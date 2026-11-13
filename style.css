@@ -30,10 +30,7 @@ body {
   src: url("assets/font/joystix.ttf");
 }
 
-#game-over-overlay{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:9999}
-#game-over-overlay .message{color:#ff5555;font-family:joystix,monospace;font-size:48px;text-align:center;text-shadow:2px 2px 6px #000}
-
-/* simple full-screen game over overlay */
+/* full-screen game over overlay */
 #game-over-overlay {
   position: fixed;
   inset: 0;
@@ -42,7 +39,6 @@ body {
   align-items: center;
   background: rgba(0,0,0,0.6);
   z-index: 9999;
-  pointer-events: none;
 }
 
 #game-over-overlay .message {
@@ -56,5 +52,3 @@ body {
 
 /* blur the canvas when game is over */
 body.game-over canvas { filter: blur(4px) saturate(0.6); }
-/* overlay should accept pointer events so keyboard focus works */
-#game-over-overlay { pointer-events: auto; }

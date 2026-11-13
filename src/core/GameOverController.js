@@ -1,5 +1,6 @@
 import EngineWrapper from './EngineWrapper.js';
 import GameState from './GameState.js';
+import Audio from './Audio.js';
 
 function showOverlay() {
     const el = document.getElementById('game-over-overlay');
