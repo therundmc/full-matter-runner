@@ -302,7 +302,8 @@ ambient: {
   `world.chars` (bullets, blasts, melee, cars hit them) and `world.civilians` (drawing), never in `enemies`: no target,
   no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
   or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra
-  that avoids the danger), screaming (world texts). No new passers-by for `AMBIENT.panic.calm` s after gunfire.
+  that avoids the danger), screaming (world texts and the `scream` / `whimper` voices, one pitch per passer-by).
+  No new passers-by for `AMBIENT.panic.calm` s after gunfire.
 
 ## Rooftops
 

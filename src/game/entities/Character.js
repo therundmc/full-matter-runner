@@ -367,7 +367,7 @@ export default class Character {
     this.world.removeBody(this.body);
     const left = gore(this.world, this, angle, cause, by);
     // most of them go down with a cry, when there is still a throat to cry with
-    if (left === 'corpse' && !this.held && !this.isCivilian && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
+    if (left === 'corpse' && !this.held && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
     this.world.onKill(this, cause, killer);
   }
 

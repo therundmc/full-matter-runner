@@ -421,11 +421,12 @@ export default class Ambient {
     }
   }
 
-  // floating scream over a passer-by (world texts), rate limited so the screen stays readable
+  // floating scream over a passer-by (world texts) and his voice, rate limited so the screen stays readable
   bark(civ, kind) {
     if (this.barkT > 0) return;
     const lines = BARKS[kind] || BARKS.scream;
     this.barkT = A.barkGap;
     this.world.texts.push({ x: civ.x, y: civ.y - 16, str: lines[Math.floor(this.r() * lines.length)], t: 1.1, dur: 1.1, color: BARK_COLOR });
+    this.world.sound(kind === 'beg' ? 'whimper' : 'scream', civ.x, civ.y, 1, { pitch: civ.voice });
   }
 }
