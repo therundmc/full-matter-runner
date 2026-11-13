@@ -4,7 +4,8 @@ import { segPoly } from '../../engine/physics/Raycast.js';
 
 const { Query } = Matter;
 
-const VAULT_REACH = 14;
+const VAULT_REACH = 18;
+const FACING = 0.3; // min cosine between the direction and the way to the obstacle
 const MAX_VAULT_DEPTH = 46;
 const BLOCKERS = CAT.WALL | CAT.PROP | CAT.GLASS | CAT.DOOR | CAT.CHAR;
 
@@ -35,9 +36,30 @@ export function spotIsFree(world, x, y, r, ignore) {
   return true;
 }
 
-// what can be vaulted in direction a: { kind: 'window' | 'prop', over, to: {x, y} } or null.
-// Furniture is only vaulted when running into it (standing still next to it means taking cover).
-export function findVault(world, ch, a, moving = true) {
+// first free spot beyond (x, y) along (ux, uy): a chair or a body right behind the obstacle must not cancel the vault
+function landing(world, ch, x, y, ux, uy, gaps) {
+  for (const g of gaps) {
+    const to = { x: x + ux * (ch.radius + g), y: y + uy * (ch.radius + g) };
+    if (spotIsFree(world, to.x, to.y, ch.radius, ch)) return to;
+  }
+  return null;
+}
+
+// over prop p from its closest point c, along (ux, uy): cast back from beyond the object to find where we come out
+function crossProp(world, ch, p, c, ux, uy) {
+  const far = { x: c.x + ux * 120, y: c.y + uy * 120 };
+  const exit = segPoly(far.x, far.y, c.x, c.y, p.body.vertices);
+  if (!exit) return null;
+  const ex = far.x + (c.x - far.x) * exit.t, ey = far.y + (c.y - far.y) * exit.t;
+  // vehicles: across the hood only (never over the roof or end to end)
+  if (p.isVehicle ? !p.canSlide(c.x, c.y, ex, ey) : Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) return null;
+  const to = landing(world, ch, ex, ey, ux, uy, [3, 10, 18]);
+  return to && { kind: 'prop', over: p, to, ledge: { x: c.x, y: c.y, tx: -uy, ty: ux } };
+}
+
+// what can be vaulted in direction a (the move, or the aim when standing still):
+// { kind: 'window' | 'prop', over, to: {x, y}, ledge: {x, y, tx, ty} (where the hands go, its tangent) } or null.
+export function findVault(world, ch, a) {
   const dx = Math.cos(a), dy = Math.sin(a);
   const r = ch.radius;
   for (const w of world.windows) {
@@ -45,31 +67,25 @@ export function findVault(world, ch, a, moving = true) {
     const nx = w.vertical ? 1 : 0, ny = w.vertical ? 0 : 1;
     const rx = ch.x - w.x, ry = ch.y - w.y;
     const side = rx * nx + ry * ny, along = rx * ny - ry * nx;
-    if (Math.abs(side) > r + VAULT_REACH || Math.abs(along) > TILE / 2) continue;
-    if ((dx * nx + dy * ny) * -Math.sign(side) < 0.35) continue;
+    if (Math.abs(side) > r + VAULT_REACH || Math.abs(along) > TILE / 2 + 3) continue;
+    if ((dx * nx + dy * ny) * -Math.sign(side) < FACING) continue;
     const s = -Math.sign(side) || 1;
     const k = Math.max(-8, Math.min(8, along));
-    const to = { x: w.x + ny * k + nx * s * (r + 7), y: w.y - nx * k + ny * s * (r + 7) };
     // hands on the sill, either side of where we go through
     const ledge = { x: w.x + ny * k, y: w.y - nx * k, tx: ny, ty: -nx };
-    if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'window', over: w, to, ledge };
+    const to = landing(world, ch, ledge.x, ledge.y, nx * s, ny * s, [7, 13, 20]);
+    if (to) return { kind: 'window', over: w, to, ledge };
   }
   for (const p of world.props) {
-    if (!moving || p.dead || !p.def.vault) continue;
+    if (p.dead || !p.def.vault) continue;
     if (Math.abs(p.x - ch.x) > 110 || Math.abs(p.y - ch.y) > 110) continue;
     const c = closestOnPolygon(ch.x, ch.y, p.body.vertices);
     if (c.d > r + VAULT_REACH) continue;
-    if ((dx * (c.x - ch.x) + dy * (c.y - ch.y)) / (c.d || 1) < 0.5) continue;
-    // cast back from beyond the object to find where we come out
-    const far = { x: c.x + dx * 120, y: c.y + dy * 120 };
-    const exit = segPoly(far.x, far.y, c.x, c.y, p.body.vertices);
-    if (!exit) continue;
-    const ex = far.x + (c.x - far.x) * exit.t, ey = far.y + (c.y - far.y) * exit.t;
-    // vehicles: across the hood only (never over the roof or end to end)
-    if (p.isVehicle ? !p.canSlide(c.x, c.y, ex, ey) : Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) continue;
-    const to = { x: ex + dx * (r + 3), y: ey + dy * (r + 3) };
-    const ledge = { x: c.x, y: c.y, tx: -dy, ty: dx };
-    if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'prop', over: p, to, ledge };
+    const nx = (c.x - ch.x) / (c.d || 1), ny = (c.y - ch.y) / (c.d || 1);
+    if (dx * nx + dy * ny < FACING) continue;
+    // along the move if that gets across, else straight over (running into it at an angle)
+    const v = crossProp(world, ch, p, c, dx, dy) || crossProp(world, ch, p, c, nx, ny);
+    if (v) return v;
   }
   return null;
 }

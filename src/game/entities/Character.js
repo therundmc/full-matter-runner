@@ -346,9 +346,9 @@ export default class Character {
 
   // ---------------- traversal ----------------
   // jump through a broken window / over a low obstacle in direction a, if there is one
-  tryVault(a, moving = true) {
+  tryVault(a) {
     if (this.vaulting || this.knocked || !this.alive) return false;
-    const v = findVault(this.world, this, a, moving);
+    const v = findVault(this.world, this, a);
     if (!v) return false;
     const dx = v.to.x - this.x, dy = v.to.y - this.y, dist = Math.hypot(dx, dy) || 1;
     const dir = Math.atan2(dy, dx);

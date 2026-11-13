@@ -100,10 +100,11 @@ export default class Player extends Character {
     }
     if (input.hit('KeyR')) this.reload();
     // Space = context action: execute > vault > slide (the slide needs a running start, no HUD label)
-    this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE' : findVault(w, this, moveA, moving) ? 'VAULT' : null;
+    this.vaultHint = sliding || this.nearDowned ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
+    this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE' : this.vaultHint ? 'VAULT' : null;
     if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
-      else if (!this.tryVault(moveA, moving) && moving) this.startSlide(moveA);
+      else if (!this.tryVault(moveA) && moving) this.startSlide(moveA);
     }
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap
@@ -169,9 +170,9 @@ export default class Player extends Character {
   updateSlide(dt) {
     const sl = this.slide, w = this.world, cfg = PLAYER.slide;
     // a broken window or a low obstacle right ahead: chain into the vault
-    if (findVault(w, this, sl.angle, true)) {
+    if (findVault(w, this, sl.angle)) {
       this.endSlide();
-      this.tryVault(sl.angle, true);
+      this.tryVault(sl.angle);
       return;
     }
     if (sl.speed >= cfg.knockSpeed * sl.run) {
