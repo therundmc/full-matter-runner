@@ -112,16 +112,11 @@ export default class Prop {
 
   // damage: hit points, (px, py): where it landed, dirA: direction of the blow, power: shove / violence,
   // kind: see the header. info (bullets): { nx, ny } surface normal, energy left when it arrived,
-  // exit: { x, y, energy } if the round went through, ricochet: it glanced off.
+  // exit: { x, y, energy } if the round went through, ricochet: it glanced off; (blades): swing direction.
   hit(damage, px, py, dirA, power = 0.6, kind = 'bullet', info = {}) {
     if (this.dead || this.dying) return;
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
-    let swing = dirA + Math.PI / 2;
-    // melee blows come in as 'blunt': tell a knife (cut) and bare hands (punch) from a bat
-    if (kind === 'blunt' && info.energy === undefined) {
-      const m = this.meleeKind(px, py);
-      kind = m.kind; swing = m.swing;
-    }
+    const swing = info.swing ?? dirA + Math.PI / 2; // a blade's stroke runs across the blow
     if (kind === 'blunt' || kind === 'cut' || kind === 'punch' || kind === 'blast' || kind === 'shrapnel') {
       const s = this.surface(px, py, dirA);
       px = s.x; py = s.y;
@@ -169,19 +164,6 @@ export default class Prop {
     if (this.hp <= 0) { this.break(dirA, power); return; }
     const frac = this.hp / d.hp;
     while (this.stage < STAGES.length && frac <= STAGES[this.stage]) this.enterStage(++this.stage, px, py, dirA);
-  }
-
-  // a melee blow: who is swinging at us, and with what (the knife cuts across the swing, fists only scuff)
-  meleeKind(px, py) {
-    let best = null, bd = Infinity;
-    for (const c of this.world.chars) {
-      if (!c.alive || !(c.swing > 0)) continue;
-      const dd = Math.hypot(c.x - px, c.y - py);
-      if (dd < bd && dd < (c.def.range || 24) + 12) { best = c; bd = dd; }
-    }
-    if (!best) return { kind: 'blunt', swing: 0 };
-    const kind = best.def.bleed ? 'cut' : best.def.hold === 'none' ? 'punch' : 'blunt';
-    return { kind, swing: best.angle + (Math.PI / 2) * (best.punchSide || 1) };
   }
 
   // where a blow along dirA through (px, py) meets the object's outline (and the surface normal there)

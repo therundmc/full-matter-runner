@@ -117,7 +117,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   - states by HP left: 70% cracked, 45% split, 20% giving way (big chunk, sag, dust); at 0 it cracks, sags, then
     falls apart into its own parts (recipe cuts of its sprite: planks, wedges, frame, cushions, doors, lids...), with
     hidden parts (legs) and contents (pool balls, books, records, bottles, cans, trash bags) as small physical bits.
-  - Melee blows arrive as 'blunt'; Prop.hit tells a knife ('cut') or fists ('punch') from the swinging character.
+  - Melee blows carry their kind from `Character.meleeStrike`: 'cut' (blade, with its swing direction), 'punch', 'blunt'.
   Only small objects are movable; everything else is `static` (bolted).
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.

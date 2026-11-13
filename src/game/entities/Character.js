@@ -285,7 +285,10 @@ export default class Character {
       if (p.dead) continue;
       const dx = p.x - x, dy = p.y - y, dd = Math.hypot(dx, dy);
       if (dd > d.range + 12 || Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2) continue;
-      p.hit(d.lethal ? 2 : 1, x + Math.cos(a) * d.range * 0.8, y + Math.sin(a) * d.range * 0.8, a, 2.5, 'blunt');
+      // a blade cuts across the swing, bare hands only scuff, a bat dents
+      const kind = d.bleed ? 'cut' : d.hold === 'none' ? 'punch' : 'blunt';
+      p.hit(d.lethal ? 2 : 1, x + Math.cos(a) * d.range * 0.8, y + Math.sin(a) * d.range * 0.8, a, 2.5, kind,
+        { swing: a + (Math.PI / 2) * (this.punchSide || 1) });
       hit = true;
     }
     for (const win of w.windows) {
