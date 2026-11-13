@@ -109,7 +109,7 @@ export default class Debris {
     const v = Body.getVelocity(this.body);
     const a = Math.atan2(v.y, v.x);
     if (sp > this.harm.lethal) {
-      c.kill(a, this.harm.kind === 'cut' ? 'glass' : 'melee', this.world.player, 0.6);
+      c.kill(a, this.harm.kind === 'cut' ? 'glass' : 'melee', this.world.player, { gore: 0.6 });
     } else if (!c.knocked) {
       c.knock(a, 'debris');
       this.world.particles.blood(c.x, c.y, a, 0.6, 10, 140);

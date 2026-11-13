@@ -47,7 +47,8 @@ src/
                           WeaponItem, AmmoItem, Projectile
     fx/                   Particles, Gore
     ui/                   HUD, Screens, Text
-    data/                 weapons, props, materials, destruction (how each prop comes apart), levels/ (index.js = registry)
+    data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+                          apart), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai
 ```
 
@@ -119,6 +120,11 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
     hidden parts (legs) and contents (pool balls, books, records, bottles, cans, trash bags) as small physical bits.
   - Melee blows carry their kind from `Character.meleeStrike`: 'cut' (blade, with its swing direction), 'punch', 'blunt'.
   Only small objects are movable; everything else is `static` (bolted).
+- Bleeding is calibrated per weapon (data/wounds.js): a weapon names its `wound` profile (blow-back, spray along the
+  blow, exit plume, mist, stain, final pool size and spreading rate, arterial spurts, how far the body is thrown).
+  `Character.kill(angle, cause, killer, by)` hands what killed (`by`: a weapon definition or `{ gore, wound }`) to
+  `gore()`; the cause is the fallback (`CAUSE_WOUND`). A knife casts a thin arc and leaves a pumping artery and a
+  lake, 7.62 a long tight jet behind the body, buckshot a wide wet cone (only up close), a bat heavy slow drops.
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
   Space = context action: execute > vault > slide. (A cover system existed and was removed at the user's request.)

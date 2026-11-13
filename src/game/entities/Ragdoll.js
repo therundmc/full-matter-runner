@@ -2,6 +2,7 @@ import { CAT, MASK, PALETTE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance, local } from '../../engine/math.js';
 import { setMaterial, impulse } from '../../engine/physics/Body.js';
+import { woundFor } from '../data/wounds.js';
 
 const { Bodies, Body, Constraint, Composite } = Matter;
 
@@ -20,6 +21,9 @@ export default class Ragdoll {
     this.fountain = this.headless ? rand(1.4, 2.4) : 0;
     this.pool = 0;
     this.poolMax = opts.pool ?? rand(11, 17);
+    this.poolRate = (opts.poolRate ?? 4) * (this.headless ? 1.75 : 1); // px/s
+    this.spurt = this.spurt0 = opts.spurt || 0; // seconds an opened artery keeps pumping
+    this.spurtA = rand(0, Math.PI * 2);
     this.settle = 0;
     this.age = 0;
     this.dead = false;
@@ -120,7 +124,8 @@ export default class Ragdoll {
     const w = this.world;
     impulse(part.body, a, weaponDef?.pellets > 1 ? 20 : 14, rand(-0.15, 0.15), 4);
     const p = part.body.position;
-    w.particles.blood(p.x, p.y, a, 0.5, 10, 220);
+    const [n, v, cone] = woundFor('bullet', weaponDef).spray;
+    w.particles.blood(p.x, p.y, a, cone + 0.2, Math.ceil(n * 0.5), v * 0.7);
     w.decals.stampBlood(p.x, p.y, 3, 3);
     this.pool = Math.min(this.poolMax + 4, this.pool + 1.5);
     const heavy = weaponDef && (weaponDef.pellets > 1 || weaponDef.heavy || weaponDef.rocket);
@@ -154,9 +159,17 @@ export default class Ragdoll {
       const a = this.torso.body.angle - Math.PI / 2;
       if (Math.sin(this.age * 14) > 0.2) w.particles.blood(n.x, n.y, a + rand(-0.5, 0.5), 0.25, 2, rand(90, 200), { z: 3 });
     }
-    if (this.pool < this.poolMax && this.age > 0.3) this.pool += dt * (this.headless ? 7 : 4);
+    if (this.spurt > 0) {
+      // an opened artery: weaker and weaker pulses
+      this.spurt -= dt;
+      if (Math.sin(this.age * 9) > 0.35) {
+        const t = this.torso.body;
+        w.particles.blood(t.position.x, t.position.y, t.angle + this.spurtA + rand(-0.12, 0.12), 0.1, 2, 50 + 190 * (this.spurt / this.spurt0), { z: 3 });
+      }
+    }
+    if (this.pool < this.poolMax && this.age > 0.3) this.pool += dt * this.poolRate;
     this.settle = moving ? 0 : this.settle + dt;
-    if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0) this.bake();
+    if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
   bake() {

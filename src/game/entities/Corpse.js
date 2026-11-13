@@ -24,6 +24,9 @@ export default class Corpse {
     this.fountain = this.headless ? rand(1.4, 2.4) : 0;
     this.pool = 0;
     this.poolMax = opts.pool ?? rand(11, 17);
+    this.poolRate = (opts.poolRate ?? 4) * (this.headless ? 1.75 : 1); // px/s
+    this.spurt = this.spurt0 = opts.spurt || 0; // seconds an opened artery keeps pumping
+    this.spurtA = rand(0, Math.PI * 2);
     this.settle = 0;
     this.age = 0;
     this.dead = false;
@@ -46,9 +49,16 @@ export default class Corpse {
       const pulse = Math.sin(this.age * 14) > 0.2;
       if (pulse) this.world.particles.blood(head.x, head.y, b.angle + rand(-0.5, 0.5), 0.25, 2, rand(90, 200), { z: 3 });
     }
-    if (this.pool < this.poolMax && this.age > 0.3) this.pool += dt * (this.headless ? 7 : 4);
+    if (this.spurt > 0) {
+      // an opened artery: weaker and weaker pulses
+      this.spurt -= dt;
+      if (Math.sin(this.age * 9) > 0.35) {
+        this.world.particles.blood(this.x, this.y, b.angle + this.spurtA + rand(-0.12, 0.12), 0.1, 2, 50 + 190 * (this.spurt / this.spurt0), { z: 3 });
+      }
+    }
+    if (this.pool < this.poolMax && this.age > 0.3) this.pool += dt * this.poolRate;
     if (Body.getSpeed(b) < 0.05) this.settle += dt; else this.settle = 0;
-    if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0) this.bake();
+    if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
   bake() {

@@ -278,7 +278,7 @@ export default class Character {
       if (Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2 && dd > c.radius + 5) continue;
       if (!w.lineOfSight(x, y, c.x, c.y)) continue;
       hit = true;
-      if (d.lethal || c.isPlayer) c.kill(a, d === WEAPONS.knife ? 'slash' : 'melee', this, d.gore ?? 0.3);
+      if (d.lethal || c.isPlayer) c.kill(a, d === WEAPONS.knife ? 'slash' : 'melee', this, d);
       else c.knock(a, 'punch');
     }
     for (const p of w.props) {
@@ -328,16 +328,17 @@ export default class Character {
     let cause = 'bullet';
     if (weaponDef?.pellets > 1) cause = distance < 120 ? 'blast' : 'bullet';
     else if (weaponDef?.heavy) cause = 'heavy';
-    this.kill(angle, cause, shooter, weaponDef?.gore ?? 0.3);
+    this.kill(angle, cause, shooter, weaponDef || {});
   }
 
-  kill(angle, cause, killer, goreMul = 1) {
+  // by: what did it (a weapon definition, or { gore, wound }): sets the dismemberment odds and the bleeding
+  kill(angle, cause, killer, by) {
     if (!this.alive) return;
     this.alive = false;
     this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
-    gore(this.world, this, angle, cause, goreMul);
+    gore(this.world, this, angle, cause, by);
     this.world.onKill(this, cause, killer);
   }
 

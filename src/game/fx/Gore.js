@@ -3,12 +3,17 @@ import { rand, chance } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
+import { WOUNDS, woundFor } from '../data/wounds.js';
 
-// Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | execute
-export function gore(world, ch, angle, cause, goreMul = 1) {
+// Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute.
+// by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
+// profile (data/wounds.js) sets how much blood goes where and how the body bleeds out.
+export function gore(world, ch, angle, cause, by) {
   const P = world.particles;
   const { x, y } = ch;
   const k = ch.kind;
+  const goreMul = by ? by.gore ?? 0.3 : 1;
+  const wd = woundFor(cause, by);
 
   let mode = 'corpse';
   switch (cause) {
@@ -22,13 +27,19 @@ export function gore(world, ch, angle, cause, goreMul = 1) {
     default: mode = 'corpse';
   }
 
-  // base spray
-  const sprayN = cause === 'slash' || cause === 'glass' ? 45 : 28;
-  if (cause === 'glass') P.blood(x, y, 0, Math.PI, 30, 160);
-  P.blood(x, y, angle, 0.45, sprayN, 340);
-  P.blood(x, y, angle + Math.PI, 0.7, 7, 110);
-  P.mist(x, y, 10);
-  world.decals.stampBlood(x, y, 7, 7);
+  // the wound itself: blow-back toward the attacker, spray along the blow, a cloud, a stain under the body
+  const [bn, bv, bc] = wd.back, [sn, sv, sc] = wd.spray, opt = wd.big ? { big: true } : undefined;
+  if (bn) P.blood(x, y, angle + Math.PI, bc, bn, bv);
+  if (wd.sweep) {
+    // cast off along the stroke: a thin arc of drops instead of a cone
+    const side = chance(0.5) ? 1 : -1, steps = 7;
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1) - 0.5;
+      P.blood(x, y, angle + side * t * wd.sweep, sc, Math.ceil(sn / steps), sv * (1 - Math.abs(t) * 0.5), opt);
+    }
+  } else P.blood(x, y, angle, sc, sn, sv, opt);
+  if (wd.mist) P.mist(x, y, wd.mist);
+  world.decals.stampBlood(x, y, wd.splat[0], wd.splat[1]);
 
   if (mode === 'gibs') {
     const radial = cause === 'explosion';
@@ -50,14 +61,15 @@ export function gore(world, ch, angle, cause, goreMul = 1) {
     return;
   }
 
-  const slide = cause === 'blast' ? rand(280, 380) : cause === 'heavy' ? 300 : rand(140, 230);
+  const slide = rand(wd.throw[0], wd.throw[1]);
+  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]), poolRate: wd.rate, spurt: wd.spurt };
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
-    world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, { headless: mode === 'headless', detach }));
+    world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, { headless: mode === 'headless', detach, ...bleeding }));
   } else {
     const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
-    world.addCorpse(new Corpse(world, corpseImg, x, y, angle, slide, { headless: mode === 'headless' }));
+    world.addCorpse(new Corpse(world, corpseImg, x, y, angle, slide, { headless: mode === 'headless', ...bleeding }));
   }
 
   if (mode === 'headless') {
@@ -74,7 +86,7 @@ export function gore(world, ch, angle, cause, goreMul = 1) {
     world.sound('gore', x, y, 0.8);
     world.shake(0.2);
   } else {
-    world.sound(cause === 'slash' ? 'slash' : 'splat', x, y);
+    world.sound(cause === 'slash' ? 'slash' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
   }
 }
 

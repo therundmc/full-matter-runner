@@ -3,6 +3,7 @@ import { impulse } from '../../engine/physics/Body.js';
 import { TILE } from '../Config.js';
 import { rand, clamp } from '../../engine/math.js';
 import { RESIST, COST, HARDNESS, wallExit, bodyExit, afterCost, ricochet } from '../systems/Penetration.js';
+import { woundFor } from '../data/wounds.js';
 
 // Fast bullet traced as a segment each step (no tunnelling), or a slow rocket.
 // A bullet carries penetration energy (`pen`): every obstacle eats some of it (systems/Penetration.js); if any is
@@ -165,8 +166,11 @@ export default class Projectile {
         if (this.spend(COST.flesh)) return true;
         // through and through: the exit wound sprays forward
         const ex = c.x + Math.cos(a) * (c.radius + 1), ey = c.y + Math.sin(a) * (c.radius + 1);
-        w.particles.blood(ex, ey, a, 0.35, 10, 300);
-        w.decals.stampBlood(ex + Math.cos(a) * rand(10, 30), ey + Math.sin(a) * rand(10, 30), 4, 4);
+        const exit = woundFor('bullet', this.weapon).exit;
+        if (exit) {
+          w.particles.blood(ex, ey, a, exit[2], exit[0], exit[1]);
+          w.decals.stampBlood(ex + Math.cos(a) * rand(10, 30), ey + Math.sin(a) * rand(10, 30), 2 + exit[0] / 8, 4);
+        }
         return { x: ex, y: ey, a: this.deflect(COST.flesh) };
       }
       case 'corpse': {
