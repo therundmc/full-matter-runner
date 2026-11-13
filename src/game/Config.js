@@ -35,6 +35,17 @@ export const PLAYER = {
   accel: 0.42,        // velocity lerp per step
   lookAhead: 0.32,    // camera offset toward the cursor
   lookAheadFar: 0.75, // with Shift held
+  // Space while running with nothing to vault (systems/Slide.js): ~0.5 s, ~2.9 m
+  slide: {
+    dur: 0.5,         // s
+    boost: 1.95,      // start speed, x run speed
+    end: 0.6,         // speed at the end (handed back to the run), x run speed
+    cooldown: 0.5,    // s after a slide before the next one
+    minSpeed: 0.45,   // x run speed needed to start one
+    knockSpeed: 1.1,  // x run speed: still fast enough to sweep a standing enemy off his feet
+    stall: 0.3,       // measured / wanted speed under which an obstacle ends the slide
+    hitMomentum: 0.6, // share of our momentum given to loose props we plough into
+  },
 };
 
 // One guard (entities/Enemy.js, ai/Perception.js). Times in seconds, distances in px, angles in rad.

@@ -1,6 +1,6 @@
-import { CAT, MASK, PALETTE, ENEMY } from '../Config.js';
+import { CAT, MASK, ENEMY } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { sprite, spriteOpt, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
+import { sprite, spriteOpt, chunk } from '../../engine/Assets.js';
 import { rand, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
@@ -9,6 +9,7 @@ import { findVault } from '../systems/Cover.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
+import { newPose, standPose, vaultPose, slidePose, drawPose, drawDown } from './CharacterAnim.js';
 
 const { Bodies, Body } = Matter;
 
@@ -19,7 +20,8 @@ export const KINDS = {
   brute: { arm: '#d89a70', skin: '#d89a70' },
 };
 
-const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const VAULT_DUR = 0.5; // s, windows and furniture alike
+const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
 
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
@@ -54,7 +56,20 @@ export default class Character {
     this.reloadDur = 1;
     this.reloadStage = 0;
     this.pickAnim = 0;
-    this.vaulting = null;   // { from, to, t, dur, kind } while jumping over something
+    this.throwT = 0;        // follow-through of a throw
+    this.throwDur = 0.28;
+    this.recoilRate = 9;    // recoil recovery per second (heavy guns recover slower)
+    this.vaulting = null;   // { from, to, t, dur, kind, dir, ... } while jumping over something
+    this.slideAnim = null;  // { dir, side, k, w } while sliding (driven by Player)
+    // animation state (see CharacterAnim.js)
+    this.gait = 0;          // 0 standing .. 1 full stride, smoothed
+    this.footA = angle;     // smoothed feet direction
+    this.lean = { x: 0, y: 0 };
+    this.prevVel = { x: 0, y: 0 };
+    this.breath = rand(0, 6.28);
+    this.downT = 0;         // time since knocked down
+    this.pose = newPose();
+    this.pose2 = newPose();
     this.alive = true;
     this.knocked = 0;
     this.downAngle = 0;
@@ -163,11 +178,25 @@ export default class Character {
     this.swing = Math.max(0, this.swing - dt);
     this.pickAnim = Math.max(0, this.pickAnim - dt);
     this.updateReload(dt);
-    this.recoil = Math.max(0, this.recoil - dt * 9);
+    this.throwT = Math.max(0, this.throwT - dt);
+    this.recoil = Math.max(0, this.recoil - dt * this.recoilRate);
     const v = Body.getVelocity(this.body);
     const sp = Math.hypot(v.x, v.y);
     this.moving = sp;
     if (sp > 0.25) { this.walk += sp * dt * 6; this.moveAngle = Math.atan2(v.y, v.x); }
+    // knocked down: a puff of dust when the body hits the floor
+    const wasDown = this.downT;
+    this.downT = this.knocked > 0 ? this.downT + dt : 0;
+    if (wasDown < 0.18 && this.downT >= 0.18) this.world.particles.smoke(this.x, this.y, 3, 5, { speed: 25, size: 4, life: 0.5 });
+    // smoothed gait / feet direction / lean into acceleration (frozen while vaulting, so the run resumes on landing)
+    if (!this.vaulting) {
+      const kg = 1 - Math.exp(-dt * 12), kf = 1 - Math.exp(-dt * 14), kl = 1 - Math.exp(-dt * 10);
+      this.gait += (Math.min(1, sp / GAIT_SPEED) - this.gait) * kg;
+      this.footA += angDiff(this.footA, sp > 0.25 ? this.moveAngle : this.angle) * kf;
+      this.lean.x += (clamp((v.x - this.prevVel.x) * 4, -1.6, 1.6) - this.lean.x) * kl;
+      this.lean.y += (clamp((v.y - this.prevVel.y) * 4, -1.6, 1.6) - this.lean.y) * kl;
+    }
+    this.prevVel.x = v.x; this.prevVel.y = v.y;
   }
 
   // ---------------- combat ----------------
@@ -228,6 +257,7 @@ export default class Character {
     // the player's gunfire draws the guards in; a guard firing calls his mates
     if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
     this.recoil = 1;
+    this.recoilRate = d.kick >= 6 ? 4.5 : 9;
     this.weapon.mag--;
     this.vel.x -= Math.cos(a) * d.kick * 0.12;
     this.vel.y -= Math.sin(a) * d.kick * 0.12;
@@ -316,18 +346,27 @@ export default class Character {
     if (this.vaulting || this.knocked || !this.alive) return false;
     const v = findVault(this.world, this, a, moving);
     if (!v) return false;
-    // hands planted on the ledge (world positions), a little apart
+    const dx = v.to.x - this.x, dy = v.to.y - this.y, dist = Math.hypot(dx, dy) || 1;
+    const dir = Math.atan2(dy, dx);
+    // hands planted on the ledge (world positions), a little apart: [left, right] relative to the move
     const L = v.ledge;
-    const hands = [{ x: L.x - L.tx * 9, y: L.y - L.ty * 9 }, { x: L.x + L.tx * 9, y: L.y + L.ty * 9 }];
+    const h0 = { x: L.x - L.tx * 9, y: L.y - L.ty * 9 }, h1 = { x: L.x + L.tx * 9, y: L.y + L.ty * 9 };
+    const flip = -L.tx * Math.sin(dir) + L.ty * Math.cos(dir) < 0;
+    // the run-up carries into the move: Hermite tangents normalized to the vault distance and duration
+    const vel = Body.getVelocity(this.body);
+    const along = Math.max(0, (vel.x * dx + vel.y * dy) / dist);
+    const win = v.kind === 'window';
+    const side = angDiff(dir, this.angle) >= 0 ? 1 : -1; // hip slides roll the chest toward the aim
     this.vaulting = {
-      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: 0.5, kind: v.kind, over: v.over,
-      hands, dir: Math.atan2(v.to.y - this.y, v.to.x - this.x), legSide: Math.random() < 0.5 ? -1 : 1,
+      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: VAULT_DUR, kind: v.kind, over: v.over, dir, dist,
+      hands: flip ? [h1, h0] : [h0, h1], side, legSide: win ? (Math.random() < 0.5 ? -1 : 1) : -side,
+      m0: clamp((along * 60 * VAULT_DUR) / dist, 0, win ? 0.6 : 1.1), m1: win ? 0.8 : 1.2, landed: false,
     };
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
-    this.world.sound(v.kind === 'prop' ? 'slide' : 'vault', this.x, this.y, 0.8);
-    if (v.kind === 'window') this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
+    this.world.sound(win ? 'vault' : 'slide', this.x, this.y, 0.8);
+    if (win) this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
     return true;
   }
 
@@ -335,24 +374,35 @@ export default class Character {
   updateVault(dt) {
     const v = this.vaulting;
     if (!v) return false;
+    const w = this.world;
     v.t += dt;
     const k = Math.min(1, v.t / v.dur);
-    // window: slow push-off, fast over the top, settle on landing. slide: one smooth glide
-    const e = v.kind === 'prop' ? k * k * (3 - 2 * k)
-      : k < 0.25 ? 0.15 * (k / 0.25) : k < 0.75 ? 0.15 + 0.75 * ((k - 0.25) / 0.5) : 0.9 + 0.1 * ((k - 0.75) / 0.25);
+    // cubic Hermite: leaves with the run-up speed, lands with the exit speed, no jerk in between
+    const k2 = k * k, k3 = k2 * k;
+    const e = (k3 - 2 * k2 + k) * v.m0 + (3 * k2 - 2 * k3) + (k3 - k2) * v.m1;
+    const c = Math.cos(v.dir), s = Math.sin(v.dir);
     // skidding over a hood throws sparks, over wood a bit of dust
-    if (v.kind === 'prop' && k > 0.2 && k < 0.8 && Math.random() < 0.35) {
+    if (v.kind === 'prop' && k > 0.25 && k < 0.75 && Math.random() < 0.35) {
       const metal = v.over?.isVehicle || v.over?.def?.material === 'metal';
-      if (metal) this.world.particles.sparks(this.x, this.y, v.dir + Math.PI, 0.6, 1, 140);
-      else this.world.particles.smoke(this.x, this.y, 1, 3, { speed: 15, size: 3, life: 0.5 });
+      if (metal) w.particles.sparks(this.x, this.y, v.dir + Math.PI, 0.6, 1, 140);
+      else w.particles.smoke(this.x, this.y, 1, 3, { speed: 15, size: 3, life: 0.5 });
     }
     Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
     Body.setVelocity(this.body, { x: 0, y: 0 });
+    // touch-down: dust, noise, a small camera kick for the player
+    if (!v.landed && k >= (v.kind === 'window' ? 0.78 : 0.84)) {
+      v.landed = true;
+      for (const sd of [-1, 1]) w.particles.smoke(this.x - s * sd * 6, this.y + c * sd * 6, 1, 2, { speed: 22, size: 3, life: 0.45 });
+      w.noise(this.x, this.y, this.isPlayer ? 120 : 0, this);
+      if (this.isPlayer) { w.shake(0.05); w.camera.push(c * 1.5, s * 1.5); }
+    }
     if (k < 1) return true;
     this.vaulting = null;
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: MASK.CHAR };
-    this.world.particles.smoke(this.x, this.y, 4, 4, { speed: 30, size: 4, life: 0.6 });
-    this.world.noise(this.x, this.y, this.isPlayer ? 120 : 0, this);
+    // hand the exit speed back to the run
+    const sp = (v.m1 * v.dist) / (v.dur * 60);
+    this.vel = { x: c * sp, y: s * sp };
+    Body.setVelocity(this.body, this.vel);
     return false;
   }
 
@@ -366,237 +416,11 @@ export default class Character {
 
   // ---------------- rendering ----------------
   draw(ctx) {
-    const x = this.x, y = this.y;
-    if (this.knocked > 0) {
-      drawSprite(ctx, silhouette(this.downImg), x + 2, y + 2, this.downAngle, 0.35);
-      drawSprite(ctx, this.downImg, x, y, this.downAngle);
-      // dizzy stars
-      const t = this.world.time * 6;
-      ctx.fillStyle = PALETTE.yellow;
-      for (let i = 0; i < 3; i++) {
-        const sa = t + (i * Math.PI * 2) / 3;
-        const h = local(x, y, this.downAngle, 9, 0);
-        ctx.fillRect(h.x + Math.cos(sa) * 6 - 1, h.y + Math.sin(sa) * 3 - 4, 2, 2);
-      }
-      return;
-    }
-    // vaulting = a little jump arc
-    let s = 1;
-    let lift = 0;
-    if (this.vaulting) {
-      const k = Math.min(1, this.vaulting.t / this.vaulting.dur);
-      lift = Math.sin(Math.PI * k);
-      s = 1 + lift * 0.16;
-    }
-    if (this.vaulting) { this.drawVault(ctx, s, lift); return; }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(s, s);
-    ctx.translate(-x, -y);
-    // feet
-    ctx.fillStyle = '#1a1214';
-    const stride = this.moving > 0.25 ? Math.sin(this.walk) * 5 : 0;
-    const fa = this.moving > 0.25 ? this.moveAngle : this.angle;
-    for (const side of [-1, 1]) {
-      const f = local(x, y, fa, stride * side + 1, side * 3.6);
-      ctx.save();
-      ctx.translate(f.x, f.y);
-      ctx.rotate(fa);
-      ctx.fillRect(-3, -1.8, 6, 3.6);
-      ctx.restore();
-    }
-    drawSprite(ctx, silhouette(this.torso), x + 2 + lift * 4, y + 2 + lift * 5, this.angle, 0.35);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(this.angle);
-    this.drawArms(ctx);
-    ctx.restore();
-    drawSprite(ctx, this.torso, x, y, this.angle);
-    ctx.restore();
-  }
-
-  // window: hands on the sill while the body goes through; furniture / car hood: action-movie slide on the hip
-  drawVault(ctx, s, lift) {
-    const v = this.vaulting;
-    const k = Math.min(1, v.t / v.dur);
-    const a = v.dir;
-    const x = this.x, y = this.y;
-    const slide = v.kind === 'prop';
-    const side = v.legSide;
-    // sliding: the body turns sideways onto its hip in the middle of the move
-    const ta = slide ? a + side * 1.15 * Math.sin(Math.PI * Math.min(1, k * 1.15)) : a;
-    const toLocal = (p) => {
-      const dx = p.x - x, dy = p.y - y, c = Math.cos(-a), sn = Math.sin(-a);
-      return { x: (dx * c - dy * sn) / s, y: (dx * sn + dy * c) / s };
-    };
-    const ARM = 11; // a real arm's reach from the shoulder
-    const reach = (h, sy) => {
-      const dx = h.x, dy = h.y - sy, len = Math.hypot(dx, dy);
-      return len > ARM ? { x: (dx / len) * ARM, y: sy + (dy / len) * ARM } : h;
-    };
-    let hands;
-    if (slide) {
-      // one palm skids on the surface right under the body, the other hand keeps the gun up
-      const palm = { x: -2, y: -side * 8 };
-      const gunA = this.angle - a;
-      hands = side > 0 ? [palm, { x: Math.cos(gunA) * 10, y: Math.sin(gunA) * 10 + 4 }]
-        : [{ x: Math.cos(gunA) * 10, y: Math.sin(gunA) * 10 - 4 }, palm];
-    } else {
-      const rest = [{ x: 7, y: -6 }, { x: 7, y: 6 }];
-      const planted = v.hands.map(toLocal).sort((h1, h2) => h1.y - h2.y);
-      hands = planted.map((h, i) => {
-        let p = h;
-        if (k < 0.22) p = { x: lerp(rest[i].x, h.x, k / 0.22), y: lerp(rest[i].y, h.y, k / 0.22) };
-        else if (k >= 0.72) p = { x: lerp(h.x, rest[i].x, (k - 0.72) / 0.28), y: lerp(h.y, rest[i].y, (k - 0.72) / 0.28) };
-        return reach(p, i === 0 ? -6 : 6);
-      });
-    }
-    // legs: tucked and swung over a sill, thrown forward in a slide
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(a);
-    ctx.scale(s, s);
-    ctx.fillStyle = '#1a1214';
-    const mid = Math.sin(Math.PI * k);
-    for (const sd of [-1, 1]) {
-      if (slide) ctx.fillRect(2 + mid * 7, sd * 2.6 + side * mid * 3 - 1.8, 6, 3.6);
-      else ctx.fillRect(-7 - mid * 3, sd * 3.2 + mid * 6 * side - 1.8, 6, 3.6);
-    }
-    ctx.restore();
-    drawSprite(ctx, silhouette(this.torso), x + 2 + lift * 4, y + 2 + lift * 5, ta, 0.35);
-    drawSprite(ctx, this.torso, x, y, ta, 1, s);
-    // arms on top: pressing on the ledge / skidding on the hood
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(a);
-    ctx.scale(s, s);
-    ctx.lineCap = 'round';
-    const shoulders = [-6, 6].map((sy) => ({ x: -Math.sin(ta - a) * sy, y: Math.cos(ta - a) * sy }));
-    hands.forEach((h, i) => {
-      const o = shoulders[i];
-      ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 4.6;
-      ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(h.x, h.y); ctx.stroke();
-      ctx.strokeStyle = this.look.arm; ctx.lineWidth = 2.8;
-      ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(h.x, h.y); ctx.stroke();
-    });
-    const d = this.def;
-    if (d.sprite) {
-      const img = sprite(d.sprite);
-      const gh = slide ? hands[side > 0 ? 1 : 0] : hands[1];
-      ctx.save();
-      ctx.translate(gh.x, gh.y);
-      ctx.rotate(slide ? this.angle - a : Math.atan2(gh.y - 6, gh.x) + 0.2);
-      ctx.drawImage(img, -d.grip, -img.height / 2);
-      ctx.restore();
-    }
-    for (const h of hands) {
-      ctx.fillStyle = PALETTE.ink; ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
-      ctx.fillStyle = this.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
-    }
-    ctx.restore();
-  }
-
-  drawArms(ctx) {
-    const d = this.def;
-    const rc = this.recoil * 3;
-    const swingP = this.swing > 0 ? 1 - this.swing / this.swingDur : 1;
-    let hl, hr, wpn = null;
-    if (d.hold === 'none') {
-      const ext = this.swing > 0 ? Math.sin(Math.PI * swingP) : 0;
-      hl = { x: 6 + (this.punchSide < 0 ? ext * 9 : 0), y: -6 + (this.punchSide < 0 ? ext * 4 : 0) };
-      hr = { x: 6 + (this.punchSide > 0 ? ext * 9 : 0), y: 6 - (this.punchSide > 0 ? ext * 4 : 0) };
-    } else if (d.hold === 'one') {
-      hr = { x: 10 - rc, y: 1.5 };
-      hl = { x: 9 - rc, y: -0.5 };
-      wpn = { x: hr.x, y: 1, a: 0 };
-    } else if (d.hold === 'two') {
-      hr = { x: 5 - rc, y: 3 };
-      wpn = { x: hr.x, y: 2, a: 0 };
-      hl = { x: hr.x + sprite(d.sprite).width * 0.5, y: 1 };
-    }
-    let carry = null; // magazine / shell held in the off hand while reloading
-    if (wpn && this.reloading > 0) {
-      const p = 1 - this.reloading / this.reloadDur;
-      const belt = { x: -1, y: -8 };
-      if (d.shellReload) {
-        // off hand shuttles shells from the belt to the loading port
-        const port = { x: wpn.x + 6, y: wpn.y + 3 };
-        const k = Math.sin(Math.PI * p);
-        hl = { x: lerp(belt.x, port.x, k), y: lerp(belt.y, port.y, k) };
-        wpn.a = -0.35;
-        carry = { img: sprite('weapons/shell'), pos: hl, a: 0 };
-      } else {
-        // tilt the gun, fetch a fresh mag from the belt, slam it in, rack
-        const tilt = p < 0.12 ? p / 0.12 : p > 0.85 ? (1 - p) / 0.15 : 1;
-        wpn.a = -0.55 * tilt;
-        const well = { x: wpn.x + 2, y: wpn.y + 3 };
-        if (p < 0.15) hl = { x: lerp(hl.x, belt.x, p / 0.15), y: lerp(hl.y, belt.y, p / 0.15) };
-        else if (p < 0.4) hl = belt;
-        else if (p < 0.7) hl = { x: lerp(belt.x, well.x, easeOut((p - 0.4) / 0.3)), y: lerp(belt.y, well.y, easeOut((p - 0.4) / 0.3)) };
-        else hl = well;
-        if (p > 0.25 && p < 0.72 && d.magSprite) carry = { img: spriteOpt(d.magSprite), pos: hl, a: Math.PI / 2 };
-        if (p > 0.86) wpn.x -= Math.sin((p - 0.86) / 0.14 * Math.PI) * 3;
-      }
-    }
-    if (wpn && this.pickAnim > 0) {
-      // flashy pickup: the weapon twirls into the hand
-      const k = this.pickAnim / 0.35;
-      wpn.a += k * k * Math.PI * 2;
-      wpn.x -= k * 3;
-    }
-    if (d.hold === 'melee') {
-      const rest = d === WEAPONS.bat ? 2.1 : 0.9;
-      let wa = rest;
-      if (this.swing > 0) {
-        const p = swingP;
-        wa = p < 0.55 ? lerp(1.8, -1.7, easeOut(p / 0.55)) : lerp(-1.7, rest, easeOut((p - 0.55) / 0.45));
-      }
-      hr = { x: 3 + Math.cos(wa) * 7, y: 2 + Math.sin(wa) * 7 };
-      wpn = { x: hr.x, y: hr.y, a: wa };
-      hl = { x: 6, y: -6 };
-      if (this.swing > 0 && swingP < 0.6) {
-        // swing trail
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(3, 2, d.range * 0.85, Math.max(-1.7, wa), 1.8);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-    const arm = (h, sy) => {
-      ctx.strokeStyle = PALETTE.ink;
-      ctx.lineWidth = 4.6;
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
-      ctx.strokeStyle = this.look.arm;
-      ctx.lineWidth = 2.8;
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
-    };
-    ctx.lineCap = 'round';
-    arm(hl, -6);
-    arm(hr, 6);
-    if (wpn) {
-      const img = sprite(d.sprite);
-      ctx.save();
-      ctx.translate(wpn.x, wpn.y);
-      ctx.rotate(wpn.a);
-      ctx.drawImage(img, -d.grip, -img.height / 2);
-      ctx.restore();
-    }
-    if (carry && carry.img) {
-      ctx.save();
-      ctx.translate(carry.pos.x, carry.pos.y);
-      ctx.rotate(carry.a);
-      ctx.drawImage(carry.img, -carry.img.width / 2, -carry.img.height / 2);
-      ctx.restore();
-    }
-    for (const h of [hl, hr]) {
-      ctx.fillStyle = PALETTE.ink;
-      ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
-      ctx.fillStyle = this.look.skin;
-      ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
-    }
+    if (this.knocked > 0) { drawDown(ctx, this, this.pose); return; }
+    const P = standPose(this, this.pose);
+    // a slide can chain into a vault: the vault blends out of whatever the slide pose was
+    if (this.slideAnim) slidePose(this, P, this.pose2);
+    if (this.vaulting) vaultPose(this, P, this.pose2);
+    drawPose(ctx, this, P);
   }
 }

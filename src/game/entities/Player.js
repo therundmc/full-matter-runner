@@ -1,9 +1,15 @@
 import { PLAYER } from '../Config.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand } from '../../engine/math.js';
+import { chunk } from '../../engine/Assets.js';
+import { impulse, kgOf } from '../../engine/physics/Body.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
+import { Slide, canSlide } from '../systems/Slide.js';
+
+const { Body } = Matter;
+let scuff = null; // floor scuff stamp, made on first use
 
 export default class Player extends Character {
   constructor(world, x, y, angle) {
@@ -13,6 +19,9 @@ export default class Player extends Character {
     this.execution = null;
     this.nearItem = null;
     this.nearDowned = null;
+    this.slide = null;      // Slide kinematics while sliding
+    this.slideCd = 0;
+    this.slideHits = new Set(); // loose bodies already shoved by the current slide
     // spare rounds per caliber
     this.ammo = { '9mm': 24, '12g': 0, '762': 0, rocket: 0 };
   }
@@ -43,6 +52,8 @@ export default class Player extends Character {
     this.baseUpdate(dt);
     if (!this.alive) return;
     const w = this.world;
+    this.slideCd -= dt;
+    this.updateSlideAnim(dt);
 
     if (this.execution) { this.updateExecution(dt); return; }
     this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
@@ -54,9 +65,14 @@ export default class Player extends Character {
     if (input.down('KeyS') || input.down('ArrowDown')) dy += 1;
     if (input.down('KeyA') || input.down('ArrowLeft')) dx -= 1;
     if (input.down('KeyD') || input.down('ArrowRight')) dx += 1;
-    this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
     const moving = !!(dx || dy);
     const moveA = moving ? Math.atan2(dy, dx) : this.angle;
+    if (this.slide) {
+      this.updateSlide(dt);
+      if (this.vaulting) return; // chained into a vault
+    }
+    const sliding = !!this.slide;
+    if (!sliding) this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
 
     // what is around us
     this.nearItem = null;
@@ -83,11 +99,11 @@ export default class Player extends Character {
       }
     }
     if (input.hit('KeyR')) this.reload();
-    // Space = context action: execute > vault
-    this.contextAction = this.nearDowned ? 'EXECUTE' : findVault(w, this, moveA, moving) ? 'VAULT' : null;
-    if (input.hit('Space')) {
+    // Space = context action: execute > vault > slide (the slide needs a running start, no HUD label)
+    this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE' : findVault(w, this, moveA, moving) ? 'VAULT' : null;
+    if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
-      else this.tryVault(moveA, moving);
+      else if (!this.tryVault(moveA, moving) && moving) this.startSlide(moveA);
     }
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap
@@ -121,9 +137,90 @@ export default class Player extends Character {
     this.weapon = null;
     this.reloading = 0;
     this.cooldown = 0.15;
-    this.swingDur = this.swing = 0.2;
+    this.throwT = this.throwDur;
     w.sound('throw', this.x, this.y, power ? 1 : 0.8);
     if (power) { w.slowmo(0.45, 0.25); w.shake(0.15); }
+  }
+
+  // ---------------- slide ----------------
+  startSlide(a) {
+    const cfg = PLAYER.slide, w = this.world;
+    if (this.vaulting || !canSlide(this.slideCd, this.moving, PLAYER.speed, cfg)) return false;
+    this.slide = new Slide(a, PLAYER.speed, cfg);
+    this.slideHits.clear();
+    // the trailing palm goes on the side of the free (left) hand
+    this.slideAnim = { dir: a, side: Math.cos(this.angle - a) >= 0 ? -1 : 1, k: 0, w: this.slideAnim?.w ?? 0 };
+    this.setSlideVelocity();
+    w.sound('slide', this.x, this.y, 0.9);
+    w.noise(this.x, this.y, 110, this);
+    w.events.emit('slide', { ch: this, x: this.x, y: this.y, angle: a });
+    w.camera.push(Math.cos(a) * 2.5, Math.sin(a) * 2.5);
+    w.shake(0.04);
+    return true;
+  }
+
+  setSlideVelocity() {
+    const sl = this.slide;
+    this.vel = { x: sl.dx * sl.speed, y: sl.dy * sl.speed };
+    Body.setVelocity(this.body, this.vel);
+  }
+
+  // physical slide: walls stop it, loose props take our momentum, standing enemies get swept off their feet
+  updateSlide(dt) {
+    const sl = this.slide, w = this.world, cfg = PLAYER.slide;
+    // a broken window or a low obstacle right ahead: chain into the vault
+    if (findVault(w, this, sl.angle, true)) {
+      this.endSlide();
+      this.tryVault(sl.angle, true);
+      return;
+    }
+    if (sl.speed >= cfg.knockSpeed * sl.run) {
+      for (const e of w.enemies) {
+        if (!e.alive || e.knocked > 0) continue;
+        const ex = e.x - this.x, ey = e.y - this.y;
+        if (Math.hypot(ex, ey) > this.radius + e.radius + sl.speed + 2 || ex * sl.dx + ey * sl.dy <= 0) continue;
+        e.knock(sl.angle, 'slide');
+        w.sound('punch', e.x, e.y);
+        w.shake(0.15);
+        w.hitstop(0.04);
+      }
+    }
+    const v = Body.getVelocity(this.body);
+    sl.step(dt, v.x * sl.dx + v.y * sl.dy);
+    if (sl.done) {
+      if (sl.stalled) w.shake(0.08);
+      this.endSlide();
+      return;
+    }
+    for (const pair of w.physics.activePairs()) {
+      const o = pair.bodyA === this.body ? pair.bodyB : pair.bodyB === this.body ? pair.bodyA : null;
+      if (!o || o.mu === undefined || (o.isStatic && !o.frozen) || this.slideHits.has(o)) continue;
+      this.slideHits.add(o);
+      impulse(o, sl.angle, kgOf(this.body) * sl.speed * cfg.hitMomentum, rand(-0.3, 0.3), 10);
+    }
+    this.setSlideVelocity();
+    // friction: dust off the hip and heel, a faint scuff on the floor
+    const fx = this.x + sl.dx * 8, fy = this.y + sl.dy * 8;
+    if (Math.random() < 0.3) w.particles.smoke(this.x - sl.dx * 3, this.y - sl.dy * 3, 1, 1.5, { speed: 10, size: 1.8, life: 0.3 });
+    if (Math.random() < 0.25) w.particles.smoke(fx, fy, 1, 2, { speed: 10, size: 2, life: 0.3 });
+    w.decals.bake(scuff ??= chunk('#140c1c', 4, 2), fx, fy, sl.angle, 0.05);
+  }
+
+  // hand the remaining speed back to the run
+  endSlide() {
+    const sl = this.slide;
+    this.slide = null;
+    this.slideCd = PLAYER.slide.cooldown;
+    this.vel = { x: sl.dx * sl.speed, y: sl.dy * sl.speed };
+    Body.setVelocity(this.body, this.vel);
+  }
+
+  // blend weight of the slide pose: quick drop into it, smooth get-up
+  updateSlideAnim(dt) {
+    const a = this.slideAnim;
+    if (!a) return;
+    if (this.slide) { a.k = this.slide.k; a.w = Math.min(1, a.w + dt / 0.07); }
+    else if ((a.w -= dt / 0.18) <= 0) this.slideAnim = null;
   }
 
   // ground finisher on a knocked-out enemy

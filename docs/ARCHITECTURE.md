@@ -28,6 +28,7 @@ src/
     systems/              rules, called by World or driven by events
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods) + free landing spot
+      Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Destruction.js      wall tiles, doors off hinges, fences
       Scoring.js          listens to 'kill': score, combo
@@ -69,6 +70,7 @@ Rules:
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
 | `kill` | `{ victim, cause, killer }` | World.onKill | Scoring |
 | `explosion` | `{ x, y, radius, source }` | Explosions | (lighting, camera) |
+| `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | Director (incident) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
@@ -102,7 +104,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   Only small objects are movable; everything else is `static` (bolted).
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
-  Space = context action: execute > vault. (A cover system existed and was removed at the user's request.)
+  Space = context action: execute > vault > slide. (A cover system existed and was removed at the user's request.)
+- Slide (Player, `PLAYER.slide`): Space while running with nothing to vault. ~0.5 s burst from ~2x run speed decaying to
+  a jog (~2.9 m), stays physical (walls stop it, loose props take our momentum), sweeps standing enemies off their
+  feet, can chain into a vault, the gun stays usable; 0.5 s cooldown.
+- Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, feet, hands, weapon, as offsets
+  from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended over it so
+  every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and exit speeds.
 
 ## Performance & robustness
 
