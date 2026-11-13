@@ -7,6 +7,7 @@ import Projectile from './Projectile.js';
 import { setKg, impulse } from '../core/Physics.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
+import AmmoItem from './AmmoItem.js';
 
 const { Bodies, Body } = Matter;
 
@@ -64,33 +65,28 @@ export default class Character {
   get def() { return WEAPONS[this.weapon ? this.weapon.type : 'fists']; }
   get armed() { return !!this.weapon; }
 
-  // weapon instance: { type, mag (rounds loaded), reserve (spare rounds, enemies only) }
+  // weapon instance: { type, mag (rounds in the gun), reserve (enemies: spare mags, or loose rounds for shotguns) }
   setWeapon(type, mag, reserve = 0) {
     this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve } : null;
     this.reloading = 0;
   }
 
-  // spare rounds for the current gun (the player overrides this with caliber pools)
+  // spare ammo for the current gun: number of mags, or loose rounds (the player overrides these with an inventory)
   reserveCount() { return this.weapon ? this.weapon.reserve : 0; }
-  takeReserve(n) { this.weapon.reserve -= n; }
-  giveReserve(n) { this.weapon.reserve += n; }
+  takeMag() { this.weapon.reserve--; return this.def.mag; }
+  takeRound() { this.weapon.reserve--; }
 
   get canReload() {
     const d = this.def;
     return d.kind === 'gun' && this.reloading <= 0 && this.weapon.mag < d.mag && this.reserveCount() > 0;
   }
 
-  // start a reload: magazine weapons swap the whole mag, the shotgun loads shell by shell
+  // start a reload: magazine weapons swap the whole mag (what is left in it falls with it), shotguns load round by round
   reload() {
     if (!this.canReload || !this.alive || this.knocked) return false;
     const d = this.def;
     this.reloadDur = this.reloading = d.reload;
     this.reloadStage = 0;
-    if (!d.shellReload) {
-      // rounds left in the old mag go back to the pool
-      this.giveReserve(this.weapon.mag);
-      this.weapon.mag = 0;
-    }
     this.world.sound(d.shellReload ? 'shellIn' : 'magOut', this.x, this.y, 0.7);
     return true;
   }
@@ -103,7 +99,7 @@ export default class Character {
     if (d.shellReload) {
       if (this.reloading <= 0) {
         this.weapon.mag++;
-        this.takeReserve(1);
+        this.takeRound();
         this.world.sound('shellIn', this.x, this.y, 0.6);
         if (this.weapon.mag < d.mag && this.reserveCount() > 0) this.reloadDur = this.reloading = d.reload;
         else { this.reloading = 0; this.world.sound('rack', this.x, this.y, 0.8); this.recoil = 0.8; }
@@ -116,9 +112,7 @@ export default class Character {
     }
     if (this.reloadStage === 1 && p > 0.7) {
       this.reloadStage = 2;
-      const n = Math.min(d.mag, this.reserveCount());
-      this.weapon.mag = n;
-      this.takeReserve(n);
+      this.weapon.mag = this.takeMag();
       this.world.sound('magIn', this.x, this.y, 0.8);
     }
     if (this.reloadStage === 2 && p > 0.86) {
@@ -129,14 +123,21 @@ export default class Character {
     if (this.reloading <= 0) this.reloading = 0;
   }
 
-  // the empty magazine falls out and clatters on the floor
+  // the old magazine falls out and clatters on the floor, with whatever rounds were left in it
   dropMag() {
     const d = this.def;
-    if (!d.magSprite) return;
-    const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6);
+    const left = this.weapon.mag;
+    this.weapon.mag = 0;
     const g = local(this.x, this.y, this.angle, d.hold === 'two' ? 9 : 8, 2);
     const a = this.angle + Math.PI / 2 + rand(-0.6, 0.6);
-    this.world.addDebris(new Debris(this.world, img, g.x, g.y, this.angle + Math.PI / 2, Math.cos(a) * rand(30, 70), Math.sin(a) * rand(30, 70),
+    const v = rand(30, 70);
+    if (left > 0) {
+      // a partial mag: can be picked up again later
+      this.world.ammoItems.push(new AmmoItem(this.world, d.ammo, left, g.x, g.y, Math.cos(a) * v / 60, Math.sin(a) * v / 60, 2.5));
+      return;
+    }
+    const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6);
+    this.world.addDebris(new Debris(this.world, img, g.x, g.y, this.angle + Math.PI / 2, Math.cos(a) * v, Math.sin(a) * v,
       rand(-0.4, 0.4), { metal: true, air: 0.1, kg: 0.15, mu: 0.4, fly: 0.25, bounce: 0.3 }));
   }
 
@@ -292,7 +293,7 @@ export default class Character {
   kill(angle, cause, killer, goreMul = 1) {
     if (!this.alive) return;
     this.alive = false;
-    this.lastCaliber = this.weapon && WEAPONS[this.weapon.type].caliber;
+    this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
     gore(this.world, this, angle, cause, goreMul);

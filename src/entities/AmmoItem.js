@@ -1,18 +1,20 @@
 import { CAT, MASK } from '../core/Config.js';
-import { CALIBERS } from '../data/weapons.js';
+import { AMMO } from '../data/weapons.js';
 import { spriteOpt, chunk, drawSprite, silhouette } from '../core/Assets.js';
 import { setMaterial } from '../core/Physics.js';
 
 const { Bodies, Body } = Matter;
 
-// Box of rounds on the floor. Pulled toward the player when close, collected on contact.
+// A magazine (with its own round count) or a box of loose rounds on the floor.
+// Pulled toward the player when close, collected on contact. delay: seconds before it can be picked up.
 export default class AmmoItem {
-  constructor(world, caliber, amount, x, y, vx = 0, vy = 0) {
+  constructor(world, type, rounds, x, y, vx = 0, vy = 0, delay = 0) {
     this.world = world;
-    this.caliber = caliber;
-    this.cal = CALIBERS[caliber];
-    this.amount = amount ?? this.cal.pickup;
-    this.img = spriteOpt(this.cal.sprite) || chunk(this.cal.color, 9, 7);
+    this.type = type;
+    this.cal = AMMO[type];
+    this.rounds = rounds ?? this.cal.rounds;
+    this.delay = delay;
+    this.img = spriteOpt(this.cal.sprite) || chunk(this.cal.color, 5, 8);
     this.body = Bodies.rectangle(x, y, this.img.width, this.img.height, {
       angle: Math.random() * 6.28, frictionAir: 0.02, restitution: 0.3, label: 'ammo',
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
@@ -31,9 +33,10 @@ export default class AmmoItem {
 
   update(dt) {
     this.t += dt;
+    this.delay -= dt;
     const p = this.world.player;
-    if (!p || !p.alive) return;
-    const full = p.ammo[this.caliber] >= this.cal.max;
+    if (!p || !p.alive || this.delay > 0) return;
+    const full = this.cal.mag ? p.mags[this.type].length >= this.cal.max : p.loose[this.type] >= this.cal.max;
     const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
     if (full) return;
     if (d < 48) {
@@ -42,12 +45,13 @@ export default class AmmoItem {
       Body.setVelocity(this.body, { x: Math.cos(a) * v, y: Math.sin(a) * v });
     }
     if (d < 15) {
-      p.ammo[this.caliber] = Math.min(this.cal.max, p.ammo[this.caliber] + this.amount);
+      p.addAmmo(this.type, this.rounds);
       this.dead = true;
       this.world.removeBody(this.body);
       this.world.sound('ammo', this.x, this.y);
       this.world.pickupFlash(this.x, this.y, this.cal.color);
-      this.world.texts.push({ x: this.x, y: this.y - 8, str: `+${this.amount} ${this.cal.name}`, t: 0.9, dur: 0.9, color: this.cal.color });
+      const label = this.cal.mag ? `+${this.cal.name} (${this.rounds})` : `+${this.rounds} ${this.cal.name}`;
+      this.world.texts.push({ x: this.x, y: this.y - 8, str: label, t: 0.9, dur: 0.9, color: this.cal.color });
     }
   }
 

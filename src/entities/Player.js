@@ -1,5 +1,5 @@
 import { PLAYER } from '../core/Config.js';
-import { WEAPONS, CALIBERS } from '../data/weapons.js';
+import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand } from '../core/math.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
@@ -12,18 +12,37 @@ export default class Player extends Character {
     this.execution = null;
     this.nearItem = null;
     this.nearDowned = null;
-    // spare rounds per caliber
-    this.ammo = { '9mm': 24, '12g': 0, '762': 0, rocket: 0 };
+    // inventory: spare magazines (rounds in each) and loose rounds
+    this.mags = { pistol: [12], uzi: [], rifle: [], sniper: [] };
+    this.loose = { shells: 0, rocket: 0 };
   }
 
   reserveCount() {
-    const c = this.def.caliber;
-    return c ? this.ammo[c] : 0;
+    const t = this.def.ammo;
+    if (!t) return 0;
+    return AMMO[t].mag ? this.mags[t].length : this.loose[t];
   }
-  takeReserve(n) { this.ammo[this.def.caliber] -= n; }
-  giveReserve(n) {
-    const c = this.def.caliber;
-    this.ammo[c] = Math.min(CALIBERS[c].max, this.ammo[c] + n);
+
+  // the fullest spare magazine goes in
+  takeMag() {
+    const list = this.mags[this.def.ammo];
+    let best = 0;
+    for (let i = 1; i < list.length; i++) if (list[i] > list[best]) best = i;
+    return list.splice(best, 1)[0];
+  }
+  takeRound() { this.loose[this.def.ammo]--; }
+
+  // returns false when the inventory is full for that ammo
+  addAmmo(type, rounds) {
+    const a = AMMO[type];
+    if (a.mag) {
+      if (this.mags[type].length >= a.max) return false;
+      this.mags[type].push(rounds);
+      return true;
+    }
+    if (this.loose[type] >= a.max) return false;
+    this.loose[type] = Math.min(a.max, this.loose[type] + rounds);
+    return true;
   }
 
   update(dt, input, aim) {
@@ -151,6 +170,6 @@ export default class Player extends Character {
   get ammoText() {
     if (!this.weapon) return '';
     const d = WEAPONS[this.weapon.type];
-    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()}` : '';
+    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)}` : '';
   }
 }

@@ -350,11 +350,11 @@ export default class World {
   onKill(ch, cause, killer) {
     if (ch.isPlayer) { this.game.onPlayerDeath(); return; }
     this.kills++;
-    // guards drop spare rounds for the gun they carried
-    const cal = ch.lastCaliber;
-    if (cal && chance(0.8)) {
+    // guards drop a spare magazine (or a few shells) for the gun they carried
+    const type = ch.lastAmmo;
+    if (type && chance(0.8)) {
       const a = rand(0, Math.PI * 2);
-      this.ammoItems.push(new AmmoItem(this, cal, undefined, ch.x, ch.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5));
+      this.ammoItems.push(new AmmoItem(this, type, undefined, ch.x, ch.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5));
     }
     const byPlayer = killer?.isPlayer || cause === 'explosion';
     if (byPlayer) {

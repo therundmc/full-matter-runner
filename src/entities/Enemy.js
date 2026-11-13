@@ -13,7 +13,7 @@ export default class Enemy extends Character {
     super(world, x, y, angle, kind, 'enemy');
     this.isEnemy = true;
     this.radius = ENEMY.radius;
-    this.setWeapon(weapon, undefined, (WEAPONS[weapon].mag ?? 0) * 2);
+    this.setWeapon(weapon, undefined, WEAPONS[weapon].shellReload ? 12 : 2);
     this.home = { x, y, angle };
     this.roam = roam;
     this.state = roam ? S.PATROL : S.IDLE;
@@ -215,7 +215,7 @@ export default class Enemy extends Character {
     const it = this.fetchTarget;
     if (!it || it.dead) { this.setState(S.SEARCH); this.searchT = 3; return; }
     if (Math.hypot(it.x - this.x, it.y - this.y) < 14) {
-      this.setWeapon(it.type, it.mag, WEAPONS[it.type].mag ?? 0);
+      this.setWeapon(it.type, it.mag, WEAPONS[it.type].shellReload ? 6 : 1);
       this.world.removeItem(it);
       this.world.sound('pickup', this.x, this.y, 0.5);
       this.setState(this.lastSeen ? S.CHASE : S.SEARCH);
