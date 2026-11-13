@@ -282,16 +282,29 @@ export default class Prop {
     // jitter briefly when hit
     let jx = 0, jy = 0;
     if (this.flash > 0) { this.flash -= 1 / 60; jx = rand(-1.5, 1.5); jy = rand(-1.5, 1.5); }
-    if (this.def.overhead) return; // drawn later, above characters
+    if (this.def.overhead) {
+      // drawn later, above characters; what stands on the ground casts a shadow at its foot
+      if (!this.def.hung) drawSprite(ctx, silhouette(this.img), p.x + 5, p.y + 7, this.body.angle, 0.28);
+      return;
+    }
     drawSprite(ctx, silhouette(this.img), p.x + jx + 3, p.y + jy + 3, this.body.angle, this.canvas ? 0.25 : 0.35);
     drawSprite(ctx, this.look, p.x + jx, p.y + jy, this.body.angle + this.sag);
   }
 
   // canopies and lamp heads: above everyone, see-through when the player is under
-  drawOverhead(ctx, player) {
-    const p = this.body.position;
-    const under = player && Math.hypot(player.x - p.x, player.y - p.y) < this.img.width * 0.45;
-    if (!this.def.hung) drawSprite(ctx, this.img, p.x + 5, p.y + 7, this.body.angle, 0.3);
-    drawSprite(ctx, this.look, p.x, p.y, this.body.angle, under ? 0.45 : 1);
+  drawOverhead(ctx, player, cam) {
+    const p = this.body.position, d = this.def;
+    // parallax: what sits up high leans away from the centre of the view
+    this.ox = (p.x - cam.x) * (d.height || 0);
+    this.oy = (p.y - cam.y) * (d.height || 0);
+    const x = p.x + this.ox, y = p.y + this.oy;
+    if (d.pole) {
+      ctx.strokeStyle = d.pole[0];
+      ctx.lineWidth = d.pole[1];
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(x, y); ctx.stroke();
+    }
+    const under = player && Math.hypot(player.x - x, player.y - y) < this.img.width * 0.45;
+    drawSprite(ctx, this.look, x, y, this.body.angle, under ? 0.45 : 1);
   }
 }

@@ -5,6 +5,8 @@
 // until something big (an explosion) shoves them.
 // light = light(s) cast by the object (see render/Lighting.js); fixture = a lamp: it flickers once damaged and its
 // light dies with it. hung = hangs from the ceiling: nobody bumps into it, but bullets, bats and blasts reach it.
+// height = how high an overhead object sits, as parallax (fraction of its distance to the centre of the view);
+// pole = [colour, width] of the post drawn from its foot to its head. sign = animated neon lettering (render/Lighting.js).
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 38, h: 22, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true },
   table_round: { static: true, vault: true, material: 'wood', r: 13, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true },
@@ -34,8 +36,10 @@ export const PROPS = {
   dumpster: { static: true, vault: true, material: 'metal', w: 35, h: 21, hp: 36, chips: '#2a6a3a', sound: 'metal', blocksPath: true },
   trash_can: { material: 'metal', r: 5.5, hp: 6, kg: 19, mu: 0.8, chips: '#555', sound: 'metal' },
   // street & neon dressing (overhead = drawn above characters, fades when the player walks under)
-  palm_tree: { material: 'wood', r: 4, hp: 12, static: true, chips: '#2f8f3a', sound: 'wood', overhead: true, dirt: true },
-  streetlight: { material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true },
+  palm_tree: { material: 'wood', r: 4, hp: 12, static: true, chips: '#2f8f3a', sound: 'wood', overhead: true, dirt: true,
+    height: 0.1, pole: ['#4a3424', 6] },
+  streetlight: { material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true,
+    height: 0.14, pole: ['#3c3c50', 3] },
   neon_sign_palm: { material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
   neon_sign_bar: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
   neon_sign_arrow: { material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
@@ -56,8 +60,14 @@ export const PROPS = {
     light: { r: 150, color: '#ff2a6d', intensity: 0.95, flicker: 'buzz', y: 3 } },
   neon_tube_cyan: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#2af0ff', intensity: 0.95, flicker: 'buzz', y: 3 } },
-  ceiling_lamp: { fixture: true, hung: true, overhead: true, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
+  ceiling_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
-  pool_lamp: { fixture: true, hung: true, overhead: true, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
+  pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
+  // up on the facade / strung across the street
+  marquee: { fixture: true, hung: true, overhead: true, height: 0.12, static: true, material: 'glass', w: 88, h: 24, hp: 6, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    sign: { letters: [[7, 12], [20, 12], [33, 12], [46, 12], [59, 12], [72, 12]], faulty: 4 },
+    light: [{ r: 170, color: '#ff2a6d', intensity: 0.95, x: -24, y: 12 }, { r: 170, color: '#ff2a6d', intensity: 0.95, x: 24, y: 12 }] },
+  string_lights: { fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
+    light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
 };

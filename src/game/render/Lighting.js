@@ -57,6 +57,18 @@ function flicker(kind, seed, t) {
   }
 }
 
+// Animated sign (`def.sign`): how bright letter i of n is. The letters come on one by one, hold, blink, go dark
+// for a beat; the faulty one never quite settles.
+function signLevel(sign, i, seed, t) {
+  const n = sign.letters.length, ph = (t + seed) % 7.5;
+  let a = ph < n * 0.22 ? (ph >= i * 0.22 ? 1 : 0)
+    : ph < 4.8 ? 1
+    : ph < 5.7 ? Math.floor((ph - 4.8) / 0.15) % 2
+    : ph < 7 ? 1 : 0;
+  if (i === sign.faulty) a *= flicker('broken', seed, t);
+  return a;
+}
+
 // ---------- visibility polygon from a point against wall segments ----------
 // segs: flat [ax, ay, bx, by, ...]; returns { pts: [x, y, ...], seg: [segment index or -1 per point] }
 function visibility(px, py, R, segs) {
@@ -463,9 +475,19 @@ export default class Lighting {
       if ((p.dead || p.lightsOut)) continue;
       // a lamp that took a hit sputters
       const hurt = p.def.fixture && p.hp < p.def.hp;
-      for (const l of this.propLights(p)) {
+      const lights = this.propLights(p);
+      if (!lights.length) continue;
+      // the emissive map follows the light: tubes buzz, screens flicker, signs spell themselves out
+      const seed = lights[0].seed, sign = p.def.sign;
+      p.glowK = flicker(hurt ? 'broken' : lights[0].flicker, seed, t);
+      let lit = 1;
+      if (sign) {
+        lit = 0;
+        for (let i = 0; i < sign.letters.length; i++) lit += signLevel(sign, i, seed, t) / sign.letters.length;
+      }
+      for (const l of lights) {
         this.placePropLight(p, l);
-        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
+        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * lit * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
       }
     }
     // a prop appeared or died: the brightness grid is stale
@@ -576,6 +598,34 @@ export default class Lighting {
     ctx.restore();
   }
 
+  // a prop's emissive map, where the prop is drawn (overhead ones shift with parallax)
+  drawGlow(g, p, t) {
+    const gl = spriteOpt(`props/${p.type}_glow`);
+    if (!gl || p.dead || p.lightsOut || !this.inView(p.x, p.y, 60)) return;
+    const k = clamp(p.glowK ?? 1, 0, 1), sign = p.def.sign, x0 = -gl.width / 2, y0 = -gl.height / 2;
+    g.save();
+    g.translate(p.x + (p.ox || 0), p.y + (p.oy || 0));
+    g.rotate(p.body.angle);
+    if (!sign) {
+      g.globalAlpha = k;
+      g.drawImage(gl, x0, y0);
+    } else {
+      const seed = this.propLights(p)[0]?.seed ?? 0;
+      sign.letters.forEach(([sx, sw], i) => {
+        const a = k * signLevel(sign, i, seed, t);
+        if (a < 0.03) return;
+        g.globalAlpha = a;
+        g.drawImage(gl, sx, 0, sw, gl.height, x0 + sx, y0, sw, gl.height);
+      });
+      const bulbs = spriteOpt(`props/${p.type}_bulbs`);
+      if (bulbs) {
+        g.globalAlpha = k;
+        g.drawImage(bulbs, 0, (Math.floor(t * 3) % 2) * gl.height, gl.width, gl.height, x0, y0, gl.width, gl.height);
+      }
+    }
+    g.restore();
+  }
+
   // additive layers after the scene: emissive maps, bloom, flares, reflections
   post(ctx, cam, t) {
     if (!this.lm) return;
@@ -593,16 +643,7 @@ export default class Lighting {
       ctx.drawImage(this.blob(l.color), l.x - rc, l.y - rc, rc * 2, rc * 2);
     }
     ctx.globalAlpha = 1;
-    for (const p of w.props) {
-      if ((p.dead || p.lightsOut) || !this.inView(p.x, p.y, 40)) continue;
-      const gl = spriteOpt(`props/${p.type}_glow`);
-      if (!gl) continue;
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.body.angle);
-      ctx.drawImage(gl, -gl.width / 2, -gl.height / 2);
-      ctx.restore();
-    }
+    for (const p of w.props) this.drawGlow(ctx, p, t);
     ctx.restore();
 
     // ---- emissive buffer (bloom source) + flare buffer
@@ -617,16 +658,7 @@ export default class Lighting {
     e.globalAlpha = L.neonGlow * (0.75 + 0.25 * beat);
     e.drawImage(this.emissive, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
     e.globalAlpha = 1;
-    for (const p of w.props) {
-      if ((p.dead || p.lightsOut) || !this.inView(p.x, p.y, 40)) continue;
-      const gl = spriteOpt(`props/${p.type}_glow`);
-      if (!gl) continue;
-      e.save();
-      e.translate(p.x, p.y);
-      e.rotate(p.body.angle);
-      e.drawImage(gl, -gl.width / 2, -gl.height / 2);
-      e.restore();
-    }
+    for (const p of w.props) this.drawGlow(e, p, t);
     for (const [l, k] of lit) {
       if (l.bare) continue;
       const x = l.x, y = l.y;
