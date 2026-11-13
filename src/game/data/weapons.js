@@ -3,6 +3,7 @@
 // Out of ammo? Throw the gun.
 // hold: 'one' | 'two' | 'melee'. grip = sprite x (from left) where the hand holds it.
 // gore: chance multiplier for dismemberment. noise: alert radius (0 = silent).
+// pen: penetration energy of one round (systems/Penetration.js: plaster wall ~27, brick ~67, a body 14).
 export const WEAPONS = {
   fists: {
     name: 'FISTS', kind: 'melee', hold: 'none', range: 21, arc: 1.1, rate: 0.32, lethal: false, sound: 'punch', windup: 0.05,
@@ -17,32 +18,32 @@ export const WEAPONS = {
   },
   pistol: {
     name: 'PISTOL', kind: 'gun', hold: 'one', sprite: 'weapons/pistol', grip: 2, mag: 12, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
-    pellets: 1, spread: 0.025, speed: 1700, sound: 'pistol', noise: 640, shake: 0.18, kick: 2.5, casing: 'casing', gore: 0.25,
+    pellets: 1, spread: 0.025, speed: 1700, pen: 12, sound: 'pistol', noise: 640, shake: 0.18, kick: 2.5, casing: 'casing', gore: 0.25,
     enemyRate: 0.55, points: 500,
   },
   uzi: {
     name: 'UZI', kind: 'gun', hold: 'one', sprite: 'weapons/uzi', grip: 3, mag: 30, ammo: '9mm', reload: 1.15, magSprite: 'weapons/mag_uzi', rate: 0.065, auto: true,
-    pellets: 1, spread: 0.11, speed: 1600, sound: 'uzi', noise: 640, shake: 0.12, kick: 1.5, casing: 'casing', gore: 0.2,
+    pellets: 1, spread: 0.11, speed: 1600, pen: 10, sound: 'uzi', noise: 640, shake: 0.12, kick: 1.5, casing: 'casing', gore: 0.2,
     enemyRate: 0.09, burst: 5, points: 500,
   },
   uzi_silenced: {
     name: 'SILENCED UZI', kind: 'gun', hold: 'one', sprite: 'weapons/uzi_silenced', grip: 3, mag: 30, ammo: '9mm', reload: 1.2, magSprite: 'weapons/mag_uzi', rate: 0.07, auto: true,
-    pellets: 1, spread: 0.09, speed: 1600, sound: 'silenced', noise: 0, shake: 0.06, kick: 1, casing: 'casing', gore: 0.15,
+    pellets: 1, spread: 0.09, speed: 1600, pen: 8, sound: 'silenced', noise: 0, shake: 0.06, kick: 1, casing: 'casing', gore: 0.15,
     enemyRate: 0.1, burst: 5, points: 700,
   },
   shotgun: {
     name: 'SHOTGUN', kind: 'gun', hold: 'two', sprite: 'weapons/shotgun', grip: 6, mag: 6, ammo: '12g', reload: 0.34, shellReload: true, rate: 0.55, auto: false,
-    pellets: 9, spread: 0.3, speed: 1450, speedVar: 0.25, range: 0.32, sound: 'shotgun', noise: 760, shake: 0.5, kick: 7,
+    pellets: 9, spread: 0.3, speed: 1450, pen: 4, speedVar: 0.25, range: 0.32, sound: 'shotgun', noise: 760, shake: 0.5, kick: 7,
     casing: 'shell', gore: 1.6, knock: 0.05, enemyRate: 1.1, points: 500,
   },
   rifle: {
     name: 'M-47', kind: 'gun', hold: 'two', sprite: 'weapons/rifle', grip: 7, mag: 30, ammo: '762', reload: 1.45, magSprite: 'weapons/mag_rifle', rate: 0.095, auto: true,
-    pellets: 1, spread: 0.045, speed: 1950, sound: 'rifle', noise: 760, shake: 0.2, kick: 2.5, casing: 'casing', gore: 0.45,
+    pellets: 1, spread: 0.045, speed: 1950, pen: 34, sound: 'rifle', noise: 760, shake: 0.2, kick: 2.5, casing: 'casing', gore: 0.45,
     enemyRate: 0.12, burst: 4, points: 500,
   },
   sniper: {
     name: 'SNIPER', kind: 'gun', hold: 'two', sprite: 'weapons/sniper', grip: 8, mag: 5, ammo: '762', reload: 1.7, magSprite: 'weapons/mag_sniper', rate: 0.85, auto: false,
-    pellets: 1, spread: 0.0, speed: 2800, pierce: 4, sound: 'rifle', noise: 900, shake: 0.7, kick: 9, casing: 'casing',
+    pellets: 1, spread: 0.0, speed: 2800, pen: 95, heavy: true, sound: 'rifle', noise: 900, shake: 0.7, kick: 9, casing: 'casing',
     gore: 1.2, enemyRate: 1.5, points: 600,
   },
   bazooka: {

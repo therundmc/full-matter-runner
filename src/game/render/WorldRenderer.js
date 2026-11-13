@@ -32,19 +32,24 @@ export default class WorldRenderer {
     for (const d of w.doors) d.draw(ctx);
     ctx.drawImage(w.decals.wallCanvas, 0, 0);
 
-    if (w.cleared && w.level.exit) this.drawExit(ctx, t);
     w.particles.draw(ctx);
+    // night + coloured lights + wall shadows multiplied over the scene (skipped in the F3 overview)
+    const lit = w.lighting.active(cam);
+    if (lit) w.lighting.apply(ctx, cam, t);
+    if (w.cleared && w.level.exit) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
-    this.drawAdditive(ctx);
+    this.drawAdditive(ctx, lit);
+    if (lit) w.lighting.post(ctx, cam, t);
     this.drawTexts(ctx);
     if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
   }
 
-  drawAdditive(ctx) {
+  // lit: the lighting pass already put the transient lights into its light map
+  drawAdditive(ctx, lit) {
     const w = this.world;
     ctx.globalCompositeOperation = 'lighter';
     w.particles.drawGlow(ctx);
-    for (const l of w.lights) {
+    for (const l of lit ? [] : w.lights) {
       const a = clamp(l.t / l.dur, 0, 1) * 0.55;
       const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
       g.addColorStop(0, l.color);

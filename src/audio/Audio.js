@@ -244,6 +244,11 @@ class AudioSystem {
     this._tone(o, { f0: rand(2500, 3500), dur: 0.25, vol: 0.12 });
     this._noiseBurst(o, { type: 'highpass', f0: 2500, dur: 0.05, vol: 0.4 });
   }
+  // a round whining off a hard surface
+  _ricochet(o) {
+    this._noiseBurst(o, { type: 'highpass', f0: 2600, f1: 1400, dur: 0.04, vol: 0.4 });
+    this._tone(o, { type: 'sawtooth', f0: rand(2600, 3400), f1: rand(700, 1100), dur: 0.28, vol: 0.07, delay: 0.01 });
+  }
   _impact(o) {
     this._noiseBurst(o, { type: 'highpass', f0: 1800, f1: 900, dur: 0.05, vol: 0.35 });
     this._tone(o, { type: 'square', f0: rand(700, 1100), f1: 250, dur: 0.035, vol: 0.06 });

@@ -15,6 +15,7 @@ import TileMap from './TileMap.js';
 import { buildLevel } from './Level.js';
 import MapRenderer from '../render/MapRenderer.js';
 import WorldRenderer from '../render/WorldRenderer.js';
+import Lighting from '../render/Lighting.js';
 import Particles from '../fx/Particles.js';
 import AmmoItem from '../entities/AmmoItem.js';
 import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
@@ -77,6 +78,7 @@ export default class World {
     buildLevel(this, level);
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
+    this.lighting = new Lighting(this);
   }
 
   get engine() { return this.physics.engine; }

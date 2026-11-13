@@ -124,6 +124,14 @@ export default class Vehicle {
     } else this.damage(dmg);
   }
 
+  // a round that went right through: torn metal and sparks on the far side
+  exitWound(px, py, dirA) {
+    if (this.exploded) return;
+    const { sx, sy } = this.toSprite(px, py);
+    this.hole(sx, sy);
+    this.world.particles.sparks(px, py, dirA, 0.7, 4, 220);
+  }
+
   hole(sx, sy) {
     const g = this.g;
     g.save();

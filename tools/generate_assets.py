@@ -1384,8 +1384,12 @@ def p_trash_can():
 
 
 # --------------------------------------------------------------------------
-# Tiles (32x32, seamless). Base painters wrap every coordinate; variants copy the
-# base and only decorate inside a 2 px margin, so they tile with the base.
+# Tiles (32x32, seamless, 1 tile = 1 m). The scene is later darkened and lit by
+# the neon pass (coloured lights, wet reflections) and the map adds its own
+# large-scale grime, so the tiles stay calm: mid-tones, low local contrast, fine
+# isotropic grain and nothing sitting at a fixed spot that would show the 32 px
+# repeat. Base painters wrap every coordinate; variants copy the base and only
+# touch the inside of a 2 px margin (asserted), fading their changes to zero.
 # --------------------------------------------------------------------------
 
 T = 32
@@ -1400,15 +1404,6 @@ def wget(cv, x, y):
     return cv.p[int(x) % cv.w, int(y) % cv.h]
 
 
-def wmix(cv, x, y, c, t):
-    wset(cv, x, y, mix(wget(cv, x, y), c, t))
-
-
-def fbm(rng, cells=(16, 8, 4), w=(0.55, 0.3, 0.15)):
-    ns = [VNoise(T, T, c, rng) for c in cells]
-    return lambda x, y: sum(n(x, y) * k for n, k in zip(ns, w))
-
-
 def pal(cols, t):
     """Piecewise blend through a list of colours, t in 0..1."""
     t = max(0.0, min(1.0, t)) * (len(cols) - 1)
@@ -1420,673 +1415,463 @@ def inside(x, y, m=VM):
     return m <= x < T - m and m <= y < T - m
 
 
-def blob(cx, cy, rx, ry, rng, rough=0.22):
-    """Noisy ellipse -> {(x, y): e} with e = 0 at the centre, 1 on the rim."""
+def smooth(t):
+    t = max(0.0, min(1.0, t))
+    return t * t * (3 - 2 * t)
+
+
+def noise(rng, rx=0, ry=None, passes=2):
+    """Wrapped white noise, box-blurred by (rx, ry), normalised to mean 0 / std 1 and clamped
+    to +-2.2 so no single blob stands out (it would mark the 32 px repeat)."""
+    ry = rx if ry is None else ry
+    f = [[rng.random() - 0.5 for _ in range(T)] for _ in range(T)]
+    for _ in range(passes if rx or ry else 0):
+        if rx:
+            f = [[sum(row[(x + k) % T] for k in range(-rx, rx + 1)) for x in range(T)] for row in f]
+        if ry:
+            f = [[sum(f[(y + k) % T][x] for k in range(-ry, ry + 1)) for x in range(T)] for y in range(T)]
+    vals = [v for row in f for v in row]
+    m = sum(vals) / len(vals)
+    s = math.sqrt(sum((v - m) ** 2 for v in vals) / len(vals)) or 1.0
+    return [[max(-2.2, min(2.2, (v - m) / s)) for v in row] for row in f]
+
+
+def speck(rng, p):
+    """Random sparse pixel set (aggregate stones, pores, fibres)."""
+    return {(x, y) for y in range(T) for x in range(T) if rng.random() < p}
+
+
+def tint(c, d, t=None, k=0.0):
+    """Brightness offset d, optionally pulled toward colour t by k."""
+    c = shift(c, int(round(d)))
+    return mix(c, t, k) if t and k > 0 else c
+
+
+def surface(cv, base, rng, fine=3.0, soft=2.0, soft_r=1, light=(0.0, 0), dark=(0.0, 0), fn=None):
+    """Generic calm surface: per-pixel grain + softly blurred grain + sparse light/dark specks."""
+    n0, n1 = noise(rng), noise(rng, soft_r)
+    lit, pit = speck(rng, light[0]), speck(rng, dark[0])
+    for y in range(T):
+        for x in range(T):
+            d = n0[y][x] * fine + n1[y][x] * soft
+            if (x, y) in lit:
+                d += light[1]
+            elif (x, y) in pit:
+                d -= dark[1]
+            c = tint(base, d)
+            cv.set(x, y, fn(x, y, c, d) if fn else c)
+    return n1
+
+
+def patch(rng, cx, cy, rx, ry, rough=0.25):
+    """Soft irregular mask {(x, y): w} with w -> 0 at its rim and before the variant margin."""
     harm = [(rng.uniform(0, 6.283), rng.uniform(0, rough), k) for k in (2, 3, 5)]
     out = {}
-    for y in range(int(cy - ry * 1.4 - 2), int(cy + ry * 1.4 + 3)):
-        for x in range(int(cx - rx * 1.4 - 2), int(cx + rx * 1.4 + 3)):
+    for y in range(VM, T - VM):
+        for x in range(VM, T - VM):
             dx, dy = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
             a = math.atan2(dy, dx)
-            r = 1.0 + sum(amp * math.sin(a * k + ph) for ph, amp, k in harm)
-            e = math.hypot(dx, dy) / r
-            if e <= 1.0:
-                out[(x, y)] = e
+            e = math.hypot(dx, dy) / (1.0 + sum(amp * math.sin(a * k + ph) for ph, amp, k in harm))
+            edge = min(x - VM + 1, T - VM - x, y - VM + 1, T - VM - y) / 3.0
+            w = smooth(1.0 - e) * smooth(edge)
+            if w > 0.01:
+                out[(x, y)] = w
     return out
 
 
-def crack_pts(rng, x, y, ang, n, margin=VM, branch=0.12, depth=0):
-    pts = []
+def apply_patch(cv, m, fn):
+    for (x, y), w in m.items():
+        cv.set(x, y, fn(x, y, cv.get(x, y), w))
+
+
+def reroll(cv, fresh):
+    """Blend in another draw of the same surface, fading in from the variant margin: the
+    variant then shares nothing but its border with the base, so the 32 px repeat breaks up."""
+    for y in range(T):
+        for x in range(T):
+            w = smooth((min(x, T - 1 - x, y, T - 1 - y) - 1.5) / 3.0)
+            if w > 0:
+                cv.set(x, y, mix(cv.get(x, y), fresh.get(x, y), w))
+
+
+def scratch(cv, rng, x, y, ang, n, d, curve=0.25):
+    """Thin faint line (scuff, hairline crack, tar seam) kept inside the variant margin."""
     fx, fy = x + 0.5, y + 0.5
-    for _ in range(n):
+    for i in range(n):
         ix, iy = int(math.floor(fx)), int(math.floor(fy))
-        if margin is not None and not inside(ix, iy, margin):
+        if not inside(ix, iy, VM + 1):
             break
-        pts.append((ix % T, iy % T))
-        ang += rng.uniform(-0.5, 0.5)
+        k = smooth(min(i + 1, n - i) / 2.5)   # taper both ends
+        cv.set(ix, iy, tint(cv.get(ix, iy), d * k))
+        ang += rng.uniform(-curve, curve)
         fx += math.cos(ang)
         fy += math.sin(ang)
-        if depth < 2 and rng.random() < branch:
-            pts += crack_pts(rng, ix, iy, ang + rng.choice([-1, 1]) * rng.uniform(0.7, 1.3), max(2, n // 3),
-                             margin, branch * 0.4, depth + 1)
-    return pts
 
 
-def draw_crack(cv, pts, dark=0.55, lip=0.2, col=None):
-    s = set(pts)
-    for (x, y) in pts:
-        if (x, (y + 1) % T) not in s and (inside(x, y + 1) or not inside(x, y)):
-            wset(cv, x, y + 1, lt(wget(cv, x, y + 1), lip))
-    for (x, y) in pts:
-        wset(cv, x, y, col if col else dk(wget(cv, x, y), dark))
+# ---- wood: staggered planks along x, fine streaky grain --------------------------
+
+FL_WOOD = hx('#7c5538')
+FL_WOOD_ROWS = [5, 6, 5, 5, 6, 5]   # plank widths (px) -> 16-19 cm boards
 
 
-def stain(cv, rng, cx, cy, rx, ry, col, t=0.5, rim=0.15, rough=0.25):
-    for (x, y), e in blob(cx, cy, rx, ry, rng, rough).items():
-        if inside(x, y):
-            k = t + (rim if e > 0.78 else 0.0)
-            cv.set(x, y, mix(cv.get(x, y), col, min(1.0, k)))
+def wood_rows():
+    rows, y0 = [], 0
+    for hgt in FL_WOOD_ROWS:
+        rows.append((y0, hgt))
+        y0 += hgt
+    return rows
 
 
-def butt(cv, x, y, horiz=True):
-    """Cigarette butt with a smouldering tip."""
-    pts = [(x, y), (x + 1, y), (x + 2, y)] if horiz else [(x, y), (x, y + 1), (x, y + 2)]
-    for i, (px, py) in enumerate(pts):
-        cv.set(px, py, [hx('#e89a4a'), hx('#f2eee4'), hx('#d8d2c4')][i])
-    cv.set(pts[-1][0] + (1 if horiz else 0), pts[-1][1] + (0 if horiz else 1), hx('#5a4a52'))
+def wood_joint(cv, x, y0, hgt, d=-12):
+    for y in range(y0, y0 + hgt - 1):
+        cv.set(x, y, tint(cv.get(x, y), d))
 
-
-def leaf(cv, x, y, col, rng):
-    pts = rng.choice([[(0, 0), (1, 0), (1, 1), (2, 1)], [(0, 0), (0, 1), (1, 1), (1, 2)],
-                      [(0, 1), (1, 0), (1, 1), (2, 0)], [(1, 0), (0, 1), (1, 1), (0, 2)]])
-    for i, (dx, dy) in enumerate(pts):
-        cv.set(x + dx, y + dy, lt(col, 0.2) if i == 0 else dk(col, 0.2) if i == 3 else col)
-    cv.set(x + pts[-1][0] + 1, y + pts[-1][1] + 1, dk(cv.get(x + pts[-1][0] + 1, y + pts[-1][1] + 1), 0.25))
-
-
-def flower(cv, x, y, petal, centre, wrap=False):
-    put = (lambda a, b, c: wset(cv, a, b, c)) if wrap else cv.set
-    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        put(x + dx, y + dy, petal if dy <= 0 else dk(petal, 0.25))
-    put(x, y, centre)
-    put(x + 1, y + 2, dk(wget(cv, x + 1, y + 2), 0.3))
-
-
-def pebble(cv, x, y, col, wrap=True):
-    put = (lambda a, b, c: wset(cv, a, b, c)) if wrap else cv.set
-    get = (lambda a, b: wget(cv, a, b)) if wrap else cv.get
-    put(x, y, lt(col, 0.25))
-    put(x + 1, y, col)
-    put(x, y + 1, col)
-    put(x + 1, y + 1, dk(col, 0.25))
-    put(x + 1, y + 2, dk(get(x + 1, y + 2), 0.4))
-    put(x + 2, y + 1, dk(get(x + 2, y + 1), 0.4))
-
-
-# ---- wood -------------------------------------------------------------------
 
 def t_wood(cv, rng):
-    cols = [hx('#b06a32'), hx('#9a5628'), hx('#c27c3c'), hx('#a45e2c'), hx('#8a4a24'), hx('#b8743a')]
-    offs = [3, 19, 11, 27]
-    seam = hx('#2a1028')
-    n = fbm(rng, (16, 8, 4), (0.4, 0.35, 0.25))
-    for r in range(4):
-        base = rng.choice(cols)
-        streaks = []
-        for _ in range(6):
-            streaks.append((rng.randint(1, 6), rng.randint(0, 31), rng.randint(5, 16), rng.choice([-1, -1, 1])))
-        for yy in range(8):
-            y = r * 8 + yy
-            for x in range(32):
-                rel = (x - offs[r]) % 32
-                c = shift(base, int(-8 + rel * 0.5 + (n(x, y) - 0.5) * 14))
-                for (sy, sx, ln, sg) in streaks:
-                    d = (x - sx) % 32
-                    if sy == yy and d < ln:
-                        c = dk(c, 0.2) if sg < 0 else lt(c, 0.1)
+    grain = noise(rng, 6, 0, 2)          # long horizontal streaks
+    fine = noise(rng)
+    joints = [3, 21, 12, 28, 8, 17]       # one board end per row, never aligned with the next row
+    for r, (y0, hgt) in enumerate(wood_rows()):
+        tone, slope = rng.uniform(-4, 4), rng.choice([-1, 1]) * rng.uniform(3, 6)
+        for yy in range(hgt):
+            y = y0 + yy
+            for x in range(T):
+                # each board drifts in tone along its length, so the two sides of a joint differ
+                d = tone + slope * (((x - joints[r]) % T) / T - 0.5) + grain[y][x] * 3.5 + fine[y][x] * 1.5
                 if yy == 0:
-                    c = lt(c, 0.16)
-                elif yy == 6:
-                    c = dk(c, 0.1)
-                elif yy == 7:
-                    c = seam
-                if rel == 0 and yy != 7:
-                    c = seam
-                elif rel == 31 and yy != 7:
-                    c = dk(c, 0.2)
-                elif rel == 1 and yy != 7:
-                    c = lt(c, 0.1)
-                if yy == 1 and rng.random() < 0.12:
-                    c = lt(c, 0.3)   # varnish glint
-                elif rng.random() < 0.06:
-                    c = shift(c, rng.choice([-7, 6]))
-                wset(cv, x, y, c)
-        for dx in (-3, 3):
-            for yy in (2, 5):
-                wset(cv, offs[r] + dx, r * 8 + yy, hx('#3a2230'))
-                wset(cv, offs[r] + dx + 1, r * 8 + yy, lt(wget(cv, offs[r] + dx + 1, r * 8 + yy), 0.15))
+                    d += 2
+                if yy == hgt - 1:
+                    d -= 13                 # seam between boards
+                wset(cv, x, y, tint(FL_WOOD, d))
+        wood_joint(cv, joints[r], y0, hgt)
 
 
 def v_wood1(cv, rng):
-    stain(cv, rng, rng.randint(10, 21), rng.randint(10, 21), 5.5, 4.0, hx('#3a0e26'), 0.42, 0.2)
-    bx, by = rng.choice([(6, 22), (24, 7), (22, 24)])
-    for (x, y), e in blob(bx + 0.5, by + 0.5, 2.2, 1.8, rng, 0.1).items():
-        cv.set(x, y, hx('#1a0c14') if e < 0.5 else mix(cv.get(x, y), hx('#3a1a14'), 0.6))
-    cv.set(bx - 1, by - 1, hx('#ff6b1a'))
+    # one extra board end: breaks the 1 m rhythm without adding a mark
+    y0, hgt = wood_rows()[rng.choice([1, 2, 3])]
+    wood_joint(cv, rng.randint(7, 23), y0, hgt)
 
 
 def v_wood2(cv, rng):
-    for (kx, ky) in [(rng.randint(5, 12), 11), (rng.randint(19, 26), 27)]:
-        for (x, y), e in blob(kx + 0.5, ky + 0.5, 2.4, 1.4, rng, 0.05).items():
-            if inside(x, y):
-                c = cv.get(x, y)
-                cv.set(x, y, hx('#2a1018') if e < 0.45 else dk(c, 0.3) if e < 0.75 else lt(c, 0.12))
-    for _ in range(4):
-        x, y = rng.randint(4, 24), rng.randint(3, 26)
-        for k in range(rng.randint(4, 7)):
-            if inside(x + k, y + k // 2):
-                cv.set(x + k, y + k // 2, lt(cv.get(x + k, y + k // 2), 0.28))
-    draw_crack(cv, crack_pts(rng, 6, 20, 0.0, 18, branch=0.05), 0.6, 0.12)
+    # a replaced board: two extra ends and a slightly different tone in between
+    y0, hgt = wood_rows()[2]
+    a = rng.randint(5, 9)
+    b = a + rng.randint(11, 15)
+    for x in range(a + 1, b):
+        for y in range(y0, y0 + hgt - 1):
+            cv.set(x, y, tint(cv.get(x, y), 5, hx('#6a4a36'), 0.08))
+    wood_joint(cv, a, y0, hgt)
+    wood_joint(cv, b, y0, hgt)
 
 
-# ---- checker ------------------------------------------------------------------
+# ---- kitchen: worn sheet linoleum (no tiles, no checkerboard) --------------------
+
+FL_LINO = hx('#a59b86')
+
 
 def t_checker(cv, rng):
-    # kitchen floor: worn beige linoleum / terrazzo, low contrast (no checkerboard: readability first)
-    base = ramp('#cbbd9e', 0.35, 0.12, 0.3)
-    n = fbm(rng, (16, 8, 4), (0.55, 0.3, 0.15))
-    for y in range(32):
-        for x in range(32):
-            c = pal(base, 0.35 + n(x, y) * 0.4)
-            r = rng.random()
-            if r < 0.05:
-                c = shift(c, -18)          # terrazzo chips
-            elif r < 0.07:
-                c = shift(c, 10)
-            if x % 16 == 15 or y % 16 == 15:
-                c = mix(c, hx('#8a7c66'), 0.35)   # faint slab seams
-            cv.set(x, y, jit(c, 2, rng))
+    mottle = noise(rng, 1, 0, 2)    # fine, slightly stretched jaspe mottling
+    surface(cv, FL_LINO, rng, 2.0, 1.0, 1, (0.02, 6), (0.025, 8),
+            fn=lambda x, y, c, d: tint(c, mottle[y][x] * 1.6))
+
 
 def v_checker1(cv, rng):
-    tx, ty = rng.choice([(1, 1), (2, 2)])
-    draw_crack(cv, crack_pts(rng, tx * 8 + 1, ty * 8 + 2, 0.6, 12, branch=0.3), 0.6, 0.0)
-    ox, oy = rng.choice([(2, 1), (1, 2)])
-    for (dx, dy) in [(5, 5), (6, 5), (5, 6), (6, 6), (4, 6), (6, 4)]:
-        cv.set(ox * 8 + dx, oy * 8 + dy, hx('#6a6070') if dx + dy > 10 else hx('#827890'))
+    for _ in range(3):   # chair scuffs
+        scratch(cv, rng, rng.randint(6, 24), rng.randint(6, 24), rng.uniform(0, 6.283), rng.randint(4, 7), -7, 0.35)
+
+
+def v_checker2(cv, rng):
+    # small cigarette burn: dark core, soft halo
+    cx, cy = rng.randint(10, 21) + 0.5, rng.randint(10, 21) + 0.5
+    apply_patch(cv, patch(rng, cx, cy, 2.6, 2.2, 0.2),
+                lambda x, y, c, w: tint(c, -22 * w, hx('#4a3a2a'), 0.3 * w))
+
+
+# ---- bathroom: large pale tiles (50 cm), soft grout -------------------------------
+
+FL_TILE_B = hx('#a3b7bf')
+FL_GROUT = hx('#94a4aa')
 
 
 def t_tile_blue(cv, rng):
-    # bathroom: large pale tiles, soft grout, a bit of grime (no busy grid)
-    base = ramp('#9ec4cf', 0.3, 0.1, 0.25)
-    grout = hx('#7d9aa6')
-    n = fbm(rng, (16, 8), (0.6, 0.4))
-    for y in range(32):
-        for x in range(32):
-            gx, gy = x % 16, y % 16
-            if gx == 15 or gy == 15:
-                c = mix(grout, pal(base, 0.4), 0.3)
-            else:
-                c = pal(base, 0.38 + n(x, y) * 0.35)
-                if gx == 0 or gy == 0:
-                    c = lt(c, 0.06)
-            cv.set(x, y, jit(c, 2, rng))
+    glaze = noise(rng, 3)
+
+    def fn(x, y, c, d):
+        gx, gy = x % 16, y % 16
+        if gx == 0 or gy == 0:
+            return tint(FL_GROUT, d * 0.6)
+        c = tint(c, glaze[y][x] * 1.2)
+        if gx == 1 or gy == 1:
+            c = tint(c, 3)
+        elif gx == 15 or gy == 15:
+            c = tint(c, -3)
+        return c
+    surface(cv, FL_TILE_B, rng, 1.6, 1.0, 1, fn=fn)
+
 
 def v_tile_blue1(cv, rng):
-    draw_crack(cv, crack_pts(rng, 9, 12, 0.4, 16, branch=0.25), 0.55, 0.15)
-    tx, ty = 2, rng.choice([1, 2])
-    for y in range(ty * 8 + 3, ty * 8 + 7):
-        for x in range(tx * 8 + 3, tx * 8 + 7):
-            if (x - tx * 8) + (y - ty * 8) >= 8:
-                cv.set(x, y, hx('#6a6a7a') if (x + y) % 3 else hx('#4a4a5a'))
-    cv.set(tx * 8 + 5, ty * 8 + 3, hx('#e8fcff'))
+    # grimy grout along part of one joint
+    y0 = rng.randint(4, 10)
+    for y in range(y0, y0 + rng.randint(10, 16)):
+        k = smooth(min(y - y0 + 1, 3) / 3.0)
+        cv.set(16, y, tint(cv.get(16, y), -5 * k, hx('#6a6a58'), 0.12 * k))
 
+
+def v_tile_blue2(cv, rng):
+    # chipped corner where four tiles meet + a short hairline
+    for (dx, dy, d) in [(1, 1, -16), (2, 1, -9), (1, 2, -9), (-1, 1, -6)]:
+        cv.set(16 + dx, 16 + dy, tint(cv.get(16 + dx, 16 + dy), d, FL_GROUT, 0.4))
+    scratch(cv, rng, 18, 18, rng.uniform(0.5, 1.0), 6, -8, 0.3)
+
+
+# ---- carpets: low-contrast pile, tiny soft motif ---------------------------------
 
 def t_carpet_red(cv, rng):
-    base = hx('#6c1030')
-    line, inner, gold = hx('#e0407a'), hx('#2c0418'), hx('#f2b440')
-    n = fbm(rng, (16, 8, 4), (0.45, 0.35, 0.2))
-    for y in range(32):
-        for x in range(32):
-            c = shift(base, int((n(x, y) - 0.5) * 18))
-            if rng.random() < 0.3:
-                c = shift(c, rng.choice([-9, 7]))
-            dx, dy = abs(x % 16 - 8), abs(y % 16 - 8)
-            d = dx + dy
-            if d == 8:
-                c = line if (x + y) % 4 else lt(line, 0.25)
-            elif d in (7, 9):
-                c = inner
-            elif d <= 1:
-                c = gold if d == 0 else dk(gold, 0.25)
-            elif d == 4 and (x + y) % 2 == 0:
-                c = mix(line, c, 0.45)
-            elif d == 16:
-                c = gold
-            elif d == 15:
-                c = mix(gold, c, 0.55)
-            cv.set(x, y, c)
+    base = hx('#80303e')
+
+    def fn(x, y, c, d):
+        if (x % 8, y % 8) in ((0, 0), (4, 4)):          # tiny soft diamond lattice
+            return tint(c, 5, hx('#a8704a'), 0.12)
+        if (x % 8, y % 8) in ((2, 2), (6, 6), (2, 6), (6, 2)):
+            return tint(c, -3)
+        return c
+    surface(cv, base, rng, 3.5, 1.3, 1, fn=fn)
 
 
 def t_carpet_purple(cv, rng):
-    base = hx('#2a1250')
-    cyan, pink, yel = hx('#24ccdc'), hx('#ff3a8e'), hx('#f2c232')
-    n = fbm(rng, (16, 8, 4), (0.45, 0.35, 0.2))
-    for y in range(32):
-        for x in range(32):
-            c = shift(base, int((n(x, y) - 0.5) * 16))
-            if rng.random() < 0.3:
-                c = shift(c, rng.choice([-7, 7]))
-            cv.set(x, y, c)
-
-    def put(x, y, c):
-        wset(cv, x, y, c if rng.random() > 0.12 else dk(c, 0.25))
-    for i in range(13):    # cyan zigzag
-        put(1 + i, 6 - abs(i % 4 - 2), cyan)
-    for i in range(9):     # yellow zigzag
-        put(17 + i, 19 + abs(i % 4 - 2), yel)
-    for t_ in range(9):    # pink triangle outline
-        put(20 + t_ * 0.8, 3 + t_, pink)
-        put(20 - t_ * 0.6, 3 + t_ * 0.9, pink)
-        put(14.6 + t_ * 1.0, 11, pink)
-    for (x, y) in [(5, 20), (9, 23), (4, 26)]:   # dots
-        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-            put(x + dx, y + dy, yel if (dx, dy) != (0, 0) else lt(yel, 0.3))
-    ring_pts = [(round(26 + math.cos(a / 8 * 6.283) * 2.6), round(27 + math.sin(a / 8 * 6.283) * 2.6)) for a in range(8)]
-    for (x, y) in ring_pts:
-        put(x, y, cyan)
-    for i in range(7):     # pink squiggle
-        put(12 + i, 28 + round(math.sin(i * 1.4)), pink)
-    for (x, y) in [(29, 14), (30, 15), (28, 15), (14, 21), (2, 15)]:
-        put(x, y, mix(cyan, base, 0.2))
+    base = hx('#563c6c')
+    flecks = {p: rng.choice([hx('#3a9aa4'), hx('#c45a8c'), hx('#a89a60')]) for p in speck(rng, 0.035)}
+    surface(cv, base, rng, 3.5, 1.3, 1,
+            fn=lambda x, y, c, d: mix(c, flecks[(x, y)], 0.28) if (x, y) in flecks else c)
 
 
-def v_carpet1(cv, rng, col):
-    stain(cv, rng, rng.randint(10, 21), rng.randint(10, 21), 6.0, 4.5, col, 0.5, 0.2, 0.3)
-    bx, by = rng.choice([(7, 24), (24, 8)])
-    for (x, y), e in blob(bx + 0.5, by + 0.5, 1.8, 1.5, rng, 0.1).items():
-        cv.set(x, y, hx('#120810') if e < 0.55 else hx('#3a2018'))
+def v_carpet1(cv, rng):
+    # pile flattened by traffic: a touch lighter and greyer
+    apply_patch(cv, patch(rng, rng.uniform(13, 19), rng.uniform(13, 19), 10, 7, 0.3),
+                lambda x, y, c, w: tint(c, 2 * w, hx('#7a6a74'), 0.05 * w))
 
 
 def v_carpet2(cv, rng):
-    for (x, y), e in blob(rng.randint(12, 19), rng.randint(12, 19), 8.0, 6.0, rng, 0.3).items():
-        if inside(x, y):
-            c = cv.get(x, y)
-            g = (c[0] + c[1] + c[2]) // 3
-            cv.set(x, y, mix(c, (g + 18, g + 14, g + 22, 255), 0.35 * (1 - e) + 0.1))
-    butt(cv, rng.randint(5, 9), rng.randint(20, 26))
-    for _ in range(6):
-        cv.set(rng.randint(3, 28), rng.randint(3, 28), hx(rng.choice(['#ff2a6d', '#05d9e8', '#f9c80e', '#f4f0ff'])))
+    # old drink stain with a slightly darker rim
+    m = patch(rng, rng.uniform(12, 20), rng.uniform(12, 20), 5.5, 4.2, 0.3)
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, -8 * min(1.0, w * 1.6) + (3 if w > 0.55 else 0)))
 
 
-# ---- concrete -----------------------------------------------------------------
+# ---- concrete: smooth trowelled slab, fine pores ----------------------------------
+
+FL_CONCRETE = hx('#6e6c74')
+
 
 def t_concrete(cv, rng):
-    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
-    cols = [hx('#4a4658'), hx('#625e72'), hx('#78748a'), hx('#8c889c')]
-    for y in range(32):
-        for x in range(32):
-            c = pal(cols, n(x, y) * 1.3 - 0.15)
-            r = rng.random()
-            if r < 0.07:
-                c = shift(c, -18)
-            elif r < 0.13:
-                c = shift(c, 14)
-            elif r < 0.145:
-                c = hx('#9a8a7a')
-            elif r < 0.155:
-                c = hx('#5a6a8a')
-            if x == 0 or y == 0:
-                c = hx('#2e2a3a')
-            elif x == 1 or y == 1:
-                c = lt(c, 0.14)
-            cv.set(x, y, c)
-    draw_crack(cv, crack_pts(rng, 6, 20, -0.4, 20, margin=None, branch=0.1), 0.35, 0.1)
+    surface(cv, FL_CONCRETE, rng, 2.6, 1.3, 1, (0.02, 7), (0.025, 12))
 
 
 def v_concrete1(cv, rng):
-    stain(cv, rng, 16, 16, 6.5, 6.0, hx('#24202e'), 0.3, 0.1, 0.3)
-    frame = ramp('#6a6878', 0.5, 0.25, 0.35)
-    for y in range(12, 20):
-        for x in range(12, 20):
-            if x in (12, 19) or y in (12, 19):
-                c = frame[3] if (x == 12 or y == 12) and not (x == 19 or y == 19) else frame[0]
-            else:
-                c = hx('#0e0a14') if x % 2 == 0 else frame[1]
-                if x % 2 and y == 13:
-                    c = frame[3]
-            cv.set(x, y, c)
-    for (x, y) in [(14, 20), (14, 21), (17, 20)]:
-        cv.set(x, y, hx('#6a3a2a'))
+    # faint old oil blot
+    apply_patch(cv, patch(rng, rng.uniform(14, 18), rng.uniform(14, 18), 10, 8, 0.35),
+                lambda x, y, c, w: tint(c, -3 * w, hx('#4a4450'), 0.05 * w))
 
 
 def v_concrete2(cv, rng):
-    cx, cy = rng.randint(11, 20), rng.randint(11, 20)
-    for (x, y), e in blob(cx, cy, 7.0, 5.0, rng, 0.3).items():
-        if inside(x, y):
-            c = mix(cv.get(x, y), hx('#14101c'), 0.65 if e < 0.85 else 0.4)
-            if 0.45 < e < 0.65:
-                c = mix(c, hx('#3a7a8a') if (x + y) % 3 else hx('#8a3a9a'), 0.35)
-            cv.set(x, y, c)
-    cv.set(cx - 2, cy - 2, hx('#9aa0d0'))
-    cv.set(cx - 1, cy - 2, hx('#6a70a0'))
-    draw_crack(cv, crack_pts(rng, 4, 6, 0.7, 26, branch=0.2), 0.55, 0.15)
+    # short hairline crack
+    scratch(cv, rng, rng.randint(6, 10), rng.randint(8, 22), rng.uniform(-0.4, 0.4), rng.randint(14, 19), -10, 0.45)
 
 
-# ---- grass --------------------------------------------------------------------
+# ---- grass: fine blades, gentle hue drift, no clumps -----------------------------
 
-GRASS_BLADE = [hx('#0f2e1e'), hx('#1f5a2a'), hx('#348a32'), hx('#5cb43c'), hx('#a8e05a')]
-
-
-def tuft(cv, x, y, rng, h=3, put=None, tall=False):
-    """V-shaped clump: outer blades lean outwards, the tallest one in the middle catches the light."""
-    put = put or (lambda a, b, c: wset(cv, a, b, c))
-    get = lambda a, b: wget(cv, a, b)
-    for dx in (-1, 0, 1):
-        put(x + dx, y + 1, dk(get(x + dx, y + 1), 0.4))
-    for dx in rng.sample([-2, -1, 0, 1, 2], rng.randint(3, 4)):
-        hh = max(2, h + (1 if tall else 0) - abs(dx) // 2 + rng.choice([0, 0, 1]))
-        for j in range(hh):
-            px_ = x + dx + ((1 if dx > 0 else -1) if dx and j >= hh - 1 else 0)
-            if j == 0:
-                c = GRASS_BLADE[1]
-            elif j == hh - 1:
-                c = GRASS_BLADE[4] if abs(dx) < 2 else GRASS_BLADE[3]
-            else:
-                c = GRASS_BLADE[2] if j < hh - 2 else GRASS_BLADE[3]
-            put(px_, y - j, c)
+FL_GRASS = hx('#56703e')
 
 
 def t_grass(cv, rng):
-    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
-    m = fbm(rng, (8, 4), (0.6, 0.4))
-    cols = [hx('#0c261c'), hx('#143c24'), hx('#1e5428'), hx('#2c6a2e')]
-    for y in range(32):
-        for x in range(32):
-            c = pal(cols, n(x, y) * 1.25 - 0.1)
-            if m(x, y) > 0.66:
-                c = mix(c, hx('#1a5a4a'), 0.35)   # cool clover patches
-            if rng.random() < 0.18:
-                c = shift(c, rng.choice([-10, 8]))
-            cv.set(x, y, c)
-    for _ in range(34):
-        tuft(cv, rng.randint(0, 31), rng.randint(0, 31), rng, rng.choice([3, 3, 4]))
-    for (x, y, p, c) in [(6, 9, '#ff5aa0', '#fff07a'), (23, 21, '#f4f2ff', '#f9c80e')]:
-        flower(cv, x, y, hx(p), hx(c), wrap=True)
-    for (x, y) in [(15, 28), (27, 5)]:
-        wset(cv, x, y, hx('#f9d84a'))
-        wset(cv, x, y + 1, dk(wget(cv, x, y + 1), 0.3))
+    hue = noise(rng, 1)
+    tips, gaps = speck(rng, 0.045), speck(rng, 0.05)
+    blades = noise(rng, 0, 1, 1)       # tiny vertical blade streaks
+
+    def fn(x, y, c, d):
+        h = hue[y][x]
+        c = mix(c, hx('#7a8044') if h > 0 else hx('#3e6a4c'), min(0.18, abs(h) * 0.08))
+        c = tint(c, blades[y][x] * 2.5)
+        if (x, y) in tips:
+            c = tint(c, 9, hx('#a6b06a'), 0.1)
+        elif (x, y) in gaps:
+            c = tint(c, -10, hx('#2a3a2a'), 0.08)
+        return c
+    surface(cv, FL_GRASS, rng, 3.6, 1.0, 1, fn=fn)
 
 
 def v_grass1(cv, rng):
-    cols = [hx('#e07a2a'), hx('#c8442a'), hx('#e8b83a'), hx('#8a5a2a')]
-    for _ in range(7):
-        leaf(cv, rng.randint(3, 24), rng.randint(3, 24), rng.choice(cols), rng)
-    fx, fy = rng.randint(8, 22), rng.randint(8, 22)
-    for (dx, dy) in [(0, 0), (3, 1), (1, 3)]:
-        flower(cv, fx + dx, fy + dy, hx('#ff4a9a'), hx('#fff07a'))
+    # a few drier blades
+    dry = speck(rng, 0.18)
+    apply_patch(cv, patch(rng, rng.uniform(12, 20), rng.uniform(12, 20), 8, 6, 0.35),
+                lambda x, y, c, w: mix(c, hx('#8a8450'), 0.35 * w) if (x, y) in dry else c)
 
 
 def v_grass2(cv, rng):
-    cx, cy = rng.randint(10, 13), rng.randint(17, 21)
-    for (x, y), e in blob(cx, cy, 4.0, 3.0, rng, 0.3).items():
-        if inside(x, y):
-            cv.set(x, y, pal([hx('#4a2e26'), hx('#6a4630'), hx('#3a2a2a')], e + rng.uniform(-0.2, 0.2)))
-    pebble(cv, cx - 1, cy - 1, hx('#a89a8a'), wrap=False)
-    pebble(cv, cx + 2, cy + 1, hx('#8a7a7a'), wrap=False)
-    wx, wy = rng.randint(19, 24), rng.randint(7, 12)
-    for a in range(7):     # weed rosette
-        ang = a / 7 * 6.283
-        for k in range(1, 4):
-            x, y = round(wx + math.cos(ang) * k), round(wy + math.sin(ang) * k * 0.8)
-            cv.set(x, y, hx('#5aa83a') if k == 3 else hx('#2e6a2a'))
-    for (dx, dy) in [(0, 0), (-4, 6), (5, 7), (-9, 14)]:
-        x, y = wx + dx, wy + dy
-        if inside(x, y) and inside(x + 2, y + 2):
-            cv.set(x, y, hx('#fff07a'))
-            cv.set(x + 1, y, hx('#f9c80e'))
-            cv.set(x, y + 1, hx('#f9c80e'))
-            cv.set(x + 1, y + 1, hx('#e88a1a'))
-            cv.set(x + 1, y + 2, hx('#173c24'))
-    for _ in range(6):
-        x, y = rng.randint(4, 27), rng.randint(6, 27)
-        tuft(cv, x, y, rng, 4, put=lambda a, b, c: cv.set(a, b, c) if inside(a, b) else None, tall=True)
+    # small worn patch where the soil shows through
+    soil = speck(rng, 0.55)
+    apply_patch(cv, patch(rng, rng.uniform(13, 19), rng.uniform(13, 19), 5.5, 4.0, 0.35),
+                lambda x, y, c, w: mix(c, tint(FL_DIRT, rng.uniform(-6, 6)), min(0.75, w * 1.1))
+                if (x, y) in soil else mix(c, hx('#7a7a48'), 0.2 * w))
 
 
-# ---- asphalt ------------------------------------------------------------------
+# ---- asphalt: mid blue-grey, fine aggregate --------------------------------------
 
-ASPH = [hx('#12121c'), hx('#1a1a28'), hx('#232335'), hx('#2e2e44')]
+FL_ASPHALT = hx('#575a65')
+LINE_Y = (15, 16, 17)
+FL_LINE_COL = hx('#cfae4c')
 
 
 def t_asphalt(cv, rng, line=False):
-    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
-    wet = fbm(rng, (16, 8), (0.7, 0.3))
-    for y in range(32):
-        for x in range(32):
-            # calm road: dark, even grain, subtle wet sheen (readability of the action first)
-            c = pal(ASPH, 0.25 + n(x, y) * 0.5)
-            r = rng.random()
-            if r < 0.04:
-                c = shift(c, 6)
-            elif r < 0.07:
-                c = shift(c, -5)
-            w = wet(x, y)
-            if w > 0.62:
-                k = min(1.0, (w - 0.62) / 0.2)
-                c = mix(c, hx('#262650'), 0.25 * k)
-            cv.set(x, y, c)
+    agg = speck(rng, 0.045)
+    surface(cv, FL_ASPHALT, rng, 3.6, 1.3, 1, dark=(0.04, 11),
+            fn=lambda x, y, c, d: tint(c, 9, hx('#8a8680'), 0.15) if (x, y) in agg else c)
     if line:
-        for x in range(32):
-            for y, col in ((15, hx('#ffe066')), (16, hx('#f9c80e')), (17, hx('#c8920a'))):
-                c = col
-                if rng.random() < 0.14:
-                    c = mix(c, cv.get(x, y), 0.65)
-                if wet(x, y) > 0.6:
-                    c = mix(c, hx('#ff9a6a'), 0.15)
+        wear = noise(rng)
+        for x in range(T):
+            for y in LINE_Y:
+                g = cv.get(x, y)
+                c = mix(FL_LINE_COL, g, 0.12 if y == 16 else 0.24)
+                c = tint(c, (sum(g[:3]) / 3 - sum(FL_ASPHALT[:3]) / 3) * 0.4)   # grain shows through the paint
+                if wear[y][x] > 1.8:
+                    c = mix(c, g, 0.4)                                      # worn flecks
                 cv.set(x, y, c)
-    draw_crack(cv, crack_pts(rng, 3, 7, 0.5, 22, margin=None, branch=0.15), 0.25, 0.06)
 
 
-def manhole(cv, rng, cx=16.0, cy=16.0, R=8.2):
-    iron = ramp('#3e3c52', 0.5, 0.25, 0.4)
-    for y in range(32):
-        for x in range(32):
-            dx, dy = x + 0.5 - cx, y + 0.5 - cy
-            d = math.hypot(dx, dy)
-            if d > R + 1.8:
-                continue
-            if d > R + 0.8:
-                cv.set(x, y, dk(cv.get(x, y), 0.3))
-                continue
-            if d > R:
-                cv.set(x, y, hx('#08060e'))
-                continue
-            L = light(dx / max(d, 0.1) * 0.95, dy / max(d, 0.1) * 0.95)
-            if d > R - 1.3:
-                c = tone(iron, L)
-            elif 0.62 * R < d < 0.62 * R + 1.0:
-                c = iron[3] if L > 0.5 else iron[1]
-            elif d < 0.55 * R and x % 3 == 0 and y % 3 == 0:
-                c = iron[3]
-            elif d < 0.55 * R and x % 3 == 1 and y % 3 == 1:
-                c = iron[0]
-            else:
-                c = iron[1] if (x * 7 + y * 3) % 5 else iron[2]
-            if rng.random() < 0.08:
-                c = mix(c, hx('#6a3a2a'), 0.5)
-            cv.set(x, y, c)
-    for (x, y) in [(int(cx) - 3, int(cy) + 5), (int(cx) + 2, int(cy) + 5)]:
-        cv.set(x, y, hx('#08060e'))
+def worn_line(cv, rng, x0, x1, k):
+    for x in range(x0, x1):
+        f = smooth(min(x - x0 + 1, x1 - x) / 4.0) * k
+        for y in LINE_Y:
+            if rng.random() < 0.7:
+                cv.set(x, y, mix(cv.get(x, y), tint(FL_ASPHALT, rng.uniform(-3, 3)), f))
 
 
-def puddle(cv, rng, cx, cy, rx, ry):
-    pts = blob(cx, cy, rx, ry, rng, 0.16)
-    for (x, y), e in pts.items():
-        if not inside(x, y):
-            continue
-        dy = y + 0.5 - cy
-        c = pal([hx('#0c0a1c'), hx('#1a1640'), hx('#2a2258')], (dy / ry + 1.0) * 0.5)
-        if e > 0.8:
-            c = mix(cv.get(x, y), hx('#0a0a14'), 0.45)
-        if e < 0.8 and -2.0 <= dy < -1.0 and (x * 7) % 6:
-            c = mix(c, NEON_PINK, 0.65 if x % 3 else 0.4)
-        elif e < 0.72 and 1.0 <= dy < 2.0 and x % 5 != 4:
-            c = mix(c, NEON_CYAN, 0.5)
-        cv.set(x, y, c)
-    keys = sorted(k for k, e in pts.items() if e < 0.5 and inside(*k))
-    for _ in range(2):
-        cv.set(*rng.choice(keys), hx('#e8f0ff'))
+def tar_seam(cv, rng, x, y, ang, n):
+    """Sealed crack: a soft, slightly darker meandering band."""
+    fx, fy = x + 0.5, y + 0.5
+    for i in range(n):
+        ix, iy = int(math.floor(fx)), int(math.floor(fy))
+        k = smooth(min(i + 1, n - i) / 3.0)
+        for (dx, dy, d) in ((0, 0, -8), (0, 1, -4)):
+            if inside(ix + dx, iy + dy, VM + 1):
+                cv.set(ix + dx, iy + dy, tint(cv.get(ix + dx, iy + dy), d * k, hx('#3a3a48'), 0.15 * k))
+        ang += rng.uniform(-0.3, 0.3)
+        fx += math.cos(ang)
+        fy += math.sin(ang)
 
 
 def v_asphalt1(cv, rng):
-    draw_crack(cv, crack_pts(rng, 5, 8, 0.3, 24, branch=0.35), 0.7, 0.3)
-    stain(cv, rng, rng.randint(18, 22), rng.randint(18, 22), 4.0, 3.0, hx('#0a0812'), 0.55, 0.0)
-    for (x, y) in [(8, 23), (10, 24), (9, 26)]:
-        cv.set(x, y, hx('#0a0812'))
+    # a few loose aggregate pits (the re-rolled grain does the rest)
+    for _ in range(5):
+        x, y = rng.randint(4, 27), rng.randint(4, 27)
+        cv.set(x, y, tint(cv.get(x, y), -9))
 
 
 def v_asphalt2(cv, rng):
-    manhole(cv, rng, 16.0, 16.0)
+    tar_seam(cv, rng, 5, rng.randint(9, 22), rng.uniform(-0.3, 0.3), 22)
 
 
 def v_asphalt_line1(cv, rng):
-    draw_crack(cv, crack_pts(rng, 5, 6, 1.1, 28, branch=0.3), 0.75, 0.32)
-    for x in range(rng.randint(18, 22), 26):
-        for y in (15, 16, 17):
-            if rng.random() < 0.6:
-                cv.set(x, y, mix(cv.get(x, y), hx('#1a1a28'), 0.75))
+    a = rng.randint(4, 10)
+    worn_line(cv, rng, a, a + rng.randint(14, 18), 0.22)
 
 
 def v_asphalt_line2(cv, rng):
-    puddle(cv, rng, rng.randint(13, 18), 16.5, 8.0, 5.0)
+    worn_line(cv, rng, 6, 20, 0.28)
+    tar_seam(cv, rng, rng.randint(12, 18), 4, 1.57 + rng.uniform(-0.3, 0.3), 24)
 
 
-# ---- dirt ---------------------------------------------------------------------
+# ---- dirt: packed earth, fine grit -----------------------------------------------
+
+FL_DIRT = hx('#6c5846')
+
 
 def t_dirt(cv, rng):
-    n = fbm(rng, (16, 8, 4), (0.45, 0.35, 0.2))
-    cols = [hx('#3a2028'), hx('#5a3830'), hx('#7a5038'), hx('#946a46')]
-    for y in range(32):
-        for x in range(32):
-            c = pal(cols, n(x, y) * 1.3 - 0.12)
-            r = rng.random()
-            if r < 0.14:
-                c = shift(c, -12)
-            elif r < 0.24:
-                c = shift(c, 9)
-            cv.set(x, y, c)
-    for _ in range(5):
-        pebble(cv, rng.randint(0, 31), rng.randint(0, 31), rng.choice([hx('#b8a48a'), hx('#8a7a8a'), hx('#c8b49a')]))
-    for _ in range(16):
-        x, y = rng.randint(0, 31), rng.randint(0, 31)
-        wset(cv, x, y, rng.choice([hx('#a8907a'), hx('#7a6a7a'), hx('#c8a882')]))
-        wset(cv, x + 1, y + 1, dk(wget(cv, x + 1, y + 1), 0.35))
-    for _ in range(14):
-        x, y = rng.randint(0, 31), rng.randint(0, 31)
-        wset(cv, x, y, hx('#2a161e'))
-    for _ in range(3):
-        x, y = rng.randint(0, 31), rng.randint(0, 31)
-        wset(cv, x, y, hx('#8a9a3a'))
-        wset(cv, x + 1, y - 1, hx('#b0b84a'))
+    grit = speck(rng, 0.03)
+
+    def fn(x, y, c, d):
+        if (x, y) in grit:
+            return tint(c, 14, hx('#9a948a'), 0.25)
+        if ((x - 1) % T, (y - 1) % T) in grit:
+            return tint(c, -6)
+        return c
+    surface(cv, FL_DIRT, rng, 4.0, 1.2, 1, dark=(0.03, 9), fn=fn)
 
 
 def v_dirt1(cv, rng):
-    for k, (sx, sy) in enumerate([(8, 6), (14, 15), (9, 22)]):
-        for y in range(5):
-            for x in range(3):
-                if (x, y) in ((0, 0), (2, 0), (0, 4), (2, 4)) or y == 3 and x == 1:
-                    continue
-                c = dk(cv.get(sx + x, sy + y), 0.55 if y % 2 == 0 else 0.35)
-                cv.set(sx + x, sy + y, c)
-        for y in range(5):
-            cv.set(sx + 3, sy + y, lt(cv.get(sx + 3, sy + y), 0.18))
-    for _ in range(4):
-        pebble(cv, rng.randint(18, 26), rng.randint(4, 26), rng.choice([hx('#c8b49a'), hx('#8a8a9a')]), wrap=False)
+    # damp, slightly darker ground
+    apply_patch(cv, patch(rng, rng.uniform(14, 18), rng.uniform(14, 18), 11, 9, 0.35),
+                lambda x, y, c, w: tint(c, -4 * w, hx('#4a3a3a'), 0.06 * w))
 
 
 def v_dirt2(cv, rng):
-    cx, cy = rng.randint(14, 18), rng.randint(14, 18)
-    for (x, y), e in blob(cx, cy, 8.0, 5.0, rng, 0.3).items():
-        if not inside(x, y):
-            continue
-        if e > 0.82:
-            c = mix(cv.get(x, y), hx('#2a1418'), 0.5)
-        else:
-            c = hx('#24141e') if (x + y * 2) % 7 else hx('#2e1a24')
-            if abs(y + 0.5 - cy + 1) < 0.6 and e < 0.6:
-                c = hx('#5a3a7a')
-            elif abs(y + 0.5 - cy - 1) < 0.6 and e < 0.4:
-                c = hx('#3a4a6a')
-        cv.set(x, y, c)
-    cv.set(cx - 3, cy - 2, hx('#a890c8'))
+    # a few small stones half buried
     for _ in range(3):
-        tuft(cv, rng.randint(4, 27), rng.choice([rng.randint(4, 7), rng.randint(25, 27)]), rng, 3,
-             put=lambda a, b, c: cv.set(a, b, c) if inside(a, b) else None)
+        x, y = rng.randint(8, 22), rng.randint(8, 22)
+        col = tint(hx('#8a8478'), rng.uniform(-8, 8))
+        cv.set(x, y, tint(col, 6))
+        cv.set(x + 1, y, col)
+        cv.set(x + 1, y + 1, tint(cv.get(x + 1, y + 1), -12))
+        cv.set(x, y + 1, tint(col, -8))
 
 
-# ---- sidewalk -----------------------------------------------------------------
+# ---- sidewalk: big light concrete slabs, thin joints -----------------------------
+
+FL_SIDEWALK = hx('#94929a')
+
 
 def t_sidewalk(cv, rng):
-    n = fbm(rng, (8, 4), (0.6, 0.4))
-    tones = [[rng.choice([-8, -3, 0, 4, 8]) for _ in range(2)] for _ in range(2)]
-    tints = [[hx(rng.choice(['#aca6b8', '#a6aab4', '#b0aaaa', '#aaa6b2'])) for _ in range(2)] for _ in range(2)]
-    seam = hx('#3a3448')
-    for y in range(32):
-        for x in range(32):
-            c = shift(tints[y // 16][x // 16], tones[y // 16][x // 16] + int((n(x, y) - 0.5) * 14))
-            r = rng.random()
-            if r < 0.08:
-                c = shift(c, -16)
-            elif r < 0.13:
-                c = shift(c, 12)
-            gx, gy = x % 16, y % 16
-            if gx == 0 or gy == 0:
-                c = seam
-            elif gx == 1 or gy == 1:
-                c = lt(c, 0.2)
-            elif gx == 15 or gy == 15:
-                c = dk(c, 0.16)
-            cv.set(x, y, c)
-    for (x, y) in [(5, 9), (22, 4), (26, 24)]:
-        cv.set(x, y, hx('#5a5466'))
-        cv.set(x + 1, y, hx('#6a6476'))
-        cv.set(x, y + 1, hx('#4a4456'))
+    def fn(x, y, c, d):
+        if x == 0 or y == 0:
+            return tint(c, -14, hx('#5a5662'), 0.12)
+        if x == 1 or y == 1:
+            return tint(c, 3)
+        return c
+    surface(cv, FL_SIDEWALK, rng, 2.8, 1.3, 1, (0.025, 8), (0.03, 10), fn=fn)
 
 
 def v_sidewalk1(cv, rng):
-    draw_crack(cv, crack_pts(rng, 17, 3, 1.2, 14, branch=0.4), 0.55, 0.18)
-    draw_crack(cv, crack_pts(rng, 3, 25, -0.2, 11, branch=0.2), 0.55, 0.18)
-    butt(cv, rng.randint(6, 10), rng.randint(5, 10))
-    butt(cv, rng.randint(20, 24), rng.randint(20, 26), horiz=False)
+    # a few flattened chewing-gum spots and a faint stain
+    apply_patch(cv, patch(rng, rng.uniform(12, 20), rng.uniform(12, 20), 7, 5, 0.35),
+                lambda x, y, c, w: tint(c, -3 * w))
+    for _ in range(3):
+        x, y = rng.randint(5, 26), rng.randint(5, 26)
+        cv.set(x, y, tint(cv.get(x, y), -12))
+        cv.set(x + 1, y, tint(cv.get(x + 1, y), -7))
 
 
 def v_sidewalk2(cv, rng):
-    sx, sy = rng.randint(7, 10), rng.randint(19, 23)
-    for _ in range(5):     # dried spatter
-        stain(cv, rng, sx + rng.uniform(-3, 3), sy + rng.uniform(-2, 2), rng.uniform(0.9, 1.8), rng.uniform(0.8, 1.4),
-              hx('#2a2434'), 0.5, 0.0, 0.1)
-    for (dx, dy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (2, 0), (0, 2)]:
-        c = hx('#2a2434') if abs(dx) + abs(dy) < 2 else hx('#5a5666')
-        cv.set(16 + dx, 16 + dy, c)
-    cv.set(17, 17, hx('#c8c4d0'))
-    for c_ in [hx('#e07a2a'), hx('#c8442a'), hx('#e8b83a')]:
-        leaf(cv, rng.randint(19, 24), rng.randint(4, 12), c_, rng)
+    scratch(cv, rng, rng.randint(5, 9), rng.randint(6, 12), rng.uniform(0.5, 0.9), rng.randint(14, 18), -16, 0.45)
 
 
-# ---- neon dance floor ---------------------------------------------------------
+# ---- neon dance floor: dark frosted panels, thin glowing joints ------------------
 
 NEON_PINK, NEON_CYAN = hx('#ff2a6d'), hx('#05d9e8')
+JOINT_V, JOINT_H, JOINT_X = hx('#4ad8e4'), hx('#f0508c'), hx('#f4e8ff')
+FL_PANEL = hx('#1e1530')
 
 
 def neon_line_px(x, y):
-    """Colour of the glowing grid line at (x, y), or None."""
+    """Colour of the glowing joint at (x, y), or None (shared with neon_floor_glow)."""
     gx, gy = x % 16, y % 16
     if gx == 0 and gy == 0:
-        return hx('#fff4ff')
+        return JOINT_X
     if gx == 0:
-        return lt(NEON_CYAN, 0.35) if gy in (1, 15) else mix(NEON_CYAN, hx('#ffffff'), 0.25)
+        return JOINT_V
     if gy == 0:
-        return lt(NEON_PINK, 0.35) if gx in (1, 15) else mix(NEON_PINK, hx('#ffffff'), 0.2)
+        return JOINT_H
     return None
 
 
 def t_neon(cv, rng):
-    panels = [[hx(rng.choice(['#170a2c', '#1c0c34', '#140826', '#200e3a'])) for _ in range(2)] for _ in range(2)]
-    for y in range(32):
-        for x in range(32):
-            gx, gy = x % 16, y % 16
-            c = panels[y // 16][x // 16]
-            c = mix(c, hx('#3a1a66'), 0.22 * max(0.0, 1.0 - (gx + gy) / 16.0))
-            if 3 <= gx <= 13 and 3 <= gy <= 13 and (gx - gy) in (4, 5) and gx + gy < 24:
-                c = mix(c, hx('#5a3a9a'), 0.35)
-            if rng.random() < 0.1:
-                c = shift(c, rng.choice([-5, 6]))
-            dxl, dyl = min(gx, 16 - gx), min(gy, 16 - gy)
-            c = mix(c, NEON_CYAN, [0, 0.42, 0.18, 0.07][min(3, dxl)])
-            c = mix(c, NEON_PINK, [0, 0.42, 0.18, 0.07][min(3, dyl)])
-            if gx in (3, 13) and gy in (3, 13):
-                c = hx('#5a4a7a')
-            line = neon_line_px(x, y)
-            cv.set(x, y, line if line else c)
+    def fn(x, y, c, d):
+        line = neon_line_px(x, y)
+        if line:
+            return line
+        gx, gy = x % 16, y % 16
+        dxl, dyl = min(gx, 16 - gx), min(gy, 16 - gy)
+        c = mix(c, JOINT_V, [0, 0.16, 0.05][min(2, dxl)])
+        return mix(c, JOINT_H, [0, 0.16, 0.05][min(2, dyl)])
+    surface(cv, FL_PANEL, rng, 1.6, 1.8, 2, fn=fn)
 
 
 def neon_glow():
@@ -2099,88 +1884,60 @@ def neon_glow():
     return cv
 
 
-def lit_panel(cv, px, py, col, hot):
-    for y in range(py * 16 + 2, py * 16 + 14):
-        for x in range(px * 16 + 2, px * 16 + 14):
-            d = max(abs(x + 0.5 - px * 16 - 8), abs(y + 0.5 - py * 16 - 8)) / 6.0
-            c = mix(hot, col, min(1.0, d * 1.1))
-            if bayer(x, y, d - 0.75):
-                c = dk(c, 0.3)
-            cv.set(x, y, c)
-
-
 def v_neon1(cv, rng):
-    lit_panel(cv, *rng.choice([(0, 0), (1, 1)]), hx('#c0189a'), hx('#ff9ae0'))
+    for _ in range(3):   # heel scuffs on the frosted panels
+        scratch(cv, rng, rng.choice([rng.randint(4, 12), rng.randint(19, 27)]),
+                rng.choice([rng.randint(4, 12), rng.randint(19, 27)]), rng.uniform(0, 6.283), 4, 6, 0.3)
 
 
 def v_neon2(cv, rng):
-    lit_panel(cv, 1, 0, hx('#0a8ab8'), hx('#9af6ff'))
-    pts = crack_pts(rng, 6, 22, 0.3, 9, margin=3, branch=0.6)
-    for (x, y) in pts:
-        if 2 <= x % 16 <= 14 and 2 <= y % 16 <= 14:
-            cv.set(x, y, hx('#b8a0e8'))
+    # one panel softly lit from below
+    px, py = rng.choice([(0, 0), (1, 0), (0, 1), (1, 1)])
+    for y in range(py * 16 + 2, py * 16 + 15):
+        for x in range(px * 16 + 2, px * 16 + 15):
+            if inside(x, y):
+                d = max(abs(x + 0.5 - px * 16 - 8), abs(y + 0.5 - py * 16 - 8)) / 7.0
+                cv.set(x, y, mix(cv.get(x, y), hx('#7a2a8a'), 0.28 * smooth(1.2 - d)))
 
 
-# ---- wall tops ----------------------------------------------------------------
+# ---- wall tops ---------------------------------------------------------------------
 
 def t_wall(cv, rng):
-    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
-    cols = [hx('#a8949a'), hx('#c6b4b0'), hx('#dccabc'), hx('#ecdccc')]
-    for y in range(32):
-        for x in range(32):
-            c = pal(cols, n(x, y) * 1.2 - 0.05)
-            if bayer(x * 3 + y, y * 5 + x, 0.18):
-                c = dk(c, 0.07)
-            r = rng.random()
-            if r < 0.06:
-                c = dk(c, 0.12)
-            elif r < 0.12:
-                c = lt(c, 0.15)
-            cv.set(x, y, c)
-    draw_crack(cv, crack_pts(rng, 20, 9, 2.2, 10, margin=None, branch=0.3), 0.18, 0.1)
+    # interior plaster seen from above: light, even, fine grain
+    surface(cv, hx('#c2b4ae'), rng, 2.2, 1.2, 1, (0.02, 5), (0.02, 6))
 
 
 def t_brick(cv, rng):
-    mortar = hx('#3a2a3e')
-    cols = ['#8a2c24', '#9a3428', '#7a2620', '#a83e2a', '#6c2420', '#94301e']
-    bricks = {}
-    for y in range(32):
+    # exterior brick top: running bond, muted reds, mortar close in value
+    mortar = hx('#6a5a5c')
+    fine = noise(rng)
+    tones = {}
+    for y in range(T):
         row = y // 4
         off = 4 if row % 2 else 0
-        for x in range(32):
-            bx = ((x + off) % 32) // 8
-            key = (row, bx)
-            if key not in bricks:
-                bricks[key] = hx('#4a2034') if rng.random() < 0.08 else hx(rng.choice(cols))
+        for x in range(T):
+            bx = ((x + off) % T) // 8
+            if (row, bx) not in tones:
+                tones[(row, bx)] = (rng.uniform(-7, 7), rng.uniform(0, 0.25))
             gx, gy = (x + off) % 8, y % 4
             if gy == 3 or gx == 7:
-                c = jit(mortar, 6, rng)
-                if rng.random() < 0.12:
-                    c = hx('#5a4a5a')
+                c = tint(mortar, fine[y][x] * 3)
             else:
-                c = bricks[key]
+                d, k = tones[(row, bx)]
+                c = tint(hx('#8a4034'), d + fine[y][x] * 3.5, hx('#7a5a4a'), k)
                 if gy == 0:
-                    c = lt(c, 0.2)
+                    c = tint(c, 5)
                 elif gy == 2:
-                    c = dk(c, 0.15)
-                if gx == 0:
-                    c = lt(c, 0.08)
-                elif gx == 6:
-                    c = dk(c, 0.1)
-                r = rng.random()
-                if r < 0.12:
-                    c = shift(c, -14)
-                elif r < 0.2:
-                    c = shift(c, 10)
+                    c = tint(c, -4)
             cv.set(x, y, c)
 
 
 FLOOR_TILES = [
     ('wood', t_wood, v_wood1, v_wood2),
-    ('checker', t_checker, v_checker1, v_checker1),
-    ('tile_blue', t_tile_blue, v_tile_blue1, v_tile_blue1),
-    ('carpet_red', t_carpet_red, lambda cv, r: v_carpet1(cv, r, hx('#280418')), v_carpet2),
-    ('carpet_purple', t_carpet_purple, lambda cv, r: v_carpet1(cv, r, hx('#120624')), v_carpet2),
+    ('checker', t_checker, v_checker1, v_checker2),
+    ('tile_blue', t_tile_blue, v_tile_blue1, v_tile_blue2),
+    ('carpet_red', t_carpet_red, v_carpet1, v_carpet2),
+    ('carpet_purple', t_carpet_purple, v_carpet1, v_carpet2),
     ('concrete', t_concrete, v_concrete1, v_concrete2),
     ('grass', t_grass, v_grass1, v_grass2),
     ('asphalt', t_asphalt, v_asphalt1, v_asphalt2),
@@ -2202,6 +1959,9 @@ def tiles():
             cv = Cv(32, 32)
             cv.img = base.img.copy()
             cv.p = cv.img.load()
+            fresh = Cv(32, 32)
+            base_fn(fresh, random.Random(900 + i * 10 + k))
+            reroll(cv, fresh)
             fn(cv, random.Random(700 + i * 10 + k))
             for y in range(32):
                 for x in range(32):

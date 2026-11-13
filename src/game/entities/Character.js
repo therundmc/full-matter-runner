@@ -212,7 +212,7 @@ export default class Character {
       const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
       const pr = new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
-        team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pierce: d.pierce || 0, rocket: d.rocket,
+        team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pen: d.pen ?? 10, rocket: d.rocket,
       });
       w.addProjectile(pr);
     }
@@ -294,7 +294,7 @@ export default class Character {
   shot(angle, weaponDef, distance, shooter) {
     let cause = 'bullet';
     if (weaponDef?.pellets > 1) cause = distance < 120 ? 'blast' : 'bullet';
-    else if (weaponDef?.pierce) cause = 'heavy';
+    else if (weaponDef?.heavy) cause = 'heavy';
     this.kill(angle, cause, shooter, weaponDef?.gore ?? 0.3);
   }
 

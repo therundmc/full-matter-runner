@@ -40,6 +40,7 @@ export default class MapRenderer {
         if (f) g.drawImage(floorTile(f, x, y), x * TILE, y * TILE, TILE, TILE);
       }
     }
+    this.grime(g, W, H);
     // soft drop shadow of walls on the floor
     const sh = document.createElement('canvas');
     sh.width = W; sh.height = H;
@@ -140,6 +141,38 @@ export default class MapRenderer {
     }
   }
 
+  // large soft light/dirt patches over the floor (two octaves of smoothed value noise) so tiles never read as a grid
+  grime(g, W, H) {
+    const layer = document.createElement('canvas');
+    layer.width = W; layer.height = H;
+    const lg = layer.getContext('2d');
+    for (const [cell, alpha, seed] of [[7, 0.55, 11], [2.5, 0.35, 97]]) {
+      const cw = Math.ceil(W / (TILE * cell)) + 2, ch = Math.ceil(H / (TILE * cell)) + 2;
+      const n = document.createElement('canvas');
+      n.width = cw; n.height = ch;
+      const ng = n.getContext('2d');
+      const img = ng.createImageData(cw, ch);
+      for (let i = 0; i < cw * ch; i++) {
+        const v = Math.round(cellHash(i % cw + seed, Math.floor(i / cw) - seed) * 255);
+        img.data.set([v, v, v, 255], i * 4);
+      }
+      ng.putImageData(img, 0, 0);
+      lg.globalAlpha = alpha;
+      lg.imageSmoothingEnabled = true;
+      lg.imageSmoothingQuality = 'high';
+      lg.drawImage(n, -TILE * cell, -TILE * cell, cw * TILE * cell, ch * TILE * cell);
+    }
+    // only where there is floor
+    lg.globalAlpha = 1;
+    lg.globalCompositeOperation = 'destination-in';
+    lg.drawImage(g.canvas, 0, 0);
+    g.save();
+    g.globalCompositeOperation = 'soft-light';
+    g.globalAlpha = 0.5;
+    g.drawImage(layer, 0, 0);
+    g.restore();
+  }
+
   // ---------- persistent decals ----------
   stampBlood(x, y, r = 3, n = 1) {
     const g = this.floorCtx;
@@ -196,14 +229,16 @@ export default class MapRenderer {
     g.restore();
   }
 
-  bulletHole(x, y) {
+  // size 1 = entry hole; exits are wider (spalling), ricochets just scuff
+  bulletHole(x, y, size = 1) {
     const g = this.wallCtx;
     g.save();
     g.globalCompositeOperation = 'source-atop';
     g.fillStyle = 'rgba(0,0,0,0.25)';
-    g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(x, y, 3 * size, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#0d0710';
-    g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+    const r = Math.max(1, Math.round(size * 1.2));
+    g.fillRect(Math.round(x) - r, Math.round(y) - r, r * 2, r * 2);
     g.restore();
   }
 

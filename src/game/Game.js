@@ -6,6 +6,7 @@ import Camera from '../engine/Camera.js';
 import Audio from '../audio/Audio.js';
 import Music from '../audio/Music.js';
 import World from './world/World.js';
+import PostFX from './render/PostFX.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
 import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults } from './ui/Screens.js';
@@ -32,6 +33,7 @@ export default class Game {
     this.deaths = 0;
     this.loadP = 0;
     this.musicOn = true;
+    this.postfx = new PostFX();
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -224,6 +226,7 @@ export default class Game {
     } else {
       this.camera.apply(ctx);
       this.safeDraw(ctx, () => this.world.draw(ctx, this.camera, t));
+      this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma));
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 

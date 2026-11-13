@@ -2,7 +2,6 @@ import { CAT, MASK, MAX_DEBRIS } from '../Config.js';
 import { PROPS } from '../data/props.js';
 import { sprite, spriteOpt, slices, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance, angDiff, clamp } from '../../engine/math.js';
-import { segPoly } from '../../engine/physics/Raycast.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 
@@ -128,11 +127,9 @@ export default class Prop {
   get x() { return this.body.position.x; }
   get y() { return this.body.position.y; }
 
-  // where a shot along dirA entering at (px, py) comes out on the far side
-  exitPoint(px, py, dirA) {
-    const fx = px + Math.cos(dirA) * 120, fy = py + Math.sin(dirA) * 120;
-    const r = segPoly(fx, fy, px, py, this.body.vertices);
-    return r ? { x: fx + (px - fx) * r.t, y: fy + (py - fy) * r.t } : null;
+  // a round that went right through blows a piece out of the far side (exit at (px, py), flying along dirA)
+  exitWound(px, py, dirA, scale) {
+    this.bite(px, py, dirA + Math.PI, scale);
   }
 
   // kind: pellet | bullet | rifle | blunt | blast
@@ -142,11 +139,6 @@ export default class Prop {
     this.flash = 0.06;
     if (this.hp - damage > 0) {
       this.bite(px, py, dirA, BITE[kind] ?? 1);
-      if (kind === 'rifle') {
-        // through and through: a bigger chunk blows out the back
-        const ex = this.exitPoint(px, py, dirA);
-        if (ex) this.bite(ex.x - Math.cos(dirA) * 5, ex.y - Math.sin(dirA) * 5, dirA + Math.PI, 1.3);
-      }
       if (kind === 'blunt') this.cracks(px, py, 3);
       if (kind === 'blast') this.scorch(px, py);
     }

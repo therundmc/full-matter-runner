@@ -123,7 +123,7 @@ export default class Ragdoll {
     w.particles.blood(p.x, p.y, a, 0.5, 10, 220);
     w.decals.stampBlood(p.x, p.y, 3, 3);
     this.pool = Math.min(this.poolMax + 4, this.pool + 1.5);
-    const heavy = weaponDef && (weaponDef.pellets > 1 || weaponDef.pierce || weaponDef.rocket);
+    const heavy = weaponDef && (weaponDef.pellets > 1 || weaponDef.heavy || weaponDef.rocket);
     if (heavy && part !== this.torso && chance(0.5)) this.detach(part, a, 260);
     else w.sound('splat', p.x, p.y, 0.35);
   }

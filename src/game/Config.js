@@ -75,3 +75,53 @@ export const PALETTE = {
 
 // hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot)
 export const WALL_HP = { '#': 7, 'X': 14 };
+
+// Lighting / post-processing (game/render/Lighting.js, PostFX.js). Light map colours are 0..1 multipliers of the scene.
+export const LIGHTING = {
+  enabled: true,
+  scale: 0.5,              // light map texels per world px
+  bloomScale: 0.25,        // bloom / reflection buffers, texels per world px
+  ambient: {               // night tint per area (rgb 0..1)
+    street: [0.26, 0.25, 0.4],
+    inside: [0.22, 0.18, 0.36],
+    neon: [0.36, 0.28, 0.5],
+    wall: [0.2, 0.17, 0.32],
+    void: [0.08, 0.06, 0.14],
+  },
+  falloff: [[0, 1], [0.12, 0.85], [0.35, 0.48], [0.65, 0.17], [1, 0]], // radial light profile (pos, alpha)
+  softSamples: 3,          // jittered shadow samples (penumbra)
+  softRadius: 3.5,         // px
+  shadowBlur: 1,           // light map texels
+  rimWidth: 12,            // px of wall face lit along the visible edges
+  rimAlpha: 1,
+  dynamicGain: 1.1,        // muzzle flashes / explosions in the light map
+  dynamicShadows: true,
+  charLight: { player: [52, 0.5], enemy: [40, 0.32], color: '#b9a8ff' }, // [radius px, intensity]
+  fireLight: 0.32,
+  overbright: 0.35,        // soft-light pass of the light map (punch on lit areas)
+  haze: 0.04,              // additive light scattering
+  bloom: 0.95,
+  bloomBlur: [2, 6],       // texels of the two bloom blurs
+  coreGlow: 0.55,          // glow blob on every light source (bloom)
+  bulb: 0.5,               // small crisp hot spot at every light source
+  neonGlow: 0.85,          // dancefloor emissive into bloom
+  flare: 0.5,              // anamorphic streaks of very bright lights
+  reflect: 0.55,           // wet floor reflections
+  reflectFloors: ['asphalt', 'asphalt_line', 'sidewalk', 'checker', 'tile_blue', 'neon_floor'],
+  bpm: 116,
+  grade: { saturate: 1.22, contrast: 1.06, shadowTint: 'rgb(0,10,18)', highlightTint: 'rgba(255,40,190,0.07)' },
+  grain: 0.05,
+  aberration: 7,           // px at full camera trauma
+  // lights of props whose def has no `light` field (upcoming props)
+  propLights: {
+    jukebox: { r: 90, color: '#ff4fd8', intensity: 0.85, flicker: 'pulse', y: 6 },
+    neon_sign_palm: { r: 120, color: '#2af0ff', intensity: 1, flicker: 'buzz' },
+    neon_sign_bar: { r: 120, color: '#ff2a6d', intensity: 1, flicker: 'broken' },
+    neon_sign_arrow: { r: 100, color: '#ffc02a', intensity: 0.9, flicker: 'buzz' },
+    streetlight: { r: 190, color: '#ffb46a', intensity: 0.9 },
+    car: [{ r: 175, color: '#fff1c8', intensity: 0.85, x: 34, y: -9, cone: 0.42 }, { r: 175, color: '#fff1c8', intensity: 0.85, x: 34, y: 9, cone: 0.42 },
+      { r: 42, color: '#ff1a3a', intensity: 0.7, x: -36, y: -10 }, { r: 42, color: '#ff1a3a', intensity: 0.7, x: -36, y: 10 }],
+    car2: [{ r: 170, color: '#fff1c8', intensity: 0.8, x: 34, y: -9, cone: 0.42 }, { r: 170, color: '#fff1c8', intensity: 0.8, x: 34, y: 9, cone: 0.42 }],
+    van: [{ r: 170, color: '#fff1c8', intensity: 0.8, x: 36, y: -10, cone: 0.42 }, { r: 170, color: '#fff1c8', intensity: 0.8, x: 36, y: 10, cone: 0.42 }],
+  },
+};

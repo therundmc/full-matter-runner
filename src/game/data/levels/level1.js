@@ -190,4 +190,65 @@ export default {
     ['table_round', 45, 11, 0],
     ['chair', 44.1, 11, 0],
   ],
+  lights: [
+    // storage: one dying fluorescent tube, red exit sign
+    [9, 5.5, 7, '#c8ffe0', 0.75, 'broken'],
+    [6.5, 15.4, 3, '#ff2030', 0.65, 'buzz'],
+    [4, 12.5, 3.5, '#4a7cff', 0.35],
+    // club: wall neons + moving dancefloor spots
+    [16.3, 6.5, 6, '#00e5ff', 0.75, 'buzz'],
+    [16.3, 12.5, 6, '#ff2a6d', 0.7, 'buzz'],
+    [40.7, 6.5, 6, '#ff2a6d', 0.75, 'buzz'],
+    [40.7, 12.5, 6, '#00e5ff', 0.7, 'buzz'],
+    [21, 8, 2.6, '#ff2af0', 1.1, 'disco'],
+    [34, 9, 2.6, '#2af0ff', 1.1, 'disco'],
+    [27, 12, 2.6, '#9a4aff', 1.1, 'disco'],
+    [30, 6, 2.2, '#ffe02a', 0.8, 'disco'],
+    [17.5, 4, 3, '#ff8a20', 0.6, 'pulse'],
+    // office: desk lamps, moonlight through the window
+    [45.7, 5, 3.4, '#ffcf7a', 0.85],
+    [49.7, 5, 3.4, '#ffcf7a', 0.85],
+    [53.7, 5, 3.4, '#ffcf7a', 0.8, 'broken'],
+    [60.3, 5.9, 5.5, '#4a6cff', 0.45],
+    // game room: pool lamp, beer neon
+    [49, 12.5, 4.6, '#c8ffb8', 0.85],
+    [60.5, 11, 4, '#ff3a7a', 0.75, 'buzz'],
+    [44, 14.8, 3, '#ffb040', 0.5],
+    // kitchen: cold buzzing fluorescent
+    [8, 20, 6.5, '#c8f0ff', 0.75, 'buzz'],
+    [8.5, 27.5, 4, '#7af0ff', 0.4],
+    // living room: warm lamps, lava lamp
+    [16.8, 20.2, 4.6, '#ffaa50', 0.85],
+    [28.4, 27, 3.6, '#ffd27a', 0.75],
+    [22, 17.6, 3, '#c040ff', 0.6, 'pulse'],
+    // lounge bar: neon behind the counter, red table lamps
+    [37, 17.7, 6.5, '#ff2a6d', 0.95, 'buzz'],
+    [33.5, 17.5, 3.5, '#2ad8ff', 0.7],
+    [39.5, 25, 3.2, '#ff5a3a', 0.7],
+    [44.8, 24, 3.4, '#c050ff', 0.65],
+    [36, 28.5, 3.8, '#ff4060', 0.6],
+    [32.3, 20.5, 3.5, '#00e5ff', 0.55, 'buzz'],
+    // restrooms: broken tubes, dark middle
+    [50, 18.6, 3.6, '#bff8ff', 0.7, 'broken'],
+    [50, 27.8, 3.6, '#9ff0ff', 0.6, 'buzz'],
+    // back lounge: desk lamp, red neon
+    [58.3, 21.2, 3.2, '#ffc070', 0.7],
+    [60.4, 18.4, 3.5, '#ff2050', 0.65, 'buzz'],
+    // street: facade neon signs
+    [9.5, 31.3, 4.5, '#ffd02a', 0.85, 'buzz'],
+    [20, 31.3, 5.5, '#ff2a6d', 1, 'buzz'],
+    [29.5, 31.3, 4.5, '#00e5ff', 0.9, 'broken'],
+    [38, 31.3, 5, '#b04aff', 0.95, 'buzz'],
+    [50, 31.3, 5, '#ff2a6d', 0.9, 'buzz'],
+    [58, 31.3, 4, '#2af0ff', 0.85, 'pulse'],
+    // street: sodium lamps on the median, cold lamps on the far sidewalk
+    [6, 33.5, 6.5, '#ffaa5a', 0.85],
+    [18, 33.5, 6.5, '#ffaa5a', 0.85],
+    [30, 33.5, 6.5, '#ffaa5a', 0.85],
+    [42, 33.5, 6.5, '#ffaa5a', 0.8, 'broken'],
+    [54, 33.5, 6.5, '#ffaa5a', 0.85],
+    [12, 42.3, 6, '#5a8cff', 0.65],
+    [36, 42.3, 6, '#ff3ac8', 0.6, 'buzz'],
+    [56, 42.3, 6, '#5a8cff', 0.65],
+  ],
 };
