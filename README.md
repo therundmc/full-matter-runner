@@ -24,7 +24,8 @@ Then open http://localhost:8000.
 | E | Pick up / swap weapons |
 | Space | Execute a knocked-out enemy |
 | Shift | Look further ahead |
-| R | Instant restart |
+| R | Reload (restart once dead) |
+| Backspace | Instant restart |
 | Esc | Pause |
 | M | Music on/off |
 | F2 / F3 | Debug: enemy vision cones / whole-level overview |
@@ -32,10 +33,14 @@ Then open http://localhost:8000.
 ## Rules
 
 - One hit kills, for you and for them.
-- Guns never reload. When one is empty, throw it.
+- Guns have magazines. R reloads; clicking on an empty gun reloads it, or, with no spare rounds left,
+  hurls it at the enemy John Wick style. Walk over ammo boxes (and what guards drop) to refill.
 - Punches, thrown weapons and doors slammed into enemies knock them out. Finish them with Space.
 - Your gunshots alert guards nearby. The silenced uzi doesn't.
-- Red barrels explode and set off other barrels. Cars blow up too.
+- Red barrels explode and set off other barrels.
+- Cars: shoot the tyres flat, crack then smash the windows, puncture the tank (fuel leak), set off the alarm
+  (it draws the guards), then the engine smokes, catches fire and the car blows up into a burning wreck.
+- Dead bodies are ragdolls: shoot or blast them and limbs come off.
 - Everything breaks: walls crack then collapse (bullets, melee, explosions), doors get ripped off their hinges,
   furniture splinters, fences and windows shatter.
 - Debris is dangerous: shoot a window and the shards slice whoever stands behind it; blast debris knocks guards out.
@@ -68,8 +73,10 @@ A level is a JS module (see `src/data/levels/level1.js`) with three layers:
   - `@` is the player.
   - Enemies: `p` pistol, `u` uzi, `s` silenced uzi, `h` shotgun, `r` rifle, `b` bat, `k` knife. Uppercase makes the enemy patrol.
   - Weapons on the floor: `1`–`9`, see `WEAPON_CHARS` in `src/data/weapons.js`.
+  - Ammo boxes: `n` 9mm, `g` 12 gauge, `v` 7.62, `q` rockets.
   - Small props: `x` barrel, `c` crate, `t` trash can.
 - **props**: `[type, x, y, rotationDeg]` in tile units, where a tile's centre is `n + 0.5`.
+  Vehicles (`car`, `car2`, `van`) go in this list too.
 
 Also set `exit`, and optionally `facing` overrides for guards (`"col,row": degrees`).
 

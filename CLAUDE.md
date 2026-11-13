@@ -56,6 +56,17 @@
 - `Debris` with `opts.harm` ({kind: 'cut'|'blunt', knock, lethal} speeds in px/step) knocks out or kills enemies it hits
   (glass shards from windows, rubble, blast-thrown pieces). Harm only applies to enemies, never the player.
 - Bullets push corpses, items and gibs; melee shoves loose bodies and cracks walls. Characters kick debris around.
+- Weapons: `weapon = { type, mag, reserve }`. `Character.reload()/updateReload()` (animated: mag drops as Debris, off hand
+  fetches a new one, rack), shotgun reloads shell by shell. Player reserve = caliber pools `player.ammo` (CALIBERS in
+  weapons.js), enemies use `weapon.reserve`. `AmmoItem` pickups (magnet + auto collect); guards drop ammo on death.
+  R = reload while alive, Backspace = restart.
+- `Vehicle` (src/entities/Vehicle.js) lives in `world.props` with a Prop-like interface (`hit`, `break`, `onBlast`,
+  `update`, `def`). Sprite-space layout contract per model in `VEHICLES` (windshield/rear/tank/hood/wheels).
+  Parts thrown out of a car use a mask without CAT.PROP (they spawn inside the body).
+- Dead bodies are `Ragdoll`s (6 Matter bodies + pin constraints, same negative collision group); `detach()` tears limbs.
+  Uses `<id>_rag_*` sprites, falls back to the gib sprites.
+- `world.emit(x, y, dur, fn)` runs a per-step emitter (hydrant geyser...). Props with `overhead` are drawn above characters.
+- Camera: `camera.punch(amount)` = brief zoom kick on big explosions.
 - Keep code clean: no stray exports/unused imports, short comments only where useful.
 
 ## Assets
