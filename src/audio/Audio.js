@@ -23,9 +23,9 @@ import { BANK, BANK_URL } from './bank.js';
 
 const MASTER_GAIN = 0.8;
 
-// kill confirm: the first kill's note (F4, the music is in F minor) and the semitones above it per kill of a
+// kill confirm: the first kill's note (F5, the music is in F minor) and the semitones above it per kill of a
 // streak (minor pentatonic)
-const KILL_ROOT = 349.23;
+const KILL_ROOT = 698.46;
 const STREAK = [0, 3, 5, 7, 10, 12, 15, 17];
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
@@ -91,7 +91,7 @@ const META = {
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
-  confirm: { pri: 3, dur: 0.75, gap: 0.03, max: 3, gain: 0.7 },
+  confirm: { pri: 4, dur: 0.9, gap: 0.03, max: 3, duck: 0.8, gain: 1 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -216,9 +216,11 @@ const FOLEY = {
   carHit: [['sheet', 1], ['thud', 0.45, 0.9]],
   // flesh
   punch: [['punch', 1], ['flesh', 0.45, 1.1, 0.008], ['thud', 0.7, 0.75]],
-  splat: [['splat', 1], ['flesh', 0.5]],
-  gore: [['gore', 1], ['splat', 0.7, 0.9], ['thud', 0.6, 0.8, 0.02]],
-  slash: [['swish', 0.5, 1.5], ['splat', 1, 1.15, 0.03]],
+  // dry meat, never a wet squish (the user hated those): the blow, a knuckle under it, the weight
+  splat: [['flesh', 1], ['punch', 0.55, 0.8, 0.004], ['thud', 0.5, 0.9]],
+  // a body torn apart: meat and weight first, the wet burst kept low under them
+  gore: [['flesh', 1, 0.85], ['gore', 0.45], ['punch', 0.6, 0.7], ['thud', 0.8, 0.8, 0.02]],
+  slash: [['swish', 0.5, 1.5], ['flesh', 0.9, 1.2, 0.03]],
   death: [['gore', 1], ['thud', 0.9, 0.7, 0.04]],
   bodyFall: [['thud', 1, 0.8], ['soft', 0.5, 0.8, 0.06]],
   shout: [['yell', 1]],
@@ -603,7 +605,7 @@ class AudioSystem {
     filt.type = 'lowpass';
     filt.Q.value = 5;
     filt.frequency.setValueAtTime(Math.min(f * 9, 9000), t);
-    filt.frequency.exponentialRampToValueAtTime(f * 1.4, t + dur * 0.55);
+    filt.frequency.exponentialRampToValueAtTime(f * 2.5, t + dur * 0.6);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.004);
@@ -819,10 +821,10 @@ class AudioSystem {
   _confirm(o, opts) {
     const f = KILL_ROOT * 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
     this.pv = 1;
-    this._pluck(o, { f, dur: 0.42, vol: 0.3, delay: 0.04 });
-    this._pluck(o, { f: f * 2, dur: 0.3, vol: 0.08, delay: 0.04 });
-    this._pluck(o, { f, dur: 0.3, vol: 0.1, delay: 0.19 });
-    this._pluck(o, { f, dur: 0.26, vol: 0.045, delay: 0.34 });
+    this._pluck(o, { f, dur: 0.55, vol: 0.45, delay: 0.03 });
+    this._pluck(o, { f: f * 2, dur: 0.35, vol: 0.14, delay: 0.03 });
+    this._pluck(o, { f, dur: 0.4, vol: 0.2, delay: 0.18 });
+    this._pluck(o, { f, dur: 0.35, vol: 0.1, delay: 0.33 });
   }
   // level cleared: one dark boom rolling away
   _clear(o) {
