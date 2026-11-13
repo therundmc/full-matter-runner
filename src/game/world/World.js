@@ -114,6 +114,13 @@ export default class World {
   characters() { return this.chars; }
   addProjectile(p) { this.projectiles.push(p); }
   addItem(it) { this.items.push(it); }
+  // a guard joining after the level was built (sandbox)
+  addEnemy(e) {
+    this.enemies.push(e);
+    this.chars.push(e);
+    this.totalEnemies++;
+    this.cleared = false;
+  }
   removeItem(it) { it.dead = true; this.removeBody(it.body); }
   addCorpse(c) { this.corpses.push(c); }
   addDebris(d) {
@@ -177,7 +184,7 @@ export default class World {
   // ---------------- deaths & level flow ----------------
   onKill(ch, cause, killer) {
     this.events.emit('kill', { victim: ch, cause, killer });
-    if (ch.isPlayer) { this.game.onPlayerDeath(); return; }
+    if (ch.isPlayer) { this.game.onPlayerDeath(cause); return; }
     if (ch.isCivilian) { this.hitstop(0.02); return; }
     // guards drop a spare magazine (or a few shells) for the gun they carried
     const type = ch.lastAmmo;

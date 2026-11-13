@@ -39,7 +39,8 @@
 ## Run / test
 - `python -m http.server 8000` then http://localhost:8000 (`?level=lab` for the physics lab).
 - `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
-- Debug keys: F2 enemy vision, F3 overview, F4 physics overlay. `window.game` in the console.
+- Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
+  vision, F3 overview, F4 physics overlay. `window.game` in the console.
 - Headless browser checks that worked: Edge `--headless=new --remote-debugging-port` driven over the DevTools
   protocol from a small Node script (eval scenarios, inputs, screenshots). Python's http.server can reset
   connections on big files; a tiny Node static server is more reliable. Never kill processes you didn't start.

@@ -51,10 +51,13 @@ src/
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile
     fx/                   Particles, Gore
-    ui/                   HUD, Screens, Text
+    debug/
+      Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
+                          cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
+    ui/                   HUD, Screens, SandboxPanel, Text
     data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), levels/ (index.js = registry)
-tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient
+tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox
 ```
 
 Rules:
@@ -228,6 +231,13 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 
 - `?level=lab` loads the physics lab (all props/weapons/ammo on three floors, a street with vehicles, passive dummies).
 - `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
+- F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,
+  prop, vehicle, blast, water; same key or mouse wheel = next variant), B rotates, F / middle click drops it at the
+  cursor (props and vehicles are refused when their footprint bites a wall); G god mode, T freeze guards, O time
+  scale (x1 / x0.5 / x0.2), U refill ammo, V teleport to the cursor, K kill all guards. A new tool is one entry
+  in `TOOLS` (debug/Sandbox.js). God mode and time scale survive a restart; guards frozen follows the level.
+- Debug keys are read once per simulation step (`Game.debugKeys`): a key press lives until a step consumes it,
+  so reading it per frame would toggle several times on high-refresh displays.
 - F2 enemy vision (cones, close-awareness ring, state:tactic + meter, target, cover, last known position,
   incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
 - `window.game` in the console.

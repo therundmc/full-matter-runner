@@ -16,7 +16,7 @@ const { Bodies } = Matter;
 
 // actors layer legend: enemy char -> [kind, weapon]; uppercase = roaming patrol
 // (optional level.patrols['col,row'] = [[col, row], ...]: explicit route for the guard spawned at col,row)
-const ENEMIES = {
+export const ENEMIES = {
   p: ['thug', 'pistol'], u: ['thug', 'uzi'], s: ['thug', 'uzi_silenced'],
   h: ['heavy', 'shotgun'], r: ['heavy', 'rifle'],
   b: ['brute', 'bat'], k: ['brute', 'knife'],

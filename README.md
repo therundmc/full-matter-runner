@@ -22,13 +22,14 @@ Then open http://localhost:8000.
 | Left click | Shoot / swing / punch |
 | Right click | Throw the weapon (knocks enemies down), or pick one up |
 | E | Pick up / swap weapons |
-| Space | Context action: execute a knocked-out enemy / vault (run into a broken window, slide over low furniture or a car hood) |
+| Space | Context action: execute a knocked-out enemy / vault (run into a broken window, slide over low furniture or a car hood) / floor slide when there is nothing to vault |
 | Shift | Look further ahead |
 | R | Reload (restart once dead) |
 | Backspace | Instant restart |
 | Esc | Pause |
 | M | Music on/off |
-| F2 / F3 | Debug: enemy vision cones / whole-level overview |
+| F1 | Sandbox panel: drop guards, weapons, props, vehicles, blasts, water; god mode, freeze guards, slow time |
+| F2 / F3 / F4 | Debug: enemy vision cones / whole-level overview / physics overlay |
 
 ## Rules
 
@@ -55,6 +56,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): `src/engine` (generic engine, 
 
 - `npm test` runs the Node unit tests (engine, physics, map / pathfinding), no browser needed.
 - `?level=lab` loads the physics lab: every prop, weapon and ammo type on three floors, a street with vehicles.
+- F1 opens the sandbox panel in any level (it lists its own keys): spawn tools at the cursor and cheats.
 - F2 enemy vision cones, F3 whole-level overview, F4 physics overlay.
 
 ## Making levels

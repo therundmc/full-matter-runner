@@ -8,6 +8,7 @@ export default class Input {
     this.pressed = new Set();
     this.mouse = { x: 0, y: 0, down: [false, false, false], clicked: [false, false, false] };
     this.anyPressed = false;
+    this.wheel = 0; // notches since the last consume (+ = down)
 
     window.addEventListener('keydown', (e) => {
       if (BLOCKED.has(e.code)) e.preventDefault();
@@ -27,6 +28,7 @@ export default class Input {
     });
     window.addEventListener('mouseup', (e) => { this.mouse.down[e.button] = false; });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('wheel', (e) => { this.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
   }
 
   _move(e) {
@@ -44,5 +46,6 @@ export default class Input {
     this.pressed.clear();
     this.mouse.clicked = [false, false, false];
     this.anyPressed = false;
+    this.wheel = 0;
   }
 }

@@ -333,7 +333,7 @@ export default class Character {
 
   // by: what did it (a weapon definition, or { gore, wound }): sets the dismemberment odds and the bleeding
   kill(angle, cause, killer, by) {
-    if (!this.alive) return;
+    if (!this.alive || this.invulnerable) return; // invulnerable: sandbox god mode
     this.alive = false;
     this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));

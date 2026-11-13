@@ -11,6 +11,13 @@ const TAUNTS = [
   'DID YOU THINK THEY WOULD MISS?',
   'PRESS R. AGAIN. AND AGAIN.',
 ];
+// deaths that deserve their own line, by cause (Character.kill)
+const CAUSE_TAUNTS = {
+  vehicle: ['LOOK BOTH WAYS.', 'THE STREET DOES NOT STOP FOR YOU.', 'ROADKILL.'],
+  explosion: ['TOO CLOSE TO THE BLAST.', 'MIND WHAT YOU SHOOT AT.'],
+  melee: ['NEVER LET THEM GET CLOSE.', 'TOO SLOW. TOO CLOSE.'],
+  slash: ['NEVER LET THEM GET CLOSE.', 'A BLADE IS QUIET. SO WERE YOU.'],
+};
 
 // ---------- synthwave backdrop for the title ----------
 export function drawTitle(ctx, W, H, t) {
@@ -116,7 +123,7 @@ export function drawIntro(ctx, W, H, t, level) {
   text(ctx, level.subtitle, W / 2, H / 2 + 46 * s, 13 * s, PALETTE.white, { alpha: a * 0.85 });
 }
 
-export function drawDead(ctx, W, H, t, seed) {
+export function drawDead(ctx, W, H, t, seed, cause) {
   const s = H / 720;
   const a = clamp(t * 1.5, 0, 1);
   ctx.fillStyle = `rgba(90,0,10,${0.35 * a})`;
@@ -124,7 +131,8 @@ export function drawDead(ctx, W, H, t, seed) {
   if (t < 0.35) return;
   const sc = 1 + Math.max(0, 0.6 - t) * 0.8;
   glitchText(ctx, "YOU'RE DEAD", W / 2, H * 0.4, 80 * s * sc, t, { rot: Math.sin(t * 2) * 0.04, color: PALETTE.pink });
-  text(ctx, TAUNTS[seed % TAUNTS.length], W / 2, H * 0.52, 16 * s, PALETTE.white, { alpha: a });
+  const lines = CAUSE_TAUNTS[cause] || TAUNTS;
+  text(ctx, lines[seed % lines.length], W / 2, H * 0.52, 16 * s, PALETTE.white, { alpha: a });
   if (t > 0.6 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'PRESS R TO RESTART', W / 2, H * 0.62, 24 * s, PALETTE.yellow);
 }
 
@@ -133,7 +141,7 @@ export function drawPause(ctx, W, H, t) {
   ctx.fillStyle = 'rgba(8,2,16,0.7)';
   ctx.fillRect(0, 0, W, H);
   glitchText(ctx, 'PAUSED', W / 2, H * 0.35, 70 * s, t);
-  ['ESC  RESUME', 'R  RESTART LEVEL', 'M  TOGGLE MUSIC', 'F2  SHOW ENEMY VISION', 'Q  QUIT TO TITLE']
+  ['ESC  RESUME', 'R  RESTART LEVEL', 'M  TOGGLE MUSIC', 'F1  SANDBOX', 'F2  SHOW ENEMY VISION', 'Q  QUIT TO TITLE']
     .forEach((l, i) => text(ctx, l, W / 2, H * 0.5 + i * 32 * s, 18 * s, i === 0 ? PALETTE.yellow : PALETTE.white));
 }
 

@@ -10,6 +10,8 @@ import PostFX from './render/PostFX.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
 import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults } from './ui/Screens.js';
+import { drawSandbox } from './ui/SandboxPanel.js';
+import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
 
 // Top-level loop and state machine: loading -> title -> intro -> play -> dead | results
@@ -34,6 +36,7 @@ export default class Game {
     this.loadP = 0;
     this.musicOn = true;
     this.postfx = new PostFX();
+    this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -72,14 +75,16 @@ export default class Game {
     // the soundtrack thickens as the squad wakes up
     Music.setIntensity(AI.music.normal);
     this.world.events.on('alertPhase', ({ phase }) => Music.setIntensity(AI.music[phase] ?? 1));
+    this.sandbox.attach(this.world);
     this.setState('intro');
   }
 
   // ---------------- hooks called by the world ----------------
   slowmo(scale, dur) { this.slow = { scale, t: dur }; }
   flash(color, a) { this.flashColor = color; this.flashA = Math.max(this.flashA, a); }
-  onPlayerDeath() {
+  onPlayerDeath(cause) {
     this.deaths++;
+    this.deathCause = cause;
     this.setState('dead');
     this.slowmo(0.18, 1.6);
     this.camera.shake(0.8);
@@ -153,15 +158,12 @@ export default class Game {
     // play / dead: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
     if (this.state === 'play' && inp.hit('Escape')) { this.setState('pause'); inp.consume(); return; }
-    if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
-    if (inp.hit('F3')) this.overview = !this.overview;
-    if (inp.hit('F4')) this.world.debugPhysics = !this.world.debugPhysics;
     if (this.state === 'dead' && this.stateT > 0.8 && inp.mouseHit(0)) { this.newGame(); inp.consume(); return; }
 
     // time scale (slow motion)
-    let target = 1;
+    let target = this.sandbox.timeScale;
     if (this.slow) {
-      target = this.slow.scale;
+      target = Math.min(target, this.slow.scale);
       this.slow.t -= dt;
       if (this.slow.t <= 0) this.slow = null;
     }
@@ -176,6 +178,7 @@ export default class Game {
       let steps = 0;
       while (this.acc >= FIXED_DT && steps < 5) {
         const aim = this.camera.screenToWorld(inp.mouse.x, inp.mouse.y);
+        this.debugKeys(inp, aim);
         this.world.step(FIXED_DT * this.timeScale, inp, aim);
         this.acc -= FIXED_DT;
         steps++;
@@ -186,6 +189,14 @@ export default class Game {
     }
     this.updateCamera(dt);
     this.flashA = Math.max(0, this.flashA - dt * 3);
+  }
+
+  // read once per simulation step (key presses live until a step consumes them)
+  debugKeys(inp, aim) {
+    if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
+    if (inp.hit('F3')) this.overview = !this.overview;
+    if (inp.hit('F4')) this.world.debugPhysics = !this.world.debugPhysics;
+    this.sandbox.update(inp, aim, this.time);
   }
 
   updateCamera(dt) {
@@ -247,6 +258,7 @@ export default class Game {
     }
 
     if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
+    if (this.sandbox.on && this.state === 'play') this.safeDraw(ctx, () => drawSandbox(ctx, H, this.sandbox, t));
     if (this.world.debugPhysics) {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;
       ctx.textAlign = 'left';
@@ -255,7 +267,7 @@ export default class Game {
     }
     this.safeDraw(ctx, () => {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level);
-      if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7);
+      if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
       if (this.state === 'pause') drawPause(ctx, W, H, t);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results);
     });
