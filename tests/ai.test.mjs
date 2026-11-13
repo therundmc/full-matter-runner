@@ -7,7 +7,9 @@ const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { detectionRate, inView, aimError, hearingError, loiterRate } = await load('game/ai/Perception.js');
 const { searchPoints, findCover, isCovered, randomPoint } = await load('game/ai/Tactics.js');
-const { default: Director } = await load('game/ai/Director.js');
+const { default: Director, freshLine } = await load('game/ai/Director.js');
+const { BARKS, SHOUTED, BARK_TONE } = await load('game/data/barks.js');
+const { PALETTE } = await load('game/Config.js');
 
 const c = (n) => (n + 0.5) * 32;
 
@@ -72,6 +74,23 @@ test('aim: wide first shots that tighten, worse on a running target', () => {
   assert.equal(aimError(1), 0);
   assert.ok(aimError(0.2, 2.9) > aimError(0.2, 0));
   assert.ok(hearingError(400) > hearingError(100));
+});
+
+test('barks: short readable lines, no doubles, known tones, and the squad does not repeat itself', () => {
+  for (const [kind, lines] of Object.entries(BARKS)) {
+    assert.ok(lines.length > 0, kind);
+    assert.equal(new Set(lines).size, lines.length, `${kind}: a line twice`);
+    for (const l of lines) assert.ok(l === l.toUpperCase() && l.length <= 26, `${kind}: ${l}`);
+  }
+  for (const kind of SHOUTED) assert.ok(BARKS[kind], kind);
+  for (const [kind, tone] of Object.entries(BARK_TONE)) assert.ok(BARKS[kind] && PALETTE[tone], kind);
+  const lines = ['A', 'B', 'C'];
+  assert.equal(freshLine(lines, ['A', 'C']), 'B');
+  assert.equal(freshLine(lines, ['A', 'B', 'C'], () => 0.99), 'C', 'all used: any of them');
+  const d = new Director({ time: 0, enemies: [], texts: [], events: { on() {}, emit() {} } });
+  const said = [];
+  for (let i = 0; i < 3; i++) { d.world.time += 1; d.bark({ x: 0, y: 0 }, 'clear', lines); said.push(d.world.texts.at(-1).str); }
+  assert.equal(new Set(said).size, 3);
 });
 
 test('loitering: a guard only minds a stranger close by, and loses patience faster the closer he stands', () => {
@@ -175,6 +194,24 @@ test('director: noises are heard in range, walls muffle the far half, automatic 
   // silent weapons make no noise
   w.events.emit('noise', { x: c(2), y: c(1), radius: 0, source: null, type: 'gunshot' });
   assert.equal(near.heard.length, 3);
+});
+
+test('director: the last guard of a real squad may be shaken by the kill before, never in a small one', () => {
+  const random = Math.random;
+  const last = (total, roll, extra) => {
+    const w = fakeWorld(), d = new Director(w);
+    const victim = fakeGuard(c(3), c(2)), g = fakeGuard(c(10), c(2), extra);
+    w.enemies.push(victim, g, fakeGuard(c(5), c(2), { yielded: true }));
+    w.totalEnemies = total;
+    victim.alive = false;
+    Math.random = () => roll;
+    try { d.onKill({ victim, cause: 'bullet', killer: w.player }); } finally { Math.random = random; }
+    return !!g.shaken;
+  };
+  assert.equal(last(AI.surrender.squad, 0), true);
+  assert.equal(last(AI.surrender.squad, 0.999), false, 'not every time');
+  assert.equal(last(AI.surrender.squad - 1, 0), false, 'too small a squad');
+  assert.equal(last(AI.surrender.squad, AI.surrender.brute + 0.01, { kind: 'brute' }), false, 'a brute rarely gives up');
 });
 
 test('director: kills and wrecked structure become incidents; budget and claims', () => {

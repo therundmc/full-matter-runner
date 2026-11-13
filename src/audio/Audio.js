@@ -65,6 +65,7 @@ const META = {
   shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.9, reach: 1900 },
   cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.9, reach: 1900 },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
+  whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.6, reach: 1200 },
   // doors, movement
   door: { gain: 0.6 },
   doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.85 },
@@ -218,6 +219,7 @@ const FOLEY = {
   death: [['gore', 1], ['thud', 0.9, 0.7, 0.04]],
   bodyFall: [['thud', 1, 0.8], ['soft', 0.5, 0.8, 0.06]],
   shout: [['yell', 1]],
+  whimper: [['pain', 0.8, 1.12]], // a man on his knees begging
   // a guard seized from behind: sleeves, his stifled grunt; then his neck, a dry crack, and the body let down
   grab: [['swish', 0.35, 1.2], ['soft', 0.7, 1.1, 0.04], ['pain', 0.3, 0.9, 0.1]],
   neck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14], ['thud', 0.6, 0.8, 0.32]],

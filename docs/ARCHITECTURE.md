@@ -199,7 +199,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   the least; blade, melee, wreckage, glass, execution, takedown more; `UNSEEN` on top when the guard never noticed) times
   the combo multiplier (+0.5 per kill of the chain, capped at x4; the chain breaks 4 s after the last kill, flooring
   a guard gives it some air back). `tally(level)` adds the end bonuses (best chain, variety of methods, time under
-  the level's par, stealth lost by ALERT phases, accuracy) and penalties (passers-by), then the grade from the
+  the level's par, stealth lost by ALERT phases, accuracy, mercy for a guard left alive on his knees) and penalties (passers-by), then the grade from the
   level's thresholds (`LEVEL_SCORING`, or a per-guard scale for test rooms). Game.onExit keeps the best result per
   level (systems/Records.js); a run where the sandbox was opened is not ranked. The HUD shows the score, the run
   clock, the multiplier and its fuse; Screens.drawResults counts the lines up one after the other.
@@ -258,7 +258,15 @@ detection gauge) runs out faster the closer the stranger stands and comes back s
   (durations in `AI`), contact shout (up to `AI.maxHunters` converge, the others hold and watch), call-ins on
   incidents, evasion sweep over search points around the last known position, claims on tactical spots,
   a per-step `budget()` for path-finding (1) and cover / flank searches (3) so the cost is spread over frames.
-- Barks are short world texts (`world.texts`), one at a time for the squad. `?` / `!` and the meter are drawn
+- Barks are short world texts (`world.texts`), one at a time for the squad, never a line it has just used
+  (`Director.bark`, `freshLine`); the lines, which ones are yelled and their colour are data (data/barks.js). In a
+  fight a guard curses the player every few seconds (`AI.tauntGap`: at the man in his sights, at the corner he
+  vanished behind, at the killer of a mate).
+- Surrender: when a kill leaves one guard of a real squad (`AI.surrender`), he may be `shaken`; the next time he
+  faces the armed player he throws his weapon down, kneels with his hands up and begs (`Enemy.surrender`, state
+  `yield`). He is out of the fight for good: `world.enemiesLeft` and `Director.alive` count him out, the
+  'surrender' event clears the level, sparing him pays the `mercy` end bonus, killing him scores as any kill.
+- `?` / `!` and the meter are drawn
   after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
 - Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned
   at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their

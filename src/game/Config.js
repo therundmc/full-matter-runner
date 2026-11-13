@@ -119,6 +119,11 @@ export const AI = {
   noiseGap: 0.25,         // the same source is heard at most this often (automatic fire)
   planBudget: 6,          // expensive AI work per step (path = 1, cover / flank search = 3)
   barkGap: 0.4,           // seconds between two barks in the whole squad
+  barkMemory: 8,          // lines the squad has just used and will not repeat
+  tauntGap: [6, 12],      // seconds between two curses of a guard in a fight
+  // The last guard alive may give up when he next faces the armed player within `range` px (Enemy.surrender):
+  // only in a squad of at least `squad`, with these odds (a brute rarely does); beg: s between two pleas.
+  surrender: { squad: 4, odds: 0.55, brute: 0.15, range: 230, beg: [2.4, 4.5] },
   // An unarmed stranger hanging about in front of a guard on public ground (Perception.loiterRate, Enemy.mind):
   // bothered within `near` px; patience = seconds before he snaps at `near` / at `close` px; shares of it at which
   // he tells him to clear off (`first`) and warns him a last time (`last`); `forget` = share won back per second.

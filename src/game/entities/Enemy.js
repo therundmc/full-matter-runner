@@ -1,10 +1,12 @@
 // A guard. Organic, readable behaviour: a detection meter fills while he sees the player ('?' then '!'),
 // he turns toward noises before walking over, reacts with a human delay, aims badly at first and better with
-// time, reloads, picks weapons back up, talks to his mates (barks) and follows the squad Director
+// time, reloads, picks weapons back up, talks to his mates and curses the player (barks, lines in data/barks.js),
+// may give up when he is the last one left, and follows the squad Director
 // (ai/Director.js) for alert phases, searches and tactical spots. Geometry lives in ai/Tactics.js,
 // perception maths in ai/Perception.js, tuning in Config (ENEMY, AI).
 import { ENEMY, AI, TILE, CAT, MASK, PALETTE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
+import { BARKS, SHOUTED } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, local, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint } from '../ai/Tactics.js';
@@ -16,23 +18,13 @@ const { Body } = Matter;
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
   SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
+  YIELD: 'yield',
 };
 // awareness implied by each state: 0 unaware, 1 suspicious ('?'), 2 alert ('!')
 const AWARE = {
   idle: 0, patrol: 0, return: 0, suspicious: 1, investigate: 1, check: 1, search: 1, guard: 1, dizzy: 1,
-  combat: 2, hunt: 2, fetch: 2, flee: 2,
+  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2,
 };
-const BARKS = {
-  sight: ['HUH?', "WHO'S THERE?"], noise: ['WHAT WAS THAT?', 'HUH?'], contact: ['HEY!', 'OVER HERE!', 'THERE HE IS!'],
-  clear: ['...NOTHING.', 'MUST BE RATS.', 'ALL CLEAR.'], body: ['MAN DOWN!', 'OH GOD...'], wake: ['GET UP!'],
-  missing: ["WHERE'D HE GO?"], damage: ['WHAT THE...'], reload: ['RELOADING!', 'COVER ME!'], panic: ['AAAH!', "HE'S CRAZY!"],
-  lost: ['WHERE IS HE?', 'SPREAD OUT!'], help: ['HELP!'], dry: ["I'M OUT!"], shots: ['SHOTS FIRED!', 'GUNFIRE!'],
-  // to a stranger hanging about (Enemy.mind)
-  shoo: ['BEAT IT.', 'KEEP WALKING.', 'GET LOST, PAL.', 'MOVE ALONG.', "WHAT'RE YOU LOOKING AT?", 'NOTHING TO SEE HERE.'],
-  warn: ['LAST WARNING!', 'I SAID MOVE!', 'YOU DEAF? WALK!', 'BACK OFF. NOW!'],
-  snap: ["THAT'S IT!", 'YOU ASKED FOR IT!', 'I WARNED YOU!'],
-};
-const SHOUTED = new Set(['shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'warn']); // barks yelled out loud
 const RANGES = ENEMY.ranges;
 
 export default class Enemy extends Character {
@@ -82,6 +74,10 @@ export default class Enemy extends Character {
     this.held = null; // the player while he has us by the neck (Player.startTakedown)
     this.nag = 0; this.nagStage = 0; // patience lost with a loitering stranger 0..1, warnings given (see mind)
     this.shooing = null;             // that stranger, while we stare him down
+    this.tauntT = rand(1.5, 5);      // until the next curse thrown at the player
+    this.shaken = false;             // last man standing, about to give up (Director.onKill)
+    this.yielded = false;            // on his knees, hands up: out of the fight for good (see surrender)
+    this.begT = 0;
   }
 
   get director() { return this.world.director; }
@@ -212,7 +208,7 @@ export default class Enemy extends Character {
 
   // noise heard (types: see ENEMY.hear); localisation gets worse with distance
   hear(type, x, y, source = null) {
-    if (this.passive || !this.alive || this.knocked > 0 || this.state === S.DIZZY) return;
+    if (this.passive || this.yielded || !this.alive || this.knocked > 0 || this.state === S.DIZZY) return;
     if (this.aware === 2) {
       if ((type === 'gunshot' || type === 'explosion') && !this.sees) this.lastKnown = { x, y };
       return;
@@ -272,7 +268,7 @@ export default class Enemy extends Character {
       this.panicT = rand(3, 5);
       this.say('panic');
       this.thinkT = 0;
-    }
+    } else if (this.aware === 2 && chance(0.7)) this.say('revenge');
     if (this.aware === 2) return;
     this.director.callIn(this, victim.x, victim.y);
     this.meter = Math.max(this.meter, 0.8);
@@ -315,6 +311,7 @@ export default class Enemy extends Character {
     this.setState(S.HUNT);
     this.lastKnown = { x, y };
     this.showIcon('!', 1);
+    if (chance(0.5)) this.say('hunt');
   }
 
   guard(x, y) {
@@ -366,6 +363,7 @@ export default class Enemy extends Character {
     }
     if (this.updateVault(dt)) return;
     if (this.passive) { this.halt(); return; }
+    if (this.yielded) { this.updateYield(dt); return; }
     this.t += dt;
     this.panicT = Math.max(0, this.panicT - dt);
     this.kneel = false;
@@ -524,6 +522,7 @@ export default class Enemy extends Character {
     if (this.sub === 'go') {
       if (this.travel(dt, pt.x, pt.y, hurry ? ENEMY.runSpeed * 0.7 : ENEMY.walkSpeed * 1.3, { doors: !hurry, near: 12, glance: true })) {
         this.sub = 'look'; this.t = 0; this.lookT = rand(1.3, 2.2); this.lookBase = pt.origin ? this.angle : pt.look;
+        if (hurry && chance(0.3)) this.say('search');
       }
       return;
     }
@@ -564,6 +563,11 @@ export default class Enemy extends Character {
   doCombat(dt) {
     const p = this.world.player;
     if (!p.alive) { this.halt(); return; }
+    // the last man standing, face to face with the armed killer of all the others: he may lose his nerve
+    if (this.shaken && this.sees && this.react <= 0 && p.armed && Math.hypot(p.x - this.x, p.y - this.y) < AI.surrender.range) {
+      this.surrender();
+      return;
+    }
     this.suppressCD -= dt; this.dodgeCD -= dt; this.stalkCD -= dt;
     if (this.sees) {
       // re-acquiring after losing sight takes a moment, and the aim has to settle again
@@ -574,6 +578,11 @@ export default class Enemy extends Character {
       this.ambushed = false;
     } else this.lostT += dt;
     if (this.shoutT > 0 && (this.shoutT -= dt) <= 0) { this.say('contact'); this.director.shout(this); }
+    // curses: at the man in his sights, or at the corner he vanished behind
+    if ((this.tauntT -= dt) <= 0) {
+      this.tauntT = rand(...AI.tauntGap);
+      if (this.panicT <= 0) this.say(this.sees ? (this.def.kind === 'gun' ? 'threat' : 'brawl') : this.lostT > 1.2 ? 'flush' : 'hunt');
+    }
     if ((this.thinkT -= dt) <= 0) { this.thinkT = rand(0.3, 0.5); this.plan(p); }
     this.target = this.sees ? p : this.lastKnown;
     switch (this.tactic) {
@@ -590,6 +599,37 @@ export default class Enemy extends Character {
       case 'reload': this.tReload(dt); break;
       case 'panic': this.tPanic(dt, p); break;
       default: this.halt(); if (this.sees) this.aimAt(p.x, p.y, dt);
+    }
+  }
+
+  // The last man standing gives up: weapon thrown down, on his knees, hands up. He is out of the fight for good
+  // (the world counts him out: 'surrender' clears the level) and it is the player's call to kill him anyway.
+  surrender() {
+    this.reloading = 0;
+    this.dropWeapon(this.angle + rand(-0.5, 0.5), 2.5);
+    this.setState(S.YIELD);
+    this.yielded = true;
+    this.shaken = false;
+    this.sees = false;
+    this.begT = rand(...AI.surrender.beg);
+    this.barkT = 0;
+    this.say('yield');
+    this.world.sound('whimper', this.x, this.y, 1, { pitch: this.voice });
+    this.world.events.emit('surrender', { who: this });
+  }
+
+  updateYield(dt) {
+    const p = this.world.player;
+    this.halt();
+    this.crouch = Math.min(1, this.crouch + dt * 5);
+    if (!p.alive) return;
+    const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
+    if (d > ENEMY.viewDist || !this.world.lineOfSight(this.x, this.y, p.x, p.y)) return;
+    this.faceAngle(Math.atan2(dy, dx), 4, dt);
+    if (d < AI.surrender.range && (this.begT -= dt) <= 0) {
+      this.begT = rand(...AI.surrender.beg);
+      this.barkT = 0;
+      if (this.say('beg')) this.world.sound('whimper', this.x, this.y, 0.8, { pitch: this.voice });
     }
   }
 
@@ -1156,7 +1196,7 @@ export default class Enemy extends Character {
   // awareness marks, drawn after the lighting so they stay readable in the dark:
   // '!' when spotted or giving a last warning, '?' while suspicious, and the detection meter filling up
   drawMarks(ctx) {
-    if (!this.alive || this.knocked > 0 || this.passive) return;
+    if (!this.alive || this.knocked > 0 || this.passive || this.yielded) return;
     const showQ = this.aware === 1 && this.state !== S.DIZZY;
     if (this.iconT > 0 || showQ) {
       const ch = this.iconT > 0 ? this.icon : '?';

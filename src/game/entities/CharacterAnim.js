@@ -58,7 +58,11 @@ export function standPose(ch, P, a = ch.angle) {
     // relaxed guard, arms swinging against the stride
     const sw = stride * 2.6 * g;
     hlx = 6 - sw; hly = -6; hrx = 6 + sw; hry = 6;
-    if (ch.throwT > 0) {
+    if (ch.yielded) {
+      // given up: open hands held up either side of the head, shaking
+      const sh = Math.sin(ch.world.time * 30) * 0.6;
+      hlx = 3 + sh; hly = -9.5; hrx = 3 - sh; hry = 9.5;
+    } else if (ch.throwT > 0) {
       // follow-through of a throw: the arm whips back from full extension
       const e = smooth(1 - ch.throwT / ch.throwDur);
       hrx = lerp(15, hrx, e); hry = lerp(1.5, hry, e);

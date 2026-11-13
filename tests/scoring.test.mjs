@@ -10,7 +10,7 @@ const { loadBest, saveBest } = await load('game/systems/Records.js');
 const S = SCORING.styles;
 const player = (type, swing = 0) => ({ isPlayer: true, weapon: type ? { type } : null, swing });
 const guard = (over = {}) => ({ isEnemy: true, x: 0, y: 0, aware: 2, knocked: 0, ...over });
-const world = (guards = 5) => ({ events: new EventBus(), time: 0, texts: [], totalEnemies: guards });
+const world = (guards = 5) => ({ events: new EventBus(), time: 0, texts: [], totalEnemies: guards, enemies: [] });
 const kill = (w, cause, killer, victim = guard()) => w.events.emit('kill', { victim, cause, killer });
 
 test('scoring: a kill is read from its cause and the weapon in hand', () => {
@@ -155,6 +155,15 @@ test('tally: every line of the breakdown comes from the rules and adds up to the
   });
   assert.equal(t.total, t.lines.reduce((sum, l) => sum + l.points, 0));
   assert.equal(t.lines.find((l) => l.key === 'time').detail, '1:00 / 1:40');
+});
+
+test('tally: a guard who gave up and was left alive is worth a mercy bonus', () => {
+  assert.equal(tally(STATS, LEVEL).lines.find((l) => l.key === 'mercy'), undefined);
+  const t = tally({ ...STATS, kills: 4, spared: 1 }, LEVEL);
+  assert.equal(t.lines.find((l) => l.key === 'mercy').points, SCORING.mercy);
+  const w = world(), sc = new Scoring(w);
+  w.enemies.push({ alive: true, yielded: true }, { alive: false, yielded: true }, { alive: true });
+  assert.equal(sc.tally(LEVEL).lines.find((l) => l.key === 'mercy').points, SCORING.mercy);
 });
 
 test('tally: slow, loud and wasteful runs lose their bonuses, never below zero', () => {

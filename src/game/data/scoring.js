@@ -23,6 +23,7 @@ export const SCORING = {
   time: 25,                 // end bonus per second under the level's par time
   stealth: { bonus: 3000, perAlert: 1000 }, // lost bit by bit every time the squad goes to ALERT
   accuracy: { bonus: 2000, noShot: 2500 },  // kills per trigger pull; never firing at all pays a little more
+  mercy: 1200,              // end bonus for a guard who gave up and was left alive
   civilian: 1000,           // lost per passer-by killed
 };
 

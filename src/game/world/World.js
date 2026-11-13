@@ -12,6 +12,7 @@
 //   'windowDestroyed' a window torn out, frame and all  { x, y, cx, cy, dirA, power }
 //   'doorBroken'    a lock burst / door ripped { x, y }
 //   'alertPhase'    squad alert phase changed  { phase, prev }   (ai/Director)
+//   'surrender'     the last guard gave up     { who }   (entities/Enemy)
 //   'trafficSpawn' / 'trafficStopped' / 'runOver' / 'civilianPanic'  street life (systems/Ambient)
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
@@ -98,12 +99,13 @@ export default class World {
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
     this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
+    this.events.on('surrender', () => this.checkCleared());
     this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
     this.lighting = new Lighting(this);
   }
 
   get engine() { return this.physics.engine; }
-  get enemiesLeft() { return this.enemies.filter((e) => e.alive).length; }
+  get enemiesLeft() { return this.enemies.filter((e) => e.alive && !e.yielded).length; } // guards still in the fight
 
   floorGrip(x, y) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
@@ -207,12 +209,17 @@ export default class World {
       this.ammoItems.push(new AmmoItem(this, type, undefined, ch.x, ch.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5));
     }
     this.hitstop(0.035);
-    if (this.enemiesLeft === 0 && !this.cleared) {
-      this.cleared = true;
-      this.slowmo(0.22, 1.3);
-      this.after(0.4, () => Audio.play('clear'));
-      this.game.onCleared();
-    } else if (chance(0.15)) this.slowmo(0.3, 0.45);
+    if (!this.checkCleared() && chance(0.15)) this.slowmo(0.3, 0.45);
+  }
+
+  // the last guard is dead or has given up: the way out opens
+  checkCleared() {
+    if (this.cleared || this.enemiesLeft > 0) return false;
+    this.cleared = true;
+    this.slowmo(0.22, 1.3);
+    this.after(0.4, () => Audio.play('clear'));
+    this.game.onCleared();
+    return true;
   }
 
   // characters leaning into a movable object slow down with its weight and grip

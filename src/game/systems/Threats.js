@@ -60,7 +60,7 @@ export default class Threats {
   strength(e) {
     const m = this.memo.get(e);
     if (!m) return 0;
-    return awareness({ alive: e.alive, knocked: e.knocked, aware: e.aware, seenAt: m.seenAt, heardAt: m.heardAt }, this.world.time, this.rules);
+    return awareness({ alive: e.alive && !e.yielded, knocked: e.knocked, aware: e.aware, seenAt: m.seenAt, heardAt: m.heardAt }, this.world.time, this.rules);
   }
 
   // he has the player in his sights, or just fired

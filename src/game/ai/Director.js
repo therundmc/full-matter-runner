@@ -6,12 +6,16 @@
 // Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken'.
 // Emits: 'alertPhase' { phase, prev }.
 import { AI, PALETTE, TILE } from '../Config.js';
-import { pick } from '../../engine/math.js';
+import { chance } from '../../engine/math.js';
+import { BARK_TONE } from '../data/barks.js';
 import { searchPoints } from './Tactics.js';
 
-const BARK_COLOR = {
-  contact: PALETTE.pink, panic: PALETTE.pink, snap: PALETTE.pink, body: PALETTE.orange, help: PALETTE.orange, warn: PALETTE.orange,
-};
+// A line among `lines` that is not in `recent` (any of them once they have all been used).
+export function freshLine(lines, recent, rnd = Math.random) {
+  const fresh = lines.filter((l) => !recent.includes(l));
+  const from = fresh.length ? fresh : lines;
+  return from[Math.floor(rnd() * from.length)];
+}
 
 export default class Director {
   constructor(world) {
@@ -30,6 +34,7 @@ export default class Director {
     this.stepT = 0;
     this.budgetLeft = AI.planBudget;
     this.barkAt = -99;
+    this.said = [];             // the last lines barked (see bark)
     this.provoked = false;      // the player gave himself away (see isThreat)
     const ev = world.events;
     ev.on('noise', (e) => this.onNoise(e));
@@ -40,7 +45,7 @@ export default class Director {
   }
 
   get vigilance() { return AI.vigilance[this.phase]; }
-  get alive() { return this.world.enemies.filter((e) => e.alive); }
+  get alive() { return this.world.enemies.filter((e) => e.alive && !e.yielded); } // still in the fight
 
   setPhase(p, t = 0) {
     this.phaseT = t;
@@ -140,9 +145,12 @@ export default class Director {
     if (!victim.roam) this.incident('missing', victim.home.x, victim.home.y, { after: w.time + 10 });
     this.emit('body', victim.x, victim.y, AI.bodyFallRadius * (victim.held ? 0.4 : 1), victim); // let down quietly
     for (const e of w.enemies) {
-      if (e === victim || !e.alive || e.knocked > 0) continue;
+      if (e === victim || !e.alive || e.knocked > 0 || e.yielded) continue;
       if (e.canSeePoint(victim.x, victim.y, 1, 120)) { inc.seen.add(e); e.witnessKill(victim); }
     }
+    // the last man standing may lose his nerve the next time he faces the killer (Enemy.surrender)
+    const left = this.alive, R = AI.surrender;
+    if (left.length === 1 && w.totalEnemies >= R.squad) left[0].shaken = chance(left[0].kind === 'brute' ? R.brute : R.odds);
   }
 
   // a guard reports something: the squad goes to CAUTION and sends a pair of idle guards to look around
@@ -262,12 +270,16 @@ export default class Director {
   }
 
   // ---------------- barks ----------------
-  // short floating line over a guard (world texts); one at a time for the whole squad so it stays readable
+  // short floating line over a guard (world texts); one at a time for the whole squad so it stays readable,
+  // and never a line the squad has just used
   bark(e, kind, lines) {
     const w = this.world;
     if (w.time - this.barkAt < AI.barkGap && kind !== 'contact') return false;
     this.barkAt = w.time;
-    w.texts.push({ x: e.x, y: e.y - 16, str: pick(lines), t: 1.4, dur: 1.4, color: BARK_COLOR[kind] || PALETTE.white });
+    const str = freshLine(lines, this.said);
+    this.said.push(str);
+    if (this.said.length > AI.barkMemory) this.said.shift();
+    w.texts.push({ x: e.x, y: e.y - 16, str, t: 1.4, dur: 1.4, color: PALETTE[BARK_TONE[kind]] || PALETTE.white });
     return true;
   }
 }

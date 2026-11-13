@@ -5,7 +5,7 @@
 //   'explosion'  remembers what blew up (a rocket kill is a hit)
 //   'alertPhase' every ALERT eats into the stealth bonus
 // The live score only holds what was earned on the spot; `tally()` adds the end bonuses (chain, variety, time,
-// stealth, accuracy), the penalties and the grade. Rules are data (data/scoring.js).
+// stealth, accuracy, mercy), the penalties and the grade. Rules are data (data/scoring.js).
 import { PALETTE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -46,7 +46,7 @@ export function gradeFor(total, grades) {
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 // End-of-level breakdown from the run's figures (pure).
-// stats: { points, kills, guards, maxCombo, methods, shots, hits, alerts, civilians, time }
+// stats: { points, kills, guards, maxCombo, methods, shots, hits, alerts, civilians, spared, time }
 // -> { lines: [{ key, label, detail, points }], total, grade, next: { grade, at } | null }
 export function tally(stats, level, rules = SCORING) {
   const lines = [];
@@ -61,6 +61,7 @@ export function tally(stats, level, rules = SCORING) {
     const acc = clamp(stats.hits / stats.shots, 0, 1);
     line('accuracy', 'ACCURACY', `${Math.round(acc * 100)}%`, rules.accuracy.bonus * acc);
   } else line('accuracy', 'ACCURACY', 'NO SHOT FIRED', rules.accuracy.noShot);
+  if (stats.spared > 0) line('mercy', 'MERCY', `x${stats.spared}`, rules.mercy * stats.spared);
   if (stats.civilians > 0) line('civilians', 'CIVILIANS', `x${stats.civilians}`, -rules.civilian * stats.civilians);
   const total = Math.max(0, lines.reduce((sum, l) => sum + l.points, 0));
   const grade = gradeFor(total, level.grades);
@@ -155,7 +156,7 @@ export default class Scoring {
     return tally({
       points: this.points, kills: this.kills, guards: this.world.totalEnemies, maxCombo: this.maxCombo,
       methods: this.methods.size, shots: this.shots, hits: this.hits, alerts: this.alerts,
-      civilians: this.civilians, time: this.world.time,
+      civilians: this.civilians, spared: this.world.enemies.filter((e) => e.alive && e.yielded).length, time: this.world.time,
     }, level, this.rules);
   }
 }
