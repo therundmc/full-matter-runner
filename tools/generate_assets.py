@@ -1014,11 +1014,13 @@ def p_tv():
     cv.rect(2, 5, 21, 5, hx('#05d9e8'))
     cv.outline()
     for x in range(2, 22):
-        cv.set(x, 6, hx('#9ef6ff'))
+        cv.set(x, 5, NEON_PINK if 8 <= x <= 11 else hx('#05d9e8'))
+        cv.set(x, 6, hx('#9ef6ff') if x % 5 else hx('#ffffff'))
         cv.set(x, 7, (5, 217, 232, 110))
     cv.set(1, 6, OUTLINE)
     cv.set(22, 6, OUTLINE)
-    return cv
+    cv.set(19, 3, hx('#ff2a3a'))
+    return cv, glow_from(cv, lambda x, y, c: y >= 5 and 2 <= x <= 21 or (x, y) == (19, 3))
 
 
 def p_fridge():
@@ -1161,28 +1163,43 @@ def p_pool_table():
 
 
 def p_arcade():
-    cv = Cv(20, 16)
+    cv, gl = Cv(20, 16), Cv(20, 16)
     cab = ramp('#2c1e44', 0.5, 0.2, 0.35)
     fill_shape(cv, 10.0, 6.0, 8.6, 5.2, lambda u, v, L: tone(cab, L), kind='rect', bevel=2.0, corner=1.0)
-    for y in range(2, 8):
-        cv.set(2, y, hx('#ff2a6d'))
-        cv.set(17, y, hx('#05d9e8'))
-    cv.rect(3, 8, 16, 10, hx('#ff2a6d'))
-    cv.rect(3, 8, 16, 8, hx('#ff8ab4'))
-    cv.rect(3, 10, 16, 10, hx('#05d9e8'))
-    for x in (5, 9, 13):
-        cv.set(x, 9, hx('#fff0f8'))
+    marquee = [hx('#ff2a6d'), hx('#ff6b1a'), hx('#f9c80e')]
+    for x in range(3, 17):     # lit marquee at the back
+        for y in (1, 2):
+            c = lt(marquee[(x // 2 + y) % 3], 0.25)
+            cv.set(x, y, c)
+            gl.set(x, y, c)
+    for y in range(3, 9):      # side art tubes
+        for x, col in ((2, NEON_PINK), (17, NEON_CYAN)):
+            cv.set(x, y, lt(col, 0.2))
+            gl.set(x, y, col)
+    screen = ["............",
+              ".c.c.c..ww..",
+              "..p.p.p.....",
+              ".....y......",
+              "....ggg..p..",
+              "....g.g....."]
+    scol = {'c': NEON_CYAN, 'p': NEON_PINK, 'w': hx('#f4f0ff'), 'y': hx('#f9c80e'), 'g': hx('#3aff8a')}
+    for j, row in enumerate(screen):
+        for i, ch in enumerate(row):
+            x, y = 4 + i, 4 + j
+            c = scol[ch] if ch != '.' else (hx('#0c1030') if (y % 2) else hx('#141a44'))
+            cv.set(x, y, c)
+            gl.set(x, y, c if ch != '.' else (40, 70, 170, 150))
     panel = Cv(20, 16)
     fill_shape(panel, 10.0, 12.6, 7.5, 1.9, lambda u, v, L: tone(ramp('#3e3650'), L), kind='rect', bevel=1.2, corner=0.8)
-    panel.set(6, 12, hx('#ff3a3a'))
-    panel.set(6, 13, hx('#a01820'))
-    panel.set(11, 13, hx('#05d9e8'))
-    panel.set(13, 13, hx('#f9c80e'))
-    panel.set(15, 13, hx('#ff2a6d'))
+    for (x, y, c) in [(6, 12, '#ff3a3a'), (6, 13, '#a01820'), (11, 13, '#05d9e8'), (13, 13, '#f9c80e'),
+                      (15, 13, '#ff2a6d')]:
+        panel.set(x, y, hx(c))
+        if (x, y) != (6, 13):
+            gl.set(x, y, hx(c))
     panel.outline()
     cv.outline()
     cv.over(panel)
-    return cv
+    return cv, gl
 
 
 def p_crate():
@@ -1325,85 +1342,6 @@ def p_bar_counter():
     return cv
 
 
-def p_car():
-    cv = Cv(76, 36)
-    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
-    cx, cy = 38.0, 18.0
-
-    def hw(u):
-        w = 14.6
-        if u > 22:
-            w -= (u - 22) * 0.12
-        return w
-
-    for y in range(36):
-        for x in range(76):
-            u, v = x + 0.5 - cx, y + 0.5 - cy
-            if u < -35.6 or u > 35.6 or abs(v) > hw(u):
-                continue
-            # rounded corners
-            cr = 5.5 if u > 0 else 4.0
-            ex = abs(u) - (35.6 - cr)
-            ey = abs(v) - (hw(u) - cr)
-            if ex > 0 and ey > 0 and ex * ex + ey * ey > cr * cr:
-                continue
-            nv = v / hw(u)
-            nu = max(0.0, (abs(u) - 30) / 6.0) * (1 if u > 0 else -1)
-            L = light(nu * 0.8, (abs(nv) ** 3) * (1 if v > 0 else -1) * 0.95)
-            col = tone(body, L)
-            cv.set(x, y, col)
-    glass = hx('#141826')
-    glass_h = hx('#2e4a6a')
-    # windshield (trapezoid), roof, rear window with louvres
-    for x in range(41, 49):
-        half = 10 - (x - 41) * 0.35
-        for y in range(int(cy - half), int(cy + half)):
-            cv.set(x, y, glass)
-    for i, x in enumerate(range(42, 48)):
-        cv.set(x, int(cy - 8 + i * 2), glass_h)
-        cv.set(x, int(cy - 7 + i * 2), glass_h)
-    for x in range(27, 41):
-        for y in range(int(cy - 10), int(cy + 10)):
-            cv.set(x, y, body[3] if y < cy - 6 else body[2] if y < cy + 6 else body[1])
-    for x in range(20, 27):
-        half = 8 + (x - 20) * 0.3
-        for y in range(int(cy - half), int(cy + half)):
-            cv.set(x, y, glass if x % 2 == 0 else body[0])
-    # side windows hint
-    for x in range(29, 41):
-        cv.set(x, int(cy - 11), glass)
-        cv.set(x, int(cy + 10), glass)
-    # hood lines + vents
-    for x in range(52, 70):
-        cv.set(x, int(cy - 6), body[1])
-        cv.set(x, int(cy + 5), body[1])
-    for x in range(55, 62, 2):
-        for y in range(int(cy - 2), int(cy + 2)):
-            cv.set(x, y, body[0])
-    # pop-up headlights (closed lids)
-    for (yy) in (int(cy - 11), int(cy + 6)):
-        cv.rect(65, yy, 70, yy + 4, body[2])
-        for x in range(65, 71):
-            cv.set(x, yy, body[0])
-            cv.set(x, yy + 4, body[0])
-        cv.rect(65, yy, 65, yy + 4, body[0])
-        cv.rect(70, yy + 1, 70, yy + 3, hx('#fff6d0'))
-    # tail lights
-    for y in range(int(cy - 11), int(cy + 11)):
-        cv.set(2, y, hx('#ff3030') if (y // 3) % 2 == 0 else hx('#c01020'))
-        cv.set(3, y, hx('#7a0810'))
-    # pin stripes (cyan)
-    for x in range(8, 68):
-        if not (20 <= x <= 48):
-            cv.set(x, int(cy - 12), hx('#05d9e8'))
-            cv.set(x, int(cy + 11), hx('#05d9e8'))
-    # mirrors
-    for (x, y) in [(43, 2), (44, 2), (43, 33), (44, 33)]:
-        cv.set(x, y, body[1])
-    cv.outline()
-    return cv
-
-
 def p_dumpster():
     cv = Cv(36, 22)
     g = ramp('#2f7040', 0.5, 0.25, 0.3)
@@ -1446,222 +1384,817 @@ def p_trash_can():
 
 
 # --------------------------------------------------------------------------
-# Tiles (32x32, seamless)
+# Tiles (32x32, seamless). Base painters wrap every coordinate; variants copy the
+# base and only decorate inside a 2 px margin, so they tile with the base.
 # --------------------------------------------------------------------------
 
-def tile(fn, seed):
-    rng = random.Random(seed)
-    cv = Cv(32, 32)
-    fn(cv, rng)
-    return cv
+T = 32
+VM = 2   # variant margin
 
+
+def wset(cv, x, y, c):
+    cv.p[int(x) % cv.w, int(y) % cv.h] = c
+
+
+def wget(cv, x, y):
+    return cv.p[int(x) % cv.w, int(y) % cv.h]
+
+
+def wmix(cv, x, y, c, t):
+    wset(cv, x, y, mix(wget(cv, x, y), c, t))
+
+
+def fbm(rng, cells=(16, 8, 4), w=(0.55, 0.3, 0.15)):
+    ns = [VNoise(T, T, c, rng) for c in cells]
+    return lambda x, y: sum(n(x, y) * k for n, k in zip(ns, w))
+
+
+def pal(cols, t):
+    """Piecewise blend through a list of colours, t in 0..1."""
+    t = max(0.0, min(1.0, t)) * (len(cols) - 1)
+    i = min(int(t), len(cols) - 2)
+    return mix(cols[i], cols[i + 1], t - i)
+
+
+def inside(x, y, m=VM):
+    return m <= x < T - m and m <= y < T - m
+
+
+def blob(cx, cy, rx, ry, rng, rough=0.22):
+    """Noisy ellipse -> {(x, y): e} with e = 0 at the centre, 1 on the rim."""
+    harm = [(rng.uniform(0, 6.283), rng.uniform(0, rough), k) for k in (2, 3, 5)]
+    out = {}
+    for y in range(int(cy - ry * 1.4 - 2), int(cy + ry * 1.4 + 3)):
+        for x in range(int(cx - rx * 1.4 - 2), int(cx + rx * 1.4 + 3)):
+            dx, dy = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
+            a = math.atan2(dy, dx)
+            r = 1.0 + sum(amp * math.sin(a * k + ph) for ph, amp, k in harm)
+            e = math.hypot(dx, dy) / r
+            if e <= 1.0:
+                out[(x, y)] = e
+    return out
+
+
+def crack_pts(rng, x, y, ang, n, margin=VM, branch=0.12, depth=0):
+    pts = []
+    fx, fy = x + 0.5, y + 0.5
+    for _ in range(n):
+        ix, iy = int(math.floor(fx)), int(math.floor(fy))
+        if margin is not None and not inside(ix, iy, margin):
+            break
+        pts.append((ix % T, iy % T))
+        ang += rng.uniform(-0.5, 0.5)
+        fx += math.cos(ang)
+        fy += math.sin(ang)
+        if depth < 2 and rng.random() < branch:
+            pts += crack_pts(rng, ix, iy, ang + rng.choice([-1, 1]) * rng.uniform(0.7, 1.3), max(2, n // 3),
+                             margin, branch * 0.4, depth + 1)
+    return pts
+
+
+def draw_crack(cv, pts, dark=0.55, lip=0.2, col=None):
+    s = set(pts)
+    for (x, y) in pts:
+        if (x, (y + 1) % T) not in s and (inside(x, y + 1) or not inside(x, y)):
+            wset(cv, x, y + 1, lt(wget(cv, x, y + 1), lip))
+    for (x, y) in pts:
+        wset(cv, x, y, col if col else dk(wget(cv, x, y), dark))
+
+
+def stain(cv, rng, cx, cy, rx, ry, col, t=0.5, rim=0.15, rough=0.25):
+    for (x, y), e in blob(cx, cy, rx, ry, rng, rough).items():
+        if inside(x, y):
+            k = t + (rim if e > 0.78 else 0.0)
+            cv.set(x, y, mix(cv.get(x, y), col, min(1.0, k)))
+
+
+def butt(cv, x, y, horiz=True):
+    """Cigarette butt with a smouldering tip."""
+    pts = [(x, y), (x + 1, y), (x + 2, y)] if horiz else [(x, y), (x, y + 1), (x, y + 2)]
+    for i, (px, py) in enumerate(pts):
+        cv.set(px, py, [hx('#e89a4a'), hx('#f2eee4'), hx('#d8d2c4')][i])
+    cv.set(pts[-1][0] + (1 if horiz else 0), pts[-1][1] + (0 if horiz else 1), hx('#5a4a52'))
+
+
+def leaf(cv, x, y, col, rng):
+    pts = rng.choice([[(0, 0), (1, 0), (1, 1), (2, 1)], [(0, 0), (0, 1), (1, 1), (1, 2)],
+                      [(0, 1), (1, 0), (1, 1), (2, 0)], [(1, 0), (0, 1), (1, 1), (0, 2)]])
+    for i, (dx, dy) in enumerate(pts):
+        cv.set(x + dx, y + dy, lt(col, 0.2) if i == 0 else dk(col, 0.2) if i == 3 else col)
+    cv.set(x + pts[-1][0] + 1, y + pts[-1][1] + 1, dk(cv.get(x + pts[-1][0] + 1, y + pts[-1][1] + 1), 0.25))
+
+
+def flower(cv, x, y, petal, centre, wrap=False):
+    put = (lambda a, b, c: wset(cv, a, b, c)) if wrap else cv.set
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        put(x + dx, y + dy, petal if dy <= 0 else dk(petal, 0.25))
+    put(x, y, centre)
+    put(x + 1, y + 2, dk(wget(cv, x + 1, y + 2), 0.3))
+
+
+def pebble(cv, x, y, col, wrap=True):
+    put = (lambda a, b, c: wset(cv, a, b, c)) if wrap else cv.set
+    get = (lambda a, b: wget(cv, a, b)) if wrap else cv.get
+    put(x, y, lt(col, 0.25))
+    put(x + 1, y, col)
+    put(x, y + 1, col)
+    put(x + 1, y + 1, dk(col, 0.25))
+    put(x + 1, y + 2, dk(get(x + 1, y + 2), 0.4))
+    put(x + 2, y + 1, dk(get(x + 2, y + 1), 0.4))
+
+
+# ---- wood -------------------------------------------------------------------
 
 def t_wood(cv, rng):
-    plank_h = 8
-    offs = [0, 13, 5, 22]
-    tones = [[rng.choice([-8, -4, 0, 4, 7]) for _ in range(2)] for _ in range(4)]
-    grain = [[rng.choice([0, 0, -1, 1, 0, -1]) for _ in range(8)] for _ in range(32)]
-    base = hx('#8a5a36')
-    for y in range(32):
-        for x in range(32):
-            r = y // plank_h
-            seg = 0
-            c = shift(base, tones[r][seg])
-            c = shift(c, grain[y][(x - offs[r]) % 32 // 4] * 5)
-            if y % plank_h == plank_h - 1:
-                c = dk(c, 0.3)
-            elif y % plank_h == 0:
-                c = lt(c, 0.06)
-            if (x - offs[r]) % 32 == 0 and y % plank_h != plank_h - 1:
-                c = dk(c, 0.25)
-            if rng.random() < 0.05:
-                c = shift(c, rng.choice([-5, 5]))
-            cv.set(x, y, c)
+    cols = [hx('#b06a32'), hx('#9a5628'), hx('#c27c3c'), hx('#a45e2c'), hx('#8a4a24'), hx('#b8743a')]
+    offs = [3, 19, 11, 27]
+    seam = hx('#2a1028')
+    n = fbm(rng, (16, 8, 4), (0.4, 0.35, 0.25))
+    for r in range(4):
+        base = rng.choice(cols)
+        streaks = []
+        for _ in range(6):
+            streaks.append((rng.randint(1, 6), rng.randint(0, 31), rng.randint(5, 16), rng.choice([-1, -1, 1])))
+        for yy in range(8):
+            y = r * 8 + yy
+            for x in range(32):
+                rel = (x - offs[r]) % 32
+                c = shift(base, int(-8 + rel * 0.5 + (n(x, y) - 0.5) * 14))
+                for (sy, sx, ln, sg) in streaks:
+                    d = (x - sx) % 32
+                    if sy == yy and d < ln:
+                        c = dk(c, 0.2) if sg < 0 else lt(c, 0.1)
+                if yy == 0:
+                    c = lt(c, 0.16)
+                elif yy == 6:
+                    c = dk(c, 0.1)
+                elif yy == 7:
+                    c = seam
+                if rel == 0 and yy != 7:
+                    c = seam
+                elif rel == 31 and yy != 7:
+                    c = dk(c, 0.2)
+                elif rel == 1 and yy != 7:
+                    c = lt(c, 0.1)
+                if yy == 1 and rng.random() < 0.12:
+                    c = lt(c, 0.3)   # varnish glint
+                elif rng.random() < 0.06:
+                    c = shift(c, rng.choice([-7, 6]))
+                wset(cv, x, y, c)
+        for dx in (-3, 3):
+            for yy in (2, 5):
+                wset(cv, offs[r] + dx, r * 8 + yy, hx('#3a2230'))
+                wset(cv, offs[r] + dx + 1, r * 8 + yy, lt(wget(cv, offs[r] + dx + 1, r * 8 + yy), 0.15))
 
+
+def v_wood1(cv, rng):
+    stain(cv, rng, rng.randint(10, 21), rng.randint(10, 21), 5.5, 4.0, hx('#3a0e26'), 0.42, 0.2)
+    bx, by = rng.choice([(6, 22), (24, 7), (22, 24)])
+    for (x, y), e in blob(bx + 0.5, by + 0.5, 2.2, 1.8, rng, 0.1).items():
+        cv.set(x, y, hx('#1a0c14') if e < 0.5 else mix(cv.get(x, y), hx('#3a1a14'), 0.6))
+    cv.set(bx - 1, by - 1, hx('#ff6b1a'))
+
+
+def v_wood2(cv, rng):
+    for (kx, ky) in [(rng.randint(5, 12), 11), (rng.randint(19, 26), 27)]:
+        for (x, y), e in blob(kx + 0.5, ky + 0.5, 2.4, 1.4, rng, 0.05).items():
+            if inside(x, y):
+                c = cv.get(x, y)
+                cv.set(x, y, hx('#2a1018') if e < 0.45 else dk(c, 0.3) if e < 0.75 else lt(c, 0.12))
+    for _ in range(4):
+        x, y = rng.randint(4, 24), rng.randint(3, 26)
+        for k in range(rng.randint(4, 7)):
+            if inside(x + k, y + k // 2):
+                cv.set(x + k, y + k // 2, lt(cv.get(x + k, y + k // 2), 0.28))
+    draw_crack(cv, crack_pts(rng, 6, 20, 0.0, 18, branch=0.05), 0.6, 0.12)
+
+
+# ---- checker ------------------------------------------------------------------
 
 def t_checker(cv, rng):
-    wht, blk, grout = hx('#dcd6c6'), hx('#302c36'), hx('#8a8476')
+    W_ = ramp('#efe4cc', 0.42, 0.18, 0.4)
+    B_ = ramp('#2a1e3c', 0.45, 0.22, 0.4)
+    grout = hx('#56486a')
+    n = fbm(rng, (16, 8), (0.6, 0.4))
+    glint = {(tx, ty) for tx in range(4) for ty in range(4) if rng.random() < 0.6}
     for y in range(32):
         for x in range(32):
-            if x % 8 == 7 or y % 8 == 7:
-                c = grout
+            gx, gy = x % 8, y % 8
+            if gx == 7 or gy == 7:
+                c = jit(grout, 4, rng)
             else:
-                c = wht if ((x // 8) + (y // 8)) % 2 == 0 else blk
-                if x % 8 == 0 or y % 8 == 0:
-                    c = lt(c, 0.06)
+                white = ((x // 8) + (y // 8)) % 2 == 0
+                r_ = W_ if white else B_
+                c = r_[2]
+                if gx == 0 or gy == 0:
+                    c = r_[3]
+                elif gx == 6 or gy == 6:
+                    c = r_[1]
+                c = shift(c, int((n(x, y) - 0.5) * 12))
+                if (x // 8, y // 8) in glint and gx + gy in (3, 4) and 1 <= gx <= 3:
+                    c = lt(c, 0.35 if not white else 0.5)
                 c = jit(c, 3, rng)
             cv.set(x, y, c)
 
 
+def v_checker1(cv, rng):
+    tx, ty = rng.choice([(1, 1), (2, 2)])
+    draw_crack(cv, crack_pts(rng, tx * 8 + 1, ty * 8 + 2, 0.6, 12, branch=0.3), 0.6, 0.0)
+    ox, oy = rng.choice([(2, 1), (1, 2)])
+    for (dx, dy) in [(5, 5), (6, 5), (5, 6), (6, 6), (4, 6), (6, 4)]:
+        cv.set(ox * 8 + dx, oy * 8 + dy, hx('#6a6070') if dx + dy > 10 else hx('#827890'))
+
+
+def v_checker2(cv, rng):
+    stain(cv, rng, rng.randint(12, 20), rng.randint(12, 20), 7.0, 5.0, hx('#5a4a3a'), 0.22, 0.12, 0.3)
+    for _ in range(4):
+        x, y = rng.randint(3, 25), rng.randint(3, 27)
+        for k in range(3):
+            cv.set(x + k, y + (1 if k == 1 else 0), hx('#1a1220'))
+
+
+# ---- blue tiles ---------------------------------------------------------------
+
 def t_tile_blue(cv, rng):
-    base, grout = hx('#8ec4dc'), hx('#5e8aa2')
-    tones = [[rng.choice([-6, -3, 0, 3, 5]) for _ in range(4)] for _ in range(4)]
+    cols = [hx('#4cbce0'), hx('#3eaad6'), hx('#5ccae8'), hx('#38a0d0'), hx('#46b2dc')]
+    grout = hx('#163a5e')
+    tc = [[rng.choice(cols) for _ in range(4)] for _ in range(4)]
     for y in range(32):
         for x in range(32):
-            if x % 8 == 7 or y % 8 == 7:
+            gx, gy = x % 8, y % 8
+            if gx == 7 or gy == 7:
                 c = grout
             else:
-                c = shift(base, tones[y // 8][x // 8])
-                if x % 8 == 0 or y % 8 == 0:
-                    c = lt(c, 0.15)
-                elif x % 8 == 6 or y % 8 == 6:
-                    c = dk(c, 0.08)
+                c = tc[y // 8][x // 8]
+                c = shift(c, int(-gy * 1.2))
+                if gx == 0 or gy == 0:
+                    c = lt(c, 0.32)
+                elif gx == 6 or gy == 6:
+                    c = dk(c, 0.22)
                 c = jit(c, 2, rng)
             cv.set(x, y, c)
     for ty in range(4):
         for tx in range(4):
-            if rng.random() < 0.5:
-                cv.set(tx * 8 + 1, ty * 8 + 1, hx('#e8f8ff'))
+            if rng.random() < 0.55:
+                for (dx, dy) in [(1, 2), (2, 1)]:
+                    cv.set(tx * 8 + dx, ty * 8 + dy, hx('#e8fcff'))
 
 
-def t_carpet(base, pat, rng, cv, kind):
-    n = VNoise(32, 32, 8, rng)
+def v_tile_blue1(cv, rng):
+    draw_crack(cv, crack_pts(rng, 9, 12, 0.4, 16, branch=0.25), 0.55, 0.15)
+    tx, ty = 2, rng.choice([1, 2])
+    for y in range(ty * 8 + 3, ty * 8 + 7):
+        for x in range(tx * 8 + 3, tx * 8 + 7):
+            if (x - tx * 8) + (y - ty * 8) >= 8:
+                cv.set(x, y, hx('#6a6a7a') if (x + y) % 3 else hx('#4a4a5a'))
+    cv.set(tx * 8 + 5, ty * 8 + 3, hx('#e8fcff'))
+
+
+def v_tile_blue2(cv, rng):
+    acc = [ramp('#ff3a8a', 0.45, 0.2, 0.35), ramp('#1e3a9a', 0.45, 0.2, 0.35)]
+    for k, (tx, ty) in enumerate(rng.sample([(1, 1), (2, 2), (1, 2), (2, 1)], 2)):
+        r_ = acc[k]
+        for gy in range(7):
+            for gx in range(7):
+                c = r_[3] if gx == 0 or gy == 0 else r_[1] if gx == 6 or gy == 6 else r_[2]
+                cv.set(tx * 8 + gx, ty * 8 + gy, c)
+        cv.set(tx * 8 + 1, ty * 8 + 2, lt(r_[3], 0.5))
+        cv.set(tx * 8 + 2, ty * 8 + 1, lt(r_[3], 0.5))
+    for _ in range(5):
+        x, y = rng.randint(3, 28), rng.randint(3, 28)
+        cv.set(x, y, hx('#f0ffff'))
+        cv.set(x, y + 1, dk(cv.get(x, y + 1), 0.25))
+
+
+# ---- carpets ------------------------------------------------------------------
+
+def t_carpet_red(cv, rng):
+    base = hx('#6c1030')
+    line, inner, gold = hx('#e0407a'), hx('#2c0418'), hx('#f2b440')
+    n = fbm(rng, (16, 8, 4), (0.45, 0.35, 0.2))
     for y in range(32):
         for x in range(32):
-            c = shift(base, int((n(x, y) - 0.5) * 10))
-            if kind == 'red':
-                d = abs(x % 8 - 4) + abs(y % 8 - 4)
-                if d == 3:
-                    c = pat
-                elif d == 0:
-                    c = mix(pat, base, 0.4)
-            else:
-                zz = abs((x % 8) - 4)
-                if (y % 16) == zz or (y % 16) == zz + 8:
-                    c = pat
-                if (x % 16 == 12) and (y % 16 == 4):
-                    c = mix(pat, hx('#05d9e8'), 0.3)
-            if rng.random() < 0.15:
-                c = shift(c, rng.choice([-6, 6]))
+            c = shift(base, int((n(x, y) - 0.5) * 18))
+            if rng.random() < 0.3:
+                c = shift(c, rng.choice([-9, 7]))
+            dx, dy = abs(x % 16 - 8), abs(y % 16 - 8)
+            d = dx + dy
+            if d == 8:
+                c = line if (x + y) % 4 else lt(line, 0.25)
+            elif d in (7, 9):
+                c = inner
+            elif d <= 1:
+                c = gold if d == 0 else dk(gold, 0.25)
+            elif d == 4 and (x + y) % 2 == 0:
+                c = mix(line, c, 0.45)
+            elif d == 16:
+                c = gold
+            elif d == 15:
+                c = mix(gold, c, 0.55)
             cv.set(x, y, c)
 
 
-def t_concrete(cv, rng):
-    n = VNoise(32, 32, 8, rng)
-    n2 = VNoise(32, 32, 4, rng)
-    base = hx('#76767a')
-    for y in range(32):
-        for x in range(32):
-            c = shift(base, int((n(x, y) - 0.5) * 14 + (n2(x, y) - 0.5) * 6))
-            r = rng.random()
-            if r < 0.06:
-                c = shift(c, -14)
-            elif r < 0.1:
-                c = shift(c, 10)
-            cv.set(x, y, c)
-    x, y = rng.randint(0, 31), rng.randint(0, 31)
-    for _ in range(26):
-        cv.set(x % 32, y % 32, dk(cv.get(x % 32, y % 32), 0.22))
-        x += 1
-        y += rng.choice([-1, 0, 0, 1])
-
-
-def t_grass(cv, rng):
-    n = VNoise(32, 32, 8, rng)
-    base = hx('#2e5c28')
-    for y in range(32):
-        for x in range(32):
-            cv.set(x, y, shift(base, int((n(x, y) - 0.5) * 14)))
-    for _ in range(80):
-        x, y = rng.randint(0, 31), rng.randint(0, 31)
-        col = hx('#3e7430') if rng.random() < 0.55 else hx('#224822')
-        ln = rng.choice([2, 2, 3])
-        for k in range(ln):
-            cv.set(x, (y + k) % 32, col if k else lt(col, 0.1))
-
-
-def t_asphalt(cv, rng, line=False):
-    n = VNoise(32, 32, 8, rng)
-    base = hx('#2c3038')
-    for y in range(32):
-        for x in range(32):
-            c = shift(base, int((n(x, y) - 0.5) * 8))
-            r = rng.random()
-            if r < 0.07:
-                c = shift(c, 12)
-            elif r < 0.13:
-                c = shift(c, -7)
-            elif r < 0.135:
-                c = hx('#6a6e78')
-            cv.set(x, y, c)
-    if line:
-        for y in (15, 16, 17):
-            for x in range(32):
-                c = hx('#e8b923') if y != 17 else hx('#c89818')
-                if rng.random() < 0.1:
-                    c = mix(c, cv.get(x, y), 0.6)
-                cv.set(x, y, c)
-
-
-def t_dirt(cv, rng):
-    n = VNoise(32, 32, 8, rng)
-    base = hx('#6a4a30')
+def t_carpet_purple(cv, rng):
+    base = hx('#2a1250')
+    cyan, pink, yel = hx('#24ccdc'), hx('#ff3a8e'), hx('#f2c232')
+    n = fbm(rng, (16, 8, 4), (0.45, 0.35, 0.2))
     for y in range(32):
         for x in range(32):
             c = shift(base, int((n(x, y) - 0.5) * 16))
-            if rng.random() < 0.12:
-                c = shift(c, rng.choice([-9, 7]))
+            if rng.random() < 0.3:
+                c = shift(c, rng.choice([-7, 7]))
             cv.set(x, y, c)
-    for _ in range(9):
-        x, y = rng.randint(0, 31), rng.randint(0, 31)
-        col = rng.choice([hx('#9a8a74'), hx('#8a7258'), hx('#a8987c')])
-        cv.set(x, y, col)
-        if rng.random() < 0.6:
-            cv.set((x + 1) % 32, y, dk(col, 0.15))
-        cv.set(x % 32, (y + 1) % 32, hx('#4a321e'))
+
+    def put(x, y, c):
+        wset(cv, x, y, c if rng.random() > 0.12 else dk(c, 0.25))
+    for i in range(13):    # cyan zigzag
+        put(1 + i, 6 - abs(i % 4 - 2), cyan)
+    for i in range(9):     # yellow zigzag
+        put(17 + i, 19 + abs(i % 4 - 2), yel)
+    for t_ in range(9):    # pink triangle outline
+        put(20 + t_ * 0.8, 3 + t_, pink)
+        put(20 - t_ * 0.6, 3 + t_ * 0.9, pink)
+        put(14.6 + t_ * 1.0, 11, pink)
+    for (x, y) in [(5, 20), (9, 23), (4, 26)]:   # dots
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            put(x + dx, y + dy, yel if (dx, dy) != (0, 0) else lt(yel, 0.3))
+    ring_pts = [(round(26 + math.cos(a / 8 * 6.283) * 2.6), round(27 + math.sin(a / 8 * 6.283) * 2.6)) for a in range(8)]
+    for (x, y) in ring_pts:
+        put(x, y, cyan)
+    for i in range(7):     # pink squiggle
+        put(12 + i, 28 + round(math.sin(i * 1.4)), pink)
+    for (x, y) in [(29, 14), (30, 15), (28, 15), (14, 21), (2, 15)]:
+        put(x, y, mix(cyan, base, 0.2))
 
 
-def t_sidewalk(cv, rng):
-    base = hx('#a6a6a2')
-    tones = [[rng.choice([-6, -2, 0, 3, 6]) for _ in range(2)] for _ in range(2)]
+def v_carpet1(cv, rng, col):
+    stain(cv, rng, rng.randint(10, 21), rng.randint(10, 21), 6.0, 4.5, col, 0.5, 0.2, 0.3)
+    bx, by = rng.choice([(7, 24), (24, 8)])
+    for (x, y), e in blob(bx + 0.5, by + 0.5, 1.8, 1.5, rng, 0.1).items():
+        cv.set(x, y, hx('#120810') if e < 0.55 else hx('#3a2018'))
+
+
+def v_carpet2(cv, rng):
+    for (x, y), e in blob(rng.randint(12, 19), rng.randint(12, 19), 8.0, 6.0, rng, 0.3).items():
+        if inside(x, y):
+            c = cv.get(x, y)
+            g = (c[0] + c[1] + c[2]) // 3
+            cv.set(x, y, mix(c, (g + 18, g + 14, g + 22, 255), 0.35 * (1 - e) + 0.1))
+    butt(cv, rng.randint(5, 9), rng.randint(20, 26))
+    for _ in range(6):
+        cv.set(rng.randint(3, 28), rng.randint(3, 28), hx(rng.choice(['#ff2a6d', '#05d9e8', '#f9c80e', '#f4f0ff'])))
+
+
+# ---- concrete -----------------------------------------------------------------
+
+def t_concrete(cv, rng):
+    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
+    cols = [hx('#4a4658'), hx('#625e72'), hx('#78748a'), hx('#8c889c')]
     for y in range(32):
         for x in range(32):
-            c = shift(base, tones[y // 16][x // 16])
-            if x % 16 == 0 or y % 16 == 0:
-                c = hx('#74746f')
-            elif x % 16 == 1 or y % 16 == 1:
-                c = lt(c, 0.1)
-            elif x % 16 == 15 or y % 16 == 15:
-                c = dk(c, 0.06)
-            if rng.random() < 0.08:
+            c = pal(cols, n(x, y) * 1.3 - 0.15)
+            r = rng.random()
+            if r < 0.07:
+                c = shift(c, -18)
+            elif r < 0.13:
+                c = shift(c, 14)
+            elif r < 0.145:
+                c = hx('#9a8a7a')
+            elif r < 0.155:
+                c = hx('#5a6a8a')
+            if x == 0 or y == 0:
+                c = hx('#2e2a3a')
+            elif x == 1 or y == 1:
+                c = lt(c, 0.14)
+            cv.set(x, y, c)
+    draw_crack(cv, crack_pts(rng, 6, 20, -0.4, 20, margin=None, branch=0.1), 0.35, 0.1)
+
+
+def v_concrete1(cv, rng):
+    stain(cv, rng, 16, 16, 6.5, 6.0, hx('#24202e'), 0.3, 0.1, 0.3)
+    frame = ramp('#6a6878', 0.5, 0.25, 0.35)
+    for y in range(12, 20):
+        for x in range(12, 20):
+            if x in (12, 19) or y in (12, 19):
+                c = frame[3] if (x == 12 or y == 12) and not (x == 19 or y == 19) else frame[0]
+            else:
+                c = hx('#0e0a14') if x % 2 == 0 else frame[1]
+                if x % 2 and y == 13:
+                    c = frame[3]
+            cv.set(x, y, c)
+    for (x, y) in [(14, 20), (14, 21), (17, 20)]:
+        cv.set(x, y, hx('#6a3a2a'))
+
+
+def v_concrete2(cv, rng):
+    cx, cy = rng.randint(11, 20), rng.randint(11, 20)
+    for (x, y), e in blob(cx, cy, 7.0, 5.0, rng, 0.3).items():
+        if inside(x, y):
+            c = mix(cv.get(x, y), hx('#14101c'), 0.65 if e < 0.85 else 0.4)
+            if 0.45 < e < 0.65:
+                c = mix(c, hx('#3a7a8a') if (x + y) % 3 else hx('#8a3a9a'), 0.35)
+            cv.set(x, y, c)
+    cv.set(cx - 2, cy - 2, hx('#9aa0d0'))
+    cv.set(cx - 1, cy - 2, hx('#6a70a0'))
+    draw_crack(cv, crack_pts(rng, 4, 6, 0.7, 26, branch=0.2), 0.55, 0.15)
+
+
+# ---- grass --------------------------------------------------------------------
+
+GRASS_BLADE = [hx('#0f2e1e'), hx('#1f5a2a'), hx('#348a32'), hx('#5cb43c'), hx('#a8e05a')]
+
+
+def tuft(cv, x, y, rng, h=3, put=None, tall=False):
+    """V-shaped clump: outer blades lean outwards, the tallest one in the middle catches the light."""
+    put = put or (lambda a, b, c: wset(cv, a, b, c))
+    get = lambda a, b: wget(cv, a, b)
+    for dx in (-1, 0, 1):
+        put(x + dx, y + 1, dk(get(x + dx, y + 1), 0.4))
+    for dx in rng.sample([-2, -1, 0, 1, 2], rng.randint(3, 4)):
+        hh = max(2, h + (1 if tall else 0) - abs(dx) // 2 + rng.choice([0, 0, 1]))
+        for j in range(hh):
+            px_ = x + dx + ((1 if dx > 0 else -1) if dx and j >= hh - 1 else 0)
+            if j == 0:
+                c = GRASS_BLADE[1]
+            elif j == hh - 1:
+                c = GRASS_BLADE[4] if abs(dx) < 2 else GRASS_BLADE[3]
+            else:
+                c = GRASS_BLADE[2] if j < hh - 2 else GRASS_BLADE[3]
+            put(px_, y - j, c)
+
+
+def t_grass(cv, rng):
+    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
+    m = fbm(rng, (8, 4), (0.6, 0.4))
+    cols = [hx('#0c261c'), hx('#143c24'), hx('#1e5428'), hx('#2c6a2e')]
+    for y in range(32):
+        for x in range(32):
+            c = pal(cols, n(x, y) * 1.25 - 0.1)
+            if m(x, y) > 0.66:
+                c = mix(c, hx('#1a5a4a'), 0.35)   # cool clover patches
+            if rng.random() < 0.18:
                 c = shift(c, rng.choice([-10, 8]))
             cv.set(x, y, c)
+    for _ in range(34):
+        tuft(cv, rng.randint(0, 31), rng.randint(0, 31), rng, rng.choice([3, 3, 4]))
+    for (x, y, p, c) in [(6, 9, '#ff5aa0', '#fff07a'), (23, 21, '#f4f2ff', '#f9c80e')]:
+        flower(cv, x, y, hx(p), hx(c), wrap=True)
+    for (x, y) in [(15, 28), (27, 5)]:
+        wset(cv, x, y, hx('#f9d84a'))
+        wset(cv, x, y + 1, dk(wget(cv, x, y + 1), 0.3))
+
+
+def v_grass1(cv, rng):
+    cols = [hx('#e07a2a'), hx('#c8442a'), hx('#e8b83a'), hx('#8a5a2a')]
+    for _ in range(7):
+        leaf(cv, rng.randint(3, 24), rng.randint(3, 24), rng.choice(cols), rng)
+    fx, fy = rng.randint(8, 22), rng.randint(8, 22)
+    for (dx, dy) in [(0, 0), (3, 1), (1, 3)]:
+        flower(cv, fx + dx, fy + dy, hx('#ff4a9a'), hx('#fff07a'))
+
+
+def v_grass2(cv, rng):
+    cx, cy = rng.randint(10, 13), rng.randint(17, 21)
+    for (x, y), e in blob(cx, cy, 4.0, 3.0, rng, 0.3).items():
+        if inside(x, y):
+            cv.set(x, y, pal([hx('#4a2e26'), hx('#6a4630'), hx('#3a2a2a')], e + rng.uniform(-0.2, 0.2)))
+    pebble(cv, cx - 1, cy - 1, hx('#a89a8a'), wrap=False)
+    pebble(cv, cx + 2, cy + 1, hx('#8a7a7a'), wrap=False)
+    wx, wy = rng.randint(19, 24), rng.randint(7, 12)
+    for a in range(7):     # weed rosette
+        ang = a / 7 * 6.283
+        for k in range(1, 4):
+            x, y = round(wx + math.cos(ang) * k), round(wy + math.sin(ang) * k * 0.8)
+            cv.set(x, y, hx('#5aa83a') if k == 3 else hx('#2e6a2a'))
+    for (dx, dy) in [(0, 0), (-4, 6), (5, 7), (-9, 14)]:
+        x, y = wx + dx, wy + dy
+        if inside(x, y) and inside(x + 2, y + 2):
+            cv.set(x, y, hx('#fff07a'))
+            cv.set(x + 1, y, hx('#f9c80e'))
+            cv.set(x, y + 1, hx('#f9c80e'))
+            cv.set(x + 1, y + 1, hx('#e88a1a'))
+            cv.set(x + 1, y + 2, hx('#173c24'))
+    for _ in range(6):
+        x, y = rng.randint(4, 27), rng.randint(6, 27)
+        tuft(cv, x, y, rng, 4, put=lambda a, b, c: cv.set(a, b, c) if inside(a, b) else None, tall=True)
+
+
+# ---- asphalt ------------------------------------------------------------------
+
+ASPH = [hx('#12121c'), hx('#1a1a28'), hx('#232335'), hx('#2e2e44')]
+
+
+def t_asphalt(cv, rng, line=False):
+    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
+    wet = fbm(rng, (16, 8), (0.7, 0.3))
+    for y in range(32):
+        for x in range(32):
+            c = pal(ASPH, n(x, y) * 1.3 - 0.15)
+            r = rng.random()
+            if r < 0.11:
+                c = shift(c, 15)
+            elif r < 0.14:
+                c = hx('#565670')
+            elif r < 0.22:
+                c = shift(c, -8)
+            elif r < 0.227:
+                c = hx('#6a5a66')
+            w = wet(x, y)
+            if w > 0.58:
+                k = min(1.0, (w - 0.58) / 0.18)
+                c = mix(c, hx('#2c2c66'), 0.35 * k)
+                if r < 0.05 * k:
+                    c = rng.choice([hx('#8ac8ff'), hx('#ff8ac8'), hx('#b8b8ff')])
+            cv.set(x, y, c)
+    if line:
+        for x in range(32):
+            for y, col in ((15, hx('#ffe066')), (16, hx('#f9c80e')), (17, hx('#c8920a'))):
+                c = col
+                if rng.random() < 0.14:
+                    c = mix(c, cv.get(x, y), 0.65)
+                if wet(x, y) > 0.6:
+                    c = mix(c, hx('#ff9a6a'), 0.15)
+                cv.set(x, y, c)
+    draw_crack(cv, crack_pts(rng, 3, 7, 0.5, 22, margin=None, branch=0.15), 0.45, 0.12)
+
+
+def manhole(cv, rng, cx=16.0, cy=16.0, R=8.2):
+    iron = ramp('#3e3c52', 0.5, 0.25, 0.4)
+    for y in range(32):
+        for x in range(32):
+            dx, dy = x + 0.5 - cx, y + 0.5 - cy
+            d = math.hypot(dx, dy)
+            if d > R + 1.8:
+                continue
+            if d > R + 0.8:
+                cv.set(x, y, dk(cv.get(x, y), 0.3))
+                continue
+            if d > R:
+                cv.set(x, y, hx('#08060e'))
+                continue
+            L = light(dx / max(d, 0.1) * 0.95, dy / max(d, 0.1) * 0.95)
+            if d > R - 1.3:
+                c = tone(iron, L)
+            elif 0.62 * R < d < 0.62 * R + 1.0:
+                c = iron[3] if L > 0.5 else iron[1]
+            elif d < 0.55 * R and x % 3 == 0 and y % 3 == 0:
+                c = iron[3]
+            elif d < 0.55 * R and x % 3 == 1 and y % 3 == 1:
+                c = iron[0]
+            else:
+                c = iron[1] if (x * 7 + y * 3) % 5 else iron[2]
+            if rng.random() < 0.08:
+                c = mix(c, hx('#6a3a2a'), 0.5)
+            cv.set(x, y, c)
+    for (x, y) in [(int(cx) - 3, int(cy) + 5), (int(cx) + 2, int(cy) + 5)]:
+        cv.set(x, y, hx('#08060e'))
+
+
+def puddle(cv, rng, cx, cy, rx, ry):
+    pts = blob(cx, cy, rx, ry, rng, 0.16)
+    for (x, y), e in pts.items():
+        if not inside(x, y):
+            continue
+        dy = y + 0.5 - cy
+        c = pal([hx('#0c0a1c'), hx('#1a1640'), hx('#2a2258')], (dy / ry + 1.0) * 0.5)
+        if e > 0.8:
+            c = mix(cv.get(x, y), hx('#0a0a14'), 0.45)
+        if e < 0.8 and -2.0 <= dy < -1.0 and (x * 7) % 6:
+            c = mix(c, NEON_PINK, 0.65 if x % 3 else 0.4)
+        elif e < 0.72 and 1.0 <= dy < 2.0 and x % 5 != 4:
+            c = mix(c, NEON_CYAN, 0.5)
+        cv.set(x, y, c)
+    keys = sorted(k for k, e in pts.items() if e < 0.5 and inside(*k))
+    for _ in range(2):
+        cv.set(*rng.choice(keys), hx('#e8f0ff'))
+
+
+def v_asphalt1(cv, rng):
+    draw_crack(cv, crack_pts(rng, 5, 8, 0.3, 24, branch=0.35), 0.7, 0.3)
+    stain(cv, rng, rng.randint(18, 22), rng.randint(18, 22), 4.0, 3.0, hx('#0a0812'), 0.55, 0.0)
+    for (x, y) in [(8, 23), (10, 24), (9, 26)]:
+        cv.set(x, y, hx('#0a0812'))
+
+
+def v_asphalt2(cv, rng):
+    manhole(cv, rng, 16.0, 16.0)
+
+
+def v_asphalt_line1(cv, rng):
+    draw_crack(cv, crack_pts(rng, 5, 6, 1.1, 28, branch=0.3), 0.75, 0.32)
+    for x in range(rng.randint(18, 22), 26):
+        for y in (15, 16, 17):
+            if rng.random() < 0.6:
+                cv.set(x, y, mix(cv.get(x, y), hx('#1a1a28'), 0.75))
+
+
+def v_asphalt_line2(cv, rng):
+    puddle(cv, rng, rng.randint(13, 18), 16.5, 8.0, 5.0)
+
+
+# ---- dirt ---------------------------------------------------------------------
+
+def t_dirt(cv, rng):
+    n = fbm(rng, (16, 8, 4), (0.45, 0.35, 0.2))
+    cols = [hx('#3a2028'), hx('#5a3830'), hx('#7a5038'), hx('#946a46')]
+    for y in range(32):
+        for x in range(32):
+            c = pal(cols, n(x, y) * 1.3 - 0.12)
+            r = rng.random()
+            if r < 0.14:
+                c = shift(c, -12)
+            elif r < 0.24:
+                c = shift(c, 9)
+            cv.set(x, y, c)
+    for _ in range(5):
+        pebble(cv, rng.randint(0, 31), rng.randint(0, 31), rng.choice([hx('#b8a48a'), hx('#8a7a8a'), hx('#c8b49a')]))
+    for _ in range(16):
+        x, y = rng.randint(0, 31), rng.randint(0, 31)
+        wset(cv, x, y, rng.choice([hx('#a8907a'), hx('#7a6a7a'), hx('#c8a882')]))
+        wset(cv, x + 1, y + 1, dk(wget(cv, x + 1, y + 1), 0.35))
+    for _ in range(14):
+        x, y = rng.randint(0, 31), rng.randint(0, 31)
+        wset(cv, x, y, hx('#2a161e'))
+    for _ in range(3):
+        x, y = rng.randint(0, 31), rng.randint(0, 31)
+        wset(cv, x, y, hx('#8a9a3a'))
+        wset(cv, x + 1, y - 1, hx('#b0b84a'))
+
+
+def v_dirt1(cv, rng):
+    for k, (sx, sy) in enumerate([(8, 6), (14, 15), (9, 22)]):
+        for y in range(5):
+            for x in range(3):
+                if (x, y) in ((0, 0), (2, 0), (0, 4), (2, 4)) or y == 3 and x == 1:
+                    continue
+                c = dk(cv.get(sx + x, sy + y), 0.55 if y % 2 == 0 else 0.35)
+                cv.set(sx + x, sy + y, c)
+        for y in range(5):
+            cv.set(sx + 3, sy + y, lt(cv.get(sx + 3, sy + y), 0.18))
+    for _ in range(4):
+        pebble(cv, rng.randint(18, 26), rng.randint(4, 26), rng.choice([hx('#c8b49a'), hx('#8a8a9a')]), wrap=False)
+
+
+def v_dirt2(cv, rng):
+    cx, cy = rng.randint(14, 18), rng.randint(14, 18)
+    for (x, y), e in blob(cx, cy, 8.0, 5.0, rng, 0.3).items():
+        if not inside(x, y):
+            continue
+        if e > 0.82:
+            c = mix(cv.get(x, y), hx('#2a1418'), 0.5)
+        else:
+            c = hx('#24141e') if (x + y * 2) % 7 else hx('#2e1a24')
+            if abs(y + 0.5 - cy + 1) < 0.6 and e < 0.6:
+                c = hx('#5a3a7a')
+            elif abs(y + 0.5 - cy - 1) < 0.6 and e < 0.4:
+                c = hx('#3a4a6a')
+        cv.set(x, y, c)
+    cv.set(cx - 3, cy - 2, hx('#a890c8'))
+    for _ in range(3):
+        tuft(cv, rng.randint(4, 27), rng.choice([rng.randint(4, 7), rng.randint(25, 27)]), rng, 3,
+             put=lambda a, b, c: cv.set(a, b, c) if inside(a, b) else None)
+
+
+# ---- sidewalk -----------------------------------------------------------------
+
+def t_sidewalk(cv, rng):
+    n = fbm(rng, (8, 4), (0.6, 0.4))
+    tones = [[rng.choice([-8, -3, 0, 4, 8]) for _ in range(2)] for _ in range(2)]
+    tints = [[hx(rng.choice(['#aca6b8', '#a6aab4', '#b0aaaa', '#aaa6b2'])) for _ in range(2)] for _ in range(2)]
+    seam = hx('#3a3448')
+    for y in range(32):
+        for x in range(32):
+            c = shift(tints[y // 16][x // 16], tones[y // 16][x // 16] + int((n(x, y) - 0.5) * 14))
+            r = rng.random()
+            if r < 0.08:
+                c = shift(c, -16)
+            elif r < 0.13:
+                c = shift(c, 12)
+            gx, gy = x % 16, y % 16
+            if gx == 0 or gy == 0:
+                c = seam
+            elif gx == 1 or gy == 1:
+                c = lt(c, 0.2)
+            elif gx == 15 or gy == 15:
+                c = dk(c, 0.16)
+            cv.set(x, y, c)
+    for (x, y) in [(5, 9), (22, 4), (26, 24)]:
+        cv.set(x, y, hx('#5a5466'))
+        cv.set(x + 1, y, hx('#6a6476'))
+        cv.set(x, y + 1, hx('#4a4456'))
+
+
+def v_sidewalk1(cv, rng):
+    draw_crack(cv, crack_pts(rng, 17, 3, 1.2, 14, branch=0.4), 0.55, 0.18)
+    draw_crack(cv, crack_pts(rng, 3, 25, -0.2, 11, branch=0.2), 0.55, 0.18)
+    butt(cv, rng.randint(6, 10), rng.randint(5, 10))
+    butt(cv, rng.randint(20, 24), rng.randint(20, 26), horiz=False)
+
+
+def v_sidewalk2(cv, rng):
+    sx, sy = rng.randint(7, 10), rng.randint(19, 23)
+    for _ in range(5):     # dried spatter
+        stain(cv, rng, sx + rng.uniform(-3, 3), sy + rng.uniform(-2, 2), rng.uniform(0.9, 1.8), rng.uniform(0.8, 1.4),
+              hx('#2a2434'), 0.5, 0.0, 0.1)
+    for (dx, dy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (2, 0), (0, 2)]:
+        c = hx('#2a2434') if abs(dx) + abs(dy) < 2 else hx('#5a5666')
+        cv.set(16 + dx, 16 + dy, c)
+    cv.set(17, 17, hx('#c8c4d0'))
+    for c_ in [hx('#e07a2a'), hx('#c8442a'), hx('#e8b83a')]:
+        leaf(cv, rng.randint(19, 24), rng.randint(4, 12), c_, rng)
+
+
+# ---- neon dance floor ---------------------------------------------------------
+
+NEON_PINK, NEON_CYAN = hx('#ff2a6d'), hx('#05d9e8')
+
+
+def neon_line_px(x, y):
+    """Colour of the glowing grid line at (x, y), or None."""
+    gx, gy = x % 16, y % 16
+    if gx == 0 and gy == 0:
+        return hx('#fff4ff')
+    if gx == 0:
+        return lt(NEON_CYAN, 0.35) if gy in (1, 15) else mix(NEON_CYAN, hx('#ffffff'), 0.25)
+    if gy == 0:
+        return lt(NEON_PINK, 0.35) if gx in (1, 15) else mix(NEON_PINK, hx('#ffffff'), 0.2)
+    return None
 
 
 def t_neon(cv, rng):
-    cells = [[hx(rng.choice(['#140a24', '#1a0c2e', '#100a20', '#1c0e30'])) for _ in range(2)] for _ in range(2)]
-    pink, cyan = hx('#ff2a6d'), hx('#05d9e8')
+    panels = [[hx(rng.choice(['#170a2c', '#1c0c34', '#140826', '#200e3a'])) for _ in range(2)] for _ in range(2)]
     for y in range(32):
         for x in range(32):
-            c = cells[y // 16][x // 16]
-            if rng.random() < 0.08:
-                c = shift(c, 6)
             gx, gy = x % 16, y % 16
-            if gx in (1, 15):
-                c = mix(c, cyan, 0.18)
-            if gy in (1, 15):
-                c = mix(c, pink, 0.18)
-            if gx == 0:
-                c = cyan
-            if gy == 0:
-                c = pink if gx != 0 else hx('#ffe8ff')
+            c = panels[y // 16][x // 16]
+            c = mix(c, hx('#3a1a66'), 0.22 * max(0.0, 1.0 - (gx + gy) / 16.0))
+            if 3 <= gx <= 13 and 3 <= gy <= 13 and (gx - gy) in (4, 5) and gx + gy < 24:
+                c = mix(c, hx('#5a3a9a'), 0.35)
+            if rng.random() < 0.1:
+                c = shift(c, rng.choice([-5, 6]))
+            dxl, dyl = min(gx, 16 - gx), min(gy, 16 - gy)
+            c = mix(c, NEON_CYAN, [0, 0.42, 0.18, 0.07][min(3, dxl)])
+            c = mix(c, NEON_PINK, [0, 0.42, 0.18, 0.07][min(3, dyl)])
+            if gx in (3, 13) and gy in (3, 13):
+                c = hx('#5a4a7a')
+            line = neon_line_px(x, y)
+            cv.set(x, y, line if line else c)
+
+
+def neon_glow():
+    cv = Cv(32, 32)
+    for y in range(32):
+        for x in range(32):
+            c = neon_line_px(x, y)
+            if c:
+                cv.set(x, y, c)
+    return cv
+
+
+def lit_panel(cv, px, py, col, hot):
+    for y in range(py * 16 + 2, py * 16 + 14):
+        for x in range(px * 16 + 2, px * 16 + 14):
+            d = max(abs(x + 0.5 - px * 16 - 8), abs(y + 0.5 - py * 16 - 8)) / 6.0
+            c = mix(hot, col, min(1.0, d * 1.1))
+            if bayer(x, y, d - 0.75):
+                c = dk(c, 0.3)
             cv.set(x, y, c)
 
+
+def v_neon1(cv, rng):
+    lit_panel(cv, *rng.choice([(0, 0), (1, 1)]), hx('#c0189a'), hx('#ff9ae0'))
+
+
+def v_neon2(cv, rng):
+    lit_panel(cv, 1, 0, hx('#0a8ab8'), hx('#9af6ff'))
+    pts = crack_pts(rng, 6, 22, 0.3, 9, margin=3, branch=0.6)
+    for (x, y) in pts:
+        if 2 <= x % 16 <= 14 and 2 <= y % 16 <= 14:
+            cv.set(x, y, hx('#b8a0e8'))
+
+
+# ---- wall tops ----------------------------------------------------------------
 
 def t_wall(cv, rng):
-    n = VNoise(32, 32, 8, rng)
-    base = hx('#d6caae')
+    n = fbm(rng, (16, 8, 4), (0.5, 0.3, 0.2))
+    cols = [hx('#a8949a'), hx('#c6b4b0'), hx('#dccabc'), hx('#ecdccc')]
     for y in range(32):
         for x in range(32):
-            c = shift(base, int((n(x, y) - 0.5) * 10))
-            if rng.random() < 0.1:
-                c = shift(c, rng.choice([-6, 5]))
+            c = pal(cols, n(x, y) * 1.2 - 0.05)
+            if bayer(x * 3 + y, y * 5 + x, 0.18):
+                c = dk(c, 0.07)
+            r = rng.random()
+            if r < 0.06:
+                c = dk(c, 0.12)
+            elif r < 0.12:
+                c = lt(c, 0.15)
             cv.set(x, y, c)
+    draw_crack(cv, crack_pts(rng, 20, 9, 2.2, 10, margin=None, branch=0.3), 0.18, 0.1)
 
 
 def t_brick(cv, rng):
-    mortar = hx('#2e1e1a')
-    cols = ['#5e261e', '#6a2c22', '#56221c', '#703024', '#4e201a']
+    mortar = hx('#3a2a3e')
+    cols = ['#8a2c24', '#9a3428', '#7a2620', '#a83e2a', '#6c2420', '#94301e']
     bricks = {}
     for y in range(32):
         row = y // 4
@@ -1670,16 +2203,790 @@ def t_brick(cv, rng):
             bx = ((x + off) % 32) // 8
             key = (row, bx)
             if key not in bricks:
-                bricks[key] = hx(rng.choice(cols))
-            if y % 4 == 3 or (x + off) % 8 == 7:
-                c = mortar
+                bricks[key] = hx('#4a2034') if rng.random() < 0.08 else hx(rng.choice(cols))
+            gx, gy = (x + off) % 8, y % 4
+            if gy == 3 or gx == 7:
+                c = jit(mortar, 6, rng)
+                if rng.random() < 0.12:
+                    c = hx('#5a4a5a')
             else:
                 c = bricks[key]
-                if y % 4 == 0:
-                    c = lt(c, 0.12)
-                if rng.random() < 0.12:
-                    c = shift(c, rng.choice([-8, 6]))
+                if gy == 0:
+                    c = lt(c, 0.2)
+                elif gy == 2:
+                    c = dk(c, 0.15)
+                if gx == 0:
+                    c = lt(c, 0.08)
+                elif gx == 6:
+                    c = dk(c, 0.1)
+                r = rng.random()
+                if r < 0.12:
+                    c = shift(c, -14)
+                elif r < 0.2:
+                    c = shift(c, 10)
             cv.set(x, y, c)
+
+
+FLOOR_TILES = [
+    ('wood', t_wood, v_wood1, v_wood2),
+    ('checker', t_checker, v_checker1, v_checker2),
+    ('tile_blue', t_tile_blue, v_tile_blue1, v_tile_blue2),
+    ('carpet_red', t_carpet_red, lambda cv, r: v_carpet1(cv, r, hx('#280418')), v_carpet2),
+    ('carpet_purple', t_carpet_purple, lambda cv, r: v_carpet1(cv, r, hx('#120624')), v_carpet2),
+    ('concrete', t_concrete, v_concrete1, v_concrete2),
+    ('grass', t_grass, v_grass1, v_grass2),
+    ('asphalt', t_asphalt, v_asphalt1, v_asphalt2),
+    ('asphalt_line', lambda cv, r: t_asphalt(cv, r, True), v_asphalt_line1, v_asphalt_line2),
+    ('dirt', t_dirt, v_dirt1, v_dirt2),
+    ('sidewalk', t_sidewalk, v_sidewalk1, v_sidewalk2),
+    ('neon_floor', t_neon, v_neon1, v_neon2),
+]
+WALL_TILES = [('wall', t_wall), ('brick', t_brick)]
+
+
+def tiles():
+    out = {}
+    for i, (name, base_fn, v1, v2) in enumerate(FLOOR_TILES):
+        base = Cv(32, 32)
+        base_fn(base, random.Random(500 + i))
+        out[name] = base
+        for k, fn in ((1, v1), (2, v2)):
+            cv = Cv(32, 32)
+            cv.img = base.img.copy()
+            cv.p = cv.img.load()
+            fn(cv, random.Random(700 + i * 10 + k))
+            for y in range(32):
+                for x in range(32):
+                    if not inside(x, y):
+                        assert cv.p[x, y] == base.p[x, y], '%s_v%d touches its border at %d,%d' % (name, k, x, y)
+            out['%s_v%d' % (name, k)] = cv
+    for i, (name, fn) in enumerate(WALL_TILES):
+        cv = Cv(32, 32)
+        fn(cv, random.Random(600 + i))
+        out[name] = cv
+    out['neon_floor_glow'] = neon_glow()
+    return out
+
+
+# --------------------------------------------------------------------------
+# Ragdoll segments (intact, they match each character's palette)
+# --------------------------------------------------------------------------
+
+def rag_torso(ch):
+    cv = Cv(14, 16)
+    k = ch['kind']
+    hx_, hy_ = 6.9, 5.9
+
+    def px(u, v, L):
+        i = tidx(L)
+        if u < -hx_ + 2.3:     # belt + top of the trousers
+            if u > -hx_ + 1.3:
+                if abs(v) < 0.9:
+                    return BRASS[3] if L > 0.6 else BRASS[2]
+                return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
+            return ch['pants'][i]
+        if u > hx_ - 1.3 and abs(v) < 1.3:
+            return ch['skin'][max(1, i)]      # neck
+        return chest_px(ch, u, v, L, hx_, hy_)
+    fill_shape(cv, 7.0, 8.0, hx_, hy_, px, ang=-math.pi / 2, kind='rect', bevel=2.2, corner=1.8, taper=0.2)
+    if k == 'thug':
+        for (x, y) in [(5, 6), (8, 6)]:
+            cv.set(x, y, ch['top'][3])    # lapels
+    if k == 'player':
+        cv.set(4, 9, hx('#ff2a6d'))       # pin badge
+    cv.outline()
+    return cv
+
+
+def rag_head(ch):
+    cv = Cv(9, 9)
+    hr = 3.5
+    fill_shape(cv, 4.5, 4.5, hr, hr, lambda u, v, L: head_top_px(ch, u, v, L, hr), pad=0.08)
+    k = ch['kind']
+    if k == 'player':
+        for (x, y) in [(1, 3), (1, 5), (2, 1), (2, 7)]:
+            cv.set(x, y, ch['hair'][1])
+        cv.set(7, 3, hx('#0e0a16'))
+        cv.set(7, 4, hx('#0e0a16'))
+        cv.set(7, 5, hx('#0e0a16'))
+        cv.set(7, 3, hx('#36e8f0'))
+    if k == 'brute':
+        cv.set(1, 4, ch['bandana'][1])
+        cv.set(0, 5, ch['bandana'][0])
+    cv.set(5, 0, ch['skin'][1])
+    cv.set(5, 8, ch['skin'][1])
+    cv.outline()
+    return cv
+
+
+def rag_arm(ch):
+    k = ch['kind']
+    s = ch['skin'] if k == 'brute' else ch['top']
+    pal_ = {'a': s[3], 'S': s[2], 'd': s[1], 'c': s[0], 'h': ch['skin'][3], 'H': ch['skin'][2], 'k': ch['skin'][1],
+            'w': WHITE[2], 'W': WHITE[1], 'r': ch.get('bandana', s)[2]}
+    rows = {'player': [".aSSSSSwHh.", ".dddddWWkk."],
+            'thug': [".aSSSSSwHh.", ".ddddddWkk."],
+            'heavy': [".aSSSSSSHh.", ".wwwwwwwkk."],
+            'brute': [".rSSSSSSHh.", ".rddddddkk."]}[k]
+    rows = ["..........."] + rows + ["..........."]
+    return ascii_cv(rows, pal_)
+
+
+def rag_leg(ch):
+    p, sh = ch['pants'], ch['shoe']
+    pal_ = {'P': p[3], 'p': p[2], 'q': p[1], 'Q': p[0], 'O': sh[3], 'o': sh[2], 'x': sh[1], 'X': sh[0],
+            's': WHITE[2]}
+    rows = [".............",
+            ".PppppppqOOo.",
+            ".pppppppqoox.",
+            ".qqqqqqqQxxX.",
+            "............."]
+    if ch['kind'] == 'heavy':
+        rows[1] = ".PpppppppOOo."
+        rows[2] = ".ssssssssoox."
+    return ascii_cv(rows, pal_)
+
+
+# --------------------------------------------------------------------------
+# Magazines, shell boxes and ammo pickups (+x = bullet tips)
+# --------------------------------------------------------------------------
+
+def mags():
+    out = {}
+    st = {'O': OUTLINE, 'L': STEEL_L[3], 'M': STEEL_L[1], 'D': STEEL[0], 'B': BRASS[3], 'b': BRASS[2],
+          'c': hx('#e07a3a'), 'K': hx('#0e0a14')}
+    out['mag_pistol'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "KKK"], st, ol=None)
+    out['mag_uzi'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "LMD", "LMD", "LMD", "KKK"], st, ol=None)
+    ak = ramp('#d0602a', 0.5, 0.25, 0.35)
+    out['mag_rifle'] = ascii_cv(["Obc.", "LMD.", "LMD.", "LMMD", ".LMD", ".LMD", ".LMD", ".LMD", ".KKK"],
+                                dict(st, L=ak[3], M=ak[2], D=ak[0]), ol=None)
+    pol = ramp('#3a3e2c', 0.4, 0.2, 0.45)
+    out['mag_sniper'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "KKK"], dict(st, L=pol[3], M=pol[2], D=pol[0]),
+                                 ol=None)
+    red = ramp('#e8303a', 0.5, 0.25, 0.3)
+    out['shells_box'] = ascii_cv(["OAAAAAAO",
+                                  "AbBbBbBR",
+                                  "ABbBbBbR",
+                                  "AyyyyyyR",
+                                  "ArrrrrrR",
+                                  "ORRRRRRO"], {'O': OUTLINE, 'A': red[3], 'r': red[2], 'R': red[0], 'b': BRASS[2],
+                                                'B': BRASS[3], 'y': hx('#f9c80e')}, ol=None)
+    # floor pickups: bright boxes with a label stripe
+    yel = ramp('#f9c80e', 0.5, 0.25, 0.45)
+    out['ammo_9mm'] = ascii_cv([".........",
+                                ".c.c.c.c.",
+                                ".AAAAAAA.",
+                                ".yyyyyyy.",
+                                ".KKKKKKK.",
+                                ".DDDDDDD.",
+                                "........."], {'A': yel[3], 'y': yel[2], 'D': yel[0], 'K': hx('#1a1020'),
+                                               'c': hx('#e07a3a')})
+    out['ammo_12g'] = ascii_cv([".........",
+                                ".BAAAAAa.",
+                                ".brrrrrR.",
+                                ".wwwwwww.",
+                                ".BAAAAAa.",
+                                ".brrrrrR.",
+                                "........."], {'A': red[3], 'a': red[2], 'r': red[2], 'R': red[0], 'B': BRASS[3],
+                                               'b': BRASS[1], 'w': hx('#f4f0ff')})
+    grn = ramp('#3ad06a', 0.5, 0.25, 0.4)
+    out['ammo_762'] = ascii_cv([".........",
+                                "...KKK...",
+                                ".AAAAAAA.",
+                                ".gggggGd.",
+                                ".yyyyyyd.",
+                                ".DDDDDDD.",
+                                "........."], {'A': grn[3], 'g': grn[2], 'G': grn[1], 'd': grn[1], 'D': grn[0],
+                                               'y': hx('#f9c80e'), 'K': hx('#2a2a34')})
+    ol_ = ramp('#7a8a3a', 0.5, 0.25, 0.4)
+    out['ammo_rocket'] = ascii_cv(["............",
+                                   ".Kk......r..",
+                                   ".KAAAAyAArRr",
+                                   ".KgggggyggRR",
+                                   ".Kk......R..",
+                                   "............"], {'A': ol_[3], 'g': ol_[1], 'y': hx('#ff6b1a'), 'r': hx('#ff5a4a'),
+                                                     'R': hx('#c8202a'), 'K': hx('#2a2430'), 'k': hx('#4a4458')})
+    return out
+
+
+# --------------------------------------------------------------------------
+# Vehicles (top-down, facing +x). Layout contract shared by car/car2/van:
+# windshield x 46..54 (van 62..70), rear window x 14..20, lights at the
+# front/back edges on y 5..9 and 27..31. Wheels are drawn by the game.
+# --------------------------------------------------------------------------
+
+GLASS = [hx('#0c1020'), hx('#141c34'), hx('#1e2c4c'), hx('#2c4068')]
+HEAD_C, HEAD_GLOW = hx('#fff4d6'), (255, 240, 205, 255)
+TAIL_C, TAIL_GLOW = hx('#ff2a3a'), (255, 36, 48, 255)
+
+
+def car_body(cv, W, cy, hw, body, x0, x1, cr_rear, cr_front, flat=0.0):
+    for y in range(cv.h):
+        for x in range(x0, x1 + 1):
+            v = y + 0.5 - cy
+            if abs(v) > hw:
+                continue
+            u_r, u_f = x - x0, x1 - x
+            cr = cr_rear if u_r < u_f else cr_front
+            ex = cr - min(u_r, u_f) - 0.5
+            ey = abs(v) - (hw - cr)
+            if ex > 0 and ey > 0 and ex * ex + ey * ey > cr * cr:
+                continue
+            nv = v / hw
+            edge = max(0.0, 1.0 - min(u_r, u_f) / 4.0)
+            L = light((-edge if u_r < u_f else edge) * 0.7, math.copysign(abs(nv) ** (3 + flat), v) * 0.95)
+            cv.set(x, y, tone(body, L))
+
+
+def glass_px(x, y, x0, x1, y0, y1, streaks=True):
+    t = (y - y0) / max(1, y1 - y0)
+    c = pal(GLASS, 0.9 - t * 0.8 + (x - x0) / max(1, x1 - x0) * 0.25)
+    if streaks:
+        s = (x - x0) + (y - y0) * 0.3
+        if 2.0 <= s < 3.0 or 4.0 <= s < 4.6:
+            c = mix(c, hx('#7ad8f0'), 0.5)
+        elif 8.0 <= s < 9.0:
+            c = mix(c, hx('#ff7ab4'), 0.4)
+    return c
+
+
+def windshield(cv, x0, x1, cy, h0, h1, body):
+    for x in range(x0, x1 + 1):
+        half = h0 + (h1 - h0) * (x - x0) / max(1, x1 - x0)
+        ya, yb = int(math.ceil(cy - half)), int(math.floor(cy + half - 0.01))
+        for y in range(ya, yb + 1):
+            c = glass_px(x, y, x0, x1, ya, yb)
+            if y in (ya, yb) or x == x0:
+                c = body[0]
+            cv.set(x, y, c)
+    cv.set(x0 + 2, int(cy - h0) + 2, hx('#e8f8ff'))
+
+
+def rear_window(cv, x0, x1, cy, half, body, louvres=False):
+    for x in range(x0, x1 + 1):
+        h = half - (x1 - x) * 0.25
+        ya, yb = int(math.ceil(cy - h)), int(math.floor(cy + h - 0.01))
+        for y in range(ya, yb + 1):
+            c = glass_px(x, y, x0, x1, ya, yb, streaks=False)
+            if y in (ya, yb) or x == x1:
+                c = body[0]
+            elif louvres and x % 2 == 0:
+                c = mix(c, body[1], 0.55)
+            cv.set(x, y, c)
+    cv.set(x1 - 2, int(cy - half) + 2, hx('#7ad8f0'))
+
+
+def lamps(cv, gl, xs, ys_list, col, glow, frame):
+    for ys in ys_list:
+        for y in range(ys[0], ys[1] + 1):
+            for x in range(xs[0], xs[1] + 1):
+                edge = y in ys and x == xs[0]
+                c = frame if edge else (lt(col, 0.45) if y == ys[0] + 1 or (y - ys[0] + x) % 4 == 0 else col)
+                cv.set(x, y, c)
+                if not edge:
+                    gl.set(x, y, glow)
+
+
+def mirror(cv, x, y, body):
+    cv.set(x, y, body[3])
+    cv.set(x + 1, y, body[2])
+
+
+def p_car():
+    cv, gl = Cv(76, 36), Cv(76, 36)
+    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
+    cy = 18.5
+    car_body(cv, 76, cy, 15.5, body, 1, 74, 3.0, 4.5)
+    mirror(cv, 45, 2, body)
+    mirror(cv, 45, 34, body)
+    for x in range(21, 46):   # roof + side glass
+        for y in range(6, 31):
+            dv = abs(y + 0.5 - cy)
+            if dv > 10.3:
+                cv.set(x, y, GLASS[2] if y < cy else GLASS[0])
+                if y == 6 and x % 5 == 0:
+                    cv.set(x, y, hx('#5aa8d8'))
+            elif dv > 9.3:
+                cv.set(x, y, body[0])
+            else:
+                cv.set(x, y, body[3] if y < cy - 6 else body[2] if y < cy + 5 else body[1])
+    for x in range(26, 42):
+        cv.set(x, 11, lt(body[3], 0.3) if x < 34 else body[3])
+    rear_window(cv, 14, 20, cy, 11.0, body, louvres=True)
+    windshield(cv, 46, 54, cy, 11.0, 13.5, body)
+    for y in (12, 25):     # hood creases
+        for x in range(56, 71):
+            cv.set(x, y, body[1] if y > cy else body[3])
+            cv.set(x, y + 1, body[0] if y > cy else body[1])
+    for x in range(57, 64, 2):    # hood louvres
+        for y in range(15, 23):
+            cv.set(x, y, hx('#2a0a1c'))
+            cv.set(x + 1, y, body[3])
+    for x in range(5, 12, 3):     # engine cover slats behind the cabin
+        for y in range(10, 27):
+            cv.set(x, y, body[1])
+    for x in range(4, 72):        # cyan pin stripes
+        cv.set(x, 4, NEON_CYAN)
+        cv.set(x, 32, dk(NEON_CYAN, 0.25))
+    for x in (24, 45):
+        for y in (3, 4, 5, 31, 32, 33):
+            cv.set(x, y, body[0])
+    cv.outline()
+    for y in range(10, 27):       # rear light bar + front grille
+        cv.set(1, y, hx('#5a0a1c') if y % 2 else hx('#2a0612'))
+        cv.set(2, y, hx('#7a1024') if y % 2 else hx('#3a0818'))
+        cv.set(74, y, hx('#1a1424') if y % 2 else hx('#6a6478'))
+    lamps(cv, gl, (72, 74), [(5, 9), (27, 31)], HEAD_C, HEAD_GLOW, hx('#c8c8d8'))
+    lamps(cv, gl, (1, 2), [(5, 9), (27, 31)], TAIL_C, TAIL_GLOW, hx('#7a0818'))
+    return cv, gl
+
+
+def p_car2():
+    cv, gl = Cv(76, 36), Cv(76, 36)
+    body = ramp('#e8ecf4', 0.5, 0.24, 0.25)
+    teal, purp = NEON_CYAN, hx('#7a1fa2')
+    cy = 18.5
+    car_body(cv, 76, cy, 15.5, body, 1, 74, 2.5, 3.5, flat=1.0)
+    mirror(cv, 46, 2, body)
+    mirror(cv, 46, 34, body)
+    for x in range(21, 46):   # T-top roof: smoked glass panels around a white bar
+        for y in range(6, 31):
+            dv = abs(y + 0.5 - cy)
+            if dv > 10.3:
+                cv.set(x, y, GLASS[1])
+            elif dv > 9.3 or x in (21, 45):
+                cv.set(x, y, body[1])
+            elif dv < 1.6:
+                cv.set(x, y, body[3] if y < cy else body[2])
+            else:
+                c = glass_px(x, y, 21, 45, 6, 30, streaks=False)
+                if (x - 21) + (y - 6) * 0.7 in (9, 10) or (x - 21) - (y - 6) * 0.3 == 14:
+                    c = mix(c, hx('#a0e8ff'), 0.5)
+                cv.set(x, y, c)
+    rear_window(cv, 14, 20, cy, 11.0, body)
+    windshield(cv, 46, 54, cy, 11.0, 13.5, body)
+    for x in list(range(3, 14)) + list(range(55, 72)):   # twin racing stripes
+        for y in (15, 16, 21, 22):
+            cv.set(x, y, teal if y in (15, 21) else dk(teal, 0.25))
+    for x in range(56, 64, 2):
+        for y in (8, 9, 10, 27, 28, 29):
+            cv.set(x, y, dk(body[0], 0.4))
+    for x in range(4, 72):
+        cv.set(x, 5, purp)
+        cv.set(x, 31, dk(purp, 0.2))
+    for y in range(5, 32):        # rear wing
+        cv.set(4, y, hx('#2a2434'))
+        cv.set(5, y, hx('#4a4458') if y % 4 else hx('#2a2434'))
+    for x in (25, 46):
+        for y in (3, 4, 32, 33):
+            cv.set(x, y, body[0])
+    cv.outline()
+    for y in range(10, 27):
+        cv.set(1, y, hx('#2a2434'))
+        cv.set(2, y, hx('#5a1028') if y % 3 else hx('#2a2434'))
+        cv.set(74, y, hx('#2a2434') if y % 2 else hx('#9a96aa'))
+    lamps(cv, gl, (72, 74), [(5, 9), (27, 31)], HEAD_C, HEAD_GLOW, hx('#2a2434'))
+    for y in (7, 29):
+        cv.set(73, y, hx('#2a2434'))
+        gl.set(73, y, CLEAR)
+    lamps(cv, gl, (1, 2), [(5, 9), (27, 31)], TAIL_C, TAIL_GLOW, hx('#3a0818'))
+    return cv, gl
+
+
+def p_van():
+    cv, gl = Cv(84, 38), Cv(84, 38)
+    body = ramp('#e2d2b0', 0.5, 0.26, 0.3)
+    cy = 19.0
+    car_body(cv, 84, cy, 16.0, body, 1, 82, 2.0, 5.0, flat=1.5)
+    mirror(cv, 63, 2, body)
+    mirror(cv, 63, 35, body)
+    sunset = [hx('#f9c80e'), hx('#ff6b1a'), hx('#ff2a6d'), hx('#7a1fa2')]
+    for x in range(3, 62):    # roof panel with ribs
+        for y in range(8, 31):
+            c = body[2] if y > 9 else body[3]
+            if y == 30:
+                c = body[1]
+            if x % 6 == 0 and 4 < x < 60:
+                c = body[1]
+            elif x % 6 == 1 and 4 < x < 60:
+                c = body[3]
+            cv.set(x, y, c)
+    for i, col in enumerate(sunset):   # sunset side stripes
+        for x in range(3, 70 - i * 2):
+            cv.set(x, 4 + i, col)
+            cv.set(x, 33 - i, dk(col, 0.2))
+    for x in range(29, 41):   # smoked roof hatch
+        for y in range(14, 25):
+            c = pal(GLASS, 0.8 - (y - 14) / 10 * 0.55)
+            if x in (29, 40) or y in (14, 24):
+                c = hx('#4a4458') if (x == 40 or y == 24) else hx('#8a849a')
+            elif (x - 29) + (y - 14) * 0.5 in (4, 4.5, 5):
+                c = mix(c, hx('#a0e8ff'), 0.5)
+            cv.set(x, y, c)
+    for y in (11, 27):        # roof rack rails + rungs
+        for x in range(7, 24):
+            cv.set(x, y, hx('#5a546a'))
+            cv.set(x, y + 1, hx('#2a2434'))
+    for x in (8, 14, 20):
+        for y in range(12, 27):
+            cv.set(x, y, hx('#5a546a'))
+            cv.set(x + 1, y, hx('#2a2434'))
+    windshield(cv, 62, 70, cy, 12.5, 14.4, body)
+    for x in range(73, 80):
+        cv.set(x, 18, body[3])
+        cv.set(x, 19, body[1])
+    for y in range(4, 34):
+        cv.set(2, y, body[1])
+    for x in range(1, 4):
+        cv.set(x, 18, body[0])
+    for x in (45, 61):
+        for y in (3, 4, 33, 34):
+            cv.set(x, y, body[0])
+    cv.outline()
+    for y in range(11, 26):
+        cv.set(81, y, hx('#1a1424') if y % 2 else hx('#a8a4b8'))
+        cv.set(82, y, hx('#2a2434'))
+    lamps(cv, gl, (80, 82), [(5, 9), (27, 31)], HEAD_C, HEAD_GLOW, hx('#c8c8d8'))
+    lamps(cv, gl, (1, 2), [(5, 9), (27, 31)], TAIL_C, TAIL_GLOW, hx('#7a0818'))
+    return cv, gl
+
+
+def p_car_tire():
+    cv = Cv(9, 5)
+    for y in range(5):
+        for x in range(9):
+            if (x in (0, 8)) and (y in (0, 4)):
+                continue
+            c = hx('#2a2634') if (x + (y > 2)) % 2 else hx('#16121e')
+            if y == 0 or x == 0:
+                c = hx('#3e3a4a') if x % 2 else hx('#2a2634')
+            cv.set(x, y, c)
+    for (x, y, c) in [(3, 1, '#d8dce8'), (4, 1, '#f4f6ff'), (5, 1, '#a8acc0'), (3, 2, '#a8acc0'),
+                      (4, 2, '#5a5e70'), (5, 2, '#8a8ea0'), (3, 3, '#8a8ea0'), (4, 3, '#6a6e80'), (5, 3, '#5a5e70')]:
+        cv.set(x, y, hx(c))
+    return cv
+
+
+def p_car_hood():
+    cv = Cv(20, 30)
+    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
+    for y in range(1, 29):
+        for x in range(1, 19):
+            k = 0.5 + 0.5 * math.sin((x + y * 0.6) * 0.45)
+            bend = (x + 0.6 * y) - 20.0
+            c = body[2] if k > 0.35 else body[1]
+            if y < 4:
+                c = body[3]
+            if -1.0 < bend < 0.6:
+                c = body[3]
+            elif 0.6 <= bend < 2.0:
+                c = body[0]
+            cv.set(x, y, c)
+    for y in (8, 21):
+        for x in range(3, 17):
+            cv.set(x, y, body[1] if y > 15 else body[3])
+    for x in range(4, 11, 2):
+        for y in range(11, 18):
+            cv.set(x, y, hx('#2a0a1c'))
+    for (x, y) in [(1, 1), (18, 1), (18, 2), (17, 28), (18, 28), (18, 27), (1, 28)]:
+        cv.set(x, y, CLEAR)
+    cv.set(15, 26, hx('#9a96aa'))
+    cv.outline()
+    return cv
+
+
+def p_car_door():
+    cv = Cv(18, 4)
+    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
+    for x in range(1, 17):
+        cv.set(x, 0, body[3])
+        cv.set(x, 1, body[2])
+        cv.set(x, 2, GLASS[2] if 3 < x < 14 else body[1])
+        cv.set(x, 3, body[0])
+    cv.set(0, 1, OUTLINE)
+    cv.set(0, 2, OUTLINE)
+    cv.set(17, 1, OUTLINE)
+    cv.set(17, 2, OUTLINE)
+    cv.set(13, 1, hx('#e8e8f4'))
+    cv.set(5, 0, NEON_CYAN)
+    cv.set(6, 0, NEON_CYAN)
+    cv.set(7, 0, NEON_CYAN)
+    return cv
+
+
+# --------------------------------------------------------------------------
+# Street props and neon
+# --------------------------------------------------------------------------
+
+def p_palm_tree():
+    S = 56
+    cv = Cv(S, S)
+    rng = random.Random(31)
+    c0 = S / 2
+    layers = []
+    for layer in range(2):
+        n = 8 if layer == 0 else 7
+        for i in range(n):
+            a = i * 2 * math.pi / n + (0.45 if layer else 0.0) + rng.uniform(-0.18, 0.18)
+            ln = rng.uniform(22.0, 26.0) if layer == 0 else rng.uniform(17.0, 21.0)
+            layers.append((layer, a, ln, rng.uniform(-0.35, 0.35)))
+    greens = [ramp('#1c6a34', 0.6, 0.35, 0.2), ramp('#2c9a34', 0.55, 0.3, 0.22)]
+    for (layer, a, ln, bend) in layers:
+        fr = Cv(S, S)
+        pts = []
+        for k in range(20):
+            t = k / 19.0
+            aa = a + bend * t * t
+            r = 2.0 + ln * t
+            pts.append((c0 + math.cos(aa) * r, c0 + math.sin(aa) * r))
+        g = greens[layer]
+        for y in range(S):
+            for x in range(S):
+                px_, py_ = x + 0.5, y + 0.5
+                best = None
+                for k in range(19):
+                    ax, ay = pts[k]
+                    bx, by = pts[k + 1]
+                    dx, dy = bx - ax, by - ay
+                    ll = dx * dx + dy * dy
+                    tt = max(0.0, min(1.0, ((px_ - ax) * dx + (py_ - ay) * dy) / ll))
+                    d = math.hypot(px_ - ax - tt * dx, py_ - ay - tt * dy)
+                    if best is None or d < best[0]:
+                        side = ((px_ - ax) * dy - (py_ - ay) * dx) / math.sqrt(ll)
+                        best = (d, (k + tt) / 19.0, side)
+                d, t, side = best
+                w = 5.6 * math.sin(math.pi * min(1.0, t * 0.95 + 0.05)) ** 0.6 * (1.0 - 0.3 * t)
+                if d > w or t > 0.995 or t < 0.06:
+                    continue
+                q = t * ln - abs(side) * 1.25
+                fr_ = q / 2.0 - math.floor(q / 2.0)
+                if abs(side) < 0.75:
+                    c = hx('#b8c84a') if t > 0.12 else hx('#7a6a3a')
+                else:
+                    if fr_ > 0.62:
+                        continue                      # gap between two leaflets
+                    lit = side * (math.sin(a) * LX - math.cos(a) * LY) > 0
+                    c = g[3] if lit else g[1]
+                    if fr_ < 0.2 and lit:
+                        c = g[2]
+                if layer == 0:
+                    c = dk(c, 0.25)
+                fr.set(x, y, c)
+        fr.outline(hx('#081a14'))
+        cv.over(fr)
+    trunk = Cv(S, S)
+    fill_shape(trunk, c0, c0, 3.6, 3.6, lambda u, v, L: tone(ramp('#6a4228', 0.5, 0.25, 0.35), L))
+    for (dx, dy) in [(-2.2, 1.2), (1.6, -2.0), (2.0, 1.8)]:
+        fill_shape(trunk, c0 + dx, c0 + dy, 1.5, 1.5, lambda u, v, L: tone(ramp('#5a3a1a', 0.45, 0.2, 0.4), L))
+    trunk.outline(hx('#1a0c10'))
+    cv.over(trunk)
+    return cv
+
+
+def p_streetlight():
+    cv, gl = Cv(14, 10), Cv(14, 10)
+    m = ramp('#5a5a72', 0.5, 0.25, 0.4)
+    for x in range(0, 4):
+        cv.set(x, 4, m[2])
+        cv.set(x, 5, m[1])
+    fill_shape(cv, 8.5, 5.0, 4.6, 3.9, lambda u, v, L: tone(m, L), kind='super', p=2.6)
+    for x in range(6, 12):
+        cv.set(x, 2, m[3])
+    for y in range(4, 7):
+        for x in range(6, 12):
+            c = hx('#fff8e0') if 7 <= x <= 10 and y == 5 else hx('#ffd27a')
+            cv.set(x, y, c)
+            gl.set(x, y, (255, 236, 180, 255) if c == hx('#fff8e0') else (255, 200, 110, 230))
+    cv.outline()
+    cv.set(0, 4, m[2])
+    cv.set(0, 5, m[1])
+    return cv, gl
+
+
+class Neon:
+    """Collects 1 px neon tubes, then renders halo + tube on the sprite and the glow map."""
+
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+        self.px = {}
+
+    def dot(self, x, y, col):
+        self.px[(int(x), int(y))] = col
+
+    def line(self, pts, col):
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            n = int(max(abs(bx - ax), abs(by - ay))) + 1
+            for k in range(n + 1):
+                t = k / n
+                self.dot(round(ax + (bx - ax) * t), round(ay + (by - ay) * t), col)
+
+    def arc(self, cx, cy, r, a0, a1, col, ry=None):
+        ry = ry or r
+        n = int(abs(a1 - a0) * max(r, ry) * 1.5) + 2
+        for k in range(n + 1):
+            a = a0 + (a1 - a0) * k / n
+            self.dot(round(cx + math.cos(a) * r - 0.5), round(cy + math.sin(a) * ry - 0.5), col)
+
+    def render(self, cv, gl):
+        for (x, y), col in self.px.items():
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    q = (x + dx, y + dy)
+                    if q not in self.px and cv.on(*q, 1):
+                        cv.set(*q, mix(cv.get(*q), col, 0.32 if dx == 0 or dy == 0 else 0.18))
+        for (x, y), col in self.px.items():
+            cv.set(x, y, lt(col, 0.35))
+            gl.set(x, y, lt(col, 0.2))
+
+
+def sign_backing(w, h):
+    cv = Cv(w, h)
+    bk = ramp('#1e1030', 0.4, 0.2, 0.3)
+    fill_shape(cv, w / 2, h / 2, w / 2 - 1, h / 2 - 1, lambda u, v, L: tone(bk, L), kind='rect', bevel=1.2, corner=1.5)
+    for (x, y) in [(2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3)]:
+        cv.set(x, y, hx('#5a4a6a'))
+    cv.outline()
+    return cv
+
+
+def p_neon_sign_palm():
+    cv, gl = sign_backing(40, 14), Cv(40, 14)
+    ne = Neon(40, 14)
+    pink, cyan, orange, yel = NEON_PINK, NEON_CYAN, hx('#ff6b1a'), hx('#f9c80e')
+    ne.arc(27.5, 10.5, 6.5, math.pi, 2 * math.pi, orange)       # sun
+    for (y, half, col) in [(6, 4, yel), (8, 5, orange)]:
+        ne.line([(27 - half + 1, y), (27 + half, y)], col)
+    ne.line([(4, 11), (36, 11)], pink)                            # horizon
+    ne.line([(10, 10), (11, 7), (12, 4)], cyan)                   # palm trunk
+    for (pts) in [[(12, 4), (9, 3), (6, 5)], [(12, 4), (15, 3), (18, 5)], [(12, 4), (10, 6), (8, 8)],
+                  [(12, 4), (14, 6), (16, 8)], [(12, 4), (12, 2)]]:
+        ne.line(pts, cyan if pts[-1][1] != 2 else hx('#3aff8a'))
+    ne.render(cv, gl)
+    return cv, gl
+
+
+FONT_BAR = {
+    'B': ["#####.", "#....#", "#....#", "#####.", "#....#", "#....#", "#....#", "#####."],
+    'A': [".####.", "#....#", "#....#", "#....#", "######", "#....#", "#....#", "#....#"],
+    'R': ["#####.", "#....#", "#....#", "#####.", "#..#..", "#...#.", "#....#", "#....#"],
+}
+
+
+def p_neon_sign_bar():
+    cv, gl = sign_backing(44, 14), Cv(44, 14)
+    ne = Neon(44, 14)
+    x0 = 16
+    for ch in 'BAR':
+        for y, row in enumerate(FONT_BAR[ch]):
+            for x, c in enumerate(row):
+                if c == '#':
+                    ne.dot(x0 + x, 3 + y, NEON_PINK)
+        x0 += 8
+    # cocktail glass
+    ne.line([(4, 3), (12, 3), (8, 7), (4, 3)], NEON_CYAN)
+    ne.line([(8, 7), (8, 10)], NEON_CYAN)
+    ne.line([(6, 10), (10, 10)], NEON_CYAN)
+    ne.dot(10, 2, hx('#3aff8a'))
+    ne.dot(11, 1, hx('#3aff8a'))
+    ne.dot(7, 4, hx('#f9c80e'))
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_arrow():
+    cv, gl = sign_backing(30, 12), Cv(30, 12)
+    ne = Neon(30, 12)
+    yel = hx('#f9c80e')
+    ne.line([(3, 4), (18, 4), (18, 2), (26, 6), (18, 9), (18, 7), (3, 7), (3, 4)], yel)
+    ne.render(cv, gl)
+    for x in range(5, 18, 3):
+        for y in (5, 6):
+            cv.set(x, y, lt(NEON_PINK, 0.3))
+            gl.set(x, y, NEON_PINK)
+    return cv, gl
+
+
+def p_jukebox():
+    cv, gl = Cv(20, 14), Cv(20, 14)
+    wood = ramp('#5a1a4a', 0.5, 0.25, 0.35)
+    fill_shape(cv, 10.0, 7.0, 9.0, 6.0, lambda u, v, L: tone(wood, L), kind='rect', bevel=1.5, corner=2.6)
+    bands = [NEON_PINK, hx('#ff6b1a'), hx('#f9c80e'), NEON_CYAN]
+    for i, col in enumerate(bands):     # glowing dome bands, back to front
+        y = 2 + i
+        for x in range(3 - (i == 0), 17 + (i == 0)):
+            c = lt(col, 0.3) if (x + i) % 5 else lt(col, 0.6)
+            cv.set(x, y, c)
+            gl.set(x, y, lt(col, 0.15))
+    for x in range(3, 17):
+        cv.set(x, 6, hx('#c8c8dc') if x % 2 else hx('#8a8aa0'))
+    for y in range(7, 12):
+        for x in range(4, 16):
+            c = hx('#2a1a30') if (x + y) % 2 else hx('#4a3a50')
+            cv.set(x, y, c)
+    for y in range(3, 12):
+        for x in (2, 17):
+            cv.set(x, y, lt(NEON_CYAN, 0.2) if y > 5 else cv.get(x, y))
+            if y > 5:
+                gl.set(x, y, NEON_CYAN)
+    for (x, col) in [(6, NEON_PINK), (8, hx('#f9c80e')), (11, NEON_CYAN), (13, hx('#3aff8a'))]:
+        cv.set(x, 11, col)
+        gl.set(x, 11, col)
+    cv.outline()
+    return cv, gl
+
+
+def p_hydrant():
+    cv = Cv(8, 8)
+    red = ramp('#e02a30', 0.55, 0.28, 0.35)
+    fill_shape(cv, 1.9, 4.0, 1.0, 1.2, lambda u, v, L: tone(ramp('#c8c8d8'), L))
+    fill_shape(cv, 6.1, 4.0, 1.0, 1.2, lambda u, v, L: tone(ramp('#c8c8d8'), L))
+    fill_shape(cv, 4.0, 4.0, 2.7, 2.7, lambda u, v, L: tone(red, L))
+    fill_shape(cv, 4.0, 4.0, 1.4, 1.4, lambda u, v, L: tone(ramp('#f9c80e', 0.5, 0.2, 0.4), L))
+    cv.set(3, 3, hx('#fff8d0'))
+    cv.outline()
+    return cv
+
+
+def p_bench():
+    cv = Cv(36, 12)
+    w = ramp('#b8682e', 0.5, 0.25, 0.35)
+    iron = ramp('#3a3a4c', 0.4, 0.2, 0.45)
+    rng = random.Random(41)
+    for (y0, y1) in [(1, 2), (4, 6), (8, 10)]:
+        for y in range(y0, y1 + 1):
+            for x in range(2, 34):
+                c = w[3] if y == y0 else w[1] if y == y1 else w[2]
+                if rng.random() < 0.12:
+                    c = shift(c, rng.choice([-10, 8]))
+                cv.set(x, y, c)
+    for x0 in (1, 32):
+        for y in range(1, 11):
+            cv.set(x0, y, iron[3] if y < 4 else iron[2])
+            cv.set(x0 + 1, y, iron[1])
+            cv.set(x0 + 2, y, iron[0])
+    for x in (12, 23):
+        cv.set(x, 5, iron[2])
+        cv.set(x, 9, iron[2])
+    cv.outline()
+    return cv
+
+
+# --------------------------------------------------------------------------
+# Glow maps for existing props
+# --------------------------------------------------------------------------
+
+def is_neon(c, sat=110, val=190):
+    return c[3] > 0 and max(c[:3]) - min(c[:3]) >= sat and max(c[:3]) >= val
+
+
+def glow_from(cv, pred):
+    gl = Cv(cv.w, cv.h)
+    for y in range(cv.h):
+        for x in range(cv.w):
+            c = cv.get(x, y)
+            if pred(x, y, c):
+                gl.set(x, y, c)
+    return gl
 
 
 # --------------------------------------------------------------------------
@@ -1758,45 +3065,62 @@ def build():
     out[('characters', 'gib_eye')] = gib_eye()
     for name, cv in weapons().items():
         out[('weapons', name)] = cv
+    for i, (cid, ch) in enumerate(CHARS.items()):
+        out[('characters', cid + '_rag_torso')] = rag_torso(ch)
+        out[('characters', cid + '_rag_head')] = rag_head(ch)
+        out[('characters', cid + '_rag_arm')] = rag_arm(ch)
+        out[('characters', cid + '_rag_leg')] = rag_leg(ch)
+    for name, cv in mags().items():
+        out[('weapons', name)] = cv
     props = dict(table=p_table, table_round=p_table_round, desk=p_desk, chair=p_chair, armchair=p_armchair,
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
                  barrel=p_barrel, bookshelf=p_bookshelf, speaker=p_speaker, dj_booth=p_dj_booth,
-                 bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can)
+                 bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can,
+                 car2=p_car2, van=p_van, car_tire=p_car_tire, car_hood=p_car_hood, car_door=p_car_door,
+                 palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
+                 neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
+                 hydrant=p_hydrant, bench=p_bench)
     for name, fn in props.items():
-        out[('props', name)] = fn()
-    tiles = dict(
-        wood=lambda cv, r: t_wood(cv, r),
-        checker=t_checker, tile_blue=t_tile_blue,
-        carpet_red=lambda cv, r: t_carpet(hx('#5c1220'), hx('#741a2a'), r, cv, 'red'),
-        carpet_purple=lambda cv, r: t_carpet(hx('#2e1648'), hx('#44225e'), r, cv, 'purple'),
-        concrete=t_concrete, grass=t_grass, asphalt=lambda cv, r: t_asphalt(cv, r),
-        asphalt_line=lambda cv, r: t_asphalt(cv, r, True), dirt=t_dirt, sidewalk=t_sidewalk,
-        neon_floor=t_neon, wall=t_wall, brick=t_brick)
-    for i, (name, fn) in enumerate(tiles.items()):
-        out[('tiles', name)] = tile(fn, 500 + i)
+        r = fn()
+        if isinstance(r, tuple):   # (sprite, emissive map)
+            out[('props', name)], out[('props', name + '_glow')] = r
+        else:
+            out[('props', name)] = r
+    out[('props', 'dj_booth_glow')] = glow_from(out[('props', 'dj_booth')], lambda x, y, c: is_neon(c))
+    for name, cv in tiles().items():
+        out[('tiles', name)] = cv
     out[('structure', 'door')] = s_door()
     out[('structure', 'window')] = s_window()
     out[('structure', 'fence')] = s_fence()
     return out
 
 
-EXPECTED = {
-    'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
-        ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12))]]
-        + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
-    'weapons': dict(pistol=(11, 5), uzi=(12, 7), uzi_silenced=(18, 7), shotgun=(22, 5), rifle=(24, 7),
-                    sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), rocket=(9, 4),
-                    casing=(3, 2), shell=(4, 2)),
-    'props': dict(table=(40, 24), table_round=(28, 28), desk=(36, 22), chair=(12, 12), armchair=(18, 18),
+GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
+           'car', 'car2', 'van']
+PROP_SIZES = dict(table=(40, 24), table_round=(28, 28), desk=(36, 22), chair=(12, 12), armchair=(18, 18),
                   sofa=(44, 18), plant=(18, 18), tv=(24, 8), fridge=(22, 20), oven=(22, 20), sink=(24, 14),
                   toilet=(12, 16), bed=(30, 44), pool_table=(64, 36), arcade=(20, 16), crate=(18, 18),
                   barrel=(14, 14), bookshelf=(40, 10), speaker=(14, 14), dj_booth=(48, 18),
-                  bar_counter=(32, 14), car=(76, 36), dumpster=(36, 22), trash_can=(12, 12)),
-    'tiles': dict((n, (32, 32)) for n in ['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purple',
-                                          'concrete', 'grass', 'asphalt', 'asphalt_line', 'dirt', 'sidewalk',
-                                          'neon_floor', 'wall', 'brick']),
+                  bar_counter=(32, 14), car=(76, 36), dumpster=(36, 22), trash_can=(12, 12),
+                  car2=(76, 36), van=(84, 38), car_tire=(9, 5), car_hood=(20, 30), car_door=(18, 4),
+                  palm_tree=(56, 56), streetlight=(14, 10), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
+                  neon_sign_arrow=(30, 12), jukebox=(20, 14), hydrant=(8, 8), bench=(36, 12))
+FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
+EXPECTED = {
+    'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
+        ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
+        ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5))]]
+        + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
+    'weapons': dict(pistol=(11, 5), uzi=(12, 7), uzi_silenced=(18, 7), shotgun=(22, 5), rifle=(24, 7),
+                    sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), rocket=(9, 4),
+                    casing=(3, 2), shell=(4, 2), mag_pistol=(3, 6), mag_uzi=(3, 9), mag_rifle=(4, 9),
+                    mag_sniper=(3, 6), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
+                    ammo_rocket=(12, 6)),
+    'props': dict(list(PROP_SIZES.items()) + [(n + '_glow', PROP_SIZES[n]) for n in GLOWING]),
+    'tiles': dict([(n + s, (32, 32)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
+                  + [(n, (32, 32)) for n in ('wall', 'brick', 'neon_floor_glow')]),
     'structure': dict(door=(32, 5), window=(32, 4), fence=(32, 6)),
 }
 
