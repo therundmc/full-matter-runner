@@ -44,7 +44,8 @@ export default class Prop {
     const opts = {
       isStatic: !!d.static, angle, label: 'prop',
       frictionAir: 0.02, friction: 0.4, restitution: 0.1,
-      collisionFilter: { category: CAT.PROP, mask: MASK.PROP },
+      // hanging from the ceiling: nothing on the floor bumps into it
+      collisionFilter: { category: CAT.PROP, mask: d.hung ? 0 : MASK.PROP },
     };
     this.body = d.r ? Bodies.circle(x, y, d.r, opts) : Bodies.rectangle(x, y, d.w, d.h, opts);
     if (!d.static) {
@@ -290,7 +291,7 @@ export default class Prop {
   drawOverhead(ctx, player) {
     const p = this.body.position;
     const under = player && Math.hypot(player.x - p.x, player.y - p.y) < this.img.width * 0.45;
-    drawSprite(ctx, this.img, p.x + 5, p.y + 7, this.body.angle, 0.3);
+    if (!this.def.hung) drawSprite(ctx, this.img, p.x + 5, p.y + 7, this.body.angle, 0.3);
     drawSprite(ctx, this.look, p.x, p.y, this.body.angle, under ? 0.45 : 1);
   }
 }

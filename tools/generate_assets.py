@@ -2698,6 +2698,124 @@ def glow_from(cv, pred):
 
 
 # --------------------------------------------------------------------------
+# Light fixtures (the visible sources of the lighting pass). Each returns (sprite, emissive map).
+# Wall-mounted ones glow on their +y side (rotate the prop to face the room).
+# --------------------------------------------------------------------------
+
+HOT = hx('#fff6dc')
+
+
+def lamp_core(cv, gl, cx, cy, r):
+    """The bulb seen through the top of a shade."""
+    fill_shape(cv, cx, cy, r, r, lambda u, v, L: HOT)
+    fill_shape(gl, cx, cy, r, r, lambda u, v, L: (255, 246, 220, 200))
+
+
+def p_floor_lamp():
+    cv, gl = Cv(16, 16), Cv(16, 16)
+    foot = ramp('#3a3442', 0.5, 0.25, 0.4)
+    fill_shape(cv, 9.5, 9.5, 4.2, 4.2, lambda u, v, L: tone(foot, L))
+    shade = ramp('#c08a4c', 0.42, 0.2, 0.35)
+    ring(cv, 8.0, 8.0, 2.0, 6.3, lambda dx, dy, d: tone(shade, 0.3 + 0.75 * light(dx / d * 0.75, dy / d * 0.75)))
+    lamp_core(cv, gl, 8.0, 8.0, 1.7)
+    cv.outline()
+    ring(gl, 8.0, 8.0, 2.0, 6.3, lambda dx, dy, d: (255, 176, 96, int(70 - 8 * d)))
+    return cv, gl
+
+
+def p_table_lamp():
+    cv, gl = Cv(18, 18), Cv(18, 18)
+    wood = ramp('#6a4026', 0.45, 0.22, 0.3)
+    fill_shape(cv, 9.0, 9.0, 8.0, 8.0, lambda u, v, L: tone(wood, L))
+    ring(cv, 9.0, 9.0, 6.6, 7.2, lambda dx, dy, d: wood[1])
+    shade = ramp('#d98a5a', 0.42, 0.2, 0.35)
+    ring(cv, 9.0, 9.0, 1.6, 5.0, lambda dx, dy, d: tone(shade, 0.3 + 0.75 * light(dx / d * 0.75, dy / d * 0.75)))
+    ring(cv, 9.0, 9.0, 5.0, 5.6, lambda dx, dy, d: dk(wood[0], 0.3))
+    lamp_core(cv, gl, 9.0, 9.0, 1.8)
+    cv.outline()
+    ring(gl, 9.0, 9.0, 1.6, 5.0, lambda dx, dy, d: (255, 170, 110, int(90 - 10 * d)))
+    return cv, gl
+
+
+def p_wall_lamp():
+    cv, gl = Cv(14, 7), Cv(14, 7)
+    cv.rect(2, 0, 11, 1, BRASS[1])
+    cv.rect(3, 0, 10, 0, BRASS[2])
+
+    def dome(u, v, L):
+        if v < 0:
+            return None
+        k = math.hypot(u / 5.0, v / 4.4)
+        return HOT if k < 0.5 else hx('#ffe2a8') if k < 0.82 else hx('#f0b868')
+    fill_shape(cv, 7.0, 2.0, 5.0, 4.4, dome)
+    cv.outline()
+    fill_shape(gl, 7.0, 2.0, 5.0, 4.4, lambda u, v, L: None if v < 0 else (255, 226, 170, 170 if math.hypot(u / 5.0, v / 4.4) < 0.82 else 90))
+    return cv, gl
+
+
+def tube_fixture(col, hot):
+    """Batten on the wall with a glowing tube under it."""
+    def make():
+        cv, gl = Cv(30, 5), Cv(30, 5)
+        m = ramp('#4a4858', 0.5, 0.25, 0.4)
+        cv.rect(0, 0, 29, 1, m[2])
+        cv.rect(0, 0, 29, 0, m[3])
+        for x0 in (0, 28):
+            cv.rect(x0, 0, x0 + 1, 3, m[1])
+        cv.rect(2, 2, 27, 2, hot)
+        cv.rect(2, 3, 27, 3, col)
+        cv.outline()
+        for x in range(2, 28):
+            cv.set(x, 4, alpha(col, 120))
+            gl.set(x, 2, hot)
+            gl.set(x, 3, col)
+            gl.set(x, 4, alpha(col, 120))
+        return cv, gl
+    return make
+
+
+def p_ceiling_lamp():
+    cv, gl = Cv(18, 18), Cv(18, 18)
+    enamel = ramp('#2f5a48', 0.5, 0.25, 0.4)
+    ring(cv, 9.0, 9.0, 2.2, 7.4, lambda dx, dy, d: tone(enamel, 0.25 + 0.85 * light(dx / d * 0.8, dy / d * 0.8)))
+    ring(cv, 9.0, 9.0, 6.6, 7.4, lambda dx, dy, d: tone(BRASS, light(dx / d * 0.9, dy / d * 0.9)))
+    lamp_core(cv, gl, 9.0, 9.0, 2.5)
+    cv.outline()
+    # light leaking under the rim
+    ring(gl, 9.0, 9.0, 7.0, 8.9, lambda dx, dy, d: (255, 214, 150, int(150 - 70 * (d - 7.0))))
+    return cv, gl
+
+
+def p_pool_lamp():
+    cv, gl = Cv(46, 12), Cv(46, 12)
+    enamel = ramp('#1f6a44', 0.5, 0.25, 0.4)
+    fill_shape(cv, 23.0, 6.0, 22.0, 5.0, lambda u, v, L: tone(enamel, L), kind='rect', bevel=3.0, corner=2.0)
+    for x in range(3, 43):
+        cv.set(x, 1, BRASS[2])
+        cv.set(x, 10, BRASS[1])
+    # vents over each bulb
+    for cx in (11, 23, 35):
+        cv.rect(cx - 3, 5, cx + 2, 6, HOT)
+        for x in range(cx - 3, cx + 3):
+            for y in (5, 6):
+                gl.set(x, y, (255, 246, 220, 200))
+    cv.outline()
+    for x in range(0, 46):
+        for y in (0, 11):
+            gl.set(x, y, (255, 214, 150, 110))
+    return cv, gl
+
+
+LIGHT_PROPS = dict(floor_lamp=p_floor_lamp, table_lamp=p_table_lamp, wall_lamp=p_wall_lamp,
+                   tube_light=tube_fixture(hx('#cfe6ff'), hx('#ffffff')),
+                   neon_tube_pink=tube_fixture(NEON_PINK, lt(NEON_PINK, 0.6)),
+                   neon_tube_cyan=tube_fixture(NEON_CYAN, lt(NEON_CYAN, 0.6)),
+                   ceiling_lamp=p_ceiling_lamp, pool_lamp=p_pool_lamp)
+LIGHT_SIZES = dict(floor_lamp=(16, 16), table_lamp=(18, 18), wall_lamp=(14, 7), tube_light=(30, 5),
+                   neon_tube_pink=(30, 5), neon_tube_cyan=(30, 5), ceiling_lamp=(18, 18), pool_lamp=(46, 12))
+
+
+# --------------------------------------------------------------------------
 # Structure
 # --------------------------------------------------------------------------
 
@@ -2796,6 +2914,8 @@ def build():
         else:
             out[('props', name)] = r
     out[('props', 'dj_booth_glow')] = glow_from(out[('props', 'dj_booth')], lambda x, y, c: is_neon(c))
+    for name, fn in LIGHT_PROPS.items():
+        out[('props', name)], out[('props', name + '_glow')] = fn()
     for name, cv in tiles().items():
         out[('tiles', name)] = cv
     out[('structure', 'door')] = s_door()
@@ -2815,6 +2935,8 @@ PROP_SIZES = dict(table=(40, 24), table_round=(28, 28), desk=(36, 22), chair=(12
                   palm_tree=(56, 56), streetlight=(14, 10), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
                   neon_sign_arrow=(30, 12), jukebox=(20, 14), hydrant=(8, 8), bench=(36, 12))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
+PROP_SIZES.update(LIGHT_SIZES)
+GLOWING += list(LIGHT_SIZES)
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
         ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),

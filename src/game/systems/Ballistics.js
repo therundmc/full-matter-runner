@@ -73,7 +73,7 @@ export function occlusion(world, x0, y0, x1, y1, target = null, origin = null) {
     if (segSeg(x0, y0, x1, y1, d.hx, d.hy, t.x, t.y) !== null) f *= 0.3;
   }
   for (const p of world.props) {
-    if (p === target || p === origin || p.dead || !(p.isVehicle || p.def.static || p.def.blocksPath)) continue;
+    if (p === target || p === origin || p.dead || p.def.hung || !(p.isVehicle || p.def.static || p.def.blocksPath)) continue;
     if (segPoly(x0, y0, x1, y1, p.body.vertices)) f *= 0.4;
   }
   for (const g of world.windows) {

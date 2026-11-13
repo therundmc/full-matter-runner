@@ -49,6 +49,11 @@ export default {
     "",
   ],
   props: [
+    // every light fixture: shoot them out
+    ['wall_lamp', 5.5, 1.09, 0], ['ceiling_lamp', 4.5, 5.2, 0],
+    ['neon_tube_pink', 13.5, 1.07, 0], ['floor_lamp', 10.6, 5.6, 0], ['table_lamp', 17.2, 3.4, 0],
+    ['tube_light', 22.5, 1.07, 0], ['pool_lamp', 22.5, 5.2, 0], ['neon_tube_cyan', 26.93, 6, 90],
+    ['streetlight', 21, 11.5, 0],
     ['chair', 2.5, 1.6, 0],
     ['table', 4.5, 3.0, 0],
     ['sofa', 4.5, 7.4, 180],
@@ -74,11 +79,5 @@ export default {
     ['hydrant', 14, 11.4, 0],
     ['palm_tree', 26, 11.4, 0],
     ['bench', 10, 18.55, 0],
-  ],
-  lights: [
-    [4.5, 4.5, 6, '#ffd9a0', 0.8],
-    [13.5, 4.5, 6, '#ff3df0', 0.9, 'pulse'],
-    [22.5, 4.5, 6, '#9fe8ff', 0.8, 'broken'],
-    [14, 14, 9, '#ffb46a', 0.7],
   ],
 };

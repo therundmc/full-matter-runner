@@ -5,7 +5,9 @@ import { P } from '../fx/Particles.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
 // multiplied over the scene, then additive bloom, anamorphic flares and wet-floor reflections.
-// Level lights: `level.lights` = [[x, y, radius, '#color', intensity, flicker?, {dir, cone}?], ...] in tile units.
+// Level lights: `level.lights` = [[x, y, radius, '#color', intensity, flicker?, {dir, cone, bulb}?], ...] in tile units.
+// They are indirect fill (sky glow, light spilling from off-screen): no visible source is drawn unless `bulb` is set.
+// Visible sources are props (lamps, tubes, signs, screens, headlights): shoot the lamp and its light dies.
 // Prop lights: `def.light` (or LIGHTING.propLights[type]) = { r, color, intensity, flicker, x, y, dir, cone } or an array,
 // r/x/y in px in the prop's local frame (sprites face +x), dir/cone in radians. Flicker: true|'buzz', 'broken', 'pulse',
 // 'tv', 'disco' (moving unshadowed spot).
@@ -120,6 +122,7 @@ export default class Lighting {
   makeLevelLight([x, y, r, color, intensity = 1, fl = false, opt = {}], i) {
     const l = this.makeLight(x * TILE + 0.013, y * TILE + 0.017, r * TILE, color, intensity, fl, i * 1.618 + 0.37);
     if (opt.cone) { l.cone = (opt.cone * Math.PI) / 180; l.dir = ((opt.dir ?? 0) * Math.PI) / 180; }
+    l.bare = !opt.bulb;
     return l;
   }
 
@@ -127,7 +130,7 @@ export default class Lighting {
     const c = rgb(color);
     return {
       x, y, r, color, rgb: c, lum: lum(c), intensity, flicker: fl, seed, cone: 0, dir: 0,
-      shadows: fl !== 'disco', cache: null, dirty: true,
+      shadows: fl !== 'disco', cache: null, dirty: true, bare: false,
     };
   }
 
@@ -245,10 +248,12 @@ export default class Lighting {
     let list = this.propEntries.get(p);
     if (list) return list;
     const def = p.def.light ?? L.propLights[p.type];
+    const glow = !!spriteOpt(`props/${p.type}_glow`);
     list = [];
     for (const d of def ? (Array.isArray(def) ? def : [def]) : []) {
       const l = this.makeLight(0, 0, d.r, d.color, d.intensity ?? 1, d.flicker ?? false, hash(p.x * 0.37 + p.y * 0.11) * 10 + list.length);
       l.lx = d.x || 0; l.ly = d.y || 0; l.ldir = d.dir || 0; l.cone = d.cone || 0;
+      l.drawn = glow; // the sprite's emissive map already shows the source
       list.push(l);
     }
     this.propEntries.set(p, list);
@@ -456,11 +461,15 @@ export default class Lighting {
     }
     for (const p of this.world.props) {
       if ((p.dead || p.lightsOut)) continue;
+      // a lamp that took a hit sputters
+      const hurt = p.def.fixture && p.hp < p.def.hp;
       for (const l of this.propLights(p)) {
         this.placePropLight(p, l);
-        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * flicker(l.flicker, l.seed, t)]);
+        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
       }
     }
+    // a prop appeared or died: the brightness grid is stale
+    if (this.propCount !== this.world.props.length) { this.propCount = this.world.props.length; this.gridDirty = true; }
     return out;
   }
 
@@ -578,7 +587,7 @@ export default class Lighting {
     ctx.globalCompositeOperation = 'lighter';
     ctx.imageSmoothingEnabled = true;
     for (const [l, k] of lit) {
-      if (l.cone || l.flicker === 'disco') continue;
+      if (l.cone || l.bare || l.drawn) continue;
       const rc = 4 + l.r * 0.03;
       ctx.globalAlpha = clamp(k * L.bulb, 0, 1);
       ctx.drawImage(this.blob(l.color), l.x - rc, l.y - rc, rc * 2, rc * 2);
@@ -619,8 +628,9 @@ export default class Lighting {
       e.restore();
     }
     for (const [l, k] of lit) {
-      const x = l.flicker === 'disco' ? l.mx : l.x, y = l.flicker === 'disco' ? l.my : l.y;
-      const r = 6 + l.r * 0.07, a = clamp(k * L.coreGlow, 0, 1);
+      if (l.bare) continue;
+      const x = l.x, y = l.y;
+      const r = 6 + l.r * 0.07, a = clamp(k * L.coreGlow * (l.drawn ? 0.6 : 1), 0, 1);
       e.globalAlpha = a;
       e.drawImage(this.blob(l.color), x - r, y - r, r * 2, r * 2);
       if (k * l.lum > 0.55 && !l.cone) {
@@ -695,7 +705,7 @@ export default class Lighting {
       r.drawImage(bl, x - sw * 3, y - len * 0.1, sw * 6, len);
     };
     for (const [l, k] of lit) {
-      if (l.flicker !== 'disco' && !l.cone) streak(l.color, l.x, l.y, l.r, k * L.reflect);
+      if (!l.bare && !l.cone) streak(l.color, l.x, l.y, l.r, k * L.reflect);
     }
     for (const l of w.lights) streak(l.color, l.x, l.y, l.r, clamp(l.t / l.dur, 0, 1) * L.reflect * 1.3);
     r.globalAlpha = 1;

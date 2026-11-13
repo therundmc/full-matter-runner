@@ -3,6 +3,8 @@
 // vault = can be slid / jumped over.
 // static = bolted down / too big to budge (never moves; it erodes and bursts into short-lived shards). Objects too heavy to push (mu·kg·g > PUSH_FORCE) stay put
 // until something big (an explosion) shoves them.
+// light = light(s) cast by the object (see render/Lighting.js); fixture = a lamp: it flickers once damaged and its
+// light dies with it. hung = hangs from the ceiling: nobody bumps into it, but bullets, bats and blasts reach it.
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 38, h: 22, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true },
   table_round: { static: true, vault: true, material: 'wood', r: 13, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true },
@@ -40,4 +42,22 @@ export const PROPS = {
   jukebox: { static: true, material: 'plastic', w: 19, h: 13, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true },
   hydrant: { material: 'metal', r: 3.5, hp: 10, static: true, chips: '#c02020', sound: 'metal', fountain: true },
   bench: { vault: true, material: 'wood', w: 34, h: 10, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
+  // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
+  // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
+  floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.8, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',
+    light: { r: 175, color: '#ffc98a', intensity: 0.95 } },
+  table_lamp: { fixture: true, material: 'wood', r: 7.5, hp: 3, kg: 14, mu: 0.9, chips: '#6a4026', sparks: true, glass: true, sound: 'wood',
+    light: { r: 130, color: '#ffb070', intensity: 0.85 } },
+  wall_lamp: { fixture: true, static: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffe2a8', sparks: true, glass: true, sound: 'glass',
+    light: { r: 160, color: '#ffd9a0', intensity: 0.9, y: 3 } },
+  tube_light: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#cfe6ff', sparks: true, glass: true, sound: 'glass',
+    light: { r: 200, color: '#d4e8ff', intensity: 0.9, flicker: 'buzz', y: 3 } },
+  neon_tube_pink: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 150, color: '#ff2a6d', intensity: 0.95, flicker: 'buzz', y: 3 } },
+  neon_tube_cyan: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+    light: { r: 150, color: '#2af0ff', intensity: 0.95, flicker: 'buzz', y: 3 } },
+  ceiling_lamp: { fixture: true, hung: true, overhead: true, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
+    light: { r: 185, color: '#ffd9a0', intensity: 1 } },
+  pool_lamp: { fixture: true, hung: true, overhead: true, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
+    light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
 };

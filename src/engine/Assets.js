@@ -20,7 +20,10 @@ const FLOOR_TILES = ['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purpl
   'asphalt_line', 'dirt', 'sidewalk', 'neon_floor'];
 const GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
   'car', 'car2', 'van'];
+// lamps: sprite + emissive map
+const FIXTURES = ['floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'neon_tube_pink', 'neon_tube_cyan', 'ceiling_lamp', 'pool_lamp'];
 export const OPTIONAL_LIST = [
+  ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...FLOOR_TILES.flatMap((t) => [`tiles/${t}_v1`, `tiles/${t}_v2`]),
   'tiles/neon_floor_glow',
   ...['palm_tree', 'streetlight', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'jukebox', 'car2', 'van',
