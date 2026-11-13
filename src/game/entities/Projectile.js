@@ -24,6 +24,7 @@ export default class Projectile {
     this.life = opts.life ?? 1.2;
     this.energy0 = this.energy = opts.pen ?? 10;
     this.rocket = !!opts.rocket;
+    this.floor = opts.floor || null; // the corpse aimed down at (rounds fly over every other one)
     this.dead = false;
     this.ignore = new Set();
     if (this.rocket) this.img = sprite('weapons/rocket');
@@ -36,7 +37,7 @@ export default class Projectile {
     let x0 = this.x, y0 = this.y;
     let x1 = x0 + this.vx * dt, y1 = y0 + this.vy * dt;
     for (let guard = 0; guard < 8; guard++) {
-      const hit = w.traceBullet(x0, y0, x1, y1, this.team, this.ignore);
+      const hit = w.traceBullet(x0, y0, x1, y1, this.team, this.ignore, this.floor);
       if (!hit) break;
       const r = this.onHit(hit);
       if (r === true) { this.x = hit.x; this.y = hit.y; this.dead = true; return; }
@@ -186,7 +187,7 @@ export default class Projectile {
           c.pool = Math.min(c.poolMax + 4, c.pool + 1.5);
           w.sound('splat', h.x, h.y, 0.35);
         }
-        return this.spend(COST.corpse);
+        return true; // shot down into the body: the round ends in the floor
       }
       case 'item':
         impulse(h.target.body, a, 8, (Math.random() - 0.5) * 0.5, 4);

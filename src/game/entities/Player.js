@@ -22,8 +22,23 @@ export default class Player extends Character {
     this.slide = null;      // Slide kinematics while sliding
     this.slideCd = 0;
     this.slideHits = new Set(); // loose bodies already shoved by the current slide
+    this.shootDown = null;  // the corpse under the crosshair when firing (rounds fly over the others)
     // spare rounds per caliber
     this.ammo = { '9mm': 24, '12g': 0, '762': 0, rocket: 0 };
+  }
+
+  // the dead body under the crosshair, unless someone alive stands there
+  corpseAt(x, y) {
+    const w = this.world;
+    for (const c of w.chars) if (c !== this && c.alive && Math.hypot(c.x - x, c.y - y) < c.radius + 10) return null;
+    for (const c of w.corpses) {
+      if (c.dead) continue;
+      for (const part of c.parts || [c]) {
+        const p = part.body.position;
+        if (Math.hypot(p.x - x, p.y - y) < 9) return c;
+      }
+    }
+    return null;
   }
 
   reserveCount() {
@@ -93,9 +108,10 @@ export default class Player extends Character {
     const d = this.def;
     if (d.kind === 'gun' ? (d.auto ? input.mouseDown(0) : input.mouseHit(0)) : input.mouseDown(0)) {
       if (input.mouseHit(0) && !this.armed && this.nearDowned) this.startExecution(this.nearDowned);
-      else if (this.attack() === 'empty' && input.mouseHit(0)) {
+      else {
+        this.shootDown = d.kind === 'gun' ? this.corpseAt(aim.x, aim.y) : null;
         // dry: reload if we can, otherwise hurl the useless gun at them
-        if (!this.reload()) this.throwWeapon(true);
+        if (this.attack() === 'empty' && input.mouseHit(0) && !this.reload()) this.throwWeapon(true);
       }
     }
     if (input.hit('KeyR')) this.reload();

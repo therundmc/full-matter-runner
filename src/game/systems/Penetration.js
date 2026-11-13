@@ -11,7 +11,7 @@ export const RESIST = {
 // wall tiles: '#' plaster/drywall partition, 'X' brick
 export const WALL_RESIST = { '#': 0.85, 'X': 2.1 };
 // fixed costs for things we don't measure: a human body, a car (two steel skins + seats), a pane of glass
-export const COST = { flesh: 14, corpse: 9, vehicle: 18, glass: 0.6 };
+export const COST = { flesh: 14, vehicle: 18, glass: 0.6 };
 // surfaces that can send a round flying off at a grazing angle (0 = never, 1 = readily)
 export const HARDNESS = { metal: 1, concrete: 0.8, ceramic: 0.6, brass: 1, X: 0.8, '#': 0.35 };
 

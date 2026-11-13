@@ -31,6 +31,7 @@ export const VEHICLES = {
 };
 
 const TYRE_HIT = [11, 5]; // half extents of a tyre's hit box (sprite px)
+const LAMP_END = 10;      // a hit this close to the nose / tail (sprite px) lands on a lamp
 
 // glass pixels (tinted blue-black) of a window region of the sprite's ImageData, so a shattered window keeps its shape
 function glassPixels(img, r) {
@@ -84,7 +85,8 @@ export default class Vehicle {
     this.wreckFire = 0;
     this.alarm = 0;
     this.alarmBeep = 0;
-    this.lightsOut = false;
+    this.lit = true;                       // lights switched on (a parked car: off)
+    this.lamps = [true, true, true, true]; // whole: head lamps left / right, tail lamps left / right (order of LIGHTING.propLights)
     this.flash = 0;
     this.dead = false; // vehicles stay in the world as wrecks
     // set while driven as through-traffic (systems/Ambient): front wheel angle, brake lights 0..1, body bounce px
@@ -97,6 +99,8 @@ export default class Vehicle {
 
   get x() { return this.body.position.x; }
   get y() { return this.body.position.y; }
+  get lightsOut() { return !this.lit || !this.lamps.some(Boolean); }
+  set lightsOut(out) { this.lit = !out; }
 
   // world point -> sprite coordinates
   toSprite(px, py) {
@@ -109,8 +113,9 @@ export default class Vehicle {
 
   inside(r, sx, sy) { return r && sx >= r[0] && sx <= r[1] && sy >= r[2] && sy <= r[3]; }
 
-  // bullets, melee, debris
-  hit(dmg, px, py, dirA) {
+  // bullets, blasts, debris, and melee (kind punch | blunt | cut: a bat smashes glass and lamps and dents the panels,
+  // a blade slashes tyres and scores the paint, fists only set the alarm off; none of them hurts the car itself)
+  hit(dmg, px, py, dirA, force = 1, kind = 'bullet') {
     const w = this.world;
     this.flash = 0.06;
     if (this.exploded) {
@@ -120,27 +125,31 @@ export default class Vehicle {
     }
     const { sx, sy } = this.toSprite(px, py);
     this.startAlarm();
+    const melee = kind === 'punch' || kind === 'blunt' || kind === 'cut';
+    if (kind === 'punch') { w.sound('carHit', px, py, 0.35); return; }
     // seen from above the bullet lands on the edge: follow it a few px inside to find what it really hits
     const da = dirA - this.body.angle, ddx = Math.cos(da), ddy = Math.sin(da);
     let tank = false;
     for (let k = 0; k <= 30; k += 1.5) {
       const qx = sx + ddx * k, qy = sy + ddy * k;
       if (k <= 14 && this.inside(this.m.tank, qx, qy)) tank = true;
-      if (k <= 8) {
+      if (k <= 8 && kind !== 'blunt') {
         for (let i = 0; i < 4; i++) {
           const [wx, wy] = this.m.wheels[i];
           if (this.tires[i] && Math.abs(qx - wx) < TYRE_HIT[0] && Math.abs(qy - wy) < TYRE_HIT[1]) { this.popTire(i, dirA); return; }
         }
       }
+      if (kind === 'cut') continue;
       if (this.windows.wind < 2 && this.inside(this.m.wind, qx, qy)) { this.hitWindow('wind', qx, qy, dirA); return; }
       if (this.m.rear && this.windows.rear < 2 && this.inside(this.m.rear, qx, qy)) { this.hitWindow('rear', qx, qy, dirA); return; }
     }
+    if (kind !== 'cut') this.breakLamp(this.lampAt(sx, sy), dirA);
+    w.particles.chips(px, py, dirA + Math.PI, 0.9, 3, this.m.color, 120);
+    w.sound('carHit', px, py, 0.6);
+    if (melee) { this.scar(sx, sy, da, kind); return; }
     // body panel: bullet hole, sparks
     this.hole(sx, sy);
     w.particles.sparks(px, py, dirA + Math.PI, 0.9, 6, 260);
-    w.particles.chips(px, py, dirA + Math.PI, 0.9, 3, this.m.color, 120);
-    w.sound('carHit', px, py, 0.6);
-    if (sx > this.w - 6 || sx < 6) this.breakLights(px, py);
     if (tank) {
       this.fuel++;
       w.particles.chips(px, py, dirA + Math.PI, 0.6, 5, '#6a5a2a', 90);
@@ -165,6 +174,66 @@ export default class Vehicle {
     g.fillStyle = '#0d0710';
     g.fillRect(Math.round(sx), Math.round(sy), 1, 1);
     g.restore();
+  }
+
+  // a dent pushed in by a bat, or the bright score of a blade (da: the blow's direction in sprite space)
+  scar(sx, sy, da, kind) {
+    const g = this.g;
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    if (kind === 'cut') {
+      const a = da + Math.PI / 2 + rand(-0.4, 0.4), l = rand(3, 6);
+      g.strokeStyle = 'rgba(225,225,235,0.6)';
+      g.lineWidth = 0.7;
+      g.beginPath();
+      g.moveTo(sx - Math.cos(a) * l, sy - Math.sin(a) * l);
+      g.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l);
+      g.stroke();
+    } else {
+      const cx = sx + Math.cos(da) * 4, cy = sy + Math.sin(da) * 4;
+      g.fillStyle = 'rgba(0,0,0,0.26)';
+      g.beginPath(); g.ellipse(cx, cy, rand(4, 6.5), rand(3, 4.5), rand(0, Math.PI), 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.16)';
+      g.fillRect(Math.round(cx - Math.cos(da) * 3) - 1, Math.round(cy - Math.sin(da) * 3), 3, 1);
+    }
+    g.restore();
+  }
+
+  // the lamp a hit on the nose or the tail lands on: the nearest one still whole at that end, or -1
+  lampAt(sx, sy) {
+    const end = sx > this.w - LAMP_END ? 0 : sx < LAMP_END ? 2 : -1;
+    if (end < 0) return -1;
+    const i = end + (sy < this.h / 2 ? 0 : 1);
+    return this.lamps[i] ? i : this.lamps[i ^ 1] ? i ^ 1 : -1;
+  }
+
+  // smash one lamp: its light goes out for good, the socket stays dark with a few splinters of lens
+  breakLamp(i, dirA) {
+    const l = LIGHTING.propLights[this.type]?.[i];
+    if (!l || !this.lamps[i]) return;
+    this.lamps[i] = false;
+    const sx = Math.round(l.x + this.w / 2), sy = Math.round(l.y + this.h / 2), g = this.g, w = this.world;
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = '#120a14';
+    g.fillRect(sx - 3, sy - 4, 6, 8);
+    g.fillStyle = 'rgba(220,230,240,0.55)';
+    for (let k = 0; k < 3; k++) g.fillRect(sx + Math.floor(rand(-3, 3)), sy + Math.floor(rand(-4, 4)), 1, 1);
+    g.restore();
+    const [px, py] = this.wpos(sx, sy);
+    w.particles.glass(px, py, dirA + Math.PI, 1.2, 12, 140);
+    w.sound('glass', px, py, 0.45);
+  }
+
+  // the emissive map, one quarter of the sprite per lamp still alive
+  drawLamps(ctx, img, x, y) {
+    if (this.lamps.every(Boolean)) { ctx.drawImage(img, x, y); return; }
+    const hw = this.w / 2, hh = this.h / 2;
+    this.lamps.forEach((on, i) => {
+      if (!on) return;
+      const sx = i < 2 ? hw : 0, sy = i % 2 ? hh : 0;
+      ctx.drawImage(img, sx, sy, hw, hh, x + sx, y + sy, hw, hh);
+    });
   }
 
   hitWindow(which, sx, sy, dirA) {
@@ -241,12 +310,6 @@ export default class Vehicle {
     this.damage(2);
   }
 
-  breakLights(px, py) {
-    if (this.lightsOut) return;
-    this.lightsOut = true;
-    this.world.particles.glass(px, py, 0, Math.PI, 10, 100);
-  }
-
   startAlarm() {
     if (this.alarm <= 0 && !this.exploded) this.alarm = 9;
   }
@@ -283,7 +346,7 @@ export default class Vehicle {
     this.exploded = true;
     this.burning = false;
     this.alarm = 0;
-    this.lightsOut = true;
+    this.lamps.fill(false);
     const w = this.world;
     const { x, y } = this;
     w.explode(x, y, { radius: 160, source: 'car', origin: this });
@@ -349,11 +412,11 @@ export default class Vehicle {
         this.alarmBeep = 0.42;
         w.sound('alarm', this.x, this.y, 0.8);
         w.noise(this.x, this.y, 520);
-        if (!this.lightsOut) {
-          for (const sx of [2, this.w - 2]) {
-            const p = this.toWorld(sx, this.h / 2);
-            w.light(p.x, p.y, 60, '#ffb040', 0.2);
-          }
+        // the lamps still whole flash at each end
+        for (const [sx, i] of [[this.w - 2, 0], [2, 2]]) {
+          if (!this.lit || !(this.lamps[i] || this.lamps[i + 1])) continue;
+          const p = this.toWorld(sx, this.h / 2);
+          w.light(p.x, p.y, 60, '#ffb040', 0.2);
         }
       }
     }
@@ -424,12 +487,14 @@ export default class Vehicle {
       const blink = this.alarm > 0 ? (Math.floor(this.alarm * 2.4) % 2 === 0 ? 1 : 0.15) : 0.85;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = blink;
-      ctx.drawImage(this.glow, ox + sagX, oy + sagY);
+      this.drawLamps(ctx, this.glow, ox + sagX, oy + sagY);
       // brake lights: the tail lamps flare up
       if (this.brake > 0.05) {
         ctx.fillStyle = '#ff2040';
         ctx.globalAlpha = this.brake * 0.9;
-        for (const l of LIGHTING.propLights[this.type] || []) if (!l.cone) ctx.fillRect(l.x - 2 + sagX, l.y - 3 + sagY, 4, 6);
+        (LIGHTING.propLights[this.type] || []).forEach((l, i) => {
+          if (!l.cone && this.lamps[i]) ctx.fillRect(l.x - 2 + sagX, l.y - 3 + sagY, 4, 6);
+        });
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';

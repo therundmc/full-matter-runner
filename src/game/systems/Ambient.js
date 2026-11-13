@@ -374,10 +374,10 @@ export default class Ambient {
     if (civ.alive) { civ.alive = false; w.removeBody(civ.body); }
   }
 
-  // what a passer-by can see: the player pointing a gun at close range, a dead body
+  // what a passer-by can see: the player with a gun out at close range (a bat or a knife scares nobody), a dead body
   lookAround(civ) {
     const w = this.world, p = w.player, P = A.panic;
-    if (p.alive && p.armed && Math.hypot(p.x - civ.x, p.y - civ.y) < P.armed * TILE && w.lineOfSight(civ.x, civ.y, p.x, p.y)) {
+    if (p.alive && p.hasGun && Math.hypot(p.x - civ.x, p.y - civ.y) < P.armed * TILE && w.lineOfSight(civ.x, civ.y, p.x, p.y)) {
       this.alarm(civ, p.x, p.y, 'armed');
       return;
     }

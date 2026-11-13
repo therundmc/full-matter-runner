@@ -6,6 +6,7 @@ import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
 import { findVault } from '../systems/Cover.js';
+import { segPoly } from '../../engine/physics/Raycast.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
@@ -83,6 +84,7 @@ export default class Character {
   get y() { return this.body.position.y; }
   get def() { return WEAPONS[this.weapon ? this.weapon.type : 'fists']; }
   get armed() { return !!this.weapon; }
+  get hasGun() { return this.def.kind === 'gun'; }
 
   // weapon instance: { type, mag (rounds in the gun), reserve (enemies: spare mags, or loose rounds for shotguns) }
   setWeapon(type, mag, reserve = 0) {
@@ -242,7 +244,7 @@ export default class Character {
       const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
       const pr = new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
-        team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pen: d.pen ?? 10, rocket: d.rocket,
+        team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pen: d.pen ?? 10, rocket: d.rocket, floor: this.shootDown,
       });
       w.addProjectile(pr);
     }
@@ -284,12 +286,20 @@ export default class Character {
     }
     for (const p of w.props) {
       if (p.dead) continue;
-      const dx = p.x - x, dy = p.y - y, dd = Math.hypot(dx, dy);
-      if (dd > d.range + 12 || Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2) continue;
+      let hx = x + Math.cos(a) * d.range * 0.8, hy = y + Math.sin(a) * d.range * 0.8;
+      if (p.isVehicle) {
+        // a long body: what counts is the panel in front of the blow, not how far its centre is
+        const reach = d.range + 6;
+        const r = segPoly(x, y, x + Math.cos(a) * reach, y + Math.sin(a) * reach, p.body.vertices);
+        if (!r) continue;
+        hx = x + Math.cos(a) * reach * r.t; hy = y + Math.sin(a) * reach * r.t;
+      } else {
+        const dx = p.x - x, dy = p.y - y, dd = Math.hypot(dx, dy);
+        if (dd > d.range + 12 || Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2) continue;
+      }
       // a blade cuts across the swing, bare hands only scuff, a bat dents
       const kind = d.bleed ? 'cut' : d.hold === 'none' ? 'punch' : 'blunt';
-      p.hit(d.lethal ? 2 : 1, x + Math.cos(a) * d.range * 0.8, y + Math.sin(a) * d.range * 0.8, a, 2.5, kind,
-        { swing: a + (Math.PI / 2) * (this.punchSide || 1) });
+      p.hit(d.lethal ? 2 : 1, hx, hy, a, 2.5, kind, { swing: a + (Math.PI / 2) * (this.punchSide || 1) });
       hit = true;
     }
     for (const win of w.windows) {

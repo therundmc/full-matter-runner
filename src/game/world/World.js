@@ -174,7 +174,7 @@ export default class World {
   // facades over the systems
   lineOfSight(x0, y0, x1, y1) { return lineOfSight(this, x0, y0, x1, y1); }
   canSeeCharacter(viewer, ch) { return canSeeCharacter(this, viewer, ch); }
-  traceBullet(x0, y0, x1, y1, team, ignore) { return traceBullet(this, x0, y0, x1, y1, team, ignore); }
+  traceBullet(x0, y0, x1, y1, team, ignore, floor) { return traceBullet(this, x0, y0, x1, y1, team, ignore, floor); }
   explode(x, y, opts) { explode(this, x, y, opts); }
   damageWall(cx, cy, dmg, x, y, dirA, power) { damageWall(this, cx, cy, dmg, x, y, dirA, power); }
   destroyWall(cx, cy, dirA, power) { destroyWall(this, cx, cy, dirA, power); }

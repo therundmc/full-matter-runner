@@ -61,3 +61,17 @@ test('ricochet: grazing hits on hard surfaces bounce, head-on hits never do', ()
   assert.equal(ricochet(0, -1, 0, 1, 0), null);
   assert.equal(ricochet(Math.PI / 2 - 0.1, -1, 0, 0, 0), null);
 });
+
+test('ballistics: rounds fly over the dead, except the body the shooter aims down at', async () => {
+  const { traceBullet } = await load('game/systems/Ballistics.js');
+  const body = (x, y) => Matter.Bodies.rectangle(x, y, 20, 14);
+  const lying = { dead: false, body: body(70, mid) }, other = { dead: false, body: body(100, mid) };
+  const guard = { alive: true, team: 'enemy', x: 135, y: mid, radius: 9 };
+  const world = { map: map(), chars: [guard], props: [], doors: [], windows: [], items: [], debris: [], corpses: [lying, other] };
+  const shoot = (floor) => traceBullet(world, 40, mid, 150, mid, 'player', new Set(), floor);
+  assert.equal(shoot(null).target, guard, 'both bodies on the way are flown over');
+  assert.equal(shoot(other).target, other, 'the one aimed at stops the round');
+  assert.equal(shoot(other).kind, 'corpse');
+  other.dead = true;
+  assert.equal(shoot(other).target, guard);
+});

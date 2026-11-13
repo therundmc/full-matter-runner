@@ -4,7 +4,8 @@ import { segPoly, segCircle, segSeg } from '../../engine/physics/Raycast.js';
 // Nearest thing hit by the segment (x0,y0)->(x1,y1).
 // Returns { t, kind, x, y, target?, part?, nx?, ny?, cx?, cy? } or null.
 // kind: wall | char | prop | door | glass | corpse | item | debris
-export function traceBullet(world, x0, y0, x1, y1, team, ignore) {
+// Rounds fly over the dead lying on the floor; only `floor`, the corpse the shooter aimed down at, can be hit.
+export function traceBullet(world, x0, y0, x1, y1, team, ignore, floor = null) {
   let best = null;
   const w = world.map.raycast(x0, y0, x1, y1);
   if (w) best = { t: w.t, kind: 'wall', nx: w.nx, ny: w.ny, cx: w.cx, cy: w.cy };
@@ -31,12 +32,11 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore) {
   test(world.props, 'prop', (p) => !p.dead);
   test(world.doors, 'door', () => true);
   test(world.windows, 'glass', (g) => g.intact);
-  // dead bodies: every ragdoll part can be hit
-  for (const c of world.corpses) {
-    if (c.dead) continue;
-    for (const part of c.parts || [{ body: c.body }]) {
+  // the body shot at on purpose: every ragdoll part can be hit
+  if (floor && !floor.dead && !ignore.has(floor)) {
+    for (const part of floor.parts || [{ body: floor.body }]) {
       const r = hitBody(part.body);
-      if (r) best = { t: r.t, kind: 'corpse', target: c, part: c.parts ? part : null };
+      if (r) best = { t: r.t, kind: 'corpse', target: floor, part: floor.parts ? part : null };
     }
   }
   test(world.items, 'item', (it) => !it.dead);

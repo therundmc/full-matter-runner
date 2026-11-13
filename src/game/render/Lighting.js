@@ -34,6 +34,8 @@ const lum = (c) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255;
 const css = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const toByte = (c) => c.map((v) => Math.round(clamp(v, 0, 1) * 255));
 
+// light i of a prop is on unless that lamp was smashed (vehicles keep one flag per lamp)
+const lampOn = (p, i) => !p.lamps || p.lamps[i];
 function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
 function noise(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i) * (1 - u) + hash(i + 1) * u; }
 
@@ -441,7 +443,10 @@ export default class Lighting {
       }
     };
     for (const l of this.lights) add(l);
-    for (const p of this.world.props) if (!(p.dead || p.lightsOut || p.moving)) for (const l of this.propLights(p)) add(l);
+    for (const p of this.world.props) {
+      if (p.dead || p.lightsOut || p.moving) continue;
+      this.propLights(p).forEach((l, i) => { if (lampOn(p, i)) add(l); });
+    }
     this.grid = grid; this.gw = gw; this.gh = gh;
   }
 
@@ -493,7 +498,7 @@ export default class Lighting {
       }
       if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * flicker(l.flicker, l.seed, t)]);
     }
-    let still = 0;
+    let still = 0, lamps = 0;
     for (const p of this.world.props) {
       if (!p.moving) still++;
       if ((p.dead || p.lightsOut)) continue;
@@ -511,15 +516,18 @@ export default class Lighting {
       }
       // driving vehicles: unshadowed lights that follow the car every frame, tail lights flare when braking
       const brake = p.brake || 0;
-      for (const l of lights) {
+      for (let i = 0; i < lights.length; i++) {
+        if (!lampOn(p, i)) continue;
+        const l = lights[i];
+        if (!p.moving) lamps++;
         this.placePropLight(p, l);
         l.moving = !!p.moving;
         const k = l.cone ? 1 : 1 + brake * 1.6;
         if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * lit * k * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
       }
     }
-    // a prop appeared, died or a car pulled up: the brightness grid is stale (passing traffic does not count)
-    if (this.propCount !== still) { this.propCount = still; this.gridDirty = true; }
+    // a prop appeared, died, lost a lamp or a car pulled up: the brightness grid is stale (passing traffic does not count)
+    if (this.propCount !== still || this.lampCount !== lamps) { this.propCount = still; this.lampCount = lamps; this.gridDirty = true; }
     return out;
   }
 
@@ -642,7 +650,10 @@ export default class Lighting {
     g.save();
     g.translate(p.x + (p.ox || 0), p.y + (p.oy || 0));
     g.rotate(p.body.angle);
-    if (!sign) {
+    if (p.drawLamps) {
+      g.globalAlpha = k;
+      p.drawLamps(g, gl, x0, y0);
+    } else if (!sign) {
       g.globalAlpha = k;
       g.drawImage(gl, x0, y0);
     } else {
