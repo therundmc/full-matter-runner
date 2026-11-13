@@ -490,14 +490,19 @@ export default class Prop {
     pieces.sort((p, q) => q.img.width * q.img.height - p.img.width * p.img.height);
     const harm = power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null;
     const z0 = this.lift();
+    // heavy furniture gives way where it stands: its big parts slump and slide a little, the crumbs are only chips.
+    // Only a blast throws it around.
+    const heavy = power < 2 && this.W * this.H > DESTRUCTION.heavyArea;
+    if (heavy) pieces.length = Math.min(pieces.length, DESTRUCTION.heavyParts);
+    const calm = heavy ? 0.3 : 1;
     let physical = d.static ? Math.min(DESTRUCTION.maxPhysicalParts, 3) : DESTRUCTION.maxPhysicalParts;
     for (const pc of pieces) {
       const lx = pc.cx - this.W / 2, ly = pc.cy - this.H / 2;
       const ox = lx * ca - ly * sa, oy = lx * sa + ly * ca;
       const L = launch(dirA, ox, oy, power, pc.fly);
       const big = pc.img.width * pc.img.height > 50;
-      this.throwPiece(pc.img, x + ox, y + oy, L.a, L.v, {
-        z: z0 * rand(0.6, 1), vz: rec.drop ? rand(-10, 20) : L.vz, spin: L.spin,
+      this.throwPiece(pc.img, x + ox, y + oy, L.a, L.v * calm, {
+        z: z0 * rand(0.6, 1), vz: rec.drop || heavy ? rand(-10, 20) : L.vz, spin: L.spin * calm,
         physical: big && physical-- > 0, harm: harm && { ...harm },
       });
     }
@@ -509,7 +514,7 @@ export default class Prop {
         const ox = lx * ca - ly * sa, oy = lx * sa + ly * ca;
         const img = chunk(rec.legs.color, Math.round(s), Math.round(Math.max(s, rec.height * PX_PER_M * 0.5)));
         const L = launch(dirA, ox, oy, power, 1);
-        this.throwPiece(img, x + ox, y + oy, L.a, L.v * 0.7, { z: z0 * 0.4, vz: L.vz * 0.6, spin: L.spin });
+        this.throwPiece(img, x + ox, y + oy, L.a, L.v * 0.7 * calm, { z: z0 * 0.4, vz: L.vz * 0.6, spin: L.spin });
       }
     }
     // contents
@@ -524,7 +529,7 @@ export default class Prop {
     // dust that hangs, then settles
     const R = Math.max(this.W, this.H) * 0.4;
     P.dust(x, y, Math.round(4 + R / 3), R, fx.dust || '#5a5462', { speed: 25 * power, size: 5, life: 3.5, alpha: fx.dust ? 0.2 : 0.14 });
-    P.chips(x, y, dirA, Math.PI, 14, d.chips, 160);
+    P.chips(x, y, dirA, Math.PI, heavy ? 8 : 14, d.chips, heavy ? 90 : 160);
     if (fx.glass || d.glass) { P.glass(x, y, dirA, 1.5, 18); w.sound('glass', x, y, 0.6); }
     if (rec.electric) { P.sparks(x, y, 0, Math.PI, 16, 260, '#bff'); P.smoke(x, y, 6, 4, { speed: 20, size: 5, life: 2, dark: true }); }
     if (d.dirt || rec.contents.some((c) => c.bit === 'soil')) P.chips(x, y, 0, Math.PI, 18, '#4a2e1a', 120);

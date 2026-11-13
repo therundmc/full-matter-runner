@@ -194,6 +194,8 @@ export const COMBO_WINDOW = 3.2;
 export const DESTRUCTION = {
   physicalShare: 0.6,  // above this share of MAX_DEBRIS, new pieces are visual shards only
   maxPhysicalParts: 6, // physical pieces per collapse (the rest are shards baked into the floor)
+  heavyArea: 900,  // px2 of sprite: bigger furniture slumps in place instead of flying apart (blasts excepted)
+  heavyParts: 7,   // big parts it leaves then
   maxBits: 18,         // loose contents spilled per collapse (balls, books...)
   maxFloats: 260,      // stuffing / paper / feathers floating at once
   maxLeaks: 3,         // liquid jets per prop
