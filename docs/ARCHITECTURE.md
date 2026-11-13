@@ -34,7 +34,9 @@ src/
       Destruction.js      wall tiles, doors off hinges, fences
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
-      Scoring.js          listens to 'kill': score, combo (killing a passer-by costs points)
+      Scoring.js          score of a run from events: kill styles x combo, end tally (bonuses, grade); pure, unit-tested
+      Records.js          best result per level in localStorage (guarded: the game runs without storage)
+      Threats.js          which off-screen guards the player can plausibly know about (pure rule + per-guard memory)
       Impacts.js          listens to 'impact': material sounds by speed and mass
       Liquids.js          what is wet on the floor: puddles fed by sources (burst hydrant), blood pools, wet floor
                           grip, footprints and slide smears (DOM-free, unit-tested)
@@ -52,16 +54,20 @@ src/
                           (wet, tacky, dry), and the pool under a bleeding body
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
+      Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
+                          ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
     debug/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
-    ui/                   HUD, Screens, SandboxPanel, Text
+    ui/                   HUD, Indicators (off-screen guard markers), Screens, SandboxPanel, Text
     data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
-                          apart), roofs (rooftop scenery), levels/ (index.js = registry)
-tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs
+                          apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
+                          thresholds per level), levels/ (index.js = registry)
+tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,
+                          scoring, threats, replay
 ```
 
 Rules:
@@ -85,15 +91,17 @@ Rules:
 | event | payload | emitted by | used by |
 |---|---|---|---|
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
-| `kill` | `{ victim, cause, killer }` | World.onKill | Scoring |
-| `explosion` | `{ x, y, radius, source }` | Explosions | (lighting, camera) |
+| `kill` | `{ victim, cause, killer }` | World.onKill | Scoring, ReplayRecorder (clips), Threats |
+| `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring |
+| `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
+| `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | Director (incident) |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor) |
-| `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing) |
+| `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
-| `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack intensity and combat variant); the HUD reads the phase directly |
+| `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack intensity and combat variant), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
 | `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
 | `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
@@ -177,6 +185,26 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `world.chars` who steps in a wet area splashes, then prints fading footprints on the dry floor (`decals.footprint`),
   or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn
   by WorldRenderer.drawPuddle and mirror the lights in Lighting.post (`LIGHTING.puddle`).
+- Score (systems/Scoring.js, rules in data/scoring.js): fed by events only. A kill is worth its style (a gunshot
+  the least; blade, melee, wreckage, glass, execution more; `UNSEEN` on top when the guard never noticed) times
+  the combo multiplier (+0.5 per kill of the chain, capped at x4; the chain breaks 4 s after the last kill, flooring
+  a guard gives it some air back). `tally(level)` adds the end bonuses (best chain, variety of methods, time under
+  the level's par, stealth lost by ALERT phases, accuracy) and penalties (passers-by), then the grade from the
+  level's thresholds (`LEVEL_SCORING`, or a per-guard scale for test rooms). Game.onExit keeps the best result per
+  level (systems/Records.js); a run where the sandbox was opened is not ranked. The HUD shows the score, the run
+  clock, the multiplier and its fuse; Screens.drawResults counts the lines up one after the other.
+- Replay (render/Replay.js, `REPLAY` in Config.js): while playing, Game.render hands the finished frame (before the
+  vignette and the HUD) to `ReplayRecorder.capture`, which copies it downscaled into a rolling atlas 15 times a
+  second of world time. A kill closes a clip 0.75 s later (more kills in the meantime stretch it); the atlas is
+  copied in one drawImage into one of at most 6 clip atlases, the weakest clip (`clipScore`: cause weight,
+  multi-kills) giving way. On the results screen `ReplayPlayer` loops the clips in order, cross-fading between
+  frames and slowing down around each kill, shifted left of the score column. Never on the death screen, nothing
+  delays a restart; the canvases are reused from run to run and released on the way back to the title.
+- Off-screen guards (systems/Threats.js, ui/Indicators.js, `INDICATORS` in Config.js): a thin dim chevron on the
+  screen edge for a guard just outside the view (within `reach`) that the player can plausibly place: he is after
+  the player or suspicious, he was heard (shot, shout, running) in the last seconds, or he was on screen a moment
+  ago (fainter). It pulses pink when he has the player in his sights or just fired. A quiet guard never seen gets
+  nothing: it must not become a radar.
 
 ## Performance & robustness
 
@@ -187,6 +215,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   Bolted furniture keeps at most a few physical parts per collapse (`DESTRUCTION` caps in Config.js).
 - Damage canvases are CPU-backed (`willReadFrequently`): pieces are cut from them and tested for opacity every hit.
 - Sprite caches (silhouettes, slices) are WeakMaps so per-instance canvases can be garbage-collected.
+- The replay recorder costs one small canvas-to-canvas copy every fourth frame (no read-back, no allocation while
+  playing; not measurable on the frame time) and at most (clips + 1) atlases of 30 frames of 384x216 (about 70 MB).
 - `Game.safeDraw` isolates the world draw: an exception is logged once and the context is restored, so the HUD,
   cursor and post effects keep rendering.
 

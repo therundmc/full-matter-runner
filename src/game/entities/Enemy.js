@@ -1019,6 +1019,7 @@ export default class Enemy extends Character {
     if (!this.alive || this.knocked > 0) return;
     this.knocked = ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
     this.director.provoked = true; // nobody floors a guard by accident
+    this.world.events.emit('knock', { victim: this, cause, angle });
     this.downAngle = angle + Math.PI;
     this.dropWeapon(angle + rand(-0.8, 0.8), rand(2, 4));
     this.vaulting = null;

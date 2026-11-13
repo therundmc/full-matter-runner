@@ -184,12 +184,37 @@ export const AMBIENT = {
     calm: 20,              // s without new passers-by after gunfire / an explosion (word gets around)
   },
   barkGap: 0.35,           // s between two civilian screams on screen
-  penalty: 250,            // score lost for killing a passer-by (player or player-made explosion)
 };
 
 export const MAX_DEBRIS = 180;    // physical loose pieces alive at once (oldest get baked into the floor)
 export const MAX_PARTICLES = 4000;
-export const COMBO_WINDOW = 3.2;
+
+// Off-screen guard markers (systems/Threats.js, ui/Indicators.js): only guards the player can plausibly know about,
+// just outside the view. Deliberately faint.
+export const INDICATORS = {
+  reach: 300,        // px beyond the screen edge: further guards get no marker at all
+  seenFor: 5,        // s a guard seen on screen is remembered
+  heardFor: 3,       // s after a shot, a shout or running steps
+  runSpeed: 1.6,     // px/step: faster than this, his steps are heard
+  seen: 0.55,        // marker strength of a remembered guard (a hunting one is 1)
+  suspicious: 0.5,   // of a guard looking for the source of a noise
+  alpha: 0.34,       // opacity of the strongest marker
+  aimAlpha: 0.62,    // peak of the pulse when he has the player in his sights / just fired
+};
+
+// End-of-level replay (render/Replay.js): downscaled frames of the last seconds, saved as clips around the kills.
+export const REPLAY = {
+  w: 384, h: 216,    // px of a recorded frame
+  fps: 15,
+  frames: 30,        // length of the rolling buffer and of a clip (2 s)
+  post: 0.75,        // s kept after the (last) kill of a clip
+  lead: 0.5,         // s always kept before the first kill, however long the clip is stretched by more kills
+  clips: 6,          // clips kept (the best ones): (clips + 1) * frames * w * h * 4 bytes of canvas, about 70 MB
+  slow: 0.22,        // playback speed around a kill
+  slowBefore: 0.3,   // s of slow motion before / after the kill frame
+  slowAfter: 0.45,
+  focus: 0.37,       // share of the screen width where the middle of the footage sits (the score column is on the right)
+};
 
 // Prop destruction (entities/Prop.js, data/destruction.js): caps that keep a shredded room cheap.
 export const DESTRUCTION = {

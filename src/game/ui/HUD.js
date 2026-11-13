@@ -1,7 +1,10 @@
-import { PALETTE, COMBO_WINDOW, TILE, AI } from '../Config.js';
+import { PALETTE, TILE, AI } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { text, neon } from './Text.js';
+import { text, neon, thousands } from './Text.js';
+import { drawIndicators } from './Indicators.js';
 import { clamp } from '../../engine/math.js';
+
+const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
 export function drawHUD(ctx, game, t) {
   const w = game.world, p = w.player;
@@ -32,17 +35,8 @@ export function drawHUD(ctx, game, t) {
   }
   text(ctx, `TARGETS ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 84 * s, 14 * s, PALETTE.yellow, { align: 'left' });
 
-  // score + combo
-  text(ctx, `${w.score} PTS`, W - pad, pad + 14 * s, 30 * s, PALETTE.white, { align: 'right', rot: Math.sin(t * 2.2 + 1) * 0.03 });
-  if (w.combo > 1) {
-    const k = clamp(1 - (w.time - w.lastKill) / COMBO_WINDOW, 0, 1);
-    const pulse = 1 + Math.max(0, 0.3 - (w.time - w.lastKill)) * 1.5;
-    text(ctx, `${w.combo}X COMBO`, W - pad, pad + 52 * s, 24 * s * pulse, PALETTE.pink, { align: 'right', rot: -0.05 });
-    ctx.fillStyle = PALETTE.ink;
-    ctx.fillRect(W - pad - 160 * s, pad + 70 * s, 160 * s, 7 * s);
-    ctx.fillStyle = neon(t, 6);
-    ctx.fillRect(W - pad - 160 * s, pad + 70 * s, 160 * s * k, 7 * s);
-  }
+  drawScore(ctx, w, W - pad, pad, s);
+  if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
 
@@ -66,6 +60,24 @@ export function drawHUD(ctx, game, t) {
     }
     drawExitArrow(ctx, game, t, s);
   }
+}
+
+// Top right corner, kept small: score, run time, and the chain multiplier with the time left to keep it going.
+function drawScore(ctx, w, x, y, s) {
+  const sc = w.scoring;
+  const pop = Math.max(0, 0.25 - (w.time - sc.lastT)); // swells for a moment when points come in
+  text(ctx, thousands(sc.score), x, y + 10 * s, 22 * s * (1 + pop * 0.6), PALETTE.white, { align: 'right' });
+  text(ctx, clock(w.time), x, y + 32 * s, 11 * s, PALETTE.white, { align: 'right', alpha: 0.5 });
+  if (sc.combo < 1) return;
+  const left = sc.comboLeft, bw = 84 * s, by = y + 60 * s;
+  // the first kill of a chain only lights the fuse; the multiplier shows once it is worth something
+  if (sc.combo > 1) text(ctx, `x${sc.multiplier.toFixed(1)}`, x, y + 49 * s, 15 * s, PALETTE.pink, { align: 'right' });
+  ctx.globalAlpha = 0.7;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x - bw, by, bw, 3 * s);
+  ctx.fillStyle = left < 0.3 ? PALETTE.yellow : PALETTE.pink;
+  ctx.fillRect(x - bw * left, by, bw * left, 3 * s);
+  ctx.globalAlpha = 1;
 }
 
 const PHASES = { caution: ['CAUTION', PALETTE.yellow], alert: ['ALERT', PALETTE.pink], evasion: ['EVASION', PALETTE.orange] };

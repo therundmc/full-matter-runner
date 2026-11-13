@@ -25,6 +25,9 @@ export function text(ctx, str, x, y, size, color = '#fff', opts = {}) {
   ctx.restore();
 }
 
+// 12400 -> '12 400'
+export const thousands = (n) => String(n).replace(/\B(?=(\d{3})+$)/g, ' ');
+
 // colour oscillating between hot pink and cyan
 export function neon(t, speed = 2) {
   const k = (Math.sin(t * speed) + 1) / 2;

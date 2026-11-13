@@ -7,6 +7,9 @@ import Audio from '../audio/Audio.js';
 import Music from '../audio/Music.js';
 import World from './world/World.js';
 import PostFX from './render/PostFX.js';
+import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
+import { loadBest, saveBest } from './systems/Records.js';
+import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
 import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults } from './ui/Screens.js';
@@ -37,6 +40,8 @@ export default class Game {
     this.musicOn = true;
     this.postfx = new PostFX();
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
+    this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
+    this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -60,8 +65,14 @@ export default class Game {
 
   newGame() {
     // ?level=<id> picks a level (e.g. ?level=lab for the physics test room)
-    const id = new URLSearchParams(location.search).get('level') || 'level1';
-    this.world = new World(this, LEVELS[id] || LEVELS.level1);
+    const id = new URLSearchParams(location.search).get('level');
+    this.levelId = LEVELS[id] ? id : 'level1';
+    this.world = new World(this, LEVELS[this.levelId]);
+    this.best = loadBest(this.levelId);
+    this.ranked = true; // until the sandbox panel is opened
+    this.replay.stop();
+    this.recorder.reset();
+    this.recorder.attach(this.world.events);
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
     this.camera.snap(p.x, p.y);
@@ -98,18 +109,19 @@ export default class Game {
   onCleared() { this.clearedT = 0; }
   onExit() {
     const w = this.world;
-    const secs = w.time;
-    const timeBonus = Math.max(0, Math.round((240 - secs) * 40));
-    const total2 = w.score + timeBonus;
-    const ratio = total2 / (w.totalEnemies * 900);
-    const grade = ratio >= 2.2 ? 'S' : ratio >= 1.6 ? 'A' : ratio >= 1.15 ? 'B' : ratio >= 0.8 ? 'C' : 'D';
-    const mm = Math.floor(secs / 60), ss = Math.floor(secs % 60);
-    this.results = {
-      kills: w.kills, total: w.totalEnemies, maxCombo: w.maxCombo, score: w.score, timeBonus, total2, grade,
-      timeStr: `${mm}:${String(ss).padStart(2, '0')}`,
-    };
+    const tally = w.scoring.tally(levelScoring(this.levelId, w.totalEnemies));
+    // a run helped by the sandbox is shown but never kept as a record
+    const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.time }) : { prev: this.best, record: false };
+    this.results = { ...tally, best: kept.prev, record: kept.record, ranked: this.ranked };
+    this.replay.start();
     Audio.play('clear');
     this.setState('results');
+  }
+  toTitle() {
+    this.world = null;
+    this.replay.stop();
+    this.recorder.release();
+    this.setState('title');
   }
 
   // ---------------- loop ----------------
@@ -140,15 +152,16 @@ export default class Game {
     if (this.state === 'pause') {
       if (inp.hit('Escape')) this.setState('play');
       else if (inp.hit('KeyR')) this.newGame();
-      else if (inp.hit('KeyQ')) { this.world = null; this.setState('title'); }
+      else if (inp.hit('KeyQ')) this.toTitle();
       else if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
       inp.consume();
       return;
     }
     if (this.state === 'results') {
       this.updateCamera(dt);
+      this.replay.update(dt);
       if (inp.hit('KeyR')) this.newGame();
-      else if (this.stateT > 1 && (inp.mouseHit(0) || inp.hit('Enter'))) { this.world = null; this.setState('title'); }
+      else if (this.stateT > 1 && (inp.mouseHit(0) || inp.hit('Enter'))) this.toTitle();
       inp.consume();
       return;
     }
@@ -201,6 +214,7 @@ export default class Game {
     if (inp.hit('F3')) this.overview = !this.overview;
     if (inp.hit('F4')) this.world.debugPhysics = !this.world.debugPhysics;
     this.sandbox.update(inp, aim, this.time);
+    if (this.sandbox.on) this.ranked = false;
   }
 
   updateCamera(dt) {
@@ -235,7 +249,10 @@ export default class Game {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    if (this.overview) {
+    const replaying = this.state === 'results' && this.replay.ready;
+    if (replaying) {
+      this.safeDraw(ctx, () => this.replay.draw(ctx, W, H, t));
+    } else if (this.overview) {
       // debug: whole level on screen
       const m = this.world.map;
       const z = Math.min(W / m.widthPx, H / m.heightPx);
@@ -253,6 +270,8 @@ export default class Game {
       ctx.fillStyle = `rgba(80,0,120,${(1 - this.timeScale) * 0.22})`;
       ctx.fillRect(0, 0, W, H);
     }
+    // the replay keeps the bare picture: no scanlines, flash or HUD (they go over it again when it plays)
+    if (this.state === 'play' && !this.overview) this.recorder.capture(this.canvas, this.world.time);
     ctx.drawImage(this.getVignette(W, H), 0, 0);
     if (this.flashA > 0) {
       ctx.globalAlpha = clamp(this.flashA, 0, 1);
@@ -270,10 +289,10 @@ export default class Game {
       this.world.renderer.debugStats().forEach((l, i) => ctx.fillText(l, 12, H - 60 * H / 720 + i * 16 * H / 720));
     }
     this.safeDraw(ctx, () => {
-      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level);
+      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best);
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
       if (this.state === 'pause') drawPause(ctx, W, H, t);
-      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results);
+      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, replaying);
     });
     this.drawCursor(ctx, t);
   }

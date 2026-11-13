@@ -3,6 +3,8 @@
 // drawing in WorldRenderer. Systems talk through `world.events` (EventBus):
 //   'impact'        physics contact            { a, b, speed, x, y }
 //   'kill'          a character died           { victim, cause, killer }
+//   'knock'         a guard was floored        { victim, cause, angle }   (entities/Enemy)
+//   'shot'          a trigger was pulled       { shooter, weapon }
 //   'explosion'     a blast went off           { x, y, radius, source }
 //   'wallDestroyed' a wall tile collapsed      { cx, cy, x, y }
 //   'noise'         something audible          { x, y, radius, source, type }
@@ -29,6 +31,7 @@ import { damageWall, destroyWall, detachDoor, destroyFence } from '../systems/De
 import Scoring from '../systems/Scoring.js';
 import Impacts from '../systems/Impacts.js';
 import Liquids from '../systems/Liquids.js';
+import Threats from '../systems/Threats.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
 
@@ -85,6 +88,8 @@ export default class World {
     this.scoring = new Scoring(this);
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // puddles, wet floors, footprints
+    this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)
+    this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
     this.chars = [this.player, ...this.enemies];
@@ -95,11 +100,6 @@ export default class World {
   }
 
   get engine() { return this.physics.engine; }
-  get score() { return this.scoring.score; }
-  get kills() { return this.scoring.kills; }
-  get combo() { return this.scoring.combo; }
-  get maxCombo() { return this.scoring.maxCombo; }
-  get lastKill() { return this.scoring.lastKill; }
   get enemiesLeft() { return this.enemies.filter((e) => e.alive).length; }
 
   floorGrip(x, y) {
@@ -112,7 +112,14 @@ export default class World {
   addBody(b) { this.physics.add(b); }
   removeBody(b) { this.physics.remove(b); }
   characters() { return this.chars; }
-  addProjectile(p) { this.projectiles.push(p); }
+  // emits one 'shot' per trigger pull: the pellets of a blast all come from the same shooter in the same step
+  addProjectile(p) {
+    this.projectiles.push(p);
+    const last = this.lastShot;
+    if (last.owner === p.owner && last.t === this.time) return;
+    last.owner = p.owner; last.t = this.time;
+    this.events.emit('shot', { shooter: p.owner, weapon: p.weapon });
+  }
   addItem(it) { this.items.push(it); }
   // a guard joining after the level was built (sandbox)
   addEnemy(e) {
@@ -254,6 +261,7 @@ export default class World {
     this.scoring.update(dt);
     this.impacts.update(dt);
     this.liquids.update(dt);
+    this.threats.update(this.view());
 
     // 4. cleanup
     this.emitters = this.emitters.filter((e) => e.t > 0);
@@ -280,6 +288,13 @@ export default class World {
         this.game.onExit();
       }
     }
+  }
+
+  // world rectangle on screen: centre and half sizes
+  view() {
+    const c = this.camera, v = this.viewRect || (this.viewRect = { x: 0, y: 0, hw: 0, hh: 0 });
+    v.x = c.x; v.y = c.y; v.hw = c.w / c.z / 2; v.hh = c.h / c.z / 2;
+    return v;
   }
 
   draw(ctx, cam, t) { this.renderer.draw(ctx, cam, t); }
