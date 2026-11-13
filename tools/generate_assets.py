@@ -3427,6 +3427,29 @@ def p_bench():
     return cv
 
 
+def p_chain_fence():
+    """Chain-link gate panel, chest high: a galvanized top rail between two posts seen from above (the 32 x 4 hitbox),
+    and the diamond mesh laid out on both sides, the way it shows when looking down through it."""
+    W, H = 34, 16
+    cv = Cv(W, H)
+    st = ramp('#aeb4be', 0.5, 0.25, 0.4)
+    for x in range(1, W - 1):                 # top rail, a tie wire every 4 px
+        cv.set(x, 7, st[3] if x % 4 else st[2])
+        cv.set(x, 8, st[1] if x % 4 else st[0])
+    for x0 in (1, W - 5):                     # posts and their caps
+        cv.rect(x0, 6, x0 + 3, 9, st[2])
+        cv.rect(x0, 9, x0 + 3, 9, st[1])
+        cv.rect(x0 + 1, 6, x0 + 2, 7, st[3])
+    cv.outline()
+    for y in list(range(0, 6)) + list(range(10, H)):   # the mesh: wires over a faint shade, fading away from the rail
+        d = 5 - y if y < 6 else y - 10
+        for x in range(2, W - 2):
+            if not cv.get(x, y)[3]:
+                wire = (x + y) % 4 == 0 or (x - y) % 4 == 0
+                cv.set(x, y, alpha(st[3], 235 - 30 * d) if wire else alpha(OUTLINE, 72 - 11 * d))
+    return cv
+
+
 # --------------------------------------------------------------------------
 # Glow maps for existing props
 # --------------------------------------------------------------------------
@@ -4097,7 +4120,7 @@ def build():
                  car2_hood=p_car2_hood, car2_door=p_car2_door, van_hood=p_van_hood, van_door=p_van_door,
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
                  neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
-                 hydrant=p_hydrant, bench=p_bench)
+                 hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
     for name, fn in props.items():
         r = fn()
         if isinstance(r, tuple):   # (sprite, emissive map)
@@ -4138,7 +4161,8 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), desk=(48, 26), chair=(16
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
                   palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
-                  neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(10, 10), bench=(52, 17))
+                  neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(10, 10), bench=(52, 17),
+                  chain_fence=(34, 16))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
 GLOWING += list(LIGHT_SIZES)

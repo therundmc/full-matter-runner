@@ -101,6 +101,7 @@ export const DESTRUCTION = {
   hydrant: { height: 0.7, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
   palm_tree: { height: 5, drop: true, floats: ['leaf', 30], parts: [{ cut: 'wedges', n: 6 }] },
   streetlight: { height: 5, drop: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  chain_fence: { height: 1.3, material: 'metal', parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   neon_sign_palm: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_bar: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_arrow: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },

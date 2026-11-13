@@ -13,6 +13,15 @@ Plan (north is up):
     rows 30-31   sidewalk
     rows 32-36   the alley where the player starts
     cols 11-13   service alley along the bar, from the street to the back lot
+    col  32      the gap between the bar and the next building
+
+Three ways in, none of them free:
+    the front    double door under the neon: the bouncer, the sidewalk patrol, the whole room at once
+    the gate     west service alley, closed by a chain-link gate to climb (Space): the shortest way to the back, but
+                 under a lamp, in full view of the street through the mesh, with a man smoking a few metres further
+    the gap      an anonymous door right of the bar opens on a dark one-metre gap: nobody posted there and no light,
+                 but it is the long way round, with no room to dodge, past a window of the bar, and it comes out
+                 in the back lot under the tube light where a guard walks his round
 """
 from levelkit import Level
 
@@ -21,8 +30,11 @@ lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
 # back lot and service alley
-lv.fill(11, 1, 30, 4, '_')
+lv.fill(11, 1, 32, 4, '_')
 lv.fill(11, 5, 13, 20, '_')
+# the gap between the bar and the next building: a door like any other on the street, a window of the bar on it
+lv.fill(32, 5, 32, 19, '_')
+lv.put(32, 20, 'D')
 # the bar: storeroom, toilets, back room, main room
 lv.fill(15, 6, 19, 10, '_')
 lv.fill(21, 6, 23, 10, '+')
@@ -38,6 +50,7 @@ lv.put(27, 11, 'L')            # back room, locked: kick it or shoot it
 lv.put(14, 8, 'D')             # storeroom -> service alley
 lv.put(28, 5, 'D')             # back room -> back lot
 lv.put(26, 5, 'G')
+lv.put(31, 14, 'G')            # the pool corner, seen from the gap
 for x in (15, 16, 24, 25, 27, 28):
     lv.put(x, 20, 'G')         # facade windows
 lv.put(21, 20, 'D')
@@ -52,8 +65,9 @@ lv.fill(20, 32, 23, 36, '_')
 
 # ---------------------------------------------------------------- actors (13 guards)
 lv.actor('@', 21, 35, face=270)
-# the bar, its service alley and its back lot are off limits; the street and the start alley are public ground
-lv.guard(11, 0, 30, 19)
+# the bar, its service alley, the gap and the back lot are off limits; the street and the start alley are public ground
+lv.guard(11, 0, 32, 19)
+lv.guard(11, 20, 13, 20)                                # behind the gate
 lv.actor('5', 22, 33)                                   # a bat by the dumpster: the first weapon
 # street
 lv.actor('b', 24, 21, face=90)                          # bouncer
@@ -73,8 +87,8 @@ lv.actor('r', 30, 8, face=180)                          # the boss behind his de
 lv.actor('u', 26, 9, face=45)
 lv.actor('s', 29, 10, face=200)
 lv.actor('v', 30, 10)
-# back lot
-lv.actor('p', 19, 3, face=0)
+# back lot: he walks along the back wall, past the back room's door, and turns round short of the gap
+lv.actor('P', 19, 4, route=[[13, 4], [29, 4]])
 
 # ---------------------------------------------------------------- props
 lv.area('the alley where it starts')
@@ -115,6 +129,8 @@ lv.prop('palm_tree', 2.5, 21.8)
 lv.prop('palm_tree', 41.6, 21.8)
 
 lv.area('service alley')
+for x in (11.5, 12.5, 13.5):
+    lv.prop('chain_fence', x, 20.88)                    # the gate, flush with the facade
 lv.prop('wall_lamp', 11.09, 19.0, 270)
 lv.prop('trash_can', 13.5, 17.4)
 lv.prop('trash_can', 13.45, 18.25)
@@ -132,7 +148,8 @@ lv.prop('crate', 17.9, 1.5, -10)
 lv.prop('crate', 17.5, 2.15, 30)
 lv.prop('barrel', 12.0, 1.45)
 lv.prop('barrel', 12.65, 1.5)
-lv.prop('trash_can', 30.4, 4.4)
+lv.prop('trash_can', 31.5, 1.5)
+lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
 lv.prop('tube_light', 29.9, 4.93, 180)
 
@@ -223,17 +240,17 @@ lv.roof('vent', 5.2, 18.6)
 
 lv.area('east block, behind the bar')
 lv.roof('skylight', 35.2, 2.6, 90)
-lv.roof('vent', 33.0, 5.2)
+lv.roof('vent', 34.4, 5.2)
 lv.roof('chimney', 38.6, 4.4)
-lv.roof('ac_unit', 33.3, 7.6, 90)
-lv.roof('ac_unit', 33.3, 9.4, 90)
-lv.roof('duct', 35.0, 9.4)
+lv.roof('ac_unit', 34.6, 7.6, 90)
+lv.roof('ac_unit', 34.6, 9.4, 90)
+lv.roof('duct', 36.2, 9.4)
 lv.roof('tank', 40.2, 8.6)
 lv.roof('skylight_tv', 35.6, 12.6)
 lv.roof('skylight_dark', 38.2, 12.6)
-lv.roof('hatch', 33.0, 14.6)
+lv.roof('hatch', 34.5, 14.9)
 lv.roof('bulkhead', 37.0, 16.4, 180)
-lv.roof('antenna', 33.4, 18.2, -15)
+lv.roof('antenna', 34.8, 18.2, -15)
 lv.roof('vent', 41.4, 18.4)
 
 lv.area('south west block, by the alley')
@@ -285,4 +302,6 @@ if __name__ == '__main__':
     lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM', exit=exit_zone,
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
+                 'Three ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
+                 'anonymous door right of the bar (east).',
              ])

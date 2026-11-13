@@ -46,6 +46,9 @@ export const PROPS = {
   jukebox: { static: true, material: 'plastic', w: 28, h: 20, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true },
   hydrant: { material: 'metal', r: 4, hp: 10, static: true, chips: '#c02020', sound: 'metal', fountain: true },
   bench: { vault: true, material: 'wood', w: 50, h: 15, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
+  // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
+  // guards path through it and vault it too (no blocksPath)
+  chain_fence: { vault: true, material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
   floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.8, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',

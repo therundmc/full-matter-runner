@@ -5,7 +5,7 @@ import { TILE } from '../Config.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 
 export const RESIST = {
-  glass: 0.1, fabric: 0.3, plastic: 0.45, rubber: 0.5, flesh: 0.55, wood: 0.6, ceramic: 1.1,
+  glass: 0.1, mesh: 0.12, fabric: 0.3, plastic: 0.45, rubber: 0.5, flesh: 0.55, wood: 0.6, ceramic: 1.1,
   concrete: 2.2, metal: 2.8, brass: 2.8,
 };
 // wall tiles: '#' plaster/drywall partition, 'X' brick

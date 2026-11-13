@@ -1,0 +1,86 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { load } from './setup.mjs';
+
+const { default: TileMap } = await load('game/world/TileMap.js');
+const { findPath } = await load('engine/nav/Pathfinding.js');
+const { findVault } = await load('game/systems/Cover.js');
+const { PROPS } = await load('game/data/props.js');
+const { default: Director } = await load('game/ai/Director.js');
+const { TILE, CAT, PLAYER } = await load('game/Config.js');
+const { default: level } = await load('game/data/levels/level1.js');
+
+const px = (t) => t * TILE;
+const spawn = (() => {
+  const row = level.actors.findIndex((r) => r.includes('@'));
+  return { x: px(level.actors[row].indexOf('@') + 0.5), y: px(row + 0.5) };
+})();
+const exit = { x: px(level.exit.x), y: px(level.exit.y) };
+
+// the three ways into the bar's grounds, as the tiles one has to cross on the facade line
+const WAYS = {
+  front: [[21, 20], [22, 20]],
+  gate: [[11, 20], [12, 20], [13, 20]],
+  gap: [[32, 20]],
+};
+
+// a world with the level's walls and its furniture, enough for the vault geometry
+function world() {
+  const map = new TileMap(level.tiles);
+  const props = level.props.filter(([type]) => PROPS[type] && !PROPS[type].hung).map(([type, col, row, deg]) => {
+    const def = PROPS[type];
+    const opts = { isStatic: true, angle: (deg * Math.PI) / 180, collisionFilter: { category: CAT.PROP } };
+    const body = def.r ? Matter.Bodies.circle(px(col), px(row), def.r, opts) : Matter.Bodies.rectangle(px(col), px(row), def.w, def.h, opts);
+    return { type, def, body, dead: false, x: px(col), y: px(row) };
+  });
+  return { map, props, windows: [], physics: { bodies: () => props.map((p) => p.body) } };
+}
+const director = () => new Director({ level, time: 0, enemies: [], events: { on() {}, emit() {} } });
+const stranger = (x, y) => ({ x, y, radius: PLAYER.radius, armed: false });
+
+test('level 1 has three ways in, and each of them alone leads from the start alley to the way out', () => {
+  const closed = (names) => {
+    const m = new TileMap(level.tiles);
+    for (const n of names) for (const [x, y] of WAYS[n]) m.blocked[y * m.w + x] = 1;
+    return m;
+  };
+  for (const way of Object.keys(WAYS)) {
+    const others = Object.keys(WAYS).filter((n) => n !== way);
+    assert.ok(findPath(closed(others), spawn.x, spawn.y, exit.x, exit.y), `through the ${way} only`);
+  }
+  assert.equal(findPath(closed(Object.keys(WAYS)), spawn.x, spawn.y, exit.x, exit.y), null, 'and there is no fourth one');
+});
+
+test('the service alley is closed by a chain-link gate that is climbed both ways', () => {
+  const w = world();
+  const gate = w.props.filter((p) => p.type === 'chain_fence');
+  assert.deepEqual(gate.map((p) => Math.floor(p.x / TILE)).sort(), [11, 12, 13], 'one panel per tile of the mouth');
+  assert.ok(PROPS.chain_fence.vault && PROPS.chain_fence.static && !PROPS.chain_fence.blocksPath);
+  const y = gate[0].y, d = director();
+  for (const col of [11.5, 12.5, 13.5]) {
+    const out = stranger(px(col), y + PROPS.chain_fence.h / 2 + PLAYER.radius + 2);
+    const over = findVault(w, out, -Math.PI / 2);
+    assert.equal(over?.kind, 'prop', `no vault at column ${col}`);
+    assert.equal(over.over.type, 'chain_fence');
+    assert.ok(over.to.y < y - PLAYER.radius, 'lands behind the gate');
+    assert.equal(d.isThreat(out), false, 'the sidewalk is public');
+    assert.equal(d.isThreat(stranger(over.to.x, over.to.y)), true, 'behind the gate is the bar\'s ground');
+    const back = findVault(w, stranger(over.to.x, over.to.y), Math.PI / 2);
+    assert.ok(back && back.to.y > y + PLAYER.radius, 'and back out');
+  }
+});
+
+test('the gap right of the bar: a door on the street, one metre wide, off limits, a window of the bar on it', () => {
+  const m = new TileMap(level.tiles), d = director();
+  assert.equal(m.at(32, 20), 'D');
+  assert.equal(d.isThreat(stranger(px(32.5), px(21.5))), false, 'in front of the door');
+  let windows = 0;
+  for (let row = 5; row <= 19; row++) {
+    assert.equal(m.isSolid(32, row), false, `row ${row}`);
+    assert.equal(m.isSolid(33, row), true, `east wall, row ${row}`);
+    if (m.at(31, row) === 'G') windows++;
+    else assert.equal(m.isSolid(31, row), true, `the bar's wall, row ${row}`);
+    assert.equal(d.isThreat(stranger(px(32.5), px(row + 0.5))), true, `row ${row} is guarded ground`);
+  }
+  assert.equal(windows, 1);
+});
