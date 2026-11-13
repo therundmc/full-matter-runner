@@ -102,6 +102,18 @@ export const DESTRUCTION = {
   palm_tree: { height: 5, drop: true, floats: ['leaf', 30], parts: [{ cut: 'wedges', n: 6 }] },
   streetlight: { height: 5, drop: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
   chain_fence: { height: 1.3, material: 'metal', parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
+  bottle_shelf: {
+    height: 1.8, parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
+    leak: { color: 'rgba(150,90,20,0.5)', on: 'hit', dur: 1.5 },
+    contents: [{ bit: 'bottle', n: 12, on: 'break' }, { bit: 'bottle', n: 2, on: 'hit', perHit: 1 }],
+  },
+  washer: {
+    height: 0.95, parts: [{ cut: 'panel', rect: [0.2, 0.3, 0.8, 0.9], name: 'lid', fly: 1.6 }, { cut: 'grid', cols: 2, rows: 2 }],
+    leak: { color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 4 },
+  },
+  neon_sign_liquor: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
+  neon_sign_video: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
+  neon_sign_wash: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_palm: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_bar: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_arrow: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },

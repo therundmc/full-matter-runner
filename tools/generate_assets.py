@@ -3451,6 +3451,147 @@ def p_chain_fence():
 
 
 # --------------------------------------------------------------------------
+# Shop fronts of the street: what shows behind the lit display windows, and their small neon wall signs
+# (same build as the bar's: a dark backing against the wall, 1 px tubes).
+# --------------------------------------------------------------------------
+
+def p_bottle_shelf():
+    """Liquor shelf from above: back panel at -y, three ranks of bottle tops grouped by brand, price rail at +y."""
+    W, H = 42, 13
+    cv = Cv(W, H)
+    wood = ramp('#4a2c1c', 0.45, 0.22, 0.3)
+    cv.rect(1, 1, W - 2, H - 2, dk(wood[0], 0.25))            # the dark between the bottles
+    cv.rect(1, 1, W - 2, 1, wood[3])
+    cv.rect(1, 2, W - 2, 2, wood[2])
+    cv.rect(1, 2, 2, H - 2, wood[2])
+    cv.rect(W - 3, 2, W - 2, H - 2, wood[1])
+    cv.rect(3, H - 2, W - 4, H - 2, hx('#cfc8b4'))            # price rail
+    rng = random.Random(23)
+    glass = ['#2f7a3c', '#b4681c', '#bcd4cc', '#3c68b0', '#5a2a12', '#d0a02c', '#8a1f2a']
+    rng.shuffle(glass)
+    slot = 0
+    while slot < 12:
+        col = hx(glass.pop())
+        for _ in range(rng.choice([1, 2, 2, 3])):             # a brand: a few bottles side by side, three deep
+            if slot == 12:
+                break
+            x = 3 + slot * 3
+            for rank, y in enumerate((3, 6, 9)):
+                if rank == 2 and rng.random() < 0.2:          # sold
+                    continue
+                cv.set(x, y, lt(col, 0.5))
+                cv.set(x + 1, y, col)
+                cv.set(x, y + 1, col)
+                cv.set(x + 1, y + 1, dk(col, 0.4))
+            cv.set(x, H - 2, lt(col, 0.3))                    # its price tag
+            slot += 1
+    cv.outline()
+    return cv
+
+
+def p_washer():
+    """Coin-op top loader from above: enamel cabinet, control panel and coin box at the back (-y), round glass lid."""
+    S = 24
+    cv = Cv(S, S)
+    en = ramp('#dfe3e8', 0.42, 0.2, 0.4)
+    fill_shape(cv, 12.0, 12.0, 11.0, 11.0, lambda u, v, L: shade(en, L), kind='rect', bevel=2.4, corner=1.6)
+    mottle(cv, random.Random(191), 4, 6)
+    pn = ramp('#566070', 0.45, 0.22, 0.35)
+    cv.rect(2, 2, 21, 5, pn[1])
+    cv.rect(2, 2, 21, 2, pn[2])
+    cv.rect(2, 5, 21, 5, pn[0])
+    for x in (4, 8):                                          # dials
+        cv.set(x, 3, hx('#eef2f8'))
+        cv.set(x, 4, hx('#98a0ae'))
+    cv.set(11, 3, hx('#3aff8a'))                              # ready light
+    cv.rect(15, 2, 19, 4, STEEL_L[2])                         # coin box and its slot
+    cv.rect(15, 4, 19, 4, STEEL_L[1])
+    cv.set(17, 3, OUTLINE)
+    cloth = (hx('#8a3040'), hx('#c8ccd4'), hx('#3a5a9a'))
+
+    def lid(dx, dy, d):
+        if d > 6.2:
+            return dk(en[0], 0.2)                             # the seal's shadow on the enamel
+        if d > 4.8:
+            return shade(CHROME, 0.25 + 0.9 * light(dx / d * 0.85, dy / d * 0.85))
+        c = mix(GLASS[0], cloth[int((math.atan2(dy, dx) + math.pi) / (2 * math.pi) * 3 + d * 0.35) % 3], 0.28)
+        return mix(c, hx('#dfeaff'), 0.55) if dx + dy < -2.6 and d > 2.2 else c
+    ring(cv, 12.0, 14.0, 0.0, 7.0, lid)
+    cv.outline()
+    return cv
+
+
+# 7 px tall capitals, one tube wide
+FONT_SHOP = {
+    'L': ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    'I': ["#", "#", "#", "#", "#", "#", "#"],
+    'Q': [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
+    'U': ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    'O': [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    'R': ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+    'V': ["#...#", "#...#", "#...#", "#...#", ".#.#.", ".#.#.", "..#.."],
+    'D': ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    'E': ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    'W': ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
+    'A': [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    'S': [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+    'H': ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    '2': [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+    '4': ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+}
+NEON_GREEN, NEON_AMBER, NEON_YELLOW = hx('#3aff8a'), hx('#ffa62a'), hx('#f9c80e')
+
+
+def neon_text(ne, x, y, text, col):
+    """Writes `text` in tubes from (x, y); returns the x where the next word would start."""
+    for ch in text:
+        for gy, row in enumerate(FONT_SHOP[ch]):
+            for gx, c in enumerate(row):
+                if c == '#':
+                    ne.dot(x + gx, y + gy, col)
+        x += len(FONT_SHOP[ch][0]) + 1
+    return x
+
+
+def p_neon_sign_liquor():
+    cv, gl = sign_backing(46, 14), Cv(46, 14)
+    ne = Neon(46, 14)
+    ne.line([(5, 2), (5, 3)], NEON_AMBER)                                      # a bottle
+    ne.line([(4, 4), (3, 5), (3, 11), (7, 11), (7, 5), (6, 4)], NEON_AMBER)
+    neon_text(ne, 11, 3, 'LIQUOR', NEON_GREEN)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_video():
+    cv, gl = sign_backing(44, 14), Cv(44, 14)
+    ne = Neon(44, 14)
+    ne.line([(3, 5), (10, 5), (10, 10), (3, 10), (3, 5)], NEON_PINK)           # a TV set and its rabbit ears
+    ne.line([(6, 4), (4, 2)], NEON_PINK)
+    ne.line([(7, 4), (9, 2)], NEON_PINK)
+    ne.line([(5, 8), (6, 7), (7, 8), (8, 7)], NEON_YELLOW)
+    neon_text(ne, 15, 3, 'VIDEO', NEON_CYAN)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_wash():
+    cv, gl = sign_backing(50, 14), Cv(50, 14)
+    ne = Neon(50, 14)
+    x = neon_text(ne, 4, 3, 'WASH', hx('#7fe0ff'))
+    neon_text(ne, x + 3, 3, '24H', NEON_YELLOW)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
+                  neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash)
+SHOP_SIZES = dict(bottle_shelf=(42, 13), washer=(24, 24), neon_sign_liquor=(46, 14), neon_sign_video=(44, 14),
+                  neon_sign_wash=(50, 14))
+SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash']
+
+
+# --------------------------------------------------------------------------
 # Glow maps for existing props
 # --------------------------------------------------------------------------
 
@@ -4121,6 +4262,7 @@ def build():
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
                  neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
                  hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
+    props.update(SHOP_PROPS)
     for name, fn in props.items():
         r = fn()
         if isinstance(r, tuple):   # (sprite, emissive map)
@@ -4165,7 +4307,8 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), desk=(48, 26), chair=(16
                   chain_fence=(34, 16))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
-GLOWING += list(LIGHT_SIZES)
+PROP_SIZES.update(SHOP_SIZES)
+GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
         ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),

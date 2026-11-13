@@ -15,6 +15,10 @@ Plan (north is up):
     cols 11-13   service alley along the bar, from the street to the back lot
     col  32      the gap between the bar and the next building
 
+The street is alive at 2:14 AM: three shop fronts throw their light on the sidewalks through their display windows
+(a liquor store and a TV shop, closed, on either side of the bar; a laundromat open all night next to the start alley).
+They are public ground, and nothing in them leads anywhere.
+
 Three ways in, none of them free:
     the front    double door under the neon: the bouncer, the sidewalk patrol, the whole room at once
     the gate     west service alley, closed by a chain-link gate to climb (Space): the shortest way to the back, but
@@ -62,6 +66,17 @@ lv.fill(0, 27, W - 1, 27, '-')
 lv.fill(0, 30, W - 1, 31, 's')
 # the alley across the road
 lv.fill(20, 32, 23, 36, '_')
+# shop fronts, 3 m deep behind their display windows: liquor store (west of the bar) and TV shop (east), both locked
+# for the night, and the laundromat by the start alley, open
+lv.fill(3, 17, 8, 19, ',')
+lv.fill(5, 20, 7, 20, 'G')
+lv.put(8, 20, 'L')
+lv.fill(36, 17, 39, 19, ';')
+lv.fill(36, 20, 38, 20, 'G')
+lv.put(39, 20, 'L')
+lv.fill(27, 33, 31, 35, '+')
+lv.fill(27, 32, 29, 32, 'G')
+lv.put(30, 32, 'D')
 
 # ---------------------------------------------------------------- actors (13 guards)
 # Blades, bats and pistols: five men with their hands (2 bats, 3 knives), six pistols. The two heavier guns are the
@@ -90,6 +105,7 @@ lv.actor('p', 26, 9, face=45)
 lv.actor('u', 29, 10, face=200)                         # his bodyguard: the only automatic in the house
 lv.actor('g', 30, 10)
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
+lv.actor('1', 8, 17)                                    # what the liquor store keeps behind its counter
 # back lot: he walks along the back wall, past the back room's door, and turns round short of the gap
 lv.actor('P', 19, 4, route=[[13, 4], [29, 4]])
 
@@ -109,7 +125,7 @@ lv.prop('streetlight', 28.5, 30.3, 270)
 lv.prop('bench', 12.5, 31.7, 180)
 lv.prop('trash_can', 14.0, 31.65)
 lv.prop('hydrant', 26.5, 30.35)
-lv.prop('neon_sign_palm', 28.5, 31.91, 180)
+lv.prop('neon_sign_palm', 17.0, 31.91, 180)
 lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
 
@@ -120,16 +136,56 @@ lv.prop('van', 38.6, 24.05, 180, lights=False)
 
 lv.area('north sidewalk and the facade')
 lv.prop('neon_sign_bar', 30.0, 21.09)
-lv.prop('neon_sign_arrow', 9.4, 21.09)
+lv.prop('neon_sign_arrow', 9.6, 21.09)
 lv.prop('plant', 20.6, 21.3)
 lv.prop('plant', 23.4, 21.3)
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
-lv.prop('bench', 36.6, 21.3)
-lv.prop('trash_can', 34.9, 21.35)
+lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window
+lv.prop('trash_can', 40.5, 21.35)
 lv.prop('hydrant', 11.6, 22.65)
 lv.prop('palm_tree', 2.5, 21.8)
 lv.prop('palm_tree', 41.6, 21.8)
+
+lv.area('liquor store')
+lv.prop('neon_sign_liquor', 4.0, 21.09)
+for x in (3.7, 5.0, 6.3):
+    lv.prop('bottle_shelf', x, 17.2)
+lv.prop('bottle_shelf', 8.3, 17.2)                      # behind the counter
+lv.prop('bar_counter', 7.5, 18.4)
+lv.prop('bar_counter', 8.5, 18.4)
+lv.prop('bottle_shelf', 5.0, 18.5)
+lv.prop('fridge', 3.4, 18.5, 270)
+lv.prop('fridge', 3.4, 19.25, 270)
+lv.prop('bottle_shelf', 5.7, 19.78, 180)                # the window display
+lv.prop('crate', 6.9, 19.6, 10)
+lv.prop('crate', 7.52, 19.62, -5)
+lv.prop('ceiling_lamp', 4.6, 19.0)
+lv.prop('ceiling_lamp', 6.9, 18.9)
+
+lv.area('TV shop')
+lv.prop('neon_sign_video', 34.9, 21.09)
+for x in (36.5, 37.5, 38.5):
+    lv.prop('tv', x, 19.7)                              # left on all night, facing the street
+lv.prop('tv', 37.7, 18.45)
+lv.prop('bookshelf', 36.7, 17.2)
+lv.prop('bookshelf', 38.0, 17.2)
+lv.prop('desk', 39.5, 18.1, 90)
+lv.prop('speaker', 36.3, 18.2)
+lv.prop('speaker', 36.3, 18.75)
+lv.prop('neon_tube_pink', 36.07, 18.5, 270)
+
+lv.area('laundromat')
+lv.prop('neon_sign_wash', 25.55, 31.91)
+for x in (27.4, 28.12, 28.84, 29.56):
+    lv.prop('washer', x, 35.6, 180)
+lv.prop('washer', 31.6, 34.1, 90)
+lv.prop('washer', 31.6, 34.82, 90)
+lv.prop('bench', 28.3, 33.4)
+lv.prop('trash_can', 31.6, 33.35)
+lv.prop('plant', 31.55, 35.6)
+lv.prop('tube_light', 28.5, 35.93, 180)
+lv.prop('tube_light', 30.5, 35.93, 180)
 
 lv.area('service alley')
 for x in (11.5, 12.5, 13.5):
@@ -237,9 +293,9 @@ lv.roof('chimney', 2.4, 9.2)
 lv.roof('hatch', 8.9, 12.6)
 lv.roof('skylight', 4.2, 14.9)
 lv.roof('skylight', 6.2, 14.9)
-lv.roof('antenna', 8.6, 17.4, 20)
-lv.roof('chimney', 2.4, 17.6)
-lv.roof('vent', 5.2, 18.6)
+lv.roof('antenna', 7.6, 12.9, 20)
+lv.roof('chimney', 1.4, 17.6)
+lv.roof('vent', 1.6, 19.0)
 
 lv.area('east block, behind the bar')
 lv.roof('skylight', 35.2, 2.6, 90)
@@ -252,8 +308,8 @@ lv.roof('tank', 40.2, 8.6)
 lv.roof('skylight_tv', 35.6, 12.6)
 lv.roof('skylight_dark', 38.2, 12.6)
 lv.roof('hatch', 34.5, 14.9)
-lv.roof('bulkhead', 37.0, 16.4, 180)
-lv.roof('antenna', 34.8, 18.2, -15)
+lv.roof('bulkhead', 37.0, 14.75, 180)
+lv.roof('antenna', 41.6, 15.2, -15)
 lv.roof('vent', 41.4, 18.4)
 
 lv.area('south west block, by the alley')
@@ -270,12 +326,12 @@ lv.roof('vent', 18.4, 37.3)
 
 lv.area('south east block, by the alley')
 lv.roof('vent', 25.6, 36.9)
-lv.roof('skylight_tv', 27.4, 35.3)
-lv.roof('chimney', 29.6, 33.8)
-lv.roof('ac_unit', 31.6, 36.3)
-lv.roof('ac_unit', 33.4, 36.3)
-lv.roof('duct', 32.5, 35.2)
-lv.roof('tank', 36.4, 35.4)
+lv.roof('chimney', 33.7, 33.7)
+lv.roof('skylight_tv', 34.6, 35.8)
+lv.roof('ac_unit', 36.0, 33.6)
+lv.roof('duct', 37.72, 33.6)
+lv.roof('tank', 37.3, 35.4)
+lv.roof('ac_unit', 40.0, 36.4)
 lv.roof('skylight_dark', 39.6, 34.4)
 lv.roof('antenna', 42.0, 36.4, -25)
 
@@ -306,5 +362,5 @@ if __name__ == '__main__':
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
                  'Three ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
-                 'anonymous door right of the bar (east).',
+                 'anonymous door right of the bar (east). Lit shop fronts on the street: liquor, TV, laundromat.',
              ])

@@ -7,7 +7,7 @@ const { findPath } = await load('engine/nav/Pathfinding.js');
 const { findVault } = await load('game/systems/Cover.js');
 const { PROPS } = await load('game/data/props.js');
 const { default: Director } = await load('game/ai/Director.js');
-const { TILE, CAT, PLAYER } = await load('game/Config.js');
+const { TILE, CAT, PLAYER, LIGHTING } = await load('game/Config.js');
 const { default: level } = await load('game/data/levels/level1.js');
 
 const px = (t) => t * TILE;
@@ -95,6 +95,45 @@ test('level 1 is fought with blades, bats and pistols: the two heavier guns wait
   const heavy = guards.filter((g) => 'ushr'.includes(g.ch));
   assert.ok(heavy.length <= 2, 'no more than two heavier guns');
   for (const g of heavy) assert.ok(g.col >= 25 && g.col <= 30 && g.row >= 6 && g.row <= 10, `a ${g.ch} outside the back room`);
-  // nothing heavier than a pistol lies around either
-  assert.deepEqual([...new Set(level.actors.join('').replace(/[^1-9]/g, ''))].sort(), ['5', '6']);
+  // nothing heavier than a pistol lies around either, and the only pistol is behind the liquor store's locked door
+  assert.deepEqual([...new Set(level.actors.join('').replace(/[^1-9]/g, ''))].sort(), ['1', '5', '6']);
+  assert.equal(level.actors.join('').split('1').length - 1, 1);
+  assert.equal(level.actors[17][8], '1');
+});
+
+// the shop fronts of the street: room (inclusive tiles), display panes and door on the facade row, neon sign
+const SHOPS = {
+  liquor: { room: [3, 17, 8, 19], facade: 20, panes: [5, 6, 7], door: [8, 'L'], sign: 'neon_sign_liquor' },
+  video: { room: [36, 17, 39, 19], facade: 20, panes: [36, 37, 38], door: [39, 'L'], sign: 'neon_sign_video' },
+  wash: { room: [27, 33, 31, 35], facade: 32, panes: [27, 28, 29], door: [30, 'D'], sign: 'neon_sign_wash' },
+};
+
+test('three shop fronts light the street: panes on the sidewalk, a neon sign, lamps and goods behind the glass', () => {
+  const m = new TileMap(level.tiles), d = director();
+  const lit = (type) => PROPS[type]?.light ?? LIGHTING.propLights[type];
+  for (const [name, s] of Object.entries(SHOPS)) {
+    const [x0, y0, x1, y1] = s.room;
+    const street = s.facade + (s.facade > y1 ? 1 : -1);
+    for (const col of s.panes) {
+      assert.equal(m.at(col, s.facade), 'G', `${name}: pane at column ${col}`);
+      assert.equal(m.at(col, street), 's', `${name}: the pane gives on the sidewalk`);
+    }
+    assert.equal(m.at(s.door[0], s.facade), s.door[1], `${name}: door`);
+    // a closed box behind its facade: nothing in it leads anywhere
+    for (let col = x0 - 1; col <= x1 + 1; col++) {
+      for (let row = y0 - 1; row <= y1 + 1; row++) {
+        const inside = col >= x0 && col <= x1 && row >= y0 && row <= y1;
+        if (inside) assert.equal(m.isSolid(col, row), false, `${name}: floor at ${col},${row}`);
+        else if (row !== s.facade || !'GDL'.includes(m.at(col, row))) assert.equal(m.isSolid(col, row), true, `${name}: wall at ${col},${row}`);
+        if (inside) assert.equal(d.isThreat(stranger(px(col + 0.5), px(row + 0.5))), false, `${name} is public ground`);
+      }
+    }
+    const signs = level.props.filter(([type]) => type === s.sign);
+    assert.equal(signs.length, 1, `${name}: one sign`);
+    assert.ok(lit(s.sign) && Math.floor(signs[0][2]) === street, `${name}: the sign hangs on the wall over the sidewalk`);
+    const inside = level.props.filter(([, col, row]) => col > x0 && col < x1 + 1 && row > y0 && row < y1 + 1);
+    assert.ok(inside.filter(([type]) => lit(type)).length >= 2, `${name}: lit from inside by its own fixtures`);
+    assert.ok(inside.filter(([type]) => !lit(type) || type === 'tv').length >= 4, `${name}: things to see behind the glass`);
+  }
+  assert.ok(!level.props.some(([type]) => /marquee/.test(type)) && !(level.roof || []).some(([type]) => /sign|marquee/.test(type)), 'no rooftop sign');
 });

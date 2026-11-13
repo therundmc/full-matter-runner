@@ -49,6 +49,16 @@ export const PROPS = {
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
   // guards path through it and vault it too (no blocksPath)
   chain_fence: { vault: true, material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
+  // shop fronts of the street: what shows behind the lit display windows, and their neon wall signs (mounted like
+  // the bar's: 3 px off the wall face; unlike the pictures they read one way up, so never rotate them)
+  bottle_shelf: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
+  washer: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sound: 'metal', blocksPath: true },
+  neon_sign_liquor: { material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
+    light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
+  neon_sign_video: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+    light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
+  neon_sign_wash: { material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
+    light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
   floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.8, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',
