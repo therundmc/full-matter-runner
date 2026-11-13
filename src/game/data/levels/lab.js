@@ -54,7 +54,7 @@ export default {
     ['neon_tube_pink', 13.5, 1.07, 0], ['floor_lamp', 10.6, 5.6, 0], ['table_lamp', 17.2, 3.4, 0],
     ['tube_light', 22.5, 1.07, 0], ['pool_lamp', 22.5, 5.2, 0], ['neon_tube_cyan', 26.93, 6, 90],
     ['streetlight', 21, 11.5, 0],
-    ['marquee', 14, 8.5, 0], ['string_lights', 7, 10.2, 0],
+    ['marquee', 10.5, 9.69, 0], ['string_lights', 7, 10.2, 0],
     ['chair', 2.5, 1.6, 0],
     ['table', 4.5, 3.0, 0],
     ['sofa', 4.5, 7.4, 180],

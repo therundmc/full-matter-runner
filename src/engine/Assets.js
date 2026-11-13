@@ -25,7 +25,6 @@ const FIXTURES = ['floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'neon_t
   'marquee', 'string_lights'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
-  'props/marquee_bulbs',
   ...FLOOR_TILES.flatMap((t) => [`tiles/${t}_v1`, `tiles/${t}_v2`]),
   'tiles/neon_floor_glow',
   ...['palm_tree', 'streetlight', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'jukebox', 'car2', 'van',

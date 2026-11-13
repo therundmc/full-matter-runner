@@ -617,11 +617,6 @@ export default class Lighting {
         g.globalAlpha = a;
         g.drawImage(gl, sx, 0, sw, gl.height, x0 + sx, y0, sw, gl.height);
       });
-      const bulbs = spriteOpt(`props/${p.type}_bulbs`);
-      if (bulbs) {
-        g.globalAlpha = k;
-        g.drawImage(bulbs, 0, (Math.floor(t * 3) % 2) * gl.height, gl.width, gl.height, x0, y0, gl.width, gl.height);
-      }
     }
     g.restore();
   }

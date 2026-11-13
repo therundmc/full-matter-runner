@@ -3014,14 +3014,14 @@ MARQUEE_TEXT, MARQUEE_X0, MARQUEE_STEP = 'MIRAGE', 8, 13
 
 
 def p_marquee():
-    """Bar sign: dark tubes on the sprite, lit letters on the glow map, the two halves of the bulb chase
-    stacked on a third sheet. Letter i spans x = MARQUEE_X0 + i * MARQUEE_STEP - 1 .. + 12 (see props.js `sign`)."""
-    W, H = 92, 28
-    cv, gl, bulbs = sign_backing(W, H), Cv(W, H), Cv(W, H * 2)
+    """Bar sign lying on the top of the facade wall, seen from above: dark tubes on the sprite, lit letters on the
+    glow map. Letter i spans x = MARQUEE_X0 + i * MARQUEE_STEP - 1 .. + 12 (see props.js `sign`)."""
+    W, H = 92, 24
+    cv, gl = sign_backing(W, H), Cv(W, H)
     dim, hot = dk(NEON_PINK, 0.62), lt(NEON_PINK, 0.3)
     for i, ch in enumerate(MARQUEE_TEXT):
         x0 = MARQUEE_X0 + i * MARQUEE_STEP
-        cells = [(x0 + cx * 2 + a, 7 + cy * 2 + b) for cy, row in enumerate(FONT_SIGN[ch])
+        cells = [(x0 + cx * 2 + a, 5 + cy * 2 + b) for cy, row in enumerate(FONT_SIGN[ch])
                  for cx, c in enumerate(row) if c == '#' for a in (0, 1) for b in (0, 1)]
         on = set(cells)
         for (x, y) in cells:
@@ -3032,14 +3032,7 @@ def p_marquee():
                 q = (x + dx, y + dy)
                 if q not in on and x0 - 1 <= q[0] <= x0 + 10:
                     gl.set(q[0], q[1], alpha(NEON_PINK, 110))
-    # bulb chase around the frame
-    ring_pts = [(x, 3) for x in range(4, W - 4, 4)] + [(W - 5, y) for y in range(7, H - 4, 4)] \
-        + [(x, H - 4) for x in range(W - 8, 3, -4)] + [(4, y) for y in range(H - 8, 6, -4)]
-    for k, (x, y) in enumerate(ring_pts):
-        cv.set(x, y, hx('#5a4320'))
-        for dx, dy, a in ((0, 0, 255), (1, 0, 90), (-1, 0, 90), (0, 1, 90), (0, -1, 90)):
-            bulbs.set(x + dx, y + dy + (k % 2) * H, (255, 214, 140, a))
-    return cv, gl, bulbs
+    return cv, gl
 
 
 def p_string_lights():
@@ -3061,8 +3054,8 @@ def p_string_lights():
     return cv, gl
 
 
-LIGHT_PROPS['string_lights'] = p_string_lights
-LIGHT_SIZES.update(marquee=(92, 28), string_lights=(128, 10))
+LIGHT_PROPS.update(marquee=p_marquee, string_lights=p_string_lights)
+LIGHT_SIZES.update(marquee=(92, 24), string_lights=(128, 10))
 
 
 # --------------------------------------------------------------------------
@@ -3167,7 +3160,6 @@ def build():
     out[('props', 'dj_booth_glow')] = glow_from(out[('props', 'dj_booth')], lambda x, y, c: is_neon(c))
     for name, fn in LIGHT_PROPS.items():
         out[('props', name)], out[('props', name + '_glow')] = fn()
-    out[('props', 'marquee')], out[('props', 'marquee_glow')], out[('props', 'marquee_bulbs')] = p_marquee()
     for name, cv in tiles().items():
         out[('tiles', name)] = cv
     out[('structure', 'door')] = s_door()
@@ -3189,7 +3181,6 @@ PROP_SIZES = dict(table=(40, 24), table_round=(28, 28), desk=(36, 22), chair=(12
                   neon_sign_arrow=(30, 12), jukebox=(20, 14), hydrant=(8, 8), bench=(36, 12))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
-PROP_SIZES['marquee_bulbs'] = (92, 56)
 GLOWING += list(LIGHT_SIZES)
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
