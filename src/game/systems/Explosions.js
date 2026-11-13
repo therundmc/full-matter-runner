@@ -27,7 +27,7 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
   P.embers(x, y, 40, 260);
   P.chips(x, y, 0, Math.PI, 30, '#2a2020', 260);
   world.decals.scorch(x, y, R * 0.75);
-  world.noise(x, y, 1100);
+  world.noise(x, y, 1100, null, 'explosion');
 
   for (const c of world.chars) {
     if (!c.alive) continue;

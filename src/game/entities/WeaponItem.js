@@ -1,4 +1,4 @@
-import { CAT, MASK, PALETTE } from '../Config.js';
+import { CAT, MASK, PALETTE, AI } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, drawSprite, silhouette } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
@@ -39,7 +39,12 @@ export default class WeaponItem {
   update(dt) {
     const sp = this.speed;
     if (!this.thrower) return;
-    if (sp < 3) { this.thrower = null; return; }
+    if (sp < 3) {
+      // a thrown gun clattering on the floor is a lure
+      if (this.thrower.isPlayer) this.world.noise(this.x, this.y, AI.thrownRadius, null, 'thrown');
+      this.thrower = null;
+      return;
+    }
     const w = this.world;
     for (const c of w.characters()) {
       if (!c.alive || c === this.thrower || c.team === this.thrower.team || c.knocked) continue;

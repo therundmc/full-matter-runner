@@ -74,6 +74,7 @@ export default class Door {
     this.world.sound('doorSlam', t.x, t.y);
     this.world.shake(0.25);
     this.pushedByPlayer = 0.8;
+    this.world.events.emit('doorBroken', { x: t.x, y: t.y });
   }
 
   // keep the door on its hinge: hinge friction, soft end stops, creaks and slams
@@ -145,7 +146,7 @@ export default class Door {
       w.sound('doorSlam', px, py, kind === 'kick' ? 0.8 : 1);
       w.shake(0.12);
       this.shakeT = 0.18;
-      w.noise(px, py, 300);
+      w.noise(px, py, 300, null, 'door');
       if (this.locked) this.latch -= dmg;
     }
     if (this.locked && this.latch <= 0) { this.unlock(px, py, dirA, kind === 'bullet' ? 0.6 : 1.3); }

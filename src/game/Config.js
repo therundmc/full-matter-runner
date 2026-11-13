@@ -37,20 +37,64 @@ export const PLAYER = {
   lookAheadFar: 0.75, // with Shift held
 };
 
+// One guard (entities/Enemy.js, ai/Perception.js). Times in seconds, distances in px, angles in rad.
 export const ENEMY = {
   radius: 8.5,
   walkSpeed: 1.0,
   runSpeed: 2.35,
   viewDist: 340,
   fov: Math.PI * 0.62,
-  closeSense: 46,         // 360° awareness radius
-  reaction: [0.6, 0.9],   // seconds before the first shot once the player is spotted
-  reacquire: [0.32, 0.5], // same, when they were already alerted
+  focusCone: 0.3,         // half-angle of the sharp centre of the view cone
+  closeSense: [20, 46, 90], // 360° awareness radius by awareness (unaware / suspicious / alert)
+  // detection meter (0..1): '?' from `suspicious`, '!' (combat) at 1
+  spotTime: [0.45, 2.0],  // seconds to fill it at point blank / at viewDist (player still, centre of view, lit)
+  suspicious: 0.3,
+  peripheral: 0.35,       // detection multiplier at the edge of the view cone
+  motion: [0.6, 0.95, 1.25], // detection multiplier: player still / walking / running
+  light: [0.35, 1.1],     // detection multiplier = light[0] + light[1] * brightness (0 dark .. 1 lit)
+  meterDecay: [0.16, 0.05], // meter loss per second out of sight (unaware / suspicious)
+  visionTick: 0.05,       // line-of-sight check period while unaware (staggered between guards)
+  // meter level a noise brings a guard to (footsteps add up instead, capped below alert)
+  hear: { gunshot: 0.75, allyFire: 0.6, explosion: 0.75, wall: 0.6, glass: 0.5, door: 0.4, thrown: 0.5, body: 0.45, noise: 0.45, footsteps: 0.18 },
+  hearError: 0.12,        // noise localisation error, fraction of the distance
+  // reaction & aim: guards must telegraph before they fire
+  reaction: [0.65, 0.95], // seconds from '!' to the first possible shot
+  reacquire: [0.32, 0.5], // same, when the target pops up again
   turnRate: 5,            // rad/s while aiming
-  aimError: 0.07,         // extra random spread on enemy shots (rad)
+  aimTolerance: 0.18,     // max angle off target to pull the trigger
+  aimError: 0.02,         // base random spread added to every enemy shot (Character.fire)
+  aimErrorMax: 0.2,       // extra error on the first shots, shrinks while they keep the target in sight
+  aimSettle: 1.6,         // seconds of steady sight to reach full accuracy
+  aimMoveMul: 1.4,        // error multiplier on a running target
   fireRateMul: 1.3,       // enemies shoot slower than the player
-  hearing: 620,           // gunshot alert radius
+  fireRange: 420,
+  spareMags: 2,           // reserve of a guard (loose shells for shotguns)
+  spareShells: 12,
+  // preferred engagement distance per weapon [min, max]
+  ranges: {
+    shotgun: [40, 105], pistol: [110, 230], uzi: [90, 200], uzi_silenced: [90, 200], rifle: [180, 300], sniper: [220, 330], bazooka: [170, 320],
+  },
   knockTime: 2.8,
+  dizzy: [1.0, 1.6],      // stagger after getting up from a knock-down
+};
+
+// Squad brain (ai/Director.js): alert phases, noises, search sweeps, budgets.
+export const AI = {
+  vigilance: { normal: 1, caution: 1.3, evasion: 1.5, alert: 1.7 }, // detection speed per phase
+  alertLinger: 4,         // seconds without a sighting before ALERT turns into EVASION
+  evasion: 18,
+  caution: 30,
+  footstepRadius: 64,
+  thrownRadius: 170,
+  bodyFallRadius: 100,
+  shoutRadius: 380,
+  maxHunters: 4,          // guards converging on a contact at once (the others hold and watch)
+  searchers: 6,           // guards sent on an evasion sweep
+  searchTiles: 16,        // sweep radius (path distance in tiles) around the last known position
+  searchSpots: 14,
+  noiseGap: 0.25,         // the same source is heard at most this often (automatic fire)
+  planBudget: 6,          // expensive AI work per step (path = 1, cover / flank search = 3)
+  barkGap: 0.4,           // seconds between two barks in the whole squad
 };
 
 export const PHYSICS = {

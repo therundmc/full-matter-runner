@@ -42,7 +42,7 @@ export function destroyWall(world, cx, cy, dirA, power = 1) {
   world.particles.smoke(x, y, 22, 14, { speed: 70, size: 10, life: 2.2 });
   world.sound('crumble', x, y);
   world.shake(0.3);
-  world.noise(x, y, 420);
+  world.noise(x, y, 420, null, 'wall');
   world.events.emit('wallDestroyed', { cx, cy, x, y });
 }
 
@@ -62,6 +62,8 @@ export function detachDoor(world, door, dirA, power = 1) {
   world.particles.smoke(b.position.x, b.position.y, 6, 10, { speed: 40, size: 6, life: 1 });
   world.sound('doorSlam', b.position.x, b.position.y);
   world.shake(0.2);
+  world.noise(b.position.x, b.position.y, 300, null, 'door');
+  world.events.emit('doorBroken', { x: door.hx, y: door.hy });
 }
 
 export function destroyFence(world, f, dirA) {

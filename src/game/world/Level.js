@@ -15,6 +15,7 @@ import WeaponItem from '../entities/WeaponItem.js';
 const { Bodies } = Matter;
 
 // actors layer legend: enemy char -> [kind, weapon]; uppercase = roaming patrol
+// (optional level.patrols['col,row'] = [[col, row], ...]: explicit route for the guard spawned at col,row)
 const ENEMIES = {
   p: ['thug', 'pistol'], u: ['thug', 'uzi'], s: ['thug', 'uzi_silenced'],
   h: ['heavy', 'shotgun'], r: ['heavy', 'rifle'],
@@ -88,7 +89,7 @@ export function buildLevel(world, level) {
       else if (ENEMIES[ch.toLowerCase()]) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
         const e = new Enemy(world, px, py, face, kind, weapon, ch !== ch.toLowerCase());
-        if (level.passive) { e.canSee = () => false; e.hear = () => {}; }
+        e.passive = !!level.passive;
         world.enemies.push(e);
       } else if (WEAPON_CHARS[ch]) {
         const type = WEAPON_CHARS[ch];

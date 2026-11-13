@@ -40,6 +40,9 @@ export default class WorldRenderer {
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
     if (lit) w.lighting.post(ctx, cam, t);
+    // guards' '?' / '!' and detection meters stay readable over the night
+    for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
+    if (w.showVision) this.drawAIDebug(ctx);
     this.drawTexts(ctx);
     if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
   }
@@ -92,6 +95,30 @@ export default class WorldRenderer {
       ctx.fillText(tx.str, tx.x, tx.y);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // F2: incidents (x: orange = unreported, cyan = reported) and the squad search points (filled once checked)
+  drawAIDebug(ctx) {
+    const d = this.world.director;
+    ctx.lineWidth = 1.5;
+    for (const inc of d.incidents) {
+      ctx.strokeStyle = inc.reported ? PALETTE.cyan : PALETTE.orange;
+      ctx.beginPath();
+      ctx.moveTo(inc.x - 5, inc.y - 5); ctx.lineTo(inc.x + 5, inc.y + 5); ctx.moveTo(inc.x + 5, inc.y - 5); ctx.lineTo(inc.x - 5, inc.y + 5);
+      ctx.stroke();
+    }
+    for (const sp of d.searchPts) {
+      ctx.strokeStyle = sp.owner ? PALETTE.pink : PALETTE.yellow;
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, 6, 0, Math.PI * 2);
+      if (sp.done) { ctx.fillStyle = 'rgba(249,200,14,0.4)'; ctx.fill(); }
+      ctx.stroke();
+    }
+    const lk = d.lastKnown;
+    if (lk) {
+      ctx.strokeStyle = PALETTE.pink;
+      ctx.beginPath(); ctx.arc(lk.x, lk.y, 10, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.lineWidth = 1;
   }
 
   drawExit(ctx, t) {

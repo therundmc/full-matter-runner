@@ -1,4 +1,4 @@
-import { PALETTE, COMBO_WINDOW, TILE } from '../Config.js';
+import { PALETTE, COMBO_WINDOW, TILE, AI } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { text, neon } from './Text.js';
 import { clamp } from '../../engine/math.js';
@@ -44,6 +44,8 @@ export function drawHUD(ctx, game, t) {
     ctx.fillRect(W - pad - 160 * s, pad + 70 * s, 160 * s * k, 7 * s);
   }
 
+  if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
+
   // context hints
   let hint = '';
   if (p.alive) {
@@ -64,6 +66,23 @@ export function drawHUD(ctx, game, t) {
     }
     drawExitArrow(ctx, game, t, s);
   }
+}
+
+const PHASES = { caution: ['CAUTION', PALETTE.yellow], alert: ['ALERT', PALETTE.pink], evasion: ['EVASION', PALETTE.orange] };
+
+// small squad alert label at the top centre, with the time left before the guards calm down
+function drawAlertPhase(ctx, dir, W, s, t) {
+  const ph = PHASES[dir.phase];
+  if (!ph) return;
+  const [label, color] = ph;
+  const alert = dir.phase === 'alert';
+  text(ctx, label, W / 2, 26 * s, 13 * s, color, { alpha: alert ? 0.7 + Math.sin(t * 9) * 0.3 : 0.8 });
+  if (alert) return;
+  const k = clamp(dir.phaseT / (dir.phase === 'caution' ? AI.caution : AI.evasion), 0, 1);
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(W / 2 - 46 * s, 37 * s, 92 * s, 3 * s);
+  ctx.fillStyle = color;
+  ctx.fillRect(W / 2 - 46 * s, 37 * s, 92 * s * k, 3 * s);
 }
 
 function drawExitArrow(ctx, game, t, s) {

@@ -155,7 +155,7 @@ export default class Player extends Character {
       w.decals.stampBlood(tg.x, tg.y, 6, 4);
       w.shake(0.18);
       if (d.kind === 'gun') {
-        if (this.weapon.mag > 0) { this.weapon.mag--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this); }
+        if (this.weapon.mag > 0) { this.weapon.mag--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot'); }
         else w.sound('punch', tg.x, tg.y);
       } else w.sound(d.hold === 'none' ? 'punch' : 'splat', tg.x, tg.y);
       if (ex.done >= ex.hits) {

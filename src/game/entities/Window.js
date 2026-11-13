@@ -53,7 +53,8 @@ export default class Window {
     }
     w.flashGlass(this.x, this.y);
     w.sound('glass', this.x, this.y);
-    w.noise(this.x, this.y, 260);
+    w.noise(this.x, this.y, 260, null, 'glass');
+    w.events.emit('windowBroken', { x: this.x, y: this.y });
   }
 
   onCollide(other) {

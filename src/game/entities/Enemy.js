@@ -1,235 +1,898 @@
-import { ENEMY, TILE, CAT, MASK, PALETTE } from '../Config.js';
+// A guard. Organic, readable behaviour: a detection meter fills while he sees the player ('?' then '!'),
+// he turns toward noises before walking over, reacts with a human delay, aims badly at first and better with
+// time, reloads, picks weapons back up, talks to his mates (barks) and follows the squad Director
+// (ai/Director.js) for alert phases, searches and tactical spots. Geometry lives in ai/Tactics.js,
+// perception maths in ai/Perception.js, tuning in Config (ENEMY, AI).
+import { ENEMY, AI, TILE, CAT, MASK, PALETTE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { rand, angDiff, approachAngle, chance, clamp } from '../../engine/math.js';
+import { rand, angDiff, approachAngle, chance, clamp, local, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
+import { findCover, findFlank, searchPoints, isCovered, randomPoint } from '../ai/Tactics.js';
+import { detectionRate, inView, aimError, hearingError } from '../ai/Perception.js';
 import Character from './Character.js';
 
 const { Body } = Matter;
 
-const S = { IDLE: 'idle', PATROL: 'patrol', COMBAT: 'combat', CHASE: 'chase', SEARCH: 'search', INVESTIGATE: 'investigate', FETCH: 'fetch', RETURN: 'return' };
+const S = {
+  IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
+  SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
+};
+// awareness implied by each state: 0 unaware, 1 suspicious ('?'), 2 alert ('!')
+const AWARE = {
+  idle: 0, patrol: 0, return: 0, suspicious: 1, investigate: 1, check: 1, search: 1, guard: 1, dizzy: 1,
+  combat: 2, hunt: 2, fetch: 2, flee: 2,
+};
+const BARKS = {
+  sight: ['HUH?', "WHO'S THERE?"], noise: ['WHAT WAS THAT?', 'HUH?'], contact: ['HEY!', 'OVER HERE!', 'THERE HE IS!'],
+  clear: ['...NOTHING.', 'MUST BE RATS.', 'ALL CLEAR.'], body: ['MAN DOWN!', 'OH GOD...'], wake: ['GET UP!'],
+  missing: ["WHERE'D HE GO?"], damage: ['WHAT THE...'], reload: ['RELOADING!', 'COVER ME!'], panic: ['AAAH!', "HE'S CRAZY!"],
+  lost: ['WHERE IS HE?', 'SPREAD OUT!'], help: ['HELP!'], dry: ["I'M OUT!"], shots: ['SHOTS FIRED!', 'GUNFIRE!'],
+};
+const RANGES = ENEMY.ranges;
 
 export default class Enemy extends Character {
   constructor(world, x, y, angle, kind, weapon, roam = false) {
     super(world, x, y, angle, kind, 'enemy');
     this.isEnemy = true;
     this.radius = ENEMY.radius;
-    this.setWeapon(weapon, undefined, WEAPONS[weapon].shellReload ? 12 : 2);
+    this.setWeapon(weapon, undefined, WEAPONS[weapon].shellReload ? ENEMY.spareShells : ENEMY.spareMags);
     this.home = { x, y, angle };
-    this.roam = roam;
-    this.state = roam ? S.PATROL : S.IDLE;
-    this.path = null;
-    this.pathIdx = 0;
-    this.repath = 0;
-    this.wait = rand(0.5, 2);
-    this.react = 0;
-    this.lost = 0;
-    this.lastSeen = null;
-    this.searchT = 0;
-    this.burst = 0;
-    this.alertIcon = 0;
-    this.icon = '';
-    this.stuck = 0;
-    this.lookPhase = rand(0, 6);
-    this.speedMul = kind === 'brute' ? 1.12 : kind === 'heavy' ? 0.9 : 1;
+    // optional explicit patrol route (level.patrols['col,row'] = [[col, row], ...] for the guard spawned there)
+    const route = world.level.patrols?.[`${Math.floor(x / TILE)},${Math.floor(y / TILE)}`];
+    this.route = route ? route.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE })) : null;
+    this.routeIdx = 0;
+    this.roam = roam || !!this.route;
+    this.passive = false;      // lab dummies: no perception at all
+    this.state = this.roam ? S.PATROL : S.IDLE;
+    this.aware = 0;
+    this.meter = 0;            // detection meter 0..1
+    this.stim = null;          // what made us suspicious {x, y, kind}
+    this.urgent = false;
+    this.sees = false;
+    this.visT = rand(0, ENEMY.visionTick); this.visAcc = 0;
+    this.seenAt = -99;
+    this.lastKnown = null;
+    this.lostT = 0;
+    this.settle = 0;           // aim steadiness 0..1
+    this.path = null; this.pathIdx = 0; this.dest = null; this.repath = 0; this.stuck = 0;
+    this.goal = null; this.target = null;
+    this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
+    this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
+    this.susT = 0; this.hideT = 0; this.shots = 0; this.ambushT = 0; this.ambushed = false; this.stalkCD = 0;
+    this.glance = 0; this.glanceT = 0; this.lookBase = angle; this.lookT = 0;
+    this.pauseT = rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
+    this.react = 0; this.tactic = null; this.thinkT = 0; this.cover = null; this.coverT = 0;
+    this.burst = 0; this.volleys = 0; this.burstLeft = 0; this.suppressCD = rand(0, 1.5);
+    this.dodge = 0; this.dodgeCD = 0; this.strafe = 0; this.strafeT = rand(1, 2);
+    this.shoutT = 0; this.panicT = 0; this.witnessed = []; this.dizzyT = 0;
+    this.kneel = false; this.crouch = 0;
+    this.searchPt = null; this.localPts = null; this.checkTarget = null; this.guardPt = null; this.guardT = 0;
+    this.fetchTarget = null; this.friend = null;
+    this.scanT = rand(0, 0.3);
+    this.icon = ''; this.iconT = 0; this.barkT = 0;
+    this.pace = rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : kind === 'heavy' ? 0.9 : 1);
+    this.seed = rand(0, 100);
+    this.sep = { x: 0, y: 0 };
     this.executing = false;
+  }
+
+  get director() { return this.world.director; }
+
+  setState(s) {
+    this.state = s;
+    this.aware = AWARE[s];
+    if (this.aware === 2) this.meter = 1;
+    this.sub = ''; this.t = 0;
+    this.path = null; this.dest = null; this.repath = 0; this.stuck = 0;
+    this.goal = null; this.target = null; this.searchPt = null;
+    this.tactic = null; this.cover = null;
+    this.director?.release(this);
   }
 
   // ---------------- perception ----------------
   canSee(p) {
     if (!p.alive) return false;
     const dx = p.x - this.x, dy = p.y - this.y;
-    const d = Math.hypot(dx, dy);
-    if (d > ENEMY.viewDist) return false;
-    if (d > ENEMY.closeSense && Math.abs(angDiff(this.angle, Math.atan2(dy, dx))) > ENEMY.fov / 2) return false;
-    return this.world.canSeeCharacter(this, p);
+    if (!inView(Math.hypot(dx, dy), Math.abs(angDiff(this.angle, Math.atan2(dy, dx))), this.aware)) return false;
+    return this.world.lineOfSight(this.x, this.y, p.x, p.y);
   }
 
-  // gunshot / glass / explosion heard
-  hear(x, y, isPlayerNoise) {
-    if (!this.alive || this.knocked || this.state === S.COMBAT) return;
-    this.lastSeen = { x, y };
+  // rangeMul: fraction of the view distance; close: radius seen all around
+  canSeePoint(x, y, rangeMul = 1, close = 0) {
+    const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
+    if (d > ENEMY.viewDist * rangeMul) return false;
+    if (d > close && Math.abs(angDiff(this.angle, Math.atan2(dy, dx))) > ENEMY.fov / 2) return false;
+    return this.world.lineOfSight(this.x, this.y, x, y);
+  }
+
+  get distracted() {
+    return (this.state === S.IDLE || (this.state === S.PATROL && this.pauseT > 0)) && (this.activity === 'smoke' || this.activity === 'phone');
+  }
+
+  // sight check: every step once alert, staggered ticks before (the meter integrates the elapsed time)
+  perceive(dt) {
+    this.visAcc += dt;
+    if (this.aware < 2 && (this.visT -= dt) > 0) return;
+    this.visT = ENEMY.visionTick;
+    const step = this.visAcc;
+    this.visAcc = 0;
+    const p = this.world.player;
+    const recent = this.world.time - this.seenAt < 3;
+    this.sees = !!p && this.canSee(p);
+    if (this.sees) {
+      if (this.aware < 2) {
+        const dx = p.x - this.x, dy = p.y - this.y;
+        this.meter = Math.min(1, this.meter + step * detectionRate({
+          dist: Math.hypot(dx, dy),
+          off: Math.abs(angDiff(this.angle, Math.atan2(dy, dx))),
+          moving: p.moving,
+          light: this.world.lighting?.levelAt?.(p.x, p.y) ?? 0.6,
+          vigilance: this.director.vigilance,
+          focus: this.state === S.DIZZY ? 0.3 : this.distracted ? 0.45 : 1,
+        }));
+        if (this.meter >= 1) this.spot(recent);
+        else if (this.meter >= ENEMY.suspicious) this.suspect(p.x, p.y, 'sight');
+      } else if (this.state === S.HUNT) this.spot(recent);
+      if (this.aware === 2) {
+        this.lastKnown = { x: p.x, y: p.y };
+        this.seenAt = this.world.time;
+        this.director.sighted(p.x, p.y);
+      }
+    } else if (this.aware < 2) this.meter = Math.max(0, this.meter - step * ENEMY.meterDecay[this.aware]);
+  }
+
+  // meter full: combat ('!'), then call it in
+  spot(recent) {
+    if (this.state === S.COMBAT || this.state === S.FETCH || this.state === S.FLEE || this.state === S.DIZZY) return;
+    this.setState(S.COMBAT);
+    this.react = rand(...(recent ? ENEMY.reacquire : ENEMY.reaction));
+    this.settle = 0;
+    this.showIcon('!', 1);
+    this.world.sound('alert', this.x, this.y);
+    this.shoutT = 0.35;
+    this.thinkT = 0;
+  }
+
+  // noise heard (types: see ENEMY.hear); localisation gets worse with distance
+  hear(type, x, y, source = null) {
+    if (this.passive || !this.alive || this.knocked > 0 || this.state === S.DIZZY) return;
+    if (this.aware === 2) {
+      if ((type === 'gunshot' || type === 'explosion') && !this.sees) this.lastKnown = { x, y };
+      return;
+    }
+    const err = hearingError(Math.hypot(x - this.x, y - this.y));
+    const sx = x + rand(-err, err), sy = y + rand(-err, err);
+    if (type === 'footsteps') {
+      this.meter = Math.min(0.55, this.meter + ENEMY.hear.footsteps);
+      if (this.meter >= ENEMY.suspicious) this.suspect(sx, sy, type);
+      return;
+    }
+    // a mate is shooting: go and help while the squad is on alert, otherwise check it out
+    const d = this.director, lk = d.lastKnown;
+    if (type === 'allyFire' && source && d.phase === 'alert' && lk) {
+      if (d.hunters() < AI.maxHunters) this.joinHunt(lk.x, lk.y); else this.guard(source.x, source.y);
+      this.say('shots');
+      return;
+    }
+    const lvl = ENEMY.hear[type] ?? ENEMY.hear.noise;
+    this.meter = Math.max(this.meter, lvl);
+    this.suspect(sx, sy, type, lvl >= 0.6);
+  }
+
+  // '?': stop, turn the head, then go and look
+  suspect(x, y, kind, urgent = false) {
+    if (this.aware === 2 || this.state === S.DIZZY) return;
+    if (urgent) this.director.raise();
+    if (this.state === S.SUSPICIOUS || this.state === S.INVESTIGATE) {
+      this.stim = { x, y, kind };
+      if (urgent && !this.urgent) this.investigate(x, y, kind, true);
+      return;
+    }
+    if (this.state === S.CHECK) this.checkTarget?.seen?.delete(this);
+    this.setState(S.SUSPICIOUS);
+    this.stim = { x, y, kind };
+    this.urgent = urgent;
+    this.susT = urgent ? rand(0.35, 0.55) : rand(0.7, 1.1);
+    this.showIcon('?', 1.5);
+    this.say(kind === 'sight' ? 'sight' : kind === 'gunshot' ? 'shots' : 'noise');
+  }
+
+  investigate(x, y, kind, urgent) {
+    if (this.aware === 2 || this.knocked > 0) return;
     this.setState(S.INVESTIGATE);
-    this.icon = '?';
-    this.alertIcon = 1.2;
+    this.stim = { x, y, kind };
+    this.urgent = urgent;
+    this.meter = Math.max(this.meter, ENEMY.suspicious);
+    this.showIcon('?', 1.2);
   }
 
-  setState(s) {
-    this.state = s;
-    this.path = null;
-    this.repath = 0;
-    this.stuck = 0;
+  // a mate died in front of us
+  witnessKill(victim) {
+    const now = this.world.time;
+    this.witnessed = this.witnessed.filter((t) => now - t < 5);
+    this.witnessed.push(now);
+    if (this.witnessed.length >= 2 && this.panicT <= 0 && chance(this.kind === 'brute' ? 0.3 : 0.6)) {
+      this.panicT = rand(3, 5);
+      this.say('panic');
+      this.thinkT = 0;
+    }
+    if (this.aware === 2) return;
+    this.director.callIn(this, victim.x, victim.y);
+    this.meter = Math.max(this.meter, 0.8);
+    // he saw where it came from only if the killer is in view too
+    const p = this.world.player;
+    const src = p.alive && this.canSeePoint(p.x, p.y) ? p : victim;
+    this.suspect(src.x + rand(-24, 24), src.y + rand(-24, 24), 'witness', true);
+    this.say('body');
+  }
+
+  // look for evidence: knocked-out mates, bodies, wrecked walls/doors/windows, empty posts
+  scanWorld() {
+    if (this.aware === 2 || this.state === S.CHECK || this.state === S.DIZZY) return;
+    const w = this.world;
+    for (const e of w.enemies) {
+      if (e === this || !e.alive || e.knocked < 0.5 || e.executing) continue;
+      if (w.enemies.some((o) => o.checkTarget?.friend === e && o.state === S.CHECK)) continue;
+      if (this.canSeePoint(e.x, e.y, 0.8)) { this.check({ kind: 'friend', x: e.x, y: e.y, friend: e }); return; }
+    }
+    for (const inc of this.director.incidents) {
+      if (inc.reported || inc.seen.has(this) || (inc.after && w.time < inc.after)) continue;
+      if (!this.canSeePoint(inc.x, inc.y, inc.kind === 'body' || inc.kind === 'missing' ? 0.75 : 0.85)) continue;
+      inc.seen.add(this);
+      this.check(inc);
+      return;
+    }
+  }
+
+  check(inc) {
+    this.setState(S.CHECK);
+    this.checkTarget = inc;
+    this.meter = Math.max(this.meter, 0.5);
+    this.showIcon('?', 1.5);
+    this.say(inc.kind === 'missing' ? 'sight' : 'damage');
+  }
+
+  // ---------------- squad orders ----------------
+  joinHunt(x, y) {
+    if (this.knocked > 0 || this.aware === 2) return;
+    this.setState(S.HUNT);
+    this.lastKnown = { x, y };
+    this.showIcon('!', 1);
+  }
+
+  guard(x, y) {
+    if (this.knocked > 0 || this.aware === 2) return;
+    this.setState(S.GUARD);
+    this.guardPt = { x, y };
+    this.guardT = rand(8, 14);
+    this.meter = Math.max(this.meter, ENEMY.suspicious);
+    this.showIcon('?', 1);
+  }
+
+  // director-run sweep after losing the target
+  beginSearch() {
+    if (!this.alive || this.knocked > 0) return;
+    this.setState(S.SEARCH);
+    this.localPts = null;
+    this.meter = Math.max(this.meter, 0.5);
+    if (chance(0.4)) this.say('lost');
+  }
+
+  beginLocalSearch(x, y, n) {
+    this.setState(S.SEARCH);
+    this.localPts = searchPoints(this.world.map, x, y, 6, n + 1).slice(1);
+  }
+
+  standDown() {
+    if (!this.alive || this.knocked > 0 || this.sees) return;
+    if (this.aware === 2 || this.state === S.SEARCH || this.state === S.GUARD) this.calm();
+  }
+
+  calm() {
+    if (this.state !== S.IDLE && this.state !== S.PATROL) this.say('clear');
+    this.setState(S.RETURN);
+    this.urgent = false;
+    this.meter = Math.min(this.meter, 0.2);
   }
 
   // ---------------- main update ----------------
   update(dt) {
     this.baseUpdate(dt);
     if (!this.alive) return;
-    this.alertIcon = Math.max(0, this.alertIcon - dt);
-    const p = this.world.player;
-
+    this.iconT = Math.max(0, this.iconT - dt);
+    this.barkT = Math.max(0, this.barkT - dt);
     if (this.knocked > 0) { this.updateKnocked(dt); return; }
     if (this.updateVault(dt)) return;
-
-    const sees = p && p.alive && this.canSee(p);
-    if (sees) {
-      this.lastSeen = { x: p.x, y: p.y };
-      this.lost = 0;
-      if (this.state !== S.COMBAT) {
-        const wasAlert = this.state === S.CHASE || this.state === S.SEARCH || this.state === S.INVESTIGATE;
-        this.setState(S.COMBAT);
-        this.react = rand(...(wasAlert ? ENEMY.reacquire : ENEMY.reaction));
-        this.icon = '!';
-        this.alertIcon = 0.8;
-        this.world.sound('alert', this.x, this.y);
-      }
-    }
+    if (this.passive) { this.halt(); return; }
+    this.t += dt;
+    this.panicT = Math.max(0, this.panicT - dt);
+    this.kneel = false;
+    this.perceive(dt);
+    if ((this.scanT -= dt) <= 0) { this.scanT = 0.3; this.scanWorld(); }
 
     switch (this.state) {
       case S.IDLE: this.doIdle(dt); break;
       case S.PATROL: this.doPatrol(dt); break;
-      case S.COMBAT: this.doCombat(dt, sees, p); break;
-      case S.CHASE: this.doChase(dt); break;
-      case S.INVESTIGATE: this.doInvestigate(dt); break;
-      case S.SEARCH: this.doSearch(dt); break;
-      case S.FETCH: this.doFetch(dt); break;
       case S.RETURN: this.doReturn(dt); break;
+      case S.SUSPICIOUS: this.doSuspicious(dt); break;
+      case S.INVESTIGATE: this.doInvestigate(dt); break;
+      case S.CHECK: this.doCheck(dt); break;
+      case S.SEARCH: this.doSearch(dt); break;
+      case S.GUARD: this.doGuard(dt); break;
+      case S.DIZZY: this.doDizzy(dt); break;
+      case S.COMBAT: this.doCombat(dt); break;
+      case S.HUNT: this.doHunt(dt); break;
+      case S.FETCH: this.doFetch(dt); break;
+      case S.FLEE: this.doFlee(dt); break;
       default: break;
     }
+    const k = this.kneel ? 1 : 0;
+    this.crouch = this.crouch < k ? Math.min(k, this.crouch + dt * 5) : Math.max(k, this.crouch - dt * 5);
   }
 
+  // ---------------- calm behaviours ----------------
   doIdle(dt) {
-    this.steer(0, 0, 0, 0.3);
-    this.lookPhase += dt * 0.6;
-    this.angle = approachAngle(this.angle, this.home.angle + Math.sin(this.lookPhase) * 0.5, dt * 2);
+    const h = this.home;
+    if (Math.hypot(h.x - this.x, h.y - this.y) > 14) { this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true }); return; }
+    this.halt();
+    if ((this.activityT -= dt) <= 0) this.pickActivity();
+    if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
+    else if (this.activity === 'turn') this.faceAngle(this.turnTo, 2.2, dt);
+    else if (this.activity === 'scan') this.faceAngle(h.angle + Math.sin(this.t * 0.8 + this.seed) * 1.2, 2.2, dt);
+    else this.sweep(dt, h.angle, 0.7, 1.8);
+  }
+
+  // what a bored guard does at his post: watch, scan, look behind, smoke, check his pager
+  pickActivity() {
+    const calm = this.director.phase === 'normal', r = Math.random();
+    if (calm && r < 0.14) { this.activity = 'smoke'; this.activityT = rand(5, 9); this.idleFace = this.wallFacing(); }
+    else if (calm && r < 0.26) { this.activity = 'phone'; this.activityT = rand(4, 8); this.idleFace = this.wallFacing(); }
+    else if (r < 0.36) { this.activity = 'turn'; this.activityT = rand(1.5, 2.6); this.turnTo = this.home.angle + rand(2.3, 4); }
+    else if (r < 0.58) { this.activity = 'scan'; this.activityT = rand(3, 5); }
+    else { this.activity = 'watch'; this.activityT = rand(3, 6); }
   }
 
   doPatrol(dt) {
-    if (this.wait > 0) {
-      this.wait -= dt;
-      this.steer(0, 0, 0, 0.3);
-      this.lookPhase += dt;
-      this.angle = approachAngle(this.angle, this.angle + Math.sin(this.lookPhase * 2) * 0.6, dt * 2);
+    if (this.pauseT > 0) {
+      this.pauseT -= dt;
+      this.halt();
+      if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
+      else this.sweep(dt, this.lookBase, 1, 1.8);
       return;
     }
-    if (!this.path) {
-      const t = this.randomPoint(this.home.x, this.home.y, 7);
-      if (!t || !this.goTo(t.x, t.y)) { this.wait = rand(0.5, 1.5); return; }
+    this.activity = 'walk';
+    if (!this.goal) this.goal = this.route ? this.route[this.routeIdx] : randomPoint(this.world.map, this.home.x, this.home.y, 7);
+    if (!this.goal) { this.pauseT = 1; return; }
+    const calm = this.director.phase === 'normal';
+    if (this.travel(dt, this.goal.x, this.goal.y, ENEMY.walkSpeed * (calm ? 1 : 1.25), { doors: true, glance: true })) {
+      this.goal = null;
+      if (this.route) this.routeIdx = (this.routeIdx + 1) % this.route.length;
+      this.pauseT = rand(0.8, 2.4);
+      this.lookBase = this.angle;
+      if (calm && chance(0.15)) { this.activity = chance(0.5) ? 'smoke' : 'phone'; this.pauseT = rand(4, 7); this.idleFace = this.wallFacing(); }
     }
-    if (this.follow(dt, ENEMY.walkSpeed)) { this.path = null; this.wait = rand(1, 3); }
-  }
-
-  doCombat(dt, sees, p) {
-    const d = this.def;
-    if (!sees) {
-      this.lost += dt;
-      if (this.lost > 0.35) {
-        this.setState(S.CHASE);
-        this.goTo(this.lastSeen.x, this.lastSeen.y);
-      } else this.steer(0, 0, 0, 0.2);
-      return;
-    }
-    const dx = p.x - this.x, dy = p.y - this.y, dist = Math.hypot(dx, dy);
-    const toP = Math.atan2(dy, dx);
-    this.angle = approachAngle(this.angle, toP, ENEMY.turnRate * dt);
-    this.react -= dt;
-
-    if (!this.armed && d.kind !== 'melee') { this.lookForWeapon(); return; }
-
-    if (d.kind === 'melee') {
-      // rush in
-      if (this.world.map.walkLine(this.x, this.y, p.x, p.y, 6)) this.steer(dx, dy, ENEMY.runSpeed * this.speedMul, 0.3);
-      else this.chaseTarget(dt, p.x, p.y, ENEMY.runSpeed * this.speedMul);
-      if (dist < d.range + p.radius - 2 && this.react <= 0) this.attack();
-      return;
-    }
-
-    // gunner: keep distance, shoot when aligned
-    if (dist > 230) this.steer(dx, dy, ENEMY.runSpeed * 0.55, 0.15);
-    else if (dist < 70) this.steer(-dx, -dy, ENEMY.walkSpeed, 0.15);
-    else this.steer(0, 0, 0, 0.15);
-    if (this.react <= 0 && Math.abs(angDiff(this.angle, toP)) < 0.18 && dist < 420 && this.cooldown <= 0) {
-      if (this.weapon.mag <= 0) { if (!this.reload() && this.reloading <= 0) this.dropWeapon(this.angle, 2); return; }
-      this.fire(d);
-      if (d.burst) {
-        this.burst++;
-        this.cooldown = this.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
-        if (this.burst >= d.burst) this.burst = 0;
-      } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25);
-    }
-  }
-
-  doChase(dt) {
-    if (!this.lastSeen) { this.setState(S.SEARCH); return; }
-    if (!this.path) this.goTo(this.lastSeen.x, this.lastSeen.y);
-    if (this.follow(dt, ENEMY.runSpeed * this.speedMul) || !this.path) {
-      this.setState(S.SEARCH);
-      this.searchT = rand(4, 6);
-    }
-  }
-
-  doInvestigate(dt) {
-    if (!this.path && !this.goTo(this.lastSeen.x, this.lastSeen.y)) { this.setState(S.SEARCH); this.searchT = 3; return; }
-    if (this.follow(dt, ENEMY.runSpeed * 0.85 * this.speedMul)) { this.setState(S.SEARCH); this.searchT = rand(3, 5); }
-  }
-
-  doSearch(dt) {
-    this.searchT -= dt;
-    if (this.searchT <= 0) { this.setState(S.RETURN); return; }
-    if (!this.armed && this.def.kind !== 'melee' && this.lookForWeapon()) return;
-    if (this.wait > 0) {
-      this.wait -= dt;
-      this.steer(0, 0, 0, 0.3);
-      this.angle += dt * 2.5 * (this.lookPhase > 3 ? 1 : -1);
-      return;
-    }
-    if (!this.path) {
-      const t = this.randomPoint(this.x, this.y, 5);
-      if (!t || !this.goTo(t.x, t.y)) { this.wait = 0.6; return; }
-    }
-    if (this.follow(dt, ENEMY.walkSpeed * 1.4)) { this.path = null; this.wait = rand(0.4, 1.2); }
   }
 
   doReturn(dt) {
-    if (this.roam) { this.setState(S.PATROL); return; }
-    if (!this.path && !this.goTo(this.home.x, this.home.y)) { this.setState(S.IDLE); return; }
-    if (this.follow(dt, ENEMY.walkSpeed)) { this.setState(S.IDLE); }
+    if (this.roam) {
+      if (this.route) {
+        let bi = 0, bd = Infinity;
+        this.route.forEach((p, i) => { const d = Math.hypot(p.x - this.x, p.y - this.y); if (d < bd) { bd = d; bi = i; } });
+        this.routeIdx = bi;
+      }
+      this.setState(S.PATROL);
+      this.pauseT = rand(0.5, 1.5);
+      return;
+    }
+    const h = this.home;
+    if (this.travel(dt, h.x, h.y, ENEMY.walkSpeed * 1.1, { doors: true, glance: true })) {
+      this.setState(S.IDLE);
+      this.activity = 'watch';
+      this.activityT = rand(2, 4);
+    }
   }
 
+  // ---------------- suspicious behaviours ----------------
+  // the tell: freeze and turn toward what caught his attention before doing anything
+  doSuspicious(dt) {
+    this.halt();
+    this.faceTo(this.stim.x, this.stim.y, 4.5, dt);
+    this.target = this.stim;
+    if (this.t < this.susT) return;
+    if (this.meter >= 0.15 || this.urgent) this.investigate(this.stim.x, this.stim.y, this.stim.kind, this.urgent);
+    else this.calm();
+  }
+
+  doInvestigate(dt) {
+    const st = this.stim;
+    if (this.sub === '') {
+      const speed = this.urgent ? ENEMY.runSpeed * 0.8 : ENEMY.walkSpeed * 1.2;
+      if (this.travel(dt, st.x, st.y, speed, { doors: !this.urgent, near: 14, glance: !this.urgent })) {
+        this.sub = 'look'; this.t = 0; this.lookT = rand(1.6, 2.6); this.lookBase = this.angle;
+      }
+      return;
+    }
+    this.halt();
+    this.sweep(dt, this.lookBase, 1.3);
+    if (this.t < this.lookT) return;
+    if (this.urgent || this.director.phase !== 'normal') this.beginLocalSearch(st.x, st.y, 2);
+    else this.calm();
+  }
+
+  // crouch over a body / wake a mate / look at the damage, then call it in
+  doCheck(dt) {
+    const c = this.checkTarget, f = c.friend;
+    if (f && (!f.alive || f.knocked <= 0)) { this.beginLocalSearch(this.x, this.y, 1); return; }
+    const x = f ? f.x : c.x, y = f ? f.y : c.y;
+    const kneel = !!f || c.kind === 'body';
+    if (this.sub === '') {
+      if (this.travel(dt, x, y, ENEMY.walkSpeed * 1.7, { near: kneel ? 18 : 40 })) {
+        this.sub = 'look'; this.t = 0; this.lookBase = Math.atan2(y - this.y, x - this.x);
+      }
+      return;
+    }
+    this.halt();
+    this.kneel = kneel;
+    if (this.t < 0.5) this.faceTo(x, y, 4, dt);
+    else this.sweep(dt, this.lookBase + Math.PI, 1.6);
+    if (this.t < (kneel ? 1.4 : 1.8)) return;
+    if (f) { f.knocked = Math.min(f.knocked, 0.2); this.say('wake'); }
+    else this.say(c.kind === 'body' ? 'body' : c.kind === 'missing' ? 'missing' : 'damage');
+    this.director.callIn(this, x, y);
+    this.beginLocalSearch(x, y, 2);
+  }
+
+  doSearch(dt) {
+    if (this.sub === '' && !this.armed && this.lookForWeapon()) return;
+    if (!this.searchPt) {
+      this.searchPt = this.localPts ? this.localPts.shift() : this.director.nextSearchPoint(this);
+      if (!this.searchPt) {
+        const lk = this.director.lastKnown;
+        if (!this.localPts && this.director.phase === 'evasion' && lk) this.guard(lk.x, lk.y);
+        else this.calm();
+        return;
+      }
+      this.sub = 'go';
+    }
+    const pt = this.searchPt;
+    const hurry = this.director.phase === 'evasion' || this.director.phase === 'alert';
+    if (this.sub === 'go') {
+      if (this.travel(dt, pt.x, pt.y, hurry ? ENEMY.runSpeed * 0.7 : ENEMY.walkSpeed * 1.3, { doors: !hurry, near: 12, glance: true })) {
+        this.sub = 'look'; this.t = 0; this.lookT = rand(1.3, 2.2); this.lookBase = pt.origin ? this.angle : pt.look;
+      }
+      return;
+    }
+    this.halt();
+    this.sweep(dt, this.lookBase, 1.4);
+    if (this.t > this.lookT) { pt.done = true; this.searchPt = null; this.sub = 'go'; }
+  }
+
+  // hold a position and watch a spot (guards beyond the hunters' quota)
+  doGuard(dt) {
+    this.halt();
+    const g = this.guardPt;
+    this.target = g;
+    this.sweep(dt, Math.atan2(g.y - this.y, g.x - this.x), 0.6);
+    if (this.t > this.guardT && this.director.phase !== 'alert') this.calm();
+  }
+
+  // groggy after a knock-down: staggers, half blind
+  doDizzy(dt) {
+    const wob = Math.sin(this.world.time * 7 + this.seed);
+    this.angle += wob * dt * 2.5;
+    const a = this.angle + wob * 1.6;
+    this.steer(Math.cos(a), Math.sin(a), 0.35, 0.05);
+    if (this.t < this.dizzyT) return;
+    if (!this.armed && this.lookForWeapon()) return;
+    if (this.sees) { this.meter = 1; this.spot(false); return; }
+    this.director.raise();
+    this.beginLocalSearch(this.x, this.y, 2);
+  }
+
+  doHunt(dt) {
+    const lk = this.lastKnown;
+    if (!lk) { this.beginSearch(); return; }
+    if (this.travel(dt, lk.x, lk.y, ENEMY.runSpeed * 0.85 * this.pace, { near: 20 })) this.beginSearch();
+  }
+
+  // ---------------- combat ----------------
+  doCombat(dt) {
+    const p = this.world.player;
+    if (!p.alive) { this.halt(); return; }
+    this.suppressCD -= dt; this.dodgeCD -= dt; this.stalkCD -= dt;
+    if (this.sees) {
+      // re-acquiring after losing sight takes a moment, and the aim has to settle again
+      if (this.lostT > 0.4) { this.react = Math.max(this.react, rand(...ENEMY.reacquire)); this.settle *= 0.4; }
+      this.lostT = 0;
+      this.react -= dt;
+      if (this.react <= 0) this.settle = Math.min(1, this.settle + dt / ENEMY.aimSettle);
+      this.ambushed = false;
+    } else this.lostT += dt;
+    if (this.shoutT > 0 && (this.shoutT -= dt) <= 0) { this.say('contact'); this.director.shout(this); }
+    if ((this.thinkT -= dt) <= 0) { this.thinkT = rand(0.3, 0.5); this.plan(p); }
+    this.target = this.sees ? p : this.lastKnown;
+    switch (this.tactic) {
+      case 'rush': this.tRush(dt, p); break;
+      case 'stalk': this.tStalk(dt, p); break;
+      case 'hold': this.tHold(dt, p); break;
+      case 'advance': this.tAdvance(dt, p); break;
+      case 'backoff': this.tBackoff(dt, p); break;
+      case 'cover': this.tCover(dt, p); break;
+      case 'ambush': this.tAmbush(dt, p); break;
+      case 'flank': this.tFlank(dt, p); break;
+      case 'hunt': this.doHunt(dt); break;
+      case 'suppress': this.tSuppress(dt); break;
+      case 'reload': this.tReload(dt); break;
+      case 'panic': this.tPanic(dt, p); break;
+      default: this.halt(); if (this.sees) this.aimAt(p.x, p.y, dt);
+    }
+  }
+
+  setTactic(t) {
+    if (t === this.tactic) return;
+    this.tactic = t;
+    this.sub = ''; this.t = 0;
+    this.path = null; this.dest = null; this.repath = 0; this.goal = null;
+    if (t !== 'cover' && t !== 'ambush' && t !== 'stalk') { this.cover = null; this.director.release(this); }
+  }
+
+  // pick a tactic (every 0.3-0.5 s): weapon state first, then distance and squad role
+  plan(p) {
+    const dist = Math.hypot(p.x - this.x, p.y - this.y), prev = this.tactic;
+    if (this.def.kind === 'gun' && this.weapon.mag <= 0 && this.reloading <= 0 && this.reserveCount() <= 0) {
+      // dry: hurl the empty gun at him (or drop it) and go on with fists
+      this.dropWeapon(this.sees ? Math.atan2(p.y - this.y, p.x - this.x) : this.angle + rand(-1, 1), this.sees ? 6 : 2);
+      this.say('dry');
+    }
+    if (!this.armed) {
+      if (this.sees && dist < 90) return this.setTactic('rush');
+      if (this.lookForWeapon() || this.fleeToFriend()) return;
+      return this.setTactic(this.sees ? 'rush' : 'hunt');
+    }
+    if (this.panicT > 0) return this.setTactic('panic');
+    if (this.def.kind === 'melee') return this.planMelee(p, dist);
+    if (this.reloading > 0 || this.needsReload()) return this.setTactic('reload');
+    if (this.sees && this.meleeThreat(p, dist)) return this.setTactic('backoff');
+    const shotgun = this.weapon.type === 'shotgun';
+    if (!this.sees) {
+      if ((prev === 'flank' && this.goal) || ((prev === 'cover' || prev === 'ambush') && this.lostT < 2.5) || (prev === 'suppress' && this.burstLeft > 0)) return;
+      if (prev === 'ambush' && this.ambushT > 0) return;
+      // shotguns hold a corner near where he vanished instead of chasing him
+      if (shotgun && this.lostT > 0.4 && !this.ambushed && this.lastKnown && this.planCover(this.lastKnown, 70, 4, true)) {
+        this.setTactic('ambush');
+        this.ambushed = true;
+        this.ambushT = rand(4, 7);
+        return;
+      }
+      if (!shotgun && this.lostT > 0.5 && this.lostT < 3 && this.suppressCD <= 0 && this.canSuppress()) {
+        this.setTactic('suppress');
+        this.burstLeft = this.def.burst ? 3 : 2;
+        return;
+      }
+      if (this.lostT > 0.4) {
+        if (this.director.wantsFlank(this) && this.planFlank()) return;
+        this.setTactic('hunt');
+      }
+      return;
+    }
+    const [rMin, rMax] = RANGES[this.weapon.type] ?? [100, 220];
+    if (!shotgun) {
+      if (prev === 'cover' && this.cover && isCovered(this.world, this.cover.x, this.cover.y, p.x, p.y) && this.volleys < 3) return;
+      if (this.world.time > this.coverT && this.planCover(p, (rMin + rMax) / 2, 5, false)) {
+        this.coverT = this.world.time + 1.2;
+        this.setTactic('cover');
+        this.volleys = 0;
+        return;
+      }
+    }
+    if (dist > rMax) return this.setTactic('advance');
+    if (dist < rMin) return this.setTactic('backoff');
+    if (prev === 'hold' && chance(0.2) && this.director.wantsFlank(this) && this.planFlank()) return;
+    this.setTactic('hold');
+  }
+
+  // melee: rush, but get closer from cover to cover while a gun is pointed at us from afar
+  planMelee(p, dist) {
+    if (!this.sees) return this.setTactic(this.lostT < 0.6 ? 'rush' : 'hunt');
+    if (this.tactic === 'stalk' && this.cover) return;
+    const aimed = p.def.kind === 'gun' && Math.abs(angDiff(p.angle, Math.atan2(this.y - p.y, this.x - p.x))) < 0.35;
+    if (aimed && dist > 150 && this.stalkCD <= 0 && this.planCover(p, 60, 4, true)) {
+      this.setTactic('stalk');
+      this.hideT = 0;
+      return;
+    }
+    this.setTactic('rush');
+  }
+
+  // a cover spot (hidden from the threat, with a peek cell) claimed for this guard; false when none / no budget
+  planCover(threat, prefDist, radius, approach) {
+    const d = this.director;
+    if (!d.budget(3)) return false;
+    const c = findCover(this.world, this, threat.x, threat.y, prefDist, (x, y) => d.isClaimed(x, y, this), radius, approach);
+    if (!c) return false;
+    this.cover = c;
+    d.claim(this, c.x, c.y);
+    return true;
+  }
+
+  planFlank() {
+    const lk = this.lastKnown;
+    if (!lk || !this.director.budget(3)) return false;
+    const f = findFlank(this.world, this, lk.x, lk.y, this.director.coverage(lk, this), (RANGES[this.weapon?.type]?.[1] ?? 200) * 0.75);
+    if (!f) return false;
+    this.setTactic('flank');
+    this.goal = f;
+    this.director.claim(this, f.x, f.y);
+    return true;
+  }
+
+  // melee rush: weaving, dodging sideways when a gun points at us
+  tRush(dt, p) {
+    const d = this.def, dx = p.x - this.x, dy = p.y - this.y, dist = Math.hypot(dx, dy);
+    if (!this.sees) {
+      const lk = this.lastKnown || p;
+      this.travel(dt, lk.x, lk.y, ENEMY.runSpeed * this.pace, { near: 16 });
+      return;
+    }
+    this.aimAt(p.x, p.y, dt, 1.4);
+    const aimed = p.def.kind === 'gun' && dist > 40 && Math.abs(angDiff(p.angle, Math.atan2(-dy, -dx))) < 0.25;
+    if (aimed && this.dodgeCD <= 0) { this.dodge = chance(0.5) ? 0.28 : -0.28; this.dodgeCD = rand(0.9, 1.6); }
+    const side = this.dodge !== 0 ? Math.sign(this.dodge) * 1.6 : Math.sin(this.world.time * 4 + this.seed) * 0.35;
+    if (this.dodge !== 0) this.dodge = Math.sign(this.dodge) * Math.max(0, Math.abs(this.dodge) - dt) || 0;
+    const ux = dx / (dist || 1), uy = dy / (dist || 1);
+    if (this.world.map.walkLine(this.x, this.y, p.x, p.y, 6)) {
+      const sep = this.separation();
+      const k = dist < 50 ? 0 : 1;
+      this.steer(ux - uy * side * k + sep.x, uy + ux * side * k + sep.y, ENEMY.runSpeed * this.pace * (this.dodge ? 1.25 : 1), 0.3);
+    } else this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 });
+    if (dist < d.range + p.radius - 2 && this.react <= 0) this.attack();
+  }
+
+  // melee: sprint to the next cover closer to him, catch breath a beat, then go again
+  tStalk(dt, p) {
+    const c = this.cover;
+    if (!c || this.t > 3) { this.stalkCD = 1.5; this.thinkT = 0; this.setTactic('rush'); return; }
+    if (this.travel(dt, c.x, c.y, ENEMY.runSpeed * this.pace, { near: 8 })) {
+      this.halt();
+      this.kneel = true;
+      if (this.sees) this.aimAt(p.x, p.y, dt);
+      if ((this.hideT += dt) > 0.5) { this.hideT = 0; this.stalkCD = rand(1.2, 2.2); this.thinkT = 0; this.setTactic('rush'); }
+    }
+  }
+
+  tHold(dt, p) {
+    if ((this.strafeT -= dt) <= 0) { this.strafeT = rand(1.2, 2.6); this.strafe = chance(0.5) ? 0 : chance(0.5) ? 0.5 : -0.5; }
+    if (this.strafe) {
+      const a = Math.atan2(p.y - this.y, p.x - this.x) + Math.PI / 2 * Math.sign(this.strafe);
+      this.steer(Math.cos(a), Math.sin(a), ENEMY.walkSpeed * 0.9, 0.12);
+      this.strafe = Math.sign(this.strafe) * Math.max(0, Math.abs(this.strafe) - dt) || 0;
+    } else this.halt();
+    if (this.sees) { this.aimAt(p.x, p.y, dt); this.tryFire(p); }
+  }
+
+  tAdvance(dt, p) {
+    const shotgun = this.weapon.type === 'shotgun';
+    this.travel(dt, p.x, p.y, ENEMY.runSpeed * (shotgun ? 0.75 : 0.6), { look: !this.sees, near: 30 });
+    if (this.sees) { this.aimAt(p.x, p.y, dt); this.tryFire(p); }
+  }
+
+  // keep distance, especially from a player charging with a melee weapon
+  tBackoff(dt, p) {
+    const dx = this.x - p.x, dy = this.y - p.y, d = Math.hypot(dx, dy) || 1;
+    const sep = this.separation();
+    let ax = dx / d, ay = dy / d;
+    if (this.moving < 0.4 && this.t > 0.3) { const s = this.seed > 50 ? 1 : -1; ax = -dy / d * s + ax * 0.3; ay = dx / d * s + ay * 0.3; }
+    this.steer(ax + sep.x, ay + sep.y, ENEMY.walkSpeed * 1.7, 0.15);
+    if (this.sees) { this.aimAt(p.x, p.y, dt); this.tryFire(p); }
+  }
+
+  // run to cover, duck, peek out to fire a volley, duck back
+  tCover(dt, p) {
+    const c = this.cover;
+    if (!c) { this.thinkT = 0; this.halt(); return; }
+    const lk = this.sees ? p : this.lastKnown || p;
+    if (this.sub === '') {
+      const arrived = this.travel(dt, c.x, c.y, ENEMY.runSpeed * 0.95, { look: false, near: 6 });
+      this.aimAt(lk.x, lk.y, dt);
+      if (arrived) { this.sub = 'hide'; this.t = 0; this.hideT = rand(0.6, 1.2); }
+      return;
+    }
+    if (this.sub === 'hide') {
+      this.travel(dt, c.x, c.y, ENEMY.walkSpeed * 1.4, { look: false, near: 5 });
+      this.kneel = true;
+      this.aimAt(lk.x, lk.y, dt, 0.6);
+      if (this.t > this.hideT && !(this.reloading > 0)) { this.sub = 'peek'; this.t = 0; this.shots = 0; }
+      return;
+    }
+    this.travel(dt, c.peek.x, c.peek.y, ENEMY.walkSpeed * 1.5, { look: false, near: 5 });
+    this.aimAt(lk.x, lk.y, dt);
+    if (this.sees && this.tryFire(p)) this.shots++;
+    const done = this.def.burst ? this.shots > 0 && this.burst === 0 : this.shots >= 2;
+    if (done || this.t > 1.8) {
+      this.sub = 'hide'; this.t = 0; this.hideT = rand(0.8, 1.6);
+      this.volleys++;
+      if (this.needsReload()) this.thinkT = 0;
+    }
+  }
+
+  // shotgun: crouch behind a corner, gun on the way he will come through
+  tAmbush(dt, p) {
+    const c = this.cover;
+    this.ambushT -= dt;
+    if (!c || this.ambushT <= 0) { this.thinkT = 0; this.setTactic('hunt'); return; }
+    const lk = this.sees ? p : this.lastKnown || p;
+    if (this.sub === '') {
+      if (this.travel(dt, c.x, c.y, ENEMY.runSpeed * 0.8, { near: 6 })) this.sub = 'wait';
+      return;
+    }
+    this.halt();
+    this.kneel = true;
+    this.aimAt(c.peek.x + (lk.x - c.peek.x) * 0.5, c.peek.y + (lk.y - c.peek.y) * 0.5, dt, 0.8);
+    if (this.sees) { this.aimAt(p.x, p.y, dt); this.tryFire(p); }
+  }
+
+  tFlank(dt, p) {
+    const g = this.goal;
+    if (!g) { this.thinkT = 0; this.halt(); return; }
+    if (this.travel(dt, g.x, g.y, ENEMY.runSpeed * 0.9, { near: 10 })) { this.goal = null; this.thinkT = 0; }
+    if (this.sees) { this.aimAt(p.x, p.y, dt); this.tryFire(p); }
+  }
+
+  // a short burst at the last known position when he ducks out of sight
+  tSuppress(dt) {
+    const lk = this.lastKnown;
+    this.halt();
+    if (!lk) { this.thinkT = 0; return; }
+    this.aimAt(lk.x, lk.y, dt);
+    if (this.tryFire(lk, 0.12)) this.burstLeft--;
+    if (this.burstLeft <= 0 || this.t > 2) { this.burstLeft = 0; this.suppressCD = rand(3, 5); this.thinkT = 0; this.setTactic('hold'); }
+  }
+
+  // get to nearby cover if any, then reload and shout it
+  tReload(dt) {
+    const lk = this.lastKnown;
+    if (lk) this.aimAt(lk.x, lk.y, dt, 0.6);
+    if (this.reloading > 0) { this.kneel = true; this.halt(); return; }
+    if (!this.needsReload()) { this.thinkT = 0; this.halt(); return; }
+    if (this.sub === '' && lk) this.sub = this.planCover(lk, 150, 3, false) ? 'go' : 'now';
+    if (this.sub === 'go' && this.cover && !this.travel(dt, this.cover.x, this.cover.y, ENEMY.runSpeed, { look: false, near: 6 }) && this.t < 2) return;
+    this.halt();
+    if (this.reload()) this.say('reload');
+  }
+
+  tPanic(dt, p) {
+    if (!this.goal) {
+      const a = Math.atan2(this.y - p.y, this.x - p.x) + rand(-0.8, 0.8);
+      this.goal = randomPoint(this.world.map, this.x + Math.cos(a) * 160, this.y + Math.sin(a) * 160, 2) || { x: this.x, y: this.y };
+    }
+    if (this.travel(dt, this.goal.x, this.goal.y, ENEMY.runSpeed, { near: 12 })) this.halt();
+    if (this.sees && chance(0.5)) { this.aimAt(p.x, p.y, dt, 0.7); this.tryFire(p, 0.35); }
+    if (this.panicT <= 0) this.thinkT = 0;
+  }
+
+  // ---------------- combat helpers ----------------
+  aimAt(x, y, dt, k = 1) { this.faceTo(x, y, ENEMY.turnRate * k, dt); }
+
+  // pull the trigger if the gun is ready and on target; the shot goes off with an error that shrinks
+  // with steady sight (settle). wild = extra error (suppressive / panic fire)
+  tryFire(tg, wild = 0) {
+    const d = this.def;
+    if (d.kind !== 'gun' || this.react > 0 || this.cooldown > 0 || this.reloading > 0 || this.weapon.mag <= 0) return false;
+    const dist = Math.hypot(tg.x - this.x, tg.y - this.y);
+    if (dist > ENEMY.fireRange || Math.abs(angDiff(this.angle, Math.atan2(tg.y - this.y, tg.x - this.x))) > ENEMY.aimTolerance + wild) return false;
+    // fairness: never fire from outside the player's screen
+    if (!this.onScreen()) return false;
+    if (this.friendInLine(tg.x, tg.y, dist)) { this.strafe = this.seed > 50 ? 0.5 : -0.5; this.strafeT = 0.6; return false; }
+    const a = this.angle;
+    this.angle += spread() * (aimError(this.settle, this.world.player.moving) + wild);
+    const r = this.attack();
+    this.angle = a;
+    if (r !== true) return false;
+    if (d.burst) {
+      this.burst++;
+      this.cooldown = this.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
+      if (this.burst >= d.burst) this.burst = 0;
+    } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25);
+    return true;
+  }
+
+  onScreen() {
+    const cam = this.world.camera, v = cam.viewRadius();
+    return Math.abs(this.x - cam.x) < v.x - 52 && Math.abs(this.y - cam.y) < v.y - 52;
+  }
+
+  friendInLine(tx, ty, dist) {
+    const ux = (tx - this.x) / dist, uy = (ty - this.y) / dist;
+    for (const e of this.world.enemies) {
+      if (e === this || !e.alive || e.knocked > 0) continue;
+      const rx = e.x - this.x, ry = e.y - this.y, along = rx * ux + ry * uy;
+      if (along > 0 && along < dist && Math.abs(rx * uy - ry * ux) < 10) return true;
+    }
+    return false;
+  }
+
+  meleeThreat(p, dist) {
+    if (p.def.kind !== 'melee' || dist > 130) return false;
+    const v = Body.getVelocity(p.body);
+    return ((this.x - p.x) * v.x + (this.y - p.y) * v.y) / dist > 1.2;
+  }
+
+  canSuppress() {
+    const lk = this.lastKnown, d = this.def;
+    if (!lk || d.kind !== 'gun' || d.pellets > 1 || d.rocket || this.weapon.mag <= 0) return false;
+    return Math.hypot(lk.x - this.x, lk.y - this.y) < 300 && this.onScreen() && this.world.lineOfSight(this.x, this.y, lk.x, lk.y);
+  }
+
+  // empty, or low while out of sight (and there is something to reload with)
+  needsReload() {
+    const w = this.weapon;
+    if (!w || this.def.kind !== 'gun' || this.reloading > 0 || this.reserveCount() <= 0) return false;
+    return w.mag <= 0 || (!this.sees && w.mag < this.def.mag * 0.35);
+  }
+
+  // ---------------- weapons ----------------
+  // nearest loaded gun / melee weapon on the floor within reach
   lookForWeapon() {
     let best = null, bd = 260;
     for (const it of this.world.items) {
-      if (it.dead || it.speed > 2) continue;
+      if (it.dead || it.speed > 2 || (it.def.kind === 'gun' && it.mag <= 0)) continue;
       const d = Math.hypot(it.x - this.x, it.y - this.y);
       if (d < bd) { bd = d; best = it; }
     }
-    if (best && this.goTo(best.x, best.y)) {
-      this.fetchTarget = best;
-      this.state = S.FETCH;
-      return true;
-    }
-    // nothing around: fight with fists
-    this.setWeapon(null);
-    return false;
+    if (!best || !this.director.budget(1) || !findPath(this.world.map, this.x, this.y, best.x, best.y)) return false;
+    this.setState(S.FETCH);
+    this.fetchTarget = best;
+    return true;
   }
 
   doFetch(dt) {
     const it = this.fetchTarget;
-    if (!it || it.dead) { this.setState(S.SEARCH); this.searchT = 3; return; }
+    if (!it || it.dead) { this.beginLocalSearch(this.x, this.y, 2); return; }
     if (Math.hypot(it.x - this.x, it.y - this.y) < 14) {
-      this.setWeapon(it.type, it.mag, WEAPONS[it.type].shellReload ? 6 : 1);
+      this.setWeapon(it.type, it.mag, it.def.shellReload ? 6 : 1);
       this.world.removeItem(it);
       this.world.sound('pickup', this.x, this.y, 0.5);
-      this.setState(this.lastSeen ? S.CHASE : S.SEARCH);
-      this.searchT = 4;
+      this.pickAnim = 0.35;
+      if (this.lastKnown) { this.setState(S.COMBAT); this.thinkT = 0; this.react = Math.max(this.react, 0.3); }
+      else this.beginLocalSearch(this.x, this.y, 2);
       return;
     }
-    this.repath -= dt;
-    if (this.repath <= 0) { this.goTo(it.x, it.y); this.repath = 0.5; }
-    if (this.follow(dt, ENEMY.runSpeed * this.speedMul)) this.path = null;
+    this.travel(dt, it.x, it.y, ENEMY.runSpeed, { near: 0 });
   }
 
-  // ---------------- movement helpers ----------------
+  // unarmed and nothing to pick up: run to the nearest armed mate and send him in
+  fleeToFriend() {
+    if (this.kind === 'brute') return false; // brutes charge with their fists
+    let best = null, bd = 600;
+    for (const e of this.world.enemies) {
+      if (e === this || !e.alive || e.knocked > 0 || e.def.kind !== 'gun') continue;
+      const d = Math.hypot(e.x - this.x, e.y - this.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    if (!best) return false;
+    this.setState(S.FLEE);
+    this.friend = best;
+    this.say('help');
+    return true;
+  }
+
+  doFlee(dt) {
+    const f = this.friend, lk = this.lastKnown;
+    if (!f || !f.alive) { this.setState(S.COMBAT); return; }
+    if (this.t > 1.5 && this.lookForWeapon()) return;
+    if (this.travel(dt, f.x, f.y, ENEMY.runSpeed, { near: 40 })) {
+      if (lk) f.joinHunt(lk.x, lk.y);
+      this.setState(S.GUARD);
+      this.guardPt = lk || { x: f.x, y: f.y };
+      this.guardT = rand(6, 10);
+    }
+  }
+
+  // ---------------- movement ----------------
+  // true = path found, false = unreachable, null = no path budget left this step (retry next one)
   goTo(x, y) {
+    if (!this.director.budget(1)) return null;
+    this.dest = { x, y };
     const path = findPath(this.world.map, this.x, this.y, x, y);
     if (!path || !path.length) { this.path = null; return false; }
     this.path = path;
@@ -237,49 +900,115 @@ export default class Enemy extends Character {
     return true;
   }
 
-  chaseTarget(dt, x, y, speed) {
+  // walk/run to (x, y), path-finding as needed; true once there (or unreachable)
+  travel(dt, x, y, speed, opts = {}) {
+    if (!this.target || this.state !== S.COMBAT) this.target = { x, y };
+    const near = opts.near ?? 8;
+    if (Math.hypot(x - this.x, y - this.y) < near) { this.path = null; this.halt(); return true; }
     this.repath -= dt;
-    if (this.repath <= 0 || !this.path) { this.goTo(x, y); this.repath = 0.45; }
-    this.follow(dt, speed, true);
+    const moved = !this.dest || Math.hypot(this.dest.x - x, this.dest.y - y) > 20;
+    if ((!this.path || moved) && this.repath <= 0) {
+      const r = this.goTo(x, y);
+      if (r === false) { this.repath = 0.4; return true; }
+      if (r === true) this.repath = 0.4;
+    }
+    if (!this.path) { this.halt(); return false; }
+    return this.follow(dt, speed, opts);
   }
 
-  // returns true when the path end is reached
-  follow(dt, speed, keepAngle = false) {
+  follow(dt, speed, opts = {}) {
     if (!this.path) return true;
-    const t = this.path[this.pathIdx];
-    const dx = t.x - this.x, dy = t.y - this.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 7) {
+    let t = this.path[this.pathIdx];
+    let dx = t.x - this.x, dy = t.y - this.y, d = Math.hypot(dx, dy);
+    if (d < 8) {
       this.pathIdx++;
-      if (this.pathIdx >= this.path.length) { this.path = null; this.steer(0, 0, 0, 0.4); return true; }
+      if (this.pathIdx >= this.path.length) { this.path = null; this.halt(); return true; }
+      t = this.path[this.pathIdx];
+      dx = t.x - this.x; dy = t.y - this.y; d = Math.hypot(dx, dy) || 1;
+    }
+    const ux = dx / d, uy = dy / d, heading = Math.atan2(dy, dx);
+    const map = this.world.map;
+    // calm guards pause a beat before stepping through a doorway
+    if (opts.doors) {
+      const cx = Math.floor((this.x + ux * 20) / TILE), cy = Math.floor((this.y + uy * 20) / TILE), key = cy * map.w + cx;
+      if (map.at(cx, cy) === 'D' && key !== this.doorKey) { this.doorKey = key; this.doorT = rand(0.35, 0.8); }
+      else if (map.at(Math.floor(this.x / TILE), Math.floor(this.y / TILE)) !== 'D' && map.at(cx, cy) !== 'D') this.doorKey = -1;
+    }
+    if (this.doorT > 0) {
+      this.doorT -= dt;
+      this.halt();
+      this.sweep(dt, heading, 0.9);
       return false;
     }
-    this.steer(dx, dy, speed, 0.25);
-    if (!keepAngle) this.angle = approachAngle(this.angle, Math.atan2(dy, dx), dt * 8);
-    // stuck detection (furniture, other bodies)
+    // organic gait: slight sway, pace drift, separation from mates, smooth acceleration
+    const sway = Math.sin(this.world.time * 1.7 + this.seed) * (speed > 1.6 ? 0.08 : 0.16);
+    const sep = this.separation();
+    const sp = speed * this.pace * (1 + Math.sin(this.world.time * 0.6 + this.seed) * 0.06);
+    this.steer(ux - uy * sway + sep.x, uy + ux * sway + sep.y, sp, speed > 1.6 ? 0.16 : 0.09);
+    if (opts.look !== false) {
+      // the head leads: look into the next leg of the path before the feet turn
+      const n = this.path[this.pathIdx + 1];
+      const la = n && d < 40 ? Math.atan2(n.y - this.y, n.x - this.x) : heading;
+      this.faceAngle(la + (opts.glance ? this.walkGlance(dt) : 0), speed > 1.6 ? 7 : 4, dt);
+    }
+    // stuck on furniture or bodies: vault it, else sidestep and re-plan
     if (this.moving < speed * 0.25) {
       this.stuck += dt;
-      if (this.stuck > 0.25 && this.tryVault(Math.atan2(dy, dx))) { this.stuck = 0; return false; }
+      if (this.stuck > 0.25 && this.tryVault(heading)) { this.stuck = 0; return false; }
       if (this.stuck > 0.7) {
         this.stuck = 0;
-        const side = Math.atan2(dy, dx) + (chance(0.5) ? 1.4 : -1.4);
+        const side = heading + (chance(0.5) ? 1.4 : -1.4);
         Body.setVelocity(this.body, { x: Math.cos(side) * speed, y: Math.sin(side) * speed });
-        const end = this.path[this.path.length - 1];
-        this.goTo(end.x, end.y);
+        this.repath = 0;
+        this.dest = null;
       }
     } else this.stuck = 0;
     return false;
   }
 
-  randomPoint(cx, cy, radiusTiles) {
-    const map = this.world.map;
-    for (let i = 0; i < 12; i++) {
-      const x = cx + rand(-radiusTiles, radiusTiles) * TILE, y = cy + rand(-radiusTiles, radiusTiles) * TILE;
-      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
-      if (map.isBlocked(tx, ty)) continue;
-      return { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+  // stand still, only nudged apart from mates
+  halt() {
+    const s = this.separation(), m = Math.hypot(s.x, s.y);
+    this.steer(s.x, s.y, m > 0.01 ? Math.min(1, m) * 1.2 : 0, 0.2);
+  }
+
+  // push away from mates closer than 26 px (reused vector)
+  separation() {
+    let sx = 0, sy = 0;
+    for (const e of this.world.enemies) {
+      if (e === this || !e.alive || e.knocked > 0) continue;
+      const dx = this.x - e.x, dy = this.y - e.y, d2 = dx * dx + dy * dy;
+      if (d2 > 26 * 26 || d2 < 0.01) continue;
+      const d = Math.sqrt(d2), k = (26 - d) / 26;
+      sx += (dx / d) * k; sy += (dy / d) * k;
     }
-    return null;
+    this.sep.x = sx; this.sep.y = sy;
+    return this.sep;
+  }
+
+  faceAngle(a, rate, dt) { this.angle = approachAngle(this.angle, a, rate * dt); }
+  faceTo(x, y, rate, dt) { this.faceAngle(Math.atan2(y - this.y, x - this.x), rate, dt); }
+
+  // look around a base direction with pauses between glances
+  sweep(dt, base, amp = 1.1, rate = 3.2) {
+    if ((this.glanceT -= dt) <= 0) { this.glanceT = rand(0.5, 1.3); this.glance = rand(-amp, amp); }
+    this.faceAngle(base + this.glance, rate, dt);
+  }
+
+  walkGlance(dt) {
+    if ((this.glanceT -= dt) <= 0) { this.glanceT = rand(1.2, 3.5); this.glance = chance(0.55) ? 0 : rand(-0.9, 0.9); }
+    return this.glance;
+  }
+
+  // the nearest wall to lean on / face while smoking or on the phone
+  wallFacing() {
+    let best = this.home.angle, bd = 3 * TILE;
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4, r = 3 * TILE;
+      const hit = this.world.map.raycast(this.x, this.y, this.x + Math.cos(a) * r, this.y + Math.sin(a) * r);
+      if (hit && hit.t * r < bd) { bd = hit.t * r; best = a; }
+    }
+    return best;
   }
 
   // ---------------- knock-down ----------------
@@ -288,12 +1017,15 @@ export default class Enemy extends Character {
     this.knocked = ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
     this.downAngle = angle + Math.PI;
     this.dropWeapon(angle + rand(-0.8, 0.8), rand(2, 4));
+    this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
     const sp = cause === 'punch' ? 3 : 4.5;
     this.vel = { x: Math.cos(angle) * sp, y: Math.sin(angle) * sp };
     Body.setVelocity(this.body, this.vel);
     this.world.particles.blood(this.x, this.y, angle, 0.6, 6, 120);
     this.swing = 0;
+    this.reloading = 0;
+    this.director.release(this);
   }
 
   updateKnocked(dt) {
@@ -304,39 +1036,112 @@ export default class Enemy extends Character {
       this.knocked = 0;
       this.body.collisionFilter = { category: CAT.CHAR, mask: MASK.CHAR, group: 0 };
       this.angle = this.downAngle + Math.PI;
-      const p = this.world.player;
-      this.lastSeen = p ? { x: p.x, y: p.y } : null;
-      this.setState(S.SEARCH);
-      this.searchT = 4;
-      this.react = 0.5;
-      if (!this.armed && this.kind !== 'brute') this.lookForWeapon();
+      if (this.passive) return;
+      this.setState(S.DIZZY);
+      this.dizzyT = rand(...ENEMY.dizzy);
+      this.meter = Math.max(this.meter, 0.5);
     }
+  }
+
+  // ---------------- feedback ----------------
+  showIcon(ch, t) { this.icon = ch; this.iconT = t; }
+
+  say(kind) {
+    if (this.barkT > 0 || !BARKS[kind]) return;
+    if (this.director.bark(this, kind, BARKS[kind])) this.barkT = 1.5;
   }
 
   draw(ctx) {
+    const k = 1 - this.crouch * 0.12;
+    if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
     super.draw(ctx);
-    if (this.alertIcon > 0 && this.alive && !this.knocked) {
-      const a = clamp(this.alertIcon * 3, 0, 1);
-      ctx.globalAlpha = a;
-      ctx.font = '10px joystix';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = PALETTE.ink;
-      ctx.fillText(this.icon, this.x + 1, this.y - 13);
-      ctx.fillStyle = this.icon === '!' ? PALETTE.pink : PALETTE.yellow;
-      ctx.fillText(this.icon, this.x, this.y - 14);
-      ctx.globalAlpha = 1;
+    if (k < 1) ctx.restore();
+    if (!this.alive || this.knocked > 0) return;
+    const t = this.world.time;
+    if (this.distracted) {
+      const h = local(this.x, this.y, this.angle, 9, 3);
+      if (this.activity === 'smoke') {
+        ctx.fillStyle = Math.sin(t * 3 + this.seed) > 0.6 ? '#ffd27a' : PALETTE.orange;
+        ctx.fillRect(h.x - 1, h.y - 1, 2, 2);
+        const ph = (t * 0.7 + this.seed) % 1;
+        ctx.fillStyle = `rgba(200,200,210,${0.35 * (1 - ph)})`;
+        ctx.fillRect(h.x + Math.sin(ph * 6) * 2 - 1, h.y - ph * 12 - 1, 2 + ph * 3, 2 + ph * 3);
+      } else {
+        ctx.fillStyle = 'rgba(5,217,232,0.35)';
+        ctx.fillRect(h.x - 3, h.y - 3, 6, 6);
+        ctx.fillStyle = '#bff6ff';
+        ctx.fillRect(h.x - 1.5, h.y - 1, 3, 2);
+      }
+    }
+    if (this.state === S.DIZZY) {
+      ctx.fillStyle = PALETTE.yellow;
+      for (let i = 0; i < 3; i++) {
+        const a = t * 6 + (i * Math.PI * 2) / 3;
+        ctx.fillRect(this.x + Math.cos(a) * 6 - 1, this.y + Math.sin(a) * 3 - 12, 2, 2);
+      }
     }
   }
 
-  // debug: vision cone
+  // awareness marks, drawn after the lighting so they stay readable in the dark:
+  // '!' when spotted, '?' while suspicious, and the detection meter filling up
+  drawMarks(ctx) {
+    if (!this.alive || this.knocked > 0 || this.passive) return;
+    const showQ = this.aware === 1 && this.state !== S.DIZZY;
+    if (this.iconT > 0 || showQ) {
+      const ch = this.iconT > 0 ? this.icon : '?';
+      ctx.font = '10px joystix';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = this.iconT > 0 ? clamp(this.iconT * 3, 0, 1) : 0.85;
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillText(ch, this.x + 1, this.y - 13);
+      ctx.fillStyle = ch === '!' ? PALETTE.pink : PALETTE.yellow;
+      ctx.fillText(ch, this.x, this.y - 14);
+      ctx.globalAlpha = 1;
+    }
+    if (this.aware < 2 && this.meter > 0.04) {
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(this.x - 7, this.y - 12, 14, 3);
+      ctx.fillStyle = this.meter > 0.7 ? PALETTE.orange : PALETTE.yellow;
+      ctx.fillRect(this.x - 6, this.y - 11, 12 * this.meter, 1);
+    }
+  }
+
+  // debug (F2): view cone (sharp centre brighter), state:tactic + meter, current target, cover, last known position
   drawVision(ctx) {
     if (!this.alive || this.knocked) return;
-    ctx.fillStyle = this.state === S.COMBAT ? 'rgba(255,40,80,0.08)' : 'rgba(255,255,255,0.05)';
+    const col = ['255,255,255', '249,200,14', '255,40,80'][this.aware];
+    ctx.fillStyle = `rgba(${col},0.06)`;
     ctx.beginPath();
     ctx.moveTo(this.x, this.y);
     ctx.arc(this.x, this.y, ENEMY.viewDist, this.angle - ENEMY.fov / 2, this.angle + ENEMY.fov / 2);
     ctx.closePath();
     ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.arc(this.x, this.y, ENEMY.viewDist * 0.7, this.angle - ENEMY.focusCone, this.angle + ENEMY.focusCone);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${col},0.35)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(this.x, this.y, ENEMY.closeSense[this.aware], 0, Math.PI * 2); ctx.stroke();
+    const tg = this.target;
+    if (tg) {
+      ctx.strokeStyle = `rgba(${col},0.7)`;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(tg.x, tg.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeRect(tg.x - 3, tg.y - 3, 6, 6);
+    }
+    if (this.cover) { ctx.strokeStyle = PALETTE.cyan; ctx.strokeRect(this.cover.x - 4, this.cover.y - 4, 8, 8); }
+    const lk = this.lastKnown;
+    if (lk && this.aware > 0) {
+      ctx.strokeStyle = PALETTE.pink;
+      ctx.beginPath(); ctx.moveTo(lk.x - 4, lk.y - 4); ctx.lineTo(lk.x + 4, lk.y + 4); ctx.moveTo(lk.x + 4, lk.y - 4); ctx.lineTo(lk.x - 4, lk.y + 4); ctx.stroke();
+    }
+    ctx.font = '5px joystix';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = PALETTE.white;
+    const label = this.state + (this.tactic ? ':' + this.tactic : '') + (this.activity !== 'walk' && this.aware === 0 ? ':' + this.activity : '');
+    ctx.fillText(`${label} ${Math.round(this.meter * 100)}`, this.x, this.y + 18);
   }
 }
-

@@ -5,6 +5,10 @@
 //   'kill'          a character died           { victim, cause, killer }
 //   'explosion'     a blast went off           { x, y, radius, source }
 //   'wallDestroyed' a wall tile collapsed      { cx, cy, x, y }
+//   'noise'         something audible          { x, y, radius, source, type }
+//   'windowBroken'  a window shattered         { x, y }
+//   'doorBroken'    a lock burst / door ripped { x, y }
+//   'alertPhase'    squad alert phase changed  { phase, prev }   (ai/Director)
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
@@ -23,6 +27,7 @@ import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, detachDoor, destroyFence } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
 import Impacts from '../systems/Impacts.js';
+import Director from '../ai/Director.js';
 
 const { Body } = Matter;
 
@@ -78,6 +83,7 @@ export default class World {
     buildLevel(this, level);
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
+    this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
     this.lighting = new Lighting(this);
   }
 
@@ -145,11 +151,9 @@ export default class World {
     Body.setVelocity(b, { x: v.x + Math.cos(a) * dv, y: v.y + Math.sin(a) * dv });
     if (spin) Body.setAngularVelocity(b, Body.getAngularVelocity(b) + spin);
   }
-  noise(x, y, radius, source = null) {
-    for (const e of this.enemies) {
-      if (!e.alive || e === source) continue;
-      if (Math.hypot(e.x - x, e.y - y) < radius) e.hear(x, y, !!source?.isPlayer);
-    }
+  // something guards may hear (routed by the Director). type: gunshot, glass, door, wall, explosion, thrown...
+  noise(x, y, radius, source = null, type = null) {
+    this.events.emit('noise', { x, y, radius, source, type });
   }
   addScore(points, x, y, label) { this.scoring.add(points, x, y, label); }
 
@@ -206,6 +210,7 @@ export default class World {
     // 1. intentions (input, AI)
     if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
+    this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
 
     // 2. physics

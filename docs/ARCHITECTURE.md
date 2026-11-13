@@ -32,6 +32,10 @@ src/
       Destruction.js      wall tiles, doors off hinges, fences
       Scoring.js          listens to 'kill': score, combo
       Impacts.js          listens to 'impact': material sounds by speed and mass
+    ai/                   enemy AI, DOM-free (unit tested)
+      Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
+      Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
+      Perception.js       detection meter rate, view test, aim error, hearing error
     render/
       MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, baked bodies)
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
@@ -40,7 +44,7 @@ src/
     fx/                   Particles, Gore
     ui/                   HUD, Screens, Text
     data/                 weapons, props, materials, levels/ (index.js = registry)
-tests/                    node --test (no browser): engine, physics, map/pathfinding
+tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai
 ```
 
 Rules:
@@ -51,7 +55,8 @@ Rules:
 
 ## Simulation step (World.step)
 
-1. intentions: player input, enemy AI (they set velocities via `Character.steer`, limited by `pushFactor`)
+1. intentions: player input, AI Director (phase timers, footsteps, budget reset), enemy AI
+   (they set velocities via `Character.steer`, limited by `pushFactor`)
 2. physics: `PhysicsWorld.step` (2 Matter sub-steps + floor friction), push contacts, door hinges, wall body rebuild
 3. reactions: items, ammo, projectiles (segment-traced), debris, corpses/ragdolls, props, emitters, particles, systems
 4. cleanup of dead entities and expired effects
@@ -63,8 +68,16 @@ Rules:
 |---|---|---|---|
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
 | `kill` | `{ victim, cause, killer }` | World.onKill | Scoring |
-| `explosion` | `{ x, y, radius, source }` | Explosions | (lighting, camera, AI: upcoming) |
-| `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | (lighting cache, AI: upcoming) |
+| `explosion` | `{ x, y, radius, source }` | Explosions | (lighting, camera) |
+| `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | Director (incident) |
+| `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing) |
+| `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
+| `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
+| `alertPhase` | `{ phase, prev }` | Director | (HUD reads the phase directly; music / lighting could follow) |
+
+Noise types: `gunshot` (any shooter; a guard's shot is heard as `allyFire` by his mates), `door`, `glass`,
+`wall`, `explosion`, `thrown` (a gun thrown by the player lands), untyped = `noise`. Footsteps / bodies falling
+are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 ## Physics model
 
@@ -101,6 +114,32 @@ Rules:
 - `Game.safeDraw` isolates the world draw: an exception is logged once and the context is restored, so the HUD,
   cursor and post effects keep rendering.
 
+## Enemy AI
+
+- **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
+  pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /
+  `investigate` / `check` (body, knocked-out mate, wreckage, empty post) / `search` / `guard` / `dizzy`;
+  alert `combat` / `hunt` / `fetch` (pick a weapon up) / `flee` (unarmed: run to an armed mate).
+- **Detection meter** 0..1 (`ai/Perception.js`): fills while the player is in view, faster close / in the centre
+  of the cone / running / lit (`world.lighting.levelAt`) / in a vigilant phase, slower when distracted;
+  `?` from `ENEMY.suspicious`, `!` at 1. Noises set the meter to a level (`ENEMY.hear`), never straight to `!`.
+- **Fairness**: human reaction delay before the first shot (`ENEMY.reaction`, `reacquire`), turn-rate limited aim,
+  aim error that shrinks with steady sight (`aimErrorMax`, `aimSettle`), no shot from off screen, no psychic
+  knowledge (last known positions only, noise localisation error).
+- **Combat tactics** (re-planned every 0.3-0.5 s): `hold`, `advance`, `backoff`, `cover` (duck / peek / volley),
+  `flank` (one or two guards, Director decides), `suppress` (short burst where he vanished), `reload` (to cover,
+  "RELOADING!"), `hunt`, `panic`; shotguns `ambush` (crouch behind a corner on his way); melee `rush` (weaving,
+  dodging a pointed gun) and `stalk` (cover to cover while a gun is on them). Dry guns are thrown at the player.
+- **Director** (`ai/Director.js`): phases `normal -> caution -> alert -> evasion -> caution -> normal`
+  (durations in `AI`), contact shout (up to `AI.maxHunters` converge, the others hold and watch), call-ins on
+  incidents, evasion sweep over search points around the last known position, claims on tactical spots,
+  a per-step `budget()` for path-finding (1) and cover / flank searches (3) so the cost is spread over frames.
+- Barks are short world texts (`world.texts`), one at a time for the squad. `?` / `!` and the meter are drawn
+  after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
+- Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned
+  at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their
+  spawn. `passive: true` = dummies with no perception (lab).
+
 ## Doors
 
 `Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out).
@@ -111,6 +150,7 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 ## Debug
 
 - `?level=lab` loads the physics lab (all props/weapons/ammo on three floors, a street with vehicles, passive dummies).
-- F2 enemy vision, F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
+- F2 enemy vision (cones, close-awareness ring, state:tactic + meter, target, cover, last known position,
+  incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
 - `window.game` in the console.
 - `npm test` runs the Node unit tests.

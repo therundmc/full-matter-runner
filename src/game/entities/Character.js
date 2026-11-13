@@ -225,8 +225,8 @@ export default class Character {
         Math.cos(ca) * v, Math.sin(ca) * v, rand(-0.9, 0.9), { material: 'brass', air: 0.08, shadow: 0, kg: 0.05, mu: 0.3, fly: 0.2, bounce: 0.5 }));
     }
     w.sound(d.sound, this.x, this.y, 1, { choke: this });
-    // only the player's gunfire draws the guards in
-    if (d.noise && this.isPlayer) w.noise(this.x, this.y, d.noise, this);
+    // the player's gunfire draws the guards in; a guard firing calls his mates
+    if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
     this.recoil = 1;
     this.weapon.mag--;
     this.vel.x -= Math.cos(a) * d.kick * 0.12;
