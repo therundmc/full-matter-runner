@@ -29,7 +29,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    over synthesized bass / room layers (user rejected fully synthesized guns as muffled: loud, crisp, "guerrilla"),
    lighting (render/Lighting.js: every visible light is a prop, level `lights` = indirect fill only),
    prop destruction pushed far (Fracture / DamageArt), real-time liquids (puddles, footprints, hydrant),
-   animations + slide on Space. Still weak: combat visual feedback, horn / scream sounds.
+   animations + slide on Space. Still weak: combat visual feedback, horn sound.
+   Every non-gun sound = cuts of a recorded CC0 foley bank (assets/sound/foley.wav + src/audio/bank.js, built by
+   `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json); user rejected synthesized SFX as clicky,
+   "Mario"-like: never add oscillator tones. Guards shout, the dying cry out. Music is liked as is.
 5. Synthwave music: darker, follows the AI alert phase.
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance

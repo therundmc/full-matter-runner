@@ -4,6 +4,8 @@ import { load } from './setup.mjs';
 
 const { default: Audio } = await load('audio/Audio.js');
 const { WEAPONS } = await load('game/data/weapons.js');
+const { MATERIAL_FX } = await load('game/data/destruction.js');
+const { BANK } = await load('audio/bank.js');
 
 // Minimal strict WebAudio stand-in: records every node and rejects what a browser would throw on
 // (non-finite values, exponential ramps to <= 0) and counts sources started.
@@ -29,6 +31,7 @@ function mockContext() {
     createBiquadFilter: () => node({ frequency: param(350), Q: param(1), gain: param(0) }),
     createStereoPanner: () => node({ pan: param(0) }),
     createWaveShaper: () => node(),
+    createConvolver: () => node(),
     createDynamicsCompressor: () => node({ threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() }),
     createOscillator: () => source({ frequency: param(440) }),
     createBufferSource: () => source({ playbackRate: param(1) }),
@@ -37,14 +40,18 @@ function mockContext() {
   return ctx;
 }
 
-function withContext(fn) {
+const FOLEY = { duration: 80 }; // stands for the decoded foley bank
+
+function withContext(fn, buffers = { foley: FOLEY }) {
   const ctx = mockContext();
   Audio.ctx = ctx;
   Audio.active = [];
   Audio.lastPlay = {};
+  Audio.buffers = buffers;
   Audio._build(ctx);
   fn(ctx);
   Audio.ctx = null;
+  Audio.buffers = {};
 }
 
 test('audio: every weapon sound, reload and handling sound builds valid nodes for every weapon', () => {
@@ -82,7 +89,7 @@ test('audio: full auto from one shooter keeps a single live voice (choke), dista
 test('audio: with the recordings loaded, every shot and the blast play a cut of them', () => {
   withContext((ctx) => {
     const buf = { duration: 1 }, played = [];
-    Audio.buffers = { pistol: buf, rifle: buf, shotgun: buf, uzi: buf };
+    Audio.buffers = { pistol: buf, rifle: buf, shotgun: buf, uzi: buf, foley: FOLEY };
     const make = ctx.createBufferSource;
     ctx.createBufferSource = () => {
       const s = make(), start = s.start;
@@ -95,6 +102,48 @@ test('audio: with the recordings loaded, every shot and the blast play a cut of 
       Audio.play(name, { x: 0, y: 0 });
       assert.ok(played.length > n, `${name}: no recording played`);
     }
-    Audio.buffers = {};
   });
+});
+
+// every other sound the game asks for (world.sound / Audio.play call sites, material tables)
+const GAME_SOUNDS = [
+  ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), 'stone', 'flesh', 'impact', 'shell',
+  'punch', 'splat', 'gore', 'slash', 'death', 'bodyFall', 'shout', 'cry', 'glass', 'crumble', 'doorBreak', 'explosion',
+  'tirePop', 'carHit', 'door', 'doorSlam', 'creak', 'vault', 'slide', 'splash', 'throw', 'swing', 'ricochet', 'ammo',
+  'alarm', 'crackle', 'ignite', 'combo', 'clear', 'ui', 'passby',
+];
+
+test('audio: every sound the game asks for plays, from a cut that lies inside the foley bank', () => {
+  const end = Math.max(...Object.values(BANK).flat().map(([at, len]) => at + len));
+  withContext((ctx) => {
+    const make = ctx.createBufferSource;
+    ctx.createBufferSource = () => {
+      const s = make(), start = s.start;
+      s.start = (t, at = 0, len = 0) => {
+        if (s.buffer === FOLEY) assert.ok(at >= 0 && len > 0 && at + len <= end + 0.05, `cut ${at} + ${len} outside the bank`);
+        start(t);
+      };
+      return s;
+    };
+    for (const name of GAME_SOUNDS) {
+      for (let i = 0; i < 12; i++) { // several times: every cut of a set comes up
+        ctx.currentTime += 4;
+        const n = ctx.started;
+        Audio.play(name, { x: 30, y: 0, vol: 0.8, n: i });
+        assert.ok(ctx.started > n, `'${name}' played nothing`);
+      }
+    }
+  });
+});
+
+test('audio: without the foley bank nothing throws and silent sounds free their voice', () => {
+  withContext((ctx) => {
+    for (const name of [...GAME_SOUNDS, 'magOut', 'rack', 'click', 'silenced', 'shotgun']) {
+      ctx.currentTime += 4;
+      Audio.play(name, { x: 30, y: 0 });
+    }
+    ctx.currentTime += 4;
+    Audio.play('wood', { x: 0, y: 0 });
+    assert.equal(Audio.active.filter((a) => a.name === 'wood').length, 0);
+  }, {});
 });

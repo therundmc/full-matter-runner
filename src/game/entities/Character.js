@@ -1,7 +1,7 @@
 import { CAT, MASK, ENEMY } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, chunk } from '../../engine/Assets.js';
-import { rand, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
+import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
@@ -30,6 +30,7 @@ export default class Character {
     this.kind = kind;
     this.team = team;
     this.look = KINDS[kind];
+    this.voice = rand(0.92, 1.1) * (kind === 'brute' || kind === 'heavy' ? 0.88 : 1); // pitch of his shouts and cries
     this.radius = 8.5;
     this.body = Bodies.circle(x, y, this.radius, {
       frictionAir: 0, friction: 0, frictionStatic: 0, restitution: 0, label: kind,
@@ -338,7 +339,9 @@ export default class Character {
     this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
-    gore(this.world, this, angle, cause, by);
+    const left = gore(this.world, this, angle, cause, by);
+    // most of them go down with a cry, when there is still a throat to cry with
+    if (left === 'corpse' && !this.isCivilian && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
     this.world.onKill(this, cause, killer);
   }
 

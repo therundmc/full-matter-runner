@@ -8,6 +8,7 @@ import { WOUNDS, woundFor } from '../data/wounds.js';
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute.
 // by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
 // profile (data/wounds.js) sets how much blood goes where and how the body bleeds out.
+// Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
 export function gore(world, ch, angle, cause, by) {
   const P = world.particles;
   const { x, y } = ch;
@@ -58,7 +59,7 @@ export function gore(world, ch, angle, cause, by) {
     world.sound('gore', x, y);
     world.shake(0.35);
     world.hitstop(0.05);
-    return;
+    return mode;
   }
 
   const slide = rand(wd.throw[0], wd.throw[1]);
@@ -88,6 +89,7 @@ export function gore(world, ch, angle, cause, by) {
   } else {
     world.sound(cause === 'slash' ? 'slash' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
   }
+  return mode;
 }
 
 function throwGib(world, img, x, y, angle, radial, bleed, spurt, speedMul = 1) {

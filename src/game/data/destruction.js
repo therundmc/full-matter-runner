@@ -122,12 +122,12 @@ export const DESTRUCTION = {
 //   cracks        radiating cracks per blunt hit
 //   hard          shows bright scrapes / dents instead of torn holes (metal)
 export const MATERIAL_FX = {
-  wood: { hit: 'wood', crush: 'wood', dust: '#9a7a58', backSplash: 0.5, exit: 1, cracks: 4, splinters: true },
-  metal: { hit: 'metal', crush: 'metal', dust: null, backSplash: 0.15, exit: 0.4, cracks: 0, hard: true },
+  wood: { hit: 'wood', crush: 'woodBreak', dust: '#9a7a58', backSplash: 0.5, exit: 1, cracks: 4, splinters: true },
+  metal: { hit: 'metal', crush: 'metalBreak', dust: null, backSplash: 0.15, exit: 0.4, cracks: 0, hard: true },
   glass: { hit: 'glassHit', crush: 'glass', dust: null, backSplash: 0.7, exit: 1.4, cracks: 7, glass: true },
-  ceramic: { hit: 'ceramic', crush: 'ceramic', dust: '#f0ece4', backSplash: 0.6, exit: 1.2, cracks: 6 },
-  plastic: { hit: 'plastic', crush: 'plastic', dust: '#77707a', backSplash: 0.35, exit: 0.8, cracks: 3 },
-  fabric: { hit: 'soft', crush: 'soft', dust: '#c8b8a8', backSplash: 0.25, exit: 0.6, cracks: 0, float: 'stuffing' },
+  ceramic: { hit: 'ceramic', crush: 'ceramicBreak', dust: '#f0ece4', backSplash: 0.6, exit: 1.2, cracks: 6 },
+  plastic: { hit: 'plastic', crush: 'plasticBreak', dust: '#77707a', backSplash: 0.35, exit: 0.8, cracks: 3 },
+  fabric: { hit: 'soft', crush: 'softBreak', dust: '#c8b8a8', backSplash: 0.25, exit: 0.6, cracks: 0, float: 'stuffing' },
 };
 
 export const DEFAULT_PARTS = {

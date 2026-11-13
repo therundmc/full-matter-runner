@@ -17,7 +17,8 @@ src/
       PhysicsWorld.js     Matter engine wrapper: sub-stepping, friction, collision dispatch, 'impact' events
       Raycast.js          grid DDA, segment vs polygon / circle / segment
     nav/Pathfinding.js    A* on the tile grid + string pulling
-  audio/                  Audio.js (mixer, synthesized SFX), Music.js (procedural synthwave)
+  audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
+                          of the foley cuts), Music.js (procedural synthwave)
   game/
     Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
@@ -116,8 +117,14 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 - Ammo is per caliber (`AMMO` in data/weapons.js: 9mm, 12g, 762, rocket). The player has a pool per caliber;
   a reload fills a fresh magazine from the pool and drops the old one with what was left in it (pickable).
-- Gun sounds are synthesized from layers (`GUNS` in audio/Audio.js: crack, body, blast, thump, action, tail, casing),
-  choked per shooter (`choke`). Reload / handling sounds take `{ weapon }` to pick that gun's mechanics (`ARMS`).
+- Sound (audio/Audio.js): a gunshot is a recorded shot (`SHOTS`) over synthesized bass / room layers (`GUNS`), choked
+  per shooter (`choke`). Every other physical sound is one or several cuts of the recorded foley bank
+  (`assets/sound/foley.wav`, indexed by audio/bank.js), layered per sound name in `FOLEY`; a `_<name>` method adds the
+  synthesized part where no recording fits (blasts, fire, tyres, alarm, traffic). Reload / handling sounds take
+  `{ weapon }` to pick that gun's parts (`ARMS`), voices take `{ pitch }` (one per character, `Character.voice`).
+  The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
+  (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
+  (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
 - Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
   - every hit paints a mark at the real impact point into the prop's own canvas (so it moves with it): 9 mm holes,
     pellet pocks, 7.62 entry + exit blow-out (Penetration exit point and remaining energy), grazing furrows / metal

@@ -28,6 +28,7 @@ const BARKS = {
   missing: ["WHERE'D HE GO?"], damage: ['WHAT THE...'], reload: ['RELOADING!', 'COVER ME!'], panic: ['AAAH!', "HE'S CRAZY!"],
   lost: ['WHERE IS HE?', 'SPREAD OUT!'], help: ['HELP!'], dry: ["I'M OUT!"], shots: ['SHOTS FIRED!', 'GUNFIRE!'],
 };
+const SHOUTED = new Set(['shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake']); // barks yelled out loud
 const RANGES = ENEMY.ranges;
 
 export default class Enemy extends Character {
@@ -150,7 +151,7 @@ export default class Enemy extends Character {
     this.react = rand(...(recent ? ENEMY.reacquire : ENEMY.reaction));
     this.settle = 0;
     this.showIcon('!', 1);
-    this.world.sound('alert', this.x, this.y);
+    this.world.sound('shout', this.x, this.y, 1, { pitch: this.voice });
     this.shoutT = 0.35;
     this.thinkT = 0;
   }
@@ -1051,7 +1052,9 @@ export default class Enemy extends Character {
 
   say(kind) {
     if (this.barkT > 0 || !BARKS[kind]) return;
-    if (this.director.bark(this, kind, BARKS[kind])) this.barkT = 1.5;
+    if (!this.director.bark(this, kind, BARKS[kind])) return;
+    this.barkT = 1.5;
+    if (SHOUTED.has(kind)) this.world.sound('shout', this.x, this.y, 0.8, { pitch: this.voice });
   }
 
   draw(ctx) {
