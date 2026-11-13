@@ -17,7 +17,8 @@ const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 
 // (px/step) it floors them, above `lethal` it kills. Optional: all (it also hits the player and passers-by),
 // cause + by (how it kills, see Gore), owner (who is credited with the kill; the player by default).
 // opts.z / opts.vz: fake height (px) and upward speed (px/s): the piece arcs through the air above its shadow,
-// lands, bounces and settles; it skips floor friction while up there. opts.land: sound when it hits the floor.
+// lands, bounces and settles; it skips floor friction while up there. opts.land: sound when it hits the floor;
+// opts.onLand(debris): called the first time it touches the floor (a bottle smashes: world.removeDebris).
 // Once settled it is baked into the floor canvas and removed from the simulation.
 export default class Debris {
   constructor(world, img, x, y, angle, vx, vy, spin, opts = {}) {
@@ -44,6 +45,7 @@ export default class Debris {
     // time up in the air (fake height ballistics)
     const air = this.z > 0 || this.vz > 0 ? (this.vz + Math.sqrt(this.vz * this.vz + 2 * GRAVITY * this.z)) / GRAVITY : 0;
     this.land = opts.land || null;
+    this.onLand = opts.onLand || null;
     setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.06), mu, world.time + Math.max(opts.fly ?? 0.12, air));
     scaleInertia(this.body, 2);
     Body.setVelocity(this.body, { x: vx / 60, y: vy / 60 });
@@ -92,6 +94,12 @@ export default class Debris {
     this.z += this.vz * dt;
     if (this.z > 0) return;
     this.z = 0;
+    if (this.onLand) {
+      const f = this.onLand;
+      this.onLand = null;
+      f(this);
+      if (this.dead) return;
+    }
     const b = this.body, v = Body.getVelocity(b);
     if (this.vz < -90) {
       if (this.land && this.size > 7) this.world.sound(this.land, b.position.x, b.position.y, Math.min(0.7, -this.vz / 400));

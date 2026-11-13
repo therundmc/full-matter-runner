@@ -5,6 +5,7 @@ import { load } from './setup.mjs';
 const F = await load('game/systems/Fracture.js');
 const { recipeFor, DESTRUCTION, BITS, FLOATS, MATERIAL_FX } = await load('game/data/destruction.js');
 const { PROPS } = await load('game/data/props.js');
+const { LIQUIDS } = await load('game/Config.js');
 
 // deterministic random
 const seeded = (s = 1) => () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
@@ -130,6 +131,25 @@ test('every prop has a recipe that works at any sprite size', () => {
   }
   // recipes only name real props
   for (const type of Object.keys(DESTRUCTION)) assert.ok(PROPS[type], type);
+});
+
+test('liquids in things: what stands as a puddle names a kind the floor knows how to draw', () => {
+  const kinds = [];
+  for (const [type, def] of Object.entries(PROPS)) {
+    const { leak } = recipeFor(type, def);
+    if (leak?.kind) kinds.push(leak.kind);
+    if (leak?.flood) assert.ok(leak.kind && leak.flood > 1000, `${type}: a flood stands on the floor`);
+  }
+  for (const bit of Object.values(BITS)) if (bit.smash) kinds.push(bit.smash.kind);
+  assert.ok(kinds.includes('booze') && kinds.includes('water'));
+  for (const kind of kinds) {
+    const k = LIQUIDS.kinds[kind];
+    for (const part of ['body', 'sheen', 'glint', 'ring']) assert.ok(k.puddle[part], `${kind}.${part}`);
+    assert.ok(k.prints > 0 && k.wet > 0);
+  }
+  assert.equal(recipeFor('bar_counter', PROPS.bar_counter).leak.kind, 'booze');
+  assert.ok(BITS.bottle.smash.share > 0.5 && BITS.bottle.smash.area > 100);
+  for (const type of ['toilet', 'sink']) assert.ok(recipeFor(type, PROPS[type]).leak.flood, type);
 });
 
 test('collapse launch: pieces leave along the blow, pushed out from the centre', () => {

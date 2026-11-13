@@ -355,48 +355,70 @@ export default class Prop {
     for (const c of this.rec.contents) {
       if (c.on !== 'hit' || this.spilled >= 6 || !chance(c.perHit ?? 1)) continue;
       this.spilled++;
-      if (c.bit === 'bottle') {
-        // the bottle behind the counter bursts
-        const P = this.world.particles;
-        P.glass(px, py, dirA, 1.2, 12, 140);
-        P.drops(px, py, dirA, 1, 10, this.rec.leak?.color || 'rgba(150,90,20,0.5)', 110);
-        this.world.sound('glassHit', px, py, 0.6);
-      } else this.throwBits(BITS[c.bit], c, 1, px, py, dirA + Math.PI + rand(-0.8, 0.8), 0.8);
+      const bit = BITS[c.bit];
+      // a bottle behind the counter bursts where it stands and runs down to the foot of it, on the shooter's side
+      if (bit.smash) this.smashBit(bit.smash, pick(c.colors || bit.colors), px - Math.cos(dirA) * 9, py - Math.sin(dirA) * 9, dirA + Math.PI);
+      else this.throwBits(bit, c, 1, px, py, dirA + Math.PI + rand(-0.8, 0.8), 0.8);
     }
   }
 
-  // loose bits: real-size little physical things (pool balls roll, records skid, books tumble)
+  // loose bits: real-size little physical things (pool balls roll, records skid, books tumble, bottles smash)
   throwBits(bit, c, n, x, y, dirA, power) {
     const w = this.world;
     const [mw, mh] = bit.size;
     const round = !!bit.round;
     for (let i = 0; i < n; i++) {
       const pw = Math.max(round ? 2.6 : 2, mw * PX_PER_M), ph = Math.max(2, mh * PX_PER_M);
-      const img = bitSprite(c.bit, pick(c.colors || bit.colors), pw, round ? pw : ph);
+      const color = pick(c.colors || bit.colors), img = bitSprite(c.bit, color, pw, round ? pw : ph);
       const a = dirA + rand(-1.2, 1.2), v = rand(40, 140) * power;
       const z = this.lift() * rand(0.5, 1), vz = rand(30, 110);
+      const smash = bit.smash && chance(bit.smash.share) ? (qx, qy) => this.smashBit(bit.smash, color, qx, qy, a) : null;
       if (this.physicalOk()) {
         w.addDebris(new Debris(w, img, x + rand(-3, 3), y + rand(-3, 3), rand(0, TAU), Math.cos(a) * v, Math.sin(a) * v, rand(-0.3, 0.3), {
           circle: round, bounce: bit.bounce ?? 0.25, mu: bit.mu, material: bit.material, z, vz,
           kg: Math.max(0.1, mw * mh * 40), land: round ? 'plastic' : null,
+          onLand: smash && ((d) => { smash(d.body.position.x, d.body.position.y); w.removeDebris(d); }),
         }));
-      } else w.particles.shard(img, x, y, a, v, { z, vz });
+      } else w.particles.shard(img, x, y, a, v, { z, vz, onLand: smash && ((p) => smash(p.x, p.y)) });
     }
   }
 
-  // a jet of liquid out of a hole, weakening, and the puddle it makes
+  // a bottle (smash: its BITS entry) shattering at (x, y): glass in its colour, a splash thrown on toward dirA, and
+  // what it held, standing on the floor
+  smashBit(smash, color, x, y, dirA) {
+    const w = this.world, P = w.particles;
+    P.glass(x, y, dirA, 1.5, 5, 90);
+    P.chips(x, y, dirA, 1.5, 4, color, 90);
+    P.drops(x, y, dirA, 1.3, 6, LIQUIDS.kinds[smash.kind].splash, 80, 3, false);
+    w.events.emit('spill', { x, y, kind: smash.kind, area: smash.area * rand(0.6, 1.3) });
+    w.sound('glassHit', x, y, 0.45, { pitch: rand(0.9, 1.25) });
+  }
+
+  // a jet of liquid out of a hole, weakening, and the puddle it makes at the foot of the object
   leak(sx, sy, dirA) {
     if (this.leaks >= DESTRUCTION.maxLeaks) return;
     this.leaks++;
-    const w = this.world, color = this.rec.leak?.color || 'rgba(110,160,200,0.16)', dur = this.rec.leak?.dur || 3;
+    const w = this.world, { color = 'rgba(110,160,200,0.16)', dur = 3, kind } = this.rec.leak || { kind: 'water' };
     const out = dirA + Math.PI + rand(-0.4, 0.4); // the jet comes back out of the hole
     let pos = this.toWorld(sx, sy);
     w.emit(pos.x, pos.y, dur, (e) => {
       if (!this.dead) pos = this.toWorld(sx, sy);
       const k = e.t / dur; // pressure falls
-      w.particles.drops(pos.x, pos.y, out + rand(-0.1, 0.1), 0.15, k > 0.3 ? 2 : 1, color, 40 + 120 * k, 5);
+      w.particles.drops(pos.x, pos.y, out + rand(-0.1, 0.1), 0.15, k > 0.3 ? 2 : 1, color, 40 + 120 * k, 5, kind !== 'water');
     });
+    if (kind) w.events.emit('spill', { x: pos.x + Math.cos(out) * 14, y: pos.y + Math.sin(out) * 14, kind, area: LIQUIDS.leak * dur, dur });
     w.sound('soft', pos.x, pos.y, 0.4);
+  }
+
+  // the pipe it was plumbed to, torn open: water wells up from the floor for a few seconds and floods around it
+  flood(x, y, area) {
+    const w = this.world, dur = 5;
+    w.events.emit('spill', { x, y, kind: this.rec.leak.kind, area, dur });
+    w.emit(x, y, dur, (e) => {
+      const k = e.t / dur;
+      if (chance(0.3 + 0.6 * k)) w.particles.jet(x, y, 1, { vz: 60 + 110 * k, speed: 26, size: 1.7, alpha: 0.7 });
+    });
+    w.sound('splash', x, y, 0.5, { pitch: rand(0.75, 0.9) });
   }
 
   // ------------------------------------------------------------------ damage states, collapse
@@ -540,9 +562,10 @@ export default class Prop {
     if (rec.electric) { P.sparks(x, y, 0, Math.PI, 16, 260, '#bff'); P.smoke(x, y, 6, 4, { speed: 20, size: 5, life: 2, dark: true }); }
     if (d.dirt || rec.contents.some((c) => c.bit === 'soil')) P.chips(x, y, 0, Math.PI, 18, '#4a2e1a', 120);
     if (d.water || rec.leak?.on === 'break') {
-      P.drops(x, y, 0, Math.PI, 18, rec.leak?.color || 'rgba(110,160,200,0.16)', 140);
+      P.drops(x, y, 0, Math.PI, 18, rec.leak?.color || 'rgba(110,160,200,0.16)', 140, 6, rec.leak?.kind !== 'water');
       if (rec.leak?.on === 'break') this.leak(this.W / 2, this.H / 2, dirA);
     }
+    if (rec.leak?.flood) this.flood(x, y, rec.leak.flood);
     w.events.emit('propDestroyed', { prop: this, x, y, dirA, power });
     if (d.explosive) return;
     w.sound(fx.crush, x, y);

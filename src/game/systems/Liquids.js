@@ -1,13 +1,16 @@
 // What is wet on the floor and what it does (no DOM: painting goes through world.decals and WorldRenderer).
-//   puddles  liquid poured by a source (a burst hydrant), spreading in real time, standing, then drying
+//   puddles  liquid poured on the floor (a burst hydrant, a broken toilet, smashed bottles), spreading in real
+//            time, standing, then drying; one kind each (LIQUIDS.kinds: water, booze)
 //   pools    the blood under each body (the corpse owns and draws it; we only know where it is wet)
 //   walkers  whoever steps in one carries it away: fading footprints, a smear when sliding
 // A wet floor also grips less (World.floorGrip), so bodies and loose objects slide further on it.
-// Tuning lives in LIQUIDS (Config.js). Listens to 'propDestroyed' (hydrants). Emits 'footprint' (guards read them).
+// Tuning lives in LIQUIDS (Config.js). Listens to 'propDestroyed' (hydrants) and 'spill' (anything pouring liquid).
+// Emits 'footprint' (guards read them).
 import { LIQUIDS } from '../Config.js';
 import { rand, TAU } from '../../engine/math.js';
 
-const JUMP = 48; // px in one step: a teleport, not a stride
+const JUMP = 48;   // px in one step: a teleport, not a stride
+const MERGE = 0.6; // seconds a puddle takes to run into the bigger one that reached it
 
 // irregular outline of a puddle: blobs around the centre, as fractions of its radius
 function lobes() {
@@ -34,22 +37,32 @@ export default class Liquids {
     world.events.on('propDestroyed', ({ prop, x, y }) => {
       if (prop.def.fountain) this.source(x, y, LIQUIDS.hydrant);
     });
+    // area px² of `kind` poured at (x, y): at once, or over dur seconds
+    world.events.on('spill', ({ x, y, kind, area, dur = 0, cap }) => {
+      if (dur > 0) this.source(x, y, { kind, rate: area / dur, dur, cap });
+      else this.feed(x, y, area, kind, cap);
+    });
   }
 
   // something pours `rate` px² of liquid per second at (x, y) for `dur` seconds
-  source(x, y, { kind = 'water', rate, dur, cap }) {
+  source(x, y, { kind = 'water', rate, dur, cap = 60 }) {
     this.sources.push({ x, y, kind, rate, cap, t: dur });
   }
 
-  // add liquid at a point: it joins the puddle it falls into, or starts a new one
+  // add liquid at a point: it joins the puddle it falls into (which creeps toward it), or starts a new one
   feed(x, y, area, kind = 'water', cap = 60) {
     let p = this.puddles.find((q) => q.kind === kind && Math.hypot(q.x - x, q.y - y) < q.r + 10);
     if (!p) {
-      if (this.puddles.length >= LIQUIDS.maxPuddles) return null;
+      // too many: the smallest one has soaked away
+      if (this.puddles.length >= LIQUIDS.maxPuddles) {
+        this.puddles.splice(this.puddles.reduce((m, q, i, all) => (q.area < all[m].area ? i : m), 0), 1);
+      }
       p = { kind, x, y, area: 0, r: 0, cap, lobes: lobes(), dry: 0, alpha: 1, fed: 0 };
       this.puddles.push(p);
     }
     p.area += area;
+    p.x += (x - p.x) * (area / p.area);
+    p.y += (y - p.y) * (area / p.area);
     p.cap = Math.max(p.cap, cap);
     p.r = Math.min(p.cap, Math.sqrt(p.area / Math.PI));
     p.dry = LIQUIDS.kinds[kind].wet;
@@ -87,6 +100,7 @@ export default class Liquids {
       p.alpha = Math.min(1, p.dry / LIQUIDS.fade);
     }
     this.puddles = this.puddles.filter((p) => p.dry > 0);
+    this.merge();
 
     // blood: wet while the body lies in it, then for a while after it has been baked into the floor
     for (const c of w.corpses) {
@@ -105,6 +119,18 @@ export default class Liquids {
     this.tick++;
     for (const ch of w.chars) this.walk(ch);
     for (const [ch, t] of this.walkers) if (t.seen !== this.tick) this.walkers.delete(ch); // dead or gone
+  }
+
+  // a puddle that has spread over a smaller one of the same liquid drinks it up
+  merge() {
+    const all = this.puddles;
+    for (let i = all.length - 1; i >= 0; i--) {
+      const s = all[i];
+      const big = all.find((q) => q !== s && q.kind === s.kind && q.area >= s.area && Math.hypot(q.x - s.x, q.y - s.y) + s.r * 0.5 < q.r);
+      if (!big) continue;
+      all.splice(i, 1);
+      this.sources.push({ x: s.x, y: s.y, kind: s.kind, rate: s.area / MERGE, cap: Math.max(big.cap, s.cap), t: MERGE });
+    }
   }
 
   // one character's feet: wet them in a puddle, print them on the dry floor after it
@@ -128,8 +154,8 @@ export default class Liquids {
       t.dist = 0;
       // feet (or a sliding hip) slapping through water; a film of blood only wets the soles
       if (k.splash) {
-        w.particles.drops(ch.x, ch.y, a, 1.2, sliding ? 5 : 2, k.splash, sliding ? 150 : 90, 3);
-        w.sound('splash', ch.x, ch.y, sliding ? 0.9 : 0.45);
+        w.particles.drops(ch.x, ch.y, a, 1.2, sliding ? 5 : 2, k.splash, sliding ? 150 : 90, 3, false);
+        if (!k.quiet) w.sound('splash', ch.x, ch.y, sliding ? 0.9 : 0.45);
       }
       return;
     }

@@ -17,7 +17,9 @@
 //   floats     [name, count]  slow floating particles on collapse (stuffing, feathers, paper, leaves...)
 //   screen     [x0, y0, x1, y1]  a glass screen: cracks, then implodes (light goes out)
 //   electric   sparks, smoke and flicker when hit
-//   leak       { color, on: 'hit'|'break', dur }  liquid jets and puddles
+//   leak       { color, on: 'hit'|'break', dur, kind?, flood? }  a jet of liquid for dur s out of each hole (on: 'hit')
+//              or once it gives way; kind (LIQUIDS.kinds): it stands as a puddle, else it only stains;
+//              flood: px2 that pour out of the broken pipe when it falls apart
 //   drop       true: hangs high (ceiling lamps, street lamp head): pieces fall from the ceiling
 export const DESTRUCTION = {
   table: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' } },
@@ -61,7 +63,7 @@ export const DESTRUCTION = {
     contents: [{ bit: 'book', n: 10, on: 'break' }, { bit: 'book', n: 2, on: 'hit', perHit: 1 }],
   },
   bar_counter: {
-    height: 1.05, parts: [{ cut: 'planks', n: 2, axis: 'long', snap: true }], leak: { color: 'rgba(150,90,20,0.5)', on: 'hit', dur: 1.2 },
+    height: 1.05, parts: [{ cut: 'planks', n: 2, axis: 'long', snap: true }], leak: { kind: 'booze', color: 'rgba(104,58,16,0.4)', on: 'hit', dur: 1.6 },
     contents: [{ bit: 'bottle', n: 6, on: 'break' }, { bit: 'bottle', n: 1, on: 'hit', perHit: 0.6 }],
   },
   fridge: {
@@ -73,8 +75,8 @@ export const DESTRUCTION = {
     height: 0.9, electric: true, parts: [{ cut: 'panel', rect: [0, 0.75, 1, 1], name: 'door', fly: 1.6 }, { cut: 'grid', cols: 2, rows: 1 }],
     contents: [{ bit: 'pan', n: 1, on: 'break' }],
   },
-  sink: { height: 0.9, parts: [{ cut: 'grid', cols: 2, rows: 1 }], leak: { color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 4 } },
-  toilet: { height: 0.4, material: 'ceramic', parts: [{ cut: 'wedges', n: 5 }], leak: { color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 5 } },
+  sink: { height: 0.9, parts: [{ cut: 'grid', cols: 2, rows: 1 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 4, flood: 3200 } },
+  toilet: { height: 0.4, material: 'ceramic', parts: [{ cut: 'wedges', n: 5 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 5, flood: 4800 } },
   tv: { height: 0.6, electric: true, screen: [0.05, 0.45, 0.95, 1], parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   arcade: { height: 1.7, electric: true, screen: [0.1, 0.05, 0.9, 0.6], parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   jukebox: {
@@ -153,13 +155,14 @@ export const DEFAULT_PARTS = {
 };
 
 // Loose bits: real size in metres (drawn at least a couple of pixels), material, how they move.
-//   round: rolls (circle body), float: drifts down slowly instead of being thrown
+//   round: rolls (circle body), float: drifts down slowly instead of being thrown,
+//   smash: { kind, area, share }: that share of them shatters on the floor and spills area px2 of that liquid
 export const BITS = {
   ball: { size: [0.06, 0.06], material: 'ceramic', round: true, bounce: 0.6, mu: 0.12,
     colors: ['#f2d22a', '#2850c8', '#d02828', '#6a2a9a', '#f07a1a', '#1f8a3a', '#7a1a1a', '#141414', '#f6f2e6'] },
   book: { size: [0.22, 0.16], material: 'wood', colors: ['#c03030', '#2a5aa8', '#e0a020', '#2a8a4a', '#7a3a9a', '#d8d0c0', '#3a2a2a'] },
   disc: { size: [0.18, 0.18], material: 'plastic', round: true, bounce: 0.3, mu: 0.25, colors: ['#ff2a6d', '#05d9e8', '#f9c80e', '#e8e0d0'] },
-  bottle: { size: [0.08, 0.28], material: 'glass', colors: ['#2a6a2a', '#7a4a10', '#a8c8b8', '#5a2a10'] },
+  bottle: { size: [0.08, 0.28], material: 'glass', colors: ['#2a6a2a', '#7a4a10', '#a8c8b8', '#5a2a10'], smash: { kind: 'booze', area: 300, share: 0.75 } },
   can: { size: [0.07, 0.12], material: 'metal', round: true, bounce: 0.35, mu: 0.3, colors: ['#c02020', '#d8d8e0', '#2050c0', '#e0c020'] },
   bag: { size: [0.42, 0.34], material: 'fabric', colors: ['#2c322c', '#23272a', '#3a3530'] },
   food: { size: [0.12, 0.1], material: 'fabric', colors: ['#d8c060', '#c84020', '#e8e0d0', '#6aa040', '#a06030'] },

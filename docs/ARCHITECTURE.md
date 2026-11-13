@@ -43,8 +43,9 @@ src/
       Records.js          best result per level in localStorage (guarded: the game runs without storage)
       Threats.js          which off-screen guards the player can plausibly know about (pure rule + per-guard memory)
       Impacts.js          listens to 'impact': material sounds by speed and mass
-      Liquids.js          what is wet on the floor: puddles fed by sources (burst hydrant), blood pools, wet floor
-                          grip, footprints and slide smears (DOM-free, unit-tested)
+      Liquids.js          what is wet on the floor: puddles of water or booze fed by sources and spills (burst hydrant,
+                          broken toilet, smashed bottles), blood pools, wet floor grip, footprints and slide smears
+                          (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
     ai/                   enemy AI, DOM-free (unit tested)
@@ -106,6 +107,7 @@ Rules:
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor) |
+| `spill` | `{ x, y, kind, area, dur?, cap? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing) | Liquids (px² of a `LIQUIDS.kinds` liquid, at once or over `dur` seconds) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
@@ -198,7 +200,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   where they fall, and a ragged burn (`decals.scorch`, BlastArt).
 - Liquids (systems/Liquids.js, `LIQUIDS` in Config.js): a source pours px² of liquid per second into a puddle that
   spreads up to its cap, stands, then dries (`world.liquids.source` / `feed`; a destroyed `def.fountain` prop is a
-  source). The blood under a body is owned and drawn by the corpse; Liquids only tracks where it is wet
+  source). Anything else that pours emits `spill`: a prop's `leak` in data/destruction.js names a `kind` (water for
+  sinks and toilets, which also `flood` when they fall apart; booze for the bar), and bottles (`BITS.bottle.smash`)
+  thrown out of a counter or a crate shatter where they land (`Debris` / shard `onLand`) into a small booze puddle.
+  Each kind has its own look (`kinds[k].puddle`: body, sheen, glint, rings, foam), prints and splash; a puddle
+  creeps toward what feeds it, drinks up a smaller one of the same kind it has spread over, and when there are
+  `maxPuddles` the smallest soaks away. The blood under a body is owned and drawn by the corpse; Liquids only tracks where it is wet
   (`corpse.pool`, `corpse.poolAt()`), including for a while after the body is baked into the floor. Anyone in
   `world.chars` who steps in a wet area splashes, then prints fading footprints on the dry floor (`decals.footprint`),
   or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn

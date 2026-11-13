@@ -1,6 +1,6 @@
 // Draws a World: floor/decals, entities in layer order, walls, particles, additive effects, floating texts.
 // Also the physics debug overlay (F4).
-import { TILE, PALETTE, CAT } from '../Config.js';
+import { TILE, PALETTE, CAT, LIQUIDS } from '../Config.js';
 import { rand, clamp, TAU } from '../../engine/math.js';
 import { puddleShape } from '../systems/Liquids.js';
 import { drawShock } from './BlastArt.js';
@@ -57,21 +57,34 @@ export default class WorldRenderer {
   }
 
   // standing liquid: a dark wet patch with an irregular edge, a pale sheen, glints, rings while something pours
-  // into it (the lights it mirrors are added by Lighting.post)
+  // into it, in the colours of its kind (the lights it mirrors are added by Lighting.post)
   drawPuddle(ctx, p, t) {
-    const shape = puddleShape(p);
+    const shape = puddleShape(p), look = LIQUIDS.kinds[p.kind].puddle;
     const blob = (k) => {
       ctx.beginPath();
       for (const [x, y, rx, ry] of shape) { ctx.moveTo(x + rx * k, y); ctx.ellipse(x, y, rx * k, ry * k, 0, 0, TAU); }
       ctx.fill();
     };
     ctx.globalAlpha = p.alpha;
-    ctx.fillStyle = 'rgba(6,10,24,0.3)';
+    ctx.fillStyle = look.body;
     blob(1);
-    ctx.fillStyle = 'rgba(120,170,230,0.06)';
+    ctx.fillStyle = look.sheen;
     blob(0.72);
+    if (look.foam) {
+      // froth pushed to the edge
+      ctx.fillStyle = look.foam;
+      ctx.globalAlpha = p.alpha * 0.5;
+      for (const l of p.lobes) {
+        for (let j = -1; j <= 1; j++) {
+          if (Math.sin(l.ph * 5 + j * 2) < -0.2) continue; // patchy
+          const a = l.a + j * 0.4 + l.ph * 0.1, d = (l.d + l.s * (0.86 - 0.1 * Math.abs(j))) * p.r;
+          ctx.fillRect(Math.round(p.x + Math.cos(a) * d), Math.round(p.y + Math.sin(a) * d), j ? 1 : 2, 1);
+        }
+      }
+      ctx.globalAlpha = p.alpha;
+    }
     // glints: short pale dashes that come and go
-    ctx.fillStyle = '#bcd8ff';
+    ctx.fillStyle = look.glint;
     for (const l of p.lobes) {
       const k = Math.sin(t * 1.3 + l.ph);
       if (k <= 0) continue;
@@ -81,7 +94,7 @@ export default class WorldRenderer {
       ctx.fillRect(Math.round(x - len / 2), Math.round(y), Math.round(len), 1);
     }
     if (p.fed > 0) {
-      ctx.strokeStyle = 'rgba(170,210,255,0.16)';
+      ctx.strokeStyle = look.ring;
       ctx.lineWidth = 0.7;
       for (let i = 0; i < 3; i++) {
         const k = (t * 0.7 + i / 3) % 1;

@@ -145,9 +145,14 @@ export default class World {
   }
   bakeDebris(d) {
     if (d.dead) return;
-    d.dead = true;
     // meat lies on the blood, everything else under it
     this.decals.bake(d.img, d.body.position.x, d.body.position.y, d.body.angle, 1, d.body.material === 'flesh');
+    this.removeDebris(d);
+  }
+  // gone without a trace (it shattered, it was consumed)
+  removeDebris(d) {
+    if (d.dead) return;
+    d.dead = true;
     this.removeBody(d.body);
   }
 
