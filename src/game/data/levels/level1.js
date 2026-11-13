@@ -105,10 +105,10 @@ export default {
     // road: parked along the bar side
     ['car2', 14.6, 24, 0, { lights: false }], ['car', 31.2, 24, 180], ['van', 38.6, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
-    ['marquee', 19, 20.69, 0], ['neon_sign_bar', 30, 21.09, 0], ['neon_sign_arrow', 9.4, 21.09, 0],
-    ['plant', 20.6, 21.3, 0], ['plant', 23.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90],
-    ['streetlight', 35.5, 22.7, 90], ['bench', 36.6, 21.3, 0], ['trash_can', 34.9, 21.35, 0],
-    ['hydrant', 11.6, 22.65, 0], ['palm_tree', 2.5, 21.8, 0], ['palm_tree', 41.6, 21.8, 0],
+    ['neon_sign_bar', 30, 21.09, 0], ['neon_sign_arrow', 9.4, 21.09, 0], ['plant', 20.6, 21.3, 0],
+    ['plant', 23.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 35.5, 22.7, 90],
+    ['bench', 36.6, 21.3, 0], ['trash_can', 34.9, 21.35, 0], ['hydrant', 11.6, 22.65, 0], ['palm_tree', 2.5, 21.8, 0],
+    ['palm_tree', 41.6, 21.8, 0],
     // service alley
     ['wall_lamp', 11.09, 19, 270], ['trash_can', 13.5, 17.4, 0], ['trash_can', 13.45, 18.25, 0],
     ['crate', 11.45, 16.9, -6], ['dumpster', 11.62, 14.5, 90], ['neon_tube_cyan', 13.93, 9.9, 90],
@@ -144,6 +144,8 @@ export default {
     ['plant', 20.55, 19.5, 0], ['plant', 24.4, 12.45, 0], ['armchair', 30.45, 17.1, 180],
     ['armchair', 29.9, 19.45, 270], ['table_round', 29.1, 18.1, 0], ['floor_lamp', 30.6, 18.35, 0],
   ],
+  // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
+  premises: [[11, 0, 30, 19]],
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, along the service alley

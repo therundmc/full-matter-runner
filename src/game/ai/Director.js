@@ -5,7 +5,7 @@
 // per-step budget for expensive work (path-finding, cover searches).
 // Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken'.
 // Emits: 'alertPhase' { phase, prev }.
-import { AI, PALETTE } from '../Config.js';
+import { AI, PALETTE, TILE } from '../Config.js';
 import { pick } from '../../engine/math.js';
 import { searchPoints } from './Tactics.js';
 
@@ -28,6 +28,7 @@ export default class Director {
     this.stepT = 0;
     this.budgetLeft = AI.planBudget;
     this.barkAt = -99;
+    this.provoked = false;      // the player gave himself away (see isThreat)
     const ev = world.events;
     ev.on('noise', (e) => this.onNoise(e));
     ev.on('kill', (e) => this.onKill(e));
@@ -104,8 +105,20 @@ export default class Director {
       const d = Math.hypot(e.x - x, e.y - y);
       if (d > radius) continue;
       if (d > radius * 0.55 && !w.lineOfSight(e.x, e.y, x, y)) continue;
+      if (type === 'gunshot' && source === w.player) this.provoked = true;
       e.hear(type, x, y, source);
     }
+  }
+
+  // ---------------- the player's cover ----------------
+  // Guards mind their own business as long as the player is empty-handed, outside the level's guarded `premises`
+  // ([col0, row0, col1, row1] tile rectangles), and nobody caught him at anything. A level without premises is
+  // hostile ground everywhere. Once he is made (spotted as a threat, heard shooting, a guard down) it is for good.
+  isThreat(p) {
+    const zones = this.world.level?.premises;
+    if (this.provoked || !zones || p.armed) return true;
+    const x = p.x / TILE, y = p.y / TILE;
+    return zones.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1);
   }
 
   // ---------------- incidents ----------------
@@ -118,6 +131,7 @@ export default class Director {
   onKill({ victim }) {
     if (!victim.isEnemy) return;
     const w = this.world;
+    this.provoked = true; // a guard is down: no more benefit of the doubt
     this.release(victim);
     const inc = this.incident('body', victim.x, victim.y);
     // a guard who never comes back to his post is missed after a while
@@ -154,6 +168,7 @@ export default class Director {
   sighted(x, y) {
     this.lastKnown = { x, y };
     this.lastSightT = this.world.time;
+    this.provoked = true;
     if (this.phase !== 'alert') this.setPhase('alert');
   }
 

@@ -58,6 +58,7 @@ class Level:
         self.actors = [[' '] * w for _ in range(h)]
         self.props = []       # (area, type, col, row, deg, options)
         self.roofs = []       # (area, kind, col, row, deg)
+        self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.facing = {}
         self.patrols = {}
         self.spawns = []      # centre of every character, for the overlap check
@@ -91,6 +92,10 @@ class Level:
 
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
+
+    # ---- guarded premises (inclusive tile rectangle): guards leave an unarmed stranger alone anywhere else
+    def guard(self, col0, row0, col1, row1):
+        self.premises.append([col0, row0, col1, row1])
 
     # ---- rooftop dressing: scenery on the flat roofs of the neighbouring buildings
     def roof(self, kind, col, row, deg=0):
@@ -205,6 +210,9 @@ class Level:
         if line:
             L.append('   ' + line)
         L.append('  ],')
+        if self.premises:
+            L.append('  // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away')
+            L.append(f'  premises: {json.dumps(self.premises)},')
         if self.roofs:
             L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
             L.append('  roof: [')

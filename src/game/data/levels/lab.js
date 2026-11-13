@@ -82,8 +82,8 @@ export default {
     ['trash_can', 25, 5, 0], ['crate', 23.5, 7.5, 0], ['crate', 24.2, 7.6, 8], ['crate', 23.8, 6.85, -12],
     ['barrel', 26.2, 8.3, 0], ['barrel', 31.5, 7.9, 0], ['wall_lamp', 29, 8.91, 180],
     // facade
-    ['neon_sign_arrow', 2, 10.09, 0], ['marquee', 10.5, 9.69, 0], ['wall_lamp', 18.6, 10.09, 0],
-    ['neon_sign_bar', 22.5, 10.09, 0], ['string_lights', 29.5, 10.6, 0],
+    ['neon_sign_arrow', 2, 10.09, 0], ['wall_lamp', 18.6, 10.09, 0], ['neon_sign_bar', 22.5, 10.09, 0],
+    ['string_lights', 29.5, 10.6, 0],
     // street
     ['palm_tree', 1.6, 11.6, 0], ['palm_tree', 32.4, 11.6, 0], ['streetlight', 2.9, 12.7, 90],
     ['streetlight', 31.4, 12.7, 90], ['trash_can', 3.8, 12.4, 0], ['hydrant', 20.5, 12.6, 0], ['car', 6.5, 14, 0],

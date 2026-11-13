@@ -115,7 +115,6 @@ lv.prop('wall_lamp', 29.0, 8.91, 180)
 
 lv.area('facade')
 lv.prop('neon_sign_arrow', 2.0, 10.09)
-lv.prop('marquee', 10.5, 9.69)
 lv.prop('wall_lamp', 18.6, 10.09)
 lv.prop('neon_sign_bar', 22.5, 10.09)
 lv.prop('string_lights', 29.5, 10.6)

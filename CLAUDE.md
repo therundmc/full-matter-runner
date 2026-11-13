@@ -25,14 +25,16 @@
    Furniture: only small objects move (chairs, plants, bins, crates, TV, speakers); the rest is bolted, with 2x HP,
    weapon-dependent bites and damage states (cracked / split / giving way).
 Blocks 4-7 are implemented but NOT yet validated by the user (built while he was away): expect feedback on each.
-4. Combat, bleeding calibrated per weapon (data/wounds.js), synthesized gun / reload sounds (user: realistic, good
-   bass), lighting (render/Lighting.js: every visible light is a prop, level `lights` = indirect fill only),
+4. Combat, bleeding calibrated per weapon (data/wounds.js), gun sounds = recorded shots (assets/sound/shots)
+   over synthesized bass / room layers (user rejected fully synthesized guns as muffled: loud, crisp, "guerrilla"),
+   lighting (render/Lighting.js: every visible light is a prop, level `lights` = indirect fill only),
    prop destruction pushed far (Fracture / DamageArt), real-time liquids (puddles, footprints, hydrant),
    animations + slide on Space. Still weak: combat visual feedback, horn / scream sounds.
 5. Synthwave music: darker, follows the AI alert phase.
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance
-   first. The elevated parallax MIRAGE sign was rejected (ugly): signs lie flat on the facade, as seen from above.
+   first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
+   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive.
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Old agent branches

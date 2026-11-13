@@ -119,6 +119,8 @@ export default class Enemy extends Character {
     const p = this.world.player;
     const recent = this.world.time - this.seenAt < 3;
     this.sees = !!p && this.canSee(p);
+    // a stranger minding his own business on public ground is none of a guard's concern
+    if (this.sees && this.aware < 2 && !this.director.isThreat(p)) this.sees = false;
     if (this.sees) {
       if (this.aware < 2) {
         const dx = p.x - this.x, dy = p.y - this.y;
@@ -1015,6 +1017,7 @@ export default class Enemy extends Character {
   knock(angle, cause) {
     if (!this.alive || this.knocked > 0) return;
     this.knocked = ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
+    this.director.provoked = true; // nobody floors a guard by accident
     this.downAngle = angle + Math.PI;
     this.dropWeapon(angle + rand(-0.8, 0.8), rand(2, 4));
     this.vaulting = null;

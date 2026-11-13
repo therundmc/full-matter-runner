@@ -170,6 +170,11 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 ## Enemy AI
 
+Guards mind their own business until the player gives himself away (`Director.isThreat`): empty-handed and
+outside the level's `premises` (tile rectangles, `lv.guard()` in tools/levelkit.py) he is a passer-by; a weapon in
+hand, trespassing, a shot heard, a guard floored or killed make him a target for good. No `premises` = hostile
+ground everywhere (lab, street testbed).
+
 - **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
   pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /
   `investigate` / `check` (body, knocked-out mate, wreckage, empty post) / `search` / `guard` / `dizzy`;

@@ -8,7 +8,7 @@ Plan (north is up):
     rows  1-4    back lot: getaway van, the way out
     rows  6-10   storeroom | toilets | back room (the boss)
     rows 12-19   the bar: counter, booths, pool table, lounge
-    rows 21-22   sidewalk, the MIRAGE sign on the facade
+    rows 21-22   sidewalk
     rows 23-29   road: parking strip, two lanes of traffic
     rows 30-31   sidewalk
     rows 32-36   the alley where the player starts
@@ -52,6 +52,8 @@ lv.fill(20, 32, 23, 36, '_')
 
 # ---------------------------------------------------------------- actors (13 guards)
 lv.actor('@', 21, 35, face=270)
+# the bar, its service alley and its back lot are off limits; the street and the start alley are public ground
+lv.guard(11, 0, 30, 19)
 lv.actor('5', 22, 33)                                   # a bat by the dumpster: the first weapon
 # street
 lv.actor('b', 24, 21, face=90)                          # bouncer
@@ -100,7 +102,6 @@ lv.prop('car', 31.2, 24.0, 180)
 lv.prop('van', 38.6, 24.05, 180, lights=False)
 
 lv.area('north sidewalk and the facade')
-lv.prop('marquee', 19.0, 20.69)
 lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.4, 21.09)
 lv.prop('plant', 20.6, 21.3)
