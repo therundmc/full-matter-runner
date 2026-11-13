@@ -393,7 +393,7 @@ export default class Vehicle {
     const [tx, ty] = this.wpos((this.m.tank[0] + this.m.tank[1]) / 2, this.h / 2);
     w.after(0.35, () => {
       w.explode(tx, ty, { radius: 80, source: 'fuel', origin: this });
-      w.particles.fire(tx, ty, 60, 260);
+      w.particles.fire(tx, ty, 60, 260, { size: [4, 11], heat: 0 });
     });
     this.puddle = Math.max(this.puddle, 30);
     this.wreckFire = rand(9, 13);

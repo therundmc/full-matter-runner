@@ -3,6 +3,7 @@ import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
 import { rand, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
+import { scorchArt } from './BlastArt.js';
 import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps, poolArt, releasePool } from './BloodArt.js';
 
 // seconds after which a stain turns tacky, then dry (a pool takes as long as it stays slippery: LIQUIDS.kinds.blood.wet)
@@ -435,21 +436,15 @@ export default class MapRenderer {
     g.restore();
   }
 
+  // the burn of a blast or a fire (ragged soot, see BlastArt)
   scorch(x, y, r) {
-    const g = this.floorCtx;
-    const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    grad.addColorStop(0, 'rgba(10,6,6,0.85)');
-    grad.addColorStop(0.6, 'rgba(20,10,10,0.5)');
-    grad.addColorStop(1, 'rgba(20,10,10,0)');
-    g.fillStyle = grad;
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    const art = scorchArt(r), ox = Math.round(x - art.width / 2), oy = Math.round(y - art.height / 2);
+    this.floorCtx.drawImage(art, ox, oy);
     // what lies there chars with it: blood, remains, wall tops
     for (const wg of [this.bloodCtx, this.fleshCtx, this.wallCtx]) {
-      wg.save();
       wg.globalCompositeOperation = 'source-atop';
-      wg.fillStyle = grad;
-      wg.beginPath(); wg.arc(x, y, r, 0, Math.PI * 2); wg.fill();
-      wg.restore();
+      wg.drawImage(art, ox, oy);
+      wg.globalCompositeOperation = 'source-over';
     }
   }
 

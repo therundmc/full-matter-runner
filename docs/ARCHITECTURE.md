@@ -59,6 +59,7 @@ src/
       BloodArt.js         what blood looks like: pixel stamps (spots, streaks, splats) built once, in three ages
                           (wet, tacky, dry), and the pool under a bleeding body
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
+      BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
@@ -189,6 +190,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, feet, hands, weapon, as offsets
   from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended over it so
   every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and exit speeds.
+- Fire (fx/Particles.js `fire` / `drawFire`, systems/Explosions.js `fireball`): a flame is a square chunk on whole
+  pixels in the flat colour of its heat (white, yellow, orange, red, soot), drawn opaque after the lighting with the
+  hottest on top; never a soft additive disc. The slow chunks of a burst stay in its heart and stay hot, the fast
+  ones cool at the rim. A blast = a few lobes of such flames, a torn shock front (`rings` entry with `blast`),
+  square billows of black smoke (`smoke` with `puff`), burning scraps thrown in arcs (`cinders`) that go on burning
+  where they fall, and a ragged burn (`decals.scorch`, BlastArt).
 - Liquids (systems/Liquids.js, `LIQUIDS` in Config.js): a source pours px² of liquid per second into a puddle that
   spreads up to its cap, stands, then dries (`world.liquids.source` / `feed`; a destroyed `def.fountain` prop is a
   source). The blood under a body is owned and drawn by the corpse; Liquids only tracks where it is wet

@@ -3,6 +3,7 @@
 import { TILE, PALETTE, CAT } from '../Config.js';
 import { rand, clamp, TAU } from '../../engine/math.js';
 import { puddleShape } from '../systems/Liquids.js';
+import { drawShock } from './BlastArt.js';
 
 const { Body } = Matter;
 
@@ -94,6 +95,7 @@ export default class WorldRenderer {
   // lit: the lighting pass already put the transient lights into its light map
   drawAdditive(ctx, lit) {
     const w = this.world;
+    w.particles.drawFire(ctx);
     ctx.globalCompositeOperation = 'lighter';
     w.particles.drawGlow(ctx);
     for (const l of lit ? [] : w.lights) {
@@ -139,6 +141,7 @@ export default class WorldRenderer {
     ctx.globalAlpha = 1;
     for (const r of w.rings) {
       const p = r.t / r.dur;
+      if (r.blast) { drawShock(ctx, r, p); continue; }
       ctx.strokeStyle = `rgba(255,240,220,${1 - p})`;
       ctx.lineWidth = 5 * (1 - p) + 1;
       ctx.beginPath(); ctx.arc(r.x, r.y, r.r + (r.max - r.r) * Math.sqrt(p), 0, Math.PI * 2); ctx.stroke();

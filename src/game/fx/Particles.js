@@ -12,12 +12,16 @@ const GRAVITY = 520;    // px/s² of fake height
 // HIGH.grow, leans away from the view centre by HIGH.lean of its distance to it, and climbs HIGH.up px up the screen
 const HIGH = { grow: 0.009, lean: 0.0012, up: 0.3 };
 const WATER = ['#f4faff', '#d6e8fa', '#b4cfec', '#8fb2da'];
+// a flame is one flat colour, the one of its heat (HEAT: where each band starts), from soot to white-hot
+const FLAME = ['#2c1c1a', '#7e1a0c', '#d8401a', '#ff8a1e', '#ffd040', '#fff6cf'];
+const HEAT = [0, 0.16, 0.32, 0.5, 0.7, 0.9];
 
 export default class Particles {
   constructor(world) {
     this.world = world;
     this.list = [];
     this.floats = 0; // FLOAT particles alive (they live long: capped)
+    this.bands = FLAME.map(() => []); // flames sorted by heat, refilled at every draw
   }
 
   add(p) {
@@ -79,21 +83,29 @@ export default class Particles {
     }
   }
 
+  // opts.puff: the smoke of a fire, in square billows that roll up toward the camera (opts.h: height it starts at)
   smoke(x, y, count, r = 6, opts = {}) {
     for (let i = 0; i < count; i++) {
       const a = rand(0, Math.PI * 2), v = rand(5, opts.speed ?? 40);
       const life = rand(0.6, opts.life ?? 1.6);
       this.add({ type: P.SMOKE, x: x + rand(-r, r), y: y + rand(-r, r), vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-        size: rand(3, opts.size ?? 9), grow: rand(6, 16), life, maxLife: life, drag: 2.5,
-        shade: opts.dark ? rand(25, 50) : rand(90, 160) });
+        size: rand(3, opts.size ?? 9), grow: opts.puff ? rand(3, 8) : rand(6, 16), life, maxLife: life, drag: 2.5,
+        shade: opts.dark ? rand(25, 50) : rand(90, 160),
+        puff: !!opts.puff, h: opts.h || 0, rise: opts.puff ? rand(8, 24) : 0, lobe: rand(0, 6.28) });
     }
   }
 
-  fire(x, y, count, speed = 160) {
+  // Flames: square chunks leaving (x, y) at up to `speed`. The slow ones stay in the middle and stay hot, the fast
+  // ones cool at the rim, so a burst reads white, yellow, orange, red from its heart outward.
+  // opts: size [min, max], life [min, max], rise (px/s toward the camera), h (height they start at), heat (added
+  // to every flame: by default a fire that just burns, yellow at birth; 0 for a blast, born white-hot).
+  fire(x, y, count, speed = 160, opts = {}) {
+    const [s0, s1] = opts.size || [3, 8], [l0, l1] = opts.life || [0.15, 0.55], base = opts.heat ?? -0.12;
     for (let i = 0; i < count; i++) {
-      const a = rand(0, Math.PI * 2), v = speed * Math.sqrt(Math.random());
-      const life = rand(0.15, 0.55);
-      this.add({ type: P.FIRE, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: rand(4, 12), life, maxLife: life, drag: 3.5 });
+      const a = rand(0, Math.PI * 2), u = Math.sqrt(Math.random()), v = speed * u;
+      const life = rand(l0, l1) * (1.15 - 0.4 * u);
+      this.add({ type: P.FIRE, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: rand(s0, s1), life, maxLife: life, drag: 3.5,
+        heat: base + (1 - u) * 0.42 + rand(-0.06, 0.06), h: opts.h || 0, rise: (opts.rise ?? 36) * rand(0.5, 1.4), lobe: rand(0, 6.28) });
     }
   }
 
@@ -103,6 +115,15 @@ export default class Particles {
       const life = rand(0.5, 1.4);
       this.add({ type: P.EMBER, x, y, z: rand(2, 10), vz: rand(40, 160), vx: Math.cos(a) * v, vy: Math.sin(a) * v,
         life, maxLife: life, drag: 1.5 });
+    }
+  }
+
+  // burning scraps thrown high: each trails flame and smoke on its way, and onLand(x, y) is called where it falls
+  cinders(x, y, count, speed, onLand) {
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, Math.PI * 2), v = speed * rand(0.45, 1.2);
+      this.add({ type: P.EMBER, x, y, z: rand(4, 10), vz: rand(150, 300), vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+        life: 3, maxLife: 3, drag: 0.8, trail: true, onLand });
     }
   }
 
@@ -246,6 +267,9 @@ export default class Particles {
         } else if (p.z <= 0) {
           this._land(p, nx, ny);
           alive = false;
+        } else if (p.trail) {
+          if (chance(0.75)) this.fire(nx, ny, 1, 6, { size: [2, 4], life: [0.12, 0.3], h: p.z, rise: 0 });
+          if (chance(0.25)) this.smoke(nx, ny, 1, 1, { dark: true, puff: true, speed: 8, size: 4, life: 0.9, h: p.z });
         }
       } else if ((p.type === P.SPARK) && map.solidAt(nx, ny)) {
         p.vx *= -0.4; p.vy *= -0.4;
@@ -253,6 +277,7 @@ export default class Particles {
         decals.speck(nx, ny);
       }
       if (p.type === P.SMOKE || p.type === P.DUST) p.size += p.grow * dt;
+      if (p.rise) p.h += p.rise * dt;
       p.x = nx; p.y = ny;
       if (alive) list[w++] = p;
     }
@@ -286,6 +311,7 @@ export default class Particles {
       case P.EMBER:
         g.fillStyle = 'rgba(20,10,10,0.6)';
         g.fillRect(Math.round(x), Math.round(y), 1, 1);
+        if (p.onLand) p.onLand(x, y);
         break;
       case P.FLOAT:
         g.fillStyle = p.color;
@@ -380,9 +406,16 @@ export default class Particles {
           break;
         case P.SMOKE: {
           const a = Math.max(0, p.life / p.maxLife);
-          ctx.globalAlpha = a * 0.45;
-          ctx.fillStyle = `rgb(${p.shade},${p.shade},${p.shade + 10})`;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+          if (p.puff) {
+            // a billow: lit from below while it is young, thinning in flat steps
+            ctx.globalAlpha = (Math.ceil(a * 4) / 4) * 0.5;
+            ctx.fillStyle = p.maxLife - p.life < 0.22 ? '#6a3a20' : `rgb(${p.shade + 6},${p.shade},${p.shade})`;
+            block(ctx, p.x, p.y - p.h * 0.5, Math.round(p.size * 1.5 * (1 + p.h * 0.006)), p.lobe);
+          } else {
+            ctx.globalAlpha = a * 0.45;
+            ctx.fillStyle = `rgb(${p.shade},${p.shade},${p.shade + 10})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+          }
           ctx.globalAlpha = 1;
           break;
         }
@@ -399,7 +432,31 @@ export default class Particles {
     }
   }
 
-  // additive pass (sparks, fire, embers)
+  // Flames, after the lighting (they shine by themselves): opaque, on whole pixels, the hottest on top, so a fire
+  // is a few flat bands of colour with a broken edge instead of a soft glow.
+  drawFire(ctx) {
+    const bands = this.bands;
+    for (const b of bands) b.length = 0;
+    for (const p of this.list) {
+      if (p.type !== P.FIRE) continue;
+      const heat = p.life / p.maxLife + p.heat;
+      let b = HEAT.length - 1;
+      while (b > 0 && heat < HEAT[b]) b--;
+      bands[b].push(p);
+    }
+    for (let b = 0; b < bands.length; b++) {
+      ctx.fillStyle = FLAME[b];
+      ctx.globalAlpha = b ? 1 : 0.5;
+      for (const p of bands[b]) {
+        // it swells as it leaves, then burns out
+        const a = p.life / p.maxLife, k = Math.min(1, 0.45 + (1 - a) * 2.2) * Math.min(1, a * 2.5 + 0.2);
+        block(ctx, p.x, p.y - p.h * 0.5, Math.max(1, Math.round(p.size * k * (1 + p.h * 0.006))), p.lobe);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // additive pass (sparks, embers)
   drawGlow(ctx) {
     for (const p of this.list) {
       if (p.type === P.SPARK) {
@@ -411,17 +468,27 @@ export default class Particles {
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x - p.vx * 0.025, p.y - p.vy * 0.025);
         ctx.stroke();
-      } else if (p.type === P.FIRE) {
-        const a = Math.max(0, p.life / p.maxLife);
-        ctx.globalAlpha = a * 0.55;
-        ctx.fillStyle = a > 0.85 ? '#ffe9a0' : a > 0.55 ? '#ff9a20' : a > 0.3 ? '#ff4a10' : '#a01808';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + (1 - a) * 0.8), 0, Math.PI * 2); ctx.fill();
       } else if (p.type === P.EMBER) {
-        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-        ctx.fillStyle = '#ffa030';
-        ctx.fillRect(p.x, p.y - p.z * 0.3, 1.5, 1.5);
+        if (p.trail) {
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#ffe9a0';
+          ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y - p.z * 0.5) - 1, 3, 3);
+        } else {
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = '#ffa030';
+          ctx.fillRect(p.x, p.y - p.z * 0.3, 1.5, 1.5);
+        }
       }
     }
     ctx.globalAlpha = 1;
   }
+}
+
+// a chunk of flame or smoke: a square of side s on whole pixels and a smaller one stuck to it (toward `lobe`),
+// so that a pile of them has a lumpy outline
+function block(ctx, x, y, s, lobe) {
+  ctx.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s);
+  if (s < 3) return;
+  const t = s >> 1, o = s * 0.55;
+  ctx.fillRect(Math.round(x + Math.cos(lobe) * o - t / 2), Math.round(y + Math.sin(lobe) * o - t / 2), t, t);
 }

@@ -2,12 +2,47 @@
 // out by mass (a chair flies, a car barely rocks). Everything is scaled by occlusion(): walls stop the blast,
 // doors / heavy furniture / glass soak part of it.
 import { TILE } from '../Config.js';
-import { rand } from '../../engine/math.js';
+import { rand, chance, TAU } from '../../engine/math.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence } from './Destruction.js';
 import { occlusion } from './Ballistics.js';
 
 const { Body } = Matter;
+
+// What a blast looks like: a torn shock front and the dust it lifts, a fireball in a few lobes (never one disc)
+// that cools from its rim inward and turns to black smoke rolling up, burning scraps thrown in arcs that go on
+// burning where they fall, flames dying on the ground, and a ragged burn.
+function fireball(world, x, y, R) {
+  const P = world.particles;
+  world.rings.push({ x, y, r: 6, max: R * 1.7, t: 0, dur: 0.35, blast: true });
+  P.fire(x, y, 46, R * 2.5, { size: [5, 13], life: [0.3, 0.75], heat: 0, rise: 24 });
+  for (let i = 0, a0 = rand(0, TAU); i < 3; i++) {
+    const a = a0 + (i * TAU) / 3 + rand(-0.5, 0.5), d = R * rand(0.2, 0.38);
+    P.fire(x + Math.cos(a) * d, y + Math.sin(a) * d, 12, R * rand(1.2, 1.9), { size: [4, 10], life: [0.3, 0.7], heat: 0, rise: 24 });
+  }
+  P.fire(x, y, 22, R * 4.2, { size: [2, 5], life: [0.15, 0.4], heat: 0 }); // tongues thrown past it
+  P.smoke(x, y, 32, R * 0.15, { dark: true, puff: true, speed: 120, size: 11, life: 2.4 });
+  P.sparks(x, y, 0, Math.PI, 60, 620);
+  P.embers(x, y, 40, 260);
+  P.chips(x, y, 0, Math.PI, 30, '#2a2020', 260);
+  for (let i = 0; i < 18; i++) {
+    const a = rand(0, TAU), c = Math.cos(a), s = Math.sin(a), v = rand(110, 230);
+    P.dust(x + c * R * 0.4, y + s * R * 0.4, 1, 4, 'rgb(150,135,120)', { vx: c * v, vy: s * v, size: 6, life: 1.6, alpha: 0.2 });
+  }
+  // a small fire on the floor: flames licking up from one spot, dying down over dur seconds
+  const burn = (bx, by, dur) => world.emit(bx, by, dur, (e) => {
+    const k = e.t / dur;
+    if (chance(0.35 + 0.5 * k)) P.fire(bx + rand(-2.5, 2.5), by + rand(-2, 2), 1, 10, { size: [2, 3 + 3 * k], life: [0.2, 0.5], rise: 50 });
+    if (chance(0.07)) P.smoke(bx, by, 1, 2, { dark: true, puff: true, speed: 14, size: 5, life: 1.5, h: 6 });
+  });
+  for (let i = 0; i < 6; i++) {
+    const a = rand(0, TAU), d = R * 0.5 * Math.sqrt(Math.random());
+    burn(x + Math.cos(a) * d, y + Math.sin(a) * d, rand(0.9, 2.4));
+  }
+  P.cinders(x, y, 8, 250, (cx, cy) => burn(cx, cy, rand(0.8, 2.2)));
+  world.after(0.3, () => world.sound('crackle', x, y, 0.6));
+  world.decals.scorch(x, y, R * 0.75);
+}
 
 // origin: the entity that blew up (ignored as an obstacle: a car's blast starts inside its own body)
 export function explode(world, x, y, { radius = 90, source = null, origin = null } = {}) {
@@ -19,14 +54,7 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
   world.hitstop(0.07);
   world.game.flash('#fff2d0', 0.55);
   world.light(x, y, R * 2.8, '#ffa040', 0.45);
-  world.rings.push({ x, y, r: 6, max: R * 1.7, t: 0, dur: 0.35 });
-  const P = world.particles;
-  P.fire(x, y, 80, R * 2.4);
-  P.smoke(x, y, 45, 14, { dark: true, speed: 110, size: 14, life: 2.6 });
-  P.sparks(x, y, 0, Math.PI, 60, 620);
-  P.embers(x, y, 40, 260);
-  P.chips(x, y, 0, Math.PI, 30, '#2a2020', 260);
-  world.decals.scorch(x, y, R * 0.75);
+  fireball(world, x, y, R);
   world.noise(x, y, 1100, null, 'explosion');
 
   for (const c of world.chars) {

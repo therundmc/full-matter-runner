@@ -53,3 +53,29 @@ test('shards: a piece with onLand is handed over when it touches the floor inste
   assert.equal(particles.list.length, 0);
   assert.ok(!calls.some(([n]) => n === 'bake'));
 });
+
+test('fire: the heart of a burst stays hotter and burns longer than its rim', () => {
+  const { particles } = stub();
+  particles.fire(0, 0, 400, 300, { heat: 0 });
+  const mean = (list, f) => list.reduce((s, p) => s + f(p), 0) / list.length;
+  const slow = particles.list.filter((p) => Math.hypot(p.vx, p.vy) < 120), fast = particles.list.filter((p) => Math.hypot(p.vx, p.vy) > 240);
+  assert.ok(slow.length > 20 && fast.length > 20);
+  assert.ok(mean(slow, (p) => p.heat) > mean(fast, (p) => p.heat) + 0.15);
+  assert.ok(mean(slow, (p) => p.maxLife) > mean(fast, (p) => p.maxLife));
+  run(particles, 1);
+  assert.equal(particles.list.length, 0, 'a burst is over within a second');
+});
+
+test('cinders: burning scraps trail flames high in the air and report where they fall', () => {
+  const { particles } = stub();
+  const fell = [];
+  particles.cinders(0, 0, 6, 200, (x, y) => fell.push(Math.hypot(x, y)));
+  run(particles, 0.25);
+  const flames = particles.list.filter((p) => p.type === P.FIRE);
+  assert.ok(flames.length > 10 && flames.some((p) => p.h > 15), 'flames left behind at the height of the scrap');
+  assert.equal(fell.length, 0);
+  run(particles, 3);
+  assert.equal(fell.length, 6);
+  assert.ok(fell.every((d) => d > 30), 'thrown well away');
+  assert.equal(particles.list.length, 0);
+});
