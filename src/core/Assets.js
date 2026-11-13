@@ -15,6 +15,22 @@ export const SPRITE_LIST = [
   'structure/door', 'structure/window', 'structure/fence',
 ];
 
+// Sprites that may not exist (yet): loaded when present, `spriteOpt()` returns null otherwise.
+const FLOOR_TILES = ['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purple', 'concrete', 'grass', 'asphalt',
+  'asphalt_line', 'dirt', 'sidewalk', 'neon_floor'];
+const GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
+  'car', 'car2', 'van'];
+export const OPTIONAL_LIST = [
+  ...FLOOR_TILES.flatMap((t) => [`tiles/${t}_v1`, `tiles/${t}_v2`]),
+  'tiles/neon_floor_glow',
+  ...['palm_tree', 'streetlight', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'jukebox', 'car2', 'van',
+    'car_tire', 'car_hood', 'car_door', 'hydrant', 'bench'].map((n) => `props/${n}`),
+  ...GLOWING.map((n) => `props/${n}_glow`),
+  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
+    .map((n) => `weapons/${n}`),
+  ...CHARACTERS.flatMap((c) => ['rag_torso', 'rag_head', 'rag_arm', 'rag_leg'].map((p) => `characters/${c}_${p}`)),
+];
+
 const images = new Map();
 const silhouettes = new Map();
 const sliceCache = new Map();
@@ -36,6 +52,12 @@ export async function loadAssets(onProgress) {
     img.onerror = () => { console.warn('missing sprite', name); images.set(name, placeholder()); onProgress?.(++done / SPRITE_LIST.length); resolve(); };
     img.src = `assets/sprites/${name}.png`;
   })));
+  await Promise.all(OPTIONAL_LIST.map((name) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => { images.set(name, img); resolve(); };
+    img.onerror = () => resolve();
+    img.src = `assets/sprites/${name}.png`;
+  })));
   try { await document.fonts.load('16px joystix'); } catch (e) { /* font optional */ }
 }
 
@@ -44,6 +66,8 @@ export function sprite(name) {
   if (!img) { img = placeholder(); images.set(name, img); }
   return img;
 }
+
+export function spriteOpt(name) { return images.get(name) || null; }
 
 // black silhouette of a sprite (used for cheap drop shadows)
 export function silhouette(img) {

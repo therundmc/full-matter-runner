@@ -1,5 +1,5 @@
 import { TILE, CAT, MASK, PALETTE, WALL_HP } from '../core/Config.js';
-import { sprite } from '../core/Assets.js';
+import { sprite, spriteOpt } from '../core/Assets.js';
 import { gridRaycast } from '../core/Raycast.js';
 import { rand, pick, chance } from '../core/math.js';
 
@@ -12,6 +12,15 @@ export const FLOORS = {
 };
 export const WALLS = { '#': 'wall', 'X': 'brick' };
 const STRUCT = new Set(['D', 'G', 'F']);
+
+// pick a texture variant (tiles/<name>_v1, _v2 when they exist) with a stable hash of the cell
+function floorTile(name, x, y) {
+  const h = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  const k = h % 5;
+  if (k === 3) return spriteOpt(`tiles/${name}_v1`) || sprite('tiles/' + name);
+  if (k === 4) return spriteOpt(`tiles/${name}_v2`) || sprite('tiles/' + name);
+  return sprite('tiles/' + name);
+}
 
 export default class TileMap {
   constructor(rows) {
@@ -104,7 +113,7 @@ export default class TileMap {
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         const f = this.floor[y * this.w + x];
-        if (f) g.drawImage(sprite('tiles/' + f), x * TILE, y * TILE, TILE, TILE);
+        if (f) g.drawImage(floorTile(f, x, y), x * TILE, y * TILE, TILE, TILE);
       }
     }
     // soft drop shadow of walls on the floor
@@ -195,7 +204,7 @@ export default class TileMap {
     this.chars[cy][cx] = '_';
     this.floor[i] = 'concrete';
     const g = this.floorCtx;
-    g.drawImage(sprite('tiles/concrete'), px, py, TILE, TILE);
+    g.drawImage(floorTile('concrete', cx, cy), px, py, TILE, TILE);
     for (let k = 0; k < 26; k++) {
       g.fillStyle = chance(0.5) ? 'rgba(20,12,20,0.55)' : (tex === 'brick' ? '#7a3424' : '#b8ae98');
       const s = rand(1, 4);
