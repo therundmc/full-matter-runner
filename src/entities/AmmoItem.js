@@ -1,6 +1,7 @@
 import { CAT, MASK } from '../core/Config.js';
 import { CALIBERS } from '../data/weapons.js';
 import { spriteOpt, chunk, drawSprite, silhouette } from '../core/Assets.js';
+import { setMaterial } from '../core/Physics.js';
 
 const { Bodies, Body } = Matter;
 
@@ -13,10 +14,10 @@ export default class AmmoItem {
     this.amount = amount ?? this.cal.pickup;
     this.img = spriteOpt(this.cal.sprite) || chunk(this.cal.color, 9, 7);
     this.body = Bodies.rectangle(x, y, this.img.width, this.img.height, {
-      angle: Math.random() * 6.28, frictionAir: 0.12, restitution: 0.3, label: 'ammo',
+      angle: Math.random() * 6.28, frictionAir: 0.02, restitution: 0.3, label: 'ammo',
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
-    Body.setDensity(this.body, 0.003);
+    setMaterial(this.body, 1.2, 0.5, world.time + 0.15);
     Body.setVelocity(this.body, { x: vx, y: vy });
     Body.setAngularVelocity(this.body, (Math.random() - 0.5) * 0.4);
     this.body.entity = this;

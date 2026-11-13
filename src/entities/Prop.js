@@ -3,6 +3,8 @@ import { PROPS } from '../data/props.js';
 import { sprite, spriteOpt, slices, chunk, drawSpriteShadowed, drawSprite } from '../core/Assets.js';
 import { rand, chance, angDiff } from '../core/math.js';
 import Debris from './Debris.js';
+import { setMaterial, impulse, freezeIfHeavy } from '../core/Physics.js';
+
 
 const { Bodies, Body } = Matter;
 
@@ -17,11 +19,14 @@ export default class Prop {
     const d = this.def;
     const opts = {
       isStatic: !!d.static, angle, label: 'prop',
-      frictionAir: d.air ?? 0.3, friction: 0.3, restitution: 0.1,
+      frictionAir: 0.02, friction: 0.4, restitution: 0.1,
       collisionFilter: { category: CAT.PROP, mask: MASK.PROP },
     };
     this.body = d.r ? Bodies.circle(x, y, d.r, opts) : Bodies.rectangle(x, y, d.w, d.h, opts);
-    if (!d.static) Body.setDensity(this.body, d.density ?? 0.01);
+    if (!d.static) {
+      setMaterial(this.body, d.kg, d.mu);
+      freezeIfHeavy(world.map, this.body);
+    }
     this.body.entity = this;
     this.dead = false;
     this.flash = 0;
@@ -32,18 +37,16 @@ export default class Prop {
   get y() { return this.body.position.y; }
 
   // bullet / melee / thrown hit
-  hit(damage, px, py, dirA, impulse = 0.6) {
+  hit(damage, px, py, dirA, power = 0.6) {
     if (this.dead) return;
     const d = this.def, w = this.world;
     this.flash = 0.06;
     w.particles.chips(px, py, dirA + Math.PI, 1.2, 4, d.chips);
     if (d.sparks || d.sound === 'metal') w.particles.sparks(px, py, dirA + Math.PI, 1, 4, 220);
     w.sound(d.sound === 'glass' ? 'impact' : d.sound, px, py, 0.5);
-    if (!d.static) {
-      Body.applyForce(this.body, { x: px, y: py }, { x: Math.cos(dirA) * impulse * 0.004 * Math.sqrt(this.body.mass), y: Math.sin(dirA) * impulse * 0.004 * Math.sqrt(this.body.mass) });
-    }
+    if (!d.static) impulse(this.body, dirA, 40 * power, (Math.random() - 0.5) * 0.1);
     this.hp -= damage;
-    if (this.hp <= 0) this.break(dirA, impulse);
+    if (this.hp <= 0) this.break(dirA, power);
   }
 
   break(dirA = rand(0, Math.PI * 2), power = 1) {

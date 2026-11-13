@@ -5,23 +5,24 @@ const FREE = MASK.DEBRIS & ~CAT.PROP;
 import { sprite, spriteOpt, silhouette, chunk, glassShards, slices } from '../core/Assets.js';
 import { rand, chance, clamp, local } from '../core/math.js';
 import Debris from './Debris.js';
+import { setMaterial, freezeIfHeavy, impulse } from '../core/Physics.js';
 
 const { Bodies, Body } = Matter;
 
 // Sprite-space layout of each model (facing +x). Regions: [x0, x1, y0, y1].
 export const VEHICLES = {
   car: {
-    sprite: 'props/car', hp: 28, color: '#ff2a6d',
+    sprite: 'props/car', hp: 28, kg: 1250, color: '#ff2a6d',
     wind: [46, 54, 5, 31], rear: [14, 20, 7, 29], tank: [0, 13, 0, 36], hood: [54, 75],
     wheels: [[15, 1], [15, 35], [60, 1], [60, 35]],
   },
   car2: {
-    sprite: 'props/car2', hp: 28, color: '#05d9e8',
+    sprite: 'props/car2', hp: 28, kg: 1200, color: '#05d9e8',
     wind: [46, 54, 5, 31], rear: [14, 20, 7, 29], tank: [0, 13, 0, 36], hood: [54, 75],
     wheels: [[15, 1], [15, 35], [60, 1], [60, 35]],
   },
   van: {
-    sprite: 'props/van', hp: 36, color: '#e6e0cf',
+    sprite: 'props/van', hp: 36, kg: 1900, color: '#e6e0cf',
     wind: [62, 70, 5, 33], rear: null, tank: [0, 13, 0, 38], hood: [70, 83],
     wheels: [[16, 1], [16, 37], [66, 1], [66, 37]],
   },
@@ -44,10 +45,12 @@ export default class Vehicle {
     this.glow = spriteOpt(this.m.sprite + '_glow');
     this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true };
     this.body = Bodies.rectangle(x, y, this.w - 4, this.h - 4, {
-      angle, frictionAir: 0.4, friction: 0.6, restitution: 0.05, label: 'vehicle',
+      angle, frictionAir: 0.02, friction: 0.6, restitution: 0.05, label: 'vehicle',
       collisionFilter: { category: CAT.PROP, mask: MASK.PROP },
     });
-    Body.setDensity(this.body, 0.04);
+    // rubber on asphalt; a ton of metal nobody can push by hand
+    setMaterial(this.body, this.m.kg, 0.9);
+    freezeIfHeavy(world.map, this.body);
     this.body.entity = this;
     this.hp = this.m.hp;
     this.windows = { wind: 0, rear: 0 }; // 0 intact, 1 cracked, 2 gone
@@ -170,7 +173,7 @@ export default class Vehicle {
     for (let k = 0; k < 10; k++) {
       const a = dirA + rand(-0.6, 0.6), v = rand(140, 380);
       w.addDebris(new Debris(w, shards[k % shards.length], cx + rand(-6, 6), cy + rand(-6, 6), rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
-        rand(-0.8, 0.8), { mask: FREE, air: 0.05, density: 0.001, shadow: 0, harm: { kind: 'cut', knock: 2.4, lethal: 5.2 } }));
+        rand(-0.8, 0.8), { mask: FREE, air: 0.05, kg: 0.1, mu: 0.35, fly: 0.3, shadow: 0, harm: { kind: 'cut', knock: 2.4, lethal: 5.2 } }));
     }
     w.sound('glass', cx, cy);
     w.flashGlass(cx, cy);
@@ -189,8 +192,6 @@ export default class Vehicle {
     w.particles.smoke(px, py, 8, 3, { speed: 90, size: 5, life: 1.2 });
     w.shake(0.15);
     w.noise(px, py, 300);
-    // the car drops on that corner
-    this.world.pushBody(this.body, dirA, 0.6, rand(-0.01, 0.01));
     this.damage(2);
   }
 
@@ -220,15 +221,11 @@ export default class Vehicle {
 
   // blast from a nearby explosion
   onBlast(d, R, a) {
-    if (this.exploded) {
-      this.world.pushBody(this.body, a, 2 * (1 - d / (R * 2)), rand(-0.02, 0.02));
-      return;
-    }
+    if (this.exploded) return;
     const k = 1 - d / R;
     if (k <= 0) return;
     for (const key of ['wind', 'rear']) if (this.m[key] && chance(0.4 + k)) { this.windows[key] = 1; this.hitWindow(key, (this.m[key][0] + this.m[key][1]) / 2, this.h / 2, a); }
     for (let i = 0; i < 4; i++) if (chance(k * 0.7)) this.popTire(i, a);
-    this.world.pushBody(this.body, a, 1.5 * k, rand(-0.02, 0.02));
     this.damage(Math.ceil(40 * k));
   }
 
@@ -259,24 +256,24 @@ export default class Vehicle {
     g.restore();
     for (const key of ['wind', 'rear']) if (this.m[key]) { const r = this.m[key]; g.fillStyle = '#0a0608'; g.fillRect(r[0], r[2], r[1] - r[0] + 1, r[3] - r[2] + 1); }
     // the whole car jumps
-    this.world.pushBody(this.body, rand(0, Math.PI * 2), 1.2, rand(-0.03, 0.03));
+    impulse(this.body, rand(0, Math.PI * 2), 1800, rand(-0.03, 0.03), 2);
     // parts fly
     const tire = spriteOpt('props/car_tire') || chunk('#141418', 9, 5);
     const harm = { kind: 'blunt', knock: 3, lethal: 8 };
     this.m.wheels.forEach(([wx, wy], i) => {
       const [px, py] = this.wpos(wx, wy);
       const a = Math.atan2(py - y, px - x) + rand(-0.4, 0.4), v = rand(200, 420);
-      if (this.tires[i] || chance(0.6)) w.addDebris(new Debris(w, tire, px, py, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), { mask: FREE, density: 0.004, air: 0.03, bounce: 0.5, harm: { ...harm } }));
+      if (this.tires[i] || chance(0.6)) w.addDebris(new Debris(w, tire, px, py, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), { mask: FREE, kg: 15, mu: 0.15, fly: 0.35, air: 0.03, bounce: 0.5, harm: { ...harm } }));
     });
     const hood = spriteOpt('props/car_hood') || slices(this.base, 4, 1)[3];
     const [hx, hy] = this.wpos((this.m.hood[0] + this.m.hood[1]) / 2, this.h / 2);
     const ha = Math.atan2(hy - y, hx - x) + rand(-0.5, 0.5);
-    w.addDebris(new Debris(w, hood, hx, hy, this.body.angle, Math.cos(ha) * 340, Math.sin(ha) * 340, rand(-0.5, 0.5), { mask: FREE, density: 0.003, air: 0.03, harm: { ...harm } }));
+    w.addDebris(new Debris(w, hood, hx, hy, this.body.angle, Math.cos(ha) * 340, Math.sin(ha) * 340, rand(-0.5, 0.5), { mask: FREE, kg: 20, mu: 0.5, fly: 0.4, air: 0.03, harm: { ...harm } }));
     const door = spriteOpt('props/car_door') || chunk(this.m.color, 18, 4);
     for (const side of [-1, 1]) {
       const [dx, dy] = this.wpos(this.w * 0.5, side < 0 ? 0 : this.h);
       const a = Math.atan2(dy - y, dx - x) + rand(-0.3, 0.3), v = rand(220, 380);
-      w.addDebris(new Debris(w, door, dx, dy, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5), { mask: FREE, density: 0.003, harm: { ...harm } }));
+      w.addDebris(new Debris(w, door, dx, dy, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5), { mask: FREE, kg: 25, mu: 0.55, fly: 0.35, harm: { ...harm } }));
     }
     for (let k = 0; k < 16; k++) {
       const a = rand(0, Math.PI * 2), v = rand(150, 450);

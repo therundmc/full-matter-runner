@@ -4,6 +4,7 @@ import { sprite, spriteOpt, chunk, drawSprite, silhouette } from '../core/Assets
 import { rand, spread, angDiff, local, lerp, clamp } from '../core/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
+import { setKg, impulse } from '../core/Physics.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 
@@ -30,8 +31,9 @@ export default class Character {
       frictionAir: 0, friction: 0, frictionStatic: 0, restitution: 0, label: kind,
       collisionFilter: { category: CAT.CHAR, mask: MASK.CHAR },
     });
-    Body.setDensity(this.body, 0.002);
+    setKg(this.body, kind === 'brute' ? 110 : kind === 'heavy' ? 100 : 80);
     Body.setInertia(this.body, Infinity);
+    this.pushFactor = 1; // < 1 while leaning into something heavy (set by World from contacts)
     this.body.sleepThreshold = Infinity;
     this.body.entity = this;
     this.angle = angle;
@@ -135,11 +137,13 @@ export default class Character {
     const g = local(this.x, this.y, this.angle, d.hold === 'two' ? 9 : 8, 2);
     const a = this.angle + Math.PI / 2 + rand(-0.6, 0.6);
     this.world.addDebris(new Debris(this.world, img, g.x, g.y, this.angle + Math.PI / 2, Math.cos(a) * rand(30, 70), Math.sin(a) * rand(30, 70),
-      rand(-0.4, 0.4), { metal: true, air: 0.1, density: 0.002, bounce: 0.3 }));
+      rand(-0.4, 0.4), { metal: true, air: 0.1, kg: 0.15, mu: 0.4, fly: 0.25, bounce: 0.3 }));
   }
 
   // desired direction (dx, dy), speed in px/step
   steer(dx, dy, speed, accel = 0.35) {
+    speed *= this.pushFactor;
+    this.pushFactor = 1;
     const len = Math.hypot(dx, dy);
     const tx = len > 0.001 ? (dx / len) * speed : 0;
     const ty = len > 0.001 ? (dy / len) * speed : 0;
@@ -211,7 +215,7 @@ export default class Character {
       const ca = a + Math.PI / 2 + rand(-0.4, 0.3);
       const v = rand(70, 140);
       w.addDebris(new Debris(w, sprite('weapons/' + d.casing), this.x + Math.cos(a) * 6, this.y + Math.sin(a) * 6, a,
-        Math.cos(ca) * v, Math.sin(ca) * v, rand(-0.9, 0.9), { metal: true, air: 0.08, shadow: 0, density: 0.001, bounce: 0.5 }));
+        Math.cos(ca) * v, Math.sin(ca) * v, rand(-0.9, 0.9), { metal: true, air: 0.08, shadow: 0, kg: 0.05, mu: 0.3, fly: 0.2, bounce: 0.5 }));
     }
     w.sound(d.sound, this.x, this.y);
     // only the player's gunfire draws the guards in
@@ -270,7 +274,7 @@ export default class Character {
         if (o.dead) continue;
         const p = o.body.position, dd = Math.hypot(p.x - x, p.y - y);
         if (dd > d.range + 8 || Math.abs(angDiff(a, Math.atan2(p.y - y, p.x - x))) > d.arc / 2) continue;
-        w.pushBody(o.body, a, d.lethal ? 4 : 2.5, rand(-0.3, 0.3));
+        impulse(o.body, a, d.lethal ? 140 : 80, rand(-0.3, 0.3), 8);
         if (o.pool !== undefined) { w.particles.blood(p.x, p.y, a, 0.5, 6, 140); hit = true; }
       }
     }

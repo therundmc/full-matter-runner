@@ -8,6 +8,7 @@ import Audio from '../core/Audio.js';
 import TileMap from './TileMap.js';
 import Particles from '../fx/Particles.js';
 import { buildLevel } from './Level.js';
+import { impulse, groundFriction, breakawayForce, kgOf, PUSH_FORCE } from '../core/Physics.js';
 
 const { Engine, Events, Composite, Body } = Matter;
 
@@ -112,11 +113,25 @@ export default class World {
     this.light(x, y, 40, color, 0.12);
   }
 
-  // add a velocity kick (px/step) to a loose body
+  // raw velocity kick (px/step), ignoring mass: only for scripted motion
   pushBody(b, a, dv, spin = 0) {
     const v = Body.getVelocity(b);
     Body.setVelocity(b, { x: v.x + Math.cos(a) * dv, y: v.y + Math.sin(a) * dv });
     if (spin) Body.setAngularVelocity(b, Body.getAngularVelocity(b) + spin);
+  }
+
+  // characters leaning into a movable object slow down with its weight and grip
+  updatePushContacts() {
+    for (const pair of this.engine.pairs.list) {
+      if (!pair.isActive) continue;
+      let c = pair.bodyA.entity, o = pair.bodyB;
+      if (!(c && (c.isPlayer || c.isEnemy))) { c = pair.bodyB.entity; o = pair.bodyA; }
+      if (!(c && (c.isPlayer || c.isEnemy)) || o.isStatic || o.mu === undefined || o.label === 'debris') continue;
+      const dx = o.position.x - c.x, dy = o.position.y - c.y;
+      if (dx * c.vel.x + dy * c.vel.y <= 0) continue;
+      const f = Math.max(0.12, 1 - breakawayForce(this.map, o) / PUSH_FORCE);
+      c.pushFactor = Math.min(c.pushFactor, f);
+    }
   }
 
   // ---------------- destruction ----------------
@@ -171,7 +186,7 @@ export default class World {
     const v = rand(160, 320) * power;
     this.addDebris(new Debris(this, plank(door.img, door.len), b.position.x, b.position.y, b.angle,
       Math.cos(dirA) * v, Math.sin(dirA) * v, rand(-0.5, 0.5),
-      { density: 0.003, air: 0.05, bounce: 0.3, harm: { kind: 'blunt', knock: 2.5, lethal: 7 } }));
+      { kg: 25, mu: 0.5, fly: 0.3, air: 0.05, bounce: 0.3, harm: { kind: 'blunt', knock: 2.5, lethal: 7 } }));
     this.particles.chips(b.position.x, b.position.y, dirA, Math.PI, 24, '#8a5a34', 200);
     this.particles.smoke(b.position.x, b.position.y, 6, 10, { speed: 40, size: 6, life: 1 });
     this.sound('doorSlam', b.position.x, b.position.y);
@@ -306,23 +321,22 @@ export default class World {
       }
     }
 
-    // shockwave on every loose body
+    // shockwave: momentum falls off with distance and is shared out by mass (a chair flies, a car barely rocks)
     for (const b of Composite.allBodies(this.engine.world)) {
-      if (b.isStatic || b.entity?.isPlayer || b.entity?.isEnemy) continue;
+      if ((b.isStatic && !b.frozen) || b.entity?.isPlayer || b.entity?.isEnemy) continue;
       const dx = b.position.x - x, dy = b.position.y - y, d = Math.hypot(dx, dy);
       if (d > R * 2.2 || d < 0.01) continue;
-      const f = (1 - d / (R * 2.2)) * 16 / Math.sqrt(Math.max(1, b.mass * 6));
-      const v = Body.getVelocity(b);
+      const J = (1 - d / (R * 2.2)) * 260;
       if (b.label === 'door') {
         const door = b.entity;
         const torque = ((b.position.x - door.hx) * dy - (b.position.y - door.hy) * dx) / (d * door.len);
-        Body.setAngularVelocity(b, Body.getAngularVelocity(b) + torque * f * 0.15);
+        Body.setAngularVelocity(b, Body.getAngularVelocity(b) + torque * J / kgOf(b) * 0.15);
         continue;
       }
-      Body.setVelocity(b, { x: v.x + (dx / d) * f, y: v.y + (dy / d) * f });
-      Body.setAngularVelocity(b, Body.getAngularVelocity(b) + rand(-0.4, 0.4) * f * 0.1);
+      const dv = impulse(b, Math.atan2(dy, dx), J, rand(-0.4, 0.4), 22);
+      b.flyUntil = this.time + 0.1 + dv * 0.02;
       if (b.entity?.isItem) b.entity.thrower = null;
-      if (b.entity?.isDebris && f > 4 && !b.entity.harm) b.entity.harm = { kind: 'blunt', knock: 3.5, lethal: 9 };
+      if (b.entity?.isDebris && dv > 4 && !b.entity.harm) b.entity.harm = { kind: 'blunt', knock: 3.5, lethal: 9 };
     }
     void source;
   }
@@ -373,6 +387,8 @@ export default class World {
     for (const e of this.enemies) e.update(dt);
 
     Engine.update(this.engine, dt * 1000);
+    groundFriction(this, Composite.allBodies(this.engine.world), dt);
+    this.updatePushContacts();
     for (const d of this.doors) d.constrain(dt);
     if (this.wallsDirty) {
       this.wallsDirty = false;

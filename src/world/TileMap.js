@@ -16,9 +16,9 @@ const STRUCT = new Set(['D', 'G', 'F']);
 // pick a texture variant (tiles/<name>_v1, _v2 when they exist) with a stable hash of the cell
 function floorTile(name, x, y) {
   const h = ((x * 73856093) ^ (y * 19349663)) >>> 0;
-  const k = h % 5;
+  const k = h % 10;
   if (k === 3) return spriteOpt(`tiles/${name}_v1`) || sprite('tiles/' + name);
-  if (k === 4) return spriteOpt(`tiles/${name}_v2`) || sprite('tiles/' + name);
+  if (k === 7) return spriteOpt(`tiles/${name}_v2`) || sprite('tiles/' + name);
   return sprite('tiles/' + name);
 }
 

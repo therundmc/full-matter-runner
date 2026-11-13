@@ -1,4 +1,5 @@
 import { sprite, drawSprite } from '../core/Assets.js';
+import { impulse } from '../core/Physics.js';
 
 // Fast bullet traced as a segment each step (no tunnelling), or a slow rocket.
 export default class Projectile {
@@ -82,7 +83,7 @@ export default class Projectile {
         // desecration: the body jerks, more blood
         const c = h.target;
         if (h.part) { c.shotPart(h.part, a, this.weapon); return true; }
-        w.pushBody(c.body, a, 2.2, (Math.random() - 0.5) * 0.2);
+        impulse(c.body, a, 30, (Math.random() - 0.5) * 0.2, 4);
         w.particles.blood(h.x, h.y, a, 0.5, 10, 220);
         w.particles.blood(h.x, h.y, a + Math.PI, 0.6, 3, 80);
         w.map.stampBlood(h.x, h.y, 3, 3);
@@ -91,13 +92,13 @@ export default class Projectile {
         return true;
       }
       case 'item':
-        w.pushBody(h.target.body, a, 3.5, (Math.random() - 0.5) * 0.8);
+        impulse(h.target.body, a, 14, (Math.random() - 0.5) * 0.8, 6);
         w.particles.sparks(h.x, h.y, a + Math.PI, 0.8, 4, 240);
         w.sound('metal', h.x, h.y, 0.4);
         this.ignore.add(h.target);
         return false;
       case 'debris':
-        w.pushBody(h.target.body, a, 3, (Math.random() - 0.5) * 0.8);
+        impulse(h.target.body, a, 8, (Math.random() - 0.5) * 0.8, 6);
         this.ignore.add(h.target);
         return false;
       default:

@@ -1,6 +1,7 @@
 import { CAT, MASK, PALETTE } from '../core/Config.js';
 import { drawSprite, silhouette } from '../core/Assets.js';
 import { rand, local } from '../core/math.js';
+import { setMaterial } from '../core/Physics.js';
 
 const { Bodies, Body } = Matter;
 
@@ -10,10 +11,10 @@ export default class Corpse {
     this.world = world;
     this.img = img;
     this.body = Bodies.circle(x, y, 7, {
-      frictionAir: 0.09, friction: 0.2, restitution: 0.15, label: 'corpse',
+      frictionAir: 0.01, friction: 0.2, restitution: 0.15, label: 'corpse',
       collisionFilter: { category: CAT.CORPSE, mask: MASK.CORPSE },
     });
-    Body.setDensity(this.body, 0.004);
+    setMaterial(this.body, 70, 0.75, world.time + 0.18);
     Body.setVelocity(this.body, { x: Math.cos(angle) * speed / 60, y: Math.sin(angle) * speed / 60 });
     Body.setAngle(this.body, angle);
     Body.setAngularVelocity(this.body, rand(-0.06, 0.06));

@@ -1,6 +1,7 @@
 import { CAT, MASK, PALETTE } from '../core/Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../core/Assets.js';
 import { rand, chance, local } from '../core/math.js';
+import { setMaterial, impulse } from '../core/Physics.js';
 
 const { Bodies, Body, Constraint, Composite } = Matter;
 
@@ -25,15 +26,14 @@ export default class Ragdoll {
     const group = Body.nextGroup(true);
     const img = (p) => spriteOpt(`characters/${kind}_rag_${p}`) || sprite(`characters/${kind}_gib_${p}`);
     const th = dir + Math.PI / 2; // head (torso -y) ends up along the travel direction
-    const opt = (density) => ({
-      frictionAir: 0.09, friction: 0.3, restitution: 0.1, label: 'ragdoll',
+    const opt = () => ({
+      frictionAir: 0.01, friction: 0.3, restitution: 0.1, label: 'ragdoll',
       collisionFilter: { group, category: CAT.CORPSE, mask: MASK.CORPSE },
-      density,
     });
 
     const tImg = img('torso');
     const tw = tImg.width, tht = tImg.height;
-    this.torso = this.addPart('torso', tImg, Bodies.rectangle(x, y, tw - 2, tht - 2, { ...opt(0.004), angle: th }), 0);
+    this.torso = this.addPart('torso', tImg, Bodies.rectangle(x, y, tw - 2, tht - 2, { ...opt(), angle: th }), 0, 36);
     this.body = this.torso.body;
 
     const at = (lx, ly) => local(x, y, th, lx, ly);
@@ -41,7 +41,7 @@ export default class Ragdoll {
       const hImg = img('head');
       const neck = { x: 0, y: -tht / 2 };
       const hp = at(0, neck.y - 4);
-      const head = this.addPart('head', hImg, Bodies.circle(hp.x, hp.y, 4, { ...opt(0.003), angle: th }), 0);
+      const head = this.addPart('head', hImg, Bodies.circle(hp.x, hp.y, 4, { ...opt(), angle: th }), 0, 5);
       this.join(head, neck, { x: 0, y: 4 });
       this.head = head;
     }
@@ -50,7 +50,7 @@ export default class Ragdoll {
       const half = im.width / 2;
       // limb image points +x (hand/shoe); its root is the -x end
       const c = at(jx + Math.cos(ang) * half, jy + Math.sin(ang) * half);
-      const part = this.addPart(name, im, Bodies.rectangle(c.x, c.y, im.width - 1, Math.max(3, im.height - 1), { ...opt(0.002), angle: th + ang }), ang);
+      const part = this.addPart(name, im, Bodies.rectangle(c.x, c.y, im.width - 1, Math.max(3, im.height - 1), { ...opt(), angle: th + ang }), ang, name === 'leg' ? 11 : 4);
       part.root = { x: -half + 1, y: 0 };
       this.join(part, { x: jx, y: jy }, part.root);
       return part;
@@ -72,7 +72,9 @@ export default class Ragdoll {
     for (const i of opts.detach || []) this.detach(this.limbs[i], dir, speed * 1.4);
   }
 
-  addPart(name, img, body, rest) {
+  addPart(name, img, body, rest, kg) {
+    // a falling body slides a bit then the cloth and skin grip the floor
+    setMaterial(body, kg, 0.75, this.world.time + 0.18);
     const part = { name, img, body, rest, attached: true, bleed: 0 };
     body.entity = this;
     body.ragPart = part;
@@ -115,7 +117,7 @@ export default class Ragdoll {
   // a bullet hits one of the parts
   shotPart(part, a, weaponDef) {
     const w = this.world;
-    w.pushBody(part.body, a, part === this.torso ? 2.2 : 3.5, rand(-0.2, 0.2));
+    impulse(part.body, a, weaponDef?.pellets > 1 ? 30 : 22, rand(-0.2, 0.2), 6);
     const p = part.body.position;
     w.particles.blood(p.x, p.y, a, 0.5, 10, 220);
     w.map.stampBlood(p.x, p.y, 3, 3);

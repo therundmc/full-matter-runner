@@ -1,6 +1,7 @@
 import { CAT, MASK } from '../core/Config.js';
 import { sprite, silhouette } from '../core/Assets.js';
 import { angDiff, clamp } from '../core/math.js';
+import { setKg } from '../core/Physics.js';
 
 const { Bodies, Body } = Matter;
 const MAX_SWING = 1.75;
@@ -17,7 +18,7 @@ export default class Door {
       angle: angle0, frictionAir: 0.07, friction: 0.05, restitution: 0.2, label: 'door',
       collisionFilter: { category: CAT.DOOR, mask: MASK.DOOR },
     });
-    Body.setDensity(this.body, 0.003);
+    setKg(this.body, 25);
     this.body.entity = this;
     this.pushedByPlayer = 0;
     this.slamCooldown = 0;
@@ -72,7 +73,7 @@ export default class Door {
 
   // bullet / melee impact: swings, splinters, and eventually rips off its hinges
   hit(px, py, dirA, dmg = 1) {
-    Body.applyForce(this.body, { x: px, y: py }, { x: Math.cos(dirA) * 0.0012, y: Math.sin(dirA) * 0.0012 });
+    Body.applyForce(this.body, { x: px, y: py }, { x: Math.cos(dirA) * 0.0008 * dmg, y: Math.sin(dirA) * 0.0008 * dmg });
     this.world.particles.chips(px, py, dirA + Math.PI, 1, 6, '#8a5a34');
     this.world.particles.chips(px, py, dirA, 0.6, 4, '#c08a54', 160);
     this.world.sound('wood', px, py, 0.4);

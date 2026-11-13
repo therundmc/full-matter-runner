@@ -46,7 +46,7 @@ export default class Window {
       const a = dirA + rand(-0.55, 0.55);
       const v = rand(160, 460) * power;
       w.addDebris(new Debris(w, shards[i % shards.length], sx, sy, rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v, rand(-0.8, 0.8), {
-        air: 0.05, bounce: 0.25, density: 0.001, shadow: 0,
+        air: 0.05, bounce: 0.25, kg: 0.1, mu: 0.35, fly: 0.3, shadow: 0,
         harm: { kind: 'cut', knock: 2.4, lethal: 5.2, ignore: source },
       }));
     }

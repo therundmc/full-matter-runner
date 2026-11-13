@@ -1,6 +1,7 @@
 import { CAT, MASK } from '../core/Config.js';
 import { drawSprite, silhouette } from '../core/Assets.js';
 import { rand, chance } from '../core/math.js';
+import { setMaterial } from '../core/Physics.js';
 
 const { Bodies, Body } = Matter;
 
@@ -18,13 +19,14 @@ export default class Debris {
       : Bodies.rectangle(x, y, w, h, {});
     Body.set(this.body, {
       angle,
-      frictionAir: opts.air ?? 0.045,
+      frictionAir: (opts.air ?? 0.045) * 0.3, // light air drag; the floor (Physics.groundFriction) does the braking
       friction: 0.1,
       restitution: opts.bounce ?? 0.35,
       collisionFilter: { category: CAT.DEBRIS, mask: opts.mask ?? MASK.DEBRIS },
       label: 'debris',
     });
-    Body.setDensity(this.body, opts.density ?? 0.002);
+    // real-ish mass from the piece size; it flies a moment before touching the floor
+    setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.04), opts.mu ?? 0.6, world.time + (opts.fly ?? 0.12));
     Body.setVelocity(this.body, { x: vx / 60, y: vy / 60 });
     Body.setAngularVelocity(this.body, spin);
     this.body.entity = this;

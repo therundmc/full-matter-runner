@@ -1,6 +1,9 @@
 import { CAT, MASK, PALETTE } from '../core/Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, drawSprite, silhouette } from '../core/Assets.js';
+import { setMaterial } from '../core/Physics.js';
+
+const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3 };
 
 const { Bodies, Body } = Matter;
 
@@ -13,10 +16,11 @@ export default class WeaponItem {
     this.mag = mag ?? this.def.mag ?? 0;
     this.img = sprite(this.def.sprite);
     this.body = Bodies.rectangle(x, y, this.img.width, Math.max(4, this.img.height), {
-      angle, frictionAir: 0.035, friction: 0.05, restitution: 0.45, label: 'item',
+      angle, frictionAir: 0.01, friction: 0.05, restitution: 0.45, label: 'item',
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
-    Body.setDensity(this.body, 0.004);
+    // thrown weapons fly before they hit the floor and slide
+    setMaterial(this.body, WEAPON_KG[type] ?? 2, 0.45, thrower ? world.time + 0.25 : 0);
     Body.setVelocity(this.body, { x: vx, y: vy });
     Body.setAngularVelocity(this.body, spin);
     this.body.entity = this;
@@ -33,8 +37,6 @@ export default class WeaponItem {
 
   update(dt) {
     const sp = this.speed;
-    // slow down quickly once it hits the floor
-    this.body.frictionAir = sp > 4 ? 0.02 : 0.12;
     if (!this.thrower) return;
     if (sp < 3) { this.thrower = null; return; }
     const w = this.world;
