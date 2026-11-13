@@ -17,7 +17,7 @@ src/
       PhysicsWorld.js     Matter engine wrapper: sub-stepping, friction, collision dispatch, 'impact' events
       Raycast.js          grid DDA, segment vs polygon / circle / segment
     nav/Pathfinding.js    A* on the tile grid + string pulling
-  audio/                  Audio.js (mixer, samples, synthesized SFX), Music.js (procedural synthwave)
+  audio/                  Audio.js (mixer, synthesized SFX), Music.js (procedural synthwave)
   game/
     Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
@@ -97,7 +97,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 - Ammo is per caliber (`AMMO` in data/weapons.js: 9mm, 12g, 762, rocket). The player has a pool per caliber;
   a reload fills a fresh magazine from the pool and drops the old one with what was left in it (pickable).
-- Gun sounds are one-shot slices of the recordings (`SLICES` in audio/Audio.js) choked per shooter (`choke`).
+- Gun sounds are synthesized from layers (`GUNS` in audio/Audio.js: crack, body, blast, thump, action, tail, casing),
+  choked per shooter (`choke`). Reload / handling sounds take `{ weapon }` to pick that gun's mechanics (`ARMS`).
 - Props erode: every hit bites a jagged piece out of a per-instance copy of the sprite (size by hit kind:
   pellet < bullet < rifle (+ exit chunk) < blast (+ scorch) < blunt (+ cracks)) and throws it as a shard or Debris.
   Damage states by HP left: 70% cracked, 45% split, 20% giving way (big chunk, dust, sag); 0 = falls apart.

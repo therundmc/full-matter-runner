@@ -121,7 +121,7 @@ export default class Player extends Character {
     this.setWeapon(it.type, it.mag);
     this.world.removeItem(it);
     this.world.sound('pickup', this.x, this.y);
-    if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7);
+    if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7, { weapon: this.weapon.type });
     this.pickAnim = 0.35;
     this.cooldown = 0.2;
     this.world.pickupFlash(this.x + Math.cos(this.angle) * 10, this.y + Math.sin(this.angle) * 10);

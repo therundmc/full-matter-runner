@@ -105,7 +105,7 @@ export default class Character {
     const d = this.def;
     this.reloadDur = this.reloading = d.reload;
     this.reloadStage = 0;
-    this.world.sound(d.shellReload ? 'shellIn' : 'magOut', this.x, this.y, 0.7);
+    this.world.sound(d.shellReload ? 'handle' : 'magOut', this.x, this.y, 0.7, { weapon: this.weapon.type, dur: d.reload });
     return true;
   }
 
@@ -118,9 +118,9 @@ export default class Character {
       if (this.reloading <= 0) {
         this.weapon.mag++;
         this.takeRound();
-        this.world.sound('shellIn', this.x, this.y, 0.6);
+        this.world.sound('shellIn', this.x, this.y, 0.6, { weapon: this.weapon.type });
         if (this.weapon.mag < d.mag && this.reserveCount() > 0) this.reloadDur = this.reloading = d.reload;
-        else { this.reloading = 0; this.world.sound('rack', this.x, this.y, 0.8); this.recoil = 0.8; }
+        else { this.reloading = 0; this.world.sound('rack', this.x, this.y, 0.8, { weapon: this.weapon.type }); this.recoil = 0.8; }
       }
       return;
     }
@@ -131,11 +131,11 @@ export default class Character {
     if (this.reloadStage === 1 && p > 0.7) {
       this.reloadStage = 2;
       this.weapon.mag = this.takeMag();
-      this.world.sound('magIn', this.x, this.y, 0.8);
+      this.world.sound('magIn', this.x, this.y, 0.8, { weapon: this.weapon.type });
     }
     if (this.reloadStage === 2 && p > 0.86) {
       this.reloadStage = 3;
-      this.world.sound('rack', this.x, this.y, 0.8);
+      this.world.sound('rack', this.x, this.y, 0.8, { weapon: this.weapon.type });
       this.recoil = 0.9;
     }
     if (this.reloading <= 0) this.reloading = 0;
@@ -211,7 +211,7 @@ export default class Character {
       }
       if (this.weapon.mag <= 0) {
         this.cooldown = 0.25;
-        this.world.sound('click', this.x, this.y);
+        this.world.sound('click', this.x, this.y, 1, { weapon: this.weapon.type });
         return 'empty';
       }
       this.fire(d);
