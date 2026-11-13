@@ -1,0 +1,116 @@
+import { TILE, CAT, MASK, WALL_HP } from '../Config.js';
+import { gridRaycast } from '../../engine/physics/Raycast.js';
+
+const { Bodies } = Matter;
+
+// Tile legend for level ASCII maps.
+export const FLOORS = {
+  '.': 'wood', ',': 'checker', '+': 'tile_blue', ':': 'carpet_red', ';': 'carpet_purple', '_': 'concrete',
+  '"': 'grass', '=': 'asphalt', '-': 'asphalt_line', '~': 'dirt', 's': 'sidewalk', '*': 'neon_floor',
+};
+export const WALLS = { '#': 'wall', 'X': 'brick' };
+const STRUCT = new Set(['D', 'G', 'F']);
+
+// Pure grid logic (no DOM): tiles, solidity, path blocking, wall HP, raycasts, wall bodies.
+export default class TileMap {
+  constructor(rows) {
+    this.h = rows.length;
+    this.w = Math.max(...rows.map((r) => r.length));
+    this.chars = rows.map((r) => r.padEnd(this.w, ' ').split(''));
+    const n = this.w * this.h;
+    this.solid = new Uint8Array(n);   // blocks bullets / vision / movement
+    this.blocked = new Uint8Array(n); // blocks path-finding
+    this.floor = new Array(n).fill(null);
+    this.hp = new Float32Array(n);
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        const ch = this.chars[y][x], i = y * this.w + x;
+        if (ch === ' ' || WALLS[ch]) { this.solid[i] = 1; this.blocked[i] = 1; }
+        if (WALLS[ch]) this.hp[i] = WALL_HP[ch];
+        if (ch === 'G' || ch === 'F') this.blocked[i] = 1;
+        if (FLOORS[ch]) this.floor[i] = FLOORS[ch];
+      }
+    }
+    // structural tiles take the floor of a neighbour
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        if (!STRUCT.has(this.chars[y][x])) continue;
+        const i = y * this.w + x;
+        for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+          const f = FLOORS[this.at(x + dx, y + dy)];
+          if (f) { this.floor[i] = f; break; }
+        }
+        if (!this.floor[i]) this.floor[i] = 'concrete';
+      }
+    }
+    this.version = 0; // bumped whenever the walls change
+    this.widthPx = this.w * TILE;
+    this.heightPx = this.h * TILE;
+    this.isSolid = (cx, cy) => cx < 0 || cy < 0 || cx >= this.w || cy >= this.h || this.solid[cy * this.w + cx] === 1;
+    this.isBlocked = (cx, cy) => cx < 0 || cy < 0 || cx >= this.w || cy >= this.h || this.blocked[cy * this.w + cx] === 1;
+  }
+
+  at(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? ' ' : this.chars[y][x]; }
+  isWallChar(x, y) { const c = this.at(x, y); return !!WALLS[c]; }
+  solidAt(px, py) { return this.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)); }
+
+  raycast(x0, y0, x1, y1) { return gridRaycast(x0, y0, x1, y1, this.isSolid); }
+
+  // is a straight walk possible (with body clearance) — used for path smoothing
+  walkLine(x0, y0, x1, y1, r = 8) {
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len * r, ny = dx / len * r;
+    for (const s of [-1, 0, 1]) {
+      if (gridRaycast(x0 + nx * s, y0 + ny * s, x1 + nx * s, y1 + ny * s, this.isBlocked)) return false;
+    }
+    return true;
+  }
+
+  // static Matter bodies for walls/void, greedy-merged into rectangles
+  buildBodies() {
+    const used = new Uint8Array(this.w * this.h);
+    const bodies = [];
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        const i = y * this.w + x;
+        if (!this.solid[i] || used[i]) continue;
+        let w = 1;
+        while (x + w < this.w && this.solid[i + w] && !used[i + w]) w++;
+        let h = 1;
+        outer: while (y + h < this.h) {
+          for (let k = 0; k < w; k++) {
+            const j = (y + h) * this.w + x + k;
+            if (!this.solid[j] || used[j]) break outer;
+          }
+          h++;
+        }
+        for (let yy = 0; yy < h; yy++) for (let k = 0; k < w; k++) used[(y + yy) * this.w + x + k] = 1;
+        bodies.push(Bodies.rectangle((x + w / 2) * TILE, (y + h / 2) * TILE, w * TILE, h * TILE, {
+          isStatic: true, label: 'wall', material: 'concrete', friction: 0, restitution: 0.2,
+          collisionFilter: { category: CAT.WALL, mask: MASK.WALL },
+        }));
+      }
+    }
+    return bodies;
+  }
+
+  // ---------- destruction ----------
+  canBreak(cx, cy) {
+    return this.isWallChar(cx, cy) && cx > 0 && cy > 0 && cx < this.w - 1 && cy < this.h - 1;
+  }
+
+  chipColor(cx, cy) { return this.at(cx, cy) === 'X' ? '#8a3a2a' : '#d8ccb0'; }
+
+  // a wall tile gives way and becomes floor; returns the wall texture name (for the renderer)
+  destroyTile(cx, cy) {
+    const i = cy * this.w + cx;
+    const tex = WALLS[this.chars[cy][cx]];
+    this.solid[i] = 0;
+    this.blocked[i] = 0;
+    this.hp[i] = 0;
+    this.chars[cy][cx] = '_';
+    this.floor[i] = 'concrete';
+    this.version++;
+    return tex;
+  }
+}

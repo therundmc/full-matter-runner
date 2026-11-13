@@ -2,92 +2,55 @@
 
 ## Git
 - Commit messages: one single sentence, no body/bullet list (attribution trailer allowed).
-- Work happens on branch `feature/hotline-rework`. `main` holds the old prototype (and the old assets in `assets/img`).
-- Do not push unless the user asks.
+- Work on branch `feature/hotline-rework`. `main` holds the old prototype. Do not push unless asked.
+- Never `git add -A` blindly: `.claude/worktrees/` holds agent worktrees (ignored in .gitignore).
 
-## Vision (what the user wants)
-- Top-down action game "in the style of" Hotline Miami (genre only: never copy its characters, masks, art, music or levels).
-- Ultra gore: blood everywhere, persistent decals, dismemberment, executions.
-- Ultra physical: everything that can move is a Matter.js body (doors, furniture, gibs, shells, corpses, thrown weapons).
-- Ultra nervous: particles everywhere, screen shake, hitstop, slow-mo, combos.
-- Ultra hard: one bullet = dead, for the player and enemies. Instant restart with R.
-- The user is French: reply in French. Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
+## Vision (user's brief, in French; reply in French)
+- Top-down, nervous, organic, demanding action game, Hotline-Miami-like genre (never copy its characters/art/music),
+  realistic, grimy, visceral 80s aesthetic with neon. One hit kills (player and enemies). Instant restart.
+- Everything physical and destructible, with progressive damage states depending on angle, power and type of hit.
+- Readability first: enemies, obstacles and weapons on the floor must be instantly identifiable.
+- NO checkerboard or aggressive repetitive textures; smooth/organic/discreet surfaces. Simplified road.
+- Scale: rooms were too big vs characters/furniture/vehicles (cars too small on the road) -> tighten spaces,
+  vehicles at real size (see engine/physics/Units.js: 1 m = 32 px; a car is ~4.4 x 1.8 m).
+- Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
+- Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
+
+## Delivery by blocks (validate each with the user before moving on)
+1. Engine, physics & smooth collisions — DONE (awaiting user validation): see docs/ARCHITECTURE.md.
+2. Destruction & object states: generalise progressive damage states to every object/cover (angle, power,
+   bullet vs melee), plus real-time liquids (blood/water that spreads, pools, footprints, hydrant water).
+3. Combat feedback & sound design / mix: blood calibrated per weapon (little for fists/bat, realistic for blades
+   and guns), heavy/dry/organic impact sounds, punchy arcade mastering. Integrate the lighting work.
+4. Synthwave music: darker, richer, more varied chord progressions, heavy pulsing loops (gated reverb, staccato bass)
+   following combat intensity.
+5. Level 1 (demo): street, alley, bar entrance, main room, back room; restricted arsenal; enemy AI (integrate the AI work).
+6. Sandbox / debug mode: spawn enemies, all weapons and assets, live physics/destruction/FX/sound experiments
+   (the `?level=lab` physics lab is its seed).
+
+## Pending work stored in branches (not merged)
+- `worktree-agent-a4bd44bea01e0fe54`: WIP neon lighting (src/fx/Lighting.js, PostFX.js: shadows, bloom, wet reflections,
+  grading). Written against the OLD layout (src/core, src/world...): port it into the new architecture in Bloc 3.
+- `worktree-agent-a8864992389c7ee0d`: WIP MGS-style AI (src/ai/Director.js, Tactics.js, Enemy.js rewrite). Old layout too:
+  port it in Bloc 5.
 
 ## Run / test
-- ES modules need an HTTP server: `python -m http.server 8000` then open http://localhost:8000.
-- No build step, no npm dependencies. Matter.js 0.20 is vendored in `libraries/matter.js` (global `Matter`).
-- Debug keys: F2 enemy vision cones, F3 whole-level overview. `window.game` is exposed in the console.
-- Headless testing that worked: Edge (`C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe --headless=new --remote-debugging-port=...`)
-  driven via the Chrome DevTools Protocol from a small Node script (Node 22 has a global WebSocket): capture console errors,
-  `Runtime.evaluate` to set up scenarios (e.g. `game.world.enemies.forEach(e => e.canSee = () => false)`), `Input.dispatch*`
-  for inputs, `Page.captureScreenshot`. Wrap evaluated code in `{ ... }` so `const` doesn't leak between evals.
-  Python's http.server sometimes resets connections on big files; a tiny Node static server is more reliable.
-  Never kill processes broadly (e.g. all python.exe): only stop what you started.
+- `python -m http.server 8000` then http://localhost:8000 (`?level=lab` for the physics lab).
+- `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
+- Debug keys: F2 enemy vision, F3 overview, F4 physics overlay. `window.game` in the console.
+- Headless browser checks that worked: Edge `--headless=new --remote-debugging-port` driven over the DevTools
+  protocol from a small Node script (eval scenarios, inputs, screenshots). Python's http.server can reset
+  connections on big files; a tiny Node static server is more reliable. Never kill processes you didn't start.
 
-## Architecture (src/)
-- `core/Game.js`: rAF loop, fixed 60 Hz steps, `timeScale` (slow-mo), `hitstop`, state machine
-  `loading -> title -> intro -> play -> dead | pause | results`.
-- `core/Config.js`: ALL tuning (TILE=32, collision categories/masks, player speed, enemy view/reaction, limits).
-- `core/Audio.js`: WebAudio. Gun samples in `assets/sound/shots/*.wav`; every other SFX is synthesized (`_name` methods).
-  `core/Music.js`: procedural synthwave loop.
-- `core/Raycast.js` (grid DDA, segment vs polygon/circle/segment), `core/Pathfinding.js` (A* + smoothing), `core/Camera.js`.
-- `world/World.js`: one playthrough. Owns the Matter engine and entity lists, bullet tracing (`traceBullet`), `explode`,
-  `noise` (alerts guards), `lineOfSight` (walls + doors), scoring/combo, rendering order.
-- `world/TileMap.js`: ASCII map parsing, pre-rendered floor/wall canvases, persistent decals (blood, holes, scorch, `bake`).
-- `world/Level.js`: builds doors/windows/fences/props/actors from level data.
-- `entities/`: Character (shared body, weapon, procedural arms/feet, melee, firing), Player, Enemy (AI states: idle, patrol,
-  combat, chase, investigate, search, fetch, return; knock-down), Projectile (segment-traced bullets, rockets),
-  WeaponItem, Prop, Door (kinematic hinge), Window, Debris, Corpse.
-- `fx/Particles.js` (blood with height z that stamps decals when landing, sparks, smoke, fire, glass, chips),
-  `fx/Gore.js` (corpse / headless / full gibs depending on cause).
-- `ui/`: HUD, Screens (title/intro/dead/pause/results), Text helpers.
-- `data/`: `weapons.js`, `props.js`, `levels/level1.js`.
-
-## Conventions
-- World units = pixels, 1 tile = 32 px. Sprites: 1 px = 1 world px, face +x, drawn centered; integer camera zoom.
-- Matter 0.20: read velocities with `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz) so slow-mo stays correct;
-  set them with `Body.setVelocity` (px per 1/60 s).
-- Characters move by `steer()` (velocity set every step, infinite inertia, never sleep).
-- Settled debris/corpses are baked into the floor canvas and removed from physics (keeps body count low, MAX_DEBRIS).
-- Bodies point back to their entity via `body.entity`; collisions dispatch to `entity.onCollide(other)`.
-- Only the player's gunfire emits noise (enemy shots don't alert the whole map).
-- Everything is destructible: wall tiles have HP (`WALL_HP`, `World.damageWall/destroyWall`, wall bodies rebuilt when
-  `wallsDirty`), doors have HP then `detachDoor`, fences `destroyFence`, every prop has finite HP (car/barrels explode).
-- `Debris` with `opts.harm` ({kind: 'cut'|'blunt', knock, lethal} speeds in px/step) knocks out or kills enemies it hits
-  (glass shards from windows, rubble, blast-thrown pieces). Harm only applies to enemies, never the player.
-- Bullets push corpses, items and gibs; melee shoves loose bodies and cracks walls. Characters kick debris around.
-- Weapons: `weapon = { type, mag, reserve }`. `Character.reload()/updateReload()` (animated: mag drops as Debris, off hand
-  fetches a new one, rack), shotgun reloads shell by shell. Player reserve = caliber pools `player.ammo` (CALIBERS in
-  weapons.js), enemies use `weapon.reserve`. `AmmoItem` pickups (magnet + auto collect); guards drop ammo on death.
-  R = reload while alive, Backspace = restart.
-- `Vehicle` (src/entities/Vehicle.js) lives in `world.props` with a Prop-like interface (`hit`, `break`, `onBlast`,
-  `update`, `def`). Sprite-space layout contract per model in `VEHICLES` (windshield/rear/tank/hood/wheels).
-  Parts thrown out of a car use a mask without CAT.PROP (they spawn inside the body).
-- Dead bodies are `Ragdoll`s (6 Matter bodies + pin constraints, same negative collision group); `detach()` tears limbs.
-  Uses `<id>_rag_*` sprites, falls back to the gib sprites.
-- `world.emit(x, y, dur, fn)` runs a per-step emitter (hydrant geyser...). Props with `overhead` are drawn above characters.
-- Camera: `camera.punch(amount)` = brief zoom kick on big explosions.
-- Keep code clean: no stray exports/unused imports, short comments only where useful.
-
-## Assets
-- `assets/sprites/**` are generated by `python tools/generate_assets.py` (Pillow, deterministic, asserts exact sizes).
-  Change art by editing that script and re-running it; keep the sizes the code expects.
-- Font: `assets/font/joystix.ttf`. Gun sounds: CC BY 3.0 Michel Baradari (credit in README).
-
-## Levels
-- Format documented in README ("Making levels"): `tiles` + `actors` ASCII layers, `props` list, `exit`, optional `facing`.
-- `level1.js` was generated by a throwaway Python script (not in repo) but is meant to be hand-edited.
-- Guards auto-face the direction with the longest clear view, treating windows as opaque (otherwise they spot the player
-  through the facade at spawn). Check new levels with F3 + F2.
-
-## Current state (end of first session)
-- Done and verified headless: title, intro card, movement, all weapons, throw -> knock-down -> execution, doors, windows,
-  barrels/explosions, gore, enemy AI, level clear -> exit -> results with grade, pause, 60 FPS.
-- Session 2: AI toned down (reaction 0.6-0.9 s, turn 5 rad/s, aim error, slower fire; ~1 s before a guard kills a
-  standing player), destructible walls/doors/fences/props, lethal glass shards and rubble, more debris,
-  music rewritten as futurewave (Music.js: supersaw pads + sidechain, rolling bass, ping-pong arps, gated snare,
-  supersaw lead, song form intro/verse/chorus/break/build).
-- Not yet done: real hand-played difficulty tuning (enemy count = 24 may be too many),
-  level 2+ / multiple floors, level select/progression, settings menu, mobile support.
-- Ideas the user may want next: more enemy types (dogs, heavy armored), masks/perks system (original designs only),
-  lighting, more levels, gamepad support.
+## Architecture & conventions
+- Read docs/ARCHITECTURE.md first (layers, step order, events, physics model).
+- `engine/` never imports `game/`. Logic modules stay DOM-free (canvas work in game/render or entity draw()).
+- New gameplay reactions: emit/listen on `world.events` instead of wiring direct calls.
+- Physics: give every dynamic body kg + mu (`setMaterial`) and a `material`; read velocities with
+  `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz); use `impulse()` (momentum) for hits/blasts;
+  heavy objects use `world.physics.freezeIfHeavy(body)`.
+- Weapons use real magazines: `weapon = { type, mag, reserve }`; the player carries `mags[ammoType]` (rounds per mag)
+  and `loose[shells|rocket]`; reloading drops the current mag with its remaining rounds (it can be picked up again).
+- Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
+- Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
+- Keep code clean: no stray exports / unused imports, short useful comments.

@@ -1,0 +1,153 @@
+// Draws a World: floor/decals, entities in layer order, walls, particles, additive effects, floating texts.
+// Also the physics debug overlay (F4).
+import { TILE, PALETTE, CAT } from '../Config.js';
+import { rand, clamp } from '../../engine/math.js';
+
+const { Body } = Matter;
+
+export default class WorldRenderer {
+  constructor(world) {
+    this.world = world;
+  }
+
+  draw(ctx, cam, t) {
+    const w = this.world;
+    const v = cam.viewRadius();
+    const pad = Math.max(v.x, v.y) * 1.1;
+    const vis = (x, y) => Math.abs(x - cam.x) < pad && Math.abs(y - cam.y) < pad;
+
+    ctx.drawImage(w.decals.floorCanvas, 0, 0);
+    for (const c of w.corpses) if (vis(c.x, c.y)) c.drawPool(ctx);
+    for (const d of w.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
+    for (const c of w.corpses) if (vis(c.x, c.y)) c.draw(ctx);
+    for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
+    for (const a of w.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
+    for (const p of w.props) if (vis(p.x, p.y)) p.draw(ctx);
+    if (w.showVision) for (const e of w.enemies) e.drawVision(ctx);
+    for (const e of w.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
+    if (w.player.alive) w.player.draw(ctx);
+    for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player);
+    for (const d of w.doors) d.draw(ctx);
+    for (const g of w.windows) if (vis(g.x, g.y)) g.draw(ctx);
+    ctx.drawImage(w.decals.wallCanvas, 0, 0);
+
+    if (w.cleared) this.drawExit(ctx, t);
+    w.particles.draw(ctx);
+    for (const p of w.projectiles) p.draw(ctx);
+    this.drawAdditive(ctx);
+    this.drawTexts(ctx);
+    if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
+  }
+
+  drawAdditive(ctx) {
+    const w = this.world;
+    ctx.globalCompositeOperation = 'lighter';
+    w.particles.drawGlow(ctx);
+    for (const l of w.lights) {
+      const a = clamp(l.t / l.dur, 0, 1) * 0.55;
+      const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+      g.addColorStop(0, l.color);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = a;
+      ctx.fillStyle = g;
+      ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+    }
+    ctx.globalAlpha = 1;
+    for (const f of w.flashes) {
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(f.a);
+      const s = f.big ? 1.6 : 1;
+      ctx.fillStyle = '#ffb020';
+      ctx.beginPath();
+      ctx.moveTo(-1, 0); ctx.lineTo(4 * s, -5 * s); ctx.lineTo(7 * s, -1.5 * s); ctx.lineTo(14 * s * rand(0.8, 1.2), 0);
+      ctx.lineTo(7 * s, 1.5 * s); ctx.lineTo(4 * s, 5 * s); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fffbe0';
+      ctx.beginPath(); ctx.arc(2, 0, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    for (const r of w.rings) {
+      const p = r.t / r.dur;
+      ctx.strokeStyle = `rgba(255,240,220,${1 - p})`;
+      ctx.lineWidth = 5 * (1 - p) + 1;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r + (r.max - r.r) * Math.sqrt(p), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  drawTexts(ctx) {
+    ctx.font = '8px joystix';
+    ctx.textAlign = 'center';
+    for (const tx of this.world.texts) {
+      ctx.globalAlpha = clamp((tx.t / tx.dur) * 2, 0, 1);
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillText(tx.str, tx.x + 1, tx.y + 1);
+      ctx.fillStyle = tx.color;
+      ctx.fillText(tx.str, tx.x, tx.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawExit(ctx, t) {
+    const ex = this.world.level.exit;
+    const x = ex.x * TILE, y = ex.y * TILE;
+    const pulse = (Math.sin(t * 6) + 1) / 2;
+    ctx.strokeStyle = pulse > 0.5 ? PALETTE.pink : PALETTE.cyan;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.arc(x, y, ex.r * TILE * (0.9 + pulse * 0.1), 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '8px joystix';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillText('EXIT', x + 1, y - ex.r * TILE - 5);
+    ctx.fillStyle = PALETTE.yellow;
+    ctx.fillText('EXIT', x, y - ex.r * TILE - 6 - pulse * 3);
+  }
+
+  // F4: every Matter body outlined by state, velocities, live contacts
+  drawPhysicsDebug(ctx, vis) {
+    const phys = this.world.physics;
+    ctx.save();
+    ctx.lineWidth = 0.75;
+    for (const b of phys.bodies()) {
+      if (!vis(b.position.x, b.position.y) && !(b.isStatic && b.label === 'wall')) continue;
+      let col = '#3cff7a';                                   // dynamic
+      if (b.isStatic) col = b.frozen ? '#4aa0ff' : '#777';   // frozen heavy / static
+      else if (b.isSleeping) col = '#2a6a3a';
+      if (b.collisionFilter.category === CAT.CHAR) col = '#ffe14a';
+      if (b.isSensor) col = '#ff4af0';
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      const vs = b.vertices;
+      ctx.moveTo(vs[0].x, vs[0].y);
+      for (let i = 1; i < vs.length; i++) ctx.lineTo(vs[i].x, vs[i].y);
+      ctx.closePath();
+      ctx.stroke();
+      if (!b.isStatic) {
+        const v = Body.getVelocity(b);
+        ctx.strokeStyle = '#ff9a2a';
+        ctx.beginPath(); ctx.moveTo(b.position.x, b.position.y); ctx.lineTo(b.position.x + v.x * 4, b.position.y + v.y * 4); ctx.stroke();
+      }
+    }
+    ctx.fillStyle = '#ff2a2a';
+    for (const pair of phys.activePairs()) {
+      for (const s of pair.collision.supports) if (s) ctx.fillRect(s.x - 1, s.y - 1, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  // screen-space stats for the overlay
+  debugStats() {
+    const phys = this.world.physics;
+    const bodies = phys.bodies();
+    const dyn = bodies.filter((b) => !b.isStatic).length;
+    const frozen = bodies.filter((b) => b.frozen).length;
+    const sleeping = bodies.filter((b) => b.isSleeping).length;
+    return [
+      `BODIES ${bodies.length}  DYNAMIC ${dyn}  FROZEN ${frozen}  SLEEPING ${sleeping}`,
+      `CONTACTS ${phys.activePairs().length}  PHYSICS ${phys.stepMs.toFixed(2)} MS x${phys.substeps}`,
+      `DEBRIS ${this.world.debris.length}  PARTICLES ${this.world.particles.list.length}`,
+    ];
+  }
+}
