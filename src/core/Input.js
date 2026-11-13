@@ -1,5 +1,5 @@
 // Keyboard + mouse state. "pressed" sets are cleared once a simulation step consumed them.
-const BLOCKED = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2']);
+const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2']);
 
 export default class Input {
   constructor(canvas) {

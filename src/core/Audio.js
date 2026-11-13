@@ -213,6 +213,50 @@ class AudioSystem {
     this._tone(o, { type: 'square', f0: 1500, f1: 900, dur: 0.03, vol: 0.05, delay: 0.03 });
   }
   _click(o) { this._tone(o, { type: 'square', f0: 1500, f1: 1200, dur: 0.03, vol: 0.18 }); }
+  _magOut(o) {
+    this._tone(o, { type: 'square', f0: 1900, f1: 1400, dur: 0.025, vol: 0.12 });
+    this._noiseBurst(o, { type: 'bandpass', f0: 3200, f1: 1800, q: 2, dur: 0.07, vol: 0.4, delay: 0.02 });
+  }
+  _magIn(o) {
+    this._tone(o, { f0: 520, f1: 260, dur: 0.05, vol: 0.5 });
+    this._noiseBurst(o, { type: 'bandpass', f0: 1600, f1: 900, q: 1.5, dur: 0.06, vol: 0.7 });
+    this._tone(o, { type: 'square', f0: 2400, dur: 0.02, vol: 0.08, delay: 0.03 });
+  }
+  _rack(o) {
+    this._noiseBurst(o, { type: 'highpass', f0: 4000, dur: 0.03, vol: 0.6 });
+    this._tone(o, { type: 'square', f0: 900, f1: 700, dur: 0.03, vol: 0.12 });
+    this._noiseBurst(o, { type: 'highpass', f0: 3000, dur: 0.04, vol: 0.7, delay: 0.09 });
+    this._tone(o, { type: 'square', f0: 1300, f1: 800, dur: 0.035, vol: 0.14, delay: 0.09 });
+  }
+  _shellIn(o) {
+    this._tone(o, { f0: 1100, f1: 650, dur: 0.04, vol: 0.3 });
+    this._noiseBurst(o, { type: 'bandpass', f0: 2200, q: 2, dur: 0.04, vol: 0.4 });
+  }
+  _ammo(o) {
+    this._tone(o, { type: 'square', f0: 700, dur: 0.04, vol: 0.1 });
+    this._tone(o, { type: 'square', f0: 1400, dur: 0.06, vol: 0.1, delay: 0.04 });
+    for (let i = 0; i < 4; i++) this._tone(o, { f0: rand(3000, 5000), dur: 0.03, vol: 0.05, delay: rand(0, 0.12) });
+  }
+  _tirePop(o) {
+    this._noiseBurst(o, { type: 'lowpass', f0: 2500, f1: 150, dur: 0.22, vol: 1.3, attack: 0.002 });
+    this._tone(o, { f0: 140, f1: 40, dur: 0.2, vol: 0.9 });
+    this._noiseBurst(o, { type: 'highpass', f0: 3500, f1: 2000, dur: 1.4, vol: 0.35, delay: 0.05, attack: 0.05 });
+  }
+  _alarm(o) {
+    this._tone(o, { type: 'square', f0: 950, dur: 0.17, vol: 0.12 });
+    this._tone(o, { type: 'square', f0: 1250, dur: 0.17, vol: 0.12, delay: 0.2 });
+  }
+  _carHit(o) {
+    this._tone(o, { type: 'triangle', f0: rand(500, 700), f1: 260, dur: 0.12, vol: 0.4 });
+    this._noiseBurst(o, { type: 'bandpass', f0: 2600, q: 3, dur: 0.06, vol: 0.5 });
+  }
+  _crackle(o) {
+    for (let i = 0; i < 3; i++) this._noiseBurst(o, { type: 'bandpass', f0: rand(1500, 4000), q: 5, dur: 0.02, vol: rand(0.1, 0.3), delay: rand(0, 0.2) });
+  }
+  _ignite(o) {
+    this._noiseBurst(o, { type: 'lowpass', f0: 300, f1: 2500, dur: 0.6, vol: 0.9, attack: 0.15 });
+    this._tone(o, { f0: 60, f1: 90, dur: 0.5, vol: 0.4 });
+  }
   _pickup(o) {
     this._tone(o, { type: 'square', f0: 520, dur: 0.05, vol: 0.12 });
     this._tone(o, { type: 'square', f0: 1040, dur: 0.07, vol: 0.12, delay: 0.05 });

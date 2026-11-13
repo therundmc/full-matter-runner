@@ -1,11 +1,13 @@
 import { TILE, CAT } from '../core/Config.js';
-import { WEAPON_CHARS } from '../data/weapons.js';
+import { WEAPON_CHARS, AMMO_CHARS } from '../data/weapons.js';
+import AmmoItem from '../entities/AmmoItem.js';
 import { sprite } from '../core/Assets.js';
 import { rand } from '../core/math.js';
 import { gridRaycast } from '../core/Raycast.js';
 import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
 import Prop from '../entities/Prop.js';
+import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
 import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
@@ -62,7 +64,8 @@ export function buildLevel(world, level) {
 
   // ---- props list: [type, col, row, deg] with col/row in tile units (floats, tile centre = n + 0.5)
   for (const [type, col, row, deg = 0] of level.props || []) {
-    const p = new Prop(world, type, col * TILE, row * TILE, (deg * Math.PI) / 180);
+    const a = (deg * Math.PI) / 180;
+    const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);
   }
@@ -82,13 +85,13 @@ export function buildLevel(world, level) {
       } else if (WEAPON_CHARS[ch]) {
         const type = WEAPON_CHARS[ch];
         world.items.push(new WeaponItem(world, type, undefined, px, py, rand(0, Math.PI * 2)));
+      } else if (AMMO_CHARS[ch]) {
+        world.ammoItems.push(new AmmoItem(world, AMMO_CHARS[ch], undefined, px, py));
       } else if (SMALL_PROPS[ch]) {
         world.props.push(new Prop(world, SMALL_PROPS[ch], px + rand(-3, 3), py + rand(-3, 3), rand(0, Math.PI * 2)));
       } else console.warn('unknown actor char', ch, x, y);
     }
   }
-  // items spawned from the map get a full magazine
-  for (const it of world.items) if (it.ammo === undefined) it.ammo = it.def.ammo ?? Infinity;
   if (!world.player) throw new Error('level has no player spawn (@)');
 }
 

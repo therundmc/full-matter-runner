@@ -14,8 +14,21 @@ export function drawHUD(ctx, game, t) {
   text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
   const ammo = p.ammoText;
   if (ammo) {
-    const empty = p.weapon.ammo <= 0;
-    text(ctx, empty ? 'EMPTY - THROW IT!' : ammo, pad, pad + 50 * s, 20 * s, empty ? PALETTE.pink : PALETTE.white, { align: 'left' });
+    const dry = p.weapon.mag <= 0 && p.reloading <= 0;
+    const noReserve = p.reserveCount() <= 0;
+    let label = ammo, col = PALETTE.white;
+    if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
+    else if (dry && noReserve) { label = 'EMPTY - THROW IT!'; col = PALETTE.pink; }
+    else if (dry) { label = 'RELOAD [R]'; col = PALETTE.yellow; }
+    const blink = dry && Math.floor(t * 6) % 2 === 0 ? 0.45 : 1;
+    text(ctx, label, pad, pad + 50 * s, 20 * s, col, { align: 'left', alpha: blink });
+    if (p.reloading > 0) {
+      const k = clamp(1 - p.reloading / p.reloadDur, 0, 1);
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillRect(pad, pad + 64 * s, 150 * s, 6 * s);
+      ctx.fillStyle = PALETTE.cyan;
+      ctx.fillRect(pad, pad + 64 * s, 150 * s * k, 6 * s);
+    }
   }
   text(ctx, `TARGETS ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 80 * s, 14 * s, PALETTE.yellow, { align: 'left' });
 

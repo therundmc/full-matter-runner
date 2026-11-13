@@ -2,6 +2,7 @@ import { sprite } from '../core/Assets.js';
 import { rand, chance } from '../core/math.js';
 import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
+import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | execute
 export function gore(world, ch, angle, cause, goreMul = 1) {
@@ -49,9 +50,15 @@ export function gore(world, ch, angle, cause, goreMul = 1) {
     return;
   }
 
-  const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
   const slide = cause === 'blast' ? rand(280, 380) : cause === 'heavy' ? 300 : rand(140, 230);
-  world.addCorpse(new Corpse(world, corpseImg, x, y, angle, slide, { headless: mode === 'headless' }));
+  if (hasRagdoll(k)) {
+    // physical body; close shotgun blasts tear limbs off
+    const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
+    world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, { headless: mode === 'headless', detach }));
+  } else {
+    const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
+    world.addCorpse(new Corpse(world, corpseImg, x, y, angle, slide, { headless: mode === 'headless' }));
+  }
 
   if (mode === 'headless') {
     if (cause === 'execute') {

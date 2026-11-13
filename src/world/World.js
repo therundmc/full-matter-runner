@@ -3,6 +3,7 @@ import { segPoly, segCircle, segSeg } from '../core/Raycast.js';
 import { rand, chance, clamp } from '../core/math.js';
 import { rubble, chunk, plank } from '../core/Assets.js';
 import Debris from '../entities/Debris.js';
+import AmmoItem from '../entities/AmmoItem.js';
 import Audio from '../core/Audio.js';
 import TileMap from './TileMap.js';
 import Particles from '../fx/Particles.js';
@@ -40,6 +41,8 @@ export default class World {
     this.windows = [];
     this.fences = [];
     this.items = [];
+    this.ammoItems = [];
+    this.emitters = [];
     this.projectiles = [];
     this.debris = [];
     this.corpses = [];
@@ -100,7 +103,14 @@ export default class World {
   hitstop(s) { this.game.hitstop = Math.max(this.game.hitstop, s); }
   slowmo(scale, dur) { this.game.slowmo(scale, dur); }
   light(x, y, r, color, dur) { this.lights.push({ x, y, r, color, t: dur, dur }); }
+  // run fn(e) every step for dur seconds (fountains, fires...)
+  emit(x, y, dur, fn) { this.emitters.push({ x, y, t: dur, fn }); }
   flashGlass(x, y) { this.light(x, y, 45, '#bff6ff', 0.08); }
+  pickupFlash(x, y, color = PALETTE.cyan) {
+    this.rings.push({ x, y, r: 2, max: 18, t: 0, dur: 0.25 });
+    this.particles.sparks(x, y, 0, Math.PI, 8, 160, color);
+    this.light(x, y, 40, color, 0.12);
+  }
 
   // add a velocity kick (px/step) to a loose body
   pushBody(b, a, dv, spin = 0) {
@@ -228,7 +238,16 @@ export default class World {
     test(this.props, 'prop', (p) => !p.dead);
     test(this.doors, 'door', () => true);
     test(this.windows, 'glass', (g) => g.intact);
-    test(this.corpses, 'corpse', (c) => !c.dead);
+    // dead bodies: every ragdoll part can be hit
+    for (const c of this.corpses) {
+      if (c.dead) continue;
+      for (const part of c.parts || [{ body: c.body }]) {
+        const bd = part.body.bounds;
+        if (bd.max.x < minX || bd.min.x > maxX || bd.max.y < minY || bd.min.y > maxY) continue;
+        const r = segPoly(x0, y0, x1, y1, part.body.vertices);
+        if (r && r.t < bt()) best = { t: r.t, kind: 'corpse', target: c, part: c.parts ? part : null };
+      }
+    }
     test(this.items, 'item', (it) => !it.dead);
     test(this.debris, 'debris', (d) => !d.dead && d.size > 4);
     if (best) { best.x = x0 + (x1 - x0) * best.t; best.y = y0 + (y1 - y0) * best.t; }
@@ -263,6 +282,7 @@ export default class World {
     for (const p of this.props) {
       if (p.dead) continue;
       const d = Math.hypot(p.x - x, p.y - y);
+      if (p.onBlast) { p.onBlast(d, R, Math.atan2(p.y - y, p.x - x)); continue; }
       if (d < R * (p.def.static ? 0.55 : 0.85)) p.break(Math.atan2(p.y - y, p.x - x), 2);
     }
     for (const g of this.windows) if (g.intact && Math.hypot(g.x - x, g.y - y) < R * 1.4) g.shatter(Math.atan2(g.y - y, g.x - x), null, 1.6);
@@ -316,6 +336,12 @@ export default class World {
   onKill(ch, cause, killer) {
     if (ch.isPlayer) { this.game.onPlayerDeath(); return; }
     this.kills++;
+    // guards drop spare rounds for the gun they carried
+    const cal = ch.lastCaliber;
+    if (cal && chance(0.8)) {
+      const a = rand(0, Math.PI * 2);
+      this.ammoItems.push(new AmmoItem(this, cal, undefined, ch.x, ch.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5));
+    }
     const byPlayer = killer?.isPlayer || cause === 'explosion';
     if (byPlayer) {
       this.combo = this.time - this.lastKill < COMBO_WINDOW ? this.combo + 1 : 1;
@@ -356,13 +382,18 @@ export default class World {
     }
 
     for (const it of this.items) if (!it.dead) it.update(dt);
+    for (const a of this.ammoItems) if (!a.dead) a.update(dt);
     for (const p of this.projectiles) p.update(dt);
     for (const d of this.debris) if (!d.dead) d.update(dt);
     for (const c of this.corpses) if (!c.dead) c.update(dt);
+    for (const p of this.props) if (p.update) p.update(dt);
+    for (const e of this.emitters) { e.t -= dt; e.fn(e); }
+    this.emitters = this.emitters.filter((e) => e.t > 0);
     this.particles.update(dt);
 
     this.projectiles = this.projectiles.filter((p) => !p.dead);
     this.items = this.items.filter((i) => !i.dead);
+    this.ammoItems = this.ammoItems.filter((a) => !a.dead);
     this.debris = this.debris.filter((d) => !d.dead);
     this.corpses = this.corpses.filter((c) => !c.dead);
     this.props = this.props.filter((p) => !p.dead);
@@ -398,10 +429,12 @@ export default class World {
     for (const d of this.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
     for (const c of this.corpses) if (vis(c.x, c.y)) c.draw(ctx);
     for (const it of this.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
+    for (const a of this.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
     for (const p of this.props) if (vis(p.x, p.y)) p.draw(ctx);
     if (this.showVision) for (const e of this.enemies) e.drawVision(ctx);
     for (const e of this.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
     if (this.player.alive) this.player.draw(ctx);
+    for (const p of this.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, this.player);
     for (const d of this.doors) d.draw(ctx);
     for (const g of this.windows) if (vis(g.x, g.y)) g.draw(ctx);
     ctx.drawImage(this.map.wallCanvas, 0, 0);

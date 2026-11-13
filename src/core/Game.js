@@ -143,8 +143,8 @@ export default class Game {
       return;
     }
 
-    // play / dead: run the simulation
-    if (inp.hit('KeyR')) { this.newGame(); inp.consume(); return; }
+    // play / dead: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
+    if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
     if (this.state === 'play' && inp.hit('Escape')) { this.setState('pause'); inp.consume(); return; }
     if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
     if (inp.hit('F3')) this.overview = !this.overview;

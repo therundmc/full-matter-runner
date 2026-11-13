@@ -25,4 +25,13 @@ export const PROPS = {
   car: { w: 72, h: 32, hp: 22, static: true, chips: '#ff2a6d', sound: 'metal', blocksPath: true, explosive: true, blast: 135, glass: true },
   dumpster: { w: 35, h: 21, hp: 18, static: true, chips: '#2a6a3a', sound: 'metal', blocksPath: true },
   trash_can: { r: 5.5, hp: 2, density: 0.008, air: 0.3, chips: '#555', sound: 'metal' },
+  // street & neon dressing (overhead = drawn above characters, fades when the player walks under)
+  palm_tree: { r: 4, hp: 6, static: true, chips: '#2f8f3a', sound: 'wood', overhead: true, dirt: true },
+  streetlight: { r: 3, hp: 2, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true },
+  neon_sign_palm: { w: 38, h: 6, hp: 2, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_bar: { w: 42, h: 6, hp: 2, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_arrow: { w: 28, h: 6, hp: 2, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
+  jukebox: { w: 19, h: 13, hp: 4, density: 0.02, air: 0.5, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true },
+  hydrant: { r: 3.5, hp: 5, static: true, chips: '#c02020', sound: 'metal', fountain: true },
+  bench: { w: 34, h: 10, hp: 4, static: true, chips: '#6a4026', sound: 'wood' },
 };

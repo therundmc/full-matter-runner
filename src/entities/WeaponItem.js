@@ -6,11 +6,11 @@ const { Bodies, Body } = Matter;
 
 // A weapon lying on the floor or flying through the air after a throw.
 export default class WeaponItem {
-  constructor(world, type, ammo, x, y, angle, vx = 0, vy = 0, spin = 0, thrower = null) {
+  constructor(world, type, mag, x, y, angle, vx = 0, vy = 0, spin = 0, thrower = null) {
     this.world = world;
     this.type = type;
     this.def = WEAPONS[type];
-    this.ammo = ammo;
+    this.mag = mag ?? this.def.mag ?? 0;
     this.img = sprite(this.def.sprite);
     this.body = Bodies.rectangle(x, y, this.img.width, Math.max(4, this.img.height), {
       angle, frictionAir: 0.035, friction: 0.05, restitution: 0.45, label: 'item',

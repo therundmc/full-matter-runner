@@ -82,7 +82,7 @@ export function drawTitle(ctx, W, H, t) {
   const lines = [
     'WASD / ZQSD  MOVE        MOUSE  AIM        SHIFT  LOOK FURTHER',
     'LMB  ATTACK        RMB  THROW / PICK UP        E  PICK UP / SWAP',
-    'SPACE  EXECUTE A KNOCKED-OUT ENEMY        R  RESTART        M  MUSIC',
+    'R  RELOAD        SPACE  EXECUTE A KNOCKED-OUT ENEMY        BACKSPACE  RESTART        M  MUSIC',
   ];
   lines.forEach((l, i) => text(ctx, l, W / 2, H * 0.78 + i * 26 * s, 13 * s, PALETTE.white, { alpha: 0.85 }));
   text(ctx, 'ONE HIT AND YOU ARE DEAD. SO ARE THEY.', W / 2, H * 0.94, 14 * s, PALETTE.pink);

@@ -1,4 +1,5 @@
 import { ENEMY, TILE, CAT, MASK, PALETTE } from '../core/Config.js';
+import { WEAPONS } from '../data/weapons.js';
 import { rand, angDiff, approachAngle, chance, clamp } from '../core/math.js';
 import { findPath } from '../core/Pathfinding.js';
 import Character from './Character.js';
@@ -12,7 +13,7 @@ export default class Enemy extends Character {
     super(world, x, y, angle, kind, 'enemy');
     this.isEnemy = true;
     this.radius = ENEMY.radius;
-    this.setWeapon(weapon, Infinity);
+    this.setWeapon(weapon, undefined, (WEAPONS[weapon].mag ?? 0) * 2);
     this.home = { x, y, angle };
     this.roam = roam;
     this.state = roam ? S.PATROL : S.IDLE;
@@ -146,8 +147,8 @@ export default class Enemy extends Character {
     else if (dist < 70) this.steer(-dx, -dy, ENEMY.walkSpeed, 0.15);
     else this.steer(0, 0, 0, 0.15);
     if (this.react <= 0 && Math.abs(angDiff(this.angle, toP)) < 0.18 && dist < 420 && this.cooldown <= 0) {
+      if (this.weapon.mag <= 0) { if (!this.reload() && this.reloading <= 0) this.dropWeapon(this.angle, 2); return; }
       this.fire(d);
-      this.weapon.ammo = Infinity;
       if (d.burst) {
         this.burst++;
         this.cooldown = this.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
@@ -214,7 +215,7 @@ export default class Enemy extends Character {
     const it = this.fetchTarget;
     if (!it || it.dead) { this.setState(S.SEARCH); this.searchT = 3; return; }
     if (Math.hypot(it.x - this.x, it.y - this.y) < 14) {
-      this.setWeapon(it.type, Infinity);
+      this.setWeapon(it.type, it.mag, WEAPONS[it.type].mag ?? 0);
       this.world.removeItem(it);
       this.world.sound('pickup', this.x, this.y, 0.5);
       this.setState(this.lastSeen ? S.CHASE : S.SEARCH);

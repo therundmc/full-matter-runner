@@ -81,6 +81,7 @@ export default class Projectile {
       case 'corpse': {
         // desecration: the body jerks, more blood
         const c = h.target;
+        if (h.part) { c.shotPart(h.part, a, this.weapon); return true; }
         w.pushBody(c.body, a, 2.2, (Math.random() - 0.5) * 0.2);
         w.particles.blood(h.x, h.y, a, 0.5, 10, 220);
         w.particles.blood(h.x, h.y, a + Math.PI, 0.6, 3, 80);

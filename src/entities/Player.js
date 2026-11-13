@@ -1,5 +1,5 @@
 import { PLAYER } from '../core/Config.js';
-import { WEAPONS } from '../data/weapons.js';
+import { WEAPONS, CALIBERS } from '../data/weapons.js';
 import { rand } from '../core/math.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
@@ -12,6 +12,18 @@ export default class Player extends Character {
     this.execution = null;
     this.nearItem = null;
     this.nearDowned = null;
+    // spare rounds per caliber
+    this.ammo = { '9mm': 24, '12g': 0, '762': 0, rocket: 0 };
+  }
+
+  reserveCount() {
+    const c = this.def.caliber;
+    return c ? this.ammo[c] : 0;
+  }
+  takeReserve(n) { this.ammo[this.def.caliber] -= n; }
+  giveReserve(n) {
+    const c = this.def.caliber;
+    this.ammo[c] = Math.min(CALIBERS[c].max, this.ammo[c] + n);
   }
 
   update(dt, input, aim) {
@@ -50,8 +62,12 @@ export default class Player extends Character {
     const d = this.def;
     if (d.kind === 'gun' ? (d.auto ? input.mouseDown(0) : input.mouseHit(0)) : input.mouseDown(0)) {
       if (input.mouseHit(0) && !this.armed && this.nearDowned) this.startExecution(this.nearDowned);
-      else this.attack();
+      else if (this.attack() === 'empty' && input.mouseHit(0)) {
+        // dry: reload if we can, otherwise hurl the useless gun at them
+        if (!this.reload()) this.throwWeapon(true);
+      }
     }
+    if (input.hit('KeyR')) this.reload();
     if (input.hit('Space') && this.nearDowned) this.startExecution(this.nearDowned);
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap
@@ -66,20 +82,28 @@ export default class Player extends Character {
     const it = this.nearItem;
     if (!it) return;
     if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
-    this.setWeapon(it.type, it.ammo);
+    this.setWeapon(it.type, it.mag);
     this.world.removeItem(it);
     this.world.sound('pickup', this.x, this.y);
-    this.cooldown = 0.12;
+    if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7);
+    this.pickAnim = 0.35;
+    this.cooldown = 0.2;
+    this.world.pickupFlash(this.x + Math.cos(this.angle) * 10, this.y + Math.sin(this.angle) * 10);
   }
 
-  throwWeapon() {
+  // power = true: the angry "out of bullets" John Wick throw (faster, spinning, a beat of slow motion)
+  throwWeapon(power = false) {
     const w = this.world, a = this.angle;
-    const it = new WeaponItem(w, this.weapon.type, this.weapon.ammo, this.x + Math.cos(a) * 12, this.y + Math.sin(a) * 12,
-      a, Math.cos(a) * 11 + this.vel.x, Math.sin(a) * 11 + this.vel.y, rand(0.4, 0.7) * (Math.random() < 0.5 ? -1 : 1), this);
+    const sp = power ? 15 : 11;
+    const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * 12, this.y + Math.sin(a) * 12,
+      a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, (power ? 0.9 : rand(0.4, 0.7)) * (Math.random() < 0.5 ? -1 : 1), this);
     w.addItem(it);
     this.weapon = null;
+    this.reloading = 0;
     this.cooldown = 0.15;
-    w.sound('throw', this.x, this.y);
+    this.swingDur = this.swing = 0.2;
+    w.sound('throw', this.x, this.y, power ? 1 : 0.8);
+    if (power) { w.slowmo(0.45, 0.25); w.shake(0.15); }
   }
 
   // ground finisher on a knocked-out enemy
@@ -111,7 +135,7 @@ export default class Player extends Character {
       w.map.stampBlood(tg.x, tg.y, 6, 4);
       w.shake(0.18);
       if (d.kind === 'gun') {
-        if (this.weapon.ammo > 0) { this.weapon.ammo--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this); }
+        if (this.weapon.mag > 0) { this.weapon.mag--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this); }
         else w.sound('punch', tg.x, tg.y);
       } else w.sound(d.hold === 'none' ? 'punch' : 'splat', tg.x, tg.y);
       if (ex.done >= ex.hits) {
@@ -127,6 +151,6 @@ export default class Player extends Character {
   get ammoText() {
     if (!this.weapon) return '';
     const d = WEAPONS[this.weapon.type];
-    return d.kind === 'gun' ? `${Math.max(0, this.weapon.ammo)}/${d.ammo}` : '';
+    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()}` : '';
   }
 }

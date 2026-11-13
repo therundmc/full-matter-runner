@@ -1,6 +1,6 @@
 import { CAT, MASK } from '../core/Config.js';
 import { PROPS } from '../data/props.js';
-import { sprite, slices, chunk, drawSpriteShadowed } from '../core/Assets.js';
+import { sprite, spriteOpt, slices, chunk, drawSpriteShadowed, drawSprite } from '../core/Assets.js';
 import { rand, chance, angDiff } from '../core/math.js';
 import Debris from './Debris.js';
 
@@ -12,7 +12,7 @@ export default class Prop {
     this.type = type;
     this.def = PROPS[type];
     if (!this.def) throw new Error('unknown prop ' + type);
-    this.img = sprite('props/' + type);
+    this.img = spriteOpt('props/' + type) || sprite(type.startsWith('neon') ? 'props/tv' : 'props/trash_can');
     this.hp = this.def.hp;
     const d = this.def;
     const opts = {
@@ -81,6 +81,14 @@ export default class Prop {
     if (d.glass) { w.particles.glass(x, y, dirA, 1.5, 14); w.sound('glass', x, y, 0.6); }
     if (d.sparks) { w.particles.sparks(x, y, 0, Math.PI, 18, 260); w.light(x, y, 50, '#9ff', 0.08); }
     if (d.dirt) w.particles.chips(x, y, 0, Math.PI, 14, '#4a2e1a', 120);
+    if (d.fountain) {
+      // broken hydrant: a geyser for a while
+      w.emit(x, y, 9, (e) => {
+        for (let i = 0; i < 3; i++) w.particles.chips(e.x, e.y, rand(0, 6.28), 0.3, 1, chance(0.5) ? '#9fdcff' : '#e8fbff', rand(60, 240));
+        if (chance(0.3)) w.particles.smoke(e.x, e.y, 1, 3, { speed: 30, size: 4, life: 0.6 });
+      });
+      w.sound('tirePop', x, y, 0.5);
+    }
     if (d.water) {
       for (let i = 0; i < 30; i++) w.particles.chips(x, y, rand(0, 7), 0.3, 1, chance(0.5) ? '#9fdcff' : '#d8f4ff', rand(40, 200));
     }
@@ -93,6 +101,15 @@ export default class Prop {
     // jitter briefly when hit
     let jx = 0, jy = 0;
     if (this.flash > 0) { this.flash -= 1 / 60; jx = rand(-1.5, 1.5); jy = rand(-1.5, 1.5); }
+    if (this.def.overhead) return; // drawn later, above characters
     drawSpriteShadowed(ctx, this.img, p.x + jx, p.y + jy, this.body.angle, 3);
+  }
+
+  // canopies and lamp heads: above everyone, see-through when the player is under
+  drawOverhead(ctx, player) {
+    const p = this.body.position;
+    const under = player && Math.hypot(player.x - p.x, player.y - p.y) < this.img.width * 0.45;
+    drawSprite(ctx, this.img, p.x + 5, p.y + 7, this.body.angle, 0.3);
+    drawSprite(ctx, this.img, p.x, p.y, this.body.angle, under ? 0.45 : 1);
   }
 }

@@ -1,6 +1,6 @@
 import { CAT, MASK, PALETTE, ENEMY } from '../core/Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { sprite, drawSprite, silhouette } from '../core/Assets.js';
+import { sprite, spriteOpt, chunk, drawSprite, silhouette } from '../core/Assets.js';
 import { rand, spread, angDiff, local, lerp, clamp } from '../core/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
@@ -45,6 +45,10 @@ export default class Character {
     this.swingDur = 1;
     this.punchSide = 1;
     this.recoil = 0;
+    this.reloading = 0;
+    this.reloadDur = 1;
+    this.reloadStage = 0;
+    this.pickAnim = 0;
     this.alive = true;
     this.knocked = 0;
     this.downAngle = 0;
@@ -58,8 +62,80 @@ export default class Character {
   get def() { return WEAPONS[this.weapon ? this.weapon.type : 'fists']; }
   get armed() { return !!this.weapon; }
 
-  setWeapon(type, ammo) {
-    this.weapon = type ? { type, ammo: ammo ?? WEAPONS[type].ammo ?? Infinity } : null;
+  // weapon instance: { type, mag (rounds loaded), reserve (spare rounds, enemies only) }
+  setWeapon(type, mag, reserve = 0) {
+    this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve } : null;
+    this.reloading = 0;
+  }
+
+  // spare rounds for the current gun (the player overrides this with caliber pools)
+  reserveCount() { return this.weapon ? this.weapon.reserve : 0; }
+  takeReserve(n) { this.weapon.reserve -= n; }
+  giveReserve(n) { this.weapon.reserve += n; }
+
+  get canReload() {
+    const d = this.def;
+    return d.kind === 'gun' && this.reloading <= 0 && this.weapon.mag < d.mag && this.reserveCount() > 0;
+  }
+
+  // start a reload: magazine weapons swap the whole mag, the shotgun loads shell by shell
+  reload() {
+    if (!this.canReload || !this.alive || this.knocked) return false;
+    const d = this.def;
+    this.reloadDur = this.reloading = d.reload;
+    this.reloadStage = 0;
+    if (!d.shellReload) {
+      // rounds left in the old mag go back to the pool
+      this.giveReserve(this.weapon.mag);
+      this.weapon.mag = 0;
+    }
+    this.world.sound(d.shellReload ? 'shellIn' : 'magOut', this.x, this.y, 0.7);
+    return true;
+  }
+
+  updateReload(dt) {
+    if (this.reloading <= 0 || !this.weapon) return;
+    const d = this.def;
+    this.reloading -= dt;
+    const p = 1 - this.reloading / this.reloadDur;
+    if (d.shellReload) {
+      if (this.reloading <= 0) {
+        this.weapon.mag++;
+        this.takeReserve(1);
+        this.world.sound('shellIn', this.x, this.y, 0.6);
+        if (this.weapon.mag < d.mag && this.reserveCount() > 0) this.reloadDur = this.reloading = d.reload;
+        else { this.reloading = 0; this.world.sound('rack', this.x, this.y, 0.8); this.recoil = 0.8; }
+      }
+      return;
+    }
+    if (this.reloadStage === 0 && p > 0.08) {
+      this.reloadStage = 1;
+      this.dropMag();
+    }
+    if (this.reloadStage === 1 && p > 0.7) {
+      this.reloadStage = 2;
+      const n = Math.min(d.mag, this.reserveCount());
+      this.weapon.mag = n;
+      this.takeReserve(n);
+      this.world.sound('magIn', this.x, this.y, 0.8);
+    }
+    if (this.reloadStage === 2 && p > 0.86) {
+      this.reloadStage = 3;
+      this.world.sound('rack', this.x, this.y, 0.8);
+      this.recoil = 0.9;
+    }
+    if (this.reloading <= 0) this.reloading = 0;
+  }
+
+  // the empty magazine falls out and clatters on the floor
+  dropMag() {
+    const d = this.def;
+    if (!d.magSprite) return;
+    const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6);
+    const g = local(this.x, this.y, this.angle, d.hold === 'two' ? 9 : 8, 2);
+    const a = this.angle + Math.PI / 2 + rand(-0.6, 0.6);
+    this.world.addDebris(new Debris(this.world, img, g.x, g.y, this.angle + Math.PI / 2, Math.cos(a) * rand(30, 70), Math.sin(a) * rand(30, 70),
+      rand(-0.4, 0.4), { metal: true, air: 0.1, density: 0.002, bounce: 0.3 }));
   }
 
   // desired direction (dx, dy), speed in px/step
@@ -75,6 +151,8 @@ export default class Character {
   baseUpdate(dt) {
     this.cooldown -= dt;
     this.swing = Math.max(0, this.swing - dt);
+    this.pickAnim = Math.max(0, this.pickAnim - dt);
+    this.updateReload(dt);
     this.recoil = Math.max(0, this.recoil - dt * 9);
     const v = Body.getVelocity(this.body);
     const sp = Math.hypot(v.x, v.y);
@@ -87,7 +165,12 @@ export default class Character {
     if (this.cooldown > 0 || !this.alive || this.knocked) return false;
     const d = this.def;
     if (d.kind === 'gun') {
-      if (this.weapon.ammo <= 0) {
+      // firing interrupts a shell-by-shell reload
+      if (this.reloading > 0) {
+        if (!d.shellReload || this.weapon.mag <= 0) return false;
+        this.reloading = 0;
+      }
+      if (this.weapon.mag <= 0) {
         this.cooldown = 0.25;
         this.world.sound('click', this.x, this.y);
         return 'empty';
@@ -134,7 +217,7 @@ export default class Character {
     // only the player's gunfire draws the guards in
     if (d.noise && this.isPlayer) w.noise(this.x, this.y, d.noise, this);
     this.recoil = 1;
-    this.weapon.ammo--;
+    this.weapon.mag--;
     this.vel.x -= Math.cos(a) * d.kick * 0.12;
     this.vel.y -= Math.sin(a) * d.kick * 0.12;
     if (this.isPlayer) {
@@ -205,6 +288,7 @@ export default class Character {
   kill(angle, cause, killer, goreMul = 1) {
     if (!this.alive) return;
     this.alive = false;
+    this.lastCaliber = this.weapon && WEAPONS[this.weapon.type].caliber;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
     gore(this.world, this, angle, cause, goreMul);
@@ -216,7 +300,7 @@ export default class Character {
   dropWeapon(angle, speed = 2) {
     if (!this.weapon) return;
     const w = this.world;
-    w.addItem(new WeaponItem(w, this.weapon.type, this.weapon.ammo === Infinity ? (this.def.ammo ?? Infinity) : this.weapon.ammo,
+    w.addItem(new WeaponItem(w, this.weapon.type, this.weapon.mag,
       this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-0.3, 0.3)));
     this.weapon = null;
   }
@@ -275,7 +359,38 @@ export default class Character {
       hr = { x: 5 - rc, y: 3 };
       wpn = { x: hr.x, y: 2, a: 0 };
       hl = { x: hr.x + sprite(d.sprite).width * 0.5, y: 1 };
-    } else {
+    }
+    let carry = null; // magazine / shell held in the off hand while reloading
+    if (wpn && this.reloading > 0) {
+      const p = 1 - this.reloading / this.reloadDur;
+      const belt = { x: -1, y: -8 };
+      if (d.shellReload) {
+        // off hand shuttles shells from the belt to the loading port
+        const port = { x: wpn.x + 6, y: wpn.y + 3 };
+        const k = Math.sin(Math.PI * p);
+        hl = { x: lerp(belt.x, port.x, k), y: lerp(belt.y, port.y, k) };
+        wpn.a = -0.35;
+        carry = { img: sprite('weapons/shell'), pos: hl, a: 0 };
+      } else {
+        // tilt the gun, fetch a fresh mag from the belt, slam it in, rack
+        const tilt = p < 0.12 ? p / 0.12 : p > 0.85 ? (1 - p) / 0.15 : 1;
+        wpn.a = -0.55 * tilt;
+        const well = { x: wpn.x + 2, y: wpn.y + 3 };
+        if (p < 0.15) hl = { x: lerp(hl.x, belt.x, p / 0.15), y: lerp(hl.y, belt.y, p / 0.15) };
+        else if (p < 0.4) hl = belt;
+        else if (p < 0.7) hl = { x: lerp(belt.x, well.x, easeOut((p - 0.4) / 0.3)), y: lerp(belt.y, well.y, easeOut((p - 0.4) / 0.3)) };
+        else hl = well;
+        if (p > 0.25 && p < 0.72 && d.magSprite) carry = { img: spriteOpt(d.magSprite), pos: hl, a: Math.PI / 2 };
+        if (p > 0.86) wpn.x -= Math.sin((p - 0.86) / 0.14 * Math.PI) * 3;
+      }
+    }
+    if (wpn && this.pickAnim > 0) {
+      // flashy pickup: the weapon twirls into the hand
+      const k = this.pickAnim / 0.35;
+      wpn.a += k * k * Math.PI * 2;
+      wpn.x -= k * 3;
+    }
+    if (d.hold === 'melee') {
       const rest = d === WEAPONS.bat ? 2.1 : 0.9;
       let wa = rest;
       if (this.swing > 0) {
@@ -314,6 +429,13 @@ export default class Character {
       ctx.translate(wpn.x, wpn.y);
       ctx.rotate(wpn.a);
       ctx.drawImage(img, -d.grip, -img.height / 2);
+      ctx.restore();
+    }
+    if (carry && carry.img) {
+      ctx.save();
+      ctx.translate(carry.pos.x, carry.pos.y);
+      ctx.rotate(carry.a);
+      ctx.drawImage(carry.img, -carry.img.width / 2, -carry.img.height / 2);
       ctx.restore();
     }
     for (const h of [hl, hr]) {
