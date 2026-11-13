@@ -25,6 +25,9 @@ export function newPose() {
     feet: [pt(), pt()],
     hl: pt(), hr: pt(), wpn: pt(), carry: pt(), trail: { on: false, x: 0, y: 0, a0: 0, a1: 0, r: 0, alpha: 0 },
     wpnOn: false, carryImg: null,
+    // weapon foreshortening (-1 pointing back .. 1), its swelling when it comes up toward the camera, and what is held
+    // above the shoulders: 0 nothing, 1 the weapon and its hand, 2 both hands
+    wpnLen: 1, wpnS: 1, top: 0,
   };
 }
 
@@ -44,7 +47,7 @@ export function standPose(ch, P, a = ch.angle) {
   const swingP = ch.swing > 0 ? 1 - ch.swing / ch.swingDur : 1;
   const rk = ch.recoil * ch.recoil; // snappy kick, eased recovery
   const kick = d.kick ?? 0;
-  let twist = 0, back = 0, dip = 0;
+  let twist = 0, back = 0, dip = 0, len = 1, thick = 1, top = 0;
 
   // aim-space hands / weapon (x forward, y right)
   let hlx, hly, hrx, hry, wx = 0, wy = 0, wa = 0, wpnOn = false;
@@ -109,30 +112,63 @@ export function standPose(ch, P, a = ch.angle) {
       hrx = wx;
     }
   } else {
-    // melee weapon: anticipation, fast swing (front of the arc when the hit lands), follow-through, recovery
+    // melee weapon. At rest a bat lies on the shoulder and a knife is held low, point forward. A blow is one of three
+    // gestures (ch.strike): forehand sweep, backhand sweep, or the heavy one (overhead smash / straight stab), all on
+    // the same clock: anticipation, fast stroke (in front when the hit lands), follow-through, recovery.
     const bat = d === WEAPONS.bat;
-    const rest = bat ? 2.1 : 0.9, wind = rest + 0.3, end = bat ? -1.9 : -1.3, over = end - 0.22;
-    const home = bat ? rest - Math.PI * 2 : rest; // the bat comes back round behind the shoulder, not through the target again
-    let r = 7;
-    wa = rest;
+    const ra = bat ? 3 : 0.35; // weapon angle at rest
+    const sw = stride * 2.2 * g;
+    hlx = 6 - sw; hly = -6;
+    hrx = bat ? 5 : 7 + sw * 0.5; hry = bat ? 4 : 6.5;
+    wa = ra;
     if (ch.swing > 0) {
-      const p = swingP;
-      wa = p < 0.12 ? lerp(rest, wind, smooth(p / 0.12))
-        : p < 0.4 ? lerp(wind, end, easeOut((p - 0.12) / 0.28))
-          : p < 0.55 ? lerp(end, over, smooth((p - 0.4) / 0.15)) : lerp(over, home, smooth((p - 0.55) / 0.45));
-      r += 2 * bump(p, 0.08, 0.6);
-      twist = (bat ? -0.4 : -0.25) * smooth((p - 0.1) / 0.3) * (1 - smooth((p - 0.5) / 0.5)); // shoulders follow the swing
-      if (p > 0.12 && p < 0.55) {
-        const tr = P.trail;
-        tr.on = true;
-        tr.alpha = 0.35 * (1 - smooth((p - 0.35) / 0.2));
-        tr.r = d.range * 0.85;
-        tr.a0 = wa; tr.a1 = Math.min(wind, wa + 1.7);
+      const p = swingP, k = ch.strike;
+      const out = smooth(p / 0.12) * (1 - smooth((p - 0.55) / 0.45)); // 0 in the rest pose .. 1 during the stroke
+      let sx, sy; // where the stroke puts the hand
+      if (k < 2) {
+        // sweep across the front (a backhand is its mirror image). The angle runs from the rest pose to the rest
+        // pose: the bat carries on round the back of the head, the knife comes back the way it went
+        const dir = k ? -1 : 1;
+        const from = bat && k ? Math.PI * 2 - ra : dir * ra, home = bat ? (k ? -ra : ra - Math.PI * 2) : dir * ra;
+        const wind = bat ? 2.5 : 1.3, end = bat ? -1.9 : -1.3, over = end - 0.22;
+        wa = dir * (p < 0.12 ? lerp(from, wind, smooth(p / 0.12))
+          : p < 0.4 ? lerp(wind, end, easeOut((p - 0.12) / 0.28))
+            : p < 0.55 ? lerp(end, over, smooth((p - 0.4) / 0.15)) : lerp(over, home, smooth((p - 0.55) / 0.45)));
+        const r = 7 + 2 * bump(p, 0.08, 0.6), cw = Math.cos(wa);
+        sx = 3 + cw * r * (bat && cw < 0 ? 0.5 : 1); sy = (bat ? 1 : 2) + Math.sin(wa) * r; // a bat stays close behind
+        twist = -dir * (bat ? 0.4 : 0.25) * smooth((p - 0.1) / 0.3) * (1 - smooth((p - 0.5) / 0.5)); // shoulders follow
+        if (p > 0.12 && p < 0.55) {
+          const tr = P.trail;
+          tr.on = true;
+          tr.alpha = 0.35 * (1 - smooth((p - 0.35) / 0.2));
+          tr.r = d.range * 0.85;
+          if (dir > 0) { tr.a0 = wa; tr.a1 = Math.min(wind, wa + 1.7); } else { tr.a0 = Math.max(-wind, wa - 1.7); tr.a1 = wa; }
+        }
+      } else if (bat) {
+        // overhead smash: up over the head (the bat shortens as it points at the camera), straight down in front,
+        // then back to the shoulder round the right side
+        const u = easeOut((p - 0.1) / 0.2);
+        if (p < 0.3) { wa = lerp(ra, Math.PI, smooth(p / 0.1)); len = Math.cos(Math.PI * u); thick = 1 + 0.35 * Math.sin(Math.PI * u); }
+        else wa = ra * smooth((p - 0.55) / 0.45);
+        sx = lerp(1.5, 10, u); sy = 1.5;
+        back = -2.5 * bump(p, 0.12, 0.7);
+        dip = 0.05 * bump(p, 0.2, 0.7) - 0.05 * bump(p, 0, 0.2); // up on the toes, then bent over the blow
+        if (p < 0.3 && len > -0.5) top = 2;
+      } else {
+        // straight stab: the elbow comes back, the point goes in with the shoulder behind it
+        const go = easeOut((p - 0.12) / 0.16);
+        wa = ra * (1 - out);
+        sx = lerp(2, 13, go); sy = lerp(5.5, 1.5, go);
+        twist = 0.25 * bump(p, 0, 0.14) - 0.35 * smooth((p - 0.12) / 0.16) * (1 - smooth((p - 0.5) / 0.5));
+        back = -2 * bump(p, 0.12, 0.7);
       }
+      hrx = lerp(hrx, sx, out); hry = lerp(hry, sy, out);
+      // a bat is swung with both hands (the other one under the leading one), a knife arm is balanced by the other
+      if (bat) { hlx = lerp(hlx, sx - Math.cos(wa) * 2.5 * len, out); hly = lerp(hly, sy - Math.sin(wa) * 2.5 * len, out); }
+      else hlx -= (k < 2 ? 2.5 : 4) * out;
     }
-    hrx = 3 + Math.cos(wa) * r; hry = 2 + Math.sin(wa) * r;
     wx = hrx; wy = hry; wpnOn = true;
-    hlx = 6; hly = -6;
+    if (bat && !top && Math.cos(wa) * len < -0.3) top = 1; // behind the head: over the shoulder
   }
   if (wpnOn && ch.pickAnim > 0) {
     // flashy pickup: the weapon twirls into the hand, a little dip to grab it
@@ -163,6 +199,7 @@ export function standPose(ch, P, a = ch.angle) {
   place(P.hl, P, a, hlx, hly);
   place(P.hr, P, a, hrx, hry);
   P.wpnOn = wpnOn;
+  P.wpnLen = len; P.wpnS = thick; P.top = top;
   if (wpnOn) { place(P.wpn, P, a, wx, wy); P.wpn.a = a + wa; }
   P.carryImg = carryImg;
   if (carryImg) { place(P.carry, P, a, cx, cy); P.carry.a = a + ca; }
@@ -183,6 +220,8 @@ function blendPose(A, B, w) {
   A.s = lerp(A.s, B.s, w);
   A.lift = lerp(A.lift, B.lift, w);
   A.legs = lerp(A.legs, B.legs, w);
+  A.wpnLen = lerp(A.wpnLen, B.wpnLen, w); A.wpnS = lerp(A.wpnS, B.wpnS, w);
+  if (w > 0.5) A.top = B.top;
   for (let i = 0; i < 2; i++) {
     const f = A.feet[i], g = B.feet[i];
     f.x = lerp(f.x, g.x, w); f.y = lerp(f.y, g.y, w); f.a = lerpA(f.a, g.a, w);
@@ -200,6 +239,7 @@ function copyPose(A, B) {
   for (let i = 0; i < 2; i++) Object.assign(A.feet[i], B.feet[i]);
   for (const k of ['hl', 'hr', 'wpn', 'carry']) Object.assign(A[k], B[k]);
   A.wpnOn = B.wpnOn; A.carryImg = B.carryImg;
+  A.wpnLen = B.wpnLen; A.wpnS = B.wpnS; A.top = B.top;
   A.trail.on = false;
 }
 
@@ -271,6 +311,7 @@ export function vaultPose(ch, P, V) {
   V.s = 1 + (win ? 0.16 : 0.09) * h;
   V.lift = win ? h : h * 0.6;
   V.legs = win ? 0 : h;
+  V.top = 0;
   legsPose(V, win ? LEGS.window : LEGS.prop, k, dir, v.legSide);
 
   if (win) {
@@ -317,6 +358,7 @@ export function slidePose(ch, P, V) {
   V.tx = P.tx * 0.3 - c * 3.5; V.ty = P.ty * 0.3 - s * 3.5;
   V.s = 0.88;
   V.legs = 1;
+  V.top = 0;
   // lead leg straight out (opposite the palm), the other bent under, a slight tremor of the floor
   const shake = Math.sin(ch.world.time * 70) * 0.35 * (1 - sl.k);
   for (let i = 0; i < 2; i++) {
@@ -338,6 +380,26 @@ export function slidePose(ch, P, V) {
 
 // ---------------- rendering ----------------
 const LH = { x: 0, y: 0 }, RH = { x: 0, y: 0 }, TMP = { x: 0, y: 0 };
+
+// the weapon at torso-local point `at`; over the shoulders it casts a little shadow on them
+function drawWeapon(ctx, P, d, ta, at, shadow) {
+  const img = sprite(d.sprite);
+  const len = Math.sign(P.wpnLen || 1) * Math.max(0.15, Math.abs(P.wpnLen));
+  for (let i = shadow ? 0 : 1; i < 2; i++) {
+    ctx.save();
+    ctx.translate(at.x + (i ? 0 : 1.5), at.y + (i ? 0 : 1.5));
+    ctx.rotate(P.wpn.a - ta);
+    ctx.scale(len, P.wpnS);
+    if (!i) ctx.globalAlpha *= 0.3;
+    ctx.drawImage(i ? img : silhouette(img), -d.grip, -img.height / 2);
+    ctx.restore();
+  }
+}
+
+function drawHand(ctx, ch, h) {
+  ctx.fillStyle = PALETTE.ink; ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
+  ctx.fillStyle = ch.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
+}
 
 export function drawPose(ctx, ch, P, alpha = 1) {
   const x = ch.x, y = ch.y, s = P.s, ta = P.ta;
@@ -413,16 +475,8 @@ export function drawPose(ctx, ch, P, alpha = 1) {
     ctx.strokeStyle = ch.look.arm; ctx.lineWidth = 2.8;
     ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
   }
-  const d = ch.def;
-  if (P.wpnOn && d.sprite) {
-    const img = sprite(d.sprite);
-    toLocal(P.wpn, TMP);
-    ctx.save();
-    ctx.translate(TMP.x, TMP.y);
-    ctx.rotate(P.wpn.a - ta);
-    ctx.drawImage(img, -d.grip, -img.height / 2);
-    ctx.restore();
-  }
+  const d = ch.def, armed = P.wpnOn && d.sprite;
+  if (armed && !P.top) drawWeapon(ctx, P, d, ta, toLocal(P.wpn, TMP));
   if (P.carryImg) {
     toLocal(P.carry, TMP);
     ctx.save();
@@ -431,14 +485,22 @@ export function drawPose(ctx, ch, P, alpha = 1) {
     ctx.drawImage(P.carryImg, -P.carryImg.width / 2, -P.carryImg.height / 2);
     ctx.restore();
   }
-  for (let i = 0; i < 2; i++) {
-    const h = i ? hr : hl;
-    ctx.fillStyle = PALETTE.ink; ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
-    ctx.fillStyle = ch.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
-  }
+  if (P.top < 2) drawHand(ctx, ch, hl);
+  if (!P.top) drawHand(ctx, ch, hr);
   ctx.restore();
 
   drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
+  if (P.top) {
+    // what is held above the shoulders goes over them
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(ta);
+    ctx.scale(s, s);
+    if (armed) drawWeapon(ctx, P, d, ta, toLocal(P.wpn, TMP), true);
+    if (P.top > 1) drawHand(ctx, ch, hl);
+    drawHand(ctx, ch, hr);
+    ctx.restore();
+  }
   ctx.globalAlpha = ga;
 }
 

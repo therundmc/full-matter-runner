@@ -53,6 +53,7 @@ export default class Character {
     this.swing = 0;
     this.swingDur = 1;
     this.punchSide = 1;
+    this.strike = 0;        // gesture of the current melee blow: 0 forehand, 1 backhand, 2 smash / stab
     this.recoil = 0;
     this.reloading = 0;
     this.reloadDur = 1;
@@ -221,12 +222,23 @@ export default class Character {
       this.cooldown = d.rate;
       return true;
     }
+    this.strike = this.pickStrike(d);
     this.cooldown = d.rate;
     this.swingDur = this.swing = d.rate * 0.85;
-    this.punchSide *= -1;
+    // side the stroke comes from (it runs toward the other one)
+    this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
     this.world.sound('swing', this.x, this.y, 0.6);
     this.world.after(d.windup, () => this.meleeStrike(d));
     return true;
+  }
+
+  // gesture of a blow with a bat or a knife (see CharacterAnim): blows chained without a pause alternate forehand
+  // and backhand; now and then comes the heavy one, an overhead smash or a straight stab
+  pickStrike(d) {
+    if (d.hold !== 'melee') return 0;
+    const chained = this.cooldown > -0.25;
+    if (this.strike !== 2 && chance(chained ? 0.25 : 0.3)) return 2;
+    return chained && this.strike === 0 ? 1 : 0;
   }
 
   muzzlePos() {
@@ -281,6 +293,10 @@ export default class Character {
       if (Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2 && dd > c.radius + 5) continue;
       if (!w.lineOfSight(x, y, c.x, c.y)) continue;
       hit = true;
+      // the blow lands: a spark across it (along it for a stab or a smash), the camera takes some of it
+      const heavy = d.hold === 'melee' && this.strike === 2;
+      w.hitSpark((x + c.x * 2) / 3, (y + c.y * 2) / 3, heavy || d.hold === 'none' ? a : a - (Math.PI / 2) * this.punchSide, d.lethal ? 1.4 : 1);
+      if (this.isPlayer) { w.camera.push(Math.cos(a) * 2, Math.sin(a) * 2); w.hitstop(d === WEAPONS.bat ? 0.06 : 0.045); }
       if (d.lethal || c.isPlayer) c.kill(a, d === WEAPONS.knife ? 'slash' : 'melee', this, d);
       else c.knock(a, 'punch');
     }
@@ -299,7 +315,7 @@ export default class Character {
       }
       // a blade cuts across the swing, bare hands only scuff, a bat dents
       const kind = d.bleed ? 'cut' : d.hold === 'none' ? 'punch' : 'blunt';
-      p.hit(d.lethal ? 2 : 1, hx, hy, a, 2.5, kind, { swing: a + (Math.PI / 2) * (this.punchSide || 1) });
+      p.hit(d.lethal ? 2 : 1, hx, hy, a, 2.5, kind, { swing: a - (Math.PI / 2) * this.punchSide });
       hit = true;
     }
     for (const win of w.windows) {

@@ -119,6 +119,24 @@ export default class WorldRenderer {
       ctx.beginPath(); ctx.arc(2, 0, 2.5 * s, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
+    // hit sparks: a long thin streak along the blow, a short one across, opening up as they fade
+    for (const f of w.hitSparks) {
+      const p = 1 - f.t / f.dur, l = (9 + 9 * p) * f.size, h = (2.2 - 1.6 * p) * f.size;
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(f.a);
+      ctx.globalAlpha = 1 - p * p;
+      ctx.fillStyle = '#fff6e0';
+      for (let i = 0; i < 2; i++) {
+        const k = i ? 0.45 : 1;
+        ctx.beginPath();
+        ctx.moveTo(-l * k, 0); ctx.lineTo(0, -h); ctx.lineTo(l * k, 0); ctx.lineTo(0, h);
+        ctx.closePath(); ctx.fill();
+        ctx.rotate(Math.PI / 2);
+      }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
     for (const r of w.rings) {
       const p = r.t / r.dur;
       ctx.strokeStyle = `rgba(255,240,220,${1 - p})`;

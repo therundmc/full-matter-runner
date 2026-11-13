@@ -265,6 +265,7 @@ export default class Player extends Character {
       const d = this.def;
       this.swingDur = this.swing = 0.2;
       this.punchSide *= -1;
+      this.strike = 2; // straight down on him
       w.particles.blood(tg.x, tg.y, rand(0, 6.28), Math.PI, 14, 160);
       w.decals.stampBlood(tg.x, tg.y, 6, 4);
       w.shake(0.18);
