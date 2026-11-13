@@ -52,6 +52,17 @@ export default class TileMap {
 
   at(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? ' ' : this.chars[y][x]; }
   isWallChar(x, y) { const c = this.at(x, y); return !!WALLS[c]; }
+  // deep inside a block of brick: the flat roof of a neighbouring building (its outer ring of tiles is the parapet)
+  isRoof(x, y) {
+    if (this.at(x, y) !== 'X') return false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < this.w && ny < this.h && !WALLS[this.chars[ny][nx]]) return false;
+      }
+    }
+    return true;
+  }
   inside(px, py) { return px >= 0 && py >= 0 && px < this.widthPx && py < this.heightPx; }
   solidAt(px, py) { return this.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)); }
 

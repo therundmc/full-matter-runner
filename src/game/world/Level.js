@@ -25,6 +25,7 @@ const SMALL_PROPS = { x: 'barrel', c: 'crate', t: 'trash_can' };
 
 export function buildLevel(world, level) {
   const map = world.map;
+  world.decals.dressRoofs(level.roof || []);
   const cx = (x) => (x + 0.5) * TILE;
 
   // ---- doors (runs of D), windows (G), fences (F)

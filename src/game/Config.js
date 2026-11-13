@@ -231,6 +231,7 @@ export const LIGHTING = {
     inside: [0.22, 0.18, 0.36],
     neon: [0.36, 0.28, 0.5],
     wall: [0.2, 0.17, 0.32],
+    roof: [0.17, 0.2, 0.34], // flat roofs of the neighbouring buildings: darker than the street, out of play
     void: [0.08, 0.06, 0.14],
   },
   falloff: [[0, 1], [0.12, 0.85], [0.35, 0.48], [0.65, 0.17], [1, 0]], // radial light profile (pos, alpha)

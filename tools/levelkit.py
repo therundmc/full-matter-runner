@@ -10,16 +10,20 @@ Units: 1 tile = 1 m = 32 px. Props are placed by their centre, in tiles (floats,
     lv.actor('@', 21, 35, face=270)
     lv.area('back lot')
     lv.prop('van', 24.5, 2.3, 180, lights=False)
+    lv.roof('skylight', 16.0, 35.5)
     lv.check(guards=13)
     lv.write('level1', header=[...], name='...', subtitle='...')
 
-Legends: tiles in src/game/world/TileMap.js, actors in src/game/world/Level.js, props in src/game/data/props.js.
+Legends: tiles in src/game/world/TileMap.js, actors in src/game/world/Level.js, props in src/game/data/props.js,
+rooftop dressing in src/game/data/roofs.js (scenery on the flat roofs: the brick tiles surrounded by walls).
 """
 import json
+import math
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOLID = set(' #X')
+WALLS = set('#X')
 OPENINGS = set('DLGF')
 GUARDS = set('pushrbk')
 
@@ -36,6 +40,12 @@ SIZES = dict(
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
 )
 
+# rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
+ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
+                  antenna=(34, 34), bulkhead=(62, 54), skylight=(46, 30), skylight_tv=(46, 30), skylight_dark=(46, 30))
+# the lit ones: (radius, offset along the piece's +y) of their glow in px (keep in sync with src/game/data/roofs.js)
+ROOF_GLOW = dict(bulkhead=(56, 30), skylight=(62, 0), skylight_tv=(54, 0))
+
 
 def js(v):
     return json.dumps(v).replace('"', "'")
@@ -47,6 +57,7 @@ class Level:
         self.tiles = [[base] * w for _ in range(h)]
         self.actors = [[' '] * w for _ in range(h)]
         self.props = []       # (area, type, col, row, deg, options)
+        self.roofs = []       # (area, kind, col, row, deg)
         self.facing = {}
         self.patrols = {}
         self.spawns = []      # centre of every character, for the overlap check
@@ -81,10 +92,44 @@ class Level:
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
 
+    # ---- rooftop dressing: scenery on the flat roofs of the neighbouring buildings
+    def roof(self, kind, col, row, deg=0):
+        self.roofs.append((self._area, kind, col, row, deg))
+
+    def is_wall(self, x, y):
+        return not (0 <= x < self.w and 0 <= y < self.h) or self.tiles[y][x] in WALLS
+
+    # same rule as TileMap.isRoof: brick with nothing but walls around it
+    def is_roof(self, x, y):
+        inside = 0 <= x < self.w and 0 <= y < self.h
+        return inside and self.tiles[y][x] == 'X' and all(self.is_wall(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
+
+    def check_roofs(self):
+        boxes = []
+        for (_, kind, col, row, deg) in self.roofs:
+            assert kind in ROOF_SIZES, f'unknown roof piece {kind}'
+            b = self.box(kind, col, row, deg, ROOF_SIZES)
+            for y in range(math.floor(b[1] + 0.02), math.floor(b[3] - 0.02) + 1):
+                for x in range(math.floor(b[0] + 0.02), math.floor(b[2] - 0.02) + 1):
+                    assert self.is_roof(x, y), f'{kind} at {col},{row} is off the roof ({x},{y})'
+            for (ok, ob) in boxes:
+                apart = b[0] >= ob[2] - 0.01 or ob[0] >= b[2] - 0.01 or b[1] >= ob[3] - 0.01 or ob[1] >= b[3] - 0.01
+                assert apart, f'{kind} at {col},{row} overlaps {ok}'
+            boxes.append((kind, b))
+            if kind in ROOF_GLOW:
+                # its glow is not shadowed: it must stay on the roof and its parapet, never spill on the street
+                r, off = ROOF_GLOW[kind]
+                a = math.radians(deg)
+                gx, gy, r = col - off / 32 * math.sin(a), row + off / 32 * math.cos(a), r / 32
+                for y in range(math.floor(gy - r), math.floor(gy + r) + 1):
+                    for x in range(math.floor(gx - r), math.floor(gx + r) + 1):
+                        d = math.hypot(gx - min(max(gx, x), x + 1), gy - min(max(gy, y), y + 1))
+                        assert d >= r or self.is_wall(x, y), f'the glow of {kind} at {col},{row} spills on ({x},{y})'
+
     # ---- checks
     @staticmethod
-    def box(kind, col, row, deg):
-        w, h = SIZES[kind]
+    def box(kind, col, row, deg, sizes=SIZES):
+        w, h = sizes[kind]
         if round(deg) % 180 == 90:
             w, h = h, w
         elif round(deg) % 90:
@@ -114,6 +159,7 @@ class Level:
             boxes.append((kind, b))
         n = sum(ch.lower() in GUARDS for row in self.actors for ch in row if ch.isalpha())
         assert guards is None or n == guards, f'{n} guards, expected {guards}'
+        self.check_roofs()
 
     # ---- output: src/game/data/levels/<module>.js
     def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None):
@@ -159,6 +205,24 @@ class Level:
         if line:
             L.append('   ' + line)
         L.append('  ],')
+        if self.roofs:
+            L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
+            L.append('  roof: [')
+            cur, line = None, ''
+            for (a, kind, col, row, deg) in self.roofs:
+                if a != cur:
+                    if line:
+                        L.append('   ' + line)
+                    L.append(f'    // {a}')
+                    cur, line = a, ''
+                item = f" ['{kind}', {col:g}, {row:g}, {deg:g}],"
+                if len(line) + len(item) > 116:
+                    L.append('   ' + line)
+                    line = ''
+                line += item
+            if line:
+                L.append('   ' + line)
+            L.append('  ],')
         if lights:
             L.append('  // indirect fill only: every visible light is a prop (lamps, signs, tubes, headlights)')
             L.append('  lights: [')
@@ -180,4 +244,4 @@ class Level:
         out = os.path.join(ROOT, 'src', 'game', 'data', 'levels', module + '.js')
         with open(out, 'w', encoding='utf-8', newline='\n') as f:
             f.write('\n'.join(L) + '\n')
-        print(f'wrote {out}: {self.w}x{self.h} tiles, {len(self.props)} props')
+        print(f'wrote {out}: {self.w}x{self.h} tiles, {len(self.props)} props, {len(self.roofs)} roof pieces')

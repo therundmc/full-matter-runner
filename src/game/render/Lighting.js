@@ -3,6 +3,7 @@ import { spriteOpt } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
 import { puddleShape } from '../systems/Liquids.js';
+import { ROOF_DECOR } from '../data/roofs.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
 // multiplied over the scene, then additive bloom, anamorphic flares and wet-floor reflections.
@@ -12,6 +13,7 @@ import { puddleShape } from '../systems/Liquids.js';
 // Prop lights: `def.light` (or LIGHTING.propLights[type]) = { r, color, intensity, flicker, x, y, dir, cone } or an array,
 // r/x/y in px in the prop's local frame (sprites face +x), dir/cone in radians. Flicker: true|'buzz', 'broken', 'pulse',
 // 'tv', 'disco' (moving unshadowed spot).
+// Rooftop glows: pieces of `level.roof` with a `light` (data/roofs.js) shine on their roof, unshadowed.
 
 const STREET = new Set(['asphalt', 'asphalt_line', 'sidewalk', 'grass', 'dirt']);
 const LIT_GRID = 16; // px per cell of the brightness grid (levelAt)
@@ -124,6 +126,7 @@ export default class Lighting {
     this.gradStops = L.falloff;
     this.buildSegments();
     this.lights = (world.level.lights || []).map((d, i) => this.makeLevelLight(d, i));
+    for (const d of world.level.roof || []) this.addRoofLight(d);
     this.buildAmbient();
     this.buildLevelLayers();
     this.gridDirty = true;
@@ -137,6 +140,20 @@ export default class Lighting {
     if (opt.cone) { l.cone = (opt.cone * Math.PI) / 180; l.dir = ((opt.dir ?? 0) * Math.PI) / 180; }
     l.bare = !opt.bulb;
     return l;
+  }
+
+  // a skylight or a door lamp up on a roof: lights the roof around it, never the street below
+  addRoofLight([kind, col, row, deg = 0]) {
+    const d = ROOF_DECOR[kind]?.light;
+    if (!d) return;
+    const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a), x = col * TILE, y = row * TILE;
+    const lx = d.x || 0, ly = d.y || 0;
+    const l = this.makeLight(x + lx * c - ly * s, y + lx * s + ly * c, d.r, d.color, d.intensity, d.flicker ?? false,
+      this.lights.length * 1.618 + 0.37);
+    l.shadows = false;
+    l.bare = true;
+    l.glow = { img: spriteOpt(`roof/${kind}_glow`), x, y, a }; // the piece's emissive map
+    this.lights.push(l);
   }
 
   makeLight(x, y, r, color, intensity, fl, seed) {
@@ -180,7 +197,7 @@ export default class Lighting {
         const g = m.floor[(y + dy) * m.w + x + dx];
         if (x + dx >= 0 && y + dy >= 0 && x + dx < m.w && y + dy < m.h && g && !STREET.has(g)) return 'wall';
       }
-      return 'street';
+      return m.isRoof(x, y) ? 'roof' : 'street';
     }
     if (!f) return m.isSolid(x, y) ? 'void' : 'street';
     if (f === 'neon_floor') return 'neon';
@@ -248,6 +265,8 @@ export default class Lighting {
     if (!changed.length) return;
     this.buildSegments();
     this.buildAmbient();
+    // a rooftop piece that went down with its roof no longer glows
+    this.lights = this.lights.filter((l) => !l.glow || m.isWallChar(Math.floor(l.glow.x / TILE), Math.floor(l.glow.y / TILE)));
     const touch = (l) => {
       for (let i = 0; i < changed.length; i += 2) {
         if (Math.abs(changed[i] - l.x) < l.r + TILE && Math.abs(changed[i + 1] - l.y) < l.r + TILE) { l.dirty = true; return; }
@@ -310,7 +329,7 @@ export default class Lighting {
     const tmp = this.tmp, g = tmp.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, size, size);
-    const o = this.openPoint(l.x, l.y);
+    const o = l.shadows ? this.openPoint(l.x, l.y) : [l.x, l.y];
     l.poly = null;
     if (o) {
       g.setTransform(s, 0, 0, s, -(l.x - R) * s, -(l.y - R) * s);
@@ -401,7 +420,7 @@ export default class Lighting {
       for (let x = 0; x < gw; x++) grid[y * gw + x] = this.ambGrid[Math.floor((y * gs) / TILE) * m.w + Math.floor((x * gs) / TILE)];
     }
     const add = (l) => {
-      if (!l.shadows && l.flicker === 'disco') return;
+      if (!l.shadows) return; // disco spots wander, rooftop glows are above the street
       const c0 = Math.max(0, Math.floor((l.x - l.r) / gs)), c1 = Math.min(gw - 1, Math.floor((l.x + l.r) / gs));
       const r0 = Math.max(0, Math.floor((l.y - l.r) / gs)), r1 = Math.min(gh - 1, Math.floor((l.y + l.r) / gs));
       const o = this.openPoint(l.x, l.y);
@@ -638,6 +657,18 @@ export default class Lighting {
     g.restore();
   }
 
+  // emissive map of a lit rooftop piece (skylight panes, a door lamp), k = its light's strength this frame
+  drawRoofGlow(g, l, k) {
+    const { img, x, y, a } = l.glow;
+    if (!img) return;
+    g.save();
+    g.translate(x, y);
+    g.rotate(a);
+    g.globalAlpha = clamp(k / l.intensity, 0, 1);
+    g.drawImage(img, -img.width / 2, -img.height / 2);
+    g.restore();
+  }
+
   // additive layers after the scene: emissive maps, bloom, flares, reflections
   post(ctx, cam, t) {
     if (!this.lm) return;
@@ -649,6 +680,7 @@ export default class Lighting {
     ctx.globalCompositeOperation = 'lighter';
     ctx.imageSmoothingEnabled = true;
     for (const [l, k] of lit) {
+      if (l.glow) this.drawRoofGlow(ctx, l, k);
       if (l.cone || l.bare || l.drawn) continue;
       const rc = 4 + l.r * 0.03;
       ctx.globalAlpha = clamp(k * L.bulb, 0, 1);
@@ -672,6 +704,7 @@ export default class Lighting {
     e.globalAlpha = 1;
     for (const p of w.props) this.drawGlow(e, p, t);
     for (const [l, k] of lit) {
+      if (l.glow) this.drawRoofGlow(e, l, k);
       if (l.bare) continue;
       const x = l.x, y = l.y;
       const r = 6 + l.r * 0.07, a = clamp(k * L.coreGlow * (l.drawn ? 0.6 : 1), 0, 1);

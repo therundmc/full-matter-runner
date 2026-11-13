@@ -45,7 +45,8 @@ src/
       Perception.js       detection meter rate, view test, aim error, hearing error
       Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
     render/
-      MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, spills, baked bodies)
+      MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, spills, baked bodies),
+                          flat roofs of the neighbouring buildings and their dressing
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
@@ -56,8 +57,8 @@ src/
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
     ui/                   HUD, Screens, SandboxPanel, Text
     data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
-                          apart), levels/ (index.js = registry)
-tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox
+                          apart), roofs (rooftop scenery), levels/ (index.js = registry)
+tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs
 ```
 
 Rules:
@@ -219,6 +220,20 @@ ambient: {
   no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
   or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra
   that avoids the danger), screaming (world texts). No new passers-by for `AMBIENT.panic.calm` s after gunfire.
+
+## Rooftops
+
+The big brick masses around a level are the neighbouring buildings seen from above. Nothing is simulated up there:
+- `TileMap.isRoof(x, y)`: a brick tile with nothing but walls (or the edge of the map) around it. MapRenderer draws
+  those with `tiles/roof` instead of brick, so the outer ring of a block reads as its parapet (inner shadow, soft
+  weathering). A breached parapet turns the roof tiles behind it back into brick.
+- Optional level field `roof: [[kind, col, row, deg], ...]` (`lv.roof()` in tools/levelkit.py, which checks that each
+  piece stands on roof tiles, overlaps nothing, and that its glow never reaches the street). Kinds live in
+  data/roofs.js (`ROOF_DECOR`: height of the cast shadow, optional `light`), sprites in `roof/<kind>`.
+  `MapRenderer.dressRoofs` paints them once on the wall canvas.
+- Lit pieces (skylights, the stair-head door lamp) become unshadowed lights in Lighting (`addRoofLight`) with their
+  emissive map `roof/<kind>_glow`; they are above the street, so the stealth light grid ignores them.
+  Roof tiles have their own ambient tint (`LIGHTING.ambient.roof`), darker than the street: out of play.
 
 ## Doors
 

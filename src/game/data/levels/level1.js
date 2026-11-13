@@ -144,6 +144,27 @@ export default {
     ['plant', 20.55, 19.5, 0], ['plant', 24.4, 12.45, 0], ['armchair', 30.45, 17.1, 180],
     ['armchair', 29.9, 19.45, 270], ['table_round', 29.1, 18.1, 0], ['floor_lamp', 30.6, 18.35, 0],
   ],
+  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
+  roof: [
+    // west block, along the service alley
+    ['skylight_dark', 7.4, 1.7, 0], ['tank', 3.2, 4.3, 0], ['vent', 8.6, 3.6, 0], ['vent', 8.6, 4.6, 0],
+    ['ac_unit', 8.7, 6.6, 90], ['duct', 7, 6.6, 0], ['ac_unit', 8.7, 8.4, 90], ['bulkhead', 5.6, 10.4, 0],
+    ['chimney', 2.4, 9.2, 0], ['hatch', 8.9, 12.6, 0], ['skylight', 4.2, 14.9, 0], ['skylight', 6.2, 14.9, 0],
+    ['antenna', 8.6, 17.4, 20], ['chimney', 2.4, 17.6, 0], ['vent', 5.2, 18.6, 0],
+    // east block, behind the bar
+    ['skylight', 35.2, 2.6, 90], ['vent', 33, 5.2, 0], ['chimney', 38.6, 4.4, 0], ['ac_unit', 33.3, 7.6, 90],
+    ['ac_unit', 33.3, 9.4, 90], ['duct', 35, 9.4, 0], ['tank', 40.2, 8.6, 0], ['skylight_tv', 35.6, 12.6, 0],
+    ['skylight_dark', 38.2, 12.6, 0], ['hatch', 33, 14.6, 0], ['bulkhead', 37, 16.4, 180],
+    ['antenna', 33.4, 18.2, -15], ['vent', 41.4, 18.4, 0],
+    // south west block, by the alley
+    ['chimney', 2.6, 34.4, 0], ['skylight_dark', 5.4, 35.6, 0], ['vent', 8.2, 33.8, 0], ['antenna', 9.8, 36.2, 35],
+    ['ac_unit', 12.4, 34.1, 0], ['duct', 14.13, 34.1, 0], ['hatch', 13, 36.6, 0], ['skylight', 16, 35.7, 0],
+    ['vent', 18.4, 33.6, 0], ['vent', 18.4, 37.3, 0],
+    // south east block, by the alley
+    ['vent', 25.6, 36.9, 0], ['skylight_tv', 27.4, 35.3, 0], ['chimney', 29.6, 33.8, 0], ['ac_unit', 31.6, 36.3, 0],
+    ['ac_unit', 33.4, 36.3, 0], ['duct', 32.5, 35.2, 0], ['tank', 36.4, 35.4, 0], ['skylight_dark', 39.6, 34.4, 0],
+    ['antenna', 42, 36.4, -25],
+  ],
   // indirect fill only: every visible light is a prop (lamps, signs, tubes, headlights)
   lights: [
     [8, 26.5, 9, '#5a6ad8', 0.3],

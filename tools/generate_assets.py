@@ -2414,6 +2414,11 @@ def t_brick(cv, rng):
             cv.set(x, y, c)
 
 
+def t_roof(cv, rng):
+    # flat roof of a neighbouring building: gravel over bitumen, cool and even
+    surface(cv, hx('#7e808e'), rng, 3.0, 1.6, 1, (0.03, 8), (0.035, 11))
+
+
 FLOOR_TILES = [
     ('wood', t_wood, v_wood1, v_wood2),
     ('checker', t_checker, v_checker1, v_checker2),
@@ -2428,7 +2433,7 @@ FLOOR_TILES = [
     ('sidewalk', t_sidewalk, v_sidewalk1, v_sidewalk2),
     ('neon_floor', t_neon, v_neon1, v_neon2),
 ]
-WALL_TILES = [('wall', t_wall), ('brick', t_brick)]
+WALL_TILES = [('wall', t_wall), ('brick', t_brick), ('roof', t_roof)]
 
 
 def tiles():
@@ -3619,6 +3624,231 @@ LIGHT_SIZES.update(marquee=(92, 24), string_lights=(128, 10))
 
 
 # --------------------------------------------------------------------------
+# Rooftop dressing: plant, skylights and stair heads on the flat roofs of the neighbouring buildings.
+# Scenery painted once on the wall layer (render/MapRenderer.js), listed in src/game/data/roofs.js.
+# The lit ones return (sprite, emissive map).
+# --------------------------------------------------------------------------
+
+GALV = ramp('#8e939c', 0.5, 0.26, 0.36)       # galvanised sheet
+
+
+def r_ac_unit():
+    """Rooftop condenser, 1.4 x 1 m: the fan under its grille on the left, the louvred coil panel on the right."""
+    W, H = 46, 32
+    cv = Cv(W, H)
+    body = ramp('#a39c90', 0.5, 0.26, 0.34)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(body, L), kind='rect', bevel=2.2, corner=1.4)
+    mottle(cv, random.Random(871), 5, 6)
+    fr = 11.0
+
+    def fan(u, v, L):
+        d = math.hypot(u, v)
+        if d > fr - 1.4:
+            return shade(GALV, L)                              # pressed rim
+        if d < 2.4:
+            return GALV[1]                                     # hub
+        blade = math.sin(math.atan2(v, u) * 5 + d * 0.3) > 0.2
+        c = hx('#474a58') if blade else hx('#18141f')
+        if abs(d - 5.6) < 0.55 or abs(u) < 0.55 or abs(v) < 0.55:
+            c = mix(c, GALV[2], 0.6)                           # grille: one ring, two spokes
+        return c
+    fill_shape(cv, 16.0, 16.0, fr, fr, fan)
+    for y in range(5, 27):                                     # louvres
+        for x in range(31, 42):
+            cv.set(x, y, (body[3], body[1], body[0])[(y - 5) % 3])
+    rng = random.Random(872)
+    smudge(cv, rng, 5, (3, 3, 43, 29), (1.0, 2.6), 0.5, hx('#7a4a26'))    # rust blooms
+    smudge(cv, rng, 6, (2, 2, 44, 30), (1.5, 3.5), 0.16)                  # soot
+    cv.outline()
+    return cv
+
+
+def r_vent():
+    """Turbine ventilator, 40 cm: spun vanes around a domed cap."""
+    S = 14
+    cv = Cv(S, S)
+
+    def px(u, v, L):
+        d = math.hypot(u, v)
+        if d < 2.3:
+            return shade(GALV, min(1.0, L + 0.12))
+        vane = math.sin(math.atan2(v, u) * 9 + d * 0.9)
+        return shade(GALV, L * (0.78 + 0.22 * vane)) if vane > -0.35 else dk(GALV[0], 0.25)
+    fill_shape(cv, S / 2, S / 2, 6.0, 6.0, px)
+    cv.outline()
+    return cv
+
+
+def r_duct():
+    """Galvanised duct run, 2 m: flanged joints every 50 cm, dents and streaks."""
+    W, H = 64, 12
+    cv = Cv(W, H)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(GALV, L), kind='rect', bevel=2.6, corner=0.6)
+    rng = random.Random(873)
+    mottle(cv, rng, 5, 4)
+    for x in (16, 32, 48):
+        for y in range(1, H - 1):
+            cv.set(x, y, GALV[3])
+            cv.set(x + 1, y, GALV[0])
+    smudge(cv, rng, 6, (2, 2, 61, 9), (1.0, 2.2), 0.2)
+    cv.outline()
+    return cv
+
+
+def speck_box(rng, x0, y0, x1, y1, p):
+    """Random sparse pixels of a box."""
+    return [(x, y) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if rng.random() < p]
+
+
+def r_hatch():
+    """Roof access hatch, 70 cm: steel lid on a curb, two hinges, a pull handle."""
+    S = 22
+    cv = Cv(S, S)
+    curb = ramp('#4a4c56', 0.5, 0.26, 0.3)
+    lid = ramp('#737a84', 0.5, 0.26, 0.36)
+    fill_shape(cv, S / 2, S / 2, S / 2 - 1, S / 2 - 1, lambda u, v, L: shade(curb, L), kind='rect', bevel=1.5, corner=1.0)
+    layer(cv, lambda ly: fill_shape(ly, S / 2, S / 2, 7.5, 7.5, lambda u, v, L: shade(lid, L), kind='rect', bevel=1.6,
+                                    corner=0.8), ol=curb[0])
+    rng = random.Random(874)
+    for (x, y) in speck_box(rng, 5, 5, 16, 16, 0.12):          # worn tread plate
+        cv.set(x, y, shift(cv.get(x, y), 14))
+    for x in (6, 15):                                          # hinges at the back
+        cv.rect(x, 2, x + 1, 3, hx('#2a2c34'))
+    cv.rect(8, 15, 13, 15, hx('#d8dee6'))                      # handle
+    cv.rect(8, 16, 13, 16, hx('#2a2c34'))
+    smudge(cv, rng, 3, (4, 4, 17, 17), (1.0, 2.0), 0.45, hx('#7a4a26'))
+    cv.outline()
+    return cv
+
+
+def r_chimney():
+    """Chimney stack, 60 cm: weathered cap stone, two clay pots, soot around the flues."""
+    S = 20
+    cv = Cv(S, S)
+    stone = ramp('#8e877e', 0.5, 0.26, 0.32)
+    clay = ramp('#a85c3a', 0.5, 0.26, 0.3)
+    fill_shape(cv, S / 2, S / 2, S / 2 - 1, S / 2 - 1, lambda u, v, L: shade(stone, L), kind='rect', bevel=2.0, corner=0.8)
+    rng = random.Random(875)
+    mottle(cv, rng, 6, 5)
+    smudge(cv, rng, 5, (4, 4, 15, 15), (2.0, 3.5), 0.4)        # soot
+
+    def pots(ly):
+        for px_ in (6.5, 13.5):
+            fill_shape(ly, px_, 10.0, 3.2, 3.2, lambda u, v, L: hx('#120c14') if math.hypot(u, v) < 1.9 else shade(clay, L))
+    layer(cv, pots)
+    cv.outline()
+    return cv
+
+
+def r_tank():
+    """Water tank, 1.5 m across: conical tin roof (seams running up to the cap) over the wooden staves."""
+    S = 50
+    cv = Cv(S, S)
+    tin = ramp('#77726c', 0.52, 0.27, 0.34)
+    wood = ramp('#6a4a36', 0.5, 0.26, 0.3)
+    R = S / 2 - 1.0
+
+    def px(u, v, L):
+        d = math.hypot(u, v)
+        if d > R - 2.2:
+            return shade(wood, L)                              # the staves showing under the eaves
+        a = math.atan2(v, u)
+        c = shade(tin, light(math.cos(a) * 0.62, math.sin(a) * 0.62))   # a cone: one slope, lit by its bearing
+        if d > 3.5 and abs(math.sin(a * 6 + 0.4)) < 0.07 + 0.25 / d:
+            c = dk(c, 0.32)                                    # standing seams
+        return c
+    fill_shape(cv, S / 2, S / 2, R, R, px)
+    rng = random.Random(876)
+    mottle(cv, rng, 5, 5)
+    smudge(cv, rng, 9, (6, 6, 43, 43), (1.5, 3.5), 0.42, hx('#7a4424'))   # rust
+    layer(cv, lambda ly: fill_shape(ly, S / 2, S / 2, 2.6, 2.6, lambda u, v, L: shade(GALV, L)), ol=tin[0])
+    cv.outline()
+    return cv
+
+
+def r_antenna():
+    """TV aerial: a short mast on its plate, the boom and its rake of elements, a coax running off."""
+    S = 34
+    cv = Cv(S, S)
+    c = S / 2
+    al, sh = hx('#b4bac4'), hx('#5c6270')
+    for i, x in enumerate(range(5, 30, 4)):                    # elements, longest at the back
+        n = 11 - i
+        for y in range(int(c) - n, int(c) + n + 1):
+            cv.set(x, y, al)
+    for x in range(3, 31):                                     # boom
+        cv.set(x, c - 1, al)
+        cv.set(x, c, sh)
+    fill_shape(cv, c, c, 3.0, 3.0, lambda u, v, L: shade(GALV, L), kind='rect', bevel=1.2, corner=0.6)
+    fill_shape(cv, c, c, 1.3, 1.3, lambda u, v, L: hx('#2a2c34'))
+    return cv
+
+
+def r_bulkhead():
+    """Stair head, 1.9 x 1.6 m: tarred lid inside a brick kerb, the door (and its bulkhead lamp) on the +y side."""
+    W, H = 62, 54
+    cv, gl = Cv(W, H), Cv(W, H)
+    brick = ramp('#7c4a40', 0.5, 0.26, 0.3)
+    tar = ramp('#55565f', 0.5, 0.26, 0.3)
+    fill_shape(cv, W / 2, H / 2 - 1.5, W / 2 - 1, H / 2 - 2.5, lambda u, v, L: shade(brick, L), kind='rect', bevel=2.0, corner=0.8)
+    layer(cv, lambda ly: fill_shape(ly, W / 2, H / 2 - 1.5, W / 2 - 5, H / 2 - 6.5, lambda u, v, L: shade(tar, L),
+                                    kind='rect', bevel=1.4, corner=0.8), ol=brick[0])
+    rng = random.Random(877)
+    mottle(cv, rng, 6, 6)
+    smudge(cv, rng, 8, (6, 5, 55, 44), (2.0, 4.5), 0.16)
+    cv.outline()
+    # the lamp over the door: a caged bulkhead light on the wall face
+    lamp = hx('#ffd9a0')
+    for x in range(27, 35):
+        cv.set(x, H - 3, hx('#2a2c34'))
+        cv.set(x, H - 2, lamp)
+        gl.set(x, H - 2, lamp)
+    cv.set(26, H - 2, hx('#2a2c34'))
+    cv.set(35, H - 2, hx('#2a2c34'))
+    for x in range(26, 36):
+        cv.set(x, H - 1, OUTLINE)
+    return cv, gl
+
+
+def skylight(glass, lit=True):
+    """Roof light, 1.4 x 0.9 m: three wired-glass panes in an aluminium curb. Lit ones glow from the room below."""
+    def make():
+        W, H = 46, 30
+        cv, gl = Cv(W, H), Cv(W, H)
+        fr = ramp('#666a74', 0.5, 0.26, 0.4)
+        fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(fr, L), kind='rect', bevel=2.2, corner=1.0)
+        grime = VNoise(48, 32, 8, random.Random(878))
+        for y in range(4, H - 4):
+            for x in range(4, W - 4):
+                px_ = (x - 4) % 13
+                if px_ == 12:
+                    continue                                   # glazing bar
+                edge = min(px_, 11 - px_, y - 4, H - 5 - y)
+                k = 0.45 + 0.4 * grime(x, y) + 0.05 * min(edge, 3)
+                if lit:
+                    c = mix(dk(glass, 0.4), lt(glass, 0.45), max(0.0, min(1.0, k)))
+                    gl.set(x, y, c)
+                else:
+                    c = mix(dk(glass, 0.35), glass, k)
+                    if abs((x + y) % 23 - 9) < 2:
+                        c = lt(c, 0.12)                        # the sky in the glass
+                cv.set(x, y, c)
+        for x in range(4, W - 4):                              # the curb's shadow on the glass
+            cv.set(x, 4, dk(cv.get(x, 4), 0.35))
+        cv.outline()
+        return (cv, gl) if lit else cv
+    return make
+
+
+ROOF_PROPS = dict(ac_unit=r_ac_unit, vent=r_vent, duct=r_duct, hatch=r_hatch, chimney=r_chimney, tank=r_tank,
+                  antenna=r_antenna, bulkhead=r_bulkhead, skylight=skylight(hx('#f0a850')),
+                  skylight_tv=skylight(hx('#6aa0e8')), skylight_dark=skylight(hx('#2a3448'), lit=False))
+ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
+                  antenna=(34, 34), bulkhead=(62, 54), skylight=(46, 30), skylight_tv=(46, 30), skylight_dark=(46, 30))
+ROOF_GLOWING = ['bulkhead', 'skylight', 'skylight_tv']
+
+
+# --------------------------------------------------------------------------
 # Structure
 # --------------------------------------------------------------------------
 
@@ -3720,6 +3950,12 @@ def build():
     out[('props', 'dj_booth_glow')] = glow_from(out[('props', 'dj_booth')], lambda x, y, c: is_neon(c))
     for name, fn in LIGHT_PROPS.items():
         out[('props', name)], out[('props', name + '_glow')] = fn()
+    for name, fn in ROOF_PROPS.items():
+        r = fn()
+        if isinstance(r, tuple):
+            out[('roof', name)], out[('roof', name + '_glow')] = r
+        else:
+            out[('roof', name)] = r
     for name, cv in tiles().items():
         out[('tiles', name)] = cv
     out[('structure', 'door')] = s_door()
@@ -3756,7 +3992,8 @@ EXPECTED = {
                     ammo_rocket=(12, 6)),
     'props': dict(list(PROP_SIZES.items()) + [(n + '_glow', PROP_SIZES[n]) for n in GLOWING]),
     'tiles': dict([(n + s, (32, 32)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
-                  + [(n, (32, 32)) for n in ('wall', 'brick', 'neon_floor_glow')]),
+                  + [(n, (32, 32)) for n in ('wall', 'brick', 'roof', 'neon_floor_glow')]),
+    'roof': dict(list(ROOF_SIZES.items()) + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
     'structure': dict(door=(32, 5), window=(32, 4), fence=(32, 6)),
 }
 

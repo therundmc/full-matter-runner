@@ -1,7 +1,8 @@
 import { TILE, PALETTE } from '../Config.js';
-import { sprite, spriteOpt } from '../../engine/Assets.js';
+import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
 import { rand, pick, chance } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
+import { ROOF_DECOR } from '../data/roofs.js';
 
 // well-mixed integer hash of a cell (no visible lattice, unlike a plain x*a ^ y*b)
 function cellHash(x, y) {
@@ -56,15 +57,19 @@ export default class MapRenderer {
 
     this.wallCanvas = document.createElement('canvas');
     this.wallCanvas.width = W; this.wallCanvas.height = H;
+    this.roof = new Uint8Array(m.w * m.h); // wall tiles drawn as the flat roof of a neighbouring building
     const w = this.wallCanvas.getContext('2d');
     w.imageSmoothingEnabled = false;
     for (let y = 0; y < m.h; y++) {
       for (let x = 0; x < m.w; x++) {
         const ch = m.at(x, y);
         if (!WALLS[ch]) continue;
-        w.drawImage(sprite('tiles/' + WALLS[ch]), x * TILE, y * TILE, TILE, TILE);
+        const roof = m.isRoof(x, y) && spriteOpt('tiles/roof');
+        this.roof[y * m.w + x] = roof ? 1 : 0;
+        w.drawImage(roof || sprite('tiles/' + WALLS[ch]), x * TILE, y * TILE, TILE, TILE);
       }
     }
+    this.shadeRoofs(w, W, H);
     // edges: dark outline where a wall meets something that isn't a wall, light bevel inside
     for (let y = 0; y < m.h; y++) {
       for (let x = 0; x < m.w; x++) {
@@ -85,6 +90,54 @@ export default class MapRenderer {
       }
     }
     this.wallCtx = w;
+  }
+
+  // flat roofs: weathering in large soft patches, and the parapet's shadow along the inside of the brick ring
+  shadeRoofs(w, W, H) {
+    const m = this.map;
+    const mask = document.createElement('canvas');
+    mask.width = W; mask.height = H;
+    const mg = mask.getContext('2d');
+    for (let i = 0; i < this.roof.length; i++) if (this.roof[i]) mg.fillRect((i % m.w) * TILE, Math.floor(i / m.w) * TILE, TILE, TILE);
+    this.grime(w, W, H, mask, 0.75);
+    const rim = (x, y) => m.isWallChar(x, y) && !this.roof[y * m.w + x];
+    for (let y = 0; y < m.h; y++) {
+      for (let x = 0; x < m.w; x++) {
+        if (!this.roof[y * m.w + x]) continue;
+        const px = x * TILE, py = y * TILE;
+        // the light comes from the top left: a wide soft shadow under the north and west parapets, a thin line elsewhere
+        for (const [d, a] of [[9, 0.12], [5, 0.16], [2, 0.3]]) {
+          w.fillStyle = `rgba(10,6,20,${a})`;
+          if (rim(x, y - 1)) w.fillRect(px, py, TILE, d);
+          if (rim(x - 1, y)) w.fillRect(px, py, d, TILE);
+        }
+        w.fillStyle = 'rgba(10,6,20,0.4)';
+        if (rim(x, y + 1)) w.fillRect(px, py + TILE - 1, TILE, 1);
+        if (rim(x + 1, y)) w.fillRect(px + TILE - 1, py, 1, TILE);
+      }
+    }
+  }
+
+  // rooftop dressing (`level.roof`, data/roofs.js): every piece painted for good, over the shadows they all cast
+  dressRoofs(list) {
+    const g = this.wallCtx;
+    const each = (fn) => {
+      for (const [kind, col, row, deg = 0] of list) {
+        const img = spriteOpt('roof/' + kind);
+        if (img) fn(img, col * TILE, row * TILE, (deg * Math.PI) / 180, ROOF_DECOR[kind].h);
+      }
+    };
+    const put = (img, x, y, a) => {
+      g.save();
+      g.translate(x, y);
+      g.rotate(a);
+      g.drawImage(img, -img.width / 2, -img.height / 2);
+      g.restore();
+    };
+    g.globalAlpha = 0.28;
+    each((img, x, y, a, h) => { put(silhouette(img), x + h, y + h, a); put(silhouette(img), x + h / 2, y + h / 2, a); });
+    g.globalAlpha = 1;
+    each((img, x, y, a) => put(img, x, y, a));
   }
 
   // dark jagged cracks around an impact, more as the tile weakens
@@ -124,6 +177,15 @@ export default class MapRenderer {
     }
     const w = this.wallCtx;
     w.clearRect(px, py, TILE, TILE);
+    // the roof behind a breached parapet shows its brick edge
+    for (let ny = cy - 1; ny <= cy + 1; ny++) {
+      for (let nx = cx - 1; nx <= cx + 1; nx++) {
+        const j = ny * m.w + nx;
+        if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h || !this.roof[j]) continue;
+        this.roof[j] = 0;
+        if (m.isWallChar(nx, ny)) w.drawImage(sprite('tiles/' + WALLS[m.at(nx, ny)]), nx * TILE, ny * TILE, TILE, TILE);
+      }
+    }
     // broken edges on the neighbouring walls
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = cx + dx, ny = cy + dy;
@@ -141,8 +203,9 @@ export default class MapRenderer {
     }
   }
 
-  // large soft light/dirt patches over the floor (two octaves of smoothed value noise) so tiles never read as a grid
-  grime(g, W, H) {
+  // large soft light/dirt patches over a layer (two octaves of smoothed value noise) so tiles never read as a grid;
+  // only where `mask` is painted
+  grime(g, W, H, mask = g.canvas, strength = 0.5) {
     const layer = document.createElement('canvas');
     layer.width = W; layer.height = H;
     const lg = layer.getContext('2d');
@@ -162,13 +225,12 @@ export default class MapRenderer {
       lg.imageSmoothingQuality = 'high';
       lg.drawImage(n, -TILE * cell, -TILE * cell, cw * TILE * cell, ch * TILE * cell);
     }
-    // only where there is floor
     lg.globalAlpha = 1;
     lg.globalCompositeOperation = 'destination-in';
-    lg.drawImage(g.canvas, 0, 0);
+    lg.drawImage(mask, 0, 0);
     g.save();
     g.globalCompositeOperation = 'soft-light';
-    g.globalAlpha = 0.5;
+    g.globalAlpha = strength;
     g.drawImage(layer, 0, 0);
     g.restore();
   }
