@@ -827,559 +827,933 @@ def weapons():
 
 
 # --------------------------------------------------------------------------
-# Props
+# Props -- real scale (1 m = 32 px, a character is a 17 px disc). Sprite = hitbox + a 1 px outline on each
+# side. Fronts face +y (screens, knobs, seats), backs -y; chairs and armchairs have their back on -x.
+# Every painter seeds its own Random so changing one never shifts another.
 # --------------------------------------------------------------------------
 
+def shade(r, L):
+    """Continuous tone(): a soft gradient through the 4-step ramp (cloth, enamel, chrome)."""
+    stops = ((0.18, r[0]), (0.46, r[1]), (0.70, r[2]), (0.96, r[3]))
+    if L <= stops[0][0]:
+        return r[0]
+    for (a, ca), (b, cb) in zip(stops, stops[1:]):
+        if L <= b:
+            return mix(ca, cb, (L - a) / (b - a))
+    return r[3]
+
+
+def mottle(cv, rng, amt=6, cell=5, box=None):
+    """Low-frequency brightness drift on painted pixels (wear, grime): organic, never a pattern."""
+    n = VNoise(cv.w, cv.h, cell, rng)
+    x0, y0, x1, y1 = box or (0, 0, cv.w - 1, cv.h - 1)
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            c = cv.get(x, y)
+            if c[3] > 0 and c != OUTLINE:
+                cv.p[x, y] = shift(c, int(round((n(x, y) - 0.5) * 2 * amt)))
+
+
+def smudge(cv, rng, n, box, r=(1.0, 2.5), t=0.2, col=None):
+    """Soft spots on painted pixels: dark grime, or a blend toward col (rust, dust, bare metal)."""
+    x0, y0, x1, y1 = box
+    for _ in range(n):
+        cx, cy, rr = rng.uniform(x0, x1), rng.uniform(y0, y1), rng.uniform(*r)
+        for y in range(int(cy - rr) - 1, int(cy + rr) + 2):
+            for x in range(int(cx - rr) - 1, int(cx + rr) + 2):
+                d = math.hypot(x + 0.5 - cx, y + 0.5 - cy) / rr
+                c = cv.get(x, y)
+                if d < 1 and c[3] > 0 and c != OUTLINE:
+                    k = t * (1 - d * d)
+                    cv.p[x, y] = mix(c, alpha(col, c[3]), k) if col else dk(c, k)
+
+
+def layer(cv, paint, ol=OUTLINE):
+    """Paint on a fresh layer, outline it (ol=None: no outline) and composite it onto cv."""
+    ly = Cv(cv.w, cv.h)
+    paint(ly)
+    if ol:
+        ly.outline(ol)
+    cv.over(ly)
+    return cv
+
+
+def relief(cv, x0, y0, x1, y1, hf, r, amp=1.0, keep=None):
+    """Shade painted pixels from a height field hf(x, y) (cloth folds, padding): normal from its gradient."""
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            c = cv.get(x, y)
+            if c[3] == 0 or c == OUTLINE or (keep and not keep(x, y)):
+                continue
+            gx = (hf(x + 1, y) - hf(x - 1, y)) * 0.5 * amp
+            gy = (hf(x, y + 1) - hf(x, y - 1)) * 0.5 * amp
+            cv.p[x, y] = shade(r, light(-gx, -gy))
+
+
+def line(cv, x0, y0, x1, y1, col, blend=False):
+    n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+    for i in range(n + 1):
+        t = i / n
+        x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        (cv.blend if blend else cv.set)(int(math.floor(x)), int(math.floor(y)), col)
+
+
+def glass_top(ly, cx, cy, r, drink, rim=hx('#dfe8ee')):
+    """A glass seen from above: lit rim, the drink, a highlight."""
+    fill_shape(ly, cx, cy, r, r, lambda u, v, L: rim if L > 0.7 else mix(rim, drink, 0.5))
+    fill_shape(ly, cx + 0.15, cy + 0.15, r - 0.8, r - 0.8, lambda u, v, L: lt(drink, 0.25) if u + v < -0.6 else drink)
+    ly.set(int(cx - r * 0.45), int(cy - r * 0.45), hx('#ffffff'))
+
+
+def ashtray(ly, cx, cy, rng, r=2.8, ember=True):
+    """Thick glass ashtray with ash and a couple of butts."""
+    glass = ramp('#9fb2be', 0.5, 0.25, 0.45)
+    fill_shape(ly, cx, cy, r, r, lambda u, v, L: shade(glass, L))
+    fill_shape(ly, cx, cy, r - 1.0, r - 1.0, lambda u, v, L: mix(hx('#3e3a44'), hx('#6a6670'), (u - v) / (2 * r) + 0.5))
+    for i in range(2):
+        a = rng.uniform(0, 2 * math.pi)
+        x1, y1 = cx + math.cos(a) * (r + 0.4), cy + math.sin(a) * (r + 0.4)
+        line(ly, cx + math.cos(a) * 0.6, cy + math.sin(a) * 0.6, x1, y1, hx('#efe6d4'))
+        ly.set(int(x1), int(y1), hx('#d89a50'))
+        if ember and i == 0:
+            ly.set(int(cx + math.cos(a) * 0.6), int(cy + math.sin(a) * 0.6), hx('#ff6b1a'))
+
+
 def p_table():
-    cv = Cv(40, 24)
-    wood_fill(cv, 1, 1, 38, 22, hx('#8c5a32'), plank=5, rng=random.Random(11))
-    bevel_edges(cv, 1, 1, 38, 22)
-    # coffee ring stain
-    ring(cv, 11, 9, 2.0, 3.0, lambda dx, dy, d: dk(cv.get(11 + dx, 9 + dy), 0.22) if (dx + dy) > -2.5 else None)
-    # ashtray with a smouldering butt
-    fill_shape(cv, 29.5, 14.5, 3.2, 3.2, lambda u, v, L: tone(ramp('#9aa4b4'), L))
-    fill_shape(cv, 29.5, 14.5, 1.9, 1.9, lambda u, v, L: hx('#3a3440') if L < 0.8 else hx('#5a5466'))
-    cv.set(30, 14, hx('#f0e8d8'))
-    cv.set(31, 14, hx('#f0e8d8'))
-    cv.set(32, 13, hx('#ff6b1a'))
+    """Back-room table: worn varnished boards, poker cards, a beer, a full ashtray, ring stains."""
+    W, H = 46, 28
+    cv = Cv(W, H)
+    rng = random.Random(11)
+    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#86552f'), plank=6, rng=rng)
+    mottle(cv, random.Random(111), 8, 7)
+    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.22, 0.32)
+    for (x, y) in ((1, 1), (W - 2, 1), (1, H - 2), (W - 2, H - 2)):
+        cv.set(x, y, CLEAR)
+    # varnish worn pale along the long edges where elbows rest
+    smudge(cv, rng, 6, (8, 2, W - 8, 4), (2.0, 3.5), 0.16, hx('#c8a070'))
+    smudge(cv, rng, 6, (8, H - 5, W - 8, H - 3), (2.0, 3.5), 0.16, hx('#c8a070'))
+    for (sx, sy) in ((10.0, 9.0), (35.5, 19.0)):   # glass rings
+        ring(cv, sx, sy, 1.7, 2.6, lambda dx, dy, d, sx=sx, sy=sy:
+             dk(cv.get(sx + dx, sy + dy), 0.2) if (dx * 0.6 + dy) > -2.0 else None)
+    ol = dk(hx('#86552f'), 0.6)
+
+    def cards(ly):
+        for (x, y, a, pip) in ((16.5, 11.5, 0.3, '#c01828'), (21.5, 10.5, -0.25, '#1a1420'), (26.5, 13.0, 0.6, '#c01828'),
+                               (20.5, 18.5, -0.7, '#1a1420')):
+            fill_shape(ly, x, y, 1.5, 2.1, lambda u, v, L: hx('#f2ece0') if L > 0.6 else hx('#d8d0c2'),
+                       ang=a, kind='rect', corner=0.4, bevel=0.6)
+            ly.set(int(x), int(y), hx(pip))
+        fill_shape(ly, 31.0, 7.5, 2.0, 2.6, lambda u, v, L: hx('#2a3a8a') if (int(u * 2 + v * 2) % 2) else hx('#34469a'),
+                   ang=0.1, kind='rect', corner=0.5, bevel=0.6)   # the deck, face down
+    layer(cv, cards, ol)
+
+    def things(ly):
+        ashtray(ly, 37.0, 9.5, random.Random(112))
+        fill_shape(ly, 9.5, 19.0, 1.9, 1.9, lambda u, v, L: shade(ramp('#5a3a12', 0.5, 0.25, 0.5), L))  # beer bottle
+        ly.set(9, 18, hx('#e8c860'))
+        ly.set(10, 19, hx('#c8a040'))
+        glass_top(ly, 13.5, 21.5, 1.9, hx('#d89a2a'))
+    layer(cv, things)
     cv.outline()
     return cv
 
 
 def p_table_round():
-    cv = Cv(28, 28)
-    c = 14.0
-    wood_fill(cv, 1, 1, 26, 26, hx('#8c5a32'), plank=4, rng=random.Random(12), vertical=True,
-              mask=lambda x, y: math.hypot(x + 0.5 - c, y + 0.5 - c) <= 12.9)
-    ring(cv, c, c, 11.6, 13.0, lambda dx, dy, d: tone(ramp('#7a4a28'), light(dx / d, dy / d)))
-    # drink + coaster
-    fill_shape(cv, 18.5, 10.5, 2.2, 2.2, lambda u, v, L: hx('#d8d0c0'))
-    fill_shape(cv, 18.5, 10.5, 1.5, 1.5, lambda u, v, L: hx('#ffd27a') if L > 0.7 else hx('#e89a30'))
-    cv.set(18, 9, hx('#fff8e0'))
+    """Round bar table: dark rim band, a drink on a beer mat, a small ashtray."""
+    S = 30
+    cv = Cv(S, S)
+    c = S / 2
+    wood_fill(cv, 1, 1, S - 2, S - 2, hx('#8a5530'), plank=5, rng=random.Random(12), vertical=True,
+              mask=lambda x, y: math.hypot(x + 0.5 - c, y + 0.5 - c) <= 13.9)
+    mottle(cv, random.Random(121), 7, 6)
+    ring(cv, c, c, 12.6, 14.0, lambda dx, dy, d: shade(ramp('#6a3a1e', 0.45, 0.22, 0.35), light(dx / d, dy / d)))
+    ring(cv, c, c, 12.0, 12.6, lambda dx, dy, d: dk(cv.get(c + dx, c + dy), 0.18))
+    ring(cv, 11.0, 18.5, 1.8, 2.6, lambda dx, dy, d: dk(cv.get(11.0 + dx, 18.5 + dy), 0.18) if dx + dy > -2 else None)
+
+    def things(ly):
+        fill_shape(ly, 18.5, 11.0, 3.0, 3.0, lambda u, v, L: hx('#c8303a') if math.hypot(u, v) > 2.1 else hx('#e8e0cc'))
+        glass_top(ly, 18.5, 11.0, 1.9, hx('#e89a30'))
+        ashtray(ly, 10.0, 12.0, random.Random(122), 2.4)
+    layer(cv, things)
     cv.outline()
     return cv
 
 
 def p_desk():
-    cv = Cv(36, 22)
-    wood_fill(cv, 1, 1, 34, 20, hx('#5c3a26'), plank=5, rng=random.Random(13))
-    bevel_edges(cv, 1, 1, 34, 20)
-    # papers
-    paper = Cv(36, 22)
-    fill_shape(paper, 6.0, 8.0, 3.2, 4.0, lambda u, v, L: hx('#f2eee4') if L > 0.5 else hx('#d8d2c4'),
-               ang=-0.2, kind='rect', corner=0.5)
-    for (x, y) in [(5, 6), (6, 6), (7, 6), (5, 8), (6, 8), (5, 10), (6, 10), (7, 10)]:
-        paper.set(x, y, hx('#9a96a8'))
-    paper.outline(dk(hx('#5c3a26'), 0.55))
-    cv.over(paper)
-    # CRT monitor (screen faces +y)
-    mon = Cv(36, 22)
-    beige = ramp('#d8ccaa', 0.42, 0.2, 0.35)
-    fill_shape(mon, 18.0, 6.5, 6.5, 5.0, lambda u, v, L: tone(beige, L), kind='rect', bevel=2.5, corner=2.0)
-    for x in range(14, 22, 2):
-        mon.set(x, 3, beige[0])
-        mon.set(x, 4, beige[0])
-    mon.rect(13, 11, 22, 11, beige[1])
-    mon.outline()
-    for x in range(13, 23):
-        mon.blend(x, 12, (90, 255, 160, 150))
-    cv.over(mon)
-    # keyboard + mouse
-    kb = Cv(36, 22)
-    kb.rect(12, 14, 24, 17, beige[2])
-    for y in (15, 16):
-        for x in range(13, 24):
-            if (x + y) % 2 == 0:
-                kb.set(x, y, beige[1])
-    kb.rect(12, 14, 24, 14, beige[3])
-    fill_shape(kb, 28.5, 15.5, 1.1, 1.5, lambda u, v, L: tone(beige, L))
-    kb.outline()
-    cv.over(kb)
-    # coffee mug
-    mug = Cv(36, 22)
-    fill_shape(mug, 30.0, 5.0, 1.9, 1.9, lambda u, v, L: tone(WHITE, L))
-    mug.set(29, 4, hx('#4a2a14'))
-    mug.set(30, 4, hx('#3a1e10'))
-    mug.set(29, 5, hx('#3a1e10'))
-    mug.set(30, 5, hx('#2a140a'))
-    mug.set(32, 5, WHITE[1])
-    mug.outline()
-    cv.over(mug)
+    """Office desk (the seat is on +y): green blotter and papers, a typewriter, rotary phone, files, a mug."""
+    W, H = 48, 26
+    cv = Cv(W, H)
+    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#5a3824'), plank=6, rng=random.Random(13))
+    mottle(cv, random.Random(131), 6, 7)
+    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.2, 0.35)
+    ol = dk(hx('#5a3824'), 0.6)
+
+    def blotter(ly):
+        g = ramp('#2e5a3e', 0.45, 0.22, 0.25)
+        fill_shape(ly, 25.0, 18.0, 9.5, 5.0, lambda u, v, L: shade(g, L), kind='rect', corner=0.6, bevel=0.8)
+        for y in range(13, 24):        # leather corner pockets
+            for x in range(15, 35):
+                if (x - 15) + (y - 13) < 3 or (34 - x) + (y - 13) < 3 or (x - 15) + (23 - y) < 3 or (34 - x) + (23 - y) < 3:
+                    ly.set(x, y, hx('#4a2a1a'))
+        fill_shape(ly, 29.5, 19.0, 3.0, 3.8, lambda u, v, L: hx('#f0ece2') if L > 0.55 else hx('#d6d0c4'),
+                   ang=0.18, kind='rect', corner=0.3, bevel=0.5)
+        for k in range(4):
+            line(ly, 27.6 + 0.1 * k, 17.0 + k * 1.4, 31.0 + 0.1 * k, 17.6 + k * 1.4, hx('#a8a4b4'))
+        line(ly, 20.0, 21.5, 24.5, 17.5, hx('#2a2a3a'))   # pen
+        ly.set(24, 17, hx('#d8b040'))
+    layer(cv, blotter, ol)
+
+    def files(ly):
+        for i, (x, y, a, col) in enumerate(((7.0, 9.0, -0.12, '#d8b878'), (7.5, 8.2, 0.08, '#c8a868'), (8.0, 7.6, -0.04, '#e0c488'))):
+            fill_shape(ly, x, y, 4.6, 5.6, lambda u, v, L, col=col: shade(ramp(col, 0.4, 0.2, 0.3), L),
+                       ang=a, kind='rect', corner=0.4, bevel=0.8)
+        line(ly, 4.0, 4.0, 11.0, 3.6, hx('#f2eee4'))       # a sheet sticking out
+        fill_shape(ly, 7.0, 21.0, 2.0, 2.0, lambda u, v, L: shade(WHITE, L))   # mug
+        fill_shape(ly, 7.0, 21.0, 1.2, 1.2, lambda u, v, L: hx('#3a1e10'))
+        ly.set(9, 21, WHITE[1])
+    layer(cv, files, ol)
+
+    def typewriter(ly):
+        body = ramp('#3e4a5a', 0.5, 0.25, 0.4)
+        fill_shape(ly, 25.0, 8.0, 7.5, 4.6, lambda u, v, L: shade(body, L), kind='rect', bevel=2.0, corner=1.6)
+        fill_shape(ly, 25.0, 4.0, 8.2, 1.2, lambda u, v, L: shade(ramp('#26262e', 0.4, 0.2, 0.5), L), kind='rect', corner=1.0)
+        ly.rect(20, 1, 29, 3, hx('#f2eee4'))               # sheet rolled in the platen
+        for x in range(21, 29, 2):
+            ly.set(x, 2, hx('#b0acb8'))
+        for y in (8, 10):                                  # key rows
+            for x in range(19 + (y == 10), 31, 2):
+                ly.set(x, y, hx('#d8d4cc'))
+        ly.rect(22, 11, 28, 11, hx('#d8d4cc'))             # space bar
+        ly.set(33, 4, hx('#c8ccd8'))                       # carriage lever
+    layer(cv, typewriter)
+
+    def phone(ly):
+        red = ramp('#b82830', 0.5, 0.25, 0.35)
+        fill_shape(ly, 41.0, 9.5, 4.0, 3.4, lambda u, v, L: shade(red, L), kind='super', p=2.6)
+        fill_capsule(ly, [(37.6, 7.0), (44.4, 7.0)], 1.3, lambda k, L, s, i, t: shade(red, L))   # handset
+        ring(ly, 41.0, 10.6, 0.9, 2.1, lambda dx, dy, d: hx('#e8e4dc') if int(math.atan2(dy, dx) * 1.6) % 2 else hx('#2a1418'))
+        line(ly, 44.5, 12.0, 46.0, 16.0, hx('#1a1018'))    # coiled cord
+    layer(cv, phone)
     cv.outline()
     return cv
 
 
 def p_chair():
-    cv = Cv(12, 12)
-    wood = ramp('#8a5230', 0.45, 0.22, 0.3)
-    seat = ramp('#7a2a3a', 0.45, 0.22, 0.3)
-    fill_shape(cv, 6.5, 6.0, 4.4, 4.4, lambda u, v, L: tone(seat, L), kind='rect', bevel=2.0, corner=1.4)
-    back = Cv(12, 12)
-    fill_shape(back, 2.0, 6.0, 1.1, 5.0, lambda u, v, L: tone(wood, L), kind='rect', bevel=1.0, corner=0.8)
-    back.outline()
-    cv.over(back)
+    """Bistro chair: chrome tube frame, padded vinyl seat, curved backrest on -x."""
+    cv = Cv(16, 16)
+    vin = ramp('#8e2c38', 0.5, 0.26, 0.32)
+    chrome = ramp('#9ea4b4', 0.55, 0.28, 0.5)
+
+    def seat(ly):
+        fill_shape(ly, 9.0, 8.0, 5.4, 5.6, lambda u, v, L: shade(vin, L), kind='super', p=3.0)
+        ly.set(9, 7, vin[1])
+        ly.set(10, 8, vin[1])
+        ly.set(7, 5, vin[3])
+    layer(cv, seat)
+
+    def back(ly):
+        fill_capsule(ly, [(3.6, 2.0), (2.3, 4.6), (2.0, 8.0), (2.3, 11.4), (3.6, 14.0)], 1.25,
+                     lambda k, L, s, i, t: shade(chrome, L) if k > 0.55 else shade(vin, L))
+    layer(cv, back)
     cv.outline()
     return cv
 
 
 def p_armchair():
-    cv = Cv(18, 18)
-    vel = ramp('#b01a30', 0.55, 0.28, 0.35)
-    seam = dk(vel[0], 0.45)
-    fill_shape(cv, 9.0, 9.0, 8.0, 8.0, lambda u, v, L: vel[0], kind='rect', corner=2.0)
-    seat = Cv(18, 18)
-    fill_shape(seat, 10.5, 9.0, 4.4, 4.0, lambda u, v, L: tone(vel, L), kind='rect', bevel=2.4, corner=1.4)
-    seat.set(10, 8, vel[0])
-    seat.set(11, 9, vel[1])
-    seat.outline(seam)
-    cv.over(seat)
-    back = Cv(18, 18)
-    fill_shape(back, 3.2, 9.0, 2.2, 8.0, lambda u, v, L: tone(vel, L), kind='rect', bevel=1.8, corner=1.6)
-    back.outline(seam)
-    cv.over(back)
-    arms_ = Cv(18, 18)
-    fill_shape(arms_, 10.5, 2.4, 6.5, 1.4, lambda u, v, L: tone(vel, L), kind='rect', bevel=1.4, corner=1.3)
-    fill_shape(arms_, 10.5, 15.6, 6.5, 1.4, lambda u, v, L: tone(vel, L), kind='rect', bevel=1.4, corner=1.3)
-    arms_.outline(seam)
-    cv.over(arms_)
-    for y in (5, 9, 13):
-        cv.set(3, y, vel[0])
+    """Chesterfield club armchair, oxblood leather with buttoned back; back on -x, seat facing +x."""
+    S = 28
+    cv = Cv(S, S)
+    lea = ramp('#7e2224', 0.5, 0.26, 0.32)
+    seam = dk(lea[0], 0.45)
+    fill_shape(cv, 14.0, 14.0, 13.0, 13.0, lambda u, v, L: lea[0], kind='rect', corner=2.6)
+
+    def seat(ly):
+        fill_shape(ly, 17.6, 14.0, 8.4, 7.4, lambda u, v, L: shade(lea, L), kind='rect', bevel=3.4, corner=2.0)
+        line(ly, 14.0, 13.0, 21.0, 15.0, lea[1])       # sat-in crease
+    layer(cv, seat, seam)
+
+    def arms(ly):
+        for cy in (4.0, 24.0):
+            fill_shape(ly, 15.5, cy, 11.6, 3.2, lambda u, v, L: shade(lea, L), kind='rect', bevel=2.4, corner=2.6)
+            fill_shape(ly, 25.2, cy, 2.0, 2.6, lambda u, v, L: shade(lea, L + 0.08))   # rolled front of the arm
+    layer(cv, arms, seam)
+
+    def back(ly):
+        fill_shape(ly, 4.4, 14.0, 3.6, 13.0, lambda u, v, L: shade(lea, L), kind='rect', bevel=2.6, corner=2.6)
+        for y in (6, 10, 14, 18, 22):                  # buttons + the pleats between them
+            ly.set(5, y, seam)
+            ly.set(5, y - 1, lea[3])
+            if y < 22:
+                ly.set(4, y + 2, lea[1])
+    layer(cv, back, seam)
+    smudge(cv, random.Random(141), 5, (6, 6, 24, 22), (1.5, 3.0), 0.12, hx('#c88a70'))   # worn leather
     cv.outline()
     return cv
 
 
 def p_sofa():
-    cv = Cv(44, 18)
-    lea = ramp('#b8368e', 0.5, 0.25, 0.35)
-    fill_shape(cv, 22.0, 9.0, 21.0, 8.0, lambda u, v, L: lea[0], kind='rect', corner=2.0)
-    cush = Cv(44, 18)
-    for cx in (11.0, 22.0, 33.0):
-        fill_shape(cush, cx, 10.5, 5.3, 5.6, lambda u, v, L: tone(lea, L), kind='rect', bevel=2.6, corner=1.8)
-    for cx in (11, 22, 33):
-        cush.set(cx - 2, 8, lt(lea[3], 0.4))
-        cush.set(cx - 1, 8, lt(lea[3], 0.4))
-    cush.outline(dk(lea[0], 0.5))
-    cv.over(cush)
-    frame = Cv(44, 18)
-    fill_shape(frame, 22.0, 2.6, 21.0, 1.7, lambda u, v, L: tone(lea, L, -1 if L < 0.88 else 0),
-               kind='rect', bevel=1.5, corner=1.5)
-    fill_shape(frame, 3.0, 9.5, 2.0, 7.5, lambda u, v, L: tone(lea, L), kind='rect', bevel=1.6, corner=1.8)
-    fill_shape(frame, 41.0, 9.5, 2.0, 7.5, lambda u, v, L: tone(lea, L), kind='rect', bevel=1.6, corner=1.8)
-    for x in range(6, 39, 3):
-        frame.set(x, 2, lea[3])
-    frame.outline(dk(lea[0], 0.5))
-    cv.over(frame)
+    """Three-seater: back along -y, rolled arms, three seat and back cushions, worn vinyl."""
+    W, H = 66, 30
+    cv = Cv(W, H)
+    lea = ramp('#a8346c', 0.52, 0.27, 0.32)
+    seam = dk(lea[0], 0.5)
+    fill_shape(cv, 33.0, 15.0, 32.0, 14.0, lambda u, v, L: lea[0], kind='rect', corner=2.6)
+
+    def frame(ly):
+        fill_shape(ly, 33.0, 4.6, 32.0, 3.6, lambda u, v, L: shade(lea, L - 0.05), kind='rect', bevel=2.6, corner=2.6)
+        for cx in (4.6, 61.4):
+            fill_shape(ly, cx, 16.0, 3.6, 13.0, lambda u, v, L: shade(lea, L), kind='rect', bevel=2.8, corner=2.6)
+    layer(cv, frame, seam)
+    rng = random.Random(151)
+
+    def cushions(ly):
+        for i, cx in enumerate((17.0, 33.0, 49.0)):
+            dy = rng.uniform(-0.3, 0.3)
+            fill_shape(ly, cx, 19.5 + dy, 7.9, 8.6, lambda u, v, L: shade(lea, L), kind='rect', bevel=3.6, corner=2.2)
+            fill_shape(ly, cx, 10.2, 7.9, 2.6, lambda u, v, L: shade(lea, L + 0.04), kind='rect', bevel=2.2, corner=2.0)
+            ly.set(int(cx) - 3, 14, lt(lea[3], 0.3))
+            ly.set(int(cx) - 2, 14, lt(lea[3], 0.3))
+            line(ly, cx - 2.5, 20.0 + dy, cx + 2.0, 21.5 + dy, lea[1])   # sat-in dip
+    layer(cv, cushions, seam)
+    # one cushion split, foam showing
+    for (x, y) in ((44, 22), (45, 22), (46, 23)):
+        cv.set(x, y, hx('#e8d898'))
+    cv.set(45, 23, hx('#c8b070'))
+    smudge(cv, rng, 9, (8, 12, 58, 26), (1.5, 3.5), 0.14)
     cv.outline()
     return cv
 
 
 def p_plant():
-    cv = Cv(18, 18)
-    pot = ramp('#c8643a', 0.45, 0.22, 0.35)
-    ring(cv, 9.0, 9.0, 2.8, 4.6, lambda dx, dy, d: tone(pot, light(dx / d * 0.8, dy / d * 0.8)))
-    fill_shape(cv, 9.0, 9.0, 2.9, 2.9, lambda u, v, L: hx('#3e2818') if L > 0.7 else hx('#2a1a10'))
+    """Potted areca palm: terracotta pot (the hitbox), fronds spilling past it."""
+    S = 24
+    c = S / 2
+    cv = Cv(S, S)
+    pot = ramp('#c06036', 0.45, 0.22, 0.35)
+    ring(cv, c, c, 5.6, 7.4, lambda dx, dy, d: shade(pot, light(dx / d * 0.85, dy / d * 0.85)))
+    fill_shape(cv, c, c, 5.7, 5.7, lambda u, v, L: mix(hx('#24160c'), hx('#4a3020'), L))
+    smudge(cv, random.Random(161), 4, (6, 6, 18, 18), (0.8, 1.5), 0.25, hx('#7a6a50'))
     cv.outline()
-    leaves = Cv(18, 18)
-    green = ramp('#3fa040', 0.55, 0.28, 0.35)
+    green = [ramp('#2a7a34', 0.6, 0.32, 0.3), ramp('#46a040', 0.55, 0.28, 0.35)]
     rng = random.Random(77)
-    n = 6
-    for i in range(n):
-        a = i * 2 * math.pi / n + rng.uniform(-0.25, 0.25) + 0.2
-        ln = rng.uniform(7.0, 7.9)
-        bend = rng.uniform(-0.25, 0.25)
-        pts = []
-        for k in range(6):
-            t = 2.0 + (ln - 2.0) * k / 5.0
-            aa = a + bend * k / 5.0
-            pts.append((9.0 + math.cos(aa) * t, 9.0 + math.sin(aa) * t))
+    for lay, n in ((0, 6), (1, 4)):
+        leaves = Cv(S, S)
+        for i in range(n):
+            a = i * 2 * math.pi / n + rng.uniform(-0.35, 0.35) + lay * 0.7
+            ln = rng.uniform(9.0, 11.4) if lay == 0 else rng.uniform(6.0, 8.0)
+            bend = rng.uniform(-0.35, 0.35)
+            pts = []
+            for k in range(7):
+                t = 1.5 + (ln - 1.5) * k / 6.0
+                aa = a + bend * (k / 6.0) ** 2
+                pts.append((c + math.cos(aa) * t, c + math.sin(aa) * t))
+            g = green[lay]
 
-        def leaf(k, L, s, seg, t):
-            if abs(s) < 0.25:
-                return green[3]
-            return tone(green, L)
-        for j in range(5):
-            w = 1.3 * math.sin(math.pi * (j + 1.0) / 6.5) ** 0.8
-            fill_capsule(leaves, [pts[j], pts[j + 1]], max(0.5, w), leaf)
-    leaves.outline(hx('#0c2410'))
-    cv.over(leaves)
+            def leaf(k, L, s, seg, t, g=g):
+                if abs(s) < 0.3:
+                    return lt(g[3], 0.2)
+                return shade(g, L - 0.1 * (s > 0))
+            for j in range(6):
+                w = 1.5 * math.sin(math.pi * (j + 1.0) / 7.5) ** 0.7
+                fill_capsule(leaves, [pts[j], pts[j + 1]], max(0.5, w), leaf)
+        leaves.outline(hx('#0c2410'))
+        cv.over(leaves)
     return cv
 
 
 def p_tv():
-    cv = Cv(24, 8)
-    blk = ramp('#2a2632', 0.5, 0.2, 0.35)
-    fill_shape(cv, 12.0, 3.5, 11.0, 2.6, lambda u, v, L: tone(blk, L), kind='rect', bevel=1.5, corner=1.0)
-    for x in range(5, 19, 2):
-        cv.set(x, 2, blk[0])
-    cv.rect(2, 5, 21, 5, hx('#05d9e8'))
+    """80s woodgrain CRT on a black TV cart with a VCR, rabbit ears; the screen faces +y."""
+    W, H = 24, 17
+    cv = Cv(W, H)
+    cart = ramp('#24222c', 0.4, 0.2, 0.45)
+    fill_shape(cv, 12.0, 8.5, 11.0, 7.5, lambda u, v, L: shade(cart, L), kind='rect', bevel=1.2, corner=0.8)
+    for (x, y) in ((1, 1), (22, 1), (1, 15), (22, 15)):
+        cv.set(x, y, hx('#a8acb8'))        # chrome corner posts
     cv.outline()
-    for x in range(2, 22):
-        cv.set(x, 5, NEON_PINK if 8 <= x <= 11 else hx('#05d9e8'))
-        cv.set(x, 6, hx('#9ef6ff') if x % 5 else hx('#ffffff'))
-        cv.set(x, 7, (5, 217, 232, 110))
-    cv.set(1, 6, OUTLINE)
-    cv.set(22, 6, OUTLINE)
-    cv.set(19, 3, hx('#ff2a3a'))
-    return cv, glow_from(cv, lambda x, y, c: y >= 5 and 2 <= x <= 21 or (x, y) == (19, 3))
+
+    def tv(ly):
+        back = ramp('#2e2a34', 0.45, 0.22, 0.4)
+        fill_shape(ly, 12.0, 3.4, 5.6, 2.6, lambda u, v, L: shade(back, L), kind='rect', bevel=1.6, corner=1.6)
+        for x in range(8, 17, 2):          # vent slots on the tube's housing
+            ly.set(x, 3, back[0])
+        wood_fill(ly, 2, 5, 21, 12, hx('#7a4a26'), plank=4, rng=random.Random(171))
+        bevel_edges(ly, 2, 5, 21, 12, 0.25, 0.3)
+        ly.set(2, 5, CLEAR)
+        ly.set(21, 5, CLEAR)
+        ly.rect(2, 12, 21, 12, hx('#b8bcc8'))   # silver bezel
+        ly.set(18, 12, hx('#e8ecf4'))
+        ly.set(20, 12, hx('#5a5a66'))
+        line(ly, 11.0, 4.0, 5.0, 0.4, hx('#c8ccd8'))   # rabbit ears
+        line(ly, 13.0, 4.0, 19.0, 0.4, hx('#c8ccd8'))
+    layer(cv, tv)
+    for x in range(3, 21):                 # the glass bulging past the bezel, lit by its own picture
+        cv.set(x, 13, hx('#9ef6ff') if x % 7 else hx('#ffffff'))
+    cv.set(2, 13, OUTLINE)
+    cv.set(21, 13, OUTLINE)
+    cv.rect(5, 14, 18, 15, hx('#3a3846'))  # VCR on the shelf
+    cv.rect(5, 14, 18, 14, hx('#4e4c5c'))
+    cv.rect(7, 15, 12, 15, hx('#14121a'))  # cassette slot
+    for x in (15, 16, 17):                 # 12:00 blinking forever
+        cv.set(x, 15, hx('#ff2a3a'))
+    return cv, glow_from(cv, lambda x, y, c: (y == 13 and 3 <= x <= 20) or (y == 15 and 15 <= x <= 17))
 
 
 def p_fridge():
-    cv = Cv(22, 20)
-    cr = ramp('#e8e2cc', 0.42, 0.18, 0.4)
-    fill_shape(cv, 11.0, 9.0, 10.0, 8.0, lambda u, v, L: tone(cr, L), kind='rect', bevel=3.0, corner=1.4)
-    cv.rect(2, 16, 19, 18, cr[1])
-    cv.rect(2, 16, 19, 16, dk(cr[1], 0.2))
-    cv.rect(4, 18, 9, 18, hx('#b8c0cc'))
-    cv.rect(4, 17, 9, 17, hx('#e8f0f8'))
-    for x in range(4, 18, 2):
-        cv.set(x, 3, cr[1])
+    """Almond fridge seen from above: dusty top, cereal box on it, condenser at the back, door + handle at +y."""
+    S = 24
+    cv = Cv(S, S)
+    cr = ramp('#ddd0aa', 0.42, 0.2, 0.4)
+    fill_shape(cv, 12.0, 11.0, 11.0, 10.0, lambda u, v, L: shade(cr, L), kind='rect', bevel=2.4, corner=1.2)
+    mottle(cv, random.Random(181), 5, 6)
+    smudge(cv, random.Random(182), 5, (3, 3, 21, 17), (2.0, 3.5), 0.1, hx('#8a8070'))   # dust
+    for x in range(3, 21):                 # condenser coils peeking out at the back
+        cv.set(x, 1, hx('#3a3640') if x % 2 else hx('#5a5662'))
+    cv.rect(1, 20, 22, 22, cr[1])          # door top edge
+    cv.rect(1, 20, 22, 20, dk(cr[1], 0.25))
+    cv.rect(3, 21, 11, 21, hx('#e8f0f8'))  # chrome handle
+    cv.rect(3, 22, 11, 22, hx('#8a92a0'))
     cv.outline()
+
+    def box(ly):                           # a pizza box someone left up there
+        fill_shape(ly, 15.0, 9.0, 4.6, 4.6, lambda u, v, L: shade(ramp('#c8a46a', 0.45, 0.22, 0.3), L),
+                   ang=0.18, kind='rect', bevel=1.0, corner=0.4)
+        fill_shape(ly, 15.0, 9.0, 1.8, 1.8, lambda u, v, L: hx('#c02a24') if math.hypot(u, v) > 0.9 else hx('#f2e6c8'))
+    layer(cv, box)
     return cv
 
 
 def p_oven():
-    cv = Cv(22, 20)
-    st = ramp('#d6d8de', 0.42, 0.2, 0.4)
-    fill_shape(cv, 11.0, 9.5, 10.0, 8.5, lambda u, v, L: tone(st, L), kind='rect', bevel=2.0, corner=1.4)
-    cv.rect(2, 2, 19, 13, hx('#26222c'))
-    for (bx, by, on) in [(6.0, 5.0, False), (15.0, 5.0, True), (6.0, 11.0, False), (15.0, 11.0, False)]:
-        ring(cv, bx, by, 1.6, 2.9, lambda dx, dy, d: hx('#5a5866') if light(dx / d, dy / d) > 0.5 else hx('#3e3c48'))
-        if on:
-            ring(cv, bx, by, 1.4, 2.6, lambda dx, dy, d: hx('#ff6b1a') if (int(d * 2) % 2 == 0) else hx('#ffb03a'))
-        cv.set(int(bx), int(by), hx('#14121a'))
+    """Gas range: enamel top, cast-iron grates, a pan on a burner, one blue flame, knobs and handle at +y."""
+    S = 22
+    cv = Cv(S, S)
+    en = ramp('#e2ddd0', 0.42, 0.2, 0.35)
+    fill_shape(cv, 11.0, 10.5, 10.0, 9.5, lambda u, v, L: shade(en, L), kind='rect', bevel=1.8, corner=1.2)
+    cv.rect(1, 1, 20, 2, shade(en, 0.5))   # back guard
+    cv.rect(1, 1, 20, 1, en[3])
+    mottle(cv, random.Random(191), 5, 5)
+    iron = hx('#24202a')
+    for (bx, by) in ((6.0, 7.0), (16.0, 7.0), (6.0, 14.0), (16.0, 14.0)):
+        fill_shape(cv, bx, by, 3.4, 3.4, lambda u, v, L: dk(en[1], 0.1), kind='rect', corner=1.0)
+        ring(cv, bx, by, 1.2, 2.2, lambda dx, dy, d: hx('#4a4652') if light(dx / d, dy / d) > 0.5 else hx('#2e2a36'))
+        line(cv, bx - 3.0, by, bx + 3.0, by, iron)       # grate bars
+        line(cv, bx, by - 3.0, bx, by + 3.0, iron)
+    ring(cv, 16.0, 14.0, 1.4, 2.4, lambda dx, dy, d: hx('#5ab8ff') if (int(math.atan2(dy, dx) * 2.5) % 2) else hx('#2a6aff'))
+    smudge(cv, random.Random(192), 4, (2, 3, 19, 17), (1.0, 2.0), 0.3, hx('#6a4a20'))   # baked-on spills
     for x in (4, 8, 13, 17):
-        cv.set(x, 16, hx('#2a2632'))
-        cv.set(x, 15, st[3])
-    cv.set(10, 16, hx('#ff2a3a'))
+        fill_shape(cv, x + 0.5, 18.5, 0.9, 0.9, lambda u, v, L: shade(ramp('#2a2632', 0.4, 0.2, 0.6), L))
+    cv.rect(3, 20, 18, 20, hx('#c8ccd6'))   # door handle
     cv.outline()
+
+    def pan(ly):
+        fill_shape(ly, 6.0, 7.0, 3.6, 3.6, lambda u, v, L: shade(ramp('#3a3640', 0.5, 0.25, 0.5), L))
+        fill_shape(ly, 6.0, 7.0, 2.6, 2.6, lambda u, v, L: hx('#2a2630') if math.hypot(u + 0.6, v + 0.4) > 1.0 else hx('#f2d24a'))
+        line(ly, 2.0, 4.0, 0.6, 2.4, hx('#1a1620'))      # handle
+        line(ly, 2.6, 3.6, 1.2, 2.0, hx('#1a1620'))
+    layer(cv, pan)
     return cv
 
 
 def p_sink():
-    cv = Cv(24, 14)
-    st = ramp('#a8b0bc', 0.45, 0.2, 0.4)
-    fill_shape(cv, 12.0, 7.0, 11.0, 6.0, lambda u, v, L: tone(st, L), kind='rect', bevel=1.5, corner=1.0)
-    for bx in (6.5, 17.5):
-        fill_shape(cv, bx, 8.0, 4.4, 4.0, lambda u, v, L: tone(ramp('#6a7280', 0.5, 0.25, 0.25), 1.0 - L * 0.9),
-                   kind='rect', bevel=2.5, corner=1.6)
-        cv.set(int(bx), 8, hx('#2a2a34'))
-    cv.rect(11, 1, 12, 4, hx('#d8e0ea'))
-    cv.set(11, 4, hx('#f8ffff'))
-    cv.set(9, 2, hx('#2a8af0'))
-    cv.set(14, 2, hx('#f03a3a'))
+    """Stainless double sink: chrome mixer at the back, a dirty plate and a mug in the basins."""
+    W, H = 28, 20
+    cv = Cv(W, H)
+    st = ramp('#a6aeba', 0.48, 0.22, 0.42)
+    fill_shape(cv, 14.0, 10.0, 13.0, 9.0, lambda u, v, L: shade(st, L), kind='rect', bevel=1.6, corner=1.0)
+    for y in range(1, 19):                 # brushed steel: faint streaks along x
+        for x in range(1, 27):
+            c = cv.get(x, y)
+            if c[3] and (y * 7 + x // 9) % 5 == 0:
+                cv.set(x, y, shift(c, 4))
+    basin = ramp('#6a7280', 0.5, 0.26, 0.25)
+    for bx in (7.5, 20.5):
+        fill_shape(cv, bx, 11.5, 5.3, 6.0, lambda u, v, L: shade(basin, 1.05 - L * 0.95), kind='rect', bevel=2.8, corner=1.8)
+        ring(cv, bx, 12.5, 0.0, 1.1, lambda dx, dy, d: hx('#2a2a34') if d < 0.6 else hx('#8a929e'))
+    smudge(cv, random.Random(201), 6, (2, 5, 26, 18), (1.0, 2.0), 0.2, hx('#c8c0a0'))   # limescale
     cv.outline()
+
+    def mixer(ly):
+        fill_shape(ly, 14.0, 2.6, 1.6, 1.4, lambda u, v, L: shade(ramp('#d0d6e0', 0.5, 0.25, 0.5), L))
+        fill_capsule(ly, [(14.0, 2.6), (11.5, 5.0), (9.5, 7.0)], 0.6, lambda k, L, s, i, t: shade(ramp('#d0d6e0', 0.5, 0.25, 0.5), L))
+        ly.set(11, 2, hx('#2a7af0'))
+        ly.set(17, 2, hx('#f03a3a'))
+    layer(cv, mixer)
+
+    def dishes(ly):
+        fill_shape(ly, 20.5, 11.5, 3.6, 3.6, lambda u, v, L: shade(WHITE, L) if math.hypot(u, v) > 2.4 else hx('#e8e4d8'))
+        ly.set(20, 11, hx('#b85a2a'))
+        ly.set(21, 12, hx('#c8a040'))
+        fill_shape(ly, 6.0, 13.5, 1.8, 1.8, lambda u, v, L: shade(ramp('#3a7ac0', 0.45, 0.22, 0.4), L))
+        ly.set(6, 13, hx('#2a1810'))
+    layer(cv, dishes)
     return cv
 
 
 def p_toilet():
-    cv = Cv(12, 16)
-    wh = ramp('#eeeef4', 0.4, 0.18, 0.2)
-    fill_shape(cv, 6.0, 10.0, 4.4, 5.3, lambda u, v, L: tone(wh, L))
-    fill_shape(cv, 6.0, 10.4, 2.6, 3.4, lambda u, v, L: hx('#8ecfe4') if L < 0.75 else hx('#c4ecf6'))
-    cv.set(6, 11, hx('#5aa8c8'))
-    cv.outline()
-    tank = Cv(12, 16)
-    fill_shape(tank, 6.0, 3.0, 5.0, 2.2, lambda u, v, L: tone(wh, L), kind='rect', bevel=1.4, corner=1.0)
-    tank.set(8, 2, hx('#b8bcc8'))
-    tank.outline()
-    cv.over(tank)
+    """Toilet: tank with flush button (-y), elongated bowl, seat ring, water; a hint of grime."""
+    W, H = 15, 23
+    cv = Cv(W, H)
+    wh = ramp('#ecebf0', 0.4, 0.18, 0.2)
+
+    def bowl(ly):
+        fill_shape(ly, 7.5, 14.5, 5.6, 7.4, lambda u, v, L: shade(wh, L))
+        fill_shape(ly, 7.5, 15.0, 3.6, 5.2, lambda u, v, L: shade(ramp('#f4f0e2', 0.4, 0.2, 0.2), 1.1 - L * 0.7))
+        fill_shape(ly, 7.5, 15.6, 2.4, 3.4, lambda u, v, L: hx('#8ec4d4') if L < 0.75 else hx('#bfe4ee'))
+        ly.set(7, 16, hx('#4a8aa8'))
+        ly.set(7, 17, hx('#5a9ab8'))
+    layer(cv, bowl)
+    smudge(cv, random.Random(211), 3, (5, 12, 10, 19), (0.8, 1.4), 0.2, hx('#a08a4a'))
+
+    def tank(ly):
+        fill_shape(ly, 7.5, 3.6, 6.4, 2.8, lambda u, v, L: shade(wh, L), kind='rect', bevel=1.6, corner=1.0)
+        fill_shape(ly, 7.5, 3.6, 1.0, 1.0, lambda u, v, L: shade(ramp('#b8bcc8', 0.45, 0.2, 0.4), L))
+        ly.set(4, 7, hx('#b8bcc8'))              # seat hinges
+        ly.set(10, 7, hx('#b8bcc8'))
+    layer(cv, tank)
     return cv
 
 
 def p_bed():
-    cv = Cv(30, 44)
-    wood_fill(cv, 1, 1, 28, 42, hx('#5a3424'), plank=4, rng=random.Random(14), vertical=True)
-    cv.rect(1, 1, 28, 3, hx('#3e2418'))
-    sheet = ramp('#6a2a9a', 0.5, 0.25, 0.35)
-    mat = Cv(30, 44)
-    fill_shape(mat, 15.0, 23.0, 12.6, 18.6, lambda u, v, L: hx('#ece6f0'), kind='rect', corner=1.5)
-    fill_shape(mat, 15.0, 7.5, 9.6, 3.4, lambda u, v, L: tone(WHITE, L), kind='rect', bevel=2.5, corner=2.0)
-    mat.set(12, 7, WHITE[1])
-    mat.set(18, 8, WHITE[1])
+    """Double bed: headboard at -y, two pillows, folded-back sheet, rumpled duvet with a turned corner."""
+    W, H = 46, 66
+    cv = Cv(W, H)
+    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#5a3424'), plank=5, rng=random.Random(14), vertical=True)
+    cv.rect(1, 1, W - 2, 4, hx('#3e2418'))
+    for x in range(1, W - 1):
+        cv.set(x, 1, hx('#6e4632'))
+    sheet = ramp('#5e2a8a', 0.52, 0.26, 0.34)
+    mat = Cv(W, H)
+    fill_shape(mat, 23.0, 34.0, 20.6, 29.0, lambda u, v, L: hx('#e8e2ea'), kind='rect', corner=1.5)
+    for cx in (13.5, 32.5):
+        fill_shape(mat, cx, 10.0, 8.4, 4.4, lambda u, v, L: shade(WHITE, L), kind='rect', bevel=3.2, corner=2.4)
+    mat.set(11, 10, WHITE[1])
+    mat.set(12, 10, WHITE[1])
+    mat.set(34, 9, WHITE[1])
     mat.outline(dk(hx('#5a3424'), 0.5))
     cv.over(mat)
-    duv = Cv(30, 44)
     rng = random.Random(15)
-    wr = [(rng.randint(5, 24), rng.randint(17, 38)) for _ in range(6)]
+    # long soft folds running down from where someone kicked the duvet, the edges rolling over the mattress
+    folds = [(1.2 + rng.uniform(-0.35, 0.35), rng.uniform(0.2, 0.3), rng.uniform(0.9, 1.5), rng.uniform(0, 6.28))
+             for _ in range(3)]
+    nz = VNoise(W, H, 11, random.Random(16))
 
-    def dpx(u, v, L):
-        if v < -15.0:
-            return tone(WHITE, L)
-        c = tone(sheet, L)
-        return c
-    fill_shape(duv, 15.0, 28.5, 13.0, 13.6, dpx, kind='rect', bevel=3.0, corner=1.5)
-    for (x, y) in wr:
-        for k in range(3):
-            if duv.on(x + k, y + k):
-                duv.set(x + k, y + k, sheet[1])
-            if duv.on(x + k + 1, y + k):
-                duv.set(x + k + 1, y + k, sheet[3])
+    def hf(x, y):
+        h = nz(x, y) * 1.6
+        for (a, f, amp, ph) in folds:
+            h += amp * math.sin((x * math.cos(a) + y * math.sin(a)) * f + ph)
+        e = min(x - 1, W - 2 - x)
+        return h - (max(0.0, 3.0 - e) ** 2) * 0.35
+    duv = Cv(W, H)
+    fill_shape(duv, 23.0, 39.5, 21.6, 24.0, lambda u, v, L: sheet[2], kind='rect', corner=2.0)
+    for y in range(48, 64):                         # bottom-right corner kicked back
+        for x in range(W):
+            if duv.on(x, y) and (x - 30) + (y - 48) > 15:
+                duv.set(x, y, CLEAR)
+    relief(duv, 1, 15, W - 2, H - 2, hf, sheet, 0.8)
+    for x in range(1, W - 1):                       # the sheet folded back over the duvet
+        for y in (16, 17, 18):
+            if duv.on(x, y):
+                duv.set(x, y, WHITE[3] if y == 16 else WHITE[2] if y == 17 else WHITE[1])
     duv.outline()
     cv.over(duv)
+    flap = Cv(W, H)                                 # the turned corner lies on the duvet, lining up
+    for y in range(40, 64):
+        for x in range(W - 1):
+            s = (x - 30) + (y - 48)
+            if 8 < s <= 15 and duv.on(x, y) and x < W - 3 and y < H - 3:
+                flap.set(x, y, mix(hx('#d4c4e0'), hx('#a890c0'), (s - 8) / 7.0))
+    flap.outline()
+    cv.over(flap)
     cv.outline()
     return cv
 
 
 def p_pool_table():
-    cv = Cv(64, 36)
-    wood_fill(cv, 1, 1, 62, 34, hx('#6e3a1c'), plank=3, rng=random.Random(16))
-    bevel_edges(cv, 1, 1, 62, 34, 0.25, 0.35)
-    felt = ramp('#1f7a4c', 0.45, 0.2, 0.15)
-    fn = VNoise(64, 36, 4, random.Random(17))
-    cv.rect(5, 5, 58, 30, felt[1])
-    for y in range(6, 30):
-        for x in range(6, 58):
-            c = felt[2]
-            if fn(x, y) > 0.72:
-                c = shift(c, 6)
+    """Pool table: wood rails with sights, leather pockets, worn felt lit from above, a game in progress, cue, chalk."""
+    W, H = 82, 46
+    cv = Cv(W, H)
+    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#6a3518'), plank=3, rng=random.Random(16))
+    mottle(cv, random.Random(161), 6, 5)
+    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.25, 0.35)
+    felt = ramp('#1f7a4c', 0.45, 0.22, 0.18)
+    fn = VNoise(W, H, 5, random.Random(17))
+    x0, y0, x1, y1 = 6, 6, W - 7, H - 7
+    cx, cy = W / 2, H / 2
+    for y in range(y0 - 1, y1 + 2):
+        for x in range(x0 - 1, x1 + 2):
+            if x in (x0 - 1, x1 + 1) or y in (y0 - 1, y1 + 1):
+                cv.set(x, y, felt[0] if (x == x1 + 1 or y == y1 + 1) else felt[1])   # cushions
+                continue
+            d = math.hypot((x - cx) / (W * 0.5), (y - cy) / (H * 0.5))
+            c = mix(felt[2], lt(felt[2], 0.2), max(0.0, 0.7 - d))     # lamp hot spot
+            c = shift(c, int((fn(x, y) - 0.5) * 8))
             cv.set(x, y, c)
-    for x in range(6, 58):
-        cv.set(x, 6, felt[1])
-    for y in range(6, 30):
-        cv.set(6, y, felt[1])
-    for (px, py) in [(5.5, 5.5), (32.0, 4.8), (58.5, 5.5), (5.5, 30.5), (32.0, 31.2), (58.5, 30.5)]:
-        fill_shape(cv, px, py, 2.3, 2.3, lambda u, v, L: hx('#0c0a10') if L < 0.85 else hx('#2a2430'))
-    for x in (12, 19, 25, 39, 45, 52):
+    for x in range(x0, x1 + 1):
+        cv.set(x, y0, dk(cv.get(x, y0), 0.2))
+    for y in range(y0, y1 + 1):
+        cv.set(x0, y, dk(cv.get(x0, y), 0.2))
+    smudge(cv, random.Random(162), 4, (x0 + 4, y0 + 4, x1 - 4, y1 - 4), (2.0, 3.5), 0.12)   # spilled beer
+    for x in (16, 26, 36, 46, 56, 66):
         cv.set(x, 2, hx('#f0e6c8'))
-        cv.set(x, 33, hx('#f0e6c8'))
-    for y in (12, 18, 24):
+        cv.set(x, H - 3, hx('#f0e6c8'))
+    for y in (13, 23, 33):
         cv.set(2, y, hx('#f0e6c8'))
-        cv.set(61, y, hx('#f0e6c8'))
-    balls = Cv(64, 36)
-    for (bx, by, col) in [(44.5, 18.5, '#f9c80e'), (46.5, 17.2, '#d02030'), (46.5, 19.8, '#2a5ad8'),
-                          (48.6, 16.0, '#7a1fa2'), (48.6, 18.5, '#101018'), (48.6, 21.0, '#ff6b1a'),
-                          (16.5, 17.5, '#f4f2ea'), (36.0, 25.0, '#1a9a4a')]:
+        cv.set(W - 3, y, hx('#f0e6c8'))
+    for (px, py) in ((5.5, 5.5), (41.0, 4.6), (W - 5.5, 5.5), (5.5, H - 5.5), (41.0, H - 4.6), (W - 5.5, H - 5.5)):
+        fill_shape(cv, px, py, 2.9, 2.9, lambda u, v, L: hx('#3a2418') if math.hypot(u, v) > 2.0 else hx('#08060c'))
+    balls = Cv(W, H)
+    for (bx, by, col, stripe) in ((58.5, 22.5, '#f9c80e', False), (61.0, 21.0, '#d02030', True), (61.0, 24.2, '#2a5ad8', False),
+                                  (63.5, 19.6, '#101018', False), (63.6, 26.4, '#ff6b1a', True), (49.0, 31.0, '#7a1fa2', False),
+                                  (30.0, 14.0, '#1a9a4a', True), (70.5, 34.5, '#8a2a1a', False), (21.0, 26.0, '#f4f2ea', False)):
         r_ = ramp(col, 0.45, 0.2, 0.45)
-        fill_shape(balls, bx, by, 1.5, 1.5, lambda u, v, L, r_=r_: tone(r_, L))
+        fill_shape(balls, bx, by, 1.5, 1.5, lambda u, v, L, r_=r_, st=stripe: hx('#f4f2ea') if st and abs(v) > 0.8 else shade(r_, L))
     balls.outline(hx('#0a2a18'))
     cv.over(balls)
-    # cue stick
-    stick = Cv(64, 36)
-    fill_capsule(stick, [(4.0, 31.0), (14.0, 19.4)], 0.6, lambda k, L, s, i, t: hx('#f0d8a8') if t > 0.9 else hx('#c08850'))
-    stick.outline()
-    cv.over(stick)
+
+    def cue(ly):
+        fill_capsule(ly, [(9.0, 39.0), (19.4, 27.6)], 0.55, lambda k, L, s, i, t: hx('#3a6ad8') if t > 0.97 else hx('#f0dcb0'))
+        fill_capsule(ly, [(4.0, 41.4), (9.0, 39.0)], 0.8, lambda k, L, s, i, t: hx('#2a1810') if t < 0.3 else hx('#7a3a1a'))
+        fill_shape(ly, 70.0, 2.5, 0.9, 0.9, lambda u, v, L: hx('#3a8ad8'), kind='rect', corner=0.2)   # chalk on the rail
+    layer(cv, cue)
     cv.outline()
     return cv
 
 
 def p_arcade():
-    cv, gl = Cv(20, 16), Cv(20, 16)
-    cab = ramp('#2c1e44', 0.5, 0.2, 0.35)
-    fill_shape(cv, 10.0, 6.0, 8.6, 5.2, lambda u, v, L: tone(cab, L), kind='rect', bevel=2.0, corner=1.0)
+    """Arcade cabinet from above: roof, lit marquee, CRT under its bezel, control panel, coin door at +y."""
+    W, H = 24, 29
+    cv, gl = Cv(W, H), Cv(W, H)
+    cab = ramp('#2a1e3e', 0.5, 0.22, 0.35)
+    fill_shape(cv, 12.0, 14.5, 11.0, 13.5, lambda u, v, L: shade(cab, L), kind='rect', bevel=1.6, corner=1.0)
+    mottle(cv, random.Random(221), 4, 4)
+    for y in range(2, 26):                 # side art stripes
+        for x, col in ((1, NEON_PINK), (22, NEON_CYAN)):
+            if y % 9 not in (0,):
+                cv.set(x, y, dk(col, 0.25))
     marquee = [hx('#ff2a6d'), hx('#ff6b1a'), hx('#f9c80e')]
-    for x in range(3, 17):     # lit marquee at the back
-        for y in (1, 2):
-            c = lt(marquee[(x // 2 + y) % 3], 0.25)
+    for x in range(3, 21):                 # marquee light box, its lit top edge
+        for y in (7, 8):
+            c = lt(marquee[(x // 3) % 3], 0.3 if y == 7 else 0.1)
             cv.set(x, y, c)
             gl.set(x, y, c)
-    for y in range(3, 9):      # side art tubes
-        for x, col in ((2, NEON_PINK), (17, NEON_CYAN)):
-            cv.set(x, y, lt(col, 0.2))
-            gl.set(x, y, col)
-    screen = ["............",
-              ".c.c.c..ww..",
-              "..p.p.p.....",
-              ".....y......",
-              "....ggg..p..",
-              "....g.g....."]
+    cv.rect(3, 9, 20, 10, hx('#100c18'))    # bezel shadow
+    screen = ["................",
+              "..c.c.c.c...ww..",
+              "...p.p.p.p......",
+              "................",
+              "........y.......",
+              "................",
+              "...........p....",
+              ".......ggg......",
+              ".......g.g......"]
     scol = {'c': NEON_CYAN, 'p': NEON_PINK, 'w': hx('#f4f0ff'), 'y': hx('#f9c80e'), 'g': hx('#3aff8a')}
     for j, row in enumerate(screen):
         for i, ch in enumerate(row):
-            x, y = 4 + i, 4 + j
-            c = scol[ch] if ch != '.' else (hx('#0c1030') if (y % 2) else hx('#141a44'))
+            x, y = 4 + i, 10 + j
+            c = scol[ch] if ch != '.' else (hx('#0c1238') if (y % 2) else hx('#121a4a'))
             cv.set(x, y, c)
             gl.set(x, y, c if ch != '.' else (40, 70, 170, 150))
-    panel = Cv(20, 16)
-    fill_shape(panel, 10.0, 12.6, 7.5, 1.9, lambda u, v, L: tone(ramp('#3e3650'), L), kind='rect', bevel=1.2, corner=0.8)
-    for (x, y, c) in [(6, 12, '#ff3a3a'), (6, 13, '#a01820'), (11, 13, '#05d9e8'), (13, 13, '#f9c80e'),
-                      (15, 13, '#ff2a6d')]:
-        panel.set(x, y, hx(c))
-        if (x, y) != (6, 13):
-            gl.set(x, y, hx(c))
+    for y in range(10, 19):                # curved glass highlight
+        cv.set(4, y, lt(cv.get(4, y), 0.25))
+    panel = Cv(W, H)
+    fill_shape(panel, 12.0, 22.0, 10.0, 2.8, lambda u, v, L: shade(ramp('#3e3650'), L), kind='rect', bevel=1.2, corner=0.8)
+    for x in range(3, 21):
+        panel.set(x, 20, hx('#ff2a6d') if x % 4 else hx('#f9c80e'))   # panel art edge
+    fill_shape(panel, 6.5, 22.0, 1.3, 1.3, lambda u, v, L: shade(ramp('#e02a30', 0.45, 0.2, 0.45), L))
+    for (x, c) in ((11, '#05d9e8'), (13, '#f9c80e'), (15, '#3aff8a'), (17, '#ff2a6d')):
+        panel.set(x, 22, hx(c))
+        panel.set(x, 23, dk(hx(c), 0.4))
+        gl.set(x, 22, hx(c))
     panel.outline()
     cv.outline()
     cv.over(panel)
+    cv.rect(7, 26, 16, 27, hx('#4a4458'))  # coin door
+    for x in (9, 14):
+        cv.set(x, 26, hx('#ff3a2a'))
+        cv.set(x, 27, hx('#a01818'))
+        gl.set(x, 26, hx('#ff3a2a'))
     return cv, gl
 
 
 def p_crate():
-    cv = Cv(18, 18)
-    w = ramp('#b47a42', 0.45, 0.22, 0.3)
-    wood_fill(cv, 1, 1, 16, 16, w[2], plank=4, rng=random.Random(18))
-    fr = Cv(18, 18)
-    for i in range(1, 17):
-        for (x, y) in [(i, 1), (i, 2), (i, 15), (i, 16), (1, i), (2, i), (15, i), (16, i)]:
-            fr.set(x, y, w[3] if (x <= 2 or y <= 2) and not (x >= 15 or y >= 15) else w[1])
-    fill_capsule(fr, [(3.5, 3.5), (14.5, 14.5)], 1.1, lambda k, L, s, i, t: w[3] if s < 0 else w[1])
-    for (x, y) in [(2, 2), (15, 2), (2, 15), (15, 15)]:
+    """Shipping crate lid: frame boards, planks, a batten, nails and faded stencils."""
+    S = 21
+    cv = Cv(S, S)
+    w = ramp('#ad7642', 0.45, 0.22, 0.3)
+    rng = random.Random(18)
+    wood_fill(cv, 1, 1, S - 2, S - 2, w[2], plank=5, rng=rng)
+    mottle(cv, random.Random(231), 7, 5)
+    fr = Cv(S, S)
+    for i in range(1, S - 1):
+        for (x, y) in ((i, 1), (i, 2), (i, S - 3), (i, S - 2), (1, i), (2, i), (S - 3, i), (S - 2, i)):
+            fr.set(x, y, w[3] if (x <= 2 or y <= 2) and not (x >= S - 3 or y >= S - 3) else w[1])
+    for x in range(3, S - 3):              # batten across the middle
+        fr.set(x, 10, w[3])
+        fr.set(x, 11, w[1])
+    for (x, y) in ((2, 2), (S - 3, 2), (2, S - 3), (S - 3, S - 3), (3, 10), (S - 4, 10)):
         fr.set(x, y, hx('#5a5a66'))
     cv.over(fr)
+    ink = alpha(hx('#1a1218'), 150)
+    for ax in (7, 13):                     # "this way up" arrows
+        for (dx, dy) in ((0, 0), (-1, 1), (1, 1), (-2, 2), (2, 2), (0, 1), (0, 2), (0, 3), (0, 4)):
+            cv.blend(ax + dx, 4 + dy, ink)
+    for (y, x0, x1) in ((14, 5, 15), (16, 7, 13)):   # shipping marks: two stencilled words
+        for x in range(x0, x1 + 1):
+            if (x - x0) % 4 != 3:
+                cv.blend(x, y, ink)
     cv.outline()
     return cv
 
 
 def p_barrel():
-    cv = Cv(14, 14)
-    red = ramp('#d8202c', 0.55, 0.28, 0.35)
-    c = 7.0
-    fill_shape(cv, c, c, 6.0, 6.0, lambda u, v, L: red[1])
-    # raised rim: lit top-left, shadowed bottom-right; inner groove inverted
-    ring(cv, c, c, 4.6, 6.1, lambda dx, dy, d: tone(red, light(dx / d * 0.95, dy / d * 0.95)))
-    ring(cv, c, c, 3.9, 4.6, lambda dx, dy, d: red[0] if light(dx / d, dy / d) > 0.5 else red[3])
-    # yellow hazard diamond with a black flame
-    for y in range(14):
-        for x in range(14):
-            d = abs(x + 0.5 - c) + abs(y + 0.5 - c)
+    """200 L steel drum, red, explosive: rolled chime, stamped rings, two bungs, hazard label, chipped paint, rust."""
+    S = 20
+    c = S / 2
+    cv = Cv(S, S)
+    red = ramp('#c81e28', 0.55, 0.28, 0.35)
+    fill_shape(cv, c, c, 9.0, 9.0, lambda u, v, L: red[2])
+    ring(cv, c, c, 7.6, 9.05, lambda dx, dy, d: shade(red, light(dx / d * 0.95, dy / d * 0.95)))
+    ring(cv, c, c, 6.8, 7.6, lambda dx, dy, d: red[0] if light(dx / d, dy / d) > 0.5 else red[3])
+    ring(cv, c, c, 4.2, 4.8, lambda dx, dy, d: red[1] if light(dx / d, dy / d) > 0.5 else lt(red[2], 0.15))
+    for (bx, by, r_) in ((5.0, 9.0, 1.6), (15.2, 12.0, 1.0)):
+        fill_shape(cv, bx, by, r_, r_, lambda u, v, L: shade(ramp('#9a9aa8', 0.5, 0.25, 0.4), L))
+        cv.set(int(bx), int(by), hx('#4a4a58'))
+    for y in range(S):                     # hazard diamond with a flame
+        for x in range(S):
+            d = abs(x + 0.5 - 11.0) + abs(y + 0.5 - 9.5)
             if d <= 3.6:
-                cv.set(x, y, hx('#f9c80e') if d <= 3.0 else hx('#1a1420'))
-    for (x, y) in [(7, 5), (6, 6), (7, 6), (6, 7), (7, 7), (8, 7)]:
+                cv.set(x, y, hx('#f2b80e') if d <= 3.0 else hx('#1a1420'))
+    for (x, y) in ((11, 8), (10, 9), (11, 9), (10, 10), (11, 10), (12, 10)):
         cv.set(x, y, hx('#1a1420'))
-    cv.set(7, 7, hx('#ff6b1a'))
-    cv.set(5, 5, hx('#fff2a0'))
-    cv.set(10, 3, hx('#9a9aaa'))   # bung cap
-    cv.set(10, 4, hx('#5a5a6a'))
+    rng = random.Random(241)
+    smudge(cv, rng, 4, (2, 2, 18, 18), (0.7, 1.1), 0.7, hx('#9a9aa8'))   # chipped to bare steel
+    smudge(cv, rng, 4, (2, 2, 18, 18), (1.0, 2.0), 0.4, hx('#6a3416'))   # rust
     cv.outline()
     return cv
 
 
 def p_bookshelf():
-    cv = Cv(40, 10)
+    """Bookcase from above: back panel at -y, two dividers, book tops (cover + page block), one lying flat."""
+    W, H = 42, 13
+    cv = Cv(W, H)
     wood = ramp('#5a3420', 0.45, 0.22, 0.3)
-    cv.rect(1, 1, 38, 8, wood[2])
-    cv.rect(1, 1, 38, 1, wood[3])
-    cv.rect(1, 8, 38, 8, wood[1])
+    cv.rect(1, 1, W - 2, H - 2, wood[1])
+    cv.rect(1, 1, W - 2, 2, wood[2])
+    cv.rect(1, 1, W - 2, 1, wood[3])
+    cv.rect(1, H - 2, W - 2, H - 2, wood[2])
     rng = random.Random(19)
-    cols = ['#b8262c', '#2a5ad8', '#e6c860', '#2c8a5a', '#7a1fa2', '#e8e0d0', '#ff6b1a', '#1fb5b5', '#3a2a44']
-    x = 2
-    while x < 38:
-        if x in (13, 26):
-            cv.rect(x, 2, x, 7, wood[1])
+    cols = ['#9a2228', '#2a4aa8', '#c8a850', '#2c7a52', '#6a1f8a', '#d8d0bc', '#c85a1a', '#1a8a8a', '#3a2a44', '#7a5a3a']
+    divs = (1, 2, 14, 27, W - 3, W - 2)
+    x = 3
+    while x < W - 3:
+        if x in divs:
             x += 1
             continue
-        bw = rng.choice([1, 1, 2, 2, 3])
-        depth = rng.choice([4, 5, 5, 6])
+        if rng.random() < 0.1:
+            x += 1                          # a gap
+            continue
+        bw = rng.choice([1, 2, 2, 3, 3])
+        depth = rng.choice([6, 7, 7, 8])
         col = hx(rng.choice(cols))
-        for xx in range(x, min(x + bw, 38)):
-            if xx in (13, 26):
-                break
-            for y in range(2, 2 + depth):
-                cv.set(xx, y, col if y > 2 else lt(col, 0.3))
-            cv.set(xx, 2 + depth - 1, dk(col, 0.3))
-        x += bw
+        lit = rng.uniform(-0.1, 0.2)        # taller books catch more light
+        xs = [xx for xx in range(x, x + bw) if xx not in divs and xx < W - 3]
+        for i, xx in enumerate(xs):
+            for y in range(3, 3 + depth):
+                pages = len(xs) >= 3 and 0 < i < len(xs) - 1 and 3 < y < 2 + depth
+                c = lt(col, lit) if lit > 0 else dk(col, -lit)
+                if pages:
+                    c = mix(c, hx('#d8ccb0'), 0.45)
+                cv.set(xx, y, c)
+            cv.set(xx, 2 + depth, dk(col, 0.35))
+        x += max(1, len(xs))
+    for xx in (14, 27):
+        cv.rect(xx, 2, xx, H - 2, wood[2])
+    cv.rect(1, 2, 2, H - 2, wood[2])
+    cv.rect(W - 3, 2, W - 2, H - 2, wood[1])
+    flat = Cv(W, H)                         # a book lying across the others
+    fill_shape(flat, 33.0, 6.0, 4.4, 3.0, lambda u, v, L: shade(ramp('#8a2a2a', 0.45, 0.2, 0.35), L), ang=0.12,
+               kind='rect', bevel=1.0, corner=0.4)
+    flat.outline()
+    cv.over(flat)
     cv.outline()
     return cv
 
 
 def p_speaker():
-    cv = Cv(14, 14)
-    fill_shape(cv, 7.0, 7.0, 6.0, 6.0, lambda u, v, L: tone(ramp('#2a2632', 0.5, 0.2, 0.3), L),
-               kind='rect', bevel=1.5, corner=1.0)
-    ring(cv, 7.0, 7.0, 3.9, 5.1, lambda dx, dy, d: tone(ramp('#55526a'), light(dx / d * 0.8, dy / d * 0.8)))
-    fill_shape(cv, 7.0, 7.0, 3.9, 3.9, lambda u, v, L: tone(ramp('#1a1820', 0.3, 0.15, 0.6), 1.0 - L))
-    fill_shape(cv, 7.0, 7.0, 1.5, 1.5, lambda u, v, L: tone(ramp('#5a5868', 0.4, 0.2, 0.4), L))
-    for (x, y) in [(1, 1), (12, 1), (1, 12), (12, 12)]:
-        cv.set(x, y, hx('#8a8a9a'))
+    """PA cabinet: black tolex, steel corners, woofer with its surround and dust cap, small horn."""
+    S = 16
+    cv = Cv(S, S)
+    fill_shape(cv, 8.0, 8.0, 7.0, 7.0, lambda u, v, L: shade(ramp('#26232e', 0.5, 0.2, 0.32), L),
+               kind='rect', bevel=1.4, corner=1.0)
+    mottle(cv, random.Random(251), 4, 4)
+    ring(cv, 8.0, 9.0, 4.4, 5.6, lambda dx, dy, d: shade(ramp('#4e4a5e'), light(dx / d * 0.8, dy / d * 0.8)))
+    fill_shape(cv, 8.0, 9.0, 4.4, 4.4, lambda u, v, L: shade(ramp('#1a1820', 0.3, 0.15, 0.6), 1.0 - L))
+    fill_shape(cv, 8.0, 9.0, 1.6, 1.6, lambda u, v, L: shade(ramp('#5a5868', 0.4, 0.2, 0.4), L))
+    cv.rect(6, 2, 10, 2, hx('#3a3646'))     # horn
+    cv.rect(7, 2, 9, 2, hx('#0e0c12'))
+    for (x, y) in ((1, 1), (2, 1), (1, 2), (13, 1), (14, 1), (14, 2), (1, 13), (1, 14), (2, 14), (14, 13), (13, 14), (14, 14)):
+        cv.set(x, y, hx('#9a9aaa') if y < 8 else hx('#6a6a7a'))
     cv.outline()
     return cv
 
 
 def p_dj_booth():
-    cv = Cv(48, 18)
-    desk = ramp('#1e1a28', 0.4, 0.2, 0.4)
-    fill_shape(cv, 24.0, 8.0, 23.0, 7.0, lambda u, v, L: tone(desk, L), kind='rect', bevel=1.6, corner=1.0)
-    for tx in (10.5, 37.5):
-        fill_shape(cv, tx, 7.5, 6.6, 5.6, lambda u, v, L: tone(ramp('#5a5a6a'), L), kind='rect', bevel=1.5, corner=1.0)
-        ring(cv, tx - 0.5, 7.5, 0.0, 4.8, lambda dx, dy, d: hx('#1a1820') if int(d) % 2 else hx('#0e0c12'))
-        circle(cv, tx - 0.5, 7.5, 1.4, hx('#ff2a6d') if tx < 20 else hx('#05d9e8'))
-        cv.set(int(tx - 1), 7, hx('#f0f0f8'))
-        fill_capsule(cv, [(tx + 5.0, 3.0), (tx + 4.4, 8.0), (tx + 2.8, 10.0)], 0.5, lambda k, L, s, i, t: hx('#d8dce8'))
-    cv.rect(20, 3, 27, 12, hx('#34323e'))
-    for x in (21, 23, 25):
-        cv.rect(x, 4, x, 9, hx('#14121a'))
-        cv.set(x, 5 + (x % 3), hx('#e8e8f0'))
-    for x in (26, 27):
-        cv.set(x, 4, hx('#f9c80e'))
-        cv.set(x, 6, hx('#05d9e8'))
-    cv.rect(21, 11, 26, 11, hx('#14121a'))
-    cv.set(23, 11, hx('#e8e8f0'))
+    """DJ booth: two direct-drive decks with records and tone arms, a mixer with VU LEDs, headphones; LED front at +y."""
+    W, H = 60, 24
+    cv = Cv(W, H)
+    desk = ramp('#1c1826', 0.4, 0.2, 0.4)
+    fill_shape(cv, 30.0, 12.0, 29.0, 11.0, lambda u, v, L: shade(desk, L), kind='rect', bevel=1.6, corner=1.0)
+    mottle(cv, random.Random(261), 3, 6)
+    plinth = ramp('#7a7a8a', 0.45, 0.22, 0.4)
+    for tx, lab in ((10.5, hx('#e8303a')), (49.5, hx('#2a9ad8'))):
+        fill_shape(cv, tx, 9.5, 8.0, 6.5, lambda u, v, L: shade(plinth, L), kind='rect', bevel=1.5, corner=1.0)
+        ring(cv, tx - 1.2, 9.5, 5.4, 5.9, lambda dx, dy, d: hx('#d8dce6') if int(math.atan2(dy, dx) * 6) % 2 else hx('#8a8e9a'))
+        ring(cv, tx - 1.2, 9.5, 0.0, 5.4, lambda dx, dy, d: hx('#16141c') if int(d * 1.5) % 2 else hx('#0c0a10'))
+        fill_shape(cv, tx - 1.2, 9.5, 1.5, 1.5, lambda u, v, L: shade(ramp(lab, 0.4, 0.2, 0.3), L))
+        cv.set(int(tx - 2.5), 7, hx('#4a4858'))   # vinyl sheen
+        cv.set(int(tx - 3.5), 8, hx('#3a3848'))
+        fill_capsule(cv, [(tx + 5.6, 4.6), (tx + 5.2, 10.0), (tx + 2.8, 12.6)], 0.5, lambda k, L, s, i, t: hx('#e0e4ee'))
+        fill_shape(cv, tx + 5.6, 4.6, 1.0, 1.0, lambda u, v, L: shade(ramp('#9a9aaa'), L))
+        cv.rect(int(tx + 6), 12, int(tx + 6), 14, hx('#2a2832'))   # pitch fader
+        cv.set(int(tx + 6), 13, hx('#e8e8f0'))
+    cv.rect(21, 3, 38, 16, hx('#2e2c38'))
+    cv.rect(21, 3, 38, 3, hx('#46445a'))
+    for x in (24, 27):                     # channel faders + EQ knobs
+        cv.rect(x, 8, x, 13, hx('#100e16'))
+        cv.set(x, 9 + (x % 3), hx('#e8e8f0'))
+        for y in (4, 6):
+            cv.set(x, y, hx('#b8b8c8'))
+    for i, y in enumerate(range(13, 3, -1)):   # VU meters
+        for x in (31, 33):
+            on = i < (7 if x == 31 else 5)
+            col = hx('#3aff6a') if i < 6 else hx('#f9c80e') if i < 8 else hx('#ff2a3a')
+            cv.set(x, y, col if on else dk(col, 0.7))
+    cv.rect(23, 15, 29, 15, hx('#100e16'))  # crossfader
+    cv.set(26, 15, hx('#e8e8f0'))
+    cv.set(36, 5, hx('#b8b8c8'))
+    cv.set(36, 8, hx('#b8b8c8'))
     cv.outline()
+
+    def phones(ly):
+        fill_capsule(ly, [(14.5, 17.0), (17.0, 15.0), (20.5, 16.2)], 0.6, lambda k, L, s, i, t: hx('#3a3846'))
+        for x in (14.5, 20.5):
+            fill_shape(ly, x, 17.2, 1.6, 1.6, lambda u, v, L: shade(ramp('#3a3846', 0.45, 0.2, 0.4), L))
+    layer(cv, phones)
     leds = ['#ff2a6d', '#05d9e8', '#f9c80e']
-    for i, x in enumerate(range(3, 46, 3)):
-        cv.set(x, 14, hx(leds[i % 3]))
-    for x in range(2, 46):
-        cv.set(x, 15, hx('#ff2a6d') if x % 2 else hx('#ff5a8d'))
-        cv.set(x, 16, (255, 42, 109, 120))
-    cv.set(1, 15, OUTLINE)
-    cv.set(46, 15, OUTLINE)
+    for x in range(2, W - 2):              # front fascia: LED chaser over a pink tube
+        cv.set(x, 19, hx(leds[(x // 4) % 3]) if x % 4 == 1 else hx('#2a2236'))
+        cv.set(x, 20, hx('#ff2a6d') if x % 2 else hx('#ff5a8d'))
+        cv.set(x, 21, hx('#c8205a'))
     return cv
 
 
 def p_bar_counter():
-    cv = Cv(32, 14)
-    wood = ramp('#4a2418', 0.45, 0.2, 0.3)
-    rng = random.Random(20)
-    grain = [[rng.choice([0, 0, 0, 0, -1, 1]) for _ in range(32)] for _ in range(14)]
-    for y in range(1, 10):
-        for x in range(32):
-            c = wood[2]
-            g = grain[y][x // 4 * 4 % 32]
-            c = shift(c, g * 6)
+    """One metre of bar (levels chain them along x, so it tiles seamlessly): bartender lip at -y, polished
+    mahogany top, padded armrest and brass foot rail on the customer side (+y), a beer on a mat."""
+    W, H = 32, 21
+    cv = Cv(W, H)
+    wood = ramp('#4a2418', 0.45, 0.2, 0.32)
+    nz = VNoise(W, H, 8, random.Random(20))         # wraps on 32 px: seamless
+    for y in range(1, 15):
+        for x in range(W):
+            g = nz(x, y * 3) - 0.5                       # long streaks along the counter
+            c = shift(wood[2], int(g * 16))
             if y == 1:
                 c = wood[3]
-            if y == 3 and (x % 16) in (2, 3, 4, 5, 6, 7):
-                c = lt(c, 0.12)
-            if y == 9:
+            elif y == 2:
+                c = wood[0]
+            elif y in (6, 7):
+                c = lt(c, 0.08 + 0.06 * math.sin(x * math.pi / 16) ** 2)   # sheen of the lamps
+            elif y == 14:
                 c = wood[1]
             cv.set(x, y, c)
-    for x in range(32):
+    pad = ramp('#5e1a22', 0.5, 0.26, 0.3)
+    for x in range(W):
         cv.set(x, 0, OUTLINE)
-        cv.set(x, 10, wood[0])
-        cv.set(x, 11, BRASS[3] if x % 8 != 0 else BRASS[2])
-        cv.set(x, 12, BRASS[1])
-        cv.set(x, 13, OUTLINE)
-    for x in (8, 24):
-        cv.set(x, 10, BRASS[0])
+        cv.set(x, 15, pad[3])
+        cv.set(x, 16, pad[2] if x % 16 else pad[0])     # tuck seams every half metre
+        cv.set(x, 17, pad[1])
+        cv.set(x, 18, OUTLINE)
+        cv.set(x, 19, BRASS[3] if x % 16 not in (7, 8) else BRASS[2])
+        cv.set(x, 20, OUTLINE)
+    for x in (7, 8):                        # rail brackets
+        cv.set(x, 18, BRASS[0])
+        cv.set(x + 16, 18, BRASS[0])
+
+    def beer(ly):
+        fill_shape(ly, 19.5, 8.5, 3.2, 3.2, lambda u, v, L: hx('#e8dcb8') if math.hypot(u, v) < 2.4 else hx('#2a5a9a'))
+        glass_top(ly, 19.5, 8.5, 2.0, hx('#e8a830'))
+        ly.set(19, 8, hx('#fff4d8'))        # head
+    layer(cv, beer, dk(wood[0], 0.4))
     return cv
 
 
 def p_dumpster():
-    cv = Cv(36, 22)
-    g = ramp('#2f7040', 0.5, 0.25, 0.3)
-    fill_shape(cv, 18.0, 11.0, 17.0, 10.0, lambda u, v, L: g[1], kind='rect', corner=1.0)
-    lid = Cv(36, 22)
-    for (x0, x1) in [(2, 17), (18, 33)]:
-        for y in range(3, 19):
-            for x in range(x0, x1 + 1):
-                c = g[2]
-                if (y - 3) % 4 == 0:
-                    c = g[3]
-                elif (y - 3) % 4 == 3:
-                    c = g[1]
-                if x == x0:
-                    c = lt(c, 0.1)
-                if x == x1:
-                    c = dk(c, 0.2)
-                lid.set(x, y, c)
-    cv.over(lid)
-    cv.rect(1, 1, 34, 2, g[0])
-    for x in range(3, 34, 5):
-        cv.set(x, 1, hx('#8a8a96'))
+    """Steel dumpster: black plastic lids (the right one pushed open over bin bags), fork pockets, rust and grime."""
+    W, H = 60, 36
+    cv = Cv(W, H)
+    g = ramp('#2c6a3c', 0.5, 0.26, 0.3)
+    fill_shape(cv, 30.0, 18.0, 29.0, 17.0, lambda u, v, L: shade(g, L), kind='rect', bevel=2.0, corner=1.4)
+    lid = ramp('#262a2c', 0.4, 0.18, 0.22)
+
+    def lids(ly):
+        for (x0, x1, y0, y1) in ((4, 29, 4, 31), (31, 56, 4, 21)):
+            fill_shape(ly, (x0 + x1 + 1) / 2, (y0 + y1 + 1) / 2, (x1 - x0 + 1) / 2, (y1 - y0 + 1) / 2,
+                       lambda u, v, L: shade(lid, L), kind='rect', bevel=1.5, corner=1.2)
+            for y in range(y0 + 7, y1 - 3, 8):      # two low moulded ribs per lid
+                for x in range(x0 + 2, x1 - 1):
+                    ly.set(x, y, shift(lid[2], 10))
+                    ly.set(x, y + 1, shift(lid[2], -8))
+            for x in (x0 + 5, x1 - 5):              # hinge knuckles at the back
+                ly.set(x, y0, hx('#5a5e66'))
+    layer(cv, lids)
+    bags = Cv(W, H)
     rng = random.Random(21)
-    for _ in range(14):
-        x, y = rng.randint(2, 33), rng.randint(3, 19)
-        cv.set(x, y, hx('#8a4a22') if rng.random() < 0.6 else hx('#5a3018'))
+    for _ in range(7):                     # bin bags in the open half
+        bx, by, r_ = rng.uniform(34, 54), rng.uniform(24, 30), rng.uniform(2.6, 4.0)
+        fill_shape(bags, bx, by, r_, r_ * 0.85, lambda u, v, L: shade(ramp('#262430', 0.4, 0.2, 0.7), L ** 1.6),
+                   ang=rng.uniform(0, 3))
+    fill_shape(bags, 49.0, 24.5, 3.0, 2.0, lambda u, v, L: shade(ramp('#a8865a', 0.4, 0.2, 0.3), L), ang=0.4,
+               kind='rect', corner=0.4)       # a flattened cardboard box
+    for y in range(H):
+        for x in range(W):
+            if not (31 <= x <= 56 and 23 <= y <= 31):
+                bags.set(x, y, CLEAR)
+    bags.outline(hx('#0c0a10'))
+    cv.over(bags)
+    for x in range(31, 57):
+        cv.set(x, 22, hx('#0c0a10'))
+    for (x0, x1) in ((1, 2), (57, 58)):    # fork pockets
+        cv.rect(x0, 9, x1, 13, g[0])
+        cv.rect(x0, 23, x1, 27, g[0])
+    rng2 = random.Random(22)
+    mottle(cv, rng2, 6, 5)
+    smudge(cv, rng2, 10, (1, 1, 58, 34), (0.8, 2.4), 0.55, hx('#7a3e1a'))   # rust
+    smudge(cv, rng2, 8, (4, 4, 56, 31), (1.5, 3.5), 0.18)                   # grime
+    for x in range(6, 26):                 # a stripe of faded stencil on the rim
+        if x % 3:
+            cv.blend(x, 33, (220, 220, 210, 70))
     cv.outline()
     return cv
 
 
 def p_trash_can():
-    cv = Cv(12, 12)
-    m = ramp('#5a606c', 0.5, 0.25, 0.35)
-    fill_shape(cv, 6.0, 6.0, 5.0, 5.0, lambda u, v, L: tone(m, L))
-    ring(cv, 6.0, 6.0, 2.5, 3.4, lambda dx, dy, d: m[1] if light(dx / d, dy / d) < 0.6 else m[3])
-    cv.rect(4, 6, 7, 6, m[0])
-    cv.rect(4, 5, 7, 5, m[3])
+    """Galvanised can lid: pressed concentric ribs, a handle bar, a dent and grime."""
+    S = 17
+    c = S / 2
+    cv = Cv(S, S)
+    m = ramp('#7a808c', 0.5, 0.25, 0.35)
+    fill_shape(cv, c, c, 7.5, 7.5, lambda u, v, L: shade(m, L))
+    for (r0, r1) in ((5.0, 5.8), (2.8, 3.5)):
+        ring(cv, c, c, r0, r1, lambda dx, dy, d: m[1] if light(dx / d, dy / d) < 0.55 else m[3])
+    rng = random.Random(271)
+    mottle(cv, rng, 8, 4)
+    smudge(cv, rng, 2, (4, 9, 12, 13), (1.6, 2.4), 0.25)    # dent
+    smudge(cv, rng, 3, (2, 2, 15, 15), (1.0, 2.0), 0.3, hx('#5a4a36'))
     cv.outline()
+
+    def handle(ly):
+        fill_capsule(ly, [(5.6, 8.5), (11.4, 8.5)], 0.9, lambda k, L, s, i, t: shade(ramp('#9aa0ac', 0.5, 0.25, 0.4), L))
+    layer(cv, handle, dk(m[0], 0.3))
     return cv
 
 
@@ -2610,32 +2984,38 @@ def p_van_door():
 # --------------------------------------------------------------------------
 
 def p_palm_tree():
-    S = 56
+    """Canary palm crown (~3.2 m) seen from above: two tiers of feathery fronds, a couple of dead ones, coconuts.
+    The trunk (the hitbox, r 4.5) is the fibrous boss in the middle."""
+    S = 104
     cv = Cv(S, S)
     rng = random.Random(31)
     c0 = S / 2
-    layers = []
-    for layer in range(2):
-        n = 8 if layer == 0 else 7
+    fronds = []
+    for tier in range(2):
+        n = 9 if tier == 0 else 7
         for i in range(n):
-            a = i * 2 * math.pi / n + (0.45 if layer else 0.0) + rng.uniform(-0.18, 0.18)
-            ln = rng.uniform(22.0, 26.0) if layer == 0 else rng.uniform(17.0, 21.0)
-            layers.append((layer, a, ln, rng.uniform(-0.35, 0.35)))
+            a = i * 2 * math.pi / n + (0.4 if tier else 0.0) + rng.uniform(-0.2, 0.2)
+            ln = rng.uniform(41.0, 49.0) if tier == 0 else rng.uniform(29.0, 37.0)
+            dead = tier == 0 and i in (2, 6)
+            fronds.append((tier, a, ln * (0.85 if dead else 1.0), rng.uniform(-0.35, 0.35), dead))
     greens = [ramp('#1c6a34', 0.6, 0.35, 0.2), ramp('#2c9a34', 0.55, 0.3, 0.22)]
-    for (layer, a, ln, bend) in layers:
+    brown = ramp('#8a6a36', 0.55, 0.3, 0.25)
+    K = 24
+    for idx, (tier, a, ln, bend, dead) in enumerate(fronds):
         fr = Cv(S, S)
         pts = []
-        for k in range(20):
-            t = k / 19.0
+        for k in range(K):
+            t = k / (K - 1.0)
             aa = a + bend * t * t
-            r = 2.0 + ln * t
+            r = 3.0 + ln * t
             pts.append((c0 + math.cos(aa) * r, c0 + math.sin(aa) * r))
-        g = greens[layer]
-        for y in range(S):
-            for x in range(S):
+        g = brown if dead else greens[tier]
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        for y in range(max(0, int(min(ys)) - 10), min(S, int(max(ys)) + 11)):
+            for x in range(max(0, int(min(xs)) - 10), min(S, int(max(xs)) + 11)):
                 px_, py_ = x + 0.5, y + 0.5
                 best = None
-                for k in range(19):
+                for k in range(K - 1):
                     ax, ay = pts[k]
                     bx, by = pts[k + 1]
                     dx, dy = bx - ax, by - ay
@@ -2644,53 +3024,71 @@ def p_palm_tree():
                     d = math.hypot(px_ - ax - tt * dx, py_ - ay - tt * dy)
                     if best is None or d < best[0]:
                         side = ((px_ - ax) * dy - (py_ - ay) * dx) / math.sqrt(ll)
-                        best = (d, (k + tt) / 19.0, side)
+                        best = (d, (k + tt) / (K - 1.0), side)
                 d, t, side = best
-                w = 5.6 * math.sin(math.pi * min(1.0, t * 0.95 + 0.05)) ** 0.6 * (1.0 - 0.3 * t)
-                if d > w or t > 0.995 or t < 0.06:
+                w = (6.0 if dead else 9.0) * math.sin(math.pi * min(1.0, t * 0.95 + 0.05)) ** 0.6 * (1.0 - 0.3 * t)
+                if d > w or t > 0.995 or t < 0.05:
                     continue
                 q = t * ln - abs(side) * 1.25
-                fr_ = q / 2.0 - math.floor(q / 2.0)
-                if abs(side) < 0.75:
-                    c = hx('#b8c84a') if t > 0.12 else hx('#7a6a3a')
+                fr_ = q / 3.0 - math.floor(q / 3.0)
+                if abs(side) < 0.9:
+                    c = (hx('#c8b060') if dead else hx('#b8c84a')) if t > 0.1 else hx('#7a6a3a')
                 else:
-                    if fr_ > 0.62:
+                    if fr_ > (0.5 if dead else 0.62):
                         continue                      # gap between two leaflets
                     lit = side * (math.sin(a) * LX - math.cos(a) * LY) > 0
                     c = g[3] if lit else g[1]
                     if fr_ < 0.2 and lit:
                         c = g[2]
-                if layer == 0:
-                    c = dk(c, 0.25)
+                    if abs(side) > w * 0.8:
+                        c = dk(c, 0.15)               # leaflet tips droop away from the light
+                if tier == 0:
+                    c = dk(c, 0.22)
                 fr.set(x, y, c)
         fr.outline(hx('#081a14'))
         cv.over(fr)
+        if idx == 8:                      # coconuts between the two tiers
+            nuts = Cv(S, S)
+            for (dx, dy) in ((-3.6, 2.4), (-1.0, 4.4), (2.6, 3.4)):
+                fill_shape(nuts, c0 + dx, c0 + dy, 2.0, 2.0, lambda u, v, L: shade(ramp('#7a5a22', 0.5, 0.25, 0.35), L))
+            nuts.outline(hx('#1a0c10'))
+            cv.over(nuts)
     trunk = Cv(S, S)
-    fill_shape(trunk, c0, c0, 3.6, 3.6, lambda u, v, L: tone(ramp('#6a4228', 0.5, 0.25, 0.35), L))
-    for (dx, dy) in [(-2.2, 1.2), (1.6, -2.0), (2.0, 1.8)]:
-        fill_shape(trunk, c0 + dx, c0 + dy, 1.5, 1.5, lambda u, v, L: tone(ramp('#5a3a1a', 0.45, 0.2, 0.4), L))
+    fill_shape(trunk, c0, c0, 4.5, 4.5, lambda u, v, L: shade(ramp('#6a4228', 0.5, 0.25, 0.35), L))
+    for (dx, dy) in ((-2.4, 1.4), (1.8, -2.2), (2.2, 2.0)):
+        fill_shape(trunk, c0 + dx, c0 + dy, 1.6, 1.6, lambda u, v, L: shade(ramp('#5a3a1a', 0.45, 0.2, 0.4), L))
     trunk.outline(hx('#1a0c10'))
     cv.over(trunk)
     return cv
 
 
 def p_streetlight():
-    cv, gl = Cv(14, 10), Cv(14, 10)
-    m = ramp('#5a5a72', 0.5, 0.25, 0.4)
-    for x in range(0, 4):
-        cv.set(x, 4, m[2])
-        cv.set(x, 5, m[1])
-    fill_shape(cv, 8.5, 5.0, 4.6, 3.9, lambda u, v, L: tone(m, L), kind='super', p=2.6)
-    for x in range(6, 12):
-        cv.set(x, 2, m[3])
-    for y in range(4, 7):
-        for x in range(6, 12):
-            c = hx('#fff8e0') if 7 <= x <= 10 and y == 5 else hx('#ffd27a')
-            cv.set(x, y, c)
-            gl.set(x, y, (255, 236, 180, 255) if c == hx('#fff8e0') else (255, 200, 110, 230))
-    cv.outline()
-    cv.set(0, 4, m[2])
-    cv.set(0, 5, m[1])
+    """Cobra-head streetlight: the pole top (hitbox, r 3) at the sprite centre, a 1.75 m arm toward +x and the
+    luminaire, its glass refractor glowing around the housing."""
+    W, H = 136, 16
+    cv, gl = Cv(W, H), Cv(W, H)
+    cx, cy = W / 2, H / 2
+    m = ramp('#5a5e6e', 0.5, 0.25, 0.4)
+    hx0 = cx + 56.0                         # luminaire centre
+
+    def arm(ly):
+        fill_capsule(ly, [(cx + 1.5, cy), (hx0 - 8.0, cy)], 1.0, lambda k, L, s, i, t: shade(m, L))
+        fill_capsule(ly, [(cx + 2.0, cy + 0.6), (cx + 9.0, cy + 0.2)], 1.4, lambda k, L, s, i, t: shade(m, L - 0.05))
+        fill_shape(ly, cx, cy, 3.0, 3.0, lambda u, v, L: shade(m, L))
+        ly.set(int(cx - 1), int(cy - 1), m[3])
+    layer(cv, arm)
+
+    def lum(ly):
+        fill_shape(ly, hx0 + 0.6, cy, 10.6, 5.2, lambda u, v, L: hx('#ffd27a') if L < 0.8 else hx('#fff4d0'), kind='super', p=2.4)
+        fill_shape(ly, hx0 - 0.6, cy, 9.6, 4.4, lambda u, v, L: shade(ramp('#6a7066', 0.5, 0.25, 0.4), L), kind='super', p=2.4)
+        line(ly, hx0 - 6.0, cy - 0.5, hx0 + 6.0, cy - 0.5, ramp('#6a7066', 0.5, 0.25, 0.4)[3])   # housing seam
+        ly.set(int(hx0 - 7), int(cy), hx('#3a3e3a'))      # photocell
+    layer(cv, lum)
+    for y in range(H):
+        for x in range(int(hx0 - 12), W):
+            c = cv.get(x, y)
+            if c[3] and (c[:3] == hx('#ffd27a')[:3] or c[:3] == hx('#fff4d0')[:3]):
+                gl.set(x, y, (255, 228, 160, 255) if c[0:3] == hx('#fff4d0')[:3] else (255, 200, 110, 230))
     return cv, gl
 
 
@@ -2798,66 +3196,120 @@ def p_neon_sign_arrow():
 
 
 def p_jukebox():
-    cv, gl = Cv(20, 14), Cv(20, 14)
-    wood = ramp('#5a1a4a', 0.5, 0.25, 0.35)
-    fill_shape(cv, 10.0, 7.0, 9.0, 6.0, lambda u, v, L: tone(wood, L), kind='rect', bevel=1.5, corner=2.6)
-    bands = [NEON_PINK, hx('#ff6b1a'), hx('#f9c80e'), NEON_CYAN]
-    for i, col in enumerate(bands):     # glowing dome bands, back to front
-        y = 2 + i
-        for x in range(3 - (i == 0), 17 + (i == 0)):
-            c = lt(col, 0.3) if (x + i) % 5 else lt(col, 0.6)
+    """Jukebox from above: chrome-trimmed arch with bubble tubes, the record magazine and platter under the glass
+    dome, title strips and buttons on the selector panel (+y)."""
+    W, H = 30, 22
+    cv, gl = Cv(W, H), Cv(W, H)
+    cx = W / 2
+    body = ramp('#4a1838', 0.5, 0.25, 0.35)
+    chrome = ramp('#b8bccc', 0.5, 0.25, 0.4)
+    bands = [NEON_PINK, hx('#ff6b1a'), hx('#f9c80e')]
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            u = (x + 0.5 - cx) / 14.0
+            v = (y + 0.5 - 12.0) / 11.0
+            e = (abs(u) ** 4 + max(0.0, -v) ** 4) ** 0.25 if v < 0 else abs(u)
+            if e > 1.0 or y > H - 2:
+                continue
+            if e > 0.92:                      # chrome trim, lit from the top-left
+                nx, ny = (u / (e or 1)) * 0.9, (min(0.0, v) / (e or 1)) * 0.9
+                c = shade(chrome, light(nx, ny))
+            elif e > 0.74:
+                if v < 0.15:                  # bubble tubes following the arch
+                    col = bands[min(2, int((e - 0.74) / 0.06))]
+                    c = lt(col, 0.3) if (x + y) % 5 else lt(col, 0.6)
+                    gl.set(x, y, lt(col, 0.1))
+                else:                         # straight cyan tubes down the front corners
+                    c = lt(NEON_CYAN, 0.2)
+                    gl.set(x, y, NEON_CYAN)
+            else:
+                c = shade(body, 0.68)
             cv.set(x, y, c)
-            gl.set(x, y, lt(col, 0.15))
-    for x in range(3, 17):
-        cv.set(x, 6, hx('#c8c8dc') if x % 2 else hx('#8a8aa0'))
-    for y in range(7, 12):
-        for x in range(4, 16):
-            c = hx('#2a1a30') if (x + y) % 2 else hx('#4a3a50')
-            cv.set(x, y, c)
-    for y in range(3, 12):
-        for x in (2, 17):
-            cv.set(x, y, lt(NEON_CYAN, 0.2) if y > 5 else cv.get(x, y))
-            if y > 5:
-                gl.set(x, y, NEON_CYAN)
-    for (x, col) in [(6, NEON_PINK), (8, hx('#f9c80e')), (11, NEON_CYAN), (13, hx('#3aff8a'))]:
-        cv.set(x, 11, col)
-        gl.set(x, 11, col)
+    # glass dome: the record magazine (discs on edge) around the platter
+    for y in range(4, 14):
+        for x in range(6, 24):
+            u, v = (x + 0.5 - cx) / 9.0, (y + 0.5 - 11.0) / 7.5
+            if u * u + min(0.0, v) ** 2 <= 1.0 and y <= 13:
+                cv.set(x, y, hx('#140c1e') if (x + y) % 3 else hx('#1a1028'))
+    labels = [NEON_PINK, hx('#f9c80e'), NEON_CYAN, hx('#3aff8a'), hx('#ff6b1a'), hx('#f4f0ff'), NEON_PINK]
+    for i in range(7):
+        a = math.pi * (1.1 + 0.8 * i / 6.0)
+        x0, y0 = cx + math.cos(a) * 4.6, 11.5 + math.sin(a) * 4.6
+        x1, y1 = cx + math.cos(a) * 7.4, 11.5 + math.sin(a) * 7.4
+        line(cv, x0, y0, x1, y1, hx('#4a4458'))
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        cv.set(int(mx), int(my), labels[i])
+        gl.set(int(mx), int(my), dk(labels[i], 0.3))
+    fill_shape(cv, cx, 11.0, 2.6, 2.6, lambda u, v, L: hx('#0c0a10') if math.hypot(u, v) > 0.9 else NEON_PINK)
+    cv.set(int(cx - 1), 10, hx('#4a4858'))
+    for y in range(5, 13):                    # reflection streak on the dome
+        cv.blend(9 + (y - 5) // 3, y, (255, 255, 255, 60))
+    # selector panel: two columns of title strips, a row of buttons, the coin light
+    for (x0, x1) in ((5, 13), (17, 25)):
+        for y in (15, 17):
+            for x in range(x0, x1 + 1):
+                c = hx('#efe4c8') if (x - x0) % 5 != 4 else hx('#6a5a50')
+                cv.set(x, y, c)
+                gl.set(x, y, (255, 240, 200, 70))
+        for y in (14, 16, 18):
+            for x in range(x0, x1 + 1):
+                cv.set(x, y, shade(body, 0.45))
+    for x in range(6, 25, 2):
+        cv.set(x, 19, hx('#d8dce8') if x != 14 else hx('#ff3a3a'))
+    gl.set(14, 19, hx('#ff3a3a'))
     cv.outline()
     return cv, gl
 
 
 def p_hydrant():
-    cv = Cv(8, 8)
-    red = ramp('#e02a30', 0.55, 0.28, 0.35)
-    fill_shape(cv, 1.9, 4.0, 1.0, 1.2, lambda u, v, L: tone(ramp('#c8c8d8'), L))
-    fill_shape(cv, 6.1, 4.0, 1.0, 1.2, lambda u, v, L: tone(ramp('#c8c8d8'), L))
-    fill_shape(cv, 4.0, 4.0, 2.7, 2.7, lambda u, v, L: tone(red, L))
-    fill_shape(cv, 4.0, 4.0, 1.4, 1.4, lambda u, v, L: tone(ramp('#f9c80e', 0.5, 0.2, 0.4), L))
-    cv.set(3, 3, hx('#fff8d0'))
+    """Fire hydrant from above: bonnet dome with its pentagon nut, two hose caps and the front pumper outlet."""
+    S = 10
+    cv = Cv(S, S)
+    red = ramp('#d0262c', 0.55, 0.28, 0.35)
+    cap = ramp('#c8c8d8', 0.5, 0.25, 0.4)
+    fill_shape(cv, 1.4, 5.0, 1.2, 1.4, lambda u, v, L: shade(cap, L))
+    fill_shape(cv, 8.6, 5.0, 1.2, 1.4, lambda u, v, L: shade(cap, L))
+    fill_shape(cv, 5.0, 8.5, 1.6, 1.2, lambda u, v, L: shade(cap, L))
+    fill_shape(cv, 5.0, 5.0, 3.6, 3.6, lambda u, v, L: shade(red, L))
+    ring(cv, 5.0, 5.0, 2.2, 2.8, lambda dx, dy, d: red[1] if light(dx / d, dy / d) > 0.5 else red[3])
+    fill_shape(cv, 5.0, 5.0, 1.3, 1.3, lambda u, v, L: shade(ramp('#e0b02a', 0.5, 0.2, 0.4), L))
+    cv.set(4, 4, hx('#fff8d0'))
+    cv.set(7, 6, hx('#8a8a98'))              # paint chipped to the iron
     cv.outline()
     return cv
 
 
 def p_bench():
-    cv = Cv(36, 12)
-    w = ramp('#b8682e', 0.5, 0.25, 0.35)
-    iron = ramp('#3a3a4c', 0.4, 0.2, 0.45)
+    """Park bench with backrest (-y): weathered slats worn pale where people sit, cast-iron ends, carved initials."""
+    W, H = 52, 17
+    cv = Cv(W, H)
+    w = ramp('#a06a3a', 0.5, 0.25, 0.3)
+    iron = ramp('#34343e', 0.4, 0.2, 0.45)
     rng = random.Random(41)
-    for (y0, y1) in [(1, 2), (4, 6), (8, 10)]:
+    nz = VNoise(W, H, 4, random.Random(42))
+    for (y0, y1) in ((1, 2), (4, 5), (7, 9), (11, 12), (14, 15)):
         for y in range(y0, y1 + 1):
-            for x in range(2, 34):
+            for x in range(2, W - 2):
                 c = w[3] if y == y0 else w[1] if y == y1 else w[2]
-                if rng.random() < 0.12:
-                    c = shift(c, rng.choice([-10, 8]))
+                c = shift(c, int((nz(x, y * 4) - 0.5) * 14))
+                if y0 >= 7 and 8 < x < W - 9:
+                    c = mix(c, hx('#c8a882'), 0.18 * math.sin(math.pi * (x - 8) / (W - 17)))   # sat-on wear
                 cv.set(x, y, c)
-    for x0 in (1, 32):
-        for y in range(1, 11):
-            cv.set(x0, y, iron[3] if y < 4 else iron[2])
-            cv.set(x0 + 1, y, iron[1])
-            cv.set(x0 + 2, y, iron[0])
-    for x in (12, 23):
-        cv.set(x, 5, iron[2])
-        cv.set(x, 9, iron[2])
+    for y in (3, 6, 10, 13):                  # gaps: the iron frame and the ground below
+        for x in range(2, W - 2):
+            cv.set(x, y, hx('#1e1a24') if x in (25, 26) else hx('#2a2430'))
+    for x0 in (1, W - 4):                     # cast-iron ends with a scrolled armrest
+        for y in range(1, 16):
+            cv.set(x0, y, iron[3] if y < 5 else iron[2])
+            cv.set(x0 + 1, y, iron[2])
+            cv.set(x0 + 2, y, iron[1])
+        cv.set(x0 + 1, 15, iron[3])
+    for x in (12, 13, 15, 16, 17):            # carved initials
+        cv.set(x, 11, dk(w[1], 0.3))
+    cv.set(36, 8, hx('#e8e4dc'))              # pigeon
+    cv.set(37, 8, hx('#d0ccc4'))
+    for x in (8, 9, 43, 44):                  # bolts
+        cv.set(x, 8, iron[1])
     cv.outline()
     return cv
 
@@ -3170,15 +3622,16 @@ def build():
 
 GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
            'car', 'car2', 'van']
-PROP_SIZES = dict(table=(40, 24), table_round=(28, 28), desk=(36, 22), chair=(12, 12), armchair=(18, 18),
-                  sofa=(44, 18), plant=(18, 18), tv=(24, 8), fridge=(22, 20), oven=(22, 20), sink=(24, 14),
-                  toilet=(12, 16), bed=(30, 44), pool_table=(64, 36), arcade=(20, 16), crate=(18, 18),
-                  barrel=(14, 14), bookshelf=(40, 10), speaker=(14, 14), dj_booth=(48, 18),
-                  bar_counter=(32, 14), car=(140, 58), dumpster=(36, 22), trash_can=(12, 12),
+# furniture at real scale (1 m = 32 px): sprite = hitbox in data/props.js + 1 px of outline on each side
+PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
+                  sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
+                  toilet=(15, 23), bed=(46, 66), pool_table=(82, 46), arcade=(24, 29), crate=(21, 21),
+                  barrel=(20, 20), bookshelf=(42, 13), speaker=(16, 16), dj_booth=(60, 24),
+                  bar_counter=(32, 21), car=(140, 58), dumpster=(60, 36), trash_can=(17, 17),
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
-                  palm_tree=(56, 56), streetlight=(14, 10), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
-                  neon_sign_arrow=(30, 12), jukebox=(20, 14), hydrant=(8, 8), bench=(36, 12))
+                  palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
+                  neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(10, 10), bench=(52, 17))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
 GLOWING += list(LIGHT_SIZES)
