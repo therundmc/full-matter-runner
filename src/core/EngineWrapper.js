@@ -22,7 +22,7 @@ const EngineWrapper = {
         width: CANVAS_W,
         height: CANVAS_H,
         wireframes: false,
-        background: '#000000',
+        background: 'transparent',
         pixelRatio: window.devicePixelRatio || 1
       }
     });

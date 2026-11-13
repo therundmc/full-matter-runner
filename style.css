@@ -6,7 +6,7 @@ html, body {
 body {
   position: relative;
   text-align: center;
-  background: #000000; /* page background */
+  background: #2d2d2d; /* page background */
   display: flex;
   align-items: center;
   justify-content: center;

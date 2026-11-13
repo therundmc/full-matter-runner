@@ -75,6 +75,24 @@ export default class Map {
             k++;
             break;
 
+          case 5:
+            this.bodies[0][k] = Bodies.rectangle(c*100, r*100, 100, 100, {
+              collisionFilter: { category: CATEGORY_FLOORMAP, mask: MASK_FLOORMAP },
+              isStatic: true,
+              render: { sprite: { texture: './assets/img/ground_grass.png' } }
+            });
+            k++;
+            break;
+
+          case 6:
+            this.bodies[0][k] = Bodies.rectangle(c*100, r*100, 100, 100, {
+              collisionFilter: { category: CATEGORY_FLOORMAP, mask: MASK_FLOORMAP },
+              isStatic: true,
+              render: { sprite: { texture: './assets/img/ground_dirt.png' } }
+            });
+            k++;
+            break;
+
           case 10:
             this.bodies[0][k] = Bodies.rectangle(c*100, r*100, 100, 100, {
               collisionFilter: { category: CATEGORY_FLOORMAP, mask: MASK_FLOORMAP },
@@ -222,6 +240,15 @@ export default class Map {
               render: { visible: false }
             });
             Composite.add(this.world, [pivot, groom]);
+            k++;
+            break;
+
+          case 9:
+            this.bodies[0][k] = Bodies.rectangle(c*100, r*100, 100, 30, {
+              collisionFilter: { category: CATEGORY_WALLMAP, mask: MASK_WALLMAP },
+              isStatic: true,
+              render: { sprite: { texture: './assets/img/fence_hori.png' } }
+            });
             k++;
             break;
 

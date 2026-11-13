@@ -22,7 +22,7 @@ export default {
     window.DynMap = new Map(0,0,DynMapArray,2,world);
 
     window.player = new Player(50, 300, 51, 29, './assets/img/player/player.png', world);
-
+    window.title = new Txt("- FULL MATTER RUNNER - ", 300, 600, 24, "white", world);
     EngineWrapper.start();
 
   // per-frame check: if player's tile is 10, load level1
