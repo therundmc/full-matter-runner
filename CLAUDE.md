@@ -11,22 +11,22 @@
 - Everything physical and destructible, with progressive damage states depending on angle, power and type of hit.
 - Readability first: enemies, obstacles and weapons on the floor must be instantly identifiable.
 - NO checkerboard or aggressive repetitive textures; smooth/organic/discreet surfaces. Simplified road.
+  (kitchen/bathroom/asphalt tiles were calmed down in tools/generate_assets.py; keep it that way.)
 - Scale: rooms were too big vs characters/furniture/vehicles (cars too small on the road) -> tighten spaces,
   vehicles at real size (see engine/physics/Units.js: 1 m = 32 px; a car is ~4.4 x 1.8 m).
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
 
 ## Delivery by blocks (validate each with the user before moving on)
-1. Engine, physics & smooth collisions — DONE (awaiting user validation): see docs/ARCHITECTURE.md.
-2. Destruction & object states: generalise progressive damage states to every object/cover (angle, power,
-   bullet vs melee), plus real-time liquids (blood/water that spreads, pools, footprints, hydrant water).
-3. Combat feedback & sound design / mix: blood calibrated per weapon (little for fists/bat, realistic for blades
-   and guns), heavy/dry/organic impact sounds, punchy arcade mastering. Integrate the lighting work.
-4. Synthwave music: darker, richer, more varied chord progressions, heavy pulsing loops (gated reverb, staccato bass)
-   following combat intensity.
-5. Level 1 (demo): street, alley, bar entrance, main room, back room; restricted arsenal; enemy AI (integrate the AI work).
-6. Sandbox / debug mode: spawn enemies, all weapons and assets, live physics/destruction/FX/sound experiments
-   (the `?level=lab` physics lab is its seed).
+1. Engine & heavy physics — restructure + physics base done; fixes done: M47 audio (sliced, choked one-shots),
+   heavier objects (mass, friction, inertia), explosions blocked by walls/obstacles (occlusion). Awaiting validation.
+2. Window vaulting + dynamic cover — done (Space context action, see docs/ARCHITECTURE.md). Awaiting validation.
+3. Granular destruction & object states (props already erode piece by piece; generalise damage states by angle,
+   power, bullet vs melee to every object/cover) + real-time liquids (blood/water spreading, footprints, hydrant).
+4. Combat, bleeding calibrated per weapon, visual feedback, sound design & mix (integrate the lighting branch).
+5. Synthwave music: darker, richer chord progressions, heavy pulsing loops (gated reverb, staccato bass).
+6. Level 1 (street, bar, back room) & enemy AI (integrate the AI branch; enemies should also use cover/vaulting).
+7. Sandbox / debug mode (the `?level=lab` physics lab is its seed).
 
 ## Pending work stored in branches (not merged)
 - `worktree-agent-a4bd44bea01e0fe54`: WIP neon lighting (src/fx/Lighting.js, PostFX.js: shadows, bloom, wet reflections,
@@ -49,8 +49,8 @@
 - Physics: give every dynamic body kg + mu (`setMaterial`) and a `material`; read velocities with
   `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz); use `impulse()` (momentum) for hits/blasts;
   heavy objects use `world.physics.freezeIfHeavy(body)`.
-- Weapons use real magazines: `weapon = { type, mag, reserve }`; the player carries `mags[ammoType]` (rounds per mag)
-  and `loose[shells|rocket]`; reloading drops the current mag with its remaining rounds (it can be picked up again).
+- Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the
+  current mag with its remaining rounds (pickable again). Enemies: `weapon.reserve` = spare mags.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
 - Keep code clean: no stray exports / unused imports, short useful comments.

@@ -1,5 +1,5 @@
 import { PALETTE, COMBO_WINDOW, TILE } from '../Config.js';
-import { WEAPONS, AMMO } from '../data/weapons.js';
+import { WEAPONS } from '../data/weapons.js';
 import { text, neon } from './Text.js';
 import { clamp } from '../../engine/math.js';
 
@@ -22,19 +22,6 @@ export function drawHUD(ctx, game, t) {
     else if (dry) { label = 'RELOAD [R]'; col = PALETTE.yellow; }
     const blink = dry && Math.floor(t * 6) % 2 === 0 ? 0.45 : 1;
     text(ctx, label, pad, pad + 50 * s, 20 * s, col, { align: 'left', alpha: blink });
-    // spare ammo: one icon per magazine, filled by how many rounds it holds; loose rounds as a count
-    const ammoType = WEAPONS[p.weapon.type].ammo, A = AMMO[ammoType];
-    if (p.reloading <= 0 && A.mag) {
-      p.mags[ammoType].forEach((r, i) => {
-        const x = pad + i * 11 * s, y = pad + 64 * s, h = 16 * s;
-        ctx.fillStyle = PALETTE.ink;
-        ctx.fillRect(x, y, 8 * s, h);
-        ctx.fillStyle = A.color;
-        ctx.fillRect(x + 1.5 * s, y + h - (h - 3 * s) * (r / A.rounds) - 1.5 * s, 5 * s, (h - 3 * s) * (r / A.rounds));
-      });
-    } else if (p.reloading <= 0) {
-      text(ctx, `+${p.loose[ammoType]} ${A.name}`, pad, pad + 72 * s, 12 * s, A.color, { align: 'left' });
-    }
     if (p.reloading > 0) {
       const k = clamp(1 - p.reloading / p.reloadDur, 0, 1);
       ctx.fillStyle = PALETTE.ink;
@@ -43,7 +30,7 @@ export function drawHUD(ctx, game, t) {
       ctx.fillRect(pad, pad + 64 * s, 150 * s * k, 6 * s);
     }
   }
-  text(ctx, `TARGETS ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 96 * s, 14 * s, PALETTE.yellow, { align: 'left' });
+  text(ctx, `TARGETS ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 84 * s, 14 * s, PALETTE.yellow, { align: 'left' });
 
   // score + combo
   text(ctx, `${w.score} PTS`, W - pad, pad + 14 * s, 30 * s, PALETTE.white, { align: 'right', rot: Math.sin(t * 2.2 + 1) * 0.03 });
@@ -60,7 +47,7 @@ export function drawHUD(ctx, game, t) {
   // context hints
   let hint = '';
   if (p.alive) {
-    if (p.nearDowned) hint = 'SPACE : EXECUTE';
+    if (p.contextAction && (p.contextAction === 'EXECUTE' || !p.nearItem)) hint = `SPACE : ${p.contextAction}`;
     else if (p.nearItem) hint = `${p.armed ? 'E : SWAP FOR' : 'RMB / E : PICK UP'} ${p.nearItem.def.name}`;
   }
   if (hint) text(ctx, hint, W / 2, H - 50 * s, 16 * s, PALETTE.white, { alpha: 0.75 + Math.sin(t * 8) * 0.25 });

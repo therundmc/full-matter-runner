@@ -4,7 +4,7 @@ import { G, PX_PER_M } from './Units.js';
 
 const { Body } = Matter;
 
-const ANGULAR_FRICTION = 24; // rad/s² per unit of mu
+const ANGULAR_FRICTION = 70; // rad/s² per unit of mu
 
 // muAt(x, y): grip multiplier of the floor under a point (carpet > wood > tiles...)
 export function groundFriction(bodies, dt, time, muAt) {

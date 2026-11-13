@@ -5,6 +5,7 @@ import { rand, spread, angDiff, local, lerp, clamp } from '../../engine/math.js'
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
+import { findVault, findCover } from '../systems/Cover.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
@@ -53,6 +54,9 @@ export default class Character {
     this.reloadDur = 1;
     this.reloadStage = 0;
     this.pickAnim = 0;
+    this.vaulting = null;   // { from, to, t, dur, kind } while jumping over something
+    this.cover = null;      // { x, y, nx, ny, low, target } while crouched against a surface
+    this.exposedT = 0;      // seconds left standing up over low cover after firing
     this.alive = true;
     this.knocked = 0;
     this.downAngle = 0;
@@ -134,7 +138,8 @@ export default class Character {
     const v = rand(30, 70);
     if (left > 0) {
       // a partial mag: can be picked up again later
-      this.world.ammoItems.push(new AmmoItem(this.world, d.ammo, left, g.x, g.y, Math.cos(a) * v / 60, Math.sin(a) * v / 60, 2.5));
+      this.world.ammoItems.push(new AmmoItem(this.world, d.ammo, left, g.x, g.y, Math.cos(a) * v / 60, Math.sin(a) * v / 60, 2.5,
+        spriteOpt(d.magSprite)));
       return;
     }
     const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6);
@@ -159,6 +164,7 @@ export default class Character {
     this.cooldown -= dt;
     this.swing = Math.max(0, this.swing - dt);
     this.pickAnim = Math.max(0, this.pickAnim - dt);
+    this.exposedT = Math.max(0, this.exposedT - dt);
     this.updateReload(dt);
     this.recoil = Math.max(0, this.recoil - dt * 9);
     const v = Body.getVelocity(this.body);
@@ -208,10 +214,13 @@ export default class Character {
     for (let i = 0; i < d.pellets; i++) {
       const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
-      w.addProjectile(new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
+      const pr = new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
         team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pierce: d.pierce || 0, rocket: d.rocket,
-      }));
+      });
+      if (this.cover?.target) pr.ignore.add(this.cover.target); // shooting over your own cover
+      w.addProjectile(pr);
     }
+    if (this.cover?.low) this.exposedT = 0.45; // stood up to fire over the cover
     const m = this.muzzlePos();
     w.muzzleFlash(m.x, m.y, a, d);
     if (d.casing) {
@@ -220,7 +229,7 @@ export default class Character {
       w.addDebris(new Debris(w, sprite('weapons/' + d.casing), this.x + Math.cos(a) * 6, this.y + Math.sin(a) * 6, a,
         Math.cos(ca) * v, Math.sin(ca) * v, rand(-0.9, 0.9), { material: 'brass', air: 0.08, shadow: 0, kg: 0.05, mu: 0.3, fly: 0.2, bounce: 0.5 }));
     }
-    w.sound(d.sound, this.x, this.y);
+    w.sound(d.sound, this.x, this.y, 1, { choke: this });
     // only the player's gunfire draws the guards in
     if (d.noise && this.isPlayer) w.noise(this.x, this.y, d.noise, this);
     this.recoil = 1;
@@ -295,6 +304,7 @@ export default class Character {
   kill(angle, cause, killer, goreMul = 1) {
     if (!this.alive) return;
     this.alive = false;
+    this.leaveCover();
     this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
@@ -303,6 +313,80 @@ export default class Character {
   }
 
   knock() { /* overridden by Enemy */ }
+
+  // ---------------- traversal ----------------
+  // jump through a broken window / over a low obstacle in direction a, if there is one
+  tryVault(a, moving = true) {
+    if (this.vaulting || this.knocked || !this.alive) return false;
+    const v = findVault(this.world, this, a, moving);
+    if (!v) return false;
+    this.leaveCover();
+    this.vaulting = { from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: v.kind === 'window' ? 0.42 : 0.34, kind: v.kind };
+    // glide over glass frames and furniture, walls still block
+    this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
+    this.vel = { x: 0, y: 0 };
+    this.world.sound('vault', this.x, this.y, 0.8);
+    if (v.kind === 'window') this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
+    return true;
+  }
+
+  // returns true while the vault is still running
+  updateVault(dt) {
+    const v = this.vaulting;
+    if (!v) return false;
+    v.t += dt;
+    const k = Math.min(1, v.t / v.dur);
+    const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
+    Body.setVelocity(this.body, { x: 0, y: 0 });
+    if (k < 1) return true;
+    this.vaulting = null;
+    this.body.collisionFilter = { ...this.body.collisionFilter, mask: MASK.CHAR };
+    this.world.particles.smoke(this.x, this.y, 4, 4, { speed: 30, size: 4, life: 0.6 });
+    this.world.noise(this.x, this.y, this.isPlayer ? 120 : 0, this);
+    return false;
+  }
+
+  // ---------------- cover ----------------
+  takeCover(c) {
+    this.cover = c;
+    if (c.target) c.target.coveredBy = this;
+    this.world.sound('cover', this.x, this.y, 0.6);
+  }
+
+  leaveCover() {
+    if (!this.cover) return;
+    if (this.cover.target?.coveredBy === this) this.cover.target.coveredBy = null;
+    this.cover = null;
+    this.exposedT = 0;
+  }
+
+  // visible above low cover: not in cover, or popping up to shoot
+  get exposed() { return !this.cover || !this.cover.low || this.exposedT > 0; }
+
+  // keep hugging the same surface while sliding along it; false when it ran out (end of the counter...)
+  refreshCover() {
+    const c = this.cover;
+    const next = findCover(this.world, this, c.target ?? null);
+    if (!next || next.low !== c.low || (c.target && next.target !== c.target)) { this.leaveCover(); return false; }
+    Object.assign(c, next);
+    return true;
+  }
+
+  // movement while in cover: slide along the surface, pinned to it, crouched speed; stop at the edge
+  steerInCover(dx, dy, speed) {
+    const c = this.cover;
+    const tx = -c.ny, ty = c.nx;
+    let along = dx * tx + dy * ty;
+    if (along) {
+      const ahead = { x: this.x + tx * Math.sign(along) * 6, y: this.y + ty * Math.sign(along) * 6, radius: this.radius };
+      const next = findCover(this.world, ahead, c.target ?? null);
+      // stop at the corner: past it the closest point is the edge and the normal swings round
+      if (!next || (c.target && next.target !== c.target) || next.nx * c.nx + next.ny * c.ny < 0.92) along = 0;
+    }
+    const pin = (this.radius + 1.5 - c.dist) * 0.4;
+    this.steer(tx * along + c.nx * pin, ty * along + c.ny * pin, speed * (Math.abs(along) > 0.1 ? 0.5 : 0.25), 0.35);
+  }
 
   dropWeapon(angle, speed = 2) {
     if (!this.weapon) return;
@@ -328,6 +412,19 @@ export default class Character {
       }
       return;
     }
+    // crouched behind cover = smaller silhouette; vaulting = a little jump arc
+    let s = this.cover && !this.exposed ? 0.86 : 1;
+    let lift = 0;
+    if (this.vaulting) {
+      const k = Math.min(1, this.vaulting.t / this.vaulting.dur);
+      lift = Math.sin(Math.PI * k);
+      s = 1 + lift * 0.16;
+    }
+    if (this.cover) this.drawCoverMark(ctx);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.translate(-x, -y);
     // feet
     ctx.fillStyle = '#1a1214';
     const stride = this.moving > 0.25 ? Math.sin(this.walk) * 5 : 0;
@@ -340,13 +437,26 @@ export default class Character {
       ctx.fillRect(-3, -1.8, 6, 3.6);
       ctx.restore();
     }
-    drawSprite(ctx, silhouette(this.torso), x + 2, y + 2, this.angle, 0.35);
+    drawSprite(ctx, silhouette(this.torso), x + 2 + lift * 4, y + 2 + lift * 5, this.angle, 0.35);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(this.angle);
     this.drawArms(ctx);
     ctx.restore();
     drawSprite(ctx, this.torso, x, y, this.angle);
+    ctx.restore();
+  }
+
+  // thin bracket along the surface we are hugging (readability)
+  drawCoverMark(ctx) {
+    const c = this.cover;
+    const tx = -c.ny, ty = c.nx;
+    ctx.strokeStyle = this.exposed ? 'rgba(255,42,109,0.7)' : 'rgba(5,217,232,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(c.x - tx * 9 + c.nx, c.y - ty * 9 + c.ny);
+    ctx.lineTo(c.x + tx * 9 + c.nx, c.y + ty * 9 + c.ny);
+    ctx.stroke();
   }
 
   drawArms(ctx) {

@@ -3,6 +3,7 @@ import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand } from '../../engine/math.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
+import { findVault, findCover } from '../systems/Cover.js';
 
 export default class Player extends Character {
   constructor(world, x, y, angle) {
@@ -12,36 +13,29 @@ export default class Player extends Character {
     this.execution = null;
     this.nearItem = null;
     this.nearDowned = null;
-    // inventory: spare magazines (rounds in each) and loose rounds
-    this.mags = { pistol: [12], uzi: [], rifle: [], sniper: [] };
-    this.loose = { shells: 0, rocket: 0 };
+    // spare rounds per caliber
+    this.ammo = { '9mm': 24, '12g': 0, '762': 0, rocket: 0 };
   }
 
   reserveCount() {
-    const t = this.def.ammo;
-    if (!t) return 0;
-    return AMMO[t].mag ? this.mags[t].length : this.loose[t];
+    const c = this.def.ammo;
+    return c ? this.ammo[c] : 0;
   }
 
-  // the fullest spare magazine goes in
+  // a fresh magazine filled from the caliber pool
   takeMag() {
-    const list = this.mags[this.def.ammo];
-    let best = 0;
-    for (let i = 1; i < list.length; i++) if (list[i] > list[best]) best = i;
-    return list.splice(best, 1)[0];
+    const c = this.def.ammo;
+    const n = Math.min(this.def.mag, this.ammo[c]);
+    this.ammo[c] -= n;
+    return n;
   }
-  takeRound() { this.loose[this.def.ammo]--; }
+  takeRound() { this.ammo[this.def.ammo]--; }
 
-  // returns false when the inventory is full for that ammo
-  addAmmo(type, rounds) {
-    const a = AMMO[type];
-    if (a.mag) {
-      if (this.mags[type].length >= a.max) return false;
-      this.mags[type].push(rounds);
-      return true;
-    }
-    if (this.loose[type] >= a.max) return false;
-    this.loose[type] = Math.min(a.max, this.loose[type] + rounds);
+  // returns false when that caliber is already full
+  addAmmo(caliber, rounds) {
+    const max = AMMO[caliber].max;
+    if (this.ammo[caliber] >= max) return false;
+    this.ammo[caliber] = Math.min(max, this.ammo[caliber] + rounds);
     return true;
   }
 
@@ -51,6 +45,8 @@ export default class Player extends Character {
     const w = this.world;
 
     if (this.execution) { this.updateExecution(dt); return; }
+    this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    if (this.updateVault(dt)) return;
 
     // movement (KeyW/A/S/D are physical positions: ZQSD on AZERTY)
     let dx = 0, dy = 0;
@@ -58,9 +54,15 @@ export default class Player extends Character {
     if (input.down('KeyS') || input.down('ArrowDown')) dy += 1;
     if (input.down('KeyA') || input.down('ArrowLeft')) dx -= 1;
     if (input.down('KeyD') || input.down('ArrowRight')) dx += 1;
-    this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
-
-    this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    if (this.cover) {
+      // pushing away from the surface leaves cover; otherwise slide along it crouched
+      const len = Math.hypot(dx, dy);
+      if (len && (dx * this.cover.nx + dy * this.cover.ny) / len > 0.6) this.leaveCover();
+      else if (this.refreshCover()) this.steerInCover(dx, dy, PLAYER.speed);
+    }
+    if (!this.cover) this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
+    const moving = !!(dx || dy);
+    const moveA = moving ? Math.atan2(dy, dx) : this.angle;
 
     // what is around us
     this.nearItem = null;
@@ -87,7 +89,18 @@ export default class Player extends Character {
       }
     }
     if (input.hit('KeyR')) this.reload();
-    if (input.hit('Space') && this.nearDowned) this.startExecution(this.nearDowned);
+    // Space = context action: execute > vault > take / leave cover
+    this.contextAction = this.nearDowned ? 'EXECUTE' : findVault(w, this, moveA, moving) ? 'VAULT'
+      : this.cover ? 'LEAVE COVER' : findCover(w, this)?.low ? 'TAKE COVER' : null;
+    if (input.hit('Space')) {
+      if (this.nearDowned) this.startExecution(this.nearDowned);
+      else if (this.tryVault(moveA, moving)) { /* jumping */ }
+      else if (this.cover) this.leaveCover();
+      else {
+        const c = findCover(w, this);
+        if (c) this.takeCover(c);
+      }
+    }
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap
     if (input.mouseHit(2)) {
@@ -170,6 +183,6 @@ export default class Player extends Character {
   get ammoText() {
     if (!this.weapon) return '';
     const d = WEAPONS[this.weapon.type];
-    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)}` : '';
+    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()} ${AMMO[d.ammo].name}` : '';
   }
 }

@@ -20,7 +20,7 @@ export default class WeaponItem {
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
     // thrown weapons fly before they hit the floor and slide
-    setMaterial(this.body, WEAPON_KG[type] ?? 2, 0.45, thrower ? world.time + 0.25 : 0);
+    setMaterial(this.body, WEAPON_KG[type] ?? 2, 0.7, thrower ? world.time + 0.25 : 0);
     this.body.material = type === 'bat' ? 'wood' : 'metal';
     Body.setVelocity(this.body, { x: vx, y: vy });
     Body.setAngularVelocity(this.body, spin);

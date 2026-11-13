@@ -7,13 +7,23 @@ const SAMPLES = {
   shotgun: 'assets/sound/shots/shotgun.wav',
   uzi: 'assets/sound/shots/cg1.wav',
 };
-const MAX_VOICES = 5;
+const MAX_VOICES = 4;
+// one clean shot cut out of each recording: [offset s, duration s]. The rifle file is a whole burst,
+// playing it per bullet stacked a dozen bursts on top of each other.
+const SLICES = {
+  pistol: [0, 0.5],
+  rifle: [0, 0.27],
+  shotgun: [0, 0.4],
+  uzi: [0, 0.22],
+};
+const FADE = 0.06;
 
 class AudioSystem {
   constructor() {
     this.ctx = null;
     this.buffers = {};
     this.voices = {};
+    this.chokes = new WeakMap(); // emitter -> its last sample voice (a new shot cuts the previous tail)
     this.listener = { x: 0, y: 0 };
     this.muted = false;
   }
@@ -95,22 +105,44 @@ class AudioSystem {
     if (fn) fn.call(this, this._out(opts), opts);
   }
 
+  // one-shot sample playback: sliced, faded out, choked per emitter (opts.choke) and voice-limited per sound
   _sample(name, opts) {
-    const ctx = this.ctx;
+    const ctx = this.ctx, now = ctx.currentTime;
+    const buf = this.buffers[name];
+    const [offset, len] = SLICES[name] || [0, buf.duration];
+    const rate = (opts.rate ?? 1) * rand(0.94, 1.06);
+    const dur = len / rate;
     const src = ctx.createBufferSource();
-    src.buffer = this.buffers[name];
-    src.playbackRate.value = (opts.rate ?? 1) * rand(0.92, 1.08);
+    src.buffer = buf;
+    src.playbackRate.value = rate;
     const out = this._out({ ...opts, vol: (opts.vol ?? 1) * 0.75 });
-    src.connect(out);
-    src.start();
-    const list = this.voices[name] || (this.voices[name] = []);
-    list.push({ src, out });
-    if (list.length > MAX_VOICES) {
-      const old = list.shift();
-      old.out.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
-      try { old.src.stop(ctx.currentTime + 0.1); } catch (e) { /* already stopped */ }
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(1, now);
+    env.gain.setValueAtTime(1, now + Math.max(0, dur - FADE));
+    env.gain.linearRampToValueAtTime(0, now + dur);
+    src.connect(env);
+    env.connect(out);
+    src.start(now, offset, len + 0.02);
+    const voice = { src, env };
+    const kill = (v) => {
+      v.env.gain.cancelScheduledValues(now);
+      v.env.gain.setTargetAtTime(0, now, 0.008);
+      try { v.src.stop(now + 0.05); } catch (e) { /* already stopped */ }
+    };
+    if (opts.choke) {
+      const prev = this.chokes.get(opts.choke);
+      if (prev) kill(prev);
+      this.chokes.set(opts.choke, voice);
     }
-    src.onended = () => { const i = list.findIndex((v) => v.src === src); if (i >= 0) list.splice(i, 1); };
+    const list = this.voices[name] || (this.voices[name] = []);
+    list.push(voice);
+    while (list.length > MAX_VOICES) kill(list.shift());
+    src.onended = () => {
+      const i = list.indexOf(voice);
+      if (i >= 0) list.splice(i, 1);
+      src.disconnect();
+      env.disconnect();
+    };
   }
 
   // ---- synthesis primitives ----
@@ -184,6 +216,15 @@ class AudioSystem {
     for (let i = 0; i < 10; i++) {
       this._noiseBurst(o, { type: 'bandpass', f0: rand(400, 1800), q: 3, dur: rand(0.03, 0.08), vol: rand(0.2, 0.5), delay: rand(0, 0.6) });
     }
+  }
+  _vault(o) {
+    this._noiseBurst(o, { f0: 500, f1: 1600, q: 1.5, dur: 0.22, vol: 0.45, attack: 0.04 });
+    this._noiseBurst(o, { type: 'lowpass', f0: 900, f1: 200, dur: 0.12, vol: 0.5, delay: 0.3 });
+    this._tone(o, { f0: 110, f1: 50, dur: 0.12, vol: 0.6, delay: 0.3 });
+  }
+  _cover(o) {
+    this._noiseBurst(o, { type: 'lowpass', f0: 700, f1: 150, dur: 0.1, vol: 0.5 });
+    this._tone(o, { f0: 130, f1: 70, dur: 0.08, vol: 0.4 });
   }
   _door(o) {
     this._tone(o, { type: 'triangle', f0: 210, f1: 95, dur: 0.12, vol: 0.7 });

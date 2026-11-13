@@ -74,7 +74,7 @@ export default class Ragdoll {
 
   addPart(name, img, body, rest, kg) {
     // a falling body slides a bit then the cloth and skin grip the floor
-    setMaterial(body, kg, 0.75, this.world.time + 0.18);
+    setMaterial(body, kg, 1.1, this.world.time + 0.18);
     body.material = 'flesh';
     const part = { name, img, body, rest, attached: true, bleed: 0 };
     body.entity = this;

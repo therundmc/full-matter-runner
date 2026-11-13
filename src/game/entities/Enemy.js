@@ -41,7 +41,7 @@ export default class Enemy extends Character {
     const d = Math.hypot(dx, dy);
     if (d > ENEMY.viewDist) return false;
     if (d > ENEMY.closeSense && Math.abs(angDiff(this.angle, Math.atan2(dy, dx))) > ENEMY.fov / 2) return false;
-    return this.world.lineOfSight(this.x, this.y, p.x, p.y);
+    return this.world.canSeeCharacter(this, p);
   }
 
   // gunshot / glass / explosion heard
@@ -68,6 +68,7 @@ export default class Enemy extends Character {
     const p = this.world.player;
 
     if (this.knocked > 0) { this.updateKnocked(dt); return; }
+    if (this.updateVault(dt)) return;
 
     const sees = p && p.alive && this.canSee(p);
     if (sees) {
@@ -258,6 +259,7 @@ export default class Enemy extends Character {
     // stuck detection (furniture, other bodies)
     if (this.moving < speed * 0.25) {
       this.stuck += dt;
+      if (this.stuck > 0.25 && this.tryVault(Math.atan2(dy, dx))) { this.stuck = 0; return false; }
       if (this.stuck > 0.7) {
         this.stuck = 0;
         const side = Math.atan2(dy, dx) + (chance(0.5) ? 1.4 : -1.4);

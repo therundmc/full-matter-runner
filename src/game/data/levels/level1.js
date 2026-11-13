@@ -1,6 +1,6 @@
 // Level 1 — "NEON NIGHTS". Generated layout, safe to hand-edit.
 // tiles legend: see src/world/TileMap.js (FLOORS/WALLS) — D door, G window, F fence.
-// actors legend: @ player | p u s h r b k enemies (UPPERCASE = patrols) | 1-9 weapons | n z v w g q ammo (pistol/uzi/rifle/sniper mags, shells, rockets) | x barrel c crate t trash
+// actors legend: @ player | p u s h r b k enemies (UPPERCASE = patrols) | 1-9 weapons | n z = 9mm, v w = 7.62, g = 12 gauge, q = rockets | x barrel c crate t trash
 export default {
   name: 'NEON NIGHTS',
   subtitle: 'SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM',

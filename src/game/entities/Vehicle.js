@@ -5,7 +5,7 @@ const FREE = MASK.DEBRIS & ~CAT.PROP;
 import { sprite, spriteOpt, silhouette, chunk, glassShards, slices } from '../../engine/Assets.js';
 import { rand, chance, clamp, local } from '../../engine/math.js';
 import Debris from './Debris.js';
-import { setMaterial, impulse } from '../../engine/physics/Body.js';
+import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 
 const { Bodies } = Matter;
 
@@ -43,13 +43,14 @@ export default class Vehicle {
     this.g = this.canvas.getContext('2d');
     this.g.drawImage(base, 0, 0);
     this.glow = spriteOpt(this.m.sprite + '_glow');
-    this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true };
+    this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true, cover: 'low', vault: true };
     this.body = Bodies.rectangle(x, y, this.w - 4, this.h - 4, {
       angle, frictionAir: 0.02, friction: 0.6, restitution: 0.05, label: 'vehicle',
       collisionFilter: { category: CAT.PROP, mask: MASK.PROP },
     });
     // rubber on asphalt; a ton of metal nobody can push by hand
     setMaterial(this.body, this.m.kg, 0.9);
+    scaleInertia(this.body, 3);
     this.body.material = 'metal';
     world.physics.freezeIfHeavy(this.body);
     this.body.entity = this;
@@ -241,7 +242,7 @@ export default class Vehicle {
     this.lightsOut = true;
     const w = this.world;
     const { x, y } = this;
-    w.explode(x, y, { radius: 140, source: 'car' });
+    w.explode(x, y, { radius: 140, source: 'car', origin: this });
     w.camera.punch(0.12);
     w.slowmo(0.3, 0.6);
     // charred wreck
@@ -284,7 +285,7 @@ export default class Vehicle {
     // the tank goes a beat later
     const [tx, ty] = this.wpos((this.m.tank[0] + this.m.tank[1]) / 2, this.h / 2);
     w.after(0.35, () => {
-      w.explode(tx, ty, { radius: 70, source: 'fuel' });
+      w.explode(tx, ty, { radius: 70, source: 'fuel', origin: this });
       w.particles.fire(tx, ty, 60, 260);
     });
     this.puddle = Math.max(this.puddle, 22);

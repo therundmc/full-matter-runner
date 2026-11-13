@@ -15,6 +15,9 @@ export function setMaterial(body, kg, mu, flyUntil = 0) {
   body.flyUntil = flyUntil;
 }
 
+// resistance to spinning: furniture is bulky and drags on the floor, it should not twirl like a top
+export function scaleInertia(body, k) { Body.setInertia(body, body.inertia * k); }
+
 export function freeze(body) {
   body.heavy = true;
   Body.setStatic(body, true);

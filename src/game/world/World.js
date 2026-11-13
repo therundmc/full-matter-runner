@@ -17,7 +17,7 @@ import MapRenderer from '../render/MapRenderer.js';
 import WorldRenderer from '../render/WorldRenderer.js';
 import Particles from '../fx/Particles.js';
 import AmmoItem from '../entities/AmmoItem.js';
-import { traceBullet, lineOfSight } from '../systems/Ballistics.js';
+import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
 import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, detachDoor, destroyFence } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
@@ -117,7 +117,8 @@ export default class World {
 
   // ---------------- services used by entities ----------------
   after(sec, fn) { this.timers.push({ t: this.time + sec, fn }); }
-  sound(name, x, y, vol = 1) { Audio.play(name, { x, y, vol }); }
+  // extra.choke: emitter key, a new sound from it cuts its previous one (gunfire)
+  sound(name, x, y, vol = 1, extra) { Audio.play(name, { x, y, vol, ...extra }); }
   shake(a) { this.camera.shake(a); }
   hitstop(s) { this.game.hitstop = Math.max(this.game.hitstop, s); }
   slowmo(scale, dur) { this.game.slowmo(scale, dur); }
@@ -152,6 +153,7 @@ export default class World {
 
   // facades over the systems
   lineOfSight(x0, y0, x1, y1) { return lineOfSight(this, x0, y0, x1, y1); }
+  canSeeCharacter(viewer, ch) { return canSeeCharacter(this, viewer, ch); }
   traceBullet(x0, y0, x1, y1, team, ignore) { return traceBullet(this, x0, y0, x1, y1, team, ignore); }
   explode(x, y, opts) { explode(this, x, y, opts); }
   damageWall(cx, cy, dmg, x, y, dirA, power) { damageWall(this, cx, cy, dmg, x, y, dirA, power); }

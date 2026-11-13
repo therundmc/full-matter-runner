@@ -1572,30 +1572,20 @@ def v_wood2(cv, rng):
 # ---- checker ------------------------------------------------------------------
 
 def t_checker(cv, rng):
-    W_ = ramp('#efe4cc', 0.42, 0.18, 0.4)
-    B_ = ramp('#2a1e3c', 0.45, 0.22, 0.4)
-    grout = hx('#56486a')
-    n = fbm(rng, (16, 8), (0.6, 0.4))
-    glint = {(tx, ty) for tx in range(4) for ty in range(4) if rng.random() < 0.6}
+    # kitchen floor: worn beige linoleum / terrazzo, low contrast (no checkerboard: readability first)
+    base = ramp('#cbbd9e', 0.35, 0.12, 0.3)
+    n = fbm(rng, (16, 8, 4), (0.55, 0.3, 0.15))
     for y in range(32):
         for x in range(32):
-            gx, gy = x % 8, y % 8
-            if gx == 7 or gy == 7:
-                c = jit(grout, 4, rng)
-            else:
-                white = ((x // 8) + (y // 8)) % 2 == 0
-                r_ = W_ if white else B_
-                c = r_[2]
-                if gx == 0 or gy == 0:
-                    c = r_[3]
-                elif gx == 6 or gy == 6:
-                    c = r_[1]
-                c = shift(c, int((n(x, y) - 0.5) * 12))
-                if (x // 8, y // 8) in glint and gx + gy in (3, 4) and 1 <= gx <= 3:
-                    c = lt(c, 0.35 if not white else 0.5)
-                c = jit(c, 3, rng)
-            cv.set(x, y, c)
-
+            c = pal(base, 0.35 + n(x, y) * 0.4)
+            r = rng.random()
+            if r < 0.05:
+                c = shift(c, -18)          # terrazzo chips
+            elif r < 0.07:
+                c = shift(c, 10)
+            if x % 16 == 15 or y % 16 == 15:
+                c = mix(c, hx('#8a7c66'), 0.35)   # faint slab seams
+            cv.set(x, y, jit(c, 2, rng))
 
 def v_checker1(cv, rng):
     tx, ty = rng.choice([(1, 1), (2, 2)])
@@ -1605,40 +1595,21 @@ def v_checker1(cv, rng):
         cv.set(ox * 8 + dx, oy * 8 + dy, hx('#6a6070') if dx + dy > 10 else hx('#827890'))
 
 
-def v_checker2(cv, rng):
-    stain(cv, rng, rng.randint(12, 20), rng.randint(12, 20), 7.0, 5.0, hx('#5a4a3a'), 0.22, 0.12, 0.3)
-    for _ in range(4):
-        x, y = rng.randint(3, 25), rng.randint(3, 27)
-        for k in range(3):
-            cv.set(x + k, y + (1 if k == 1 else 0), hx('#1a1220'))
-
-
-# ---- blue tiles ---------------------------------------------------------------
-
 def t_tile_blue(cv, rng):
-    cols = [hx('#4cbce0'), hx('#3eaad6'), hx('#5ccae8'), hx('#38a0d0'), hx('#46b2dc')]
-    grout = hx('#163a5e')
-    tc = [[rng.choice(cols) for _ in range(4)] for _ in range(4)]
+    # bathroom: large pale tiles, soft grout, a bit of grime (no busy grid)
+    base = ramp('#9ec4cf', 0.3, 0.1, 0.25)
+    grout = hx('#7d9aa6')
+    n = fbm(rng, (16, 8), (0.6, 0.4))
     for y in range(32):
         for x in range(32):
-            gx, gy = x % 8, y % 8
-            if gx == 7 or gy == 7:
-                c = grout
+            gx, gy = x % 16, y % 16
+            if gx == 15 or gy == 15:
+                c = mix(grout, pal(base, 0.4), 0.3)
             else:
-                c = tc[y // 8][x // 8]
-                c = shift(c, int(-gy * 1.2))
+                c = pal(base, 0.38 + n(x, y) * 0.35)
                 if gx == 0 or gy == 0:
-                    c = lt(c, 0.32)
-                elif gx == 6 or gy == 6:
-                    c = dk(c, 0.22)
-                c = jit(c, 2, rng)
-            cv.set(x, y, c)
-    for ty in range(4):
-        for tx in range(4):
-            if rng.random() < 0.55:
-                for (dx, dy) in [(1, 2), (2, 1)]:
-                    cv.set(tx * 8 + dx, ty * 8 + dy, hx('#e8fcff'))
-
+                    c = lt(c, 0.06)
+            cv.set(x, y, jit(c, 2, rng))
 
 def v_tile_blue1(cv, rng):
     draw_crack(cv, crack_pts(rng, 9, 12, 0.4, 16, branch=0.25), 0.55, 0.15)
@@ -1649,24 +1620,6 @@ def v_tile_blue1(cv, rng):
                 cv.set(x, y, hx('#6a6a7a') if (x + y) % 3 else hx('#4a4a5a'))
     cv.set(tx * 8 + 5, ty * 8 + 3, hx('#e8fcff'))
 
-
-def v_tile_blue2(cv, rng):
-    acc = [ramp('#ff3a8a', 0.45, 0.2, 0.35), ramp('#1e3a9a', 0.45, 0.2, 0.35)]
-    for k, (tx, ty) in enumerate(rng.sample([(1, 1), (2, 2), (1, 2), (2, 1)], 2)):
-        r_ = acc[k]
-        for gy in range(7):
-            for gx in range(7):
-                c = r_[3] if gx == 0 or gy == 0 else r_[1] if gx == 6 or gy == 6 else r_[2]
-                cv.set(tx * 8 + gx, ty * 8 + gy, c)
-        cv.set(tx * 8 + 1, ty * 8 + 2, lt(r_[3], 0.5))
-        cv.set(tx * 8 + 2, ty * 8 + 1, lt(r_[3], 0.5))
-    for _ in range(5):
-        x, y = rng.randint(3, 28), rng.randint(3, 28)
-        cv.set(x, y, hx('#f0ffff'))
-        cv.set(x, y + 1, dk(cv.get(x, y + 1), 0.25))
-
-
-# ---- carpets ------------------------------------------------------------------
 
 def t_carpet_red(cv, rng):
     base = hx('#6c1030')
@@ -1889,22 +1842,17 @@ def t_asphalt(cv, rng, line=False):
     wet = fbm(rng, (16, 8), (0.7, 0.3))
     for y in range(32):
         for x in range(32):
-            c = pal(ASPH, n(x, y) * 1.3 - 0.15)
+            # calm road: dark, even grain, subtle wet sheen (readability of the action first)
+            c = pal(ASPH, 0.25 + n(x, y) * 0.5)
             r = rng.random()
-            if r < 0.11:
-                c = shift(c, 15)
-            elif r < 0.14:
-                c = hx('#565670')
-            elif r < 0.22:
-                c = shift(c, -8)
-            elif r < 0.227:
-                c = hx('#6a5a66')
+            if r < 0.04:
+                c = shift(c, 6)
+            elif r < 0.07:
+                c = shift(c, -5)
             w = wet(x, y)
-            if w > 0.58:
-                k = min(1.0, (w - 0.58) / 0.18)
-                c = mix(c, hx('#2c2c66'), 0.35 * k)
-                if r < 0.05 * k:
-                    c = rng.choice([hx('#8ac8ff'), hx('#ff8ac8'), hx('#b8b8ff')])
+            if w > 0.62:
+                k = min(1.0, (w - 0.62) / 0.2)
+                c = mix(c, hx('#262650'), 0.25 * k)
             cv.set(x, y, c)
     if line:
         for x in range(32):
@@ -1915,7 +1863,7 @@ def t_asphalt(cv, rng, line=False):
                 if wet(x, y) > 0.6:
                     c = mix(c, hx('#ff9a6a'), 0.15)
                 cv.set(x, y, c)
-    draw_crack(cv, crack_pts(rng, 3, 7, 0.5, 22, margin=None, branch=0.15), 0.45, 0.12)
+    draw_crack(cv, crack_pts(rng, 3, 7, 0.5, 22, margin=None, branch=0.15), 0.25, 0.06)
 
 
 def manhole(cv, rng, cx=16.0, cy=16.0, R=8.2):
@@ -2229,8 +2177,8 @@ def t_brick(cv, rng):
 
 FLOOR_TILES = [
     ('wood', t_wood, v_wood1, v_wood2),
-    ('checker', t_checker, v_checker1, v_checker2),
-    ('tile_blue', t_tile_blue, v_tile_blue1, v_tile_blue2),
+    ('checker', t_checker, v_checker1, v_checker1),
+    ('tile_blue', t_tile_blue, v_tile_blue1, v_tile_blue1),
     ('carpet_red', t_carpet_red, lambda cv, r: v_carpet1(cv, r, hx('#280418')), v_carpet2),
     ('carpet_purple', t_carpet_purple, lambda cv, r: v_carpet1(cv, r, hx('#120624')), v_carpet2),
     ('concrete', t_concrete, v_concrete1, v_concrete2),

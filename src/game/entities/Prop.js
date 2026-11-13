@@ -1,13 +1,32 @@
 import { CAT, MASK } from '../Config.js';
 import { PROPS } from '../data/props.js';
-import { sprite, spriteOpt, slices, chunk, drawSpriteShadowed, drawSprite } from '../../engine/Assets.js';
-import { rand, chance, angDiff } from '../../engine/math.js';
+import { sprite, spriteOpt, slices, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
+import { rand, chance, angDiff, clamp } from '../../engine/math.js';
 import Debris from './Debris.js';
-import { setMaterial, impulse } from '../../engine/physics/Body.js';
-
+import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 
 const { Bodies } = Matter;
 
+// a canvas with an irregular blob path of radius r around (x, y)
+function jagged(g, x, y, r) {
+  g.beginPath();
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rand(-0.3, 0.3), rr = r * rand(0.55, 1.15);
+    if (i === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  g.closePath();
+}
+
+function opaqueEnough(c, min = 6) {
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 40 && ++n >= min) return true;
+  return false;
+}
+
+// Furniture and street dressing. Hits bite pieces out of it progressively (the sprite is eroded where it was hit
+// and the bitten piece flies off as debris); when its hit points run out, what is left falls apart.
 export default class Prop {
   constructor(world, type, x, y, angle = 0) {
     this.world = world;
@@ -25,27 +44,83 @@ export default class Prop {
     this.body = d.r ? Bodies.circle(x, y, d.r, opts) : Bodies.rectangle(x, y, d.w, d.h, opts);
     if (!d.static) {
       setMaterial(this.body, d.kg, d.mu);
+      scaleInertia(this.body, 4);
       world.physics.freezeIfHeavy(this.body);
     }
     this.body.entity = this;
     this.body.material = d.material;
     this.dead = false;
     this.flash = 0;
+    this.canvas = null; // per-instance copy of the sprite, created on the first bite
     world.addBody(this.body);
+  }
+
+  get look() { return this.canvas || this.img; }
+
+  // world point -> sprite pixel
+  toSprite(px, py) {
+    const a = -this.body.angle, dx = px - this.x, dy = py - this.y;
+    return { sx: dx * Math.cos(a) - dy * Math.sin(a) + this.img.width / 2, sy: dx * Math.sin(a) + dy * Math.cos(a) + this.img.height / 2 };
+  }
+
+  // tear a piece out of the object around a hit point; the piece flies off
+  bite(px, py, dirA, scale) {
+    const img = this.img;
+    if (!this.canvas) {
+      this.canvas = document.createElement('canvas');
+      this.canvas.width = img.width; this.canvas.height = img.height;
+      this.canvas.getContext('2d').drawImage(img, 0, 0);
+    }
+    // bite slightly inside the edge the bullet entered through
+    const { sx, sy } = this.toSprite(px + Math.cos(dirA) * 2.5, py + Math.sin(dirA) * 2.5);
+    const r = clamp(Math.sqrt((img.width * img.height * 0.5) / (Math.PI * this.def.hp)), 2.5, 9) * scale;
+    const size = Math.ceil(r * 2.4) + 2;
+    const piece = document.createElement('canvas');
+    piece.width = piece.height = size;
+    const pg = piece.getContext('2d');
+    jagged(pg, size / 2, size / 2, r);
+    pg.clip();
+    pg.drawImage(this.canvas, size / 2 - sx, size / 2 - sy);
+    const g = this.canvas.getContext('2d');
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    jagged(g, sx, sy, r);
+    g.fill();
+    // splintered dark rim and a couple of cracks around the hole
+    g.globalCompositeOperation = 'source-atop';
+    g.strokeStyle = 'rgba(20,10,14,0.65)';
+    g.lineWidth = 1.2;
+    jagged(g, sx, sy, r + 0.8);
+    g.stroke();
+    g.lineWidth = 0.7;
+    for (let k = 0; k < 2; k++) {
+      const a = rand(0, Math.PI * 2);
+      g.beginPath(); g.moveTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r);
+      g.lineTo(sx + Math.cos(a) * (r + rand(3, 7)), sy + Math.sin(a) * (r + rand(3, 7)));
+      g.stroke();
+    }
+    g.restore();
+    if (opaqueEnough(piece)) {
+      const back = dirA + Math.PI + rand(-1, 1);
+      const a = chance(0.6) ? back : dirA + rand(-0.6, 0.6), v = rand(70, 190) * scale;
+      this.world.addDebris(new Debris(this.world, piece, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5),
+        { air: 0.06, material: this.def.material, fly: 0.15 }));
+    }
   }
 
   get x() { return this.body.position.x; }
   get y() { return this.body.position.y; }
 
-  // bullet / melee / thrown hit
+  // bullet / melee / thrown hit: every hit bites a piece off
   hit(damage, px, py, dirA, power = 0.6) {
     if (this.dead) return;
     const d = this.def, w = this.world;
     this.flash = 0.06;
-    w.particles.chips(px, py, dirA + Math.PI, 1.2, 4, d.chips);
+    if (this.hp - damage > 0) this.bite(px, py, dirA, damage > 1 ? 1.3 : 1);
+    w.particles.chips(px, py, dirA + Math.PI, 1.2, 3, d.chips);
     if (d.sparks || d.sound === 'metal') w.particles.sparks(px, py, dirA + Math.PI, 1, 4, 220);
     w.sound(d.sound === 'glass' ? 'impact' : d.sound, px, py, 0.5);
-    if (!d.static) impulse(this.body, dirA, 40 * power, (Math.random() - 0.5) * 0.1);
+    if (!d.static) impulse(this.body, dirA, 25 * power, (Math.random() - 0.5) * 0.05);
     this.hp -= damage;
     if (this.hp <= 0) this.break(dirA, power);
   }
@@ -57,14 +132,15 @@ export default class Prop {
     const { x, y } = this.body.position;
     w.removeBody(this.body);
     if (d.explosive) w.after(0.06, () => w.explode(x, y, { radius: d.blast ?? 92, source: this.type }));
-    // more pieces for bigger furniture
-    const cols = Math.min(4, Math.max(2, Math.round(this.img.width / 11)));
-    const rows = Math.min(3, Math.max(1, Math.round(this.img.height / 11)));
-    const pieces = slices(this.img, cols, rows);
+    // what is left falls apart in a few big chunks
+    const cols = Math.min(3, Math.max(2, Math.round(this.img.width / 16)));
+    const rows = Math.min(2, Math.max(1, Math.round(this.img.height / 16)));
+    const pieces = slices(this.look, cols, rows);
     const harm = power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null;
     const ca = Math.cos(this.body.angle), sa = Math.sin(this.body.angle);
     const pw = this.img.width / cols, ph = this.img.height / rows;
     pieces.forEach((pc, k) => {
+      if (this.canvas && !opaqueEnough(pc, 10)) return; // already shot away
       // start each piece where it was in the object
       const lx = ((k % cols) + 0.5) * pw - this.img.width / 2, ly = (Math.floor(k / cols) + 0.5) * ph - this.img.height / 2;
       const px = x + lx * ca - ly * sa, py = y + lx * sa + ly * ca;
@@ -74,7 +150,7 @@ export default class Prop {
         { air: 0.07, material: d.material, harm: harm && { ...harm } }));
     });
     // splinters / shards
-    for (let k = 0; k < 6 + cols * rows; k++) {
+    for (let k = 0; k < 4 + cols * rows; k++) {
       const a = dirA + rand(-1.4, 1.4), v = rand(80, 300) * power;
       w.addDebris(new Debris(w, chunk(d.chips, Math.floor(rand(2, 6)), Math.floor(rand(1, 3)) + 1), x + rand(-8, 8), y + rand(-8, 8), rand(0, 6),
         Math.cos(a) * v, Math.sin(a) * v, rand(-0.8, 0.8), { air: 0.06, kg: 0.1, shadow: 0 }));
@@ -106,7 +182,8 @@ export default class Prop {
     let jx = 0, jy = 0;
     if (this.flash > 0) { this.flash -= 1 / 60; jx = rand(-1.5, 1.5); jy = rand(-1.5, 1.5); }
     if (this.def.overhead) return; // drawn later, above characters
-    drawSpriteShadowed(ctx, this.img, p.x + jx, p.y + jy, this.body.angle, 3);
+    drawSprite(ctx, silhouette(this.img), p.x + jx + 3, p.y + jy + 3, this.body.angle, this.canvas ? 0.25 : 0.35);
+    drawSprite(ctx, this.look, p.x + jx, p.y + jy, this.body.angle);
   }
 
   // canopies and lamp heads: above everyone, see-through when the player is under
@@ -114,6 +191,6 @@ export default class Prop {
     const p = this.body.position;
     const under = player && Math.hypot(player.x - p.x, player.y - p.y) < this.img.width * 0.45;
     drawSprite(ctx, this.img, p.x + 5, p.y + 7, this.body.angle, 0.3);
-    drawSprite(ctx, this.img, p.x, p.y, this.body.angle, under ? 0.45 : 1);
+    drawSprite(ctx, this.look, p.x, p.y, this.body.angle, under ? 0.45 : 1);
   }
 }

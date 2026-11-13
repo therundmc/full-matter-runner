@@ -27,6 +27,7 @@ export default class Window {
     if (!this.intact) return;
     this.intact = false;
     const w = this.world;
+    w.map.blocked[Math.floor(this.y / TILE) * w.map.w + Math.floor(this.x / TILE)] = 0;
     w.removeBody(this.body);
     // broken frame still blocks characters (but not bullets or thrown items)
     this.body = Bodies.rectangle(this.x, this.y, this.vertical ? 4 : TILE, this.vertical ? TILE : 4, {

@@ -26,8 +26,9 @@ src/
       TileMap.js          pure grid logic (solid / blocked / wall HP / version), wall bodies (no DOM)
       Level.js            builds entities from level data
     systems/              rules, called by World or driven by events
-      Ballistics.js       traceBullet, lineOfSight
-      Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave
+      Ballistics.js       traceBullet, lineOfSight, canSeeCharacter (low cover hides), occlusion (blast transmission)
+      Cover.js            findCover (walls, def.cover furniture), findVault (broken windows, def.vault furniture)
+      Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Destruction.js      wall tiles, doors off hinges, fences
       Scoring.js          listens to 'kill': score, combo
       Impacts.js          listens to 'impact': material sounds by speed and mass
@@ -76,6 +77,20 @@ Rules:
   is "frozen" (static) at rest and only wakes up from big impulses (explosions). Lighter objects slow the
   character down in proportion to their weight.
 - Impulses are momentum (kg·px/step): `impulse(body, angle, J)` gives light bodies a big kick and heavy ones a nudge.
+
+## Gameplay systems notes
+
+- Ammo is per caliber (`AMMO` in data/weapons.js: 9mm, 12g, 762, rocket). The player has a pool per caliber;
+  a reload fills a fresh magazine from the pool and drops the old one with what was left in it (pickable).
+- Gun sounds are one-shot slices of the recordings (`SLICES` in audio/Audio.js) choked per shooter (`choke`).
+- Props erode: every hit bites a jagged piece out of a per-instance copy of the sprite and throws it as Debris;
+  at 0 HP only what is left falls apart.
+- Traversal (Character): `tryVault(angle, moving)` jumps through broken windows / over `def.vault` furniture
+  (only when running into it), collisions limited to walls during the jump. Space = context action:
+  execute > vault > take / leave cover.
+- Cover (Character): `takeCover`, `steerInCover` (slide along the face, stop at corners), `exposedT` after firing
+  over low cover. Low cover hides a crouched character (`canSeeCharacter`) and stops bullets; when the character
+  pops up to shoot, bullets fly over that piece of furniture.
 
 ## Debug
 

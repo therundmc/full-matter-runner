@@ -28,7 +28,7 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore) {
       if (r) best = { t: r.t, kind, target: o, nx: r.nx, ny: r.ny };
     }
   };
-  test(world.props, 'prop', (p) => !p.dead);
+  test(world.props, 'prop', (p) => !p.dead && !(p.coveredBy?.exposed && p.coveredBy.team !== team));
   test(world.doors, 'door', () => true);
   test(world.windows, 'glass', (g) => g.intact);
   // dead bodies: every ragdoll part can be hit
@@ -45,6 +45,14 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore) {
   return best;
 }
 
+// can `viewer` see character `ch`? walls/doors block, and so does low cover someone is crouched behind
+export function canSeeCharacter(world, viewer, ch) {
+  if (!lineOfSight(world, viewer.x, viewer.y, ch.x, ch.y)) return false;
+  const c = ch.cover;
+  if (c?.low && !ch.exposed && c.target && !c.target.dead && segPoly(viewer.x, viewer.y, ch.x, ch.y, c.target.body.vertices)) return false;
+  return true;
+}
+
 // walls and closed doors block sight
 export function lineOfSight(world, x0, y0, x1, y1) {
   if (world.map.raycast(x0, y0, x1, y1)) return false;
@@ -53,4 +61,27 @@ export function lineOfSight(world, x0, y0, x1, y1) {
     if (segSeg(x0, y0, x1, y1, d.hx, d.hy, t.x, t.y) !== null) return false;
   }
   return true;
+}
+
+// How much of a blast travels from (x0,y0) to (x1,y1): 0 = fully blocked, 1 = open air.
+// Walls block everything, closed doors and heavy furniture soak most of it, intact glass a little.
+// `target` (an entity or { cx, cy } wall tile) and `origin` (what blew up) never count as obstacles.
+export function occlusion(world, x0, y0, x1, y1, target = null, origin = null) {
+  const wall = world.map.raycast(x0, y0, x1, y1);
+  if (wall && !(target && wall.cx === target.cx && wall.cy === target.cy)) return 0;
+  let f = 1;
+  for (const d of world.doors) {
+    if (d === target) continue;
+    const t = d.tip();
+    if (segSeg(x0, y0, x1, y1, d.hx, d.hy, t.x, t.y) !== null) f *= 0.3;
+  }
+  for (const p of world.props) {
+    if (p === target || p === origin || p.dead || !(p.isVehicle || p.def.static || p.def.blocksPath)) continue;
+    if (segPoly(x0, y0, x1, y1, p.body.vertices)) f *= 0.4;
+  }
+  for (const g of world.windows) {
+    if (g === target || !g.intact) continue;
+    if (segPoly(x0, y0, x1, y1, g.body.vertices)) f *= 0.7;
+  }
+  return f;
 }

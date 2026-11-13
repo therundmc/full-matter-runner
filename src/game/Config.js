@@ -54,7 +54,7 @@ export const ENEMY = {
 };
 
 export const PHYSICS = {
-  pushForce: 520, // N a character can push with (heavier/grippier objects won't budge)
+  pushForce: 650, // N a character can shove with (heavier/grippier objects won't budge)
   substeps: 2,    // Matter updates per simulation step (smoother contacts)
 };
 

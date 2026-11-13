@@ -1,9 +1,12 @@
 import { CAT, MASK } from '../Config.js';
 import { drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance } from '../../engine/math.js';
-import { setMaterial } from '../../engine/physics/Body.js';
+import { setMaterial, scaleInertia } from '../../engine/physics/Body.js';
 
 const { Bodies, Body } = Matter;
+
+// how pieces drag on the floor by material: meat sticks, glass and brass skitter, rubber rolls
+const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 0.75, concrete: 1, wood: 0.9 };
 
 // Any physical loose piece: gibs, shell casings, furniture fragments, glass shards, wall chunks.
 // opts.harm = { kind: 'cut'|'blunt', knock, lethal, ignore } makes a fast piece dangerous for enemies.
@@ -26,7 +29,9 @@ export default class Debris {
       label: 'debris',
     });
     // real-ish mass from the piece size; it flies a moment before touching the floor
-    setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.04), opts.mu ?? 0.6, world.time + (opts.fly ?? 0.12));
+    const mu = opts.mu ?? MATERIAL_MU[opts.material] ?? 0.9;
+    setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.06), mu, world.time + (opts.fly ?? 0.12));
+    scaleInertia(this.body, 2);
     Body.setVelocity(this.body, { x: vx / 60, y: vy / 60 });
     Body.setAngularVelocity(this.body, spin);
     this.body.entity = this;

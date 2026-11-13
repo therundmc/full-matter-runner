@@ -14,7 +14,7 @@ export default class Corpse {
       frictionAir: 0.01, friction: 0.2, restitution: 0.15, label: 'corpse',
       collisionFilter: { category: CAT.CORPSE, mask: MASK.CORPSE },
     });
-    setMaterial(this.body, 70, 0.75, world.time + 0.18);
+    setMaterial(this.body, 70, 1.1, world.time + 0.18);
     this.body.material = 'flesh';
     Body.setVelocity(this.body, { x: Math.cos(angle) * speed / 60, y: Math.sin(angle) * speed / 60 });
     Body.setAngle(this.body, angle);
