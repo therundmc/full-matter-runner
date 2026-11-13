@@ -24,17 +24,20 @@
 3. Broken-window frame indicator + blast occlusion — done. Cover system REMOVED (user: useless for now).
    Furniture: only small objects move (chairs, plants, bins, crates, TV, speakers); the rest is bolted, with 2x HP,
    weapon-dependent bites and damage states (cracked / split / giving way).
-4. Combat, bleeding calibrated per weapon, visual feedback, sound design & mix (integrate the lighting branch);
-   real-time liquids (blood/water spreading, footprints, hydrant) still to do.
-5. Synthwave music: darker, richer chord progressions, heavy pulsing loops (gated reverb, staccato bass).
-6. Level 1 (street, bar, back room) & enemy AI (integrate the AI branch). User wants fewer enemies (level1 now 13).
-7. Sandbox / debug mode (the `?level=lab` physics lab is its seed).
+Blocks 4-7 are implemented but NOT yet validated by the user (built while he was away): expect feedback on each.
+4. Combat, bleeding calibrated per weapon (data/wounds.js), synthesized gun / reload sounds (user: realistic, good
+   bass), lighting (render/Lighting.js: every visible light is a prop, level `lights` = indirect fill only),
+   prop destruction pushed far (Fracture / DamageArt), real-time liquids (puddles, footprints, hydrant),
+   animations + slide on Space. Still weak: combat visual feedback, horn / scream sounds.
+5. Synthwave music: darker, follows the AI alert phase.
+6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
+   (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance
+   first. The elevated parallax MIRAGE sign was rejected (ugly): signs lie flat on the facade, as seen from above.
+7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
-## Pending work stored in branches (not merged)
-- `worktree-agent-a4bd44bea01e0fe54`: WIP neon lighting (src/fx/Lighting.js, PostFX.js: shadows, bloom, wet reflections,
-  grading). Written against the OLD layout (src/core, src/world...): port it into the new architecture in Bloc 3.
-- `worktree-agent-a8864992389c7ee0d`: WIP MGS-style AI (src/ai/Director.js, Tactics.js, Enemy.js rewrite). Old layout too:
-  port it in Bloc 5.
+## Old agent branches
+- The `worktree-agent-*` branches (lighting, AI and others) are already ported into `feature/hotline-rework`:
+  nothing left to merge from them. Do not delete them without asking.
 
 ## Run / test
 - `python -m http.server 8000` then http://localhost:8000 (`?level=lab` for the physics lab).
@@ -56,4 +59,6 @@
   current mag with its remaining rounds (pickable again). Enemies: `weapon.reserve` = spare mags.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
+- level1.js and lab.js are generated: edit `tools/build_level1.py` / `tools/build_lab.py` (tools/levelkit.py checks
+  spawns, furniture overlaps and rooftop pieces) and run them; never hand-edit the output.
 - Keep code clean: no stray exports / unused imports, short useful comments.
