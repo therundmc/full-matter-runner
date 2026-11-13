@@ -8,7 +8,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { rand, angDiff, approachAngle, chance, clamp, local, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint } from '../ai/Tactics.js';
-import { detectionRate, inView, aimError, hearingError } from '../ai/Perception.js';
+import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
 import Character from './Character.js';
 
 const { Body } = Matter;
@@ -27,8 +27,12 @@ const BARKS = {
   clear: ['...NOTHING.', 'MUST BE RATS.', 'ALL CLEAR.'], body: ['MAN DOWN!', 'OH GOD...'], wake: ['GET UP!'],
   missing: ["WHERE'D HE GO?"], damage: ['WHAT THE...'], reload: ['RELOADING!', 'COVER ME!'], panic: ['AAAH!', "HE'S CRAZY!"],
   lost: ['WHERE IS HE?', 'SPREAD OUT!'], help: ['HELP!'], dry: ["I'M OUT!"], shots: ['SHOTS FIRED!', 'GUNFIRE!'],
+  // to a stranger hanging about (Enemy.mind)
+  shoo: ['BEAT IT.', 'KEEP WALKING.', 'GET LOST, PAL.', 'MOVE ALONG.', "WHAT'RE YOU LOOKING AT?", 'NOTHING TO SEE HERE.'],
+  warn: ['LAST WARNING!', 'I SAID MOVE!', 'YOU DEAF? WALK!', 'BACK OFF. NOW!'],
+  snap: ["THAT'S IT!", 'YOU ASKED FOR IT!', 'I WARNED YOU!'],
 };
-const SHOUTED = new Set(['shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake']); // barks yelled out loud
+const SHOUTED = new Set(['shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'warn']); // barks yelled out loud
 const RANGES = ENEMY.ranges;
 
 export default class Enemy extends Character {
@@ -76,6 +80,8 @@ export default class Enemy extends Character {
     this.sep = { x: 0, y: 0 };
     this.executing = false;
     this.held = null; // the player while he has us by the neck (Player.startTakedown)
+    this.nag = 0; this.nagStage = 0; // patience lost with a loitering stranger 0..1, warnings given (see mind)
+    this.shooing = null;             // that stranger, while we stare him down
   }
 
   get director() { return this.world.director; }
@@ -121,8 +127,10 @@ export default class Enemy extends Character {
     const p = this.world.player;
     const recent = this.world.time - this.seenAt < 3;
     this.sees = !!p && this.canSee(p);
-    // a stranger minding his own business on public ground is none of a guard's concern
-    if (this.sees && this.aware < 2 && !this.director.isThreat(p)) this.sees = false;
+    // a stranger minding his own business on public ground is none of a guard's concern, unless he hangs about
+    const stranger = this.sees && this.aware < 2 && !this.director.isThreat(p);
+    if (stranger) this.sees = false;
+    this.mind(stranger ? p : null, step);
     if (this.sees) {
       if (this.aware < 2) {
         const dx = p.x - this.x, dy = p.y - this.y;
@@ -143,6 +151,51 @@ export default class Enemy extends Character {
         this.director.sighted(p.x, p.y);
       }
     } else if (this.aware < 2) this.meter = Math.max(0, this.meter - step * ENEMY.meterDecay[this.aware]);
+  }
+
+  // A harmless stranger (or null) loitering in front of us: told to clear off, warned a last time, then we lose it
+  // and the squad takes him for a threat for good. Patience comes back slowly once he has gone.
+  mind(p, step) {
+    const L = AI.loiter;
+    let rate = 0;
+    if (p && this.aware === 0) {
+      const dx = p.x - this.x, dy = p.y - this.y;
+      // in front of us only: a quiet man behind our back bothers nobody
+      if (Math.abs(angDiff(this.angle, Math.atan2(dy, dx))) <= ENEMY.fov / 2) rate = loiterRate(Math.hypot(dx, dy)) * (this.distracted ? 0.6 : 1);
+    }
+    this.shooing = rate > 0 && this.nagStage > 0 ? p : null;
+    if (!rate) {
+      this.nag = Math.max(0, this.nag - step * L.forget);
+      if (!this.nag) this.nagStage = 0;
+      return;
+    }
+    this.nag += step * rate;
+    if (this.nag >= 1) {
+      this.nag = 0; this.nagStage = 0; this.shooing = null;
+      this.director.provoked = true;
+      this.barkT = 0;
+      this.say('snap');
+      this.sees = true;
+      this.lastKnown = { x: p.x, y: p.y };
+      this.spot(false);
+    } else if (this.nag >= L.last && this.nagStage < 2) {
+      this.nagStage = 2;
+      this.barkT = 0;
+      this.say('warn');
+      this.showIcon('!', 1.2);
+    } else if (this.nag >= L.first && this.nagStage < 1 && this.say('shoo')) {
+      this.nagStage = 1;
+      this.world.sound('shout', this.x, this.y, 0.45, { pitch: this.voice });
+    }
+  }
+
+  // stand and stare down the stranger we are telling to clear off
+  stare(dt) {
+    const p = this.shooing;
+    if (!p) return false;
+    this.halt();
+    this.faceAngle(Math.atan2(p.y - this.y, p.x - this.x), 6, dt);
+    return true;
   }
 
   // meter full: combat ('!'), then call it in
@@ -341,6 +394,7 @@ export default class Enemy extends Character {
 
   // ---------------- calm behaviours ----------------
   doIdle(dt) {
+    if (this.stare(dt)) return;
     const h = this.home;
     if (Math.hypot(h.x - this.x, h.y - this.y) > 14) { this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true }); return; }
     this.halt();
@@ -362,6 +416,7 @@ export default class Enemy extends Character {
   }
 
   doPatrol(dt) {
+    if (this.stare(dt)) return;
     if (this.pauseT > 0) {
       this.pauseT -= dt;
       this.halt();
@@ -383,6 +438,7 @@ export default class Enemy extends Character {
   }
 
   doReturn(dt) {
+    if (this.stare(dt)) return;
     if (this.roam) {
       if (this.route) {
         let bi = 0, bd = Infinity;
@@ -1057,11 +1113,13 @@ export default class Enemy extends Character {
   // ---------------- feedback ----------------
   showIcon(ch, t) { this.icon = ch; this.iconT = t; }
 
+  // whether the line was actually said (one's own breath and the squad's turn to speak allowing)
   say(kind) {
-    if (this.barkT > 0 || !BARKS[kind]) return;
-    if (!this.director.bark(this, kind, BARKS[kind])) return;
+    if (this.barkT > 0 || !BARKS[kind]) return false;
+    if (!this.director.bark(this, kind, BARKS[kind])) return false;
     this.barkT = 1.5;
     if (SHOUTED.has(kind)) this.world.sound('shout', this.x, this.y, 0.8, { pitch: this.voice });
+    return true;
   }
 
   draw(ctx) {
@@ -1096,7 +1154,7 @@ export default class Enemy extends Character {
   }
 
   // awareness marks, drawn after the lighting so they stay readable in the dark:
-  // '!' when spotted, '?' while suspicious, and the detection meter filling up
+  // '!' when spotted or giving a last warning, '?' while suspicious, and the detection meter filling up
   drawMarks(ctx) {
     if (!this.alive || this.knocked > 0 || this.passive) return;
     const showQ = this.aware === 1 && this.state !== S.DIZZY;
@@ -1111,11 +1169,13 @@ export default class Enemy extends Character {
       ctx.fillText(ch, this.x, this.y - 14);
       ctx.globalAlpha = 1;
     }
-    if (this.aware < 2 && this.meter > 0.04) {
+    // the same gauge shows his suspicion, or his patience running out with a loiterer
+    const m = Math.max(this.meter, this.nagStage ? this.nag : 0);
+    if (this.aware < 2 && m > 0.04) {
       ctx.fillStyle = PALETTE.ink;
       ctx.fillRect(this.x - 7, this.y - 12, 14, 3);
-      ctx.fillStyle = this.meter > 0.7 ? PALETTE.orange : PALETTE.yellow;
-      ctx.fillRect(this.x - 6, this.y - 11, 12 * this.meter, 1);
+      ctx.fillStyle = m > 0.7 ? PALETTE.orange : PALETTE.yellow;
+      ctx.fillRect(this.x - 6, this.y - 11, 12 * m, 1);
     }
   }
 

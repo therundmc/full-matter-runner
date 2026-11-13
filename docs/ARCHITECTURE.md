@@ -50,7 +50,7 @@ src/
     ai/                   enemy AI, DOM-free (unit tested)
       Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
-      Perception.js       detection meter rate, view test, aim error, hearing error
+      Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
       Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
@@ -235,7 +235,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 Guards mind their own business until the player gives himself away (`Director.isThreat`): empty-handed and
 outside the level's `premises` (tile rectangles, `lv.guard()` in tools/levelkit.py) he is a passer-by; a weapon in
 hand, trespassing, a shot heard, a guard floored or killed make him a target for good. No `premises` = hostile
-ground everywhere (lab, street testbed).
+ground everywhere (lab, street testbed). A passer-by must not hang about either (`Enemy.mind`, `AI.loiter`,
+`Perception.loiterRate`): a guard who has him in front of him within a few metres stops, stares him down and tells
+him to clear off, warns him a last time ('!'), then snaps: the whole squad is provoked. His patience (shown on the
+detection gauge) runs out faster the closer the stranger stands and comes back slowly once he has gone.
 
 - **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
   pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /

@@ -119,6 +119,10 @@ export const AI = {
   noiseGap: 0.25,         // the same source is heard at most this often (automatic fire)
   planBudget: 6,          // expensive AI work per step (path = 1, cover / flank search = 3)
   barkGap: 0.4,           // seconds between two barks in the whole squad
+  // An unarmed stranger hanging about in front of a guard on public ground (Perception.loiterRate, Enemy.mind):
+  // bothered within `near` px; patience = seconds before he snaps at `near` / at `close` px; shares of it at which
+  // he tells him to clear off (`first`) and warns him a last time (`last`); `forget` = share won back per second.
+  loiter: { near: 120, close: 40, patience: [8, 2.4], first: 0.12, last: 0.55, forget: 0.1 },
 };
 
 export const PHYSICS = {

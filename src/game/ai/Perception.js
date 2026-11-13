@@ -1,6 +1,6 @@
 // Pure perception maths for the guards (no world access, unit tested): how fast the detection meter fills,
-// how wrong their aim is, how badly they localise a noise.
-import { ENEMY } from '../Config.js';
+// how wrong their aim is, how badly they localise a noise, how long they put up with a loiterer.
+import { ENEMY, AI } from '../Config.js';
 import { clamp, lerp } from '../../engine/math.js';
 
 // Detection meter fill per second.
@@ -29,6 +29,13 @@ export function inView(dist, off, aware) {
 export function aimError(settle, targetMoving = 0) {
   const e = lerp(ENEMY.aimErrorMax, 0, clamp(settle, 0, 1));
   return e * (targetMoving > 1.6 ? ENEMY.aimMoveMul : 1);
+}
+
+// Share of his patience a guard loses per second with a harmless stranger standing `dist` px in front of him:
+// none beyond L.near, faster the closer he hangs about.
+export function loiterRate(dist, L = AI.loiter) {
+  if (dist > L.near) return 0;
+  return 1 / lerp(L.patience[0], L.patience[1], clamp((L.near - dist) / (L.near - L.close), 0, 1));
 }
 
 // Localisation error radius (px) of a noise heard from `dist` away.

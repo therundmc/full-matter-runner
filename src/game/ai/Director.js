@@ -9,7 +9,9 @@ import { AI, PALETTE, TILE } from '../Config.js';
 import { pick } from '../../engine/math.js';
 import { searchPoints } from './Tactics.js';
 
-const BARK_COLOR = { contact: PALETTE.pink, panic: PALETTE.pink, body: PALETTE.orange, help: PALETTE.orange };
+const BARK_COLOR = {
+  contact: PALETTE.pink, panic: PALETTE.pink, snap: PALETTE.pink, body: PALETTE.orange, help: PALETTE.orange, warn: PALETTE.orange,
+};
 
 export default class Director {
   constructor(world) {
