@@ -71,7 +71,7 @@ const META = {
   door: { gain: 0.6 },
   doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.85 },
   creak: { dur: 0.6, gap: 0.2, max: 2, gain: 0.5 },
-  vault: { dur: 0.5, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
+  vault: { dur: 0.5, gain: 0.8 }, climb: { pri: 2, dur: 0.8, gap: 0.2, max: 2, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
   swing: { gain: 0.5 }, throw: { gain: 0.55 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
   // weapons in the hands
@@ -230,6 +230,8 @@ const FOLEY = {
   doorSlam: [['doorSlam', 1], ['thud', 0.5, 0.8]],
   creak: [['creak', 1]],
   vault: [['swish', 0.3, 0.6], ['soft', 0.6, 1, 0.1], ['thud', 0.5, 1.1, 0.27]], // hands on the sill, the landing
+  // over a chain-link gate: the mesh shaken by the hands, then by the body, and the landing
+  climb: [['rattle', 0.9, 0.75], ['sheet', 0.35, 1.3, 0.06], ['rattle', 0.7, 0.62, 0.3], ['thud', 0.5, 1.1, 0.55]],
   // a body dragged over the floor (or a car hood): the launch, the scrape under it, where it stops
   slide: [['swish', 0.6, 0.6], ['scrape', 1, 0.75, 0.02], ['scrape', 0.6, 0.6, 0.1], ['thud', 0.4, 1.1, 0.45]],
   splash: [['splash', 1]],

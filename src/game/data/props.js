@@ -48,7 +48,7 @@ export const PROPS = {
   bench: { vault: true, material: 'wood', w: 50, h: 15, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
   // guards path through it and vault it too (no blocksPath)
-  chain_fence: { vault: true, material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
+  chain_fence: { vault: true, climb: true, material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
   // shop fronts of the street: what shows behind the lit display windows, and their neon wall signs (mounted like
   // the bar's: 3 px off the wall face; unlike the pictures they read one way up, so never rotate them)
   bottle_shelf: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },

@@ -54,11 +54,12 @@ function crossProp(world, ch, p, c, ux, uy) {
   // vehicles: across the hood only (never over the roof or end to end)
   if (p.isVehicle ? !p.canSlide(c.x, c.y, ex, ey) : Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) return null;
   const to = landing(world, ch, ex, ey, ux, uy, [3, 10, 18]);
-  return to && { kind: 'prop', over: p, to, ledge: { x: c.x, y: c.y, tx: -uy, ty: ux } };
+  return to && { kind: p.def.climb ? 'climb' : 'prop', over: p, to, ledge: { x: c.x, y: c.y, tx: -uy, ty: ux } };
 }
 
 // what can be vaulted in direction a (the move, or the aim when standing still):
-// { kind: 'window' | 'prop', over, to: {x, y}, ledge: {x, y, tx, ty} (where the hands go, its tangent) } or null.
+// { kind: 'window' | 'prop' | 'climb' (def.climb: hoisted over, not slid across), over, to: {x, y},
+//   ledge: {x, y, tx, ty} (where the hands go, its tangent) } or null.
 export function findVault(world, ch, a) {
   const dx = Math.cos(a), dy = Math.sin(a);
   const r = ch.radius;

@@ -320,12 +320,13 @@ function reach(h, P, side) {
 }
 
 // ---------------- vault ----------------
-// window: anticipation crouch, hands planted on the sill, body hoisted through with tucked legs, squash on landing.
+// window / gate to climb: anticipation crouch, hands planted on the sill, body hoisted through with tucked legs,
+// squash on landing.
 // prop: action-movie hip slide over the top, the gun arm stays on target, one palm skidding on the surface.
 export function vaultPose(ch, P, V) {
   const v = ch.vaulting;
   const k = clamp(v.t / v.dur, 0, 1);
-  const win = v.kind === 'window';
+  const win = v.kind !== 'prop'; // a sill or the top rail of a gate
   const dir = v.dir, c = Math.cos(dir), s = Math.sin(dir);
   copyPose(V, P);
 

@@ -60,7 +60,7 @@ test('the service alley is closed by a chain-link gate that is climbed both ways
   for (const col of [11.5, 12.5, 13.5]) {
     const out = stranger(px(col), y + PROPS.chain_fence.h / 2 + PLAYER.radius + 2);
     const over = findVault(w, out, -Math.PI / 2);
-    assert.equal(over?.kind, 'prop', `no vault at column ${col}`);
+    assert.equal(over?.kind, 'climb', `no way over at column ${col}`);
     assert.equal(over.over.type, 'chain_fence');
     assert.ok(over.to.y < y - PLAYER.radius, 'lands behind the gate');
     assert.equal(d.isThreat(out), false, 'the sidewalk is public');

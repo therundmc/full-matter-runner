@@ -30,7 +30,7 @@ src/
                           tiles, the wall tiles holding each opening up (`heldBy`)
     systems/              rules, called by World or driven by events
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
-      Cover.js            findVault (broken windows, def.vault furniture / car hoods) + free landing spot
+      Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Takedown.js         `behind(player, guard)`: who can be seized from behind (rule only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()

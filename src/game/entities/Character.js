@@ -21,7 +21,9 @@ export const KINDS = {
   brute: { arm: '#d89a70', skin: '#d89a70' },
 };
 
-const VAULT_DUR = 0.5; // s, windows and furniture alike
+const VAULT_DUR = 0.5;  // s, windows and furniture alike
+const CLIMB_DUR = 0.72; // s, over a chain-link gate
+const CLIMB_NOISE = 230; // px the rattling mesh is heard at when the player climbs
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
 
 // Shared body / weapon / animation logic for the player and enemies.
@@ -388,18 +390,20 @@ export default class Character {
     // the run-up carries into the move: Hermite tangents normalized to the vault distance and duration
     const vel = Body.getVelocity(this.body);
     const along = Math.max(0, (vel.x * dx + vel.y * dy) / dist);
-    const win = v.kind === 'window';
+    const win = v.kind !== 'prop', climb = v.kind === 'climb'; // hoisted over on the hands, or slid across
+    const dur = climb ? CLIMB_DUR : VAULT_DUR;
     const side = angDiff(dir, this.angle) >= 0 ? 1 : -1; // hip slides roll the chest toward the aim
     this.vaulting = {
-      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: VAULT_DUR, kind: v.kind, over: v.over, dir, dist,
+      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur, kind: v.kind, over: v.over, dir, dist,
       hands: flip ? [h1, h0] : [h0, h1], side, legSide: win ? (Math.random() < 0.5 ? -1 : 1) : -side,
-      m0: clamp((along * 60 * VAULT_DUR) / dist, 0, win ? 0.6 : 1.1), m1: win ? 0.8 : 1.2, landed: false,
+      m0: clamp((along * 60 * dur) / dist, 0, win ? 0.6 : 1.1), m1: win ? 0.8 : 1.2, landed: false,
     };
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
-    this.world.sound(win ? 'vault' : 'slide', this.x, this.y, 0.8);
-    if (win) this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
+    this.world.sound(climb ? 'climb' : win ? 'vault' : 'slide', this.x, this.y, 0.8);
+    if (climb) this.world.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
+    else if (win) this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
     return true;
   }
 
@@ -423,7 +427,7 @@ export default class Character {
     Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
     Body.setVelocity(this.body, { x: 0, y: 0 });
     // touch-down: dust, noise, a small camera kick for the player
-    if (!v.landed && k >= (v.kind === 'window' ? 0.78 : 0.84)) {
+    if (!v.landed && k >= (v.kind === 'prop' ? 0.84 : 0.78)) {
       v.landed = true;
       for (const sd of [-1, 1]) w.particles.smoke(this.x - s * sd * 6, this.y + c * sd * 6, 1, 2, { speed: 22, size: 3, life: 0.45 });
       w.noise(this.x, this.y, this.isPlayer ? 120 : 0, this);

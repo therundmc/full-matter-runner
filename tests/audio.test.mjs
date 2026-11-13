@@ -114,7 +114,7 @@ test('audio: with the recordings loaded, every shot and the blast play a cut of 
 const GAME_SOUNDS = [
   ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), 'stone', 'flesh', 'impact', 'shell',
   'punch', 'splat', 'gore', 'slash', 'death', 'bodyFall', 'shout', 'cry', 'grab', 'neck', 'whimper', 'scream', 'glass', 'crumble', 'doorBreak', 'explosion',
-  'tirePop', 'carHit', 'door', 'doorSlam', 'creak', 'vault', 'slide', 'splash', 'throw', 'swing', 'ricochet', 'ammo',
+  'tirePop', 'carHit', 'door', 'doorSlam', 'creak', 'vault', 'climb', 'slide', 'splash', 'throw', 'swing', 'ricochet', 'ammo',
   'alarm', 'crackle', 'ignite', 'confirm', 'clear', 'ui', 'passby',
 ];
 
