@@ -78,3 +78,23 @@ test('audio: full auto from one shooter keeps a single live voice (choke), dista
     assert.ok(ctx.started > n, 'a rifle 2000 px away is still heard');
   });
 });
+
+test('audio: with the recordings loaded, every shot and the blast play a cut of them', () => {
+  withContext((ctx) => {
+    const buf = { duration: 1 }, played = [];
+    Audio.buffers = { pistol: buf, rifle: buf, shotgun: buf, uzi: buf };
+    const make = ctx.createBufferSource;
+    ctx.createBufferSource = () => {
+      const s = make(), start = s.start;
+      s.start = (...a) => { if (s.buffer === buf) played.push(a); start(...a); };
+      return s;
+    };
+    for (const name of ['pistol', 'uzi', 'shotgun', 'rifle', 'sniper', 'explosion']) {
+      ctx.currentTime += 3;
+      const n = played.length;
+      Audio.play(name, { x: 0, y: 0 });
+      assert.ok(played.length > n, `${name}: no recording played`);
+    }
+    Audio.buffers = {};
+  });
+});

@@ -1,7 +1,9 @@
-// WebAudio sound system: every sound is synthesized (no samples), mixed through a punchy master chain.
+// WebAudio sound system: recorded gunshots (SAMPLES) over synthesized bass / room layers, everything else
+// synthesized, mixed through a punchy master chain.
 //
 // Bus chain (all created in _build):
-//   guns -> drive (tanh "mic preamp" saturation) -> sfx
+//   guns -> drive (tanh "mic preamp" saturation) -> sfx        (synthesized shots)
+//   shots -> HP 35 Hz -> low shelf (weight) -> high shelf (air) -> bus   (recorded shots: no drive, full crack)
 //   sfx  -> HP 30 Hz -> low shelf (+bass punch) -> low-mid cut (350 Hz) -> presence (+3.2 kHz) -+
 //   music -> HP 28 Hz -> duck (sidechain-style dip on loud SFX) -------------------------------+-> bus
 //   bus -> filter (lowpass: slow-motion / death muffle) -> glue compressor -> soft clip (tanh,
@@ -24,7 +26,8 @@ const ALIAS = { impact: 'stone' };
 // gain: mix trim (handling noises sit well under the shots).
 const DEFAULT_META = { pri: 1, dur: 0.3, gap: 0.025, max: 4, duck: 1 };
 const META = {
-  explosion: { pri: 4, dur: 1.6, gap: 0.12, max: 2, duck: 0.3, reach: 3400 },
+  explosion: { pri: 4, dur: 2.6, gap: 0.12, max: 2, duck: 0.3, reach: 3400 },
+  alarm: { pri: 2, dur: 0.4, gap: 0.2, max: 2, reach: 2600 },
   gore: { pri: 3, dur: 0.7, gap: 0.05, max: 3, duck: 0.75 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.4 },
   crumble: { pri: 3, dur: 1.0, gap: 0.08, max: 2, duck: 0.6 },
@@ -44,11 +47,11 @@ const META = {
   rocket: { pri: 3, dur: 0.9, gap: 0.1, max: 2, duck: 0.5, reach: 3000 },
   ricochet: { pri: 1, dur: 0.25, gap: 0.05, max: 3 },
   shell: { pri: 0, dur: 0.35, gap: 0.03, max: 4 },
-  magOut: { pri: 1, dur: 0.5, gap: 0.05, max: 3, gain: 0.45 },
-  magIn: { pri: 1, dur: 0.2, gap: 0.05, max: 3, gain: 0.45 },
-  rack: { pri: 1, dur: 0.5, gap: 0.05, max: 3, gain: 0.45 },
-  shellIn: { pri: 1, dur: 0.15, gap: 0.03, max: 3, gain: 0.45 },
-  handle: { pri: 1, dur: 0.2, gap: 0.05, max: 3, gain: 0.45 },
+  magOut: { pri: 1, dur: 0.5, gap: 0.05, max: 3, gain: 0.9 },
+  magIn: { pri: 1, dur: 0.2, gap: 0.05, max: 3, gain: 0.9 },
+  rack: { pri: 1, dur: 0.5, gap: 0.05, max: 3, gain: 0.9 },
+  shellIn: { pri: 1, dur: 0.15, gap: 0.03, max: 3, gain: 0.9 },
+  handle: { pri: 1, dur: 0.2, gap: 0.05, max: 3, gain: 0.9 },
   pickup: { pri: 1, dur: 0.2, gap: 0.05, max: 3, gain: 0.5 },
   click: { pri: 1, dur: 0.1, gap: 0.05, max: 3, gain: 0.8 },
   crackle: { pri: 0, dur: 0.25, gap: 0.08, max: 2 },
@@ -61,7 +64,25 @@ const META = {
 };
 const GLOBAL_SOFT_CAP = 14; // above this, only louder / higher priority sounds get in (stealing the quietest)
 const GLOBAL_HARD_CAP = 22;
-const NEAR = 350, FAR = 1500; // px: distance muffling starts at NEAR and is full at FAR (whatever the reach)
+const NEAR = 520, FAR = 1900; // px: distance muffling starts at NEAR and is full at FAR (whatever the reach)
+
+// Recorded gunshots (assets/sound/shots, CC BY 3.0 Michel Baradari): the core of a shot once they are loaded.
+const SAMPLES = {
+  pistol: 'assets/sound/shots/pistol.wav',
+  rifle: 'assets/sound/shots/rifle.wav',
+  shotgun: 'assets/sound/shots/shotgun.wav',
+  uzi: 'assets/sound/shots/cg1.wav',
+};
+// Per gun sound: recording, one clean shot cut out of it [offset s, length s] (the rifle file is a whole burst),
+// playback rate, level, and how much of the synthesized layers stays under it (bass and room only).
+const SHOTS = {
+  pistol: { key: 'pistol', cut: [0, 0.5], rate: 1, vol: 1.0, under: 0.5 },
+  uzi: { key: 'uzi', cut: [0, 0.22], rate: 1, vol: 0.9, under: 0.4 },
+  shotgun: { key: 'shotgun', cut: [0, 0.45], rate: 0.94, vol: 1.15, under: 0.6 },
+  rifle: { key: 'rifle', cut: [0, 0.27], rate: 1, vol: 1.05, under: 0.5 },
+  sniper: { key: 'rifle', cut: [0, 0.32], rate: 0.8, vol: 1.25, under: 0.7 },
+};
+const FADE = 0.06; // s: fade at the end of a cut recording
 
 // Gunshots: one close-miked shot = layers, each with its own envelope (see _gun). Hz, seconds, linear volume.
 //   crack: muzzle-blast edge [highpass Hz, dur, vol]          body: band-passed noise [f0, f1, q, dur, vol]
@@ -181,13 +202,20 @@ class AudioSystem {
     this.duckUntil = 0;
     this.duckDepth = 1;
     this.pv = 1;        // per-play pitch factor (set in play, read by the synthesis helpers)
+    this.buffers = {};  // decoded recordings (SAMPLES), filled by unlock()
   }
 
   // must be called from a user gesture
   async unlock() {
     if (this.ctx) { if (this.ctx.state === 'suspended') await this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) this._build(this.ctx = new AC());
+    if (!AC) return;
+    this._build(this.ctx = new AC());
+    await Promise.all(Object.entries(SAMPLES).map(async ([k, url]) => {
+      try {
+        this.buffers[k] = await this.ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
+      } catch (e) { console.warn('sound load failed', k, e); } // the synthesized shot takes over
+    }));
   }
 
   // bus chain + shared buffers (see the header)
@@ -222,6 +250,10 @@ class AudioSystem {
     this.guns = ctx.createGain();
     this.guns.gain.value = 0.5;
     chain(this.guns, shaper((x) => Math.tanh(2 * x), '2x'), this.sfx);
+    // recorded shots keep their full crack: no drive, no low-mid cut, a bit of weight and air
+    this.shots = ctx.createGain();
+    this.shots.gain.value = 0.9;
+    chain(this.shots, bq('highpass', 35, 0.7), bq('lowshelf', 120, 0.7, 3), bq('highshelf', 5000, 0.7, 3.5), this.bus);
 
     this.filter = bq('lowpass', 20000, 0.7);
     // glue: only the loud peaks go over the threshold, so the music bed is not pumped by every shot. (The browser adds
@@ -367,8 +399,9 @@ class AudioSystem {
       if (prev && prev.end > this.ctx.currentTime) this._kill(prev, this.ctx.currentTime, 0.02);
       this.chokes.set(opts.choke, entry);
     }
-    const o = entry.gain = this._out(sp, opts.dest || (gun ? this.guns : this.sfx));
-    if (gun) return this._gun(o, gun, sp, opts);
+    const shot = gun && SHOTS[name], buf = shot && this.buffers[shot.key];
+    const o = entry.gain = this._out(sp, opts.dest || (buf ? this.shots : gun ? this.guns : this.sfx));
+    if (gun) return this._gun(o, gun, sp, opts, buf && shot, buf);
     o.gain.value = sp.vol * rand(0.88, 1.1); // never twice the same level
     this.pv = rand(0.93, 1.07);
     const v = clamp(opts.vol ?? 1, 0.1, 1.5); // how hard it was hit
@@ -441,14 +474,16 @@ class AudioSystem {
 
   // data-driven impact: thump + noise body + crack ticks + optional partials; harder hits (v) are louder / brighter
   _material(o, m, v) {
-    const k = 0.45 + 0.55 * v;
+    const k = 0.6 + 0.6 * v;
+    // the hit itself: a dry, bright smack before the material answers
+    if (m.snap) this._noiseBurst(o, { type: 'highpass', f0: m.snap.f, q: 0.7, dur: 0.014, vol: m.snap.vol * 1.6 * k, attack: 0.0002 });
     if (m.thump) this._thump(o, { f0: m.thump[0], f1: m.thump[1], dur: m.thump[2], type: m.thump[3], vol: m.thump[4] * k });
     if (m.body) {
       const b = m.body, bright = 0.7 + 0.3 * v;
       this._noiseBurst(o, { type: b.type || 'bandpass', f0: b.f0 * bright, f1: b.f1, q: b.q, dur: b.dur, vol: b.vol * k });
     }
     if (m.snap) for (let i = 0; i < m.snap.n; i++) this._tick(o, { f: m.snap.f * rand(0.8, 1.25), q: 4, dur: 0.012, vol: m.snap.vol * k, delay: i ? rand(0.008, m.snap.span) : 0 });
-    if (m.partials) this._partials(o, { f: rand(...m.partials.f), ratios: m.partials.ratios, dur: m.partials.dur, vol: m.partials.vol * k });
+    if (m.partials) this._partials(o, { f: rand(...m.partials.f), ratios: m.partials.ratios, dur: m.partials.dur * 1.6, vol: m.partials.vol * 1.5 * k });
   }
 
   // ---- procedural SFX: flesh and melee ----
@@ -519,13 +554,27 @@ class AudioSystem {
     for (let i = 0; i < 5; i++) this._tick(o, { f: rand(1800, 3500), q: 5, dur: 0.012, vol: rand(0.2, 0.45), delay: rand(0, 0.12) });
     this._thump(o, { f0: 180, f1: 70, dur: 0.1, type: 'triangle', vol: 0.5, delay: 0.14 });
   }
+  // a shock front you feel first, the fireball, the boom coming back off the buildings, a long rumble and debris
+  // raining down. With the recordings loaded, a slowed-down shotgun blast gives it the grain of a real detonation.
   _explosion(o) {
-    this._thump(o, { f0: 95, f1: 20, dur: 1.1, vol: 1.3 });                               // sub drop
-    this._tick(o, { f: 3500, q: 0.6, dur: 0.08, vol: 1.0 });                              // crack
-    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 2600, f1: 70, dur: 0.75, vol: 1.5, attack: 0.004 }); // blast body
-    this._noiseBurst(o, { f0: 450, f1: 200, q: 0.7, dur: 0.35, vol: 0.5 });
-    for (let i = 0; i < 9; i++) this._tick(o, { f: rand(600, 2600), q: 3, dur: rand(0.03, 0.07), vol: rand(0.15, 0.4) * (1 - i / 14), delay: 0.2 + 0.9 * (i / 9) ** 1.3 + rand(0, 0.05) }); // debris rain
-    for (let i = 0; i < 3; i++) this._thump(o, { f0: rand(110, 170), f1: 55, dur: 0.08, vol: 0.35, delay: rand(0.25, 0.9) });
+    const rec = this.buffers.shotgun;
+    this._noiseBurst(o, { type: 'none', dur: 0.004, vol: 1.6, attack: 0.0001 });                                 // shock front
+    this._noiseBurst(o, { type: 'highpass', f0: 2200, f1: 900, q: 0.7, dur: 0.09, vol: 1.1, attack: 0.0003 }); // crack
+    if (rec) {
+      this._sample(o, rec, { len: 0.6, rate: 0.42 * this.pv, vol: 1.5 });
+      this._sample(o, rec, { len: 0.45, rate: 0.27 * this.pv, vol: 1.0, delay: 0.03 });
+    }
+    this._thump(o, { f0: 110, f1: 24, dur: 1.3, vol: 1.5 });                                                     // sub drop
+    this._thump(o, { type: 'triangle', f0: 190, f1: 60, dur: 0.16, vol: 0.9 });                                  // chest punch
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 5200, f1: 90, dur: 1.1, vol: rec ? 1.0 : 1.6, attack: 0.002 }); // fireball
+    this._noiseBurst(o, { f0: 900, f1: 180, q: 0.5, dur: 0.6, vol: 0.7, attack: 0.003 });                        // roar
+    for (const [t, v] of [[0.16, 0.55], [0.33, 0.35]]) {                                                         // echoes
+      this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 1400, f1: 120, dur: 0.45, vol: v, attack: 0.01, delay: t });
+      this._thump(o, { f0: 80, f1: 34, dur: 0.3, vol: v, delay: t });
+    }
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 260, f1: 45, dur: 2.2, vol: 0.8, attack: 0.15, delay: 0.1 }); // rumble
+    for (let i = 0; i < 12; i++) this._tick(o, { f: rand(600, 3200), q: 3, dur: rand(0.03, 0.07), vol: rand(0.15, 0.4) * (1 - i / 16), delay: 0.25 + 1.3 * (i / 12) ** 1.3 + rand(0, 0.05) }); // debris rain
+    for (let i = 0; i < 4; i++) this._thump(o, { f0: rand(110, 170), f1: 55, dur: 0.08, vol: 0.35, delay: rand(0.3, 1.2) });
   }
   _tirePop(o) {
     this._thump(o, { f0: 150, f1: 42, dur: 0.18, vol: 1.0 });
@@ -580,20 +629,26 @@ class AudioSystem {
   _swing(o) { this._noiseBurst(o, { f0: 1800, f1: 500, q: 2, dur: 0.15, vol: 0.45, attack: 0.03 }); }
 
   // ---- guns ----
-  // one shot from the GUNS layers. Every shot differs a little (pitch, level +-1 dB, tail length); with
+  // one shot: its recording when loaded (`shot`, `buf`), over the GUNS layers. Every shot differs a little (pitch, level +-1 dB, tail length); with
   // distance the crack, mechanics and reflections fade first while the thump carries (+ the _out lowpass).
-  _gun(o, G, sp, opts) {
+  _gun(o, G, sp, opts, shot = null, buf = null) {
     this.pv = 1 + rand(-1, 1) * (G.jit ?? 0.03);
     o.gain.value = sp.vol * rand(0.89, 1.12);
     const hi = 1 - 0.75 * sp.far, lo = 1 + 0.8 * sp.far;
     const [cf, cd, cv] = G.crack, b = G.body, B = G.blast, T = G.thump;
-    this._noiseBurst(o, { type: 'highpass', f0: cf, q: 0.7, dur: cd, vol: cv * hi, attack: 0.0002 });
-    this._noiseBurst(o, { type: 'none', dur: 0.0012, vol: cv * 0.5 * hi, attack: 0.0001 }); // full-band spike
-    this._noiseBurst(o, { f0: b[0], f1: b[1], q: b[2], dur: b[3], vol: b[4] * hi, attack: 0.0006 });
-    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: B[0], f1: B[1], dur: B[2], vol: B[3], attack: 0.001 });
-    this._thump(o, { f0: T[0], f1: T[1], dur: T[2], vol: T[3] * lo });
-    if (G.punch) this._thump(o, { type: 'triangle', f0: G.punch[0], f1: G.punch[1], dur: G.punch[2], vol: G.punch[3] * hi });
-    if (G.sub) this._thump(o, { f0: G.sub[0], f1: G.sub[1], dur: G.sub[2], vol: G.sub[3] * lo, delay: 0.004 });
+    const u = shot ? shot.under : 1; // under a recording the synthesis only adds bass and room
+    if (shot) {
+      this._sample(o, buf, { offset: shot.cut[0], len: shot.cut[1], rate: shot.rate * this.pv, vol: shot.vol });
+      this._noiseBurst(o, { type: 'highpass', f0: cf, q: 0.7, dur: 0.012, vol: cv * 0.45 * hi, attack: 0.0002 }); // extra snap
+    } else {
+      this._noiseBurst(o, { type: 'highpass', f0: cf, q: 0.7, dur: cd, vol: cv * hi, attack: 0.0002 });
+      this._noiseBurst(o, { type: 'none', dur: 0.0012, vol: cv * 0.5 * hi, attack: 0.0001 }); // full-band spike
+      this._noiseBurst(o, { f0: b[0], f1: b[1], q: b[2], dur: b[3], vol: b[4] * hi, attack: 0.0006 });
+      this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: B[0], f1: B[1], dur: B[2], vol: B[3], attack: 0.001 });
+    }
+    this._thump(o, { f0: T[0], f1: T[1], dur: T[2], vol: T[3] * lo * u });
+    if (G.punch) this._thump(o, { type: 'triangle', f0: G.punch[0], f1: G.punch[1], dur: G.punch[2], vol: G.punch[3] * hi * u });
+    if (G.sub) this._thump(o, { f0: G.sub[0], f1: G.sub[1], dur: G.sub[2], vol: G.sub[3] * lo * u, delay: 0.004 });
     if (G.whoosh) {
       const [f0, f1, dur, vol] = G.whoosh;
       this._noiseBurst(o, { f0, f1, q: 1.1, dur, vol: vol * hi, attack: 0.05, delay: 0.01 });
@@ -601,9 +656,25 @@ class AudioSystem {
     }
     for (const m of G.mech || []) this._clack(o, m, 1, 0, hi);
     if (G.cycle) this._action(o, RACKS[G.cycle[0]], 1, G.cycle[1], 0.8 * hi);
-    this._tail(o, G.tail, rand(0.85, 1.15), hi, lo);
+    this._tail(o, G.tail, rand(0.85, 1.15), hi * u, lo * u);
     const c = G.casing;
     if (c && Math.random() < c[1]) this.play('shell', { x: opts.x, y: opts.y, vol: 0.6 * (opts.vol ?? 1), kind: c[0], delay: c[2] });
+  }
+
+  // one cut of a recording into voice `o`, faded out at the end of the cut
+  _sample(o, buf, { offset = 0, len = buf.duration, rate = 1, vol = 1, delay = 0 }) {
+    const ctx = this.ctx, t = ctx.currentTime + delay, dur = len / rate;
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf;
+    s.playbackRate.value = rate;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.setValueAtTime(vol, t + Math.max(0, dur - FADE));
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    s.connect(g);
+    g.connect(o);
+    o._n++;
+    s.onended = () => this._release(o, s, g);
+    s.start(t, offset, len + 0.02);
   }
 
   // the room answering: low rumble, a darker mid wash, and a few discrete slap echoes off nearby walls
@@ -626,8 +697,9 @@ class AudioSystem {
     t += t0; f /= s; vol *= k;
     if (scrape) this._noiseBurst(o, { f0: f * 0.45, f1: f * 0.75, q: 2.2, dur: scrape, vol: vol * 0.35, attack: scrape * 0.7, delay: Math.max(0, t - scrape * 0.8) });
     this._tick(o, { f, q: 2.5, dur: 0.007, vol, delay: t });
+    this._noiseBurst(o, { type: 'highpass', f0: 3800 / s, q: 0.7, dur: 0.016, vol: vol * 0.7, attack: 0.0003, delay: t }); // steel on steel
     if (knock) this._thump(o, { type: 'triangle', f0: knock / s, f1: knock / s / 2, dur: 0.035, vol: vol * 0.7, delay: t });
-    if (ring) this._partials(o, { f: ring / s, ratios: [1, 2.76], dur: 0.05, vol: vol * 0.18, delay: t });
+    if (ring) this._partials(o, { f: ring / s, ratios: [1, 2.76, 5.4], dur: 0.09, vol: vol * 0.3, delay: t });
   }
 
   _action(o, strokes, s, t0, k) { for (const m of strokes) this._clack(o, m, s, t0, k); }
@@ -718,9 +790,12 @@ class AudioSystem {
   }
 
   // ---- fire, alarm, UI ----
+  // car alarm: a harsh piezo siren whooping up, once per call (the vehicle repeats it)
   _alarm(o) {
-    this._tone(o, { type: 'square', f0: 950, dur: 0.17, vol: 0.1 });
-    this._tone(o, { type: 'square', f0: 1250, dur: 0.17, vol: 0.1, delay: 0.2 });
+    this.pv = 1; // a siren does not drift
+    for (const [type, k, vol] of [['square', 1, 0.2], ['sawtooth', 1.006, 0.16], ['square', 2.01, 0.07]]) {
+      this._tone(o, { type, f0: 780 * k, f1: 1650 * k, dur: 0.37, fdur: 0.33, vol, attack: 0.004 });
+    }
   }
   _crackle(o) {
     for (let i = 0; i < 3; i++) this._tick(o, { f: rand(1500, 4000), q: 5, dur: 0.02, vol: rand(0.1, 0.3), delay: rand(0, 0.2) });
