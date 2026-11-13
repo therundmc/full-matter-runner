@@ -93,7 +93,7 @@ Rules:
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
-| `alertPhase` | `{ phase, prev }` | Director | (HUD reads the phase directly; music / lighting could follow) |
+| `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack intensity and combat variant); the HUD reads the phase directly |
 | `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
 | `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
@@ -127,6 +127,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
   (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
   (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
+- Music (audio/Music.js): one procedural song, planned bar by bar from data (progressions, patterns, sections, forms)
+  and scheduled 0.3 s ahead. The alert phase drives it from Game: `AI.music[phase]` is the intensity (0 = menu loop,
+  then thicker layers and brighter filters), and the phases in `AI.combatMusic` switch it to its combat variant
+  (`FORMS.combat`: same key, tempo and motif; galloping kick, 16th octave bass, chopped pad, the motif re-struck).
+  A riser and a snare roll announce the fight at once, the variant takes over on the next bar line, plays at least
+  `MIN_FIGHT_BARS`, and hands back through a closing bar (fill) to the song's break.
 - Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
   - every hit paints a mark at the real impact point into the prop's own canvas (so it moves with it): 9 mm holes,
     pellet pocks, 7.62 entry + exit blow-out (Penetration exit point and remaining energy), grazing furrows / metal

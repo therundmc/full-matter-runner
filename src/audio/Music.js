@@ -2,8 +2,9 @@
 // Data first (chords, progressions, patterns, sections, song form); a seeded bar planner turns it into note
 // events (every return of a section varies), then a lookahead scheduler plays each bar on long-lived synth
 // voices (mono bass/arp/lead, 5-voice pad: no nodes per note) and on drum one-shots synthesized once into
-// AudioBuffers. Public API: start(), stop(), setIntensity(0..1). The constructor takes an optional
-// (context, destination) so the song can be rendered offline for analysis.
+// AudioBuffers. Public API: start(), stop(), setIntensity(0..1), setCombat(on): the song has a combat variant
+// (FORMS.combat: same key, tempo and motif, angrier) that takes over on a bar line while the game fights.
+// The constructor takes an optional (context, destination) so the song can be rendered offline for analysis.
 import Audio from './Audio.js';
 
 const BPM = 108;
@@ -12,6 +13,7 @@ const STEP = BAR / 16;
 const LOOKAHEAD = 0.3;   // s: a bar is scheduled once its downbeat is this close
 const SWING = 0.1;       // hats: odd 16ths are late by this fraction of a 16th
 const GATE_HOLD = 0.22;  // s: gated reverb stays open this long after a snare/clap
+const MIN_FIGHT_BARS = 2; // the combat variant plays at least this long before it may wind down
 
 // ---------------------------------------------------------------- harmony
 const PC = { C: 0, Db: 1, D: 2, Eb: 3, E: 4, F: 5, Gb: 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11 };
@@ -35,6 +37,8 @@ const PROGRESSIONS = {
   break: ['Bbm9', 'Gbmaj7', 'Dbmaj9', 'Ab6', 'Bbm9', 'Gbmaj7#11', 'Bbm9', ['F7sus4', 'F7b9']],
   // same shape in C minor (v), pivoting back through Db - C7 (VI - V of F minor)
   dropB: ['Cm9', 'Abmaj7', 'Fm9', 'G7b9', 'Cm9', 'Abmaj7', 'Dbmaj7', ['C7sus4', 'C7b9']],
+  // the fight's chase: phrygian bII over an F pedal, then iv - bII and the dominant with its leading-tone dim7
+  chase: ['Fm(add9)', 'Gbmaj7/F', 'Fm(add9)', ['Dbmaj7', 'C7b9'], 'Bbm9', 'Gbmaj7#11', 'C7sus4', ['C7b9', 'Edim7']],
 };
 
 const CHORDS = new Map();
@@ -107,11 +111,12 @@ function arpPool(c, base) {
 // drums: digit = velocity /9, 'o' open hat, H/M/L toms
 const KICK = {
   heart: '9.........7.....', four: '9...9...9...9...', broken: '9.....7.9.....7.', drive: '9...9...9...9..6',
-  build8: '8.8.8.8.9.9.9.9.',
+  build8: '8.8.8.8.9.9.9.9.', gallop: '9..69..69..69.6.',
 };
 const SNARE = {
   back: '....9.......9...', ghost: '....9..2....9.2.', half: '........9.......',
   roll8: '5.5.5.5.6.6.6.6.', roll8b: '6.6.6.6.7.7.7.7.', roll16: '6666777788889999', breakRoll: '........55667789',
+  skank: '..6.9.6...6.9.6.', // offbeat pushes around the backbeat: reads as double time
 };
 const HATS = { off8: '..5...5...5...5.', eights: '6.3.6.3.6.3.6.3.', sixteen: '6243624362436245', drive: '73o373o373o373o3' };
 const FILLS = {
@@ -122,12 +127,15 @@ const FILLS = {
 const BASS = {
   pedal: 'R---------------', halftime: 'R-----r.R---F-r.', pulse8: 'R.r.R.r.R.r.R.rA', octave: 'R.O.r.O.R.O.rOrA',
   syncop: 'R..rR.r.R..rO.rA', gallop: 'R.rrR.rrR.rrR.rO', drive: 'RrrORrrrRrrORrr7',
+  rush: 'RrOrRrOrRrOrRO7A', tresillo: 'RrrOrrOrRrrOrrOA', // fight: 16ths with rolling / 3-3-2 octave accents
 };
 // arp: index into the 6-note pool
 const ARP = {
   sparse: '0...2...1...3...', pulse8: '0.2.1.3.0.2.4.3.', broken: '0213243102132435', updown: '0123454321012345',
-  up: '0123450123452345', cascade: '5432105432104321',
+  up: '0123450123452345', cascade: '5432105432104321', pedal: '0102030401020305',
 };
+// pad stabs (fight): the sustained chord is chopped open on these steps
+const STABS = { tresillo: '9..9..9.9..9..9.', eights: '9.6.9.6.9.6.9.6.' };
 // lead phrases: per bar, [step, midi, length in 16ths]; null = rest
 const LEADS = {
   drop: [
@@ -146,6 +154,28 @@ const LEADS = {
 };
 LEADS.dropB = LEADS.drop.map((bar, i) => (i < 6 ? bar.map(([s, m, l]) => [s, m - 5, l])
   : i === 6 ? [[0, 77, 6], [6, 75, 2], [8, 72, 8]] : bar));
+// fight: the drop motif re-struck, every held note broken into detached 3-3-2 cells of the same pitch
+const restrike = ([s, m, len]) => {
+  const out = [];
+  for (const cell of len >= 8 ? [3, 3] : len >= 6 ? [3] : len >= 4 ? [2] : []) {
+    out.push([s, m, cell * 0.7]);
+    s += cell; len -= cell;
+  }
+  out.push([s, m, len]);
+  return out;
+};
+LEADS.fight = LEADS.drop.map((bar) => bar.flatMap(restrike));
+// chase: the head of the motif (C Eb F, then G Ab) as a 16th ostinato that follows the chords, a dim7 run to end
+LEADS.chase = [
+  [[0, 72, 1], [1, 75, 1], [2, 77, 2], [4, 72, 1], [5, 75, 1], [6, 77, 2], [8, 79, 1], [9, 80, 1], [10, 84, 3], [14, 80, 2]],
+  [[0, 73, 1], [1, 77, 1], [2, 78, 2], [4, 73, 1], [5, 77, 1], [6, 78, 2], [8, 82, 1], [9, 80, 1], [10, 78, 3], [14, 77, 2]],
+  [[0, 72, 1], [1, 75, 1], [2, 77, 2], [4, 72, 1], [5, 75, 1], [6, 77, 2], [8, 84, 2], [10, 80, 2], [12, 79, 2], [14, 77, 2]],
+  [[0, 80, 3], [3, 77, 3], [6, 73, 2], [8, 76, 3], [11, 79, 3], [14, 82, 2]],
+  [[0, 77, 1], [1, 73, 1], [2, 77, 2], [4, 77, 1], [5, 73, 1], [6, 77, 2], [8, 80, 1], [9, 82, 1], [10, 85, 3], [14, 82, 2]],
+  [[0, 78, 1], [1, 73, 1], [2, 78, 2], [4, 78, 1], [5, 73, 1], [6, 78, 2], [8, 82, 1], [9, 84, 1], [10, 85, 3], [14, 84, 2]],
+  [[0, 79, 3], [3, 77, 3], [6, 79, 2], [8, 82, 3], [11, 79, 3], [14, 77, 2]],
+  [[0, 76, 2], [2, 79, 2], [4, 82, 2], [6, 85, 2], [8, 88, 2], [10, 85, 2], [12, 82, 2], [14, 79, 2]],
+];
 
 const parseHits = (pat) => [...pat].flatMap((ch, s) => (ch === '.' ? [] : [{ s, ch, v: ch >= '1' && ch <= '9' ? ch / 9 : 0.75 }]));
 const HITS = new Map();
@@ -153,11 +183,16 @@ const hits = (pat) => { if (!pat) return []; let h = HITS.get(pat); if (!h) HITS
 
 // ---------------------------------------------------------------- arrangement
 // energy 0..1 picks layers in the lists (calm -> busy) and opens filters; `enter` delays a layer to a bar;
-// kickBars/snareBars override per bar; level compensates loudness; duck = sidechain floor (1 = no pump)
+// kickBars/snareBars override per bar; level compensates loudness; duck = sidechain floor (1 = no pump);
+// fillRate = chance of a small fill every 4th bar; bite opens the bass and arp filters further; stab chops the
+// pad on a STABS pattern; leadVol scales the lead
 const DROP = {
   prog: 'drop', energy: 1, level: 0.86, pad: 0.75, kick: 'drive', snare: 'back', clap: true, hats: ['eights', 'sixteen', 'drive'],
   bass: ['gallop', 'drive'], arp: ['up', 'cascade'], lead: 'drop', leadMin: 0.85, fills: true, crash: true, impact: true, duck: 0.25,
 };
+// the fight is the drop getting angry: galloping kick, 16th octave bass, chopped pad, a fill every 4 bars and the
+// motif re-struck; the chase answers it in double time
+const FIGHT = { ...DROP, pad: 1.3, hats: ['drive'], leadMin: 0, fillRate: 1, bite: 1.5, duck: 0.45 };
 const SECTIONS = {
   intro: { prog: 'intro', energy: 0.25, level: 0.9, pad: 1, sweep: true, kick: 'heart', enter: { kick: 4 }, bass: ['pedal'],
     arp: ['sparse', 'pulse8'], duck: 0.6 },
@@ -177,12 +212,18 @@ const SECTIONS = {
     crash: true, duck: 1 },
   dropB: { ...DROP, prog: 'dropB', lead: 'dropB', leadMin: 0.5 },
   dropB2: { ...DROP, prog: 'dropB', lead: 'dropB', leadMin: 0.4, impact: false, crash: false, arp: ['broken', 'cascade'] },
+  fight: { ...FIGHT, kick: 'gallop', snare: 'ghost', stab: 'tresillo', bass: ['rush', 'tresillo'], arp: ['pedal', 'cascade'],
+    lead: 'fight', leadVol: 1.25 },
+  chase: { ...FIGHT, prog: 'chase', snare: 'skank', stab: 'eights', bass: ['tresillo', 'rush'], arp: ['up', 'pedal'],
+    lead: 'chase', impact: false, riser: 2 },
 };
 const FORMS = {
   menu: ['intro', 'ambient'],
   game: ['verseA', 'verseB', 'build', 'dropA', 'dropA2', 'break', 'verseA', 'verseB', 'build', 'dropB', 'dropB2'],
+  combat: ['fight', 'chase'],
 };
 const SECTION_BARS = 8;
+const AFTERMATH = FORMS.game.indexOf('break'); // where the song resumes once a fight is over
 
 // ---------------------------------------------------------------- mix levels
 const MIX = {
@@ -424,6 +465,13 @@ class Session {
     this.padLfo.gain.setTargetAtTime(cut * 0.4, t, 0.8);
   }
 
+  // chopped pad: opens on the stab and falls back to a murmur one 16th later
+  padStab(t, level) {
+    const g = this.padV.gain;
+    g.setTargetAtTime(MIX.pad * level, t, 0.004);
+    g.setTargetAtTime(MIX.pad * level * 0.12, t + STEP, 0.03);
+  }
+
   arp(t, m, v, decay, cut) {
     const f = mtof(m);
     for (const o of this.arpO) o.frequency.setValueAtTime(f, t);
@@ -435,13 +483,13 @@ class Session {
     q.setTargetAtTime(cut * 0.25, t + 0.01, decay * 0.8);
   }
 
-  lead(t, m, dur) {
+  lead(t, m, dur, v = 1) {
     const f = mtof(m), glide = Math.abs(t - this.leadEnd) < 0.02;
     this.leadO.forEach((o, i) => {
       const fi = i === 2 ? f / 2 : f;
       if (glide) o.frequency.setTargetAtTime(fi, t, 0.035); else o.frequency.setValueAtTime(fi, t);
     });
-    env(this.leadV.gain, t, dur * 0.92, MIX.lead, 0.012, 0.06);
+    env(this.leadV.gain, t, dur * 0.92, MIX.lead * v, 0.012, 0.06);
     this.vib.gain.setTargetAtTime(0, t, 0.01);
     if (dur > 0.4) this.vib.gain.setTargetAtTime(14, t + 0.25, 0.15);
     this.leadEnd = t + dur;
@@ -513,6 +561,7 @@ class Music {
     this.playing = false;
     this.target = 0;    // requested intensity
     this.level = 0;     // smoothed intensity, moves once per bar
+    this.combat = false; // the game is fighting: the combat variant plays (see _tick)
     this.passes = {};   // times each section has played: drives the variations
     this.form = null;
     this.voicing = null;
@@ -542,6 +591,9 @@ class Music {
   // 0 = menu (intro/ambient loop); > 0 = the song, its arrangement thickening with the value
   setIntensity(v) { this.target = clamp(v, 0, 1); }
 
+  // true while the game fights: the song (not the menu) hands over to its combat variant, and back afterwards
+  setCombat(on) { this.combat = !!on; }
+
   _open(ctx) {
     if (this.bufCtx !== ctx) { this.buf = makeBuffers(ctx); this.bufCtx = ctx; }
     this.S = new Session(ctx, this.buf, this.dest || Audio.music);
@@ -549,14 +601,28 @@ class Music {
     this.form = null;
     this.level = this.target;
     this.nextBar = ctx.currentTime + 0.1;
+    this.cued = false;   // the fight cue played: the variant is due on the next bar line
+    this.out = false;    // the bar being planned is the last of a fight
+    this.fightBars = 0;  // bars of the combat variant played in a row
   }
 
   _tick(until) {
     const now = this.S.ctx.currentTime;
     if (this.nextBar < now) this.nextBar = now + 0.05; // timer was throttled (background tab): resync, don't burst
+    // a fight breaks out: announce it over the bars already scheduled, the variant takes over on the next bar line
+    if (this.combat && this.target > 0 && this.form === FORMS.game && !this.cued) { this.cued = true; this._cue(now); }
     while (this.nextBar < until) {
-      const want = this.target > 0 ? FORMS.game : FORMS.menu;
-      if (this.form !== want) { this.form = want; this.pos = 0; this.bar = 0; }
+      const fight = this.form === FORMS.combat;
+      let want = this.target <= 0 ? FORMS.menu
+        : this.combat || this.cued || (fight && this.fightBars < MIN_FIGHT_BARS) ? FORMS.combat : FORMS.game;
+      // the fight is over: one more bar of it, ending on a fill, then the song resumes at its break
+      this.out = fight && want === FORMS.game && !this.out;
+      if (this.out) want = FORMS.combat;
+      if (this.form !== want) {
+        this.pos = fight && want === FORMS.game ? AFTERMATH : 0;
+        this.form = want; this.bar = 0; this.fightBars = 0;
+      }
+      this.cued = false;
       this.level += (this.target - this.level) * 0.5;
       const p = this._plan();
       this._play(this.nextBar, p);
@@ -566,8 +632,17 @@ class Music {
         this.bar = 0;
         this.pos = (this.pos + 1) % this.form.length;
       }
+      this.fightBars++;
       this.nextBar += BAR;
     }
+  }
+
+  // fight cue, laid over what is left of the bars already scheduled: a riser and a snare roll into the downbeat
+  _cue(now) {
+    const t0 = now + 0.03, t1 = this.nextBar, n = Math.min(8, Math.floor((t1 - t0) / STEP));
+    if (n < 1) return;
+    this.S.sweep(t0, t1 - t0, 400, 7000);
+    for (let k = n; k >= 1; k--) this.S.hit('snare', t1 - k * STEP, MIX.snare * (1 - k / 10));
   }
 
   _chordsAt(name, b) {
@@ -581,7 +656,8 @@ class Music {
     const r = rng(hashStr(name) ^ Math.imul(pass + 1, 7919) ^ Math.imul(b + 1, 104729));
     const game = this.form === FORMS.game;
     const e = sec.energy * (game ? 0.55 + 0.45 * this.level : 1);
-    const last = b === SECTION_BARS - 1;
+    const last = this.out || b === SECTION_BARS - 1; // last bar before another section
+    const after = this.out ? FORMS.game[AFTERMATH] : this.form[(this.pos + 1) % this.form.length];
     const on = (layer) => b >= (sec.enter?.[layer] ?? 0);
     const pick = (list, bias = 0) => (list?.length ? list[clamp(Math.floor(e * list.length) + bias, 0, list.length - 1)] : null);
     const vary = (pass + (b >> 2)) % 2; // alternates every 4 bars and every pass
@@ -589,7 +665,7 @@ class Music {
     const chords = this._chordsAt(name, b);
     for (const c of chords) c.voicing = this.voicing = voiceLead(c.ch, this.voicing);
     const chordAt = (s) => (s >= 8 ? chords[chords.length - 1] : chords[0]).ch;
-    const next = last ? this._chordsAt(this.form[(this.pos + 1) % this.form.length], 0)[0].ch : this._chordsAt(name, b + 1)[0].ch;
+    const next = this._chordsAt(last ? after : name, last ? 0 : b + 1)[0].ch;
 
     // ---- drums
     const kick = on('kick') ? hits(KICK[sec.kickBars ? sec.kickBars[b] : sec.kick]) : [];
@@ -598,7 +674,7 @@ class Music {
     let tom = [];
     let fill = null;
     if (sec.fills && last) fill = FILLS[['roll', 'toms', 'toms2', 'flam'][Math.floor(r() * 4)]];
-    else if (sec.fills && b % 4 === 3 && r() < 0.6) fill = FILLS[r() < 0.5 ? 'small' : 'flam'];
+    else if (sec.fills && b % 4 === 3 && r() < (sec.fillRate ?? 0.6)) fill = FILLS[r() < 0.5 ? 'small' : 'flam'];
     if (fill) {
       const from = Math.min(...[fill.snare, fill.tom].filter(Boolean).map((p) => p.search(/[^.]/)));
       snare = snare.filter((h) => h.s < from).concat(hits(fill.snare));
@@ -649,15 +725,16 @@ class Music {
       lead = phrase.map(([s, m, len]) => ({ s, m: m + oct, len }));
     }
 
+    const bite = sec.bite ?? 1;
     const plan = {
-      name, pass, bar: b, e, chords, kick, snare, clap, hat, tom, bass, arp, lead,
-      level: sec.level, duck: sec.duck, pad: sec.pad,
+      name, pass, bar: b, e, chords, kick, snare, clap, hat, tom, bass, arp, lead, stab: hits(STABS[sec.stab]),
+      level: sec.level, duck: sec.duck, pad: sec.pad, leadVol: sec.leadVol ?? 1,
       padCut: (300 + 2400 * e) * (sec.padCut ?? 1) * (sec.sweep ? 0.35 + 0.65 * (b / 7) : 1),
-      bassCut: [90 + 260 * e, 500 + 2200 * e], arpDecay: 0.05 + 0.1 * e, arpCut: 1200 + 3200 * e,
+      bassCut: [(90 + 260 * e) * bite, (500 + 2200 * e) * bite], arpDecay: 0.05 + 0.1 * e, arpCut: (1200 + 3200 * e) * bite,
       crash: b === 0 && sec.crash, impact: b === 0 && sec.impact, down: b === 0 && sec.down,
       riser: sec.riser && b === SECTION_BARS - sec.riser ? sec.riser : 0,
     };
-    if (sec.breath && last) for (const k of ['kick', 'snare', 'clap', 'hat', 'tom', 'bass', 'arp', 'lead']) plan[k] = plan[k].filter((h) => h.s < 12);
+    if (sec.breath && b === SECTION_BARS - 1) for (const k of ['kick', 'snare', 'clap', 'hat', 'tom', 'bass', 'arp', 'lead']) plan[k] = plan[k].filter((h) => h.s < 12);
     return plan;
   }
 
@@ -665,10 +742,11 @@ class Music {
     const S = this.S, at = (s) => t0 + s * STEP;
     S.setLevel(t0, p.level);
     S.padLevel(t0, p.pad, p.padCut);
+    for (const h of p.stab) S.padStab(at(h.s), p.pad * h.v);
     for (const c of p.chords) S.chord(at(c.s), c.voicing);
     for (const n of p.bass) S.bass(at(n.s), n.m, n.gate * STEP, n.v, p.bassCut[0], p.bassCut[1]);
     for (const n of p.arp) S.arp(at(n.s), n.m, n.v, p.arpDecay, p.arpCut);
-    for (const n of p.lead) S.lead(at(n.s), n.m, n.len * STEP);
+    for (const n of p.lead) S.lead(at(n.s), n.m, n.len * STEP, p.leadVol);
 
     for (const h of p.kick) {
       S.hit('kick', at(h.s), MIX.kick * h.v);

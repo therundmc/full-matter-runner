@@ -72,9 +72,13 @@ export default class Game {
     this.flashA = 0;
     this.clearedT = 0;
     Audio.setMuffle(0);
-    // the soundtrack thickens as the squad wakes up
-    Music.setIntensity(AI.music.normal);
-    this.world.events.on('alertPhase', ({ phase }) => Music.setIntensity(AI.music[phase] ?? 1));
+    // the soundtrack thickens as the squad wakes up and turns to its combat variant while it fights
+    const score = (phase) => {
+      Music.setIntensity(AI.music[phase] ?? 1);
+      Music.setCombat(AI.combatMusic.includes(phase));
+    };
+    score('normal');
+    this.world.events.on('alertPhase', ({ phase }) => score(phase));
     this.sandbox.attach(this.world);
     this.setState('intro');
   }
