@@ -84,3 +84,17 @@ test('the gap right of the bar: a door on the street, one metre wide, off limits
   }
   assert.equal(windows, 1);
 });
+
+test('level 1 is fought with blades, bats and pistols: the two heavier guns wait in the back room', () => {
+  const guards = [];
+  level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbk'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
+  const n = (set) => guards.filter((g) => set.includes(g.ch)).length;
+  assert.equal(guards.length, 13);
+  assert.ok(n('bk') >= 4, 'bats and knives');
+  assert.ok(n('p') >= 5, 'pistols');
+  const heavy = guards.filter((g) => 'ushr'.includes(g.ch));
+  assert.ok(heavy.length <= 2, 'no more than two heavier guns');
+  for (const g of heavy) assert.ok(g.col >= 25 && g.col <= 30 && g.row >= 6 && g.row <= 10, `a ${g.ch} outside the back room`);
+  // nothing heavier than a pistol lies around either
+  assert.deepEqual([...new Set(level.actors.join('').replace(/[^1-9]/g, ''))].sort(), ['5', '6']);
+});

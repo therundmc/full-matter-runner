@@ -64,6 +64,8 @@ lv.fill(0, 30, W - 1, 31, 's')
 lv.fill(20, 32, 23, 36, '_')
 
 # ---------------------------------------------------------------- actors (13 guards)
+# Blades, bats and pistols: five men with their hands (2 bats, 3 knives), six pistols. The two heavier guns are the
+# reward at the far end, in the back room: the boss's shotgun (12 gauge on his desk) and his bodyguard's uzi.
 lv.actor('@', 21, 35, face=270)
 # the bar, its service alley, the gap and the back lot are off limits; the street and the start alley are public ground
 lv.guard(11, 0, 32, 19)
@@ -74,19 +76,20 @@ lv.actor('b', 24, 21, face=90)                          # bouncer
 lv.actor('P', 17, 22, route=[[16, 22], [27, 22]])       # pistol, walks the sidewalk
 lv.actor('k', 12, 12, face=270)                         # having a smoke in the service alley
 # the bar
-lv.actor('h', 18, 12, face=90)                          # bartender, shotgun under the counter
+lv.actor('b', 18, 12, face=90)                          # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=0)                           # watching the pool game
-lv.actor('p', 21, 16, face=180)
-lv.actor('U', 23, 18, route=[[23, 18], [24, 15], [29, 15], [29, 12], [24, 12]])
+lv.actor('k', 21, 16, face=180)
+lv.actor('P', 23, 18, route=[[23, 18], [24, 15], [29, 15], [29, 12], [24, 12]])
 # back of house
 lv.actor('p', 17, 8, face=90)
 lv.actor('6', 18, 9)
 lv.actor('n', 16, 7)
 lv.actor('k', 22, 7, face=90)
-lv.actor('r', 30, 8, face=180)                          # the boss behind his desk
-lv.actor('u', 26, 9, face=45)
-lv.actor('s', 29, 10, face=200)
-lv.actor('v', 30, 10)
+lv.actor('h', 30, 8, face=180)                          # the boss behind his desk, a shotgun across it
+lv.actor('p', 26, 9, face=45)
+lv.actor('u', 29, 10, face=200)                         # his bodyguard: the only automatic in the house
+lv.actor('g', 30, 10)
+lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
 # back lot: he walks along the back wall, past the back room's door, and turns round short of the gap
 lv.actor('P', 19, 4, route=[[13, 4], [29, 4]])
 
