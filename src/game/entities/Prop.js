@@ -304,7 +304,12 @@ export default class Prop {
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(x, y); ctx.stroke();
     }
-    const under = player && Math.hypot(player.x - x, player.y - y) < this.img.width * 0.45;
+    // see-through when the player stands under the sprite itself (a lamp arm is long and thin)
+    let under = false;
+    if (player) {
+      const c = Math.cos(this.body.angle), s = Math.sin(this.body.angle), dx = player.x - x, dy = player.y - y;
+      under = Math.abs(dx * c + dy * s) < this.img.width * 0.45 && Math.abs(dy * c - dx * s) < this.img.height * 0.45 + 4;
+    }
     drawSprite(ctx, this.look, x, y, this.body.angle, under ? 0.45 : 1);
   }
 }

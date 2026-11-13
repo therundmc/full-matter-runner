@@ -169,7 +169,7 @@ export const LIGHTING = {
     neon_sign_palm: { r: 120, color: '#2af0ff', intensity: 1, flicker: 'buzz' },
     neon_sign_bar: { r: 120, color: '#ff2a6d', intensity: 1, flicker: 'broken' },
     neon_sign_arrow: { r: 100, color: '#ffc02a', intensity: 0.9, flicker: 'buzz' },
-    streetlight: { r: 190, color: '#ffb46a', intensity: 0.9 },
+    streetlight: { r: 190, color: '#ffb46a', intensity: 0.9, x: 56 },
     car: vehicleLights(67, 15.5, -68, 17.5),
     car2: vehicleLights(56, 15, -65, 13.5),
     van: vehicleLights(77, 16.5, -76, 24),

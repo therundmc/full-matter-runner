@@ -1,4 +1,4 @@
-import { FIXED_DT, PLAYER, PALETTE } from './Config.js';
+import { FIXED_DT, PLAYER, PALETTE, TILE } from './Config.js';
 import { loadAssets } from '../engine/Assets.js';
 import { clamp, lerp } from '../engine/math.js';
 import Input from '../engine/Input.js';
@@ -60,6 +60,7 @@ export default class Game {
     const id = new URLSearchParams(location.search).get('level') || 'level1';
     this.world = new World(this, LEVELS[id] || LEVELS.level1);
     const p = this.world.player;
+    this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
     this.camera.snap(p.x, p.y);
     this.acc = 0;
     this.hitstop = 0;

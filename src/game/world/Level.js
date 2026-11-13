@@ -69,10 +69,12 @@ export function buildLevel(world, level) {
     }
   }
 
-  // ---- props list: [type, col, row, deg] with col/row in tile units (floats, tile centre = n + 0.5)
-  for (const [type, col, row, deg = 0] of level.props || []) {
+  // ---- props list: [type, col, row, deg, options?] with col/row in tile units (floats, tile centre = n + 0.5)
+  // options: { lights: false } = starts with its lights off (a parked car)
+  for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
+    if (opt?.lights === false) p.lightsOut = true;
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);
   }

@@ -13,6 +13,7 @@ export default class Camera {
     this.w = 1; this.h = 1;
     this.time = 0;
     this.sway = true;
+    this.bounds = null;        // { w, h } of the world in px: the view never leaves it
   }
 
   resize(w, h) {
@@ -21,7 +22,15 @@ export default class Camera {
     this.zoom = Math.max(1, Math.round(h / 380));
   }
 
-  snap(x, y) { this.x = x; this.y = y; }
+  snap(x, y) { this.x = x; this.y = y; this.clamp(); }
+
+  // keep the view inside the world (a world smaller than the view is centred); the margin hides the sway's corners
+  clamp() {
+    if (!this.bounds) return;
+    const hw = this.w / this.zoom / 2 + 10, hh = this.h / this.zoom / 2 + 10, { w, h } = this.bounds;
+    this.x = w < hw * 2 ? w / 2 : Math.min(Math.max(this.x, hw), w - hw);
+    this.y = h < hh * 2 ? h / 2 : Math.min(Math.max(this.y, hh), h - hh);
+  }
 
   shake(amount) { this.trauma = Math.min(1.2, this.trauma + amount); }
 
@@ -37,6 +46,7 @@ export default class Camera {
     const k = 1 - Math.pow(0.0008, dt);
     this.x = lerp(this.x, tx, k);
     this.y = lerp(this.y, ty, k);
+    this.clamp();
     this.trauma = Math.max(0, this.trauma - dt * 1.6);
     this.punchZ *= Math.pow(0.01, dt);
     const s = this.trauma * this.trauma;
