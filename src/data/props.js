@@ -1,0 +1,28 @@
+// Furniture / props. w,h = hitbox (px), r = circle radius. hp: bullet hits before breaking (Infinity = unbreakable).
+// static props never move; dynamic ones get shoved by the player, bullets and explosions.
+export const PROPS = {
+  table: { w: 38, h: 22, hp: 5, density: 0.03, air: 0.4, chips: '#7a4a2a', sound: 'wood', blocksPath: true },
+  table_round: { r: 13, hp: 4, density: 0.02, air: 0.4, chips: '#8a5530', sound: 'wood', blocksPath: true },
+  desk: { w: 34, h: 20, hp: 5, density: 0.035, air: 0.45, chips: '#6a4026', sound: 'wood', blocksPath: true, sparks: true },
+  chair: { w: 11, h: 11, hp: 1, density: 0.004, air: 0.25, chips: '#7a4a2a', sound: 'wood' },
+  armchair: { w: 16, h: 16, hp: 3, density: 0.012, air: 0.3, chips: '#9a1f2a', sound: 'wood' },
+  sofa: { w: 42, h: 16, hp: 7, static: true, chips: '#c04a8a', sound: 'wood', blocksPath: true },
+  plant: { r: 7, hp: 1, density: 0.006, air: 0.3, chips: '#3a8a3a', dirt: true, sound: 'wood' },
+  tv: { w: 22, h: 7, hp: 1, density: 0.01, air: 0.4, chips: '#222', sparks: true, glass: true, sound: 'glass' },
+  fridge: { w: 21, h: 19, hp: 9, static: true, chips: '#ddd', sound: 'metal', blocksPath: true },
+  oven: { w: 21, h: 19, hp: 9, static: true, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true },
+  sink: { w: 23, h: 13, hp: 7, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
+  toilet: { w: 11, h: 15, hp: 3, static: true, chips: '#eee', sound: 'glass', water: true, blocksPath: true },
+  bed: { w: 29, h: 42, hp: 9, static: true, chips: '#7a3aa0', sound: 'wood', blocksPath: true },
+  pool_table: { w: 62, h: 34, hp: Infinity, static: true, chips: '#1e7a3a', sound: 'wood', blocksPath: true },
+  arcade: { w: 19, h: 15, hp: 5, static: true, chips: '#333', sparks: true, glass: true, sound: 'metal', blocksPath: true },
+  crate: { w: 17, h: 17, hp: 3, density: 0.012, air: 0.35, chips: '#a07040', sound: 'wood' },
+  barrel: { r: 6.5, hp: 1, density: 0.01, air: 0.25, chips: '#c02020', explosive: true, sound: 'metal' },
+  bookshelf: { w: 39, h: 9, hp: 6, static: true, chips: '#6a4026', sound: 'wood', blocksPath: true },
+  speaker: { w: 13, h: 13, hp: 3, density: 0.015, air: 0.4, chips: '#222', sparks: true, sound: 'wood' },
+  dj_booth: { w: 46, h: 16, hp: 10, static: true, chips: '#222', sparks: true, sound: 'metal', blocksPath: true },
+  bar_counter: { w: 32, h: 13, hp: Infinity, static: true, chips: '#4a2a1a', sound: 'wood', blocksPath: true },
+  car: { w: 72, h: 32, hp: Infinity, static: true, chips: '#ff2a6d', sound: 'metal', blocksPath: true },
+  dumpster: { w: 35, h: 21, hp: Infinity, static: true, chips: '#2a6a3a', sound: 'metal', blocksPath: true },
+  trash_can: { r: 5.5, hp: 2, density: 0.008, air: 0.3, chips: '#555', sound: 'metal' },
+};
