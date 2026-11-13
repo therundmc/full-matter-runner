@@ -6,9 +6,10 @@
 //   'knock'         a guard was floored        { victim, cause, angle }   (entities/Enemy)
 //   'shot'          a trigger was pulled       { shooter, weapon }
 //   'explosion'     a blast went off           { x, y, radius, source }
-//   'wallDestroyed' a wall tile collapsed      { cx, cy, x, y }
+//   'wallDestroyed' a wall tile collapsed      { cx, cy, x, y, dirA, power }
 //   'noise'         something audible          { x, y, radius, source, type }
 //   'windowBroken'  a window shattered         { x, y }
+//   'windowDestroyed' a window torn out, frame and all  { x, y, cx, cy, dirA, power }
 //   'doorBroken'    a lock burst / door ripped { x, y }
 //   'alertPhase'    squad alert phase changed  { phase, prev }   (ai/Director)
 //   'trafficSpawn' / 'trafficStopped' / 'runOver' / 'civilianPanic'  street life (systems/Ambient)
@@ -27,7 +28,7 @@ import Particles from '../fx/Particles.js';
 import AmmoItem from '../entities/AmmoItem.js';
 import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
 import { explode } from '../systems/Explosions.js';
-import { damageWall, destroyWall, detachDoor, destroyFence } from '../systems/Destruction.js';
+import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence, watchOpenings } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
 import Impacts from '../systems/Impacts.js';
 import Liquids from '../systems/Liquids.js';
@@ -93,6 +94,7 @@ export default class World {
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
+    watchOpenings(this); // windows and doors go with the wall that holds them
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
     this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
@@ -189,6 +191,7 @@ export default class World {
   explode(x, y, opts) { explode(this, x, y, opts); }
   damageWall(cx, cy, dmg, x, y, dirA, power) { damageWall(this, cx, cy, dmg, x, y, dirA, power); }
   destroyWall(cx, cy, dirA, power) { destroyWall(this, cx, cy, dirA, power); }
+  destroyWindow(win, dirA, power) { destroyWindow(this, win, dirA, power); }
   detachDoor(door, dirA, power) { detachDoor(this, door, dirA, power); }
   destroyFence(f, dirA) { destroyFence(this, f, dirA); }
 

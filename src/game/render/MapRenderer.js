@@ -169,6 +169,39 @@ export default class MapRenderer {
     each((img, x, y, a) => put(img, x, y, a));
   }
 
+  // ---------- openings ----------
+  // a doorway (run of `n` door tiles from tile x, y): the threshold on the floor, and a jamb let into the end of
+  // the wall on each side (wood casing in plaster, steel in brick). The jambs go when their wall tile does.
+  doorway(x, y, n, horizontal) {
+    const m = this.map;
+    const put = (g, img, px, py, flip = 1) => {
+      g.save();
+      g.translate(px, py);
+      if (!horizontal) g.rotate(Math.PI / 2);
+      g.scale(flip, 1);
+      g.drawImage(img, -img.width / 2, -img.height / 2);
+      g.restore();
+    };
+    const at = (k) => (horizontal ? [(x + k) * TILE, (y + 0.5) * TILE] : [(x + 0.5) * TILE, (y + k) * TILE]);
+    for (let k = 0; k < n; k++) put(this.floorCtx, sprite('structure/threshold'), ...at(k + 0.5));
+    for (const [k, flip] of [[-1, 1], [n, -1]]) {
+      const tx = horizontal ? x + k : x, ty = horizontal ? y : y + k;
+      if (!m.isWallChar(tx, ty)) continue;
+      const img = sprite(m.at(tx, ty) === 'X' ? 'structure/door_jamb_steel' : 'structure/door_jamb');
+      put(this.wallCtx, img, ...at(k < 0 ? -img.width / 2 / TILE : n + img.width / 2 / TILE), flip);
+    }
+  }
+
+  // the sill of a window, as deep as the wall it is set in
+  windowSill(cx, cy, vertical) {
+    const g = this.floorCtx, img = sprite('structure/window_sill');
+    g.save();
+    g.translate((cx + 0.5) * TILE, (cy + 0.5) * TILE);
+    if (vertical) g.rotate(Math.PI / 2);
+    g.drawImage(img, -img.width / 2, -img.height / 2);
+    g.restore();
+  }
+
   // dark jagged cracks around an impact, more as the tile weakens
   crack(x, y, severity) {
     const g = this.wallCtx;

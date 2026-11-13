@@ -11,6 +11,7 @@ import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
 import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
+import { doorLeaves } from './Openings.js';
 
 const { Bodies } = Matter;
 
@@ -47,22 +48,14 @@ export function buildLevel(world, level) {
         }
         // any 'L' in the run makes it a locked door
         const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells };
-        if (horizontal) {
-          const py = cx(y);
-          if (n === 2) {
-            world.doors.push(new Door(world, x * TILE + 1, py, 0, TILE - 2, opts));
-            world.doors.push(new Door(world, (x + 2) * TILE - 1, py, Math.PI, TILE - 2, opts));
-          } else world.doors.push(new Door(world, x * TILE + 1, py, 0, n * TILE - 2, opts));
-        } else {
-          const px = cx(x);
-          if (n === 2) {
-            world.doors.push(new Door(world, px, y * TILE + 1, Math.PI / 2, TILE - 2, opts));
-            world.doors.push(new Door(world, px, (y + 2) * TILE - 1, -Math.PI / 2, TILE - 2, opts));
-          } else world.doors.push(new Door(world, px, y * TILE + 1, Math.PI / 2, n * TILE - 2, opts));
+        for (const l of doorLeaves(x, y, n, horizontal)) {
+          world.doors.push(new Door(world, l.hx, l.hy, l.angle, l.len, { ...opts, support: l.support, strike: l.strike }));
         }
+        world.decals.doorway(x, y, n, horizontal);
       } else if (ch === 'G') {
         const horizontal = wallish(x - 1, y) || wallish(x + 1, y);
-        world.windows.push(new Window(world, cx(x), cx(y), !horizontal));
+        world.windows.push(new Window(world, x, y, !horizontal));
+        world.decals.windowSill(x, y, !horizontal);
       } else if (ch === 'F') {
         const horizontal = map.at(x - 1, y) === 'F' || map.at(x + 1, y) === 'F' || map.isWallChar(x - 1, y) || map.isWallChar(x + 1, y);
         buildFence(world, cx(x), cx(y), !horizontal);

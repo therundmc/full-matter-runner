@@ -319,7 +319,7 @@ export default class Character {
       hit = true;
     }
     for (const win of w.windows) {
-      if (win.intact && Math.hypot(win.x - x, win.y - y) < d.range + 12) { win.shatter(a); hit = true; }
+      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && win.blow(x, y, a, this, d === WEAPONS.bat ? 2 : 0)) hit = true;
     }
     for (const door of [...w.doors]) {
       const t = door.tip();

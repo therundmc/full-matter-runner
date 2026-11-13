@@ -13,7 +13,9 @@ const GRAVITY = 520; // px/s² of fake height (pieces thrown up arc and land)
 const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 0.75, concrete: 1, wood: 0.9 };
 
 // Any physical loose piece: gibs, shell casings, furniture fragments, glass shards, wall chunks.
-// opts.harm = { kind: 'cut'|'blunt', knock, lethal, ignore } makes a fast piece dangerous for enemies.
+// opts.harm = { kind: 'cut'|'blunt', knock, lethal, ignore } makes a fast piece dangerous for enemies: above `knock`
+// (px/step) it floors them, above `lethal` it kills. Optional: all (it also hits the player and passers-by),
+// cause + by (how it kills, see Gore), owner (who is credited with the kill; the player by default).
 // opts.z / opts.vz: fake height (px) and upward speed (px/s): the piece arcs through the air above its shadow,
 // lands, bounces and settles; it skips floor friction while up there. opts.land: sound when it hits the floor.
 // Once settled it is baked into the floor canvas and removed from the simulation.
@@ -100,10 +102,10 @@ export default class Debris {
     } else this.vz = 0;
   }
 
-  // a fast shard / chunk smashing into an enemy
+  // a fast shard / chunk smashing into an enemy (into anybody with harm.all)
   checkHarm(sp) {
     const p = this.body.position;
-    for (const c of this.world.enemies) {
+    for (const c of this.harm.all ? this.world.chars : this.world.enemies) {
       if (!c.alive || c === this.harm.ignore) continue;
       if (Math.hypot(c.x - p.x, c.y - p.y) > c.radius + this.size * 0.5 + 2) continue;
       this.applyHarm(c, sp);
@@ -113,10 +115,11 @@ export default class Debris {
 
   applyHarm(c, sp) {
     const v = Body.getVelocity(this.body);
-    const a = Math.atan2(v.y, v.x);
-    if (sp > this.harm.lethal) {
-      c.kill(a, this.harm.kind === 'cut' ? 'glass' : 'melee', this.world.player, { gore: 0.6 });
-    } else if (!c.knocked) {
+    const a = Math.atan2(v.y, v.x), h = this.harm;
+    if (sp > h.lethal) {
+      const killer = h.owner ?? (c.isPlayer ? null : this.world.player);
+      c.kill(a, h.cause ?? (h.kind === 'cut' ? 'glass' : 'melee'), killer, h.by ?? { gore: 0.6 });
+    } else if (c.isEnemy && !c.knocked) {
       c.knock(a, 'debris');
       this.world.particles.blood(c.x, c.y, a, 0.6, 10, 140);
       this.world.sound('punch', c.x, c.y, 0.7);
@@ -128,7 +131,8 @@ export default class Debris {
 
   onCollide(other) {
     const e = other.entity;
-    if (this.harm && e?.isEnemy && e.alive && e !== this.harm.ignore) {
+    const prey = e?.isEnemy || (this.harm?.all && (e?.isPlayer || e?.isCivilian));
+    if (this.harm && prey && e.alive && e !== this.harm.ignore) {
       const sp = Body.getSpeed(this.body);
       if (sp > this.harm.knock) this.applyHarm(e, sp);
     }

@@ -3852,34 +3852,191 @@ ROOF_GLOWING = ['bulkhead', 'skylight', 'skylight_tv']
 # Structure
 # --------------------------------------------------------------------------
 
-def s_door():
-    cv = Cv(32, 5)
-    w = ramp('#9a6236', 0.45, 0.22, 0.3)
+DOOR_WOOD = ramp('#a86a38', 0.5, 0.24, 0.34)
+ALU = ramp('#9aa0b0', 0.5, 0.26, 0.4)
+SILL = ramp('#625e72', 0.5, 0.24, 0.3)
+
+
+def _leaf(w):
+    """Door leaf seen from above, hinge at x = 0, latch at x = 31. Rows 1..7 = the leaf, rows 0 and 8 = what sticks
+    out of its faces (handle). Door.js keeps both ends and tiles the middle (x 8..19) to the leaf length."""
+    cv = Cv(32, 9)
     for x in range(1, 31):
-        cv.set(x, 1, w[3])
-        cv.set(x, 2, w[2] if x % 7 else w[1])
-        cv.set(x, 3, w[1])
-    for y in (1, 2, 3):
-        cv.set(1, y, w[0])
-        cv.set(2, y, dk(cv.get(2, y), 0.3))
-    cv.set(1, 2, hx('#8a8a96'))
+        cv.set(x, 2, w[3])
+        for y in (3, 4, 5):
+            cv.set(x, y, w[2])
+        cv.set(x, 6, w[1])
+    # long quiet grain, no pattern
+    for x, y, n in ((9, 3, 5), (17, 5, 6), (3, 4, 3), (24, 4, 3)):
+        for k in range(n):
+            cv.set(x + k, y, mix(w[2], w[1], 0.55))
+    # stiles at both ends (end grain)
+    for x in (1, 30):
+        for y in range(2, 7):
+            cv.set(x, y, mix(cv.get(x, y), w[0], 0.45))
     cv.outline()
-    cv.set(28, 0, BRASS[3])
-    cv.set(28, 4, BRASS[1])
-    cv.set(28, 2, BRASS[2])
+    # hinge: two steel knuckles on the faces, the pin between them
+    for x in (2, 3, 4):
+        cv.set(x, 1, STEEL_L[3] if x == 3 else STEEL_L[2])
+        cv.set(x, 7, STEEL_L[1])
+    cv.rect(2, 3, 3, 5, STEEL[0])
+    cv.set(2, 3, STEEL_L[3])
+    cv.set(3, 3, STEEL_L[2])
+    cv.set(2, 4, STEEL_L[2])
+    # latch plate on the edge
+    cv.rect(30, 3, 30, 5, STEEL_L[2])
     return cv
 
 
-def s_window():
-    cv = Cv(32, 4)
+def s_door():
+    cv = _leaf(DOOR_WOOD)
+    # lever handle on each face: the rose on the leaf, the brass lever proud of it
+    for y, c0, c1 in ((0, BRASS[3], BRASS[2]), (8, BRASS[2], BRASS[1])):
+        cv.rect(22, y, 26, y, c1)
+        cv.rect(25, y, 26, y, c0)
+        cv.set(21, y, OUTLINE)
+        cv.set(27, y, OUTLINE)
+    cv.set(26, 1, BRASS[2])
+    cv.set(26, 7, BRASS[1])
+    return cv
+
+
+def s_door_locked():
+    """Reinforced door: the same leaf under steel straps, a lock case through it and a dead bolt in the edge."""
+    cv = _leaf(ramp('#8a5a36', 0.5, 0.24, 0.3))
+    for x0 in (8, 15):
+        for y in range(1, 8):
+            cv.set(x0, y, STEEL_L[3] if y < 3 else STEEL_L[2] if y < 6 else STEEL_L[1])
+            cv.set(x0 + 1, y, STEEL_L[2] if y < 3 else STEEL_L[1] if y < 6 else STEEL_L[0])
+        cv.set(x0, 4, STEEL[0])        # rivet
+    # lock case, proud of both faces
+    cv.rect(21, 0, 28, 8, OUTLINE)
+    cv.rect(22, 1, 27, 7, STEEL_L[1])
+    cv.rect(22, 1, 27, 2, STEEL_L[3])
+    cv.rect(22, 3, 27, 5, STEEL_L[2])
+    cv.rect(24, 3, 25, 5, BRASS[2])    # cylinder
+    cv.set(24, 3, BRASS[3])
+    cv.set(25, 5, BRASS[0])
+    cv.set(24, 4, OUTLINE)             # keyhole
+    cv.rect(29, 3, 31, 5, STEEL_L[3])  # dead bolt
+    cv.rect(29, 5, 31, 5, STEEL_L[1])
+    return cv
+
+
+def s_jamb(w):
+    """Door frame post set into the end of a wall (5 px wide across the 32 px of wall): x = 4 faces the opening."""
+    cv = Cv(5, 32)
+    cv.rect(0, 0, 4, 31, OUTLINE)
+    for y in range(1, 31):
+        cv.set(1, y, w[1])
+        cv.set(2, y, w[3])
+        cv.set(3, y, w[2])
+    for y in (1, 30):                  # casing on both wall faces
+        cv.rect(1, y, 3, y, w[3])
+    cv.rect(1, 15, 3, 16, mix(w[1], w[0], 0.5))   # joint where the stop sits
+    return cv
+
+
+def s_threshold():
+    """Floor of a doorway (one tile of a run along x): the reveal in the wall's shade and a worn metal sill bar."""
+    cv = Cv(32, 32)
+    for y in range(32):
+        d = abs(y - 15.5) / 15.5
+        for x in range(32):
+            cv.set(x, y, (16, 10, 24, int(96 - 44 * d)))
+    cv.rect(0, 12, 31, 12, OUTLINE)
+    cv.rect(0, 19, 31, 19, OUTLINE)
     for x in range(32):
-        cv.set(x, 0, (120, 200, 220, 210))
-        cv.set(x, 1, (170, 240, 250, 170))
-        cv.set(x, 2, (150, 230, 245, 170))
-        cv.set(x, 3, (100, 170, 200, 210))
-    for sx in (4, 5, 17, 25):
-        cv.set(sx, 1, (255, 255, 255, 230))
-        cv.set(sx + 1, 2, (255, 255, 255, 200))
+        cv.set(x, 13, STEEL_L[2])
+        cv.set(x, 14, STEEL_L[1])
+        for y in (15, 16):
+            cv.set(x, y, STEEL[2])
+        cv.set(x, 17, STEEL[1])
+        cv.set(x, 18, STEEL[0])
+    for x in (5, 26):                  # screws
+        cv.set(x, 15, STEEL[0])
+        cv.set(x, 16, STEEL_L[2])
+    return cv
+
+
+def s_window_sill():
+    """Window ledge (one tile of a run along x): the wall cut down to sill height, lower and darker than its top."""
+    cv = Cv(32, 32)
+    rng = random.Random(77)
+    for y in range(32):
+        for x in range(32):
+            c = SILL[2]
+            if y in (2, 3):
+                c = SILL[3]
+            elif y in (27, 28, 29):
+                c = SILL[1]
+            elif 10 <= y <= 21:
+                c = mix(SILL[2], SILL[1], 0.5)      # the rebate the frame sits in
+            cv.set(x, y, tint(c, rng.uniform(-3, 3)))
+    cv.rect(0, 0, 31, 1, OUTLINE)
+    cv.rect(0, 30, 31, 31, OUTLINE)
+    cv.rect(0, 12, 31, 19, mix(SILL[0], OUTLINE, 0.5))   # glazing channel: dark once the glass is gone
+    return cv
+
+
+def _window_frame(cv, mullion):
+    cv.rect(0, 0, 31, 0, OUTLINE)
+    cv.rect(0, 9, 31, 9, OUTLINE)
+    for x in range(32):
+        cv.set(x, 1, ALU[3])
+        cv.set(x, 8, ALU[1])
+    for x0 in (0, 29):                 # end posts
+        cv.rect(x0, 1, x0 + 2, 8, ALU[2])
+        cv.rect(x0, 1, x0 + 2, 2, ALU[3])
+        cv.rect(x0, 7, x0 + 2, 8, ALU[1])
+        xi = x0 + 2 if x0 == 0 else x0
+        cv.rect(xi, 2, xi, 7, OUTLINE)
+    if mullion:
+        cv.rect(15, 1, 16, 8, ALU[2])
+        cv.rect(15, 1, 16, 2, ALU[3])
+        cv.rect(15, 7, 16, 8, ALU[1])
+        cv.rect(14, 2, 14, 7, OUTLINE)
+        cv.rect(17, 2, 17, 7, OUTLINE)
+
+
+def s_window():
+    """Glazed window seen from above (along x, 10 px across): aluminium rails and posts, a glazing bar, tinted glass."""
+    cv = Cv(32, 10)
+    for x in range(3, 29):
+        cv.set(x, 2, (214, 250, 255, 205))
+        cv.set(x, 3, (150, 226, 240, 170))
+        cv.set(x, 4, (118, 206, 228, 160))
+        cv.set(x, 5, (104, 192, 222, 160))
+        cv.set(x, 6, (86, 168, 208, 170))
+        cv.set(x, 7, (60, 128, 178, 200))
+    # reflections: two slanted glints per pane
+    for x0 in (5, 9, 20, 24):
+        for k in range(4):
+            cv.set(x0 + k, 6 - k, (255, 255, 255, 235))
+            if x0 in (5, 20):
+                cv.set(x0 + k + 1, 6 - k, (236, 252, 255, 200))
+    _window_frame(cv, True)
+    return cv
+
+
+def s_window_broken():
+    """The same frame with the glass gone: teeth left in the rebates, the glazing bar snapped."""
+    cv = Cv(32, 10)
+    _window_frame(cv, False)
+    g0, g1 = (226, 252, 255, 240), (150, 220, 240, 215)
+    # (x, from the top rail?, depth): shards standing in both rails
+    for x, top, d in ((4, 1, 3), (5, 1, 2), (9, 1, 1), (12, 1, 2), (19, 1, 1), (22, 1, 3), (23, 1, 2), (27, 1, 1),
+                      (6, 0, 1), (10, 0, 2), (11, 0, 3), (18, 0, 2), (21, 0, 1), (26, 0, 3), (27, 0, 2)):
+        for k in range(d):
+            cv.set(x, 2 + k if top else 7 - k, g0 if k == 0 else g1)
+    # daggers left against the posts
+    for x, y in ((3, 3), (4, 4), (3, 4), (3, 5), (28, 4), (27, 5), (28, 5), (28, 6)):
+        cv.set(x, y, g1 if (x + y) % 2 else g0)
+    # stubs of the snapped glazing bar
+    for y, c in ((2, ALU[2]), (7, ALU[1])):
+        cv.rect(15, y, 16, y, c)
+    cv.set(15, 3, ALU[1])
+    cv.set(16, 6, ALU[0])
     return cv
 
 
@@ -3959,7 +4116,13 @@ def build():
     for name, cv in tiles().items():
         out[('tiles', name)] = cv
     out[('structure', 'door')] = s_door()
+    out[('structure', 'door_locked')] = s_door_locked()
+    out[('structure', 'door_jamb')] = s_jamb(ramp('#6e4a32', 0.5, 0.26, 0.34))
+    out[('structure', 'door_jamb_steel')] = s_jamb(STEEL_L)
+    out[('structure', 'threshold')] = s_threshold()
     out[('structure', 'window')] = s_window()
+    out[('structure', 'window_broken')] = s_window_broken()
+    out[('structure', 'window_sill')] = s_window_sill()
     out[('structure', 'fence')] = s_fence()
     return out
 
@@ -3994,7 +4157,8 @@ EXPECTED = {
     'tiles': dict([(n + s, (32, 32)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof', 'neon_floor_glow')]),
     'roof': dict(list(ROOF_SIZES.items()) + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
-    'structure': dict(door=(32, 5), window=(32, 4), fence=(32, 6)),
+    'structure': dict(door=(32, 9), door_locked=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
+                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
 }
 
 

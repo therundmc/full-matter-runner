@@ -54,8 +54,8 @@ export function canSeeCharacter(world, viewer, ch) {
 export function lineOfSight(world, x0, y0, x1, y1) {
   if (world.map.raycast(x0, y0, x1, y1)) return false;
   for (const d of world.doors) {
-    const t = d.tip();
-    if (segSeg(x0, y0, x1, y1, d.hx, d.hy, t.x, t.y) !== null) return false;
+    const s = d.span();
+    if (segSeg(x0, y0, x1, y1, s.x0, s.y0, s.x1, s.y1) !== null) return false;
   }
   return true;
 }
@@ -69,8 +69,8 @@ export function occlusion(world, x0, y0, x1, y1, target = null, origin = null) {
   let f = 1;
   for (const d of world.doors) {
     if (d === target) continue;
-    const t = d.tip();
-    if (segSeg(x0, y0, x1, y1, d.hx, d.hy, t.x, t.y) !== null) f *= 0.3;
+    const s = d.span();
+    if (segSeg(x0, y0, x1, y1, s.x0, s.y0, s.x1, s.y1) !== null) f *= 0.3;
   }
   for (const p of world.props) {
     if (p === target || p === origin || p.dead || p.def.hung || !(p.isVehicle || p.def.static || p.def.blocksPath)) continue;

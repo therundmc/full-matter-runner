@@ -121,7 +121,8 @@ export default class Projectile {
         return { x: ex.x, y: ex.y, a: this.deflect(ex.cost) };
       }
       case 'glass':
-        h.target.shatter(a, this.owner?.isEnemy ? this.owner : null, this.weapon?.pellets > 1 ? 1.3 : 1);
+        h.target.shatter(a, this.owner, this.weapon?.pellets > 1 ? 1.3 : 1);
+        if (heavy) h.target.damageFrame(3, a); // a heavy round tears at the frame too
         this.ignore.add(h.target);
         return this.spend(COST.glass);
       case 'prop': {

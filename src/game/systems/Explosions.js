@@ -4,7 +4,7 @@
 import { TILE } from '../Config.js';
 import { rand } from '../../engine/math.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
-import { damageWall, destroyWall, detachDoor, destroyFence } from './Destruction.js';
+import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence } from './Destruction.js';
 import { occlusion } from './Ballistics.js';
 
 const { Body } = Matter;
@@ -57,10 +57,14 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
       else if (de < R * 1.6) p.hit(0.5, p.x + rand(-4, 4), p.y + rand(-4, 4), a + rand(-0.4, 0.4), 0.8, 'shrapnel');
     }
   }
-  for (const g of world.windows) {
-    if (!g.intact) continue;
+  // windows: torn out of the wall near the blast, further away the glass goes and the frame is battered
+  for (const g of [...world.windows]) {
     const d = Math.hypot(g.x - x, g.y - y), f = d < R * 1.4 ? occ(g.x, g.y, g) : 0;
-    if (f > 0 && d / f < R * 1.4) g.shatter(Math.atan2(g.y - y, g.x - x), null, 1.6 * f);
+    if (f <= 0 || d / f > R * 1.4) continue;
+    const a = Math.atan2(g.y - y, g.x - x), de = d / f;
+    if (de < R * 0.6) { destroyWindow(world, g, a, 1.6 * f); continue; }
+    g.shatter(a, null, 1.6 * f);
+    if (de < R * 1.05) g.damageFrame(Math.ceil(5 * (1 - de / (R * 1.05))), a, 1.3);
   }
   for (const door of [...world.doors]) {
     const b = door.body.position;

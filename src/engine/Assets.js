@@ -12,7 +12,8 @@ export const SPRITE_LIST = [
     'dumpster', 'trash_can'].map((n) => `props/${n}`),
   ...['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purple', 'concrete', 'grass', 'asphalt', 'asphalt_line',
     'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
-  'structure/door', 'structure/window', 'structure/fence',
+  ...['door', 'door_locked', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
+    .map((n) => `structure/${n}`),
 ];
 
 // Sprites that may not exist (yet): loaded when present, `spriteOpt()` returns null otherwise.
@@ -138,8 +139,31 @@ function canvas(w, h) {
   return c;
 }
 
-// sharp glass shards (several variants)
-export function glassShards() {
+// sharp glass shards, 8 variants per size: 'small' crumbs (3-8 px), 'mid' (6-10 px), 'big' daggers (11-18 px)
+export function glassShards(size = 'small') {
+  if (size !== 'small') {
+    const big = size === 'big';
+    return cached('glass-' + size, () => Array.from({ length: 8 }, (_, i) => {
+      const w = big ? 11 + i : 6 + (i % 5), h = big ? 4 + (i % 3) : 3 + (i % 2);
+      const c = canvas(w + 2, h + 2);
+      const g = c.getContext('2d');
+      g.translate(1, 1);
+      // a long splinter: broad broken base on the left, the point on the right
+      const top = w * (0.2 + (i % 3) * 0.12), low = w * (0.3 + ((i + 1) % 3) * 0.1), tip = h * (0.35 + (i % 4) * 0.1);
+      g.beginPath();
+      g.moveTo(0, h * 0.25); g.lineTo(top, 0); g.lineTo(w, tip); g.lineTo(low, h); g.lineTo(0, h * 0.8);
+      g.closePath();
+      g.fillStyle = 'rgba(176,236,252,0.9)';
+      g.fill();
+      g.lineWidth = 1;
+      g.strokeStyle = big ? 'rgba(24,64,96,0.95)' : 'rgba(40,90,124,0.7)';
+      g.stroke();
+      // the bevel catching the light, from the base to the point
+      g.strokeStyle = 'rgba(255,255,255,0.95)';
+      g.beginPath(); g.moveTo(top * 0.6, h * 0.35); g.lineTo(w - 2, tip); g.stroke();
+      return c;
+    }));
+  }
   return cached('glass', () => Array.from({ length: 8 }, (_, i) => {
     const w = 3 + (i % 4) * 1.5, h = 2 + (i % 3);
     const c = canvas(Math.ceil(w) + 1, Math.ceil(h) + 1);

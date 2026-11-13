@@ -26,12 +26,16 @@ src/
       World.js            one playthrough: entity lists, services, fixed step order, system facades
       TileMap.js          pure grid logic (solid / blocked / wall HP / version), wall bodies (no DOM)
       Level.js            builds entities from level data
+      Openings.js         geometry of doors / windows in walls (DOM-free, unit-tested): door leaves of a run of door
+                          tiles, the wall tiles holding each opening up (`heldBy`)
     systems/              rules, called by World or driven by events
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods) + free landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
-      Destruction.js      wall tiles, doors off hinges, fences
+      Destruction.js      wall tiles, windows torn out, doors off hinges, fences; `watchOpenings` makes doors and
+                          windows go with the wall tile that holds them (listens to `wallDestroyed`)
+      Glass.js            how a pane breaks (DOM-free, unit-tested): shards of three sizes, which ones cut / kill
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
       Scoring.js          score of a run from events: kill styles x combo, end tally (bonuses, grade); pure, unit-tested
@@ -96,7 +100,8 @@ Rules:
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
 | `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
-| `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | Director (incident) |
+| `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
+| `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
@@ -292,12 +297,29 @@ The big brick masses around a level are the neighbouring buildings seen from abo
   emissive map `roof/<kind>_glow`; they are above the street, so the stealth light grid ignores them.
   Roof tiles have their own ambient tint (`LIGHTING.ambient.roof`), darker than the street: out of play.
 
-## Doors
+## Doors and windows
 
 `Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out).
 Level tile `L` = locked door: static, blocks path-finding; shooting the lock (latch end) or kicking / hitting it
 breaks the latch and bursts it open. Bullets punch holes in a per-door canvas, damage warps the leaf, 7.62 rounds
 go through, at 0 HP it is ripped off (Destruction.detachDoor).
+
+- Layout (world/Openings.js `doorLeaves`): a run of door tiles is one leaf hinged on the wall before it (pivot set
+  in from the wall end, so an open leaf lies against it), a run of two is a double door. Each leaf knows its
+  `support` (hinge) and `strike` (latch) wall tiles.
+- Look: the leaf sprite (`structure/door`, `door_locked`: steel straps, lock case, red tell-tale) is cut in three
+  and its middle tiled to the leaf length (`Door.compose`). `MapRenderer.doorway` paints the threshold on the floor
+  canvas and a jamb in each wall end on the wall canvas (wood casing, steel in brick), so a jamb goes with its wall.
+- `Window` = one `G` tile: glazed aluminium frame (`structure/window`, `window_broken`) over a sill painted on the
+  floor canvas (`MapRenderer.windowSill`). `shatter(dirA, breaker, power)` breaks the pane (the tile stops blocking
+  paths, the frame is left to vault) and throws the shards of systems/Glass.js as `Debris`: crumbs, mid shards
+  that floor a guard, and a few big daggers that kill whoever they hit while still fast (`harm.all`, cause `slash`,
+  the breaker spared); at rest a shard is harmless.
+- The frame has its own HP (`damageFrame`: blasts, bat blows on a broken window, heavy rounds); at 0, or when a
+  vehicle rams it or a blast goes off next to it, `Destruction.destroyWindow` removes the window and turns its
+  tile into a breach with `TileMap.destroyTile`, exactly like a destroyed wall tile (sight, paths, lights).
+- Openings go with what holds them (`Destruction.watchOpenings`): when a wall tile collapses, the windows built into
+  it are torn out, the door hinged on it falls, a bolt shot into it is free; a glazed run follows window by window.
 
 ## Debug
 

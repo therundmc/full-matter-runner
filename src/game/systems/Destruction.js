@@ -1,9 +1,11 @@
-// Breaking the level itself: wall tiles crack then collapse, doors get ripped off, fences flattened.
+// Breaking the level itself: wall tiles crack then collapse, windows are torn out of them, doors get ripped off,
+// fences flattened.
 import { TILE, WALL_HP } from '../Config.js';
 import { rand, chance, clamp } from '../../engine/math.js';
 import { rubble, chunk } from '../../engine/Assets.js';
 import Debris from '../entities/Debris.js';
 import { splitInTwo } from '../render/DamageArt.js';
+import { heldBy } from '../world/Openings.js';
 
 export function damageWall(world, cx, cy, dmg, x, y, dirA, power = 1) {
   const m = world.map;
@@ -44,7 +46,7 @@ export function destroyWall(world, cx, cy, dirA, power = 1) {
   world.sound('crumble', x, y);
   world.shake(0.3);
   world.noise(x, y, 420, null, 'wall');
-  world.events.emit('wallDestroyed', { cx, cy, x, y });
+  world.events.emit('wallDestroyed', { cx, cy, x, y, dirA, power });
 }
 
 // door ripped off its hinges; a violent blow (blast) breaks the leaf in two across the grain
@@ -71,6 +73,56 @@ export function detachDoor(world, door, dirA, power = 1) {
   world.shake(0.2);
   world.noise(b.position.x, b.position.y, 300, null, 'door');
   world.events.emit('doorBroken', { x: door.hx, y: door.hy });
+}
+
+const FRAME_BITS = [[15, 4], [12, 4], [8, 4], [6, 3], [4, 3]]; // twisted rails and posts of a window frame (px)
+
+// a window torn out of its wall, glass, frame and sill: what is left is a breach like any other
+export function destroyWindow(world, win, dirA = 0, power = 1) {
+  const i = world.windows.indexOf(win);
+  if (i < 0) return;
+  if (win.intact) win.shatter(dirA, null, power);
+  world.windows.splice(i, 1);
+  world.removeBody(win.body);
+  world.map.destroyTile(win.cx, win.cy);
+  world.decals.destroyTile(win.cx, win.cy, win.wall);
+  const { x, y } = win;
+  const spot = () => [x + rand(-10, 10) * (win.vertical ? 0.3 : 1), y + rand(-10, 10) * (win.vertical ? 1 : 0.3)];
+  const fling = (img, opts) => {
+    const a = dirA + rand(-0.9, 0.9), v = rand(70, 230) * power;
+    world.addDebris(new Debris(world, img, ...spot(), rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), opts));
+  };
+  for (const [w, h] of FRAME_BITS) {
+    fling(chunk('#9aa0b0', w, h), { air: 0.06, bounce: 0.3, material: 'metal', z: rand(4, 10), vz: rand(20, 80), land: 'metal',
+      harm: { kind: 'blunt', knock: 3.2, lethal: 8 } });
+  }
+  const lumps = rubble(win.wall);
+  for (let k = 0; k < 4; k++) fling(lumps[Math.floor(rand(0, 6))], { air: 0.07, bounce: 0.2, material: 'concrete' });
+  world.particles.chips(x, y, dirA, Math.PI, 14, '#9aa0b0', 200);
+  world.particles.smoke(x, y, 10, 10, { speed: 50, size: 8, life: 1.8 });
+  world.sound('metalBreak', x, y, 0.8);
+  world.sound('crumble', x, y, 0.6);
+  world.shake(0.2);
+  world.noise(x, y, 380, null, 'wall');
+  world.events.emit('windowDestroyed', { x, y, cx: win.cx, cy: win.cy, dirA, power });
+}
+
+const DOMINO = 0.12; // s between a window going and the next one of a glazed front following it
+
+// Openings go with what holds them. When a wall tile collapses, the windows built into it are torn out, the door
+// hinged on it falls and a bolt shot into it is free; a window going takes the next one of a glazed run with it.
+export function watchOpenings(world) {
+  const collapse = ({ cx, cy, dirA = 0, power = 1 }, delay = 0) => {
+    const held = heldBy(world, cx, cy);
+    for (const g of held.windows) {
+      if (delay) world.after(delay, () => destroyWindow(world, g, dirA, power));
+      else destroyWindow(world, g, dirA, power);
+    }
+    for (const d of held.doors) detachDoor(world, d, dirA, power);
+    for (const d of held.unbolted) { const t = d.tip(); d.unlock(t.x, t.y, dirA, 0.6); }
+  };
+  world.events.on('wallDestroyed', (e) => collapse(e));
+  world.events.on('windowDestroyed', (e) => collapse(e, DOMINO));
 }
 
 export function destroyFence(world, f, dirA) {

@@ -1,55 +1,67 @@
-import { CAT, MASK, TILE } from '../Config.js';
+import { CAT, MASK, TILE, MAX_DEBRIS, DESTRUCTION } from '../Config.js';
 import { sprite, glassShards } from '../../engine/Assets.js';
 import Debris from './Debris.js';
-import { rand } from '../../engine/math.js';
+import { rand, angDiff } from '../../engine/math.js';
+import { windowSupports } from '../world/Openings.js';
+import { SHARDS, shardBurst, shardHarm } from '../systems/Glass.js';
 
-const { Bodies } = Matter;
+const { Bodies, Body } = Matter;
 
-// Glass pane: see-through, stops bodies, shatters on bullets / fast objects.
+const THICK = 6;     // px: the glazed frame, set in the middle of the wall (the sill around it is painted on the floor)
+const FRAME_HP = 6;  // what the frame takes (blasts, bat blows, heavy rounds) before it is torn out of the wall
+
+// A window at tile (cx, cy): a pane in an aluminium frame, see-through, stops bodies. The glass shatters on bullets,
+// blows and fast objects (shards: systems/Glass.js) and leaves a frame to vault through; the frame itself goes with
+// enough damage or with the wall holding it (`supports`, see Destruction.destroyWindow / watchOpenings).
 export default class Window {
-  constructor(world, x, y, vertical) {
+  constructor(world, cx, cy, vertical) {
     this.world = world;
-    this.x = x; this.y = y;
+    this.cx = cx; this.cy = cy;
+    this.x = (cx + 0.5) * TILE; this.y = (cy + 0.5) * TILE;
     this.vertical = vertical;
     this.angle = vertical ? Math.PI / 2 : 0;
-    this.img = sprite('structure/window');
+    this.supports = windowSupports(cx, cy, vertical);
+    this.wall = this.supports.some(([sx, sy]) => world.map.at(sx, sy) === 'X') ? 'brick' : 'wall'; // what it is set in
     this.intact = true;
-    this.body = Bodies.rectangle(x, y, vertical ? 4 : TILE, vertical ? TILE : 4, {
-      isStatic: true, label: 'window',
-      collisionFilter: { category: CAT.GLASS, mask: MASK.GLASS },
-    });
-    this.body.entity = this;
-    this.shards = Array.from({ length: 4 }, () => rand(2, 7));
-    world.addBody(this.body);
+    this.hp = FRAME_HP;
+    this.nicks = [];                // dents in the frame: [x, y, w] in sprite space
+    this.phase = rand(0, 1);        // so the reflections of a glazed front don't slide in step
+    this.body = this.makeBody('window', MASK.GLASS);
   }
 
-  shatter(dirA = 0, source = null, power = 1) {
+  makeBody(label, mask) {
+    const body = Bodies.rectangle(this.x, this.y, this.vertical ? THICK : TILE, this.vertical ? TILE : THICK, {
+      isStatic: true, label, collisionFilter: { category: CAT.GLASS, mask },
+    });
+    body.entity = this;
+    this.world.addBody(body);
+    return body;
+  }
+
+  // the pane bursts away from the hit (dirA); `breaker` = who did it (never cut by his own shards)
+  shatter(dirA = 0, breaker = null, power = 1) {
     if (!this.intact) return;
     this.intact = false;
     const w = this.world;
-    w.map.blocked[Math.floor(this.y / TILE) * w.map.w + Math.floor(this.x / TILE)] = 0;
+    w.map.blocked[this.cy * w.map.w + this.cx] = 0;
     w.removeBody(this.body);
-    // broken frame still blocks characters (but not bullets or thrown items)
-    this.body = Bodies.rectangle(this.x, this.y, this.vertical ? 4 : TILE, this.vertical ? TILE : 4, {
-      isStatic: true, label: 'window-frame',
-      collisionFilter: { category: CAT.GLASS, mask: MASK.GLASS_BROKEN },
-    });
-    this.body.entity = this;
-    w.addBody(this.body);
+    // the empty frame still stops characters (they vault it), not bullets or thrown things
+    this.body = this.makeBody('window-frame', MASK.GLASS_BROKEN);
     w.particles.glass(this.x, this.y, dirA, 0.9, 40, 240);
     w.particles.glass(this.x, this.y, dirA + Math.PI, 1.2, 10, 80);
-    // real shards: they fly through the room and cut whoever stands behind
-    const shards = glassShards();
-    const n = 12 + Math.floor(rand(0, 6));
-    for (let i = 0; i < n; i++) {
-      const along = rand(-TILE / 2, TILE / 2);
-      const sx = this.x + (this.vertical ? 0 : along), sy = this.y + (this.vertical ? along : 0);
-      const a = dirA + rand(-0.55, 0.55);
-      const v = rand(160, 460) * power;
-      w.addDebris(new Debris(w, shards[i % shards.length], sx, sy, rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v, rand(-0.8, 0.8), {
-        air: 0.05, bounce: 0.25, kg: 0.1, mu: 0.35, fly: 0.3, shadow: 0, material: 'glass',
-        harm: { kind: 'cut', knock: 2.4, lethal: 5.2, ignore: source },
-      }));
+    // real shards: the crumbs skitter, the big ones fly through the room and cut whoever stands behind
+    const crowded = w.debris.length > MAX_DEBRIS * DESTRUCTION.physicalShare;
+    const ca = Math.cos(dirA), sa = Math.sin(dirA);
+    for (const s of shardBurst(Math.min(power, 1.5))) {
+      if (crowded && s.size === 'small') continue;
+      const k = s.along * (TILE - 10);
+      const sx = this.x + (this.vertical ? 0 : k) + ca * 3, sy = this.y + (this.vertical ? k : 0) + sa * 3;
+      const a = dirA + s.spread, big = s.size === 'big';
+      w.addDebris(new Debris(w, glassShards(s.size)[s.variant], sx, sy, big ? a + rand(-0.4, 0.4) : rand(0, 6.28),
+        Math.cos(a) * s.speed, Math.sin(a) * s.speed, s.spin * (big ? 0.4 : 1), {
+          air: 0.05, bounce: 0.25, kg: SHARDS[s.size].kg, mu: 0.35, shadow: big ? 1 : 0, material: 'glass',
+          z: s.z, vz: s.vz, land: 'glassHit', harm: shardHarm(s.size, breaker),
+        }));
     }
     w.flashGlass(this.x, this.y);
     w.sound('glass', this.x, this.y);
@@ -57,44 +69,59 @@ export default class Window {
     w.events.emit('windowBroken', { x: this.x, y: this.y });
   }
 
+  // the frame takes a beating: it dents, then is torn out of the wall
+  damageFrame(dmg, dirA = 0, power = 1) {
+    if (this.hp <= 0) return;
+    this.hp -= dmg;
+    for (let k = 0; k < 1 + dmg; k++) this.nicks.push([Math.floor(rand(1, TILE - 4)), rand(0, 1) < 0.5 ? 1 : 8, Math.ceil(rand(1, 3))]);
+    const w = this.world;
+    w.particles.sparks(this.x, this.y, dirA, 1.2, 4 + dmg * 2, 220);
+    w.sound('metal', this.x, this.y, 0.7);
+    if (this.hp <= 0) w.destroyWindow(this, dirA, power);
+  }
+
+  // a melee blow struck from (x, y) toward dirA: breaks the glass; once it is gone, `dmg` goes to the frame
+  // if the blow is aimed at it. Returns whether it landed.
+  blow(x, y, dirA, by, dmg = 0) {
+    if (this.intact) { this.shatter(dirA, by); return true; }
+    if (dmg <= 0 || Math.abs(angDiff(dirA, Math.atan2(this.y - y, this.x - x))) > 1) return false;
+    this.damageFrame(dmg, dirA, 1.2);
+    return true;
+  }
+
   onCollide(other) {
     const e = other.entity;
     if (!this.intact || !e) return;
-    const fast = Matter.Body.getSpeed(other) > 3;
-    if ((e.isItem && fast) || (e.isDebris && Matter.Body.getSpeed(other) > 4.5) || (e.def && fast)) {
-      this.shatter(Math.atan2(other.velocity.y, other.velocity.x), null, 0.7);
-    }
+    const sp = Body.getSpeed(other), a = Math.atan2(other.velocity.y, other.velocity.x);
+    // a car goes through frame and all; thrown things and heavy pieces only break the glass
+    if (e.isVehicle && sp > 3) this.world.destroyWindow(this, a, 1.3);
+    else if ((e.isItem && sp > 3) || (e.isDebris && sp > 4.5) || (e.def && sp > 3)) this.shatter(a, null, 0.7);
   }
 
   draw(ctx) {
+    const H = TILE / 2;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    const H = TILE / 2;
-    if (this.intact) {
-      ctx.drawImage(this.img, -H, -this.img.height / 2, TILE, this.img.height);
-    } else {
-      // what is left: the sill and both jambs, glass teeth still stuck in the frame
-      ctx.fillStyle = '#140c1c';
-      ctx.fillRect(-H, -2, TILE, 4);
-      ctx.fillStyle = '#6a5a6e';
-      ctx.fillRect(-H + 1, -1, TILE - 2, 2);
-      ctx.fillStyle = 'rgba(200,245,255,0.85)';
-      ctx.beginPath();
-      ctx.moveTo(-H + 2, -1); ctx.lineTo(-H + 2 + this.shards[0], -0.5); ctx.lineTo(-H + 2, 0.5);
-      ctx.moveTo(H - 2, -1); ctx.lineTo(H - 2 - this.shards[2], -0.5); ctx.lineTo(H - 2, 0.5);
-      ctx.moveTo(-H + 6 + this.shards[1] * 2, -1); ctx.lineTo(-H + 8 + this.shards[1] * 2, -2.5); ctx.lineTo(-H + 10 + this.shards[1] * 2, -1);
-      ctx.fill();
-      // passable: a soft pulse along the sill
-      const pulse = 0.25 + 0.2 * Math.sin(this.world.time * 4);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = `rgba(5,217,232,${pulse})`;
-      ctx.fillRect(-H + 3, -0.5, TILE - 6, 1);
-      ctx.globalCompositeOperation = 'source-over';
-    }
+    const img = sprite(this.intact ? 'structure/window' : 'structure/window_broken');
+    ctx.drawImage(img, -H, -img.height / 2);
     ctx.fillStyle = '#140c1c';
-    ctx.fillRect(-H - 1, -3, 4, 6);
-    ctx.fillRect(H - 3, -3, 4, 6);
+    for (const [x, y, w] of this.nicks) ctx.fillRect(x - H, y - img.height / 2, w, 1);
+    ctx.globalCompositeOperation = 'lighter';
+    if (this.intact) {
+      // a reflection sliding along the pane now and then
+      const t = (this.world.time * 0.22 + this.phase) % 1;
+      if (t < 0.3) {
+        const gx = -H + 4 + (t / 0.3) * (TILE - 13);
+        ctx.fillStyle = `rgba(200,244,255,${0.3 * Math.sin((t / 0.3) * Math.PI)})`;
+        ctx.fillRect(gx, -3, 3, 6);
+        ctx.fillRect(gx + 4, -3, 1, 6);
+      }
+    } else {
+      // passable: a soft pulse along the sill
+      ctx.fillStyle = `rgba(5,217,232,${0.25 + 0.2 * Math.sin(this.world.time * 4)})`;
+      ctx.fillRect(-H + 4, -1, TILE - 8, 2);
+    }
     ctx.restore();
   }
 }
