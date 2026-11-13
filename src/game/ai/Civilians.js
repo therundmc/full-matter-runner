@@ -31,7 +31,7 @@ export class Walker {
 
   get panicked() { return this.state === WALKER.PANIC || this.state === WALKER.FLEE || this.state === WALKER.COWER; }
 
-  // Something scary at (x, y). kind: gunshot | explosion | kill | corpse | armed | scream | hit.
+  // Something scary at (x, y). kind: gunshot | explosion | kill | corpse | armed (a gun) | weapon (a bat, a knife) | scream | hit.
   // Returns true when this makes him panic (first time, or a much closer danger while fleeing).
   alarm(x, y, kind, from) {
     if (this.state === WALKER.DONE) return false;
@@ -47,7 +47,7 @@ export class Walker {
     this.danger = { x, y };
     this.pose = kind === 'armed' || (kind === 'gunshot' && this.r() < 0.4) ? 'hands' : 'duck';
     this.t = kind === 'scream' ? between(this.r, A.panic.freeze) * 0.5 : between(this.r, A.panic.freeze);
-    this.bark = kind === 'armed' ? 'beg' : 'scream';
+    this.bark = kind === 'armed' ? 'beg' : kind === 'weapon' ? 'back' : 'scream';
     return true;
   }
 

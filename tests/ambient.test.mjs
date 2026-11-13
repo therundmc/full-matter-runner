@@ -256,3 +256,12 @@ test('edges: invisible bars around the map stop characters, not traffic or passe
   const left = bars.find((b) => b.position.x < 0);
   assert.ok(left.bounds.max.x <= 0.01 && left.bounds.min.y <= 0 && left.bounds.max.y >= m.heightPx);
 });
+
+test('walkers: a bat or a knife scares them too, but only a gun makes them beg', () => {
+  const w = new Walker(path, { r: seeded(3), speed: 40, run: 150 });
+  w.update(0.1, 0, 100, {});
+  assert.equal(w.alarm(50, 100, 'weapon'), true);
+  assert.equal(w.state, WALKER.PANIC);
+  assert.equal(w.pose, 'duck');
+  assert.equal(w.bark, 'back');
+});

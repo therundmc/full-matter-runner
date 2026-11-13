@@ -30,6 +30,7 @@ const MAX_HALF = 80; // half length of the longest model (van, 160 px): the spaw
 const BARKS = {
   scream: ['AAAH!', 'HELP!', 'RUN!', 'OH MY GOD!', 'POLICE!', 'NO NO NO!'],
   beg: ["DON'T SHOOT!", 'PLEASE!', 'TAKE IT!'],
+  back: ['STAY BACK!', "HE'S ARMED!", 'LEAVE ME ALONE!', 'GET AWAY FROM ME!'],
 };
 const BARK_COLOR = '#ffe6f0';
 
@@ -374,11 +375,11 @@ export default class Ambient {
     if (civ.alive) { civ.alive = false; w.removeBody(civ.body); }
   }
 
-  // what a passer-by can see: the player with a gun out at close range (a bat or a knife scares nobody), a dead body
+  // what a passer-by can see: the player with a weapon in hand at close range (only a gun makes them beg), a body
   lookAround(civ) {
     const w = this.world, p = w.player, P = A.panic;
-    if (p.alive && p.hasGun && Math.hypot(p.x - civ.x, p.y - civ.y) < P.armed * TILE && w.lineOfSight(civ.x, civ.y, p.x, p.y)) {
-      this.alarm(civ, p.x, p.y, 'armed');
+    if (p.alive && p.armed && Math.hypot(p.x - civ.x, p.y - civ.y) < P.armed * TILE && w.lineOfSight(civ.x, civ.y, p.x, p.y)) {
+      this.alarm(civ, p.x, p.y, p.hasGun ? 'armed' : 'weapon');
       return;
     }
     for (const c of w.corpses) {

@@ -200,7 +200,7 @@ export const AMBIENT = {
     hear: 1,               // fraction of a gunshot / explosion noise radius that panics passers-by
     witness: 9,            // m: a kill seen that close
     corpse: 4.5,           // m: a dead body in view
-    armed: 4,              // m: the player with a gun drawn
+    armed: 4,              // m: the player with a weapon in hand
     spread: 6,             // m: a screaming passer-by panics the others around
     freeze: [0.35, 0.9],   // s of hands up / ducking before running
     check: 0.25,           // s between two sight checks (staggered)

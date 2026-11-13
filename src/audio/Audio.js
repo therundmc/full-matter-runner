@@ -23,8 +23,10 @@ import { BANK, BANK_URL } from './bank.js';
 
 const MASTER_GAIN = 0.8;
 
-// semitones above the first kill's bell, per kill of a streak
-const STREAK = [0, 2, 4, 7, 9, 12];
+// kill confirm: the first kill's note (F4, the music is in F minor) and the semitones above it per kill of a
+// streak (minor pentatonic)
+const KILL_ROOT = 349.23;
+const STREAK = [0, 3, 5, 7, 10, 12, 15, 17];
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
 
@@ -59,8 +61,8 @@ const META = {
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
   splat: { pri: 2, dur: 0.3, gap: 0.03, gain: 0.85 },
-  slash: { pri: 2, dur: 0.3, gap: 0.04, max: 3, gain: 0.85 },
-  punch: { pri: 2, dur: 0.3, gap: 0.04, max: 3, gain: 0.9 },
+  slash: { pri: 2, dur: 0.3, gap: 0.04, max: 3, duck: 0.9, gain: 0.95 },
+  punch: { pri: 3, dur: 0.35, gap: 0.04, max: 3, duck: 0.85, gain: 1 },
   bodyFall: { pri: 1, dur: 0.4, gap: 0.05, max: 3, gain: 0.8 },
   shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.9, reach: 1900 },
   cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.9, reach: 1900 },
@@ -89,7 +91,7 @@ const META = {
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
-  confirm: { pri: 3, dur: 0.6, gap: 0.03, max: 3, gain: 0.7 },
+  confirm: { pri: 3, dur: 0.75, gap: 0.03, max: 3, gain: 0.7 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -213,7 +215,7 @@ const FOLEY = {
   tirePop: [['thud', 0.8, 1.2]],
   carHit: [['sheet', 1], ['thud', 0.45, 0.9]],
   // flesh
-  punch: [['punch', 1], ['flesh', 0.45, 1.1, 0.008]],
+  punch: [['punch', 1], ['flesh', 0.45, 1.1, 0.008], ['thud', 0.7, 0.75]],
   splat: [['splat', 1], ['flesh', 0.5]],
   gore: [['gore', 1], ['splat', 0.7, 0.9], ['thud', 0.6, 0.8, 0.02]],
   slash: [['swish', 0.5, 1.5], ['splat', 1, 1.15, 0.03]],
@@ -232,8 +234,8 @@ const FOLEY = {
   vault: [['swish', 0.3, 0.6], ['soft', 0.6, 1, 0.1], ['thud', 0.5, 1.1, 0.27]], // hands on the sill, the landing
   // over a chain-link gate: the mesh shaken by the hands, then by the body, and the landing
   climb: [['rattle', 0.9, 0.75], ['sheet', 0.35, 1.3, 0.06], ['rattle', 0.7, 0.62, 0.3], ['thud', 0.5, 1.1, 0.55]],
-  // a body dragged over the floor (or a car hood): the launch, the scrape under it, where it stops
-  slide: [['swish', 0.6, 0.6], ['scrape', 1, 0.75, 0.02], ['scrape', 0.6, 0.6, 0.1], ['thud', 0.4, 1.1, 0.45]],
+  // a body gliding over the floor (or a car hood): the launch here, the long smooth hiss in _slide
+  slide: [['swish', 0.45, 0.5]],
   splash: [['splash', 1]],
   throw: [['swish', 1, 0.7]],
   swing: [['swish', 1, 0.9]],
@@ -594,7 +596,38 @@ class AudioSystem {
     osc.stop(t + dur + 0.03);
   }
 
+  // synth stab: two detuned saws and a triangle an octave below, through a resonant low-pass that snaps shut
+  _pluck(o, { f = 349, dur = 0.4, vol = 0.3, delay = 0 }) {
+    const ctx = this.ctx, t = ctx.currentTime + delay;
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.Q.value = 5;
+    filt.frequency.setValueAtTime(Math.min(f * 9, 9000), t);
+    filt.frequency.exponentialRampToValueAtTime(f * 1.4, t + dur * 0.55);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    filt.connect(g); g.connect(o);
+    [[f * 0.996, 'sawtooth'], [f * 1.004, 'sawtooth'], [f / 2, 'triangle']].forEach(([hz, type], i) => {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(hz, t);
+      osc.connect(filt);
+      o._n++;
+      osc.onended = () => this._release(o, osc, ...(i ? [] : [filt, g]));
+      osc.start(t);
+      osc.stop(t + dur + 0.03);
+    });
+  }
+
   // ---- synthesized parts of the big sounds (their debris and flesh are FOLEY layers) ----
+  // a blow that lands: the felt knock under the recorded hit and the smack of its first milliseconds
+  _punch(o, opts, v) {
+    this._thump(o, { f0: 170, f1: 46, dur: 0.17, vol: 0.9 * v });
+    this._noiseBurst(o, { type: 'highpass', f0: 2400, f1: 1300, dur: 0.035, vol: 0.45 * v, attack: 0.001 });
+  }
+  _slash(o, opts, v) { this._thump(o, { f0: 130, f1: 50, dur: 0.12, vol: 0.5 * v, delay: 0.03 }); }
   _death(o) {
     this._thump(o, { f0: 90, f1: 28, dur: 0.6, vol: 0.7 });
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 500, f1: 60, dur: 0.9, vol: 0.8 });
@@ -629,9 +662,10 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'lowpass', f0: 3000, f1: 200, dur: 0.13, vol: 1.0, attack: 0.002 });
     this._noiseBurst(o, { type: 'highpass', f0: 3500, f1: 2000, dur: 0.8, vol: 0.2, delay: 0.05, attack: 0.04 }); // hiss
   }
-  // clothes rasping on the floor, lower as the slide slows down
+  // clothes gliding on the floor: one smooth hiss with some body under it, lower as the slide slows down
   _slide(o) {
-    this._noiseBurst(o, { f0: 1500, f1: 600, q: 0.6, dur: 0.5, vol: 0.5, attack: 0.03 });
+    this._noiseBurst(o, { f0: 2600, f1: 700, q: 0.5, dur: 0.6, vol: 0.5, attack: 0.06 });
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 1000, f1: 260, dur: 0.55, vol: 0.8, attack: 0.05 });
   }
 
   // ---- guns ----
@@ -779,13 +813,16 @@ class AudioSystem {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });
     this._thump(o, { f0: 60, f1: 85, dur: 0.4, vol: 0.5 });
   }
-  // a kill confirmed: a small bell struck just after the blow, its ring tuned to the strike; every kill of a
-  // streak (opts.n) climbs one step of a pentatonic scale, so that bells still ringing agree with the new one
+  // a kill confirmed (asked for by the user, the one synthesized SFX): a synthwave stab just after the blow, with
+  // its octave and two tape echoes; every kill of a streak (opts.n) climbs one step of the music's minor
+  // pentatonic scale, so that notes still ringing agree with the new one and with the track
   _confirm(o, opts) {
-    const k = 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
+    const f = KILL_ROOT * 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
     this.pv = 1;
-    this._cut(o, 'ding', { rate: k, delay: 0.04 });
-    this._cut(o, 'ring', { vol: 0.7, rate: 0.62 * k, delay: 0.045 });
+    this._pluck(o, { f, dur: 0.42, vol: 0.3, delay: 0.04 });
+    this._pluck(o, { f: f * 2, dur: 0.3, vol: 0.08, delay: 0.04 });
+    this._pluck(o, { f, dur: 0.3, vol: 0.1, delay: 0.19 });
+    this._pluck(o, { f, dur: 0.26, vol: 0.045, delay: 0.34 });
   }
   // level cleared: one dark boom rolling away
   _clear(o) {
