@@ -84,7 +84,7 @@ test('liquids: walking out of blood leaves fading footprints, left and right, a 
   go(liquids, wet, 2, 400);
   const k = LIQUIDS.kinds.blood;
   assert.equal(prints.length, k.prints);
-  assert.ok(sounds.includes('splash'));
+  assert.ok(!sounds.includes('splash'), 'a film of blood does not splash');
   assert.ok(prints.every(([x]) => x > 12), 'only once out of the pool');
   for (let i = 1; i < prints.length; i++) {
     assert.ok(Math.abs(prints[i][0] - prints[i - 1][0] - LIQUIDS.stride) <= 2, 'one stride apart');
@@ -95,11 +95,12 @@ test('liquids: walking out of blood leaves fading footprints, left and right, a 
 });
 
 test('liquids: no prints in the air, a slide smears instead, the dead and the gone are forgotten', () => {
-  const { world, liquids, prints, smears } = stub();
+  const { world, liquids, prints, smears, sounds } = stub();
   liquids.feed(0, 0, 3000);
   const ch = walker(-10, 0);
   world.chars.push(ch);
   go(liquids, ch, 2, 15);
+  assert.ok(sounds.includes('splash'), 'feet splash through water');
   ch.vaulting = {};
   go(liquids, ch, 2, 30);
   assert.equal(prints.length, 0);

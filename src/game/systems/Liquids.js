@@ -126,9 +126,11 @@ export default class Liquids {
       t.left = k.prints;
       if (t.dist < LIQUIDS.stride) return;
       t.dist = 0;
-      // feet (or a sliding hip) slapping through it
-      if (k.splash) w.particles.drops(ch.x, ch.y, a, 1.2, sliding ? 5 : 2, k.splash, sliding ? 150 : 90, 3);
-      w.sound('splash', ch.x, ch.y, sliding ? 0.9 : 0.45);
+      // feet (or a sliding hip) slapping through water; a film of blood only wets the soles
+      if (k.splash) {
+        w.particles.drops(ch.x, ch.y, a, 1.2, sliding ? 5 : 2, k.splash, sliding ? 150 : 90, 3);
+        w.sound('splash', ch.x, ch.y, sliding ? 0.9 : 0.45);
+      }
       return;
     }
     const k = LIQUIDS.kinds[t.kind], fade = t.left / k.prints;

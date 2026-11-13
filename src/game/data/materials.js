@@ -1,5 +1,6 @@
 // Physical materials. mu = sliding friction on a "neutral" floor, bounce = restitution,
-// sound = impact sound family, chips = colour of the splinters/flakes it sheds.
+// sound = impact sound family, chips = colour of the splinters/flakes it sheds,
+// quiet = closing speed (px/step) under which its contacts make no sound.
 export const MATERIALS = {
   wood: { mu: 0.5, bounce: 0.15, sound: 'wood', chips: '#7a4a2a' },
   metal: { mu: 0.4, bounce: 0.25, sound: 'metal', chips: '#9a9aa8', sparks: true },
@@ -7,7 +8,8 @@ export const MATERIALS = {
   ceramic: { mu: 0.45, bounce: 0.1, sound: 'ceramic', chips: '#eeeeee' },
   plastic: { mu: 0.4, bounce: 0.3, sound: 'plastic', chips: '#333333' },
   fabric: { mu: 0.8, bounce: 0.05, sound: 'soft', chips: '#9a1f2a' },
-  flesh: { mu: 0.75, bounce: 0.05, sound: 'flesh', chips: '#8a1010' },
+  flesh: { mu: 0.75, bounce: 0.05, sound: 'flesh', chips: '#8a1010' }, // the dead and their pieces
+  clothed: { mu: 0.75, bounce: 0.05, sound: 'soft', chips: '#8a1010', quiet: 3.2 }, // someone alive: only a hard bump is heard
   concrete: { mu: 0.7, bounce: 0.1, sound: 'stone', chips: '#b8ae98' },
   rubber: { mu: 0.9, bounce: 0.5, sound: 'soft', chips: '#141418' },
   brass: { mu: 0.3, bounce: 0.5, sound: 'shell', chips: '#d8a040' },

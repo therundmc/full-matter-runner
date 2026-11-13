@@ -42,7 +42,7 @@ export default class Character {
     this.pushFactor = 1; // < 1 while leaning into something heavy (set by World from contacts)
     this.body.sleepThreshold = Infinity;
     this.body.entity = this;
-    this.body.material = 'flesh';
+    this.body.material = 'clothed';
     this.angle = angle;
     this.moveAngle = angle;
     this.vel = { x: 0, y: 0 };

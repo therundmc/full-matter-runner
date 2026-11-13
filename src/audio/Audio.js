@@ -23,6 +23,8 @@ import { BANK, BANK_URL } from './bank.js';
 
 const MASTER_GAIN = 0.8;
 
+// semitones above the first kill's bell, per kill of a streak
+const STREAK = [0, 2, 4, 7, 9, 12];
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
 
@@ -66,7 +68,7 @@ const META = {
   door: { gain: 0.6 },
   doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.85 },
   creak: { dur: 0.6, gap: 0.2, max: 2, gain: 0.5 },
-  vault: { dur: 0.5, gain: 0.8 }, slide: { dur: 0.5, gain: 0.8 },
+  vault: { dur: 0.5, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
   swing: { gain: 0.5 }, throw: { gain: 0.55 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
   // weapons in the hands
@@ -81,10 +83,10 @@ const META = {
   click: { dur: 0.12, gap: 0.05, max: 3, gain: 0.7 },
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
   // fire, alarm, UI, street
-  alarm: { pri: 2, dur: 0.4, gap: 0.2, max: 2, reach: 2600, gain: 0.6 },
+  alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
-  combo: { pri: 2, dur: 0.2, gap: 0.05, max: 2, gain: 0.45 },
+  confirm: { pri: 3, dur: 0.6, gap: 0.03, max: 3, gain: 0.7 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -220,7 +222,8 @@ const FOLEY = {
   doorSlam: [['doorSlam', 1], ['thud', 0.5, 0.8]],
   creak: [['creak', 1]],
   vault: [['swish', 0.3, 0.6], ['soft', 0.6, 1, 0.1], ['thud', 0.5, 1.1, 0.27]], // hands on the sill, the landing
-  slide: [['thud', 0.35, 1.2, 0.32]],
+  // a body dragged over the floor (or a car hood): the launch, the scrape under it, where it stops
+  slide: [['swish', 0.6, 0.6], ['scrape', 1, 0.75, 0.02], ['scrape', 0.6, 0.6, 0.1], ['thud', 0.4, 1.1, 0.45]],
   splash: [['splash', 1]],
   throw: [['swish', 1, 0.7]],
   swing: [['swish', 1, 0.9]],
@@ -616,9 +619,9 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'lowpass', f0: 3000, f1: 200, dur: 0.13, vol: 1.0, attack: 0.002 });
     this._noiseBurst(o, { type: 'highpass', f0: 3500, f1: 2000, dur: 0.8, vol: 0.2, delay: 0.05, attack: 0.04 }); // hiss
   }
-  // clothes dragged over the floor
+  // clothes rasping on the floor, lower as the slide slows down
   _slide(o) {
-    this._noiseBurst(o, { f0: 700, f1: 1500, q: 0.8, dur: 0.32, vol: 0.6, attack: 0.04 });
+    this._noiseBurst(o, { f0: 1500, f1: 600, q: 0.6, dur: 0.5, vol: 0.5, attack: 0.03 });
   }
 
   // ---- guns ----
@@ -766,8 +769,14 @@ class AudioSystem {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });
     this._thump(o, { f0: 60, f1: 85, dur: 0.4, vol: 0.5 });
   }
-  // kill streak: a brass casing ringing a little higher each time
-  _combo(o, opts) { this._cut(o, 'casing', { rate: 0.85 + 0.035 * Math.min(opts.n || 1, 12) }); }
+  // a kill confirmed: a small bell struck just after the blow, its ring tuned to the strike; every kill of a
+  // streak (opts.n) climbs one step of a pentatonic scale, so that bells still ringing agree with the new one
+  _confirm(o, opts) {
+    const k = 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
+    this.pv = 1;
+    this._cut(o, 'ding', { rate: k, delay: 0.04 });
+    this._cut(o, 'ring', { vol: 0.7, rate: 0.62 * k, delay: 0.045 });
+  }
   // level cleared: one dark boom rolling away
   _clear(o) {
     this._thump(o, { f0: 75, f1: 30, dur: 1.4, vol: 1.0 });

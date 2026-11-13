@@ -37,7 +37,7 @@ export default class Scoring {
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     const base = cause === 'execute' ? 1000 : cause === 'explosion' ? 600 : (killer?.def?.points ?? 500);
     this.add(base * Math.min(this.combo, 10), victim.x, victim.y - 10, cause === 'execute' ? 'EXECUTION' : null);
-    if (this.combo > 1) Audio.play('combo', { n: this.combo });
+    Audio.play('confirm', { n: this.combo });
   }
 
   update() {

@@ -25,7 +25,7 @@ export default class Impacts {
     const src = energy(a) >= energy(b) ? a : b;
     const mat = MATERIALS[src.material];
     const name = mat && SOUND[mat.sound];
-    if (!name) return;
+    if (!name || speed < (mat.quiet ?? 0)) return;
     const t = this.world.time;
     if (src.lastImpactSound > t - BODY_COOLDOWN) return;
     src.lastImpactSound = t;
