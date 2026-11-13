@@ -33,23 +33,26 @@ src/
       Destruction.js      wall tiles, doors off hinges, fences
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
-      Scoring.js          listens to 'kill': score, combo
+      Scoring.js          listens to 'kill': score, combo (killing a passer-by costs points)
       Impacts.js          listens to 'impact': material sounds by speed and mass
+      Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
+      Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
     ai/                   enemy AI, DOM-free (unit tested)
       Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
       Perception.js       detection meter rate, view test, aim error, hearing error
+      Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
     render/
       MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, spills, baked bodies)
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
-    entities/             Character, Player, Enemy, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
+    entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile
     fx/                   Particles, Gore
     ui/                   HUD, Screens, Text
     data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), levels/ (index.js = registry)
-tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai
+tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient
 ```
 
 Rules:
@@ -61,7 +64,8 @@ Rules:
 ## Simulation step (World.step)
 
 1. intentions: player input, AI Director (phase timers, footsteps, budget reset), enemy AI
-   (they set velocities via `Character.steer`, limited by `pushFactor`)
+   (they set velocities via `Character.steer`, limited by `pushFactor`), Ambient (drivers set their car's
+   velocity, passers-by steer, run-over checks, spawn / despawn)
 2. physics: `PhysicsWorld.step` (2 Matter sub-steps + floor friction), push contacts, door hinges, wall body rebuild
 3. reactions: items, ammo, projectiles (segment-traced), debris, corpses/ragdolls, props, emitters, particles, systems
 4. cleanup of dead entities and expired effects
@@ -81,6 +85,10 @@ Rules:
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
 | `alertPhase` | `{ phase, prev }` | Director | (HUD reads the phase directly; music / lighting could follow) |
+| `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
+| `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam) | |
+| `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
+| `civilianPanic` | `{ civilian, x, y, kind }` | Ambient (a passer-by starts to panic; kind: gunshot, explosion, kill, corpse, armed, scream, hit) | |
 
 Noise types: `gunshot` (any shooter; a guard's shot is heard as `allyFire` by his mates), `door`, `glass`,
 `wall`, `explosion`, `thrown` (a gun thrown by the player lands), untyped = `noise`. Footsteps / bodies falling
@@ -173,6 +181,33 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their
   spawn. `passive: true` = dummies with no perception (lab).
 
+## Street life (systems/Ambient.js)
+
+Optional level field, levels without it are untouched:
+```js
+ambient: {
+  seed: 1986,                                                    // optional (default: hash of the level name)
+  traffic: [{ row: 11, dir: -1, speed: 9, gap: [3, 7], models: ['car', 'car2', 'van'] }], // row tiles, speed tiles/s
+  walkers: [{ path: [[-1.5, 7], [45.5, 7]], gap: [6, 13], max: 3 }], // tiles, off-map to off-map (or to a door)
+}
+```
+- **Open borders**: `TileMap.buildEdgeBodies` puts invisible static bars (`CAT.EDGE`) just outside the map. Characters,
+  items, bodies and loose props collide with them; driven vehicles and passers-by leave `CAT.EDGE` out of their mask.
+  Path-finding never leaves the grid, Lighting treats the outside like the border tile (no shadow edge on an open street).
+- **Traffic**: real `Vehicle`s (same wrecking, lights, explosion) spawned beyond the edge when the spawn box is clear,
+  driven by a `Driver` (Traffic.js): personal cruise speed, car following (`safeSpeed`), late hard braking for people,
+  wait then go around a static obstacle through a free lane (backing up when wedged), give up after `AMBIENT.giveUp`
+  (engine off, parked). A lane whose spawn stays blocked `AMBIENT.jam` s closes until it is clear again. A burst tyre,
+  a dead driver (windshield gone / heavy damage) or a fire makes the car coast, drift and stop: it becomes an ordinary
+  parked car / wreck (tiles marked blocked, driver bails out). Above `AMBIENT.lethal` a car kills whoever it hits and
+  throws the ragdoll (`cause: 'vehicle'`); it drives over bodies. Driven cars skip the static shadow caches (unshadowed
+  lights redrawn every frame, brake lights flare). One procedural pass-by sound per car (`passby` in Audio.js).
+- **Passers-by**: `Civilian` (Character subclass, team `civilian`, sprites civ1-4) with a `Walker` brain. They are in
+  `world.chars` (bullets, blasts, melee, cars hit them) and `world.civilians` (drawing), never in `enemies`: no target,
+  no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
+  or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra
+  that avoids the danger), screaming (world texts). No new passers-by for `AMBIENT.panic.calm` s after gunfire.
+
 ## Doors
 
 `Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out).
@@ -183,6 +218,7 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 ## Debug
 
 - `?level=lab` loads the physics lab (all props/weapons/ammo on three floors, a street with vehicles, passive dummies).
+- `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F2 enemy vision (cones, close-awareness ring, state:tactic + meter, target, cover, last known position,
   incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
 - `window.game` in the console.

@@ -1,5 +1,5 @@
 // Sprite loading + derived caches (silhouettes for drop shadows, slices for debris).
-const CHARACTERS = ['player', 'thug', 'heavy', 'brute'];
+const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'civ1', 'civ2', 'civ3', 'civ4']; // civN: ambient passers-by
 const CHAR_PARTS = ['torso', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 export const SPRITE_LIST = [

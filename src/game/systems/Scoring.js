@@ -1,5 +1,5 @@
 // Score and combo, driven by 'kill' events.
-import { COMBO_WINDOW, PALETTE } from '../Config.js';
+import { COMBO_WINDOW, PALETTE, AMBIENT } from '../Config.js';
 import { chance } from '../../engine/math.js';
 import Audio from '../../audio/Audio.js';
 
@@ -21,6 +21,14 @@ export default class Scoring {
 
   onKill({ victim, cause, killer }) {
     if (victim.isPlayer) return;
+    // passers-by are not targets: killing one costs points
+    if (victim.isCivilian) {
+      if (killer?.isPlayer || cause === 'explosion') {
+        this.score = Math.max(0, this.score - AMBIENT.penalty);
+        this.world.texts.push({ x: victim.x, y: victim.y - 10, str: `CIVILIAN -${AMBIENT.penalty}`, t: 1.1, dur: 1.1, color: PALETTE.white });
+      }
+      return;
+    }
     this.kills++;
     if (!(killer?.isPlayer || cause === 'explosion')) return;
     const t = this.world.time;

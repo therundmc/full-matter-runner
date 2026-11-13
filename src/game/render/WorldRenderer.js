@@ -27,6 +27,7 @@ export default class WorldRenderer {
     for (const g of w.windows) if (vis(g.x, g.y)) g.draw(ctx);
     if (w.showVision) for (const e of w.enemies) e.drawVision(ctx);
     for (const e of w.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
+    for (const c of w.civilians) if (c.alive && vis(c.x, c.y)) c.draw(ctx);
     if (w.player.alive) w.player.draw(ctx);
     for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
     for (const d of w.doors) d.draw(ctx);

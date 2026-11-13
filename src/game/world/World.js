@@ -9,6 +9,7 @@
 //   'windowBroken'  a window shattered         { x, y }
 //   'doorBroken'    a lock burst / door ripped { x, y }
 //   'alertPhase'    squad alert phase changed  { phase, prev }   (ai/Director)
+//   'trafficSpawn' / 'trafficStopped' / 'runOver' / 'civilianPanic'  street life (systems/Ambient)
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
@@ -28,6 +29,7 @@ import { damageWall, destroyWall, detachDoor, destroyFence } from '../systems/De
 import Scoring from '../systems/Scoring.js';
 import Impacts from '../systems/Impacts.js';
 import Director from '../ai/Director.js';
+import Ambient from '../systems/Ambient.js';
 
 const { Body } = Matter;
 
@@ -51,11 +53,13 @@ export default class World {
     this.renderer = new WorldRenderer(this);
     this.wallBodies = this.map.buildBodies();
     this.addBody(this.wallBodies);
+    this.addBody(this.map.buildEdgeBodies()); // nobody walks off an open map border (traffic / passers-by excepted)
     this.wallsDirty = false;
     this.particles = new Particles(this);
 
     this.player = null;
     this.enemies = [];
+    this.civilians = [];  // passers-by (systems/Ambient): in `chars`, never level targets
     this.chars = [];
     this.props = [];
     this.doors = [];
@@ -84,6 +88,7 @@ export default class World {
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
     this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
+    this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
     this.lighting = new Lighting(this);
   }
 
@@ -171,6 +176,7 @@ export default class World {
   onKill(ch, cause, killer) {
     this.events.emit('kill', { victim: ch, cause, killer });
     if (ch.isPlayer) { this.game.onPlayerDeath(); return; }
+    if (ch.isCivilian) { this.hitstop(0.02); return; }
     // guards drop a spare magazine (or a few shells) for the gun they carried
     const type = ch.lastAmmo;
     if (type && chance(0.8)) {
@@ -212,6 +218,7 @@ export default class World {
     else this.player.baseUpdate(dt);
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
+    this.ambient?.update(dt);
 
     // 2. physics
     this.physics.step(dt, this.time);

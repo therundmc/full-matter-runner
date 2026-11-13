@@ -146,10 +146,11 @@ export default class Lighting {
     };
   }
 
-  // wall edges between solid and open tiles, merged along rows / columns
+  // wall edges between solid and open tiles, merged along rows / columns. Outside the map counts as the border
+  // tile next to it, so an open border (a street running off the map) casts no shadow edge.
   buildSegments() {
     const m = this.map, T = TILE, segs = [];
-    const S = (x, y) => m.isSolid(x, y);
+    const S = (x, y) => m.isSolid(clamp(x, 0, m.w - 1), clamp(y, 0, m.h - 1));
     for (let y = 0; y <= m.h; y++) {
       let start = 0, kind = 0;
       for (let x = 0; x <= m.w; x++) {
@@ -420,7 +421,7 @@ export default class Lighting {
       }
     };
     for (const l of this.lights) add(l);
-    for (const p of this.world.props) if (!(p.dead || p.lightsOut)) for (const l of this.propLights(p)) add(l);
+    for (const p of this.world.props) if (!(p.dead || p.lightsOut || p.moving)) for (const l of this.propLights(p)) add(l);
     this.grid = grid; this.gw = gw; this.gh = gh;
   }
 
@@ -471,7 +472,9 @@ export default class Lighting {
       }
       if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * flicker(l.flicker, l.seed, t)]);
     }
+    let still = 0;
     for (const p of this.world.props) {
+      if (!p.moving) still++;
       if ((p.dead || p.lightsOut)) continue;
       // a lamp that took a hit sputters
       const hurt = p.def.fixture && p.hp < p.def.hp;
@@ -485,13 +488,17 @@ export default class Lighting {
         lit = 0;
         for (let i = 0; i < sign.letters.length; i++) lit += signLevel(sign, i, seed, t) / sign.letters.length;
       }
+      // driving vehicles: unshadowed lights that follow the car every frame, tail lights flare when braking
+      const brake = p.brake || 0;
       for (const l of lights) {
         this.placePropLight(p, l);
-        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * lit * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
+        l.moving = !!p.moving;
+        const k = l.cone ? 1 : 1 + brake * 1.6;
+        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * lit * k * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
       }
     }
-    // a prop appeared or died: the brightness grid is stale
-    if (this.propCount !== this.world.props.length) { this.propCount = this.world.props.length; this.gridDirty = true; }
+    // a prop appeared, died or a car pulled up: the brightness grid is stale (passing traffic does not count)
+    if (this.propCount !== still) { this.propCount = still; this.gridDirty = true; }
     return out;
   }
 
@@ -523,6 +530,14 @@ export default class Lighting {
       if (l.flicker === 'disco') {
         g.globalAlpha = clamp(k, 0, 1);
         g.drawImage(this.blob(l.color, true), l.mx - l.r, l.my - l.r, l.r * 2, l.r * 2);
+        continue;
+      }
+      if (l.moving) {
+        g.save();
+        if (l.cone) this.clipCone(g, l);
+        g.globalAlpha = clamp(k, 0, 1);
+        g.drawImage(this.blob(l.color), l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+        g.restore();
         continue;
       }
       if ((l.dirty || !l.cache) && (rebuilt++ < 6 || !l.cache)) this.buildCache(l);

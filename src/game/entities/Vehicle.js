@@ -1,4 +1,4 @@
-import { CAT, MASK } from '../Config.js';
+import { CAT, MASK, LIGHTING } from '../Config.js';
 
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
@@ -87,6 +87,11 @@ export default class Vehicle {
     this.lightsOut = false;
     this.flash = 0;
     this.dead = false; // vehicles stay in the world as wrecks
+    // set while driven as through-traffic (systems/Ambient): front wheel angle, brake lights 0..1, body bounce px
+    this.moving = false;
+    this.steer = 0;
+    this.brake = 0;
+    this.bob = 0;
     world.addBody(this.body);
   }
 
@@ -403,12 +408,14 @@ export default class Vehicle {
       if (flat) { sagX += (wx < this.w / 2 ? -0.5 : 0.5); sagY += (wy < this.h / 2 ? -0.5 : 0.5); }
       ctx.save();
       ctx.translate(ox + wx, oy + wy);
+      if (wx > this.w / 2 && this.steer) ctx.rotate(this.steer);
       if (flat) ctx.scale(1.15, 0.6);
       if (tire) ctx.drawImage(tire, -tire.width / 2, -tire.height / 2);
       else { ctx.fillStyle = '#141418'; ctx.fillRect(-10, -3.5, 20, 7); }
       ctx.restore();
     });
     const jx = this.flash > 0 ? rand(-1, 1) : 0;
+    sagY += this.bob;
     ctx.globalAlpha = 0.4;
     ctx.drawImage(silhouette(this.base), ox + 3, oy + 3);
     ctx.globalAlpha = 1;
@@ -418,6 +425,12 @@ export default class Vehicle {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = blink;
       ctx.drawImage(this.glow, ox + sagX, oy + sagY);
+      // brake lights: the tail lamps flare up
+      if (this.brake > 0.05) {
+        ctx.fillStyle = '#ff2040';
+        ctx.globalAlpha = this.brake * 0.9;
+        for (const l of LIGHTING.propLights[this.type] || []) if (!l.cone) ctx.fillRect(l.x - 2 + sagX, l.y - 3 + sagY, 4, 6);
+      }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }

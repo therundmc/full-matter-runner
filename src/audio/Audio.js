@@ -56,6 +56,7 @@ const META = {
   combo: { pri: 2, dur: 0.2, gap: 0.05, max: 2 },
   clear: { pri: 3, dur: 0.5, gap: 0.5, max: 1 },
   ui: { pri: 3, dur: 0.1, gap: 0.05, max: 2 },
+  passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
 };
 const GLOBAL_SOFT_CAP = 14; // above this, only louder / higher priority sounds get in (stealing the quietest)
 const GLOBAL_HARD_CAP = 22;
@@ -733,6 +734,60 @@ class AudioSystem {
   _ui(o) {
     this._tick(o, { f: 3000, q: 1.5, dur: 0.01, vol: 0.2 });
     this._tone(o, { type: 'square', f0: 880, f1: 660, dur: 0.06, vol: 0.1 });
+  }
+
+  // ---- ambient traffic ----
+  // a car driving past: engine buzz + tyre roar swelling to the closest point (`lead` s) then fading, panned across
+  // in the driving direction (dir ±1); side: 0 = right under the camera .. 1 = across the street; pitch drops as it passes
+  _passby(o, { lead = 1, dur = 2.6, dir = 1, side = 0.5, f = 50 }) {
+    const ctx = this.ctx, t = ctx.currentTime, peak = t + lead, end = t + Math.max(dur, lead + 0.6);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(1, peak);
+    env.gain.exponentialRampToValueAtTime(0.0001, end);
+    const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+    if (pan.pan) {
+      const w = 0.85 * (0.5 + 0.5 * side);
+      pan.pan.setValueAtTime(-w * dir, t);
+      pan.pan.linearRampToValueAtTime(0, peak);
+      pan.pan.linearRampToValueAtTime(w * dir, end);
+    }
+    env.connect(pan);
+    pan.connect(o);
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(f * 1.05, t);
+    osc.frequency.linearRampToValueAtTime(f * 1.04, Math.max(t, peak - 0.1));
+    osc.frequency.linearRampToValueAtTime(f * 0.9, peak + 0.25); // doppler
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(260, t);
+    lp.frequency.linearRampToValueAtTime(950 - side * 450, peak);
+    lp.frequency.linearRampToValueAtTime(220, end);
+    const og = ctx.createGain();
+    og.gain.value = 0.2;
+    osc.connect(lp); lp.connect(og); og.connect(env);
+    const n = ctx.createBufferSource();
+    n.buffer = this.brown;
+    n.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.7;
+    bp.frequency.setValueAtTime(420, t);
+    bp.frequency.linearRampToValueAtTime(900, peak);
+    bp.frequency.linearRampToValueAtTime(380, end);
+    const ng = ctx.createGain();
+    ng.gain.value = 0.8;
+    n.connect(bp); bp.connect(ng); ng.connect(env);
+    o._n += 2;
+    let left = 2;
+    const fin = () => { if (--left === 0) { env.disconnect(); pan.disconnect(); } };
+    osc.onended = () => { fin(); this._release(o, osc, lp, og); };
+    n.onended = () => { fin(); this._release(o, n, bp, ng); };
+    osc.start(t);
+    n.start(t, Math.random() * 1.5);
+    osc.stop(end + 0.05);
+    n.stop(end + 0.05);
   }
 }
 

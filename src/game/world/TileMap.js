@@ -52,6 +52,7 @@ export default class TileMap {
 
   at(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? ' ' : this.chars[y][x]; }
   isWallChar(x, y) { const c = this.at(x, y); return !!WALLS[c]; }
+  inside(px, py) { return px >= 0 && py >= 0 && px < this.widthPx && py < this.heightPx; }
   solidAt(px, py) { return this.isSolid(Math.floor(px / TILE), Math.floor(py / TILE)); }
 
   raycast(x0, y0, x1, y1) { return gridRaycast(x0, y0, x1, y1, this.isSolid); }
@@ -92,6 +93,19 @@ export default class TileMap {
       }
     }
     return bodies;
+  }
+
+  // invisible static bars hugging the map from outside: on an open border (street running off the map) they keep
+  // characters, loose items and bodies in; through-traffic and passers-by leave CAT.EDGE out of their mask
+  buildEdgeBodies() {
+    const T = TILE, W = this.widthPx, H = this.heightPx;
+    const opt = { isStatic: true, label: 'edge', friction: 0, restitution: 0.1, collisionFilter: { category: CAT.EDGE, mask: MASK.WALL } };
+    return [
+      Bodies.rectangle(W / 2, -T / 2, W + 2 * T, T, opt),
+      Bodies.rectangle(W / 2, H + T / 2, W + 2 * T, T, opt),
+      Bodies.rectangle(-T / 2, H / 2, T, H, opt),
+      Bodies.rectangle(W + T / 2, H / 2, T, H, opt),
+    ];
   }
 
   // ---------- destruction ----------

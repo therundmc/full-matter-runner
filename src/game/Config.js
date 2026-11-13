@@ -15,18 +15,19 @@ export const CAT = {
   ITEM: 0x0020,
   GLASS: 0x0040,
   CORPSE: 0x0080,
+  EDGE: 0x0100, // invisible barriers just outside the map (TileMap.buildEdgeBodies): traffic and walkers ignore them
 };
 
 export const MASK = {
   WALL: 0xffff,
-  PROP: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.GLASS | CAT.CORPSE,
+  PROP: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.GLASS | CAT.CORPSE | CAT.EDGE,
   DOOR: CAT.PROP | CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.CORPSE,
-  CHAR: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.GLASS | CAT.DEBRIS,
-  DEBRIS: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.DEBRIS | CAT.GLASS | CAT.CHAR,
-  ITEM: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.GLASS,
+  CHAR: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.GLASS | CAT.DEBRIS | CAT.EDGE,
+  DEBRIS: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.DEBRIS | CAT.GLASS | CAT.CHAR | CAT.EDGE,
+  ITEM: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.GLASS | CAT.EDGE,
   GLASS: CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.PROP | CAT.CORPSE,
   GLASS_BROKEN: CAT.CHAR,
-  CORPSE: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.GLASS,
+  CORPSE: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.GLASS | CAT.EDGE,
 };
 
 export const PLAYER = {
@@ -112,6 +113,59 @@ export const AI = {
 export const PHYSICS = {
   pushForce: 650, // N a character can shove with (heavier/grippier objects won't budge)
   substeps: 2,    // Matter updates per simulation step (smoother contacts)
+};
+
+// Ambient street life (systems/Ambient.js): traffic on level.ambient.traffic lanes, passers-by on
+// level.ambient.walkers paths. Distances in m (= tiles), speeds in m/s, times in s, unless noted.
+export const AMBIENT = {
+  maxCars: 8,              // moving traffic vehicles at once (all lanes)
+  maxWalkers: 9,           // civilians at once (all paths)
+  margin: 3,               // m beyond the map edge (past the vehicle's half length) where traffic spawns / despawns
+  prewarm: 0.6,            // fraction of the steady-state traffic / crowd placed on the street when the level starts
+  // driving
+  speedVar: 0.12,          // per car cruise speed spread (fraction of the lane speed)
+  accel: 3,                // m/s² pulling away
+  brake: 6,                // m/s² comfortable braking (behind traffic)
+  emergency: 9,            // m/s² hard braking (sudden obstacle)
+  headway: 1.2,            // s of time gap kept behind the vehicle ahead
+  minGap: 1.6,             // m bumper to bumper when stopped
+  lanePad: 0.15,           // m added to each side of a vehicle's width when looking for obstacles in its lane
+  wobble: [0.12, 0.12],    // lateral drift: max amplitude (m), cycles per s (drivers are not on rails)
+  steer: 0.9,              // heading correction per m of lateral error (rad)
+  maxSteer: 0.22,          // rad
+  patience: [2.5, 4.5],    // s stopped behind a static obstacle before going around it
+  // going around it: m of extra stopping room behind it, rad of steering, m/s pulling out, s backing up when wedged
+  detour: { room: 2, steer: 0.55, speed: 3, reverse: 1 },
+  giveUp: 25,              // s at a standstill before a jammed driver switches the engine off (parked car)
+  jam: 10,                 // s a lane's spawn stays blocked before the lane stops spawning (no deadlock)
+  reopen: 6,               // s of clear lane before a closed lane spawns again
+  panicBoost: 1.35,        // a driver under fire floors it
+  coast: [2, 4],           // m/s² a disabled car slows down with (dead driver / burst tyre / on fire)
+  swerve: [0.5, 1.1],      // m a disabled car drifts sideways before it stops
+  bailOut: 0.8,            // chance the driver of a burning / shot-up car gets out alive and runs
+  // people vs cars
+  lethal: 3.2,             // m/s: faster than this, a hit kills (one hit kills, guards and player alike)
+  shove: 1.3,              // ragdoll launch speed as a fraction of the car speed
+  attention: [0.55, 1.4],  // m (+ 0.25 s of travel) ahead where a driver notices a person: late, rarely stops in time
+  passby: { lead: 1.4, range: 15, vol: 0.55 }, // s before the closest pass, m of lateral hearing range, loudness
+  // pedestrians (speeds in m/s)
+  walk: [1.05, 1.45],
+  run: [4.2, 5.2],
+  coupleChance: 0.3,       // a spawn is two people walking side by side
+  stopChance: 0.35,        // a walker stops once on the way (cigarette, shop window, phone)
+  stop: [3, 7],            // s
+  panic: {
+    hear: 1,               // fraction of a gunshot / explosion noise radius that panics passers-by
+    witness: 9,            // m: a kill seen that close
+    corpse: 4.5,           // m: a dead body in view
+    armed: 4,              // m: the player with a gun drawn
+    spread: 6,             // m: a screaming passer-by panics the others around
+    freeze: [0.35, 0.9],   // s of hands up / ducking before running
+    check: 0.25,           // s between two sight checks (staggered)
+    calm: 20,              // s without new passers-by after gunfire / an explosion (word gets around)
+  },
+  barkGap: 0.35,           // s between two civilian screams on screen
+  penalty: 250,            // score lost for killing a passer-by (player or player-made explosion)
 };
 
 export const MAX_DEBRIS = 180;    // physical loose pieces alive at once (oldest get baked into the floor)

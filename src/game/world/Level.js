@@ -123,7 +123,8 @@ function facing(level, map, x, y) {
   return best;
 }
 
-function markBlocked(map, prop) {
+// tiles under a path-blocking prop (also used when a traffic vehicle comes to rest as a parked wreck)
+export function markBlocked(map, prop) {
   const b = prop.body.bounds;
   const x0 = Math.floor((b.min.x + 4) / TILE), x1 = Math.floor((b.max.x - 4) / TILE);
   const y0 = Math.floor((b.min.y + 4) / TILE), y1 = Math.floor((b.max.y - 4) / TILE);

@@ -385,6 +385,8 @@ WHITE = ramp('#f4f2ec', 0.35, 0.16, 0.2)
 def head_top_px(ch, u, v, L, r):
     """Head seen from straight above, face toward +u."""
     k = ch['kind']
+    if k == 'civ':
+        return civ_head_px(ch, u, v, L, r)
     i = tidx(L)
     if k == 'heavy':
         if L > 0.95:
@@ -413,6 +415,8 @@ def head_top_px(ch, u, v, L, r):
 def shoulder_px(ch, u, v, L, hu, hv, hr):
     """Shoulders (u along facing, v across). hu/hv: offset from head centre."""
     k = ch['kind']
+    if k == 'civ':
+        return civ_shoulder_px(ch, u, v, L, hu, hv, hr)
     i = tidx(L)
     hd = math.hypot(hu, hv)
     if hd < hr + 1.6 and hu + hv * 0.4 > -0.5:
@@ -474,6 +478,8 @@ def draw_torso(ch):
 def chest_px(ch, u, v, L, hx_, hy_):
     """Front of torso while lying on the back. u toward the head, v across."""
     k = ch['kind']
+    if k == 'civ':
+        return civ_chest_px(ch, u, v, L, hx_, hy_)
     i = tidx(L)
     if k == 'player':
         if abs(v) < 1.3 and u < hx_ - 0.6:
@@ -507,6 +513,8 @@ def chest_px(ch, u, v, L, hx_, hy_):
 def face_px(ch, u, v, L, r):
     """Head seen from the front (lying on the back). u toward top of head."""
     k = ch['kind']
+    if k == 'civ':
+        return civ_face_px(ch, u, v, L, r)
     i = tidx(L)
     if k == 'player' and u > 1.0 - 0.25 * abs(v):
         return ch['hair'][i]
@@ -745,6 +753,106 @@ def gib_eye():
     return ascii_cv([".wW",
                      "wpW",
                      "rRr"], pal, ol=None)
+
+
+# --------------------------------------------------------------------------
+# Civilians (ambient passers-by, src/game/entities/Civilian.js)
+# Light, varied everyday clothes so they never read as guards: a mustard windbreaker, a coral blouse with long
+# hair, a beige trench coat with a flat cap, a sage hoodie with the hood up. kind='civ' routes the shared
+# character painters (torso, bodies, gibs, ragdoll parts) to the civ_*_px functions below; 'style' picks the outfit.
+# --------------------------------------------------------------------------
+
+CIVILIANS = {
+    'civ1': dict(kind='civ', style='jacket', top=ramp('#d9a441', 0.46, 0.22, 0.4), trim=ramp('#3a5a8a'),
+                 pants=ramp('#4f6a98', 0.45, 0.22, 0.3), shoe=ramp('#e8e4da', 0.4, 0.2, 0.2),
+                 hair=ramp('#5a3a24', 0.5, 0.25, 0.4), skin=SKIN, sh=(4.0, 8.0)),
+    'civ2': dict(kind='civ', style='long', top=ramp('#f0a08a', 0.46, 0.22, 0.35), pants=ramp('#3a2c4a'),
+                 shoe=ramp('#7a1f2a', 0.45, 0.22, 0.3), hair=ramp('#2a1a1e', 0.5, 0.25, 0.6),
+                 skin=ramp('#d99a76', 0.46, 0.22, 0.3), sh=(3.8, 7.4)),
+    'civ3': dict(kind='civ', style='trench', top=ramp('#bfae86', 0.45, 0.22, 0.35), cap=ramp('#5a5a66', 0.45, 0.22, 0.4),
+                 pants=ramp('#55555f'), shoe=ramp('#3a2a20', 0.4, 0.2, 0.3),
+                 skin=ramp('#e2b08e', 0.46, 0.22, 0.3), sh=(4.2, 8.2)),
+    'civ4': dict(kind='civ', style='hood', top=ramp('#8fbf6a', 0.46, 0.22, 0.35), pants=ramp('#4a4a3a'),
+                 shoe=ramp('#ecebf2', 0.4, 0.2, 0.2), skin=ramp('#c88a60', 0.46, 0.22, 0.3), sh=(4.1, 8.1)),
+}
+CHARS.update(CIVILIANS)
+
+
+def civ_head_px(ch, u, v, L, r):
+    """Head from above, face toward +u: hair, a flat cap or a hood."""
+    i = tidx(L)
+    st = ch['style']
+    if st == 'hood':
+        if u > r - 1.3:
+            return ch['skin'][i]                      # face peeking out of the hood
+        if u > r - 2.3:
+            return ch['top'][max(0, i - 1)]           # hood rim
+        return ch['top'][i]
+    if st == 'trench':
+        if u > r - 1.1:
+            return ch['cap'][max(0, i - 2)]           # visor
+        if math.hypot(u + 0.4, v) < 0.8:
+            return lt(ch['cap'][2], 0.3)              # button on top
+        return ch['cap'][i]
+    if u > r - 1.55:
+        return ch['skin'][i]
+    if st == 'long':
+        streak = int(math.floor(v * 1.3 + 40)) % 3 == 0
+        return ch['hair'][max(0, i - 1) if streak else i]
+    streak = int(math.floor(v * 0.8 + u * 0.5 + 40)) % 4 == 0
+    return ch['hair'][max(0, i - 1) if streak else i]
+
+
+def civ_shoulder_px(ch, u, v, L, hu, hv, hr):
+    i = tidx(L)
+    st = ch['style']
+    hd = math.hypot(hu, hv)
+    if hd < hr + 1.6 and hu + hv * 0.4 > -0.5:
+        i = max(0, i - 1)                             # head shadow
+    if st == 'long' and -hr - 1.6 < hu < 0.4 and abs(hv) < hr * 0.75:
+        return ch['hair'][max(0, i - 1)]              # hair down the back
+    if st == 'hood' and hu < -0.6 and hd < hr + 1.7:
+        return ch['top'][max(0, i - 1)]               # hood folds behind the neck
+    if st == 'trench' and hr + 0.1 < hd < hr + 1.4 and hu > -0.9:
+        return lt(ch['top'][2], 0.22)                 # turned-up collar
+    if st == 'jacket' and -0.7 < u < 0.5:
+        return ch['trim'][i]                          # stripe across the back
+    return ch['top'][i]
+
+
+def civ_chest_px(ch, u, v, L, hx_, hy_):
+    """Front of the torso, lying on the back (u toward the head)."""
+    i = tidx(L)
+    st = ch['style']
+    if st == 'jacket':
+        if abs(v) < 0.35:
+            return ch['trim'][min(i, 2)]              # zip
+    if st == 'long' and u > hx_ - 2.4 and abs(v) < 0.4 + (u - (hx_ - 2.4)) * 0.9:
+        return ch['skin'][i]                          # neckline
+    if st == 'trench':
+        if abs(u + 0.6) < 0.5:
+            return ch['top'][max(0, i - 2)]           # belt
+        if abs(abs(v) - 1.7) < 0.4 and int(math.floor(u * 1.2 + 40)) % 2 == 0:
+            return ch['top'][0]                       # double row of buttons
+    if st == 'hood':
+        if u < -hx_ + 3.2 and abs(v) < 2.6:
+            return ch['top'][max(0, i - 1)]           # front pocket
+        if abs(abs(v) - 0.9) < 0.25 and u > hx_ - 2.6:
+            return WHITE[max(1, i)]                   # drawstrings
+    return ch['top'][i]
+
+
+def civ_face_px(ch, u, v, L, r):
+    """Head from the front (lying on the back, u toward the top of the head)."""
+    i = tidx(L)
+    st = ch['style']
+    if st == 'hood' and (u > 0.6 or abs(v) > r - 1.0):
+        return ch['top'][i]
+    if st == 'trench' and u > 1.1:
+        return ch['cap'][i]
+    if st in ('jacket', 'long') and (u > 1.2 or (st == 'long' and abs(v) > r - 1.0)):
+        return ch['hair'][i]
+    return ch['skin'][i]
 
 
 # --------------------------------------------------------------------------
@@ -2409,7 +2517,7 @@ def rag_arm(ch):
     rows = {'player': [".aSSSSSwHh.", ".dddddWWkk."],
             'thug': [".aSSSSSwHh.", ".ddddddWkk."],
             'heavy': [".aSSSSSSHh.", ".wwwwwwwkk."],
-            'brute': [".rSSSSSSHh.", ".rddddddkk."]}[k]
+            'brute': [".rSSSSSSHh.", ".rddddddkk."]}.get(k, [".aSSSSSSHh.", ".ddddddWkk."])
     rows = ["..........."] + rows + ["..........."]
     return ascii_cv(rows, pal_)
 
