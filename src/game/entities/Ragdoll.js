@@ -172,9 +172,12 @@ export default class Ragdoll {
     if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
+  // centre of the blood pool
+  poolAt() { return this.headless ? this.neckPos() : this.head.body.position; }
+
   bake() {
     const w = this.world;
-    const n = this.headless ? this.neckPos() : this.head.body.position;
+    const n = this.poolAt();
     w.decals.stampPool(n.x, n.y, this.pool);
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle);
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
@@ -186,7 +189,7 @@ export default class Ragdoll {
 
   drawPool(ctx) {
     if (this.pool <= 0) return;
-    const n = this.headless ? this.neckPos() : this.head.body.position;
+    const n = this.poolAt();
     ctx.fillStyle = PALETTE.blood[3];
     ctx.beginPath();
     ctx.ellipse(n.x, n.y, this.pool, this.pool * 0.8, this.torso.body.angle, 0, Math.PI * 2);

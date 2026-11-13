@@ -39,6 +39,9 @@ export default class Corpse {
   // head end of the sprite is +x
   headPos() { return local(this.x, this.y, this.body.angle, this.img.width / 2 - 5, 0); }
 
+  // centre of the blood pool
+  poolAt() { return this.headPos(); }
+
   update(dt) {
     const b = this.body;
     this.age += dt;

@@ -28,6 +28,7 @@ import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, detachDoor, destroyFence } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
 import Impacts from '../systems/Impacts.js';
+import Liquids from '../systems/Liquids.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
 
@@ -83,6 +84,7 @@ export default class World {
 
     this.scoring = new Scoring(this);
     this.impacts = new Impacts(this);
+    this.liquids = new Liquids(this); // puddles, wet floors, footprints
 
     buildLevel(this, level);
     this.chars = [this.player, ...this.enemies];
@@ -103,7 +105,7 @@ export default class World {
   floorGrip(x, y) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
     if (cx < 0 || cy < 0 || cx >= m.w || cy >= m.h) return 1;
-    return FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1;
+    return (FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1) * (this.liquids?.grip(x, y) ?? 1);
   }
 
   // ---------------- registry ----------------
@@ -242,6 +244,7 @@ export default class World {
     this.particles.update(dt);
     this.scoring.update(dt);
     this.impacts.update(dt);
+    this.liquids.update(dt);
 
     // 4. cleanup
     this.emitters = this.emitters.filter((e) => e.t > 0);

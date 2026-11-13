@@ -267,6 +267,32 @@ export default class MapRenderer {
     g.fill();
   }
 
+  // one wet shoe print, toe toward `angle` (~24 cm long)
+  footprint(x, y, angle, color, alpha) {
+    const g = this.floorCtx;
+    g.save();
+    g.translate(x, y);
+    g.rotate(angle);
+    g.globalAlpha = alpha;
+    g.fillStyle = color;
+    g.beginPath(); g.ellipse(1.5, 0, 2.3, 1.5, 0, 0, Math.PI * 2); g.fill();  // sole
+    g.beginPath(); g.ellipse(-2.5, 0, 1.3, 1.2, 0, 0, Math.PI * 2); g.fill(); // heel
+    g.restore();
+  }
+
+  // a wet body dragged over the floor: a wide soft stroke ending at (x, y)
+  smear(x, y, angle, len, color, alpha) {
+    const g = this.floorCtx;
+    g.save();
+    g.translate(x, y);
+    g.rotate(angle);
+    g.globalAlpha = alpha;
+    g.fillStyle = color;
+    g.fillRect(-len, -3.5 + rand(-0.6, 0.6), len, 2.4);
+    g.fillRect(-len, 0.6 + rand(-0.6, 0.6), len, 3);
+    g.restore();
+  }
+
   // permanently paint an image (corpse, gib, debris) onto the floor
   bake(img, x, y, angle, alpha = 1) {
     const g = this.floorCtx;

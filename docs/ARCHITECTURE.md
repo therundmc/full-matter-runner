@@ -35,6 +35,8 @@ src/
                           part recipes -> polygons, collapse launch
       Scoring.js          listens to 'kill': score, combo (killing a passer-by costs points)
       Impacts.js          listens to 'impact': material sounds by speed and mass
+      Liquids.js          what is wet on the floor: puddles fed by sources (burst hydrant), blood pools, wet floor
+                          grip, footprints and slide smears (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
     ai/                   enemy AI, DOM-free (unit tested)
@@ -80,7 +82,7 @@ Rules:
 | `explosion` | `{ x, y, radius, source }` | Explosions | (lighting, camera) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | Director (incident) |
-| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | (nobody yet) |
+| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
@@ -142,6 +144,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, feet, hands, weapon, as offsets
   from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended over it so
   every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and exit speeds.
+- Liquids (systems/Liquids.js, `LIQUIDS` in Config.js): a source pours px² of liquid per second into a puddle that
+  spreads up to its cap, stands, then dries (`world.liquids.source` / `feed`; a destroyed `def.fountain` prop is a
+  source). The blood under a body is owned and drawn by the corpse; Liquids only tracks where it is wet
+  (`corpse.pool`, `corpse.poolAt()`), including for a while after the body is baked into the floor. Anyone in
+  `world.chars` who steps in a wet area splashes, then prints fading footprints on the dry floor (`decals.footprint`),
+  or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn
+  by WorldRenderer.drawPuddle and mirror the lights in Lighting.post (`LIGHTING.puddle`).
 
 ## Performance & robustness
 

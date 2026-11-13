@@ -1,7 +1,8 @@
 // Draws a World: floor/decals, entities in layer order, walls, particles, additive effects, floating texts.
 // Also the physics debug overlay (F4).
 import { TILE, PALETTE, CAT } from '../Config.js';
-import { rand, clamp } from '../../engine/math.js';
+import { rand, clamp, TAU } from '../../engine/math.js';
+import { puddleShape } from '../systems/Liquids.js';
 
 const { Body } = Matter;
 
@@ -17,6 +18,7 @@ export default class WorldRenderer {
     const vis = (x, y) => Math.abs(x - cam.x) < pad && Math.abs(y - cam.y) < pad;
 
     ctx.drawImage(w.decals.floorCanvas, 0, 0);
+    for (const p of w.liquids.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.drawPool(ctx);
     for (const d of w.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.draw(ctx);
@@ -46,6 +48,42 @@ export default class WorldRenderer {
     if (w.showVision) this.drawAIDebug(ctx);
     this.drawTexts(ctx);
     if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
+  }
+
+  // standing liquid: a dark wet patch with an irregular edge, a pale sheen, glints, rings while something pours
+  // into it (the lights it mirrors are added by Lighting.post)
+  drawPuddle(ctx, p, t) {
+    const shape = puddleShape(p);
+    const blob = (k) => {
+      ctx.beginPath();
+      for (const [x, y, rx, ry] of shape) { ctx.moveTo(x + rx * k, y); ctx.ellipse(x, y, rx * k, ry * k, 0, 0, TAU); }
+      ctx.fill();
+    };
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = 'rgba(6,10,24,0.3)';
+    blob(1);
+    ctx.fillStyle = 'rgba(120,170,230,0.06)';
+    blob(0.72);
+    // glints: short pale dashes that come and go
+    ctx.fillStyle = '#bcd8ff';
+    for (const l of p.lobes) {
+      const k = Math.sin(t * 1.3 + l.ph);
+      if (k <= 0) continue;
+      const x = p.x + Math.cos(l.a + l.ph) * l.d * p.r * 0.9, y = p.y + Math.sin(l.a + l.ph) * l.d * p.r * 0.8;
+      const len = 2 + l.s * 5;
+      ctx.globalAlpha = p.alpha * k * 0.22;
+      ctx.fillRect(Math.round(x - len / 2), Math.round(y), Math.round(len), 1);
+    }
+    if (p.fed > 0) {
+      ctx.strokeStyle = 'rgba(170,210,255,0.16)';
+      ctx.lineWidth = 0.7;
+      for (let i = 0; i < 3; i++) {
+        const k = (t * 0.7 + i / 3) % 1;
+        ctx.globalAlpha = p.alpha * (1 - k);
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * k * 0.9, p.r * k * 0.8, 0, 0, TAU); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   // lit: the lighting pass already put the transient lights into its light map

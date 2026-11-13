@@ -532,7 +532,9 @@ export default class Prop {
       // broken hydrant: a geyser for a while
       w.emit(x, y, 9, (e) => {
         P.drops(e.x, e.y, rand(0, TAU), Math.PI, 3, 'rgba(110,160,200,0.14)', rand(60, 220), 30);
-        if (chance(0.3)) P.smoke(e.x, e.y, 1, 3, { speed: 30, size: 4, life: 0.6 });
+        // the white column itself, falling back around the stump
+        P.drops(e.x, e.y, rand(0, TAU), Math.PI, 2, 'rgba(215,235,255,0.1)', rand(15, 70), 44);
+        if (chance(0.5)) P.smoke(e.x, e.y, 1, 3, { speed: 30, size: 5, life: 0.7 });
       });
       w.sound('tirePop', x, y, 0.5);
     }

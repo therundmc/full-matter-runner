@@ -2,6 +2,7 @@ import { TILE, LIGHTING as L } from '../Config.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
+import { puddleShape } from '../systems/Liquids.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
 // multiplied over the scene, then additive bloom, anamorphic flares and wet-floor reflections.
@@ -452,6 +453,7 @@ export default class Lighting {
     this.em = need(this.em, w * b, h * b);
     this.bl = need(this.bl, w * b, h * b);
     this.rf = need(this.rf, w * b, h * b);
+    this.pd = need(this.pd, w * b, h * b);
     this.fl = need(this.fl, Math.ceil((w * b) / 6), h * b);
   }
 
@@ -738,21 +740,44 @@ export default class Lighting {
     r.clearRect(0, 0, this.rf.width, this.rf.height);
     r.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
     r.globalCompositeOperation = 'lighter';
-    const streak = (color, x, y, rad, a) => {
+    const streak = (g, color, x, y, rad, a, far = 1) => {
       if (a <= 0.01) return;
-      const bl = this.blob(color), sw = Math.max(5, rad * 0.11), len = Math.min(rad * 0.85, 150);
-      r.globalAlpha = clamp(a, 0, 1);
-      r.drawImage(bl, x - sw, y - len * 0.25, sw * 2, len * 1.6);
-      r.globalAlpha = clamp(a * 0.45, 0, 1);
-      r.drawImage(bl, x - sw * 3, y - len * 0.1, sw * 6, len);
+      const bl = this.blob(color), sw = Math.max(5, rad * 0.11) * far, len = Math.min(rad * 0.85, 150) * far;
+      g.globalAlpha = clamp(a, 0, 1);
+      g.drawImage(bl, x - sw, y - len * 0.25, sw * 2, len * 1.6);
+      g.globalAlpha = clamp(a * 0.45, 0, 1);
+      g.drawImage(bl, x - sw * 3, y - len * 0.1, sw * 6, len);
     };
-    for (const [l, k] of lit) {
-      if (!l.bare && !l.cone) streak(l.color, l.x, l.y, l.r, k * L.reflect);
-    }
-    for (const l of w.lights) streak(l.color, l.x, l.y, l.r, clamp(l.t / l.dur, 0, 1) * L.reflect * 1.3);
+    const streaks = (g, gain, far) => {
+      for (const [l, k] of lit) {
+        if (!l.bare && !l.cone) streak(g, l.color, l.x, l.y, l.r, k * gain, far);
+      }
+      for (const l of w.lights) streak(g, l.color, l.x, l.y, l.r, clamp(l.t / l.dur, 0, 1) * gain * 1.3, far);
+    };
+    streaks(r, L.reflect, 1);
     r.globalAlpha = 1;
     r.globalCompositeOperation = 'destination-in';
     r.drawImage(this.reflMask, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
+
+    // ---- standing water (systems/Liquids.js) mirrors the lights harder than a damp floor, and from further away
+    const puddles = w.liquids ? w.liquids.puddles.filter((q) => this.inView(q.x, q.y, q.r * 1.5)) : [];
+    if (puddles.length) {
+      const g = this.pd.getContext('2d');
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalCompositeOperation = 'source-over';
+      g.clearRect(0, 0, this.pd.width, this.pd.height);
+      g.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
+      // the water itself in black (adds nothing), then the streaks only where there is water
+      g.fillStyle = '#000';
+      for (const q of puddles) {
+        g.globalAlpha = q.alpha;
+        g.beginPath();
+        for (const [x, y, rx, ry] of puddleShape(q)) { g.moveTo(x + rx, y); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }
+        g.fill();
+      }
+      g.globalCompositeOperation = 'source-atop';
+      streaks(g, L.puddle, 1.6);
+    }
 
     // ---- composite everything additively (smooth upscale)
     ctx.save();
@@ -762,6 +787,7 @@ export default class Lighting {
     ctx.drawImage(this.bl, x0, y0, vw, vh);
     ctx.globalAlpha = 1;
     ctx.drawImage(this.rf, x0, y0, vw, vh);
+    if (puddles.length) ctx.drawImage(this.pd, x0, y0, vw, vh);
     ctx.drawImage(this.fl, x0, y0, vw, vh);
     ctx.restore();
     void cam;

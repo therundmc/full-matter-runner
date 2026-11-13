@@ -57,6 +57,7 @@ const META = {
   clear: { pri: 3, dur: 0.5, gap: 0.5, max: 1 },
   ui: { pri: 3, dur: 0.1, gap: 0.05, max: 2 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
+  splash: { pri: 0, dur: 0.2, gap: 0.06, max: 3, gain: 0.5 },
 };
 const GLOBAL_SOFT_CAP = 14; // above this, only louder / higher priority sounds get in (stealing the quietest)
 const GLOBAL_HARD_CAP = 22;
@@ -568,6 +569,12 @@ class AudioSystem {
   _step(o) {
     this._thump(o, { f0: 120, f1: 60, dur: 0.06, vol: 0.4 });
     this._noiseBurst(o, { type: 'lowpass', f0: 1200, f1: 300, dur: 0.05, vol: 0.3 });
+  }
+  // a shoe in a puddle: a wet slap and its spray
+  _splash(o, opts, v) {
+    this._noiseBurst(o, { type: 'bandpass', f0: 1500, f1: 600, q: 0.9, dur: 0.07, vol: 0.5 * v, attack: 0.004 });
+    this._noiseBurst(o, { type: 'highpass', f0: 3200, dur: 0.11, vol: 0.16 * v, attack: 0.02, delay: 0.02 });
+    this._thump(o, { f0: 150, f1: 80, dur: 0.05, vol: 0.2 * v });
   }
   _throw(o) { this._noiseBurst(o, { f0: 500, f1: 2400, q: 2, dur: 0.2, vol: 0.4, attack: 0.05 }); }
   _swing(o) { this._noiseBurst(o, { f0: 1800, f1: 500, q: 2, dur: 0.15, vol: 0.45, attack: 0.03 }); }

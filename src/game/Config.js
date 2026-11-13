@@ -115,6 +115,24 @@ export const PHYSICS = {
   substeps: 2,    // Matter updates per simulation step (smoother contacts)
 };
 
+// Wet floors (systems/Liquids.js). Lengths in px, areas in px2, times in s.
+export const LIQUIDS = {
+  maxPuddles: 16,
+  grip: 0.55,     // floor grip multiplier where it is wet
+  minPool: 4,     // a blood pool smaller than this wets no shoe
+  stride: 17,     // between two footprints (alternating feet)
+  gait: 3,        // half the distance between the left and the right foot
+  smear: 7,       // length of one stroke of a slide's smear
+  fade: 6,        // a drying puddle fades out over its last seconds
+  // prints: steps a wet sole keeps marking; wet: seconds it stays wet once nothing feeds it;
+  // color / alpha: of the prints; splash: drops kicked up when running through it
+  kinds: {
+    blood: { prints: 16, wet: 45, color: '#6e0810', alpha: 0.9 },
+    water: { prints: 9, wet: 70, color: '#0b0f1c', alpha: 0.55, splash: 'rgba(110,160,200,0.14)' },
+  },
+  hydrant: { kind: 'water', rate: 1600, dur: 9, cap: 66 }, // a burst hydrant floods ~2 m around it
+};
+
 // Ambient street life (systems/Ambient.js): traffic on level.ambient.traffic lanes, passers-by on
 // level.ambient.walkers paths. Distances in m (= tiles), speeds in m/s, times in s, unless noted.
 export const AMBIENT = {
@@ -234,6 +252,7 @@ export const LIGHTING = {
   neonGlow: 0.85,          // dancefloor emissive into bloom
   flare: 0.5,              // anamorphic streaks of very bright lights
   reflect: 0.55,           // wet floor reflections
+  puddle: 0.5,             // extra reflections in standing water
   reflectFloors: ['asphalt', 'asphalt_line', 'sidewalk', 'checker', 'tile_blue', 'neon_floor'],
   bpm: 108,
   grade: { saturate: 1.22, contrast: 1.06, shadowTint: 'rgb(0,10,18)', highlightTint: 'rgba(255,40,190,0.07)' },
