@@ -31,6 +31,8 @@ src/
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Destruction.js      wall tiles, doors off hinges, fences
+      Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
+                          part recipes -> polygons, collapse launch
       Scoring.js          listens to 'kill': score, combo
       Impacts.js          listens to 'impact': material sounds by speed and mass
     ai/                   enemy AI, DOM-free (unit tested)
@@ -38,13 +40,14 @@ src/
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
       Perception.js       detection meter rate, view test, aim error, hearing error
     render/
-      MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, baked bodies)
+      MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, spills, baked bodies)
+      DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
     entities/             Character, Player, Enemy, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile
     fx/                   Particles, Gore
     ui/                   HUD, Screens, Text
-    data/                 weapons, props, materials, levels/ (index.js = registry)
+    data/                 weapons, props, materials, destruction (how each prop comes apart), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai
 ```
 
@@ -72,6 +75,7 @@ Rules:
 | `explosion` | `{ x, y, radius, source }` | Explosions | (lighting, camera) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `wallDestroyed` | `{ cx, cy, x, y }` | Destruction | Director (incident) |
+| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | (nobody yet) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
@@ -99,9 +103,21 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   a reload fills a fresh magazine from the pool and drops the old one with what was left in it (pickable).
 - Gun sounds are synthesized from layers (`GUNS` in audio/Audio.js: crack, body, blast, thump, action, tail, casing),
   choked per shooter (`choke`). Reload / handling sounds take `{ weapon }` to pick that gun's mechanics (`ARMS`).
-- Props erode: every hit bites a jagged piece out of a per-instance copy of the sprite (size by hit kind:
-  pellet < bullet < rifle (+ exit chunk) < blast (+ scorch) < blunt (+ cracks)) and throws it as a shard or Debris.
-  Damage states by HP left: 70% cracked, 45% split, 20% giving way (big chunk, dust, sag); 0 = falls apart.
+- Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
+  - every hit paints a mark at the real impact point into the prop's own canvas (so it moves with it): 9 mm holes,
+    pellet pocks, 7.62 entry + exit blow-out (Penetration exit point and remaining energy), grazing furrows / metal
+    scrapes / ricochets, blunt dents with radiating cracks, knife slashes across the swing, blast scorch + shrapnel.
+    Bullets also dig a visible channel (to the exit, or as deep as their energy lets them).
+  - material response (MATERIAL_FX): torn bits and chips fly back out of the entry and in a cone out of the exit,
+    faster the more energy is left; wood splinters, glass cracks / shards, metal sparks and bright rims, fabric
+    stuffing floating down, ceramic dust, electronics sparks / smoke / CRT implosion (light goes out), liquids leak.
+  - damage zones (ZoneGrid): hits wear the zone they land in (and the zones a round crosses); a worn zone is torn
+    off (a corner, a hole), a full line of torn zones saws the object in two: the smaller side falls, the rest keeps
+    standing (a bolted prop's body shrinks to it).
+  - states by HP left: 70% cracked, 45% split, 20% giving way (big chunk, sag, dust); at 0 it cracks, sags, then
+    falls apart into its own parts (recipe cuts of its sprite: planks, wedges, frame, cushions, doors, lids...), with
+    hidden parts (legs) and contents (pool balls, books, records, bottles, cans, trash bags) as small physical bits.
+  - Melee blows arrive as 'blunt'; Prop.hit tells a knife ('cut') or fists ('punch') from the swinging character.
   Only small objects are movable; everything else is `static` (bolted).
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
@@ -117,8 +133,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 - Physical debris live at most `MAX_AGE` (7 s) or until they settle, then get baked into the floor canvas;
   at most `MAX_DEBRIS` (180) at once; pieces under 6 px don't collide with each other.
-- Purely visual pieces use `particles.shard(img, ...)`: they fly, land, skid and fade (no physics body).
-  Bolted furniture (`def.static`) and splinters only ever produce shards.
+- Purely visual pieces use `particles.shard(img, ...)`: they arc with a fake height above their shadow, bounce,
+  skid, then are baked into the floor (remains stay). Debris also has a fake height (`z`, `vz`).
+  Bolted furniture keeps at most a few physical parts per collapse (`DESTRUCTION` caps in Config.js).
+- Damage canvases are CPU-backed (`willReadFrequently`): pieces are cut from them and tested for opacity every hit.
 - Sprite caches (silhouettes, slices) are WeakMaps so per-instance canvases can be garbage-collected.
 - `Game.safeDraw` isolates the world draw: an exception is logged once and the context is restored, so the HUD,
   cursor and post effects keep rendering.

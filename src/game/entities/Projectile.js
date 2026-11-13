@@ -125,16 +125,26 @@ export default class Projectile {
       case 'prop': {
         const p = h.target;
         const mat = p.isVehicle ? 'metal' : p.def.material;
+        const dmg = heavy ? 2 : 1;
         const g = this.glance(h, HARDNESS[mat]);
-        if (g) { p.hit(heavy ? 2 : 1, h.x, h.y, a, 0.3, 'pellet'); return g; }
-        p.hit(heavy ? 2 : 1, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1,
-          this.weapon?.pellets > 1 ? 'pellet' : this.weapon?.ammo === '762' ? 'rifle' : 'bullet');
+        if (g) {
+          if (p.isVehicle) p.hit(dmg, h.x, h.y, a, 0.3, 'pellet');
+          else p.hit(dmg, h.x, h.y, a, 0.3, 'graze', { nx: h.nx, ny: h.ny, energy: this.energy, ricochet: true });
+          return g;
+        }
+        const kind = this.weapon?.pellets > 1 ? 'pellet' : this.weapon?.ammo === '762' ? 'rifle' : 'bullet';
         this.ignore.add(p);
         const out = bodyExit(p.body.vertices, h.x, h.y, a);
-        if (!out) return true;
-        const cost = p.isVehicle ? COST.vehicle : (RESIST[mat] ?? 1) * out.len;
-        if (this.spend(cost)) return true;
-        if (!p.dead) p.exitWound?.(out.x, out.y, a, clamp(0.7 + this.energy0 / 60, 0.8, 2.2));
+        const cost = !out ? Infinity : p.isVehicle ? COST.vehicle : (RESIST[mat] ?? 1) * out.len;
+        if (p.isVehicle) p.hit(dmg, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1, kind);
+        else {
+          // the prop paints the entry, and the exit blow-out with what energy the round still has there
+          const left = out ? afterCost(this.energy, cost) : 0;
+          p.hit(dmg, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1, kind,
+            { nx: h.nx, ny: h.ny, energy: this.energy, exit: left > 0 ? { x: out.x, y: out.y, energy: left } : null });
+        }
+        if (!out || this.spend(cost)) return true;
+        if (p.isVehicle && !p.dead) p.exitWound(out.x, out.y, a, clamp(0.7 + this.energy0 / 60, 0.8, 2.2));
         return { x: out.x, y: out.y, a: this.deflect(cost) };
       }
       case 'door': {

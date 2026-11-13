@@ -258,6 +258,15 @@ export default class MapRenderer {
     wg.restore();
   }
 
+  // liquid stain (water, spirits, milk): a soft ellipse in the given rgba colour
+  spill(x, y, r, color) {
+    const g = this.floorCtx;
+    g.fillStyle = color;
+    g.beginPath();
+    g.ellipse(x, y, r, r * rand(0.6, 1), rand(0, 3), 0, Math.PI * 2);
+    g.fill();
+  }
+
   // permanently paint an image (corpse, gib, debris) onto the floor
   bake(img, x, y, angle, alpha = 1) {
     const g = this.floorCtx;

@@ -49,11 +49,12 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
     const de = d / f;
     if (p.onBlast) { p.onBlast(de, R, Math.atan2(p.y - y, p.x - x)); continue; }
     const a = Math.atan2(p.y - y, p.x - x);
-    if (de < R * (p.def.static ? 0.55 : 0.85)) p.break(a, 2);
-    else if (de < R && p.hit) {
-      // survived the blast: chunks torn off the side facing it
-      const r = Math.max(p.def.w ?? 0, p.def.h ?? 0, (p.def.r ?? 0) * 2) / 2;
-      for (let k = 0; k < 3; k++) p.hit(1, p.x - Math.cos(a) * r + rand(-4, 4), p.y - Math.sin(a) * r + rand(-4, 4), a, 1.4, 'blast');
+    // the closer, the more violently it is thrown apart
+    if (de < R * (p.def.static ? 0.55 : 0.85)) p.break(a, 2 + (1 - de / R) * 1.5);
+    else if (p.hit) {
+      // survived the blast: the side facing it is scorched and shredded (Prop.hit finds that side), or just peppered
+      if (de < R) for (let k = 0; k < 3; k++) p.hit(1, p.x + rand(-4, 4), p.y + rand(-4, 4), a + rand(-0.3, 0.3), 1.4, 'blast');
+      else if (de < R * 1.6) p.hit(0.5, p.x + rand(-4, 4), p.y + rand(-4, 4), a + rand(-0.4, 0.4), 0.8, 'shrapnel');
     }
   }
   for (const g of world.windows) {

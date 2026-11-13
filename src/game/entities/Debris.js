@@ -6,12 +6,15 @@ import { setMaterial, scaleInertia } from '../../engine/physics/Body.js';
 const { Bodies, Body } = Matter;
 
 const MAX_AGE = 7;
+const GRAVITY = 520; // px/s² of fake height (pieces thrown up arc and land)
 
 // how pieces drag on the floor by material: meat sticks, glass and brass skitter, rubber rolls
 const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 0.75, concrete: 1, wood: 0.9 };
 
 // Any physical loose piece: gibs, shell casings, furniture fragments, glass shards, wall chunks.
 // opts.harm = { kind: 'cut'|'blunt', knock, lethal, ignore } makes a fast piece dangerous for enemies.
+// opts.z / opts.vz: fake height (px) and upward speed (px/s): the piece arcs through the air above its shadow,
+// lands, bounces and settles; it skips floor friction while up there. opts.land: sound when it hits the floor.
 // Once settled it is baked into the floor canvas and removed from the simulation.
 export default class Debris {
   constructor(world, img, x, y, angle, vx, vy, spin, opts = {}) {
@@ -33,7 +36,12 @@ export default class Debris {
     });
     // real-ish mass from the piece size; it flies a moment before touching the floor
     const mu = opts.mu ?? MATERIAL_MU[opts.material] ?? 0.9;
-    setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.06), mu, world.time + (opts.fly ?? 0.12));
+    this.z = opts.z ?? 0;
+    this.vz = opts.vz ?? 0;
+    // time up in the air (fake height ballistics)
+    const air = this.z > 0 || this.vz > 0 ? (this.vz + Math.sqrt(this.vz * this.vz + 2 * GRAVITY * this.z)) / GRAVITY : 0;
+    this.land = opts.land || null;
+    setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.06), mu, world.time + Math.max(opts.fly ?? 0.12, air));
     scaleInertia(this.body, 2);
     Body.setVelocity(this.body, { x: vx / 60, y: vy / 60 });
     Body.setAngularVelocity(this.body, spin);
@@ -62,11 +70,28 @@ export default class Debris {
       this.spurt -= dt;
       if (chance(0.6)) this.world.particles.blood(b.position.x, b.position.y, rand(0, Math.PI * 2), 0.3, 1, rand(60, 160), { z: 4 });
     }
+    if (this.z > 0 || this.vz > 0) this.fall(dt);
     if (this.harm && sp > this.harm.knock) this.checkHarm(sp);
     else if (this.harm && this.age > 0.3) this.harm = null;
-    if (sp < 0.06 && Math.abs(Body.getAngularVelocity(b)) < 0.01) this.settle += dt; else this.settle = 0;
+    if (sp < 0.06 && Math.abs(Body.getAngularVelocity(b)) < 0.01 && this.z <= 0) this.settle += dt; else this.settle = 0;
     // settled pieces become floor decals; nothing stays a physics body for more than MAX_AGE seconds
     if ((this.settle > 0.9 && this.age > 1.2) || this.age > MAX_AGE) this.world.bakeDebris(this);
+  }
+
+  // fake height: arc down, land with a thud, a small bounce or two
+  fall(dt) {
+    this.vz -= GRAVITY * dt;
+    this.z += this.vz * dt;
+    if (this.z > 0) return;
+    this.z = 0;
+    const b = this.body, v = Body.getVelocity(b);
+    if (this.vz < -90) {
+      if (this.land && this.size > 7) this.world.sound(this.land, b.position.x, b.position.y, Math.min(0.7, -this.vz / 400));
+      this.vz *= -0.28;
+      Body.setVelocity(b, { x: v.x * 0.75, y: v.y * 0.75 });
+      Body.setAngularVelocity(b, Body.getAngularVelocity(b) * 0.6);
+      b.flyUntil = this.world.time + (2 * this.vz) / GRAVITY;
+    } else this.vz = 0;
   }
 
   // a fast shard / chunk smashing into an enemy
@@ -104,8 +129,9 @@ export default class Debris {
   }
 
   draw(ctx) {
-    const p = this.body.position;
-    if (this.shadow) drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.3);
-    drawSprite(ctx, this.img, p.x, p.y, this.body.angle);
+    const p = this.body.position, z = this.z;
+    // the shadow stays on the floor; the piece is drawn up there, a little bigger
+    if (this.shadow) drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.3 / (1 + z * 0.03));
+    drawSprite(ctx, this.img, p.x, p.y - z * 0.5, this.body.angle, 1, z > 0 ? 1 + z * 0.006 : 1);
   }
 }

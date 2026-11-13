@@ -3,6 +3,7 @@ import { TILE, WALL_HP } from '../Config.js';
 import { rand, chance, clamp } from '../../engine/math.js';
 import { rubble, chunk } from '../../engine/Assets.js';
 import Debris from '../entities/Debris.js';
+import { splitInTwo } from '../render/DamageArt.js';
 
 export function damageWall(world, cx, cy, dmg, x, y, dirA, power = 1) {
   const m = world.map;
@@ -46,7 +47,7 @@ export function destroyWall(world, cx, cy, dirA, power = 1) {
   world.events.emit('wallDestroyed', { cx, cy, x, y });
 }
 
-// door ripped off its hinges
+// door ripped off its hinges; a violent blow (blast) breaks the leaf in two across the grain
 export function detachDoor(world, door, dirA, power = 1) {
   const i = world.doors.indexOf(door);
   if (i < 0) return;
@@ -54,13 +55,19 @@ export function detachDoor(world, door, dirA, power = 1) {
   world.removeBody(door.body);
   for (const c of door.cells) world.map.blocked[c] = 0; // a ripped-off locked door no longer blocks paths
   const b = door.body;
-  const v = rand(160, 320) * power;
-  world.addDebris(new Debris(world, door.canvas, b.position.x, b.position.y, b.angle,
-    Math.cos(dirA) * v, Math.sin(dirA) * v, rand(-0.5, 0.5),
-    { kg: 25, mu: 0.5, fly: 0.3, air: 0.05, bounce: 0.3, material: 'wood', harm: { kind: 'blunt', knock: 2.5, lethal: 7 } }));
+  const harm = { kind: 'blunt', knock: 2.5, lethal: 7 };
+  const halves = power > 1.2 ? splitInTwo(door.canvas) : [door.canvas];
+  const ca = Math.cos(b.angle), sa = Math.sin(b.angle);
+  halves.forEach((img, k) => {
+    const off = halves.length > 1 ? (k ? 1 : -1) * door.len * 0.25 : 0;
+    const v = rand(160, 320) * power, a = dirA + (halves.length > 1 ? rand(-0.4, 0.4) : 0);
+    world.addDebris(new Debris(world, img, b.position.x + ca * off, b.position.y + sa * off, b.angle,
+      Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5),
+      { kg: 25 / halves.length, mu: 0.5, fly: 0.3, air: 0.05, bounce: 0.3, material: 'wood', z: 8, vz: 60 * power, land: 'wood', harm: { ...harm } }));
+  });
   world.particles.chips(b.position.x, b.position.y, dirA, Math.PI, 24, '#8a5a34', 200);
-  world.particles.smoke(b.position.x, b.position.y, 6, 10, { speed: 40, size: 6, life: 1 });
-  world.sound('doorSlam', b.position.x, b.position.y);
+  world.particles.dust(b.position.x, b.position.y, 8, 10, '#9a7a58', { speed: 40, size: 6, life: 2.5 });
+  world.sound('doorBreak', b.position.x, b.position.y);
   world.shake(0.2);
   world.noise(b.position.x, b.position.y, 300, null, 'door');
   world.events.emit('doorBroken', { x: door.hx, y: door.hy });

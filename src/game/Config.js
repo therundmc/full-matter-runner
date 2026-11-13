@@ -118,6 +118,16 @@ export const MAX_DEBRIS = 180;    // physical loose pieces alive at once (oldest
 export const MAX_PARTICLES = 4000;
 export const COMBO_WINDOW = 3.2;
 
+// Prop destruction (entities/Prop.js, data/destruction.js): caps that keep a shredded room cheap.
+export const DESTRUCTION = {
+  physicalShare: 0.6,  // above this share of MAX_DEBRIS, new pieces are visual shards only
+  maxPhysicalParts: 6, // physical pieces per collapse (the rest are shards baked into the floor)
+  maxBits: 18,         // loose contents spilled per collapse (balls, books...)
+  maxFloats: 260,      // stuffing / paper / feathers floating at once
+  maxLeaks: 3,         // liquid jets per prop
+  stageDelay: [0.07, 0.16], // crack -> sag -> fall apart (s); explosions skip most of it
+};
+
 export const PALETTE = {
   pink: '#ff2a6d',
   cyan: '#05d9e8',
