@@ -1,4 +1,4 @@
-import { CAT, MASK, MAX_DEBRIS, DESTRUCTION } from '../Config.js';
+import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, LIQUIDS } from '../Config.js';
 import { PROPS } from '../data/props.js';
 import { recipeFor, BITS, FLOATS } from '../data/destruction.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
@@ -7,7 +7,7 @@ import { segPoly } from '../../engine/physics/Raycast.js';
 import { rand, chance, clamp, pick } from '../../engine/math.js';
 import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
-import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite } from '../render/DamageArt.js';
+import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 
@@ -446,6 +446,7 @@ export default class Prop {
       w.after(0.06, () => w.explode(x, y, { radius: d.blast ?? 92, source: this.type }));
       return;
     }
+    if (d.fountain) { this.collapse(dirA, power); return; } // under pressure: it pops at once
     this.dying = true;
     const [t1, t2] = power >= 2 ? [0.015, 0.03] : DESTRUCTION.stageDelay;
     // 1. crack: lines through it, a crack of the material, lamps and screens pop
@@ -477,6 +478,11 @@ export default class Prop {
     const { x, y } = this.centre();
     const ang = this.body.angle, ca = Math.cos(ang), sa = Math.sin(ang);
     w.removeBody(this.body);
+    if (d.fountain) {
+      this.burst(x, y, dirA);
+      w.events.emit('propDestroyed', { prop: this, x, y, dirA, power });
+      return;
+    }
     // cut the (damaged) sprite along the recipe's seams
     const work = canvas(this.W, this.H);
     work.getContext('2d').drawImage(this.look, 0, 0);
@@ -533,16 +539,6 @@ export default class Prop {
     if (fx.glass || d.glass) { P.glass(x, y, dirA, 1.5, 18); w.sound('glass', x, y, 0.6); }
     if (rec.electric) { P.sparks(x, y, 0, Math.PI, 16, 260, '#bff'); P.smoke(x, y, 6, 4, { speed: 20, size: 5, life: 2, dark: true }); }
     if (d.dirt || rec.contents.some((c) => c.bit === 'soil')) P.chips(x, y, 0, Math.PI, 18, '#4a2e1a', 120);
-    if (d.fountain) {
-      // broken hydrant: a geyser for a while
-      w.emit(x, y, 9, (e) => {
-        P.drops(e.x, e.y, rand(0, TAU), Math.PI, 3, 'rgba(110,160,200,0.14)', rand(60, 220), 30);
-        // the white column itself, falling back around the stump
-        P.drops(e.x, e.y, rand(0, TAU), Math.PI, 2, 'rgba(215,235,255,0.1)', rand(15, 70), 44);
-        if (chance(0.5)) P.smoke(e.x, e.y, 1, 3, { speed: 30, size: 5, life: 0.7 });
-      });
-      w.sound('tirePop', x, y, 0.5);
-    }
     if (d.water || rec.leak?.on === 'break') {
       P.drops(x, y, 0, Math.PI, 18, rec.leak?.color || 'rgba(110,160,200,0.16)', 140);
       if (rec.leak?.on === 'break') this.leak(this.W / 2, this.H / 2, dirA);
@@ -553,6 +549,57 @@ export default class Prop {
     // the heavy thud of the remains hitting the floor
     if (this.W * this.H > 300) w.after(0.18, () => w.sound('bodyFall', x, y, 0.6));
     w.shake(0.08 + Math.min(0.15, (this.W * this.H) / 8000));
+  }
+
+  // A hydrant gives way in one piece: the main blows the whole body off its flange, straight up (toward the camera,
+  // see Particles HIGH), and it comes down a few metres away while the water keeps gushing out of the stump:
+  // a white column, its crown falling back as rain all around, mist. The flood is systems/Liquids.js.
+  burst(x, y, dirA) {
+    const w = this.world, P = w.particles, dur = LIQUIDS.hydrant.dur;
+    w.decals.bake(stump(Math.max(this.W, this.H)), x, y, this.body.angle);
+    P.shard(this.look, x, y, dirA + rand(-0.6, 0.6), rand(30, 60), {
+      high: true, z: 8, vz: rand(400, 450), rot: this.body.angle, spin: rand(4, 8) * pick([-1, 1]), drag: 0.4,
+      onLand: (p) => this.thump(p),
+    });
+    // the first slug of water, the paint and rust it tears off
+    P.jet(x, y, 50, { vz: 470, speed: 50, size: 3.4, alpha: 0.95 });
+    P.jet(x, y, 40, { vz: 260, speed: 210, size: 2.2, alpha: 0.7 });
+    P.chips(x, y, 0, Math.PI, 16, this.def.chips, 220);
+    P.sparks(x, y, 0, Math.PI, 8, 260);
+    w.rings.push({ x, y, r: 3, max: 40, t: 0, dur: 0.3 });
+    w.light(x, y, 70, '#cfe6ff', 0.15);
+    w.shake(0.35);
+    w.sound(this.rec.fx.crush, x, y);
+    w.sound('tirePop', x, y, 0.9);
+    w.sound('splash', x, y, 1, { pitch: 0.55 });
+    w.noise(x, y, 300);
+    let hiss = 0;
+    w.emit(x, y, dur, (e) => {
+      // pressure: throbbing, falling to a dribble over the last third
+      const k = Math.min(1, e.t / (dur * 0.33)) * (0.86 + 0.14 * Math.sin(e.t * 9));
+      P.jet(e.x, e.y, 6, { vz: 440 * k, speed: 20, size: 2.5, alpha: 0.95 });   // the column
+      P.jet(e.x, e.y, 3, { vz: 370 * k, speed: 115 * k, size: 1.8, alpha: 0.6 }); // its crown, falling back all around
+      if (chance(0.3)) P.smoke(e.x, e.y, 1, 6 + 22 * k, { speed: 26, size: 6, life: 1.3 });
+      if (w.time >= hiss) {
+        hiss = w.time + rand(0.4, 0.7);
+        w.sound('splash', e.x, e.y, 0.3 * k, { pitch: rand(0.5, 0.7) });
+      }
+    });
+  }
+
+  // the hydrant body coming back down (p: its airborne shard): it dents the floor, floors whoever stands under it
+  // and stays there as a heavy loose piece
+  thump(p) {
+    const w = this.world;
+    w.sound('metalBreak', p.x, p.y, 0.9);
+    w.shake(0.3);
+    w.particles.sparks(p.x, p.y, 0, Math.PI, 10, 220);
+    w.particles.dust(p.x, p.y, 5, 4, '#7a7078', { speed: 40, size: 5, life: 1.6 });
+    for (const c of w.enemies) {
+      if (c.alive && !c.knocked && Math.hypot(c.x - p.x, c.y - p.y) < c.radius + 7) c.knock(Math.atan2(c.y - p.y, c.x - p.x), 'debris');
+    }
+    w.addDebris(new Debris(w, p.img, p.x, p.y, p.rot, p.vx * 0.6, p.vy * 0.6, rand(-0.25, 0.25),
+      { material: 'metal', kg: 30, vz: 150, land: 'metal', bounce: 0.2 }));
   }
 
   // ------------------------------------------------------------------ drawing

@@ -337,6 +337,23 @@ export function splitInTwo(src) {
   });
 }
 
+// what a hydrant blown off its pipe leaves bolted to the pavement (seen from above): the flange, its sheared bright
+// edge and the open main in the middle
+export function stump(size) {
+  const c = canvas(size, size), g = c.getContext('2d'), m = size / 2;
+  const disc = (r, color) => { g.fillStyle = color; g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill(); };
+  disc(m * 0.78, INK);
+  disc(m * 0.66, '#5a1216');
+  disc(m * 0.46, '#b8bcc8');
+  disc(m * 0.34, '#05060a');
+  g.fillStyle = '#2a0a0c';
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    g.fillRect(Math.round(m + Math.cos(a) * m * 0.56 - 0.5), Math.round(m + Math.sin(a) * m * 0.56 - 0.5), 1, 1);
+  }
+  return c;
+}
+
 // ---- loose bits (cached per kind / colour / size) ----
 const bitCache = new Map();
 

@@ -3,10 +3,15 @@ import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette } from '../../engine/Assets.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
-// FLOAT: stuffing / feathers / paper drifting down slowly; DUST: clouds that hang and settle; DROP: liquid.
-export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7, SHARD: 8, FLOAT: 9, DUST: 10, DROP: 11 };
+// FLOAT: stuffing / feathers / paper drifting down slowly; DUST: clouds that hang and settle; DROP: liquid;
+// JET: water thrown high (a geyser), seen from above: it grows and leans away from the middle of the view as it rises.
+export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7, SHARD: 8, FLOAT: 9, DUST: 10, DROP: 11, JET: 12 };
 const SHARD_REST = 0.5; // seconds a landed shard lies still before it is baked into the floor
 const GRAVITY = 520;    // px/s² of fake height
+// what goes really high (JET, shards thrown with opts.high) comes toward the camera: per px of height it grows by
+// HIGH.grow, leans away from the view centre by HIGH.lean of its distance to it, and climbs HIGH.up px up the screen
+const HIGH = { grow: 0.009, lean: 0.0012, up: 0.3 };
+const WATER = ['#f4faff', '#d6e8fa', '#b4cfec', '#8fb2da'];
 
 export default class Particles {
   constructor(world) {
@@ -119,12 +124,25 @@ export default class Particles {
 
   // purely visual piece of an object (img): flies, lands, skids a little, fades away. No physics body.
   // It tumbles, lands, bounces, skids, then is baked into the floor (the remains stay).
+  // opts.high: thrown metres up, it comes toward the camera (see HIGH); opts.onLand(p): called when it touches the
+  // floor, instead of the bounce and the bake (the caller takes over from there).
   shard(img, x, y, angle, speed, opts = {}) {
     const a = angle;
     this.add({ type: P.SHARD, img, x, y, z: opts.z ?? 6, vz: opts.vz ?? (40 + Math.random() * 90),
       vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, rot: opts.rot ?? Math.random() * 6.28,
       spin: opts.spin ?? (Math.random() - 0.5) * 14, life: 8, drag: opts.drag ?? 1.2, landed: false,
-      bounce: opts.bounce ?? 0.3 });
+      bounce: opts.bounce ?? 0.3, high: !!opts.high, onLand: opts.onLand || null });
+  }
+
+  // water under pressure, straight up: `count` gobs leaving at up to `vz` px/s, scattered sideways up to `speed`
+  // (alpha: how solid they look, 1 = white water, less = spray)
+  jet(x, y, count, { vz = 400, speed = 30, size = 3, alpha = 0.8 } = {}) {
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, Math.PI * 2), v = speed * Math.sqrt(Math.random());
+      this.add({ type: P.JET, x: x + rand(-1.5, 1.5), y: y + rand(-1.5, 1.5), z: 2, vz: vz * rand(0.72, 1.05),
+        vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: size * rand(0.6, 1.2), color: pick(WATER),
+        alpha: alpha * rand(0.65, 1.1), life: 4, drag: 0.3 });
+    }
   }
 
   // slow floating bits: stuffing, foam, feathers, paper, leaves (kind = a data/destruction.js FLOATS entry)
@@ -149,13 +167,13 @@ export default class Particles {
     }
   }
 
-  // liquid: droplets that leave a wet stain where they land (many of them make a puddle)
-  drops(x, y, angle, spreadA, count, color, speed = 120, z = 6) {
+  // liquid: droplets that leave a wet stain where they land (stain = false: spray that dries at once)
+  drops(x, y, angle, spreadA, count, color, speed = 120, z = 6, stain = true) {
     const fly = color.replace(/[\d.]+\)$/, '0.75)'); // a stain is faint, a flying drop catches the light
     for (let i = 0; i < count; i++) {
       const a = angle + rand(-spreadA, spreadA), v = speed * rand(0.4, 1.1);
       this.add({ type: P.DROP, x, y, z: z * rand(0.6, 1.2), vz: rand(0, 60), vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-        size: rand(0.8, 1.6), color, fly, life: 3, drag: 1 });
+        size: rand(0.8, 1.6), color, fly, stain, life: 3, drag: 1 });
     }
   }
 
@@ -179,6 +197,11 @@ export default class Particles {
           p.vz -= GRAVITY * dt;
           p.z += p.vz * dt;
           p.rot += p.spin * dt;
+          if (p.z <= 0 && p.onLand) {
+            p.z = 0;
+            p.onLand(p);
+            continue;
+          }
           if (p.z <= 0) {
             p.z = 0;
             if (p.vz < -70 && p.bounce > 0) { p.vz *= -p.bounce; p.bounce *= 0.5; p.vx *= 0.7; p.vy *= 0.7; p.spin *= 0.6; }
@@ -201,6 +224,14 @@ export default class Particles {
         if (map.solidAt(nx, ny)) { p.vx = -p.vx * 0.3; p.vy = -p.vy * 0.3; } else { p.x = nx; p.y = ny; }
         if (p.z <= 0 || !alive) { this._land(p, p.x, p.y); alive = false; }
         if (alive) { floats++; list[w++] = p; }
+        continue;
+      } else if (p.type === P.JET) {
+        // far above the walls: it only meets the floor (and is lost on a roof)
+        p.vz -= GRAVITY * dt;
+        p.z += p.vz * dt;
+        p.x = nx; p.y = ny;
+        if (p.z > 0 && alive) list[w++] = p;
+        else if (chance(0.4) && !map.solidAt(nx, ny)) this.drops(nx, ny, rand(0, 6.28), 3.14, 1, 'rgba(200,225,250,0.5)', 30, 2, false);
         continue;
       } else if (p.z !== undefined) {
         p.vz -= 520 * dt;
@@ -263,7 +294,7 @@ export default class Particles {
         g.globalAlpha = 1;
         break;
       case P.DROP:
-        decals.spill(x, y, p.size * rand(1.2, 2.2), p.color);
+        if (p.stain) decals.spill(x, y, p.size * rand(1.2, 2.2), p.color);
         break;
       default: break;
     }
@@ -271,6 +302,7 @@ export default class Particles {
 
   // normal-blended particles (drawn before the additive pass)
   draw(ctx) {
+    const cam = this.world.camera;
     for (const p of this.list) {
       switch (p.type) {
         case P.SHARD: {
@@ -283,10 +315,28 @@ export default class Particles {
           ctx.drawImage(silhouette(p.img), -hw, -hh);
           ctx.restore();
           ctx.save();
-          const k = 1 + p.z * 0.006;
-          ctx.transform(c * k, s * k, -s * k, c * k, p.x, p.y - p.z * 0.5);
+          if (p.high) {
+            const k = 1 + p.z * HIGH.grow, l = p.z * HIGH.lean;
+            ctx.transform(c * k, s * k, -s * k, c * k, p.x + (p.x - cam.x) * l, p.y + (p.y - cam.y) * l - p.z * HIGH.up);
+          } else {
+            const k = 1 + p.z * 0.006;
+            ctx.transform(c * k, s * k, -s * k, c * k, p.x, p.y - p.z * 0.5);
+          }
           ctx.drawImage(p.img, -hw, -hh);
           ctx.restore();
+          break;
+        }
+        case P.JET: {
+          // a gob and the streak it leaves behind it (where it was a moment ago)
+          const s = Math.max(1, Math.round(p.size * (1 + p.z * HIGH.grow)));
+          const dx = p.x - cam.x, dy = p.y - cam.y;
+          ctx.fillStyle = p.color;
+          for (let i = 0; i < 2; i++) {
+            const z = Math.max(0, p.z - i * p.vz * 0.035), l = z * HIGH.lean;
+            ctx.globalAlpha = Math.min(1, p.alpha) * (i ? 0.45 : 1);
+            ctx.fillRect(Math.round(p.x + dx * l - s / 2), Math.round(p.y + dy * l - z * HIGH.up - s / 2), s, s);
+          }
+          ctx.globalAlpha = 1;
           break;
         }
         case P.FLOAT: {

@@ -154,7 +154,7 @@ export const LIQUIDS = {
     blood: { prints: 16, wet: 45, color: '#5c0a0c', alpha: 0.9 },
     water: { prints: 9, wet: 70, color: '#0b0f1c', alpha: 0.55, splash: 'rgba(110,160,200,0.14)' },
   },
-  hydrant: { kind: 'water', rate: 1600, dur: 9, cap: 66 }, // a burst hydrant floods ~2 m around it
+  hydrant: { kind: 'water', rate: 2600, dur: 12, cap: 96 }, // a burst hydrant gushes for dur s and floods ~3 m around it
 };
 
 // Ambient street life (systems/Ambient.js): traffic on level.ambient.traffic lanes, passers-by on
