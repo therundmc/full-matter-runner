@@ -51,6 +51,11 @@
 - Settled debris/corpses are baked into the floor canvas and removed from physics (keeps body count low, MAX_DEBRIS).
 - Bodies point back to their entity via `body.entity`; collisions dispatch to `entity.onCollide(other)`.
 - Only the player's gunfire emits noise (enemy shots don't alert the whole map).
+- Everything is destructible: wall tiles have HP (`WALL_HP`, `World.damageWall/destroyWall`, wall bodies rebuilt when
+  `wallsDirty`), doors have HP then `detachDoor`, fences `destroyFence`, every prop has finite HP (car/barrels explode).
+- `Debris` with `opts.harm` ({kind: 'cut'|'blunt', knock, lethal} speeds in px/step) knocks out or kills enemies it hits
+  (glass shards from windows, rubble, blast-thrown pieces). Harm only applies to enemies, never the player.
+- Bullets push corpses, items and gibs; melee shoves loose bodies and cracks walls. Characters kick debris around.
 - Keep code clean: no stray exports/unused imports, short comments only where useful.
 
 ## Assets
@@ -67,7 +72,11 @@
 ## Current state (end of first session)
 - Done and verified headless: title, intro card, movement, all weapons, throw -> knock-down -> execution, doors, windows,
   barrels/explosions, gore, enemy AI, level clear -> exit -> results with grade, pause, 60 FPS.
-- Not yet done: real hand-played difficulty tuning (reaction times, accuracy, enemy count = 24 may be too many),
+- Session 2: AI toned down (reaction 0.6-0.9 s, turn 5 rad/s, aim error, slower fire; ~1 s before a guard kills a
+  standing player), destructible walls/doors/fences/props, lethal glass shards and rubble, more debris,
+  music rewritten as futurewave (Music.js: supersaw pads + sidechain, rolling bass, ping-pong arps, gated snare,
+  supersaw lead, song form intro/verse/chorus/break/build).
+- Not yet done: real hand-played difficulty tuning (enemy count = 24 may be too many),
   level 2+ / multiple floors, level select/progression, settings menu, mobile support.
 - Ideas the user may want next: more enemy types (dogs, heavy armored), masks/perks system (original designs only),
   lighting, more levels, gamepad support.

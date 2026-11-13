@@ -178,6 +178,13 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'highpass', f0: 3000, f1: 1200, dur: 0.25, vol: 0.5 });
     for (let i = 0; i < 6; i++) this._noiseBurst(o, { type: 'bandpass', f0: rand(800, 2500), q: 4, dur: 0.05, vol: 0.3, delay: rand(0.1, 0.7) });
   }
+  _crumble(o) {
+    this._noiseBurst(o, { type: 'lowpass', f0: 900, f1: 80, q: 0.8, dur: 1.1, vol: 1.1, attack: 0.01 });
+    this._tone(o, { f0: 70, f1: 30, dur: 0.6, vol: 0.8 });
+    for (let i = 0; i < 10; i++) {
+      this._noiseBurst(o, { type: 'bandpass', f0: rand(400, 1800), q: 3, dur: rand(0.03, 0.08), vol: rand(0.2, 0.5), delay: rand(0, 0.6) });
+    }
+  }
   _door(o) {
     this._tone(o, { type: 'triangle', f0: 210, f1: 95, dur: 0.12, vol: 0.7 });
     this._noiseBurst(o, { f0: 600, f1: 250, q: 1.5, dur: 0.09, vol: 0.6 });

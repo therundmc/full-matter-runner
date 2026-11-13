@@ -121,6 +121,7 @@ function buildFence(world, x, y, vertical) {
     isStatic: true, label: 'fence', collisionFilter: { category: CAT.WALL, mask: CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.CORPSE | CAT.PROP },
   });
   world.addBody(body);
+  world.fences.push({ x, y, vertical, body, dead: false });
   // fences are static decoration: paint them on the wall layer
   const g = world.map.wallCtx;
   const img = sprite('structure/fence');

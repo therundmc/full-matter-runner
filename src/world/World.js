@@ -1,6 +1,8 @@
-import { TILE, MAX_DEBRIS, COMBO_WINDOW, PALETTE } from '../core/Config.js';
+import { TILE, MAX_DEBRIS, COMBO_WINDOW, PALETTE, WALL_HP } from '../core/Config.js';
 import { segPoly, segCircle, segSeg } from '../core/Raycast.js';
 import { rand, chance, clamp } from '../core/math.js';
+import { rubble, chunk, plank } from '../core/Assets.js';
+import Debris from '../entities/Debris.js';
 import Audio from '../core/Audio.js';
 import TileMap from './TileMap.js';
 import Particles from '../fx/Particles.js';
@@ -25,7 +27,9 @@ export default class World {
 
     this.map = new TileMap(level.tiles);
     this.map.render();
-    this.addBody(this.map.buildBodies());
+    this.wallBodies = this.map.buildBodies();
+    this.addBody(this.wallBodies);
+    this.wallsDirty = false;
     this.particles = new Particles(this);
 
     this.player = null;
@@ -34,6 +38,7 @@ export default class World {
     this.props = [];
     this.doors = [];
     this.windows = [];
+    this.fences = [];
     this.items = [];
     this.projectiles = [];
     this.debris = [];
@@ -95,6 +100,86 @@ export default class World {
   hitstop(s) { this.game.hitstop = Math.max(this.game.hitstop, s); }
   slowmo(scale, dur) { this.game.slowmo(scale, dur); }
   light(x, y, r, color, dur) { this.lights.push({ x, y, r, color, t: dur, dur }); }
+  flashGlass(x, y) { this.light(x, y, 45, '#bff6ff', 0.08); }
+
+  // add a velocity kick (px/step) to a loose body
+  pushBody(b, a, dv, spin = 0) {
+    const v = Body.getVelocity(b);
+    Body.setVelocity(b, { x: v.x + Math.cos(a) * dv, y: v.y + Math.sin(a) * dv });
+    if (spin) Body.setAngularVelocity(b, Body.getAngularVelocity(b) + spin);
+  }
+
+  // ---------------- destruction ----------------
+  damageWall(cx, cy, dmg, x, y, dirA, power = 1) {
+    const m = this.map;
+    if (!m.canBreak(cx, cy)) return;
+    const i = cy * m.w + cx;
+    const max = WALL_HP[m.at(cx, cy)];
+    const col = m.chipColor(cx, cy);
+    m.hp[i] -= dmg;
+    m.crack(x, y, clamp(1 - m.hp[i] / max, 0, 1));
+    this.particles.chips(x, y, dirA + Math.PI, 1.1, 3 + dmg * 3, col, 150);
+    this.particles.smoke(x, y, 1 + Math.min(4, dmg), 2, { speed: 28, size: 4, life: 0.9 });
+    if (chance(0.3 * dmg)) {
+      const pcs = rubble(m.at(cx, cy) === 'X' ? 'brick' : 'wall');
+      const a = dirA + Math.PI + rand(-0.8, 0.8), v = rand(60, 180);
+      this.addDebris(new Debris(this, pcs[Math.floor(rand(0, 5))], x, y, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
+        rand(-0.5, 0.5), { density: 0.003, air: 0.08 }));
+    }
+    if (m.hp[i] <= 0) this.destroyWall(cx, cy, dirA, power);
+  }
+
+  destroyWall(cx, cy, dirA, power = 1) {
+    const m = this.map;
+    if (!m.canBreak(cx, cy)) return;
+    const brick = m.at(cx, cy) === 'X';
+    const col = m.chipColor(cx, cy);
+    m.destroyTile(cx, cy);
+    this.wallsDirty = true;
+    const x = (cx + 0.5) * TILE, y = (cy + 0.5) * TILE;
+    const pcs = rubble(brick ? 'brick' : 'wall');
+    const n = 9 + Math.floor(rand(0, 6));
+    for (let k = 0; k < n; k++) {
+      const a = dirA + rand(-1.1, 1.1), v = rand(90, 330) * power;
+      this.addDebris(new Debris(this, pcs[k % pcs.length], x + rand(-12, 12), y + rand(-12, 12), rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
+        rand(-0.5, 0.5), { density: 0.004, air: 0.07, bounce: 0.2, harm: { kind: 'blunt', knock: 3.2, lethal: 7.5 } }));
+    }
+    this.particles.chips(x, y, dirA, Math.PI, 30, col, 220);
+    this.particles.smoke(x, y, 22, 14, { speed: 70, size: 10, life: 2.2 });
+    this.sound('crumble', x, y);
+    this.shake(0.3);
+    this.noise(x, y, 420);
+  }
+
+  // door ripped off its hinges
+  detachDoor(door, dirA, power = 1) {
+    const i = this.doors.indexOf(door);
+    if (i < 0) return;
+    this.doors.splice(i, 1);
+    this.removeBody(door.body);
+    const b = door.body;
+    const v = rand(160, 320) * power;
+    this.addDebris(new Debris(this, plank(door.img, door.len), b.position.x, b.position.y, b.angle,
+      Math.cos(dirA) * v, Math.sin(dirA) * v, rand(-0.5, 0.5),
+      { density: 0.003, air: 0.05, bounce: 0.3, harm: { kind: 'blunt', knock: 2.5, lethal: 7 } }));
+    this.particles.chips(b.position.x, b.position.y, dirA, Math.PI, 24, '#8a5a34', 200);
+    this.particles.smoke(b.position.x, b.position.y, 6, 10, { speed: 40, size: 6, life: 1 });
+    this.sound('doorSlam', b.position.x, b.position.y);
+    this.shake(0.2);
+  }
+
+  destroyFence(f, dirA) {
+    if (f.dead) return;
+    f.dead = true;
+    this.removeBody(f.body);
+    this.map.wallCtx.clearRect(f.x - 17, f.y - 17, 34, 34);
+    for (let k = 0; k < 6; k++) {
+      const a = dirA + rand(-1, 1), v = rand(80, 260);
+      this.addDebris(new Debris(this, chunk('#6a4a2a', Math.floor(rand(3, 9)), 3), f.x + rand(-10, 10), f.y + rand(-10, 10), rand(0, 6),
+        Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), { density: 0.002 }));
+    }
+    this.particles.chips(f.x, f.y, dirA, Math.PI, 12, '#6a4a2a', 160);
+  }
 
   muzzleFlash(x, y, a, d) {
     this.flashes.push({ x, y, a, t: 0.05, big: d.pellets > 1 || d.rocket });
@@ -123,7 +208,7 @@ export default class World {
   traceBullet(x0, y0, x1, y1, team, ignore) {
     let best = null;
     const w = this.map.raycast(x0, y0, x1, y1);
-    if (w) best = { t: w.t, kind: 'wall', nx: w.nx, ny: w.ny };
+    if (w) best = { t: w.t, kind: 'wall', nx: w.nx, ny: w.ny, cx: w.cx, cy: w.cy };
     const bt = () => (best ? best.t : 1);
     for (const c of this.chars) {
       if (!c.alive || c.team === team || ignore.has(c)) continue;
@@ -143,6 +228,9 @@ export default class World {
     test(this.props, 'prop', (p) => !p.dead);
     test(this.doors, 'door', () => true);
     test(this.windows, 'glass', (g) => g.intact);
+    test(this.corpses, 'corpse', (c) => !c.dead);
+    test(this.items, 'item', (it) => !it.dead);
+    test(this.debris, 'debris', (d) => !d.dead && d.size > 4);
     if (best) { best.x = x0 + (x1 - x0) * best.t; best.y = y0 + (y1 - y0) * best.t; }
     return best;
   }
@@ -175,10 +263,28 @@ export default class World {
     for (const p of this.props) {
       if (p.dead) continue;
       const d = Math.hypot(p.x - x, p.y - y);
-      if (p.def.hp === Infinity) continue;
       if (d < R * (p.def.static ? 0.55 : 0.85)) p.break(Math.atan2(p.y - y, p.x - x), 2);
     }
-    for (const g of this.windows) if (g.intact && Math.hypot(g.x - x, g.y - y) < R * 1.4) g.shatter(Math.atan2(g.y - y, g.x - x));
+    for (const g of this.windows) if (g.intact && Math.hypot(g.x - x, g.y - y) < R * 1.4) g.shatter(Math.atan2(g.y - y, g.x - x), null, 1.6);
+    for (const door of [...this.doors]) {
+      const b = door.body.position;
+      const d = Math.hypot(b.x - x, b.y - y);
+      if (d < R * 1.2) this.detachDoor(door, Math.atan2(b.y - y, b.x - x), 1.5 * (1 - d / (R * 1.4)) + 0.6);
+    }
+    for (const f of this.fences) if (!f.dead && Math.hypot(f.x - x, f.y - y) < R) this.destroyFence(f, Math.atan2(f.y - y, f.x - x));
+    // walls: crushed near the blast, cracked further away
+    const rr = Math.ceil(R / TILE) + 1, ccx = Math.floor(x / TILE), ccy = Math.floor(y / TILE);
+    for (let ty = ccy - rr; ty <= ccy + rr; ty++) {
+      for (let tx = ccx - rr; tx <= ccx + rr; tx++) {
+        if (!this.map.canBreak(tx, ty)) continue;
+        const wx = (tx + 0.5) * TILE, wy = (ty + 0.5) * TILE;
+        const d = Math.hypot(wx - x, wy - y);
+        if (d > R * 1.05) continue;
+        const a = Math.atan2(wy - y, wx - x);
+        if (d < R * 0.6) this.destroyWall(tx, ty, a, 1.6);
+        else this.damageWall(tx, ty, Math.ceil(10 * (1 - d / (R * 1.05))), wx - Math.cos(a) * 14, wy - Math.sin(a) * 14, a, 1.3);
+      }
+    }
 
     // shockwave on every loose body
     for (const b of Composite.allBodies(this.engine.world)) {
@@ -196,6 +302,7 @@ export default class World {
       Body.setVelocity(b, { x: v.x + (dx / d) * f, y: v.y + (dy / d) * f });
       Body.setAngularVelocity(b, Body.getAngularVelocity(b) + rand(-0.4, 0.4) * f * 0.1);
       if (b.entity?.isItem) b.entity.thrower = null;
+      if (b.entity?.isDebris && f > 4 && !b.entity.harm) b.entity.harm = { kind: 'blunt', knock: 3.5, lethal: 9 };
     }
     void source;
   }
@@ -241,6 +348,12 @@ export default class World {
 
     Engine.update(this.engine, dt * 1000);
     for (const d of this.doors) d.constrain(dt);
+    if (this.wallsDirty) {
+      this.wallsDirty = false;
+      Composite.remove(this.engine.world, this.wallBodies);
+      this.wallBodies = this.map.buildBodies();
+      this.addBody(this.wallBodies);
+    }
 
     for (const it of this.items) if (!it.dead) it.update(dt);
     for (const p of this.projectiles) p.update(dt);

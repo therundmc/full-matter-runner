@@ -21,6 +21,7 @@ export default class Door {
     this.body.entity = this;
     this.pushedByPlayer = 0;
     this.slamCooldown = 0;
+    this.hp = 6;
     world.addBody(this.body);
   }
 
@@ -69,11 +70,14 @@ export default class Door {
     }
   }
 
-  // bullet impact
-  hit(px, py, dirA) {
+  // bullet / melee impact: swings, splinters, and eventually rips off its hinges
+  hit(px, py, dirA, dmg = 1) {
     Body.applyForce(this.body, { x: px, y: py }, { x: Math.cos(dirA) * 0.0012, y: Math.sin(dirA) * 0.0012 });
-    this.world.particles.chips(px, py, dirA + Math.PI, 1, 4, '#8a5a34');
+    this.world.particles.chips(px, py, dirA + Math.PI, 1, 6, '#8a5a34');
+    this.world.particles.chips(px, py, dirA, 0.6, 4, '#c08a54', 160);
     this.world.sound('wood', px, py, 0.4);
+    this.hp -= dmg;
+    if (this.hp <= 0) this.world.detachDoor(this, dirA, 0.9);
   }
 
   draw(ctx) {

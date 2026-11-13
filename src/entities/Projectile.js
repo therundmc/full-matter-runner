@@ -56,9 +56,10 @@ export default class Projectile {
         w.particles.chips(h.x + h.nx, h.y + h.ny, Math.atan2(h.ny, h.nx), 0.8, 3, '#b8ae9c', 90);
         w.particles.smoke(h.x + h.nx * 2, h.y + h.ny * 2, 1, 1, { speed: 20, size: 3, life: 0.5 });
         w.sound('impact', h.x, h.y, 0.6);
+        w.damageWall(h.cx, h.cy, this.weapon?.pierce ? 3 : 1, h.x - h.nx * 2, h.y - h.ny * 2, a);
         return true;
       case 'glass':
-        h.target.shatter(a);
+        h.target.shatter(a, this.owner?.isEnemy ? this.owner : null, this.weapon?.pellets > 1 ? 1.3 : 1);
         this.ignore.add(h.target);
         return false;
       case 'prop':
@@ -66,7 +67,7 @@ export default class Projectile {
         if (this.pierce > 0) { this.pierce--; this.ignore.add(h.target); return false; }
         return true;
       case 'door':
-        h.target.hit(h.x, h.y, a);
+        h.target.hit(h.x, h.y, a, this.weapon?.pierce ? 3 : 1);
         if (this.pierce > 0) { this.pierce--; this.ignore.add(h.target); return false; }
         return true;
       case 'char': {
@@ -77,6 +78,27 @@ export default class Projectile {
         if (this.pierce > 0) { this.pierce--; return false; }
         return true;
       }
+      case 'corpse': {
+        // desecration: the body jerks, more blood
+        const c = h.target;
+        w.pushBody(c.body, a, 2.2, (Math.random() - 0.5) * 0.2);
+        w.particles.blood(h.x, h.y, a, 0.5, 10, 220);
+        w.particles.blood(h.x, h.y, a + Math.PI, 0.6, 3, 80);
+        w.map.stampBlood(h.x, h.y, 3, 3);
+        c.pool = Math.min(c.poolMax + 4, c.pool + 1.5);
+        w.sound('splat', h.x, h.y, 0.35);
+        return true;
+      }
+      case 'item':
+        w.pushBody(h.target.body, a, 3.5, (Math.random() - 0.5) * 0.8);
+        w.particles.sparks(h.x, h.y, a + Math.PI, 0.8, 4, 240);
+        w.sound('metal', h.x, h.y, 0.4);
+        this.ignore.add(h.target);
+        return false;
+      case 'debris':
+        w.pushBody(h.target.body, a, 3, (Math.random() - 0.5) * 0.8);
+        this.ignore.add(h.target);
+        return false;
       default:
         return true;
     }

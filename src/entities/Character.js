@@ -1,4 +1,4 @@
-import { CAT, MASK, PALETTE } from '../core/Config.js';
+import { CAT, MASK, PALETTE, ENEMY } from '../core/Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, drawSprite, silhouette } from '../core/Assets.js';
 import { rand, spread, angDiff, local, lerp, clamp } from '../core/math.js';
@@ -116,7 +116,7 @@ export default class Character {
     const a = this.angle;
     const enemy = this.team === 'enemy';
     for (let i = 0; i < d.pellets; i++) {
-      const sp = d.spread * spread() + (enemy ? rand(-0.035, 0.035) : 0);
+      const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
       w.addProjectile(new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
         team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pierce: d.pierce || 0, rocket: d.rocket,
@@ -173,6 +173,22 @@ export default class Character {
       if (Math.hypot(mx - x, my - y) < d.range + 14) {
         Body.applyForce(door.body, { x: mx, y: my }, { x: Math.cos(a) * 0.004, y: Math.sin(a) * 0.004 });
         if (this.isPlayer) door.pushedByPlayer = 0.8;
+      }
+    }
+    // walls crack under heavy swings
+    if (d.lethal) {
+      const hx = x + Math.cos(a) * (d.range * 0.9), hy = y + Math.sin(a) * (d.range * 0.9);
+      const cx = Math.floor(hx / 32), cy = Math.floor(hy / 32);
+      if (w.map.isWallChar(cx, cy)) { w.damageWall(cx, cy, 1, hx, hy, a); w.shake(0.08); hit = true; }
+    }
+    // shove whatever loose stuff is in the arc
+    for (const list of [w.corpses, w.debris, w.items]) {
+      for (const o of list) {
+        if (o.dead) continue;
+        const p = o.body.position, dd = Math.hypot(p.x - x, p.y - y);
+        if (dd > d.range + 8 || Math.abs(angDiff(a, Math.atan2(p.y - y, p.x - x))) > d.arc / 2) continue;
+        w.pushBody(o.body, a, d.lethal ? 4 : 2.5, rand(-0.3, 0.3));
+        if (o.pool !== undefined) { w.particles.blood(p.x, p.y, a, 0.5, 6, 140); hit = true; }
       }
     }
     if (hit) w.sound(d.sound, x, y);

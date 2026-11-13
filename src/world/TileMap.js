@@ -1,4 +1,4 @@
-import { TILE, CAT, MASK, PALETTE } from '../core/Config.js';
+import { TILE, CAT, MASK, PALETTE, WALL_HP } from '../core/Config.js';
 import { sprite } from '../core/Assets.js';
 import { gridRaycast } from '../core/Raycast.js';
 import { rand, pick, chance } from '../core/math.js';
@@ -22,10 +22,12 @@ export default class TileMap {
     this.solid = new Uint8Array(n);   // blocks bullets / vision / movement
     this.blocked = new Uint8Array(n); // blocks path-finding
     this.floor = new Array(n).fill(null);
+    this.hp = new Float32Array(n);
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         const ch = this.chars[y][x], i = y * this.w + x;
         if (ch === ' ' || WALLS[ch]) { this.solid[i] = 1; this.blocked[i] = 1; }
+        if (WALLS[ch]) this.hp[i] = WALL_HP[ch];
         if (ch === 'G' || ch === 'F') this.blocked[i] = 1;
         if (FLOORS[ch]) this.floor[i] = FLOORS[ch];
       }
@@ -149,6 +151,73 @@ export default class TileMap {
       }
     }
     this.wallCtx = w;
+  }
+
+  // ---------- destruction ----------
+  canBreak(cx, cy) {
+    return this.isWallChar(cx, cy) && cx > 0 && cy > 0 && cx < this.w - 1 && cy < this.h - 1;
+  }
+
+  chipColor(cx, cy) { return this.at(cx, cy) === 'X' ? '#8a3a2a' : '#d8ccb0'; }
+
+  // dark jagged cracks around an impact, more as the tile weakens
+  crack(x, y, severity) {
+    const g = this.wallCtx;
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    g.strokeStyle = `rgba(20,12,28,${0.45 + severity * 0.5})`;
+    g.lineWidth = 1;
+    const n = 1 + Math.floor(severity * 4);
+    for (let k = 0; k < n; k++) {
+      let px = x, py = y;
+      let a = rand(0, Math.PI * 2);
+      g.beginPath();
+      g.moveTo(px, py);
+      for (let s = 0; s < 3 + severity * 4; s++) {
+        a += rand(-0.7, 0.7);
+        px += Math.cos(a) * rand(2, 4);
+        py += Math.sin(a) * rand(2, 4);
+        g.lineTo(px, py);
+      }
+      g.stroke();
+    }
+    g.restore();
+  }
+
+  // a wall tile gives way: it becomes rubble-covered floor
+  destroyTile(cx, cy) {
+    const i = cy * this.w + cx;
+    const px = cx * TILE, py = cy * TILE;
+    const tex = WALLS[this.chars[cy][cx]];
+    this.solid[i] = 0;
+    this.blocked[i] = 0;
+    this.hp[i] = 0;
+    this.chars[cy][cx] = '_';
+    this.floor[i] = 'concrete';
+    const g = this.floorCtx;
+    g.drawImage(sprite('tiles/concrete'), px, py, TILE, TILE);
+    for (let k = 0; k < 26; k++) {
+      g.fillStyle = chance(0.5) ? 'rgba(20,12,20,0.55)' : (tex === 'brick' ? '#7a3424' : '#b8ae98');
+      const s = rand(1, 4);
+      g.fillRect(px + rand(0, TILE - s), py + rand(0, TILE - s), s, s * rand(0.5, 1));
+    }
+    const w = this.wallCtx;
+    w.clearRect(px, py, TILE, TILE);
+    // broken edges on the neighbouring walls
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (!this.isWallChar(nx, ny)) continue;
+      const ex = dx === 1 ? nx * TILE : dx === -1 ? nx * TILE + TILE - 3 : nx * TILE;
+      const ey = dy === 1 ? ny * TILE : dy === -1 ? ny * TILE + TILE - 3 : ny * TILE;
+      w.fillStyle = PALETTE.ink;
+      if (dx) w.fillRect(ex, ey, 3, TILE); else w.fillRect(ex, ey, TILE, 3);
+      // jagged bites out of the edge
+      for (let k = 0; k < 5; k++) {
+        const t = rand(0, TILE - 4), d = rand(2, 6);
+        if (dx) w.fillRect(dx === 1 ? ex : ex - d + 3, ey + t, d, rand(2, 5));
+        else w.fillRect(ex + t, dy === 1 ? ey : ey - d + 3, rand(2, 5), d);
+      }
+    }
   }
 
   // ---------- persistent decals ----------

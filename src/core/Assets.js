@@ -62,8 +62,10 @@ export function silhouette(img) {
 
 // split a sprite into a grid of pieces (debris); returns array of canvases
 export function slices(img, cols = 2, rows = 2) {
-  const key = img;
-  let cached = sliceCache.get(key);
+  let perImg = sliceCache.get(img);
+  if (!perImg) { perImg = new Map(); sliceCache.set(img, perImg); }
+  const key = cols + 'x' + rows;
+  let cached = perImg.get(key);
   if (cached) return cached;
   cached = [];
   const pw = Math.ceil(img.width / cols), ph = Math.ceil(img.height / rows);
@@ -86,8 +88,76 @@ export function slices(img, cols = 2, rows = 2) {
       cached.push(cv);
     }
   }
-  sliceCache.set(key, cached);
+  perImg.set(key, cached);
   return cached;
+}
+
+const procCache = new Map();
+function cached(key, make) {
+  let v = procCache.get(key);
+  if (!v) { v = make(); procCache.set(key, v); }
+  return v;
+}
+
+function canvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+
+// sharp glass shards (several variants)
+export function glassShards() {
+  return cached('glass', () => Array.from({ length: 8 }, (_, i) => {
+    const w = 3 + (i % 4) * 1.5, h = 2 + (i % 3);
+    const c = canvas(Math.ceil(w) + 1, Math.ceil(h) + 1);
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(170,235,255,0.85)';
+    g.beginPath(); g.moveTo(0, h); g.lineTo(w * (0.3 + (i % 3) * 0.2), 0); g.lineTo(w, h * 0.7); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.95)';
+    g.fillRect(Math.floor(w * 0.4), Math.floor(h * 0.4), 1, 1);
+    return c;
+  }));
+}
+
+// small solid chunk of a given colour (splinters, rubble, metal bits)
+export function chunk(color, w, h) {
+  return cached(`chunk${color}${w}x${h}`, () => {
+    const c = canvas(w, h);
+    const g = c.getContext('2d');
+    g.fillStyle = '#140c1c';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = color;
+    g.fillRect(w > 2 ? 1 : 0, h > 2 ? 1 : 0, Math.max(1, w - 2), Math.max(1, h - 2));
+    return c;
+  });
+}
+
+// jagged rubble cut from a wall texture
+export function rubble(texture) {
+  return cached('rubble' + texture, () => {
+    const img = sprite('tiles/' + texture);
+    return Array.from({ length: 10 }, (_, i) => {
+      const w = 4 + (i % 5) * 2, h = 4 + ((i * 3) % 4) * 2;
+      const c = canvas(w, h);
+      const g = c.getContext('2d');
+      g.beginPath();
+      g.moveTo(Math.random() * 2, 0); g.lineTo(w, Math.random() * 2); g.lineTo(w - Math.random() * 2, h); g.lineTo(0, h - Math.random() * 2);
+      g.closePath(); g.clip();
+      g.drawImage(img, (i * 7) % (32 - w), (i * 5) % (32 - h), w, h, 0, 0, w, h);
+      g.strokeStyle = 'rgba(20,12,28,0.9)';
+      g.stroke();
+      return c;
+    });
+  });
+}
+
+// a door plank image stretched to a length
+export function plank(img, len) {
+  return cached('plank' + len, () => {
+    const c = canvas(Math.round(len), img.height);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  });
 }
 
 // draw an image centered at (x, y) with rotation

@@ -50,7 +50,6 @@ export default class Enemy extends Character {
     this.setState(S.INVESTIGATE);
     this.icon = '?';
     this.alertIcon = 1.2;
-    if (isPlayerNoise) this.react = Math.min(this.react, 0.25);
   }
 
   setState(s) {
@@ -76,7 +75,7 @@ export default class Enemy extends Character {
       if (this.state !== S.COMBAT) {
         const wasAlert = this.state === S.CHASE || this.state === S.SEARCH || this.state === S.INVESTIGATE;
         this.setState(S.COMBAT);
-        this.react = wasAlert ? rand(0.15, 0.25) : rand(...ENEMY.reaction);
+        this.react = rand(...(wasAlert ? ENEMY.reacquire : ENEMY.reaction));
         this.icon = '!';
         this.alertIcon = 0.8;
         this.world.sound('alert', this.x, this.y);
@@ -151,9 +150,9 @@ export default class Enemy extends Character {
       this.weapon.ammo = Infinity;
       if (d.burst) {
         this.burst++;
-        this.cooldown = this.burst >= d.burst ? rand(0.5, 0.8) : d.rate * 1.1;
+        this.cooldown = this.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
         if (this.burst >= d.burst) this.burst = 0;
-      } else this.cooldown = d.enemyRate * rand(0.85, 1.25);
+      } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25);
     }
   }
 
@@ -306,7 +305,7 @@ export default class Enemy extends Character {
       this.lastSeen = p ? { x: p.x, y: p.y } : null;
       this.setState(S.SEARCH);
       this.searchT = 4;
-      this.react = 0.3;
+      this.react = 0.5;
       if (!this.armed && this.kind !== 'brute') this.lookForWeapon();
     }
   }

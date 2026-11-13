@@ -1,7 +1,7 @@
 import { CAT, MASK } from '../core/Config.js';
 import { PROPS } from '../data/props.js';
-import { sprite, slices, drawSpriteShadowed } from '../core/Assets.js';
-import { rand, chance } from '../core/math.js';
+import { sprite, slices, chunk, drawSpriteShadowed } from '../core/Assets.js';
+import { rand, chance, angDiff } from '../core/math.js';
 import Debris from './Debris.js';
 
 const { Bodies, Body } = Matter;
@@ -52,16 +52,30 @@ export default class Prop {
     const d = this.def, w = this.world;
     const { x, y } = this.body.position;
     w.removeBody(this.body);
-    if (d.explosive) {
-      w.after(0.06, () => w.explode(x, y, { radius: 92, source: 'barrel' }));
-      return;
-    }
-    const cols = this.img.width > 26 ? 3 : 2, rows = this.img.height > 18 ? 2 : 1;
+    if (d.explosive) w.after(0.06, () => w.explode(x, y, { radius: d.blast ?? 92, source: this.type }));
+    // more pieces for bigger furniture
+    const cols = Math.min(4, Math.max(2, Math.round(this.img.width / 11)));
+    const rows = Math.min(3, Math.max(1, Math.round(this.img.height / 11)));
     const pieces = slices(this.img, cols, rows);
-    for (const pc of pieces) {
-      const a = dirA + rand(-1.2, 1.2), v = rand(60, 220) * power;
-      w.addDebris(new Debris(w, pc, x + rand(-6, 6), y + rand(-6, 6), this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.3, 0.3), { air: 0.07, density: 0.003 }));
+    const harm = power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null;
+    const ca = Math.cos(this.body.angle), sa = Math.sin(this.body.angle);
+    const pw = this.img.width / cols, ph = this.img.height / rows;
+    pieces.forEach((pc, k) => {
+      // start each piece where it was in the object
+      const lx = ((k % cols) + 0.5) * pw - this.img.width / 2, ly = (Math.floor(k / cols) + 0.5) * ph - this.img.height / 2;
+      const px = x + lx * ca - ly * sa, py = y + lx * sa + ly * ca;
+      const out = Math.atan2(py - y, px - x);
+      const a = dirA + (Math.hypot(lx, ly) > 2 ? angDiff(dirA, out) * 0.5 : 0) + rand(-0.6, 0.6), v = rand(70, 240) * power;
+      w.addDebris(new Debris(w, pc, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.4, 0.4),
+        { air: 0.07, density: 0.003, harm: harm && { ...harm } }));
+    });
+    // splinters / shards
+    for (let k = 0; k < 6 + cols * rows; k++) {
+      const a = dirA + rand(-1.4, 1.4), v = rand(80, 300) * power;
+      w.addDebris(new Debris(w, chunk(d.chips, Math.floor(rand(2, 6)), Math.floor(rand(1, 3)) + 1), x + rand(-8, 8), y + rand(-8, 8), rand(0, 6),
+        Math.cos(a) * v, Math.sin(a) * v, rand(-0.8, 0.8), { air: 0.06, density: 0.0015, shadow: 0 }));
     }
+    if (d.explosive) return;
     w.particles.chips(x, y, dirA, Math.PI, 18, d.chips, 180);
     w.particles.smoke(x, y, 5, 8, { speed: 30, size: 6, life: 0.8 });
     if (d.glass) { w.particles.glass(x, y, dirA, 1.5, 14); w.sound('glass', x, y, 0.6); }

@@ -1,5 +1,6 @@
 import { CAT, MASK, TILE } from '../core/Config.js';
-import { sprite } from '../core/Assets.js';
+import { sprite, glassShards } from '../core/Assets.js';
+import Debris from './Debris.js';
 import { rand } from '../core/math.js';
 
 const { Bodies } = Matter;
@@ -22,7 +23,7 @@ export default class Window {
     world.addBody(this.body);
   }
 
-  shatter(dirA = 0) {
+  shatter(dirA = 0, source = null, power = 1) {
     if (!this.intact) return;
     this.intact = false;
     const w = this.world;
@@ -34,15 +35,33 @@ export default class Window {
     });
     this.body.entity = this;
     w.addBody(this.body);
-    w.particles.glass(this.x, this.y, dirA, 0.9, 28, 200);
-    w.particles.glass(this.x, this.y, dirA + Math.PI, 1.2, 8, 80);
+    w.particles.glass(this.x, this.y, dirA, 0.9, 40, 240);
+    w.particles.glass(this.x, this.y, dirA + Math.PI, 1.2, 10, 80);
+    // real shards: they fly through the room and cut whoever stands behind
+    const shards = glassShards();
+    const n = 12 + Math.floor(rand(0, 6));
+    for (let i = 0; i < n; i++) {
+      const along = rand(-TILE / 2, TILE / 2);
+      const sx = this.x + (this.vertical ? 0 : along), sy = this.y + (this.vertical ? along : 0);
+      const a = dirA + rand(-0.55, 0.55);
+      const v = rand(160, 460) * power;
+      w.addDebris(new Debris(w, shards[i % shards.length], sx, sy, rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v, rand(-0.8, 0.8), {
+        air: 0.05, bounce: 0.25, density: 0.001, shadow: 0,
+        harm: { kind: 'cut', knock: 2.4, lethal: 5.2, ignore: source },
+      }));
+    }
+    w.flashGlass(this.x, this.y);
     w.sound('glass', this.x, this.y);
     w.noise(this.x, this.y, 260);
   }
 
   onCollide(other) {
     const e = other.entity;
-    if (this.intact && e && e.isItem && Matter.Body.getSpeed(other) > 3) this.shatter(Math.atan2(other.velocity.y, other.velocity.x));
+    if (!this.intact || !e) return;
+    const fast = Matter.Body.getSpeed(other) > 3;
+    if ((e.isItem && fast) || (e.isDebris && Matter.Body.getSpeed(other) > 4.5) || (e.def && fast)) {
+      this.shatter(Math.atan2(other.velocity.y, other.velocity.x), null, 0.7);
+    }
   }
 
   draw(ctx) {

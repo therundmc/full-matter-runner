@@ -17,11 +17,13 @@ export function gore(world, ch, angle, cause, goreMul = 1) {
     case 'bullet': mode = chance(0.18 * goreMul) ? 'headless' : 'corpse'; break;
     case 'melee': mode = chance(0.3 * goreMul) ? 'headless' : 'corpse'; break;
     case 'execute': mode = 'headless'; break;
+    case 'glass': mode = chance(0.25) ? 'headless' : 'corpse'; break;
     default: mode = 'corpse';
   }
 
   // base spray
-  const sprayN = cause === 'slash' ? 40 : 28;
+  const sprayN = cause === 'slash' || cause === 'glass' ? 45 : 28;
+  if (cause === 'glass') P.blood(x, y, 0, Math.PI, 30, 160);
   P.blood(x, y, angle, 0.45, sprayN, 340);
   P.blood(x, y, angle + Math.PI, 0.7, 7, 110);
   P.mist(x, y, 10);

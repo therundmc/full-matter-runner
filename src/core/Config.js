@@ -19,8 +19,8 @@ export const MASK = {
   WALL: 0xffff,
   PROP: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.GLASS | CAT.CORPSE,
   DOOR: CAT.PROP | CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.CORPSE,
-  CHAR: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.GLASS,
-  DEBRIS: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.DEBRIS | CAT.GLASS,
+  CHAR: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.CHAR | CAT.GLASS | CAT.DEBRIS,
+  DEBRIS: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.DEBRIS | CAT.GLASS | CAT.CHAR,
   ITEM: CAT.WALL | CAT.PROP | CAT.DOOR | CAT.GLASS,
   GLASS: CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.PROP | CAT.CORPSE,
   GLASS_BROKEN: CAT.CHAR,
@@ -42,13 +42,16 @@ export const ENEMY = {
   viewDist: 340,
   fov: Math.PI * 0.62,
   closeSense: 46,         // 360° awareness radius
-  reaction: [0.32, 0.5],  // seconds before the first shot once the player is spotted
-  turnRate: 9,            // rad/s while aiming
+  reaction: [0.6, 0.9],   // seconds before the first shot once the player is spotted
+  reacquire: [0.32, 0.5], // same, when they were already alerted
+  turnRate: 5,            // rad/s while aiming
+  aimError: 0.07,         // extra random spread on enemy shots (rad)
+  fireRateMul: 1.3,       // enemies shoot slower than the player
   hearing: 620,           // gunshot alert radius
   knockTime: 2.8,
 };
 
-export const MAX_DEBRIS = 260;
+export const MAX_DEBRIS = 420;
 export const MAX_PARTICLES = 4000;
 export const COMBO_WINDOW = 3.2;
 
@@ -62,3 +65,6 @@ export const PALETTE = {
   ink: '#140c1c',
   blood: ['#7c0a0a', '#930d10', '#a8141a', '#6a0707', '#b81a1f'],
 };
+
+// hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot)
+export const WALL_HP = { '#': 7, 'X': 14 };

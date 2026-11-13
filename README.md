@@ -35,7 +35,10 @@ Then open http://localhost:8000.
 - Guns never reload. When one is empty, throw it.
 - Punches, thrown weapons and doors slammed into enemies knock them out. Finish them with Space.
 - Your gunshots alert guards nearby. The silenced uzi doesn't.
-- Red barrels explode and set off other barrels.
+- Red barrels explode and set off other barrels. Cars blow up too.
+- Everything breaks: walls crack then collapse (bullets, melee, explosions), doors get ripped off their hinges,
+  furniture splinters, fences and windows shatter.
+- Debris is dangerous: shoot a window and the shards slice whoever stands behind it; blast debris knocks guards out.
 - Clear the floor, then get back to the car.
 
 ## Project layout
