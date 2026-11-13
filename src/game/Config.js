@@ -92,6 +92,7 @@ export const ENEMY = {
 // Squad brain (ai/Director.js): alert phases, noises, search sweeps, budgets.
 export const AI = {
   vigilance: { normal: 1, caution: 1.3, evasion: 1.5, alert: 1.7 }, // detection speed per phase
+  music: { normal: 0.35, caution: 0.6, evasion: 0.8, alert: 1 },    // soundtrack intensity per phase
   alertLinger: 4,         // seconds without a sighting before ALERT turns into EVASION
   evasion: 18,
   caution: 30,

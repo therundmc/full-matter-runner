@@ -1,4 +1,4 @@
-import { FIXED_DT, PLAYER, PALETTE, TILE } from './Config.js';
+import { FIXED_DT, PLAYER, PALETTE, TILE, AI } from './Config.js';
 import { loadAssets } from '../engine/Assets.js';
 import { clamp, lerp } from '../engine/math.js';
 import Input from '../engine/Input.js';
@@ -69,7 +69,9 @@ export default class Game {
     this.flashA = 0;
     this.clearedT = 0;
     Audio.setMuffle(0);
-    Music.setIntensity(1);
+    // the soundtrack thickens as the squad wakes up
+    Music.setIntensity(AI.music.normal);
+    this.world.events.on('alertPhase', ({ phase }) => Music.setIntensity(AI.music[phase] ?? 1));
     this.setState('intro');
   }
 
