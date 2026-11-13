@@ -3,7 +3,7 @@
 //   pools    the blood under each body (the corpse owns and draws it; we only know where it is wet)
 //   walkers  whoever steps in one carries it away: fading footprints, a smear when sliding
 // A wet floor also grips less (World.floorGrip), so bodies and loose objects slide further on it.
-// Tuning lives in LIQUIDS (Config.js). Listens to 'propDestroyed' (hydrants).
+// Tuning lives in LIQUIDS (Config.js). Listens to 'propDestroyed' (hydrants). Emits 'footprint' (guards read them).
 import { LIQUIDS } from '../Config.js';
 import { rand, TAU } from '../../engine/math.js';
 
@@ -147,6 +147,7 @@ export default class Liquids {
     t.side = -t.side;
     const px = ch.x - Math.sin(a) * LIQUIDS.gait * t.side, py = ch.y + Math.cos(a) * LIQUIDS.gait * t.side;
     w.decals.footprint(px, py, a, k.color, k.alpha * (0.25 + 0.75 * fade));
+    w.events.emit('footprint', { who: ch, x: px, y: py, angle: a, kind: t.kind });
     t.left--;
   }
 }

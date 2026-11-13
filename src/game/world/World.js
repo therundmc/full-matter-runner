@@ -13,6 +13,7 @@
 //   'doorBroken'    a lock burst / door ripped { x, y }
 //   'alertPhase'    squad alert phase changed  { phase, prev }   (ai/Director)
 //   'surrender'     the last guard gave up     { who }   (entities/Enemy)
+//   'footprint'     a wet sole marked the floor { who, x, y, angle, kind }   (systems/Liquids)
 //   'trafficSpawn' / 'trafficStopped' / 'runOver' / 'civilianPanic'  street life (systems/Ambient)
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';

@@ -1,7 +1,8 @@
 // A guard. Organic, readable behaviour: a detection meter fills while he sees the player ('?' then '!'),
 // he turns toward noises before walking over, reacts with a human delay, aims badly at first and better with
 // time, reloads, picks weapons back up, talks to his mates and curses the player (barks, lines in data/barks.js),
-// may give up when he is the last one left, and follows the squad Director
+// follows the player's wet or bloody footprints, may give up when he is the last one left, and follows the squad
+// Director
 // (ai/Director.js) for alert phases, searches and tactical spots. Geometry lives in ai/Tactics.js,
 // perception maths in ai/Perception.js, tuning in Config (ENEMY, AI).
 import { ENEMY, AI, TILE, CAT, MASK, PALETTE } from '../Config.js';
@@ -18,13 +19,14 @@ const { Body } = Matter;
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
   SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
-  YIELD: 'yield',
+  YIELD: 'yield', TRACK: 'track',
 };
 // awareness implied by each state: 0 unaware, 1 suspicious ('?'), 2 alert ('!')
 const AWARE = {
   idle: 0, patrol: 0, return: 0, suspicious: 1, investigate: 1, check: 1, search: 1, guard: 1, dizzy: 1,
-  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2,
+  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2, track: 1,
 };
+const TRACKERS = new Set([S.IDLE, S.PATROL, S.RETURN, S.SEARCH]); // states a guard leaves to follow footprints
 const RANGES = ENEMY.ranges;
 
 export default class Enemy extends Character {
@@ -75,6 +77,8 @@ export default class Enemy extends Character {
     this.nag = 0; this.nagStage = 0; // patience lost with a loitering stranger 0..1, warnings given (see mind)
     this.shooing = null;             // that stranger, while we stare him down
     this.tauntT = rand(1.5, 5);      // until the next curse thrown at the player
+    this.trackAt = null;             // the footprint we are walking to (see doTrack)
+    this.nearT = 0;                  // time spent a few steps from a spot without reaching it (see blockedAt)
     this.shaken = false;             // last man standing, about to give up (Director.onKill)
     this.yielded = false;            // on his knees, hands up: out of the fight for good (see surrender)
     this.begT = 0;
@@ -253,6 +257,7 @@ export default class Enemy extends Character {
   investigate(x, y, kind, urgent) {
     if (this.aware === 2 || this.knocked > 0) return;
     this.setState(S.INVESTIGATE);
+    this.nearT = 0;
     this.stim = { x, y, kind };
     this.urgent = urgent;
     this.meter = Math.max(this.meter, ENEMY.suspicious);
@@ -295,6 +300,23 @@ export default class Enemy extends Character {
       this.check(inc);
       return;
     }
+    // the player's footprints: blood alarms anyone, wet soles only mean something to a guard already looking
+    const d = this.director;
+    if (!TRACKERS.has(this.state) || d.tracker) return;
+    const looking = this.aware > 0 || d.phase !== 'normal', R = AI.trail;
+    const print = d.trail.find((q) => this.canSeePoint(q.x, q.y, R.sight, R.close), (q) => looking || q.kind === 'blood');
+    if (print) this.track(print);
+  }
+
+  // '?': follow the footprints from that one on
+  track(print) {
+    this.setState(S.TRACK);
+    this.nearT = 0;
+    this.trackAt = print;
+    this.meter = Math.max(this.meter, ENEMY.suspicious);
+    this.showIcon('?', 1.5);
+    this.say(print.kind === 'blood' ? 'blood' : 'tracks');
+    if (print.kind === 'blood') this.director.raise();
   }
 
   check(inc) {
@@ -384,6 +406,7 @@ export default class Enemy extends Character {
       case S.HUNT: this.doHunt(dt); break;
       case S.FETCH: this.doFetch(dt); break;
       case S.FLEE: this.doFlee(dt); break;
+      case S.TRACK: this.doTrack(dt); break;
       default: break;
     }
     const k = this.kneel ? 1 : 0;
@@ -470,7 +493,7 @@ export default class Enemy extends Character {
     const st = this.stim;
     if (this.sub === '') {
       const speed = this.urgent ? ENEMY.runSpeed * 0.8 : ENEMY.walkSpeed * 1.2;
-      if (this.travel(dt, st.x, st.y, speed, { doors: !this.urgent, near: 14, glance: !this.urgent })) {
+      if (this.travel(dt, st.x, st.y, speed, { doors: !this.urgent, near: 14, glance: !this.urgent }) || this.blockedAt(dt, st.x, st.y)) {
         this.sub = 'look'; this.t = 0; this.lookT = rand(1.6, 2.6); this.lookBase = this.angle;
       }
       return;
@@ -529,6 +552,20 @@ export default class Enemy extends Character {
     this.halt();
     this.sweep(dt, this.lookBase, 1.4);
     if (this.t > this.lookT) { pt.done = true; this.searchPt = null; this.sub = 'go'; }
+  }
+
+  // walk the footprints one hop at a time, then go and look where they were heading
+  doTrack(dt) {
+    const d = this.director, at = this.trackAt, hurry = d.phase !== 'normal';
+    const speed = hurry ? ENEMY.runSpeed * 0.7 : ENEMY.walkSpeed * 1.3;
+    if (!this.travel(dt, at.x, at.y, speed, { near: 12, glance: true }) && !this.blockedAt(dt, at.x, at.y)) return;
+    this.nearT = 0;
+    d.trail.close(at);
+    const next = d.trail.next(at);
+    if (next) { this.trackAt = next; return; }
+    const x = at.x + Math.cos(at.angle) * AI.trail.ahead, y = at.y + Math.sin(at.angle) * AI.trail.ahead;
+    const open = this.world.lineOfSight(at.x, at.y, x, y);
+    this.investigate(open ? x : at.x, open ? y : at.y, 'tracks', hurry || at.kind === 'blood');
   }
 
   // hold a position and watch a spot (guards beyond the hunters' quota)
@@ -1003,6 +1040,13 @@ export default class Enemy extends Character {
     this.path = path;
     this.pathIdx = 0;
     return true;
+  }
+
+  // True when we have been a few steps from (x, y) for too long without getting there: something stands on the
+  // spot (a car, a pile of wreckage) and close enough is good enough.
+  blockedAt(dt, x, y) {
+    if (Math.hypot(x - this.x, y - this.y) > 80) { this.nearT = 0; return false; }
+    return (this.nearT += dt) > 2;
   }
 
   // walk/run to (x, y), path-finding as needed; true once there (or unreachable)

@@ -51,6 +51,7 @@ src/
       Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
+      Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
       Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
@@ -266,6 +267,10 @@ detection gauge) runs out faster the closer the stranger stands and comes back s
   faces the armed player he throws his weapon down, kneels with his hands up and begs (`Enemy.surrender`, state
   `yield`). He is out of the fight for good: `world.enemiesLeft` and `Director.alive` count him out, the
   'surrender' event clears the level, sparing him pays the `mercy` end bonus, killing him scores as any kill.
+- Footprints: Liquids emits 'footprint' for every print; the Director keeps the player's in `director.trail`
+  (ai/Trail.js, `AI.trail`: they dry after `fresh` s). A guard who sees one (`Enemy.scanWorld`) follows the run of
+  prints hop by hop (state `track`, one tracker at a time), then goes and looks where they were heading. Bloody
+  prints alarm any guard and put the squad on CAUTION; wet ones only mean something to a guard already looking.
 - `?` / `!` and the meter are drawn
   after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
 - Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned

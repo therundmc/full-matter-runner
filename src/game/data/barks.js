@@ -7,6 +7,8 @@ export const BARKS = {
   damage: ['WHAT THE...', 'WHO DID THIS?', "THAT WASN'T LIKE THAT."],
   missing: ["WHERE'D HE GO?", "HE'S NOT AT HIS POST."],
   clear: ['...NOTHING.', 'MUST BE RATS.', 'ALL CLEAR.', 'JUMPING AT SHADOWS.', 'FORGET IT.'],
+  tracks: ['FOOTPRINTS...', 'WET TRACKS.', 'SOMEONE CAME THROUGH HERE.', 'FRESH TRACKS.'],
+  blood: ['BLOOD...', 'BLOODY FOOTPRINTS!', "THAT'S BLOOD. THIS WAY."],
   search: ["I'LL FIND YOU.", 'COME OUT, COME OUT...', "HE'S CLOSE.", 'CHECK THE CORNERS!', "YOU'RE NOT LEAVING ALIVE."],
   // a stranger hanging about (Enemy.mind)
   shoo: ['BEAT IT.', 'KEEP WALKING.', 'GET LOST, PAL.', 'MOVE ALONG.', "WHAT'RE YOU LOOKING AT?", 'NOTHING TO SEE HERE.'],

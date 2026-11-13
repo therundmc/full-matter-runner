@@ -118,6 +118,10 @@ export const AI = {
   searchSpots: 14,
   noiseGap: 0.25,         // the same source is heard at most this often (automatic fire)
   planBudget: 6,          // expensive AI work per step (path = 1, cover / flank search = 3)
+  // The player's wet or bloody footprints (ai/Trail.js, Enemy.doTrack). fresh: s a print stays readable; max: prints
+  // kept; gap: px between two prints of the same run; hop: px a tracker walks at a time; sight: share of the view
+  // distance at which a print is noticed, close: px all around; ahead: px he goes on past the last print.
+  trail: { fresh: 45, max: 48, gap: 60, hop: 70, sight: 0.45, close: 36, ahead: 96 },
   barkGap: 0.4,           // seconds between two barks in the whole squad
   barkMemory: 8,          // lines the squad has just used and will not repeat
   tauntGap: [6, 12],      // seconds between two curses of a guard in a fight

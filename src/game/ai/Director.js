@@ -2,13 +2,15 @@
 //   normal -> caution (something odd) -> alert (player seen) -> evasion (lost him: sweep) -> caution -> normal,
 // routes noises to the guards who can hear them, keeps the incidents left in the world (bodies, wrecked
 // doors / windows / walls) as evidence, runs search sweeps and the claims on tactical spots, and hands out a
-// per-step budget for expensive work (path-finding, cover searches).
-// Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken'.
+// per-step budget for expensive work (path-finding, cover searches). It also keeps the trail of prints the
+// player's wet or bloody soles leave behind (ai/Trail.js), which one guard at a time may follow.
+// Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken', 'footprint'.
 // Emits: 'alertPhase' { phase, prev }.
 import { AI, PALETTE, TILE } from '../Config.js';
 import { chance } from '../../engine/math.js';
 import { BARK_TONE } from '../data/barks.js';
 import { searchPoints } from './Tactics.js';
+import Trail from './Trail.js';
 
 // A line among `lines` that is not in `recent` (any of them once they have all been used).
 export function freshLine(lines, recent, rnd = Math.random) {
@@ -36,16 +38,20 @@ export default class Director {
     this.barkAt = -99;
     this.said = [];             // the last lines barked (see bark)
     this.provoked = false;      // the player gave himself away (see isThreat)
+    this.trail = new Trail();   // the player's footprints
     const ev = world.events;
     ev.on('noise', (e) => this.onNoise(e));
     ev.on('kill', (e) => this.onKill(e));
     ev.on('wallDestroyed', (e) => this.incident('wall', e.x, e.y));
     ev.on('windowBroken', (e) => this.incident('window', e.x, e.y));
     ev.on('doorBroken', (e) => this.incident('door', e.x, e.y));
+    ev.on('footprint', (e) => { if (e.who.isPlayer) this.trail.add(e.x, e.y, e.angle, e.kind, world.time); });
   }
 
   get vigilance() { return AI.vigilance[this.phase]; }
   get alive() { return this.world.enemies.filter((e) => e.alive && !e.yielded); } // still in the fight
+  // the guard following the player's footprints, if any (one is enough)
+  get tracker() { return this.world.enemies.find((e) => e.alive && e.knocked <= 0 && e.state === 'track'); }
 
   setPhase(p, t = 0) {
     this.phaseT = t;
@@ -84,6 +90,7 @@ export default class Director {
   // phase timers
   tick(dt) {
     const w = this.world;
+    this.trail.prune(w.time);
     if (this.phase === 'alert' && w.time - this.lastSightT > AI.alertLinger) this.startEvasion();
     else if (this.phase === 'evasion' && (this.phaseT -= dt) <= 0) {
       this.setPhase('caution', AI.caution);
