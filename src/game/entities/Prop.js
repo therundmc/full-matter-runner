@@ -2,6 +2,7 @@ import { CAT, MASK, MAX_DEBRIS } from '../Config.js';
 import { PROPS } from '../data/props.js';
 import { sprite, spriteOpt, slices, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance, angDiff, clamp } from '../../engine/math.js';
+import { segPoly } from '../../engine/physics/Raycast.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 
@@ -25,8 +26,13 @@ function opaqueEnough(c, min = 6) {
   return false;
 }
 
-// Furniture and street dressing. Hits bite pieces out of it progressively (the sprite is eroded where it was hit
-// and the bitten piece flies off as debris); when its hit points run out, what is left falls apart.
+// how big a bite each kind of hit takes, relative to the object
+const BITE = { pellet: 0.6, bullet: 1, rifle: 0.8, blunt: 1.7, blast: 1.4 };
+// damage states, by fraction of hit points left: cracked, split, giving way
+const STAGES = [0.7, 0.45, 0.2];
+
+// Furniture and street dressing. Every hit bites a piece out where it landed (the piece flies off), and the object
+// goes through damage states (cracked -> split -> giving way) before what is left falls apart.
 export default class Prop {
   constructor(world, type, x, y, angle = 0) {
     this.world = world;
@@ -52,6 +58,8 @@ export default class Prop {
     this.dead = false;
     this.flash = 0;
     this.canvas = null; // per-instance copy of the sprite, created on the first bite
+    this.stage = 0;     // damage states reached
+    this.sag = 0;       // slight tilt once it is giving way
     world.addBody(this.body);
   }
 
@@ -63,17 +71,22 @@ export default class Prop {
     return { sx: dx * Math.cos(a) - dy * Math.sin(a) + this.img.width / 2, sy: dx * Math.sin(a) + dy * Math.cos(a) + this.img.height / 2 };
   }
 
+  ensureCanvas() {
+    if (this.canvas) return this.canvas.getContext('2d');
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.img.width; this.canvas.height = this.img.height;
+    const g = this.canvas.getContext('2d');
+    g.drawImage(this.img, 0, 0);
+    return g;
+  }
+
   // tear a piece out of the object around a hit point; the piece flies off
   bite(px, py, dirA, scale) {
     const img = this.img;
-    if (!this.canvas) {
-      this.canvas = document.createElement('canvas');
-      this.canvas.width = img.width; this.canvas.height = img.height;
-      this.canvas.getContext('2d').drawImage(img, 0, 0);
-    }
+    this.ensureCanvas();
     // bite slightly inside the edge the bullet entered through
     const { sx, sy } = this.toSprite(px + Math.cos(dirA) * 2.5, py + Math.sin(dirA) * 2.5);
-    const r = clamp(Math.sqrt((img.width * img.height * 0.5) / (Math.PI * this.def.hp)), 2.5, 9) * scale;
+    const r = clamp(Math.sqrt((img.width * img.height * 0.5) / (Math.PI * this.def.hp)), 2, 8) * scale;
     const size = Math.ceil(r * 2.4) + 2;
     const piece = document.createElement('canvas');
     piece.width = piece.height = size;
@@ -102,7 +115,7 @@ export default class Prop {
     g.restore();
     if (opaqueEnough(piece)) {
       const back = dirA + Math.PI + rand(-1, 1);
-      const a = chance(0.6) ? back : dirA + rand(-0.6, 0.6), v = rand(70, 190) * scale;
+      const a = chance(0.6) ? back : dirA + rand(-0.6, 0.6), v = rand(40, 120) * scale;
       if (this.def.static || this.world.debris.length > MAX_DEBRIS * 0.6) {
         this.world.particles.shard(piece, px, py, a, v);
       } else {
@@ -115,18 +128,107 @@ export default class Prop {
   get x() { return this.body.position.x; }
   get y() { return this.body.position.y; }
 
-  // bullet / melee / thrown hit: every hit bites a piece off
-  hit(damage, px, py, dirA, power = 0.6) {
+  // where a shot along dirA entering at (px, py) comes out on the far side
+  exitPoint(px, py, dirA) {
+    const fx = px + Math.cos(dirA) * 120, fy = py + Math.sin(dirA) * 120;
+    const r = segPoly(fx, fy, px, py, this.body.vertices);
+    return r ? { x: fx + (px - fx) * r.t, y: fy + (py - fy) * r.t } : null;
+  }
+
+  // kind: pellet | bullet | rifle | blunt | blast
+  hit(damage, px, py, dirA, power = 0.6, kind = 'bullet') {
     if (this.dead) return;
     const d = this.def, w = this.world;
     this.flash = 0.06;
-    if (this.hp - damage > 0) this.bite(px, py, dirA, damage > 1 ? 1.3 : 1);
+    if (this.hp - damage > 0) {
+      this.bite(px, py, dirA, BITE[kind] ?? 1);
+      if (kind === 'rifle') {
+        // through and through: a bigger chunk blows out the back
+        const ex = this.exitPoint(px, py, dirA);
+        if (ex) this.bite(ex.x - Math.cos(dirA) * 5, ex.y - Math.sin(dirA) * 5, dirA + Math.PI, 1.3);
+      }
+      if (kind === 'blunt') this.cracks(px, py, 3);
+      if (kind === 'blast') this.scorch(px, py);
+    }
     w.particles.chips(px, py, dirA + Math.PI, 1.2, 3, d.chips);
     if (d.sparks || d.sound === 'metal') w.particles.sparks(px, py, dirA + Math.PI, 1, 4, 220);
     w.sound(d.sound === 'glass' ? 'impact' : d.sound, px, py, 0.5);
     if (!d.static) impulse(this.body, dirA, 25 * power, (Math.random() - 0.5) * 0.05);
     this.hp -= damage;
-    if (this.hp <= 0) this.break(dirA, power);
+    if (this.hp <= 0) { this.break(dirA, power); return; }
+    // damage states
+    const frac = this.hp / d.hp;
+    while (this.stage < STAGES.length && frac <= STAGES[this.stage]) this.enterStage(++this.stage, px, py, dirA);
+  }
+
+  enterStage(stage, px, py, dirA) {
+    const w = this.world, d = this.def;
+    if (stage === 1) {
+      this.cracks(this.x, this.y, 6);
+    } else if (stage === 2) {
+      this.split();
+      w.particles.chips(this.x, this.y, dirA, Math.PI, 10, d.chips, 140);
+      w.sound(d.sound === 'metal' ? 'metal' : 'wood', this.x, this.y, 0.8);
+    } else if (stage === 3) {
+      // a big piece gives way
+      this.bite(px + rand(-6, 6), py + rand(-6, 6), dirA, 2.2);
+      this.sag = rand(-0.06, 0.06);
+      w.particles.smoke(this.x, this.y, 6, 10, { speed: 25, size: 6, life: 1.2 });
+      w.sound('creak', this.x, this.y, 0.8);
+    }
+  }
+
+  // dark cracks spreading through the object from a point
+  cracks(px, py, n) {
+    const g = this.ensureCanvas();
+    const { sx, sy } = this.toSprite(px, py);
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    g.strokeStyle = 'rgba(16,8,12,0.75)';
+    g.lineWidth = 0.8;
+    for (let k = 0; k < n; k++) {
+      let x = sx, y = sy, a = rand(0, Math.PI * 2);
+      g.beginPath(); g.moveTo(x, y);
+      for (let i = 0; i < 6; i++) {
+        a += rand(-0.6, 0.6);
+        x += Math.cos(a) * rand(2, 5); y += Math.sin(a) * rand(2, 5);
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    g.restore();
+  }
+
+  // a jagged gap right across the object
+  split() {
+    const g = this.ensureCanvas();
+    const W = this.canvas.width, H = this.canvas.height;
+    const across = W >= H;
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    g.lineWidth = 1.6;
+    g.beginPath();
+    let t = (across ? W : H) * rand(0.35, 0.65);
+    for (let u = 0; u <= (across ? H : W); u += 2) {
+      t += rand(-1.5, 1.5);
+      if (across) g.lineTo(t, u); else g.lineTo(u, t);
+    }
+    g.stroke();
+    g.restore();
+  }
+
+  // blackened side facing a blast
+  scorch(px, py) {
+    const g = this.ensureCanvas();
+    const { sx, sy } = this.toSprite(px, py);
+    const grad = g.createRadialGradient(sx, sy, 0, sx, sy, 14);
+    grad.addColorStop(0, 'rgba(10,6,6,0.7)');
+    grad.addColorStop(1, 'rgba(10,6,6,0)');
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = grad;
+    g.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    g.restore();
   }
 
   break(dirA = rand(0, Math.PI * 2), power = 1) {
@@ -150,7 +252,7 @@ export default class Prop {
       const lx = ((k % cols) + 0.5) * pw - this.img.width / 2, ly = (Math.floor(k / cols) + 0.5) * ph - this.img.height / 2;
       const px = x + lx * ca - ly * sa, py = y + lx * sa + ly * ca;
       const out = Math.atan2(py - y, px - x);
-      const a = dirA + (Math.hypot(lx, ly) > 2 ? angDiff(dirA, out) * 0.5 : 0) + rand(-0.6, 0.6), v = rand(70, 240) * power;
+      const a = dirA + (Math.hypot(lx, ly) > 2 ? angDiff(dirA, out) * 0.5 : 0) + rand(-0.6, 0.6), v = rand(40, 150) * power;
       if (physical) {
         w.addDebris(new Debris(w, pc, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.4, 0.4),
           { air: 0.07, material: d.material, harm: harm && { ...harm } }));
@@ -158,7 +260,7 @@ export default class Prop {
     });
     // splinters: visual only
     for (let k = 0; k < 6 + cols * rows * 2; k++) {
-      const a = dirA + rand(-1.4, 1.4), v = rand(80, 300) * power;
+      const a = dirA + rand(-1.4, 1.4), v = rand(50, 180) * power;
       w.particles.shard(chunk(d.chips, Math.floor(rand(2, 6)), Math.floor(rand(1, 3)) + 1), x + rand(-8, 8), y + rand(-8, 8), a, v);
     }
     if (d.explosive) return;
@@ -189,7 +291,7 @@ export default class Prop {
     if (this.flash > 0) { this.flash -= 1 / 60; jx = rand(-1.5, 1.5); jy = rand(-1.5, 1.5); }
     if (this.def.overhead) return; // drawn later, above characters
     drawSprite(ctx, silhouette(this.img), p.x + jx + 3, p.y + jy + 3, this.body.angle, this.canvas ? 0.25 : 0.35);
-    drawSprite(ctx, this.look, p.x + jx, p.y + jy, this.body.angle);
+    drawSprite(ctx, this.look, p.x + jx, p.y + jy, this.body.angle + this.sag);
   }
 
   // canopies and lamp heads: above everyone, see-through when the player is under

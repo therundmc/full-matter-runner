@@ -32,7 +32,7 @@ export default class WorldRenderer {
     for (const d of w.doors) d.draw(ctx);
     ctx.drawImage(w.decals.wallCanvas, 0, 0);
 
-    if (w.cleared) this.drawExit(ctx, t);
+    if (w.cleared && w.level.exit) this.drawExit(ctx, t);
     w.particles.draw(ctx);
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx);

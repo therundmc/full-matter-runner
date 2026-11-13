@@ -53,7 +53,7 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
     else if (de < R && p.hit) {
       // survived the blast: chunks torn off the side facing it
       const r = Math.max(p.def.w ?? 0, p.def.h ?? 0, (p.def.r ?? 0) * 2) / 2;
-      for (let k = 0; k < 2; k++) p.hit(1, p.x - Math.cos(a) * r + rand(-4, 4), p.y - Math.sin(a) * r + rand(-4, 4), a, 1.4);
+      for (let k = 0; k < 3; k++) p.hit(1, p.x - Math.cos(a) * r + rand(-4, 4), p.y - Math.sin(a) * r + rand(-4, 4), a, 1.4, 'blast');
     }
   }
   for (const g of world.windows) {
@@ -96,14 +96,14 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
     if (d > R * 2.2 || d < 0.01) continue;
     const f = occ(b.position.x, b.position.y, b.entity);
     if (f <= 0) continue;
-    const J = (1 - d / (R * 2.2)) * 200 * f;
+    const J = (1 - d / (R * 2.2)) * 140 * f;
     if (b.label === 'door') {
       const door = b.entity;
       const torque = ((b.position.x - door.hx) * dy - (b.position.y - door.hy) * dx) / (d * door.len);
       Body.setAngularVelocity(b, Body.getAngularVelocity(b) + (torque * J) / kgOf(b) * 0.15);
       continue;
     }
-    const dv = impulse(b, Math.atan2(dy, dx), J, rand(-0.4, 0.4), 22);
+    const dv = impulse(b, Math.atan2(dy, dx), J, rand(-0.3, 0.3), 14);
     b.flyUntil = world.time + 0.1 + dv * 0.02;
     if (b.entity?.isItem) b.entity.thrower = null;
     if (b.entity?.isDebris && dv > 4 && !b.entity.harm) b.entity.harm = { kind: 'blunt', knock: 3.5, lethal: 9 };

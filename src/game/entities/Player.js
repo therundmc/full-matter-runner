@@ -3,7 +3,7 @@ import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand } from '../../engine/math.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
-import { findVault, findCover } from '../systems/Cover.js';
+import { findVault } from '../systems/Cover.js';
 
 export default class Player extends Character {
   constructor(world, x, y, angle) {
@@ -54,13 +54,7 @@ export default class Player extends Character {
     if (input.down('KeyS') || input.down('ArrowDown')) dy += 1;
     if (input.down('KeyA') || input.down('ArrowLeft')) dx -= 1;
     if (input.down('KeyD') || input.down('ArrowRight')) dx += 1;
-    if (this.cover) {
-      // pushing away from the surface leaves cover; otherwise slide along it crouched
-      const len = Math.hypot(dx, dy);
-      if (len && (dx * this.cover.nx + dy * this.cover.ny) / len > 0.6) this.leaveCover();
-      else if (this.refreshCover()) this.steerInCover(dx, dy, PLAYER.speed);
-    }
-    if (!this.cover) this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
+    this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
     const moving = !!(dx || dy);
     const moveA = moving ? Math.atan2(dy, dx) : this.angle;
 
@@ -89,17 +83,11 @@ export default class Player extends Character {
       }
     }
     if (input.hit('KeyR')) this.reload();
-    // Space = context action: execute > vault > take / leave cover
-    this.contextAction = this.nearDowned ? 'EXECUTE' : findVault(w, this, moveA, moving) ? 'VAULT'
-      : this.cover ? 'LEAVE COVER' : findCover(w, this)?.low ? 'TAKE COVER' : null;
+    // Space = context action: execute > vault
+    this.contextAction = this.nearDowned ? 'EXECUTE' : findVault(w, this, moveA, moving) ? 'VAULT' : null;
     if (input.hit('Space')) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
-      else if (this.tryVault(moveA, moving)) { /* jumping */ }
-      else if (this.cover) this.leaveCover();
-      else {
-        const c = findCover(w, this);
-        if (c) this.takeCover(c);
-      }
+      else this.tryVault(moveA, moving);
     }
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap

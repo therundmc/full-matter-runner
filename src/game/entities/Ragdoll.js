@@ -118,7 +118,7 @@ export default class Ragdoll {
   // a bullet hits one of the parts
   shotPart(part, a, weaponDef) {
     const w = this.world;
-    impulse(part.body, a, weaponDef?.pellets > 1 ? 30 : 22, rand(-0.2, 0.2), 6);
+    impulse(part.body, a, weaponDef?.pellets > 1 ? 20 : 14, rand(-0.15, 0.15), 4);
     const p = part.body.position;
     w.particles.blood(p.x, p.y, a, 0.5, 10, 220);
     w.decals.stampBlood(p.x, p.y, 3, 3);

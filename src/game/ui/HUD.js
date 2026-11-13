@@ -53,7 +53,8 @@ export function drawHUD(ctx, game, t) {
   if (hint) text(ctx, hint, W / 2, H - 50 * s, 16 * s, PALETTE.white, { alpha: 0.75 + Math.sin(t * 8) * 0.25 });
 
   // level cleared
-  if (w.cleared && !w.exited && game.state === 'play') {
+  // levels without an exit (the lab) have nothing to point at
+  if (w.cleared && !w.exited && game.state === 'play' && w.level.exit) {
     const ct = game.clearedT;
     if (ct < 2.4) {
       const sc = 1 + Math.max(0, 0.4 - ct) * 2;

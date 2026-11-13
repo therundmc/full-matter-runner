@@ -1,13 +1,9 @@
-// Geometry for the two traversal mechanics:
-//  - cover: the nearest surface a character can crouch behind (walls, furniture with def.cover = 'low' | 'high')
-//  - vault: a broken window or a low obstacle (def.vault) to jump over, with a free landing spot on the far side
+// Vaulting geometry: a broken window or a low obstacle (def.vault) to get over, with a free landing spot on the far side.
 import { TILE, CAT } from '../Config.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
-import { WALLS } from '../world/TileMap.js';
 
 const { Query } = Matter;
 
-const COVER_REACH = 20;   // px from the body edge to the surface
 const VAULT_REACH = 14;
 const MAX_VAULT_DEPTH = 46;
 const BLOCKERS = CAT.WALL | CAT.PROP | CAT.GLASS | CAT.DOOR | CAT.CHAR;
@@ -22,35 +18,6 @@ function closestOnPolygon(px, py, verts) {
     const d = Math.hypot(px - x, py - y);
     if (!best || d < best.d) best = { x, y, d };
   }
-  return best;
-}
-
-// nearest cover surface: { x, y, nx, ny, low, target, dist } (n points from the surface toward the character)
-export function findCover(world, ch, onlyTarget) {
-  const x = ch.x, y = ch.y, reach = ch.radius + COVER_REACH;
-  let best = null;
-  const consider = (c) => { if (c.d < reach && (!best || c.d < best.d)) best = c; };
-  for (const p of world.props) {
-    if (p.dead || !p.def.cover) continue;
-    if (onlyTarget !== undefined && p !== onlyTarget) continue;
-    if (Math.abs(p.x - x) > 90 || Math.abs(p.y - y) > 90) continue;
-    const c = closestOnPolygon(x, y, p.body.vertices);
-    if (c.d < 0.5) continue;
-    consider({ x: c.x, y: c.y, d: c.d, nx: (x - c.x) / c.d, ny: (y - c.y) / c.d, low: p.def.cover === 'low', target: p });
-  }
-  if (onlyTarget === undefined || onlyTarget === null) {
-    const m = world.map, cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
-    for (let ty = cy - 1; ty <= cy + 1; ty++) {
-      for (let tx = cx - 1; tx <= cx + 1; tx++) {
-        if (!WALLS[m.at(tx, ty)]) continue;
-        const qx = Math.max(tx * TILE, Math.min(x, (tx + 1) * TILE)), qy = Math.max(ty * TILE, Math.min(y, (ty + 1) * TILE));
-        const d = Math.hypot(x - qx, y - qy);
-        if (d < 0.5) continue;
-        consider({ x: qx, y: qy, d, nx: (x - qx) / d, ny: (y - qy) / d, low: false, target: null });
-      }
-    }
-  }
-  if (best) { best.dist = best.d; delete best.d; }
   return best;
 }
 

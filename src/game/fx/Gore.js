@@ -80,7 +80,7 @@ export function gore(world, ch, angle, cause, goreMul = 1) {
 
 function throwGib(world, img, x, y, angle, radial, bleed, spurt, speedMul = 1) {
   const a = radial ? rand(0, Math.PI * 2) : angle + rand(-0.9, 0.9);
-  const v = rand(140, 430) * speedMul;
+  const v = rand(110, 330) * speedMul;
   world.addDebris(new Debris(world, img, x + rand(-4, 4), y + rand(-4, 4), rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v,
     rand(-0.6, 0.6), { bleed: bleed * rand(0.7, 1.3), spurt, bounce: 0.3, air: 0.035, material: 'flesh' }));
 }

@@ -240,17 +240,19 @@ export default class Game {
       ctx.globalAlpha = 1;
     }
 
-    if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') drawHUD(ctx, this, t);
+    if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
     if (this.world.debugPhysics) {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;
       ctx.textAlign = 'left';
       ctx.fillStyle = '#3cff7a';
       this.world.renderer.debugStats().forEach((l, i) => ctx.fillText(l, 12, H - 60 * H / 720 + i * 16 * H / 720));
     }
-    if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level);
-    if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7);
-    if (this.state === 'pause') drawPause(ctx, W, H, t);
-    if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results);
+    this.safeDraw(ctx, () => {
+      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level);
+      if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7);
+      if (this.state === 'pause') drawPause(ctx, W, H, t);
+      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results);
+    });
     this.drawCursor(ctx, t);
   }
 

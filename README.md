@@ -22,7 +22,7 @@ Then open http://localhost:8000.
 | Left click | Shoot / swing / punch |
 | Right click | Throw the weapon (knocks enemies down), or pick one up |
 | E | Pick up / swap weapons |
-| Space | Context action: execute a knocked-out enemy / vault (run into a broken window or low furniture) / take or leave cover |
+| Space | Context action: execute a knocked-out enemy / vault (run into a broken window, slide over low furniture or a car hood) |
 | Shift | Look further ahead |
 | R | Reload (restart once dead) |
 | Backspace | Instant restart |
@@ -35,8 +35,6 @@ Then open http://localhost:8000.
 - One hit kills, for you and for them.
 - Ammo is per caliber (9mm, 12 gauge, 7.62, rockets). R reloads a fresh magazine; the old one drops with what
   was left in it. Empty and nothing left? Click again to hurl the gun, John Wick style.
-- Cover: stand next to a counter, sofa, car... and press Space to crouch behind it; slide along it; firing pops
-  you up and exposes you for a moment.
 - Punches, thrown weapons and doors slammed into enemies knock them out. Finish them with Space.
 - Your gunshots alert guards nearby. The silenced uzi doesn't.
 - Red barrels explode and set off other barrels.

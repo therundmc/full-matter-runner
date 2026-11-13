@@ -16,7 +16,7 @@ export function damageWall(world, cx, cy, dmg, x, y, dirA, power = 1) {
   world.particles.smoke(x, y, 1 + Math.min(4, dmg), 2, { speed: 28, size: 4, life: 0.9 });
   if (chance(0.3 * dmg)) {
     const pcs = rubble(m.at(cx, cy) === 'X' ? 'brick' : 'wall');
-    const a = dirA + Math.PI + rand(-0.8, 0.8), v = rand(60, 180);
+    const a = dirA + Math.PI + rand(-0.8, 0.8), v = rand(40, 120);
     world.addDebris(new Debris(world, pcs[Math.floor(rand(0, 5))], x, y, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
       rand(-0.5, 0.5), { air: 0.08, material: 'concrete' }));
   }
@@ -34,7 +34,7 @@ export function destroyWall(world, cx, cy, dirA, power = 1) {
   const pcs = rubble(tex);
   const n = 9 + Math.floor(rand(0, 6));
   for (let k = 0; k < n; k++) {
-    const a = dirA + rand(-1.1, 1.1), v = rand(90, 330) * power;
+    const a = dirA + rand(-1.1, 1.1), v = rand(60, 200) * power;
     world.addDebris(new Debris(world, pcs[k % pcs.length], x + rand(-12, 12), y + rand(-12, 12), rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
       rand(-0.5, 0.5), { air: 0.07, bounce: 0.2, material: 'concrete', harm: { kind: 'blunt', knock: 3.2, lethal: 7.5 } }));
   }

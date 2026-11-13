@@ -64,7 +64,8 @@ export default class Projectile {
         this.ignore.add(h.target);
         return false;
       case 'prop':
-        h.target.hit(1, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1);
+        h.target.hit(1, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1,
+          this.weapon?.pellets > 1 ? 'pellet' : this.weapon?.ammo === '762' ? 'rifle' : 'bullet');
         if (this.pierce > 0) { this.pierce--; this.ignore.add(h.target); return false; }
         return true;
       case 'door': {
@@ -85,7 +86,7 @@ export default class Projectile {
         // desecration: the body jerks, more blood
         const c = h.target;
         if (h.part) { c.shotPart(h.part, a, this.weapon); return true; }
-        impulse(c.body, a, 30, (Math.random() - 0.5) * 0.2, 4);
+        impulse(c.body, a, 18, (Math.random() - 0.5) * 0.15, 3);
         w.particles.blood(h.x, h.y, a, 0.5, 10, 220);
         w.particles.blood(h.x, h.y, a + Math.PI, 0.6, 3, 80);
         w.decals.stampBlood(h.x, h.y, 3, 3);
@@ -94,13 +95,13 @@ export default class Projectile {
         return true;
       }
       case 'item':
-        impulse(h.target.body, a, 14, (Math.random() - 0.5) * 0.8, 6);
+        impulse(h.target.body, a, 8, (Math.random() - 0.5) * 0.5, 4);
         w.particles.sparks(h.x, h.y, a + Math.PI, 0.8, 4, 240);
         w.sound('metal', h.x, h.y, 0.4);
         this.ignore.add(h.target);
         return false;
       case 'debris':
-        impulse(h.target.body, a, 8, (Math.random() - 0.5) * 0.8, 6);
+        impulse(h.target.body, a, 4, (Math.random() - 0.5) * 0.5, 4);
         this.ignore.add(h.target);
         return false;
       default:

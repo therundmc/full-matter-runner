@@ -5,7 +5,7 @@ import { rand, spread, angDiff, local, lerp, clamp } from '../../engine/math.js'
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
-import { findVault, findCover } from '../systems/Cover.js';
+import { findVault } from '../systems/Cover.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
@@ -55,8 +55,6 @@ export default class Character {
     this.reloadStage = 0;
     this.pickAnim = 0;
     this.vaulting = null;   // { from, to, t, dur, kind } while jumping over something
-    this.cover = null;      // { x, y, nx, ny, low, target } while crouched against a surface
-    this.exposedT = 0;      // seconds left standing up over low cover after firing
     this.alive = true;
     this.knocked = 0;
     this.downAngle = 0;
@@ -164,7 +162,6 @@ export default class Character {
     this.cooldown -= dt;
     this.swing = Math.max(0, this.swing - dt);
     this.pickAnim = Math.max(0, this.pickAnim - dt);
-    this.exposedT = Math.max(0, this.exposedT - dt);
     this.updateReload(dt);
     this.recoil = Math.max(0, this.recoil - dt * 9);
     const v = Body.getVelocity(this.body);
@@ -217,10 +214,8 @@ export default class Character {
       const pr = new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
         team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pierce: d.pierce || 0, rocket: d.rocket,
       });
-      if (this.cover?.target) pr.ignore.add(this.cover.target); // shooting over your own cover
       w.addProjectile(pr);
     }
-    if (this.cover?.low) this.exposedT = 0.45; // stood up to fire over the cover
     const m = this.muzzlePos();
     w.muzzleFlash(m.x, m.y, a, d);
     if (d.casing) {
@@ -260,7 +255,7 @@ export default class Character {
       if (p.dead) continue;
       const dx = p.x - x, dy = p.y - y, dd = Math.hypot(dx, dy);
       if (dd > d.range + 12 || Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2) continue;
-      p.hit(d.lethal ? 2 : 1, x + Math.cos(a) * d.range * 0.8, y + Math.sin(a) * d.range * 0.8, a, 2.5);
+      p.hit(d.lethal ? 2 : 1, x + Math.cos(a) * d.range * 0.8, y + Math.sin(a) * d.range * 0.8, a, 2.5, 'blunt');
       hit = true;
     }
     for (const win of w.windows) {
@@ -288,7 +283,7 @@ export default class Character {
         if (o.dead) continue;
         const p = o.body.position, dd = Math.hypot(p.x - x, p.y - y);
         if (dd > d.range + 8 || Math.abs(angDiff(a, Math.atan2(p.y - y, p.x - x))) > d.arc / 2) continue;
-        impulse(o.body, a, d.lethal ? 140 : 80, rand(-0.3, 0.3), 8);
+        impulse(o.body, a, d.lethal ? 90 : 50, rand(-0.2, 0.2), 6);
         if (o.pool !== undefined) { w.particles.blood(p.x, p.y, a, 0.5, 6, 140); hit = true; }
       }
     }
@@ -306,7 +301,6 @@ export default class Character {
   kill(angle, cause, killer, goreMul = 1) {
     if (!this.alive) return;
     this.alive = false;
-    this.leaveCover();
     this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
@@ -322,18 +316,17 @@ export default class Character {
     if (this.vaulting || this.knocked || !this.alive) return false;
     const v = findVault(this.world, this, a, moving);
     if (!v) return false;
-    this.leaveCover();
     // hands planted on the ledge (world positions), a little apart
     const L = v.ledge;
     const hands = [{ x: L.x - L.tx * 9, y: L.y - L.ty * 9 }, { x: L.x + L.tx * 9, y: L.y + L.ty * 9 }];
     this.vaulting = {
-      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: v.kind === 'window' ? 0.55 : 0.45, kind: v.kind,
+      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: 0.5, kind: v.kind, over: v.over,
       hands, dir: Math.atan2(v.to.y - this.y, v.to.x - this.x), legSide: Math.random() < 0.5 ? -1 : 1,
     };
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
-    this.world.sound('vault', this.x, this.y, 0.8);
+    this.world.sound(v.kind === 'prop' ? 'slide' : 'vault', this.x, this.y, 0.8);
     if (v.kind === 'window') this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
     return true;
   }
@@ -344,8 +337,15 @@ export default class Character {
     if (!v) return false;
     v.t += dt;
     const k = Math.min(1, v.t / v.dur);
-    // slow on the push-off, fast over the top, settle on landing
-    const e = k < 0.25 ? 0.15 * (k / 0.25) : k < 0.75 ? 0.15 + 0.75 * ((k - 0.25) / 0.5) : 0.9 + 0.1 * ((k - 0.75) / 0.25);
+    // window: slow push-off, fast over the top, settle on landing. slide: one smooth glide
+    const e = v.kind === 'prop' ? k * k * (3 - 2 * k)
+      : k < 0.25 ? 0.15 * (k / 0.25) : k < 0.75 ? 0.15 + 0.75 * ((k - 0.25) / 0.5) : 0.9 + 0.1 * ((k - 0.75) / 0.25);
+    // skidding over a hood throws sparks, over wood a bit of dust
+    if (v.kind === 'prop' && k > 0.2 && k < 0.8 && Math.random() < 0.35) {
+      const metal = v.over?.isVehicle || v.over?.def?.material === 'metal';
+      if (metal) this.world.particles.sparks(this.x, this.y, v.dir + Math.PI, 0.6, 1, 140);
+      else this.world.particles.smoke(this.x, this.y, 1, 3, { speed: 15, size: 3, life: 0.5 });
+    }
     Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
     Body.setVelocity(this.body, { x: 0, y: 0 });
     if (k < 1) return true;
@@ -354,47 +354,6 @@ export default class Character {
     this.world.particles.smoke(this.x, this.y, 4, 4, { speed: 30, size: 4, life: 0.6 });
     this.world.noise(this.x, this.y, this.isPlayer ? 120 : 0, this);
     return false;
-  }
-
-  // ---------------- cover ----------------
-  takeCover(c) {
-    this.cover = c;
-    if (c.target) c.target.coveredBy = this;
-    this.world.sound('cover', this.x, this.y, 0.6);
-  }
-
-  leaveCover() {
-    if (!this.cover) return;
-    if (this.cover.target?.coveredBy === this) this.cover.target.coveredBy = null;
-    this.cover = null;
-    this.exposedT = 0;
-  }
-
-  // visible above low cover: not in cover, or popping up to shoot
-  get exposed() { return !this.cover || !this.cover.low || this.exposedT > 0; }
-
-  // keep hugging the same surface while sliding along it; false when it ran out (end of the counter...)
-  refreshCover() {
-    const c = this.cover;
-    const next = findCover(this.world, this, c.target ?? null);
-    if (!next || next.low !== c.low || (c.target && next.target !== c.target)) { this.leaveCover(); return false; }
-    Object.assign(c, next);
-    return true;
-  }
-
-  // movement while in cover: slide along the surface, pinned to it, crouched speed; stop at the edge
-  steerInCover(dx, dy, speed) {
-    const c = this.cover;
-    const tx = -c.ny, ty = c.nx;
-    let along = dx * tx + dy * ty;
-    if (along) {
-      const ahead = { x: this.x + tx * Math.sign(along) * 6, y: this.y + ty * Math.sign(along) * 6, radius: this.radius };
-      const next = findCover(this.world, ahead, c.target ?? null);
-      // stop at the corner: past it the closest point is the edge and the normal swings round
-      if (!next || (c.target && next.target !== c.target) || next.nx * c.nx + next.ny * c.ny < 0.92) along = 0;
-    }
-    const pin = (this.radius + 1.5 - c.dist) * 0.4;
-    this.steer(tx * along + c.nx * pin, ty * along + c.ny * pin, speed * (Math.abs(along) > 0.1 ? 0.5 : 0.25), 0.35);
   }
 
   dropWeapon(angle, speed = 2) {
@@ -421,15 +380,14 @@ export default class Character {
       }
       return;
     }
-    // crouched behind cover = smaller silhouette; vaulting = a little jump arc
-    let s = this.cover && !this.exposed ? 0.86 : 1;
+    // vaulting = a little jump arc
+    let s = 1;
     let lift = 0;
     if (this.vaulting) {
       const k = Math.min(1, this.vaulting.t / this.vaulting.dur);
       lift = Math.sin(Math.PI * k);
       s = 1 + lift * 0.16;
     }
-    if (this.cover) this.drawCoverMark(ctx);
     if (this.vaulting) { this.drawVault(ctx, s, lift); return; }
     ctx.save();
     ctx.translate(x, y);
@@ -457,56 +415,77 @@ export default class Character {
     ctx.restore();
   }
 
-  // Battlefield-style vault: hands planted on the ledge while the body swings over it
+  // window: hands on the sill while the body goes through; furniture / car hood: action-movie slide on the hip
   drawVault(ctx, s, lift) {
     const v = this.vaulting;
     const k = Math.min(1, v.t / v.dur);
     const a = v.dir;
     const x = this.x, y = this.y;
+    const slide = v.kind === 'prop';
+    const side = v.legSide;
+    // sliding: the body turns sideways onto its hip in the middle of the move
+    const ta = slide ? a + side * 1.15 * Math.sin(Math.PI * Math.min(1, k * 1.15)) : a;
     const toLocal = (p) => {
       const dx = p.x - x, dy = p.y - y, c = Math.cos(-a), sn = Math.sin(-a);
       return { x: (dx * c - dy * sn) / s, y: (dx * sn + dy * c) / s };
     };
-    // reach for the ledge, keep the hands planted while passing over, then let go
-    const rest = [{ x: 7, y: -6 }, { x: 7, y: 6 }];
-    // left shoulder -> the hand on the left of the body (no crossed arms)
-    const planted = v.hands.map(toLocal).sort((h1, h2) => h1.y - h2.y);
-    const hands = planted.map((h, i) => {
-      if (k < 0.22) return { x: lerp(rest[i].x, h.x, k / 0.22), y: lerp(rest[i].y, h.y, k / 0.22) };
-      if (k < 0.72) return h;
-      return { x: lerp(h.x, rest[i].x, (k - 0.72) / 0.28), y: lerp(h.y, rest[i].y, (k - 0.72) / 0.28) };
-    });
+    const ARM = 11; // a real arm's reach from the shoulder
+    const reach = (h, sy) => {
+      const dx = h.x, dy = h.y - sy, len = Math.hypot(dx, dy);
+      return len > ARM ? { x: (dx / len) * ARM, y: sy + (dy / len) * ARM } : h;
+    };
+    let hands;
+    if (slide) {
+      // one palm skids on the surface right under the body, the other hand keeps the gun up
+      const palm = { x: -2, y: -side * 8 };
+      const gunA = this.angle - a;
+      hands = side > 0 ? [palm, { x: Math.cos(gunA) * 10, y: Math.sin(gunA) * 10 + 4 }]
+        : [{ x: Math.cos(gunA) * 10, y: Math.sin(gunA) * 10 - 4 }, palm];
+    } else {
+      const rest = [{ x: 7, y: -6 }, { x: 7, y: 6 }];
+      const planted = v.hands.map(toLocal).sort((h1, h2) => h1.y - h2.y);
+      hands = planted.map((h, i) => {
+        let p = h;
+        if (k < 0.22) p = { x: lerp(rest[i].x, h.x, k / 0.22), y: lerp(rest[i].y, h.y, k / 0.22) };
+        else if (k >= 0.72) p = { x: lerp(h.x, rest[i].x, (k - 0.72) / 0.28), y: lerp(h.y, rest[i].y, (k - 0.72) / 0.28) };
+        return reach(p, i === 0 ? -6 : 6);
+      });
+    }
+    // legs: tucked and swung over a sill, thrown forward in a slide
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(a);
     ctx.scale(s, s);
-    // legs tucked and swung to one side over the obstacle
-    const swing = Math.sin(Math.PI * k) * 6 * v.legSide;
     ctx.fillStyle = '#1a1214';
-    for (const side of [-1, 1]) ctx.fillRect(-7 - Math.sin(Math.PI * k) * 3, side * 3.2 + swing - 1.8, 6, 3.6);
+    const mid = Math.sin(Math.PI * k);
+    for (const sd of [-1, 1]) {
+      if (slide) ctx.fillRect(2 + mid * 7, sd * 2.6 + side * mid * 3 - 1.8, 6, 3.6);
+      else ctx.fillRect(-7 - mid * 3, sd * 3.2 + mid * 6 * side - 1.8, 6, 3.6);
+    }
     ctx.restore();
-    drawSprite(ctx, silhouette(this.torso), x + 2 + lift * 4, y + 2 + lift * 5, a, 0.35);
-    // body first, then the arms pressing down on the ledge on top of it
-    drawSprite(ctx, this.torso, x, y, a, 1, s);
+    drawSprite(ctx, silhouette(this.torso), x + 2 + lift * 4, y + 2 + lift * 5, ta, 0.35);
+    drawSprite(ctx, this.torso, x, y, ta, 1, s);
+    // arms on top: pressing on the ledge / skidding on the hood
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(a);
     ctx.scale(s, s);
     ctx.lineCap = 'round';
+    const shoulders = [-6, 6].map((sy) => ({ x: -Math.sin(ta - a) * sy, y: Math.cos(ta - a) * sy }));
     hands.forEach((h, i) => {
-      const sy = i === 0 ? -6 : 6;
+      const o = shoulders[i];
       ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 4.6;
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(h.x, h.y); ctx.stroke();
       ctx.strokeStyle = this.look.arm; ctx.lineWidth = 2.8;
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(h.x, h.y); ctx.stroke();
     });
-    // weapon kept along the right forearm
     const d = this.def;
     if (d.sprite) {
-      const img = sprite(d.sprite), h = hands[1];
+      const img = sprite(d.sprite);
+      const gh = slide ? hands[side > 0 ? 1 : 0] : hands[1];
       ctx.save();
-      ctx.translate((h.x) * 0.6, (h.y + 6) * 0.6);
-      ctx.rotate(Math.atan2(h.y - 6, h.x) + 0.2);
+      ctx.translate(gh.x, gh.y);
+      ctx.rotate(slide ? this.angle - a : Math.atan2(gh.y - 6, gh.x) + 0.2);
       ctx.drawImage(img, -d.grip, -img.height / 2);
       ctx.restore();
     }
@@ -515,18 +494,6 @@ export default class Character {
       ctx.fillStyle = this.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
     }
     ctx.restore();
-  }
-
-  // thin bracket along the surface we are hugging (readability)
-  drawCoverMark(ctx) {
-    const c = this.cover;
-    const tx = -c.ny, ty = c.nx;
-    ctx.strokeStyle = this.exposed ? 'rgba(255,42,109,0.7)' : 'rgba(5,217,232,0.7)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(c.x - tx * 9 + c.nx, c.y - ty * 9 + c.ny);
-    ctx.lineTo(c.x + tx * 9 + c.nx, c.y + ty * 9 + c.ny);
-    ctx.stroke();
   }
 
   drawArms(ctx) {

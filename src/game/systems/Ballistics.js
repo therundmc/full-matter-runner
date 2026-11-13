@@ -28,7 +28,7 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore) {
       if (r) best = { t: r.t, kind, target: o, nx: r.nx, ny: r.ny };
     }
   };
-  test(world.props, 'prop', (p) => !p.dead && !(p.coveredBy?.exposed && p.coveredBy.team !== team));
+  test(world.props, 'prop', (p) => !p.dead);
   test(world.doors, 'door', () => true);
   test(world.windows, 'glass', (g) => g.intact);
   // dead bodies: every ragdoll part can be hit
@@ -45,12 +45,9 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore) {
   return best;
 }
 
-// can `viewer` see character `ch`? walls/doors block, and so does low cover someone is crouched behind
+// can `viewer` see character `ch`? (walls and closed doors block)
 export function canSeeCharacter(world, viewer, ch) {
-  if (!lineOfSight(world, viewer.x, viewer.y, ch.x, ch.y)) return false;
-  const c = ch.cover;
-  if (c?.low && !ch.exposed && c.target && !c.target.dead && segPoly(viewer.x, viewer.y, ch.x, ch.y, c.target.body.vertices)) return false;
-  return true;
+  return lineOfSight(world, viewer.x, viewer.y, ch.x, ch.y);
 }
 
 // walls and closed doors block sight

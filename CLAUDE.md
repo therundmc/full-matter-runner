@@ -18,15 +18,16 @@
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
 
 ## Delivery by blocks (validate each with the user before moving on)
-1. Engine perf fix & bolted furniture — done: weak caches, debris lifetime/caps (baked into the floor), render isolation
-   (safeDraw), big furniture static (erodes, bursts into ephemeral shards). Also earlier: M47 audio, heavy physics.
-2. Realistic doors (locked 'L' tiles, kick/shoot the lock, bullet holes, warping, ripped off) + Battlefield vault
-   animation (hands planted on the ledge) — done.
-3. Broken-window indicator (sill + jambs + pulse) — done; blast occlusion (walls block explosions) — done.
+1. Engine perf & stability — done. The "3 explosions" bug was the lab (no exit) clearing -> exit HUD crash; fixed and
+   HUD/overlays are isolated with safeDraw. Debris lifetimes/caps, weak caches. Gentler impulses on loose pieces.
+2. Doors (locked 'L', kicks, holes, warping) + vaulting (window: hands on the sill; furniture/hood: slide) — done.
+3. Broken-window frame indicator + blast occlusion — done. Cover system REMOVED (user: useless for now).
+   Furniture: only small objects move (chairs, plants, bins, crates, TV, speakers); the rest is bolted, with 2x HP,
+   weapon-dependent bites and damage states (cracked / split / giving way).
 4. Combat, bleeding calibrated per weapon, visual feedback, sound design & mix (integrate the lighting branch);
    real-time liquids (blood/water spreading, footprints, hydrant) still to do.
 5. Synthwave music: darker, richer chord progressions, heavy pulsing loops (gated reverb, staccato bass).
-6. Level 1 (street, bar, back room) & enemy AI (integrate the AI branch; enemies use cover/vaulting/locked doors).
+6. Level 1 (street, bar, back room) & enemy AI (integrate the AI branch). User wants fewer enemies (level1 now 13).
 7. Sandbox / debug mode (the `?level=lab` physics lab is its seed).
 
 ## Pending work stored in branches (not merged)

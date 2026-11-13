@@ -43,7 +43,7 @@ export default class Vehicle {
     this.g = this.canvas.getContext('2d');
     this.g.drawImage(base, 0, 0);
     this.glow = spriteOpt(this.m.sprite + '_glow');
-    this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true, cover: 'low', vault: true };
+    this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true, vault: true };
     this.body = Bodies.rectangle(x, y, this.w - 4, this.h - 4, {
       angle, frictionAir: 0.02, friction: 0.6, restitution: 0.05, label: 'vehicle',
       collisionFilter: { category: CAT.PROP, mask: MASK.PROP },

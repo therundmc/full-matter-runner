@@ -222,13 +222,9 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'lowpass', f0: 900, f1: 200, dur: 0.12, vol: 0.5, delay: 0.3 });
     this._tone(o, { f0: 110, f1: 50, dur: 0.12, vol: 0.6, delay: 0.3 });
   }
-  _cover(o) {
-    this._noiseBurst(o, { type: 'lowpass', f0: 700, f1: 150, dur: 0.1, vol: 0.5 });
-    this._tone(o, { f0: 130, f1: 70, dur: 0.08, vol: 0.4 });
-  }
-  _creak(o) {
-    this._tone(o, { type: 'sawtooth', f0: rand(180, 260), f1: rand(120, 160), dur: 0.35, vol: 0.05 });
-    this._noiseBurst(o, { f0: 1400, f1: 900, q: 8, dur: 0.3, vol: 0.12, attack: 0.05 });
+  _slide(o) {
+    this._noiseBurst(o, { f0: 900, f1: 2200, q: 2.5, dur: 0.4, vol: 0.4, attack: 0.03 });
+    this._noiseBurst(o, { type: 'lowpass', f0: 600, f1: 200, dur: 0.15, vol: 0.4, delay: 0.42 });
   }
   _door(o) {
     this._tone(o, { type: 'triangle', f0: 210, f1: 95, dur: 0.12, vol: 0.7 });

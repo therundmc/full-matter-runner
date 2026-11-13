@@ -26,8 +26,8 @@ src/
       TileMap.js          pure grid logic (solid / blocked / wall HP / version), wall bodies (no DOM)
       Level.js            builds entities from level data
     systems/              rules, called by World or driven by events
-      Ballistics.js       traceBullet, lineOfSight, canSeeCharacter (low cover hides), occlusion (blast transmission)
-      Cover.js            findCover (walls, def.cover furniture), findVault (broken windows, def.vault furniture)
+      Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
+      Cover.js            findVault (broken windows, def.vault furniture / car hoods) + free landing spot
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Destruction.js      wall tiles, doors off hinges, fences
       Scoring.js          listens to 'kill': score, combo
@@ -83,14 +83,13 @@ Rules:
 - Ammo is per caliber (`AMMO` in data/weapons.js: 9mm, 12g, 762, rocket). The player has a pool per caliber;
   a reload fills a fresh magazine from the pool and drops the old one with what was left in it (pickable).
 - Gun sounds are one-shot slices of the recordings (`SLICES` in audio/Audio.js) choked per shooter (`choke`).
-- Props erode: every hit bites a jagged piece out of a per-instance copy of the sprite and throws it as Debris;
-  at 0 HP only what is left falls apart.
-- Traversal (Character): `tryVault(angle, moving)` jumps through broken windows / over `def.vault` furniture
-  (only when running into it), collisions limited to walls during the jump. Space = context action:
-  execute > vault > take / leave cover.
-- Cover (Character): `takeCover`, `steerInCover` (slide along the face, stop at corners), `exposedT` after firing
-  over low cover. Low cover hides a crouched character (`canSeeCharacter`) and stops bullets; when the character
-  pops up to shoot, bullets fly over that piece of furniture.
+- Props erode: every hit bites a jagged piece out of a per-instance copy of the sprite (size by hit kind:
+  pellet < bullet < rifle (+ exit chunk) < blast (+ scorch) < blunt (+ cracks)) and throws it as a shard or Debris.
+  Damage states by HP left: 70% cracked, 45% split, 20% giving way (big chunk, dust, sag); 0 = falls apart.
+  Only small objects are movable; everything else is `static` (bolted).
+- Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
+  furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
+  Space = context action: execute > vault. (A cover system existed and was removed at the user's request.)
 
 ## Performance & robustness
 
