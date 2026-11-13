@@ -32,8 +32,9 @@ export const OPTIONAL_LIST = [
 ];
 
 const images = new Map();
-const silhouettes = new Map();
-const sliceCache = new Map();
+// weak caches: per-instance canvases (eroded props, bitten pieces) can be garbage-collected
+const silhouettes = new WeakMap();
+const sliceCache = new WeakMap();
 
 function placeholder() {
   const c = document.createElement('canvas');
@@ -175,14 +176,6 @@ export function rubble(texture) {
   });
 }
 
-// a door plank image stretched to a length
-export function plank(img, len) {
-  return cached('plank' + len, () => {
-    const c = canvas(Math.round(len), img.height);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return c;
-  });
-}
 
 // draw an image centered at (x, y) with rotation
 export function drawSprite(ctx, img, x, y, angle = 0, alpha = 1, scale = 1) {

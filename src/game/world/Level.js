@@ -28,29 +28,35 @@ export function buildLevel(world, level) {
 
   // ---- doors (runs of D), windows (G), fences (F)
   const used = new Set();
-  const isD = (x, y) => map.at(x, y) === 'D';
+  const isD = (x, y) => map.at(x, y) === 'D' || map.at(x, y) === 'L';
   const wallish = (x, y) => map.isWallChar(x, y) || map.at(x, y) === 'G';
   for (let y = 0; y < map.h; y++) {
     for (let x = 0; x < map.w; x++) {
       const ch = map.at(x, y);
-      if (ch === 'D' && !used.has(`${x},${y}`)) {
+      if ((ch === 'D' || ch === 'L') && !used.has(`${x},${y}`)) {
         let hl = 1; while (isD(x + hl, y)) hl++;
         let vl = 1; while (isD(x, y + vl)) vl++;
         const horizontal = hl > 1 || (vl === 1 && (wallish(x - 1, y) || wallish(x + 1, y)));
         const n = horizontal ? hl : vl;
-        for (let i = 0; i < n; i++) used.add(horizontal ? `${x + i},${y}` : `${x},${y + i}`);
+        const cells = [];
+        for (let i = 0; i < n; i++) {
+          used.add(horizontal ? `${x + i},${y}` : `${x},${y + i}`);
+          cells.push(horizontal ? y * map.w + x + i : (y + i) * map.w + x);
+        }
+        // any 'L' in the run makes it a locked door
+        const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells };
         if (horizontal) {
           const py = cx(y);
           if (n === 2) {
-            world.doors.push(new Door(world, x * TILE + 1, py, 0, TILE - 2));
-            world.doors.push(new Door(world, (x + 2) * TILE - 1, py, Math.PI, TILE - 2));
-          } else world.doors.push(new Door(world, x * TILE + 1, py, 0, n * TILE - 2));
+            world.doors.push(new Door(world, x * TILE + 1, py, 0, TILE - 2, opts));
+            world.doors.push(new Door(world, (x + 2) * TILE - 1, py, Math.PI, TILE - 2, opts));
+          } else world.doors.push(new Door(world, x * TILE + 1, py, 0, n * TILE - 2, opts));
         } else {
           const px = cx(x);
           if (n === 2) {
-            world.doors.push(new Door(world, px, y * TILE + 1, Math.PI / 2, TILE - 2));
-            world.doors.push(new Door(world, px, (y + 2) * TILE - 1, -Math.PI / 2, TILE - 2));
-          } else world.doors.push(new Door(world, px, y * TILE + 1, Math.PI / 2, n * TILE - 2));
+            world.doors.push(new Door(world, px, y * TILE + 1, Math.PI / 2, TILE - 2, opts));
+            world.doors.push(new Door(world, px, (y + 2) * TILE - 1, -Math.PI / 2, TILE - 2, opts));
+          } else world.doors.push(new Door(world, px, y * TILE + 1, Math.PI / 2, n * TILE - 2, opts));
         }
       } else if (ch === 'G') {
         const horizontal = wallish(x - 1, y) || wallish(x + 1, y);

@@ -2,7 +2,8 @@ import { MAX_PARTICLES, PALETTE } from '../Config.js';
 import { rand, pick, chance } from '../../engine/math.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
-export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7 };
+export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7, SHARD: 8 };
+const SHARD_REST = 2.2; // seconds a shard lies on the floor before fading out
 
 export default class Particles {
   constructor(world) {
@@ -93,6 +94,14 @@ export default class Particles {
     }
   }
 
+  // purely visual piece of an object (img): flies, lands, skids a little, fades away. No physics body.
+  shard(img, x, y, angle, speed, opts = {}) {
+    const a = angle;
+    this.add({ type: P.SHARD, img, x, y, z: opts.z ?? 6, vz: opts.vz ?? (40 + Math.random() * 90),
+      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, rot: opts.rot ?? Math.random() * 6.28,
+      spin: (Math.random() - 0.5) * 14, life: 8, drag: 1.2, landed: false });
+  }
+
   // ---- simulation ----
   update(dt) {
     const map = this.world.map;
@@ -107,7 +116,20 @@ export default class Particles {
       const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
       let alive = p.life > 0;
 
-      if (p.z !== undefined) {
+      if (p.type === P.SHARD) {
+        // airborne, then skid to a stop on the floor and fade
+        if (!p.landed) {
+          p.vz -= 520 * dt;
+          p.z += p.vz * dt;
+          p.rot += p.spin * dt;
+          if (p.z <= 0) { p.z = 0; p.landed = true; p.life = SHARD_REST; p.vx *= 0.4; p.vy *= 0.4; p.spin *= 0.3; }
+        } else {
+          const f2 = Math.max(0, 1 - 6 * dt);
+          p.vx *= f2; p.vy *= f2; p.spin *= f2;
+          p.rot += p.spin * dt;
+        }
+        if (map.solidAt(nx, ny)) { p.vx *= -0.3; p.vy *= -0.3; p.x += p.vx * dt; p.y += p.vy * dt; if (alive) list[w++] = p; continue; }
+      } else if (p.z !== undefined) {
         p.vz -= 520 * dt;
         p.z += p.vz * dt;
         if (map.solidAt(nx, ny)) {
@@ -158,6 +180,16 @@ export default class Particles {
   draw(ctx) {
     for (const p of this.list) {
       switch (p.type) {
+        case P.SHARD: {
+          const a = p.landed ? Math.min(1, p.life / 0.6) : 1;
+          ctx.save();
+          ctx.globalAlpha = a;
+          ctx.translate(p.x, p.y - p.z * 0.3);
+          ctx.rotate(p.rot);
+          ctx.drawImage(p.img, -p.img.width / 2, -p.img.height / 2);
+          ctx.restore();
+          break;
+        }
         case P.BLOOD: {
           const s = p.size * (1 + Math.max(0, p.z) * 0.04);
           ctx.fillStyle = p.color;

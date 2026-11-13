@@ -5,6 +5,8 @@ import { setMaterial, scaleInertia } from '../../engine/physics/Body.js';
 
 const { Bodies, Body } = Matter;
 
+const MAX_AGE = 7;
+
 // how pieces drag on the floor by material: meat sticks, glass and brass skitter, rubber rolls
 const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 0.75, concrete: 1, wood: 0.9 };
 
@@ -25,7 +27,8 @@ export default class Debris {
       frictionAir: (opts.air ?? 0.045) * 0.3, // light air drag; the floor (Physics.groundFriction) does the braking
       friction: 0.1,
       restitution: opts.bounce ?? 0.35,
-      collisionFilter: { category: CAT.DEBRIS, mask: opts.mask ?? MASK.DEBRIS },
+      // small bits ignore each other: far fewer contact pairs when a room gets shredded
+      collisionFilter: { category: CAT.DEBRIS, mask: opts.mask ?? (Math.max(w, h) < 6 ? MASK.DEBRIS & ~CAT.DEBRIS : MASK.DEBRIS) },
       label: 'debris',
     });
     // real-ish mass from the piece size; it flies a moment before touching the floor
@@ -62,7 +65,8 @@ export default class Debris {
     if (this.harm && sp > this.harm.knock) this.checkHarm(sp);
     else if (this.harm && this.age > 0.3) this.harm = null;
     if (sp < 0.06 && Math.abs(Body.getAngularVelocity(b)) < 0.01) this.settle += dt; else this.settle = 0;
-    if (this.settle > 0.9 && this.age > 1.2) this.world.bakeDebris(this);
+    // settled pieces become floor decals; nothing stays a physics body for more than MAX_AGE seconds
+    if ((this.settle > 0.9 && this.age > 1.2) || this.age > MAX_AGE) this.world.bakeDebris(this);
   }
 
   // a fast shard / chunk smashing into an enemy

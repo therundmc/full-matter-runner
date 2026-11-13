@@ -266,12 +266,14 @@ export default class Character {
     for (const win of w.windows) {
       if (win.intact && Math.hypot(win.x - x, win.y - y) < d.range + 12) { win.shatter(a); hit = true; }
     }
-    for (const door of w.doors) {
+    for (const door of [...w.doors]) {
       const t = door.tip();
       const mx = (door.hx + t.x) / 2, my = (door.hy + t.y) / 2;
       if (Math.hypot(mx - x, my - y) < d.range + 14) {
-        Body.applyForce(door.body, { x: mx, y: my }, { x: Math.cos(a) * 0.004, y: Math.sin(a) * 0.004 });
+        // bare hands = a kick, otherwise a blow with the weapon
+        door.hit(mx, my, a, d === WEAPONS.bat ? 2 : 1, d.hold === 'none' ? 'kick' : 'melee');
         if (this.isPlayer) door.pushedByPlayer = 0.8;
+        hit = true;
       }
     }
     // walls crack under heavy swings
@@ -321,7 +323,13 @@ export default class Character {
     const v = findVault(this.world, this, a, moving);
     if (!v) return false;
     this.leaveCover();
-    this.vaulting = { from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: v.kind === 'window' ? 0.42 : 0.34, kind: v.kind };
+    // hands planted on the ledge (world positions), a little apart
+    const L = v.ledge;
+    const hands = [{ x: L.x - L.tx * 9, y: L.y - L.ty * 9 }, { x: L.x + L.tx * 9, y: L.y + L.ty * 9 }];
+    this.vaulting = {
+      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur: v.kind === 'window' ? 0.55 : 0.45, kind: v.kind,
+      hands, dir: Math.atan2(v.to.y - this.y, v.to.x - this.x), legSide: Math.random() < 0.5 ? -1 : 1,
+    };
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
@@ -336,7 +344,8 @@ export default class Character {
     if (!v) return false;
     v.t += dt;
     const k = Math.min(1, v.t / v.dur);
-    const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    // slow on the push-off, fast over the top, settle on landing
+    const e = k < 0.25 ? 0.15 * (k / 0.25) : k < 0.75 ? 0.15 + 0.75 * ((k - 0.25) / 0.5) : 0.9 + 0.1 * ((k - 0.75) / 0.25);
     Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
     Body.setVelocity(this.body, { x: 0, y: 0 });
     if (k < 1) return true;
@@ -421,6 +430,7 @@ export default class Character {
       s = 1 + lift * 0.16;
     }
     if (this.cover) this.drawCoverMark(ctx);
+    if (this.vaulting) { this.drawVault(ctx, s, lift); return; }
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(s, s);
@@ -444,6 +454,66 @@ export default class Character {
     this.drawArms(ctx);
     ctx.restore();
     drawSprite(ctx, this.torso, x, y, this.angle);
+    ctx.restore();
+  }
+
+  // Battlefield-style vault: hands planted on the ledge while the body swings over it
+  drawVault(ctx, s, lift) {
+    const v = this.vaulting;
+    const k = Math.min(1, v.t / v.dur);
+    const a = v.dir;
+    const x = this.x, y = this.y;
+    const toLocal = (p) => {
+      const dx = p.x - x, dy = p.y - y, c = Math.cos(-a), sn = Math.sin(-a);
+      return { x: (dx * c - dy * sn) / s, y: (dx * sn + dy * c) / s };
+    };
+    // reach for the ledge, keep the hands planted while passing over, then let go
+    const rest = [{ x: 7, y: -6 }, { x: 7, y: 6 }];
+    // left shoulder -> the hand on the left of the body (no crossed arms)
+    const planted = v.hands.map(toLocal).sort((h1, h2) => h1.y - h2.y);
+    const hands = planted.map((h, i) => {
+      if (k < 0.22) return { x: lerp(rest[i].x, h.x, k / 0.22), y: lerp(rest[i].y, h.y, k / 0.22) };
+      if (k < 0.72) return h;
+      return { x: lerp(h.x, rest[i].x, (k - 0.72) / 0.28), y: lerp(h.y, rest[i].y, (k - 0.72) / 0.28) };
+    });
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    ctx.scale(s, s);
+    // legs tucked and swung to one side over the obstacle
+    const swing = Math.sin(Math.PI * k) * 6 * v.legSide;
+    ctx.fillStyle = '#1a1214';
+    for (const side of [-1, 1]) ctx.fillRect(-7 - Math.sin(Math.PI * k) * 3, side * 3.2 + swing - 1.8, 6, 3.6);
+    ctx.restore();
+    drawSprite(ctx, silhouette(this.torso), x + 2 + lift * 4, y + 2 + lift * 5, a, 0.35);
+    // body first, then the arms pressing down on the ledge on top of it
+    drawSprite(ctx, this.torso, x, y, a, 1, s);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    ctx.scale(s, s);
+    ctx.lineCap = 'round';
+    hands.forEach((h, i) => {
+      const sy = i === 0 ? -6 : 6;
+      ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 4.6;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
+      ctx.strokeStyle = this.look.arm; ctx.lineWidth = 2.8;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
+    });
+    // weapon kept along the right forearm
+    const d = this.def;
+    if (d.sprite) {
+      const img = sprite(d.sprite), h = hands[1];
+      ctx.save();
+      ctx.translate((h.x) * 0.6, (h.y + 6) * 0.6);
+      ctx.rotate(Math.atan2(h.y - 6, h.x) + 0.2);
+      ctx.drawImage(img, -d.grip, -img.height / 2);
+      ctx.restore();
+    }
+    for (const h of hands) {
+      ctx.fillStyle = PALETTE.ink; ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
+      ctx.fillStyle = this.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
+    }
     ctx.restore();
   }
 

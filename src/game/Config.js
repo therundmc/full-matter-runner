@@ -58,7 +58,7 @@ export const PHYSICS = {
   substeps: 2,    // Matter updates per simulation step (smoother contacts)
 };
 
-export const MAX_DEBRIS = 420;
+export const MAX_DEBRIS = 180;    // physical loose pieces alive at once (oldest get baked into the floor)
 export const MAX_PARTICLES = 4000;
 export const COMBO_WINDOW = 3.2;
 

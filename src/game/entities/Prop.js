@@ -1,4 +1,4 @@
-import { CAT, MASK } from '../Config.js';
+import { CAT, MASK, MAX_DEBRIS } from '../Config.js';
 import { PROPS } from '../data/props.js';
 import { sprite, spriteOpt, slices, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance, angDiff, clamp } from '../../engine/math.js';
@@ -103,8 +103,12 @@ export default class Prop {
     if (opaqueEnough(piece)) {
       const back = dirA + Math.PI + rand(-1, 1);
       const a = chance(0.6) ? back : dirA + rand(-0.6, 0.6), v = rand(70, 190) * scale;
-      this.world.addDebris(new Debris(this.world, piece, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5),
-        { air: 0.06, material: this.def.material, fly: 0.15 }));
+      if (this.def.static || this.world.debris.length > MAX_DEBRIS * 0.6) {
+        this.world.particles.shard(piece, px, py, a, v);
+      } else {
+        this.world.addDebris(new Debris(this.world, piece, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5),
+          { air: 0.06, material: this.def.material, fly: 0.15 }));
+      }
     }
   }
 
@@ -139,6 +143,7 @@ export default class Prop {
     const harm = power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null;
     const ca = Math.cos(this.body.angle), sa = Math.sin(this.body.angle);
     const pw = this.img.width / cols, ph = this.img.height / rows;
+    const physical = !d.static && this.world.debris.length < MAX_DEBRIS * 0.6;
     pieces.forEach((pc, k) => {
       if (this.canvas && !opaqueEnough(pc, 10)) return; // already shot away
       // start each piece where it was in the object
@@ -146,14 +151,15 @@ export default class Prop {
       const px = x + lx * ca - ly * sa, py = y + lx * sa + ly * ca;
       const out = Math.atan2(py - y, px - x);
       const a = dirA + (Math.hypot(lx, ly) > 2 ? angDiff(dirA, out) * 0.5 : 0) + rand(-0.6, 0.6), v = rand(70, 240) * power;
-      w.addDebris(new Debris(w, pc, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.4, 0.4),
-        { air: 0.07, material: d.material, harm: harm && { ...harm } }));
+      if (physical) {
+        w.addDebris(new Debris(w, pc, px, py, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.4, 0.4),
+          { air: 0.07, material: d.material, harm: harm && { ...harm } }));
+      } else w.particles.shard(pc, px, py, a, v * 1.2, { rot: this.body.angle, vz: rand(60, 160) });
     });
-    // splinters / shards
-    for (let k = 0; k < 4 + cols * rows; k++) {
+    // splinters: visual only
+    for (let k = 0; k < 6 + cols * rows * 2; k++) {
       const a = dirA + rand(-1.4, 1.4), v = rand(80, 300) * power;
-      w.addDebris(new Debris(w, chunk(d.chips, Math.floor(rand(2, 6)), Math.floor(rand(1, 3)) + 1), x + rand(-8, 8), y + rand(-8, 8), rand(0, 6),
-        Math.cos(a) * v, Math.sin(a) * v, rand(-0.8, 0.8), { air: 0.06, kg: 0.1, shadow: 0 }));
+      w.particles.shard(chunk(d.chips, Math.floor(rand(2, 6)), Math.floor(rand(1, 3)) + 1), x + rand(-8, 8), y + rand(-8, 8), a, v);
     }
     if (d.explosive) return;
     w.particles.chips(x, y, dirA, Math.PI, 18, d.chips, 180);

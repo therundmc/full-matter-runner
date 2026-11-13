@@ -18,14 +18,15 @@
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
 
 ## Delivery by blocks (validate each with the user before moving on)
-1. Engine & heavy physics — restructure + physics base done; fixes done: M47 audio (sliced, choked one-shots),
-   heavier objects (mass, friction, inertia), explosions blocked by walls/obstacles (occlusion). Awaiting validation.
-2. Window vaulting + dynamic cover — done (Space context action, see docs/ARCHITECTURE.md). Awaiting validation.
-3. Granular destruction & object states (props already erode piece by piece; generalise damage states by angle,
-   power, bullet vs melee to every object/cover) + real-time liquids (blood/water spreading, footprints, hydrant).
-4. Combat, bleeding calibrated per weapon, visual feedback, sound design & mix (integrate the lighting branch).
+1. Engine perf fix & bolted furniture — done: weak caches, debris lifetime/caps (baked into the floor), render isolation
+   (safeDraw), big furniture static (erodes, bursts into ephemeral shards). Also earlier: M47 audio, heavy physics.
+2. Realistic doors (locked 'L' tiles, kick/shoot the lock, bullet holes, warping, ripped off) + Battlefield vault
+   animation (hands planted on the ledge) — done.
+3. Broken-window indicator (sill + jambs + pulse) — done; blast occlusion (walls block explosions) — done.
+4. Combat, bleeding calibrated per weapon, visual feedback, sound design & mix (integrate the lighting branch);
+   real-time liquids (blood/water spreading, footprints, hydrant) still to do.
 5. Synthwave music: darker, richer chord progressions, heavy pulsing loops (gated reverb, staccato bass).
-6. Level 1 (street, bar, back room) & enemy AI (integrate the AI branch; enemies should also use cover/vaulting).
+6. Level 1 (street, bar, back room) & enemy AI (integrate the AI branch; enemies use cover/vaulting/locked doors).
 7. Sandbox / debug mode (the `?level=lab` physics lab is its seed).
 
 ## Pending work stored in branches (not merged)

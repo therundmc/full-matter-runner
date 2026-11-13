@@ -83,7 +83,9 @@ export function findVault(world, ch, a, moving = true) {
     const s = -Math.sign(side) || 1;
     const k = Math.max(-8, Math.min(8, along));
     const to = { x: w.x + ny * k + nx * s * (r + 7), y: w.y - nx * k + ny * s * (r + 7) };
-    if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'window', over: w, to };
+    // hands on the sill, either side of where we go through
+    const ledge = { x: w.x + ny * k, y: w.y - nx * k, tx: ny, ty: -nx };
+    if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'window', over: w, to, ledge };
   }
   for (const p of world.props) {
     if (!moving || p.dead || !p.def.vault) continue;
@@ -98,7 +100,8 @@ export function findVault(world, ch, a, moving = true) {
     const ex = far.x + (c.x - far.x) * exit.t, ey = far.y + (c.y - far.y) * exit.t;
     if (Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) continue;
     const to = { x: ex + dx * (r + 3), y: ey + dy * (r + 3) };
-    if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'prop', over: p, to };
+    const ledge = { x: c.x, y: c.y, tx: -dy, ty: dx };
+    if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'prop', over: p, to, ledge };
   }
   return null;
 }

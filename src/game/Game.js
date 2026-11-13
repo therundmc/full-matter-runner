@@ -223,7 +223,7 @@ export default class Game {
       this.world.draw(ctx, { x: m.widthPx / 2, y: m.heightPx / 2, viewRadius: () => ({ x: 1e5, y: 1e5 }) }, t);
     } else {
       this.camera.apply(ctx);
-      this.world.draw(ctx, this.camera, t);
+      this.safeDraw(ctx, () => this.world.draw(ctx, this.camera, t));
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -252,6 +252,18 @@ export default class Game {
     if (this.state === 'pause') drawPause(ctx, W, H, t);
     if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results);
     this.drawCursor(ctx, t);
+  }
+
+  // a failing draw must never take the HUD / cursor / effects down with it: restore the context and report once
+  safeDraw(ctx, fn) {
+    ctx.save();
+    try { fn(); } catch (e) {
+      if (!this.drawErrorShown) { this.drawErrorShown = true; console.error('render error', e); }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   getVignette(W, H) {

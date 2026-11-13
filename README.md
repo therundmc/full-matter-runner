@@ -66,7 +66,7 @@ A level is a JS module (see `src/game/data/levels/level1.js`, registered in `lev
 - **tiles**: one char per 32 px tile.
   - Walls: `#` interior wall, `X` brick wall, space = void (solid).
   - Floors: `.` wood, `,` checker, `+` blue tile, `:` red carpet, `;` purple carpet, `_` concrete, `"` grass, `=` asphalt, `-` road line, `~` dirt, `s` sidewalk, `*` neon dancefloor.
-  - Structure: `D` door (a 2-tile run becomes double doors), `G` window, `F` fence.
+  - Structure: `D` door (a 2-tile run becomes double doors), `L` locked door, `G` window, `F` fence.
 - **actors**: same grid.
   - `@` is the player.
   - Enemies: `p` pistol, `u` uzi, `s` silenced uzi, `h` shotgun, `r` rifle, `b` bat, `k` knife. Uppercase makes the enemy patrol.

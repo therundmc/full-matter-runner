@@ -69,19 +69,31 @@ export default class Window {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
+    const H = TILE / 2;
     if (this.intact) {
-      ctx.drawImage(this.img, -TILE / 2, -this.img.height / 2, TILE, this.img.height);
+      ctx.drawImage(this.img, -H, -this.img.height / 2, TILE, this.img.height);
     } else {
-      ctx.fillStyle = 'rgba(190,240,255,0.75)';
-      // jagged remains at both ends
+      // what is left: the sill and both jambs, glass teeth still stuck in the frame
+      ctx.fillStyle = '#140c1c';
+      ctx.fillRect(-H, -2, TILE, 4);
+      ctx.fillStyle = '#6a5a6e';
+      ctx.fillRect(-H + 1, -1, TILE - 2, 2);
+      ctx.fillStyle = 'rgba(200,245,255,0.85)';
       ctx.beginPath();
-      ctx.moveTo(-TILE / 2, -1.5); ctx.lineTo(-TILE / 2 + this.shards[0], 0); ctx.lineTo(-TILE / 2 + this.shards[1] * 0.5, 1.5); ctx.lineTo(-TILE / 2, 1.5);
-      ctx.moveTo(TILE / 2, -1.5); ctx.lineTo(TILE / 2 - this.shards[2], 0); ctx.lineTo(TILE / 2 - this.shards[3] * 0.5, 1.5); ctx.lineTo(TILE / 2, 1.5);
+      ctx.moveTo(-H + 2, -1); ctx.lineTo(-H + 2 + this.shards[0], -0.5); ctx.lineTo(-H + 2, 0.5);
+      ctx.moveTo(H - 2, -1); ctx.lineTo(H - 2 - this.shards[2], -0.5); ctx.lineTo(H - 2, 0.5);
+      ctx.moveTo(-H + 6 + this.shards[1] * 2, -1); ctx.lineTo(-H + 8 + this.shards[1] * 2, -2.5); ctx.lineTo(-H + 10 + this.shards[1] * 2, -1);
       ctx.fill();
+      // passable: a soft pulse along the sill
+      const pulse = 0.25 + 0.2 * Math.sin(this.world.time * 4);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `rgba(5,217,232,${pulse})`;
+      ctx.fillRect(-H + 3, -0.5, TILE - 6, 1);
+      ctx.globalCompositeOperation = 'source-over';
     }
     ctx.fillStyle = '#140c1c';
-    ctx.fillRect(-TILE / 2 - 1, -2.5, 3, 5);
-    ctx.fillRect(TILE / 2 - 2, -2.5, 3, 5);
+    ctx.fillRect(-H - 1, -3, 4, 6);
+    ctx.fillRect(H - 3, -3, 4, 6);
     ctx.restore();
   }
 }

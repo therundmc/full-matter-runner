@@ -1,7 +1,7 @@
 // Breaking the level itself: wall tiles crack then collapse, doors get ripped off, fences flattened.
 import { TILE, WALL_HP } from '../Config.js';
 import { rand, chance, clamp } from '../../engine/math.js';
-import { rubble, chunk, plank } from '../../engine/Assets.js';
+import { rubble, chunk } from '../../engine/Assets.js';
 import Debris from '../entities/Debris.js';
 
 export function damageWall(world, cx, cy, dmg, x, y, dirA, power = 1) {
@@ -52,9 +52,10 @@ export function detachDoor(world, door, dirA, power = 1) {
   if (i < 0) return;
   world.doors.splice(i, 1);
   world.removeBody(door.body);
+  for (const c of door.cells) world.map.blocked[c] = 0; // a ripped-off locked door no longer blocks paths
   const b = door.body;
   const v = rand(160, 320) * power;
-  world.addDebris(new Debris(world, plank(door.img, door.len), b.position.x, b.position.y, b.angle,
+  world.addDebris(new Debris(world, door.canvas, b.position.x, b.position.y, b.angle,
     Math.cos(dirA) * v, Math.sin(dirA) * v, rand(-0.5, 0.5),
     { kg: 25, mu: 0.5, fly: 0.3, air: 0.05, bounce: 0.3, material: 'wood', harm: { kind: 'blunt', knock: 2.5, lethal: 7 } }));
   world.particles.chips(b.position.x, b.position.y, dirA, Math.PI, 24, '#8a5a34', 200);

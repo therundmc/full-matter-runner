@@ -9,7 +9,7 @@ export const FLOORS = {
   '"': 'grass', '=': 'asphalt', '-': 'asphalt_line', '~': 'dirt', 's': 'sidewalk', '*': 'neon_floor',
 };
 export const WALLS = { '#': 'wall', 'X': 'brick' };
-const STRUCT = new Set(['D', 'G', 'F']);
+const STRUCT = new Set(['D', 'L', 'G', 'F']);
 
 // Pure grid logic (no DOM): tiles, solidity, path blocking, wall HP, raycasts, wall bodies.
 export default class TileMap {

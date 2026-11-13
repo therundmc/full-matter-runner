@@ -23,12 +23,13 @@ export default class WorldRenderer {
     for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
     for (const a of w.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
     for (const p of w.props) if (vis(p.x, p.y)) p.draw(ctx);
+    // window sills under the characters (someone vaulting goes over them)
+    for (const g of w.windows) if (vis(g.x, g.y)) g.draw(ctx);
     if (w.showVision) for (const e of w.enemies) e.drawVision(ctx);
     for (const e of w.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
     if (w.player.alive) w.player.draw(ctx);
     for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player);
     for (const d of w.doors) d.draw(ctx);
-    for (const g of w.windows) if (vis(g.x, g.y)) g.draw(ctx);
     ctx.drawImage(w.decals.wallCanvas, 0, 0);
 
     if (w.cleared) this.drawExit(ctx, t);

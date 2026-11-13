@@ -92,6 +92,23 @@ Rules:
   over low cover. Low cover hides a crouched character (`canSeeCharacter`) and stops bullets; when the character
   pops up to shoot, bullets fly over that piece of furniture.
 
+## Performance & robustness
+
+- Physical debris live at most `MAX_AGE` (7 s) or until they settle, then get baked into the floor canvas;
+  at most `MAX_DEBRIS` (180) at once; pieces under 6 px don't collide with each other.
+- Purely visual pieces use `particles.shard(img, ...)`: they fly, land, skid and fade (no physics body).
+  Bolted furniture (`def.static`) and splinters only ever produce shards.
+- Sprite caches (silhouettes, slices) are WeakMaps so per-instance canvases can be garbage-collected.
+- `Game.safeDraw` isolates the world draw: an exception is logged once and the context is restored, so the HUD,
+  cursor and post effects keep rendering.
+
+## Doors
+
+`Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out).
+Level tile `L` = locked door: static, blocks path-finding; shooting the lock (latch end) or kicking / hitting it
+breaks the latch and bursts it open. Bullets punch holes in a per-door canvas, damage warps the leaf, 7.62 rounds
+go through, at 0 HP it is ripped off (Destruction.detachDoor).
+
 ## Debug
 
 - `?level=lab` loads the physics lab (all props/weapons/ammo on three floors, a street with vehicles, passive dummies).

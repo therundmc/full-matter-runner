@@ -67,10 +67,12 @@ export default class Projectile {
         h.target.hit(1, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1);
         if (this.pierce > 0) { this.pierce--; this.ignore.add(h.target); return false; }
         return true;
-      case 'door':
-        h.target.hit(h.x, h.y, a, this.weapon?.pierce ? 3 : 1);
-        if (this.pierce > 0) { this.pierce--; this.ignore.add(h.target); return false; }
+      case 'door': {
+        h.target.hit(h.x, h.y, a, this.weapon?.pierce ? 3 : 1, 'bullet');
+        // rifle rounds go through a wooden door
+        if (this.pierce > 0 || this.weapon?.ammo === '762') { this.pierce = Math.max(0, this.pierce - 1); this.ignore.add(h.target); return false; }
         return true;
+      }
       case 'char': {
         const c = h.target;
         const d = Math.hypot(c.x - this.owner?.x, c.y - this.owner?.y) || 999;
