@@ -4,7 +4,7 @@ export const MATERIALS = {
   wood: { mu: 0.5, bounce: 0.15, sound: 'wood', chips: '#7a4a2a' },
   metal: { mu: 0.4, bounce: 0.25, sound: 'metal', chips: '#9a9aa8', sparks: true },
   glass: { mu: 0.35, bounce: 0.1, sound: 'glass', chips: '#bff6ff' },
-  ceramic: { mu: 0.45, bounce: 0.1, sound: 'glass', chips: '#eeeeee' },
+  ceramic: { mu: 0.45, bounce: 0.1, sound: 'ceramic', chips: '#eeeeee' },
   plastic: { mu: 0.4, bounce: 0.3, sound: 'plastic', chips: '#333333' },
   fabric: { mu: 0.8, bounce: 0.05, sound: 'soft', chips: '#9a1f2a' },
   flesh: { mu: 0.75, bounce: 0.05, sound: 'flesh', chips: '#8a1010' },

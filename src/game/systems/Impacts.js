@@ -6,7 +6,7 @@ import { clamp } from '../../engine/math.js';
 
 const { Body } = Matter;
 
-const SOUND = { wood: 'wood', metal: 'metal', glass: 'impact', stone: 'impact', flesh: 'punch', plastic: 'click', shell: 'shell' };
+const SOUND = { wood: 'wood', metal: 'metal', glass: 'glassHit', ceramic: 'ceramic', stone: 'stone', flesh: 'flesh', plastic: 'plastic', soft: 'soft', shell: 'shell' };
 const MIN_SPEED = 1.2;      // px/step closing speed below which nothing is heard
 const BODY_COOLDOWN = 0.12; // s between two sounds of the same body
 const MAX_PER_SECOND = 14;
