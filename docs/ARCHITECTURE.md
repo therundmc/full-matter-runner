@@ -32,6 +32,7 @@ src/
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods) + free landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
+      Takedown.js         `behind(player, guard)`: who can be seized from behind (rule only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Destruction.js      wall tiles, windows torn out, doors off hinges, fences; `watchOpenings` makes doors and
                           windows go with the wall tile that holds them (listens to `wallDestroyed`)
@@ -176,7 +177,11 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   stays where it formed if the body is shoved, and is baked with the body (`decals.bakePool`).
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
-  Space = context action: execute > vault > slide. (A cover system existed and was removed at the user's request.)
+  Space = context action: execute > takedown > vault > slide. (A cover system existed and was removed at the user's
+  request.)
+- Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown): Space right behind a standing guard who has
+  his back to us. He is `held` (helpless, mute) for the half second it takes, then killed with cause `snap` (a dry
+  body: no blood, no cry, a body fall heard from much closer) or, knife in hand, `slash`. Scored as `takedown`.
 - Slide (Player, `PLAYER.slide`): Space while running with nothing to vault. ~0.5 s burst from ~2x run speed decaying to
   a jog (~2.9 m), stays physical (walls stop it, loose props take our momentum), sweeps standing enemies off their
   feet, can chain into a vault, the gun stays usable; 0.5 s cooldown.
@@ -191,7 +196,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn
   by WorldRenderer.drawPuddle and mirror the lights in Lighting.post (`LIGHTING.puddle`).
 - Score (systems/Scoring.js, rules in data/scoring.js): fed by events only. A kill is worth its style (a gunshot
-  the least; blade, melee, wreckage, glass, execution more; `UNSEEN` on top when the guard never noticed) times
+  the least; blade, melee, wreckage, glass, execution, takedown more; `UNSEEN` on top when the guard never noticed) times
   the combo multiplier (+0.5 per kill of the chain, capped at x4; the chain breaks 4 s after the last kill, flooring
   a guard gives it some air back). `tally(level)` adds the end bonuses (best chain, variety of methods, time under
   the level's par, stealth lost by ALERT phases, accuracy) and penalties (passers-by), then the grade from the

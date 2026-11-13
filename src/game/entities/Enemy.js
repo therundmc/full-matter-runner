@@ -75,6 +75,7 @@ export default class Enemy extends Character {
     this.seed = rand(0, 100);
     this.sep = { x: 0, y: 0 };
     this.executing = false;
+    this.held = null; // the player while he has us by the neck (Player.startTakedown)
   }
 
   get director() { return this.world.director; }
@@ -305,6 +306,11 @@ export default class Enemy extends Character {
     this.iconT = Math.max(0, this.iconT - dt);
     this.barkT = Math.max(0, this.barkT - dt);
     if (this.knocked > 0) { this.updateKnocked(dt); return; }
+    if (this.held) {
+      // seized from behind: nothing he can do, unless the grip is lost
+      if (this.held.alive && this.held.takedown?.target === this) { this.halt(); return; }
+      this.held = null;
+    }
     if (this.updateVault(dt)) return;
     if (this.passive) { this.halt(); return; }
     this.t += dt;

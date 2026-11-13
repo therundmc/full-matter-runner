@@ -136,7 +136,7 @@ export default class Director {
     const inc = this.incident('body', victim.x, victim.y);
     // a guard who never comes back to his post is missed after a while
     if (!victim.roam) this.incident('missing', victim.home.x, victim.home.y, { after: w.time + 10 });
-    this.emit('body', victim.x, victim.y, AI.bodyFallRadius, victim);
+    this.emit('body', victim.x, victim.y, AI.bodyFallRadius * (victim.held ? 0.4 : 1), victim); // let down quietly
     for (const e of w.enemies) {
       if (e === victim || !e.alive || e.knocked > 0) continue;
       if (e.canSeePoint(victim.x, victim.y, 1, 120)) { inc.seen.add(e); e.witnessKill(victim); }

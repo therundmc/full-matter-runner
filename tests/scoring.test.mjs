@@ -19,6 +19,9 @@ test('scoring: a kill is read from its cause and the weapon in hand', () => {
   assert.deepEqual(killStyle({ cause: 'slash', killer: player('knife', 1) }), { style: 'blade', method: 'knife' });
   assert.deepEqual(killStyle({ cause: 'melee', killer: player('bat', 0.2) }), { style: 'melee', method: 'bat' });
   assert.deepEqual(killStyle({ cause: 'execute', killer: player() }), { style: 'execution', method: 'execution' });
+  const p = player();
+  assert.deepEqual(killStyle({ cause: 'snap', killer: p, victim: { held: p } }), { style: 'takedown', method: 'takedown' });
+  assert.deepEqual(killStyle({ cause: 'slash', killer: p, victim: { held: p } }), { style: 'takedown', method: 'takedown' });
   assert.deepEqual(killStyle({ cause: 'explosion', killer: null }), { style: 'explosion', method: 'explosion' });
 });
 

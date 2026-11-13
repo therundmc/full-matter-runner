@@ -43,7 +43,7 @@ export function drawHUD(ctx, game, t) {
   // context hints
   let hint = '';
   if (p.alive) {
-    if (p.contextAction && (p.contextAction === 'EXECUTE' || !p.nearItem)) hint = `SPACE : ${p.contextAction}`;
+    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = `SPACE : ${p.contextAction}`;
     else if (p.nearItem) hint = `${p.armed ? 'E : SWAP FOR' : 'RMB / E : PICK UP'} ${p.nearItem.def.name}`;
   }
   if (hint) text(ctx, hint, W / 2, H - 50 * s, 16 * s, PALETTE.white, { alpha: 0.75 + Math.sin(t * 8) * 0.25 });

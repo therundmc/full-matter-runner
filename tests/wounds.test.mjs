@@ -11,7 +11,7 @@ test('wounds: every profile is complete and every weapon names an existing one',
     assert.equal(w.spray.length, 3, name);
     assert.ok(!w.exit || w.exit.length === 3, name);
     assert.equal(w.splat.length, 2, name);
-    assert.ok(w.pool[0] <= w.pool[1] && w.rate > 0, name);
+    assert.ok(w.pool[0] <= w.pool[1] && (w.rate > 0 || !w.pool[1]), name); // no pool, no rate
     assert.ok(w.throw[0] <= w.throw[1], name);
   }
   for (const [id, d] of Object.entries(WEAPONS)) {

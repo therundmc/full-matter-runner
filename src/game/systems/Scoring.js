@@ -16,10 +16,11 @@ const GUN_CAUSES = new Set(['bullet', 'blast', 'heavy']);
 
 // How a kill was done: { style (SCORING.styles key), method (what counts for variety) }, or null when the
 // player had no hand in it (run over by traffic, shot by a mate).
-export function killStyle({ cause, killer }) {
+export function killStyle({ cause, killer, victim }) {
   if (cause === 'explosion') return { style: 'explosion', method: 'explosion' };
   if (!killer?.isPlayer) return null;
   if (cause === 'execute') return { style: 'execution', method: 'execution' };
+  if (victim?.held === killer) return { style: 'takedown', method: 'takedown' };
   if (cause === 'slash') return { style: 'blade', method: 'knife' };
   if (cause === 'glass') return { style: 'glass', method: 'glass' };
   const type = killer.weapon?.type;

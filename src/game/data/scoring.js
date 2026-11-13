@@ -11,6 +11,7 @@ export const SCORING = {
     debris: { points: 900, label: 'WRECKAGE' },         // flying furniture, bricks, car parts
     glass: { points: 900, label: 'GLASS' },             // window shards
     execution: { points: 1000, label: 'EXECUTION' },    // finishing a guard on the floor
+    takedown: { points: 1000, label: 'TAKEDOWN' },      // neck broken or throat cut from behind
   },
   unseen: 300,              // added when the victim never knew we were there
   // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself

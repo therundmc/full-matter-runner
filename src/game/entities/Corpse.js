@@ -42,7 +42,7 @@ export default class Corpse {
     const b = this.body;
     this.age += dt;
     const head = this.headPos(), sp = Body.getSpeed(b);
-    if (sp > 0.5) wipe(this.world, this, head.x, head.y, 4);
+    if (sp > 0.5 && !this.dry) wipe(this.world, this, head.x, head.y, 4);
     bleedOut(this, dt, { x: head.x, y: head.y, angle: b.angle }, { x: this.x, y: this.y, angle: b.angle }, head, sp < 0.3);
     if (sp < 0.05) this.settle += dt; else this.settle = 0;
     if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();

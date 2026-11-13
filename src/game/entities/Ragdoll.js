@@ -125,6 +125,7 @@ export default class Ragdoll {
     w.particles.blood(p.x, p.y, a, cone + 0.2, Math.ceil(n * 0.5), v * 0.7);
     w.decals.stampBlood(p.x, p.y, 3, 3);
     this.pool = Math.min(this.poolMax + 4, this.pool + 1.5);
+    this.dry = false;
     const heavy = weaponDef && (weaponDef.pellets > 1 || weaponDef.heavy || weaponDef.rocket);
     if (heavy && part !== this.torso && chance(0.5)) this.detach(part, a, 260);
     else w.sound('splat', p.x, p.y, 0.35);
@@ -138,7 +139,7 @@ export default class Ragdoll {
       const sp = Body.getSpeed(part.body);
       if (sp > 0.06 || Math.abs(Body.getAngularVelocity(part.body)) > 0.01) moving = true;
       const pos = part.body.position;
-      if (sp > 0.6 && (part === this.head || part === this.torso || part.bleed > 0)) wipe(w, part, pos.x, pos.y, part === this.torso ? 5 : 2);
+      if (sp > 0.6 && !this.dry && (part === this.head || part === this.torso || part.bleed > 0)) wipe(w, part, pos.x, pos.y, part === this.torso ? 5 : 2);
       if (part.bleed > 0) {
         part.bleed -= dt;
         if (chance(0.5)) w.particles.blood(pos.x, pos.y, rand(0, 6.28), 0.3, 1, rand(40, 120), { z: 3 });

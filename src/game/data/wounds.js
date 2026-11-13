@@ -33,13 +33,15 @@ export const WOUNDS = {
   glass: { back: [30, 160, Math.PI], spray: [34, 330, 0.45], mist: 8, splat: [6, 6], pool: [12, 16], rate: 5, spurt: 1.2, throw: [140, 230] },
   // run over: broken more than opened, the car does the throwing (systems/Ambient.js)
   impact: { back: [0, 0, 0], spray: [22, 260, 0.9], big: true, mist: 6, splat: [7, 6], pool: [12, 17], rate: 3.5, throw: [140, 230] },
+  // neck broken from behind: nothing opened, the body is let down on the spot
+  snap: { back: [0, 0, 0], spray: [0, 0, 0], mist: 0, splat: [0, 0], pool: [0, 0], rate: 0, throw: [35, 60] },
   // head stamped on the floor
   crush: { back: [8, 120, 1.2], spray: [20, 260, 0.9], big: true, mist: 10, splat: [8, 8], pool: [14, 18], rate: 7, throw: [40, 80] },
 };
 
 // kills that carry no weapon (falling debris, executions, explosions, cars)
 export const CAUSE_WOUND = {
-  bullet: 'small', heavy: 'heavy', blast: 'buckshot', explosion: 'buckshot', melee: 'blunt', slash: 'slash', glass: 'glass', execute: 'crush', vehicle: 'impact',
+  bullet: 'small', heavy: 'heavy', blast: 'buckshot', explosion: 'buckshot', melee: 'blunt', slash: 'slash', glass: 'glass', execute: 'crush', vehicle: 'impact', snap: 'snap',
 };
 
 // by = what killed (a weapon definition, or nothing)

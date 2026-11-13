@@ -12,6 +12,7 @@ export function startBleeding(c, opts) {
   c.poolPos = null;                             // where that pool stands: it does not follow the body
   c.spurt = c.spurt0 = opts.spurt || 0;         // seconds an opened artery keeps pumping
   c.spurtA = rand(0, Math.PI * 2);
+  c.dry = !!opts.dry;                           // no open wound: wipes nothing while it slides (until it is shot)
 }
 
 // a jet driven by the heart: nothing between two beats, then a squirt that swells and dies, so every beat lays a

@@ -49,6 +49,16 @@ export const PLAYER = {
   },
 };
 
+// Space right behind a standing guard who has his back to us (systems/Takedown.js, Player.updateTakedown):
+// arms round his neck, one wrench; with the knife, his throat. Silent, but it takes its time.
+export const TAKEDOWN = {
+  reach: 26,     // px between the two
+  rear: 1.05,    // half-angle (rad) of the arc behind his back we must stand in
+  facing: 1.2,   // how far (rad) we may be aiming away from him
+  dur: 0.62,     // s, the whole move
+  killAt: 0.56,  // share of it at which the neck goes
+};
+
 // One guard (entities/Enemy.js, ai/Perception.js). Times in seconds, distances in px, angles in rad.
 export const ENEMY = {
   radius: 8.5,

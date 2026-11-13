@@ -2,7 +2,7 @@
 // Each frame a character builds a pose: plain numbers (torso offset / angle / scale, feet, hands, weapon), all stored as
 // offsets from the body centre in world orientation. Traversal poses (vault, slide) are blended over the standing pose
 // so moves start and end exactly on the walk cycle (no popping). drawPose() then paints shadow, feet, arms, torso.
-import { PALETTE } from '../Config.js';
+import { PALETTE, TAKEDOWN } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
@@ -176,6 +176,36 @@ export function standPose(ch, P, a = ch.angle) {
     wa += k * k * Math.PI * 2;
     wx -= k * 3;
     dip = 0.05 * Math.sin(Math.PI * k);
+  }
+
+  if (ch.grab) {
+    // takedown from behind (Player.updateTakedown), on its own clock k: the arms close round the neck of the man
+    // standing D px ahead, hold him, then wrench his head to one side. With a knife the left hand holds the head and
+    // the blade is drawn across the throat; a gun or a bat stays in the right hand and the left arm does it alone.
+    const G = ch.grab, D = G.d, s = G.side;
+    const on = smooth(G.k / 0.3) * (1 - smooth((G.k - 0.72) / 0.28));
+    const wr = smooth((G.k - 0.42) / (TAKEDOWN.killAt - 0.42));
+    const ha = s * 1.2 * wr, c = Math.cos(ha), sn = Math.sin(ha);
+    const round = (lx, ly) => [D + lx * c - ly * sn, lx * sn + ly * c]; // a point of his head, turning with it
+    let l, r = null;
+    if (d.hold === 'none') { l = round(-1.5, -4); r = round(-1.5, 4); }
+    else if (G.blade) { l = [D - 1 - 1.5 * wr, -3.5]; r = [D + 3 - 2 * wr, 4 + 3 * wr]; wa = lerp(wa, -1.85 + 0.75 * wr, on); }
+    else l = round(2.5, 1);
+    hlx = lerp(hlx, l[0], on); hly = lerp(hly, l[1], on);
+    if (r) {
+      hrx = lerp(hrx, r[0], on); hry = lerp(hry, r[1], on);
+      if (wpnOn) { wx = hrx; wy = hry; }
+    } else { hrx -= 3 * on; wx -= 3 * on; }
+    twist += s * 0.3 * wr * on;
+    back -= 2.5 * on;
+  }
+  if (ch.held) {
+    // seized from behind: pulled back onto his heels, the free hand clawing at the arm round his neck
+    const j = Math.sin(ch.world.time * 38 + ch.breath) * 0.8;
+    hlx = 4.5 + j; hly = -3;
+    if (wpnOn) wa += 0.5;
+    else { hrx = 4.5 - j; hry = 3; }
+    back += 1.5;
   }
 
   // torso: shoulders counter-rotate with the stride, lean into acceleration, bob, idle breathing, recoil push

@@ -1,12 +1,13 @@
-import { PLAYER } from '../Config.js';
+import { PLAYER, TAKEDOWN } from '../Config.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
-import { rand } from '../../engine/math.js';
+import { rand, chance, clamp, angDiff } from '../../engine/math.js';
 import { chunk } from '../../engine/Assets.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide } from '../systems/Slide.js';
+import { behind } from '../systems/Takedown.js';
 
 const { Body } = Matter;
 let scuff = null; // floor scuff stamp, made on first use
@@ -19,6 +20,9 @@ export default class Player extends Character {
     this.execution = null;
     this.nearItem = null;
     this.nearDowned = null;
+    this.nearBack = null;   // a guard whose back we stand right behind (Space takes him down)
+    this.takedown = null;   // { target, t, done, blade, side } while we have him by the neck
+    this.grab = null;       // what CharacterAnim plays of it: { k, d, side, blade }
     this.slide = null;      // Slide kinematics while sliding
     this.slideCd = 0;
     this.slideHits = new Set(); // loose bodies already shoved by the current slide
@@ -71,6 +75,7 @@ export default class Player extends Character {
     this.updateSlideAnim(dt);
 
     if (this.execution) { this.updateExecution(dt); return; }
+    if (this.takedown) { this.updateTakedown(dt); return; }
     this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
     if (this.updateVault(dt)) return;
 
@@ -103,6 +108,7 @@ export default class Player extends Character {
     for (const e of w.enemies) {
       if (e.alive && e.knocked > 0 && Math.hypot(e.x - this.x, e.y - this.y) < 26) { this.nearDowned = e; break; }
     }
+    this.nearBack = (!this.nearDowned && w.enemies.find((e) => behind(this, e) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
 
     // attack
     const d = this.def;
@@ -115,11 +121,14 @@ export default class Player extends Character {
       }
     }
     if (input.hit('KeyR')) this.reload();
-    // Space = context action: execute > vault > slide (the slide needs a running start, no HUD label)
-    this.vaultHint = sliding || this.nearDowned ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
-    this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE' : this.vaultHint ? 'VAULT' : null;
+    // Space = context action: execute > takedown > vault > slide (the slide needs a running start, no HUD label)
+    const busy = sliding || this.nearDowned || this.nearBack;
+    this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
+    this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
+      : this.nearBack ? (d === WEAPONS.knife ? 'SLIT THROAT' : 'BREAK NECK') : this.vaultHint ? 'VAULT' : null;
     if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
+      else if (this.nearBack) this.startTakedown(this.nearBack);
       else if (!this.tryVault(moveA) && moving) this.startSlide(moveA);
     }
 
@@ -278,6 +287,49 @@ export default class Player extends Character {
         this.execution = null;
         this.cooldown = 0.2;
       }
+    }
+  }
+
+  // seize a guard from behind: he can do nothing until it is over (Enemy.held), nobody hears it
+  startTakedown(target) {
+    const blade = this.def === WEAPONS.knife;
+    // bare hands wrench either way; with something in the right hand the left arm pulls his chin round
+    const side = this.def.hold === 'none' && chance(0.5) ? 1 : -1;
+    this.takedown = { target, t: 0, done: false, blade, side };
+    this.grab = { k: 0, d: 17, side, blade };
+    this.contextAction = null;
+    this.swing = 0;
+    target.held = this;
+    target.swing = 0;
+    this.world.sound('grab', target.x, target.y, 1, { pitch: target.voice });
+  }
+
+  updateTakedown(dt) {
+    const td = this.takedown, tg = td.target, w = this.world, T = TAKEDOWN;
+    td.t += dt;
+    const k = td.t / T.dur;
+    this.grab.k = k;
+    this.steer(0, 0, 0, 0.5);
+    if (!td.done) {
+      if (!tg.alive) { this.takedown = this.grab = null; return; } // somebody got him first
+      // pressed against his back, looking the same way; his head is wrenched round when it comes
+      const dx = tg.x - this.x, dy = tg.y - this.y, dist = Math.hypot(dx, dy);
+      this.angle = Math.atan2(dy, dx);
+      if (dist > 17) this.steer(dx, dy, 1.5, 0.5);
+      this.grab.d = dist;
+      const wr = clamp((k - 0.42) / (T.killAt - 0.42), 0, 1);
+      tg.angle += angDiff(tg.angle, this.angle + td.side * 0.9 * wr * wr) * Math.min(1, dt * 30);
+      if (k >= T.killAt) {
+        td.done = true;
+        w.hitstop(0.07);
+        w.camera.push(Math.cos(this.angle + td.side * 1.5) * 2, Math.sin(this.angle + td.side * 1.5) * 2);
+        if (td.blade) tg.kill(this.angle, 'slash', this, this.def);
+        else tg.kill(this.angle + td.side * 1.5, 'snap', this);
+      }
+    }
+    if (k >= 1) {
+      this.takedown = this.grab = null;
+      this.cooldown = 0.15;
     }
   }
 

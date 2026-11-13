@@ -5,7 +5,8 @@ import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { WOUNDS, woundFor } from '../data/wounds.js';
 
-// Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute.
+// Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
+// or snap (a broken neck: a clean body, no blood at all).
 // by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
 // profile (data/wounds.js) sets how much blood goes where and how the body bleeds out.
 // Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
@@ -40,7 +41,7 @@ export function gore(world, ch, angle, cause, by) {
     }
   } else P.blood(x, y, angle, sc, sn, sv, opt);
   if (wd.mist) P.mist(x, y, wd.mist, 10, angle);
-  world.decals.stampBlood(x, y, wd.splat[0], wd.splat[1], angle);
+  if (wd.splat[0]) world.decals.stampBlood(x, y, wd.splat[0], wd.splat[1], angle);
 
   if (mode === 'gibs') {
     const radial = cause === 'explosion';
@@ -63,7 +64,7 @@ export function gore(world, ch, angle, cause, by) {
   }
 
   const slide = rand(wd.throw[0], wd.throw[1]);
-  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]), poolRate: wd.rate, spurt: wd.spurt };
+  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]), poolRate: wd.rate, spurt: wd.spurt, dry: cause === 'snap' };
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
@@ -87,7 +88,7 @@ export function gore(world, ch, angle, cause, by) {
     world.sound('gore', x, y, 0.8);
     world.shake(0.2);
   } else {
-    world.sound(cause === 'slash' ? 'slash' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
+    world.sound(cause === 'slash' ? 'slash' : cause === 'snap' ? 'neck' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
   }
   return mode;
 }
