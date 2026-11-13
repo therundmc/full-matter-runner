@@ -127,7 +127,7 @@ export const LIQUIDS = {
   // prints: steps a wet sole keeps marking; wet: seconds it stays wet once nothing feeds it;
   // color / alpha: of the prints; splash: drops kicked up when running through it
   kinds: {
-    blood: { prints: 16, wet: 45, color: '#6e0810', alpha: 0.9 },
+    blood: { prints: 16, wet: 45, color: '#5c0a0c', alpha: 0.9 },
     water: { prints: 9, wet: 70, color: '#0b0f1c', alpha: 0.55, splash: 'rgba(110,160,200,0.14)' },
   },
   hydrant: { kind: 'water', rate: 1600, dur: 9, cap: 66 }, // a burst hydrant floods ~2 m around it
@@ -210,7 +210,7 @@ export const PALETTE = {
   orange: '#ff6b1a',
   white: '#fff4f0',
   ink: '#140c1c',
-  blood: ['#7c0a0a', '#930d10', '#a8141a', '#6a0707', '#b81a1f'],
+  blood: ['#780b0f', '#8c1014', '#9a1418', '#560709', '#aa1c1e'], // drops in the air; [3] dark meat, [4] wet flesh
 };
 
 // hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot)

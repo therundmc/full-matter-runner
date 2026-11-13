@@ -1,8 +1,18 @@
 import { TILE, PALETTE } from '../Config.js';
 import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
-import { rand, pick, chance } from '../../engine/math.js';
+import { rand, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
+import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps, poolArt, releasePool } from './BloodArt.js';
+
+// seconds after which a stain turns tacky, then dry (a pool takes as long as it stays slippery: LIQUIDS.kinds.blood.wet)
+const STAIN_AGES = [9, 30], POOL_AGES = [20, 45];
+const MAX_AGEING = 1500; // stains waiting for an age: beyond that the oldest dry early
+const AGE_BUDGET = 24;   // stains re-tinted per step at most
+
+// sole (toe toward +x) and heel of a shoe print, in px
+const SHOE = [[0, -1], [1, -1], [2, -1], [3, -1], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [1, 1], [2, 1], [3, 1],
+  [-3, -1], [-2, -1], [-3, 0], [-2, 0], [-3, 1], [-2, 1]];
 
 // well-mixed integer hash of a cell (no visible lattice, unlike a plain x*a ^ y*b)
 function cellHash(x, y) {
@@ -19,12 +29,20 @@ function floorTile(name, x, y) {
   return sprite('tiles/' + name);
 }
 
-// Pre-rendered floor / wall layers of a TileMap and everything painted on them for good
-// (blood, bullet holes, scorch marks, baked corpses and debris).
+// Pre-rendered layers of a TileMap and everything painted on them for good, bottom to top:
+//   floor   tiles, scuffs, spills, footprints, baked debris
+//   blood   stains, spatter and pools (BloodArt stamps), drying in place: over the debris, under the bodies
+//   flesh   baked corpses and gibs
+//   walls   wall tops and roofs, bullet holes, splashes
 export default class MapRenderer {
   constructor(map) {
     this.map = map;
+    this.clock = 0;
+    this.ageing = [[], []]; // stains waiting to turn tacky / dry, oldest first: { s, x, y, rot, at }
+    this.heads = [0, 0];
+    this.pools = [];        // baked pools still drying: { art, x, y, r, age, at }
     this.render();
+    warmStamps();
   }
 
   // ---------- rendering ----------
@@ -54,6 +72,8 @@ export default class MapRenderer {
     g.globalAlpha = 0.3; g.drawImage(sh, 5, 5);
     g.globalAlpha = 1;
     this.floorCtx = g;
+    [this.bloodCanvas, this.bloodCtx] = this.layer(W, H);
+    [this.fleshCanvas, this.fleshCtx] = this.layer(W, H);
 
     this.wallCanvas = document.createElement('canvas');
     this.wallCanvas.width = W; this.wallCanvas.height = H;
@@ -90,6 +110,15 @@ export default class MapRenderer {
       }
     }
     this.wallCtx = w;
+  }
+
+  // an empty map-sized layer
+  layer(W, H) {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    return [c, g];
   }
 
   // flat roofs: weathering in large soft patches, and the parapet's shadow along the inside of the brick ring
@@ -235,62 +264,131 @@ export default class MapRenderer {
     g.restore();
   }
 
-  // ---------- persistent decals ----------
-  stampBlood(x, y, r = 3, n = 1) {
-    const g = this.floorCtx;
-    for (let i = 0; i < n; i++) {
-      g.fillStyle = pick(PALETTE.blood);
-      g.globalAlpha = rand(0.75, 1);
-      const ox = rand(-r, r) * (n > 1 ? 1 : 0), oy = rand(-r, r) * (n > 1 ? 1 : 0);
-      const rr = Math.max(0.6, r * rand(0.4, 1));
-      g.beginPath();
-      g.ellipse(x + ox, y + oy, rr, rr * rand(0.6, 1), rand(0, 3), 0, Math.PI * 2);
-      g.fill();
+  // ---------- blood ----------
+  // one stamp on the blood layer, on whole pixels, rotated without smoothing; it will age where it lies
+  put(s, x, y, rot) {
+    const d = { s, x: Math.round(x), y: Math.round(y), rot, at: this.clock + STAIN_AGES[0] };
+    this.blit(this.bloodCtx, stampImage(s), d);
+    this.ageing[0].push(d);
+  }
+
+  blit(g, img, d) {
+    const c = Math.cos(d.rot), s = Math.sin(d.rot);
+    g.setTransform(c, s, -s, c, d.x, d.y);
+    g.drawImage(img, -d.s.cx, -d.s.cy);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  // blood on the floor. n = 1: one drop of radius r. n > 1: what a wound leaves, a ragged stain of radius r with
+  // spines and satellites (thrown toward `angle` if given) and a few separate drops around it
+  stampBlood(x, y, r = 3, n = 1, angle = rand(0, TAU)) {
+    if (n <= 1) {
+      if (r < 1.1) this.speck(x, y, r);
+      else this.put(spotStamp(r), x, y, Math.floor(rand(0, 4)) * (TAU / 4));
+      return;
     }
+    this.put(splatStamp(r), x, y, angle);
+    for (let i = 0; i < n * 0.6; i++) {
+      const a = rand(0, TAU), d = r * (1 + 1.8 * Math.random() ** 2);
+      this.stampBlood(x + Math.cos(a) * d, y + Math.sin(a) * d, rand(0.8, 1 + r * 0.2));
+    }
+  }
+
+  // a droplet too fine to stand wet: one or two pixels
+  speck(x, y, r = 0.6) {
+    const g = this.bloodCtx;
+    g.fillStyle = pick(SPECK);
+    g.globalAlpha = rand(0.55, 0.95);
+    g.fillRect(Math.round(x), Math.round(y), r > 0.85 && chance(0.5) ? 2 : 1, r > 0.85 && chance(0.4) ? 2 : 1);
     g.globalAlpha = 1;
   }
 
-  // elongated streak in direction (dx, dy)
+  // a drop that landed at an angle, travelling along (dx, dy): an elongated stain, its tail and satellites ahead
   stampStreak(x, y, dx, dy, len, width) {
-    const g = this.floorCtx;
-    g.save();
-    g.translate(x, y);
-    g.rotate(Math.atan2(dy, dx));
-    g.fillStyle = pick(PALETTE.blood);
-    g.globalAlpha = 0.9;
-    g.beginPath();
-    g.ellipse(len / 2, 0, len / 2, width / 2, 0, 0, Math.PI * 2);
-    g.fill();
-    if (chance(0.5)) { g.beginPath(); g.arc(len + rand(1, 4), rand(-1, 1), width * 0.4, 0, Math.PI * 2); g.fill(); }
-    g.restore();
-  }
-
-  stampPool(x, y, r) {
-    const g = this.floorCtx;
-    g.fillStyle = PALETTE.blood[3];
-    g.globalAlpha = 0.95;
-    for (let i = 0; i < 6; i++) {
-      g.beginPath();
-      g.ellipse(x + rand(-r, r) * 0.4, y + rand(-r, r) * 0.4, r * rand(0.6, 1), r * rand(0.5, 0.9), rand(0, 3), 0, Math.PI * 2);
-      g.fill();
-    }
-    g.fillStyle = 'rgba(255,120,120,0.12)';
-    g.beginPath(); g.arc(x - r * 0.3, y - r * 0.3, r * 0.3, 0, Math.PI * 2); g.fill();
+    const a = Math.atan2(dy, dx);
+    if (width >= 1.3) { this.put(streakStamp(width, len), x, y, a); return; }
+    // a fine one: a short dash and a dot thrown ahead of it
+    const g = this.bloodCtx, c = Math.cos(a), s = Math.sin(a);
+    g.fillStyle = pick(SPECK);
+    g.globalAlpha = rand(0.55, 0.95);
+    for (let i = 0; i < len; i++) g.fillRect(Math.round(x + c * i), Math.round(y + s * i), 1, 1);
+    if (chance(0.5)) g.fillRect(Math.round(x + c * (len + 2)), Math.round(y + s * (len + 2)), 1, 1);
     g.globalAlpha = 1;
   }
 
-  // blood/holes on walls: drawn only where wall pixels exist
-  stampWall(x, y, r, color) {
-    const g = this.wallCtx;
+  // something bleeding wiped over the floor from (x0, y0) to (x1, y1): w px of thin broken streaks, never a band
+  drag(x0, y0, x1, y1, w) {
+    this.streaks(this.bloodCtx, x0, y0, x1, y1, w, SPECK, 0.8);
+  }
+
+  streaks(g, x0, y0, x1, y1, w, colors, alpha) {
+    const d = Math.hypot(x1 - x0, y1 - y0);
+    if (d < 0.5) return;
+    const ux = (x1 - x0) / d, uy = (y1 - y0) / d, lanes = Math.max(1, Math.round(w));
+    for (let j = 0; j < lanes; j++) {
+      const off = j - (lanes - 1) / 2;
+      // each lane comes and goes every few pixels, the outer ones more often
+      const k = cellHash(Math.floor(x0 / 6) * 31 + j, Math.floor(y0 / 6));
+      if (k < 0.22 + (0.3 * Math.abs(off)) / (lanes / 2 + 0.5)) continue;
+      g.fillStyle = colors[j % colors.length];
+      g.globalAlpha = alpha * (0.45 + 0.55 * k);
+      for (let t = 1; t <= d; t++) g.fillRect(Math.round(x0 + ux * t - uy * off), Math.round(y0 + uy * t + ux * off), 1, 1);
+    }
+    g.globalAlpha = 1;
+  }
+
+  // the pool a body (owner) lay in, left on the floor for good; it dries slowly
+  bakePool(owner, x, y, r) {
+    if (r < 1) return;
+    const art = poolArt(owner);
+    releasePool(owner);
+    art.draw(this.bloodCtx, x, y, r);
+    this.pools.push({ art, x, y, r, age: 0, at: this.clock + POOL_AGES[0] });
+    if (this.pools.length > 48) this.agePool(this.pools.shift(), 2);
+  }
+
+  agePool(p, age) {
+    const g = this.bloodCtx;
+    g.globalCompositeOperation = 'source-atop';
+    p.art.draw(g, p.x, p.y, p.r, age);
+    g.globalCompositeOperation = 'source-over';
+    p.age = age;
+    p.at = this.clock + POOL_AGES[1] - POOL_AGES[0];
+  }
+
+  // blood dries where it lies: the stamps that reached an age are re-tinted in place (a bounded few per step)
+  update(dt) {
+    this.clock += dt;
+    const g = this.bloodCtx;
+    g.globalCompositeOperation = 'source-atop';
+    let budget = AGE_BUDGET;
+    for (let a = 0; a < 2; a++) {
+      const q = this.ageing[a];
+      let h = this.heads[a];
+      while (h < q.length && budget > 0 && (q[h].at <= this.clock || q.length - h > MAX_AGEING)) {
+        const d = q[h++];
+        budget--;
+        this.blit(g, stampImage(d.s, a + 1), d);
+        if (a === 0) { d.at = this.clock + STAIN_AGES[1] - STAIN_AGES[0]; this.ageing[1].push(d); }
+      }
+      if (h > 256) { q.splice(0, h); h = 0; }
+      this.heads[a] = h;
+    }
+    g.globalCompositeOperation = 'source-over';
+    for (const p of this.pools) if (p.at <= this.clock) this.agePool(p, p.age + 1);
+    if (this.pools.some((p) => p.age >= 2)) this.pools = this.pools.filter((p) => p.age < 2);
+  }
+
+  // blood thrown on a wall top: drawn only where wall pixels exist
+  stampWall(x, y, r) {
+    const g = this.wallCtx, st = spotStamp(Math.max(1.3, r));
     g.save();
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = color || pick(PALETTE.blood);
-    g.beginPath();
-    g.arc(x, y, r, 0, Math.PI * 2);
-    g.fill();
+    g.drawImage(stampImage(st, 1), Math.round(x) - st.cx, Math.round(y) - st.cy);
     g.restore();
   }
 
+  // ---------- other persistent decals ----------
   // size 1 = entry hole; exits are wider (spalling), ricochets just scuff
   bulletHole(x, y, size = 1) {
     const g = this.wallCtx;
@@ -312,12 +410,14 @@ export default class MapRenderer {
     grad.addColorStop(1, 'rgba(20,10,10,0)');
     g.fillStyle = grad;
     g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-    const wg = this.wallCtx;
-    wg.save();
-    wg.globalCompositeOperation = 'source-atop';
-    wg.fillStyle = grad;
-    wg.beginPath(); wg.arc(x, y, r, 0, Math.PI * 2); wg.fill();
-    wg.restore();
+    // what lies there chars with it: blood, remains, wall tops
+    for (const wg of [this.bloodCtx, this.fleshCtx, this.wallCtx]) {
+      wg.save();
+      wg.globalCompositeOperation = 'source-atop';
+      wg.fillStyle = grad;
+      wg.beginPath(); wg.arc(x, y, r, 0, Math.PI * 2); wg.fill();
+      wg.restore();
+    }
   }
 
   // liquid stain (water, spirits, milk): a soft ellipse in the given rgba colour
@@ -329,35 +429,26 @@ export default class MapRenderer {
     g.fill();
   }
 
-  // one wet shoe print, toe toward `angle` (~24 cm long)
+  // one wet shoe print, toe toward `angle` (~24 cm long): the pixels of a sole and a heel, never all of them
   footprint(x, y, angle, color, alpha) {
-    const g = this.floorCtx;
-    g.save();
-    g.translate(x, y);
-    g.rotate(angle);
-    g.globalAlpha = alpha;
+    const g = this.floorCtx, c = Math.cos(angle), s = Math.sin(angle);
     g.fillStyle = color;
-    g.beginPath(); g.ellipse(1.5, 0, 2.3, 1.5, 0, 0, Math.PI * 2); g.fill();  // sole
-    g.beginPath(); g.ellipse(-2.5, 0, 1.3, 1.2, 0, 0, Math.PI * 2); g.fill(); // heel
-    g.restore();
+    for (const [lx, ly] of SHOE) {
+      if (chance(0.18)) continue;
+      g.globalAlpha = alpha * rand(0.55, 1);
+      g.fillRect(Math.round(x + lx * c - ly * s), Math.round(y + lx * s + ly * c), 1, 1);
+    }
+    g.globalAlpha = 1;
   }
 
-  // a wet body dragged over the floor: a wide soft stroke ending at (x, y)
+  // a wet body dragged over the floor: a wide streaky stroke ending at (x, y)
   smear(x, y, angle, len, color, alpha) {
-    const g = this.floorCtx;
-    g.save();
-    g.translate(x, y);
-    g.rotate(angle);
-    g.globalAlpha = alpha;
-    g.fillStyle = color;
-    g.fillRect(-len, -3.5 + rand(-0.6, 0.6), len, 2.4);
-    g.fillRect(-len, 0.6 + rand(-0.6, 0.6), len, 3);
-    g.restore();
+    this.streaks(this.floorCtx, x - Math.cos(angle) * len, y - Math.sin(angle) * len, x, y, 7, [color], alpha);
   }
 
-  // permanently paint an image (corpse, gib, debris) onto the floor
-  bake(img, x, y, angle, alpha = 1) {
-    const g = this.floorCtx;
+  // permanently paint an image onto the floor (debris), or over the blood (flesh: a corpse, a gib)
+  bake(img, x, y, angle, alpha = 1, flesh = false) {
+    const g = flesh ? this.fleshCtx : this.floorCtx;
     g.save();
     g.translate(x, y);
     g.rotate(angle);

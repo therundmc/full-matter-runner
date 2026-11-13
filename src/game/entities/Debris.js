@@ -2,6 +2,7 @@ import { CAT, MASK } from '../Config.js';
 import { drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance } from '../../engine/math.js';
 import { setMaterial, scaleInertia } from '../../engine/physics/Body.js';
+import { wipe } from '../fx/Bleeding.js';
 
 const { Bodies, Body } = Matter;
 
@@ -64,7 +65,12 @@ export default class Debris {
     const sp = Body.getSpeed(b);
     if (this.bleed > 0) {
       this.bleed -= dt;
-      if (sp > 0.4) this.world.decals.stampBlood(b.position.x, b.position.y, rand(0.8, 1.8), 1);
+      // meat drips while it flies and dabs the floor it tumbles on (its wet side comes round again and again)
+      if (this.z > 0) {
+        this.wx = undefined;
+        if (chance(0.3)) this.world.decals.speck(b.position.x + rand(-1, 1), b.position.y + rand(-1, 1), rand(0.6, 1.4));
+      } else if (sp > 0.4 && Math.sin(this.age * 20 + this.size) > 0.1) wipe(this.world, this, b.position.x, b.position.y, Math.min(4, this.size * 0.4));
+      else this.wx = undefined;
     }
     if (this.spurt > 0) {
       this.spurt -= dt;

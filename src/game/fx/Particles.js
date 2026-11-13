@@ -1,5 +1,5 @@
 import { MAX_PARTICLES, PALETTE, DESTRUCTION } from '../Config.js';
-import { rand, pick, chance } from '../../engine/math.js';
+import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette } from '../../engine/Assets.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
@@ -26,23 +26,42 @@ export default class Particles {
   }
 
   // ---- emitters ----
+  // Blood leaving a wound, `count` drops within `spreadA` of `angle` plus the fine spray that comes with them and
+  // that the air stops short; a few heavy drops carry (more with opts.big), the cone is denser in its middle, and
+  // now and then a string of drops leaves one behind the other. opts.jet: an arterial jet, every drop on the line
+  // at the given speed.
   blood(x, y, angle, spreadA, count, speed, opts = {}) {
-    for (let i = 0; i < count; i++) {
-      const a = angle + rand(-spreadA, spreadA);
-      const v = speed * rand(0.25, 1.15);
+    const wide = spreadA > 2, heavy = opts.big ? 0.72 : 0.88;
+    let string = 0, sa = 0, sv = 0;
+    for (let i = 0, n = opts.jet ? count : Math.ceil(count * 1.5); i < n; i++) {
+      const u = Math.random();
+      let a = angle + (wide || opts.jet ? rand(-1, 1) : spread() * (u > heavy ? 0.7 : 1.15)) * spreadA;
+      let v = speed * (opts.jet ? rand(0.92, 1.05) : u < 0.5 ? rand(0.15, 1.1) : u > heavy ? rand(0.3, 0.85) : rand(0.3, 1.15));
+      let size = opts.jet ? rand(1.3, 2.1) : u < 0.5 ? 1 : u > heavy ? rand(2.3, opts.big ? 3.8 : 3) : rand(1.3, 2.2);
+      if (string > 0) {
+        // the next drop of a string: same line, a little slower, a little smaller
+        string--;
+        a = sa + rand(-0.02, 0.02);
+        v = sv *= rand(0.8, 0.92);
+        size = Math.max(1, 1.2 + string * 0.3);
+      } else if (count >= 8 && !opts.jet && chance(0.07)) {
+        string = randi(3, 6); sa = a; sv = v = speed * rand(0.8, 1.2);
+      }
       this.add({
-        type: P.BLOOD, x, y, z: opts.z ?? rand(8, 16), vz: rand(-20, 120),
+        type: P.BLOOD, x, y, z: opts.z ?? rand(8, 16), vz: opts.jet ? rand(50, 100) : rand(-20, 120),
         vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-        size: rand(0.8, opts.big ? 3.6 : 2.4), color: pick(PALETTE.blood), life: 3, drag: 1.2,
+        size, color: pick(PALETTE.blood), life: 3, drag: size <= 1 ? 2.4 : size > 2.3 ? 0.8 : 1.2,
       });
     }
   }
 
-  mist(x, y, count, r = 10) {
-    for (let i = 0; i < count; i++) {
-      const a = rand(0, Math.PI * 2), v = rand(10, 70);
+  // the fine red cloud of a hit (blown along `angle` if given): it hangs a moment and settles as a stipple
+  mist(x, y, count, r = 10, angle) {
+    for (let i = 0; i < count * 2; i++) {
+      const a = angle === undefined ? rand(0, Math.PI * 2) : angle + spread() * 1.1, v = rand(10, 120);
+      const life = rand(0.15, 0.5);
       this.add({ type: P.MIST, x: x + rand(-r, r) * 0.3, y: y + rand(-r, r) * 0.3, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-        size: rand(1.5, 4.5), life: rand(0.2, 0.5), maxLife: 0.5, drag: 4, color: pick(PALETTE.blood) });
+        size: chance(0.25) ? 2 : 1, life, maxLife: life, drag: 4, color: pick(PALETTE.blood) });
     }
   }
 
@@ -187,8 +206,11 @@ export default class Particles {
         p.vz -= 520 * dt;
         p.z += p.vz * dt;
         if (map.solidAt(nx, ny)) {
-          // hit a wall while airborne
-          if (p.type === P.BLOOD) decals.stampWall(nx, ny, p.size * 1.3, p.color);
+          // hit a wall while airborne: blood splashes its top and runs down to its foot
+          if (p.type === P.BLOOD) {
+            decals.stampWall(nx, ny, p.size * 0.9);
+            if (chance(0.5)) decals.stampBlood(p.x, p.y, p.size * 0.8);
+          }
           alive = false;
         } else if (p.z <= 0) {
           this._land(p, nx, ny);
@@ -196,6 +218,8 @@ export default class Particles {
         }
       } else if ((p.type === P.SPARK) && map.solidAt(nx, ny)) {
         p.vx *= -0.4; p.vy *= -0.4;
+      } else if (p.type === P.MIST && !alive && chance(0.6) && !map.solidAt(nx, ny)) {
+        decals.speck(nx, ny);
       }
       if (p.type === P.SMOKE || p.type === P.DUST) p.size += p.grow * dt;
       p.x = nx; p.y = ny;
@@ -210,9 +234,14 @@ export default class Particles {
     const g = decals.floorCtx;
     switch (p.type) {
       case P.BLOOD: {
-        const sp = Math.hypot(p.vx, p.vy);
-        if (sp > 60 && chance(0.6)) decals.stampStreak(x, y, p.vx, p.vy, Math.min(14, sp * 0.05) + p.size, p.size * 1.4);
-        else decals.stampBlood(x, y, p.size, 1);
+        // the flatter a drop comes in, the longer its stain; one falling straight leaves a round spot
+        const flat = Math.hypot(p.vx, p.vy) / Math.max(40, -p.vz);
+        if (p.size <= 1) {
+          if (flat > 1.1) decals.stampStreak(x, y, p.vx, p.vy, 1 + Math.min(3, flat), 1);
+          else decals.speck(x, y, 1);
+        } else if (flat > 0.6) decals.stampStreak(x, y, p.vx, p.vy, p.size * (1.3 + Math.min(3.6, flat * 1.3)), p.size * 1.35);
+        else if (p.size > 2.6 && chance(0.5)) decals.stampBlood(x, y, p.size * 1.2, 3, Math.atan2(p.vy, p.vx)); // a heavy one bursts
+        else decals.stampBlood(x, y, p.size * 1.1);
         break;
       }
       case P.GLASS:
@@ -282,15 +311,21 @@ export default class Particles {
           ctx.fillRect(p.x, p.y - p.z * 0.4, p.size, p.size);
           break;
         case P.BLOOD: {
-          const s = p.size * (1 + Math.max(0, p.z) * 0.04);
+          // a drop on whole pixels, stretched back along its way when it flies fast
+          const s = p.size < 1.3 ? 1 : p.size < 2.5 ? 2 : 3, y = p.y - p.z * 0.25;
           ctx.fillStyle = p.color;
-          ctx.fillRect(p.x - s / 2, p.y - s / 2 - p.z * 0.25, s, s);
+          ctx.fillRect(Math.round(p.x - s / 2), Math.round(y - s / 2), s, s);
+          if (p.vx * p.vx + p.vy * p.vy > 4900) {
+            const t = s > 1 ? s - 1 : 1;
+            ctx.fillRect(Math.round(p.x - p.vx * 0.012 - t / 2), Math.round(y - p.vy * 0.012 - t / 2), t, t);
+            ctx.fillRect(Math.round(p.x - p.vx * 0.024), Math.round(y - p.vy * 0.024), 1, 1);
+          }
           break;
         }
         case P.MIST:
-          ctx.globalAlpha = Math.max(0, p.life / p.maxLife) * 0.35;
+          ctx.globalAlpha = Math.min(1, (p.life / p.maxLife) * 2) * 0.75;
           ctx.fillStyle = p.color;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, 1);
           ctx.globalAlpha = 1;
           break;
         case P.SMOKE: {

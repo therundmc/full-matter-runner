@@ -39,8 +39,8 @@ export function gore(world, ch, angle, cause, by) {
       P.blood(x, y, angle + side * t * wd.sweep, sc, Math.ceil(sn / steps), sv * (1 - Math.abs(t) * 0.5), opt);
     }
   } else P.blood(x, y, angle, sc, sn, sv, opt);
-  if (wd.mist) P.mist(x, y, wd.mist);
-  world.decals.stampBlood(x, y, wd.splat[0], wd.splat[1]);
+  if (wd.mist) P.mist(x, y, wd.mist, 10, angle);
+  world.decals.stampBlood(x, y, wd.splat[0], wd.splat[1], angle);
 
   if (mode === 'gibs') {
     const radial = cause === 'explosion';

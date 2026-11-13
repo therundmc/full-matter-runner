@@ -133,7 +133,8 @@ export default class World {
   bakeDebris(d) {
     if (d.dead) return;
     d.dead = true;
-    this.decals.bake(d.img, d.body.position.x, d.body.position.y, d.body.angle);
+    // meat lies on the blood, everything else under it
+    this.decals.bake(d.img, d.body.position.x, d.body.position.y, d.body.angle, 1, d.body.material === 'flesh');
     this.removeBody(d.body);
   }
 
@@ -249,6 +250,7 @@ export default class World {
     for (const p of this.props) if (p.update) p.update(dt);
     for (const e of this.emitters) { e.t -= dt; e.fn(e); }
     this.particles.update(dt);
+    this.decals.update(dt);
     this.scoring.update(dt);
     this.impacts.update(dt);
     this.liquids.update(dt);

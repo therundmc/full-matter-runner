@@ -1,7 +1,9 @@
-import { CAT, MASK, PALETTE } from '../Config.js';
+import { CAT, MASK } from '../Config.js';
 import { drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, local } from '../../engine/math.js';
 import { setMaterial } from '../../engine/physics/Body.js';
+import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
+import { poolArt } from '../render/BloodArt.js';
 
 const { Bodies, Body } = Matter;
 
@@ -20,13 +22,7 @@ export default class Corpse {
     Body.setAngle(this.body, angle);
     Body.setAngularVelocity(this.body, rand(-0.06, 0.06));
     this.body.entity = this;
-    this.headless = !!opts.headless;
-    this.fountain = this.headless ? rand(1.4, 2.4) : 0;
-    this.pool = 0;
-    this.poolMax = opts.pool ?? rand(11, 17);
-    this.poolRate = (opts.poolRate ?? 4) * (this.headless ? 1.75 : 1); // px/s
-    this.spurt = this.spurt0 = opts.spurt || 0; // seconds an opened artery keeps pumping
-    this.spurtA = rand(0, Math.PI * 2);
+    startBleeding(this, opts);
     this.settle = 0;
     this.age = 0;
     this.dead = false;
@@ -39,46 +35,31 @@ export default class Corpse {
   // head end of the sprite is +x
   headPos() { return local(this.x, this.y, this.body.angle, this.img.width / 2 - 5, 0); }
 
-  // centre of the blood pool
-  poolAt() { return this.headPos(); }
+  // centre of the blood pool: where it started under the head, or the head while the body still slides
+  poolAt() { return this.poolPos || this.headPos(); }
 
   update(dt) {
     const b = this.body;
     this.age += dt;
-    const head = this.headPos();
-    if (Body.getSpeed(b) > 0.5) this.world.decals.stampBlood(head.x, head.y, rand(1, 2.5), 1);
-    if (this.fountain > 0) {
-      this.fountain -= dt;
-      const pulse = Math.sin(this.age * 14) > 0.2;
-      if (pulse) this.world.particles.blood(head.x, head.y, b.angle + rand(-0.5, 0.5), 0.25, 2, rand(90, 200), { z: 3 });
-    }
-    if (this.spurt > 0) {
-      // an opened artery: weaker and weaker pulses
-      this.spurt -= dt;
-      if (Math.sin(this.age * 9) > 0.35) {
-        this.world.particles.blood(this.x, this.y, b.angle + this.spurtA + rand(-0.12, 0.12), 0.1, 2, 50 + 190 * (this.spurt / this.spurt0), { z: 3 });
-      }
-    }
-    if (this.pool < this.poolMax && this.age > 0.3) this.pool += dt * this.poolRate;
-    if (Body.getSpeed(b) < 0.05) this.settle += dt; else this.settle = 0;
+    const head = this.headPos(), sp = Body.getSpeed(b);
+    if (sp > 0.5) wipe(this.world, this, head.x, head.y, 4);
+    bleedOut(this, dt, { x: head.x, y: head.y, angle: b.angle }, { x: this.x, y: this.y, angle: b.angle }, head, sp < 0.3);
+    if (sp < 0.05) this.settle += dt; else this.settle = 0;
     if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
   bake() {
-    const head = this.headPos();
-    this.world.decals.stampPool(head.x, head.y, this.pool);
-    this.world.decals.bake(this.img, this.x, this.y, this.body.angle);
+    const at = this.poolAt();
+    this.world.decals.bakePool(this, at.x, at.y, this.pool);
+    this.world.decals.bake(this.img, this.x, this.y, this.body.angle, 1, true);
     this.world.removeBody(this.body);
     this.dead = true;
   }
 
   drawPool(ctx) {
-    if (this.pool <= 0) return;
-    const head = this.headPos();
-    ctx.fillStyle = PALETTE.blood[3];
-    ctx.beginPath();
-    ctx.ellipse(head.x, head.y, this.pool, this.pool * 0.8, this.body.angle, 0, Math.PI * 2);
-    ctx.fill();
+    if (this.pool < 1) return;
+    const at = this.poolAt();
+    poolArt(this).draw(ctx, at.x, at.y, this.pool);
   }
 
   draw(ctx) {

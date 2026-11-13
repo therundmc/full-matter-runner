@@ -3,6 +3,8 @@ import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.j
 import { rand, chance, local } from '../../engine/math.js';
 import { setMaterial, impulse } from '../../engine/physics/Body.js';
 import { woundFor } from '../data/wounds.js';
+import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
+import { poolArt } from '../render/BloodArt.js';
 
 const { Bodies, Body, Constraint, Composite } = Matter;
 
@@ -17,13 +19,7 @@ export default class Ragdoll {
     this.kind = kind;
     this.parts = [];
     this.joints = [];
-    this.headless = !!opts.headless;
-    this.fountain = this.headless ? rand(1.4, 2.4) : 0;
-    this.pool = 0;
-    this.poolMax = opts.pool ?? rand(11, 17);
-    this.poolRate = (opts.poolRate ?? 4) * (this.headless ? 1.75 : 1); // px/s
-    this.spurt = this.spurt0 = opts.spurt || 0; // seconds an opened artery keeps pumping
-    this.spurtA = rand(0, Math.PI * 2);
+    startBleeding(this, opts);
     this.settle = 0;
     this.age = 0;
     this.dead = false;
@@ -46,7 +42,8 @@ export default class Ragdoll {
       const neck = { x: 0, y: -tht / 2 };
       const hp = at(0, neck.y - 4);
       const head = this.addPart('head', hImg, Bodies.circle(hp.x, hp.y, 4, { ...opt(), angle: th }), 0, 5);
-      this.join(head, neck, { x: 0, y: 4 });
+      head.root = { x: 0, y: 4 };
+      this.join(head, neck, head.root);
       this.head = head;
     }
     const limb = (name, jx, jy, ang) => {
@@ -141,7 +138,7 @@ export default class Ragdoll {
       const sp = Body.getSpeed(part.body);
       if (sp > 0.06 || Math.abs(Body.getAngularVelocity(part.body)) > 0.01) moving = true;
       const pos = part.body.position;
-      if (sp > 0.6 && (part === this.head || part === this.torso || part.bleed > 0)) w.decals.stampBlood(pos.x, pos.y, rand(0.8, 2), 1);
+      if (sp > 0.6 && (part === this.head || part === this.torso || part.bleed > 0)) wipe(w, part, pos.x, pos.y, part === this.torso ? 5 : 2);
       if (part.bleed > 0) {
         part.bleed -= dt;
         if (chance(0.5)) w.particles.blood(pos.x, pos.y, rand(0, 6.28), 0.3, 1, rand(40, 120), { z: 3 });
@@ -153,33 +150,24 @@ export default class Ragdoll {
       const pos = this.torso.body.position;
       w.particles.blood(pos.x, pos.y, rand(0, 6.28), 0.4, 1, rand(60, 140), { z: 3 });
     }
-    if (this.fountain > 0) {
-      this.fountain -= dt;
-      const n = this.neckPos();
-      const a = this.torso.body.angle - Math.PI / 2;
-      if (Math.sin(this.age * 14) > 0.2) w.particles.blood(n.x, n.y, a + rand(-0.5, 0.5), 0.25, 2, rand(90, 200), { z: 3 });
-    }
-    if (this.spurt > 0) {
-      // an opened artery: weaker and weaker pulses
-      this.spurt -= dt;
-      if (Math.sin(this.age * 9) > 0.35) {
-        const t = this.torso.body;
-        w.particles.blood(t.position.x, t.position.y, t.angle + this.spurtA + rand(-0.12, 0.12), 0.1, 2, 50 + 190 * (this.spurt / this.spurt0), { z: 3 });
-      }
-    }
-    if (this.pool < this.poolMax && this.age > 0.3) this.pool += dt * this.poolRate;
+    const t = this.torso.body, n = this.neckPos(), src = this.source();
+    bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
+      src.position, Body.getSpeed(src) < 0.3);
     this.settle = moving ? 0 : this.settle + dt;
     if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
-  // centre of the blood pool
-  poolAt() { return this.headless ? this.neckPos() : this.head.body.position; }
+  // the part the blood seeps from: the head while it is on, else the torso (its pool forms at the neck)
+  source() { return this.head?.attached ? this.head.body : this.torso.body; }
+
+  // centre of the blood pool: where it started, or under the wound while the body still slides
+  poolAt() { return this.poolPos || (this.head?.attached ? this.head.body.position : this.neckPos()); }
 
   bake() {
     const w = this.world;
     const n = this.poolAt();
-    w.decals.stampPool(n.x, n.y, this.pool);
-    for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle);
+    w.decals.bakePool(this, n.x, n.y, this.pool);
+    for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
     for (const part of this.parts) w.removeBody(part.body);
     this.dead = true;
@@ -188,12 +176,9 @@ export default class Ragdoll {
   order() { return [...this.limbs.filter((p) => p.name === 'leg'), ...this.limbs.filter((p) => p.name === 'arm'), this.torso, ...(this.head ? [this.head] : [])]; }
 
   drawPool(ctx) {
-    if (this.pool <= 0) return;
+    if (this.pool < 1) return;
     const n = this.poolAt();
-    ctx.fillStyle = PALETTE.blood[3];
-    ctx.beginPath();
-    ctx.ellipse(n.x, n.y, this.pool, this.pool * 0.8, this.torso.body.angle, 0, Math.PI * 2);
-    ctx.fill();
+    poolArt(this).draw(ctx, n.x, n.y, this.pool);
   }
 
   draw(ctx) {
@@ -201,17 +186,18 @@ export default class Ragdoll {
       const b = part.body;
       drawSprite(ctx, silhouette(part.img), b.position.x + 1, b.position.y + 1, b.angle, 0.3);
       drawSprite(ctx, part.img, b.position.x, b.position.y, b.angle);
-      if (!part.attached) {
-        // bloody stump at the root
-        const r = local(b.position.x, b.position.y, b.angle, part.root.x, part.root.y);
-        ctx.fillStyle = PALETTE.blood[4];
-        ctx.fillRect(r.x - 1.5, r.y - 1.5, 3, 3);
-      }
+      // bloody stump at the root of a torn part
+      if (!part.attached) stump(ctx, local(b.position.x, b.position.y, b.angle, part.root.x, part.root.y), 3);
     }
-    if (this.headless) {
-      const n = this.neckPos();
-      ctx.fillStyle = PALETTE.blood[4];
-      ctx.beginPath(); ctx.arc(n.x, n.y, 2.5, 0, Math.PI * 2); ctx.fill();
-    }
+    if (this.headless) stump(ctx, this.neckPos(), 4);
   }
+}
+
+// raw flesh where something was torn off: dark meat, a wet centre
+function stump(ctx, p, s) {
+  const x = Math.round(p.x - s / 2), y = Math.round(p.y - s / 2);
+  ctx.fillStyle = PALETTE.blood[3];
+  ctx.fillRect(x, y, s, s);
+  ctx.fillStyle = PALETTE.blood[4];
+  ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
 }

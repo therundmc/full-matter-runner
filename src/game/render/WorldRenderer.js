@@ -19,7 +19,10 @@ export default class WorldRenderer {
 
     ctx.drawImage(w.decals.floorCanvas, 0, 0);
     for (const p of w.liquids.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
+    // blood lies over everything baked into the floor; the dead and their pieces lie on the blood
+    ctx.drawImage(w.decals.bloodCanvas, 0, 0);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.drawPool(ctx);
+    ctx.drawImage(w.decals.fleshCanvas, 0, 0);
     for (const d of w.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.draw(ctx);
     for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);

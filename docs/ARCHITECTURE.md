@@ -46,13 +46,15 @@ src/
       Perception.js       detection meter rate, view test, aim error, hearing error
       Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
     render/
-      MapRenderer.js      floor / wall canvases and permanent decals (blood, holes, scorch, spills, baked bodies),
-                          flat roofs of the neighbouring buildings and their dressing
+      MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
+                          baked bodies), flat roofs of the neighbouring buildings and their dressing
+      BloodArt.js         what blood looks like: pixel stamps (spots, streaks, splats) built once, in three ages
+                          (wet, tacky, dry), and the pool under a bleeding body
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile
-    fx/                   Particles, Gore
+    fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
     debug/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
@@ -146,6 +148,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `Character.kill(angle, cause, killer, by)` hands what killed (`by`: a weapon definition or `{ gore, wound }`) to
   `gore()`; the cause is the fallback (`CAUSE_WOUND`). A knife casts a thin arc and leaves a pumping artery and a
   lake, 7.62 a long tight jet behind the body, buckshot a wide wet cone (only up close), a bat heavy slow drops.
+- Blood on the floor (render/BloodArt.js, MapRenderer): a drop lands as a stamp picked by how it hit (flat = tapered
+  streak along its travel with satellites, steep = ragged spot, heavy = splat); stamps are per-pixel thickness maps
+  (film to core) coloured through one ramp per age, never circles or gradients. They are baked into `bloodCanvas`,
+  drawn over the floor decals and under `fleshCanvas` (baked bodies and meat), so blood covers rubble and the dead
+  stay readable on it. `decals.update(dt)` dries stains by re-blitting their tacky then dry variant (a few per step,
+  queue capped). The pool under a body (`poolArt(owner)`, fx/Bleeding.js) is repainted only when it grows or ages,
+  stays where it formed if the body is shoved, and is baked with the body (`decals.bakePool`).
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
   Space = context action: execute > vault > slide. (A cover system existed and was removed at the user's request.)
