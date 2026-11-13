@@ -159,7 +159,7 @@ export const LIGHTING = {
   flare: 0.5,              // anamorphic streaks of very bright lights
   reflect: 0.55,           // wet floor reflections
   reflectFloors: ['asphalt', 'asphalt_line', 'sidewalk', 'checker', 'tile_blue', 'neon_floor'],
-  bpm: 116,
+  bpm: 108,
   grade: { saturate: 1.22, contrast: 1.06, shadowTint: 'rgb(0,10,18)', highlightTint: 'rgba(255,40,190,0.07)' },
   grain: 0.05,
   aberration: 7,           // px at full camera trauma
