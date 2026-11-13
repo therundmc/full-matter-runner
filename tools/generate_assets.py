@@ -2118,308 +2118,491 @@ def mags():
 
 
 # --------------------------------------------------------------------------
-# Vehicles (top-down, facing +x). Layout contract shared by car/car2/van:
-# windshield x 46..54 (van 62..70), rear window x 14..20, lights at the
-# front/back edges on y 5..9 and 27..31. Wheels are drawn by the game.
+# Vehicles (top-down, facing +x, real size at 1 m = 32 px): sedan 4.4 x 1.8 m (140 x 58), coupe 4.2 x 1.75 m
+# (134 x 56), panel van 5.0 x 2.0 m (160 x 64). Only the mirrors use the outer 2 px on each side: the game's
+# hitbox is the sprite minus 2 px all round. Glass, tank, hood, wheel and light positions are a contract with
+# VEHICLES (src/game/entities/Vehicle.js) and LIGHTING.propLights (src/game/Config.js): keep them in sync.
+# Tyres are drawn by the game under the body. Details are mirrored about the centre line.
 # --------------------------------------------------------------------------
 
-GLASS = [hx('#0c1020'), hx('#141c34'), hx('#1e2c4c'), hx('#2c4068')]
+GLASS = [hx('#0a0e1a'), hx('#121a2e'), hx('#1c2944'), hx('#2a3c5e')]
+CHROME = [hx('#3a3848'), hx('#77768c'), hx('#b8b8c8'), hx('#eeeef8')]
+RUBBER = [hx('#141218'), hx('#211e28'), hx('#2e2a36'), hx('#45404f')]
+ROAD_DIRT = hx('#5e4c3a')
+RUST = [hx('#4a2416'), hx('#7a3a1c'), hx('#a0582a')]
+PLATE = hx('#d8d2b8')
+AMBER = hx('#ffaa2a')
+SHEEN, NEON_SHEEN = hx('#8fd0ea'), hx('#ff7ab4')
 HEAD_C, HEAD_GLOW = hx('#fff4d6'), (255, 240, 205, 255)
 TAIL_C, TAIL_GLOW = hx('#ff2a3a'), (255, 36, 48, 255)
+SEDAN_BODY = ramp('#ff2a6d', 0.55, 0.3, 0.4)
+COUPE_BODY = ramp('#e8ecf4', 0.5, 0.24, 0.25)
+VAN_BODY = ramp('#e2d2b0', 0.5, 0.26, 0.3)
 
 
-def car_body(cv, W, cy, hw, body, x0, x1, cr_rear, cr_front, flat=0.0):
-    for y in range(cv.h):
+def soft(r, L):
+    """Continuous blend through a 4-tone ramp: big panels get soft gradients instead of bands."""
+    return pal(r, (L - 0.12) / 0.8)
+
+
+def darken(t):
+    return lambda c, side: dk(c, t)
+
+
+def ridge(t):
+    """A crease catches the light on the top side and is shadowed on the bottom side."""
+    return lambda c, side: lt(c, t) if side < 0 else dk(c, t)
+
+
+class Veh:
+    """One vehicle sprite + glow map. Rows are given on the top side (y < cy) and mirrored."""
+
+    def __init__(self, w, h, cy, seed):
+        self.cv, self.gl = Cv(w, h), Cv(w, h)
+        self.cy = cy
+        self.rng = random.Random(seed)
+        self.mask, self.glass, self.half = set(), set(), {}
+
+    def v(self, y):
+        return y + 0.5 - self.cy
+
+    def m(self, y):
+        return 2 * self.cy - 1 - y
+
+    def put(self, x, y, c, both=True):
+        """c: colour or fn(current, side) with side -1 on the top half, +1 on the bottom half."""
+        for yy in ((y, self.m(y)) if both else (y,)):
+            col = c(self.cv.get(x, yy), -1 if yy < self.cy else 1) if callable(c) else c
+            self.cv.set(x, yy, col)
+
+    def line(self, x0, y0, x1, y1, c, both=True):
+        n = max(abs(x1 - x0), abs(y1 - y0), 1)
+        for i in range(n + 1):
+            self.put(int(round(x0 + (x1 - x0) * i / n)), int(round(y0 + (y1 - y0) * i / n)), c, both)
+
+    def rows(self, x, v0, v1):
+        """Top-side rows at column x whose |v| lies in (v0, v1]."""
+        return [y for y in range(self.cy) if v0 < -self.v(y) <= v1]
+
+    def shell(self, body, x0, x1, hw, cr_rear, cr_front, nose=0, pinch=0.0, crown=3.0):
+        """Body shell: rounded box (pinched toward the nose for a wedge), domed across, rolled at both ends."""
         for x in range(x0, x1 + 1):
-            v = y + 0.5 - cy
-            if abs(v) > hw:
-                continue
             u_r, u_f = x - x0, x1 - x
+            h = hw - (pinch * ((x - (x1 - nose)) / nose) ** 2 if nose and x > x1 - nose else 0.0)
+            self.half[x] = h
             cr = cr_rear if u_r < u_f else cr_front
-            ex = cr - min(u_r, u_f) - 0.5
-            ey = abs(v) - (hw - cr)
-            if ex > 0 and ey > 0 and ex * ex + ey * ey > cr * cr:
+            for y in range(self.cv.h):
+                v = self.v(y)
+                ex, ey = cr - min(u_r, u_f) - 0.5, abs(v) - (h - cr)
+                if abs(v) > h or (ex > 0 and ey > 0 and ex * ex + ey * ey > cr * cr):
+                    continue
+                end = max(0.0, 1.0 - min(u_r, u_f) / 9.0) ** 1.5
+                L = light((-end if u_r < u_f else end) * 0.8, math.copysign((abs(v) / h) ** crown, v) * 0.95) - v / h * 0.1
+                self.cv.set(x, y, soft(body, L))
+                self.mask.add((x, y))
+
+    def panel(self, body, x0, x1, hw, r=3, crown=2.5, lift=0.0):
+        """Raised flat panel (roof): its own gentle dome, rounded corners."""
+        for x in range(x0, x1 + 1):
+            for y in self.rows(x, -1, hw):
+                ex, ey = r - min(x - x0, x1 - x) - 0.5, -self.v(y) - (hw - r)
+                if ex > 0 and ey > 0 and ex * ex + ey * ey > r * r:
+                    continue
+                for yy in (y, self.m(y)):
+                    v = self.v(yy)
+                    nv = math.copysign((abs(v) / hw) ** crown, v) * 0.7
+                    self.cv.set(x, yy, soft(body, light(0.0, nv) + lift))
+
+    def glass_col(self, x, y, x0, x1, h, sheen):
+        t = (self.v(y) + h) / (2 * h)
+        c = pal(GLASS, 0.8 - t * 0.65 + (x - x0) / max(1, x1 - x0) * 0.1)
+        if sheen is not None:   # one soft diagonal reflection (and a faint neon one)
+            s = (x - x0) + (self.v(y) + h) * 0.6 - sheen
+            if 0 <= s < 2.5:
+                c = mix(c, SHEEN, 0.3)
+            elif -1 <= s < 0 or 2.5 <= s < 3.5:
+                c = mix(c, SHEEN, 0.12)
+            elif 7 <= s < 8:
+                c = mix(c, NEON_SHEEN, 0.14)
+        return c
+
+    def trap(self, x0, x1, hw0, hw1, sheen=None):
+        """Windshield / rear window: trapezoid of glass, half width hw0 at x0 to hw1 at x1."""
+        for x in range(x0, x1 + 1):
+            h = hw0 + (hw1 - hw0) * (x - x0) / max(1, x1 - x0)
+            for y in self.rows(x, -1, h):
+                for yy in (y, self.m(y)):
+                    self.cv.set(x, yy, self.glass_col(x, yy, x0, x1, h, sheen))
+                    self.glass.add((x, yy))
+
+    def side(self, x0, x1, inner, outer, pillars=()):
+        """Side windows seen at a grazing angle between the roof (inner(x)) and the beltline (outer)."""
+        for x in range(x0, x1 + 1):
+            if x in pillars:
                 continue
-            nv = v / hw
-            edge = max(0.0, 1.0 - min(u_r, u_f) / 4.0)
-            L = light((-edge if u_r < u_f else edge) * 0.7, math.copysign(abs(nv) ** (3 + flat), v) * 0.95)
-            cv.set(x, y, tone(body, L))
+            for y in self.rows(x, inner(x), outer):
+                k = (-self.v(y) - inner(x)) / max(0.5, outer - inner(x))
+                self.cv.set(x, y, pal(GLASS, 0.75 - k * 0.35))
+                self.cv.set(x, self.m(y), pal(GLASS, 0.3 - k * 0.25))
+                self.glass |= {(x, y), (x, self.m(y))}
+        self.put(x0 + 3, self.rows(x0 + 3, inner(x0 + 3), outer)[-1], lambda c, s: mix(c, SHEEN, 0.35 if s < 0 else 0.1))
 
+    def seal(self):
+        """Rubber seals: body pixels touching glass get darker."""
+        edge = {(x + a, y + b) for (x, y) in self.glass for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))}
+        for p in sorted(edge - self.glass):
+            if p in self.mask:
+                self.cv.set(p[0], p[1], dk(self.cv.get(*p), 0.38))
 
-def glass_px(x, y, x0, x1, y0, y1, streaks=True):
-    t = (y - y0) / max(1, y1 - y0)
-    c = pal(GLASS, 0.9 - t * 0.8 + (x - x0) / max(1, x1 - x0) * 0.25)
-    if streaks:
-        s = (x - x0) + (y - y0) * 0.3
-        if 2.0 <= s < 3.0 or 4.0 <= s < 4.6:
-            c = mix(c, hx('#7ad8f0'), 0.5)
-        elif 8.0 <= s < 9.0:
-            c = mix(c, hx('#ff7ab4'), 0.4)
-    return c
+    def arches(self, wheels, r=11):
+        """Fender lips over the wheels: a lit crest and the flare falling away into shadow."""
+        for wx in wheels:
+            for x in range(wx - r, wx + r + 1):
+                crest = self.half[x] - 3.5 + 2.2 * ((x - wx) / r) ** 2
+                for y in self.rows(x, crest, 99):
+                    if (x, y) in self.mask and (x, y) not in self.glass:
+                        self.put(x, y, darken(0.2) if -self.v(y) > crest + 1 else ridge(0.14))
 
+    def grime(self, wheels, amount=1.0, rust=6, scratches=3):
+        """Road film on the sills and around the arches, a few rust specks and scratches."""
+        n = VNoise(self.cv.w, self.cv.h, 7, self.rng)
+        for (x, y) in sorted(self.mask - self.glass):
+            v, hw = abs(self.v(y)), self.half[x]
+            k = max(0.0, (v - (hw - 6)) / 6.0) * 0.4
+            for wx in wheels:
+                k += max(0.0, 1.0 - math.hypot((x - wx) / 1.5, hw - v) / 10.0) * 0.32
+            k *= amount * (0.3 + 1.3 * n(x, y))
+            if k > 0.03:
+                self.cv.set(x, y, mix(self.cv.get(x, y), ROAD_DIRT, min(0.5, k)))
+        for _ in range(rust):
+            x = int(self.rng.choice(wheels) + self.rng.uniform(-13, 13))
+            y = int(math.floor(self.cy - self.half[x] + self.rng.uniform(0.5, 3)))
+            if self.rng.random() < 0.5:
+                y = self.m(y)
+            for i in range(self.rng.randint(1, 4)):
+                p = (x + self.rng.randint(-1, 1) * (i > 0), y + self.rng.randint(-1, 1) * (i > 0))
+                if p in self.mask:
+                    self.cv.set(p[0], p[1], mix(self.cv.get(*p), RUST[self.rng.randint(0, 2)], 0.7))
+        for _ in range(scratches):
+            x = self.rng.randint(20, self.cv.w - 30)
+            y = int(math.floor(self.cy - self.half[x] + self.rng.uniform(1.5, 4)))
+            ln = self.rng.randint(4, 9)
+            for i in range(ln):
+                p = (x + i, y + (i * 2 > ln) * self.rng.choice((0, 0, 1)))
+                if p in self.mask:
+                    self.cv.set(p[0], p[1], lt(self.cv.get(*p), 0.22))
 
-def windshield(cv, x0, x1, cy, h0, h1, body):
-    for x in range(x0, x1 + 1):
-        half = h0 + (h1 - h0) * (x - x0) / max(1, x1 - x0)
-        ya, yb = int(math.ceil(cy - half)), int(math.floor(cy + half - 0.01))
-        for y in range(ya, yb + 1):
-            c = glass_px(x, y, x0, x1, ya, yb)
-            if y in (ya, yb) or x == x0:
-                c = body[0]
-            cv.set(x, y, c)
-    cv.set(x0 + 2, int(cy - h0) + 2, hx('#e8f8ff'))
+    def rim(self):
+        """Lower edge a touch darker, upper edge catching the light."""
+        for (x, y) in sorted(self.mask):
+            if (x, y + 1) not in self.mask:
+                self.cv.set(x, y, dk(self.cv.get(x, y), 0.25))
+            elif (x, y - 1) not in self.mask:
+                self.cv.set(x, y, lt(self.cv.get(x, y), 0.12))
 
-
-def rear_window(cv, x0, x1, cy, half, body, louvres=False):
-    for x in range(x0, x1 + 1):
-        h = half - (x1 - x) * 0.25
-        ya, yb = int(math.ceil(cy - h)), int(math.floor(cy + h - 0.01))
-        for y in range(ya, yb + 1):
-            c = glass_px(x, y, x0, x1, ya, yb, streaks=False)
-            if y in (ya, yb) or x == x1:
-                c = body[0]
-            elif louvres and x % 2 == 0:
-                c = mix(c, body[1], 0.55)
-            cv.set(x, y, c)
-    cv.set(x1 - 2, int(cy - half) + 2, hx('#7ad8f0'))
-
-
-def lamps(cv, gl, xs, ys_list, col, glow, frame):
-    for ys in ys_list:
-        for y in range(ys[0], ys[1] + 1):
-            for x in range(xs[0], xs[1] + 1):
-                edge = y in ys and x == xs[0]
-                c = frame if edge else (lt(col, 0.45) if y == ys[0] + 1 or (y - ys[0] + x) % 4 == 0 else col)
-                cv.set(x, y, c)
+    def lamp(self, x0, x1, y0, y1, col, glow, frame, back=None):
+        """Light cluster (mirrored): framed lens, brighter top row; the lens goes into the glow map.
+        back: the framed (inner) column, x0 by default (front lights)."""
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                edge = y in (y0, y1) or x == (x0 if back is None else back)
+                c = frame if edge else (lt(col, 0.45) if y == y0 + 1 else col)
+                self.put(x, y, c)
                 if not edge:
-                    gl.set(x, y, glow)
+                    self.gl.set(x, y, glow)
+                    self.gl.set(x, self.m(y), glow)
 
+    def bumper(self, x0, x1, tones):
+        """Bumper across the whole end, lit from the top."""
+        for x in range(x0, x1 + 1):
+            for y in range(self.cv.h):
+                if (x, y) in self.mask:
+                    t = 0.95 - (y / self.cv.h) * 0.75 - (0.15 if x in (x0, x1) and x0 != x1 else 0)
+                    self.cv.set(x, y, pal(tones, t))
 
-def mirror(cv, x, y, body):
-    cv.set(x, y, body[3])
-    cv.set(x + 1, y, body[2])
+    def mirror(self, x0, x1, tones, glass_end):
+        """Door mirror on its arm, sticking out past the body; the glass faces back."""
+        y = min(y for (x, y) in self.mask if x0 <= x <= x1) - 1
+        for x in range(x0, x1 + 1):
+            self.put(x, y, GLASS[1] if x == glass_end else tones[3] if x == x0 + 1 else tones[2])
+
+    def done(self):
+        self.cv.outline()
+        return self.cv, self.gl
 
 
 def p_car():
-    cv, gl = Cv(76, 36), Cv(76, 36)
-    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
-    cy = 18.5
-    car_body(cv, 76, cy, 15.5, body, 1, 74, 3.0, 4.5)
-    mirror(cv, 45, 2, body)
-    mirror(cv, 45, 34, body)
-    for x in range(21, 46):   # roof + side glass
-        for y in range(6, 31):
-            dv = abs(y + 0.5 - cy)
-            if dv > 10.3:
-                cv.set(x, y, GLASS[2] if y < cy else GLASS[0])
-                if y == 6 and x % 5 == 0:
-                    cv.set(x, y, hx('#5aa8d8'))
-            elif dv > 9.3:
-                cv.set(x, y, body[0])
-            else:
-                cv.set(x, y, body[3] if y < cy - 6 else body[2] if y < cy + 5 else body[1])
-    for x in range(26, 42):
-        cv.set(x, 11, lt(body[3], 0.3) if x < 34 else body[3])
-    rear_window(cv, 14, 20, cy, 11.0, body, louvres=True)
-    windshield(cv, 46, 54, cy, 11.0, 13.5, body)
-    for y in (12, 25):     # hood creases
-        for x in range(56, 71):
-            cv.set(x, y, body[1] if y > cy else body[3])
-            cv.set(x, y + 1, body[0] if y > cy else body[1])
-    for x in range(57, 64, 2):    # hood louvres
-        for y in range(15, 23):
-            cv.set(x, y, hx('#2a0a1c'))
-            cv.set(x + 1, y, body[3])
-    for x in range(5, 12, 3):     # engine cover slats behind the cabin
-        for y in range(10, 27):
-            cv.set(x, y, body[1])
-    for x in range(4, 72):        # cyan pin stripes
-        cv.set(x, 4, NEON_CYAN)
-        cv.set(x, 32, dk(NEON_CYAN, 0.25))
-    for x in (24, 45):
-        for y in (3, 4, 5, 31, 32, 33):
-            cv.set(x, y, body[0])
-    cv.outline()
-    for y in range(10, 27):       # rear light bar + front grille
-        cv.set(1, y, hx('#5a0a1c') if y % 2 else hx('#2a0612'))
-        cv.set(2, y, hx('#7a1024') if y % 2 else hx('#3a0818'))
-        cv.set(74, y, hx('#1a1424') if y % 2 else hx('#6a6478'))
-    lamps(cv, gl, (72, 74), [(5, 9), (27, 31)], HEAD_C, HEAD_GLOW, hx('#c8c8d8'))
-    lamps(cv, gl, (1, 2), [(5, 9), (27, 31)], TAIL_C, TAIL_GLOW, hx('#7a0818'))
-    return cv, gl
+    """80s four-door sedan, 4.4 x 1.8 m: boxy, chrome bumpers, quad headlights, thick C pillars."""
+    k = Veh(140, 58, 29, 4401)
+    body = SEDAN_BODY
+    wheels = (30, 112)
+    k.shell(body, 1, 138, 26.5, 5, 6, crown=2.2)
+    k.arches(wheels)
+    k.trap(34, 45, 19.5, 17.5, sheen=2)                      # rear window
+    k.trap(81, 97, 17.5, 21.5, sheen=4)                      # windshield
+    k.panel(body, 46, 80, 18.5)                              # roof
+    k.side(47, 85, lambda x: 18.5 if x <= 80 else 19.0 + (x - 81) / 4, 22.0, pillars=(64, 65))
+    k.line(42, 6, 90, 6, lambda c, s: mix(c, CHROME[2 if s < 0 else 1], 0.55))   # beltline trim
+    for x in (40, 65, 90):                                   # door seams
+        k.line(x, 2, x, 5, darken(0.4))
+    for x in (45, 69):                                       # door handles
+        k.line(x, 4, x + 2, 4, lambda c, s: CHROME[3 if s < 0 else 2])
+    k.line(6, 8, 6, 28, darken(0.4))                         # trunk lid
+    k.line(6, 8, 33, 8, darken(0.4))
+    k.line(9, 28, 10, 28, CHROME[2])                         # trunk lock
+    k.line(98, 8, 98, 28, darken(0.45))                      # cowl gap
+    k.line(98, 8, 133, 8, darken(0.4))                       # hood shut lines
+    k.line(101, 20, 130, 20, ridge(0.18))                    # hood creases
+    k.line(9, 20, 30, 20, ridge(0.15))                       # trunk lid crease
+    k.put(131, 28, CHROME[3])                                # hood ornament
+    k.line(96, 26, 95, 14, RUBBER[0], both=False)            # parked wipers
+    k.line(96, 45, 95, 33, RUBBER[0], both=False)
+    k.line(24, 3, 27, 3, darken(0.3), both=False)            # fuel filler flap
+    k.line(24, 4, 27, 4, darken(0.15), both=False)
+    k.put(20, 53, RUBBER[0], both=False)                     # antenna base
+    k.put(21, 53, CHROME[2], both=False)
+    k.grime(wheels)
+    k.seal()
+    k.rim()
+    k.bumper(137, 138, CHROME)
+    k.bumper(1, 2, CHROME)
+    for x in (137, 138):                                     # rubber bumper guards
+        k.line(x, 13, x, 15, RUBBER[1 if x == 137 else 0])
+    for y in range(20, 29):                                  # grille
+        for x in range(134, 137):
+            k.put(x, y, CHROME[1] if y == 20 or x == 134 else RUBBER[0] if y % 2 else RUBBER[2])
+    k.lamp(134, 136, 8, 13, HEAD_C, HEAD_GLOW, CHROME[2])     # quad headlights
+    k.lamp(134, 136, 13, 18, HEAD_C, HEAD_GLOW, CHROME[2])
+    k.line(135, 5, 136, 5, AMBER)
+    k.line(135, 6, 136, 6, dk(AMBER, 0.2))
+    k.lamp(3, 5, 5, 17, TAIL_C, TAIL_GLOW, hx('#7a0818'), back=5)      # wide tail lights
+    k.line(4, 18, 5, 18, hx('#e8e4dc'))                       # reverse lights
+    for y in range(23, 29):                                   # licence plate
+        k.line(3, y, 4, y, PLATE if y > 23 else RUBBER[1])
+    k.mirror(86, 90, body, 90)
+    return k.done()
 
 
 def p_car2():
-    cv, gl = Cv(76, 36), Cv(76, 36)
-    body = ramp('#e8ecf4', 0.5, 0.24, 0.25)
+    """80s sports coupe, 4.2 x 1.75 m: low wedge, pop-up headlights, T-top, fastback hatch, rear wing."""
+    k = Veh(134, 56, 28, 4202)
+    body = COUPE_BODY
     teal, purp = NEON_CYAN, hx('#7a1fa2')
-    cy = 18.5
-    car_body(cv, 76, cy, 15.5, body, 1, 74, 2.5, 3.5, flat=1.0)
-    mirror(cv, 46, 2, body)
-    mirror(cv, 46, 34, body)
-    for x in range(21, 46):   # T-top roof: smoked glass panels around a white bar
-        for y in range(6, 31):
-            dv = abs(y + 0.5 - cy)
-            if dv > 10.3:
-                cv.set(x, y, GLASS[1])
-            elif dv > 9.3 or x in (21, 45):
-                cv.set(x, y, body[1])
-            elif dv < 1.6:
-                cv.set(x, y, body[3] if y < cy else body[2])
+    wheels = (28, 106)
+    k.shell(body, 1, 132, 25.5, 4, 5, nose=30, pinch=3.0, crown=2.6)
+    k.arches(wheels, r=10)
+    for x in list(range(5, 22)) + list(range(100, 128)):     # twin racing stripes
+        k.put(x, 23, teal)
+        k.put(x, 24, dk(teal, 0.25))
+    k.line(6, 4, 125, 4, lambda c, s: purp if s < 0 else dk(purp, 0.25))   # side stripe
+    k.trap(22, 49, 14.5, 17.5, sheen=6)                      # fastback hatch glass
+    k.trap(78, 98, 17.0, 21.0, sheen=5)                      # raked windshield
+    k.panel(body, 50, 77, 17.5)                              # roof
+    for x in range(53, 75):                                  # T-top: smoked panels around the centre bar
+        for y in range(13, 25):
+            c = pal(GLASS, 0.75 - (y - 13) / 11 * 0.45)
+            if 9 <= (x - 53) + (y - 13) * 0.6 < 11.5:
+                c = mix(c, SHEEN, 0.28)
+            frame = x in (53, 74) or y in (13, 24)
+            k.put(x, y, RUBBER[2] if frame else lambda cur, sd, c=c: c if sd < 0 else dk(c, 0.15))
+    k.side(51, 85, lambda x: 17.5 if x <= 77 else 18.5 + (x - 78) / 5, 20.5, pillars=(62,))
+    for x in (55, 93):                                       # long doors
+        k.line(x, 2, x, 6, darken(0.4))
+    k.line(58, 5, 60, 5, RUBBER[1])                          # flush handles
+    k.line(99, 8, 99, 27, darken(0.45))                      # cowl gap
+    k.line(99, 8, 126, 8, darken(0.4))
+    for i, x in enumerate(range(104, 111)):                  # NACA ducts
+        k.put(x, 13, RUBBER[0])
+        if i > 3:
+            k.put(x, 14, RUBBER[1])
+    for x in range(112, 123):                                # pop-up headlight pods (raised)
+        for y in range(9, 17):
+            edge = x in (112, 122) or y in (9, 16)
+            k.put(x, y, dk(body[1], 0.3) if edge else body[3] if y < 12 else body[2])
+    k.line(123, 10, 123, 17, darken(0.3))                    # their shadow
+    k.line(113, 17, 123, 17, darken(0.3))
+    k.line(97, 26, 96, 13, RUBBER[0], both=False)            # single wiper
+    k.line(24, 2, 26, 2, darken(0.3), both=False)            # filler flap
+    k.grime(wheels, amount=0.8, rust=3, scratches=2)
+    k.seal()
+    k.rim()
+    for x in range(6, 12):                                   # rear wing on its endplates
+        for y in range(3, 28):
+            if y < 5:
+                c = RUBBER[0]
             else:
-                c = glass_px(x, y, 21, 45, 6, 30, streaks=False)
-                if (x - 21) + (y - 6) * 0.7 in (9, 10) or (x - 21) - (y - 6) * 0.3 == 14:
-                    c = mix(c, hx('#a0e8ff'), 0.5)
-                cv.set(x, y, c)
-    rear_window(cv, 14, 20, cy, 11.0, body)
-    windshield(cv, 46, 54, cy, 11.0, 13.5, body)
-    for x in list(range(3, 14)) + list(range(55, 72)):   # twin racing stripes
-        for y in (15, 16, 21, 22):
-            cv.set(x, y, teal if y in (15, 21) else dk(teal, 0.25))
-    for x in range(56, 64, 2):
-        for y in (8, 9, 10, 27, 28, 29):
-            cv.set(x, y, dk(body[0], 0.4))
-    for x in range(4, 72):
-        cv.set(x, 5, purp)
-        cv.set(x, 31, dk(purp, 0.2))
-    for y in range(5, 32):        # rear wing
-        cv.set(4, y, hx('#2a2434'))
-        cv.set(5, y, hx('#4a4458') if y % 4 else hx('#2a2434'))
-    for x in (25, 46):
-        for y in (3, 4, 32, 33):
-            cv.set(x, y, body[0])
-    cv.outline()
-    for y in range(10, 27):
-        cv.set(1, y, hx('#2a2434'))
-        cv.set(2, y, hx('#5a1028') if y % 3 else hx('#2a2434'))
-        cv.set(74, y, hx('#2a2434') if y % 2 else hx('#9a96aa'))
-    lamps(cv, gl, (72, 74), [(5, 9), (27, 31)], HEAD_C, HEAD_GLOW, hx('#2a2434'))
-    for y in (7, 29):
-        cv.set(73, y, hx('#2a2434'))
-        gl.set(73, y, CLEAR)
-    lamps(cv, gl, (1, 2), [(5, 9), (27, 31)], TAIL_C, TAIL_GLOW, hx('#3a0818'))
-    return cv, gl
+                c = RUBBER[3] if x == 7 else RUBBER[2] if x < 10 else RUBBER[1] if x < 11 else RUBBER[0]
+            if x > 6 or y < 5:
+                k.put(x, y, c)
+    k.line(12, 5, 12, 27, darken(0.35))
+    k.bumper(1, 1, RUBBER)
+    k.bumper(130, 132, RUBBER)
+    for y in range(5, 28):                                   # full-width tail light bar, plate in the middle
+        for x in (2, 3, 4):
+            if y > 23 and x < 4:
+                k.put(x, y, PLATE if y > 24 else RUBBER[1])
+            else:
+                lens = x > 2 and y > 5 and y % 3
+                k.put(x, y, TAIL_C if lens else hx('#3a0818'))
+                if lens and y < 24:
+                    k.gl.set(x, y, TAIL_GLOW)
+                    k.gl.set(x, k.m(y), TAIL_GLOW)
+    k.lamp(120, 122, 10, 15, HEAD_C, HEAD_GLOW, RUBBER[1])   # pop-ups, up
+    k.line(128, 24, 128, 27, RUBBER[0])                      # air intake
+    k.line(129, 24, 129, 27, RUBBER[1])
+    k.line(128, 6, 129, 6, AMBER)
+    k.line(128, 7, 128, 8, dk(AMBER, 0.2))
+    k.mirror(84, 88, body, 88)
+    return k.done()
 
 
 def p_van():
-    cv, gl = Cv(84, 38), Cv(84, 38)
-    body = ramp('#e2d2b0', 0.5, 0.26, 0.3)
-    cy = 19.0
-    car_body(cv, 84, cy, 16.0, body, 1, 82, 2.0, 5.0, flat=1.5)
-    mirror(cv, 63, 2, body)
-    mirror(cv, 63, 35, body)
+    """80s panel van, 5.0 x 2.0 m: long ribbed box roof, short hood, black bumpers, sliding side door."""
+    k = Veh(160, 64, 32, 5003)
+    body = VAN_BODY
     sunset = [hx('#f9c80e'), hx('#ff6b1a'), hx('#ff2a6d'), hx('#7a1fa2')]
-    for x in range(3, 62):    # roof panel with ribs
-        for y in range(8, 31):
-            c = body[2] if y > 9 else body[3]
-            if y == 30:
-                c = body[1]
-            if x % 6 == 0 and 4 < x < 60:
-                c = body[1]
-            elif x % 6 == 1 and 4 < x < 60:
-                c = body[3]
-            cv.set(x, y, c)
-    for i, col in enumerate(sunset):   # sunset side stripes
-        for x in range(3, 70 - i * 2):
-            cv.set(x, 4 + i, col)
-            cv.set(x, 33 - i, dk(col, 0.2))
-    for x in range(29, 41):   # smoked roof hatch
-        for y in range(14, 25):
-            c = pal(GLASS, 0.8 - (y - 14) / 10 * 0.55)
-            if x in (29, 40) or y in (14, 24):
-                c = hx('#4a4458') if (x == 40 or y == 24) else hx('#8a849a')
-            elif (x - 29) + (y - 14) * 0.5 in (4, 4.5, 5):
-                c = mix(c, hx('#a0e8ff'), 0.5)
-            cv.set(x, y, c)
-    for y in (11, 27):        # roof rack rails + rungs
-        for x in range(7, 24):
-            cv.set(x, y, hx('#5a546a'))
-            cv.set(x, y + 1, hx('#2a2434'))
-    for x in (8, 14, 20):
-        for y in range(12, 27):
-            cv.set(x, y, hx('#5a546a'))
-            cv.set(x + 1, y, hx('#2a2434'))
-    windshield(cv, 62, 70, cy, 12.5, 14.4, body)
-    for x in range(73, 80):
-        cv.set(x, 18, body[3])
-        cv.set(x, 19, body[1])
-    for y in range(4, 34):
-        cv.set(2, y, body[1])
-    for x in range(1, 4):
-        cv.set(x, 18, body[0])
-    for x in (45, 61):
-        for y in (3, 4, 33, 34):
-            cv.set(x, y, body[0])
-    cv.outline()
-    for y in range(11, 26):
-        cv.set(81, y, hx('#1a1424') if y % 2 else hx('#a8a4b8'))
-        cv.set(82, y, hx('#2a2434'))
-    lamps(cv, gl, (80, 82), [(5, 9), (27, 31)], HEAD_C, HEAD_GLOW, hx('#c8c8d8'))
-    lamps(cv, gl, (1, 2), [(5, 9), (27, 31)], TAIL_C, TAIL_GLOW, hx('#7a0818'))
-    return cv, gl
+    wheels = (38, 140)
+    k.shell(body, 1, 158, 29.5, 3, 8, crown=3.0)
+    k.arches(wheels, r=12)
+    k.panel(body, 7, 122, 24.5, r=2, crown=4.0, lift=0.04)  # box roof
+    for x in range(20, 120, 14):                             # roof ribs
+        k.line(x, 8, x, 31, lambda c, s: lt(c, 0.1))
+        k.line(x + 1, 8, x + 1, 31, darken(0.12))
+    k.line(7, 7, 122, 7, darken(0.22))                       # drip rail
+    for i, col in enumerate(sunset):                         # sunset side stripes
+        k.line(8, 3 + i, 106 - i * 3, 3 + i, lambda c, s, col=col: col if s < 0 else dk(col, 0.2))
+    k.trap(123, 137, 23.0, 26.5, sheen=3)                    # windshield
+    k.side(111, 126, lambda x: 24.5 if x <= 122 else 24.5 + (x - 122) / 4, 27.0)
+    for x in range(54, 67):                                  # smoked roof vent
+        for y in range(25, 32):
+            frame = x in (54, 66) or y == 25
+            k.put(x, y, (CHROME[1] if y == 25 or x == 54 else RUBBER[1]) if frame
+                  else k.glass_col(x, y, 54, 66, 7, sheen=3))
+    for x in range(10, 39):                                  # roof rack: rails and rungs
+        k.put(x, 15, CHROME[2] if x % 13 else CHROME[3])
+        k.put(x, 16, darken(0.3))
+    for x in (12, 25, 37):
+        k.line(x, 16, x, 47, CHROME[2], both=False)
+        k.line(x + 1, 17, x + 1, 47, darken(0.3), both=False)
+    for x in (110, 138):                                     # cab doors
+        k.line(x, 2, x, 7, darken(0.4))
+    k.line(112, 4, 114, 4, CHROME[2])
+    for x in (70, 108):                                      # sliding door (right side only)
+        k.line(x, 56, x, 61, darken(0.4), both=False)
+    k.line(70, 58, 108, 58, darken(0.15), both=False)
+    k.line(138, 8, 138, 31, darken(0.45))                    # short hood
+    k.line(138, 9, 153, 9, darken(0.4))
+    k.line(140, 22, 152, 22, ridge(0.1))
+    k.line(136, 30, 135, 13, RUBBER[0], both=False)          # wipers
+    k.line(136, 50, 135, 33, RUBBER[0], both=False)
+    for y in (31, 32):                                       # rear doors: split and handle
+        k.line(4, y, 7, y, darken(0.35 if y == 31 else 0.2), both=False)
+    k.put(5, 34, CHROME[2], both=False)
+    k.grime(wheels, amount=1.3, rust=10, scratches=4)
+    k.seal()
+    k.rim()
+    k.bumper(1, 3, RUBBER)
+    k.bumper(157, 158, RUBBER)
+    for y in range(21, 32):                                  # grille
+        for x in range(154, 157):
+            k.put(x, y, CHROME[1] if y == 21 or x == 154 else RUBBER[0] if y % 2 else CHROME[0])
+    k.lamp(154, 156, 11, 15, HEAD_C, HEAD_GLOW, CHROME[2])   # stacked square headlights
+    k.lamp(154, 156, 15, 19, HEAD_C, HEAD_GLOW, CHROME[2])
+    k.line(155, 8, 156, 8, AMBER)
+    k.line(155, 9, 156, 9, dk(AMBER, 0.2))
+    k.lamp(4, 6, 4, 11, TAIL_C, TAIL_GLOW, hx('#7a0818'), back=6)      # tall tail lights on the corner posts
+    k.line(5, 3, 6, 3, AMBER)
+    for x in range(125, 131):                                # big black mirrors
+        k.put(x, 1, RUBBER[3] if x == 126 else GLASS[1] if x == 130 else RUBBER[2])
+    return k.done()
 
 
 def p_car_tire():
-    cv = Cv(9, 5)
-    for y in range(5):
-        for x in range(9):
-            if (x in (0, 8)) and (y in (0, 4)):
+    """Tyre seen from above (tread up), 0.62 m x 0.22 m."""
+    cv = Cv(20, 7)
+    for y in range(7):
+        for x in range(20):
+            if x in (0, 19) and y in (0, 6):
                 continue
-            c = hx('#2a2634') if (x + (y > 2)) % 2 else hx('#16121e')
+            c = RUBBER[1] if (x + (y > 3)) % 3 == 0 else RUBBER[2]
+            if y == 3:
+                c = RUBBER[0]
             if y == 0 or x == 0:
-                c = hx('#3e3a4a') if x % 2 else hx('#2a2634')
+                c = RUBBER[3]
+            elif y == 6 or x == 19:
+                c = RUBBER[0]
             cv.set(x, y, c)
-    for (x, y, c) in [(3, 1, '#d8dce8'), (4, 1, '#f4f6ff'), (5, 1, '#a8acc0'), (3, 2, '#a8acc0'),
-                      (4, 2, '#5a5e70'), (5, 2, '#8a8ea0'), (3, 3, '#8a8ea0'), (4, 3, '#6a6e80'), (5, 3, '#5a5e70')]:
-        cv.set(x, y, hx(c))
     return cv
 
 
-def p_car_hood():
-    cv = Cv(20, 30)
-    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
-    for y in range(1, 29):
-        for x in range(1, 19):
-            k = 0.5 + 0.5 * math.sin((x + y * 0.6) * 0.45)
-            bend = (x + 0.6 * y) - 20.0
-            c = body[2] if k > 0.35 else body[1]
-            if y < 4:
-                c = body[3]
-            if -1.0 < bend < 0.6:
-                c = body[3]
-            elif 0.6 <= bend < 2.0:
-                c = body[0]
+def hood_debris(body, w, h, seed, stripe=None):
+    """Hood blown off: buckled panel with a diagonal fold, dents, a scorched edge, torn corners."""
+    rng = random.Random(seed)
+    cv = Cv(w, h)
+    burn = VNoise(w, h, 5, rng)
+    fold = rng.uniform(0.4, 0.55)
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            u, v = (x + 0.5) / w, (y + 0.5) / h
+            d = (u - fold) + (v - 0.5) * 0.45
+            c = soft(body, light(-0.55 if d < 0 else 0.3, (v - 0.5) * 0.6))
+            if stripe and abs((y + 0.5) - h / 2) in (2.5, 3.5):
+                c = stripe
+            if -0.02 < d < 0.025:
+                c = lt(c, 0.3) if d < 0 else dk(c, 0.35)
+            c = mix(c, hx('#1a1012'), max(0.0, (1 - u) * 1.6 - 0.9 + burn(x, y) * 0.5))
             cv.set(x, y, c)
-    for y in (8, 21):
-        for x in range(3, 17):
-            cv.set(x, y, body[1] if y > 15 else body[3])
-    for x in range(4, 11, 2):
-        for y in range(11, 18):
-            cv.set(x, y, hx('#2a0a1c'))
-    for (x, y) in [(1, 1), (18, 1), (18, 2), (17, 28), (18, 28), (18, 27), (1, 28)]:
-        cv.set(x, y, CLEAR)
-    cv.set(15, 26, hx('#9a96aa'))
+    for _ in range(4):
+        cx, cy, r = rng.uniform(4, w - 4), rng.uniform(4, h - 4), rng.uniform(1.5, 3.0)
+        for y in range(int(cy - r), int(cy + r) + 1):
+            for x in range(int(cx - r), int(cx + r) + 1):
+                if math.hypot(x - cx, y - cy) < r and cv.on(x, y):
+                    cv.set(x, y, dk(cv.get(x, y), 0.25) if y > cy else lt(cv.get(x, y), 0.12))
+    for (x0, y0) in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
+        for i in range(rng.randint(2, 4)):
+            for j in range(rng.randint(1, 4 - min(i, 3))):
+                cv.set(x0 + (i if x0 == 1 else -i), y0 + (j if y0 == 1 else -j), CLEAR)
     cv.outline()
     return cv
 
 
-def p_car_door():
-    cv = Cv(18, 4)
-    body = ramp('#ff2a6d', 0.55, 0.3, 0.4)
-    for x in range(1, 17):
-        cv.set(x, 0, body[3])
-        cv.set(x, 1, body[2])
-        cv.set(x, 2, GLASS[2] if 3 < x < 14 else body[1])
-        cv.set(x, 3, body[0])
-    cv.set(0, 1, OUTLINE)
-    cv.set(0, 2, OUTLINE)
-    cv.set(17, 1, OUTLINE)
-    cv.set(17, 2, OUTLINE)
-    cv.set(13, 1, hx('#e8e8f4'))
-    cv.set(5, 0, NEON_CYAN)
-    cv.set(6, 0, NEON_CYAN)
-    cv.set(7, 0, NEON_CYAN)
+def door_debris(body, w, stripe=None):
+    """Door ripped off, seen from above edge-on: skin, window frame with glass left in it, handle."""
+    cv = Cv(w, 6)
+    for x in range(1, w - 1):
+        cv.set(x, 1, lt(body[2], 0.2))
+        cv.set(x, 2, stripe or body[2])
+        cv.set(x, 3, GLASS[2] if 4 < x < w - 8 else body[1])
+        cv.set(x, 4, body[0])
+    cv.set(w - 7, 1, CHROME[3])
+    cv.set(w - 6, 1, CHROME[2])
+    cv.outline()
     return cv
+
+
+
+def p_car_hood():
+    return hood_debris(SEDAN_BODY, 38, 44, 4411)
+
+
+def p_car2_hood():
+    return hood_debris(COUPE_BODY, 30, 40, 4212, stripe=NEON_CYAN)
+
+
+def p_van_hood():
+    return hood_debris(VAN_BODY, 18, 48, 5013)
+
+
+def p_car_door():
+    return door_debris(SEDAN_BODY, 34)
+
+
+def p_car2_door():
+    return door_debris(COUPE_BODY, 40, stripe=hx('#7a1fa2'))
+
+
+def p_van_door():
+    return door_debris(VAN_BODY, 30, stripe=hx('#ff6b1a'))
 
 
 # --------------------------------------------------------------------------
@@ -2971,6 +3154,7 @@ def build():
                  barrel=p_barrel, bookshelf=p_bookshelf, speaker=p_speaker, dj_booth=p_dj_booth,
                  bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can,
                  car2=p_car2, van=p_van, car_tire=p_car_tire, car_hood=p_car_hood, car_door=p_car_door,
+                 car2_hood=p_car2_hood, car2_door=p_car2_door, van_hood=p_van_hood, van_door=p_van_door,
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
                  neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
                  hydrant=p_hydrant, bench=p_bench)
@@ -2998,8 +3182,9 @@ PROP_SIZES = dict(table=(40, 24), table_round=(28, 28), desk=(36, 22), chair=(12
                   sofa=(44, 18), plant=(18, 18), tv=(24, 8), fridge=(22, 20), oven=(22, 20), sink=(24, 14),
                   toilet=(12, 16), bed=(30, 44), pool_table=(64, 36), arcade=(20, 16), crate=(18, 18),
                   barrel=(14, 14), bookshelf=(40, 10), speaker=(14, 14), dj_booth=(48, 18),
-                  bar_counter=(32, 14), car=(76, 36), dumpster=(36, 22), trash_can=(12, 12),
-                  car2=(76, 36), van=(84, 38), car_tire=(9, 5), car_hood=(20, 30), car_door=(18, 4),
+                  bar_counter=(32, 14), car=(140, 58), dumpster=(36, 22), trash_can=(12, 12),
+                  car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
+                  car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
                   palm_tree=(56, 56), streetlight=(14, 10), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
                   neon_sign_arrow=(30, 12), jukebox=(20, 14), hydrant=(8, 8), bench=(36, 12))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]

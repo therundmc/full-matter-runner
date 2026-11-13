@@ -76,6 +76,13 @@ export const PALETTE = {
 // hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot)
 export const WALL_HP = { '#': 7, 'X': 14 };
 
+// Vehicle lights in the sprite's local frame (px from the centre, +x forward): two headlight cones at (hx, ±hy)
+// and two red tail light glows at (tx, ±ty). Positions match the lamps of the generated sprites.
+const vehicleLights = (hx, hy, tx, ty) => [
+  ...[-1, 1].map((s) => ({ r: 220, color: '#fff1c8', intensity: 0.85, x: hx, y: hy * s, cone: 0.42 })),
+  ...[-1, 1].map((s) => ({ r: 48, color: '#ff1a3a', intensity: 0.7, x: tx, y: ty * s })),
+];
+
 // Lighting / post-processing (game/render/Lighting.js, PostFX.js). Light map colours are 0..1 multipliers of the scene.
 export const LIGHTING = {
   enabled: true,
@@ -119,9 +126,8 @@ export const LIGHTING = {
     neon_sign_bar: { r: 120, color: '#ff2a6d', intensity: 1, flicker: 'broken' },
     neon_sign_arrow: { r: 100, color: '#ffc02a', intensity: 0.9, flicker: 'buzz' },
     streetlight: { r: 190, color: '#ffb46a', intensity: 0.9 },
-    car: [{ r: 175, color: '#fff1c8', intensity: 0.85, x: 34, y: -9, cone: 0.42 }, { r: 175, color: '#fff1c8', intensity: 0.85, x: 34, y: 9, cone: 0.42 },
-      { r: 42, color: '#ff1a3a', intensity: 0.7, x: -36, y: -10 }, { r: 42, color: '#ff1a3a', intensity: 0.7, x: -36, y: 10 }],
-    car2: [{ r: 170, color: '#fff1c8', intensity: 0.8, x: 34, y: -9, cone: 0.42 }, { r: 170, color: '#fff1c8', intensity: 0.8, x: 34, y: 9, cone: 0.42 }],
-    van: [{ r: 170, color: '#fff1c8', intensity: 0.8, x: 36, y: -10, cone: 0.42 }, { r: 170, color: '#fff1c8', intensity: 0.8, x: 36, y: 10, cone: 0.42 }],
+    car: vehicleLights(67, 15.5, -68, 17.5),
+    car2: vehicleLights(56, 15, -65, 13.5),
+    van: vehicleLights(77, 16.5, -76, 24),
   },
 };

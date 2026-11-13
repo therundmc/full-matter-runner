@@ -74,6 +74,7 @@ export default {
     ['armchair', 25, 5, 0],
     ['trash_can', 20.6, 7.5, 0],
     ['car', 8, 13.6, 0],
+    ['car2', 12, 16.6, 180],
     ['van', 19, 16.6, 180],
     ['dumpster', 25, 13, 90],
     ['streetlight', 3, 11.5, 0],

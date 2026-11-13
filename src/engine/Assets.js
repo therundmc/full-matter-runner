@@ -29,7 +29,7 @@ export const OPTIONAL_LIST = [
   ...FLOOR_TILES.flatMap((t) => [`tiles/${t}_v1`, `tiles/${t}_v2`]),
   'tiles/neon_floor_glow',
   ...['palm_tree', 'streetlight', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'jukebox', 'car2', 'van',
-    'car_tire', 'car_hood', 'car_door', 'hydrant', 'bench'].map((n) => `props/${n}`),
+    'car_tire', 'car_hood', 'car_door', 'car2_hood', 'car2_door', 'van_hood', 'van_door', 'hydrant', 'bench'].map((n) => `props/${n}`),
   ...GLOWING.map((n) => `props/${n}_glow`),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
     .map((n) => `weapons/${n}`),

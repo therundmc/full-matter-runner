@@ -9,24 +9,40 @@ import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js
 
 const { Bodies } = Matter;
 
-// Sprite-space layout of each model (facing +x). Regions: [x0, x1, y0, y1].
+// Sprite-space layout of each model (real size, facing +x; must match tools/generate_assets.py).
+// Regions: [x0, x1, y0, y1]; hood: [x0, x1]; wheels: tyre centres (they stick out a little past the sides).
+// Sprites: car (sedan) 140x58, car2 (coupe) 134x56, van 160x64; the hitbox is the sprite minus 2 px all round.
 export const VEHICLES = {
   car: {
-    sprite: 'props/car', hp: 28, kg: 1250, color: '#ff2a6d',
-    wind: [46, 54, 5, 31], rear: [14, 20, 7, 29], tank: [0, 13, 0, 36], hood: [54, 75],
-    wheels: [[15, 1], [15, 35], [60, 1], [60, 35]],
+    sprite: 'props/car', hp: 28, kg: 1200, color: '#ff2a6d',
+    wind: [82, 96, 11, 46], rear: [35, 44, 11, 46], tank: [0, 26, 0, 58], hood: [98, 134],
+    wheels: [[30, 2], [30, 56], [112, 2], [112, 56]],
   },
   car2: {
-    sprite: 'props/car2', hp: 28, kg: 1200, color: '#05d9e8',
-    wind: [46, 54, 5, 31], rear: [14, 20, 7, 29], tank: [0, 13, 0, 36], hood: [54, 75],
-    wheels: [[15, 1], [15, 35], [60, 1], [60, 35]],
+    sprite: 'props/car2', hp: 28, kg: 1150, color: '#05d9e8',
+    wind: [79, 97, 11, 44], rear: [24, 48, 14, 41], tank: [0, 24, 0, 56], hood: [99, 128],
+    wheels: [[28, 2], [28, 54], [106, 2], [106, 54]],
   },
   van: {
     sprite: 'props/van', hp: 36, kg: 1900, color: '#e6e0cf',
-    wind: [62, 70, 5, 33], rear: null, tank: [0, 13, 0, 38], hood: [70, 83],
-    wheels: [[16, 1], [16, 37], [66, 1], [66, 37]],
+    wind: [124, 136, 9, 54], rear: null, tank: [0, 30, 0, 64], hood: [138, 154],
+    wheels: [[38, 2], [38, 62], [140, 2], [140, 62]],
   },
 };
+
+const TYRE_HIT = [11, 5]; // half extents of a tyre's hit box (sprite px)
+
+// glass pixels (tinted blue-black) of a window region of the sprite's ImageData, so a shattered window keeps its shape
+function glassPixels(img, r) {
+  const px = [];
+  for (let y = r[2]; y <= r[3]; y++) {
+    for (let x = r[0]; x <= r[1]; x++) {
+      const i = (y * img.width + x) * 4, d = img.data, R = d[i], G = d[i + 1], B = d[i + 2];
+      if (d[i + 3] > 200 && B - R >= 14 && B >= G && R + G + B < 520) px.push([x, y]);
+    }
+  }
+  return px;
+}
 
 // A car you can wreck piece by piece: tyres, windows, fuel tank, alarm, smoke, fire, explosion.
 export default class Vehicle {
@@ -42,6 +58,9 @@ export default class Vehicle {
     this.canvas.width = this.w; this.canvas.height = this.h;
     this.g = this.canvas.getContext('2d');
     this.g.drawImage(base, 0, 0);
+    const img = this.g.getImageData(0, 0, this.w, this.h);
+    this.glassPx = {};
+    for (const key of ['wind', 'rear']) if (this.m[key]) this.glassPx[key] = glassPixels(img, this.m[key]);
     this.glow = spriteOpt(this.m.sprite + '_glow');
     this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true, vault: true };
     this.body = Bodies.rectangle(x, y, this.w - 4, this.h - 4, {
@@ -99,13 +118,13 @@ export default class Vehicle {
     // seen from above the bullet lands on the edge: follow it a few px inside to find what it really hits
     const da = dirA - this.body.angle, ddx = Math.cos(da), ddy = Math.sin(da);
     let tank = false;
-    for (let k = 0; k <= 24; k += 1.5) {
+    for (let k = 0; k <= 30; k += 1.5) {
       const qx = sx + ddx * k, qy = sy + ddy * k;
-      if (k <= 10 && this.inside(this.m.tank, qx, qy)) tank = true;
-      if (k <= 7) {
+      if (k <= 14 && this.inside(this.m.tank, qx, qy)) tank = true;
+      if (k <= 8) {
         for (let i = 0; i < 4; i++) {
           const [wx, wy] = this.m.wheels[i];
-          if (this.tires[i] && Math.hypot(qx - wx, qy - wy) < 7) { this.popTire(i, dirA); return; }
+          if (this.tires[i] && Math.abs(qx - wx) < TYRE_HIT[0] && Math.abs(qy - wy) < TYRE_HIT[1]) { this.popTire(i, dirA); return; }
         }
       }
       if (this.windows.wind < 2 && this.inside(this.m.wind, qx, qy)) { this.hitWindow('wind', qx, qy, dirA); return; }
@@ -116,7 +135,7 @@ export default class Vehicle {
     w.particles.sparks(px, py, dirA + Math.PI, 0.9, 6, 260);
     w.particles.chips(px, py, dirA + Math.PI, 0.9, 3, this.m.color, 120);
     w.sound('carHit', px, py, 0.6);
-    if (sx > this.w - 4 || sx < 4) this.breakLights(px, py);
+    if (sx > this.w - 6 || sx < 6) this.breakLights(px, py);
     if (tank) {
       this.fuel++;
       w.particles.chips(px, py, dirA + Math.PI, 0.6, 5, '#6a5a2a', 90);
@@ -167,22 +186,23 @@ export default class Vehicle {
       return;
     }
     if (state > 2) return;
-    // window explodes into the car / out the other side
+    // window explodes into the car / out the other side: the cabin shows through the hole
+    this.clearGlass(which, '#140c1c');
+    const px = this.glassPx[which], my = (r[2] + r[3]) / 2;
     g.save();
-    g.fillStyle = '#140c1c';
-    g.fillRect(r[0], r[2], r[1] - r[0] + 1, r[3] - r[2] + 1);
     g.fillStyle = 'rgba(190,240,255,0.6)';
-    for (let k = 0; k < 10; k++) g.fillRect(r[0] + rand(0, r[1] - r[0]), chance(0.5) ? r[2] : r[3] - 1, 1, 1);
+    for (let k = 0; k < 14 && px.length; k++) g.fillRect(...px[Math.floor(rand(0, px.length))], 1, 1);
     g.fillStyle = '#3a2a3a';
-    g.fillRect(r[0] + 1, (r[2] + r[3]) / 2 - 5, 3, 4); // seat headrests
-    g.fillRect(r[0] + 1, (r[2] + r[3]) / 2 + 1, 3, 4);
+    const hx = which === 'wind' ? r[0] + 1 : r[1] - 4; // seat headrests, next to the roof
+    g.fillRect(hx, my - 11, 4, 7);
+    g.fillRect(hx, my + 4, 4, 7);
     g.restore();
-    const [cx, cy] = this.wpos((r[0] + r[1]) / 2, (r[2] + r[3]) / 2);
+    const [cx, cy] = this.wpos((r[0] + r[1]) / 2, my);
     w.particles.glass(cx, cy, dirA, 1, 40, 220);
     const shards = glassShards();
-    for (let k = 0; k < 10; k++) {
+    for (let k = 0; k < 12; k++) {
       const a = dirA + rand(-0.6, 0.6), v = rand(140, 380);
-      w.addDebris(new Debris(w, shards[k % shards.length], cx + rand(-6, 6), cy + rand(-6, 6), rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
+      w.addDebris(new Debris(w, shards[k % shards.length], cx + rand(-4, 4), cy + rand(-12, 12), rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
         rand(-0.8, 0.8), { mask: FREE, material: 'glass', air: 0.05, kg: 0.1, mu: 0.35, fly: 0.3, shadow: 0, harm: { kind: 'cut', knock: 2.4, lethal: 5.2 } }));
     }
     w.sound('glass', cx, cy);
@@ -191,6 +211,17 @@ export default class Vehicle {
   }
 
   wpos(sx, sy) { const p = this.toWorld(sx, sy); return [p.x, p.y]; }
+
+  clearGlass(which, color) {
+    this.g.fillStyle = color;
+    for (const [x, y] of this.glassPx[which]) this.g.fillRect(x, y, 1, 1);
+  }
+
+  // a slide across this vehicle (entry and exit points, world) is only allowed over the hood
+  canSlide(ax, ay, bx, by) {
+    const [h0, h1] = this.m.hood;
+    return [this.toSprite(ax, ay), this.toSprite(bx, by)].every(({ sx }) => sx >= h0 - 2 && sx <= h1 + 2);
+  }
 
   popTire(i, dirA) {
     if (!this.tires[i]) return;
@@ -250,7 +281,7 @@ export default class Vehicle {
     this.lightsOut = true;
     const w = this.world;
     const { x, y } = this;
-    w.explode(x, y, { radius: 140, source: 'car', origin: this });
+    w.explode(x, y, { radius: 160, source: 'car', origin: this });
     w.camera.punch(0.12);
     w.slowmo(0.3, 0.6);
     // charred wreck
@@ -264,22 +295,22 @@ export default class Vehicle {
       g.fillRect(rand(0, this.w), rand(0, this.h), rand(1, 5), rand(1, 4));
     }
     g.restore();
-    for (const key of ['wind', 'rear']) if (this.m[key]) { const r = this.m[key]; g.fillStyle = '#0a0608'; g.fillRect(r[0], r[2], r[1] - r[0] + 1, r[3] - r[2] + 1); }
+    for (const key of ['wind', 'rear']) if (this.m[key]) this.clearGlass(key, '#0a0608');
     // the whole car jumps
     impulse(this.body, rand(0, Math.PI * 2), 1800, rand(-0.03, 0.03), 2);
     // parts fly
-    const tire = spriteOpt('props/car_tire') || chunk('#141418', 9, 5);
+    const tire = spriteOpt('props/car_tire') || chunk('#141418', 20, 7);
     const harm = { kind: 'blunt', knock: 3, lethal: 8 };
     this.m.wheels.forEach(([wx, wy], i) => {
       const [px, py] = this.wpos(wx, wy);
       const a = Math.atan2(py - y, px - x) + rand(-0.4, 0.4), v = rand(200, 420);
       if (this.tires[i] || chance(0.6)) w.addDebris(new Debris(w, tire, px, py, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), { mask: FREE, material: 'rubber', kg: 15, mu: 0.15, fly: 0.35, air: 0.03, bounce: 0.5, harm: { ...harm } }));
     });
-    const hood = spriteOpt('props/car_hood') || slices(this.base, 4, 1)[3];
+    const hood = spriteOpt(this.m.sprite + '_hood') || slices(this.base, 4, 1)[3];
     const [hx, hy] = this.wpos((this.m.hood[0] + this.m.hood[1]) / 2, this.h / 2);
     const ha = Math.atan2(hy - y, hx - x) + rand(-0.5, 0.5);
     w.addDebris(new Debris(w, hood, hx, hy, this.body.angle, Math.cos(ha) * 340, Math.sin(ha) * 340, rand(-0.5, 0.5), { mask: FREE, material: 'metal', kg: 20, mu: 0.5, fly: 0.4, air: 0.03, harm: { ...harm } }));
-    const door = spriteOpt('props/car_door') || chunk(this.m.color, 18, 4);
+    const door = spriteOpt(this.m.sprite + '_door') || chunk(this.m.color, 32, 5);
     for (const side of [-1, 1]) {
       const [dx, dy] = this.wpos(this.w * 0.5, side < 0 ? 0 : this.h);
       const a = Math.atan2(dy - y, dx - x) + rand(-0.3, 0.3), v = rand(220, 380);
@@ -287,16 +318,16 @@ export default class Vehicle {
     }
     for (let k = 0; k < 16; k++) {
       const a = rand(0, Math.PI * 2), v = rand(150, 450);
-      w.addDebris(new Debris(w, chunk(chance(0.5) ? this.m.color : '#2a2a33', Math.floor(rand(2, 6)), Math.floor(rand(2, 4))), x + rand(-20, 20), y + rand(-10, 10),
+      w.addDebris(new Debris(w, chunk(chance(0.5) ? this.m.color : '#2a2a33', Math.floor(rand(2, 6)), Math.floor(rand(2, 4))), x + rand(-0.3, 0.3) * this.w, y + rand(-0.3, 0.3) * this.h,
         rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.9, 0.9), { mask: FREE, material: 'metal', kg: 1 }));
     }
     // the tank goes a beat later
     const [tx, ty] = this.wpos((this.m.tank[0] + this.m.tank[1]) / 2, this.h / 2);
     w.after(0.35, () => {
-      w.explode(tx, ty, { radius: 70, source: 'fuel', origin: this });
+      w.explode(tx, ty, { radius: 80, source: 'fuel', origin: this });
       w.particles.fire(tx, ty, 60, 260);
     });
-    this.puddle = Math.max(this.puddle, 22);
+    this.puddle = Math.max(this.puddle, 30);
     this.wreckFire = rand(9, 13);
   }
 
@@ -330,7 +361,7 @@ export default class Vehicle {
     if (this.fuel > 0 && this.puddle < 8 + this.fuel * 5) this.puddle += dt * 2.5;
     if (this.burning) {
       this.fuse -= dt;
-      w.particles.fire(hood.x + rand(-6, 6), hood.y + rand(-6, 6), 2, 40);
+      w.particles.fire(hood.x + rand(-10, 10), hood.y + rand(-10, 10), 2, 40);
       if (chance(0.3)) w.particles.embers(hood.x, hood.y, 1, 80);
       if (chance(0.08)) w.sound('crackle', hood.x, hood.y, 0.6);
       if (chance(0.5)) w.light(hood.x, hood.y, 70 + rand(0, 20), '#ff7a20', 0.05);
@@ -345,8 +376,8 @@ export default class Vehicle {
       if (chance(0.4)) w.particles.smoke(p.x, p.y, 1, 4, { speed: 25, size: 7, life: 2.4, dark: true });
       if (chance(0.15)) w.particles.embers(p.x, p.y, 1, 90);
       if (chance(0.06)) w.sound('crackle', p.x, p.y, 0.5);
-      if (chance(0.5)) w.light(this.x, this.y, 110 + rand(0, 30), '#ff6a18', 0.05);
-      if (this.wreckFire <= 0) w.decals.scorch(this.x, this.y, 46);
+      if (chance(0.5)) w.light(this.x, this.y, 130 + rand(0, 30), '#ff6a18', 0.05);
+      if (this.wreckFire <= 0) w.decals.scorch(this.x, this.y, 72);
     }
   }
 
@@ -371,10 +402,10 @@ export default class Vehicle {
       const flat = !this.tires[i] || this.exploded;
       if (flat) { sagX += (wx < this.w / 2 ? -0.5 : 0.5); sagY += (wy < this.h / 2 ? -0.5 : 0.5); }
       ctx.save();
-      ctx.translate(ox + wx, oy + wy + (wy < this.h / 2 ? 1 : -1));
+      ctx.translate(ox + wx, oy + wy);
       if (flat) ctx.scale(1.15, 0.6);
       if (tire) ctx.drawImage(tire, -tire.width / 2, -tire.height / 2);
-      else { ctx.fillStyle = '#141418'; ctx.fillRect(-4.5, -2.5, 9, 5); }
+      else { ctx.fillStyle = '#141418'; ctx.fillRect(-10, -3.5, 20, 7); }
       ctx.restore();
     });
     const jx = this.flash > 0 ? rand(-1, 1) : 0;

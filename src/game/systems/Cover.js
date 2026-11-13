@@ -28,7 +28,7 @@ export function spotIsFree(world, x, y, r, ignore) {
     if (m.solidAt(x + ox, y + oy)) return false;
   }
   const near = world.physics.bodies().filter((b) => (b.collisionFilter.category & BLOCKERS) && b !== ignore?.body
-    && Math.abs(b.position.x - x) < 80 && Math.abs(b.position.y - y) < 80);
+    && b.bounds.min.x < x + r && b.bounds.max.x > x - r && b.bounds.min.y < y + r && b.bounds.max.y > y - r);
   for (const [ox, oy] of [[0, 0], [r * 0.8, 0], [-r * 0.8, 0], [0, r * 0.8], [0, -r * 0.8]]) {
     if (Query.point(near, { x: x + ox, y: y + oy }).length) return false;
   }
@@ -56,7 +56,7 @@ export function findVault(world, ch, a, moving = true) {
   }
   for (const p of world.props) {
     if (!moving || p.dead || !p.def.vault) continue;
-    if (Math.abs(p.x - ch.x) > 90 || Math.abs(p.y - ch.y) > 90) continue;
+    if (Math.abs(p.x - ch.x) > 110 || Math.abs(p.y - ch.y) > 110) continue;
     const c = closestOnPolygon(ch.x, ch.y, p.body.vertices);
     if (c.d > r + VAULT_REACH) continue;
     if ((dx * (c.x - ch.x) + dy * (c.y - ch.y)) / (c.d || 1) < 0.5) continue;
@@ -65,7 +65,8 @@ export function findVault(world, ch, a, moving = true) {
     const exit = segPoly(far.x, far.y, c.x, c.y, p.body.vertices);
     if (!exit) continue;
     const ex = far.x + (c.x - far.x) * exit.t, ey = far.y + (c.y - far.y) * exit.t;
-    if (Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) continue;
+    // vehicles: across the hood only (never over the roof or end to end)
+    if (p.isVehicle ? !p.canSlide(c.x, c.y, ex, ey) : Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) continue;
     const to = { x: ex + dx * (r + 3), y: ey + dy * (r + 3) };
     const ledge = { x: c.x, y: c.y, tx: -dy, ty: dx };
     if (spotIsFree(world, to.x, to.y, r, ch)) return { kind: 'prop', over: p, to, ledge };
