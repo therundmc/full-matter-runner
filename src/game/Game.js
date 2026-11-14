@@ -14,7 +14,8 @@ import { loadSettings, saveSettings } from './systems/Settings.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults, drawOutro, pauseSliders } from './ui/Screens.js';
+import { drawLoading, drawIntro, drawDead, drawPause, drawResults, drawOutro, pauseSliders } from './ui/Screens.js';
+import { drawTitleScene } from './ui/TitleScene.js';
 import { OUTRO, camBlend } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
@@ -330,7 +331,7 @@ export default class Game {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     if (this.state === 'loading') { drawLoading(ctx, W, H, this.loadP); return; }
-    if (this.state === 'title' || !this.world) { drawTitle(ctx, W, H, t); this.drawCursor(ctx, t); return; }
+    if (this.state === 'title' || !this.world) { drawTitleScene(ctx, W, H, t, this.input.mouse); this.drawCursor(ctx, t); return; }
 
     // backdrop outside the map
     const bg = ctx.createLinearGradient(0, 0, W, H);

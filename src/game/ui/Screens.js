@@ -1,5 +1,5 @@
 import { PALETTE } from '../Config.js';
-import { text, neon, glitchText, thousands } from './Text.js';
+import { text, glitchText, thousands } from './Text.js';
 import { clamp } from '../../engine/math.js';
 import { OUTRO, fadeAlpha, barsK } from '../systems/Outro.js';
 
@@ -19,82 +19,6 @@ const CAUSE_TAUNTS = {
   melee: ['NEVER LET THEM GET CLOSE.', 'TOO SLOW. TOO CLOSE.'],
   slash: ['NEVER LET THEM GET CLOSE.', 'A BLADE IS QUIET. SO WERE YOU.'],
 };
-
-// ---------- synthwave backdrop for the title ----------
-export function drawTitle(ctx, W, H, t) {
-  const s = H / 720;
-  const horizon = H * 0.58;
-  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, '#0b0418');
-  sky.addColorStop(0.55, '#2a0a45');
-  sky.addColorStop(1, '#b0186a');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, horizon);
-  // stars
-  for (let i = 0; i < 80; i++) {
-    const x = (i * 9301 + 49297) % 233280 / 233280 * W;
-    const y = (i * 4021 + 7919) % 1000 / 1000 * horizon * 0.7;
-    ctx.fillStyle = `rgba(255,255,255,${0.3 + 0.7 * Math.abs(Math.sin(t * 1.5 + i))})`;
-    ctx.fillRect(x, y, 2 * s, 2 * s);
-  }
-  // striped sun
-  const sr = 150 * s, sx = W / 2, sy = horizon - 30 * s;
-  const sun = ctx.createLinearGradient(0, sy - sr, 0, sy + sr);
-  sun.addColorStop(0, '#ffe46b');
-  sun.addColorStop(0.5, '#ff7a3d');
-  sun.addColorStop(1, '#ff2a6d');
-  ctx.save();
-  ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = sun;
-  ctx.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
-  ctx.fillStyle = '#2a0a45';
-  for (let i = 0; i < 7; i++) {
-    const yy = sy + i * 16 * s - ((t * 12 * s) % (16 * s));
-    ctx.fillRect(sx - sr, yy, sr * 2, (2 + i * 1.3) * s);
-  }
-  ctx.restore();
-  // mountains
-  ctx.fillStyle = '#16052a';
-  ctx.beginPath();
-  ctx.moveTo(0, horizon);
-  for (let x = 0; x <= W; x += 40 * s) ctx.lineTo(x, horizon - (Math.abs(Math.sin(x * 0.004 + 1)) * 70 + Math.abs(Math.sin(x * 0.013)) * 30) * s);
-  ctx.lineTo(W, horizon);
-  ctx.fill();
-  // floor grid
-  ctx.fillStyle = '#0d0318';
-  ctx.fillRect(0, horizon, W, H - horizon);
-  ctx.strokeStyle = PALETTE.pink;
-  ctx.lineWidth = 2 * s;
-  ctx.shadowColor = PALETTE.pink;
-  ctx.shadowBlur = 10 * s;
-  const off = (t * 0.6) % 1;
-  for (let i = 0; i < 18; i++) {
-    const z = (i + 1 - off) / 18;
-    const y = horizon + (H - horizon) * Math.pow(z, 2.2);
-    ctx.globalAlpha = z;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-  for (let i = -16; i <= 16; i++) {
-    ctx.beginPath();
-    ctx.moveTo(W / 2 + i * 14 * s, horizon);
-    ctx.lineTo(W / 2 + i * 170 * s, H);
-    ctx.stroke();
-  }
-  ctx.shadowBlur = 0;
-
-  const bob = Math.sin(t * 2) * 6 * s;
-  glitchText(ctx, 'FULL MATTER', W / 2, H * 0.2 + bob, 84 * s, t, { rot: Math.sin(t * 1.3) * 0.025, color: PALETTE.white });
-  glitchText(ctx, 'RUNNER', W / 2, H * 0.33 + bob, 96 * s, t + 1, { rot: Math.sin(t * 1.3 + 1) * 0.025, color: PALETTE.yellow });
-  if (Math.floor(t * 2.5) % 2 === 0) text(ctx, 'CLICK TO START', W / 2, H * 0.66, 30 * s, neon(t, 3));
-  const lines = [
-    'WASD / ZQSD  MOVE        MOUSE  AIM        SHIFT  LOOK FURTHER',
-    'LMB  ATTACK        RMB  THROW / PICK UP        E  PICK UP / SWAP',
-    'R  RELOAD        SPACE  EXECUTE A KNOCKED-OUT ENEMY        BACKSPACE  RESTART        M  MUSIC',
-  ];
-  lines.forEach((l, i) => text(ctx, l, W / 2, H * 0.78 + i * 26 * s, 13 * s, PALETTE.white, { alpha: 0.85 }));
-  text(ctx, 'ONE HIT AND YOU ARE DEAD. SO ARE THEY.', W / 2, H * 0.94, 14 * s, PALETTE.pink);
-}
 
 export function drawLoading(ctx, W, H, p) {
   const s = H / 720;
