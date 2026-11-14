@@ -15,7 +15,7 @@ export default {
     '17,22': [[16, 22], [27, 22]],
     '19,4': [[13, 4], [29, 4]],
   },
-  jobs: { '24,14': 'pool', '20,16': 'cards', '17,8': 'count' },
+  jobs: { '24,21': 'door', '18,12': 'wipe', '24,14': 'pool', '20,16': 'cards', '24,17': 'door', '17,8': 'count' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "XXXXXXXXXXX______________________XXXXXXXXXXX",
@@ -183,8 +183,8 @@ export default {
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[23.4, 34.5]], "pigeons": [[21.5, 32.8, 5], [33.3, 21.7, 3], [27.5, 2.6, 4]]},
-  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n]
-  street: {"papers": [[0, 30, 43, 31, 9], [20, 32, 23, 36, 3], [0, 21, 43, 22, 9], [0, 23, 43, 29, 6], [11, 1, 13, 19, 4], [14, 1, 32, 4, 4]], "manholes": [[9.5, 25.2], [27.3, 28.5], [12.5, 10.6]]},
+  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
+  street: {"papers": [[0, 30, 43, 31, 9], [20, 32, 23, 36, 3], [0, 21, 43, 22, 9], [0, 23, 43, 29, 6], [11, 1, 13, 19, 4], [14, 1, 32, 4, 4]], "beds": [[22.1, 36.5, 0]], "manholes": [[9.5, 25.2], [27.3, 28.5], [12.5, 10.6]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, along the service alley
@@ -238,6 +238,7 @@ export default {
       ['civ4', 28.6, 17.5, 60, 'drink'],
       ['dancer1', 29.5, 18.9, 180, 'dance'],
       ['dancer2', 27.9, 18.75, 190, 'dance'],
+      ['tramp', 22.1, 36.5, 180, 'sleep'],
     ],
   },
 };

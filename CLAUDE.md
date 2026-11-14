@@ -62,6 +62,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    that bend and shed coins, newspaper boxes, steam from manholes, the oven's vent and pierced pipes
    (systems/Steam.js), a water pipe that leaks, loose papers blown by gusts and passing cars (systems/Papers.js;
    level `street` = dressing without a body, `lv.dress` in tools/levelkit.py).
+   People: a tramp asleep on his cardboard in the start alley who wakes and runs (patron pastime 'sleep'), doormen
+   who follow the player with their eyes (job 'door'), a bartender who polishes glasses and ducks behind his counter
+   at the first shots (job 'wipe'), customers who shove their chair back, drop their glass and leave a cigarette
+   burning when they run ('patronLeft', `AMBIENT.leave`).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Run / test

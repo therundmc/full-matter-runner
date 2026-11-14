@@ -32,6 +32,9 @@ export function buildLevel(world, level) {
   // manhole covers (level `street.manholes`), painted on the ground once and for all
   const cover = spriteOpt('props/manhole');
   if (cover) for (const [c, r] of level.street?.manholes || []) world.decals.bake(cover, c * TILE, r * TILE, 0);
+  // flattened cardboard someone sleeps on (level `street.beds`), same
+  const bed = spriteOpt('props/cardboard_bed');
+  if (bed) for (const [c, r, deg = 0] of level.street?.beds || []) world.decals.bake(bed, c * TILE, r * TILE, (deg * Math.PI) / 180);
 
   // ---- doors (runs of D), windows (G), fences (F)
   const used = new Set();

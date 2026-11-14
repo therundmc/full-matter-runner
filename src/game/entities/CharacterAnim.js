@@ -581,6 +581,7 @@ export function drawDown(ctx, ch, P) {
   const sc = 1 + 0.12 * (1 - fall);
   drawSprite(ctx, silhouette(ch.downImg), x + 2 + (1 - fall) * 2, y + 2 + (1 - fall) * 2, ch.downAngle, 0.35 * down, sc);
   drawSprite(ctx, ch.downImg, x, y, ch.downAngle, down, sc);
+  if (ch.asleep) return;
   // dizzy stars
   const t = ch.world.time * 6;
   ctx.fillStyle = PALETTE.yellow;

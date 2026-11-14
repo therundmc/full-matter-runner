@@ -11,7 +11,8 @@
 // (systems/Traffic.js); once disabled they coast to a stop and stay as parked wrecks. Passers-by are
 // Civilians with a Walker brain (ai/Civilians.js). Rules and numbers: Config AMBIENT.
 // Events emitted: 'trafficSpawn' { vehicle }, 'trafficStopped' { vehicle, reason }, 'runOver' { victim, vehicle, speed },
-// 'civilianPanic' { civilian, x, y, kind }. Listens to 'noise' (gunshots, explosions) and 'kill'.
+// 'civilianPanic' { civilian, x, y, kind }. Listens to 'noise' (gunshots, explosions), 'kill' and 'patronLeft'
+// (a customer running off shoves his chair back, drops his glass, leaves a cigarette burning: `butts`).
 import { TILE, CAT, MASK, AMBIENT as A } from '../Config.js';
 import { angDiff } from '../../engine/math.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
@@ -22,6 +23,7 @@ import { Walker, WALKER, escapeRoute, hideRoute, pathLength, pointAlong } from '
 import { markBlocked } from '../world/Level.js';
 
 const { Body } = Matter;
+const WAKES = new Set(['gunshot', 'explosion', 'scream', 'hit']); // what gets through to a sleeper
 
 // through-traffic leaves the map and drives over dead bodies (no ragdoll snagged on a bumper)
 const MASK_DRIVING = MASK.PROP & ~CAT.EDGE & ~CAT.CORPSE;
@@ -61,6 +63,8 @@ export default class Ambient {
     this.scaredUntil = -1; // no new passers-by until then (after gunfire / explosions)
     this.nooks = new Set(); // cells where someone has curled up: one corner each
     this.obstacles = [];
+    this.butts = [];       // cigarettes left burning in an ashtray: { x, y, until, puff } (render/StreetArt.js)
+    world.events.on('patronLeft', (e) => this.onLeave(e));
     world.events.on('noise', (e) => this.onNoise(e));
     world.events.on('kill', (e) => this.onKill(e));
     world.events.on('alarm', (e) => this.onAlarm(e));
@@ -341,6 +345,12 @@ export default class Ambient {
       if (this.civilians.some((c) => Math.hypot(c.x - s.x, c.y - s.y) < 20)) continue;
       this.spawnWalker(p, 0);
     }
+    for (const b of this.butts) {
+      if ((b.puff -= dt) > 0) continue;
+      b.puff = A.leave.wisp;
+      w.particles.dust(b.x + 3, b.y - 1, 1, 1, '#c8c8d2', { speed: 2, size: 2, life: 1.8, alpha: 0.22, vy: -7 });
+    }
+    if (this.butts.length) this.butts = this.butts.filter((b) => b.until > w.time);
     // sight checks (staggered): an armed player close by, a corpse in view
     this.checkT -= dt;
     const look = this.checkT <= 0;
@@ -351,7 +361,8 @@ export default class Ambient {
     };
     for (const civ of [...this.civilians]) {
       if (!civ.alive) { this.removeCivilian(civ); continue; }
-      if (look && (!civ.brain.panicked || civ.brain.frozen)) this.lookAround(civ);
+      if (civ.asleep) this.stir(civ);
+      else if (look && (!civ.brain.panicked || civ.brain.frozen)) this.lookAround(civ);
       civ.update(dt, sense);
       const b = civ.brain;
       if (b.bark) { this.bark(civ, b.bark); b.bark = null; }
@@ -396,9 +407,43 @@ export default class Ambient {
     const r = this.r, w = this.world;
     const brain = new Walker([{ x, y }], { r, speed: between(r, A.walk) * TILE, run: between(r, A.run) * TILE, post: { activity: pastime, face: angle } });
     const civ = new Civilian(w, x, y, angle, kind, brain);
-    civ.sit(x, y);
+    if (pastime === 'sleep') civ.sleep(x, y, angle); else civ.sit(x, y, angle);
     this.civilians.push(civ);
     w.chars.push(civ);
+  }
+
+  // a sleeper is woken by the player running right over him
+  stir(civ) {
+    const p = this.world.player, L = A.leave;
+    if (p.alive && Math.hypot(p.x - civ.x, p.y - civ.y) < L.wake && Body.getSpeed(p.body) > L.tread) this.alarm(civ, p.x, p.y, 'hit');
+  }
+
+  // a customer runs off his spot: his chair is shoved back, the glass in his hand may go, and his cigarette may be
+  // left burning in the ashtray of the table or counter he sat at
+  onLeave({ civilian: civ, activity }) {
+    const w = this.world, L = A.leave, r = this.r, { x, y, face } = civ.post;
+    let chair = null, best = L.chair;
+    for (const p of w.props) {
+      const d = p.type === 'chair' && !p.dead ? Math.hypot(p.x - x, p.y - y) : Infinity;
+      if (d < best) { best = d; chair = p; }
+    }
+    if (chair) {
+      wake(chair.body);
+      impulse(chair.body, face + Math.PI + between(r, [-0.7, 0.7]), between(r, L.shove), between(r, [-0.3, 0.3]));
+      w.sound('wood', chair.x, chair.y, 0.5);
+    }
+    const fx = Math.cos(face), fy = Math.sin(face);
+    if (activity === 'drink' && r() < L.glass) {
+      // out of his right hand, at his feet
+      const gx = x + fx * 4 - fy * 8, gy = y + fy * 4 + fx * 8;
+      w.particles.glass(gx, gy, face, 2.5, 5, 80);
+      w.sound('glass', gx, gy, 0.4, { pitch: 1.3 });
+      w.events.emit('spill', { x: gx, y: gy, kind: 'booze', area: 110, dur: 1.2 });
+    }
+    const bx = x + fx * 24, by = y + fy * 24;
+    if ((activity === 'drink' || activity === 'cards') && r() < L.butt && w.map.isBlocked(Math.floor(bx / TILE), Math.floor(by / TILE))) {
+      this.butts.push({ x: bx, y: by, until: w.time + between(r, L.burn), puff: 0 });
+    }
   }
 
   removeCivilian(civ) {
@@ -426,6 +471,7 @@ export default class Ambient {
   }
 
   alarm(civ, x, y, kind) {
+    if (civ.asleep && !WAKES.has(kind)) return; // what he would have to see
     if (civ.alive && civ.brain.alarm(x, y, kind, civ)) this.onPanic(civ, kind);
   }
 

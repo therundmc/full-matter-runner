@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { drag, exhale, talks, stretch, clap, pours, reliefSpot, STRETCH } = await load('game/ai/Pastimes.js');
+const { drag, exhale, talks, stretch, clap, pours, reliefSpot, gazeAt, STRETCH } = await load('game/ai/Pastimes.js');
 const { carry, inHand } = await load('game/ai/Carry.js');
 const { pastimeHands } = await load('game/render/PastimeArt.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
@@ -56,15 +56,24 @@ test('pastimes: a drag then a breath of smoke, a chat turn about, a stretch, a c
 
 test('pastimes: every kind puts both hands somewhere', () => {
   for (const kind of ['pool', 'cue', 'cards', 'count', 'drink', 'watch', 'dance', 'smoke', 'phone', 'talk', 'listen', 'cross',
-    'piss', 'stretch', 'wrist', 'pockets', 'bag']) {
+    'piss', 'stretch', 'wrist', 'pockets', 'bag', 'wipe']) {
     for (const t of [0, 0.7, 3.1, 9.4]) {
       const h = pastimeHands(kind, t, 0.4);
       assert.ok(h && [h.hl.x, h.hl.y, h.hr.x, h.hr.y].every((v) => Number.isFinite(v) && Math.abs(v) < 14), kind);
     }
   }
   assert.equal(pastimeHands('walk', 0, 0), null);
+  assert.equal(pastimeHands('sleep', 0, 0), null);
   const open = pastimeHands('stretch', STRETCH / 2, 0), rest = pastimeHands('stretch', 0, 0);
   assert.ok(open.hr.y - open.hl.y > rest.hr.y - rest.hl.y + 6, 'arms thrown out');
+});
+
+test('gaze: a doorman looks at whoever comes near in front of him, straight ahead otherwise', () => {
+  const south = Math.PI / 2, G = AI.gaze;
+  assert.ok(Math.abs(gazeAt(south, 60, 60, G.range, G.arc) - Math.PI / 4) < 1e-9, 'someone to his front left');
+  assert.equal(gazeAt(south, 0, G.range + 1, G.range, G.arc), south, 'too far');
+  assert.equal(gazeAt(south, 10, -60, G.range, G.arc), south, 'behind his back');
+  assert.ok(gazeAt(south, -80, 20, G.range, G.arc) > south, 'well to his side still');
 });
 
 test('relief: against the nearest wall out in a yard, at the toilet on bathroom tiles, nowhere else', () => {

@@ -132,6 +132,9 @@ export const AI = {
   // back from it he stands (px)
   gate: { calm: 3, rush: 1.2, room: 46, far: 96 },
   trail: { fresh: 45, max: 48, gap: 60, hop: 70, sight: 0.45, close: 36, ahead: 96 },
+  // a doorman's eyes follow whoever comes within `range` px and `arc` rad of the way he stands, at `turn` rad/s
+  gaze: { range: 176, arc: 1.9, turn: 4 },
+  duck: [2.5, 4],          // s a bartender stays down behind his counter at the first shots
   // how a guard carries his weapon (ai/Carry.js), in s: putting it away, drawing a pistol or a blade, bringing a
   // long gun round from his back, raising it on a target; ready: how far out (0..1) it must be to fire
   carry: { holster: 0.7, draw: 0.22, unsling: 0.34, raise: 0.16, ready: 0.3 },
@@ -367,6 +370,10 @@ export const AMBIENT = {
   stopChance: 0.35,        // a walker stops once on the way (cigarette, shop window, phone)
   stop: [3, 7],            // s
   hurry: 1.8,              // pace of a passer-by walking away from a ringing alarm (x his walk)
+  // a customer running off his spot: the chair within `chair` px is shoved back (`shove`, kg.px/step), odds his
+  // glass goes over, odds he leaves a cigarette burning in the ashtray (for `burn` s, a wisp every `wisp` s).
+  // A sleeper is woken by feet running (`tread` px/step) within `wake` px
+  leave: { chair: 20, shove: [12, 26], glass: 0.6, butt: 0.45, burn: [30, 50], wisp: 0.5, wake: 15, tread: 1.5 },
   panic: {
     hear: 1,               // fraction of a gunshot / explosion noise radius that panics passers-by
     witness: 9,            // m: a kill seen that close

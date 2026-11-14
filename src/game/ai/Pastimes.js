@@ -8,8 +8,10 @@
 //   talk / listen  the two halves of a chat, turn about             cross   arms folded
 //   stretch, wrist  a stretch, a look at his watch (one go)         piss    against a wall or at a toilet
 //   pockets, bag   how a passer-by carries his hands                count   bills peeled off a wad, one by one
+//   door   a doorman: arms folded, his eyes on whoever comes near   wipe    a bartender polishing a glass
+//   sleep  lying on his cardboard until something wakes him
 import { TILE } from '../Config.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, angDiff } from '../../engine/math.js';
 
 const CYCLE = 5;     // s between two pool strokes
 const STRIKE = 0.8;  // share of the cycle at which the cue hits the ball
@@ -22,6 +24,13 @@ const OPEN_AIR = '_"~';     // floors a man relieves himself on, against a wall:
 const REACH = 3 * TILE;     // how far he walks for it
 
 const frac = (v) => v - Math.floor(v);
+
+// where a doorman standing toward `base` looks: at someone (dx, dy) px away if he is within `range` px and
+// `arc` rad of that way, else straight ahead
+export function gazeAt(base, dx, dy, range, arc) {
+  const a = Math.atan2(dy, dx);
+  return Math.hypot(dx, dy) <= range && Math.abs(angDiff(base, a)) <= arc ? a : base;
+}
 
 // true when a pool stroke lands between t0 and t1 (s); seed shifts each player's rhythm
 export function struck(t0, t1, seed) {

@@ -102,14 +102,14 @@ lv.host(15, 16, 23, 19)
 lv.host(21, 6, 23, 11)
 lv.actor('5', 22, 33)                                   # a bat by the dumpster: the first weapon
 # street
-lv.actor('b', 24, 21, face=90)                          # bouncer
+lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
 lv.actor('P', 17, 22, route=[[16, 22], [27, 22]])       # pistol, walks the sidewalk
 lv.actor('k', 12, 12, face=270)                         # having a smoke in the service alley
 # the bar
-lv.actor('b', 18, 12, face=90)                          # bartender, a bat under the counter
+lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=349, job='pool')             # playing pool
 lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
-lv.actor('b', 24, 17, face=65)                          # bouncer of the VIP room, an eye on its door
+lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.8, 14.15, 270, 'drink')            # on the counter stools
 lv.patron('civ3', 19.2, 14.15, 270, 'drink')
@@ -161,6 +161,8 @@ lv.prop('phone_booth', 34.6, 31.61, 180)                # its back to the wall, 
 lv.prop('news_box', 10.7, 31.8, 180)
 lv.dress('papers', 0, 30, 43, 31, 9)
 lv.dress('papers', 20, 32, 23, 36, 3)
+lv.dress('beds', 22.1, 36.5, 0)                          # a tramp asleep on his cardboard, against the wall
+lv.patron('tramp', 22.1, 36.5, 180, 'sleep')
 lv.prop('neon_sign_palm', 17.0, 31.91, 180)
 lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)

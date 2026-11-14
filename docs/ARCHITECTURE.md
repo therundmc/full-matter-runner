@@ -81,7 +81,7 @@ src/
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver, the specks of the mirror ball
-      StreetArt.js        the loose sheets of systems/Papers.js
+      StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
@@ -140,6 +140,7 @@ Rules:
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
 | `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |
 | `poolStroke` | `{ x, y }` | Enemy (a guard at the pool table plays his shot) | PoolBalls |
+| `patronLeft` | `{ civilian, activity }` | Civilian (a posted customer runs off his spot) | Ambient (his chair is shoved back, his glass goes over, a cigarette is left burning: `AMBIENT.leave`) |
 | `civilianPanic` | `{ civilian, x, y, kind }` | Ambient (a passer-by starts to panic; kind: gunshot, explosion, kill, corpse, armed, scream, hit) | |
 
 Noise types: `gunshot` (any shooter; a guard's shot is heard as `allyFire` by his mates), `door`, `glass`,
@@ -350,9 +351,11 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
   after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
 - Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned
   at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their
-  spawn. `passive: true` = dummies with no perception (lab). `jobs: { 'col,row': 'pool' | 'cards' | 'count' }` = the pastime
+  spawn. `passive: true` = dummies with no perception (lab). `jobs: { 'col,row': 'pool' | 'cards' | 'count' | 'door' | 'wipe' }` = the pastime
   of the guard posted there (ai/Pastimes.js): he is at it while all is calm, less watchful (`Enemy.distracted`),
-  and drops it as soon as the squad is on edge.
+  and drops it as soon as the squad is on edge. Two of them leave his eyes free: a doorman ('door') stands arms
+  folded and follows the player with his eyes (`AI.gaze`), a bartender ('wipe') polishes a glass and ducks behind
+  his counter for a moment at the first shots (`AI.duck`).
 
 ## Street life (systems/Ambient.js)
 
@@ -365,6 +368,9 @@ ambient: {
   patrons: [['civ2', 16.8, 14.15, 270, 'drink']], // customers posted indoors: [sprite, col, row, deg, pastime]
 }
 ```
+- **Sleeper**: a patron at the 'sleep' pastime (the tramp on his cardboard, level `street.beds`) lies there,
+  stepped over like a body, until a shot, a blast, a scream, a blow or the player running over him wakes him
+  (`Civilian.sleep`, `Ambient.stir`); then he is up and off.
 - **Open borders**: `TileMap.buildEdgeBodies` puts invisible static bars (`CAT.EDGE`) just outside the map. Characters,
   items, bodies and loose props collide with them; driven vehicles and passers-by leave `CAT.EDGE` out of their mask.
   Path-finding never leaves the grid, Lighting treats the outside like the border tile (no shadow edge on an open street).

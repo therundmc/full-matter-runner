@@ -52,6 +52,14 @@ export function pastimeHands(kind, t, seed) {
       const k = stretch(t) > 0.3 ? 1 : stretch(t) / 0.3;
       return { hl: { x: 6 + k, y: -6 + 4.5 * k }, hr: { x: 6, y: 6 } };
     }
+    case 'wipe': {
+      // a glass in the left hand, the rag going round in it; held up to the light now and then
+      const u = (t / 9 + seed) % 1, up = u > 0.8 ? Math.sin((u - 0.8) * 5 * Math.PI) : 0, a = t * 9;
+      return {
+        hl: { x: 6.5 + up * 1.5, y: -2.5 - up * 2 },
+        hr: { x: (7 + Math.cos(a) * 0.9) * (1 - up) + 5 * up, y: (-0.4 + Math.sin(a) * 0.9) * (1 - up) + 4.5 * up },
+      };
+    }
     case 'pockets': return { hl: { x: 0.5, y: -6.6 }, hr: { x: 0.5, y: 6.6 } };
     case 'bag': return { hl: { x: 6, y: -6 }, hr: { x: 1.5, y: 7.5 } };
     case 'dance': {
@@ -71,7 +79,7 @@ function stick(ctx, x0, y0, x1, y1, w, color) {
 }
 
 const BAGS = ['#7a4a2a', '#2c3a52', '#5a5248'];
-const PROPS = new Set(['pool', 'cue', 'cards', 'count', 'drink', 'smoke', 'phone', 'piss', 'bag']);
+const PROPS = new Set(['pool', 'cue', 'cards', 'count', 'drink', 'smoke', 'phone', 'piss', 'bag', 'wipe']);
 
 function box(ctx, x, y, w, h, color) {
   ctx.fillStyle = PALETTE.ink; ctx.fillRect(x - w / 2 - 0.7, y - h / 2 - 0.7, w + 1.4, h + 1.4);
@@ -132,6 +140,13 @@ export function drawPastime(ctx, ch, kind, t) {
     ctx.beginPath(); ctx.moveTo(7.5, 0); ctx.quadraticCurveTo(10, w, 12.5, w * 1.6); ctx.stroke();
     ctx.fillStyle = 'rgba(226,214,120,0.5)';
     ctx.fillRect(12 + Math.sin(t * 23) * 1.5, w * 1.6 + Math.cos(t * 17) * 1.5, 1, 1);
+  } else if (kind === 'wipe') {
+    // the glass he polishes, his rag
+    const g = h.hl;
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(g.x - 0.9, g.y - 2.4, 4.8, 4.8);
+    ctx.fillStyle = '#dfe8ee'; ctx.fillRect(g.x - 0.2, g.y - 1.7, 3.4, 3.4);
+    ctx.fillStyle = '#9fb4c0'; ctx.fillRect(g.x + 0.5, g.y - 1, 2, 2);
+    box(ctx, h.hr.x + 1.2, h.hr.y, 3, 2.6, '#e6e0d0');
   } else if (kind === 'bag') {
     box(ctx, h.hr.x + 0.5, h.hr.y + 2.6, 6.5, 4.2, BAGS[Math.floor(ch.seed) % BAGS.length]);
   } else {

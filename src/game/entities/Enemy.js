@@ -12,7 +12,7 @@ import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engin
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
-import { struck, talks, pours, reliefSpot, STRETCH } from '../ai/Pastimes.js';
+import { struck, talks, pours, reliefSpot, gazeAt, STRETCH } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
@@ -22,6 +22,8 @@ const { Body } = Matter;
 // at ease (see pickActivity): what takes his mind off his watch, what takes his hands, what is done in one go,
 // what a round is broken by, and the states in which a weapon stays put away
 const ABSORBING = new Set(['smoke', 'phone', 'chat', 'piss']);
+const WATCHFUL = new Set(['door', 'wipe']); // jobs that leave his eyes free
+const DUCK = 1.8; // how far down a bartender ducks behind his counter (1 = kneeling)
 const HANDS = new Set(['smoke', 'phone', 'piss', 'stretch', 'wrist', 'cross']);
 const ONE_GO = new Set(['stretch', 'wrist']);
 const PAUSES = ['smoke', 'phone', 'stretch', 'wrist'];
@@ -67,7 +69,9 @@ export default class Enemy extends Character {
     this.goal = null; this.target = null;
     this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
     this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
-    this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards' | 'count'
+    this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards' | 'count' | 'door' | 'wipe'
+    this.ducked = false;   // a bartender has been down behind his counter once (see hear)
+    this.duckT = 0;        // s he stays down
     this.actT = 0;         // s actually spent at the current activity
     this.atPost = true;    // standing where he means to be (his post, or `errand`)
     this.errand = null;    // where he went for a moment ({ x, y, face, wall }: to relieve himself)
@@ -138,7 +142,7 @@ export default class Enemy extends Character {
 
   get distracted() {
     return (this.state === S.IDLE || (this.state === S.PATROL && this.pauseT > 0))
-      && (ABSORBING.has(this.activity) || this.activity === this.job);
+      && (ABSORBING.has(this.activity) || (this.activity === this.job && !WATCHFUL.has(this.job)));
   }
 
   // standing at ease: at his post or pausing on his round, nothing on his mind
@@ -151,7 +155,16 @@ export default class Enemy extends Character {
     if (!this.atEase || this.stow < 0.6) return null;
     const a = this.activity;
     if (a === 'chat') return talks(this.world.time, this.turn) ? 'talk' : 'listen';
+    if (a === 'door') return 'cross';
     return HANDS.has(a) || a === this.job ? a : null;
+  }
+
+  // a doorman's eyes: on the player when he comes near in front of him, else the way he stands
+  gaze(base) {
+    const p = this.world.player, G = AI.gaze;
+    if (!p.alive) return base;
+    const a = gazeAt(base, p.x - this.x, p.y - this.y, G.range, G.arc);
+    return a !== base && this.world.lineOfSight(this.x, this.y, p.x, p.y) ? a : base;
   }
 
   get pouring() { return this.pastime === 'piss' && pours(this.actT, this.activityT); }
@@ -268,6 +281,11 @@ export default class Enemy extends Character {
   // noise heard (types: see ENEMY.hear); localisation gets worse with distance
   hear(type, x, y, source = null) {
     if (this.passive || this.yielded || !this.alive || this.knocked > 0 || this.state === S.DIZZY) return;
+    // a bartender at the first shots: down behind his counter for a moment
+    if (this.job === 'wipe' && !this.ducked && this.atPost && this.aware < 2 && (type === 'gunshot' || type === 'explosion')) {
+      this.ducked = true;
+      this.duckT = rand(...AI.duck);
+    }
     if (this.aware === 2) {
       if ((type === 'gunshot' || type === 'explosion') && !this.sees) this.lastKnown = { x, y };
       return;
@@ -450,7 +468,9 @@ export default class Enemy extends Character {
     this.perceive(dt);
     if ((this.scanT -= dt) <= 0) { this.scanT = 0.3; this.scanWorld(); }
 
-    switch (this.state) {
+    // down behind his counter (see hear): nothing else until he dares look, unless the threat is on him
+    if (this.duckT > 0 && this.aware < 2) { this.duckT -= dt; this.halt(); this.kneel = true; }
+    else switch (this.state) {
       case S.IDLE: this.doIdle(dt); break;
       case S.PATROL: this.doPatrol(dt); break;
       case S.RETURN: this.doReturn(dt); break;
@@ -467,7 +487,7 @@ export default class Enemy extends Character {
       case S.TRACK: this.doTrack(dt); break;
       default: break;
     }
-    const k = this.kneel ? 1 : 0;
+    const k = !this.kneel ? 0 : this.duckT > 0 && this.aware < 2 ? DUCK : 1;
     this.crouch = this.crouch < k ? Math.min(k, this.crouch + dt * 5) : Math.max(k, this.crouch - dt * 5);
   }
 
@@ -493,7 +513,8 @@ export default class Enemy extends Character {
       this.world.sound('pool', x, y, 0.8);
       this.world.events.emit('poolStroke', { x, y });
     }
-    if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
+    if (this.activity === 'door') this.faceAngle(this.gaze(h.angle + Math.sin(this.t * 0.5 + this.seed) * 0.25), AI.gaze.turn, dt);
+    else if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
     else if (this.activity === 'turn') this.faceAngle(this.turnTo, 2.2, dt);
     else if (this.activity === 'scan') this.faceAngle(h.angle + Math.sin(this.t * 0.8 + this.seed) * 1.2, 2.2, dt);
     else this.sweep(dt, h.angle, 0.7, 1.8);

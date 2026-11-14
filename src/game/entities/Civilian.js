@@ -1,6 +1,7 @@
 // A passer-by (ambient life): unarmed, light varied clothes, walks a path, panics and runs off the map (some
 // trip on the way), curls up shaking in a corner or freezes hands up, each his own way and with his own voice.
-// Or a patron posted indoors (sit): at a pastime on his seat (ai/Pastimes.js) until he panics like the others.
+// Or a patron posted indoors (sit): at a pastime on his seat (ai/Pastimes.js) until he panics like the others
+// ('patronLeft' { civilian, activity } when he runs off it). Or a sleeper (sleep) lying there until he is woken.
 // Moved by a Walker brain (ai/Civilians.js) that systems/Ambient.js ticks. Same body, death and gore as anyone;
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
 import { CAT, MASK, TILE } from '../Config.js';
@@ -18,11 +19,12 @@ export const CIVILIAN_LOOKS = {
   civ2: { arm: '#f0a08a', skin: '#d99a76' },
   civ3: { arm: '#bfae86', skin: '#e2b08e' },
   civ4: { arm: '#8fbf6a', skin: '#c88a60' },
-  // the dancers of a VIP room (bare arms): never picked for a passer-by
-  dancer1: { arm: '#eab08a', skin: '#eab08a', indoor: true },
-  dancer2: { arm: '#b9774f', skin: '#b9774f', indoor: true },
+  // the dancers of a VIP room (bare arms), a tramp in his old coat: posted only, never picked for a passer-by
+  dancer1: { arm: '#eab08a', skin: '#eab08a', posted: true },
+  dancer2: { arm: '#b9774f', skin: '#b9774f', posted: true },
+  tramp: { arm: '#6f7350', skin: '#c8906c', posted: true },
 };
-export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS).filter((k) => !CIVILIAN_LOOKS[k].indoor);
+export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS).filter((k) => !CIVILIAN_LOOKS[k].posted);
 // passers-by walk out of the map: the edge barriers are not for them
 const MASK_CIV = MASK.CHAR & ~CAT.EDGE;
 const MASK_SEATED = MASK_CIV & ~CAT.PROP;
@@ -44,8 +46,10 @@ export default class Civilian extends Character {
     this.habit = this.seed < 22 ? 'pockets' : this.seed < 42 ? 'bag' : null;
     this.stuckT = 0;
     this.dodge = 0;
-    this.post = null;      // a patron's spot (see sit)
+    this.post = null;      // a patron's spot { x, y, face } (see sit)
     this.seated = false;   // on his seat: furniture is not in his way
+    this.left = false;     // a patron has run off his spot
+    this.asleep = false;   // lying down until something wakes him (see sleep)
     this.solid();
   }
 
@@ -53,10 +57,21 @@ export default class Civilian extends Character {
 
   // a patron posted at (x, y): on a stool, in a booth, on a stage. He goes through the furniture he sits on until
   // he has run clear of it.
-  sit(x, y) {
-    this.post = { x, y };
+  sit(x, y, face) {
+    this.post = { x, y, face };
     this.seated = true;
     this.solid();
+  }
+
+  // a sleeper lying at (x, y), his head toward `angle`: down, stepped over like a body, until a shot, a scream, a
+  // blow or feet running over him wake him (systems/Ambient.js)
+  sleep(x, y, angle) {
+    this.post = { x, y, face: angle };
+    this.asleep = true;
+    this.knocked = Infinity;
+    this.downT = 1; // already down: no fall
+    this.downAngle = angle;
+    this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE & ~CAT.EDGE, group: 0 };
   }
 
   // called by Ambient (step 1, before physics)
@@ -64,10 +79,17 @@ export default class Civilian extends Character {
     this.baseUpdate(dt);
     if (!this.alive) return;
     if (this.knocked > 0) {
+      if (this.asleep && this.knocked === Infinity && this.brain.panicked) {
+        // woken with a start: up and off, whatever his temper
+        const d = this.brain.danger;
+        this.knocked = rand(0.5, 0.8);
+        this.brain.bolt(d.x, d.y);
+      }
       this.knocked -= dt;
       this.steer(0, 0, 0, 0.08);
       if (this.knocked <= 0) {
         this.knocked = 0;
+        this.asleep = false;
         this.solid();
         this.angle = this.downAngle + Math.PI;
       }
@@ -82,6 +104,10 @@ export default class Civilian extends Character {
       && !this.world.props.some((p) => p.body && !p.dead && !p.def?.fixture && Bounds.overlaps(p.body.bounds, this.body.bounds))) {
       this.seated = false;
       this.solid();
+    }
+    if (this.post && !this.left && (b.state === WALKER.FLEE || b.state === WALKER.HIDE)) {
+      this.left = true;
+      this.world.events.emit('patronLeft', { civilian: this, activity: b.activity });
     }
     if (it.x === null) {
       let face = it.face, hx = 0, hy = 0;
@@ -131,7 +157,8 @@ export default class Civilian extends Character {
 
   // thrown gun, shove, punch: down for a moment, then he runs
   knock(angle) {
-    if (!this.alive || this.knocked > 0) return;
+    if (!this.alive || (this.knocked > 0 && !this.asleep)) return;
+    this.asleep = false;
     this.knocked = rand(1.2, 2);
     this.downAngle = angle + Math.PI;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE & ~CAT.EDGE, group: 0 };

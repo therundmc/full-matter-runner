@@ -782,6 +782,10 @@ CIVILIANS = {
                     pants=ramp('#b9774f', 0.46, 0.22, 0.3), sleeve=ramp('#b9774f', 0.46, 0.22, 0.3),
                     shoe=ramp('#f4f2ec', 0.4, 0.2, 0.2), hair=ramp('#b0382a', 0.5, 0.25, 0.4),
                     skin=ramp('#b9774f', 0.46, 0.22, 0.3), sh=(3.7, 7.2)),
+    # the one asleep on his cardboard: an old olive coat, a woolly hat
+    'tramp': dict(kind='civ', style='trench', top=ramp('#6f7350', 0.45, 0.22, 0.35), cap=ramp('#8a3a2a', 0.45, 0.22, 0.4),
+                  pants=ramp('#3e3a34'), shoe=ramp('#2a2420', 0.4, 0.2, 0.3),
+                  skin=ramp('#c8906c', 0.46, 0.22, 0.3), sh=(4.3, 8.3)),
 }
 CHARS.update(CIVILIANS)
 
@@ -3950,14 +3954,36 @@ def p_manhole():
     return cv
 
 
+def p_cardboard_bed():
+    """Flattened cardboard boxes someone sleeps on, painted on the ground: tan, creased, a strip of tape."""
+    W, H = 36, 20
+    cv = Cv(W, H)
+    rng = random.Random(77)
+    base = hx('#a5855a')
+    for y in range(H):
+        for x in range(W):
+            edge = x in (0, W - 1) or y in (0, H - 1)
+            cv.set(x, y, dk(base, 0.3) if edge else lt(base, rng.uniform(0, 0.07)) if rng.random() < 0.5 else dk(base, rng.uniform(0, 0.07)))
+    for x in (12, 24):                       # where the flaps fold
+        for y in range(1, H - 1):
+            cv.set(x, y, dk(base, 0.2))
+    for x in range(1, W - 1):                # the seam between two boxes
+        if x not in (12, 24):
+            cv.set(x, 10, dk(base, 0.12))
+    cv.rect(14, 4, 22, 5, hx('#7a5a36'))     # tape
+    for (x, y) in ((0, 0), (1, 0), (0, 1), (W - 1, H - 1), (W - 2, H - 1), (W - 1, H - 2), (W - 1, 0)):   # torn corners
+        cv.set(x, y, CLEAR)
+    return cv
+
+
 # small dressing added one by one (the details list)
 DETAIL_PROPS = dict(cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
                     vending=p_vending, phone_booth=p_phone_booth, parking_meter=p_parking_meter, news_box=p_news_box,
                     pipe_steam=pipe('#8a5a3a', '#b07a52', '#5e3a24', '#c8c0a8'), pipe_water=pipe('#4a6a7a', '#6e8e9e', '#30485a', '#9aa2b0'),
-                    wall_vent=p_wall_vent, manhole=p_manhole)
+                    wall_vent=p_wall_vent, manhole=p_manhole, cardboard_bed=p_cardboard_bed)
 DETAIL_SIZES = dict(cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
-                    pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16))
+                    pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

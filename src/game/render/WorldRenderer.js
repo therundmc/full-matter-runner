@@ -7,7 +7,7 @@ import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife, drawSparkle } from './PropLife.js';
-import { drawPapers } from './StreetArt.js';
+import { drawPapers, drawButts } from './StreetArt.js';
 
 const { Body } = Matter;
 
@@ -34,6 +34,7 @@ export default class WorldRenderer {
     for (const a of w.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
     drawPapers(ctx, w.papers, vis);
     for (const p of w.props) if (vis(p.x, p.y)) p.draw(ctx);
+    if (w.ambient) drawButts(ctx, w.ambient.butts, vis);
     drawPropLife(ctx, w, t, vis);
     drawCritters(ctx, w.critters, t, vis);
     // window sills under the characters (someone vaulting goes over them)

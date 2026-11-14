@@ -131,7 +131,8 @@ class Level:
         self.critters.setdefault(kind, []).append([col, row, *more])
 
     # ---- street dressing without a body: 'manholes' col, row (a cover breathing steam, systems/Steam.js);
-    # 'papers' col0, row0, col1, row1, n (n loose sheets dropped in that inclusive tile rectangle, systems/Papers.js)
+    # 'papers' col0, row0, col1, row1, n (n loose sheets dropped in that inclusive tile rectangle, systems/Papers.js);
+    # 'beds' col, row, deg (flattened cardboard painted on the ground, for a patron at the 'sleep' pastime)
     def dress(self, kind, *v):
         self.street.setdefault(kind, []).append(list(v))
 
@@ -267,7 +268,7 @@ class Level:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')
         if self.street:
-            L.append('  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n]')
+            L.append('  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]')
             L.append(f'  street: {json.dumps(self.street)},')
         if self.roofs:
             L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
