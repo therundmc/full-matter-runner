@@ -213,7 +213,7 @@ lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
 lv.dress('manholes', 9.5, 25.2)
 lv.dress('manholes', 27.3, 28.5)
-lv.prop('wall_lamp', 2.6, 21.09)                        # over the foot of the fire escape: the ladder must be seen
+lv.prop('wall_lamp', 2.35, 21.09)                       # by the foot of the fire escape: the ladder must be seen
 lv.prop('palm_tree', 41.6, 21.8)
 
 lv.area('liquor store')
@@ -373,6 +373,8 @@ lv.area('the liquor store roof')
 lv.prop('ladder', 1.5, 20.5)                            # the fire escape, at the corner of the street
 lv.prop('wall_lamp', 1.5, 15.09, 180)                   # a lamp at the top of it
 lv.prop('string_lights', 4.0, 9.0)                      # somebody's summer evenings
+lv.prop('wall_lamp', 9.91, 11.4, 90)                    # a lamp by each way down
+lv.prop('wall_lamp', 9.91, 4.6, 90)
 lv.prop('chair', 3.3, 10.2, 200)
 lv.prop('chair', 4.9, 10.5, 330)
 lv.prop('crate', 4.15, 9.9, 12)                         # their table

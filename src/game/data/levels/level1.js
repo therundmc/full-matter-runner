@@ -115,7 +115,7 @@ export default {
     ['bench', 37.5, 22.62, 180], ['trash_can', 40.5, 21.35, 0], ['hydrant', 11.6, 22.65, 0],
     ['vending', 18.5, 21.33, 0], ['news_box', 26.6, 21.19, 0], ['parking_meter', 12.3, 22.78, 0],
     ['parking_meter', 16.9, 22.78, 0], ['parking_meter', 28.8, 22.78, 0], ['parking_meter', 33.6, 22.78, 0],
-    ['parking_meter', 41.3, 22.78, 0], ['wall_lamp', 2.6, 21.09, 0], ['palm_tree', 41.6, 21.8, 0],
+    ['parking_meter', 41.3, 22.78, 0], ['wall_lamp', 2.35, 21.09, 0], ['palm_tree', 41.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],
@@ -176,10 +176,10 @@ export default {
     ['armchair', 26.5, 17.5, 0], ['armchair', 26.5, 19.45, 0], ['plant', 29.75, 17.35, 0],
     ['neon_tube_pink', 28, 19.93, 180],
     // the liquor store roof
-    ['ladder', 1.5, 20.5, 0], ['wall_lamp', 1.5, 15.09, 180], ['string_lights', 4, 9, 0], ['chair', 3.3, 10.2, 200],
-    ['chair', 4.9, 10.5, 330], ['crate', 4.15, 9.9, 12], ['plant', 1.45, 8.5, 0], ['crate', 8.5, 8.5, -8],
-    ['crate', 8.45, 9.25, 20], ['barrel', 6.5, 13.5, 0], ['barrel', 1.5, 13.4, 0], ['trash_can', 7.5, 6.5, 0],
-    ['crate', 8.5, 4.5, 5],
+    ['ladder', 1.5, 20.5, 0], ['wall_lamp', 1.5, 15.09, 180], ['string_lights', 4, 9, 0],
+    ['wall_lamp', 9.91, 11.4, 90], ['wall_lamp', 9.91, 4.6, 90], ['chair', 3.3, 10.2, 200], ['chair', 4.9, 10.5, 330],
+    ['crate', 4.15, 9.9, 12], ['plant', 1.45, 8.5, 0], ['crate', 8.5, 8.5, -8], ['crate', 8.45, 9.25, 20],
+    ['barrel', 6.5, 13.5, 0], ['barrel', 1.5, 13.4, 0], ['trash_can', 7.5, 6.5, 0], ['crate', 8.5, 4.5, 5],
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[11, 0, 32, 4], [11, 5, 13, 20], [32, 5, 32, 19], [14, 5, 20, 11], [24, 5, 31, 11], [15, 12, 20, 12], [25, 16, 30, 19]],

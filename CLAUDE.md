@@ -59,7 +59,14 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 6. Level 1 (alley, road, bar, back room, back lot; 15 guards: hand to hand but two guns, the pool player's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
-   against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only)
+   against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only).
+   Made to be replayed another way (user: "plein de possibilites"): five ways in on foot (front door, gate to
+   climb, the dark gap, the liquor store roof reached by a `ladder` from the street corner or from inside the shop
+   and left by a `parapet` drop into the service alley or the back lot, the shop's staff door on the alley) and
+   four windows to dive through (toilets and boss's room on the back lot, pool corner and VIP room on the gap).
+   A walkable roof is floor tile `^`. Guards have the keys of the house (`World.pathForGuard`, `Door.unlatch`):
+   never lock a door without checking they can still get out (the QA robot reports `guard-stuck`).
+   The level ends in the getaway van (systems/Outro.js)
    & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
@@ -97,6 +104,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 - `npm start` (tools/serve.mjs: first free port from 8000, no browser cache) then the address it prints
   (`?level=lab` for the physics lab). The user often has an old server still running on 8000: a second
   `python -m http.server 8000` then fails with "address already in use", which he reads as "the server is broken".
+- `npm run qa -- --minutes 10 [--seed n] [--god] [--realtime]`: a robot plays the game in a headless browser and
+  writes `qa-report/<stamp>/report.md` (+ json, screenshots): exceptions, bodies in walls, stuck guards, softlocks,
+  leaks, slow frames, features never exercised. Run it after any gameplay or level change and read the report
+  (tools/qa/README.md). `npm run shot -- scenario.json outdir`: the scenario / screenshot harness it shares.
 - `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
 - Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
   vision, F3 overview, F4 physics overlay (with FPS and frame times). `window.game` in the console.

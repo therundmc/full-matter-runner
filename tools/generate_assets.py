@@ -4079,15 +4079,69 @@ def flipped_table(W, wood, leg, face=None, feet=4):
     return paint
 
 
+def p_ladder():
+    """A fixed steel ladder filling its gap in a wall, seen from above: two rails along the climb (y), rungs across,
+    hand hoops at both ends; its shadow falls to the lower right, as off something that stands clear of the floor."""
+    cv = Cv(32, 32)
+    rail, hi, lo, sh = hx('#aab2c6'), hx('#dfe6f2'), STEEL_L[1], (8, 6, 16, 110)   # pale: it must be seen in the dark
+    for dx, dy, shadow in ((2, 2, True), (0, 0, False)):
+        for x0 in (6, 22):
+            for y in range(2, 30):
+                for x in range(x0, x0 + 3):
+                    if not cv.ok(x + dx, y + dy):
+                        continue
+                    cv.set(x + dx, y + dy, sh if shadow else hi if x == x0 else lo if x == x0 + 2 else rail)
+        for y in range(4, 29, 4):
+            for x in range(9, 22):
+                if cv.ok(x + dx, y + dy):
+                    cv.set(x + dx, y + dy, sh if shadow else hi if y % 8 == 4 else rail)
+    for y0 in (1, 29):                                   # the hoops one holds on to, at the top and at the foot
+        for x in range(5, 26):
+            cv.set(x, y0, hi)
+            cv.set(x, y0 + 1, lo)
+    return cv
+
+
+def p_parapet():
+    """The low wall at the edge of a roof where one can swing a leg over: a pale coping stone on a course of brick,
+    worn in the middle by everybody who has."""
+    cv = Cv(34, 12)
+    rng = random.Random(77)
+    stone, brick = hx('#b0aaa0'), hx('#7a4a40')
+    for x in range(1, 33):
+        worn = abs(x - 16.5) < 6
+        for y in range(1, 11):
+            if y in (1, 10):
+                c = dk(brick, 0.12 if (x + y) % 9 else 0.3)   # the course under the coping, a joint now and then
+            else:
+                c = stone
+                if y == 2:
+                    c = lt(c, 0.16)
+                elif y == 9:
+                    c = dk(c, 0.22)
+                if worn and 3 <= y <= 8:
+                    c = dk(c, 0.08 + rng.uniform(0, 0.06))
+                else:
+                    g = rng.uniform(-0.04, 0.04)
+                    c = lt(c, g) if g > 0 else dk(c, -g)
+            cv.set(x, y, c)
+    for x in (11, 22):                                   # two joints in the coping
+        for y in range(2, 10):
+            cv.set(x, y, dk(stone, 0.3))
+    cv.outline()
+    return cv
+
+
 # small dressing added one by one (the details list)
-DETAIL_PROPS = dict(cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
+DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet,
+                    cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
                     vending=p_vending, phone_booth=p_phone_booth, parking_meter=p_parking_meter, news_box=p_news_box,
                     pipe_steam=pipe('#8a5a3a', '#b07a52', '#5e3a24', '#c8c0a8'), pipe_water=pipe('#4a6a7a', '#6e8e9e', '#30485a', '#9aa2b0'),
                     wall_vent=p_wall_vent, manhole=p_manhole, cardboard_bed=p_cardboard_bed,
                     table_flipped=flipped_table(46, '#86552f', '#5a361e'),
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'))
-DETAIL_SIZES = dict(cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
+DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27))
