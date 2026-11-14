@@ -1,5 +1,6 @@
 // Sprite loading + derived caches (silhouettes for drop shadows, slices for debris).
-const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'civ1', 'civ2', 'civ3', 'civ4']; // civN: ambient passers-by
+// civN: ambient passers-by and customers; dancerN: the dancers of a VIP room
+const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'civ1', 'civ2', 'civ3', 'civ4', 'dancer1', 'dancer2'];
 const CHAR_PARTS = ['torso', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 export const SPRITE_LIST = [
@@ -31,7 +32,7 @@ export const OPTIONAL_LIST = [
   ...['palm_tree', 'streetlight', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'jukebox', 'car2', 'van',
     'car_tire', 'car_hood', 'car_door', 'car2_hood', 'car2_door', 'van_hood', 'van_door', 'hydrant', 'bench'].map((n) => `props/${n}`),
   ...GLOWING.map((n) => `props/${n}_glow`),
-  ...['chain_fence', 'bottle_shelf', 'washer'].map((n) => `props/${n}`),
+  ...['chain_fence', 'bottle_shelf', 'washer', 'card_table', 'dance_stage'].map((n) => `props/${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
     .map((n) => `weapons/${n}`),

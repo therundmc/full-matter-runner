@@ -54,6 +54,7 @@ src/
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
       Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
+      Pastimes.js         what people do at their spot in a bar (pool, cards, a drink, dancing): timing only
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing
@@ -61,6 +62,7 @@ src/
                           (wet, tacky, dry), and the pool under a bleeding body
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
+      PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards or glass in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
@@ -299,7 +301,9 @@ detection gauge) runs out faster the closer the stranger stands and comes back s
   after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
 - Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned
   at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their
-  spawn. `passive: true` = dummies with no perception (lab).
+  spawn. `passive: true` = dummies with no perception (lab). `jobs: { 'col,row': 'pool' | 'cards' }` = the pastime
+  of the guard posted there (ai/Pastimes.js): he is at it while all is calm, less watchful (`Enemy.distracted`),
+  and drops it as soon as the squad is on edge.
 
 ## Street life (systems/Ambient.js)
 
@@ -309,6 +313,7 @@ ambient: {
   seed: 1986,                                                    // optional (default: hash of the level name)
   traffic: [{ row: 11, dir: -1, speed: 9, gap: [3, 7], models: ['car', 'car2', 'van'] }], // row tiles, speed tiles/s
   walkers: [{ path: [[-1.5, 7], [45.5, 7]], gap: [6, 13], max: 3 }], // tiles, off-map to off-map (or to a door)
+  patrons: [['civ2', 16.8, 14.15, 270, 'drink']], // customers posted indoors: [sprite, col, row, deg, pastime]
 }
 ```
 - **Open borders**: `TileMap.buildEdgeBodies` puts invisible static bars (`CAT.EDGE`) just outside the map. Characters,

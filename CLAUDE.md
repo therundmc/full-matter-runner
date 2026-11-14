@@ -39,7 +39,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
-   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive.
+   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. Bar life: guards at a pastime
+   (level `jobs`: pool, cards), customers and VIP-room dancers (`ambient.patrons`, sprites dancerN) who run for
+   the street when it kicks off.
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Old agent branches

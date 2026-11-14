@@ -265,3 +265,34 @@ test('walkers: a bat or a knife scares them too, but only a gun makes them beg',
   assert.equal(w.pose, 'duck');
   assert.equal(w.bark, 'back');
 });
+
+test('patrons: posted at their spot for good, busy, they panic like anyone at the first shot', () => {
+  const w = new Walker([{ x: 100, y: 100 }], { r: seeded(5), speed: 40, run: 150, post: { activity: 'cards', face: 1 } });
+  for (let i = 0; i < 600; i++) w.update(0.1, 100, 100, {});
+  assert.deepEqual(w.update(0.1, 100, 100, {}), { x: null, y: null, speed: 0, face: 1 });
+  assert.equal(w.state, WALKER.STOP);
+  assert.equal(w.activity, 'cards');
+  assert.equal(w.alarm(50, 100, 'gunshot'), true);
+  assert.equal(w.state, WALKER.PANIC);
+});
+
+test('pastimes: one pool stroke per cycle, the cue shot through right then', async () => {
+  const { struck, cueShift, sip } = await load('game/ai/Pastimes.js');
+  let n = 0, at = 0;
+  for (let i = 0; i < 1000; i++) if (struck(i * 0.02, (i + 1) * 0.02, 0.3)) { n++; at = (i + 1) * 0.02; }
+  assert.equal(n, 4, 'four strokes in 20 s');
+  assert.ok(cueShift(at - 0.3, 0.3) < -3 && cueShift(at + 0.1, 0.3) > 6, 'drawn back, then through the ball');
+  for (let t = 0; t < 20; t += 0.05) assert.ok(sip(t, 0.7) >= 0 && sip(t, 0.7) <= 1);
+});
+
+test('patrons: boxed in by the furniture he sits on, a patron still finds his way out, never through a wall', () => {
+  const m = new TileMap(['XXXXXXX', 'X.....s', 'X.....s', 'X.....s', 'XXXXXXX']);
+  const T = TILE, W = m.w;
+  // a booth against the west wall: sofa cells (1, 1..3), tables right of them (2, 1..3)
+  for (const [x, y] of [[1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3]]) m.blocked[y * W + x] = 1;
+  const route = escapeRoute(m, 1.5 * T, 2.5 * T, null);
+  assert.ok(route && route.at(-1).x > m.widthPx, 'out by the east side');
+  // furniture on every side for more than two cells: he stays put
+  for (let y = 1; y <= 3; y++) for (let x = 3; x <= 5; x++) m.blocked[y * W + x] = 1;
+  assert.equal(escapeRoute(m, 1.5 * T, 2.5 * T, null), null);
+});

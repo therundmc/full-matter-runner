@@ -30,7 +30,7 @@ GUARDS = set('pushrbk')
 # hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
 # None = hangs from the ceiling / sits on a wall: never in the way
 SIZES = dict(
-    table=(44, 26), table_round=(28, 28), desk=(46, 24), chair=(14, 14), armchair=(26, 26), sofa=(64, 28),
+    table=(44, 26), table_round=(28, 28), card_table=(28, 28), dance_stage=(48, 48), desk=(46, 24), chair=(14, 14), armchair=(26, 26), sofa=(64, 28),
     plant=(15, 15), tv=(22, 15), fridge=(22, 22), oven=(20, 20), sink=(26, 18), toilet=(13, 21), bed=(44, 64),
     pool_table=(80, 44), arcade=(22, 27), crate=(19, 19), barrel=(18, 18), bookshelf=(40, 11), speaker=(14, 14),
     dj_booth=(58, 22), bar_counter=(32, 19), dumpster=(58, 34), trash_can=(15, 15), jukebox=(28, 20),
@@ -62,6 +62,8 @@ class Level:
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.facing = {}
         self.patrols = {}
+        self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
+        self.patrons = []     # [sprite, col, row, deg, pastime]: civilians posted indoors
         self.spawns = []      # centre of every character, for the overlap check
         self._area = ''
 
@@ -75,7 +77,7 @@ class Level:
         self.tiles[y][x] = ch
 
     # ---- actors: player, guards (UPPERCASE = patrols along `route`), weapons, ammo
-    def actor(self, ch, x, y, face=None, route=None):
+    def actor(self, ch, x, y, face=None, route=None, job=None):
         t = self.tiles[y][x]
         assert t not in SOLID and t not in OPENINGS, f'actor {ch} on a solid tile at {x},{y}'
         assert self.actors[y][x] == ' ', f'two actors at {x},{y}'
@@ -84,8 +86,15 @@ class Level:
             self.facing[f'{x},{y}'] = face
         if route:
             self.patrols[f'{x},{y}'] = route
+        if job:
+            self.jobs[f'{x},{y}'] = job
         if ch == '@' or ch.lower() in GUARDS:
             self.spawns.append((x + 0.5, y + 0.5))
+
+    def patron(self, kind, x, y, deg, pastime):
+        """A civilian posted indoors at (x, y) in tiles, facing deg, busy with `pastime`: he may sit on furniture."""
+        assert self.tiles[int(y)][int(x)] not in SOLID | OPENINGS, f'patron in a wall at {x},{y}'
+        self.patrons.append([kind, x, y, deg, pastime])
 
     # ---- props: `area` names the group they are listed under in the output
     def area(self, name):
@@ -188,6 +197,8 @@ class Level:
             L.append('  patrols: {')
             L += [f"    '{k}': {json.dumps(v)}," for k, v in self.patrols.items()]
             L.append('  },')
+        if self.jobs:
+            L.append('  jobs: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.jobs.items()) + ' },')
         L.append('  tiles: [')
         L += [f'    {json.dumps("".join(r))},' for r in self.tiles]
         L.append('  ],')
@@ -248,6 +259,11 @@ class Level:
             for w in ambient.get('walkers', []):
                 L.append(f"      {{ path: {json.dumps(w['path'])}, gap: {w['gap']}, max: {w['max']} }},")
             L.append('    ],')
+            if self.patrons:
+                L.append('    // customers posted indoors: [sprite, col, row, deg, pastime]')
+                L.append('    patrons: [')
+                L += [f'      {js(p)},' for p in self.patrons]
+                L.append('    ],')
             L.append('  },')
         L.append('};')
         out = os.path.join(ROOT, 'src', 'game', 'data', 'levels', module + '.js')

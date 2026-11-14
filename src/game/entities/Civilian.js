@@ -1,12 +1,14 @@
 // A passer-by (ambient life): unarmed, light varied clothes, walks a path, panics and runs off the map.
+// Or a patron posted indoors (sit): at a pastime on his seat (ai/Pastimes.js) until he panics like the others.
 // Moved by a Walker brain (ai/Civilians.js) that systems/Ambient.js ticks. Same body, death and gore as anyone;
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
 import { CAT, MASK, PALETTE, TILE } from '../Config.js';
 import { rand, local, angDiff, approachAngle } from '../../engine/math.js';
 import { WALKER } from '../ai/Civilians.js';
+import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
 
-const { Body } = Matter;
+const { Body, Bounds } = Matter;
 
 // arm (sleeve) and hand colours of each civilian sprite (tools/generate_assets.py, CIVILIANS)
 export const CIVILIAN_LOOKS = {
@@ -14,10 +16,14 @@ export const CIVILIAN_LOOKS = {
   civ2: { arm: '#f0a08a', skin: '#d99a76' },
   civ3: { arm: '#bfae86', skin: '#e2b08e' },
   civ4: { arm: '#8fbf6a', skin: '#c88a60' },
+  // the dancers of a VIP room (bare arms): never picked for a passer-by
+  dancer1: { arm: '#eab08a', skin: '#eab08a', indoor: true },
+  dancer2: { arm: '#b9774f', skin: '#b9774f', indoor: true },
 };
-export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS);
+export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS).filter((k) => !CIVILIAN_LOOKS[k].indoor);
 // passers-by walk out of the map: the edge barriers are not for them
 const MASK_CIV = MASK.CHAR & ~CAT.EDGE;
+const MASK_SEATED = MASK_CIV & ~CAT.PROP;
 
 export default class Civilian extends Character {
   constructor(world, x, y, angle, kind, brain) {
@@ -31,7 +37,19 @@ export default class Civilian extends Character {
     this.seed = rand(0, 100);
     this.stuckT = 0;
     this.dodge = 0;
-    this.body.collisionFilter = { category: CAT.CHAR, mask: MASK_CIV, group: 0 };
+    this.post = null;      // a patron's spot (see sit)
+    this.seated = false;   // on his seat: furniture is not in his way
+    this.solid();
+  }
+
+  solid() { this.body.collisionFilter = { category: CAT.CHAR, mask: this.seated ? MASK_SEATED : MASK_CIV, group: 0 }; }
+
+  // a patron posted at (x, y): on a stool, in a booth, on a stage. He goes through the furniture he sits on until
+  // he has run clear of it.
+  sit(x, y) {
+    this.post = { x, y };
+    this.seated = true;
+    this.solid();
   }
 
   // called by Ambient (step 1, before physics)
@@ -43,7 +61,7 @@ export default class Civilian extends Character {
       this.steer(0, 0, 0, 0.08);
       if (this.knocked <= 0) {
         this.knocked = 0;
-        this.body.collisionFilter = { category: CAT.CHAR, mask: MASK_CIV, group: 0 };
+        this.solid();
         this.angle = this.downAngle + Math.PI;
       }
       return;
@@ -52,9 +70,21 @@ export default class Civilian extends Character {
     const it = b.update(dt, this.x, this.y, sense);
     const ducking = b.state === WALKER.PANIC && b.pose === 'duck' || b.state === WALKER.COWER;
     this.crouch += ((ducking ? 1 : 0) - this.crouch) * Math.min(1, dt * 10);
+    if (this.seated && b.state === WALKER.FLEE
+      && !this.world.props.some((p) => p.body && !p.dead && !p.def?.fixture && Bounds.overlaps(p.body.bounds, this.body.bounds))) {
+      this.seated = false;
+      this.solid();
+    }
     if (it.x === null) {
-      this.steer(0, 0, 0, 0.25);
-      let face = it.face;
+      let face = it.face, hx = 0, hy = 0;
+      if (this.post && b.state === WALKER.STOP) {
+        // shoved off his seat, he gets back on it; a dancer steps around her spot and sways
+        const d = b.activity === 'dance', t = this.world.time + this.seed;
+        hx = this.post.x + (d ? Math.cos(t * 1.3) * 5 : 0) - this.x;
+        hy = this.post.y + (d ? Math.sin(t * 1.9) * 4 : 0) - this.y;
+        if (d) face += Math.sin(t * 2.6) * 0.7;
+      }
+      if (Math.hypot(hx, hy) > 1.5) this.steer(hx, hy, 0.4, 0.2); else this.steer(0, 0, 0, 0.25);
       if (b.activity === 'chat' && this.mate?.alive) face = Math.atan2(this.mate.y - this.y, this.mate.x - this.x);
       if (face !== null && face !== undefined) this.angle = approachAngle(this.angle, face, dt * 5);
       this.stuckT = 0;
@@ -98,6 +128,7 @@ export default class Civilian extends Character {
     if (!this.alive || this.knocked > 0) return;
     const b = this.brain, t = this.world.time;
     if (b.state !== WALKER.STOP) return;
+    drawPastime(ctx, this, b.activity, t);
     if (b.activity === 'smoke') {
       // cigarette ember at the lips, glowing on each drag, a curl of smoke
       const h = local(this.x, this.y, this.angle, 7, 2);
@@ -116,11 +147,15 @@ export default class Civilian extends Character {
     }
   }
 
-  // empty hands: an easy arm swing while walking, a cigarette / phone held up, hands up or over the head in panic
+  // hands: busy with a pastime, an easy arm swing while walking, a cigarette / phone held up, up or over the head
+  // in panic
   drawArms(ctx) {
     const b = this.brain;
     let hl, hr;
-    if (b.state === WALKER.PANIC && b.pose === 'hands') {
+    const busy = b.state === WALKER.STOP && pastimeHands(b.activity, this.world.time, this.seed);
+    if (busy) {
+      ({ hl, hr } = busy);
+    } else if (b.state === WALKER.PANIC && b.pose === 'hands') {
       const sh = Math.sin(this.world.time * 30) * 0.6; // trembling
       hl = { x: 3 + sh, y: -9 }; hr = { x: 3 - sh, y: 9 };
     } else if (b.state === WALKER.COWER || (b.state === WALKER.PANIC && b.pose === 'duck')) {

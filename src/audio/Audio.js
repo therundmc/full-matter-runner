@@ -80,6 +80,7 @@ const META = {
   vault: { dur: 0.5, gain: 0.8 }, climb: { pri: 2, dur: 0.8, gap: 0.2, max: 2, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
   swing: { gain: 0.5 }, throw: { gain: 0.55 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
+  pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.55 },
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
   shell: { pri: 0, dur: 0.4, gap: 0.03, gain: 0.4 },
@@ -243,6 +244,8 @@ const FOLEY = {
   // a body gliding over the floor (or a car hood): the launch here, the long smooth hiss in _slide
   slide: [['swish', 0.45, 0.5]],
   splash: [['splash', 1]],
+  // a pool shot: the cue ball hit dry, the ball it knocks an instant later
+  pool: [['plastic', 0.8, 1.9], ['plastic', 0.5, 2.3, 0.07], ['wood', 0.25, 2.2, 0.02]],
   throw: [['swish', 1, 0.7]],
   swing: [['swish', 1, 0.9]],
   // small things

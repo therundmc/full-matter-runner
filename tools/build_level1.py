@@ -7,7 +7,7 @@ Plan (north is up):
 
     rows  1-4    back lot: getaway van, the way out
     rows  6-10   storeroom | toilets | back room (the boss)
-    rows 12-19   the bar: counter, booths, pool table, lounge
+    rows 12-19   the bar: counter, booths, card table, pool table, VIP room
     rows 21-22   sidewalk
     rows 23-29   road: parking strip, two lanes of traffic
     rows 30-31   sidewalk
@@ -47,7 +47,10 @@ lv.fill(20, 6, 20, 10, '#')
 lv.fill(24, 6, 24, 10, '#')
 lv.fill(15, 11, 30, 11, '#')
 lv.fill(15, 12, 30, 19, '.')
-lv.fill(25, 16, 30, 19, ':')
+# the VIP room in the south-east corner: no window, an open doorway on the main room
+lv.fill(25, 16, 30, 19, '#')
+lv.fill(26, 17, 30, 19, ':')
+lv.put(25, 18, ':')
 lv.put(16, 11, 'D')            # behind the counter -> storeroom
 lv.put(22, 11, 'D')            # toilets
 lv.put(27, 11, 'L')            # back room, locked: kick it or shoot it
@@ -55,7 +58,7 @@ lv.put(14, 8, 'D')             # storeroom -> service alley
 lv.put(28, 5, 'D')             # back room -> back lot
 lv.put(26, 5, 'G')
 lv.put(31, 14, 'G')            # the pool corner, seen from the gap
-for x in (15, 16, 24, 25, 27, 28):
+for x in (15, 16, 24):
     lv.put(x, 20, 'G')         # facade windows
 lv.put(21, 20, 'D')
 lv.put(22, 20, 'D')            # front double door
@@ -92,9 +95,22 @@ lv.actor('P', 17, 22, route=[[16, 22], [27, 22]])       # pistol, walks the side
 lv.actor('k', 12, 12, face=270)                         # having a smoke in the service alley
 # the bar
 lv.actor('b', 18, 12, face=90)                          # bartender, a bat under the counter
-lv.actor('p', 24, 14, face=0)                           # watching the pool game
-lv.actor('k', 21, 16, face=180)
-lv.actor('P', 23, 18, route=[[23, 18], [24, 15], [29, 15], [29, 12], [24, 12]])
+lv.actor('p', 24, 14, face=349, job='pool')             # playing pool
+lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
+lv.actor('P', 23, 18, route=[[23, 18], [23, 15], [29, 15], [23, 15], [19, 15]])
+# customers (civilians): they run for the street when it kicks off
+lv.patron('civ1', 16.8, 14.15, 270, 'drink')            # on the counter stools
+lv.patron('civ3', 19.2, 14.15, 270, 'drink')
+lv.patron('civ2', 15.6, 16.2, 0, 'drink')               # a couple in the first booth
+lv.patron('civ4', 17.3, 15.8, 180, 'watch')
+lv.patron('civ4', 19.6, 17.5, 0, 'cards')               # the card game
+lv.patron('civ1', 21.4, 17.5, 180, 'cards')
+lv.patron('civ3', 28.35, 14.0, 180, 'cue')              # waiting for his turn at the pool table
+lv.patron('civ1', 26.55, 17.5, 40, 'drink')             # the VIP room: three customers, two dancers
+lv.patron('civ3', 26.55, 19.45, -27, 'watch')
+lv.patron('civ4', 28.6, 17.5, 60, 'drink')
+lv.patron('dancer1', 29.5, 18.9, 180, 'dance')
+lv.patron('dancer2', 27.9, 18.75, 190, 'dance')
 # back of house
 lv.actor('p', 17, 8, face=90)
 lv.actor('6', 18, 9)
@@ -254,30 +270,31 @@ lv.prop('neon_tube_pink', 18.8, 12.07)
 for x in (16.5, 18.5, 20.5):
     lv.prop('ceiling_lamp', x, 13.4)
 
-lv.area('the bar: booths, tables, pool, lounge')
+lv.area('the bar: booths, card table, pool')
 for y in (16.2, 18.6):
     lv.prop('sofa', 15.5, y, 270)
     lv.prop('table', 16.5, y, 90)
     lv.prop('chair', 17.3, y - 0.4, 180)
     lv.prop('chair', 17.3, y + 0.4, 180)
-lv.prop('table_round', 20.0, 17.0)
-lv.prop('chair', 20.0, 16.15, 90)
-lv.prop('chair', 19.15, 17.0, 0)
-lv.prop('chair', 20.85, 17.0, 180)
-lv.prop('table_round', 24.4, 17.7)
-lv.prop('chair', 24.4, 16.85, 90)
-lv.prop('chair', 25.25, 17.7, 180)
-lv.prop('pool_table', 27.0, 14.0)
-lv.prop('pool_lamp', 27.0, 14.0)
+lv.prop('card_table', 20.5, 17.5)
+lv.prop('chair', 19.6, 17.5, 0)
+lv.prop('chair', 21.4, 17.5, 180)
+lv.prop('chair', 20.5, 18.45, 270)
+lv.prop('pool_table', 26.6, 14.0)
+lv.prop('pool_lamp', 26.6, 14.0)
 lv.prop('arcade', 30.5, 12.5, 90)
 lv.prop('wall_lamp', 30.91, 15.5, 90)
 lv.prop('jukebox', 23.6, 19.6, 180)
 lv.prop('plant', 20.55, 19.5)
 lv.prop('plant', 24.4, 12.45)
-lv.prop('armchair', 30.45, 17.1, 180)
-lv.prop('armchair', 29.9, 19.45, 270)
-lv.prop('table_round', 29.1, 18.1)
-lv.prop('floor_lamp', 30.6, 18.35)
+
+lv.area('the bar: VIP room')
+lv.prop('dance_stage', 30.0, 18.9)
+lv.prop('sofa', 28.4, 17.45)
+lv.prop('armchair', 26.5, 17.5, 0)
+lv.prop('armchair', 26.5, 19.45, 0)
+lv.prop('plant', 30.55, 17.4)
+lv.prop('neon_tube_pink', 28.0, 19.93, 180)
 
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
 lv.area('west block, along the service alley')

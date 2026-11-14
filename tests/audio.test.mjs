@@ -115,7 +115,7 @@ const GAME_SOUNDS = [
   ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), 'stone', 'flesh', 'impact', 'shell',
   'punch', 'splat', 'gore', 'slash', 'death', 'bodyFall', 'shout', 'cry', 'grab', 'neck', 'whimper', 'scream', 'glass', 'crumble', 'doorBreak', 'explosion',
   'tirePop', 'carHit', 'door', 'doorSlam', 'creak', 'vault', 'climb', 'slide', 'splash', 'throw', 'swing', 'ricochet', 'ammo',
-  'alarm', 'crackle', 'ignite', 'confirm', 'clear', 'ui', 'passby',
+  'alarm', 'crackle', 'ignite', 'confirm', 'clear', 'ui', 'passby', 'pool',
 ];
 
 test('audio: every sound the game asks for plays, from a cut that lies inside the foley bank', () => {

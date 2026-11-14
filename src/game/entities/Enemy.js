@@ -12,6 +12,8 @@ import { rand, angDiff, approachAngle, chance, clamp, local, spread } from '../.
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
+import { struck } from '../ai/Pastimes.js';
+import { drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
 
 const { Body } = Matter;
@@ -57,6 +59,7 @@ export default class Enemy extends Character {
     this.goal = null; this.target = null;
     this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
     this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
+    this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards'
     this.susT = 0; this.hideT = 0; this.shots = 0; this.ambushT = 0; this.ambushed = false; this.stalkCD = 0;
     this.glance = 0; this.glanceT = 0; this.lookBase = angle; this.lookT = 0;
     this.pauseT = rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
@@ -114,7 +117,8 @@ export default class Enemy extends Character {
   }
 
   get distracted() {
-    return (this.state === S.IDLE || (this.state === S.PATROL && this.pauseT > 0)) && (this.activity === 'smoke' || this.activity === 'phone');
+    return (this.state === S.IDLE || (this.state === S.PATROL && this.pauseT > 0))
+      && (this.activity === 'smoke' || this.activity === 'phone' || this.activity === this.job);
   }
 
   // sight check: every step once alert, staggered ticks before (the meter integrates the elapsed time)
@@ -419,16 +423,30 @@ export default class Enemy extends Character {
     const h = this.home;
     if (Math.hypot(h.x - this.x, h.y - this.y) > 14) { this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true }); return; }
     this.halt();
-    if ((this.activityT -= dt) <= 0) this.pickActivity();
+    if ((this.activityT -= dt) <= 0 || (this.activity === this.job && this.director.phase !== 'normal')) this.pickActivity();
+    const now = this.world.time;
+    if (this.activity === 'pool' && struck(now - dt, now, this.seed)) {
+      this.world.sound('pool', this.x + Math.cos(this.angle) * 30, this.y + Math.sin(this.angle) * 30, 0.8);
+    }
     if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
     else if (this.activity === 'turn') this.faceAngle(this.turnTo, 2.2, dt);
     else if (this.activity === 'scan') this.faceAngle(h.angle + Math.sin(this.t * 0.8 + this.seed) * 1.2, 2.2, dt);
     else this.sweep(dt, h.angle, 0.7, 1.8);
   }
 
-  // what a bored guard does at his post: watch, scan, look behind, smoke, check his pager
+  // a pastime at his post: he is at it when the level opens and goes back to it as long as all is calm
+  takeJob(job) {
+    if (!job) return;
+    this.job = job;
+    this.activity = job;
+    this.activityT = rand(8, 14);
+  }
+
+  // what a bored guard does at his post: his pastime if he has one, else watch, scan, look behind, smoke,
+  // check his pager
   pickActivity() {
     const calm = this.director.phase === 'normal', r = Math.random();
+    if (calm && this.job && chance(0.8)) { this.activity = this.job; this.activityT = rand(8, 14); this.idleFace = this.home.angle; return; }
     if (calm && r < 0.14) { this.activity = 'smoke'; this.activityT = rand(5, 9); this.idleFace = this.wallFacing(); }
     else if (calm && r < 0.26) { this.activity = 'phone'; this.activityT = rand(4, 8); this.idleFace = this.wallFacing(); }
     else if (r < 0.36) { this.activity = 'turn'; this.activityT = rand(1.5, 2.6); this.turnTo = this.home.angle + rand(2.3, 4); }
@@ -1213,7 +1231,8 @@ export default class Enemy extends Character {
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
     const t = this.world.time;
-    if (this.distracted) {
+    if (this.distracted && this.activity === this.job) drawPastime(ctx, this, this.job, t);
+    else if (this.distracted) {
       const h = local(this.x, this.y, this.angle, 9, 3);
       if (this.activity === 'smoke') {
         ctx.fillStyle = Math.sin(t * 3 + this.seed) > 0.6 ? '#ffd27a' : PALETTE.orange;

@@ -9,8 +9,9 @@ const ACTIVITIES = ['smoke', 'window', 'phone'];
 const REACH = 6; // px: a waypoint counts as reached
 
 export class Walker {
-  // path: [{x, y}] (first point = spawn); opts: { r, speed, run, partner }
-  constructor(path, { r, speed, run, partner = null }) {
+  // path: [{x, y}] (first point = spawn); opts: { r, speed, run, partner, post }
+  // post { activity, face }: a patron who stays at his spot, busy, until something scares him off
+  constructor(path, { r, speed, run, partner = null, post = null }) {
     this.r = r;
     this.path = path;
     this.i = 1;
@@ -26,7 +27,8 @@ export class Walker {
     this.bark = null;          // set when he has something to scream (read and cleared by Ambient)
     // one stop somewhere along the way, at a distance from the start
     this.walked = 0;
-    this.stopAt = !partner && r() < A.stopChance ? between(r, [0.25, 0.75]) * pathLength(path) : -1;
+    this.stopAt = !partner && !post && r() < A.stopChance ? between(r, [0.25, 0.75]) * pathLength(path) : -1;
+    if (post) { this.state = WALKER.STOP; this.activity = post.activity; this.face = post.face; this.t = Infinity; }
   }
 
   get panicked() { return this.state === WALKER.PANIC || this.state === WALKER.FLEE || this.state === WALKER.COWER; }
@@ -169,6 +171,23 @@ export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10,
   const heap = new MinHeap();
   g[start] = 0;
   heap.push(start, 0);
+  if (blocked[start]) {
+    // inside furniture (a patron on his seat, boxed in by a table): he slides off it, so the search also opens
+    // from the free cells up to two steps away, never through a wall
+    let ring = [start];
+    for (let step = 1; step <= 2; step++) {
+      const next = [];
+      for (const c of ring) {
+        for (const d of [-W, W, -1, 1]) {
+          const n = c + d;
+          if (n < 0 || n >= W * H || (d * d === 1 && ((n / W) | 0) !== ((c / W) | 0)) || map.solid?.[n] || g[n] < Infinity) continue;
+          g[n] = step; came[n] = start;
+          if (blocked[n]) next.push(n); else heap.push(n, step);
+        }
+      }
+      ring = next;
+    }
+  }
   let best = -1, bestScore = Infinity;
   while (heap.size) {
     const [cur, cost] = heap.pop();

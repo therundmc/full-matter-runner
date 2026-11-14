@@ -58,7 +58,13 @@ export default class Ambient {
     world.events.on('noise', (e) => this.onNoise(e));
     world.events.on('kill', (e) => this.onKill(e));
     this.prewarm();
+    for (const [kind, col, row, deg, pastime] of def.patrons || []) {
+      this.spawnPatron(kind, col * TILE, row * TILE, (deg * Math.PI) / 180, pastime);
+    }
   }
+
+  // passers-by in the street: the patrons posted indoors do not count against their quota
+  get strollers() { return this.civilians.reduce((n, c) => n + (c.post ? 0 : 1), 0); }
 
   // ---------------- start: the street is already busy ----------------
   prewarm() {
@@ -77,7 +83,7 @@ export default class Ambient {
     }
     for (const p of this.paths) {
       const n = Math.round(p.max * A.prewarm);
-      for (let k = 0; k < n && this.civilians.length < A.maxWalkers; k++) this.spawnWalker(p, between(r, [0.08, 0.85]) * p.len);
+      for (let k = 0; k < n && this.strollers < A.maxWalkers; k++) this.spawnWalker(p, between(r, [0.08, 0.85]) * p.len);
       p.timer = between(r, p.gap) * 0.6;
     }
   }
@@ -231,7 +237,7 @@ export default class Ambient {
     }
     // the driver gets out: running from a shot-up / burning car, walking away from a hopeless jam
     const out = reason === 'fire' || reason === 'tyre' || reason === 'jam';
-    if (out && this.r() < A.bailOut && this.civilians.length < A.maxWalkers + 2 && inside) this.bailOut(v, reason !== 'jam');
+    if (out && this.r() < A.bailOut && this.strollers < A.maxWalkers + 2 && inside) this.bailOut(v, reason !== 'jam');
     w.events.emit('trafficStopped', { vehicle: v, reason });
   }
 
@@ -313,7 +319,7 @@ export default class Ambient {
       p.timer -= dt;
       if (p.timer > 0) continue;
       p.timer = between(r, p.gap);
-      if (p.alive >= p.max || this.civilians.length >= A.maxWalkers || w.time < this.scaredUntil) continue;
+      if (p.alive >= p.max || this.strollers >= A.maxWalkers || w.time < this.scaredUntil) continue;
       const s = p.pts[0];
       if (this.civilians.some((c) => Math.hypot(c.x - s.x, c.y - s.y) < 20)) continue;
       this.spawnWalker(p, 0);
@@ -342,7 +348,7 @@ export default class Ambient {
     const path = [{ x: start.x, y: start.y }, ...p.pts.slice(start.i)];
     const a = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
     const lead = this.spawnCivilian(path, start.x, start.y, a, p);
-    if (r() < A.coupleChance && this.civilians.length < A.maxWalkers) {
+    if (r() < A.coupleChance && this.strollers < A.maxWalkers) {
       // a couple: side by side, a shoulder apart, same pace
       const ox = -Math.sin(a) * 15, oy = Math.cos(a) * 15;
       const path2 = path.map((q) => ({ x: q.x + ox, y: q.y + oy }));
@@ -362,6 +368,17 @@ export default class Ambient {
     this.civilians.push(civ);
     w.chars.push(civ);
     return civ;
+  }
+
+  // a customer posted indoors (def.patrons): busy at his spot until something scares him off, then he flees like
+  // any passer-by
+  spawnPatron(kind, x, y, angle, pastime) {
+    const r = this.r, w = this.world;
+    const brain = new Walker([{ x, y }], { r, speed: between(r, A.walk) * TILE, run: between(r, A.run) * TILE, post: { activity: pastime, face: angle } });
+    const civ = new Civilian(w, x, y, angle, kind, brain);
+    civ.sit(x, y);
+    this.civilians.push(civ);
+    w.chars.push(civ);
   }
 
   removeCivilian(civ) {

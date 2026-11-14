@@ -16,7 +16,8 @@ import { doorLeaves } from './Openings.js';
 const { Bodies } = Matter;
 
 // actors layer legend: enemy char -> [kind, weapon]; uppercase = roaming patrol
-// (optional level.patrols['col,row'] = [[col, row], ...]: explicit route for the guard spawned at col,row)
+// (optional level.patrols['col,row'] = [[col, row], ...]: explicit route for the guard spawned at col,row;
+// optional level.jobs['col,row'] = 'pool' | 'cards': the pastime of the guard posted there, ai/Pastimes.js)
 export const ENEMIES = {
   p: ['thug', 'pistol'], u: ['thug', 'uzi'], s: ['thug', 'uzi_silenced'],
   h: ['heavy', 'shotgun'], r: ['heavy', 'rifle'],
@@ -86,6 +87,7 @@ export function buildLevel(world, level) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
         const e = new Enemy(world, px, py, face, kind, weapon, ch !== ch.toLowerCase());
         e.passive = !!level.passive;
+        e.takeJob(level.jobs?.[`${x},${y}`]);
         world.enemies.push(e);
       } else if (WEAPON_CHARS[ch]) {
         const type = WEAPON_CHARS[ch];

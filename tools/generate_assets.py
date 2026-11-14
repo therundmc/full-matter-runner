@@ -666,7 +666,7 @@ def gib_head(ch):
 
 
 def gib_arm(ch):
-    s = ch['skin'] if ch['kind'] == 'brute' else ch['top']
+    s = ch.get('sleeve') or (ch['skin'] if ch['kind'] == 'brute' else ch['top'])
     pal = {'r': BLOOD[1], 'R': BLOOD[2], 'b': BONE, 's': s[3], 'S': s[2], 'd': s[1],
            'c': s[1] if ch['kind'] != 'heavy' else WHITE[2],
            'h': ch['skin'][3], 'H': ch['skin'][2], 'k': ch['skin'][1]}
@@ -774,6 +774,14 @@ CIVILIANS = {
                  skin=ramp('#e2b08e', 0.46, 0.22, 0.3), sh=(4.2, 8.2)),
     'civ4': dict(kind='civ', style='hood', top=ramp('#8fbf6a', 0.46, 0.22, 0.35), pants=ramp('#4a4a3a'),
                  shoe=ramp('#ecebf2', 0.4, 0.2, 0.2), skin=ramp('#c88a60', 0.46, 0.22, 0.3), sh=(4.1, 8.1)),
+    # the dancers of the bar's VIP room: big hair, bare skin, two bright pieces and heels
+    'dancer1': dict(kind='civ', style='dancer', top=ramp('#ff3d8a', 0.46, 0.22, 0.35), pants=SKIN, sleeve=SKIN,
+                    shoe=ramp('#ff3d8a', 0.45, 0.22, 0.3), hair=ramp('#e8c66a', 0.5, 0.25, 0.35), skin=SKIN,
+                    sh=(3.7, 7.2)),
+    'dancer2': dict(kind='civ', style='dancer', top=ramp('#2fd6e0', 0.46, 0.22, 0.35),
+                    pants=ramp('#b9774f', 0.46, 0.22, 0.3), sleeve=ramp('#b9774f', 0.46, 0.22, 0.3),
+                    shoe=ramp('#f4f2ec', 0.4, 0.2, 0.2), hair=ramp('#b0382a', 0.5, 0.25, 0.4),
+                    skin=ramp('#b9774f', 0.46, 0.22, 0.3), sh=(3.7, 7.2)),
 }
 CHARS.update(CIVILIANS)
 
@@ -796,7 +804,7 @@ def civ_head_px(ch, u, v, L, r):
         return ch['cap'][i]
     if u > r - 1.55:
         return ch['skin'][i]
-    if st == 'long':
+    if st in ('long', 'dancer'):
         streak = int(math.floor(v * 1.3 + 40)) % 3 == 0
         return ch['hair'][max(0, i - 1) if streak else i]
     streak = int(math.floor(v * 0.8 + u * 0.5 + 40)) % 4 == 0
@@ -809,12 +817,14 @@ def civ_shoulder_px(ch, u, v, L, hu, hv, hr):
     hd = math.hypot(hu, hv)
     if hd < hr + 1.6 and hu + hv * 0.4 > -0.5:
         i = max(0, i - 1)                             # head shadow
-    if st == 'long' and -hr - 1.6 < hu < 0.4 and abs(hv) < hr * 0.75:
+    if st in ('long', 'dancer') and -hr - 1.6 < hu < 0.4 and abs(hv) < hr * 0.75:
         return ch['hair'][max(0, i - 1)]              # hair down the back
     if st == 'hood' and hu < -0.6 and hd < hr + 1.7:
         return ch['top'][max(0, i - 1)]               # hood folds behind the neck
     if st == 'trench' and hr + 0.1 < hd < hr + 1.4 and hu > -0.9:
         return lt(ch['top'][2], 0.22)                 # turned-up collar
+    if st == 'dancer':
+        return ch['top'][i] if -0.9 < u < 0.2 else ch['skin'][i]   # bare shoulders, a strap across the back
     if st == 'jacket' and -0.7 < u < 0.5:
         return ch['trim'][i]                          # stripe across the back
     return ch['top'][i]
@@ -829,6 +839,8 @@ def civ_chest_px(ch, u, v, L, hx_, hy_):
             return ch['trim'][min(i, 2)]              # zip
     if st == 'long' and u > hx_ - 2.4 and abs(v) < 0.4 + (u - (hx_ - 2.4)) * 0.9:
         return ch['skin'][i]                          # neckline
+    if st == 'dancer':
+        return ch['top'][i] if hx_ - 3.4 < u < hx_ - 1.4 or u < -hx_ + 1.8 else ch['skin'][i]   # two pieces
     if st == 'trench':
         if abs(u + 0.6) < 0.5:
             return ch['top'][max(0, i - 2)]           # belt
@@ -850,7 +862,7 @@ def civ_face_px(ch, u, v, L, r):
         return ch['top'][i]
     if st == 'trench' and u > 1.1:
         return ch['cap'][i]
-    if st in ('jacket', 'long') and (u > 1.2 or (st == 'long' and abs(v) > r - 1.0)):
+    if st in ('jacket', 'long', 'dancer') and (u > 1.2 or (st != 'jacket' and abs(v) > r - 1.0)):
         return ch['hair'][i]
     return ch['skin'][i]
 
@@ -1083,6 +1095,69 @@ def p_table_round():
         glass_top(ly, 18.5, 11.0, 1.9, hx('#e89a30'))
         ashtray(ly, 10.0, 12.0, random.Random(122), 2.4)
     layer(cv, things)
+    cv.outline()
+    return cv
+
+
+def p_card_table():
+    """Card table: green baize in a wood rail, the pot, hands dealt to three seats (one laid open), a drink."""
+    S = 30
+    cv = Cv(S, S)
+    c = S / 2
+    felt = ramp('#1f7a4c', 0.45, 0.22, 0.18)
+    rail = ramp('#6a3518', 0.45, 0.22, 0.35)
+    fn = VNoise(S, S, 5, random.Random(171))
+    for y in range(1, S - 1):
+        for x in range(1, S - 1):
+            d = math.hypot(x + 0.5 - c, y + 0.5 - c)
+            if d <= 12.2:
+                cv.set(x, y, shift(mix(felt[2], lt(felt[2], 0.2), max(0.0, 0.7 - d / 12)), int((fn(x, y) - 0.5) * 8)))
+    ring(cv, c, c, 11.3, 12.2, lambda dx, dy, d: felt[0] if dx + dy > 0 else felt[1])
+    ring(cv, c, c, 12.2, 14.0, lambda dx, dy, d: shade(rail, light(dx / d, dy / d)))
+
+    def things(ly):
+        for k, col in enumerate(('#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040', '#d8303a')):
+            circle(ly, c + math.cos(k * 1.3) * 2.3, c + math.sin(k * 1.3) * 2.3, 1.3, hx(col))
+        back, face = hx('#a8282e'), hx('#f0ece0')
+        for a, up in ((math.pi, False), (0.0, False), (-math.pi / 2, True)):
+            for s in (-1, 1):
+                px = c + math.cos(a) * 8 - math.sin(a) * s * 1.8
+                py = c + math.sin(a) * 8 + math.cos(a) * s * 1.8
+                fill_shape(ly, px, py, 1.5, 2.2, lambda u, v, L: face if up or abs(u) > 0.9 or abs(v) > 1.6 else back,
+                           ang=a + s * 0.25, kind='rect', corner=0.5, bevel=0.5)
+        glass_top(ly, c + 6.0, c + 6.5, 1.7, hx('#c8842a'))
+    layer(cv, things)
+    cv.outline()
+    return cv
+
+
+def p_dance_stage():
+    """Dance stage: a low round platform of dark lacquer with a brass edge and bulbs, a chrome pole in the middle."""
+    S = 50
+    cv = Cv(S, S)
+    c = S / 2
+    top = ramp('#3a1f4a', 0.45, 0.22, 0.3)
+    riser = ramp('#1c1024', 0.4, 0.2, 0.5)
+    fn = VNoise(S, S, 6, random.Random(181))
+    for y in range(1, S - 1):
+        for x in range(1, S - 1):
+            d = math.hypot(x + 0.5 - c, y + 0.5 - c)
+            if d <= 21.6:
+                cv.set(x, y, shift(mix(top[2], top[3], max(0.0, 0.6 - d / 22)), int((fn(x, y) - 0.5) * 6)))
+    ring(cv, c, c, 13.0, 14.0, lambda dx, dy, d: top[3])
+    ring(cv, c, c, 20.2, 21.6, lambda dx, dy, d: shade(ramp('#d8a848', 0.5, 0.25, 0.4), light(dx / d, dy / d)))
+    ring(cv, c, c, 21.6, 24.0, lambda dx, dy, d: shade(riser, light(dx / d, dy / d)))
+    for k in range(16):
+        a = (k + 0.5) * math.pi / 8
+        bx, by = int(c + math.cos(a) * 17.6 - 0.5), int(c + math.sin(a) * 17.6 - 0.5)
+        for ox, oy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            cv.set(bx + ox, by + oy, hx('#fff0c0') if k % 2 else hx('#ff8ad0'))
+
+    def pole(ly):
+        fill_shape(ly, c, c, 4.2, 4.2, lambda u, v, L: shade(STEEL, L))
+        fill_shape(ly, c, c, 2.4, 2.4, lambda u, v, L: shade(ramp('#aab4c4', 0.5, 0.25, 0.5), L))
+        ly.set(c - 1, c - 1, hx('#ffffff'))
+    layer(cv, pole)
     cv.outline()
     return cv
 
@@ -2516,7 +2591,7 @@ def rag_head(ch):
 
 def rag_arm(ch):
     k = ch['kind']
-    s = ch['skin'] if k == 'brute' else ch['top']
+    s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
     pal_ = {'a': s[3], 'S': s[2], 'd': s[1], 'c': s[0], 'h': ch['skin'][3], 'H': ch['skin'][2], 'k': ch['skin'][1],
             'w': WHITE[2], 'W': WHITE[1], 'r': ch.get('bandana', s)[2]}
     rows = {'player': [".aSSSSSwHh.", ".dddddWWkk."],
@@ -4252,7 +4327,7 @@ def build():
         out[('characters', cid + '_rag_leg')] = rag_leg(ch)
     for name, cv in mags().items():
         out[('weapons', name)] = cv
-    props = dict(table=p_table, table_round=p_table_round, desk=p_desk, chair=p_chair, armchair=p_armchair,
+    props = dict(table=p_table, table_round=p_table_round, card_table=p_card_table, dance_stage=p_dance_stage, desk=p_desk, chair=p_chair, armchair=p_armchair,
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
                  barrel=p_barrel, bookshelf=p_bookshelf, speaker=p_speaker, dj_booth=p_dj_booth,
@@ -4295,7 +4370,7 @@ def build():
 GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
            'car', 'car2', 'van']
 # furniture at real scale (1 m = 32 px): sprite = hitbox in data/props.js + 1 px of outline on each side
-PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
+PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(30, 30), dance_stage=(50, 50), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
                   sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
                   toilet=(15, 23), bed=(46, 66), pool_table=(82, 46), arcade=(24, 29), crate=(21, 21),
                   barrel=(20, 20), bookshelf=(42, 13), speaker=(16, 16), dj_booth=(60, 24),
