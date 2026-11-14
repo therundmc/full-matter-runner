@@ -2,7 +2,9 @@
 // Serves the repository on the first free port from 8000 up (so a server left running elsewhere is not a problem),
 // answers several requests at once and never lets the browser cache anything: a plain reload always shows the
 // latest sprites, sounds and code.
-// Also a module: `startServer({ port, quiet })` (tools/qa, tools/shot.mjs) resolves to { server, port, url, close }.
+// Also a module: `startServer({ port, quiet, root, onPage })` (tools/qa, tools/shot.mjs, tools/play.mjs) resolves to
+// { server, port, url, close }. root: the folder served (default: the repository); onPage: called before a page (a
+// URL ending with /) is served.
 import http from 'node:http';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -16,17 +18,18 @@ const TYPES = {
   '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.ttf': 'font/ttf', '.ico': 'image/x-icon',
 };
 
-function handler(req, res) {
+const handler = (root, onPage) => (req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
-  const file = path.join(ROOT, url.endsWith('/') ? url + 'index.html' : url);
-  // nothing outside the repository
-  if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
+  if (onPage && url.endsWith('/')) { try { onPage(); } catch (e) { console.error(e.message); } }
+  const file = path.join(root, url.endsWith('/') ? url + 'index.html' : url);
+  // nothing outside the served folder
+  if (!file.startsWith(root)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(data);
   });
-}
+};
 
 // does anything answer on that port, over IPv4 or IPv6? (binding alone does not tell: on Windows a server bound to
 // the IPv6 side leaves the IPv4 side free, and the browser would then reach the other one through `localhost`)
@@ -48,9 +51,9 @@ export async function freePort(port = 8000, quiet = false) {
   return port;
 }
 
-export async function startServer({ port = 8000, quiet = false } = {}) {
+export async function startServer({ port = 8000, quiet = false, root = ROOT, onPage = null } = {}) {
   port = await freePort(port, quiet);
-  const server = http.createServer(handler);
+  const server = http.createServer(handler(path.resolve(root), onPage));
   await new Promise((done, fail) => {
     server.once('error', fail);
     // 127.0.0.1 in the address, not `localhost`: nothing else can be reached by mistake

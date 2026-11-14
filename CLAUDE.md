@@ -45,7 +45,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json). Synthesized sounds: the user first rejected
    them as clicky, "Mario"-like, then (2026-11-14) allowed them, alone or mixed with a recording, for everything
    EXCEPT guns and explosions, where they sound cheap: those stay recordings. Synthesized today: the kill confirm
-   (a dry shooter's headshot "dink", a little higher with each kill of a streak; he dropped the chime as too arcade),
+   (a punch, a knock and a short muted note that climbs a scale over the chain; he dropped the chime as too arcade and
+   the metal "dink" as a bottle),
    the doors, the guards' voices under their recording, the car horn (`_horn`: a driver held up by somebody honks). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
    Doors are synthesized whole (struck-panel partials, `_door` / `_doorSlam`; user hated every door recording), no
@@ -112,6 +113,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 - index.html starts the game through a small service worker (sw.js) that fetches every file fresh, because the user
   runs `python -m http.server` out of habit and his browser then mixed cached and new modules ("does not provide an
   export named ...", three times). If that error comes back: Ctrl+Shift+R once.
+- `npm run play` (tools/play.mjs, port 8100): serves the LAST COMMIT, re-exported at each page load when a new commit
+  came in. This is what the user should play while agents are editing the working tree (it is broken half of the time
+  then, and he was hit by it twice). Tell him to use it, and commit finished work so he sees it.
 - `npm start` (tools/serve.mjs: first free port from 8000, no browser cache) then the address it prints
   (`?level=lab` for the physics lab). The user often has an old server still running on 8000: a second
   `python -m http.server 8000` then fails with "address already in use", which he reads as "the server is broken".
