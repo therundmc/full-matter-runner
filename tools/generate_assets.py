@@ -369,7 +369,9 @@ SKIN = ramp('#eab08a', 0.46, 0.22, 0.3)
 CHARS = {
     'player': dict(kind='player', top=ramp('#1fb5b5', 0.5, 0.25, 0.35), sleeve=None,
                    pants=ramp('#2c3a6a'), shoe=ramp('#ecebf2', 0.4, 0.2, 0.2),
-                   hair=ramp('#f2cc58', 0.45, 0.22, 0.45), skin=SKIN, sh=(4.0, 8.0)),
+                   hair=ramp('#f2cc58', 0.45, 0.22, 0.45), skin=SKIN, sh=(4.0, 8.0),
+                   # standing, he wears a cheap dark suit under a clear rain poncho, the hood up (draw_torso)
+                   suit=ramp('#30303c', 0.5, 0.25, 0.3), poncho=True),
     'thug': dict(kind='thug', top=ramp('#e6e0cf', 0.42, 0.2, 0.5), pants=ramp('#2a2632'),
                  shoe=ramp('#1e1820', 0.3, 0.15, 0.25), hair=ramp('#3a2c48', 0.55, 0.3, 0.45),
                  shirt=ramp('#2a2236'), skin=SKIN, sh=(4.0, 8.0)),
@@ -436,42 +438,159 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
     return ch['top'][i]
 
 
-def draw_torso(ch):
-    cv = Cv(20, 20)
-    rx, ry = ch['sh']
-    hcx, hcy, hr = 11.0, 10.0, 4.1
-    body = Cv(20, 20)
-    fill_shape(body, 9.6, 10.0, rx, ry,
-               lambda u, v, L: shoulder_px(ch, u, v, L, u - 1.4, v, hr), kind='super', p=2.4)
-    body.outline()
-    cv.over(body)
-    head = Cv(20, 20)
-    fill_shape(head, hcx, hcy, hr, hr, lambda u, v, L: head_top_px(ch, u, v, L, hr), pad=0.08)
+FINE = 2    # characters are painted at twice the world's pixel density; the game draws them at half size (Assets.js)
+PLASTIC = (206, 226, 222)   # the player's rain poncho: milky clear plastic
+PLASTIC_HI = (250, 255, 252)
+PLASTIC_LO = (96, 118, 128)
+PLASTIC_MID = (168, 188, 190)
+
+
+def torso_body(ch, rng):
+    """The shoulders from above at FINE density: the design of shoulder_px, then what cloth has: a seam down the back,
+    the sleeve heads, a collar, creases and grime."""
+    S, W = FINE, 20 * FINE
+    rx, ry = ch['sh'][0] * S, ch['sh'][1] * S
+    hr = 3.8 * S
+    crease = VNoise(W, W, 4, rng)
+    suit = ch.get('suit')
     k = ch['kind']
-    if k == 'player':
-        # messy hair tufts poking out at the back and sides
-        for (u, v, c) in [(-4.6, -1.0, 1), (-4.6, 1.5, 2), (-3.3, -3.4, 1), (-3.2, 3.6, 0), (-1.0, -4.6, 2), (-0.6, 4.5, 1)]:
-            head.set(math.floor(hcx + u), math.floor(hcy + v), ch['hair'][c])
-        # sunglasses on the front edge
-        for yy in range(int(hcy) - 2, int(hcy) + 2):
-            xs = [x for x in range(20) if head.on(x, yy)]
-            if xs:
-                head.set(max(xs), yy, hx('#0e0a16'))
-                if yy == int(hcy) - 2:
-                    head.set(max(xs), yy, hx('#36e8f0'))
-    if k in ('player', 'thug', 'brute'):
-        # ears
-        head.set(int(hcx) + 1, int(hcy - hr) - 1, ch['skin'][1])
-        head.set(int(hcx) + 1, int(hcy + hr), ch['skin'][1])
-    if k == 'heavy':
-        head.set(int(hcx) + 1, int(hcy - hr) - 1, ch['skin'][1])
-        head.set(int(hcx) + 1, int(hcy + hr), ch['skin'][1])
+
+    def px(u, v, L):
+        if suit:
+            c = shade(suit, L)
+        else:
+            c = shoulder_px(ch, u / S, v / S, L, (u - 1.4 * S) / S, v / S, hr / S)
+        n = crease(u + W, v + W)
+        if n > 0.7:
+            c = dk(c, 0.1)                       # a crease of the cloth
+        elif n < 0.24:
+            c = lt(c, 0.07)
+        if k != 'brute' and abs(abs(v) - ry * 0.66) < 0.55 and u < rx * 0.6:
+            c = dk(c, 0.16)                      # where the sleeve is sewn on
+        if abs(v) < 0.55 and u < -1.5 * S:
+            c = dk(c, 0.2)                       # the seam down the back
+        if u < -rx + 1.6 * S:
+            c = dk(c, 0.1)                       # the back falls away from the light
+        return c
+    body = Cv(W, W)
+    fill_shape(body, 9.6 * S, 10.0 * S, rx, ry, px, kind='super', p=2.4)
+    if suit or k == 'thug':
+        # shirt collar and tie in front of the neck, the lapels' notch either side
+        shirt, tie = (WHITE, hx('#1a1620')) if suit else (ch['shirt'], hx('#8a1a3a'))
+        for dv in range(-3, 4):
+            for du in range(0, 4 - abs(dv)):
+                x, y = int(13.0 * S + du), int(10.0 * S + dv)
+                if body.on(x, y):
+                    body.set(x, y, tie if dv == 0 else shirt[2] if abs(dv) < 2 else shirt[1])
+        for sgn in (-1, 1):
+            for i in range(4):
+                x, y = int(12.2 * S + i), int(10.0 * S + sgn * (4 + i * 0.9))
+                if body.on(x, y):
+                    body.set(x, y, dk(body.get(x, y), 0.3))
+    mottle(body, rng, amt=5, cell=4)
+    smudge(body, rng, 3, (6, 6, W - 7, W - 7), r=(1.5, 3.0), t=0.16)
+    body.outline()
+    return body
+
+
+def torso_head(ch, rng):
+    """The head from above at FINE density, face toward +x: the design of head_top_px, ears, the brow and the nose."""
+    S, W = FINE, 20 * FINE
+    hcx, hcy, hr = 11.0 * S, 10.0 * S, 3.8 * S
+    k = ch['kind']
+    strand = VNoise(W, W, 2, rng)
+
+    def px(u, v, L):
+        c = head_top_px(ch, u / S, v / S, L, hr / S)
+        if c is None:
+            return None
+        if u > hr - 1.4 * S:
+            # the face: brow in shadow, the nose catching the light
+            if abs(v) < 1.1 and u > hr - 1.6:
+                return lt(ch['skin'][2], 0.25)
+            return ch['skin'][1] if u < hr - 0.9 * S else ch['skin'][2]
+        if k not in ('heavy',) and strand(u * 0.5 + W, v + W) > 0.62:
+            c = dk(c, 0.14)                      # strands
+        return c
+    head = Cv(W, W)
+    fill_shape(head, hcx, hcy, hr, hr * 0.94, px, pad=0.04)
+    for sgn in (-1, 1):                           # ears
+        ey = hcy + sgn * (hr * 0.94 + 0.2)
+        for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
+            head.set(int(hcx + dx), int(ey + dy), ch['skin'][1 if dx < 3 else 2])
     if k == 'brute':
-        # bandana knot tails trailing behind
-        for (x, y, c) in [(6, 9, 2), (5, 8, 1), (6, 10, 1), (5, 11, 1), (4, 11, 0)]:
+        # bandana knot and its two tails trailing behind
+        for (x, y, c) in [(12, 18, 2), (11, 17, 2), (10, 16, 1), (9, 15, 1), (12, 21, 1), (11, 22, 1), (10, 23, 1), (9, 24, 0), (13, 19, 3), (13, 20, 2)]:
             head.set(x, y, ch['bandana'][c])
     head.outline()
-    cv.over(head)
+    return head
+
+
+def poncho(cv, rng):
+    """The player's rain poncho laid over him: clear plastic that shows the suit through it, creased from the neck out,
+    its hem and its folds catching the light, the hood up over his head and open on the face, beaded with rain."""
+    S, W = FINE, 20 * FINE
+    cx, cy, rx, ry, p = 9.0 * S, 10.0 * S, 5.4 * S, 9.3 * S, 2.6
+    hcx, hcy, hr = 11.0 * S, 10.0 * S, 4.3 * S
+    fold = VNoise(W, W, 4, rng)
+    over = Cv(W, W)
+    for y in range(W):
+        for x in range(W):
+            u, v = x + 0.5 - cx, y + 0.5 - cy
+            e = (abs(u) / rx) ** p + (abs(v) / ry) ** p
+            hu, hv = x + 0.5 - hcx, y + 0.5 - hcy
+            hd = math.hypot(hu, hv * 1.04)
+            hood = hd <= hr
+            if e > 1.0 and not hood:
+                continue
+            if hood and hu > hr * 0.34 and abs(hv) < hr * 0.78:
+                continue                           # the opening of the hood: his face
+            th = math.atan2(v, u + 1.5 * S)
+            c = math.sin(th * 6.0 + fold(x, y) * 5.0)
+            col, a = PLASTIC, 138
+            if hood:
+                a = 176
+                if abs(hv) < 0.7 and hu < hr * 0.3:
+                    col, a = PLASTIC_HI, 215         # the seam over the top of the hood
+                elif hd > hr - 1.3:
+                    col, a = PLASTIC_HI, 200         # its rim
+                elif hu < -hr * 0.5:
+                    col, a = PLASTIC_LO, 165
+            elif e > 0.84:
+                col, a = PLASTIC_HI, 190             # the hem
+            elif c > 0.9:
+                col, a = PLASTIC_HI, 225             # a fold catching the light
+            elif c < -0.86:
+                col, a = PLASTIC_LO, 170             # the hollow next to it
+            elif u < -rx * 0.45:
+                col, a = PLASTIC_MID, 150
+            over.set(x, y, col + (a,))
+    # the rim of the hood round the face
+    for i in range(-9, 10):
+        ang = i / 9.0 * 0.92
+        over.set(int(hcx + math.cos(ang) * hr * 0.36 + (1 - abs(i) / 9.0) * 1.2), int(hcy + math.sin(ang) * hr * 0.86), PLASTIC_HI + (235,))
+    # rain beading on it, and what the night has left: a few dark spots
+    for _ in range(9):
+        x, y = rng.randrange(4, W - 4), rng.randrange(3, W - 3)
+        if over.on(x, y, 60):
+            over.set(x, y, (255, 255, 255, 250))
+            over.set(x, y + 1, PLASTIC_LO + (150,))
+    for (x, y) in ((7, 9), (8, 10), (6, 28), (7, 29), (9, 31)):
+        if over.on(x, y, 60):
+            over.set(x, y, hx('#5a0c16', 235))
+    over.outline(col=hx('#18202a'), th=60)
+    cv.over(over)
+
+
+def draw_torso(ch):
+    """A standing character from straight above, facing +x: 40 x 40 pixels for 20 x 20 world px (FINE density)."""
+    W = 20 * FINE
+    rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(ch['kind']) * 7 + int(ch['sh'][1] * 10))
+    cv = Cv(W, W)
+    cv.over(torso_body(ch, rng))
+    cv.over(torso_head(ch, rng))
+    if ch.get('poncho'):
+        poncho(cv, rng)
     return cv
 
 
@@ -4915,7 +5034,7 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5)),
         ('_rag_torso_up', (14, 16)), ('_rag_torso_down', (14, 16)), ('_rag_head_up', (9, 9))]]

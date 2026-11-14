@@ -20,7 +20,7 @@ import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, doorHandP
 const { Bodies, Body } = Matter;
 
 export const KINDS = {
-  player: { arm: '#1fb5b5', skin: '#f2c493' },
+  player: { arm: '#30303c', skin: '#ff6aa8' }, // suit sleeves out of his rain poncho, pink rubber gloves
   thug: { arm: '#e6e0cf', skin: '#e0a878' },
   heavy: { arm: '#4b2470', skin: '#c88a60' },
   brute: { arm: '#d89a70', skin: '#d89a70' },

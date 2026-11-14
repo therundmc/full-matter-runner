@@ -18,8 +18,9 @@ export default class Camera {
 
   resize(w, h) {
     this.w = w; this.h = h;
-    // integer zoom keeps pixel art crisp; aim for ~380 world px of vertical view
-    this.zoom = Math.max(1, Math.round(h / 380));
+    // integer zoom keeps pixel art crisp; aim for ~300 world px of vertical view (the user wanted the camera closer,
+    // to see the detail: it was 380)
+    this.zoom = Math.max(1, Math.round(h / 300));
   }
 
   snap(x, y) { this.x = x; this.y = y; this.clamp(); }

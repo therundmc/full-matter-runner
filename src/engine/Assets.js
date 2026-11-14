@@ -46,6 +46,11 @@ export const OPTIONAL_LIST = [
     'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
 ];
 
+// Sprites painted finer than the world (1 sprite px = 1 world px everywhere else): world px per sprite px, by name.
+// The standing characters are painted at twice the density (tools/generate_assets.py FINE). An image carries its
+// own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
+const density = (name) => (/^characters\/\w+_torso$/.test(name) ? 0.5 : 1);
+
 const images = new Map();
 // weak caches: per-instance canvases (eroded props, bitten pieces) can be garbage-collected
 const silhouettes = new WeakMap();
@@ -64,13 +69,13 @@ export async function loadAssets(onProgress) {
   let done = 0;
   await Promise.all(SPRITE_LIST.map((name) => new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => { images.set(name, img); onProgress?.(++done / SPRITE_LIST.length); resolve(); };
+    img.onload = () => { img.k = density(name); images.set(name, img); onProgress?.(++done / SPRITE_LIST.length); resolve(); };
     img.onerror = () => { console.warn('missing sprite', name); images.set(name, placeholder()); onProgress?.(++done / SPRITE_LIST.length); resolve(); };
     img.src = `assets/sprites/${name}.png`;
   })));
   await Promise.all(OPTIONAL_LIST.map((name) => new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => { images.set(name, img); resolve(); };
+    img.onload = () => { img.k = density(name); images.set(name, img); resolve(); };
     img.onerror = () => resolve();
     img.src = `assets/sprites/${name}.png`;
   })));
@@ -96,6 +101,7 @@ export function silhouette(img) {
   g.globalCompositeOperation = 'source-in';
   g.fillStyle = '#000';
   g.fillRect(0, 0, s.width, s.height);
+  s.k = img.k;
   silhouettes.set(img, s);
   return s;
 }
@@ -220,7 +226,8 @@ export function drawSprite(ctx, img, x, y, angle = 0, alpha = 1, scale = 1) {
   ctx.save();
   ctx.translate(x, y);
   if (angle) ctx.rotate(angle);
-  if (scale !== 1) ctx.scale(scale, scale);
+  const sc = scale * (img.k || 1); // a finer sprite is drawn smaller (see `density`)
+  if (sc !== 1) ctx.scale(sc, sc);
   if (alpha !== 1) ctx.globalAlpha *= alpha;
   ctx.drawImage(img, -img.width / 2, -img.height / 2);
   ctx.restore();

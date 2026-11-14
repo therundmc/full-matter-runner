@@ -229,7 +229,7 @@ function drawFlash(ctx, f, now) {
   ctx.rotate(f.dir);
   ctx.scale(1 - f.squash * e, 1 + f.squash * 0.5 * e); // flattened along the blow
   ctx.rotate(a + f.twist * e - f.dir);
-  ctx.scale(f.s, f.s);
+  ctx.scale(f.s * (f.img.k || 1), f.s * (f.img.k || 1)); // the torso is a finer sprite (Assets.js `density`)
   ctx.globalAlpha = k < 0.5 ? 1 : 2 * (1 - k);
   ctx.drawImage(img, -img.width / 2, -img.height / 2);
   ctx.restore();

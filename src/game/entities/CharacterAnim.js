@@ -811,7 +811,7 @@ function drawTucked(ctx, ch, P, bx, by) {
   ctx.translate(bx, by);
   ctx.rotate(P.ta);
   ctx.scale(P.s * (1 - 0.22 * t), P.s * (1 + 0.05 * t));
-  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  drawSprite(ctx, img, 0, 0);
   // the head gone under the shoulders: the jacket's back where it was, lit on its round top, the spine down the
   // middle, the collar at the front edge
   ctx.globalAlpha *= t;
