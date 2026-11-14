@@ -5,9 +5,9 @@ import { PX_PER_M } from '../../engine/physics/Units.js';
 import { sprite, spriteOpt, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 import { rand, chance, clamp, pick } from '../../engine/math.js';
-import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch } from '../systems/Fracture.js';
+import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
-import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump } from '../render/DamageArt.js';
+import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 
@@ -263,6 +263,7 @@ export default class Prop {
       }
     }
     if (this.flash > 0) this.flash -= dt;
+    if (this.parts) this.shed(dt);
   }
 
   // ------------------------------------------------------------------ zones: corners off, sawn in two
@@ -492,59 +493,57 @@ export default class Prop {
     w.after(t2, () => this.collapse(dirA, power));
   }
 
+  // Falls apart into its own parts, cut along the recipe's seams. They do not all leave at once: the collapse runs
+  // through the object from the blow to its far end (Fracture.crumble), each part staying in place (draw) until its
+  // turn (shed). A blast, a lamp or anything overhead goes in one go. What it held spills with the first part.
   collapse(dirA, power) {
-    if (this.dead) return;
-    this.dead = true;
-    this.dying = false;
+    if (this.dead || this.parts) return;
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx, P = w.particles;
     const { x, y } = this.centre();
     const ang = this.body.angle, ca = Math.cos(ang), sa = Math.sin(ang);
     w.removeBody(this.body);
     if (d.fountain) {
+      this.dead = true;
       this.burst(x, y, dirA);
       w.events.emit('propDestroyed', { prop: this, x, y, dirA, power });
       return;
     }
+    this.dying = true;
+    this.sag = 0;
     // cut the (damaged) sprite along the recipe's seams
     const work = canvas(this.W, this.H);
     work.getContext('2d').drawImage(this.look, 0, 0);
     const pieces = [];
     for (const g of [...rec.parts, { cut: 'grid', cols: 2, rows: 2 }]) {
       for (const c of cutPolys(g, this.W, this.H, Math.random, this.lastHit)) {
-        const pc = cutPiece(work, c.poly, { min: 8 });
+        const pc = cutPiece(work, c.poly, { min: 8, wreck: true });
         if (pc) pieces.push({ ...pc, name: c.name, fly: c.fly ?? 1 });
       }
     }
     pieces.sort((p, q) => q.img.width * q.img.height - p.img.width * p.img.height);
-    const harm = power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null;
-    const z0 = this.lift();
     // heavy furniture gives way where it stands: its big parts slump and slide a little, the crumbs are only chips.
     // Only a blast throws it around.
     const heavy = power < 2 && this.W * this.H > DESTRUCTION.heavyArea;
     if (heavy) pieces.length = Math.min(pieces.length, DESTRUCTION.heavyParts);
-    const calm = heavy ? 0.3 : 1;
     let physical = d.static ? Math.min(DESTRUCTION.maxPhysicalParts, 3) : DESTRUCTION.maxPhysicalParts;
-    for (const pc of pieces) {
-      const lx = pc.cx - this.W / 2, ly = pc.cy - this.H / 2;
-      const ox = lx * ca - ly * sa, oy = lx * sa + ly * ca;
-      const L = launch(dirA, ox, oy, power, pc.fly);
-      const big = pc.img.width * pc.img.height > 50;
-      this.throwPiece(pc.img, x + ox, y + oy, L.a, L.v * calm, {
-        z: z0 * rand(0.6, 1), vz: rec.drop || heavy ? rand(-10, 20) : L.vz, spin: L.spin * calm,
-        physical: big && physical-- > 0, harm: harm && { ...harm },
-      });
-    }
+    for (const pc of pieces) pc.physical = pc.img.width * pc.img.height > 50 && physical-- > 0;
     // parts the top view hid (table legs)
     if (rec.legs) {
       const s = Math.max(2, rec.legs.size * PX_PER_M), n = rec.legs.n;
       for (let i = 0; i < n; i++) {
         const lx = n === 1 ? 0 : (i % 2 ? 0.4 : -0.4) * this.W, ly = n <= 2 ? 0 : (i < 2 ? -0.4 : 0.4) * this.H;
-        const ox = lx * ca - ly * sa, oy = lx * sa + ly * ca;
         const img = chunk(rec.legs.color, Math.round(s), Math.round(Math.max(s, rec.height * PX_PER_M * 0.5)));
-        const L = launch(dirA, ox, oy, power, 1);
-        this.throwPiece(img, x + ox, y + oy, L.a, L.v * 0.7 * calm, { z: z0 * 0.4, vz: L.vz * 0.6, spin: L.spin });
+        pieces.push({ img, cx: this.W / 2 + lx, cy: this.H / 2 + ly, fly: 1, leg: true });
       }
     }
+    const grounded = !d.fixture && !d.overhead && !d.hung;
+    const wave = crumble(pieces, this.lastHit || [this.W / 2, this.H / 2], grounded && power < 2 && !d.explosive ? DESTRUCTION.crumble : 0);
+    pieces.forEach((pc, i) => { pc.t = wave[i]; });
+    const z0 = this.lift();
+    this.parts = pieces;
+    this.fall = { x, y, ca, sa, dirA, power, heavy, z0, t: 0, harm: power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null };
+    if (grounded) w.decals.bake(remains(this.W, this.H, d.chips), x, y, ang);
+    this.shed(0);
     // contents
     let bits = DESTRUCTION.maxBits;
     for (const c of rec.contents) {
@@ -572,6 +571,32 @@ export default class Prop {
     // the heavy thud of the remains hitting the floor
     if (this.W * this.H > 300) w.after(0.18, () => w.sound('bodyFall', x, y, 0.6));
     w.shake(0.08 + Math.min(0.15, (this.W * this.H) / 8000));
+  }
+
+  // the collapse goes on: the parts whose turn has come let go; once the last one has, the object is gone
+  shed(dt) {
+    const f = this.fall;
+    f.t += dt;
+    this.parts = this.parts.filter((pc) => pc.t > f.t || this.release(pc));
+    if (this.parts.length) return;
+    this.parts = null;
+    this.dying = false;
+    this.dead = true;
+  }
+
+  // one part comes loose where it was: big furniture slumps, the rest is thrown along the blow; crumbs at the tear
+  release(pc) {
+    const f = this.fall, lx = pc.cx - this.W / 2, ly = pc.cy - this.H / 2;
+    const ox = lx * f.ca - ly * f.sa, oy = lx * f.sa + ly * f.ca;
+    const L = launch(f.dirA, ox, oy, f.power, pc.fly), calm = f.heavy ? 0.3 : 1;
+    if (pc.leg) this.throwPiece(pc.img, f.x + ox, f.y + oy, L.a, L.v * 0.7 * calm, { z: f.z0 * 0.4, vz: L.vz * 0.6, spin: L.spin });
+    else {
+      this.throwPiece(pc.img, f.x + ox, f.y + oy, L.a, L.v * calm, {
+        z: f.z0 * rand(0.6, 1), vz: this.rec.drop || f.heavy ? rand(-10, 20) : L.vz, spin: L.spin * calm,
+        physical: pc.physical, harm: f.harm && { ...f.harm },
+      });
+      if (pc.t > 0) this.world.particles.chips(f.x + ox, f.y + oy, L.a, 1.4, 2, this.def.chips, 80);
+    }
   }
 
   // A hydrant gives way in one piece: the main blows the whole body off its flange, straight up (toward the camera,
@@ -641,6 +666,7 @@ export default class Prop {
   }
 
   draw(ctx) {
+    if (this.parts) { this.drawParts(ctx); return; }
     const o = this.centre(), k = this.kick;
     const x = o.x + k.x, y = o.y + k.y, a = this.body.angle + this.sag + k.r;
     if (this.def.overhead) {
@@ -655,6 +681,18 @@ export default class Prop {
       ctx.globalCompositeOperation = 'lighter';
       drawSprite(ctx, this.look, x, y, a, clamp(this.flash / 0.06, 0, 1) * 0.35, this.squash);
       ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  // falling apart: the parts that have not let go yet, still in place; one about to go shudders
+  drawParts(ctx) {
+    const f = this.fall, a = this.body.angle;
+    for (const pc of this.parts) {
+      if (pc.leg) continue; // still hidden under the top
+      const lx = pc.cx - this.W / 2, ly = pc.cy - this.H / 2, loose = pc.t - f.t < 0.07 ? 0.8 : 0;
+      const x = f.x + lx * f.ca - ly * f.sa + rand(-loose, loose), y = f.y + lx * f.sa + ly * f.ca + rand(-loose, loose);
+      drawSprite(ctx, silhouette(pc.img), x + 2, y + 2, a, 0.3);
+      drawSprite(ctx, pc.img, x, y, a);
     }
   }
 

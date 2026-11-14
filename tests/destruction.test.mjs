@@ -162,3 +162,13 @@ test('collapse launch: pieces leave along the blow, pushed out from the centre',
   const left = F.launch(-Math.PI / 2, -10, 0, 1, 1, () => 0.5), right = F.launch(-Math.PI / 2, 10, 0, 1, 1, () => 0.5);
   assert.ok(Math.cos(left.a) < Math.cos(right.a));
 });
+
+test('collapse wave: parts let go from the blow outward, all of them within the time it takes', () => {
+  const parts = [{ cx: 2, cy: 5 }, { cx: 20, cy: 5 }, { cx: 38, cy: 5 }, { cx: 20, cy: 18 }];
+  const t = F.crumble(parts, [0, 5], 0.3, seeded(9));
+  assert.ok(t[0] < t[1] && t[1] < t[2], `${t}`);
+  assert.ok(t[0] < 0.08 && t[2] > 0.2, 'the near end at once, the far end last');
+  assert.ok(t.every((v) => v >= 0 && v <= 0.3));
+  assert.deepEqual(F.crumble(parts, [0, 5], 0), [0, 0, 0, 0], 'a blast takes it all at once');
+  assert.deepEqual(F.crumble([], [0, 0], 0.3), []);
+});

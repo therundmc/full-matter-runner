@@ -260,6 +260,16 @@ export const DESTRUCTION = {
   maxFloats: 260,      // stuffing / paper / feathers floating at once
   maxLeaks: 3,         // liquid jets per prop
   stageDelay: [0.07, 0.16], // crack -> sag -> fall apart (s); explosions skip most of it
+  crumble: 0.32,       // s the falling apart takes: its parts let go one after the other, from the blow outward
+};
+
+// What destruction leaves lying on the floor for good. Everything still flies; only part of the crumbs stay, and
+// faint, so that blood, bodies and weapons remain the loudest things on the ground.
+export const LITTER = {
+  keep: 0.5,   // share of chips, glass slivers, fluff, cinders and tiny torn bits that leave a mark where they fall
+  alpha: 0.7,  // how solid a crumb's mark is
+  small: 28,   // px2 of image: a visual shard under this is a "tiny bit" (bigger pieces always stay)
+  rubble: 14,  // crumbs painted on the floor of a breached wall tile
 };
 
 export const PALETTE = {

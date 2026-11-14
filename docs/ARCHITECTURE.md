@@ -165,6 +165,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   - states by HP left: 70% cracked, 45% split, 20% giving way (big chunk, sag, dust); at 0 it cracks, sags, then
     falls apart into its own parts (recipe cuts of its sprite: planks, wedges, frame, cushions, doors, lids...), with
     hidden parts (legs) and contents (pool balls, books, records, bottles, cans, trash bags) as small physical bits.
+  - the falling apart is not one frame: `Fracture.crumble` gives each part a delay, a wave running from the blow to
+    the far end over `DESTRUCTION.crumble` s. Until its turn a part is drawn in place (`Prop.parts`, `shed`,
+    `release`, `drawParts`); the prop is `dying`, body already gone, and `dead` once the last part has let go.
+    Blasts, explosives, fixtures and overhead / hung props go in one go. Parts are cut as wreckage (`cutPiece` with
+    `wreck`: dulled, edges bitten) so they never read as live furniture, and a patch of grime and crumbs
+    (`DamageArt.remains`) is baked where the object stood.
   - Melee blows carry their kind from `Character.meleeStrike`: 'cut' (blade, with its swing direction), 'punch', 'blunt'.
   Only small objects are movable; everything else is `static` (bolted).
 - Bleeding is calibrated per weapon (data/wounds.js): a weapon names its `wound` profile (blow-back, spray along the
@@ -238,6 +244,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Purely visual pieces use `particles.shard(img, ...)`: they arc with a fake height above their shadow, bounce,
   skid, then are baked into the floor (remains stay). Debris also has a fake height (`z`, `vz`).
   Bolted furniture keeps at most a few physical parts per collapse (`DESTRUCTION` caps in Config.js).
+  A piece is baked with the shadow it cast while loose (`decals.wreck`), so settling does not pop.
+- Floor litter (`LITTER` in Config.js): everything still flies, but only a share of the crumbs (chips, glass slivers,
+  fluff, cinders, tiny visual shards) leaves a mark where it lands, and a faint one; real pieces, casings, magazines
+  and blood always stay. Blood has its own layer above the floor, so it always covers rubble.
 - Damage canvases are CPU-backed (`willReadFrequently`): pieces are cut from them and tested for opacity every hit.
 - Sprite caches (silhouettes, slices) are WeakMaps so per-instance canvases can be garbage-collected.
 - The replay recorder costs one small canvas-to-canvas copy every fourth frame (no read-back, no allocation while

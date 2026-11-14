@@ -1,4 +1,4 @@
-import { TILE, PALETTE } from '../Config.js';
+import { TILE, PALETTE, LITTER } from '../Config.js';
 import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
 import { rand, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
@@ -233,7 +233,7 @@ export default class MapRenderer {
     const px = cx * TILE, py = cy * TILE;
     const g = this.floorCtx;
     g.drawImage(floorTile('concrete', cx, cy), px, py, TILE, TILE);
-    for (let k = 0; k < 26; k++) {
+    for (let k = 0; k < LITTER.rubble; k++) {
       g.fillStyle = chance(0.5) ? 'rgba(20,12,20,0.55)' : (tex === 'brick' ? '#7a3424' : '#b8ae98');
       const s = rand(1, 4);
       g.fillRect(px + rand(0, TILE - s), py + rand(0, TILE - s), s, s * rand(0.5, 1));
@@ -483,5 +483,11 @@ export default class MapRenderer {
     g.globalAlpha = alpha;
     g.drawImage(img, -img.width / 2, -img.height / 2);
     g.restore();
+  }
+
+  // a loose piece come to rest becomes part of the floor, with the shadow it cast while loose: nothing pops
+  wreck(img, x, y, angle, shadow = true) {
+    if (shadow) this.bake(silhouette(img), x + 1, y + 1, angle, 0.3);
+    this.bake(img, x, y, angle);
   }
 }

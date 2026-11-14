@@ -1,4 +1,4 @@
-import { MAX_PARTICLES, PALETTE, DESTRUCTION } from '../Config.js';
+import { MAX_PARTICLES, PALETTE, DESTRUCTION, LITTER } from '../Config.js';
 import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette } from '../../engine/Assets.js';
 
@@ -232,9 +232,9 @@ export default class Particles {
           const f2 = Math.max(0, 1 - 6 * dt);
           p.vx *= f2; p.vy *= f2; p.spin *= f2;
           p.rot += p.spin * dt;
-          if ((p.life < 1.5 && p.vx * p.vx + p.vy * p.vy < 4) || p.life <= 0) { decals.bake(p.img, p.x, p.y, p.rot); alive = false; }
+          if ((p.life < 1.5 && p.vx * p.vx + p.vy * p.vy < 4) || p.life <= 0) { this._rest(p); alive = false; }
         }
-        if (!alive && !p.landed) { p.landed = true; decals.bake(p.img, p.x, p.y, p.rot); }
+        if (!alive && !p.landed) { p.landed = true; this._rest(p); }
         if (map.solidAt(nx, ny)) { p.vx *= -0.3; p.vy *= -0.3; p.x += p.vx * dt; p.y += p.vy * dt; if (alive) list[w++] = p; continue; }
       } else if (p.type === P.FLOAT) {
         // pops up, then flutters down, swaying
@@ -285,9 +285,24 @@ export default class Particles {
     this.floats = floats;
   }
 
+  // a shard that has come to rest becomes part of the floor; of the tiny ones only some stay (LITTER)
+  _rest(p) {
+    if (p.img.width * p.img.height < LITTER.small && !chance(LITTER.keep)) return;
+    this.world.decals.wreck(p.img, p.x, p.y, p.rot);
+  }
+
+  // what a falling particle leaves on the floor. Crumbs (glass, chips, cinders, fluff) only now and then, and faint
+  // (LITTER): the floor must not fill up with rubble; blood always marks.
   _land(p, x, y) {
     const decals = this.world.decals;
-    const g = decals.floorCtx;
+    const crumb = (color, w, h) => {
+      if (!chance(LITTER.keep)) return;
+      const g = decals.floorCtx;
+      g.globalAlpha = LITTER.alpha;
+      g.fillStyle = color;
+      g.fillRect(Math.round(x), Math.round(y), w, h);
+      g.globalAlpha = 1;
+    };
     switch (p.type) {
       case P.BLOOD: {
         // the flatter a drop comes in, the longer its stain; one falling straight leaves a round spot
@@ -301,23 +316,17 @@ export default class Particles {
         break;
       }
       case P.GLASS:
-        g.fillStyle = chance(0.5) ? 'rgba(200,250,255,0.85)' : 'rgba(120,220,240,0.7)';
-        g.fillRect(Math.round(x), Math.round(y), Math.ceil(p.size), 1);
+        crumb(chance(0.5) ? 'rgba(200,250,255,0.85)' : 'rgba(120,220,240,0.7)', Math.ceil(p.size), 1);
         break;
       case P.CHIP:
-        g.fillStyle = p.color;
-        g.fillRect(Math.round(x), Math.round(y), Math.ceil(p.size), Math.ceil(p.size * 0.6));
+        crumb(p.color, Math.ceil(p.size), Math.ceil(p.size * 0.6));
         break;
       case P.EMBER:
-        g.fillStyle = 'rgba(20,10,10,0.6)';
-        g.fillRect(Math.round(x), Math.round(y), 1, 1);
+        crumb('rgba(20,10,10,0.6)', 1, 1);
         if (p.onLand) p.onLand(x, y);
         break;
       case P.FLOAT:
-        g.fillStyle = p.color;
-        g.globalAlpha = 0.85;
-        g.fillRect(x, y, p.size, p.flat ? p.size * 0.6 : p.size);
-        g.globalAlpha = 1;
+        crumb(p.color, Math.round(p.size), Math.max(1, Math.round(p.flat ? p.size * 0.6 : p.size)));
         break;
       case P.DROP:
         if (p.stain) decals.spill(x, y, p.size * rand(1.2, 2.2), p.color);

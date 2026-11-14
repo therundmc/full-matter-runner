@@ -342,3 +342,11 @@ export function launch(dirA, lx, ly, power, fly = 1, rnd = Math.random) {
   const v = (25 + rnd() * 70) * power * fly;
   return { a, v, vz: (40 + rnd() * 80) * Math.min(1.6, 0.6 + power * 0.4), spin: jit(rnd, 0.25 + power * 0.1) };
 }
+
+// When each part of a collapsing object lets go: the collapse runs through it like a wave, from the blow (hit, sprite
+// px) to its far end, over `dur` seconds. parts: [{ cx, cy }] (sprite px). Returns one delay (s) per part.
+export function crumble(parts, hit, dur, rnd = Math.random) {
+  const d = parts.map((p) => Math.hypot(p.cx - hit[0], p.cy - hit[1]));
+  const far = Math.max(1, ...d);
+  return d.map((v) => dur * Math.min(1, (v / far) * 0.85 + rnd() * 0.15));
+}

@@ -246,7 +246,9 @@ export function bite(src, x, y, r, mat) {
 
 // Cut polygon `poly` (sprite px) out of `src`: returns { img, cx, cy } (piece centre in sprite px) or null if empty.
 // erase: also remove it from src (collapse: each cut only takes what the previous ones left).
-export function cutPiece(src, poly, { erase = true, min = 8 } = {}) {
+// wreck: a part of a thing that has fallen apart: its edges are bitten (broken, not sawn) and it looks dull and
+// dusty, so that wreckage never reads as furniture still standing.
+export function cutPiece(src, poly, { erase = true, min = 8, wreck = false } = {}) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [x, y] of poly) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   x0 = Math.floor(Math.max(0, x0)); y0 = Math.floor(Math.max(0, y0));
@@ -266,6 +268,18 @@ export function cutPiece(src, poly, { erase = true, min = 8 } = {}) {
   pg.lineWidth = 0.8;
   polyPath(pg, poly, x0, y0);
   pg.stroke();
+  if (wreck) {
+    pg.fillStyle = 'rgba(14,8,14,0.22)';
+    pg.fillRect(0, 0, piece.width, piece.height);
+    pg.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < poly.length; i++) {
+      const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length], len = Math.hypot(bx - ax, by - ay);
+      for (let d = rand(0, 3); d < len; d += rand(2, 5)) {
+        const s = chance(0.3) ? 2 : 1;
+        pg.fillRect(Math.round(ax + ((bx - ax) * d) / len - x0 - s / 2), Math.round(ay + ((by - ay) * d) / len - y0 - s / 2), s, s);
+      }
+    }
+  }
   pg.restore();
   if (erase) {
     const g = src.getContext('2d');
@@ -335,6 +349,21 @@ export function splitInTwo(src) {
     g.drawImage(src, -ox, 0);
     return c;
   });
+}
+
+// what stays on the floor where a thing (W x H px) stood and fell apart: a ragged patch of grime, thicker in the
+// middle, and crumbs of its material. It grounds the wreckage lying on it.
+export function remains(W, H, color) {
+  const pad = 3, c = canvas(W + pad * 2, H + pad * 2), g = c.getContext('2d');
+  // two draws averaged: more of it toward the middle
+  const mid = (size) => pad + ((Math.random() + Math.random()) / 2) * size;
+  for (let i = Math.min(420, Math.round((W * H) / 9)); i > 0; i--) {
+    const crumb = chance(0.12), s = crumb || chance(0.5) ? 1 : 2;
+    g.fillStyle = crumb ? color : INK;
+    g.globalAlpha = crumb ? 0.55 : rand(0.1, 0.3);
+    g.fillRect(Math.round(mid(W) - s / 2), Math.round(mid(H) - s / 2), s, s);
+  }
+  return c;
 }
 
 // what a hydrant blown off its pipe leaves bolted to the pavement (seen from above): the flange, its sheared bright

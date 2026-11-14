@@ -4,7 +4,8 @@ import { load } from './setup.mjs';
 
 const { default: Particles, P } = await load('game/fx/Particles.js');
 const { PROPS } = await load('game/data/props.js');
-const { LIQUIDS } = await load('game/Config.js');
+const { LIQUIDS, LITTER } = await load('game/Config.js');
+const { FLOATS } = await load('game/data/destruction.js');
 
 // a world reduced to what the particles touch: an open floor, decal calls recorded by name
 function stub() {
@@ -15,7 +16,7 @@ function stub() {
     camera: { x: 0, y: 0 },
     decals: {
       floorCtx: { fillRect: rec('rect'), set fillStyle(v) {}, set globalAlpha(v) {} },
-      spill: rec('spill'), bake: rec('bake'), stampBlood: rec('blood'), speck: rec('speck'),
+      spill: rec('spill'), wreck: rec('bake'), stampBlood: rec('blood'), speck: rec('blood'), stampStreak: rec('blood'),
     },
   };
   return { world, particles: new Particles(world), calls };
@@ -78,4 +79,27 @@ test('cinders: burning scraps trail flames high in the air and report where they
   assert.equal(fell.length, 6);
   assert.ok(fell.every((d) => d > 30), 'thrown well away');
   assert.equal(particles.list.length, 0);
+});
+
+test('litter: every crumb flies but only a share stays on the floor, big pieces and blood always do', () => {
+  const marks = (emit, name = 'rect') => {
+    const { particles, calls } = stub();
+    emit(particles);
+    const flying = particles.list.length;
+    run(particles, 16);
+    assert.equal(particles.list.length, 0, 'all of it came down');
+    return { flying, left: calls.filter(([n]) => n === name).length };
+  };
+  const share = (r) => r.left / r.flying;
+  const near = (v) => Math.abs(v - LITTER.keep) < 0.12;
+  const chips = marks((p) => p.chips(0, 0, 0, 3, 400, '#864'));
+  assert.equal(chips.flying, 400, 'the spectacle in the air is whole');
+  assert.ok(near(share(chips)), `chips ${share(chips)}`);
+  assert.ok(near(share(marks((p) => p.glass(0, 0, 0, 3, 400)))), 'glass');
+  assert.ok(near(share(marks((p) => p.floaters(0, 0, FLOATS.stuffing, 200)))), 'fluff');
+  assert.ok(near(share(marks((p) => { for (let i = 0; i < 300; i++) p.shard({ width: 4, height: 1 }, 0, 0, i, 60); }, 'bake'))), 'splinters');
+  const big = marks((p) => { for (let i = 0; i < 40; i++) p.shard({ width: 9, height: 6 }, 0, 0, i, 60); }, 'bake');
+  assert.equal(big.left, 40, 'a real piece of the thing always stays');
+  const blood = marks((p) => p.blood(0, 0, 0, 3, 200, 120), 'blood');
+  assert.ok(blood.left >= blood.flying, 'every drop of blood marks the floor');
 });
