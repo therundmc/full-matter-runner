@@ -6,6 +6,7 @@ import { puddleShape } from '../systems/Liquids.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
+import { drawPropLife, drawSparkle } from './PropLife.js';
 
 const { Body } = Matter;
 
@@ -31,6 +32,7 @@ export default class WorldRenderer {
     for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
     for (const a of w.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
     for (const p of w.props) if (vis(p.x, p.y)) p.draw(ctx);
+    drawPropLife(ctx, w, t, vis);
     drawCritters(ctx, w.critters, t, vis);
     // window sills under the characters (someone vaulting goes over them)
     for (const g of w.windows) if (vis(g.x, g.y)) g.draw(ctx);
@@ -50,6 +52,7 @@ export default class WorldRenderer {
     if (w.cleared && w.level.exit) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
+    drawSparkle(ctx, w, t, vis);
     if (lit) w.lighting.post(ctx, cam, t);
     drawMoths(ctx, w.critters, t, vis);
     drawLasers(ctx, w);

@@ -39,6 +39,7 @@ SIZES = dict(
     neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None, alarm_box=None,
     marquee=None, neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
+    ceiling_fan=None, mirror_ball=None, extinguisher=None,
 )
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)

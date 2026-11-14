@@ -53,6 +53,11 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    away while calm, in hand and low on alert, raised on a target (ai/Carry.js); they smoke, read a pager, stretch,
    fold their arms, chat in pairs, go for a leak (Enemy.pickActivity, ai/Pastimes.js); civilians use their hands
    too (`busyHands()`: pastimes, pockets, a bag, hands up in a panic).
+   The bar's furniture is alive: pool balls that really roll, collide and drop (systems/PoolBalls.js, struck by the
+   players, thrown by a shot or a bump), an arcade that rings and a jukebox that derails then goes dark
+   (systems/Gadgets.js; the jukebox plays no tune of its own, the soundtrack stays alone), snow on the boss's TV,
+   a turning ceiling fan and a mirror ball throwing specks round the VIP room (render/PropLife.js), hung lamps that
+   swing on a hit or a blast, wall extinguishers whose white cloud blocks sight (systems/Clouds.js, World.sightLine).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Run / test

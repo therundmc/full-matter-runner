@@ -299,7 +299,8 @@ export default class Lighting {
   // follow the prop; shadows rebuilt when it moved
   placePropLight(p, l) {
     const a = p.body.angle, c = Math.cos(a), s = Math.sin(a);
-    const x = p.x + l.lx * c - l.ly * s, y = p.y + l.lx * s + l.ly * c;
+    const k = p.def.hung ? p.kick : null; // a hanging lamp takes its light along as it swings
+    const x = p.x + l.lx * c - l.ly * s + (k ? k.x : 0), y = p.y + l.lx * s + l.ly * c + (k ? k.y : 0);
     if (Math.abs(x - l.x) > 1.5 || Math.abs(y - l.y) > 1.5 || Math.abs(a + l.ldir - l.dir) > 0.03) {
       l.x = x; l.y = y; l.dir = a + l.ldir; l.dirty = true;
     }
@@ -502,8 +503,8 @@ export default class Lighting {
     for (const p of this.world.props) {
       if (!p.moving) still++;
       if ((p.dead || p.lightsOut)) continue;
-      // a lamp that took a hit sputters
-      const hurt = p.def.fixture && p.hp < p.def.hp;
+      // a lamp that took a hit sputters, a machine on its way out too (systems/Gadgets.js)
+      const hurt = (p.def.fixture && p.hp < p.def.hp) || p.sputter;
       const lights = this.propLights(p);
       if (!lights.length) continue;
       // the emissive map follows the light: tubes buzz, screens flicker, signs spell themselves out
@@ -648,7 +649,7 @@ export default class Lighting {
     if (!gl || p.dead || p.lightsOut || !this.inView(p.x, p.y, 60)) return;
     const k = clamp(p.glowK ?? 1, 0, 1), sign = p.def.sign, x0 = -gl.width / 2, y0 = -gl.height / 2;
     g.save();
-    g.translate(p.x + (p.ox || 0), p.y + (p.oy || 0));
+    g.translate(p.x + (p.ox || 0) + (p.def.hung ? p.kick.x : 0), p.y + (p.oy || 0) + (p.def.hung ? p.kick.y : 0));
     g.rotate(p.body.angle);
     if (p.drawLamps) {
       g.globalAlpha = k;

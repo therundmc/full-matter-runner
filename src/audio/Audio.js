@@ -85,6 +85,8 @@ const META = {
   flutter: { pri: 1, dur: 0.5, gap: 0.25, max: 2, gain: 0.45 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
   pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.55 },
+  clack: { pri: 0, dur: 0.12, gap: 0.04, max: 3, gain: 0.45 }, pocket: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.5 },
+  ding: { pri: 1, dur: 0.4, gap: 0.3, max: 1, gain: 0.4 }, derail: { pri: 1, dur: 1.2, gap: 1, max: 1, gain: 0.55 },
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
   shell: { pri: 0, dur: 0.4, gap: 0.03, gain: 0.4 },
@@ -258,6 +260,9 @@ const FOLEY = {
   splash: [['splash', 1]],
   // a pool shot: the cue ball hit dry, the ball it knocks an instant later
   pool: [['plastic', 0.8, 1.9], ['plastic', 0.5, 2.3, 0.07], ['wood', 0.25, 2.2, 0.02]],
+  // two balls meeting, one dropping into a pocket (systems/PoolBalls.js)
+  clack: [['plastic', 0.7, 2.5]],
+  pocket: [['wood', 0.5, 1.4], ['plastic', 0.3, 1.5, 0.06]],
   throw: [['swish', 1, 0.7]],
   swing: [['swish', 1, 0.9]],
   // pigeons going up: a clatter of wings, short quick beats of air
@@ -827,6 +832,36 @@ class AudioSystem {
     }
   }
 
+  // the arcade cabinet's bell when it is shaken: two strokes of the shop bell's cut, short and higher
+  _ding(o) {
+    const buf = this.buffers.foley;
+    if (!buf) return;
+    const [offset, len] = BANK.metalBreak[2];
+    [1.9, 2.4].forEach((rate, i) => this._sample(o, buf, { offset, len: Math.min(len, 0.3), rate, vol: 0.6, delay: i * 0.09, fade: 0.1 }));
+  }
+  // a jukebox knocked off its record: the needle rips across (a swish), then the turntable drags down to a stop
+  // (a creak turning slower and slower)
+  _derail(o) {
+    const buf = this.buffers.foley;
+    if (!buf) return;
+    const ctx = this.ctx, t = ctx.currentTime + 0.05, [offset, len] = BANK.creak[0], [rip, ripLen] = BANK.swish[0];
+    this._sample(o, buf, { offset: rip, len: ripLen, rate: 2.6, vol: 0.6 });
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf;
+    s.loop = true;
+    s.loopStart = offset;
+    s.loopEnd = offset + len;
+    s.playbackRate.setValueAtTime(2, t);
+    s.playbackRate.exponentialRampToValueAtTime(0.3, t + 1.1);
+    g.gain.setValueAtTime(0.8, t);
+    g.gain.linearRampToValueAtTime(0, t + 1.15);
+    s.connect(g);
+    g.connect(o);
+    o._n++;
+    s.onended = () => this._release(o, s, g);
+    s.start(t, offset);
+    s.stop(t + 1.17);
+  }
   // a police siren far across the city, one wail per call (systems/Sirens.js repeats it): up and back down, its
   // highs eaten by the distance, drowned in the hall; opts.pan and opts.pitch tell two cars apart
   _siren(o, opts) {

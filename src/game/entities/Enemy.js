@@ -125,7 +125,7 @@ export default class Enemy extends Character {
     if (!p.alive) return false;
     const dx = p.x - this.x, dy = p.y - this.y;
     if (!inView(Math.hypot(dx, dy), Math.abs(angDiff(this.angle, Math.atan2(dy, dx))), this.aware)) return false;
-    return this.world.lineOfSight(this.x, this.y, p.x, p.y);
+    return this.world.sightLine(this.x, this.y, p.x, p.y);
   }
 
   // rangeMul: fraction of the view distance; close: radius seen all around
@@ -133,7 +133,7 @@ export default class Enemy extends Character {
     const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
     if (d > ENEMY.viewDist * rangeMul) return false;
     if (d > close && Math.abs(angDiff(this.angle, Math.atan2(dy, dx))) > ENEMY.fov / 2) return false;
-    return this.world.lineOfSight(this.x, this.y, x, y);
+    return this.world.sightLine(this.x, this.y, x, y);
   }
 
   get distracted() {
@@ -489,7 +489,9 @@ export default class Enemy extends Character {
     this.easeTick(dt);
     const now = this.world.time;
     if (this.activity === 'pool' && struck(now - dt, now, this.seed)) {
-      this.world.sound('pool', this.x + Math.cos(this.angle) * 30, this.y + Math.sin(this.angle) * 30, 0.8);
+      const x = this.x + Math.cos(this.angle) * 30, y = this.y + Math.sin(this.angle) * 30;
+      this.world.sound('pool', x, y, 0.8);
+      this.world.events.emit('poolStroke', { x, y });
     }
     if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
     else if (this.activity === 'turn') this.faceAngle(this.turnTo, 2.2, dt);

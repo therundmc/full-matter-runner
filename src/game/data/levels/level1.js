@@ -149,7 +149,7 @@ export default {
     ['tv', 29.5, 6.3, 0], ['table_lamp', 30.5, 6.4, 0], ['plant', 25.45, 6.5, 0], ['desk', 29.5, 8.3, 90],
     ['sofa', 25.5, 8.6, 270], ['table_round', 27.3, 7.9, 0], ['chair', 27.3, 7.05, 90], ['chair', 28.15, 7.9, 180],
     ['chair', 27.3, 8.75, 270], ['ceiling_lamp', 27.3, 7.9, 0], ['floor_lamp', 25.4, 10.55, 0],
-    ['cash_case', 30.5, 9.8, 8],
+    ['cash_case', 30.5, 9.8, 8], ['extinguisher', 27.5, 6.14, 0],
     // the bar: counter along the north wall
     ['bar_counter', 15.5, 13.4, 0], ['bar_counter', 16.5, 13.4, 0], ['bar_counter', 17.5, 13.4, 0],
     ['bar_counter', 18.5, 13.4, 0], ['bar_counter', 19.5, 13.4, 0], ['bar_counter', 20.5, 13.4, 0],
@@ -163,10 +163,12 @@ export default {
     ['card_table', 20.4, 17.5, 0], ['chair', 19.25, 17.5, 0], ['chair', 21.55, 17.5, 180],
     ['chair', 19.98, 18.34, 262], ['chair', 20.82, 18.32, 270], ['pool_table', 26.6, 14, 0],
     ['pool_lamp', 26.6, 14, 0], ['arcade', 30.5, 12.5, 90], ['wall_lamp', 30.91, 15.5, 90],
-    ['jukebox', 23.6, 19.6, 180], ['plant', 20.55, 19.5, 0], ['plant', 24.4, 12.45, 0],
+    ['jukebox', 23.6, 19.6, 180], ['ceiling_fan', 23.2, 15.7, 0], ['extinguisher', 23.6, 12.14, 0],
+    ['plant', 20.55, 19.5, 0], ['plant', 24.4, 12.45, 0],
     // the bar: VIP room
-    ['dance_stage', 30, 18.9, 0], ['sofa', 28.4, 17.45, 0], ['armchair', 26.5, 17.5, 0], ['armchair', 26.5, 19.45, 0],
-    ['plant', 30.55, 17.4, 0], ['neon_tube_pink', 28, 19.93, 180],
+    ['dance_stage', 30, 18.9, 0], ['mirror_ball', 28.5, 18.6, 0], ['sofa', 28.4, 17.45, 0],
+    ['armchair', 26.5, 17.5, 0], ['armchair', 26.5, 19.45, 0], ['plant', 30.55, 17.4, 0],
+    ['neon_tube_pink', 28, 19.93, 180],
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[11, 0, 32, 4], [11, 5, 13, 20], [32, 5, 32, 19], [14, 5, 20, 11], [24, 5, 31, 11], [15, 12, 20, 12], [25, 16, 30, 19]],

@@ -50,6 +50,10 @@ src/
       Alarms.js           closed shops (level.alarms) that ring when broken into: bell, beacon, guards come to look,
                           passers-by hurry on, until the box is shot off the wall (DOM-free, unit-tested)
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
+      PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
+                          DOM-free, unit-tested; drawn by render/PropLife.js)
+      Clouds.js           the powder out of a pierced extinguisher: hides from the guards (World.sightLine)
+      Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
@@ -74,6 +78,7 @@ src/
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
+      PropLife.js         pool balls, snow on a TV left on, the specks of the mirror ball
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
@@ -131,6 +136,7 @@ Rules:
 | `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam, scared) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
 | `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |
+| `poolStroke` | `{ x, y }` | Enemy (a guard at the pool table plays his shot) | PoolBalls |
 | `civilianPanic` | `{ civilian, x, y, kind }` | Ambient (a passer-by starts to panic; kind: gunshot, explosion, kill, corpse, armed, scream, hit) | |
 
 Noise types: `gunshot` (any shooter; a guard's shot is heard as `allyFire` by his mates), `door`, `glass`,

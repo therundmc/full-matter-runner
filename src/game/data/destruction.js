@@ -16,6 +16,7 @@
 //   contents   [{ bit, n, on: 'break'|'hit', perHit?, colors? }]  loose things inside, see BITS
 //   floats     [name, count]  slow floating particles on collapse (stuffing, feathers, paper, leaves...)
 //   sheds      name: the same, a few at every hit (banknotes out of a case)
+//   snow       true: its screen shows snow while it is on (render/PropLife.js)
 //   screen     [x0, y0, x1, y1]  a glass screen: cracks, then implodes (light goes out)
 //   electric   sparks, smoke and flicker when hit
 //   leak       { color, on: 'hit'|'break', dur, kind?, flood? }  a jet of liquid for dur s out of each hole (on: 'hit')
@@ -96,7 +97,7 @@ export const DESTRUCTION = {
   },
   sink: { height: 0.9, parts: [{ cut: 'grid', cols: 2, rows: 1 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 4, flood: 3200 } },
   toilet: { height: 0.4, material: 'ceramic', parts: [{ cut: 'wedges', n: 5 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 5, flood: 4800 } },
-  tv: { height: 0.6, electric: true, screen: [0.05, 0.45, 0.95, 1], parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
+  tv: { height: 0.6, electric: true, snow: true, screen: [0.05, 0.45, 0.95, 1], parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   arcade: { height: 1.7, electric: true, screen: [0.1, 0.05, 0.9, 0.6], parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   jukebox: {
     height: 1.5, electric: true, screen: [0.1, 0.05, 0.9, 0.5], parts: [{ cut: 'grid', cols: 2, rows: 2 }],
@@ -153,6 +154,9 @@ export const DESTRUCTION = {
   neon_tube_cyan: { height: 2.4, electric: true, material: 'glass', parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   ceiling_lamp: { height: 2.6, drop: true, electric: true, parts: [{ cut: 'wedges', n: 5 }] },
   pool_lamp: { height: 2.2, drop: true, electric: true, parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
+  ceiling_fan: { height: 2.6, drop: true, electric: true, parts: [{ cut: 'wedges', n: 4 }] },
+  mirror_ball: { height: 2.4, drop: true, parts: [{ cut: 'wedges', n: 6 }] },
+  extinguisher: { height: 1.2 },
 };
 
 // Material-based defaults for props without a recipe, and the per-material hit response.

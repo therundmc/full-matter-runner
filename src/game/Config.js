@@ -221,6 +221,45 @@ export const BARREL = {
   every: 0.07,             // s between two wisps
 };
 
+// the balls on a pool table (systems/PoolBalls.js); table-local px, the sprite's centre at 0,0
+export const POOL = {
+  half: [35, 17],          // of the felt
+  r: 1.5,
+  pockets: [[-35.5, -17.5], [0, -18.4], [35.5, -17.5], [-35.5, 17.5], [0, 18.4], [35.5, 17.5]],
+  mouth: 3.6,              // a ball this close to a pocket drops
+  rack: [                  // x, y, colour, striped; the cue ball first
+    [-20, 3, '#f4f2ea'], [17.5, -0.5, '#f9c80e'], [20, -2, '#d02030', true], [20, 1.2, '#2a5ad8'], [22.5, -3.4, '#101018'],
+    [22.6, 3.4, '#ff6b1a', true], [8, 8, '#7a1fa2'], [-11, -9, '#1a9a4a', true], [29.5, 11.5, '#8a2a1a'],
+  ],
+  drag: 0.9,               // share of its speed a rolling ball loses per second
+  stop: 4,                 // px/s under which it stands still
+  cushion: 0.7,            // speed kept off a cushion
+  stroke: [95, 150],       // px/s the cue ball leaves at
+  jolt: 70,                // px/s a round in the table gives the balls near it
+  bump: 9,                 // the same per px/step of a body bumping into it
+  clack: 22,               // px/s closing speed from which two balls are heard
+};
+
+// machines that answer a blow (systems/Gadgets.js), by prop type
+export const GADGETS = {
+  arcade: { sound: 'ding', gap: 0.5, flash: '#3ae8ff', bump: 1.2 }, // rings when hit, or bumped into (px/step)
+  jukebox: { sound: 'derail', dies: 1.2 },                           // derails at the first blow, dark `dies` s later
+};
+
+// the cloud out of a pierced extinguisher (systems/Clouds.js); px and seconds
+export const CLOUD = {
+  jet: 2.4,                // s it sprays
+  speed: 105,              // px/s of the powder leaving the nozzle
+  reach: 40,               // how far from the wall the heart of the cloud ends up
+  r: 46,                   // its radius once swollen (`grow` s)
+  grow: 1.4,
+  life: 9,                 // s in all, the last `fade` thinning away
+  fade: 2.5,
+  every: 0.04,             // s between two puffs of the jet
+  core: 0.8,               // share of the radius nobody sees through
+  color: '#eef1f4',
+};
+
 // street fauna (systems/Critters.js); distances in tiles, speeds in px/s unless said otherwise
 export const CRITTERS = {
   hit: 5,                  // px a bullet passes within to kill one

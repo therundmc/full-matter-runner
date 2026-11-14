@@ -71,6 +71,8 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
   for (const p of world.props) {
     if (p.dead) continue;
     const d = Math.hypot(p.x - x, p.y - y);
+    // what hangs from the ceiling swings well beyond the reach of the damage
+    if (p.def.hung && d < R * 3.5) p.recoil(Math.atan2(p.y - y, p.x - x), 2.2 * (1 - d / (R * 3.5)));
     if (d > R * 2) continue;
     const f = occ(p.x, p.y, p);
     if (f <= 0) continue;

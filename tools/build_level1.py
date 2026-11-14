@@ -281,6 +281,7 @@ lv.prop('chair', 27.3, 8.75, 270)
 lv.prop('ceiling_lamp', 27.3, 7.9)
 lv.prop('floor_lamp', 25.4, 10.55)
 lv.prop('cash_case', 30.5, 9.8, 8)                      # the boss's takings, open by his desk
+lv.prop('extinguisher', 27.5, 6.14)                     # on the wall behind him
 
 lv.area('the bar: counter along the north wall')
 for i in range(6):
@@ -309,11 +310,14 @@ lv.prop('pool_lamp', 26.6, 14.0)
 lv.prop('arcade', 30.5, 12.5, 90)
 lv.prop('wall_lamp', 30.91, 15.5, 90)
 lv.prop('jukebox', 23.6, 19.6, 180)
+lv.prop('ceiling_fan', 23.2, 15.7)                      # turning over the middle of the room
+lv.prop('extinguisher', 23.6, 12.14)                    # by the toilets' door
 lv.prop('plant', 20.55, 19.5)
 lv.prop('plant', 24.4, 12.45)
 
 lv.area('the bar: VIP room')
 lv.prop('dance_stage', 30.0, 18.9)
+lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round the room
 lv.prop('sofa', 28.4, 17.45)
 lv.prop('armchair', 26.5, 17.5, 0)
 lv.prop('armchair', 26.5, 19.45, 0)

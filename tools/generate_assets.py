@@ -1670,15 +1670,6 @@ def p_pool_table():
         cv.set(W - 3, y, hx('#f0e6c8'))
     for (px, py) in ((5.5, 5.5), (41.0, 4.6), (W - 5.5, 5.5), (5.5, H - 5.5), (41.0, H - 4.6), (W - 5.5, H - 5.5)):
         fill_shape(cv, px, py, 2.9, 2.9, lambda u, v, L: hx('#3a2418') if math.hypot(u, v) > 2.0 else hx('#08060c'))
-    balls = Cv(W, H)
-    for (bx, by, col, stripe) in ((58.5, 22.5, '#f9c80e', False), (61.0, 21.0, '#d02030', True), (61.0, 24.2, '#2a5ad8', False),
-                                  (63.5, 19.6, '#101018', False), (63.6, 26.4, '#ff6b1a', True), (49.0, 31.0, '#7a1fa2', False),
-                                  (30.0, 14.0, '#1a9a4a', True), (70.5, 34.5, '#8a2a1a', False), (21.0, 26.0, '#f4f2ea', False)):
-        r_ = ramp(col, 0.45, 0.2, 0.45)
-        fill_shape(balls, bx, by, 1.5, 1.5, lambda u, v, L, r_=r_, st=stripe: hx('#f4f2ea') if st and abs(v) > 0.8 else shade(r_, L))
-    balls.outline(hx('#0a2a18'))
-    cv.over(balls)
-
     def cue(ly):
         fill_capsule(ly, [(9.0, 39.0), (19.4, 27.6)], 0.55, lambda k, L, s, i, t: hx('#3a6ad8') if t > 0.97 else hx('#f0dcb0'))
         fill_capsule(ly, [(4.0, 41.4), (9.0, 39.0)], 0.8, lambda k, L, s, i, t: hx('#2a1810') if t < 0.3 else hx('#7a3a1a'))
@@ -3803,9 +3794,60 @@ def p_cash_case():
     return cv
 
 
+def p_ceiling_fan():
+    """Ceiling fan from above: four thin blades the game spins, see-through enough to read who stands under it."""
+    cv, hub = Cv(44, 44), Cv(44, 44)
+    wood, edge = hx('#2c2228', 200), hx('#a8927a', 215)   # dark varnish: it has to read against a wooden floor
+    for i in range(5, 21):
+        for j in (-2, -1, 0, 1):
+            col = edge if j == -2 else wood        # the leading edge catches the light
+            cv.set(22 + i, 22 + j, col)
+            cv.set(21 - i, 21 - j, col)
+            cv.set(21 - j, 22 + i, col)
+            cv.set(22 + j, 21 - i, col)
+    for y in range(17, 27):
+        for x in range(17, 27):
+            d = math.hypot(x - 21.5, y - 21.5)
+            if d < 4.6:
+                hub.set(x, y, hx('#c9a24a') if d < 1.6 else hx('#34343e') if d > 3.2 else hx('#4a4a56'))
+    hub.outline()
+    cv.over(hub)
+    return cv
+
+
+def p_mirror_ball():
+    """Mirror ball from above: little facets, lit from the top left."""
+    cv = Cv(12, 12)
+    tones = [hx('#566074'), hx('#8892a6'), hx('#c2cad6'), hx('#f4f8ff')]
+    for y in range(1, 11):
+        for x in range(1, 11):
+            dx, dy = x - 5.5, y - 5.5
+            if dx * dx + dy * dy > 22:
+                continue
+            L = 1 - math.hypot(dx + 1.6, dy + 1.6) / 7.5
+            facet = (0.45, -0.25, 0.1)[(x + 2 * y) % 3]
+            cv.set(x, y, tones[max(0, min(3, int(L * 3.2 + facet)))])
+    cv.outline()
+    return cv
+
+
+def p_extinguisher():
+    """Wall extinguisher on its bracket (the wall at -y): red cylinder, black valve and hose, a label."""
+    cv = Cv(8, 11)
+    cv.rect(1, 1, 6, 2, hx('#6a6a76'))             # the bracket
+    cv.rect(1, 3, 6, 9, hx('#c0202a'))
+    cv.rect(1, 3, 1, 9, hx('#8a1420'))
+    cv.rect(5, 3, 5, 9, hx('#e8505a'))
+    cv.rect(2, 5, 4, 6, hx('#f2ead0'))             # its label
+    cv.rect(3, 2, 4, 3, hx('#14141a'))             # valve
+    cv.rect(6, 3, 6, 7, hx('#14141a'))             # hose down its side
+    cv.outline()
+    return cv
+
+
 # small dressing added one by one (the details list)
-DETAIL_PROPS = dict(cash_case=p_cash_case)
-DETAIL_SIZES = dict(cash_case=(22, 16))
+DETAIL_PROPS = dict(cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher)
+DETAIL_SIZES = dict(cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

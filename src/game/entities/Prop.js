@@ -256,17 +256,21 @@ export default class Prop {
 
   // little recoil of the struck object (bolted furniture just shudders)
   recoil(dirA, power) {
-    const k = this.kick, amt = clamp(power, 0.3, 2.5) * (this.def.static ? 40 : 20);
+    const k = this.kick, amt = clamp(power, 0.3, 2.5) * (this.def.hung ? 60 : this.def.static ? 40 : 20);
     k.vx += Math.cos(dirA) * amt; k.vy += Math.sin(dirA) * amt;
     k.vr += rand(-1, 1) * 0.6 * clamp(power, 0.3, 2) * (this.def.static ? 0.5 : 1);
     this.flash = 0.06;
   }
 
+  // how far round a ceiling fan has turned
+  spun() { return (this.def.spin || 0) * this.world.time; }
+
   update(dt) {
     const k = this.kick;
     if (k.x || k.y || k.vx || k.vy || k.r || k.vr) {
-      // stiff damped spring back to rest
-      k.vx += (-700 * k.x - 24 * k.vx) * dt; k.vy += (-700 * k.y - 24 * k.vy) * dt; k.vr += (-500 * k.r - 20 * k.vr) * dt;
+      // stiff damped spring back to rest; what hangs from the ceiling swings on like a pendulum
+      const hung = this.def.hung, ks = hung ? 45 : 700, cs = hung ? 1.1 : 24, kr = hung ? 60 : 500, cr = hung ? 2.5 : 20;
+      k.vx += (-ks * k.x - cs * k.vx) * dt; k.vy += (-ks * k.y - cs * k.vy) * dt; k.vr += (-kr * k.r - cr * k.vr) * dt;
       k.x += k.vx * dt; k.y += k.vy * dt; k.r += k.vr * dt;
       if (Math.abs(k.x) + Math.abs(k.y) + Math.abs(k.vx) + Math.abs(k.vy) + Math.abs(k.r) * 50 + Math.abs(k.vr) < 0.02) {
         k.x = k.y = k.vx = k.vy = k.r = k.vr = 0;
@@ -733,6 +737,7 @@ export default class Prop {
     if (this.def.overhead) {
       // drawn later, above characters; what stands on the ground casts a shadow at its foot
       if (!this.def.hung) drawSprite(ctx, this.shadowImg(), o.x + 5, o.y + 7, a, 0.28);
+      else if (this.def.spin) drawSprite(ctx, this.shadowImg(), x + 4, y + 9, a + this.spun(), 0.2); // blades over the floor
       return;
     }
     if (this.rec.rack?.scatter && !this.rack) this.bottles(); // the glasses on a counter are set out when first seen
@@ -764,7 +769,7 @@ export default class Prop {
     // parallax: what sits up high leans away from the centre of the view
     this.ox = (o.x - cam.x) * (d.height || 0);
     this.oy = (o.y - cam.y) * (d.height || 0);
-    const x = o.x + this.ox + k.x, y = o.y + this.oy + k.y, a = this.body.angle + this.sag + k.r;
+    const x = o.x + this.ox + k.x, y = o.y + this.oy + k.y, a = this.body.angle + this.sag + k.r + this.spun();
     if (d.pole) {
       ctx.strokeStyle = d.pole[0];
       ctx.lineWidth = d.pole[1];

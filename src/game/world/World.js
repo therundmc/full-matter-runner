@@ -38,6 +38,9 @@ import Threats from '../systems/Threats.js';
 import Alarms from '../systems/Alarms.js';
 import Critters from '../systems/Critters.js';
 import Sirens from '../systems/Sirens.js';
+import PoolBalls from '../systems/PoolBalls.js';
+import Clouds from '../systems/Clouds.js';
+import Gadgets from '../systems/Gadgets.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
 
@@ -100,6 +103,9 @@ export default class World {
     this.alarms = new Alarms(this, level.alarms); // closed shops that ring when broken into
     this.critters = new Critters(this, level.critters); // rats, pigeons, the cat, flies, moths
     this.sirens = new Sirens(this);               // far off, once the shooting drags on
+    this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
+    this.clouds = new Clouds(this);               // extinguisher powder nobody sees through
+    this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
@@ -212,6 +218,8 @@ export default class World {
 
   // facades over the systems
   lineOfSight(x0, y0, x1, y1) { return lineOfSight(this, x0, y0, x1, y1); }
+  // what eyes can make out: no wall in the way, no cloud either
+  sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.clouds.blocks(x0, y0, x1, y1); }
   canSeeCharacter(viewer, ch) { return canSeeCharacter(this, viewer, ch); }
   traceBullet(x0, y0, x1, y1, team, ignore, floor) { return traceBullet(this, x0, y0, x1, y1, team, ignore, floor); }
   explode(x, y, opts) { explode(this, x, y, opts); }
@@ -301,6 +309,8 @@ export default class World {
     this.alarms.update(dt);
     this.critters.update(dt);
     this.sirens.update(dt);
+    this.poolBalls.update(dt);
+    this.clouds.update(dt);
     this.threats.update(this.view());
 
     // 4. cleanup

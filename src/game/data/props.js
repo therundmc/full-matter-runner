@@ -57,7 +57,8 @@ export const PROPS = {
   neon_sign_palm: { material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
   neon_sign_bar: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
   neon_sign_arrow: { material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
-  jukebox: { static: true, material: 'plastic', w: 28, h: 20, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true },
+  jukebox: { static: true, material: 'plastic', w: 28, h: 20, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true,
+    light: { r: 70, color: '#ff5a9a', intensity: 0.55, flicker: 'pulse', y: 6 } },
   hydrant: { material: 'metal', r: 4, hp: 1, static: true, chips: '#c02020', sound: 'metal', fountain: true },
   bench: { vault: true, material: 'wood', w: 50, h: 15, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
@@ -91,6 +92,12 @@ export const PROPS = {
     light: { r: 150, color: '#ff2a6d', intensity: 0.95, flicker: 'buzz', y: 3 } },
   neon_tube_cyan: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#2af0ff', intensity: 0.95, flicker: 'buzz', y: 3 } },
+  // turns (`spin`, rad/s) with the shadow of its blades on the floor
+  ceiling_fan: { hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 5, hp: 3, chips: '#6e4e36', sparks: true, sound: 'metal', spin: 5.5 },
+  // `sparkle` specks of light turn round it (render/PropLife.js)
+  mirror_ball: { hung: true, overhead: true, height: 0.06, static: true, material: 'glass', r: 5, hp: 2, chips: '#dfe8f4', glass: true, sound: 'glass', sparkle: 30 },
+  // on a wall, facing the room along +y: pierced, it empties itself in a cloud nobody sees through (systems/Clouds.js)
+  extinguisher: { static: true, material: 'metal', w: 6, h: 9, hp: 1, chips: '#c0202a', sound: 'metal', cloud: true },
   ceiling_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
   pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
