@@ -17,10 +17,13 @@ export function drawHUD(ctx, game, t) {
   text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
   const ammo = p.ammoText;
   if (ammo) {
-    const dry = p.weapon.mag <= 0 && p.reloading <= 0;
+    // a melee weapon shows the kills left in it, in the warning colour on its last one
+    const gun = def.kind === 'gun';
+    const dry = gun && p.weapon.mag <= 0 && p.reloading <= 0;
     const noReserve = p.reserveCount() <= 0;
     let label = ammo, col = PALETTE.white;
-    if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
+    if (!gun) col = p.weapon.wear <= 1 ? PALETTE.pink : PALETTE.white;
+    else if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
     else if (dry && noReserve) { label = 'EMPTY - THROW IT!'; col = PALETTE.pink; }
     else if (dry) { label = 'RELOAD [R]'; col = PALETTE.yellow; }
     const blink = dry && Math.floor(t * 6) % 2 === 0 ? 0.45 : 1;

@@ -56,7 +56,7 @@ export default class Character {
     this.swing = 0;
     this.swingDur = 1;
     this.punchSide = 1;
-    this.strike = 0;        // gesture of the current melee blow: 0 forehand, 1 backhand, 2 smash / stab
+    this.strike = 0;        // gesture of the current melee blow: 0 forehand, 1 backhand, 2 smash / stab, 3 spin / overhead stab
     this.recoil = 0;
     this.barrel = 0;        // heat of the barrel, in rounds: it smokes after a burst (BARREL)
     this.fumeT = 0;
@@ -94,9 +94,10 @@ export default class Character {
   get armed() { return !!this.weapon; }
   get hasGun() { return this.def.kind === 'gun'; }
 
-  // weapon instance: { type, mag (rounds in the gun), reserve (enemies: spare mags, or loose rounds for shotguns) }
+  // weapon instance: { type, mag (rounds in the gun), reserve (enemies: spare mags, or loose rounds for shotguns),
+  // wear (melee: kills left in it; only the player's ever wears out) }
   setWeapon(type, mag, reserve = 0) {
-    this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve } : null;
+    this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve, wear: WEAPONS[type].wear } : null;
     this.reloading = 0;
   }
 
@@ -241,11 +242,13 @@ export default class Character {
   }
 
   // gesture of a blow with a bat or a knife (see CharacterAnim): blows chained without a pause alternate forehand
-  // and backhand; now and then comes the heavy one, an overhead smash or a straight stab
+  // and backhand; now and then comes the heavy one, an overhead smash or a straight stab (a blade's is as often an
+  // overhead stab, 3); in the middle of a chain a club sometimes goes all the way round (a spin, 3)
   pickStrike(d) {
     if (d.hold !== 'melee') return 0;
     const chained = this.cooldown > -0.25;
-    if (this.strike !== 2 && chance(chained ? 0.25 : 0.3)) return 2;
+    if (d.swing === 'club' && chained && this.strike !== 3 && chance(0.2)) return 3;
+    if (this.strike < 2 && chance(chained ? 0.25 : 0.3)) return d.swing === 'blade' && chance(0.5) ? 3 : 2;
     return chained && this.strike === 0 ? 1 : 0;
   }
 
@@ -303,27 +306,42 @@ export default class Character {
 
   meleeStrike(d) {
     if (!this.alive || this.knocked) return;
-    const w = this.world, a = this.angle, x = this.x, y = this.y;
+    const w = this.world, a = this.angle, x = this.x, y = this.y, weapon = this.weapon;
+    // a club swung all the way round reaches everyone about him
+    const spin = this.strike === 3 && d.swing === 'club', arc = spin ? Math.PI * 2 : d.arc;
     let hit = false;
     for (const c of w.characters()) {
       if (c === this || !c.alive || c.team === this.team) continue;
       const dx = c.x - x, dy = c.y - y, dd = Math.hypot(dx, dy);
       if (dd > d.range + c.radius) continue;
-      if (Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2 && dd > c.radius + 5) continue;
+      if (Math.abs(angDiff(a, Math.atan2(dy, dx))) > arc / 2 && dd > c.radius + 5) continue;
       if (!w.lineOfSight(x, y, c.x, c.y)) continue;
       hit = true;
       // the blow lands: a spark across it (along it for a stab or a smash), the camera takes some of it
-      const heavy = d.hold === 'melee' && this.strike === 2;
+      const heavy = d.hold === 'melee' && (this.strike === 2 || (this.strike === 3 && d.swing === 'blade'));
       w.hitSpark((x + c.x * 2) / 3, (y + c.y * 2) / 3, heavy || d.hold === 'none' ? a : a - (Math.PI / 2) * this.punchSide, d.lethal ? 1.4 : 1);
       if (this.isPlayer) { w.camera.push(Math.cos(a) * 2, Math.sin(a) * 2); w.hitstop(d.heft === 2 ? 0.06 : 0.045); }
       if (d.lethal || c.isPlayer) {
-        // how it landed: the heavy stroke or a sweep, and from which side of him (fx/Blows.js, Scoring)
-        const how = { from: blowFrom(c.angle, a), heavy };
-        if (d.lethal) blowFx(w, d, c, a, how);
+        // a spin takes him the way it found him, wherever he stood round us
+        const ba = spin ? Math.atan2(dy, dx) : a;
+        // how it landed: the heavy stroke, a spin or a sweep, and from which side of him (fx/Blows.js, Scoring)
+        const how = { from: blowFrom(c.angle, ba), heavy };
+        if (spin) how.spin = true;
+        // the player's weapon wears out: the kill that uses it up breaks it over him (once, even through two men)
+        const wears = this.isPlayer && d.wear && weapon && this.weapon === weapon;
+        const last = wears && weapon.wear <= 1;
+        if (last) { how.broke = true; how.heavy = true; }
+        if (d.lethal) blowFx(w, d, c, ba, how);
         // a club brought straight down crushes, and drops him where he stood
-        const by = heavy && d.swing === 'club' && !d.thrust ? { ...d, wound: 'crush', gore: (d.gore || 0.3) * 2.5 } : d;
-        c.kill(a, d.swing === 'blade' ? 'slash' : 'melee', this, by, how);
-        if (d.snaps && this.weapon && chance(d.snapOdds)) this.snapWeapon(a);
+        let by = heavy && d.swing === 'club' && !d.thrust ? { ...d, wound: 'crush', gore: (d.gore || 0.3) * 2.5 } : d;
+        if (last) {
+          // what stays in him: the whole weapon, or the half it snapped into (a bat just snaps)
+          const stuck = d.breaks === 'lodge' ? d.sprite : d.snaps ? WEAPONS[d.snaps].sprite : undefined;
+          const blade = d.swing === 'blade';
+          by = { ...d, wound: blade ? 'slash' : 'crush', gore: blade ? 0 : (d.gore || 0.3) * 2.5, stuck };
+        }
+        c.kill(ba, d.swing === 'blade' ? 'slash' : 'melee', this, by, how);
+        if (wears && --weapon.wear <= 0) this.breakWeapon(a, !!by.stuck);
       } else c.knock(a, 'punch');
     }
     for (const p of w.props) {
@@ -336,8 +354,9 @@ export default class Character {
         if (!r) continue;
         hx = x + Math.cos(a) * reach * r.t; hy = y + Math.sin(a) * reach * r.t;
       } else {
-        const dx = p.x - x, dy = p.y - y, dd = Math.hypot(dx, dy);
-        if (dd > d.range + 12 || Math.abs(angDiff(a, Math.atan2(dy, dx))) > d.arc / 2) continue;
+        const dx = p.x - x, dy = p.y - y, dd = Math.hypot(dx, dy), pa = Math.atan2(dy, dx);
+        if (dd > d.range + 12 || Math.abs(angDiff(a, pa)) > arc / 2) continue;
+        if (spin) { hx = x + Math.cos(pa) * d.range * 0.8; hy = y + Math.sin(pa) * d.range * 0.8; }
       }
       // a blade cuts across the swing, bare hands only scuff, a bat dents
       const kind = d.bleed ? 'cut' : d.hold === 'none' ? 'punch' : 'blunt';
@@ -376,14 +395,27 @@ export default class Character {
     if (hit) w.sound(d.sound, x, y);
   }
 
-  // the weapon breaks over someone (def.snaps): the far half flies off, what stays in the hand is another weapon
-  snapWeapon(a) {
-    const d = this.def, w = this.world, tip = local(this.x, this.y, a, d.range * 0.8, 0), fa = a + rand(0.4, 0.9) * this.punchSide;
-    w.addDebris(new Debris(w, sprite(WEAPONS[d.snaps].sprite), tip.x, tip.y, a + rand(-1, 1), Math.cos(fa) * 170, Math.sin(fa) * 170,
-      rand(-0.8, 0.8), { material: 'wood', kg: 0.3, mu: 0.6, fly: 0.35, bounce: 0.3 }));
-    w.particles.chips(tip.x, tip.y, a, 1.2, 6, '#d8c090', 160);
-    w.sound('woodBreak', tip.x, tip.y, 0.6, { pitch: 1.5 });
-    this.setWeapon(d.snaps, 0);
+  // the weapon gives out over someone (def.breaks): 'snap' = it breaks in two, the far end flies off unless it stayed
+  // planted in him, and what is left in the hand is def.snaps (fresh), or nothing; 'lodge' = it stays in the body
+  breakWeapon(a, planted = false) {
+    const d = this.def, w = this.world, tip = local(this.x, this.y, a, d.range * 0.8, 0);
+    if (d.breaks === 'snap') {
+      if (!planted) {
+        const fa = a + rand(0.4, 0.9) * this.punchSide;
+        w.addDebris(new Debris(w, sprite(d.snaps ? WEAPONS[d.snaps].sprite : d.sprite), tip.x, tip.y, a + rand(-1, 1),
+          Math.cos(fa) * 170, Math.sin(fa) * 170, rand(-0.8, 0.8), { material: d.material, kg: 0.3, mu: 0.6, fly: 0.35, bounce: 0.3 }));
+      }
+      w.particles.chips(tip.x, tip.y, a, 1.2, 6, '#d8c090', 160);
+      w.sound('woodBreak', tip.x, tip.y, 0.6, { pitch: 1.5 });
+      this.setWeapon(d.snaps, 0);
+    } else {
+      const metal = d.material === 'metal';
+      w.sound(metal ? 'metal' : 'wood', tip.x, tip.y, 1, metal ? { pitch: 0.7 } : undefined);
+      this.weapon = null;
+    }
+    w.slowmo(0.35, 0.3);
+    w.hitstop(0.1);
+    w.shake(0.35);
   }
 
   // hit by a projectile; how: what the round did on its way (Projectile: pierced, through, bounced, dist, last)
@@ -480,8 +512,10 @@ export default class Character {
   dropWeapon(angle, speed = 2) {
     if (!this.weapon) return;
     const w = this.world;
-    w.addItem(new WeaponItem(w, this.weapon.type, this.weapon.mag,
-      this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-0.3, 0.3)));
+    const it = new WeaponItem(w, this.weapon.type, this.weapon.mag,
+      this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-0.3, 0.3));
+    it.wear = this.weapon.wear;
+    w.addItem(it);
     this.weapon = null;
   }
 

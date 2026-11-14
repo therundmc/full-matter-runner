@@ -192,6 +192,7 @@ export default class Player extends Character {
     if (!it) return;
     if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
     this.setWeapon(it.type, it.mag);
+    this.weapon.wear = it.wear ?? this.def.wear;
     this.world.removeItem(it);
     this.world.sound('pickup', this.x, this.y);
     this.world.events.emit('pickup', { ch: this, type: it.type });
@@ -207,6 +208,7 @@ export default class Player extends Character {
     const sp = power ? 15 : 11;
     const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * 12, this.y + Math.sin(a) * 12,
       a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, (power ? 0.9 : rand(0.4, 0.7)) * (Math.random() < 0.5 ? -1 : 1), this);
+    it.wear = this.weapon.wear;
     w.addItem(it);
     this.weapon = null;
     this.reloading = 0;
@@ -311,48 +313,76 @@ export default class Player extends Character {
     else if ((a.w -= dt / 0.18) <= 0) this.slideAnim = null;
   }
 
-  // ground finisher on a knocked-out enemy
+  // ground finisher on a knocked-out enemy: the beats of data/finishers.js one after the other, the last one kills
   startExecution(target) {
-    const f = finisherFor(this.def);
-    this.execution = { target, t: 0, hits: f.hits, done: 0, interval: f.every, f };
+    const f = finisherFor(this.def, this.weapon);
+    this.execution = { target, t: 0, i: 0, f };
     target.executing = true;
     this.steer(0, 0, 0, 1);
+    if (f.beats[0][1] === 'windup') this.windup();
+  }
+
+  // the weapon brought back and held: the stroke clock all but stopped just past its anticipation
+  windup() {
+    this.strike = 0;
+    this.swingDur = 20;
+    this.swing = 18.2;
+    this.world.sound('swing', this.x, this.y, 0.5, { pitch: 0.7 });
   }
 
   updateExecution(dt) {
-    const ex = this.execution;
-    const tg = ex.target;
-    const w = this.world;
-    if (!tg.alive) { this.execution = null; return; }
+    const ex = this.execution, tg = ex.target, w = this.world, f = ex.f, d = this.def;
+    if (!tg.alive) { this.execution = null; this.swing = 0; return; }
     // stand over the target
     const dx = tg.x - this.x, dy = tg.y - this.y;
     this.angle = Math.atan2(dy, dx);
     this.steer(dx, dy, Math.hypot(dx, dy) > 12 ? 1.5 : 0, 0.5);
     ex.t += dt;
-    if (ex.t >= ex.interval) {
-      ex.t = 0;
-      ex.done++;
-      const d = this.def;
-      this.swingDur = this.swing = 0.2;
-      this.punchSide *= -1;
-      this.strike = 2; // straight down on him
+    const [wait, what] = f.beats[ex.i];
+    if (ex.t < wait) return;
+    ex.t = 0;
+    if (what === 'windup') {
+      // let go: the swing comes round in slow motion
+      if (f.slowmo) w.slowmo(...f.slowmo);
+    } else {
+      this.swingDur = this.swing = 0.22;
+      this.strike = typeof what === 'number' ? what : 2;
+      // a weapon's stroke comes from its own side (as in attack), fists alternate
+      this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
       w.particles.blood(tg.x, tg.y, rand(0, 6.28), Math.PI, 14, 160);
       w.decals.stampBlood(tg.x, tg.y, 6, 4);
       w.shake(0.18);
-      if (d.kind === 'gun') {
+      if (what === 'shot') {
         if (this.weapon.mag > 0) { this.weapon.mag--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot'); }
         else w.sound('punch', tg.x, tg.y);
-      } else w.sound(d.hold === 'none' ? 'punch' : 'splat', tg.x, tg.y);
-      if (d.swing === 'club') blowFx(w, d, tg, this.angle, { heavy: true, from: 'side' });
-      if (ex.done >= ex.hits) {
-        const f = ex.f;
-        // the cue goes through him and snaps: half of it stays planted in the body, the other is a stake in the hand
-        if (f.plant) { w.addItem(new WeaponItem(w, d.snaps, 0, tg.x, tg.y, this.angle + rand(-0.3, 0.3))); this.snapWeapon(this.angle); }
-        tg.kill(this.angle, f.cause, this, f.cause === 'slash' ? { gore: 0, wound: 'slash' } : undefined, { finisher: true, label: f.label });
-        this.execution = null;
-        this.cooldown = 0.2;
+      } else {
+        w.sound(d.hold === 'none' ? 'punch' : d.swing === 'blade' ? 'slash' : 'splat', tg.x, tg.y);
+        if (d.swing === 'club') blowFx(w, d, tg, this.angle, { heavy: true, from: 'side' });
+        if (what === 'stomp') {
+          w.particles.dust(tg.x, tg.y, 8, 12, '#6a6272', { speed: 50, size: 4, life: 0.7, alpha: 0.2 });
+          w.shake(0.3);
+          w.sound('bodyFall', tg.x, tg.y, 1);
+        }
       }
     }
+    if (++ex.i < f.beats.length) {
+      if (f.beats[ex.i][1] === 'windup') this.windup();
+      return;
+    }
+    // the last beat kills
+    let by, angle = this.angle;
+    if (f.plant) {
+      // it goes through him and stays: a cue snaps (its other half left in the hand), a stake is let go
+      by = { gore: 0, wound: 'slash', stuck: d.snaps ? WEAPONS[d.snaps].sprite : d.sprite };
+    } else if (f.launch) {
+      // the head flies off across the swing (it runs toward the side opposite the one it came from)
+      by = { gore: 99, wound: 'blunt', launch: f.launch };
+      angle = this.angle - this.punchSide * 1.2;
+    } else if (f.cause === 'slash') by = { gore: 0, wound: 'slash' };
+    tg.kill(angle, f.cause, this, by, { finisher: true, label: f.label });
+    if (f.plant) this.breakWeapon(this.angle, true);
+    this.execution = null;
+    this.cooldown = 0.25;
   }
 
   // seize a guard from behind: he can do nothing until it is over (Enemy.held), nobody hears it
@@ -413,7 +443,8 @@ export default class Player extends Character {
 
   get ammoText() {
     if (!this.weapon) return '';
-    const d = WEAPONS[this.weapon.type];
-    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()} ${AMMO[d.ammo].name}` : '';
+    const d = WEAPONS[this.weapon.type], n = this.weapon.wear;
+    if (d.kind === 'gun') return `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()} ${AMMO[d.ammo].name}`;
+    return d.wear ? `${n} BLOW${n === 1 ? '' : 'S'} LEFT` : '';
   }
 }

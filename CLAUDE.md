@@ -104,9 +104,13 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
   current mag with its remaining rounds (pickable again). Enemies: `weapon.reserve` = spare mags.
   User wants rounds counted: a pistol holds 7, the player starts with no reserve, a dead guard drops no spare
   magazine and level 1 has no ammunition box (a gun picked up holds what was left in it, that is all).
-- Melee weapons are data (`swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `finisher`): never test
-  `=== WEAPONS.bat`. Blow effects: fx/Blows.js; finishers / takedowns per weapon: data/finishers.js; kill tags
-  (collateral, slide kill, wallbang, from behind...): `SCORING.tags` + `Scoring.killTags`, fed by the `how` of `kill`.
+- Melee weapons are data (`swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `finisher`, `wear`, `breaks`):
+  never test `=== WEAPONS.bat`. The player's melee weapons break on the kill that uses them up (`wear` kills, carried
+  by the dropped item): snapped in two (`breaks: 'snap'`, `snaps` left in the hand) or left planted in the body
+  (`'lodge'`), `Character.breakWeapon`, drawn on the body by Ragdoll `stuck`. Strike gestures 0-3 (3 = a club's spin,
+  a blade's overhead stab). Blow effects: fx/Blows.js; finishers (sequences of `beats`) / takedowns per weapon:
+  data/finishers.js; kill tags (collateral, slide kill, wallbang, from behind, spin, weapon break...): `SCORING.tags`
+  + `Scoring.killTags`, fed by the `how` of `kill`. A body that does not crawl may twitch a moment (`THROES`, data/wounds.js).
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
 - level1.js and lab.js are generated: edit `tools/build_level1.py` / `tools/build_lab.py` (tools/levelkit.py checks

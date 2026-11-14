@@ -5,8 +5,10 @@
 // melee: swing = 'club' (long, swung with both hands, lies on the shoulder) | 'blade' (held low, stabs and cuts);
 // heft 2 = smashes panes and doors; material = what it is made of (the crack of a blow, the item on the floor);
 // rest: angle a club is carried at when it does not lie on the shoulder (a cue is held across the body, by its middle);
-// thrust: its heavy stroke is a lunge, not an overhead smash; snaps: what is left in the hand when it breaks over
-// someone (snapOdds per kill); finisher: its own ground finisher (data/finishers.js).
+// thrust: its heavy stroke is a lunge, not an overhead smash; finisher: its own ground finisher (data/finishers.js).
+// wear: kills the player's weapon survives; the one that uses it up breaks it (Character.breakWeapon) as `breaks`:
+// 'snap' = it breaks in two over him (what is left in the hand is `snaps`, or nothing), 'lodge' = it stays planted
+// in the body.
 // gore: chance multiplier for dismemberment. wound: how the victim bleeds (data/wounds.js). noise: alert radius (0 = silent).
 // pen: penetration energy of one round (systems/Penetration.js: plaster wall ~27, brick ~67, a body 14).
 export const WEAPONS = {
@@ -16,25 +18,29 @@ export const WEAPONS = {
   bat: {
     name: 'BAT', kind: 'melee', hold: 'melee', sprite: 'weapons/bat', grip: 3, range: 30, arc: 1.9, rate: 0.42,
     lethal: true, sound: 'punch', gore: 0.35, wound: 'blunt', windup: 0.07, points: 800, swing: 'club', heft: 2, material: 'wood',
+    wear: 5, breaks: 'snap', finisher: 'bat',
   },
   // heavier and shorter than a bat: it breaks what it lands on
   tire_iron: {
     name: 'TIRE IRON', kind: 'melee', hold: 'melee', sprite: 'weapons/tire_iron', grip: 3, range: 27, arc: 1.7, rate: 0.37,
     lethal: true, sound: 'punch', gore: 0.6, wound: 'blunt', windup: 0.06, points: 800, swing: 'club', heft: 2, material: 'metal',
+    wear: 7, breaks: 'lodge',
   },
-  // long reach, quick; it snaps over a skull now and then, and what is left is a stake
+  // long reach, quick; it soon snaps over a skull, and what is left is a stake
   cue: {
     name: 'POOL CUE', kind: 'melee', hold: 'melee', sprite: 'weapons/cue', grip: 13, rest: 0.5, range: 38, arc: 1.5, rate: 0.36,
     lethal: true, sound: 'punch', gore: 0.2, wound: 'blunt', windup: 0.06, points: 800, swing: 'club', heft: 1, material: 'wood',
-    thrust: true, snaps: 'cue_half', snapOdds: 0.4, finisher: 'cue',
+    thrust: true, snaps: 'cue_half', finisher: 'cue', wear: 3, breaks: 'snap',
   },
   cue_half: {
     name: 'BROKEN CUE', kind: 'melee', hold: 'melee', sprite: 'weapons/cue_half', grip: 3, range: 26, arc: 1.2, rate: 0.25,
     lethal: true, sound: 'slash', gore: 0.2, wound: 'slash', windup: 0.04, points: 800, swing: 'blade', material: 'wood', bleed: true,
+    finisher: 'stake', wear: 3, breaks: 'lodge',
   },
   knife: {
     name: 'KNIFE', kind: 'melee', hold: 'melee', sprite: 'weapons/knife', grip: 2, range: 24, arc: 1.3, rate: 0.26,
     lethal: true, sound: 'slash', gore: 0.25, wound: 'slash', windup: 0.04, points: 800, bleed: true, swing: 'blade', material: 'metal',
+    wear: 4, breaks: 'lodge',
   },
   pistol: {
     name: 'PISTOL', kind: 'gun', hold: 'one', sprite: 'weapons/pistol', grip: 2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,

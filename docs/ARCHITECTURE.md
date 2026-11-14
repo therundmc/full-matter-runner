@@ -268,10 +268,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `world.chars` who steps in a wet area splashes, then prints fading footprints on the dry floor (`decals.footprint`),
   or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn
   by WorldRenderer.drawPuddle and mirror the lights in Lighting.post (`LIGHTING.puddle`).
-- Melee (data/weapons.js `swing` club | blade, `heft`, `material`, `thrust`, `snaps`): a blow that lands is dressed
-  by fx/Blows.js (what struck, the heavy stroke or a sweep, from the front, the side or behind). Ground finishers
-  and takedowns go by the weapon in hand (data/finishers.js): a cue is driven through the man and snaps, one half
-  left in him, the other a stake in the hand. The circumstances of a kill (`how` of the `kill` event, the killer
+- Melee (data/weapons.js `swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `wear`, `breaks`): a blow that
+  lands is dressed by fx/Blows.js (what struck, the heavy stroke, a spin or a sweep, from the front, the side or
+  behind). The player's weapon wears out (`weapon.wear`, kept on the item when dropped): the kill that uses it up
+  breaks it over the man (`Character.breakWeapon`: snapped in two, or left planted in him, drawn and baked with the
+  Ragdoll as `stuck`). Ground finishers and takedowns go by the weapon in hand (data/finishers.js): a finisher is a
+  sequence of `beats` (blows, a held windup, a stomp, shots) played by `Player.updateExecution`, the last one kills;
+  a cue is driven through the man and snaps, one half left in him, the other a stake in the hand. The circumstances of a kill (`how` of the `kill` event, the killer
   sliding or vaulting, a dodge or a pick-up just before, several in a row) are tags that add points and count as
   ways of killing (`Scoring.killTags`, `SCORING.tags`).
 - Score (systems/Scoring.js, rules in data/scoring.js): fed by events only. A kill is worth its style (a gunshot

@@ -17,10 +17,10 @@ const GUN_CAUSES = new Set(['bullet', 'blast', 'heavy']);
 
 // How a kill was done: { style (SCORING.styles key), method (what counts for variety) }, or null when the
 // player had no hand in it (run over by traffic, shot by a mate).
-export function killStyle({ cause, killer, victim }) {
+export function killStyle({ cause, killer, victim, how }) {
   if (cause === 'explosion') return { style: 'explosion', method: 'explosion' };
   if (!killer?.isPlayer) return null;
-  if (cause === 'execute') return { style: 'execution', method: 'execution' };
+  if (cause === 'execute' || how?.finisher) return { style: 'execution', method: 'execution' };
   if (victim?.held === killer) return { style: 'takedown', method: 'takedown' };
   if (cause === 'slash') return { style: 'blade', method: 'knife' };
   if (cause === 'glass') return { style: 'glass', method: 'glass' };
@@ -35,7 +35,7 @@ export function killStyle({ cause, killer, victim }) {
 }
 
 // The circumstances of a kill worth a bonus (SCORING.tags keys). how: what whoever killed knew of it (a round:
-// pierced, through, bounced, dist, last; a blow: from, heavy; smoked); ctx: { now, dodgeT, pickT, streak } where
+// pierced, through, bounced, dist, last; a blow: from, heavy, spin, broke; smoked); ctx: { now, dodgeT, pickT, streak } where
 // streak counts the kills of the last instants, this one included.
 export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   const tags = [];
@@ -48,6 +48,8 @@ export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   if (killer?.vaulting) tags.push('airborne');
   if (how.from === 'behind') tags.push('behind');
   if (how.heavy) tags.push('smash');
+  if (how.spin) tags.push('spin');
+  if (how.broke) tags.push('broke');
   if (how.smoked) tags.push('smoked');
   if (ctx.now - ctx.dodgeT < rules.dodgeWindow) tags.push('dodge');
   if (ctx.now - ctx.pickT < rules.drawWindow) tags.push('quickdraw');
@@ -167,7 +169,9 @@ export default class Scoring {
     let bonus = unseen ? R.unseen : 0;
     for (const t of this.tags) { bonus += R.tags[t].points; this.methods.add(t); }
     const pts = Math.round((style.points + bonus) * this.multiplier);
-    const labels = [unseen ? 'UNSEEN' : circ.label || style.label, ...this.tags.map((t) => R.tags[t].label)].filter(Boolean);
+    // the three that pay most are spelled out
+    const best = [...this.tags].sort((a, b) => R.tags[b].points - R.tags[a].points);
+    const labels = [unseen ? 'UNSEEN' : circ.label || style.label, ...best.map((t) => R.tags[t].label)].filter(Boolean);
     this.add(pts, victim.x, victim.y - 10, labels.slice(0, 3).join(' + '));
     Audio.play('confirm', { n: this.combo });
   }

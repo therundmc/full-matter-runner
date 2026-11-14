@@ -22,6 +22,8 @@ test('scoring: a kill is read from its cause and the weapon in hand', () => {
   assert.deepEqual(killStyle({ cause: 'slash', killer: player('knife', 1) }), { style: 'blade', method: 'knife' });
   assert.deepEqual(killStyle({ cause: 'melee', killer: player('bat', 0.2) }), { style: 'melee', method: 'bat' });
   assert.deepEqual(killStyle({ cause: 'execute', killer: player() }), { style: 'execution', method: 'execution' });
+  // a finisher that leaves the body whole (the bat's home run) is still one
+  assert.deepEqual(killStyle({ cause: 'melee', killer: player('bat', 0.2), how: { finisher: true } }), { style: 'execution', method: 'execution' });
   const p = player();
   assert.deepEqual(killStyle({ cause: 'snap', killer: p, victim: { held: p } }), { style: 'takedown', method: 'takedown' });
   assert.deepEqual(killStyle({ cause: 'slash', killer: p, victim: { held: p } }), { style: 'takedown', method: 'takedown' });
@@ -54,8 +56,10 @@ test('scoring: the circumstances of a kill are read from the round, the blow and
   assert.deepEqual(killTags({ killer: { ...p, vaulting: {} } }, quiet), ['airborne']);
   assert.deepEqual(killTags({ killer: p, how: { from: 'behind', heavy: true, smoked: true } }, quiet), ['behind', 'smash', 'smoked']);
   assert.deepEqual(killTags({ killer: p, how: { from: 'front' } }, { ...quiet, dodgeT: 49, pickT: 49.5 }), ['dodge', 'quickdraw']);
+  assert.deepEqual(killTags({ killer: p, how: { from: 'side', spin: true } }, quiet), ['spin']);
+  assert.deepEqual(killTags({ killer: p, how: { heavy: true, broke: true } }, quiet), ['smash', 'broke']);
   assert.deepEqual([2, 3, 4, 7].map((streak) => killTags({ killer: null }, { ...quiet, streak })[0]), ['double', 'triple', 'massacre', 'massacre']);
-  for (const tag of ['collateral', 'wallbang', 'ricochet', 'longshot', 'lastRound', 'slide', 'airborne', 'behind', 'smash', 'smoked', 'dodge', 'quickdraw', 'double', 'triple', 'massacre']) {
+  for (const tag of ['collateral', 'wallbang', 'ricochet', 'longshot', 'lastRound', 'slide', 'airborne', 'behind', 'smash', 'spin', 'broke', 'smoked', 'dodge', 'quickdraw', 'double', 'triple', 'massacre']) {
     assert.ok(T.tags[tag].points > 0 && T.tags[tag].label, tag);
   }
 });
@@ -89,16 +93,27 @@ test('blows: a blow takes a man from behind, the side or the front; every weapon
   assert.equal(blowFrom(0, Math.PI - 0.2), 'front');
   assert.equal(blowFrom(0, -Math.PI / 2), 'side');
   assert.equal(blowFrom(3, -3), 'behind', 'across the +-pi seam');
-  const of = (type) => finisherFor(WEAPONS[type]);
+  const of = (type, mag) => finisherFor(WEAPONS[type], type ? { type, mag } : null);
   assert.equal(of('fists'), FINISHERS.fists);
-  assert.equal(of('bat'), FINISHERS.club);
+  assert.equal(of('bat'), FINISHERS.bat);
   assert.equal(of('tire_iron'), FINISHERS.club);
   assert.equal(of('knife'), FINISHERS.blade);
-  assert.equal(of('cue_half'), FINISHERS.blade);
+  assert.equal(of('cue_half'), FINISHERS.stake);
   assert.equal(of('cue'), FINISHERS.cue);
-  assert.equal(of('pistol'), FINISHERS.gun);
+  assert.equal(of('pistol', 7), FINISHERS.doubleTap);
+  assert.equal(of('pistol', 1), FINISHERS.gun);
+  assert.equal(of('pistol', 0), FINISHERS.gun);
+  assert.equal(of('shotgun', 6), FINISHERS.gun, 'buckshot does not double tap');
+  assert.equal(of('bazooka', 1), FINISHERS.gun);
   assert.ok(FINISHERS.cue.plant && WEAPONS[WEAPONS.cue.snaps].swing === 'blade', 'a snapped cue is a stake');
-  for (const f of Object.values(FINISHERS)) assert.ok(f.hits >= 1 && f.every > 0 && f.label && ['execute', 'slash'].includes(f.cause));
+  for (const [name, f] of Object.entries(FINISHERS)) {
+    assert.ok(f.label && ['execute', 'slash', 'melee'].includes(f.cause) && f.beats.length > 0, name);
+    for (const [wait, what] of f.beats) {
+      assert.ok(wait > 0, name);
+      assert.ok([0, 1, 2, 3].includes(what) || ['windup', 'stomp', 'shot'].includes(what), `${name}: ${what}`);
+    }
+    assert.notEqual(f.beats[f.beats.length - 1][1], 'windup', `${name} ends on a blow`);
+  }
   for (const t of Object.values(TAKEDOWNS)) assert.ok(t.action && t.label);
   for (const d of Object.values(WEAPONS)) if (d.hold === 'melee') assert.ok(['club', 'blade'].includes(d.swing) && d.material, d.name);
   assert.equal(WEAPONS.pistol.mag, 7);

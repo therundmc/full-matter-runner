@@ -14,6 +14,7 @@ export default class WeaponItem {
     this.type = type;
     this.def = WEAPONS[type];
     this.mag = mag ?? this.def.mag ?? 0;
+    this.wear = this.def.wear; // melee: kills left in it (whoever drops a worn one sets it)
     this.img = sprite(this.def.sprite);
     this.body = Bodies.rectangle(x, y, this.img.width, Math.max(4, this.img.height), {
       angle, frictionAir: 0.01, friction: 0.05, restitution: 0.45, label: 'item',

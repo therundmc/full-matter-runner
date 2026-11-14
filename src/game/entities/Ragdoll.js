@@ -2,7 +2,7 @@ import { CAT, MASK, PALETTE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance, local } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
-import { woundFor, CRAWL } from '../data/wounds.js';
+import { woundFor, CRAWL, THROES } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
 import { poolArt } from '../render/BloodArt.js';
 
@@ -25,6 +25,10 @@ export default class Ragdoll {
     this.dead = false;
     // not quite dead (opts.crawl): pulls left, s to the next one, the arm that reaches
     this.crawl = opts.crawl ? { left: Math.round(rand(...CRAWL.pulls)), t: rand(...CRAWL.delay), arm: 0, groaned: false } : null;
+    // or his limbs jerk a moment (opts.throes): s left of it, s to the next jerk
+    this.throes = opts.throes ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
+    // the weapon left planted in him (opts.stuck: its sprite), at an angle off the line of his body
+    this.stuck = opts.stuck ? { img: sprite(opts.stuck), a: rand(-0.6, 0.6) } : null;
     const group = Body.nextGroup(true);
     const img = (p) => spriteOpt(`characters/${kind}_rag_${p}`) || sprite(`characters/${kind}_gib_${p}`);
     const th = dir + Math.PI / 2; // head (torso -y) ends up along the travel direction
@@ -106,7 +110,7 @@ export default class Ragdoll {
   detach(part, dir, speed = 250) {
     if (!part || !part.attached) return;
     part.attached = false;
-    this.crawl = null;
+    this.crawl = this.throes = null;
     const j = this.joints.find((k) => k.part === part);
     if (j) Composite.remove(this.world.engine.world, j.c);
     part.bleed = rand(1.2, 2);
@@ -122,7 +126,7 @@ export default class Ragdoll {
   // a bullet hits one of the parts
   shotPart(part, a, weaponDef) {
     const w = this.world;
-    this.crawl = null; // that finishes him
+    this.crawl = this.throes = null; // that finishes him
     impulse(part.body, a, weaponDef?.pellets > 1 ? 20 : 14, rand(-0.15, 0.15), 4);
     const p = part.body.position;
     const [n, v, cone] = woundFor('bullet', weaponDef).spray;
@@ -139,6 +143,7 @@ export default class Ragdoll {
     this.age += dt;
     const w = this.world;
     if (this.crawl) this.drag(dt);
+    if (this.throes) this.twitch(dt);
     let moving = false;
     for (const part of this.parts) {
       const sp = Body.getSpeed(part.body);
@@ -160,7 +165,7 @@ export default class Ragdoll {
     bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
       src.position, Body.getSpeed(src) < 0.3);
     this.settle = moving ? 0 : this.settle + dt;
-    if (this.settle > 2 && !this.crawl && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
+    if (this.settle > 2 && !this.crawl && !this.throes && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
   // not quite dead: a few pulls on his arms, head first, each one a little way (the smear follows), then he lies still
@@ -176,6 +181,29 @@ export default class Ragdoll {
       // the arm that reaches goes ahead of the rest
       if (part.attached) impulse(part.body, a, kgOf(part.body) * CRAWL.pull * (part === this.limbs[c.arm] ? 1.5 : 1));
     }
+    if (c.left > 0) return;
+    // the last one: the arm is flung out once more, a last whimper, and he lies still
+    const arm = this.limbs[c.arm].body;
+    impulse(arm, t.angle + (c.arm ? 0 : Math.PI), kgOf(arm) * CRAWL.pull * 2);
+    this.world.sound('whimper', this.x, this.y, 0.4, { pitch: 0.8 });
+  }
+
+  // death throes: now and then one of his limbs jerks, for a moment
+  twitch(dt) {
+    const th = this.throes;
+    if ((th.t -= dt) <= 0) { this.throes = null; return; }
+    if ((th.next -= dt) > 0) return;
+    th.next = rand(...THROES.every);
+    const limbs = this.limbs.filter((p) => p.attached);
+    if (!limbs.length) return;
+    const b = limbs[Math.floor(Math.random() * limbs.length)].body;
+    impulse(b, b.angle + (chance(0.5) ? 1 : -1) * Math.PI / 2, kgOf(b) * THROES.kick);
+  }
+
+  // where the planted weapon is drawn: out of the torso, its centre some way along the direction it points
+  stuckAt() {
+    const t = this.torso.body, a = t.angle - Math.PI / 2 + this.stuck.a, r = this.stuck.img.width * 0.3;
+    return { x: t.position.x + Math.cos(a) * r, y: t.position.y + Math.sin(a) * r, a };
   }
 
   // the part the blood seeps from: the head while it is on, else the torso (its pool forms at the neck)
@@ -189,6 +217,7 @@ export default class Ragdoll {
     const n = this.poolAt();
     w.decals.bakePool(this, n.x, n.y, this.pool);
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
+    if (this.stuck) { const s = this.stuckAt(); w.decals.bake(this.stuck.img, s.x, s.y, s.a, 1, true); }
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
     for (const part of this.parts) w.removeBody(part.body);
     this.dead = true;
@@ -209,6 +238,11 @@ export default class Ragdoll {
       drawSprite(ctx, part.img, b.position.x, b.position.y, b.angle);
       // bloody stump at the root of a torn part
       if (!part.attached) stump(ctx, local(b.position.x, b.position.y, b.angle, part.root.x, part.root.y), 3);
+    }
+    if (this.stuck) {
+      const s = this.stuckAt();
+      drawSprite(ctx, silhouette(this.stuck.img), s.x + 1, s.y + 1, s.a, 0.3);
+      drawSprite(ctx, this.stuck.img, s.x, s.y, s.a);
     }
     if (this.headless) stump(ctx, this.neckPos(), 4);
   }

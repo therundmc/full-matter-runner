@@ -121,12 +121,14 @@ export function standPose(ch, P, a = ch.angle) {
       hrx = wx;
     }
   } else {
-    // melee weapon. At rest a bat lies on the shoulder and a knife is held low, point forward. A blow is one of three
-    // gestures (ch.strike): forehand sweep, backhand sweep, or the heavy one (overhead smash / straight stab), all on
-    // the same clock: anticipation, fast stroke (in front when the hit lands), follow-through, recovery.
+    // melee weapon. At rest a bat lies on the shoulder and a knife is held low, point forward. A blow is one of four
+    // gestures (ch.strike): forehand sweep, backhand sweep, the heavy one (overhead smash / straight stab), or 3 (a
+    // club's spin, a blade's overhead stab), all on the same clock: anticipation, fast stroke (in front when the hit
+    // lands), follow-through, recovery.
     const bat = d.swing === 'club';
     const ra = bat ? d.rest ?? 3 : 0.35; // weapon angle at rest
     const round = bat && ra > 1.5; // it rests behind the shoulder: a sweep carries on round the back of the head
+    const spin = bat && ch.swing > 0 && ch.strike === 3;
     const sw = stride * 2.2 * g;
     hlx = 6 - sw; hly = -6;
     hrx = bat ? 5 : 7 + sw * 0.5; hry = bat ? 4 : 6.5;
@@ -135,7 +137,21 @@ export function standPose(ch, P, a = ch.angle) {
       const p = swingP, k = ch.strike;
       const out = smooth(p / 0.12) * (1 - smooth((p - 0.55) / 0.45)); // 0 in the rest pose .. 1 during the stroke
       let sx, sy; // where the stroke puts the hand
-      if (k < 2) {
+      if (spin) {
+        // spin: the whole body turns once, the weapon held out trailing behind it; it starts back right, goes through
+        // the front and all the way round, then settles back to the rest pose
+        const u = smooth((p - 0.08) / 0.5), phi = 2.4 - Math.PI * 2 * u;
+        wa = lerpA(phi, ra, smooth((p - 0.55) / 0.45));
+        sx = 2 + Math.cos(phi) * 8; sy = Math.sin(phi) * 8;
+        twist = p < 0.6 ? -Math.PI * 2 * u : 0; // a full turn is the same as none
+        if (p > 0.08 && p < 0.58) {
+          const tr = P.trail;
+          tr.on = true;
+          tr.alpha = 0.35;
+          tr.r = d.range * 0.85;
+          tr.a0 = phi; tr.a1 = phi + 1.6;
+        }
+      } else if (k < 2) {
         // sweep across the front (a backhand is its mirror image). The angle runs from the rest pose to the rest
         // pose: the bat carries on round the back of the head, the knife comes back the way it went
         const dir = k ? -1 : 1;
@@ -154,9 +170,9 @@ export function standPose(ch, P, a = ch.angle) {
           tr.r = d.range * 0.85;
           if (dir > 0) { tr.a0 = wa; tr.a1 = Math.min(wind, wa + 1.7); } else { tr.a0 = Math.max(-wind, wa - 1.7); tr.a1 = wa; }
         }
-      } else if (bat && !d.thrust) {
-        // overhead smash: up over the head (the bat shortens as it points at the camera), straight down in front,
-        // then back to the shoulder round the right side
+      } else if (bat ? !d.thrust : k === 3) {
+        // overhead smash (a blade: an ice-pick stab): up over the head (the weapon shortens as it points at the
+        // camera), straight down in front, then back to the rest pose round the right side
         const u = easeOut((p - 0.1) / 0.2);
         if (p < 0.3) { wa = lerp(ra, Math.PI, smooth(p / 0.1)); len = Math.cos(Math.PI * u); thick = 1 + 0.35 * Math.sin(Math.PI * u); }
         else wa = ra * smooth((p - 0.55) / 0.45);
@@ -178,7 +194,7 @@ export function standPose(ch, P, a = ch.angle) {
       else hlx -= (k < 2 ? 2.5 : 4) * out;
     }
     wx = hrx; wy = hry; wpnOn = true;
-    if (bat && !top && Math.cos(wa) * len < -0.3) top = 1; // behind the head: over the shoulder
+    if (bat && !top && !spin && Math.cos(wa) * len < -0.3) top = 1; // behind the head: over the shoulder
   }
   if (wpnOn && ch.stow > 0) {
     // put away: a pistol or a knife on the hip, anything long across the back, both hands free. Drawing it, the

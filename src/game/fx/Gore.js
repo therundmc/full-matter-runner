@@ -3,12 +3,13 @@ import { rand, chance } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
-import { WOUNDS, woundFor } from '../data/wounds.js';
+import { WOUNDS, THROES, woundFor } from '../data/wounds.js';
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
 // by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
-// profile (data/wounds.js) sets how much blood goes where and how the body bleeds out.
+// profile (data/wounds.js) sets how much blood goes where and how the body bleeds out; stuck = sprite of what is left
+// planted in the body, launch = speed of a head knocked off (x the usual).
 // Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
 export function gore(world, ch, angle, cause, by) {
   const P = world.particles;
@@ -68,9 +69,11 @@ export function gore(world, ch, angle, cause, by) {
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
+    // not quite dead: he crawls a little way, or failing that his limbs jerk a moment
+    const crawl = mode === 'corpse' && !!ch.isEnemy && !detach.length && chance(wd.crawl || 0);
     world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, {
-      headless: mode === 'headless', detach, ...bleeding,
-      crawl: mode === 'corpse' && !!ch.isEnemy && !detach.length && chance(wd.crawl || 0),
+      headless: mode === 'headless', detach, ...bleeding, crawl, stuck: by?.stuck,
+      throes: !crawl && cause !== 'snap' && chance(THROES.odds),
     }));
   } else {
     const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
@@ -85,7 +88,7 @@ export function gore(world, ch, angle, cause, by) {
       for (let i = 0; i < 4; i++) throwGib(world, sprite('characters/gib_chunk' + (i % 3)), x, y, angle, true, 0.5, 0, 0.5);
       throwGib(world, sprite('characters/gib_eye'), x, y, angle, true, 0.2, 0, 0.6);
     } else {
-      throwGib(world, sprite(`characters/${k}_gib_head`), x, y, angle, false, 1.2, 0.6, 1.4);
+      throwGib(world, sprite(`characters/${k}_gib_head`), x, y, angle, false, 1.2, 0.6, by?.launch ?? 1.4);
       P.blood(x, y, angle, 0.25, 30, 420, { big: true });
     }
     world.sound('gore', x, y, 0.8);
