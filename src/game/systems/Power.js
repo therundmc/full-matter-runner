@@ -7,7 +7,7 @@
 import { TILE, LIGHTING } from '../Config.js';
 import { rand } from '../../engine/math.js';
 
-const MARGIN = 0.3;   // tiles around the zone that still count: signs and lamps on the outside faces of its walls
+const MARGIN = 0.6;   // tiles around the zone that still count: signs, lamps and machines against the outside of its walls
 const STUTTER = 0.45; // s the lights flicker before they die
 const BACKUP = 1.0;   // s after the cut before the battery lamps catch
 const REACH = 13;     // tiles the bang of the box carries to guards (walls muffle it)

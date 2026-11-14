@@ -141,7 +141,9 @@ export default {
     ['gas_bottle', 13.7, 7.05, 0], ['pipe_steam', 13.93, 13.6, 90],
     // back lot
     ['van', 24.5, 2.3, 180, { lights: false }], ['dumpster', 15.2, 1.6, 0], ['crate', 17.2, 1.45, 5],
-    ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
+    ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['fridge', 13.5, 1.42, -6], ['washer', 13.55, 2.25, 8],
+    ['tv', 16.55, 1.42, 12, { lights: false }], ['armchair', 19, 1.5, 14], ['chair', 19.95, 1.4, 40],
+    ['trash_can', 21, 1.45, 0], ['trash_can', 21.6, 1.6, 0], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
     ['trash_can', 31.5, 1.5, 0], ['parapet', 10.5, 3.5, 90], ['crate', 32.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
     ['fuse_box', 24.5, 4.92, 180], ['emergency_light', 23.6, 12.09, 0], ['emergency_light', 20.5, 19.91, 180],
     ['emergency_light', 24.91, 17.4, 90], ['emergency_light', 17.6, 10.91, 180], ['emergency_light', 21.09, 8.5, 270],
@@ -200,7 +202,7 @@ export default {
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[23.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [33.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
-  street: {"papers": [[0, 30, 43, 31, 9], [20, 32, 23, 36, 3], [0, 21, 43, 22, 9], [0, 23, 43, 29, 6], [11, 1, 13, 19, 4], [14, 1, 32, 4, 4], [1, 8, 9, 14, 3]], "beds": [[22.1, 36.5, 0], [2.7, 13.75, 8]], "manholes": [[9.5, 25.2], [27.3, 28.5], [12.5, 10.6]]},
+  street: {"papers": [[0, 30, 43, 31, 9], [20, 32, 23, 36, 3], [0, 21, 43, 22, 9], [0, 23, 43, 29, 6], [11, 1, 13, 19, 4], [14, 1, 32, 4, 4], [1, 8, 9, 14, 3]], "beds": [[22.1, 36.5, 0], [19.3, 2.5, -12], [2.7, 13.75, 8]], "manholes": [[9.5, 25.2], [27.3, 28.5], [12.5, 10.6]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, round the roof
