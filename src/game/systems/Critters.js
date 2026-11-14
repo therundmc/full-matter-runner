@@ -2,12 +2,15 @@
 //   rats     nest under every dumpster: a blow or a shot on it sends a few running, jinking along the walls to a hole;
 //            they make passers-by jump
 //   pigeons  peck about in flocks, all up at a shot, at anyone running at them, at the cat
-//   cat      sits watching the player; bolts when he moves close or at a shot, over a bin on its way (a noise guards
-//            may come and look at)
+//   cat      sits watching the player; bolts when he moves close or at a shot, to hide under the nearest parked car
+//            (slips in by the middle of its side, two eye glints left at the edge); it leaves when the car moves, is
+//            hit hard, burns or blows, or a shot rings close, for the next car. No car in reach: over a bin on its
+//            way (a noise guards may come and look at) and away
 //   flies    hang over dumpsters and bodies gone cold; moths round the street lamps and signs (anchors only: the
 //            insects themselves are drawn from the clock, render/CritterArt.js)
 // Bullets, swings and blasts kill the ones on the ground. No bodies: a few numbers each. DOM-free.
 import { TILE, CRITTERS as C } from '../Config.js';
+import { findPath } from '../../engine/nav/Pathfinding.js';
 import { rand, randi, chance, angDiff, TAU } from '../../engine/math.js';
 
 const { Body } = Matter;
@@ -59,8 +62,9 @@ export default class Critters {
   scare(x, y, birds, cats = 0) {
     let first = null;
     for (const c of this.list) {
-      if (c.state !== 'idle') continue;
+      if (c.state !== 'idle' && c.state !== 'hide') continue;
       const d = Math.hypot(c.x - x, c.y - y);
+      if (c.state === 'hide') { if (d < Math.min(cats, C.cat.spook * TILE)) this.bolt(c, c.car.x, c.car.y, c.car); continue; }
       if (c.kind === 'cat' && d < cats) this.bolt(c, x, y);
       if (c.kind !== 'pigeon' || c.wait > 0 || d > birds) continue;
       c.wait = rand(0.02, 0.35);
@@ -70,14 +74,51 @@ export default class Critters {
     if (first) this.world.sound('flutter', first.x, first.y, 0.8);
   }
 
-  // off the cat goes, away from (x, y), by way of a bin if one stands on its way
-  bolt(c, x, y) {
+  // where the cat slips in under a car, by the middle of the side `side` (+1 / -1) of its body
+  entry(car, side) {
+    const a = car.body.angle, k = side * (car.h - 4) / 2;
+    return { x: car.x - Math.sin(a) * k, y: car.y + Math.cos(a) * k, nx: -Math.sin(a) * side, ny: Math.cos(a) * side };
+  }
+
+  // a parked car is a hiding place while it stands still, whole and little hurt
+  parked(car, hp0 = car.hp) {
+    return car.isVehicle && !car.moving && !car.exploded && !car.burning && car.hp >= hp0 - C.cat.hurt * car.m.hp;
+  }
+
+  // the parked car (not `except`) with the shortest way to its side, from the cat's side of it: { car, side, path }
+  // or null; the way is a path on the tile map, no longer than the cat's reach
+  refuge(c, except) {
+    const reach = C.cat.car * TILE, found = [];
+    for (const car of this.world.props) {
+      if (car === except || !this.parked(car)) continue;
+      const a = car.body.angle, side = (c.x - car.x) * -Math.sin(a) + (c.y - car.y) * Math.cos(a) < 0 ? -1 : 1;
+      const e = this.entry(car, side), d = Math.hypot(e.x - c.x, e.y - c.y);
+      if (d < reach) found.push({ car, side, e, d });
+    }
+    let best = null, near = reach;
+    // the nearest few as the crow flies are tried: a wall may make the farther one the shorter way
+    for (const f of found.sort((p, q) => p.d - q.d).slice(0, C.cat.tries)) {
+      const path = findPath(this.world.map, c.x, c.y, f.e.x, f.e.y, C.cat.nodes);
+      if (!path) continue;
+      let len = 0, px = c.x, py = c.y;
+      for (const q of path) { len += Math.hypot(q.x - px, q.y - py); px = q.x; py = q.y; }
+      if (len < near) { best = { car: f.car, side: f.side, path }; near = len; }
+    }
+    return best;
+  }
+
+  // off the cat goes, away from (x, y): to a parked car if one is in reach (not `except`), else by way of a bin
+  bolt(c, x, y, except = null) {
     const w = this.world;
     c.state = 'run';
     c.life = rand(...C.cat.life);
     c.turn = 0.3;
     c.a = Math.atan2(c.y - y, c.x - x);
     c.bin = null;
+    c.low = false;
+    const ref = this.refuge(c, except);
+    c.car = ref?.car ?? null;
+    if (ref) { c.side = ref.side; c.hp0 = ref.car.hp; c.path = ref.path; c.retried = false; return; }
     let best = C.cat.bin * TILE;
     for (const b of w.props) {
       if (b.type !== 'trash_can' || b.dead) continue;
@@ -90,7 +131,7 @@ export default class Critters {
 
   blast(x, y, radius) {
     for (const c of this.list) {
-      if (c.state !== 'dead' && c.state !== 'fly' && Math.hypot(c.x - x, c.y - y) < radius) this.kill(c, Math.atan2(c.y - y, c.x - x));
+      if (c.state !== 'dead' && c.state !== 'fly' && c.state !== 'hide' && Math.hypot(c.x - x, c.y - y) < radius) this.kill(c, Math.atan2(c.y - y, c.x - x));
     }
     this.scare(x, y, C.pigeon.hear * TILE, C.cat.hear * TILE);
   }
@@ -151,7 +192,12 @@ export default class Critters {
       if (d < C.cat.shy * TILE && Body.getSpeed(p.body) > C.cat.still) this.bolt(c, p.x, p.y);
       return;
     }
+    if (c.state === 'hide') {
+      if (!this.parked(c.car, c.hp0)) this.bolt(c, c.car.x, c.car.y, c.car); // its car is no shelter any more
+      return;
+    }
     c.life -= dt;
+    if (c.car) { this.dash(c, dt); return; }
     const b = c.bin;
     if (b) {
       const dx = b.x - c.x, dy = b.y - c.y, d = Math.hypot(dx, dy);
@@ -173,6 +219,27 @@ export default class Critters {
     }
     const atWall = this.scurry(c, dt, C.cat.speed, 0.25);
     if ((c.life <= 0 && atWall) || c.life < -4) c.gone = true;
+  }
+
+  // along its path to the middle of the car's side, low over the last half tile, then out of sight under the car
+  dash(c, dt) {
+    const car = c.car;
+    if (!this.parked(car, c.hp0)) { this.bolt(c, c.x - Math.cos(c.a), c.y - Math.sin(c.a), car); return; }
+    const t = c.path[0], dx = t.x - c.x, dy = t.y - c.y, d = Math.hypot(dx, dy), step = C.cat.speed * dt;
+    c.a = Math.atan2(dy, dx);
+    c.low = c.path.length === 1 && d < C.cat.low * TILE;
+    if (d <= step) {
+      if (c.path.length > 1) { c.x = t.x; c.y = t.y; c.path.shift(); return; }
+      const e = this.entry(car, c.side);
+      Object.assign(c, { state: 'hide', x: e.x, y: e.y, nx: e.nx, ny: e.ny, low: false });
+      return;
+    }
+    const nx = c.x + dx / d * step, ny = c.y + dy / d * step;
+    if (!this.wall(nx, ny)) { c.x = nx; c.y = ny; return; }
+    // a way that turns out shut: one new path, else it runs for it as it can
+    const e = this.entry(car, c.side), path = c.retried ? null : findPath(this.world.map, c.x, c.y, e.x, e.y, C.cat.nodes);
+    c.retried = true;
+    if (path) c.path = path; else c.car = null;
   }
 
   pigeon(c, dt) {
@@ -217,7 +284,7 @@ export default class Critters {
   hits(dt) {
     const w = this.world, p = w.player;
     for (const c of this.list) {
-      if (c.state === 'dead' || c.state === 'fly' || (c.kind === 'rat' && c.wait > 0)) continue;
+      if (c.state === 'dead' || c.state === 'fly' || c.state === 'hide' || (c.kind === 'rat' && c.wait > 0)) continue;
       for (const b of w.projectiles) {
         if (b.dead || segDist(c.x, c.y, b.x - b.vx * dt, b.y - b.vy * dt, b.x, b.y) > C.hit) continue;
         this.kill(c, Math.atan2(b.vy, b.vx));

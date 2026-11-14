@@ -333,6 +333,12 @@ export const CRITTERS = {
     shy: 2,                // the player moving this close
     still: 0.4,            // px/step under which he is not moving
     hear: 16,
+    car: 14,               // a parked car within this (tiles, along the way there) is where it hides
+    tries: 3,              // nearest cars whose way is worked out
+    nodes: 2500,           // path search budget
+    low: 0.5,              // tiles from the car where it ducks low
+    spook: 3,              // a shot this close (tiles) flushes it out of hiding
+    hurt: 0.15,            // share of the car's hit points lost that makes it no shelter
     bin: 5,                // a bin within this on its way gets jumped on: it rattles, it does not move
     noise: 5,              // the clatter carries this far
   },

@@ -6,10 +6,12 @@ const PINK = '#d09a9a', INK = '#14151c';
 // on the ground, over the furniture (the cat sits on things, rats come out from under them)
 export function drawCritters(ctx, critters, t, vis) {
   for (const c of critters.list) {
+    if (c.state === 'hide') { if (vis(c.x, c.y)) glints(ctx, c, t); continue; }
     if (c.state === 'fly' || c.wait > 0 && c.kind === 'rat' || !vis(c.x, c.y)) continue;
     ctx.save();
     ctx.translate(Math.round(c.x), Math.round(c.y));
     ctx.rotate(c.a);
+    if (c.low) ctx.scale(1, 0.6); // ducking under a car
     ART[c.kind](ctx, c, t);
     ctx.restore();
   }
@@ -25,6 +27,14 @@ export function drawCritters(ctx, critters, t, vis) {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+// the hidden cat: two pale green glints at the edge of the car's side it went in by, looking out, blinking slowly
+// (the cars are drawn before the critters, so they are not covered)
+function glints(ctx, c, t) {
+  if ((t + c.ph * 3) % 4.5 < 0.2) return;
+  ctx.fillStyle = '#b6f0a8';
+  for (const k of [-1.5, 1.5]) ctx.fillRect(Math.round(c.x + c.nx * 1.5 - c.ny * k) - 1, Math.round(c.y + c.ny * 1.5 + c.nx * k) - 1, 2, 2);
 }
 
 // pigeons in the air: bigger as they climb, wings beating, their shadow left on the ground

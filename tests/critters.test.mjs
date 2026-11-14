@@ -11,15 +11,25 @@ const { Bodies, Body } = Matter;
 // an open lot of 40 x 40 tiles walled in; sounds, noises and blood are recorded
 function stub(def) {
   const log = { sound: [], noise: [], blood: 0 };
-  const solid = (cx, cy) => cx < 0 || cy < 0 || cx >= 40 || cy >= 40;
+  const walls = new Set();
+  const solid = (cx, cy) => cx < 0 || cy < 0 || cx >= 40 || cy >= 40 || walls.has(cx + ',' + cy);
+  const blocked = new Uint8Array(1600);
   const body = Bodies.circle(0, 0, 8);
   const world = {
     events: new EventBus(), props: [], enemies: [], civilians: [], corpses: [], projectiles: [],
-    map: { isSolid: solid, at: () => '.', widthPx: 40 * TILE, heightPx: 40 * TILE },
+    map: {
+      isSolid: solid, at: () => '.', widthPx: 40 * TILE, heightPx: 40 * TILE, w: 40, h: 40, blocked,
+      walkLine(x0, y0, x1, y1) {
+        for (let i = 0; i <= 40; i++) if (solid(Math.floor((x0 + (x1 - x0) * i / 40) / TILE), Math.floor((y0 + (y1 - y0) * i / 40) / TILE))) return false;
+        return true;
+      },
+    },
     player: { alive: true, body, swing: 0, angle: 0, get x() { return body.position.x; }, get y() { return body.position.y; } },
     sound: (name) => log.sound.push(name), noise: (x, y, r) => log.noise.push(r), lineOfSight: () => true,
     particles: { blood: () => log.blood++, chips() {} }, decals: { stampBlood() {} },
   };
+  // a wall of tiles: world.map.wall(col, row0, row1)
+  world.map.wall = (col, r0, r1) => { for (let r = r0; r <= r1; r++) { walls.add(col + ',' + r); blocked[r * 40 + col] = 1; } };
   return { world, critters: new Critters(world, def), log };
 }
 const run = (critters, sec) => { for (let i = 0; i < sec * 60; i++) critters.update(1 / 60); };
@@ -107,6 +117,111 @@ test('critters: the cat watches the player, bolts when he walks up and rattles t
   assert.deepEqual(log.noise, [CRITTERS.cat.noise * TILE]);
   run(critters, 15);
   assert.equal(critters.list.length, 0, 'gone');
+});
+
+// a parked car: 140 x 60 px sprite, so a body of 136 x 56
+const car = (col, row, angle = 0) => {
+  const body = Bodies.rectangle(col * TILE, row * TILE, 136, 56, { angle });
+  return { isVehicle: true, moving: false, exploded: false, burning: false, hp: 24, m: { hp: 24 }, w: 140, h: 60, body, type: 'car',
+    get x() { return body.position.x; }, get y() { return body.position.y; } };
+};
+const scareCat = (world) => {
+  Body.setPosition(world.player.body, { x: 19 * TILE, y: 20 * TILE });
+  Body.setVelocity(world.player.body, { x: 2, y: 0 });
+};
+
+test('critters: scared, the cat runs under the nearest parked car, hides there for good and slips out when the car goes', () => {
+  const { world, critters, log } = stub({ cats: [[20, 20]] });
+  const near = car(20, 24), far = car(20, 30), bin = prop('trash_can', 20, 17, 15, 15);
+  world.props.push(bin, far, near);
+  const cat = critters.list[0];
+  scareCat(world);
+  critters.update(1 / 60);
+  assert.equal(cat.car, near, 'the nearest one');
+  assert.equal(cat.bin, null);
+  run(critters, 2);
+  assert.equal(cat.state, 'hide');
+  assert.ok(!cat.gone && critters.list.includes(cat));
+  assert.ok(Math.abs(cat.x - near.x) < 1 && Math.abs(cat.y - (near.y - 28)) < 1, 'by the middle of the side facing it');
+  assert.deepEqual(log.noise, []);
+  assert.deepEqual(log.sound, []);
+  run(critters, 30);
+  assert.equal(cat.state, 'hide', 'it stays');
+  // the car drives off: for the next one
+  near.moving = true;
+  run(critters, 0.1);
+  assert.equal(cat.state, 'run');
+  assert.equal(cat.car, far);
+  near.moving = false;
+  run(critters, 4);
+  assert.equal(cat.state, 'hide');
+  assert.equal(cat.car, far);
+  // a shot far off leaves it alone, one close by flushes it; no car left, off the map
+  world.events.emit('noise', { x: far.x, y: far.y + 8 * TILE, radius: 20 * TILE, type: 'gunshot' });
+  assert.equal(cat.state, 'hide');
+  far.exploded = near.exploded = true;
+  run(critters, 15);
+  assert.equal(critters.list.length, 0, 'no car left: gone');
+});
+
+test('critters: a hard hit or a shot close to its car sends the hidden cat out; a burning or exploded car is never chosen', () => {
+  const { world, critters } = stub({ cats: [[20, 20]] });
+  const a = car(20, 24), b = car(26, 24), wreck = car(20, 22), fire = car(21, 22);
+  wreck.exploded = true; fire.burning = true;
+  world.props.push(wreck, fire, a, b);
+  const cat = critters.list[0];
+  scareCat(world);
+  critters.update(1 / 60);
+  assert.equal(cat.car, a);
+  run(critters, 2);
+  assert.equal(cat.state, 'hide');
+  a.hp -= 2; // a scratch
+  run(critters, 1);
+  assert.equal(cat.state, 'hide');
+  a.hp -= 5;
+  run(critters, 0.1);
+  assert.equal(cat.car, b, 'hit hard: next car');
+  run(critters, 4);
+  assert.equal(cat.state, 'hide');
+  world.events.emit('noise', { x: b.x, y: b.y + 2 * TILE, radius: 20 * TILE, type: 'gunshot' });
+  assert.equal(cat.state, 'run', 'a shot within 3 tiles');
+  assert.equal(cat.car, a, 'the other car, hurt but standing, is a fresh shelter');
+});
+
+test('critters: a wall between the cat and the car: it goes round it, never through a solid tile, and hides', () => {
+  const { world, critters } = stub({ cats: [[20, 20]] });
+  world.map.wall(22, 19, 27); // a wall between them, open to the north
+  const target = car(26, 24);
+  world.props.push(target);
+  const cat = critters.list[0];
+  scareCat(world);
+  critters.update(1 / 60);
+  assert.equal(cat.car, target, 'a way exists');
+  for (let i = 0; i < 6 * 60 && cat.state === 'run'; i++) {
+    critters.update(1 / 60);
+    assert.ok(!world.map.isSolid(Math.floor(cat.x / TILE), Math.floor(cat.y / TILE)), 'never in a wall');
+  }
+  assert.equal(cat.state, 'hide');
+  // shut in with no way out: the old run
+  const sealed = stub({ cats: [[20, 20]] });
+  sealed.world.map.wall(21, 0, 39);
+  sealed.world.props.push(car(25, 20));
+  scareCat(sealed.world);
+  sealed.critters.update(1 / 60);
+  assert.equal(sealed.critters.list[0].car, null);
+  assert.equal(sealed.critters.list[0].state, 'run');
+});
+
+test('critters: with no car in reach the cat bolts as before', () => {
+  const { world, critters } = stub({ cats: [[20, 20]] });
+  const bin = prop('trash_can', 20, 17, 15, 15), tooFar = car(20, 20 + CRITTERS.cat.car + 2);
+  world.props.push(bin, tooFar);
+  scareCat(world);
+  critters.update(1 / 60);
+  const cat = critters.list[0];
+  assert.equal(cat.state, 'run');
+  assert.equal(cat.car, null);
+  assert.equal(cat.bin, bin);
 });
 
 test('critters: a blast kills the ones on the ground within its radius; flies over dumpsters and cold bodies', () => {
