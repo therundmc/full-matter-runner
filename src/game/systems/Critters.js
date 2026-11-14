@@ -105,7 +105,6 @@ export default class Critters {
       w.particles.chips(c.x, c.y, a, 2.5, 8, '#c8ccd4', 80); // feathers
       this.scare(c.x, c.y, C.pigeon.flock * TILE);
     }
-    w.sound('flesh', c.x, c.y, 0.5);
     // only so many left lying
     const dead = this.list.filter((o) => o.state === 'dead');
     if (dead.length > C.dead) dead[0].gone = true;

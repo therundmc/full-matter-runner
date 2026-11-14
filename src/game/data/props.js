@@ -135,11 +135,6 @@ export const PROPS = {
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
   pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
-  // bar sign lying on the top of the facade wall (centre it 6 px street-side of the wall's middle: row + 0.69 for a
-  // sign reading from the south, so its edge overhangs the wall face and bullets can reach it)
-  marquee: { fixture: true, hung: true, static: true, material: 'glass', w: 88, h: 22, hp: 6, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
-    sign: { letters: [[7, 12], [20, 12], [33, 12], [46, 12], [59, 12], [72, 12]], faulty: 4 },
-    light: [{ r: 170, color: '#ff2a6d', intensity: 0.95, x: -24, y: 15 }, { r: 170, color: '#ff2a6d', intensity: 0.95, x: 24, y: 15 }] },
   // strung across the street
   string_lights: { fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },

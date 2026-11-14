@@ -40,11 +40,13 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    over synthesized bass / room layers (user rejected fully synthesized guns as muffled: loud, crisp, "guerrilla"),
    lighting (render/Lighting.js: every visible light is a prop, level `lights` = indirect fill only),
    prop destruction pushed far (Fracture / DamageArt), real-time liquids (puddles, footprints, hydrant),
-   animations + slide on Space. Still weak: combat visual feedback, horn sound.
-   Every non-gun sound = cuts of a recorded CC0 foley bank (assets/sound/foley.wav + src/audio/bank.js, built by
-   `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json); user rejected synthesized SFX as clicky,
-   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is synthesized:
-   a dry shooter's headshot "dink", a little higher with each kill of a streak; he dropped the chime as too arcade). No bolt sound between sniper shots. No meat / wet / squish
+   animations + slide on Space. Still weak: combat visual feedback.
+   Most non-gun sounds = cuts of a recorded CC0 foley bank (assets/sound/foley.wav + src/audio/bank.js, built by
+   `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json). Synthesized sounds: the user first rejected
+   them as clicky, "Mario"-like, then (2026-11-14) allowed them, alone or mixed with a recording, for everything
+   EXCEPT guns and explosions, where they sound cheap: those stay recordings. Synthesized today: the kill confirm
+   (a dry shooter's headshot "dink", a little higher with each kill of a streak; he dropped the chime as too arcade),
+   the doors, the guards' voices under their recording, the car horn (`_horn`: a driver held up by somebody honks). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
    Doors are synthesized whole (struck-panel partials, `_door` / `_doorSlam`; user hated every door recording), no
    hinge creak. Guards' voices = their recording pushed back + a synthesized voice under it (`_voice`); telling a

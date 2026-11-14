@@ -139,14 +139,10 @@ Rules:
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
 | `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack combat variant; intensity through Tension), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
-| `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
-| `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam, scared) | |
-| `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
 | `powerCut` | `{ x, y }` (the fuse box) | Power (the lights of the house just went out) | Director (an incident at the box: whoever sees it raises the alert) |
 | `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |
 | `poolStroke` | `{ x, y }` | Enemy (a guard at the pool table plays his shot) | PoolBalls |
 | `patronLeft` | `{ civilian, activity }` | Civilian (a posted customer runs off his spot) | Ambient (his chair is shoved back, his glass goes over, a cigarette is left burning: `AMBIENT.leave`) |
-| `civilianPanic` | `{ civilian, x, y, kind }` | Ambient (a passer-by starts to panic; kind: gunshot, explosion, kill, corpse, armed, scream, hit) | |
 
 Noise types: `gunshot` (any shooter; a guard's shot is heard as `allyFire` by his mates), `door`, `glass`,
 `wall`, `explosion`, `thrown` (a gun thrown by the player lands), untyped = `noise`. Footsteps / bodies falling

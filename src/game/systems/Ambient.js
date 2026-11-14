@@ -10,8 +10,7 @@
 // Traffic vehicles are ordinary Vehicles (same wrecking, lights, explosion) driven by a Driver brain
 // (systems/Traffic.js); once disabled they coast to a stop and stay as parked wrecks. Passers-by are
 // Civilians with a Walker brain (ai/Civilians.js). Rules and numbers: Config AMBIENT.
-// Events emitted: 'trafficSpawn' { vehicle }, 'trafficStopped' { vehicle, reason }, 'runOver' { victim, vehicle, speed },
-// 'civilianPanic' { civilian, x, y, kind }. Listens to 'noise' (gunshots, explosions), 'kill' and 'patronLeft'
+// Listens to 'noise' (gunshots, explosions), 'kill' and 'patronLeft'
 // (a customer running off shoves his chair back, drops his glass, leaves a cigarette burning: `butts`).
 import { TILE, CAT, MASK, AMBIENT as A } from '../Config.js';
 import { angDiff } from '../../engine/math.js';
@@ -151,10 +150,9 @@ export default class Ambient {
     v.body.sleepThreshold = Infinity; // a driven body must never doze off between two velocity commands
     v.body.collisionFilter = { ...v.body.collisionFilter, mask: MASK_DRIVING };
     Body.setVelocity(v.body, { x: (Math.cos(lane.angle) * d.speed) / 60, y: 0 });
-    const c = { v, d, lane, hl: (v.w - 4) / 2, hw: (v.h - 4) / 2, heard: false, hitT: 0, hp: v.hp, stall: 0 };
+    const c = { v, d, lane, hl: (v.w - 4) / 2, hw: (v.h - 4) / 2, heard: false, hitT: 0, hp: v.hp, stall: 0, honks: 0, honkT: 0, pitch: between(r, [0.9, 1.12]) * (model === 'van' ? 0.8 : 1) };
     this.cars.push(c);
     w.props.push(v);
-    w.events.emit('trafficSpawn', { vehicle: v });
     return c;
   }
 
@@ -184,6 +182,7 @@ export default class Ambient {
       bypass: () => (o ? findBypass(car, o, this.rows, this.obstacles) : null),
     });
     if (c.hitT > 0) d.speed = Math.max(0, d.speed - A.emergency * TILE * dt);
+    this.honk(c, dt);
     if (d.state === 'stopped') { this.park(c, d.reason); return; }
     // drive: heading toward the target row, velocity along the heading
     const want = steerAngle(lane.dir, v.y, d.targetY, d.steerMax);
@@ -205,6 +204,19 @@ export default class Ambient {
       const p = v.toWorld(1, v.h * 0.7);
       w.particles.smoke(p.x, p.y, 1, 2, { speed: 10, size: 3, life: 0.9 });
     }
+  }
+
+  // a driver held up by a person leans on the horn: once after a beat, then every few seconds, three times at most
+  honk(c, dt) {
+    const d = c.d, held = d.state === 'drive' && !c.v.exploded && d.speed < 10 && d.noticeT > 0.3;
+    if (!held) { c.honks = 0; c.honkT = 0; return; }
+    if (c.honks >= 3) return;
+    if (!c.honkT) c.honkT = c.honks ? between(this.r, [2.5, 5]) : between(this.r, [0.6, 1.5]);
+    c.honkT -= dt;
+    if (c.honkT > 0) return;
+    c.honkT = 0;
+    c.honks++;
+    this.world.sound('horn', c.v.x, c.v.y, 1, { pitch: c.pitch });
   }
 
   // nearest living person in front of the car, in its band (px), Infinity if none
@@ -257,7 +269,6 @@ export default class Ambient {
       const out = reason === 'fire' || reason === 'tyre' || reason === 'jam';
       if (out && this.r() < A.bailOut && this.strollers < A.maxWalkers + 2 && inside) this.bailOut(v, reason !== 'jam');
     }
-    w.events.emit('trafficStopped', { vehicle: v, reason });
   }
 
   // the driver's door is on the car's left (-y in sprite space), a passenger's (side 1) on its right; `from` is
@@ -309,7 +320,6 @@ export default class Ambient {
       w.sound('carHit', ch.x, ch.y, 1);
       w.sound('bodyFall', ch.x, ch.y, 0.9);
       w.shake(0.3);
-      w.events.emit('runOver', { victim: ch, vehicle: v, speed });
       // the driver stomps on the brake, then runs for it (hit and run)
       c.hitT = 0.9;
       d.panic = true;
@@ -477,7 +487,6 @@ export default class Ambient {
 
   // a screaming passer-by sets off the others around him
   onPanic(civ, kind) {
-    this.world.events.emit('civilianPanic', { civilian: civ, x: civ.x, y: civ.y, kind });
     const R = A.panic.spread * TILE;
     for (const o of this.civilians) {
       if (o === civ || o.brain.panicked || Math.hypot(o.x - civ.x, o.y - civ.y) > R) continue;

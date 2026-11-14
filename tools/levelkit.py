@@ -37,7 +37,7 @@ SIZES = dict(
     hydrant=(8, 8), bench=(50, 15), palm_tree=(9, 9), streetlight=(6, 6), floor_lamp=(10, 10), table_lamp=(15, 15),
     car=(136, 54), car2=(130, 52), van=(156, 60), chain_fence=(32, 4), bottle_shelf=(40, 11), back_bar=(40, 8), washer=(22, 22),
     neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None, alarm_box=None,
-    marquee=None, neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
+    neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
     fuse_box=None, emergency_light=None,

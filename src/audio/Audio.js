@@ -115,6 +115,7 @@ const META = {
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
+  horn: { pri: 2, dur: 0.8, gap: 1.2, max: 2, gain: 0.5, reach: 1400, hall: 0.25 },
 };
 for (const k in META) META[k] = { ...DEFAULT_META, ...META[k] };
 const GLOBAL_SOFT_CAP = 26; // above this, only louder / higher priority sounds get in (stealing the quietest)
@@ -1045,6 +1046,37 @@ class AudioSystem {
     this._thump(o, { f0: 75, f1: 30, dur: 1.4, vol: 1.0 });
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 700, f1: 60, dur: 1.6, vol: 0.9, attack: 0.01 });
     this._noiseBurst(o, { f0: 2500, f1: 600, q: 0.5, dur: 1.2, vol: 0.1, attack: 0.3 });
+  }
+
+  // a car horn: two notes a third apart (two detuned saws each), softly clipped and kept dark for the reedy honk;
+  // opts.pitch: that vehicle's horn
+  _horn(o, opts) {
+    const ctx = this.ctx, t = ctx.currentTime, p = opts.pitch || 1, hold = rand(0.35, 0.7), end = t + 0.01 + hold + 0.06;
+    const g = ctx.createGain(), lp = ctx.createBiquadFilter(), ws = ctx.createWaveShaper(), srcs = [];
+    if (!this.hornCurve) {
+      this.hornCurve = new Float32Array(1025);
+      for (let i = 0; i < 1025; i++) this.hornCurve[i] = Math.tanh((i / 512 - 1) * 2.2);
+    }
+    ws.curve = this.hornCurve;
+    lp.type = 'lowpass';
+    lp.frequency.value = 1800;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 0.01);
+    g.gain.setValueAtTime(0.5, t + 0.01 + hold);
+    g.gain.linearRampToValueAtTime(0, end);
+    for (const f of [415, 520]) for (const cents of [-7, 7]) {
+      const src = ctx.createOscillator();
+      src.type = 'sawtooth';
+      src.frequency.value = f * p;
+      src.detune.value = cents;
+      src.connect(ws);
+      src.start(t);
+      src.stop(end + 0.02);
+      srcs.push(src);
+    }
+    ws.connect(lp); lp.connect(g); g.connect(o);
+    o._n++;
+    srcs[0].onended = () => this._release(o, ...srcs, ws, lp, g);
   }
 
   // ---- ambient traffic ----

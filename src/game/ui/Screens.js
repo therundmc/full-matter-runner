@@ -84,6 +84,14 @@ export function pauseSliders(W, H) {
     .map(([key, label], i) => ({ key, label, x: W / 2 - w / 2, y: H * 0.43 + i * 34 * s, w, h }));
 }
 
+// what the pause screen lists (keys are physical positions, so ZQSD on AZERTY); see entities/Player.js, Game.js
+const CONTROLS = [
+  [['ZQSD/WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['LEFT CLICK', 'ATTACK / SHOOT'],
+    ['RIGHT CLICK', 'THROW / PICK UP'], ['E', 'PICK UP / SWAP / TRUNK']],
+  [['R', 'RELOAD'], ['SPACE', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'TAKE DOWN / FINISH'],
+    ['BACKSPACE', 'RESTART'], ['M', 'MUSIC ON / OFF']],
+];
+
 export function drawPause(ctx, W, H, t, settings, selected) {
   const s = H / 720;
   ctx.fillStyle = 'rgba(8,2,16,0.7)';
@@ -100,7 +108,14 @@ export function drawPause(ctx, W, H, t, settings, selected) {
     text(ctx, `${Math.round(v * 100)}%`, r.x + r.w + 24 * s, my, 16 * s, col, { align: 'left' });
   });
   ['ESC  RESUME', 'R  RESTART LEVEL', 'F1  SANDBOX', 'F2  SHOW ENEMY VISION', 'Q  QUIT TO TITLE']
-    .forEach((l, i) => text(ctx, l, W / 2, H * 0.64 + i * 26 * s, 15 * s, i === 0 ? PALETTE.yellow : PALETTE.white));
+    .forEach((l, i) => text(ctx, l, W / 2, H * 0.6 + i * 22 * s, 14 * s, i === 0 ? PALETTE.yellow : PALETTE.white));
+  // the controls, two columns: key in the accent colour, then what it does (a blank key continues the line above)
+  const cw = 450 * s, top = H * 0.6 + 5 * 22 * s + 22 * s;
+  CONTROLS.forEach((col, c) => col.forEach(([key, what], i) => {
+    const x = W / 2 - cw + c * cw + 20 * s, y = top + i * 18 * s;
+    text(ctx, key, x, y, 12 * s, PALETTE.yellow, { align: 'left' });
+    text(ctx, what, x + 138 * s, y, 12 * s, PALETTE.white, { align: 'left', alpha: 0.85 });
+  }));
 }
 
 const LINE_EVERY = 0.38, COUNT = 0.3; // s between two lines of the breakdown, s a figure takes to count up

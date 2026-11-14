@@ -4363,39 +4363,6 @@ LIGHT_SIZES = dict(floor_lamp=(16, 16), table_lamp=(18, 18), wall_lamp=(14, 7), 
 # Overhead dressing: things mounted up high, drawn above everyone with a little parallax.
 # --------------------------------------------------------------------------
 
-FONT_SIGN = {
-    'M': ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
-    'I': ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
-    'R': ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
-    'A': [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
-    'G': [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
-    'E': ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
-}
-MARQUEE_TEXT, MARQUEE_X0, MARQUEE_STEP = 'MIRAGE', 8, 13
-
-
-def p_marquee():
-    """Bar sign lying on the top of the facade wall, seen from above: dark tubes on the sprite, lit letters on the
-    glow map. Letter i spans x = MARQUEE_X0 + i * MARQUEE_STEP - 1 .. + 12 (see props.js `sign`)."""
-    W, H = 92, 24
-    cv, gl = sign_backing(W, H), Cv(W, H)
-    dim, hot = dk(NEON_PINK, 0.62), lt(NEON_PINK, 0.3)
-    for i, ch in enumerate(MARQUEE_TEXT):
-        x0 = MARQUEE_X0 + i * MARQUEE_STEP
-        cells = [(x0 + cx * 2 + a, 5 + cy * 2 + b) for cy, row in enumerate(FONT_SIGN[ch])
-                 for cx, c in enumerate(row) if c == '#' for a in (0, 1) for b in (0, 1)]
-        on = set(cells)
-        for (x, y) in cells:
-            cv.set(x, y, dim)
-            gl.set(x, y, hot)
-        for (x, y) in cells:        # soft halo, kept inside the letter's own column band
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                q = (x + dx, y + dy)
-                if q not in on and x0 - 1 <= q[0] <= x0 + 10:
-                    gl.set(q[0], q[1], alpha(NEON_PINK, 110))
-    return cv, gl
-
-
 def p_string_lights():
     """A sagging cable of party bulbs strung between two walls."""
     W, H = 128, 10
@@ -4415,8 +4382,8 @@ def p_string_lights():
     return cv, gl
 
 
-LIGHT_PROPS.update(marquee=p_marquee, string_lights=p_string_lights)
-LIGHT_SIZES.update(marquee=(92, 24), string_lights=(128, 10))
+LIGHT_PROPS.update(string_lights=p_string_lights)
+LIGHT_SIZES.update(string_lights=(128, 10))
 
 
 # --------------------------------------------------------------------------
