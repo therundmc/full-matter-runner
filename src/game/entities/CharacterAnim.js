@@ -1,7 +1,8 @@
 // Procedural character animation shared by the player and enemies.
 // Each frame a character builds a pose: plain numbers (torso offset / angle / scale, feet, hands, weapon), all stored as
-// offsets from the body centre in world orientation. Traversal poses (vault, slide) are blended over the standing pose
-// so moves start and end exactly on the walk cycle (no popping). drawPose() then paints shadow, feet, arms, torso.
+// offsets from the body centre in world orientation. Traversal poses (vault, ladder, roll, slide) are blended over the
+// standing pose so moves start and end exactly on the walk cycle (no popping). drawPose() then paints shadow, feet,
+// arms, torso.
 // Optional on a character: stow / lower (how the weapon is carried, ai/Carry.js) and busyHands() (where hands taken
 // by something else are: a pastime, a cigarette, a panic).
 import { PALETTE, TAKEDOWN } from '../Config.js';
@@ -23,6 +24,7 @@ const pt = () => ({ x: 0, y: 0, a: 0 });
 export function newPose() {
   return {
     tx: 0, ty: 0, ta: 0, s: 1, lift: 0, legs: 0, // legs: visibility of the thighs (thrown-forward poses)
+    tuck: 0, over: 0, // curled up in a ball, the back up (a roll); the legs up over the body
     feet: [pt(), pt()],
     hl: pt(), hr: pt(), wpn: pt(), carry: pt(), trail: { on: false, x: 0, y: 0, a0: 0, a1: 0, r: 0, alpha: 0 },
     wpnOn: false, carryImg: null,
@@ -263,6 +265,8 @@ export function standPose(ch, P, a = ch.angle) {
   P.s = 1 + 0.014 * g * Math.abs(Math.cos(ch.walk)) + 0.012 * (1 - g) * Math.sin(ch.world.time * 2.3 + ch.breath) - dip;
   P.lift = 0;
   P.legs = 0;
+  P.tuck = 0;
+  P.over = 0;
 
   // feet along the smoothed travel direction; the stride fades in and out with the gait
   const fa = ch.footA, amp = 5 * g;
@@ -297,6 +301,7 @@ function blendPose(A, B, w) {
   A.s = lerp(A.s, B.s, w);
   A.lift = lerp(A.lift, B.lift, w);
   A.legs = lerp(A.legs, B.legs, w);
+  A.tuck = lerp(A.tuck, B.tuck, w); A.over = lerp(A.over, B.over, w);
   A.wpnLen = lerp(A.wpnLen, B.wpnLen, w); A.wpnS = lerp(A.wpnS, B.wpnS, w);
   if (w > 0.5) A.top = B.top;
   for (let i = 0; i < 2; i++) {
@@ -312,7 +317,7 @@ function blendPose(A, B, w) {
 }
 
 function copyPose(A, B) {
-  A.tx = B.tx; A.ty = B.ty; A.ta = B.ta; A.s = B.s; A.lift = B.lift; A.legs = B.legs;
+  A.tx = B.tx; A.ty = B.ty; A.ta = B.ta; A.s = B.s; A.lift = B.lift; A.legs = B.legs; A.tuck = B.tuck; A.over = B.over;
   for (let i = 0; i < 2; i++) Object.assign(A.feet[i], B.feet[i]);
   for (const k of ['hl', 'hr', 'wpn', 'carry']) Object.assign(A[k], B[k]);
   A.wpnOn = B.wpnOn; A.carryImg = B.carryImg;
@@ -363,13 +368,15 @@ function reach(h, P, side) {
 }
 
 // ---------------- vault ----------------
-// window / gate to climb: anticipation crouch, hands planted on the sill, body hoisted through with tucked legs,
-// squash on landing.
+// hoist (a sill, a gate, a parapet): anticipation crouch, hands planted on the edge, body hoisted over with tucked
+// legs, squash on landing (or straight on into a roll after a drop).
 // prop: action-movie hip slide over the top, the gun arm stays on target, one palm skidding on the surface.
 export function vaultPose(ch, P, V) {
   const v = ch.vaulting;
+  if (v.rolling) return rollPose(ch, P, V);
+  if (v.ladder) return ladderPose(ch, P, V);
   const k = clamp(v.t / v.dur, 0, 1);
-  const win = v.kind !== 'prop'; // a sill or the top rail of a gate
+  const win = v.hoist;
   const dir = v.dir, c = Math.cos(dir), s = Math.sin(dir);
   copyPose(V, P);
 
@@ -414,12 +421,168 @@ export function vaultPose(ch, P, V) {
     V.carryImg = null;
   }
 
-  // blend in from / out to the walk, then crouch before the take-off and squash on landing on top
-  const w = smooth(k / 0.14) * (1 - smooth((k - 0.82) / 0.18));
+  // blend in from / out to the walk (a roll takes over from the landing pose instead), then crouch before the
+  // take-off and squash on landing on top
+  const w = smooth(k / 0.14) * (v.roll ? 1 : 1 - smooth((k - 0.82) / 0.18));
   blendPose(P, V, w);
   const land = win ? 0.78 : 0.82;
   P.s *= 1 - 0.05 * bump(k, 0, 0.18) - 0.07 * bump(k, land - 0.02, 1);
   P.lift = V.lift * w;
+  return P;
+}
+
+// ---------------- ladder ----------------
+// Up a ladder, or down it: the same moves played backwards in time. He steps onto its foot, climbs it in n steps
+// (one hand reaches for a rung higher up, the body follows, then the foot of the other side), and at the top both
+// hands go on the edge and he pulls himself over and stands. Down, he turns his back to the way he goes, lowers
+// himself over the edge, steps down hand under hand facing the ladder and turns round at the bottom.
+// q: places along the ladder's axis (px from its centre, toward the top); u: the time of the climb as if going up.
+const RUNGS = {
+  n: 5, foot: -10, top: 8, // steps, and the body's place on the ladder at the first and the last of them
+  on: 0.13, off: 0.74,     // u: on the ladder from the foot, off it over the edge
+  reach: 9, toe: -7,       // where a hand / a foot goes, ahead of the body (snapped to the nearest rung)
+  edge: 14, hand: 4.5, feet: 3.5, // the top edge, how far apart the hands / feet are from the axis
+};
+const RUNG_AT = [-11.5, -7.5, -3.5, 0.5, 4.5, 8.5, 12.5]; // the rungs of the ladder sprite, along its y from its centre
+const stepQ = (j) => RUNGS.foot + ((RUNGS.top - RUNGS.foot) * j) / RUNGS.n;
+
+// where the body is at time k of a ladder move L (Character.ladderPlan): { u, i (-1 stepping on, 0..n-1 climbing,
+// n over the edge), w (time within it), q, top }
+export function ladderAt(L, k) {
+  const R = RUNGS, u = L.up ? k : 1 - k;
+  const qLow = L.up ? L.q0 : L.q1, qHigh = L.up ? L.q1 : L.q0;
+  if (u < R.on) return { u, i: -1, w: 1, q: lerp(qLow, R.foot, smooth(u / R.on)), top: false };
+  if (u < R.off) {
+    const f = ((u - R.on) / (R.off - R.on)) * R.n, i = Math.min(R.n - 1, Math.floor(f)), w = f - i;
+    return { u, i, w, q: stepQ(i + smooth((w - 0.35) / 0.6)), top: false };
+  }
+  const w = (u - R.off) / (1 - R.off);
+  return { u, i: R.n, w, q: lerp(R.top, qHigh, smooth((w - 0.15) / 0.85)), top: true };
+}
+
+// 0 .. 1: how much of him is on the ladder (the facing is held on it) at climb time u
+export const ladderGrip = (u) => smooth(u / RUNGS.on) * (1 - smooth((u - 0.86) / 0.14));
+
+// q of the rung nearest to q
+function rungNear(L, q) {
+  let best = RUNG_AT[0] * L.sgn;
+  for (const r of RUNG_AT) if (Math.abs(r * L.sgn - q) < Math.abs(best - q)) best = r * L.sgn;
+  return best;
+}
+
+// q of a hand or a foot during step i (time w): it moves on the steps of parity p, over [a, b] of the step, to the
+// rung nearest to where the body will then be, plus off. Returns [q, how far into its move it is (0 .. 1)].
+function limbQ(L, i, w, p, off, a, b) {
+  const last = ((i - p) & 1) === 0 ? i : i - 1; // the step of its latest move (maybe this one)
+  const t = last === i ? smooth((w - a) / (b - a)) : 1;
+  return [lerp(rungNear(L, stepQ(last - 1) + off), rungNear(L, stepQ(last + 1) + off), t), t];
+}
+
+function ladderPose(ch, P, V) {
+  const v = ch.vaulting, L = v.ladder, R = RUNGS, at = ladderAt(L, clamp(v.t / v.dur, 0, 1));
+  copyPose(V, P);
+  const ax = L.ax, ay = L.ay, rx = -ay, ry = ax, f = L.face; // up the ladder, and to his right
+  const bx = ch.x, by = ch.y;
+  // a point on the ladder (q along it, side across it, to his right), as an offset from the body
+  const on = (out, q, side) => { out.x = L.cx + ax * q + rx * side - bx; out.y = L.cy + ay * q + ry * side - by; };
+  const top = at.top ? at.w : 0, i = Math.min(at.i, R.n - 1), w = at.top ? 1 : at.w;
+  const high = clamp((at.q - R.foot) / (R.top - R.foot), 0, 1) * (1 - smooth(top / 0.9));
+  const over = bump(top, 0.1, 0.95); // pulling himself over the edge
+  // the shoulders sway toward the hand that reaches
+  const reaching = at.i >= 0 && !at.top ? (at.i & 1 ? 1 : -1) * bump(w, 0, 0.7) : 0;
+  V.ta = f - 0.12 * reaching;
+  const lean = 1.2 + 2.5 * over;
+  V.tx = ax * lean; V.ty = ay * lean;
+  V.s = 1 + 0.06 * high + 0.1 * over;
+  V.lift = 0.3 * high + 0.35 * over;
+  V.legs = 0;
+  V.top = 0;
+  // hands on the rungs, then on the edge until the body has passed them
+  const grip = 1 - smooth((top - 0.55) / 0.3);
+  for (let h = 0; h < 2; h++) {
+    const hand = h ? V.hr : V.hl, side = h ? 1 : -1;
+    const [q, t] = limbQ(L, i, w, h, R.reach, 0, 0.5);
+    const e = smooth((top - 0.08 * h) / 0.25);
+    on(hand, lerp(q, R.edge, e), side * (R.hand + 2 * e + 1.2 * bump(t, 0, 1)));
+    hand.x = lerp(P[h ? 'hr' : 'hl'].x, hand.x, grip); hand.y = lerp(P[h ? 'hr' : 'hl'].y, hand.y, grip);
+  }
+  // feet on the rungs below, the one of the other side follows each hand; over the edge they come under him
+  const stand = smooth((top - 0.35) / 0.5);
+  for (let j = 0; j < 2; j++) {
+    const ft = V.feet[j], side = j ? 1 : -1;
+    const [q] = limbQ(L, i, w, 1 - j, R.toe, 0.55, 0.95);
+    on(ft, q, side * R.feet);
+    ft.x = lerp(ft.x, ax + rx * side * 3.6, stand); ft.y = lerp(ft.y, ay + ry * side * 3.6, stand);
+    ft.a = f;
+  }
+  holdOnTheWay(ch, V, f);
+  blendPose(P, V, ladderGrip(at.u));
+  return P;
+}
+
+// the weapon while both hands are busy: a short one stays in the right hand along the move, a long one goes on the back
+function holdOnTheWay(ch, V, f) {
+  V.carryImg = null;
+  if (!V.wpnOn) return;
+  const d = ch.def;
+  if (d.hold === 'two' || d.swing === 'club') {
+    const sa = 2.05, off = sprite(d.sprite).width * 0.5 - d.grip;
+    place(V.wpn, V, V.ta, -3 - Math.cos(sa) * off, -Math.sin(sa) * off);
+    V.wpn.a = V.ta + sa;
+  } else {
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = f + 0.25;
+    V.wpnLen = 0.8;
+  }
+}
+
+// ---------------- roll ----------------
+// After a drop: a forward roll over one shoulder, seen from above. The body tucks into a ball (the head goes under,
+// the back shows), the legs come up over it and unfold in front, he sits up over his feet and rises running. The free
+// hand takes the floor first and pushes him up at the end; the weapon stays in the other one, tucked in.
+const ROLL = {
+  t: [0, 0.14, 0.3, 0.46, 0.62, 0.8, 1],
+  fwd: [0, 3.5, 2, -0.5, -3, -1.5, 0],  // torso ahead of the body centre
+  s: [1, 0.88, 0.8, 0.8, 0.86, 0.95, 1],
+  tuck: [0, 0.6, 1, 1, 0.4, 0, 0],
+  fx: [1, -2, -3, 1, 8, 4, 1],          // feet: forward, and half their spread
+  fy: [3.6, 3.2, 3.4, 3.4, 3.2, 3.4, 3.6],
+  legs: [0, 0, 0.7, 1, 1, 0.3, 0],
+  hx: [6, 10, 3, 2, -1, 1, 6],          // the free hand: on the floor ahead, tucked in, pushing off beside the hip
+  hy: [6, 5, 3.5, 3.5, 8.5, 7, 6],
+};
+
+function rollPose(ch, P, V) {
+  const v = ch.vaulting, r = v.rolling, k = clamp(r.t / r.dur, 0, 1);
+  const dir = v.dir, c = Math.cos(dir), s = Math.sin(dir), key = (n) => track(ROLL.t, ROLL[n], k);
+  const mv = (out, lx, ly) => { out.x = lx * c - ly * s; out.y = lx * s + ly * c; }; // move space -> pose space
+  copyPose(V, P);
+  const fwd = key('fwd');
+  V.ta = dir + r.side * 0.5 * bump(k, 0.06, 0.72);
+  V.tx = c * fwd; V.ty = s * fwd;
+  V.s = key('s');
+  V.tuck = clamp(key('tuck'), 0, 1);
+  V.over = bump(k, 0.22, 0.6);
+  V.legs = clamp(key('legs'), 0, 1);
+  V.lift = 0.25 * V.over;
+  V.top = 0;
+  const fx = key('fx'), fy = key('fy');
+  for (let i = 0; i < 2; i++) { mv(V.feet[i], fx, (i ? 1 : -1) * fy); V.feet[i].a = dir; }
+  // the hands go from the walk into the move; a gun or a blade stays in the right hand, tucked against the chest
+  const hk = smooth(k / 0.12), hx = key('hx'), hy = key('hy'), d = ch.def;
+  const armed = V.wpnOn, two = armed && (d.hold === 'two' || d.swing === 'club');
+  mv(TMP, hx, -hy); V.hl.x = lerp(P.hl.x, TMP.x, hk); V.hl.y = lerp(P.hl.y, TMP.y, hk);
+  if (two) mv(TMP, 2, 3);
+  else if (armed) mv(TMP, 3.5, 3);
+  else mv(TMP, hx, hy);
+  V.hr.x = lerp(P.hr.x, TMP.x, hk); V.hr.y = lerp(P.hr.y, TMP.y, hk);
+  if (two) { mv(TMP, 5, -1.5); V.hl.x = lerp(P.hl.x, TMP.x, hk); V.hl.y = lerp(P.hl.y, TMP.y, hk); }
+  if (armed) {
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y;
+    V.wpn.a = lerpA(P.wpn.a, dir + (two ? -0.7 : 0.35), hk);
+    V.wpnLen = lerp(P.wpnLen, 0.75, hk);
+  }
+  V.carryImg = null;
+  blendPose(P, V, 1 - smooth((k - 0.8) / 0.2));
   return P;
 }
 
@@ -505,21 +668,9 @@ function drawHand(ctx, ch, h) {
   ctx.fillStyle = ch.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
 }
 
-export function drawPose(ctx, ch, P, alpha = 1) {
-  const x = ch.x, y = ch.y, s = P.s, ta = P.ta;
-  const bx = x + P.tx, by = y + P.ty;
-  const ga = ctx.globalAlpha;
-  if (alpha !== 1) ctx.globalAlpha = ga * alpha;
-
-  // shadow: further away, larger and softer as the body rises
-  const sh = silhouette(ch.torso), lift = P.lift;
-  const ox = 2 + lift * 4, oy = 2 + lift * 5, sa = 0.35 * (1 - 0.35 * lift);
-  if (lift > 0.05) {
-    drawSprite(ctx, sh, bx + ox - 0.7, by + oy - 0.5, ta, sa * 0.55, s * 1.05);
-    drawSprite(ctx, sh, bx + ox + 0.7, by + oy + 0.5, ta, sa * 0.55, s * 1.05);
-  } else drawSprite(ctx, sh, bx + ox, by + oy, ta, sa, s);
-
-  // thighs from the hips to the feet, only when the legs are thrown out in front
+// thighs from the hips to the feet (only when the legs are thrown out in front), and the feet: they rise less than
+// the shoulders; up: how much nearer the eye they are
+function drawLegs(ctx, P, x, y, bx, by, s, up = 1) {
   if (P.legs > 0.05) {
     ctx.save();
     ctx.globalAlpha *= Math.min(1, P.legs * 1.5);
@@ -534,10 +685,8 @@ export function drawPose(ctx, ch, P, alpha = 1) {
     }
     ctx.restore();
   }
-
-  // feet (they rise less than the shoulders)
   ctx.fillStyle = FOOT;
-  const fs = 1 + (s - 1) * 0.5;
+  const fs = (1 + (s - 1) * 0.5) * up;
   for (const f of P.feet) {
     ctx.save();
     ctx.translate(x + f.x, y + f.y);
@@ -546,6 +695,47 @@ export function drawPose(ctx, ch, P, alpha = 1) {
     ctx.fillRect(-3, -1.8, 6, 3.6);
     ctx.restore();
   }
+}
+
+// curled up in a roll: the torso shorter and rounder, the head tucked under, the hunched back on top of it
+function drawTucked(ctx, ch, P, bx, by) {
+  const t = smooth(P.tuck), img = ch.torso;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.rotate(P.ta);
+  ctx.scale(P.s * (1 - 0.22 * t), P.s * (1 + 0.05 * t));
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  // the head gone under the shoulders: the jacket's back where it was, lit on its round top, the spine down the
+  // middle, the collar at the front edge
+  ctx.globalAlpha *= t;
+  ctx.fillStyle = ch.look.arm;
+  ctx.beginPath(); ctx.ellipse(0, 0, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(-1.8, 0, 3.2, 5.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.beginPath(); ctx.ellipse(1, -1.2, 2.6, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(-4.5, -0.4, 8, 0.8);
+  ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.arc(0, 0, 5, -1.1, 1.1); ctx.stroke();
+  ctx.restore();
+}
+
+export function drawPose(ctx, ch, P, alpha = 1) {
+  const x = ch.x, y = ch.y, s = P.s, ta = P.ta;
+  const bx = x + P.tx, by = y + P.ty;
+  const ga = ctx.globalAlpha;
+  if (alpha !== 1) ctx.globalAlpha = ga * alpha;
+
+  // shadow: further away, larger and softer as the body rises
+  const sh = silhouette(ch.torso), lift = P.lift;
+  const ox = 2 + lift * 4, oy = 2 + lift * 5, sa = 0.35 * (1 - 0.35 * lift);
+  if (lift > 0.05) {
+    drawSprite(ctx, sh, bx + ox - 0.7, by + oy - 0.5, ta, sa * 0.55, s * 1.05);
+    drawSprite(ctx, sh, bx + ox + 0.7, by + oy + 0.5, ta, sa * 0.55, s * 1.05);
+  } else drawSprite(ctx, sh, bx + ox, by + oy, ta, sa, s);
+
+  if (P.over <= 0.35) drawLegs(ctx, P, x, y, bx, by, s);
 
   // arms and weapon in the torso frame
   ctx.save();
@@ -593,7 +783,9 @@ export function drawPose(ctx, ch, P, alpha = 1) {
   if (!P.top) drawHand(ctx, ch, hr);
   ctx.restore();
 
-  drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
+  if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
+  else drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
+  if (P.over > 0.35) drawLegs(ctx, P, x, y, bx, by, s, 1 + 0.15 * P.over); // up over the body, nearer the eye
   if (P.top) {
     // what is held above the shoulders goes over them
     ctx.save();

@@ -1,17 +1,17 @@
-import { CAT, MASK, ENEMY, BARREL } from '../Config.js';
+import { CAT, MASK, ENEMY, BARREL, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, chunk } from '../../engine/Assets.js';
 import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
-import { findVault } from '../systems/Cover.js';
+import { findVault, onRoof, rollRoom } from '../systems/Cover.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, drawPose, drawDown } from './CharacterAnim.js';
+import { newPose, standPose, vaultPose, slidePose, sitPose, drawPose, drawDown, ladderAt, ladderGrip } from './CharacterAnim.js';
 
 const { Bodies, Body } = Matter;
 
@@ -24,7 +24,13 @@ export const KINDS = {
 
 const VAULT_DUR = 0.5;  // s, windows and furniture alike
 const CLIMB_DUR = 0.72; // s, over a chain-link gate
+const LADDER_DUR = 1.1; // s, up or down a ladder
 const CLIMB_NOISE = 230; // px the rattling mesh is heard at when the player climbs
+const RUNG_NOISE = 150;  // px each of his steps on a steel ladder is heard at
+const LAND_NOISE = 120;  // px a flat landing is heard at
+
+// cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
+const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
 
 // Shared body / weapon / animation logic for the player and enemies.
@@ -444,13 +450,14 @@ export default class Character {
   knock() { /* overridden by Enemy */ }
 
   // ---------------- traversal ----------------
-  // jump through a window (the player: broken or not)  / over a low obstacle in direction a, if there is one
+  // jump through a window (the player: broken or not) / over a low obstacle in direction a, if there is one; up or
+  // down a ladder (def.climb 'rungs'); a drop from a height (def.land 'roll', down to the ground) ends in a roll
   tryVault(a) {
     if (this.vaulting || this.knocked || !this.alive) return false;
-    const v = findVault(this.world, this, a);
+    const w = this.world, v = findVault(w, this, a);
     if (!v) return false;
     const dx = v.to.x - this.x, dy = v.to.y - this.y, dist = Math.hypot(dx, dy) || 1;
-    const dir = Math.atan2(dy, dx);
+    const dir = Math.atan2(dy, dx), def = v.over.def || {};
     // hands planted on the ledge (world positions), a little apart: [left, right] relative to the move
     const L = v.ledge;
     const h0 = { x: L.x - L.tx * 9, y: L.y - L.ty * 9 }, h1 = { x: L.x + L.tx * 9, y: L.y + L.ty * 9 };
@@ -458,60 +465,131 @@ export default class Character {
     // the run-up carries into the move: Hermite tangents normalized to the vault distance and duration
     const vel = Body.getVelocity(this.body);
     const along = Math.max(0, (vel.x * dx + vel.y * dy) / dist);
-    const win = v.kind !== 'prop', climb = v.kind === 'climb'; // hoisted over on the hands, or slid across
-    const dur = climb ? CLIMB_DUR : VAULT_DUR;
+    // hoisted over on the hands (a sill, a gate, a parapet), or slid across (furniture, a hood)
+    const hoist = v.kind !== 'prop' || !!def.land, climb = v.kind === 'climb';
+    const ladder = def.climb === 'rungs' ? this.ladderPlan(v, dir) : null;
+    const dur = ladder ? LADDER_DUR : climb ? CLIMB_DUR : VAULT_DUR;
     const side = angDiff(dir, this.angle) >= 0 ? 1 : -1; // hip slides roll the chest toward the aim
     this.vaulting = {
-      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur, kind: v.kind, over: v.over, dir, dist,
-      hands: flip ? [h1, h0] : [h0, h1], side, legSide: win ? (Math.random() < 0.5 ? -1 : 1) : -side,
-      m0: clamp((along * 60 * dur) / dist, 0, win ? 0.6 : 1.1), m1: win ? 0.8 : 1.2, landed: false,
+      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur, kind: v.kind, over: v.over, dir, dist, hoist, ladder,
+      roll: this.isPlayer && def.land === 'roll' && !onRoof(w, v.to.x, v.to.y), rolling: null,
+      hands: flip ? [h1, h0] : [h0, h1], side, legSide: hoist ? (Math.random() < 0.5 ? -1 : 1) : -side,
+      m0: clamp((along * 60 * dur) / dist, 0, hoist ? 0.6 : 1.1), m1: ladder ? 0.5 : hoist ? 0.8 : 1.2, landed: false,
     };
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
-    this.world.sound(climb ? 'climb' : win ? 'vault' : 'slide', this.x, this.y, 0.8);
-    if (climb) this.world.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
-    else if (win && !v.over.intact) this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60); // a whole pane shatters in updateVault
+    if (ladder) return true; // each rung is heard as it is climbed (climbLadder)
+    w.sound(climb ? 'climb' : hoist ? 'vault' : 'slide', this.x, this.y, 0.8);
+    if (climb) w.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
+    else if (v.kind === 'window' && !v.over.intact) w.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60); // a whole pane shatters in updateVault
     return true;
   }
 
-  // returns true while the vault is still running
+  // a ladder about to be climbed (see ladderAt): up when the far side is a roof; its axis (unit, toward the top) and
+  // centre, the facing (always toward the top: one comes down it backwards), where the move starts and ends along it
+  ladderPlan(v, dir) {
+    const p = v.over, up = onRoof(this.world, v.to.x, v.to.y);
+    const tx = Math.cos(dir) * (up ? 1 : -1), ty = Math.sin(dir) * (up ? 1 : -1);
+    const lx = -Math.sin(p.body.angle), ly = Math.cos(p.body.angle); // the rails run along the sprite's y
+    const sgn = lx * tx + ly * ty >= 0 ? 1 : -1, ax = lx * sgn, ay = ly * sgn;
+    const q = (x, y) => (x - p.x) * ax + (y - p.y) * ay;
+    return { up, ax, ay, cx: p.x, cy: p.y, sgn, face: Math.atan2(ay, ax), q0: q(this.x, this.y), q1: q(v.to.x, v.to.y), i: -2 };
+  }
+
+  // returns true while the vault (or the roll after it) is still running
   updateVault(dt) {
     const v = this.vaulting;
     if (!v) return false;
+    if (v.rolling) return this.updateRoll(dt, v);
     const w = this.world;
     v.t += dt;
     const k = Math.min(1, v.t / v.dur);
-    // cubic Hermite: leaves with the run-up speed, lands with the exit speed, no jerk in between
-    const k2 = k * k, k3 = k2 * k;
-    const e = (k3 - 2 * k2 + k) * v.m0 + (3 * k2 - 2 * k3) + (k3 - k2) * v.m1;
     const c = Math.cos(v.dir), s = Math.sin(v.dir);
-    // skidding over a hood throws sparks, over wood a bit of dust
-    if (v.kind === 'prop' && k > 0.25 && k < 0.75 && Math.random() < 0.35) {
-      const metal = v.over?.isVehicle || v.over?.def?.material === 'metal';
-      if (metal) w.particles.sparks(this.x, this.y, v.dir + Math.PI, 0.6, 1, 140);
-      else w.particles.smoke(this.x, this.y, 1, 3, { speed: 15, size: 3, life: 0.5 });
+    let e;
+    if (v.ladder) e = this.climbLadder(v, k);
+    else {
+      // leaves with the run-up speed, lands with the exit speed, no jerk in between
+      e = hermite(k, v.m0, v.m1);
+      // skidding over a hood throws sparks, over wood a bit of dust
+      if (!v.hoist && k > 0.25 && k < 0.75 && Math.random() < 0.35) {
+        const metal = v.over?.isVehicle || v.over?.def?.material === 'metal';
+        if (metal) w.particles.sparks(this.x, this.y, v.dir + Math.PI, 0.6, 1, 140);
+        else w.particles.smoke(this.x, this.y, 1, 3, { speed: 15, size: 3, life: 0.5 });
+      }
     }
     Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
     Body.setVelocity(this.body, { x: 0, y: 0 });
     // a whole pane bursts as the body goes through (its own noise and glass; the diver is never cut by it)
     if (k >= 0.3 && v.kind === 'window' && v.over.intact) v.over.shatter(v.dir, this, 1);
-    // touch-down: dust, noise, a small camera kick for the player
-    if (!v.landed && k >= (v.kind === 'prop' ? 0.84 : 0.78)) {
+    // touch-down: dust, noise (less of it when he rolls), a small camera kick for the player
+    if (!v.ladder && !v.landed && k >= (v.roll ? 1 : v.hoist ? 0.78 : 0.84)) {
       v.landed = true;
       for (const sd of [-1, 1]) w.particles.smoke(this.x - s * sd * 6, this.y + c * sd * 6, 1, 2, { speed: 22, size: 3, life: 0.45 });
-      w.noise(this.x, this.y, this.isPlayer ? 120 : 0, this);
+      w.noise(this.x, this.y, this.isPlayer ? (v.roll ? PLAYER.roll.noise : LAND_NOISE) : 0, this);
       if (this.isPlayer) { w.shake(0.05); w.camera.push(c * 1.5, s * 1.5); }
     }
     if (k < 1) return true;
+    if (v.roll) { this.startRoll(v); return this.updateRoll(dt, v); }
+    this.endVault(v, (v.m1 * v.dist) / (v.dur * 60));
+    return false;
+  }
+
+  // one frame up or down a ladder: returns how far along the move the body is. Both hands are on it: the facing is
+  // held on the ladder. Each step on a rung rings a little and is heard a little way.
+  climbLadder(v, k) {
+    const L = v.ladder, at = ladderAt(L, k), w = this.world;
+    this.angle += angDiff(this.angle, L.face) * ladderGrip(at.u);
+    if (at.i !== L.i) {
+      const first = L.i === -2;
+      L.i = at.i;
+      if (at.top && (L.up || first)) w.sound('vault', this.x, this.y, 0.45); // over the edge of the roof
+      else if (at.i >= 0 && !at.top) {
+        w.sound('metal', this.x, this.y, 0.22, { pitch: 1.35 });
+        w.noise(this.x, this.y, this.isPlayer ? RUNG_NOISE : 0, this);
+      }
+    }
+    return (at.q - L.q0) / (L.q1 - L.q0 || 1);
+  }
+
+  // the feet touch the ground after a drop: a shoulder roll on along the move, as far as there is room for
+  startRoll(v) {
+    const R = PLAYER.roll, w = this.world;
+    const len = rollRoom(w, this, this.x, this.y, v.dir, R.dist);
+    const dur = R.dur * (0.7 + (0.3 * len) / R.dist);
+    v.rolling = { t: 0, dur, len, from: { x: this.x, y: this.y }, m0: 1.25, m1: R.exit, side: Math.random() < 0.5 ? -1 : 1, up: false };
+    // back on the ground: bodies, furniture and doors stop him again
+    this.body.collisionFilter = { ...this.body.collisionFilter, mask: MASK.CHAR };
+    w.sound('bodyFall', this.x, this.y, 0.45, { pitch: 1.2 });
+  }
+
+  // the roll is driven by velocity: the physics still stops it at whatever moved into the way since it was probed
+  updateRoll(dt, v) {
+    const r = v.rolling, w = this.world;
+    r.t += dt;
+    const k = Math.min(1, r.t / r.dur), e = hermite(k, r.m0, r.m1);
+    const c = Math.cos(v.dir), s = Math.sin(v.dir), n = Math.max(dt * 60, 1e-3);
+    const vx = clamp((r.from.x + c * r.len * e - this.x) / n, -4, 4), vy = clamp((r.from.y + s * r.len * e - this.y) / n, -4, 4);
+    this.vel = { x: vx, y: vy };
+    Body.setVelocity(this.body, this.vel);
+    // the feet find the floor again: a second puff where he comes up
+    if (!r.up && k >= 0.7) {
+      r.up = true;
+      w.particles.smoke(this.x + c * 5, this.y + s * 5, 2, 2, { speed: 18, size: 3, life: 0.4 });
+      w.sound('slide', this.x, this.y, 0.35, { pitch: 1.3 });
+    }
+    if (k < 1) return true;
+    this.endVault(v, (r.m1 * r.len) / (r.dur * 60));
+    return false;
+  }
+
+  // back on his feet: collisions as usual, the exit speed (px/step along the move) handed back to the run
+  endVault(v, sp) {
     this.vaulting = null;
     if (v.kind === 'window') this.glassSafe = 0.4;
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: MASK.CHAR };
-    // hand the exit speed back to the run
-    const sp = (v.m1 * v.dist) / (v.dur * 60);
-    this.vel = { x: c * sp, y: s * sp };
+    this.vel = { x: Math.cos(v.dir) * sp, y: Math.sin(v.dir) * sp };
     Body.setVelocity(this.body, this.vel);
-    return false;
   }
 
   dropWeapon(angle, speed = 2) {

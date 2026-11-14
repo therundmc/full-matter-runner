@@ -1,4 +1,5 @@
-// Vaulting geometry: a broken window or a low obstacle (def.vault) to get over, with a free landing spot on the far side.
+// Vaulting geometry: a broken window or a low obstacle (def.vault) to get over, with a free landing spot on the far side,
+// and the room there is to roll on after a drop.
 import { TILE, CAT } from '../Config.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 
@@ -34,6 +35,18 @@ export function spotIsFree(world, x, y, r, ignore) {
     if (Query.point(near, { x: x + ox, y: y + oy }).length) return false;
   }
   return true;
+}
+
+// is (x, y) on a walkable roof (floor tile '^')?
+export const onRoof = (world, x, y) => world.map.at(Math.floor(x / TILE), Math.floor(y / TILE)) === '^';
+
+// how far (px, up to max) a character can roll from (x, y) along angle a before something solid is in the way:
+// walls, doors, furniture, glass and people; probed in small steps so the roll never ends inside anything
+export function rollRoom(world, ch, x, y, a, max, step = 3) {
+  const ux = Math.cos(a), uy = Math.sin(a);
+  let d = 0;
+  for (let n = Math.min(max, step); d < max && spotIsFree(world, x + ux * n, y + uy * n, ch.radius, ch); n = Math.min(max, n + step)) d = n;
+  return d;
 }
 
 // first free spot beyond (x, y) along (ux, uy): a chair or a body right behind the obstacle must not cancel the vault
@@ -77,11 +90,16 @@ export function findVault(world, ch, a) {
     const to = landing(world, ch, ledge.x, ledge.y, nx * s, ny * s, [7, 13, 20]);
     if (to) return { kind: 'window', over: w, to, ledge };
   }
+  // the nearest first: in front of a gate made of several panels, the one he stands at
+  const near = [];
   for (const p of world.props) {
     if (p.dead || !p.def.vault) continue;
     if (Math.abs(p.x - ch.x) > 110 || Math.abs(p.y - ch.y) > 110) continue;
     const c = closestOnPolygon(ch.x, ch.y, p.body.vertices);
-    if (c.d > r + VAULT_REACH) continue;
+    if (c.d <= r + VAULT_REACH) near.push([p, c]);
+  }
+  near.sort((a, b) => a[1].d - b[1].d);
+  for (const [p, c] of near) {
     const nx = (c.x - ch.x) / (c.d || 1), ny = (c.y - ch.y) / (c.d || 1);
     if (dx * nx + dy * ny < FACING) continue;
     // along the move if that gets across, else straight over (running into it at an angle)

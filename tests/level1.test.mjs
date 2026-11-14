@@ -156,6 +156,7 @@ test('the liquor store roof: up a ladder from the street or from the shop, down 
   const w = world(), m = w.map, d = director(), R = PLAYER.radius;
   for (let col = 1; col <= 9; col++) for (let row = 8; row <= 14; row++) assert.equal(m.at(col, row), '^', `roof at ${col},${row}`);
   assert.ok(PROPS.ladder.climb && PROPS.ladder.vault && PROPS.ladder.blocksPath && PROPS.parapet.vault && PROPS.parapet.blocksPath);
+  assert.ok(PROPS.ladder.lasting && PROPS.parapet.lasting, 'neither can be destroyed: each closes a gap in a wall');
   // [from, heading, kind, the tile one lands on]
   const moves = [
     [[1.5, 21.35], -Math.PI / 2, 'climb', [1, 19]],   // up from the sidewalk

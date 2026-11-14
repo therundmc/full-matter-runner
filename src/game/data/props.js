@@ -67,11 +67,12 @@ export const PROPS = {
   bench: { vault: true, material: 'wood', w: 50, h: 15, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
   // guards path through it and vault it too (no blocksPath)
-  // a fixed steel ladder filling its gap in a wall: the way up to a roof (climbed with Space, like the gate)
-  ladder: { vault: true, climb: 'rungs', blocksPath: true, material: 'mesh', w: 30, h: 30, hp: 60, static: true, chips: '#9ea4ae', sound: 'metal' },
+  // a fixed steel ladder filling its gap in a wall: the way up to a roof (climbed with Space, like the gate);
+  // lasting: it is marked by blows and rounds but never destroyed (it closes a gap in a wall: gone, the gap would be a door)
+  ladder: { vault: true, climb: 'rungs', lasting: true, blocksPath: true, material: 'mesh', w: 30, h: 30, hp: 60, static: true, chips: '#9ea4ae', sound: 'metal' },
   // the low wall at the edge of a roof, where one can drop to the ground (vaulted with Space);
   // land: 'roll' = one comes down from a height on the far side and rolls on landing (entities/Character.js)
-  parapet: { vault: true, land: 'roll', blocksPath: true, material: 'stone', w: 32, h: 10, hp: 60, static: true, chips: '#8a5a50', sound: 'stone' },
+  parapet: { vault: true, land: 'roll', lasting: true, blocksPath: true, material: 'stone', w: 32, h: 10, hp: 60, static: true, chips: '#8a5a50', sound: 'stone' },
   // what stands on a roof one can walk on: the sprites of the scenery of the roofs around (data/roofs.js), with a body
   ac_unit: { sprite: 'roof/ac_unit', static: true, vault: true, blocksPath: true, material: 'metal', w: 46, h: 32, hp: 30, chips: '#8a909c', sparks: true, sound: 'metal' },
   roof_vent: { sprite: 'roof/vent', static: true, material: 'metal', r: 6.5, hp: 12, chips: '#8a909c', sound: 'metal' },

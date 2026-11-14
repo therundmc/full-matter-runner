@@ -52,6 +52,13 @@ export const PLAYER = {
     cost: 0.5,        // stamina (0..1) a slide takes: two in a row from rested
     regen: 0.28,      // stamina back per second on our feet
   },
+  // after a drop from a height (over a prop whose def has land: 'roll', down to the ground): a forward shoulder roll
+  roll: {
+    dur: 0.46,        // s, at full length
+    dist: 44,         // px rolled when nothing is in the way (less when something is)
+    exit: 0.75,       // speed handed back to the run at the end, x the roll's mean speed
+    noise: 70,        // px the guards hear the landing at (a flat landing: 120)
+  },
 };
 
 // Space right behind a standing guard who has his back to us (systems/Takedown.js, Player.updateTakedown):

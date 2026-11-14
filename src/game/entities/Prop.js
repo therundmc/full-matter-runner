@@ -172,7 +172,7 @@ export default class Prop {
     for (const i of torn) this.tearZone(i, dirA, power);
     if (torn.length) { const cut = this.zones.cut(); if (cut) this.sawOff(cut, dirA); }
 
-    this.hp -= damage;
+    if (!d.lasting) this.hp -= damage; // a way through a wall takes the marks, never gives (data/props.js)
     if (this.hp <= 0) { this.break(dirA, power); return; }
     const frac = this.hp / d.hp;
     while (this.stage < STAGES.length && frac <= STAGES[this.stage]) this.enterStage(++this.stage, px, py, dirA);
@@ -572,7 +572,7 @@ export default class Prop {
 
   // Gives way: it cracks, sags, then falls apart into its own parts (staged over a few frames; blasts are faster).
   break(dirA = rand(0, TAU), power = 1) {
-    if (this.dead || this.dying) return;
+    if (this.dead || this.dying || this.def.lasting) return;
     const d = this.def, w = this.world, fx = this.rec.fx;
     this.hp = Math.min(this.hp, 0);
     // explosives, leaking gas, and gas torn open by a blast
