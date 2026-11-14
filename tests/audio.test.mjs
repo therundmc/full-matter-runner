@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const { default: Audio, META } = await load('audio/Audio.js');
 const { RECIPES, formOf, FLOOR_OF, HANDLING } = await load('audio/Foley.js');
@@ -132,7 +133,7 @@ function calledNames() {
       }
     }
   };
-  walk(new URL('../src/game', import.meta.url).pathname.replace(/^\/(\w:)/, '$1'));
+  walk(fileURLToPath(new URL('../src/game', import.meta.url))); // not .pathname: a space in the path would stay encoded
   return names;
 }
 const GAME_SOUNDS = [...new Set([
