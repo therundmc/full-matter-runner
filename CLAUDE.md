@@ -109,6 +109,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Run / test
+- index.html starts the game through a small service worker (sw.js) that fetches every file fresh, because the user
+  runs `python -m http.server` out of habit and his browser then mixed cached and new modules ("does not provide an
+  export named ...", three times). If that error comes back: Ctrl+Shift+R once.
 - `npm start` (tools/serve.mjs: first free port from 8000, no browser cache) then the address it prints
   (`?level=lab` for the physics lab). The user often has an old server still running on 8000: a second
   `python -m http.server 8000` then fails with "address already in use", which he reads as "the server is broken".
@@ -120,7 +123,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 - The picture goes through a WebGL last pass, the lens (render/PostGL.js + render/Lens.js, settings data/post.js: radial
   colour fringe, shock waves, heat shimmer, glow, grading per situation, tube / tape look, speed smear, soft edges,
   shafts of light, zoom kick and impact frame on a kill); HUD and screens are drawn on a canvas above it. `?post=0`
-  turns it off (old 2D grading). The user asked for it "aux petits oignons": tune in data/post.js, never hard-code.
+  turns it off (old 2D grading), F6 toggles it. Tune in data/post.js, never hard-code. The user's verdict: at rest it
+  must be barely there (a boosted resting look was "far too much"); it is a KILL that the lens underlines (fringe, zoom,
+  colours pushed, impact frame); no blur in play (soft edges, speed smear, colour bleed are off: "does not look good").
 - Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
   vision, F3 overview, F4 physics overlay (with FPS and frame times), F6 lens on / off (the picture with and without the
   WebGL last pass, to compare). `window.game` in the console.

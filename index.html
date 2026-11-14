@@ -10,6 +10,26 @@
   </head>
   <body>
     <canvas id="game"></canvas>
-    <script type="module" src="src/main.js"></script>
+    <script>
+      // The game starts once sw.js is in charge, so that no file can come out of the browser cache (see sw.js).
+      // Without a service worker (or if it is slow to come) it starts anyway.
+      (function () {
+        var started = false;
+        function boot() {
+          if (started) return;
+          started = true;
+          var s = document.createElement("script");
+          s.type = "module";
+          s.src = "src/main.js";
+          document.body.appendChild(s);
+        }
+        if (!("serviceWorker" in navigator)) { boot(); return; }
+        navigator.serviceWorker.register("sw.js").then(function () { return navigator.serviceWorker.ready; }).then(function () {
+          if (navigator.serviceWorker.controller) boot();
+          else navigator.serviceWorker.addEventListener("controllerchange", boot);
+        }).catch(boot);
+        setTimeout(boot, 1500);
+      })();
+    </script>
   </body>
 </html>
