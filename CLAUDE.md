@@ -10,6 +10,8 @@
   tests to add, and the repo rules: no commit, no push, no server, ASCII-only source, `npm test` green, generated
   levels and sprites only through their tools. The subagent reports deviations; the main session decides.
 - Done inline by the main session only: one-line fixes, and bug hunts that need its own measurements.
+- Exceptions the user asked for: level design, the shader layer, and (2026-11-15) the VISUAL REWORK of the sprites:
+  "do it yourself, do not delegate to other agents". The main session paints those itself.
 
 ## Git
 - Commit messages: one single sentence, no body/bullet list (attribution trailer allowed).
@@ -27,6 +29,21 @@
   vehicles at real size (see engine/physics/Units.js: 1 m = 32 px; a car is ~4.4 x 1.8 m).
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
+
+## Visual rework (started 2026-11-15, the user's direction: more visceral, more real, more detail, a little dirty)
+- Stays strictly top-down (he chose it over the three-quarter view of his reference sheet): every animation built
+  so far stays valid. Never a rooster or any animal mask (that is another game's character).
+- Sprites are repainted at TWICE the pixel density, kind by kind (`FINE` in tools/generate_assets.py; the engine draws
+  a finer sprite smaller: `density` / `img.k` in engine/Assets.js, honoured by drawSprite; raw drawImage callers must
+  scale by `img.k`). Done: the standing characters (`_torso`, 40 x 40). To do, in this order: the bodies on the floor
+  at their real length (a man is 1.75 m: the ragdoll parts make him 1.2 m today), the weapons, the furniture and the
+  cars (already at real size: 1 m = 32 px), the floors and walls. Dirt, wear and grime everywhere, lightly.
+- The hero: a cheap dark suit under a clear plastic rain poncho, hood up, pink rubber gloves (he picked it among
+  three proposals); blood is meant to run on the poncho as the kills add up (not built yet).
+- Camera a third closer (engine/Camera.js: about 300 world px of vertical view, integer zoom).
+- Proportions: he feels the rooms too big for the furniture. Measured: furniture and cars are at real size, the
+  characters were wrong. He also wants the oversized rooms tightened (toilets, the boss's office, the storeroom) and
+  more furniture: a level pass to do once the guard-life agent has handed build_level1.py back.
 
 ## Delivery by blocks (validate each with the user before moving on)
 1. Engine perf & stability — done. The "3 explosions" bug was the lab (no exit) clearing -> exit HUD crash; fixed and
