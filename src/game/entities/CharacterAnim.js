@@ -20,7 +20,10 @@ const lerpA = (a, b, t) => a + angDiff(a, b) * t;
 const ARM = 11;           // a real arm's reach from the shoulder (px)
 const SHOULDER = 6;       // shoulders at torso-local (0, ±6)
 const FOOT = '#1a1214';
-const LEG_STROKES = [[PALETTE.ink, 4.6], ['#3a3148', 3]];
+const LEG_STROKES = [[PALETTE.ink, 5.6], ['#3a3148', 4]]; // a leg is not a stick (the user: "disproportionate")
+// everyone on his feet is drawn a little bigger than his body's circle: the user wanted the characters "a bit
+// bigger", in step with the bodies on the floor (engine/Assets.js LYING)
+const BIG = 1.08;
 
 const pt = () => ({ x: 0, y: 0, a: 0 });
 export function newPose() {
@@ -644,7 +647,7 @@ export function sitPose(ch, P, V) {
 // Enemy.postBody); hands and wpn in his torso's frame, rest (where his weapon lies) in the pose's.
 const BASES = {
   // torso pulled back toward the backrest (px), how much lower (smaller) he is, where the feet go [x, y] each
-  seat: { back: 3, s: 0.9, feet: [[15.5, -5.5], [14.5, 5]], legs: 1 },
+  seat: { back: 3, s: 0.9, feet: [[12.5, -5], [11.8, 4.6]], legs: 1 },
   desk: { back: 4.5, s: 0.86, feet: [[21, 1.6], [23, -1.1]], legs: 1 },
   wall: { back: 1.5, s: 1, feet: [[2, -3.6], [-3.5, 4.4]], legs: 0 },
 };
@@ -888,7 +891,7 @@ function drawTucked(ctx, ch, P, bx, by) {
 }
 
 export function drawPose(ctx, ch, P, alpha = 1) {
-  const x = ch.x, y = ch.y, s = P.s, ta = P.ta;
+  const x = ch.x, y = ch.y, s = P.s * BIG, ta = P.ta;
   const bx = x + P.tx, by = y + P.ty;
   const ga = ctx.globalAlpha;
   if (alpha !== 1) ctx.globalAlpha = ga * alpha;

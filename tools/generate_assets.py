@@ -2773,16 +2773,22 @@ def tiles():
 # Ragdoll segments (intact, they match each character's palette)
 # --------------------------------------------------------------------------
 
-# ---- a body on the floor, part by part (entities/Ragdoll.js), at FINE density and at a man's real size: torso
-# 16 x 21 world px, head 9 x 9, arm 22 x 5, leg 27 x 6: 1.75 m from crown to heel
-def lying(w, h, fn, rng, grime=4):
-    """fn(x, y) -> colour or None for each pixel, then a little grime and the outline."""
+# ---- a body on the floor, part by part (entities/Ragdoll.js), at FINE density. Each part is painted at a man's real
+# length (torso 21 world px, arm 22, leg 27: 1.75 m from crown to heel) then brought down to `to`, between that and
+# the stubby 1.2 m of before (torso 18, arm 17, leg 20): at full length a dead man looked like another game next to
+# the standing characters (the user: "completely different proportions"), and he asked for something in between.
+def lying(w, h, fn, rng, grime=4, to=None):
+    """fn(x, y) -> colour or None for each pixel of a w x h part; squeezed to `to`, then a little grime and the outline."""
     cv = Cv(w, h)
     for y in range(h):
         for x in range(w):
             c = fn(x, y)
             if c is not None:
                 cv.set(x, y, c)
+    if to:
+        cv.img = cv.img.resize(to, Image.NEAREST)
+        cv.w, cv.h = to
+        cv.p = cv.img.load()
     mottle(cv, rng, amt=grime, cell=4)
     cv.outline()
     return cv
@@ -2805,7 +2811,7 @@ def torso_edge(y):
 
 def rag_torso(ch, back=False):
     """The trunk from the collar to the belt, his front (or his back): the design of chest_px drawn finer, then the
-    lapels' edge, the belt and its buckle, creases, the shade under the arms."""
+    lapels' edge, the belt and its buckle, creases, the shade under the arms (no more: too much detail was rejected)."""
     k = ch['kind']
     rng = part_rng(ch, 1 + back)
     crease = VNoise(32, 44, 4, rng)
@@ -2845,15 +2851,13 @@ def rag_torso(ch, back=False):
                 b = 0.3 + 0.38 * (u + 6.9)
                 if abs(abs(v) - b) < 0.2 and u > -5.6:
                     c = dk(ch['top'][1], 0.25)           # the edge of the lapel
-                elif abs(v) < b and abs(v) > 0.7 and int(y) % 9 == 4 and abs(v) < 1.2:
-                    c = WHITE[2]                         # a shirt button
         n = crease(x, y)
         if n > 0.72:
             c = dk(c, 0.12)
         elif n < 0.22:
             c = lt(c, 0.08)
         return c
-    return lying(32, 42, px, rng)
+    return lying(32, 42, px, rng, to=(32, 36))
 
 
 def rag_torso_up(ch):
@@ -2881,7 +2885,7 @@ def rag_head(ch):
 
 def rag_head_up(ch):
     """The head of a body lying on its back (18 x 18, crown toward -y): a face. Brows, the eyes shut, the nose and
-    its shadow, the mouth a little open, the ears, the jaw in shade; a thread of blood at the corner of the mouth."""
+    its shadow, the mouth a little open, the ears, the jaw in shade. Kept simple: the user found more than this too much."""
     rng = part_rng(ch, 4)
     k = ch['kind']
     cv = Cv(18, 18)
@@ -2905,15 +2909,9 @@ def rag_head_up(ch):
         cv.set(x, 13, hx('#5a1c24'))                     # the mouth, a little open
     cv.set(8, 14, skin[1])
     cv.set(9, 14, skin[1])
-    cv.set(11, 13, BLOOD[1])                             # blood at its corner
-    cv.set(11, 14, BLOOD[0])
     for x in range(5, 13):
         if cv.on(x, 15):
             cv.set(x, 15, skin[1])                       # the jaw in shade
-    if k == 'thug':
-        for (x, y) in ((6, 13), (12, 12), (7, 15), (10, 15), (5, 12)):
-            if cv.on(x, y):
-                cv.set(x, y, dk(skin[1], 0.18))          # stubble
     mottle(cv, rng, amt=3, cell=3)
     cv.outline()
     return cv
@@ -2921,7 +2919,7 @@ def rag_head_up(ch):
 
 def rag_arm(ch):
     """An arm from the shoulder (-x) to the fingers (+x), 44 x 10: the sleeve with its crease at the elbow, the cuff,
-    the hand, a thumb, the lines between the fingers."""
+    the hand and its thumb."""
     k = ch['kind']
     rng = part_rng(ch, 5)
     s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
@@ -2935,8 +2933,6 @@ def rag_arm(ch):
             return None                                  # rounded ends
         i = 3 if y < 3 else 2 if y < 6 else 1
         if x >= 35:                                      # the hand
-            if x >= 40 and y in (3, 6):
-                return skin[0]                           # between the fingers
             if y == 1 and not 36 <= x <= 38:
                 return None                              # only the thumb sticks out
             return skin[i]
@@ -2950,12 +2946,12 @@ def rag_arm(ch):
         if x == 31 and not cuff and k != 'brute':
             c = s[max(0, i - 1)]                         # the end of the sleeve
         return c
-    return lying(44, 10, px, rng, grime=3)
+    return lying(44, 10, px, rng, grime=3, to=(34, 10))
 
 
 def rag_leg(ch):
     """A leg from the hip (-x) to the toe (+x), 54 x 12: the trouser leg narrowing to the ankle, its pressed crease, the
-    knee, the hem, a sock, the shoe with its sole, its laces and a shine on the toe."""
+    knee, the hem, a sock, the shoe with its sole."""
     k = ch['kind']
     rng = part_rng(ch, 6)
     p, sh = ch['pants'], ch['shoe']
@@ -2975,10 +2971,6 @@ def rag_leg(ch):
         if x >= 46:                                      # the shoe
             if y == bot:
                 return sh[0]                             # sole
-            if 47 <= x <= 49 and y in (4, 6):
-                return sh[3]                             # laces
-            if x in (50, 51) and y in (3, 4):
-                return sh[3]                             # the shine on the toe
             return sh[i]
         if x >= 44:
             return WHITE[max(1, i - 1)] if k != 'thug' else hx('#1a1420')   # sock
@@ -2992,13 +2984,13 @@ def rag_leg(ch):
         if x in (23, 24) and y >= 5:
             c = p[max(0, i - 1)]                         # behind the knee
         return c
-    return lying(54, 12, px, rng, grime=3)
+    return lying(54, 12, px, rng, grime=3, to=(40, 12))
 
 
 def knocked_down(ch):
     """A man knocked out cold, built from the parts of a body on the floor so he is the size of one: on his back, an arm
-    thrown out, the other along him, the legs a little apart. 124 x 96, the head toward +x."""
-    W, H = 96, 124
+    thrown out, the other along him, the legs a little apart. 108 x 96, the head toward +x."""
+    W, H = 96, 108
     body = Image.new('RGBA', (W, H), CLEAR)
 
     def limb(cv, rx, ry, deg):
@@ -3009,8 +3001,8 @@ def knocked_down(ch):
         tmp = tmp.rotate(-deg, resample=Image.NEAREST)
         body.alpha_composite(tmp, (int(rx - n // 2), int(ry - n // 2)))
     leg, arm = rag_leg(ch), rag_arm(ch)
-    limb(leg, 42, 62, 97)
-    limb(leg, 54, 62, 80)
+    limb(leg, 42, 56, 97)
+    limb(leg, 54, 56, 80)
     limb(arm, 34, 28, 114)
     limb(arm, 62, 28, 18)
     body.alpha_composite(rag_torso_up(ch).img, (32, 21))
@@ -5149,10 +5141,10 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (40, 40)), ('_down', (124, 96)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_down', (108, 96)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
-        ('_rag_torso', (32, 42)), ('_rag_head', (18, 18)), ('_rag_arm', (44, 10)), ('_rag_leg', (54, 12)),
-        ('_rag_torso_up', (32, 42)), ('_rag_torso_down', (32, 42)), ('_rag_head_up', (18, 18))]]
+        ('_rag_torso', (32, 36)), ('_rag_head', (18, 18)), ('_rag_arm', (34, 10)), ('_rag_leg', (40, 12)),
+        ('_rag_torso_up', (32, 36)), ('_rag_torso_down', (32, 36)), ('_rag_head_up', (18, 18))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(48, 14),
