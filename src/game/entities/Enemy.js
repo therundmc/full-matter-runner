@@ -982,7 +982,10 @@ export default class Enemy extends Character {
       const sep = this.separation();
       const k = dist < 50 ? 0 : 1;
       this.steer(ux - uy * side * k + sep.x, uy + ux * side * k + sep.y, ENEMY.runSpeed * this.pace * (this.dodge ? 1.25 : 1), 0.3);
-    } else this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 });
+    } else if (this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 }) && dist > 30) {
+      // no way round on foot (he stands behind a counter, on a roof edge): straight at him, over what is in the way
+      if (!this.tryVault(Math.atan2(dy, dx))) this.steer(ux, uy, ENEMY.runSpeed * this.pace, 0.3);
+    }
     if (dist < d.range + p.radius - 2 && this.react <= 0) this.attack();
   }
 
@@ -1248,7 +1251,7 @@ export default class Enemy extends Character {
   goTo(x, y) {
     if (!this.director.budget(1)) return null;
     this.dest = { x, y };
-    const path = findPath(this.world.map, this.x, this.y, x, y);
+    const path = this.world.pathForGuard(this.x, this.y, x, y);
     if (!path || !path.length) { this.path = null; return false; }
     this.path = path;
     this.pathIdx = 0;
@@ -1289,6 +1292,12 @@ export default class Enemy extends Character {
       dx = t.x - this.x; dy = t.y - this.y; d = Math.hypot(dx, dy) || 1;
     }
     const ux = dx / d, uy = dy / d, heading = Math.atan2(dy, dx);
+    // the keys of the house: a locked door on his way opens for him
+    for (const door of this.world.doors) {
+      if (!door.locked || !this.world.isHouseDoor(door)) continue;
+      const tip = door.tip();
+      if (Math.hypot((door.hx + tip.x) / 2 - this.x - ux * 14, (door.hy + tip.y) / 2 - this.y - uy * 14) < 22) door.unlatch();
+    }
     const map = this.world.map;
     const cx = Math.floor((this.x + ux * 20) / TILE), cy = Math.floor((this.y + uy * 20) / TILE), key = cy * map.w + cx;
     const mx = Math.floor(this.x / TILE), my = Math.floor(this.y / TILE);

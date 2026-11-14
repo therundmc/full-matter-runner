@@ -67,6 +67,10 @@ export const PROPS = {
   bench: { vault: true, material: 'wood', w: 50, h: 15, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
   // guards path through it and vault it too (no blocksPath)
+  // a fixed steel ladder filling its gap in a wall: the way up to a roof (climbed with Space, like the gate)
+  ladder: { vault: true, climb: true, blocksPath: true, material: 'mesh', w: 30, h: 30, hp: 60, static: true, chips: '#9ea4ae', sound: 'metal' },
+  // the low wall at the edge of a roof, where one can drop to the ground (vaulted with Space)
+  parapet: { vault: true, blocksPath: true, material: 'stone', w: 32, h: 10, hp: 60, static: true, chips: '#8a5a50', sound: 'stone' },
   chain_fence: { vault: true, climb: true, material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
   // shop fronts of the street: what shows behind the lit display windows, and their neon wall signs (mounted like
   // the bar's: 3 px off the wall face; unlike the pictures they read one way up, so never rotate them)

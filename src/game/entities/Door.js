@@ -91,6 +91,16 @@ export default class Door {
     for (const i of this.cells) this.world.map.blocked[i] = 1;
   }
 
+  // a guard lets himself through with his key: hardly a sound, and it stays unlocked behind him
+  unlatch() {
+    if (!this.locked) return;
+    this.locked = false;
+    Body.setStatic(this.body, false);
+    setKg(this.body, 25);
+    for (const i of this.cells) this.world.map.blocked[i] = 0;
+    this.world.sound('door', this.hx, this.hy, 0.5);
+  }
+
   // the lock gives: the door bursts open away from the hit
   unlock(px, py, dirA, power = 1) {
     if (!this.locked) return;

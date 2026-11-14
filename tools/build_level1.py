@@ -17,15 +17,24 @@ Plan (north is up):
 
 The street is alive at 2:14 AM: three shop fronts throw their light on the sidewalks through their display windows
 (a liquor store and a TV shop, closed, on either side of the bar; a laundromat open all night next to the start alley).
-They are public ground, and nothing in them leads anywhere.
+They are public ground. The liquor store has a staff door on the service alley and a ladder to its roof.
 
-Three ways in, none of them free:
+Six ways in, none of them free (the level is made to be played again another way):
     the front    double door under the neon: the bouncer, the sidewalk patrol, the whole room at once
     the gate     west service alley, closed by a chain-link gate to climb (Space): the shortest way to the back, but
                  under a lamp, in full view of the street through the mesh, with a man smoking a few metres further
     the gap      an anonymous door right of the bar opens on a dark one-metre gap: nobody posted there and no light,
                  but it is the long way round, with no room to dodge, past a window of the bar, and it comes out
-                 in the back lot under the tube light where a guard walks his round
+                 in the back lot under the tube light where a guard walks his round; on its way, a window of the
+                 VIP room to dive through
+    the roof     a fire-escape ladder at the corner of the liquor store (far left of the street) climbs to its flat
+                 roof: nobody up there, a bat left by whoever comes to smoke, and two drops over the parapet: into
+                 the service alley behind the gate and the smoker's back, or into the west end of the back lot
+    the shop     the liquor store: break in by the front (the bell rings, the guards come and look: a diversion as
+                 much as a way in), or come down its own ladder from the roof without a sound; the pistol is behind
+                 the counter, and the staff door opens on the service alley, inside the gate
+    the lot      from the back lot: the locked back door (to force), the boss's window (to dive through, into the
+                 middle of them), or the toilets' window (a public room: one comes out of it a customer)
 """
 from levelkit import Level
 
@@ -57,6 +66,8 @@ lv.put(27, 11, 'L')            # back room, locked: kick it or shoot it
 lv.put(14, 8, 'D')             # storeroom -> service alley
 lv.put(28, 5, 'L')             # back room -> back lot, locked: the back way in has to be forced
 lv.put(26, 5, 'G')
+lv.put(22, 5, 'G')             # the toilets' window on the back lot
+lv.put(31, 17, 'G')            # the VIP room's window on the gap
 lv.put(31, 14, 'G')            # the pool corner, seen from the gap
 for x in (15, 16, 24):
     lv.put(x, 20, 'G')         # facade windows
@@ -72,6 +83,15 @@ lv.fill(20, 32, 23, 36, '_')
 # shop fronts, 3 m deep behind their display windows: liquor store (west of the bar) and TV shop (east), both locked
 # for the night, and the laundromat by the start alley, open
 lv.fill(3, 17, 8, 19, ',')
+lv.put(9, 17, ',')
+lv.put(10, 17, 'D')            # its staff door, behind the counter, on the service alley
+# the liquor store's flat roof: up a ladder from the street corner or from the shop, down over a parapet
+lv.fill(1, 8, 9, 14, '^')
+lv.fill(7, 3, 9, 7, '^')       # its north arm, above the back lot
+lv.fill(1, 15, 1, 20, '^')     # the fire escape's landing and its ladder on the street
+lv.fill(3, 15, 3, 16, '^')     # the shop's own ladder, in its back wall
+lv.put(10, 12, '^')            # the parapet over the service alley
+lv.put(10, 3, '^')             # ... and over the back lot
 lv.fill(5, 20, 7, 20, 'G')
 lv.put(8, 20, 'L')
 lv.fill(36, 17, 39, 19, ';')
@@ -106,7 +126,7 @@ lv.host(21, 6, 23, 11)
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
 lv.actor('J', 17, 22, route=[[16, 22], [27, 22]])       # a blade in his pocket, walks the sidewalk
-lv.actor('k', 12, 12, face=270)                         # having a smoke in the service alley
+lv.actor('k', 12, 8, face=270)                          # having a smoke in the service alley, by the storeroom door
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
@@ -193,14 +213,15 @@ lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
 lv.dress('manholes', 9.5, 25.2)
 lv.dress('manholes', 27.3, 28.5)
-lv.prop('palm_tree', 2.5, 21.8)
+lv.prop('wall_lamp', 2.6, 21.09)                        # over the foot of the fire escape: the ladder must be seen
 lv.prop('palm_tree', 41.6, 21.8)
 
 lv.area('liquor store')
 lv.prop('neon_sign_liquor', 4.0, 21.09)
 lv.alarm(3, 17, 8, 19, 4.87, 21.1)
-for x in (3.7, 5.0, 6.3):
+for x in (5.0, 6.3):
     lv.prop('bottle_shelf', x, 17.2)
+lv.prop('ladder', 3.5, 16.5)                            # up to the roof
 lv.prop('bottle_shelf', 8.3, 17.2)                      # behind the counter
 lv.prop('bar_counter', 7.5, 18.4)
 lv.prop('bar_counter', 8.5, 18.4)
@@ -244,7 +265,8 @@ for x in (11.5, 12.5, 13.5):
 lv.prop('wall_lamp', 11.09, 19.0, 270)
 lv.prop('trash_can', 13.5, 17.4)
 lv.prop('trash_can', 13.45, 18.25)
-lv.prop('crate', 11.45, 16.9, -6)
+lv.prop('crate', 12.7, 15.9, -6)
+lv.prop('parapet', 10.5, 12.5, 90)                     # the drop from the roof
 lv.prop('dumpster', 11.62, 14.5, 90)
 lv.prop('neon_tube_cyan', 13.93, 9.9, 90)
 lv.prop('crate', 11.45, 9.8, 4)
@@ -263,7 +285,7 @@ lv.prop('crate', 17.5, 2.15, 30)
 lv.prop('barrel', 12.0, 1.45)
 lv.prop('barrel', 12.65, 1.5)
 lv.prop('trash_can', 31.5, 1.5)
-lv.pigeons(27.5, 2.6, 2)
+lv.prop('parapet', 10.5, 3.5, 90)                      # the drop from the roof
 lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
 lv.prop('wall_vent', 16.3, 4.92, 180)                   # the oven's extractor steams into the lot
@@ -343,26 +365,35 @@ lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round 
 lv.prop('sofa', 28.4, 17.45)
 lv.prop('armchair', 26.5, 17.5, 0)
 lv.prop('armchair', 26.5, 19.45, 0)
-lv.prop('plant', 30.55, 17.4)
+lv.prop('plant', 29.75, 17.35)
 lv.prop('neon_tube_pink', 28.0, 19.93, 180)
 
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
-lv.area('west block, along the service alley')
-lv.roof('skylight_dark', 7.4, 1.7)
+lv.area('the liquor store roof')
+lv.prop('ladder', 1.5, 20.5)                            # the fire escape, at the corner of the street
+lv.prop('wall_lamp', 1.5, 15.09, 180)                   # a lamp at the top of it
+lv.prop('string_lights', 4.0, 9.0)                      # somebody's summer evenings
+lv.prop('chair', 3.3, 10.2, 200)
+lv.prop('chair', 4.9, 10.5, 330)
+lv.prop('crate', 4.15, 9.9, 12)                         # their table
+lv.prop('plant', 1.45, 8.5)
+lv.prop('crate', 8.5, 8.5, -8)
+lv.prop('crate', 8.45, 9.25, 20)
+lv.prop('barrel', 6.5, 13.5)                            # rain water
+lv.prop('barrel', 1.5, 13.4)
+lv.prop('trash_can', 7.5, 6.5)
+lv.prop('crate', 8.5, 4.5, 5)
+lv.actor('5', 4, 11)                                    # a bat left against the crate
+lv.pigeons(6.2, 11.2, 3)
+lv.dress('papers', 1, 8, 9, 14, 3)
+
+lv.area('west block, round the roof')
+lv.roof('skylight_dark', 3.2, 1.75)
 lv.roof('tank', 3.2, 4.3)
-lv.roof('vent', 8.6, 3.6)
-lv.roof('vent', 8.6, 4.6)
-lv.roof('ac_unit', 8.7, 6.6, 90)
-lv.roof('duct', 7.0, 6.6)
-lv.roof('ac_unit', 8.7, 8.4, 90)
-lv.roof('bulkhead', 5.6, 10.4)
-lv.roof('chimney', 2.4, 9.2)
-lv.roof('hatch', 8.9, 12.6)
-lv.roof('skylight', 4.2, 14.9)
-lv.roof('skylight', 6.2, 14.9)
-lv.roof('antenna', 7.6, 12.9, 20)
-lv.roof('chimney', 1.4, 17.6)
-lv.roof('vent', 1.6, 19.0)
+lv.roof('vent', 5.3, 2.4)
+lv.roof('vent', 5.3, 3.4)
+lv.roof('chimney', 1.5, 5.6)
+lv.roof('antenna', 4.9, 5.75, 20)
 
 lv.area('east block, behind the bar')
 lv.roof('skylight', 35.2, 2.6, 90)

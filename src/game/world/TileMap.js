@@ -7,6 +7,7 @@ const { Bodies } = Matter;
 export const FLOORS = {
   '.': 'wood', ',': 'checker', '+': 'tile_blue', ':': 'carpet_red', ';': 'carpet_purple', '_': 'concrete',
   '"': 'grass', '=': 'asphalt', '-': 'asphalt_line', '~': 'dirt', 's': 'sidewalk', '*': 'neon_floor',
+  '^': 'roof', // a flat roof one can walk on (same tar paper as the roofs of the buildings around)
 };
 export const WALLS = { '#': 'wall', 'X': 'brick' };
 const STRUCT = new Set(['D', 'L', 'G', 'F']);

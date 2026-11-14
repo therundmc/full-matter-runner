@@ -40,6 +40,7 @@ import Sirens from '../systems/Sirens.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Clouds from '../systems/Clouds.js';
 import Gadgets from '../systems/Gadgets.js';
+import { findPath } from '../../engine/nav/Pathfinding.js';
 import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
 import Director from '../ai/Director.js';
@@ -135,6 +136,28 @@ export default class World {
   // ---------------- registry ----------------
   addBody(b) { this.physics.add(b); }
   removeBody(b) { this.physics.remove(b); }
+
+  // a locked door of the house (on or within a tile of its guarded premises): the guards have its key
+  isHouseDoor(d) {
+    if (d.house === undefined) {
+      const W = this.map.w, zones = this.level.premises || [];
+      d.house = d.cells.some((i) => {
+        const c = i % W, r = Math.floor(i / W);
+        return zones.some(([c0, r0, c1, r1]) => c >= c0 - 1 && c <= c1 + 1 && r >= r0 - 1 && r <= r1 + 1);
+      });
+    }
+    return d.house;
+  }
+
+  // a guard's way from s to t: the locked doors of the house do not stop him (he unlocks them as he comes to them,
+  // Enemy.follow); everyone else's are walls to him too
+  pathForGuard(sx, sy, tx, ty) {
+    const b = this.map.blocked, open = [];
+    for (const d of this.doors) if (d.locked && this.isHouseDoor(d)) for (const i of d.cells) { b[i] = 0; open.push(i); }
+    const path = findPath(this.map, sx, sy, tx, ty);
+    for (const i of open) b[i] = 1;
+    return path;
+  }
   characters() { return this.chars; }
   // emits one 'shot' per trigger pull: the pellets of a blast all come from the same shooter in the same step
   addProjectile(p) {
