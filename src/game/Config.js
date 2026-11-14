@@ -129,6 +129,15 @@ export const AI = {
   // kept; gap: px between two prints of the same run; hop: px a tracker walks at a time; sight: share of the view
   // distance at which a print is noticed, close: px all around; ahead: px he goes on past the last print.
   trail: { fresh: 45, max: 48, gap: 60, hop: 70, sight: 0.45, close: 36, ahead: 96 },
+  // how a guard carries his weapon (ai/Carry.js), in s: putting it away, drawing a pistol or a blade, bringing a
+  // long gun round from his back, raising it on a target; ready: how far out (0..1) it must be to fire
+  carry: { holster: 0.7, draw: 0.22, unsling: 0.34, raise: 0.16, ready: 0.3 },
+  // two calm guards within `near` px (one of them walking by: `pass`) stop for a word: for `time` s, then not
+  // again for `every` s; line: odds a turn to talk comes with a line over his head
+  chat: { near: 84, pass: 56, time: [6, 11], every: [25, 50], line: 0.7 },
+  // a guard goes and relieves himself (ai/Pastimes.js reliefSpot) every `every` s (the first time after `first`),
+  // odds per idle pick, for `time` s; a spot not reached in `giveUp` s is forgotten
+  relief: { odds: 0.12, every: [90, 180], first: [15, 120], time: [7, 10], giveUp: 6 },
   barkGap: 0.4,           // seconds between two barks in the whole squad
   barkMemory: 8,          // lines the squad has just used and will not repeat
   tauntGap: [6, 12],      // seconds between two curses of a guard in a fight

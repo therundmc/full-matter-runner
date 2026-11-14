@@ -72,6 +72,8 @@ export default class Character {
     this.lean = { x: 0, y: 0 };
     this.prevVel = { x: 0, y: 0 };
     this.breath = rand(0, 6.28);
+    this.stow = 0;          // weapon put away 1 .. in hand 0 (ai/Carry.js; only the guards ever put theirs away)
+    this.lower = 0;         // gun held low 1 .. raised on a target 0
     this.downT = 0;         // time since knocked down
     this.pose = newPose();
     this.pose2 = newPose();

@@ -2,9 +2,10 @@
 // Or a patron posted indoors (sit): at a pastime on his seat (ai/Pastimes.js) until he panics like the others.
 // Moved by a Walker brain (ai/Civilians.js) that systems/Ambient.js ticks. Same body, death and gore as anyone;
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
-import { CAT, MASK, PALETTE, TILE } from '../Config.js';
-import { rand, local, angDiff, approachAngle } from '../../engine/math.js';
+import { CAT, MASK, TILE } from '../Config.js';
+import { rand, approachAngle } from '../../engine/math.js';
 import { WALKER } from '../ai/Civilians.js';
+import { talks } from '../ai/Pastimes.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
 
@@ -24,6 +25,7 @@ export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS).filter((k) => !CIVILIA
 // passers-by walk out of the map: the edge barriers are not for them
 const MASK_CIV = MASK.CHAR & ~CAT.EDGE;
 const MASK_SEATED = MASK_CIV & ~CAT.PROP;
+const OVER_HEAD = { hl: { x: 1, y: -4 }, hr: { x: 1, y: 4 } }; // arms over the head
 
 export default class Civilian extends Character {
   constructor(world, x, y, angle, kind, brain) {
@@ -35,6 +37,8 @@ export default class Civilian extends Character {
     this.mate = null;      // the other half of a couple
     this.crouch = 0;
     this.seed = rand(0, 100);
+    // how a passer-by carries his hands on a walk: in the pockets, on a bag, or swinging
+    this.habit = this.seed < 22 ? 'pockets' : this.seed < 42 ? 'bag' : null;
     this.stuckT = 0;
     this.dodge = 0;
     this.post = null;      // a patron's spot (see sit)
@@ -127,64 +131,31 @@ export default class Civilian extends Character {
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
     const b = this.brain, t = this.world.time;
-    if (b.state !== WALKER.STOP) return;
-    drawPastime(ctx, this, b.activity, t);
-    if (b.activity === 'smoke') {
-      // cigarette ember at the lips, glowing on each drag, a curl of smoke
-      const h = local(this.x, this.y, this.angle, 7, 2);
-      const drag = Math.sin(t * 1.3 + this.seed) > 0.75;
-      ctx.fillStyle = drag ? '#ffd27a' : PALETTE.orange;
-      ctx.fillRect(h.x - 1, h.y - 1, 2, 2);
-      const ph = (t * 0.6 + this.seed) % 1;
-      ctx.fillStyle = `rgba(200,200,210,${0.3 * (1 - ph)})`;
-      ctx.fillRect(h.x + Math.sin(ph * 6) * 2 - 1, h.y - ph * 12 - 1, 2 + ph * 3, 2 + ph * 3);
-    } else if (b.activity === 'phone') {
-      const h = local(this.x, this.y, this.angle, 6, 3);
-      ctx.fillStyle = 'rgba(5,217,232,0.35)';
-      ctx.fillRect(h.x - 3, h.y - 3, 6, 6);
-      ctx.fillStyle = '#bff6ff';
-      ctx.fillRect(h.x - 1.5, h.y - 1, 3, 2);
-    }
+    if (b.state === WALKER.STOP) drawPastime(ctx, this, this.pastime, t);
+    else if (b.state === WALKER.WALK && this.habit === 'bag') drawPastime(ctx, this, 'bag', t);
   }
 
-  // hands: busy with a pastime, an easy arm swing while walking, a cigarette / phone held up, up or over the head
-  // in panic
-  drawArms(ctx) {
-    const b = this.brain;
-    let hl, hr;
-    const busy = b.state === WALKER.STOP && pastimeHands(b.activity, this.world.time, this.seed);
-    if (busy) {
-      ({ hl, hr } = busy);
-    } else if (b.state === WALKER.PANIC && b.pose === 'hands') {
-      const sh = Math.sin(this.world.time * 30) * 0.6; // trembling
-      hl = { x: 3 + sh, y: -9 }; hr = { x: 3 - sh, y: 9 };
-    } else if (b.state === WALKER.COWER || (b.state === WALKER.PANIC && b.pose === 'duck')) {
-      hl = { x: 1, y: -4 }; hr = { x: 1, y: 4 }; // arms over the head
-    } else if (b.state === WALKER.STOP && (b.activity === 'smoke' || b.activity === 'phone')) {
-      hl = { x: 5, y: -5 };
-      hr = b.activity === 'smoke' ? { x: 6, y: 2 } : { x: 5, y: 3 };
-    } else {
-      const run = b.state === WALKER.FLEE;
-      const s = this.moving > 0.25 ? Math.sin(this.walk) * (run ? 6 : 3.5) : 0;
-      hl = { x: 1.5 + s, y: run ? -7 : -7.5 };
-      hr = { x: 1.5 - s, y: run ? 7 : 7.5 };
+  // what he is at, as a kind of render/PastimeArt.js: a couple chats turn about, a window is looked at hands in
+  // the pockets
+  get pastime() {
+    const a = this.brain.activity;
+    if (a === 'chat') return talks(this.world.time, this.mate && this.seed > this.mate.seed ? 1 : 0) ? 'talk' : 'listen';
+    return a === 'window' ? 'pockets' : a;
+  }
+
+  // CharacterAnim hook, where the hands are: at a pastime on his spot, up or over the head in a panic, in the
+  // pockets or on a bag on a walk; null lets the arms swing
+  busyHands() {
+    const b = this.brain, t = this.world.time;
+    if (b.state === WALKER.STOP) return pastimeHands(this.pastime, t, this.seed);
+    if (b.state === WALKER.PANIC && b.pose === 'hands') {
+      const sh = Math.sin(t * 30) * 0.6; // trembling
+      return { hl: { x: 3 + sh, y: -9 }, hr: { x: 3 - sh, y: 9 } };
     }
-    // the arms swing relative to the body even while the head looks around
-    const turn = this.moving > 0.25 && b.state !== WALKER.STOP ? angDiff(this.angle, this.moveAngle) : 0;
-    if (Math.abs(turn) > 0.05) {
-      const c = Math.cos(turn), sn = Math.sin(turn);
-      [hl, hr] = [hl, hr].map((h) => ({ x: h.x * c - h.y * sn, y: h.x * sn + h.y * c }));
-    }
-    ctx.lineCap = 'round';
-    for (const [h, sy] of [[hl, -6], [hr, 6]]) {
-      ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 4.6;
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
-      ctx.strokeStyle = this.look.arm; ctx.lineWidth = 2.8;
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(h.x, h.y); ctx.stroke();
-    }
-    for (const h of [hl, hr]) {
-      ctx.fillStyle = PALETTE.ink; ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
-      ctx.fillStyle = this.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
-    }
+    if (b.state === WALKER.COWER || (b.state === WALKER.PANIC && b.pose === 'duck')) return OVER_HEAD;
+    if (b.state !== WALKER.WALK || !this.habit) return null;
+    const h = pastimeHands(this.habit, t, this.seed);
+    if (this.habit === 'bag') h.hl.x -= Math.sin(this.walk) * 2.6 * Math.min(1, this.gait); // the free arm swings
+    return h;
   }
 }

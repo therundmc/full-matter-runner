@@ -55,7 +55,9 @@ src/
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
       Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
-      Pastimes.js         what people do at their spot in a bar (pool, cards, a drink, dancing): timing only
+      Pastimes.js         what people do with themselves while all is calm (pool, cards, a drink, a cigarette,
+                          a chat, a leak...): timing and spots only
+      Carry.js            how a guard carries his weapon: put away, in hand and low, raised on a target
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing
@@ -63,7 +65,7 @@ src/
                           (wet, tacky, dry), and the pool under a bleeding body
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
-      PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards or glass in them
+      PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
@@ -208,6 +210,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   feet, can chain into a vault, the gun stays usable; 0.5 s cooldown. At its heart (`duck`) the body is under the
   line of fire: rounds carry on over it (`Player.ducking`, Projectile) and the first one earns a breath of bullet
   time (`dodge` event). Each slide costs stamina (`cost`, back with `regen`; small HUD bar while it recovers).
+- Life at ease: while the squad is calm a guard's weapon is put away (`ai/Carry.js`: `stow`, `lower`; a pistol or
+  a blade on the hip, anything long across the back), in hand and low as soon as something is up, raised on a
+  target (he cannot fire before it is out: `AI.carry`). Idle picks (`Enemy.pickActivity`) mix watching with a
+  cigarette, his pager, a stretch, a look at his watch, folded arms, a word with a colleague in reach (`chatWith`,
+  lines `BARKS.chat`) and a leak (`reliefSpot`: a wall of the yard, a toilet; it leaves a puddle). Any character
+  may define `busyHands()` (hands taken by something else than the weapon or the walk: guards' and patrons'
+  pastimes, a passer-by's pockets or bag, hands up in a panic), read by `standPose`.
 - Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, feet, hands, weapon, as offsets
   from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended over it so
   every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and exit speeds.

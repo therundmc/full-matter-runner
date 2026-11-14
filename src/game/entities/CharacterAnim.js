@@ -2,6 +2,8 @@
 // Each frame a character builds a pose: plain numbers (torso offset / angle / scale, feet, hands, weapon), all stored as
 // offsets from the body centre in world orientation. Traversal poses (vault, slide) are blended over the standing pose
 // so moves start and end exactly on the walk cycle (no popping). drawPose() then paints shadow, feet, arms, torso.
+// Optional on a character: stow / lower (how the weapon is carried, ai/Carry.js) and busyHands() (where hands taken
+// by something else are: a pastime, a cigarette, a panic).
 import { PALETTE, TAKEDOWN } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
@@ -78,16 +80,20 @@ export function standPose(ch, P, a = ch.angle) {
     }
   } else if (d.hold === 'one' || d.hold === 'two') {
     const kp = 1.6 + kick * 0.45;
+    // not on a target: a pistol pulled in, pointing at the floor; a long gun across the chest
+    const low = smooth(ch.lower);
     wpnOn = true;
     wa = -rk * (0.05 + kick * 0.02); // muzzle climb
     back = rk * kick * 0.12;
     if (d.hold === 'one') {
-      hrx = 10 - kp * rk; hry = 1.5;
-      wx = hrx; wy = 1;
+      hrx = lerp(10, 6.5, low) - kp * rk; hry = 1.5 + 0.5 * low;
+      wx = hrx; wy = 1 + 0.5 * low;
+      len = 1 - 0.25 * low;
       hlx = hrx - 1; hly = -0.5;
     } else {
-      hrx = 5 - kp * rk; hry = 3;
-      wx = hrx; wy = 2;
+      wa -= 0.55 * low;
+      hrx = lerp(5, 3, low) - kp * rk; hry = 3 + 2 * low;
+      wx = hrx; wy = hry - 1;
       const hw = sprite(d.sprite).width * 0.5;
       hlx = wx + Math.cos(wa) * hw; hly = wy - 1 + Math.sin(wa) * hw;
     }
@@ -174,6 +180,25 @@ export function standPose(ch, P, a = ch.angle) {
     wx = hrx; wy = hry; wpnOn = true;
     if (bat && !top && Math.cos(wa) * len < -0.3) top = 1; // behind the head: over the shoulder
   }
+  if (wpnOn && ch.stow > 0) {
+    // put away: a pistol or a knife on the hip, anything long across the back, both hands free. Drawing it, the
+    // hand goes to it first, then brings it up.
+    const k = smooth(ch.stow), sw = stride * 2.6 * g, long = d.hold === 'two' || d === WEAPONS.bat;
+    const reach = Math.min(1, k * 2), away = Math.max(0, k * 2 - 1);
+    let sx = 1, sy = 6.5, sa = 3; // on the hip: little more than the grip shows
+    if (long) {
+      const off = sprite(d.sprite).width * 0.5 - d.grip;
+      sa = 2.05; sx = -3 - Math.cos(sa) * off; sy = -Math.sin(sa) * off;
+    }
+    wx = lerp(wx, sx, reach); wy = lerp(wy, sy, reach); wa = lerp(wa, sa, reach);
+    len = lerp(len, long ? 1 : 0.55, reach);
+    if (k > 0.5) top = 0;
+    hrx = lerp(lerp(hrx, long ? -1 : sx, reach), 6 + sw, away); hry = lerp(lerp(hry, long ? 7 : sy, reach), 6, away);
+    hlx = lerp(hlx, 6 - sw, reach); hly = lerp(hly, -6, reach); // the other hand lets go first, comes back last
+  }
+  // hands taken by something else (a pastime, a cigarette, a chat, a panic): the character says where they are
+  const busy = ch.busyHands?.();
+  if (busy) { hlx = busy.hl.x; hly = busy.hl.y; hrx = busy.hr.x; hry = busy.hr.y; }
   if (wpnOn && ch.pickAnim > 0) {
     // flashy pickup: the weapon twirls into the hand, a little dip to grab it
     const k = ch.pickAnim / 0.35;
@@ -215,8 +240,10 @@ export function standPose(ch, P, a = ch.angle) {
   // torso: shoulders counter-rotate with the stride, lean into acceleration, bob, idle breathing, recoil push
   const sway = stride * 0.07 * g;
   P.ta = a + sway + twist;
-  P.tx = ch.lean.x - Math.cos(a) * back;
-  P.ty = ch.lean.y - Math.sin(a) * back;
+  // standing around, the weight goes from one leg to the other (not the player: his stance answers the keys)
+  const shift = ch.isPlayer ? 0 : (1 - g) * clamp(Math.sin(ch.world.time * 0.5 + ch.breath * 3) * 3, -1, 1);
+  P.tx = ch.lean.x - Math.cos(a) * back - Math.sin(a) * shift * 0.8;
+  P.ty = ch.lean.y - Math.sin(a) * back + Math.cos(a) * shift * 0.8;
   P.s = 1 + 0.014 * g * Math.abs(Math.cos(ch.walk)) + 0.012 * (1 - g) * Math.sin(ch.world.time * 2.3 + ch.breath) - dip;
   P.lift = 0;
   P.legs = 0;
@@ -225,7 +252,7 @@ export function standPose(ch, P, a = ch.angle) {
   const fa = ch.footA, amp = 5 * g;
   for (let i = 0; i < 2; i++) {
     const side = i ? 1 : -1, f = P.feet[i];
-    const lx = stride * side * amp + 1, ly = side * 3.6;
+    const lx = stride * side * amp + 1 + Math.max(0, -side * shift) * 1.3, ly = side * 3.6; // the free foot ahead
     f.x = lx * Math.cos(fa) - ly * Math.sin(fa);
     f.y = lx * Math.sin(fa) + ly * Math.cos(fa);
     f.a = fa;

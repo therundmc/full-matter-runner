@@ -8,21 +8,29 @@
 import { ENEMY, AI, TILE, CAT, MASK, PALETTE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { BARKS, SHOUTED } from '../data/barks.js';
-import { rand, angDiff, approachAngle, chance, clamp, local, spread } from '../../engine/math.js';
+import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
-import { struck } from '../ai/Pastimes.js';
-import { drawPastime } from '../render/PastimeArt.js';
+import { struck, talks, pours, reliefSpot, STRETCH } from '../ai/Pastimes.js';
+import { carry, inHand } from '../ai/Carry.js';
+import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
 
 const { Body } = Matter;
 
+// at ease (see pickActivity): what takes his mind off his watch, what takes his hands, what is done in one go,
+// what a round is broken by, and the states in which a weapon stays put away
+const ABSORBING = new Set(['smoke', 'phone', 'chat', 'piss']);
+const HANDS = new Set(['smoke', 'phone', 'piss', 'stretch', 'wrist', 'cross']);
+const ONE_GO = new Set(['stretch', 'wrist']);
+const PAUSES = ['smoke', 'phone', 'stretch', 'wrist'];
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
   SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
   YIELD: 'yield', TRACK: 'track',
 };
+const CALM = new Set([S.IDLE, S.PATROL, S.RETURN]);
 // awareness implied by each state: 0 unaware, 1 suspicious ('?'), 2 alert ('!')
 const AWARE = {
   idle: 0, patrol: 0, return: 0, suspicious: 1, investigate: 1, check: 1, search: 1, guard: 1, dizzy: 1,
@@ -60,6 +68,15 @@ export default class Enemy extends Character {
     this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
     this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
     this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards'
+    this.actT = 0;         // s actually spent at the current activity
+    this.atPost = true;    // standing where he means to be (his post, or `errand`)
+    this.errand = null;    // where he went for a moment ({ x, y, face, wall }: to relieve himself)
+    this.errandT = 0;
+    this.reliefCd = rand(...AI.relief.first);
+    this.mate = null;      // the colleague he is chatting with; turn: which of the two he is (0 | 1)
+    this.turn = 0; this.spoke = false; this.chatCd = rand(4, 25); this.chatScan = 0;
+    this.dripT = 0;
+    this.stow = 1; this.lower = 1; // weapon put away until something is up (ai/Carry.js)
     this.susT = 0; this.hideT = 0; this.shots = 0; this.ambushT = 0; this.ambushed = false; this.stalkCD = 0;
     this.glance = 0; this.glanceT = 0; this.lookBase = angle; this.lookT = 0;
     this.pauseT = rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
@@ -97,6 +114,7 @@ export default class Enemy extends Character {
     this.path = null; this.dest = null; this.repath = 0; this.stuck = 0;
     this.goal = null; this.target = null; this.searchPt = null;
     this.tactic = null; this.cover = null;
+    this.errand = null; this.mate = null;
     this.director?.release(this);
   }
 
@@ -118,7 +136,36 @@ export default class Enemy extends Character {
 
   get distracted() {
     return (this.state === S.IDLE || (this.state === S.PATROL && this.pauseT > 0))
-      && (this.activity === 'smoke' || this.activity === 'phone' || this.activity === this.job);
+      && (ABSORBING.has(this.activity) || this.activity === this.job);
+  }
+
+  // standing at ease: at his post or pausing on his round, nothing on his mind
+  get atEase() {
+    return this.aware === 0 && (this.state === S.IDLE ? this.atPost : this.state === S.PATROL && this.pauseT > 0);
+  }
+
+  // what his hands are at while at ease (a kind of render/PastimeArt.js), or null: free, or on his weapon
+  get pastime() {
+    if (!this.atEase || this.stow < 0.6) return null;
+    const a = this.activity;
+    if (a === 'chat') return talks(this.world.time, this.turn) ? 'talk' : 'listen';
+    return HANDS.has(a) || a === this.job ? a : null;
+  }
+
+  get pouring() { return this.pastime === 'piss' && pours(this.actT, this.activityT); }
+
+  // CharacterAnim hook
+  busyHands() {
+    const k = this.pastime;
+    return k && pastimeHands(k, ONE_GO.has(k) ? this.actT : this.world.time, this.seed);
+  }
+
+  // weapon put away while all is calm, in hand and lowered once something is up, raised on a target
+  updateCarry(dt) {
+    const calm = this.aware === 0 && this.director.phase === 'normal' && CALM.has(this.state);
+    const was = this.stow;
+    carry(this, calm, this.aware >= 2 || this.recoil > 0, this.def.hold === 'two', dt);
+    if (was >= 0.5 && this.stow < 0.5 && this.weapon) this.world.sound('pickup', this.x, this.y, 0.5);
   }
 
   // sight check: every step once alert, staggered ticks before (the meter integrates the elapsed time)
@@ -383,6 +430,9 @@ export default class Enemy extends Character {
     if (!this.alive) return;
     this.iconT = Math.max(0, this.iconT - dt);
     this.barkT = Math.max(0, this.barkT - dt);
+    this.chatCd = Math.max(0, this.chatCd - dt);
+    this.reliefCd = Math.max(0, this.reliefCd - dt);
+    this.updateCarry(dt);
     if (this.knocked > 0) { this.updateKnocked(dt); return; }
     if (this.held) {
       // seized from behind: nothing he can do, unless the grip is lost
@@ -422,10 +472,19 @@ export default class Enemy extends Character {
   // ---------------- calm behaviours ----------------
   doIdle(dt) {
     if (this.stare(dt)) return;
-    const h = this.home;
-    if (Math.hypot(h.x - this.x, h.y - this.y) > 14) { this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true }); return; }
+    const h = this.errand ?? this.home;
+    this.atPost = Math.hypot(h.x - this.x, h.y - this.y) <= 14;
+    if (!this.atPost) {
+      // a spot he cannot get to (something in the way) is forgotten
+      if (this.errand && (this.errandT += dt) > AI.relief.giveUp) { this.errand = null; this.activityT = 0; }
+      this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true });
+      return;
+    }
     this.halt();
-    if ((this.activityT -= dt) <= 0 || (this.activity === this.job && this.director.phase !== 'normal')) this.pickActivity();
+    this.actT += dt;
+    const busy = this.distracted || HANDS.has(this.activity); // dropped as soon as the squad is on edge
+    if ((this.activityT -= dt) <= 0 || (busy && this.director.phase !== 'normal')) this.pickActivity();
+    this.easeTick(dt);
     const now = this.world.time;
     if (this.activity === 'pool' && struck(now - dt, now, this.seed)) {
       this.world.sound('pool', this.x + Math.cos(this.angle) * 30, this.y + Math.sin(this.angle) * 30, 0.8);
@@ -444,37 +503,124 @@ export default class Enemy extends Character {
     this.activityT = rand(8, 14);
   }
 
-  // what a bored guard does at his post: his pastime if he has one, else watch, scan, look behind, smoke,
-  // check his pager
+  // what a bored guard does at his post: his pastime if he has one; else a word with a colleague, a leak, a
+  // cigarette, his pager, a stretch, a look at his watch, arms folded; or (the only ones left once the squad is
+  // on edge) watch, scan, look behind
   pickActivity() {
-    const calm = this.director.phase === 'normal', r = Math.random();
-    if (calm && this.job && chance(0.8)) { this.activity = this.job; this.activityT = rand(8, 14); this.idleFace = this.home.angle; return; }
-    if (calm && r < 0.14) { this.activity = 'smoke'; this.activityT = rand(5, 9); this.idleFace = this.wallFacing(); }
-    else if (calm && r < 0.26) { this.activity = 'phone'; this.activityT = rand(4, 8); this.idleFace = this.wallFacing(); }
-    else if (r < 0.36) { this.activity = 'turn'; this.activityT = rand(1.5, 2.6); this.turnTo = this.home.angle + rand(2.3, 4); }
-    else if (r < 0.58) { this.activity = 'scan'; this.activityT = rand(3, 5); }
-    else { this.activity = 'watch'; this.activityT = rand(3, 6); }
+    const calm = this.director.phase === 'normal', r = Math.random(), q = Math.random();
+    const set = (activity, t, face = this.idleFace) => { this.activity = activity; this.activityT = t; this.idleFace = face; };
+    this.actT = 0; this.errand = null; this.errandT = 0;
+    if (calm && this.job && chance(0.8)) { set(this.job, rand(8, 14), this.home.angle); return; }
+    if (calm) {
+      const mate = this.chatCd <= 0 && this.findMate(AI.chat.near);
+      if (mate) { this.chatWith(mate); return; }
+      const spot = r < AI.relief.odds && this.reliefCd <= 0 && reliefSpot(this.world.map, this.world.props, this.x, this.y);
+      if (spot) {
+        this.errand = spot;
+        this.reliefCd = rand(...AI.relief.every);
+        set('piss', rand(...AI.relief.time), spot.face);
+        return;
+      }
+      const ahead = this.home.angle + rand(-0.6, 0.6);
+      // about half the time something to do with his hands, the other half his job: watching
+      const u = r - AI.relief.odds;
+      if (u >= 0 && u < 0.12) { set('smoke', rand(6, 10), ahead); return; }
+      if (u >= 0 && u < 0.19) { set('phone', rand(4, 7), ahead); return; }
+      if (u >= 0 && u < 0.26) { set('stretch', STRETCH); return; }
+      if (u >= 0 && u < 0.33) { set('wrist', STRETCH); return; }
+      if (u >= 0 && u < 0.45) { set('cross', rand(4, 8)); return; }
+    }
+    if (q < 0.25) { set('turn', rand(1.5, 2.6)); this.turnTo = this.home.angle + rand(2.3, 4); }
+    else if (q < 0.55) set('scan', rand(3, 5));
+    else set('watch', rand(3, 6));
+  }
+
+  // calm, on his feet, at his post or on his round, with nothing going on
+  get idle() {
+    return this.aware === 0 && this.knocked <= 0 && !this.held && !this.passive
+      && (this.state === S.PATROL || (this.state === S.IDLE && this.atPost))
+      && this.activity !== this.job && this.activity !== 'chat' && this.activity !== 'piss';
+  }
+
+  // a colleague within `reach` px, in sight, who has a minute
+  findMate(reach) {
+    for (const e of this.world.enemies) {
+      if (e === this || !e.alive || e.chatCd > 0 || !e.idle) continue;
+      const d = Math.hypot(e.x - this.x, e.y - this.y);
+      if (d > 20 && d < reach && this.world.lineOfSight(this.x, this.y, e.x, e.y)) return e;
+    }
+    return null;
+  }
+
+  // stop for a word: both turn to each other and talk turn about, until the time is up or one is called away
+  chatWith(mate) {
+    const t = rand(...AI.chat.time), first = chance(0.5) ? 0 : 1;
+    this.joinChat(mate, t, first);
+    mate.joinChat(this, t, 1 - first);
+  }
+
+  joinChat(mate, t, turn) {
+    this.mate = mate; this.turn = turn; this.spoke = false;
+    this.activity = 'chat'; this.actT = 0; this.errand = null;
+    this.chatCd = t + rand(...AI.chat.every);
+    this.idleFace = Math.atan2(mate.y - this.y, mate.x - this.x);
+    if (this.state === S.PATROL) this.pauseT = t; else this.activityT = t;
+  }
+
+  // upkeep of what he is at: a chat (facing the other, a line when his turn comes, over as soon as the other is
+  // called away), a leak (it runs down the wall onto the floor)
+  easeTick(dt) {
+    if (this.activity === 'chat') {
+      const m = this.mate;
+      if (!m || !m.alive || m.mate !== this || m.activity !== 'chat' || !m.distracted) {
+        this.mate = null;
+        this.activity = 'watch';
+        if (this.state === S.PATROL) this.pauseT = Math.min(this.pauseT, 0.6); else this.activityT = Math.min(this.activityT, 0.6);
+        return;
+      }
+      this.idleFace = Math.atan2(m.y - this.y, m.x - this.x);
+      const mine = talks(this.world.time, this.turn);
+      if (mine && !this.spoke && chance(AI.chat.line)) this.say('chat');
+      this.spoke = mine;
+    } else if (this.errand?.wall && this.pouring && (this.dripT -= dt) <= 0) {
+      this.dripT = 0.5;
+      this.world.events.emit('spill', { x: this.x + Math.cos(this.angle) * 12, y: this.y + Math.sin(this.angle) * 12, kind: 'water', area: 12 });
+    }
   }
 
   doPatrol(dt) {
     if (this.stare(dt)) return;
+    const calm = this.director.phase === 'normal';
     if (this.pauseT > 0) {
       this.pauseT -= dt;
+      this.actT += dt;
       this.halt();
+      this.easeTick(dt);
       if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
       else this.sweep(dt, this.lookBase, 1, 1.8);
       return;
     }
     this.activity = 'walk';
+    // walking past a colleague who has a minute: stop for a word
+    if (calm && this.chatCd <= 0 && (this.chatScan -= dt) <= 0) {
+      this.chatScan = 0.5;
+      const mate = this.findMate(AI.chat.pass);
+      if (mate) { this.chatWith(mate); return; }
+    }
     if (!this.goal) this.goal = this.route ? this.route[this.routeIdx] : randomPoint(this.world.map, this.home.x, this.home.y, 7);
     if (!this.goal) { this.pauseT = 1; return; }
-    const calm = this.director.phase === 'normal';
     if (this.travel(dt, this.goal.x, this.goal.y, ENEMY.walkSpeed * (calm ? 1 : 1.25), { doors: true, glance: true })) {
       this.goal = null;
       if (this.route) this.routeIdx = (this.routeIdx + 1) % this.route.length;
       this.pauseT = rand(0.8, 2.4);
       this.lookBase = this.angle;
-      if (calm && chance(0.15)) { this.activity = chance(0.5) ? 'smoke' : 'phone'; this.pauseT = rand(4, 7); this.idleFace = this.wallFacing(); }
+      if (calm && chance(0.3)) {
+        // a longer halt: a cigarette, his pager, a stretch, a look at his watch
+        const k = PAUSES[Math.floor(rand(0, PAUSES.length))];
+        this.activity = k; this.actT = 0;
+        this.pauseT = ABSORBING.has(k) ? rand(4, 7) : STRETCH;
+        this.idleFace = this.angle + rand(-0.8, 0.8);
+      }
     }
   }
 
@@ -939,7 +1085,7 @@ export default class Enemy extends Character {
   // with steady sight (settle). wild = extra error (suppressive / panic fire)
   tryFire(tg, wild = 0) {
     const d = this.def;
-    if (d.kind !== 'gun' || this.react > 0 || this.cooldown > 0 || this.reloading > 0 || this.weapon.mag <= 0) return false;
+    if (d.kind !== 'gun' || !inHand(this) || this.react > 0 || this.cooldown > 0 || this.reloading > 0 || this.weapon.mag <= 0) return false;
     const dist = Math.hypot(tg.x - this.x, tg.y - this.y);
     if (dist > ENEMY.fireRange || Math.abs(angDiff(this.angle, Math.atan2(tg.y - this.y, tg.x - this.x))) > ENEMY.aimTolerance + wild) return false;
     // fairness: never fire from outside the player's screen
@@ -1155,7 +1301,11 @@ export default class Enemy extends Character {
     return this.sep;
   }
 
-  faceAngle(a, rate, dt) { this.angle = approachAngle(this.angle, a, rate * dt); }
+  // turn towards a: at a steady rate on a target, easing into it otherwise (a head that settles, not a turret)
+  faceAngle(a, rate, dt) {
+    const k = this.aware >= 2 ? 1 : Math.min(1, Math.abs(angDiff(this.angle, a)) / 0.6 + 0.15);
+    this.angle = approachAngle(this.angle, a, rate * dt * k);
+  }
   faceTo(x, y, rate, dt) { this.faceAngle(Math.atan2(y - this.y, x - this.x), rate, dt); }
 
   // look around a base direction with pauses between glances
@@ -1167,17 +1317,6 @@ export default class Enemy extends Character {
   walkGlance(dt) {
     if ((this.glanceT -= dt) <= 0) { this.glanceT = rand(1.2, 3.5); this.glance = chance(0.55) ? 0 : rand(-0.9, 0.9); }
     return this.glance;
-  }
-
-  // the nearest wall to lean on / face while smoking or on the phone
-  wallFacing() {
-    let best = this.home.angle, bd = 3 * TILE;
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4, r = 3 * TILE;
-      const hit = this.world.map.raycast(this.x, this.y, this.x + Math.cos(a) * r, this.y + Math.sin(a) * r);
-      if (hit && hit.t * r < bd) { bd = hit.t * r; best = a; }
-    }
-    return best;
   }
 
   // ---------------- knock-down ----------------
@@ -1233,22 +1372,8 @@ export default class Enemy extends Character {
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
     const t = this.world.time;
-    if (this.distracted && this.activity === this.job) drawPastime(ctx, this, this.job, t);
-    else if (this.distracted) {
-      const h = local(this.x, this.y, this.angle, 9, 3);
-      if (this.activity === 'smoke') {
-        ctx.fillStyle = Math.sin(t * 3 + this.seed) > 0.6 ? '#ffd27a' : PALETTE.orange;
-        ctx.fillRect(h.x - 1, h.y - 1, 2, 2);
-        const ph = (t * 0.7 + this.seed) % 1;
-        ctx.fillStyle = `rgba(200,200,210,${0.35 * (1 - ph)})`;
-        ctx.fillRect(h.x + Math.sin(ph * 6) * 2 - 1, h.y - ph * 12 - 1, 2 + ph * 3, 2 + ph * 3);
-      } else {
-        ctx.fillStyle = 'rgba(5,217,232,0.35)';
-        ctx.fillRect(h.x - 3, h.y - 3, 6, 6);
-        ctx.fillStyle = '#bff6ff';
-        ctx.fillRect(h.x - 1.5, h.y - 1, 3, 2);
-      }
-    }
+    const kind = this.pastime;
+    if (kind) drawPastime(ctx, this, kind, ONE_GO.has(kind) ? this.actT : t);
     if (this.state === S.DIZZY) {
       ctx.fillStyle = PALETTE.yellow;
       for (let i = 0; i < 3; i++) {

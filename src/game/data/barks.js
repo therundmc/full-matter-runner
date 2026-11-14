@@ -1,6 +1,10 @@
 // What the guards say (data only): short lines floating over their heads, by occasion. Enemy.say names the
 // occasion, Director.bark picks the line (never one the squad has just used) and shows it.
 export const BARKS = {
+  // two of them killing time (Enemy.chatWith)
+  chat: ['QUIET NIGHT.', 'BOSS IS IN A MOOD.', 'GOT A LIGHT?', 'MY FEET ARE KILLING ME.', 'YOU OWE ME TWENTY.',
+    'SEEN THE NEW GIRL?', 'I HATE THE NIGHT SHIFT.', 'SO I TOLD HIM: NO.', 'YOU CATCH THE FIGHT?', 'HE PAYS LATE. AGAIN.',
+    'HA! NO WAY.', 'THIS PLACE, MAN...', 'ANOTHER HOUR OF THIS.', 'RAIN AGAIN TOMORROW.'],
   // calm, then looking for something
   sight: ['HUH?', "WHO'S THERE?", 'SOMEBODY THERE?', 'YOU SEE THAT?'],
   noise: ['WHAT WAS THAT?', 'HUH?', 'YOU HEAR THAT?', 'WHAT THE HELL?'],
