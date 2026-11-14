@@ -157,6 +157,19 @@ export const DESTRUCTION = {
   ceiling_fan: { height: 2.6, drop: true, electric: true, parts: [{ cut: 'wedges', n: 4 }] },
   mirror_ball: { height: 2.4, drop: true, parts: [{ cut: 'wedges', n: 6 }] },
   extinguisher: { height: 1.2 },
+  vending: {
+    height: 1.8, electric: true, parts: [{ cut: 'grid', cols: 2, rows: 2 }],
+    contents: [{ bit: 'can', n: 10, on: 'break' }, { bit: 'can', n: 1, on: 'hit', perHit: 1 }],
+  },
+  phone_booth: { height: 2.2, electric: true, parts: [{ cut: 'wedges', n: 7 }] },
+  parking_meter: { height: 1.2, drop: true, contents: [{ bit: 'coin', n: 9, on: 'break' }, { bit: 'coin', n: 1, on: 'hit', perHit: 1 }] },
+  news_box: {
+    height: 1, floats: ['paper', 10], parts: [{ cut: 'grid', cols: 2, rows: 1 }],
+    contents: [{ bit: 'sheet', n: 6, on: 'break' }, { bit: 'sheet', n: 1, on: 'hit', perHit: 1 }],
+  },
+  pipe_steam: { height: 0.5 },
+  pipe_water: { height: 0.5, leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 7 } },
+  wall_vent: { height: 0.4 },
 };
 
 // Material-based defaults for props without a recipe, and the per-material hit response.
@@ -203,6 +216,8 @@ export const BITS = {
   chip: { size: [0.05, 0.05], material: 'plastic', round: true, bounce: 0.4, mu: 0.2, colors: ['#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040'] },
   brick: { size: [0.2, 0.12], material: 'fabric', colors: ['#e8e4dc', '#dcd6ca'] },
   wad: { size: [0.16, 0.08], material: 'fabric', colors: ['#5a8a4a', '#6a9a5a'] },
+  coin: { size: [0.03, 0.03], material: 'metal', round: true, bounce: 0.5, mu: 0.2, colors: ['#d8d8e0', '#c4c8d0', '#e0c060'] },
+  sheet: { size: [0.3, 0.22], material: 'fabric', colors: ['#ece8dc', '#f6f2e8', '#d8d2c0'] },
 };
 
 // slow floating particles: colour, size px, fall speed (lower = floats longer)

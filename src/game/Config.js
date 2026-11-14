@@ -244,6 +244,33 @@ export const POOL = {
 export const GADGETS = {
   arcade: { sound: 'ding', gap: 0.5, flash: '#3ae8ff', bump: 1.2 }, // rings when hit, or bumped into (px/step)
   jukebox: { sound: 'derail', dies: 1.2 },                           // derails at the first blow, dark `dies` s later
+  parking_meter: { sound: 'coin', gap: 0.15 },                       // its coins ring at every blow
+};
+
+// Steam in the street (systems/Steam.js): manholes breathing, wall vents, steam pipes a round went through
+export const STEAM = {
+  color: '#d4dade',
+  range: 620,        // px from the player past which nothing is puffed
+  drift: [-9, -5],   // px/s: the night air carries it
+  manhole: { breath: 3.5, rest: [4, 9], every: 0.14, size: 5, life: 2.8, alpha: 0.26 },
+  vent: { every: 0.18, size: 4, life: 2.4, alpha: 0.32, speed: 22 },
+  leak: { dur: 7, every: 0.05, speed: 90, max: 3 }, // max holes per pipe
+};
+
+// Loose paper on the pavement (systems/Papers.js); speeds of bodies in px/step, the rest in px and seconds
+export const PAPERS = {
+  gust: [6, 14],     // s between two gusts of wind
+  blow: 1.3,         // s a gust lasts
+  force: [70, 150],  // px/s2 it pushes a sheet with
+  friction: 2.2,     // 1/s: how fast a sheet settles
+  tumble: 0.12,      // turns of its shape per px travelled
+  wake: 58,          // px round a moving car that drags the sheets along
+  carFast: 1.5,      // a car slower than this stirs nothing
+  pull: 0.35,        // share of the car's speed a sheet takes
+  aside: 45,         // px/s it is thrown away from the car
+  kick: 11,          // px: someone running this close kicks it
+  runFast: 1.4,
+  kickV: 55,         // px/s
 };
 
 // the cloud out of a pierced extinguisher (systems/Clouds.js); px and seconds

@@ -103,15 +103,18 @@ export default {
     ['string_lights', 22, 36.1, 0], ['wall_lamp', 20.09, 34.6, 270],
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 28.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
-    ['trash_can', 14, 31.65, 0], ['hydrant', 26.5, 30.35, 0], ['neon_sign_palm', 17, 31.91, 180],
-    ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 39.5, 31.2, 0],
+    ['trash_can', 14, 31.65, 0], ['hydrant', 26.5, 30.35, 0], ['phone_booth', 34.6, 31.61, 180],
+    ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180], ['palm_tree', 4.5, 31.2, 0],
+    ['palm_tree', 39.5, 31.2, 0],
     // road: parked along the bar side
     ['car2', 14.6, 24, 0, { lights: false }], ['car', 31.2, 24, 180], ['van', 38.6, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
     ['neon_sign_bar', 30, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['plant', 20.6, 21.3, 0],
     ['plant', 23.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 35.5, 22.7, 90],
     ['bench', 37.5, 22.62, 180], ['trash_can', 40.5, 21.35, 0], ['hydrant', 11.6, 22.65, 0],
-    ['palm_tree', 2.5, 21.8, 0], ['palm_tree', 41.6, 21.8, 0],
+    ['vending', 18.5, 21.33, 0], ['news_box', 26.6, 21.19, 0], ['parking_meter', 12.3, 22.78, 0],
+    ['parking_meter', 16.9, 22.78, 0], ['parking_meter', 28.8, 22.78, 0], ['parking_meter', 33.6, 22.78, 0],
+    ['parking_meter', 41.3, 22.78, 0], ['palm_tree', 2.5, 21.8, 0], ['palm_tree', 41.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 3.7, 17.2, 0],
     ['bottle_shelf', 5, 17.2, 0], ['bottle_shelf', 6.3, 17.2, 0], ['bottle_shelf', 8.3, 17.2, 0],
@@ -133,11 +136,13 @@ export default {
     ['wall_lamp', 11.09, 19, 270], ['trash_can', 13.5, 17.4, 0], ['trash_can', 13.45, 18.25, 0],
     ['crate', 11.45, 16.9, -6], ['dumpster', 11.62, 14.5, 90], ['neon_tube_cyan', 13.93, 9.9, 90],
     ['crate', 11.45, 9.8, 4], ['gas_bottle', 13.72, 6.55, 0], ['gas_bottle', 13.7, 7.05, 0],
+    ['pipe_steam', 13.93, 13.6, 90],
     // back lot
     ['van', 24.5, 2.3, 180, { lights: false }], ['dumpster', 15.2, 1.6, 0], ['crate', 17.2, 1.45, 5],
     ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
     ['trash_can', 31.5, 1.5, 0], ['crate', 32.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
-    ['tube_light', 29.9, 4.93, 180], ['gas_bottle', 30.4, 4.74, 0],
+    ['wall_vent', 16.3, 4.92, 180], ['pipe_water', 20.2, 1.07, 0], ['tube_light', 29.9, 4.93, 180],
+    ['gas_bottle', 30.4, 4.74, 0],
     // storeroom
     ['bookshelf', 15.7, 6.2, 0], ['oven', 17.1, 6.38, 0], ['sink', 18.35, 6.3, 0], ['fridge', 19.55, 6.4, 0],
     ['tube_light', 19.93, 8.5, 90], ['dope_table', 17.5, 9.32, 0], ['crate', 19.5, 9.7, 4],
@@ -178,6 +183,8 @@ export default {
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[23.4, 34.5]], "pigeons": [[21.5, 32.8, 5], [33.3, 21.7, 3], [27.5, 2.6, 4]]},
+  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n]
+  street: {"papers": [[0, 30, 43, 31, 9], [20, 32, 23, 36, 3], [0, 21, 43, 22, 9], [0, 23, 43, 29, 6], [11, 1, 13, 19, 4], [14, 1, 32, 4, 4]], "manholes": [[9.5, 25.2], [27.3, 28.5], [12.5, 10.6]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, along the service alley

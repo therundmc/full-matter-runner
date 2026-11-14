@@ -58,6 +58,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    (systems/Gadgets.js; the jukebox plays no tune of its own, the soundtrack stays alone), snow on the boss's TV,
    a turning ceiling fan and a mirror ball throwing specks round the VIP room (render/PropLife.js), hung lamps that
    swing on a hit or a blast, wall extinguishers whose white cloud blocks sight (systems/Clouds.js, World.sightLine).
+   Street furniture: a drinks machine that spits cans, a phone booth whose receiver dangles once hit, parking meters
+   that bend and shed coins, newspaper boxes, steam from manholes, the oven's vent and pierced pipes
+   (systems/Steam.js), a water pipe that leaks, loose papers blown by gusts and passing cars (systems/Papers.js;
+   level `street` = dressing without a body, `lv.dress` in tools/levelkit.py).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Run / test

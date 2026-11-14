@@ -157,6 +157,10 @@ lv.prop('streetlight', 28.5, 30.3, 270)
 lv.prop('bench', 12.5, 31.7, 180)
 lv.prop('trash_can', 14.0, 31.65)
 lv.prop('hydrant', 26.5, 30.35)
+lv.prop('phone_booth', 34.6, 31.61, 180)                # its back to the wall, open on the street
+lv.prop('news_box', 10.7, 31.8, 180)
+lv.dress('papers', 0, 30, 43, 31, 9)
+lv.dress('papers', 20, 32, 23, 36, 3)
 lv.prop('neon_sign_palm', 17.0, 31.91, 180)
 lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
@@ -177,6 +181,14 @@ lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing th
 lv.prop('trash_can', 40.5, 21.35)
 lv.pigeons(33.3, 21.7, 3)
 lv.prop('hydrant', 11.6, 22.65)
+lv.prop('vending', 18.5, 21.33)                         # drinks machine against the bar's front
+lv.prop('news_box', 26.6, 21.19)
+for col in (12.3, 16.9, 28.8, 33.6, 41.3):              # a meter at the head of each parking bay
+    lv.prop('parking_meter', col, 22.78)
+lv.dress('papers', 0, 21, 43, 22, 9)
+lv.dress('papers', 0, 23, 43, 29, 6)
+lv.dress('manholes', 9.5, 25.2)
+lv.dress('manholes', 27.3, 28.5)
 lv.prop('palm_tree', 2.5, 21.8)
 lv.prop('palm_tree', 41.6, 21.8)
 
@@ -234,6 +246,9 @@ lv.prop('neon_tube_cyan', 13.93, 9.9, 90)
 lv.prop('crate', 11.45, 9.8, 4)
 lv.prop('gas_bottle', 13.72, 6.55)                      # the stove's gas, against the bar's wall
 lv.prop('gas_bottle', 13.7, 7.05)
+lv.prop('pipe_steam', 13.93, 13.6, 90)                  # the bar's heating, along its wall: a round makes it whistle
+lv.dress('manholes', 12.5, 10.6)
+lv.dress('papers', 11, 1, 13, 19, 4)
 
 lv.area('back lot')
 lv.prop('van', 24.5, 2.3, 180, lights=False)
@@ -247,6 +262,9 @@ lv.prop('trash_can', 31.5, 1.5)
 lv.pigeons(27.5, 2.6, 4)
 lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
+lv.prop('wall_vent', 16.3, 4.92, 180)                   # the oven's extractor steams into the lot
+lv.prop('pipe_water', 20.2, 1.07)
+lv.dress('papers', 14, 1, 32, 4, 4)
 lv.prop('tube_light', 29.9, 4.93, 180)
 lv.prop('gas_bottle', 30.4, 4.74)
 

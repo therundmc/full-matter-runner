@@ -3845,9 +3845,119 @@ def p_extinguisher():
     return cv
 
 
+def p_vending():
+    """Street drinks machine from above, its lit front along +y: a dull red top, vents, the glowing panel."""
+    cv = Cv(28, 22)
+    cv.rect(1, 1, 26, 16, hx('#7a2630'))
+    cv.rect(1, 1, 26, 2, hx('#541820'))
+    cv.rect(2, 3, 25, 4, hx('#8e3640'))            # what the street lamp leaves on it
+    cv.rect(4, 7, 12, 12, hx('#6a2028'))           # a sunken panel
+    for x in (17, 20, 23):
+        cv.rect(x, 7, x + 1, 12, hx('#4e161e'))    # vents
+    cv.rect(1, 17, 26, 20, hx('#f2f6ff'))          # the lit front
+    cv.rect(2, 18, 9, 19, hx('#ff5a6a'))
+    cv.rect(11, 18, 18, 19, hx('#58d8f0'))
+    cv.rect(20, 18, 25, 19, hx('#ffd84a'))
+    cv.outline()
+    return cv
+
+
+def p_phone_booth():
+    """Phone booth from above, open along +y: steel frame, a tinted glass roof the phone shows through, a lit header."""
+    cv, fr = Cv(26, 26), Cv(26, 26)
+    steel = hx('#5a6270')
+    cv.rect(2, 2, 23, 23, hx('#8fd0e6', 70))
+    for i in range(4, 21):                          # a glint across the glass
+        cv.set(i, 24 - i, hx('#eaf8ff', 110))
+    fr.rect(1, 1, 24, 2, steel)                     # back and sides
+    fr.rect(1, 1, 2, 24, steel)
+    fr.rect(23, 1, 24, 24, steel)
+    fr.rect(1, 23, 4, 24, steel)                    # door posts
+    fr.rect(21, 23, 24, 24, steel)
+    fr.rect(3, 3, 22, 4, hx('#dff4ff'))             # lit header
+    fr.rect(8, 5, 15, 10, hx('#343a46'))            # the phone
+    fr.rect(9, 6, 12, 9, hx('#9aa2b0'))             # its keys
+    fr.set(14, 6, hx('#f9c80e'))                    # coin slot
+    fr.outline()
+    cv.over(fr)
+    return cv
+
+
+def p_parking_meter():
+    """Parking meter head from above: grey dome, dark window, the red flag."""
+    cv = Cv(7, 8)
+    cv.rect(1, 1, 5, 6, hx('#8a909c'))
+    cv.rect(1, 1, 5, 1, hx('#b4bac6'))
+    cv.rect(2, 3, 4, 4, hx('#1c2028'))
+    cv.set(3, 3, hx('#e03030'))
+    cv.rect(2, 6, 4, 6, hx('#5a606c'))
+    cv.outline()
+    return cv
+
+
+def p_news_box():
+    """Newspaper box from above: blue steel, the front page under its window (front along +y)."""
+    cv = Cv(16, 13)
+    cv.rect(1, 1, 14, 11, hx('#2a5aa8'))
+    cv.rect(1, 1, 14, 2, hx('#4a7ac8'))
+    cv.rect(1, 10, 14, 11, hx('#1c3e78'))
+    cv.rect(3, 4, 12, 8, hx('#e8e4d8'))
+    cv.rect(4, 5, 11, 5, hx('#3a3a40'))            # headline
+    cv.rect(4, 7, 9, 7, hx('#8a8a90'))
+    cv.set(13, 10, hx('#d8d8e0'))                  # coin slot
+    cv.outline()
+    return cv
+
+
+def pipe(body, lite, shade, band):
+    """A run of pipe along a wall (the wall at -y): brackets into the wall, two flanges."""
+    def make():
+        cv = Cv(96, 6)
+        cv.rect(0, 2, 95, 4, hx(body))
+        cv.rect(0, 2, 95, 2, hx(lite))
+        cv.rect(0, 4, 95, 4, hx(shade))
+        for x in (10, 47, 84):
+            cv.rect(x, 0, x + 2, 5, hx('#3a3a44'))
+        for x in (30, 66):
+            cv.rect(x, 1, x + 1, 5, hx(band))
+        cv.outline()
+        return cv
+    return make
+
+
+def p_wall_vent():
+    """Extractor outlet on a wall (the wall at -y): a louvred steel box."""
+    cv = Cv(16, 7)
+    cv.rect(1, 1, 14, 5, hx('#6a707c'))
+    cv.rect(1, 1, 14, 1, hx('#8a909c'))
+    for x in range(3, 13, 2):
+        cv.rect(x, 2, x, 4, hx('#1c2028'))
+    cv.outline()
+    return cv
+
+
+def p_manhole():
+    """Manhole cover, painted on the road: dark cast iron, a rim, a few studs."""
+    cv = Cv(16, 16)
+    for y in range(16):
+        for x in range(16):
+            d = math.hypot(x - 7.5, y - 7.5)
+            if d < 7.2:
+                c = '#15171c' if d > 6.0 else '#30323a' if d > 5.0 else '#24262d'
+                if d <= 4.2 and x % 3 == 1 and y % 3 == 1:
+                    c = '#34363e'
+                cv.set(x, y, hx(c))
+    return cv
+
+
 # small dressing added one by one (the details list)
-DETAIL_PROPS = dict(cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher)
-DETAIL_SIZES = dict(cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11))
+DETAIL_PROPS = dict(cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
+                    vending=p_vending, phone_booth=p_phone_booth, parking_meter=p_parking_meter, news_box=p_news_box,
+                    pipe_steam=pipe('#8a5a3a', '#b07a52', '#5e3a24', '#c8c0a8'), pipe_water=pipe('#4a6a7a', '#6e8e9e', '#30485a', '#9aa2b0'),
+                    wall_vent=p_wall_vent, manhole=p_manhole)
+DETAIL_SIZES = dict(cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
+                    vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
+                    pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

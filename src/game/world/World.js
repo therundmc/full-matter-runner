@@ -41,6 +41,8 @@ import Sirens from '../systems/Sirens.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Clouds from '../systems/Clouds.js';
 import Gadgets from '../systems/Gadgets.js';
+import Steam from '../systems/Steam.js';
+import Papers from '../systems/Papers.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
 
@@ -106,6 +108,8 @@ export default class World {
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
     this.clouds = new Clouds(this);               // extinguisher powder nobody sees through
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
+    this.steam = new Steam(this, level.street?.manholes);  // manholes, vents, pierced steam pipes
+    this.papers = new Papers(this, level.street?.papers);  // loose sheets the wind and the cars blow about
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
@@ -311,6 +315,8 @@ export default class World {
     this.sirens.update(dt);
     this.poolBalls.update(dt);
     this.clouds.update(dt);
+    this.steam.update(dt);
+    this.papers.update(dt);
     this.threats.update(this.view());
 
     // 4. cleanup

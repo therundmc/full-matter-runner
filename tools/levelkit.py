@@ -40,6 +40,7 @@ SIZES = dict(
     marquee=None, neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
+    vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
@@ -64,6 +65,7 @@ class Level:
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
+        self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -127,6 +129,11 @@ class Level:
         t = self.tiles[int(row)][int(col)]
         assert t not in SOLID and t not in 'DLG', f'{kind} at {col},{row} in {t!r}'
         self.critters.setdefault(kind, []).append([col, row, *more])
+
+    # ---- street dressing without a body: 'manholes' col, row (a cover breathing steam, systems/Steam.js);
+    # 'papers' col0, row0, col1, row1, n (n loose sheets dropped in that inclusive tile rectangle, systems/Papers.js)
+    def dress(self, kind, *v):
+        self.street.setdefault(kind, []).append(list(v))
 
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
@@ -259,6 +266,9 @@ class Level:
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')
+        if self.street:
+            L.append('  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n]')
+            L.append(f'  street: {json.dumps(self.street)},')
         if self.roofs:
             L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
             L.append('  roof: [')

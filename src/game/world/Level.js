@@ -1,7 +1,7 @@
 import { TILE, CAT } from '../Config.js';
 import { WEAPON_CHARS, AMMO_CHARS } from '../data/weapons.js';
 import AmmoItem from '../entities/AmmoItem.js';
-import { sprite } from '../../engine/Assets.js';
+import { sprite, spriteOpt } from '../../engine/Assets.js';
 import { rand } from '../../engine/math.js';
 import { gridRaycast } from '../../engine/physics/Raycast.js';
 import Player from '../entities/Player.js';
@@ -29,6 +29,9 @@ export function buildLevel(world, level) {
   const map = world.map;
   world.decals.dressRoofs(level.roof || []);
   const cx = (x) => (x + 0.5) * TILE;
+  // manhole covers (level `street.manholes`), painted on the ground once and for all
+  const cover = spriteOpt('props/manhole');
+  if (cover) for (const [c, r] of level.street?.manholes || []) world.decals.bake(cover, c * TILE, r * TILE, 0);
 
   // ---- doors (runs of D), windows (G), fences (F)
   const used = new Set();

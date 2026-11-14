@@ -447,6 +447,7 @@ export function bitSprite(kind, color, w, h) {
   switch (kind) {
     case 'ball':
     case 'chip':
+    case 'coin':
     case 'can':
     case 'pan':
       g.fillStyle = kind === 'pan' ? '#141418' : '#140c1c';

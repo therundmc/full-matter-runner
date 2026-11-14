@@ -121,6 +121,8 @@ export default class Prop {
     if (this.dead || this.dying) return;
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
     w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind });
+    if (d.handset) this.offHook ??= w.time; // the receiver jumps off its hook
+    if (d.bends) this.lean(dirA, power);
     const swing = info.swing ?? dirA + Math.PI / 2; // a blade's stroke runs across the blow
     if (kind === 'blunt' || kind === 'cut' || kind === 'punch' || kind === 'blast' || kind === 'shrapnel') {
       const s = this.surface(px, py, dirA);
@@ -363,6 +365,15 @@ export default class Prop {
     w.particles.smoke(q.x, q.y, 6, 3, { speed: 20, size: 5, life: 1.8, dark: true });
     w.sound('glass', q.x, q.y, 0.8);
     this.lightsOut = true;
+  }
+
+  // a thin post gives a little more at every blow, the way it was sent (its head is drawn that far off its foot)
+  lean(dirA, power) {
+    const b = this.bend ||= { x: 0, y: 0 }, k = 2 * Math.min(power, 2), max = this.def.bends;
+    b.x += Math.cos(dirA) * k;
+    b.y += Math.sin(dirA) * k;
+    const l = Math.hypot(b.x, b.y);
+    if (l > max) { b.x *= max / l; b.y *= max / l; }
   }
 
   // something inside falls out of the hole (a book, a ball)
@@ -769,7 +780,8 @@ export default class Prop {
     // parallax: what sits up high leans away from the centre of the view
     this.ox = (o.x - cam.x) * (d.height || 0);
     this.oy = (o.y - cam.y) * (d.height || 0);
-    const x = o.x + this.ox + k.x, y = o.y + this.oy + k.y, a = this.body.angle + this.sag + k.r + this.spun();
+    const b = this.bend || { x: 0, y: 0 }; // a bent post keeps its lean
+    const x = o.x + this.ox + k.x + b.x, y = o.y + this.oy + k.y + b.y, a = this.body.angle + this.sag + k.r + this.spun();
     if (d.pole) {
       ctx.strokeStyle = d.pole[0];
       ctx.lineWidth = d.pole[1];

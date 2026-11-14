@@ -98,6 +98,18 @@ export const PROPS = {
   mirror_ball: { hung: true, overhead: true, height: 0.06, static: true, material: 'glass', r: 5, hp: 2, chips: '#dfe8f4', glass: true, sound: 'glass', sparkle: 30 },
   // on a wall, facing the room along +y: pierced, it empties itself in a cloud nobody sees through (systems/Clouds.js)
   extinguisher: { static: true, material: 'metal', w: 6, h: 9, hp: 1, chips: '#c0202a', sound: 'metal', cloud: true },
+  // ---- street furniture. handset = [x, y] px from the centre of the hook its receiver hangs on (render/PropLife.js);
+  // bends = px its head gives way, all told, under blows; steam = 'vent': it breathes steam along its +y,
+  // 'leak': a pipe that whistles steam out of every bullet hole (systems/Steam.js)
+  vending: { static: true, material: 'metal', w: 26, h: 20, hp: 9, chips: '#7a2630', sparks: true, sound: 'metal', blocksPath: true,
+    light: { r: 64, color: '#eaf2ff', intensity: 0.6, y: 12 } },
+  phone_booth: { static: true, material: 'glass', w: 24, h: 24, hp: 6, chips: '#8fd0e6', glass: true, sound: 'glass', blocksPath: true, handset: [5, -6],
+    light: { r: 44, color: '#cfeeff', intensity: 0.45 } },
+  parking_meter: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#8a909c', sound: 'metal', bends: 6 },
+  news_box: { static: true, material: 'metal', w: 14, h: 11, hp: 4, chips: '#2a5aa8', sound: 'metal' },
+  pipe_steam: { static: true, material: 'metal', w: 96, h: 4, hp: 40, chips: '#8a5a3a', sound: 'metal', steam: 'leak' },
+  pipe_water: { static: true, material: 'metal', w: 96, h: 4, hp: 40, chips: '#4a6a7a', sound: 'metal' },
+  wall_vent: { static: true, material: 'metal', w: 14, h: 5, hp: 5, chips: '#6a707c', sound: 'metal', steam: 'vent' },
   ceiling_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
   pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',

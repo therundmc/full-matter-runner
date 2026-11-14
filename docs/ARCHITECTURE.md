@@ -54,6 +54,8 @@ src/
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Clouds.js           the powder out of a pierced extinguisher: hides from the guards (World.sightLine)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
+      Steam.js            manholes that breathe, wall vents, steam pipes whistling out of a bullet hole (STEAM, level `street`)
+      Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
@@ -78,7 +80,8 @@ src/
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
-      PropLife.js         pool balls, snow on a TV left on, the specks of the mirror ball
+      PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver, the specks of the mirror ball
+      StreetArt.js        the loose sheets of systems/Papers.js
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)

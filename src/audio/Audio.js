@@ -86,6 +86,7 @@ const META = {
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
   pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.55 },
   clack: { pri: 0, dur: 0.12, gap: 0.04, max: 3, gain: 0.45 }, pocket: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.5 },
+  coin: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.4 },
   ding: { pri: 1, dur: 0.4, gap: 0.3, max: 1, gain: 0.4 }, derail: { pri: 1, dur: 1.2, gap: 1, max: 1, gain: 0.55 },
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
@@ -262,6 +263,8 @@ const FOLEY = {
   pool: [['plastic', 0.8, 1.9], ['plastic', 0.5, 2.3, 0.07], ['wood', 0.25, 2.2, 0.02]],
   // two balls meeting, one dropping into a pocket (systems/PoolBalls.js)
   clack: [['plastic', 0.7, 2.5]],
+  // small change shaken out of a parking meter
+  coin: [['casing', 0.6, 1.5], ['casing', 0.45, 1.9, 0.07]],
   pocket: [['wood', 0.5, 1.4], ['plastic', 0.3, 1.5, 0.06]],
   throw: [['swish', 1, 0.7]],
   swing: [['swish', 1, 0.9]],
