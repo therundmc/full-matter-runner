@@ -71,6 +71,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
+   The bar hangs on a fuse box on its back wall, in the back lot (level `power`, systems/Power.js, prop `fuse_box`):
+   smashed or shot, the lights stutter and die, the jukebox and the fans stop, and only the red battery lamps over the
+   doors are left (props with `standby`); guards see far less in it, and those who heard the box come and look.
    Street fauna (level `critters`, systems/Critters.js; silent but for the pigeons' wings, a cut of recorded air): rats
    run out from under a dumpster that is hit, pigeons go up at a shot or when run at, a cat bolts over a bin, flies, moths.
    User: a small level is fine, every detail polished, real scale, ambiance

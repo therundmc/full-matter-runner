@@ -3846,6 +3846,43 @@ def p_alarm_box():
     return cv
 
 
+def p_fuse_box():
+    """The house's fuse box on an outside wall (-y): a steel cabinet seen from above under its little bulkhead lamp, its
+    two doors, a yellow hazard plate, the red handle of the main switch, the conduit that feeds it along the wall."""
+    cv = Cv(26, 11)
+    cv.rect(0, 0, 25, 1, hx('#4a4e58'))          # conduit along the wall
+    cv.rect(0, 0, 25, 0, hx('#6e737e'))
+    cv.rect(4, 2, 21, 8, hx('#8a909c'))          # cabinet
+    cv.rect(4, 2, 21, 2, hx('#c0c6d0'))
+    cv.rect(4, 8, 21, 8, hx('#5a5f6a'))
+    cv.rect(12, 3, 12, 7, hx('#5e636e'))         # door seam
+    cv.rect(6, 4, 10, 6, hx('#f0c81e'))          # hazard plate
+    cv.rect(8, 4, 8, 5, hx('#2a2410'))
+    cv.set(7, 6, hx('#2a2410'))
+    cv.rect(14, 4, 15, 6, hx('#30343c'))         # meter window
+    cv.set(14, 4, hx('#9ad8ff'))
+    cv.rect(17, 4, 19, 6, hx('#c2281e'))         # main switch
+    cv.rect(17, 4, 19, 4, hx('#ff8070'))
+    cv.outline()
+    return cv
+
+
+def p_emergency_light():
+    """A battery lamp on a wall (-y): a cream case and its two round heads, dull red until the mains fail."""
+    cv, gl = Cv(14, 7), Cv(14, 7)
+    cv.rect(2, 0, 11, 2, hx('#cfc8b4'))
+    cv.rect(2, 0, 11, 0, hx('#ece6d4'))
+    cv.rect(2, 2, 11, 2, hx('#948c78'))
+    cv.set(7, 1, hx('#3aff8a'))
+    for x0 in (3, 8):
+        cv.rect(x0, 3, x0 + 2, 5, hx('#7a2a22'))
+        cv.set(x0 + 1, 4, hx('#b04a3c'))
+        gl.rect(x0, 3, x0 + 2, 5, (255, 110, 80, 200))
+        gl.set(x0 + 1, 4, (255, 230, 210, 255))
+    cv.outline()
+    return cv, gl
+
+
 def p_cash_case():
     """The boss's case lying open: its lid thrown back (-y), banded wads of notes in two rows."""
     cv = Cv(22, 16)
@@ -4133,7 +4170,7 @@ def p_parapet():
 
 
 # small dressing added one by one (the details list)
-DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet,
+DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
                     vending=p_vending, phone_booth=p_phone_booth, parking_meter=p_parking_meter, news_box=p_news_box,
                     pipe_steam=pipe('#8a5a3a', '#b07a52', '#5e3a24', '#c8c0a8'), pipe_water=pipe('#4a6a7a', '#6e8e9e', '#30485a', '#9aa2b0'),
@@ -4141,7 +4178,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet,
                     table_flipped=flipped_table(46, '#86552f', '#5a361e'),
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'))
-DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
+DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27))
@@ -4286,9 +4323,10 @@ LIGHT_PROPS = dict(floor_lamp=p_floor_lamp, table_lamp=p_table_lamp, wall_lamp=p
                    tube_light=tube_fixture(hx('#cfe6ff'), hx('#ffffff')),
                    neon_tube_pink=tube_fixture(NEON_PINK, lt(NEON_PINK, 0.6)),
                    neon_tube_cyan=tube_fixture(NEON_CYAN, lt(NEON_CYAN, 0.6)),
-                   ceiling_lamp=p_ceiling_lamp, pool_lamp=p_pool_lamp)
+                   ceiling_lamp=p_ceiling_lamp, pool_lamp=p_pool_lamp, emergency_light=p_emergency_light)
 LIGHT_SIZES = dict(floor_lamp=(16, 16), table_lamp=(18, 18), wall_lamp=(14, 7), tube_light=(30, 5),
-                   neon_tube_pink=(30, 5), neon_tube_cyan=(30, 5), ceiling_lamp=(18, 18), pool_lamp=(46, 12))
+                   neon_tube_pink=(30, 5), neon_tube_cyan=(30, 5), ceiling_lamp=(18, 18), pool_lamp=(46, 12),
+                   emergency_light=(14, 7))
 
 
 # --------------------------------------------------------------------------

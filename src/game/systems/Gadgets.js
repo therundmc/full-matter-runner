@@ -20,7 +20,7 @@ export default class Gadgets {
     const w = this.world, p = w.player, g = this.cfg.jukebox;
     let best = 0;
     for (const prop of w.props) {
-      if (prop.type !== 'jukebox' || prop.dead || prop.sputter) continue;
+      if (prop.type !== 'jukebox' || prop.dead || prop.sputter || prop.unpowered) continue;
       const near = clamp(1 - Math.hypot(prop.x - p.x, prop.y - p.y) / g.reach, 0, 1);
       best = Math.max(best, near ** 1.5 * (w.walledOff(prop.x, prop.y) ? g.muffled : 1));
     }
@@ -29,8 +29,8 @@ export default class Gadgets {
 
   poke(prop) {
     const g = this.cfg[prop.type], w = this.world;
-    // a dark arcade is mute; a jukebox whose glass caved in still has a record turning
-    if (!g || prop.dead || (prop.lightsOut && !g.dies) || w.time < (prop.busy || 0)) return;
+    // a dark arcade is mute; a jukebox whose glass caved in still has a record turning; nothing answers without power
+    if (!g || prop.dead || prop.unpowered || (prop.lightsOut && !g.dies) || w.time < (prop.busy || 0)) return;
     prop.busy = g.dies ? Infinity : w.time + g.gap;
     w.sound(g.sound, prop.x, prop.y, 1);
     if (g.flash) w.light(prop.x, prop.y, 80, g.flash, 0.18);

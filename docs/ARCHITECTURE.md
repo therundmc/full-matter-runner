@@ -49,6 +49,8 @@ src/
                           (DOM-free, unit-tested)
       Alarms.js           closed shops (level.alarms) that ring when broken into: bell, beacon, guards come to look,
                           passers-by hurry on, until the box is shot off the wall (DOM-free, unit-tested)
+      Power.js            the house's fuse box (level.power): smashed, the lights of its zone stutter and die, the
+                          battery lamps (`standby` props) come on, guards come to look (DOM-free, unit-tested)
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
@@ -140,6 +142,7 @@ Rules:
 | `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
 | `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam, scared) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
+| `powerCut` | `{ x, y }` (the fuse box) | Power (the lights of the house just went out) | Director (an incident at the box: whoever sees it raises the alert) |
 | `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |
 | `poolStroke` | `{ x, y }` | Enemy (a guard at the pool table plays his shot) | PoolBalls |
 | `patronLeft` | `{ civilian, activity }` | Civilian (a posted customer runs off his spot) | Ambient (his chair is shoved back, his glass goes over, a cigarette is left burning: `AMBIENT.leave`) |

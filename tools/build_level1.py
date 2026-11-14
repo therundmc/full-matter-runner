@@ -286,6 +286,12 @@ lv.prop('trash_can', 31.5, 1.5)
 lv.prop('parapet', 10.5, 3.5, 90)                      # the drop from the roof
 lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
+# the house's fuse box, between the two windows: smash it and the bar is left in its emergency lighting
+lv.power(14, 5, 31, 20, 24.5, 4.92, 180)
+for (x, y, deg) in ((23.6, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: back, front, VIP side
+                    (17.6, 10.91, 180), (21.09, 8.5, 270), (29.5, 10.91, 180),   # storeroom, toilets, the boss's room
+                    (28.5, 17.09, 0)):                                          # the VIP room
+    lv.prop('emergency_light', x, y, deg)
 lv.prop('wall_vent', 16.3, 4.92, 180)                   # the oven's extractor steams into the lot
 lv.prop('pipe_water', 20.2, 1.07)
 lv.dress('papers', 14, 1, 32, 4, 4)

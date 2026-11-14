@@ -51,6 +51,7 @@ export default class Director {
     ev.on('wallDestroyed', (e) => this.incident('wall', e.x, e.y));
     ev.on('windowBroken', (e) => this.incident('window', e.x, e.y));
     ev.on('doorBroken', (e) => this.incident('door', e.x, e.y));
+    ev.on('powerCut', (e) => this.incident('power', e.x, e.y)); // whoever comes to look finds the box smashed
     ev.on('footprint', (e) => { if (e.who.isPlayer) this.trail.add(e.x, e.y, e.angle, e.kind, world.time); });
   }
 

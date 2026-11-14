@@ -7,6 +7,7 @@ export const BARKS = {
     'HA! NO WAY.', 'THIS PLACE, MAN...', 'ANOTHER HOUR OF THIS.', 'RAIN AGAIN TOMORROW.'],
   // calm, then looking for something
   sight: ['HUH?', "WHO'S THERE?", 'SOMEBODY THERE?', 'YOU SEE THAT?'],
+  dark: ['WHO KILLED THE LIGHTS?', 'THE FUSES AGAIN?', 'SOMEBODY CHECK THE BOX!', "CAN'T SEE A THING."],
   noise: ['WHAT WAS THAT?', 'HUH?', 'YOU HEAR THAT?', 'WHAT THE HELL?'],
   damage: ['WHAT THE...', 'WHO DID THIS?', "THAT WASN'T LIKE THAT."],
   missing: ["WHERE'D HE GO?", "HE'S NOT AT HIS POST."],

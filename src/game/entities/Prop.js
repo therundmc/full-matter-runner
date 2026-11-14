@@ -23,6 +23,7 @@ const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 2
 // what holes a gas bottle or a stove (see gasHit)
 const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
 const TAU = Math.PI * 2;
+const COAST = 1.6; // s a fan takes to run down once the power is cut
 
 // Furniture and street dressing, destroyed piece by piece (data/destruction.js says how each one comes apart):
 //  - every hit leaves a mark where it landed, in the prop's own canvas (holes, furrows, dents, slashes, scorch),
@@ -265,7 +266,11 @@ export default class Prop {
   }
 
   // how far round a ceiling fan has turned
-  spun() { return (this.def.spin || 0) * this.world.time; }
+  // blades that turn; once the power is cut (`unpowered` = when, systems/Power.js) they coast to a stop
+  spun() {
+    const t = this.world.time, u = this.unpowered;
+    return (this.def.spin || 0) * (u === undefined ? t : u + COAST * (1 - Math.exp(-(t - u) / COAST)));
+  }
 
   update(dt) {
     const k = this.kick;

@@ -68,14 +68,15 @@ export const PROPS = {
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
   // guards path through it and vault it too (no blocksPath)
   // a fixed steel ladder filling its gap in a wall: the way up to a roof (climbed with Space, like the gate)
-  ladder: { vault: true, climb: true, blocksPath: true, material: 'mesh', w: 30, h: 30, hp: 60, static: true, chips: '#9ea4ae', sound: 'metal' },
-  // the low wall at the edge of a roof, where one can drop to the ground (vaulted with Space)
-  parapet: { vault: true, blocksPath: true, material: 'stone', w: 32, h: 10, hp: 60, static: true, chips: '#8a5a50', sound: 'stone' },
+  ladder: { vault: true, climb: 'rungs', blocksPath: true, material: 'mesh', w: 30, h: 30, hp: 60, static: true, chips: '#9ea4ae', sound: 'metal' },
+  // the low wall at the edge of a roof, where one can drop to the ground (vaulted with Space);
+  // land: 'roll' = one comes down from a height on the far side and rolls on landing (entities/Character.js)
+  parapet: { vault: true, land: 'roll', blocksPath: true, material: 'stone', w: 32, h: 10, hp: 60, static: true, chips: '#8a5a50', sound: 'stone' },
   // what stands on a roof one can walk on: the sprites of the scenery of the roofs around (data/roofs.js), with a body
   ac_unit: { sprite: 'roof/ac_unit', static: true, vault: true, blocksPath: true, material: 'metal', w: 46, h: 32, hp: 30, chips: '#8a909c', sparks: true, sound: 'metal' },
   roof_vent: { sprite: 'roof/vent', static: true, material: 'metal', r: 6.5, hp: 12, chips: '#8a909c', sound: 'metal' },
   water_tank: { sprite: 'roof/tank', static: true, blocksPath: true, material: 'metal', r: 24, hp: 60, chips: '#6a4a32', sound: 'metal' },
-  chain_fence: { vault: true, climb: true, material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
+  chain_fence: { vault: true, climb: true, land: 'roll', material: 'mesh', w: 32, h: 4, hp: 24, static: true, chips: '#9ea4ae', sound: 'metal' },
   // shop fronts of the street: what shows behind the lit display windows, and their neon wall signs (mounted like
   // the bar's: 3 px off the wall face; unlike the pictures they read one way up, so never rotate them)
   bottle_shelf: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
@@ -84,6 +85,12 @@ export const PROPS = {
   washer: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sound: 'metal', blocksPath: true },
   // a closed shop's alarm (level `alarms`, systems/Alarms.js): shot off the wall, it shuts up
   alarm_box: { fixture: true, static: true, material: 'metal', w: 10, h: 5, hp: 3, chips: '#c4c8ce', sparks: true, sound: 'metal' },
+  // the house's fuse box on an outside wall (level `power`, systems/Power.js): smashed, the lights go out inside
+  fuse_box: { fixture: true, static: true, material: 'metal', w: 18, h: 8, hp: 3, chips: '#8a909c', sparks: true, sound: 'metal',
+    light: { r: 64, color: '#ffe6a8', intensity: 0.6, y: 4 } }, // the pilot lamp over it: it has to be found
+  // a battery lamp over a door: dark as long as the mains are on (`standby`), all that is left once they are cut
+  emergency_light: { fixture: true, static: true, standby: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffb0a0', sparks: true, glass: true, sound: 'glass',
+    light: { r: 150, color: '#ff5a3c', intensity: 0.95, y: 3 } },
   neon_sign_liquor: { material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
   neon_sign_video: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',

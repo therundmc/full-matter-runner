@@ -143,8 +143,10 @@ export default {
     ['van', 24.5, 2.3, 180, { lights: false }], ['dumpster', 15.2, 1.6, 0], ['crate', 17.2, 1.45, 5],
     ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
     ['trash_can', 31.5, 1.5, 0], ['parapet', 10.5, 3.5, 90], ['crate', 32.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
-    ['wall_vent', 16.3, 4.92, 180], ['pipe_water', 20.2, 1.07, 0], ['tube_light', 29.9, 4.93, 180],
-    ['gas_bottle', 30.4, 4.74, 0],
+    ['fuse_box', 24.5, 4.92, 180], ['emergency_light', 23.6, 12.09, 0], ['emergency_light', 20.5, 19.91, 180],
+    ['emergency_light', 24.91, 17.4, 90], ['emergency_light', 17.6, 10.91, 180], ['emergency_light', 21.09, 8.5, 270],
+    ['emergency_light', 29.5, 10.91, 180], ['emergency_light', 28.5, 17.09, 0], ['wall_vent', 16.3, 4.92, 180],
+    ['pipe_water', 20.2, 1.07, 0], ['tube_light', 29.9, 4.93, 180], ['gas_bottle', 30.4, 4.74, 0],
     // storeroom
     ['bookshelf', 15.7, 6.2, 0], ['oven', 17.1, 6.38, 0], ['sink', 18.35, 6.3, 0], ['fridge', 19.55, 6.4, 0],
     ['tube_light', 19.93, 8.5, 90], ['dope_table', 17.5, 9.32, 0], ['crate', 19.5, 9.7, 4],
@@ -193,6 +195,8 @@ export default {
   welcome: [[21, 12, 30, 12], [15, 13, 30, 15], [15, 16, 23, 19], [21, 6, 23, 11]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
+  // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
+  power: {"box": [24.5, 4.92], "zone": [14, 5, 31, 20]},
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[23.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [33.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]

@@ -35,6 +35,7 @@ import Impacts from '../systems/Impacts.js';
 import Liquids from '../systems/Liquids.js';
 import Threats from '../systems/Threats.js';
 import Alarms from '../systems/Alarms.js';
+import Power from '../systems/Power.js';
 import Critters from '../systems/Critters.js';
 import Sirens from '../systems/Sirens.js';
 import PoolBalls from '../systems/PoolBalls.js';
@@ -110,6 +111,7 @@ export default class World {
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
     this.clouds = new Clouds(this);               // extinguisher powder nobody sees through
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
+    this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
     this.steam = new Steam(this, level.street?.manholes);  // manholes, vents, pierced steam pipes
     this.papers = new Papers(this, level.street?.papers);  // loose sheets the wind and the cars blow about
     this.lastShot = { owner: null, t: -1 };
@@ -406,6 +408,7 @@ export default class World {
     this.impacts.update(dt);
     this.liquids.update(dt);
     this.alarms.update(dt);
+    this.power.update();
     this.critters.update(dt);
     this.sirens.update(dt);
     this.poolBalls.update(dt);

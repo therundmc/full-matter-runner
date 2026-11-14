@@ -40,6 +40,7 @@ SIZES = dict(
     marquee=None, neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
+    fuse_box=None, emergency_light=None,
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
@@ -66,6 +67,7 @@ class Level:
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
         self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
+        self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
         self.facing = {}
@@ -119,6 +121,12 @@ class Level:
     def alarm(self, col0, row0, col1, row1, col, row, deg=0):
         self.alarms.append(dict(rect=[col0, row0, col1, row1], box=[col, row]))
         self.prop('alarm_box', col, row, deg)
+
+    # ---- the house's electricity (systems/Power.js): everything lit inside the inclusive tile rectangle hangs on the
+    # fuse box at (col, row) on an outside wall; put `emergency_light` props over the doors for what is left after
+    def power(self, col0, row0, col1, row1, col, row, deg=0):
+        self.mains = dict(box=[col, row], zone=[col0, row0, col1, row1])
+        self.prop('fuse_box', col, row, deg)
 
     # ---- street fauna (systems/Critters.js): a flock of n pigeons pecking about (col, row), a cat sitting at (col, row)
     def pigeons(self, col, row, n):
@@ -270,6 +278,9 @@ class Level:
         if self.alarms:
             L.append('  // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box')
             L.append(f'  alarms: {json.dumps(self.alarms)},')
+        if self.mains:
+            L.append('  // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside')
+            L.append(f'  power: {json.dumps(self.mains)},')
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')
