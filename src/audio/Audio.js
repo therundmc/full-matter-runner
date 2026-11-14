@@ -96,6 +96,7 @@ const META = {
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
+  hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
   confirm: { pri: 4, dur: 1.1, gap: 0.03, max: 3, duck: 0.8, gain: 1, hall: 0.55 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
@@ -831,6 +832,12 @@ class AudioSystem {
     for (let i = 0; i < 3; i++) {
       this._noiseBurst(o, { type: 'highpass', f0: rand(1200, 3000), q: 0.7, dur: rand(0.008, 0.02), vol: rand(0.15, 0.4), delay: rand(0, 0.22), attack: 0.0005 });
     }
+  }
+  // gas under pressure through a hole: a hard bright hiss over the roar of its flame (pitch climbs with the fuse)
+  _hiss(o, opts) {
+    const p = opts.pitch || 1;
+    this._noiseBurst(o, { type: 'bandpass', f0: 4600 * p, f1: 5400 * p, q: 1.1, dur: 0.3, vol: 0.55, attack: 0.04 });
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 900, f1: 700, dur: 0.3, vol: 0.6, attack: 0.05 });
   }
   _ignite(o) {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });

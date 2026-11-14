@@ -55,7 +55,7 @@ test('pastimes: a drag then a breath of smoke, a chat turn about, a stretch, a c
 });
 
 test('pastimes: every kind puts both hands somewhere', () => {
-  for (const kind of ['pool', 'cue', 'cards', 'drink', 'watch', 'dance', 'smoke', 'phone', 'talk', 'listen', 'cross',
+  for (const kind of ['pool', 'cue', 'cards', 'count', 'drink', 'watch', 'dance', 'smoke', 'phone', 'talk', 'listen', 'cross',
     'piss', 'stretch', 'wrist', 'pockets', 'bag']) {
     for (const t of [0, 0.7, 3.1, 9.4]) {
       const h = pastimeHands(kind, t, 0.4);

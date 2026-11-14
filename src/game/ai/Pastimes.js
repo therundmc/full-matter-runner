@@ -7,7 +7,7 @@
 //   smoke  a cigarette, a drag now and then                         phone   his pager read
 //   talk / listen  the two halves of a chat, turn about             cross   arms folded
 //   stretch, wrist  a stretch, a look at his watch (one go)         piss    against a wall or at a toilet
-//   pockets, bag   how a passer-by carries his hands
+//   pockets, bag   how a passer-by carries his hands                count   bills peeled off a wad, one by one
 import { TILE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
 

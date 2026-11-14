@@ -23,6 +23,16 @@
 //   drop       true: hangs high (ceiling lamps, street lamp head): pieces fall from the ceiling
 export const DESTRUCTION = {
   table: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' } },
+  card_table: {
+    height: 0.75, parts: [{ cut: 'planks', n: 4, axis: 'long', snap: true }], legs: { n: 4, size: 0.1, color: '#4a2c18' },
+    floats: ['cash', 8], contents: [{ bit: 'chip', n: 14, on: 'break' }],
+  },
+  // powder: a white puff at every hit, a cloud when it goes over
+  dope_table: {
+    height: 0.75, powder: '#f2efe8', parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }],
+    legs: { n: 4, size: 0.09, color: '#4a2c18' }, floats: ['cash', 22],
+    contents: [{ bit: 'brick', n: 4, on: 'break' }, { bit: 'wad', n: 4, on: 'break' }, { bit: 'brick', n: 1, on: 'hit', perHit: 0.3 }],
+  },
   table_round: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 1, size: 0.14, color: '#4a2c18' } },
   desk: {
     height: 0.75, electric: true, floats: ['paper', 14],
@@ -99,6 +109,7 @@ export const DESTRUCTION = {
   },
   trash_can: { height: 0.7, parts: [{ cut: 'grid', cols: 2, rows: 2 }], floats: ['paper', 8], contents: [{ bit: 'can', n: 2, on: 'break' }] },
   barrel: { height: 0.9, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
+  gas_bottle: { height: 0.6, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   bench: { height: 0.45, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 2, size: 0.08, color: '#2a2a30' } },
   hydrant: { height: 0.7, parts: [{ cut: 'grid', cols: 2, rows: 1 }] }, // never cut: it pops off whole (Prop.burst)
   palm_tree: { height: 5, drop: true, floats: ['leaf', 30], parts: [{ cut: 'wedges', n: 6 }] },
@@ -170,6 +181,9 @@ export const BITS = {
   slat: { size: [0.9, 0.08], material: 'wood', colors: ['#8a6038', '#7a5030'] },
   cue: { size: [1.45, 0.04], material: 'wood', colors: ['#c8a060'] },
   soil: { size: [0.3, 0.3], material: 'fabric', colors: ['#3a2416'] },
+  chip: { size: [0.05, 0.05], material: 'plastic', round: true, bounce: 0.4, mu: 0.2, colors: ['#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040'] },
+  brick: { size: [0.2, 0.12], material: 'fabric', colors: ['#e8e4dc', '#dcd6ca'] },
+  wad: { size: [0.16, 0.08], material: 'fabric', colors: ['#5a8a4a', '#6a9a5a'] },
 };
 
 // slow floating particles: colour, size px, fall speed (lower = floats longer)
@@ -180,6 +194,7 @@ export const FLOATS = {
   paper: { colors: ['#ece8dc', '#f6f2e8', '#d8d2c0'], size: [2, 3.2], fall: 9, flat: true },
   leaf: { colors: ['#2f8f3a', '#3aa048', '#25702c'], size: [1.5, 2.8], fall: 12, flat: true },
   straw: { colors: ['#d8b860', '#c8a048'], size: [1, 2.4], fall: 16, flat: true },
+  cash: { colors: ['#6a9a5a', '#86b070', '#4f7f45'], size: [2, 3.4], fall: 8, flat: true },
 };
 
 // the recipe of a prop, with defaults filled from its material

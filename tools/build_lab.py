@@ -110,7 +110,7 @@ lv.prop('crate', 23.5, 7.5)
 lv.prop('crate', 24.2, 7.6, 8)
 lv.prop('crate', 23.8, 6.85, -12)
 lv.prop('barrel', 26.2, 8.3)
-lv.prop('barrel', 31.5, 7.9)
+lv.prop('gas_bottle', 31.5, 7.9)
 lv.prop('wall_lamp', 29.0, 8.91, 180)
 
 lv.area('facade')

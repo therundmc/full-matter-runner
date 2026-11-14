@@ -80,7 +80,7 @@ export default {
     ['toilet', 30.4, 1.4, 0], ['toilet', 31.6, 1.4, 0], ['sink', 32.65, 3, 90], ['table', 27.5, 4.6, 0],
     ['chair', 27, 3.85, 90], ['chair', 28, 3.85, 90], ['chair', 27, 5.35, 270], ['chair', 28, 5.35, 270],
     ['trash_can', 25, 5, 0], ['crate', 23.5, 7.5, 0], ['crate', 24.2, 7.6, 8], ['crate', 23.8, 6.85, -12],
-    ['barrel', 26.2, 8.3, 0], ['barrel', 31.5, 7.9, 0], ['wall_lamp', 29, 8.91, 180],
+    ['barrel', 26.2, 8.3, 0], ['gas_bottle', 31.5, 7.9, 0], ['wall_lamp', 29, 8.91, 180],
     // facade
     ['neon_sign_arrow', 2, 10.09, 0], ['wall_lamp', 18.6, 10.09, 0], ['neon_sign_bar', 22.5, 10.09, 0],
     ['string_lights', 29.5, 10.6, 0],

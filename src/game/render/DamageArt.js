@@ -397,6 +397,7 @@ export function bitSprite(kind, color, w, h) {
   const r = Math.min(w, h) / 2;
   switch (kind) {
     case 'ball':
+    case 'chip':
     case 'can':
     case 'pan':
       g.fillStyle = kind === 'pan' ? '#141418' : '#140c1c';

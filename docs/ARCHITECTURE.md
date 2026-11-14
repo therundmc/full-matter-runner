@@ -34,6 +34,7 @@ src/
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Takedown.js         `behind(player, guard)`: who can be seized from behind (rule only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
+      Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles, windows torn out, doors off hinges, fences; `watchOpenings` makes doors and
                           windows go with the wall tile that holds them (listens to `wallDestroyed`)
       Glass.js            how a pane breaks (DOM-free, unit-tested): shards of three sizes, which ones cut / kill
@@ -325,7 +326,7 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
   after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
 - Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned
   at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their
-  spawn. `passive: true` = dummies with no perception (lab). `jobs: { 'col,row': 'pool' | 'cards' }` = the pastime
+  spawn. `passive: true` = dummies with no perception (lab). `jobs: { 'col,row': 'pool' | 'cards' | 'count' }` = the pastime
   of the guard posted there (ai/Pastimes.js): he is at it while all is calm, less watchful (`Enemy.distracted`),
   and drops it as soon as the squad is on edge.
 

@@ -18,7 +18,12 @@ export const PROPS = {
   tv: { material: 'plastic', w: 22, h: 15, hp: 4, kg: 30, mu: 0.8, chips: '#222', sparks: true, glass: true, sound: 'glass',
     light: { r: 100, color: '#7fc8ff', intensity: 1, flicker: 'tv', y: 7 } },
   fridge: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true },
-  oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true },
+  // gas: a round through it lights a jet at the hole, then it goes off after `fuse` s (systems/Gas.js);
+  // rocket: odds that a loose bottle takes off on its own jet
+  oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true,
+    gas: { fuse: [1.6, 2.6] }, blast: 84 },
+  gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.75, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
+    gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
   sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
   toilet: { material: 'ceramic', w: 13, h: 21, hp: 6, static: true, chips: '#eee', sound: 'glass', water: true, blocksPath: true },
   bed: { static: true, vault: true, material: 'fabric', w: 44, h: 64, hp: 18, chips: '#7a3aa0', sound: 'wood', blocksPath: true },
@@ -32,7 +37,10 @@ export const PROPS = {
     light: { r: 34, color: '#8a5cff', intensity: 0.35, flicker: 'pulse' } },
   dj_booth: { static: true, vault: true, material: 'plastic', w: 58, h: 22, hp: 20, chips: '#222', sparks: true, sound: 'metal', blocksPath: true,
     light: { r: 130, color: '#ff3df0', intensity: 0.95, flicker: 'pulse', y: 8 } },
-  card_table: { static: true, vault: true, material: 'wood', r: 14, hp: 10, chips: '#1f7a4c', sound: 'wood', blocksPath: true },
+  card_table: { static: true, vault: true, material: 'wood', w: 58, h: 36, hp: 16, chips: '#1f7a4c', sound: 'wood', blocksPath: true },
+  // the pimp's counting table (bricks, scale, cash): its desk lamp is the light
+  dope_table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 12, chips: '#6e4426', sound: 'wood', blocksPath: true,
+    light: { r: 70, color: '#ffe0a0', intensity: 0.6, x: 14, y: 8 } },
   // a low round stage one walks on: only its pole is in the way
   dance_stage: { static: true, material: 'metal', r: 3, hp: 14, chips: '#aab4c4', sparks: true, sound: 'metal',
     light: { r: 110, color: '#ffc8ee', intensity: 0.75, flicker: 'pulse' } },

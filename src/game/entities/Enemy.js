@@ -67,7 +67,7 @@ export default class Enemy extends Character {
     this.goal = null; this.target = null;
     this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
     this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
-    this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards'
+    this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards' | 'count'
     this.actT = 0;         // s actually spent at the current activity
     this.atPost = true;    // standing where he means to be (his post, or `errand`)
     this.errand = null;    // where he went for a moment ({ x, y, face, wall }: to relieve himself)

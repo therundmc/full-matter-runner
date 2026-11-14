@@ -1100,33 +1100,120 @@ def p_table_round():
 
 
 def p_card_table():
-    """Card table: green baize in a wood rail, the pot, hands dealt to three seats (one laid open), a drink."""
-    S = 30
-    cv = Cv(S, S)
-    c = S / 2
+    """Poker table: an oval of green baize in a padded wood rail, the pot, hands dealt to five seats, drinks."""
+    W, H = 60, 38
+    cv = Cv(W, H)
+    cx, cy = W / 2, H / 2
+    half = cx - cy   # half-length of the straight sides
     felt = ramp('#1f7a4c', 0.45, 0.22, 0.18)
     rail = ramp('#6a3518', 0.45, 0.22, 0.35)
-    fn = VNoise(S, S, 5, random.Random(171))
-    for y in range(1, S - 1):
-        for x in range(1, S - 1):
-            d = math.hypot(x + 0.5 - c, y + 0.5 - c)
-            if d <= 12.2:
-                cv.set(x, y, shift(mix(felt[2], lt(felt[2], 0.2), max(0.0, 0.7 - d / 12)), int((fn(x, y) - 0.5) * 8)))
-    ring(cv, c, c, 11.3, 12.2, lambda dx, dy, d: felt[0] if dx + dy > 0 else felt[1])
-    ring(cv, c, c, 12.2, 14.0, lambda dx, dy, d: shade(rail, light(dx / d, dy / d)))
+    fn = VNoise(W, H, 5, random.Random(171))
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            dx, dy = x + 0.5 - cx, y + 0.5 - cy
+            ex = dx - max(-half, min(half, dx))
+            d = math.hypot(ex, dy) or 1e-6
+            nx, ny = ex / d, dy / d
+            if d > 18.0:
+                continue
+            if d > 14.2:
+                c = shade(rail, light(nx, ny))
+                cv.set(x, y, lt(c, 0.12) if 15.6 < d <= 16.5 else c)   # the padding's crown
+            elif d > 13.3:
+                cv.set(x, y, felt[0] if nx + ny > 0 else felt[1])
+            else:
+                c = shift(mix(felt[2], lt(felt[2], 0.2), max(0.0, 0.7 - d / 14)), int((fn(x, y) - 0.5) * 8))
+                cv.set(x, y, lt(c, 0.1) if 9.3 < d <= 10.0 else c)     # the betting line
 
     def things(ly):
-        for k, col in enumerate(('#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040', '#d8303a')):
-            circle(ly, c + math.cos(k * 1.3) * 2.3, c + math.sin(k * 1.3) * 2.3, 1.3, hx(col))
+        chips = ('#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040', '#1a1420')
+        rng = random.Random(172)
+        for k, (x, y) in enumerate(((-3.2, -1.4), (0.0, -2.2), (3.2, -1.0), (-1.6, 1.6), (1.8, 2.0))):   # the pot
+            circle(ly, cx + x, cy + y, 1.4, hx(chips[k]))
+        for (x, y, a) in ((cx - 8.0, cy + 2.5, 0.4), (cx + 8.5, cy - 1.5, -0.5)):   # notes thrown in
+            fill_shape(ly, x, y, 2.2, 1.2, lambda u, v, L: hx('#86b070') if abs(u) < 1.2 else hx('#5a8a4a'),
+                       ang=a, kind='rect', corner=0.3, bevel=0.5)
         back, face = hx('#a8282e'), hx('#f0ece0')
-        for a, up in ((math.pi, False), (0.0, False), (-math.pi / 2, True)):
+        seats = ((cx - 21, cy, math.pi, False), (cx + 21, cy, 0.0, False), (17.0, cy + 8.5, math.pi / 2, False),
+                 (43.0, cy + 8.5, math.pi / 2, True), (cx - 4.0, cy - 8.5, -math.pi / 2, False))
+        for i, (sx, sy, a, up) in enumerate(seats):
             for s in (-1, 1):
-                px = c + math.cos(a) * 8 - math.sin(a) * s * 1.8
-                py = c + math.sin(a) * 8 + math.cos(a) * s * 1.8
+                px, py = sx - math.sin(a) * s * 1.8, sy + math.cos(a) * s * 1.8
                 fill_shape(ly, px, py, 1.5, 2.2, lambda u, v, L: face if up or abs(u) > 0.9 or abs(v) > 1.6 else back,
                            ang=a + s * 0.25, kind='rect', corner=0.5, bevel=0.5)
-        glass_top(ly, c + 6.0, c + 6.5, 1.7, hx('#c8842a'))
+            if up:
+                ly.set(int(sx - 2), int(sy), hx('#c01828'))
+                ly.set(int(sx + 1), int(sy), hx('#1a1420'))
+            for k in range(2 + i % 2):                                  # each player's stack, at his right hand
+                circle(ly, sx - math.sin(a) * (5.5 + k * 2.2) - math.cos(a) * 1.5,
+                       sy + math.cos(a) * (5.5 + k * 2.2) - math.sin(a) * 1.5, 1.2, hx(chips[rng.randrange(4)]))
+        fill_shape(ly, cx + 3.5, cy - 8.5, 1.7, 2.4, lambda u, v, L: hx('#8a1f26') if (int(u * 2 + v * 2) % 2) else back,
+                   ang=1.45, kind='rect', corner=0.5, bevel=0.6)        # the deck, by the dealer
+        glass_top(ly, 12.5, 12.5, 1.7, hx('#c8842a'))
+        glass_top(ly, 48.0, 25.5, 1.7, hx('#d89a2a'))
+        ashtray(ly, 46.5, 11.5, random.Random(173), 2.3)
     layer(cv, things)
+    cv.outline()
+    return cv
+
+
+def p_dope_table():
+    """The pimp's counting table: taped bricks, bags, a scale, a mirror with lines cut on it, wads of cash, a lamp."""
+    W, H = 46, 28
+    cv = Cv(W, H)
+    rng = random.Random(13)
+    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#6e4426'), plank=6, rng=rng)
+    mottle(cv, random.Random(131), 8, 7)
+    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.22, 0.32)
+    for (x, y) in ((1, 1), (W - 2, 1), (1, H - 2), (W - 2, H - 2)):
+        cv.set(x, y, CLEAR)
+    smudge(cv, rng, 7, (12, 6, 32, 22), (1.2, 2.6), 0.3, hx('#eeeae2'))   # powder dusted over the boards
+    white = ramp('#e8e4dc', 0.3, 0.15, 0.4)
+    green = ramp('#5a8a4a', 0.4, 0.2, 0.3)
+
+    def goods(ly):
+        for (x, y, a) in ((7.5, 7.0, 0.1), (8.0, 12.0, -0.08), (14.5, 6.5, 0.3), (7.0, 20.5, 1.5)):   # taped bricks
+            fill_shape(ly, x, y, 3.2, 2.0, lambda u, v, L: hx('#9a7a44') if abs(u) < 0.6 else shade(white, L),
+                       ang=a, kind='rect', corner=0.5, bevel=0.7)
+        for (x, y) in ((17.5, 19.5), (20.5, 21.5), (16.0, 22.5), (22.5, 18.5), (13.5, 18.0)):          # small bags
+            fill_shape(ly, x, y, 1.5, 1.2, lambda u, v, L: shade(white, L))
+        fill_shape(ly, 23.5, 9.5, 4.2, 3.0, lambda u, v, L: hx('#c8dcec') if u - v > 1.5 else hx('#9ab8cc'),
+                   ang=-0.15, kind='rect', corner=0.4, bevel=0.5)                                      # the mirror
+        for k in range(3):
+            line(ly, 21.0 + k * 2.0, 8.0, 21.6 + k * 2.0, 11.2, hx('#ffffff'))
+        fill_shape(ly, 31.0, 19.5, 4.2, 3.4, lambda u, v, L: shade(STEEL, L), kind='rect', corner=0.6, bevel=0.8)   # the scale
+        fill_shape(ly, 31.0, 19.0, 2.7, 2.7, lambda u, v, L: shade(ramp('#b8c0cc', 0.5, 0.25, 0.4), L))
+        fill_shape(ly, 31.0, 19.0, 1.4, 1.2, lambda u, v, L: shade(white, L))
+        ly.set(31, 22, hx('#ff5a3a'))
+        for (x, y, a) in ((35.0, 5.5, 0.0), (41.0, 7.5, 1.57), (35.5, 11.5, 0.1), (40.5, 14.5, 0.0)):    # wads
+            fill_shape(ly, x, y, 2.7, 1.6, lambda u, v, L: hx('#f2ead0') if abs(u) < 0.7 else shade(green, L),
+                       ang=a, kind='rect', corner=0.3, bevel=0.6)
+    layer(cv, goods, dk(hx('#6e4426'), 0.6))
+
+    def lamp(ly):
+        circle(ly, 41.5, 23.5, 2.0, hx('#2a2a34'))
+        line(ly, 41.0, 23.0, 37.5, 21.5, hx('#3a3a48'))
+        fill_shape(ly, 37.0, 21.5, 2.8, 2.2, lambda u, v, L: shade(ramp('#3f7a5a', 0.5, 0.25, 0.4), L), ang=0.4)
+        ly.set(36, 21, hx('#fff4c0'))
+        ly.set(36, 22, hx('#ffe08a'))
+    layer(cv, lamp)
+    cv.outline()
+    return cv
+
+
+def p_gas_bottle():
+    """A gas bottle from above: blue steel shoulder, the guard ring around a brass valve with its red hand wheel."""
+    S = 14
+    c = S / 2
+    cv = Cv(S, S)
+    blue = ramp('#4f82c0', 0.55, 0.28, 0.35)
+    fill_shape(cv, c, c, 6.0, 6.0, lambda u, v, L: shade(blue, L))
+    ring(cv, c, c, 5.1, 6.05, lambda dx, dy, d: blue[0] if dx + dy > 0 else blue[1])
+    ring(cv, c, c, 2.9, 4.2, lambda dx, dy, d: hx('#e4e9f0') if dx + dy < 0 else hx('#9aa4b4'))   # guard ring
+    fill_shape(cv, c, c, 2.9, 2.9, lambda u, v, L: hx('#1c2a44'))
+    fill_shape(cv, c, c, 1.5, 1.5, lambda u, v, L: hx('#e8b850') if u + v < 0 else hx('#b88a30'))  # brass valve
+    cv.set(int(c), int(c), hx('#e02828'))
+    cv.set(int(c) - 1, int(c), hx('#e02828'))
     cv.outline()
     return cv
 
@@ -4327,7 +4414,7 @@ def build():
         out[('characters', cid + '_rag_leg')] = rag_leg(ch)
     for name, cv in mags().items():
         out[('weapons', name)] = cv
-    props = dict(table=p_table, table_round=p_table_round, card_table=p_card_table, dance_stage=p_dance_stage, desk=p_desk, chair=p_chair, armchair=p_armchair,
+    props = dict(table=p_table, table_round=p_table_round, card_table=p_card_table, dope_table=p_dope_table, gas_bottle=p_gas_bottle, dance_stage=p_dance_stage, desk=p_desk, chair=p_chair, armchair=p_armchair,
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
                  barrel=p_barrel, bookshelf=p_bookshelf, speaker=p_speaker, dj_booth=p_dj_booth,
@@ -4370,7 +4457,7 @@ def build():
 GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
            'car', 'car2', 'van']
 # furniture at real scale (1 m = 32 px): sprite = hitbox in data/props.js + 1 px of outline on each side
-PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(30, 30), dance_stage=(50, 50), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
+PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dope_table=(46, 28), gas_bottle=(14, 14), dance_stage=(50, 50), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
                   sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
                   toilet=(15, 23), bed=(46, 66), pool_table=(82, 46), arcade=(24, 29), crate=(21, 21),
                   barrel=(20, 20), bookshelf=(42, 13), speaker=(16, 16), dj_booth=(60, 24),

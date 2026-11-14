@@ -42,7 +42,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
    `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public
    (he walks in like a customer, level `welcome`); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime
-   (level `jobs`: pool, cards), customers and VIP-room dancers (`ambient.patrons`, sprites dancerN) who run for
+   (level `jobs`: pool, cards, the pimp counting his dope in the storeroom), customers and VIP-room dancers (`ambient.patrons`, sprites dancerN) who run for
    the street when it kicks off. Guards at ease (user: "too flat", wants many animations, be creative): weapon put
    away while calm, in hand and low on alert, raised on a target (ai/Carry.js); they smoke, read a pager, stretch,
    fold their arms, chat in pairs, go for a leak (Enemy.pickActivity, ai/Pastimes.js); civilians use their hands

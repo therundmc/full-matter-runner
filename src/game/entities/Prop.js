@@ -10,6 +10,7 @@ import { RESIST } from '../systems/Penetration.js';
 import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
+import { ignite } from '../systems/Gas.js';
 
 const { Bodies } = Matter;
 
@@ -19,6 +20,8 @@ const STAGES = [0.7, 0.45, 0.2];
 const ZONE_WEAR = { pellet: 0.6, bullet: 1, rifle: 1.4, graze: 0.4, blunt: 1.7, blast: 2.2, cut: 0.5, punch: 0.3, shrapnel: 0.3 };
 // penetration energy assumed when the caller does not give one
 const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 24, cut: 3, punch: 2, shrapnel: 3 };
+// what holes a gas bottle or a stove (see gasHit)
+const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
 const TAU = Math.PI * 2;
 
 // Furniture and street dressing, destroyed piece by piece (data/destruction.js says how each one comes apart):
@@ -127,6 +130,7 @@ export default class Prop {
     const g = this.ensureCanvas();
     const { sx, sy } = this.spritePoint(px, py, dirA, kind === 'cut' ? Math.min(4, Math.min(this.W, this.H) * 0.3) : 1.2);
     this.lastHit = [sx, sy];
+    if (d.gas) damage = this.gasHit(damage, kind, sx, sy, dirA);
     const la = dirA - this.body.angle; // shot direction in sprite space
     const size = Math.min(this.W, this.H);
     const m = markShape(kind, { energy, inc, size, hard: fx.hard, cracks: fx.cracks, glass: fx.glass, ricochet: info.ricochet });
@@ -148,6 +152,7 @@ export default class Prop {
       if (chance(0.3)) w.particles.smoke(px, py, 1, 2, { speed: 15, size: 3, life: 0.8, dark: true });
     }
     this.spillOnHit(px, py, dirA);
+    if (rec.powder) w.particles.dust(px, py, 4, 5, rec.powder, { speed: 35, size: 4, life: 1.8, alpha: 0.35 });
     if (rec.leak?.on === 'hit' || d.water) this.leak(sx, sy, dirA);
     w.sound(fx.glass || (d.glass && this.inRect(rec.screen, sx, sy)) ? 'glassHit' : fx.hit, px, py, kind === 'pellet' ? 0.35 : 0.55);
     this.recoil(dirA, power);
@@ -458,12 +463,21 @@ export default class Prop {
     });
   }
 
+  // Gas inside (bottle, stove): whatever holes it lights a jet at the hole and a fuse (systems/Gas.js) and does
+  // no other damage; a blow only knocks a bottle about. Returns the damage left to apply.
+  gasHit(damage, kind, sx, sy, dirA) {
+    const holed = PIERCING.has(kind);
+    if (holed && !this.gasLeak) ignite(this, sx, sy, dirA);
+    return holed || (this.def.explosive && kind !== 'blast') ? 0 : damage;
+  }
+
   // Gives way: it cracks, sags, then falls apart into its own parts (staged over a few frames; blasts are faster).
   break(dirA = rand(0, TAU), power = 1) {
     if (this.dead || this.dying) return;
     const d = this.def, w = this.world, fx = this.rec.fx;
     this.hp = Math.min(this.hp, 0);
-    if (d.explosive) {
+    // explosives, leaking gas, and gas torn open by a blast
+    if (d.explosive || this.gasLeak || (d.gas && power >= 2)) {
       const { x, y } = this.body.position;
       this.collapse(dirA, power);
       w.after(0.06, () => w.explode(x, y, { radius: d.blast ?? 92, source: this.type }));
@@ -553,6 +567,7 @@ export default class Prop {
       this.throwBits(BITS[c.bit], c, n, x, y, dirA, Math.max(0.8, power * 0.8));
     }
     if (rec.floats) P.floaters(x, y, FLOATS[rec.floats[0]], rec.floats[1], dirA, Math.PI, 70 * Math.min(power, 2), z0);
+    if (rec.powder) P.dust(x, y, 26, Math.max(this.W, this.H) * 0.4, rec.powder, { speed: 60 * power, size: 9, life: 4.5, alpha: 0.4 });
     // dust that hangs, then settles
     const R = Math.max(this.W, this.H) * 0.4;
     P.dust(x, y, Math.round(4 + R / 3), R, fx.dust || '#5a5462', { speed: 25 * power, size: 5, life: 3.5, alpha: fx.dust ? 0.2 : 0.14 });

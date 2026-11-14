@@ -115,8 +115,9 @@ lv.patron('civ1', 16.8, 14.15, 270, 'drink')            # on the counter stools
 lv.patron('civ3', 19.2, 14.15, 270, 'drink')
 lv.patron('civ2', 15.6, 16.2, 0, 'drink')               # a couple in the first booth
 lv.patron('civ4', 17.3, 15.8, 180, 'watch')
-lv.patron('civ4', 19.6, 17.5, 0, 'cards')               # the card game
-lv.patron('civ1', 21.4, 17.5, 180, 'cards')
+lv.patron('civ4', 19.25, 17.5, 0, 'cards')              # the poker game
+lv.patron('civ1', 21.55, 17.5, 180, 'cards')
+lv.patron('civ2', 20.82, 18.32, 270, 'cards')
 lv.patron('civ3', 28.35, 14.0, 180, 'cue')              # waiting for his turn at the pool table
 lv.patron('civ1', 26.55, 17.5, 40, 'drink')             # the VIP room: three customers, two dancers
 lv.patron('civ3', 26.55, 19.45, -27, 'watch')
@@ -124,8 +125,8 @@ lv.patron('civ4', 28.6, 17.5, 60, 'drink')
 lv.patron('dancer1', 29.5, 18.9, 180, 'dance')
 lv.patron('dancer2', 27.9, 18.75, 190, 'dance')
 # back of house
-lv.actor('p', 17, 8, face=90)
-lv.actor('6', 18, 9)
+lv.actor('p', 17, 8, face=90, job='count')              # the pimp, alone, counting his dope
+lv.actor('6', 19, 7)
 lv.actor('n', 16, 7)
 lv.actor('k', 22, 7, face=90)
 lv.actor('h', 30, 8, face=180)                          # the boss behind his desk, a shotgun across it
@@ -225,7 +226,8 @@ lv.prop('crate', 11.45, 16.9, -6)
 lv.prop('dumpster', 11.62, 14.5, 90)
 lv.prop('neon_tube_cyan', 13.93, 9.9, 90)
 lv.prop('crate', 11.45, 9.8, 4)
-lv.prop('barrel', 11.45, 6.5)
+lv.prop('gas_bottle', 13.72, 6.55)                      # the stove's gas, against the bar's wall
+lv.prop('gas_bottle', 13.7, 7.05)
 
 lv.area('back lot')
 lv.prop('van', 24.5, 2.3, 180, lights=False)
@@ -239,14 +241,15 @@ lv.prop('trash_can', 31.5, 1.5)
 lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
 lv.prop('tube_light', 29.9, 4.93, 180)
+lv.prop('gas_bottle', 30.4, 4.74)
 
 lv.area('storeroom')
 lv.prop('bookshelf', 15.7, 6.2)
-lv.prop('bookshelf', 17.0, 6.2)
+lv.prop('oven', 17.1, 6.38)
 lv.prop('sink', 18.35, 6.3)
 lv.prop('fridge', 19.55, 6.4)
 lv.prop('tube_light', 19.93, 8.5, 90)
-lv.prop('barrel', 15.4, 9.7)
+lv.prop('dope_table', 17.5, 9.32)
 lv.prop('crate', 19.5, 9.7, 4)
 lv.prop('crate', 19.45, 10.45, -3)
 lv.prop('crate', 18.75, 10.5, 12)
@@ -288,10 +291,11 @@ for y in (16.2, 18.6):
     lv.prop('table', 16.5, y, 90)
     lv.prop('chair', 17.3, y - 0.4, 180)
     lv.prop('chair', 17.3, y + 0.4, 180)
-lv.prop('card_table', 20.5, 17.5)
-lv.prop('chair', 19.6, 17.5, 0)
-lv.prop('chair', 21.4, 17.5, 180)
-lv.prop('chair', 20.5, 18.45, 270)
+lv.prop('card_table', 20.4, 17.5)
+lv.prop('chair', 19.25, 17.5, 0)
+lv.prop('chair', 21.55, 17.5, 180)
+lv.prop('chair', 19.98, 18.34, 262)
+lv.prop('chair', 20.82, 18.32, 270)
 lv.prop('pool_table', 26.6, 14.0)
 lv.prop('pool_lamp', 26.6, 14.0)
 lv.prop('arcade', 30.5, 12.5, 90)
