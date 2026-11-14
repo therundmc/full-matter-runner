@@ -5,9 +5,10 @@ import { PX_PER_M } from '../../engine/physics/Units.js';
 import { sprite, spriteOpt, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 import { rand, chance, clamp, pick } from '../../engine/math.js';
-import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble } from '../systems/Fracture.js';
+import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble, tearShape } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
-import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot } from '../render/DamageArt.js';
+import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot,
+  gash, rip, wear, brokenEdge, soilSpill, ductStump } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 import { ignite } from '../systems/Gas.js';
@@ -24,6 +25,7 @@ const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 2
 const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
 const TAU = Math.PI * 2;
 const COAST = 1.6; // s a fan takes to run down once the power is cut
+const INK_DOOR = '#141018'; // outline of a cabinet's open doors
 
 // Furniture and street dressing, destroyed piece by piece (data/destruction.js says how each one comes apart):
 //  - every hit leaves a mark where it landed, in the prop's own canvas (holes, furrows, dents, slashes, scorch),
@@ -65,6 +67,7 @@ export default class Prop {
     this.leaks = 0;
     this.spilled = 0;
     this.rack = null;   // the bottles standing in plain sight (rec.rack), see bottles()
+    this.doors = null;  // a cabinet's doors once they sprang open (rec.doors): [{ a, v, rest }], see openDoors()
     world.addBody(this.body);
   }
 
@@ -165,15 +168,19 @@ export default class Prop {
     this.recoil(dirA, power);
     if (!d.static) impulse(this.body, dirA, 25 * power, (Math.random() - 0.5) * 0.05);
 
+    if (this.doors) this.swingDoors(power);
+    // a way through a wall (data/props.js `lasting`) takes the marks, never gives: no zone of it is torn, it never breaks
+    if (d.lasting) return;
     // the zone it landed in wears down: corners come off, a line of torn zones saws it in two
     if (!this.zones) this.zones = new ZoneGrid(this.W, this.H, d.hp);
     const torn = this.zones.damage(sx, sy, damage * (ZONE_WEAR[kind] ?? 1), kind === 'blast' ? 0.5 : 0.15);
     if (tr) torn.push(...this.zones.wearLine(sx, sy, tr.x, tr.y, damage * 0.35));
     for (const i of torn) this.tearZone(i, dirA, power);
-    if (torn.length) { const cut = this.zones.cut(); if (cut) this.sawOff(cut, dirA); }
+    if (torn.length && rec.saw) { const cut = this.zones.cut(); if (cut) this.sawOff(cut, dirA); }
 
-    if (!d.lasting) this.hp -= damage; // a way through a wall takes the marks, never gives (data/props.js)
-    if (this.hp <= 0) { this.break(dirA, power); return; }
+    this.hp -= damage;
+    // only a blast throws the wreck about; a blow (whose power is the shove it gives) or a round lets it give way
+    if (this.hp <= 0) { this.break(dirA, kind === 'blast' ? Math.max(2, power) : Math.min(power, 1.6)); return; }
     const frac = this.hp / d.hp;
     while (this.stage < STAGES.length && frac <= STAGES[this.stage]) this.enterStage(++this.stage, px, py, dirA);
   }
@@ -212,7 +219,8 @@ export default class Prop {
 
   // material torn out around a hit: flies back out of the entry, or forward when blown through
   tear(sx, sy, r, side, dirA, energy, info) {
-    const piece = bite(this.canvas, sx, sy, r, this.rec.material);
+    // splinters are torn the way the material leaves: back out of an entry, on along the blow out of an exit
+    const piece = bite(this.canvas, sx, sy, r, this.rec.material, dirA - this.body.angle + (side === 'entry' ? Math.PI : 0));
     if (!piece) return;
     const e = ejecta(side, dirA, energy, info.nx, info.ny);
     const a = e.a + rand(-e.spread, e.spread), v = rand(e.vmin, e.vmax);
@@ -284,29 +292,38 @@ export default class Prop {
       }
     }
     if (this.flash > 0) this.flash -= dt;
+    // hanging doors: a loose pendulum about the angle they hang at
+    if (this.doors) for (const d of this.doors) { d.v += (-(d.a - d.rest) * 30 - d.v * 2.2) * dt; d.a += d.v * dt; }
     if (this.parts) this.shed(dt);
   }
 
   // ------------------------------------------------------------------ zones: corners off, sawn in two
 
-  // a worn-out zone is torn away (jagged), blown along the hit
+  // A worn-out zone gives, the way its material does (MATERIAL_FX `tear`): a ragged chunk breaks off and is blown
+  // along the hit, sheet metal is torn open on the dark inside, upholstery opens on its stuffing.
   tearZone(i, dirA, power) {
-    const [x0, y0, x1, y1] = this.zones.rect(i);
-    const jx = (x1 - x0) * 0.25, jy = (y1 - y0) * 0.25;
-    const j = (v) => v * rand(-1, 1);
-    const poly = [
-      [x0 + j(jx), y0 + j(jy)], [(x0 + x1) / 2 + j(jx), y0 + j(jy)], [x1 + j(jx), y0 + j(jy)], [x1 + j(jx), (y0 + y1) / 2 + j(jy)],
-      [x1 + j(jx), y1 + j(jy)], [(x0 + x1) / 2 + j(jx), y1 + j(jy)], [x0 + j(jx), y1 + j(jy)], [x0 + j(jx), (y0 + y1) / 2 + j(jy)],
-    ];
+    const rect = this.zones.rect(i), fx = this.rec.fx, w = this.world;
+    const poly = tearShape(rect, this.W, this.H);
+    const p = this.toWorld((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2);
     this.ensureCanvas();
+    if (fx.tear === 'gash') {
+      gash(this.canvas, poly);
+      w.particles.sparks(p.x, p.y, dirA + Math.PI, 1, 5, 220);
+      w.sound('metalBreak', p.x, p.y, 0.5);
+      return;
+    }
+    if (fx.tear === 'rip') {
+      rip(this.canvas, poly);
+      w.particles.floaters(p.x, p.y, FLOATS[fx.float], 8, dirA + Math.PI, 1.2, 50, 8);
+      w.sound(fx.hit, p.x, p.y, 0.5);
+      return;
+    }
     const pc = cutPiece(this.canvas, poly, { min: 6 });
-    const w = this.world;
-    const p = this.toWorld((x0 + x1) / 2, (y0 + y1) / 2);
+    brokenEdge(this.canvas, poly, this.rec.material, dirA - this.body.angle);
     if (pc) {
       const L = launch(dirA, 0, 0, Math.max(1, power), 1);
       this.throwPiece(pc.img, p.x, p.y, L.a, L.v, { z: this.lift() * 0.7, vz: L.vz, spin: L.spin, physical: pc.img.width * pc.img.height > 60 });
     }
-    const fx = this.rec.fx;
     if (fx.dust) w.particles.dust(p.x, p.y, 3, 2, fx.dust, { speed: 25, size: 4, vx: Math.cos(dirA) * 20, vy: Math.sin(dirA) * 20 });
     w.particles.chips(p.x, p.y, dirA, 1, 6, this.def.chips, 120);
     w.sound(fx.crush, p.x, p.y, 0.6);
@@ -526,24 +543,78 @@ export default class Prop {
     w.sound('splash', x, y, 0.5, { pitch: rand(0.75, 0.9) });
   }
 
+  // A tank giving way: what it held bursts out all around it at once, a ring of spray thrown wide that weakens, and
+  // stands in one big pool (systems/Liquids.js).
+  gush(x, y, area) {
+    const w = this.world, P = w.particles, R = Math.max(this.W, this.H) / 2, dur = 1.8;
+    const { color = 'rgba(110,160,200,0.16)', kind = 'water' } = this.rec.leak || {};
+    // it stands wider than anything that leaks (the pool's radius may pass the usual cap)
+    w.events.emit('spill', { x, y, kind, area, dur, cap: Math.sqrt(area / Math.PI) * 1.2 });
+    P.drops(x, y, 0, Math.PI, 50, color, 240, 12, false);
+    w.emit(x, y, dur, (e) => {
+      const k = e.t / dur; // time left: the pressure falls
+      for (let i = 0; i < 3; i++) {
+        const a = rand(0, TAU);
+        P.drops(x + Math.cos(a) * R * 0.8, y + Math.sin(a) * R * 0.8, a, 0.25, 1, color, 50 + 170 * k, 8, false);
+      }
+    });
+    w.sound('splash', x, y, 1, { pitch: 0.55 });
+    w.after(0.25, () => w.sound('splash', x, y, 0.7, { pitch: 0.7 }));
+  }
+
+  // ------------------------------------------------------------------ doors, wires
+
+  // the doors of a cabinet (rec.doors) spring open on their hinges and swing to where they hang
+  openDoors() {
+    const n = this.rec.doors.n;
+    this.doors = Array.from({ length: n }, () => ({ a: 0, v: rand(9, 14), rest: rand(1.2, 2.1) }));
+    const p = this.toWorld(this.W / 2, this.H);
+    this.world.particles.sparks(p.x, p.y, this.body.angle + Math.PI / 2, 0.9, 8, 200, '#bff');
+    this.world.sound('metal', p.x, p.y, 0.5, { pitch: 1.3 });
+  }
+
+  // a blow sets the hanging doors swinging
+  swingDoors(power) { for (const d of this.doors) d.v += rand(-1, 1) * 6 * clamp(power, 0.3, 2); }
+
+  // the doors come off with the rest: thin steel plates thrown along the blow
+  dropDoors(x, y, dirA) {
+    const len = this.W / this.doors.length;
+    const img = chunk(this.def.chips, Math.max(2, Math.round(len)), 1);
+    for (let i = this.doors.length; i > 0; i--) this.throwPiece(img, x + rand(-3, 3), y + rand(-3, 3), dirA + rand(-0.8, 0.8), rand(40, 90), { z: this.lift(), vz: rand(20, 60) });
+    this.doors = null;
+  }
+
+  // the wires it was torn from spit sparks for a while where it hung (rec.live)
+  liveWires(x, y, dur) {
+    const w = this.world;
+    w.emit(x, y, dur, (e) => {
+      if (!chance(0.05 + 0.1 * (e.t / dur))) return;
+      w.particles.sparks(x + rand(-2, 2), y + rand(-2, 2), rand(0, TAU), 1.2, 4, 180, '#bff');
+      if (chance(0.3)) w.light(x, y, 30, '#bff6ff', 0.05);
+    });
+  }
+
   // ------------------------------------------------------------------ damage states, collapse
 
   enterStage(stage, px, py, dirA) {
-    const w = this.world, d = this.def, fx = this.rec.fx;
+    const w = this.world, d = this.def, rec = this.rec, fx = rec.fx, mat = rec.material;
     const [sx, sy] = this.lastHit || [this.W / 2, this.H / 2];
+    if (rec.doors && stage === rec.doors.at) this.openDoors();
     if (stage === 1) {
-      cracks(this.ensureCanvas(), sx, sy, fx.cracks + 2, Math.max(this.W, this.H) * 0.3);
+      wear(this.ensureCanvas(), mat, sx, sy, Math.max(3, fx.cracks + 2), Math.max(this.W, this.H) * 0.3, this.W, this.H);
       w.sound(fx.crush, px, py, 0.5);
     } else if (stage === 2) {
-      this.ensureCanvas();
-      splitLine(this.canvas, this.rec.material === 'wood' ? (this.W >= this.H ? 'x' : 'y') : chance(0.5) ? 'x' : 'y');
+      // it splits right across (wood along its grain); sheet metal buckles and upholstery tears open instead
+      const g = this.ensureCanvas();
+      if (fx.tear === 'chunk') splitLine(this.canvas, mat === 'wood' ? (this.W >= this.H ? 'x' : 'y') : chance(0.5) ? 'x' : 'y', mat);
+      else wear(g, mat, this.W / 2, this.H / 2, 6, Math.max(this.W, this.H) * 0.4, this.W, this.H);
       w.particles.chips(this.x, this.y, dirA, Math.PI, 10, d.chips, 140);
       if (fx.dust) w.particles.dust(this.x, this.y, 4, 4, fx.dust, { speed: 20, size: 5 });
       w.sound(fx.crush, this.x, this.y, 0.8);
     } else if (stage === 3) {
       // a big piece gives way, it sags
       this.ensureCanvas();
-      this.tear(clamp(sx + rand(-3, 3), 0, this.W), clamp(sy + rand(-3, 3), 0, this.H), clamp(Math.min(this.W, this.H) * 0.3, 2.5, 7), 'exit', dirA, 15, {});
+      this.tear(clamp(sx + rand(-3, 3), 0, this.W), clamp(sy + rand(-3, 3), 0, this.H), clamp(Math.min(this.W, this.H) * 0.22, 2.5, 6), 'exit', dirA, 15, {});
       this.sag = rand(-0.025, 0.025);
       w.particles.dust(this.x, this.y, 6, 5, fx.dust || '#6a6070', { speed: 22, size: 6, life: 2.5 });
       if (fx.float) w.particles.floaters(this.x, this.y, FLOATS[fx.float], 10, dirA, 1.5, 50, 8);
@@ -587,7 +658,7 @@ export default class Prop {
     const [t1, t2] = power >= 2 ? [0.015, 0.03] : DESTRUCTION.stageDelay;
     // 1. crack: lines through it, a crack of the material, lamps and screens pop
     const [sx, sy] = this.lastHit || [this.W / 2, this.H / 2];
-    cracks(this.ensureCanvas(), sx, sy, 6, Math.max(this.W, this.H) * 0.5);
+    wear(this.ensureCanvas(), this.rec.material, sx, sy, 6, Math.max(this.W, this.H) * 0.5, this.W, this.H);
     this.recoil(dirA, power * 1.5);
     w.sound(fx.crush, this.x, this.y, 0.9);
     if (d.fixture || this.rec.electric) {
@@ -655,20 +726,28 @@ export default class Prop {
     const z0 = this.lift();
     this.parts = pieces;
     this.fall = { x, y, ca, sa, dirA, power, heavy, z0, t: 0, harm: power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null };
-    if (grounded) w.decals.bake(remains(this.W, this.H, d.chips), x, y, ang);
+    if (rec.spill === 'soil') w.decals.bake(soilSpill(this.W, this.H), x, y, ang);
+    else if (grounded) w.decals.bake(remains(this.W, this.H, d.chips), x, y, ang);
+    if (rec.stump === 'duct') w.decals.bake(ductStump(Math.round(Math.min(this.W, this.H) * 0.8)), x, y, ang);
+    if (this.doors) this.dropDoors(x, y, dirA);
     this.shed(0);
     this.empty(x, y, dirA, power, z0);
-    if (rec.powder) P.dust(x, y, 26, Math.max(this.W, this.H) * 0.4, rec.powder, { speed: 60 * power, size: 9, life: 4.5, alpha: 0.4 });
-    // dust that hangs, then settles
     const R = Math.max(this.W, this.H) * 0.4;
+    if (rec.powder) P.dust(x, y, 26, R, rec.powder, { speed: 60 * power, size: 9, life: 4.5, alpha: 0.4 });
+    // dust that hangs, then settles
     P.dust(x, y, Math.round(4 + R / 3), R, fx.dust || '#5a5462', { speed: 25 * power, size: 5, life: 3.5, alpha: fx.dust ? 0.2 : 0.14 });
     P.chips(x, y, dirA, Math.PI, heavy ? 8 : 14, d.chips, heavy ? 90 : 160);
     if (fx.glass || d.glass) { P.glass(x, y, dirA, 1.5, 18); w.sound('glass', x, y, 0.6); }
     if (rec.electric) { P.sparks(x, y, 0, Math.PI, 16, 260, '#bff'); P.smoke(x, y, 6, 4, { speed: 20, size: 5, life: 2, dark: true }); }
+    // a motor dying: a black puff that rolls out of it and hangs
+    if (rec.puff) P.smoke(x, y, rec.puff, R * 0.5, { speed: 30, size: 8, life: 2.6, dark: true });
+    if (rec.live) this.liveWires(x, y, rec.live);
+    if (rec.gush) this.gush(x, y, rec.gush);
     if (d.dirt || rec.contents.some((c) => c.bit === 'soil')) P.chips(x, y, 0, Math.PI, 18, '#4a2e1a', 120);
     if (d.water || rec.leak?.on === 'break') {
       P.drops(x, y, 0, Math.PI, 18, rec.leak?.color || 'rgba(110,160,200,0.16)', 140, 6, rec.leak?.kind !== 'water');
-      if (rec.leak?.on === 'break') this.leak(this.W / 2, this.H / 2, dirA);
+      // what stands as a puddle keeps running out of it a while; the rest (a fridge's cartons) only splashes
+      if (rec.leak?.on === 'break' && rec.leak.kind) this.leak(this.W / 2, this.H / 2, dirA);
     }
     if (rec.leak?.flood) this.flood(x, y, rec.leak.flood);
     w.events.emit('propDestroyed', { prop: this, x, y, dirA, power });
@@ -784,12 +863,37 @@ export default class Prop {
     if (this.rec.rack?.scatter && !this.rack) this.bottles(); // the glasses on a counter are set out when first seen
     drawSprite(ctx, this.shadowImg(), x + 3, y + 3, a, this.canvas ? 0.3 : 0.35);
     drawSprite(ctx, this.look, x, y, a, 1, this.squash);
+    if (this.doors) this.drawDoors(ctx, x, y, a);
     if (this.flash > 0) {
       // hit flash: the object brightens for a frame or two
       ctx.globalCompositeOperation = 'lighter';
       drawSprite(ctx, this.look, x, y, a, clamp(this.flash / 0.06, 0, 1) * 0.35, this.squash);
       ctx.globalCompositeOperation = 'source-over';
     }
+  }
+
+  // the open doors of a cabinet, seen edge on from above: thin plates out of its front corners (local +y edge)
+  drawDoors(ctx, x, y, a) {
+    const n = this.doors.length, len = this.W / n, c = Math.cos(a), s = Math.sin(a);
+    ctx.save();
+    ctx.transform(c, s, -s, c, x, y);
+    this.doors.forEach((d, i) => {
+      // left door hinged on the left corner, right one on the right, both swinging out into the room
+      const side = n === 1 || i === 0 ? -1 : 1, hx = (side * this.W) / 2, an = side < 0 ? d.a : Math.PI - d.a;
+      ctx.save();
+      ctx.translate(hx, this.H / 2);
+      ctx.rotate(an);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(1, 1.5, len, 2);
+      ctx.fillStyle = INK_DOOR;
+      ctx.fillRect(0, -0.5, len, 3);
+      ctx.fillStyle = this.def.chips;
+      ctx.fillRect(0.5, 0, len - 1, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; // its edge catches the light
+      ctx.fillRect(0.5, 0, len - 1, 0.7);
+      ctx.restore();
+    });
+    ctx.restore();
   }
 
   // falling apart: the parts that have not let go yet, still in place; one about to go shudders

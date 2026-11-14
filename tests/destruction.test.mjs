@@ -190,3 +190,74 @@ test('collapse wave: parts let go from the blow outward, all of them within the 
   assert.deepEqual(F.crumble(parts, [0, 5], 0), [0, 0, 0, 0], 'a blast takes it all at once');
   assert.deepEqual(F.crumble([], [0, 0], 0.3), []);
 });
+
+const area = (p) => Math.abs(p.reduce((s, [x, y], i) => { const [u, v] = p[(i + 1) % p.length]; return s + x * v - u * y; }, 0)) / 2;
+
+test('round things: the rim breaks in arcs inside the outline, a lid comes apart along its own seams', () => {
+  const rim = F.cutPolys({ cut: 'ring', n: 6, t: 0.2 }, 40, 40, seeded(4));
+  assert.equal(rim.length, 6);
+  for (const { poly } of rim) assert.ok(poly.every(([x, y]) => Math.hypot(x - 20, y - 20) <= 20 + 1e-6), 'on the disc');
+  const band = rim.reduce((s, { poly }) => s + area(poly), 0), want = Math.PI * (400 - 256);
+  assert.ok(Math.abs(band - want) < want * 0.12, `band ${band} vs ${want}`);
+  // a lid's plates meet in its middle, wherever it was hit
+  const lid = F.cutPolys({ cut: 'wedges', n: 6, centre: true }, 40, 40, seeded(2), [3, 3]);
+  for (const { poly } of lid) assert.ok(poly.some(([x, y]) => Math.hypot(x - 20, y - 20) < 1e-6));
+});
+
+test('torn zones: a bite out of the object, never a quarter of it, opening on the edge it is on', () => {
+  // a round table: its zones are small enough that one torn off is not a pie wedge
+  const z = new F.ZoneGrid(28, 28, 10);
+  assert.ok(z.cols >= 3 && z.rows >= 3);
+  for (let i = 0; i < z.cols * z.rows; i++) {
+    const poly = F.tearShape(z.rect(i), 28, 28, seeded(i + 1));
+    assert.ok(inside(poly, 28, 28) && poly.length >= 8);
+    assert.ok(area(poly) < 28 * 28 * 0.15, `zone ${i}: ${area(poly)}`);
+  }
+  // a corner zone reaches the corner
+  const corner = F.tearShape(z.rect(0), 28, 28, seeded(5));
+  assert.ok(corner.some(([x, y]) => x < 1 || y < 1));
+});
+
+test('materials give way their own way: wood breaks off and saws through, sheet metal gashes, upholstery rips', () => {
+  for (const [name, fx] of Object.entries(MATERIAL_FX)) {
+    assert.ok(['chunk', 'gash', 'rip'].includes(fx.tear), name);
+    assert.equal(typeof fx.saw, 'boolean', name);
+  }
+  assert.equal(MATERIAL_FX.metal.tear, 'gash');
+  assert.equal(MATERIAL_FX.fabric.tear, 'rip');
+  assert.ok(MATERIAL_FX.wood.saw && !MATERIAL_FX.metal.saw);
+  // a box is never sawn in two, a pipe is
+  assert.ok(!recipeFor('ac_unit', PROPS.ac_unit).saw && recipeFor('pipe_water', PROPS.pipe_water).saw);
+  // ways up and over are marked, never torn: their recipes name real materials
+  for (const type of ['ladder', 'parapet']) {
+    assert.ok(PROPS[type].lasting && DESTRUCTION[type], type);
+    assert.ok(MATERIAL_FX[recipeFor(type, PROPS[type]).material], type);
+  }
+  assert.equal(recipeFor('ladder', PROPS.ladder).material, 'metal');
+});
+
+test('recent props have a recipe of their own', () => {
+  for (const type of ['water_tank', 'ac_unit', 'roof_vent', 'fuse_box', 'emergency_light', 'dance_stage', 'string_lights']) {
+    assert.ok(DESTRUCTION[type], type);
+  }
+  const tank = recipeFor('water_tank', PROPS.water_tank);
+  assert.equal(tank.leak.kind, 'water');
+  assert.equal(tank.leak.on, 'hit');
+  assert.ok(tank.gush > 5000, 'it bursts into a big pool');
+  assert.ok(tank.parts.some((c) => c.cut === 'ring') && tank.parts.some((c) => c.cut === 'wedges' && c.centre));
+  const ac = recipeFor('ac_unit', PROPS.ac_unit);
+  assert.ok(ac.electric && ac.puff > 0 && ac.parts.some((c) => c.name === 'grille'));
+  const fuse = recipeFor('fuse_box', PROPS.fuse_box);
+  assert.ok(fuse.electric && fuse.doors.n >= 1 && fuse.doors.at >= 1 && fuse.live > 0);
+  assert.equal(recipeFor('roof_vent', PROPS.roof_vent).stump, 'duct');
+  // round tops lose their rim in arcs first
+  for (const type of ['table_round', 'card_table', 'dance_stage']) assert.equal(recipeFor(type, PROPS[type]).parts[0].cut, 'ring', type);
+});
+
+test('a broken plant leaves its soil spilled where it stood and the shards of its pot', () => {
+  const r = recipeFor('plant', PROPS.plant);
+  assert.equal(r.spill, 'soil');
+  const pot = r.contents.find((c) => c.bit === 'pot');
+  assert.ok(pot && pot.on === 'break' && pot.n >= 4 && BITS.pot.material === 'ceramic');
+  assert.ok(r.floats[0] === 'leaf');
+});

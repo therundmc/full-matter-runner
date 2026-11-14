@@ -84,7 +84,8 @@ export function ejecta(side, dirA, energy = 10, nx, ny) {
 export class ZoneGrid {
   constructor(W, H, hp) {
     this.W = W; this.H = H;
-    const cell = Math.max(6, Math.min(W, H) / 2);
+    // a third of the short side: a torn zone is a bite out of the object, never a quarter of it
+    const cell = Math.max(6, Math.min(W, H) / 3);
     this.cols = clamp(Math.round(W / cell), 1, 6);
     this.rows = clamp(Math.round(H / cell), 1, 4);
     this.cw = W / this.cols; this.ch = H / this.rows;
@@ -260,9 +261,11 @@ function rayRect(cx, cy, a, x0, y0, x1, y1) {
   return [cx + dx * t, cy + dy * t];
 }
 
-// radial fracture: n wedges around (hx, hy) (the impact), seams jagged and shared
+// radial fracture: n wedges around (hx, hy) (the impact; the middle with g.centre: a lid along its own seams),
+// seams jagged and shared
 function wedges(g, W, H, rnd, hit) {
   const [x0, y0, x1, y1] = rectOf(g.rect, W, H);
+  if (g.centre) hit = null;
   const cx = clamp(hit ? hit[0] : (x0 + x1) / 2, x0 + 1, x1 - 1), cy = clamp(hit ? hit[1] : (y0 + y1) / 2, y0 + 1, y1 - 1);
   const n = Math.max(3, g.n || 5);
   const base = rnd() * Math.PI * 2;
@@ -320,6 +323,44 @@ function frame(g, W, H) {
 
 const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 
+// the rim of something round (the ellipse in the rect): n arcs of a band t thick (fraction of the radius), split
+// by jagged seams. What is inside is left to the next cut.
+function ring(g, W, H, rnd) {
+  const [x0, y0, x1, y1] = rectOf(g.rect, W, H);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2, ry = (y1 - y0) / 2;
+  const n = Math.max(3, g.n || 6), k = 1 - (g.t ?? 0.2), base = rnd() * Math.PI * 2;
+  const at = (a, s) => [cx + Math.cos(a) * rx * s, cy + Math.sin(a) * ry * s];
+  const seams = Array.from({ length: n + 1 }, (_, i) => base + ((i + (i % n ? jit(rnd, 0.25) : 0)) / n) * Math.PI * 2);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a0 = seams[i], a1 = seams[i + 1], steps = 4, outer = [], inner = [];
+    for (let s = 0; s <= steps; s++) {
+      const a = a0 + ((a1 - a0) * s) / steps;
+      outer.push(at(a, 1));
+      inner.push(at(a, k * (s % steps ? 1 : 1 + jit(rnd, 0.05))));
+    }
+    out.push([...outer, ...inner.reverse()]);
+  }
+  return out;
+}
+
+// The patch a worn-out zone tears off (cell rect in sprite px): a ragged blob around the middle of the cell, pushed
+// out toward the edge it is on so that it opens there as a broken notch, kept on the sprite. rnd() in [0, 1).
+export function tearShape([x0, y0, x1, y1], W, H, rnd = Math.random) {
+  const cw = x1 - x0, ch = y1 - y0;
+  let cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  if (x0 <= 0) cx -= cw * 0.25; else if (x1 >= W) cx += cw * 0.25;
+  if (y0 <= 0) cy -= ch * 0.25; else if (y1 >= H) cy += ch * 0.25;
+  const n = 11, base = rnd() * Math.PI * 2, poly = [];
+  for (let i = 0; i < n; i++) {
+    const a = base + (i / n) * Math.PI * 2 + jit(rnd, 0.2);
+    // a spike now and then: what breaks off is splintered, not round
+    const r = (i % 3 === 0 ? 0.6 + rnd() * 0.25 : 0.35 + rnd() * 0.2);
+    poly.push([clamp(cx + Math.cos(a) * cw * r, 0, W), clamp(cy + Math.sin(a) * ch * r, 0, H)]);
+  }
+  return poly;
+}
+
 // One cut of a recipe -> list of { poly, name? }
 export function cutPolys(g, W, H, rnd = Math.random, hit = null) {
   switch (g.cut) {
@@ -327,6 +368,7 @@ export function cutPolys(g, W, H, rnd = Math.random, hit = null) {
     case 'wedges': return wedges(g, W, H, rnd, hit).map((poly) => ({ poly, name: 'shard' }));
     case 'grid': return grid(g, W, H, rnd).map((poly) => ({ poly, name: 'chunk' }));
     case 'frame': return frame(g, W, H).map((poly) => ({ poly, name: 'frame' }));
+    case 'ring': return ring(g, W, H, rnd).map((poly) => ({ poly, name: g.name || 'rim', fly: g.fly }));
     case 'panel': { const [a, b, c, d] = rectOf(g.rect, W, H); return [{ poly: box(a, b, c, d), name: g.name || 'panel', fly: g.fly }]; }
     default: return [];
   }

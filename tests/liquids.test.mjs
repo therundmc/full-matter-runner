@@ -172,3 +172,13 @@ test('liquids: no prints in the air, a slide smears instead, the dead and the go
   liquids.update(1 / 60);
   assert.equal(liquids.walkers.size, 0);
 });
+
+test('liquids: a tank that bursts empties itself in one pool wider than any leak', () => {
+  const { world, liquids } = stub();
+  const area = 16000; // data/destruction.js water_tank.gush, poured over 1.8 s (Prop.gush)
+  world.events.emit('spill', { x: 200, y: 200, kind: 'water', area, dur: 1.8, cap: Math.sqrt(area / Math.PI) * 1.2 });
+  for (let t = 0; t < 6; t += 0.1) liquids.update(0.1);
+  assert.equal(liquids.puddles.length, 1);
+  assert.ok(liquids.puddles[0].r > 60, `r ${liquids.puddles[0].r}`);
+  assert.equal(liquids.at(200 + 55, 200).kind, 'water');
+});

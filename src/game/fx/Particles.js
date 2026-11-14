@@ -7,7 +7,7 @@ import { silhouette } from '../../engine/Assets.js';
 // JET: water thrown high (a geyser), seen from above: it grows and leans away from the middle of the view as it rises.
 export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7, SHARD: 8, FLOAT: 9, DUST: 10, DROP: 11, JET: 12 };
 const SHARD_REST = 0.5; // seconds a landed shard lies still before it is baked into the floor
-const GRAVITY = 520;    // px/s² of fake height
+const GRAVITY = 520;    // px/s2 of fake height
 // what goes really high (JET, shards thrown with opts.high) comes toward the camera: per px of height it grows by
 // HIGH.grow, leans away from the view centre by HIGH.lean of its distance to it, and climbs HIGH.up px up the screen
 const HIGH = { grow: 0.009, lean: 0.0012, up: 0.3 };
@@ -15,10 +15,13 @@ const WATER = ['#f4faff', '#d6e8fa', '#b4cfec', '#8fb2da'];
 // a flame is one flat colour, the one of its heat (HEAT: where each band starts), from soot to white-hot
 const FLAME = ['#2c1c1a', '#7e1a0c', '#d8401a', '#ff8a1e', '#ffd040', '#fff6cf'];
 const HEAT = [0, 0.16, 0.32, 0.5, 0.7, 0.9];
-// smoke is a few flat greys, each chunk one of them with its lit corner one step lighter (the last tone is only
-// ever a highlight); it thins in steps, then breaks up into wisps
+// smoke is a few flat greys; the billows of a fire are chunks of one of them with their lit corner one step lighter
+// (the last tone is only ever a highlight) that thin in steps, then break up into wisps; other smoke is soft puffs
 const SMOKE = { light: ['#62626e', '#7c7c88', '#989aa6', '#b6b8c2'], dark: ['#1b191d', '#29262b', '#39353b', '#4b464d'] };
-const WISP = 0.3;       // share of its life a chunk of smoke or dust ends as wisps
+const WISP = 0.3;       // share of its life a chunk of fire smoke ends as wisps
+// soft puffs (see puff()): sprite size, shape variants per colour, drawn size per unit of particle size, opacity
+// (dust: times its own alpha), below `min` it is not drawn
+const PUFF = { px: 16, variants: 3, scale: 2.2, dust: 2.4, smoke: 0.8, min: 0.025 };
 
 export default class Particles {
   constructor(world) {
@@ -388,11 +391,11 @@ export default class Particles {
           break;
         }
         case P.DUST: {
-          // a cloud of flat squares: it comes in two steps, thins in four and ends in wisps
-          const k = p.life / p.maxLife, s = Math.max(2, Math.round(p.size * 1.8));
-          ctx.globalAlpha = p.alpha * 1.5 * (Math.ceil(Math.min(1, k * 2) * 4) / 4) * (k > 0.9 ? 0.5 : 1);
-          ctx.fillStyle = p.color;
-          if (k > WISP) block(ctx, p.x, p.y, s, p.x * 0.7 + p.maxLife * 9); else wisps(ctx, p.x, p.y, s, p.maxLife * 9, 1 - k / WISP);
+          // a soft puff that swells, thins away and is gone: a pile of them is a cloud without an outline
+          const s = p.size * PUFF.scale, al = p.alpha * PUFF.dust * fade(p.life / p.maxLife);
+          if (al < PUFF.min) break;
+          ctx.globalAlpha = Math.min(1, al);
+          ctx.drawImage((p.spr ||= puff(p.color, (p.maxLife * 31) | 0)).img, p.x - s / 2, p.y - s / 2, s, s);
           ctx.globalAlpha = 1;
           break;
         }
@@ -420,6 +423,15 @@ export default class Particles {
           break;
         case P.SMOKE: {
           const a = Math.max(0, p.life / p.maxLife);
+          if (!p.puff) {
+            // the smoke of a short or a dying motor: soft, like dust (the billows of a fire stay square, below)
+            const s = p.size * PUFF.scale, al = PUFF.smoke * fade(a);
+            if (al < PUFF.min) break;
+            ctx.globalAlpha = al;
+            ctx.drawImage((p.spr ||= puff(p.tones[p.tone], (p.lobe * 5) | 0)).img, p.x - s / 2, p.y - s / 2, s, s);
+            ctx.globalAlpha = 1;
+            break;
+          }
           // a chunk: a billow of a fire is lit from below while it is young; all thin in flat steps
           const y = p.y - p.h * 0.5, s = Math.max(2, Math.round(p.size * (p.puff ? 1.5 * (1 + p.h * 0.006) : 1.7)));
           const glow = p.puff && p.maxLife - p.life < 0.22;
@@ -500,6 +512,47 @@ export default class Particles {
     }
     ctx.globalAlpha = 1;
   }
+}
+
+// Soft puffs (dust, the extinguisher's powder, the smoke of a short): a small sprite per colour and variant, made once
+// (kept on the particle as `spr`: { img }) and drawn scaled. Its alpha falls off to nothing at the rim from a few
+// overlapping lobes, so a pile of them is a lumpy cloud with no square edge; scaled on whole texels it keeps the
+// pixel grain of the rest.
+const puffs = new Map();
+function puff(color, variant) {
+  const key = color + (variant % PUFF.variants);
+  let e = puffs.get(key);
+  if (e) return e;
+  const n = PUFF.px, m = n / 2;
+  const c = document.createElement('canvas');
+  c.width = c.height = n;
+  const g = c.getContext('2d');
+  let seed = (variant % PUFF.variants) * 7919 + 17;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 4; i++) {
+    const a = rnd() * Math.PI * 2, d = i ? n * 0.17 : 0, r = n * (i ? 0.27 : 0.46);
+    const x = m + Math.cos(a) * d, y = m + Math.sin(a) * d;
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(0,0,0,${i ? 0.35 : 0.6})`);
+    grad.addColorStop(0.55, `rgba(0,0,0,${i ? 0.15 : 0.28})`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, n, n);
+  }
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = color;
+  g.fillRect(0, 0, n, n);
+  // drawn as a bitmap once it is ready (it stays on the GPU; a small canvas would be uploaded at every draw)
+  e = { img: c };
+  createImageBitmap(c).then((b) => { e.img = b; }, () => {});
+  puffs.set(key, e);
+  return e;
+}
+
+// how much of a soft puff shows at k = life left / life: it comes in quickly, then thins away smoothly
+function fade(k) {
+  const out = Math.min(1, k / 0.65);
+  return Math.min(1, (1 - k) * 8) * out * out;
 }
 
 // what is left of a chunk of smoke of side s: three small squares drifting apart (k: 0 -> 1) on whole pixels

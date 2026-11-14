@@ -4,8 +4,14 @@
 import { rand, chance } from '../../engine/math.js';
 
 const INK = '#0d0710';
+const TAU = Math.PI * 2;
 // rim colour of a fresh hole / torn edge, per material
-const RIM = { wood: '#d8a870', metal: '#eef2fa', glass: '#f0fcff', ceramic: '#ffffff', plastic: '#8a8490', fabric: '#f2ece0' };
+const RIM = { wood: '#d8a870', metal: '#eef2fa', glass: '#f0fcff', ceramic: '#ffffff', plastic: '#8a8490', fabric: '#f2ece0', stone: '#d8d0c4' };
+// what shows through a hole: the dark inside of a box, the shade under a top (fabric: the stuffing)
+const VOID = 'rgba(10,5,9,0.66)';
+const STUFFING = ['#ece4d4', '#d8ccb8', '#f6f0e4'];
+// materials with no inside to show: a bite is a chip out of the surface, not a hole
+const SOLID = new Set(['stone', 'ceramic']);
 
 // Damage canvases live in CPU memory (willReadFrequently): pieces are cut from them and tested for opacity on every
 // hit, and a GPU canvas would be read back each time.
@@ -82,7 +88,9 @@ export function paintMark(g, x, y, m, a, mat) {
       if (hard) { g.fillStyle = rim; g.beginPath(); g.ellipse(0, 0, ex + 0.6, m.r + 0.6, 0, 0, Math.PI * 2); g.fill(); }
       g.fillStyle = INK;
       g.beginPath(); g.ellipse(0, 0, ex, m.r, 0, 0, Math.PI * 2); g.fill();
+      // the core goes through, but what is under it is in the shade: it reads as a hole, not as a light dot
       g.globalCompositeOperation = 'destination-out';
+      g.globalAlpha = 0.5;
       g.beginPath(); g.ellipse(0, 0, ex * 0.7, m.r * 0.7, 0, 0, Math.PI * 2); g.fill();
       break;
     }
@@ -107,9 +115,10 @@ export function paintMark(g, x, y, m, a, mat) {
     case 'dent': {
       // a crushed patch: shaded bowl (dark on the far side, light on the near side), torn edges if brittle
       g.globalCompositeOperation = 'source-atop';
+      // crushed wood or plaster only darkens, a dent in sheet metal is a deep shadow
       const grad = g.createRadialGradient(x + Math.cos(a) * m.r * 0.35, y + Math.sin(a) * m.r * 0.35, 0, x, y, m.r * 1.3);
-      grad.addColorStop(0, 'rgba(8,4,8,0.7)');
-      grad.addColorStop(0.7, 'rgba(8,4,8,0.25)');
+      grad.addColorStop(0, hard ? 'rgba(8,4,8,0.7)' : 'rgba(8,4,8,0.42)');
+      grad.addColorStop(0.7, hard ? 'rgba(8,4,8,0.25)' : 'rgba(8,4,8,0.15)');
       grad.addColorStop(1, 'rgba(8,4,8,0)');
       g.fillStyle = grad;
       g.fillRect(x - m.r * 1.4, y - m.r * 1.4, m.r * 2.8, m.r * 2.8);
@@ -179,7 +188,7 @@ export function paintMark(g, x, y, m, a, mat) {
   }
   g.restore();
   if (m.cracks) cracks(g, x, y, m.cracks, mat === 'glass' ? 9 : 5 + m.r * 2, mat === 'glass' ? 'rgba(235,250,255,0.85)' : undefined);
-  if (m.pocks) pocks(g, x, y, m.pocks, Math.max(4, (m.scorch || 6) * 0.9), hard ? rim : INK);
+  if (m.pocks) pocks(g, x, y, m.pocks, Math.max(4, (m.scorch || 6) * 0.9), hard ? rim : null);
 }
 
 // the channel a round dug through the object (seen from above): a dark groove with a torn, lighter lip
@@ -205,43 +214,206 @@ export function paintTrack(g, x0, y0, x1, y1, width, mat) {
   g.restore();
 }
 
-// shrapnel peppering around a point
-function pocks(g, x, y, n, spread, color) {
+// shrapnel peppering around a point: dark pits; on metal (rim) one in four is a bright nick in the paint
+function pocks(g, x, y, n, spread, rim) {
   g.save();
   g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = color;
-  for (let i = 0; i < n; i++) g.fillRect(Math.round(x + rand(-spread, spread)), Math.round(y + rand(-spread, spread)), 1, 1);
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = rim && i % 4 === 0 ? rim : INK;
+    g.globalAlpha = rim && i % 4 === 0 ? 0.6 : 0.8;
+    g.fillRect(Math.round(x + rand(-spread, spread)), Math.round(y + rand(-spread, spread)), 1, 1);
+  }
   g.restore();
 }
 
-// Tear a jagged blob of radius r out of `src` around (x, y): returns the piece canvas (centred on the hole), or null
-// when there was (almost) nothing left there. The hole gets a dark torn rim.
-export function bite(src, x, y, r, mat) {
-  const size = Math.ceil(r * 2.6) + 2;
+// a ragged outline of radius r: most points inside, every third one a spike (what breaks is splintered, not round),
+// stretched along a (the way the blow went, the grain)
+function ragged(r, a, stretch = 1.25) {
+  const pts = [], n = 10, c = Math.cos(a), s = Math.sin(a);
+  for (let i = 0; i < n; i++) {
+    const t = (i / n) * TAU + rand(-0.2, 0.2), rr = r * (i % 3 ? rand(0.5, 0.85) : rand(1, 1.4));
+    const u = Math.cos(t) * rr * stretch, v = Math.sin(t) * rr / stretch;
+    pts.push([u * c - v * s, u * s + v * c]);
+  }
+  return pts;
+}
+
+// Tear a jagged piece of radius r out of `src` around (x, y), the blow going along a: returns the piece canvas
+// (centred on the hole), or null when there was (almost) nothing left there. What the hole shows is the material's:
+// the dark inside (a box, the shade under a top) with fresh splinters / bright torn lips / chipped edges around it,
+// or the stuffing of upholstery.
+export function bite(src, x, y, r, mat, a = rand(0, TAU)) {
+  const size = Math.ceil(r * 3.6) + 2;
   const piece = canvas(size, size);
   const pg = piece.getContext('2d');
   const g = src.getContext('2d');
-  // the same blob for the piece and the hole
-  const pts = [];
-  const n = 7;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + rand(-0.3, 0.3), rr = r * rand(0.55, 1.15);
-    pts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
-  }
+  // the same outline for the piece and the hole
+  const pts = ragged(r, a);
   polyPath(pg, pts.map(([px, py]) => [px + size / 2, py + size / 2]));
   pg.clip();
   pg.drawImage(src, size / 2 - x, size / 2 - y);
+  const at = (k) => pts.map(([px, py]) => [px * k + x, py * k + y]);
   g.save();
-  g.globalCompositeOperation = 'destination-out';
-  polyPath(g, pts.map(([px, py]) => [px + x, py + y]));
-  g.fill();
   g.globalCompositeOperation = 'source-atop';
-  g.strokeStyle = mat === 'metal' ? 'rgba(235,240,255,0.7)' : 'rgba(20,10,14,0.7)';
-  g.lineWidth = 1.1;
-  polyPath(g, pts.map(([px, py]) => [px * 1.15 + x, py * 1.15 + y]));
-  g.stroke();
+  if (mat === 'fabric') {
+    // the cover is torn open on the stuffing, a few tufts poking out over the edge
+    g.fillStyle = STUFFING[0];
+    polyPath(g, at(1)); g.fill();
+    g.fillStyle = STUFFING[1];
+    polyPath(g, at(0.55)); g.fill();
+    g.strokeStyle = 'rgba(20,10,14,0.6)';
+    g.lineWidth = 0.7;
+    polyPath(g, at(1.05)); g.stroke();
+    tufts(g, at(1.15), 3);
+  } else if (SOLID.has(mat)) {
+    // stone and china are solid: a chip shows the paler body under the glaze or the grime, with a shaded pit
+    g.fillStyle = RIM[mat];
+    g.globalAlpha = 0.55;
+    polyPath(g, at(1)); g.fill();
+    g.fillStyle = 'rgba(20,12,14,0.35)';
+    g.globalAlpha = 1;
+    polyPath(g, at(0.45)); g.fill();
+    lips(g, at(1.05), mat, a);
+  } else {
+    // the dark inside, and through the middle of it the floor in the shade
+    g.fillStyle = VOID;
+    polyPath(g, at(1)); g.fill();
+    g.globalCompositeOperation = 'destination-out';
+    g.globalAlpha = mat === 'glass' ? 0.9 : 0.5;
+    polyPath(g, at(0.6)); g.fill();
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-atop';
+    lips(g, at(1.08), mat, a);
+  }
   g.restore();
   return opaqueEnough(piece, 4) ? piece : null;
+}
+
+// the edge of a fresh tear in that material: splinters of pale wood thrown out along the blow, a bright torn lip on
+// metal, white crazing on glass, pale chips on the rest; a dark line where it broke
+function lips(g, pts, mat, a) {
+  g.strokeStyle = 'rgba(14,6,10,0.5)';
+  g.lineWidth = 0.8;
+  polyPath(g, pts); g.stroke();
+  g.fillStyle = RIM[mat] || RIM.wood;
+  g.strokeStyle = g.fillStyle;
+  g.lineWidth = mat === 'wood' ? 1 : 0.6;
+  for (let i = 0; i < pts.length; i++) {
+    if (chance(0.3)) continue;
+    const [x, y] = pts[i];
+    if (mat === 'wood') {
+      // a splinter: a short pale line out of the edge along the blow
+      const l = rand(1, 2.5), da = a + rand(-0.5, 0.5);
+      g.globalAlpha = 0.65;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(da) * l, y + Math.sin(da) * l); g.stroke();
+    } else if (mat === 'metal') {
+      // a lip of torn sheet bent out, catching the light
+      g.globalAlpha = 0.85;
+      g.fillRect(Math.round(x), Math.round(y), 1, 1);
+      if (chance(0.5)) g.fillRect(Math.round(x + rand(-1, 1)), Math.round(y + rand(-1, 1)), 1, 1);
+    } else {
+      g.globalAlpha = mat === 'glass' ? 0.8 : 0.55;
+      g.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+  }
+  g.globalAlpha = 1;
+}
+
+// the edge left by a piece that broke away (poly, sprite px), in its material, the blow going along a
+export function brokenEdge(src, poly, mat, a) {
+  const g = src.getContext('2d');
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  lips(g, poly, mat, a);
+  g.restore();
+}
+
+// fluffs of stuffing poking out of a tear (pts: its edge)
+function tufts(g, pts, n) {
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pts[Math.floor(rand(0, pts.length))];
+    g.fillStyle = STUFFING[i % 3];
+    g.fillRect(Math.round(x - 1), Math.round(y - 0.5), 2, 1);
+    g.fillRect(Math.round(x - 0.5), Math.round(y - 1), 1, 2);
+  }
+}
+
+// A damage zone of sheet metal worn through (poly, sprite px): torn open on the dark inside, its lips bright and bent
+// out, a dent shading the panel around it. The outline stays: a box does not lose its corners to a few rounds.
+export function gash(src, poly) {
+  const g = src.getContext('2d');
+  let cx = 0, cy = 0;
+  for (const [x, y] of poly) { cx += x / poly.length; cy += y / poly.length; }
+  const inner = poly.map(([x, y]) => [cx + (x - cx) * 0.62, cy + (y - cy) * 0.62]);
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  // the panel caved in around the tear
+  g.fillStyle = 'rgba(8,4,10,0.3)';
+  polyPath(g, poly); g.fill();
+  g.fillStyle = VOID;
+  polyPath(g, inner); g.fill();
+  // what is inside: a wire, a bracket, dimly
+  g.fillStyle = 'rgba(70,72,84,0.7)';
+  for (let i = 0; i < 2; i++) g.fillRect(Math.round(cx + rand(-2, 2)), Math.round(cy + rand(-2, 2)), chance(0.5) ? 2 : 1, 1);
+  lips(g, inner, 'metal', 0);
+  // the petals of the tear bent outward
+  g.strokeStyle = 'rgba(235,240,250,0.7)';
+  g.lineWidth = 0.6;
+  for (const [x, y] of inner) {
+    if (chance(0.5)) continue;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (x - cx) * 0.35, y + (y - cy) * 0.35); g.stroke();
+  }
+  g.restore();
+}
+
+// A damage zone of upholstery worn through (poly): the cover hangs open on the stuffing. Nothing falls off.
+export function rip(src, poly) {
+  const g = src.getContext('2d');
+  let cx = 0, cy = 0;
+  for (const [x, y] of poly) { cx += x / poly.length; cy += y / poly.length; }
+  const at = (k) => poly.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]);
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  g.fillStyle = STUFFING[1];
+  polyPath(g, at(0.7)); g.fill();
+  g.fillStyle = STUFFING[0];
+  polyPath(g, at(0.45)); g.fill();
+  g.fillStyle = 'rgba(40,24,20,0.35)'; // springs, the frame, the dirt of years
+  for (let i = 0; i < 3; i++) g.fillRect(Math.round(cx + rand(-3, 3)), Math.round(cy + rand(-3, 3)), 1, 1);
+  g.strokeStyle = 'rgba(20,8,12,0.7)';
+  g.lineWidth = 0.8;
+  polyPath(g, at(0.72)); g.stroke();
+  tufts(g, at(0.8), 4);
+  g.restore();
+}
+
+// What a damage state does to the surface around (x, y), n marks about len px long: cracks in wood, ceramic, stone
+// and plastic (white crazing in glass), rips on the stuffing in upholstery, dents with bright creases in sheet metal.
+export function wear(g, mat, x, y, n, len, W, H) {
+  if (mat === 'fabric') {
+    for (let i = 0; i < Math.ceil(n / 3); i++) {
+      paintMark(g, x + rand(-len, len) * 0.5, y + rand(-len, len) * 0.3, { shape: 'slash', len: Math.min(len, Math.max(4, W * 0.3)) }, rand(-0.5, 0.5) + (W >= H ? 0 : Math.PI / 2), 'fabric');
+    }
+  } else if (mat === 'metal') {
+    for (let i = 0; i < Math.ceil(n / 3); i++) {
+      const dx = x + rand(-len, len) * 0.4, dy = y + rand(-len, len) * 0.4, a = rand(0, TAU);
+      paintMark(g, dx, dy, { shape: 'dent', r: Math.min(5, Math.max(2, len * 0.25)) }, a, 'metal');
+      crease(g, dx, dy, a + Math.PI / 2, Math.min(len, 8));
+    }
+  } else cracks(g, x, y, n, len, mat === 'glass' ? 'rgba(235,250,255,0.85)' : undefined);
+}
+
+// a fold in a panel: a dark line under a bright one
+function crease(g, x, y, a, len) {
+  const c = Math.cos(a) * len / 2, s = Math.sin(a) * len / 2;
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  g.lineWidth = 0.7;
+  g.strokeStyle = 'rgba(10,6,12,0.55)';
+  g.beginPath(); g.moveTo(x - c, y - s + 0.7); g.lineTo(x + c, y + s + 0.7); g.stroke();
+  g.strokeStyle = 'rgba(235,240,250,0.55)';
+  g.beginPath(); g.moveTo(x - c, y - s); g.lineTo(x + c, y + s); g.stroke();
+  g.restore();
 }
 
 // Cut polygon `poly` (sprite px) out of `src`: returns { img, cx, cy } (piece centre in sprite px) or null if empty.
@@ -295,22 +467,34 @@ export function cutPiece(src, poly, { erase = true, min = 8, wreck = false } = {
   return { img: piece, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
 }
 
-// a jagged crack right across the object (split stage): wood along the grain, the rest anywhere
-export function splitLine(src, along) {
+// A jagged crack right across the object (split stage): wood along the grain, the rest anywhere. It opens a little:
+// a dark gap, a pale lip of fresh material on one side, a hairline of light through it here and there.
+export function splitLine(src, along, mat = 'wood') {
   const g = src.getContext('2d');
-  const W = src.width, H = src.height;
-  g.save();
-  g.globalCompositeOperation = 'destination-out';
-  g.lineWidth = 1.3;
-  g.beginPath();
+  const W = src.width, H = src.height, pts = [];
   if (along === 'x') {
     let y = H * rand(0.35, 0.65);
-    for (let x = 0; x <= W; x += 2) { y += rand(-0.8, 0.8); g.lineTo(x, y); }
+    for (let x = 0; x <= W; x += 2) { y += rand(-0.8, 0.8); pts.push([x, y]); }
   } else {
     let x = W * rand(0.35, 0.65);
-    for (let y = 0; y <= H; y += 2) { x += rand(-1.2, 1.2); g.lineTo(x, y); }
+    for (let y = 0; y <= H; y += 2) { x += rand(-1.2, 1.2); pts.push([x, y]); }
   }
-  g.stroke();
+  const line = (ox, oy) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x + ox, y + oy) : g.moveTo(x + ox, y + oy))); g.stroke(); };
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  g.lineJoin = 'round';
+  g.strokeStyle = RIM[mat] || RIM.wood;
+  g.globalAlpha = mat === 'metal' ? 0.6 : 0.45;
+  g.lineWidth = 0.7;
+  line(along === 'x' ? 0 : 1, along === 'x' ? 1 : 0);
+  g.globalAlpha = 1;
+  g.strokeStyle = mat === 'glass' ? 'rgba(235,250,255,0.9)' : 'rgba(10,4,8,0.85)';
+  g.lineWidth = 1;
+  line(0, 0);
+  g.globalCompositeOperation = 'destination-out';
+  g.globalAlpha = 0.35;
+  g.lineWidth = 0.6;
+  line(0, 0);
   g.restore();
 }
 
@@ -411,6 +595,54 @@ export function remains(W, H, color) {
     g.fillStyle = crumb ? color : INK;
     g.globalAlpha = crumb ? 0.55 : rand(0.1, 0.3);
     g.fillRect(Math.round(mid(W) - s / 2), Math.round(mid(H) - s / 2), s, s);
+  }
+  return c;
+}
+
+// what a potted plant leaves where it stood (W x H its sprite): the soil spilled in a heap, thinning out, leaves torn
+// off and lying in it, a crumb of the pot here and there
+export function soilSpill(W, H) {
+  const pad = 4, c = canvas(W + pad * 2, H + pad * 2), g = c.getContext('2d');
+  const cx = c.width / 2, cy = c.height / 2, R = Math.min(W, H) * 0.42;
+  const soil = ['#2a1a10', '#3a2416', '#4a301c', '#5a3a22'];
+  for (let i = Math.round(R * R * 1.6); i > 0; i--) {
+    // thick in the middle, a few crumbs flung further
+    const a = rand(0, TAU), d = R * Math.pow(Math.random(), 0.7) * (chance(0.1) ? 1.6 : 1);
+    g.globalAlpha = d < R * 0.6 ? 0.95 : rand(0.4, 0.8);
+    g.fillStyle = soil[Math.floor(rand(0, soil.length))];
+    const s = d < R * 0.5 && chance(0.4) ? 2 : 1;
+    g.fillRect(Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d * 0.85), s, s);
+  }
+  g.globalAlpha = 1;
+  const leaf = ['#2f8f3a', '#3aa048', '#25702c'];
+  for (let i = 0; i < 5; i++) {
+    const a = rand(0, TAU), d = R * rand(0.2, 1.3), x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+    g.fillStyle = leaf[i % 3];
+    g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(rand(0, TAU));
+    g.fillRect(-2, -0.5, 4, 1.5); g.fillStyle = '#1c4a20'; g.fillRect(-2, 0, 4, 0.5);
+    g.restore();
+  }
+  g.fillStyle = '#9a4a26';
+  for (let i = 0; i < 3; i++) g.fillRect(Math.round(cx + rand(-R, R)), Math.round(cy + rand(-R, R)), 2, 1);
+  return c;
+}
+
+// what a roof vent torn off its duct leaves (size px): the dark open duct in its galvanised flange, four bolts
+export function ductStump(size) {
+  const c = canvas(size, size), g = c.getContext('2d'), m = size / 2;
+  const disc = (r, color) => { g.fillStyle = color; g.beginPath(); g.arc(m, m, r, 0, TAU); g.fill(); };
+  disc(m * 0.95, INK);
+  disc(m * 0.85, '#6a6e78');
+  disc(m * 0.62, '#2a2a30');
+  disc(m * 0.52, '#050508');
+  // the sheared edge of the duct catches the light on one side
+  g.strokeStyle = '#c8ccd4';
+  g.lineWidth = 0.8;
+  g.beginPath(); g.arc(m, m, m * 0.57, Math.PI * 1.05, Math.PI * 1.6); g.stroke();
+  g.fillStyle = '#1a1a20';
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    g.fillRect(Math.round(m + Math.cos(a) * m * 0.74 - 0.5), Math.round(m + Math.sin(a) * m * 0.74 - 0.5), 1, 1);
   }
   return c;
 }

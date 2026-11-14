@@ -33,10 +33,11 @@ export default class Clouds {
       if ((k.puff -= dt) <= 0 && k.t < c.life - c.fade) {
         if (k.t < c.jet) {
           k.puff = c.every;
-          w.particles.dust(k.x0 + dx * 4, k.y0 + dy * 4, 3, 2, c.color, { speed: 30, size: 7, life: 3.4, alpha: 0.7, vx: dx * c.speed, vy: dy * c.speed });
+          // soft puffs (Particles): two bigger ones do what three square chunks did, at less cost
+          w.particles.dust(k.x0 + dx * 4, k.y0 + dy * 4, 2, 2, c.color, { speed: 30, size: 8.5, life: 3.4, alpha: 0.55, vx: dx * c.speed, vy: dy * c.speed });
         } else {
           k.puff = c.every * 2;
-          w.particles.dust(k.x, k.y, 2, k.r * 0.7, c.color, { speed: 8, size: 8, life: 3.4, alpha: 0.6 });
+          w.particles.dust(k.x, k.y, 1, k.r * 0.7, c.color, { speed: 8, size: 10, life: 3.4, alpha: 0.5 });
         }
       }
       if (k.t < c.jet && (k.hiss -= dt) <= 0) {
