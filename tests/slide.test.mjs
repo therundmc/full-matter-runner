@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { Slide, slideSpeed, slideDistance, canSlide } = await load('game/systems/Slide.js');
+const { Slide, slideSpeed, slideDistance, canSlide, recover, ducked } = await load('game/systems/Slide.js');
 const { PLAYER, TILE } = await load('game/Config.js');
 
 const cfg = PLAYER.slide;
@@ -42,4 +42,19 @@ test('slide: needs a running start and respects the cooldown', () => {
   assert.equal(canSlide(0, run, run, cfg), true);
   assert.equal(canSlide(0, run * 0.2, run, cfg), false);
   assert.equal(canSlide(0.1, run, run, cfg), false);
+});
+
+test('slide: costs stamina (two in a row from rested, then a wait) and lets rounds pass over its heart only', () => {
+  let st = 1;
+  for (let i = 0; i < 2; i++) { assert.equal(canSlide(0, run, run, cfg, st), true); st -= cfg.cost; }
+  assert.equal(canSlide(0, run, run, cfg, st), false, 'out of breath');
+  let t = 0;
+  while (!canSlide(0, run, run, cfg, st)) { st = recover(st, 0.1, cfg); t += 0.1; }
+  assert.ok(t > 1 && t < 3, `${t} s to get one slide back`);
+  assert.equal(recover(0.99, 5, cfg), 1);
+  assert.equal(ducked(0, cfg), false, 'not while going down');
+  assert.equal(ducked(0.4, cfg), true);
+  assert.equal(ducked(0.95, cfg), false, 'nor while getting up');
+  const window = (cfg.duck[1] - cfg.duck[0]) * cfg.dur;
+  assert.ok(window > 0.2 && window < 0.4, `${window} s under the line of fire`);
 });

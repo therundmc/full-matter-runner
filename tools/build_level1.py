@@ -82,12 +82,24 @@ lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
 # ---------------------------------------------------------------- actors (13 guards)
-# Blades, bats and pistols: five men with their hands (2 bats, 3 knives), six pistols. The two heavier guns are the
+# Blades, bats and pistols: six men with their hands (3 bats, 3 knives), five pistols. The two heavier guns are the
 # reward at the far end, in the back room: the boss's shotgun (12 gauge on his desk) and his bodyguard's uzi.
 lv.actor('@', 21, 35, face=270)
-# the bar, its service alley, the gap and the back lot are off limits; the street and the start alley are public ground
-lv.guard(11, 0, 32, 19)
-lv.guard(11, 20, 13, 20)                                # behind the gate
+# The street, the start alley, the bar room and its toilets are public ground: anyone may walk in for a drink.
+# Off limits: the back lot, the service alley behind its gate, the gap, and inside the bar the storeroom, the
+# boss's back room, behind the counter and the VIP room. Whoever is seen there is thrown out the hard way.
+lv.guard(11, 0, 32, 4)                                  # back lot
+lv.guard(11, 5, 13, 20)                                 # service alley, behind the gate
+lv.guard(32, 5, 32, 19)                                 # the gap
+lv.guard(14, 5, 20, 11)                                 # storeroom and its door
+lv.guard(24, 5, 31, 11)                                 # back room and its door
+lv.guard(15, 12, 20, 12)                                # behind the counter
+lv.guard(25, 16, 30, 19)                                # VIP room and its doorway
+# customers hang about freely in the bar room and the toilets (not in front of the VIP door: the bouncer's spot)
+lv.host(21, 12, 30, 12)
+lv.host(15, 13, 30, 15)
+lv.host(15, 16, 23, 19)
+lv.host(21, 6, 23, 11)
 lv.actor('5', 22, 33)                                   # a bat by the dumpster: the first weapon
 # street
 lv.actor('b', 24, 21, face=90)                          # bouncer
@@ -97,7 +109,7 @@ lv.actor('k', 12, 12, face=270)                         # having a smoke in the 
 lv.actor('b', 18, 12, face=90)                          # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=349, job='pool')             # playing pool
 lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
-lv.actor('P', 23, 18, route=[[23, 18], [23, 15], [29, 15], [23, 15], [19, 15]])
+lv.actor('b', 24, 17, face=65)                          # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.8, 14.15, 270, 'drink')            # on the counter stools
 lv.patron('civ3', 19.2, 14.15, 270, 'drink')

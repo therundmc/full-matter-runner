@@ -4,6 +4,7 @@ import { TILE, PALETTE, CAT, LIQUIDS } from '../Config.js';
 import { rand, clamp, TAU } from '../../engine/math.js';
 import { puddleShape } from '../systems/Liquids.js';
 import { drawShock } from './BlastArt.js';
+import { drawLasers } from './LaserSight.js';
 
 const { Body } = Matter;
 
@@ -47,6 +48,7 @@ export default class WorldRenderer {
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
     if (lit) w.lighting.post(ctx, cam, t);
+    drawLasers(ctx, w);
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
     const pl = w.player;

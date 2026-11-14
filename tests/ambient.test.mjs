@@ -109,6 +109,24 @@ test('traffic: going around a stuck obstacle after waiting, only through a free 
   assert.equal(d.bypass, null, 'back to its lane once past');
 });
 
+test('traffic: a driver who hears shots stands on the brake after a moment of shock and abandons the car', () => {
+  const lane = new Lane(laneDef, 80 * TILE), d = new Driver(lane, seeded(6));
+  const s = { x: 0, y: lane.y, hw: 27, gap: Infinity, lead: 0, leadStatic: false, person: Infinity, passed: false, stalled: false };
+  d.update(1 / 60, s);
+  const cruise = d.speed;
+  d.flee(0.5);
+  d.flee(5); // the first scare counts
+  let t = 0, x = 0;
+  for (; t < 0.4; t += 1 / 60) d.update(1 / 60, s);
+  assert.ok(d.speed >= cruise * 0.95, 'still driving during the shock');
+  for (; d.state !== 'stopped' && t < 10; t += 1 / 60) { d.update(1 / 60, s); x += d.speed / 60; }
+  assert.equal(d.state, 'stopped');
+  assert.equal(d.reason, 'scared');
+  assert.ok(t < 4, `stopped in ${t} s`);
+  assert.ok(x / TILE < 14, `over ${x / TILE} m`);
+  assert.ok(A.flee.odds > 0.5 && A.flee.odds < 1, 'most stop, some floor it');
+});
+
 test('traffic: a hopeless jam ends with the engine off (parked), never a frozen driver', () => {
   const lane = new Lane(laneDef, 80 * TILE), d = new Driver(lane, seeded(5));
   d.speed = 0;

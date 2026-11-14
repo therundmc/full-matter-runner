@@ -6,7 +6,7 @@ import { impulse, kgOf } from '../../engine/physics/Body.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
-import { Slide, canSlide } from '../systems/Slide.js';
+import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind } from '../systems/Takedown.js';
 
 const { Body } = Matter;
@@ -25,6 +25,8 @@ export default class Player extends Character {
     this.grab = null;       // what CharacterAnim plays of it: { k, d, side, blade }
     this.slide = null;      // Slide kinematics while sliding
     this.slideCd = 0;
+    this.stamina = 1;       // 0..1: what slides cost (PLAYER.slide.cost), back with time
+    this.winded = 0;        // s left of the HUD flash after a slide refused for lack of it
     this.slideHits = new Set(); // loose bodies already shoved by the current slide
     this.shootDown = null;  // the corpse under the crosshair when firing (rounds fly over the others)
     // spare rounds per caliber
@@ -72,6 +74,8 @@ export default class Player extends Character {
     if (!this.alive) return;
     const w = this.world;
     this.slideCd -= dt;
+    this.winded = Math.max(0, this.winded - dt);
+    if (!this.slide) this.stamina = recover(this.stamina, dt, PLAYER.slide);
     this.updateSlideAnim(dt);
 
     if (this.execution) { this.updateExecution(dt); return; }
@@ -173,6 +177,8 @@ export default class Player extends Character {
   startSlide(a) {
     const cfg = PLAYER.slide, w = this.world;
     if (this.vaulting || !canSlide(this.slideCd, this.moving, PLAYER.speed, cfg)) return false;
+    if (this.stamina < cfg.cost) { this.winded = 0.35; return false; }
+    this.stamina -= cfg.cost;
     this.slide = new Slide(a, PLAYER.speed, cfg);
     this.slideHits.clear();
     // the trailing palm goes on the side of the free (left) hand
@@ -184,6 +190,18 @@ export default class Player extends Character {
     w.camera.push(Math.cos(a) * 2.5, Math.sin(a) * 2.5);
     w.shake(0.04);
     return true;
+  }
+
+  // low on the floor at the heart of a slide: rounds pass over us (Projectile)
+  get ducking() { return !!this.slide && ducked(this.slide.k, PLAYER.slide); }
+
+  // a round just did: a breath of slow motion, once per slide
+  dodge() {
+    const sl = this.slide, w = this.world;
+    if (!sl || sl.dodged) return;
+    sl.dodged = true;
+    w.slowmo(...PLAYER.slide.bulletTime);
+    w.events.emit('dodge', { ch: this, x: this.x, y: this.y });
   }
 
   setSlideVelocity() {

@@ -162,6 +162,11 @@ export default class Projectile {
       }
       case 'char': {
         const c = h.target;
+        if (c.ducking) { // sliding under the line of fire: the round carries on over him
+          this.ignore.add(c);
+          c.dodge();
+          return { x: h.x, y: h.y, a };
+        }
         const d = Math.hypot(c.x - this.owner?.x, c.y - this.owner?.y) || 999;
         c.shot(a, this.weapon, d, this.owner);
         this.ignore.add(c);

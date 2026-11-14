@@ -103,7 +103,8 @@ export default class Ambient {
       const sx = lane.spawnX(MAX_HALF);
       const spawnClear = !this.occupied(lane.y, sx - MAX_HALF - A.minGap * TILE * 2, sx + MAX_HALF + A.minGap * TILE * 2);
       const laneClear = !this.cars.some((c) => c.lane === lane && c.d.speed < 8);
-      if (lane.tick(dt, { spawnClear, laneClear, room: moving < A.maxCars }, r)) this.spawnCar(lane, sx);
+      const room = moving < A.maxCars && this.world.time >= this.scaredUntil; // nobody drives into a gunfight
+      if (lane.tick(dt, { spawnClear, laneClear, room }, r)) this.spawnCar(lane, sx);
     }
     for (const c of [...this.cars]) this.drive(c, dt);
   }
@@ -235,21 +236,29 @@ export default class Ambient {
       v.body.collisionFilter = { ...v.body.collisionFilter, mask: MASK.PROP };
       markBlocked(w.map, v);
     }
-    // the driver gets out: running from a shot-up / burning car, walking away from a hopeless jam
-    const out = reason === 'fire' || reason === 'tyre' || reason === 'jam';
-    if (out && this.r() < A.bailOut && this.strollers < A.maxWalkers + 2 && inside) this.bailOut(v, reason !== 'jam');
+    // the driver gets out: running from gunfire or from a shot-up / burning car, walking away from a hopeless jam
+    if (reason === 'scared') {
+      if (inside) {
+        this.bailOut(v, true, c.scare);
+        if (this.r() < A.flee.passenger) this.bailOut(v, true, c.scare, 1);
+      }
+    } else {
+      const out = reason === 'fire' || reason === 'tyre' || reason === 'jam';
+      if (out && this.r() < A.bailOut && this.strollers < A.maxWalkers + 2 && inside) this.bailOut(v, reason !== 'jam');
+    }
     w.events.emit('trafficStopped', { vehicle: v, reason });
   }
 
-  // the driver's door is on the car's left (-y in sprite space)
-  bailOut(v, panic) {
-    const w = this.world, p = v.toWorld(v.w * 0.55, -10);
+  // the driver's door is on the car's left (-y in sprite space), a passenger's (side 1) on its right; `from` is
+  // what they run from (default: their own car)
+  bailOut(v, panic, from = v, side = -1) {
+    const w = this.world, p = v.toWorld(v.w * 0.55, side < 0 ? -10 : v.h + 10);
     if (w.map.solidAt(p.x, p.y)) return;
     const route = panic ? [p] : escapeRoute(w.map, p.x, p.y, null);
     if (!route) return;
-    const civ = this.spawnCivilian([p, ...route], p.x, p.y, v.body.angle - Math.PI / 2);
+    const civ = this.spawnCivilian([p, ...route], p.x, p.y, v.body.angle + side * Math.PI / 2);
     if (!panic) return;
-    civ.brain.alarm(v.x, v.y, 'explosion');
+    civ.brain.alarm(from.x, from.y, from === v ? 'explosion' : 'gunshot');
     this.onPanic(civ, 'scream');
   }
 
@@ -429,6 +438,13 @@ export default class Ambient {
     if (type !== 'gunshot' && type !== 'explosion') return;
     this.panicAround(x, y, radius * A.panic.hear, type);
     this.scaredUntil = this.world.time + A.panic.calm;
+    // at the wheel: most stop dead and run for it, the others floor it
+    for (const c of this.cars) {
+      if (c.scare || Math.hypot(c.v.x - x, c.v.y - y) > radius * A.panic.hear) continue;
+      c.scare = { x, y };
+      if (this.r() < A.flee.odds) c.d.flee(between(this.r, A.flee.delay));
+      else c.d.panic = true;
+    }
   }
 
   onKill({ victim }) {

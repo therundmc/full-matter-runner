@@ -10,10 +10,9 @@ export default {
   name: 'NEON NIGHTS',
   subtitle: 'SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM',
   exit: { x: 28.7, y: 2.4, r: 1.4 },
-  facing: { '21,35': 270, '24,21': 90, '12,12': 270, '18,12': 90, '24,14': 349, '20,16': 90, '17,8': 90, '22,7': 90, '30,8': 180, '26,9': 45, '29,10': 200 },
+  facing: { '21,35': 270, '24,21': 90, '12,12': 270, '18,12': 90, '24,14': 349, '20,16': 90, '24,17': 65, '17,8': 90, '22,7': 90, '30,8': 180, '26,9': 45, '29,10': 200 },
   patrols: {
     '17,22': [[16, 22], [27, 22]],
-    '23,18': [[23, 18], [23, 15], [29, 15], [23, 15], [19, 15]],
     '19,4': [[13, 4], [29, 4]],
   },
   jobs: { '24,14': 'pool', '20,16': 'cards' },
@@ -75,8 +74,8 @@ export default {
     "                        p",
     "",
     "                    k",
-    "        1                       6",
-    "                       P",
+    "        1               b       6",
+    "",
     "",
     "",
     "                        b",
@@ -167,7 +166,9 @@ export default {
     ['plant', 30.55, 17.4, 0], ['neon_tube_pink', 28, 19.93, 180],
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
-  premises: [[11, 0, 32, 19], [11, 20, 13, 20]],
+  premises: [[11, 0, 32, 4], [11, 5, 13, 20], [32, 5, 32, 19], [14, 5, 20, 11], [24, 5, 31, 11], [15, 12, 20, 12], [25, 16, 30, 19]],
+  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
+  welcome: [[21, 12, 30, 12], [15, 13, 30, 15], [15, 16, 23, 19], [21, 6, 23, 11]],
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, along the service alley

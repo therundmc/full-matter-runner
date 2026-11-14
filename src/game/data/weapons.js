@@ -43,7 +43,7 @@ export const WEAPONS = {
   },
   sniper: {
     name: 'SNIPER', kind: 'gun', hold: 'two', sprite: 'weapons/sniper', grip: 8, mag: 5, ammo: '762', reload: 1.7, magSprite: 'weapons/mag_sniper', rate: 0.85, auto: false,
-    pellets: 1, spread: 0.0, speed: 2800, pen: 95, heavy: true, sound: 'sniper', noise: 900, shake: 0.7, kick: 9, casing: 'casing',
+    pellets: 1, spread: 0.0, speed: 2800, pen: 95, heavy: true, laser: '#ff2e3e', sound: 'sniper', noise: 900, shake: 0.7, kick: 9, casing: 'casing',
     gore: 1.2, wound: 'heavy', enemyRate: 1.5, points: 600,
   },
   bazooka: {

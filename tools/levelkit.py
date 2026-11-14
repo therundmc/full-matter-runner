@@ -60,6 +60,7 @@ class Level:
         self.props = []       # (area, type, col, row, deg, options)
         self.roofs = []       # (area, kind, col, row, deg)
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
+        self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -106,6 +107,10 @@ class Level:
     # ---- guarded premises (inclusive tile rectangle): guards leave an unarmed stranger alone anywhere else
     def guard(self, col0, row0, col1, row1):
         self.premises.append([col0, row0, col1, row1])
+
+    # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
+    def host(self, col0, row0, col1, row1):
+        self.welcome.append([col0, row0, col1, row1])
 
     # ---- rooftop dressing: scenery on the flat roofs of the neighbouring buildings
     def roof(self, kind, col, row, deg=0):
@@ -225,6 +230,9 @@ class Level:
         if self.premises:
             L.append('  // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away')
             L.append(f'  premises: {json.dumps(self.premises)},')
+        if self.welcome:
+            L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
+            L.append(f'  welcome: {json.dumps(self.welcome)},')
         if self.roofs:
             L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
             L.append('  roof: [')

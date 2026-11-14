@@ -64,6 +64,7 @@ src/
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards or glass in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
+      LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
@@ -106,6 +107,7 @@ Rules:
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
 | `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
+| `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | - |
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor) |
@@ -115,7 +117,7 @@ Rules:
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
 | `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack intensity and combat variant), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
 | `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
-| `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam) | |
+| `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam, scared) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
 | `civilianPanic` | `{ civilian, x, y, kind }` | Ambient (a passer-by starts to panic; kind: gunshot, explosion, kill, corpse, armed, scream, hit) | |
 
@@ -144,6 +146,9 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   (`assets/sound/foley.wav`, indexed by audio/bank.js), layered per sound name in `FOLEY`; a `_<name>` method adds the
   synthesized part where no recording fits (blasts, fire, tyres, alarm, traffic). Reload / handling sounds take
   `{ weapon }` to pick that gun's parts (`ARMS`), voices take `{ pitch }` (one per character, `Character.voice`).
+  Space: every positional voice is panned and loses level and highs with distance while more of it is sent to a
+  long hall reverb (also behind every gunshot and the kill chime); `World.sound` flags what the player hears
+  through a wall or a closed door (`occ`): quieter and dull.
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
   (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
   (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
@@ -196,7 +201,9 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   body: no blood, no cry, a body fall heard from much closer) or, knife in hand, `slash`. Scored as `takedown`.
 - Slide (Player, `PLAYER.slide`): Space while running with nothing to vault. ~0.5 s burst from ~2x run speed decaying to
   a jog (~2.9 m), stays physical (walls stop it, loose props take our momentum), sweeps standing enemies off their
-  feet, can chain into a vault, the gun stays usable; 0.5 s cooldown.
+  feet, can chain into a vault, the gun stays usable; 0.5 s cooldown. At its heart (`duck`) the body is under the
+  line of fire: rounds carry on over it (`Player.ducking`, Projectile) and the first one earns a breath of bullet
+  time (`dodge` event). Each slide costs stamina (`cost`, back with `regen`; small HUD bar while it recovers).
 - Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, feet, hands, weapon, as offsets
   from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended over it so
   every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and exit speeds.
@@ -262,10 +269,14 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 Guards mind their own business until the player gives himself away (`Director.isThreat`): empty-handed and
 outside the level's `premises` (tile rectangles, `lv.guard()` in tools/levelkit.py) he is a passer-by; a weapon in
 hand, trespassing, a shot heard, a guard floored or killed make him a target for good. No `premises` = hostile
-ground everywhere (lab, street testbed). A passer-by must not hang about either (`Enemy.mind`, `AI.loiter`,
+ground everywhere (lab, street testbed). Level 1's bar room and toilets are public: only the VIP room, the back
+room, the storeroom, behind the counter and the yards are premises. A passer-by must not hang about either, except
+in the level's `welcome` rectangles (`lv.host()`, `Director.isGuest`: a customer in the bar room) (`Enemy.mind`, `AI.loiter`,
 `Perception.loiterRate`): a guard who has him in front of him within a few metres stops, stares him down and tells
 him to clear off, warns him a last time ('!'), then snaps: the whole squad is provoked. His patience (shown on the
 detection gauge) runs out faster the closer the stranger stands and comes back slowly once he has gone.
+An unarmed stranger who steps into premises under a guard's nose (`Director.isIntruder`, within `AI.loiter.near`)
+makes him suspicious at once: he goes after him, finds him, and the fight is on (the VIP room's bouncer).
 
 - **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
   pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /
@@ -324,7 +335,9 @@ ambient: {
   wait then go around a static obstacle through a free lane (backing up when wedged), give up after `AMBIENT.giveUp`
   (engine off, parked). A lane whose spawn stays blocked `AMBIENT.jam` s closes until it is clear again. A burst tyre,
   a dead driver (windshield gone / heavy damage) or a fire makes the car coast, drift and stop: it becomes an ordinary
-  parked car / wreck (tiles marked blocked, driver bails out). Above `AMBIENT.lethal` a car kills whoever it hits and
+  parked car / wreck (tiles marked blocked, driver bails out). Gunfire heard from the wheel (`AMBIENT.flee`): most
+  drivers stand on the brake after a moment of shock, leave the car in the road and run (sometimes a passenger
+  too), the others floor it; no new traffic until the street has calmed down. Above `AMBIENT.lethal` a car kills whoever it hits and
   throws the ragdoll (`cause: 'vehicle'`); it drives over bodies. Driven cars skip the static shadow caches (unshadowed
   lights redrawn every frame, brake lights flare). One procedural pass-by sound per car (`passby` in Audio.js).
 - **Passers-by**: `Civilian` (Character subclass, team `civilian`, sprites civ1-4) with a `Walker` brain. They are in

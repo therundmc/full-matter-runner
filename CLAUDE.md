@@ -32,21 +32,18 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    animations + slide on Space. Still weak: combat visual feedback, horn sound.
    Every non-gun sound = cuts of a recorded CC0 foley bank (assets/sound/foley.wav + src/audio/bank.js, built by
    `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json); user rejected synthesized SFX as clicky,
-   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime
-   in the music's key that climbs with the combo, style picked with J in the F1 panel). No meat / wet / squish
+   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime,
+   the "gling" he picked, in the music's key, climbing with the combo, with reverb). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
 5. Synthwave music: darker, follows the AI alert phase.
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
-   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. Bar life: guards at a pastime
+   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public
+   (he walks in like a customer, level `welcome`); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime
    (level `jobs`: pool, cards), customers and VIP-room dancers (`ambient.patrons`, sprites dancerN) who run for
    the street when it kicks off.
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
-
-## Old agent branches
-- The `worktree-agent-*` branches (lighting, AI and others) are already ported into `feature/hotline-rework`:
-  nothing left to merge from them. Do not delete them without asking.
 
 ## Run / test
 - `python -m http.server 8000` then http://localhost:8000 (`?level=lab` for the physics lab).

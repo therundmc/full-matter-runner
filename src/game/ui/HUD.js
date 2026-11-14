@@ -1,4 +1,4 @@
-import { PALETTE, TILE, AI } from '../Config.js';
+import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { text, neon, thousands } from './Text.js';
 import { drawIndicators } from './Indicators.js';
@@ -34,6 +34,18 @@ export function drawHUD(ctx, game, t) {
     }
   }
   text(ctx, `TARGETS ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 84 * s, 14 * s, PALETTE.yellow, { align: 'left' });
+  // stamina: only while it is coming back; pink = not enough for a slide, blinking when one was just refused
+  if (p.stamina < 1) {
+    const y = pad + 96 * s, bw = 150 * s, short = p.stamina < PLAYER.slide.cost;
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(pad, y, bw, 5 * s);
+    ctx.globalAlpha = p.winded > 0 && Math.floor(t * 14) % 2 ? 0.35 : 1;
+    ctx.fillStyle = short ? PALETTE.pink : PALETTE.yellow;
+    ctx.fillRect(pad, y, bw * p.stamina, 5 * s);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(pad + bw * PLAYER.slide.cost - s, y, 2 * s, 5 * s); // what one slide takes
+  }
 
   drawScore(ctx, w, W - pad, pad, s);
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
@@ -67,7 +79,7 @@ function drawScore(ctx, w, x, y, s) {
   const sc = w.scoring;
   const pop = Math.max(0, 0.25 - (w.time - sc.lastT)); // swells for a moment when points come in
   text(ctx, thousands(sc.score), x, y + 10 * s, 22 * s * (1 + pop * 0.6), PALETTE.white, { align: 'right' });
-  text(ctx, clock(w.time), x, y + 32 * s, 11 * s, PALETTE.white, { align: 'right', alpha: 0.5 });
+  text(ctx, clock(w.runTime), x, y + 32 * s, 11 * s, PALETTE.white, { align: 'right', alpha: 0.5 });
   if (sc.combo < 1) return;
   const left = sc.comboLeft, bw = 84 * s, by = y + 60 * s;
   // the first kill of a chain only lights the fuse; the multiplier shows once it is worth something

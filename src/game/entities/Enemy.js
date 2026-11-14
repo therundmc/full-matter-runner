@@ -134,10 +134,12 @@ export default class Enemy extends Character {
     // a stranger minding his own business on public ground is none of a guard's concern, unless he hangs about
     const stranger = this.sees && this.aware < 2 && !this.director.isThreat(p);
     if (stranger) this.sees = false;
-    this.mind(stranger ? p : null, step);
+    this.mind(stranger && !this.director.isGuest(p) ? p : null, step);
     if (this.sees) {
       if (this.aware < 2) {
         const dx = p.x - this.x, dy = p.y - this.y;
+        // a stranger stepping into a private room under our nose: no need to stare at him to wonder
+        if (Math.hypot(dx, dy) <= AI.loiter.near && this.director.isIntruder(p)) this.meter = Math.max(this.meter, ENEMY.suspicious);
         this.meter = Math.min(1, this.meter + step * detectionRate({
           dist: Math.hypot(dx, dy),
           off: Math.abs(angDiff(this.angle, Math.atan2(dy, dx))),

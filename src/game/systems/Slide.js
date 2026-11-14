@@ -16,9 +16,19 @@ export function slideDistance(run, cfg, dt = 1 / 60) {
   return d;
 }
 
-// only while actually running, and not right after another slide
-export function canSlide(cooldown, speed, run, cfg) {
-  return cooldown <= 0 && speed >= run * cfg.minSpeed;
+// only while actually running, with the breath for it, and not right after another slide
+export function canSlide(cooldown, speed, run, cfg, stamina = 1) {
+  return cooldown <= 0 && speed >= run * cfg.minSpeed && stamina >= cfg.cost;
+}
+
+// stamina (0..1) after dt seconds on our feet
+export function recover(stamina, dt, cfg) {
+  return Math.min(1, stamina + cfg.regen * dt);
+}
+
+// at progress k, is the body low enough for rounds to pass over it? (the heart of the slide, not its ends)
+export function ducked(k, cfg) {
+  return k >= cfg.duck[0] && k <= cfg.duck[1];
 }
 
 export class Slide {

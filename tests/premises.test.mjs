@@ -23,5 +23,27 @@ test('a level without premises is hostile everywhere; level 1 starts the player 
   const d = new Director(world(LEVELS.level1));
   assert.equal(d.isThreat(at(21, 35)), false, 'the start alley');
   assert.equal(d.isThreat(at(21, 22)), false, 'the sidewalk in front of the bar');
-  assert.equal(d.isThreat(at(22, 15)), true, 'inside the bar');
+  assert.equal(d.isThreat(at(22, 15)), false, 'the bar room is open to customers');
+});
+
+test('level 1: the bar room and its toilets are open, the private rooms are not, and customers are left alone', () => {
+  const d = new Director(world(LEVELS.level1));
+  for (const [col, row, what] of [[22, 13, 'by the door'], [27, 14, 'the pool table'], [20, 17, 'the card table'], [22, 8, 'the toilets']]) {
+    assert.equal(d.isThreat(at(col, row)), false, what);
+    assert.equal(d.isGuest(at(col, row)), true, `${what}: a customer`);
+  }
+  for (const [col, row, what] of [[27, 18, 'the VIP room'], [25, 18, 'its doorway'], [27, 8, 'the back room'], [17, 8, 'the storeroom'],
+    [17, 12, 'behind the counter'], [12, 10, 'the service alley'], [20, 2, 'the back lot']]) {
+    assert.equal(d.isThreat(at(col, row)), true, what);
+  }
+  assert.equal(d.isThreat(at(24, 18)), false, 'in front of the VIP door');
+  assert.equal(d.isGuest(at(24, 18)), false, 'the bouncer does not let anyone hang about at his door');
+  assert.equal(d.isGuest(at(21, 22)), false, 'nor does anyone on the sidewalk');
+  assert.equal(new Director(world({})).isGuest(at(1, 1)), false);
+  // walking into the VIP room unarmed: an intruder a guard goes after, not yet a man to shoot on sight from afar
+  assert.equal(d.isIntruder(at(27, 18)), true);
+  assert.equal(d.isIntruder(at(27, 18, true)), false, 'armed: a plain threat');
+  assert.equal(d.isIntruder(at(22, 15)), false, 'a customer');
+  d.provoked = true;
+  assert.equal(d.isIntruder(at(27, 18)), false);
 });

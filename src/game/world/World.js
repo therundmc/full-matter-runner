@@ -85,6 +85,7 @@ export default class World {
     this.texts = [];
 
     this.cleared = false;
+    this.endT = null; // time of the player's death: the run's clock stops there
     this.exited = false;
     this.showVision = false;
     this.debugPhysics = false;
@@ -161,7 +162,16 @@ export default class World {
   // ---------------- services used by entities ----------------
   after(sec, fn) { this.timers.push({ t: this.time + sec, fn }); }
   // extra.choke: emitter key, a new sound from it cuts its previous one (gunfire)
-  sound(name, x, y, vol = 1, extra) { Audio.play(name, { x, y, vol, ...extra }); }
+  sound(name, x, y, vol = 1, extra) { Audio.play(name, { x, y, vol, occ: this.walledOff(x, y), ...extra }); }
+
+  // is a sound made at (x, y) heard through a wall or a closed door? (the player is the ear)
+  walledOff(x, y) {
+    const p = this.player;
+    if (!p || x === undefined) return false;
+    const d = Math.hypot(x - p.x, y - p.y);
+    return d > 90 && d < 2400 && !this.lineOfSight(p.x, p.y, x, y);
+  }
+  get runTime() { return this.endT ?? this.time; }
   shake(a) { this.camera.shake(a); }
   hitstop(s) { this.game.hitstop = Math.max(this.game.hitstop, s); }
   slowmo(scale, dur) { this.game.slowmo(scale, dur); }
@@ -208,7 +218,7 @@ export default class World {
   // ---------------- deaths & level flow ----------------
   onKill(ch, cause, killer) {
     this.events.emit('kill', { victim: ch, cause, killer });
-    if (ch.isPlayer) { this.game.onPlayerDeath(cause); return; }
+    if (ch.isPlayer) { this.endT = this.time; this.game.onPlayerDeath(cause); return; }
     if (ch.isCivilian) { this.hitstop(0.02); return; }
     // guards drop a spare magazine (or a few shells) for the gun they carried
     const type = ch.lastAmmo;

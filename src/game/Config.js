@@ -46,6 +46,10 @@ export const PLAYER = {
     knockSpeed: 1.1,  // x run speed: still fast enough to sweep a standing enemy off his feet
     stall: 0.3,       // measured / wanted speed under which an obstacle ends the slide
     hitMomentum: 0.6, // share of our momentum given to loose props we plough into
+    duck: [0.06, 0.72],       // share of the slide spent low enough for rounds to pass over us
+    bulletTime: [0.3, 0.4],   // time scale, s: the breath of slow motion when a round does
+    cost: 0.5,        // stamina (0..1) a slide takes: two in a row from rested
+    regen: 0.28,      // stamina back per second on our feet
   },
 };
 
@@ -196,6 +200,8 @@ export const AMBIENT = {
   coast: [2, 4],           // m/s² a disabled car slows down with (dead driver / burst tyre / on fire)
   swerve: [0.5, 1.1],      // m a disabled car drifts sideways before it stops
   bailOut: 0.8,            // chance the driver of a burning / shot-up car gets out alive and runs
+  // gunfire heard from the wheel: most drivers stop dead and run, the others floor it
+  flee: { odds: 0.8, delay: [0.15, 0.9], passenger: 0.35 }, // delay: s of reaction; passenger: odds of a second runner
   // people vs cars
   lethal: 3.2,             // m/s: faster than this, a hit kills (one hit kills, guards and player alike)
   shove: 1.3,              // ragdoll launch speed as a fraction of the car speed

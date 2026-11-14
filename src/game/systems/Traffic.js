@@ -124,8 +124,9 @@ export function steerAngle(dir, y, targetY, max = A.maxSteer) {
 }
 
 // The driver of one traffic vehicle: cruise speed with a personal spread, car following, late braking for
-// people, patience then a detour around a stuck obstacle, panic (floor it) under fire, coasting to a stop
-// once disabled. state: drive | coast | stopped (handed over to the world as a parked / wrecked car).
+// people, patience then a detour around a stuck obstacle, panic (floor it) under fire, fleeing (stand on the
+// brake, leave the car where it stops) when shots ring out, coasting to a stop once disabled.
+// state: drive | coast | stopped (handed over to the world as a parked / wrecked car).
 export class Driver {
   constructor(lane, r) {
     this.lane = lane;
@@ -148,6 +149,12 @@ export class Driver {
     this.decel = 0;
     this.coastY = lane.y;
     this.reason = null;
+    this.fleeT = null;  // s before the scared driver hits the brake (null: not fleeing)
+  }
+
+  // gunfire close by: after `delay` s of shock, stop dead and abandon the car (reason 'scared')
+  flee(delay) {
+    if (this.state === 'drive' && this.fleeT === null) this.fleeT = delay;
   }
 
   get moving() { return this.state !== 'stopped'; }
@@ -165,6 +172,13 @@ export class Driver {
       this.targetY = this.coastY;
       this.brake = 1;
       if (this.speed < 4) { this.speed = 0; this.state = 'stopped'; }
+      return;
+    }
+    if (this.fleeT !== null && (this.fleeT -= dt) <= 0) {
+      this.speed = Math.max(0, this.speed - A.emergency * TILE * dt);
+      this.brake = 1;
+      this.targetY = s.y;
+      if (this.speed < 4) { this.speed = 0; this.state = 'stopped'; this.reason = 'scared'; }
       return;
     }
     // jammed for good (every way round blocked): engine off, it stays there as a parked car

@@ -19,6 +19,12 @@ export function freshLine(lines, recent, rnd = Math.random) {
   return from[Math.floor(rnd() * from.length)];
 }
 
+// is the point inside one of the [col0, row0, col1, row1] tile rectangles (inclusive)?
+function inZones(zones, p) {
+  const x = p.x / TILE, y = p.y / TILE;
+  return !!zones && zones.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1);
+}
+
 export default class Director {
   constructor(world) {
     this.world = world;
@@ -130,10 +136,14 @@ export default class Director {
   // hostile ground everywhere. Once he is made (spotted as a threat, heard shooting, a guard down) it is for good.
   isThreat(p) {
     const zones = this.world.level?.premises;
-    if (this.provoked || !zones || p.armed) return true;
-    const x = p.x / TILE, y = p.y / TILE;
-    return zones.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1);
+    return this.provoked || !zones || !!p.armed || inZones(zones, p);
   }
+
+  // where a stranger is a customer (level `welcome` rectangles: a bar room), nobody tells him to clear off
+  isGuest(p) { return inZones(this.world.level?.welcome, p); }
+
+  // a harmless stranger who walked in where he has no business: a guard who sees him close goes after him at once
+  isIntruder(p) { return !this.provoked && !p.armed && inZones(this.world.level?.premises, p); }
 
   // ---------------- incidents ----------------
   incident(kind, x, y, extra = {}) {

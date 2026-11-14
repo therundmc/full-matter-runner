@@ -10,10 +10,14 @@
 //   shots -> HP 35 Hz -> low shelf -> high shelf ----------+   (recorded shots: no drive, full crack)
 //   sfx   -> HP 30 Hz -> low shelf -> low-mid cut -> presence -+-> mix -> glue compressor ---+
 //   sfx + shots -> room (convolution reverb, generated impulse) -+                            |
+//   per-voice sends -> hall (longer impulse: gunfire, far sounds, the kill chime) -> mix      |
 //   music -> HP 28 Hz -> duck (held dip while it is loud) -> its own compressor -------------+-> bus
 //   bus -> filter (lowpass: slow motion / death muffle) -> soft clip (linear under its knee, oversampled)
 //       -> limiter (safety) -> master -> destination
 // The music has its own compressor so that gunfire never pumps it: only the duck moves it, slowly.
+//
+// Space: each positional voice is panned, loses level and highs with distance while more of it goes to the hall,
+// and is duller and quieter behind a wall (`occ`, set by World.sound).
 //
 // META (per sound) drives voice admission: rate limit, per-name cap, global cap with voice stealing, music ducking,
 // how far it carries and its place in the mix. Reload / handling sounds take `weapon` (a weapon id) to pick that
@@ -26,10 +30,6 @@ const MASTER_GAIN = 0.8;
 // kill confirm: the first kill's note (F5, the music is in F minor) and the semitones above it per kill of a
 // streak (minor pentatonic)
 const KILL_ROOT = 698.46;
-// what the kill confirm sounds like (F1 panel, J; remembered): a strummed glassy chime, one dry metallic hit, or
-// the synth stab
-export const KILL_STYLES = ['gling', 'dink', 'stab'];
-const STYLE_KEY = 'fmr.killSound';
 const STREAK = [0, 3, 5, 7, 10, 12, 15, 17];
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
@@ -96,7 +96,7 @@ const META = {
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
-  confirm: { pri: 4, dur: 1.1, gap: 0.03, max: 3, duck: 0.8, gain: 1 },
+  confirm: { pri: 4, dur: 1.1, gap: 0.03, max: 3, duck: 0.8, gain: 1, hall: 0.55 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -105,9 +105,13 @@ for (const k in META) META[k] = { ...DEFAULT_META, ...META[k] };
 const GLOBAL_SOFT_CAP = 14; // above this, only louder / higher priority sounds get in (stealing the quietest)
 const GLOBAL_HARD_CAP = 22;
 const NEAR = 520, FAR = 1900; // px: distance muffling starts at NEAR and is full at FAR (whatever the reach)
+const PAN = 520;              // px to the side for a sound to sit fully on that side
+const GUN_HALL = 0.16;        // share of every gunshot sent to the hall (META `hall` for the other sounds)
+const FAR_HALL = 0.3;         // more of it for what is far away: distance is heard as space, not only as level
+const OCCLUDED = [0.6, 1100]; // behind a wall: level factor, lowpass (Hz)
 const DUCK_HOLD = 0.25, DUCK_RELEASE = 0.3; // s: the music stays down through a burst, then comes back slowly
 const CHOKE = 0.05; // s: how fast a shooter's previous shot fades under his next one
-const GUN_LEVEL = 0.32; // gunfire in the mix: loud, but under the master's clip so that bursts stay clean
+const GUN_LEVEL = 0.37; // gunfire in the mix: loud, but under the master's clip so that bursts stay clean
 
 // Recordings. Gunshots: assets/sound/shots, CC BY 3.0 Michel Baradari; foley: the bank (CC0, assets/sound/CREDITS.md).
 const SAMPLES = {
@@ -168,11 +172,11 @@ const GUNS = {
     thump: [136, 44, 0.14, 1.1], punch: [240, 100, 0.03, 0.45],
     tail: [0.75, 1600, 0.36, 3, 1.1], casing: ['762', 0.6, 0.3],
   },
-  // the biggest crack, deep sub, long rolling echo, then the bolt worked
+  // the biggest crack, deep sub, long rolling echo (no bolt worked between shots: the user was sick of hearing it)
   sniper: {
     crack: [3000, 0.0045, 1.45], body: [2400, 340, 0.6, 0.11, 1.5], blast: [2000, 70, 0.28, 1.4],
     thump: [104, 32, 0.28, 1.3], punch: [200, 80, 0.05, 0.5], sub: [55, 24, 0.62, 0.95],
-    cycle: ['rack', 0.42, 0.3, 0.8], tail: [1.7, 1300, 0.5, 4, 1.9], casing: ['762', 1, 0.75],
+    tail: [1.7, 1300, 0.5, 4, 1.9], casing: ['762', 1, 0.75],
   },
   // launch: back-blast thump + motor whoosh
   rocket: {
@@ -257,15 +261,6 @@ const FOLEY = {
 };
 
 class AudioSystem {
-  get killStyle() {
-    if (!this._style) { try { this._style = globalThis.localStorage?.getItem(STYLE_KEY); } catch { /* no storage */ } }
-    return KILL_STYLES.includes(this._style) ? this._style : KILL_STYLES[0];
-  }
-  set killStyle(s) {
-    this._style = s;
-    try { globalThis.localStorage?.setItem(STYLE_KEY, s); } catch { /* no storage */ }
-  }
-
   constructor() {
     this.ctx = null;
     this.chokes = new WeakMap(); // emitter -> its last voice (a new shot fades the previous tail)
@@ -333,6 +328,11 @@ class AudioSystem {
     chain(this.sfx, gain(0.2), room);
     chain(this.shots, gain(0.1), room);
     chain(room, bq('highpass', 160, 0.7), mix);
+    // and a bigger space behind gunfire, far sounds and the kill chime: fed voice by voice (see _out)
+    this.hall = ctx.createConvolver();
+    this.hall.normalize = false;
+    this.hall.buffer = this._room(ctx, 0.03, 2.4, 0.4);
+    chain(this.hall, bq('highpass', 220, 0.7), mix);
 
     // glue on the effects only: loud bursts are held together, the music bed is left alone. (The browser adds
     // makeup gain from these settings: a low threshold would push clicks and casings up towards the gunshots.)
@@ -366,8 +366,8 @@ class AudioSystem {
 
   // impulse response of the room: 12 ms of air, a few early reflections off the nearest walls, then a 1 s
   // noise tail that gets darker as it dies; unit energy per channel, so the send gain is the wet level
-  _room(ctx) {
-    const R = ctx.sampleRate, pre = Math.round(R * 0.012), n = pre + Math.round(R * 1.0);
+  _room(ctx, delay = 0.012, len = 1, tau = 0.15) {
+    const R = ctx.sampleRate, pre = Math.round(R * delay), n = pre + Math.round(R * len);
     const ir = ctx.createBuffer(2, n, R);
     for (let c = 0; c < 2; c++) {
       const d = ir.getChannelData(c);
@@ -375,7 +375,7 @@ class AudioSystem {
       for (let i = pre; i < n; i++) {
         const t = (i - pre) / R;
         lp += (0.2 + 0.6 * Math.exp(-t / 0.12)) * (Math.random() * 2 - 1 - lp);
-        d[i] = lp * Math.exp(-t / 0.15);
+        d[i] = lp * Math.exp(-t / tau);
       }
       for (const [t, v] of [[0.007, 1.4], [0.017, -1.1], [0.029, 0.8], [0.043, -0.6]]) d[pre + Math.round(R * t * rand(0.85, 1.15))] += v;
       for (let i = pre; i < n; i++) energy += d[i] * d[i];
@@ -405,10 +405,12 @@ class AudioSystem {
       const dx = opts.x - this.listener.x, dy = opts.y - this.listener.y;
       const d = Math.hypot(dx, dy);
       vol *= clamp(1 - d / reach, 0.08, 1);
-      pan = clamp(dx / 700, -0.8, 0.8);
+      pan = clamp(dx / PAN, -0.85, 0.85);
       far = clamp((d - NEAR) / (FAR - NEAR), 0, 1); // far sounds lose their highs
     }
-    return { vol, pan, far };
+    const occ = !!opts.occ;
+    if (occ) vol *= OCCLUDED[0];
+    return { vol, pan, far, occ, hall: 0 };
   }
 
   // per-play gain node (+ distance lowpass, + pan); `o._n` counts live sources so the chain is disconnected at the end
@@ -416,9 +418,9 @@ class AudioSystem {
     const ctx = this.ctx, g = ctx.createGain();
     g.gain.value = sp.vol;
     const chain = [g];
-    if (sp.far > 0.05) {
+    if (sp.far > 0.05 || sp.occ) {
       const lp = ctx.createBiquadFilter();
-      lp.frequency.value = 600 + 15400 * (1 - sp.far) ** 2;
+      lp.frequency.value = Math.min(600 + 15400 * (1 - sp.far) ** 2, sp.occ ? OCCLUDED[1] : Infinity);
       chain.push(lp);
     }
     if (ctx.createStereoPanner && Math.abs(sp.pan) > 0.02) {
@@ -427,6 +429,14 @@ class AudioSystem {
       chain.push(p);
     }
     chain.forEach((n, i) => n.connect(chain[i + 1] || dest));
+    const wet = sp.hall + sp.far * FAR_HALL;
+    if (wet > 0.02 && this.hall) {
+      const send = ctx.createGain();
+      send.gain.value = wet;
+      chain[chain.length - 1].connect(send);
+      send.connect(this.hall);
+      chain.push(send);
+    }
     g._chain = chain;
     g._n = 0;
     return g;
@@ -495,6 +505,7 @@ class AudioSystem {
     const meta = META[name] || DEFAULT_META;
     const sp = this._spatial(opts, meta.reach);
     sp.vol *= meta.gain;
+    sp.hall = meta.hall ?? (gun ? GUN_HALL : 0);
     if (sp.vol < 0.012) return; // inaudible
     const entry = this._admit(name, meta, sp.vol);
     if (!entry) return;
@@ -612,31 +623,6 @@ class AudioSystem {
     osc.onended = () => this._release(o, osc, g);
     osc.start(t);
     osc.stop(t + dur + 0.03);
-  }
-
-  // synth stab: two detuned saws and a triangle an octave below, through a resonant low-pass that snaps shut
-  _pluck(o, { f = 349, dur = 0.4, vol = 0.3, delay = 0 }) {
-    const ctx = this.ctx, t = ctx.currentTime + delay;
-    const filt = ctx.createBiquadFilter();
-    filt.type = 'lowpass';
-    filt.Q.value = 5;
-    filt.frequency.setValueAtTime(Math.min(f * 9, 9000), t);
-    filt.frequency.exponentialRampToValueAtTime(f * 2.5, t + dur * 0.6);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    filt.connect(g); g.connect(o);
-    [[f * 0.996, 'sawtooth'], [f * 1.004, 'sawtooth'], [f / 2, 'triangle']].forEach(([hz, type], i) => {
-      const osc = ctx.createOscillator();
-      osc.type = type;
-      osc.frequency.setValueAtTime(hz, t);
-      osc.connect(filt);
-      o._n++;
-      osc.onended = () => this._release(o, osc, ...(i ? [] : [filt, g]));
-      osc.start(t);
-      osc.stop(t + dur + 0.03);
-    });
   }
 
   // FM bell: a sine whose pitch a faster one shakes, hard at the strike and less as it rings (glassy, very 80s)
@@ -852,29 +838,15 @@ class AudioSystem {
   }
   // a kill confirmed (asked for by the user, the one synthesized SFX): a reward just after the blow. Every kill of
   // a streak (opts.n) climbs one step of the music's minor pentatonic scale, so that notes still ringing agree
-  // with the new one and with the track. Three styles (killStyle).
+  // with the new one and with the track. The "gling" he picked: a glassy chime strummed upward, in a hall (META).
   _confirm(o, opts) {
     const f = KILL_ROOT * 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
-    const style = this.killStyle, d = 0.03;
+    const d = 0.03;
     this.pv = 1;
-    if (style === 'stab') {
-      // synth stab, its octave and two tape echoes
-      this._pluck(o, { f, dur: 0.55, vol: 0.45, delay: d });
-      this._pluck(o, { f: f * 2, dur: 0.35, vol: 0.14, delay: d });
-      this._pluck(o, { f, dur: 0.4, vol: 0.2, delay: d + 0.15 });
-      this._pluck(o, { f, dur: 0.35, vol: 0.1, delay: d + 0.3 });
-      return;
-    }
-    // the weight of a hit that counted and the tick of its first milliseconds, under either chime
+    // the weight of a hit that counted and the tick of its first milliseconds, under the chime
     this._thump(o, { f0: 150, f1: 55, dur: 0.14, vol: 0.7, delay: d });
     this._noiseBurst(o, { type: 'highpass', f0: 5000, dur: 0.018, vol: 0.3, attack: 0.0005, delay: d });
-    if (style === 'dink') {
-      // one dry metallic hit (an untuned partial makes it ring like struck steel)
-      this._bell(o, { f: f * 2, dur: 0.24, vol: 0.42, delay: d, ratio: 1.41, index: 2.4 });
-      this._bell(o, { f: f * 4, dur: 0.12, vol: 0.1, delay: d, ratio: 2 });
-      return;
-    }
-    // 'gling': root, fifth and octave strummed upward in a tenth of a second, the octave left ringing, a glint on top
+    // root, fifth and octave strummed upward in a tenth of a second, the octave left ringing, a glint on top
     this._bell(o, { f, dur: 0.5, vol: 0.32, delay: d });
     this._bell(o, { f: f * 1.5, dur: 0.55, vol: 0.26, delay: d + 0.035 });
     this._bell(o, { f: f * 2, dur: 0.95, vol: 0.3, delay: d + 0.07 });
