@@ -24,7 +24,7 @@ const WAYS = {
   gate: [[11, 20], [12, 20], [13, 20]],
   gap: [[32, 20]],
   roof: [[1, 20]],          // the fire-escape ladder at the corner of the liquor store
-  shop: [[8, 20]],          // the liquor store's front door, and out by its staff door on the service alley
+  shop: [[8, 20]],          // the liquor store's front door, and on by its own ladder to the roof
 };
 
 // a world with the level's walls and its furniture, enough for the vault geometry
@@ -115,7 +115,7 @@ test('level 1 is fought hand to hand: two guns in the house (the bar room, the b
 
 // the shop fronts of the street: room (inclusive tiles), display panes and door on the facade row, neon sign
 const SHOPS = {
-  liquor: { room: [3, 17, 8, 19], facade: 20, panes: [5, 6, 7], door: [8, 'L'], sign: 'neon_sign_liquor', ways: [[3, 16], [9, 17]] },
+  liquor: { room: [3, 17, 8, 19], facade: 20, panes: [5, 6, 7], door: [8, 'L'], sign: 'neon_sign_liquor', ways: [[3, 16]] },
   video: { room: [36, 17, 39, 19], facade: 20, panes: [36, 37, 38], door: [39, 'L'], sign: 'neon_sign_video' },
   wash: { room: [27, 33, 31, 35], facade: 32, panes: [27, 28, 29], door: [30, 'D'], sign: 'neon_sign_wash' },
 };
@@ -177,9 +177,12 @@ test('the liquor store roof: up a ladder from the street or from the shop, down 
   assert.equal(d.isThreat(stranger(px(5), px(11))), false);
   assert.equal(d.isThreat(stranger(px(11.5), px(12.5))), true);
   assert.equal(d.isThreat(stranger(px(11.5), px(3.5))), true);
-  // the shop's staff door gives on the service alley
-  assert.equal(m.at(10, 17), 'D');
-  assert.equal(m.isSolid(11, 17), false);
+  // the shop has no door on the service alley: its ladder is the only way on
+  for (let row = 17; row <= 19; row++) assert.ok(m.isSolid(9, row) || m.isSolid(10, row), `a wall between the shop and the alley at row ${row}`);
+  // nothing stands in the way at the top of either ladder
+  for (const [col, row] of [[1, 15], [1, 14], [2, 14], [3, 14], [3, 15]]) {
+    assert.ok(!w.props.some((p) => Math.floor(p.x / TILE) === col && Math.floor(p.y / TILE) === row), `the roof is clear at ${col},${row}`);
+  }
 });
 
 test("ways round: the toilets and the boss's room have a window on the back lot, the VIP room one on the gap", () => {

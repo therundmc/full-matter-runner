@@ -37,7 +37,7 @@ export default class Prop {
     this.type = type;
     this.def = PROPS[type];
     if (!this.def) throw new Error('unknown prop ' + type);
-    this.img = spriteOpt('props/' + type) || sprite(type.startsWith('neon') ? 'props/tv' : 'props/trash_can');
+    this.img = spriteOpt(this.def.sprite || 'props/' + type) || sprite(type.startsWith('neon') ? 'props/tv' : 'props/trash_can');
     this.rec = recipeFor(type, this.def);
     this.hp = this.def.hp;
     const d = this.def;

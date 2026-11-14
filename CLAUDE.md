@@ -61,8 +61,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
    against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only).
    Made to be replayed another way (user: "plein de possibilites"): five ways in on foot (front door, gate to
-   climb, the dark gap, the liquor store roof reached by a `ladder` from the street corner or from inside the shop
-   and left by a `parapet` drop into the service alley or the back lot, the shop's staff door on the alley) and
+   climb, the dark gap, the liquor store roof reached by a `ladder` from the street corner, the shop itself whose
+   own ladder goes up to that roof; the roof is left by a `parapet` drop into the service alley or the back lot; no
+   door between the shop and the alley, the user had it removed; the roof is dressed with real props, `sprite` option) and
    four windows to dive through (toilets and boss's room on the back lot, pool corner and VIP room on the gap).
    A walkable roof is floor tile `^`. Guards have the keys of the house (`World.pathForGuard`, `Door.unlatch`):
    never lock a door without checking they can still get out (the QA robot reports `guard-stuck`).

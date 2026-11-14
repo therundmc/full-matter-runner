@@ -17,7 +17,7 @@ Plan (north is up):
 
 The street is alive at 2:14 AM: three shop fronts throw their light on the sidewalks through their display windows
 (a liquor store and a TV shop, closed, on either side of the bar; a laundromat open all night next to the start alley).
-They are public ground. The liquor store has a staff door on the service alley and a ladder to its roof.
+They are public ground. The liquor store has a ladder to its roof in its back wall.
 
 Six ways in, none of them free (the level is made to be played again another way):
     the front    double door under the neon: the bouncer, the sidewalk patrol, the whole room at once
@@ -32,7 +32,7 @@ Six ways in, none of them free (the level is made to be played again another way
                  the service alley behind the gate and the smoker's back, or into the west end of the back lot
     the shop     the liquor store: break in by the front (the bell rings, the guards come and look: a diversion as
                  much as a way in), or come down its own ladder from the roof without a sound; the pistol is behind
-                 the counter, and the staff door opens on the service alley, inside the gate
+                 the counter, and the same ladder is the way on from there
     the lot      from the back lot: the locked back door (to force), the boss's window (to dive through, into the
                  middle of them), or the toilets' window (a public room: one comes out of it a customer)
 """
@@ -83,8 +83,6 @@ lv.fill(20, 32, 23, 36, '_')
 # shop fronts, 3 m deep behind their display windows: liquor store (west of the bar) and TV shop (east), both locked
 # for the night, and the laundromat by the start alley, open
 lv.fill(3, 17, 8, 19, ',')
-lv.put(9, 17, ',')
-lv.put(10, 17, 'D')            # its staff door, behind the counter, on the service alley
 # the liquor store's flat roof: up a ladder from the street corner or from the shop, down over a parapet
 lv.fill(1, 8, 9, 14, '^')
 lv.fill(7, 3, 9, 7, '^')       # its north arm, above the back lot
@@ -265,7 +263,7 @@ for x in (11.5, 12.5, 13.5):
 lv.prop('wall_lamp', 11.09, 19.0, 270)
 lv.prop('trash_can', 13.5, 17.4)
 lv.prop('trash_can', 13.45, 18.25)
-lv.prop('crate', 12.7, 15.9, -6)
+lv.prop('crate', 11.45, 16.9, -6)
 lv.prop('parapet', 10.5, 12.5, 90)                     # the drop from the roof
 lv.prop('dumpster', 11.62, 14.5, 90)
 lv.prop('neon_tube_cyan', 13.93, 9.9, 90)
@@ -371,22 +369,41 @@ lv.prop('neon_tube_pink', 28.0, 19.93, 180)
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
 lv.area('the liquor store roof')
 lv.prop('ladder', 1.5, 20.5)                            # the fire escape, at the corner of the street
-lv.prop('wall_lamp', 1.5, 15.09, 180)                   # a lamp at the top of it
-lv.prop('string_lights', 4.0, 9.0)                      # somebody's summer evenings
 lv.prop('wall_lamp', 9.91, 11.4, 90)                    # a lamp by each way down
 lv.prop('wall_lamp', 9.91, 4.6, 90)
-lv.prop('chair', 3.3, 10.2, 200)
-lv.prop('chair', 4.9, 10.5, 330)
-lv.prop('crate', 4.15, 9.9, 12)                         # their table
+# somebody's summer evenings, against the north wall: a couch from the street, a crate for a table, a radio
+lv.prop('string_lights', 4.0, 9.3)
+lv.prop('sofa', 3.9, 8.5)
+lv.prop('crate', 3.9, 9.75, 12)
+lv.prop('chair', 2.7, 9.95, 160)
+lv.prop('chair', 5.1, 10.05, 25)
+lv.prop('speaker', 5.45, 8.4)
 lv.prop('plant', 1.45, 8.5)
-lv.prop('crate', 8.5, 8.5, -8)
-lv.prop('crate', 8.45, 9.25, 20)
-lv.prop('barrel', 6.5, 13.5)                            # rain water
-lv.prop('barrel', 1.5, 13.4)
+lv.prop('plant', 6.2, 8.45)
+lv.prop('floor_lamp', 2.5, 8.45)
+# the building's plant: the water tank, the air conditioning of the shop, vents, the heating pipe along the edge
+lv.prop('water_tank', 6.9, 12.2)
+lv.prop('ac_unit', 9.47, 9.6, 90)
+lv.prop('roof_vent', 8.35, 8.5)
+lv.prop('roof_vent', 9.4, 8.45)
+lv.prop('roof_vent', 5.3, 12.7)
+lv.prop('wall_vent', 7.4, 8.08)                         # the neighbours' kitchen steams over the roof
+lv.prop('pipe_steam', 6.5, 14.93, 180)
+lv.prop('crate', 1.5, 12.2, -8)                         # stores nobody came back for
+lv.prop('crate', 1.45, 11.45, 20)
+lv.prop('trash_can', 2.3, 12.5)
+lv.prop('barrel', 8.5, 13.6)
+lv.dress('beds', 2.7, 13.75, 8)                         # and a flattened box somebody slept on
+# the north arm, over the back lot: the bar's air conditioning, and a chair for whoever keeps an eye on the lot
+lv.prop('ac_unit', 7.53, 5.0, 90)
+lv.prop('roof_vent', 7.4, 3.5)
 lv.prop('trash_can', 7.5, 6.5)
-lv.prop('crate', 8.5, 4.5, 5)
+lv.prop('crate', 9.5, 6.3, 5)
+lv.prop('chair', 9.3, 4.4, 80)
+lv.prop('wall_vent', 8.4, 3.08)
 lv.actor('5', 4, 11)                                    # a bat left against the crate
-lv.pigeons(6.2, 11.2, 3)
+lv.pigeons(4.6, 12.6, 3)
+lv.pigeons(8.6, 6.0, 2)
 lv.dress('papers', 1, 8, 9, 14, 3)
 
 lv.area('west block, round the roof')
@@ -462,6 +479,7 @@ if __name__ == '__main__':
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
-                 'Three ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
-                 'anonymous door right of the bar (east). Lit shop fronts on the street: liquor, TV, laundromat.',
+                 'Ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
+                 'anonymous door right of the bar (east), the liquor store and its roof (far west), four windows.',
+                 'Lit shop fronts on the street: liquor, TV, laundromat.',
              ])
