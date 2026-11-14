@@ -9,6 +9,7 @@
 export default {
   name: 'NEON NIGHTS',
   subtitle: 'SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM',
+  objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 28.7, y: 2.4, r: 1.4 },
   facing: { '20,34': 0, '24,21': 90, '12,12': 270, '18,12': 90, '24,14': 349, '20,16': 90, '24,17': 65, '17,8': 90, '22,7': 90, '30,8': 180, '26,9': 45, '28,9': 20, '29,10': 200, '26,4': 270 },
   patrols: {

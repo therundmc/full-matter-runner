@@ -27,6 +27,8 @@ import { rand, clamp } from '../engine/math.js';
 import { BANK, BANK_URL } from './bank.js';
 
 const MASTER_GAIN = 0.8;
+const MUSIC_GAIN = 0.6;
+const SHOTS_GAIN = 0.65; // recorded gunshots, times GUN_LEVEL
 
 // kill confirm: quarter tones it climbs over a streak, one per kill
 const STREAK_STEPS = 10;
@@ -288,6 +290,7 @@ class AudioSystem {
     this.chokes = new WeakMap(); // emitter -> its last voice (a new shot fades the previous tail)
     this.listener = { x: 0, y: 0 };
     this.muted = false;
+    this.vol = { master: 1, music: 1, sfx: 1 }; // player volumes (settings), scale the bus gains
     this.active = [];   // live plays, for the caps and voice stealing
     this.lastPlay = {}; // name -> { t, vol } of the last admitted play
     this.duckUntil = 0;
@@ -328,8 +331,8 @@ class AudioSystem {
       return s;
     };
 
-    this.sfx = gain(SFX_LEVEL);
-    this.music = gain(0.6);
+    this.sfx = gain(SFX_LEVEL * this.vol.sfx);
+    this.music = gain(MUSIC_GAIN * this.vol.music);
     this.duck = gain(1);
     this.bus = gain(1);
     const mix = gain(1);
@@ -341,7 +344,7 @@ class AudioSystem {
     this.guns = gain(0.5);
     chain(this.guns, shaper((x) => Math.tanh(2 * x), '2x'), gain(GUN_LEVEL * 0.9 / SFX_LEVEL), this.sfx);
     // recorded shots keep their full crack: no drive, no low-mid cut, a bit of weight and air
-    this.shots = gain(0.65 * GUN_LEVEL);
+    this.shots = gain(SHOTS_GAIN * GUN_LEVEL * this.vol.sfx);
     chain(this.shots, bq('highpass', 35, 0.7), bq('lowshelf', 120, 0.7, 3), bq('highshelf', 5000, 0.7, 3.5), mix);
     // one room for everything that is not music: it glues the recordings (all made in different places) together
     const room = ctx.createConvolver();
@@ -370,7 +373,7 @@ class AudioSystem {
       return a <= KNEE ? G * x : Math.sign(x) * (Y + (1 - Y) * Math.tanh(G * (a - KNEE) / (1 - Y)));
     }, '4x');
     const limiter = param(ctx.createDynamicsCompressor(), { threshold: -3, knee: 0, ratio: 20, attack: 0.001, release: 0.08 });
-    this.master = gain(MASTER_GAIN);
+    this.master = gain(this.muted ? 0 : MASTER_GAIN * this.vol.master);
     chain(this.bus, this.filter, gain(0.85), clip, limiter, this.master, ctx.destination);
 
     // shared noise: white (texture) and brown (rumble), 2 s each, looped by the sources
@@ -409,7 +412,19 @@ class AudioSystem {
 
   toggleMute() {
     this.muted = !this.muted;
-    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : MASTER_GAIN, this.ctx.currentTime, 0.05);
+    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : MASTER_GAIN * this.vol.master, this.ctx.currentTime, 0.05);
+  }
+
+  // kind: 'master' | 'music' | 'sfx', v: 0..1. Safe before the context exists (_build applies this.vol).
+  setVolume(kind, v) {
+    if (!(kind in this.vol)) return;
+    v = clamp(Number.isFinite(v) ? v : 1, 0, 1);
+    this.vol[kind] = v;
+    if (!this.ctx) return;
+    const set = (node, g) => node && node.gain.setTargetAtTime(g, this.ctx.currentTime, 0.03);
+    if (kind === 'master') set(this.master, this.muted ? 0 : MASTER_GAIN * v);
+    else if (kind === 'music') set(this.music, MUSIC_GAIN * v);
+    else { set(this.sfx, SFX_LEVEL * v); set(this.shots, SHOTS_GAIN * GUN_LEVEL * v); }
   }
 
   // 0 = clear, 1 = heavily muffled (death / slow motion)

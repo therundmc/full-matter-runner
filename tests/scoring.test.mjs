@@ -281,13 +281,14 @@ test('grades: every level table goes down from S to a floor at zero', () => {
 });
 
 test('grades: level 1 cannot be aced by shooting alone, and a clean varied run can', () => {
-  const lvl = LEVEL_SCORING.level1, n = 13;
+  const lvl = LEVEL_SCORING.level1, n = 15;
   // every guard shot one by one, no chain, in par time, alerts all the way, half the rounds wasted
   const sloppy = tally({ points: n * S.shot.points, kills: n, guards: n, maxCombo: 1, methods: 1, shots: 2 * n, hits: n, alerts: 3, civilians: 0, time: lvl.par }, lvl);
   assert.ok(['C', 'D'].includes(sloppy.grade), `sloppy run got ${sloppy.grade}`);
-  // close-quarters kills in chains of 4, four ways of killing, one alert, a minute under par
-  const chain = [1, 1.5, 2, 2.5].reduce((sum, m) => sum + S.melee.points * m, 0);
-  const sharp = tally({ points: 3 * chain + S.melee.points, kills: n, guards: n, maxCombo: 4, methods: 4, shots: 4, hits: 3, alerts: 1, civilians: 0, time: lvl.par - 60 }, lvl);
+  // close-quarters kills in chains of 5, each with a couple of kill tags (about 1500 a kill), four ways of
+  // killing and tags, one alert, a minute under par
+  const chain = [1, 1.5, 2, 2.5, 3].reduce((sum, m) => sum + (S.melee.points + 1500) * m, 0);
+  const sharp = tally({ points: 3 * chain, kills: n, guards: n, maxCombo: 5, methods: 6, shots: 4, hits: 3, alerts: 1, civilians: 0, time: lvl.par - 60 }, lvl);
   assert.ok(['S', 'A'].includes(sharp.grade), `sharp run got ${sharp.grade} with ${sharp.total}`);
 });
 

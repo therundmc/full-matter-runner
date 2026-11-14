@@ -149,3 +149,8 @@ test('no flock of pigeons sits in the start alley, where the cat lives', () => {
     assert.ok(!(col >= 20 && col < 24 && row >= 32 && row < 37), `flock at ${col}, ${row}`);
   }
 });
+
+test('level 1 states its objective: one line while guards remain, one once it is cleared', () => {
+  assert.equal(level.objective.length, 2);
+  for (const line of level.objective) assert.ok(typeof line === 'string' && line.length > 0);
+});

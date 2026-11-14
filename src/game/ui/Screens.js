@@ -111,7 +111,7 @@ export function drawIntro(ctx, W, H, t, level, best) {
   const s = H / 720;
   const a = clamp(Math.min(t * 3, (2.6 - t) * 2.5), 0, 1);
   ctx.globalAlpha = a;
-  const band = 150 * s;
+  const band = 186 * s;
   ctx.fillStyle = 'rgba(8,2,16,0.85)';
   ctx.fillRect(0, H / 2 - band / 2, W, band);
   ctx.fillStyle = PALETTE.pink;
@@ -122,7 +122,8 @@ export function drawIntro(ctx, W, H, t, level, best) {
   text(ctx, 'LEVEL 1', W / 2 - slide, H / 2 - 38 * s, 18 * s, PALETTE.yellow, { alpha: a });
   glitchText(ctx, level.name, W / 2 + slide, H / 2 + 2 * s, 50 * s, t, { alpha: a });
   text(ctx, level.subtitle, W / 2, H / 2 + 42 * s, 13 * s, PALETTE.white, { alpha: a * 0.85 });
-  if (best) text(ctx, `BEST ${thousands(best.total)}  ${best.grade}`, W / 2, H / 2 + 62 * s, 11 * s, PALETTE.cyan, { alpha: a * 0.8 });
+  if (level.objective) text(ctx, level.objective[0], W / 2, H / 2 + 68 * s, 16 * s, PALETTE.yellow, { alpha: a });
+  if (best) text(ctx, `BEST ${thousands(best.total)}  ${best.grade}`, W / 2, H / 2 + 92 * s, 11 * s, PALETTE.cyan, { alpha: a * 0.8 });
 }
 
 export function drawDead(ctx, W, H, t, seed, cause) {
@@ -138,13 +139,30 @@ export function drawDead(ctx, W, H, t, seed, cause) {
   if (t > 0.6 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'PRESS R TO RESTART', W / 2, H * 0.62, 24 * s, PALETTE.yellow);
 }
 
-export function drawPause(ctx, W, H, t) {
+// volume sliders of the pause screen: track rectangles in canvas pixels (shared by drawing and mouse input)
+export function pauseSliders(W, H) {
+  const s = H / 720, w = 260 * s, h = 8 * s;
+  return [['master', 'MASTER'], ['music', 'MUSIC'], ['sfx', 'EFFECTS']]
+    .map(([key, label], i) => ({ key, label, x: W / 2 - w / 2, y: H * 0.43 + i * 34 * s, w, h }));
+}
+
+export function drawPause(ctx, W, H, t, settings, selected) {
   const s = H / 720;
   ctx.fillStyle = 'rgba(8,2,16,0.7)';
   ctx.fillRect(0, 0, W, H);
-  glitchText(ctx, 'PAUSED', W / 2, H * 0.35, 70 * s, t);
-  ['ESC  RESUME', 'R  RESTART LEVEL', 'M  TOGGLE MUSIC', 'F1  SANDBOX', 'F2  SHOW ENEMY VISION', 'Q  QUIT TO TITLE']
-    .forEach((l, i) => text(ctx, l, W / 2, H * 0.5 + i * 32 * s, 18 * s, i === 0 ? PALETTE.yellow : PALETTE.white));
+  glitchText(ctx, 'PAUSED', W / 2, H * 0.27, 70 * s, t);
+  pauseSliders(W, H).forEach((r, i) => {
+    const v = settings[r.key], col = i === selected ? PALETTE.yellow : PALETTE.white, my = r.y + r.h / 2;
+    text(ctx, r.label, r.x - 24 * s, my, 16 * s, col, { align: 'right' });
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.fillStyle = col;
+    ctx.fillRect(r.x, r.y, r.w * v, r.h);
+    ctx.fillRect(r.x + r.w * v - 4 * s, my - 11 * s, 8 * s, 22 * s);
+    text(ctx, `${Math.round(v * 100)}%`, r.x + r.w + 24 * s, my, 16 * s, col, { align: 'left' });
+  });
+  ['ESC  RESUME', 'R  RESTART LEVEL', 'F1  SANDBOX', 'F2  SHOW ENEMY VISION', 'Q  QUIT TO TITLE']
+    .forEach((l, i) => text(ctx, l, W / 2, H * 0.64 + i * 26 * s, 15 * s, i === 0 ? PALETTE.yellow : PALETTE.white));
 }
 
 const LINE_EVERY = 0.38, COUNT = 0.3; // s between two lines of the breakdown, s a figure takes to count up

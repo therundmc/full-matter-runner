@@ -36,7 +36,7 @@ export function drawHUD(ctx, game, t) {
       ctx.fillRect(pad, pad + 64 * s, 150 * s * k, 6 * s);
     }
   }
-  text(ctx, `TARGETS ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 84 * s, 14 * s, PALETTE.yellow, { align: 'left' });
+  text(ctx, `GUARDS LEFT ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 84 * s, 14 * s, PALETTE.yellow, { align: 'left' });
   // stamina: only while it is coming back; pink = not enough for a slide, blinking when one was just refused
   if (p.stamina < 1) {
     const y = pad + 96 * s, bw = 150 * s, short = p.stamina < PLAYER.slide.cost;
@@ -54,6 +54,7 @@ export function drawHUD(ctx, game, t) {
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
+  drawObjective(ctx, w, game, W, s);
 
   // context hints
   let hint = '';
@@ -97,6 +98,14 @@ function drawScore(ctx, w, x, y, s) {
 }
 
 const PHASES = { caution: ['CAUTION', PALETTE.yellow], alert: ['ALERT', PALETTE.pink], evasion: ['EVASION', PALETTE.orange] };
+
+// the current goal, small at the top centre, under the alert banner (label at 26 px, its timer bar down to 40 px)
+function drawObjective(ctx, w, game, W, s) {
+  const obj = w.level.objective;
+  if (!obj) return;
+  if (!w.cleared) text(ctx, obj[0], W / 2, 56 * s, 13 * s, PALETTE.white, { alpha: 0.8 });
+  else if (game.clearedT > 3 || Math.floor(game.clearedT * 4) % 2 === 0) text(ctx, obj[1], W / 2, 56 * s, 13 * s, PALETTE.yellow);
+}
 
 // small squad alert label at the top centre, with the time left before the guards calm down
 function drawAlertPhase(ctx, dir, W, s, t) {

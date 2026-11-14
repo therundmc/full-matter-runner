@@ -53,7 +53,9 @@ export const SCORING = {
 
 // Per level: par time (s) and the total a grade starts at, best first. The last grade is the floor.
 export const LEVEL_SCORING = {
-  level1: { par: 180, grades: [['S', 32000], ['A', 24000], ['B', 16000], ['C', 9000], ['D', 0]] },
+  // recalibrated for 15 guards fought hand to hand (800 to 1000 a kill, kill tags on top, multiplier up to x4) and
+  // the end bonuses (variety now counts the tags)
+  level1: { par: 240, grades: [['S', 52000], ['A', 38000], ['B', 26000], ['C', 15000], ['D', 0]] },
 };
 
 // levels without their own entry (test rooms): scaled by the number of guards

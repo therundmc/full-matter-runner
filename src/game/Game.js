@@ -10,10 +10,11 @@ import Tension from './ai/Tension.js';
 import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
+import { loadSettings, saveSettings } from './systems/Settings.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults } from './ui/Screens.js';
+import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults, pauseSliders } from './ui/Screens.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
@@ -39,6 +40,11 @@ export default class Game {
     this.deaths = 0;
     this.loadP = 0;
     this.musicOn = true;
+    this.settings = loadSettings();
+    for (const k in this.settings) Audio.setVolume(k, this.settings[k]);
+    this.sel = 0;      // selected slider of the pause screen
+    this.grab = null;  // slider held by the mouse
+    this.lastMouse = { x: 0, y: 0 };
     this.postfx = new PostFX();
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
@@ -62,7 +68,38 @@ export default class Game {
     this.setState('title');
   }
 
-  setState(s) { this.state = s; this.stateT = 0; }
+  setState(s) { this.state = s; this.stateT = 0; this.grab = null; }
+
+  // pause screen sliders: mouse (grab a track, drag, release saves) and keyboard (up/down select, left/right +-5%)
+  updateSliders(inp) {
+    const rows = pauseSliders(this.canvas.width, this.canvas.height);
+    const { x, y } = inp.mouse, tol = 8 * this.canvas.height / 720;
+    const moved = x !== this.lastMouse.x || y !== this.lastMouse.y;
+    this.lastMouse = { x, y };
+    const set = (key, v) => {
+      v = Math.round(clamp(v, 0, 1) * 100) / 100;
+      if (v === this.settings[key]) return false;
+      this.settings[key] = v;
+      Audio.setVolume(key, v);
+      return true;
+    };
+    const audible = (key) => { if (key !== 'music') Audio.play('ui'); }; // hear the new level
+    const hover = rows.findIndex((r) => y >= r.y - tol && y <= r.y + r.h + tol && x >= r.x - tol && x <= r.x + r.w + tol);
+    if (inp.mouseHit(0) && hover >= 0) this.grab = hover;
+    if (this.grab !== null) {
+      const r = rows[this.grab];
+      this.sel = this.grab;
+      if (inp.mouseDown(0)) set(r.key, (x - r.x) / r.w);
+      else { saveSettings(this.settings); audible(r.key); this.grab = null; }
+    } else if (hover >= 0 && moved) this.sel = hover;
+    const dv = (inp.hit('ArrowDown') || inp.hit('KeyS') ? 1 : 0) - (inp.hit('ArrowUp') || inp.hit('KeyW') ? 1 : 0);
+    if (dv) this.sel = (this.sel + dv + rows.length) % rows.length;
+    const dh = (inp.hit('ArrowRight') || inp.hit('KeyD') ? 1 : 0) - (inp.hit('ArrowLeft') || inp.hit('KeyA') ? 1 : 0);
+    if (dh) {
+      const key = rows[this.sel].key;
+      if (set(key, this.settings[key] + dh * 0.05)) { saveSettings(this.settings); audible(key); }
+    }
+  }
 
   newGame() {
     // ?level=<id> picks a level (e.g. ?level=lab for the physics test room)
@@ -171,6 +208,7 @@ export default class Game {
     if (inp.hit('KeyM')) { this.musicOn = !this.musicOn; this.musicOn ? Music.start() : Music.stop(); }
 
     if (this.state === 'pause') {
+      this.updateSliders(inp);
       if (inp.hit('Escape')) this.setState('play');
       else if (inp.hit('KeyR')) this.newGame();
       else if (inp.hit('KeyQ')) this.toTitle();
@@ -316,7 +354,7 @@ export default class Game {
     this.safeDraw(ctx, () => {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best);
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
-      if (this.state === 'pause') drawPause(ctx, W, H, t);
+      if (this.state === 'pause') drawPause(ctx, W, H, t, this.settings, this.sel);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, replaying);
     });
     this.drawCursor(ctx, t);
