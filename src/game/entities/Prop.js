@@ -7,7 +7,7 @@ import { segPoly } from '../../engine/physics/Raycast.js';
 import { rand, chance, clamp, pick } from '../../engine/math.js';
 import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
-import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains } from '../render/DamageArt.js';
+import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 import { ignite } from '../systems/Gas.js';
@@ -63,6 +63,7 @@ export default class Prop {
     this.screenHp = 2;
     this.leaks = 0;
     this.spilled = 0;
+    this.rack = null;   // the bottles standing in plain sight (rec.rack), see bottles()
     world.addBody(this.body);
   }
 
@@ -128,6 +129,7 @@ export default class Prop {
     const energy = info.energy ?? ENERGY[kind] ?? 10;
     const inc = kind === 'blast' || kind === 'shrapnel' ? 1 : incidence(dirA, info.nx, info.ny);
     const g = this.ensureCanvas();
+    if (rec.rack) this.bottles(); // read off the sprite before anything marks it
     const { sx, sy } = this.spritePoint(px, py, dirA, kind === 'cut' ? Math.min(4, Math.min(this.W, this.H) * 0.3) : 1.2);
     this.lastHit = [sx, sy];
     if (d.gas) damage = this.gasHit(damage, kind, sx, sy, dirA);
@@ -152,6 +154,7 @@ export default class Prop {
       if (chance(0.3)) w.particles.smoke(px, py, 1, 2, { speed: 15, size: 3, life: 0.8, dark: true });
     }
     this.spillOnHit(px, py, dirA);
+    if (rec.rack) this.burstRack(sx, sy, tr ? tr.x : sx, tr ? tr.y : sy, dirA, kind);
     if (rec.powder) w.particles.dust(px, py, 4, 5, rec.powder, { speed: 35, size: 4, life: 1.8, alpha: 0.35 });
     if (rec.leak?.on === 'hit' || d.water) this.leak(sx, sy, dirA);
     w.sound(fx.glass || (d.glass && this.inRect(rec.screen, sx, sy)) ? 'glassHit' : fx.hit, px, py, kind === 'pellet' ? 0.35 : 0.55);
@@ -356,16 +359,56 @@ export default class Prop {
     this.lightsOut = true;
   }
 
-  // something inside falls out of the hole (a book, a ball) or bursts (a bottle)
+  // something inside falls out of the hole (a book, a ball)
   spillOnHit(px, py, dirA) {
     for (const c of this.rec.contents) {
       if (c.on !== 'hit' || this.spilled >= 6 || !chance(c.perHit ?? 1)) continue;
       this.spilled++;
-      const bit = BITS[c.bit];
-      // a bottle behind the counter bursts where it stands and runs down to the foot of it, on the shooter's side
-      if (bit.smash) this.smashBit(bit.smash, pick(c.colors || bit.colors), px - Math.cos(dirA) * 9, py - Math.sin(dirA) * 9, dirA + Math.PI);
-      else this.throwBits(bit, c, 1, px, py, dirA + Math.PI + rand(-0.8, 0.8), 0.8);
+      this.throwBits(BITS[c.bit], c, 1, px, py, dirA + Math.PI + rand(-0.8, 0.8), 0.8);
     }
+  }
+
+  // the bottles or glasses standing on it (rec.rack): found, or set out, the first time they are needed
+  bottles() {
+    if (!this.rack) {
+      this.ensureCanvas();
+      this.rack = rackSlots(this.canvas, this.rec.rack, this.x * 7 + this.y * 13);
+    }
+    return this.rack;
+  }
+
+  // what a hit bursts on the rack: the bottles on a bullet's way (sprite points, entry to end of its channel), those
+  // under a blow, a whole stretch in a blast
+  burstRack(sx, sy, ex, ey, dirA, kind) {
+    const shot = kind === 'bullet' || kind === 'rifle' || kind === 'pellet';
+    const reach = shot ? 2.4 : kind === 'blast' ? 16 : 6;
+    const most = kind === 'pellet' ? 1 : kind === 'bullet' ? 2 : kind === 'rifle' ? 3 : kind === 'blast' ? 8 : 4;
+    const dx = ex - sx, dy = ey - sy, l2 = dx * dx + dy * dy;
+    const off = (b) => { // from the middle of the bottle to the segment
+      const qx = b.x + b.s / 2 - sx, qy = b.y + b.s / 2 - sy, t = l2 ? clamp((qx * dx + qy * dy) / l2, 0, 1) : 0;
+      return Math.hypot(qx - dx * t, qy - dy * t);
+    };
+    this.rack.filter((b) => b.up).map((b) => [off(b), b]).filter(([d]) => d <= reach)
+      .sort((p, q) => p[0] - q[0]).slice(0, most).forEach(([, b]) => this.popBottle(b, dirA + Math.PI));
+  }
+
+  // one bottle of the rack bursts where it stands: glass in its colour, a splash thrown back toward dirA, and what
+  // it held running off the front of the shelf to stand at the foot of it
+  popBottle(b, dirA) {
+    const w = this.world, P = w.particles, rack = this.rec.rack, smash = BITS[rack.bit].smash;
+    const wet = LIQUIDS.kinds[smash.kind].splash;
+    b.up = false;
+    popSlot(this.canvas, this.img, b, wet);
+    const p = this.toWorld(b.x + b.s / 2, b.y + b.s / 2), foot = this.toWorld(b.x + b.s / 2, this.H + 2);
+    const front = this.body.angle + Math.PI / 2;
+    P.glass(p.x, p.y, dirA, 1.5, 5, 90);
+    P.chips(p.x, p.y, dirA, 1.5, 4, b.color, 90);
+    P.drops(p.x, p.y, dirA, 1.3, 6, wet, 80, 3, false);
+    w.emit(foot.x, foot.y, 0.9, () => {
+      if (chance(0.45)) P.drops(foot.x + rand(-1.5, 1.5), foot.y, front, 0.6, 1, wet, 22, 9, false);
+    });
+    w.events.emit('spill', { x: foot.x, y: foot.y, kind: smash.kind, area: smash.area * (rack.share ?? 1) * rand(0.6, 1.3), dur: 0.9 });
+    w.sound('glassHit', p.x, p.y, 0.45, { pitch: rand(0.9, 1.25) });
   }
 
   // loose bits: real-size little physical things (pool balls roll, records skid, books tumble, bottles smash)
@@ -562,7 +605,8 @@ export default class Prop {
     let bits = DESTRUCTION.maxBits;
     for (const c of rec.contents) {
       if (c.on !== 'break') continue;
-      const n = Math.min(c.n, bits);
+      // of a rack, only the bottles still standing are left to fall
+      const n = Math.min(c.n, bits, c.bit === rec.rack?.bit && this.rack ? this.rack.filter((b) => b.up).length : c.n);
       bits -= n;
       this.throwBits(BITS[c.bit], c, n, x, y, dirA, Math.max(0.8, power * 0.8));
     }
@@ -689,6 +733,7 @@ export default class Prop {
       if (!this.def.hung) drawSprite(ctx, this.shadowImg(), o.x + 5, o.y + 7, a, 0.28);
       return;
     }
+    if (this.rec.rack?.scatter && !this.rack) this.bottles(); // the glasses on a counter are set out when first seen
     drawSprite(ctx, this.shadowImg(), x + 3, y + 3, a, this.canvas ? 0.3 : 0.35);
     drawSprite(ctx, this.look, x, y, a, 1, this.squash);
     if (this.flash > 0) {

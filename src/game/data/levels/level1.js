@@ -152,9 +152,9 @@ export default {
     ['bar_counter', 15.5, 13.4, 0], ['bar_counter', 16.5, 13.4, 0], ['bar_counter', 17.5, 13.4, 0],
     ['bar_counter', 18.5, 13.4, 0], ['bar_counter', 19.5, 13.4, 0], ['bar_counter', 20.5, 13.4, 0],
     ['chair', 15.6, 14.15, 270], ['chair', 16.8, 14.15, 270], ['chair', 18, 14.15, 270], ['chair', 19.2, 14.15, 270],
-    ['chair', 20.4, 14.15, 270], ['bookshelf', 17.5, 12.2, 0], ['bookshelf', 20.1, 12.2, 0],
-    ['neon_tube_pink', 18.8, 12.07, 0], ['ceiling_lamp', 16.5, 13.4, 0], ['ceiling_lamp', 18.5, 13.4, 0],
-    ['ceiling_lamp', 20.5, 13.4, 0],
+    ['chair', 20.4, 14.15, 270], ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0],
+    ['back_bar', 20.71, 12.16, 0], ['neon_tube_pink', 18.5, 12.05, 0], ['ceiling_lamp', 16.5, 13.4, 0],
+    ['ceiling_lamp', 18.5, 13.4, 0], ['ceiling_lamp', 20.5, 13.4, 0],
     // the bar: booths, card table, pool
     ['sofa', 15.5, 16.2, 270], ['table', 16.5, 16.2, 90], ['chair', 17.3, 15.8, 180], ['chair', 17.3, 16.6, 180],
     ['sofa', 15.5, 18.6, 270], ['table', 16.5, 18.6, 90], ['chair', 17.3, 18.2, 180], ['chair', 17.3, 19, 180],

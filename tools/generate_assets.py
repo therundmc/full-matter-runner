@@ -1918,7 +1918,8 @@ def p_dj_booth():
 
 def p_bar_counter():
     """One metre of bar (levels chain them along x, so it tiles seamlessly): bartender lip at -y, polished
-    mahogany top, padded armrest and brass foot rail on the customer side (+y), a beer on a mat."""
+    mahogany top, padded armrest and brass foot rail on the customer side (+y). The glasses standing on it are
+    set out by the game (DESTRUCTION rack), so that no two metres are alike."""
     W, H = 32, 21
     cv = Cv(W, H)
     wood = ramp('#4a2418', 0.45, 0.2, 0.32)
@@ -1948,12 +1949,6 @@ def p_bar_counter():
     for x in (7, 8):                        # rail brackets
         cv.set(x, 18, BRASS[0])
         cv.set(x + 16, 18, BRASS[0])
-
-    def beer(ly):
-        fill_shape(ly, 19.5, 8.5, 3.2, 3.2, lambda u, v, L: hx('#e8dcb8') if math.hypot(u, v) < 2.4 else hx('#2a5a9a'))
-        glass_top(ly, 19.5, 8.5, 2.0, hx('#e8a830'))
-        ly.set(19, 8, hx('#fff4d8'))        # head
-    layer(cv, beer, dk(wood[0], 0.4))
     return cv
 
 
@@ -3746,9 +3741,39 @@ def p_neon_sign_wash():
     return cv, gl
 
 
-SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
+def p_back_bar():
+    """The bar's back shelves, hung on the wall (-y): a strip of mirror, two ranks of bottle tops (same grid as the
+    liquor shelf: DESTRUCTION rack), the glass edge of the shelf lit pink from below."""
+    W, H = 42, 10
+    cv = Cv(W, H)
+    wood = ramp('#3a2218', 0.45, 0.22, 0.3)
+    gap = dk(wood[0], 0.25)
+    cv.rect(1, 1, W - 2, H - 2, gap)
+    rng = random.Random(47)
+    for x in range(1, W - 1):                                 # the mirror: the room's lights slide across it
+        m = hx('#8ea6ba') if (x // 3) % 4 else hx('#d4e4f0')
+        cv.set(x, 1, shift(m, rng.randint(-8, 8)))
+    glass = ['#2f7a3c', '#b4681c', '#bcd4cc', '#3c68b0', '#5a2a12', '#d0a02c', '#8a1f2a', '#c8c8d8', '#7a3aa0']
+    for rank, y in enumerate((2, 5)):
+        for slot in range(12):
+            if rng.random() < 0.08:                           # one is out, on the counter
+                continue
+            col = hx(rng.choice(glass))
+            x = 3 + slot * 3
+            cv.set(x, y, lt(col, 0.5))
+            cv.set(x + 1, y, col)
+            cv.set(x, y + 1, col)
+            cv.set(x + 1, y + 1, dk(col, 0.4))
+    for x in range(1, W - 1):
+        cv.set(x, 7, hx('#ff5f96') if x % 7 else hx('#ffc0d8'))   # lit edge
+        cv.set(x, 8, wood[1])
+    cv.outline()
+    return cv
+
+
+SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash)
-SHOP_SIZES = dict(bottle_shelf=(42, 13), washer=(24, 24), neon_sign_liquor=(46, 14), neon_sign_video=(44, 14),
+SHOP_SIZES = dict(bottle_shelf=(42, 13), back_bar=(42, 10), washer=(24, 24), neon_sign_liquor=(46, 14), neon_sign_video=(44, 14),
                   neon_sign_wash=(50, 14))
 SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash']
 

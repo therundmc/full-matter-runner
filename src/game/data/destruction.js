@@ -20,6 +20,10 @@
 //   leak       { color, on: 'hit'|'break', dur, kind?, flood? }  a jet of liquid for dur s out of each hole (on: 'hit')
 //              or once it gives way; kind (LIQUIDS.kinds): it stands as a puddle, else it only stains;
 //              flood: px2 that pour out of the broken pipe when it falls apart
+//   rack       bottles or glasses standing in plain sight, burst one by one by what hits them (bit: their BITS
+//              entry, share: how much of a bottle each holds). Either drawn in the sprite on a grid
+//              { x, dx, n, ys, s }: n across from x every dx px, one rank per ys, s px square, front at +y; or set
+//              out by the game on a bare top { scatter: [min, max], rect: [x0, y0, x1, y1] px, colors }
 //   drop       true: hangs high (ceiling lamps, street lamp head): pieces fall from the ceiling
 export const DESTRUCTION = {
   table: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' } },
@@ -73,8 +77,8 @@ export const DESTRUCTION = {
     contents: [{ bit: 'book', n: 10, on: 'break' }, { bit: 'book', n: 2, on: 'hit', perHit: 1 }],
   },
   bar_counter: {
-    height: 1.05, parts: [{ cut: 'planks', n: 2, axis: 'long', snap: true }], leak: { kind: 'booze', color: 'rgba(104,58,16,0.4)', on: 'hit', dur: 1.6 },
-    contents: [{ bit: 'bottle', n: 6, on: 'break' }, { bit: 'bottle', n: 1, on: 'hit', perHit: 0.6 }],
+    height: 1.05, parts: [{ cut: 'planks', n: 2, axis: 'long', snap: true }],
+    rack: { bit: 'bottle', share: 0.3, scatter: [0, 2], rect: [2, 4, 26, 9], colors: ['#e8a830', '#d8c8a0', '#b4541c', '#e0e6ea'] },
   },
   fridge: {
     height: 1.8, parts: [{ cut: 'panel', rect: [0, 0.72, 1, 1], name: 'door', fly: 1.8 }, { cut: 'grid', cols: 2, rows: 1 }],
@@ -117,8 +121,13 @@ export const DESTRUCTION = {
   chain_fence: { height: 1.3, material: 'metal', parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   bottle_shelf: {
     height: 1.8, parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
-    leak: { color: 'rgba(150,90,20,0.5)', on: 'hit', dur: 1.5 },
-    contents: [{ bit: 'bottle', n: 12, on: 'break' }, { bit: 'bottle', n: 2, on: 'hit', perHit: 1 }],
+    rack: { bit: 'bottle', x: 3, dx: 3, n: 12, ys: [3, 6, 9], s: 2 },
+    contents: [{ bit: 'bottle', n: 12, on: 'break' }],
+  },
+  back_bar: {
+    height: 1.7, parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
+    rack: { bit: 'bottle', share: 0.6, x: 3, dx: 3, n: 12, ys: [2, 5], s: 2 },
+    contents: [{ bit: 'bottle', n: 10, on: 'break' }],
   },
   washer: {
     height: 0.95, parts: [{ cut: 'panel', rect: [0.2, 0.3, 0.8, 0.9], name: 'lid', fly: 1.6 }, { cut: 'grid', cols: 2, rows: 2 }],

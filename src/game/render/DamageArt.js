@@ -334,6 +334,55 @@ export function smashScreen(src, rect) {
   g.restore();
 }
 
+// The bottles or glasses of a rack (DESTRUCTION rack) as slots { x, y, s, color, bg, up } in sprite pixels. A grid
+// rack is read off the pristine sprite (a slot the colour of the gap beside it is empty); a scatter rack is set
+// out here on the bare top, the same way every time for a given seed.
+export function rackSlots(src, rack, seed) {
+  const g = src.getContext('2d'), slots = [];
+  if (rack.scatter) {
+    let s = (Math.floor(seed) * 2654435761) >>> 0;
+    const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const [x0, y0, x1, y1] = rack.rect, [lo, hi] = rack.scatter;
+    for (let n = lo + Math.floor(r() * (hi - lo + 1)); n > 0; n--) {
+      const b = { x: Math.round(x0 + r() * (x1 - x0)), y: Math.round(y0 + r() * (y1 - y0)), s: 4,
+        color: rack.colors[Math.floor(r() * rack.colors.length)], bg: null, up: true };
+      if (slots.some((o) => Math.abs(o.x - b.x) < 7 && Math.abs(o.y - b.y) < 6)) continue;
+      // a glass from above: its shadow, its rim, what is left in it, a glint
+      g.fillStyle = 'rgba(0,0,0,0.35)';
+      g.fillRect(b.x + 1, b.y + 4, 3, 1); g.fillRect(b.x + 4, b.y + 1, 1, 3);
+      g.fillStyle = '#cfdfe8';
+      g.fillRect(b.x + 1, b.y, 2, 4); g.fillRect(b.x, b.y + 1, 4, 2);
+      g.fillStyle = b.color;
+      g.fillRect(b.x + 1, b.y + 1, 2, 2);
+      g.fillStyle = '#ffffff';
+      g.fillRect(b.x + 1, b.y, 1, 1);
+      slots.push(b);
+    }
+    return slots;
+  }
+  const at = (x, y) => g.getImageData(x, y, 1, 1).data;
+  for (const y of rack.ys) {
+    for (let i = 0; i < rack.n; i++) {
+      const x = rack.x + i * rack.dx, c = at(x + 1, y), o = at(x + rack.s, y);
+      if (Math.abs(c[0] - o[0]) + Math.abs(c[1] - o[1]) + Math.abs(c[2] - o[2]) < 24) continue;
+      slots.push({ x, y, s: rack.s, color: `rgb(${c[0]},${c[1]},${c[2]})`, bg: `rgb(${o[0]},${o[1]},${o[2]})`, up: true });
+    }
+  }
+  return slots;
+}
+
+// a slot of the rack once its bottle burst: the bare shelf (or the top of the pristine sprite img), a bit of
+// glass left standing, and what it held (wet: its colour) running toward the front
+export function popSlot(src, img, b, wet) {
+  const g = src.getContext('2d');
+  if (b.bg) { g.fillStyle = b.bg; g.fillRect(b.x, b.y, b.s, b.s); }
+  else g.drawImage(img, b.x, b.y, b.s + 1, b.s + 1, b.x, b.y, b.s + 1, b.s + 1);
+  g.fillStyle = 'rgba(214,236,244,0.7)';
+  g.fillRect(b.x + (chance(0.5) ? 0 : b.s - 1), b.y + (chance(0.5) ? 0 : b.s - 1), 1, 1);
+  g.fillStyle = wet.replace(/[\d.]+\)$/, '0.55)');
+  g.fillRect(b.x + Math.floor(rand(0, b.s)), b.y + b.s - 1, 1, Math.min(src.height - b.y - b.s, Math.round(rand(2, 4))));
+}
+
 // two halves of a long piece (a door leaf), cut across with a splintered edge
 export function splitInTwo(src) {
   const W = src.width, H = src.height, cut = W * rand(0.4, 0.6);

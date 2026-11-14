@@ -233,8 +233,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Liquids (systems/Liquids.js, `LIQUIDS` in Config.js): a source pours px² of liquid per second into a puddle that
   spreads up to its cap, stands, then dries (`world.liquids.source` / `feed`; a destroyed `def.fountain` prop is a
   source). Anything else that pours emits `spill`: a prop's `leak` in data/destruction.js names a `kind` (water for
-  sinks and toilets, which also `flood` when they fall apart; booze for the bar), and bottles (`BITS.bottle.smash`)
-  thrown out of a counter or a crate shatter where they land (`Debris` / shard `onLand`) into a small booze puddle.
+  sinks and toilets, which also `flood` when they fall apart), and bottles (`BITS.bottle.smash`) thrown out of a
+  shelf or a crate shatter where they land (`Debris` / shard `onLand`) into a small booze puddle. Bottles in plain
+  sight are a `rack` (data/destruction.js): the grid of bottle tops drawn in a shelf's sprite (liquor shelf, the
+  bar's `back_bar` on the wall behind the counter) or the glasses the game sets out on each metre of counter. What
+  hits the prop bursts the ones on its way one by one (`Prop.burstRack`: wiped off the sprite, glass in their
+  colour, the drink running off the front to a puddle at the foot); only those still standing fall when it breaks.
   Each kind has its own look (`kinds[k].puddle`: body, sheen, glint, rings, foam), prints and splash; a puddle
   creeps toward what feeds it, drinks up a smaller one of the same kind it has spread over, and when there are
   `maxPuddles` the smallest soaks away. The blood under a body is owned and drawn by the corpse; Liquids only tracks where it is wet

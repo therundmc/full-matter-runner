@@ -64,6 +64,8 @@ export const PROPS = {
   // shop fronts of the street: what shows behind the lit display windows, and their neon wall signs (mounted like
   // the bar's: 3 px off the wall face; unlike the pictures they read one way up, so never rotate them)
   bottle_shelf: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
+  // the bar's own bottles, racked on the wall behind the counter (a shallow shelf: the bartender walks past it)
+  back_bar: { static: true, material: 'wood', w: 40, h: 8, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
   washer: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sound: 'metal', blocksPath: true },
   neon_sign_liquor: { material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },

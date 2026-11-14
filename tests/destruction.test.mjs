@@ -147,9 +147,27 @@ test('liquids in things: what stands as a puddle names a kind the floor knows ho
     for (const part of ['body', 'sheen', 'glint', 'ring']) assert.ok(k.puddle[part], `${kind}.${part}`);
     assert.ok(k.prints > 0 && k.wet > 0);
   }
-  assert.equal(recipeFor('bar_counter', PROPS.bar_counter).leak.kind, 'booze');
   assert.ok(BITS.bottle.smash.share > 0.5 && BITS.bottle.smash.area > 100);
   for (const type of ['toilet', 'sink']) assert.ok(recipeFor(type, PROPS[type]).leak.flood, type);
+});
+
+test('racks: bottles in plain sight are something that smashes into a liquid, on a grid inside the sprite', () => {
+  let grids = 0;
+  for (const [type, def] of Object.entries(PROPS)) {
+    const { rack } = recipeFor(type, def);
+    if (!rack) continue;
+    assert.ok(LIQUIDS.kinds[BITS[rack.bit].smash.kind], `${type}: ${rack.bit}`);
+    if (rack.scatter) {
+      assert.ok(rack.scatter[0] <= rack.scatter[1] && rack.colors.length > 0, type);
+      assert.ok(rack.rect[2] + 5 <= def.w && rack.rect[3] + 5 <= def.h, `${type}: glasses stand on the top`);
+    } else {
+      grids++;
+      // sprites carry a 1 px outline around the body: the last bottle and the last rank stay inside it
+      assert.ok(rack.x + (rack.n - 1) * rack.dx + rack.s <= def.w + 1, `${type}: across`);
+      assert.ok(Math.max(...rack.ys) + rack.s <= def.h + 1, `${type}: ranks`);
+    }
+  }
+  assert.ok(grids >= 2 && recipeFor('bar_counter', PROPS.bar_counter).rack.scatter, 'shelves and the counter');
 });
 
 test('collapse launch: pieces leave along the blow, pushed out from the centre', () => {

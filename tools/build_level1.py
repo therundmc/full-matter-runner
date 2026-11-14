@@ -279,9 +279,9 @@ for i in range(6):
     lv.prop('bar_counter', 15.5 + i, 13.4)
 for x in (15.6, 16.8, 18.0, 19.2, 20.4):
     lv.prop('chair', x, 14.15, 270)
-lv.prop('bookshelf', 17.5, 12.2)
-lv.prop('bookshelf', 20.1, 12.2)
-lv.prop('neon_tube_pink', 18.8, 12.07)
+for x in (17.59, 19.41, 20.71):                           # the bottles: racked on the wall, either side of the
+    lv.prop('back_bar', x, 12.16)                        # bartender and of the neon over his head
+lv.prop('neon_tube_pink', 18.5, 12.05)
 for x in (16.5, 18.5, 20.5):
     lv.prop('ceiling_lamp', x, 13.4)
 
