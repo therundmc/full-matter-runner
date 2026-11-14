@@ -21,6 +21,8 @@ const BEAT = 0.7;         // ... and from which the song proper, with its beat, 
 const STAGES = 5;         // layers a kill chain can bring in (see setCombo)
 const STAGE_GAIN = 0.045; // each of them a little louder
 const HOT = 0.9;          // ... and under which a fight stays on its first section (no double-time chase)
+const FADE_BARS = 2;      // bars a new form takes to open up out of the muffled mix
+const OPEN = 20000;       // Hz: the mix's tone filter wide open
 
 // ---------------------------------------------------------------- harmony
 const PC = { C: 0, Db: 1, D: 2, Eb: 3, E: 4, F: 5, Gb: 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11 };
@@ -394,7 +396,8 @@ class Session {
     this.out = gain(MIX.out);
     this.out.connect(dest);
     this.mix = gain(MIX.bus);
-    chain(this.mix, filt('highpass', 28), shaper(CLIP), this.out);
+    this.tone = filt('lowpass', OPEN, 0.6); // the fades between parts close and open it (see tone)
+    chain(this.mix, filt('highpass', 28), this.tone, shaper(CLIP), this.out);
     this.drums = gain(1); this.drums.connect(this.mix);
     this.duck = gain(1); this.duck.connect(this.mix);
 
@@ -561,7 +564,22 @@ class Session {
     this.gate.gain.setTargetAtTime(0, t1, 0.006);
   }
 
-  setLevel(t, v) { this.mix.gain.setTargetAtTime(v * MIX.bus, t, 0.3); }
+  setLevel(t, v, glide = 0.3) { this.mix.gain.setTargetAtTime(v * MIX.bus, t, glide); }
+
+  // the fades between parts: the whole mix muffled down to `close` Hz from step `at` over `dur` bars, or opened up
+  // from `from` Hz over `open` bars (0: at once)
+  fade(t0, { from, open, close, at = 0, dur = 1 }) {
+    const f = this.tone.frequency;
+    if (close) {
+      const t = t0 + at * STEP;
+      f.setValueAtTime(OPEN, t);
+      f.exponentialRampToValueAtTime(close, t + dur * BAR);
+    } else if (!open) f.setValueAtTime(OPEN, t0);
+    else {
+      f.setValueAtTime(from, t0);
+      f.exponentialRampToValueAtTime(OPEN, t0 + open * BAR);
+    }
+  }
 
   fadeOut() { this.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.08); }
 
@@ -635,6 +653,7 @@ class Music {
     this.out = false;    // the bar being planned is the last of a fight
     this.fightBars = 0;  // bars of the combat variant played in a row
     this.stage = 0;
+    this.fresh = false;  // the bar being planned is the first of a new form
   }
 
   _tick(until) {
@@ -656,12 +675,14 @@ class Music {
       if (this.form !== want) {
         this.pos = fight && want === FORMS.game ? AFTERMATH : 0;
         this.form = want; this.bar = 0; this.fightBars = 0;
+        this.fresh = true;
       }
       this.cued = false;
       this.level += (this.target - this.level) * 0.5;
       const top = Math.min(STAGES, this.combo);
       this.stage = top >= this.stage ? top : this.stage - 1;
       const p = this._plan();
+      this.fresh = false;
       this._play(this.nextBar, p);
       if (this.onBar) this.onBar(p, this.nextBar);
       if (++this.bar >= SECTION_BARS) {
@@ -718,7 +739,10 @@ class Music {
     let hat = on('hats') ? hits(HATS[pick(sec.hats, b < 2 ? -1 : 0)]) : [];
     let tom = [];
     let fill = null;
-    if (sec.fills && last) fill = FILLS[['roll', 'toms', 'toms2', 'flam'][Math.floor(r() * 4)]];
+    // at the top of a chain the fight rolls into every fourth bar: 32nd notes swelling over its second half
+    const roll = fight && st >= STAGES - 1 && b % 4 === 3 && !this.out;
+    if (roll) { snare = snare.filter((h) => h.s < 8); hat = hat.filter((h) => h.s < 8 || h.ch !== 'o'); }
+    else if (sec.fills && last) fill = FILLS[['roll', 'toms', 'toms2', 'flam'][Math.floor(r() * 4)]];
     else if (sec.fills && b % 4 === 3 && r() < (sec.fillRate ?? 0.6)) fill = FILLS[r() < 0.5 ? 'small' : 'flam'];
     if (fill) {
       const from = Math.min(...[fill.snare, fill.tom].filter(Boolean).map((p) => p.search(/[^.]/)));
@@ -770,6 +794,15 @@ class Music {
       lead = phrase.map(([s, m, len]) => ({ s, m: m + oct, len }));
     }
 
+    // fades between parts (Session.fade): a new form comes in muffled and opens up, a fight excepted (it hits at
+    // once and closes down over its last bar); a section of the song closes a little over its last half bar and
+    // opens again over the next, a drop at once
+    let fade = null;
+    if (this.fresh) fade = fight ? { open: 0 } : { from: 500, open: FADE_BARS };
+    else if (this.out) fade = { close: 700 };
+    else if (game && b === 0) fade = sec.impact ? { open: 0 } : { from: 2400, open: 1 };
+    else if (game && last && !sec.riser && !SECTIONS[after].impact) fade = { close: 2400, at: 8, dur: 0.5 };
+
     const bite = sec.bite ?? 1;
     const plan = {
       name, pass, bar: b, e, stage: st, chords, kick, snare, clap, hat, tom, bass, arp, lead,
@@ -777,7 +810,8 @@ class Music {
       level: sec.level * (1 + STAGE_GAIN * st), duck: sec.duck, pad: sec.pad, leadVol: sec.leadVol ?? 1,
       padCut: (300 + 2400 * e) * (sec.padCut ?? 1) * (sec.sweep ? 0.35 + 0.65 * (b / 7) : 1),
       bassCut: [(90 + 260 * e) * bite, (500 + 2200 * e) * bite], arpDecay: 0.05 + 0.1 * e, arpCut: (1200 + 3200 * e) * bite,
-      crash: b === 0 && sec.crash, impact: b === 0 && sec.impact, down: b === 0 && sec.down,
+      roll, fade, glide: this.fresh && !fight ? BAR : 0.3,
+      crash: (b === 0 && sec.crash) || (fight && st >= STAGES - 1 && b % 4 === 0), impact: b === 0 && sec.impact, down: b === 0 && sec.down,
       riser: sec.riser && b === SECTION_BARS - sec.riser ? sec.riser : 0,
     };
     if (sec.breath && b === SECTION_BARS - 1) for (const k of ['kick', 'snare', 'clap', 'hat', 'tom', 'bass', 'arp', 'lead']) plan[k] = plan[k].filter((h) => h.s < 12);
@@ -786,7 +820,8 @@ class Music {
 
   _play(t0, p) {
     const S = this.S, at = (s) => t0 + s * STEP;
-    S.setLevel(t0, p.level);
+    S.setLevel(t0, p.level, p.glide);
+    if (p.fade) S.fade(t0, p.fade);
     S.padLevel(t0, p.pad, p.padCut);
     for (const h of p.stab) S.padStab(at(h.s), p.pad * h.v);
     for (const c of p.chords) S.chord(at(c.s), c.voicing);
@@ -814,6 +849,10 @@ class Music {
       g1 = t + GATE_HOLD;
     }
     if (g1 > 0) S.gateOpen(g0, g1);
+    if (p.roll) {
+      for (let k = 0; k < 16; k++) S.hit('snare', at(8 + k / 2), MIX.snare * (0.25 + 0.75 * (k / 15) ** 1.6), { gate: true, rate: 1 + k * 0.006 });
+      S.gateOpen(at(8), at(16));
+    }
 
     if (p.crash) S.hit('crash', t0, MIX.crash, { verb: true });
     if (p.impact) S.hit('kick', t0, MIX.impact, { rate: 0.5, verb: true });

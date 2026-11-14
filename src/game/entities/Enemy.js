@@ -249,11 +249,11 @@ export default class Enemy extends Character {
     } else if (this.nag >= L.last && this.nagStage < 2) {
       this.nagStage = 2;
       this.barkT = 0;
-      this.say('warn');
+      if (this.say('warn')) this.world.sound('mutter', this.x, this.y, 1, { pitch: this.voice });
       this.showIcon('!', 1.2);
     } else if (this.nag >= L.first && this.nagStage < 1 && this.say('shoo')) {
       this.nagStage = 1;
-      this.world.sound('shout', this.x, this.y, 0.45, { pitch: this.voice });
+      this.world.sound('mutter', this.x, this.y, 0.6, { pitch: this.voice });
     }
   }
 

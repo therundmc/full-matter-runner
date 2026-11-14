@@ -103,9 +103,8 @@ export default {
     ['string_lights', 22, 36.1, 0], ['wall_lamp', 20.09, 34.6, 270],
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 28.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
-    ['trash_can', 14, 31.65, 0], ['hydrant', 26.5, 30.35, 0], ['phone_booth', 34.6, 31.61, 180],
-    ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180], ['palm_tree', 4.5, 31.2, 0],
-    ['palm_tree', 39.5, 31.2, 0],
+    ['hydrant', 26.5, 30.35, 0], ['phone_booth', 34.6, 31.61, 180], ['news_box', 10.7, 31.8, 180],
+    ['neon_sign_palm', 17, 31.91, 180], ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 39.5, 31.2, 0],
     // road: parked along the bar side
     ['car2', 14.6, 24, 0, { lights: false }], ['car', 31.2, 24, 180], ['van', 38.6, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
@@ -182,7 +181,7 @@ export default {
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
-  critters: {"cats": [[23.4, 34.5]], "pigeons": [[21.5, 32.8, 5], [33.3, 21.7, 3], [27.5, 2.6, 4]]},
+  critters: {"cats": [[23.4, 34.5]], "pigeons": [[21.5, 32.8, 3], [33.3, 21.7, 2], [27.5, 2.6, 2]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
   street: {"papers": [[0, 30, 43, 31, 9], [20, 32, 23, 36, 3], [0, 21, 43, 22, 9], [0, 23, 43, 29, 6], [11, 1, 13, 19, 4], [14, 1, 32, 4, 4]], "beds": [[22.1, 36.5, 0]], "manholes": [[9.5, 25.2], [27.3, 28.5], [12.5, 10.6]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer

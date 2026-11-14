@@ -519,15 +519,14 @@ export default class Ambient {
     }
   }
 
-  // floating scream over a passer-by (world texts) and his own voice, rate limited so the screen stays readable;
-  // a runner's breath has no words
+  // a passer-by's own voice, and a floating scream over him (world texts) rate limited so the screen stays
+  // readable; a runner's breath has no words
   bark(civ, kind) {
     const voice = VOICES[kind] || 'scream';
-    if (kind === 'pant') { this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice }); return; }
-    if (this.barkT > 0) return;
+    this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice });
+    if (kind === 'pant' || this.barkT > 0) return;
     const lines = BARKS[kind] || BARKS.scream;
     this.barkT = A.barkGap;
     this.world.texts.push({ x: civ.x, y: civ.y - 16, str: lines[Math.floor(this.r() * lines.length)], t: 1.1, dur: 1.1, color: BARK_COLOR });
-    this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice });
   }
 }

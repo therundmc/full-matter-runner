@@ -330,7 +330,7 @@ export const CRITTERS = {
   },
   // flies per swarm, px it spreads over; s before a body draws them, bodies at most
   flies: { dumpster: 6, wide: 26, body: 4, close: 9, cold: 20, bodies: 4 },
-  moths: { n: 4, at: { streetlight: 56, wall_lamp: 0, neon_sign_bar: 0, neon_sign_palm: 0, neon_sign_liquor: 0 } }, // px along the prop to its lamp
+  moths: { n: 2, at: { streetlight: 56, wall_lamp: 0, neon_sign_bar: 0, neon_sign_palm: 0, neon_sign_liquor: 0 } }, // px along the prop to its lamp
 };
 
 export const AMBIENT = {

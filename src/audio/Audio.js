@@ -74,11 +74,12 @@ const META = {
   cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.9, reach: 1900 },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
   whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.6, reach: 1200 },
-  scream: { pri: 2, dur: 0.5, gap: 0.45, max: 2, gain: 0.75, reach: 1700 },
+  scream: { pri: 2, dur: 0.6, gap: 0.22, max: 3, gain: 0.7, reach: 1700 },
+  mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.55, reach: 900 },
   pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.4, reach: 800 },
   sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700 },
   // doors, movement
-  door: { gain: 0.6 },
+  door: { dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.85 },
   creak: { dur: 0.6, gap: 0.2, max: 2, gain: 0.5 },
   vault: { dur: 0.5, gain: 0.8 }, climb: { pri: 2, dur: 0.8, gap: 0.2, max: 2, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
@@ -246,14 +247,15 @@ const FOLEY = {
   bodyFall: [['thud', 1, 0.8], ['soft', 0.5, 0.8, 0.06]],
   shout: [['yell', 1]],
   whimper: [['pain', 0.8, 1.12]], // a man on his knees begging
-  scream: [['yell', 1, 1.1]],     // a passer-by running for his life
+  scream: [['pain', 1, 1.06]],    // a cry of panic: a passer-by running for his life
   sob: [['pain', 0.55, 1.3], ['pain', 0.4, 1.45, 0.3, 0.6]], // curled up in a corner, under his breath
   // a guard seized from behind: sleeves, his stifled grunt; then his neck, a dry crack, and the body let down
   grab: [['swish', 0.35, 1.2], ['soft', 0.7, 1.1, 0.04], ['pain', 0.3, 0.9, 0.1]],
   neck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14], ['thud', 0.6, 0.8, 0.32]],
   // doors, movement
-  door: [['door', 1]],
-  doorSlam: [['doorSlam', 1], ['thud', 0.5, 0.8]],
+  // a leaf swinging into its stop knocks (its body in _door); kicked or breached it bangs (_doorSlam)
+  door: [['wood', 0.35, 1.2]],
+  doorSlam: [['wood', 0.75, 0.85], ['thud', 0.8, 0.75]],
   creak: [['creak', 1]],
   vault: [['swish', 0.3, 0.6], ['soft', 0.6, 1, 0.1], ['thud', 0.5, 1.1, 0.27]], // hands on the sill, the landing
   // over a chain-link gate: the mesh shaken by the hands, then by the body, and the landing
@@ -706,6 +708,47 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'highpass', f0: 3500, f1: 2000, dur: 0.8, vol: 0.2, delay: 0.05, attack: 0.04 }); // hiss
   }
   // clothes gliding on the floor: one smooth hiss with some body under it, lower as the slide slows down
+  // the leaf against its stop: a hollow wooden knock and the latch answering it
+  _door(o, opts, v) {
+    this._thump(o, { f0: 190, f1: 95, dur: 0.11, vol: 0.55 * v, type: 'triangle' });
+    this._noiseBurst(o, { f0: 1100, f1: 700, q: 1.6, dur: 0.07, vol: 0.4 * v, attack: 0.001 });
+    this._noiseBurst(o, { f0: 3400, q: 7, dur: 0.05, vol: 0.12 * v, delay: 0.035 });
+  }
+  // kicked open or broken in: a dry bang, the panel's boom, the latch rattling
+  _doorSlam(o, opts, v) {
+    this._thump(o, { f0: 140, f1: 48, dur: 0.24, vol: 0.9 * v });
+    this._noiseBurst(o, { type: 'lowpass', f0: 2600, f1: 280, dur: 0.2, vol: 0.6 * v, attack: 0.001 });
+    this._noiseBurst(o, { f0: 3000, q: 6, dur: 0.06, vol: 0.14 * v, delay: 0.05 });
+    this._noiseBurst(o, { f0: 3300, q: 6, dur: 0.05, vol: 0.08 * v, delay: 0.11 });
+  }
+
+  // a guard grumbling at a stranger to clear off, under his breath: a voiced murmur through two vowel formants,
+  // one syllable ("hm?") at first, two ("hé, hé") when he warns
+  _mutter(o, opts, v) {
+    const ctx = this.ctx, t = ctx.currentTime, f = 112 * this.pv, two = v > 0.8;
+    const src = ctx.createOscillator(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.type = 'sawtooth';
+    src.frequency.setValueAtTime(f, t);
+    src.frequency.linearRampToValueAtTime(f * (two ? 0.88 : 1.12), t + 0.3); // a question rises, a warning falls
+    f1.type = f2.type = 'bandpass';
+    f1.frequency.value = two ? 560 : 420; f1.Q.value = 5;
+    f2.frequency.value = two ? 1700 : 1150; f2.Q.value = 9;
+    g.gain.setValueAtTime(0.0001, t);
+    const syl = two ? [[0, 0.13], [0.2, 0.16]] : [[0, 0.24]];
+    for (const [s, d] of syl) {
+      g.gain.linearRampToValueAtTime(0.0001, t + s);
+      g.gain.linearRampToValueAtTime(0.55, t + s + 0.035);
+      g.gain.linearRampToValueAtTime(0.4, t + s + d * 0.7);
+      g.gain.linearRampToValueAtTime(0.0001, t + s + d);
+    }
+    src.connect(f1); src.connect(f2); f1.connect(g); f2.connect(g); g.connect(o);
+    o._n++;
+    src.onended = () => this._release(o, src, f1, f2, g);
+    src.start(t);
+    src.stop(t + 0.45);
+    this._noiseBurst(o, { f0: 1500, q: 0.8, dur: two ? 0.36 : 0.24, vol: 0.06, attack: 0.03 }); // his breath
+  }
+
   _slide(o) {
     this._noiseBurst(o, { f0: 2600, f1: 700, q: 0.5, dur: 0.6, vol: 0.5, attack: 0.06 });
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 1000, f1: 260, dur: 0.55, vol: 0.8, attack: 0.05 });

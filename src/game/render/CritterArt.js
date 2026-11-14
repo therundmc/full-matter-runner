@@ -53,13 +53,13 @@ export function drawFlying(ctx, critters, t) {
 
 // pale specks turning round the lamps, drawn over the night
 export function drawMoths(ctx, critters, t, vis) {
-  ctx.fillStyle = '#fff2c8';
+  ctx.fillStyle = '#ffffff';
   for (const s of critters.lamps()) {
     if (!vis(s.x, s.y)) continue;
     for (let i = 0; i < s.n; i++) {
       const ph = s.seed + i * 2.1;
       const r = 6 + 11 * (0.5 + 0.5 * Math.sin(t * 1.7 + ph)), a = t * (2.2 + i * 0.7) * (i % 2 ? 1 : -1) + ph + Math.sin(t * 9 + ph) * 0.6;
-      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 31 + ph);
+      ctx.globalAlpha = 0.85 + 0.15 * Math.sin(t * 31 + ph);
       // wings open, wings shut
       ctx.fillRect(Math.round(s.x + Math.cos(a) * r), Math.round(s.y + Math.sin(a) * r * 0.8), Math.sin(t * 43 + ph) > 0 ? 2 : 1, 1);
     }

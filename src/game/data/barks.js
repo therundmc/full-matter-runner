@@ -40,7 +40,7 @@ export const BARKS = {
 
 // occasions yelled out loud (a recorded shout goes with the line)
 export const SHOUTED = new Set([
-  'shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'warn', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
+  'shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
 ]);
 
 // occasions not written in white (PALETTE keys)

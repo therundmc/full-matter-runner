@@ -37,7 +37,8 @@ export default class Civilian extends Character {
     super(world, x, y, angle, kind, 'civilian');
     this.look = CIVILIAN_LOOKS[kind];
     this.isCivilian = true;
-    this.voice = rand(0.92, 1.3); // higher and more varied than the guards': each his own
+    // higher and more varied than the guards': each his own, the dancers' higher still
+    this.voice = kind.startsWith('dancer') ? rand(1.3, 1.45) : rand(0.92, 1.3);
     this.brain = brain;
     this.mate = null;      // the other half of a couple
     this.crouch = 0;

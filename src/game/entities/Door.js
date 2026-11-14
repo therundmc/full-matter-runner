@@ -42,7 +42,6 @@ export default class Door {
     this.body.entity = this;
     this.pushedByPlayer = 0;
     this.slamCooldown = 0;
-    this.creakCooldown = 0;
     this.hp = MAX_HP;
     this.latch = LATCH_HP;
     this.locked = false;
@@ -111,7 +110,7 @@ export default class Door {
     this.world.events.emit('doorBroken', { x: t.x, y: t.y });
   }
 
-  // keep the door on its hinge: hinge friction, soft end stops, creaks and slams
+  // keep the door on its hinge: hinge friction, soft end stops that knock when it swings into them
   constrain(dt) {
     const b = this.body;
     if (this.locked) return;
@@ -133,10 +132,6 @@ export default class Door {
     } else if (Math.abs(rel) > lim - 0.25 && Math.sign(av) === Math.sign(rel)) {
       av *= 0.85; // cushion before the stop
     }
-    if (Math.abs(av) > 0.03 && Math.abs(av) < 0.12 && this.creakCooldown <= 0) {
-      this.world.sound('creak', this.hx, this.hy, 0.5);
-      this.creakCooldown = rand(0.6, 1.2);
-    }
     const a = this.a0 + rel;
     const c = Math.cos(a), s = Math.sin(a);
     Body.setAngle(b, a);
@@ -146,7 +141,6 @@ export default class Door {
     Body.setVelocity(b, { x: -av * s * h, y: av * c * h });
     this.pushedByPlayer = Math.max(0, this.pushedByPlayer - dt);
     this.slamCooldown -= dt;
-    this.creakCooldown -= dt;
   }
 
   // speed of the door surface at a given point (px/step)

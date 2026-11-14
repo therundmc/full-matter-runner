@@ -272,6 +272,23 @@ test('music: a fight starts bare, every kill of a chain brings a layer and some 
   assert.deepEqual(down.slice(0, 7).filter((s, i, a) => i === 0 || s !== a[i - 1]).slice(-5), [4, 3, 2, 1, 0], 'a step a bar');
 });
 
+test('music: at the top of a chain every fourth bar rolls into a crash, and the parts fade into one another', () => {
+  const bars = playMusic(40 * BAR, [[1, () => Music.setCombat(true)], [2 * BAR, () => Music.setCombo(5)], [24 * BAR, () => { Music.setCombat(false); Music.setCombo(0); }]], 0.85);
+  const hot = bars.filter((b) => FIGHT.includes(b.name) && b.plan.stage >= 4 && b.t < 24 * BAR);
+  assert.ok(hot.length >= 8);
+  for (const b of hot) {
+    assert.equal(!!b.plan.roll, b.bar % 4 === 3, b.name + b.bar);
+    if (b.plan.roll) assert.ok(b.plan.snare.every((h) => h.s < 8), 'the roll has the second half to itself');
+    else if (b.bar % 4 === 0) assert.ok(b.plan.crash, 'and lands on a crash');
+  }
+  assert.ok(!bars.some((b) => b.plan.roll && b.plan.stage < 4), 'only at the top');
+  const fade = (i) => bars[i].plan.fade;
+  assert.deepEqual(fade(0), { from: 500, open: 2 }, 'the first bar opens up out of the muffled mix');
+  const first = bars.findIndex((b) => FIGHT.includes(b.name)), calm = bars.findIndex((b, i) => i > first && !FIGHT.includes(b.name));
+  assert.deepEqual(fade(first), { open: 0 }, 'a fight hits at once');
+  assert.ok(fade(calm - 1).close && fade(calm).from && bars[calm].plan.glide > 1, 'and closes down, the song comes back up slowly');
+});
+
 test('music: a fight that stops at once still plays its minimum, a new one during the closing bar carries on', () => {
   const short = playMusic(30, [[5, () => Music.setCombat(true)], [5.2, () => Music.setCombat(false)]]);
   assert.ok(onGrid(short));

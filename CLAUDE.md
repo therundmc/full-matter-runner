@@ -35,10 +35,13 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime,
    the "gling" he picked, in the music's key, climbing with the combo, with reverb). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
+   Doors: a recorded wood knock over a synthesized body, no hinge creak (user hated the door recordings). A guard
+   telling a stranger off mutters (synthesized `_mutter`), never yells; panicking customers cry out (cuts of 'pain').
 5. Synthwave music: darker; next to silent while all is quiet (a few spaced plucks), the beat (house, 126 BPM, four
    on the floor, off-beat open hat, pumping bass; original material only) starts bare with the fight, each chained
    kill adds a layer and a little volume (`Music.setCombo`), and
-   it gets worked up with the alert phase and the heat of the fight (ai/Tension.js).
+   it gets worked up with the alert phase and the heat of the fight (ai/Tension.js). Parts fade into one another
+   (a filter on the whole mix, `Session.fade`); at the top of a chain a 32nd snare roll fills every fourth bar.
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
