@@ -214,7 +214,7 @@ async function seatedGuard(job, seatType, seatAngle, actor) {
     map, props: [prop], enemies: [], chars: [], doors: [], texts: [], time: 0, level: {}, events,
     player: { alive: false, x: 0, y: 0 },
     particles: { smoke() {}, dust() {}, glass() {}, floaters() {}, shard() {}, blood() {} },
-    sound() {}, light() {}, emit() {}, addBody() {}, sightLine: () => false, lineOfSight: () => false,
+    sound() {}, light() {}, emit() {}, addBody() {}, floorAt: () => 'wood', sightLine: () => false, lineOfSight: () => false,
     pathForGuard: (a, b, c, d) => findPath(map, a, b, c, d),
   };
   world.director = new Director(world);

@@ -36,6 +36,7 @@ const LAND_NOISE = 120;  // px a flat landing is heard at
 // cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
 const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
+const STRIDE = 17;      // px between two footfalls
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
 
 // Shared body / weapon / animation logic for the player and enemies.
@@ -81,6 +82,7 @@ export default class Character {
     this.throwDur = 0.28;
     this.recoilRate = 9;    // recoil recovery per second (heavy guns recover slower)
     this.glassSafe = 0;     // seconds of immunity to flying shards left after a window vault
+    this.stride = 0;        // px walked since the last footfall
     this.vaulting = null;   // { from, to, t, dur, kind, dir, ... } while jumping over something
     this.slideAnim = null;  // { dir, side, k, w } while sliding (driven by Player)
     // animation state (see CharacterAnim.js)
@@ -227,6 +229,12 @@ export default class Character {
       this.footA += angDiff(this.footA, sp > 0.25 ? this.moveAngle : this.angle) * kf;
       this.lean.x += (clamp((v.x - this.prevVel.x) * 4, -1.6, 1.6) - this.lean.x) * kl;
       this.lean.y += (clamp((v.y - this.prevVel.y) * 4, -1.6, 1.6) - this.lean.y) * kl;
+      // a foot comes down every STRIDE px on his feet: its sound, by the floor (quiet: audio STEP_LEVEL)
+      if (sp > 0.3 && !this.slideAnim && this.alive && (this.stride += sp * dt * 60) >= STRIDE) {
+        this.stride = 0;
+        const run = sp > 1.8;
+        this.world.sound('step', this.x, this.y, run ? 0.9 : 0.6, { floor: this.world.floorAt(this.x, this.y), run });
+      }
     }
     this.prevVel.x = v.x; this.prevVel.y = v.y;
   }

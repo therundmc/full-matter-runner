@@ -39,7 +39,7 @@ const CONFIRM_SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
 const CONFIRM_ROOT = 196; // Hz
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
-const STEP_LEVEL = 0.3; // footsteps, far under everything else (0: none at all)
+const STEP_LEVEL = 0.2; // footsteps, far under everything else (the user: quiet, not too loud; 0: none at all)
 const VARIATIONS = 5;   // baked renders of each synthesized foley form
 const PREBAKE = [3, 0.03]; // s after the unlock the background baking starts; s between two renders without idle callbacks
 // names that map onto another sound

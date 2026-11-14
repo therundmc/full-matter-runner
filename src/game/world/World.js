@@ -126,6 +126,12 @@ export default class World {
   get engine() { return this.physics.engine; }
   get enemiesLeft() { return this.enemies.filter((e) => e.alive && !e.yielded).length; } // guards still in the fight
 
+  // the floor's name under a point (TileMap floors: 'wood', 'asphalt', 'roof'...), for what depends on it (footsteps)
+  floorAt(x, y) {
+    const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
+    return cx < 0 || cy < 0 || cx >= m.w || cy >= m.h ? 'concrete' : m.floor[cy * m.w + cx] || 'concrete';
+  }
+
   floorGrip(x, y) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
     if (cx < 0 || cy < 0 || cx >= m.w || cy >= m.h) return 1;
