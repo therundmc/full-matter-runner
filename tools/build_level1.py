@@ -99,7 +99,7 @@ lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
-# ---------------------------------------------------------------- actors (15 guards)
+# ---------------------------------------------------------------- actors (14 guards)
 # Blades, bats and a tire iron: thirteen men with their hands. Two guns in the whole house: the pool player's pistol
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
@@ -124,7 +124,6 @@ lv.host(21, 6, 23, 11)
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
 lv.actor('J', 17, 22, route=[[16, 22], [27, 22]])       # a blade in his pocket, walks the sidewalk
-lv.actor('k', 12, 8, face=270)                          # having a smoke in the service alley, by the storeroom door
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
@@ -164,7 +163,6 @@ lv.area('the alley where it starts')
 lv.prop('dumpster', 23.42, 35.0, 90)
 lv.prop('trash_can', 20.45, 36.4)
 lv.prop('trash_can', 20.5, 35.6)
-lv.prop('crate', 20.45, 33.3, 8)
 lv.prop('trash_can', 23.3, 32.5)                        # on the cat's way out
 lv.cat(23.4, 34.5)                                      # on the dumpster, watching him
 lv.pigeons(16.5, 30.6, 3)
@@ -205,7 +203,8 @@ lv.pigeons(33.3, 21.7, 2)
 lv.prop('hydrant', 11.6, 22.65)
 lv.prop('vending', 18.5, 21.33)                         # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
-for col in (12.3, 16.9, 28.8, 33.6, 41.3):              # a meter at the head of each parking bay
+for col in (12.3, 28.8, 33.6, 41.3):                    # a meter at the head of each parking bay (none at the tail
+                                                        # of the first car: its trunk is opened from there)
     lv.prop('parking_meter', col, 22.78)
 lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
@@ -489,7 +488,7 @@ ambient = {
 exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3}   # by the getaway van's cab door: he gets in and drives off (systems/Outro.js)
 
 if __name__ == '__main__':
-    lv.check(guards=15)
+    lv.check(guards=14)
     lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM', exit=exit_zone,
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[

@@ -79,14 +79,17 @@ export default class Director {
   update(dt) {
     const w = this.world, p = w.player;
     this.budgetLeft = AI.planBudget;
+    // A stranger nobody has anything against (isThreat) walks about and pushes doors like any customer: no guard
+    // pricks up his ears at it. Only somebody who has no business being there, or who gave himself away, is listened for.
+    const minded = this.isThreat(p);
     // player footsteps (he always runs when moving)
-    if (p.alive && p.moving > 1.8 && (this.stepT -= dt) <= 0) {
+    if (minded && p.alive && p.moving > 1.8 && (this.stepT -= dt) <= 0) {
       this.stepT = 0.28;
       this.emit('footsteps', p.x, p.y, AI.footstepRadius, p);
     }
     // a door swung by the player catches the eye
     for (const d of w.doors) {
-      if (d.pushedByPlayer <= 0 || Math.abs(d.body.angularVelocity) < 0.03 || (this.doorSeen.get(d) ?? 0) > w.time) continue;
+      if (!minded || d.pushedByPlayer <= 0 || Math.abs(d.body.angularVelocity) < 0.03 || (this.doorSeen.get(d) ?? 0) > w.time) continue;
       this.doorSeen.set(d, w.time + 0.6);
       const t = d.tip(), mx = (d.hx + t.x) / 2, my = (d.hy + t.y) / 2;
       for (const e of w.enemies) if (e.alive && e.aware < 2 && e.canSeePoint(mx, my, 0.8)) e.hear('door', mx, my);

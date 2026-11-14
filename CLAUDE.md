@@ -58,7 +58,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    kill adds a layer and a little volume (`Music.setCombo`), and
    it gets worked up with the alert phase and the heat of the fight (ai/Tension.js). Parts fade into one another
    (a filter on the whole mix, `Session.fade`); at the top of a chain a 32nd snare roll fills every fourth bar.
-6. Level 1 (alley, road, bar, back room, back lot; 15 guards: hand to hand but two guns, the pool player's pistol
+6. Level 1 (alley, road, bar, back room, back lot; 14 guards: hand to hand but two guns, the pool player's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
    against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only).
@@ -122,7 +122,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
   shafts of light, zoom kick and impact frame on a kill); HUD and screens are drawn on a canvas above it. `?post=0`
   turns it off (old 2D grading). The user asked for it "aux petits oignons": tune in data/post.js, never hard-code.
 - Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
-  vision, F3 overview, F4 physics overlay (with FPS and frame times). `window.game` in the console.
+  vision, F3 overview, F4 physics overlay (with FPS and frame times), F6 lens on / off (the picture with and without the
+  WebGL last pass, to compare). `window.game` in the console.
 - Headless browser checks that worked: Edge `--headless=new --remote-debugging-port` driven over the DevTools
   protocol from a small Node script (eval scenarios, inputs, screenshots). Python's http.server can reset
   connections on big files; a tiny Node static server is more reliable. Never kill processes you didn't start.

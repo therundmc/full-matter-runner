@@ -12,7 +12,7 @@ export default {
   subtitle: 'SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 23.4, y: 4.0, r: 1.3 },
-  facing: { '20,34': 0, '24,21': 90, '12,8': 270, '18,12': 90, '24,14': 349, '20,16': 90, '24,17': 65, '17,8': 90, '22,7': 90, '30,8': 180, '26,9': 45, '28,9': 20, '29,10': 200, '26,4': 270 },
+  facing: { '20,34': 0, '24,21': 90, '18,12': 90, '24,14': 349, '20,16': 90, '24,17': 65, '17,8': 90, '22,7': 90, '30,8': 180, '26,9': 45, '28,9': 20, '29,10': 200, '26,4': 270 },
   patrols: {
     '17,22': [[16, 22], [27, 22]],
     '19,4': [[13, 4], [29, 4]],
@@ -67,7 +67,7 @@ export default {
     "",
     "",
     "                   6  k",
-    "            k    j            h",
+    "                 j            h",
     "                          m k",
     "                             i",
     "    5",
@@ -101,8 +101,8 @@ export default {
   props: [
     // the alley where it starts
     ['dumpster', 23.42, 35, 90], ['trash_can', 20.45, 36.4, 0], ['trash_can', 20.5, 35.6, 0],
-    ['crate', 20.45, 33.3, 8], ['trash_can', 23.3, 32.5, 0], ['string_lights', 22, 33.9, 0],
-    ['string_lights', 22, 36.1, 0], ['wall_lamp', 20.09, 34.6, 270],
+    ['trash_can', 23.3, 32.5, 0], ['string_lights', 22, 33.9, 0], ['string_lights', 22, 36.1, 0],
+    ['wall_lamp', 20.09, 34.6, 270],
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 28.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
     ['hydrant', 26.5, 30.35, 0], ['phone_booth', 34.6, 31.61, 180], ['news_box', 10.7, 31.8, 180],
@@ -115,8 +115,8 @@ export default {
     ['plant', 23.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 35.5, 22.7, 90],
     ['bench', 37.5, 22.62, 180], ['trash_can', 40.5, 21.35, 0], ['hydrant', 11.6, 22.65, 0],
     ['vending', 18.5, 21.33, 0], ['news_box', 26.6, 21.19, 0], ['parking_meter', 12.3, 22.78, 0],
-    ['parking_meter', 16.9, 22.78, 0], ['parking_meter', 28.8, 22.78, 0], ['parking_meter', 33.6, 22.78, 0],
-    ['parking_meter', 41.3, 22.78, 0], ['wall_lamp', 2.35, 21.09, 0], ['palm_tree', 41.6, 21.8, 0],
+    ['parking_meter', 28.8, 22.78, 0], ['parking_meter', 33.6, 22.78, 0], ['parking_meter', 41.3, 22.78, 0],
+    ['wall_lamp', 2.35, 21.09, 0], ['palm_tree', 41.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],

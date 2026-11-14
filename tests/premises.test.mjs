@@ -47,3 +47,20 @@ test('level 1: the bar room and its toilets are open, the private rooms are not,
   d.provoked = true;
   assert.equal(d.isIntruder(at(27, 18)), false);
 });
+
+test('nobody listens for the steps or the doors of a stranger who does nothing wrong', () => {
+  const run = (player) => {
+    const heard = [];
+    const guard = { alive: true, aware: 0, knocked: 0, x: player.x + TILE, y: player.y, canSeePoint: () => true, hear: (type) => heard.push(type) };
+    const door = { pushedByPlayer: 1, body: { angularVelocity: 0.2 }, hx: 21 * TILE, hy: 20 * TILE, tip: () => ({ x: 22 * TILE, y: 20 * TILE }) };
+    const w = { ...world(LEVELS.level1), enemies: [guard], doors: [door], lineOfSight: () => true, player: { alive: true, moving: 3, ...player } };
+    const d = new Director(w);
+    for (let i = 0; i < 30; i++) d.update(1 / 60);
+    return heard;
+  };
+  assert.deepEqual(run(at(22, 15)), [], 'a customer crossing the bar room, pushing its door');
+  assert.deepEqual(run(at(21, 22)), [], 'a passer-by on the sidewalk');
+  assert.ok(run(at(22, 15, true)).includes('footsteps'), 'a weapon in hand: every step counts');
+  const inside = run(at(27, 8));
+  assert.ok(inside.includes('footsteps') && inside.includes('door'), 'in the boss\'s room he has no business there');
+});
