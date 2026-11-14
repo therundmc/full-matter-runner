@@ -120,6 +120,8 @@ export const MOMENTS = {
   finisher: { kind: 'finisher', power: 1, stop: 0.12, shake: 0.35, push: 4 }, // the last beat of a finisher
   takedown: { kind: 'finisher', power: 0.8, stop: 0.07, shake: 0.12, push: 2 },
   slide: { kind: 'blunt', power: 0.35, stop: 0.04, shake: 0.15, push: 2 },   // swept off his feet by a slide
+  // every slide of the player's opens a moment of bullet time: [time scale, real seconds]. He aims at full speed in it.
+  slideTime: { slowmo: [0.42, 0.55] },
   break: { slowmo: [0.35, 0.3], stop: 0.1, shake: 0.35 },                   // the player's weapon gives out over a man
   throw: { slowmo: [0.45, 0.25], shake: 0.15 },                             // the angry throw of an empty gun
   // the last guard in sight goes down after a real fight (others still about the level): a breath of slow motion.

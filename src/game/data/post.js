@@ -70,6 +70,10 @@ export const POST = {
   // ---- 9. shafts: light streaming out of the brightest lamps in view
   rays: { max: 3, strength: 0.16, reach: 0.55, minRadius: 110 },
 
+  // ---- the rampage: while a chain of kills runs the whole picture heats up, from `from` kills to full at `full`:
+  // colours, contrast, fringe (px), glow and vignette added at full; it eases back when the chain breaks
+  rampage: { from: 2, full: 8, sat: 0.22, con: 0.09, fringe: 1.8, glow: 0.14, vignette: 0.1, ease: 3 },
+
   // ---- the punch of a kill of the player's: a zoom kick toward it, the colours pushed for an instant and, for the
   // heavy ones, an impact frame. This is where the lens is allowed to show.
   punch: {
@@ -79,6 +83,8 @@ export const POST = {
     con: 0.16,
     kickDecay: 4.5,        // 1/s
     power: { finisher: 1, blast: 1, heavy: 0.85, blow: 0.7, round: 0.6 },   // how hard each kind of kill hits the lens
+    // the chain: each kill of a chain hits the lens harder (power x (1 + each x kills before it), capped at max)
+    combo: { each: 0.16, max: 2 },
     frame: 0.055,          // s of impact frame
     frameFrom: 0.8,        // power of a kill of the player's that earns one
     frameGap: 0.5,         // s at least between two of them

@@ -436,7 +436,7 @@ export default class Game {
     return {
       W, H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
       state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
-      timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
+      timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {
         x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,
         move: v?.rolling ? 'roll' : v?.kind === 'window' ? 'dive' : p.slideAnim ? 'slide' : null,

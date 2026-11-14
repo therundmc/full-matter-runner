@@ -30,8 +30,10 @@ const MASTER_GAIN = 0.8;
 const MUSIC_GAIN = 0.6;
 const SHOTS_GAIN = 0.65; // recorded gunshots, times GUN_LEVEL
 
-// kill confirm: quarter tones it climbs over a streak, one per kill
-const STREAK_STEPS = 10;
+// kill confirm: the semitones over its lowest note that its tone climbs over a chain, one step per kill (a minor
+// pentatonic scale: a run of kills plays a rising line)
+const CONFIRM_SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
+const CONFIRM_ROOT = 196; // Hz
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
 // names that map onto another sound
@@ -111,7 +113,7 @@ const META = {
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
-  confirm: { pri: 4, dur: 0.3, gap: 0.03, max: 3, duck: 0.85, gain: 1, hall: 0.1 },
+  confirm: { pri: 4, dur: 0.3, gap: 0.03, max: 3, duck: 0.85, gain: 0.8, hall: 0.08 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -1030,16 +1032,17 @@ class AudioSystem {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });
     this._thump(o, { f0: 60, f1: 85, dur: 0.4, vol: 0.5 });
   }
-  // a kill confirmed (asked for by the user, the one synthesized SFX; he wanted a shooter's headshot "dink" after
-  // finding the chime too arcade): the dull knock of the hit and a struck piece of metal, three inharmonic partials
-  // that die at once, dry. Every kill of a streak (opts.n) rings a little higher.
+  // a kill confirmed (synthesized, asked for by the user; he found a chime too arcade, then a struck-metal "dink" too
+  // much like a bottle, and wanted it less loud and satisfying): a punch one feels, a dry knock, a tick, and one short
+  // muted note that climbs a scale with each kill of the chain (opts.n), so a rampage plays a rising line.
   _confirm(o, opts) {
-    const up = 2 ** (Math.min((opts.n || 1) - 1, STREAK_STEPS) / 24), d = 0.02;
+    const step = CONFIRM_SCALE[Math.min((opts.n || 1) - 1, CONFIRM_SCALE.length - 1)], f = CONFIRM_ROOT * 2 ** (step / 12), d = 0.015;
     this.pv = 1;
-    this._thump(o, { f0: 190, f1: 70, dur: 0.09, vol: 0.8, delay: d });
-    this._noiseBurst(o, { type: 'lowpass', f0: 1800, f1: 400, dur: 0.05, vol: 0.5, attack: 0.0005, delay: d });
-    for (const [ratio, vol, dur] of [[1, 0.5, 0.11], [2.76, 0.3, 0.07], [5.4, 0.16, 0.045]]) this._ring(o, 1250 * up * ratio, dur, vol, d);
-    this._noiseBurst(o, { type: 'highpass', f0: 6000, dur: 0.012, vol: 0.35, attack: 0.0003, delay: d });
+    this._thump(o, { f0: 150, f1: 52, dur: 0.12, vol: 0.85, delay: d });                                  // the punch, felt
+    this._noiseBurst(o, { f0: 820, f1: 420, q: 1.1, dur: 0.045, vol: 0.4, attack: 0.0005, delay: d });      // the knock
+    this._noiseBurst(o, { type: 'highpass', f0: 4200, dur: 0.008, vol: 0.2, attack: 0.0003, delay: d });    // the tick
+    // the note: harmonic partials dying fast, a muted pluck (inharmonic ones rang like a bottle: the user's word)
+    for (const [ratio, vol, dur] of [[1, 0.42, 0.14], [2, 0.14, 0.08], [3, 0.05, 0.045]]) this._ring(o, f * ratio, dur, vol, d);
   }
   // level cleared: one dark boom rolling away
   _clear(o) {

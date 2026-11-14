@@ -155,3 +155,24 @@ test('lens: hot spots and lamps are handed over in the picture frame, capped', (
   assert.equal(u.lights.length, POST.rays.max * 4);
   assert.deepEqual([...u.lights.slice(0, 3)].map((n) => +n.toFixed(4)), [(960 - 200) / 1920, 1 - (540 + 200) / 1080, 1].map((n) => +n.toFixed(4)));
 });
+
+test('lens: every kill of a chain hits harder, and a running chain heats the whole picture up', () => {
+  const player = { isPlayer: true }, victim = { x: 0, y: 0 };
+  const zoomAt = (combo) => { const lens = new Lens(); lens.update(1 / 60, view({ combo })); lens.kill({ victim, killer: player, cause: 'bullet' }); return lens.uniforms(view({ combo })).zoom; };
+  assert.ok(zoomAt(4) > zoomAt(1) && zoomAt(1) > zoomAt(0));
+  assert.ok(Math.abs(zoomAt(30) - POST.punch.zoom * Math.min(1.6, POST.punch.power.round * POST.punch.combo.max)) < 1e-9, 'capped');
+  // at a high chain even a plain kill earns its impact frame
+  const lens = new Lens();
+  lens.update(1 / 60, view({ combo: 6 }));
+  lens.kill({ victim, killer: player, cause: 'bullet' });
+  assert.equal(lens.uniforms(view({ combo: 6 })).frame, 1);
+  // the rampage: nothing for a first kill, full at `full`, gone when the chain breaks
+  const cold = new Lens(), hot = new Lens();
+  run(cold, 4, view({ combo: 1 }));
+  run(hot, 4, view({ combo: POST.rampage.full }));
+  const a = cold.uniforms(view()), b = hot.uniforms(view());
+  assert.ok(cold.rampage < 0.01 && hot.rampage > 0.99);
+  assert.ok(b.grade.sat > a.grade.sat + POST.rampage.sat * 0.9 && b.fringe > a.fringe + POST.rampage.fringe * 0.9 && b.vignette > a.vignette && b.glow.strength > a.glow.strength);
+  run(hot, 4, view({ combo: 0 }));
+  assert.ok(hot.rampage < 0.01);
+});

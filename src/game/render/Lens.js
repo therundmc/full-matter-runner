@@ -9,6 +9,7 @@
 //   powerOn              false once the house's fuse box is smashed (systems/Power.js)
 //   timeScale, trauma    slow motion (1 = none), camera shake 0..1.2
 //   look                 the player looks far (Shift)
+//   combo                kills in the player's current chain (systems/Scoring.js)
 //   player               { x, y, angle, move } with move: 'slide' | 'roll' | 'dive' | null
 //   heat                 [{ x, y, kind: 'fire' | 'steam' }] hot spots in the world
 //   lights               [{ x, y, k }] the brightest lamps in view, strongest first
@@ -26,6 +27,8 @@ export default class Lens {
     this.blur = 0;              // the whole picture soft (menus), 0..1
     this.smear = { x: 0, y: 0 };
     this.radial = 0;
+    this.rampage = 0;           // 0..1: how hot the chain of kills runs
+    this.combo = 0;             // kills in the chain, as of the last frame
     this.state = null;
     this.reset();
   }
@@ -62,11 +65,14 @@ export default class Lens {
   kill({ victim, killer, cause, how }) {
     if (!killer?.isPlayer || !victim || victim.isPlayer) return;
     const c = this.cfg, P = c.punch.power;
-    const p = how?.finisher ? P.finisher : cause === 'explosion' ? P.blast : how?.heavy || how?.spin || how?.broke ? P.heavy
+    const base = how?.finisher ? P.finisher : cause === 'explosion' ? P.blast : how?.heavy || how?.spin || how?.broke ? P.heavy
       : how?.from ? P.blow : P.round;
+    // every kill of a chain lands harder than the last
+    const p = base * Math.min(c.punch.combo.max, 1 + c.punch.combo.each * this.combo);
+    this.combo++;
     this.bump(c.fringe.kill * p);
-    this.kick = Math.max(this.kick, p);
-    if (c.punch.zoom * p > this.zoom) { this.zoom = c.punch.zoom * p; this.zoomAt = { x: victim.x, y: victim.y }; }
+    this.kick = Math.max(this.kick, Math.min(1.6, p));
+    if (c.punch.zoom * p > this.zoom) { this.zoom = c.punch.zoom * Math.min(1.6, p); this.zoomAt = { x: victim.x, y: victim.y }; }
     if (p >= c.punch.frameFrom && this.frameGap <= 0) { this.frame = c.punch.frame; this.frameGap = c.punch.frameGap; }
   }
 
@@ -126,6 +132,11 @@ export default class Lens {
     for (const e of this.embers) e.t += dt;
     this.embers = this.embers.filter((e) => e.t < c.heat.blast.life);
 
+    // the chain of kills, as the score keeps it; the picture heats up with it
+    this.combo = v.state === 'play' ? v.combo || 0 : 0;
+    const R = c.rampage;
+    this.rampage = ease(this.rampage, clamp01((this.combo - R.from + 1) / (R.full - R.from + 1)), R.ease, dt);
+
     // grading: ease every number toward the situation's
     const to = this.gradeFor(v), g = this.grade, r = c.gradeEase;
     g.sat = ease(g.sat, to.sat, r, dt); g.con = ease(g.con, to.con, r, dt); g.tintK = ease(g.tintK, to.tintK, r, dt);
@@ -175,10 +186,10 @@ export default class Lens {
       lights.set([x, y, Math.min(1, l.k), 0], i * 4);
     });
 
-    const t = c.tube, k = this.kick;
-    const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k, con: this.grade.con + c.punch.con * k };
+    const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
+    const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k + R.sat * r, con: this.grade.con + c.punch.con * k + R.con * r };
     return {
-      fringe: (c.fringe.rest + this.fringe + c.fringe.trauma * Math.max(0, (v.trauma || 0) - 0.15)) * px,
+      fringe: (c.fringe.rest + this.fringe + R.fringe * r + c.fringe.trauma * Math.max(0, (v.trauma || 0) - 0.15)) * px,
       zoom: this.zoom,
       focus: this.zoom > 0.0005 && this.zoomAt ? at(this.zoomAt.x, this.zoomAt.y) : centre,
       frame: this.frame > 0 ? 1 : 0,
@@ -188,10 +199,10 @@ export default class Lens {
       smear: [this.smear.x * (H / W), this.smear.y],
       radial: this.radial, centre,
       edge: this.edge, blur: this.blur,
-      glow: c.glow, rays: c.rays, lights,
+      glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights,
       grade: g,
       curve: t.curve, scan: t.scan, scanStep: Math.max(2, Math.round(H / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
-      vignette: t.vignette,
+      vignette: t.vignette + R.vignette * r,
     };
   }
 }

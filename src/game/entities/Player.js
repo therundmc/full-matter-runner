@@ -264,6 +264,7 @@ export default class Player extends Character {
     if (this.stamina < cfg.cost) { this.winded = 0.35; return false; }
     this.stamina -= cfg.cost;
     this.slide = new Slide(a, PLAYER.speed, cfg);
+    w.slowmo(...MOMENTS.slideTime.slowmo); // bullet time
     this.slideHits.clear();
     // the trailing palm goes on the side of the free (left) hand
     this.slideAnim = { dir: a, side: Math.cos(this.angle - a) >= 0 ? -1 : 1, k: 0, w: this.slideAnim?.w ?? 0 };
