@@ -20,6 +20,8 @@ export function blowFx(world, d, victim, a, how) {
   }
   // brought down on him with everything: the floor takes its share
   if (how.heavy) P.dust(x, y, 7, 10, '#6a6272', { speed: 45, size: 4, life: 0.7, alpha: 0.2 });
-  if (how.from === 'behind') P.blood(x, y, a, 0.35, 10, 260);      // off the back of his head, the way he falls
-  else if (how.from === 'front') P.blood(x, y, back, 0.5, 8, 200); // his head snaps back
+  // a few drops off the blow itself, by what struck (the wound's own blood is the profile's business: data/wounds.js)
+  const drops = Math.round((club ? 4 : 2) * (how.heavy ? 1.6 : 1));
+  if (how.from === 'behind') P.blood(x, y, a, 0.35, drops, 260);        // off the back of his head, the way he falls
+  else if (how.from === 'front') P.blood(x, y, back, 0.5, drops, 200); // his head snaps back
 }

@@ -1,12 +1,14 @@
-// Two short ways of dying on the floor (entities/Ragdoll.js) as pure pose maths: no Matter, no DOM.
+// Short ways of dying (entities/Ragdoll.js) as pure pose maths: no Matter, no DOM.
 //   spasm  he lies as he fell; a leg kicks a few times, each kick weaker and slower, a hand opens and closes, the
 //          torso arches on the first kick
 //   curl   the hands come to the wound, the knees draw up, he rolls a little onto his side, holds, then goes slack
+//   throat his throat cut, he sinks onto his knees, both hands at it, pitches forward onto the floor while the artery
+//          pumps in weakening spurts, a leg pushes once or twice, the hands slip off, still
 // Same frame and poses as fx/CrawlPose.js; `from` is the pose he fell in ({ arms, legs, head }, limb angles off the
 // torso's). Both return { rock (rad, added to the torso angle), roll (squeeze across: rolled onto his side), arch
 // (squeeze along: the back arched), top (the arms lie over the torso), arms, legs, head } and end where they began
 // or slack, every limb straight (the body is baked as it is drawn).
-import { SPASM, CURL } from '../data/wounds.js';
+import { SPASM, CURL, THROAT } from '../data/wounds.js';
 import { angDiff, clamp } from '../../engine/math.js';
 import { rng, smooth, mix } from './CrawlPose.js';
 
@@ -77,5 +79,66 @@ export function curlPose(plan, u, from, geom, up) {
   return {
     rock: side * (0.18 * inK - 0.1 * outK) + 0.015 * shake, roll: 1 - CURL.roll * hold, arch: 1, top: up && hold > 0.2,
     arms, legs, head: { a: from.head.a + side * (0.35 * inK - 0.1 * outK), s: from.head.s * (1 - 0.15 * hold) },
+  };
+}
+
+// { dur (s), beats: [{ t0, d (s), k (strength, 0 to 1), sweep (which way its aim runs) }], pushes: [{ t0, d, leg }],
+// side (the cheek he lands on) }
+export function throatPlan(seed) {
+  const R = rng(seed), T = THROAT, J = ([a, b]) => mix(a, b, R());
+  const dur = J(T.dur), n = T.beats[0] + Math.floor(R() * (T.beats[1] - T.beats[0] + 1));
+  const beats = [];
+  // the heart slows: the spurts come further and further apart, each weaker than the last
+  for (let i = 0, t = 0.08, gap = T.gap, k = 1; i < n; i++, gap *= T.slow, k *= T.fade) {
+    const d = T.beat * (1 + 0.15 * i) * J([0.9, 1.1]);
+    if (t + d > dur) break;
+    beats.push({ t0: t, d, k: Math.min(1, k * J([0.9, 1.05])), sweep: R() < 0.5 ? -1 : 1 });
+    t += gap * J([0.9, 1.1]);
+  }
+  // once he is down: a leg pushes, maybe the other one after it
+  const np = T.push[0] + Math.floor(R() * (T.push[1] - T.push[0] + 1)), leg = R() < 0.5 ? 0 : 1;
+  const t0 = T.kneel + T.pitch + J([0.05, 0.25]);
+  const pushes = Array.from({ length: np }, (_, i) => ({ t0: t0 + i * J([0.45, 0.6]), d: J([0.3, 0.42]), leg: (leg + i) % 2 }));
+  return { dur, beats, pushes, side: R() < 0.5 ? -1 : 1 };
+}
+
+// u s into it. geom = { arms, legs (as for fx/CrawlPose.js), half (half the torso's length, px) }.
+// Returns { arch (his length as seen from above: foreshortened while he kneels), rock, roll, top, arms, legs, head
+// (with dy: px it sits back over his shoulders while he kneels), jet (0 to 1: how hard the artery throws now),
+// jetA (rad its aim is off the line of his neck), z (px above the floor it leaves from), down (he lies on the floor) }.
+export function throatPose(plan, u, geom) {
+  const T = THROAT, half = geom.half;
+  const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel) / T.pitch), up = 1 - fall;
+  const slipAt = plan.dur * (1 - T.slip), slack = smooth((u - slipAt) / (plan.dur - slipAt));
+  const arch = mix(mix(0.28, T.upright, kneel), 1, fall);
+  let jet = 0, jetA = 0;
+  for (const b of plan.beats) {
+    const v = (u - b.t0) / b.d;
+    if (v <= 0 || v >= 1) continue;
+    // a spurt swells and dies; its aim runs across as it goes, so it lays an arc
+    const k = b.k * Math.sin(Math.PI * v) ** 0.6;
+    if (k > jet) { jet = k; jetA = b.sweep * (v - 0.5) * 0.5; }
+  }
+  const tremble = 0.06 * jet * Math.sin(u * 37);
+  // both hands clamped on his throat, one over the other, elbows out; slid off it at the end, along his sides
+  const arms = geom.arms.map((g, k) => {
+    const dx = (g.x < 0 ? -1.2 : 1.2) - g.x, dy = -half * arch + 1.5 + k * 1.5 - g.y * arch;
+    const held = { a: Math.atan2(dy, dx) + tremble, s: clamp(Math.hypot(dx, dy) / g.len, 0.3, 1) };
+    return mixPose(held, { a: Math.PI / 2 + outward(g) * 0.3, s: 1 }, slack);
+  });
+  // standing, the legs are under him; kneeling, the shins lie behind him; down, the legs stretch out
+  const legs = geom.legs.map((g, k) => {
+    let push = 0;
+    for (const p of plan.pushes) if (p.leg === k) push = Math.max(push, jerk((u - p.t0) / p.d));
+    const o = outward(g), bent = mixPose({ a: Math.PI / 2 + o * 0.05, s: 0.3 }, { a: Math.PI / 2 + o * 0.12, s: 0.55 }, kneel);
+    const q = mixPose(bent, { a: Math.PI / 2 + o * 0.15, s: 1 }, fall);
+    return { a: q.a + o * 0.35 * push, s: q.s * (1 - 0.35 * push) };
+  });
+  let rock = 0.03 * jet * fall;
+  for (const p of plan.pushes) rock += (p.leg ? -1 : 1) * 0.05 * jerk((u - p.t0) / p.d);
+  return {
+    arch, rock, roll: 1, top: fall < 0.5, arms, legs,
+    head: { a: plan.side * 0.45 * fall + tremble, s: 1 - 0.1 * jet * fall, dy: up * (half * arch * 0.7 + 4) },
+    jet, jetA: jetA + plan.side * 0.45 * fall, z: mix(3, 15, up), down: u >= T.kneel + T.pitch,
   };
 }

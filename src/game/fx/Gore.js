@@ -3,20 +3,26 @@ import { rand, chance, angDiff } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
-import { WOUNDS, THROES, SPASM, woundFor } from '../data/wounds.js';
+import { blowFrom } from './Blows.js';
+import { WOUNDS, BODY, THROAT, THROES, SPASM, woundFor, blowScale } from '../data/wounds.js';
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
 // by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
 // profile (data/wounds.js) sets how much blood goes where and how the body bleeds out; stuck = sprite of what is left
 // planted in the body, launch = speed of a head knocked off (x the usual).
+// how: the blow (Character.kill: heavy, spin, finisher, thrown...) scales the blood and the throw. A man held from
+// behind (ch.held: a takedown) is let down where he stood; one already down (ch.knocked) is finished where he lies.
 // Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
-export function gore(world, ch, angle, cause, by) {
+export function gore(world, ch, angle, cause, by, how) {
   const P = world.particles;
   const { x, y } = ch;
   const k = ch.kind;
   const goreMul = by ? by.gore ?? 0.3 : 1;
-  const wd = woundFor(cause, by);
+  const blow = ch.knocked > 0 ? { ...how, finisher: true } : how;
+  const throat = cutThroat(ch, angle, cause, by, blow);
+  const wd = throat ? WOUNDS.throat : woundFor(cause, by, blow);
+  const more = blowScale(wd, by, blow), many = (n) => Math.round(n * more);
 
   let mode = 'corpse';
   switch (cause) {
@@ -32,17 +38,17 @@ export function gore(world, ch, angle, cause, by) {
 
   // the wound itself: blow-back toward the attacker, spray along the blow, a cloud, a stain under the body
   const [bn, bv, bc] = wd.back, [sn, sv, sc] = wd.spray, opt = wd.big ? { big: true } : undefined;
-  if (bn) P.blood(x, y, angle + Math.PI, bc, bn, bv);
+  if (bn) P.blood(x, y, angle + Math.PI, bc, many(bn), bv);
   if (wd.sweep) {
     // cast off along the stroke: a thin arc of drops instead of a cone
     const side = chance(0.5) ? 1 : -1, steps = 7;
     for (let i = 0; i < steps; i++) {
       const t = i / (steps - 1) - 0.5;
-      P.blood(x, y, angle + side * t * wd.sweep, sc, Math.ceil(sn / steps), sv * (1 - Math.abs(t) * 0.5), opt);
+      P.blood(x, y, angle + side * t * wd.sweep, sc, Math.ceil(many(sn) / steps), sv * (1 - Math.abs(t) * 0.5), opt);
     }
-  } else P.blood(x, y, angle, sc, sn, sv, opt);
-  if (wd.mist) P.mist(x, y, wd.mist, 10, angle);
-  if (wd.splat[0]) world.decals.stampBlood(x, y, wd.splat[0], wd.splat[1], angle);
+  } else if (sn) P.blood(x, y, angle, sc, many(sn), sv, opt);
+  if (wd.mist) P.mist(x, y, many(wd.mist), 10, angle);
+  if (wd.splat[0]) world.decals.stampBlood(x, y, wd.splat[0] * Math.sqrt(more), many(wd.splat[1]), angle);
 
   if (mode === 'gibs') {
     const radial = cause === 'explosion';
@@ -64,16 +70,17 @@ export function gore(world, ch, angle, cause, by) {
     return mode;
   }
 
-  const slide = rand(wd.throw[0], wd.throw[1]);
-  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]), poolRate: wd.rate, spurt: wd.spurt, dry: cause === 'snap' };
+  const slide = rand(wd.throw[0], wd.throw[1]) * throwScale(ch, blow);
+  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]) * Math.sqrt(more), poolRate: wd.rate, spurt: wd.spurt, dry: cause === 'snap' };
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
-    const dying = cause === 'snap' ? null : lastMoves(ch, wd, mode === 'corpse' && !detach.length);
-    world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, {
+    const whole = mode === 'corpse' && !detach.length;
+    const dying = cause === 'snap' ? null : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
+    world.addCorpse(new Ragdoll(world, k, x, y, dying === 'throat' ? ch.angle + rand(-0.3, 0.3) : angle, slide, {
       headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying,
-      // he faced his killer: he goes over backwards
-      back: !!dying && dying !== 'throes' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
+      // he faced his killer: he goes over backwards (a cut throat pitches forward)
+      back: !!dying && dying !== 'throes' && dying !== 'throat' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
       killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,
     }));
   } else {
@@ -98,6 +105,21 @@ export function gore(world, ch, angle, cause, by) {
     world.sound(cause === 'slash' ? 'slash' : cause === 'snap' ? 'neck' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
   }
   return mode;
+}
+
+// a blade across his throat: always when he is held from behind (a takedown), now and then on a slash from the front
+// or the side (THROAT.odds); never a thrust, nor a man already down
+function cutThroat(ch, angle, cause, by, how) {
+  if (cause !== 'slash' || how?.finisher || woundFor(cause, by, how) === WOUNDS.stab) return false;
+  return !!ch.held || (blowFrom(ch.angle, angle) !== 'behind' && chance(THROAT.odds));
+}
+
+// the throw x what the blow was (BODY.how)
+function throwScale(ch, how) {
+  const H = BODY.how;
+  if (ch.held) return H.held;
+  if (how?.finisher) return H.finisher;
+  return (how?.heavy ? H.heavy : 1) * (how?.spin ? H.spin : 1);
 }
 
 // how he dies on the floor (entities/Ragdoll.js): not quite dead, a guard crawls a little way; else a whole body may

@@ -1,6 +1,7 @@
 // How a body bleeds once it is down (shared by Corpse and Ragdoll; no DOM): the jets of a severed neck or an
 // opened artery, pumped beat by beat, the pool seeping under it once it lies still, the trail it wipes while it slides.
 import { rand } from '../../engine/math.js';
+import { THROAT } from '../data/wounds.js';
 
 // sets the bleeding state of a body from its wound (opts: headless, pool, poolRate, spurt; see data/wounds.js)
 export function startBleeding(c, opts) {
@@ -22,6 +23,13 @@ function jet(c, x, y, angle, rate, power) {
   if (beat < 0.15) return;
   const a = angle + Math.sin(c.age * 1.7 + c.spurtA) * 0.3;
   c.world.particles.blood(x, y, a, 0.04, beat > 0.7 ? 2 : 1, (45 + 190 * beat) * power, { z: 3, jet: true });
+}
+
+// a cut throat's artery, this step of a spurt (fx/DyingPose.js throatPose): k = how hard it throws now (0 to 1),
+// from z px above the floor; a line of drops near to far as the spurt swells, far to near as it dies
+export function squirt(world, x, y, angle, k, z) {
+  const [v0, v1] = THROAT.jet;
+  world.particles.blood(x, y, angle, 0.03, k > 0.6 ? 2 : 1, v0 + (v1 - v0) * k, { z, jet: true });
 }
 
 // One step of bleeding out. neck / wound: { x, y, angle } where the neck stump and the opened artery are and point;

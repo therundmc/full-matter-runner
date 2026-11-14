@@ -2,11 +2,12 @@ import { CAT, MASK, PALETTE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
-import { woundFor, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
-import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
+import { woundFor, BODY, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
+import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
 import { poolArt } from '../render/BloodArt.js';
 import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
-import { spasmPlan, spasmPose, curlPlan, curlPose } from '../fx/DyingPose.js';
+import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from '../fx/DyingPose.js';
+import { jointAngle, clampJoint, partAngle } from '../fx/Joints.js';
 
 const { Bodies, Body, Constraint, Composite, Query } = Matter;
 const JOINT = 0.75; // stiffness of the pin joints
@@ -14,6 +15,10 @@ const JOINT = 0.75; // stiffness of the pin joints
 const BLOCKERS = CAT.WALL | CAT.DOOR | CAT.GLASS | CAT.EDGE | CAT.PROP;
 const ZERO = { x: 0, y: 0 };
 const GLANCE = 0.6; // rad his head turns as he glances back at his killer before he crawls
+const RANGE = { arm: BODY.joints.shoulder, leg: BODY.joints.hip, head: BODY.joints.neck };
+const FALL = { crawl: CRAWL.fall, spasm: SPASM.fall, curl: CURL.fall, throat: 0 }; // s of plain physics first
+// turns tried, off the way he falls, when he is laid out across a wall or a bolted prop
+const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
 
 // rag_* sprites are intact limbs; the gib sprites stand in when they are missing
 export function hasRagdoll(kind) { return !!(spriteOpt(`characters/${kind}_rag_torso`) || spriteOpt(`characters/${kind}_gib_torso`)); }
@@ -31,12 +36,12 @@ export default class Ragdoll {
     this.age = 0;
     this.dead = false;
     // how he dies on the floor (opts.dying, fx/Gore.js): 'crawl' (not quite dead, he drags himself away from his
-    // killer, opts.killer: { x, y }, along dir), 'spasm' or 'curl', each a scripted sequence (script()), phase by
+    // killer, opts.killer: { x, y }, along dir), 'spasm', 'curl' or 'throat' (his throat cut, he sinks onto his knees
+    // where he stood, at { x, y }, and pitches forward along dir), each a scripted sequence (script()), phase by
     // phase, t = s into the phase, seed = its moves; or 'throes': his limbs jerk a moment (s left of it, s to the next)
     const how = opts.dying;
-    this.dying = how && how !== 'throes' ? { kind: how, phase: 'fall', t: 0, dir, seed: randi(1, 2 ** 30),
-      fall: how === 'crawl' ? CRAWL.fall : how === 'spasm' ? SPASM.fall : CURL.fall,
-      killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 } } : null;
+    this.dying = how && how !== 'throes' ? { kind: how, phase: 'fall', t: 0, dir, seed: randi(1, 2 ** 30), fall: FALL[how],
+      hip: { x, y }, killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 } } : null;
     this.throes = how === 'throes' ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
     this.up = false; // lying on his back (opts.back: he went over backwards)
     // the weapon left planted in him (opts.stuck: its sprite), at an angle off the line of his body
@@ -65,12 +70,13 @@ export default class Ragdoll {
       this.join(head, neck, head.root);
       this.head = head;
     }
+    // limb image points +x (hand/shoe); its root is the -x end. ang: its turn off the torso as for the +x side
+    // (BODY: the -x side mirrored)
     const limb = (name, jx, jy, ang) => {
-      const im = img(name);
+      const im = img(name), a = jx < 0 ? Math.PI - ang : ang;
       const half = im.width / 2;
-      // limb image points +x (hand/shoe); its root is the -x end
-      const c = at(jx + Math.cos(ang) * half, jy + Math.sin(ang) * half);
-      const part = this.addPart(name, im, Bodies.rectangle(c.x, c.y, im.width - 1, Math.max(3, im.height - 1), { ...opt(), angle: th + ang }), ang, name === 'leg' ? 11 : 4);
+      const c = at(jx + Math.cos(a) * half, jy + Math.sin(a) * half);
+      const part = this.addPart(name, im, Bodies.rectangle(c.x, c.y, im.width - 1, Math.max(3, im.height - 1), { ...opt(), angle: th + a }), a, name === 'leg' ? 11 : 4);
       part.root = { x: -half + 1, y: 0 };
       part.jt = { x: jx, y: jy }; // its joint on the torso, torso-local
       part.len = im.width - 2;    // root to tip
@@ -78,18 +84,21 @@ export default class Ragdoll {
       return part;
     };
     this.limbs = [
-      limb('arm', -tw / 2 + 1, -tht / 2 + 3, Math.PI + rand(-0.6, 0.3)),
-      limb('arm', tw / 2 - 1, -tht / 2 + 3, rand(-0.3, 0.6)),
-      limb('leg', -3, tht / 2 - 1, Math.PI / 2 + rand(0, 0.5)),
-      limb('leg', 3, tht / 2 - 1, Math.PI / 2 - rand(0, 0.5)),
+      limb('arm', -tw / 2 + 1, -tht / 2 + 3, rand(...BODY.arms)),
+      limb('arm', tw / 2 - 1, -tht / 2 + 3, rand(...BODY.arms)),
+      limb('leg', -3, tht / 2 - 1, rand(...BODY.legs)),
+      limb('leg', 3, tht / 2 - 1, rand(...BODY.legs)),
     ];
+    this.fit(x, y);
 
+    // thrown as one body, turning a little as a whole; the limbs trail behind the torso
+    const spin = rand(...BODY.spin) * (speed / 100) * (chance(0.5) ? 1 : -1) / 60;
     for (const p of this.parts) {
-      Body.setVelocity(p.body, { x: Math.cos(dir) * speed / 60 + rand(-0.6, 0.6), y: Math.sin(dir) * speed / 60 + rand(-0.6, 0.6) });
-      Body.setAngularVelocity(p.body, rand(-0.15, 0.15));
+      const k = p.len ? 1 - BODY.lag : 1, r = p.body.position;
+      Body.setVelocity(p.body, { x: Math.cos(dir) * k * speed / 60 - spin * (r.y - y), y: Math.sin(dir) * k * speed / 60 + spin * (r.x - x) });
+      Body.setAngularVelocity(p.body, spin);
       world.addBody(p.body);
     }
-    if (this.head) Body.setVelocity(this.head.body, { x: Math.cos(dir) * speed / 50, y: Math.sin(dir) * speed / 50 });
     for (const j of this.joints) world.addBody(j.c);
     for (const i of opts.detach || []) this.detach(this.limbs[i], dir, speed * 1.4);
     // a body that will move on the floor shows the side it lies on; the others keep the plain sprites
@@ -116,6 +125,70 @@ export default class Ragdoll {
       length: 0, stiffness: JOINT, damping: 0.08, render: { visible: false },
     });
     this.joints.push({ c, part });
+  }
+
+  // laid out across a wall or a bolted prop (he went down against it): turned about his middle (x, y) until every
+  // part is clear of it, or left as he is when no turn is
+  fit(x, y) {
+    const near = this.blockers(x, y, 40), m = this.world.map;
+    const ends = (p) => (p.len ? [-1, 0, 1].map((k) => local(p.body.position.x, p.body.position.y, p.body.angle, k * p.len / 2, 0)) : [p.body.position]);
+    const pts = this.parts.flatMap(ends).map((q) => ({ x: q.x - x, y: q.y - y }));
+    const clear = (d) => pts.every((q) => {
+      const r = local(x, y, d, q.x, q.y);
+      return !m.solidAt(r.x, r.y) && !Query.point(near, r).length;
+    });
+    if (clear(0)) return;
+    const d = TURNS.find(clear);
+    if (d === undefined) return;
+    for (const p of this.parts) {
+      const b = p.body, r = local(0, 0, d, b.position.x - x, b.position.y - y);
+      Body.setPosition(b, { x: x + r.x, y: y + r.y });
+      Body.setAngle(b, b.angle + d);
+    }
+  }
+
+  // what a body cannot go through (BLOCKERS) within r of (x, y): walls, doors, glass and furniture that does not budge
+  blockers(x, y, r) {
+    return this.world.physics.bodies().filter((b) => (b.collisionFilter.category & BLOCKERS) && b.collisionFilter.mask
+      && (!(b.collisionFilter.category & CAT.PROP) || b.isStatic || b.entity?.def?.blocksPath || b.entity?.isVehicle)
+      && b.bounds.min.x < x + r && b.bounds.max.x > x - r && b.bounds.min.y < y + r && b.bounds.max.y > y - r);
+  }
+
+  // A limp body, after each physics step: every part held within what its joint allows (BODY.joints; a part that
+  // reaches the end of it stops there and goes on with the torso), and what is left of a swing taken out of him
+  // (BODY.damp): the parts turn and move more and more as one, so he drops and stays instead of flailing.
+  limp(dt) {
+    const t = this.torso.body, ta = t.angle, wt = Body.getAngularVelocity(t), vt = Body.getVelocity(t);
+    const ks = 1 - Math.exp(-BODY.damp.spin * dt), kv = 1 - Math.exp(-BODY.damp.slide * dt);
+    const on = this.parts.filter((p) => p.attached);
+    let m = 0, vx = 0, vy = 0;
+    for (const p of on) {
+      const v = Body.getVelocity(p.body);
+      m += p.body.mass; vx += v.x * p.body.mass; vy += v.y * p.body.mass;
+    }
+    vx /= m; vy /= m;
+    for (const p of on) {
+      const b = p.body;
+      if (p !== this.torso) {
+        const left = p.jt.x < 0 && p !== this.head, a = jointAngle(ta, b.angle, left), c = clampJoint(a, RANGE[p.name]);
+        if (c !== a && this.hold(p, partAngle(ta, c, left))) {
+          Body.setVelocity(b, { x: vt.x - wt * (b.position.y - t.position.y), y: vt.y + wt * (b.position.x - t.position.x) });
+          Body.setAngularVelocity(b, wt);
+        } else Body.setAngularVelocity(b, Body.getAngularVelocity(b) + (wt - Body.getAngularVelocity(b)) * ks);
+      }
+      const v = Body.getVelocity(b);
+      Body.setVelocity(b, { x: v.x + (vx - v.x) * kv, y: v.y + (vy - v.y) * kv });
+    }
+  }
+
+  // part p held at the end of its joint's range, at angle a; not into a wall (forced into it, it would be thrown back
+  // out step after step): false, the wall has it
+  hold(p, a) {
+    const t = this.torso.body, j = local(t.position.x, t.position.y, t.angle, p.jt.x, p.jt.y);
+    const end = local(j.x, j.y, a, p.len ? p.len / 2 : 0, p.len ? 0 : -4);
+    if (this.world.map.solidAt(end.x, end.y)) return false;
+    seat(p.body, j, p.root, a);
+    return true;
   }
 
   get x() { return this.torso.body.position.x; }
@@ -146,14 +219,14 @@ export default class Ragdoll {
     const w = this.world;
     this.release(); // that finishes him
     this.throes = null;
-    impulse(part.body, a, weaponDef?.pellets > 1 ? 20 : 14, rand(-0.15, 0.15), 4);
+    const heavy = weaponDef && (weaponDef.pellets > 1 || weaponDef.heavy || weaponDef.rocket);
+    impulse(part.body, a, BODY.jolt[weaponDef?.pellets > 1 ? 1 : heavy ? 2 : 0], rand(-0.15, 0.15), 4);
     const p = part.body.position;
     const [n, v, cone] = woundFor('bullet', weaponDef).spray;
     w.particles.blood(p.x, p.y, a, cone + 0.2, Math.ceil(n * 0.5), v * 0.7);
     w.decals.stampBlood(p.x, p.y, 3, 3);
     this.pool = Math.min(this.poolMax + 4, this.pool + 1.5);
     this.dry = false;
-    const heavy = weaponDef && (weaponDef.pellets > 1 || weaponDef.heavy || weaponDef.rocket);
     if (heavy && part !== this.torso && chance(0.5)) this.detach(part, a, 260);
     else w.sound('splat', p.x, p.y, 0.35);
   }
@@ -163,6 +236,7 @@ export default class Ragdoll {
     const w = this.world;
     if (this.dying) this.script(dt);
     if (this.throes) this.twitch(dt);
+    if (!this.dying || this.dying.phase === 'fall') this.limp(dt);
     let moving = false;
     for (const part of this.parts) {
       const sp = Body.getSpeed(part.body);
@@ -180,9 +254,11 @@ export default class Ragdoll {
       const pos = this.torso.body.position;
       w.particles.blood(pos.x, pos.y, rand(0, 6.28), 0.4, 1, rand(60, 140), { z: 3 });
     }
-    const t = this.torso.body, n = this.neckPos(), src = this.source();
+    // the pool forms where he ends up: not under a man crawling, nor before a cut throat is down on the floor
+    const t = this.torso.body, n = this.neckPos(), src = this.source(), s = this.dying;
+    const going = s && (s.kind === 'crawl' || (s.kind === 'throat' && !s.down));
     bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
-      src.position, this.dying?.kind !== 'crawl' && Body.getSpeed(src) < 0.3); // the pool forms where he ends up
+      src.position, !going && Body.getSpeed(src) < 0.3);
     this.settle = moving ? 0 : this.settle + dt;
     if (this.settle > 2 && !this.dying && !this.throes && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
@@ -190,7 +266,8 @@ export default class Ragdoll {
   // How he dies on the floor, a scripted sequence (fx/CrawlPose.js, fx/DyingPose.js). After a moment of plain physics
   // (fall) every part is posed straight into its body each step, roots on their joints (the joints go slack
   // meanwhile). crawl: he turns onto his belly (turn), drags himself away pull after pull (crawl), reaches out a last
-  // time and lies still (last); spasm, curl: he writhes where he fell (writhe).
+  // time and lies still (last); spasm, curl: he writhes where he fell (writhe); throat: from his knees to the floor,
+  // bleeding out (throat).
   script(dt) {
     const s = this.dying, t = this.torso.body;
     // something shoved him (a swing, a slide): physics has him back
@@ -205,6 +282,7 @@ export default class Ragdoll {
     if (s.phase === 'crawl') this.drag(s);
     if (s.phase === 'last') this.last(s);
     if (s.phase === 'writhe') this.writhe(s);
+    if (s.phase === 'throat') this.throat(s);
   }
 
   // he has landed: his pose as he fell (limb angles off the torso's), and for a crawl the way he goes (away from his
@@ -213,7 +291,7 @@ export default class Ragdoll {
     const t = this.torso.body, x = t.position.x, y = t.position.y, half = this.torso.img.height / 2;
     const rel = (p) => ({ a: angDiff(t.angle, p.body.angle), s: 1 });
     const g = (p) => ({ x: p.jt.x, y: p.jt.y, len: p.len });
-    this.geom = { arms: this.limbs.slice(0, 2).map(g), legs: this.limbs.slice(2).map(g) };
+    this.geom = { arms: this.limbs.slice(0, 2).map(g), legs: this.limbs.slice(2).map(g), half };
     s.from = { x, y, a: t.angle, arms: this.limbs.slice(0, 2).map(rel), legs: this.limbs.slice(2).map(rel),
       head: this.head ? rel(this.head) : { a: 0, s: 1 } };
     s.t = 0;
@@ -224,6 +302,11 @@ export default class Ragdoll {
       const k = this.toLocal(x, y, A, s.killer);
       Object.assign(s, { phase: 'turn', esc, A, over: this.up, look: k.x < 0 ? -GLANCE : GLANCE, pull: -1, planted: -1,
         plan: crawlPlan(s.seed, this.geom.arms[0].len) });
+    } else if (s.kind === 'throat') {
+      // he pitches forward, or off to a side when there is no floor for him ahead
+      const esc = escapeDir(s.dir, (a) => !this.clear(s.hip.x, s.hip.y, a, 4, 2 * half + 8));
+      if (esc === null) return false;
+      Object.assign(s, { phase: 'throat', A: esc + Math.PI / 2, plan: throatPlan(s.seed) });
     } else Object.assign(s, { phase: 'writhe', plan: s.kind === 'spasm' ? spasmPlan(s.seed) : curlPlan(s.seed) });
     for (const j of this.joints) j.c.stiffness = 0;
     return true;
@@ -308,11 +391,25 @@ export default class Ragdoll {
     const P = spasm ? spasmPose(s.plan, s.t, f, this.geom) : curlPose(s.plan, s.t, f, this.geom, this.up);
     this.limbs[0].top = this.limbs[1].top = P.top;
     this.pose(f.x, f.y, f.a + P.rock, P, P.roll);
-    this.torso.sy = P.arch;
     if (!s.cried && s.t > (spasm ? s.plan.kicks[0].t0 : s.plan.dur * 0.2)) {
       s.cried = true;
       if (spasm) this.world.sound('soft', f.x, f.y, 0.35); // a heel on the floor
       else this.world.sound('whimper', f.x, f.y, 0.45, { pitch: 0.75 });
+    }
+    if (s.t >= s.plan.dur) this.release();
+  }
+
+  // the throat cut: on his knees where he stood (s.hip), his length foreshortened (P.arch), then forward onto the
+  // floor; every spurt of the artery thrown from his neck the way it points
+  throat(s) {
+    const P = throatPose(s.plan, s.t, this.geom), half = this.geom.half, a = s.A + P.rock;
+    const c = local(s.hip.x, s.hip.y, s.A, 0, -half * P.arch);
+    this.limbs[0].top = this.limbs[1].top = P.top;
+    this.pose(c.x, c.y, a, P);
+    s.down = P.down;
+    if (P.jet > 0 && !this.dry) {
+      const n = local(c.x, c.y, a, 0, -half * P.arch);
+      squirt(this.world, n.x, n.y, a - Math.PI / 2 + P.jetA, P.jet, P.z);
     }
     if (s.t >= s.plan.dur) this.release();
   }
@@ -341,21 +438,20 @@ export default class Ragdoll {
     return { x: dx * cs + dy * sn, y: -dx * sn + dy * cs };
   }
 
-  // the torso at (x, y), angle a, every attached part on its joint (P: fx/CrawlPose.js); roll = squeeze across
+  // the torso at (x, y), angle a, every attached part on its joint (P: fx/CrawlPose.js, fx/DyingPose.js); roll =
+  // squeeze across, P.arch = squeeze along (the joints come in with it)
   pose(x, y, a, P, roll = 1) {
-    const set = (b, px, py, ang) => {
-      Body.setAngle(b, ang);
-      Body.setPosition(b, { x: px, y: py });
-      Body.setVelocity(b, ZERO);
-      Body.setAngularVelocity(b, 0);
-    };
+    const along = P.arch ?? 1;
+    const still = (b) => { Body.setVelocity(b, ZERO); Body.setAngularVelocity(b, 0); };
     const place = (part, q) => {
-      const j = local(x, y, a, part.jt.x * roll, part.jt.y + (q.dy || 0)), ang = a + q.a, r = part.root;
-      const cs = Math.cos(ang), sn = Math.sin(ang);
-      set(part.body, j.x - (r.x * cs - r.y * sn), j.y - (r.x * sn + r.y * cs), ang);
+      seat(part.body, local(x, y, a, part.jt.x * roll, part.jt.y * along + (q.dy || 0)), part.root, a + q.a);
+      still(part.body);
     };
-    set(this.torso.body, x, y, a);
+    Body.setAngle(this.torso.body, a);
+    Body.setPosition(this.torso.body, { x, y });
+    still(this.torso.body);
     this.torso.sx = roll;
+    this.torso.sy = along;
     this.limbs.forEach((part, i) => {
       const q = i < 2 ? P.arms[i] : P.legs[i - 2];
       place(part, q);
@@ -378,10 +474,7 @@ export default class Ragdoll {
       if (d >= d1) break; // the far end too
     }
     if (pts.some((p) => m.solidAt(p.x, p.y))) return false;
-    const r = d1 + 12;
-    const near = this.world.physics.bodies().filter((b) => (b.collisionFilter.category & BLOCKERS) && b.collisionFilter.mask
-      && (!(b.collisionFilter.category & CAT.PROP) || b.isStatic || b.entity?.def?.blocksPath || b.entity?.isVehicle)
-      && b.bounds.min.x < x + r && b.bounds.max.x > x - r && b.bounds.min.y < y + r && b.bounds.max.y > y - r);
+    const near = this.blockers(x, y, d1 + 12);
     return !pts.some((p) => Query.point(near, p).length);
   }
 
@@ -464,6 +557,13 @@ export default class Ragdoll {
     }
     if (this.headless) stump(ctx, this.neckPos(), 4);
   }
+}
+
+// a part at angle a with its root r (part-local) on the point j
+function seat(b, j, r, a) {
+  const cs = Math.cos(a), sn = Math.sin(a);
+  Body.setAngle(b, a);
+  Body.setPosition(b, { x: j.x - (r.x * cs - r.y * sn), y: j.y - (r.x * sn + r.y * cs) });
 }
 
 // a part as it lies, or scaled about its root (part.sx along it, part.sy across: the head lifted, rolling over)

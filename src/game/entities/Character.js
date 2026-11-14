@@ -434,7 +434,7 @@ export default class Character {
     // shove whatever loose stuff is in the arc
     for (const list of [w.corpses, w.debris, w.items]) {
       for (const o of list) {
-        if (o.dead) continue;
+        if (o.dead || o.age === 0) continue; // not the body this very blow just made: it was thrown as it should
         const p = o.body.position, dd = Math.hypot(p.x - x, p.y - y);
         if (dd > d.range + 8 || Math.abs(angDiff(a, Math.atan2(p.y - y, p.x - x))) > d.arc / 2) continue;
         impulse(o.body, a, d.lethal ? 90 : 50, rand(-0.2, 0.2), 6);
@@ -487,7 +487,7 @@ export default class Character {
     this.alive = false;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
-    const left = gore(this.world, this, angle, cause, by);
+    const left = gore(this.world, this, angle, cause, by, how); // how: the blow decides how much he bleeds
     // most of them go down with a cry, when there is still a throat to cry with
     if (left === 'corpse' && !this.held && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
     this.world.onKill(this, cause, killer, how);

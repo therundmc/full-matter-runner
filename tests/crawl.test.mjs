@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { CRAWL, SPASM, CURL } = await load('game/data/wounds.js');
+const { CRAWL, SPASM, CURL, THROAT, BODY } = await load('game/data/wounds.js');
 const { crawlPlan, pullAt, travelAt, crawlPose, lastPose, escapeDir } = await load('game/fx/CrawlPose.js');
-const { spasmPlan, spasmPose, curlPlan, curlPose } = await load('game/fx/DyingPose.js');
+const { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } = await load('game/fx/DyingPose.js');
+const { jointAngle } = await load('game/fx/Joints.js');
 
 // a thug's rag parts: shoulders and hips on the torso (torso-local), limb lengths
 const GEOM = { arms: [{ x: -6, y: -5, len: 9 }, { x: 6, y: -5, len: 9 }], legs: [{ x: -3, y: 7, len: 11 }, { x: 3, y: 7, len: 11 }] };
@@ -197,5 +198,58 @@ test('curl: hands to the wound, knees drawn up, rolled onto his side, then slack
       for (const q of [...limbs(P), P.head]) assert.ok(q.s > 0.4 && q.s <= 1);
       assert.ok(samePose(P, curlPose(plan, u + 0.01, FELL, GEOM, true), 0.25));
     }
+  }
+});
+
+test('throat: three to five spurts, each weaker and later than the last, then a leg pushes once or twice', () => {
+  assert.deepEqual(throatPlan(77), throatPlan(77));
+  for (const seed of SEEDS) {
+    const plan = throatPlan(seed), b = plan.beats, down = THROAT.kneel + THROAT.pitch;
+    assert.ok(plan.dur >= THROAT.dur[0] && plan.dur <= THROAT.dur[1] && plan.dur <= 3);
+    assert.ok(b.length >= THROAT.beats[0] && b.length <= THROAT.beats[1]);
+    for (let j = 1; j < b.length; j++) {
+      assert.ok(b[j].k < b[j - 1].k, 'weaker');
+      assert.ok(b[j].t0 >= b[j - 1].t0 + b[j - 1].d - 1e-9, 'one after the other');
+      if (j > 1) assert.ok(b[j].t0 - b[j - 1].t0 > (b[j - 1].t0 - b[j - 2].t0) * 0.9, 'the heart slows');
+    }
+    assert.ok(b.at(-1).t0 + b.at(-1).d <= plan.dur);
+    assert.ok(plan.pushes.length >= 1 && plan.pushes.length <= 2);
+    for (const p of plan.pushes) assert.ok(p.t0 >= down && p.t0 + p.d < plan.dur, 'once he is down');
+  }
+});
+
+test('throat: on his knees, hands at his throat, forward onto the floor, the artery in spurts, slack and in range at the end', () => {
+  const G = { ...GEOM, half: 8 }, J = BODY.joints;
+  for (const seed of SEEDS.slice(0, 60)) {
+    const plan = throatPlan(seed);
+    const kneel = throatPose(plan, THROAT.kneel, G);
+    assert.ok(kneel.arch < 0.5 && kneel.top && !kneel.down, 'kneeling: foreshortened, the hands over him');
+    assert.ok(kneel.z > 10, 'the first spurts leave from up at his neck');
+    for (let k = 0; k < 2; k++) {
+      // each hand within a few px of his throat
+      const g = G.arms[k], q = kneel.arms[k], hx = g.x + Math.cos(q.a) * q.s * g.len, hy = g.y * kneel.arch + Math.sin(q.a) * q.s * g.len;
+      assert.ok(Math.hypot(hx, hy + G.half * kneel.arch) < 4, 'a hand at the throat');
+    }
+    const lying = throatPose(plan, THROAT.kneel + THROAT.pitch + 0.01, G);
+    assert.ok(lying.down && lying.arch === 1 && !lying.top && lying.z < 4);
+    // nothing between the spurts, and each spurt's peak below the last one's
+    const peaks = plan.beats.map((x) => Math.max(...Array.from({ length: 21 }, (_, n) => throatPose(plan, x.t0 + x.d * n / 20, G).jet)));
+    for (let j = 1; j < peaks.length; j++) assert.ok(peaks[j] < peaks[j - 1]);
+    for (let j = 1; j < plan.beats.length; j++) {
+      const gap = plan.beats[j].t0 - (plan.beats[j - 1].t0 + plan.beats[j - 1].d);
+      if (gap > 0.02) assert.equal(throatPose(plan, plan.beats[j].t0 - gap / 2, G).jet, 0);
+    }
+    for (let u = 0; u < plan.dur; u += 0.01) {
+      const P = throatPose(plan, u, G), Q = throatPose(plan, u + 0.01, G);
+      assert.ok(samePose(P, Q, 0.25) && Math.abs(P.arch - Q.arch) < 0.1 && Math.abs(P.head.dy - Q.head.dy) < 1, 'no pop');
+      for (const q of limbs(P)) assert.ok(q.s >= 0.3 && q.s <= 1);
+    }
+    // the end is the body that gets baked: straight limbs, every joint where a joint can be
+    const end = throatPose(plan, plan.dur, G);
+    for (const q of [...limbs(end), end.head]) assert.ok(near(q.s, 1));
+    assert.ok(end.jet === 0 && near(end.head.dy, 0) && end.head.a >= J.neck[0] && end.head.a <= J.neck[1]);
+    const inRange = (g, q, [lo, hi]) => { const a = jointAngle(0, q.a, g.x < 0); return a >= lo && a <= hi; };
+    end.arms.forEach((q, k) => assert.ok(inRange(G.arms[k], q, J.shoulder), 'arm ' + k));
+    end.legs.forEach((q, k) => assert.ok(inRange(G.legs[k], q, J.hip), 'leg ' + k));
   }
 });
