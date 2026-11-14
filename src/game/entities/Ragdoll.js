@@ -1,8 +1,8 @@
 import { CAT, MASK, PALETTE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, chance, local } from '../../engine/math.js';
-import { setMaterial, impulse } from '../../engine/physics/Body.js';
-import { woundFor } from '../data/wounds.js';
+import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
+import { woundFor, CRAWL } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
 import { poolArt } from '../render/BloodArt.js';
 
@@ -23,6 +23,8 @@ export default class Ragdoll {
     this.settle = 0;
     this.age = 0;
     this.dead = false;
+    // not quite dead (opts.crawl): pulls left, s to the next one, the arm that reaches
+    this.crawl = opts.crawl ? { left: Math.round(rand(...CRAWL.pulls)), t: rand(...CRAWL.delay), arm: 0, groaned: false } : null;
     const group = Body.nextGroup(true);
     const img = (p) => spriteOpt(`characters/${kind}_rag_${p}`) || sprite(`characters/${kind}_gib_${p}`);
     const th = dir + Math.PI / 2; // head (torso -y) ends up along the travel direction
@@ -104,6 +106,7 @@ export default class Ragdoll {
   detach(part, dir, speed = 250) {
     if (!part || !part.attached) return;
     part.attached = false;
+    this.crawl = null;
     const j = this.joints.find((k) => k.part === part);
     if (j) Composite.remove(this.world.engine.world, j.c);
     part.bleed = rand(1.2, 2);
@@ -119,6 +122,7 @@ export default class Ragdoll {
   // a bullet hits one of the parts
   shotPart(part, a, weaponDef) {
     const w = this.world;
+    this.crawl = null; // that finishes him
     impulse(part.body, a, weaponDef?.pellets > 1 ? 20 : 14, rand(-0.15, 0.15), 4);
     const p = part.body.position;
     const [n, v, cone] = woundFor('bullet', weaponDef).spray;
@@ -134,6 +138,7 @@ export default class Ragdoll {
   update(dt) {
     this.age += dt;
     const w = this.world;
+    if (this.crawl) this.drag(dt);
     let moving = false;
     for (const part of this.parts) {
       const sp = Body.getSpeed(part.body);
@@ -155,7 +160,22 @@ export default class Ragdoll {
     bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
       src.position, Body.getSpeed(src) < 0.3);
     this.settle = moving ? 0 : this.settle + dt;
-    if (this.settle > 2 && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
+    if (this.settle > 2 && !this.crawl && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
+  }
+
+  // not quite dead: a few pulls on his arms, head first, each one a little way (the smear follows), then he lies still
+  drag(dt) {
+    const c = this.crawl, t = this.torso.body;
+    if ((c.t -= dt) > 0 || Body.getSpeed(t) > 0.3) return;
+    if (c.left-- <= 0) { this.crawl = null; return; }
+    c.t = rand(...CRAWL.every);
+    c.arm = 1 - c.arm;
+    if (!c.groaned) { c.groaned = true; this.world.sound('whimper', this.x, this.y, 0.5, { pitch: 0.85 }); }
+    const a = t.angle - Math.PI / 2 + rand(-0.3, 0.3);
+    for (const part of this.parts) {
+      // the arm that reaches goes ahead of the rest
+      if (part.attached) impulse(part.body, a, kgOf(part.body) * CRAWL.pull * (part === this.limbs[c.arm] ? 1.5 : 1));
+    }
   }
 
   // the part the blood seeps from: the head while it is on, else the torso (its pool forms at the neck)

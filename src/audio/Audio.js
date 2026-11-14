@@ -53,6 +53,7 @@ const META = {
   wood: { gain: 0.6 }, metal: { gain: 0.55 }, stone: { gain: 0.6 }, plastic: { gain: 0.7 }, soft: { gain: 0.6 },
   ceramic: { gain: 0.55 }, glassHit: { gain: 0.5 }, flesh: { gain: 0.7 },
   woodBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.85 },
+  flip: { pri: 2, dur: 0.6, gap: 0.2, max: 2, gain: 0.8 },
   metalBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.8 },
   ceramicBreak: { pri: 2, dur: 0.5, gap: 0.05, max: 3, gain: 0.75 },
   plasticBreak: { pri: 2, dur: 0.4, gap: 0.05, max: 3, gain: 0.7 },
@@ -223,6 +224,7 @@ const FOLEY = {
   ceramic: [['ceramic', 1]], glassHit: [['glassHit', 1]], flesh: [['soft', 0.7, 0.85]],
   // the thing giving way
   woodBreak: [['woodBreak', 1], ['wood', 0.5, 0.85]],
+  flip: [['wood', 0.8, 0.7], ['thud', 0.9, 0.8, 0.05], ['wood', 0.5, 1.1, 0.12]], // a table going over on its side
   metalBreak: [['metalBreak', 1], ['sheet', 0.6]],
   ceramicBreak: [['ceramic', 1], ['glassHit', 0.5, 0.8], ['stone', 0.5]],
   plasticBreak: [['plastic', 1, 0.8], ['woodBreak', 0.45, 1.5]],

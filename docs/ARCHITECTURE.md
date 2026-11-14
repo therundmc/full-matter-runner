@@ -64,7 +64,8 @@ src/
     ai/                   enemy AI, DOM-free (unit tested)
       Tension.js          soundtrack intensity: alert phase + heat of the fight (shots, kills, blasts)
       Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
-      Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point, the way through a doorway
+      Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point, the way through a doorway,
+                          the table worth tipping over in front of a cover spot (`tableToFlip`)
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
       Civilians.js        passers-by Walker brain (stroll, stop, panic, then by temperament flee / hide curled up / freeze) + escapeRoute, hideRoute
@@ -213,6 +214,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `Character.kill(angle, cause, killer, by)` hands what killed (`by`: a weapon definition or `{ gore, wound }`) to
   `gore()`; the cause is the fallback (`CAUSE_WOUND`). A knife casts a thin arc and leaves a pumping artery and a
   lake, 7.62 a long tight jet behind the body, buckshot a wide wet cone (only up close), a bat heavy slow drops.
+  A profile's `crawl` is the odds that a guard killed whole is not quite dead: his `Ragdoll` drags itself a few
+  pulls further (`CRAWL`, `Ragdoll.drag`), groans once, smears the floor as any moving body does, then lies still.
 - Blood on the floor (render/BloodArt.js, MapRenderer): a drop lands as a stamp picked by how it hit (flat = tapered
   streak along its travel with satellites, steep = ragged spot, heavy = splat); stamps are per-pixel thickness maps
   (film to core) coloured through one ramp per age, never circles or gradients. They are baked into `bloodCanvas`,
@@ -293,6 +296,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   skid, then are baked into the floor (remains stay). Debris also has a fake height (`z`, `vz`).
   Bolted furniture keeps at most a few physical parts per collapse (`DESTRUCTION` caps in Config.js).
   A piece is baked with the shadow it cast while loose (`decals.wreck`), so settling does not pop.
+  A table whose def names a `flips` prop can be tipped on its edge (`Prop.flip(dirA)`): it is replaced by that
+  bolted, vaultable shield with the health it had left, and what stood on it is thrown (`Prop.empty`). A gun guard
+  taking cover prefers a spot with such a table before it (`AI.flip`, the `bonus` of `Tactics.findCover`), steps
+  up to it and shoves it over toward the threat (`Enemy.tCover`, sub `flip`).
 - Floor litter (`LITTER` in Config.js): everything still flies, but only a share of the crumbs (chips, glass slivers,
   fluff, cinders, tiny visual shards) leaves a mark where it lands, and a faint one; real pieces, casings, magazines
   and blood always stay. Blood has its own layer above the floor, so it always covers rubble.

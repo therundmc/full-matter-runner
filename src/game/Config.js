@@ -134,6 +134,9 @@ export const AI = {
   trail: { fresh: 45, max: 48, gap: 60, hop: 70, sight: 0.45, close: 36, ahead: 96 },
   // a doorman's eyes follow whoever comes within `range` px and `arc` rad of the way he stands, at `turn` rad/s
   gaze: { range: 176, arc: 1.9, turn: 4 },
+  // tipping a table over for a shield: px from the cover spot to the table at most, px to be at it, s to get there,
+  // px of extra way such a spot is worth
+  flip: { reach: 40, near: 6, time: 0.8, pull: 96 },
   duck: [2.5, 4],          // s a bartender stays down behind his counter at the first shots
   // how a guard carries his weapon (ai/Carry.js), in s: putting it away, drawing a pistol or a blade, bringing a
   // long gun round from his back, raising it on a target; ready: how far out (0..1) it must be to fire

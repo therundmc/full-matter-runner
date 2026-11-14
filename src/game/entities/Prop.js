@@ -428,6 +428,40 @@ export default class Prop {
     w.sound('glassHit', p.x, p.y, 0.45, { pitch: rand(0.9, 1.25) });
   }
 
+  // what stood on it or in it goes flying (it breaks up, or it is tipped over)
+  empty(x, y, dirA, power, z0 = this.lift()) {
+    const rec = this.rec;
+    let bits = DESTRUCTION.maxBits;
+    for (const c of rec.contents) {
+      if (c.on !== 'break') continue;
+      // of a rack, only the bottles still standing are left to fall
+      const n = Math.min(c.n, bits, c.bit === rec.rack?.bit && this.rack ? this.rack.filter((b) => b.up).length : c.n);
+      bits -= n;
+      this.throwBits(BITS[c.bit], c, n, x, y, dirA, Math.max(0.8, power * 0.8));
+    }
+    if (rec.floats) this.world.particles.floaters(x, y, FLOATS[rec.floats[0]], rec.floats[1], dirA, Math.PI, 70 * Math.min(power, 2), z0);
+  }
+
+  // Tipped over on its side, its top toward dirA (a guard making himself a shield): what stood on it goes flying and
+  // the upended table (def.flips) takes its place, as worn as this one was. Returns it, or null when this is not
+  // something one tips over (any more).
+  flip(dirA) {
+    const d = this.def, w = this.world;
+    if (!d.flips || this.dead || this.parts) return null;
+    const { x, y } = this.centre();
+    w.removeBody(this.body);
+    this.dead = true;
+    const p = new Prop(w, d.flips, x, y, dirA + Math.PI / 2);
+    p.hp = Math.max(2, p.hp * this.hp / d.hp);
+    // it lands on its edge and rocks
+    p.kick.x = -Math.cos(dirA) * 7; p.kick.y = -Math.sin(dirA) * 7; p.kick.vr = rand(-2, 2);
+    w.props.push(p);
+    this.empty(x, y, dirA, 1);
+    w.particles.dust(x, y, 6, this.W * 0.4, this.rec.fx.dust || '#5a5462', { speed: 30, size: 4, life: 2, alpha: 0.16 });
+    w.sound('flip', x, y);
+    return p;
+  }
+
   // loose bits: real-size little physical things (pool balls roll, records skid, books tumble, bottles smash)
   throwBits(bit, c, n, x, y, dirA, power) {
     const w = this.world;
@@ -618,16 +652,7 @@ export default class Prop {
     this.fall = { x, y, ca, sa, dirA, power, heavy, z0, t: 0, harm: power >= 1.5 ? { kind: 'blunt', knock: 3.5, lethal: 8.5 } : null };
     if (grounded) w.decals.bake(remains(this.W, this.H, d.chips), x, y, ang);
     this.shed(0);
-    // contents
-    let bits = DESTRUCTION.maxBits;
-    for (const c of rec.contents) {
-      if (c.on !== 'break') continue;
-      // of a rack, only the bottles still standing are left to fall
-      const n = Math.min(c.n, bits, c.bit === rec.rack?.bit && this.rack ? this.rack.filter((b) => b.up).length : c.n);
-      bits -= n;
-      this.throwBits(BITS[c.bit], c, n, x, y, dirA, Math.max(0.8, power * 0.8));
-    }
-    if (rec.floats) P.floaters(x, y, FLOATS[rec.floats[0]], rec.floats[1], dirA, Math.PI, 70 * Math.min(power, 2), z0);
+    this.empty(x, y, dirA, power, z0);
     if (rec.powder) P.dust(x, y, 26, Math.max(this.W, this.H) * 0.4, rec.powder, { speed: 60 * power, size: 9, life: 4.5, alpha: 0.4 });
     // dust that hangs, then settles
     const R = Math.max(this.W, this.H) * 0.4;

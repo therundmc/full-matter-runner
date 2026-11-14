@@ -10,7 +10,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { BARKS, SHOUTED } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
-import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor } from '../ai/Tactics.js';
+import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
 import { struck, talks, pours, reliefSpot, gazeAt, STRETCH } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
@@ -941,8 +941,13 @@ export default class Enemy extends Character {
   planCover(threat, prefDist, radius, approach) {
     const d = this.director;
     if (!d.budget(3)) return false;
-    const c = findCover(this.world, this, threat.x, threat.y, prefDist, (x, y) => d.isClaimed(x, y, this), radius, approach);
+    // a table to tip over in front of a spot is worth a detour; he does it once there (tCover)
+    const tables = approach ? [] : this.world.props.filter((p) => p.def.flips && !p.dead);
+    const flip = (x, y) => tableToFlip(tables, x, y, threat.x, threat.y, AI.flip.reach);
+    const c = findCover(this.world, this, threat.x, threat.y, prefDist, (x, y) => d.isClaimed(x, y, this), radius, approach,
+      tables.length ? (x, y) => (flip(x, y) ? AI.flip.pull : 0) : null);
     if (!c) return false;
+    if (tables.length) c.flip = flip(c.x, c.y);
     this.cover = c;
     d.claim(this, c.x, c.y);
     return true;
@@ -1027,7 +1032,24 @@ export default class Enemy extends Character {
     if (this.sub === '') {
       const arrived = this.travel(dt, c.x, c.y, ENEMY.runSpeed * 0.95, { look: false, near: 6 });
       this.aimAt(lk.x, lk.y, dt);
-      if (arrived) { this.sub = 'hide'; this.t = 0; this.hideT = rand(0.6, 1.2); }
+      if (arrived) {
+        this.sub = c.flip && Math.hypot(c.x - this.x, c.y - this.y) < 16 ? 'flip' : 'hide';
+        this.t = 0; this.hideT = rand(0.6, 1.2);
+      }
+      return;
+    }
+    if (this.sub === 'flip') {
+      // a step up to the table in front of his spot and over it goes, its top toward the threat; then back behind it
+      const f = c.flip, F = AI.flip;
+      const dx = f ? f.x - this.x : 0, dy = f ? f.y - this.y : 0, d = Math.hypot(dx, dy);
+      if (f && !f.prop.dead && d > F.near && this.t < F.time) {
+        this.steer(dx, dy, ENEMY.runSpeed * 0.8);
+        this.faceAngle(f.a, ENEMY.turnRate, dt);
+        return;
+      }
+      if (f && d < F.near * 3) f.prop.flip(f.a);
+      c.flip = null;
+      this.sub = 'hide'; this.t = 0;
       return;
     }
     if (this.sub === 'hide') {

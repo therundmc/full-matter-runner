@@ -33,7 +33,8 @@ export const OPTIONAL_LIST = [
     'car_tire', 'car_hood', 'car_door', 'car2_hood', 'car2_door', 'van_hood', 'van_door', 'hydrant', 'bench'].map((n) => `props/${n}`),
   ...GLOWING.map((n) => `props/${n}_glow`),
   ...['chain_fence', 'bottle_shelf', 'washer', 'card_table', 'dance_stage', 'dope_table', 'gas_bottle', 'back_bar', 'alarm_box', 'cash_case', 'ceiling_fan', 'mirror_ball', 'extinguisher',
-    'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed'].map((n) => `props/${n}`),
+    'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed',
+    'table_flipped', 'table_round_flipped', 'card_table_flipped'].map((n) => `props/${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
     .map((n) => `weapons/${n}`),

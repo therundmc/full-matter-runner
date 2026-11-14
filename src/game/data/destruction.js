@@ -28,7 +28,10 @@
 //              out by the game on a bare top { scatter: [min, max], rect: [x0, y0, x1, y1] px, colors }
 //   drop       true: hangs high (ceiling lamps, street lamp head): pieces fall from the ceiling
 export const DESTRUCTION = {
-  table: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' } },
+  table: {
+    height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' },
+    contents: [{ bit: 'bottle', n: 1, on: 'break' }],
+  },
   card_table: {
     height: 0.75, parts: [{ cut: 'planks', n: 4, axis: 'long', snap: true }], legs: { n: 4, size: 0.1, color: '#4a2c18' },
     floats: ['cash', 8], contents: [{ bit: 'chip', n: 14, on: 'break' }],
@@ -43,7 +46,10 @@ export const DESTRUCTION = {
     height: 0.2, sheds: 'cash', floats: ['cash', 46],
     contents: [{ bit: 'wad', n: 9, on: 'break' }, { bit: 'wad', n: 1, on: 'hit', perHit: 0.7 }],
   },
-  table_round: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 1, size: 0.14, color: '#4a2c18' } },
+  table_round: {
+    height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 1, size: 0.14, color: '#4a2c18' },
+    contents: [{ bit: 'bottle', n: 1, on: 'break' }],
+  },
   desk: {
     height: 0.75, electric: true, floats: ['paper', 14],
     parts: [{ cut: 'panel', rect: [0.25, 0.05, 0.75, 0.6], name: 'monitor', fly: 1.3 }, { cut: 'planks', n: 3, axis: 'long', snap: true }],

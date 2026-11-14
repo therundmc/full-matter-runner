@@ -66,6 +66,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    who follow the player with their eyes (job 'door'), a bartender who polishes glasses and ducks behind his counter
    at the first shots (job 'wipe'), customers who shove their chair back, drop their glass and leave a cigarette
    burning when they run ('patronLeft', `AMBIENT.leave`).
+   A guard killed whole is sometimes not quite dead: he drags himself a little way, groans once and lies still
+   (`crawl` odds per wound in data/wounds.js, `CRAWL`, `Ragdoll.drag`; the user wants it short). Gun guards tip a
+   table over for a shield before kneeling behind it (prop def `flips`, `Prop.flip`, `Tactics.tableToFlip`, `AI.flip`).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Run / test

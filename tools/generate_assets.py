@@ -3976,14 +3976,56 @@ def p_cardboard_bed():
     return cv
 
 
+def flipped_table(W, wood, leg, face=None, feet=4):
+    """A table tipped on its side, seen from above: its top on edge along -y (a sliver of its upper face on the outside),
+    the legs lying on the floor behind it (or the one pedestal and its foot)."""
+    def paint():
+        H = 27
+        cv = Cv(W, H)
+        rng = random.Random(W * 7 + feet)
+        base, lg = hx(wood), hx(leg)
+        top = hx(face) if face else lt(base, 0.28)
+        for x in range(1, W - 1):
+            g = rng.uniform(-0.06, 0.06)
+            for y in range(1, 7):
+                c = top if y < 3 else dk(base, 0.38) if y == 6 else base
+                cv.set(x, y, lt(c, g) if g > 0 else dk(c, -g))
+        for x in (1, W - 2):
+            cv.set(x, 1, CLEAR)
+
+        def post(x0, x1, y0, y1):
+            cv.rect(x0, y0, x1, y1, lg)
+            for y in range(y0, y1 + 1):
+                cv.set(x0, y, lt(lg, 0.22))
+                cv.set(x1, y, dk(lg, 0.28))
+        if feet == 4:
+            cv.rect(7, 7, W - 8, 8, dk(base, 0.22))          # the apron under the top
+            for x0 in (4, W - 7):
+                post(x0, x0 + 2, 7, H - 4)
+                cv.rect(x0, H - 3, x0 + 2, H - 2, dk(lg, 0.45))   # the end of the leg
+        else:
+            c = W // 2
+            post(c - 2, c + 1, 7, H - 6)
+            cv.rect(c - 7, H - 5, c + 6, H - 3, dk(lg, 0.12))     # its round foot, on edge
+            cv.rect(c - 7, H - 5, c + 6, H - 5, lt(lg, 0.2))
+            cv.rect(c - 7, H - 2, c + 6, H - 2, dk(lg, 0.45))
+        cv.outline()
+        return cv
+    return paint
+
+
 # small dressing added one by one (the details list)
 DETAIL_PROPS = dict(cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
                     vending=p_vending, phone_booth=p_phone_booth, parking_meter=p_parking_meter, news_box=p_news_box,
                     pipe_steam=pipe('#8a5a3a', '#b07a52', '#5e3a24', '#c8c0a8'), pipe_water=pipe('#4a6a7a', '#6e8e9e', '#30485a', '#9aa2b0'),
-                    wall_vent=p_wall_vent, manhole=p_manhole, cardboard_bed=p_cardboard_bed)
+                    wall_vent=p_wall_vent, manhole=p_manhole, cardboard_bed=p_cardboard_bed,
+                    table_flipped=flipped_table(46, '#86552f', '#5a361e'),
+                    table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
+                    card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'))
 DETAIL_SIZES = dict(cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
-                    pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20))
+                    pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
+                    table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

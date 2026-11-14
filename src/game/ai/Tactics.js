@@ -50,8 +50,9 @@ function clearShot(world, x0, y0, x1, y1) {
 
 // Nearest spot (from `from`) hidden from the threat (tx, ty), with a free "peek" cell next to it that has a clear
 // shot at it. prefDist = preferred distance to the threat; isClaimed(x, y) filters spots taken by squad mates.
-// approach = true allows moving toward the threat (melee stalking, shotgun ambush).
-export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, approach = false) {
+// approach = true allows moving toward the threat (melee stalking, shotgun ambush). bonus(x, y) = px of extra way
+// a spot is worth (a table to tip over in front of it).
+export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, approach = false, bonus = null) {
   const map = world.map, blocks = coverCell(map);
   const ecx = Math.floor(from.x / TILE), ecy = Math.floor(from.y / TILE);
   const dET = Math.hypot(tx - from.x, ty - from.y) || 1;
@@ -66,7 +67,7 @@ export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, 
       const toward = ((x - from.x) * (tx - from.x) + (y - from.y) * (ty - from.y)) / dET;
       if (!approach && toward > dE * 0.6 && dT < dET - 40) continue;
       if (approach && dT > dET) continue;
-      cands.push({ cx, cy, x, y, score: dE + Math.abs(dT - prefDist) * 0.5 });
+      cands.push({ cx, cy, x, y, score: dE + Math.abs(dT - prefDist) * 0.5 - (bonus ? bonus(x, y) : 0) });
     }
   }
   cands.sort((a, b) => a.score - b.score);
@@ -84,6 +85,35 @@ export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, 
     if (findPath(map, from.x, from.y, c.x, c.y, 1500)) return { x: c.x, y: c.y, peek };
   }
   return null;
+}
+
+// The one of `tables` (live props with a def `flips`) standing right in front of the cover spot (x, y), the threat
+// (tx, ty) beyond it, that a guard can tip over for a shield: { prop, a, x, y } with a = the way its top goes down and (x, y) = where to stand
+// to shove it, or null. A long table (def.w along its length) only goes over across, pushed from a long side.
+export function tableToFlip(tables, x, y, tx, ty, reach) {
+  let best = null, bestD = reach;
+  for (const p of tables) {
+    const d = p.def;
+    const dx = x - p.x, dy = y - p.y;
+    let a, half, lx = 0;
+    if (d.r) {
+      a = Math.atan2(-dy, -dx);
+      half = d.r;
+    } else {
+      const c = Math.cos(p.body.angle), s = Math.sin(p.body.angle), ly = -dx * s + dy * c; // the spot in the table's frame
+      lx = dx * c + dy * s;
+      if (Math.abs(lx) > d.w / 2 + 4 || Math.abs(ly) < d.h / 2) continue;
+      a = p.body.angle + (ly > 0 ? -Math.PI / 2 : Math.PI / 2);
+      half = d.h / 2;
+      lx = Math.max(-d.w / 2 + 6, Math.min(d.w / 2 - 6, lx));
+    }
+    const ux = Math.cos(a), uy = Math.sin(a);
+    if (ux * (tx - p.x) + uy * (ty - p.y) < half) continue; // the threat is not on the far side
+    const sx = p.x - ux * (half + 10) - uy * lx, sy = p.y - uy * (half + 10) + ux * lx;
+    const dist = Math.hypot(sx - x, sy - y);
+    if (dist < bestD) { bestD = dist; best = { prop: p, a, x: sx, y: sy }; }
+  }
+  return best;
 }
 
 // A firing spot around the target seen from a new angle (away from the angles `avoid` already covered by the squad).

@@ -8,8 +8,8 @@
 // height = how high an overhead object sits, as parallax (fraction of its distance to the centre of the view);
 // pole = [colour, width] of the post drawn from its foot to its head. sign = animated neon lettering (render/Lighting.js).
 export const PROPS = {
-  table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true },
-  table_round: { static: true, vault: true, material: 'wood', r: 14, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true },
+  table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
+  table_round: { static: true, vault: true, material: 'wood', r: 14, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true, flips: 'table_round_flipped' },
   desk: { static: true, vault: true, material: 'wood', w: 46, h: 24, hp: 14, chips: '#6a4026', sound: 'wood', blocksPath: true, sparks: true },
   chair: { material: 'wood', w: 14, h: 14, hp: 6, kg: 7, mu: 0.88, chips: '#7a4a2a', sound: 'wood' },
   armchair: { static: true, material: 'fabric', w: 26, h: 26, hp: 10, chips: '#9a1f2a', sound: 'wood' },
@@ -37,7 +37,11 @@ export const PROPS = {
     light: { r: 34, color: '#8a5cff', intensity: 0.35, flicker: 'pulse' } },
   dj_booth: { static: true, vault: true, material: 'plastic', w: 58, h: 22, hp: 20, chips: '#222', sparks: true, sound: 'metal', blocksPath: true,
     light: { r: 130, color: '#ff3df0', intensity: 0.95, flicker: 'pulse', y: 8 } },
-  card_table: { static: true, vault: true, material: 'wood', w: 58, h: 36, hp: 16, chips: '#1f7a4c', sound: 'wood', blocksPath: true },
+  card_table: { static: true, vault: true, material: 'wood', w: 58, h: 36, hp: 16, chips: '#1f7a4c', sound: 'wood', blocksPath: true, flips: 'card_table_flipped' },
+  // a table tipped on its side for a shield (`flips`, Prop.flip): its top on edge toward local -y, the legs lying behind
+  table_flipped: { static: true, vault: true, material: 'wood', w: 44, h: 25, hp: 14, chips: '#7a4a2a', sound: 'wood' },
+  table_round_flipped: { static: true, vault: true, material: 'wood', w: 28, h: 25, hp: 10, chips: '#8a5530', sound: 'wood' },
+  card_table_flipped: { static: true, vault: true, material: 'wood', w: 58, h: 25, hp: 16, chips: '#1f7a4c', sound: 'wood' },
   // the pimp's counting table (bricks, scale, cash): its desk lamp is the light
   dope_table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 12, chips: '#6e4426', sound: 'wood', blocksPath: true,
     light: { r: 70, color: '#ffe0a0', intensity: 0.6, x: 14, y: 8 } },

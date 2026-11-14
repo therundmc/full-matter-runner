@@ -6,7 +6,7 @@ const { ENEMY, AI } = await load('game/Config.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { detectionRate, inView, aimError, hearingError, loiterRate } = await load('game/ai/Perception.js');
-const { searchPoints, findCover, isCovered, randomPoint, throughDoor } = await load('game/ai/Tactics.js');
+const { searchPoints, findCover, isCovered, randomPoint, throughDoor, tableToFlip } = await load('game/ai/Tactics.js');
 const { default: Director, freshLine } = await load('game/ai/Director.js');
 const { BARKS, SHOUTED, BARK_TONE } = await load('game/data/barks.js');
 const { PALETTE } = await load('game/Config.js');
@@ -247,4 +247,23 @@ test('director: kills and wrecked structure become incidents; budget and claims'
   assert.equal(d.isClaimed(110, 100, a), false, 'own claim');
   d.release(a);
   assert.equal(d.isClaimed(110, 100, b), false);
+});
+
+test('tactics: a table in front of the cover spot is tipped toward the threat, from one of its long sides only', () => {
+  const table = (x, y, angle, def = { flips: 'table_flipped', w: 44, h: 26 }) => ({ def, x, y, body: { angle }, dead: false });
+  const long = table(200, 200, 0), world = [long];
+  // behind it to the south, the threat to the north: over it goes northward, shoved from just behind its edge
+  const f = tableToFlip(world, 205, 232, 200, 60, AI.flip.reach);
+  assert.equal(f.prop, long);
+  assert.ok(Math.abs(f.a + Math.PI / 2) < 1e-9);
+  assert.ok(Math.abs(f.x - 205) < 1e-9 && Math.abs(f.y - 223) < 1e-9);
+  assert.equal(tableToFlip(world, 205, 232, 200, 400, AI.flip.reach), null, 'the threat on his own side');
+  assert.equal(tableToFlip(world, 240, 200, 60, 200, AI.flip.reach), null, 'not from its end');
+  assert.equal(tableToFlip(world, 205, 290, 200, 60, AI.flip.reach), null, 'too far to reach');
+  // a round one goes over whichever way he pushes it; turned a quarter, a long one goes over east-west
+  const round = table(300, 300, 0, { flips: 'table_round_flipped', r: 14 });
+  const g = tableToFlip([round], 270, 330, 400, 200, AI.flip.reach);
+  assert.ok(Math.abs(g.a + Math.PI / 4) < 1e-9 && Math.hypot(g.x - 300, g.y - 300) > 23 && g.x < 300 && g.y > 300);
+  const h = tableToFlip([table(200, 200, Math.PI / 2)], 170, 195, 330, 200, AI.flip.reach);
+  assert.ok(Math.abs(Math.cos(h.a) - 1) < 1e-9 && Math.abs(h.x - 177) < 1e-9 && Math.abs(h.y - 195) < 1e-9);
 });

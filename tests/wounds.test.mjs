@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { WOUNDS, CAUSE_WOUND, woundFor } = await load('game/data/wounds.js');
+const { WOUNDS, CAUSE_WOUND, CRAWL, woundFor } = await load('game/data/wounds.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 
 test('wounds: every profile is complete and every weapon names an existing one', () => {
@@ -48,4 +48,14 @@ test('wounds: calibrated by weapon (a blade bleeds out, 7.62 goes through, a sil
   assert.ok(WOUNDS.buckshot.spray[2] > WOUNDS.rifle.spray[2] * 2);
   // a stabbed man drops where he stood, buckshot carries him off
   assert.ok(WOUNDS.slash.throw[1] < WOUNDS.small.throw[0] && WOUNDS.buckshot.throw[0] > WOUNDS.rifle.throw[1]);
+});
+
+test('wounds: only a wound that leaves a man whole lets him crawl, a little way and not for long', () => {
+  for (const [name, w] of Object.entries(WOUNDS)) assert.ok((w.crawl || 0) <= 0.5, name);
+  for (const name of ['punch', 'buckshot', 'heavy', 'snap', 'crush', 'impact', 'glass']) assert.ok(!WOUNDS[name].crawl, name);
+  assert.ok(WOUNDS.small.crawl > WOUNDS.rifle.crawl && WOUNDS.pellet.crawl > 0);
+  // a jointed body on the floor loses some 0.26 px/step2 (measured): under two metres in all, over in a few seconds
+  const far = CRAWL.pulls[1] * CRAWL.pull ** 2 / (2 * 0.26);
+  assert.ok(far > 20 && far < 64, 'px crawled at most: ' + far);
+  assert.ok(CRAWL.delay[1] + CRAWL.pulls[1] * CRAWL.every[1] < 8);
 });

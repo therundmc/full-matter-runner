@@ -68,7 +68,10 @@ export function gore(world, ch, angle, cause, by) {
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
-    world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, { headless: mode === 'headless', detach, ...bleeding }));
+    world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, {
+      headless: mode === 'headless', detach, ...bleeding,
+      crawl: mode === 'corpse' && !!ch.isEnemy && !detach.length && chance(wd.crawl || 0),
+    }));
   } else {
     const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
     world.addCorpse(new Corpse(world, corpseImg, x, y, angle, slide, { headless: mode === 'headless', ...bleeding }));
