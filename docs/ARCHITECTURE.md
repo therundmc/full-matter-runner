@@ -218,8 +218,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `Character.kill(angle, cause, killer, by)` hands what killed (`by`: a weapon definition or `{ gore, wound }`) to
   `gore()`; the cause is the fallback (`CAUSE_WOUND`). A knife casts a thin arc and leaves a pumping artery and a
   lake, 7.62 a long tight jet behind the body, buckshot a wide wet cone (only up close), a bat heavy slow drops.
-  A profile's `crawl` is the odds that a guard killed whole is not quite dead: his `Ragdoll` drags itself a few
-  pulls further (`CRAWL`, `Ragdoll.drag`), groans once, smears the floor as any moving body does, then lies still.
+  A profile's `crawl` is the odds that a guard killed whole is not quite dead: his `Ragdoll` runs a short scripted
+  sequence (`opts.dying`, pure pose maths in fx/CrawlPose.js and fx/DyingPose.js, numbers in data/wounds.js). 'crawl':
+  he gets onto his belly and drags himself a few uneven pulls away on his forearms (`CRAWL`, a seeded plan per body,
+  one pull may fail), then lies still; 'curl' (a wound's `curl` odds, `CURL`): hands to the wound, knees drawn up;
+  'spasm' (`SPASM`): a leg kicks a few times; 'throes' (`THROES`): plain physics jerks. Which side he lies on is real
+  (`opts.back`: he faced the blow): `_rag_*_up` sprites face up, `_rag_torso_down` on his belly. Any blow or shove
+  hands the body back to the physics at once.
 - Blood on the floor (render/BloodArt.js, MapRenderer): a drop lands as a stamp picked by how it hit (flat = tapered
   streak along its travel with satellites, steep = ragged spot, heavy = splat); stamps are per-pixel thickness maps
   (film to core) coloured through one ramp per age, never circles or gradients. They are baked into `bloodCanvas`,

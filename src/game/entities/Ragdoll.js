@@ -1,17 +1,19 @@
 import { CAT, MASK, PALETTE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
-import { rand, randi, chance, local, angDiff, clamp } from '../../engine/math.js';
+import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
-import { woundFor, CRAWL, THROES } from '../data/wounds.js';
+import { woundFor, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
 import { poolArt } from '../render/BloodArt.js';
-import { crawlPose, giveUpPose, travelAt, stepOf, escapeDir, smooth } from '../fx/CrawlPose.js';
+import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
+import { spasmPlan, spasmPose, curlPlan, curlPose } from '../fx/DyingPose.js';
 
 const { Bodies, Body, Constraint, Composite, Query } = Matter;
 const JOINT = 0.75; // stiffness of the pin joints
 // what a crawling man cannot go through: walls, doors, glass, the map's edge and furniture that does not budge
 const BLOCKERS = CAT.WALL | CAT.DOOR | CAT.GLASS | CAT.EDGE | CAT.PROP;
 const ZERO = { x: 0, y: 0 };
+const GLANCE = 0.6; // rad his head turns as he glances back at his killer before he crawls
 
 // rag_* sprites are intact limbs; the gib sprites stand in when they are missing
 export function hasRagdoll(kind) { return !!(spriteOpt(`characters/${kind}_rag_torso`) || spriteOpt(`characters/${kind}_gib_torso`)); }
@@ -28,12 +30,15 @@ export default class Ragdoll {
     this.settle = 0;
     this.age = 0;
     this.dead = false;
-    // not quite dead (opts.crawl): he rolls onto his back and pushes himself away from his killer (opts.killer: { x, y },
-    // read live), along dir; a scripted sequence (script()), phase by phase, t = s into the phase
-    this.crawl = opts.crawl ? { phase: 'fall', t: 0, dir, killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 },
-      pulls: randi(...CRAWL.pulls), first: randi(0, 1) } : null;
-    // or his limbs jerk a moment (opts.throes): s left of it, s to the next jerk
-    this.throes = opts.throes ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
+    // how he dies on the floor (opts.dying, fx/Gore.js): 'crawl' (not quite dead, he drags himself away from his
+    // killer, opts.killer: { x, y }, along dir), 'spasm' or 'curl', each a scripted sequence (script()), phase by
+    // phase, t = s into the phase, seed = its moves; or 'throes': his limbs jerk a moment (s left of it, s to the next)
+    const how = opts.dying;
+    this.dying = how && how !== 'throes' ? { kind: how, phase: 'fall', t: 0, dir, seed: randi(1, 2 ** 30),
+      fall: how === 'crawl' ? CRAWL.fall : how === 'spasm' ? SPASM.fall : CURL.fall,
+      killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 } } : null;
+    this.throes = how === 'throes' ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
+    this.up = false; // lying on his back (opts.back: he went over backwards)
     // the weapon left planted in him (opts.stuck: its sprite), at an angle off the line of his body
     this.stuck = opts.stuck ? { img: sprite(opts.stuck), a: rand(-0.6, 0.6) } : null;
     const group = Body.nextGroup(true);
@@ -87,6 +92,8 @@ export default class Ragdoll {
     if (this.head) Body.setVelocity(this.head.body, { x: Math.cos(dir) * speed / 50, y: Math.sin(dir) * speed / 50 });
     for (const j of this.joints) world.addBody(j.c);
     for (const i of opts.detach || []) this.detach(this.limbs[i], dir, speed * 1.4);
+    // a body that will move on the floor shows the side it lies on; the others keep the plain sprites
+    if (opts.dying && opts.dying !== 'throes') this.lie(!!opts.back);
   }
 
   addPart(name, img, body, rest, kg) {
@@ -154,7 +161,7 @@ export default class Ragdoll {
   update(dt) {
     this.age += dt;
     const w = this.world;
-    if (this.crawl) this.script(dt);
+    if (this.dying) this.script(dt);
     if (this.throes) this.twitch(dt);
     let moving = false;
     for (const part of this.parts) {
@@ -175,115 +182,163 @@ export default class Ragdoll {
     }
     const t = this.torso.body, n = this.neckPos(), src = this.source();
     bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
-      src.position, !this.crawl && Body.getSpeed(src) < 0.3); // the pool forms where he ends up
+      src.position, this.dying?.kind !== 'crawl' && Body.getSpeed(src) < 0.3); // the pool forms where he ends up
     this.settle = moving ? 0 : this.settle + dt;
-    if (this.settle > 2 && !this.crawl && !this.throes && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
+    if (this.settle > 2 && !this.dying && !this.throes && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
   }
 
-  // Not quite dead: the scripted crawl (fx/CrawlPose.js). After a moment of plain physics (fall) every part is posed
-  // straight into its body each step, roots on their joints (the joints go slack meanwhile): he rolls onto his back
-  // (turn), pushes himself away on his heels and elbows (crawl), reaches out to his killer and lies still (giveUp).
+  // How he dies on the floor, a scripted sequence (fx/CrawlPose.js, fx/DyingPose.js). After a moment of plain physics
+  // (fall) every part is posed straight into its body each step, roots on their joints (the joints go slack
+  // meanwhile). crawl: he turns onto his belly (turn), drags himself away pull after pull (crawl), reaches out a last
+  // time and lies still (last); spasm, curl: he writhes where he fell (writhe).
   script(dt) {
-    const c = this.crawl, t = this.torso.body;
+    const s = this.dying, t = this.torso.body;
     // something shoved him (a swing, a slide): physics has him back
-    if (c.at && Math.hypot(t.position.x - c.at.x, t.position.y - c.at.y) > 2) { this.release(false); return; }
-    c.t += dt;
-    if (c.phase === 'fall') {
+    if (s.at && Math.hypot(t.position.x - s.at.x, t.position.y - s.at.y) > 2) { this.release(false); return; }
+    s.t += dt;
+    if (s.phase === 'fall') {
       // he lands first: still sliding, he gets a little longer
-      if (c.t < CRAWL.fall || (Body.getSpeed(t) > 0.4 && c.t < CRAWL.fall + 0.6)) return;
-      if (!this.startTurn()) { this.crawl = null; return; }
+      if (s.t < s.fall || (Body.getSpeed(t) > 0.4 && s.t < s.fall + 0.6)) return;
+      if (!this.begin(s)) { this.dying = null; return; }
     }
-    if (c.phase === 'turn') this.turnOver(c);
-    if (c.phase === 'crawl') this.push(c);
-    if (c.phase === 'giveUp') this.giveUp(c);
+    if (s.phase === 'turn') this.turnOver(s);
+    if (s.phase === 'crawl') this.drag(s);
+    if (s.phase === 'last') this.last(s);
+    if (s.phase === 'writhe') this.writhe(s);
   }
 
-  // which way he goes: away from his killer, or turned off it by a wall; false when every way is shut
-  startTurn() {
-    const c = this.crawl, t = this.torso.body, half = this.torso.img.height / 2;
-    const esc = escapeDir(c.dir, (a) => !this.clear(t.position.x, t.position.y, a, half, half + 28));
-    if (esc === null) return false;
+  // he has landed: his pose as he fell (limb angles off the torso's), and for a crawl the way he goes (away from his
+  // killer, or turned off it by a wall); false when every way is shut
+  begin(s) {
+    const t = this.torso.body, x = t.position.x, y = t.position.y, half = this.torso.img.height / 2;
     const rel = (p) => ({ a: angDiff(t.angle, p.body.angle), s: 1 });
-    Object.assign(c, {
-      phase: 'turn', t: 0, esc, A: esc + Math.PI / 2, // A: torso angle, head (-y) along esc
-      from: { x: t.position.x, y: t.position.y, a: t.angle, limbs: this.limbs.map(rel), head: this.head && rel(this.head) },
-    });
     const g = (p) => ({ x: p.jt.x, y: p.jt.y, len: p.len });
     this.geom = { arms: this.limbs.slice(0, 2).map(g), legs: this.limbs.slice(2).map(g) };
+    s.from = { x, y, a: t.angle, arms: this.limbs.slice(0, 2).map(rel), legs: this.limbs.slice(2).map(rel),
+      head: this.head ? rel(this.head) : { a: 0, s: 1 } };
+    s.t = 0;
+    if (s.kind === 'crawl') {
+      const esc = escapeDir(s.dir, (a) => !this.clear(x, y, a, half, half + 28));
+      if (esc === null) return false;
+      const A = esc + Math.PI / 2; // torso angle, head (-y) along esc
+      const k = this.toLocal(x, y, A, s.killer);
+      Object.assign(s, { phase: 'turn', esc, A, over: this.up, look: k.x < 0 ? -GLANCE : GLANCE, pull: -1, planted: -1,
+        plan: crawlPlan(s.seed, this.geom.arms[0].len) });
+    } else Object.assign(s, { phase: 'writhe', plan: s.kind === 'spasm' ? spasmPlan(s.seed) : curlPlan(s.seed) });
     for (const j of this.joints) j.c.stiffness = 0;
     return true;
   }
 
-  // he rolls onto his back: from how he fell to the first pose of the crawl, squeezed edge-on halfway
-  turnOver(c) {
-    const k = Math.min(1, c.t / CRAWL.turn), b = smooth(k), f = c.from;
-    const a = f.a + angDiff(f.a, c.A) * b;
-    const to = crawlPose(0, 0, this.geom, c.first, this.look(f.x, f.y, a));
+  // onto his belly: from how he fell to the first pose of the crawl, rolled over from his back (squeezed edge-on
+  // halfway), or only gathered under him when he fell on his face
+  turnOver(s) {
+    const k = Math.min(1, s.t / (s.over ? CRAWL.turn : CRAWL.gather)), b = smooth(k), f = s.from;
+    const to = crawlPose(s.plan, 0, 0, this.geom, s.look);
     const blend = (p, q) => ({ a: p.a + angDiff(p.a, q.a) * b, s: p.s + (q.s - p.s) * b });
-    const P = { arms: to.arms.map((q, i) => blend(f.limbs[i], q)), legs: to.legs.map((q, i) => blend(f.limbs[i + 2], q)),
-      head: this.head && blend(f.head, to.head) };
-    if (k >= 0.5 && !c.flipped) this.flip();
-    this.pose(f.x, f.y, a, P, k > 0.2 && k < 0.8 ? 1 - 0.8 * Math.sin(Math.PI * (k - 0.2) / 0.6) : 1);
-    if (k >= 1) Object.assign(c, { phase: 'crawl', t: 0, cycle: -1 });
+    const P = { arms: to.arms.map((q, i) => blend(f.arms[i], q)), legs: to.legs.map((q, i) => blend(f.legs[i], q)),
+      head: blend(f.head, to.head) };
+    const a = f.a + angDiff(f.a, s.A) * b;
+    if (s.over && k >= 0.5 && this.up) this.flip();
+    this.pose(f.x, f.y, a, P, s.over && k > 0.2 && k < 0.8 ? 1 - 0.8 * Math.sin(Math.PI * (k - 0.2) / 0.6) : 1);
+    this.shove(f.x, f.y, a);
+    if (k >= 1) Object.assign(s, { phase: 'crawl', t: 0 });
   }
 
-  // halfway through the roll: his front comes up, a puff of dust off the floor
+  // halfway through the roll: his back comes up, a puff of dust off the floor
   flip() {
     const t = this.torso.body.position, w = this.world;
-    this.crawl.flipped = true;
-    this.torso.img = spriteOpt(`characters/${this.kind}_rag_torso_up`) || this.torso.img;
-    if (this.head) this.head.img = spriteOpt(`characters/${this.kind}_rag_head_up`) || this.head.img;
-    w.particles.dust(t.x, t.y, 4, 6, '#6a6272', { speed: 25, size: 4, life: 0.6, alpha: 0.18 });
+    this.lie(false);
+    w.particles.dust(t.x, t.y, 3, 6, '#6a6272', { speed: 20, size: 3, life: 1, alpha: 0.1 });
     w.sound('soft', t.x, t.y, 0.5);
   }
 
-  // he pushes on his heels and elbows, a little less far each time
-  push(c) {
-    const i = Math.floor(c.t / CRAWL.cycle), p = c.t / CRAWL.cycle - i, f = c.from;
-    if (i !== c.cycle) {
-      // before each push: is there floor for it?
-      if (i >= c.pulls || !this.canPush(c, i)) { this.stop(c, i); this.giveUp(c); return; }
-      c.cycle = i;
+  // face up (the _up sprites: his front, his face) or face down (his back, _rag_torso_down, and the crown of his head)
+  lie(up) {
+    const s = up ? '_up' : '';
+    this.up = up;
+    this.torso.img = spriteOpt(`characters/${this.kind}_rag_torso${up ? '_up' : '_down'}`) || this.torso.img;
+    if (this.head) this.head.img = spriteOpt(`characters/${this.kind}_rag_head${s}`) || this.head.img;
+  }
+
+  // he drags himself along on his forearms, pull after pull
+  drag(s) {
+    const { i, u } = pullAt(s.plan, s.t), p = s.plan.pulls[i];
+    if (i !== s.pull) {
+      // before each pull: is there floor for it?
+      if (!p || !this.canPull(s, i)) { this.stop(s, i); this.last(s); return; }
+      if (s.pull < 0) this.world.sound('whimper', s.from.x, s.from.y, 0.5, { pitch: 0.85 });
+      s.pull = i;
     }
-    if (!c.groaned) { c.groaned = true; this.world.sound('whimper', f.x, f.y, 0.5, { pitch: 0.85 }); }
-    const d = travelAt(i, p), x = f.x + Math.cos(c.esc) * d, y = f.y + Math.sin(c.esc) * d;
-    const P = crawlPose(i, p, this.geom, c.first, this.look(x, y, c.A));
-    this.pose(x, y, c.A + P.rock, P);
+    const d = travelAt(s.plan, i, u), x = s.from.x + Math.cos(s.esc) * d, y = s.from.y + Math.sin(s.esc) * d;
+    const P = crawlPose(s.plan, i, u, this.geom, s.look);
+    this.pose(x, y, s.A + P.rock, P);
+    // the hand comes down: a print of his blood under the fingers
+    if (s.planted !== i && u >= p.t[0]) {
+      s.planted = i;
+      const h = this.handAt(this.limbs[p.arm]);
+      if (!this.dry) this.world.decals.stampBlood(h.x, h.y, 1);
+    }
     // posed by hand, it is never seen moving: the smear follows the torso here
     if (!this.dry) wipe(this.world, this.torso, x, y, 5);
+    this.shove(x, y, s.A);
   }
 
-  canPush(c, i) {
-    const half = this.torso.img.height / 2, d = travelAt(i, 0), f = c.from;
-    return this.clear(f.x + Math.cos(c.esc) * d, f.y + Math.sin(c.esc) * d, c.esc, half, half + 10 + stepOf(i));
+  canPull(s, i) {
+    const half = this.torso.img.height / 2, d = travelAt(s.plan, i, 0), f = s.from;
+    return this.clear(f.x + Math.cos(s.esc) * d, f.y + Math.sin(s.esc) * d, s.esc, half, half + 10 + s.plan.pulls[i].d);
   }
 
-  // he stops before push i: where he lies, how, and the arm on his killer's side
-  stop(c, i) {
-    const d = travelAt(i, 0), x = c.from.x + Math.cos(c.esc) * d, y = c.from.y + Math.sin(c.esc) * d;
-    const k = this.toLocal(x, y, c.A, c.killer);
-    Object.assign(c, { phase: 'giveUp', t: 0, x, y, still: crawlPose(i, 0, this.geom, c.first, this.look(x, y, c.A)), reach: k.x < 0 ? 0 : 1 });
-    this.limbs[c.reach].top = true;
+  // he stops before pull i, where he lies
+  stop(s, i) {
+    const d = travelAt(s.plan, i, 0);
+    Object.assign(s, { phase: 'last', t: 0, i, x: s.from.x + Math.cos(s.esc) * d, y: s.from.y + Math.sin(s.esc) * d });
   }
 
-  // one arm comes up toward his killer and holds, a last whimper, then it drops and the head rolls aside
-  giveUp(c) {
-    const u = Math.min(c.t, CRAWL.giveUp), j = this.limbs[c.reach].jt, k = this.toLocal(c.x, c.y, c.A, c.killer);
-    this.pose(c.x, c.y, c.A, giveUpPose(u, c.still, this.geom, c.reach, Math.atan2(k.y - j.y, k.x - j.x), this.look(c.x, c.y, c.A)));
-    if (u > 0.3 && !c.sighed) { c.sighed = true; this.world.sound('whimper', c.x, c.y, 0.4, { pitch: 0.8 }); }
-    if (c.t >= CRAWL.giveUp) this.release();
+  // a last reach, the hand claws, the arm drops, the head goes down to one side, a shudder, a last whimper, still
+  last(s) {
+    const P = lastPose(s.plan, s.i, s.t, this.geom, s.look);
+    this.pose(s.x, s.y, s.A + P.rock, P);
+    if (s.t > 0.3 && !s.sighed) { s.sighed = true; this.world.sound('whimper', s.x, s.y, 0.4, { pitch: 0.8 }); }
+    if (s.t >= CRAWL.last) this.release();
+  }
+
+  // a spasm or a curl, where he fell
+  writhe(s) {
+    const f = s.from, spasm = s.kind === 'spasm';
+    const P = spasm ? spasmPose(s.plan, s.t, f, this.geom) : curlPose(s.plan, s.t, f, this.geom, this.up);
+    this.limbs[0].top = this.limbs[1].top = P.top;
+    this.pose(f.x, f.y, f.a + P.rock, P, P.roll);
+    this.torso.sy = P.arch;
+    if (!s.cried && s.t > (spasm ? s.plan.kicks[0].t0 : s.plan.dur * 0.2)) {
+      s.cried = true;
+      if (spasm) this.world.sound('soft', f.x, f.y, 0.35); // a heel on the floor
+      else this.world.sound('whimper', f.x, f.y, 0.45, { pitch: 0.75 });
+    }
+    if (s.t >= s.plan.dur) this.release();
+  }
+
+  // where the hand of an arm is, as posed
+  handAt(part) {
+    const b = part.body, r = local(b.position.x, b.position.y, b.angle, part.root.x, part.root.y), d = (part.sx ?? 1) * part.len;
+    return { x: r.x + Math.cos(b.angle) * d, y: r.y + Math.sin(b.angle) * d };
+  }
+
+  // whatever lies under the torso at (x, y), angle a (his own gun), is nudged out from under him: drawn above the
+  // bodies, it would lie on top of him
+  shove(x, y, a) {
+    const half = this.torso.img.height / 2;
+    for (const it of this.world.items) {
+      if (it.dead || !it.body || Body.getSpeed(it.body) > 0.3) continue;
+      const k = this.toLocal(x, y, a, it.body.position);
+      if (Math.abs(k.x) > 10 || k.y < -half - 12 || k.y > half + 14) continue;
+      impulse(it.body, a + (k.x < 0 ? Math.PI : 0), kgOf(it.body) * 1.5);
+    }
   }
 
   // point pt in the frame of a torso at (x, y), angle a
   toLocal(x, y, a, pt) {
     const dx = pt.x - x, dy = pt.y - y, cs = Math.cos(a), sn = Math.sin(a);
     return { x: dx * cs + dy * sn, y: -dx * sn + dy * cs };
-  }
-
-  // how far his head turns toward his killer, the torso at (x, y), angle a
-  look(x, y, a) {
-    const k = this.toLocal(x, y, a, this.crawl.killer);
-    return clamp(Math.atan2(-k.x, k.y + this.torso.img.height / 2), -0.5, 0.5);
   }
 
   // the torso at (x, y), angle a, every attached part on its joint (P: fx/CrawlPose.js); roll = squeeze across
@@ -295,7 +350,7 @@ export default class Ragdoll {
       Body.setAngularVelocity(b, 0);
     };
     const place = (part, q) => {
-      const j = local(x, y, a, part.jt.x * roll, part.jt.y), ang = a + q.a, r = part.root;
+      const j = local(x, y, a, part.jt.x * roll, part.jt.y + (q.dy || 0)), ang = a + q.a, r = part.root;
       const cs = Math.cos(ang), sn = Math.sin(ang);
       set(part.body, j.x - (r.x * cs - r.y * sn), j.y - (r.x * sn + r.y * cs), ang);
     };
@@ -311,7 +366,7 @@ export default class Ragdoll {
       this.head.sx = roll;
       this.head.sy = P.head.s;
     }
-    this.crawl.at = { x, y };
+    this.dying.at = { x, y };
   }
 
   // is there floor for him d0 to d1 px along a from (x, y): for his head, and his elbows either side?
@@ -330,13 +385,13 @@ export default class Ragdoll {
     return !pts.some((p) => Query.point(near, p).length);
   }
 
-  // the script lets go (over, or he was shot, torn or shoved): physics has him where he is, face up if he had
-  // turned; still = stopped dead (else a shove keeps its momentum)
+  // the script lets go (over, or he was shot, torn or shoved): physics has him where and as he lies;
+  // still = stopped dead (else a shove keeps its momentum)
   release(still = true) {
-    const c = this.crawl;
-    if (!c) return;
-    this.crawl = null;
-    if (c.phase === 'fall') return;
+    const s = this.dying;
+    if (!s) return;
+    this.dying = null;
+    if (s.phase === 'fall') return;
     for (const part of this.parts) {
       part.sx = part.sy = 1;
       part.top = false;

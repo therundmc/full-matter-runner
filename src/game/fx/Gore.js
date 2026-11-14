@@ -1,9 +1,9 @@
 import { sprite } from '../../engine/Assets.js';
-import { rand, chance } from '../../engine/math.js';
+import { rand, chance, angDiff } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
-import { WOUNDS, THROES, woundFor } from '../data/wounds.js';
+import { WOUNDS, THROES, SPASM, woundFor } from '../data/wounds.js';
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
@@ -69,11 +69,12 @@ export function gore(world, ch, angle, cause, by) {
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
-    // not quite dead: he crawls a little way, or failing that his limbs jerk a moment
-    const crawl = mode === 'corpse' && !!ch.isEnemy && !detach.length && chance(wd.crawl || 0);
+    const dying = cause === 'snap' ? null : lastMoves(ch, wd, mode === 'corpse' && !detach.length);
     world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, {
-      headless: mode === 'headless', detach, ...bleeding, crawl, killer: crawl ? killerOf(world, x, y, angle) : null, stuck: by?.stuck,
-      throes: !crawl && cause !== 'snap' && chance(THROES.odds),
+      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying,
+      // he faced his killer: he goes over backwards
+      back: !!dying && dying !== 'throes' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
+      killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,
     }));
   } else {
     const corpseImg = sprite(`characters/${k}_${mode === 'headless' ? 'dead1' : 'dead0'}`);
@@ -99,7 +100,17 @@ export function gore(world, ch, angle, cause, by) {
   return mode;
 }
 
-// who a crawling man keeps his eyes on: the player when he stands on the side the blow came from (read live), else a
+// how he dies on the floor (entities/Ragdoll.js): not quite dead, a guard crawls a little way; else a whole body may
+// spasm or curl up round its wound, any body may jerk a moment (throes); or he lies still (null)
+function lastMoves(ch, wd, whole) {
+  if (whole && ch.isEnemy && chance(wd.crawl || 0)) return 'crawl';
+  const r = Math.random(), curl = whole ? wd.curl || 0 : 0;
+  if (r < curl) return 'curl';
+  if (whole && r < curl + SPASM.odds) return 'spasm';
+  return r < THROES.odds ? 'throes' : null;
+}
+
+// who a crawling man glances back at: the player when he stands on the side the blow came from (read live), else a
 // point back that way
 function killerOf(world, x, y, angle) {
   const p = world.player, cx = Math.cos(angle), cy = Math.sin(angle);

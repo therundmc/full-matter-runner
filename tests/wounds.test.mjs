@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { WOUNDS, CAUSE_WOUND, CRAWL, THROES, woundFor } = await load('game/data/wounds.js');
+const { WOUNDS, CAUSE_WOUND, CRAWL, SPASM, CURL, THROES, woundFor } = await load('game/data/wounds.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 
 test('wounds: every profile is complete and every weapon names an existing one', () => {
@@ -54,15 +54,21 @@ test('wounds: only a wound that leaves a man whole lets him crawl, now and then,
   for (const [name, w] of Object.entries(WOUNDS)) assert.ok((w.crawl || 0) <= 0.4, name);
   for (const name of ['punch', 'buckshot', 'heavy', 'snap', 'crush', 'impact', 'glass']) assert.ok(!WOUNDS[name].crawl, name);
   assert.ok(WOUNDS.small.crawl > WOUNDS.rifle.crawl && WOUNDS.pellet.crawl > 0);
-  // the longest crawl: under a metre and a quarter in all (1 m = 32 px), over in a few seconds
-  let far = 0;
-  for (let i = 0; i < CRAWL.pulls[1]; i++) far += CRAWL.step * CRAWL.decay ** i;
-  assert.ok(far > 15 && far < 40, 'px crawled at most: ' + far);
-  assert.ok(CRAWL.decay > 0 && CRAWL.decay < 1 && CRAWL.pulls[0] <= CRAWL.pulls[1]);
-  assert.ok(CRAWL.fall + CRAWL.turn + CRAWL.pulls[1] * CRAWL.cycle + CRAWL.giveUp < 9);
+  // (how far and how long: tests/crawl.test.mjs)
+  assert.ok(CRAWL.decay > 0 && CRAWL.decay < 1 && CRAWL.pulls[0] >= 3 && CRAWL.pulls[0] <= CRAWL.pulls[1] && CRAWL.pulls[1] <= 5);
+  assert.ok(CRAWL.weak > 0 && CRAWL.weak < 1 && CRAWL.slip > 0 && CRAWL.slip < 1);
+  for (const k of ['reach', 'claw', 'haul', 'pause']) assert.ok(CRAWL[k][0] > 0 && CRAWL[k][0] <= CRAWL[k][1], k);
 });
 
-test('wounds: a body that does not crawl may twitch a moment, a quick jerk now and then', () => {
+test('wounds: a body that does not crawl may curl up round a cut or a bullet, spasm or twitch, briefly', () => {
+  for (const [name, w] of Object.entries(WOUNDS)) {
+    // spasm and curl take their share of the throes' odds first: there is some of it left
+    assert.ok((w.curl || 0) + SPASM.odds < THROES.odds - 0.1, name);
+  }
+  for (const name of ['punch', 'blunt', 'crush', 'snap', 'impact']) assert.ok(!WOUNDS[name].curl, name);
+  for (const name of ['slash', 'small', 'rifle', 'glass']) assert.ok(WOUNDS[name].curl > 0, name);
+  assert.ok(SPASM.dur[0] >= 0.8 && SPASM.dur[1] <= 1.6 && SPASM.kicks[0] >= 3 && SPASM.kicks[1] <= 4);
+  assert.ok(CURL.dur[0] >= 1.2 && CURL.dur[1] <= 2 && CURL.roll > 0 && CURL.roll < 1);
   assert.ok(THROES.odds > 0 && THROES.odds < 1);
   assert.ok(THROES.dur[0] > 0 && THROES.dur[0] <= THROES.dur[1]);
   assert.ok(THROES.every[0] > 0 && THROES.every[0] <= THROES.every[1] && THROES.every[1] < THROES.dur[0]);

@@ -99,8 +99,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    who follow the player with their eyes (job 'door'), a bartender who polishes glasses and ducks behind his counter
    at the first shots (job 'wipe'), customers who shove their chair back, drop their glass and leave a cigarette
    burning when they run ('patronLeft', `AMBIENT.leave`).
-   A guard killed whole is sometimes not quite dead: he drags himself a little way, groans once and lies still
-   (`crawl` odds per wound in data/wounds.js, `CRAWL`, `Ragdoll.drag`; the user wants it short). Gun guards tip a
+   A guard killed whole is sometimes not quite dead: he gets onto his belly and drags himself a little way on his
+   forearms, head first, away from his killer, uneven pulls, one may fail, then lies still (`crawl` odds per wound in
+   data/wounds.js, `CRAWL`, fx/CrawlPose.js; the user wants it short, rare, organic, and ON HIS BELLY, not on his
+   back); or he curls up on his wound (`curl`), or a leg kicks a few times (`SPASM`), fx/DyingPose.js. Gun guards tip a
    table over for a shield before kneeling behind it (prop def `flips`, `Prop.flip`, `Tactics.tableToFlip`, `AI.flip`).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 

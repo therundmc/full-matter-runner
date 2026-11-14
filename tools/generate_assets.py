@@ -2654,6 +2654,36 @@ def rag_torso(ch):
     return cv
 
 
+def rag_torso_down(ch):
+    """The torso of a man lying on his belly (Ragdoll crawl, spasm, curl): his back. The cloth of his top all over, a
+    darker seam down the spine, the collar under the neck, the belt without its buckle."""
+    cv = Cv(14, 16)
+    k = ch['kind']
+    hx_, hy_ = 6.9, 5.9
+    if k == 'civ':
+        return rag_torso(ch)          # plain tops: the front reads as a back
+
+    def px(u, v, L):
+        i = tidx(L)
+        if u < -hx_ + 2.3:     # belt + top of the trousers
+            if u > -hx_ + 1.3:
+                return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
+            return ch['pants'][i]
+        if u > hx_ - 1.3 and abs(v) < 1.3:
+            return ch['skin'][max(1, i)]      # nape
+        if k == 'brute' and abs(v) > hy_ - 1.2:
+            return ch['skin'][i]              # bare shoulders
+        if k in ('thug', 'player'):
+            if hx_ - 2.4 < u <= hx_ - 1.3 and abs(v) < 2.8:
+                return ch['top'][min(3, i + 1)]   # collar
+            if abs(v) < 0.5 and u < hx_ - 2.4:
+                return ch['top'][max(0, i - 1)]   # seam down the back, the vent
+        return ch['top'][i]
+    fill_shape(cv, 7.0, 8.0, hx_, hy_, px, ang=-math.pi / 2, kind='rect', bevel=2.2, corner=1.8, taper=0.2)
+    cv.outline()
+    return cv
+
+
 def rag_head(ch):
     cv = Cv(9, 9)
     hr = 3.5
@@ -4851,6 +4881,7 @@ def build():
         out[('characters', cid + '_rag_torso')] = rag_torso(ch)
         out[('characters', cid + '_rag_head')] = rag_head(ch)
         out[('characters', cid + '_rag_torso_up')] = rag_torso_up(ch)
+        out[('characters', cid + '_rag_torso_down')] = rag_torso_down(ch)
         out[('characters', cid + '_rag_head_up')] = rag_head_up(ch)
         out[('characters', cid + '_rag_arm')] = rag_arm(ch)
         out[('characters', cid + '_rag_leg')] = rag_leg(ch)
@@ -4920,7 +4951,7 @@ EXPECTED = {
         ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5)),
-        ('_rag_torso_up', (14, 16)), ('_rag_head_up', (9, 9))]]
+        ('_rag_torso_up', (14, 16)), ('_rag_torso_down', (14, 16)), ('_rag_head_up', (9, 9))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     'weapons': dict(pistol=(11, 5), uzi=(12, 7), uzi_silenced=(18, 7), shotgun=(22, 5), rifle=(24, 7),
                     sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), cue=(40, 3), cue_half=(20, 3), tire_iron=(16, 4),
