@@ -514,6 +514,8 @@ export const LIGHTING = {
   grain: 0.05,
   aberration: 7,           // px at full camera trauma
   // lights of props whose def has no `light` field (upcoming props)
+  // a mirror ball's spots (prop light `spots`): rad/s they turn at, px across, their colours
+  ball: { turn: 0.32, size: 9, tints: ['#ffffff', '#ffffff', '#ffc2e6', '#bfeaff'] },
   propLights: {
     jukebox: { r: 90, color: '#ff4fd8', intensity: 0.85, flicker: 'pulse', y: 6 },
     neon_sign_palm: { r: 120, color: '#2af0ff', intensity: 1, flicker: 'buzz' },

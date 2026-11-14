@@ -98,8 +98,9 @@ export const PROPS = {
     light: { r: 150, color: '#2af0ff', intensity: 0.95, flicker: 'buzz', y: 3 } },
   // turns (`spin`, rad/s) with the shadow of its blades on the floor
   ceiling_fan: { hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 5, hp: 3, chips: '#6e4e36', sparks: true, sound: 'metal', spin: 5.5 },
-  // `sparkle` specks of light turn round it (render/PropLife.js)
-  mirror_ball: { hung: true, overhead: true, height: 0.06, static: true, material: 'glass', r: 5, hp: 2, chips: '#dfe8f4', glass: true, sound: 'glass', sparkle: 9 },
+  // its light is a ring of small spots sweeping the room (render/Lighting.js `spots`), and a glint on the ball itself
+  mirror_ball: { hung: true, overhead: true, height: 0.06, static: true, material: 'glass', r: 5, hp: 2, chips: '#dfe8f4', glass: true, sound: 'glass',
+    light: [{ r: 118, color: '#ffffff', intensity: 0.95, spots: 16 }, { r: 30, color: '#e6ecff', intensity: 0.5 }] },
   // on a wall, facing the room along +y: pierced, it empties itself in a cloud nobody sees through (systems/Clouds.js)
   extinguisher: { static: true, material: 'metal', w: 6, h: 9, hp: 1, chips: '#c0202a', sound: 'metal', cloud: true },
   // ---- street furniture. handset = [x, y] px from the centre of the hook its receiver hangs on (render/PropLife.js);

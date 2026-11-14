@@ -81,7 +81,7 @@ src/
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
-      PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver, the specks of the mirror ball
+      PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and

@@ -12,7 +12,8 @@ import { ROOF_DECOR } from '../data/roofs.js';
 // Visible sources are props (lamps, tubes, signs, screens, headlights): shoot the lamp and its light dies.
 // Prop lights: `def.light` (or LIGHTING.propLights[type]) = { r, color, intensity, flicker, x, y, dir, cone } or an array,
 // r/x/y in px in the prop's local frame (sprites face +x), dir/cone in radians. Flicker: true|'buzz', 'broken', 'pulse',
-// 'tv', 'disco' (moving unshadowed spot).
+// 'tv', 'disco' (moving unshadowed spot). `spots: n` makes it a mirror ball: instead of one pool of light, n small
+// ones sweep the room round it within r, cut by the walls (drawSpots).
 // Rooftop glows: pieces of `level.roof` with a `light` (data/roofs.js) shine on their roof, unshadowed.
 
 const STREET = new Set(['asphalt', 'asphalt_line', 'sidewalk', 'grass', 'dirt']);
@@ -288,6 +289,7 @@ export default class Lighting {
     for (const d of def ? (Array.isArray(def) ? def : [def]) : []) {
       const l = this.makeLight(0, 0, d.r, d.color, d.intensity ?? 1, d.flicker ?? false, hash(p.x * 0.37 + p.y * 0.11) * 10 + list.length);
       l.lx = d.x || 0; l.ly = d.y || 0; l.ldir = d.dir || 0; l.cone = d.cone || 0;
+      l.spots = d.spots || 0;
       l.drawn = glow; // the sprite's emissive map already shows the source
       list.push(l);
     }
@@ -395,6 +397,22 @@ export default class Lighting {
     g.arc(l.x, l.y, l.r, l.dir - l.cone, l.dir + l.cone);
     g.closePath();
     g.clip();
+  }
+
+  // a mirror ball's light: `spots` small pools turning round it, all the same way and each on its own ring, some
+  // tinted by the room's lamps; whatever a wall hides from the ball stays dark
+  drawSpots(g, l, k, t) {
+    if (!l.poly || l.dirty) { l.poly = visibility(l.x, l.y, l.r, this.segs); l.dirty = false; }
+    g.save();
+    this.tracePoly(g, l.poly.pts);
+    g.clip();
+    for (let i = 0; i < l.spots; i++) {
+      const ring = 0.25 + 0.75 * hash(i * 7.3 + l.seed), a = t * L.ball.turn + (i / l.spots) * Math.PI * 2 + hash(i * 3.1) * 0.8;
+      const r = l.r * ring, size = L.ball.size * (0.6 + 0.6 * ring);
+      g.globalAlpha = clamp(k * (0.6 + 0.4 * Math.sin(t * 2.1 + i * 1.7)), 0, 1);
+      g.drawImage(this.blob(L.ball.tints[i % L.ball.tints.length], true), l.x + Math.cos(a) * r - size, l.y + Math.sin(a) * r * 0.85 - size * 0.8, size * 2, size * 1.6);
+    }
+    g.restore();
   }
 
   // soft radial sprite of a colour (unshadowed lights, glows, reflections); spot = flat disc with a soft rim
@@ -562,6 +580,7 @@ export default class Lighting {
         g.drawImage(this.blob(l.color, true), l.mx - l.r, l.my - l.r, l.r * 2, l.r * 2);
         continue;
       }
+      if (l.spots) { this.drawSpots(g, l, k, t); continue; }
       if (l.moving) {
         g.save();
         if (l.cone) this.clipCone(g, l);

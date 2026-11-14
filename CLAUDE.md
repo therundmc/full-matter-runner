@@ -66,7 +66,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    The bar's furniture is alive: pool balls that really roll, collide and drop (systems/PoolBalls.js, struck by the
    players, thrown by a shot or a bump), an arcade that rings and a jukebox that derails then goes dark
    (systems/Gadgets.js; till then it plays its own small band on the song's bars and chords, `Music.setJukebox`), snow on the boss's TV,
-   a turning ceiling fan and a mirror ball throwing specks round the VIP room (render/PropLife.js), hung lamps that
+   a turning ceiling fan (render/PropLife.js) and a mirror ball whose spots are real lights sweeping the VIP room
+   (prop light `spots`, Lighting.drawSpots; the user found drawn specks cheap), hung lamps that
    swing on a hit or a blast, wall extinguishers whose white cloud blocks sight (systems/Clouds.js, World.sightLine).
    Street furniture: a drinks machine that spits cans, a phone booth whose receiver dangles once hit, parking meters
    that bend and shed coins, newspaper boxes, steam from manholes, the oven's vent and pierced pipes

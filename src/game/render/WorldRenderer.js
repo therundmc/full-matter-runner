@@ -6,7 +6,7 @@ import { puddleShape } from '../systems/Liquids.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
-import { drawPropLife, drawSparkle } from './PropLife.js';
+import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
 
 const { Body } = Matter;
@@ -55,7 +55,6 @@ export default class WorldRenderer {
     if (w.cleared && w.level.exit) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
-    drawSparkle(ctx, w, t, vis);
     if (lit) w.lighting.post(ctx, cam, t);
     drawMoths(ctx, w.critters, t, vis);
     drawLasers(ctx, w);
