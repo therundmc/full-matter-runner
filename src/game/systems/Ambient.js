@@ -440,7 +440,7 @@ export default class Ambient {
     if (chair) {
       wake(chair.body);
       impulse(chair.body, face + Math.PI + between(r, [-0.7, 0.7]), between(r, L.shove), between(r, [-0.3, 0.3]));
-      w.sound('wood', chair.x, chair.y, 0.5);
+      w.sound('chairScrape', chair.x, chair.y, 0.6);
     }
     const fx = Math.cos(face), fy = Math.sin(face);
     if (activity === 'drink' && r() < L.glass) {

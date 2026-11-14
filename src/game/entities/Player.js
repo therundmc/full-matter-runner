@@ -185,7 +185,7 @@ export default class Player extends Character {
       this.steer(0, 0, 0, 1);
       if (!input.anyPressed && !input.mouseDown(0)) return false;
       this.rising = true;
-      this.world.sound('vault', this.x, this.y, 0.5);
+      this.world.sound('getUp', this.x, this.y, 0.7);
     }
     this.sit = Math.max(0, this.sit - dt / PLAYER.rise);
     if (this.sit <= 0.3) return true;
@@ -201,7 +201,7 @@ export default class Player extends Character {
     car.liftTrunk(0);
     this.nearTrunk = null;
     this.swing = 0;
-    this.world.sound('carHit', car.x, car.y, 0.35);
+    this.world.sound('trunk', car.x, car.y, 0.8);
   }
 
   updateTrunk(dt) {
@@ -233,7 +233,7 @@ export default class Player extends Character {
     if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
     this.setWeapon(type, mag);
     this.weapon.wear = wear ?? this.def.wear;
-    this.world.sound('pickup', this.x, this.y);
+    this.world.sound('pickup', this.x, this.y, 1, { weapon: type });
     this.world.events.emit('pickup', { ch: this, type });
     if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7, { weapon: this.weapon.type });
     this.pickAnim = 0.35;
@@ -253,7 +253,7 @@ export default class Player extends Character {
     this.reloading = 0;
     this.cooldown = 0.15;
     this.throwT = this.throwDur;
-    w.sound('throw', this.x, this.y, power ? 1 : 0.8);
+    w.sound('throw', this.x, this.y, power ? 1 : 0.8, { weapon: it.type });
     if (power) { w.slowmo(...MOMENTS.throw.slowmo); w.shake(MOMENTS.throw.shake); }
   }
 
@@ -366,7 +366,7 @@ export default class Player extends Character {
     this.strike = 0;
     this.swingDur = 20;
     this.swing = 18.2;
-    this.world.sound('swing', this.x, this.y, 0.5, { pitch: 0.7 });
+    this.world.sound('swing', this.x, this.y, 0.5, { pitch: 0.7, weapon: this.weapon?.type });
   }
 
   updateExecution(dt) {

@@ -1,10 +1,11 @@
 // WebAudio sound system: recordings wherever a real thing makes the noise, a little synthesis under them, mixed
 // through a small mastering chain.
 //   - gunshots: recorded shots (SAMPLES / SHOTS) over synthesized bass and room layers (GUNS, see _gun)
-//   - everything physical (impacts, breaks, flesh, doors, reloads, casings, voices, water): cuts of the recorded
-//     foley bank (bank.js, built by tools/build_sounds.mjs), layered per sound in FOLEY and / or by a `_<name>` method
-//   - noise-based synthesis only where no recording fits: blast bodies, fire, tyres, the car alarm, traffic,
-//     the far-off sirens
+//   - impacts and breaks of props, flesh, reloads, casings, voices, water: cuts of the recorded foley bank (bank.js,
+//     built by tools/build_sounds.mjs), layered per sound in FOLEY and / or by a `_<name>` method
+//   - the body and its moves, hands and objects, doors, small things: physically modelled foley (Foley.js recipes
+//     rendered by Synth.js), a few variations of each baked once into buffers and played with live variations
+//   - noise-based synthesis where nothing else fits: blast bodies, tyres, the car alarm, traffic, the far-off sirens
 //
 // Bus chain (all created in _build):
 //   guns  -> drive (tanh) -> gun level -> sfx              (synthesized shots)
@@ -25,6 +26,8 @@
 // gun's parts (ARMS); voices take `pitch` (one per character).
 import { rand, clamp } from '../engine/math.js';
 import { BANK, BANK_URL } from './bank.js';
+import { RECIPES, formOf } from './Foley.js';
+import { render } from './Synth.js';
 
 const MASTER_GAIN = 0.8;
 const MUSIC_GAIN = 0.6;
@@ -36,6 +39,9 @@ const CONFIRM_SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
 const CONFIRM_ROOT = 196; // Hz
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
+const STEP_LEVEL = 0.3; // footsteps, far under everything else (0: none at all)
+const VARIATIONS = 5;   // baked renders of each synthesized foley form
+const PREBAKE = [3, 0.03]; // s after the unlock the background baking starts; s between two renders without idle callbacks
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
 
@@ -44,7 +50,7 @@ const ALIAS = { impact: 'stone' };
 // (1 = none); reach: px at which it fades out (loud sounds carry further, losing their highs on the way);
 // gain: level in the mix (a close gunshot is the reference; handling noises sit far under it).
 const DEFAULT_META = { pri: 1, dur: 0.3, gap: 0.025, max: 4, duck: 1, gain: 1 };
-const META = {
+export const META = {
   explosion: { pri: 4, dur: 2.6, gap: 0.12, max: 2, duck: 0.45, reach: 3400, gain: 0.5 },
   pistol: { pri: 3, dur: 0.45, gap: 0, duck: 0.75, reach: 2600 },
   uzi: { pri: 3, dur: 0.25, gap: 0, duck: 0.8, reach: 2400 },
@@ -73,7 +79,7 @@ const META = {
   splat: { pri: 2, dur: 0.3, gap: 0.03, gain: 0.85 },
   slash: { pri: 2, dur: 0.3, gap: 0.04, max: 3, duck: 0.9, gain: 0.95 },
   punch: { pri: 3, dur: 0.35, gap: 0.04, max: 3, duck: 0.85, gain: 1 },
-  bodyFall: { pri: 1, dur: 0.4, gap: 0.05, max: 3, gain: 0.8 },
+  bodyFall: { pri: 1, dur: 0.4, gap: 0.05, max: 3, gain: 0.55 },
   shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.75, reach: 1900 },
   cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.65, reach: 1900 },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
@@ -84,16 +90,26 @@ const META = {
   pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.4, reach: 800 },
   sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700 },
   // doors, movement
-  door: { dur: 0.3, gap: 0.08, max: 2, gain: 0.7 },
-  doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.8 },
+  door: { dur: 0.3, gap: 0.08, max: 2, gain: 0.34 },
+  doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.4 },
   creak: { dur: 0.6, gap: 0.2, max: 2, gain: 0.5 },
-  vault: { dur: 0.5, gain: 0.8 }, climb: { pri: 2, dur: 0.8, gap: 0.2, max: 2, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
-  swing: { gain: 0.5 }, throw: { gain: 0.55 },
+  // the body and its moves (synthesized: Foley.js)
+  vault: { dur: 0.5, gap: 0.15, max: 3, gain: 0.38 }, dive: { pri: 2, dur: 0.6, gap: 0.2, max: 2, gain: 0.49 },
+  climb: { pri: 2, dur: 0.75, gap: 0.2, max: 2, gain: 0.47 }, hipSlide: { dur: 0.5, gap: 0.15, max: 2, gain: 0.41 },
+  slide: { pri: 2, dur: 0.55, gap: 0.2, max: 2, gain: 0.47 }, roll: { pri: 2, dur: 0.45, gap: 0.2, max: 2, gain: 0.45 },
+  rollUp: { dur: 0.25, gap: 0.15, max: 2, gain: 0.6 }, getUp: { dur: 0.6, gap: 0.5, max: 1, gain: 0.3 },
+  rung: { dur: 0.25, gap: 0.06, max: 2, gain: 0.33 }, ledge: { dur: 0.5, gap: 0.3, max: 2, gain: 0.31 },
+  step: { pri: 0, dur: 0.12, gap: 0.03, max: 4, gain: STEP_LEVEL, reach: 700 },
+  drag: { pri: 0, dur: 0.6, gap: 0.4, max: 2, gain: 0.25 },
+  // hands and objects
+  swing: { dur: 0.25, gap: 0.05, max: 3, gain: 0.45 }, throw: { dur: 0.4, gap: 0.1, max: 2, gain: 0.25 },
+  drop: { pri: 0, dur: 0.4, gap: 0.05, max: 3, gain: 0.5 }, clubHit: { pri: 2, dur: 0.3, gap: 0.04, max: 3, gain: 1 },
+  trunk: { dur: 0.45, gap: 0.3, max: 1, gain: 0.32 }, chairScrape: { pri: 0, dur: 0.4, gap: 0.1, max: 2, gain: 0.22 },
   flutter: { pri: 1, dur: 0.5, gap: 0.25, max: 2, gain: 0.45 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
-  pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.55 },
-  clack: { pri: 0, dur: 0.12, gap: 0.04, max: 3, gain: 0.45 }, pocket: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.5 },
-  coin: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.4 },
+  pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.33 },
+  clack: { pri: 0, dur: 0.12, gap: 0.04, max: 3, gain: 1 }, pocket: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.5 },
+  coin: { pri: 0, dur: 0.6, gap: 0.1, max: 2, gain: 0.21 },
   ding: { pri: 1, dur: 0.4, gap: 0.3, max: 1, gain: 0.6 }, derail: { pri: 2, dur: 1.2, gap: 1, max: 1, gain: 0.95 },
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
@@ -110,7 +126,7 @@ const META = {
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   shopAlarm: { pri: 1, dur: 0.56, gap: 0.3, max: 2, reach: 1500, gain: 0.15 },
   siren: { pri: 0, dur: 4.6, gap: 1.5, max: 2, gain: 0.05, hall: 0.7 },
-  crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
+  crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.3 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
   confirm: { pri: 4, dur: 0.3, gap: 0.03, max: 3, duck: 0.85, gain: 0.8, hall: 0.08 },
@@ -251,7 +267,6 @@ const FOLEY = {
   gore: [['punch', 1, 0.65], ['woodBreak', 0.45, 1.7, 0.01], ['thud', 0.9, 0.75, 0.02]],
   slash: [['swish', 0.5, 1.5], ['punch', 0.7, 1.3, 0.03]],
   death: [['punch', 1, 0.7], ['thud', 0.9, 0.7, 0.04]],
-  bodyFall: [['thud', 1, 0.8], ['soft', 0.5, 0.8, 0.06]],
   // the guards' voices: their recording further back, a synthesized voice under it (_shout, _cry, _whimper)
   shout: [['yell', 0.55]],
   whimper: [['pain', 0.5, 1.12]], // a man on his knees begging
@@ -262,27 +277,12 @@ const FOLEY = {
   neck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14], ['thud', 0.6, 0.8, 0.32]],
   // doors, movement
   creak: [['creak', 1]],
-  vault: [['swish', 0.3, 0.6], ['soft', 0.6, 1, 0.1], ['thud', 0.5, 1.1, 0.27]], // hands on the sill, the landing
-  // over a chain-link gate: the mesh shaken by the hands, then by the body, and the landing
-  climb: [['rattle', 0.9, 0.75], ['sheet', 0.35, 1.3, 0.06], ['rattle', 0.7, 0.62, 0.3], ['thud', 0.5, 1.1, 0.55]],
-  // a body gliding over the floor (or a car hood): the launch here, the long smooth hiss in _slide
-  slide: [['swish', 0.45, 0.5]],
   splash: [['splash', 1]],
-  // a pool shot: the cue ball hit dry, the ball it knocks an instant later
-  pool: [['plastic', 0.8, 1.9], ['plastic', 0.5, 2.3, 0.07], ['wood', 0.25, 2.2, 0.02]],
-  // two balls meeting, one dropping into a pocket (systems/PoolBalls.js)
-  clack: [['plastic', 0.7, 2.5]],
-  // small change shaken out of a parking meter
-  coin: [['casing', 0.6, 1.5], ['casing', 0.45, 1.9, 0.07]],
-  pocket: [['wood', 0.5, 1.4], ['plastic', 0.3, 1.5, 0.06]],
-  throw: [['swish', 1, 0.7]],
-  swing: [['swish', 1, 0.9]],
   // pigeons going up: a clatter of wings, short quick beats of air
   flutter: [['swish', 0.5, 2.6], ['swish', 0.4, 2.9, 0.07], ['swish', 0.4, 2.4, 0.15], ['swish', 0.3, 2.8, 0.24], ['swish', 0.2, 2.5, 0.34]],
   // small things
   ricochet: [['stone', 0.5, 1.5]],
   ammo: [['rattle', 1], ['handle', 0.35, 1.2]],
-  crackle: [['woodBreak', 0.3, 1.7, 0, 0.5]],
   ui: [['click', 1, 0.8], ['thud', 0.4, 1.5]],
   clear: [['doorSlam', 0.6, 0.6]],
 };
@@ -300,7 +300,8 @@ class AudioSystem {
     this.duckDepth = 1;
     this.pv = 1;        // per-play pitch factor (set in play, read by the helpers)
     this.buffers = {};  // decoded recordings (SAMPLES), filled by unlock()
-    this.bags = {};     // bank set -> cuts not played yet in this round (see _pick)
+    this.bags = {};     // bank set or baked form -> what was not played yet in this round (see _bag)
+    this.baked = {};    // synthesized foley form -> its variations, rendered on first use or in the background
   }
 
   // must be called from a user gesture
@@ -314,10 +315,24 @@ class AudioSystem {
         this.buffers[k] = await this.ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
       } catch (e) { console.warn('sound load failed', k, e); } // shots fall back on synthesis, foley stays silent
     }));
+    this._prebake();
+  }
+
+  // renders every synthesized form's first variation in the background, one at a time, after the start's own load
+  // and only in the idle time between frames (a render takes 1 to 10 ms)
+  _prebake() {
+    const todo = Object.entries(RECIPES).flatMap(([name, r]) => (r.forms ? Object.keys(r.forms).map((f) => [`${name}.${f}`, r.forms[f]]) : [[name, r]]));
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(() => fn({ timeRemaining: () => 0 }), PREBAKE[1] * 1000));
+    const next = (deadline) => {
+      do this._variation(...todo.shift(), 0); while (todo.length && deadline.timeRemaining() > 12);
+      if (todo.length) idle(next);
+    };
+    setTimeout(() => idle(next), PREBAKE[0] * 1000);
   }
 
   // bus chain + shared buffers (see the header)
   _build(ctx) {
+    this.baked = {};
     const param = (n, v) => { for (const k in v) n[k].value = v[k]; return n; };
     const gain = (v) => param(ctx.createGain(), { gain: v });
     const bq = (type, frequency, Q, g = 0) => {
@@ -540,9 +555,10 @@ class AudioSystem {
   play(name, opts = {}) {
     if (!this.ctx || this.ctx.state !== 'running') return;
     name = ALIAS[name] || name;
-    const gun = GUNS[name], layers = FOLEY[name], recipe = !gun && this['_' + name];
-    if (!gun && !layers && !recipe) return;
+    const gun = GUNS[name], layers = FOLEY[name], recipe = !gun && this['_' + name], synth = RECIPES[name];
+    if (!gun && !layers && !recipe && !synth) return;
     const meta = META[name] || DEFAULT_META;
+    if (meta.gain <= 0) return; // turned off (STEP_LEVEL)
     const sp = this._spatial(opts, meta.reach);
     sp.vol *= meta.gain;
     sp.hall = meta.hall ?? (gun ? GUN_HALL : 0);
@@ -562,6 +578,7 @@ class AudioSystem {
       this.pv = rand(0.95, 1.05) * (opts.pitch ?? 1);
       const v = clamp(opts.vol ?? 1, 0.1, 1.5); // how hard it was hit
       if (layers) this._foley(o, layers, v);
+      if (synth) this._synth(o, name, opts, v);
       if (recipe) recipe.call(this, o, opts, v);
     }
     if (!o._n) { // nothing to play (bank not loaded): free the voice
@@ -587,21 +604,24 @@ class AudioSystem {
     s.start(t, offset, len + 0.02);
   }
 
-  // next cut [offset, length] of a bank set: drawn from a shuffled round, so none comes back before the others
-  _pick(set) {
-    const cuts = BANK[set];
-    let bag = this.bags[set];
+  // next of n things under `key` (cuts of a bank set, baked variations): drawn from a shuffled round, so none comes
+  // back before the others
+  _bag(key, n) {
+    let bag = this.bags[key];
     if (!bag || !bag.length) {
       const last = bag && bag.last;
-      bag = this.bags[set] = cuts.map((_, i) => i);
+      bag = this.bags[key] = Array.from({ length: n }, (_, i) => i);
       for (let i = bag.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [bag[i], bag[j]] = [bag[j], bag[i]];
       }
-      if (bag.length > 1 && bag[bag.length - 1] === last) bag.reverse(); // never the same cut twice in a row
+      if (bag.length > 1 && bag[bag.length - 1] === last) bag.reverse(); // never the same one twice in a row
     }
-    return cuts[bag.last = bag.pop()];
+    return (bag.last = bag.pop());
   }
+
+  // next cut [offset, length] of a bank set
+  _pick(set) { return BANK[set][this._bag(set, BANK[set].length)]; }
 
   // one cut of bank `set` into voice `o` (silent until the bank is loaded)
   _cut(o, set, { vol = 1, rate = 1, delay = 0 } = {}) {
@@ -617,6 +637,29 @@ class AudioSystem {
     for (const [set, vol, rate = 1, delay = 0, odds = 1] of layers) {
       if (odds >= 1 || Math.random() < odds) this._cut(o, set, { vol, rate: rate * k, delay });
     }
+  }
+
+  // ---- synthesized foley (Foley.js) ----
+  // variation i of a form, rendered into a buffer the first time it is asked for
+  _variation(key, recipe, i) {
+    const list = (this.baked[key] ||= []);
+    if (!list[i]) {
+      const sr = this.ctx.sampleRate, d = render(recipe, sr, i * 7919 + key.length * 104729 + 1);
+      const buf = this.ctx.createBuffer(1, d.length, sr);
+      buf.getChannelData(0).set(d);
+      list[i] = { buf, len: d.length / sr };
+    }
+    return list[i];
+  }
+
+  // one baked variation of `name`'s form for opts into voice `o` at `vol`; a harder hit (v) is a little brighter. Returns
+  // whether there was one (a form may not exist for opts: a gun picked up has no grip of its own)
+  _synth(o, name, opts, v = 1, vol = 1) {
+    const f = formOf(name, opts);
+    if (!f) return false;
+    const { buf, len } = this._variation(f.key, f.recipe, this._bag(f.key, VARIATIONS));
+    this._sample(o, buf, { len, rate: this.pv * rand(0.97, 1.03) * (0.96 + 0.06 * Math.min(v, 1.2)), vol, fade: 0.005 });
+    return true;
   }
 
   // ---- synthesis primitives (all honour the per-play pitch factor this.pv) ----
@@ -666,11 +709,8 @@ class AudioSystem {
   }
 
   // ---- synthesized parts of the big sounds (their debris and flesh are FOLEY layers) ----
-  // a blow that lands: the felt knock under the recorded hit and the smack of its first milliseconds
-  _punch(o, opts, v) {
-    this._thump(o, { f0: 170, f1: 46, dur: 0.17, vol: 0.9 * v });
-    this._noiseBurst(o, { type: 'highpass', f0: 2400, f1: 1300, dur: 0.035, vol: 0.45 * v, attack: 0.001 });
-  }
+  // a blow that lands: the chest's dull knock under the recorded hit
+  _punch(o, opts, v) { this._synth(o, 'punchBody', opts, v, 0.9); }
   _slash(o, opts, v) { this._thump(o, { f0: 130, f1: 50, dur: 0.12, vol: 0.5 * v, delay: 0.03 }); }
   _death(o) {
     this._thump(o, { f0: 90, f1: 28, dur: 0.6, vol: 0.7 });
@@ -706,24 +746,8 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'lowpass', f0: 3000, f1: 200, dur: 0.13, vol: 1.0, attack: 0.002 });
     this._noiseBurst(o, { type: 'highpass', f0: 3500, f1: 2000, dur: 0.8, vol: 0.2, delay: 0.05, attack: 0.04 }); // hiss
   }
-  // ---- doors (synthesized whole: the user hated every recording of one) ----
-  // a partial of something struck: a pure tone that only dies away (wood rings, it does not swoop)
+  // a partial of something struck: a pure tone that only dies away (the kill confirm's muted note)
   _ring(o, f, dur, vol, delay = 0) { this._thump(o, { f0: f, f1: f * 0.97, dur, vol, delay }); }
-  // the leaf against its stop: the panel's hollow knock (four partials), the contact, the latch
-  _door(o, opts, v) {
-    const k = rand(0.92, 1.08);
-    for (const [f, d, a] of [[96, 0.16, 0.5], [172, 0.11, 0.38], [287, 0.07, 0.22], [431, 0.05, 0.1]]) this._ring(o, f * k, d, a * v);
-    this._noiseBurst(o, { type: 'lowpass', f0: 900, f1: 300, dur: 0.05, vol: 0.3 * v, attack: 0.001 });
-    this._noiseBurst(o, { f0: 2900, q: 9, dur: 0.02, vol: 0.1 * v, delay: 0.03 });
-  }
-  // kicked open or broken in: the same panel hit hard, lower and longer, the room answering, the latch rattling
-  _doorSlam(o, opts, v) {
-    const k = rand(0.92, 1.08);
-    for (const [f, d, a] of [[62, 0.34, 0.9], [118, 0.24, 0.6], [203, 0.15, 0.35], [336, 0.09, 0.18]]) this._ring(o, f * k, d, a * v);
-    this._noiseBurst(o, { type: 'lowpass', f0: 2200, f1: 240, dur: 0.14, vol: 0.55 * v, attack: 0.001 });
-    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 500, f1: 90, dur: 0.4, vol: 0.4 * v, attack: 0.004 });
-    for (const d of [0.05, 0.1, 0.17]) this._noiseBurst(o, { f0: 3100, q: 8, dur: 0.025, vol: 0.09 * v, delay: d });
-  }
 
   // ---- synthesized voice (under the guards' recordings, which the user wanted further back) ----
   // a buzzing source (two saws a few cents apart, shaken by `rough`: a growl) through three vowel formants that
@@ -786,12 +810,6 @@ class AudioSystem {
   // a man begging or whining: thin, high, trembling
   _whimper(o) {
     this._voice(o, { f: 215, bend: [[0, 1], [0.5, 1.12], [1, 0.94]], from: VOWEL.i, to: VOWEL.e, dur: 0.36, vol: 0.28, rough: 0.25, breath: 0.1 });
-  }
-
-  // clothes gliding on the floor: one smooth hiss with some body under it, lower as the slide slows down
-  _slide(o) {
-    this._noiseBurst(o, { f0: 2600, f1: 700, q: 0.5, dur: 0.6, vol: 0.5, attack: 0.06 });
-    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 1000, f1: 260, dur: 0.55, vol: 0.8, attack: 0.05 });
   }
 
   // ---- guns ----
@@ -875,7 +893,8 @@ class AudioSystem {
       this._noiseBurst(o, { f0: 500, f1: 900, q: 1.5, dur: opts.dur * 0.55, vol: 0.3, attack: opts.dur * 0.4, delay: opts.dur * 0.35 });
     }
   }
-  _pickup(o, opts) { this._handle(o, opts); }
+  // a melee weapon taken in hand has its own grip, a gun its handling
+  _pickup(o, opts) { if (!this._synth(o, 'grip', opts)) this._handle(o, opts); }
   // dry fire: hammer / striker falling on nothing
   _click(o, opts) { this._cut(o, 'click', { rate: this._arms(opts).rate }); }
   // a casing bouncing on the floor (CASINGS kind, default 9 mm brass), bounces closer and quieter each time
@@ -1014,13 +1033,6 @@ class AudioSystem {
       return [osc, g];
     });
     oscs.forEach(([osc, g], i) => { osc.onended = () => this._release(o, osc, g, ...(i ? [env, horn] : [])); });
-  }
-  // fire: wood popping over a short flutter of flame
-  _crackle(o) {
-    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 500, f1: 300, dur: 0.3, vol: 0.3, attack: 0.08 });
-    for (let i = 0; i < 3; i++) {
-      this._noiseBurst(o, { type: 'highpass', f0: rand(1200, 3000), q: 0.7, dur: rand(0.008, 0.02), vol: rand(0.15, 0.4), delay: rand(0, 0.22), attack: 0.0005 });
-    }
   }
   // gas under pressure through a hole: a hard bright hiss over the roar of its flame (pitch climbs with the fuse)
   _hiss(o, opts) {

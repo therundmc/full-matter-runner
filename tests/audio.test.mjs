@@ -2,7 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { default: Audio } = await load('audio/Audio.js');
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+
+const { default: Audio, META } = await load('audio/Audio.js');
+const { RECIPES, formOf, FLOOR_OF, HANDLING } = await load('audio/Foley.js');
+const { render, LAYER_KINDS } = await load('audio/Synth.js');
+const { FLOORS } = await load('game/world/TileMap.js');
+const { GADGETS } = await load('game/Config.js');
+const CONFIG_SOUNDS = Object.values(GADGETS).map((g) => g.sound).filter(Boolean);
 const { default: Music } = await load('audio/Music.js');
 const { default: Tension } = await load('game/ai/Tension.js');
 const { WEAPONS } = await load('game/data/weapons.js');
@@ -111,13 +118,27 @@ test('audio: with the recordings loaded, every shot and the blast play a cut of 
   });
 });
 
-// every other sound the game asks for (world.sound / Audio.play call sites, material tables)
-const GAME_SOUNDS = [
-  ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), 'stone', 'flesh', 'impact', 'shell',
-  'punch', 'splat', 'gore', 'slash', 'death', 'bodyFall', 'shout', 'cry', 'grab', 'neck', 'whimper', 'scream', 'glass', 'crumble', 'doorBreak', 'explosion',
-  'tirePop', 'carHit', 'door', 'doorSlam', 'creak', 'vault', 'climb', 'slide', 'splash', 'throw', 'swing', 'ricochet', 'ammo',
-  'alarm', 'crackle', 'ignite', 'confirm', 'clear', 'ui', 'passby', 'pool', 'mutter',
-];
+// every name written in a world.sound / Audio.play call of the game (each literal of its first argument, but the
+// ones a condition compares against), plus the material tables, the gadgets and the voices of the crowd
+function calledNames() {
+  const names = new Set(), walk = (dir) => {
+    for (const f of readdirSync(dir)) {
+      const p = `${dir}/${f}`;
+      if (statSync(p).isDirectory()) walk(p);
+      else if (p.endsWith('.js')) {
+        for (const [, arg] of readFileSync(p, 'utf8').matchAll(/(?:\.sound|Audio\.play)\(([^,)]*)[,)]/g)) {
+          for (const [, n] of arg.matchAll(/(?<!===?\s*)'(\w+)'/g)) names.add(n);
+        }
+      }
+    }
+  };
+  walk(new URL('../src/game', import.meta.url).pathname.replace(/^\/(\w:)/, '$1'));
+  return names;
+}
+const GAME_SOUNDS = [...new Set([
+  ...calledNames(), ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), ...CONFIG_SOUNDS,
+  'stone', 'flesh', 'shell', 'scream', 'whimper', 'sob', 'pant', 'step', 'drop', 'drag',
+])].filter((n) => !Object.values(WEAPONS).some((d) => d.kind === 'gun' && d.sound === n));
 
 test('audio: every sound the game asks for plays, from a cut that lies inside the foley bank', () => {
   const end = Math.max(...Object.values(BANK).flat().map(([at, len]) => at + len));
@@ -126,7 +147,7 @@ test('audio: every sound the game asks for plays, from a cut that lies inside th
     ctx.createBufferSource = () => {
       const s = make(), start = s.start;
       s.start = (t, at = 0, len = 0) => {
-        if (s.buffer === FOLEY) assert.ok(at >= 0 && len > 0 && at + len <= end + 0.05, `cut ${at} + ${len} outside the bank`);
+        if (s.buffer === FOLEY && !s.loop) assert.ok(at >= 0 && len > 0 && at + len <= end + 0.05, `cut ${at} + ${len} outside the bank`);
         start(t);
       };
       return s;
@@ -320,4 +341,51 @@ test('music: the menu ignores the fight, and a throttled timer resyncs without s
   assert.ok(bars.every((b, i) => i === 0 || b.t > bars[i - 1].t));
   assert.ok(FIGHT.includes(bars.find((b) => b.t > 20).name));
   assert.equal(bars[bars.length - 1].name, 'break');
+});
+
+test('audio: every sound the game plays has its own mix settings, and the scan of the call sites found them', () => {
+  for (const n of ['rung', 'roll', 'rollUp', 'ledge', 'dive', 'hipSlide', 'getUp', 'trunk', 'clubHit', 'chairScrape', 'swing', 'punch']) {
+    assert.ok(GAME_SOUNDS.includes(n), `${n} not found in the game's calls`);
+  }
+  for (const n of GAME_SOUNDS) assert.ok(META[n === 'impact' ? 'stone' : n], `'${n}' has no META entry`); // impact: an alias
+});
+
+test('foley: every recipe and form renders a clean, varied, normalized sound', () => {
+  const sr = 22050;
+  for (const [name, r] of Object.entries(RECIPES)) {
+    const forms = r.forms ? Object.entries(r.forms) : [[name, r]];
+    assert.ok(forms.length, name);
+    for (const [form, rec] of forms) {
+      assert.ok(rec.level > 0 && rec.level <= 1 && rec.dur > 0 && rec.layers.length, `${name}.${form}`);
+      for (const l of rec.layers) assert.ok(LAYER_KINDS.includes(l.k), `${name}.${form}: layer ${l.k}`);
+      const a = render(rec, sr, 1), b = render(rec, sr, 2);
+      for (const x of [a, b]) {
+        let peak = 0;
+        for (const v of x) { assert.ok(Number.isFinite(v)); peak = Math.max(peak, Math.abs(v)); }
+        assert.ok(Math.abs(peak - rec.level) < 1e-3, `${name}.${form}: peak ${peak}`);
+        assert.ok(x.length / sr <= rec.dur + 0.4 && Math.abs(x[x.length - 1]) < 0.01 * rec.level, `${name}.${form}: length / tail`);
+      }
+      assert.ok(a.length !== b.length || a.some((v, i) => v !== b[i]), `${name}.${form}: two variations are the same`);
+    }
+  }
+});
+
+test('foley: every floor, weapon and option a call can pass has its form', () => {
+  for (const f of Object.values(FLOORS)) assert.ok(FLOOR_OF[f], `floor ${f}`);
+  for (const w of Object.keys(WEAPONS)) assert.ok(HANDLING[w], `weapon ${w}`);
+  for (const floor of [...Object.values(FLOORS), undefined]) {
+    for (const run of [false, true]) assert.ok(formOf('step', { floor, run }));
+    for (const n of ['slide', 'roll', 'rollUp']) assert.ok(formOf(n, { floor }));
+  }
+  for (const weapon of [...Object.keys(WEAPONS), undefined]) for (const n of ['swing', 'throw', 'drop']) assert.ok(formOf(n, { weapon }), `${n} ${weapon}`);
+  assert.equal(formOf('grip', { weapon: 'pistol' }), null, 'a gun picked up keeps its handling recording');
+  for (const material of ['metal', 'wood', 'fabric', undefined]) assert.ok(formOf('hipSlide', { material }) && formOf('clubHit', { material }));
+});
+
+test('audio: footsteps never starve the voices, and STEP_LEVEL 0 would silence them', () => {
+  withContext((ctx) => {
+    for (let i = 0; i < 60; i++) { Audio.play('step', { x: 10 * i, y: 0, floor: 'asphalt', run: true }); ctx.currentTime += 1 / 12; }
+    assert.ok(Audio.active.filter((a) => a.name === 'step').length <= META.step.max);
+    assert.ok(META.step.pri === 0 && META.step.gain < 0.5);
+  });
 });

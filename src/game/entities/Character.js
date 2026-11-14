@@ -273,7 +273,7 @@ export default class Character {
     this.cooldown = d.rate;
     this.swingDur = d.rate * 0.85;
     this.swing = this.swingDur * (fromTell ? 1 - TELL.hold : 1);
-    this.world.sound('swing', this.x, this.y, 0.6);
+    this.world.sound('swing', this.x, this.y, 0.6, { weapon: this.weapon?.type });
     this.world.after(d.windup, () => this.meleeStrike(d));
     return true;
   }
@@ -527,7 +527,7 @@ export default class Character {
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
     if (ladder) return true; // each rung is heard as it is climbed (climbLadder)
-    w.sound(climb ? 'climb' : hoist ? 'vault' : 'slide', this.x, this.y, 0.8);
+    w.sound(climb ? 'climb' : v.kind === 'window' && v.over.intact ? 'dive' : hoist ? 'vault' : 'hipSlide', this.x, this.y, 0.8, { land: !this.vaulting.roll, material: v.over.isVehicle ? 'metal' : def.material });
     if (climb) w.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
     else if (v.kind === 'window' && !v.over.intact) w.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60); // a whole pane shatters in updateVault
     return true;
@@ -590,9 +590,9 @@ export default class Character {
     if (at.i !== L.i) {
       const first = L.i === -2;
       L.i = at.i;
-      if (at.top && (L.up || first)) w.sound('vault', this.x, this.y, 0.45); // over the edge of the roof
+      if (at.top && (L.up || first)) w.sound('ledge', this.x, this.y, 0.6); // over the edge of the roof
       else if (at.i >= 0 && !at.top) {
-        w.sound('metal', this.x, this.y, 0.22, { pitch: 1.35 });
+        w.sound('rung', this.x, this.y, 0.7);
         w.noise(this.x, this.y, this.isPlayer ? RUNG_NOISE : 0, this);
       }
     }
@@ -607,7 +607,7 @@ export default class Character {
     v.rolling = { t: 0, dur, len, from: { x: this.x, y: this.y }, m0: 1.25, m1: R.exit, side: Math.random() < 0.5 ? -1 : 1, up: false };
     // back on the ground: bodies, furniture and doors stop him again
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: MASK.CHAR };
-    w.sound('bodyFall', this.x, this.y, 0.45, { pitch: 1.2 });
+    w.sound('roll', this.x, this.y, 0.8);
   }
 
   // the roll is driven by velocity: the physics still stops it at whatever moved into the way since it was probed
@@ -623,7 +623,7 @@ export default class Character {
     if (!r.up && k >= 0.7) {
       r.up = true;
       w.particles.smoke(this.x + c * 5, this.y + s * 5, 2, 2, { speed: 18, size: 3, life: 0.4 });
-      w.sound('slide', this.x, this.y, 0.35, { pitch: 1.3 });
+      w.sound('rollUp', this.x, this.y, 0.7);
     }
     if (k < 1) return true;
     this.endVault(v, (r.m1 * r.len) / (r.dur * 60));

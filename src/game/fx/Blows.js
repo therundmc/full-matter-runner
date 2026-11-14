@@ -14,7 +14,7 @@ export function blowFx(world, d, victim, a, how) {
   const P = world.particles, { x, y } = victim, back = a + Math.PI, club = d.swing === 'club', metal = d.material === 'metal';
   if (club) {
     // the crack of what it is made of over the blow itself: steel rings and sparks, wood knocks
-    world.sound(metal ? 'metal' : 'wood', x, y, how.heavy ? 1 : 0.8, { pitch: metal ? 0.8 : 1.15 });
+    world.sound('clubHit', x, y, how.heavy ? 1 : 0.8, { material: d.material });
     if (metal) P.sparks(x, y, back, 0.9, how.heavy ? 6 : 3, 220);
     if (how.from === 'front') P.chips(x, y, a + rand(-0.5, 0.5), 0.9, 3, '#ece6d8', 150); // teeth
   }
