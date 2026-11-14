@@ -116,7 +116,12 @@ export default class Door {
     const b = this.body;
     if (this.locked) return;
     let rel = angDiff(this.a0, b.angle);
-    let av = Body.getAngularVelocity(b) * Math.max(0, 1 - HINGE_FRICTION * dt);
+    // what the leaf picked up this step counts about the hinge, not about its middle: a push on the middle of the
+    // leaf opens it, and one near the hinge cannot swing it the wrong way
+    const h = (this.len - this.back) / 2; // pivot to the middle of the leaf
+    const v = Body.getVelocity(b), along = v.y * Math.cos(b.angle) - v.x * Math.sin(b.angle);
+    let av = (b.inertia * Body.getAngularVelocity(b) + b.mass * h * along) / (b.inertia + b.mass * h * h)
+      * Math.max(0, 1 - HINGE_FRICTION * dt);
     const lim = MAX_SWING - this.warp * 0.25; // a warped door doesn't open as far
     if (Math.abs(rel) > lim) {
       rel = clamp(rel, -lim, lim);
@@ -133,7 +138,7 @@ export default class Door {
       this.creakCooldown = rand(0.6, 1.2);
     }
     const a = this.a0 + rel;
-    const c = Math.cos(a), s = Math.sin(a), h = (this.len - this.back) / 2; // pivot to the middle of the leaf
+    const c = Math.cos(a), s = Math.sin(a);
     Body.setAngle(b, a);
     Body.setPosition(b, { x: this.hx + c * h, y: this.hy + s * h });
     Body.setAngularVelocity(b, av);

@@ -29,6 +29,18 @@ function hidden(blocks, sx, sy, x, y) {
   return true;
 }
 
+// The way through the doorway of cell (cx, cy) for a walker at (x, y) heading (ux, uy): down the middle of the
+// opening, where neither jamb nor the leaf swung against it is in the way. Unit vector, or null when the cell is
+// not a passage between two free cells.
+export function throughDoor(map, cx, cy, x, y, ux, uy) {
+  const free = (i, j) => i >= 0 && j >= 0 && i < map.w && j < map.h && !map.blocked[j * map.w + i];
+  const vert = free(cx, cy - 1) && free(cx, cy + 1);
+  if (!vert && !(free(cx - 1, cy) && free(cx + 1, cy))) return null;
+  const ahead = 18 * (Math.sign(vert ? uy : ux) || 1); // px further along the passage
+  const dx = vert ? centre(cx) - x : ahead, dy = vert ? ahead : centre(cy) - y, d = Math.hypot(dx, dy);
+  return { x: dx / d, y: dy / d };
+}
+
 export function isCovered(world, x, y, sx, sy) { return hidden(coverCell(world.map), sx, sy, x, y); }
 
 // clear shot both ways (vision and bullets)

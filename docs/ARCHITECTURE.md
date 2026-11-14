@@ -52,7 +52,7 @@ src/
     ai/                   enemy AI, DOM-free (unit tested)
       Tension.js          soundtrack intensity: alert phase + heat of the fight (shots, kills, blasts)
       Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
-      Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
+      Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point, the way through a doorway
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
       Civilians.js        passers-by Walker brain (stroll, stop, panic, then by temperament flee / hide curled up / freeze) + escapeRoute, hideRoute
@@ -377,7 +377,10 @@ The big brick masses around a level are the neighbouring buildings seen from abo
 
 ## Doors and windows
 
-`Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out).
+`Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out);
+what a contact gives the leaf is taken about the hinge (`Door.constrain`), so a push anywhere on it opens it.
+Guards take a doorway one at a time and down its middle (`Enemy.follow`: `gateTaken` / `standBack`, `AI.gate`,
+`Tactics.throughDoor`), and re-plan when the ground covered says they push at something that will not give.
 Level tile `L` = locked door: static, blocks path-finding; shooting the lock (latch end) or kicking / hitting it
 breaks the latch and bursts it open. Bullets punch holes in a per-door canvas, damage warps the leaf, 7.62 rounds
 go through, at 0 HP it is ripped off (Destruction.detachDoor).

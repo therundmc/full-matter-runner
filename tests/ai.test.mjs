@@ -6,7 +6,7 @@ const { ENEMY, AI } = await load('game/Config.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { detectionRate, inView, aimError, hearingError, loiterRate } = await load('game/ai/Perception.js');
-const { searchPoints, findCover, isCovered, randomPoint } = await load('game/ai/Tactics.js');
+const { searchPoints, findCover, isCovered, randomPoint, throughDoor } = await load('game/ai/Tactics.js');
 const { default: Director, freshLine } = await load('game/ai/Director.js');
 const { BARKS, SHOUTED, BARK_TONE } = await load('game/data/barks.js');
 const { PALETTE } = await load('game/Config.js');
@@ -104,6 +104,18 @@ test('loitering: a guard only minds a stranger close by, and loses patience fast
 });
 
 // ---------------- tactics ----------------
+test('a doorway is taken down its middle, whatever corner the path cuts', () => {
+  const map = new TileMap(ROWS);
+  // the door (7, 3) joins the rooms left and right: from its upper edge, heading right and up, he is brought back
+  // down to the axis while still going right
+  const w = throughDoor(map, 7, 3, 7 * 32 + 4, 3 * 32 + 4, 0.7, -0.7);
+  assert.ok(w.x > 0.5 && w.y > 0.3, `${w.x}, ${w.y}`);
+  assert.ok(Math.abs(Math.hypot(w.x, w.y) - 1) < 1e-9);
+  const back = throughDoor(map, 7, 3, c(7), c(3), -1, 0);
+  assert.ok(back.x === -1 && back.y === 0, 'on the axis, straight on');
+  assert.equal(throughDoor(map, 1, 1, c(1), c(1), 1, 0), null, 'a corner is no passage');
+});
+
 test('search points: origin first, doorway found, spread apart', () => {
   const map = new TileMap(ROWS);
   const pts = searchPoints(map, c(3), c(1), 16, 6);

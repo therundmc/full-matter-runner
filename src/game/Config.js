@@ -128,6 +128,9 @@ export const AI = {
   // The player's wet or bloody footprints (ai/Trail.js, Enemy.doTrack). fresh: s a print stays readable; max: prints
   // kept; gap: px between two prints of the same run; hop: px a tracker walks at a time; sight: share of the view
   // distance at which a print is noticed, close: px all around; ahead: px he goes on past the last print.
+  // doorways, one at a time: how long a guard waits for a mate in the frame (s, walking / running) and how far
+  // back from it he stands (px)
+  gate: { calm: 3, rush: 1.2, room: 46, far: 96 },
   trail: { fresh: 45, max: 48, gap: 60, hop: 70, sight: 0.45, close: 36, ahead: 96 },
   // how a guard carries his weapon (ai/Carry.js), in s: putting it away, drawing a pistol or a blade, bringing a
   // long gun round from his back, raising it on a target; ready: how far out (0..1) it must be to fire

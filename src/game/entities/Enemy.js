@@ -10,7 +10,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { BARKS, SHOUTED } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
-import { findCover, findFlank, searchPoints, isCovered, randomPoint } from '../ai/Tactics.js';
+import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
 import { struck, talks, pours, reliefSpot, STRETCH } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
@@ -80,6 +80,8 @@ export default class Enemy extends Character {
     this.susT = 0; this.hideT = 0; this.shots = 0; this.ambushT = 0; this.ambushed = false; this.stalkCD = 0;
     this.glance = 0; this.glanceT = 0; this.lookBase = angle; this.lookT = 0;
     this.pauseT = rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
+    this.gate = -1; this.gateT = -9; this.gateFor = -1; this.gateWait = 0; // the doorway he holds / waits for
+    this.probeT = 0; this.probeX = x; this.probeY = y;                     // ground covered lately (see follow)
     this.react = 0; this.tactic = null; this.thinkT = 0; this.cover = null; this.coverT = 0;
     this.burst = 0; this.volleys = 0; this.burstLeft = 0; this.suppressCD = rand(0, 1.5);
     this.dodge = 0; this.dodgeCD = 0; this.strafe = 0; this.strafeT = rand(1, 2);
@@ -1243,11 +1245,27 @@ export default class Enemy extends Character {
     }
     const ux = dx / d, uy = dy / d, heading = Math.atan2(dy, dx);
     const map = this.world.map;
+    const cx = Math.floor((this.x + ux * 20) / TILE), cy = Math.floor((this.y + uy * 20) / TILE), key = cy * map.w + cx;
+    const mx = Math.floor(this.x / TILE), my = Math.floor(this.y / TILE);
+    const ahead = map.at(cx, cy) === 'D', inside = map.at(mx, my) === 'D';
+    // one at a time through a doorway: whoever is in the frame, or was first to it, goes; the others stand back
+    const want = inside ? my * map.w + mx : ahead ? key : this.gateWait > 0 ? this.gateFor : -1;
+    if (want < 0) this.gate = -1;
+    else if (!inside && this.gateWait < (speed > 1.6 ? AI.gate.rush : AI.gate.calm) && this.gateTaken(want)) {
+      this.gate = -1;
+      this.gateFor = want;
+      this.gateWait += dt;
+      if (!this.standBack(dt, want, heading)) this.gateWait = 0; // sent somewhere else meanwhile
+      return false;
+    } else {
+      this.gate = want;
+      this.gateT = this.world.time;
+      if (inside) this.gateWait = 0;
+    }
     // calm guards pause a beat before stepping through a doorway
     if (opts.doors) {
-      const cx = Math.floor((this.x + ux * 20) / TILE), cy = Math.floor((this.y + uy * 20) / TILE), key = cy * map.w + cx;
-      if (map.at(cx, cy) === 'D' && key !== this.doorKey) { this.doorKey = key; this.doorT = rand(0.35, 0.8); }
-      else if (map.at(Math.floor(this.x / TILE), Math.floor(this.y / TILE)) !== 'D' && map.at(cx, cy) !== 'D') this.doorKey = -1;
+      if (ahead && key !== this.doorKey) { this.doorKey = key; this.doorT = rand(0.35, 0.8); }
+      else if (!inside && !ahead) this.doorKey = -1;
     }
     if (this.doorT > 0) {
       this.doorT -= dt;
@@ -1259,26 +1277,57 @@ export default class Enemy extends Character {
     const sway = Math.sin(this.world.time * 1.7 + this.seed) * (speed > 1.6 ? 0.08 : 0.16);
     const sep = this.separation();
     const sp = speed * this.pace * (1 + Math.sin(this.world.time * 0.6 + this.seed) * 0.06);
-    this.steer(ux - uy * sway + sep.x, uy + ux * sway + sep.y, sp, speed > 1.6 ? 0.16 : 0.09);
+    // a doorway is taken down its middle, not across the corner where the leaf hangs
+    const way = (inside || ahead) && throughDoor(map, inside ? mx : cx, inside ? my : cy, this.x, this.y, ux, uy);
+    if (way) this.steer(way.x + sep.x, way.y + sep.y, sp, 0.16);
+    else this.steer(ux - uy * sway + sep.x, uy + ux * sway + sep.y, sp, speed > 1.6 ? 0.16 : 0.09);
     if (opts.look !== false) {
       // the head leads: look into the next leg of the path before the feet turn
       const n = this.path[this.pathIdx + 1];
       const la = n && d < 40 ? Math.atan2(n.y - this.y, n.x - this.x) : heading;
       this.faceAngle(la + (opts.glance ? this.walkGlance(dt) : 0), speed > 1.6 ? 7 : 4, dt);
     }
+    // pushing at something that will not give: his legs go, the ground does not
+    this.probeT += dt;
+    let held = false;
+    if (this.probeT >= 0.5) {
+      held = Math.hypot(this.x - this.probeX, this.y - this.probeY) < sp * 6; // a fifth of half a second's walk
+      this.probeT = 0; this.probeX = this.x; this.probeY = this.y;
+    }
     // stuck on furniture or bodies: vault it, else sidestep and re-plan
-    if (this.moving < speed * 0.25) {
-      this.stuck += dt;
+    if (held || this.moving < speed * 0.25) {
+      this.stuck += held ? 1 : dt;
       if (this.stuck > 0.25 && this.tryVault(heading)) { this.stuck = 0; return false; }
       if (this.stuck > 0.7) {
         this.stuck = 0;
-        const side = heading + (chance(0.5) ? 1.4 : -1.4);
+        // in a door frame there is no room at the sides: back out of it
+        const side = heading + (inside ? Math.PI : chance(0.5) ? 1.4 : -1.4);
         Body.setVelocity(this.body, { x: Math.cos(side) * speed, y: Math.sin(side) * speed });
         this.repath = 0;
         this.dest = null;
       }
     } else this.stuck = 0;
     return false;
+  }
+
+  // is the doorway (cell key) another guard's: he stands in it, or claimed it a moment ago (see follow)
+  gateTaken(key) {
+    const w = this.world.map.w, now = this.world.time;
+    return this.world.enemies.some((e) => e !== this && e.alive && !(e.knocked > 0)
+      && ((e.gate === key && now - e.gateT < 0.3) || Math.floor(e.y / TILE) * w + Math.floor(e.x / TILE) === key));
+  }
+
+  // wait for a doorway: off to one side of the frame, eyes on it; false when it is no longer on his way
+  standBack(dt, key, heading) {
+    const w = this.world.map.w;
+    const dx = this.x - (key % w + 0.5) * TILE, dy = this.y - (Math.floor(key / w) + 0.5) * TILE, d = Math.hypot(dx, dy);
+    if (d > AI.gate.far) return false;
+    if (d < AI.gate.room) {
+      const a = Math.atan2(dy, dx) + (this.seed < 50 ? 0.9 : -0.9), s = this.separation();
+      this.steer(Math.cos(a) + s.x, Math.sin(a) + s.y, 0.8, 0.15);
+    } else this.halt();
+    this.faceAngle(heading, 4, dt);
+    return true;
   }
 
   // stand still, only nudged apart from mates
