@@ -4,6 +4,7 @@ import { load } from './setup.mjs';
 
 const { default: Audio } = await load('audio/Audio.js');
 const { default: Music } = await load('audio/Music.js');
+const { default: Tension } = await load('game/ai/Tension.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { MATERIAL_FX } = await load('game/data/destruction.js');
 const { BANK } = await load('audio/bank.js');
@@ -159,7 +160,7 @@ const FIGHT = ['fight', 'chase']; // sections of the combat variant
 
 // Plays the soundtrack on a mock context the way the game does (a tick every 100 ms, 0.3 s ahead) for `seconds`,
 // running the scripted calls [time, fn(ctx)] on the way. Returns the bars planned: [{ t, name, bar, plan }].
-function playMusic(seconds, script = [], intensity = 0.35) {
+function playMusic(seconds, script = [], intensity = 0.8) {
   const ctx = mockContext();
   ctx.noPast = true;
   const bars = [];
@@ -185,6 +186,42 @@ test('music: without a fight the song never plays its combat variant', () => {
   assert.ok(bars.length >= 99 && onGrid(bars));
   assert.ok(!bars.some((b) => FIGHT.includes(b.name)));
   assert.deepEqual(bars.slice(7, 9).map((b) => b.name + b.bar), ['verseA7', 'verseB0']);
+});
+
+test('music: no beat while all is quiet, a heartbeat when someone wonders, the beat when it kicks off', () => {
+  const bars = playMusic(30 * BAR, [[10 * BAR, () => Music.setIntensity(0.55)], [20 * BAR, () => Music.setIntensity(0.75)]], 0.25);
+  assert.ok(onGrid(bars));
+  const of = (name) => bars.filter((b) => b.name === name);
+  assert.ok(of('calm').length >= 9 && of('tense').length >= 9 && of('verseA').length >= 8);
+  assert.deepEqual([...new Set(bars.map((b) => b.name))].slice(0, 3), ['calm', 'tense', 'verseA']);
+  for (const { plan: p } of of('calm')) {
+    assert.equal(p.kick.length + p.snare.length + p.hat.length + p.tom.length, 0, 'no drums');
+    assert.ok(p.arp.length === 2 && p.bass.length === 1 && p.lead.length <= 4, 'a drone and a few notes');
+  }
+  assert.ok(of('calm').some((b) => b.plan.lead.length), 'an answer now and then');
+  for (const { plan: p } of of('tense')) assert.ok(p.kick.length === 2 && !p.snare.length, 'a heartbeat');
+  assert.equal(of('verseA')[0].bar, 0, 'the song starts from its top');
+  assert.ok(of('verseA').every((b) => b.plan.kick.length >= 4 && b.plan.snare.length >= 2));
+  // a fight from the calm: cued, then the variant; it stays on its first section until it is hot
+  const cold = playMusic(24 * BAR, [[5, () => Music.setCombat(true)]], 0.25);
+  assert.ok(cold.some((b) => b.name === 'fight') && !cold.some((b) => b.name === 'chase'));
+});
+
+test('tension: the alert phase sets the floor, shots and kills heat the soundtrack up for a few seconds', () => {
+  const t = new Tension();
+  assert.ok(t.level('normal') < 0.45 && t.level('caution') >= 0.45 && t.level('caution') < 0.7, 'calm, then a heartbeat');
+  assert.ok(t.level('evasion') >= 0.7 && t.level('alert') < 0.9, 'the beat; a fight is not hot by itself');
+  t.bump('kill');
+  assert.ok(t.level('normal') >= 0.45 && t.level('normal') < 0.7, 'a quiet kill: a heartbeat');
+  assert.ok(t.level('alert') >= 0.9, 'a kill in a fight: hot');
+  t.bump('kill');
+  assert.ok(t.level('normal') >= 0.7, 'a massacre gets the beat, alert or not');
+  for (let i = 0; i < 20 * 60; i++) t.update(1 / 60);
+  assert.equal(t.heat, 0);
+  for (let i = 0; i < 3; i++) t.bump('shot');
+  assert.ok(t.level('alert') >= 0.9, 'a firefight is hot');
+  t.bump('nothing');
+  assert.ok(t.heat <= 1);
 });
 
 test('music: a fight is cued at once, takes over on the next bar line and hands back when the game calms down', () => {

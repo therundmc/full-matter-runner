@@ -107,7 +107,10 @@ export const ENEMY = {
 // Squad brain (ai/Director.js): alert phases, noises, search sweeps, budgets.
 export const AI = {
   vigilance: { normal: 1, caution: 1.3, evasion: 1.5, alert: 1.7 }, // detection speed per phase
-  music: { normal: 0.35, caution: 0.6, evasion: 0.8, alert: 1 },    // soundtrack intensity per phase
+  // soundtrack intensity per phase (Music: beatless under 0.45, a heartbeat, the beat from 0.7), and what the
+  // fight itself adds on top: heat 0..1 gained per event, lost in `cool` s, worth `gain` of intensity
+  music: { normal: 0.25, caution: 0.55, evasion: 0.75, alert: 0.85 },
+  heat: { shot: 0.12, kill: 0.7, blast: 0.6, cool: 14, gain: 0.5 },
   combatMusic: ['alert'], // phases during which the soundtrack plays its combat variant
   alertLinger: 4,         // seconds without a sighting before ALERT turns into EVASION
   evasion: 18,

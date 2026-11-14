@@ -2,8 +2,9 @@
 // Data first (chords, progressions, patterns, sections, song form); a seeded bar planner turns it into note
 // events (every return of a section varies), then a lookahead scheduler plays each bar on long-lived synth
 // voices (mono bass/arp/lead, 5-voice pad: no nodes per note) and on drum one-shots synthesized once into
-// AudioBuffers. Public API: start(), stop(), setIntensity(0..1), setCombat(on): the song has a combat variant
-// (FORMS.combat: same key, tempo and motif, angrier) that takes over on a bar line while the game fights.
+// AudioBuffers. Public API: start(), stop(), setIntensity(0..1), setCombat(on). The intensity picks the form on
+// a bar line: beatless calm (pad and a few notes), tense (a heartbeat), then the song and its beat (BEAT); the
+// combat variant (FORMS.combat: same key, tempo and motif, angrier) takes over while the game fights.
 // The constructor takes an optional (context, destination) so the song can be rendered offline for analysis.
 import Audio from './Audio.js';
 
@@ -14,6 +15,9 @@ const LOOKAHEAD = 0.3;   // s: a bar is scheduled once its downbeat is this clos
 const SWING = 0.1;       // hats: odd 16ths are late by this fraction of a 16th
 const GATE_HOLD = 0.22;  // s: gated reverb stays open this long after a snare/clap
 const MIN_FIGHT_BARS = 2; // the combat variant plays at least this long before it may wind down
+const TENSE = 0.45;       // intensity from which the calm gets a heartbeat
+const BEAT = 0.7;         // ... and from which the song proper, with its beat, plays
+const HOT = 0.9;          // ... and under which a fight stays on its first section (no double-time chase)
 
 // ---------------------------------------------------------------- harmony
 const PC = { C: 0, Db: 1, D: 2, Eb: 3, E: 4, F: 5, Gb: 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11 };
@@ -131,7 +135,7 @@ const BASS = {
 };
 // arp: index into the 6-note pool
 const ARP = {
-  sparse: '0...2...1...3...', pulse8: '0.2.1.3.0.2.4.3.', broken: '0213243102132435', updown: '0123454321012345',
+  lone: '0.........2.....', far: '....1.......3...', sparse: '0...2...1...3...', pulse8: '0.2.1.3.0.2.4.3.', broken: '0213243102132435', updown: '0123454321012345',
   up: '0123450123452345', cascade: '5432105432104321', pedal: '0102030401020305',
 };
 // pad stabs (fight): the sustained chord is chopped open on these steps
@@ -194,6 +198,12 @@ const DROP = {
 // motif re-struck; the chase answers it in double time
 const FIGHT = { ...DROP, pad: 1.3, hats: ['drive'], leadMin: 0, fillRate: 1, bite: 1.5, duck: 0.45 };
 const SECTIONS = {
+  // nothing is happening: no drums, a held chord, a low drone, two plucked notes a bar and an answer now and then
+  calm: { prog: 'verseA', energy: 0.3, level: 0.9, pad: 1, bass: ['pedal'], arp: ['lone', 'far'], lead: 'answers',
+    leadVol: 0.5, duck: 1 },
+  // someone is wondering: a heartbeat and off-beat hats under the same chords
+  tense: { prog: 'verseA', energy: 0.4, level: 0.95, pad: 1, kick: 'heart', hats: ['off8'], enter: { hats: 2 },
+    bass: ['halftime'], arp: ['sparse', 'pulse8'], duck: 0.6 },
   intro: { prog: 'intro', energy: 0.25, level: 0.9, pad: 1, sweep: true, kick: 'heart', enter: { kick: 4 }, bass: ['pedal'],
     arp: ['sparse', 'pulse8'], duck: 0.6 },
   ambient: { prog: 'verseA', energy: 0.35, level: 0.95, pad: 1, kick: 'heart', hats: ['off8'], bass: ['halftime'],
@@ -219,6 +229,8 @@ const SECTIONS = {
 };
 const FORMS = {
   menu: ['intro', 'ambient'],
+  calm: ['calm'],
+  tense: ['tense'],
   game: ['verseA', 'verseB', 'build', 'dropA', 'dropA2', 'break', 'verseA', 'verseB', 'build', 'dropB', 'dropB2'],
   combat: ['fight', 'chase'],
 };
@@ -588,7 +600,7 @@ class Music {
     this.S = null;
   }
 
-  // 0 = menu (intro/ambient loop); > 0 = the song, its arrangement thickening with the value
+  // 0 = menu (intro/ambient loop); > 0 = the game: calm, tense, then (BEAT) the song, thickening with the value
   setIntensity(v) { this.target = clamp(v, 0, 1); }
 
   // true while the game fights: the song (not the menu) hands over to its combat variant, and back afterwards
@@ -610,13 +622,17 @@ class Music {
     const now = this.S.ctx.currentTime;
     if (this.nextBar < now) this.nextBar = now + 0.05; // timer was throttled (background tab): resync, don't burst
     // a fight breaks out: announce it over the bars already scheduled, the variant takes over on the next bar line
-    if (this.combat && this.target > 0 && this.form === FORMS.game && !this.cued) { this.cued = true; this._cue(now); }
+    if (this.combat && this.target > 0 && this.form && this.form !== FORMS.menu && this.form !== FORMS.combat && !this.cued) {
+      this.cued = true;
+      this._cue(now);
+    }
     while (this.nextBar < until) {
       const fight = this.form === FORMS.combat;
       let want = this.target <= 0 ? FORMS.menu
-        : this.combat || this.cued || (fight && this.fightBars < MIN_FIGHT_BARS) ? FORMS.combat : FORMS.game;
+        : this.combat || this.cued || (fight && this.fightBars < MIN_FIGHT_BARS) ? FORMS.combat
+          : this.target >= BEAT ? FORMS.game : this.target >= TENSE ? FORMS.tense : FORMS.calm;
       // the fight is over: one more bar of it, ending on a fill, then the song resumes at its break
-      this.out = fight && want === FORMS.game && !this.out;
+      this.out = fight && want !== FORMS.combat && want !== FORMS.menu && !this.out;
       if (this.out) want = FORMS.combat;
       if (this.form !== want) {
         this.pos = fight && want === FORMS.game ? AFTERMATH : 0;
@@ -630,11 +646,17 @@ class Music {
       if (++this.bar >= SECTION_BARS) {
         this.passes[p.name] = p.pass + 1;
         this.bar = 0;
-        this.pos = (this.pos + 1) % this.form.length;
+        this.pos = this._after();
       }
       this.fightBars++;
       this.nextBar += BAR;
     }
+  }
+
+  // index of the section after the current one: a fight only breaks into its double-time chase while it is hot
+  _after() {
+    const n = (this.pos + 1) % this.form.length;
+    return this.form === FORMS.combat && this.form[n] === 'chase' && this.level < HOT ? this.pos : n;
   }
 
   // fight cue, laid over what is left of the bars already scheduled: a riser and a snare roll into the downbeat
@@ -657,7 +679,7 @@ class Music {
     const game = this.form === FORMS.game;
     const e = sec.energy * (game ? 0.55 + 0.45 * this.level : 1);
     const last = this.out || b === SECTION_BARS - 1; // last bar before another section
-    const after = this.out ? FORMS.game[AFTERMATH] : this.form[(this.pos + 1) % this.form.length];
+    const after = this.out ? FORMS.game[AFTERMATH] : this.form[this._after()];
     const on = (layer) => b >= (sec.enter?.[layer] ?? 0);
     const pick = (list, bias = 0) => (list?.length ? list[clamp(Math.floor(e * list.length) + bias, 0, list.length - 1)] : null);
     const vary = (pass + (b >> 2)) % 2; // alternates every 4 bars and every pass

@@ -6,6 +6,7 @@ import Camera from '../engine/Camera.js';
 import Audio from '../audio/Audio.js';
 import Music from '../audio/Music.js';
 import World from './world/World.js';
+import Tension from './ai/Tension.js';
 import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
@@ -83,13 +84,16 @@ export default class Game {
     this.flashA = 0;
     this.clearedT = 0;
     Audio.setMuffle(0);
-    // the soundtrack thickens as the squad wakes up and turns to its combat variant while it fights
-    const score = (phase) => {
-      Music.setIntensity(AI.music[phase] ?? 1);
-      Music.setCombat(AI.combatMusic.includes(phase));
-    };
-    score('normal');
-    this.world.events.on('alertPhase', ({ phase }) => score(phase));
+    // the soundtrack: calm until the squad wakes up or blood is shed (Tension, fed every frame in update), its
+    // combat variant while the squad fights
+    const ev = this.world.events;
+    this.tension = new Tension();
+    ev.on('shot', () => this.tension.bump('shot'));
+    ev.on('kill', ({ victim }) => { if (!victim.isPlayer) this.tension.bump('kill'); });
+    ev.on('explosion', () => this.tension.bump('blast'));
+    ev.on('alertPhase', ({ phase }) => Music.setCombat(AI.combatMusic.includes(phase)));
+    Music.setCombat(false);
+    Music.setIntensity(this.tension.level('normal'));
     this.sandbox.attach(this.world);
     this.setState('intro');
   }
@@ -187,6 +191,8 @@ export default class Game {
     this.timeScale = lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;
+    this.tension.update(dt);
+    Music.setIntensity(this.tension.level(this.world.director.phase));
 
     if (this.hitstop > 0) {
       this.hitstop -= dt;

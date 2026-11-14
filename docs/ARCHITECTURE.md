@@ -49,6 +49,7 @@ src/
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
     ai/                   enemy AI, DOM-free (unit tested)
+      Tension.js          soundtrack intensity: alert phase + heat of the fight (shots, kills, blasts)
       Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
@@ -115,7 +116,7 @@ Rules:
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
-| `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack intensity and combat variant), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
+| `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack combat variant; intensity through Tension), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
 | `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
 | `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam, scared) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
@@ -153,9 +154,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
   (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
 - Music (audio/Music.js): one procedural song, planned bar by bar from data (progressions, patterns, sections, forms)
-  and scheduled 0.3 s ahead. The alert phase drives it from Game: `AI.music[phase]` is the intensity (0 = menu loop,
-  then thicker layers and brighter filters), and the phases in `AI.combatMusic` switch it to its combat variant
-  (`FORMS.combat`: same key, tempo and motif; galloping kick, 16th octave bass, chopped pad, the motif re-struck).
+  and scheduled 0.3 s ahead. Game drives it through `ai/Tension.js`: the intensity is `AI.music[phase]` plus the
+  heat of the fight itself (`AI.heat`: shots, kills and blasts, cooling in a few seconds). 0 = menu loop; then,
+  picked on a bar line, a beatless calm (pad, drone, a few notes), a tense heartbeat (`TENSE`) and the song with
+  its beat (`BEAT`, thicker layers and brighter filters with the value). The phases in `AI.combatMusic` switch it
+  to its combat variant (`FORMS.combat`: same key, tempo and motif; galloping kick, 16th octave bass, chopped pad,
+  the motif re-struck), whose double-time chase section only comes while the fight is hot (`HOT`).
   A riser and a snare roll announce the fight at once, the variant takes over on the next bar line, plays at least
   `MIN_FIGHT_BARS`, and hands back through a closing bar (fill) to the song's break.
 - Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
