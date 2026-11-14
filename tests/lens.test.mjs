@@ -24,39 +24,52 @@ test('lens: at rest the fringe is the resting one, nothing bends, the grading is
   assert.equal(u.glitch, 0);
   assert.ok([...u.waves].every((n) => n === 0) && [...u.heat].every((n) => n === 0));
   assert.ok(Math.abs(u.grade.sat - POST.grades.calm.sat) < 0.01 && Math.abs(u.edge - POST.focus.edge) < 0.01 && u.blur < 0.01);
+  // the user's rule: at rest the lens is hardly there
+  assert.ok(POST.fringe.rest <= 1 && POST.tube.curve <= 0.008 && POST.focus.edge <= 0.15 && POST.glow.strength <= 0.2 && POST.rays.strength <= 0.2);
   assert.deepEqual(u.smear, [0, 0]);
 });
 
-test("lens: a lethal blow of the player's kicks the fringe and the zoom toward where it landed, then both die", () => {
-  const lens = new Lens(), bus = new EventBus();
+test("lens: a kill of the player's kicks the fringe, the colours and the zoom toward the victim, then all of it dies", () => {
+  const lens = new Lens(), bus = new EventBus(), player = { isPlayer: true };
   lens.bind(bus);
-  bus.emit('blow', { x: 100, y: -50, power: 1, lethal: true, byPlayer: true, kind: 'blunt' });
+  run(lens, 4);
+  const rest = lens.uniforms(view());
+  bus.emit('kill', { victim: { x: 100, y: -50 }, killer: player, cause: 'melee', how: { finisher: true } });
   let u = lens.uniforms(view());
-  assert.ok(u.fringe > POST.fringe.rest + POST.fringe.blow * 0.9);
+  assert.ok(u.fringe > POST.fringe.rest + POST.fringe.kill * 0.9);
   assert.ok(Math.abs(u.zoom - POST.punch.zoom) < 1e-9);
   assert.deepEqual(u.focus.map((n) => +n.toFixed(4)), [(960 + 200) / 1920, 1 - (540 - 100) / 1080].map((n) => +n.toFixed(4)));
+  assert.ok(Math.abs(u.grade.sat - rest.grade.sat - POST.punch.sat) < 1e-6 && u.grade.con > rest.grade.con, 'the colours are pushed');
   assert.equal(u.frame, 1, 'a heavy kill earns its impact frame');
   run(lens, POST.punch.frame + 0.05);
   assert.equal(lens.uniforms(view()).frame, 0);
-  run(lens, 1.5);
+  run(lens, 2.5);
   u = lens.uniforms(view());
-  assert.ok(u.fringe < POST.fringe.rest + 0.05 && u.zoom < 0.0001);
+  assert.ok(u.fringe < POST.fringe.rest + 0.05 && u.zoom < 0.0001 && Math.abs(u.grade.sat - rest.grade.sat) < 0.001);
 });
 
-test('lens: a light blow, a guard\'s blow or a blow that does not kill gets no zoom and no impact frame', () => {
-  for (const e of [{ power: 0.3, lethal: true, byPlayer: true }, { power: 1, lethal: true, byPlayer: false }, { power: 1, lethal: false, byPlayer: true }]) {
-    const lens = new Lens();
-    lens.blow({ x: 0, y: 0, ...e });
-    const u = lens.uniforms(view());
-    assert.equal(u.frame, 0);
-    if (!e.lethal || !e.byPlayer) assert.equal(u.zoom, 0);
-    assert.ok(u.fringe > POST.fringe.rest);
-  }
-  // and never two impact frames on top of each other
-  const lens = new Lens();
+test('lens: a plain kill gets no impact frame, a kill by somebody else nothing, a blow only makes the lens shiver', () => {
+  const player = { isPlayer: true }, victim = { x: 0, y: 0 };
+  let lens = new Lens();
+  lens.kill({ victim, killer: player, cause: 'bullet' });
+  let u = lens.uniforms(view());
+  assert.equal(u.frame, 0);
+  assert.ok(u.zoom > 0 && u.zoom < POST.punch.zoom);
+  lens = new Lens();
+  lens.kill({ victim, killer: { isEnemy: true }, cause: 'bullet' });
+  lens.kill({ victim: { isPlayer: true, x: 0, y: 0 }, killer: player, cause: 'explosion' });
+  u = lens.uniforms(view());
+  assert.ok(u.zoom === 0 && u.frame === 0 && Math.abs(u.fringe - POST.fringe.rest) < 1e-6);
   lens.blow({ x: 0, y: 0, power: 1, lethal: true, byPlayer: true });
+  u = lens.uniforms(view());
+  assert.ok(u.fringe > POST.fringe.rest && u.zoom === 0 && u.frame === 0);
+  // heavier kills hit harder, and never two impact frames on top of each other
+  const P = POST.punch.power;
+  assert.ok(P.finisher >= P.heavy && P.heavy > P.blow && P.blow > P.round && P.round > 0 && P.finisher <= 1);
+  lens = new Lens();
+  lens.kill({ victim, killer: player, cause: 'explosion' });
   run(lens, POST.punch.frame + 0.02);
-  lens.blow({ x: 0, y: 0, power: 1, lethal: true, byPlayer: true });
+  lens.kill({ victim, killer: player, cause: 'explosion' });
   assert.equal(lens.uniforms(view()).frame, 0);
 });
 

@@ -33,6 +33,7 @@ export default class Lens {
   // a new run: nothing of the last one hangs in the air
   reset() {
     this.fringe = 0;   // px of colour fringe on top of the resting one
+    this.kick = 0;     // 0..1: the colours pushed by a kill
     this.zoom = 0;     // zoom kick, and the world point it goes toward
     this.zoomAt = null;
     this.frame = 0;    // s of impact frame left
@@ -47,16 +48,25 @@ export default class Lens {
   bind(events) {
     this.reset();
     events.on('blow', (e) => this.blow(e));
+    events.on('kill', (e) => this.kill(e));
     events.on('explosion', (e) => this.blast(e));
     events.on('shot', (e) => this.shot(e));
   }
 
-  // a blow or a round landed on somebody: { x, y, power 0..1, lethal, byPlayer }
-  blow({ x, y, power = 0.5, lethal = false, byPlayer = false }) {
-    const c = this.cfg, p = clamp01(power);
-    this.bump(c.fringe.blow * p * (byPlayer ? 1 : 0.5));
-    if (!lethal || !byPlayer) return;
-    if (c.punch.zoom * p > this.zoom) { this.zoom = c.punch.zoom * p; this.zoomAt = { x, y }; }
+  // a blow or a round landed on somebody: { power 0..1, byPlayer }: the lens shivers, no more (a kill is `kill`)
+  blow({ power = 0.5, byPlayer = false }) {
+    this.bump(this.cfg.fringe.blow * clamp01(power) * (byPlayer ? 1 : 0.5));
+  }
+
+  // the player killed somebody: the lens underlines it, harder for a heavy kill (punch.power)
+  kill({ victim, killer, cause, how }) {
+    if (!killer?.isPlayer || !victim || victim.isPlayer) return;
+    const c = this.cfg, P = c.punch.power;
+    const p = how?.finisher ? P.finisher : cause === 'explosion' ? P.blast : how?.heavy || how?.spin || how?.broke ? P.heavy
+      : how?.from ? P.blow : P.round;
+    this.bump(c.fringe.kill * p);
+    this.kick = Math.max(this.kick, p);
+    if (c.punch.zoom * p > this.zoom) { this.zoom = c.punch.zoom * p; this.zoomAt = { x: victim.x, y: victim.y }; }
     if (p >= c.punch.frameFrom && this.frameGap <= 0) { this.frame = c.punch.frame; this.frameGap = c.punch.frameGap; }
   }
 
@@ -106,6 +116,7 @@ export default class Lens {
     }
     this.fringe *= Math.exp(-c.fringe.decay * dt);
     this.zoom *= Math.exp(-c.punch.zoomDecay * dt);
+    this.kick *= Math.exp(-c.punch.kickDecay * dt);
     this.frame = Math.max(0, this.frame - dt);
     this.frameGap = Math.max(0, this.frameGap - dt);
     this.muzzleT = Math.max(0, this.muzzleT - dt);
@@ -123,7 +134,7 @@ export default class Lens {
     // focus
     const f = c.focus;
     const edge = v.state === 'dead' ? f.dead : v.state === 'title' || v.state === 'loading' ? f.title : v.look && v.state === 'play' ? f.look : f.edge;
-    const blur = v.state === 'pause' ? f.pause : v.state === 'results' ? f.results : v.state === 'dead' ? 0.3 : 0;
+    const blur = v.state === 'pause' ? f.pause : v.state === 'results' ? f.results : 0;
     this.edge = ease(this.edge, edge, f.ease, dt);
     this.blur = ease(this.blur, blur, f.ease, dt);
 
@@ -164,7 +175,8 @@ export default class Lens {
       lights.set([x, y, Math.min(1, l.k), 0], i * 4);
     });
 
-    const g = this.grade, t = c.tube;
+    const t = c.tube, k = this.kick;
+    const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k, con: this.grade.con + c.punch.con * k };
     return {
       fringe: (c.fringe.rest + this.fringe + c.fringe.trauma * Math.max(0, (v.trauma || 0) - 0.15)) * px,
       zoom: this.zoom,
