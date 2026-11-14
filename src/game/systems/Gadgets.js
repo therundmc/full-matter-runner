@@ -2,6 +2,7 @@
 // or hit, as long as its screen lives; the jukebox derails at the first blow (its lights sputter, `prop.sputter`),
 // then goes dark. DOM-free.
 import { GADGETS } from '../Config.js';
+import { clamp } from '../../engine/math.js';
 
 export default class Gadgets {
   constructor(world, cfg = GADGETS) {
@@ -11,6 +12,19 @@ export default class Gadgets {
     world.events.on('impact', ({ a, b, speed }) => {
       for (const e of [a.entity, b.entity]) if (e && speed >= (cfg[e.type]?.bump ?? Infinity)) this.poke(e);
     });
+  }
+
+  // how well the jukebox's tune (audio/Music.js) is heard from where the player stands, 0..1: nothing once it is
+  // knocked off its record
+  tune() {
+    const w = this.world, p = w.player, g = this.cfg.jukebox;
+    let best = 0;
+    for (const prop of w.props) {
+      if (prop.type !== 'jukebox' || prop.dead || prop.sputter) continue;
+      const near = clamp(1 - Math.hypot(prop.x - p.x, prop.y - p.y) / g.reach, 0, 1);
+      best = Math.max(best, near ** 1.5 * (w.walledOff(prop.x, prop.y) ? g.muffled : 1));
+    }
+    return best;
   }
 
   poke(prop) {

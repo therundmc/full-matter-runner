@@ -195,6 +195,7 @@ export default class Game {
     this.tension.update(dt);
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
+    Music.setJukebox(this.world.gadgets.tune());
 
     if (this.hitstop > 0) {
       this.hitstop -= dt;

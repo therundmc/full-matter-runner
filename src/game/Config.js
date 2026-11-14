@@ -249,7 +249,8 @@ export const POOL = {
 // machines that answer a blow (systems/Gadgets.js), by prop type
 export const GADGETS = {
   arcade: { sound: 'ding', gap: 0.5, flash: '#3ae8ff', bump: 1.2 }, // rings when hit, or bumped into (px/step)
-  jukebox: { sound: 'derail', dies: 1.2 },                           // derails at the first blow, dark `dies` s later
+  // derails at the first blow, dark `dies` s later; till then its tune is heard `reach` px away, `muffled` behind a wall
+  jukebox: { sound: 'derail', dies: 1.2, reach: 460, muffled: 0.3 },
   parking_meter: { sound: 'coin', gap: 0.15 },                       // its coins ring at every blow
 };
 
@@ -397,6 +398,7 @@ export const AMBIENT = {
     calm: 20,              // s without new passers-by after gunfire / an explosion (word gets around)
   },
   barkGap: 0.35,           // s between two civilian screams on screen
+  cryLag: 0.7,             // s: each waits up to this long before he cries out, so a crowd does not scream as one
 };
 
 export const MAX_DEBRIS = 180;    // physical loose pieces alive at once (oldest get baked into the floor)

@@ -116,7 +116,7 @@ const GAME_SOUNDS = [
   ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), 'stone', 'flesh', 'impact', 'shell',
   'punch', 'splat', 'gore', 'slash', 'death', 'bodyFall', 'shout', 'cry', 'grab', 'neck', 'whimper', 'scream', 'glass', 'crumble', 'doorBreak', 'explosion',
   'tirePop', 'carHit', 'door', 'doorSlam', 'creak', 'vault', 'climb', 'slide', 'splash', 'throw', 'swing', 'ricochet', 'ammo',
-  'alarm', 'crackle', 'ignite', 'confirm', 'clear', 'ui', 'passby', 'pool',
+  'alarm', 'crackle', 'ignite', 'confirm', 'clear', 'ui', 'passby', 'pool', 'mutter',
 ];
 
 test('audio: every sound the game asks for plays, from a cut that lies inside the foley bank', () => {
@@ -287,6 +287,17 @@ test('music: at the top of a chain every fourth bar rolls into a crash, and the 
   const first = bars.findIndex((b) => FIGHT.includes(b.name)), calm = bars.findIndex((b, i) => i > first && !FIGHT.includes(b.name));
   assert.deepEqual(fade(first), { open: 0 }, 'a fight hits at once');
   assert.ok(fade(calm - 1).close && fade(calm).from && bars[calm].plan.glide > 1, 'and closes down, the song comes back up slowly');
+});
+
+test('music: the jukebox plays its own band on the bars of the song while it is heard, and only then', () => {
+  const bars = playMusic(12 * BAR, [[4 * BAR, () => Music.setJukebox(0.8)], [8 * BAR, () => Music.setJukebox(0)]], 0.25);
+  Music.setJukebox(0);
+  const played = bars.map((b) => !!b.plan.juke);
+  assert.ok(!played[1] && played[6] && !played[11], played.join());
+  for (const b of bars.filter((x) => x.plan.juke)) {
+    assert.ok(b.plan.juke.tune.length >= 4 && b.plan.juke.bass.length >= 4);
+    for (const n of [...b.plan.juke.tune, ...b.plan.juke.bass]) assert.ok(n.s >= 0 && n.s + n.len <= 16 && n.m > 30 && n.m < 90, JSON.stringify(n));
+  }
 });
 
 test('music: a fight that stops at once still plays its minimum, a new one during the closing bar carries on', () => {

@@ -523,7 +523,8 @@ export default class Ambient {
   // readable; a runner's breath has no words
   bark(civ, kind) {
     const voice = VOICES[kind] || 'scream';
-    this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice });
+    const cry = () => { if (civ.alive) this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice }); };
+    if (voice === 'scream') this.world.after(this.r() * A.cryLag, cry); else cry();
     if (kind === 'pant' || this.barkT > 0) return;
     const lines = BARKS[kind] || BARKS.scream;
     this.barkT = A.barkGap;

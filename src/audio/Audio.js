@@ -32,6 +32,8 @@ const MASTER_GAIN = 0.8;
 // streak (minor pentatonic)
 const KILL_ROOT = 698.46;
 const STREAK = [0, 3, 5, 7, 10, 12, 15, 17];
+// formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
+const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
 
@@ -70,17 +72,18 @@ const META = {
   slash: { pri: 2, dur: 0.3, gap: 0.04, max: 3, duck: 0.9, gain: 0.95 },
   punch: { pri: 3, dur: 0.35, gap: 0.04, max: 3, duck: 0.85, gain: 1 },
   bodyFall: { pri: 1, dur: 0.4, gap: 0.05, max: 3, gain: 0.8 },
-  shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.9, reach: 1900 },
-  cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.9, reach: 1900 },
+  shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.75, reach: 1900 },
+  cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.65, reach: 1900 },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
-  whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.6, reach: 1200 },
-  scream: { pri: 2, dur: 0.6, gap: 0.22, max: 3, gain: 0.7, reach: 1700 },
-  mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.55, reach: 900 },
+  whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.5, reach: 1200 },
+  // a crowd: many at once, each his own cry, carried by the room
+  scream: { pri: 3, dur: 1.1, gap: 0.05, max: 7, gain: 0.9, reach: 2000, hall: 0.22 },
+  mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.5, reach: 900 },
   pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.4, reach: 800 },
   sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700 },
   // doors, movement
-  door: { dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
-  doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.85 },
+  door: { dur: 0.3, gap: 0.08, max: 2, gain: 0.7 },
+  doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.8 },
   creak: { dur: 0.6, gap: 0.2, max: 2, gain: 0.5 },
   vault: { dur: 0.5, gain: 0.8 }, climb: { pri: 2, dur: 0.8, gap: 0.2, max: 2, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
   swing: { gain: 0.5 }, throw: { gain: 0.55 },
@@ -89,7 +92,7 @@ const META = {
   pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.55 },
   clack: { pri: 0, dur: 0.12, gap: 0.04, max: 3, gain: 0.45 }, pocket: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.5 },
   coin: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.4 },
-  ding: { pri: 1, dur: 0.4, gap: 0.3, max: 1, gain: 0.4 }, derail: { pri: 1, dur: 1.2, gap: 1, max: 1, gain: 0.55 },
+  ding: { pri: 1, dur: 0.4, gap: 0.3, max: 1, gain: 0.6 }, derail: { pri: 2, dur: 1.2, gap: 1, max: 1, gain: 0.95 },
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
   shell: { pri: 0, dur: 0.4, gap: 0.03, gain: 0.4 },
@@ -114,8 +117,8 @@ const META = {
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
 };
 for (const k in META) META[k] = { ...DEFAULT_META, ...META[k] };
-const GLOBAL_SOFT_CAP = 14; // above this, only louder / higher priority sounds get in (stealing the quietest)
-const GLOBAL_HARD_CAP = 22;
+const GLOBAL_SOFT_CAP = 26; // above this, only louder / higher priority sounds get in (stealing the quietest)
+const GLOBAL_HARD_CAP = 40;
 const NEAR = 520, FAR = 1900; // px: distance muffling starts at NEAR and is full at FAR (whatever the reach)
 const PAN = 520;              // px to the side for a sound to sit fully on that side
 const GUN_HALL = 0.16;        // share of every gunshot sent to the hall (META `hall` for the other sounds)
@@ -123,6 +126,7 @@ const FAR_HALL = 0.3;         // more of it for what is far away: distance is he
 const OCCLUDED = [0.6, 1100]; // behind a wall: level factor, lowpass (Hz)
 const DUCK_HOLD = 0.25, DUCK_RELEASE = 0.3; // s: the music stays down through a burst, then comes back slowly
 const CHOKE = 0.05; // s: how fast a shooter's previous shot fades under his next one
+const SFX_LEVEL = 0.72; // everything that is not a recorded shot: under the guns and the music, never in their way
 const GUN_LEVEL = 0.37; // gunfire in the mix: loud, but under the master's clip so that bursts stay clean
 
 // Recordings. Gunshots: assets/sound/shots, CC BY 3.0 Michel Baradari; foley: the bank (CC0, assets/sound/CREDITS.md).
@@ -245,17 +249,15 @@ const FOLEY = {
   slash: [['swish', 0.5, 1.5], ['punch', 0.7, 1.3, 0.03]],
   death: [['punch', 1, 0.7], ['thud', 0.9, 0.7, 0.04]],
   bodyFall: [['thud', 1, 0.8], ['soft', 0.5, 0.8, 0.06]],
-  shout: [['yell', 1]],
-  whimper: [['pain', 0.8, 1.12]], // a man on his knees begging
-  scream: [['pain', 1, 1.06]],    // a cry of panic: a passer-by running for his life
+  // the guards' voices: their recording further back, a synthesized voice under it (_shout, _cry, _whimper)
+  shout: [['yell', 0.55]],
+  whimper: [['pain', 0.5, 1.12]], // a man on his knees begging
+  scream: [['panic', 1]],         // a long cry of panic: someone running for his life
   sob: [['pain', 0.55, 1.3], ['pain', 0.4, 1.45, 0.3, 0.6]], // curled up in a corner, under his breath
   // a guard seized from behind: sleeves, his stifled grunt; then his neck, a dry crack, and the body let down
   grab: [['swish', 0.35, 1.2], ['soft', 0.7, 1.1, 0.04], ['pain', 0.3, 0.9, 0.1]],
   neck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14], ['thud', 0.6, 0.8, 0.32]],
   // doors, movement
-  // a leaf swinging into its stop knocks (its body in _door); kicked or breached it bangs (_doorSlam)
-  door: [['wood', 0.35, 1.2]],
-  doorSlam: [['wood', 0.75, 0.85], ['thud', 0.8, 0.75]],
   creak: [['creak', 1]],
   vault: [['swish', 0.3, 0.6], ['soft', 0.6, 1, 0.1], ['thud', 0.5, 1.1, 0.27]], // hands on the sill, the landing
   // over a chain-link gate: the mesh shaken by the hands, then by the body, and the landing
@@ -328,7 +330,7 @@ class AudioSystem {
       return s;
     };
 
-    this.sfx = gain(0.9);
+    this.sfx = gain(SFX_LEVEL);
     this.music = gain(0.6);
     this.duck = gain(1);
     this.bus = gain(1);
@@ -339,7 +341,7 @@ class AudioSystem {
     // gun drive: unity gain for quiet (distant) shots, rounds the peaks of close ones off like an overdriven
     // mic, which is a big part of what makes a recorded gunshot sound heavy. In: +-2 -> out: +-0.96.
     this.guns = gain(0.5);
-    chain(this.guns, shaper((x) => Math.tanh(2 * x), '2x'), gain(GUN_LEVEL), this.sfx);
+    chain(this.guns, shaper((x) => Math.tanh(2 * x), '2x'), gain(GUN_LEVEL * 0.9 / SFX_LEVEL), this.sfx);
     // recorded shots keep their full crack: no drive, no low-mid cut, a bit of weight and air
     this.shots = gain(0.65 * GUN_LEVEL);
     chain(this.shots, bq('highpass', 35, 0.7), bq('lowshelf', 120, 0.7, 3), bq('highshelf', 5000, 0.7, 3.5), mix);
@@ -707,48 +709,89 @@ class AudioSystem {
     this._noiseBurst(o, { type: 'lowpass', f0: 3000, f1: 200, dur: 0.13, vol: 1.0, attack: 0.002 });
     this._noiseBurst(o, { type: 'highpass', f0: 3500, f1: 2000, dur: 0.8, vol: 0.2, delay: 0.05, attack: 0.04 }); // hiss
   }
-  // clothes gliding on the floor: one smooth hiss with some body under it, lower as the slide slows down
-  // the leaf against its stop: a hollow wooden knock and the latch answering it
+  // ---- doors (synthesized whole: the user hated every recording of one) ----
+  // a partial of something struck: a pure tone that only dies away (wood rings, it does not swoop)
+  _ring(o, f, dur, vol, delay = 0) { this._thump(o, { f0: f, f1: f * 0.97, dur, vol, delay }); }
+  // the leaf against its stop: the panel's hollow knock (four partials), the contact, the latch
   _door(o, opts, v) {
-    this._thump(o, { f0: 190, f1: 95, dur: 0.11, vol: 0.55 * v, type: 'triangle' });
-    this._noiseBurst(o, { f0: 1100, f1: 700, q: 1.6, dur: 0.07, vol: 0.4 * v, attack: 0.001 });
-    this._noiseBurst(o, { f0: 3400, q: 7, dur: 0.05, vol: 0.12 * v, delay: 0.035 });
+    const k = rand(0.92, 1.08);
+    for (const [f, d, a] of [[96, 0.16, 0.5], [172, 0.11, 0.38], [287, 0.07, 0.22], [431, 0.05, 0.1]]) this._ring(o, f * k, d, a * v);
+    this._noiseBurst(o, { type: 'lowpass', f0: 900, f1: 300, dur: 0.05, vol: 0.3 * v, attack: 0.001 });
+    this._noiseBurst(o, { f0: 2900, q: 9, dur: 0.02, vol: 0.1 * v, delay: 0.03 });
   }
-  // kicked open or broken in: a dry bang, the panel's boom, the latch rattling
+  // kicked open or broken in: the same panel hit hard, lower and longer, the room answering, the latch rattling
   _doorSlam(o, opts, v) {
-    this._thump(o, { f0: 140, f1: 48, dur: 0.24, vol: 0.9 * v });
-    this._noiseBurst(o, { type: 'lowpass', f0: 2600, f1: 280, dur: 0.2, vol: 0.6 * v, attack: 0.001 });
-    this._noiseBurst(o, { f0: 3000, q: 6, dur: 0.06, vol: 0.14 * v, delay: 0.05 });
-    this._noiseBurst(o, { f0: 3300, q: 6, dur: 0.05, vol: 0.08 * v, delay: 0.11 });
+    const k = rand(0.92, 1.08);
+    for (const [f, d, a] of [[62, 0.34, 0.9], [118, 0.24, 0.6], [203, 0.15, 0.35], [336, 0.09, 0.18]]) this._ring(o, f * k, d, a * v);
+    this._noiseBurst(o, { type: 'lowpass', f0: 2200, f1: 240, dur: 0.14, vol: 0.55 * v, attack: 0.001 });
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 500, f1: 90, dur: 0.4, vol: 0.4 * v, attack: 0.004 });
+    for (const d of [0.05, 0.1, 0.17]) this._noiseBurst(o, { f0: 3100, q: 8, dur: 0.025, vol: 0.09 * v, delay: d });
   }
 
-  // a guard grumbling at a stranger to clear off, under his breath: a voiced murmur through two vowel formants,
-  // one syllable ("hm?") at first, two ("hé, hé") when he warns
-  _mutter(o, opts, v) {
-    const ctx = this.ctx, t = ctx.currentTime, f = 112 * this.pv, two = v > 0.8;
-    const src = ctx.createOscillator(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), g = ctx.createGain();
-    src.type = 'sawtooth';
-    src.frequency.setValueAtTime(f, t);
-    src.frequency.linearRampToValueAtTime(f * (two ? 0.88 : 1.12), t + 0.3); // a question rises, a warning falls
-    f1.type = f2.type = 'bandpass';
-    f1.frequency.value = two ? 560 : 420; f1.Q.value = 5;
-    f2.frequency.value = two ? 1700 : 1150; f2.Q.value = 9;
-    g.gain.setValueAtTime(0.0001, t);
-    const syl = two ? [[0, 0.13], [0.2, 0.16]] : [[0, 0.24]];
-    for (const [s, d] of syl) {
-      g.gain.linearRampToValueAtTime(0.0001, t + s);
-      g.gain.linearRampToValueAtTime(0.55, t + s + 0.035);
-      g.gain.linearRampToValueAtTime(0.4, t + s + d * 0.7);
-      g.gain.linearRampToValueAtTime(0.0001, t + s + d);
+  // ---- synthesized voice (under the guards' recordings, which the user wanted further back) ----
+  // a buzzing source (two saws a few cents apart, shaken by `rough`: a growl) through three vowel formants that
+  // glide `from` -> `to`; its pitch follows `bend` ([time 0..1, ratio] points); `syl` cuts it in syllables
+  // ([start, end] 0..1); `breath` is the air let out with it
+  _voice(o, { f = 120, bend = [[0, 1], [1, 0.8]], from = VOWEL.a, to = from, dur = 0.3, vol = 0.5, rough = 0, breath = 0.08, syl = [[0, 1]] }) {
+    const ctx = this.ctx, t = ctx.currentTime, f0 = f * this.pv, g = ctx.createGain(), nodes = [g];
+    const srcs = [-8, 8].map((cents) => {
+      const src = ctx.createOscillator();
+      src.type = 'sawtooth';
+      src.detune.value = cents;
+      src.frequency.setValueAtTime(f0 * bend[0][1], t);
+      for (const [k, r] of bend.slice(1)) src.frequency.linearRampToValueAtTime(f0 * r, t + k * dur);
+      return src;
+    });
+    if (rough) {
+      const lfo = ctx.createOscillator(), depth = ctx.createGain();
+      lfo.frequency.value = 31;
+      depth.gain.value = rough * 100; // cents
+      lfo.connect(depth);
+      for (const src of srcs) depth.connect(src.detune);
+      lfo.start(t);
+      lfo.stop(t + dur + 0.05);
+      nodes.push(lfo, depth);
     }
-    src.connect(f1); src.connect(f2); f1.connect(g); f2.connect(g); g.connect(o);
+    [1, 0.55, 0.25].forEach((level, i) => {
+      const bp = ctx.createBiquadFilter(), fg = ctx.createGain();
+      bp.type = 'bandpass';
+      bp.Q.value = 6 + i * 3;
+      bp.frequency.setValueAtTime(from[i], t);
+      bp.frequency.linearRampToValueAtTime(to[i], t + dur);
+      fg.gain.value = level;
+      for (const src of srcs) src.connect(bp);
+      bp.connect(fg); fg.connect(g);
+      nodes.push(bp, fg);
+    });
+    g.gain.setValueAtTime(0.0001, t);
+    for (const [k0, k1] of syl) {
+      const t0 = t + k0 * dur, t1 = t + k1 * dur;
+      g.gain.linearRampToValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + Math.min(0.03, (t1 - t0) * 0.25));
+      g.gain.linearRampToValueAtTime(vol * 0.7, t0 + (t1 - t0) * 0.7);
+      g.gain.linearRampToValueAtTime(0.0001, t1);
+    }
+    g.connect(o);
     o._n++;
-    src.onended = () => this._release(o, src, f1, f2, g);
-    src.start(t);
-    src.stop(t + 0.45);
-    this._noiseBurst(o, { f0: 1500, q: 0.8, dur: two ? 0.36 : 0.24, vol: 0.06, attack: 0.03 }); // his breath
+    srcs[0].onended = () => this._release(o, ...srcs, ...nodes);
+    for (const src of srcs) { src.start(t); src.stop(t + dur + 0.05); }
+    if (breath) this._noiseBurst(o, { f0: from[1], f1: to[1], q: 1.2, dur, vol: breath, attack: 0.02 });
+  }
+  // a guard grumbling at a stranger to clear off, under his breath: "hm?" at first, "hey, hey" when he warns
+  _mutter(o, opts, v) {
+    if (v > 0.8) this._voice(o, { f: 112, bend: [[0, 1], [1, 0.86]], from: VOWEL.e, dur: 0.4, vol: 0.5, syl: [[0, 0.38], [0.52, 1]], breath: 0.05 });
+    else this._voice(o, { f: 108, bend: [[0, 1], [1, 1.14]], from: VOWEL.m, to: VOWEL.o, dur: 0.26, vol: 0.5, breath: 0.05 });
+  }
+  // a guard calling out: one barked syllable
+  _shout(o, opts, v) {
+    this._voice(o, { f: 150, bend: [[0, 0.9], [0.25, 1.22], [1, 0.84]], from: VOWEL.e, to: VOWEL.a, dur: 0.27, vol: 0.9 * v, rough: 0.5, breath: 0.1 });
+  }
+  // a man begging or whining: thin, high, trembling
+  _whimper(o) {
+    this._voice(o, { f: 215, bend: [[0, 1], [0.5, 1.12], [1, 0.94]], from: VOWEL.i, to: VOWEL.e, dur: 0.36, vol: 0.28, rough: 0.25, breath: 0.1 });
   }
 
+  // clothes gliding on the floor: one smooth hiss with some body under it, lower as the slide slows down
   _slide(o) {
     this._noiseBurst(o, { f0: 2600, f1: 700, q: 0.5, dur: 0.6, vol: 0.5, attack: 0.06 });
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 1000, f1: 260, dur: 0.55, vol: 0.8, attack: 0.05 });
@@ -866,7 +909,11 @@ class AudioSystem {
   // the sniff after a sob
   _sob(o) { this._noiseBurst(o, { f0: 1900, f1: 2700, q: 2, dur: 0.12, vol: 0.3, attack: 0.04, delay: 0.62 }); }
 
-  _cry(o) { this._cut(o, Math.random() < 0.6 ? 'die' : 'pain'); }
+  // someone hit for good: his recorded cry, and a hoarse falling one under it
+  _cry(o) {
+    this._cut(o, Math.random() < 0.6 ? 'die' : 'pain', { vol: 0.6 });
+    this._voice(o, { f: 185, bend: [[0, 1.15], [0.3, 1], [1, 0.6]], from: VOWEL.a, to: VOWEL.o, dur: rand(0.38, 0.55), vol: 0.4, rough: 0.8, breath: 0.14 });
+  }
 
   // ---- fire, alarm, UI ----
   // shop alarm: an electric bell, one burst per call (the alarm repeats it): the hammer on the gong 22 times a
@@ -1013,7 +1060,7 @@ class AudioSystem {
 
   // ---- ambient traffic ----
   // a car driving past: engine buzz + tyre roar swelling to the closest point (`lead` s) then fading, panned across
-  // in the driving direction (dir Â±1); side: 0 = right under the camera .. 1 = across the street; pitch drops as it passes
+  // in the driving direction (dir Ã‚Â±1); side: 0 = right under the camera .. 1 = across the street; pitch drops as it passes
   _passby(o, { lead = 1, dur = 2.6, dir = 1, side = 0.5, f = 50 }) {
     const ctx = this.ctx, t = ctx.currentTime, peak = t + lead, end = t + Math.max(dur, lead + 0.6);
     const env = ctx.createGain();

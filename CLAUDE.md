@@ -35,8 +35,11 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime,
    the "gling" he picked, in the music's key, climbing with the combo, with reverb). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
-   Doors: a recorded wood knock over a synthesized body, no hinge creak (user hated the door recordings). A guard
-   telling a stranger off mutters (synthesized `_mutter`), never yells; panicking customers cry out (cuts of 'pain').
+   Doors are synthesized whole (struck-panel partials, `_door` / `_doorSlam`; user hated every door recording), no
+   hinge creak. Guards' voices = their recording pushed back + a synthesized voice under it (`_voice`); telling a
+   stranger off they only mutter. A panic is a crowd: every customer cries out (bank set 'panic', long yells), up
+   to 7 at once, never all on the same instant. Effects sit under guns and music (`SFX_LEVEL`). User cannot hear
+   what the voice cap drops: check admission (`_admit`: gap / max per name) before blaming a sound's level.
 5. Synthwave music: darker; next to silent while all is quiet (a few spaced plucks), the beat (house, 126 BPM, four
    on the floor, off-beat open hat, pumping bass; original material only) starts bare with the fight, each chained
    kill adds a layer and a little volume (`Music.setCombo`), and
@@ -58,7 +61,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    too (`busyHands()`: pastimes, pockets, a bag, hands up in a panic).
    The bar's furniture is alive: pool balls that really roll, collide and drop (systems/PoolBalls.js, struck by the
    players, thrown by a shot or a bump), an arcade that rings and a jukebox that derails then goes dark
-   (systems/Gadgets.js; the jukebox plays no tune of its own, the soundtrack stays alone), snow on the boss's TV,
+   (systems/Gadgets.js; till then it plays its own small band on the song's bars and chords, `Music.setJukebox`), snow on the boss's TV,
    a turning ceiling fan and a mirror ball throwing specks round the VIP room (render/PropLife.js), hung lamps that
    swing on a hit or a blast, wall extinguishers whose white cloud blocks sight (systems/Clouds.js, World.sightLine).
    Street furniture: a drinks machine that spits cans, a phone booth whose receiver dangles once hit, parking meters

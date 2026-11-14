@@ -59,6 +59,9 @@
       "slightscream-08", "slightscream-09", "slightscream-11", "slightscream-12", "slightscream-13", "slightscream-14"],
     "die": ["die1", "hit1", "hit2", "hit3", "hit5", "slightscream-05", "slightscream-10", "slightscream-15"],
     "yell": ["3grunt1", "3grunt4", "3grunt5", "1yell9", "3yell3", "3yell4", "2yell1", "1yell14", "1yell15", "1yell8"],
+    "panic": [["2yell5", 0.3, 1.55], ["2yell6", 0.4, 1.7], ["3yell1", 0.36, 1.85], ["3yell10", 0.22, 1.36], ["3yell6", 0.4, 1.7],
+      ["3yell9", 0.36, 1.94], ["3yell13", 0.08, 1.5], ["yell1", 1.46, 2.63], ["yell10", 0.3, 1.78], ["yell11", 0.46, 2.1],
+      ["yell5", 0.43, 1.6], ["2yell8", 0.16, 1.24], ["3yell15", 0.08, 0.98], ["3yell12", 0.1, 0.87]],
     "splash": ["splash_09", "splash_10", "water_splash-05", "splash_06", "splash_14"]
   }
 }

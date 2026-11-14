@@ -133,7 +133,7 @@ export class Walker {
         if (this.ri >= this.route.length) { this.state = WALKER.DONE; return { x: null, y: null, speed: 0, face: null }; }
         if (this.tripIn !== null && (this.tripIn -= dt) <= 0) { this.tripIn = null; this.fall = true; }
         // a scream or a whine now and then, his breath in between
-        if (this.t <= 0) { this.t = between(this.r, [1.2, 2.6]); this.bark = this.r() < 0.6 ? 'scream' : 'whine'; }
+        if (this.t <= 0) { this.t = between(this.r, [0.8, 1.9]); this.bark = this.r() < 0.75 ? 'scream' : 'whine'; }
         else if ((this.air -= dt) <= 0) { this.air = between(this.r, [0.5, 0.85]); this.bark = 'pant'; }
         const p = this.route[this.ri];
         return { x: p.x, y: p.y, speed: this.run, face: null };
