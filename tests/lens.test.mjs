@@ -138,7 +138,7 @@ test('lens: hot spots and lamps are handed over in the picture frame, capped', (
   const lights = Array.from({ length: 5 }, (_, i) => ({ x: -100, y: 100, k: 2 - i * 0.3 }));
   const u = lens.uniforms(view({ heat, lights }));
   assert.equal(u.heat.length, POST.heat.max * 4);
-  assert.ok(Math.abs(u.heat[2] - (POST.heat.fire.r * 2) / 1080) < 1e-6 && u.heat[3] === POST.heat.fire.k);
+  assert.ok(Math.abs(u.heat[2] - (POST.heat.fire.r * 2) / 1080) < 1e-6 && Math.abs(u.heat[3] - POST.heat.fire.k) < 1e-6);
   assert.equal(u.lights.length, POST.rays.max * 4);
   assert.deepEqual([...u.lights.slice(0, 3)].map((n) => +n.toFixed(4)), [(960 - 200) / 1920, 1 - (540 + 200) / 1080, 1].map((n) => +n.toFixed(4)));
 });

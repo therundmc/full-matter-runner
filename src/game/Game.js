@@ -52,6 +52,8 @@ export default class Game {
     this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
     this.lens = new Lens();            // what the last pass of the picture does this frame
     this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
+    this.lensOn = true;                // F6 shows the picture without it, to compare
+    this.lensNote = 0;                 // game time until which the F6 label stays up
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
@@ -218,6 +220,12 @@ export default class Game {
     if (inp.anyPressed) Audio.unlock().then(() => { if (this.musicOn) Music.start(); });
 
     if (this.state === 'loading') return;
+    // debug: the picture with / without the lens
+    if (inp.hit('F6') && this.post) {
+      this.lensOn = !this.lensOn;
+      this.post.show(this.lensOn);
+      this.lensNote = this.time + 1.6;
+    }
     if (this.state === 'title') {
       Music.setIntensity(0);
       if (inp.mouseHit(0) || inp.hit('Enter') || inp.hit('Space')) { Audio.play('ui'); this.newGame(); }
@@ -337,7 +345,7 @@ export default class Game {
   // Without it everything lands on the game's canvas, graded in 2D, as before.
   render() {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height, t = this.time;
-    const post = this.post?.ok ? this.post : null, o = post ? post.octx : ctx;
+    const post = this.post?.ok && this.lensOn ? this.post : null, o = post ? post.octx : ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
@@ -354,6 +362,12 @@ export default class Game {
       o.imageSmoothingEnabled = false;
     }
     if (inWorld) this.drawOver(o, W, H, t);
+    if (this.lensNote > t) {
+      o.font = `${Math.round(14 * H / 720)}px monospace`;
+      o.textAlign = 'left';
+      o.fillStyle = '#3cff7a';
+      o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
+    }
     if (this.state !== 'loading' && this.state !== 'outro') this.drawCursor(o, t);
   }
 

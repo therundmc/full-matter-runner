@@ -217,6 +217,9 @@ class Post {
     return { tex, fbo, w, h };
   }
 
+  // on show / off show (the debug key that compares the picture with and without the lens)
+  show(on) { if (this.ok) this.canvas.style.display = this.overlay.style.display = on ? '' : 'none'; }
+
   // follow the game's canvas (called by Game.resize)
   resize() {
     const gl = this.gl, W = this.scene.width, H = this.scene.height;

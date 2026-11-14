@@ -145,7 +145,7 @@ export default class Sandbox {
       ['U  REFILL AMMO', ''],
       ['V  TELEPORT TO CURSOR', ''],
       ['K  KILL ALL GUARDS', ''],
-      ['F2 VISION  F3 MAP  F4 PHYSICS', 'dim'],
+      ['F2 VISION  F3 MAP  F4 PHYSICS  F6 LENS', 'dim'],
       ['F1  HIDE', 'dim'],
     );
     if (this.note && now < this.note.until) out.push([this.note.text, 'sel']);
