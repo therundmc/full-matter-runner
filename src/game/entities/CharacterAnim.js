@@ -8,7 +8,7 @@
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN } from '../Config.js';
 import { TELL, GESTURE } from '../data/feel.js';
-import { sprite, spriteOpt, drawSprite, silhouette, sw } from '../../engine/Assets.js';
+import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 
 export const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
@@ -102,7 +102,7 @@ export function standPose(ch, P, a = ch.angle) {
       wa -= 0.55 * low;
       hrx = lerp(5, 3, low) - kp * rk; hry = 3 + 2 * low;
       wx = hrx; wy = hry - 1;
-      const hw = sw(sprite(d.sprite)) * 0.5;
+      const hw = spriteW(sprite(d.sprite)) * 0.5;
       hlx = wx + Math.cos(wa) * hw; hly = wy - 1 + Math.sin(wa) * hw;
     }
     if (ch.reloading > 0) {
@@ -204,7 +204,7 @@ export function standPose(ch, P, a = ch.angle) {
     const reach = Math.min(1, k * 2), away = Math.max(0, k * 2 - 1);
     let sx = 1, sy = 6.5, sa = 3; // on the hip: little more than the grip shows
     if (long) {
-      const off = sw(sprite(d.sprite)) * 0.5 - d.grip;
+      const off = spriteW(sprite(d.sprite)) * 0.5 - d.grip;
       sa = 2.05; sx = -3 - Math.cos(sa) * off; sy = -Math.sin(sa) * off;
     }
     wx = lerp(wx, sx, reach); wy = lerp(wy, sy, reach); wa = lerp(wa, sa, reach);
@@ -517,7 +517,7 @@ function holdOnTheWay(ch, V, f) {
   if (!V.wpnOn) return;
   const d = ch.def;
   if (d.hold === 'two' || d.swing === 'club') {
-    const sa = 2.05, off = sw(sprite(d.sprite)) * 0.5 - d.grip;
+    const sa = 2.05, off = spriteW(sprite(d.sprite)) * 0.5 - d.grip;
     place(V.wpn, V, V.ta, -3 - Math.cos(sa) * off, -Math.sin(sa) * off);
     V.wpn.a = V.ta + sa;
   } else {
