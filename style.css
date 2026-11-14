@@ -19,3 +19,17 @@ html, body {
   cursor: none;
   image-rendering: pixelated;
 }
+
+/* the lens (WebGL) and, above it, the HUD: stacked on the game's canvas, the mouse goes through to it */
+#post, #hud {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+#hud {
+  image-rendering: pixelated;
+}

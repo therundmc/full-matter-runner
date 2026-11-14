@@ -1,4 +1,5 @@
 import { TILE, LIGHTING as L } from '../Config.js';
+import { POST } from '../data/post.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
@@ -545,6 +546,10 @@ export default class Lighting {
         if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * lit * k * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
       }
     }
+    // the strongest lamps in view, for the lens' shafts of light (render/Lens.js)
+    this.brightest = out.filter(([l, k]) => !l.cone && l.flicker !== 'disco' && l.r >= POST.rays.minRadius && k * l.lum > 0.25)
+      .sort((a, b) => b[1] * b[0].lum * b[0].r - a[1] * a[0].lum * a[0].r).slice(0, POST.rays.max)
+      .map(([l, k]) => ({ x: l.x, y: l.y, k: k * l.lum }));
     // a prop appeared, died, lost a lamp or a car pulled up: the brightness grid is stale (passing traffic does not count)
     if (this.propCount !== still || this.lampCount !== lamps) { this.propCount = still; this.lampCount = lamps; this.gridDirty = true; }
     return out;

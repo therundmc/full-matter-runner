@@ -123,6 +123,7 @@ Rules:
 | event | payload | emitted by | used by |
 |---|---|---|---|
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
+| `blow` | `{ x, y, angle, power 0..1, kind, lethal, byPlayer }` | Character / Projectile (a blow or a round landed on somebody) | Lens (colour fringe, zoom kick, impact frame) |
 | `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring |
@@ -468,3 +469,15 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
 - `window.game` in the console.
 - `npm test` runs the Node unit tests.
+
+## The lens (post-processing)
+
+The game draws its scene on the 2D canvas `#game`. When WebGL is there, `render/PostGL.js` takes that canvas as a
+texture every frame and puts it on screen (`#post`) through a few small shader passes: a blurred half-size copy (focus,
+colour bleed), the glow of what is bright and shafts dragged out of the strongest lamps (quarter size), then the final
+pass: zoom kick, tube curvature, torn tape, shock waves, heat shimmer, radial colour fringe, speed smear, soft edges,
+grading per situation, impact frame, scan lines, vignette, grain. What must stay sharp (flash, HUD, screens, cursor)
+is drawn on a third canvas above (`#hud`). `render/Lens.js` is the director: DOM-free, unit-tested, it listens to
+`blow`, `shot` and `explosion`, is told the situation once a frame (`Game.lensView`) and returns plain numbers.
+Every look setting is in `data/post.js`. Without WebGL, or with `?post=0`, nothing of this exists and the old 2D
+grading (`render/PostFX.js`) and vignette are used, as before. The replay recorder captures the bare 2D scene.

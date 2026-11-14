@@ -117,6 +117,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
   leaks, slow frames, features never exercised. Run it after any gameplay or level change and read the report
   (tools/qa/README.md). `npm run shot -- scenario.json outdir`: the scenario / screenshot harness it shares.
 - `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
+- The picture goes through a WebGL last pass, the lens (render/PostGL.js + render/Lens.js, settings data/post.js: radial
+  colour fringe, shock waves, heat shimmer, glow, grading per situation, tube / tape look, speed smear, soft edges,
+  shafts of light, zoom kick and impact frame on a kill); HUD and screens are drawn on a canvas above it. `?post=0`
+  turns it off (old 2D grading). The user asked for it "aux petits oignons": tune in data/post.js, never hard-code.
 - Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
   vision, F3 overview, F4 physics overlay (with FPS and frame times). `window.game` in the console.
 - Headless browser checks that worked: Edge `--headless=new --remote-debugging-port` driven over the DevTools

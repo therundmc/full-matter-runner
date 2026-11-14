@@ -20,6 +20,8 @@ import { OUTRO, camBlend } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
+import Lens from './render/Lens.js';
+import { createPost } from './render/PostGL.js';
 
 // Top-level loop and state machine: loading -> title -> intro -> play -> dead | [outro ->] results
 export default class Game {
@@ -47,7 +49,9 @@ export default class Game {
     this.sel = 0;      // selected slider of the pause screen
     this.grab = null;  // slider held by the mouse
     this.lastMouse = { x: 0, y: 0 };
-    this.postfx = new PostFX();
+    this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
+    this.lens = new Lens();            // what the last pass of the picture does this frame
+    this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
@@ -60,6 +64,7 @@ export default class Game {
     this.canvas.width = Math.floor(window.innerWidth * dpr);
     this.canvas.height = Math.floor(window.innerHeight * dpr);
     this.camera.resize(this.canvas.width, this.canvas.height);
+    this.post?.resize();
     this.vignette = null;
   }
 
@@ -116,6 +121,7 @@ export default class Game {
     this.replay.stop();
     this.recorder.reset();
     this.recorder.attach(this.world.events);
+    this.lens.bind(this.world.events);
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
     this.camera.snap(p.x, p.y);
@@ -326,13 +332,33 @@ export default class Game {
   }
 
   // ---------------- render ----------------
+  // The scene goes on the game's canvas. With the lens (render/PostGL.js) that canvas is only its source: the lens
+  // puts it on screen, and what must stay sharp (flash, HUD, screens, cursor) is drawn on a canvas of its own above.
+  // Without it everything lands on the game's canvas, graded in 2D, as before.
   render() {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height, t = this.time;
+    const post = this.post?.ok ? this.post : null, o = post ? post.octx : ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    if (this.state === 'loading') { drawLoading(ctx, W, H, this.loadP); return; }
-    if (this.state === 'title' || !this.world) { drawTitleScene(ctx, W, H, t, this.input.mouse); this.drawCursor(ctx, t); return; }
+    const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
+    if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
+    else if (!inWorld) drawTitleScene(ctx, W, H, t, this.input.mouse);
+    else this.drawScene(ctx, W, H, t, post);
+    if (post) {
+      const now = performance.now() / 1000, view = this.lensView(W, H, inWorld);
+      this.lens.update(Math.min(0.1, now - (this.lensT ?? now)), view);
+      this.lensT = now;
+      post.render(this.lens.uniforms(view), t);
+      o.setTransform(1, 0, 0, 1, 0, 0);
+      o.clearRect(0, 0, W, H);
+      o.imageSmoothingEnabled = false;
+    }
+    if (inWorld) this.drawOver(o, W, H, t);
+    if (this.state !== 'loading' && this.state !== 'outro') this.drawCursor(o, t);
+  }
 
+  // the world (or the replay of the run behind the results), lit, before any lens
+  drawScene(ctx, W, H, t, post) {
     // backdrop outside the map
     const bg = ctx.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, '#12061f');
@@ -341,8 +367,8 @@ export default class Game {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    const replaying = this.state === 'results' && this.replay.ready;
-    if (replaying) {
+    this.replaying = this.state === 'results' && this.replay.ready;
+    if (this.replaying) {
       this.safeDraw(ctx, () => this.replay.draw(ctx, W, H, t));
     } else if (this.overview) {
       // debug: whole level on screen
@@ -353,25 +379,26 @@ export default class Game {
     } else {
       this.camera.apply(ctx);
       this.safeDraw(ctx, () => this.world.draw(ctx, this.camera, t));
-      this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma));
+      if (!post) this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma));
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    // post
     if (this.timeScale < 0.95) {
       ctx.fillStyle = `rgba(80,0,120,${(1 - this.timeScale) * 0.22})`;
       ctx.fillRect(0, 0, W, H);
     }
-    // the replay keeps the bare picture: no scanlines, flash or HUD (they go over it again when it plays)
+    // the replay keeps the bare picture: no lens, scanlines, flash or HUD (they go over it again when it plays)
     if (this.state === 'play' && !this.overview) this.recorder.capture(this.canvas, this.world.time);
-    ctx.drawImage(this.getVignette(W, H), 0, 0);
+    if (!post) ctx.drawImage(this.getVignette(W, H), 0, 0);
+  }
+
+  // what goes over the picture and stays sharp
+  drawOver(ctx, W, H, t) {
     if (this.flashA > 0) {
       ctx.globalAlpha = clamp(this.flashA, 0, 1);
       ctx.fillStyle = this.flashColor;
       ctx.fillRect(0, 0, W, H);
       ctx.globalAlpha = 1;
     }
-
     if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
     if (this.sandbox.on && this.state === 'play') this.safeDraw(ctx, () => drawSandbox(ctx, H, this.sandbox, t));
     if (this.world.debugPhysics) {
@@ -384,10 +411,27 @@ export default class Game {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best);
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
       if (this.state === 'pause') drawPause(ctx, W, H, t, this.settings, this.sel);
-      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, replaying);
+      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro.t);
     });
-    if (this.state !== 'outro') this.drawCursor(ctx, t);
+  }
+
+  // the situation, as the lens wants it told (render/Lens.js)
+  lensView(W, H, inWorld) {
+    const w = this.world, p = inWorld ? w.player : null, inp = this.input, v = p?.vaulting;
+    return {
+      W, H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
+      state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
+      timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
+      player: p && {
+        x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,
+        move: v?.rolling ? 'roll' : v?.kind === 'window' ? 'dive' : p.slideAnim ? 'slide' : null,
+      },
+      // what heats the air: burning wrecks, pierced steam pipes (blasts are the lens' own business)
+      heat: inWorld ? [...w.props.filter((q) => q.burning).map((q) => ({ x: q.x, y: q.y, kind: 'fire' })),
+        ...w.steam.leaks.map((l) => ({ x: l.x, y: l.y, kind: 'steam' }))] : [],
+      lights: inWorld && !this.overview ? w.lighting?.brightest || [] : [],
+    };
   }
 
   // a failing draw must never take the HUD / cursor / effects down with it: restore the context and report once
