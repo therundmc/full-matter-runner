@@ -47,9 +47,9 @@ export const OPTIONAL_LIST = [
 ];
 
 // Sprites painted finer than the world (1 sprite px = 1 world px everywhere else): world px per sprite px, by name.
-// The standing characters are painted at twice the density (tools/generate_assets.py FINE). An image carries its
+// The standing characters are painted at four times the density (tools/generate_assets.py FINE). An image carries its
 // own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
-const density = (name) => (/^characters\/\w+_torso$/.test(name) ? 0.5 : 1);
+const density = (name) => (/^characters\/\w+_torso$/.test(name) ? 0.25 : 1);
 
 const images = new Map();
 // weak caches: per-instance canvases (eroded props, bitten pieces) can be garbage-collected
