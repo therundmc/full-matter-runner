@@ -2,11 +2,12 @@
 // Serves the repository on the first free port from 8000 up (so a server left running elsewhere is not a problem),
 // answers several requests at once and never lets the browser cache anything: a plain reload always shows the
 // latest sprites, sounds and code.
+// Also a module: `startServer({ port, quiet })` (tools/qa, tools/shot.mjs) resolves to { server, port, url, close }.
 import http from 'node:http';
 import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TYPES = {
@@ -15,7 +16,7 @@ const TYPES = {
   '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.ttf': 'font/ttf', '.ico': 'image/x-icon',
 };
 
-const server = http.createServer((req, res) => {
+function handler(req, res) {
   const url = decodeURIComponent(req.url.split('?')[0]);
   const file = path.join(ROOT, url.endsWith('/') ? url + 'index.html' : url);
   // nothing outside the repository
@@ -25,7 +26,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(data);
   });
-});
+}
 
 // does anything answer on that port, over IPv4 or IPv6? (binding alone does not tell: on Windows a server bound to
 // the IPv6 side leaves the IPv4 side free, and the browser would then reach the other one through `localhost`)
@@ -37,12 +38,36 @@ const answers = (port, host) => new Promise((done) => {
 });
 const taken = async (port) => (await Promise.all([answers(port, '127.0.0.1'), answers(port, '::1')])).some(Boolean);
 
-let port = +process.argv[2] || 8000;
-const last = port + 20;
-while (port < last && await taken(port)) {
-  console.log(`port ${port} is taken (another server is still running there), trying ${port + 1}`);
-  port++;
+// first free port in [port, port + 20)
+export async function freePort(port = 8000, quiet = false) {
+  const last = port + 20;
+  while (port < last && await taken(port)) {
+    if (!quiet) console.log(`port ${port} is taken (another server is still running there), trying ${port + 1}`);
+    port++;
+  }
+  return port;
 }
-server.on('error', (e) => { console.error(e.message); process.exit(1); });
-// 127.0.0.1 in the address, not `localhost`: nothing else can be reached by mistake
-server.listen(port, '127.0.0.1', () => console.log(`FULL MATTER RUNNER: http://127.0.0.1:${port}  (Ctrl+C to stop)`));
+
+export async function startServer({ port = 8000, quiet = false } = {}) {
+  port = await freePort(port, quiet);
+  const server = http.createServer(handler);
+  await new Promise((done, fail) => {
+    server.once('error', fail);
+    // 127.0.0.1 in the address, not `localhost`: nothing else can be reached by mistake
+    server.listen(port, '127.0.0.1', done);
+  });
+  // keep-alive sockets would hold close() open: drop them
+  const close = () => new Promise((done) => { server.closeAllConnections?.(); server.close(() => done()); });
+  return { server, port, url: `http://127.0.0.1:${port}/`, close };
+}
+
+// run directly: `npm start`
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  try {
+    const { port } = await startServer({ port: +process.argv[2] || 8000 });
+    console.log(`FULL MATTER RUNNER: http://127.0.0.1:${port}  (Ctrl+C to stop)`);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+}
