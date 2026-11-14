@@ -22,6 +22,7 @@ export const ENEMIES = {
   p: ['thug', 'pistol'], u: ['thug', 'uzi'], s: ['thug', 'uzi_silenced'],
   h: ['heavy', 'shotgun'], r: ['heavy', 'rifle'],
   b: ['brute', 'bat'], k: ['brute', 'knife'],
+  m: ['thug', 'bat'], j: ['thug', 'knife'], i: ['thug', 'tire_iron'],
 };
 const SMALL_PROPS = { x: 'barrel', c: 'crate', t: 'trash_can' };
 
@@ -76,6 +77,7 @@ export function buildLevel(world, level) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
     if (opt?.lights === false) p.lightsOut = true;
+    if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);
   }
@@ -88,7 +90,10 @@ export function buildLevel(world, level) {
       if (ch === ' ' || ch === '.') continue;
       const px = cx(x), py = cx(y);
       const face = facing(level, map, x, y);
-      if (ch === '@') world.player = new Player(world, px, py, face);
+      if (ch === '@') {
+        world.player = new Player(world, px, py, face);
+        if (level.intro === 'sit') world.player.sit = 1; // he starts sitting on the ground, his back to the wall
+      }
       else if (ENEMIES[ch.toLowerCase()]) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
         const e = new Enemy(world, px, py, face, kind, weapon, ch !== ch.toLowerCase());

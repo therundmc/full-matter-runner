@@ -27,7 +27,6 @@ import MapRenderer from '../render/MapRenderer.js';
 import WorldRenderer from '../render/WorldRenderer.js';
 import Lighting from '../render/Lighting.js';
 import Particles from '../fx/Particles.js';
-import AmmoItem from '../entities/AmmoItem.js';
 import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
 import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence, watchOpenings } from '../systems/Destruction.js';
@@ -234,16 +233,12 @@ export default class World {
   destroyFence(f, dirA) { destroyFence(this, f, dirA); }
 
   // ---------------- deaths & level flow ----------------
-  onKill(ch, cause, killer) {
-    this.events.emit('kill', { victim: ch, cause, killer });
+  // how: the circumstances of the kill, when whoever did it knows them (a round's way there, a blow's side)
+  onKill(ch, cause, killer, how) {
+    this.events.emit('kill', { victim: ch, cause, killer, how });
     if (ch.isPlayer) { this.endT = this.time; this.game.onPlayerDeath(cause); return; }
     if (ch.isCivilian) { this.hitstop(0.02); return; }
-    // guards drop a spare magazine (or a few shells) for the gun they carried
-    const type = ch.lastAmmo;
-    if (type && chance(0.8)) {
-      const a = rand(0, Math.PI * 2);
-      this.ammoItems.push(new AmmoItem(this, type, undefined, ch.x, ch.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5));
-    }
+    // no spare magazine on a guard: a gun picked up holds what was left in it, and that is all (user: count your rounds)
     this.hitstop(0.035);
     if (!this.checkCleared() && chance(0.15)) this.slowmo(0.3, 0.45);
   }

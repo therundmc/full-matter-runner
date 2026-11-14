@@ -938,6 +938,15 @@ def weapons():
     W['knife'] = ascii_cv(["..........",
                            ".GgGKsSSt.",
                            ".........."], gun)
+    # pool cue (1.25 m): dark butt, pale maple shaft, white ferrule, chalked tip; and its butt half once it has snapped
+    cue = {'B': hx('#3a2418'), 'b': hx('#6a4426'), 'm': hx('#d8c090'), 'f': hx('#f0ece0'), 'c': hx('#3a8ad8')}
+    W['cue'] = ascii_cv(['.' * 40, '.BBBBBBBbbbbbb' + 'm' * 22 + 'ffc.', '.' * 40], cue)
+    W['cue_half'] = ascii_cv(['.' * 20, '.BBBBBBBbbbbbbmmmmm.', '.' * 20], cue)
+    # tire iron: a steel bar, its socket end bent square
+    W['tire_iron'] = ascii_cv(["................",
+                               ".DMMMMMMMMMMLK..",
+                               "............MK..",
+                               "................"], gun)
     W['rocket'] = ascii_cv([".........",
                             ".QooorRt.",
                             ".qQQQRRR.",
@@ -4763,7 +4772,8 @@ EXPECTED = {
         ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     'weapons': dict(pistol=(11, 5), uzi=(12, 7), uzi_silenced=(18, 7), shotgun=(22, 5), rifle=(24, 7),
-                    sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), rocket=(9, 4),
+                    sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), cue=(40, 3), cue_half=(20, 3), tire_iron=(16, 4),
+                    rocket=(9, 4),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(3, 6), mag_uzi=(3, 9), mag_rifle=(4, 9),
                     mag_sniper=(3, 6), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
                     ammo_rocket=(12, 6)),

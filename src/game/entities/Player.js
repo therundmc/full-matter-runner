@@ -8,6 +8,8 @@ import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind } from '../systems/Takedown.js';
+import { finisherFor, TAKEDOWNS } from '../data/finishers.js';
+import { blowFx } from '../fx/Blows.js';
 
 const { Body } = Matter;
 let scuff = null; // floor scuff stamp, made on first use
@@ -21,6 +23,9 @@ export default class Player extends Character {
     this.nearItem = null;
     this.nearDowned = null;
     this.nearBack = null;   // a guard whose back we stand right behind (Space takes him down)
+    this.nearTrunk = null;  // a parked car's closed trunk within reach, with something in it (E opens it)
+    this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
+    this.rising = false;
     this.takedown = null;   // { target, t, done, blade, side } while we have him by the neck
     this.grab = null;       // what CharacterAnim plays of it: { k, d, side, blade }
     this.slide = null;      // Slide kinematics while sliding
@@ -30,7 +35,7 @@ export default class Player extends Character {
     this.slideHits = new Set(); // loose bodies already shoved by the current slide
     this.shootDown = null;  // the corpse under the crosshair when firing (rounds fly over the others)
     // spare rounds per caliber
-    this.ammo = { '9mm': 24, '12g': 0, '762': 0, rocket: 0 };
+    this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
   }
 
   // the dead body under the crosshair, unless someone alive stands there
@@ -78,6 +83,7 @@ export default class Player extends Character {
     if (!this.slide) this.stamina = recover(this.stamina, dt, PLAYER.slide);
     this.updateSlideAnim(dt);
 
+    if (this.sit > 0 && !this.updateSit(dt, input)) return;
     if (this.execution) { this.updateExecution(dt); return; }
     if (this.takedown) { this.updateTakedown(dt); return; }
     this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
@@ -112,6 +118,8 @@ export default class Player extends Character {
     for (const e of w.enemies) {
       if (e.alive && e.knocked > 0 && Math.hypot(e.x - this.x, e.y - this.y) < 26) { this.nearDowned = e; break; }
     }
+    this.nearTrunk = this.nearItem ? null : w.props.find((p) => p.trunk && !p.trunk.open && !p.dead
+      && Math.hypot(p.trunkSpot().x - this.x, p.trunkSpot().y - this.y) < PLAYER.trunkReach) || null;
     this.nearBack = (!this.nearDowned && w.enemies.find((e) => behind(this, e) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
 
     // attack
@@ -129,7 +137,7 @@ export default class Player extends Character {
     const busy = sliding || this.nearDowned || this.nearBack;
     this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
     this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
-      : this.nearBack ? (d === WEAPONS.knife ? 'SLIT THROAT' : 'BREAK NECK')
+      : this.nearBack ? TAKEDOWNS[this.takedownKind()].action
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : 'VAULT') : null;
     if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
@@ -142,7 +150,25 @@ export default class Player extends Character {
       if (this.armed) this.throwWeapon();
       else this.pickUp();
     }
-    if (input.hit('KeyE')) this.pickUp();
+    if (input.hit('KeyE')) {
+      if (this.nearTrunk) this.nearTrunk.openTrunk();
+      else this.pickUp();
+    }
+  }
+
+  // sitting against the wall when a level starts: the first key or click gets him up (PLAYER.rise s), and he has
+  // his legs back a little before he is quite upright. Returns whether he can act.
+  updateSit(dt, input) {
+    if (!this.rising) {
+      this.steer(0, 0, 0, 1);
+      if (!input.anyPressed && !input.mouseDown(0)) return false;
+      this.rising = true;
+      this.world.sound('vault', this.x, this.y, 0.5);
+    }
+    this.sit = Math.max(0, this.sit - dt / PLAYER.rise);
+    if (this.sit <= 0.3) return true;
+    this.steer(0, 0, 0, 1);
+    return false;
   }
 
   pickUp() {
@@ -152,6 +178,7 @@ export default class Player extends Character {
     this.setWeapon(it.type, it.mag);
     this.world.removeItem(it);
     this.world.sound('pickup', this.x, this.y);
+    this.world.events.emit('pickup', { ch: this, type: it.type });
     if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7, { weapon: this.weapon.type });
     this.pickAnim = 0.35;
     this.cooldown = 0.2;
@@ -270,9 +297,8 @@ export default class Player extends Character {
 
   // ground finisher on a knocked-out enemy
   startExecution(target) {
-    const d = this.def;
-    const hits = d.kind === 'gun' ? 1 : d.hold === 'none' ? 3 : 2;
-    this.execution = { target, t: 0, hits, done: 0, interval: d.kind === 'gun' ? 0.22 : 0.26 };
+    const f = finisherFor(this.def);
+    this.execution = { target, t: 0, hits: f.hits, done: 0, interval: f.every, f };
     target.executing = true;
     this.steer(0, 0, 0, 1);
   }
@@ -301,8 +327,12 @@ export default class Player extends Character {
         if (this.weapon.mag > 0) { this.weapon.mag--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot'); }
         else w.sound('punch', tg.x, tg.y);
       } else w.sound(d.hold === 'none' ? 'punch' : 'splat', tg.x, tg.y);
+      if (d.swing === 'club') blowFx(w, d, tg, this.angle, { heavy: true, from: 'side' });
       if (ex.done >= ex.hits) {
-        tg.kill(this.angle, 'execute', this);
+        const f = ex.f;
+        // the cue goes through him and snaps: half of it stays planted in the body, the other is a stake in the hand
+        if (f.plant) { w.addItem(new WeaponItem(w, d.snaps, 0, tg.x, tg.y, this.angle + rand(-0.3, 0.3))); this.snapWeapon(this.angle); }
+        tg.kill(this.angle, f.cause, this, f.cause === 'slash' ? { gore: 0, wound: 'slash' } : undefined, { finisher: true, label: f.label });
         this.execution = null;
         this.cooldown = 0.2;
       }
@@ -311,10 +341,10 @@ export default class Player extends Character {
 
   // seize a guard from behind: he can do nothing until it is over (Enemy.held), nobody hears it
   startTakedown(target) {
-    const blade = this.def === WEAPONS.knife;
+    const kind = this.takedownKind(), blade = kind === 'blade';
     // bare hands wrench either way; with something in the right hand the left arm pulls his chin round
     const side = this.def.hold === 'none' && chance(0.5) ? 1 : -1;
-    this.takedown = { target, t: 0, done: false, blade, side };
+    this.takedown = { target, t: 0, done: false, blade, side, kind };
     this.grab = { k: 0, d: 17, side, blade };
     this.contextAction = null;
     this.swing = 0;
@@ -342,14 +372,25 @@ export default class Player extends Character {
         td.done = true;
         w.hitstop(0.07);
         w.camera.push(Math.cos(this.angle + td.side * 1.5) * 2, Math.sin(this.angle + td.side * 1.5) * 2);
-        if (td.blade) tg.kill(this.angle, 'slash', this, this.def);
-        else tg.kill(this.angle + td.side * 1.5, 'snap', this);
+        const how = { label: TAKEDOWNS[td.kind].label };
+        if (td.blade) tg.kill(this.angle, 'slash', this, this.def, how);
+        else if (td.kind === 'club') {
+          // the back of his skull: one blow, no cry
+          blowFx(w, this.def, tg, this.angle, { heavy: true, from: 'behind' });
+          tg.kill(this.angle, 'melee', this, { gore: 0, wound: 'crush' }, how);
+        } else tg.kill(this.angle + td.side * 1.5, 'snap', this, undefined, how);
       }
     }
     if (k >= 1) {
       this.takedown = this.grab = null;
       this.cooldown = 0.15;
     }
+  }
+
+  // how a guard seized from behind is put down with what is in the hand (data/finishers.js TAKEDOWNS)
+  takedownKind() {
+    const d = this.def;
+    return d.swing === 'blade' ? 'blade' : d.finisher === 'cue' ? 'choke' : d.swing === 'club' ? 'club' : 'neck';
   }
 
   knock(angle) { this.kill(angle, 'melee'); }

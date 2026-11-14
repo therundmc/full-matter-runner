@@ -3,7 +3,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { sprite, drawSprite, silhouette } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 
-const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3 };
+const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3, cue: 0.6, cue_half: 0.3, tire_iron: 1.3 };
 
 const { Bodies, Body } = Matter;
 
@@ -21,7 +21,7 @@ export default class WeaponItem {
     });
     // thrown weapons fly before they hit the floor and slide
     setMaterial(this.body, WEAPON_KG[type] ?? 2, 0.7, thrower ? world.time + 0.25 : 0);
-    this.body.material = type === 'bat' ? 'wood' : 'metal';
+    this.body.material = this.def.material || 'metal';
     Body.setVelocity(this.body, { x: vx, y: vy });
     Body.setAngularVelocity(this.body, spin);
     this.body.entity = this;

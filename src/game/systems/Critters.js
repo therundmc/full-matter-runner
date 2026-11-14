@@ -9,7 +9,6 @@
 // Bullets, swings and blasts kill the ones on the ground. No bodies: a few numbers each. DOM-free.
 import { TILE, CRITTERS as C } from '../Config.js';
 import { rand, randi, chance, angDiff, TAU } from '../../engine/math.js';
-import { impulse } from '../../engine/physics/Body.js';
 
 const { Body } = Matter;
 const SHUT = 'GDLF'; // windows, doors and fences stop them like walls
@@ -165,7 +164,7 @@ export default class Critters {
         return;
       } else {
         // over it goes
-        impulse(b.body, c.a, C.cat.push, rand(-0.2, 0.2));
+        b.kick.x = Math.cos(c.a) * 3; b.kick.y = Math.sin(c.a) * 3; b.kick.vr = rand(-3, 3);
         w.sound('metal', b.x, b.y, 0.9);
         w.particles.chips(b.x, b.y, c.a, 1.4, 7, '#b8b0a0', 70);
         w.noise(b.x, b.y, C.cat.noise * TILE);

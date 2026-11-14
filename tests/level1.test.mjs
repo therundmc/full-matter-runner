@@ -85,20 +85,26 @@ test('the gap right of the bar: a door on the street, one metre wide, off limits
   assert.equal(windows, 1);
 });
 
-test('level 1 is fought with blades, bats and pistols: the two heavier guns wait in the back room', () => {
+test('level 1 is fought hand to hand: two guns in the house (the bar room, the boss), one hidden in the liquor store', () => {
   const guards = [];
-  level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbk'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
-  const n = (set) => guards.filter((g) => set.includes(g.ch)).length;
+  level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbkmji'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
   assert.equal(guards.length, 13);
-  assert.ok(n('bk') >= 4, 'bats and knives');
-  assert.ok(n('p') >= 5, 'pistols');
-  const heavy = guards.filter((g) => 'ushr'.includes(g.ch));
-  assert.ok(heavy.length <= 2, 'no more than two heavier guns');
-  for (const g of heavy) assert.ok(g.col >= 25 && g.col <= 30 && g.row >= 6 && g.row <= 10, `a ${g.ch} outside the back room`);
-  // nothing heavier than a pistol lies around either, and the only pistol is behind the liquor store's locked door
-  assert.deepEqual([...new Set(level.actors.join('').replace(/[^1-9]/g, ''))].sort(), ['1', '5', '6']);
+  const guns = guards.filter((g) => 'pushr'.includes(g.ch));
+  assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p']);
+  const [boss, pool] = guns;
+  assert.ok(boss.col >= 25 && boss.col <= 30 && boss.row >= 6 && boss.row <= 10, "the shotgun is the boss's, in the back room");
+  assert.equal(level.jobs[`${pool.col},${pool.row}`], 'pool', "the pistol is the pool player's");
+  // lying around: knives, a cue by the pool table, one pistol behind the liquor store's locked door; no ammunition
+  // anywhere and no weapon in the start alley (the first one is in the trunk of the first parked car)
+  assert.deepEqual([...new Set(level.actors.join('').replace(/[^0-9]/g, ''))].sort(), ['0', '1', '6']);
   assert.equal(level.actors.join('').split('1').length - 1, 1);
   assert.equal(level.actors[17][8], '1');
+  assert.ok(!/[nzvwgq]/.test(level.actors.join('')), 'no ammunition box');
+  for (let row = 32; row <= 36; row++) assert.ok(!/[0-9]/.test(level.actors[row].slice(20, 24)), 'nothing to pick up in the alley');
+  const trunks = level.props.filter((p) => p[4]?.trunk);
+  assert.deepEqual(trunks.map((p) => [p[0], p[4].trunk]), [['car2', 'tire_iron']]);
+  assert.ok(trunks[0][1] < 20, 'the first car on the left');
+  assert.equal(level.intro, 'sit');
 });
 
 // the shop fronts of the street: room (inclusive tiles), display panes and door on the facade row, neon sign

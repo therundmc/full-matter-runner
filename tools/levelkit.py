@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOLID = set(' #X')
 WALLS = set('#X')
 OPENINGS = set('DLGF')
-GUARDS = set('pushrbk')
+GUARDS = set('pushrbkmji')
 
 # hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
 # None = hangs from the ceiling / sits on a wall: never in the way
@@ -63,6 +63,7 @@ class Level:
         self.roofs = []       # (area, kind, col, row, deg)
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
+        self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
@@ -258,6 +259,8 @@ class Level:
         if self.premises:
             L.append('  // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away')
             L.append(f'  premises: {json.dumps(self.premises)},')
+        if self.intro:
+            L.append(f"  intro: '{self.intro}',")
         if self.welcome:
             L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
             L.append(f'  welcome: {json.dumps(self.welcome)},')

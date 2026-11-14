@@ -36,6 +36,8 @@ export const PLAYER = {
   accel: 0.42,        // velocity lerp per step
   lookAhead: 0.32,    // camera offset toward the cursor
   lookAheadFar: 0.75, // with Shift held
+  rise: 0.55,         // s to get up off the ground at the start of a level
+  trunkReach: 30,     // px from the tail of a car at which its trunk can be opened
   // Space while running with nothing to vault (systems/Slide.js): ~0.5 s, ~2.9 m
   slide: {
     dur: 0.5,         // s
@@ -325,8 +327,7 @@ export const CRITTERS = {
     shy: 2,                // the player moving this close
     still: 0.4,            // px/step under which he is not moving
     hear: 16,
-    bin: 5,                // a bin within this on its way gets knocked
-    push: 45,              // kg px/step into the bin
+    bin: 5,                // a bin within this on its way gets jumped on: it rattles, it does not move
     noise: 5,              // the clatter carries this far
   },
   // flies per swarm, px it spreads over; s before a body draws them, bodies at most

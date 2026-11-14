@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 const { default: EventBus } = await load('engine/EventBus.js');
-const { default: Scoring, killStyle, comboMultiplier, gradeFor, tally } = await load('game/systems/Scoring.js');
+const { default: Scoring, killStyle, killTags, comboMultiplier, gradeFor, tally } = await load('game/systems/Scoring.js');
+const { blowFrom } = await load('game/fx/Blows.js');
+const { FINISHERS, TAKEDOWNS, finisherFor } = await load('game/data/finishers.js');
+const { WEAPONS } = await load('game/data/weapons.js');
 const { SCORING, LEVEL_SCORING, levelScoring } = await load('game/data/scoring.js');
 const { loadBest, saveBest } = await load('game/systems/Records.js');
 
@@ -39,6 +42,66 @@ test('scoring: kills the player had no hand in are worth nothing', () => {
   assert.equal(sc.kills, 1);
   assert.equal(sc.points, 0);
   assert.equal(sc.combo, 0);
+});
+
+test('scoring: the circumstances of a kill are read from the round, the blow and the moment', () => {
+  const T = SCORING, quiet = { now: 50, dodgeT: -99, pickT: -99, streak: 1 }, p = player('pistol');
+  assert.deepEqual(killTags({ killer: p }, quiet), []);
+  assert.deepEqual(killTags({ killer: p, how: { pierced: 1, dist: 100 } }, quiet), ['collateral']);
+  assert.deepEqual(killTags({ killer: p, how: { through: true, bounced: true, dist: T.longShot + 1, last: true } }, quiet),
+    ['wallbang', 'ricochet', 'longshot', 'lastRound']);
+  assert.deepEqual(killTags({ killer: { ...p, slide: {} } }, quiet), ['slide']);
+  assert.deepEqual(killTags({ killer: { ...p, vaulting: {} } }, quiet), ['airborne']);
+  assert.deepEqual(killTags({ killer: p, how: { from: 'behind', heavy: true, smoked: true } }, quiet), ['behind', 'smash', 'smoked']);
+  assert.deepEqual(killTags({ killer: p, how: { from: 'front' } }, { ...quiet, dodgeT: 49, pickT: 49.5 }), ['dodge', 'quickdraw']);
+  assert.deepEqual([2, 3, 4, 7].map((streak) => killTags({ killer: null }, { ...quiet, streak })[0]), ['double', 'triple', 'massacre', 'massacre']);
+  for (const tag of ['collateral', 'wallbang', 'ricochet', 'longshot', 'lastRound', 'slide', 'airborne', 'behind', 'smash', 'smoked', 'dodge', 'quickdraw', 'double', 'triple', 'massacre']) {
+    assert.ok(T.tags[tag].points > 0 && T.tags[tag].label, tag);
+  }
+});
+
+test('scoring: a tagged kill pays its bonuses, shows them and counts each as a way of killing', () => {
+  const w = world(), sc = new Scoring(w), T = SCORING.tags;
+  w.events.emit('kill', { victim: guard(), cause: 'bullet', killer: { ...player('pistol'), slide: {} }, how: { pierced: 1, dist: 80 } });
+  assert.deepEqual(sc.tags, ['collateral', 'slide']);
+  assert.equal(sc.points, S.shot.points + T.collateral.points + T.slide.points);
+  assert.equal(w.texts[0].str, `COLLATERAL + SLIDE KILL +${sc.points}`);
+  assert.deepEqual([...sc.methods].sort(), ['collateral', 'pistol', 'slide']);
+  // a second one right behind it is a double; later, alone, it is not
+  w.time = 0.3;
+  kill(w, 'bullet', player('pistol'));
+  assert.deepEqual(sc.tags, ['double']);
+  w.time = 3;
+  kill(w, 'bullet', player('pistol'));
+  assert.deepEqual(sc.tags, []);
+  // a dodge or a pick-up a moment before, and the label a finisher gives itself
+  w.time = 10;
+  w.events.emit('dodge', {});
+  w.events.emit('pickup', { ch: { isPlayer: true } });
+  w.time = 10.5;
+  w.events.emit('kill', { victim: guard(), cause: 'slash', killer: player('cue'), how: { finisher: true, label: 'IMPALED' } });
+  assert.deepEqual(sc.tags, ['dodge', 'quickdraw']);
+  assert.ok(w.texts[w.texts.length - 1].str.startsWith('IMPALED + DODGE KILL + QUICK DRAW'));
+});
+
+test('blows: a blow takes a man from behind, the side or the front; every weapon has its finisher and its takedown', () => {
+  assert.equal(blowFrom(0, 0.3), 'behind');
+  assert.equal(blowFrom(0, Math.PI - 0.2), 'front');
+  assert.equal(blowFrom(0, -Math.PI / 2), 'side');
+  assert.equal(blowFrom(3, -3), 'behind', 'across the +-pi seam');
+  const of = (type) => finisherFor(WEAPONS[type]);
+  assert.equal(of('fists'), FINISHERS.fists);
+  assert.equal(of('bat'), FINISHERS.club);
+  assert.equal(of('tire_iron'), FINISHERS.club);
+  assert.equal(of('knife'), FINISHERS.blade);
+  assert.equal(of('cue_half'), FINISHERS.blade);
+  assert.equal(of('cue'), FINISHERS.cue);
+  assert.equal(of('pistol'), FINISHERS.gun);
+  assert.ok(FINISHERS.cue.plant && WEAPONS[WEAPONS.cue.snaps].swing === 'blade', 'a snapped cue is a stake');
+  for (const f of Object.values(FINISHERS)) assert.ok(f.hits >= 1 && f.every > 0 && f.label && ['execute', 'slash'].includes(f.cause));
+  for (const t of Object.values(TAKEDOWNS)) assert.ok(t.action && t.label);
+  for (const d of Object.values(WEAPONS)) if (d.hold === 'melee') assert.ok(['club', 'blade'].includes(d.swing) && d.material, d.name);
+  assert.equal(WEAPONS.pistol.mag, 7);
 });
 
 test('scoring: getting close pays more than pulling a trigger', () => {

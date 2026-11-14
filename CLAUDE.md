@@ -45,7 +45,11 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    kill adds a layer and a little volume (`Music.setCombo`), and
    it gets worked up with the alert phase and the heat of the fight (ai/Tension.js). Parts fade into one another
    (a filter on the whole mix, `Session.fade`); at the top of a chain a 32nd snare roll fills every fourth bar.
-6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
+6. Level 1 (alley, road, bar, back room, back lot; 13 guards: hand to hand but two guns, the pool player's pistol
+   and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
+   of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
+   against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only)
+   & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
    Street fauna (level `critters`, systems/Critters.js; silent but for the pigeons' wings, a cut of recorded air): rats
@@ -95,6 +99,11 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
   heavy objects use `world.physics.freezeIfHeavy(body)`.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the
   current mag with its remaining rounds (pickable again). Enemies: `weapon.reserve` = spare mags.
+  User wants rounds counted: a pistol holds 7, the player starts with no reserve, a dead guard drops no spare
+  magazine and level 1 has no ammunition box (a gun picked up holds what was left in it, that is all).
+- Melee weapons are data (`swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `finisher`): never test
+  `=== WEAPONS.bat`. Blow effects: fx/Blows.js; finishers / takedowns per weapon: data/finishers.js; kill tags
+  (collateral, slide kill, wallbang, from behind...): `SCORING.tags` + `Scoring.killTags`, fed by the `how` of `kill`.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
 - level1.js and lab.js are generated: edit `tools/build_level1.py` / `tools/build_lab.py` (tools/levelkit.py checks

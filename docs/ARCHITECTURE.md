@@ -121,12 +121,13 @@ Rules:
 | event | payload | emitted by | used by |
 |---|---|---|---|
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
-| `kill` | `{ victim, cause, killer }` | World.onKill | Scoring, ReplayRecorder (clips), Threats |
+| `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats |
+| `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
 | `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
-| `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | - |
+| `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
 | `propHit` | `{ prop, x, y, dirA, kind }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster) |
@@ -267,6 +268,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `world.chars` who steps in a wet area splashes, then prints fading footprints on the dry floor (`decals.footprint`),
   or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn
   by WorldRenderer.drawPuddle and mirror the lights in Lighting.post (`LIGHTING.puddle`).
+- Melee (data/weapons.js `swing` club | blade, `heft`, `material`, `thrust`, `snaps`): a blow that lands is dressed
+  by fx/Blows.js (what struck, the heavy stroke or a sweep, from the front, the side or behind). Ground finishers
+  and takedowns go by the weapon in hand (data/finishers.js): a cue is driven through the man and snaps, one half
+  left in him, the other a stake in the hand. The circumstances of a kill (`how` of the `kill` event, the killer
+  sliding or vaulting, a dodge or a pick-up just before, several in a row) are tags that add points and count as
+  ways of killing (`Scoring.killTags`, `SCORING.tags`).
 - Score (systems/Scoring.js, rules in data/scoring.js): fed by events only. A kill is worth its style (a gunshot
   the least; blade, melee, wreckage, glass, execution, takedown more; `UNSEEN` on top when the guard never noticed) times
   the combo multiplier (+0.5 per kill of the chain, capped at x4; the chain breaks 4 s after the last kill, flooring

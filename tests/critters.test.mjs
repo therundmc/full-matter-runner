@@ -25,7 +25,7 @@ function stub(def) {
 const run = (critters, sec) => { for (let i = 0; i < sec * 60; i++) critters.update(1 / 60); };
 const prop = (type, col, row, w = 58, h = 34) => {
   const body = Bodies.rectangle(col * TILE, row * TILE, w, h);
-  return { type, body, dead: false, get x() { return body.position.x; }, get y() { return body.position.y; } };
+  return { type, body, dead: false, kick: { x: 0, y: 0, vr: 0 }, get x() { return body.position.x; }, get y() { return body.position.y; } };
 };
 const of = (critters, kind, state) => critters.list.filter((c) => c.kind === kind && (!state || c.state === state));
 
@@ -87,7 +87,7 @@ test('critters: pigeons peck about until a shot nearby, or the player running at
   assert.equal(critters.list.length, 0, 'gone');
 });
 
-test('critters: the cat watches the player, bolts when he walks up and knocks the bin on its way', () => {
+test('critters: the cat watches the player, bolts when he walks up and rattles the bin on its way without moving it', () => {
   const { world, critters, log } = stub({ cats: [[20, 20]] });
   const bin = prop('trash_can', 20, 17, 15, 15), behind = prop('trash_can', 17, 21, 15, 15);
   world.props.push(bin, behind);
@@ -102,8 +102,8 @@ test('critters: the cat watches the player, bolts when he walks up and knocks th
   assert.equal(cat.state, 'run');
   assert.equal(cat.bin, bin, 'the one that is not on the side of the fright');
   run(critters, 1);
-  assert.ok(Body.getSpeed(bin.body) > 0.5, 'the bin is knocked');
-  assert.equal(Body.getSpeed(behind.body), 0);
+  assert.ok(Math.hypot(bin.kick.x, bin.kick.y) > 2 && Body.getSpeed(bin.body) === 0, 'the bin rattles where it stands');
+  assert.ok(!behind.kick.x && Body.getSpeed(behind.body) === 0);
   assert.deepEqual(log.noise, [CRITTERS.cat.noise * TILE]);
   run(critters, 15);
   assert.equal(critters.list.length, 0, 'gone');

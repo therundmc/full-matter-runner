@@ -1,5 +1,6 @@
 // Score of a run (DOM-free). Fed by world events only:
-//   'kill'       points by style x combo multiplier, different ways of killing, hits
+//   'kill'       points by style (+ the circumstances: killTags) x combo multiplier, different ways of killing, hits
+//   'dodge', 'pickup'  remembered a moment: a kill right after one is tagged
 //   'knock'      small bonus for flooring a guard (thrown gun, slide), keeps the chain alive
 //   'shot'       trigger pulls of the player (accuracy)
 //   'explosion'  remembers what blew up (a rocket kill is a hit)
@@ -31,6 +32,27 @@ export function killStyle({ cause, killer, victim }) {
   }
   if (!GUN_CAUSES.has(cause)) return null;
   return { style: cause === 'blast' ? 'pointBlank' : 'shot', method: WEAPONS[type]?.kind === 'gun' ? type : 'gun' };
+}
+
+// The circumstances of a kill worth a bonus (SCORING.tags keys). how: what whoever killed knew of it (a round:
+// pierced, through, bounced, dist, last; a blow: from, heavy; smoked); ctx: { now, dodgeT, pickT, streak } where
+// streak counts the kills of the last instants, this one included.
+export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
+  const tags = [];
+  if (how.pierced > 0) tags.push('collateral');
+  if (how.through) tags.push('wallbang');
+  if (how.bounced) tags.push('ricochet');
+  if (how.dist >= rules.longShot) tags.push('longshot');
+  if (how.last) tags.push('lastRound');
+  if (killer?.slide) tags.push('slide');
+  if (killer?.vaulting) tags.push('airborne');
+  if (how.from === 'behind') tags.push('behind');
+  if (how.heavy) tags.push('smash');
+  if (how.smoked) tags.push('smoked');
+  if (ctx.now - ctx.dodgeT < rules.dodgeWindow) tags.push('dodge');
+  if (ctx.now - ctx.pickT < rules.drawWindow) tags.push('quickdraw');
+  if (ctx.streak >= 2) tags.push(ctx.streak === 2 ? 'double' : ctx.streak === 3 ? 'triple' : 'massacre');
+  return tags;
 }
 
 export function comboMultiplier(n, rules = SCORING.combo) {
@@ -86,12 +108,17 @@ export default class Scoring {
     this.civilians = 0;
     this.lastT = -99;         // world time points last came in (the HUD score swells)
     this.blast = null;        // { t, source } last explosion
+    this.dodgeT = this.pickT = this.killT = -99; // world time of the last dodge, pick-up, kill by the player
+    this.streak = 0;          // kills in quick succession (rules.multiWindow)
+    this.tags = [];           // circumstances of the last kill
     const ev = world.events;
     ev.on('kill', (e) => this.onKill(e));
     ev.on('knock', (e) => this.onKnock(e));
     ev.on('shot', ({ shooter }) => { if (shooter?.isPlayer) this.shots++; });
     ev.on('explosion', ({ source }) => { this.blast = { t: world.time, source }; });
     ev.on('alertPhase', ({ phase }) => { if (phase === 'alert') this.alerts++; });
+    ev.on('dodge', () => { this.dodgeT = world.time; });
+    ev.on('pickup', ({ ch }) => { if (ch.isPlayer) this.pickT = world.time; });
   }
 
   // what the HUD shows while playing
@@ -131,8 +158,17 @@ export default class Scoring {
     this.comboEnd = w.time + this.rules.combo.window;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     const unseen = victim.aware === 0 && !(victim.knocked > 0);
-    const pts = Math.round((style.points + (unseen ? this.rules.unseen : 0)) * this.multiplier);
-    this.add(pts, victim.x, victim.y - 10, unseen ? 'UNSEEN' : style.label);
+    // the circumstances: each adds its points and counts as a way of killing
+    const k = e.killer, R = this.rules;
+    this.streak = w.time - this.killT <= R.multiWindow ? this.streak + 1 : 1;
+    this.killT = w.time;
+    const circ = { ...e.how, smoked: !!(k && w.clouds?.blocks(k.x, k.y, victim.x, victim.y)) };
+    this.tags = killTags({ killer: k, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);
+    let bonus = unseen ? R.unseen : 0;
+    for (const t of this.tags) { bonus += R.tags[t].points; this.methods.add(t); }
+    const pts = Math.round((style.points + bonus) * this.multiplier);
+    const labels = [unseen ? 'UNSEEN' : circ.label || style.label, ...this.tags.map((t) => R.tags[t].label)].filter(Boolean);
+    this.add(pts, victim.x, victim.y - 10, labels.slice(0, 3).join(' + '));
     Audio.play('confirm', { n: this.combo });
   }
 

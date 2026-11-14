@@ -28,6 +28,8 @@ export default class Projectile {
     this.floor = opts.floor || null; // the corpse aimed down at (rounds fly over every other one)
     this.dead = false;
     this.ignore = new Set();
+    // its way so far, for the score: people killed, a wall or a door gone through, a ricochet
+    this.kills = 0; this.through = false; this.bounced = false;
     if (this.rocket) this.img = sprite('weapons/rocket');
   }
 
@@ -40,7 +42,9 @@ export default class Projectile {
     for (let guard = 0; guard < 8; guard++) {
       const hit = w.traceBullet(x0, y0, x1, y1, this.team, this.ignore, this.floor);
       if (!hit) break;
+      const skipped = this.bounced;
       const r = this.onHit(hit);
+      if (r !== true && this.bounced === skipped && (hit.kind === 'wall' || hit.kind === 'door')) this.through = true;
       if (r === true) { this.x = hit.x; this.y = hit.y; this.dead = true; return; }
       if (r === false) {
         x0 = hit.x + Math.cos(this.angle) * 0.5;
@@ -85,6 +89,7 @@ export default class Projectile {
     if (na === null) return null;
     const w = this.world;
     this.energy *= 0.45;
+    this.bounced = true;
     w.particles.sparks(h.x, h.y, na, 0.5, 7, 320);
     w.sound('ricochet', h.x, h.y, 0.7);
     return { x: h.x + h.nx * 0.8, y: h.y + h.ny * 0.8, a: na + rand(-0.08, 0.08) };
@@ -170,7 +175,10 @@ export default class Projectile {
           return { x: h.x, y: h.y, a };
         }
         const d = Math.hypot(c.x - this.owner?.x, c.y - this.owner?.y) || 999;
-        c.shot(a, this.weapon, d, this.owner);
+        c.shot(a, this.weapon, d, this.owner, {
+          dist: d, pierced: this.kills, through: this.through, bounced: this.bounced, last: this.owner?.weapon?.mag === 0,
+        });
+        if (!c.alive) this.kills++;
         this.ignore.add(c);
         if (this.spend(COST.flesh)) return true;
         // through and through: the exit wound sprays forward

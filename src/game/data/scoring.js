@@ -13,6 +13,28 @@ export const SCORING = {
     execution: { points: 1000, label: 'EXECUTION' },    // finishing a guard on the floor
     takedown: { points: 1000, label: 'TAKEDOWN' },      // neck broken or throat cut from behind
   },
+  // circumstances that add to a kill (Scoring.killTags), each one also a different way of killing
+  tags: {
+    collateral: { points: 700, label: 'COLLATERAL' },   // the same round had already killed someone
+    wallbang: { points: 500, label: 'WALLBANG' },       // through a wall or a door
+    ricochet: { points: 800, label: 'RICOCHET' },
+    longshot: { points: 300, label: 'LONG SHOT' },
+    lastRound: { points: 300, label: 'LAST ROUND' },    // with the last round of the magazine
+    slide: { points: 500, label: 'SLIDE KILL' },        // while sliding
+    airborne: { points: 600, label: 'AIRBORNE' },       // in the middle of a vault
+    behind: { points: 300, label: 'FROM BEHIND' },      // a blow in the back
+    smash: { points: 200, label: 'SMASH' },             // the heavy stroke: overhead smash, lunge, straight stab
+    smoked: { points: 400, label: 'SMOKED' },           // through an extinguisher's cloud
+    dodge: { points: 600, label: 'DODGE KILL' },        // right after a round passed over a slide
+    quickdraw: { points: 300, label: 'QUICK DRAW' },    // with a weapon picked up a moment ago
+    double: { points: 400, label: 'DOUBLE KILL' },      // two, three, more within `multiWindow`
+    triple: { points: 900, label: 'TRIPLE KILL' },
+    massacre: { points: 1500, label: 'MASSACRE' },
+  },
+  longShot: 420,            // px
+  multiWindow: 0.7,         // s between two kills of a multiple one
+  dodgeWindow: 1.5,         // s after the dodge
+  drawWindow: 1.2,          // s after the pick-up
   unseen: 300,              // added when the victim never knew we were there
   // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself
   knock: { throw: 200, slide: 200, debris: 150 },

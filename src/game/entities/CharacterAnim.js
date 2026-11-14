@@ -5,7 +5,6 @@
 // Optional on a character: stow / lower (how the weapon is carried, ai/Carry.js) and busyHands() (where hands taken
 // by something else are: a pastime, a cigarette, a panic).
 import { PALETTE, TAKEDOWN } from '../Config.js';
-import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 
@@ -125,7 +124,7 @@ export function standPose(ch, P, a = ch.angle) {
     // melee weapon. At rest a bat lies on the shoulder and a knife is held low, point forward. A blow is one of three
     // gestures (ch.strike): forehand sweep, backhand sweep, or the heavy one (overhead smash / straight stab), all on
     // the same clock: anticipation, fast stroke (in front when the hit lands), follow-through, recovery.
-    const bat = d === WEAPONS.bat;
+    const bat = d.swing === 'club';
     const ra = bat ? 3 : 0.35; // weapon angle at rest
     const sw = stride * 2.2 * g;
     hlx = 6 - sw; hly = -6;
@@ -154,7 +153,7 @@ export function standPose(ch, P, a = ch.angle) {
           tr.r = d.range * 0.85;
           if (dir > 0) { tr.a0 = wa; tr.a1 = Math.min(wind, wa + 1.7); } else { tr.a0 = Math.max(-wind, wa - 1.7); tr.a1 = wa; }
         }
-      } else if (bat) {
+      } else if (bat && !d.thrust) {
         // overhead smash: up over the head (the bat shortens as it points at the camera), straight down in front,
         // then back to the shoulder round the right side
         const u = easeOut((p - 0.1) / 0.2);
@@ -165,7 +164,7 @@ export function standPose(ch, P, a = ch.angle) {
         dip = 0.05 * bump(p, 0.2, 0.7) - 0.05 * bump(p, 0, 0.2); // up on the toes, then bent over the blow
         if (p < 0.3 && len > -0.5) top = 2;
       } else {
-        // straight stab: the elbow comes back, the point goes in with the shoulder behind it
+        // straight stab (or a cue's lunge): the elbow comes back, the point goes in with the shoulder behind it
         const go = easeOut((p - 0.12) / 0.16);
         wa = ra * (1 - out);
         sx = lerp(2, 13, go); sy = lerp(5.5, 1.5, go);
@@ -183,7 +182,7 @@ export function standPose(ch, P, a = ch.angle) {
   if (wpnOn && ch.stow > 0) {
     // put away: a pistol or a knife on the hip, anything long across the back, both hands free. Drawing it, the
     // hand goes to it first, then brings it up.
-    const k = smooth(ch.stow), sw = stride * 2.6 * g, long = d.hold === 'two' || d === WEAPONS.bat;
+    const k = smooth(ch.stow), sw = stride * 2.6 * g, long = d.hold === 'two' || d.swing === 'club';
     const reach = Math.min(1, k * 2), away = Math.max(0, k * 2 - 1);
     let sx = 1, sy = 6.5, sa = 3; // on the hip: little more than the grip shows
     if (long) {
@@ -435,6 +434,32 @@ export function slidePose(ch, P, V) {
     V.hl.x = px; V.hl.y = py;
     reach(V.hl, V, -1);
     V.carryImg = null;
+  }
+  blendPose(P, V, w);
+  return P;
+}
+
+// ---------------- sitting on the ground (Player.sit: how a level starts) ----------------
+// back to the wall, legs stretched out in front, palms on the floor by the hips; ch.sit runs 1 -> 0 as he gets up
+export function sitPose(ch, P, V) {
+  const w = smooth(ch.sit);
+  if (w <= 0) return P;
+  copyPose(V, P);
+  const c = Math.cos(ch.angle), s = Math.sin(ch.angle);
+  V.ta = ch.angle;
+  V.tx = -c * 4; V.ty = -s * 4;
+  V.s = 0.86;
+  V.legs = 1;
+  V.top = 0;
+  V.wpnOn = false;
+  V.carryImg = null;
+  for (let i = 0; i < 2; i++) {
+    const side = i ? 1 : -1, lx = i ? 12 : 13.5, ly = side * 3.5, f = V.feet[i];
+    f.x = V.tx + lx * c - ly * s; f.y = V.ty + lx * s + ly * c; f.a = ch.angle;
+  }
+  for (const [h, side] of [[V.hl, -1], [V.hr, 1]]) {
+    h.x = V.tx - c - s * side * 9; h.y = V.ty - s + c * side * 9;
+    reach(h, V, side);
   }
   blendPose(P, V, w);
   return P;

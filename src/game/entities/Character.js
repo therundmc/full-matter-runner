@@ -10,7 +10,8 @@ import { segPoly } from '../../engine/physics/Raycast.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
-import { newPose, standPose, vaultPose, slidePose, drawPose, drawDown } from './CharacterAnim.js';
+import { blowFrom, blowFx } from '../fx/Blows.js';
+import { newPose, standPose, vaultPose, slidePose, sitPose, drawPose, drawDown } from './CharacterAnim.js';
 
 const { Bodies, Body } = Matter;
 
@@ -314,9 +315,16 @@ export default class Character {
       // the blow lands: a spark across it (along it for a stab or a smash), the camera takes some of it
       const heavy = d.hold === 'melee' && this.strike === 2;
       w.hitSpark((x + c.x * 2) / 3, (y + c.y * 2) / 3, heavy || d.hold === 'none' ? a : a - (Math.PI / 2) * this.punchSide, d.lethal ? 1.4 : 1);
-      if (this.isPlayer) { w.camera.push(Math.cos(a) * 2, Math.sin(a) * 2); w.hitstop(d === WEAPONS.bat ? 0.06 : 0.045); }
-      if (d.lethal || c.isPlayer) c.kill(a, d === WEAPONS.knife ? 'slash' : 'melee', this, d);
-      else c.knock(a, 'punch');
+      if (this.isPlayer) { w.camera.push(Math.cos(a) * 2, Math.sin(a) * 2); w.hitstop(d.heft === 2 ? 0.06 : 0.045); }
+      if (d.lethal || c.isPlayer) {
+        // how it landed: the heavy stroke or a sweep, and from which side of him (fx/Blows.js, Scoring)
+        const how = { from: blowFrom(c.angle, a), heavy };
+        if (d.lethal) blowFx(w, d, c, a, how);
+        // a club brought straight down crushes, and drops him where he stood
+        const by = heavy && d.swing === 'club' && !d.thrust ? { ...d, wound: 'crush', gore: (d.gore || 0.3) * 2.5 } : d;
+        c.kill(a, d.swing === 'blade' ? 'slash' : 'melee', this, by, how);
+        if (d.snaps && this.weapon && chance(d.snapOdds)) this.snapWeapon(a);
+      } else c.knock(a, 'punch');
     }
     for (const p of w.props) {
       if (p.dead) continue;
@@ -337,14 +345,14 @@ export default class Character {
       hit = true;
     }
     for (const win of w.windows) {
-      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && win.blow(x, y, a, this, d === WEAPONS.bat ? 2 : 0)) hit = true;
+      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && win.blow(x, y, a, this, d.heft === 2 ? 2 : 0)) hit = true;
     }
     for (const door of [...w.doors]) {
       const t = door.tip();
       const mx = (door.hx + t.x) / 2, my = (door.hy + t.y) / 2;
       if (Math.hypot(mx - x, my - y) < d.range + 14) {
         // bare hands = a kick, otherwise a blow with the weapon
-        door.hit(mx, my, a, d === WEAPONS.bat ? 2 : 1, d.hold === 'none' ? 'kick' : 'melee');
+        door.hit(mx, my, a, d.heft === 2 ? 2 : 1, d.hold === 'none' ? 'kick' : 'melee');
         if (this.isPlayer) door.pushedByPlayer = 0.8;
         hit = true;
       }
@@ -368,25 +376,35 @@ export default class Character {
     if (hit) w.sound(d.sound, x, y);
   }
 
-  // hit by a projectile
-  shot(angle, weaponDef, distance, shooter) {
+  // the weapon breaks over someone (def.snaps): the far half flies off, what stays in the hand is another weapon
+  snapWeapon(a) {
+    const d = this.def, w = this.world, tip = local(this.x, this.y, a, d.range * 0.8, 0), fa = a + rand(0.4, 0.9) * this.punchSide;
+    w.addDebris(new Debris(w, sprite(WEAPONS[d.snaps].sprite), tip.x, tip.y, a + rand(-1, 1), Math.cos(fa) * 170, Math.sin(fa) * 170,
+      rand(-0.8, 0.8), { material: 'wood', kg: 0.3, mu: 0.6, fly: 0.35, bounce: 0.3 }));
+    w.particles.chips(tip.x, tip.y, a, 1.2, 6, '#d8c090', 160);
+    w.sound('woodBreak', tip.x, tip.y, 0.6, { pitch: 1.5 });
+    this.setWeapon(d.snaps, 0);
+  }
+
+  // hit by a projectile; how: what the round did on its way (Projectile: pierced, through, bounced, dist, last)
+  shot(angle, weaponDef, distance, shooter, how) {
     let cause = 'bullet';
     if (weaponDef?.pellets > 1) cause = distance < 120 ? 'blast' : 'bullet';
     else if (weaponDef?.heavy) cause = 'heavy';
-    this.kill(angle, cause, shooter, weaponDef || {});
+    this.kill(angle, cause, shooter, weaponDef || {}, how);
   }
 
-  // by: what did it (a weapon definition, or { gore, wound }): sets the dismemberment odds and the bleeding
-  kill(angle, cause, killer, by) {
+  // by: what did it (a weapon definition, or { gore, wound }): sets the dismemberment odds and the bleeding;
+  // how: the circumstances of it, for the score (see Scoring.killTags)
+  kill(angle, cause, killer, by, how) {
     if (!this.alive || this.invulnerable) return; // invulnerable: sandbox god mode
     this.alive = false;
-    this.lastAmmo = this.weapon && WEAPONS[this.weapon.type].ammo;
     this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
     this.world.removeBody(this.body);
     const left = gore(this.world, this, angle, cause, by);
     // most of them go down with a cry, when there is still a throat to cry with
     if (left === 'corpse' && !this.held && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
-    this.world.onKill(this, cause, killer);
+    this.world.onKill(this, cause, killer, how);
   }
 
   knock() { /* overridden by Enemy */ }
@@ -474,6 +492,7 @@ export default class Character {
     // a slide can chain into a vault: the vault blends out of whatever the slide pose was
     if (this.slideAnim) slidePose(this, P, this.pose2);
     if (this.vaulting) vaultPose(this, P, this.pose2);
+    if (this.sit > 0) sitPose(this, P, this.pose2);
     drawPose(ctx, this, P);
   }
 }

@@ -82,9 +82,12 @@ lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
 # ---------------------------------------------------------------- actors (13 guards)
-# Blades, bats and pistols: six men with their hands (3 bats, 3 knives), five pistols. The two heavier guns are the
-# reward at the far end, in the back room: the boss's shotgun (12 gauge on his desk) and his bodyguard's uzi.
-lv.actor('@', 21, 35, face=270)
+# Blades, bats and a tire iron: eleven men with their hands. Two guns in the whole house: the pool player's pistol
+# in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
+# (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
+lv.actor('@', 20, 34, face=0)
+lv.intro = 'sit'                                        # on the ground, his back to the wall: he gets up
+
 # The street, the start alley, the bar room and its toilets are public ground: anyone may walk in for a drink.
 # Off limits: the back lot, the service alley behind its gate, the gap, and inside the bar the storeroom, the
 # boss's back room, behind the counter and the VIP room. Whoever is seen there is thrown out the hard way.
@@ -100,14 +103,14 @@ lv.host(21, 12, 30, 12)
 lv.host(15, 13, 30, 15)
 lv.host(15, 16, 23, 19)
 lv.host(21, 6, 23, 11)
-lv.actor('5', 22, 33)                                   # a bat by the dumpster: the first weapon
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
-lv.actor('P', 17, 22, route=[[16, 22], [27, 22]])       # pistol, walks the sidewalk
+lv.actor('J', 17, 22, route=[[16, 22], [27, 22]])       # a blade in his pocket, walks the sidewalk
 lv.actor('k', 12, 12, face=270)                         # having a smoke in the service alley
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
-lv.actor('p', 24, 14, face=349, job='pool')             # playing pool
+lv.actor('p', 24, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
+lv.actor('0', 25, 15)                                   # a cue left against the pool table
 lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
@@ -125,18 +128,16 @@ lv.patron('civ4', 28.6, 17.5, 60, 'drink')
 lv.patron('dancer1', 29.5, 18.9, 180, 'dance')
 lv.patron('dancer2', 27.9, 18.75, 190, 'dance')
 # back of house
-lv.actor('p', 17, 8, face=90, job='count')              # the pimp, alone, counting his dope
+lv.actor('j', 17, 8, face=90, job='count')              # the pimp, alone, counting his dope
 lv.actor('6', 19, 7)
-lv.actor('n', 16, 7)
 lv.actor('k', 22, 7, face=90)
 lv.actor('h', 30, 8, face=180)                          # the boss behind his desk, a shotgun across it
-lv.actor('p', 26, 9, face=45)
-lv.actor('u', 29, 10, face=200)                         # his bodyguard: the only automatic in the house
-lv.actor('g', 30, 10)
+lv.actor('m', 26, 9, face=45)
+lv.actor('i', 29, 10, face=200)                         # his bodyguard, a tire iron in his fist
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
 lv.actor('1', 8, 17)                                    # what the liquor store keeps behind its counter
 # back lot: he walks along the back wall, past the back room's door, and turns round short of the gap
-lv.actor('P', 19, 4, route=[[13, 4], [29, 4]])
+lv.actor('M', 19, 4, route=[[13, 4], [29, 4]])
 
 # ---------------------------------------------------------------- props
 lv.area('the alley where it starts')
@@ -167,7 +168,7 @@ lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
 
 lv.area('road: parked along the bar side')
-lv.prop('car2', 14.6, 24.0, 0, lights=False)
+lv.prop('car2', 14.6, 24.0, 0, lights=False, trunk='tire_iron')   # E at its tail: a tire iron in the trunk
 lv.prop('car', 31.2, 24.0, 180)
 lv.prop('van', 38.6, 24.05, 180, lights=False)
 
