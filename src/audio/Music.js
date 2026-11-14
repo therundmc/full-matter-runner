@@ -2,13 +2,14 @@
 // Data first (chords, progressions, patterns, sections, song form); a seeded bar planner turns it into note
 // events (every return of a section varies), then a lookahead scheduler plays each bar on long-lived synth
 // voices (mono bass/arp/lead, 5-voice pad: no nodes per note) and on drum one-shots synthesized once into
-// AudioBuffers. Public API: start(), stop(), setIntensity(0..1), setCombat(on). The intensity picks the form on
-// a bar line: beatless calm (pad and a few notes), tense (a heartbeat), then the song and its beat (BEAT); the
-// combat variant (FORMS.combat: same key, tempo and motif, angrier) takes over while the game fights.
+// AudioBuffers. Public API: start(), stop(), setIntensity(0..1), setCombat(on), setCombo(n). The intensity picks
+// the form on a bar line: a near-silent calm (a few spaced plucks), tense (a heartbeat), then the song and its beat
+// (BEAT); the combat variant (FORMS.combat: same key and motif, a house beat) takes over while the game fights,
+// bare at first, each kill of a chain bringing a layer and a little volume (the stage, see setCombo).
 // The constructor takes an optional (context, destination) so the song can be rendered offline for analysis.
 import Audio from './Audio.js';
 
-const BPM = 108;
+const BPM = 126;
 const BAR = 240 / BPM;
 const STEP = BAR / 16;
 const LOOKAHEAD = 0.3;   // s: a bar is scheduled once its downbeat is this close
@@ -17,6 +18,8 @@ const GATE_HOLD = 0.22;  // s: gated reverb stays open this long after a snare/c
 const MIN_FIGHT_BARS = 2; // the combat variant plays at least this long before it may wind down
 const TENSE = 0.45;       // intensity from which the calm gets a heartbeat
 const BEAT = 0.7;         // ... and from which the song proper, with its beat, plays
+const STAGES = 5;         // layers a kill chain can bring in (see setCombo)
+const STAGE_GAIN = 0.045; // each of them a little louder
 const HOT = 0.9;          // ... and under which a fight stays on its first section (no double-time chase)
 
 // ---------------------------------------------------------------- harmony
@@ -122,7 +125,10 @@ const SNARE = {
   roll8: '5.5.5.5.6.6.6.6.', roll8b: '6.6.6.6.7.7.7.7.', roll16: '6666777788889999', breakRoll: '........55667789',
   skank: '..6.9.6...6.9.6.', // offbeat pushes around the backbeat: reads as double time
 };
-const HATS = { off8: '..5...5...5...5.', eights: '6.3.6.3.6.3.6.3.', sixteen: '6243624362436245', drive: '73o373o373o373o3' };
+const HATS = {
+  house: '..o...o...o...o.', house16: '3.o33.o33.o33.o3', // the open hat on every off-beat
+  off8: '..5...5...5...5.', eights: '6.3.6.3.6.3.6.3.', sixteen: '6243624362436245', drive: '73o373o373o373o3',
+};
 const FILLS = {
   small: { snare: '.............4.6' }, flam: { snare: '............6.79' }, roll: { snare: '........45667789' },
   toms: { tom: '........H.HMM.LL' }, toms2: { tom: '............HMLL', snare: '........7.......' },
@@ -131,11 +137,13 @@ const FILLS = {
 const BASS = {
   pedal: 'R---------------', halftime: 'R-----r.R---F-r.', pulse8: 'R.r.R.r.R.r.R.rA', octave: 'R.O.r.O.R.O.rOrA',
   syncop: 'R..rR.r.R..rO.rA', gallop: 'R.rrR.rrR.rrR.rO', drive: 'RrrORrrrRrrORrr7',
+  pump: '..R...R...R...RA', roll: '.rRr.rRr.rRr.rRA', // house: between the kicks, so the bass pumps
   rush: 'RrOrRrOrRrOrRO7A', tresillo: 'RrrOrrOrRrrOrrOA', // fight: 16ths with rolling / 3-3-2 octave accents
 };
 // arp: index into the 6-note pool
 const ARP = {
-  lone: '0.........2.....', far: '....1.......3...', sparse: '0...2...1...3...', pulse8: '0.2.1.3.0.2.4.3.', broken: '0213243102132435', updown: '0123454321012345',
+  rest: '................', one: '......0.........', lone: '0.........2.....', far: '....1.......3...',
+  sparse: '0...2...1...3...', pulse8: '0.2.1.3.0.2.4.3.', broken: '0213243102132435', updown: '0123454321012345',
   up: '0123450123452345', cascade: '5432105432104321', pedal: '0102030401020305',
 };
 // pad stabs (fight): the sustained chord is chopped open on these steps
@@ -189,18 +197,23 @@ const hits = (pat) => { if (!pat) return []; let h = HITS.get(pat); if (!h) HITS
 // energy 0..1 picks layers in the lists (calm -> busy) and opens filters; `enter` delays a layer to a bar;
 // kickBars/snareBars override per bar; level compensates loudness; duck = sidechain floor (1 = no pump);
 // fillRate = chance of a small fill every 4th bar; bite opens the bass and arp filters further; stab chops the
-// pad on a STABS pattern; leadVol scales the lead
+// pad on a STABS pattern; leadVol scales the lead; arpEach turns the arp pattern every bar (not every 4);
+// `from` = the stage (kill chain) a layer comes in at, and in a fight the lists (kick, hats, bass) step up with it
 const DROP = {
   prog: 'drop', energy: 1, level: 0.86, pad: 0.75, kick: 'drive', snare: 'back', clap: true, hats: ['eights', 'sixteen', 'drive'],
   bass: ['gallop', 'drive'], arp: ['up', 'cascade'], lead: 'drop', leadMin: 0.85, fills: true, crash: true, impact: true, duck: 0.25,
 };
-// the fight is the drop getting angry: galloping kick, 16th octave bass, chopped pad, a fill every 4 bars and the
-// motif re-struck; the chase answers it in double time
-const FIGHT = { ...DROP, pad: 1.3, hats: ['drive'], leadMin: 0, fillRate: 1, bite: 1.5, duck: 0.45 };
+// the fight is house: four on the floor, an open hat on every off-beat, a bass that pumps between the kicks. It
+// starts bare; a chain of kills brings in the clap, the 16ths and the arp, the chopped pad, then the motif and a
+// rolling octave bass; the chase answers it in double time
+const FIGHT = {
+  ...DROP, level: 0.8, pad: 1.1, kick: ['four', 'four', 'drive'], snare: 'back', hats: ['house', 'house16', 'drive'],
+  bass: ['pump', 'roll', 'rush'], leadMin: 0, fillRate: 1, bite: 1.5, duck: 0.3, from: { snare: 1, arp: 2, stab: 3, lead: 4 },
+};
 const SECTIONS = {
-  // nothing is happening: no drums, a held chord, a low drone, two plucked notes a bar and an answer now and then
-  calm: { prog: 'verseA', energy: 0.3, level: 0.9, pad: 1, bass: ['pedal'], arp: ['lone', 'far'], lead: 'answers',
-    leadVol: 0.5, duck: 1 },
+  // nothing is happening: next to silence, a breath of the chord and a pluck or two a bar, some bars none
+  calm: { prog: 'verseA', energy: 0.3, level: 0.5, pad: 0.22, arp: ['lone', 'rest', 'one', 'far', 'rest'], arpEach: true,
+    duck: 1 },
   // someone is wondering: a heartbeat and off-beat hats under the same chords
   tense: { prog: 'verseA', energy: 0.4, level: 0.95, pad: 1, kick: 'heart', hats: ['off8'], enter: { hats: 2 },
     bass: ['halftime'], arp: ['sparse', 'pulse8'], duck: 0.6 },
@@ -208,7 +221,7 @@ const SECTIONS = {
     arp: ['sparse', 'pulse8'], duck: 0.6 },
   ambient: { prog: 'verseA', energy: 0.35, level: 0.95, pad: 1, kick: 'heart', hats: ['off8'], bass: ['halftime'],
     arp: ['pulse8', 'broken'], duck: 0.55 },
-  verseA: { prog: 'verseA', energy: 0.6, level: 1, pad: 0.8, kick: 'four', snare: 'back', hats: ['off8', 'eights'],
+  verseA: { prog: 'verseA', energy: 0.6, level: 1, pad: 0.8, kick: 'four', snare: 'back', hats: ['house', 'eights'],
     bass: ['pulse8', 'octave'], arp: ['sparse', 'broken'], fills: true, crash: true, duck: 0.35 },
   verseB: { prog: 'verseB', energy: 0.68, level: 1, pad: 0.8, kick: 'broken', snare: 'ghost', hats: ['eights', 'sixteen'],
     bass: ['syncop', 'octave'], arp: ['broken', 'updown'], lead: 'answers', leadPass: 1, fills: true, duck: 0.35 },
@@ -222,9 +235,8 @@ const SECTIONS = {
     crash: true, duck: 1 },
   dropB: { ...DROP, prog: 'dropB', lead: 'dropB', leadMin: 0.5 },
   dropB2: { ...DROP, prog: 'dropB', lead: 'dropB', leadMin: 0.4, impact: false, crash: false, arp: ['broken', 'cascade'] },
-  fight: { ...FIGHT, kick: 'gallop', snare: 'ghost', stab: 'tresillo', bass: ['rush', 'tresillo'], arp: ['pedal', 'cascade'],
-    lead: 'fight', leadVol: 1.25 },
-  chase: { ...FIGHT, prog: 'chase', snare: 'skank', stab: 'eights', bass: ['tresillo', 'rush'], arp: ['up', 'pedal'],
+  fight: { ...FIGHT, stab: 'tresillo', arp: ['pedal', 'cascade'], lead: 'fight', leadVol: 1.25 },
+  chase: { ...FIGHT, prog: 'chase', snare: 'skank', stab: 'eights', bass: ['roll', 'tresillo', 'rush'], arp: ['up', 'pedal'],
     lead: 'chase', impact: false, riser: 2 },
 };
 const FORMS = {
@@ -239,7 +251,7 @@ const AFTERMATH = FORMS.game.indexOf('break'); // where the song resumes once a 
 
 // ---------------------------------------------------------------- mix levels
 const MIX = {
-  bus: 0.7, out: 0.9, kick: 0.27, snare: 0.18, clap: 0.1, hat: 0.055, ohat: 0.035, tom: 0.12, crash: 0.05, impact: 0.16, riser: 0.02,
+  bus: 0.7, out: 0.9, kick: 0.27, snare: 0.18, clap: 0.1, hat: 0.055, ohat: 0.046, tom: 0.12, crash: 0.05, impact: 0.16, riser: 0.02,
   bass: 0.3, bassOut: 0.3, sub: 0.1, pad: 0.12, arp: 0.11, lead: 0.075,
   gateSend: 0.7, gateRet: 0.9, verbRet: 0.5, delayRet: 0.32, delayFb: 0.38,
 };
@@ -574,6 +586,8 @@ class Music {
     this.target = 0;    // requested intensity
     this.level = 0;     // smoothed intensity, moves once per bar
     this.combat = false; // the game is fighting: the combat variant plays (see _tick)
+    this.combo = 0;     // kills in the player's chain
+    this.stage = 0;     // layers it has brought in: up at once, down a step a bar
     this.passes = {};   // times each section has played: drives the variations
     this.form = null;
     this.voicing = null;
@@ -606,6 +620,10 @@ class Music {
   // true while the game fights: the song (not the menu) hands over to its combat variant, and back afterwards
   setCombat(on) { this.combat = !!on; }
 
+  // kills in the player's chain: each one brings a layer of the beat in and a little volume, up to STAGES; when
+  // the chain breaks they go one by one, a bar apart
+  setCombo(n) { this.combo = n || 0; }
+
   _open(ctx) {
     if (this.bufCtx !== ctx) { this.buf = makeBuffers(ctx); this.bufCtx = ctx; }
     this.S = new Session(ctx, this.buf, this.dest || Audio.music);
@@ -616,6 +634,7 @@ class Music {
     this.cued = false;   // the fight cue played: the variant is due on the next bar line
     this.out = false;    // the bar being planned is the last of a fight
     this.fightBars = 0;  // bars of the combat variant played in a row
+    this.stage = 0;
   }
 
   _tick(until) {
@@ -640,6 +659,8 @@ class Music {
       }
       this.cued = false;
       this.level += (this.target - this.level) * 0.5;
+      const top = Math.min(STAGES, this.combo);
+      this.stage = top >= this.stage ? top : this.stage - 1;
       const p = this._plan();
       this._play(this.nextBar, p);
       if (this.onBar) this.onBar(p, this.nextBar);
@@ -676,12 +697,14 @@ class Music {
   _plan() {
     const name = this.form[this.pos], sec = SECTIONS[name], b = this.bar, pass = this.passes[name] || 0;
     const r = rng(hashStr(name) ^ Math.imul(pass + 1, 7919) ^ Math.imul(b + 1, 104729));
-    const game = this.form === FORMS.game;
-    const e = sec.energy * (game ? 0.55 + 0.45 * this.level : 1);
+    const game = this.form === FORMS.game, fight = this.form === FORMS.combat, st = game || fight ? this.stage : 0;
+    const e = fight ? sec.energy * (0.55 + 0.45 * st / STAGES)
+      : Math.min(1, sec.energy * (game ? 0.55 + 0.45 * this.level + 0.06 * st : 1));
     const last = this.out || b === SECTION_BARS - 1; // last bar before another section
     const after = this.out ? FORMS.game[AFTERMATH] : this.form[this._after()];
-    const on = (layer) => b >= (sec.enter?.[layer] ?? 0);
-    const pick = (list, bias = 0) => (list?.length ? list[clamp(Math.floor(e * list.length) + bias, 0, list.length - 1)] : null);
+    const on = (layer) => b >= (sec.enter?.[layer] ?? 0) && st >= (sec.from?.[layer] ?? 0);
+    const pick = (list, bias = 0) => (list?.length
+      ? list[clamp(Math.floor((fight ? st / (STAGES + 1) : e) * list.length) + bias, 0, list.length - 1)] : null);
     const vary = (pass + (b >> 2)) % 2; // alternates every 4 bars and every pass
 
     const chords = this._chordsAt(name, b);
@@ -690,7 +713,7 @@ class Music {
     const next = this._chordsAt(last ? after : name, last ? 0 : b + 1)[0].ch;
 
     // ---- drums
-    const kick = on('kick') ? hits(KICK[sec.kickBars ? sec.kickBars[b] : sec.kick]) : [];
+    const kick = on('kick') ? hits(KICK[sec.kickBars ? sec.kickBars[b] : Array.isArray(sec.kick) ? pick(sec.kick) : sec.kick]) : [];
     let snare = on('snare') ? hits(SNARE[sec.snareBars ? sec.snareBars[b] : sec.snare]) : [];
     let hat = on('hats') ? hits(HATS[pick(sec.hats, b < 2 ? -1 : 0)]) : [];
     let tom = [];
@@ -708,7 +731,7 @@ class Music {
     // ---- bass
     const bass = [];
     const bpat = BASS[pick(sec.bass, -vary)];
-    for (let s = 0; s < 16; s++) {
+    for (let s = 0; bpat && s < 16; s++) {
       const tok = bpat[s];
       if (tok === '.' || tok === '-') continue;
       let len = 1;
@@ -728,8 +751,8 @@ class Music {
 
     // ---- arp: pattern and inversion rotate every 4 bars / pass, octave answer at phrase ends
     const arp = [];
-    if (sec.arp && e >= 0.2) {
-      const apat = ARP[sec.arp[(pass + (b >> 2)) % sec.arp.length]];
+    if (sec.arp && e >= 0.2 && on('arp')) {
+      const apat = ARP[sec.arp[(pass + (sec.arpEach ? b : b >> 2)) % sec.arp.length]];
       const base = [60, 63, 58][(pass * 2 + (b >> 2)) % 3];
       for (let s = 0; s < 16; s++) {
         if (apat[s] === '.') continue;
@@ -742,15 +765,16 @@ class Music {
     // ---- lead (restrained: only when the section allows it and intensity is high enough)
     let lead = [];
     const phrase = sec.lead && LEADS[sec.lead][b];
-    if (phrase && this.level >= (sec.leadMin ?? 0) && pass >= (sec.leadPass ?? 0)) {
+    if (phrase && on('lead') && this.level >= (sec.leadMin ?? 0) && pass >= (sec.leadPass ?? 0)) {
       const oct = sec.lead !== 'answers' && pass % 2 === 1 && b < 4 ? -12 : sec.lead === 'answers' && vary ? -12 : 0;
       lead = phrase.map(([s, m, len]) => ({ s, m: m + oct, len }));
     }
 
     const bite = sec.bite ?? 1;
     const plan = {
-      name, pass, bar: b, e, chords, kick, snare, clap, hat, tom, bass, arp, lead, stab: hits(STABS[sec.stab]),
-      level: sec.level, duck: sec.duck, pad: sec.pad, leadVol: sec.leadVol ?? 1,
+      name, pass, bar: b, e, stage: st, chords, kick, snare, clap, hat, tom, bass, arp, lead,
+      stab: on('stab') ? hits(STABS[sec.stab]) : [],
+      level: sec.level * (1 + STAGE_GAIN * st), duck: sec.duck, pad: sec.pad, leadVol: sec.leadVol ?? 1,
       padCut: (300 + 2400 * e) * (sec.padCut ?? 1) * (sec.sweep ? 0.35 + 0.65 * (b / 7) : 1),
       bassCut: [(90 + 260 * e) * bite, (500 + 2200 * e) * bite], arpDecay: 0.05 + 0.1 * e, arpCut: (1200 + 3200 * e) * bite,
       crash: b === 0 && sec.crash, impact: b === 0 && sec.impact, down: b === 0 && sec.down,

@@ -93,6 +93,7 @@ export default class Game {
     ev.on('explosion', () => this.tension.bump('blast'));
     ev.on('alertPhase', ({ phase }) => Music.setCombat(AI.combatMusic.includes(phase)));
     Music.setCombat(false);
+    Music.setCombo(0);
     Music.setIntensity(this.tension.level('normal'));
     this.sandbox.attach(this.world);
     this.setState('intro');
@@ -193,6 +194,7 @@ export default class Game {
     if (this.world.cleared) this.clearedT += dt;
     this.tension.update(dt);
     Music.setIntensity(this.tension.level(this.world.director.phase));
+    Music.setCombo(this.world.scoring.combo);
 
     if (this.hitstop > 0) {
       this.hitstop -= dt;

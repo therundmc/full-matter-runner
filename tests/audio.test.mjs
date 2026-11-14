@@ -155,7 +155,7 @@ test('audio: without the foley bank nothing throws and silent sounds free their 
 });
 
 // ---------------------------------------------------------------- soundtrack (audio/Music.js)
-const BAR = 240 / 108;
+const BAR = 240 / 126;
 const FIGHT = ['fight', 'chase']; // sections of the combat variant
 
 // Plays the soundtrack on a mock context the way the game does (a tick every 100 ms, 0.3 s ahead) for `seconds`,
@@ -167,6 +167,7 @@ function playMusic(seconds, script = [], intensity = 0.8) {
   Object.assign(Music, { ctx, dest: ctx.destination, playing: false, S: null, passes: {}, voicing: null });
   Music.setIntensity(intensity);
   Music.setCombat(false);
+  Music.setCombo(0);
   Music.onBar = (plan, t) => bars.push({ t, name: plan.name, bar: plan.bar, plan });
   Music._open(ctx);
   const todo = script.slice();
@@ -196,9 +197,9 @@ test('music: no beat while all is quiet, a heartbeat when someone wonders, the b
   assert.deepEqual([...new Set(bars.map((b) => b.name))].slice(0, 3), ['calm', 'tense', 'verseA']);
   for (const { plan: p } of of('calm')) {
     assert.equal(p.kick.length + p.snare.length + p.hat.length + p.tom.length, 0, 'no drums');
-    assert.ok(p.arp.length === 2 && p.bass.length === 1 && p.lead.length <= 4, 'a drone and a few notes');
+    assert.ok(p.arp.length <= 2 && !p.bass.length && !p.lead.length && p.level <= 0.5, 'a few quiet plucks, nothing else');
   }
-  assert.ok(of('calm').some((b) => b.plan.lead.length), 'an answer now and then');
+  assert.ok(of('calm').some((b) => b.plan.arp.length) && of('calm').some((b) => !b.plan.arp.length), 'bars of silence between them');
   for (const { plan: p } of of('tense')) assert.ok(p.kick.length === 2 && !p.snare.length, 'a heartbeat');
   assert.equal(of('verseA')[0].bar, 0, 'the song starts from its top');
   assert.ok(of('verseA').every((b) => b.plan.kick.length >= 4 && b.plan.snare.length >= 2));
@@ -227,7 +228,7 @@ test('tension: the alert phase sets the floor, shots and kills heat the soundtra
 test('music: a fight is cued at once, takes over on the next bar line and hands back when the game calms down', () => {
   let cue = 0;
   const bars = playMusic(60, [
-    [5, (ctx) => { cue = ctx.started; Music.setCombat(true); Music.setIntensity(1); }],
+    [5, (ctx) => { cue = ctx.started; Music.setCombat(true); Music.setIntensity(1); Music.setCombo(5); }],
     [5.1, (ctx) => { cue = ctx.started - cue; }],
     [30, () => { Music.setCombat(false); Music.setIntensity(0.8); }],
   ]);
@@ -243,14 +244,32 @@ test('music: a fight is cued at once, takes over on the next bar line and hands 
   assert.equal(bars[calm].name + bars[calm].bar, 'break0');
   assert.ok(bars[calm].plan.down && bars[calm].plan.crash, 'the song resumes at its break, on a downlifter');
   assert.ok(!bars.slice(calm).some((b) => FIGHT.includes(b.name)));
-  // the variant alternates its two sections; every bar of it is dense and stays on the 16-step grid
+  // the variant alternates its two sections; at the top of a chain every bar is dense, and on the 16-step grid
   assert.deepEqual([...new Set(bars.slice(first, calm).map((b) => b.name))], FIGHT);
   for (const b of bars.slice(first, calm)) {
     const p = b.plan;
-    assert.ok(p.bass.length >= 15 && p.arp.length === 16 && p.lead.length >= 5 && p.stab.length >= 6 && p.kick.length >= 5, b.name + b.bar);
+    assert.ok(p.bass.length >= 12 && p.arp.length === 16 && p.lead.length >= 5 && p.stab.length >= 6 && p.kick.length >= 4, b.name + b.bar);
     for (const n of [...p.lead, ...p.bass, ...p.arp]) assert.ok(n.s >= 0 && n.s < 16 && n.m > 20 && n.m < 100);
     for (const n of p.lead) assert.ok(n.s + n.len <= 16, 'lead notes end inside their bar');
   }
+});
+
+test('music: a fight starts bare, every kill of a chain brings a layer and some volume, and they go one by one', () => {
+  const kills = [1, 2, 3, 4, 5].map((n) => [(2 + 4 * n) * BAR, () => Music.setCombo(n)]);
+  const bars = playMusic(40 * BAR, [[1, () => Music.setCombat(true)], ...kills, [26 * BAR, () => Music.setCombo(0)]], 0.85);
+  const at = (stage) => bars.find((b) => b.name === 'fight' && b.plan.stage === stage && b.bar % 4 !== 3).plan;
+  const bare = at(0);
+  assert.ok(bare.kick.length === 4 && bare.hat.length === 4 && bare.hat.every((h) => h.ch === 'o' && h.s % 4 === 2), 'four on the floor, the open hat off the beat');
+  assert.ok(bare.bass.length >= 4 && bare.bass.every((n) => n.s % 4), 'the bass between the kicks');
+  assert.ok(!bare.snare.length && !bare.arp.length && !bare.stab.length && !bare.lead.length, 'and nothing else');
+  assert.ok(at(1).snare.length >= 2 && !at(1).arp.length, 'the clap');
+  assert.ok(at(2).arp.length === 16 && at(2).hat.length > 4 && !at(2).stab.length, 'the arp and the 16ths');
+  assert.ok(at(3).stab.length >= 6 && !at(3).lead.length, 'the chopped pad');
+  assert.ok(at(4).lead.length >= 5 && at(5).lead.length >= 5, 'the motif');
+  for (let s = 1; s <= 5; s++) assert.ok(at(s).level > at(s - 1).level && at(s).e > at(s - 1).e, 'louder and brighter');
+  assert.ok(at(5).level < at(0).level * 1.3, 'only a little louder');
+  const down = bars.filter((b) => b.t > 26 * BAR).map((b) => b.plan.stage);
+  assert.deepEqual(down.slice(0, 7).filter((s, i, a) => i === 0 || s !== a[i - 1]).slice(-5), [4, 3, 2, 1, 0], 'a step a bar');
 });
 
 test('music: a fight that stops at once still plays its minimum, a new one during the closing bar carries on', () => {

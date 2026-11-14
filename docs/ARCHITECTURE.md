@@ -159,10 +159,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Music (audio/Music.js): one procedural song, planned bar by bar from data (progressions, patterns, sections, forms)
   and scheduled 0.3 s ahead. Game drives it through `ai/Tension.js`: the intensity is `AI.music[phase]` plus the
   heat of the fight itself (`AI.heat`: shots, kills and blasts, cooling in a few seconds). 0 = menu loop; then,
-  picked on a bar line, a beatless calm (pad, drone, a few notes), a tense heartbeat (`TENSE`) and the song with
+  picked on a bar line, a near-silent calm (a few spaced plucks), a tense heartbeat (`TENSE`) and the song with
   its beat (`BEAT`, thicker layers and brighter filters with the value). The phases in `AI.combatMusic` switch it
-  to its combat variant (`FORMS.combat`: same key, tempo and motif; galloping kick, 16th octave bass, chopped pad,
-  the motif re-struck), whose double-time chase section only comes while the fight is hot (`HOT`).
+  to its combat variant (`FORMS.combat`: same key and motif, house at 126 BPM: four on the floor, an open hat off
+  the beat, a bass pumping between the kicks), whose double-time chase section only comes while the fight is hot
+  (`HOT`). It starts bare: `Music.setCombo(kills in the chain)` sets a stage (`STAGES`) that brings the layers in
+  one kill at a time (section `from`: clap, arp and 16ths, chopped pad, motif) with a little volume
+  (`STAGE_GAIN`), and lets them go a bar apart once the chain breaks.
   A riser and a snare roll announce the fight at once, the variant takes over on the next bar line, plays at least
   `MIN_FIGHT_BARS`, and hands back through a closing bar (fill) to the song's break.
 - Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):

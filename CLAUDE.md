@@ -35,7 +35,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime,
    the "gling" he picked, in the music's key, climbing with the combo, with reverb). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
-5. Synthwave music: darker; no beat while all is quiet (pad and a few notes), the beat starts with the fight and
+5. Synthwave music: darker; next to silent while all is quiet (a few spaced plucks), the beat (house, 126 BPM, four
+   on the floor, off-beat open hat, pumping bass; original material only) starts bare with the fight, each chained
+   kill adds a layer and a little volume (`Music.setCombo`), and
    it gets worked up with the alert phase and the heat of the fight (ai/Tension.js).
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance
