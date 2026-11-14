@@ -1,5 +1,5 @@
 import { CAT, MASK, PALETTE } from '../Config.js';
-import { sprite, spriteOpt, drawSprite, silhouette, sw } from '../../engine/Assets.js';
+import { sprite, spriteOpt, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, BODY, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
@@ -55,7 +55,7 @@ export default class Ragdoll {
     });
 
     const tImg = img('torso');
-    const tw = tImg.width, tht = tImg.height;
+    const tw = sw(tImg), tht = sh(tImg); // world px: the parts are finer sprites (engine/Assets.js `density`)
     this.torso = this.addPart('torso', tImg, Bodies.rectangle(x, y, tw - 2, tht - 2, { ...opt(), angle: th }), 0, 36);
     this.body = this.torso.body;
 
@@ -74,12 +74,12 @@ export default class Ragdoll {
     // (BODY: the -x side mirrored)
     const limb = (name, jx, jy, ang) => {
       const im = img(name), a = jx < 0 ? Math.PI - ang : ang;
-      const half = im.width / 2;
+      const half = sw(im) / 2;
       const c = at(jx + Math.cos(a) * half, jy + Math.sin(a) * half);
-      const part = this.addPart(name, im, Bodies.rectangle(c.x, c.y, im.width - 1, Math.max(3, im.height - 1), { ...opt(), angle: th + a }), a, name === 'leg' ? 11 : 4);
+      const part = this.addPart(name, im, Bodies.rectangle(c.x, c.y, sw(im) - 1, Math.max(3, sh(im) - 1), { ...opt(), angle: th + a }), a, name === 'leg' ? 11 : 4);
       part.root = { x: -half + 1, y: 0 };
       part.jt = { x: jx, y: jy }; // its joint on the torso, torso-local
-      part.len = im.width - 2;    // root to tip
+      part.len = sw(im) - 2;      // root to tip
       this.join(part, part.jt, part.root);
       return part;
     };
@@ -102,7 +102,7 @@ export default class Ragdoll {
     for (const j of this.joints) world.addBody(j.c);
     for (const i of opts.detach || []) this.detach(this.limbs[i], dir, speed * 1.4);
     // a body that will move on the floor shows the side it lies on; the others keep the plain sprites
-    if (opts.dying && opts.dying !== 'throes') this.lie(!!opts.back);
+    this.lie(opts.dying && opts.dying !== 'throes' ? !!opts.back : true);
   }
 
   addPart(name, img, body, rest, kg) {
@@ -194,7 +194,7 @@ export default class Ragdoll {
   get x() { return this.torso.body.position.x; }
   get y() { return this.torso.body.position.y; }
 
-  neckPos() { return local(this.x, this.y, this.torso.body.angle, 0, -this.torso.img.height / 2); }
+  neckPos() { return local(this.x, this.y, this.torso.body.angle, 0, -sh(this.torso.img) / 2); }
 
   // tear a limb off (shotgun blast, sniper round, explosion)
   detach(part, dir, speed = 250) {
@@ -288,7 +288,7 @@ export default class Ragdoll {
   // he has landed: his pose as he fell (limb angles off the torso's), and for a crawl the way he goes (away from his
   // killer, or turned off it by a wall); false when every way is shut
   begin(s) {
-    const t = this.torso.body, x = t.position.x, y = t.position.y, half = this.torso.img.height / 2;
+    const t = this.torso.body, x = t.position.x, y = t.position.y, half = sh(this.torso.img) / 2;
     const rel = (p) => ({ a: angDiff(t.angle, p.body.angle), s: 1 });
     const g = (p) => ({ x: p.jt.x, y: p.jt.y, len: p.len });
     this.geom = { arms: this.limbs.slice(0, 2).map(g), legs: this.limbs.slice(2).map(g), half };
@@ -367,7 +367,7 @@ export default class Ragdoll {
   }
 
   canPull(s, i) {
-    const half = this.torso.img.height / 2, d = travelAt(s.plan, i, 0), f = s.from;
+    const half = sh(this.torso.img) / 2, d = travelAt(s.plan, i, 0), f = s.from;
     return this.clear(f.x + Math.cos(s.esc) * d, f.y + Math.sin(s.esc) * d, s.esc, half, half + 10 + s.plan.pulls[i].d);
   }
 
@@ -423,7 +423,7 @@ export default class Ragdoll {
   // whatever lies under the torso at (x, y), angle a (his own gun), is nudged out from under him: drawn above the
   // bodies, it would lie on top of him
   shove(x, y, a) {
-    const half = this.torso.img.height / 2;
+    const half = sh(this.torso.img) / 2;
     for (const it of this.world.items) {
       if (it.dead || !it.body || Body.getSpeed(it.body) > 0.3) continue;
       const k = this.toLocal(x, y, a, it.body.position);
@@ -574,16 +574,18 @@ function drawPart(ctx, img, part, off, alpha) {
   ctx.save();
   ctx.translate(p.x + off, p.y + off);
   ctx.rotate(b.angle);
-  ctx.scale(sx, sy);
+  const k = img.k || 1; // a finer sprite: o is in world px
+  ctx.scale(sx * k, sy * k);
   if (alpha !== 1) ctx.globalAlpha *= alpha;
-  ctx.drawImage(img, -o.x - img.width / 2, -o.y - img.height / 2);
+  ctx.drawImage(img, -o.x / k - img.width / 2, -o.y / k - img.height / 2);
   ctx.restore();
 }
 
 // a limb bent (part.sx < 1: its end that much nearer its root): its two halves drawn from the root to the knee or
 // elbow, that comes up and out away from the body (from), and on to the shoe or hand, which keep their size
 function drawBent(ctx, img, part, off, alpha, from) {
-  const b = part.body, ang = b.angle, w = img.width, m = Math.floor(w / 2), h = img.height;
+  const b = part.body, ang = b.angle, k = img.k || 1, wp = img.width, mp = Math.floor(wp / 2), hp = img.height;
+  const w = wp * k, m = mp * k, h = hp * k; // the same in world px (a finer sprite)
   const R = local(b.position.x, b.position.y, ang, part.root.x, part.root.y);
   const p = m - 1, q = w - 1 - m, d = part.sx * part.len;
   const F = { x: R.x + Math.cos(ang) * d, y: R.y + Math.sin(ang) * d };
@@ -592,17 +594,17 @@ function drawBent(ctx, img, part, off, alpha, from) {
   let nx = -Math.sin(ang), ny = Math.cos(ang);
   if (nx * (R.x + F.x - 2 * from.x) + ny * (R.y + F.y - 2 * from.y) < 0) { nx = -nx; ny = -ny; }
   const K = { x: R.x + Math.cos(ang) * along + nx * rise, y: R.y + Math.sin(ang) * along + ny * rise };
-  const half = (P, Q, sx, sw, x0, len) => {
+  const half = (P, Q, sx, n, x0, len) => { // sx, n: the slice of the sprite, in its own px
     ctx.save();
     ctx.translate(P.x + off, P.y + off);
     ctx.rotate(Math.atan2(Q.y - P.y, Q.x - P.x));
     ctx.scale(Math.hypot(Q.x - P.x, Q.y - P.y) / len, 1);
     if (alpha !== 1) ctx.globalAlpha *= alpha;
-    ctx.drawImage(img, sx, 0, sw, h, x0, -h / 2, sw, h);
+    ctx.drawImage(img, sx, 0, n, hp, x0, -h / 2, n * k, h);
     ctx.restore();
   };
-  half(R, K, 0, m, -1, p);
-  half(K, F, m, w - m, 0, q);
+  half(R, K, 0, mp, -1, p);
+  half(K, F, mp, wp - mp, 0, q);
 }
 
 // raw flesh where something was torn off: dark meat, a wet centre

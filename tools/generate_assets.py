@@ -2773,165 +2773,252 @@ def tiles():
 # Ragdoll segments (intact, they match each character's palette)
 # --------------------------------------------------------------------------
 
-def rag_torso(ch):
-    cv = Cv(14, 16)
-    k = ch['kind']
-    hx_, hy_ = 6.9, 5.9
+# ---- a body on the floor, part by part (entities/Ragdoll.js), at FINE density and at a man's real size: torso
+# 16 x 21 world px, head 9 x 9, arm 22 x 5, leg 27 x 6: 1.75 m from crown to heel
+def lying(w, h, fn, rng, grime=4):
+    """fn(x, y) -> colour or None for each pixel, then a little grime and the outline."""
+    cv = Cv(w, h)
+    for y in range(h):
+        for x in range(w):
+            c = fn(x, y)
+            if c is not None:
+                cv.set(x, y, c)
+    mottle(cv, rng, amt=grime, cell=4)
+    cv.outline()
+    return cv
 
-    def px(u, v, L):
+
+def part_rng(ch, n):
+    return random.Random(sum(ch['top'][2][:3]) * 13 + sum(ch['pants'][2][:3]) * 7 + n)
+
+
+def torso_edge(y):
+    """Half-width of a lying torso at row y (32 x 42, head toward -y): round shoulders, the waist, the hips."""
+    if y < 5:
+        return 8.5 + 1.5 * y
+    if y <= 13:
+        return 14.5
+    if y <= 30:
+        return 14.5 - (y - 13) / 17.0 * 3.2
+    return 11.3 + (y - 30) / 10.0 * 1.2
+
+
+def rag_torso(ch, back=False):
+    """The trunk from the collar to the belt, his front (or his back): the design of chest_px drawn finer, then the
+    lapels' edge, the belt and its buckle, creases, the shade under the arms."""
+    k = ch['kind']
+    rng = part_rng(ch, 1 + back)
+    crease = VNoise(32, 44, 4, rng)
+
+    def px(x, y):
+        if y < 1 or y > 40:
+            return None
+        d = abs(x - 15.5)
+        hw = torso_edge(y)
+        if d > hw:
+            return None
+        L = max(0.15, min(1.0, 0.66 - (x - 15.5) / 14.5 * 0.2 - (y - 21) / 21.0 * 0.1))
+        if d > hw - 2.2:
+            L -= 0.22                                    # the flank turns away
         i = tidx(L)
-        if u < -hx_ + 2.3:     # belt + top of the trousers
-            if u > -hx_ + 1.3:
-                if abs(v) < 0.9:
-                    return BRASS[3] if L > 0.6 else BRASS[2]
-                return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
+        u, v = (21 - y) / 21.0 * 6.9, (x - 15.5) / 14.5 * 5.9
+        if y >= 38:
             return ch['pants'][i]
-        if u > hx_ - 1.3 and abs(v) < 1.3:
-            return ch['skin'][max(1, i)]      # neck
-        return chest_px(ch, u, v, L, hx_, hy_)
-    fill_shape(cv, 7.0, 8.0, hx_, hy_, px, ang=-math.pi / 2, kind='rect', bevel=2.2, corner=1.8, taper=0.2)
-    if k == 'thug':
-        for (x, y) in [(5, 6), (8, 6)]:
-            cv.set(x, y, ch['top'][3])    # lapels
-    if k == 'player':
-        cv.set(4, 9, hx('#ff2a6d'))       # pin badge
-    cv.outline()
-    return cv
-
-
-def rag_torso_down(ch):
-    """The torso of a man lying on his belly (Ragdoll crawl, spasm, curl): his back. The cloth of his top all over, a
-    darker seam down the spine, the collar under the neck, the belt without its buckle."""
-    cv = Cv(14, 16)
-    k = ch['kind']
-    hx_, hy_ = 6.9, 5.9
-    if k == 'civ':
-        return rag_torso(ch)          # plain tops: the front reads as a back
-
-    def px(u, v, L):
-        i = tidx(L)
-        if u < -hx_ + 2.3:     # belt + top of the trousers
-            if u > -hx_ + 1.3:
-                return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
-            return ch['pants'][i]
-        if u > hx_ - 1.3 and abs(v) < 1.3:
-            return ch['skin'][max(1, i)]      # nape
-        if k == 'brute' and abs(v) > hy_ - 1.2:
-            return ch['skin'][i]              # bare shoulders
-        if k in ('thug', 'player'):
-            if hx_ - 2.4 < u <= hx_ - 1.3 and abs(v) < 2.8:
-                return ch['top'][min(3, i + 1)]   # collar
-            if abs(v) < 0.5 and u < hx_ - 2.4:
-                return ch['top'][max(0, i - 1)]   # seam down the back, the vent
-        return ch['top'][i]
-    fill_shape(cv, 7.0, 8.0, hx_, hy_, px, ang=-math.pi / 2, kind='rect', bevel=2.2, corner=1.8, taper=0.2)
-    cv.outline()
-    return cv
-
-
-def rag_head(ch):
-    cv = Cv(9, 9)
-    hr = 3.5
-    fill_shape(cv, 4.5, 4.5, hr, hr, lambda u, v, L: head_top_px(ch, u, v, L, hr), pad=0.08)
-    k = ch['kind']
-    if k == 'player':
-        for (x, y) in [(1, 3), (1, 5), (2, 1), (2, 7)]:
-            cv.set(x, y, ch['hair'][1])
-        cv.set(7, 3, hx('#0e0a16'))
-        cv.set(7, 4, hx('#0e0a16'))
-        cv.set(7, 5, hx('#0e0a16'))
-        cv.set(7, 3, hx('#36e8f0'))
-    if k == 'brute':
-        cv.set(1, 4, ch['bandana'][1])
-        cv.set(0, 5, ch['bandana'][0])
-    cv.set(5, 0, ch['skin'][1])
-    cv.set(5, 8, ch['skin'][1])
-    cv.outline()
-    return cv
+        if y >= 36:
+            if not back and d < 2.2:
+                return BRASS[3] if d < 1.2 else BRASS[1]
+            return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
+        if y < 3 and d < 3.2:
+            return ch['skin'][max(1, i)]                 # the neck
+        if back:
+            if k == 'brute' and d > hw - 4:
+                c = ch['skin'][i]
+            elif k in ('thug', 'player') and y < 6 and d < 6:
+                c = ch['top'][min(3, i + 1)]             # collar
+            elif k != 'civ' and d < 0.6:
+                c = ch['top'][max(0, i - 1)]             # the seam down the back
+            else:
+                c = ch['top'][i] if k != 'civ' else civ_chest_px(ch, u, v, L, 6.9, 5.9)
+        else:
+            c = chest_px(ch, u, v, L, 6.9, 5.9)
+            if k == 'thug':
+                b = 0.3 + 0.38 * (u + 6.9)
+                if abs(abs(v) - b) < 0.2 and u > -5.6:
+                    c = dk(ch['top'][1], 0.25)           # the edge of the lapel
+                elif abs(v) < b and abs(v) > 0.7 and int(y) % 9 == 4 and abs(v) < 1.2:
+                    c = WHITE[2]                         # a shirt button
+        n = crease(x, y)
+        if n > 0.72:
+            c = dk(c, 0.12)
+        elif n < 0.22:
+            c = lt(c, 0.08)
+        return c
+    return lying(32, 42, px, rng)
 
 
 def rag_torso_up(ch):
-    """The torso once he has rolled onto his back (Ragdoll crawl): the front, a dark stain off the centre."""
-    cv = rag_torso(ch)
-    k = ch['kind']
-    if k in ('thug', 'player'):
-        for (x, y) in [(4, 4), (9, 4), (4, 5), (9, 5)]:
-            cv.set(x, y, ch['top'][3])      # lapels catching the light
-    for y in range(16):
-        for x in range(14):
-            d = ((x + 0.5 - 9.3) / 2.3) ** 2 + ((y + 0.5 - 7.2) / 2.0) ** 2
-            if d <= 1.0 and cv.get(x, y) != OUTLINE and cv.on(x, y):
-                cv.set(x, y, BLOOD[1] if d < 0.45 else BLOOD_POOL)
-    for (x, y, c) in [(10, 9, BLOOD_POOL), (10, 10, BLOOD[0]), (8, 6, BLOOD[2])]:
-        if cv.get(x, y) != OUTLINE:
-            cv.set(x, y, c)
+    """The torso of a body lying on its back: his front."""
+    return rag_torso(ch)
+
+
+def rag_torso_down(ch):
+    """The torso of a body lying on its belly: his back."""
+    return rag_torso(ch, back=True)
+
+
+def rag_head(ch):
+    """The head of a body lying face down (18 x 18): the back of the skull, the nape toward the shoulders (+y)."""
+    rng = part_rng(ch, 3)
+    cv = Cv(18, 18)
+    fill_shape(cv, 9.0, 9.0, 7.4, 7.4, lambda u, v, L: head_top_px(ch, u / 2.0, v / 2.0, L, 3.7), ang=math.pi / 2, pad=0.05)
+    for sgn in (-1, 1):
+        cv.set(9 + sgn * 8, 10, ch['skin'][1])
+        cv.set(9 + sgn * 8, 11, ch['skin'][1])
+    mottle(cv, rng, amt=3, cell=3)
+    cv.outline()
     return cv
 
 
 def rag_head_up(ch):
-    """The head face up (crown toward -y, chin toward +y): the face, hair only as a rim on the crown."""
-    cv = Cv(9, 9)
-    hr = 3.5
-    k, st = ch['kind'], ch.get('style')
-    rim = (ch.get('hair') or ch.get('bandana') or ch.get('cap') or ch['top']) if k != 'heavy' else None
-    if st == 'hood':
-        rim = ch['top']
-    elif st == 'trench':
-        rim = ch['cap']
-    elif k == 'brute':
-        rim = ch['bandana']
-
-    def px(u, v, L):
-        i = tidx(L)
-        if rim and (u > hr - 2.1 or (abs(v) > hr - 1.0 and u > (-1.0 if st in ('long', 'dancer', 'hood') else 0.6))):
-            return rim[i]
-        if k == 'heavy' and L > 0.95:
-            return lt(ch['skin'][2], 0.6)
-        return ch['skin'][i]
-    fill_shape(cv, 4.5, 4.5, hr, hr, px, ang=-math.pi / 2, pad=0.08)
-    eye = hx('#1a1018')
-    if k == 'player':
-        for x in (3, 4, 5):
-            cv.set(x, 4, hx('#0e0a16'))     # the sunglasses stay on
-        cv.set(3, 4, hx('#36e8f0'))
-    else:
-        cv.set(3, 4, eye)
-        cv.set(5, 4, eye)
-    cv.set(4, 5, ch['skin'][1])             # under the nose
-    cv.set(4, 6, hx('#2a0a14'))             # mouth open
-    cv.set(5, 7, BLOOD[1])                  # a thread of blood from its corner
-    cv.set(0, 4, ch['skin'][1])             # ears
-    cv.set(8, 4, ch['skin'][1])
+    """The head of a body lying on its back (18 x 18, crown toward -y): a face. Brows, the eyes shut, the nose and
+    its shadow, the mouth a little open, the ears, the jaw in shade; a thread of blood at the corner of the mouth."""
+    rng = part_rng(ch, 4)
+    k = ch['kind']
+    cv = Cv(18, 18)
+    fill_shape(cv, 9.0, 9.0, 7.4, 7.4, lambda u, v, L: face_px(ch, u / 2.0, v / 2.0, L, 3.7), ang=-math.pi / 2, pad=0.05)
+    skin, dark = ch['skin'], hx('#2a1820')
+    brow = (ch.get('hair') or ch['skin'])[0] if k != 'heavy' else skin[0]
+    for sgn in (-1, 1):
+        cv.set(9 + sgn * 8, 9, skin[1])                  # ears
+        cv.set(9 + sgn * 8, 10, skin[1])
+        cx = 9 + sgn * 3 - (1 if sgn < 0 else 0)
+        for dx in (0, 1):
+            if cv.on(cx + dx, 7):
+                cv.set(cx + dx, 7, brow)                 # brow
+            cv.set(cx + dx, 9, dark)                     # the eye, shut
+        cv.set(cx + (0 if sgn < 0 else 1), 10, skin[1])  # the hollow under it
+    for y in (9, 10, 11):
+        cv.set(8, y, skin[3])                            # the nose, lit ...
+        cv.set(9, y, skin[1])                            # ... and its shadow
+    cv.set(8, 12, skin[1])
+    for x in (7, 8, 9, 10):
+        cv.set(x, 13, hx('#5a1c24'))                     # the mouth, a little open
+    cv.set(8, 14, skin[1])
+    cv.set(9, 14, skin[1])
+    cv.set(11, 13, BLOOD[1])                             # blood at its corner
+    cv.set(11, 14, BLOOD[0])
+    for x in range(5, 13):
+        if cv.on(x, 15):
+            cv.set(x, 15, skin[1])                       # the jaw in shade
+    if k == 'thug':
+        for (x, y) in ((6, 13), (12, 12), (7, 15), (10, 15), (5, 12)):
+            if cv.on(x, y):
+                cv.set(x, y, dk(skin[1], 0.18))          # stubble
+    mottle(cv, rng, amt=3, cell=3)
     cv.outline()
     return cv
 
 
 def rag_arm(ch):
+    """An arm from the shoulder (-x) to the fingers (+x), 44 x 10: the sleeve with its crease at the elbow, the cuff,
+    the hand, a thumb, the lines between the fingers."""
     k = ch['kind']
+    rng = part_rng(ch, 5)
     s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
-    pal_ = {'a': s[3], 'S': s[2], 'd': s[1], 'c': s[0], 'h': ch['skin'][3], 'H': ch['skin'][2], 'k': ch['skin'][1],
-            'w': WHITE[2], 'W': WHITE[1], 'r': ch.get('bandana', s)[2]}
-    rows = {'player': [".aSSSSSwHh.", ".dddddWWkk."],
-            'thug': [".aSSSSSwHh.", ".ddddddWkk."],
-            'heavy': [".aSSSSSSHh.", ".wwwwwwwkk."],
-            'brute': [".rSSSSSSHh.", ".rddddddkk."]}.get(k, [".aSSSSSSHh.", ".ddddddWkk."])
-    rows = ["..........."] + rows + ["..........."]
-    return ascii_cv(rows, pal_)
+    cuff = WHITE if k in ('player', 'thug') else None
+    skin = ch['skin']
+
+    def px(x, y):
+        if x < 1 or x > 42 or y < 1 or y > 8:
+            return None
+        if (x < 2 or x > 41) and (y < 2 or y > 7):
+            return None                                  # rounded ends
+        i = 3 if y < 3 else 2 if y < 6 else 1
+        if x >= 35:                                      # the hand
+            if x >= 40 and y in (3, 6):
+                return skin[0]                           # between the fingers
+            if y == 1 and not 36 <= x <= 38:
+                return None                              # only the thumb sticks out
+            return skin[i]
+        if cuff and x >= 32:
+            return cuff[max(1, i - 1)]
+        if k == 'heavy' and y in (4, 5):
+            return WHITE[max(1, i - 1)]                  # the stripe down the sleeve
+        c = s[i]
+        if x in (16, 17) and y >= 4:
+            c = s[max(0, i - 1)]                         # the elbow's crease
+        if x == 31 and not cuff and k != 'brute':
+            c = s[max(0, i - 1)]                         # the end of the sleeve
+        return c
+    return lying(44, 10, px, rng, grime=3)
 
 
 def rag_leg(ch):
+    """A leg from the hip (-x) to the toe (+x), 54 x 12: the trouser leg narrowing to the ankle, its pressed crease, the
+    knee, the hem, a sock, the shoe with its sole, its laces and a shine on the toe."""
+    k = ch['kind']
+    rng = part_rng(ch, 6)
     p, sh = ch['pants'], ch['shoe']
-    pal_ = {'P': p[3], 'p': p[2], 'q': p[1], 'Q': p[0], 'O': sh[3], 'o': sh[2], 'x': sh[1], 'X': sh[0],
-            's': WHITE[2]}
-    rows = [".............",
-            ".PppppppqOOo.",
-            ".pppppppqoox.",
-            ".qqqqqqqQxxX.",
-            "............."]
-    if ch['kind'] == 'heavy':
-        rows[1] = ".PpppppppOOo."
-        rows[2] = ".ssssssssoox."
-    return ascii_cv(rows, pal_)
+
+    def px(x, y):
+        if x < 1 or x > 52:
+            return None
+        top = 1 if x < 24 else 2
+        bot = 10 if x < 24 else 9
+        if x >= 46:
+            top, bot = 2, 9
+            if x > 51 and (y < 4 or y > 7):
+                return None                              # the round of the toe
+        if y < top or y > bot:
+            return None
+        i = 3 if y < top + 2 else 2 if y < bot - 2 else 1
+        if x >= 46:                                      # the shoe
+            if y == bot:
+                return sh[0]                             # sole
+            if 47 <= x <= 49 and y in (4, 6):
+                return sh[3]                             # laces
+            if x in (50, 51) and y in (3, 4):
+                return sh[3]                             # the shine on the toe
+            return sh[i]
+        if x >= 44:
+            return WHITE[max(1, i - 1)] if k != 'thug' else hx('#1a1420')   # sock
+        if x == 43:
+            return p[max(0, i - 1)]                      # the hem
+        if k == 'heavy' and y in (5, 6):
+            return WHITE[max(1, i - 1)]
+        c = p[i]
+        if y == 4 and k in ('thug', 'player'):
+            c = p[min(3, i + 1)]                         # the pressed crease
+        if x in (23, 24) and y >= 5:
+            c = p[max(0, i - 1)]                         # behind the knee
+        return c
+    return lying(54, 12, px, rng, grime=3)
+
+
+def knocked_down(ch):
+    """A man knocked out cold, built from the parts of a body on the floor so he is the size of one: on his back, an arm
+    thrown out, the other along him, the legs a little apart. 124 x 96, the head toward +x."""
+    W, H = 96, 124
+    body = Image.new('RGBA', (W, H), CLEAR)
+
+    def limb(cv, rx, ry, deg):
+        # the limb's root (its -x end) put on (rx, ry), pointing deg degrees from +x (y down)
+        n = cv.w * 2 + 4
+        tmp = Image.new('RGBA', (n, n), CLEAR)
+        tmp.alpha_composite(cv.img, (n // 2 - 1, n // 2 - cv.h // 2))
+        tmp = tmp.rotate(-deg, resample=Image.NEAREST)
+        body.alpha_composite(tmp, (int(rx - n // 2), int(ry - n // 2)))
+    leg, arm = rag_leg(ch), rag_arm(ch)
+    limb(leg, 42, 62, 97)
+    limb(leg, 54, 62, 80)
+    limb(arm, 34, 28, 114)
+    limb(arm, 62, 28, 18)
+    body.alpha_composite(rag_torso_up(ch).img, (32, 21))
+    body.alpha_composite(rag_head_up(ch).img, (39, 5))
+    out = Cv(H, W)
+    out.img = body.rotate(-90, resample=Image.NEAREST, expand=True)
+    out.p = out.img.load()
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -4977,7 +5064,7 @@ def build():
     for i, (cid, ch) in enumerate(CHARS.items()):
         g = 'characters'
         out[(g, cid + '_torso')] = draw_torso(ch)
-        out[(g, cid + '_down')] = draw_body(ch, 26, 16, POSE_DOWN, seed=i)
+        out[(g, cid + '_down')] = knocked_down(ch)
         out[(g, cid + '_dead0')] = draw_body(ch, 30, 22, POSE_DEAD, dead=True, seed=i)
         out[(g, cid + '_dead1')] = draw_body(ch, 30, 22, POSE_DEAD, dead=True, headless=True, seed=i)
         out[(g, cid + '_gib_head')] = gib_head(ch)
@@ -5062,10 +5149,10 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (40, 40)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_down', (124, 96)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
-        ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5)),
-        ('_rag_torso_up', (14, 16)), ('_rag_torso_down', (14, 16)), ('_rag_head_up', (9, 9))]]
+        ('_rag_torso', (32, 42)), ('_rag_head', (18, 18)), ('_rag_arm', (44, 10)), ('_rag_leg', (54, 12)),
+        ('_rag_torso_up', (32, 42)), ('_rag_torso_down', (32, 42)), ('_rag_head_up', (18, 18))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(48, 14),
