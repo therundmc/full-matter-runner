@@ -1,5 +1,16 @@
 # Project instructions — FULL MATTER RUNNER
 
+## Working mode: the strongest model thinks, a cheaper one types (user's rule, to keep costs down)
+- The main session (Claude Fable, the most capable model) does the analysis: reading the code, reproducing and
+  diagnosing bugs, measuring (headless browser), designing the change, writing the brief, then reviewing the diff,
+  checking it in the game and committing.
+- The implementation itself is delegated to a subagent on a cheaper model fitted to the job (Agent tool, `model`):
+  Sonnet for small, fully specified edits; Opus for larger multi-file work or anything subtle. Never Fable for typing.
+- A brief is self-contained (the subagent starts cold): files and functions to touch, exact behaviour and numbers,
+  tests to add, and the repo rules: no commit, no push, no server, ASCII-only source, `npm test` green, generated
+  levels and sprites only through their tools. The subagent reports deviations; the main session decides.
+- Done inline by the main session only: one-line fixes, and bug hunts that need its own measurements.
+
 ## Git
 - Commit messages: one single sentence, no body/bullet list (attribution trailer allowed).
 - Work on branch `feature/hotline-rework`. `main` holds the old prototype. Do not push unless asked.
