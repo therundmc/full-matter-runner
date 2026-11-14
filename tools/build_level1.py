@@ -149,7 +149,7 @@ lv.prop('trash_can', 20.5, 35.6)
 lv.prop('crate', 20.45, 33.3, 8)
 lv.prop('trash_can', 23.3, 32.5)                        # on the cat's way out
 lv.cat(23.4, 34.5)                                      # on the dumpster, watching him
-lv.pigeons(21.5, 32.8, 3)
+lv.pigeons(16.5, 30.6, 3)
 lv.prop('string_lights', 22.0, 33.9)
 lv.prop('string_lights', 22.0, 36.1)
 lv.prop('wall_lamp', 20.09, 34.6, 270)

@@ -64,7 +64,7 @@ export function findVault(world, ch, a) {
   const dx = Math.cos(a), dy = Math.sin(a);
   const r = ch.radius;
   for (const w of world.windows) {
-    if (w.intact) continue;
+    if (w.intact && !ch.isPlayer) continue; // only the player dives through a whole pane
     const nx = w.vertical ? 1 : 0, ny = w.vertical ? 0 : 1;
     const rx = ch.x - w.x, ry = ch.y - w.y;
     const side = rx * nx + ry * ny, along = rx * ny - ry * nx;

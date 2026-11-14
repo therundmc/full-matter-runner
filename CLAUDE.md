@@ -99,7 +99,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
   `python -m http.server 8000` then fails with "address already in use", which he reads as "the server is broken".
 - `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
 - Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
-  vision, F3 overview, F4 physics overlay. `window.game` in the console.
+  vision, F3 overview, F4 physics overlay (with FPS and frame times). `window.game` in the console.
 - Headless browser checks that worked: Edge `--headless=new --remote-debugging-port` driven over the DevTools
   protocol from a small Node script (eval scenarios, inputs, screenshots). Python's http.server can reset
   connections on big files; a tiny Node static server is more reliable. Never kill processes you didn't start.

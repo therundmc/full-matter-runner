@@ -15,6 +15,7 @@ const { destroyWall, damageWall, watchOpenings, destroyWindow } = await load('ga
 const { default: Window } = await load('game/entities/Window.js');
 const { default: Door } = await load('game/entities/Door.js');
 const { default: Debris } = await load('game/entities/Debris.js');
+const { findVault } = await load('game/systems/Cover.js');
 
 const seeded = (s = 1) => () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
 const near = (a, b, eps = 1e-9) => Math.abs(a - b) < eps;
@@ -264,4 +265,32 @@ test('shards spare whoever broke the pane, slow or small ones never kill, and on
   assert.equal(lying.harm, null);
   lying.onCollide({ entity: g4 });
   assert.equal(g4.alive, true);
+});
+
+test('an intact window can be dived through by the player alone, a broken one by anybody', () => {
+  const w = world();
+  w.physics = { bodies: () => [] };
+  w.props = [];
+  const pane = windowAt(w, 10, 2);
+  const who = (isPlayer) => ({ x: pane.x, y: pane.y + 14, radius: 9, isPlayer });
+  const dive = findVault(w, who(true), -Math.PI / 2);
+  assert.equal(dive?.kind, 'window');
+  assert.equal(dive.over, pane);
+  assert.ok(dive.to.y < pane.y, 'lands on the far side');
+  assert.equal(findVault(w, who(false), -Math.PI / 2), null, 'a guard needs the glass gone first');
+  pane.shatter(-Math.PI / 2);
+  assert.equal(findVault(w, who(true), -Math.PI / 2)?.kind, 'window');
+  assert.equal(findVault(w, who(false), -Math.PI / 2)?.kind, 'window');
+});
+
+test('nobody mid-dive, nor in the instant after landing, is cut by a flying shard', () => {
+  const diver = person({ isPlayer: true, vaulting: { kind: 'window' } });
+  throwShard('big', 6, diver);
+  assert.equal(diver.alive, true);
+  const landed = person({ isPlayer: true, glassSafe: 0.3 });
+  throwShard('big', 6, landed);
+  assert.equal(landed.alive, true);
+  const bystander = person({ isPlayer: true, glassSafe: 0 });
+  throwShard('big', 6, bystander);
+  assert.equal(bystander.alive, false);
 });

@@ -67,6 +67,7 @@ export default class Character {
     this.throwT = 0;        // follow-through of a throw
     this.throwDur = 0.28;
     this.recoilRate = 9;    // recoil recovery per second (heavy guns recover slower)
+    this.glassSafe = 0;     // seconds of immunity to flying shards left after a window vault
     this.vaulting = null;   // { from, to, t, dur, kind, dir, ... } while jumping over something
     this.slideAnim = null;  // { dir, side, k, w } while sliding (driven by Player)
     // animation state (see CharacterAnim.js)
@@ -188,6 +189,7 @@ export default class Character {
   baseUpdate(dt) {
     this.cooldown -= dt;
     this.swing = Math.max(0, this.swing - dt);
+    this.glassSafe = Math.max(0, this.glassSafe - dt);
     this.pickAnim = Math.max(0, this.pickAnim - dt);
     this.updateReload(dt);
     this.throwT = Math.max(0, this.throwT - dt);
@@ -442,7 +444,7 @@ export default class Character {
   knock() { /* overridden by Enemy */ }
 
   // ---------------- traversal ----------------
-  // jump through a broken window / over a low obstacle in direction a, if there is one
+  // jump through a window (the player: broken or not)  / over a low obstacle in direction a, if there is one
   tryVault(a) {
     if (this.vaulting || this.knocked || !this.alive) return false;
     const v = findVault(this.world, this, a);
@@ -469,7 +471,7 @@ export default class Character {
     this.vel = { x: 0, y: 0 };
     this.world.sound(climb ? 'climb' : win ? 'vault' : 'slide', this.x, this.y, 0.8);
     if (climb) this.world.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
-    else if (win) this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60);
+    else if (win && !v.over.intact) this.world.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60); // a whole pane shatters in updateVault
     return true;
   }
 
@@ -492,6 +494,8 @@ export default class Character {
     }
     Body.setPosition(this.body, { x: lerp(v.from.x, v.to.x, e), y: lerp(v.from.y, v.to.y, e) });
     Body.setVelocity(this.body, { x: 0, y: 0 });
+    // a whole pane bursts as the body goes through (its own noise and glass; the diver is never cut by it)
+    if (k >= 0.3 && v.kind === 'window' && v.over.intact) v.over.shatter(v.dir, this, 1);
     // touch-down: dust, noise, a small camera kick for the player
     if (!v.landed && k >= (v.kind === 'prop' ? 0.84 : 0.78)) {
       v.landed = true;
@@ -501,6 +505,7 @@ export default class Character {
     }
     if (k < 1) return true;
     this.vaulting = null;
+    if (v.kind === 'window') this.glassSafe = 0.4;
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: MASK.CHAR };
     // hand the exit speed back to the run
     const sp = (v.m1 * v.dist) / (v.dur * 60);

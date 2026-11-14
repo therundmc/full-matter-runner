@@ -139,7 +139,7 @@ export default class Player extends Character {
     this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
     this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
       : this.nearBack ? TAKEDOWNS[this.takedownKind()].action
-        : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : 'VAULT') : null;
+        : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
     if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
       else if (this.nearBack) this.startTakedown(this.nearBack);

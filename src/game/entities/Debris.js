@@ -114,7 +114,7 @@ export default class Debris {
   checkHarm(sp) {
     const p = this.body.position;
     for (const c of this.harm.all ? this.world.chars : this.world.enemies) {
-      if (!c.alive || c === this.harm.ignore) continue;
+      if (!c.alive || c === this.harm.ignore || c.vaulting || c.glassSafe > 0) continue; // mid-dive is safe
       if (Math.hypot(c.x - p.x, c.y - p.y) > c.radius + this.size * 0.5 + 2) continue;
       this.applyHarm(c, sp);
       return;
@@ -140,7 +140,7 @@ export default class Debris {
   onCollide(other) {
     const e = other.entity;
     const prey = e?.isEnemy || (this.harm?.all && (e?.isPlayer || e?.isCivilian));
-    if (this.harm && prey && e.alive && e !== this.harm.ignore) {
+    if (this.harm && prey && e.alive && e !== this.harm.ignore && !e.vaulting && !(e.glassSafe > 0)) {
       const sp = Body.getSpeed(this.body);
       if (sp > this.harm.knock) this.applyHarm(e, sp);
     }

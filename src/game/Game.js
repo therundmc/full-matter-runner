@@ -140,8 +140,21 @@ export default class Game {
     this.last = now;
     this.time += dt;
     this.stateT += dt;
+    const t0 = performance.now();
     this.update(dt);
+    const t1 = performance.now();
     this.render();
+    this.sample(dt, t1 - t0, performance.now() - t1);
+  }
+
+  // rolling frame stats, refreshed twice a second into this.perf (shown by the F4 overlay)
+  sample(dt, upMs, drMs) {
+    const p = this.perfAcc || (this.perfAcc = { t: 0, n: 0, worst: 0, up: 0, dr: 0 });
+    p.t += dt; p.n++; p.up += upMs; p.dr += drMs;
+    p.worst = Math.max(p.worst, dt * 1000);
+    if (p.t < 0.5) return;
+    this.perf = { fps: Math.round(p.n / p.t), frame: (p.t * 1000) / p.n, worst: p.worst, update: p.up / p.n, render: p.dr / p.n };
+    p.t = p.n = p.worst = p.up = p.dr = 0;
   }
 
   update(dt) {
@@ -298,7 +311,7 @@ export default class Game {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;
       ctx.textAlign = 'left';
       ctx.fillStyle = '#3cff7a';
-      this.world.renderer.debugStats().forEach((l, i) => ctx.fillText(l, 12, H - 60 * H / 720 + i * 16 * H / 720));
+      this.world.renderer.debugStats().forEach((l, i) => ctx.fillText(l, 12, H - 80 * H / 720 + i * 16 * H / 720));
     }
     this.safeDraw(ctx, () => {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best);

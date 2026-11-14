@@ -143,3 +143,9 @@ test('three shop fronts light the street: panes on the sidewalk, a neon sign, la
   }
   assert.ok(!level.props.some(([type]) => /marquee/.test(type)) && !(level.roof || []).some(([type]) => /sign|marquee/.test(type)), 'no rooftop sign');
 });
+
+test('no flock of pigeons sits in the start alley, where the cat lives', () => {
+  for (const [col, row] of level.critters.pigeons) {
+    assert.ok(!(col >= 20 && col < 24 && row >= 32 && row < 37), `flock at ${col}, ${row}`);
+  }
+});

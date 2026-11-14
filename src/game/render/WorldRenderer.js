@@ -14,6 +14,7 @@ const { Body } = Matter;
 export default class WorldRenderer {
   constructor(world) {
     this.world = world;
+    this.lightMs = 0; // smoothed cost of the lighting passes
   }
 
   draw(ctx, cam, t) {
@@ -51,11 +52,16 @@ export default class WorldRenderer {
     w.particles.draw(ctx);
     // night + coloured lights + wall shadows multiplied over the scene (skipped in the F3 overview)
     const lit = w.lighting.active(cam);
+    let l0 = performance.now();
     if (lit) w.lighting.apply(ctx, cam, t);
+    let lightMs = performance.now() - l0;
     if (w.cleared && w.level.exit) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
+    l0 = performance.now();
     if (lit) w.lighting.post(ctx, cam, t);
+    lightMs += performance.now() - l0;
+    this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis);
     drawLasers(ctx, w);
     // guards' '?' / '!' and detection meters stay readable over the night
@@ -284,7 +290,9 @@ export default class WorldRenderer {
     const dyn = bodies.filter((b) => !b.isStatic).length;
     const frozen = bodies.filter((b) => b.frozen).length;
     const sleeping = bodies.filter((b) => b.isSleeping).length;
+    const pf = this.world.game?.perf;
     return [
+      pf ? `FPS ${pf.fps}  FRAME ${pf.frame.toFixed(1)} MS (WORST ${pf.worst.toFixed(1)})  UPDATE ${pf.update.toFixed(1)} MS  RENDER ${pf.render.toFixed(1)} MS  LIGHTING ${this.lightMs.toFixed(1)} MS` : 'FPS ...',
       `BODIES ${bodies.length}  DYNAMIC ${dyn}  FROZEN ${frozen}  SLEEPING ${sleeping}`,
       `CONTACTS ${phys.activePairs().length}  PHYSICS ${phys.stepMs.toFixed(2)} MS x${phys.substeps}`,
       `DEBRIS ${this.world.debris.length}  PARTICLES ${this.world.particles.list.length}`,
