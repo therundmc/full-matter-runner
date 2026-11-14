@@ -49,6 +49,9 @@ src/
                           (DOM-free, unit-tested)
       Alarms.js           closed shops (level.alarms) that ring when broken into: bell, beacon, guards come to look,
                           passers-by hurry on, until the box is shot off the wall (DOM-free, unit-tested)
+      Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
+                          that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
+                          (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
     ai/                   enemy AI, DOM-free (unit tested)
@@ -116,7 +119,8 @@ Rules:
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | - |
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
-| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor) |
+| `propHit` | `{ prop, x, y, dirA, kind }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster) |
+| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster) |
 | `spill` | `{ x, y, kind, area, dur?, cap? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing) | Liquids (px² of a `LIQUIDS.kinds` liquid, at once or over `dur` seconds) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |

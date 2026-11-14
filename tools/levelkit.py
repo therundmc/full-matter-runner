@@ -62,6 +62,7 @@ class Level:
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
+        self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -113,6 +114,18 @@ class Level:
     def alarm(self, col0, row0, col1, row1, col, row, deg=0):
         self.alarms.append(dict(rect=[col0, row0, col1, row1], box=[col, row]))
         self.prop('alarm_box', col, row, deg)
+
+    # ---- street fauna (systems/Critters.js): a flock of n pigeons pecking about (col, row), a cat sitting at (col, row)
+    def pigeons(self, col, row, n):
+        self.fauna('pigeons', col, row, n)
+
+    def cat(self, col, row):
+        self.fauna('cats', col, row)
+
+    def fauna(self, kind, col, row, *more):
+        t = self.tiles[int(row)][int(col)]
+        assert t not in SOLID and t not in 'DLG', f'{kind} at {col},{row} in {t!r}'
+        self.critters.setdefault(kind, []).append([col, row, *more])
 
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
@@ -242,6 +255,9 @@ class Level:
         if self.alarms:
             L.append('  // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box')
             L.append(f'  alarms: {json.dumps(self.alarms)},')
+        if self.critters:
+            L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
+            L.append(f'  critters: {json.dumps(self.critters)},')
         if self.roofs:
             L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
             L.append('  roof: [')

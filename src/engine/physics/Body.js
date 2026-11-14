@@ -2,7 +2,7 @@
 // and "freezing" (static while at rest) for objects too heavy to be pushed by hand.
 import { KG } from './Units.js';
 
-const { Body } = Matter;
+const { Body, Sleeping } = Matter;
 
 export function setKg(body, kg) { Body.setMass(body, kg * KG); }
 export function kgOf(body) { return (body.frozen ? body._original?.mass : body.mass) / KG; }
@@ -42,6 +42,7 @@ export function impulse(body, a, J, spin = 0, cap = 12) {
     wake(body);
   }
   if (body.isStatic) return 0;
+  if (body.isSleeping) Sleeping.set(body, false); // asleep, it would keep the speed and never move
   const v = Body.getVelocity(body);
   Body.setVelocity(body, { x: v.x + Math.cos(a) * dv, y: v.y + Math.sin(a) * dv });
   if (spin) Body.setAngularVelocity(body, Body.getAngularVelocity(body) + spin * Math.min(1, 20 / kg));

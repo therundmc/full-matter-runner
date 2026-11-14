@@ -120,6 +120,7 @@ export default class Prop {
   hit(damage, px, py, dirA, power = 0.6, kind = 'bullet', info = {}) {
     if (this.dead || this.dying) return;
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
+    w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind });
     const swing = info.swing ?? dirA + Math.PI / 2; // a blade's stroke runs across the blow
     if (kind === 'blunt' || kind === 'cut' || kind === 'punch' || kind === 'blast' || kind === 'shrapnel') {
       const s = this.surface(px, py, dirA);

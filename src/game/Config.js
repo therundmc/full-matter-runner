@@ -200,6 +200,46 @@ export const ALARM = {
   beacon: { r: 140, color: '#ff3b30', dur: 0.3 },
 };
 
+// street fauna (systems/Critters.js); distances in tiles, speeds in px/s unless said otherwise
+export const CRITTERS = {
+  hit: 5,                  // px a bullet passes within to kill one
+  reach: 28,               // px of a swing that kills one
+  dead: 14,                // carcasses left lying
+  rat: {
+    nest: [4, 6],          // under each dumpster
+    out: [2, 3],           // sent running by a blow
+    speed: [95, 135],
+    life: [5, 9],          // s before it looks for a hole
+    fear: 2.5,             // it veers away from the player closer than this
+    scare: 1.6,            // a passer-by this close jumps
+  },
+  pigeon: {
+    walk: 14,
+    fly: 230,
+    climb: 0.7,            // s to be up
+    away: 5,               // s on the wing before it is gone
+    hear: 22,              // a shot within this sends them up
+    near: 0.5,             // anyone this close
+    shy: 1.7,              // the player this close
+    run: 3,                // anyone running (or the cat) this close
+    fast: 1.8,             // px/step: running
+    flock: 1.5,            // one goes up: the others within this follow
+  },
+  cat: {
+    speed: 250,
+    life: [3, 5],          // s of flight before it slips away
+    shy: 2,                // the player moving this close
+    still: 0.4,            // px/step under which he is not moving
+    hear: 16,
+    bin: 5,                // a bin within this on its way gets knocked
+    push: 45,              // kg px/step into the bin
+    noise: 5,              // the clatter carries this far
+  },
+  // flies per swarm, px it spreads over; s before a body draws them, bodies at most
+  flies: { dumpster: 6, wide: 26, body: 4, close: 9, cold: 20, bodies: 4 },
+  moths: { n: 4, at: { streetlight: 56, wall_lamp: 0, neon_sign_bar: 0, neon_sign_palm: 0, neon_sign_liquor: 0 } }, // px along the prop to its lamp
+};
+
 export const AMBIENT = {
   maxCars: 8,              // moving traffic vehicles at once (all lanes)
   maxWalkers: 9,           // civilians at once (all paths)

@@ -81,6 +81,7 @@ const META = {
   creak: { dur: 0.6, gap: 0.2, max: 2, gain: 0.5 },
   vault: { dur: 0.5, gain: 0.8 }, climb: { pri: 2, dur: 0.8, gap: 0.2, max: 2, gain: 0.8 }, slide: { pri: 2, dur: 0.7, gap: 0.2, max: 2, gain: 0.9 },
   swing: { gain: 0.5 }, throw: { gain: 0.55 },
+  flutter: { pri: 1, dur: 0.5, gap: 0.25, max: 2, gain: 0.45 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
   pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.55 },
   // weapons in the hands
@@ -257,6 +258,8 @@ const FOLEY = {
   pool: [['plastic', 0.8, 1.9], ['plastic', 0.5, 2.3, 0.07], ['wood', 0.25, 2.2, 0.02]],
   throw: [['swish', 1, 0.7]],
   swing: [['swish', 1, 0.9]],
+  // pigeons going up: a clatter of wings, short quick beats of air
+  flutter: [['swish', 0.5, 2.6], ['swish', 0.4, 2.9, 0.07], ['swish', 0.4, 2.4, 0.15], ['swish', 0.3, 2.8, 0.24], ['swish', 0.2, 2.5, 0.34]],
   // small things
   ricochet: [['stone', 0.5, 1.5]],
   ammo: [['rattle', 1], ['handle', 0.35, 1.2]],

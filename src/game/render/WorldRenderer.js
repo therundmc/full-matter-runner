@@ -5,6 +5,7 @@ import { rand, clamp, TAU } from '../../engine/math.js';
 import { puddleShape } from '../systems/Liquids.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
+import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 
 const { Body } = Matter;
 
@@ -30,6 +31,7 @@ export default class WorldRenderer {
     for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
     for (const a of w.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
     for (const p of w.props) if (vis(p.x, p.y)) p.draw(ctx);
+    drawCritters(ctx, w.critters, t, vis);
     // window sills under the characters (someone vaulting goes over them)
     for (const g of w.windows) if (vis(g.x, g.y)) g.draw(ctx);
     if (w.showVision) for (const e of w.enemies) e.drawVision(ctx);
@@ -39,6 +41,7 @@ export default class WorldRenderer {
     for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
     for (const d of w.doors) d.draw(ctx);
     ctx.drawImage(w.decals.wallCanvas, 0, 0);
+    drawFlying(ctx, w.critters, t);
 
     w.particles.draw(ctx);
     // night + coloured lights + wall shadows multiplied over the scene (skipped in the F3 overview)
@@ -48,6 +51,7 @@ export default class WorldRenderer {
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
     if (lit) w.lighting.post(ctx, cam, t);
+    drawMoths(ctx, w.critters, t, vis);
     drawLasers(ctx, w);
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);

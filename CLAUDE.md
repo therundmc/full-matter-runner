@@ -42,6 +42,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
+   Street fauna (level `critters`, systems/Critters.js; silent but for the pigeons' wings, a cut of recorded air): rats
+   run out from under a dumpster that is hit, pigeons go up at a shot or when run at, a cat bolts over a bin, flies, moths.
    User: a small level is fine, every detail polished, real scale, ambiance
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
    `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public

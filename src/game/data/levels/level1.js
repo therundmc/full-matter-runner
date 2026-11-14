@@ -99,8 +99,8 @@ export default {
   props: [
     // the alley where it starts
     ['dumpster', 23.42, 35, 90], ['trash_can', 20.45, 36.4, 0], ['trash_can', 20.5, 35.6, 0],
-    ['crate', 20.45, 33.3, 8], ['string_lights', 22, 33.9, 0], ['string_lights', 22, 36.1, 0],
-    ['wall_lamp', 20.09, 34.6, 270],
+    ['crate', 20.45, 33.3, 8], ['trash_can', 23.3, 32.5, 0], ['string_lights', 22, 33.9, 0],
+    ['string_lights', 22, 36.1, 0], ['wall_lamp', 20.09, 34.6, 270],
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 28.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
     ['trash_can', 14, 31.65, 0], ['hydrant', 26.5, 30.35, 0], ['neon_sign_palm', 17, 31.91, 180],
@@ -173,6 +173,8 @@ export default {
   welcome: [[21, 12, 30, 12], [15, 13, 30, 15], [15, 16, 23, 19], [21, 6, 23, 11]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
+  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
+  critters: {"cats": [[23.4, 34.5]], "pigeons": [[21.5, 32.8, 5], [33.3, 21.7, 3], [27.5, 2.6, 4]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, along the service alley
