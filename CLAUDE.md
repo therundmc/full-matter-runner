@@ -32,8 +32,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    animations + slide on Space. Still weak: combat visual feedback, horn sound.
    Every non-gun sound = cuts of a recorded CC0 foley bank (assets/sound/foley.wav + src/audio/bank.js, built by
    `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json); user rejected synthesized SFX as clicky,
-   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthwave stab in
-   the music's key that climbs with the combo). Guards shout, the dying cry out. Music is liked as is.
+   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime
+   in the music's key that climbs with the combo, style picked with J in the F1 panel). No meat / wet / squish
+   recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
 5. Synthwave music: darker, follows the AI alert phase.
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance

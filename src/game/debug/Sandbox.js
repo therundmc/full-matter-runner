@@ -2,6 +2,7 @@
 // A tool drops something at the cursor (guards, weapons, props, vehicles, blasts, water); cheats bend the rules
 // (god mode, frozen guards, time scale, ammo, teleport). DOM-free: ui/SandboxPanel.js draws `lines()`.
 import { TILE, LIQUIDS } from '../Config.js';
+import Audio, { KILL_STYLES } from '../../audio/Audio.js';
 import { rand, TAU } from '../../engine/math.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
 import { PROPS } from '../data/props.js';
@@ -116,6 +117,11 @@ export default class Sandbox {
       Body.setPosition(p.body, { x: aim.x, y: aim.y });
       Body.setVelocity(p.body, { x: 0, y: 0 });
     }
+    if (input.hit('KeyJ')) {
+      // next kill confirm sound, played at a random step of a streak
+      Audio.killStyle = KILL_STYLES[(KILL_STYLES.indexOf(Audio.killStyle) + 1) % KILL_STYLES.length];
+      Audio.play('confirm', { n: 1 + Math.floor(rand(0, 4)) });
+    }
     if (input.hit('KeyK')) {
       let n = 0;
       for (const e of w.enemies) if (e.alive) { e.kill(rand(0, TAU), 'bullet', p, {}); n++; }
@@ -145,6 +151,7 @@ export default class Sandbox {
       ['U  REFILL AMMO', ''],
       ['V  TELEPORT TO CURSOR', ''],
       ['K  KILL ALL GUARDS', ''],
+      [`J  KILL SOUND : ${Audio.killStyle.toUpperCase()}`, ''],
       ['F2 VISION  F3 MAP  F4 PHYSICS', 'dim'],
       ['F1  HIDE', 'dim'],
     );

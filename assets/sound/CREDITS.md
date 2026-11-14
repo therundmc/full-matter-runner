@@ -14,7 +14,7 @@ Cut, trimmed and normalized by `tools/build_sounds.mjs` from the packs below (th
 | Author | Packs |
 | --- | --- |
 | rubberduck | `100-cc0-sfx`, `100-cc0-sfx-2`, `100-cc0-metal-and-wood-sfx`, `75-cc0-breaking-falling-hit-sfx`, `40-cc0-water-splash-slime-sfx` |
-| Independent.nu | `35-wooden-crackshitsdestructions`, `8-wet-squish-slurp-impacts` |
+| Independent.nu | `35-wooden-crackshitsdestructions` |
 | qubodup | `punch`, `impact`, `15-vocal-male-strainhurtpainjump-sounds`, `door-open-door-close-set`, `metal-interactions` |
 | SpringySpringo | `gun-reload-sounds` |
 | zer0_sol | `handgun-reload-sound-effect`, `shotgun-reload-sound-effects` |

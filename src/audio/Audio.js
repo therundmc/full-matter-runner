@@ -26,6 +26,10 @@ const MASTER_GAIN = 0.8;
 // kill confirm: the first kill's note (F5, the music is in F minor) and the semitones above it per kill of a
 // streak (minor pentatonic)
 const KILL_ROOT = 698.46;
+// what the kill confirm sounds like (F1 panel, J; remembered): a strummed glassy chime, one dry metallic hit, or
+// the synth stab
+export const KILL_STYLES = ['gling', 'dink', 'stab'];
+const STYLE_KEY = 'fmr.killSound';
 const STREAK = [0, 3, 5, 7, 10, 12, 15, 17];
 // names that map onto another sound
 const ALIAS = { impact: 'stone' };
@@ -91,7 +95,7 @@ const META = {
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
-  confirm: { pri: 4, dur: 0.9, gap: 0.03, max: 3, duck: 0.8, gain: 1 },
+  confirm: { pri: 4, dur: 1.1, gap: 0.03, max: 3, duck: 0.8, gain: 1 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -201,7 +205,7 @@ const CASINGS = {
 const FOLEY = {
   // one hit, per material
   wood: [['wood', 1]], metal: [['metal', 1]], stone: [['stone', 1]], plastic: [['plastic', 1]], soft: [['soft', 1]],
-  ceramic: [['ceramic', 1]], glassHit: [['glassHit', 1]], flesh: [['flesh', 1]],
+  ceramic: [['ceramic', 1]], glassHit: [['glassHit', 1]], flesh: [['soft', 0.7, 0.85]],
   // the thing giving way
   woodBreak: [['woodBreak', 1], ['wood', 0.5, 0.85]],
   metalBreak: [['metalBreak', 1], ['sheet', 0.6]],
@@ -215,13 +219,13 @@ const FOLEY = {
   tirePop: [['thud', 0.8, 1.2]],
   carHit: [['sheet', 1], ['thud', 0.45, 0.9]],
   // flesh
-  punch: [['punch', 1], ['flesh', 0.45, 1.1, 0.008], ['thud', 0.7, 0.75]],
-  // dry meat, never a wet squish (the user hated those): the blow, a knuckle under it, the weight
-  splat: [['flesh', 1], ['punch', 0.55, 0.8, 0.004], ['thud', 0.5, 0.9]],
-  // a body torn apart: meat and weight first, the wet burst kept low under them
-  gore: [['flesh', 1, 0.85], ['gore', 0.45], ['punch', 0.6, 0.7], ['thud', 0.8, 0.8, 0.02]],
-  slash: [['swish', 0.5, 1.5], ['flesh', 0.9, 1.2, 0.03]],
-  death: [['gore', 1], ['thud', 0.9, 0.7, 0.04]],
+  // dry blows only: no meat or wet recording anywhere (the user hated every one of them as a "squish")
+  punch: [['punch', 1], ['soft', 0.4, 1.1, 0.008], ['thud', 0.7, 0.75]],
+  splat: [['punch', 1, 0.8], ['thud', 0.7, 0.9], ['soft', 0.5, 0.7, 0.01]],
+  // a body torn apart: a heavy blow, the bone cracking, the weight
+  gore: [['punch', 1, 0.65], ['woodBreak', 0.45, 1.7, 0.01], ['thud', 0.9, 0.75, 0.02]],
+  slash: [['swish', 0.5, 1.5], ['punch', 0.7, 1.3, 0.03]],
+  death: [['punch', 1, 0.7], ['thud', 0.9, 0.7, 0.04]],
   bodyFall: [['thud', 1, 0.8], ['soft', 0.5, 0.8, 0.06]],
   shout: [['yell', 1]],
   whimper: [['pain', 0.8, 1.12]], // a man on his knees begging
@@ -250,6 +254,15 @@ const FOLEY = {
 };
 
 class AudioSystem {
+  get killStyle() {
+    if (!this._style) { try { this._style = globalThis.localStorage?.getItem(STYLE_KEY); } catch { /* no storage */ } }
+    return KILL_STYLES.includes(this._style) ? this._style : KILL_STYLES[0];
+  }
+  set killStyle(s) {
+    this._style = s;
+    try { globalThis.localStorage?.setItem(STYLE_KEY, s); } catch { /* no storage */ }
+  }
+
   constructor() {
     this.ctx = null;
     this.chokes = new WeakMap(); // emitter -> its last voice (a new shot fades the previous tail)
@@ -623,6 +636,25 @@ class AudioSystem {
     });
   }
 
+  // FM bell: a sine whose pitch a faster one shakes, hard at the strike and less as it rings (glassy, very 80s)
+  _bell(o, { f = 700, dur = 0.6, vol = 0.3, delay = 0, ratio = 3.5, index = 1.6 }) {
+    const ctx = this.ctx, t = ctx.currentTime + delay;
+    const car = ctx.createOscillator(), mod = ctx.createOscillator(), depth = ctx.createGain(), g = ctx.createGain();
+    const k = f * index * Math.min(1, 1000 / f); // high notes shaken less: no harsh fold-back
+    car.frequency.setValueAtTime(f, t);
+    mod.frequency.setValueAtTime(f * ratio, t);
+    depth.gain.setValueAtTime(k, t);
+    depth.gain.exponentialRampToValueAtTime(k * 0.06, t + dur * 0.5);
+    mod.connect(depth); depth.connect(car.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    car.connect(g); g.connect(o);
+    o._n++;
+    car.onended = () => this._release(o, car, mod, depth, g);
+    for (const n of [car, mod]) { n.start(t); n.stop(t + dur + 0.03); }
+  }
+
   // ---- synthesized parts of the big sounds (their debris and flesh are FOLEY layers) ----
   // a blow that lands: the felt knock under the recorded hit and the smack of its first milliseconds
   _punch(o, opts, v) {
@@ -815,16 +847,35 @@ class AudioSystem {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });
     this._thump(o, { f0: 60, f1: 85, dur: 0.4, vol: 0.5 });
   }
-  // a kill confirmed (asked for by the user, the one synthesized SFX): a synthwave stab just after the blow, with
-  // its octave and two tape echoes; every kill of a streak (opts.n) climbs one step of the music's minor
-  // pentatonic scale, so that notes still ringing agree with the new one and with the track
+  // a kill confirmed (asked for by the user, the one synthesized SFX): a reward just after the blow. Every kill of
+  // a streak (opts.n) climbs one step of the music's minor pentatonic scale, so that notes still ringing agree
+  // with the new one and with the track. Three styles (killStyle).
   _confirm(o, opts) {
     const f = KILL_ROOT * 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
+    const style = this.killStyle, d = 0.03;
     this.pv = 1;
-    this._pluck(o, { f, dur: 0.55, vol: 0.45, delay: 0.03 });
-    this._pluck(o, { f: f * 2, dur: 0.35, vol: 0.14, delay: 0.03 });
-    this._pluck(o, { f, dur: 0.4, vol: 0.2, delay: 0.18 });
-    this._pluck(o, { f, dur: 0.35, vol: 0.1, delay: 0.33 });
+    if (style === 'stab') {
+      // synth stab, its octave and two tape echoes
+      this._pluck(o, { f, dur: 0.55, vol: 0.45, delay: d });
+      this._pluck(o, { f: f * 2, dur: 0.35, vol: 0.14, delay: d });
+      this._pluck(o, { f, dur: 0.4, vol: 0.2, delay: d + 0.15 });
+      this._pluck(o, { f, dur: 0.35, vol: 0.1, delay: d + 0.3 });
+      return;
+    }
+    // the weight of a hit that counted and the tick of its first milliseconds, under either chime
+    this._thump(o, { f0: 150, f1: 55, dur: 0.14, vol: 0.7, delay: d });
+    this._noiseBurst(o, { type: 'highpass', f0: 5000, dur: 0.018, vol: 0.3, attack: 0.0005, delay: d });
+    if (style === 'dink') {
+      // one dry metallic hit (an untuned partial makes it ring like struck steel)
+      this._bell(o, { f: f * 2, dur: 0.24, vol: 0.42, delay: d, ratio: 1.41, index: 2.4 });
+      this._bell(o, { f: f * 4, dur: 0.12, vol: 0.1, delay: d, ratio: 2 });
+      return;
+    }
+    // 'gling': root, fifth and octave strummed upward in a tenth of a second, the octave left ringing, a glint on top
+    this._bell(o, { f, dur: 0.5, vol: 0.32, delay: d });
+    this._bell(o, { f: f * 1.5, dur: 0.55, vol: 0.26, delay: d + 0.035 });
+    this._bell(o, { f: f * 2, dur: 0.95, vol: 0.3, delay: d + 0.07 });
+    this._bell(o, { f: Math.min(f * 4, 6000), dur: 0.45, vol: 0.06, delay: d + 0.07, ratio: 2 });
   }
   // level cleared: one dark boom rolling away
   _clear(o) {
