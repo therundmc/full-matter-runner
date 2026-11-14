@@ -36,10 +36,15 @@ export function drawHUD(ctx, game, t) {
       ctx.fillRect(pad, pad + 64 * s, 150 * s * k, 6 * s);
     }
   }
-  text(ctx, `GUARDS LEFT ${w.enemiesLeft}/${w.totalEnemies}`, pad, pad + 84 * s, 14 * s, PALETTE.yellow, { align: 'left' });
+  // guards left: a small head-and-shoulders mark and the count, right under the weapon (or its ammo line)
+  const gy = pad + (ammo ? (p.reloading > 0 ? 82 : 70) : 42) * s, u = 2 * s;
+  ctx.fillStyle = PALETTE.yellow;
+  ctx.fillRect(pad + u, gy - 5 * u, 3 * u, 3 * u);  // head
+  ctx.fillRect(pad, gy - 1.5 * u, 5 * u, 2.5 * u);  // shoulders
+  text(ctx, `${w.enemiesLeft}/${w.totalEnemies}`, pad + 8 * u, gy - 2 * u, 14 * s, PALETTE.yellow, { align: 'left' });
   // stamina: only while it is coming back; pink = not enough for a slide, blinking when one was just refused
   if (p.stamina < 1) {
-    const y = pad + 96 * s, bw = 150 * s, short = p.stamina < PLAYER.slide.cost;
+    const y = gy + 6 * s, bw = 150 * s, short = p.stamina < PLAYER.slide.cost;
     ctx.fillStyle = PALETTE.ink;
     ctx.fillRect(pad, y, bw, 5 * s);
     ctx.globalAlpha = p.winded > 0 && Math.floor(t * 14) % 2 ? 0.35 : 1;
