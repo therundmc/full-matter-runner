@@ -2,10 +2,14 @@ import { CAT, MASK, PALETTE, AI } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, drawSprite, silhouette } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
+import { blowFrom } from '../fx/Blows.js';
 
 const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3, cue: 0.6, cue_half: 0.3, tire_iron: 1.3 };
 
 const { Bodies, Body } = Matter;
+
+// a thrown blade at least this fast (px/step) plants itself in the man instead of knocking him down
+const STICK_SPEED = 6;
 
 // A weapon lying on the floor or flying through the air after a throw.
 export default class WeaponItem {
@@ -52,10 +56,16 @@ export default class WeaponItem {
       if (Math.hypot(c.x - this.x, c.y - this.y) < c.radius + 6) {
         const v = Body.getVelocity(this.body);
         const a = Math.atan2(v.y, v.x);
-        c.knock(a, 'throw');
-        w.sound('punch', c.x, c.y);
+        const stick = this.def.swing === 'blade' && sp >= STICK_SPEED;
+        if (stick) {
+          // like a blade blow: it stays in the body and is gone from the floor
+          const by = { ...this.def, wound: 'slash', gore: 0, stuck: this.def.sprite };
+          c.kill(a, 'slash', this.thrower, by, { thrown: true, from: blowFrom(c.angle, a) });
+        } else c.knock(a, 'throw');
+        w.sound(stick ? this.def.sound : 'punch', c.x, c.y);
         w.particles.blood(c.x, c.y, a, 0.5, 8, 120);
         w.shake(0.15);
+        if (stick) { w.removeItem(this); return; }
         Body.setVelocity(this.body, { x: -v.x * 0.3, y: -v.y * 0.3 });
         this.thrower = null;
         return;

@@ -25,6 +25,7 @@ export const SCORING = {
     behind: { points: 300, label: 'FROM BEHIND' },      // a blow in the back
     smash: { points: 200, label: 'SMASH' },             // the heavy stroke: overhead smash, lunge, straight stab
     spin: { points: 300, label: 'SPIN KILL' },          // a club swung all the way round
+    thrown: { points: 500, label: 'THROWN BLADE' },    // a knife thrown that planted itself in him
     broke: { points: 400, label: 'WEAPON BREAK' },      // the blow that broke the weapon over him
     smoked: { points: 400, label: 'SMOKED' },           // through an extinguisher's cloud
     dodge: { points: 600, label: 'DODGE KILL' },        // right after a round passed over a slide

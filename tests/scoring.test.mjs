@@ -58,8 +58,9 @@ test('scoring: the circumstances of a kill are read from the round, the blow and
   assert.deepEqual(killTags({ killer: p, how: { from: 'front' } }, { ...quiet, dodgeT: 49, pickT: 49.5 }), ['dodge', 'quickdraw']);
   assert.deepEqual(killTags({ killer: p, how: { from: 'side', spin: true } }, quiet), ['spin']);
   assert.deepEqual(killTags({ killer: p, how: { heavy: true, broke: true } }, quiet), ['smash', 'broke']);
+  assert.deepEqual(killTags({ killer: p, how: { from: 'front', thrown: true } }, quiet), ['thrown']);
   assert.deepEqual([2, 3, 4, 7].map((streak) => killTags({ killer: null }, { ...quiet, streak })[0]), ['double', 'triple', 'massacre', 'massacre']);
-  for (const tag of ['collateral', 'wallbang', 'ricochet', 'longshot', 'lastRound', 'slide', 'airborne', 'behind', 'smash', 'spin', 'broke', 'smoked', 'dodge', 'quickdraw', 'double', 'triple', 'massacre']) {
+  for (const tag of ['collateral', 'wallbang', 'ricochet', 'longshot', 'lastRound', 'slide', 'airborne', 'behind', 'smash', 'spin', 'broke', 'thrown', 'smoked', 'dodge', 'quickdraw', 'double', 'triple', 'massacre']) {
     assert.ok(T.tags[tag].points > 0 && T.tags[tag].label, tag);
   }
 });

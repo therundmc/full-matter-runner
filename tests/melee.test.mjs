@@ -100,3 +100,29 @@ test('melee: what a guard seized from behind gets depends on what is in the hand
   assert.equal(kind('knife'), 'blade');
   assert.equal(kind(null), 'neck');
 });
+
+// a flying weapon thrown by the player, `v` px/step towards a guard facing it
+const { default: WeaponItem } = await load('game/entities/WeaponItem.js');
+function flight(type, v) {
+  const removed = [];
+  const it = Object.create(WeaponItem.prototype);
+  const w = { ...world([]), removeItem: (i) => removed.push(i), noise: noop };
+  const g = { ...guard(10, 0), knocked: 0, knock(a, cause) { this.knockedBy = cause; } };
+  w.characters = () => [g];
+  const body = Matter.Bodies.rectangle(0, 0, 10, 4);
+  Matter.Body.setVelocity(body, { x: v, y: 0 });
+  Object.assign(it, { world: w, type, def: WEAPONS[type], thrower: fighter('pistol'), body });
+  it.update(1 / 60);
+  return { g, removed, it };
+}
+
+test('melee: a knife thrown fast plants itself in the man; a slow one or a bat only knocks him down', () => {
+  const k = flight('knife', 12);
+  assert.ok(!k.g.alive && k.g.cause === 'slash' && k.g.how.thrown && k.g.how.from);
+  assert.equal(k.g.by.stuck, WEAPONS.knife.sprite);
+  assert.equal(k.removed.length, 1);
+  const slow = flight('knife', 4);
+  assert.ok(slow.g.alive && slow.g.knockedBy === 'throw' && slow.removed.length === 0);
+  const bat = flight('bat', 12);
+  assert.ok(bat.g.alive && bat.g.knockedBy === 'throw' && bat.removed.length === 0);
+});
