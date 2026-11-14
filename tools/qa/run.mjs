@@ -1,4 +1,4 @@
-// `npm run qa -- [--minutes 10] [--seed 1] [--level level1] [--god] [--realtime] [--port 8123] [--keep-open]`
+// `npm run qa -- [--minutes 10] [--seed 1] [--level level1] [--god] [--realtime] [--plans a,b] [--port 8123] [--keep-open]`
 // Plays the game with a robot (tools/qa/bot.js) in a headless browser for a span of GAME time, watches for problems
 // and writes qa-report/<yyyymmdd-hhmmss>/ (report.md, report.json, screenshots, browser.log). See tools/qa/README.md.
 // Exit code: 0 no error finding, 1 at least one, 2 the tool itself failed (no browser, page did not load...).
@@ -17,7 +17,7 @@ const BATCH_TIMEOUT = 90000; // ms: a batch that long means the game hangs
 
 // ---------------------------------------------------------------- options
 function parseArgs(argv) {
-  const o = { minutes: 10, seed: 1, level: 'level1', god: false, mode: 'fast', port: 8123, keepOpen: false };
+  const o = { minutes: 10, seed: 1, level: 'level1', god: false, mode: 'fast', plans: null, port: 8123, keepOpen: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], next = () => argv[++i];
     if (a === '--minutes') o.minutes = +next();
@@ -25,6 +25,7 @@ function parseArgs(argv) {
     else if (a === '--level') o.level = next();
     else if (a === '--god') o.god = true;
     else if (a === '--realtime') o.mode = 'realtime';
+    else if (a === '--plans') o.plans = next().split(',').filter(Boolean);
     else if (a === '--port') o.port = +next();
     else if (a === '--keep-open') o.keepOpen = true;
     else if (a === '--help' || a === '-h') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n')[0].slice(3)); process.exit(0); }
@@ -35,7 +36,7 @@ function parseArgs(argv) {
 }
 
 const opts = parseArgs(process.argv.slice(2));
-const replay = `npm run qa -- --minutes ${opts.minutes} --seed ${opts.seed} --level ${opts.level}${opts.god ? ' --god' : ''}${opts.mode === 'realtime' ? ' --realtime' : ''}`;
+const replay = `npm run qa -- --minutes ${opts.minutes} --seed ${opts.seed} --level ${opts.level}${opts.god ? ' --god' : ''}${opts.mode === 'realtime' ? ' --realtime' : ''}${opts.plans ? ' --plans ' + opts.plans.join(',') : ''}`;
 
 function reportDir() {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
@@ -168,7 +169,7 @@ async function main() {
     if ((await page.eval('game.state')) !== 'title') break;
   }
   await page.eval(fs.readFileSync(path.join(HERE, 'bot.js'), 'utf8') + '\n;true');
-  await page.eval(`__qa.init(${JSON.stringify({ seed: opts.seed, god: opts.god, mode: opts.mode })})`);
+  await page.eval(`__qa.init(${JSON.stringify({ seed: opts.seed, god: opts.god, mode: opts.mode, level: opts.level, plans: opts.plans })})`);
   exitCode = 0;
 
   const target = opts.minutes * 60;
@@ -227,7 +228,7 @@ const gameSeconds = last?.clock || 0;
 const extra = [];
 if (final) {
   extra.push(...leakFindings(samples), ...crossSessionLeak(final.sessions), ...slowFindings(opts.mode, final.timing, final.perfSamples));
-  if (!interrupted) extra.push(...coverageFindings(final.stats.coverage, gameSeconds));
+  if (!interrupted) extra.push(...coverageFindings(final.stats.coverage, gameSeconds, final.stats.notApplicable));
 }
 for (const f of extra) findings.set(f.key, f);
 const order = { error: 0, warn: 1 };

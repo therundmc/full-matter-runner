@@ -66,9 +66,9 @@ export function slowFindings(mode, timing, perfSamples) {
   return out;
 }
 
-export function coverageFindings(coverage, gameSeconds) {
+export function coverageFindings(coverage, gameSeconds, notApplicable = []) {
   if (gameSeconds < 300) return []; // a long session only (5 game minutes and more)
-  return Object.entries(coverage).filter(([, n]) => !n).map(([f]) => finding('not-covered', 'warn', f, null, null,
+  return Object.entries(coverage).filter(([f, n]) => !n && !notApplicable?.includes(f)).map(([f]) => finding('not-covered', 'warn', f, null, null,
     { feature: f, why: `never exercised in ${Math.round(gameSeconds)} s of game time (the bot cannot reach it, or the game no longer offers it)` }));
 }
 
@@ -120,15 +120,18 @@ export function writeReport(dir, rep) {
   L.push('');
   L.push('## Statistics');
   L.push('');
-  L.push(`- Sessions: ${st.sessions ?? 0}, deaths: ${sum(st.deaths)}, clears (results screen): ${st.clears?.length ?? 0}, give-ups (no kill for long, restarted): ${st.giveUps ?? 0}, forced restarts: ${st.forcedRestarts ?? 0}`);
+  L.push(`- Sessions: ${st.sessions ?? 0}, deaths: ${sum(st.deaths)}, clears (results screen): ${st.clears?.length ?? 0}, give-ups (no kill for long, restarted): ${st.giveUps ?? 0}, forced restarts: ${st.forcedRestarts ?? 0}${st.restartsAfterClear ? `, restarts a minute after clearing a level with no exit: ${st.restartsAfterClear}` : ''}`);
   L.push(`- Deaths by cause: ${list(st.deaths)}; by killer: ${list(st.deathsBy)}`);
   L.push(`- Guards killed: ${st.kills ?? 0} (by the player ${st.playerKills ?? 0}); most in one session: ${st.maxKills ?? 0} (session ${st.maxKillsSession ?? '-'}) of ${rep.guards ?? '?'}`);
   L.push(`- Kills by style: ${list(st.styles)}`);
   L.push(`- Kill tags seen: ${list(st.tags)}`);
-  L.push(`- Kill weapons: ${list(st.killWeapons)}; picked up: ${list(st.picked)}; shots fired: ${list(st.fired)}`);
+  L.push(`- Kill weapons: ${list(st.killWeapons)}; picked up: ${list(st.picked)}; shots fired: ${list(st.fired)}; ammunition seen on the floor: ${st.ammoOnFloor ?? 0}`);
   L.push(`- Civilians killed: ${list(st.civilians)}`);
   if (st.clears?.length) L.push(`- Clears: ${st.clears.map((c) => `session ${c.session}: ${c.grade} ${c.score} in ${c.time} s`).join('; ')}`);
   L.push(`- Coverage: ${Object.entries(st.coverage || {}).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  if (st.notApplicable?.length) L.push(`- Not in this level (no warning): ${st.notApplicable.join(', ')}`);
+  L.push(`- How the dead went: ${list(st.dying)}`);
+  L.push(`- Plans (started / done / cut short by a death or restart / skipped as pointless, failures): ${planLines(st.plans)}`);
   L.push(`- Bot goals: ${list(st.goals)}; abandoned: ${st.goalsAbandoned ?? 0}; one-step wall contacts (not reported): ${st.transientInWall ?? 0}`);
   if (rep.perf) L.push(`- Speed: ${rep.perf}`);
   if (rep.bot) L.push(`- Bot at the end: \`${oneLine(rep.bot, 600).replace(/`/g, "'")}\``);
@@ -143,6 +146,10 @@ export function writeReport(dir, rep) {
 }
 
 const sum = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
+const planLines = (plans) => Object.entries(plans || {}).map(([name, p]) => {
+  const failed = Object.entries(p.failed).map(([at, n]) => `${at} x${n}`).join('; ');
+  return `${name} ${p.started}/${p.done}/${p.cut ?? 0}/${p.skipped}${failed ? ` (failed: ${failed})` : ''}`;
+}).join(', ') || '-';
 export function fmtTime(s) { s = Math.round(s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 
 // ten lines for the terminal

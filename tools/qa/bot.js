@@ -17,9 +17,64 @@
   const DT = 1 / 60;
   const MELEE_SPACE = new Set(['EXECUTE']);
   const VAULTS = new Set(['VAULT', 'DIVE THROUGH', 'CLIMB']);
-  // features a long session should exercise at least once (else a 'not-covered' warning, see run.mjs)
-  const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'slide', 'takedown', 'finisher', 'trunk', 'doorOpened', 'doorBreached',
-    'weaponBroken', 'pickup', 'throw', 'reload', 'gunKill', 'meleeKill', 'clear', 'exit'];
+  // features a long session should exercise at least once (else a 'not-covered' warning, see run.mjs), unless the
+  // level has nothing for it (notApplicable)
+  const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'ladderUp', 'ladderDown', 'roofDrop', 'roll', 'slide', 'takedown',
+    'finisher', 'trunk', 'doorOpened', 'doorBreached', 'weaponBroken', 'pickup', 'throw', 'thrownKill', 'reload', 'gunKill', 'meleeKill',
+    'powerCut', 'horn', 'dyingCrawl', 'dyingCurl', 'dyingSpasm', 'dyingThroat', 'clear', 'exit'];
+  const DYING = { crawl: 'dyingCrawl', curl: 'dyingCurl', spasm: 'dyingSpasm', throat: 'dyingThroat' };
+
+  // Plans: what the bot sets out to do, drawn at each session start (and again after a while of free play) from a
+  // seeded shuffled deck, so each comes up as often as the others. A plan is a list of steps (tile coordinates):
+  //   go: [x, y]        walk there (grid path; a locked door on the way is broken open)
+  //   to: [x, y]        walk straight there (where the grid sees furniture: the liquor store is mostly blocked cells)
+  //   cross: [x, y]     push toward it and press Space (ladder, parapet, counter): done when the move is over
+  //   pick: type        walk to the nearest such weapon (by `near`, within `r` tiles, or anywhere with `any`;
+  //                     `direct`: straight at it, not along the grid), E
+  //   trunk             open the first closed trunk (skipped when already armed); a pick `optional` is skipped
+  //                     when there is no such weapon
+  //   wait: s           stand there s seconds (in a traffic lane: a held-up driver leans on his horn)
+  //   smash: type       go to `stand`, then strike or shoot the prop by `near` until it is gone
+  // then the bot plays freely, in the plan's `style` ('throw': blades are thrown at guards in range).
+  // ok(w, p): whether the plan still makes sense now. Routes through the map are level 1's; a level with no entry
+  // here only plays 'free'. A plan marked `rescue` is never drawn, only started when needed.
+  const FIRE_ESCAPE = [{ go: [1.5, 21.4] }, { cross: [1.5, 19.3] }]; // up the street corner's ladder onto the liquor store roof
+  const DROP_LOT = [{ go: [9.45, 3.5] }, { cross: [11.7, 3.5] }];    // over the parapet, down into the back lot (a roll)
+  const DROP_ALLEY = [{ go: [9.45, 12.5] }, { cross: [11.7, 12.5] }]; // ... into the service alley
+  // the liquor store: the pistol lies behind the counter, in the aisle between it and the shelves that leads west to
+  // the foot of the shop's ladder (all of it blocked cells for the grid)
+  const PISTOL = { pick: 'pistol', near: [8.5, 17.5], r: 3, direct: true };
+  const SHOP_DOWN = [{ go: [3.5, 15.45] }, { cross: [3.5, 17.6] }];  // down the shop's own ladder, into the aisle
+  const SHOP_UP = [{ to: [3.5, 17.75] }, { to: [3.5, 17.45] }, { cross: [3.5, 15.4] }];
+  const COUNTER_IN = [{ go: [8.5, 19.5] }, { cross: [8.5, 17.7] }];  // in by the front door (locked: broken open), over the counter
+  const COUNTER_OUT = [{ to: [8.5, 17.75] }, { cross: [8.5, 19.6] }];
+  const itemNear = (w, type, at, r) => w.items.find((it) => !it.dead && it.type === type && Math.hypot(it.x - at[0] * TILE, it.y - at[1] * TILE) < r * TILE);
+  const TIRE_IRON = [{ trunk: true }, { pick: 'tire_iron', near: [13.5, 24], r: 4, optional: true }];
+  const THROW = { steps: [{ pick: 'knife', any: true }], style: 'throw', ok: (w) => w.items.some((it) => !it.dead && it.type === 'knife') };
+  const PLANS = {
+    level1: {
+      free: { steps: [] },
+      trunk: { steps: TIRE_IRON, ok: (w, p) => !p.armed && B.trunks.some((c) => !c.dead && !c.trunk.open) },
+      roof: { steps: [...FIRE_ESCAPE, ...DROP_LOT] },
+      roofShop: { steps: [...FIRE_ESCAPE, ...SHOP_DOWN, PISTOL, ...SHOP_UP, ...DROP_ALLEY], ok: (w) => !!itemNear(w, 'pistol', PISTOL.near, 3) },
+      liquor: { steps: [...COUNTER_IN, PISTOL, ...COUNTER_OUT], ok: (w, p) => !p.hasGun && !!itemNear(w, 'pistol', PISTOL.near, 3) },
+      // the back lot is watched (a patrol, a doorman by the back door): a tire iron first, if the trunk still has it
+      fuse: { steps: [...TIRE_IRON, { smash: 'fuse_box', near: [24.5, 4.92], stand: [24.5, 4.3] }], ok: (w) => w.power.on },
+      // in the westbound lane until a driver stops and leans on his horn: --god only, drivers see a man in the road
+      // late by design (Traffic.Driver attention) and he is nearly always run over
+      road: { steps: [{ go: [17.5, 26.2] }, { wait: 15 }], ok: () => opts.god },
+      throw: { steps: [{ pick: 'knife', near: [32.5, 17.5], r: 3, any: true }], style: 'throw' },
+      // off the roof when a failed plan left the bot up there (the grid has no way down: ladders and parapets block)
+      offRoof: { steps: DROP_ALLEY, rescue: true },
+    },
+    lab: { free: { steps: [] }, throw: THROW },
+    street: {
+      free: { steps: [] },
+      throw: THROW,
+      road: { steps: [{ go: [20.5, 11.2] }, { wait: 15 }], ok: () => opts.god },
+      road2: { steps: [{ go: [24.5, 14.2] }, { wait: 15 }], ok: () => opts.god },
+    },
+  };
 
   // seeded PRNG (mulberry32)
   const prng = (seed) => () => {
@@ -40,7 +95,7 @@
   const qa = (window.__qa = {});
   let game, findPath, Audio, killStyle, rnd, opts;
   const S = {
-    clock: 0, steps: 0, session: 0, world: null, sess: null,
+    clock: 0, steps: 0, session: 0, world: null, sess: null, deck: [],
     findings: new Map(), dirty: new Set(), freshKinds: [],
     actions: [],
     stats: {
@@ -48,6 +103,7 @@
       kills: 0, playerKills: 0, styles: {}, tags: {}, killWeapons: {}, picked: {}, fired: {}, civilians: {},
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
+      plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0,
     },
     sessions: [],      // per session summary (Node analyses its samples for leaks)
     newSamples: [],    // leak samples since the last status
@@ -84,6 +140,7 @@
 
   // ---------------------------------------------------------------- per session
   function onNewWorld(w) {
+    if (B.plan) planStat(B.plan.name).cut++; // the session ended under it (death, restart)
     S.world = w;
     S.session++;
     S.stats.sessions++;
@@ -91,7 +148,7 @@
       index: S.session, start: r1(S.clock), kills: 0, playerKills: 0, died: null, cleared: false, exited: false,
       samples: [], nextSample: 0, startBodies: w.physics.bodies().length,
       heapStart: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null,
-      guards: w.totalEnemies, lastKillT: S.clock,
+      guards: w.totalEnemies, lastKillT: S.clock, plans: [],
     };
     S.sessions.push(sess);
     if (S.sessions.length > 400) S.sessions.shift();
@@ -116,8 +173,19 @@
     const reload = p.reload;
     p.reload = function (...a) { const r = reload.apply(this, a); if (r) cover('reload'); return r; };
     for (const e of w.enemies) wrapGuard(e);
+    // the horn of a held-up driver (systems/Ambient.js) is only a sound: listen for it
+    const sound = w.sound;
+    w.sound = function (name, ...a) { if (name === 'horn') { cover('horn'); act('horn'); } return sound.call(this, name, ...a); };
+    // the ways through walls (ladders, parapets) take marks but must never go: watch them and what hit them last
+    B.lasting = w.props.filter((q) => q.def.lasting);
+    for (const q of B.lasting) {
+      const hit = q.hit;
+      q.hit = function (damage, px, py, dirA, power, kind, ...a) { this.__qaHit = { damage, kind, t: r1(w.time) }; return hit.call(this, damage, px, py, dirA, power, kind, ...a); };
+    }
+    if (!S.stats.notApplicable) S.stats.notApplicable = notApplicable(w);
     const ev = w.events;
     ev.on('kill', (e) => onKill(w, e));
+    ev.on('powerCut', () => { cover('powerCut'); act('POWER CUT'); B.powerCheckT = w.time + 1.5; });
     ev.on('slide', ({ ch }) => { if (ch?.isPlayer) cover('slide'); });
     ev.on('pickup', ({ ch, type }) => { if (ch?.isPlayer) { cover('pickup'); bump(S.stats.picked, type); } });
     ev.on('shot', ({ shooter, weapon }) => { if (shooter?.isPlayer) bump(S.stats.fired, weapon?.type || weapon?.name || 'gun'); });
@@ -132,7 +200,27 @@
     B.takedownWas = null; B.execWas = null; B.diedSeen = false; B.resultsSeen = false; B.clearT = null;
     B.sessionStart = S.clock; B.noTarget = 0; B.blacklist = [];
     B.exitSince = null; B.leftZero = null; B.exitPathT = -99;
+    B.powerCheckT = null; B.lastingSeen = new Set();
+    B.plan = null; B.style = null;
     act(`session ${S.session}`);
+    startPlan(w, p, drawPlan(w, p));
+  }
+
+  // features this level has nothing for (no 'not-covered' warning about them)
+  function notApplicable(w) {
+    const has = (type) => w.props.some((q) => q.type === type);
+    const na = [];
+    if (!has('ladder')) na.push('ladderUp', 'ladderDown');
+    if (!has('parapet')) na.push('roofDrop');
+    if (!w.props.some((q) => q.def.land === 'roll')) na.push('roll'); // parapets, chain-link fences
+    if (!w.power.zone) na.push('powerCut');
+    if (!w.level.ambient?.traffic?.length) na.push('horn');
+    if (!w.props.some((q) => q.trunk)) na.push('trunk');
+    if (!w.windows.length) na.push('windowDive', 'windowVault');
+    if (!w.doors.some((d) => d.locked)) na.push('doorBreached');
+    if (!w.level.exit) na.push('exit');
+    if (!w.enemies.length) na.push('takedown', 'finisher', 'gunKill', 'meleeKill', 'thrownKill', ...Object.values(DYING), 'clear');
+    return na;
   }
 
   // a guard's travel(): when it is asked to walk somewhere, for the guard-stuck detector
@@ -163,6 +251,7 @@
     S.stats.maxKills = Math.max(S.stats.maxKills, S.sess.kills);
     if (S.stats.maxKills === S.sess.kills) S.stats.maxKillsSession = S.session;
     if (!killer?.isPlayer) return;
+    if (e.how?.thrown) { cover('thrownKill'); act('THROWN KILL'); }
     S.stats.playerKills++;
     S.sess.playerKills++;
     const how = killStyle(e);
@@ -219,20 +308,26 @@
     const near = (list) => list.map((o) => ({ o, d: Math.hypot(o.x - p.x, o.y - p.y) })).sort((a, b) => a.d - b.d);
     const items = near(w.items.filter((it) => !it.dead && it.speed <= 3 && !blacklisted(it.x, it.y)));
     const loaded = ({ o }) => o.def?.kind === 'gun' && o.mag > 0;
-    const wantGun = !p.hasGun && items.some(loaded);
+    const wantGun = B.style !== 'throw' && !p.hasGun && items.some(loaded); // a blade thrower keeps to blades
     const options = [];
     if (guards.length) options.push({ w: p.armed ? 7 : 3, f: () => { const g = near(guards).find(({ o }) => !blacklisted(o.x, o.y)) || near(guards)[0]; return { type: 'guard', x: g.o.x, y: g.o.y, guard: g.o }; } });
     const gunNear = wantGun && items.some((x) => loaded(x) && x.d < 400);
     if (items.length && (!p.armed || wantGun)) options.push({ w: gunNear ? 12 : p.armed ? 3 : 8, f: () => { const pool = wantGun ? items.filter(loaded) : items, it = pool[Math.floor(rnd() * Math.min(3, pool.length))].o; return { type: 'item', x: it.x, y: it.y, item: it }; } });
-    const ammo = p.hasGun ? near((w.ammoItems || []).filter((a) => !a.dead && a.type === p.def.ammo && !blacklisted(a.x, a.y))) : [];
-    if (ammo.length && p.ammo[p.def.ammo] < p.def.mag * 2) options.push({ w: 4, f: () => ({ type: 'ammo', x: ammo[0].o.x, y: ammo[0].o.y, item: ammo[0].o }) });
+    // rounds on the floor: for the gun in hand, or of a caliber we have none of (level 1: a guard's dropped magazine
+    // is the only way to a reload)
+    const mine = (o) => p.hasGun && o.type === p.def.ammo;
+    const ammo = near((w.ammoItems || []).filter((a) => !a.dead && !blacklisted(a.x, a.y)))
+      .filter(({ o, d }) => d < 12 * TILE && p.ammo[o.type] < (mine(o) ? p.def.mag * 2 : 1));
+    if (ammo.length) options.push({ w: mine(ammo[0].o) ? 4 : 1.5, f: () => ({ type: 'ammo', x: ammo[0].o.x, y: ammo[0].o.y, item: ammo[0].o }) });
     const trunks = B.trunks.filter((c) => !c.dead && c.trunk && !c.trunk.open);
     if (trunks.length) options.push({ w: p.armed ? 0.6 : 3, f: () => { const c = trunks[0], at = c.toWorld(-14, c.h / 2); return { type: 'trunk', x: at.x, y: at.y, car: c }; } });
     if (w.doors.length) options.push({ w: 1, f: () => doorGoal(w, p, w.doors[Math.floor(rnd() * w.doors.length)]) });
     if (w.windows.length) options.push({ w: 1.3, f: () => windowGoal(w, p, w.windows[Math.floor(rnd() * w.windows.length)]) });
     options.push({ w: 0.8, f: () => { const [cx, cy] = B.walkable[Math.floor(rnd() * B.walkable.length)]; return { type: 'wander', x: (cx + 0.5) * TILE, y: (cy + 0.5) * TILE }; } });
+    options.push({ w: guards.length ? 0.6 : 4, f: () => (smashGoal(w, p) ? 'plan' : null) });
     for (let i = 0; i < 6; i++) {
       const g = pickWeighted(options).f();
+      if (g === 'plan') return true;
       if (g && setGoal(w, p, g)) return true;
     }
     return false;
@@ -308,6 +403,196 @@
     return { wallAhead: w.map.isSolid(cx, cy), tile: w.map.at(cx, cy), near: near.sort((a, b) => a.d - b.d).slice(0, 4) };
   }
 
+  // ---------------------------------------------------------------- plans (see PLANS)
+  const onRoofTile = (w, x, y) => w.map.at(...cellOf(x, y)) === '^';
+  const guardsUp = (w) => w.enemies.some((e) => e.alive && !e.yielded);
+  const planStat = (name) => S.stats.plans[name] || (S.stats.plans[name] = { started: 0, done: 0, cut: 0, skipped: 0, failed: {} });
+  const stepName = (st) => (st.go ? `go ${st.go}` : st.to ? `to ${st.to}` : st.cross ? `cross ${st.cross}` : st.pick ? `pick ${st.pick}`
+    : st.trunk ? 'trunk' : st.wait ? `wait ${st.wait}` : `smash ${st.smash}`);
+
+  // the next plan of the deck that makes sense now ('free' only at a session start; rescues are never drawn)
+  function drawPlan(w, p, start = true) {
+    const plans = PLANS[opts.level] || { free: { steps: [] } };
+    const names = Object.keys(plans).filter((n) => !plans[n].rescue && (!opts.plans || opts.plans.includes(n)));
+    if (!names.length) return start ? 'free' : null;
+    for (let i = 0; i < names.length * 2; i++) {
+      if (!S.deck.length) {
+        S.deck = names.slice();
+        for (let k = S.deck.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [S.deck[k], S.deck[j]] = [S.deck[j], S.deck[k]]; }
+      }
+      const name = S.deck.shift(), plan = plans[name];
+      if (name === 'free' && !start) continue;
+      if (!plan.ok || plan.ok(w, p)) return name;
+      planStat(name).skipped++;
+    }
+    return start ? 'free' : null;
+  }
+
+  function startPlan(w, p, name, steps = PLANS[opts.level]?.[name]?.steps || []) {
+    planStat(name).started++;
+    S.sess.plans.push(name);
+    const style = PLANS[opts.level]?.[name]?.style;
+    if (style) B.style = style;
+    B.nextPlanT = S.clock + 40;
+    act(`plan ${name}`);
+    B.plan = { name, steps, i: -1 };
+    nextStep(w, p);
+  }
+
+  function endPlan(ok, why) {
+    const pl = B.plan;
+    if (!pl) return null;
+    if (ok) { planStat(pl.name).done++; act(`plan ${pl.name} done`); }
+    else {
+      const at = `${pl.i}: ${stepName(pl.steps[pl.i])}: ${why}`;
+      bump(planStat(pl.name).failed, at);
+      act(`plan ${pl.name} failed (${at})`);
+      // a route that breaks is worth a look (a ladder that no longer takes him, a door that will not give); a roaming
+      // smash that cannot get there is not
+      const p = game.world.player;
+      if (pl.name !== 'smash' && why !== 'level cleared') {
+        report('plan-failed', 'warn', `${pl.name} ${at}`, posOf(p.x, p.y), { plan: pl.name, step: at, weapon: p.weapon?.type || 'fists', goal: B.goal && B.goal.type, ctx: p.contextAction });
+      }
+    }
+    B.plan = B.step = null; B.goal = B.path = null;
+    B.nextPlanT = S.clock + 40;
+    return null;
+  }
+
+  // a stand point by prop q: its own cell if free, else the free neighbour nearest to the player
+  function standBy(w, p, q) {
+    const [cx, cy] = cellOf(q.x, q.y);
+    if (!w.map.isBlocked(cx, cy)) return { x: q.x, y: q.y };
+    let best = null;
+    for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      if (w.map.isBlocked(cx + ox, cy + oy)) continue;
+      const at = { x: (cx + ox + 0.5) * TILE, y: (cy + oy + 0.5) * TILE }, d = Math.hypot(at.x - p.x, at.y - p.y);
+      if (!best || d < best.d) best = { ...at, d };
+    }
+    return best;
+  }
+
+  function nextStep(w, p) {
+    const pl = B.plan;
+    if (++pl.i >= pl.steps.length) return endPlan(true);
+    const st = B.step = { ...pl.steps[pl.i], t0: S.clock };
+    B.goal = B.path = null;
+    const go = (g) => (setGoal(w, p, g) ? undefined : endPlan(false, 'no path'));
+    if (st.go) { st.x = st.go[0] * TILE; st.y = st.go[1] * TILE; return go({ type: 'route', x: st.x, y: st.y }); }
+    const spot = st.to || st.cross;
+    if (spot) { st.x = spot[0] * TILE; st.y = spot[1] * TILE; st.best = Infinity; return null; }
+    if (st.pick) return p.weapon?.type === st.pick ? nextStep(w, p) : findItem(w, p, st);
+    if (st.wait) return null;
+    if (st.trunk) {
+      st.car = B.trunks.find((c) => !c.dead && !c.trunk.open);
+      if (!st.car || p.armed) return nextStep(w, p);
+      const at = st.car.toWorld(-14, st.car.h / 2);
+      return go({ type: 'trunk', x: at.x, y: at.y, car: st.car });
+    }
+    // smash
+    st.prop = st.prop || w.props.find((q) => !q.dead && q.type === st.smash && Math.hypot(q.x - st.near[0] * TILE, q.y - st.near[1] * TILE) < 1.5 * TILE);
+    if (!st.prop) return nextStep(w, p);
+    const at = st.stand ? { x: st.stand[0] * TILE, y: st.stand[1] * TILE } : standBy(w, p, st.prop);
+    if (!at) return endPlan(false, 'nowhere to stand');
+    st.x = at.x; st.y = at.y;
+    return go({ type: 'route', x: st.x, y: st.y });
+  }
+
+  // the weapon a pick step is after (one just thrown out of a trunk may take a step to show up)
+  function findItem(w, p, st) {
+    st.item = (st.near && itemNear(w, st.pick, st.near, st.r || 2))
+      || (st.any && w.items.filter((it) => !it.dead && it.type === st.pick).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]);
+    if (!st.item) return S.clock - st.t0 < 1.5 ? null : st.optional ? nextStep(w, p) : endPlan(false, `no ${st.pick} left`);
+    if (st.direct) { st.best = Infinity; return null; }
+    return setGoal(w, p, { type: 'item', x: st.item.x, y: st.item.y, item: st.item }) ? undefined : endPlan(false, 'no path');
+  }
+
+  // one frame of the current step: a heading when the step steers itself (cross, smash), null to stand, undefined to
+  // follow the path the step planned (go, pick, trunk)
+  function runPlan(w, p, inp) {
+    const st = B.step;
+    if (w.cleared && w.level.exit && !onRoofTile(w, p.x, p.y)) return endPlan(false, 'level cleared');
+    if (S.clock - st.t0 > (st.cross ? 4 : st.to || st.direct ? 8 : 45)) return endPlan(false, 'timeout');
+    if (st.go) {
+      if (Math.hypot(p.x - st.x, p.y - st.y) < 8) return nextStep(w, p);
+      return B.goal ? undefined : endPlan(false, 'gave up the way');
+    }
+    if (st.to) return Math.hypot(p.x - st.x, p.y - st.y) < 6 ? nextStep(w, p) : straight(p, inp, st, st.x, st.y);
+    if (st.wait) return S.clock - st.t0 > st.wait ? nextStep(w, p) : null;
+    if (st.cross) {
+      if (p.vaulting) { st.vaulted = true; return null; }
+      if (st.vaulted) return nextStep(w, p);
+      const h = steer(inp, st.x - p.x, st.y - p.y);
+      if (VAULTS.has(p.contextAction) && S.clock > B.spaceT) { press(inp, 'Space'); B.spaceT = S.clock + 0.3; act(`space (${p.contextAction})`); }
+      return h;
+    }
+    if (st.pick) {
+      if (p.weapon?.type === st.pick) return nextStep(w, p);
+      if (!st.item) return findItem(w, p, st);
+      if (st.item.dead) return endPlan(false, `${st.pick} taken`);
+      if (p.nearItem === st.item) { press(inp, 'KeyE'); act(`pick up ${st.pick}`); }
+      if (st.direct) return straight(p, inp, st, st.item.x, st.item.y);
+      return B.goal ? undefined : endPlan(false, 'gave up the way');
+    }
+    if (st.trunk) {
+      if (st.car.dead || st.car.trunk.open) return nextStep(w, p);
+      if (p.nearTrunk) { press(inp, 'KeyE'); act('open trunk'); }
+      return B.goal ? undefined : endPlan(false, 'gave up the way');
+    }
+    // smash: get there, then hit it until it is gone (a roaming smash stops after a few seconds of it)
+    const q = st.prop, d = Math.hypot(q.x - p.x, q.y - p.y);
+    if (q.dead || !w.props.includes(q) || (q.type === 'fuse_box' && !w.power.on)) { act(`smashed ${q.type}`); return nextStep(w, p); }
+    // a gun shoots it from where it is seen; a blow needs to be at it
+    const shoot = p.def.kind === 'gun' && d < 220 && w.lineOfSight(p.x, p.y, q.x, q.y);
+    if (!st.at && (Math.hypot(p.x - st.x, p.y - st.y) < 8 || d < 22 || shoot)) { st.at = S.clock; B.goal = B.path = null; }
+    if (!st.at) return B.goal ? undefined : endPlan(false, 'gave up the way');
+    if (st.enough && S.clock - st.at > st.enough) return nextStep(w, p);
+    if (S.clock - st.at > 8) return endPlan(false, `${q.type} still there (hp ${q.hp})`);
+    aimAt(inp, q.x, q.y);
+    if (p.def.kind === 'gun') { if (S.clock > B.fireT) { inp.mouse.clicked[0] = inp.mouse.down[0] = true; B.fireT = S.clock + 0.35; act(`shoot ${q.type}`); } }
+    else { inp.mouse.down[0] = true; act(`strike ${q.type}`); }
+    return !shoot && d > (p.def.range || 20) + 4 ? steer(inp, q.x - p.x, q.y - p.y) : null;
+  }
+
+  // straight at (x, y), off the grid: a counter or a box in the way is vaulted
+  function straight(p, inp, st, x, y) {
+    if (p.vaulting) return null;
+    const d = Math.hypot(x - p.x, y - p.y);
+    if (d < st.best - 4) { st.best = d; st.bestT = S.clock; }
+    if (S.clock - st.bestT > 0.8 && VAULTS.has(p.contextAction) && S.clock > B.spaceT) { press(inp, 'Space'); B.spaceT = S.clock + 0.5; act(`space (${p.contextAction})`); }
+    return steer(inp, x - p.x, y - p.y);
+  }
+
+  // a roaming target: something breakable around, to hit or shoot (on levels with nothing else to do, mostly); only
+  // one the grid can reach
+  function smashGoal(w, p) {
+    const list = w.props.filter((q) => !q.dead && !q.def.lasting && !q.trunk && Math.hypot(q.x - p.x, q.y - p.y) < 15 * TILE && !blacklisted(q.x, q.y));
+    for (let i = 0; i < 4 && list.length; i++) {
+      const q = pickWeighted(list.map((o) => ({ o, w: o.isVehicle ? 0.3 : 1 }))).o;
+      list.splice(list.indexOf(q), 1);
+      B.blacklist.push({ x: q.x, y: q.y, until: S.clock + 30 });
+      const at = standBy(w, p, q);
+      if (!at || !findPath(w.map, p.x, p.y, at.x, at.y, 8000)) continue;
+      startPlan(w, p, 'smash', [{ smash: q.type, prop: q, stand: [at.x / TILE, at.y / TILE], enough: 2 + rnd() * 3 }]);
+      return !!B.plan;
+    }
+    return false;
+  }
+
+  // about to step into a lane a car is coming down: wait on the kerb (drivers see a man in the road late, by design:
+  // Traffic.Driver attention). Once in the lane, he keeps going.
+  function trafficAhead(w, p, heading) {
+    const nx = p.x + Math.cos(heading) * 26, ny = p.y + Math.sin(heading) * 26;
+    for (const c of w.ambient?.cars || []) {
+      if (c.v.exploded || !c.d.moving || Math.abs(c.d.speed) < 20) continue;
+      const band = c.hw + 14;
+      if (Math.abs(ny - c.v.y) > band || Math.abs(p.y - c.v.y) <= band) continue;
+      const ahead = (nx - c.v.x) * c.lane.dir; // px from the car to where he would step in, along its way
+      if (ahead > -c.hl - 10 && ahead < c.hl + Math.abs(c.d.speed) * 2.2) return true;
+    }
+    return false;
+  }
+
   // one decision + input frame of the bot while playing
   function play(w, p, inp) {
     inp.keys.clear();
@@ -330,49 +615,64 @@
     const d = p.def, gun = d.kind === 'gun';
     const tdist = tg ? Math.hypot(tg.x - p.x, tg.y - p.y) : Infinity;
     const reach = (d.range || 20) + 12;
+    const range = d.pellets > 1 ? 210 : 360; // a gun: a sensible distance to shoot from
+    // on a plan, only a guard who is on to us is fought; the others are left alone
+    const threat = !!tg && (tdist < reach + 24 || (tg.aware >= 2 && tdist < (gun ? range : 170)));
+    const foe = B.plan && !threat ? null : tg;
     // an unaware guard, standing: creep up behind him for a takedown (half the time), instead of rushing him
-    if (tg !== B.sneakFor) { B.sneakFor = tg; B.sneak = !!tg && rnd() < 0.5; }
-    const sneaking = tg && B.sneak && !gun && tg.aware === 0 && !(tg.knocked > 0) && !tg.held;
-    const back = sneaking && { x: tg.x - Math.cos(tg.angle) * 20, y: tg.y - Math.sin(tg.angle) * 20 };
+    if (foe !== B.sneakFor) { B.sneakFor = foe; B.sneak = !!foe && rnd() < 0.5; }
+    const sneaking = foe && B.sneak && !gun && foe.aware === 0 && !(foe.knocked > 0) && !foe.held;
+    const back = sneaking && { x: foe.x - Math.cos(foe.angle) * 20, y: foe.y - Math.sin(foe.angle) * 20 };
 
-    // goal upkeep
-    if (!B.goal || S.clock - B.goalT > 25 || (w.cleared && B.goal.type !== 'exit')) chooseGoal(w, p);
+    // plan or goal upkeep
+    let planHeading;
+    if (!B.plan && !p.vaulting && onRoofTile(w, p.x, p.y) && PLANS[opts.level]?.offRoof) startPlan(w, p, 'offRoof');
+    else if (!B.plan && !w.cleared && guardsUp(w) && S.clock > B.nextPlanT && !threat) {
+      const name = drawPlan(w, p, false);
+      if (name) startPlan(w, p, name); else B.nextPlanT = S.clock + 40;
+    }
+    if (B.plan) planHeading = runPlan(w, p, inp);
+    else if (!B.goal || S.clock - B.goalT > 25 || (w.cleared && w.level.exit && B.goal.type !== 'exit')) chooseGoal(w, p);
     else if (B.goal.type === 'guard' && (!B.goal.guard.alive || B.goal.guard.yielded)) chooseGoal(w, p);
     else if ((B.goal.type === 'item' || B.goal.type === 'ammo') && B.goal.item.dead) chooseGoal(w, p);
     else if (B.goal.type === 'trunk' && B.goal.car.trunk?.open) chooseGoal(w, p);
-    else if (S.clock >= B.replanT && !B.goal.crossing) {
+    if (B.goal && S.clock >= B.replanT && !B.goal.crossing) {
       if (B.goal.type === 'guard') { B.goal.x = B.goal.guard.x; B.goal.y = B.goal.guard.y; }
-      if (!setGoal(w, p, B.goal)) chooseGoal(w, p);
+      if (B.goal.type === 'item' || B.goal.type === 'ammo') { B.goal.x = B.goal.item.x; B.goal.y = B.goal.item.y; }
+      if (!setGoal(w, p, B.goal)) { if (B.plan) B.goal = B.path = null; else chooseGoal(w, p); }
     }
+    const steering = planHeading !== undefined; // the plan steers (cross, smash): no chase, no unsticking moves
 
     // movement: straight at a close target in sight, else along the path
     let heading = null;
-    const chase = tg && !gun && tdist < 240;
-    if (B.side && S.clock < B.sideT) heading = steer(inp, Math.cos(B.side), Math.sin(B.side));
+    const chase = foe && !gun && tdist < 240;
+    if (steering) heading = planHeading;
+    else if (B.side && S.clock < B.sideT) heading = steer(inp, Math.cos(B.side), Math.sin(B.side));
     else if (sneaking && tdist < 240) {
       B.side = null;
       const bd = Math.hypot(back.x - p.x, back.y - p.y);
       // round him, not through him: aim for a point off to the side of his back while still in front of him
-      const ahead = Math.cos(tg.angle) * (p.x - tg.x) + Math.sin(tg.angle) * (p.y - tg.y) > 0;
-      const via = ahead ? { x: tg.x + Math.cos(tg.angle + Math.PI / 2) * 40, y: tg.y + Math.sin(tg.angle + Math.PI / 2) * 40 } : back;
+      const ahead = Math.cos(foe.angle) * (p.x - foe.x) + Math.sin(foe.angle) * (p.y - foe.y) > 0;
+      const via = ahead ? { x: foe.x + Math.cos(foe.angle + Math.PI / 2) * 40, y: foe.y + Math.sin(foe.angle + Math.PI / 2) * 40 } : back;
       if (bd > 6) heading = steer(inp, via.x - p.x, via.y - p.y);
       act('sneak');
     } else if (chase) {
       B.side = null;
-      if (tdist > reach * 0.6) heading = steer(inp, tg.x - p.x, tg.y - p.y);
-    } else if (gun && tg && tdist < 170) {
-      // too close with a gun: hold the ground, a step aside now and then
-      if (rnd() < 0.02) { B.side = Math.atan2(tg.y - p.y, tg.x - p.x) + (rnd() < 0.5 ? 1.6 : -1.6); B.sideT = S.clock + 0.3; }
+      if (tdist > reach * 0.6) heading = steer(inp, foe.x - p.x, foe.y - p.y);
+    } else if (gun && foe && tdist < range * 0.6) {
+      // a gun at close range: hold the ground, a step aside now and then
+      if (rnd() < 0.02) { B.side = Math.atan2(foe.y - p.y, foe.x - p.x) + (rnd() < 0.5 ? 1.6 : -1.6); B.sideT = S.clock + 0.3; }
     } else if (B.path) {
       let wp = B.path[B.idx];
       while (wp && Math.hypot(wp.x - p.x, wp.y - p.y) < (B.idx === B.path.length - 1 ? 14 : 12)) wp = B.path[++B.idx];
-      if (!wp) arrive(w, p, inp);
+      if (!wp) heading = arrive(w, p, inp) ?? null;
       else heading = steer(inp, wp.x - p.x, wp.y - p.y);
     }
     if (B.goal?.type === 'window' && (B.goal.crossing || (B.path && B.idx >= B.path.length - 1 && Math.hypot(B.goal.x - p.x, B.goal.y - p.y) < 20))) heading = windowApproach(w, p, inp);
+    if (heading !== null && !p.vaulting && trafficAhead(w, p, heading)) { inp.keys.clear(); heading = null; act('wait for traffic'); }
 
     // progress watch: no headway for a while -> vault, then sidestep, then report and give up the goal
-    if (heading !== null && !p.vaulting && !p.execution && !p.takedown && !p.slide && !B.goal?.crossing) {
+    if (heading !== null && !steering && !p.vaulting && !p.execution && !p.takedown && !p.slide && !B.goal?.crossing) {
       const a = B.anchor || (B.anchor = { x: p.x, y: p.y, t: w.time });
       const moved = Math.hypot(p.x - a.x, p.y - a.y);
       if (moved >= 8) { B.anchor = { x: p.x, y: p.y, t: w.time }; }
@@ -382,7 +682,7 @@
         else if (held > 0.9 && !B.side) { B.side = heading + (rnd() < 0.5 ? 1 : -1) * (Math.PI / 2 + rnd() * 0.6); B.sideT = S.clock + 0.35; act('sidestep'); }
         if (held > 3 && B.path) {
           report('player-stuck', 'warn', `${B.goal?.type}@${cellOf(p.x, p.y)}`, posOf(p.x, p.y),
-            { goal: B.goal && { type: B.goal.type, at: cellOf(B.goal.x, B.goal.y) }, heading: r1(heading), front: inFront(w, p, heading) });
+            { goal: B.goal && { type: B.goal.type, at: cellOf(B.goal.x, B.goal.y) }, plan: B.plan && `${B.plan.name} ${stepName(B.step)}`, heading: r1(heading), front: inFront(w, p, heading) });
           abandon('stuck');
           B.anchor = null;
         }
@@ -390,46 +690,56 @@
       if (B.side && S.clock >= B.sideT) B.side = null;
     } else B.anchor = null;
     // no headway toward the goal for a long time (circling round furniture the grid does not know): give it up
-    if (B.goal && heading !== null && !B.goal.crossing) {
+    if (B.goal && heading !== null && !steering && !B.goal.crossing) {
       const gd = Math.hypot(B.goal.x - p.x, B.goal.y - p.y), h = B.headway;
       if (gd < h.best - 16) { h.best = gd; h.t = S.clock; }
       else if (S.clock - h.t > 10) abandon('no headway');
     }
 
     // a locked door on the way: break it open (kicks, blows or rounds into the lock)
-    const lockedDoor = B.goal?.breach && !tg && w.doors.find((dd) => dd.locked && Math.hypot(doorMid(dd).x - p.x, doorMid(dd).y - p.y) < 40);
+    const lockedDoor = B.goal?.breach && !threat && w.doors.find((dd) => dd.locked && Math.hypot(doorMid(dd).x - p.x, doorMid(dd).y - p.y) < 40);
     if (lockedDoor) {
       const m = doorMid(lockedDoor);
       inp.keys.clear();
+      // close enough for the blow to land (a kick reaches the middle of the door from range + 14 px)
+      if (!gun && Math.hypot(m.x - p.x, m.y - p.y) > (d.range || 20) + 8) steer(inp, m.x - p.x, m.y - p.y);
       aimAt(inp, m.x, m.y);
       if (gun) { if (S.clock > B.fireT) { inp.mouse.clicked[0] = inp.mouse.down[0] = true; B.fireT = S.clock + 0.3; } }
       else inp.mouse.down[0] = true;
       act('breach locked door');
+      B.anchor = null; B.headway.t = S.clock; // breaking it is headway
       return;
     }
 
     // aim and fight
-    if (tg) aimAt(inp, tg.x, tg.y);
-    else if (heading !== null) aimAt(inp, p.x + Math.cos(heading) * 120, p.y + Math.sin(heading) * 120);
-    if (tg) {
+    const smashing = B.step?.smash && B.step.at;
+    if (foe) aimAt(inp, foe.x, foe.y);
+    else if (heading !== null && !smashing) aimAt(inp, p.x + Math.cos(heading) * 120, p.y + Math.sin(heading) * 120);
+    if (foe) {
+      const aimed = Math.abs(angDiff(p.angle, Math.atan2(foe.y - p.y, foe.x - p.x))) < 0.12;
       if (gun) {
-        if (tdist < 520 && (p.weapon.mag > 0 || p.reserveCount() === 0)) {
+        if (tdist < range && (p.weapon.mag > 0 || p.reserveCount() === 0)) {
           if (d.auto) { inp.mouse.down[0] = true; if (S.clock > B.fireT) { B.fireT = S.clock + 0.4; act('fire (auto)'); } }
-          else if (S.clock > B.fireT) { inp.mouse.clicked[0] = true; inp.mouse.down[0] = true; B.fireT = S.clock + 0.12 + rnd() * 0.25; act('fire'); }
+          else if (S.clock > B.fireT && aimed) { inp.mouse.clicked[0] = true; inp.mouse.down[0] = true; B.fireT = S.clock + 0.15 + rnd() * 0.25; act('fire'); }
         }
+      } else if (B.style === 'throw' && d.swing === 'blade' && aimed && tdist > 45 && tdist < 170 && !(foe.knocked > 0)) {
+        inp.mouse.clicked[2] = true; act('throw blade');
       } else if (tdist < reach && !sneaking) { inp.mouse.down[0] = true; act('strike'); }
       if (p.armed && tdist < 220 && tdist > 60 && rnd() < 0.002) { inp.mouse.clicked[2] = true; act('throw weapon'); }
     }
-    if (gun && p.reserveCount() > 0 && !p.reloading && (p.weapon.mag === 0 || (!tg && p.weapon.mag < d.mag && rnd() < 0.01))) { press(inp, 'KeyR'); act('reload'); }
+    if (gun && p.reserveCount() > 0 && !p.reloading && (p.weapon.mag === 0 || (!foe && p.weapon.mag < d.mag && rnd() < 0.01))) { press(inp, 'KeyR'); act('reload'); }
 
     // context actions
     const ca = p.contextAction;
     if (ca && (MELEE_SPACE.has(ca) || (p.nearBack && !VAULTS.has(ca)))) { press(inp, 'Space'); act(`space (${ca})`); }
-    else if (heading !== null && !ca && rnd() < 0.004) { press(inp, 'Space'); act('slide'); }
-    else if (VAULTS.has(ca) && heading !== null && rnd() < 0.01) { press(inp, 'Space'); act(`space (${ca})`); }
+    // (no slide on a plan: one chains into a vault, a ladder too, and off the route)
+    else if (!B.plan && heading !== null && !ca && rnd() < 0.004) { press(inp, 'Space'); act('slide'); }
+    else if (!B.plan && VAULTS.has(ca) && heading !== null && rnd() < 0.01) { press(inp, 'Space'); act(`space (${ca})`); }
+    if (B.plan) return; // the plan picks up what it wants
+    const it = p.nearItem, thrower = B.style === 'throw';
     if (p.nearTrunk) { press(inp, 'KeyE'); act('open trunk'); }
-    else if (p.nearItem && (!p.armed || (!gun && p.nearItem.def?.kind === 'gun' && p.nearItem.mag > 0) || rnd() < 0.003)) {
-      press(inp, 'KeyE'); act(`pick up ${p.nearItem.type}`);
+    else if (it && (!p.armed || (!thrower && !gun && it.def?.kind === 'gun' && it.mag > 0) || (thrower && !gun && d.swing !== 'blade' && it.def?.swing === 'blade') || rnd() < 0.003)) {
+      press(inp, 'KeyE'); act(`pick up ${it.type}`);
     }
   }
 
@@ -442,7 +752,8 @@
     if (g.type === 'item' && p.nearItem) { press(inp, 'KeyE'); act(`pick up ${p.nearItem.type}`); }
     if (g.type === 'trunk' && p.nearTrunk) { press(inp, 'KeyE'); act('open trunk'); }
     if (g.type === 'window') return; // windowApproach finishes it
-    if (g.type === 'exit') { const ex = w.level.exit; steer(inp, ex.x * TILE - p.x, ex.y * TILE - p.y); return; }
+    if (g.type === 'exit') { const ex = w.level.exit; return steer(inp, ex.x * TILE - p.x, ex.y * TILE - p.y); }
+    if (g.type === 'route') return Math.hypot(g.x - p.x, g.y - p.y) > 3 ? steer(inp, g.x - p.x, g.y - p.y) : null; // the plan's spot, exactly
     if (g.type === 'guard') return;
     B.goal = null; B.path = null;
   }
@@ -500,6 +811,13 @@
       press(inp, 'Backspace');
       return;
     }
+    // a level with no way out (lab, street): a minute of roaming once it is cleared, then another go
+    if (w.cleared && !w.level.exit && S.clock - B.clearT > 60) {
+      S.stats.restartsAfterClear = (S.stats.restartsAfterClear || 0) + 1;
+      act('cleared, no exit: restart');
+      press(inp, 'Backspace');
+      return;
+    }
     play(w, p, inp);
   }
 
@@ -510,17 +828,22 @@
     const p = w.player, now = w.time;
     S.steps++;
     // coverage through state changes
-    if (p.vaulting && p.vaulting !== B.vaultWas) {
-      const v = p.vaulting;
-      cover(v.kind === 'window' ? (v.over?.intact ? 'windowDive' : 'windowVault') : v.kind === 'climb' ? 'climb' : 'vault');
-      act(`${v.kind === 'window' ? (v.over?.intact ? 'dive through window' : 'vault window') : v.kind}`);
+    const v = p.vaulting;
+    if (v && v !== B.vaultWas) {
+      const what = v.kind === 'window' ? (v.over?.intact ? 'windowDive' : 'windowVault')
+        : v.ladder ? (v.ladder.up ? 'ladderUp' : 'ladderDown') : v.kind === 'climb' ? 'climb' : 'vault';
+      cover(what);
+      if (v.over?.type === 'parapet') cover('roofDrop');
+      act(`${what}${v.over?.type ? ' ' + v.over.type : ''}`);
     }
-    B.vaultWas = p.vaulting;
+    if (v?.rolling && v.rolling !== B.rollWas) { cover('roll'); act('roll'); }
+    B.vaultWas = v;
+    B.rollWas = v?.rolling;
     if (p.takedown && p.takedown !== B.takedownWas) { cover('takedown'); act('takedown'); }
     B.takedownWas = p.takedown;
     if (p.execution && p.execution !== B.execWas) { cover('finisher'); act('finisher'); }
     B.execWas = p.execution;
-    if (w.cleared && !S.sess.cleared) { S.sess.cleared = true; cover('clear'); act('LEVEL CLEARED'); }
+    if (w.cleared && !S.sess.cleared) { S.sess.cleared = true; B.clearT = S.clock; cover('clear'); act('LEVEL CLEARED'); }
     for (const c of B.trunks) if (c.trunk?.open && !c.__qaOpen) { c.__qaOpen = true; cover('trunk'); }
     if (S.steps % 15 === 0) {
       for (const d of B.locked) if (!d.locked) { B.locked.delete(d); cover('doorBreached'); act('door breached'); }
@@ -529,13 +852,24 @@
         if (!w.doors.includes(d) || Math.abs(angDiff(d.a0, d.body.angle)) > 0.5) { B.opened.add(d); cover('doorOpened'); }
       }
       for (const e of w.enemies) wrapGuard(e);
+      // rounds on the floor (level 1 has no box: only a magazine a guard drops when he reloads early)
+      for (const a of w.ammoItems || []) if (!a.__qaSeen) { a.__qaSeen = true; S.stats.ammoOnFloor++; }
+      // how the dead go: a crawl, a curl, a spasm (scripted, Ragdoll.dying) or a few throes
+      for (const c of w.corpses) {
+        if (c.__qaSeen) continue;
+        c.__qaSeen = true;
+        const how = c.dying?.kind || (c.throes ? 'throes' : null);
+        if (!how) continue;
+        bump(S.stats.dying, how);
+        if (DYING[how]) cover(DYING[how]);
+      }
     }
     if (g.state !== 'play' && g.state !== 'dead') return;
 
     // in-wall: a centre inside a solid tile for more than 0.2 s (a single step of it is counted, not reported)
     const walled = (ch) => !ch.vaulting && w.map.inside(ch.x, ch.y) && w.map.solidAt(ch.x, ch.y);
-    const checkWall = (ch, who) => {
-      if (!ch.alive || !walled(ch)) { S.inWall.delete(ch); return; }
+    const checkWall = (ch, who, alive = ch.alive) => {
+      if (!alive || !walled(ch)) { S.inWall.delete(ch); return; }
       const t0 = S.inWall.get(ch);
       if (t0 === undefined) { S.inWall.set(ch, now); S.stats.transientInWall++; return; }
       if (now - t0 > 0.2 && t0 !== -1) {
@@ -548,12 +882,16 @@
     if (S.steps % 6 === 0) {
       for (const e of w.enemies) checkWall(e, 'guard');
       for (const c of w.civilians) checkWall(c, 'civilian');
+      // a man not quite dead drags himself along the floor: never into a wall
+      for (const c of w.corpses) if (c.dying?.kind === 'crawl') checkWall(c, 'crawler', !c.dead);
     }
 
     if (S.steps % 30 === 0) {
       nanCheck(w);
       outOfMap(w);
       guardStuck(w);
+      lastingCheck(w);
+      powerCheck(w);
       if (opts.mode === 'realtime') audioCheck();
       else if (S.steps % 600 === 0) audioCheck(true);
     }
@@ -627,6 +965,30 @@
     }
   }
 
+  // a lasting prop (a ladder or a parapet closing a gap in a wall) must never be destroyed or removed
+  function lastingCheck(w) {
+    for (const q of B.lasting) {
+      if (B.lastingSeen.has(q) || (!q.dead && w.props.includes(q))) continue;
+      B.lastingSeen.add(q);
+      report('lasting-dead', 'error', `${q.type}@${cellOf(q.x, q.y)}`, posOf(q.x, q.y),
+        { type: q.type, dead: !!q.dead, inWorld: w.props.includes(q), hp: q.hp, lastHit: q.__qaHit || null });
+    }
+  }
+
+  // once the bar's power is cut (and the lights had time to stutter out), no lamp on its mains may still glow
+  function powerCheck(w) {
+    const pw = w.power;
+    if (pw.on || B.powerCheckT === null || w.time < B.powerCheckT) return;
+    for (const q of w.props) {
+      if (q.dead || q.lightsOut || q.isVehicle || q.def.standby || q.__qaLit || !pw.inside(q.x, q.y)) continue;
+      if (!(pw.wired || []).includes(q) && !w.lighting.propLights(q).length) continue;
+      q.__qaLit = true;
+      report('power-lit', 'error', `${q.type}@${cellOf(q.x, q.y)}`, posOf(q.x, q.y),
+        { type: q.type, wired: (pw.wired || []).includes(q), lights: w.lighting.propLights(q).length, sputter: !!q.sputter,
+          cutAgo: r1(w.time - pw.cutAt), why: 'a lamp on the cut mains is still lit (lightsOut false)' });
+    }
+  }
+
   function softlock(w, p) {
     const now = w.time;
     // every guard down (or given up) but the level not cleared
@@ -637,7 +999,7 @@
     const ex = w.level.exit;
     if (!w.cleared || !ex || !p.alive) { B.exitSince = null; return; }
     // no way to the exit
-    if (now - B.exitPathT > 5) {
+    if (now - B.exitPathT > 5 && !p.vaulting && !onRoofTile(w, p.x, p.y)) { // the roof's ways down are not in the grid
       B.exitPathT = now;
       if (!findPath(w.map, p.x, p.y, ex.x * TILE, ex.y * TILE, 20000)) report('softlock', 'error', 'no-path-to-exit', posOf(p.x, p.y), { why: 'level cleared but no grid path from the player to the exit', exit: ex });
     }
@@ -668,7 +1030,7 @@
 
   // ---------------------------------------------------------------- API used by run.mjs
   qa.init = async (o) => {
-    opts = { seed: 1, god: false, mode: 'fast', sessionCap: 300, ...o };
+    opts = { seed: 1, god: false, mode: 'fast', level: 'level1', sessionCap: 300, ...o };
     rnd = prng(opts.seed * 7919 + 13);
     game = window.game;
     if (!game) throw new Error('window.game missing');
@@ -779,7 +1141,8 @@
   qa.debug = () => {
     const w = game.world, p = w?.player;
     return {
-      state: game.state, goal: B.goal && { type: B.goal.type, at: cellOf(B.goal.x, B.goal.y) }, path: B.path ? `${B.idx}/${B.path.length}` : null,
+      state: game.state, plan: B.plan && `${B.plan.name} ${stepName(B.step)}`, style: B.style,
+      goal: B.goal && { type: B.goal.type, at: cellOf(B.goal.x, B.goal.y) }, path: B.path ? `${B.idx}/${B.path.length}` : null,
       target: B.target && { kind: B.target.kind, at: cellOf(B.target.x, B.target.y), aware: B.target.aware, knocked: B.target.knocked > 0 },
       player: p && { at: posOf(p.x, p.y), alive: p.alive, weapon: p.weapon?.type || 'fists', sit: p.sit, ctx: p.contextAction, execution: !!p.execution, takedown: !!p.takedown, vaulting: !!p.vaulting },
       guardsLeft: w?.enemiesLeft, lastActions: lastActions(),
