@@ -223,9 +223,12 @@ class Post {
   show(on) { if (this.ok) this.canvas.style.display = this.overlay.style.display = on ? '' : 'none'; }
 
   // follow the game's canvas (called by Game.resize)
-  resize() {
+  // outW, outH: the window, in device px. The scene may be larger (Game.resize): we bring it down. The HUD's canvas
+  // keeps the scene's size, so everything drawn on it is laid out as on the scene, and the page scales it.
+  resize(outW = this.scene.width, outH = this.scene.height) {
     const gl = this.gl, W = this.scene.width, H = this.scene.height;
-    for (const c of [this.canvas, this.overlay]) { c.width = W; c.height = H; }
+    this.canvas.width = outW; this.canvas.height = outH;
+    this.overlay.width = W; this.overlay.height = H;
     for (const t of this.targets || []) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fbo); }
     const hw = Math.max(1, W >> 1), hh = Math.max(1, H >> 1), qw = Math.max(1, W >> 2), qh = Math.max(1, H >> 2);
     this.targets = [this.target(hw, hh), this.target(hw, hh), this.target(qw, qh), this.target(qw, qh), this.target(qw, qh)];

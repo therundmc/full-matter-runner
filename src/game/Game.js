@@ -2,7 +2,7 @@ import { FIXED_DT, PLAYER, PALETTE, TILE, AI } from './Config.js';
 import { loadAssets } from '../engine/Assets.js';
 import { clamp, lerp } from '../engine/math.js';
 import Input from '../engine/Input.js';
-import Camera from '../engine/Camera.js';
+import Camera, { VIEW } from '../engine/Camera.js';
 import Audio from '../audio/Audio.js';
 import Music from '../audio/Music.js';
 import World from './world/World.js';
@@ -62,11 +62,15 @@ export default class Game {
   }
 
   resize() {
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = Math.floor(window.innerWidth * dpr);
-    this.canvas.height = Math.floor(window.innerHeight * dpr);
+    const dpr = window.devicePixelRatio || 1, w = Math.floor(window.innerWidth * dpr), h = Math.floor(window.innerHeight * dpr);
+    // With the lens, the scene is drawn at a whole zoom (crisp pixels) on a canvas a little larger than the window and
+    // the lens brings it down to it: the view is VIEW world px high whatever the window's size. Without the lens the
+    // canvas is the window and the zoom the nearest whole one.
+    const ss = this.post?.ok ? (VIEW * Math.max(1, Math.ceil(h / VIEW))) / h : 1;
+    this.canvas.width = Math.round(w * ss);
+    this.canvas.height = Math.round(h * ss);
     this.camera.resize(this.canvas.width, this.canvas.height);
-    this.post?.resize();
+    this.post?.resize(w, h);
     this.vignette = null;
   }
 
@@ -434,7 +438,7 @@ export default class Game {
   lensView(W, H, inWorld) {
     const w = this.world, p = inWorld ? w.player : null, inp = this.input, v = p?.vaulting;
     return {
-      W, H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
+      W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
       state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
       timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {

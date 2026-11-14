@@ -160,7 +160,7 @@ export default class Lens {
   // The numbers of this frame for the last pass. Positions are in the picture's own frame: 0..1, y up; lengths in
   // picture heights unless said otherwise.
   uniforms(v) {
-    const c = this.cfg, W = v.W, H = v.H, px = H / 1080;
+    const c = this.cfg, W = v.W, H = v.H, out = v.outH || H, px = out / 1080; // out: the height it ends up on screen
     const at = (x, y) => { const s = v.toScreen(x, y); return [s.x / W, 1 - s.y / H]; };
     const centre = v.player && v.state !== 'title' ? at(v.player.x, v.player.y) : [0.5, 0.5];
 
@@ -201,7 +201,7 @@ export default class Lens {
       edge: this.edge, blur: this.blur,
       glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights, tone: c.tone,
       grade: g,
-      curve: t.curve, scan: t.scan, scanStep: Math.max(2, Math.round(H / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
+      curve: t.curve, scan: t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
       vignette: t.vignette + R.vignette * r,
     };
   }

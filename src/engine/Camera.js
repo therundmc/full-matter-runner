@@ -1,6 +1,10 @@
 import { rand, lerp } from './math.js';
 
 // Follow camera with look-ahead, trauma shake and a slow tilt sway.
+// World px of vertical view. It was 380; the user wanted the camera closer to see the detail (300), then "a tiny bit"
+// further out.
+export const VIEW = 330;
+
 export default class Camera {
   constructor() {
     this.x = 0; this.y = 0;
@@ -18,9 +22,9 @@ export default class Camera {
 
   resize(w, h) {
     this.w = w; this.h = h;
-    // integer zoom keeps pixel art crisp; aim for ~300 world px of vertical view (the user wanted the camera closer,
-    // to see the detail: it was 380)
-    this.zoom = Math.max(1, Math.round(h / 300));
+    // a whole zoom keeps pixel art crisp: the nearest to VIEW world px of vertical view (Game.resize sizes the canvas
+    // so that it is exactly that when the lens is there to bring the picture down to the window)
+    this.zoom = Math.max(1, Math.round(h / VIEW));
   }
 
   snap(x, y) { this.x = x; this.y = y; this.clamp(); }

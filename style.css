@@ -30,6 +30,7 @@ html, body {
   pointer-events: none;
 }
 
+/* the HUD's canvas has the scene's size, a little larger than the window: scaled smoothly */
 #hud {
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
