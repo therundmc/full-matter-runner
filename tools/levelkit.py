@@ -36,7 +36,7 @@ SIZES = dict(
     dj_booth=(58, 22), bar_counter=(32, 19), dumpster=(58, 34), trash_can=(15, 15), jukebox=(28, 20),
     hydrant=(8, 8), bench=(50, 15), palm_tree=(9, 9), streetlight=(6, 6), floor_lamp=(10, 10), table_lamp=(15, 15),
     car=(136, 54), car2=(130, 52), van=(156, 60), chain_fence=(32, 4), bottle_shelf=(40, 11), back_bar=(40, 8), washer=(22, 22),
-    neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None,
+    neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None, alarm_box=None,
     marquee=None, neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
 )
@@ -61,6 +61,7 @@ class Level:
         self.roofs = []       # (area, kind, col, row, deg)
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
+        self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -107,6 +108,11 @@ class Level:
     # ---- guarded premises (inclusive tile rectangle): guards leave an unarmed stranger alone anywhere else
     def guard(self, col0, row0, col1, row1):
         self.premises.append([col0, row0, col1, row1])
+
+    # ---- a closed shop (inclusive tile rectangle of its floor) whose alarm box hangs at (col, row) on its front
+    def alarm(self, col0, row0, col1, row1, col, row, deg=0):
+        self.alarms.append(dict(rect=[col0, row0, col1, row1], box=[col, row]))
+        self.prop('alarm_box', col, row, deg)
 
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
@@ -233,6 +239,9 @@ class Level:
         if self.welcome:
             L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
             L.append(f'  welcome: {json.dumps(self.welcome)},')
+        if self.alarms:
+            L.append('  // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box')
+            L.append(f'  alarms: {json.dumps(self.alarms)},')
         if self.roofs:
             L.append('  // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer')
             L.append('  roof: [')

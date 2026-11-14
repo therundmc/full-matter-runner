@@ -113,15 +113,16 @@ export default {
     ['bench', 37.5, 22.62, 180], ['trash_can', 40.5, 21.35, 0], ['hydrant', 11.6, 22.65, 0],
     ['palm_tree', 2.5, 21.8, 0], ['palm_tree', 41.6, 21.8, 0],
     // liquor store
-    ['neon_sign_liquor', 4, 21.09, 0], ['bottle_shelf', 3.7, 17.2, 0], ['bottle_shelf', 5, 17.2, 0],
-    ['bottle_shelf', 6.3, 17.2, 0], ['bottle_shelf', 8.3, 17.2, 0], ['bar_counter', 7.5, 18.4, 0],
-    ['bar_counter', 8.5, 18.4, 0], ['bottle_shelf', 5, 18.5, 0], ['fridge', 3.4, 18.5, 270],
-    ['fridge', 3.4, 19.25, 270], ['bottle_shelf', 5.7, 19.78, 180], ['crate', 6.9, 19.6, 10],
-    ['crate', 7.52, 19.62, -5], ['ceiling_lamp', 4.6, 19, 0], ['ceiling_lamp', 6.9, 18.9, 0],
+    ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 3.7, 17.2, 0],
+    ['bottle_shelf', 5, 17.2, 0], ['bottle_shelf', 6.3, 17.2, 0], ['bottle_shelf', 8.3, 17.2, 0],
+    ['bar_counter', 7.5, 18.4, 0], ['bar_counter', 8.5, 18.4, 0], ['bottle_shelf', 5, 18.5, 0],
+    ['fridge', 3.4, 18.5, 270], ['fridge', 3.4, 19.25, 270], ['bottle_shelf', 5.7, 19.78, 180],
+    ['crate', 6.9, 19.6, 10], ['crate', 7.52, 19.62, -5], ['ceiling_lamp', 4.6, 19, 0], ['ceiling_lamp', 6.9, 18.9, 0],
     // TV shop
-    ['neon_sign_video', 34.9, 21.09, 0], ['tv', 36.5, 19.7, 0], ['tv', 37.5, 19.7, 0], ['tv', 38.5, 19.7, 0],
-    ['tv', 37.7, 18.45, 0], ['bookshelf', 36.7, 17.2, 0], ['bookshelf', 38, 17.2, 0], ['desk', 39.5, 18.1, 90],
-    ['speaker', 36.3, 18.2, 0], ['speaker', 36.3, 18.75, 0], ['neon_tube_pink', 36.07, 18.5, 270],
+    ['neon_sign_video', 34.9, 21.09, 0], ['alarm_box', 35.8, 21.1, 0], ['tv', 36.5, 19.7, 0], ['tv', 37.5, 19.7, 0],
+    ['tv', 38.5, 19.7, 0], ['tv', 37.7, 18.45, 0], ['bookshelf', 36.7, 17.2, 0], ['bookshelf', 38, 17.2, 0],
+    ['desk', 39.5, 18.1, 90], ['speaker', 36.3, 18.2, 0], ['speaker', 36.3, 18.75, 0],
+    ['neon_tube_pink', 36.07, 18.5, 270],
     // laundromat
     ['neon_sign_wash', 25.55, 31.91, 0], ['washer', 27.4, 35.6, 180], ['washer', 28.12, 35.6, 180],
     ['washer', 28.84, 35.6, 180], ['washer', 29.56, 35.6, 180], ['washer', 31.6, 34.1, 90],
@@ -170,6 +171,8 @@ export default {
   premises: [[11, 0, 32, 4], [11, 5, 13, 20], [32, 5, 32, 19], [14, 5, 20, 11], [24, 5, 31, 11], [15, 12, 20, 12], [25, 16, 30, 19]],
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
   welcome: [[21, 12, 30, 12], [15, 13, 30, 15], [15, 16, 23, 19], [21, 6, 23, 11]],
+  // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
+  alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, along the service alley

@@ -178,6 +178,7 @@ lv.prop('palm_tree', 41.6, 21.8)
 
 lv.area('liquor store')
 lv.prop('neon_sign_liquor', 4.0, 21.09)
+lv.alarm(3, 17, 8, 19, 4.87, 21.1)
 for x in (3.7, 5.0, 6.3):
     lv.prop('bottle_shelf', x, 17.2)
 lv.prop('bottle_shelf', 8.3, 17.2)                      # behind the counter
@@ -194,6 +195,7 @@ lv.prop('ceiling_lamp', 6.9, 18.9)
 
 lv.area('TV shop')
 lv.prop('neon_sign_video', 34.9, 21.09)
+lv.alarm(36, 17, 39, 19, 35.8, 21.1)
 for x in (36.5, 37.5, 38.5):
     lv.prop('tv', x, 19.7)                              # left on all night, facing the street
 lv.prop('tv', 37.7, 18.45)

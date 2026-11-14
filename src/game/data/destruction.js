@@ -142,6 +142,7 @@ export const DESTRUCTION = {
   floor_lamp: { height: 1.6, electric: true, parts: [{ cut: 'wedges', n: 4 }] },
   table_lamp: { height: 1, electric: true, parts: [{ cut: 'wedges', n: 4 }] },
   wall_lamp: { height: 2, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 4 }] },
+  alarm_box: { height: 2.2, electric: true, material: 'metal', parts: [{ cut: 'wedges', n: 3 }] },
   tube_light: { height: 2.4, electric: true, material: 'glass', parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   neon_tube_pink: { height: 2.4, electric: true, material: 'glass', parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
   neon_tube_cyan: { height: 2.4, electric: true, material: 'glass', parts: [{ cut: 'grid', cols: 4, rows: 1 }] },

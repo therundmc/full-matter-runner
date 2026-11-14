@@ -63,6 +63,7 @@ export default class Ambient {
     this.obstacles = [];
     world.events.on('noise', (e) => this.onNoise(e));
     world.events.on('kill', (e) => this.onKill(e));
+    world.events.on('alarm', (e) => this.onAlarm(e));
     this.prewarm();
     for (const [kind, col, row, deg, pastime] of def.patrons || []) {
       this.spawnPatron(kind, col * TILE, row * TILE, (deg * Math.PI) / 180, pastime);
@@ -441,6 +442,13 @@ export default class Ambient {
   panicAround(x, y, radius, kind) {
     for (const civ of [...this.civilians]) {
       if (Math.hypot(civ.x - x, civ.y - y) < radius) this.alarm(civ, x, y, kind);
+    }
+  }
+
+  // a shop's alarm ringing: nobody lingers near it
+  onAlarm({ x, y, radius }) {
+    for (const civ of this.civilians) {
+      if (Math.hypot(civ.x - x, civ.y - y) < radius) civ.brain.hurry(4);
     }
   }
 

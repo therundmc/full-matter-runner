@@ -35,6 +35,7 @@ import Scoring from '../systems/Scoring.js';
 import Impacts from '../systems/Impacts.js';
 import Liquids from '../systems/Liquids.js';
 import Threats from '../systems/Threats.js';
+import Alarms from '../systems/Alarms.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
 
@@ -94,6 +95,7 @@ export default class World {
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // puddles, wet floors, footprints
     this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)
+    this.alarms = new Alarms(this, level.alarms); // closed shops that ring when broken into
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
@@ -292,6 +294,7 @@ export default class World {
     this.scoring.update(dt);
     this.impacts.update(dt);
     this.liquids.update(dt);
+    this.alarms.update(dt);
     this.threats.update(this.view());
 
     // 4. cleanup

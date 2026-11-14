@@ -67,6 +67,8 @@ export const PROPS = {
   // the bar's own bottles, racked on the wall behind the counter (a shallow shelf: the bartender walks past it)
   back_bar: { static: true, material: 'wood', w: 40, h: 8, hp: 10, chips: '#7a4a10', glass: true, sound: 'glass', blocksPath: true },
   washer: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sound: 'metal', blocksPath: true },
+  // a closed shop's alarm (level `alarms`, systems/Alarms.js): shot off the wall, it shuts up
+  alarm_box: { fixture: true, static: true, material: 'metal', w: 10, h: 5, hp: 3, chips: '#c4c8ce', sparks: true, sound: 'metal' },
   neon_sign_liquor: { material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
   neon_sign_video: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',

@@ -189,6 +189,17 @@ export const LIQUIDS = {
 
 // Ambient street life (systems/Ambient.js): traffic on level.ambient.traffic lanes, passers-by on
 // level.ambient.walkers paths. Distances in m (= tiles), speeds in m/s, times in s, unless noted.
+// shop alarms (systems/Alarms.js)
+export const ALARM = {
+  duration: 40,            // s of ringing after the last breach
+  period: 0.54,            // s between two bursts of the bell (the length of one: Audio shopAlarm)
+  margin: 1.2,             // tiles around the shop's floor that count as its walls, windows and door
+  call: 3,                 // every so many bursts the guards around hear it and passers-by hurry on
+  reach: 14,               // tiles the bell carries to guards (walls muffle it)
+  shy: 7,                  // tiles within which passers-by hurry on
+  beacon: { r: 140, color: '#ff3b30', dur: 0.3 },
+};
+
 export const AMBIENT = {
   maxCars: 8,              // moving traffic vehicles at once (all lanes)
   maxWalkers: 9,           // civilians at once (all paths)
@@ -228,6 +239,7 @@ export const AMBIENT = {
   coupleChance: 0.3,       // a spawn is two people walking side by side
   stopChance: 0.35,        // a walker stops once on the way (cigarette, shop window, phone)
   stop: [3, 7],            // s
+  hurry: 1.8,              // pace of a passer-by walking away from a ringing alarm (x his walk)
   panic: {
     hear: 1,               // fraction of a gunshot / explosion noise radius that panics passers-by
     witness: 9,            // m: a kill seen that close

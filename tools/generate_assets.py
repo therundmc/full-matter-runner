@@ -3771,9 +3771,26 @@ def p_back_bar():
     return cv
 
 
+def p_alarm_box():
+    """A shop's alarm box on its front wall (-y): a pressed steel case, the slots of its bell, the red lens of its beacon."""
+    cv = Cv(12, 8)
+    cv.rect(1, 1, 10, 5, hx('#c4c8ce'))
+    cv.rect(1, 1, 10, 1, hx('#e8eaee'))
+    cv.rect(1, 5, 10, 5, hx('#8c909a'))
+    for x in (2, 4):
+        cv.rect(x, 2, x, 4, hx('#565a64'))
+    cv.rect(7, 2, 9, 4, hx('#c2281e'))
+    cv.set(7, 2, hx('#ff8070'))
+    cv.rect(7, 4, 9, 4, hx('#8a1a14'))
+    cv.outline()
+    return cv
+
+
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
+                  alarm_box=p_alarm_box,
                   neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash)
 SHOP_SIZES = dict(bottle_shelf=(42, 13), back_bar=(42, 10), washer=(24, 24), neon_sign_liquor=(46, 14), neon_sign_video=(44, 14),
+                  alarm_box=(12, 8),
                   neon_sign_wash=(50, 14))
 SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash']
 

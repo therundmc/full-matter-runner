@@ -47,6 +47,8 @@ src/
       Liquids.js          what is wet on the floor: puddles of water or booze fed by sources and spills (burst hydrant,
                           broken toilet, smashed bottles), blood pools, wet floor grip, footprints and slide smears
                           (DOM-free, unit-tested)
+      Alarms.js           closed shops (level.alarms) that ring when broken into: bell, beacon, guards come to look,
+                          passers-by hurry on, until the box is shot off the wall (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
     ai/                   enemy AI, DOM-free (unit tested)
@@ -123,6 +125,7 @@ Rules:
 | `trafficSpawn` | `{ vehicle }` | Ambient (a car enters a lane) | |
 | `trafficStopped` | `{ vehicle, reason }` | Ambient (a driven car is now a parked car / wreck; reason: tyre, driver, fire, exploded, jam, scared) | |
 | `runOver` | `{ victim, vehicle, speed }` | Ambient (a car killed someone, after the `kill`) | |
+| `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |
 | `civilianPanic` | `{ civilian, x, y, kind }` | Ambient (a passer-by starts to panic; kind: gunshot, explosion, kill, corpse, armed, scream, hit) | |
 
 Noise types: `gunshot` (any shooter; a guard's shot is heard as `allyFire` by his mates), `door`, `glass`,

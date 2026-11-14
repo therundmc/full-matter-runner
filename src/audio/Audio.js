@@ -96,6 +96,7 @@ const META = {
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
   // fire, alarm, UI, street
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
+  shopAlarm: { pri: 1, dur: 0.56, gap: 0.3, max: 2, reach: 1500, gain: 0.15 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
@@ -810,6 +811,17 @@ class AudioSystem {
   _cry(o) { this._cut(o, Math.random() < 0.6 ? 'die' : 'pain'); }
 
   // ---- fire, alarm, UI ----
+  // shop alarm: an electric bell, one burst per call (the alarm repeats it): the hammer on the gong 22 times a
+  // second, each stroke the same recorded ring of metal (the most bell-like cut of the bank, about 3.6 kHz)
+  _shopAlarm(o) {
+    const buf = this.buffers.foley;
+    if (!buf) return;
+    const [offset, len] = BANK.metalBreak[2];
+    for (let i = 0; i < 12; i++) {
+      this._sample(o, buf, { offset, len: Math.min(len, 0.11), rate: 0.86 + (i & 1) * 0.012, vol: i ? 0.5 : 0.62, delay: i * 0.045, fade: 0.04 });
+    }
+  }
+
   // car alarm: one whoop of a harsh horn siren per call (the vehicle repeats it), at a steady level
   _alarm(o) {
     const ctx = this.ctx, t = ctx.currentTime, dur = 0.37;

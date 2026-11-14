@@ -40,7 +40,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    kill adds a layer and a little volume (`Music.setCombo`), and
    it gets worked up with the alert phase and the heat of the fight (ai/Tension.js).
 6. Level 1 (alley, road, bar, back room, back lot; 13 guards) & MGS-style enemy AI (ai/Director.js), street life
-   (traffic, passers-by), dressed rooftops. User: a small level is fine, every detail polished, real scale, ambiance
+   (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
+   broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
+   User: a small level is fine, every detail polished, real scale, ambiance
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
    `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public
    (he walks in like a customer, level `welcome`); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime

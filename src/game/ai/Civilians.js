@@ -21,6 +21,8 @@ export class Walker {
     this.speed = speed;
     this.run = run;
     this.partner = partner;   // the leader of a couple: the follower stops and chats when he does
+    this.posted = !!post;
+    this.rush = 0;             // s he still hurries on (see hurry)
     this.state = WALKER.WALK;
     this.t = 0;
     this.activity = null;
@@ -72,6 +74,11 @@ export class Walker {
     return true;
   }
 
+  // a nuisance, not a fright (an alarm ringing): a passer-by cuts his stop short and walks on faster for `sec`
+  hurry(sec) {
+    if (!this.posted && !this.panicked) this.rush = Math.max(this.rush, sec);
+  }
+
   // off he goes, away from (x, y), whatever he was at
   bolt(x, y) {
     this.danger = { x, y };
@@ -87,11 +94,12 @@ export class Walker {
   // returns the intent { x, y (target or null), speed (px/s), face (angle or null) }
   update(dt, x, y, sense) {
     this.t -= dt;
+    this.rush -= dt;
     switch (this.state) {
       case WALKER.WALK: return this.walk(dt, x, y);
       case WALKER.STOP: {
         const p = this.partner;
-        const done = p ? p.state !== WALKER.STOP : this.t <= 0;
+        const done = p ? p.state !== WALKER.STOP : this.t <= 0 || this.rush > 0;
         if (done) { this.state = WALKER.WALK; this.activity = null; return this.walk(dt, x, y); }
         return { x: null, y: null, speed: 0, face: this.face };
       }
@@ -154,8 +162,9 @@ export class Walker {
     let tg = this.path[this.i];
     while (tg && Math.hypot(tg.x - x, tg.y - y) < REACH) tg = this.path[++this.i];
     if (!tg) { this.state = WALKER.DONE; return { x: null, y: null, speed: 0, face: null }; }
-    this.walked += this.speed * dt;
-    if (this.stopAt >= 0 && this.walked >= this.stopAt) {
+    const speed = this.rush > 0 ? this.speed * A.hurry : this.speed;
+    this.walked += speed * dt;
+    if (this.stopAt >= 0 && this.walked >= this.stopAt && !(this.rush > 0)) {
       this.stopAt = -1;
       this.state = WALKER.STOP;
       this.activity = ACTIVITIES[Math.floor(this.r() * ACTIVITIES.length)];
@@ -165,7 +174,7 @@ export class Walker {
       this.face = this.activity === 'window' ? a - Math.PI / 2 : a + (this.r() - 0.5) * 1.6;
       return { x: null, y: null, speed: 0, face: this.face };
     }
-    return { x: tg.x, y: tg.y, speed: this.speed, face: null };
+    return { x: tg.x, y: tg.y, speed, face: null };
   }
 }
 
