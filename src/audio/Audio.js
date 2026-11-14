@@ -28,10 +28,8 @@ import { BANK, BANK_URL } from './bank.js';
 
 const MASTER_GAIN = 0.8;
 
-// kill confirm: the first kill's note (F5, the music is in F minor) and the semitones above it per kill of a
-// streak (minor pentatonic)
-const KILL_ROOT = 698.46;
-const STREAK = [0, 3, 5, 7, 10, 12, 15, 17];
+// kill confirm: quarter tones it climbs over a streak, one per kill
+const STREAK_STEPS = 10;
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
 // names that map onto another sound
@@ -77,7 +75,7 @@ const META = {
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
   whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.5, reach: 1200 },
   // a crowd: many at once, each his own cry, carried by the room
-  scream: { pri: 3, dur: 1.1, gap: 0.05, max: 7, gain: 0.9, reach: 2000, hall: 0.22 },
+  scream: { pri: 3, dur: 1.1, gap: 0.08, max: 5, gain: 0.6, reach: 2000, hall: 0.22 },
   mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.5, reach: 900 },
   pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.4, reach: 800 },
   sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700 },
@@ -111,7 +109,7 @@ const META = {
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
-  confirm: { pri: 4, dur: 1.1, gap: 0.03, max: 3, duck: 0.8, gain: 1, hall: 0.55 },
+  confirm: { pri: 4, dur: 0.3, gap: 0.03, max: 3, duck: 0.85, gain: 1, hall: 0.1 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
@@ -649,25 +647,6 @@ class AudioSystem {
     osc.stop(t + dur + 0.03);
   }
 
-  // FM bell: a sine whose pitch a faster one shakes, hard at the strike and less as it rings (glassy, very 80s)
-  _bell(o, { f = 700, dur = 0.6, vol = 0.3, delay = 0, ratio = 3.5, index = 1.6 }) {
-    const ctx = this.ctx, t = ctx.currentTime + delay;
-    const car = ctx.createOscillator(), mod = ctx.createOscillator(), depth = ctx.createGain(), g = ctx.createGain();
-    const k = f * index * Math.min(1, 1000 / f); // high notes shaken less: no harsh fold-back
-    car.frequency.setValueAtTime(f, t);
-    mod.frequency.setValueAtTime(f * ratio, t);
-    depth.gain.setValueAtTime(k, t);
-    depth.gain.exponentialRampToValueAtTime(k * 0.06, t + dur * 0.5);
-    mod.connect(depth); depth.connect(car.frequency);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.002);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    car.connect(g); g.connect(o);
-    o._n++;
-    car.onended = () => this._release(o, car, mod, depth, g);
-    for (const n of [car, mod]) { n.start(t); n.stop(t + dur + 0.03); }
-  }
-
   // ---- synthesized parts of the big sounds (their debris and flesh are FOLEY layers) ----
   // a blow that lands: the felt knock under the recorded hit and the smack of its first milliseconds
   _punch(o, opts, v) {
@@ -1035,21 +1014,16 @@ class AudioSystem {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });
     this._thump(o, { f0: 60, f1: 85, dur: 0.4, vol: 0.5 });
   }
-  // a kill confirmed (asked for by the user, the one synthesized SFX): a reward just after the blow. Every kill of
-  // a streak (opts.n) climbs one step of the music's minor pentatonic scale, so that notes still ringing agree
-  // with the new one and with the track. The "gling" he picked: a glassy chime strummed upward, in a hall (META).
+  // a kill confirmed (asked for by the user, the one synthesized SFX; he wanted a shooter's headshot "dink" after
+  // finding the chime too arcade): the dull knock of the hit and a struck piece of metal, three inharmonic partials
+  // that die at once, dry. Every kill of a streak (opts.n) rings a little higher.
   _confirm(o, opts) {
-    const f = KILL_ROOT * 2 ** (STREAK[Math.min((opts.n || 1) - 1, STREAK.length - 1)] / 12);
-    const d = 0.03;
+    const up = 2 ** (Math.min((opts.n || 1) - 1, STREAK_STEPS) / 24), d = 0.02;
     this.pv = 1;
-    // the weight of a hit that counted and the tick of its first milliseconds, under the chime
-    this._thump(o, { f0: 150, f1: 55, dur: 0.14, vol: 0.7, delay: d });
-    this._noiseBurst(o, { type: 'highpass', f0: 5000, dur: 0.018, vol: 0.3, attack: 0.0005, delay: d });
-    // root, fifth and octave strummed upward in a tenth of a second, the octave left ringing, a glint on top
-    this._bell(o, { f, dur: 0.5, vol: 0.32, delay: d });
-    this._bell(o, { f: f * 1.5, dur: 0.55, vol: 0.26, delay: d + 0.035 });
-    this._bell(o, { f: f * 2, dur: 0.95, vol: 0.3, delay: d + 0.07 });
-    this._bell(o, { f: Math.min(f * 4, 6000), dur: 0.45, vol: 0.06, delay: d + 0.07, ratio: 2 });
+    this._thump(o, { f0: 190, f1: 70, dur: 0.09, vol: 0.8, delay: d });
+    this._noiseBurst(o, { type: 'lowpass', f0: 1800, f1: 400, dur: 0.05, vol: 0.5, attack: 0.0005, delay: d });
+    for (const [ratio, vol, dur] of [[1, 0.5, 0.11], [2.76, 0.3, 0.07], [5.4, 0.16, 0.045]]) this._ring(o, 1250 * up * ratio, dur, vol, d);
+    this._noiseBurst(o, { type: 'highpass', f0: 6000, dur: 0.012, vol: 0.35, attack: 0.0003, delay: d });
   }
   // level cleared: one dark boom rolling away
   _clear(o) {
@@ -1060,7 +1034,7 @@ class AudioSystem {
 
   // ---- ambient traffic ----
   // a car driving past: engine buzz + tyre roar swelling to the closest point (`lead` s) then fading, panned across
-  // in the driving direction (dir Â±1); side: 0 = right under the camera .. 1 = across the street; pitch drops as it passes
+  // in the driving direction (dir +-1); side: 0 = right under the camera .. 1 = across the street; pitch drops as it passes
   _passby(o, { lead = 1, dur = 2.6, dir = 1, side = 0.5, f = 50 }) {
     const ctx = this.ctx, t = ctx.currentTime, peak = t + lead, end = t + Math.max(dur, lead + 0.6);
     const env = ctx.createGain();

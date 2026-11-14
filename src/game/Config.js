@@ -37,7 +37,6 @@ export const PLAYER = {
   lookAhead: 0.32,    // camera offset toward the cursor
   lookAheadFar: 0.75, // with Shift held
   rise: 0.55,         // s to get up off the ground at the start of a level
-  trunkReach: 30,     // px from the tail of a car at which its trunk can be opened
   // Space while running with nothing to vault (systems/Slide.js): ~0.5 s, ~2.9 m
   slide: {
     dur: 0.5,         // s

@@ -11,7 +11,7 @@ import { behind } from '../systems/Takedown.js';
 import { finisherFor, TAKEDOWNS } from '../data/finishers.js';
 import { blowFx } from '../fx/Blows.js';
 
-const { Body } = Matter;
+const { Body, Query } = Matter;
 let scuff = null; // floor scuff stamp, made on first use
 
 export default class Player extends Character {
@@ -24,6 +24,7 @@ export default class Player extends Character {
     this.nearDowned = null;
     this.nearBack = null;   // a guard whose back we stand right behind (Space takes him down)
     this.nearTrunk = null;  // a parked car's closed trunk within reach, with something in it (E opens it)
+    this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.rising = false;
     this.takedown = null;   // { target, t, done, blade, side } while we have him by the neck
@@ -83,6 +84,7 @@ export default class Player extends Character {
     if (!this.slide) this.stamina = recover(this.stamina, dt, PLAYER.slide);
     this.updateSlideAnim(dt);
 
+    this.unstick();
     if (this.sit > 0 && !this.updateSit(dt, input)) return;
     if (this.execution) { this.updateExecution(dt); return; }
     if (this.takedown) { this.updateTakedown(dt); return; }
@@ -118,8 +120,7 @@ export default class Player extends Character {
     for (const e of w.enemies) {
       if (e.alive && e.knocked > 0 && Math.hypot(e.x - this.x, e.y - this.y) < 26) { this.nearDowned = e; break; }
     }
-    this.nearTrunk = this.nearItem ? null : w.props.find((p) => p.trunk && !p.trunk.open && !p.dead
-      && Math.hypot(p.trunkSpot().x - this.x, p.trunkSpot().y - this.y) < PLAYER.trunkReach) || null;
+    this.nearTrunk = w.props.find((p) => p.trunk && !p.trunk.open && !p.dead && p.nearTrunk(this.x, this.y)) || null;
     this.nearBack = (!this.nearDowned && w.enemies.find((e) => behind(this, e) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
 
     // attack
@@ -154,6 +155,21 @@ export default class Player extends Character {
       if (this.nearTrunk) this.nearTrunk.openTrunk();
       else this.pickUp();
     }
+  }
+
+  // Last resort against being squeezed into something solid (a car creeping onto us against another one, a wreck
+  // thrown at us in a doorway): whenever our centre ends up inside a wall or a vehicle, we are put back where we
+  // last stood clear. Vaults go over things on purpose.
+  unstick() {
+    if (this.vaulting) return;
+    const w = this.world, at = { x: this.x, y: this.y };
+    const stuck = w.map.solidAt(at.x, at.y) || w.props.some((p) => p.isVehicle && !p.dead
+      && Math.abs(p.x - at.x) < 90 && Math.abs(p.y - at.y) < 90 && Query.point([p.body], at).length);
+    if (!stuck) { this.safe.x = at.x; this.safe.y = at.y; return; }
+    Body.setPosition(this.body, this.safe);
+    this.vel = { x: 0, y: 0 };
+    Body.setVelocity(this.body, this.vel);
+    this.slide = null;
   }
 
   // sitting against the wall when a level starts: the first key or click gets him up (PLAYER.rise s), and he has

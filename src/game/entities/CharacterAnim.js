@@ -125,7 +125,8 @@ export function standPose(ch, P, a = ch.angle) {
     // gestures (ch.strike): forehand sweep, backhand sweep, or the heavy one (overhead smash / straight stab), all on
     // the same clock: anticipation, fast stroke (in front when the hit lands), follow-through, recovery.
     const bat = d.swing === 'club';
-    const ra = bat ? 3 : 0.35; // weapon angle at rest
+    const ra = bat ? d.rest ?? 3 : 0.35; // weapon angle at rest
+    const round = bat && ra > 1.5; // it rests behind the shoulder: a sweep carries on round the back of the head
     const sw = stride * 2.2 * g;
     hlx = 6 - sw; hly = -6;
     hrx = bat ? 5 : 7 + sw * 0.5; hry = bat ? 4 : 6.5;
@@ -138,7 +139,7 @@ export function standPose(ch, P, a = ch.angle) {
         // sweep across the front (a backhand is its mirror image). The angle runs from the rest pose to the rest
         // pose: the bat carries on round the back of the head, the knife comes back the way it went
         const dir = k ? -1 : 1;
-        const from = bat && k ? Math.PI * 2 - ra : dir * ra, home = bat ? (k ? -ra : ra - Math.PI * 2) : dir * ra;
+        const from = round && k ? Math.PI * 2 - ra : dir * ra, home = round ? (k ? -ra : ra - Math.PI * 2) : dir * ra;
         const wind = bat ? 2.5 : 1.3, end = bat ? -1.9 : -1.3, over = end - 0.22;
         wa = dir * (p < 0.12 ? lerp(from, wind, smooth(p / 0.12))
           : p < 0.4 ? lerp(wind, end, easeOut((p - 0.12) / 0.28))

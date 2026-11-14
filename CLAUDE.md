@@ -32,8 +32,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    animations + slide on Space. Still weak: combat visual feedback, horn sound.
    Every non-gun sound = cuts of a recorded CC0 foley bank (assets/sound/foley.wav + src/audio/bank.js, built by
    `node tools/build_sounds.mjs <packs-dir>` from tools/sounds.json); user rejected synthesized SFX as clicky,
-   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is a synthesized chime,
-   the "gling" he picked, in the music's key, climbing with the combo, with reverb). No bolt sound between sniper shots. No meat / wet / squish
+   "Mario"-like: never add oscillator tones (one exception he asked for: the kill confirm is synthesized:
+   a dry shooter's headshot "dink", a little higher with each kill of a streak; he dropped the chime as too arcade). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
    Doors are synthesized whole (struck-panel partials, `_door` / `_doorSlam`; user hated every door recording), no
    hinge creak. Guards' voices = their recording pushed back + a synthesized voice under it (`_voice`); telling a
@@ -45,7 +45,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    kill adds a layer and a little volume (`Music.setCombo`), and
    it gets worked up with the alert phase and the heat of the fight (ai/Tension.js). Parts fade into one another
    (a filter on the whole mix, `Session.fade`); at the top of a chain a 32nd snare roll fills every fourth bar.
-6. Level 1 (alley, road, bar, back room, back lot; 13 guards: hand to hand but two guns, the pool player's pistol
+6. Level 1 (alley, road, bar, back room, back lot; 15 guards: hand to hand but two guns, the pool player's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
    against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only)
@@ -57,7 +57,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    User: a small level is fine, every detail polished, real scale, ambiance
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
    `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public
-   (he walks in like a customer, level `welcome`); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime
+   (he walks in like a customer, level `welcome`; the back door is locked, the back way in has to be forced); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime
    (level `jobs`: pool, cards, the pimp counting his dope in the storeroom), customers and VIP-room dancers (`ambient.patrons`, sprites dancerN) who panic each his own way (`AMBIENT.panic`: most run, a few trip, some curl up sobbing in a corner or behind furniture, some freeze hands up) and run for
    the street when it kicks off. Guards at ease (user: "too flat", wants many animations, be creative): weapon put
    away while calm, in hand and low on alert, raised on a target (ai/Carry.js); they smoke, read a pager, stretch,
@@ -83,7 +83,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
 ## Run / test
-- `python -m http.server 8000` then http://localhost:8000 (`?level=lab` for the physics lab).
+- `npm start` (tools/serve.mjs: first free port from 8000, no browser cache) then the address it prints
+  (`?level=lab` for the physics lab). The user often has an old server still running on 8000: a second
+  `python -m http.server 8000` then fails with "address already in use", which he reads as "the server is broken".
 - `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
 - Debug keys: F1 sandbox panel (game/debug/Sandbox.js: spawn tools + cheats, keys listed on screen), F2 enemy
   vision, F3 overview, F4 physics overlay. `window.game` in the console.

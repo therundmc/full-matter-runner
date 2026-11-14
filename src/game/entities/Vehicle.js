@@ -114,7 +114,11 @@ export default class Vehicle {
 
   // where one stands to open the trunk (level prop option `trunk`: the weapon lying in it), and opening it: the
   // lid goes up and what was in it is tipped out on the road behind the bumper
-  trunkSpot() { return this.toWorld(-12, this.h / 2); }
+  // standing anywhere round the tail will do: behind the bumper or by either rear corner
+  nearTrunk(px, py) {
+    const { sx, sy } = this.toSprite(px, py);
+    return sx > -36 && sx < 36 && sy > -28 && sy < this.h + 28;
+  }
 
   openTrunk() {
     const w = this.world, t = this.trunk, at = this.toWorld(-9, this.h / 2), a = this.body.angle + Math.PI;

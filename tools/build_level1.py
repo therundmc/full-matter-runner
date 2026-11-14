@@ -55,7 +55,7 @@ lv.put(16, 11, 'D')            # behind the counter -> storeroom
 lv.put(22, 11, 'D')            # toilets
 lv.put(27, 11, 'L')            # back room, locked: kick it or shoot it
 lv.put(14, 8, 'D')             # storeroom -> service alley
-lv.put(28, 5, 'D')             # back room -> back lot
+lv.put(28, 5, 'L')             # back room -> back lot, locked: the back way in has to be forced
 lv.put(26, 5, 'G')
 lv.put(31, 14, 'G')            # the pool corner, seen from the gap
 for x in (15, 16, 24):
@@ -81,8 +81,8 @@ lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
-# ---------------------------------------------------------------- actors (13 guards)
-# Blades, bats and a tire iron: eleven men with their hands. Two guns in the whole house: the pool player's pistol
+# ---------------------------------------------------------------- actors (15 guards)
+# Blades, bats and a tire iron: thirteen men with their hands. Two guns in the whole house: the pool player's pistol
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
 lv.actor('@', 20, 34, face=0)
@@ -133,11 +133,13 @@ lv.actor('6', 19, 7)
 lv.actor('k', 22, 7, face=90)
 lv.actor('h', 30, 8, face=180)                          # the boss behind his desk, a shotgun across it
 lv.actor('m', 26, 9, face=45)
+lv.actor('k', 28, 9, face=20, job='count')              # counting the night's banknotes by the boss's case
 lv.actor('i', 29, 10, face=200)                         # his bodyguard, a tire iron in his fist
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
 lv.actor('1', 8, 17)                                    # what the liquor store keeps behind its counter
 # back lot: he walks along the back wall, past the back room's door, and turns round short of the gap
 lv.actor('M', 19, 4, route=[[13, 4], [29, 4]])
+lv.actor('b', 26, 4, face=270, job='door')              # posted by the back door, his back to the wall
 
 # ---------------------------------------------------------------- props
 lv.area('the alley where it starts')
@@ -422,7 +424,7 @@ ambient = {
 exit_zone = {'x': 28.7, 'y': 2.4, 'r': 1.4}
 
 if __name__ == '__main__':
-    lv.check(guards=13)
+    lv.check(guards=15)
     lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM', exit=exit_zone,
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',

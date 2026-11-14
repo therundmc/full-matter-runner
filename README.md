@@ -8,10 +8,11 @@ Physics by [matter.js](https://brm.io/matter-js/), rendering on a custom Canvas2
 ES modules need an HTTP server:
 
 ```
-python -m http.server 8000
+npm start
 ```
 
-Then open http://localhost:8000.
+Then open the address it prints (http://127.0.0.1:8000, or the next free port when a server is already running on
+that one). `python -m http.server 8000` works too, with a browser cache to clear by hand (Ctrl+F5) after an update.
 
 ## Controls
 

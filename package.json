@@ -5,6 +5,7 @@
   "description": "Top-down one-hit-kill action game (browser, no build step).",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "start": "node tools/serve.mjs",
     "serve": "python -m http.server 8000"
   }
 }

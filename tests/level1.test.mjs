@@ -88,7 +88,7 @@ test('the gap right of the bar: a door on the street, one metre wide, off limits
 test('level 1 is fought hand to hand: two guns in the house (the bar room, the boss), one hidden in the liquor store', () => {
   const guards = [];
   level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbkmji'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
-  assert.equal(guards.length, 13);
+  assert.equal(guards.length, 15);
   const guns = guards.filter((g) => 'pushr'.includes(g.ch));
   assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p']);
   const [boss, pool] = guns;

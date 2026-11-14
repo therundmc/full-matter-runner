@@ -4,6 +4,7 @@
 // hold: 'one' | 'two' | 'melee'. grip = sprite x (from left) where the hand holds it.
 // melee: swing = 'club' (long, swung with both hands, lies on the shoulder) | 'blade' (held low, stabs and cuts);
 // heft 2 = smashes panes and doors; material = what it is made of (the crack of a blow, the item on the floor);
+// rest: angle a club is carried at when it does not lie on the shoulder (a cue is held across the body, by its middle);
 // thrust: its heavy stroke is a lunge, not an overhead smash; snaps: what is left in the hand when it breaks over
 // someone (snapOdds per kill); finisher: its own ground finisher (data/finishers.js).
 // gore: chance multiplier for dismemberment. wound: how the victim bleeds (data/wounds.js). noise: alert radius (0 = silent).
@@ -23,7 +24,7 @@ export const WEAPONS = {
   },
   // long reach, quick; it snaps over a skull now and then, and what is left is a stake
   cue: {
-    name: 'POOL CUE', kind: 'melee', hold: 'melee', sprite: 'weapons/cue', grip: 5, range: 40, arc: 1.5, rate: 0.36,
+    name: 'POOL CUE', kind: 'melee', hold: 'melee', sprite: 'weapons/cue', grip: 13, rest: 0.5, range: 38, arc: 1.5, rate: 0.36,
     lethal: true, sound: 'punch', gore: 0.2, wound: 'blunt', windup: 0.06, points: 800, swing: 'club', heft: 1, material: 'wood',
     thrust: true, snaps: 'cue_half', snapOdds: 0.4, finisher: 'cue',
   },

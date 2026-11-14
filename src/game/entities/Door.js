@@ -48,6 +48,7 @@ export default class Door {
     this.cells = cells;     // tiles it covers (blocked for path-finding while locked)
     this.shakeT = 0;
     this.warpSign = Math.random() < 0.5 ? -1 : 1;
+    this.lastA = angle0;    // the leaf's angle at the end of the previous step (see stopAt)
     world.addBody(this.body);
     if (locked) this.lock();
   }
@@ -132,7 +133,12 @@ export default class Door {
     } else if (Math.abs(rel) > lim - 0.25 && Math.sign(av) === Math.sign(rel)) {
       av *= 0.85; // cushion before the stop
     }
-    const a = this.a0 + rel;
+    let a = this.a0 + rel;
+    // the hinge is enforced, not simulated: without this the leaf would sweep straight through whoever stands in
+    // its way and throw him out the other side, into a wall at times. It stops against a body and bounces off.
+    const stop = this.stopAt(a);
+    if (stop) { a = stop.a; av = -av * 0.2; }
+    this.lastA = a;
     const c = Math.cos(a), s = Math.sin(a);
     Body.setAngle(b, a);
     Body.setPosition(b, { x: this.hx + c * h, y: this.hy + s * h });
@@ -143,6 +149,34 @@ export default class Door {
     this.slamCooldown -= dt;
   }
 
+  // would the leaf, going from its last angle to `a`, sweep onto someone standing within its reach? Returns the
+  // angle it stops at ({ a }), against him; null when the way is free or he was already under it
+  stopAt(a) {
+    let best = null;
+    for (const ch of this.world.characters()) {
+      if (!ch.alive || ch.vaulting || ch.knocked > 0) continue;
+      const dx = ch.x - this.hx, dy = ch.y - this.hy, r = Math.hypot(dx, dy);
+      if (r > this.len + ch.radius) continue;
+      const at = Math.atan2(dy, dx), half = Math.asin(Math.min(1, (ch.radius + LEAF.thick / 2 - 1) / Math.max(r, 1)));
+      const was = angDiff(at, this.lastA), now = angDiff(at, a);
+      if (Math.abs(was) < half || (Math.abs(now) >= half && Math.sign(now) === Math.sign(was))) continue;
+      const to = at + Math.sign(was) * half;
+      if (!best || Math.abs(angDiff(this.lastA, to)) < Math.abs(angDiff(this.lastA, best.a))) best = { a: to };
+      this.slam(ch);
+    }
+    return best;
+  }
+
+  // a door thrown open by the player lands on a guard: he goes down
+  slam(ent) {
+    if (!(ent.isEnemy && ent.alive && !ent.knocked && this.pushedByPlayer > 0 && this.speedAt(ent.x, ent.y) > 1.6)) return;
+    const a = Math.atan2(ent.y - this.hy, ent.x - this.hx) + Math.sign(Body.getAngularVelocity(this.body)) * Math.PI / 2;
+    ent.knock(a, 'door');
+    this.world.sound('doorSlam', ent.x, ent.y);
+    this.world.shake(0.25);
+    this.world.addScore(300, ent.x, ent.y, 'DOOR SLAM');
+  }
+
   // speed of the door surface at a given point (px/step)
   speedAt(x, y) { return Math.abs(Body.getAngularVelocity(this.body)) * Math.hypot(x - this.hx, y - this.hy); }
 
@@ -150,13 +184,7 @@ export default class Door {
     const ent = other.entity;
     if (!ent) return;
     if (ent.isPlayer) { this.pushedByPlayer = 0.8; return; }
-    if (ent.isEnemy && ent.alive && !ent.knocked && this.pushedByPlayer > 0 && this.speedAt(ent.x, ent.y) > 1.6) {
-      const a = Math.atan2(ent.y - this.hy, ent.x - this.hx) + Math.sign(Body.getAngularVelocity(this.body)) * Math.PI / 2;
-      ent.knock(a, 'door');
-      this.world.sound('doorSlam', ent.x, ent.y);
-      this.world.shake(0.25);
-      this.world.addScore(300, ent.x, ent.y, 'DOOR SLAM');
-    }
+    this.slam(ent);
   }
 
   // distance from the pivot along the leaf of a world point
