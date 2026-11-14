@@ -22,7 +22,7 @@ import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL } from '../data/feel.js';
 import { POSTS, HELD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
-import { sprite, spriteOpt } from '../../engine/Assets.js';
+import { sprite, spriteOpt, sw } from '../../engine/Assets.js';
 
 const { Body, Bounds } = Matter;
 
@@ -1953,7 +1953,7 @@ export default class Enemy extends Character {
     const P = this.pose, d = this.def, k = 1 - this.tell / this.tellDur;
     let x = this.x + P.hr.x, y = this.y + P.hr.y;
     if (P.wpnOn && d.sprite) {
-      const len = (sprite(d.sprite).width - d.grip) * P.wpnLen * P.s;
+      const len = (sw(sprite(d.sprite)) - d.grip) * P.wpnLen * P.s;
       x = this.x + P.wpn.x + Math.cos(P.wpn.a) * len; y = this.y + P.wpn.y + Math.sin(P.wpn.a) * len;
     } else if (this.punchSide < 0) { x = this.x + P.hl.x; y = this.y + P.hl.y; }
     const r = 2 + 5 * Math.min(1, k * 1.6), h = 0.9;

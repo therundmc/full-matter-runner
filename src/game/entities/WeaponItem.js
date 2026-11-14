@@ -1,6 +1,6 @@
 import { CAT, MASK, PALETTE, AI } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { sprite, drawSprite, silhouette } from '../../engine/Assets.js';
+import { sprite, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 import { blowFrom } from '../fx/Blows.js';
 
@@ -20,7 +20,7 @@ export default class WeaponItem {
     this.mag = mag ?? this.def.mag ?? 0;
     this.wear = this.def.wear; // melee: kills left in it (whoever drops a worn one sets it)
     this.img = sprite(this.def.sprite);
-    this.body = Bodies.rectangle(x, y, this.img.width, Math.max(4, this.img.height), {
+    this.body = Bodies.rectangle(x, y, sw(this.img), Math.max(4, sh(this.img)), {
       angle, frictionAir: 0.01, friction: 0.05, restitution: 0.45, label: 'item',
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
@@ -93,7 +93,7 @@ export default class WeaponItem {
       ctx.lineWidth = 1;
       ctx.translate(p.x, p.y);
       ctx.rotate(this.body.angle);
-      ctx.strokeRect(-this.img.width / 2 - 2, -this.img.height / 2 - 2, this.img.width + 4, this.img.height + 4);
+      ctx.strokeRect(-sw(this.img) / 2 - 2, -sh(this.img) / 2 - 2, sw(this.img) + 4, sh(this.img) + 4);
       ctx.restore();
     }
   }

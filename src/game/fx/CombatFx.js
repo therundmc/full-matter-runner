@@ -6,7 +6,7 @@
 // time, so it slows down with it.
 // The state is plain data; only draw() and the white silhouette cache touch a canvas.
 import { SMEAR_TINT, HEAVY, STROKE, feelOf } from '../data/feel.js';
-import { sprite } from '../../engine/Assets.js';
+import { sprite, sw } from '../../engine/Assets.js';
 import { rand, clamp, lerp, angDiff } from '../../engine/math.js';
 
 const CAP = 24;          // effects of each kind alive at once (the oldest gives way)
@@ -145,7 +145,7 @@ export function sampleSmear(ch, P, d, spec, heavy) {
   S.swing = ch.swing;
   let tx, ty, mx, my;
   if (P.wpnOn && d.sprite) {
-    const img = sprite(d.sprite), len = (img.width - d.grip) * P.wpnLen * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
+    const img = sprite(d.sprite), len = (sw(img) - d.grip) * P.wpnLen * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
     mx = P.wpn.x + c * len * 0.35; my = P.wpn.y + s * len * 0.35;
     tx = P.wpn.x + c * len; ty = P.wpn.y + s * len;
   } else {

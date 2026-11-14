@@ -8,7 +8,7 @@
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN } from '../Config.js';
 import { TELL, GESTURE } from '../data/feel.js';
-import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
+import { sprite, spriteOpt, drawSprite, silhouette, sw } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 
 export const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
@@ -102,7 +102,7 @@ export function standPose(ch, P, a = ch.angle) {
       wa -= 0.55 * low;
       hrx = lerp(5, 3, low) - kp * rk; hry = 3 + 2 * low;
       wx = hrx; wy = hry - 1;
-      const hw = sprite(d.sprite).width * 0.5;
+      const hw = sw(sprite(d.sprite)) * 0.5;
       hlx = wx + Math.cos(wa) * hw; hly = wy - 1 + Math.sin(wa) * hw;
     }
     if (ch.reloading > 0) {
@@ -204,7 +204,7 @@ export function standPose(ch, P, a = ch.angle) {
     const reach = Math.min(1, k * 2), away = Math.max(0, k * 2 - 1);
     let sx = 1, sy = 6.5, sa = 3; // on the hip: little more than the grip shows
     if (long) {
-      const off = sprite(d.sprite).width * 0.5 - d.grip;
+      const off = sw(sprite(d.sprite)) * 0.5 - d.grip;
       sa = 2.05; sx = -3 - Math.cos(sa) * off; sy = -Math.sin(sa) * off;
     }
     wx = lerp(wx, sx, reach); wy = lerp(wy, sy, reach); wa = lerp(wa, sa, reach);
@@ -517,7 +517,7 @@ function holdOnTheWay(ch, V, f) {
   if (!V.wpnOn) return;
   const d = ch.def;
   if (d.hold === 'two' || d.swing === 'club') {
-    const sa = 2.05, off = sprite(d.sprite).width * 0.5 - d.grip;
+    const sa = 2.05, off = sw(sprite(d.sprite)) * 0.5 - d.grip;
     place(V.wpn, V, V.ta, -3 - Math.cos(sa) * off, -Math.sin(sa) * off);
     V.wpn.a = V.ta + sa;
   } else {
@@ -806,15 +806,15 @@ const LH = { x: 0, y: 0 }, RH = { x: 0, y: 0 }, TMP = { x: 0, y: 0 };
 
 // the weapon at torso-local point `at`; over the shoulders it casts a little shadow on them
 function drawWeapon(ctx, P, d, ta, at, shadow) {
-  const img = sprite(d.sprite);
+  const img = sprite(d.sprite), k = img.k || 1;
   const len = Math.sign(P.wpnLen || 1) * Math.max(0.15, Math.abs(P.wpnLen));
   for (let i = shadow ? 0 : 1; i < 2; i++) {
     ctx.save();
     ctx.translate(at.x + (i ? 0 : 1.5), at.y + (i ? 0 : 1.5));
     ctx.rotate(P.wpn.a - ta);
-    ctx.scale(len, P.wpnS);
+    ctx.scale(len * k, P.wpnS * k); // k: the weapon is a finer sprite (Assets.js `density`); d.grip is in world px
     if (!i) ctx.globalAlpha *= 0.3;
-    ctx.drawImage(i ? img : silhouette(img), -d.grip, -img.height / 2);
+    ctx.drawImage(i ? img : silhouette(img), -d.grip / k, -img.height / 2);
     ctx.restore();
   }
 }

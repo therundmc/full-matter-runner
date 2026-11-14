@@ -481,6 +481,7 @@ export default class MapRenderer {
     g.translate(x, y);
     g.rotate(angle);
     g.globalAlpha = alpha;
+    if (img.k && img.k !== 1) g.scale(img.k, img.k); // a finer sprite (Assets.js `density`) baked at the floor's scale
     g.drawImage(img, -img.width / 2, -img.height / 2);
     g.restore();
   }

@@ -1,5 +1,5 @@
 import { CAT, MASK } from '../Config.js';
-import { drawSprite, silhouette } from '../../engine/Assets.js';
+import { drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, chance } from '../../engine/math.js';
 import { setMaterial, scaleInertia } from '../../engine/physics/Body.js';
 import { wipe } from '../fx/Bleeding.js';
@@ -24,7 +24,7 @@ export default class Debris {
   constructor(world, img, x, y, angle, vx, vy, spin, opts = {}) {
     this.world = world;
     this.img = img;
-    const w = Math.max(2, img.width - 1), h = Math.max(2, img.height - 1);
+    const w = Math.max(2, sw(img) - 1), h = Math.max(2, sh(img) - 1);
     this.size = Math.max(w, h);
     this.body = opts.circle
       ? Bodies.circle(x, y, Math.max(1.5, Math.min(w, h) / 2), {})

@@ -14,7 +14,7 @@ import math
 import os
 import random
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
@@ -436,137 +436,103 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
     return ch['top'][i]
 
 
-FINE = 4    # standing characters are painted at four times the world's pixel density; the game draws them at a
-            # quarter of their size (engine/Assets.js `density`)
-SUN = (-0.46, -0.56, 0.69)      # the light, from the top left as everywhere else
+FINE = 2    # characters and weapons are painted at twice the world's pixel density, still plain pixel art (the user
+            # wants it kept: a smooth, shaded repaint was the wrong direction); the game draws them at half size
+            # (engine/Assets.js `density`)
+def torso_body(ch, rng):
+    """The shoulders from above at FINE density: the design of shoulder_px, then what cloth has: a seam down the back,
+    the sleeve heads, a collar, creases and grime."""
+    S, W = FINE, 20 * FINE
+    rx, ry = ch['sh'][0] * S, ch['sh'][1] * S
+    hr = 3.8 * S
+    crease = VNoise(W, W, 4, rng)
+    suit = ch.get('suit')
+    k = ch['kind']
+
+    def px(u, v, L):
+        if suit:
+            c = shade(suit, L)
+        else:
+            c = shoulder_px(ch, u / S, v / S, L, (u - 1.4 * S) / S, v / S, hr / S)
+        n = crease(u + W, v + W)
+        if n > 0.7:
+            c = dk(c, 0.1)                       # a crease of the cloth
+        elif n < 0.24:
+            c = lt(c, 0.07)
+        if k != 'brute' and abs(abs(v) - ry * 0.66) < 0.55 and u < rx * 0.6:
+            c = dk(c, 0.16)                      # where the sleeve is sewn on
+        if abs(v) < 0.55 and u < -1.5 * S:
+            c = dk(c, 0.2)                       # the seam down the back
+        if u < -rx + 1.6 * S:
+            c = dk(c, 0.1)                       # the back falls away from the light
+        return c
+    body = Cv(W, W)
+    fill_shape(body, 9.6 * S, 10.0 * S, rx, ry, px, kind='super', p=2.4)
+    if suit or k == 'thug':
+        # shirt collar and tie in front of the neck, the lapels' notch either side
+        shirt, tie = (WHITE, hx('#1a1620')) if suit else (ch['shirt'], hx('#8a1a3a'))
+        for dv in range(-3, 4):
+            for du in range(0, 4 - abs(dv)):
+                x, y = int(13.0 * S + du), int(10.0 * S + dv)
+                if body.on(x, y):
+                    body.set(x, y, tie if dv == 0 else shirt[2] if abs(dv) < 2 else shirt[1])
+        for sgn in (-1, 1):
+            for i in range(4):
+                x, y = int(12.2 * S + i), int(10.0 * S + sgn * (4 + i * 0.9))
+                if body.on(x, y):
+                    body.set(x, y, dk(body.get(x, y), 0.3))
+    mottle(body, rng, amt=5, cell=4)
+    smudge(body, rng, 3, (6, 6, W - 7, W - 7), r=(1.5, 3.0), t=0.16)
+    body.outline()
+    return body
 
 
-def lit_tone(c, n, k=1.0):
-    """Base colour c under the light: n is how much its surface faces it (0..1), k an extra darkening (creases, seams,
-    what lies in a shadow). Shadows drift cold, lights warm: no flat tone anywhere."""
-    f = (0.4 + 0.8 * n) * k
-    r, g, b = c[0] * f, c[1] * f, c[2] * f
-    if f < 0.78:
-        t = (0.78 - f) * 0.5
-        r, g, b = r + (DARK_T[0] - r) * t, g + (DARK_T[1] - g) * t, b + (DARK_T[2] - b) * t
-    elif f > 1.0:
-        t = min(0.45, (f - 1.0) * 0.8)
-        r, g, b = r + (LIGHT_T[0] - r) * t, g + (LIGHT_T[1] - g) * t, b + (LIGHT_T[2] - b) * t
-    return (int(max(0, min(255, r))), int(max(0, min(255, g))), int(max(0, min(255, b))), 255)
+def torso_head(ch, rng):
+    """The head from above at FINE density, face toward +x: the design of head_top_px, ears, the brow and the nose."""
+    S, W = FINE, 20 * FINE
+    hcx, hcy, hr = 11.0 * S, 10.0 * S, 3.8 * S
+    k = ch['kind']
+    strand = VNoise(W, W, 2, rng)
+
+    def px(u, v, L):
+        c = head_top_px(ch, u / S, v / S, L, hr / S)
+        if c is None:
+            return None
+        if u > hr - 1.4 * S:
+            # the face: brow in shadow, the nose catching the light
+            if abs(v) < 1.1 and u > hr - 1.6:
+                return lt(ch['skin'][2], 0.25)
+            return ch['skin'][1] if u < hr - 0.9 * S else ch['skin'][2]
+        if k not in ('heavy',) and strand(u * 0.5 + W, v + W) > 0.62:
+            c = dk(c, 0.14)                      # strands
+        return c
+    head = Cv(W, W)
+    fill_shape(head, hcx, hcy, hr, hr * 0.94, px, pad=0.04)
+    for sgn in (-1, 1):                           # ears
+        ey = hcy + sgn * (hr * 0.94 + 0.2)
+        for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
+            head.set(int(hcx + dx), int(ey + dy), ch['skin'][1 if dx < 3 else 2])
+    if k == 'player':
+        # dark glasses across the brow
+        for dv in range(-5, 6):
+            head.set(int(hcx + hr - 2.6), int(hcy + dv), hx('#0e0a16') if dv else hx('#3a3450'))
+        head.set(int(hcx + hr - 2.6), int(hcy - 5), hx('#36e8f0'))
+    if k == 'brute':
+        # bandana knot and its two tails trailing behind
+        for (x, y, c) in [(12, 18, 2), (11, 17, 2), (10, 16, 1), (9, 15, 1), (12, 21, 1), (11, 22, 1), (10, 23, 1), (9, 24, 0), (13, 19, 3), (13, 20, 2)]:
+            head.set(x, y, ch['bandana'][c])
+    head.outline()
+    return head
 
 
 def draw_torso(ch):
-    """A standing character from straight above, facing +x: 80 x 80 pixels for 20 x 20 world px (FINE density).
-    Not flat shapes: a height field (the round of the shoulders, the deltoids, the skull, the ears, the nose) lit from
-    the top left, so every part turns away from the light as a body does. The design of each kind (stripes, straps,
-    collar, hair, cap...) comes from shoulder_px / head_top_px; cloth creases, seams, strands, the head's shadow on
-    the shoulders and a little grime go over it. Painted at twice that size and brought down, for clean edges."""
-    S, Q = FINE, 2
-    W, N, G = 20 * FINE, 20 * FINE * 2, FINE * 2          # G: painted px per old (20 x 20) px
-    k = ch['kind']
-    rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(k) * 7 + int(ch['sh'][1] * 10))
-    rx, ry = ch['sh'][0] * G * 1.04, ch['sh'][1] * G
-    bcx, bcy = 9.4 * G, 10.0 * G
-    hcx, hcy, hrx, hry = 11.3 * G, 10.0 * G, 3.95 * G, 3.5 * G
-    crease, strand = VNoise(N, N, 8, rng), VNoise(N, N, 2, rng)
-    H = [[0.0] * N for _ in range(N)]
-    K = [[0] * N for _ in range(N)]                      # 0 nothing, 1 shoulders, 2 head, 3 ears and nose
-    for y in range(N):
-        for x in range(N):
-            u, v = x + 0.5 - bcx, y + 0.5 - bcy
-            e = (abs(u) / rx) ** 2.6 + (abs(v) / ry) ** 2.6
-            h, kd = 0.0, 0
-            if e < 1:
-                # the round of the back and chest, a deltoid at each end, the trapezius rising to the neck
-                h = 0.5 * math.sqrt(1 - e) + 0.2 * math.exp(-(((abs(v) - ry * 0.72) / (ry * 0.3)) ** 2 + (u / (rx * 0.95)) ** 2))
-                h += 0.16 * math.exp(-((v / (ry * 0.38)) ** 2 + ((u + rx * 0.1) / (rx * 0.8)) ** 2))
-                kd = 1
-            hu, hv = x + 0.5 - hcx, y + 0.5 - hcy
-            eh = (hu / hrx) ** 2 + (hv / hry) ** 2
-            if eh < 1:
-                h, kd = 0.95 + 0.7 * math.sqrt(1 - eh), 2
-            else:
-                for sgn in (-1, 1):
-                    ee = ((hu - 0.3 * G) / (1.0 * G)) ** 2 + ((hv - sgn * (hry + 0.2 * G)) / (0.62 * G)) ** 2
-                    if ee < 1:
-                        h, kd = max(h, 0.9 + 0.22 * math.sqrt(1 - ee)), 3
-                en = ((hu - hrx - 0.1 * G) / (0.75 * G)) ** 2 + (hv / (0.55 * G)) ** 2
-                if en < 1 and k != 'civ':
-                    h, kd = max(h, 0.95 + 0.25 * math.sqrt(1 - en)), 3
-            H[y][x], K[y][x] = h, kd
-    img = Image.new('RGBA', (N, N), CLEAR)
-    p = img.load()
-    hair = ch.get('hair')
-    for y in range(1, N - 1):
-        for x in range(1, N - 1):
-            kd = K[y][x]
-            if not kd:
-                continue
-            nx, ny = (H[y][x - 1] - H[y][x + 1]) * G * 1.6, (H[y - 1][x] - H[y + 1][x]) * G * 1.6
-            ln = math.sqrt(nx * nx + ny * ny + 1)
-            n = max(0.0, (nx * SUN[0] + ny * SUN[1] + SUN[2]) / ln)
-            dark = 1.0
-            if kd == 1:
-                us, vs = (x + 0.5 - bcx) / G, (y + 0.5 - bcy) / G
-                c = shoulder_px(ch, us, vs, 0.7, us - 1.4, vs, 3.8)
-                dark *= 0.93 + 0.14 * crease(x, y)                                   # the cloth is never flat
-                if k != 'brute' and abs(abs(vs) - ch['sh'][1] * 0.66) < 0.11 and us < ch['sh'][0] * 0.6:
-                    dark *= 0.8                                                      # where the sleeve is sewn on
-                if abs(vs) < 0.1 and us < -1.2:
-                    dark *= 0.78                                                     # the seam down the back
-                # the head's shadow, thrown down and to the right
-                sh = ((x - 2.2 * G - hcx + 0.5) / (hrx * 1.12)) ** 2 + ((y - 2.6 * G - hcy + 0.5) / (hry * 1.12)) ** 2
-                if sh < 1:
-                    dark *= 0.66 + 0.34 * sh
-            elif kd == 2:
-                hu, hv = (x + 0.5 - hcx) / G, (y + 0.5 - hcy) / G
-                if k in ('player', 'thug') and hair:
-                    if hu > 2.35:
-                        c = ch['skin'][2]                                            # brow and face
-                        if hu < 2.9:
-                            dark *= 0.8
-                    else:
-                        c = hair[2]
-                        dark *= 0.8 + 0.34 * strand(x * 0.3 + (9 if k == 'player' else 0), y)   # strands, along the head
-                        if k == 'thug' and abs(hv + 0.9) < 0.12 and hu > -2.5:
-                            dark *= 0.7                                              # his parting
-                else:
-                    c = head_top_px(ch, hu, hv, 0.7, 3.8)
-                    if k == 'heavy' and math.hypot(hu + 0.9, hv + 1.1) < 0.9:
-                        dark *= 1.22                                                 # the shine of a bald skull
-            else:
-                c = ch['skin'][2]
-                dark *= 0.92
-            if c is None:
-                continue
-            p[x, y] = lit_tone(c, n, dark)
-    if k == 'player':
-        # dark glasses across the brow
-        for y in range(N):
-            for x in range(N):
-                hu, hv = (x + 0.5 - hcx) / G, (y + 0.5 - hcy) / G
-                if 2.75 < hu < 3.5 and abs(hv) < 2.2 and K[y][x] == 2:
-                    p[x, y] = (22, 18, 34, 255) if abs(hv) > 0.25 else (60, 54, 80, 255)
-    if k == 'brute':
-        # the bandana's knot and its two tails behind
-        for (ax, ay, bx, by) in ((6.6, 9.6, 5.2, 8.2), (6.6, 10.4, 5.0, 11.8)):
-            for i in range(24):
-                t = i / 23.0
-                x, y = int((ax + (bx - ax) * t) * G), int((ay + (by - ay) * t) * G)
-                for dy in range(-2, 3):
-                    for dx in range(-2, 3):
-                        p[x + dx, y + dy] = lit_tone(ch['bandana'][2], 0.55 - 0.2 * t)
-    out = Cv(W, W)
-    small = img.resize((W, W), Image.BOX)
-    # a thin dark contour, not a cartoon outline: the silhouette grown by one pixel, under the figure
-    grown = small.split()[3].filter(ImageFilter.MaxFilter(3)).point(lambda a: int(a * 0.82))
-    edge = Image.new('RGBA', (W, W), OUTLINE[:3] + (0,))
-    edge.putalpha(grown)
-    out.img = Image.alpha_composite(edge, small)
-    out.p = out.img.load()
-    mottle(out, rng, amt=4, cell=8)
-    smudge(out, rng, 4, (10, 10, W - 11, W - 11), r=(2.5, 6.0), t=0.1)
-    return out
+    """A standing character from straight above, facing +x: 40 x 40 pixels for 20 x 20 world px (FINE density)."""
+    W = 20 * FINE
+    rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(ch['kind']) * 7 + int(ch['sh'][1] * 10))
+    cv = Cv(W, W)
+    cv.over(torso_body(ch, rng))
+    cv.over(torso_head(ch, rng))
+    return cv
 
 
 def chest_px(ch, u, v, L, hx_, hy_):
@@ -976,71 +942,128 @@ OLIVE = ramp('#5d6a32', 0.45, 0.22, 0.3)
 BRASS = ramp('#e0a830', 0.45, 0.22, 0.4)
 
 
+# ---- weapons at FINE density: the 1x drawing doubled, every doubled row split into a lit top and a darker underside,
+# then what makes each one a real object: sights, serrations, a trigger guard, checkering, grain, tape, rust, old blood
+BEVEL = {'L': 'LM', 'M': 'MD', 'D': 'DK', 'S': 'Ss', 's': 'sD', 'w': 'wW', 'W': 'WV', 'o': 'oO', 'O': 'OQ', 'Q': 'Qq',
+         'g': 'gG', 'm': 'mn', 'b': 'bj', 'B': 'Bk', 'f': 'fe', 'c': 'cC', 't': 'tD', 'y': 'yY', 'r': 'rR'}
+
+
+def fine(rows, marks=()):
+    """rows: a 1x drawing (ascii_cv rows). marks: (x, y, 'chars') runs laid over the doubled drawing (' ' leaves the
+    pixel as it is, '.' clears it)."""
+    g = []
+    for r in rows:
+        g.append([BEVEL.get(ch, ch + ch)[0] for ch in r for _ in (0, 1)])
+        g.append([BEVEL.get(ch, ch + ch)[1] for ch in r for _ in (0, 1)])
+    for x, y, s in marks:
+        for i, ch in enumerate(s):
+            if ch != ' ':
+                g[y][x + i] = ch
+    return [''.join(r) for r in g]
+
+
 def weapons():
     W = {}
     gun = {'L': STEEL[3], 'M': STEEL[2], 'D': STEEL[1], 'K': STEEL[0], 'w': WOOD[3], 'W': WOOD[2],
            'V': WOOD[1], 'G': hx('#2a2230'), 'g': hx('#4a3e50'), 'S': STEEL_L[3], 's': STEEL_L[2],
-           'c': hx('#36e8f0'), 'o': OLIVE[3], 'O': OLIVE[2], 'Q': OLIVE[1], 'q': OLIVE[0],
-           'y': hx('#f9c80e'), 'r': hx('#b8262c'), 'R': hx('#7a1420'), 't': hx('#d8d8e0'), 'T': hx('#2a2230')}
-    W['pistol'] = ascii_cv(["...........",
-                            ".LLLLLLLLS.",
-                            ".DMMMMMMMK.",
-                            ".GGgK......",
-                            "..........."], gun)
-    W['uzi'] = ascii_cv(["............",
-                         ".LLLLLLLLL..",
-                         ".DMMMMMMMMS.",
-                         "..KDGG.D....",
-                         "....GG......",
-                         "....Gg......",
-                         "............"], gun)
-    W['uzi_silenced'] = ascii_cv(["..................",
-                                  ".LLLLLLLLL.SSSSSS.",
-                                  ".DMMMMMMMMMsssssS.",
-                                  "..KDGG.D...DDDDDD.",
-                                  "....GG............",
-                                  "....Gg............",
-                                  ".................."], gun)
-    W['shotgun'] = ascii_cv(["......................",
-                             "....wwwLLLLLLLLLLLLLS.",
-                             ".wwWWWVMMMMwwwwwDDDDK.",
-                             ".VVV...K..VVVVV.......",
-                             "......................"], gun)
-    W['rifle'] = ascii_cv(["........................",
-                           "..........K.........K...",
-                           ".wwww.LLLLLLwwwwwLLLLLS.",
-                           ".WWWWVMMMMMMVVVVVDDDDDK.",
-                           ".VV....GG.MD............",
-                           "........G..MD...........",
-                           "........................"], gun)
-    W['sniper'] = ascii_cv(["............................",
-                            ".........SSSSSSSSc..........",
-                            ".GGgggGGMMMMMMMMMMLLLLLLLLS.",
-                            ".GGG.....K..................",
-                            "............................"], gun)
-    W['bazooka'] = ascii_cv(["..........................",
-                             ".QQo..........K...........",
-                             ".QOoooooooooooooooyyoooOQ.",
-                             ".qOOOOOOOOOOOOOOOOyyOOOOq.",
-                             ".qQQQQQQQQQQQQQQQQyyQQQQq.",
-                             ".qq.......GG.T............",
-                             ".........................."], gun)
-    W['bat'] = ascii_cv(["......................",
-                         "..t.....wwwwwwwwwwww..",
-                         ".VTtTtTVWWWWWWWWWWWWV.",
-                         "......................"], gun)
-    W['knife'] = ascii_cv(["..........",
-                           ".GgGKsSSt.",
-                           ".........."], gun)
-    # pool cue (1.25 m): dark butt, pale maple shaft, white ferrule, chalked tip; and its butt half once it has snapped
-    cue = {'B': hx('#3a2418'), 'b': hx('#6a4426'), 'm': hx('#d8c090'), 'f': hx('#f0ece0'), 'c': hx('#3a8ad8')}
-    W['cue'] = ascii_cv(['.' * 40, '.BBBBBBBbbbbbb' + 'm' * 22 + 'ffc.', '.' * 40], cue)
-    W['cue_half'] = ascii_cv(['.' * 20, '.BBBBBBBbbbbbbmmmmm.', '.' * 20], cue)
-    # tire iron: a steel bar, its socket end bent square
-    W['tire_iron'] = ascii_cv(["................",
-                               ".DMMMMMMMMMMLK..",
-                               "............MK..",
-                               "................"], gun)
+           'c': hx('#36e8f0'), 'C': hx('#1a98a8'), 'o': OLIVE[3], 'O': OLIVE[2], 'Q': OLIVE[1], 'q': OLIVE[0],
+           'y': hx('#f9c80e'), 'Y': hx('#b88a08'), 'r': hx('#b8262c'), 'R': hx('#7a1420'), 't': hx('#d8d8e0'),
+           'T': hx('#2a2230'), 'x': hx('#7a4a32'), 'n': hx('#1c1820'), 'h': hx('#5a0c16'),
+           # the pool cue: dark butt, its linen wrap, pale maple, the ferrule, the chalked tip (and their undersides)
+           'B': hx('#3a2418'), 'k': hx('#241610'), 'b': hx('#6a4426'), 'j': hx('#4a2e1a'), 'm': hx('#d8c090'),
+           'f': hx('#f0ece0'), 'e': hx('#c8c4b8')}
+    W['pistol'] = ascii_cv(fine(["...........",
+                                 ".LLLLLLLLS.",
+                                 ".DMMMMMMMK.",
+                                 ".GGgK......",
+                                 "..........."],
+                                [(3, 1, 'K'), (18, 1, 'K'),                        # rear and front sights
+                                 (2, 3, 'DMDMDM'), (11, 3, 'KKK'),                 # slide serrations, the ejection port
+                                 (2, 5, 'KK'), (18, 4, 'DK'),
+                                 (2, 6, 'GgGgGgKDDK'), (2, 7, 'gGgGgG.K..K'),      # checkered grip, the trigger guard
+                                 (2, 8, 'GgGgG...KK'), (9, 7, 'D')]), gun)
+    W['uzi'] = ascii_cv(fine(["............",
+                              ".LLLLLLLLL..",
+                              ".DMMMMMMMMS.",
+                              "..KDGG.D....",
+                              "....GG......",
+                              "....Gg......",
+                              "............"],
+                             [(4, 1, 'K'), (17, 1, 'K'), (6, 3, 'DKDKDK'), (12, 4, 'KKKK'),
+                              (8, 8, 'GgGg'), (8, 10, 'gGgG'), (8, 11, 'GgGG'), (14, 7, 'K'), (13, 8, 'K')]), gun)
+    W['uzi_silenced'] = ascii_cv(fine(["..................",
+                                       ".LLLLLLLLL.SSSSSS.",
+                                       ".DMMMMMMMMMsssssS.",
+                                       "..KDGG.D...DDDDDD.",
+                                       "....GG............",
+                                       "....Gg............",
+                                       ".................."],
+                                      [(4, 1, 'K'), (6, 3, 'DKDKDK'), (12, 4, 'KKKK'), (24, 3, 'D D D D D'),
+                                       (24, 5, 'K K K K K'), (8, 8, 'GgGg'), (8, 10, 'gGgG'), (8, 11, 'GgGG')]), gun)
+    W['shotgun'] = ascii_cv(fine(["......................",
+                                  "....wwwLLLLLLLLLLLLLS.",
+                                  ".wwWWWVMMMMwwwwwDDDDK.",
+                                  ".VVV...K..VVVVV.......",
+                                  "......................"],
+                                 [(40, 1, 'S'),                                         # the bead
+                                  (2, 4, 'T'), (2, 5, 'T'), (2, 6, 'T'), (2, 7, 'T'),   # butt pad
+                                  (5, 4, 'W ww W'), (4, 5, 'V WW V'),                   # grain of the stock
+                                  (17, 4, 'KKKKK'), (16, 5, 'D'),                       # ejection port
+                                  (13, 6, 'K..K'), (14, 7, 'KK'),                       # trigger guard
+                                  (22, 4, 'wVwVwVwVwV'), (22, 5, 'WVWVWVWVWV'),         # the pump's grooves
+                                  (20, 6, 'VnVnVnVnVn'), (36, 4, 'M'), (36, 5, 'D')]), gun)
+    W['rifle'] = ascii_cv(fine(["........................",
+                                "..........K.........K...",
+                                ".wwww.LLLLLLwwwwwLLLLLS.",
+                                ".WWWWVMMMMMMVVVVVDDDDDK.",
+                                ".VV....GG.MD............",
+                                "........G..MD...........",
+                                "........................"],
+                               [(2, 4, 'T'), (2, 5, 'T'), (2, 6, 'T'), (2, 7, 'T'), (14, 6, 'KKKK'),
+                                (26, 4, 'w.w.w.w.w'), (26, 6, 'V.V.V.V.V'), (20, 9, 'D'), (22, 11, 'D'), (44, 5, 'S')]), gun)
+    W['sniper'] = ascii_cv(fine(["............................",
+                                 ".........SSSSSSSSc..........",
+                                 ".GGgggGGMMMMMMMMMMLLLLLLLLS.",
+                                 ".GGG.....K..................",
+                                 "............................"],
+                                [(18, 2, 'K'), (33, 2, 'K'), (34, 3, 'C'), (2, 4, 'T'), (2, 5, 'T'), (2, 6, 'T'),
+                                 (6, 4, 'g g g'), (20, 5, 'KK'), (17, 6, 'K..K'), (18, 7, 'KK'), (52, 4, 'S')]), gun)
+    W['bazooka'] = ascii_cv(fine(["..........................",
+                                  ".QQo..........K...........",
+                                  ".QOoooooooooooooooyyoooOQ.",
+                                  ".qOOOOOOOOOOOOOOOOyyOOOOq.",
+                                  ".qQQQQQQQQQQQQQQQQyyQQQQq.",
+                                  ".qq.......GG.T............",
+                                  ".........................."],
+                                 [(10, 5, 'q'), (10, 6, 'q'), (10, 7, 'q'), (10, 8, 'q'), (30, 5, 'q'), (30, 6, 'q'),
+                                  (30, 7, 'q'), (30, 8, 'q'), (20, 10, 'GgGg'), (20, 11, 'gGgG'), (14, 6, 'x'), (41, 8, 'x')]), gun)
+    W['bat'] = ascii_cv(fine(["......................",
+                              "..t.....wwwwwwwwwwww..",
+                              ".VTtTtTVWWWWWWWWWWWWV.",
+                              "......................"],
+                             [(16, 2, '......'), (16, 3, '..ww'),                       # the barrel tapers to the handle
+                              (40, 2, '.'), (41, 2, '.'), (41, 3, 'V'),                 # its rounded end
+                              (22, 3, 'W   w    W     w'), (24, 4, 'w    W      w  W'), # grain
+                              (4, 4, 'nTnTnTnTnT'), (4, 5, 'TnTnTnTnTn'),               # grip tape
+                              (2, 3, 'VV'), (2, 6, 'VV'), (4, 2, '..'), (4, 3, '..'),   # the knob
+                              (33, 3, 'hh'), (34, 4, 'hhh'), (30, 5, 'h'), (37, 4, 'h')]), gun)   # what it has done
+    W['knife'] = ascii_cv(fine(["..........",
+                                ".GgGKsSSt.",
+                                ".........."],
+                               [(2, 2, 'KgGgGg'), (2, 3, 'KGgGgG'), (8, 1, 'KK'), (8, 4, 'KK'),   # handle, pommel, guard
+                                (10, 2, 'ssssss..'), (10, 3, 'SSSSSSt.'), (16, 2, 'S.')]), gun)   # spine, edge, the point
+    W['cue'] = ascii_cv(fine(['.' * 40, '.BBBBBBBbbbbbb' + 'm' * 22 + 'ffc.', '.' * 40],
+                             [(2, 2, 'e'), (2, 3, 'e'), (15, 2, 'f'), (15, 3, 'e'), (16, 2, 'j j j j j j'), (17, 3, 'b b b b b'),
+                              (27, 2, 'f'), (27, 3, 'e')]), gun)
+    W['cue_half'] = ascii_cv(fine(['.' * 20, '.BBBBBBBbbbbbbmmmmm.', '.' * 20],
+                                  [(2, 2, 'e'), (2, 3, 'e'), (15, 2, 'f'), (15, 3, 'e'), (16, 2, 'j j j j j j'), (17, 3, 'b b b b b'),
+                                   (27, 2, 'f'), (27, 3, 'e'), (36, 2, 'm.'), (37, 3, '.')]), gun)   # where it snapped
+    W['tire_iron'] = ascii_cv(fine(["................",
+                                    ".DMMMMMMMMMMLK..",
+                                    "............MK..",
+                                    "................"],
+                                   [(2, 2, 'SD'), (2, 3, 'DK'), (10, 3, 'x'), (17, 2, 'x'), (18, 3, 'xx'),   # the pry end, rust
+                                    (24, 6, 'DK'), (25, 5, 'T')]), gun)                                       # the socket
     W['rocket'] = ascii_cv([".........",
                             ".QooorRt.",
                             ".qQQQRRR.",
@@ -5039,13 +5062,14 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (80, 80)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5)),
         ('_rag_torso_up', (14, 16)), ('_rag_torso_down', (14, 16)), ('_rag_head_up', (9, 9))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
-    'weapons': dict(pistol=(11, 5), uzi=(12, 7), uzi_silenced=(18, 7), shotgun=(22, 5), rifle=(24, 7),
-                    sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), cue=(40, 3), cue_half=(20, 3), tire_iron=(16, 4),
+    # the weapons in hand are at FINE density: twice these world sizes
+    'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(48, 14),
+                    sniper=(56, 10), bazooka=(52, 14), bat=(44, 8), knife=(20, 6), cue=(80, 6), cue_half=(40, 6), tire_iron=(32, 8),
                     rocket=(9, 4),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(3, 6), mag_uzi=(3, 9), mag_rifle=(4, 9),
                     mag_sniper=(3, 6), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),

@@ -1,6 +1,6 @@
 import { CAT, MASK, ENEMY, BARREL, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { sprite, spriteOpt, chunk } from '../../engine/Assets.js';
+import { sprite, spriteOpt, chunk, sw } from '../../engine/Assets.js';
 import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
@@ -307,7 +307,7 @@ export default class Character {
   muzzlePos() {
     const d = this.def;
     const img = sprite(d.sprite);
-    const lx = (d.hold === 'two' ? 5 : 10) + img.width - d.grip;
+    const lx = (d.hold === 'two' ? 5 : 10) + sw(img) - d.grip;
     return local(this.x, this.y, this.angle, lx, d.hold === 'two' ? 2 : 1);
   }
 

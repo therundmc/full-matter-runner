@@ -1,5 +1,5 @@
 import { CAT, MASK, PALETTE } from '../Config.js';
-import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
+import { sprite, spriteOpt, drawSprite, silhouette, sw } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, BODY, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
@@ -507,7 +507,7 @@ export default class Ragdoll {
 
   // where the planted weapon is drawn: out of the torso, its centre some way along the direction it points
   stuckAt() {
-    const t = this.torso.body, a = t.angle - Math.PI / 2 + this.stuck.a, r = this.stuck.img.width * 0.3;
+    const t = this.torso.body, a = t.angle - Math.PI / 2 + this.stuck.a, r = sw(this.stuck.img) * 0.3;
     return { x: t.position.x + Math.cos(a) * r, y: t.position.y + Math.sin(a) * r, a };
   }
 

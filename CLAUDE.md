@@ -30,20 +30,19 @@
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
 
-## Visual rework (started 2026-11-15, the user's direction: more visceral, more real, more detail, a little dirty)
-- Stays strictly top-down (he chose it over the three-quarter view of his reference sheet): every animation built
-  so far stays valid. Never a rooster or any animal mask (that is another game's character).
-- Sprites are repainted at TWICE the pixel density, kind by kind (`FINE` in tools/generate_assets.py; the engine draws
-  a finer sprite smaller: `density` / `img.k` in engine/Assets.js, honoured by drawSprite; raw drawImage callers must
-  scale by `img.k`). Done: the standing characters (`_torso`, 40 x 40). To do, in this order: the bodies on the floor
-  at their real length (a man is 1.75 m: the ragdoll parts make him 1.2 m today), the weapons, the furniture and the
-  cars (already at real size: 1 m = 32 px), the floors and walls. Dirt, wear and grime everywhere, lightly.
-- The hero: a cheap dark suit under a clear plastic rain poncho, hood up, pink rubber gloves (he picked it among
-  three proposals); blood is meant to run on the poncho as the kills add up (not built yet).
-- Camera a third closer (engine/Camera.js: about 300 world px of vertical view, integer zoom).
-- Proportions: he feels the rooms too big for the furniture. Measured: furniture and cars are at real size, the
-  characters were wrong. He also wants the oversized rooms tightened (toilets, the boss's office, the storeroom) and
-  more furniture: a level pass to do once the guard-life agent has handed build_level1.py back.
+## Visual rework (2026-11-15: the user's verdicts, after three wrong turns of mine)
+- KEEP THE PIXEL ART. He wants "a bit more detail, more real", not another style: a smooth shaded repaint ("blocs
+  degueulasses"), a new hero in a rain poncho ("skin degueulasse") and anything that leaves pixel art were all
+  rejected. Strictly top-down. The hero stays the blond man in the cyan jacket. Never a rooster or animal mask.
+- How detail is added: a sprite is painted at TWICE the pixel density (`FINE` in tools/generate_assets.py), plain pixel
+  art, and the engine draws it at half size (`density` / `img.k` in engine/Assets.js; `sw` / `sh` give a sprite's size
+  in world px; drawSprite, the decal bake and the weapon drawing honour `img.k`; a raw drawImage must scale by it).
+  Done: the standing characters (`_torso`, 40 x 40: seams, creases, collar, ears, nose, strands) and the twelve
+  weapons (`fine()`: the 1x drawing doubled, bevelled, then sights, serrations, checkering, grain, tape, rust, old
+  blood). Not done: bodies on the floor (ragdoll parts make a man 1.2 m long instead of 1.75), furniture, cars, floors.
+- Camera: `VIEW` = 330 world px high (engine/Camera.js); he said this zoom is right. The scene is drawn at a whole
+  zoom on a canvas a little larger than the window and the lens brings it down (Game.resize).
+- Still asked and not done: tighten the oversized rooms (toilets, the boss's office, the storeroom), more furniture.
 
 ## Delivery by blocks (validate each with the user before moving on)
 1. Engine perf & stability — done. The "3 explosions" bug was the lab (no exit) clearing -> exit HUD crash; fixed and
