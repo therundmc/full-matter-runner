@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { TILE, AMBIENT: A, CAT, MASK } = await load('game/Config.js');
 const { Lane, Driver, gapAhead, safeSpeed, findBypass, steerAngle, seeded } = await load('game/systems/Traffic.js');
-const { Walker, WALKER, escapeRoute, pathLength, pointAlong } = await load('game/ai/Civilians.js');
+const { Walker, WALKER, escapeRoute, hideRoute, pathLength, pointAlong } = await load('game/ai/Civilians.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 
 const box = (x0, x1, y0, y1, extra = {}) => ({ x0, x1, y0, y1, ref: {}, moving: false, speed: 0, ...extra });
@@ -194,7 +194,7 @@ test('walkers: stroll the whole path, maybe stopping once', () => {
 });
 
 test('walkers: panic (freeze) then run away along the escape route, or cower without one', () => {
-  const w = new Walker(path, { r: seeded(3), speed: 40, run: 150 });
+  const w = new Walker(path, { r: seeded(3), speed: 40, run: 150, temper: 'run' });
   w.update(0.1, 0, 100, {});
   assert.equal(w.alarm(50, 100, 'armed'), true);
   assert.equal(w.state, WALKER.PANIC);
@@ -212,7 +212,7 @@ test('walkers: panic (freeze) then run away along the escape route, or cower wit
   w.update(0.05, -95, 100, sense);
   assert.equal(w.state, WALKER.DONE);
 
-  const c = new Walker(path, { r: seeded(4), speed: 40, run: 150 });
+  const c = new Walker(path, { r: seeded(4), speed: 40, run: 150, temper: 'run' });
   c.alarm(0, 0, 'explosion');
   for (let t = 0; t < 1.2; t += 0.05) c.update(0.05, 0, 100, { escape: () => null });
   assert.equal(c.state, WALKER.COWER);
@@ -276,7 +276,7 @@ test('edges: invisible bars around the map stop characters, not traffic or passe
 });
 
 test('walkers: a bat or a knife scares them too, but only a gun makes them beg', () => {
-  const w = new Walker(path, { r: seeded(3), speed: 40, run: 150 });
+  const w = new Walker(path, { r: seeded(3), speed: 40, run: 150, temper: 'run' });
   w.update(0.1, 0, 100, {});
   assert.equal(w.alarm(50, 100, 'weapon'), true);
   assert.equal(w.state, WALKER.PANIC);
@@ -301,6 +301,103 @@ test('pastimes: one pool stroke per cycle, the cue shot through right then', asy
   assert.equal(n, 4, 'four strokes in 20 s');
   assert.ok(cueShift(at - 0.3, 0.3) < -3 && cueShift(at + 0.1, 0.3) > 6, 'drawn back, then through the ball');
   for (let t = 0; t < 20; t += 0.05) assert.ok(sip(t, 0.7) >= 0 && sip(t, 0.7) <= 1);
+});
+
+test('walkers: by temperament they run (a few trip), curl up in a corner sobbing, or freeze until it gets close', () => {
+  const tempers = { run: 0, hide: 0, stay: 0 };
+  let trips = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    const w = new Walker(path, { r: seeded(seed), speed: 40, run: 150 });
+    w.alarm(50, 100, 'gunshot');
+    tempers[w.temper]++;
+    if (w.tripIn !== null) trips++;
+  }
+  assert.ok(tempers.run > 150 && tempers.hide > 40 && tempers.stay > 20, JSON.stringify(tempers));
+  assert.ok(trips > 30 && trips < 100, 'a few trip: ' + trips);
+
+  // the hider runs to his corner, curls up and sobs, then dares to run
+  const sense = { escape: () => [{ x: -100, y: 100 }], hide: () => [{ x: 0, y: 160 }] };
+  const h = new Walker(path, { r: seeded(7), speed: 40, run: 150, temper: 'hide' });
+  h.alarm(50, 100, 'gunshot');
+  h.bark = null;
+  let it;
+  for (let t = 0; t < 1; t += 0.05) it = h.update(0.05, 0, 100, sense);
+  assert.equal(h.state, WALKER.HIDE);
+  assert.deepEqual([it.x, it.y, it.speed], [0, 160, 150]);
+  h.update(0.05, 0, 158, sense);
+  assert.equal(h.state, WALKER.COWER);
+  assert.equal(h.pose, 'ball');
+  assert.ok(h.panicked);
+  const barks = [];
+  for (let t = 0; t < 12; t += 0.1) { h.update(0.1, 0, 158, sense); if (h.bark) { barks.push(h.bark); h.bark = null; } }
+  assert.ok(barks.length >= 3 && barks.every((b) => b === 'sob'), barks.join());
+  assert.equal(h.alarm(10, 158, 'gunshot', { x: 0, y: 158 }), false);
+  assert.equal(h.state, WALKER.COWER, 'a shot next to him: he stays down');
+  for (let t = 0; t < 16; t += 0.1) h.update(0.1, 0, 158, sense);
+  assert.equal(h.state, WALKER.FLEE);
+  assert.equal(h.pose, null);
+  // no corner around: he runs like the others
+  const n = new Walker(path, { r: seeded(8), speed: 40, run: 150, temper: 'hide' });
+  n.alarm(50, 100, 'gunshot');
+  for (let t = 0; t < 1; t += 0.05) n.update(0.05, 0, 100, { escape: sense.escape, hide: () => null });
+  assert.equal(n.state, WALKER.FLEE);
+
+  // the frozen one stands hands up for seconds; a gun brought close sets him running, a far shot does not
+  const f = new Walker(path, { r: seeded(9), speed: 40, run: 150, temper: 'stay' });
+  f.alarm(300, 100, 'gunshot');
+  for (let t = 0; t < 3; t += 0.1) f.update(0.1, 0, 100, sense);
+  assert.ok(f.frozen && f.pose === 'hands');
+  f.alarm(300, 100, 'gunshot', { x: 0, y: 100 });
+  assert.ok(f.frozen);
+  f.alarm(40, 100, 'armed', { x: 0, y: 100 });
+  assert.equal(f.state, WALKER.FLEE);
+  assert.deepEqual(f.danger, { x: 40, y: 100 });
+
+  // a runner pants between two screams, and trips once
+  const r = new Walker(path, { r: seeded(10), speed: 40, run: 150, temper: 'run' });
+  r.alarm(50, 100, 'gunshot');
+  r.tripIn = 0.5;
+  const heard = new Set();
+  let falls = 0;
+  for (let t = 0; t < 8; t += 0.05) {
+    r.update(0.05, 0, 100, { escape: () => [{ x: -9000, y: 100 }] });
+    if (r.bark) { heard.add(r.bark); r.bark = null; }
+    if (r.fall) { falls++; r.fall = false; }
+  }
+  assert.equal(falls, 1);
+  assert.ok(heard.has('pant') && heard.has('scream'), [...heard].join());
+});
+
+test('walkers: a hiding corner is close, tucked in and out of sight of the danger, one person each', () => {
+  // a room with a recess in the north-east, behind a wall stub
+  const m = new TileMap([
+    'XXXXXXXXXX',
+    'X.....X..X',
+    'X.....X..X',
+    'X........X',
+    'X........X',
+    'XXXXXXXXXX',
+  ]);
+  const T = TILE, W = m.w;
+  const danger = { x: 1.5 * T, y: 1.5 * T };
+  const seen = (x, y) => { // crude sight: blocked by the stub for whoever is east of it and above its end
+    const cx = Math.floor(x / T), cy = Math.floor(y / T);
+    return !(cx >= 7 && cy <= 2);
+  };
+  const taken = new Set();
+  const route = hideRoute(m, 4.5 * T, 3.5 * T, danger, seen, taken);
+  const end = route.at(-1), cell = Math.floor(end.y / T) * W + Math.floor(end.x / T);
+  assert.ok(!seen(end.x, end.y), 'out of sight');
+  assert.ok(!m.blocked[cell] && taken.has(cell));
+  const other = hideRoute(m, 4.5 * T, 3.5 * T, danger, seen, taken).at(-1);
+  assert.notDeepEqual(other, end, 'the corner is taken');
+  // everything in sight and nothing to get behind: nowhere to hide
+  const open = new TileMap(['XXXXXXXX', 'X......X', 'X......X', 'X......X', 'XXXXXXXX']);
+  assert.equal(hideRoute(open, 5.5 * T, 2.5 * T, { x: 2.5 * T, y: 2.5 * T }, () => true), null);
+  // furniture between him and the gun will do
+  open.blocked[2 * open.w + 4] = 1;
+  const behind = hideRoute(open, 5.5 * T, 1.5 * T, { x: 1.5 * T, y: 2.5 * T }, () => true);
+  assert.deepEqual(behind.at(-1), { x: 5.5 * T, y: 2.5 * T });
 });
 
 test('patrons: boxed in by the furniture he sits on, a patron still finds his way out, never through a wall', () => {

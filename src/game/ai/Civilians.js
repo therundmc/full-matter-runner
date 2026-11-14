@@ -1,17 +1,20 @@
 // Passers-by brains, DOM-free and unit tested: a stroll along a path (with an optional stop: cigarette, shop
-// window, phone, a chat for couples), then panic (hands up / duck for a beat) and a sprint off the map along a
-// route that keeps away from the danger (escapeRoute). Units: px, px/s, s.
+// window, phone, a chat for couples), then panic (hands up / duck for a beat) and, by temperament, a sprint off
+// the map along a route that keeps away from the danger (escapeRoute; a few trip on the way), a corner to curl
+// up in out of sight (hideRoute), or a long freeze on the spot, hands up. Units: px, px/s, s.
 import { TILE, AMBIENT as A } from '../Config.js';
 import { between } from '../systems/Traffic.js';
 
-export const WALKER = { WALK: 'walk', STOP: 'stop', PANIC: 'panic', FLEE: 'flee', COWER: 'cower', DONE: 'done' };
+export const WALKER = { WALK: 'walk', STOP: 'stop', PANIC: 'panic', FLEE: 'flee', HIDE: 'hide', COWER: 'cower', DONE: 'done' };
+const BOLTS = ['armed', 'weapon', 'gunshot', 'explosion']; // what sets a frozen one running, from close
 const ACTIVITIES = ['smoke', 'window', 'phone'];
 const REACH = 6; // px: a waypoint counts as reached
 
 export class Walker {
-  // path: [{x, y}] (first point = spawn); opts: { r, speed, run, partner, post }
+  // path: [{x, y}] (first point = spawn); opts: { r, speed, run, partner, post, temper }
   // post { activity, face }: a patron who stays at his spot, busy, until something scares him off
-  constructor(path, { r, speed, run, partner = null, post = null }) {
+  // temper: 'run' | 'hide' | 'stay', how he panics (drawn at his first fright when not given)
+  constructor(path, { r, speed, run, partner = null, post = null, temper = null }) {
     this.r = r;
     this.path = path;
     this.i = 1;
@@ -21,25 +24,35 @@ export class Walker {
     this.state = WALKER.WALK;
     this.t = 0;
     this.activity = null;
-    this.pose = null;          // hands | duck while panicking
+    this.pose = null;          // hands | duck while panicking, ball once curled up
+    this.temper = temper;
+    this.tripIn = null;        // s of running left before he trips
+    this.fall = false;         // set when he trips (read and cleared by the Civilian)
+    this.air = 0;              // s to his next breath
     this.danger = null;
     this.route = null;
-    this.bark = null;          // set when he has something to scream (read and cleared by Ambient)
+    this.bark = null;          // set when he has something to voice: scream, beg, pant, sob... (read and cleared by Ambient)
     // one stop somewhere along the way, at a distance from the start
     this.walked = 0;
     this.stopAt = !partner && !post && r() < A.stopChance ? between(r, [0.25, 0.75]) * pathLength(path) : -1;
     if (post) { this.state = WALKER.STOP; this.activity = post.activity; this.face = post.face; this.t = Infinity; }
   }
 
-  get panicked() { return this.state === WALKER.PANIC || this.state === WALKER.FLEE || this.state === WALKER.COWER; }
+  get panicked() { return [WALKER.PANIC, WALKER.FLEE, WALKER.HIDE, WALKER.COWER].includes(this.state); }
+  get frozen() { return this.state === WALKER.PANIC && this.temper === 'stay'; }
 
   // Something scary at (x, y). kind: gunshot | explosion | kill | corpse | armed (a gun) | weapon (a bat, a knife) | scream | hit.
   // Returns true when this makes him panic (first time, or a much closer danger while fleeing).
   alarm(x, y, kind, from) {
     if (this.state === WALKER.DONE) return false;
     if (this.panicked) {
-      if (this.state !== WALKER.FLEE || !from) return false;
-      const d = Math.hypot(x - from.x, y - from.y);
+      const d = from ? Math.hypot(x - from.x, y - from.y) : 0;
+      if (this.state !== WALKER.FLEE) {
+        // a blow, or a weapon right on top of the one frozen there, sets him running
+        if (kind === 'hit' || (this.frozen && from && BOLTS.includes(kind) && d < A.panic.bolt * TILE)) this.bolt(x, y);
+        return false;
+      }
+      if (!from) return false;
       if (!this.danger || d > Math.hypot(this.danger.x - from.x, this.danger.y - from.y) * 0.5) return false;
       this.danger = { x, y };
       this.route = null; // re-route away from the new threat
@@ -50,10 +63,27 @@ export class Walker {
     this.pose = kind === 'armed' || (kind === 'gunshot' && this.r() < 0.4) ? 'hands' : 'duck';
     this.t = kind === 'scream' ? between(this.r, A.panic.freeze) * 0.5 : between(this.r, A.panic.freeze);
     this.bark = kind === 'armed' ? 'beg' : kind === 'weapon' ? 'back' : 'scream';
+    if (!this.temper) {
+      const k = this.r();
+      this.temper = k < A.panic.hide ? 'hide' : k < A.panic.hide + A.panic.stay ? 'stay' : 'run';
+    }
+    if (this.r() < A.panic.trip) this.tripIn = between(this.r, A.panic.tripAfter);
+    if (this.temper === 'stay' && kind !== 'hit') { this.pose = 'hands'; this.t = between(this.r, A.panic.stayFor); }
     return true;
   }
 
-  // sense: { escape(x, y, danger) -> [{x, y}] | null } (only called when a route is needed)
+  // off he goes, away from (x, y), whatever he was at
+  bolt(x, y) {
+    this.danger = { x, y };
+    this.temper = 'run';
+    this.state = WALKER.FLEE;
+    this.pose = null;
+    this.route = null;
+    this.t = 0;
+  }
+
+  // sense: { escape(x, y, danger) -> [{x, y}] | null, hide(x, y, danger) -> [{x, y}] | null } (only called when
+  // a route is needed; hide is optional)
   // returns the intent { x, y (target or null), speed (px/s), face (angle or null) }
   update(dt, x, y, sense) {
     this.t -= dt;
@@ -67,10 +97,24 @@ export class Walker {
       }
       case WALKER.PANIC:
         if (this.t > 0) return { x: null, y: null, speed: 0, face: Math.atan2(this.danger.y - y, this.danger.x - x) };
-        this.state = WALKER.FLEE;
         this.pose = null;
-        this.route = null;
+        this.route = this.temper === 'hide' ? sense.hide?.(x, y, this.danger) ?? null : null;
+        this.ri = 0;
+        this.state = this.route ? WALKER.HIDE : WALKER.FLEE;
+        this.t = this.route ? 5 : 0; // a corner he cannot reach in time: he drops where he is
         return this.update(0, x, y, sense);
+      case WALKER.HIDE: {
+        while (this.ri < this.route.length && Math.hypot(this.route[this.ri].x - x, this.route[this.ri].y - y) < REACH * 1.5) this.ri++;
+        if (this.ri >= this.route.length || this.t <= 0) {
+          this.state = WALKER.COWER;
+          this.pose = 'ball';
+          this.t = between(this.r, A.panic.hideFor);
+          this.air = 0.6;
+          return { x: null, y: null, speed: 0, face: null };
+        }
+        const p = this.route[this.ri];
+        return { x: p.x, y: p.y, speed: this.run, face: null };
+      }
       case WALKER.FLEE: {
         if (!this.route) {
           this.route = sense.escape(x, y, this.danger);
@@ -79,13 +123,21 @@ export class Walker {
         }
         while (this.ri < this.route.length && Math.hypot(this.route[this.ri].x - x, this.route[this.ri].y - y) < REACH * 2) this.ri++;
         if (this.ri >= this.route.length) { this.state = WALKER.DONE; return { x: null, y: null, speed: 0, face: null }; }
-        if (this.t <= 0) { this.t = between(this.r, [1.2, 2.6]); this.bark = 'scream'; }
+        if (this.tripIn !== null && (this.tripIn -= dt) <= 0) { this.tripIn = null; this.fall = true; }
+        // a scream or a whine now and then, his breath in between
+        if (this.t <= 0) { this.t = between(this.r, [1.2, 2.6]); this.bark = this.r() < 0.6 ? 'scream' : 'whine'; }
+        else if ((this.air -= dt) <= 0) { this.air = between(this.r, [0.5, 0.85]); this.bark = 'pant'; }
         const p = this.route[this.ri];
         return { x: p.x, y: p.y, speed: this.run, face: null };
       }
       case WALKER.COWER:
-        if (this.t <= 0) { this.state = WALKER.FLEE; this.pose = null; this.route = null; }
-        return { x: null, y: null, speed: 0, face: this.danger ? Math.atan2(this.danger.y - y, this.danger.x - x) : null };
+        if (this.t <= 0) { this.bolt(this.danger.x, this.danger.y); return { x: null, y: null, speed: 0, face: null }; }
+        if (this.pose === 'ball') {
+          // curled up facing his corner, sobbing under his breath
+          if ((this.air -= dt) <= 0) { this.air = between(this.r, [1.6, 3.6]); this.bark = 'sob'; }
+          return { x: null, y: null, speed: 0, face: null };
+        }
+        return { x: null, y: null, speed: 0, face: Math.atan2(this.danger.y - y, this.danger.x - x) };
       default:
         return { x: null, y: null, speed: 0, face: null };
     }
@@ -171,23 +223,7 @@ export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10,
   const heap = new MinHeap();
   g[start] = 0;
   heap.push(start, 0);
-  if (blocked[start]) {
-    // inside furniture (a patron on his seat, boxed in by a table): he slides off it, so the search also opens
-    // from the free cells up to two steps away, never through a wall
-    let ring = [start];
-    for (let step = 1; step <= 2; step++) {
-      const next = [];
-      for (const c of ring) {
-        for (const d of [-W, W, -1, 1]) {
-          const n = c + d;
-          if (n < 0 || n >= W * H || (d * d === 1 && ((n / W) | 0) !== ((c / W) | 0)) || map.solid?.[n] || g[n] < Infinity) continue;
-          g[n] = step; came[n] = start;
-          if (blocked[n]) next.push(n); else heap.push(n, step);
-        }
-      }
-      ring = next;
-    }
-  }
+  if (blocked[start]) slideOff(map, start, (n, step) => { g[n] = step; came[n] = start; heap.push(n, step); });
   let best = -1, bestScore = Infinity;
   while (heap.size) {
     const [cur, cost] = heap.pop();
@@ -220,6 +256,71 @@ export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10,
   if (map.walkLine) pts = pull(map, sx, sy, pts);
   pts.push(out(best % W, (best / W) | 0));
   return pts;
+}
+
+// A start cell inside furniture (a patron on his seat, boxed in by a table): he slides off it, so a search also
+// opens from the free cells up to two steps away, never through a wall. Calls visit(cell, steps) for each.
+function slideOff(map, start, visit) {
+  const W = map.w, seen = new Set([start]);
+  let ring = [start];
+  for (let step = 1; step <= 2; step++) {
+    const next = [];
+    for (const c of ring) {
+      for (const d of [-W, W, -1, 1]) {
+        const n = c + d;
+        if (n < 0 || n >= W * map.h || (d * d === 1 && ((n / W) | 0) !== ((c / W) | 0)) || map.solid?.[n] || seen.has(n)) continue;
+        seen.add(n);
+        if (map.blocked[n]) next.push(n); else visit(n, step);
+      }
+    }
+    ring = next;
+  }
+}
+
+// A corner to curl up in near (sx, sy): breadth-first over the free cells within `reach` steps, to one that has
+// walls or furniture around it and is hidden from the danger, either out of its sight (seen(x, y) is false) or
+// right behind something; the closest, most tucked-in one wins. `taken` (a Set of cells, filled here) keeps two
+// people out of the same corner. Returns [{x, y}] or null.
+export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = A.panic.nook) {
+  const W = map.w, H = map.h, T = TILE, blocked = map.blocked;
+  if (!danger || sx < 0 || sy < 0 || sx >= W * T || sy >= H * T) return null;
+  const start = Math.floor(sy / T) * W + Math.floor(sx / T);
+  const came = new Map([[start, -1]]);
+  let ring = [start];
+  if (blocked[start]) { ring = []; slideOff(map, start, (n) => { came.set(n, start); ring.push(n); }); }
+  const wall = (x, y) => x >= 0 && y >= 0 && x < W && y < H && blocked[y * W + x];
+  let best = -1, bestScore = Infinity;
+  for (let depth = 1; depth <= reach && ring.length; depth++) {
+    const next = [];
+    for (const c of ring) {
+      const cx = c % W, cy = (c / W) | 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = cx + dx, ny = cy + dy, ni = ny * W + nx;
+          if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1 || blocked[ni] || came.has(ni)) continue;
+          if (dx && dy && (blocked[cy * W + nx] || blocked[ny * W + cx])) continue;
+          came.set(ni, c);
+          next.push(ni);
+          let walls = 0;
+          for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (wall(nx + i, ny + j)) walls++;
+          const px = (nx + 0.5) * T, py = (ny + 0.5) * T, dl = Math.hypot(danger.x - px, danger.y - py);
+          if (dl < 2 * T || taken.has(ni)) continue;
+          const score = depth - walls * 1.5 - Math.min(8, dl / T) * 0.5;
+          if (score >= bestScore) continue;
+          const cover = wall(nx + Math.round((danger.x - px) / dl), ny + Math.round((danger.y - py) / dl));
+          if (cover || (walls >= 3 && !seen(px, py))) { bestScore = score; best = ni; }
+        }
+      }
+    }
+    ring = next;
+  }
+  if (best < 0) return null;
+  taken.add(best);
+  const cells = [];
+  for (let c = best; c !== start && c >= 0; c = came.get(c)) cells.push(c);
+  cells.reverse();
+  const pts = cells.map((c) => ({ x: ((c % W) + 0.5) * T, y: (((c / W) | 0) + 0.5) * T }));
+  return map.walkLine ? pull(map, sx, sy, pts) : pts;
 }
 
 // string pulling: skip waypoints while a straight walk is clear

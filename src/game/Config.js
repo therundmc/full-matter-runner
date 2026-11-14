@@ -232,6 +232,15 @@ export const AMBIENT = {
     armed: 4,              // m: the player with a weapon in hand
     spread: 6,             // m: a screaming passer-by panics the others around
     freeze: [0.35, 0.9],   // s of hands up / ducking before running
+    // temperaments: most run for it, the others go to ground in a corner or stand there shaking
+    hide: 0.24,            // odds of curling up out of sight (when such a spot is close)
+    stay: 0.14,            // odds of freezing on the spot, hands up
+    hideFor: [14, 26],     // s curled up before daring to run
+    stayFor: [5, 10],      // s frozen
+    bolt: 2.6,             // m: a weapon or a shot that close sets a frozen one running
+    nook: 9,               // cells a hider runs to his corner, at most
+    trip: 0.2,             // odds a runner falls flat once
+    tripAfter: [0.6, 2.5], // s of running before he does
     check: 0.25,           // s between two sight checks (staggered)
     calm: 20,              // s without new passers-by after gunfire / an explosion (word gets around)
   },

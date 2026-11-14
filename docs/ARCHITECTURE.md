@@ -55,7 +55,7 @@ src/
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
-      Civilians.js        passers-by Walker brain (stroll, stop, panic, flee, cower) + escapeRoute (way off the map)
+      Civilians.js        passers-by Walker brain (stroll, stop, panic, then by temperament flee / hide curled up / freeze) + escapeRoute, hideRoute
       Pastimes.js         what people do with themselves while all is calm (pool, cards, a drink, a cigarette,
                           a chat, a leak...): timing and spots only
       Carry.js            how a guard carries his weapon: put away, in hand and low, raised on a target

@@ -18,7 +18,7 @@ import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Civilian, { CIVILIAN_KINDS } from '../entities/Civilian.js';
 import { Lane, Driver, gapAhead, findBypass, steerAngle, seeded, between, hashString } from './Traffic.js';
-import { Walker, WALKER, escapeRoute, pathLength, pointAlong } from '../ai/Civilians.js';
+import { Walker, WALKER, escapeRoute, hideRoute, pathLength, pointAlong } from '../ai/Civilians.js';
 import { markBlocked } from '../world/Level.js';
 
 const { Body } = Matter;
@@ -31,7 +31,12 @@ const BARKS = {
   scream: ['AAAH!', 'HELP!', 'RUN!', 'OH MY GOD!', 'POLICE!', 'NO NO NO!'],
   beg: ["DON'T SHOOT!", 'PLEASE!', 'TAKE IT!'],
   back: ['STAY BACK!', "HE'S ARMED!", 'LEAVE ME ALONE!', 'GET AWAY FROM ME!'],
+  whine: ['OH GOD!', 'NO NO NO!', 'PLEASE!', 'MOVE!'],
+  sob: ['please...', 'oh god...', 'no... no...', "don't..."],
+  trip: ['AH!', 'OOF!'],
 };
+// the voice that goes with a bark (audio/Audio.js); a scream otherwise
+const VOICES = { beg: 'whimper', whine: 'whimper', sob: 'sob', pant: 'pant' };
 const BARK_COLOR = '#ffe6f0';
 
 export default class Ambient {
@@ -54,6 +59,7 @@ export default class Ambient {
     this.barkT = 0;
     this.checkT = 0;
     this.scaredUntil = -1; // no new passers-by until then (after gunfire / explosions)
+    this.nooks = new Set(); // cells where someone has curled up: one corner each
     this.obstacles = [];
     world.events.on('noise', (e) => this.onNoise(e));
     world.events.on('kill', (e) => this.onKill(e));
@@ -258,6 +264,7 @@ export default class Ambient {
     if (!route) return;
     const civ = this.spawnCivilian([p, ...route], p.x, p.y, v.body.angle + side * Math.PI / 2);
     if (!panic) return;
+    civ.brain.temper = 'run'; // out of a car under fire, nobody stays around
     civ.brain.alarm(from.x, from.y, from === v ? 'explosion' : 'gunshot');
     this.onPanic(civ, 'scream');
   }
@@ -337,10 +344,13 @@ export default class Ambient {
     this.checkT -= dt;
     const look = this.checkT <= 0;
     if (look) this.checkT = A.panic.check;
-    const sense = { escape: (x, y, danger) => escapeRoute(w.map, x, y, danger) };
+    const sense = {
+      escape: (x, y, danger) => escapeRoute(w.map, x, y, danger),
+      hide: (x, y, danger) => hideRoute(w.map, x, y, danger, (px, py) => w.lineOfSight(px, py, danger.x, danger.y), this.nooks),
+    };
     for (const civ of [...this.civilians]) {
       if (!civ.alive) { this.removeCivilian(civ); continue; }
-      if (look && !civ.brain.panicked) this.lookAround(civ);
+      if (look && (!civ.brain.panicked || civ.brain.frozen)) this.lookAround(civ);
       civ.update(dt, sense);
       const b = civ.brain;
       if (b.bark) { this.bark(civ, b.bark); b.bark = null; }
@@ -455,12 +465,15 @@ export default class Ambient {
     }
   }
 
-  // floating scream over a passer-by (world texts) and his voice, rate limited so the screen stays readable
+  // floating scream over a passer-by (world texts) and his own voice, rate limited so the screen stays readable;
+  // a runner's breath has no words
   bark(civ, kind) {
+    const voice = VOICES[kind] || 'scream';
+    if (kind === 'pant') { this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice }); return; }
     if (this.barkT > 0) return;
     const lines = BARKS[kind] || BARKS.scream;
     this.barkT = A.barkGap;
     this.world.texts.push({ x: civ.x, y: civ.y - 16, str: lines[Math.floor(this.r() * lines.length)], t: 1.1, dur: 1.1, color: BARK_COLOR });
-    this.world.sound(kind === 'beg' ? 'whimper' : 'scream', civ.x, civ.y, 1, { pitch: civ.voice });
+    this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice });
   }
 }

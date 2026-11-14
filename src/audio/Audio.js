@@ -73,6 +73,8 @@ const META = {
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
   whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.6, reach: 1200 },
   scream: { pri: 2, dur: 0.5, gap: 0.45, max: 2, gain: 0.75, reach: 1700 },
+  pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.4, reach: 800 },
+  sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700 },
   // doors, movement
   door: { gain: 0.6 },
   doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.85 },
@@ -236,6 +238,7 @@ const FOLEY = {
   shout: [['yell', 1]],
   whimper: [['pain', 0.8, 1.12]], // a man on his knees begging
   scream: [['yell', 1, 1.1]],     // a passer-by running for his life
+  sob: [['pain', 0.55, 1.3], ['pain', 0.4, 1.45, 0.3, 0.6]], // curled up in a corner, under his breath
   // a guard seized from behind: sleeves, his stifled grunt; then his neck, a dry crack, and the body let down
   grab: [['swish', 0.35, 1.2], ['soft', 0.7, 1.1, 0.04], ['pain', 0.3, 0.9, 0.1]],
   neck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14], ['thud', 0.6, 0.8, 0.32]],
@@ -795,6 +798,15 @@ class AudioSystem {
 
   // ---- voices ----
   // someone hit for good: a short cry (opts.pitch: his voice)
+  // a runner out of breath: air in, air out (filtered noise, no voice)
+  _pant(o) {
+    this._noiseBurst(o, { f0: 1500, f1: 2300, q: 1.6, dur: 0.16, vol: 0.5, attack: 0.05 });
+    this._noiseBurst(o, { f0: 1100, f1: 700, q: 1.2, dur: 0.24, vol: 0.7, attack: 0.03, delay: 0.2 });
+  }
+
+  // the sniff after a sob
+  _sob(o) { this._noiseBurst(o, { f0: 1900, f1: 2700, q: 2, dur: 0.12, vol: 0.3, attack: 0.04, delay: 0.62 }); }
+
   _cry(o) { this._cut(o, Math.random() < 0.6 ? 'die' : 'pain'); }
 
   // ---- fire, alarm, UI ----
