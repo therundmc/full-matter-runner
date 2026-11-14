@@ -15,6 +15,10 @@ const WATER = ['#f4faff', '#d6e8fa', '#b4cfec', '#8fb2da'];
 // a flame is one flat colour, the one of its heat (HEAT: where each band starts), from soot to white-hot
 const FLAME = ['#2c1c1a', '#7e1a0c', '#d8401a', '#ff8a1e', '#ffd040', '#fff6cf'];
 const HEAT = [0, 0.16, 0.32, 0.5, 0.7, 0.9];
+// smoke is a few flat greys, each chunk one of them with its lit corner one step lighter (the last tone is only
+// ever a highlight); it thins in steps, then breaks up into wisps
+const SMOKE = { light: ['#62626e', '#7c7c88', '#989aa6', '#b6b8c2'], dark: ['#1b191d', '#29262b', '#39353b', '#4b464d'] };
+const WISP = 0.3;       // share of its life a chunk of smoke or dust ends as wisps
 
 export default class Particles {
   constructor(world) {
@@ -90,7 +94,7 @@ export default class Particles {
       const life = rand(0.6, opts.life ?? 1.6);
       this.add({ type: P.SMOKE, x: x + rand(-r, r), y: y + rand(-r, r), vx: Math.cos(a) * v, vy: Math.sin(a) * v,
         size: rand(3, opts.size ?? 9), grow: opts.puff ? rand(3, 8) : rand(6, 16), life, maxLife: life, drag: 2.5,
-        shade: opts.dark ? rand(25, 50) : rand(90, 160),
+        tones: opts.dark ? SMOKE.dark : SMOKE.light, tone: randi(0, 2),
         puff: !!opts.puff, h: opts.h || 0, rise: opts.puff ? rand(8, 24) : 0, lobe: rand(0, 6.28) });
     }
   }
@@ -384,10 +388,11 @@ export default class Particles {
           break;
         }
         case P.DUST: {
-          const k = p.life / p.maxLife;
-          ctx.globalAlpha = p.alpha * Math.min(1, k * 2) * Math.min(1, (1 - k) * 8);
+          // a cloud of flat squares: it comes in two steps, thins in four and ends in wisps
+          const k = p.life / p.maxLife, s = Math.max(2, Math.round(p.size * 1.8));
+          ctx.globalAlpha = p.alpha * 1.5 * (Math.ceil(Math.min(1, k * 2) * 4) / 4) * (k > 0.9 ? 0.5 : 1);
           ctx.fillStyle = p.color;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+          if (k > WISP) block(ctx, p.x, p.y, s, p.x * 0.7 + p.maxLife * 9); else wisps(ctx, p.x, p.y, s, p.maxLife * 9, 1 - k / WISP);
           ctx.globalAlpha = 1;
           break;
         }
@@ -415,15 +420,19 @@ export default class Particles {
           break;
         case P.SMOKE: {
           const a = Math.max(0, p.life / p.maxLife);
-          if (p.puff) {
-            // a billow: lit from below while it is young, thinning in flat steps
-            ctx.globalAlpha = (Math.ceil(a * 4) / 4) * 0.5;
-            ctx.fillStyle = p.maxLife - p.life < 0.22 ? '#6a3a20' : `rgb(${p.shade + 6},${p.shade},${p.shade})`;
-            block(ctx, p.x, p.y - p.h * 0.5, Math.round(p.size * 1.5 * (1 + p.h * 0.006)), p.lobe);
-          } else {
-            ctx.globalAlpha = a * 0.45;
-            ctx.fillStyle = `rgb(${p.shade},${p.shade},${p.shade + 10})`;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+          // a chunk: a billow of a fire is lit from below while it is young; all thin in flat steps
+          const y = p.y - p.h * 0.5, s = Math.max(2, Math.round(p.size * (p.puff ? 1.5 * (1 + p.h * 0.006) : 1.7)));
+          const glow = p.puff && p.maxLife - p.life < 0.22;
+          ctx.globalAlpha = (Math.ceil(a * 4) / 4) * (p.puff ? 0.5 : 0.55);
+          ctx.fillStyle = glow ? '#6a3a20' : p.tones[p.tone];
+          if (a <= WISP) wisps(ctx, p.x, y, s, p.lobe, 1 - a / WISP);
+          else {
+            block(ctx, p.x, y, s, p.lobe);
+            if (s >= 5 && !glow) {
+              ctx.fillStyle = p.tones[p.tone + 1];
+              const q = s >> 1;
+              ctx.fillRect(Math.round(p.x - s / 2) + 1, Math.round(y - s / 2) + 1, q, q);
+            }
           }
           ctx.globalAlpha = 1;
           break;
@@ -490,6 +499,15 @@ export default class Particles {
       }
     }
     ctx.globalAlpha = 1;
+  }
+}
+
+// what is left of a chunk of smoke of side s: three small squares drifting apart (k: 0 -> 1) on whole pixels
+function wisps(ctx, x, y, s, turn, k) {
+  const t = Math.max(1, Math.round(s * (0.42 - 0.2 * k))), o = s * (0.3 + 0.35 * k);
+  for (let i = 0; i < 3; i++) {
+    const a = turn + i * 2.1;
+    ctx.fillRect(Math.round(x + Math.cos(a) * o - t / 2), Math.round(y + Math.sin(a) * o - t / 2), t, t);
   }
 }
 
