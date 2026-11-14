@@ -2675,6 +2675,62 @@ def rag_head(ch):
     return cv
 
 
+def rag_torso_up(ch):
+    """The torso once he has rolled onto his back (Ragdoll crawl): the front, a dark stain off the centre."""
+    cv = rag_torso(ch)
+    k = ch['kind']
+    if k in ('thug', 'player'):
+        for (x, y) in [(4, 4), (9, 4), (4, 5), (9, 5)]:
+            cv.set(x, y, ch['top'][3])      # lapels catching the light
+    for y in range(16):
+        for x in range(14):
+            d = ((x + 0.5 - 9.3) / 2.3) ** 2 + ((y + 0.5 - 7.2) / 2.0) ** 2
+            if d <= 1.0 and cv.get(x, y) != OUTLINE and cv.on(x, y):
+                cv.set(x, y, BLOOD[1] if d < 0.45 else BLOOD_POOL)
+    for (x, y, c) in [(10, 9, BLOOD_POOL), (10, 10, BLOOD[0]), (8, 6, BLOOD[2])]:
+        if cv.get(x, y) != OUTLINE:
+            cv.set(x, y, c)
+    return cv
+
+
+def rag_head_up(ch):
+    """The head face up (crown toward -y, chin toward +y): the face, hair only as a rim on the crown."""
+    cv = Cv(9, 9)
+    hr = 3.5
+    k, st = ch['kind'], ch.get('style')
+    rim = (ch.get('hair') or ch.get('bandana') or ch.get('cap') or ch['top']) if k != 'heavy' else None
+    if st == 'hood':
+        rim = ch['top']
+    elif st == 'trench':
+        rim = ch['cap']
+    elif k == 'brute':
+        rim = ch['bandana']
+
+    def px(u, v, L):
+        i = tidx(L)
+        if rim and (u > hr - 2.1 or (abs(v) > hr - 1.0 and u > (-1.0 if st in ('long', 'dancer', 'hood') else 0.6))):
+            return rim[i]
+        if k == 'heavy' and L > 0.95:
+            return lt(ch['skin'][2], 0.6)
+        return ch['skin'][i]
+    fill_shape(cv, 4.5, 4.5, hr, hr, px, ang=-math.pi / 2, pad=0.08)
+    eye = hx('#1a1018')
+    if k == 'player':
+        for x in (3, 4, 5):
+            cv.set(x, 4, hx('#0e0a16'))     # the sunglasses stay on
+        cv.set(3, 4, hx('#36e8f0'))
+    else:
+        cv.set(3, 4, eye)
+        cv.set(5, 4, eye)
+    cv.set(4, 5, ch['skin'][1])             # under the nose
+    cv.set(4, 6, hx('#2a0a14'))             # mouth open
+    cv.set(5, 7, BLOOD[1])                  # a thread of blood from its corner
+    cv.set(0, 4, ch['skin'][1])             # ears
+    cv.set(8, 4, ch['skin'][1])
+    cv.outline()
+    return cv
+
+
 def rag_arm(ch):
     k = ch['kind']
     s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
@@ -4702,6 +4758,8 @@ def build():
     for i, (cid, ch) in enumerate(CHARS.items()):
         out[('characters', cid + '_rag_torso')] = rag_torso(ch)
         out[('characters', cid + '_rag_head')] = rag_head(ch)
+        out[('characters', cid + '_rag_torso_up')] = rag_torso_up(ch)
+        out[('characters', cid + '_rag_head_up')] = rag_head_up(ch)
         out[('characters', cid + '_rag_arm')] = rag_arm(ch)
         out[('characters', cid + '_rag_leg')] = rag_leg(ch)
     for name, cv in mags().items():
@@ -4769,7 +4827,8 @@ EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
         ('_torso', (20, 20)), ('_down', (26, 16)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
-        ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5))]]
+        ('_rag_torso', (14, 16)), ('_rag_head', (9, 9)), ('_rag_arm', (11, 4)), ('_rag_leg', (13, 5)),
+        ('_rag_torso_up', (14, 16)), ('_rag_head_up', (9, 9))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     'weapons': dict(pistol=(11, 5), uzi=(12, 7), uzi_silenced=(18, 7), shotgun=(22, 5), rifle=(24, 7),
                     sniper=(28, 5), bazooka=(26, 7), bat=(22, 4), knife=(10, 3), cue=(40, 3), cue_half=(20, 3), tire_iron=(16, 4),

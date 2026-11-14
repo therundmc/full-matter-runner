@@ -72,7 +72,7 @@ export function gore(world, ch, angle, cause, by) {
     // not quite dead: he crawls a little way, or failing that his limbs jerk a moment
     const crawl = mode === 'corpse' && !!ch.isEnemy && !detach.length && chance(wd.crawl || 0);
     world.addCorpse(new Ragdoll(world, k, x, y, angle, slide, {
-      headless: mode === 'headless', detach, ...bleeding, crawl, stuck: by?.stuck,
+      headless: mode === 'headless', detach, ...bleeding, crawl, killer: crawl ? killerOf(world, x, y, angle) : null, stuck: by?.stuck,
       throes: !crawl && cause !== 'snap' && chance(THROES.odds),
     }));
   } else {
@@ -97,6 +97,14 @@ export function gore(world, ch, angle, cause, by) {
     world.sound(cause === 'slash' ? 'slash' : cause === 'snap' ? 'neck' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
   }
   return mode;
+}
+
+// who a crawling man keeps his eyes on: the player when he stands on the side the blow came from (read live), else a
+// point back that way
+function killerOf(world, x, y, angle) {
+  const p = world.player, cx = Math.cos(angle), cy = Math.sin(angle);
+  if (p && (p.x - x) * cx + (p.y - y) * cy < 0) return p;
+  return { x: x - cx * 60, y: y - cy * 60 };
 }
 
 function throwGib(world, img, x, y, angle, radial, bleed, spurt, speedMul = 1) {

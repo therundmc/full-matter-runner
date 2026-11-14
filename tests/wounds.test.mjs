@@ -50,14 +50,16 @@ test('wounds: calibrated by weapon (a blade bleeds out, 7.62 goes through, a sil
   assert.ok(WOUNDS.slash.throw[1] < WOUNDS.small.throw[0] && WOUNDS.buckshot.throw[0] > WOUNDS.rifle.throw[1]);
 });
 
-test('wounds: only a wound that leaves a man whole lets him crawl, a little way and not for long', () => {
-  for (const [name, w] of Object.entries(WOUNDS)) assert.ok((w.crawl || 0) <= 0.6, name);
+test('wounds: only a wound that leaves a man whole lets him crawl, now and then, a little way and not for long', () => {
+  for (const [name, w] of Object.entries(WOUNDS)) assert.ok((w.crawl || 0) <= 0.4, name);
   for (const name of ['punch', 'buckshot', 'heavy', 'snap', 'crush', 'impact', 'glass']) assert.ok(!WOUNDS[name].crawl, name);
   assert.ok(WOUNDS.small.crawl > WOUNDS.rifle.crawl && WOUNDS.pellet.crawl > 0);
-  // a jointed body on the floor loses some 0.26 px/step2 (measured): under three metres in all, over in a few seconds
-  const far = CRAWL.pulls[1] * CRAWL.pull ** 2 / (2 * 0.26);
-  assert.ok(far > 20 && far < 96, 'px crawled at most: ' + far);
-  assert.ok(CRAWL.pulls[0] <= CRAWL.pulls[1] && CRAWL.delay[1] + CRAWL.pulls[1] * CRAWL.every[1] < 10);
+  // the longest crawl: under a metre and a quarter in all (1 m = 32 px), over in a few seconds
+  let far = 0;
+  for (let i = 0; i < CRAWL.pulls[1]; i++) far += CRAWL.step * CRAWL.decay ** i;
+  assert.ok(far > 15 && far < 40, 'px crawled at most: ' + far);
+  assert.ok(CRAWL.decay > 0 && CRAWL.decay < 1 && CRAWL.pulls[0] <= CRAWL.pulls[1]);
+  assert.ok(CRAWL.fall + CRAWL.turn + CRAWL.pulls[1] * CRAWL.cycle + CRAWL.giveUp < 9);
 });
 
 test('wounds: a body that does not crawl may twitch a moment, a quick jerk now and then', () => {
