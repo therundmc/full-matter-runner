@@ -40,6 +40,8 @@ export const OPTIONAL_LIST = [
     .map((n) => `weapons/${n}`),
   // rag_*_up: torso and head of a body lying on its back; rag_torso_down: its back, when it lies on its belly (Ragdoll)
   ...CHARACTERS.flatMap((c) => ['rag_torso', 'rag_head', 'rag_arm', 'rag_leg', 'rag_torso_up', 'rag_head_up', 'rag_torso_down'].map((p) => `characters/${c}_${p}`)),
+  // small things in a guard's hands at his post, dropped or left about
+  ...['butt', 'cigar', 'can', 'magazine', 'ashtray'].map((n) => `items/${n}`),
   // rooftops of the neighbouring buildings (painted on the wall layer)
   'tiles/roof',
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',

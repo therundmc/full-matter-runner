@@ -636,6 +636,65 @@ export function sitPose(ch, P, V) {
   return P;
 }
 
+// ---------------- at his post (Enemy.postBody, data/posts.js) ----------------
+// The standing pose bent by the gesture of the moment (leant over, twisted, the weight on one leg, a foot out), then
+// blended (B.w 0..1) into the way he is at it: sat slumped on a couch, legs out; leant back in an armchair, both feet
+// up on the desk, ankles crossed; his back flat against a wall, a sole up on it. B.w runs back to 0 as he gets up:
+// the legs come back under him and he stands. B: { base, w, fwd, side, twist, dip, foot, hands, wpn, rest } (see
+// Enemy.postBody); hands and wpn in his torso's frame, rest (where his weapon lies) in the pose's.
+const BASES = {
+  // torso pulled back toward the backrest (px), how much lower (smaller) he is, where the feet go [x, y] each
+  seat: { back: 3, s: 0.9, feet: [[15.5, -5.5], [14.5, 5]], legs: 1 },
+  desk: { back: 4.5, s: 0.86, feet: [[21, 1.6], [23, -1.1]], legs: 1 },
+  wall: { back: 1.5, s: 1, feet: [[2, -3.6], [-3.5, 4.4]], legs: 0 },
+};
+
+// move the torso of P by (dx, dy), turn it by dA and scale it by ds, carrying the hands and what they hold with it
+function moveTorso(P, dx, dy, dA, ds) {
+  const c = Math.cos(dA), s = Math.sin(dA);
+  for (const k of ['hl', 'hr', 'wpn', 'carry']) {
+    const p = P[k], rx = (p.x - P.tx) * ds, ry = (p.y - P.ty) * ds;
+    p.x = P.tx + dx + rx * c - ry * s; p.y = P.ty + dy + rx * s + ry * c;
+    if (k === 'wpn' || k === 'carry') p.a += dA;
+  }
+  P.tx += dx; P.ty += dy; P.ta += dA; P.s *= ds;
+}
+
+export function postPose(ch, P, V, B) {
+  const a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  moveTorso(P, c * B.fwd - s * B.side, s * B.fwd + c * B.side, B.twist, 1 - B.dip);
+  if (B.foot) {
+    const [i, lx, ly] = B.foot, f = P.feet[i];
+    f.x = lx * c - ly * s; f.y = lx * s + ly * c; f.a = a;
+  }
+  const base = BASES[B.base], w = smooth(B.w);
+  if (base && w > 0) {
+    copyPose(V, P);
+    V.tx = P.tx - c * base.back; V.ty = P.ty - s * base.back;
+    V.s = base.s * (1 - B.dip);
+    V.legs = base.legs;
+    V.top = 0;
+    base.feet.forEach(([lx, ly], i) => { const f = V.feet[i]; f.x = lx * c - ly * s; f.y = lx * s + ly * c; f.a = a; });
+    if (B.hands) { place(V.hl, V, V.ta, B.hands.hl.x, B.hands.hl.y); place(V.hr, V, V.ta, B.hands.hr.x, B.hands.hr.y); }
+    blendPose(P, V, w);
+    P.legs = base.legs * w;
+  }
+  if (B.wpn && P.wpnOn) {
+    // his weapon in his hands at it (a blade cleaning his nails, a club tossed and caught)
+    place(P.wpn, P, P.ta, B.wpn.x, B.wpn.y);
+    P.wpn.a = P.ta + B.wpn.a; P.wpnLen = B.wpn.len; P.wpnS = B.wpn.s; P.top = B.wpn.top;
+  }
+  if (B.rest && P.wpnOn) {
+    // his weapon lying in front of him: it comes from there into his hands as he draws it (ch.stow 1 -> 0)
+    const k = smooth(ch.stow);
+    P.wpn.x = lerp(P.wpn.x, B.rest.x, k); P.wpn.y = lerp(P.wpn.y, B.rest.y, k);
+    P.wpn.a = lerpA(P.wpn.a, B.rest.a, k);
+    P.wpnLen = lerp(P.wpnLen, 1, k); P.wpnS = 1;
+    if (k > 0.5) P.top = 0;
+  }
+  return P;
+}
+
 // ---------------- opening a car trunk (Player.trunkOpen, GESTURE.trunk) ----------------
 // He bends over the tail, both hands under the edge of the lid; it comes up (the hands go up and forward with it),
 // the right one reaches in and comes back out with what was there; he straightens up.

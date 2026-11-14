@@ -25,7 +25,7 @@ Six ways in, none of them free (the level is made to be played again another way
                  under a lamp, in full view of the street through the mesh, with a man smoking a few metres further
     the gap      an anonymous door right of the bar opens on a dark one-metre gap: nobody posted there and no light,
                  but it is the long way round, with no room to dodge, past a window of the bar, and it comes out
-                 in the back lot under the tube light where a guard walks his round; on its way, a window of the
+                 in the back lot under the tube light by the back door, where a guard leans smoking; on its way, a window of the
                  VIP room to dive through
     the roof     a fire-escape ladder at the corner of the liquor store (far left of the street) climbs to its flat
                  roof: nobody up there, a bat left by whoever comes to smoke, and two drops over the parapet: into
@@ -100,7 +100,7 @@ lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
 # ---------------------------------------------------------------- actors (14 guards)
-# Blades, bats and a tire iron: thirteen men with their hands. Two guns in the whole house: the pool player's pistol
+# Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
 lv.actor('@', 20, 34, face=0)
@@ -123,7 +123,7 @@ lv.host(15, 16, 23, 19)
 lv.host(21, 6, 23, 11)
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
-lv.actor('J', 17, 22, route=[[16, 22], [27, 22]])       # a blade in his pocket, walks the sidewalk
+lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his pocket, walks the sidewalk
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
@@ -145,18 +145,19 @@ lv.patron('civ4', 28.6, 17.5, 60, 'drink')
 lv.patron('dancer1', 29.5, 18.9, 180, 'dance')
 lv.patron('dancer2', 27.9, 18.75, 190, 'dance')
 # back of house
-lv.actor('j', 17, 8, face=90, job='count')              # the pimp, alone, counting his dope
+lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weighing and bagging his dope
 lv.actor('6', 19, 7)
-lv.actor('k', 22, 7, face=90)
-lv.actor('h', 30, 8, face=180)                          # the boss behind his desk, a shotgun across it
-lv.actor('m', 26, 9, face=45)
-lv.actor('k', 28, 9, face=20, job='count')              # counting the night's banknotes by the boss's case
-lv.actor('i', 29, 10, face=200)                         # his bodyguard, a tire iron in his fist
+lv.actor('k', 21, 9, face=0, job='piss')               # in the toilets: the bowl, the sink, a smoke against the wall
+lv.actor('h', 30, 9, face=180, job='boss')              # the boss in his armchair, feet up on the desk, the shotgun on it
+lv.actor('m', 26, 9, face=0, job='couch')               # his two men on the couch: one reads,
+lv.actor('i', 26, 10, face=0, job='couch')              # ... the other one plays with his tire iron
+lv.actor('k', 29, 10, face=0, job='count')              # counting the night's banknotes by the boss's case
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
 lv.actor('1', 8, 17)                                    # what the liquor store keeps behind its counter
-# back lot: he walks along the back wall, past the back room's door, and turns round short of the gap
-lv.actor('M', 19, 4, route=[[13, 4], [29, 4]])
-lv.actor('b', 26, 4, face=270, job='door')              # posted by the back door, his back to the wall
+# back lot: one man, his back against the wall by the back door, smoking; now and then a look at the van
+lv.actor('b', 27, 4, face=270, job='lean')
+# the service alley: a man smoking against the bar's wall under the cyan tube, by the storeroom door
+lv.actor('k', 12, 8, face=180, job='alley')
 
 # ---------------------------------------------------------------- props
 lv.area('the alley where it starts')
@@ -312,7 +313,7 @@ lv.prop('oven', 17.1, 6.38)
 lv.prop('sink', 18.35, 6.3)
 lv.prop('fridge', 19.55, 6.4)
 lv.prop('tube_light', 19.93, 8.5, 90)
-lv.prop('dope_table', 17.5, 9.32)
+lv.prop('dope_table', 17.5, 9.2)
 lv.prop('crate', 19.5, 9.7, 4)
 lv.prop('crate', 19.45, 10.45, -3)
 lv.prop('crate', 18.75, 10.5, 12)
@@ -325,18 +326,20 @@ lv.prop('tube_light', 21.07, 8.6, 270)
 lv.prop('trash_can', 21.4, 10.5)
 
 lv.area('back room')
-lv.prop('tv', 29.5, 6.3)
-lv.prop('table_lamp', 30.5, 6.4)
+lv.prop('tv', 27.6, 10.5, 180)                         # against the south wall, clear of the back door
+lv.prop('table_lamp', 25.45, 7.2)
 lv.prop('plant', 25.45, 6.5)
-lv.prop('desk', 29.5, 8.3, 90)
+lv.prop('desk', 29.5, 6.75, 270)                        # its seat side toward the boss, up against the north wall
 lv.prop('sofa', 25.5, 8.6, 270)
-lv.prop('table_round', 27.3, 7.9)
-lv.prop('chair', 27.3, 7.05, 90)
-lv.prop('chair', 28.15, 7.9, 180)
-lv.prop('chair', 27.3, 8.75, 270)
-lv.prop('ceiling_lamp', 27.3, 7.9)
+lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
+                                                        # north of it to get caught in (the QA robot found him there)
+lv.prop('table_round', 27.6, 7.9)                       # a step off the couch: its men get up and out
+lv.prop('chair', 27.6, 7.05, 90)
+lv.prop('chair', 28.45, 7.9, 180)
+lv.prop('chair', 27.6, 8.75, 270)
+lv.prop('ceiling_lamp', 27.6, 7.9)
 lv.prop('floor_lamp', 25.4, 10.55)
-lv.prop('cash_case', 30.5, 9.8, 8)                      # the boss's takings, open by his desk
+lv.prop('cash_case', 30.45, 10.45, 8)                   # the boss's takings, open by his desk
 lv.prop('extinguisher', 27.5, 6.14)                     # on the wall behind him
 
 lv.area('the bar: counter along the north wall')

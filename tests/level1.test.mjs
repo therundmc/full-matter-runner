@@ -213,3 +213,34 @@ test('level 1 states its objective: one line while guards remain, one once it is
   assert.equal(level.objective.length, 2);
   for (const line of level.objective) assert.ok(typeof line === 'string' && line.length > 0);
 });
+
+test('level 1: every one of the 14 guards has something to do, at a post or on a round, and can get to every room', async () => {
+  const { POSTS } = await load('game/data/posts.js');
+  const guards = [];
+  level.actors.forEach((row, y) => [...row].forEach((ch, x) => { if ('pusrhbkmji'.includes(ch.toLowerCase()) && ch !== ' ') guards.push([x, y]); }));
+  assert.equal(guards.length, 14);
+  for (const [x, y] of guards) {
+    const key = `${x},${y}`, job = level.jobs[key];
+    assert.ok(job || level.patrols[key], `the guard at ${key} just stands there`);
+    if (job) assert.ok(POSTS[job], `${key}: ${job} has a script`);
+  }
+  // the furniture in the way and the doors of the house open to its men (World.pathForGuard)
+  const map = new TileMap(level.tiles), w = world();
+  for (const p of w.props) {
+    if (!p.def.blocksPath) continue;
+    const b = p.body.bounds;
+    for (let ty = Math.floor((b.min.y + 4) / TILE); ty <= Math.floor((b.max.y - 4) / TILE); ty++) {
+      for (let tx = Math.floor((b.min.x + 4) / TILE); tx <= Math.floor((b.max.x - 4) / TILE); tx++) map.blocked[ty * map.w + tx] = 1;
+    }
+  }
+  for (const [tx, ty] of [[27, 11], [28, 5]]) map.blocked[ty * map.w + tx] = 0;
+  const rooms = { storeroom: [17, 7], toilets: [22, 8], 'back room': [27, 9], bar: [22, 15], vip: [28, 18], lot: [20, 4],
+    alley: [12, 12], street: [20, 22] };
+  // (not the bartender: the nav grid takes the shelves of his back bar, 8 px deep against the wall, for furniture that
+  // fills his walkway, data/props.js back_bar blocksPath; he walks it straight, Enemy.work)
+  for (const [x, y] of guards.filter(([x, y]) => level.jobs[`${x},${y}`] !== 'wipe')) {
+    for (const [room, [rx, ry]] of Object.entries(rooms)) {
+      assert.ok(findPath(map, px(x + 0.5), px(y + 0.5), px(rx + 0.5), px(ry + 0.5)), `the guard at ${x},${y} cannot get to the ${room}`);
+    }
+  }
+});

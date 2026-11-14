@@ -1053,6 +1053,34 @@ def weapons():
     return W
 
 
+# small things the guards have in hand, drop or leave about (entities/PostArt.js, Enemy.dropHeld): a cigarette end and
+# a cigar stub left smoking on the floor, a can kicked down the sidewalk, a magazine slid off a knee, the boss's ashtray
+def items():
+    I = {}
+    I['butt'] = ascii_cv(["wwwo",
+                          "dddo"], {'w': hx('#ece6d6'), 'd': hx('#c8c0ae'), 'o': hx('#d89a50')}, ol=None)
+    I['cigar'] = ascii_cv(["BbbgBa",
+                           "BBbgBa"], {'B': hx('#5a341e'), 'b': hx('#7a4a2a'), 'g': hx('#c8a040'), 'a': hx('#8a8a8a')}, ol=None)
+    I['can'] = ascii_cv(["......",
+                         ".rWrs.",
+                         ".RRRs.",
+                         "......"], {'r': hx('#d8303a'), 'R': hx('#a01e28'), 'W': hx('#f0ece0'), 's': hx('#c8ccd4')})
+    # a glossy cover: a picture, the title across its head, the print of its lines
+    I['magazine'] = ascii_cv(["........",
+                              ".tttttt.",
+                              ".tTTTTt.",
+                              ".pppppp.",
+                              ".pPPPpp.",
+                              ".pPPPpp.",
+                              ".ppppbp.",
+                              ".llllll.",
+                              ".llllll.",
+                              "........"], {'t': hx('#f0e6d0'), 'T': hx('#d8202a'), 'p': hx('#e8508a'), 'P': hx('#f0b090'),
+                                            'b': hx('#4a7ab0'), 'l': hx('#d8d2c0')})
+    I['ashtray'] = layer(Cv(10, 10), lambda ly: ashtray(ly, 5.0, 5.0, random.Random(901), 2.8))
+    return I
+
+
 # --------------------------------------------------------------------------
 # Props -- real scale (1 m = 32 px, a character is a 17 px disc). Sprite = hitbox + a 1 px outline on each
 # side. Fronts face +y (screens, knobs, seats), backs -y; chairs and armchairs have their back on -x.
@@ -4948,6 +4976,8 @@ def build():
         out[('characters', cid + '_rag_leg')] = rag_leg(ch)
     for name, cv in mags().items():
         out[('weapons', name)] = cv
+    for name, cv in items().items():
+        out[('items', name)] = cv
     props = dict(table=p_table, table_round=p_table_round, card_table=p_card_table, dope_table=p_dope_table, gas_bottle=p_gas_bottle, dance_stage=p_dance_stage, desk=p_desk, chair=p_chair, armchair=p_armchair,
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
@@ -5024,6 +5054,7 @@ EXPECTED = {
     'tiles': dict([(n + s, (32, 32)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof', 'neon_floor_glow')]),
     'roof': dict(list(ROOF_SIZES.items()) + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
+    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
 }

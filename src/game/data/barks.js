@@ -5,6 +5,10 @@ export const BARKS = {
   chat: ['QUIET NIGHT.', 'BOSS IS IN A MOOD.', 'GOT A LIGHT?', 'MY FEET ARE KILLING ME.', 'YOU OWE ME TWENTY.',
     'SEEN THE NEW GIRL?', 'I HATE THE NIGHT SHIFT.', 'SO I TOLD HIM: NO.', 'YOU CATCH THE FIGHT?', 'HE PAYS LATE. AGAIN.',
     'HA! NO WAY.', 'THIS PLACE, MAN...', 'ANOTHER HOUR OF THIS.', 'RAIN AGAIN TOMORROW.'],
+  // at their post (data/posts.js): the boss to his men, a joke on the couch and the other one laughing
+  boss: ['TURN THAT DOWN.', 'WHERE IS MY MONEY?', 'COUNT IT AGAIN.', 'NOBODY GETS IN.', 'GOOD NIGHT, BOYS.'],
+  joke: ['SO THE PRIEST SAYS...', 'GET THIS ONE.', 'AND HER HUSBAND WALKS IN.', 'HE SAYS: WHAT DOG?', 'GUESS WHO PUKED.'],
+  laugh: ['HA HA HA!', 'HA! GOOD ONE.', 'STOP IT, MAN.', 'HAH!'],
   // calm, then looking for something
   sight: ['HUH?', "WHO'S THERE?", 'SOMEBODY THERE?', 'YOU SEE THAT?'],
   dark: ['WHO KILLED THE LIGHTS?', 'THE FUSES AGAIN?', 'SOMEBODY CHECK THE BOX!', "CAN'T SEE A THING."],

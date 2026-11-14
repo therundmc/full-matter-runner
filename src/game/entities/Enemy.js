@@ -12,19 +12,27 @@ import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engin
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
-import { struck, talks, pours, reliefSpot, gazeAt, STRETCH } from '../ai/Pastimes.js';
+import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
+  poolSpots, besideCar, STRIKE, drawn, TOSS } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
+import { standPose, postPose, drawPose } from './CharacterAnim.js';
+import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL } from '../data/feel.js';
-import { sprite } from '../../engine/Assets.js';
+import { POSTS, HELD } from '../data/posts.js';
+import { FLOATS } from '../data/destruction.js';
+import { sprite, spriteOpt } from '../../engine/Assets.js';
 
-const { Body } = Matter;
+const { Body, Bounds } = Matter;
 
 // at ease (see pickActivity): what takes his mind off his watch, what takes his hands, what is done in one go,
 // what a round is broken by, and the states in which a weapon stays put away
 const ABSORBING = new Set(['smoke', 'phone', 'chat', 'piss']);
-const WATCHFUL = new Set(['door', 'wipe']); // jobs that leave his eyes free
+// jobs that leave his eyes free: the doormen, the bartender, the two men smoking against a wall (lookouts more than
+// smokers); the others have their eyes on what they do (the pool, cards, the money, the dope, a magazine, the bowl)
+const WATCHFUL = new Set(['door', 'wipe', 'lean', 'alley']);
+const STANDOFF = 26; // px off his seat where a seated man stands up
 const DUCK = 1.8; // how far down a bartender ducks behind his counter (1 = kneeling)
 const HANDS = new Set(['smoke', 'phone', 'piss', 'stretch', 'wrist', 'cross']);
 const ONE_GO = new Set(['stretch', 'wrist']);
@@ -71,7 +79,7 @@ export default class Enemy extends Character {
     this.goal = null; this.target = null;
     this.sub = ''; this.t = 0;  // sub-step of the current state and time spent in it
     this.activity = 'watch'; this.activityT = rand(2, 5); this.idleFace = angle; this.turnTo = angle;
-    this.job = null;       // his pastime at his post (level.jobs): 'pool' | 'cards' | 'count' | 'door' | 'wipe'
+    this.job = null;       // his life at his post (level.jobs): a data/posts.js script
     this.ducked = false;   // a bartender has been down behind his counter once (see hear)
     this.duckT = 0;        // s he stays down
     this.actT = 0;         // s actually spent at the current activity
@@ -110,6 +118,20 @@ export default class Enemy extends Character {
     this.shaken = false;             // last man standing, about to give up (Director.onKill)
     this.yielded = false;            // on his knees, hands up: out of the fight for good (see surrender)
     this.begT = 0;
+    // his job's life at his post (data/posts.js, see takeJob / work)
+    this.script = null;    // the script of his job, played by
+    this.routine = null;   // ... an ai/Pastimes.js Routine
+    this.seat = null;      // the place his job sits him on { x, y, face, side, slot }
+    this.workSpot = null;  // where the phase under way is done { x, y, face }
+    this.onSpot = false;   // ... and he is there
+    this.posture = 0;      // 0 on his feet .. 1 sat down / leant back on his wall (the job's `body`)
+    this.postureOf = null; // ... which of them
+    this.through = false;  // going through furniture: on his seat, onto it, off it
+    this.holding = null;   // what is in his hands at it (data/posts.js HELD)
+    this.mouth = false;    // a cigar left clamped in his teeth
+    this.rest = null;      // where his weapon lies while he sits { x, y, a }
+    this.ashtray = null;   // where the boss taps his ash { x, y }
+    this.eyeOn = false; this.nodT = 0; this.fxT = 0;
   }
 
   get director() { return this.world.director; }
@@ -154,10 +176,9 @@ export default class Enemy extends Character {
 
   // what his hands are at while at ease (a kind of render/PastimeArt.js), or null: free, or on his weapon
   get pastime() {
-    if (!this.atEase || this.stow < 0.6) return null;
+    if (!this.atEase || this.stow < 0.6 || (this.routine && this.activity === this.job)) return null;
     const a = this.activity;
     if (a === 'chat') return talks(this.world.time, this.turn) ? 'talk' : 'listen';
-    if (a === 'door') return 'cross';
     return HANDS.has(a) || a === this.job ? a : null;
   }
 
@@ -173,6 +194,11 @@ export default class Enemy extends Character {
 
   // CharacterAnim hook
   busyHands() {
+    const ph = this.gestureOn;
+    if (ph) return this.gestureHands(ph);
+    if (this.script?.walk && this.state === S.PATROL && this.pauseT <= 0 && this.aware === 0 && this.stow >= 0.6) {
+      return pastimeHands(this.script.walk, this.world.time, this.seed);
+    }
     const k = this.pastime;
     return k && pastimeHands(k, ONE_GO.has(k) ? this.actT : this.world.time, this.seed);
   }
@@ -463,6 +489,7 @@ export default class Enemy extends Character {
     }
     if (this.updateVault(dt)) return;
     if (this.passive) { this.halt(); return; }
+    this.seatThrough();
     if (this.yielded) { this.updateYield(dt); return; }
     // a blow wound up (windUp) comes now, whether he is still in reach or not
     if (this.tell > 0 && (this.tell -= dt) <= 0) { this.tell = 0; this.attack(true); }
@@ -471,6 +498,12 @@ export default class Enemy extends Character {
     this.kneel = false;
     this.perceive(dt);
     if ((this.scanT -= dt) <= 0) { this.scanT = 0.3; this.scanWorld(); }
+    this.nodT = Math.max(0, this.nodT - dt);
+    if (this.holding && !(this.atEase && this.activity === this.job)) {
+      if (this.aware > 0 || this.director.phase !== 'normal') this.dropHeld(); else this.holding = null;
+    }
+    // sat down: he gets up first, and does nothing else until he is on his feet
+    if (this.updatePosture(dt)) { this.crouch = Math.max(0, this.crouch - dt * 5); return; }
 
     // down behind his counter (see hear): nothing else until he dares look, unless the threat is on him
     if (this.duckT > 0 && this.aware < 2) { this.duckT -= dt; this.halt(); this.kneel = true; }
@@ -498,6 +531,7 @@ export default class Enemy extends Character {
   // ---------------- calm behaviours ----------------
   doIdle(dt) {
     if (this.stare(dt)) return;
+    if (this.routine && this.activity === this.job) { this.work(dt); return; }
     const h = this.errand ?? this.home;
     this.atPost = Math.hypot(h.x - this.x, h.y - this.y) <= 14;
     if (!this.atPost) {
@@ -511,14 +545,7 @@ export default class Enemy extends Character {
     const busy = this.distracted || HANDS.has(this.activity); // dropped as soon as the squad is on edge
     if ((this.activityT -= dt) <= 0 || (busy && this.director.phase !== 'normal')) this.pickActivity();
     this.easeTick(dt);
-    const now = this.world.time;
-    if (this.activity === 'pool' && struck(now - dt, now, this.seed)) {
-      const x = this.x + Math.cos(this.angle) * 30, y = this.y + Math.sin(this.angle) * 30;
-      this.world.sound('pool', x, y, 0.8);
-      this.world.events.emit('poolStroke', { x, y });
-    }
-    if (this.activity === 'door') this.faceAngle(this.gaze(h.angle + Math.sin(this.t * 0.5 + this.seed) * 0.25), AI.gaze.turn, dt);
-    else if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
+    if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
     else if (this.activity === 'turn') this.faceAngle(this.turnTo, 2.2, dt);
     else if (this.activity === 'scan') this.faceAngle(h.angle + Math.sin(this.t * 0.8 + this.seed) * 1.2, 2.2, dt);
     else this.sweep(dt, h.angle, 0.7, 1.8);
@@ -530,6 +557,383 @@ export default class Enemy extends Character {
     this.job = job;
     this.activity = job;
     this.activityT = rand(8, 14);
+    const S = POSTS[job];
+    if (!S) return;
+    this.script = S;
+    if (S.seat) {
+      // on his seat from the start; he stands up just off it
+      const seat = this.takeSeat(S.seat);
+      if (seat) {
+        this.seat = seat;
+        this.home = this.standOff(seat);
+        Body.setPosition(this.body, seat);
+        this.angle = seat.face;
+        this.posture = 1; this.postureOf = S.body; this.onSpot = true;
+        this.seatThrough();
+      }
+    } else if (S.body === 'wall') {
+      // his post: his back against a plain stretch of the wall behind him
+      const w = wallBehind(this.world.map, this.x, this.y, this.home.angle);
+      if (w) {
+        this.home = { x: w.x, y: w.y, angle: w.face };
+        Body.setPosition(this.body, w);
+        this.angle = w.face;
+      }
+    }
+    if (S.rest === 'desk' && this.seat) {
+      // his weapon across the desk in front of him, his ashtray on the arm of his chair
+      const desk = this.nearest('desk', this.seat, 3 * TILE), f = this.seat.face;
+      if (desk) this.rest = { x: desk.x + Math.cos(f) * 6, y: desk.y + Math.sin(f) * 6, a: f + Math.PI / 2 + 0.2 };
+      this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
+    }
+    this.routine = new Routine(S, this.seat?.slot ?? 0);
+    if (!S.walk) this.routine.begin(this.routine.pick(), true);
+  }
+
+  // ---------------- at his post (data/posts.js) ----------------
+  // the prop of `type` nearest to p within `reach` px
+  nearest(type, p, reach) {
+    let best = null, bd = reach;
+    for (const q of this.world.props) {
+      const d = q.type === type && !q.dead ? Math.hypot(q.x - p.x, q.y - p.y) : Infinity;
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best;
+  }
+
+  // the free place nearest him on the nearest piece of furniture his job sits him on
+  takeSeat(def) {
+    const prop = this.nearest(def.prop, this, 3 * TILE);
+    if (!prop) return null;
+    const taken = this.world.enemies.filter((e) => e.seat);
+    const places = def.places.map((pl, slot) => ({ ...seatPlace(prop, pl, def.face), side: pl[2] ?? 1, slot }))
+      .filter((s) => !taken.some((e) => Math.hypot(e.seat.x - s.x, e.seat.y - s.y) < 4));
+    places.sort((a, b) => Math.hypot(a.x - this.x, a.y - this.y) - Math.hypot(b.x - this.x, b.y - this.y));
+    return places[0] ?? null;
+  }
+
+  // where he stands up from his seat: off its front, else off a side (a desk in front of him), else behind
+  standOff(seat) {
+    for (const da of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) {
+      const a = seat.face + da, x = seat.x + Math.cos(a) * STANDOFF, y = seat.y + Math.sin(a) * STANDOFF;
+      if (!this.world.map.isBlocked(Math.floor(x / TILE), Math.floor(y / TILE)) && !this.furnitureAt(x, y, this.radius)) {
+        return { x, y, angle: seat.face };
+      }
+    }
+    return { x: seat.x, y: seat.y, angle: seat.face };
+  }
+
+  // a piece of furniture whose box comes within r px of (x, y)
+  furnitureAt(x, y, r) {
+    const box = { min: { x: x - r, y: y - r }, max: { x: x + r, y: y + r } };
+    return this.world.props.some((p) => p.body && !p.dead && !p.def.hung && !p.def.fixture && Bounds.overlaps(p.body.bounds, box));
+  }
+
+  // on his seat, on his way onto it or off it, he goes through the furniture (the sofa would shove him off it)
+  seatThrough() {
+    const st = this.seat;
+    if (!st || this.knocked > 0) return;
+    const near = this.posture > 0 || (this.activity === this.job && this.aware === 0 && Math.hypot(st.x - this.x, st.y - this.y) < 40);
+    const want = near || (this.through && this.furnitureAt(this.x, this.y, this.radius - 2));
+    if (want === this.through) return;
+    this.through = want;
+    this.body.collisionFilter = { category: CAT.CHAR, mask: want ? MASK.CHAR & ~CAT.PROP : MASK.CHAR, group: 0 };
+  }
+
+  // the body the phase under way asks for ('seat' | 'desk' | 'wall'), while all is calm and he is at it
+  get wantBody() {
+    const ph = this.routine?.phase;
+    if (!ph || this.activity !== this.job || !this.onSpot || !this.atEase || this.director.phase !== 'normal') return null;
+    const b = ph.body ?? this.script.body;
+    return b && b !== 'stand' ? b : null;
+  }
+
+  // sitting down (leaning back) at the spot, getting up when something is up or the job goes on elsewhere. True
+  // while a seated man is still getting up: no step, no blow, no shot till he is on his feet.
+  updatePosture(dt) {
+    if (!this.script) return false;
+    const want = this.wantBody, S = this.script;
+    if (want && (want === this.postureOf || this.posture <= 0)) {
+      this.postureOf = want;
+      this.posture = Math.min(1, this.posture + dt / (want === 'wall' ? 0.4 : S.sit ?? 0.8));
+      return false;
+    }
+    if (this.posture <= 0) return false;
+    const seated = this.postureOf !== 'wall';
+    this.posture = Math.max(0, this.posture - dt / (seated ? S.rise ?? 0.5 : 0.35));
+    if (!seated || this.posture <= 0) return false;
+    // up and off the front of it as he rises, turning to what called him
+    const h = this.home, d = Math.hypot(h.x - this.x, h.y - this.y);
+    this.steer(h.x - this.x, h.y - this.y, Math.min(1, d / 12), 0.25);
+    const tg = this.lastKnown ?? this.stim;
+    if (tg) this.faceTo(tg.x, tg.y, 3, dt);
+    return true;
+  }
+
+  // the phase under way while he is at it, or null
+  get gestureOn() {
+    const R = this.routine;
+    return R && R.act && this.activity === this.job && this.onSpot && this.atEase && this.stow >= 0.6 ? R.phase : null;
+  }
+
+  // where the hands are at phase ph, in the gesture's own frame (render: PostArt mirrors the drawing itself)
+  rawHands(ph) {
+    const G = GESTURES[ph.g] ?? {}, R = this.routine, t = this.world.time;
+    return G.hands ? G.hands(R.k, R.t, t, this.seed, this.def.swing)
+      : pastimeHands(G.pastime ?? ph.g, gestureClock(G, R.k, t, this.seed), this.seed);
+  }
+
+  // ... and on his body: mirrored for the man on the other side of a couch (his other arm along the backrest)
+  gestureHands(ph) {
+    const h = this.rawHands(ph);
+    if (!h || (this.seat?.side ?? 1) > 0) return h;
+    return { hl: { x: h.hr.x, y: -h.hr.y }, hr: { x: h.hl.x, y: -h.hl.y } };
+  }
+
+  // CharacterAnim.postPose: how his body is at it, or null (his plain stance)
+  postBody() {
+    if (!this.script || this.vaulting || this.knocked > 0) return null;
+    const ph = this.gestureOn, R = this.routine, side = this.seat?.side ?? 1;
+    if (!ph && this.posture <= 0) return null;
+    const G = ph && GESTURES[ph.g], b = G?.body?.(R.k, R.t, this.seed) ?? {};
+    const B = {
+      base: this.postureOf, w: this.posture, fwd: b.fwd ?? 0, side: (b.side ?? 0) * side, twist: (b.twist ?? 0) * side,
+      dip: b.dip ?? 0, foot: b.foot ? [side > 0 ? b.foot[0] : 1 - b.foot[0], b.foot[1], b.foot[2] * side] : null,
+      hands: ph ? this.gestureHands(ph) : null, wpn: null,
+      rest: this.rest && this.posture > 0 ? { x: this.rest.x - this.x, y: this.rest.y - this.y, a: this.rest.a } : null,
+    };
+    if (ph?.g === 'fiddle' && B.hands) {
+      // his own weapon in his hands: a blade pointed at his nails, a club turning over in the air
+      const hr = B.hands.hr;
+      if (this.def.swing === 'blade') B.wpn = { x: hr.x, y: hr.y, a: -1.75 * side, len: 0.8, s: 1, top: 0 };
+      else {
+        const u = (R.t / TOSS) % 1, k = clamp((u - 0.15) / 0.6, 0, 1), up = Math.sin(Math.PI * k);
+        B.wpn = { x: hr.x + 2 * up, y: hr.y - 2 * up * side, a: (-0.5 + Math.PI * 2 * k) * side, len: 1, s: 1 + 0.35 * up, top: up > 0.1 ? 1 : 0 };
+      }
+    }
+    return B;
+  }
+
+  // can he play act `name` here: all it needs is at hand (a car to look into, a customer to serve, a dancer...)
+  canPlay(name) {
+    return this.script.acts[name].phases.every((ph) => (!ph.at || ph.at === 'post' || ph.at === 'here' || this.spotFor(ph))
+      && (ph.look !== 'dance' || this.dancer()));
+  }
+
+  // the nearest dancer in sight
+  dancer() {
+    let best = null, bd = 7 * TILE;
+    for (const c of this.world.chars) {
+      if (!c.isCivilian || !c.alive || c.brain?.activity !== 'dance') continue;
+      const d = Math.hypot(c.x - this.x, c.y - this.y);
+      if (d < bd && this.world.lineOfSight(this.x, this.y, c.x, c.y)) { bd = d; best = c; }
+    }
+    return best;
+  }
+
+  // where phase ph is done { x, y, face }, or null when there is no such place
+  spotFor(ph) {
+    const w = this.world, h = this.home, R = 4 * TILE;
+    switch (ph.at ?? 'post') {
+      case 'post': return this.seat ?? { x: h.x, y: h.y, face: h.angle };
+      case 'here': return { x: this.x, y: this.y, face: this.angle };
+      case 'toilet': { const s = reliefSpot(w.map, w.props, h.x, h.y); return s && !s.wall ? s : null; }
+      case 'wall': { const s = reliefSpot(w.map, w.props, this.x, this.y); return s?.wall ? s : null; }
+      case 'sink': { const p = this.nearest('sink', h, R); return p && frontOf(p, this.radius + 1); }
+      case 'car': {
+        let best = null, bd = R;
+        for (const v of w.props) {
+          const d = v.isVehicle && !v.moving && !v.dead ? Math.hypot(v.x - this.x, v.y - this.y) - v.w / 2 : Infinity;
+          if (d < bd) { bd = d; best = v; }
+        }
+        return best && besideCar(best, this.x, this.y);
+      }
+      case 'stool': {
+        // behind the counter, square in front of a customer having a drink at it
+        const ax = -Math.sin(h.angle), ay = Math.cos(h.angle);
+        const drinkers = w.chars.filter((c) => c.isCivilian && c.alive && c.brain?.activity === 'drink' && !c.left
+          && Math.abs((c.x - h.x) * ax + (c.y - h.y) * ay) < 2.5 * TILE && Math.abs((c.x - h.x) * ay - (c.y - h.y) * ax) < 2 * TILE);
+        if (!drinkers.length) return null;
+        const c = drinkers[Math.floor(Math.random() * drinkers.length)], along = (c.x - h.x) * ax + (c.y - h.y) * ay;
+        return { x: h.x + ax * along, y: h.y + ay * along, face: h.angle };
+      }
+      case 'pool': {
+        // another side of the table, nobody standing there
+        const table = this.nearest('pool_table', h, R);
+        if (!table) return null;
+        const free = poolSpots(table, this.radius + 1).filter((s) => Math.hypot(s.x - this.x, s.y - this.y) > 24
+          && !w.map.isSolid(Math.floor(s.x / TILE), Math.floor(s.y / TILE)) && !this.furnitureAt(s.x, s.y, this.radius - 2)
+          && !w.chars.some((c) => c !== this && c.alive && Math.hypot(c.x - s.x, c.y - s.y) < 22));
+        return free.length ? free[Math.floor(Math.random() * free.length)] : null;
+      }
+      default: return null;
+    }
+  }
+
+  // a new act of his job (at a halt on his round only one, then he walks on)
+  nextAct() {
+    const R = this.routine;
+    if (this.state === S.PATROL) { this.pauseT = 0; this.activity = 'walk'; return; }
+    if (!this.script.stay && this.activityT <= 0) { this.pickActivity(); if (this.activity !== this.job) return; }
+    R.begin(R.pick((n) => this.canPlay(n)));
+    this.startPhase();
+  }
+
+  // a phase begins: a new spot if it says where, its line
+  startPhase() {
+    const R = this.routine, ph = R.phase;
+    if (!ph) return;
+    if (ph.at || R.i === 0) this.workSpot = null;
+    this.fxT = 0;
+    if (ph.say && chance(ph.say[1]) && this.say(ph.say[0])) {
+      this.world.sound('mutter', this.x, this.y, 0.5, { pitch: this.voice });
+      // the other man at the same job answers it (a laugh at a joke)
+      const mate = ph.answer && this.world.enemies.find((e) => e !== this && e.alive && e.job === this.job && e.atEase
+        && Math.hypot(e.x - this.x, e.y - this.y) < 3 * TILE);
+      if (mate) mate.routine.cue(ph.answer, R.dur + rand(0.1, 0.4));
+    }
+  }
+
+  // At his post, the routine of his job (data/posts.js): to the spot of each phase, then at it, phase by phase
+  work(dt) {
+    const R = this.routine;
+    if (this.director.phase !== 'normal' && !WATCHFUL.has(this.job)) { this.pickActivity(); return; }
+    this.activityT -= dt;
+    if (!R.act && !R.cued) { this.nextAct(); if (this.activity !== this.job || !R.act) return; }
+    const ph = R.phase;
+    if (ph && !this.workSpot) {
+      this.workSpot = this.spotFor(ph);
+      this.errandT = 0;
+      if (!this.workSpot) { this.onSpot = false; if (R.advance() === 'phase') this.startPhase(); return; }
+    }
+    const s = this.workSpot ?? { x: this.x, y: this.y, face: this.angle }, d = Math.hypot(s.x - this.x, s.y - this.y);
+    this.onSpot = d < 10 || (this.posture > 0 && this.onSpot);
+    this.atPost = this.onSpot;
+    if (!this.onSpot) {
+      // a spot he cannot get to (somebody standing there, something in the way) is given up
+      if ((this.errandT += dt) > AI.relief.giveUp) { this.workSpot = null; if (R.advance() === 'phase') this.startPhase(); return; }
+      // a few steps in plain sight (along behind a counter the grid takes for furniture): straight there
+      if (d < 3 * TILE && this.world.lineOfSight(this.x, this.y, s.x, s.y)) {
+        this.steer(s.x - this.x, s.y - this.y, ENEMY.walkSpeed * 0.8, 0.15);
+        this.faceAngle(Math.atan2(s.y - this.y, s.x - this.x), 4, dt);
+      } else this.travel(dt, s.x, s.y, ENEMY.walkSpeed, { doors: true, near: 6 });
+      return;
+    }
+    if (d > 1) this.steer(s.x - this.x, s.y - this.y, Math.min(0.5, d / 16), 0.2); else this.halt();
+    this.faceAngle(this.lookFor(ph, s), ph?.look === 'sweep' ? 1.2 : 2.5, dt);
+    const body = ph && (ph.body ?? this.script.body);
+    if (body && body !== 'stand' && this.posture < 1) return; // sitting down, his back to the wall first
+    this.holding = (ph && GESTURES[ph.g]?.item) || null;
+    const k0 = R.k, ev = R.step(dt);
+    if (ph) this.postFx(ph, k0, ev ? 1 : R.k, dt);
+    if (ev === 'phase') this.startPhase();
+    else if (ev === 'act') { this.workSpot = null; this.nextAct(); }
+  }
+
+  // where his eyes go at phase ph done at spot s
+  lookFor(ph, s) {
+    switch (ph?.look) {
+      case 'sweep': return s.face + Math.sin(this.world.time * 0.42 + this.seed) * 1.05;
+      case 'back': return s.face + Math.PI;
+      case 'dance': { const c = this.dancer(); return c ? Math.atan2(c.y - this.y, c.x - this.x) : s.face; }
+      default: break;
+    }
+    if (!this.script.gaze) return s.face;
+    // a doorman: his eyes on whoever comes near, a nod as he first looks at him
+    const base = s.face + Math.sin(this.t * 0.5 + this.seed) * 0.25, a = this.gaze(base), on = a !== base;
+    if (on && !this.eyeOn && this.nodT <= 0 && this.script.acts.nod) { this.routine.cue('nod', 0.4); this.nodT = 20; }
+    this.eyeOn = on;
+    return a;
+  }
+
+  // a point of his own frame (px ahead, to his right) in the world
+  ahead(fwd, right = 0) {
+    const c = Math.cos(this.angle), s = Math.sin(this.angle);
+    return { x: this.x + c * fwd - s * right, y: this.y + s * fwd + c * right };
+  }
+
+  // what phase ph gives off between k0 and k1 of it: its sound, a light, smoke, what flies off
+  postFx(ph, k0, k1, dt) {
+    const w = this.world, at = (k) => k0 < k && k1 >= k;
+    const every = (s) => { if ((this.fxT -= dt) > 0) return false; this.fxT = s; return true; };
+    if (ph.sound && at(ph.sound[1])) w.sound(ph.sound[0], this.x, this.y, ph.sound[2], { pitch: ph.sound[3] });
+    switch (ph.fx) {
+      case 'ember': if (drawn(k1) > 0.5 && every(0.1)) { const p = this.ahead(4, 2); w.light(p.x, p.y, 34, '#ff7a2a', 0.16); } break;
+      case 'flame': if (every(0.08)) { const p = this.ahead(7); w.light(p.x, p.y, 20, '#ff9a40', 0.12); } break;
+      case 'cloud':
+        // a slow thick cloud rolled out of his mouth, in a few breaths
+        for (const k of [0.05, 0.25, 0.45]) {
+          if (at(k)) { const p = this.ahead(7); w.particles.smoke(p.x, p.y, 2, 2, { speed: 12, life: 3, size: 6 }); }
+        }
+        break;
+      case 'ash': if (at(0.45)) { const p = this.hand(ph); w.particles.dust(p.x, p.y, 3, 1, '#8a8a90', { speed: 5, size: 1.2, life: 1.2, alpha: 0.55 }); } break;
+      case 'butt': if (at(0.5)) { const p = this.ahead(9, 3); this.dropSmoke(p.x, p.y, this.angle + rand(-0.3, 0.3), rand(90, 130), 'butt'); } break;
+      case 'stream': if (k1 > 0.1 && k1 < 0.93 && every(0.55)) w.sound('splash', this.x, this.y, 0.12, { pitch: rand(1.7, 2) }); break;
+      case 'tap': if (every(0.7)) w.sound('splash', this.x, this.y, 0.16, { pitch: 1.2 }); break;
+      case 'can': {
+        const img = spriteOpt('items/can');
+        if (img && at(0.38)) {
+          const p = this.ahead(8, 3.6);
+          w.particles.shard(img, p.x, p.y, this.angle + rand(-0.25, 0.25), rand(150, 210), { z: 2, vz: 70, bounce: 0.45, spin: rand(-12, 12) });
+          w.sound('metal', p.x, p.y, 0.35, { pitch: 1.8 });
+        }
+        break;
+      }
+      case 'stroke':
+        if (at(STRIKE)) {
+          const p = this.ahead(30);
+          w.sound('pool', p.x, p.y, 0.8);
+          w.events.emit('poolStroke', p);
+        }
+        break;
+      case 'chip': if (at(0.5)) w.sound('clack', this.x, this.y, 0.3, { pitch: 1.5 }); break;
+      default: break;
+    }
+  }
+
+  // his right hand at phase ph, in the world
+  hand(ph) {
+    const h = this.gestureHands(ph);
+    return h ? this.ahead(h.hr.x, h.hr.y) : this.ahead(6, 5);
+  }
+
+  // a cigarette end (or a cigar) flying off and smoking a while where it lands
+  dropSmoke(x, y, a, speed, name) {
+    const w = this.world, img = spriteOpt(`items/${name}`);
+    if (!img) return;
+    w.particles.shard(img, x, y, a, speed, { z: 8, vz: 40, bounce: 0, spin: rand(-8, 8), onLand: (p) => {
+      p.life = 0;
+      w.decals.bake(img, p.x, p.y, p.rot);
+      w.emit(p.x, p.y, rand(4, 7), (e) => {
+        if (Math.random() < 0.04) w.particles.dust(e.x, e.y - 1, 1, 1, '#c8c8d2', { speed: 2, size: 2, life: 1.8, alpha: 0.22, vy: -7 });
+      });
+    } });
+  }
+
+  // it kicks off: what was in his hands falls (data/posts.js HELD)
+  dropHeld() {
+    const name = this.holding, it = HELD[name], w = this.world, a = this.angle, p = this.ahead(7, 3);
+    this.holding = null;
+    if (!it) return;
+    switch (it.drop) {
+      case 'glass':
+        w.particles.glass(p.x, p.y, a, 2.5, 5, 80);
+        w.sound('glass', p.x, p.y, 0.4, { pitch: 1.3 });
+        w.events.emit('spill', { x: p.x, y: p.y, kind: 'booze', area: it.spill ?? 70, dur: 1 });
+        break;
+      case 'butt':
+        if (chance(it.keep ?? 0)) this.mouth = true;
+        else this.dropSmoke(p.x, p.y, a + rand(-1.2, 1.2), rand(20, 50), name === 'cigar' ? 'cigar' : 'butt');
+        break;
+      case 'magazine': {
+        const img = spriteOpt('items/magazine');
+        if (img) w.particles.shard(img, p.x, p.y, a + rand(-0.6, 0.6), rand(30, 60), { z: 5, vz: 10, spin: rand(-3, 3), bounce: 0 });
+        break;
+      }
+      case 'paper': case 'cash': w.particles.floaters(p.x, p.y, FLOATS[it.drop], it.n, a, 1.4, 50, 8); break;
+      case 'powder': w.particles.dust(p.x, p.y, 4, 3, '#f2f2ec', { alpha: 0.3 }); break;
+      default: break;
+    }
   }
 
   // what a bored guard does at his post: his pastime if he has one; else a word with a colleague, a leak, a
@@ -539,7 +943,8 @@ export default class Enemy extends Character {
     const calm = this.director.phase === 'normal', r = Math.random(), q = Math.random();
     const set = (activity, t, face = this.idleFace) => { this.activity = activity; this.activityT = t; this.idleFace = face; };
     this.actT = 0; this.errand = null; this.errandT = 0;
-    if (calm && this.job && chance(0.8)) { set(this.job, rand(8, 14), this.home.angle); return; }
+    if (this.routine) { this.routine.act = null; this.routine.cued = null; this.workSpot = null; this.onSpot = false; }
+    if (calm && this.job && (this.script?.stay || chance(0.8))) { set(this.job, rand(8, 14), this.home.angle); return; }
     if (calm) {
       const mate = this.chatCd <= 0 && this.findMate(AI.chat.near);
       if (mate) { this.chatWith(mate); return; }
@@ -621,6 +1026,10 @@ export default class Enemy extends Character {
     if (this.stare(dt)) return;
     const calm = this.director.phase === 'normal';
     if (this.pauseT > 0) {
+      if (this.routine && this.activity === this.job) {
+        if (calm) this.work(dt); else { this.pauseT = 0; this.routine.act = null; }
+        return;
+      }
       this.pauseT -= dt;
       this.actT += dt;
       this.halt();
@@ -643,7 +1052,15 @@ export default class Enemy extends Character {
       if (this.route) this.routeIdx = (this.routeIdx + 1) % this.route.length;
       this.pauseT = rand(0.8, 2.4);
       this.lookBase = this.angle;
-      if (calm && chance(0.3)) {
+      if (calm && this.routine && chance(0.6)) {
+        // a halt at what his job does on his round (data/posts.js)
+        const R = this.routine, name = R.pick((n) => this.canPlay(n));
+        if (name) {
+          this.activity = this.job; this.pauseT = Infinity;
+          R.begin(name);
+          this.startPhase();
+        }
+      } else if (calm && chance(0.3)) {
         // a longer halt: a cigarette, his pager, a stretch, a look at his watch
         const k = PAUSES[Math.floor(rand(0, PAUSES.length))];
         this.activity = k; this.actT = 0;
@@ -1431,6 +1848,7 @@ export default class Enemy extends Character {
   knock(angle, cause) {
     if (!this.alive || this.knocked > 0) return;
     this.knocked = ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
+    this.posture = 0; this.through = false;
     this.director.provoked = true; // nobody floors a guard by accident
     this.world.events.emit('knock', { victim: this, cause, angle });
     this.downAngle = angle + Math.PI;
@@ -1474,14 +1892,26 @@ export default class Enemy extends Character {
   }
 
   draw(ctx) {
+    if (this.ashtray) drawItem(ctx, 'ashtray', this.ashtray.x, this.ashtray.y, 0.4);
     const k = 1 - this.crouch * 0.12;
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
-    super.draw(ctx);
+    const B = this.postBody();
+    if (B) drawPose(ctx, this, postPose(this, standPose(this, this.pose), this.pose2, B));
+    else super.draw(ctx);
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
     const t = this.world.time;
     const kind = this.pastime;
     if (kind) drawPastime(ctx, this, kind, ONE_GO.has(kind) ? this.actT : t);
+    // what is in his hands at his post, in his torso's frame
+    const P = this.pose, A = { x: this.x + P.tx, y: this.y + P.ty, angle: P.ta, s: P.s, side: this.seat?.side ?? 1, seed: this.seed };
+    const ph = this.gestureOn;
+    if (ph) {
+      const G = GESTURES[ph.g], R = this.routine;
+      if (G?.pastime) drawPastime(ctx, A, G.pastime, gestureClock(G, R.k, t, this.seed));
+      drawPost(ctx, A, ph.g, R.k, R.t, t, this.rawHands(ph), { seed: this.seed, reach: 16 });
+    }
+    if (this.mouth) drawMouth(ctx, A);
     if (this.state === S.DIZZY) {
       ctx.fillStyle = PALETTE.yellow;
       for (let i = 0; i < 3; i++) {

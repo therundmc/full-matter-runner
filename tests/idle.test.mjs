@@ -6,7 +6,7 @@ const { drag, exhale, talks, stretch, clap, pours, reliefSpot, gazeAt, STRETCH }
 const { carry, inHand } = await load('game/ai/Carry.js');
 const { pastimeHands } = await load('game/render/PastimeArt.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
-const { AI, TILE } = await load('game/Config.js');
+const { AI, TILE, CAT } = await load('game/Config.js');
 
 const run = (ch, calm, aiming, long, s) => { for (let t = 0; t < s; t += 1 / 60) carry(ch, calm, aiming, long, 1 / 60); return ch; };
 
@@ -99,4 +99,159 @@ test('relief: against the nearest wall out in a yard, at the toilet on bathroom 
   assert.ok(Math.abs(Math.sin(b.face) + 1) < 1e-6, 'facing it');
   assert.equal(reliefSpot(map, [props[0]], ...at(7, 2)), null, 'no toilet left');
   assert.equal(reliefSpot(map, props, ...at(6, 3)), null, 'not on the parquet');
+});
+
+// ---------------- a guard's life at his post (data/posts.js) ----------------
+const { POSTS, HELD } = await load('game/data/posts.js');
+const { Routine, GESTURES, seatPlace, frontOf, wallBehind, poolSpots } = await load('game/ai/Pastimes.js');
+const { BARKS } = await load('game/data/barks.js');
+
+const BODIES = ['stand', 'seat', 'desk', 'wall'];
+const SPOTS = ['post', 'here', 'toilet', 'sink', 'wall', 'car', 'stool', 'pool'];
+const LOOKS = ['sweep', 'dance', 'back'];
+const FX = ['ember', 'cloud', 'ash', 'flame', 'butt', 'stream', 'tap', 'can', 'stroke', 'deal', 'chip', 'slide'];
+const handsOf = (g, k, pt) => {
+  const G = GESTURES[g];
+  return G.hands ? G.hands(k, pt, pt + 3, 0.4, 'club') : pastimeHands(G.pastime, pt, 0.4);
+};
+
+test('posts: every job script is well formed, its phases are gestures that put both hands somewhere', () => {
+  for (const [job, S] of Object.entries(POSTS)) {
+    assert.ok(!S.body || BODIES.includes(S.body), job);
+    if (S.body === 'seat' || S.body === 'desk') {
+      assert.ok(S.seat && S.seat.places.length && S.rise > 0 && S.rise <= 0.7, `${job}: a seat and a quick get-up`);
+    }
+    const acts = Object.entries(S.acts);
+    assert.ok(acts.some(([, a]) => !a.cue), `${job}: something to do`);
+    for (const [name, act] of acts) {
+      assert.ok(act.phases.length, `${job}.${name}`);
+      for (const ph of act.phases) {
+        const id = `${job}.${name}.${ph.g}`;
+        assert.ok(GESTURES[ph.g], `${id}: a gesture`);
+        assert.ok(ph.dur[0] > 0 && ph.dur[0] <= ph.dur[1] && ph.dur[1] < 30, `${id}: duration`);
+        assert.ok(!ph.at || SPOTS.includes(ph.at), id);
+        assert.ok(!ph.body || BODIES.includes(ph.body), id);
+        assert.ok(!ph.look || LOOKS.includes(ph.look), id);
+        assert.ok(!ph.fx || FX.includes(ph.fx), id);
+        assert.ok(!ph.say || (BARKS[ph.say[0]] && ph.say[1] > 0 && ph.say[1] <= 1), id);
+        assert.ok(!ph.answer || S.acts[ph.answer]?.cue, `${id}: answered by a cued act`);
+        if (ph.sound) assert.ok(ph.sound[1] >= 0 && ph.sound[1] <= 1 && ph.sound[2] > 0, id);
+        const item = GESTURES[ph.g].item;
+        assert.ok(!item || HELD[item], `${id}: what becomes of the ${item}`);
+        for (const k of [0, 0.3, 0.5, 0.8, 1]) {
+          const h = handsOf(ph.g, k, k * 4 + 0.1);
+          assert.ok(h && [h.hl.x, h.hl.y, h.hr.x, h.hr.y].every((v) => Number.isFinite(v) && Math.abs(v) < 16), `${id} at ${k}`);
+        }
+      }
+    }
+  }
+});
+
+test('posts: two men at the same job drift out of step, a cued act cuts in, an act is never played twice in a row', () => {
+  const play = () => {
+    const R = new Routine(POSTS.door);
+    R.begin(R.pick(), true);
+    const seen = [];
+    let repeats = 0;
+    for (let t = 0; t < 180; t += 1 / 30) {
+      const prev = R.name;
+      if (R.step(1 / 30) === 'act') {
+        R.begin(R.pick());
+        if (R.name === prev) repeats++;
+      }
+      seen.push(`${R.name}.${R.i}`);
+    }
+    return { seen, repeats };
+  };
+  const a = play(), b = play();
+  assert.equal(a.repeats + b.repeats, 0);
+  const apart = a.seen.filter((s, i) => s !== b.seen[i]).length / a.seen.length;
+  assert.ok(apart > 0.3, `in step ${Math.round((1 - apart) * 100)}% of the time`);
+  const R = new Routine(POSTS.couch, 1);
+  R.begin('read');
+  R.cue('laugh', 0.5);
+  assert.equal(R.step(0.3), null);
+  assert.equal(R.step(0.3), 'phase');
+  assert.equal(R.name, 'laugh');
+  // weights by seat: the man on one side reads, the one on the other plays with his weapon
+  const count = (slot, name) => { const r = new Routine(POSTS.couch, slot); let n = 0; for (let i = 0; i < 400; i++) if (r.pick() === name) n++; return n; };
+  assert.ok(count(1, 'read') > count(0, 'read') * 3 && count(0, 'fiddle') > count(1, 'fiddle') * 3);
+});
+
+test('posts: the spots: a place on a couch, in front of a sink, against a plain wall, round a pool table', () => {
+  const sofa = { x: 100, y: 200, angle: -Math.PI / 2, def: { w: 64, h: 28 } };
+  const s = seatPlace(sofa, [16, -1], 90);
+  assert.ok(Math.abs(s.x - 99) < 1e-9 && Math.abs(s.y - 184) < 1e-9 && Math.abs(Math.cos(s.face) - 1) < 1e-9, 'north end, facing east');
+  const sink = frontOf({ x: 100, y: 100, angle: Math.PI / 2, def: { w: 26, h: 18 } }, 11);
+  assert.ok(Math.abs(sink.x - 80) < 1e-9 && Math.abs(Math.cos(sink.face) - 1) < 1e-9, 'west of it, facing it');
+  const map = new TileMap([
+    '#######',
+    '#_____#',
+    '#_____#',
+    '###D###',
+  ]);
+  const w = wallBehind(map, 3.5 * TILE, 1.5 * TILE, -Math.PI / 2);
+  assert.ok(w && w.x !== 3.5 * TILE && w.y === 2.5 * TILE + TILE / 2 - 9, 'not against the door: the next stretch of wall');
+  assert.ok(Math.abs(Math.sin(w.face) + 1) < 1e-9, 'facing away from it');
+  const spots = poolSpots({ x: 0, y: 0, angle: 0, def: { w: 80, h: 44 } });
+  assert.equal(spots.length, 6);
+  for (const p of spots) assert.ok(Math.cos(p.face) * -p.x + Math.sin(p.face) * -p.y > 0, 'each facing the table');
+});
+
+// a guard on his seat in a small room, with the bare world he needs (no physics engine: his velocity is applied by hand)
+async function seatedGuard(job, seatType, seatAngle, actor) {
+  globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
+  const { default: Enemy } = await load('game/entities/Enemy.js');
+  const { default: Director } = await load('game/ai/Director.js');
+  const { PROPS } = await load('game/data/props.js');
+  const { findPath } = await load('engine/nav/Pathfinding.js');
+  const map = new TileMap(['##########', '#;;;;;;;;#', '#;;;;;;;;#', '#;;;;;;;;#', '#;;;;;;;;#', '##########']);
+  const def = PROPS[seatType];
+  const prop = { type: seatType, def, x: 2 * TILE, y: 3 * TILE, dead: false,
+    body: Matter.Bodies.rectangle(2 * TILE, 3 * TILE, def.w, def.h, { isStatic: true, angle: seatAngle }) };
+  const events = { on() {}, emit() {} };
+  const world = {
+    map, props: [prop], enemies: [], chars: [], doors: [], texts: [], time: 0, level: {}, events,
+    player: { alive: false, x: 0, y: 0 },
+    particles: { smoke() {}, dust() {}, glass() {}, floaters() {}, shard() {}, blood() {} },
+    sound() {}, light() {}, emit() {}, addBody() {}, sightLine: () => false, lineOfSight: () => false,
+    pathForGuard: (a, b, c, d) => findPath(map, a, b, c, d),
+  };
+  world.director = new Director(world);
+  const [kind, weapon] = actor;
+  const e = new Enemy(world, 3.5 * TILE, 3.5 * TILE, 0, kind, weapon);
+  e.perceive = () => {}; e.scanWorld = () => {};
+  e.takeJob(job);
+  world.enemies.push(e); world.chars.push(e);
+  const step = (s) => {
+    for (let t = 0; t < s; t += 1 / 60) {
+      world.time += 1 / 60;
+      e.update(1 / 60);
+      const v = Matter.Body.getVelocity(e.body);
+      Matter.Body.setPosition(e.body, { x: e.x + v.x, y: e.y + v.y });
+    }
+  };
+  return { e, step, prop };
+}
+
+test('a seated guard sits on his furniture, and once alerted is up and armed within his get-up time', async () => {
+  for (const [job, seat, angle, actor] of [['couch', 'sofa', -Math.PI / 2, ['thug', 'tire_iron']], ['boss', 'armchair', 0, ['heavy', 'shotgun']]]) {
+    const { e, step, prop } = await seatedGuard(job, seat, angle, actor);
+    const S = POSTS[job];
+    assert.ok(e.seat && e.posture === 1, `${job}: on his seat from the start`);
+    assert.equal(e.body.collisionFilter.mask & CAT.PROP, 0, `${job}: the furniture does not shove him off it`);
+    step(3);
+    assert.ok(Math.hypot(e.x - e.seat.x, e.y - e.seat.y) < 3 && e.posture === 1, `${job}: still sat`);
+    assert.ok(e.gestureOn, `${job}: at his pastime`);
+    e.suspect(e.x + 100, e.y, 'noise');
+    step(S.rise * 0.5);
+    assert.ok(e.posture > 0 && e.state === 'suspicious', `${job}: a beat to get up`);
+    step(S.rise * 0.5 + 0.05);
+    assert.equal(e.posture, 0, `${job}: on his feet`);
+    assert.ok(inHand(e), `${job}: his weapon in his hand`);
+    step(1);
+    const b = prop.body.bounds, r = e.radius;
+    const clear = e.x + r < b.min.x || e.x - r > b.max.x || e.y + r < b.min.y || e.y - r > b.max.y;
+    assert.ok(!clear || e.body.collisionFilter.mask & CAT.PROP, `${job}: solid again once off it`);
+  }
 });
