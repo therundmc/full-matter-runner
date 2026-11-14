@@ -8,6 +8,7 @@ import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
+import { OUTRO } from '../systems/Outro.js';
 
 const { Body } = Matter;
 
@@ -43,7 +44,7 @@ export default class WorldRenderer {
     if (w.showVision) for (const e of w.enemies) e.drawVision(ctx);
     for (const e of w.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
     for (const c of w.civilians) if (c.alive && vis(c.x, c.y)) c.draw(ctx);
-    if (w.player.alive) w.player.draw(ctx);
+    if (w.player.alive && !w.player.hidden) w.player.draw(ctx); // hidden: in the getaway van
     for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
     for (const d of w.doors) d.draw(ctx);
     ctx.drawImage(w.decals.wallCanvas, 0, 0);
@@ -55,7 +56,7 @@ export default class WorldRenderer {
     let l0 = performance.now();
     if (lit) w.lighting.apply(ctx, cam, t);
     let lightMs = performance.now() - l0;
-    if (w.cleared && w.level.exit) this.drawExit(ctx, t);
+    if (w.cleared && w.level.exit && !w.outro) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
@@ -234,11 +235,13 @@ export default class WorldRenderer {
     ctx.restore();
   }
 
+  // the way out once the level is cleared: a pulsing ring on the exit zone, and with a getaway van (World.getaway)
+  // GET IN over it and a mark on the cab door he will get in by
   drawExit(ctx, t) {
-    const ex = this.world.level.exit;
-    const x = ex.x * TILE, y = ex.y * TILE;
-    const pulse = (Math.sin(t * 6) + 1) / 2;
-    ctx.strokeStyle = pulse > 0.5 ? PALETTE.pink : PALETTE.cyan;
+    const w = this.world, ex = w.level.exit, van = w.getaway();
+    const x = ex.x * TILE, y = ex.y * TILE, label = van ? 'GET IN' : 'EXIT';
+    const pulse = (Math.sin(t * 6) + 1) / 2, color = pulse > 0.5 ? PALETTE.pink : PALETTE.cyan;
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.beginPath(); ctx.arc(x, y, ex.r * TILE * (0.9 + pulse * 0.1), 0, Math.PI * 2); ctx.stroke();
@@ -246,9 +249,30 @@ export default class WorldRenderer {
     ctx.font = '8px joystix';
     ctx.textAlign = 'center';
     ctx.fillStyle = PALETTE.ink;
-    ctx.fillText('EXIT', x + 1, y - ex.r * TILE - 5);
+    ctx.fillText(label, x + 1, y - ex.r * TILE - 5);
     ctx.fillStyle = PALETTE.yellow;
-    ctx.fillText('EXIT', x, y - ex.r * TILE - 6 - pulse * 3);
+    ctx.fillText(label, x, y - ex.r * TILE - 6 - pulse * 3);
+    if (van) this.drawCabDoor(ctx, van, color, t);
+  }
+
+  // the door's edge on the van's side, chevrons stepping in toward it
+  drawCabDoor(ctx, van, color, t) {
+    const p = this.world.player, q = this.world.cabDoor(van, p.x, p.y);
+    const edge = van.toWorld(OUTRO.door, van.toSprite(q.x, q.y).sy < van.h / 2 ? 0 : van.h);
+    const o = 3 + 2 * (0.5 + 0.5 * Math.sin(t * 8));
+    ctx.save();
+    ctx.translate(edge.x, edge.y);
+    ctx.rotate(Math.atan2(edge.y - q.y, edge.x - q.x)); // +x: into the van
+    ctx.lineCap = ctx.lineJoin = 'round';
+    for (const [width, col] of [[3.2, 'rgba(8,4,16,0.8)'], [1.3, color]]) {
+      ctx.lineWidth = width;
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(0, -8); ctx.lineTo(0, 8);
+      for (const c of [o, o + 4]) { ctx.moveTo(-c - 3.5, -3.5); ctx.lineTo(-c, 0); ctx.lineTo(-c - 3.5, 3.5); }
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // F4: every Matter body outlined by state, velocities, live contacts

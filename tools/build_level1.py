@@ -421,7 +421,7 @@ ambient = {
     ],
 }
 
-exit_zone = {'x': 28.7, 'y': 2.4, 'r': 1.4}
+exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3}   # by the getaway van's cab door: he gets in and drives off (systems/Outro.js)
 
 if __name__ == '__main__':
     lv.check(guards=15)

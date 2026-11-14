@@ -1,6 +1,7 @@
 import { PALETTE } from '../Config.js';
 import { text, neon, glitchText, thousands } from './Text.js';
 import { clamp } from '../../engine/math.js';
+import { OUTRO, fadeAlpha, barsK } from '../systems/Outro.js';
 
 const TAUNTS = [
   'ONE BULLET. THAT IS ALL IT TAKES.',
@@ -137,6 +138,19 @@ export function drawDead(ctx, W, H, t, seed, cause) {
   const lines = CAUSE_TAUNTS[cause] || TAUNTS;
   text(ctx, lines[seed % lines.length], W / 2, H * 0.52, 16 * s, PALETTE.white, { alpha: a });
   if (t > 0.6 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'PRESS R TO RESTART', W / 2, H * 0.62, 24 * s, PALETTE.yellow);
+}
+
+// the getaway (systems/Outro): the picture fades to black, letterbox bars slide in over it
+export function drawOutro(ctx, W, H, t) {
+  const fade = fadeAlpha(t), bar = Math.ceil(H * OUTRO.bars * barsK(t));
+  ctx.fillStyle = '#000';
+  if (fade > 0) {
+    ctx.globalAlpha = fade;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+  ctx.fillRect(0, 0, W, bar);
+  ctx.fillRect(0, H - bar, W, bar);
 }
 
 // volume sliders of the pause screen: track rectangles in canvas pixels (shared by drawing and mouse input)

@@ -6,9 +6,9 @@ import { sprite, spriteOpt, silhouette, chunk, glassShards, slices } from '../..
 import { rand, chance, clamp, local } from '../../engine/math.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
-import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
+import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/Body.js';
 
-const { Bodies } = Matter;
+const { Bodies, Body, Sleeping } = Matter;
 
 // Sprite-space layout of each model (real size, facing +x; must match tools/generate_assets.py).
 // Regions: [x0, x1, y0, y1]; hood: [x0, x1]; wheels: tyre centres (they stick out a little past the sides).
@@ -413,6 +413,35 @@ export default class Vehicle {
     });
     this.puddle = Math.max(this.puddle, 30);
     this.wreckFire = rand(9, 13);
+  }
+
+  // driven by a script (the getaway, systems/Outro): straight ahead at sp px/step, over the bodies on the floor;
+  // anything too heavy to push by hand that it noses into is woken for the physics to shove. sp 0: it stops there
+  driveOff(sp) {
+    const b = this.body, w = this.world;
+    if (sp <= 0) {
+      if (!this.moving) return;
+      this.moving = false;
+      this.bob = 0;
+      Body.setVelocity(b, { x: 0, y: 0 });
+      b.sleepThreshold = 60; // Matter's default
+      b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP };
+      return;
+    }
+    if (!this.moving) {
+      this.moving = true;
+      wake(b);
+      b.sleepThreshold = Infinity; // never dozing off between two velocity commands
+      b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP & ~CAT.CORPSE };
+    }
+    if (b.isSleeping) Sleeping.set(b, false);
+    for (const pair of w.physics.activePairs()) {
+      const o = pair.bodyA === b ? pair.bodyB : pair.bodyB === b ? pair.bodyA : null;
+      if (o?.frozen) wake(o);
+    }
+    Body.setAngularVelocity(b, 0);
+    Body.setVelocity(b, { x: Math.cos(b.angle) * sp, y: Math.sin(b.angle) * sp });
+    b.flyUntil = w.time + 0.05; // no floor friction fighting the engine
   }
 
   update(dt) {

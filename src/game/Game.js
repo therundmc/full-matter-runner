@@ -14,12 +14,13 @@ import { loadSettings, saveSettings } from './systems/Settings.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults, pauseSliders } from './ui/Screens.js';
+import { drawTitle, drawLoading, drawIntro, drawDead, drawPause, drawResults, drawOutro, pauseSliders } from './ui/Screens.js';
+import { OUTRO, camBlend } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
 
-// Top-level loop and state machine: loading -> title -> intro -> play -> dead | results
+// Top-level loop and state machine: loading -> title -> intro -> play -> dead | [outro ->] results
 export default class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -152,7 +153,18 @@ export default class Game {
     Audio.play('death');
   }
   onCleared() { this.clearedT = 0; }
+  // the player stepped into the exit zone: he leaves in the getaway van when there is one (systems/Outro), on foot
+  // straight to the results otherwise
   onExit() {
+    const van = this.world.getaway();
+    if (!van) { this.showResults(); return; }
+    this.world.startOutro(van);
+    this.slow = null;
+    this.timeScale = 1;
+    this.hitstop = 0;
+    this.setState('outro');
+  }
+  showResults() {
     const w = this.world;
     const tally = w.scoring.tally(levelScoring(this.levelId, w.totalEnemies));
     // a run helped by the sandbox is shown but never kept as a record
@@ -231,14 +243,21 @@ export default class Game {
       return;
     }
 
-    // play / dead: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
+    // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
+    const outro = this.state === 'outro';
+    if (outro) {
+      // the world plays on by itself: no input reaches it; a fresh key press or a click skips to the results
+      const skip = this.stateT > OUTRO.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      inp.consume();
+      if (skip || this.world.outro.van.exploded) { this.showResults(); return; }
+    }
     if (this.state === 'play' && inp.hit('Escape')) { this.setState('pause'); inp.consume(); return; }
     if (this.state === 'dead' && this.stateT > 0.8 && inp.mouseHit(0)) { this.newGame(); inp.consume(); return; }
 
     // time scale (slow motion)
-    let target = this.sandbox.timeScale;
-    if (this.slow) {
+    let target = outro ? 1 : this.sandbox.timeScale;
+    if (this.slow && !outro) {
       target = Math.min(target, this.slow.scale);
       this.slow.t -= dt;
       if (this.slow.t <= 0) this.slow = null;
@@ -258,7 +277,7 @@ export default class Game {
       let steps = 0;
       while (this.acc >= FIXED_DT && steps < 5) {
         const aim = this.camera.screenToWorld(inp.mouse.x, inp.mouse.y);
-        this.debugKeys(inp, aim);
+        if (!outro) this.debugKeys(inp, aim);
         this.world.step(FIXED_DT * this.timeScale, inp, aim);
         this.acc -= FIXED_DT;
         steps++;
@@ -269,6 +288,7 @@ export default class Game {
     }
     this.updateCamera(dt);
     this.flashA = Math.max(0, this.flashA - dt * 3);
+    if (this.state === 'outro' && this.world.outro.t >= OUTRO.end) this.showResults();
   }
 
   // read once per simulation step (key presses live until a step consumes them)
@@ -291,7 +311,15 @@ export default class Game {
     const len = Math.hypot(ox, oy);
     if (len > max) { ox *= max / len; oy *= max / len; }
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
-    this.camera.update(dt, p.x + ox, p.y + oy);
+    let tx = p.x + ox, ty = p.y + oy;
+    const o = this.state === 'outro' && w.outro;
+    if (o) {
+      // from the player over to the van's cab, a little ahead of it
+      const cab = o.van.toWorld(OUTRO.door, o.van.h / 2), k = camBlend(o.t);
+      tx += (cab.x + Math.cos(o.angle) * OUTRO.lead - tx) * k;
+      ty += (cab.y + Math.sin(o.angle) * OUTRO.lead - ty) * k;
+    }
+    this.camera.update(dt, tx, ty);
     Audio.listener.x = this.camera.x;
     Audio.listener.y = this.camera.y;
   }
@@ -356,8 +384,9 @@ export default class Game {
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
       if (this.state === 'pause') drawPause(ctx, W, H, t, this.settings, this.sel);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, replaying);
+      if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro.t);
     });
-    this.drawCursor(ctx, t);
+    if (this.state !== 'outro') this.drawCursor(ctx, t);
   }
 
   // a failing draw must never take the HUD / cursor / effects down with it: restore the context and report once

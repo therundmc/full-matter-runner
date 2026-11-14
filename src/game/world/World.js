@@ -15,7 +15,7 @@
 //   'surrender'     the last guard gave up     { who }   (entities/Enemy)
 //   'footprint'     a wet sole marked the floor { who, x, y, angle, kind }   (systems/Liquids)
 //   'trafficSpawn' / 'trafficStopped' / 'runOver' / 'civilianPanic'  street life (systems/Ambient)
-import { TILE, MAX_DEBRIS, PALETTE, PHYSICS } from '../Config.js';
+import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
@@ -44,6 +44,7 @@ import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
+import { OUTRO, vanSpeed, crossed } from '../systems/Outro.js';
 
 const { Body } = Matter;
 
@@ -94,6 +95,7 @@ export default class World {
     this.cleared = false;
     this.endT = null; // time of the player's death: the run's clock stops there
     this.exited = false;
+    this.outro = null; // the getaway playing (startOutro): { t, van, door, angle, from, done, inside }
     this.showVision = false;
     this.debugPhysics = false;
 
@@ -253,6 +255,80 @@ export default class World {
     return true;
   }
 
+  // ---------------- the getaway (systems/Outro) ----------------
+  // the vehicle the level is left in: a van parked by the exit zone, in one piece and not on fire; null if none
+  getaway() {
+    const ex = this.level.exit;
+    if (!ex) return null;
+    const x = ex.x * TILE, y = ex.y * TILE;
+    return this.props.find((p) => p.isVehicle && p.type === 'van' && !p.exploded && !p.burning && !p.moving
+      && Math.hypot(p.x - x, p.y - y) < OUTRO.reach) || null;
+  }
+
+  // where one stands to get in: by the cab door on the side of (x, y), on the other side if that one is against a wall
+  cabDoor(van, x, y) {
+    const r = PLAYER.radius + 3, near = van.toSprite(x, y).sy < van.h / 2 ? -r : van.h + r;
+    for (const sy of [near, van.h - near]) {
+      const q = van.toWorld(OUTRO.door, sy), out = van.toWorld(OUTRO.door, sy + Math.sign(sy) * r);
+      if (!this.map.solidAt(q.x, q.y) && !this.map.solidAt(out.x, out.y)) return q;
+    }
+    return van.toWorld(OUTRO.door, near);
+  }
+
+  // the player stepped into the exit zone: from now on stepOutro runs him instead of the input; nothing can hurt him
+  startOutro(van) {
+    const p = this.player;
+    p.invulnerable = true;
+    p.vaultHint = null;
+    p.slide = null;
+    this.outro = { t: 0, van, door: this.cabDoor(van, p.x, p.y), angle: van.body.angle, from: { x: van.x, y: van.y }, done: 0, inside: false };
+  }
+
+  stepOutro(dt) {
+    const o = this.outro, p = this.player, v = o.van, O = OUTRO, t0 = o.t, t = (o.t += dt);
+    if (!o.inside) {
+      // he walks to the door (a vault under way ends first)
+      p.baseUpdate(dt);
+      p.updateSlideAnim(dt);
+      if (!(p.vaulting && p.updateVault(dt))) {
+        const dx = o.door.x - p.x, dy = o.door.y - p.y, d = Math.hypot(dx, dy);
+        p.angle = d > 4 ? Math.atan2(dy, dx) : Math.atan2(v.y - p.y, v.x - p.x);
+        p.steer(dx, dy, Math.min(PLAYER.speed, d * 0.3), PLAYER.accel);
+      }
+      if (t >= O.walk) this.boardGetaway();
+    } else Body.setPosition(p.body, v.toWorld(O.door + 8, v.h / 2)); // riding in the cab
+    const exhaust = (n) => {
+      const e = v.toWorld(1, v.h * 0.7);
+      this.particles.smoke(e.x, e.y, n, 2, { speed: 14, size: 3.5, life: 1 });
+    };
+    if (crossed(t0, t, O.lights)) {
+      v.lightsOut = false;
+      // the engine turns over and swells as it pulls away (panned the way it goes)
+      this.sound('passby', undefined, undefined, 0.6, { lead: 1.5, dur: 2.1, dir: Math.sign(Math.cos(o.angle)) || 1, side: 0.1, f: 34 });
+      exhaust(3);
+    }
+    if (t >= O.lights && chance(t < O.go ? 0.08 : 0.3)) exhaust(1);
+    // idling shudder, a little rock as it moves off, then smooth
+    v.bob = t < O.lights ? 0 : Math.sin(this.time * 38) * (t < O.go ? 0.25 : 0.45 * Math.max(0, 1 - (t - O.go) / 0.6));
+    o.done = (v.x - o.from.x) * Math.cos(o.angle) + (v.y - o.from.y) * Math.sin(o.angle);
+    v.driveOff(vanSpeed(t, o.done));
+  }
+
+  // at the door: he gets in (no longer drawn, no body, out of `chars`: no light of his own, no laser out of the cab)
+  boardGetaway() {
+    const o = this.outro, p = this.player, { x, y } = o.door;
+    o.inside = true;
+    p.vel = { x: 0, y: 0 };
+    Body.setVelocity(p.body, p.vel);
+    Body.setPosition(p.body, o.door);
+    p.hidden = true;
+    this.removeBody(p.body);
+    const i = this.chars.indexOf(p);
+    if (i >= 0) this.chars.splice(i, 1);
+    this.sound('carHit', x, y, 0.5);
+    this.particles.dust(x, y, 6, 6, '#6a6272', { speed: 30, size: 3, life: 0.5, alpha: 0.2 });
+  }
+
   // characters leaning into a movable object slow down with its weight and grip
   updatePushContacts() {
     for (const pair of this.physics.activePairs()) {
@@ -275,7 +351,8 @@ export default class World {
       for (const t of due) t.fn();
     }
     // 1. intentions (input, AI)
-    if (this.player.alive) this.player.update(dt, input, aim);
+    if (this.outro) this.stepOutro(dt);
+    else if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
