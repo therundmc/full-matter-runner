@@ -15,6 +15,7 @@
 //   legs       { n, size: metres, color }  extra pieces that were hidden under the top (table legs)
 //   contents   [{ bit, n, on: 'break'|'hit', perHit?, colors? }]  loose things inside, see BITS
 //   floats     [name, count]  slow floating particles on collapse (stuffing, feathers, paper, leaves...)
+//   sheds      name: the same, a few at every hit (banknotes out of a case)
 //   screen     [x0, y0, x1, y1]  a glass screen: cracks, then implodes (light goes out)
 //   electric   sparks, smoke and flicker when hit
 //   leak       { color, on: 'hit'|'break', dur, kind?, flood? }  a jet of liquid for dur s out of each hole (on: 'hit')
@@ -36,6 +37,10 @@ export const DESTRUCTION = {
     height: 0.75, powder: '#f2efe8', parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }],
     legs: { n: 4, size: 0.09, color: '#4a2c18' }, floats: ['cash', 22],
     contents: [{ bit: 'brick', n: 4, on: 'break' }, { bit: 'wad', n: 4, on: 'break' }, { bit: 'brick', n: 1, on: 'hit', perHit: 0.3 }],
+  },
+  cash_case: {
+    height: 0.2, sheds: 'cash', floats: ['cash', 46],
+    contents: [{ bit: 'wad', n: 9, on: 'break' }, { bit: 'wad', n: 1, on: 'hit', perHit: 0.7 }],
   },
   table_round: { height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 1, size: 0.14, color: '#4a2c18' } },
   desk: {

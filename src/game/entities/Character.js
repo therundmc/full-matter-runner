@@ -1,4 +1,4 @@
-import { CAT, MASK, ENEMY } from '../Config.js';
+import { CAT, MASK, ENEMY, BARREL } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, chunk } from '../../engine/Assets.js';
 import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
@@ -57,6 +57,8 @@ export default class Character {
     this.punchSide = 1;
     this.strike = 0;        // gesture of the current melee blow: 0 forehand, 1 backhand, 2 smash / stab
     this.recoil = 0;
+    this.barrel = 0;        // heat of the barrel, in rounds: it smokes after a burst (BARREL)
+    this.fumeT = 0;
     this.reloading = 0;
     this.reloadDur = 1;
     this.reloadStage = 0;
@@ -188,6 +190,7 @@ export default class Character {
     this.updateReload(dt);
     this.throwT = Math.max(0, this.throwT - dt);
     this.recoil = Math.max(0, this.recoil - dt * this.recoilRate);
+    if (this.barrel > 0) this.fume(dt);
     const v = Body.getVelocity(this.body);
     const sp = Math.hypot(v.x, v.y);
     this.moving = sp;
@@ -252,6 +255,15 @@ export default class Character {
     return local(this.x, this.y, this.angle, lx, d.hold === 'two' ? 2 : 1);
   }
 
+  // the barrel that just fired a burst smokes once it falls silent, a thin wisp that rises until it has cooled
+  fume(dt) {
+    this.barrel = Math.max(0, this.barrel - dt * BARREL.cool);
+    if ((this.fumeT -= dt) > 0 || this.barrel < BARREL.from || !this.hasGun) return;
+    this.fumeT = BARREL.every;
+    const m = this.muzzlePos();
+    this.world.particles.smoke(m.x, m.y, 1, 0.5, { speed: 7, size: 3, life: 1, puff: true, h: 4 });
+  }
+
   fire(d) {
     const w = this.world;
     const a = this.angle;
@@ -276,6 +288,8 @@ export default class Character {
     // the player's gunfire draws the guards in; a guard firing calls his mates
     if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
     this.recoil = 1;
+    this.barrel = Math.min(BARREL.max, this.barrel + (d.pellets > 1 || d.rocket ? BARREL.big : 1));
+    this.fumeT = BARREL.wait;
     this.recoilRate = d.kick >= 6 ? 4.5 : 9;
     this.weapon.mag--;
     this.vel.x -= Math.cos(a) * d.kick * 0.12;

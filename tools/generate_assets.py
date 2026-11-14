@@ -3786,6 +3786,27 @@ def p_alarm_box():
     return cv
 
 
+def p_cash_case():
+    """The boss's case lying open: its lid thrown back (-y), banded wads of notes in two rows."""
+    cv = Cv(22, 16)
+    cv.rect(1, 1, 20, 14, hx('#23232b'))
+    cv.rect(2, 2, 19, 4, hx('#4a2a30'))            # the lining of the lid
+    cv.rect(2, 2, 19, 2, hx('#5e3640'))
+    cv.rect(1, 6, 20, 6, hx('#0e0e12'))            # the hinge
+    for x in (2, 8, 14):
+        for y in (7, 11):
+            cv.rect(x, y, x + 4, y + 2, hx('#5a8a4a'))
+            cv.rect(x, y, x + 4, y, hx('#7aa868'))
+            cv.rect(x + 2, y, x + 2, y + 2, hx('#f2ead0'))   # its paper band
+    cv.rect(9, 14, 12, 14, hx('#6a6a76'))          # the handle
+    cv.outline()
+    return cv
+
+
+# small dressing added one by one (the details list)
+DETAIL_PROPS = dict(cash_case=p_cash_case)
+DETAIL_SIZES = dict(cash_case=(22, 16))
+
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,
                   neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash)
@@ -4467,6 +4488,7 @@ def build():
                  neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
                  hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
     props.update(SHOP_PROPS)
+    props.update(DETAIL_PROPS)
     for name, fn in props.items():
         r = fn()
         if isinstance(r, tuple):   # (sprite, emissive map)
@@ -4512,6 +4534,7 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dop
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
 PROP_SIZES.update(SHOP_SIZES)
+PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [

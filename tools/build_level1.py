@@ -280,6 +280,7 @@ lv.prop('chair', 28.15, 7.9, 180)
 lv.prop('chair', 27.3, 8.75, 270)
 lv.prop('ceiling_lamp', 27.3, 7.9)
 lv.prop('floor_lamp', 25.4, 10.55)
+lv.prop('cash_case', 30.5, 9.8, 8)                      # the boss's takings, open by his desk
 
 lv.area('the bar: counter along the north wall')
 for i in range(6):

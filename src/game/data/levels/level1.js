@@ -149,6 +149,7 @@ export default {
     ['tv', 29.5, 6.3, 0], ['table_lamp', 30.5, 6.4, 0], ['plant', 25.45, 6.5, 0], ['desk', 29.5, 8.3, 90],
     ['sofa', 25.5, 8.6, 270], ['table_round', 27.3, 7.9, 0], ['chair', 27.3, 7.05, 90], ['chair', 28.15, 7.9, 180],
     ['chair', 27.3, 8.75, 270], ['ceiling_lamp', 27.3, 7.9, 0], ['floor_lamp', 25.4, 10.55, 0],
+    ['cash_case', 30.5, 9.8, 8],
     // the bar: counter along the north wall
     ['bar_counter', 15.5, 13.4, 0], ['bar_counter', 16.5, 13.4, 0], ['bar_counter', 17.5, 13.4, 0],
     ['bar_counter', 18.5, 13.4, 0], ['bar_counter', 19.5, 13.4, 0], ['bar_counter', 20.5, 13.4, 0],

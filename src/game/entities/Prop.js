@@ -237,6 +237,7 @@ export default class Prop {
     }
     if (fx.hard) P.sparks(px, py, e.a, e.spread + 0.3, info.ricochet ? 8 : 4, 260);
     if (fx.float && kind !== 'punch') P.floaters(px, py, FLOATS[fx.float], Math.ceil(n * 1.5), e.a, e.spread + 0.4, v * 0.4, 6);
+    if (this.rec.sheds) P.floaters(px, py, FLOATS[this.rec.sheds], 7, e.a, 1.3, 80, 8);
     if (fx.dust) P.dust(px, py, side === 'exit' ? 2 : 1, 1.5, fx.dust, { speed: 20, size: 3, life: 1.6, vx: Math.cos(e.a) * 15, vy: Math.sin(e.a) * 15 });
   }
 

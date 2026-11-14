@@ -4,6 +4,7 @@ import { TILE } from '../Config.js';
 import { rand, clamp } from '../../engine/math.js';
 import { RESIST, COST, HARDNESS, wallExit, bodyExit, afterCost, ricochet } from '../systems/Penetration.js';
 import { woundFor } from '../data/wounds.js';
+import { WALL_IMPACT } from '../data/materials.js';
 
 // Fast bullet traced as a segment each step (no tunnelling), or a slow rocket.
 // A bullet carries penetration energy (`pen`): every obstacle eats some of it (systems/Penetration.js); if any is
@@ -104,9 +105,10 @@ export default class Projectile {
         if (g) { w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5, 0.6); return g; }
         const na = Math.atan2(h.ny, h.nx);
         w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5);
-        w.particles.sparks(h.x, h.y, na, 0.9, 5, 260);
-        w.particles.chips(h.x + h.nx, h.y + h.ny, na, 0.8, 3, '#b8ae9c', 90);
-        w.particles.smoke(h.x + h.nx * 2, h.y + h.ny * 2, 1, 1, { speed: 20, size: 3, life: 0.5 });
+        const s = WALL_IMPACT[w.map.at(h.cx, h.cy)] || WALL_IMPACT.X;
+        if (s.sparks) w.particles.sparks(h.x, h.y, na, 0.9, s.sparks, 260);
+        w.particles.chips(h.x + h.nx, h.y + h.ny, na, 0.8, s.n, s.chips, 90);
+        w.particles.dust(h.x + h.nx * 2, h.y + h.ny * 2, s.puff, 2, s.dust, { speed: 24, size: 4, life: 2, alpha: 0.32, vx: h.nx * 16, vy: h.ny * 16 });
         w.sound('impact', h.x, h.y, 0.6);
         const ex = wallExit(w.map, h.x, h.y, a, this.energy);
         // the energy left in the wall is what breaks it, tile by tile

@@ -49,6 +49,7 @@ src/
                           (DOM-free, unit-tested)
       Alarms.js           closed shops (level.alarms) that ring when broken into: bell, beacon, guards come to look,
                           passers-by hurry on, until the box is shot off the wall (DOM-free, unit-tested)
+      Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)

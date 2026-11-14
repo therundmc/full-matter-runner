@@ -16,6 +16,12 @@ export const MATERIALS = {
   brass: { mu: 0.3, bounce: 0.5, sound: 'shell', chips: '#d8a040' },
 };
 
+// what a round knocks out of a wall, by tile: n chips, a puff of dust, sparks (plaster gives none, brick a few)
+export const WALL_IMPACT = {
+  '#': { chips: '#e6e0d2', n: 6, dust: '#efe9dc', puff: 3, sparks: 0 },
+  X: { chips: '#9a5440', n: 4, dust: '#a8705c', puff: 2, sparks: 2 },
+};
+
 // how grippy each floor is (multiplies the object's own friction coefficient)
 export const FLOOR_GRIP = {
   wood: 1, checker: 0.8, tile_blue: 0.75, carpet_red: 1.35, carpet_purple: 1.35, concrete: 1.05, grass: 1.5,

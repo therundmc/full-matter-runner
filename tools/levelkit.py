@@ -30,7 +30,7 @@ GUARDS = set('pushrbk')
 # hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
 # None = hangs from the ceiling / sits on a wall: never in the way
 SIZES = dict(
-    table=(44, 26), table_round=(28, 28), card_table=(58, 36), dope_table=(44, 26), gas_bottle=(12, 12), dance_stage=(48, 48), desk=(46, 24), chair=(14, 14), armchair=(26, 26), sofa=(64, 28),
+    cash_case=(20, 14), table=(44, 26), table_round=(28, 28), card_table=(58, 36), dope_table=(44, 26), gas_bottle=(12, 12), dance_stage=(48, 48), desk=(46, 24), chair=(14, 14), armchair=(26, 26), sofa=(64, 28),
     plant=(15, 15), tv=(22, 15), fridge=(22, 22), oven=(20, 20), sink=(26, 18), toilet=(13, 21), bed=(44, 64),
     pool_table=(80, 44), arcade=(22, 27), crate=(19, 19), barrel=(18, 18), bookshelf=(40, 11), speaker=(14, 14),
     dj_booth=(58, 22), bar_counter=(32, 19), dumpster=(58, 34), trash_can=(15, 15), jukebox=(28, 20),

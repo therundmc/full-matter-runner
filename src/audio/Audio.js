@@ -3,7 +3,8 @@
 //   - gunshots: recorded shots (SAMPLES / SHOTS) over synthesized bass and room layers (GUNS, see _gun)
 //   - everything physical (impacts, breaks, flesh, doors, reloads, casings, voices, water): cuts of the recorded
 //     foley bank (bank.js, built by tools/build_sounds.mjs), layered per sound in FOLEY and / or by a `_<name>` method
-//   - noise-based synthesis only where no recording fits: blast bodies, fire, tyres, the car alarm, traffic
+//   - noise-based synthesis only where no recording fits: blast bodies, fire, tyres, the car alarm, traffic,
+//     the far-off sirens
 //
 // Bus chain (all created in _build):
 //   guns  -> drive (tanh) -> gun level -> sfx              (synthesized shots)
@@ -98,6 +99,7 @@ const META = {
   // fire, alarm, UI, street
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   shopAlarm: { pri: 1, dur: 0.56, gap: 0.3, max: 2, reach: 1500, gain: 0.15 },
+  siren: { pri: 0, dur: 4.6, gap: 1.5, max: 2, gain: 0.05, hall: 0.7 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.6 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
@@ -825,6 +827,39 @@ class AudioSystem {
     }
   }
 
+  // a police siren far across the city, one wail per call (systems/Sirens.js repeats it): up and back down, its
+  // highs eaten by the distance, drowned in the hall; opts.pan and opts.pitch tell two cars apart
+  _siren(o, opts) {
+    const ctx = this.ctx, t = ctx.currentTime, dur = 4.6, k = opts.pitch || 1;
+    const air = ctx.createBiquadFilter(), env = ctx.createGain();
+    air.type = 'lowpass';
+    air.frequency.value = 1000;
+    air.Q.value = 0.5;
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(1, t + 0.5);
+    env.gain.setValueAtTime(1, t + dur - 0.6);
+    env.gain.linearRampToValueAtTime(0.0001, t + dur);
+    const side = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+    if (side.pan) side.pan.value = opts.pan || 0;
+    env.connect(air);
+    air.connect(side);
+    side.connect(o);
+    const oscs = [['sawtooth', 1], ['square', 1.006]].map(([type, d]) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(520 * k * d, t);
+      osc.frequency.exponentialRampToValueAtTime(1150 * k * d, t + dur * 0.45);
+      osc.frequency.exponentialRampToValueAtTime(520 * k * d, t + dur);
+      g.gain.value = 0.3;
+      osc.connect(g);
+      g.connect(env);
+      o._n++;
+      osc.start(t);
+      osc.stop(t + dur + 0.01);
+      return [osc, g];
+    });
+    oscs.forEach(([osc, g], i) => { osc.onended = () => this._release(o, osc, g, ...(i ? [env, air, side] : [])); });
+  }
   // car alarm: one whoop of a harsh horn siren per call (the vehicle repeats it), at a steady level
   _alarm(o) {
     const ctx = this.ctx, t = ctx.currentTime, dur = 0.37;

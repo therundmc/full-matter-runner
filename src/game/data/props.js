@@ -44,6 +44,8 @@ export const PROPS = {
   // a low round stage one walks on: only its pole is in the way
   dance_stage: { static: true, material: 'metal', r: 3, hp: 14, chips: '#aab4c4', sparks: true, sound: 'metal',
     light: { r: 110, color: '#ffc8ee', intensity: 0.75, flicker: 'pulse' } },
+  // the boss's case, open on the floor by his desk: banknotes fly at every hit
+  cash_case: { material: 'plastic', w: 20, h: 14, hp: 4, kg: 9, mu: 0.85, chips: '#2a2a32', sound: 'wood' },
   bar_counter: { vault: true, material: 'wood', w: 32, h: 19, hp: 16, static: true, chips: '#4a2a1a', sound: 'wood', blocksPath: true },
   dumpster: { static: true, vault: true, material: 'metal', w: 58, h: 34, hp: 36, chips: '#2a6a3a', sound: 'metal', blocksPath: true },
   trash_can: { material: 'metal', r: 7.5, hp: 6, kg: 15, mu: 0.8, chips: '#555', sound: 'metal' },

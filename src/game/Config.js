@@ -200,6 +200,27 @@ export const ALARM = {
   beacon: { r: 140, color: '#ff3b30', dur: 0.3 },
 };
 
+// far-off police sirens once a firefight drags on (systems/Sirens.js); seconds
+export const SIRENS = {
+  lull: 5,                 // shots less than this apart are one firefight
+  after: 25,               // of firefight before the first wail
+  rise: 14,                // to come up, `fade` to die down
+  fade: 10,
+  linger: 35,              // of silence before they give up
+  period: 4.6,             // one wail (Audio siren)
+  cars: [{ pan: -0.5, pitch: 1, vol: 1, late: 0 }, { pan: 0.6, pitch: 0.93, vol: 0.7, late: 7 }], // each its side and voice
+};
+
+// a barrel smokes for a moment after a burst (Character.fume)
+export const BARREL = {
+  max: 8,                  // rounds' worth of heat it holds
+  big: 3,                  // what a shotgun blast or a rocket is worth
+  from: 2.5,               // heat from which it smokes
+  wait: 0.16,              // s after the last shot
+  cool: 3,                 // heat lost per second
+  every: 0.07,             // s between two wisps
+};
+
 // street fauna (systems/Critters.js); distances in tiles, speeds in px/s unless said otherwise
 export const CRITTERS = {
   hit: 5,                  // px a bullet passes within to kill one
