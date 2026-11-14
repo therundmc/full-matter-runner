@@ -510,16 +510,16 @@ export const LIGHTING = {
   dynamicShadows: true,
   charLight: { player: [52, 0.5], enemy: [40, 0.32], color: '#b9a8ff' }, // [radius px, intensity]
   fireLight: 0.32,
-  overbright: 0.35,        // soft-light pass of the light map (punch on lit areas)
+  overbright: 0.2,         // soft-light pass of the light map (punch on lit areas)
   haze: 0.04,              // additive light scattering
-  bloom: 0.95,
+  bloom: 0.7,              // the user found the lights too strong: "one sees nothing"; keep it diffuse
   bloomBlur: [2, 6],       // texels of the two bloom blurs
-  coreGlow: 0.55,          // glow blob on every light source (bloom)
+  coreGlow: 0.42,          // glow blob on every light source (bloom)
   bulb: 0.5,               // small crisp hot spot at every light source
   neonGlow: 0.85,          // dancefloor emissive into bloom
-  flare: 0.5,              // anamorphic streaks of very bright lights
-  reflect: 0.55,           // wet floor reflections
-  puddle: 0.5,             // extra reflections in standing water
+  flare: 0.32,             // anamorphic streaks of very bright lights
+  reflect: 0.34,           // wet floor reflections
+  puddle: 0.4,             // extra reflections in standing water
   reflectFloors: ['asphalt', 'asphalt_line', 'sidewalk', 'checker', 'tile_blue', 'neon_floor'],
   bpm: 108,
   grade: { saturate: 1.22, contrast: 1.06, shadowTint: 'rgb(0,10,18)', highlightTint: 'rgba(255,40,190,0.07)' },

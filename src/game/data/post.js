@@ -34,7 +34,11 @@ export const POST = {
   },
 
   // ---- 4. glow: only what is really bright bleeds, wide and soft (over the lighting's own bloom of the emitters)
-  glow: { threshold: 0.84, knee: 0.12, strength: 0.16 },
+  glow: { threshold: 0.88, knee: 0.1, strength: 0.07 },
+
+  // ---- highlights: what is brighter than `knee` is pulled back by `soften` of the excess, so a lit sidewalk or a
+  // shop window never burns out to plain white (the user: "too saturated, one sees nothing")
+  tone: { knee: 0.62, soften: 0.5 },
 
   // ---- 5. grading, per situation. sat, con: saturation and contrast; gain: multiplies; lift: lightens the blacks
   // toward that colour (screen); tint + tintK: a soft-light wash. The picture eases from one to the next.
@@ -68,7 +72,7 @@ export const POST = {
   focus: { edge: 0, title: 0, look: 0, dead: 0, pause: 1, results: 0.8, ease: 6 },
 
   // ---- 9. shafts: light streaming out of the brightest lamps in view
-  rays: { max: 3, strength: 0.16, reach: 0.55, minRadius: 110 },
+  rays: { max: 3, strength: 0.06, reach: 0.55, minRadius: 110 },
 
   // ---- the rampage: while a chain of kills runs the whole picture heats up, from `from` kills to full at `full`:
   // colours, contrast, fringe (px), glow and vignette added at full; it eases back when the chain breaks

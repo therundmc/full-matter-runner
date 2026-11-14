@@ -5,7 +5,7 @@
 // the offset of their parallax layer.
 import { M, MY, GY, ROAD, LW, canvas, rowF } from './Draw.js';
 import { hash, clamp, smooth } from './Timeline.js';
-import { DOORMAN, CAT, ROOF, MAN } from './Layout.js';
+import { DOORMAN, CAT, ROOF } from './Layout.js';
 
 // ---------------------------------------------------------------- the doorman
 // a big man in a dark jacket against the wall, a foot up on it, smoking. Lit from above by the bulbs of the arrow
@@ -194,18 +194,10 @@ export function drawSmoke(ctx, t, wind, bx, by) {
     ctx.fillRect(Math.round(x) + bx, Math.round(y) + by, 1 + (age > 2 ? 1 : 0) + puff, 1 + puff);
   }
 }
-// soft puffs (steam): from the manhole in the road, and from the vent stack on the bar's roof, blown left
-export function drawSteam(ctx, puffSprite, t, wind, mx, my, bx, by) {
+// soft puffs (steam) from the vent stack on the bar's roof, blown left
+export function drawSteam(ctx, puffSprite, t, wind, bx, by) {
   ctx.imageSmoothingEnabled = true;
   const torn = 1 - 0.45 * wind.gust;
-  for (let i = 0; i < 18; i++) {
-    const life = 4.2 * torn, age = (t + i * life / 18) % life, k = age / life;
-    const breath = 0.45 + 0.55 * Math.max(0, Math.sin((t - age) * 0.7));
-    const x = MAN.x + (hash(i) - 0.5) * 8 + Math.sin(age * 1.3 + i) * 3 * k - wind.speed * age * age * 9 - age * 2, y = MAN.y - age * 13 * (1 - 0.4 * wind.gust);
-    const s = 6 + k * 24;
-    ctx.globalAlpha = (1 - k) * Math.min(1, k * 5) * 0.85 * breath;
-    ctx.drawImage(puffSprite, x - s / 2 + mx, y - s / 2 + my, s * (1 + wind.gust * 0.6), s * 0.8);
-  }
   for (let i = 0; i < 8; i++) {
     const life = 3, age = (t + i * life / 8) % life, k = age / life, s = 3 + k * 12;
     const x = 290 - wind.speed * age * 16 - age * 2 + Math.sin(age * 2 + i) * k * 2, y = ROOF - 13 - age * 5;

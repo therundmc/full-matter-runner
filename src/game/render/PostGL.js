@@ -69,7 +69,7 @@ const FINAL = `${HEAD}
 uniform sampler2D uScene, uSoft, uGlow, uRays;
 uniform vec2 uRes, uFocus, uCentre, uSmear;
 uniform float uTime, uFringe, uZoom, uFrame, uGlitch, uCurve, uScan, uScanStep, uMask, uBleed, uGrain, uVignette;
-uniform float uEdge, uBlur, uGlowK, uRaysK, uRadial, uWaveWidth;
+uniform float uEdge, uBlur, uGlowK, uRaysK, uRadial, uWaveWidth, uToneKnee, uToneSoften;
 uniform vec4 uWaves[4];
 uniform vec4 uHeat[6];
 uniform vec3 uGain, uLift, uTint;
@@ -127,6 +127,8 @@ void main() {
   col = mix(col, soft, clamp(edge * uEdge + uBlur, 0.0, 1.0));
   // glow and shafts
   col += texture2D(uGlow, uv).rgb * uGlowK + texture2D(uRays, uv).rgb * uRaysK;
+  // highlights rolled off: bright stays bright, never a flat white
+  col -= max(col - uToneKnee, 0.0) * uToneSoften;
   // tape: the colour runs, the drawing does not
   col = mix(col, vec3(dot(col, LUMA)) + soft - dot(soft, LUMA), uBleed);
   // grading
@@ -272,6 +274,7 @@ class Post {
         uTime: t % 1000, uFringe: u.fringe, uZoom: u.zoom, uFrame: u.frame, uGlitch: u.glitch, uCurve: u.curve, uScan: u.scan,
         uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette, uEdge: u.edge, uBlur: u.blur,
         uGlowK: u.glow.strength, uRaysK: u.rays.strength, uRadial: u.radial, uWaveWidth: u.waveWidth,
+        uToneKnee: u.tone.knee, uToneSoften: u.tone.soften,
         uSat: u.grade.sat, uCon: u.grade.con, uTintK: u.grade.tintK,
       };
       for (const k in one) g.uniform1f(l[k], one[k]);

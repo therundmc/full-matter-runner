@@ -199,7 +199,7 @@ export default class Lens {
       smear: [this.smear.x * (H / W), this.smear.y],
       radial: this.radial, centre,
       edge: this.edge, blur: this.blur,
-      glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights,
+      glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights, tone: c.tone,
       grade: g,
       curve: t.curve, scan: t.scan, scanStep: Math.max(2, Math.round(H / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
       vignette: t.vignette + R.vignette * r,

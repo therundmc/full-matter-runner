@@ -10,7 +10,7 @@ import { PALETTE } from '../Config.js';
 import { text, glitchText, neon } from './Text.js';
 import { LW, LH, M, MY, CW, CH, RX, RY, GY, ROAD, F, rowF, canvas, shade, put, cropTo, glowSprite } from './title/Draw.js';
 import { hash, clamp, smooth, windState, signState, bulbState, sweepState, lightningState, tubeState } from './title/Timeline.js';
-import { LAMP, TUBE, WIN, HYD, BOOTH, MAN, COLD, WARM, AMBER, BOOTHC, PINK, CYAN, VIOLET, BULB, AMB } from './title/Layout.js';
+import { LAMP, TUBE, WIN, HYD, BOOTH, COLD, WARM, AMBER, BOOTHC, PINK, CYAN, VIOLET, BULB, AMB } from './title/Layout.js';
 import { HIDDEN, buildSky, buildClouds, buildFlash, buildFar, buildMid, buildBarAlbedo, buildGround, buildRefl, buildProps, buildBoothGlow, buildFg, buildFgNeon, buildCone, buildWinBase } from './title/Layers.js';
 import { buildSign, drawSignLit, drawSignFx, SIGN_LIGHT, REFL_SPAN } from './title/Sign.js';
 import { buildRain, rainFrame, drawRain, drawFrontRain, drawSplashes, drawGroundWater, drawMist } from './title/Rain.js';
@@ -334,7 +334,7 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   ctx.drawImage(S.glowWhite, BOOTH.x - 10 + hx + M, BOOTH.y - BOOTH.h - 6 + hy + MY, BOOTH.w + 20, BOOTH.h + 14);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.imageSmoothingEnabled = false;
   drawBoothWater(ctx, t, hx + M, hy + MY);
-  drawSteam(ctx, S.puff, t, wind, sx(rowF(MAN.y)), sy(rowF(MAN.y)), bx, by);
+  drawSteam(ctx, S.puff, t, wind, bx, by);
   drawPapers(ctx, t, wind, sx, sy);
 
   // 6. foreground: car rear (beads on it, rain bouncing off it), lamp post, cone, moths; then the rain in front of
