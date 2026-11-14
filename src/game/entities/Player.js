@@ -9,7 +9,11 @@ import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind } from '../systems/Takedown.js';
 import { finisherFor, TAKEDOWNS } from '../data/finishers.js';
+import { MOMENTS, GESTURE } from '../data/feel.js';
 import { blowFx } from '../fx/Blows.js';
+import { landMoment } from '../fx/Impact.js';
+import { muzzleFlash } from '../fx/CombatFx.js';
+import { smooth } from './CharacterAnim.js';
 
 const { Body, Query } = Matter;
 let scuff = null; // floor scuff stamp, made on first use
@@ -24,6 +28,7 @@ export default class Player extends Character {
     this.nearDowned = null;
     this.nearBack = null;   // a guard whose back we stand right behind (Space takes him down)
     this.nearTrunk = null;  // a parked car's closed trunk within reach, with something in it (E opens it)
+    this.trunkOpen = null;  // { car, t, took } while he opens it (updateTrunk)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.rising = false;
@@ -88,6 +93,7 @@ export default class Player extends Character {
     if (this.sit > 0 && !this.updateSit(dt, input)) return;
     if (this.execution) { this.updateExecution(dt); return; }
     if (this.takedown) { this.updateTakedown(dt); return; }
+    if (this.trunkOpen) { this.updateTrunk(dt); return; }
     this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
     if (this.updateVault(dt)) return;
 
@@ -152,7 +158,7 @@ export default class Player extends Character {
       else this.pickUp();
     }
     if (input.hit('KeyE')) {
-      if (this.nearTrunk) this.nearTrunk.openTrunk();
+      if (this.nearTrunk) this.startTrunk(this.nearTrunk);
       else this.pickUp();
     }
   }
@@ -187,15 +193,48 @@ export default class Player extends Character {
     return false;
   }
 
+  // E at the tail of a parked car (GESTURE.trunk): he bends over it, lifts the lid with both hands and takes what is
+  // inside; he cannot strike meanwhile
+  startTrunk(car) {
+    this.trunkOpen = { car, t: 0, took: false };
+    car.trunk.open = true;
+    car.liftTrunk(0);
+    this.nearTrunk = null;
+    this.swing = 0;
+    this.world.sound('carHit', car.x, car.y, 0.35);
+  }
+
+  updateTrunk(dt) {
+    const o = this.trunkOpen, car = o.car, T = GESTURE.trunk;
+    if (car.dead || car.exploded) { this.trunkOpen = null; return; }
+    o.t += dt;
+    const k = o.t / T.dur, at = car.trunkSpot(), dx = at.x - this.x, dy = at.y - this.y;
+    // squared up to the lid's edge, a step in if he is not quite there
+    this.angle = Math.atan2(dy, dx);
+    this.steer(dx, dy, Math.hypot(dx, dy) > 7 ? 1.5 : 0, 0.5);
+    car.liftTrunk(smooth((k - T.lift[0]) / (T.lift[1] - T.lift[0])));
+    if (!o.took && k >= T.take) {
+      o.took = true;
+      const type = car.takeFromTrunk();
+      if (type) this.take(type);
+    }
+    if (k >= 1) this.trunkOpen = null;
+  }
+
   pickUp() {
     const it = this.nearItem;
     if (!it) return;
-    if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
-    this.setWeapon(it.type, it.mag);
-    this.weapon.wear = it.wear ?? this.def.wear;
     this.world.removeItem(it);
+    this.take(it.type, it.mag, it.wear);
+  }
+
+  // a weapon into the hand (what was in it falls behind him): mag = rounds in it, wear = kills left in a melee one
+  take(type, mag, wear) {
+    if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
+    this.setWeapon(type, mag);
+    this.weapon.wear = wear ?? this.def.wear;
     this.world.sound('pickup', this.x, this.y);
-    this.world.events.emit('pickup', { ch: this, type: it.type });
+    this.world.events.emit('pickup', { ch: this, type });
     if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7, { weapon: this.weapon.type });
     this.pickAnim = 0.35;
     this.cooldown = 0.2;
@@ -215,7 +254,7 @@ export default class Player extends Character {
     this.cooldown = 0.15;
     this.throwT = this.throwDur;
     w.sound('throw', this.x, this.y, power ? 1 : 0.8);
-    if (power) { w.slowmo(0.45, 0.25); w.shake(0.15); }
+    if (power) { w.slowmo(...MOMENTS.throw.slowmo); w.shake(MOMENTS.throw.shake); }
   }
 
   // ---------------- slide ----------------
@@ -271,8 +310,7 @@ export default class Player extends Character {
         if (Math.hypot(ex, ey) > this.radius + e.radius + sl.speed + 2 || ex * sl.dx + ey * sl.dy <= 0) continue;
         e.knock(sl.angle, 'slide');
         w.sound('punch', e.x, e.y);
-        w.shake(0.15);
-        w.hitstop(0.04);
+        landMoment(w, e, sl.angle, null, MOMENTS.slide, false);
       }
     }
     const v = Body.getVelocity(this.body);
@@ -341,6 +379,7 @@ export default class Player extends Character {
     const [wait, what] = f.beats[ex.i];
     if (ex.t < wait) return;
     ex.t = 0;
+    const last = ex.i === f.beats.length - 1;
     if (what === 'windup') {
       // let go: the swing comes round in slow motion
       if (f.slowmo) w.slowmo(...f.slowmo);
@@ -351,19 +390,25 @@ export default class Player extends Character {
       this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
       w.particles.blood(tg.x, tg.y, rand(0, 6.28), Math.PI, 14, 160);
       w.decals.stampBlood(tg.x, tg.y, 6, 4);
-      w.shake(0.18);
       if (what === 'shot') {
-        if (this.weapon.mag > 0) { this.weapon.mag--; w.muzzleFlash(tg.x, tg.y, this.angle, d); w.sound(d.sound, this.x, this.y); if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot'); }
-        else w.sound('punch', tg.x, tg.y);
+        if (this.weapon.mag > 0) {
+          this.weapon.mag--;
+          const m = this.muzzlePos();
+          muzzleFlash(w, m.x, m.y, this.angle, d, this);
+          w.sound(d.sound, this.x, this.y);
+          if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
+        } else w.sound('punch', tg.x, tg.y);
       } else {
         w.sound(d.hold === 'none' ? 'punch' : d.swing === 'blade' ? 'slash' : 'splat', tg.x, tg.y);
         if (d.swing === 'club') blowFx(w, d, tg, this.angle, { heavy: true, from: 'side' });
         if (what === 'stomp') {
           w.particles.dust(tg.x, tg.y, 8, 12, '#6a6272', { speed: 50, size: 4, life: 0.7, alpha: 0.2 });
-          w.shake(0.3);
+          w.shake(MOMENTS.stomp.shake);
           w.sound('bodyFall', tg.x, tg.y, 1);
         }
       }
+      // every beat but the last lands as a blow of its own (the last one lands as the finisher, once he is dead)
+      if (!last) landMoment(w, tg, this.angle, d, MOMENTS.beat, false);
     }
     if (++ex.i < f.beats.length) {
       if (f.beats[ex.i][1] === 'windup') this.windup();
@@ -380,6 +425,7 @@ export default class Player extends Character {
       angle = this.angle - this.punchSide * 1.2;
     } else if (f.cause === 'slash') by = { gore: 0, wound: 'slash' };
     tg.kill(angle, f.cause, this, by, { finisher: true, label: f.label });
+    landMoment(w, tg, angle, d, MOMENTS.finisher, !tg.alive);
     if (f.plant) this.breakWeapon(this.angle, true);
     this.execution = null;
     this.cooldown = 0.25;
@@ -395,7 +441,7 @@ export default class Player extends Character {
     this.contextAction = null;
     this.swing = 0;
     target.held = this;
-    target.swing = 0;
+    target.swing = target.tell = 0;
     this.world.sound('grab', target.x, target.y, 1, { pitch: target.voice });
   }
 
@@ -416,8 +462,6 @@ export default class Player extends Character {
       tg.angle += angDiff(tg.angle, this.angle + td.side * 0.9 * wr * wr) * Math.min(1, dt * 30);
       if (k >= T.killAt) {
         td.done = true;
-        w.hitstop(0.07);
-        w.camera.push(Math.cos(this.angle + td.side * 1.5) * 2, Math.sin(this.angle + td.side * 1.5) * 2);
         const how = { label: TAKEDOWNS[td.kind].label };
         if (td.blade) tg.kill(this.angle, 'slash', this, this.def, how);
         else if (td.kind === 'club') {
@@ -425,6 +469,7 @@ export default class Player extends Character {
           blowFx(w, this.def, tg, this.angle, { heavy: true, from: 'behind' });
           tg.kill(this.angle, 'melee', this, { gore: 0, wound: 'crush' }, how);
         } else tg.kill(this.angle + td.side * 1.5, 'snap', this, undefined, how);
+        landMoment(w, tg, this.angle + td.side * 1.5, this.def, MOMENTS.takedown, !tg.alive);
       }
     }
     if (k >= 1) {

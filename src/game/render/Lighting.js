@@ -758,14 +758,6 @@ export default class Lighting {
       f.globalAlpha = a * L.flare;
       f.drawImage(this.blob(l.color), l.x - r * 6, l.y - r * 0.35, r * 12, r * 0.7);
     }
-    const hot = this.blob('#ffd890');
-    for (const fl of w.flashes) {
-      const r = fl.big ? 26 : 16;
-      e.globalAlpha = 1;
-      e.drawImage(hot, fl.x - r, fl.y - r, r * 2, r * 2);
-      f.globalAlpha = L.flare;
-      f.drawImage(hot, fl.x - r * 6, fl.y - r * 0.3, r * 12, r * 0.6);
-    }
     const fire = this.blob('#ff8a2a'), spark = this.blob('#fff0b0');
     for (const p of w.particles.list) {
       if (p.type === P.FIRE) {

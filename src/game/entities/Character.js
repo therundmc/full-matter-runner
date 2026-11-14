@@ -11,7 +11,11 @@ import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, drawPose, drawDown, ladderAt, ladderGrip } from './CharacterAnim.js';
+import { landBlow, jolt, killBeat } from '../fx/Impact.js';
+import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
+import { feelOf, MOMENTS, TELL, GESTURE } from '../data/feel.js';
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt }
+  from './CharacterAnim.js';
 
 const { Bodies, Body } = Matter;
 
@@ -32,6 +36,7 @@ const LAND_NOISE = 120;  // px a flat landing is heard at
 // cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
 const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
+const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
 
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
@@ -63,6 +68,8 @@ export default class Character {
     this.swingDur = 1;
     this.punchSide = 1;
     this.strike = 0;        // gesture of the current melee blow: 0 forehand, 1 backhand, 2 smash / stab, 3 spin / overhead stab
+    this.tell = 0;          // s left of a guard's wind-up before his blow comes (windUp)
+    this.tellDur = 1;
     this.recoil = 0;
     this.barrel = 0;        // heat of the barrel, in rounds: it smokes after a burst (BARREL)
     this.fumeT = 0;
@@ -85,6 +92,8 @@ export default class Character {
     this.stow = 0;          // weapon put away 1 .. in hand 0 (ai/Carry.js; only the guards ever put theirs away)
     this.lower = 0;         // gun held low 1 .. raised on a target 0
     this.downT = 0;         // time since knocked down
+    this.riseDur = 0;       // s the getting up takes, once it has started (CharacterAnim.riseDurAt)
+    this.doorHand = null;   // { x, y, a, w }: a hand flat on the door leaf he pushes (updateDoorHand)
     this.pose = newPose();
     this.pose2 = newPose();
     this.alive = true;
@@ -209,6 +218,8 @@ export default class Character {
     const wasDown = this.downT;
     this.downT = this.knocked > 0 ? this.downT + dt : 0;
     if (wasDown < 0.18 && this.downT >= 0.18) this.world.particles.smoke(this.x, this.y, 3, 5, { speed: 25, size: 4, life: 0.5 });
+    this.riseDur = riseDurAt(this.riseDur, this.knocked, GESTURE.getup.dur);
+    this.updateDoorHand(dt, sp, v);
     // smoothed gait / feet direction / lean into acceleration (frozen while vaulting, so the run resumes on landing)
     if (!this.vaulting) {
       const kg = 1 - Math.exp(-dt * 12), kf = 1 - Math.exp(-dt * 14), kl = 1 - Math.exp(-dt * 10);
@@ -220,8 +231,27 @@ export default class Character {
     this.prevVel.x = v.x; this.prevVel.y = v.y;
   }
 
+  // walking into a door leaf: a hand comes up flat against it for as long as he pushes (GESTURE.door)
+  updateDoorHand(dt, sp, v) {
+    const G = GESTURE.door, doors = this.world.doors;
+    let on = false;
+    if (sp > G.speed && !this.vaulting && !(this.knocked > 0) && doors?.length) {
+      for (const door of doors) {
+        const t = door.touch(this.x, this.y, this.radius + G.gap, TOUCH);
+        if (t && (t.x - this.x) * v.x + (t.y - this.y) * v.y > 0) { on = true; break; }
+      }
+    }
+    const H = this.doorHand;
+    if (on) {
+      const h = (this.doorHand = H || { x: 0, y: 0, a: 0, w: 0 });
+      h.x = TOUCH.x; h.y = TOUCH.y; h.a = TOUCH.a;
+      h.w = Math.min(1, h.w + dt / G.on);
+    } else if (H && (H.w -= dt / G.off) <= 0) this.doorHand = null;
+  }
+
   // ---------------- combat ----------------
-  attack() {
+  // fromTell: the blow a guard has been winding up (windUp): it goes on from its held anticipation
+  attack(fromTell = false) {
     if (this.cooldown > 0 || !this.alive || this.knocked) return false;
     const d = this.def;
     if (d.kind === 'gun') {
@@ -239,13 +269,27 @@ export default class Character {
       this.cooldown = d.rate;
       return true;
     }
-    this.strike = this.pickStrike(d);
+    if (!fromTell) this.pickBlow(d);
     this.cooldown = d.rate;
-    this.swingDur = this.swing = d.rate * 0.85;
-    // side the stroke comes from (it runs toward the other one)
-    this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
+    this.swingDur = d.rate * 0.85;
+    this.swing = this.swingDur * (fromTell ? 1 - TELL.hold : 1);
     this.world.sound('swing', this.x, this.y, 0.6);
     this.world.after(d.windup, () => this.meleeStrike(d));
+    return true;
+  }
+
+  // the gesture of the next blow, and the side its stroke comes from (it runs toward the other one)
+  pickBlow(d) {
+    this.strike = this.pickStrike(d);
+    this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
+  }
+
+  // a guard's blow does not come out of nowhere: he picks it and holds its anticipation (the weapon drawn back, a
+  // glint on it: Enemy.drawMarks) for the weapon's FEEL tell, then lets it go (Enemy.update calls attack(true))
+  windUp() {
+    if (this.cooldown > 0 || this.tell > 0 || this.def.kind === 'gun') return false;
+    this.pickBlow(this.def);
+    this.tell = this.tellDur = feelOf(this.def).tell;
     return true;
   }
 
@@ -289,7 +333,7 @@ export default class Character {
       w.addProjectile(pr);
     }
     const m = this.muzzlePos();
-    w.muzzleFlash(m.x, m.y, a, d);
+    muzzleFlash(w, m.x, m.y, a, d, this);
     if (d.casing) {
       const ca = a + Math.PI / 2 + rand(-0.4, 0.3);
       const v = rand(70, 140);
@@ -306,10 +350,7 @@ export default class Character {
     this.weapon.mag--;
     this.vel.x -= Math.cos(a) * d.kick * 0.12;
     this.vel.y -= Math.sin(a) * d.kick * 0.12;
-    if (this.isPlayer) {
-      w.shake(d.shake);
-      w.camera.push(-Math.cos(a) * d.kick, -Math.sin(a) * d.kick);
-    }
+    if (this.isPlayer) { const f = feelOf(d).fire; jolt(w, a + Math.PI, 0, f.shake, f.push); }
   }
 
   meleeStrike(d) {
@@ -325,20 +366,18 @@ export default class Character {
       if (Math.abs(angDiff(a, Math.atan2(dy, dx))) > arc / 2 && dd > c.radius + 5) continue;
       if (!w.lineOfSight(x, y, c.x, c.y)) continue;
       hit = true;
-      // the blow lands: a spark across it (along it for a stab or a smash), the camera takes some of it
       const heavy = d.hold === 'melee' && (this.strike === 2 || (this.strike === 3 && d.swing === 'blade'));
-      w.hitSpark((x + c.x * 2) / 3, (y + c.y * 2) / 3, heavy || d.hold === 'none' ? a : a - (Math.PI / 2) * this.punchSide, d.lethal ? 1.4 : 1);
-      if (this.isPlayer) { w.camera.push(Math.cos(a) * 2, Math.sin(a) * 2); w.hitstop(d.heft === 2 ? 0.06 : 0.045); }
+      // a spin takes him the way it found him, wherever he stood round us
+      const ba = spin ? Math.atan2(dy, dx) : a;
+      let hard = heavy;
       if (d.lethal || c.isPlayer) {
-        // a spin takes him the way it found him, wherever he stood round us
-        const ba = spin ? Math.atan2(dy, dx) : a;
         // how it landed: the heavy stroke, a spin or a sweep, and from which side of him (fx/Blows.js, Scoring)
         const how = { from: blowFrom(c.angle, ba), heavy };
         if (spin) how.spin = true;
         // the player's weapon wears out: the kill that uses it up breaks it over him (once, even through two men)
         const wears = this.isPlayer && d.wear && weapon && this.weapon === weapon;
         const last = wears && weapon.wear <= 1;
-        if (last) { how.broke = true; how.heavy = true; }
+        if (last) { how.broke = true; how.heavy = hard = true; }
         if (d.lethal) blowFx(w, d, c, ba, how);
         // a club brought straight down crushes, and drops him where he stood
         let by = heavy && d.swing === 'club' && !d.thrust ? { ...d, wound: 'crush', gore: (d.gore || 0.3) * 2.5 } : d;
@@ -351,6 +390,8 @@ export default class Character {
         c.kill(ba, d.swing === 'blade' ? 'slash' : 'melee', this, by, how);
         if (wears && --weapon.wear <= 0) this.breakWeapon(a, !!by.stuck);
       } else c.knock(a, 'punch');
+      // what the eye and the screen take of it (fx/Impact.js), at the point of contact
+      landBlow(w, c, (x + c.x * 2) / 3, (y + c.y * 2) / 3, ba, d, { lethal: !c.alive, byPlayer: this.isPlayer, heavy: hard });
     }
     for (const p of w.props) {
       if (p.dead) continue;
@@ -421,9 +462,9 @@ export default class Character {
       w.sound(metal ? 'metal' : 'wood', tip.x, tip.y, 1, metal ? { pitch: 0.7 } : undefined);
       this.weapon = null;
     }
-    w.slowmo(0.35, 0.3);
-    w.hitstop(0.1);
-    w.shake(0.35);
+    const B = MOMENTS.break;
+    w.slowmo(...B.slowmo);
+    jolt(w, a, B.stop, B.shake, 0);
   }
 
   // hit by a projectile; how: what the round did on its way (Projectile: pierced, through, bounced, dist, last)
@@ -432,6 +473,11 @@ export default class Character {
     if (weaponDef?.pellets > 1) cause = distance < 120 ? 'blast' : 'bullet';
     else if (weaponDef?.heavy) cause = 'heavy';
     this.kill(angle, cause, shooter, weaponDef || {}, how);
+    // a few pellets from afar land as a share of the whole charge
+    if (weaponDef?.kind === 'gun') {
+      landBlow(this.world, this, this.x - Math.cos(angle) * this.radius, this.y - Math.sin(angle) * this.radius, angle, weaponDef,
+        { lethal: !this.alive, byPlayer: !!shooter?.isPlayer, share: cause === 'bullet' && weaponDef.pellets > 1 ? 0.6 : 1 });
+    }
   }
 
   // by: what did it (a weapon definition, or { gore, wound }): sets the dismemberment odds and the bleeding;
@@ -445,6 +491,7 @@ export default class Character {
     // most of them go down with a cry, when there is still a throat to cry with
     if (left === 'corpse' && !this.held && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
     this.world.onKill(this, cause, killer, how);
+    killBeat(this.world, this, killer);
   }
 
   knock() { /* overridden by Enemy */ }
@@ -610,6 +657,10 @@ export default class Character {
     if (this.slideAnim) slidePose(this, P, this.pose2);
     if (this.vaulting) vaultPose(this, P, this.pose2);
     if (this.sit > 0) sitPose(this, P, this.pose2);
+    if (this.trunkOpen) trunkPose(this, P, this.pose2);
+    if (this.doorHand) doorHandPose(this, P);
+    // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
+    if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
     drawPose(ctx, this, P);
   }
 }

@@ -5,11 +5,14 @@ import { rand, clamp } from '../../engine/math.js';
 import { RESIST, COST, HARDNESS, wallExit, bodyExit, afterCost, ricochet } from '../systems/Penetration.js';
 import { woundFor } from '../data/wounds.js';
 import { WALL_IMPACT } from '../data/materials.js';
+import { feelOf, SURFACE } from '../data/feel.js';
+import { combatFx } from '../fx/CombatFx.js';
 
 // Fast bullet traced as a segment each step (no tunnelling), or a slow rocket.
 // A bullet carries penetration energy (`pen`): every obstacle eats some of it (systems/Penetration.js); if any is
 // left it comes out the far side (exit hole, debris blown forward, slightly deflected), slower. Grazing hits on hard
-// surfaces ricochet.
+// surfaces ricochet. Its streak in flight and the pop where it stops on anything but a man go by its weapon's family
+// (data/feel.js `round`); a heavy round leaves the line of its way hanging a moment (fx/CombatFx.js wake).
 export default class Projectile {
   constructor(world, x, y, angle, speed, opts) {
     this.world = world;
@@ -31,6 +34,8 @@ export default class Projectile {
     // its way so far, for the score: people killed, a wall or a door gone through, a ricochet
     this.kills = 0; this.through = false; this.bounced = false;
     if (this.rocket) this.img = sprite('weapons/rocket');
+    this.look = feelOf(this.weapon).round;
+    this.wake = this.look.wake ? combatFx(world).wake(x, y, this.look.wake, this.look.width) : null;
   }
 
   update(dt) {
@@ -45,7 +50,7 @@ export default class Projectile {
       const skipped = this.bounced;
       const r = this.onHit(hit);
       if (r !== true && this.bounced === skipped && (hit.kind === 'wall' || hit.kind === 'door')) this.through = true;
-      if (r === true) { this.x = hit.x; this.y = hit.y; this.dead = true; return; }
+      if (r === true) { this.x = hit.x; this.y = hit.y; this.dead = true; if (this.wake) this.trace(hit.x, hit.y); return; }
       if (r === false) {
         x0 = hit.x + Math.cos(this.angle) * 0.5;
         y0 = hit.y + Math.sin(this.angle) * 0.5;
@@ -55,14 +60,23 @@ export default class Projectile {
       const left = Math.max(0, Math.hypot(x1 - hit.x, y1 - hit.y) - Math.hypot(r.x - hit.x, r.y - hit.y));
       this.steer(r.a);
       this.ox = r.x; this.oy = r.y;
+      if (this.wake) this.trace(hit.x, hit.y, r.x, r.y);
       x0 = r.x + Math.cos(r.a) * 0.5; y0 = r.y + Math.sin(r.a) * 0.5;
       x1 = x0 + Math.cos(r.a) * left; y1 = y0 + Math.sin(r.a) * left;
     }
     this.x = x1; this.y = y1;
+    if (this.wake) this.trace(x1, y1);
     if (this.rocket) {
       w.particles.smoke(this.x - this.vx * 0.02, this.y - this.vy * 0.02, 1, 2, { speed: 15, size: 4, life: 0.9 });
       w.particles.fire(this.x - this.vx * 0.03, this.y - this.vy * 0.03, 1, 30);
     }
+  }
+
+  // the wake reaches (x, y) and stays fresh; a new leg of it starts at (nx, ny) when the round turns there
+  trace(x, y, nx, ny) {
+    const wk = this.wake;
+    wk.x1 = x; wk.y1 = y; wk.t0 = this.world.time;
+    if (nx !== undefined) this.wake = combatFx(this.world).wake(nx, ny, this.look.wake, this.look.width);
   }
 
   // new heading; speed follows the energy left (kinetic: v ~ sqrt(E))
@@ -109,6 +123,7 @@ export default class Projectile {
         const g = this.glance(h, HARDNESS[w.map.at(h.cx, h.cy)]);
         if (g) { w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5, 0.6); return g; }
         const na = Math.atan2(h.ny, h.nx);
+        combatFx(w).burst(h.x + h.nx, h.y + h.ny, na, SURFACE);
         w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5);
         const s = WALL_IMPACT[w.map.at(h.cx, h.cy)] || WALL_IMPACT.X;
         if (s.sparks) w.particles.sparks(h.x, h.y, na, 0.9, s.sparks, 260);
@@ -144,6 +159,7 @@ export default class Projectile {
         }
         const kind = this.weapon?.pellets > 1 ? 'pellet' : this.weapon?.ammo === '762' ? 'rifle' : 'bullet';
         this.ignore.add(p);
+        combatFx(w).burst(h.x, h.y, a + Math.PI, SURFACE);
         const out = bodyExit(p.body.vertices, h.x, h.y, a);
         const cost = !out ? Infinity : p.isVehicle ? COST.vehicle : (RESIST[mat] ?? 1) * out.len;
         if (p.isVehicle) p.hit(dmg, h.x, h.y, a, this.weapon?.pellets > 1 ? 0.6 : 1, kind);
@@ -160,6 +176,7 @@ export default class Projectile {
       case 'door': {
         const d = h.target;
         d.hit(h.x, h.y, a, heavy ? 3 : 1, 'bullet');
+        combatFx(w).burst(h.x, h.y, a + Math.PI, SURFACE);
         this.ignore.add(d);
         const out = bodyExit(d.body.vertices, h.x, h.y, a);
         if (!out) return true;
@@ -236,16 +253,16 @@ export default class Projectile {
       drawSprite(ctx, this.img, this.x, this.y, this.angle);
       return;
     }
-    const tl = 0.022;
-    let tx = this.x - this.vx * tl, ty = this.y - this.vy * tl;
+    const R = this.look;
+    let tx = this.x - this.vx * R.len, ty = this.y - this.vy * R.len;
     // do not draw the trail behind the muzzle
     if ((tx - this.ox) * this.vx + (ty - this.oy) * this.vy < 0) { tx = this.ox; ty = this.oy; }
     ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = 'rgba(255,200,90,0.35)';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = R.width;
     ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(this.x, this.y); ctx.stroke();
     ctx.strokeStyle = '#fff6d0';
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = R.core;
     ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(this.x, this.y); ctx.stroke();
     ctx.globalCompositeOperation = 'source-over';
   }

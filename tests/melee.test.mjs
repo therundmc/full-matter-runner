@@ -10,7 +10,7 @@ const { default: Player } = await load('game/entities/Player.js');
 const noop = () => {};
 const sink = new Proxy({}, { get: () => noop });
 const world = (victims) => ({
-  particles: sink, decals: sink, camera: sink, sound: noop, slowmo: noop, hitstop: noop, shake: noop, hitSpark: noop,
+  particles: sink, decals: sink, camera: sink, sound: noop, slowmo: noop, hitstop: noop, shake: noop, events: sink, time: 0,
   characters: () => victims, lineOfSight: () => true, props: [], windows: [], doors: [], corpses: [], debris: [], items: [],
   map: { isWallChar: () => false },
 });

@@ -9,6 +9,7 @@ import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
 import { OUTRO } from '../systems/Outro.js';
+import { drawCombat } from '../fx/CombatFx.js';
 
 const { Body } = Matter;
 
@@ -58,6 +59,7 @@ export default class WorldRenderer {
     let lightMs = performance.now() - l0;
     if (w.cleared && w.level.exit && !w.outro) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
+    drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
     if (lit) w.lighting.post(ctx, cam, t);
@@ -139,36 +141,6 @@ export default class WorldRenderer {
       ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
     }
     ctx.globalAlpha = 1;
-    for (const f of w.flashes) {
-      ctx.save();
-      ctx.translate(f.x, f.y);
-      ctx.rotate(f.a);
-      const s = f.big ? 1.6 : 1;
-      ctx.fillStyle = '#ffb020';
-      ctx.beginPath();
-      ctx.moveTo(-1, 0); ctx.lineTo(4 * s, -5 * s); ctx.lineTo(7 * s, -1.5 * s); ctx.lineTo(14 * s * rand(0.8, 1.2), 0);
-      ctx.lineTo(7 * s, 1.5 * s); ctx.lineTo(4 * s, 5 * s); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#fffbe0';
-      ctx.beginPath(); ctx.arc(2, 0, 2.5 * s, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
-    // hit sparks: a long thin streak along the blow, a short one across, opening up as they fade
-    for (const f of w.hitSparks) {
-      const p = 1 - f.t / f.dur, l = (9 + 9 * p) * f.size, h = (2.2 - 1.6 * p) * f.size;
-      ctx.save();
-      ctx.translate(f.x, f.y);
-      ctx.rotate(f.a);
-      ctx.globalAlpha = 1 - p * p;
-      ctx.fillStyle = '#fff6e0';
-      for (let i = 0; i < 2; i++) {
-        const k = i ? 0.45 : 1;
-        ctx.beginPath();
-        ctx.moveTo(-l * k, 0); ctx.lineTo(0, -h); ctx.lineTo(l * k, 0); ctx.lineTo(0, h);
-        ctx.closePath(); ctx.fill();
-        ctx.rotate(Math.PI / 2);
-      }
-      ctx.restore();
-    }
     ctx.globalAlpha = 1;
     for (const r of w.rings) {
       const p = r.t / r.dur;

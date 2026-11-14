@@ -5,7 +5,7 @@ const FREE = MASK.DEBRIS & ~CAT.PROP;
 import { sprite, spriteOpt, silhouette, chunk, glassShards, slices } from '../../engine/Assets.js';
 import { rand, chance, clamp, local } from '../../engine/math.js';
 import Debris from './Debris.js';
-import WeaponItem from './WeaponItem.js';
+import { WEAPONS } from '../data/weapons.js';
 import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/Body.js';
 
 const { Bodies, Body, Sleeping } = Matter;
@@ -112,19 +112,23 @@ export default class Vehicle {
   // sprite coordinates -> world point
   toWorld(sx, sy) { return local(this.x, this.y, this.body.angle, sx - this.w / 2, sy - this.h / 2); }
 
-  // where one stands to open the trunk (level prop option `trunk`: the weapon lying in it), and opening it: the
-  // lid goes up and what was in it is tipped out on the road behind the bumper
-  // standing anywhere round the tail will do: behind the bumper or by either rear corner
+  // The trunk (level prop option `trunk`: { item: the weapon lying in it, open, lift }), opened by the player
+  // (Player.startTrunk): where one stands to open it (anywhere round the tail: behind the bumper or by either rear
+  // corner), where his hands go (the lid's edge, behind the bumper), the lid coming up, what is inside taken out
   nearTrunk(px, py) {
     const { sx, sy } = this.toSprite(px, py);
     return sx > -36 && sx < 36 && sy > -28 && sy < this.h + 28;
   }
 
-  openTrunk() {
-    const w = this.world, t = this.trunk, at = this.toWorld(-9, this.h / 2), a = this.body.angle + Math.PI;
-    t.open = true;
-    w.sound('carHit', this.x, this.y, 0.35);
-    w.addItem(new WeaponItem(w, t.item, undefined, at.x, at.y, a + rand(1, 2), Math.cos(a) * 1.2, Math.sin(a) * 1.2, rand(-0.15, 0.15)));
+  trunkSpot() { return this.toWorld(-9, this.h / 2); }
+
+  // 0 shut .. 1 up against the rear window
+  liftTrunk(k) { this.trunk.lift = k; }
+
+  takeFromTrunk() {
+    const t = this.trunk, item = t.item;
+    t.item = null;
+    return item;
   }
 
   inside(r, sx, sy) { return r && sx >= r[0] && sx <= r[1] && sy >= r[2] && sy <= r[3]; }
@@ -529,11 +533,21 @@ export default class Vehicle {
     ctx.globalAlpha = 1;
     ctx.drawImage(this.canvas, ox + sagX + jx, oy + sagY);
     if (this.trunk?.open && !this.exploded) {
-      // the open trunk: its dark well, the lid standing up against the rear window
-      const x0 = ox + 5 + sagX, y0 = oy + 9 + sagY, n = this.m.tank[1] - 9;
-      ctx.fillStyle = '#08080e'; ctx.fillRect(x0, y0, n, this.h - 18);
-      ctx.fillStyle = this.m.color; ctx.fillRect(x0 + n, y0 - 1, 3, this.h - 16);
-      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x0 + n + 2, y0 - 1, 1, this.h - 16);
+      // the open trunk: its dark well (with what is still in it), the lid standing up against the rear window; seen
+      // from above, its edge runs from the bumper to the window as it comes up
+      const t = this.trunk, x0 = ox + 5 + sagX, y0 = oy + 9 + sagY, n = this.m.tank[1] - 9, k = t.lift ?? 1, e = Math.round(n * k);
+      ctx.fillStyle = '#08080e'; ctx.fillRect(x0, y0, e, this.h - 18);
+      if (t.item && e > 4) {
+        const img = sprite(WEAPONS[t.item].sprite);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0, y0, e, this.h - 18); ctx.clip();
+        ctx.translate(x0 + n / 2, y0 + (this.h - 18) / 2);
+        ctx.rotate(Math.PI / 2 - 0.3);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        ctx.restore();
+      }
+      ctx.fillStyle = this.m.color; ctx.fillRect(x0 + e, y0 - 1, 3, this.h - 16);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x0 + e + 2, y0 - 1, 1, this.h - 16);
     }
     if (this.glow && !this.lightsOut) {
       const blink = this.alarm > 0 ? (Math.floor(this.alarm * 2.4) % 2 === 0 ? 1 : 0.15) : 0.85;

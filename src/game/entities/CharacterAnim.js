@@ -5,7 +5,9 @@
 // arms, torso.
 // Optional on a character: stow / lower (how the weapon is carried, ai/Carry.js) and busyHands() (where hands taken
 // by something else are: a pastime, a cigarette, a panic).
+// A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN } from '../Config.js';
+import { TELL, GESTURE } from '../data/feel.js';
 import { sprite, spriteOpt, drawSprite, silhouette } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 
@@ -26,8 +28,9 @@ export function newPose() {
     tx: 0, ty: 0, ta: 0, s: 1, lift: 0, legs: 0, // legs: visibility of the thighs (thrown-forward poses)
     tuck: 0, over: 0, // curled up in a ball, the back up (a roll); the legs up over the body
     feet: [pt(), pt()],
-    hl: pt(), hr: pt(), wpn: pt(), carry: pt(), trail: { on: false, x: 0, y: 0, a0: 0, a1: 0, r: 0, alpha: 0 },
+    hl: pt(), hr: pt(), wpn: pt(), carry: pt(),
     wpnOn: false, carryImg: null,
+    flat: null, flatA: 0, // the hand laid flat on something ('hl' | 'hr') and the angle of that surface
     // weapon foreshortening (-1 pointing back .. 1), its swelling when it comes up toward the camera, and what is held
     // above the shoulders: 0 nothing, 1 the weapon and its hand, 2 both hands
     wpnLen: 1, wpnS: 1, top: 0,
@@ -47,7 +50,10 @@ export function standPose(ch, P, a = ch.angle) {
   const d = ch.def;
   const g = Math.min(1, ch.gait);
   const stride = Math.sin(ch.walk);
-  const swingP = ch.swing > 0 ? 1 - ch.swing / ch.swingDur : 1;
+  // a guard winding up a blow (Character.windUp) holds its anticipation, cocked, trembling a little
+  const cock = ch.tell > 0 && ch.swing <= 0 ? smooth(Math.min(1, (1 - ch.tell / ch.tellDur) * 2.5)) : 0;
+  const striking = ch.swing > 0 || cock > 0;
+  const swingP = ch.swing > 0 ? 1 - ch.swing / ch.swingDur : cock > 0 ? TELL.hold * cock : 1;
   const rk = ch.recoil * ch.recoil; // snappy kick, eased recovery
   const kick = d.kick ?? 0;
   let twist = 0, back = 0, dip = 0, len = 1, thick = 1, top = 0;
@@ -55,7 +61,7 @@ export function standPose(ch, P, a = ch.angle) {
   // aim-space hands / weapon (x forward, y right)
   let hlx, hly, hrx, hry, wx = 0, wy = 0, wa = 0, wpnOn = false;
   let carryImg = null, cx = 0, cy = 0, ca = 0;
-  P.trail.on = false;
+  P.flat = null;
 
   if (d.hold === 'none') {
     // relaxed guard, arms swinging against the stride
@@ -70,11 +76,12 @@ export function standPose(ch, P, a = ch.angle) {
       const e = smooth(1 - ch.throwT / ch.throwDur);
       hrx = lerp(15, hrx, e); hry = lerp(1.5, hry, e);
       twist = -0.35 * (1 - e);
-    } else if (ch.swing > 0) {
-      // punch: small pull-back, snap out, ease home
+    } else if (striking) {
+      // punch: small pull-back (a guard's wind-up: the fist drawn right back), snap out (it is out when the blow
+      // lands, a fifth of the way through), hold, ease home
       const p = swingP;
-      const ext = p < 0.15 ? -0.25 * smooth(p / 0.15)
-        : p < 0.4 ? lerp(-0.25, 1, easeOut((p - 0.15) / 0.25)) : lerp(1, 0, smooth((p - 0.4) / 0.6));
+      const ext = cock ? -0.55 * cock : p < 0.05 ? -0.25 * smooth(p / 0.05)
+        : p < 0.18 ? lerp(-0.25, 1, easeOut((p - 0.05) / 0.13)) : p < 0.3 ? 1 : lerp(1, 0, smooth((p - 0.3) / 0.7));
       if (ch.punchSide < 0) { hlx += ext * 10; hly += Math.max(0, ext) * 4; }
       else { hrx += ext * 10; hry -= Math.max(0, ext) * 4; }
       twist = -ch.punchSide * 0.2 * ext;
@@ -130,12 +137,12 @@ export function standPose(ch, P, a = ch.angle) {
     const bat = d.swing === 'club';
     const ra = bat ? d.rest ?? 3 : 0.35; // weapon angle at rest
     const round = bat && ra > 1.5; // it rests behind the shoulder: a sweep carries on round the back of the head
-    const spin = bat && ch.swing > 0 && ch.strike === 3;
+    const spin = bat && striking && ch.strike === 3;
     const sw = stride * 2.2 * g;
     hlx = 6 - sw; hly = -6;
     hrx = bat ? 5 : 7 + sw * 0.5; hry = bat ? 4 : 6.5;
     wa = ra;
-    if (ch.swing > 0) {
+    if (striking) {
       const p = swingP, k = ch.strike;
       const out = smooth(p / 0.12) * (1 - smooth((p - 0.55) / 0.45)); // 0 in the rest pose .. 1 during the stroke
       let sx, sy; // where the stroke puts the hand
@@ -146,13 +153,6 @@ export function standPose(ch, P, a = ch.angle) {
         wa = lerpA(phi, ra, smooth((p - 0.55) / 0.45));
         sx = 2 + Math.cos(phi) * 8; sy = Math.sin(phi) * 8;
         twist = p < 0.6 ? -Math.PI * 2 * u : 0; // a full turn is the same as none
-        if (p > 0.08 && p < 0.58) {
-          const tr = P.trail;
-          tr.on = true;
-          tr.alpha = 0.35;
-          tr.r = d.range * 0.85;
-          tr.a0 = phi; tr.a1 = phi + 1.6;
-        }
       } else if (k < 2) {
         // sweep across the front (a backhand is its mirror image). The angle runs from the rest pose to the rest
         // pose: the bat carries on round the back of the head, the knife comes back the way it went
@@ -165,13 +165,6 @@ export function standPose(ch, P, a = ch.angle) {
         const r = 7 + 2 * bump(p, 0.08, 0.6), cw = Math.cos(wa);
         sx = 3 + cw * r * (bat && cw < 0 ? 0.5 : 1); sy = (bat ? 1 : 2) + Math.sin(wa) * r; // a bat stays close behind
         twist = -dir * (bat ? 0.4 : 0.25) * smooth((p - 0.1) / 0.3) * (1 - smooth((p - 0.5) / 0.5)); // shoulders follow
-        if (p > 0.12 && p < 0.55) {
-          const tr = P.trail;
-          tr.on = true;
-          tr.alpha = 0.35 * (1 - smooth((p - 0.35) / 0.2));
-          tr.r = d.range * 0.85;
-          if (dir > 0) { tr.a0 = wa; tr.a1 = Math.min(wind, wa + 1.7); } else { tr.a0 = Math.max(-wind, wa - 1.7); tr.a1 = wa; }
-        }
       } else if (bat ? !d.thrust : k === 3) {
         // overhead smash (a blade: an ice-pick stab): up over the head (the weapon shortens as it points at the
         // camera), straight down in front, then back to the rest pose round the right side
@@ -194,6 +187,12 @@ export function standPose(ch, P, a = ch.angle) {
       // a bat is swung with both hands (the other one under the leading one), a knife arm is balanced by the other
       if (bat) { hlx = lerp(hlx, sx - Math.cos(wa) * 2.5 * len, out); hly = lerp(hly, sy - Math.sin(wa) * 2.5 * len, out); }
       else hlx -= (k < 2 ? 2.5 : 4) * out;
+    }
+    if (cock) {
+      // wound up: the shoulders turned away from the blow to come, the weight back, the weapon shaking a little
+      twist += ch.punchSide * 0.3 * cock;
+      back += 1.5 * cock;
+      wa += Math.sin(ch.world.time * 47 + ch.breath) * 0.06 * cock;
     }
     wx = hrx; wy = hry; wpnOn = true;
     if (bat && !top && !spin && Math.cos(wa) * len < -0.3) top = 1; // behind the head: over the shoulder
@@ -284,12 +283,6 @@ export function standPose(ch, P, a = ch.angle) {
   if (wpnOn) { place(P.wpn, P, a, wx, wy); P.wpn.a = a + wa; }
   P.carryImg = carryImg;
   if (carryImg) { place(P.carry, P, a, cx, cy); P.carry.a = a + ca; }
-  if (P.trail.on) {
-    const tr = P.trail;
-    place(tr, P, a, 3, 2);
-    tr.a0 += a; tr.a1 += a;
-    tr.r *= P.s;
-  }
   return P;
 }
 
@@ -312,7 +305,6 @@ function blendPose(A, B, w) {
     const p = A[k], q = B[k];
     p.x = lerp(p.x, q.x, w); p.y = lerp(p.y, q.y, w); p.a = lerpA(p.a, q.a, w);
   }
-  if (w > 0.5) A.trail.on = false;
   return A;
 }
 
@@ -322,7 +314,6 @@ function copyPose(A, B) {
   for (const k of ['hl', 'hr', 'wpn', 'carry']) Object.assign(A[k], B[k]);
   A.wpnOn = B.wpnOn; A.carryImg = B.carryImg;
   A.wpnLen = B.wpnLen; A.wpnS = B.wpnS; A.top = B.top;
-  A.trail.on = false;
 }
 
 // Catmull-Rom through keys (times ascending, same length as vals)
@@ -645,6 +636,112 @@ export function sitPose(ch, P, V) {
   return P;
 }
 
+// ---------------- opening a car trunk (Player.trunkOpen, GESTURE.trunk) ----------------
+// He bends over the tail, both hands under the edge of the lid; it comes up (the hands go up and forward with it),
+// the right one reaches in and comes back out with what was there; he straightens up.
+export function trunkPose(ch, P, V) {
+  const T = GESTURE.trunk, k = clamp(ch.trunkOpen.t / T.dur, 0, 1), a = ch.angle;
+  copyPose(V, P);
+  const bend = smooth(k / 0.18) * (1 - smooth((k - 0.82) / 0.18));
+  const lift = smooth((k - T.lift[0]) / (T.lift[1] - T.lift[0]));
+  const dig = bump(k, T.lift[1] - 0.06, T.take + 0.12); // the right hand into the trunk and out
+  V.ta = a;
+  V.tx = P.tx * (1 - bend) + Math.cos(a) * 2.5 * bend;
+  V.ty = P.ty * (1 - bend) + Math.sin(a) * 2.5 * bend;
+  V.s = P.s * (1 - 0.07 * bend);
+  V.top = 0;
+  const lx = 8 + 3 * lift, wide = 4.5 + lift;
+  place(V.hl, V, a, lx, -wide);
+  place(V.hr, V, a, lerp(lx, 12, dig), lerp(wide, 1.5, dig));
+  // the hands up with the lid seen from above: nearer the eye
+  const hb = smooth(k / 0.15) * (1 - smooth((k - 0.86) / 0.14));
+  for (const [h, q] of [[V.hl, P.hl], [V.hr, P.hr]]) {
+    h.x = lerp(q.x, h.x, hb); h.y = lerp(q.y, h.y, hb);
+    reach(h, V, h === V.hl ? -1 : 1);
+  }
+  holdOnTheWay(ch, V, a);
+  blendPose(P, V, bend);
+  return P;
+}
+
+// ---------------- a hand flat on a door leaf (Character.doorHand, GESTURE.door) ----------------
+// The hand on the leaf's side comes up flat against it while he pushes; with something in the right hand it is
+// always the left one (the weapon stays where it is).
+export function doorHandPose(ch, P) {
+  const H = ch.doorHand, w = smooth(H.w);
+  if (w <= 0) return P;
+  const tx = H.x - ch.x, ty = H.y - ch.y;
+  const right = !P.wpnOn && Math.cos(P.ta) * ty - Math.sin(P.ta) * tx > 0;
+  const h = right ? P.hr : P.hl;
+  h.x = lerp(h.x, tx, w); h.y = lerp(h.y, ty, w);
+  reach(h, P, right ? 1 : -1);
+  if (w > 0.5) { P.flat = right ? 'hr' : 'hl'; P.flatA = H.a; }
+  return P;
+}
+
+// ---------------- knocked down: the blow, the fall, getting up ----------------
+// s the getting up takes: set when the time left on the floor first comes under `dur` (whatever is left then, so a
+// man shaken awake early gets up quicker), cleared once he is up; knocked = Infinity (asleep) never starts it
+export function riseDurAt(riseDur, knocked, dur) {
+  if (!(knocked > 0)) return 0;
+  return riseDur || (knocked <= dur ? knocked : 0);
+}
+// 0 .. 1 how far up he is
+export const riseOf = (ch) => (ch.riseDur > 0 && !ch.executing ? clamp(1 - ch.knocked / ch.riseDur, 0, 1) : 0);
+
+// Taken off his feet (fall 0 .. 1): the torso thrown along the blow, the head snapped round with it, the arms left
+// behind, the feet swept out toward whoever hit him.
+function staggerPose(ch, P, V, fall) {
+  const kd = ch.downAngle + Math.PI, c = Math.cos(kd), s = Math.sin(kd);
+  const side = Math.sin(ch.angle - kd) >= 0 ? 1 : -1, e = easeOut(fall);
+  copyPose(V, P);
+  V.ta = P.ta + side * 0.75 * e;
+  V.tx = P.tx + c * 5 * e; V.ty = P.ty + s * 5 * e;
+  V.s = P.s * (1 + 0.06 * bump(fall, 0, 0.7) - 0.08 * fall);
+  V.legs = 0.8 * e;
+  V.top = 0;
+  for (let i = 0; i < 2; i++) {
+    const side2 = i ? 1 : -1, f = V.feet[i];
+    f.x = -c * 8 * e - s * side2 * 3.6; f.y = -s * 8 * e + c * side2 * 3.6; f.a = kd + Math.PI;
+    const h = i ? V.hr : V.hl;
+    h.x = lerp(h.x, V.tx - c * 7 - s * side2 * 8, e); h.y = lerp(h.y, V.ty - s * 7 + c * side2 * 8, e);
+  }
+  blendPose(P, V, 1);
+  return P;
+}
+
+// Getting up (k 0 .. 1), facing the way he will stand (toward his feet): from the floor he sits up on his hands, gets
+// a foot under him and goes onto one knee, the left hand flat on the floor, the right one on the raised knee, then
+// pushes up into his stance. Key frames in his own space (x forward, y to his right).
+const RISE = {
+  t: [0, 0.3, 0.55, 0.78, 1],
+  fwd: [-6, -4.5, 0, 0.5, 0],    // torso along his facing (behind his hips while sitting)
+  s: [0.8, 0.83, 0.86, 0.93, 1],
+  legs: [1, 1, 1, 0.5, 0],
+  fx: [11, 9, 6.5, 3, 1], fy: [3.5, 3.8, 4.2, 3.8, 3.6],      // the right foot: out in front, then under the raised knee
+  bx: [11, 8, -5.5, -2, 1], by: [-3.5, -3.6, -2.8, -3.4, -3.6], // the left one: drawn back under him, the knee down
+  lx: [-4, -3, 6, 6, 6], ly: [-8.5, -8.5, -8.5, -7, -6],      // the left hand on the floor, then off it
+  rx: [-4, -2, 5, 6, 6], ry: [8.5, 8, 4.5, 5, 6],             // the right one: on the floor, then on the knee
+};
+function risePose(ch, P, V, k) {
+  const a = ch.downAngle + Math.PI, c = Math.cos(a), s = Math.sin(a), key = (n) => track(RISE.t, RISE[n], k);
+  const mv = (out, lx, ly) => { out.x = V.tx + lx * c - ly * s; out.y = V.ty + lx * s + ly * c; };
+  copyPose(V, P);
+  V.ta = a;
+  V.tx = c * key('fwd'); V.ty = s * key('fwd');
+  V.s = key('s');
+  V.legs = clamp(key('legs'), 0, 1);
+  V.top = 0;
+  mv(V.feet[1], key('fx'), key('fy')); mv(V.feet[0], key('bx'), key('by'));
+  V.feet[0].a = V.feet[1].a = a;
+  mv(V.hl, key('lx'), key('ly')); mv(V.hr, key('rx'), key('ry'));
+  reach(V.hl, V, -1); reach(V.hr, V, 1);
+  holdOnTheWay(ch, V, a);
+  blendPose(P, V, 1 - smooth((k - 0.78) / 0.22));
+  if (k < 0.6) { P.flat = 'hl'; P.flatA = a; } // the palm flat on the floor
+  return P;
+}
+
 // ---------------- rendering ----------------
 const LH = { x: 0, y: 0 }, RH = { x: 0, y: 0 }, TMP = { x: 0, y: 0 };
 
@@ -663,7 +760,17 @@ function drawWeapon(ctx, P, d, ta, at, shadow) {
   }
 }
 
-function drawHand(ctx, ch, h) {
+// flat: the angle (in the frame it is drawn in) of the surface the palm is laid flat on
+function drawHand(ctx, ch, h, flat = null) {
+  if (flat !== null) {
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.rotate(flat);
+    ctx.fillStyle = PALETTE.ink; ctx.fillRect(-3.2, -2, 6.4, 4);
+    ctx.fillStyle = ch.look.skin; ctx.fillRect(-2.4, -1.2, 4.8, 2.4);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = PALETTE.ink; ctx.fillRect(h.x - 2.2, h.y - 2.2, 4.4, 4.4);
   ctx.fillStyle = ch.look.skin; ctx.fillRect(h.x - 1.4, h.y - 1.4, 2.8, 2.8);
 }
@@ -748,18 +855,6 @@ export function drawPose(ctx, ch, P, alpha = 1) {
     out.x = dx * c - dy * sn; out.y = dx * sn + dy * c;
     return out;
   };
-  const tr = P.trail;
-  if (tr.on && tr.alpha > 0.01) {
-    toLocal(tr, TMP);
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = `rgba(255,255,255,${tr.alpha.toFixed(3)})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(TMP.x, TMP.y, tr.r / s, tr.a0 - ta, tr.a1 - ta);
-    ctx.stroke();
-    ctx.restore();
-  }
   const hl = toLocal(P.hl, LH), hr = toLocal(P.hr, RH);
   ctx.lineCap = 'round';
   for (let i = 0; i < 2; i++) {
@@ -779,8 +874,9 @@ export function drawPose(ctx, ch, P, alpha = 1) {
     ctx.drawImage(P.carryImg, -P.carryImg.width / 2, -P.carryImg.height / 2);
     ctx.restore();
   }
-  if (P.top < 2) drawHand(ctx, ch, hl);
-  if (!P.top) drawHand(ctx, ch, hr);
+  const fa = P.flatA - ta;
+  if (P.top < 2) drawHand(ctx, ch, hl, P.flat === 'hl' ? fa : null);
+  if (!P.top) drawHand(ctx, ch, hr, P.flat === 'hr' ? fa : null);
   ctx.restore();
 
   if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
@@ -800,15 +896,15 @@ export function drawPose(ctx, ch, P, alpha = 1) {
   ctx.globalAlpha = ga;
 }
 
-// knocked down: the body drops onto the floor (cross-fade + settle), lies dizzy, then rises back into the stance
+// knocked down: taken off his feet (stagger), the body drops onto the floor (cross-fade + settle), lies dizzy, then
+// gets up through one knee (risePose)
 export function drawDown(ctx, ch, P) {
   const x = ch.x, y = ch.y;
-  const fall = smooth(ch.downT / 0.22);
-  const rise = ch.executing ? 0 : smooth((0.4 - ch.knocked) / 0.4);
-  const down = fall * (1 - rise);
+  const fall = smooth(ch.downT / 0.22), k = riseOf(ch);
+  const down = fall * (1 - smooth(k / 0.3));
   if (down < 1) {
-    standPose(ch, P, rise > 0 ? ch.downAngle + Math.PI : ch.angle);
-    P.s *= rise > 0 ? 0.88 + 0.12 * rise : 1 - 0.1 * fall;
+    if (k > 0) risePose(ch, standPose(ch, P, ch.downAngle + Math.PI), ch.pose2, k);
+    else staggerPose(ch, standPose(ch, P, ch.angle), ch.pose2, fall);
     drawPose(ctx, ch, P, 1 - down);
   }
   if (down <= 0) return;

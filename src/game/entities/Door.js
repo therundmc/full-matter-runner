@@ -77,6 +77,19 @@ export default class Door {
     return { x: this.hx + Math.cos(a) * this.len, y: this.hy + Math.sin(a) * this.len };
   }
 
+  // the point of the leaf's face nearest to (px, py) when it lies within `reach` of it (a hand laid on the door:
+  // Character.updateDoorHand), written into out { x, y, a: the leaf's angle }; null otherwise
+  touch(px, py, reach, out) {
+    const rx = px - this.hx, ry = py - this.hy, far = this.len + this.back + reach;
+    if (rx * rx + ry * ry > far * far) return null;
+    const a = this.body.angle, c = Math.cos(a), s = Math.sin(a), half = LEAF.thick / 2;
+    const along = rx * c + ry * s, across = -rx * s + ry * c, u = clamp(along, -this.back, this.len);
+    if (Math.hypot(along - u, Math.max(0, Math.abs(across) - half)) > reach) return null;
+    const n = Math.sign(across) * half;
+    out.x = this.hx + c * u - s * n; out.y = this.hy + s * u + c * n; out.a = a;
+    return out;
+  }
+
   // what the leaf closes off, from wall end to wall end when shut (sight and blast tests): the leaf itself plus
   // the play left around it
   span() {

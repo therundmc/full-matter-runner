@@ -88,8 +88,6 @@ export default class World {
     this.debris = [];
     this.corpses = [];
     this.lights = [];
-    this.flashes = [];
-    this.hitSparks = [];    // blows that connected
     this.rings = [];
     this.texts = [];
 
@@ -225,14 +223,6 @@ export default class World {
     this.particles.sparks(x, y, 0, Math.PI, 8, 160, color);
     this.light(x, y, 40, color, 0.12);
   }
-  // a blow that connects: a short spark streaked along a
-  hitSpark(x, y, a, size = 1) { this.hitSparks.push({ x, y, a, size, t: 0.09, dur: 0.09 }); }
-  muzzleFlash(x, y, a, d) {
-    this.flashes.push({ x, y, a, t: 0.05, big: d.pellets > 1 || d.rocket });
-    this.light(x, y, d.pellets > 1 ? 110 : 75, '#ffb347', 0.06);
-    this.particles.sparks(x, y, a, 0.35, d.pellets > 1 ? 10 : 3, 380);
-    this.particles.smoke(x, y, d.pellets > 1 ? 5 : 2, 2, { speed: 30, size: 4, life: 0.6 });
-  }
   // raw velocity kick (px/step), ignoring mass: only for scripted motion (magnets...)
   pushBody(b, a, dv, spin = 0) {
     const v = Body.getVelocity(b);
@@ -263,10 +253,10 @@ export default class World {
   onKill(ch, cause, killer, how) {
     this.events.emit('kill', { victim: ch, cause, killer, how });
     if (ch.isPlayer) { this.endT = this.time; this.game.onPlayerDeath(cause); return; }
-    if (ch.isCivilian) { this.hitstop(0.02); return; }
-    // no spare magazine on a guard: a gun picked up holds what was left in it, and that is all (user: count your rounds)
-    this.hitstop(0.035);
-    if (!this.checkCleared() && chance(0.15)) this.slowmo(0.3, 0.45);
+    if (ch.isCivilian) return;
+    // no spare magazine on a guard: a gun picked up holds what was left in it, and that is all (user: count your rounds).
+    // The freeze and the slow motion of a kill are the blow's business (fx/Impact.js, data/feel.js).
+    this.checkCleared();
   }
 
   // the last guard is dead or has given up: the way out opens
@@ -426,10 +416,6 @@ export default class World {
     this.props = this.props.filter((p) => !p.dead);
     for (const l of this.lights) l.t -= dt;
     this.lights = this.lights.filter((l) => l.t > 0);
-    for (const f of this.flashes) f.t -= dt;
-    this.flashes = this.flashes.filter((f) => f.t > 0);
-    for (const f of this.hitSparks) f.t -= dt;
-    this.hitSparks = this.hitSparks.filter((f) => f.t > 0);
     for (const r of this.rings) r.t += dt;
     this.rings = this.rings.filter((r) => r.t < r.dur);
     for (const t of this.texts) { t.t -= dt; t.y -= dt * 18; }

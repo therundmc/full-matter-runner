@@ -16,6 +16,8 @@ import { struck, talks, pours, reliefSpot, gazeAt, STRETCH } from '../ai/Pastime
 import { carry, inHand } from '../ai/Carry.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
+import { TELL } from '../data/feel.js';
+import { sprite } from '../../engine/Assets.js';
 
 const { Body } = Matter;
 
@@ -462,6 +464,8 @@ export default class Enemy extends Character {
     if (this.updateVault(dt)) return;
     if (this.passive) { this.halt(); return; }
     if (this.yielded) { this.updateYield(dt); return; }
+    // a blow wound up (windUp) comes now, whether he is still in reach or not
+    if (this.tell > 0 && (this.tell -= dt) <= 0) { this.tell = 0; this.attack(true); }
     this.t += dt;
     this.panicT = Math.max(0, this.panicT - dt);
     this.kneel = false;
@@ -980,13 +984,14 @@ export default class Enemy extends Character {
     const ux = dx / (dist || 1), uy = dy / (dist || 1);
     if (this.world.map.walkLine(this.x, this.y, p.x, p.y, 6)) {
       const sep = this.separation();
-      const k = dist < 50 ? 0 : 1;
-      this.steer(ux - uy * side * k + sep.x, uy + ux * side * k + sep.y, ENEMY.runSpeed * this.pace * (this.dodge ? 1.25 : 1), 0.3);
+      const k = dist < 50 ? 0 : 1, planted = this.tell > 0 ? TELL.pace : 1; // winding up, he plants his feet
+      this.steer(ux - uy * side * k + sep.x, uy + ux * side * k + sep.y, ENEMY.runSpeed * this.pace * planted * (this.dodge ? 1.25 : 1), 0.3);
     } else if (this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 }) && dist > 30) {
       // no way round on foot (he stands behind a counter, on a roof edge): straight at him, over what is in the way
       if (!this.tryVault(Math.atan2(dy, dx))) this.steer(ux, uy, ENEMY.runSpeed * this.pace, 0.3);
     }
-    if (dist < d.range + p.radius - 2 && this.react <= 0) this.attack();
+    // in reach (or about to be): he winds his blow up, it comes a moment later (Character.windUp)
+    if (dist < d.range + p.radius + TELL.reach && this.react <= 0) this.windUp();
   }
 
   // melee: sprint to the next cover closer to him, catch breath a beat, then go again
@@ -1436,7 +1441,7 @@ export default class Enemy extends Character {
     this.vel = { x: Math.cos(angle) * sp, y: Math.sin(angle) * sp };
     Body.setVelocity(this.body, this.vel);
     this.world.particles.blood(this.x, this.y, angle, 0.6, 6, 120);
-    this.swing = 0;
+    this.swing = this.tell = 0;
     this.reloading = 0;
     this.director.release(this);
   }
@@ -1490,6 +1495,7 @@ export default class Enemy extends Character {
   // '!' when spotted or giving a last warning, '?' while suspicious, and the detection meter filling up
   drawMarks(ctx) {
     if (!this.alive || this.knocked > 0 || this.passive || this.yielded) return;
+    if (this.tell > 0) this.drawTell(ctx);
     const showQ = this.aware === 1 && this.state !== S.DIZZY;
     if (this.iconT > 0 || showQ) {
       const ch = this.iconT > 0 ? this.icon : '?';
@@ -1510,6 +1516,29 @@ export default class Enemy extends Character {
       ctx.fillStyle = m > 0.7 ? PALETTE.orange : PALETTE.yellow;
       ctx.fillRect(this.x - 6, this.y - 11, 12 * m, 1);
     }
+  }
+
+  // a blow wound up: a glint on the weapon's tip (or on the fist), growing as it comes, so it reads in the dark
+  drawTell(ctx) {
+    const P = this.pose, d = this.def, k = 1 - this.tell / this.tellDur;
+    let x = this.x + P.hr.x, y = this.y + P.hr.y;
+    if (P.wpnOn && d.sprite) {
+      const len = (sprite(d.sprite).width - d.grip) * P.wpnLen * P.s;
+      x = this.x + P.wpn.x + Math.cos(P.wpn.a) * len; y = this.y + P.wpn.y + Math.sin(P.wpn.a) * len;
+    } else if (this.punchSide < 0) { x = this.x + P.hl.x; y = this.y + P.hl.y; }
+    const r = 2 + 5 * Math.min(1, k * 1.6), h = 0.9;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(this.world.time * 3);
+    ctx.globalAlpha = 0.6 + 0.4 * k;
+    for (const [col, g] of [[PALETTE.pink, 1.6], ['#fff8f0', 0.8]]) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(-r * g, 0); ctx.lineTo(0, -h * g); ctx.lineTo(r * g, 0); ctx.lineTo(0, h * g);
+      ctx.moveTo(0, -r * g); ctx.lineTo(h * g, 0); ctx.lineTo(0, r * g); ctx.lineTo(-h * g, 0);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // debug (F2): view cone (sharp centre brighter), state:tactic + meter, current target, cover, last known position
