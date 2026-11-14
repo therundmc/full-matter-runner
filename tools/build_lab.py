@@ -3,13 +3,22 @@
 
     python tools/build_lab.py
 
-Three furnished rooms on three floor materials (wood, carpet, tiles: each has loose objects to shove around),
-every kind of door and window, the whole arsenal laid out in front of the building, and a street with the three
-vehicles. The guards are passive dummies.
+Every prop type of src/game/data/props.js is placed somewhere (but the *_flipped tables: the game makes those when
+a table is tipped):
+  west wing    three furnished rooms on three floor materials (wood, carpet, tiles: each has loose objects to shove
+               around), every kind of door and window, the whole arsenal laid out in front of the building;
+  east wing    a lit room on the house's fuse box (lamps, fan, tv, arcade, mirror ball over a dance stage, a card
+               table, two emergency lights), a closed shop with its alarm box and stock, and a walkable roof (floor
+               tile ^) reached by a ladder from the street, dressed with a water tank, an AC unit and a vent, and left
+               by a parapet drop;
+  street       the three vehicles, a bit of street furniture (phone booth, vending machine, parking meters, news box,
+               hydrant, bench, streetlights, a chain fence), and a row of wall-mounted pieces along the south wall
+               (steam pipe, wall vent, extinguishers, water pipe), neon signs on the facade.
+The guards are passive dummies.
 """
 from levelkit import Level
 
-W, H = 34, 23
+W, H = 57, 23
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -26,11 +35,23 @@ lv.put(22, 7, 'G')
 # facade: locked door, windows, double door, single door
 for x, ch in ((4, 'L'), (6, 'G'), (7, 'G'), (13, 'G'), (16, 'D'), (17, 'D'), (20, 'G'), (25, 'G'), (27, 'D'), (30, 'G')):
     lv.put(x, 9, ch)
-lv.fill(1, 10, 32, 10, '_')
-lv.fill(1, 11, 32, 12, 's')
-lv.fill(1, 13, 32, 19, '=')
-lv.fill(1, 17, 32, 17, '-')
-lv.fill(1, 20, 32, 21, 's')
+# east wing: lit room (34-43), closed shop (45-49), walkable roof (51-55: ladder at 52, parapet drop at 55)
+lv.fill(34, 1, 43, 8, ':')
+lv.fill(44, 1, 44, 8, '#')
+lv.fill(45, 1, 49, 8, '.')
+lv.fill(50, 1, 50, 8, '#')
+lv.fill(51, 1, 55, 8, '^')
+lv.put(52, 9, '^')          # the ladder's foot, on the street
+lv.put(55, 9, '^')          # the parapet drop
+lv.put(38, 9, 'D')
+lv.put(41, 9, 'G')
+lv.put(45, 9, 'G')
+lv.put(47, 9, 'L')
+lv.fill(1, 10, 55, 10, '_')
+lv.fill(1, 11, 55, 12, 's')
+lv.fill(1, 13, 55, 19, '=')
+lv.fill(1, 17, 55, 17, '-')
+lv.fill(1, 20, 55, 21, 's')
 
 # ---------------------------------------------------------------- actors
 lv.actor('@', 15, 12, face=270)
@@ -118,6 +139,42 @@ lv.prop('neon_sign_arrow', 2.0, 10.09)
 lv.prop('wall_lamp', 18.6, 10.09)
 lv.prop('neon_sign_bar', 22.5, 10.09)
 lv.prop('string_lights', 29.5, 10.6)
+lv.prop('neon_sign_wash', 10.5, 10.09)
+lv.prop('neon_sign_video', 36.0, 10.09)
+lv.prop('neon_sign_liquor', 46.0, 10.09)
+
+lv.area('east wing: lit room on the fuse box')
+lv.power(34, 1, 43, 8, 40.0, 10.09, 0)                  # outside, on the facade between the door and the window
+lv.prop('ceiling_lamp', 36.5, 5.5)
+lv.prop('card_table', 36.5, 5.5)
+for (x, y) in ((35.2, 4.0), (36.0, 7.2), (37.8, 7.0)):
+    lv.prop('chair', x, y, 90 if y < 5 else 270)
+lv.prop('armchair', 34.7, 7.7)
+lv.prop('floor_lamp', 34.6, 1.4)
+lv.prop('tv', 40.6, 1.3, 0)
+lv.prop('ceiling_fan', 38.0, 3.2)
+lv.prop('arcade', 43.55, 3.5, 90)
+lv.prop('dance_stage', 40.0, 6.2)
+lv.prop('mirror_ball', 40.0, 6.2)
+lv.prop('emergency_light', 37.2, 8.91, 180)
+lv.prop('emergency_light', 43.91, 7.0, 90)
+
+lv.area('east wing: closed shop with an alarm')
+lv.alarm(45, 1, 49, 8, 48.7, 10.09, 0)
+lv.prop('bottle_shelf', 46.0, 1.2)
+lv.prop('bottle_shelf', 47.4, 1.2)
+lv.prop('back_bar', 46.0, 1.9)
+lv.prop('cash_case', 46.5, 4.5, 12)
+lv.prop('dope_table', 48.0, 6.0)
+lv.prop('washer', 49.4, 8.4)
+lv.prop('armchair', 45.8, 7.6)
+
+lv.area('east wing: the roof')
+lv.prop('ladder', 52.5, 9.5)                            # up from the street
+lv.prop('parapet', 55.5, 9.5, 0)                        # the drop back down
+lv.prop('water_tank', 53.0, 2.6)
+lv.prop('ac_unit', 54.5, 6.0, 90)
+lv.prop('roof_vent', 51.7, 5.5)
 
 lv.area('street')
 lv.prop('palm_tree', 1.6, 11.6)
@@ -137,16 +194,34 @@ lv.prop('trash_can', 12.0, 21.6)
 lv.prop('neon_sign_palm', 22.0, 21.91, 180)
 lv.prop('trash_can', 28.6, 21.5)
 lv.prop('dumpster', 30.5, 21.2)
+# wall-mounted row along the south wall (facing the street)
+lv.prop('pipe_steam', 3.5, 21.91, 180)
+lv.prop('wall_vent', 6.5, 21.91, 180)
+lv.prop('extinguisher', 8.0, 21.91, 180)
+lv.prop('pipe_water', 15.0, 21.91, 180)
+lv.prop('extinguisher', 18.5, 21.91, 180)
+# east street
+lv.prop('vending', 35.0, 11.3)
+lv.prop('news_box', 37.5, 11.5)
+lv.prop('parking_meter', 40.0, 12.1)
+lv.prop('parking_meter', 42.0, 12.1)
+lv.prop('phone_booth', 47.0, 11.6)
+lv.prop('streetlight', 44.5, 12.7, 90)
+for x in (53.5, 54.5, 55.5):
+    lv.prop('chain_fence', x, 11.5)                     # a fence to climb, at the end of the pavement
+lv.prop('hydrant', 36.5, 20.6)
+lv.prop('bench', 41.0, 21.6, 180)
 
 lights = [
     [8, 16.5, 9, '#5a6ad8', 0.3],
     [25, 16.5, 9, '#7a5ad8', 0.3],
+    [45, 16.5, 9, '#5a6ad8', 0.3],
 ]
 
 if __name__ == '__main__':
     lv.check(guards=7)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  EVERY PROP, WEAPON AND VEHICLE', passive=True, lights=lights,
              header=[
-                 'Physics lab: three furnished rooms on three floor materials, every door, window, prop, weapon and ammo type,',
-                 'and a street with the vehicles. Load with ?level=lab. Guards here are passive dummies (they never see or hear you).',
+                 'Physics lab: furnished rooms on three floor materials, a lit room on a fuse box, a closed shop with an alarm, a roof with',
+                 'a ladder and a parapet, every door, window, prop, weapon and ammo type, and a street with the vehicles. Load with ?level=lab. Guards here are passive dummies (they never see or hear you).',
              ])
