@@ -1903,6 +1903,73 @@ def ashtray(ly, cx, cy, rng, r=2.8, ember=True):
             ly.set(int(cx + math.cos(a) * 0.6), int(cy + math.sin(a) * 0.6), hx('#ff6b1a'))
 
 
+def knob(cv, x, y, r, base, ang, mark=hx('#f4f2ec')):
+    """A round control knob from above: its chrome skirt, the grip lit from the top left, the pointer line."""
+    ring(cv, x, y, r * 0.62, r, lambda dx, dy, d: shade(CHROME, 0.2 + 0.85 * light(dx / d, dy / d)))
+    fill_shape(cv, x, y, r * 0.64, r * 0.64, lambda u, v, L: shade(ramp(base, 0.5, 0.25, 0.45), L))
+    line(cv, x, y, x + math.cos(ang) * r * 0.8, y + math.sin(ang) * r * 0.8, mark)
+
+
+def chrome_bar(cv, x0, y0, x1, y1, ramp_=None):
+    """A chrome tube or bar lying along x over [x0, x1) x [y0, y1): lit on top, a hot line of reflection, dark under."""
+    r = ramp_ or ramp('#b8bcc8', 0.5, 0.26, 0.5)
+
+    def f(x, y, c):
+        t = (y - y0) / max(0.01, y1 - y0)
+        col = shade(r, 0.95 - t * 0.9)
+        if 0.18 < t < 0.42 and int(x * 2) % 11 not in (3, 4):
+            col = lt(r[3], 0.35)
+        return col
+    px_paint(cv, x0, y0, x1, y1, f)
+
+
+def brushed(cv, rng, box, amt=7, along_x=True):
+    """Brushed steel: long hairline streaks along the grain, pixel-fine."""
+    x0, y0, x1, y1 = box
+    n = VNoise(cv.w * 4, cv.h * 4, 4, rng)
+
+    def f(x, y, c):
+        if c[3] == 0 or c == OUTLINE:
+            return None
+        k = n(x * 0.25, y * 8.0) if along_x else n(x * 8.0, y * 0.25)
+        return shift(c, int((k - 0.5) * 2 * amt))
+    px_paint(cv, x0, y0, x1, y1, f)
+
+
+def can_top(cv, x, y, r, col):
+    """A drinks can from above: the lit rim, the lid's ring, the ring-pull, its printed shoulder."""
+    fill_shape(cv, x, y, r, r, lambda u, v, L: shade(ramp(col, 0.45, 0.22, 0.3), L))
+    ring(cv, x, y, r * 0.55, r * 0.78, lambda dx, dy, d: hx('#e8ecf2') if dx + dy < 0 else hx('#9aa0ac'))
+    fill_shape(cv, x, y, r * 0.55, r * 0.55, lambda u, v, L: hx('#c8ccd6') if L > 0.6 else hx('#a4aab6'))
+    cv.dot(x + 0.25, y - 0.25, hx('#5a5e6a'))
+    cv.dot(x - 0.25, y + 0.25, hx('#e8ecf2'))
+
+
+def frond(ly, c, a, ln, bend, g, rng, leaflet=2.4, side=1.0):
+    """An areca frond from above: a midrib arching out from (c, c) at angle a, pairs of narrow leaflets swept toward
+    its tip, lit on the side facing the light."""
+    pts = []
+    for k in range(9):
+        t = k / 8.0
+        aa = a + bend * t * t
+        r = 1.2 + (ln - 1.2) * t
+        pts.append((c + math.cos(aa) * r, c + math.sin(aa) * r))
+    for k in range(1, 9):
+        t = k / 8.0
+        x0, y0 = pts[k]
+        dx, dy = pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]
+        d = math.hypot(dx, dy) or 1.0
+        dx, dy = dx / d, dy / d
+        ll = leaflet * math.sin(math.pi * min(1.0, 0.15 + t * 0.95)) ** 0.7 * rng.uniform(0.8, 1.1)
+        for s in (-1, 1):
+            nx, ny = -dy * s, dx * s
+            ex, ey = x0 + (nx * 0.85 + dx * 0.55) * ll, y0 + (ny * 0.85 + dy * 0.55) * ll
+            lit = light(nx, ny)
+            fill_capsule(ly, [(x0, y0), (ex, ey)], 0.42 if t < 0.9 else 0.32,
+                         lambda k_, L, sd, i, tt, lit=lit: shade(g, 0.25 + lit * 0.75 - tt * 0.15))
+    fill_capsule(ly, pts, 0.3, lambda k_, L, sd, i, t: lt(g[2], 0.15))
+
+
 def p_table():
     """Back-room table: worn varnished boards, poker cards, a beer, a full ashtray, ring stains."""
     W, H = 46, 28
@@ -2071,18 +2138,31 @@ def p_dope_table():
 
 
 def p_gas_bottle():
-    """A gas bottle from above: blue steel shoulder, the guard ring around a brass valve with its red hand wheel."""
+    """A propane bottle from above: the blue steel shoulder domed toward the light, a white stamped tare band, the guard
+    collar with its two hand holes, the brass valve and the red hand wheel on its spokes."""
     S = 14
     c = S / 2
     cv = Cv(S, S)
     blue = ramp('#4f82c0', 0.55, 0.28, 0.35)
-    fill_shape(cv, c, c, 6.0, 6.0, lambda u, v, L: shade(blue, L))
-    ring(cv, c, c, 5.1, 6.05, lambda dx, dy, d: blue[0] if dx + dy > 0 else blue[1])
-    ring(cv, c, c, 2.9, 4.2, lambda dx, dy, d: hx('#e4e9f0') if dx + dy < 0 else hx('#9aa4b4'))   # guard ring
-    fill_shape(cv, c, c, 2.9, 2.9, lambda u, v, L: hx('#1c2a44'))
-    fill_shape(cv, c, c, 1.5, 1.5, lambda u, v, L: hx('#e8b850') if u + v < 0 else hx('#b88a30'))  # brass valve
-    cv.set(int(c), int(c), hx('#e02828'))
-    cv.set(int(c) - 1, int(c), hx('#e02828'))
+    fill_shape(cv, c, c, 6.0, 6.0, lambda u, v, L: shade(blue, L * 0.9 + 0.1))
+    ring(cv, c, c, 5.4, 6.05, lambda dx, dy, d: blue[0] if dx + dy > 1 else blue[1])
+    ring(cv, c, c, 4.4, 4.8, lambda dx, dy, d: hx('#e8e8e0') if abs(math.atan2(dy, dx) - 2.4) < 0.7 else None)   # the tare band
+    smudge(cv, random.Random(2731), 4, (2, 2, 12, 12), (0.5, 1.0), 0.6, hx('#8a8e98'))   # knocks to the steel
+    steel = ramp('#9aa4b4', 0.5, 0.25, 0.4)
+
+    def collar(dx, dy, d):
+        a = math.atan2(dy, dx)
+        if abs(math.sin(a)) > 0.92 and 3.2 < d < 3.9:
+            return hx('#1c2a44')                                       # the hand holes
+        return shade(steel, light(dx / d * 0.9, dy / d * 0.9) if d > 3.5 else 0.9 - light(dx / d, dy / d) * 0.7)
+    ring(cv, c, c, 2.8, 4.25, collar)
+    fill_shape(cv, c, c, 2.8, 2.8, lambda u, v, L: hx('#1c2a44'))
+    fill_shape(cv, c, c, 1.6, 1.6, lambda u, v, L: shade(ramp('#d8a840', 0.45, 0.22, 0.4), L))   # brass valve
+    ring(cv, c, c, 1.0, 1.6, lambda dx, dy, d: shade(ramp('#d02828', 0.45, 0.22, 0.4), light(dx / d, dy / d)))   # hand wheel
+    for a in (0.4, 2.5, 4.6):
+        line(cv, c, c, c + math.cos(a) * 1.2, c + math.sin(a) * 1.2, hx('#a01818'))
+    cv.dot(c - 0.25, c - 0.25, hx('#ffe8a0'))
+    fgrain(cv, random.Random(2732), 3)
     cv.outline()
     return cv
 
@@ -2121,59 +2201,87 @@ def p_dance_stage():
 
 
 def p_desk():
-    """Office desk (the seat is on +y): green blotter and papers, a typewriter, rotary phone, files, a mug."""
+    """Office desk (the seat on +y): mahogany with a tooled green leather inset, a typewriter with a sheet in it, a
+    banker's lamp, a rotary phone, files and loose papers, a blotter with a letter and a pen, an ashtray with a cigar
+    burning, a coffee mug and its ring."""
     W, H = 48, 26
     cv = Cv(W, H)
-    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#5a3824'), plank=6, rng=random.Random(13))
-    mottle(cv, random.Random(131), 6, 7)
-    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.2, 0.35)
-    ol = dk(hx('#5a3824'), 0.6)
+    wood_fill(cv, 1, 1, W - 2, H - 2, hx('#5a3020'), plank=6, rng=random.Random(13))
+    mottle(cv, random.Random(131), 5, 7)
+    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.22, 0.35)
+    for (x, y) in ((1, 1), (W - 2, 1), (1, H - 2), (W - 2, H - 2)):
+        frect(cv, x + (0.5 if x > 1 else 0), y + (0.5 if y > 1 else 0), x + (1 if x > 1 else 0.5), y + (1 if y > 1 else 0.5), CLEAR)
+    lea = ramp('#2a5a3c', 0.45, 0.22, 0.25)
+    nz = VNoise(W, H, 3, random.Random(132))
+    px_paint(cv, 4, 3.5, 44, 22.5, lambda x, y, c: shift(shade(lea, 0.62 + (nz(x, y) - 0.5) * 0.25), 0))
+    for (x0, y0, x1, y1) in ((4, 3.5, 44, 4), (4, 4, 4.5, 22.5)):
+        frect(cv, x0, y0, x1, y1, dk(lea[0], 0.3))                     # its edge sunk into the wood
+    dash(cv, 5.0, 5.0, 43.0, 5.0, hx('#c8a050'), 1, 1)                 # the gold tooling
+    dash(cv, 5.0, 21.5, 43.0, 21.5, hx('#a8843c'), 1, 1)
+    dash(cv, 5.0, 5.0, 5.0, 21.5, hx('#c8a050'), 1, 1)
+    dash(cv, 43.0, 5.0, 43.0, 21.5, hx('#a8843c'), 1, 1)
+    smudge(cv, random.Random(133), 5, (8, 14, 40, 22), (1.5, 3.0), 0.14, hx('#6a8a6a'))   # leather rubbed pale
+    ring(cv, 9.0, 19.5, 1.5, 2.1, lambda dx, dy, d: dk(cv.get(9.0 + dx, 19.5 + dy), 0.25) if dx - dy > -2 else None)   # a mug's ring
+    ol = dk(hx('#5a3020'), 0.6)
 
-    def blotter(ly):
-        g = ramp('#2e5a3e', 0.45, 0.22, 0.25)
-        fill_shape(ly, 25.0, 18.0, 9.5, 5.0, lambda u, v, L: shade(g, L), kind='rect', corner=0.6, bevel=0.8)
-        for y in range(13, 24):        # leather corner pockets
-            for x in range(15, 35):
-                if (x - 15) + (y - 13) < 3 or (34 - x) + (y - 13) < 3 or (x - 15) + (23 - y) < 3 or (34 - x) + (23 - y) < 3:
-                    ly.set(x, y, hx('#4a2a1a'))
-        fill_shape(ly, 29.5, 19.0, 3.0, 3.8, lambda u, v, L: hx('#f0ece2') if L > 0.55 else hx('#d6d0c4'),
-                   ang=0.18, kind='rect', corner=0.3, bevel=0.5)
+    def paper(ly):
+        fill_shape(ly, 24.5, 18.6, 7.0, 3.4, lambda u, v, L: shade(ramp('#1e3a2a', 0.45, 0.22, 0.25), L), kind='rect', corner=0.4, bevel=0.6)   # blotter
+        for x in (17.5, 31.5):
+            frect(ly, x - 0.5, 15.2, x + 0.5, 22.0, hx('#4a2a1a'))      # its leather ends
+        fill_shape(ly, 26.0, 18.6, 2.8, 3.6, lambda u, v, L: hx('#f2eee4') if L > 0.5 else hx('#dad4c6'), ang=0.12,
+                   kind='rect', corner=0.2, bevel=0.4)                 # a letter
+        for k in range(5):
+            line(ly, 24.0 + 0.12 * k, 16.4 + k * 1.0, 28.0 + 0.12 * k, 16.9 + k * 1.0, hx('#8a8a9a'))
+        fill_capsule(ly, [(19.5, 21.0), (23.8, 17.0)], 0.4, lambda k, L, s, i, t: hx('#d8b040') if t > 0.9 else shade(ramp('#1a1a24', 0.4, 0.2, 0.6), L))   # pen
+        for i, (x, y, a, col) in enumerate(((8.0, 9.5, -0.1, '#d8b878'), (8.5, 8.8, 0.08, '#c8a868'), (8.6, 8.2, -0.05, '#e8e0cc'))):
+            fill_shape(ly, x, y, 3.8, 4.8, lambda u, v, L, col=col: shade(ramp(col, 0.4, 0.2, 0.3), L),
+                       ang=a, kind='rect', corner=0.3, bevel=0.6)       # files, the top one a loose sheet
         for k in range(4):
-            line(ly, 27.6 + 0.1 * k, 17.0 + k * 1.4, 31.0 + 0.1 * k, 17.6 + k * 1.4, hx('#a8a4b4'))
-        line(ly, 20.0, 21.5, 24.5, 17.5, hx('#2a2a3a'))   # pen
-        ly.set(24, 17, hx('#d8b040'))
-    layer(cv, blotter, ol)
+            line(ly, 6.4, 5.8 + k * 1.2, 10.6, 5.6 + k * 1.2, hx('#a8a4b0'))
+        fill_shape(ly, 14.0, 21.0, 2.2, 1.4, lambda u, v, L: hx('#f2eee4'), ang=-0.5, kind='rect', corner=0.2)   # a note
+    layer(cv, paper, ol)
 
-    def files(ly):
-        for i, (x, y, a, col) in enumerate(((7.0, 9.0, -0.12, '#d8b878'), (7.5, 8.2, 0.08, '#c8a868'), (8.0, 7.6, -0.04, '#e0c488'))):
-            fill_shape(ly, x, y, 4.6, 5.6, lambda u, v, L, col=col: shade(ramp(col, 0.4, 0.2, 0.3), L),
-                       ang=a, kind='rect', corner=0.4, bevel=0.8)
-        line(ly, 4.0, 4.0, 11.0, 3.6, hx('#f2eee4'))       # a sheet sticking out
-        fill_shape(ly, 7.0, 21.0, 2.0, 2.0, lambda u, v, L: shade(WHITE, L))   # mug
-        fill_shape(ly, 7.0, 21.0, 1.2, 1.2, lambda u, v, L: hx('#3a1e10'))
-        ly.set(9, 21, WHITE[1])
-    layer(cv, files, ol)
+    def things(ly):
+        fill_shape(ly, 9.0, 19.5, 1.9, 1.9, lambda u, v, L: shade(WHITE, L))   # the mug
+        fill_shape(ly, 9.0, 19.5, 1.2, 1.2, lambda u, v, L: hx('#3a1e10') if L < 0.7 else hx('#5a3420'))
+        fill_capsule(ly, [(10.9, 19.2), (11.6, 19.8)], 0.45, lambda k, L, s, i, t: shade(WHITE, L))
+        ashtray(ly, 37.0, 19.5, random.Random(134), 2.3)
+        fill_capsule(ly, [(35.4, 18.6), (31.6, 16.6)], 0.5, lambda k, L, s, i, t: hx('#ff6b1a') if t > 0.92 else hx('#6a4024') if t < 0.2 else hx('#8a5a34'))   # the cigar
+        brass = ramp('#c8a050', 0.5, 0.25, 0.45)
+        fill_shape(ly, 40.5, 6.5, 2.0, 2.0, lambda u, v, L: shade(brass, L))   # banker's lamp: its base,
+        fill_capsule(ly, [(36.0, 7.4), (44.0, 7.4)], 1.5, lambda k, L, s, i, t: hx('#9ef0b0') if L > 0.9 else shade(ramp('#1e7a4a', 0.45, 0.22, 0.4), L))   # its green shade
+        for x in (35.6, 44.4):
+            fill_shape(ly, x, 7.4, 0.5, 1.3, lambda u, v, L: shade(brass, L), kind='rect', corner=0.2)
+        stud(ly, 40.0, 4.5, brass[1])                                  # the pull chain
+    layer(cv, things)
 
     def typewriter(ly):
         body = ramp('#3e4a5a', 0.5, 0.25, 0.4)
-        fill_shape(ly, 25.0, 8.0, 7.5, 4.6, lambda u, v, L: shade(body, L), kind='rect', bevel=2.0, corner=1.6)
-        fill_shape(ly, 25.0, 4.0, 8.2, 1.2, lambda u, v, L: shade(ramp('#26262e', 0.4, 0.2, 0.5), L), kind='rect', corner=1.0)
-        ly.rect(20, 1, 29, 3, hx('#f2eee4'))               # sheet rolled in the platen
-        for x in range(21, 29, 2):
-            ly.set(x, 2, hx('#b0acb8'))
-        for y in (8, 10):                                  # key rows
-            for x in range(19 + (y == 10), 31, 2):
-                ly.set(x, y, hx('#d8d4cc'))
-        ly.rect(22, 11, 28, 11, hx('#d8d4cc'))             # space bar
-        ly.set(33, 4, hx('#c8ccd8'))                       # carriage lever
+        frect(ly, 19.0, 1.0, 29.0, 3.6, hx('#f2eee4'))                 # the sheet rolled in the platen
+        for k in range(3):
+            line(ly, 20.0, 1.6 + k * 0.7, 27.5, 1.6 + k * 0.7, hx('#b0acb8'))
+        fill_shape(ly, 24.0, 8.4, 7.6, 4.8, lambda u, v, L: shade(body, L), kind='rect', bevel=1.8, corner=1.6)
+        fill_capsule(ly, [(16.0, 4.2), (32.0, 4.2)], 1.1, lambda k, L, s, i, t: shade(ramp('#26262e', 0.4, 0.2, 0.5), L))   # platen
+        for x in (15.6, 32.4):
+            fill_shape(ly, x, 4.2, 0.7, 0.9, lambda u, v, L: shade(CHROME, L))   # its knobs
+        line(ly, 32.0, 3.0, 34.4, 1.6, CHROME[2])                      # the carriage return lever
+        frect(ly, 18.0, 6.0, 30.0, 7.0, hx('#1a1a22'))                 # the type basket's slot
+        for row, y in enumerate((7.8, 9.0, 10.2)):                     # the keys, round caps in rows
+            for k in range(9 - row):
+                x = 18.4 + row * 0.6 + k * 1.4
+                fill_shape(ly, x, y, 0.5, 0.45, lambda u, v, L: hx('#f0ece4') if L > 0.6 else hx('#bcb8b0'))
+        frect(ly, 21.0, 11.4, 27.0, 12.0, hx('#e0dcd4'))               # the space bar
+        frect(ly, 21.0, 11.8, 27.0, 12.0, hx('#9a968e'))
     layer(cv, typewriter)
 
     def phone(ly):
         red = ramp('#b82830', 0.5, 0.25, 0.35)
-        fill_shape(ly, 41.0, 9.5, 4.0, 3.4, lambda u, v, L: shade(red, L), kind='super', p=2.6)
-        fill_capsule(ly, [(37.6, 7.0), (44.4, 7.0)], 1.3, lambda k, L, s, i, t: shade(red, L))   # handset
-        ring(ly, 41.0, 10.6, 0.9, 2.1, lambda dx, dy, d: hx('#e8e4dc') if int(math.atan2(dy, dx) * 1.6) % 2 else hx('#2a1418'))
-        line(ly, 44.5, 12.0, 46.0, 16.0, hx('#1a1018'))    # coiled cord
+        fill_shape(ly, 40.5, 14.0, 3.6, 3.0, lambda u, v, L: shade(red, L), kind='super', p=2.6)
+        fill_capsule(ly, [(37.4, 11.6), (43.6, 11.6)], 1.2, lambda k, L, s, i, t: shade(red, L))   # the handset
+        ring(ly, 40.5, 15.0, 0.6, 1.9, lambda dx, dy, d: hx('#f0ece4') if int(math.atan2(dy, dx) * 1.6 + 6) % 2 else hx('#3a1418'))
+        fill_shape(ly, 40.5, 15.0, 0.6, 0.6, lambda u, v, L: hx('#f0ece4'))
+        line(ly, 44.0, 15.6, 45.6, 20.4, hx('#1a1018'))                # the coiled cord
+        line(ly, 44.4, 15.6, 46.0, 20.4, hx('#3a2228'))
     layer(cv, phone)
     cv.outline()
     return cv
@@ -2288,190 +2396,306 @@ def p_sofa():
 
 
 def p_plant():
-    """Potted areca palm: terracotta pot (the hitbox), fronds spilling past it."""
+    """Potted areca palm: a terracotta pot (the hitbox) with its rolled lip, dark soil and a few pebbles, three tiers of
+    fronds spilling past it, the lowest in the shade of the others."""
     S = 24
     c = S / 2
     cv = Cv(S, S)
     pot = ramp('#c06036', 0.45, 0.22, 0.35)
-    ring(cv, c, c, 5.6, 7.4, lambda dx, dy, d: shade(pot, light(dx / d * 0.85, dy / d * 0.85)))
-    fill_shape(cv, c, c, 5.7, 5.7, lambda u, v, L: mix(hx('#24160c'), hx('#4a3020'), L))
-    smudge(cv, random.Random(161), 4, (6, 6, 18, 18), (0.8, 1.5), 0.25, hx('#7a6a50'))
+    ring(cv, c, c, 5.4, 7.4, lambda dx, dy, d: shade(pot, light(dx / d * 0.85, dy / d * 0.85)) if d > 6.2 else
+         shade(pot, 0.95 - light(dx / d * 0.7, dy / d * 0.7) * 0.7))
+    ring(cv, c, c, 6.1, 6.4, lambda dx, dy, d: dk(cv.get(c + dx, c + dy), 0.18))   # under the lip
+    rng = random.Random(161)
+    soil = VNoise(S, S, 2, rng)
+    fill_shape(cv, c, c, 5.5, 5.5, lambda u, v, L: mix(hx('#1e130a'), hx('#4a3020'), soil(c + u, c + v) * 0.8 + (u + v) * 0.02))
+    for _ in range(6):
+        a, r = rng.uniform(0, 6.3), rng.uniform(2.5, 5.0)
+        fill_shape(cv, c + math.cos(a) * r, c + math.sin(a) * r, 0.45, 0.4, lambda u, v, L: hx('#a89a88') if L > 0.6 else hx('#6a5e50'))
+    smudge(cv, rng, 4, (5, 5, 19, 19), (0.8, 1.5), 0.3, hx('#d8d0b8'))   # salts dried on the clay
     cv.outline()
-    green = [ramp('#2a7a34', 0.6, 0.32, 0.3), ramp('#46a040', 0.55, 0.28, 0.35)]
+    greens = [ramp('#1e5a28', 0.6, 0.32, 0.3), ramp('#2e7a34', 0.55, 0.3, 0.32), ramp('#48a040', 0.5, 0.28, 0.35)]
     rng = random.Random(77)
-    for lay, n in ((0, 6), (1, 4)):
+    for lay, n, ln in ((0, 6, 11.0), (1, 5, 9.0), (2, 4, 6.4)):
         leaves = Cv(S, S)
         for i in range(n):
-            a = i * 2 * math.pi / n + rng.uniform(-0.35, 0.35) + lay * 0.7
-            ln = rng.uniform(9.0, 11.4) if lay == 0 else rng.uniform(6.0, 8.0)
-            bend = rng.uniform(-0.35, 0.35)
-            pts = []
-            for k in range(7):
-                t = 1.5 + (ln - 1.5) * k / 6.0
-                aa = a + bend * (k / 6.0) ** 2
-                pts.append((c + math.cos(aa) * t, c + math.sin(aa) * t))
-            g = green[lay]
-
-            def leaf(k, L, s, seg, t, g=g):
-                if abs(s) < 0.3:
-                    return lt(g[3], 0.2)
-                return shade(g, L - 0.1 * (s > 0))
-            for j in range(6):
-                w = 1.5 * math.sin(math.pi * (j + 1.0) / 7.5) ** 0.7
-                fill_capsule(leaves, [pts[j], pts[j + 1]], max(0.5, w), leaf)
+            a = i * 2 * math.pi / n + rng.uniform(-0.3, 0.3) + lay * 0.62
+            frond(leaves, c, a, ln * rng.uniform(0.9, 1.05), rng.uniform(-0.45, 0.45), greens[lay], rng,
+                  2.6 if lay < 2 else 1.9)
         leaves.outline(hx('#0c2410'))
         cv.over(leaves)
     return cv
 
 
 def p_tv():
-    """80s woodgrain CRT on a black TV cart with a VCR, rabbit ears; the screen faces +y."""
+    """80s woodgrain CRT on a black TV cart, from above, the screen facing +y: the tube's black housing tapering to the
+    back with its vents and its cord, the walnut veneer of the cabinet, rabbit ears on their base, the silver bezel and
+    the bulging glass lit by its picture, the channel knobs, the VCR on the cart's shelf blinking 12:00."""
     W, H = 24, 17
     cv = Cv(W, H)
     cart = ramp('#24222c', 0.4, 0.2, 0.45)
-    fill_shape(cv, 12.0, 8.5, 11.0, 7.5, lambda u, v, L: shade(cart, L), kind='rect', bevel=1.2, corner=0.8)
-    for (x, y) in ((1, 1), (22, 1), (1, 15), (22, 15)):
-        cv.set(x, y, hx('#a8acb8'))        # chrome corner posts
+    fill_shape(cv, 12.0, 8.5, 11.0, 7.5, lambda u, v, L: shade(cart, L), kind='rect', bevel=1.0, corner=0.8)
+    for (x, y) in ((1.5, 1.5), (22.5, 1.5), (1.5, 15.5), (22.5, 15.5)):
+        fill_shape(cv, x, y, 0.75, 0.75, lambda u, v, L: shade(CHROME, L))   # the cart's chrome posts
     cv.outline()
 
-    def tv(ly):
+    def set_(ly):
         back = ramp('#2e2a34', 0.45, 0.22, 0.4)
-        fill_shape(ly, 12.0, 3.4, 5.6, 2.6, lambda u, v, L: shade(back, L), kind='rect', bevel=1.6, corner=1.6)
-        for x in range(8, 17, 2):          # vent slots on the tube's housing
-            ly.set(x, 3, back[0])
-        wood_fill(ly, 2, 5, 21, 12, hx('#7a4a26'), plank=4, rng=random.Random(171))
+        fill_shape(ly, 12.0, 3.6, 6.6, 2.6, lambda u, v, L: shade(back, L), kind='rect', bevel=1.4, corner=1.6, taper=0.0)
+        for x in range(8, 17):                                         # vent slots in the housing
+            frect(ly, x + 0.25, 2.0, x + 0.75, 4.0, back[0])
+        frect(ly, 13.5, 4.3, 16.0, 5.0, hx('#c8c4b4'))                 # the maker's sticker
+        wood_fill(ly, 2, 5, 21, 12, hx('#6e4224'), plank=9, rng=random.Random(171))
         bevel_edges(ly, 2, 5, 21, 12, 0.25, 0.3)
-        ly.set(2, 5, CLEAR)
-        ly.set(21, 5, CLEAR)
-        ly.rect(2, 12, 21, 12, hx('#b8bcc8'))   # silver bezel
-        ly.set(18, 12, hx('#e8ecf4'))
-        ly.set(20, 12, hx('#5a5a66'))
-        line(ly, 11.0, 4.0, 5.0, 0.4, hx('#c8ccd8'))   # rabbit ears
-        line(ly, 13.0, 4.0, 19.0, 0.4, hx('#c8ccd8'))
-    layer(cv, tv)
-    for x in range(3, 21):                 # the glass bulging past the bezel, lit by its own picture
-        cv.set(x, 13, hx('#9ef6ff') if x % 7 else hx('#ffffff'))
-    cv.set(2, 13, OUTLINE)
-    cv.set(21, 13, OUTLINE)
-    cv.rect(5, 14, 18, 15, hx('#3a3846'))  # VCR on the shelf
-    cv.rect(5, 14, 18, 14, hx('#4e4c5c'))
-    cv.rect(7, 15, 12, 15, hx('#14121a'))  # cassette slot
-    for x in (15, 16, 17):                 # 12:00 blinking forever
-        cv.set(x, 15, hx('#ff2a3a'))
-    return cv, glow_from(cv, lambda x, y, c: (y == 13 and 3 <= x <= 20) or (y == 15 and 15 <= x <= 17))
+        frect(ly, 2.0, 5.0, 2.5, 5.5, CLEAR)
+        frect(ly, 21.5, 5.0, 22.0, 5.5, CLEAR)
+        frect(ly, 2.0, 12.0, 22.0, 13.0, lambda c: hx('#c8ccd6'))      # the silver bezel
+        frect(ly, 2.0, 12.0, 22.0, 12.5, hx('#e8ecf4'))
+        frect(ly, 17.0, 12.0, 21.5, 13.0, hx('#9aa0ac'))               # the control column
+        for x in (18.0, 19.5):
+            knob(ly, x + 0.25, 12.5, 0.7, '#1a1820', -1.2)
+        stud(ly, 21.0, 12.5, hx('#e03030'))                            # the power light
+        fill_shape(ly, 11.6, 7.4, 1.6, 1.2, lambda u, v, L: shade(ramp('#2a2830', 0.45, 0.22, 0.5), L))   # the ears' base
+        for (ex, ey) in ((4.6, 0.5), (19.6, 0.8)):
+            line(ly, 11.6, 7.2, ex, ey, hx('#d8dce6'))
+            line(ly, 11.6 + (0.5 if ex > 12 else -0.5), 7.4, ex + (0.5 if ex > 12 else -0.5), ey + 0.3, hx('#7a808c'))
+            ly.dot(ex, ey, hx('#ffffff'))
+        line(ly, 7.0, 2.0, 2.5, 0.5, hx('#141218'))                    # the cord off the back
+    layer(cv, set_)
+    pic = [hx('#9ef6ff'), hx('#ffd0a0'), hx('#7ab0ff'), hx('#ff9ac8'), hx('#c8f0ff')]
+
+    def glass(x, y, c):                                                # the glass bulging past the bezel, its picture
+        col = pic[int(x * 0.6) % 5]
+        if y >= 13.5:
+            col = mix(col, hx('#3a6a8a'), 0.45)
+        if abs(x - 5.5) < 0.6 and y < 13.5:
+            col = hx('#ffffff')                                        # a lamp caught on the curve
+        return col
+    px_paint(cv, 3.0, 13.0, 17.0, 14.0, glass)
+    frect(cv, 2.5, 13.0, 3.0, 14.0, OUTLINE)
+    frect(cv, 17.0, 13.0, 21.5, 14.0, hx('#5a5e6a'))
+    frect(cv, 21.5, 13.0, 22.0, 14.0, OUTLINE)
+    frect(cv, 4.0, 14.5, 20.0, 16.0, hx('#3a3846'))                   # the VCR on the shelf
+    frect(cv, 4.0, 14.5, 20.0, 15.0, hx('#5a5868'))
+    frect(cv, 6.0, 15.0, 12.0, 15.5, hx('#141218'))                   # its cassette door
+    for x in (14.5, 15.0, 16.0, 16.5):                                 # 12:00 blinking forever
+        cv.dot(x, 15.25, hx('#ff2a3a'))
+    for x in (18.0, 19.0):
+        cv.dot(x, 15.25, hx('#b8bcc8'))
+    return cv, glow_from(cv, lambda x, y, c: (y == 13 and 3 <= x <= 16) or (y == 15 and 14 <= x <= 16 and c[0] > 200 and c[1] < 80))
 
 
 def p_fridge():
-    """Almond fridge seen from above: dusty top, cereal box on it, condenser at the back, door + handle at +y."""
+    """Almond fridge from above, its door along +y: the enamel top, dustier toward the wall, its pressed panel, the
+    condenser's coils standing off the back, the door's top edge on its black gasket, the chrome cap of the long
+    handle and the hinge plate, a pizza box and a can left up there."""
     S = 24
     cv = Cv(S, S)
     cr = ramp('#ddd0aa', 0.42, 0.2, 0.4)
-    fill_shape(cv, 12.0, 11.0, 11.0, 10.0, lambda u, v, L: shade(cr, L), kind='rect', bevel=2.4, corner=1.2)
-    mottle(cv, random.Random(181), 5, 6)
-    smudge(cv, random.Random(182), 5, (3, 3, 21, 17), (2.0, 3.5), 0.1, hx('#8a8070'))   # dust
-    for x in range(3, 21):                 # condenser coils peeking out at the back
-        cv.set(x, 1, hx('#3a3640') if x % 2 else hx('#5a5662'))
-    cv.rect(1, 20, 22, 22, cr[1])          # door top edge
-    cv.rect(1, 20, 22, 20, dk(cr[1], 0.25))
-    cv.rect(3, 21, 11, 21, hx('#e8f0f8'))  # chrome handle
-    cv.rect(3, 22, 11, 22, hx('#8a92a0'))
+    rng = random.Random(181)
+
+    def coils(x, y, c):                                                # the zigzag tube, its top catching the light
+        return hx('#8a8696') if int(x * 2) % 3 == 0 and y < 1.5 else hx('#3a3640') if y < 1.5 else hx('#16121c')
+    px_paint(cv, 2.5, 1, 21.5, 2.5, coils)
+    fill_shape(cv, 12.0, 11.0, 11.0, 9.0, lambda u, v, L: shade(cr, L), kind='rect', bevel=1.4, corner=1.2)
+    dust = VNoise(S, S, 4, rng)
+
+    def top(x, y, c):                                                  # dust, thicker toward the wall nobody wipes
+        if c[3] == 0 or c == OUTLINE:
+            return None
+        k = max(0.0, 0.5 - (y - 2) / 22.0) * 0.5 + (dust(x, y) - 0.5) * 0.12
+        return mix(c, hx('#9a9078'), max(0.0, k))
+    px_paint(cv, 1, 2, 23, 20, top)
+    for (x0, y0, x1, y1) in ((2.5, 3.0, 21.5, 3.5), (2.5, 3.5, 3.0, 18.5)):
+        frect(cv, x0, y0, x1, y1, lambda c: dk(c, 0.12))               # the pressed panel of the top, its shadowed side
+    for (x0, y0, x1, y1) in ((2.5, 18.5, 21.5, 19.0), (21.0, 3.5, 21.5, 18.5)):
+        frect(cv, x0, y0, x1, y1, lambda c: lt(c, 0.14))               # and its lit side
+    for (x, y) in ((2.0, 2.5), (21.5, 2.5)):
+        stud(cv, x, y, cr[1])
+
+    def door(x, y, c):
+        if y < 20.5:
+            return hx('#1c1820')                                       # the gasket
+        if y < 21.0:
+            return lt(cr[3], 0.1)
+        return cr[2] if y < 22.0 else cr[1]
+    px_paint(cv, 1.5, 20, 22.5, 22.5, door)
+    frect(cv, 1.5, 20.5, 2.0, 22.5, cr[3])
+    frect(cv, 22.0, 20.5, 22.5, 22.5, cr[0])
+    frect(cv, 18.5, 20.0, 22.0, 22.5, lambda c: shade(CHROME, 0.62))  # the hinge plate and its pin
+    frect(cv, 18.5, 20.0, 22.0, 20.5, CHROME[3])
+    stud(cv, 19.5, 21.0, CHROME[1])
+    stud(cv, 21.0, 21.5, CHROME[1])
+    chrome_bar(cv, 3.0, 20.5, 7.0, 23.0)                               # the handle's cap, standing proud of the door
+    smudge(cv, rng, 3, (3, 19, 9, 23), (0.6, 1.2), 0.18)               # finger marks round it
     cv.outline()
 
-    def box(ly):                           # a pizza box someone left up there
-        fill_shape(ly, 15.0, 9.0, 4.6, 4.6, lambda u, v, L: shade(ramp('#c8a46a', 0.45, 0.22, 0.3), L),
-                   ang=0.18, kind='rect', bevel=1.0, corner=0.4)
-        fill_shape(ly, 15.0, 9.0, 1.8, 1.8, lambda u, v, L: hx('#c02a24') if math.hypot(u, v) > 0.9 else hx('#f2e6c8'))
-    layer(cv, box)
+    def things(ly):
+        fill_shape(ly, 14.5, 9.5, 4.6, 4.4, lambda u, v, L: shade(ramp('#c8a46a', 0.45, 0.22, 0.3), L),
+                   ang=0.16, kind='rect', bevel=0.9, corner=0.4)       # a pizza box
+        fill_shape(ly, 14.6, 9.4, 2.0, 2.0, lambda u, v, L: hx('#c02a24') if math.hypot(u, v) > 1.2 else hx('#f2e6c8'))
+        fill_shape(ly, 14.6, 9.4, 0.7, 0.7, lambda u, v, L: hx('#2a6a3a'))
+        line(ly, 10.4, 12.0, 18.6, 13.4, dk(hx('#c8a46a'), 0.3))       # the lid's fold
+        smudge(ly, rng, 2, (11, 6, 17, 12), (0.7, 1.2), 0.3, hx('#7a5020'))   # grease through the card
+        can_top(ly, 6.0, 7.0, 1.5, hx('#c8202a'))
+    layer(cv, things)
     return cv
 
 
 def p_oven():
-    """Gas range: enamel top, cast-iron grates, a pan on a burner, one blue flame, knobs and handle at +y."""
+    """80s gas range from above, front along +y: the raised backguard with its clock, four burners in their chrome
+    drip bowls under cast-iron grates (one lit blue), a pan frying an egg, a kettle, baked-on spills, the knobs on the
+    front strip and the oven door's chrome handle."""
     S = 22
     cv = Cv(S, S)
     en = ramp('#e2ddd0', 0.42, 0.2, 0.35)
-    fill_shape(cv, 11.0, 10.5, 10.0, 9.5, lambda u, v, L: shade(en, L), kind='rect', bevel=1.8, corner=1.2)
-    cv.rect(1, 1, 20, 2, shade(en, 0.5))   # back guard
-    cv.rect(1, 1, 20, 1, en[3])
-    mottle(cv, random.Random(191), 5, 5)
-    iron = hx('#24202a')
-    for (bx, by) in ((6.0, 7.0), (16.0, 7.0), (6.0, 14.0), (16.0, 14.0)):
-        fill_shape(cv, bx, by, 3.4, 3.4, lambda u, v, L: dk(en[1], 0.1), kind='rect', corner=1.0)
-        ring(cv, bx, by, 1.2, 2.2, lambda dx, dy, d: hx('#4a4652') if light(dx / d, dy / d) > 0.5 else hx('#2e2a36'))
-        line(cv, bx - 3.0, by, bx + 3.0, by, iron)       # grate bars
-        line(cv, bx, by - 3.0, bx, by + 3.0, iron)
-    ring(cv, 16.0, 14.0, 1.4, 2.4, lambda dx, dy, d: hx('#5ab8ff') if (int(math.atan2(dy, dx) * 2.5) % 2) else hx('#2a6aff'))
-    smudge(cv, random.Random(192), 4, (2, 3, 19, 17), (1.0, 2.0), 0.3, hx('#6a4a20'))   # baked-on spills
-    for x in (4, 8, 13, 17):
-        fill_shape(cv, x + 0.5, 18.5, 0.9, 0.9, lambda u, v, L: shade(ramp('#2a2632', 0.4, 0.2, 0.6), L))
-    cv.rect(3, 20, 18, 20, hx('#c8ccd6'))   # door handle
+    rng = random.Random(191)
+    fill_shape(cv, 11.0, 11.0, 10.0, 10.0, lambda u, v, L: shade(en, L), kind='rect', bevel=1.2, corner=1.0)
+    mottle(cv, random.Random(1911), 4, 5)
+    fill_shape(cv, 11.0, 2.4, 10.0, 1.5, lambda u, v, L: shade(ramp('#bdb4a0', 0.45, 0.22, 0.4), L), kind='rect',
+               bevel=0.8, corner=0.6)                                  # backguard
+    frect(cv, 1, 3.9, 21, 4.4, lambda c: dk(en[1], 0.25))             # its shadow on the cooktop
+    frect(cv, 8.5, 1.5, 13.5, 3.2, hx('#141a16'))                     # the clock's window
+    for x in (9.0, 10.0, 11.5, 12.5):
+        cv.dot(x, 2.0, hx('#5aff8a'))
+        cv.dot(x, 2.5, hx('#2a9a4a'))
+    for x in (3.0, 18.5):
+        stud(cv, x, 2.0, hx('#8a8474'))
+    smudge(cv, rng, 5, (2, 5, 20, 16), (0.8, 1.8), 0.32, hx('#7a5226'))   # baked-on spills
+    iron = ramp('#3a3640', 0.5, 0.25, 0.4)
+    burners = ((6.0, 7.6), (16.0, 7.6), (6.0, 13.2), (16.0, 13.2))
+    for (bx, by) in burners:
+        ring(cv, bx, by, 1.5, 3.0, lambda dx, dy, d: shade(CHROME, 0.2 + 0.9 * light(-dx / d * 0.9, -dy / d * 0.9)))   # drip bowl
+        ring(cv, bx, by, 2.9, 3.2, lambda dx, dy, d: dk(en[1], 0.3) if dx + dy < 0 else None)
+        ring(cv, bx, by, 0.8, 1.5, lambda dx, dy, d: shade(iron, light(dx / d, dy / d)) if int(math.atan2(dy, dx) * 2.6) % 2 else iron[0])   # burner head, its ports
+        fill_shape(cv, bx, by, 0.85, 0.85, lambda u, v, L: shade(ramp('#2a2630', 0.4, 0.2, 0.5), L))
+    ring(cv, 16.0, 13.2, 1.5, 2.1, lambda dx, dy, d: (hx('#9adfff') if d < 1.75 else hx('#3a7aff')) if int(math.atan2(dy, dx) * 2.6) % 2 else hx('#2a5ae8'))
+    for gx in (6.0, 16.0):                                             # two cast-iron grates, one over each pair
+        for (pts, r_) in (([(gx - 3.6, 4.6), (gx + 3.6, 4.6), (gx + 3.6, 16.0), (gx - 3.6, 16.0), (gx - 3.6, 4.6)], 0.38),
+                          ([(gx - 3.6, 10.4), (gx + 3.6, 10.4)], 0.38)):
+            fill_capsule(cv, pts, r_, lambda k, L, s, i, t: shade(iron, L))
+        for by in (7.6, 13.2):
+            for a in (0.785, 2.356, 3.927, 5.498):                     # its fingers reaching in over the bowl
+                ca, sa = math.cos(a), math.sin(a)
+                fill_capsule(cv, [(gx + ca * 1.9, by + sa * 1.9), (gx + ca * 4.2, by + sa * 4.2)], 0.36,
+                             lambda k, L, s, i, t: shade(iron, L))
+    for i, x in enumerate((3.2, 7.1, 11.0, 14.9, 18.8)):              # the knobs on the front strip
+        knob(cv, x, 18.0, 1.35, '#4a4652', -math.pi / 2 + (0.0, 0.9, -0.6, 2.2, 0.0)[i])
+    frect(cv, 1.5, 16.2, 20.5, 16.6, lambda c: dk(c, 0.18))           # where the cooktop drops to the front strip
+    chrome_bar(cv, 3.0, 19.6, 19.0, 21.0)                              # the oven door's handle
+    for x in (3.0, 18.4):
+        frect(cv, x, 19.4, x + 0.6, 21.0, CHROME[1])
     cv.outline()
 
     def pan(ly):
-        fill_shape(ly, 6.0, 7.0, 3.6, 3.6, lambda u, v, L: shade(ramp('#3a3640', 0.5, 0.25, 0.5), L))
-        fill_shape(ly, 6.0, 7.0, 2.6, 2.6, lambda u, v, L: hx('#2a2630') if math.hypot(u + 0.6, v + 0.4) > 1.0 else hx('#f2d24a'))
-        line(ly, 2.0, 4.0, 0.6, 2.4, hx('#1a1620'))      # handle
-        line(ly, 2.6, 3.6, 1.2, 2.0, hx('#1a1620'))
+        fill_capsule(ly, [(2.6, 15.6), (0.6, 17.8)], 0.55, lambda k, L, s, i, t: shade(ramp('#1a1620', 0.4, 0.2, 0.6), L))
+        fill_shape(ly, 6.0, 13.2, 3.6, 3.6, lambda u, v, L: shade(ramp('#3a3640', 0.5, 0.25, 0.5), L))
+        fill_shape(ly, 6.0, 13.2, 2.8, 2.8, lambda u, v, L: hx('#26222c') if u + v > -1.6 else hx('#3a3644'))
+        fill_shape(ly, 5.6, 13.0, 1.7, 1.4, lambda u, v, L: hx('#f6f2e6') if L > 0.4 else hx('#e2dccc'), ang=0.4)   # the egg
+        fill_shape(ly, 5.7, 13.0, 0.65, 0.65, lambda u, v, L: hx('#ffd84a') if L > 0.6 else hx('#f2b42a'))
+
+        def kettle(u, v, L):
+            return shade(ramp('#c8402c', 0.5, 0.25, 0.4), L)
+        fill_shape(ly, 16.0, 7.6, 2.9, 2.9, kettle)
+        fill_shape(ly, 16.0, 7.6, 1.2, 1.2, lambda u, v, L: hx('#2a2630') if L < 0.6 else hx('#4a4652'))   # its lid knob
+        fill_capsule(ly, [(18.4, 6.4), (19.8, 5.2)], 0.5, lambda k, L, s, i, t: shade(ramp('#c8402c', 0.5, 0.25, 0.4), L))   # spout
+        fill_capsule(ly, [(13.6, 6.0), (16.0, 4.9), (18.4, 6.0)], 0.35, lambda k, L, s, i, t: hx('#1a1620'))   # bail handle
     layer(cv, pan)
     return cv
 
 
 def p_sink():
-    """Stainless double sink: chrome mixer at the back, a dirty plate and a mug in the basins."""
+    """Stainless double sink from above (the wall at -y): brushed deck with its rolled upstand, two deep basins lit on
+    their far walls, strainers, a mixer tap with its spout over the left basin and a drop hanging from it, a plate and a
+    mug left to soak, a sponge, limescale and water spots."""
     W, H = 28, 20
     cv = Cv(W, H)
     st = ramp('#a6aeba', 0.48, 0.22, 0.42)
-    fill_shape(cv, 14.0, 10.0, 13.0, 9.0, lambda u, v, L: shade(st, L), kind='rect', bevel=1.6, corner=1.0)
-    for y in range(1, 19):                 # brushed steel: faint streaks along x
-        for x in range(1, 27):
-            c = cv.get(x, y)
-            if c[3] and (y * 7 + x // 9) % 5 == 0:
-                cv.set(x, y, shift(c, 4))
-    basin = ramp('#6a7280', 0.5, 0.26, 0.25)
+    rng = random.Random(201)
+    fill_shape(cv, 14.0, 10.0, 13.0, 9.0, lambda u, v, L: shade(st, L), kind='rect', bevel=1.2, corner=1.0)
+    frect(cv, 1.5, 1.0, 26.5, 1.5, lt(st[3], 0.2))                    # the upstand rolled over at the wall
+    frect(cv, 1.5, 2.0, 26.5, 2.5, dk(st[1], 0.1))
+    brushed(cv, rng, (1, 1, 27, 19), 6)
+    basin = ramp('#6a7280', 0.5, 0.26, 0.3)
     for bx in (7.5, 20.5):
-        fill_shape(cv, bx, 11.5, 5.3, 6.0, lambda u, v, L: shade(basin, 1.05 - L * 0.95), kind='rect', bevel=2.8, corner=1.8)
-        ring(cv, bx, 12.5, 0.0, 1.1, lambda dx, dy, d: hx('#2a2a34') if d < 0.6 else hx('#8a929e'))
-    smudge(cv, random.Random(201), 6, (2, 5, 26, 18), (1.0, 2.0), 0.2, hx('#c8c0a0'))   # limescale
+        fill_shape(cv, bx, 11.5, 5.4, 6.1, lambda u, v, L: shade(basin, 1.05 - L * 0.95), kind='rect', bevel=2.4, corner=1.8)
+        fill_shape(cv, bx, 11.5, 5.4, 6.1, lambda u, v, L: (lt(st[3], 0.25) if u > 0 and v > 0 else dk(st[0], 0.2))
+                   if (abs(u) > 4.9 or abs(v) > 5.6) and (u > 0 and v > 0 or u < 0 and v < 0) else None, kind='rect', corner=1.8)
+        brushed(cv, random.Random(int(bx * 10)), (int(bx) - 4, 7, int(bx) + 4, 16), 4, along_x=False)
+        ring(cv, bx, 12.8, 0.9, 1.5, lambda dx, dy, d: lt(st[3], 0.2) if dx + dy < 0 else st[0])   # the strainer
+        fill_shape(cv, bx, 12.8, 0.9, 0.9, lambda u, v, L: hx('#2a2a34'))
+        for (ox, oy) in ((-0.5, 0.0), (0.5, 0.0), (0.0, -0.5), (0.0, 0.5)):
+            cv.dot(bx + ox, 12.8 + oy, hx('#8a929e'))
+        smudge(cv, rng, 2, (int(bx) - 3, 10, int(bx) + 3, 16), (1.0, 1.8), 0.22, hx('#d8d0b0'))   # limescale
+    for _ in range(14):                                                # water spots dried on the deck
+        x, y = rng.uniform(2, 26), rng.uniform(3, 18)
+        if 2.0 < x < 13.0 and 5.4 < y < 17.6 or 15.0 < x < 26.0 and 5.4 < y < 17.6:
+            continue
+        cv.dot(x, y, lt(cv.get(x, y), 0.25))
     cv.outline()
 
-    def mixer(ly):
-        fill_shape(ly, 14.0, 2.6, 1.6, 1.4, lambda u, v, L: shade(ramp('#d0d6e0', 0.5, 0.25, 0.5), L))
-        fill_capsule(ly, [(14.0, 2.6), (11.5, 5.0), (9.5, 7.0)], 0.6, lambda k, L, s, i, t: shade(ramp('#d0d6e0', 0.5, 0.25, 0.5), L))
-        ly.set(11, 2, hx('#2a7af0'))
-        ly.set(17, 2, hx('#f03a3a'))
-    layer(cv, mixer)
+    def tap(ly):
+        tr = ramp('#d0d6e0', 0.5, 0.25, 0.55)
+        fill_shape(ly, 14.0, 3.2, 3.6, 1.2, lambda u, v, L: shade(tr, L), kind='rect', corner=1.0, bevel=0.8)   # its plate
+        for (x, dot) in ((11.0, hx('#2a7af0')), (17.0, hx('#f03a3a'))):   # the two cross-head handles
+            fill_shape(ly, x, 3.2, 1.3, 1.3, lambda u, v, L: shade(tr, L), kind='super', p=1.3)
+            fill_shape(ly, x, 3.2, 0.5, 0.5, lambda u, v, L, dot=dot: dot)
+        fill_capsule(ly, [(14.0, 3.2), (12.6, 4.6), (10.4, 6.4), (9.2, 7.4)], 0.55,
+                     lambda k, L, s, i, t: lt(tr[3], 0.3) if L > 0.9 else shade(tr, L))   # the spout
+        ly.dot(9.0, 7.5, hx('#5a6070'))
+    layer(cv, tap)
+    cv.dot(8.75, 8.25, hx('#cfefff'))                                  # the drop hanging from it
+    cv.dot(8.75, 8.75, hx('#7ab8e0'))
 
     def dishes(ly):
-        fill_shape(ly, 20.5, 11.5, 3.6, 3.6, lambda u, v, L: shade(WHITE, L) if math.hypot(u, v) > 2.4 else hx('#e8e4d8'))
-        ly.set(20, 11, hx('#b85a2a'))
-        ly.set(21, 12, hx('#c8a040'))
-        fill_shape(ly, 6.0, 13.5, 1.8, 1.8, lambda u, v, L: shade(ramp('#3a7ac0', 0.45, 0.22, 0.4), L))
-        ly.set(6, 13, hx('#2a1810'))
+        fill_shape(ly, 20.8, 12.0, 3.4, 3.4, lambda u, v, L: shade(WHITE, L) if math.hypot(u, v) > 2.2 else hx('#e8e4d8'))
+        ring(ly, 20.8, 12.0, 2.2, 2.5, lambda dx, dy, d: hx('#3a6ab0'))   # its blue band
+        smudge(ly, rng, 2, (19, 10, 23, 14), (0.6, 1.0), 0.6, hx('#b85a2a'))   # sauce
+        line(ly, 18.0, 9.6, 23.4, 15.0, hx('#c8ccd6'))                  # a fork across it
+        line(ly, 18.0, 10.0, 23.0, 15.2, hx('#7a808c'))
+        fill_shape(ly, 5.6, 14.2, 1.8, 1.8, lambda u, v, L: shade(ramp('#3a7ac0', 0.45, 0.22, 0.4), L))   # the mug
+        fill_shape(ly, 5.6, 14.2, 1.1, 1.1, lambda u, v, L: hx('#2a1810'))
+        fill_capsule(ly, [(7.4, 13.8), (8.0, 14.6)], 0.4, lambda k, L, s, i, t: shade(ramp('#3a7ac0', 0.45, 0.22, 0.4), L))
+        fill_shape(ly, 24.0, 3.8, 1.8, 1.0, lambda u, v, L: hx('#f2d44a') if v > -0.3 else hx('#3a8a3a'), ang=-0.15,
+                   kind='rect', corner=0.3, bevel=0.5)                 # the sponge
     layer(cv, dishes)
     return cv
 
 
 def p_toilet():
-    """Toilet: tank with flush button (-y), elongated bowl, seat ring, water; a hint of grime."""
+    """Toilet from above, the wall at -y: the cistern under its lid with a spare roll on it and the chrome lever, the
+    lid raised against it, the seat on its hinges, the bowl's porcelain rim, the water and the dark of the trap, a
+    brown ring at the waterline and a streak of scale from under the rim."""
     W, H = 15, 23
     cv = Cv(W, H)
     wh = ramp('#ecebf0', 0.4, 0.18, 0.2)
+    rng = random.Random(211)
 
     def bowl(ly):
-        fill_shape(ly, 7.5, 14.5, 5.6, 7.4, lambda u, v, L: shade(wh, L))
-        fill_shape(ly, 7.5, 15.0, 3.6, 5.2, lambda u, v, L: shade(ramp('#f4f0e2', 0.4, 0.2, 0.2), 1.1 - L * 0.7))
-        fill_shape(ly, 7.5, 15.6, 2.4, 3.4, lambda u, v, L: hx('#8ec4d4') if L < 0.75 else hx('#bfe4ee'))
-        ly.set(7, 16, hx('#4a8aa8'))
-        ly.set(7, 17, hx('#5a9ab8'))
+        fill_shape(ly, 7.5, 14.6, 5.7, 7.3, lambda u, v, L: shade(wh, L))   # the seat
+        fill_shape(ly, 7.5, 14.8, 4.2, 5.6, lambda u, v, L: shade(ramp('#f2f0ea', 0.4, 0.2, 0.2), 1.1 - L * 0.8))   # porcelain rim
+        fill_shape(ly, 7.5, 15.0, 3.6, 4.9, lambda u, v, L: shade(ramp('#e4e2da', 0.4, 0.2, 0.2), 1.05 - L * 0.9))  # the bowl falling away
+        fill_shape(ly, 7.5, 15.6, 2.5, 3.4, lambda u, v, L: hx('#9ac8d4') if L < 0.7 else hx('#c4e6ee'))           # the water
+        fill_shape(ly, 7.5, 14.6, 1.1, 1.5, lambda u, v, L: hx('#3a6a80') if L < 0.6 else hx('#4e84a0'))           # the trap
+        ly.dot(6.5, 16.5, hx('#f4fcff'))
     layer(cv, bowl)
-    smudge(cv, random.Random(211), 3, (5, 12, 10, 19), (0.8, 1.4), 0.2, hx('#a08a4a'))
+
+    def stain(x, y, c):
+        e = ((x - 7.5) / 2.6) ** 2 + ((y - 15.6) / 3.5) ** 2
+        return mix(c, hx('#a8884a'), 0.45) if 0.85 < e <= 1.08 and c[3] else None   # the ring at the waterline
+    px_paint(cv, 4, 11, 11, 20, stain)
+    line(cv, 7.0, 10.2, 7.2, 12.4, mix(hx('#e4e2da'), hx('#c8a050'), 0.5))   # scale streaking down from the rim
 
     def tank(ly):
-        fill_shape(ly, 7.5, 3.6, 6.4, 2.8, lambda u, v, L: shade(wh, L), kind='rect', bevel=1.6, corner=1.0)
-        fill_shape(ly, 7.5, 3.6, 1.0, 1.0, lambda u, v, L: shade(ramp('#b8bcc8', 0.45, 0.2, 0.4), L))
-        ly.set(4, 7, hx('#b8bcc8'))              # seat hinges
-        ly.set(10, 7, hx('#b8bcc8'))
+        fill_shape(ly, 7.5, 3.4, 6.5, 2.7, lambda u, v, L: shade(wh, L), kind='rect', bevel=1.2, corner=1.0)
+        frect(ly, 1.5, 5.6, 13.5, 6.1, lambda c: dk(c, 0.18))         # the lid's overhang
+        fill_shape(ly, 7.5, 6.9, 5.2, 0.7, lambda u, v, L: shade(wh, L - 0.1), kind='rect', corner=0.5, bevel=0.4)   # the raised lid, on edge
+        chrome_bar(ly, 1.0, 4.4, 3.4, 5.4)                             # the flush lever
+        fill_shape(ly, 9.8, 3.2, 1.7, 1.7, lambda u, v, L: shade(WHITE, L))   # a spare roll
+        fill_shape(ly, 9.8, 3.2, 0.6, 0.6, lambda u, v, L: hx('#a89878'))
+        for x in (4.0, 11.0):                                          # the seat's hinges
+            fill_shape(ly, x, 7.9, 0.8, 0.6, lambda u, v, L: shade(CHROME, L), kind='rect', corner=0.2)
     layer(cv, tank)
+    smudge(cv, rng, 3, (3, 1, 13, 6), (0.8, 1.4), 0.08)
     return cv
 
 
@@ -2598,58 +2822,72 @@ def p_pool_table():
 
 
 def p_arcade():
-    """Arcade cabinet from above: roof, lit marquee, CRT under its bezel, control panel, coin door at +y."""
+    """Arcade cabinet from above, front at +y: the roof of the purple cabinet with its T-moulding, side art, the lit
+    marquee, the CRT in its bezel playing a shooter under its curved glass, the control panel with its art, a ball-top
+    stick and four buttons, cigarette burns on the panel, the coin door's two lit slots."""
     W, H = 24, 29
     cv, gl = Cv(W, H), Cv(W, H)
     cab = ramp('#2a1e3e', 0.5, 0.22, 0.35)
-    fill_shape(cv, 12.0, 14.5, 11.0, 13.5, lambda u, v, L: shade(cab, L), kind='rect', bevel=1.6, corner=1.0)
+    fill_shape(cv, 12.0, 14.5, 11.0, 13.5, lambda u, v, L: shade(cab, L), kind='rect', bevel=1.4, corner=1.0)
     mottle(cv, random.Random(221), 4, 4)
-    for y in range(2, 26):                 # side art stripes
-        for x, col in ((1, NEON_PINK), (22, NEON_CYAN)):
-            if y % 9 not in (0,):
-                cv.set(x, y, dk(col, 0.25))
+    frect(cv, 1.0, 1.0, 23.0, 1.5, lt(cab[3], 0.15))                   # the T-moulding round the roof
+
+    def side(x, y, c):                                                 # side art: a swoosh fading down the flank
+        col = NEON_PINK if x < 12 else NEON_CYAN
+        k = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(y * 0.55))
+        return dk(col, k) if (x < 12 and x < 2.0) or (x >= 12 and x >= 22.0) else None
+    px_paint(cv, 1.0, 2.0, 23.0, 26.0, side)
+    frect(cv, 2.0, 2.0, 22.0, 6.0, lambda c: dk(c, 0.1))               # the roof panel, a shade darker, its vents
+    for x in range(5, 19, 2):
+        frect(cv, x, 3.0, x + 1.0, 4.5, cab[0])
     marquee = [hx('#ff2a6d'), hx('#ff6b1a'), hx('#f9c80e')]
-    for x in range(3, 21):                 # marquee light box, its lit top edge
-        for y in (7, 8):
-            c = lt(marquee[(x // 3) % 3], 0.3 if y == 7 else 0.1)
-            cv.set(x, y, c)
-            gl.set(x, y, c)
-    cv.rect(3, 9, 20, 10, hx('#100c18'))    # bezel shadow
-    screen = ["................",
-              "..c.c.c.c...ww..",
-              "...p.p.p.p......",
-              "................",
-              "........y.......",
-              "................",
-              "...........p....",
-              ".......ggg......",
-              ".......g.g......"]
-    scol = {'c': NEON_CYAN, 'p': NEON_PINK, 'w': hx('#f4f0ff'), 'y': hx('#f9c80e'), 'g': hx('#3aff8a')}
-    for j, row in enumerate(screen):
-        for i, ch in enumerate(row):
-            x, y = 4 + i, 10 + j
-            c = scol[ch] if ch != '.' else (hx('#0c1238') if (y % 2) else hx('#121a4a'))
-            cv.set(x, y, c)
-            gl.set(x, y, c if ch != '.' else (40, 70, 170, 150))
-    for y in range(10, 19):                # curved glass highlight
-        cv.set(4, y, lt(cv.get(4, y), 0.25))
+
+    def marq(x, y, c):
+        col = lt(marquee[int((x - 3) / 6.0) % 3], 0.25 if y < 7.5 else 0.05)
+        if 7.0 <= y < 8.5 and int(x * 2) % 3 == 0 and 5 < x < 19:
+            col = hx('#fff6dc')                                        # the logo's letters
+        return col
+    px_paint(cv, 3.0, 6.5, 21.0, 9.0, marq)
+    px_paint(gl, 3.0, 6.5, 21.0, 9.0, marq)
+    frect(cv, 3.0, 9.0, 21.0, 10.0, hx('#100c18'))                     # bezel shadow
+    sprites = {(7.0, 11.0): NEON_CYAN, (9.0, 11.0): NEON_CYAN, (11.0, 11.0): NEON_CYAN, (13.0, 11.0): NEON_CYAN,
+               (8.0, 12.5): NEON_PINK, (10.0, 12.5): NEON_PINK, (12.0, 12.5): NEON_PINK, (14.0, 12.5): NEON_PINK,
+               (11.5, 14.5): hx('#f9c80e'), (15.5, 13.5): hx('#f4f0ff')}
+
+    def screen(x, y, c):
+        col = hx('#0c1238') if int(y * 2) % 2 else hx('#121a4a')       # scanlines
+        for (sx, sy), sc in sprites.items():
+            if sx <= x < sx + 1.0 and sy <= y < sy + 0.5:
+                col = sc
+        if 10.0 <= x < 13.0 and 16.5 <= y < 17.5:
+            col = hx('#3aff8a') if not (11.0 <= x < 12.0 and y >= 17.0) else hx('#121a4a')   # the player's ship
+        if 18.0 <= x < 19.0 and 10.5 <= y < 11.0:
+            col = hx('#f4f0ff')                                        # the score
+        if x < 4.5:
+            col = lt(col, 0.25)                                        # the curved glass catching the room
+        return col
+    px_paint(cv, 4.0, 10.0, 20.0, 18.5, screen)
+    px_paint(gl, 4.0, 10.0, 20.0, 18.5, lambda x, y, c: (40, 70, 170, 150) if cv.get(x, y) in (hx('#0c1238'), hx('#121a4a')) else cv.get(x, y))
+    cv.dot(11.5, 15.5, hx('#ffffff'))                                  # a shot going up
+    gl.dot(11.5, 15.5, hx('#ffffff'))
     panel = Cv(W, H)
-    fill_shape(panel, 12.0, 22.0, 10.0, 2.8, lambda u, v, L: shade(ramp('#3e3650'), L), kind='rect', bevel=1.2, corner=0.8)
-    for x in range(3, 21):
-        panel.set(x, 20, hx('#ff2a6d') if x % 4 else hx('#f9c80e'))   # panel art edge
-    fill_shape(panel, 6.5, 22.0, 1.3, 1.3, lambda u, v, L: shade(ramp('#e02a30', 0.45, 0.2, 0.45), L))
-    for (x, c) in ((11, '#05d9e8'), (13, '#f9c80e'), (15, '#3aff8a'), (17, '#ff2a6d')):
-        panel.set(x, 22, hx(c))
-        panel.set(x, 23, dk(hx(c), 0.4))
-        gl.set(x, 22, hx(c))
+    fill_shape(panel, 12.0, 22.0, 10.0, 2.8, lambda u, v, L: shade(ramp('#3e3650'), L), kind='rect', bevel=1.0, corner=0.8)
+    px_paint(panel, 2.5, 19.5, 21.5, 20.2, lambda x, y, c: hx('#ff2a6d') if int(x) % 4 else hx('#f9c80e'))   # panel art edge
+    fill_shape(panel, 6.0, 22.4, 0.9, 0.9, lambda u, v, L: shade(ramp('#1a1820', 0.4, 0.2, 0.5), L))   # the stick's shaft hole
+    fill_shape(panel, 5.7, 22.0, 1.3, 1.3, lambda u, v, L: lt(hx('#ff8080'), 0.3) if L > 0.9 else shade(ramp('#e02a30', 0.45, 0.2, 0.45), L))   # ball top
+    for (x, c) in ((11.0, '#05d9e8'), (13.5, '#f9c80e'), (16.0, '#3aff8a'), (18.5, '#ff2a6d')):
+        fill_shape(panel, x, 22.6, 0.85, 0.85, lambda u, v, L, c=c: lt(hx(c), 0.35) if L > 0.85 else shade(ramp(c, 0.45, 0.2, 0.3), L))
+        fill_shape(gl, x, 22.6, 0.7, 0.7, lambda u, v, L, c=c: hx(c))
+    fill_shape(panel, 15.0, 24.2, 0.5, 0.4, lambda u, v, L: hx('#1a1018'))   # a cigarette burn
     panel.outline()
     cv.outline()
     cv.over(panel)
-    cv.rect(7, 26, 16, 27, hx('#4a4458'))  # coin door
-    for x in (9, 14):
-        cv.set(x, 26, hx('#ff3a2a'))
-        cv.set(x, 27, hx('#a01818'))
-        gl.set(x, 26, hx('#ff3a2a'))
+    frect(cv, 7.0, 26.0, 17.0, 28.0, hx('#4a4458'))                   # coin door
+    frect(cv, 7.0, 26.0, 17.0, 26.5, hx('#6a6478'))
+    for x in (9.0, 14.0):
+        frect(cv, x, 26.5, x + 1.0, 27.5, hx('#ff3a2a'))
+        frect(cv, x + 0.25, 26.5, x + 0.75, 27.5, hx('#ffb0a0'))
+        frect(gl, x, 26.5, x + 1.0, 27.5, hx('#ff3a2a'))
     return cv, gl
 
 
@@ -2690,28 +2928,43 @@ def p_crate():
 
 
 def p_barrel():
-    """200 L steel drum, red, explosive: rolled chime, stamped rings, two bungs, hazard label, chipped paint, rust."""
+    """200 L steel drum, red, explosive, from above: the rolled chime, the lid dished a little, its pressed ring, the
+    two bungs, a hazard diamond with its flame, a stencilled code, chipped paint, rust and a dent."""
     S = 20
     c = S / 2
     cv = Cv(S, S)
     red = ramp('#c81e28', 0.55, 0.28, 0.35)
-    fill_shape(cv, c, c, 9.0, 9.0, lambda u, v, L: red[2])
-    ring(cv, c, c, 7.6, 9.05, lambda dx, dy, d: shade(red, light(dx / d * 0.95, dy / d * 0.95)))
-    ring(cv, c, c, 6.8, 7.6, lambda dx, dy, d: red[0] if light(dx / d, dy / d) > 0.5 else red[3])
-    ring(cv, c, c, 4.2, 4.8, lambda dx, dy, d: red[1] if light(dx / d, dy / d) > 0.5 else lt(red[2], 0.15))
-    for (bx, by, r_) in ((5.0, 9.0, 1.6), (15.2, 12.0, 1.0)):
-        fill_shape(cv, bx, by, r_, r_, lambda u, v, L: shade(ramp('#9a9aa8', 0.5, 0.25, 0.4), L))
-        cv.set(int(bx), int(by), hx('#4a4a58'))
-    for y in range(S):                     # hazard diamond with a flame
-        for x in range(S):
-            d = abs(x + 0.5 - 11.0) + abs(y + 0.5 - 9.5)
-            if d <= 3.6:
-                cv.set(x, y, hx('#f2b80e') if d <= 3.0 else hx('#1a1420'))
-    for (x, y) in ((11, 8), (10, 9), (11, 9), (10, 10), (11, 10), (12, 10)):
-        cv.set(x, y, hx('#1a1420'))
+    fill_shape(cv, c, c, 9.0, 9.0, lambda u, v, L: shade(red, 0.62 - (u + v) * 0.02))
+    ring(cv, c, c, 8.1, 9.05, lambda dx, dy, d: shade(red, light(dx / d * 0.95, dy / d * 0.95)) if d > 8.5 else red[0])
+    ring(cv, c, c, 7.5, 8.1, lambda dx, dy, d: shade(red, 0.9 - light(dx / d, dy / d) * 0.75))   # the chime's inner wall
+    ring(cv, c, c, 5.3, 5.9, lambda dx, dy, d: shade(red, 0.2 + light(dx / d, dy / d) * 0.8))   # a pressed ring
+    for (bx, by, r_) in ((4.6, 8.0, 1.5), (15.0, 13.0, 0.95)):        # the bungs
+        ring(cv, bx, by, r_, r_ + 0.5, lambda dx, dy, d: dk(red[1], 0.2) if dx + dy < 0 else lt(red[2], 0.2))
+        fill_shape(cv, bx, by, r_, r_, lambda u, v, L: shade(ramp('#9a9aa8', 0.5, 0.25, 0.45), L))
+        line(cv, bx - r_ * 0.6, by, bx + r_ * 0.6, by, hx('#4a4a58'))
+    for (x, y) in ((10.5, 2.4), (10.5, 17.4)):
+        frect(cv, x - 2.5, y - 0.25, x + 2.5, y + 0.25, alpha(hx('#f0e8d8'), 150))   # stencilled code, worn
+    cx, cy = 11.0, 9.6
+
+    def diamond(x, y, col):
+        d = abs(x - cx) + abs(y - cy)
+        if d > 3.9:
+            return None
+        if d > 3.4:
+            return hx('#1a1420')
+        if d > 3.0:
+            return hx('#f2b80e') if (x - cx) + (y - cy) > 0 or d < 3.2 else hx('#fff0a0')
+        return hx('#f2b80e')
+    px_paint(cv, cx - 4, cy - 4, cx + 4, cy + 4, diamond)
+    for (x, y) in ((11.0, 8.0), (10.5, 8.5), (11.0, 8.5), (11.5, 9.0), (10.5, 9.0), (10.0, 9.5), (11.0, 9.5),
+                   (11.5, 9.5), (10.0, 10.0), (10.5, 10.0), (11.0, 10.0), (11.5, 10.0), (10.5, 10.5), (11.0, 10.5),
+                   (9.5, 11.0), (10.0, 11.0), (10.5, 11.0), (11.0, 11.0), (11.5, 11.0), (12.0, 11.0)):
+        cv.dot(x, y, hx('#1a1420'))                                    # the flame over its bar
     rng = random.Random(241)
-    smudge(cv, rng, 4, (2, 2, 18, 18), (0.7, 1.1), 0.7, hx('#9a9aa8'))   # chipped to bare steel
-    smudge(cv, rng, 4, (2, 2, 18, 18), (1.0, 2.0), 0.4, hx('#6a3416'))   # rust
+    smudge(cv, rng, 5, (2, 2, 18, 18), (0.5, 0.9), 0.75, hx('#9a9aa8'))   # chipped to bare steel
+    smudge(cv, rng, 5, (1, 1, 19, 19), (0.8, 1.8), 0.45, hx('#6a3416'))   # rust
+    smudge(cv, rng, 1, (13, 4, 16, 7), (1.6, 2.0), 0.22)                # a dent
+    fgrain(cv, random.Random(242), 3)
     cv.outline()
     return cv
 
@@ -2775,70 +3028,87 @@ def p_bookshelf():
 
 
 def p_speaker():
-    """PA cabinet: black tolex, steel corners, woofer with its surround and dust cap, small horn."""
+    """PA cabinet: black tolex with its weave, steel corner caps, a woofer in its rubber surround with a dented dust
+    cap, the horn's slot, screws round the baffle."""
     S = 16
     cv = Cv(S, S)
-    fill_shape(cv, 8.0, 8.0, 7.0, 7.0, lambda u, v, L: shade(ramp('#26232e', 0.5, 0.2, 0.32), L),
-               kind='rect', bevel=1.4, corner=1.0)
-    mottle(cv, random.Random(251), 4, 4)
-    ring(cv, 8.0, 9.0, 4.4, 5.6, lambda dx, dy, d: shade(ramp('#4e4a5e'), light(dx / d * 0.8, dy / d * 0.8)))
-    fill_shape(cv, 8.0, 9.0, 4.4, 4.4, lambda u, v, L: shade(ramp('#1a1820', 0.3, 0.15, 0.6), 1.0 - L))
-    fill_shape(cv, 8.0, 9.0, 1.6, 1.6, lambda u, v, L: shade(ramp('#5a5868', 0.4, 0.2, 0.4), L))
-    cv.rect(6, 2, 10, 2, hx('#3a3646'))     # horn
-    cv.rect(7, 2, 9, 2, hx('#0e0c12'))
-    for (x, y) in ((1, 1), (2, 1), (1, 2), (13, 1), (14, 1), (14, 2), (1, 13), (1, 14), (2, 14), (14, 13), (13, 14), (14, 14)):
-        cv.set(x, y, hx('#9a9aaa') if y < 8 else hx('#6a6a7a'))
+    fill_shape(cv, 8.0, 8.0, 7.0, 7.0, lambda u, v, L: shade(ramp('#26232e', 0.5, 0.2, 0.32), L), kind='rect', bevel=1.2, corner=1.0)
+    px_paint(cv, 1, 1, 15, 15, lambda x, y, c: shift(c, 4) if (int(x * 2) + int(y * 2)) % 3 == 0 else None)   # the tolex's weave
+    ring(cv, 8.0, 9.0, 4.4, 5.6, lambda dx, dy, d: shade(ramp('#3e3a4a', 0.45, 0.22, 0.45), light(dx / d * 0.85, dy / d * 0.85)))   # surround
+    ring(cv, 8.0, 9.0, 5.6, 6.0, lambda dx, dy, d: hx('#121016'))
+    fill_shape(cv, 8.0, 9.0, 4.4, 4.4, lambda u, v, L: shade(ramp('#1e1c24', 0.3, 0.15, 0.55), 1.05 - L))   # the cone
+    for a in range(0, 360, 45):
+        r_ = math.radians(a)
+        line(cv, 8.0 + math.cos(r_) * 1.9, 9.0 + math.sin(r_) * 1.9, 8.0 + math.cos(r_) * 4.2, 9.0 + math.sin(r_) * 4.2,
+             hx('#2a2832'))                                            # the cone's ribs
+    fill_shape(cv, 8.0, 9.0, 1.7, 1.7, lambda u, v, L: shade(ramp('#5a5868', 0.4, 0.2, 0.45), L))   # dust cap
+    cv.dot(8.5, 9.5, hx('#2a2832'))
+    frect(cv, 5.0, 2.0, 11.0, 2.8, hx('#3a3646'))                      # the horn
+    frect(cv, 5.5, 2.25, 10.5, 2.6, hx('#0e0c12'))
+    for (x, y) in ((2.5, 4.0), (13.0, 4.0), (2.5, 14.0), (13.0, 14.0)):
+        stud(cv, x, y, hx('#6a6a7a'))
+    for (x, y) in ((1, 1), (13, 1), (1, 13), (13, 13)):                # steel corner caps
+        fill_shape(cv, x + 1.0, y + 1.0, 1.0, 1.0, lambda u, v, L: shade(ramp('#9a9aaa', 0.5, 0.25, 0.4), L), kind='rect', corner=0.5)
     cv.outline()
     return cv
 
 
 def p_dj_booth():
-    """DJ booth: two direct-drive decks with records and tone arms, a mixer with VU LEDs, headphones; LED front at +y."""
+    """DJ booth: two direct-drive decks, records with their grooves and labels, strobe dots on the platters' rims, tone
+    arms with their headshells, pitch faders; a mixer with its faders, EQ knobs and VU ladders; headphones thrown
+    down; the LED chaser over a pink tube along the front (+y)."""
     W, H = 60, 24
     cv = Cv(W, H)
     desk = ramp('#1c1826', 0.4, 0.2, 0.4)
-    fill_shape(cv, 30.0, 12.0, 29.0, 11.0, lambda u, v, L: shade(desk, L), kind='rect', bevel=1.6, corner=1.0)
+    fill_shape(cv, 30.0, 12.0, 29.0, 11.0, lambda u, v, L: shade(desk, L), kind='rect', bevel=1.4, corner=1.0)
     mottle(cv, random.Random(261), 3, 6)
     plinth = ramp('#7a7a8a', 0.45, 0.22, 0.4)
     for tx, lab in ((10.5, hx('#e8303a')), (49.5, hx('#2a9ad8'))):
-        fill_shape(cv, tx, 9.5, 8.0, 6.5, lambda u, v, L: shade(plinth, L), kind='rect', bevel=1.5, corner=1.0)
-        ring(cv, tx - 1.2, 9.5, 5.4, 5.9, lambda dx, dy, d: hx('#d8dce6') if int(math.atan2(dy, dx) * 6) % 2 else hx('#8a8e9a'))
-        ring(cv, tx - 1.2, 9.5, 0.0, 5.4, lambda dx, dy, d: hx('#16141c') if int(d * 1.5) % 2 else hx('#0c0a10'))
-        fill_shape(cv, tx - 1.2, 9.5, 1.5, 1.5, lambda u, v, L: shade(ramp(lab, 0.4, 0.2, 0.3), L))
-        cv.set(int(tx - 2.5), 7, hx('#4a4858'))   # vinyl sheen
-        cv.set(int(tx - 3.5), 8, hx('#3a3848'))
-        fill_capsule(cv, [(tx + 5.6, 4.6), (tx + 5.2, 10.0), (tx + 2.8, 12.6)], 0.5, lambda k, L, s, i, t: hx('#e0e4ee'))
-        fill_shape(cv, tx + 5.6, 4.6, 1.0, 1.0, lambda u, v, L: shade(ramp('#9a9aaa'), L))
-        cv.rect(int(tx + 6), 12, int(tx + 6), 14, hx('#2a2832'))   # pitch fader
-        cv.set(int(tx + 6), 13, hx('#e8e8f0'))
-    cv.rect(21, 3, 38, 16, hx('#2e2c38'))
-    cv.rect(21, 3, 38, 3, hx('#46445a'))
-    for x in (24, 27):                     # channel faders + EQ knobs
-        cv.rect(x, 8, x, 13, hx('#100e16'))
-        cv.set(x, 9 + (x % 3), hx('#e8e8f0'))
-        for y in (4, 6):
-            cv.set(x, y, hx('#b8b8c8'))
-    for i, y in enumerate(range(13, 3, -1)):   # VU meters
-        for x in (31, 33):
-            on = i < (7 if x == 31 else 5)
-            col = hx('#3aff6a') if i < 6 else hx('#f9c80e') if i < 8 else hx('#ff2a3a')
-            cv.set(x, y, col if on else dk(col, 0.7))
-    cv.rect(23, 15, 29, 15, hx('#100e16'))  # crossfader
-    cv.set(26, 15, hx('#e8e8f0'))
-    cv.set(36, 5, hx('#b8b8c8'))
-    cv.set(36, 8, hx('#b8b8c8'))
+        fill_shape(cv, tx, 9.5, 8.0, 6.5, lambda u, v, L: shade(plinth, L), kind='rect', bevel=1.2, corner=1.0)
+        px = tx - 1.2
+        ring(cv, px, 9.5, 5.4, 5.9, lambda dx, dy, d: hx('#e8ecf4') if int(math.atan2(dy, dx) * 12) % 2 else hx('#6a6e7a'))   # strobe dots
+        ring(cv, px, 9.5, 0.0, 5.4, lambda dx, dy, d: hx('#1c1a22') if int(d * 3.2) % 2 else hx('#0c0a10'))   # grooves
+        ring(cv, px, 9.5, 2.4, 5.2, lambda dx, dy, d: hx('#3e3c4a') if abs(math.atan2(dy, dx) + 2.3) < 0.18 else None)   # the light on the vinyl
+        fill_shape(cv, px, 9.5, 1.6, 1.6, lambda u, v, L, lab=lab: shade(ramp(lab, 0.4, 0.2, 0.3), L))
+        cv.dot(px, 9.5, hx('#e8e8f0'))                                 # the spindle
+        fill_shape(cv, tx + 5.6, 4.4, 1.1, 1.1, lambda u, v, L: shade(ramp('#9a9aaa'), L))   # tone arm's pivot
+        fill_capsule(cv, [(tx + 5.6, 4.4), (tx + 5.2, 10.0), (tx + 3.4, 12.2)], 0.35, lambda k, L, s, i, t: shade(CHROME, L))
+        fill_shape(cv, tx + 3.0, 12.6, 0.7, 0.5, lambda u, v, L: hx('#2a2832'), ang=0.6, kind='rect', corner=0.2)   # headshell
+        frect(cv, tx + 5.5, 11.5, tx + 6.5, 15.0, hx('#100e16'))       # pitch fader
+        frect(cv, tx + 5.0, 13.0, tx + 7.0, 13.5, hx('#e8e8f0'))
+    fill_shape(cv, 30.0, 9.5, 9.0, 6.6, lambda u, v, L: shade(ramp('#2e2c38', 0.45, 0.22, 0.4), L), kind='rect', bevel=0.8, corner=0.6)   # mixer
+    for i, x in enumerate((23.5, 26.5)):                              # channel faders + EQ knobs
+        for y in (4.4, 6.2, 8.0):
+            knob(cv, x, y, 0.7, '#1a1820', -1.6 + i * 0.6 + y * 0.2)
+        frect(cv, x - 0.25, 9.5, x + 0.25, 14.5, hx('#0c0a10'))
+        frect(cv, x - 0.75, 11.0 + i * 1.5, x + 0.75, 11.75 + i * 1.5, hx('#e8e8f0'))
+    for k in range(10):                                                # VU ladders
+        y = 13.5 - k * 0.9
+        col = hx('#3aff6a') if k < 6 else hx('#f9c80e') if k < 8 else hx('#ff2a3a')
+        for x, lvl in ((31.0, 7), (33.0, 5)):
+            frect(cv, x, y, x + 1.0, y + 0.5, col if k < lvl else dk(col, 0.72))
+    frect(cv, 23.0, 15.0, 29.0, 15.5, hx('#100e16'))                   # crossfader
+    frect(cv, 25.5, 14.7, 26.5, 15.8, hx('#e8e8f0'))
+    for y in (5.0, 8.0):
+        knob(cv, 36.5, y, 0.7, '#1a1820', 0.4 * y)
     cv.outline()
 
     def phones(ly):
-        fill_capsule(ly, [(14.5, 17.0), (17.0, 15.0), (20.5, 16.2)], 0.6, lambda k, L, s, i, t: hx('#3a3846'))
+        fill_capsule(ly, [(14.5, 17.0), (17.0, 15.0), (20.5, 16.2)], 0.55, lambda k, L, s, i, t: shade(ramp('#3a3846', 0.45, 0.2, 0.4), L))
         for x in (14.5, 20.5):
             fill_shape(ly, x, 17.2, 1.6, 1.6, lambda u, v, L: shade(ramp('#3a3846', 0.45, 0.2, 0.4), L))
+            fill_shape(ly, x, 17.2, 0.8, 0.8, lambda u, v, L: hx('#141218'))
+        line(ly, 20.5, 18.6, 23.0, 19.4, hx('#141218'))
     layer(cv, phones)
     leds = ['#ff2a6d', '#05d9e8', '#f9c80e']
-    for x in range(2, W - 2):              # front fascia: LED chaser over a pink tube
-        cv.set(x, 19, hx(leds[(x // 4) % 3]) if x % 4 == 1 else hx('#2a2236'))
-        cv.set(x, 20, hx('#ff2a6d') if x % 2 else hx('#ff5a8d'))
-        cv.set(x, 21, hx('#c8205a'))
+
+    def fascia(x, y, c):                                               # the LED chaser over a pink tube
+        if y < 19.5:
+            return hx(leds[int(x / 4) % 3]) if int(x * 2) % 8 in (2, 3) else hx('#2a2236')
+        if y < 20.5:
+            return hx('#ffc0d8') if y < 20.0 else hx('#ff5a8d')
+        return hx('#c8205a')
+    px_paint(cv, 2.0, 19.0, W - 2.0, 21.5, fascia)
     return cv
 
 
@@ -2912,50 +3182,68 @@ def p_bar_counter():
 
 
 def p_dumpster():
-    """Steel dumpster: black plastic lids (the right one pushed open over bin bags), fork pockets, rust and grime."""
+    """Green steel dumpster from above, front along +y: its rolled rim with the side ribs, two black plastic lids with
+    moulded ribs, hinge knuckles and a grip (the right one pushed back over bin bags and a box), the fork pockets, the
+    casters peeking out at the corners, a stencilled name, rust and grime."""
     W, H = 60, 36
     cv = Cv(W, H)
     g = ramp('#2c6a3c', 0.5, 0.26, 0.3)
-    fill_shape(cv, 30.0, 18.0, 29.0, 17.0, lambda u, v, L: shade(g, L), kind='rect', bevel=2.0, corner=1.4)
-    lid = ramp('#262a2c', 0.4, 0.18, 0.22)
+    rng = random.Random(21)
+    for (x, y) in ((4.0, 34.4), (56.0, 34.4), (4.0, 1.6), (56.0, 1.6)):   # the casters
+        fill_shape(cv, x, y, 2.2, 1.4, lambda u, v, L: shade(RUBBER, L), kind='rect', corner=0.6)
+    fill_shape(cv, 30.0, 18.0, 29.0, 16.6, lambda u, v, L: shade(g, L), kind='rect', bevel=1.6, corner=1.2)
+    for x in range(8, 54, 6):                                          # the ribs pressed into the sides, seen over the rim
+        for (y0, y1) in ((1.4, 2.4), (33.6, 34.6)):
+            frect(cv, x, y0, x + 1.0, y1, lambda cc: lt(cc, 0.16))
+            frect(cv, x + 1.0, y0, x + 1.5, y1, lambda cc: dk(cc, 0.25))
+    for (x0, x1) in ((1, 2.5), (57.5, 59)):                            # fork pockets
+        for y in (9, 23):
+            frect(cv, x0, y, x1, y + 4, g[0])
+            frect(cv, x0, y, x1, y + 0.5, lt(g[1], 0.1))
+    rng2 = random.Random(22)
+    mottle(cv, rng2, 5, 5)
+    smudge(cv, rng2, 12, (1, 1, 58, 34), (0.6, 2.2), 0.55, hx('#7a3e1a'))   # rust
+    smudge(cv, rng2, 8, (1, 1, 58, 34), (1.5, 3.5), 0.16)                  # grime
+    lid = ramp('#262a2c', 0.4, 0.18, 0.28)
+    frect(cv, 31, 22, 57, 31.5, hx('#0c0a10'))                         # the dark of the open half
 
     def lids(ly):
-        for (x0, x1, y0, y1) in ((4, 29, 4, 31), (31, 56, 4, 21)):
-            fill_shape(ly, (x0 + x1 + 1) / 2, (y0 + y1 + 1) / 2, (x1 - x0 + 1) / 2, (y1 - y0 + 1) / 2,
-                       lambda u, v, L: shade(lid, L), kind='rect', bevel=1.5, corner=1.2)
-            for y in range(y0 + 7, y1 - 3, 8):      # two low moulded ribs per lid
-                for x in range(x0 + 2, x1 - 1):
-                    ly.set(x, y, shift(lid[2], 10))
-                    ly.set(x, y + 1, shift(lid[2], -8))
-            for x in (x0 + 5, x1 - 5):              # hinge knuckles at the back
-                ly.set(x, y0, hx('#5a5e66'))
+        for (x0, x1, y0, y1) in ((3.5, 29.5, 3.5, 31.5), (30.5, 56.5, 3.5, 21.0)):
+            fill_shape(ly, (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2,
+                       lambda u, v, L: shade(lid, L), kind='rect', bevel=1.2, corner=1.0)
+            for y in [y0 + 6.5 + k * 7 for k in range(4) if y0 + 6.5 + k * 7 < y1 - 3]:   # moulded ribs
+                frect(ly, x0 + 1.5, y, x1 - 1.5, y + 0.5, lt(lid[2], 0.18))
+                frect(ly, x0 + 1.5, y + 0.5, x1 - 1.5, y + 1.5, shift(lid[2], 6))
+                frect(ly, x0 + 1.5, y + 1.5, x1 - 1.5, y + 2.0, lid[0])
+            for x in (x0 + 4, x1 - 6):                                 # hinge knuckles at the back
+                frect(ly, x, y0 - 0.5, x + 2.0, y0 + 1.0, hx('#5a5e66'))
+                frect(ly, x, y0 - 0.5, x + 2.0, y0, hx('#8a8e98'))
+            gx = (x0 + x1) / 2
+            frect(ly, gx - 3.0, y1 - 2.0, gx + 3.0, y1 - 0.8, lid[0])  # the grip moulded in its front
+            frect(ly, gx - 3.0, y1 - 0.8, gx + 3.0, y1 - 0.4, lt(lid[2], 0.12))
+            fgrain(ly, rng, 3)
     layer(cv, lids)
     bags = Cv(W, H)
-    rng = random.Random(21)
-    for _ in range(7):                     # bin bags in the open half
+    for _ in range(7):                                                 # bin bags in the open half
         bx, by, r_ = rng.uniform(34, 54), rng.uniform(24, 30), rng.uniform(2.6, 4.0)
-        fill_shape(bags, bx, by, r_, r_ * 0.85, lambda u, v, L: shade(ramp('#262430', 0.4, 0.2, 0.7), L ** 1.6),
+        fill_shape(bags, bx, by, r_, r_ * 0.85, lambda u, v, L: shade(ramp('#2a2834', 0.45, 0.2, 0.32), L),
                    ang=rng.uniform(0, 3))
-    fill_shape(bags, 49.0, 24.5, 3.0, 2.0, lambda u, v, L: shade(ramp('#a8865a', 0.4, 0.2, 0.3), L), ang=0.4,
-               kind='rect', corner=0.4)       # a flattened cardboard box
-    for y in range(H):
-        for x in range(W):
-            if not (31 <= x <= 56 and 23 <= y <= 31):
-                bags.set(x, y, CLEAR)
+        crease(bags, [(bx - r_ * 0.5, by - r_ * 0.2), (bx, by + r_ * 0.1), (bx + r_ * 0.4, by - r_ * 0.3)], 0.3)
+    fill_shape(bags, 49.0, 25.0, 3.4, 2.2, lambda u, v, L: shade(ramp('#a8865a', 0.4, 0.2, 0.3), L), ang=0.4,
+               kind='rect', corner=0.4)                                # a flattened cardboard box
+    fill_shape(bags, 38.5, 28.5, 1.0, 1.0, lambda u, v, L: shade(ramp('#3a8a3a', 0.45, 0.22, 0.4), L))   # a bottle
+    px_paint(bags, 0, 0, W, H, lambda x, y, cc: CLEAR if not (31 <= x < 57 and 22.5 <= y < 31.5) else None)
     bags.outline(hx('#0c0a10'))
     cv.over(bags)
-    for x in range(31, 57):
-        cv.set(x, 22, hx('#0c0a10'))
-    for (x0, x1) in ((1, 2), (57, 58)):    # fork pockets
-        cv.rect(x0, 9, x1, 13, g[0])
-        cv.rect(x0, 23, x1, 27, g[0])
-    rng2 = random.Random(22)
-    mottle(cv, rng2, 6, 5)
-    smudge(cv, rng2, 10, (1, 1, 58, 34), (0.8, 2.4), 0.55, hx('#7a3e1a'))   # rust
-    smudge(cv, rng2, 8, (4, 4, 56, 31), (1.5, 3.5), 0.18)                   # grime
-    for x in range(6, 26):                 # a stripe of faded stencil on the rim
-        if x % 3:
-            cv.blend(x, 33, (220, 220, 210, 70))
+    frect(cv, 31, 21.0, 57, 22.5, hx('#0c0a10'))                       # the shadow the raised lid casts in
+    smudge(cv, rng2, 6, (4, 4, 56, 30), (1.5, 3.0), 0.1)               # grime on the lids
+    for _ in range(9):                                                 # and what the pigeons left
+        x, y = rng2.uniform(5, 55), rng2.uniform(5, 20)
+        cv.dot(x, y, hx('#d8d4c8'))
+        cv.dot(x + 0.5, y, hx('#a8a498'))
+    for x in range(8, 26):                                             # a stencilled name on the rim, worn
+        if x % 4 != 3 and rng2.random() < 0.8:
+            frect(cv, x, 32.8, x + 1, 33.6, lambda cc: mix(cc, hx('#e8e4d8'), 0.45))
     cv.outline()
     return cv
 
@@ -4746,7 +5034,8 @@ def p_jukebox():
 
 def p_hydrant():
     """Fire hydrant from above, 14 x 14: two hose caps on the sides and the pumper outlet in front, each with its own
-    dark edge, under the barrel's flange, the bonnet dome and its brass nut (the user: sharper and a little bigger)."""
+    dark edge and the chain that keeps it, under the barrel's bolted flange, the bonnet dome and its pentagon brass nut
+    (the user: sharper and a little bigger)."""
     S = 14
     cv = Cv(S, S)
     red = ramp('#d0262c', 0.55, 0.28, 0.35)
@@ -4756,74 +5045,86 @@ def p_hydrant():
     def caps(ly):
         for (cx, cy, rx, ry) in ((2.3, 7.0, 1.4, 2.0), (11.7, 7.0, 1.4, 2.0), (7.0, 11.7, 2.0, 1.4)):
             fill_shape(ly, cx, cy, rx, ry, lambda u, v, L: shade(cap, L))
+            fill_shape(ly, cx, cy, rx * 0.45, ry * 0.45, lambda u, v, L: shade(cap, 1.0 - L * 0.6), kind='super', p=1.2)   # its nut
 
     def barrel(ly):
         fill_shape(ly, 7.0, 7.0, 4.1, 4.1, lambda u, v, L: red[1] if L < 0.5 else red[2])     # the flange
+        for k in range(6):
+            a = k * math.pi / 3 + 0.3
+            stud(ly, 7.0 + math.cos(a) * 3.6 - 0.25, 7.0 + math.sin(a) * 3.6 - 0.25, red[1])   # its bolts
     layer(cv, caps)
     layer(cv, barrel)
     fill_shape(cv, 7.0, 7.0, 3.0, 3.0, lambda u, v, L: shade(red, L))                          # the bonnet
     ring(cv, 7.0, 7.0, 2.9, 3.4, lambda dx, dy, d: red[0])                                     # its edge
-    fill_shape(cv, 7.0, 7.0, 1.5, 1.5, lambda u, v, L: shade(nut, L))
-    cv.set(5, 5, hx('#ff9a8a'))               # the light on the dome
-    cv.set(9, 8, hx('#8a8a98'))               # paint chipped to the iron
+    fill_shape(cv, 7.0, 7.0, 1.5, 1.5, lambda u, v, L: shade(nut, L), kind='super', p=1.1)     # pentagon-ish nut
+    cv.dot(5.0, 5.0, hx('#ff9a8a'))                                    # the light on the dome
+    cv.dot(5.5, 5.0, hx('#ff9a8a'))
+    smudge(cv, random.Random(4747), 3, (3, 3, 11, 11), (0.4, 0.7), 0.7, hx('#8a8a98'))   # paint chipped to the iron
+    line(cv, 3.0, 8.6, 5.4, 10.6, hx('#6a6a78'))                       # a cap's chain
     return cv
 
 
 def p_bench():
-    """Park bench with backrest (-y): weathered slats worn pale where people sit, cast-iron ends, carved initials."""
+    """Park bench with backrest (-y): weathered slats with their grain and bolts, worn pale where people sit, cast-iron
+    scrolled ends, carved initials, what a pigeon left."""
     W, H = 52, 17
     cv = Cv(W, H)
     w = ramp('#a06a3a', 0.5, 0.25, 0.3)
     iron = ramp('#34343e', 0.4, 0.2, 0.45)
-    rng = random.Random(41)
-    nz = VNoise(W, H, 4, random.Random(42))
-    for (y0, y1) in ((1, 2), (4, 5), (7, 9), (11, 12), (14, 15)):
-        for y in range(y0, y1 + 1):
-            for x in range(2, W - 2):
-                c = w[3] if y == y0 else w[1] if y == y1 else w[2]
-                c = shift(c, int((nz(x, y * 4) - 0.5) * 14))
-                if y0 >= 7 and 8 < x < W - 9:
-                    c = mix(c, hx('#c8a882'), 0.18 * math.sin(math.pi * (x - 8) / (W - 17)))   # sat-on wear
-                cv.set(x, y, c)
-    for y in (3, 6, 10, 13):                  # gaps: the iron frame and the ground below
-        for x in range(2, W - 2):
-            cv.set(x, y, hx('#1e1a24') if x in (25, 26) else hx('#2a2430'))
-    for x0 in (1, W - 4):                     # cast-iron ends with a scrolled armrest
-        for y in range(1, 16):
-            cv.set(x0, y, iron[3] if y < 5 else iron[2])
-            cv.set(x0 + 1, y, iron[2])
-            cv.set(x0 + 2, y, iron[1])
-        cv.set(x0 + 1, 15, iron[3])
-    for x in (12, 13, 15, 16, 17):            # carved initials
-        cv.set(x, 11, dk(w[1], 0.3))
-    cv.set(36, 8, hx('#e8e4dc'))              # pigeon
-    cv.set(37, 8, hx('#d0ccc4'))
-    for x in (8, 9, 43, 44):                  # bolts
-        cv.set(x, 8, iron[1])
+    frect(cv, 2, 1, W - 2, 16, hx('#1e1a24'))                          # the ground and frame under the gaps
+    for (x0, x1) in ((24.5, 27.5),):
+        frect(cv, x0, 1, x1, 16, hx('#2a2632'))                        # the middle support
+    for k, (y0, y1) in enumerate(((1, 2), (4, 5), (7, 9), (11, 12), (14, 15))):
+        wood_fill(cv, 2, y0, W - 3, y1, w[2], plank=y1 - y0 + 1, rng=random.Random(41 + k))
+        bevel_edges(cv, 2, y0, W - 3, y1, 0.22, 0.32)
+        if y0 >= 7:
+            px_paint(cv, 9, y0, W - 9, y1 + 1, lambda x, y, c: mix(c, hx('#c8a882'), 0.2 * math.sin(math.pi * (x - 9) / (W - 18))))   # sat-on wear
+        for x in (8.0, 25.5, 43.0):
+            stud(cv, x, y0 + (y1 - y0 + 1) / 2.0 - 0.25, iron[1])     # carriage bolts
+    for x0 in (1, W - 4):                                              # cast-iron ends with a scrolled armrest
+        fill_capsule(cv, [(x0 + 1.5, 1.6), (x0 + 1.5, 15.4)], 1.4, lambda k, L, s, i, t: shade(iron, L + (0.15 if t < 0.25 else 0.0)))
+        ring(cv, x0 + 1.5, 15.0, 0.5, 1.2, lambda dx, dy, d: iron[3] if dx + dy < 0 else iron[1])   # the scroll
+    for (x, y) in ((12.0, 11.5), (12.5, 11.5), (14.0, 11.5), (15.0, 11.5), (15.5, 11.5), (17.0, 11.5)):
+        cv.dot(x, y, dk(w[1], 0.35))                                   # carved initials
+    for (x, y) in ((36.0, 8.0), (36.5, 8.5), (37.0, 8.0)):
+        cv.dot(x, y, hx('#e8e4dc'))                                    # pigeon
+    smudge(cv, random.Random(42), 5, (3, 1, W - 3, 16), (1.0, 2.5), 0.14)
     cv.outline()
     return cv
 
 
 def p_chain_fence():
     """Chain-link gate panel, chest high: a galvanized top rail between two posts seen from above (the 32 x 4 hitbox),
-    and the diamond mesh laid out on both sides, the way it shows when looking down through it."""
+    with its tie wires, and the diamond mesh laid out on both sides, one fine wire wide, the way it shows when looking
+    down through it, fading away from the rail."""
     W, H = 34, 16
     cv = Cv(W, H)
     st = ramp('#aeb4be', 0.5, 0.25, 0.4)
-    for x in range(1, W - 1):                 # top rail, a tie wire every 4 px
-        cv.set(x, 7, st[3] if x % 4 else st[2])
-        cv.set(x, 8, st[1] if x % 4 else st[0])
-    for x0 in (1, W - 5):                     # posts and their caps
-        cv.rect(x0, 6, x0 + 3, 9, st[2])
-        cv.rect(x0, 9, x0 + 3, 9, st[1])
-        cv.rect(x0 + 1, 6, x0 + 2, 7, st[3])
+    fill_capsule(cv, [(1.5, 7.5), (W - 1.5, 7.5)], 0.95, lambda k, L, s, i, t: lt(st[3], 0.2) if L > 0.9 else shade(st, L))   # top rail
+    for x in range(4, W - 4, 4):
+        frect(cv, x, 7.0, x + 0.5, 8.5, st[0])                         # tie wires
+    for x0 in (1.0, W - 5.0):                                          # posts and their caps
+        fill_shape(cv, x0 + 2.0, 7.5, 2.0, 2.0, lambda u, v, L: shade(st, L))
+        fill_shape(cv, x0 + 2.0, 7.5, 1.0, 1.0, lambda u, v, L: shade(st, L + 0.15))
     cv.outline()
-    for y in list(range(0, 6)) + list(range(10, H)):   # the mesh: wires over a faint shade, fading away from the rail
-        d = 5 - y if y < 6 else y - 10
-        for x in range(2, W - 2):
-            if not cv.get(x, y)[3]:
-                wire = (x + y) % 4 == 0 or (x - y) % 4 == 0
-                cv.set(x, y, alpha(st[3], 235 - 30 * d) if wire else alpha(OUTLINE, 72 - 11 * d))
+    s = cv.s
+    for j in range(cv.ph):
+        y = (j + 0.5) / s
+        if 6.0 <= y < 10.0:
+            continue
+        d = (5.5 - y) if y < 6 else (y - 9.5)
+        for i in range(2 * s, (W - 2) * s):
+            if cv.p[i, j][3]:
+                continue
+            x = (i + 0.5) / s
+            wire = (i + j) % (4 * s) == 0 or (i - j) % (4 * s) == 0
+            knot = (i + j) % (4 * s) == 0 and (i - j) % (4 * s) == 0
+            if knot:
+                cv.p[i, j] = alpha(lt(st[3], 0.2), int(250 - 30 * d))
+            elif wire:
+                cv.p[i, j] = alpha(st[3], int(225 - 30 * d))
+            else:
+                cv.p[i, j] = alpha(OUTLINE, int(60 - 9 * d))
     return cv
 
 
@@ -4871,34 +5172,54 @@ def p_bottle_shelf():
 
 
 def p_washer():
-    """Coin-op top loader from above: enamel cabinet, control panel and coin box at the back (-y), round glass lid."""
+    """Coin-op top loader from above: white enamel cabinet, the console at the back (-y) with its timer dial, cycle knob,
+    ready lamp and chrome coin slide, the lid with its seam, finger grip and round window on the wash, a box of
+    powder and a few grains spilled."""
     S = 24
     cv = Cv(S, S)
     en = ramp('#dfe3e8', 0.42, 0.2, 0.4)
-    fill_shape(cv, 12.0, 12.0, 11.0, 11.0, lambda u, v, L: shade(en, L), kind='rect', bevel=2.4, corner=1.6)
-    mottle(cv, random.Random(191), 4, 6)
+    rng = random.Random(191)
+    fill_shape(cv, 12.0, 12.0, 11.0, 11.0, lambda u, v, L: shade(en, L), kind='rect', bevel=1.6, corner=1.4)
+    mottle(cv, random.Random(1912), 3, 6)
     pn = ramp('#566070', 0.45, 0.22, 0.35)
-    cv.rect(2, 2, 21, 5, pn[1])
-    cv.rect(2, 2, 21, 2, pn[2])
-    cv.rect(2, 5, 21, 5, pn[0])
-    for x in (4, 8):                                          # dials
-        cv.set(x, 3, hx('#eef2f8'))
-        cv.set(x, 4, hx('#98a0ae'))
-    cv.set(11, 3, hx('#3aff8a'))                              # ready light
-    cv.rect(15, 2, 19, 4, STEEL_L[2])                         # coin box and its slot
-    cv.rect(15, 4, 19, 4, STEEL_L[1])
-    cv.set(17, 3, OUTLINE)
-    cloth = (hx('#8a3040'), hx('#c8ccd4'), hx('#3a5a9a'))
+    fill_shape(cv, 12.0, 3.8, 10.4, 2.4, lambda u, v, L: shade(pn, L), kind='rect', bevel=0.9, corner=0.6)   # console
+    frect(cv, 1.6, 6.2, 22.4, 6.7, lambda c: dk(en[1], 0.2))           # its shadow on the top
+    knob(cv, 4.4, 3.8, 1.4, '#e8ecf2', -0.6, hx('#2a2e38'))            # the cycle knob
+    fill_shape(cv, 9.0, 3.8, 1.6, 1.4, lambda u, v, L: hx('#1a1e24'), kind='rect', corner=0.4)   # the timer window
+    line(cv, 8.2, 3.8, 9.8, 3.8, hx('#f0a830'))
+    cv.dot(11.5, 3.0, hx('#3aff8a'))                                   # ready
+    cv.dot(11.5, 4.5, hx('#2a4a30'))
+    chrome_bar(cv, 14.0, 2.4, 21.0, 5.2)                               # the coin slide
+    for x in (15.2, 17.2, 19.2):
+        frect(cv, x, 3.4, x + 1.0, 4.2, hx('#2a2a34'))                 # its coin slots
+    stud(cv, 2.2, 2.0, pn[1])
+    stud(cv, 21.6, 2.0, pn[1])
 
-    def lid(dx, dy, d):
-        if d > 6.2:
-            return dk(en[0], 0.2)                             # the seal's shadow on the enamel
-        if d > 4.8:
+    def lid(x, y, c):
+        return shade(en, 0.72 if y < 7.8 else 0.6 if y > 20.6 else 0.66)
+    px_paint(cv, 4.5, 7.5, 19.5, 21.5, lid)
+    for (x0, y0, x1, y1, f) in ((4.5, 7.5, 19.5, 8.0, lambda c: dk(c, 0.35)), (4.5, 8.0, 5.0, 21.5, lambda c: dk(c, 0.3)),
+                                (4.5, 21.0, 19.5, 21.5, lambda c: lt(c, 0.25)), (19.0, 8.0, 19.5, 21.0, lambda c: lt(c, 0.2))):
+        frect(cv, x0, y0, x1, y1, f)                                   # the lid's seam, shadowed and lit
+    frect(cv, 9.5, 19.5, 14.5, 20.5, lambda c: dk(c, 0.22))           # its finger grip
+    cloth = (hx('#8a3040'), hx('#c8ccd4'), hx('#3a5a9a'), hx('#d8b048'))
+
+    def window(dx, dy, d):
+        if d > 4.4:
             return shade(CHROME, 0.25 + 0.9 * light(dx / d * 0.85, dy / d * 0.85))
-        c = mix(GLASS[0], cloth[int((math.atan2(dy, dx) + math.pi) / (2 * math.pi) * 3 + d * 0.35) % 3], 0.28)
-        return mix(c, hx('#dfeaff'), 0.55) if dx + dy < -2.6 and d > 2.2 else c
-    ring(cv, 12.0, 14.0, 0.0, 7.0, lid)
+        k = int((math.atan2(dy, dx) + math.pi) / (2 * math.pi) * 5 + d * 0.5) % 4
+        c = mix(GLASS[1], cloth[k], 0.45)
+        return mix(c, hx('#e8f2ff'), 0.6) if dx + dy < -2.4 and d > 2.0 else c
+    ring(cv, 12.0, 13.8, 0.0, 5.2, window)
     cv.outline()
+
+    def powder(ly):
+        fill_shape(ly, 20.4, 16.0, 1.6, 2.4, lambda u, v, L: hx('#f26a1a') if v < -0.6 else shade(ramp('#2a6ad8', 0.45, 0.22, 0.4), L),
+                   ang=0.12, kind='rect', corner=0.3, bevel=0.6)
+        ly.dot(20.0, 16.4, hx('#ffffff'))
+    layer(cv, powder)
+    for _ in range(6):
+        cv.dot(rng.uniform(17.5, 22.0), rng.uniform(18.5, 22.0), hx('#f4f6fc'))
     return cv
 
 
@@ -4998,121 +5319,167 @@ def p_back_bar():
 
 
 def p_alarm_box():
-    """A shop's alarm box on its front wall (-y): a pressed steel case, the slots of its bell, the red lens of its beacon."""
+    """A shop's alarm box on its front wall (-y): a pressed steel case with its lit edge and screws, the louvres of its
+    bell, the maker's plate, the red dome of its beacon."""
     cv = Cv(12, 8)
-    cv.rect(1, 1, 10, 5, hx('#c4c8ce'))
-    cv.rect(1, 1, 10, 1, hx('#e8eaee'))
-    cv.rect(1, 5, 10, 5, hx('#8c909a'))
-    for x in (2, 4):
-        cv.rect(x, 2, x, 4, hx('#565a64'))
-    cv.rect(7, 2, 9, 4, hx('#c2281e'))
-    cv.set(7, 2, hx('#ff8070'))
-    cv.rect(7, 4, 9, 4, hx('#8a1a14'))
+    st = ramp('#c4c8ce', 0.45, 0.22, 0.4)
+    fill_shape(cv, 6.0, 3.5, 5.0, 2.5, lambda u, v, L: shade(st, L), kind='rect', bevel=0.8, corner=0.5)
+    for x in (2.0, 3.0, 4.0):
+        frect(cv, x, 2.0, x + 0.5, 5.0, hx('#565a64'))                 # the bell's louvres
+        frect(cv, x + 0.5, 2.0, x + 1.0, 5.0, st[3])
+    frect(cv, 2.0, 5.2, 5.0, 5.7, hx('#2a5ab0'))                       # the maker's plate
+    fill_shape(cv, 8.4, 3.6, 1.8, 1.8, lambda u, v, L: shade(ramp('#c2281e', 0.45, 0.22, 0.5), L))   # the beacon
+    cv.dot(7.75, 2.75, hx('#ffb0a0'))
+    for (x, y) in ((1.5, 1.5), (10.0, 1.5), (1.5, 5.5), (10.0, 5.5)):
+        cv.dot(x, y, st[0])
     cv.outline()
     return cv
 
 
 def p_fuse_box():
-    """The house's fuse box on an outside wall (-y): a steel cabinet seen from above under its little bulkhead lamp, its
-    two doors, a yellow hazard plate, the red handle of the main switch, the conduit that feeds it along the wall."""
+    """The house's fuse box on an outside wall (-y), from above: the conduit along the wall and its clips, a grey steel
+    cabinet with its rain hood, the seam of its two doors and their hinges, a yellow hazard plate, the meter's round
+    window, the red handle of the main switch, a padlock, rust weeping from the hood."""
     cv = Cv(26, 11)
-    cv.rect(0, 0, 25, 1, hx('#4a4e58'))          # conduit along the wall
-    cv.rect(0, 0, 25, 0, hx('#6e737e'))
-    cv.rect(4, 2, 21, 8, hx('#8a909c'))          # cabinet
-    cv.rect(4, 2, 21, 2, hx('#c0c6d0'))
-    cv.rect(4, 8, 21, 8, hx('#5a5f6a'))
-    cv.rect(12, 3, 12, 7, hx('#5e636e'))         # door seam
-    cv.rect(6, 4, 10, 6, hx('#f0c81e'))          # hazard plate
-    cv.rect(8, 4, 8, 5, hx('#2a2410'))
-    cv.set(7, 6, hx('#2a2410'))
-    cv.rect(14, 4, 15, 6, hx('#30343c'))         # meter window
-    cv.set(14, 4, hx('#9ad8ff'))
-    cv.rect(17, 4, 19, 6, hx('#c2281e'))         # main switch
-    cv.rect(17, 4, 19, 4, hx('#ff8070'))
+    frect(cv, 0, 0, 26, 1.5, hx('#4a4e58'))                            # the conduit along the wall
+    frect(cv, 0, 0, 26, 0.5, hx('#6e737e'))
+    for x in (2.0, 23.0):
+        frect(cv, x, 0, x + 1.0, 1.5, hx('#8a909c'))
+    st = ramp('#8a909c', 0.45, 0.22, 0.4)
+    fill_shape(cv, 13.0, 5.4, 9.0, 3.6, lambda u, v, L: shade(st, L), kind='rect', bevel=0.8, corner=0.5)
+    frect(cv, 4.0, 1.8, 22.0, 2.6, st[3])                              # its rain hood
+    frect(cv, 4.0, 2.6, 22.0, 3.0, st[0])
+    frect(cv, 12.75, 3.0, 13.25, 8.8, hx('#4e535e'))                   # the doors' seam
+    for x in (4.5, 21.0):
+        frect(cv, x, 3.5, x + 0.5, 8.5, hx('#5e636e'))                 # their hinges
+    fill_shape(cv, 8.0, 5.8, 2.4, 1.8, lambda u, v, L: hx('#f0c81e'), kind='rect', corner=0.2)   # hazard plate
+    for (x, y) in ((8.5, 4.5), (8.0, 5.0), (7.5, 5.5), (8.0, 5.5), (8.5, 5.5), (8.0, 6.0), (7.5, 6.5)):
+        cv.dot(x, y, hx('#2a2410'))                                    # its bolt
+    ring(cv, 15.4, 5.6, 1.1, 1.5, lambda dx, dy, d: shade(CHROME, light(dx / d, dy / d)))   # the meter's window
+    fill_shape(cv, 15.4, 5.6, 1.1, 1.1, lambda u, v, L: hx('#cfe8f4') if u + v < -0.5 else hx('#7aa8c0'))
+    line(cv, 15.4, 5.6, 16.0, 5.0, hx('#c02020'))
+    fill_shape(cv, 19.0, 5.6, 1.4, 1.8, lambda u, v, L: shade(ramp('#c2281e', 0.45, 0.22, 0.4), L), kind='rect', corner=0.4)   # main switch
+    fill_shape(cv, 13.0, 8.4, 0.7, 0.6, lambda u, v, L: shade(ramp('#c8a050', 0.45, 0.22, 0.4), L), kind='rect', corner=0.3)   # padlock
+    smudge(cv, random.Random(5015), 4, (5, 3, 21, 9), (0.5, 1.2), 0.5, hx('#7a3e1a'))
     cv.outline()
     return cv
 
 
 def p_emergency_light():
-    """A battery lamp on a wall (-y): a cream case and its two round heads, dull red until the mains fail."""
+    """A battery lamp on a wall (-y): a cream case with its vents and the green charge light, the test button, two
+    round heads in their sockets, dull red until the mains fail."""
     cv, gl = Cv(14, 7), Cv(14, 7)
-    cv.rect(2, 0, 11, 2, hx('#cfc8b4'))
-    cv.rect(2, 0, 11, 0, hx('#ece6d4'))
-    cv.rect(2, 2, 11, 2, hx('#948c78'))
-    cv.set(7, 1, hx('#3aff8a'))
-    for x0 in (3, 8):
-        cv.rect(x0, 3, x0 + 2, 5, hx('#7a2a22'))
-        cv.set(x0 + 1, 4, hx('#b04a3c'))
-        gl.rect(x0, 3, x0 + 2, 5, (255, 110, 80, 200))
-        gl.set(x0 + 1, 4, (255, 230, 210, 255))
+    case = ramp('#cfc8b4', 0.45, 0.22, 0.3)
+    fill_shape(cv, 7.0, 1.5, 5.0, 1.5, lambda u, v, L: shade(case, L), kind='rect', corner=0.5, bevel=0.6)
+    for x in (3.0, 4.0, 9.5, 10.5):
+        frect(cv, x, 0.8, x + 0.5, 2.0, case[1])                       # vents
+    cv.dot(6.5, 1.25, hx('#3aff8a'))                                   # charging
+    cv.dot(7.5, 1.25, hx('#c83a2a'))                                   # test button
+    for x0 in (4.0, 10.0):
+        ring(cv, x0, 4.4, 1.2, 1.7, lambda dx, dy, d: shade(case, light(dx / d, dy / d)))   # the socket
+        fill_shape(cv, x0, 4.4, 1.2, 1.2, lambda u, v, L: hx('#b04a3c') if L > 0.7 else hx('#7a2a22'))
+        cv.dot(x0 - 0.5, 4.0, hx('#d87a6a'))
+        fill_shape(gl, x0, 4.4, 1.6, 1.6, lambda u, v, L: (255, 110, 80, 200))
+        fill_shape(gl, x0, 4.4, 0.7, 0.7, lambda u, v, L: (255, 230, 210, 255))
     cv.outline()
     return cv, gl
 
 
 def p_cash_case():
-    """The boss's case lying open: its lid thrown back (-y), banded wads of notes in two rows."""
+    """The boss's attache case lying open, its lid thrown back (-y): the lid's red lining and elastic pocket, the brass
+    hinges, banded wads of notes in two rows in the black shell, the chrome latches and the handle at +y."""
     cv = Cv(22, 16)
-    cv.rect(1, 1, 20, 14, hx('#23232b'))
-    cv.rect(2, 2, 19, 4, hx('#4a2a30'))            # the lining of the lid
-    cv.rect(2, 2, 19, 2, hx('#5e3640'))
-    cv.rect(1, 6, 20, 6, hx('#0e0e12'))            # the hinge
-    for x in (2, 8, 14):
-        for y in (7, 11):
-            cv.rect(x, y, x + 4, y + 2, hx('#5a8a4a'))
-            cv.rect(x, y, x + 4, y, hx('#7aa868'))
-            cv.rect(x + 2, y, x + 2, y + 2, hx('#f2ead0'))   # its paper band
-    cv.rect(9, 14, 12, 14, hx('#6a6a76'))          # the handle
+    shell = ramp('#26262e', 0.45, 0.22, 0.4)
+    fill_shape(cv, 11.0, 3.6, 10.0, 2.6, lambda u, v, L: shade(shell, L), kind='rect', bevel=0.8, corner=0.8)   # the lid
+    fill_shape(cv, 11.0, 3.6, 9.0, 1.8, lambda u, v, L: shade(ramp('#6a1e2a', 0.45, 0.22, 0.3), 1.0 - L * 0.6), kind='rect', corner=0.4)
+    dash(cv, 3.0, 3.4, 19.0, 3.4, hx('#8a3040'), 1, 1)                 # the pocket's elastic
+    frect(cv, 1.0, 6.2, 21.0, 6.8, hx('#0e0e12'))                      # the hinge line
+    for x in (4.0, 16.0):
+        frect(cv, x, 6.0, x + 2.0, 7.0, hx('#c8a050'))
+        frect(cv, x, 6.0, x + 2.0, 6.5, hx('#f0d080'))
+    fill_shape(cv, 11.0, 10.9, 10.0, 4.1, lambda u, v, L: shade(shell, L), kind='rect', bevel=0.8, corner=0.8)
+    frect(cv, 2.0, 7.6, 20.0, 14.0, hx('#121216'))
+    note = ramp('#6a9a5a', 0.45, 0.22, 0.3)
+    for i, x in enumerate((2.4, 8.4, 14.4)):
+        for j, y in enumerate((7.8, 11.0)):
+            def wad(px, py, c, x=x, y=y):
+                t = (py - y) / 2.8
+                col = shade(note, 0.82 - t * 0.5)
+                if int(py * 2) % 2 and px > x + 4.6:
+                    col = dk(col, 0.15)                                # the edges of the notes
+                if x + 2.2 <= px < x + 3.2:
+                    col = hx('#f2ead0') if t < 0.6 else hx('#c8c0a4')  # the paper band
+                return col
+            px_paint(cv, x, y, x + 5.2, y + 2.8, wad)
+            cv.dot(x + 2.5, y + 1.0, hx('#8a6a3a'))
+    for x in (5.0, 15.5):                                              # latches
+        chrome_bar(cv, x, 14.2, x + 1.5, 15.0)
+    fill_capsule(cv, [(9.0, 15.0), (13.0, 15.0)], 0.5, lambda k, L, s, i, t: shade(RUBBER, L))   # the handle
     cv.outline()
     return cv
 
 
 def p_ceiling_fan():
-    """Ceiling fan from above: four thin blades the game spins, see-through enough to read who stands under it."""
+    """Ceiling fan from above: four dark wood paddles on brass irons, the motor housing with its cap, see-through enough
+    to read who stands under it (the game spins it)."""
     cv, hub = Cv(44, 44), Cv(44, 44)
-    wood, edge = hx('#2c2228', 200), hx('#a8927a', 215)   # dark varnish: it has to read against a wooden floor
-    for i in range(5, 21):
-        for j in (-2, -1, 0, 1):
-            col = edge if j == -2 else wood        # the leading edge catches the light
-            cv.set(22 + i, 22 + j, col)
-            cv.set(21 - i, 21 - j, col)
-            cv.set(21 - j, 22 + i, col)
-            cv.set(22 + j, 21 - i, col)
-    for y in range(17, 27):
-        for x in range(17, 27):
-            d = math.hypot(x - 21.5, y - 21.5)
-            if d < 4.6:
-                hub.set(x, y, hx('#c9a24a') if d < 1.6 else hx('#34343e') if d > 3.2 else hx('#4a4a56'))
+    wood = (hx('#2c2228', 200), hx('#3a2c30', 205), hx('#a8927a', 215))   # dark varnish: it has to read on a wooden floor
+    c = 22.0
+    for k in range(4):
+        a = k * math.pi / 2
+
+        def blade(u, v, L):
+            col = wood[2] if v < -1.45 else wood[1] if L > 0.6 else wood[0]   # the leading edge catches the light
+            return col
+        bx, by = c + math.cos(a) * 13.0, c + math.sin(a) * 13.0
+        fill_shape(cv, bx, by, 8.0, 2.0, blade, ang=a, kind='rect', corner=1.6, bevel=0.6)
+        fill_capsule(hub, [(c + math.cos(a) * 3.5, c + math.sin(a) * 3.5), (c + math.cos(a) * 7.5, c + math.sin(a) * 7.5)], 0.7,
+                     lambda kk, L, s, i, t: shade(ramp('#c9a24a', 0.45, 0.22, 0.4), L))   # the blade iron
+    fill_shape(hub, c, c, 4.4, 4.4, lambda u, v, L: shade(ramp('#3a3a46', 0.45, 0.22, 0.45), L))   # motor
+    ring(hub, c, c, 3.0, 3.4, lambda dx, dy, d: hx('#24242c'))
+    fill_shape(hub, c, c, 1.6, 1.6, lambda u, v, L: shade(ramp('#c9a24a', 0.45, 0.22, 0.45), L))   # the brass cap
     hub.outline()
     cv.over(hub)
     return cv
 
 
 def p_mirror_ball():
-    """Mirror ball from above: little facets, lit from the top left."""
+    """Mirror ball from above: rows of little square mirrors on a sphere, each catching the light its own way, the
+    hot ones near the top left, the grout between them."""
     cv = Cv(12, 12)
-    tones = [hx('#566074'), hx('#8892a6'), hx('#c2cad6'), hx('#f4f8ff')]
-    for y in range(1, 11):
-        for x in range(1, 11):
-            dx, dy = x - 5.5, y - 5.5
-            if dx * dx + dy * dy > 22:
-                continue
-            L = 1 - math.hypot(dx + 1.6, dy + 1.6) / 7.5
-            facet = (0.45, -0.25, 0.1)[(x + 2 * y) % 3]
-            cv.set(x, y, tones[max(0, min(3, int(L * 3.2 + facet)))])
+    rng = random.Random(5090)
+
+    jit_ = dict(((x, y), rng.uniform(-0.3, 0.3)) for x in range(12) for y in range(12))
+
+    def ball(u, v, L):
+        x, y = int(6.0 + u), int(6.0 + v)
+        k = jit_[(x, y)]
+        col = shade(ramp('#8892a6', 0.5, 0.25, 0.6), L + k)
+        if ((6.0 + u) % 1.0) > 0.5 and ((6.0 + v) % 1.0) > 0.5:
+            col = dk(col, 0.12)                                        # the grout at a mirror's corner
+        return col
+    fill_shape(cv, 6.0, 6.0, 5.0, 5.0, ball)
+    for (x, y) in ((3.5, 3.5), (5.0, 2.5), (2.5, 5.5)):
+        cv.dot(x, y, hx('#ffffff'))
     cv.outline()
     return cv
 
 
 def p_extinguisher():
-    """Wall extinguisher on its bracket (the wall at -y): red cylinder, black valve and hose, a label."""
+    """Wall extinguisher on its bracket (the wall at -y), from above: the strap, the red cylinder's domed top, the black
+    valve head with its lever and the gauge, the pin's yellow tag, the hose down its side."""
     cv = Cv(8, 11)
-    cv.rect(1, 1, 6, 2, hx('#6a6a76'))             # the bracket
-    cv.rect(1, 3, 6, 9, hx('#c0202a'))
-    cv.rect(1, 3, 1, 9, hx('#8a1420'))
-    cv.rect(5, 3, 5, 9, hx('#e8505a'))
-    cv.rect(2, 5, 4, 6, hx('#f2ead0'))             # its label
-    cv.rect(3, 2, 4, 3, hx('#14141a'))             # valve
-    cv.rect(6, 3, 6, 7, hx('#14141a'))             # hose down its side
+    frect(cv, 1.0, 1.0, 7.0, 2.5, hx('#5a5a66'))                       # the bracket on the wall
+    frect(cv, 1.0, 1.0, 7.0, 1.5, hx('#8a8a96'))
+    red = ramp('#c0202a', 0.5, 0.25, 0.4)
+    fill_shape(cv, 4.0, 6.4, 3.0, 3.6, lambda u, v, L: shade(red, L))
+    frect(cv, 1.0, 5.6, 7.0, 6.1, lambda c: dk(c, 0.2) if c[3] else None)   # the strap round it
+    fill_shape(cv, 3.6, 6.0, 1.3, 1.1, lambda u, v, L: shade(ramp('#26242c', 0.45, 0.22, 0.5), L), kind='rect', corner=0.4)   # valve head
+    fill_capsule(cv, [(3.6, 6.0), (3.6, 9.4)], 0.42, lambda k, L, s, i, t: shade(ramp('#3a3844', 0.45, 0.22, 0.5), L))   # its lever
+    cv.dot(2.75, 5.25, hx('#f4f4ec'))                                  # the gauge
+    cv.dot(3.0, 5.5, hx('#3aa85a'))
+    cv.dot(4.75, 5.5, hx('#f2c81e'))                                   # the pin's tag
+    fill_capsule(cv, [(4.8, 6.6), (6.0, 7.4), (6.4, 9.6)], 0.4, lambda k, L, s, i, t: shade(RUBBER, L))   # the hose
     cv.outline()
     return cv
 
@@ -5185,13 +5552,14 @@ def p_phone_booth():
 
 
 def p_parking_meter():
-    """Parking meter head from above: grey dome, dark window, the red flag."""
+    """Parking meter head from above: a grey cast dome, its window with the red EXPIRED flag up, the coin slot."""
     cv = Cv(7, 8)
-    cv.rect(1, 1, 5, 6, hx('#8a909c'))
-    cv.rect(1, 1, 5, 1, hx('#b4bac6'))
-    cv.rect(2, 3, 4, 4, hx('#1c2028'))
-    cv.set(3, 3, hx('#e03030'))
-    cv.rect(2, 6, 4, 6, hx('#5a606c'))
+    fill_shape(cv, 3.5, 3.8, 2.6, 2.9, lambda u, v, L: shade(ramp('#8a909c', 0.5, 0.25, 0.45), L), kind='rect', bevel=1.2, corner=1.2)
+    frect(cv, 2.0, 2.5, 5.0, 4.5, hx('#1c2028'))                       # the window
+    frect(cv, 2.0, 2.5, 5.0, 3.0, hx('#5a7a8a'))
+    frect(cv, 3.0, 3.0, 4.5, 4.0, hx('#e03030'))                       # the flag
+    frect(cv, 3.0, 3.0, 4.5, 3.5, hx('#ff7060'))
+    frect(cv, 2.5, 5.5, 4.5, 6.0, hx('#2a2e36'))                       # the coin slot
     cv.outline()
     return cv
 
@@ -5230,156 +5598,221 @@ def p_news_box():
     return cv
 
 
-def pipe(body, lite, shade, band):
-    """A run of pipe along a wall (the wall at -y): brackets into the wall, two flanges."""
+def pipe(body, lite, shade_, band):
+    """A run of pipe along a wall (the wall at -y): a round tube lit along its top, clamps bolted into the wall, two
+    flanges with their bolts, painted bands, rust and drips from the joints."""
     def make():
         cv = Cv(96, 6)
-        cv.rect(0, 2, 95, 4, hx(body))
-        cv.rect(0, 2, 95, 2, hx(lite))
-        cv.rect(0, 4, 95, 4, hx(shade))
-        for x in (10, 47, 84):
-            cv.rect(x, 0, x + 2, 5, hx('#3a3a44'))
-        for x in (30, 66):
-            cv.rect(x, 1, x + 1, 5, hx(band))
+        tube = (hx(shade_), mix(hx(shade_), hx(body), 0.5), hx(body), hx(lite))
+
+        def f(x, y, c):
+            t = (y - 2.0) / 3.0
+            col = shade(tube, 0.95 - t * 0.85)
+            if 0.12 < t < 0.3:
+                col = lt(tube[3], 0.15)
+            return col
+        px_paint(cv, 0, 2, 96, 5, f)
+        for x in (10.0, 47.0, 84.0):                                    # clamps into the wall
+            frect(cv, x, 0.5, x + 2.0, 5.5, hx('#3a3a44'))
+            frect(cv, x, 0.5, x + 2.0, 1.0, hx('#6a6a76'))
+            stud(cv, x + 0.5, 1.0, hx('#8a8a96'))
+        for x in (30.0, 66.0):                                          # flanges and painted bands
+            frect(cv, x, 1.0, x + 1.5, 5.5, hx(band))
+            frect(cv, x, 1.0, x + 0.5, 5.5, lt(hx(band), 0.2))
+            for y in (1.5, 4.5):
+                stud(cv, x + 0.5, y, dk(hx(band), 0.3))
+        smudge(cv, random.Random(len(body) + ord(body[1])), 10, (0, 2, 96, 5), (0.6, 1.6), 0.4, hx('#7a3e1a'))
         cv.outline()
         return cv
     return make
 
 
 def p_wall_vent():
-    """Extractor outlet on a wall (the wall at -y): a louvred steel box."""
+    """Extractor outlet on a wall (the wall at -y): a steel box, its louvres each lit on the lip, the screws, soot
+    blown out over it."""
     cv = Cv(16, 7)
-    cv.rect(1, 1, 14, 5, hx('#6a707c'))
-    cv.rect(1, 1, 14, 1, hx('#8a909c'))
+    st = ramp('#6a707c', 0.45, 0.22, 0.4)
+    fill_shape(cv, 8.0, 3.0, 7.0, 2.0, lambda u, v, L: shade(st, L), kind='rect', bevel=0.7, corner=0.4)
     for x in range(3, 13, 2):
-        cv.rect(x, 2, x, 4, hx('#1c2028'))
+        frect(cv, x, 2.0, x + 1.0, 4.5, hx('#1c2028'))
+        frect(cv, x, 2.0, x + 1.0, 2.5, lt(st[3], 0.1))
+    for x in (1.5, 14.0):
+        stud(cv, x, 2.5, st[1])
+    smudge(cv, random.Random(5249), 4, (2, 1, 14, 5), (1.0, 2.0), 0.25)   # soot
     cv.outline()
     return cv
 
 
 def p_manhole():
-    """Manhole cover, painted on the road: dark cast iron, a rim, a few studs."""
+    """Manhole cover, painted on the road: cast iron worn smooth on its raised diamond pattern, the frame round it, two
+    pick holes, the city's ring of letters, rust in the hollows."""
     cv = Cv(16, 16)
-    for y in range(16):
-        for x in range(16):
-            d = math.hypot(x - 7.5, y - 7.5)
-            if d < 7.2:
-                c = '#15171c' if d > 6.0 else '#30323a' if d > 5.0 else '#24262d'
-                if d <= 4.2 and x % 3 == 1 and y % 3 == 1:
-                    c = '#34363e'
-                cv.set(x, y, hx(c))
+    iron = ramp('#30323a', 0.45, 0.22, 0.35)
+    rng = random.Random(5260)
+    c = 7.5
+
+    def disc(x, y, col):
+        dx, dy = x - c - 0.5, y - c - 0.5
+        d = math.hypot(dx, dy)
+        if d >= 7.4:
+            return None
+        if d > 6.4:
+            return shade(iron, 0.3 + 0.5 * light(dx / d, dy / d)) if d > 6.9 else hx('#0e1014')   # frame, the gap
+        if 5.0 < d <= 5.8:
+            return dk(iron[1], 0.1) if int(math.atan2(dy, dx) * 9) % 3 else lt(iron[2], 0.1)   # the letters
+        u, v = (dx + dy) * 0.7071, (dx - dy) * 0.7071
+        if (u % 2.2 < 0.75) or (v % 2.2 < 0.75):
+            return lt(iron[2], 0.1) if dx + dy < 0 else iron[2]        # raised diamond ribs, worn shiny
+        return dk(iron[2], 0.18)
+    px_paint(cv, 0, 0, 16, 16, disc)
+    for (x, y) in ((5.0, 7.5), (10.0, 7.5)):
+        fill_shape(cv, x + 0.5, y + 0.5, 0.6, 0.4, lambda u, v, L: hx('#08090c'), kind='rect', corner=0.2)   # pick holes
+    smudge(cv, rng, 3, (2, 2, 14, 14), (0.6, 1.2), 0.3, hx('#6a3a1c'))
     return cv
 
 
 def p_cardboard_bed():
-    """Flattened cardboard boxes someone sleeps on, painted on the ground: tan, creased, a strip of tape."""
+    """Flattened cardboard boxes someone sleeps on, painted on the ground: kraft board with the corrugation showing
+    through, the folds of the flaps, a printed logo half gone, brown tape, water stains and torn corners."""
     W, H = 36, 20
     cv = Cv(W, H)
     rng = random.Random(77)
-    base = hx('#a5855a')
-    for y in range(H):
-        for x in range(W):
-            edge = x in (0, W - 1) or y in (0, H - 1)
-            cv.set(x, y, dk(base, 0.3) if edge else lt(base, rng.uniform(0, 0.07)) if rng.random() < 0.5 else dk(base, rng.uniform(0, 0.07)))
-    for x in (12, 24):                       # where the flaps fold
-        for y in range(1, H - 1):
-            cv.set(x, y, dk(base, 0.2))
-    for x in range(1, W - 1):                # the seam between two boxes
-        if x not in (12, 24):
-            cv.set(x, 10, dk(base, 0.12))
-    cv.rect(14, 4, 22, 5, hx('#7a5a36'))     # tape
-    for (x, y) in ((0, 0), (1, 0), (0, 1), (W - 1, H - 1), (W - 2, H - 1), (W - 1, H - 2), (W - 1, 0)):   # torn corners
-        cv.set(x, y, CLEAR)
+    base = ramp('#a5855a', 0.4, 0.2, 0.25)
+    nz = VNoise(W, H, 4, rng)
+
+    def board(x, y, c):
+        col = shade(base, 0.6 + (nz(x, y) - 0.5) * 0.3)
+        if int(y * 2) % 3 == 0:
+            col = shift(col, -4)                                       # the flutes under the liner
+        if x < 18 and 1 <= y < 10 and x > 0.5:
+            col = shift(col, 6)                                        # one box lighter than the other
+        return col
+    px_paint(cv, 0.5, 0.5, W - 0.5, H - 0.5, board)
+    for x in (12.0, 24.5):                                             # where the flaps fold
+        crease(cv, [(x, 1.0), (x + 0.3, H - 1.0)], 0.2)
+    crease(cv, [(1.0, 10.0), (W - 1.0, 10.3)], 0.14)                   # the seam between two boxes
+    for (x0, y0, x1, y1) in ((14.0, 4.0, 22.0, 5.5), (2.0, 13.0, 8.0, 14.0)):
+        frect(cv, x0, y0, x1, y1, lambda c: mix(c, hx('#7a5a30'), 0.6))   # tape
+        frect(cv, x0, y0, x1, y0 + 0.5, lambda c: lt(c, 0.12))
+    for (x, y) in ((28.0, 4.0), (29.5, 4.0), (31.0, 4.0), (28.0, 5.5), (31.0, 5.5)):
+        frect(cv, x, y, x + 1.0, y + 0.5, lambda c: mix(c, hx('#2a3a6a'), 0.45))   # what is left of a logo
+    smudge(cv, rng, 4, (2, 2, 34, 18), (2.0, 4.0), 0.22)                # water stains
+    smudge(cv, rng, 3, (2, 2, 34, 18), (1.0, 2.0), 0.2, hx('#5a4430'))
+    bevel_edges(cv, 0, 0, W - 1, H - 1, 0.1, 0.3)
+    for (x0, y0, x1, y1) in ((0, 0, 2, 1), (0, 1, 1, 2), (W - 2, H - 1, W, H), (W - 1, H - 2, W, H - 1), (W - 1, 0, W, 1),
+                             (20, H - 0.5, 23, H)):
+        frect(cv, x0, y0, x1, y1, CLEAR)                               # torn corners
     return cv
 
 
 def flipped_table(W, wood, leg, face=None, feet=4):
-    """A table tipped on its side, seen from above: its top on edge along -y (a sliver of its upper face on the outside),
-    the legs lying on the floor behind it (or the one pedestal and its foot)."""
+    """A table tipped on its side, seen from above: its top on edge along -y (a sliver of its upper face on the outside,
+    the thickness of the board with its end grain), the apron and the legs lying on the floor behind it with their
+    turnings and brackets (or the one pedestal and its round foot)."""
     def paint():
         H = 27
         cv = Cv(W, H)
+        base, lg = hx(wood), ramp(leg, 0.45, 0.22, 0.35)
         rng = random.Random(W * 7 + feet)
-        base, lg = hx(wood), hx(leg)
-        top = hx(face) if face else lt(base, 0.28)
-        for x in range(1, W - 1):
-            g = rng.uniform(-0.06, 0.06)
-            for y in range(1, 7):
-                c = top if y < 3 else dk(base, 0.38) if y == 6 else base
-                cv.set(x, y, lt(c, g) if g > 0 else dk(c, -g))
-        for x in (1, W - 2):
-            cv.set(x, 1, CLEAR)
-
-        def post(x0, x1, y0, y1):
-            cv.rect(x0, y0, x1, y1, lg)
-            for y in range(y0, y1 + 1):
-                cv.set(x0, y, lt(lg, 0.22))
-                cv.set(x1, y, dk(lg, 0.28))
-        if feet == 4:
-            cv.rect(7, 7, W - 8, 8, dk(base, 0.22))          # the apron under the top
-            for x0 in (4, W - 7):
-                post(x0, x0 + 2, 7, H - 4)
-                cv.rect(x0, H - 3, x0 + 2, H - 2, dk(lg, 0.45))   # the end of the leg
+        if face:
+            frect(cv, 1, 1, W - 1, 3, lambda c: hx(face))              # the felt, seen past the rail
+            frect(cv, 1, 1, W - 1, 1.5, lt(hx(face), 0.2))
+            dash(cv, 1.5, 2.5, W - 1.5, 2.5, dk(hx(face), 0.25), 1, 1)
         else:
-            c = W // 2
-            post(c - 2, c + 1, 7, H - 6)
-            cv.rect(c - 7, H - 5, c + 6, H - 3, dk(lg, 0.12))     # its round foot, on edge
-            cv.rect(c - 7, H - 5, c + 6, H - 5, lt(lg, 0.2))
-            cv.rect(c - 7, H - 2, c + 6, H - 2, dk(lg, 0.45))
+            wood_fill(cv, 1, 1, W - 2, 2, lt(base, 0.2), plank=9, rng=rng)   # the varnished top, a sliver of it
+            frect(cv, 1, 1, W - 1, 1.5, lt(base, 0.4))
+        wood_fill(cv, 1, 3, W - 2, 6, base, plank=9, rng=rng)            # the board's thickness, on edge
+        frect(cv, 1, 3, W - 1, 3.5, lt(base, 0.18))
+        frect(cv, 1, 6, W - 1, 7, dk(base, 0.38))
+        px_paint(cv, 1, 3.5, W - 1, 6, lambda x, y, c: dk(c, 0.12) if int(x * 2) % 5 == 0 else None)   # end grain
+        smudge(cv, rng, 4, (2, 2, W - 2, 6), (0.8, 1.6), 0.25, hx('#e0c49a'))   # knocks through the varnish
+        frect(cv, 1, 1, 2, 2, CLEAR)
+        frect(cv, W - 2, 1, W - 1, 2, CLEAR)
+
+        def post(pts, r):
+            fill_capsule(cv, pts, r, lambda k, L, s, i, t: (dk(lg[1], 0.2) if 0.08 < t < 0.12 or 0.86 < t < 0.9 else shade(lg, L))
+                         if t < 0.94 else shade(ramp('#9aa0ac', 0.45, 0.22, 0.4), L))   # turned rings, a steel foot
+        if feet == 4:
+            frect(cv, 6, 7, W - 6, 8.5, dk(base, 0.22))                # the apron under the top
+            frect(cv, 6, 8, W - 6, 8.5, dk(base, 0.4))
+            for x0 in (5.5, W - 5.5):
+                post([(x0, 7.0), (x0, H - 2.4)], 1.35)
+                frect(cv, x0 - 2.5, 7.0, x0 + 2.5, 9.0, hx('#5a5e68'))  # the corner bracket
+                stud(cv, x0 - 1.5, 7.5, hx('#9aa0ac'))
+                stud(cv, x0 + 1.0, 7.5, hx('#9aa0ac'))
+        else:
+            c = W / 2
+            post([(c, 7.0), (c, H - 5.5)], 1.7)
+            fill_shape(cv, c, H - 3.8, 7.0, 1.6, lambda u, v, L: shade(lg, L), kind='rect', corner=1.2, bevel=0.8)   # its foot, on edge
         cv.outline()
         return cv
     return paint
 
 
 def p_ladder():
-    """A fixed steel ladder filling its gap in a wall, seen from above: two rails along the climb (y), rungs across,
-    hand hoops at both ends; its shadow falls to the lower right, as off something that stands clear of the floor."""
+    """A fixed steel ladder filling its gap in a wall, seen from above: two round rails along the climb (y), rungs
+    across with their welds, hand hoops at both ends; its shadow falls to the lower right, as off something that stands
+    clear of the floor. Pale: it must be seen in the dark."""
     cv = Cv(32, 32)
-    rail, hi, lo, sh = hx('#aab2c6'), hx('#dfe6f2'), STEEL_L[1], (8, 6, 16, 110)   # pale: it must be seen in the dark
-    for dx, dy, shadow in ((2, 2, True), (0, 0, False)):
-        for x0 in (6, 22):
-            for y in range(2, 30):
-                for x in range(x0, x0 + 3):
-                    if not cv.ok(x + dx, y + dy):
-                        continue
-                    cv.set(x + dx, y + dy, sh if shadow else hi if x == x0 else lo if x == x0 + 2 else rail)
+    tube = ramp('#aab2c6', 0.45, 0.22, 0.4)
+    sh = (8, 6, 16, 110)
+
+    def paint(ly, shadow, dx=0.0, dy=0.0):
+        col = (lambda k, L, s, i, t: sh) if shadow else (lambda k, L, s, i, t: lt(tube[3], 0.3) if L > 0.92 else shade(tube, L))
+        for x0 in (7.5, 23.5):
+            fill_capsule(ly, [(x0 + dx, 2.5 + dy), (x0 + dx, 29.5 + dy)], 1.3, col)
         for y in range(4, 29, 4):
-            for x in range(9, 22):
-                if cv.ok(x + dx, y + dy):
-                    cv.set(x + dx, y + dy, sh if shadow else hi if y % 8 == 4 else rail)
-    for y0 in (1, 29):                                   # the hoops one holds on to, at the top and at the foot
-        for x in range(5, 26):
-            cv.set(x, y0, hi)
-            cv.set(x, y0 + 1, lo)
+            fill_capsule(ly, [(8.8 + dx, y + 0.5 + dy), (22.2 + dx, y + 0.5 + dy)], 0.75, col)
+        for y0 in (1.2, 30.4):
+            fill_capsule(ly, [(5.5 + dx, y0 + dy), (25.5 + dx, y0 + dy)], 0.7, col)
+    shadow = Cv(32, 32)
+    paint(shadow, True, 2.0, 2.0)
+    cv.over(shadow)
+    rails = Cv(32, 32)
+    paint(rails, False)
+    for y in range(4, 29, 4):
+        for x0 in (8.6, 22.0):
+            stud(rails, x0, y + 0.25, tube[1])                         # the welds
+    smudge(rails, random.Random(5334), 6, (6, 2, 26, 30), (0.4, 0.9), 0.4, hx('#8a5a3a'))   # rust where the paint went
+    cv.over(rails)
     return cv
 
 
 def p_parapet():
-    """The low wall at the edge of a roof where one can swing a leg over: a pale coping stone on a course of brick,
-    worn in the middle by everybody who has."""
+    """The low wall at the edge of a roof where one can swing a leg over: concrete coping slabs on a course of brick,
+    their joints, a crack, lichen, worn pale in the middle by everybody who has."""
     cv = Cv(34, 12)
     rng = random.Random(77)
-    stone, brick = hx('#b0aaa0'), hx('#7a4a40')
-    for x in range(1, 33):
-        worn = abs(x - 16.5) < 6
-        for y in range(1, 11):
-            if y in (1, 10):
-                c = dk(brick, 0.12 if (x + y) % 9 else 0.3)   # the course under the coping, a joint now and then
-            else:
-                c = stone
-                if y == 2:
-                    c = lt(c, 0.16)
-                elif y == 9:
-                    c = dk(c, 0.22)
-                if worn and 3 <= y <= 8:
-                    c = dk(c, 0.08 + rng.uniform(0, 0.06))
-                else:
-                    g = rng.uniform(-0.04, 0.04)
-                    c = lt(c, g) if g > 0 else dk(c, -g)
-            cv.set(x, y, c)
-    for x in (11, 22):                                   # two joints in the coping
-        for y in range(2, 10):
-            cv.set(x, y, dk(stone, 0.3))
+    stone = ramp('#b0aaa0', 0.45, 0.22, 0.3)
+    brick = hx('#7a4a40')
+    nz = VNoise(34, 12, 2, rng)
+
+    def course(x, y, c):
+        k = int((x + (0.0 if y < 6 else 2.0)) / 4.0)
+        col = shift(dk(brick, 0.1), [-6, 3, -2, 6, 0, -4, 4, -1, 2, 5][k % 10])
+        if (x + (0.0 if y < 6 else 2.0)) % 4.0 < 0.5:
+            col = hx('#5a5048')                                        # mortar
+        return col
+    px_paint(cv, 1, 1, 33, 2, course)
+    px_paint(cv, 1, 10, 33, 11, course)
+
+    def coping(x, y, c):
+        col = shade(stone, 0.62 + (nz(x, y) - 0.5) * 0.18)
+        if y < 2.5:
+            col = shade(stone, 0.95)                                   # the rounded lip, lit
+        elif y >= 9.5:
+            col = shade(stone, 0.25)
+        if abs(x - 17) < 6 and 3 <= y < 9:
+            col = lt(col, 0.07 * (1 - abs(x - 17) / 6))                # worn pale
+        return col
+    px_paint(cv, 1, 2, 33, 10, coping)
+    for x in (11.0, 22.5):                                             # the slabs' joints
+        frect(cv, x, 2, x + 0.5, 10, dk(stone[1], 0.25))
+        frect(cv, x + 0.5, 2, x + 1.0, 10, lt(stone[2], 0.1))
+    line(cv, 26.0, 3.0, 27.5, 6.0, dk(stone[1], 0.2))                  # a crack
+    line(cv, 27.5, 6.0, 27.0, 8.5, dk(stone[1], 0.2))
+    smudge(cv, rng, 4, (2, 3, 32, 9), (0.6, 1.2), 0.45, hx('#8a9a5a'))   # lichen
+    smudge(cv, rng, 3, (2, 3, 32, 9), (1.0, 2.0), 0.15)
     cv.outline()
     return cv
 
@@ -5448,84 +5881,139 @@ def p_apt_door():
 
 
 def p_doormat():
-    """A doormat: coir, a darker border, worn in the middle."""
+    """A coir doormat: stiff fibres in short tufts, a darker woven border, worn flat and dirty in the middle."""
     cv = Cv(26, 14)
-    cv.rect(1, 1, 24, 12, hx('#5a4a32'))
-    cv.rect(3, 3, 22, 10, hx('#7a6644'))
     rng = random.Random(77)
-    for _ in range(40):
-        cv.set(rng.randint(3, 22), rng.randint(3, 10), hx('#8a7650') if rng.random() < 0.5 else hx('#665436'))
-    cv.rect(9, 5, 16, 8, hx('#6e5c3e'))
+    coir = ramp('#8a7448', 0.45, 0.22, 0.3)
+
+    def mat(x, y, c):
+        border = x < 3 or x >= 23 or y < 3 or y >= 11
+        t = rng.random()
+        col = shade(coir, 0.44 if t < 0.25 else 0.56 if t < 0.7 else 0.68)
+        if border:
+            col = dk(col, 0.3) if (int(x * 2) + int(y * 2)) % 2 else dk(col, 0.22)   # the woven edge
+        elif abs(x - 13) < 6 and abs(y - 7) < 3:
+            col = mix(col, hx('#5a4a32'), 0.4)                         # trodden in
+        return col
+    px_paint(cv, 1, 1, 25, 13, mat)
+    smudge(cv, rng, 3, (6, 4, 20, 10), (1.0, 2.0), 0.2)
     cv.outline()
     return cv
 
 
 def p_stairs():
-    """A flight of stairs going down (toward -y), from above: the treads darker and darker, a rail each side."""
+    """A flight of stairs going down (toward -y), from above: concrete treads, darker and darker, each with its lit
+    steel nosing and a rubber strip, worn in the middle, grime in the corners, a steel rail each side on its posts."""
     W, H = 66, 46
     cv = Cv(W, H)
     st = ramp('#6e6c74', 0.5, 0.25, 0.3)
     n = 9
+    rng = random.Random(5463)
+    nz = VNoise(W, H, 3, rng)
     for i in range(n):
-        y0 = 1 + int(i * (H - 2) / n)
-        y1 = int((i + 1) * (H - 2) / n)
-        f = 1.0 - 0.75 * (n - 1 - i) / (n - 1)          # the deeper, the darker
-        c = tuple(int(v * f) for v in st[2][:3]) + (255,)
-        cv.rect(4, y0, W - 5, y1, c)
-        cv.rect(4, y1, W - 5, y1, tuple(int(v * f * 0.55) for v in st[2][:3]) + (255,))   # the nosing's shadow
-        cv.rect(4, y0, W - 5, y0, tuple(min(255, int(v * f * 1.25)) for v in st[2][:3]) + (255,))
-    for x in (1, W - 4):
-        cv.rect(x, 1, x + 2, H - 2, hx('#2a2630'))
-        cv.rect(x + 1, 1, x + 1, H - 2, hx('#4a4654'))
+        y0 = 1 + i * (H - 2) / n
+        y1 = 1 + (i + 1) * (H - 2) / n
+        f = 1.0 - 0.72 * (n - 1 - i) / (n - 1)                          # the deeper, the darker
+
+        def tread(x, y, c, y0=y0, y1=y1, f=f):
+            t = (y - y0) / (y1 - y0)
+            col = shade(st, 0.5 + (nz(x, y) - 0.5) * 0.25 - t * 0.12)
+            if abs(x - W / 2) < 9:
+                col = lt(col, 0.05)                                    # worn in the middle
+            if x < 7 or x > W - 7:
+                col = dk(col, 0.15)                                    # grime in the corners
+            d = y - y0
+            if d < 1.0:
+                col = hx('#b8bcc8') if d < 0.5 else hx('#6a6e78')      # the steel nosing
+            elif 1.5 < d < 2.0 and 6 < x < W - 6:
+                col = hx('#2a2830')                                    # rubber strip
+            elif y1 - y < 1.0:
+                col = dk(col, 0.4)                                     # in the shadow of the step above
+            return tuple(int(v * f) for v in col[:3]) + (255,)
+        px_paint(cv, 4, y0, W - 4, y1, tread)
+    for x in (1.0, W - 4.0):                                           # rails
+        fill_capsule(cv, [(x + 1.5, 1.6), (x + 1.5, H - 1.6)], 1.3, lambda k, L, s, i, t: shade(ramp('#4a4654', 0.45, 0.22, 0.45), L))
+        for y in (6.0, 23.0, 40.0):
+            fill_shape(cv, x + 1.5, y, 1.5, 1.5, lambda u, v, L: shade(ramp('#3a3644', 0.45, 0.22, 0.45), L))   # posts
     cv.outline()
     return cv
 
 
 def p_floor_hole():
-    """Floorboards torn up over a hiding place: the dark hole, splintered ends, a tin box left open and empty beside it."""
+    """Floorboards torn up over a hiding place: the dark hole with a joist running across it, splintered board ends with
+    their pale torn fibres and bent nails, a tin box left open and empty beside it."""
     cv = Cv(30, 22)
-    cv.rect(2, 3, 19, 18, hx('#0c0810'))
-    cv.rect(3, 4, 18, 17, hx('#1a1218'))
-    for (x, y, w) in ((1, 2, 7), (9, 2, 5), (15, 3, 6), (1, 19, 5), (8, 18, 8), (17, 19, 4)):
-        cv.rect(x, y, x + w, y + 1, hx('#8a5a34'))
-        cv.set(x + w, y, hx('#d8b070'))
-    cv.rect(21, 7, 28, 15, hx('#5a6470'))
-    cv.rect(22, 8, 27, 14, hx('#2a3038'))
-    cv.rect(21, 5, 28, 6, hx('#8a94a0'))
-    cv.set(24, 11, hx('#3fa66a'))
+    frect(cv, 2, 3, 20, 19, hx('#0c0810'))
+    frect(cv, 3, 4, 19, 18, hx('#16101a'))
+    fill_shape(cv, 11.0, 11.0, 8.0, 1.6, lambda u, v, L: shade(ramp('#3a2418', 0.45, 0.22, 0.35), L * 0.7), kind='rect', corner=0.4)   # a joist
+    for x in range(4, 18, 3):
+        cv.dot(x + 0.5, 6.0 + (x % 4), hx('#2a2428'))                  # dust and droppings
+    rng = random.Random(5484)
+    wood = ramp('#8a5a34', 0.45, 0.22, 0.3)
+    for (x, y, w) in ((1, 1.5, 7), (9, 1.5, 5), (15, 2.5, 6), (1, 18.5, 5), (8, 18.0, 8), (17, 19.0, 4)):
+        wood_fill(cv, x, int(y), x + w - 1, int(y) + 1, wood[2], plank=2, rng=rng)
+        bevel_edges(cv, x, int(y), x + w - 1, int(y) + 1, 0.2, 0.3)
+        for k in range(4):                                             # the splintered end
+            ly = y + k * 0.5
+            frect(cv, x + w, ly, x + w + rng.uniform(0.5, 1.5), ly + 0.5, hx('#e0bc80') if k % 2 else hx('#c89a60'))
+        stud(cv, x + 1.0, y + 0.5, hx('#6a6a76'))                      # a nail
+    st = ramp('#5a6470', 0.45, 0.22, 0.4)
+    fill_shape(cv, 25.0, 11.5, 3.8, 3.8, lambda u, v, L: shade(st, L), kind='rect', corner=0.6, bevel=0.8)   # the tin
+    fill_shape(cv, 25.0, 11.8, 3.0, 3.0, lambda u, v, L: shade(ramp('#2a3038', 0.4, 0.2, 0.3), 1.0 - L * 0.7), kind='rect', corner=0.4)
+    fill_shape(cv, 25.0, 6.0, 3.8, 1.0, lambda u, v, L: shade(ramp('#8a94a0', 0.45, 0.22, 0.4), L), kind='rect', corner=0.4)   # its lid, back
+    cv.dot(24.0, 12.5, hx('#3fa66a'))                                  # one note left behind
     cv.outline()
     return cv
 
 
 def p_jerrycan():
-    """A jerrycan on the floor, from above: red, its handle, the cap, the pressed cross on its side."""
+    """A jerrycan on the floor, from above: red pressed steel, its three handles over the top, the spout's cap on its
+    clamp, the pressed X, chipped paint and a run of fuel."""
     cv = Cv(11, 13)
     red = ramp('#c8281e', 0.5, 0.25, 0.3)
-    cv.rect(1, 1, 9, 11, red[2])
-    cv.rect(1, 1, 9, 2, red[3])
-    cv.rect(1, 10, 9, 11, red[1])
-    cv.rect(3, 4, 7, 4, red[0])
-    cv.rect(5, 3, 5, 9, red[1])
-    cv.rect(2, 7, 8, 7, red[1])
-    cv.rect(7, 1, 8, 2, hx('#e0b040'))
+    fill_shape(cv, 5.5, 6.5, 4.5, 5.5, lambda u, v, L: shade(red, L), kind='rect', bevel=1.2, corner=0.8)
+    for (a, b) in (((2.2, 5.0), (8.8, 11.4)), ((8.8, 5.0), (2.2, 11.4))):   # the pressed X
+        line(cv, a[0], a[1], b[0], b[1], red[1])
+        line(cv, a[0] - 0.5, a[1], b[0] - 0.5, b[1], lt(red[2], 0.2))
+    for x in (3.0, 5.5, 8.0):                                          # the three handles
+        fill_capsule(cv, [(x, 1.8), (x, 4.4)], 0.5, lambda k, L, s, i, t: shade(red, L + 0.1))
+    frect(cv, 2.2, 1.5, 8.8, 2.0, red[0])
+    fill_shape(cv, 8.2, 2.4, 1.2, 1.2, lambda u, v, L: shade(ramp('#e0b040', 0.45, 0.22, 0.4), L))   # the cap
+    line(cv, 7.0, 2.0, 9.4, 1.4, hx('#8a8e98'))                        # its clamp
+    smudge(cv, random.Random(5500), 3, (2, 4, 9, 12), (0.4, 0.8), 0.7, hx('#8a8e98'))
+    line(cv, 8.6, 3.4, 8.9, 6.6, alpha(hx('#5a3a20'), 160))            # a run of fuel
     cv.outline()
     return cv
 
 
 def p_runner():
-    """A length of corridor carpet, worn, from above (its long way along x). No outline: lengths are laid end to end."""
+    """A length of corridor carpet, worn, from above (its long way along x; lengths are laid end to end, so it wraps
+    seamlessly on its 96 px and has no outline): ochre piping, a dark border, a red field with a soft lozenge every
+    metre and a half, the pile trodden flat down the middle."""
     W, H = 96, 18
     cv = Cv(W, H)
     red = ramp('#5e2a34', 0.5, 0.25, 0.3)
-    cv.rect(0, 0, W - 1, H - 1, red[1])
-    cv.rect(0, 3, W - 1, H - 4, red[2])
-    for y in (1, H - 2):
-        cv.rect(0, y, W - 1, y, hx('#8a6a3a'))                    # its ochre piping
-    rng = random.Random(311)
-    for _ in range(150):                                          # the pile, trodden flat down the middle
-        x, y = rng.randint(0, W - 1), rng.randint(3, H - 4)
-        worn = abs(y - (H - 1) / 2) < 3.2
-        cv.set(x, y, red[1] if worn and rng.random() < 0.75 else red[3] if rng.random() < 0.2 else red[2])
+    nz = VNoise(W, H, 2, random.Random(311))
+    nw = VNoise(W, H, 8, random.Random(312))
+
+    def pile(x, y, c):
+        if y < 1.5 or y >= H - 1.5:
+            col = hx('#8a6a3a') if 0.5 <= y < 1.5 or H - 1.5 <= y < H - 0.5 else red[0]
+        elif y < 3.5 or y >= H - 3.5:
+            col = red[1]
+        else:
+            col = red[2]
+            u = (x % 48.0) - 24.0
+            d = abs(u) / 10.0 + abs(y - H / 2) / 4.5
+            if 0.86 < d < 1.0:
+                col = mix(red[2], hx('#8a6a3a'), 0.35)                 # the lozenge
+            elif d < 0.3:
+                col = mix(red[2], hx('#2a3a5a'), 0.3)
+        col = shift(col, int((nz(x, y) - 0.5) * 10))
+        if abs(y - H / 2) < 4.5:
+            col = mix(col, hx('#7a5a5a'), max(0.0, nw(x, y) - 0.45) * 0.5)   # trodden flat
+        return col
+    px_paint(cv, 0, 0, W, H, pile)
     return cv
 
 
@@ -5553,77 +6041,108 @@ def p_parking_bay():
 
 
 def p_radiator():
-    """A cast-iron radiator under a wall (the wall at -y), from above: its columns, the valve."""
+    """A cast-iron radiator under a wall (the wall at -y), from above: its rounded columns painted cream, the gaps, the
+    feed pipe into the wall and the valve with its red wheel, paint chipped off the edges."""
     cv = Cv(30, 8)
-    cv.rect(1, 1, 28, 6, hx('#8a8e98'))
-    for x in range(2, 27, 3):
-        cv.rect(x, 1, x, 6, hx('#c4c8d0'))
-        cv.rect(x + 1, 1, x + 1, 6, hx('#6a6e78'))
-    cv.rect(1, 6, 28, 6, hx('#4a4e58'))
-    cv.rect(27, 3, 28, 4, hx('#b8262c'))
+    paint_ = ramp('#d8d2c0', 0.45, 0.22, 0.3)
+    frect(cv, 1.0, 1.5, 28.0, 6.5, hx('#2a2830'))
+    for x in range(2, 26, 2):                                          # the columns
+        fill_shape(cv, x + 0.9, 4.0, 0.85, 2.6, lambda u, v, L: shade(paint_, L), kind='rect', corner=0.8, bevel=0.8)
+    fill_capsule(cv, [(26.4, 0.0), (26.4, 4.0), (27.5, 4.0)], 0.5, lambda k, L, s, i, t: shade(CHROME, L))   # feed pipe
+    ring(cv, 27.5, 4.0, 0.0, 1.0, lambda dx, dy, d: shade(ramp('#b8262c', 0.45, 0.22, 0.4), light(dx / (d or 1), dy / (d or 1))))   # valve wheel
+    cv.dot(27.25, 3.75, hx('#ff8070'))
+    smudge(cv, random.Random(5532), 5, (2, 1, 26, 7), (0.4, 0.8), 0.6, hx('#4a4a52'))   # paint chipped to the iron
     cv.outline()
     return cv
 
 
 def p_bike():
-    """A bicycle leant on a wall, from above: both tyres end on, the frame's tube, the handlebar across, the saddle."""
+    """A racing bike leant on a wall, from above: both tyres end on with their tread, the red frame's tubes and its
+    highlight, the chainring and cranks with their pedals, the saddle, drop handlebars taped black."""
     cv = Cv(46, 14)
-    tyre, steel = hx('#1a1a20'), hx('#aab2bc')
-    for x0 in (2, 30):
-        cv.rect(x0, 6, x0 + 13, 7, tyre)
-        cv.rect(x0 + 2, 6, x0 + 11, 6, hx('#3a3a44'))
-    cv.rect(9, 6, 36, 7, hx('#c8402c'))
-    cv.rect(9, 6, 36, 6, hx('#e86a50'))
-    cv.rect(33, 2, 34, 11, steel)                                 # the handlebar and its grips
-    cv.rect(33, 2, 34, 3, tyre)
-    cv.rect(33, 10, 34, 11, tyre)
-    cv.rect(14, 5, 19, 8, hx('#2a2026'))                          # the saddle
-    cv.rect(15, 5, 18, 5, hx('#4a3a40'))
-    cv.rect(22, 4, 24, 4, hx('#6a6e78'))                          # the pedals
-    cv.rect(22, 9, 24, 9, hx('#6a6e78'))
+    for x0 in (2.0, 30.0):                                             # the wheels, seen on edge
+        fill_capsule(cv, [(x0 + 0.6, 7.0), (x0 + 13.4, 7.0)], 0.9, lambda k, L, s, i, t: shade(RUBBER, L + 0.1))
+        dash(cv, x0 + 1.0, 6.5, x0 + 13.0, 6.5, RUBBER[3], 1, 2)
+        frect(cv, x0 + 6.0, 6.5, x0 + 8.0, 7.5, hx('#c8ccd6'))         # the hub
+    red = ramp('#c8402c', 0.5, 0.25, 0.35)
+    fill_capsule(cv, [(9.0, 7.0), (37.0, 7.0)], 0.7, lambda k, L, s, i, t: lt(red[3], 0.2) if L > 0.9 else shade(red, L))   # top tube
+    fill_capsule(cv, [(16.5, 6.6), (21.0, 6.0)], 0.5, lambda k, L, s, i, t: shade(red, L))   # the down tube under it
+    fill_shape(cv, 22.0, 9.2, 1.8, 1.8, lambda u, v, L: shade(CHROME, L))   # the chainring
+    fill_shape(cv, 22.0, 9.2, 0.8, 0.8, lambda u, v, L: hx('#2a2a32'))
+    for (x, y) in ((22.0, 4.0), (22.0, 11.4)):                         # cranks and pedals
+        line(cv, 22.0, 7.2, x, y, CHROME[1])
+        frect(cv, x - 1.0, y - 0.5, x + 1.0, y + 0.5, hx('#2a2a32'))
+    fill_shape(cv, 15.0, 7.0, 2.4, 1.3, lambda u, v, L: shade(ramp('#2a2026', 0.45, 0.22, 0.4), L), kind='super', p=2.4)   # the saddle
+    fill_capsule(cv, [(34.5, 2.0), (35.5, 3.0), (35.5, 11.0), (34.5, 12.0)], 0.6,
+                 lambda k, L, s, i, t: shade(RUBBER, L) if t > 0.0 and (i == 0 or i == 2) else shade(CHROME, L))   # the bars
+    frect(cv, 34.5, 6.5, 36.5, 7.5, CHROME[1])                         # the stem
     cv.outline()
     return cv
 
 
 def p_bin_bag():
-    """A full bin bag, from above: black plastic, the folds catching the light, the knot."""
+    """A full bin bag, from above: black plastic stretched over what is inside, its folds running in to the knot and
+    catching the light, the knot's two ears."""
     W, H = 15, 14
     cv = Cv(W, H)
-    b = ramp('#2c2e3a', 0.5, 0.25, 0.45)
-    for y in range(H):
-        for x in range(W):
-            u, v = (x - 7) / 6.6, (y - 6.5) / 6.1
-            d = u * u + v * v
-            if d > 1.0:
+    b = ramp('#2c2e3a', 0.5, 0.25, 0.22)
+    cx, cy = 7.2, 6.8
+    lumps = [(4.5, 5.0, 2.6), (10.0, 4.6, 2.4), (5.2, 9.4, 2.8), (10.4, 9.6, 2.2), (7.5, 7.0, 3.2)]
+
+    def h(x, y):
+        z = sum(math.exp(-((x - lx) ** 2 + (y - ly) ** 2) / (r * r)) for lx, ly, r in lumps)
+        a = math.atan2(y - cy, x - cx)
+        return z + 0.18 * math.sin(a * 7.0 + math.hypot(x - cx, y - cy) * 0.6)
+    fill_shape(cv, 7.0, 6.6, 6.6, 6.0, lambda u, v, L: b[2])
+    for j in range(cv.ph):
+        for i in range(cv.pw):
+            c = cv.p[i, j]
+            if c[3] == 0:
                 continue
-            fold = math.sin(math.atan2(v, u) * 3 + 0.6) > 0.86
-            cv.set(x, y, b[3] if fold and 0.15 < d < 0.8 else b[1] if d > 0.62 else b[2])
-    cv.rect(6, 5, 8, 7, b[0])
-    cv.set(7, 6, hx('#8a8e9c'))
+            x, y = (i + 0.5) / cv.s, (j + 0.5) / cv.s
+            gx, gy = (h(x + 0.5, y) - h(x - 0.5, y)), (h(x, y + 0.5) - h(x, y - 0.5))
+            L = light(-gx * 0.9, -gy * 0.9)
+            col = shade(b, L)
+            if L > 0.97:
+                col = lt(b[3], 0.2)                                    # the sheen of the plastic
+            cv.p[i, j] = col
+    fill_shape(cv, cx, cy, 1.2, 1.0, lambda u, v, L: shade(b, L))      # the knot
+    for (ex, ey) in ((5.4, 5.6), (8.8, 5.4)):
+        fill_capsule(cv, [(cx, cy), (ex, ey)], 0.5, lambda k, L, s, i, t: shade(b, L + 0.1))
     cv.outline()
     return cv
 
 
 def p_newspaper():
-    """A folded newspaper left at a door: the headline, grey lines of text, a picture."""
+    """A folded newspaper left at a door: the masthead, a headline, a photograph, grey columns of text, the fold."""
     cv = Cv(13, 10)
-    cv.rect(1, 1, 11, 8, hx('#d8d2c0'))
-    cv.rect(2, 2, 10, 3, hx('#2a2630'))
-    for y in (5, 7):
-        cv.rect(2, y, 6, y, hx('#8a8678'))
-    cv.rect(8, 5, 10, 7, hx('#6a6e78'))
-    cv.rect(1, 8, 11, 8, hx('#b0a890'))
+    paper = ramp('#dcd6c4', 0.4, 0.2, 0.2)
+    fill_shape(cv, 6.5, 5.0, 5.4, 3.9, lambda u, v, L: shade(paper, L), kind='rect', corner=0.3, bevel=0.6, ang=0.04)
+    frect(cv, 2.0, 1.8, 11.0, 2.8, hx('#1e1a24'))                      # the masthead
+    frect(cv, 2.5, 2.2, 10.5, 2.4, hx('#8a8494'))
+    frect(cv, 2.0, 3.5, 11.0, 4.0, hx('#3a3640'))                      # the headline
+    frect(cv, 7.5, 4.5, 11.0, 7.5, hx('#6a6e78'))                      # a photograph
+    frect(cv, 8.0, 5.0, 10.0, 6.0, hx('#9a9ea8'))
+    for y in (4.5, 5.5, 6.5, 7.5):
+        frect(cv, 2.0, y, 7.0, y + 0.5, hx('#9a948a'))                 # columns of text
+    frect(cv, 1.0, 8.0, 12.0, 8.5, lambda c: dk(c, 0.18) if c[3] else None)   # the fold
     cv.outline()
     return cv
 
 
 def p_shoes():
-    """A pair of shoes left on a doormat, from above (toes toward +x)."""
+    """A pair of shoes left on a doormat, from above (toes toward +x): brown leather uppers, the laces, the dark of the
+    opening and its heel counter, the welt of the sole showing round them."""
     cv = Cv(10, 9)
-    for y0 in (1, 5):
-        cv.rect(1, y0, 8, y0 + 2, hx('#5a3a22'))
-        cv.rect(1, y0, 4, y0 + 2, hx('#1c1418'))                  # the opening
-        cv.rect(6, y0, 8, y0, hx('#8a5c38'))
+    lea = ramp('#5a3a22', 0.45, 0.22, 0.35)
+    for y0 in (2.4, 6.4):
+        fill_shape(cv, 4.8, y0, 3.9, 1.6, lambda u, v, L: shade(RUBBER, L), kind='super', p=2.4)   # the welt
+        fill_shape(cv, 4.9, y0, 3.5, 1.3, lambda u, v, L: shade(lea, L), kind='super', p=2.4)
+        fill_shape(cv, 2.6, y0, 1.3, 0.8, lambda u, v, L: hx('#1c1418'), kind='super', p=2.2)   # the opening
+        for k in range(3):                                             # the laces
+            cv.dot(4.5 + k * 0.5, y0 - 0.5, hx('#e8dcc0'))
+            cv.dot(4.5 + k * 0.5, y0 + 0.25, hx('#e8dcc0'))
+        cv.dot(7.5, y0 - 0.75, lt(lea[3], 0.2))                        # the toe's polish
     cv.outline()
     return cv
 
@@ -5692,42 +6211,58 @@ def lamp_core(cv, gl, cx, cy, r):
 
 
 def p_floor_lamp():
+    """Standard lamp from above: the cast foot showing past the pleated shade, the shade's wire ring, the bulb."""
     cv, gl = Cv(16, 16), Cv(16, 16)
     foot = ramp('#3a3442', 0.5, 0.25, 0.4)
-    fill_shape(cv, 9.5, 9.5, 4.2, 4.2, lambda u, v, L: tone(foot, L))
-    shade = ramp('#c08a4c', 0.42, 0.2, 0.35)
-    ring(cv, 8.0, 8.0, 2.0, 6.3, lambda dx, dy, d: tone(shade, 0.3 + 0.75 * light(dx / d * 0.75, dy / d * 0.75)))
+    fill_shape(cv, 9.5, 9.5, 4.2, 4.2, lambda u, v, L: shade(foot, L))
+    ring(cv, 9.5, 9.5, 3.4, 3.8, lambda dx, dy, d: lt(foot[3], 0.2) if dx + dy < 0 else None)
+    pleated(cv, 8.0, 8.0, 2.0, 6.3, ramp('#c08a4c', 0.42, 0.2, 0.35))
+    for a in (0.6, 2.7, 4.8):                                          # the wire spider holding the shade
+        line(cv, 8.0 + math.cos(a) * 1.6, 8.0 + math.sin(a) * 1.6, 8.0 + math.cos(a) * 2.6, 8.0 + math.sin(a) * 2.6, hx('#5a4a3a'))
     lamp_core(cv, gl, 8.0, 8.0, 1.7)
+    cv.dot(7.5, 7.5, hx('#ffffff'))
     cv.outline()
     ring(gl, 8.0, 8.0, 2.0, 6.3, lambda dx, dy, d: (255, 176, 96, int(70 - 8 * d)))
     return cv, gl
 
 
 def p_table_lamp():
+    """Side table with a lamp on it, from above: the round walnut top and its moulded edge, the pleated shade, the
+    bulb, a coaster and the lamp's cord running off the edge."""
     cv, gl = Cv(18, 18), Cv(18, 18)
     wood = ramp('#6a4026', 0.45, 0.22, 0.3)
-    fill_shape(cv, 9.0, 9.0, 8.0, 8.0, lambda u, v, L: tone(wood, L))
-    ring(cv, 9.0, 9.0, 6.6, 7.2, lambda dx, dy, d: wood[1])
-    shade = ramp('#d98a5a', 0.42, 0.2, 0.35)
-    ring(cv, 9.0, 9.0, 1.6, 5.0, lambda dx, dy, d: tone(shade, 0.3 + 0.75 * light(dx / d * 0.75, dy / d * 0.75)))
-    ring(cv, 9.0, 9.0, 5.0, 5.6, lambda dx, dy, d: dk(wood[0], 0.3))
-    lamp_core(cv, gl, 9.0, 9.0, 1.8)
+    wood_fill(cv, 1, 1, 16, 16, wood[2], plank=6, rng=random.Random(5683), mask=lambda x, y: math.hypot(x + 0.5 - 9, y + 0.5 - 9) <= 8.0)
+    ring(cv, 9.0, 9.0, 7.0, 8.0, lambda dx, dy, d: shade(wood, light(dx / d * 0.9, dy / d * 0.9)))   # the moulded edge
+    ring(cv, 9.0, 9.0, 6.6, 7.0, lambda dx, dy, d: wood[0])
+    ring(cv, 4.6, 13.0, 1.0, 1.5, lambda dx, dy, d: dk(cv.get(4.6 + dx, 13.0 + dy), 0.2))   # a glass's ring
+    line(cv, 11.0, 12.0, 15.6, 15.0, hx('#1a1418'))                    # the cord
+    pleated(cv, 9.0, 9.0, 1.6, 5.2, ramp('#d98a5a', 0.42, 0.2, 0.35))
+    lamp_core(cv, gl, 9.0, 9.0, 1.6)
+    cv.dot(8.5, 8.5, hx('#ffffff'))
     cv.outline()
-    ring(gl, 9.0, 9.0, 1.6, 5.0, lambda dx, dy, d: (255, 170, 110, int(90 - 10 * d)))
+    ring(gl, 9.0, 9.0, 1.6, 5.2, lambda dx, dy, d: (255, 170, 110, int(90 - 10 * d)))
     return cv, gl
 
 
 def p_wall_lamp():
+    """Wall lamp (the wall at -y): a brass backplate with its two screws, a frosted glass half dome, hot where the bulb
+    is, a dead moth in it."""
     cv, gl = Cv(14, 7), Cv(14, 7)
-    cv.rect(2, 0, 11, 1, BRASS[1])
-    cv.rect(3, 0, 10, 0, BRASS[2])
+    fill_shape(cv, 7.0, 0.9, 4.6, 0.9, lambda u, v, L: shade(BRASS, L), kind='rect', corner=0.4, bevel=0.5)
+    for x in (3.5, 10.0):
+        stud(cv, x, 0.5, BRASS[1])
 
     def dome(u, v, L):
         if v < 0:
             return None
         k = math.hypot(u / 5.0, v / 4.4)
-        return HOT if k < 0.5 else hx('#ffe2a8') if k < 0.82 else hx('#f0b868')
+        c = HOT if k < 0.45 else mix(HOT, hx('#ffe2a8'), (k - 0.45) / 0.3) if k < 0.75 else mix(hx('#ffe2a8'), hx('#e0a058'), (k - 0.75) / 0.25)
+        return c
     fill_shape(cv, 7.0, 2.0, 5.0, 4.4, dome)
+    for k in range(5):                                                 # the frosting's ribs
+        a = 0.35 + k * 0.6
+        line(cv, 7.0 + math.cos(a) * 3.0, 2.0 + math.sin(a) * 3.0, 7.0 + math.cos(a) * 4.2, 2.0 + math.sin(a) * 4.0, hx('#f0c880'))
+    cv.dot(9.0, 4.0, hx('#5a4a3a'))                                    # the moth
     cv.outline()
     fill_shape(gl, 7.0, 2.0, 5.0, 4.4, lambda u, v, L: None if v < 0 else (255, 226, 170, 170 if math.hypot(u / 5.0, v / 4.4) < 0.82 else 90))
     return cv, gl
@@ -5754,40 +6289,98 @@ def tube_fixture(col, hot):
     return make
 
 
+def pleated(cv, cx, cy, r0, r1, base, n=16):
+    """A pleated fabric shade from above, the bulb's light through it: the pleats running out from the top ring, lit
+    on the side facing the lamp in the room, the rolled hem."""
+    def f(dx, dy, d):
+        a = math.atan2(dy, dx)
+        p = math.sin(a * n)
+        L = 0.3 + 0.75 * light(dx / d * 0.75, dy / d * 0.75) + p * 0.08
+        col = shade(base, L)
+        if d > r1 - 0.6:
+            col = dk(col, 0.18) if dx + dy > 0 else lt(col, 0.12)      # the hem
+        elif d < r0 + 0.5:
+            col = lt(col, 0.3)                                         # the glow at the top ring
+        return col
+    ring(cv, cx, cy, r0, r1, f)
+
+
+def p_tube_light():
+    """A fluorescent batten on the wall (-y): the steel channel with its end caps and screws, the tube's pins, the tube
+    hot down its middle, a darkened end where it is wearing out, the light it throws on the wall below."""
+    cv, gl = Cv(30, 5), Cv(30, 5)
+    col, hot = hx('#cfe6ff'), hx('#ffffff')
+    m = ramp('#4a4858', 0.5, 0.25, 0.4)
+    frect(cv, 0, 0, 30, 2, m[2])
+    frect(cv, 0, 0, 30, 0.5, m[3])
+    frect(cv, 0, 1.5, 30, 2, m[1])
+    for x0 in (0, 28):
+        fill_shape(cv, x0 + 1.0, 2.0, 1.0, 2.0, lambda u, v, L: shade(m, L), kind='rect', corner=0.4)   # end caps
+        stud(cv, x0 + 0.75, 0.75, m[1])
+
+    def tube(x, y, c):
+        t = (y - 2.0) / 2.0
+        k = hot if 0.25 < t < 0.55 else col if t < 0.8 else alpha(col, 200)
+        if x > 25.5:
+            k = mix(k, hx('#8a96a8'), 0.5)                             # the end going grey
+        return k
+    px_paint(cv, 2, 2, 28, 4, tube)
+    for x in (2.0, 27.5):
+        frect(cv, x, 2.5, x + 0.5, 3.5, hx('#c8ccd6'))                 # the pins
+    cv.outline()
+    px_paint(gl, 2, 2, 28, 4, lambda x, y, c: hot if 2.5 <= y < 3.0 else col)
+    frect(cv, 2, 4.0, 28, 5.0, alpha(col, 110))
+    frect(gl, 2, 4.0, 28, 5.0, alpha(col, 120))
+    return cv, gl
+
+
 def p_ceiling_lamp():
+    """Enamel pendant shade from above: its green dome lit from the side, the brass rim and the rivets of the
+    cord-grip at the top, the bulb seen past it, the light leaking under the rim."""
     cv, gl = Cv(18, 18), Cv(18, 18)
     enamel = ramp('#2f5a48', 0.5, 0.25, 0.4)
-    ring(cv, 9.0, 9.0, 2.2, 7.4, lambda dx, dy, d: tone(enamel, 0.25 + 0.85 * light(dx / d * 0.8, dy / d * 0.8)))
-    ring(cv, 9.0, 9.0, 6.6, 7.4, lambda dx, dy, d: tone(BRASS, light(dx / d * 0.9, dy / d * 0.9)))
-    lamp_core(cv, gl, 9.0, 9.0, 2.5)
+    ring(cv, 9.0, 9.0, 2.2, 7.4, lambda dx, dy, d: shade(enamel, 0.25 + 0.85 * light(dx / d * 0.8, dy / d * 0.8)) if not
+         (abs(d - 4.6) < 0.25) else dk(enamel[1], 0.2))
+    ring(cv, 9.0, 9.0, 6.7, 7.4, lambda dx, dy, d: shade(BRASS, light(dx / d * 0.9, dy / d * 0.9)))
+    ring(cv, 9.0, 9.0, 2.2, 3.0, lambda dx, dy, d: shade(BRASS, light(dx / d, dy / d)))   # the cord-grip
+    for k in range(6):
+        a = k * math.pi / 3
+        stud(cv, 9.0 + math.cos(a) * 2.6, 9.0 + math.sin(a) * 2.6, BRASS[1])
+    smudge(cv, random.Random(5734), 3, (3, 3, 15, 15), (0.6, 1.2), 0.5, hx('#e8e4d8'))   # chips in the enamel
+    lamp_core(cv, gl, 9.0, 9.0, 2.2)
+    cv.dot(8.5, 8.5, hx('#ffffff'))
     cv.outline()
-    # light leaking under the rim
-    ring(gl, 9.0, 9.0, 7.0, 8.9, lambda dx, dy, d: (255, 214, 150, int(150 - 70 * (d - 7.0))))
+    ring(gl, 9.0, 9.0, 7.0, 8.9, lambda dx, dy, d: (255, 214, 150, int(150 - 70 * (d - 7.0))))   # light leaking under the rim
     return cv, gl
 
 
 def p_pool_lamp():
+    """Billiard light over the table: a long green enamel hood with its brass trim and end caps, the vents over each of
+    its three bulbs, the chains' eyes, the light spilling under its long edges."""
     cv, gl = Cv(46, 12), Cv(46, 12)
     enamel = ramp('#1f6a44', 0.5, 0.25, 0.4)
-    fill_shape(cv, 23.0, 6.0, 22.0, 5.0, lambda u, v, L: tone(enamel, L), kind='rect', bevel=3.0, corner=2.0)
-    for x in range(3, 43):
-        cv.set(x, 1, BRASS[2])
-        cv.set(x, 10, BRASS[1])
-    # vents over each bulb
-    for cx in (11, 23, 35):
-        cv.rect(cx - 3, 5, cx + 2, 6, HOT)
-        for x in range(cx - 3, cx + 3):
-            for y in (5, 6):
-                gl.set(x, y, (255, 246, 220, 200))
+    fill_shape(cv, 23.0, 6.0, 22.0, 5.0, lambda u, v, L: shade(enamel, L), kind='rect', bevel=3.0, corner=2.0)
+    frect(cv, 3, 1.0, 43, 1.5, BRASS[3])                               # brass trim along both edges
+    frect(cv, 3, 1.5, 43, 2.0, BRASS[2])
+    frect(cv, 3, 10.0, 43, 10.5, BRASS[1])
+    for x in (1.5, 44.5):
+        fill_shape(cv, x, 6.0, 1.0, 4.0, lambda u, v, L: shade(BRASS, L), kind='rect', corner=0.8)   # end caps
+    for cx in (11.0, 23.0, 35.0):
+        frect(cv, cx - 3.0, 4.5, cx + 3.0, 7.5, dk(enamel[1], 0.3))
+        for k in range(5):
+            frect(cv, cx - 2.5 + k * 1.2, 5.0, cx - 2.0 + k * 1.2, 7.0, HOT)   # the vents, the bulb seen through
+        frect(gl, cx - 3.0, 4.5, cx + 3.0, 7.5, (255, 246, 220, 200))
+    for x in (6.0, 40.0):
+        ring(cv, x, 6.0, 0.5, 1.0, lambda dx, dy, d: shade(BRASS, light(dx / d, dy / d)))   # chain eyes
+    smudge(cv, random.Random(5746), 4, (4, 3, 42, 9), (1.0, 2.0), 0.12)
     cv.outline()
-    for x in range(0, 46):
-        for y in (0, 11):
-            gl.set(x, y, (255, 214, 150, 110))
+    frect(gl, 0, 0, 46, 1.0, (255, 214, 150, 110))
+    frect(gl, 0, 11.0, 46, 12, (255, 214, 150, 110))
     return cv, gl
 
 
 LIGHT_PROPS = dict(floor_lamp=p_floor_lamp, table_lamp=p_table_lamp, wall_lamp=p_wall_lamp,
-                   tube_light=tube_fixture(hx('#cfe6ff'), hx('#ffffff')),
+                   tube_light=p_tube_light,
                    neon_tube_pink=tube_fixture(NEON_PINK, lt(NEON_PINK, 0.6)),
                    neon_tube_cyan=tube_fixture(NEON_CYAN, lt(NEON_CYAN, 0.6)),
                    ceiling_lamp=p_ceiling_lamp, pool_lamp=p_pool_lamp, emergency_light=p_emergency_light)
@@ -5833,32 +6426,45 @@ GALV = ramp('#8e939c', 0.5, 0.26, 0.36)       # galvanised sheet
 
 
 def r_ac_unit():
-    """Rooftop condenser, 1.4 x 1 m: the fan under its grille on the left, the louvred coil panel on the right."""
+    """Rooftop condenser, 1.4 x 1 m: the fan's blades under its wire grille on the left, the louvred coil panel on the
+    right, the service panel's screws and label, rust blooms and soot."""
     W, H = 46, 32
     cv = Cv(W, H)
     body = ramp('#a39c90', 0.5, 0.26, 0.34)
-    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(body, L), kind='rect', bevel=2.2, corner=1.4)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(body, L), kind='rect', bevel=2.0, corner=1.4)
     mottle(cv, random.Random(871), 5, 6)
     fr = 11.0
 
     def fan(u, v, L):
         d = math.hypot(u, v)
-        if d > fr - 1.4:
+        if d > fr - 1.2:
             return shade(GALV, L)                              # pressed rim
+        if d > fr - 1.7:
+            return GALV[0]
+        a = math.atan2(v, u)
         if d < 2.4:
-            return GALV[1]                                     # hub
-        blade = math.sin(math.atan2(v, u) * 5 + d * 0.3) > 0.2
-        c = hx('#474a58') if blade else hx('#18141f')
-        if abs(d - 5.6) < 0.55 or abs(u) < 0.55 or abs(v) < 0.55:
-            c = mix(c, GALV[2], 0.6)                           # grille: one ring, two spokes
+            return shade(GALV, 0.9 - d * 0.15)                 # hub
+        blade = math.sin(a * 4 + d * 0.28) > 0.25
+        c = shade(ramp('#474a58', 0.45, 0.22, 0.3), 0.4 + 0.4 * math.sin(a * 4 + d * 0.28)) if blade else hx('#18141f')
+        if any(abs(d - r) < 0.28 for r in (4.0, 6.4, 8.6)) or abs(math.sin(a * 4)) < 0.05:
+            c = mix(c, GALV[3], 0.7)                           # the wire grille: rings and spokes
         return c
     fill_shape(cv, 16.0, 16.0, fr, fr, fan)
-    for y in range(5, 27):                                     # louvres
-        for x in range(31, 42):
-            cv.set(x, y, (body[3], body[1], body[0])[(y - 5) % 3])
+
+    def louvres(x, y, c):
+        t = (y - 5.0) % 1.5
+        return body[3] if t < 0.5 else body[1] if t < 1.0 else body[0]
+    px_paint(cv, 31, 5, 42, 27, louvres)
+    frect(cv, 30.5, 4.5, 42.5, 5.0, body[0])
+    for (x, y) in ((3.0, 3.0), (43.0, 3.0), (3.0, 28.5), (43.0, 28.5), (29.0, 3.0), (29.0, 28.5)):
+        stud(cv, x, y, body[1])
+    frect(cv, 31.0, 28.0, 37.0, 29.5, hx('#e8e4d8'))                  # the maker's label, faded
+    frect(cv, 31.5, 28.5, 35.0, 29.0, hx('#8a8478'))
     rng = random.Random(872)
-    smudge(cv, rng, 5, (3, 3, 43, 29), (1.0, 2.6), 0.5, hx('#7a4a26'))    # rust blooms
+    smudge(cv, rng, 6, (3, 3, 43, 29), (0.8, 2.4), 0.5, hx('#7a4a26'))    # rust blooms
     smudge(cv, rng, 6, (2, 2, 44, 30), (1.5, 3.5), 0.16)                  # soot
+    for x in (4.0, 12.0, 21.0):
+        line(cv, x, 27.5, x + 0.3, 30.5, alpha(hx('#6a3a1c'), 150))       # rust running off the casing
     cv.outline()
     return cv
 
@@ -5880,17 +6486,23 @@ def r_vent():
 
 
 def r_duct():
-    """Galvanised duct run, 2 m: flanged joints every 50 cm, dents and streaks."""
+    """Galvanised duct run, 2 m: flanged joints every 50 cm with their bolts, the sheet's spangle, dents and streaks."""
     W, H = 64, 12
     cv = Cv(W, H)
     fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(GALV, L), kind='rect', bevel=2.6, corner=0.6)
     rng = random.Random(873)
     mottle(cv, rng, 5, 4)
+    px_paint(cv, 1, 1, W - 1, H - 1, lambda x, y, c: shift(c, int(math.sin(x * 2.3 + math.sin(y * 1.7) * 2) * 4)) if c[3] else None)
     for x in (16, 32, 48):
-        for y in range(1, H - 1):
-            cv.set(x, y, GALV[3])
-            cv.set(x + 1, y, GALV[0])
-    smudge(cv, rng, 6, (2, 2, 61, 9), (1.0, 2.2), 0.2)
+        frect(cv, x, 1, x + 0.5, H - 1, GALV[3])
+        frect(cv, x + 0.5, 1, x + 1.5, H - 1, GALV[2])
+        frect(cv, x + 1.5, 1, x + 2.0, H - 1, GALV[0])
+        for y in (2.5, 8.5):
+            stud(cv, x + 0.75, y, GALV[1])
+    smudge(cv, rng, 3, (2, 2, 61, 9), (1.4, 2.4), 0.2)                 # dents
+    for _ in range(6):
+        x = rng.uniform(3, 60)
+        line(cv, x, 7.0, x + 0.4, 10.5, alpha(hx('#5a5048'), 60))      # streaks down its side
     cv.outline()
     return cv
 
@@ -5901,22 +6513,30 @@ def speck_box(rng, x0, y0, x1, y1, p):
 
 
 def r_hatch():
-    """Roof access hatch, 70 cm: steel lid on a curb, two hinges, a pull handle."""
+    """Roof access hatch, 70 cm: a steel lid on its curb, tread plate worn shiny, two hinges at the back, a pull handle,
+    the hasp, rust."""
     S = 22
     cv = Cv(S, S)
     curb = ramp('#4a4c56', 0.5, 0.26, 0.3)
     lid = ramp('#737a84', 0.5, 0.26, 0.36)
     fill_shape(cv, S / 2, S / 2, S / 2 - 1, S / 2 - 1, lambda u, v, L: shade(curb, L), kind='rect', bevel=1.5, corner=1.0)
-    layer(cv, lambda ly: fill_shape(ly, S / 2, S / 2, 7.5, 7.5, lambda u, v, L: shade(lid, L), kind='rect', bevel=1.6,
-                                    corner=0.8), ol=curb[0])
+
+    def lid_(ly):
+        fill_shape(ly, S / 2, S / 2, 7.5, 7.5, lambda u, v, L: shade(lid, L), kind='rect', bevel=1.4, corner=0.8)
+
+        def tread(x, y, c):                                    # tread plate: little raised bars, alternating
+            u, v = (x - 4.0) % 2.0, (y - 4.0) % 2.0
+            k = int((x - 4.0) / 2.0) + int((y - 4.0) / 2.0)
+            on = (0.2 < u < 1.8 and 0.6 < v < 1.4) if k % 2 else (0.6 < u < 1.4 and 0.2 < v < 1.8)
+            return lt(c, 0.1) if on and c[3] else None
+        px_paint(ly, 5, 5, 17, 17, tread)
+    layer(cv, lid_, ol=curb[0])
+    for x in (6.0, 14.0):                                      # hinges at the back
+        fill_capsule(cv, [(x, 2.6), (x + 2.0, 2.6)], 0.6, lambda k, L, s, i, t: shade(ramp('#2a2c34', 0.4, 0.2, 0.5), L))
+    chrome_bar(cv, 8.0, 15.4, 14.0, 16.6)                      # handle
+    frect(cv, 10.5, 17.5, 11.5, 19.0, hx('#2a2c34'))           # hasp
     rng = random.Random(874)
-    for (x, y) in speck_box(rng, 5, 5, 16, 16, 0.12):          # worn tread plate
-        cv.set(x, y, shift(cv.get(x, y), 14))
-    for x in (6, 15):                                          # hinges at the back
-        cv.rect(x, 2, x + 1, 3, hx('#2a2c34'))
-    cv.rect(8, 15, 13, 15, hx('#d8dee6'))                      # handle
-    cv.rect(8, 16, 13, 16, hx('#2a2c34'))
-    smudge(cv, rng, 3, (4, 4, 17, 17), (1.0, 2.0), 0.45, hx('#7a4a26'))
+    smudge(cv, rng, 4, (4, 4, 17, 17), (0.8, 1.8), 0.45, hx('#7a4a26'))
     cv.outline()
     return cv
 
@@ -5967,20 +6587,22 @@ def r_tank():
 
 
 def r_antenna():
-    """TV aerial: a short mast on its plate, the boom and its rake of elements, a coax running off."""
+    """TV aerial: a short mast on its plate with four bolts, the boom and its rake of round elements (longest at the
+    back) with their clamps, a coax running off."""
     S = 34
     cv = Cv(S, S)
     c = S / 2
-    al, sh = hx('#b4bac4'), hx('#5c6270')
+    al = ramp('#b4bac4', 0.5, 0.25, 0.4)
     for i, x in enumerate(range(5, 30, 4)):                    # elements, longest at the back
         n = 11 - i
-        for y in range(int(c) - n, int(c) + n + 1):
-            cv.set(x, y, al)
-    for x in range(3, 31):                                     # boom
-        cv.set(x, c - 1, al)
-        cv.set(x, c, sh)
+        fill_capsule(cv, [(x + 0.5, c - n), (x + 0.5, c + n)], 0.35, lambda k, L, s, i_, t: shade(al, L))
+        frect(cv, x, c - 1.5, x + 1.0, c + 0.5, hx('#3a3e48'))   # its clamp
+    fill_capsule(cv, [(3.0, c - 0.5), (31.0, c - 0.5)], 0.6, lambda k, L, s, i, t: shade(al, L))   # boom
     fill_shape(cv, c, c, 3.0, 3.0, lambda u, v, L: shade(GALV, L), kind='rect', bevel=1.2, corner=0.6)
-    fill_shape(cv, c, c, 1.3, 1.3, lambda u, v, L: hx('#2a2c34'))
+    for (dx, dy) in ((-2.2, -2.2), (1.8, -2.2), (-2.2, 1.8), (1.8, 1.8)):
+        stud(cv, c + dx, c + dy, GALV[1])
+    fill_shape(cv, c, c, 1.3, 1.3, lambda u, v, L: shade(ramp('#2a2c34', 0.4, 0.2, 0.4), L))
+    fill_capsule(cv, [(c + 1.0, c + 1.0), (c + 4.0, c + 6.0), (c + 3.0, S - 2.0)], 0.4, lambda k, L, s, i, t: hx('#1a1a20'))   # the coax
     return cv
 
 
@@ -6046,6 +6668,9 @@ ROOF_PROPS = dict(ac_unit=r_ac_unit, vent=r_vent, duct=r_duct, hatch=r_hatch, ch
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
                   antenna=(34, 34), bulkhead=(62, 54), skylight=(46, 30), skylight_tv=(46, 30), skylight_dark=(46, 30))
 ROOF_GLOWING = ['bulkhead', 'skylight', 'skylight_tv']
+# the plant on the roofs is painted at FINE density like the props (three of them are props on the walkable roof);
+# the lit pieces stay at the world's (keep in step with ROOF_FINE in src/engine/Assets.js)
+ROOF_FINE = {'ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna'}
 
 
 # --------------------------------------------------------------------------
@@ -6314,9 +6939,9 @@ def build():
             out[('props', name)] = r
     out[('props', 'dj_booth_glow')] = glow_from(out[('props', 'dj_booth')], lambda x, y, c: is_neon(c))
     for name, fn in LIGHT_PROPS.items():
-        out[('props', name)], out[('props', name + '_glow')] = fn()
+        out[('props', name)], out[('props', name + '_glow')] = fine(fn, name) if name in FINE_PROPS else fn()
     for name, fn in ROOF_PROPS.items():
-        r = fn()
+        r = fine(fn, name) if name in ROOF_FINE else fn()
         if isinstance(r, tuple):
             out[('roof', name)], out[('roof', name + '_glow')] = r
         else:
@@ -6354,9 +6979,11 @@ PROP_SIZES.update(SHOP_SIZES)
 PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 # the furniture, the street's dressing and the vehicles are painted at FINE density (their emissive maps too), like
-# the people and the weapons: the sizes above are in world px. The neon signs and the lamps stay at the world's: they are light.
+# the people and the weapons: the sizes above are in world px. The neon signs, neon tubes and party bulbs stay at the
+# world's: they are light (the lamps' fittings are painted fine, their glow maps with them).
 # (keep in step with FINE in src/engine/Assets.js)
-FINE_PROPS = set(PROP_SIZES) - set(LIGHT_SIZES) - set(SHOP_GLOWING) - {'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow'}
+FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING)
+              - {'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'neon_tube_pink', 'neon_tube_cyan', 'string_lights'})
 
 
 def soft_ink(cv):
@@ -6405,7 +7032,8 @@ EXPECTED = {
                   for n, (w, h) in PROP_SIZES.items() for g in ([''] + (['_glow'] if n in GLOWING else []))),
     'tiles': dict([(n + s, (32 * FINE, 32 * FINE)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof')] + [('neon_floor_glow', (32 * FINE, 32 * FINE))]),
-    'roof': dict(list(ROOF_SIZES.items()) + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
+    'roof': dict([(n, (w * FINE, h * FINE) if n in ROOF_FINE else (w, h)) for n, (w, h) in ROOF_SIZES.items()]
+                 + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
     'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),

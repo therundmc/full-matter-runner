@@ -61,7 +61,7 @@ export const OPTIONAL_LIST = [
 // (a kind's name has no underscore: `thug_torso` and `thug_head` are fine, `thug_rag_torso` and `thug_gib_head` are not)
 const FINE = /^(characters\/[a-z0-9]+_(torso|head)|weapons\/(pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron))$/;
 // the furniture, the street's dressing and the vehicles (and their emissive maps), painted at the same density
-// (generate_assets.py FINE_PROPS); the neon signs and the lamps stay at the world's
+// (generate_assets.py FINE_PROPS), the lamps' fittings too; the neon signs, neon tubes and party bulbs stay at the world's
 const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back_bar', 'bar_counter', 'barrel', 'bed', 'bench',
   'bike', 'bin_bag', 'bookshelf', 'bottle_shelf', 'car', 'car2', 'van', 'car_tire', 'car_hood', 'car_door', 'car2_hood',
   'car2_door', 'van_hood', 'van_door', 'card_table', 'card_table_flipped', 'cardboard_bed', 'cash_case', 'ceiling_fan',
@@ -69,9 +69,13 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'floor_hole', 'fridge', 'fuse_box', 'gas_bottle', 'hydrant', 'jerrycan', 'jukebox', 'ladder', 'manhole', 'mirror_ball',
   'news_box', 'newspaper', 'oven', 'palm_tree', 'parapet', 'parking_meter', 'phone_booth', 'pipe_steam', 'pipe_water', 'plant',
   'parking_bay', 'pool_table', 'radiator', 'road_edge', 'runner', 'shoes', 'sink', 'sofa', 'speaker', 'stairs', 'stall', 'streetlight', 'table',
-  'table_flipped', 'table_round', 'table_round_flipped', 'toilet', 'trash_can', 'tv', 'urinal', 'vending', 'wall_vent', 'washer']);
-// the floor tiles too (64 x 64 pixels a tile); the wall tops and the roofs stay at the world's
+  'table_flipped', 'table_round', 'table_round_flipped', 'toilet', 'trash_can', 'tv', 'urinal', 'vending', 'wall_vent', 'washer',
+  'floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'ceiling_lamp', 'pool_lamp', 'emergency_light']);
+// the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
+const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
+// the floor tiles too (64 x 64 pixels a tile); the wall tops stay at the world's
 const fine = (name) => FINE.test(name) || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
+  || (name.startsWith('roof/') && ROOF_FINE.has(name.slice(5)))
   || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v1|v2|glow)$/, '')));
 const density = (name) => (fine(name) ? 0.5 : 1);
 

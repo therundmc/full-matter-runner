@@ -1,6 +1,6 @@
 import { TILE, PALETTE, LITTER, WALL_RIM } from '../Config.js';
-import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
-import { rand, pick, chance, TAU } from '../../engine/math.js';
+import { sprite, spriteOpt, silhouette, sw, sh } from '../../engine/Assets.js';
+import { rand, randi, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
@@ -171,7 +171,7 @@ export default class MapRenderer {
       g.save();
       g.translate(x, y);
       g.rotate(a);
-      g.drawImage(img, -img.width / 2, -img.height / 2);
+      g.drawImage(img, -sw(img) / 2, -sh(img) / 2, sw(img), sh(img)); // a finer piece: its size in world px
       g.restore();
     };
     g.globalAlpha = 0.28;

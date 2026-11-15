@@ -23,15 +23,20 @@ test('assets: of the people only the standing characters are finer than the worl
     'characters/boss_dead0', 'weapons/rocket']) assert.ok(!FINE.test(n), n);
 });
 
-test('assets: the furniture, the vehicles and the floors are painted at twice the world density, the light and the walls are not', () => {
-  for (const n of ['desk', 'bar_counter', 'sofa', 'car', 'van', 'car_tire', 'dumpster', 'apt_door']) assert.ok(FINE_PROPS.has(n), n);
-  for (const n of ['wall_lamp', 'tube_light', 'ceiling_lamp', 'neon_sign_bar', 'neon_sign_liquor']) assert.ok(!FINE_PROPS.has(n), n);
+test('assets: the furniture, the lamps, the vehicles and the floors are painted at twice the world density, the neon and the walls are not', () => {
+  for (const n of ['desk', 'bar_counter', 'sofa', 'car', 'van', 'car_tire', 'dumpster', 'apt_door', 'wall_lamp', 'tube_light', 'ceiling_lamp']) assert.ok(FINE_PROPS.has(n), n);
+  for (const n of ['neon_tube_pink', 'neon_tube_cyan', 'string_lights', 'neon_sign_bar', 'neon_sign_liquor']) assert.ok(!FINE_PROPS.has(n), n);
   for (const n of FINE_PROPS) {
     const { w, h } = png('props/' + n);
     assert.ok(w % 2 === 0 && h % 2 === 0, `props/${n} is ${w}x${h}`);
   }
   for (const t of FLOOR_TILES) for (const s of ['', '_v1', '_v2']) assert.deepEqual(png(`tiles/${t}${s}`), { w: 64, h: 64 }, t + s);
   for (const t of ['wall', 'brick', 'roof']) assert.deepEqual(png('tiles/' + t), { w: 32, h: 32 }, t);
+  // the plant on the roofs is fine too (an AC unit is 46 x 32 world px), the lit pieces are not
+  const ROOF_FINE = new Set(list('ROOF_FINE', /const ROOF_FINE = new Set\((\[[^\]]*\])\)/));
+  assert.ok(ROOF_FINE.has('ac_unit') && !ROOF_FINE.has('skylight') && !ROOF_FINE.has('bulkhead'));
+  assert.deepEqual(png('roof/ac_unit'), { w: 92, h: 64 });
+  assert.deepEqual(png('roof/skylight'), { w: 46, h: 30 });
 });
 
 test('assets: every look a level gives a guard, and every civilian look, has its sprites and its colours', async () => {
