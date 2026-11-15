@@ -53,6 +53,8 @@ src/
                           battery lamps (`standby` props) come on, guards come to look (DOM-free, unit-tested)
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
       Ambience.js         the night heard: city wash, gusts, hums, drips, a room's murmur (one-shots repeated; DOM-free)
+      Tutorial.js         a level that teaches: rooms played in order, dormant guards woken wave by wave, hints, retry from the last room (DOM-free)
+      Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Clouds.js           the powder out of a pierced extinguisher: hides from the guards (World.sightLine)
