@@ -6338,6 +6338,33 @@ def p_trapdoor():
     return cv
 
 
+def p_beer_tap():
+    """A draught tower on the bar from above, the bartender's side at -y: the chrome T of the tower along the bar with
+    its three spouts over the black drip tray, the three tap handles standing up in their brewers' colours (seen from
+    over them: their tops and the shadow they throw onto the bar), a bar towel left folded by it, wet rings."""
+    W, H = 22, 10
+    cv = Cv(W, H)
+    tray = ramp('#24262c', 0.45, 0.22, 0.5)
+    fill_shape(cv, 11.0, 2.4, 9.5, 2.0, lambda u, v, L: shade(tray, L), kind='rect', bevel=0.8, corner=0.5)
+    for x in range(3, 20, 2):                                           # the grate of the drip tray
+        frect(cv, x, 1.0, x + 0.5, 3.8, tray[0])
+    fill_shape(cv, 6.0, 2.6, 1.3, 0.9, lambda u, v, L: hx('#c8902a') if L > 0.4 else hx('#8a5a18'))   # beer left in it
+    chrome_bar(cv, 2.0, 4.6, 20.0, 6.6)                                 # the tower's T along the bar
+    for x in (2.0, 19.0):
+        fill_shape(cv, x + 0.5, 5.6, 1.2, 1.2, lambda u, v, L: shade(CHROME, L))
+    cv.outline()
+    for i, (x, col) in enumerate(((5.5, '#b8262c'), (11.0, '#d8a838'), (16.5, '#1f6a3a'))):
+        frect(cv, x - 0.5, 3.0, x + 0.5, 4.8, CHROME[2])                # the spout over the tray
+        cv.dot(x, 3.0, CHROME[3])
+        fill_shape(cv, x + 1.2, 8.4, 1.6, 0.9, lambda u, v, L: (10, 8, 12, 110))   # the handle's shadow on the bar
+        hand = ramp(col, 0.45, 0.24, 0.42)
+        fill_shape(cv, x, 7.4, 1.5, 1.7, lambda u, v, L: shade(hand, L), kind='rect', corner=0.7)
+        frect(cv, x - 0.5, 6.6, x + 0.5, 7.0, hx('#f0e8d0'))           # the brewer's badge
+        cv.dot(x - 0.5, 6.5, lt(hand[3], 0.4))
+    cv.outline()
+    return cv
+
+
 def p_rug():
     """The boss's rug, a worn Persian on the floor of his back room, one corner kicked back over itself: the deep red
     field and its navy medallion, the patterned border, the fringe, and under the turned corner the edge of the
@@ -6386,7 +6413,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     entry_carpet=p_entry_carpet, awning=p_awning, radiator=p_radiator, bike=p_bike,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes,
                     keg=p_keg, fire_alarm=p_fire_alarm,
-                    trapdoor=p_trapdoor, rug=p_rug)
+                    trapdoor=p_trapdoor, rug=p_rug, beer_tap=p_beer_tap)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
@@ -6394,7 +6421,7 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
                     floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
-                    keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28))
+                    keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28), beer_tap=(22, 10))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

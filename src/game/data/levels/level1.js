@@ -108,7 +108,7 @@ export default {
     ['hydrant', 25.5, 30.35, 0], ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180],
     ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
     // road: parked along the bar side
-    ['car2', 14.6, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180],
+    ['car2', 14.6, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180, { lights: false }],
     ['van', 34.3, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
     ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['velvet_rope', 19.5, 22, 0],
@@ -165,15 +165,14 @@ export default {
     ['chair', 16.75, 14.5, 270], ['chair', 17.85, 14.5, 270], ['chair', 18.95, 14.5, 270],
     ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0], ['neon_tube_pink', 18.5, 12.05, 0],
     ['ceiling_lamp', 16.3, 13.85, 0], ['ceiling_lamp', 18, 13.85, 0], ['ceiling_lamp', 19.7, 13.85, 0],
-    ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0],
+    ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0], ['beer_tap', 15.95, 13.62, 0], ['beer_tap', 17.15, 13.62, 0],
     // the bar: booths, card table, pool
     ['sofa', 15.5, 16, 270], ['table', 16.5, 16, 90], ['chair', 17.15, 16, 180], ['wall_lamp', 15.09, 16, 270],
     ['sofa', 15.5, 18, 270], ['table', 16.5, 18, 90], ['chair', 17.15, 18, 180], ['wall_lamp', 15.09, 18, 270],
     ['card_table', 19.5, 17.75, 90], ['ceiling_lamp', 19.5, 17.75, 0], ['chair', 18.7, 17.45, 0],
     ['chair', 20.3, 18.05, 180], ['plant', 17.85, 19.55, 0], ['pool_table', 26.2, 14, 0], ['pool_lamp', 26.2, 14, 0],
-    ['table_round', 22.75, 13.65, 0], ['arcade', 28.5, 12.5, 90], ['wall_lamp', 28.91, 13.3, 90],
-    ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 22, 15, 0], ['extinguisher', 22.6, 12.14, 0],
-    ['plant', 27.65, 12.35, 0],
+    ['arcade', 28.5, 12.5, 90], ['wall_lamp', 28.91, 13.3, 90], ['jukebox', 22.6, 19.6, 180],
+    ['ceiling_fan', 22, 15, 0], ['extinguisher', 22.6, 12.14, 0], ['plant', 27.65, 12.35, 0],
     // the bar: what can be used
     ['fire_alarm', 24, 12.07, 0],
     // the bar: VIP room

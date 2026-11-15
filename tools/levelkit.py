@@ -45,7 +45,7 @@ SIZES = dict(
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     awning=None, velvet_rope=(30, 6),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
-    keg=(16, 16), fire_alarm=None,
+    keg=(16, 16), beer_tap=None, fire_alarm=None,
 )
 
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the

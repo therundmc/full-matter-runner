@@ -780,13 +780,19 @@ export default class Lighting {
     r.clearRect(0, 0, this.rf.width, this.rf.height);
     r.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
     r.globalCompositeOperation = 'lighter';
-    const streak = (g, color, x, y, rad, a, far = 1) => {
+    // a light's streak lies only where the light reaches: clipped to its shadow polygon, so a lamp inside does not
+    // mirror on the pavement through the wall (a light with no polygon yet, or one stuck in a wall, shows none)
+    const streak = (g, l, a, far = 1) => {
       if (a <= 0.01) return;
-      const bl = this.blob(color), sw = Math.max(5, rad * 0.11) * far, len = Math.min(rad * 0.85, 150) * far;
+      const pts = l.shadows === false ? null : Array.isArray(l.poly) ? l.poly : l.poly?.pts;
+      if (l.shadows !== false && !pts?.length) return;
+      const bl = this.blob(l.color), x = l.x, y = l.y, sw = Math.max(5, l.r * 0.11) * far, len = Math.min(l.r * 0.85, 150) * far;
+      if (pts) { g.save(); this.tracePoly(g, pts); g.clip(); }
       g.globalAlpha = clamp(a, 0, 1);
       g.drawImage(bl, x - sw, y - len * 0.25, sw * 2, len * 1.6);
       g.globalAlpha = clamp(a * 0.45, 0, 1);
       g.drawImage(bl, x - sw * 3, y - len * 0.1, sw * 6, len);
+      if (pts) g.restore();
     };
     // a car's beam on a wet road: a long sheen laid along it, brightest a little ahead of the lamp
     const H = RAIN.headlight;
@@ -801,10 +807,10 @@ export default class Lighting {
     };
     const streaks = (g, gain, far) => {
       for (const [l, k] of lit) {
-        if (!l.bare && !l.cone) streak(g, l.color, l.x, l.y, l.r, k * gain, far);
+        if (!l.bare && !l.cone) streak(g, l, k * gain, far);
         else if (l.cone && this.wet > 0 && l.r > 120) beam(g, l, k * gain * H.gain * this.wet);
       }
-      for (const l of w.lights) streak(g, l.color, l.x, l.y, l.r, clamp(l.t / l.dur, 0, 1) * gain * 1.3, far);
+      for (const l of w.lights) streak(g, l, clamp(l.t / l.dur, 0, 1) * gain * 1.3, far);
     };
     streaks(r, L.reflect * (1 + this.wet), 1);
     r.globalAlpha = 1;

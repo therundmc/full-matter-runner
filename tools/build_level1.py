@@ -217,7 +217,7 @@ for i in range(14):
 for col in (2.0, 7.0, 12.1, 17.1, 22.1, 26.8, 31.6, 36.9, 41.9):
     lv.paint('parking_bay', drawn(col), 24.05, 90)
 lv.prop('car2', 14.6, 24.0, 0, lights=False, trunk='tire_iron')   # E at its tail: a tire iron in the trunk
-lv.prop('car', 31.2, 24.0, 180)
+lv.prop('car', 31.2, 24.0, 180, lights=False)           # parked: its lights off
 lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
 
 lv.area('north sidewalk and the facade')
@@ -377,7 +377,7 @@ lv.area('the bar: counter along the north wall')
 # Walkways (the user: "no room to get through"): a man is drawn 26 px wide, so about 1.2 m of clear floor along every
 # way across the room. Behind the counter 1.25 m (one squeezes past the bartender); between a customer on a stool and
 # the booths and the card game 1.2 m, the whole of row 15; from the front door a lane 1.5 m wide up to it, the card
-# game on its left, the jukebox on its right; 1.2 m and more round the high table and the pool table. The men at the
+# game on its left, the jukebox on its right; the middle of the room left clear (a high table there was "useless"). The men at the
 # counter, the cards, the dope and the money stand square at what they work at (data/posts.js `front`).
 for x in (15.5, 16.5, 17.5, 18.5, 20.5):                # (no module on the cut line)
     lv.prop('bar_counter', x, 13.85)
@@ -390,6 +390,8 @@ for x in (16.3, 18.0, 20.7):
     lv.prop('ceiling_lamp', x, 13.85)
 for y in (12.45, 13.02):                                # two kegs of draught in the corner behind the counter: holed,
     lv.prop('keg', 15.36, y)                            # they flood it with beer, and whoever runs on it goes down
+for x in (15.95, 17.15):                                # their taps on the bar, the bartender's side of it
+    lv.prop('beer_tap', x, 13.62)
 
 lv.area('the bar: booths, card table, pool')
 # two booths end to end along the west wall, each with its lamp; a chair across each table. They stop a metre short
@@ -408,7 +410,6 @@ lv.prop('chair', 21.3, 18.05, 180)
 lv.prop('plant', 17.85, 19.55)                          # in the corner between the booths and the game
 lv.prop('pool_table', 27.2, 14.0)                       # its west end at the pool player's cue
 lv.prop('pool_lamp', 27.2, 14.0)
-lv.prop('table_round', 23.75, 13.65)                    # a high table to stand at and watch the game
 lv.prop('arcade', 30.5, 12.5, 90)
 lv.prop('wall_lamp', 30.91, 13.3, 90)
 lv.prop('jukebox', 23.6, 19.6, 180)

@@ -102,6 +102,7 @@ export const DESTRUCTION = {
     parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
     contents: [{ bit: 'book', n: 10, on: 'break' }, { bit: 'book', n: 2, on: 'hit', perHit: 1 }],
   },
+  beer_tap: { height: 1.4, material: 'metal' },
   bar_counter: {
     height: 1.05, parts: [{ cut: 'planks', n: 2, axis: 'long', snap: true }],
     rack: { bit: 'bottle', share: 0.3, scatter: [0, 2], rect: [2, 4, 26, 9], colors: ['#e8a830', '#d8c8a0', '#b4541c', '#e0e6ea'] },
