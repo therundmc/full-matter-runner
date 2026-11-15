@@ -1,9 +1,10 @@
 // Weapon definitions. ammo = caliber (see AMMO), mag = magazine capacity, reload = seconds (per round when
 // shellReload). A reload fills a fresh mag from the caliber pool; the old mag drops with whatever was left in it.
 // Out of ammo? Throw the gun.
-// hold: 'one' | 'two' | 'melee'. grip = sprite x (from left, world px) where the hand holds it. A long gun ('two') is
-// shouldered: butt = sprite x that sits in the shoulder, fore = sprite x of the front hand; onShoulder: carried on top
-// of the shoulder (a launcher), over it.
+// hold: 'one' | 'two' | 'melee'. grip = sprite x (from left, world px) where the hand holds it; bore = how far the
+// barrel runs off the sprite's middle line (world px, - = toward its top: where the muzzle flash and the laser start).
+// A long gun ('two') is shouldered: butt = sprite x that sits in the shoulder, fore = sprite x of the front hand;
+// onShoulder: carried on top of the shoulder (a launcher), over it.
 // melee: swing = 'club' (long, swung with both hands, lies on the shoulder) | 'blade' (held low, stabs and cuts);
 // heft 2 = smashes panes and doors; material = what it is made of (the crack of a blow, the item on the floor);
 // rest: angle a club is carried at when it does not lie on the shoulder (a cue is held across the body, by its middle);
@@ -45,7 +46,7 @@ export const WEAPONS = {
     wear: 4, breaks: 'lodge',
   },
   pistol: {
-    name: 'PISTOL', kind: 'gun', hold: 'one', sprite: 'weapons/pistol', grip: 2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
+    name: '1911', kind: 'gun', hold: 'one', sprite: 'weapons/pistol', grip: 3, bore: -2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
     pellets: 1, spread: 0.025, speed: 1700, pen: 16, sound: 'pistol', noise: 640, shake: 0.18, kick: 2.5, casing: 'casing', gore: 0.25, wound: 'small',
     enemyRate: 0.55, points: 500,
   },
@@ -60,17 +61,17 @@ export const WEAPONS = {
     enemyRate: 0.1, burst: 5, points: 700,
   },
   shotgun: {
-    name: 'SHOTGUN', kind: 'gun', hold: 'two', sprite: 'weapons/shotgun', grip: 6, fore: 13.5, mag: 6, ammo: '12g', reload: 0.34, shellReload: true, rate: 0.55, auto: false,
+    name: 'SUPER 90', kind: 'gun', hold: 'two', sprite: 'weapons/shotgun', grip: 7.5, bore: -0.75, fore: 16, mag: 6, ammo: '12g', reload: 0.34, shellReload: true, rate: 0.55, auto: false,
     pellets: 9, spread: 0.3, speed: 1450, pen: 4, speedVar: 0.25, range: 0.32, sound: 'shotgun', noise: 760, shake: 0.5, kick: 7,
     casing: 'shell', gore: 1.6, wound: 'buckshot', knock: 0.05, enemyRate: 1.1, points: 500,
   },
   rifle: {
-    name: 'M16', kind: 'gun', hold: 'two', sprite: 'weapons/rifle', grip: 8.5, fore: 17, mag: 30, ammo: '762', reload: 1.45, magSprite: 'weapons/mag_rifle', rate: 0.095, auto: true,
+    name: 'M16', kind: 'gun', hold: 'two', sprite: 'weapons/rifle', grip: 8.5, bore: -1, fore: 17, mag: 30, ammo: '762', reload: 1.45, magSprite: 'weapons/mag_rifle', rate: 0.095, auto: true,
     pellets: 1, spread: 0.045, speed: 1950, pen: 34, sound: 'rifle', noise: 760, shake: 0.2, kick: 2.5, casing: 'casing', gore: 0.45, wound: 'rifle',
     enemyRate: 0.12, burst: 4, points: 500,
   },
   sniper: {
-    name: 'SNIPER', kind: 'gun', hold: 'two', sprite: 'weapons/sniper', grip: 8, fore: 15, mag: 5, ammo: '762', reload: 1.7, magSprite: 'weapons/mag_sniper', rate: 0.85, auto: false,
+    name: '.50 CAL', kind: 'gun', hold: 'two', sprite: 'weapons/sniper', grip: 8.5, fore: 17.5, mag: 5, ammo: '762', reload: 1.7, magSprite: 'weapons/mag_sniper', rate: 0.85, auto: false,
     pellets: 1, spread: 0.0, speed: 2800, pen: 95, heavy: true, laser: '#ff2e3e', sound: 'sniper', noise: 900, shake: 0.7, kick: 9, casing: 'casing',
     gore: 1.2, wound: 'heavy', enemyRate: 1.5, points: 600,
   },

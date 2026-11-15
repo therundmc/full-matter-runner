@@ -41,12 +41,13 @@ const SHOULDERED = { twist: 0.3, pocket: [-1.6, 3.3], low: [-0.4, 4.6], lowA: -0
 
 const GAIT_WIDTH = GAIT.width;
 
-// where the muzzle of gun d (w world px long) is when it is aimed, in the aim's frame (pose px, x forward)
+// where the muzzle of gun d (w world px long) is when it is aimed, in the aim's frame (pose px, x forward); the
+// sprite is drawn centred on the hand's line, its bore `bore` px off it
 const MUZZLE = { x: 0, y: 0 };
 export function muzzleAt(d, w) {
-  if (d.hold !== 'two') { MUZZLE.x = 10 + w - d.grip; MUZZLE.y = 1; return MUZZLE; }
+  if (d.hold !== 'two') { MUZZLE.x = 10 + w - d.grip; MUZZLE.y = 1 + (d.bore ?? 0); return MUZZLE; }
   const at = d.onShoulder ? SHOULDERED.onShoulder : SHOULDERED.pocket;
-  MUZZLE.x = at[0] + w - (d.butt ?? 0.5); MUZZLE.y = at[1];
+  MUZZLE.x = at[0] + w - (d.butt ?? 0.5); MUZZLE.y = at[1] + (d.bore ?? 0);
   return MUZZLE;
 }
 
