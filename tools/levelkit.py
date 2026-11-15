@@ -43,7 +43,7 @@ SIZES = dict(
     fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 40),
     apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
-    palm_planter=(20, 20), velvet_rope=(30, 6), neon_sign_girls=None,
+    palm_planter=(20, 20), velvet_rope=(30, 6),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
 
@@ -52,8 +52,7 @@ SIZES = dict(
 # back door of level 1 had its men jammed in it)
 ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=12, fuse_box=18,
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
-               neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
-               neon_sign_girls=48)
+               neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet')

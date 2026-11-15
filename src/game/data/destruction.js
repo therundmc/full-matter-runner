@@ -161,7 +161,6 @@ export const DESTRUCTION = {
   },
   neon_sign_liquor: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_video: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
-  neon_sign_girls: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   palm_planter: {
     height: 0.9, floats: ['leaf', 18], spill: 'soil',
     parts: [{ cut: 'grid', cols: 2, rows: 2 }], contents: [{ bit: 'soil', n: 1, on: 'break' }],

@@ -227,14 +227,13 @@ lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.6, 21.09)
 # the club's door (the user wanted it like a strip club's: the wall lamps and the plain pots were "vile"; a pergola
 # was tried before, "too ugly"): a red carpet to the kerb between brass posts and velvet ropes, a palm each side in a
-# lacquered planter lit violet from below, the dancer's neon on the wall to the west; the bouncer at the east rope.
+# lacquered planter lit violet from below (a GIRLS neon was tried: "too much"); the bouncer at the east rope.
 # The ropes stand clear of the sidewalk patrol's beat (row 22) and leave the carpet 1.9 m wide.
 lv.paint('entry_carpet', 22.0, 21.94)
 lv.prop('palm_planter', 20.62, 21.44)
 lv.prop('palm_planter', 23.38, 21.44)
 lv.prop('velvet_rope', 20.5, 22.0)
 lv.prop('velvet_rope', 23.5, 22.0)
-lv.prop('neon_sign_girls', 18.6, 21.09)
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window

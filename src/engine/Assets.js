@@ -37,7 +37,7 @@ export const OPTIONAL_LIST = [
     'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed', 'ladder', 'parapet', 'fuse_box',
     'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'apt_door', 'doormat', 'stairs', 'floor_hole', 'jerrycan',
     'runner', 'road_edge', 'parking_bay', 'palm_planter', 'velvet_rope', 'entry_carpet', 'radiator', 'bike', 'bin_bag', 'newspaper', 'shoes'].map((n) => `props/${n}`),
-  ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_girls'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
     .map((n) => `weapons/${n}`),
   // rag_*_up: torso and head of a body lying on its back; rag_torso_down: its back, when it lies on its belly (Ragdoll)

@@ -5226,7 +5226,6 @@ def p_washer():
 # 7 px tall capitals, one tube wide
 FONT_SHOP = {
     'L': ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
-    'G': [".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."],
     'I': ["#", "#", "#", "#", "#", "#", "#"],
     'Q': [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
     'U': ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
@@ -5274,32 +5273,6 @@ def p_neon_sign_video():
     ne.line([(7, 4), (9, 2)], NEON_PINK)
     ne.line([(5, 8), (6, 7), (7, 8), (8, 7)], NEON_YELLOW)
     neon_text(ne, 15, 3, 'VIDEO', NEON_CYAN)
-    ne.render(cv, gl)
-    return cv, gl
-
-
-def neon_fill(ne, pts, col):
-    """Fills a polygon with tube: a shape lit whole (a neon's filled figure)."""
-    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-    for y in range(int(min(ys)), int(max(ys)) + 1):
-        for x in range(int(min(xs)), int(max(xs)) + 1):
-            px_, py_, inside = x + 0.5, y + 0.5, False
-            for (ax, ay), (bx, by) in zip(pts, pts[1:] + pts[:1]):
-                if (ay > py_) != (by > py_) and px_ < ax + (py_ - ay) * (bx - ax) / (by - ay):
-                    inside = not inside
-            if inside:
-                ne.dot(x, y, col)
-
-
-def p_neon_sign_girls():
-    """The club's sign by its door: a leg kicked up in pink, in a red pump on a yellow stiletto, GIRLS in cyan."""
-    cv, gl = sign_backing(50, 20), Cv(50, 20)
-    ne = Neon(50, 20)
-    neon_fill(ne, [(1, 19), (1.5, 14), (5, 9.5), (8.5, 6.5), (10.5, 5), (11.8, 6.4), (10.5, 9), (9, 12.5), (7.5, 15.5),
-                   (6.5, 19)], NEON_PINK)
-    neon_fill(ne, [(10.6, 4.2), (13, 2.6), (15.6, 2.0), (16.2, 2.8), (13.6, 5.0), (12.2, 5.8)], hx('#ff3a3a'))
-    ne.line([(12, 6), (12, 9)], NEON_YELLOW)
-    neon_text(ne, 20, 7, 'GIRLS', NEON_CYAN)
     ne.render(cv, gl)
     return cv, gl
 
@@ -6292,11 +6265,11 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,
-                  neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash, neon_sign_girls=p_neon_sign_girls)
+                  neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash)
 SHOP_SIZES = dict(bottle_shelf=(42, 13), back_bar=(42, 10), washer=(24, 24), neon_sign_liquor=(46, 14), neon_sign_video=(44, 14),
                   alarm_box=(12, 8),
-                  neon_sign_wash=(50, 14), neon_sign_girls=(50, 20))
-SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_girls']
+                  neon_sign_wash=(50, 14))
+SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash']
 
 
 # --------------------------------------------------------------------------
