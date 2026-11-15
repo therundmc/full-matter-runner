@@ -251,7 +251,6 @@ lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
 lv.dress('manholes', 9.5, 25.2)
 lv.dress('manholes', 27.3, 28.5)
-lv.prop('wall_lamp', 2.35, 21.09)                       # by the foot of the fire escape: the ladder must be seen
 lv.prop('palm_tree', 41.6, 21.8)
 
 lv.area('liquor store')

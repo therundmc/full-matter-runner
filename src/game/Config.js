@@ -574,6 +574,7 @@ export const LIGHTING = {
   neonGlow: 0.85,          // dancefloor emissive into bloom
   flare: 0.32,             // anamorphic streaks of very bright lights
   reflect: 0.34,           // wet floor reflections
+  shortStreak: { r: 130, k: 0.4 }, // a small light's (a sign, a wall lamp: r <= r px) reflection is k x r long, not 0.85 x r
   puddle: 0.4,             // extra reflections in standing water
   reflectFloors: ['asphalt', 'asphalt_line', 'sidewalk', 'checker', 'tile_blue', 'neon_floor'],
   bpm: 108,
@@ -587,7 +588,7 @@ export const LIGHTING = {
     jukebox: { r: 90, color: '#ff4fd8', intensity: 0.85, flicker: 'pulse', y: 6 },
     neon_sign_palm: { r: 120, color: '#2af0ff', intensity: 1, flicker: 'buzz' },
     neon_sign_bar: { r: 120, color: '#ff2a6d', intensity: 1, flicker: 'broken' },
-    neon_sign_arrow: { r: 100, color: '#ffc02a', intensity: 0.9, flicker: 'buzz' },
+    neon_sign_arrow: { r: 72, color: '#ffc02a', intensity: 0.55, flicker: 'buzz' }, // small and bright: kept off the road (the user)
     streetlight: { r: 190, color: '#ffb46a', intensity: 0.9, x: 56 },
     car: vehicleLights(67, 15.5, -68, 17.5),
     car2: vehicleLights(56, 15, -65, 13.5),

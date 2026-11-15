@@ -825,7 +825,8 @@ export default class Lighting {
       if (a <= 0.01) return;
       const pts = l.shadows === false ? null : Array.isArray(l.poly) ? l.poly : l.poly?.pts;
       if (l.shadows !== false && !pts?.length) return;
-      const bl = this.blob(l.color), x = l.x, y = l.y, sw = Math.max(5, l.r * 0.11) * far, len = Math.min(l.r * 0.85, 150) * far;
+      const bl = this.blob(l.color), x = l.x, y = l.y, sw = Math.max(5, l.r * 0.11) * far;
+      const len = Math.min(l.r * (l.r <= L.shortStreak.r ? L.shortStreak.k : 0.85), 150) * far; // a sign's stays on its pavement
       if (pts) { g.save(); this.tracePoly(g, pts); g.clip(); }
       g.globalAlpha = clamp(a, 0, 1);
       g.drawImage(bl, x - sw, y - len * 0.25, sw * 2, len * 1.6);
