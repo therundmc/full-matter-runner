@@ -224,8 +224,9 @@ lv.pigeons(33.3, 21.7, 2)
 lv.prop('hydrant', 10.6, 22.65)                       # clear of the alley's mouth (bigger, it snagged whoever came out)
 lv.prop('vending', 18.5, 21.33)                         # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
-for col in (12.3, 28.8, 33.6, 41.3):                    # a meter at the head of each parking bay (none at the tail
-                                                        # of the first car: its trunk is opened from there)
+for col in (17.1, 28.8, 33.6, 41.3):                    # a meter at the head of each parking bay (none at the tail
+                                                        # of the first car, where its trunk opens and the guards come out
+                                                        # of the service alley's gate: they ran into it)
     lv.prop('parking_meter', col, 22.78)
 lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
