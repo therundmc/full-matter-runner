@@ -28,24 +28,24 @@ test('a level without premises is hostile everywhere; level 1 starts the player 
 
 test('level 1: the bar room and its toilets are open, the private rooms are not, and customers are left alone', () => {
   const d = new Director(world(LEVELS.level1));
-  for (const [col, row, what] of [[22, 13, 'by the door'], [27, 14, 'the pool table'], [20, 17, 'the card table'], [22, 8, 'the toilets']]) {
+  for (const [col, row, what] of [[21, 13, 'by the door'], [26, 14, 'the pool table'], [19, 16, 'the card table'], [21, 8, 'the toilets']]) {
     assert.equal(d.isThreat(at(col, row)), false, what);
     assert.equal(d.isGuest(at(col, row)), true, `${what}: a customer`);
   }
-  for (const [col, row, what] of [[27, 18, 'the VIP room'], [25, 18, 'its doorway'], [27, 8, 'the back room'], [17, 8, 'the storeroom'],
-    [17, 12, 'behind the counter'], [12, 10, 'the service alley'], [20, 2, 'the back lot']]) {
+  for (const [col, row, what] of [[26, 17, 'the VIP room'], [24, 17, 'its doorway'], [26, 8, 'the back room'], [17, 8, 'the storeroom'],
+    [17, 12, 'behind the counter'], [12, 10, 'the service alley'], [19, 2, 'the back lot']]) {
     assert.equal(d.isThreat(at(col, row)), true, what);
   }
-  assert.equal(d.isThreat(at(24, 18)), false, 'in front of the VIP door');
-  assert.equal(d.isGuest(at(24, 18)), false, 'the bouncer does not let anyone hang about at his door');
-  assert.equal(d.isGuest(at(21, 22)), false, 'nor does anyone on the sidewalk');
+  assert.equal(d.isThreat(at(23, 17)), false, 'in front of the VIP door');
+  assert.equal(d.isGuest(at(23, 17)), false, 'the bouncer does not let anyone hang about at his door');
+  assert.equal(d.isGuest(at(20, 21)), false, 'nor does anyone on the sidewalk');
   assert.equal(new Director(world({})).isGuest(at(1, 1)), false);
   // walking into the VIP room unarmed: an intruder a guard goes after, not yet a man to shoot on sight from afar
-  assert.equal(d.isIntruder(at(27, 18)), true);
-  assert.equal(d.isIntruder(at(27, 18, true)), false, 'armed: a plain threat');
-  assert.equal(d.isIntruder(at(22, 15)), false, 'a customer');
+  assert.equal(d.isIntruder(at(26, 17)), true);
+  assert.equal(d.isIntruder(at(26, 17, true)), false, 'armed: a plain threat');
+  assert.equal(d.isIntruder(at(21, 14)), false, 'a customer');
   d.provoked = true;
-  assert.equal(d.isIntruder(at(27, 18)), false);
+  assert.equal(d.isIntruder(at(26, 17)), false);
 });
 
 test('nobody listens for the steps or the doors of a stranger who does nothing wrong', () => {

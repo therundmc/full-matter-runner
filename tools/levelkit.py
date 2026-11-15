@@ -61,7 +61,12 @@ def js(v):
 
 
 class Level:
-    def __init__(self, w, h, base='X'):
+    # w, h: the size it is drawn at in the builder. cut_cols / cut_rows: whole tile columns / rows taken out of it at
+    # the end (to tighten rooms without redrawing them): the builder keeps its own coordinates, every one of them is
+    # moved here as it comes in (what lies inside a cut collapses onto its edge: keep things out of the cuts).
+    def __init__(self, w, h, base='X', cut_cols=(), cut_rows=()):
+        self.cut_x, self.cut_y = sorted(cut_cols), sorted(cut_rows)
+        w, h = w - len(self.cut_x), h - len(self.cut_y)
         self.w, self.h = w, h
         self.tiles = [[base] * w for _ in range(h)]
         self.actors = [[' '] * w for _ in range(h)]
@@ -88,17 +93,56 @@ class Level:
         self.spawns = []      # centre of every character, for the overlap check
         self._area = ''
 
+    # ---- the cuts: a builder's coordinate to the level's. along: a position (tiles, a float); tile: a tile index,
+    # never in a cut; span: an inclusive tile range, what is left of it (None: all of it was cut)
+    @staticmethod
+    def _along(v, cuts):
+        return v - sum(min(max(v - c, 0), 1) for c in cuts)
+
+    @staticmethod
+    def _tile(t, cuts, what='tile'):
+        assert t not in cuts, f'{what} on a cut line ({t})'
+        return t - sum(c < t for c in cuts)
+
+    @staticmethod
+    def _span(a, b, cuts):
+        kept = [t - sum(c < t for c in cuts) for t in range(a, b + 1) if t not in cuts]
+        return (kept[0], kept[-1]) if kept else None
+
+    def X(self, v):
+        return round(self._along(v, self.cut_x), 4)
+
+    def Y(self, v):
+        return round(self._along(v, self.cut_y), 4)
+
+    def at(self, col, row):
+        return self.X(col), self.Y(row)
+
+    def rect(self, c0, r0, c1, r1):
+        sx, sy = self._span(c0, c1, self.cut_x), self._span(r0, r1, self.cut_y)
+        assert sx and sy, f'rectangle {c0},{r0},{c1},{r1} cut away whole'
+        return [sx[0], sy[0], sx[1], sy[1]]
+
+    def tile(self, x, y, what='tile'):
+        return self._tile(x, self.cut_x, what), self._tile(y, self.cut_y, what)
+
     # ---- tiles
     def fill(self, x0, y0, x1, y1, ch):
-        for y in range(y0, y1 + 1):
-            for x in range(x0, x1 + 1):
+        sx, sy = self._span(x0, x1, self.cut_x), self._span(y0, y1, self.cut_y)
+        if not sx or not sy:
+            return
+        for y in range(sy[0], sy[1] + 1):
+            for x in range(sx[0], sx[1] + 1):
                 self.tiles[y][x] = ch
 
     def put(self, x, y, ch):
+        x, y = self.tile(x, y, f'{ch!r}')
         self.tiles[y][x] = ch
 
     # ---- actors: player, guards (UPPERCASE = patrols along `route`), weapons, ammo
     def actor(self, ch, x, y, face=None, route=None, job=None):
+        x, y = self.tile(x, y, f'actor {ch}')
+        route = route and [list(self.at(*q)) for q in route]
         t = self.tiles[y][x]
         assert t not in SOLID and t not in OPENINGS, f'actor {ch} on a solid tile at {x},{y}'
         assert self.actors[y][x] == ' ', f'two actors at {x},{y}'
@@ -114,6 +158,7 @@ class Level:
 
     def patron(self, kind, x, y, deg, pastime):
         """A civilian posted indoors at (x, y) in tiles, facing deg, busy with `pastime`: he may sit on furniture."""
+        x, y = self.at(x, y)
         assert self.tiles[int(y)][int(x)] not in SOLID | OPENINGS, f'patron in a wall at {x},{y}'
         self.patrons.append([kind, x, y, deg, pastime])
 
@@ -122,7 +167,7 @@ class Level:
         self._area = name
 
     def prop(self, kind, col, row, deg=0, **opt):
-        self.props.append((self._area, kind, col, row, deg, opt))
+        self.props.append((self._area, kind, *self.at(col, row), deg, opt))
 
     # ---- a fire at (col, row); stage: the room of the tutorial he must have reached for it to catch (None: at once),
     # delay: s after that before it does
@@ -130,36 +175,37 @@ class Level:
     # nobody bumps into it and no round stops on it
     def paint(self, sprite, col, row, deg=0):
         assert sprite in FLOOR, f'{sprite} is not floor paint'
-        self.floor.append([sprite, col, row, deg])
+        self.floor.append([sprite, *self.at(col, row), deg])
 
     def fire(self, col, row, stage=None, delay=None):
+        col, row = self.at(col, row)
         self.fires.append([col, row] if stage is None else [col, row, stage] if delay is None else [col, row, stage, delay])
 
     # ---- a dead body at (col, row), its head toward deg, in a pool of `pool` px
     def body(self, kind, col, row, deg=0, pool=18):
-        self.bodies.append([kind, col, row, deg, pool])
+        self.bodies.append([kind, *self.at(col, row), deg, pool])
 
     # ---- a weapon lying at (col, row) with `rounds` in it (None: full)
     def drop(self, kind, col, row, deg=0, rounds=None):
-        self.drops.append([kind, col, row, deg, rounds])
+        self.drops.append([kind, *self.at(col, row), deg, rounds])
 
     # ---- a weapon stood against a wall at (col, row), its tip pointing deg (toward the wall)
     def lean(self, kind, col, row, deg=0):
-        self.leans.append([kind, col, row, deg])
+        self.leans.append([kind, *self.at(col, row), deg])
 
     # ---- guarded premises (inclusive tile rectangle): guards leave an unarmed stranger alone anywhere else
     def guard(self, col0, row0, col1, row1):
-        self.premises.append([col0, row0, col1, row1])
+        self.premises.append(self.rect(col0, row0, col1, row1))
 
     # ---- a closed shop (inclusive tile rectangle of its floor) whose alarm box hangs at (col, row) on its front
     def alarm(self, col0, row0, col1, row1, col, row, deg=0):
-        self.alarms.append(dict(rect=[col0, row0, col1, row1], box=[col, row]))
+        self.alarms.append(dict(rect=self.rect(col0, row0, col1, row1), box=list(self.at(col, row))))
         self.prop('alarm_box', col, row, deg)
 
     # ---- the house's electricity (systems/Power.js): everything lit inside the inclusive tile rectangle hangs on the
     # fuse box at (col, row) on an outside wall; put `emergency_light` props over the doors for what is left after
     def power(self, col0, row0, col1, row1, col, row, deg=0):
-        self.mains = dict(box=[col, row], zone=[col0, row0, col1, row1])
+        self.mains = dict(box=list(self.at(col, row)), zone=self.rect(col0, row0, col1, row1))
         self.prop('fuse_box', col, row, deg)
 
     # ---- street fauna (systems/Critters.js): a flock of n pigeons pecking about (col, row), a cat sitting at (col, row)
@@ -170,6 +216,7 @@ class Level:
         self.fauna('cats', col, row)
 
     def fauna(self, kind, col, row, *more):
+        col, row = self.at(col, row)
         t = self.tiles[int(row)][int(col)]
         assert t not in SOLID and t not in 'DLG', f'{kind} at {col},{row} in {t!r}'
         self.critters.setdefault(kind, []).append([col, row, *more])
@@ -178,15 +225,16 @@ class Level:
     # 'papers' col0, row0, col1, row1, n (n loose sheets dropped in that inclusive tile rectangle, systems/Papers.js);
     # 'beds' col, row, deg (flattened cardboard painted on the ground, for a patron at the 'sleep' pastime)
     def dress(self, kind, *v):
-        self.street.setdefault(kind, []).append(list(v))
+        v = [*self.rect(*v[:4]), *v[4:]] if kind == 'papers' else [*self.at(*v[:2]), *v[2:]]
+        self.street.setdefault(kind, []).append(v)
 
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
-        self.welcome.append([col0, row0, col1, row1])
+        self.welcome.append(self.rect(col0, row0, col1, row1))
 
     # ---- rooftop dressing: scenery on the flat roofs of the neighbouring buildings
     def roof(self, kind, col, row, deg=0):
-        self.roofs.append((self._area, kind, col, row, deg))
+        self.roofs.append((self._area, kind, *self.at(col, row), deg))
 
     def is_wall(self, x, y):
         return not (0 <= x < self.w and 0 <= y < self.h) or self.tiles[y][x] in WALLS
@@ -255,6 +303,16 @@ class Level:
 
     # ---- output: src/game/data/levels/<module>.js
     def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None, objective=None):
+        assert not (self.tutorial and (self.cut_x or self.cut_y)), 'a tutorial is not moved by the cuts'
+        # what the builder hands over in its own coordinates
+        if exit:
+            exit = {**exit, 'x': self.X(exit['x']), 'y': self.Y(exit['y'])}
+            if 'route' in exit:
+                exit['route'] = [list(self.at(*q)) for q in exit['route']]
+        lights = [[*self.at(*l[:2]), *l[2:]] for l in lights]
+        if ambient:
+            ambient = {**ambient, 'traffic': [{**t, 'row': self.Y(t['row'])} for t in ambient.get('traffic', [])],
+                       'walkers': [{**w, 'path': [list(self.at(*q)) for q in w['path']]} for w in ambient.get('walkers', [])]}
         L = ['// ' + h for h in header]
         L.append(f'// Generated by tools/build_{module}.py (edit the script: it checks spawns and furniture overlaps), 1 tile = 1 m.')
         L.append('// tiles legend: see src/game/world/TileMap.js (FLOORS/WALLS) - D door, L locked door, G window.')

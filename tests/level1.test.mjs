@@ -20,11 +20,11 @@ const exit = { x: px(level.exit.x), y: px(level.exit.y) };
 // the ways into the bar's grounds on foot, as the tiles one has to cross on the facade line (the windows one can
 // dive through come on top: see the test of the ways round)
 const WAYS = {
-  front: [[21, 20], [22, 20]],
-  gate: [[11, 20], [12, 20], [13, 20]],
-  gap: [[32, 20]],
-  roof: [[1, 20]],          // the fire-escape ladder at the corner of the liquor store
-  shop: [[8, 20]],          // the liquor store's front door, and on by its own ladder to the roof
+  front: [[20, 19], [21, 19]],
+  gate: [[11, 19], [12, 19], [13, 19]],
+  gap: [[30, 19]],
+  roof: [[1, 19]],          // the fire-escape ladder at the corner of the liquor store
+  shop: [[8, 19]],          // the liquor store's front door, and on by its own ladder to the roof
 };
 
 // a world with the level's walls and its furniture, enough for the vault geometry
@@ -75,19 +75,19 @@ test('the service alley is closed by a chain-link gate that is climbed both ways
 
 test('the gap right of the bar: a door on the street, one metre wide, off limits, two windows of the bar on it', () => {
   const m = new TileMap(level.tiles), d = director();
-  assert.equal(m.at(32, 20), 'D');
-  assert.equal(d.isThreat(stranger(px(32.5), px(21.5))), false, 'in front of the door');
+  assert.equal(m.at(30, 19), 'D');
+  assert.equal(d.isThreat(stranger(px(30.5), px(20.5))), false, 'in front of the door');
   let windows = 0;
-  for (let row = 5; row <= 19; row++) {
-    assert.equal(m.isSolid(32, row), false, `row ${row}`);
-    assert.equal(m.isSolid(33, row), true, `east wall, row ${row}`);
-    if (m.at(31, row) === 'G') windows++;
-    else assert.equal(m.isSolid(31, row), true, `the bar's wall, row ${row}`);
-    assert.equal(d.isThreat(stranger(px(32.5), px(row + 0.5))), true, `row ${row} is guarded ground`);
+  for (let row = 5; row <= 18; row++) {
+    assert.equal(m.isSolid(30, row), false, `row ${row}`);
+    assert.equal(m.isSolid(31, row), true, `east wall, row ${row}`);
+    if (m.at(29, row) === 'G') windows++;
+    else assert.equal(m.isSolid(29, row), true, `the bar's wall, row ${row}`);
+    assert.equal(d.isThreat(stranger(px(30.5), px(row + 0.5))), true, `row ${row} is guarded ground`);
   }
   assert.equal(windows, 2, 'the pool corner and the VIP room');
-  assert.equal(m.at(31, 14), 'G');
-  assert.equal(m.at(31, 17), 'G');
+  assert.equal(m.at(29, 14), 'G');
+  assert.equal(m.at(29, 16), 'G');
 });
 
 test('level 1 is fought hand to hand: two guns in the house (the bar room, the boss), one hidden in the liquor store', () => {
@@ -97,7 +97,7 @@ test('level 1 is fought hand to hand: two guns in the house (the bar room, the b
   const guns = guards.filter((g) => 'pushr'.includes(g.ch));
   assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p']);
   const [boss, pool] = guns;
-  assert.ok(boss.col >= 25 && boss.col <= 30 && boss.row >= 6 && boss.row <= 10, "the shotgun is the boss's, in the back room");
+  assert.ok(boss.col >= 24 && boss.col <= 28 && boss.row >= 6 && boss.row <= 10, "the shotgun is the boss's, in the back room");
   assert.equal(level.jobs[`${pool.col},${pool.row}`], 'pool', "the pistol is the pool player's");
   // lying around: knives, a cue by the pool table, one pistol behind the liquor store's locked door; no ammunition
   // anywhere and no weapon in the start alley (the first one is in the trunk of the first parked car)
@@ -105,9 +105,9 @@ test('level 1 is fought hand to hand: two guns in the house (the bar room, the b
   assert.deepEqual(level.lean.map((l) => l[0]), ['cue'], 'the cue stands against a wall of the bar room');
   assert.equal(level.actors[11][4], '5', 'the one bat is up on the liquor store roof');
   assert.equal(level.actors.join('').split('1').length - 1, 1);
-  assert.equal(level.actors[17][8], '1');
+  assert.equal(level.actors[16][8], '1');
   assert.ok(!/[nzvwgq]/.test(level.actors.join('')), 'no ammunition box');
-  for (let row = 32; row <= 36; row++) assert.ok(!/[0-9]/.test(level.actors[row].slice(20, 24)), 'nothing to pick up in the alley');
+  for (let row = 31; row <= 35; row++) assert.ok(!/[0-9]/.test(level.actors[row].slice(19, 23)), 'nothing to pick up in the alley');
   const trunks = level.props.filter((p) => p[4]?.trunk);
   assert.deepEqual(trunks.map((p) => [p[0], p[4].trunk]), [['car2', 'tire_iron']]);
   assert.ok(trunks[0][1] < 20, 'the first car on the left');
@@ -116,9 +116,9 @@ test('level 1 is fought hand to hand: two guns in the house (the bar room, the b
 
 // the shop fronts of the street: room (inclusive tiles), display panes and door on the facade row, neon sign
 const SHOPS = {
-  liquor: { room: [3, 17, 8, 19], facade: 20, panes: [5, 6, 7], door: [8, 'L'], sign: 'neon_sign_liquor', ways: [[3, 16]] },
-  video: { room: [36, 17, 39, 19], facade: 20, panes: [36, 37, 38], door: [39, 'L'], sign: 'neon_sign_video' },
-  wash: { room: [27, 33, 31, 35], facade: 32, panes: [27, 28, 29], door: [30, 'D'], sign: 'neon_sign_wash' },
+  liquor: { room: [3, 16, 8, 18], facade: 19, panes: [5, 6, 7], door: [8, 'L'], sign: 'neon_sign_liquor', ways: [[3, 15]] },
+  video: { room: [34, 16, 37, 18], facade: 19, panes: [34, 35, 36], door: [37, 'L'], sign: 'neon_sign_video' },
+  wash: { room: [26, 32, 29, 34], facade: 31, panes: [26, 27], door: [28, 'D'], sign: 'neon_sign_wash' },
 };
 
 test('three shop fronts light the street: panes on the sidewalk, a neon sign, lamps and goods behind the glass', () => {
@@ -160,10 +160,10 @@ test('the liquor store roof: up a ladder from the street or from the shop, down 
   assert.ok(PROPS.ladder.lasting && PROPS.parapet.lasting, 'neither can be destroyed: each closes a gap in a wall');
   // [from, heading, kind, the tile one lands on]
   const moves = [
-    [[1.5, 21.35], -Math.PI / 2, 'climb', [1, 19]],   // up from the sidewalk
-    [[1.5, 19.65], Math.PI / 2, 'climb', [1, 21]],    // and back down
-    [[3.5, 17.35], -Math.PI / 2, 'climb', [3, 15]],   // up from the shop
-    [[3.5, 15.65], Math.PI / 2, 'climb', [3, 17]],
+    [[1.5, 20.35], -Math.PI / 2, 'climb', [1, 18]],   // up from the sidewalk
+    [[1.5, 18.65], Math.PI / 2, 'climb', [1, 20]],    // and back down
+    [[3.5, 16.35], -Math.PI / 2, 'climb', [3, 14]],   // up from the shop
+    [[3.5, 14.65], Math.PI / 2, 'climb', [3, 16]],
     [[9.6, 12.5], 0, 'prop', [11, 12]],               // down into the service alley, inside the gate
     [[11.4, 12.5], Math.PI, 'prop', [9, 12]],
     [[9.6, 3.5], 0, 'prop', [11, 3]],                 // down into the back lot
@@ -180,22 +180,22 @@ test('the liquor store roof: up a ladder from the street or from the shop, down 
   assert.equal(d.isThreat(stranger(px(11.5), px(12.5))), true);
   assert.equal(d.isThreat(stranger(px(11.5), px(3.5))), true);
   // the shop has no door on the service alley: its ladder is the only way on
-  for (let row = 17; row <= 19; row++) assert.ok(m.isSolid(9, row) || m.isSolid(10, row), `a wall between the shop and the alley at row ${row}`);
+  for (let row = 16; row <= 18; row++) assert.ok(m.isSolid(9, row) || m.isSolid(10, row), `a wall between the shop and the alley at row ${row}`);
   // nothing stands in the way at the top of either ladder
-  for (const [col, row] of [[1, 15], [1, 14], [2, 14], [3, 14], [3, 15]]) {
+  for (const [col, row] of [[1, 15], [1, 14], [2, 14], [3, 14]]) {
     assert.ok(!w.props.some((p) => Math.floor(p.x / TILE) === col && Math.floor(p.y / TILE) === row), `the roof is clear at ${col},${row}`);
   }
 });
 
 test("ways round: the toilets and the boss's room have a window on the back lot, the VIP room one on the gap", () => {
   const m = new TileMap(level.tiles);
-  for (const [col, row, inside, outside] of [[22, 5, [22, 6], [22, 4]], [26, 5, [26, 6], [26, 4]], [31, 17, [30, 17], [32, 17]], [31, 14, [30, 14], [32, 14]]]) {
+  for (const [col, row, inside, outside] of [[21, 5, [21, 6], [21, 4]], [25, 5, [25, 6], [25, 4]], [29, 16, [28, 16], [30, 16]], [29, 14, [28, 14], [30, 14]]]) {
     assert.equal(m.at(col, row), 'G', `window at ${col},${row}`);
     assert.equal(m.isSolid(...inside), false);
     assert.equal(m.isSolid(...outside), false);
   }
   // furniture leaves room to land behind each of them (a prop's box never reaches the tile behind the pane)
-  const landing = [[22, 6], [26, 6], [30, 17], [30, 14]];
+  const landing = [[21, 6], [25, 6], [28, 16], [28, 14]];
   for (const [col, row] of landing) {
     const cx = px(col + 0.5), cy = px(row + 0.5);
     const hit = level.props.some(([type, pc, pr]) => PROPS[type] && !PROPS[type].hung && !PROPS[type].overhead
@@ -206,7 +206,7 @@ test("ways round: the toilets and the boss's room have a window on the back lot,
 
 test('no flock of pigeons sits in the start alley, where the cat lives', () => {
   for (const [col, row] of level.critters.pigeons) {
-    assert.ok(!(col >= 20 && col < 24 && row >= 32 && row < 37), `flock at ${col}, ${row}`);
+    assert.ok(!(col >= 19 && col < 23 && row >= 31 && row < 36), `flock at ${col}, ${row}`);
   }
 });
 
@@ -234,9 +234,9 @@ test('level 1: every one of the 14 guards has something to do, at a post or on a
       for (let tx = Math.floor((b.min.x + 4) / TILE); tx <= Math.floor((b.max.x - 4) / TILE); tx++) map.blocked[ty * map.w + tx] = 1;
     }
   }
-  for (const [tx, ty] of [[27, 11], [28, 5]]) map.blocked[ty * map.w + tx] = 0;
-  const rooms = { storeroom: [17, 7], toilets: [22, 8], 'back room': [27, 9], bar: [22, 15], vip: [28, 18], lot: [20, 4],
-    alley: [12, 12], street: [20, 22] };
+  for (const [tx, ty] of [[26, 11], [24, 5]]) map.blocked[ty * map.w + tx] = 0;
+  const rooms = { storeroom: [17, 7], toilets: [21, 8], 'back room': [26, 9], bar: [21, 14], vip: [27, 17], lot: [19, 4],
+    alley: [12, 12], street: [19, 21] };
   // (not the bartender: the nav grid takes the shelves of his back bar, 8 px deep against the wall, for furniture that
   // fills his walkway, data/props.js back_bar blocksPath; he walks it straight, Enemy.work)
   for (const [x, y] of guards.filter(([x, y]) => level.jobs[`${x},${y}`] !== 'wipe')) {

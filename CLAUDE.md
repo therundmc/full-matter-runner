@@ -54,8 +54,12 @@
   holes, a cut, the blood of a blow). A man knocked down falls on his back, head AWAY from the blow (`downAngle`).
 - Camera: `VIEW` = 330 world px high (engine/Camera.js); he said this zoom is right. The scene is drawn at a whole
   zoom on a canvas a little larger than the window and the lens brings it down (Game.resize).
-- Rooms: not moved. With people 1.3 x bigger the back rooms are about right in body widths; move walls only if he
-  still finds them too big (asked before the scale change). No television in front of the boss's door.
+- Rooms (2026-11-15, his verdict: "the furniture too small or the rooms too big", "maybe shrink the rooms a little"):
+  level 1 is tightened by whole tiles taken out (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
+  `cut_rows`): the builder keeps its drawing's coordinates, the kit moves them; keep things off the cut lines. The bar
+  room went from 16 x 8 m to 14 x 7 m. Coordinates in tests and the QA robot's plans are the level's (after the cuts).
+  A doorway needs room on one side at least (a guard jam came from a door between a desk and an armchair, and a battery
+  lamp in front of a door). No television in front of the boss's door.
 
 ## Delivery by blocks (validate each with the user before moving on)
 1. Engine perf & stability — done. The "3 explosions" bug was the lab (no exit) clearing -> exit HUD crash; fixed and
