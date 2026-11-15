@@ -15,7 +15,7 @@ import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, 
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawLoading, drawIntro, drawDead, drawOutro, describeDeath } from './ui/Screens.js';
+import { drawLoading, drawIntro, drawDead, drawOutro, describeDeath, INTRO, introBeats, introTint, SHUTTER_SOUND } from './ui/Screens.js';
 import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import Menu from './ui/Menu.js';
@@ -111,7 +111,10 @@ export default class Game {
     this.setState('title');
   }
 
-  setState(s) { this.state = s; this.stateT = 0; this.grab = null; this.menuRects = []; }
+  setState(s) {
+    if (s !== 'play') this.introOut = null; // the level's card opens over play only (leaveIntro)
+    this.state = s; this.stateT = 0; this.grab = null; this.menuRects = [];
+  }
 
   // ---------------- settings ----------------
   // what a setting does once changed (the value is already in this.settings; fullscreen goes by setFullscreen)
@@ -207,6 +210,8 @@ export default class Game {
     ev.on('tutorialEnd', () => this.onTutorialEnd());
     this.sandbox.attach(this.world);
     this.cineT = 0;
+    this.introT = 0;
+    this.introOut = null;
     this.setState(state);
   }
 
@@ -217,6 +222,19 @@ export default class Game {
     this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
     this.setState('fall');
+  }
+
+  // play starts at once; the card stays where it was and opens like a shutter over the first moments of play
+  leaveIntro() {
+    const at = Math.min(this.stateT, INTRO.leave);
+    Audio.play(SHUTTER_SOUND.name, { vol: SHUTTER_SOUND.vol, ...SHUTTER_SOUND.opts });
+    this.setState('play');
+    this.introOut = at;
+  }
+
+  // what the level's card shows (ui/Screens.js drawIntro)
+  introCard() {
+    return { level: this.world.level, best: this.best, label: levelLabel(this.levelId), device: this.input.device, tint: introTint(this.levelId) };
   }
 
   // ---------------- hooks called by the world ----------------
@@ -352,9 +370,13 @@ export default class Game {
       return;
     }
     if (this.state === 'intro') {
+      // the level's card (ui/Screens.js drawIntro): it plays its beats, then a key, a click or its time is up hands over
       this.updateCamera(dt);
-      if (this.stateT > 2.6 || (this.stateT > 0.3 && (inp.mouseHit(0) || inp.anyPressed))) { inp.consume(); this.setState('play'); }
-      else inp.consume();
+      for (const b of introBeats(this.world.level, this.introT, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
+      this.introT = this.stateT;
+      const skip = this.stateT > INTRO.skipAfter && (inp.mouseHit(0) || inp.anyPressed);
+      inp.consume();
+      if (skip || this.stateT >= INTRO.leave) this.leaveIntro();
       return;
     }
 
@@ -659,7 +681,8 @@ export default class Game {
       this.world.renderer.debugStats().forEach((l, i) => ctx.fillText(l, 12, H - 80 * H / 720 + i * 16 * H / 720));
     }
     this.safeDraw(ctx, () => {
-      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best, levelLabel(this.levelId));
+      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.introCard());
+      else if (this.state === 'play' && this.introOut != null && this.stateT < INTRO.out) drawIntro(ctx, W, H, this.introOut, this.introCard(), this.stateT);
       if (this.state === 'fall' && this.stateT < FALL.fade) {
         ctx.globalAlpha = clamp(this.stateT / FALL.fade, 0, 1);
         ctx.fillStyle = '#000';

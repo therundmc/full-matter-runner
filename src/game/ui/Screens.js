@@ -33,24 +33,180 @@ export function drawLoading(ctx, W, H, p) {
   ctx.fillRect(W / 2 - 200 * s, H / 2, 400 * s * p, 14 * s);
 }
 
-// best: the level's best result so far ({ total, grade }), if any
-export function drawIntro(ctx, W, H, t, level, best, label = 'LEVEL 1') {
-  const s = H / 720;
-  const a = clamp(Math.min(t * 3, (2.6 - t) * 2.5), 0, 1);
-  ctx.globalAlpha = a;
-  const band = 186 * s;
-  ctx.fillStyle = 'rgba(8,2,16,0.85)';
-  ctx.fillRect(0, H / 2 - band / 2, W, band);
-  ctx.fillStyle = PALETTE.pink;
-  ctx.fillRect(0, H / 2 - band / 2, W, 3 * s);
-  ctx.fillRect(0, H / 2 + band / 2 - 3 * s, W, 3 * s);
-  ctx.globalAlpha = 1;
-  const slide = (1 - clamp(t * 2.5, 0, 1)) * W * 0.3;
-  text(ctx, label, W / 2 - slide, H / 2 - 38 * s, 18 * s, PALETTE.yellow, { alpha: a });
-  glitchText(ctx, level.name, W / 2 + slide, H / 2 + 2 * s, 50 * s, t, { alpha: a });
-  text(ctx, level.subtitle, W / 2, H / 2 + 42 * s, 13 * s, PALETTE.white, { alpha: a * 0.85 });
-  if (level.objective) text(ctx, level.objective[0], W / 2, H / 2 + 68 * s, 16 * s, PALETTE.yellow, { alpha: a });
-  if (best) text(ctx, `BEST ${thousands(best.total)}  ${best.grade}`, W / 2, H / 2 + 92 * s, 11 * s, PALETTE.cyan, { alpha: a * 0.8 });
+// The card a level opens on, in the death screen's family: black bars slammed in over the level (seen between them),
+// the level's label stamped, then its name stamped down big with a jolt and a flash, a black band sliding in where the
+// place and the hour are typed, the objective under it, the best result in the top bar and the way in in the bottom
+// one. At `leave` s (or at the first key) play starts and the bars open like a shutter over it, the card thrown off
+// (Game draws that part over play: `out`). Timeline and sounds are pure (introTimeline, introBeats: unit-tested).
+export const INTRO = {
+  bars: 0.12,                   // s the bars take to slam in
+  label: 0.06, labelFall: 0.08, // the label's stamp: when it starts, how long it falls
+  title: 0.16, slam: 0.14,      // the name's stamp: when it starts, how long it falls
+  band: 0.44, bandIn: 0.16,     // the band slides in, then the place and the hour are typed at `cps` letters a second
+  type: 0.52, cps: 80,
+  objective: 0.12,              // s after the typing
+  prompt: 0.5,                  // the prompt, early: he can go at once
+  leave: 2.3, out: 0.3,         // s the card holds before play starts by itself; s the shutter takes to open
+  skipAfter: 0.3,               // a key or a click before that is not taken as a skip
+};
+// the colours of a level's card: main (title, edges), deep (the band's shadow), wash (r,g,b over the picture)
+const INTRO_TINTS = {
+  tutorial: { main: PALETTE.cyan, deep: '#004a5c', wash: '0,26,44' },
+  level1: { main: PALETTE.pink, deep: '#7a0034', wash: '44,0,30' },
+};
+export const introTint = (id) => INTRO_TINTS[id] || INTRO_TINTS.level1;
+// heard as the shutter opens (Game.leaveIntro), whenever that is
+export const SHUTTER_SOUND = { name: 'swing', vol: 0.7, opts: { weapon: 'bat' } };
+
+// when each beat of a level's card comes (s from its start)
+export function introTimeline(level, R = INTRO) {
+  const land = R.title + R.slam, typed = R.type + (level.subtitle?.length || 0) / R.cps;
+  return { label: R.label + R.labelFall, land, band: R.band, typed, objective: typed + R.objective, prompt: R.prompt, leave: R.leave };
+}
+
+// what is heard between t0 and t1 (s, t0 excluded): the bars landing, the label's knock, the name's stamp, the band's
+// rush, a tick per letter typed (one a frame at most), the objective's click. -> [{ name, vol, opts? }] for Audio.play
+export function introBeats(level, t0, t1, R = INTRO) {
+  const T = introTimeline(level, R), out = [], crossed = (at) => at > t0 && at <= t1;
+  if (crossed(R.bars)) out.push({ name: 'bodyFall', vol: 0.6 });
+  if (crossed(T.label)) out.push({ name: 'click', vol: 0.9 });
+  if (crossed(T.land)) out.push({ name: 'punch', vol: 1 }, { name: 'bodyFall', vol: 0.8 });
+  if (level.subtitle && crossed(R.band)) out.push({ name: 'swing', vol: 0.45, opts: { weapon: 'cue' } });
+  const sub = level.subtitle || '';
+  for (let i = 0; i < sub.length; i++) {
+    if (sub[i] !== ' ' && crossed(R.type + (i + 1) / R.cps)) { out.push({ name: 'click', vol: 0.3 }); break; }
+  }
+  if (level.objective && crossed(T.objective)) out.push({ name: 'ui', vol: 0.6 });
+  return out;
+}
+
+// a font size for `str` that fits `width`, no bigger than `size`
+function fitSize(ctx, str, size, width) {
+  ctx.save();
+  ctx.font = `${Math.round(size)}px joystix, monospace`;
+  const w = ctx.measureText(str).width;
+  ctx.restore();
+  return w > width ? size * (width / w) : size;
+}
+
+// t: s on the card (held where it was once play has started); out: s since play started (the shutter opening).
+// card: { level, best ({ total, grade } or null), label ('LEVEL 1'), device, tint: introTint(id) }
+export function drawIntro(ctx, W, H, t, card, out = 0) {
+  const { level, best, label, device, tint } = card;
+  const s = H / 720, R = INTRO, T = introTimeline(level), ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+  // the shutter: everything goes, faster and faster
+  const go = clamp(out / R.out, 0, 1) ** 2, stay = 1 - go;
+  // the picture darkens in the level's colour, more at the edges
+  const a = ease(t / 0.2) * stay;
+  ctx.fillStyle = `rgba(${tint.wash},${0.42 * a})`;
+  ctx.fillRect(0, 0, W, H);
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, Math.hypot(W, H) * 0.6);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, `rgba(0,0,0,${0.7 * a})`);
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, W, H);
+  // black bars slam in, an edge of the level's colour on each; they open like a shutter
+  const bar = H * 0.16 * ease(t / R.bars) * stay;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, bar);
+  ctx.fillRect(0, H - bar, W, bar);
+  ctx.fillStyle = tint.main;
+  ctx.fillRect(0, bar, W, 3 * s);
+  ctx.fillRect(0, H - bar - 3 * s, W, 3 * s);
+
+  // the card keeps above two thirds of the height: level 1 opens on him sat in the alley about there, under it
+  const ty = H * 0.37, rot = -0.035, throwX = -go * W * 0.9, fade = clamp(1 - go * 2.5, 0, 1);
+  // the label, stamped on a little black plate above the name
+  const lk = clamp((t - R.label) / R.labelFall, 0, 1);
+  if (t > R.label) {
+    const sc = 1 + (1 - ease(lk)) * 1.2, ls = 20 * s * sc;
+    ctx.save();
+    ctx.globalAlpha = clamp(lk * 3, 0, 1) * fade;
+    ctx.translate(W / 2 + throwX * 0.7, ty - 74 * s);
+    ctx.rotate(rot);
+    ctx.font = `${Math.round(ls)}px joystix, monospace`;
+    const pw = ctx.measureText(label).width + 34 * s * sc, ph = 34 * s * sc;
+    ctx.fillStyle = tint.deep;
+    ctx.fillRect(-pw / 2 + 4 * s, -ph / 2 + 4 * s, pw, ph);
+    ctx.fillStyle = '#050003';
+    ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+    ctx.fillStyle = tint.main;
+    ctx.fillRect(-pw / 2, -ph / 2, 5 * s, ph);
+    ctx.fillRect(pw / 2 - 5 * s, -ph / 2, 5 * s, ph);
+    text(ctx, label, 0, 1 * s, ls, PALETTE.yellow, { shadow: null });
+    ctx.restore();
+  }
+
+  // the name stamped down: big, fast, a jolt when it lands, a white ghost of it where it hit
+  const k = clamp((t - R.title) / R.slam, 0, 1), land = t - T.land;
+  if (t > R.title) {
+    const size = fitSize(ctx, level.name, 96 * s, W * 0.86);
+    const sc = 1 + (1 - ease(k)) * 1.6, jolt = land > 0 && land < 0.18 ? (1 - land / 0.18) * 9 * s : 0;
+    const jx = jolt * Math.sin(t * 90) + throwX, jy = jolt * Math.cos(t * 77);
+    ctx.save();
+    ctx.globalAlpha = clamp(k * 2, 0, 1) * clamp(1 - go * 1.5, 0, 1);
+    text(ctx, level.name, W / 2 + 9 * s + jx, ty + 10 * s + jy, size * sc, '#000', { shadow: null, rot });
+    if (land > 0 && land < 0.3) text(ctx, level.name, W / 2, ty, size * (1 + land * 0.8), PALETTE.white, { shadow: null, outline: false, rot, alpha: 0.5 * (1 - land / 0.3) });
+    glitchText(ctx, level.name, W / 2 + jx, ty + jy, size * sc, t, { rot, color: tint.main });
+    ctx.restore();
+    if (land > 0 && land < 0.12 && !out) {
+      ctx.fillStyle = `rgba(255,255,255,${0.3 * (1 - land / 0.12)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // the place and the hour, typed on a black band sliding in from the left (and thrown off to the right)
+  const bt = t - R.band;
+  if (bt > 0 && level.subtitle) {
+    const bw = Math.min(W, 800 * s), bh = 50 * s, by = H * 0.525, slide = (1 - ease(bt / R.bandIn)) * -W + go * W;
+    ctx.save();
+    ctx.translate(W / 2 + slide, by);
+    ctx.rotate(-0.012);
+    ctx.fillStyle = tint.deep;
+    ctx.fillRect(-bw / 2 + 6 * s, -bh / 2 + 6 * s, bw, bh);
+    ctx.fillStyle = '#050003';
+    ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+    ctx.fillStyle = tint.main;
+    ctx.fillRect(-bw / 2, -bh / 2, 10 * s, bh);
+    ctx.fillRect(bw / 2 - 10 * s, -bh / 2, 10 * s, bh);
+    const sub = level.subtitle, n = clamp(Math.floor((t - R.type) * R.cps), 0, sub.length);
+    const size = fitSize(ctx, sub, 17 * s, bw - 60 * s);
+    ctx.font = `${Math.round(size)}px joystix, monospace`;
+    const x0 = -ctx.measureText(sub).width / 2, shown = sub.slice(0, n);
+    if (n) text(ctx, shown, x0, 0, size, PALETTE.white, { align: 'left', shadow: tint.deep });
+    // the cursor: runs with the letters, then blinks
+    if (t > R.type - 0.05 && (n < sub.length || Math.sin(t * 14) > 0)) {
+      ctx.font = `${Math.round(size)}px joystix, monospace`;
+      const cx = x0 + ctx.measureText(shown).width + 3 * s;
+      ctx.fillStyle = tint.main;
+      ctx.fillRect(cx, -size * 0.45, size * 0.55, size * 0.9);
+    }
+    ctx.restore();
+  }
+
+  // what he is here for
+  const ot = t - T.objective;
+  if (ot > 0 && level.objective) {
+    const oa = ease(ot / 0.18) * fade, rise = (1 - ease(ot / 0.18)) * 10 * s;
+    text(ctx, 'OBJECTIVE', W / 2, H * 0.592 + rise, 13 * s, tint.main, { alpha: oa });
+    text(ctx, level.objective[0], W / 2, H * 0.628 + rise, 19 * s, PALETTE.yellow, { alpha: oa });
+  }
+
+  // the way in, in the bottom bar; the best result so far, in the top one
+  const pt = t - R.prompt;
+  if (pt > 0) {
+    const pa = ease(pt / 0.15) * fade, pulse = 0.82 + 0.18 * Math.sin(t * 9);
+    const list = device === 'pad' ? [['confirm', 'TO START']] : [['confirm', ''], ['attack', 'TO START']];
+    ctx.save();
+    ctx.globalAlpha = pa;
+    drawPrompts(ctx, list, W / 2, H - bar / 2, 34 * s * pulse ** 0.3, device, { color: PALETTE.yellow, gap: 0.5, font: 0.62, lead: 'PRESS' });
+    ctx.restore();
+    if (best) {
+      const y = bar / 2;
+      text(ctx, best.grade, W - 30 * s, y, 22 * s, PALETTE.yellow, { align: 'right', alpha: pa });
+      text(ctx, `BEST  ${thousands(best.total)}`, W - 62 * s, y, 13 * s, tint.main, { align: 'right', alpha: 0.85 * pa });
+    }
+  }
 }
 
 // What killed him, told on the death screen: { verb, by } ('SHOT', 'BY A THUG  -  UZI'). cause: Character.kill's;

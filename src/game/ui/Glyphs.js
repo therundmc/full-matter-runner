@@ -113,18 +113,22 @@ export function drawCap(ctx, label, x, y, h, alpha = 1) {
 }
 
 // a row of prompts centred on cx: [[action, words], ...], each the cap for `device` then the words; returns its width.
-// opts: { color, alpha, gap (between two prompts, in h), font: words' size (default 0.62 h) }
+// opts: { color, alpha, gap (between two prompts, in h), font: words' size (default 0.62 h), lead: words before the
+// first cap ('PRESS') }
 export function drawPrompts(ctx, list, cx, y, h, device, opts = {}) {
-  const { color = PALETTE.white, alpha = 1, gap = 1.6, font = 0.62 } = opts, size = h * font;
+  const { color = PALETTE.white, alpha = 1, gap = 1.6, font = 0.62, lead = '' } = opts, size = h * font;
   ctx.save();
   ctx.font = `${Math.round(size)}px joystix, monospace`;
   const parts = list.map(([action, words]) => {
     const label = keyLabel(action, device), cw = capWidth(ctx, label, h), ww = words ? ctx.measureText(words).width : 0;
     return { label, words, cw, ww, w: cw + (words ? h * 0.4 + ww : 0) };
   });
+  const leadW = lead ? ctx.measureText(lead).width + h * 0.4 : 0;
   ctx.restore();
-  const total = parts.reduce((s, p) => s + p.w, 0) + gap * h * (parts.length - 1);
+  const total = leadW + parts.reduce((s, p) => s + p.w, 0) + gap * h * (parts.length - 1);
   let x = cx - total / 2;
+  if (lead) text(ctx, lead, x, y, size, color, { align: 'left', alpha });
+  x += leadW;
   for (const p of parts) {
     drawCap(ctx, p.label, x, y, h, alpha);
     if (p.words) text(ctx, p.words, x + p.cw + h * 0.4, y, size, color, { align: 'left', alpha });
