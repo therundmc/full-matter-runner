@@ -109,7 +109,7 @@ export default class World {
     this.alarms = new Alarms(this, level.alarms); // closed shops that ring when broken into
     this.critters = new Critters(this, level.critters); // rats, pigeons, the cat, flies, moths
     this.sirens = new Sirens(this);               // far off, once the shooting drags on
-    this.ambience = new Ambience(this);           // the night heard: the city's wash, hums, drips, a room's murmur
+    this.ambience = new Ambience(this);           // the night heard, place by place: beds, traffic, one-shots
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
     this.clouds = new Clouds(this);               // extinguisher powder nobody sees through
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
@@ -221,6 +221,8 @@ export default class World {
   after(sec, fn) { this.timers.push({ t: this.time + sec, fn }); }
   // extra.choke: emitter key, a new sound from it cuts its previous one (gunfire)
   sound(name, x, y, vol = 1, extra) { Audio.play(name, { x, y, vol, occ: this.walledOff(x, y), ...extra }); }
+  // the beds of the night and the room's reverb, as systems/Ambience.js mixes them
+  atmosphere(mix) { Audio.setAmbience(mix); }
 
   // is a sound made at (x, y) heard through a wall or a closed door? (the player is the ear)
   walledOff(x, y) {

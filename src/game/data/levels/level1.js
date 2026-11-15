@@ -199,6 +199,8 @@ export default {
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [34, 17, 37, 19], "box": [33.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
   power: {"box": [23.5, 4.92], "zone": [14, 5, 29, 20]},
+  // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1] (the first wins)
+  soundscape: { rain: 0.35, zones: [['vip', 24, 17, 28, 19], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20], ['lot', 30, 5, 30, 19], ['shop', 3, 17, 8, 19], ['shop', 34, 17, 37, 19], ['shop', 26, 33, 29, 35], ['alley', 19, 32, 22, 36]] },
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[22.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [31.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]

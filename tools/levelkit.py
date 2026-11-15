@@ -93,6 +93,8 @@ class Level:
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
+        self.zones = []       # what each place sounds like: [kind, col0, row0, col1, row1] (src/game/data/soundscape.js)
+        self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -234,6 +236,11 @@ class Level:
     def dress(self, kind, *v):
         v = [*self.rect(*v[:4]), *v[4:]] if kind == 'papers' else [*self.at(*v[:2]), *v[2:]]
         self.street.setdefault(kind, []).append(v)
+
+    # ---- what a place sounds like (src/game/data/soundscape.js ZONES): its kind over an inclusive tile rectangle, the
+    # first given wins where two overlap; a tile in none is a street, a roof or a room by its floor
+    def sound(self, kind, col0, row0, col1, row1):
+        self.zones.append([kind, *self.rect(col0, row0, col1, row1)])
 
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
@@ -417,6 +424,9 @@ class Level:
         if self.mains:
             L.append('  // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside')
             L.append(f'  power: {json.dumps(self.mains)},')
+        if self.zones or self.rain:
+            L.append('  // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1] (the first wins)')
+            L.append(f"  soundscape: {{ rain: {self.rain or 0}, zones: {js(self.zones)} }},")
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')

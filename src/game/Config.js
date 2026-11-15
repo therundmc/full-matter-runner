@@ -231,17 +231,19 @@ export const SIRENS = {
   cars: [{ pan: -0.5, pitch: 1, vol: 1, late: 0 }, { pan: 0.6, pitch: 0.93, vol: 0.7, late: 7 }], // each its side and voice
 };
 
-// The night heard around the player (systems/Ambience.js; the sounds, all synthesized, in audio/Audio.js). Their
-// levels are the `gain` of air / gust / hum / drip / walla in the audio META table.
+// The night heard around the player (systems/Ambience.js): long beds per place of the level and per prop, the
+// traffic car by car, one-shots on top (what each place sounds like: data/soundscape.js; the beds: audio/Beds.js).
 export const AMBIENCE = {
-  air: 4.5,                // s between two swells of the city's far-off wash (each lasts 9 s: they overlap)
   indoors: ['wood', 'checker', 'tile_blue', 'neon_floor', 'carpet_red', 'carpet_purple'], // floors under a roof
-  ease: 1.5,               // 1/s the bed follows him in and out of doors
+  ease: 1.6,               // 1/s the mix follows him from place to place (and a crowd falling silent)
+  send: 0.1,               // s between two mixes handed to the mixer (it glides in between)
+  through: 0.35,           // level of a place heard through its walls ...
+  muffle: 600,             // ... and the Hz it is cut at
+  open: 14000,             // Hz a bed is cut at where it is heard openly
+  props: { through: 0.45, muffle: 900, pan: 300 }, // a prop's bed through a wall; px to the side for full pan
   gust: 1,                 // a gust of wind (systems/Papers.js), out of doors ...
   muffled: 0.7,            // ... and how much of it is lost indoors
-  hum: { every: 2, reach: 230, max: 3 },            // props with `hum`: within reach px, the nearest max of them
   drip: { every: [0.8, 3], reach: 300, spread: 14 }, // props with `drip`: s between two drops, px around the prop
-  walla: { every: 2.4, min: 2, full: 7 },            // calm customers: from `min` of them, full voice at `full`
 };
 
 // a barrel smokes for a moment after a burst (Character.fume)
@@ -398,7 +400,6 @@ export const AMBIENT = {
   lethal: 3.2,             // m/s: faster than this, a hit kills (one hit kills, guards and player alike)
   shove: 1.3,              // ragdoll launch speed as a fraction of the car speed
   attention: [0.55, 1.4],  // m (+ 0.25 s of travel) ahead where a driver notices a person: late, rarely stops in time
-  passby: { lead: 1.4, range: 15, vol: 0.55 }, // s before the closest pass, m of lateral hearing range, loudness
   // pedestrians (speeds in m/s)
   walk: [1.05, 1.45],
   run: [4.2, 5.2],

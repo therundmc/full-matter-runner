@@ -16,6 +16,8 @@ const { default: Tension } = await load('game/ai/Tension.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { MATERIAL_FX } = await load('game/data/destruction.js');
 const { BANK } = await load('audio/bank.js');
+const { ZONES } = await load('game/data/soundscape.js');
+const ZONE_SOUNDS = Object.values(ZONES).flatMap((z) => z.events.flatMap((e) => (typeof e.sound === 'string' ? [e.sound] : Object.keys(e.sound))));
 
 // Minimal strict WebAudio stand-in: records every node and rejects what a browser would throw on
 // (non-finite values, exponential ramps to <= 0) and counts sources started. With `noPast` set, anything
@@ -137,7 +139,7 @@ function calledNames() {
   return names;
 }
 const GAME_SOUNDS = [...new Set([
-  ...calledNames(), ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), ...CONFIG_SOUNDS,
+  ...calledNames(), ...Object.values(MATERIAL_FX).flatMap((fx) => [fx.hit, fx.crush]), ...CONFIG_SOUNDS, ...ZONE_SOUNDS,
   'stone', 'flesh', 'shell', 'scream', 'whimper', 'sob', 'pant', 'step', 'drop', 'drag',
 ])].filter((n) => !Object.values(WEAPONS).some((d) => d.kind === 'gun' && d.sound === n));
 
@@ -174,6 +176,26 @@ test('audio: without the foley bank nothing throws and silent sounds free their 
     Audio.play('wood', { x: 0, y: 0 });
     assert.equal(Audio.active.filter((a) => a.name === 'wood').length, 0);
   }, {});
+});
+
+test('audio: the beds of the night: a looping voice per bed once rendered, let go when left out, rooms crossfaded', () => {
+  withContext((ctx) => {
+    const buf = { duration: 4 }, made = [];
+    Audio.bedBufs = { city: buf, engine: buf };
+    const make = ctx.createBufferSource;
+    ctx.createBufferSource = () => { const s = make(); made.push(s); return s; };
+    const mix = (beds) => Audio.setAmbience({ beds, room: { open: 1, warm: 0 } });
+    mix({ city: { gain: 0.3, lp: 14000, pan: 0 }, car0: { bed: 'engine', gain: 0.2, lp: 9000, pan: 0.5, rate: 1.1 }, rain: { gain: 0.2 } });
+    assert.equal(made.length, 2, 'a loop per voice whose bed is ready');
+    assert.ok(made.every((s) => s.loop && s.buffer === buf));
+    assert.deepEqual(Audio.bedQueue, ['rain'], 'the other one is queued to be rendered');
+    assert.equal(Audio.beds.car0.src.playbackRate.value, 1.1);
+    for (let t = 0; t < 10; t += 0.1) { ctx.currentTime += 0.1; mix({ city: { gain: 0.3, lp: 14000, pan: 0 } }); }
+    assert.equal(Audio.beds.car0.src, null, 'the car gone, its loop is let go');
+    assert.ok(Audio.beds.city.src, 'the city goes on');
+    assert.equal(made.length, 2, 'and is not restarted');
+    Audio.bedQueue = [];
+  });
 });
 
 // ---------------------------------------------------------------- soundtrack (audio/Music.js, audio/score.js)

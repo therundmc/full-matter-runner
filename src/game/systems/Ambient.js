@@ -55,7 +55,7 @@ export default class Ambient {
     const pad = 2 * TILE;
     this.bandY0 = Math.min(...this.rows) - pad;
     this.bandY1 = Math.max(...this.rows) + pad;
-    this.cars = [];        // driven vehicles: { v: Vehicle, d: Driver, lane, hl, hw, heard, hitT, hp, stall }
+    this.cars = [];        // driven vehicles: { v: Vehicle, d: Driver, lane, hl, hw, hitT, hp, stall } (heard by systems/Ambience.js)
     this.civilians = world.civilians;
     this.barkT = 0;
     this.checkT = 0;
@@ -150,7 +150,7 @@ export default class Ambient {
     v.body.sleepThreshold = Infinity; // a driven body must never doze off between two velocity commands
     v.body.collisionFilter = { ...v.body.collisionFilter, mask: MASK_DRIVING };
     Body.setVelocity(v.body, { x: (Math.cos(lane.angle) * d.speed) / 60, y: 0 });
-    const c = { v, d, lane, hl: (v.w - 4) / 2, hw: (v.h - 4) / 2, heard: false, hitT: 0, hp: v.hp, stall: 0, honks: 0, honkT: 0, pitch: between(r, [0.9, 1.12]) * (model === 'van' ? 0.8 : 1) };
+    const c = { v, d, lane, hl: (v.w - 4) / 2, hw: (v.h - 4) / 2, hitT: 0, hp: v.hp, stall: 0, honks: 0, honkT: 0, pitch: between(r, [0.9, 1.12]) * (model === 'van' ? 0.8 : 1) };
     this.cars.push(c);
     w.props.push(v);
     return c;
@@ -198,7 +198,6 @@ export default class Ambient {
     v.brake += ((d.brake ? 1 : 0) - v.brake) * Math.min(1, dt * 12);
     v.bob = Math.sin(w.time * 9 + c.hl) * 0.35 * Math.min(1, Math.abs(d.speed) / 200);
     this.runOver(c);
-    this.passBy(c);
     // exhaust
     if (this.r() < 0.06 && d.speed > 30) {
       const p = v.toWorld(1, v.h * 0.7);
@@ -324,23 +323,6 @@ export default class Ambient {
       c.hitT = 0.9;
       d.panic = true;
     }
-  }
-
-  // engine pass-by: one swept sound per car, started a moment before it passes the camera
-  passBy(c) {
-    if (c.heard) return;
-    const w = this.world, cam = w.camera, d = c.d, dir = c.lane.dir;
-    const dy = Math.abs(c.v.y - cam.y) / TILE;
-    if (dy > A.passby.range) return;
-    const t = ((cam.x - c.v.x) * dir) / Math.max(30, d.speed);
-    if (t < 0 || t > A.passby.lead) return;
-    c.heard = true;
-    const k = 1 - dy / A.passby.range;
-    const model = c.v.type;
-    w.sound('passby', undefined, undefined, A.passby.vol * k * k, {
-      lead: t, dur: t + 1.6, dir, side: Math.min(1, dy / 6),
-      f: (model === 'van' ? 38 : model === 'car2' ? 58 : 47) * (0.8 + d.speed / (12 * TILE)),
-    });
   }
 
   // ---------------- passers-by ----------------

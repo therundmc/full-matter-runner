@@ -20,7 +20,8 @@ src/
       Raycast.js          grid DDA, segment vs polygon / circle / segment
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
-                          of the foley cuts), Music.js (procedural synthwave / house) playing score.js (its data)
+                          of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
+                          Music.js (procedural synthwave / house) playing score.js (its data)
   game/
     Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
@@ -54,7 +55,9 @@ src/
       Power.js            the house's fuse box (level.power): smashed, the lights of its zone stutter and die, the
                           battery lamps (`standby` props) come on, guards come to look (DOM-free, unit-tested)
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
-      Ambience.js         the night heard: city wash, gusts, hums, drips, a room's murmur (one-shots repeated; DOM-free)
+      Ambience.js         the night heard place by place (level.soundscape, data/soundscape.js): beds crossfaded by
+                          where the player is and bled through walls, prop beds, the traffic car by car, one-shots
+                          (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
       Tutorial.js         a level that teaches: rooms played in order, dormant guards woken wave by wave, hints, retry from the last room (DOM-free)
       Fires.js            things burning for the look of it (level `fires`), caught stage by stage in the tutorial (DOM-free)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
@@ -184,7 +187,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `{ weapon }` to pick that gun's parts (`ARMS`), voices take `{ pitch }` (one per character, `Character.voice`).
   Space: every positional voice is panned and loses level and highs with distance while more of it is sent to a
   long hall reverb (also behind every gunshot and the kill chime); `World.sound` flags what the player hears
-  through a wall or a closed door (`occ`): quieter and dull.
+  through a wall or a closed door (`occ`): quieter and dull. The room's own reverb follows the place he is in
+  (`ROOMS`: an open slap outdoors, a warm bar, small rooms, tiled toilets). The ambience is not made of voices but of
+  beds (`setAmbience`, fed by systems/Ambience.js through `World.atmosphere` ten times a second): long seamless loops
+  rendered once by audio/Beds.js (rain, the city, a room's talk, a radio, hums, a fan, rain on a car roof, an
+  engine), each voice with its gain / lowpass / pan / playback rate gliding; a voice not refreshed fades out by itself
+  (pause, menu) and its loop is let go.
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
   (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
   (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
@@ -432,13 +440,26 @@ ambient: {
   drivers stand on the brake after a moment of shock, leave the car in the road and run (sometimes a passenger
   too), the others floor it; no new traffic until the street has calmed down. Above `AMBIENT.lethal` a car kills whoever it hits and
   throws the ragdoll (`cause: 'vehicle'`); it drives over bodies. Driven cars skip the static shadow caches (unshadowed
-  lights redrawn every frame, brake lights flare). One procedural pass-by sound per car (`passby` in Audio.js).
+  lights redrawn every frame, brake lights flare). Heard car by car by systems/Ambience.js (an engine voice each).
 - **Passers-by**: `Civilian` (Character subclass, team `civilian`, sprites civ1-4) with a `Walker` brain. They are in
   `world.chars` (bullets, blasts, melee, cars hit them) and `world.civilians` (drawing), never in `enemies`: no target,
   no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
   or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra
   that avoids the danger), screaming (world texts and the `scream` / `whimper` voices, one pitch per passer-by).
   No new passers-by for `AMBIENT.panic.calm` s after gunfire.
+
+## Soundscape (systems/Ambience.js, data/soundscape.js)
+
+Optional level field: `soundscape: { rain: 0..1, zones: [[kind, col0, row0, col1, row1], ...] }` (written by the level
+kit's `lv.sound(kind, ...)` / `lv.rain`). Every floor tile gets a kind of place, the first zone that holds it, else
+`street` (outdoors), `roof` (`^`) or `room` (indoor floors, `AMBIENCE.indoors`); doors and windows keep the last one.
+A kind (`ZONES`) has a reverb class, beds (`{ bed: level }`, a crowd of calm customers or the mains may drive them)
+and events (one-shots on random clocks, from a calm customer, a guard at his job, a prop, a spot of the zone, or far
+off). Where the player stands its beds play openly; the other kinds within `carry` tiles (a distance field through
+walls) bleed in at `AMBIENCE.through` and less, low-passed, panned toward them; levels ease at `AMBIENCE.ease`.
+Prop beds (`PROP_BEDS`) follow the nearest working prop of their kind; the traffic (`CARS`) gives each of the nearest
+moving cars a voice of the `engine` bed whose rate follows its speed and the Doppler shift. The bar falls silent when
+its customers panic, the radio and the hums stop with the power.
 
 ## Rooftops
 

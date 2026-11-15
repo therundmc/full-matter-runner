@@ -5,13 +5,16 @@
 //     built by tools/build_sounds.mjs), layered per sound in FOLEY and / or by a `_<name>` method
 //   - the body and its moves, hands and objects, doors, small things: physically modelled foley (Foley.js recipes
 //     rendered by Synth.js), a few variations of each baked once into buffers and played with live variations
-//   - noise-based synthesis where nothing else fits: blast bodies, tyres, the car alarm, traffic, the far-off sirens
+//   - noise-based synthesis where nothing else fits: blast bodies, tyres, the car alarm, the far-off sirens
+//   - the beds of the night (setAmbience, driven by systems/Ambience.js): long loops rendered once by Beds.js (rain,
+//     the city, a room talking, what hums, the traffic's engines...), each voice with its own level, tone, side, speed
 //
 // Bus chain (all created in _build):
 //   guns  -> drive (tanh) -> gun level -> sfx              (synthesized shots)
 //   shots -> HP 35 Hz -> low shelf -> high shelf ----------+   (recorded shots: no drive, full crack)
 //   sfx   -> HP 30 Hz -> low shelf -> low-mid cut -> presence -+-> mix -> glue compressor ---+
-//   sfx + shots -> room (convolution reverb, generated impulse) -+                            |
+//   amb (the beds: per voice gain -> lowpass -> pan) -> sfx                                     |
+//   sfx + shots -> the rooms (ROOMS: warm / small / tiled impulses, an open slap; crossfaded by place) -+ |
 //   per-voice sends -> hall (longer impulse: gunfire, far sounds, the kill chime) -> mix      |
 //   music -> HP 28 Hz -> duck (held dip while it is loud) -> its own compressor -------------+-> bus
 //   bus -> filter (lowpass: slow motion / death muffle) -> soft clip (linear under its knee, oversampled)
@@ -28,6 +31,7 @@ import { rand, clamp } from '../engine/math.js';
 import { BANK, BANK_URL } from './bank.js';
 import { RECIPES, formOf } from './Foley.js';
 import { render } from './Synth.js';
+import { BEDS, renderBed, renderLaugh } from './Beds.js';
 
 const MASTER_GAIN = 0.8;
 const MUSIC_GAIN = 0.6;
@@ -39,12 +43,6 @@ const CONFIRM_SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
 const CONFIRM_ROOT = 196; // Hz
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
-// what hums (Ambience): [multiple of the mains' 60 Hz, wave, level, filter, its frequency] per partial
-const HUMS = {
-  neon: [[2, 'sawtooth', 0.6, 'lowpass', 420], [2, 'square', 0.035, 'highpass', 2500]],
-  fridge: [[1, 'sine', 0.45], [2, 'sine', 0.3], [3, 'sine', 0.12], [1, 'sawtooth', 0.12, 'lowpass', 300]],
-  mains: [[2, 'sine', 0.45], [4, 'sine', 0.2], [1, 'sawtooth', 0.15, 'bandpass', 360]],
-};
 const STEP_LEVEL = 0.2; // footsteps, far under everything else (the user: quiet, not too loud; 0: none at all)
 const VARIATIONS = 5;   // baked renders of each synthesized foley form
 const PREBAKE = [3, 0.03]; // s after the unlock the background baking starts; s between two renders without idle callbacks
@@ -141,13 +139,18 @@ export const META = {
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
   skid: { pri: 2, dur: 1, gap: 0.25, max: 2, gain: 0.3, reach: 1800 },
-  // the night around (systems/Ambience.js): long swells that overlap, hums, drips, a room's murmur; all far under
-  // the rest and the first voices dropped in a fight
+  // the night around (systems/Ambience.js; its beds are not voices, see setAmbience): the city's swell of the opening
+  // cinematic, the wind, drops, and the life of the bar and its toilets; far under the rest, the first dropped in a fight
   air: { pri: 0, dur: 9, gap: 2, max: 3, gain: 0.1 },
   gust: { pri: 0, dur: 3.6, gap: 2, max: 2, gain: 0.22 },
-  hum: { pri: 0, dur: 2.6, gap: 0, max: 3, reach: 230, gain: 0.1 },
   drip: { pri: 0, dur: 0.3, gap: 0.2, max: 2, reach: 300, gain: 0.18 },
-  walla: { pri: 0, dur: 3.2, gap: 1, max: 2, reach: 560, gain: 0.4, hall: 0.3 },
+  clink: { pri: 0, dur: 0.5, gap: 0.3, max: 2, reach: 700, gain: 0.3 },
+  ice: { pri: 0, dur: 0.6, gap: 1, max: 1, reach: 600, gain: 0.25 },
+  laugh: { pri: 0, dur: 1.2, gap: 1.5, max: 1, reach: 900, gain: 0.35, hall: 0.06 },
+  pour: { pri: 0, dur: 1.6, gap: 1, max: 1, reach: 600, gain: 0.3 },
+  bottle: { pri: 0, dur: 0.4, gap: 0.4, max: 1, reach: 700, gain: 0.35 },
+  till: { pri: 0, dur: 1.2, gap: 2, max: 1, reach: 700, gain: 0.25 },
+  cistern: { pri: 0, dur: 3.5, gap: 3, max: 1, reach: 500, gain: 0.3 },
   horn: { pri: 2, dur: 0.8, gap: 1.2, max: 2, gain: 0.5, reach: 1400, hall: 0.25 },
 };
 for (const k in META) META[k] = { ...DEFAULT_META, ...META[k] };
@@ -162,6 +165,22 @@ const DUCK_HOLD = 0.25, DUCK_RELEASE = 0.3; // s: the music stays down through a
 const CHOKE = 0.05; // s: how fast a shooter's previous shot fades under his next one
 const SFX_LEVEL = 0.72; // everything that is not a recorded shot: under the guns and the music, never in their way
 const GUN_LEVEL = 0.37; // gunfire in the mix: loud, but under the master's clip so that bursts stay clean
+
+// The rooms effects are heard in (systems/Ambience.js crossfades them by place): sends from the effects and from the
+// recorded shots, and the impulse [pre-delay s, length s, decay s, brightness]; 'open' has none: the street's facades
+// throw a slap back ([delay s, level]). Until told otherwise everything is in the warm one.
+const ROOMS = {
+  open: { sfx: 0.12, shots: 0.1, slap: [[0.09, 0.45], [0.17, 0.25]] },
+  warm: { sfx: 0.2, shots: 0.1, ir: [0.012, 1, 0.15, 1] },
+  small: { sfx: 0.15, shots: 0.08, ir: [0.005, 0.5, 0.07, 0.8] },
+  tiled: { sfx: 0.26, shots: 0.14, ir: [0.004, 0.9, 0.14, 1.6] },
+};
+// The beds (setAmbience)
+const AMB_LEVEL = 0.5;  // all of them, under everything else
+const BED_TAU = 0.12;   // s: how fast a voice follows its level, tone, side and speed (the mix comes ~10 times a second)
+const BED_HOLD = 0.6;   // s a voice keeps its level without a new mix (pause, menu, a level left), then fades out
+const BED_IDLE = 6;     // s a silent voice keeps its loop running before it is let go
+const BED_FLOOR = 1e-4; // under this a voice is silent
 
 // Recordings. Gunshots: assets/sound/shots, CC BY 3.0 Michel Baradari; foley: the bank (CC0, assets/sound/CREDITS.md).
 const SAMPLES = {
@@ -317,6 +336,10 @@ class AudioSystem {
     this.buffers = {};  // decoded recordings (SAMPLES), filled by unlock()
     this.bags = {};     // bank set or baked form -> what was not played yet in this round (see _bag)
     this.baked = {};    // synthesized foley form -> its variations, rendered on first use or in the background
+    this.beds = {};     // bed voice -> { g, lp, pan, src, quiet } (setAmbience)
+    this.bedBufs = {};  // bed -> its rendered loop (null: being rendered)
+    this.bedQueue = []; // beds waiting to be rendered, one at a time in idle time
+    this.laughs = {};   // 'm' | 'f' -> rendered laughs
   }
 
   // must be called from a user gesture
@@ -331,6 +354,7 @@ class AudioSystem {
       } catch (e) { console.warn('sound load failed', k, e); } // shots fall back on synthesis, foley stays silent
     }));
     this._prebake();
+    for (const k in BEDS) this._bakeBed(k); // the beds of the night, all of them in idle time from now on
   }
 
   // renders every synthesized form's first variation in the background, one at a time, after the start's own load
@@ -348,6 +372,10 @@ class AudioSystem {
   // bus chain + shared buffers (see the header)
   _build(ctx) {
     this.baked = {};
+    this.beds = {};
+    this.bedBufs = {};
+    this.bedQueue = [];
+    this.laughs = {};
     const param = (n, v) => { for (const k in v) n[k].value = v[k]; return n; };
     const gain = (v) => param(ctx.createGain(), { gain: v });
     const bq = (type, frequency, Q, g = 0) => {
@@ -379,13 +407,35 @@ class AudioSystem {
     // recorded shots keep their full crack: no drive, no low-mid cut, a bit of weight and air
     this.shots = gain(SHOTS_GAIN * GUN_LEVEL * this.vol.sfx);
     chain(this.shots, bq('highpass', 35, 0.7), bq('lowshelf', 120, 0.7, 3), bq('highshelf', 5000, 0.7, 3.5), mix);
-    // one room for everything that is not music: it glues the recordings (all made in different places) together
-    const room = ctx.createConvolver();
-    room.normalize = false;
-    room.buffer = this._room(ctx);
-    chain(this.sfx, gain(0.2), room);
-    chain(this.shots, gain(0.1), room);
-    chain(room, bq('highpass', 160, 0.7), mix);
+    // the room everything that is not music is heard in: it glues the recordings (all made in different places)
+    // together, and tells the street from the bar and the tiled toilets (ROOMS, crossfaded by setAmbience)
+    this.rooms = {};
+    for (const [name, R] of Object.entries(ROOMS)) {
+      const on = name === 'warm' ? 1 : 0, sends = [gain(R.sfx * on), gain(R.shots * on)];
+      this.sfx.connect(sends[0]);
+      this.shots.connect(sends[1]);
+      const out = gain(1);
+      if (R.ir) {
+        const conv = ctx.createConvolver();
+        conv.normalize = false;
+        conv.buffer = this._room(ctx, ...R.ir);
+        for (const s of sends) s.connect(conv);
+        conv.connect(out);
+      } else {
+        const dark = bq('lowpass', 2500, 0.7);
+        for (const s of sends) s.connect(dark);
+        for (const [t, v] of R.slap) {
+          const d = ctx.createDelay(0.5);
+          d.delayTime.value = t;
+          chain(dark, d, gain(v), out);
+        }
+      }
+      chain(out, bq('highpass', 160, 0.7), mix);
+      this.rooms[name] = sends;
+    }
+    // the beds of the night, into the effects (setAmbience)
+    this.amb = gain(AMB_LEVEL);
+    this.amb.connect(this.sfx);
     // and a bigger space behind gunfire, far sounds and the kill chime: fed voice by voice (see _out)
     this.hall = ctx.createConvolver();
     this.hall.normalize = false;
@@ -422,9 +472,10 @@ class AudioSystem {
     }
   }
 
-  // impulse response of the room: 12 ms of air, a few early reflections off the nearest walls, then a 1 s
-  // noise tail that gets darker as it dies; unit energy per channel, so the send gain is the wet level
-  _room(ctx, delay = 0.012, len = 1, tau = 0.15) {
+  // impulse response of a room: `delay` s of air, a few early reflections off the nearest walls, then a `len` s
+  // noise tail that gets darker as it dies (less so the brighter: tiles); unit energy per channel, so the send gain
+  // is the wet level
+  _room(ctx, delay = 0.012, len = 1, tau = 0.15, bright = 1) {
     const R = ctx.sampleRate, pre = Math.round(R * delay), n = pre + Math.round(R * len);
     const ir = ctx.createBuffer(2, n, R);
     for (let c = 0; c < 2; c++) {
@@ -432,7 +483,7 @@ class AudioSystem {
       let lp = 0, energy = 0;
       for (let i = pre; i < n; i++) {
         const t = (i - pre) / R;
-        lp += (0.2 + 0.6 * Math.exp(-t / 0.12)) * (Math.random() * 2 - 1 - lp);
+        lp += Math.min(1, (0.2 + 0.6 * Math.exp(-t / 0.12)) * bright) * (Math.random() * 2 - 1 - lp);
         d[i] = lp * Math.exp(-t / tau);
       }
       for (const [t, v] of [[0.007, 1.4], [0.017, -1.1], [0.029, 0.8], [0.043, -0.6]]) d[pre + Math.round(R * t * rand(0.85, 1.15))] += v;
@@ -477,6 +528,10 @@ class AudioSystem {
       vol *= clamp(1 - d / reach, 0.08, 1);
       pan = clamp(dx / PAN, -0.85, 0.85);
       far = clamp((d - NEAR) / (FAR - NEAR), 0, 1); // far sounds lose their highs
+    } else {
+      // somewhere off the map: opts.side (-1 left .. 1 right), opts.distant (0 near .. 1 far)
+      if (opts.side !== undefined) pan = clamp(opts.side, -0.85, 0.85);
+      if (opts.distant !== undefined) far = clamp(opts.distant, 0, 1);
     }
     const occ = !!opts.occ;
     if (occ) vol *= OCCLUDED[0];
@@ -516,6 +571,106 @@ class AudioSystem {
   _release(o, ...nodes) {
     nodes.forEach((n) => n.disconnect());
     if (--o._n === 0) o._chain.forEach((n) => n.disconnect());
+  }
+
+  // ---- the beds of the night (systems/Ambience.js, through World.atmosphere) ----
+  // mix: { beds: { voice: { gain, lp, pan, bed = voice, rate = 1 } }, room: { ROOMS name: weight } }. A voice left out
+  // fades away; every voice fades away by itself when no mix comes for BED_HOLD s (a pause, the menu, a level left)
+  // and its loop is let go BED_IDLE s later. A bed is heard once it is rendered (all are queued at the unlock).
+  setAmbience({ beds = {}, room = null } = {}) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const now = this.ctx.currentTime;
+    for (const name in beds) this._bed(name, beds[name], now);
+    for (const name in this.beds) if (!(name in beds)) this._bed(name, null, now);
+    if (room) {
+      for (const k in this.rooms) {
+        const w = clamp(room[k] ?? 0, 0, 1), [s, g] = this.rooms[k];
+        this._glide(s.gain, ROOMS[k].sfx * w, now, 0.15);
+        this._glide(g.gain, ROOMS[k].shots * w, now, 0.15);
+      }
+    }
+  }
+
+  // an automated value: toward v from now; with `hold`, back to 0 unless told again within hold s
+  _glide(param, v, now, tau, hold = 0) {
+    param.cancelScheduledValues(now);
+    param.setTargetAtTime(v, now, tau);
+    if (hold) param.setTargetAtTime(0, now + hold, 0.3);
+  }
+
+  // one voice of the beds (m: its mix, null: silent)
+  _bed(name, m, now) {
+    const ctx = this.ctx, on = !!m && m.gain >= BED_FLOOR;
+    let b = this.beds[name];
+    if (!b) {
+      if (!on) return;
+      const g = ctx.createGain(), lp = ctx.createBiquadFilter(), pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      g.gain.value = 0;
+      lp.type = 'lowpass';
+      lp.Q.value = 0.5;
+      lp.frequency.value = m.lp ?? 20000;
+      g.connect(lp);
+      if (pan) { pan.pan.value = m.pan || 0; lp.connect(pan); pan.connect(this.amb); } else lp.connect(this.amb);
+      b = this.beds[name] = { g, lp, pan, src: null, quiet: 0 };
+    }
+    if (on) {
+      b.quiet = 0;
+      if (!b.src) {
+        const buf = this._bakeBed(m.bed || name);
+        if (!buf) return;
+        b.src = this._loop(b, buf, m.rate ?? 1);
+      }
+      this._glide(b.g.gain, m.gain, now, BED_TAU, BED_HOLD);
+      this._glide(b.lp.frequency, clamp(m.lp ?? 20000, 40, 20000), now, BED_TAU);
+      if (b.pan) this._glide(b.pan.pan, clamp(m.pan || 0, -1, 1), now, BED_TAU);
+      this._glide(b.src.playbackRate, clamp(m.rate ?? 1, 0.25, 4), now, BED_TAU);
+    } else {
+      this._glide(b.g.gain, 0, now, BED_TAU);
+      b.quiet ||= now;
+      if (b.src && now - b.quiet > BED_IDLE) { b.src.stop(now); b.src = null; }
+    }
+    // without news it stops by itself (a stop called again replaces the last one)
+    if (b.src) b.src.stop(now + BED_HOLD + BED_IDLE);
+  }
+
+  // a bed's loop started into voice b, at a random point of it
+  _loop(b, buf, rate) {
+    const s = this.ctx.createBufferSource();
+    s.buffer = buf;
+    s.loop = true;
+    s.playbackRate.value = rate;
+    s.connect(b.g);
+    s.onended = () => { s.disconnect(); if (b.src === s) b.src = null; };
+    s.start(this.ctx.currentTime, Math.random() * (buf.duration || 0));
+    return s;
+  }
+
+  // the rendered loop of a bed, or null while it is not ready (it is queued: rendered one at a time, in idle time)
+  _bakeBed(key) {
+    if (this.bedBufs[key] !== undefined || !BEDS[key]) return this.bedBufs[key] || null;
+    this.bedBufs[key] = null;
+    this.bedQueue.push(key);
+    if (this.bedQueue.length === 1) this._bakeNext();
+    return null;
+  }
+
+  _bakeNext() {
+    const key = this.bedQueue[0], ctx = this.ctx;
+    if (!key) return;
+    const gen = renderBed(key, 1 + Object.keys(BEDS).indexOf(key) * 7919);
+    const idle = globalThis.requestIdleCallback || ((fn) => setTimeout(() => fn({ timeRemaining: () => 6 }), 20));
+    const step = (deadline) => {
+      if (this.ctx !== ctx) return; // the context was rebuilt meanwhile
+      let s;
+      do s = gen.next(); while (!s.done && deadline.timeRemaining() > 3);
+      if (!s.done) { idle(step); return; }
+      const { sr, data } = s.value, buf = ctx.createBuffer(data.length, data[0].length, sr);
+      data.forEach((d, i) => buf.getChannelData(i).set(d));
+      this.bedBufs[key] = buf;
+      this.bedQueue.shift();
+      this._bakeNext();
+    };
+    idle(step);
   }
 
   // music dip under a loud sound: down fast (no click), held, back up slowly. A burst keeps it down instead of
@@ -1117,9 +1272,9 @@ class AudioSystem {
     srcs[0].onended = () => this._release(o, ...srcs, ws, lp, g);
   }
 
-  // ---- the night around (systems/Ambience.js) ----
+  // ---- the night around: the wind, drops (systems/Ambience.js), the opening cinematic's city ----
   // one long swell of the city's far-off wash: brown noise kept low (lower still from indoors, opts.inside 0..1) under
-  // a breath of tyre hiss; each swell sits a little to one side and overlaps the next, so the bed never stands still
+  // a breath of tyre hiss; each swell sits a little to one side and overlaps the next (in play the city is a bed)
   _air(o, { inside = 0, dur = 9 }) {
     const ctx = this.ctx, t = ctx.currentTime, end = t + dur;
     const env = ctx.createGain(), pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
@@ -1181,37 +1336,6 @@ class AudioSystem {
     this._pair(o, [air, bp, ag], [low, lp], [env, sp], t, end);
   }
 
-  // something electric humming close by, a few seconds of it (the system plays the next before this one ends):
-  // partials of the mains ([multiple of 60 Hz, wave, level, filter, its frequency]); opts.kind: neon | fridge | mains.
-  // Every hum starts on the mains' cycle, so two in a row add up instead of beating.
-  _hum(o, { kind = 'neon', dur = 2.6, fade = 0.6 }) {
-    const ctx = this.ctx, cycle = 1 / 60, t = Math.ceil((ctx.currentTime + 0.01) / cycle) * cycle, end = t + dur;
-    const env = ctx.createGain(), nodes = [env];
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.linearRampToValueAtTime(1, t + fade);
-    env.gain.setValueAtTime(1, end - fade);
-    env.gain.linearRampToValueAtTime(0.0001, end);
-    env.connect(o);
-    const srcs = (HUMS[kind] || HUMS.neon).map(([mult, type, level, filter, f]) => {
-      const osc = ctx.createOscillator(), g = ctx.createGain();
-      osc.type = type;
-      osc.frequency.value = 60 * mult;
-      g.gain.value = level;
-      nodes.push(g);
-      if (filter) {
-        const bq = ctx.createBiquadFilter();
-        bq.type = filter; bq.frequency.value = f; bq.Q.value = 1;
-        osc.connect(bq); bq.connect(g);
-        nodes.push(bq);
-      } else osc.connect(g);
-      g.connect(env);
-      osc.start(t); osc.stop(end + 0.02);
-      return osc;
-    });
-    o._n++;
-    srcs[0].onended = () => this._release(o, ...srcs, ...nodes);
-  }
-
   // a drop of water on a wet floor: a short note that climbs as the drop closes over, then a smaller one behind it
   _drip(o) {
     const ctx = this.ctx, t = ctx.currentTime, f = rand(850, 1500), nodes = [];
@@ -1233,37 +1357,73 @@ class AudioSystem {
     last.onended = () => this._release(o, ...nodes);
   }
 
-  // a room of people talking over one another, no word to be made out: air shaped like speech, cut in syllables, and
-  // a few voices mumbling in it (opts.n: how many people)
-  _walla(o, { n = 4, dur = 3.2 }) {
-    const ctx = this.ctx, t = ctx.currentTime, end = t + dur;
-    const env = ctx.createGain(), steps = Math.round(dur * 5); // five syllables a second
-    env.gain.setValueAtTime(0.0001, t);
-    for (let i = 1; i < steps; i++) env.gain.linearRampToValueAtTime(rand(0.15, 1) * Math.min(1, i / 3, (steps - i) / 3), t + (i / steps) * dur);
-    env.gain.linearRampToValueAtTime(0.0001, end);
-    env.connect(o);
-    const src = ctx.createBufferSource(), nodes = [env];
-    src.buffer = this.noise; src.loop = true;
-    for (const [f, q, level] of [[430, 1.1, 1], [1500, 1.4, 0.22]]) {
-      const bp = ctx.createBiquadFilter(), g = ctx.createGain();
-      bp.type = 'bandpass'; bp.frequency.value = f * rand(0.9, 1.1); bp.Q.value = q;
-      g.gain.value = level * 0.5;
-      src.connect(bp); bp.connect(g); g.connect(env);
-      nodes.push(bp, g);
+  // ---- the life of the bar and its toilets (systems/Ambience.js events) ----
+  // glass on glass: two tumblers touched (a toast) or one set down on a table; three inharmonic partials ringing over
+  // a tap of the recorded glass
+  _clink(o) {
+    const f = rand(1700, 2900), toast = Math.random() < 0.4;
+    for (const at of toast ? [0, rand(0.03, 0.07)] : [0]) {
+      const k = at ? rand(1.05, 1.2) : 1;
+      this._cut(o, 'glassHit', { vol: 0.2, rate: rand(1.6, 2.2), delay: at });
+      this._ring(o, f * k, 0.5, 0.35, at);
+      this._ring(o, f * k * 2.32, 0.25, 0.14, at);
+      this._ring(o, f * k * 4.1, 0.12, 0.06, at);
     }
-    o._n++;
-    src.onended = () => this._release(o, src, ...nodes);
-    src.start(t, Math.random() * 1.5);
-    src.stop(end + 0.05);
-    const vowels = Object.values(VOWEL), pv = this.pv;
-    for (let i = 0; i < Math.min(4, n - 1); i++) {
-      const len = rand(0.45, 0.9), cut = rand(0.35, 0.6);
-      this.pv = 1;
-      this._voice(o, { f: rand(92, 185), bend: [[0, 1], [0.5, rand(0.9, 1.12)], [1, rand(0.78, 0.95)]], from: vowels[i % vowels.length],
-        to: vowels[Math.floor(rand(0, vowels.length - 0.01))], dur: len, vol: 0.16, breath: 0, syl: [[0, cut - 0.08], [cut, 1]],
-        delay: rand(0, dur - len - 0.1) });
+    if (!toast) this._cut(o, 'wood', { vol: 0.25, rate: rand(1.4, 1.7) });
+  }
+  // ice cubes swirled in a glass: a handful of small knocks on its side, each ringing high and short
+  _ice(o) {
+    let t = 0;
+    for (let i = 0, n = 3 + Math.floor(rand(0, 4)); i < n; i++) {
+      t += rand(0.04, 0.12);
+      const f = rand(2600, 4200);
+      this._ring(o, f, rand(0.04, 0.08), rand(0.12, 0.3), t);
+      this._ring(o, f * 1.9, 0.03, 0.06, t);
     }
-    this.pv = pv;
+    this._cut(o, 'glassHit', { vol: 0.1, rate: rand(2.4, 2.9) });
+  }
+  // a bottle set down on the counter: glass on wood, the bottle's own low note
+  _bottle(o) {
+    this._cut(o, 'glassHit', { vol: 0.3, rate: rand(0.8, 1) });
+    this._cut(o, 'wood', { vol: 0.45, rate: rand(1.1, 1.4) });
+    this._ring(o, rand(650, 900), 0.18, 0.22);
+  }
+  // a drink poured: the stream into the glass, and its bubbles, their note rising as it fills
+  _pour(o) {
+    const dur = rand(0.9, 1.5), f0 = rand(380, 520);
+    this._noiseBurst(o, { f0: 900, f1: 1400, q: 0.8, dur, vol: 0.1, attack: 0.08 });
+    for (let t = 0.05; t < dur; t += rand(0.04, 0.1)) this._bubble(o, f0 * (1 + 1.2 * (t / dur)) * rand(0.85, 1.15), t, rand(0.08, 0.22));
+  }
+  // one bubble bursting in water: a note that climbs as it closes
+  _bubble(o, f, delay, vol) { this._thump(o, { f0: f, f1: f * 1.6, dur: 0.04, vol, delay }); }
+  // the till: keys punched, its bell, the drawer sliding out
+  _till(o) {
+    let t = 0;
+    for (let i = 0; i < 3; i++, t += rand(0.12, 0.18)) this._cut(o, 'click', { vol: 0.35, rate: rand(1.1, 1.4), delay: t });
+    this._ring(o, 2093, 0.9, 0.25, t);
+    this._ring(o, 2093 * 2.76, 0.4, 0.07, t);
+    this._cut(o, 'rattle', { vol: 0.35, rate: 1.2, delay: t + 0.05 });
+    this._cut(o, 'metal', { vol: 0.25, rate: 1.3, delay: t + 0.3 });
+  }
+  // a cistern filling after a flush: water hissing through the valve and running in, fading as it fills, bubbles in
+  // the tank, then the float shuts it off
+  _cistern(o) {
+    const dur = rand(4.5, 6);
+    this._noiseBurst(o, { f0: 1800, f1: 2600, q: 2.5, dur, vol: 0.22, attack: 0.3 });
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 600, f1: 300, dur, vol: 0.4, attack: 0.2 });
+    for (let t = 0.2; t < dur - 0.4; t += rand(0.12, 0.4)) this._bubble(o, rand(300, 700), t, rand(0.04, 0.12) * (1 - t / dur));
+    this._cut(o, 'click', { vol: 0.35, rate: 0.7, delay: dur });
+    this._cut(o, 'thud', { vol: 0.15, rate: 1.5, delay: dur });
+  }
+  // somebody laughing across the room (Beds.js renders the voice, a few of each, a man's or a woman's by opts.pitch)
+  _laugh(o, opts) {
+    const who = (opts.pitch ?? 1) > 1.18 ? 'f' : 'm', list = (this.laughs[who] ||= []), i = this._bag('laugh.' + who, 4);
+    if (!list[i]) {
+      const sr = 22050, d = renderLaugh(i * 104729 + (who === 'f' ? 7 : 3), who === 'f', sr), buf = this.ctx.createBuffer(1, d.length, sr);
+      buf.getChannelData(0).set(d);
+      list[i] = { buf, len: d.length / sr };
+    }
+    this._sample(o, list[i].buf, { len: list[i].len, rate: rand(0.96, 1.04), fade: 0.05 });
   }
 
   // tyres sliding on the road: a squeal, three narrow bands of air that wander together and fall as the slide ends
