@@ -77,21 +77,21 @@ test('traversal: over the parapet from the roof he drops and rolls on; climbing 
 
 test('traversal: the roll is cut short by a wall ahead and never ends in anything solid', () => {
   // a wall right behind the gate, in the service alley
-  const w = world([[11, 18, 'X'], [12, 18, 'X'], [13, 18, 'X']]), p = man(w, 12.5, 20.4);
+  const w = world([[11, 19, 'X'], [12, 19, 'X'], [13, 19, 'X']]), p = man(w, 12.5, 21.4);
   assert.ok(p.tryVault(-Math.PI / 2));
   const y0 = p.vaulting.to.y;
   play(p);
   assert.ok(y0 - p.y < PLAYER.roll.dist - 10, `${y0 - p.y} px only`);
   assert.ok(!w.map.solidAt(p.x, p.y) && !w.map.solidAt(p.x, p.y - p.radius), 'clear of the wall');
   // and furniture in the way counts as much as a wall
-  const free = rollRoom(world(), p, px(12.5), px(19), -Math.PI / 2, PLAYER.roll.dist);
-  const crate = rollRoom(world([], [['crate', 12.5, 18.2, 0]]), p, px(12.5), px(19), -Math.PI / 2, PLAYER.roll.dist);
+  const free = rollRoom(world(), p, px(12.5), px(20), -Math.PI / 2, PLAYER.roll.dist);
+  const crate = rollRoom(world([], [['crate', 12.5, 19.2, 0]]), p, px(12.5), px(20), -Math.PI / 2, PLAYER.roll.dist);
   assert.equal(free, PLAYER.roll.dist);
   assert.ok(crate < 16, `${crate} px before the crate`);
 });
 
 test('traversal: the gate is climbed both ways and each time he rolls on landing', () => {
-  for (const [row, a, side] of [[19.35, Math.PI / 2, 's'], [20.4, -Math.PI / 2, '_']]) {
+  for (const [row, a, side] of [[20.35, Math.PI / 2, 's'], [21.4, -Math.PI / 2, '_']]) {
     const w = world(), p = man(w, 12.5, row);
     assert.ok(p.tryVault(a));
     assert.equal(p.vaulting.kind, 'climb');
@@ -102,7 +102,7 @@ test('traversal: the gate is climbed both ways and each time he rolls on landing
 });
 
 test('traversal: up the ladder facing it, down it backwards, never a roll', () => {
-  const w = world(), up = man(w, 1.5, 20.35);
+  const w = world(), up = man(w, 1.5, 21.35);
   assert.ok(up.tryVault(-Math.PI / 2));
   const L = up.vaulting.ladder;
   assert.ok(L && L.up && up.vaulting.kind === 'climb');
@@ -116,7 +116,7 @@ test('traversal: up the ladder facing it, down it backwards, never a roll', () =
   const still = seen.path.filter((q, i) => i && Math.abs(q.y - seen.path[i - 1].y) < 0.15).length;
   assert.ok(still > 10, `${still} frames at rest on a rung`);
 
-  const down = man(w, 1.5, 18.65);
+  const down = man(w, 1.5, 19.65);
   assert.ok(down.tryVault(Math.PI / 2));
   assert.ok(!down.vaulting.ladder.up);
   seen = play(down);

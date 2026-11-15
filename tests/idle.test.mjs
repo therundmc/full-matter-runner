@@ -103,7 +103,7 @@ test('relief: against the nearest wall out in a yard, at the toilet on bathroom 
 
 // ---------------- a guard's life at his post (data/posts.js) ----------------
 const { POSTS, HELD } = await load('game/data/posts.js');
-const { Routine, GESTURES, seatPlace, frontOf, wallBehind, poolSpots } = await load('game/ai/Pastimes.js');
+const { Routine, GESTURES, seatPlace, frontOf, sideOf, wallBehind, poolSpots } = await load('game/ai/Pastimes.js');
 const { BARKS } = await load('game/data/barks.js');
 
 const BODIES = ['stand', 'seat', 'desk', 'wall'];
@@ -178,7 +178,7 @@ test('posts: two men at the same job drift out of step, a cued act cuts in, an a
   assert.ok(count(1, 'read') > count(0, 'read') * 3 && count(0, 'fiddle') > count(1, 'fiddle') * 3);
 });
 
-test('posts: the spots: a place on a couch, in front of a sink, against a plain wall, round a pool table', () => {
+test('posts: the spots: a place on a couch, in front of a sink, against a plain wall, round a pool table, at a table', () => {
   const sofa = { x: 100, y: 200, angle: -Math.PI / 2, def: { w: 64, h: 28 } };
   const s = seatPlace(sofa, [16, -1], 90);
   assert.ok(Math.abs(s.x - 99) < 1e-9 && Math.abs(s.y - 184) < 1e-9 && Math.abs(Math.cos(s.face) - 1) < 1e-9, 'north end, facing east');
@@ -196,6 +196,15 @@ test('posts: the spots: a place on a couch, in front of a sink, against a plain 
   const spots = poolSpots({ x: 0, y: 0, angle: 0, def: { w: 80, h: 44 } });
   assert.equal(spots.length, 6);
   for (const p of spots) assert.ok(Math.cos(p.face) * -p.x + Math.sin(p.face) * -p.y > 0, 'each facing the table');
+  // at what he works at (posts `front`): square in the middle of the side he faces, a hand's width off it
+  const table = { x: 100, y: 100, angle: 0, def: { w: 44, h: 26 } };
+  const south = sideOf(table, Math.PI / 2 + 0.3, 11);
+  assert.ok(Math.abs(south.x - 100) < 1e-9 && Math.abs(south.y - (100 - 13 - 11)) < 1e-9, 'north of it, centred on it');
+  assert.ok(Math.abs(Math.sin(south.face) - 1) < 1e-9, 'facing it');
+  const end = sideOf(table, Math.PI, 11);
+  assert.ok(Math.abs(end.x - (100 + 22 + 11)) < 1e-9 && Math.abs(end.y - 100) < 1e-9, 'at its east end, facing west');
+  const turned = sideOf({ x: 0, y: 0, angle: Math.PI / 2, def: { w: 20, h: 14 } }, 0, 11);
+  assert.ok(Math.abs(turned.x + 7 + 11) < 1e-9 && Math.abs(turned.y) < 1e-9, 'a case turned across: its long side to him');
 });
 
 // a guard on his seat in a small room, with the bare world he needs (no physics engine: his velocity is applied by hand)

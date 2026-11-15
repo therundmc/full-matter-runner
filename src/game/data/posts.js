@@ -9,6 +9,8 @@
 //   seat   the furniture he sits on: the nearest prop of type `prop`, places [x, y, side] in its own px frame (one man
 //          each, the free one nearest his post; side -1: his gestures mirrored, the other arm along the backrest)
 //          facing `face` (deg, in that frame)
+//   front  what he works at standing (a prop type): his post is square in the middle of the side of the nearest one
+//          he faces, his belly against it (it is placed for him: the tile he starts on only says which side)
 //   sit, rise   s he takes to sit down, to get up when something is up (frozen meanwhile: a beat the player gets)
 //   rest   'desk': his weapon stands against the end of the nearest desk, on his left, while he sits; he grabs it
 //          getting up
@@ -63,6 +65,7 @@ export const POSTS = {
   // the bartender: polishes glasses; takes a bottle off the back bar, pours, slides the glass to a customer on a
   // stool; wipes the counter; leans on it on both hands (eyes free: he sees the room)
   wipe: {
+    front: 'bar_counter',
     acts: {
       polish: { w: 3, phases: [{ g: 'wipe', dur: [6, 10] }] },
       serve: { w: 2, phases: [{ g: 'fetch', dur: [1.1, 1.4], look: 'back' }, { g: 'pour', dur: [2, 2.6], sound: ['splash', 0.3, 0.25, 1.5] },
@@ -81,6 +84,7 @@ export const POSTS = {
   },
   // the dealer: shuffles, deals round the table, picks up his hand, throws a chip in, plays on, rakes the pot
   cards: {
+    front: 'card_table',
     acts: {
       hand: { w: 1, phases: [{ g: 'shuffle', dur: [2, 3] }, { g: 'deal', dur: [1.8, 2.2], fx: 'deal' },
         { g: 'cards', dur: [4, 7] }, { g: 'chip', dur: [0.8, 1], fx: 'chip' }, { g: 'cards', dur: [3, 6] },
@@ -89,6 +93,7 @@ export const POSTS = {
   },
   // the pimp at his table: a pinch onto the scale, a little bag tied, a finger licked
   dope: {
+    front: 'dope_table',
     acts: {
       weigh: { w: 3, phases: [{ g: 'weigh', dur: [2.5, 3.5] }, { g: 'bag', dur: [1.6, 2.2] }] },
       taste: { w: 1, phases: [{ g: 'lick', dur: [1, 1.3] }] },
@@ -97,6 +102,7 @@ export const POSTS = {
   },
   // the night's takings: bills peeled off, a thumb wetted, a wad banded and stacked in the case
   count: {
+    front: 'cash_case',
     acts: {
       wad: { w: 1, phases: [{ g: 'count', dur: [4, 6] }, { g: 'thumb', dur: [0.7, 0.9] }, { g: 'count', dur: [3, 5] },
         { g: 'band', dur: [1.3, 1.7] }, { g: 'stack', dur: [1, 1.3], sound: ['pocket', 0.6, 0.3, 0.8] }] },

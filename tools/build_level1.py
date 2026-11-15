@@ -33,16 +33,17 @@ Six ways in, none of them free (the level is made to be played again another way
     the shop     the liquor store: break in by the front (the bell rings, the guards come and look: a diversion as
                  much as a way in), or come down its own ladder from the roof without a sound; the pistol is behind
                  the counter, and the same ladder is the way on from there
-    the lot      from the back lot: the locked back door (to force), the boss's window (to dive through, into the
-                 middle of them), or the toilets' window (a public room: one comes out of it a customer)
+    the lot      from the back lot: the locked back door (to force), or the toilets' window (a public room: one comes
+                 out of it a customer); the boss's room has no window
 """
 from levelkit import Level
 
 W, H = 44, 38
 # Tightened after the people were drawn 1.3x bigger (the user: the furniture too small for the rooms, or the rooms too
-# big): a column out of the west half of the bar's block, one out of its east half, a row out of the bar room. The
-# coordinates below are the drawing's; the level kit moves them (keep things off the cut lines).
-CUT_COLS, CUT_ROWS = (19, 29), (15,)
+# big): a column out of the west half of the bar's block, one out of its east half. A row was taken out of the bar room
+# too, and given back: with it there was no way past between the counter's stools and the booths. The coordinates
+# below are the drawing's; the level kit moves them (keep things off the cut lines).
+CUT_COLS, CUT_ROWS = (19, 29), ()
 lv = Level(W, H, cut_cols=CUT_COLS, cut_rows=CUT_ROWS)
 
 # ---------------------------------------------------------------- tiles
@@ -68,9 +69,9 @@ lv.put(16, 11, 'D')            # behind the counter -> storeroom
 lv.put(22, 11, 'D')            # toilets
 lv.put(27, 11, 'L')            # back room, locked: kick it or shoot it
 lv.put(14, 8, 'D')             # storeroom -> service alley
-lv.put(25, 5, 'L')             # back room -> back lot, locked: the back way in has to be forced (west of the boss's
-                               # window: east of it the desk and his armchair leave only a doorway's width)
-lv.put(26, 5, 'G')
+lv.put(25, 5, 'L')             # back room -> back lot, locked: the back way in has to be forced (at the west end of
+                               # the wall: east of it the desk and his armchair leave only a doorway's width). No
+                               # window in the boss's room (the user had it walled up)
 lv.put(22, 5, 'G')             # the toilets' window on the back lot
 lv.put(31, 17, 'G')            # the VIP room's window on the gap
 lv.put(31, 14, 'G')            # the pool corner, seen from the gap
@@ -132,16 +133,16 @@ lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
 lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his pocket, walks the sidewalk
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
-lv.actor('p', 24, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
+lv.actor('p', 25, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
 lv.lean('cue', 25.6, 12.2, 270)                         # a cue stood against the wall by the pool table
 lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
-lv.patron('civ1', 16.8, 14.15, 270, 'drink')            # on the counter stools
-lv.patron('civ2', 15.6, 16.4, 0, 'drink')               # alone in the first booth
-lv.patron('civ4', 18.2, 17.5, 0, 'cards')              # the poker game
-lv.patron('civ1', 21.55, 17.5, 180, 'cards')
-lv.patron('civ3', 28.35, 14.0, 180, 'cue')              # waiting for his turn at the pool table
+lv.patron('civ1', 16.75, 14.5, 270, 'drink')            # on the counter stools
+lv.patron('civ2', 15.6, 17.4, 0, 'drink')               # alone in the first booth
+lv.patron('civ4', 18.7, 17.45, 0, 'cards')              # the poker game
+lv.patron('civ1', 21.3, 18.05, 180, 'cards')
+lv.patron('civ3', 30.15, 13.45, 180, 'cue')             # waiting for his turn at the pool table
 lv.patron('civ1', 26.55, 17.5, 40, 'drink')             # the VIP room: two customers, a dancer
 lv.patron('civ3', 26.55, 19.45, -27, 'watch')
 lv.patron('dancer1', 30.0, 18.9, 180, 'dance')
@@ -297,7 +298,7 @@ lv.prop('trash_can', 31.5, 1.5)
 lv.prop('parapet', 10.5, 3.5, 90)                      # the drop from the roof
 lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
-# the house's fuse box, between the two windows: smash it and the bar is left in its emergency lighting
+# the house's fuse box, between the toilets' window and the back door: smash it and the bar is left in its emergency lighting
 lv.power(14, 5, 31, 20, 24.5, 4.92, 180)
 for (x, y, deg) in ((23.6, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: back, front, VIP side
                     (17.6, 10.91, 180), (21.09, 8.5, 270), (25.4, 10.91, 180),   # storeroom, toilets, the boss's room
@@ -306,7 +307,8 @@ for (x, y, deg) in ((23.6, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),    
 lv.prop('wall_vent', 16.3, 4.92, 180)                   # the oven's extractor steams into the lot
 lv.prop('pipe_water', 20.2, 1.07)
 lv.dress('papers', 14, 1, 32, 4, 4)
-lv.prop('tube_light', 25.5, 4.93, 180)                  # over the back door
+lv.prop('tube_light', 26.55, 4.93, 180)                 # beside the back door (a body on the wall: over it, it
+                                                        # barred the doorway)
 lv.prop('gas_bottle', 30.4, 4.74)
 
 lv.area('storeroom')
@@ -315,10 +317,9 @@ lv.prop('oven', 17.1, 6.38)
 lv.prop('sink', 18.35, 6.3)
 lv.prop('fridge', 18.62, 7.5, 90)
 lv.prop('tube_light', 18.93, 8.6, 90)
-lv.prop('dope_table', 17.5, 9.2)
-lv.prop('crate', 18.5, 9.75, 4)
-lv.prop('crate', 18.5, 10.45, -3)
-lv.prop('crate', 17.85, 10.5, 12)
+lv.prop('dope_table', 17.0, 9.2)                        # in the middle of the room, a way round it on every side
+lv.prop('crate', 18.55, 10.55, 4)                       # the stock, in corners off every way round the table (behind
+lv.prop('crate', 15.4, 6.85, 10)                        # it they made a pocket where two men jammed)
 
 lv.area('toilets')
 lv.prop('toilet', 21.5, 6.4)
@@ -337,54 +338,59 @@ lv.prop('desk', 27.6, 6.75, 270)                        # its seat side toward t
 lv.prop('sofa', 25.5, 8.6, 270)
 lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
                                                         # north of it to get caught in (the QA robot found him there)
-lv.prop('table_round', 27.0, 8.1)                       # a step off the couch: its men get up and out
-lv.prop('chair', 27.0, 7.25, 90)
-lv.prop('chair', 27.85, 8.1, 180)
-lv.prop('chair', 27.0, 8.95, 270)
-lv.prop('ceiling_lamp', 27.0, 8.1)
+lv.prop('table_round', 27.6, 8.75)                      # 1.2 m off the couch: its men get up and out, and that is
+lv.prop('chair', 28.45, 8.75, 180)                      # the way from the back door to the rest of the room; 0.85 m
+lv.prop('chair', 27.6, 9.57, 270)                       # under the desk, to the boss's corner
+lv.prop('ceiling_lamp', 27.6, 8.75)
 lv.prop('floor_lamp', 25.4, 10.55)
-lv.prop('cash_case', 30.45, 10.45, 8)                   # the boss's takings, open by his desk
+lv.prop('cash_case', 30.2, 10.45, 84)                   # the boss's takings, open on the floor in front of the man
+                                                        # who counts them
 lv.prop('extinguisher', 25.9, 10.86, 180)              # on the wall by the door
 
 lv.area('the bar: counter along the north wall')
-for x in (15.5, 16.5, 17.5, 18.5, 20.5):              # (no module on the cut line)
-    lv.prop('bar_counter', x, 13.4)
-for x in (15.6, 16.8, 18.0, 20.4):
-    lv.prop('chair', x, 14.15, 270)
-for x in (17.59, 20.41):                           # the bottles: racked on the wall, either side of the
-    lv.prop('back_bar', x, 12.16)                        # bartender and of the neon over his head
+# Walkways (the user: "no room to get through"): a man is drawn 26 px wide, so about 1.2 m of clear floor along every
+# way across the room. Behind the counter 1.25 m (one squeezes past the bartender); between a customer on a stool and
+# the booths and the card game 1.2 m, the whole of row 15; from the front door a lane 1.5 m wide up to it, the card
+# game on its left, the jukebox on its right; 1.2 m and more round the high table and the pool table. The men at the
+# counter, the cards, the dope and the money stand square at what they work at (data/posts.js `front`).
+for x in (15.5, 16.5, 17.5, 18.5, 20.5):                # (no module on the cut line)
+    lv.prop('bar_counter', x, 13.85)
+for x in (15.65, 16.75, 17.85, 18.95):
+    lv.prop('chair', x, 14.5, 270)
+for x in (17.59, 20.41):                                # the bottles: racked on the wall, either side of the
+    lv.prop('back_bar', x, 12.16)                       # bartender and of the neon over his head
 lv.prop('neon_tube_pink', 18.5, 12.05)
 for x in (16.3, 18.0, 20.7):
-    lv.prop('ceiling_lamp', x, 13.4)
+    lv.prop('ceiling_lamp', x, 13.85)
 
 lv.area('the bar: booths, card table, pool')
-for y in (16.4, 18.6):
+# two booths end to end along the west wall, each with its lamp; a chair across each table
+for y in (17.0, 19.0):
     lv.prop('sofa', 15.5, y, 270)
     lv.prop('table', 16.5, y, 90)
-    lv.prop('chair', 17.3, y - 0.4, 180)
-    lv.prop('chair', 17.3, y + 0.4, 180)
-lv.prop('card_table', 20.4, 17.5)
-lv.prop('ceiling_lamp', 20.4, 17.5)                     # the game is played under a lamp
-for y in (16.4, 18.6):                                  # and each booth has its own, on the wall over the sofa
+    lv.prop('chair', 17.15, y, 180)
     lv.prop('wall_lamp', 15.09, y, 270)
-lv.prop('chair', 18.2, 17.5, 0)
-lv.prop('chair', 21.55, 17.5, 180)
-lv.prop('chair', 18.98, 18.34, 262)
-lv.prop('chair', 20.82, 18.32, 270)
-lv.prop('pool_table', 26.6, 14.0)
-lv.prop('pool_lamp', 26.6, 14.0)
+# the poker game, the table lengthwise under its lamp: the dealer at its head, a player each side (an aisle of a metre
+# to the booths, the lane from the door on the other side, and at its foot the way between them along the front)
+lv.prop('card_table', 20.5, 17.75, 90)
+lv.prop('ceiling_lamp', 20.5, 17.75)
+lv.prop('chair', 18.7, 17.45, 0)
+lv.prop('chair', 21.3, 18.05, 180)
+lv.prop('plant', 17.85, 19.55)                          # in the corner between the booths and the game
+lv.prop('pool_table', 27.2, 14.0)                       # its west end at the pool player's cue
+lv.prop('pool_lamp', 27.2, 14.0)
+lv.prop('table_round', 23.75, 13.65)                    # a high table to stand at and watch the game
 lv.prop('arcade', 30.5, 12.5, 90)
 lv.prop('wall_lamp', 30.91, 13.3, 90)
 lv.prop('jukebox', 23.6, 19.6, 180)
-lv.prop('ceiling_fan', 23.2, 16.3)                      # turning over the middle of the room
+lv.prop('ceiling_fan', 23.0, 15.0)                      # turning over the middle of the room
 lv.prop('extinguisher', 23.6, 12.14)                    # by the toilets' door
-lv.prop('plant', 20.55, 19.5)
-lv.prop('plant', 24.4, 12.45)
+lv.prop('plant', 28.65, 12.35)                          # east of the back room's door, clear of its way
 
 lv.area('the bar: VIP room')
 lv.prop('dance_stage', 30.0, 18.9)
 lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round the room
-lv.prop('sofa', 28.4, 17.45)
+lv.prop('sofa', 28.15, 17.45)                           # clear of where one lands diving through the window
 lv.prop('armchair', 26.5, 17.5, 0)
 lv.prop('armchair', 26.5, 19.45, 0)
 lv.prop('neon_tube_pink', 28.0, 19.93, 180)
@@ -507,6 +513,6 @@ if __name__ == '__main__':
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
                  'Ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
-                 'anonymous door right of the bar (east), the liquor store and its roof (far west), four windows.',
+                 'anonymous door right of the bar (east), the liquor store and its roof (far west), three windows.',
                  'Lit shop fronts on the street: liquor, TV, laundromat.',
              ])

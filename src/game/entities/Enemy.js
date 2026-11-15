@@ -13,7 +13,7 @@ import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
 import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
-  poolSpots, besideCar, STRIKE, drawn, TOSS } from '../ai/Pastimes.js';
+  sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
@@ -575,6 +575,15 @@ export default class Enemy extends Character {
         this.angle = seat.face;
         this.posture = 1; this.postureOf = S.body; this.onSpot = true;
         this.seatThrough();
+      }
+    } else if (S.front) {
+      // his post: square in the middle of the side he faces of what he works at, his hands on it
+      const p = this.nearest(S.front, this, 2 * TILE);
+      if (p) {
+        const f = sideOf(p, this.home.angle, this.radius + 1);
+        this.home = { x: f.x, y: f.y, angle: f.face };
+        Body.setPosition(this.body, f);
+        this.angle = f.face;
       }
     } else if (S.body === 'wall') {
       // his post: his back against a plain stretch of the wall behind him
@@ -1734,7 +1743,9 @@ export default class Enemy extends Character {
     const map = this.world.map;
     const cx = Math.floor((this.x + ux * 20) / TILE), cy = Math.floor((this.y + uy * 20) / TILE), key = cy * map.w + cx;
     const mx = Math.floor(this.x / TILE), my = Math.floor(this.y / TILE);
-    const ahead = map.at(cx, cy) === 'D', inside = map.at(mx, my) === 'D';
+    // a door frame, locked or not (a locked door of the house opens for him like any other)
+    const frame = (x, y) => map.at(x, y) === 'D' || map.at(x, y) === 'L';
+    const ahead = frame(cx, cy), inside = frame(mx, my);
     // one at a time through a doorway: whoever is in the frame, or was first to it, goes; the others stand back
     const want = inside ? my * map.w + mx : ahead ? key : this.gateWait > 0 ? this.gateFor : -1;
     if (want < 0) this.gate = -1;

@@ -46,6 +46,13 @@ SIZES = dict(
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
 
+# what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
+# wall in px (keep in sync with src/game/data/props.js): never across a doorway, where it bars the way (a lamp over the
+# back door of level 1 had its men jammed in it)
+ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=12, fuse_box=18,
+               extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
+               neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48)
+
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes')
 
@@ -297,9 +304,26 @@ class Level:
                 clear = not (b[0] - 0.27 < sx < b[2] + 0.27 and b[1] - 0.27 < sy < b[3] + 0.27)
                 assert clear, f'{kind} at {col},{row} on a spawn {sx},{sy}'
             boxes.append((kind, b))
+        for (_, kind, col, row, deg, _) in self.props:
+            if kind in ON_WALL:
+                self.check_on_wall(kind, col, row, deg)
         n = sum(ch.lower() in GUARDS for row in self.actors for ch in row if ch.isalpha())
         assert guards is None or n == guards, f'{n} guards, expected {guards}'
         self.check_roofs()
+
+    # a piece on a wall face: the wall it hangs on (the nearer tile edge across its depth), along its length (4 px of
+    # play), is no doorway
+    def check_on_wall(self, kind, col, row, deg):
+        half = ON_WALL[kind] / 64
+        if round(deg) % 180 == 90:
+            x = round(col) if col < round(col) else round(col) - 1
+            cells = [(x, y) for y in range(math.floor(row - half + 0.12), math.floor(row + half - 0.12) + 1)]
+        else:
+            y = round(row) if row < round(row) else round(row) - 1
+            cells = [(x, y) for x in range(math.floor(col - half + 0.12), math.floor(col + half - 0.12) + 1)]
+        for (x, y) in cells:
+            if 0 <= x < self.w and 0 <= y < self.h:
+                assert self.tiles[y][x] not in 'DL', f'{kind} at {col},{row} hangs across the doorway at {x},{y}'
 
     # ---- output: src/game/data/levels/<module>.js
     def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None, objective=None):

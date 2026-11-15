@@ -332,6 +332,14 @@ export function frontOf(prop, gap) {
   return { x: prop.x + Math.cos(a) * d, y: prop.y + Math.sin(a) * d, face: a + Math.PI };
 }
 
+// standing at the side of a piece of furniture that faces him (he looks along `face`), square in the middle of that
+// side, `gap` px off it, facing it
+export function sideOf(prop, face, gap) {
+  const a = ang(prop), k = Math.round((face + Math.PI - a) / (Math.PI / 2)), n = a + (k * Math.PI) / 2;
+  const half = (k % 2 ? prop.def.h ?? 2 * prop.def.r : prop.def.w ?? 2 * prop.def.r) / 2, d = half + gap;
+  return { x: prop.x + Math.cos(n) * d, y: prop.y + Math.sin(n) * d, face: n + Math.PI };
+}
+
 // his back against the wall behind (x, y) as seen facing `face`, on a plain stretch of it: never a door or a window
 // (the next tile along when it is one). { x, y, face }: 9 px off the wall, facing away from it; or null
 export function wallBehind(map, x, y, face) {

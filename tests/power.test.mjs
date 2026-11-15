@@ -90,13 +90,13 @@ test('power: without power the jukebox is silent and no machine answers a blow',
 });
 
 test('power: level 1 hangs the bar on a fuse box in the back lot, with a battery lamp in every room', () => {
-  assert.deepEqual(level.power.zone, [14, 5, 29, 19]);
+  assert.deepEqual(level.power.zone, [14, 5, 29, 20]);
   const [col, row] = level.power.box;
   assert.ok(level.props.some(([type, c, r]) => type === 'fuse_box' && c === col && r === row));
   assert.ok(row < 5, 'on the lot side of the back wall');
   const lamps = level.props.filter(([type]) => type === 'emergency_light');
   // bar room (three), storeroom, toilets, the boss's room, the VIP room
-  const rooms = [[15, 12, 23, 18], [15, 12, 28, 14], [15, 6, 18, 10], [20, 6, 22, 10], [24, 6, 28, 10], [25, 16, 28, 18]];
+  const rooms = [[15, 12, 23, 19], [15, 12, 28, 15], [15, 6, 18, 10], [20, 6, 22, 10], [24, 6, 28, 10], [25, 17, 28, 19]];
   for (const [c0, r0, c1, r1] of rooms) {
     assert.ok(lamps.some(([, c, r]) => c > c0 - 0.2 && c < c1 + 1.2 && r > r0 - 0.2 && r < r1 + 1.2), `a battery lamp in ${c0},${r0}`);
   }
