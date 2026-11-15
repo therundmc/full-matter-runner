@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""The opening's comic panels (ui/Cinematic.js, ui/cine/Panels.js), drawn like a noir thriller album.
+"""The game's comic panels: the opening (ui/Cinematic.js), the leap's card (ui/cine/Leap.js) and level 1's closing
+page (ui/cine/Ending.js), all framed and animated by ui/cine/Panels.js.
 
 Run from the repo root:  python tools/generate_comic.py
 Writes RGB / RGBA PNGs to assets/sprites/comic/<name>.png (loaded as optional sprites by engine/Assets.js).
 
-Style: ligne claire. Clean ink outlines of an even weight, flat colour areas of two or three tones each, big solid
-black shadows, one light per panel, a few colours a panel (night blue, sodium yellow, the orange of a match, blood).
-Never a gradient, a dither or a screentone. Everything is drawn aliased at SC panel px per title px (the title's
-logical screen is 384 x 216), so the game draws a panel at its logical size with nearest neighbour and it stays crisp.
-Only the still art is here: what moves (the lamp's flicker, smoke, the match's flame, the blood spreading, the
-typed words) is drawn live by the game over it.
+Style, one art direction for every page (the user's pick, after the alley card): neon noir. The night in a few flat
+blues and purples; people as black shapes, a neon rim along their edge (`backlit`), a face only where a light falls
+on it, in two tones and its ink; neon pink and cyan, the orange of a match and of fire, a few accents (the money,
+blood); wet ground where the lights come back broken into horizontal ripples (`ripples`). Every still is then printed
+a little off register like the title: what is bright gets a cyan ghost to its left and a pink one to its right
+(`doubled`). Never a gradient, a dither or a screentone. Everything is drawn aliased at SC panel px per title px (the
+title's logical screen is 384 x 216), so the game draws a panel at its logical size with nearest neighbour and it stays
+crisp. Only the still art is here: what moves (the flame, smoke, the rain, the typed words) is drawn live by the game.
 
 Shapes are point lists through a Catmull-Rom spline (a point (x, y, 0) is a sharp corner), filled flat, optionally
 clipped to another shape; `brush` draws a tapered ink stroke. Deterministic: no randomness at all.
@@ -178,6 +181,41 @@ class Cv:
         assert self.im.size == size, (name, self.im.size, size)
         os.makedirs(OUT_DIR, exist_ok=True)
         self.im.save(os.path.join(OUT_DIR, name + '.png'))
+
+
+def shift(m, dx, dy):
+    """A mask moved by (dx, dy), what leaves it dropped (no wrapping round its edges)."""
+    out = Image.new(m.mode, m.size, 0)
+    out.paste(m, (dx, dy))
+    return out
+
+
+# the off-register print of the title (ui/TitleScene.js: a cyan ghost left of the words, a pink one right of them)
+GHOST_CYAN, GHOST_PINK = hx('#1fa6c4'), hx('#d22a6e')
+GHOST_LIT = 150     # how bright (its brightest channel) a part of a still must be to be doubled
+
+
+def doubled(im, d=SC, lit=GHOST_LIT, cols=(GHOST_CYAN, GHOST_PINK)):
+    """The still printed a little off register: what is bright in it gets a flat cyan ghost d px to its left and a
+    flat pink one d px to its right, seen only outside it and where they fall on darker ground (each channel keeps
+    the brighter of the two), so neon, rims and lit faces come out doubled in red and blue along their edges. RGB or
+    RGBA."""
+    alpha = im.getchannel('A') if im.mode == 'RGBA' else None
+    rgb = im.convert('RGB')
+    r, g, b = rgb.split()
+    m = ImageChops.lighter(ImageChops.lighter(r, g), b).point(lambda v: 255 if v >= lit else 0)
+    if alpha is not None:
+        m = ImageChops.multiply(m, alpha)
+    out = rgb
+    for dx, col in ((-d, cols[0]), (d, cols[1])):
+        ghost = Image.new('RGB', im.size, (0, 0, 0))
+        ghost.paste(col, (0, 0), ImageChops.subtract(shift(m, dx, 0), m))
+        out = ImageChops.lighter(out, ghost)
+    if alpha is None:
+        return out
+    out = out.convert('RGBA')
+    out.putalpha(alpha)
+    return out
 
 
 # ---------------------------------------------------------------- people
@@ -372,100 +410,6 @@ def head_young(cv, t, pal):
         cv.brush(t([(6 + k * 3, y + 2), (12 + k * 3, y - 1)]), 1, 1, col=sh)
 
 
-def head_old(cv, t, pal):
-    """The building's super, three quarters, the moment he is shot: a wide tired face, jowls, a big nose, bags under
-    the eyes, grey hair gone from the top and thick over the ears, reading glasses; the eyes gone wide, the brows up,
-    the mouth open on a cry that does not come."""
-    sk, sh, dp, hair, hairD = pal['skin'], pal['shade'], pal.get('deep', INK), pal['hair'], pal['hairD']
-    head = t([(-2, 11), (16, 11), (27, 18), (33, 28), (35, 35, 0), (32, 40), (36, 48), (45, 62, 0), (42, 68), (36, 69, 0),
-              (37, 74), (35, 78, 0), (37, 84), (33, 88, 0), (33, 95), (24, 104), (8, 106), (-6, 98), (-14, 86, 0),
-              (-18, 72), (-28, 62), (-33, 44), (-31, 27), (-19, 15)])
-    neck = t([(-8, 84), (-10, 118), (24, 118), (22, 104), (10, 104)])
-    cv.shape(neck, sh, 3)
-    cv.brush(t([(16, 104), (18, 110), (17, 118)]), 1.5, 1)                 # the old man's neck, its cords
-    cv.fill(head, sk)
-    cv.fill(t([(-60, -10, 0), (-4, -4), (2, 26), (-1, 40), (-4, 56), (2, 70), (4, 86), (-2, 100), (-6, 120), (-60, 120, 0)]), sh, clip=head)
-    cv.fill(t([(4, 62), (12, 66), (14, 84), (8, 92), (2, 80)]), sh, clip=head)                       # the hollow of the cheek
-    cv.fill(t([(4, 40), (14, 37), (26, 40), (30, 47), (22, 52), (8, 52)]), sh, clip=head)
-    cv.fill(t([(27, 46), (32, 58), (37, 67), (44, 68), (38, 62), (33, 48)]), sh, clip=head)
-    cv.fill(t([(8, 100), (20, 96), (32, 95), (24, 104), (8, 106)]), sh, clip=head)
-    # grey hair: gone from the top, thick and untidy over the ears and the back
-    cv.fill(t([(-60, 10, 0), (-20, 8), (-8, 24), (-4, 40), (-6, 56, 0), (-16, 60), (-60, 80, 0)]), hair, clip=head)
-    for a, b in [((-10, 26), (-30, 30)), ((-8, 40), (-34, 46)), ((-12, 52), (-32, 58))]:
-        cv.brush(t([a, b]), 1.5, 0.5, col=hairD, clip=head)
-    cv.ink(head, t.ink())
-    tufts = t([(-6, 28), (-4, 22), (0, 30), (2, 24), (2, 34)])
-    cv.brush(tufts, 2, 1, col=hair)
-    ear = t([(-6, 46), (-15, 40), (-22, 48), (-21, 62), (-13, 72), (-6, 66)])
-    cv.shape(ear, sh, 3)
-    cv.brush(t([(-10, 48), (-16, 53), (-14, 63)]), 2.5, 1)
-    # the eyes, open on nothing: no glint, the lids half down
-    eye34(cv, t, 14, 47, 15, dict(pal, white=pal.get('white', (190, 180, 160))), look=0.5, open_=1.15)
-    far = t([(28, 47), (31.5, 45), (35, 46.5), (32, 48.5)])
-    cv.fill(far, pal.get('white', (190, 180, 160)))
-    cv.ellipse(*t.pt(31.5, 46.6), t.len(1.4), t.len(1.6), dp, clip=far)
-    cv.brush(t([(27.5, 47), (31.5, 44.5), (35, 46)]), 2.5, 1)
-    # thick grey brows, the lines of sixty years
-    cv.brush(t([(3, 40), (10, 35), (20, 34), (27, 38)]), 2.5, 2, mid=5, col=hair)
-    cv.brush(t([(29, 38), (33, 35.5), (36, 37)]), 3.5, 1.5, col=hair)
-    cv.brush(t([(4, 40), (10, 35.6), (20, 34.6), (27, 38.4)]), 0.5, 0.5, mid=1.4)
-    for y in (24, 29):
-        cv.brush(t([(8, y), (18, y - 2), (28, y)]), 0.5, 0.5, mid=1.6)
-    for k in range(3):
-        cv.brush(t([(4, 44 + k * 3), (-1, 43 + k * 4)]), 1.2, 0.3)          # crow's feet
-    cv.brush(t([(6, 55), (14, 58), (22, 55)]), 0.5, 0.5, mid=1.8)          # the bags
-    cv.brush(t([(8, 59), (15, 62), (22, 59)]), 0.4, 0.4, mid=1.2, col=sh)
-    # a big nose, the deep folds, the jowls, the mouth fallen open
-    cv.brush(t([(33, 61), (37, 68), (43, 68)]), 2.5, 1.5)
-    cv.fill(t([(39, 66.5), (42.5, 66), (42, 68.4)]), dp)
-    cv.brush(t([(30, 64), (22, 74), (18, 86)]), 3, 1)
-    cv.brush(t([(12, 82), (16, 94), (22, 100)]), 1.5, 0.5)                 # the jowl
-    mouth = t([(23, 78), (29, 77), (35, 78), (33, 83), (28, 85), (24, 83)])
-    cv.fill(mouth, dp)
-    cv.fill(t([(25, 77.5), (30, 77.2), (34, 78), (30, 79)]), (196, 184, 160), clip=mouth)
-    cv.ink(mouth, 2)
-    cv.brush(t([(25, 87), (29, 88), (33, 86)]), 1, 0.5, col=sh)            # the lower lip
-    # his reading glasses, knocked askew
-    fr = pal.get('frame', (58, 42, 26))
-    cv.ink(t([(4, 44), (14, 41), (24, 45), (23, 53), (13, 56), (5, 52)]), 2.5, col=fr)
-    cv.ink(t([(29, 44), (34, 42.5), (37, 45), (36, 51), (31, 52)]), 2, col=fr)
-    cv.brush(t([(24, 46), (29, 45)]), 2, 2, col=fr)
-    cv.brush(t([(4, 46), (-6, 46), (-14, 50)]), 2, 1.5, col=fr)
-    cv.brush(t([(26, 89), (31, 89.5)]), 1.5, 0.5)
-
-
-def head_hero(cv, pal, open_):
-    """Him, asleep on his side, so close the panel is his eye: the brow, brown hair fallen over it, the bridge of the
-    nose, the cheek pressed into the pillow, three days' beard; the eye shut, or open on the noise (open_)."""
-    sk, sh, hair, hairL = pal['skin'], pal['shade'], pal['hair'], pal['hairL']
-    cv.rect(0, 0, 450, 174, sk)
-    cv.fill([(0, 0, 0), (60, 0), (90, 60), (80, 120), (40, 174, 0), (0, 174, 0)], sh)                  # the temple, away
-    cv.fill([(120, 66), (180, 50), (250, 54), (290, 72), (250, 80), (180, 76)], sh)                    # under the brow
-    cv.fill([(300, 20), (318, 80), (340, 140), (360, 174, 0), (450, 174, 0), (450, 0, 0), (310, 0, 0)], sh)   # beyond the nose
-    cv.fill([(150, 120), (230, 130), (300, 124), (330, 174, 0), (120, 174, 0)], pal['stubble'])
-    cv.brush([(296, 10), (312, 70), (330, 120), (352, 174)], 3, 5)                                   # the bridge of the nose
-    cv.brush([(336, 30), (346, 60)], 1.5, 0.5, col=sh)
-    # the far eye, past the nose, in the dark, and the neon from the window along his face
-    cv.brush([(372, 74), (392, 70), (412, 76)], 2, 1.5, mid=4)
-    cv.brush([(372, 52), (400, 46), (424, 54)], 4, 2, mid=9, col=hair)
-    cv.fill([(436, 0, 0), (450, 0, 0), (450, 174, 0), (440, 174, 0), (430, 90)], pal['neon'])
-    # the near eye
-    t = T(0, 0, 1.0)
-    eye34(cv, t, 196, 92, 92, pal, look=0.7, open_=open_ * 0.85, glint=pal.get('glint') if open_ > 0 else None)
-    cv.brush([(150, 128), (200, 136), (250, 130)], 0.5, 0.5, mid=2.5, col=sh)                      # the bag under it
-    # the brow, and his hair fallen over it
-    cv.brush([(120, 60), (170, 44), (230, 42), (282, 54)], 6, 4, mid=15, col=hair)
-    cv.fill([(0, 0, 0), (450, 0, 0), (450, 14, 0), (400, 22), (340, 12), (300, 26), (250, 14), (200, 30), (150, 16),
-             (100, 34), (50, 20), (0, 30, 0)], hair)
-    for x0, x1, y1, w in ((60, 90, 70, 9), (130, 150, 50, 7), (210, 236, 46, 8), (262, 300, 60, 6), (330, 340, 40, 6)):
-        cv.brush([(x0, 0), (x0 + (x1 - x0) * 0.5, y1 * 0.6), (x1, y1)], w, 1, col=hair)
-        cv.brush([(x0 + 3, 0), (x0 + 3 + (x1 - x0) * 0.5, y1 * 0.5)], 2, 0.5, col=hairL)
-    # the pillow pressing into his cheek
-    pillow = [(0, 140), (60, 128), (130, 150), (200, 160), (260, 174, 0), (0, 174, 0)]
-    cv.shape(pillow, pal['pillow'], 4)
-    cv.brush([(40, 150), (90, 146), (130, 160)], 2, 1, col=pal['pillowD'])
-
-
 def eye34(cv, t, x, y, w, pal, look=0.0, open_=1.0, glint=None):
     """A near eye in three quarters, centred (x, y), w wide: a dark iris half under a heavy upper lid, a little of the
     white each side of it (shaded, never pure), the lower lid. look -1..1 moves the iris; open_ 0: shut, the lashes."""
@@ -507,22 +451,36 @@ def finger(cv, pts, w, col, shade=None, side=1, band=0.45):
         cv.brush([(p[0] + ox, p[1] + oy) for p in pts], w * band, w * band * 0.7, col=shade)
 
 
-def leather(cv, pts, lit, edge=None, w=4):
-    """A black leather jacket's part: black, its folds caught by the light in flat streaks (edge: those streaks,
-    each a point list)."""
-    m = cv.fill(pts, INK)
-    for e in edge or []:
-        cv.fill(e, lit, clip=m)
-    if w:
-        cv.ink(pts, w)
-    return m
+def runs(m, dx, dy, n=3):
+    """A mask keeping only what is at least n px long along (dx, dy) (one unit step): the specks a rim leaves on the
+    stairs of an edge nearly along its own light go."""
+    e = m
+    for k in range(1, n):
+        e = ImageChops.darker(e, shift(m, -dx * k, -dy * k))
+    out = e
+    for k in range(1, n):
+        out = ImageChops.lighter(out, shift(e, dx * k, dy * k))
+    return out
 
 
 def backlit(cv, m, col, sides=((3, 0), (-2, 0))):
     """The edges of a dark shape caught by a light behind it: a thin rim on each side given as (dx, dy), the way the
-    light comes from."""
+    light comes from (a rim lit from above or below runs along the edge, so what is shorter than 3 px across it is
+    dropped, and the other way round)."""
     for dx, dy in sides:
-        cv.im.paste(col, (0, 0), ImageChops.subtract(m, ImageChops.offset(m, -dx, -dy)))
+        rim = ImageChops.subtract(m, shift(m, -dx, -dy))
+        if dx == 0 or dy == 0:
+            rim = runs(rim, 1 if dx == 0 else 0, 1 if dy == 0 else 0)
+        cv.im.paste(col, (0, 0), rim)
+
+
+def silhouette(w, h, paint):
+    """What paint(cv) draws (fills, ink and all) on an empty w x h canvas, as one mask: a figure painted in full
+    turned into the black shape the art direction wants of it."""
+    key = (255, 0, 255)
+    tmp = Cv(w, h, key)
+    paint(tmp)
+    return ImageChops.difference(tmp.im, Image.new('RGB', (w, h), key)).convert('L').point(lambda v: 255 if v else 0)
 
 
 def limb(m, pts, w0, w1):
@@ -595,167 +553,350 @@ def boards(cv, y0, y1, vx, vy, n, cols, gap=INK):
         cv.brush([(pa, y0), (a, y1)], 1, 3, col=gap)
 
 
-# ================================================================ the panels
-# Each panel is painted at SC x its size in the title's px (Cinematic.js PAGES gives the same sizes).
-FLAME = (536, 160)    # page 2, panel 3: where the match's head is (panel px); the game draws its flame there
+# ---------------------------------------------------------------- the night: what every page shares
+# The palette of the art direction: the night's blues and purples, the two neons, the fire.
+NIGHT, FLOOR = hx('#0b0a14'), hx('#0e0d17')
+PINK, PINK_D, PINK_DD = hx('#ff3a7a'), hx('#a02458'), hx('#3e1430')
+CYAN, CYAN_D, CYAN_DD = hx('#3ad8e8'), hx('#1e6a7a'), hx('#14303a')
+FIRE, FIRE_D, FIRE_L = hx('#ff8a20'), hx('#c8381a'), hx('#fff0a0')
+VIOLET = hx('#2a1430')
 
 
-def panel_eye(open_):
-    """Before the pages, over the room: his eye, shut, then open on the noise. In the night's blue, the neon of the
-    bar across the street on his face through the window."""
-    cv = Cv(450, 174)
-    pal = dict(skin=hx('#a8706a'), shade=hx('#5a3448'), stubble=hx('#9a6462'), hair=hx('#2a1812'), hairL=hx('#5a3a2a'),
-               white=hx('#c8b0b0'), iris=hx('#4a2a18'), glint=hx('#ff8ab0'), neon=hx('#ff3a7a'),
-               pillow=hx('#3a3a5a'), pillowD=hx('#24243a'))
-    head_hero(cv, pal, 1.0 if open_ else 0.0)
+def bead(i):
+    """A number in [0, 1) for the i-th thing scattered somewhere: the same every run (no randomness in this tool)."""
+    s = math.sin(i * 127.1 + 311.7) * 43758.5453
+    return s - math.floor(s)
+
+
+def rain_beads(cv, x0, y0, x1, y1, n, cols, seed=0, clip=None):
+    """Drops of rain standing on a pane: n small drops, each dark with a lit fleck."""
+    dark, lit = cols
+    for i in range(n):
+        x, y = x0 + bead(seed + i) * (x1 - x0), y0 + bead(seed + i + 500) * (y1 - y0)
+        r = 1.5 + bead(seed + i + 900) * 2.5
+        cv.ellipse(x, y, r, r * 1.2, dark, clip=clip)
+        cv.ellipse(x - r * 0.3, y - r * 0.4, max(1, r * 0.4), max(1, r * 0.4), lit, clip=clip)
+
+
+def ripples(cv, x0, y0, x1, y1, w0, w1, cols, gap, seed=0, n=22, breaks=9, clip=None):
+    """A light come back off wet ground: a column from (x0, y0), w0 wide, to (x1, y1) nearer us, w1 wide; its flat
+    tones cols (outer ... core) one inside the other, its edges ragged, broken across by bands of the ground (gap)
+    that thicken as they come nearer."""
+    def edge(i, side):
+        u = i / n
+        return (x0 + (x1 - x0) * u + side * (w0 + (w1 - w0) * u) * (0.35 + 0.3 * bead(seed + i * 2 + (side > 0))) +
+                (bead(seed + i + 40) - 0.5) * 10 * u, y0 + (y1 - y0) * u ** 1.2)
+    outer = None
+    for lvl, col in enumerate(cols):
+        k = (1.0, 0.5, 0.16, 0.06)[lvl] if len(cols) > 1 else 1.0
+        pts = []
+        for i in list(range(n + 1)) + list(range(n, -1, -1)):
+            side = -1 if len(pts) <= n else 1
+            p = edge(i, side)
+            pts.append((x0 + (p[0] - x0) * k + (x1 - x0) * (i / n) * (1 - k), p[1]))
+        cv.fill(pts, col, clip=clip)
+        outer = pts if lvl == 0 else outer
+    for i in range(1, breaks):
+        y = y0 + (y1 - y0) * ((i + bead(seed + i) * 0.6) / breaks) ** 1.2
+        xc = x0 + (x1 - x0) * i / breaks
+        cv.brush([(xc - w1, y), (xc + w1, y)], 1 + i * 0.5, 1 + i * 0.3, col=gap, clip=outer)
+
+
+def window_night(cv, x0, y0, x1, y1, seed=0, sign=True):
+    """A window on the night street: the block across in the dark, a few lit windows, the bar's neon (pink, a cyan
+    bar under it), rain standing on the glass; the frame and its cross in ink. Returns the glass's mask."""
+    glass = [(x0, y0, 0), (x1, y0, 0), (x1, y1, 0), (x0, y1, 0)]
+    gm = cv.fill(glass, hx('#1c1238'), smooth=False)
+    w, h = x1 - x0, y1 - y0
+    cv.fill([(x0, y0 + h * 0.34, 0), (x0 + w * 0.3, y0 + h * 0.34, 0), (x0 + w * 0.3, y0 + h * 0.22, 0), (x0 + w * 0.62, y0 + h * 0.22, 0),
+             (x0 + w * 0.62, y0 + h * 0.4, 0), (x1, y0 + h * 0.4, 0), (x1, y1, 0), (x0, y1, 0)], hx('#120c24'), clip=gm, smooth=False)
+    for i in range(9):
+        lx, ly = x0 + w * (0.06 + 0.9 * bead(seed + i)), y0 + h * (0.3 + 0.2 * bead(seed + i + 30))
+        cv.rect(lx, ly, lx + w * 0.03, ly + h * 0.04, hx('#3a2440') if i % 3 else hx('#5a3a3a'), clip=gm)
+    if sign:
+        cv.rect(x0 + w * 0.12, y0 + h * 0.56, x0 + w * 0.6, y0 + h * 0.64, PINK, clip=gm)
+        cv.rect(x0 + w * 0.5, y0 + h * 0.72, x0 + w * 0.86, y0 + h * 0.76, CYAN, clip=gm)
+    rain_beads(cv, x0, y0, x1, y1, int(w * h / 1600), (hx('#140e2a'), hx('#4a3a6a')), seed=seed + 7, clip=gm)
+    cv.ink(glass, 6, smooth=False)
+    cv.brush([((x0 + x1) / 2, y0), ((x0 + x1) / 2, y1)], 5, 5)
+    cv.brush([(x0, y0 + h * 0.48), (x1, y0 + h * 0.48)], 5, 5)
+    return gm
+
+
+def figure_asleep(cv, x, y, s=1.0):
+    """Him asleep on his side under a sheet, seen from the side, as one mask: his head on the pillow at the origin,
+    the sheet over his shoulder, his hip and his drawn-up knees, his feet at +x; one arm hanging out over the bed's
+    edge to the floor (local px, the mattress's top at y 0, the floor at y 46)."""
+    P = lambda p: (x + p[0] * s, y + p[1] * s) + ((0,) if len(p) > 2 else ())
+    m = cv.blank()
+    d = ImageDraw.Draw(m)
+    for pts in ([(-34, -40), (-26, -66), (-4, -80), (22, -76), (36, -60), (38, -42), (30, -30), (14, -26), (-12, -26), (-28, -30)],
+                [(-30, -64), (-46, -62), (-52, -48), (-44, -40), (-36, -44)],                                 # his hair on the pillow
+                [(26, -30, 0), (34, -60), (56, -88), (96, -98), (134, -86), (170, -62), (214, -60), (262, -84),
+                 (300, -88), (340, -72), (380, -64), (420, -58), (444, -40), (452, -16), (454, 0, 0), (26, 0, 0)]):       # under the sheet
+        d.polygon(spline([P(p) for p in pts]), fill=255)
+    limb(m, [P((76, -50)), P((92, -6)), P((96, 14))], 20 * s, 16 * s)         # the arm over the edge ...
+    limb(m, [P((96, 14)), P((98, 26)), P((100, 34))], 15 * s, 12 * s)         # ... the forearm down
+    d.polygon(spline([P(p) for p in [(90, 30), (110, 30), (116, 42), (112, 52), (104, 54), (94, 48)]]), fill=255)   # the hand, open
+    for k in range(3):
+        limb(m, [P((97 + k * 6, 48)), P((96 + k * 6.5, 58 + (k % 2) * 3))], 5 * s, 4 * s)                    # its fingers
+    return m
+
+
+# ================================================================ the opening
+# Each panel is painted at SC x its size in the title's px (Cinematic.js PAGES gives the same sizes). Three pages:
+# his last night (asleep; the boss's men at his door), what they came for (the board, the box, the money; the petrol
+# on his sofa), no loose ends (the match; the fire under his door; his eye opens).
+CLOCK = (164, 150)    # page 1, panel 1: the bedside clock's digits (panel px); the game blinks its colon
+FLAME = (536, 160)    # page 3, panel 1: where the match's head is (panel px); the game draws its flame there
+GAP = (150, 410, 236)  # page 3, panel 2: the gap under his door, x0, x1, y (panel px); the game makes it burn
+
+SEGMENTS = {'0': 'abcdef', '1': 'bc', '2': 'abged', '3': 'abgcd', '4': 'fgbc', '5': 'afgcd', '6': 'afgedc', '7': 'abc',
+            '8': 'abcdefg', '9': 'abcdfg'}
+
+
+def digits(cv, x, y, s, h, col):
+    """A clock's digits, seven segments each, h tall, from (x, y) their top left; ':' is two dots."""
+    w, th = h * 0.5, max(3, round(h * 0.16))
+    for ch in s:
+        if ch == ':':
+            for yy in (h * 0.28, h * 0.68):
+                cv.rect(x, y + yy, x + th, y + yy + th, col)
+            x += th * 3
+            continue
+        seg = {'a': (x, y, x + w, y + th), 'g': (x, y + (h - th) / 2, x + w, y + (h + th) / 2), 'd': (x, y + h - th, x + w, y + h),
+               'f': (x, y, x + th, y + h / 2), 'e': (x, y + h / 2, x + th, y + h), 'b': (x + w - th, y, x + w, y + h / 2),
+               'c': (x + w - th, y + h / 2, x + w, y + h)}
+        for k in SEGMENTS[ch]:
+            cv.rect(*seg[k], col)
+        x += w + th * 2
+
+
+def panel_sleep():
+    """Page 1, panel 1. His bedroom in the dark, the bar's neon across the street through the rain on the window: him
+    asleep on his side, a black shape under the sheet with the neon along its edge, his arm hanging out of the bed
+    over an empty bottle; the clock on the table says 1:05; by the door his suitcase stands packed, his cap on the
+    hook: he was leaving in the morning."""
+    cv = Cv(1080, 288, hx('#110e20'))
+    floor_y, top = 236, 190
+    cv.rect(0, floor_y, 1080, 288, FLOOR)
+    for x in range(-600, 1700, 64):                                             # the boards, running to the far wall
+        cv.brush([(540 + (x - 540) * 0.5, floor_y), (540 + (x - 540) * 1.4, 288)], 1.5, 2.5, col=NIGHT)
+    cv.brush([(0, floor_y), (1080, floor_y)], 4, 4)
+    # the window over the bed, and the neon it throws down across the wall, the bed and the floor
+    wx0, wy0, wx1, wy1 = 360, 8, 590, 132
+    cv.fill([(wx0, wy1, 0), (wx1, wy1, 0), (wx1 + 150, floor_y + 52, 0), (wx0 + 150, floor_y + 52, 0)], hx('#1e1430'), smooth=False)
+    cv.brush([((wx0 + wx1) / 2, wy1), ((wx0 + wx1) / 2 + 150, floor_y + 52)], 8, 12, col=hx('#110e20'))
+    window_night(cv, wx0, wy0, wx1, wy1, seed=3)
+    cv.rect(wx0 - 14, wy1 + 2, wx1 + 14, wy1 + 12, hx('#1a1428'))              # the sill
+    cv.brush([(wx0 - 14, wy1 + 2), (wx1 + 14, wy1 + 2)], 2, 2, col=PINK_D)
+    # the bed: its head, the mattress, the frame, in the dark, the neon along their tops
+    head = [(258, 112), (276, 106), (282, floor_y, 0), (256, floor_y, 0)]
+    m = cv.fill(head, hx('#16122a'))
+    backlit(cv, m, PINK_D, ((0, -3), (3, 0)))
+    cv.ink(head, 3)
+    side = [(276, top, 0), (800, top, 0), (800, 226, 0), (276, 226, 0)]
+    cv.fill(side, hx('#1a1630'), smooth=False)
+    cv.fill([(wx0 + 60, top, 0), (wx1 + 110, top, 0), (wx1 + 130, 226, 0), (wx0 + 80, 226, 0)], hx('#2a1a3a'), smooth=False)
+    cv.rect(276, 222, 800, 230, hx('#0e0b18'))
+    for x in (284, 788):
+        cv.rect(x, 230, x + 10, floor_y, INK)
+    cv.ink(side, 3, smooth=False)
+    pillow = [(282, 172), (300, 162), (360, 160), (372, 176), (360, top, 0), (284, top, 0)]
+    m = cv.fill(pillow, hx('#2a2440'))
+    backlit(cv, m, PINK_D, ((0, -3),))
+    # him under the sheet, black, the neon along his back, his shoulder, his hip
+    m = figure_asleep(cv, 322, top, 1.0)
+    cv.im.paste(INK, (0, 0), m)
+    backlit(cv, m, PINK_D, ((0, -4), (4, 0)))
+    backlit(cv, m, PINK, ((1, -2),))
+    # the empty bottle on its side on the floor, under his hand
+    bottle = [(424, 266), (474, 262), (480, 256, 0), (500, 255, 0), (500, 262, 0), (480, 262, 0), (474, 272), (424, 276)]
+    m = cv.fill(bottle, hx('#0c1a10'))
+    backlit(cv, m, hx('#5ac08a'), ((0, -2), (2, 0)))
+    # the bedside table, the clock on it: 1:05 in red
+    table = [(130, 176, 0), (240, 176, 0), (240, floor_y, 0), (130, floor_y, 0)]
+    m = cv.fill(table, hx('#141024'), smooth=False)
+    backlit(cv, m, PINK_DD, ((0, -3),))
+    cv.ink(table, 3, smooth=False)
+    cv.brush([(136, 204), (234, 204)], 2, 2, col=INK)
+    clock = [(150, 140, 0), (236, 140, 0), (238, 176, 0), (148, 176, 0)]
+    cv.shape(clock, hx('#0c0a12'), 3, )
+    cv.rect(156, 146, 230, 172, hx('#1a0608'))
+    digits(cv, CLOCK[0] - 6, CLOCK[1], '1:05', 18, hx('#ff2a3a'))
+    # his suitcase by the door, packed and strapped, and the door, his cap on its hook
+    case = [(836, 160), (930, 156), (936, floor_y, 0), (830, floor_y, 0)]
+    m = cv.fill(case, hx('#2a1a24'))
+    cv.fill([(836, 160), (930, 156), (931, 166), (835, 170)], hx('#4a2a3a'), clip=case)
+    for x in (860, 904):
+        cv.rect(x, 158, x + 6, floor_y, hx('#120a10'))
+    cv.ink(case, 3)
+    backlit(cv, m, PINK_D, ((-3, 0), (0, -3)))
+    cv.ink([(866, 156), (870, 140), (896, 139), (900, 155)], 6, closed=False)            # the handle
+    cv.shape([(918, 170), (934, 172), (932, 192), (916, 190)], hx('#d8d0b4'), 2)            # its tag
+    door = [(960, 34, 0), (1060, 34, 0), (1060, floor_y, 0), (960, floor_y, 0)]
+    cv.fill(door, hx('#17132a'), smooth=False)
+    for y0, y1 in ((52, 128), (144, 220)):
+        cv.ink([(976, y0, 0), (1044, y0, 0), (1044, y1, 0), (976, y1, 0)], 3, col=hx('#0c0a16'), smooth=False)
+    cv.ink(door, 7, smooth=False)
+    cv.ellipse(970, 140, 5, 5, PINK_D)
+    cv.brush([(1000, 44), (1000, 54)], 3, 3, col=INK)                                       # the hook, his cap on it
+    cap = [(978, 74, 0), (980, 60), (994, 50), (1012, 50), (1024, 60), (1028, 66), (1046, 70, 0), (1044, 74, 0)]
+    m = cv.fill(cap, INK)
+    backlit(cv, m, PINK_D, ((-3, 0), (0, -3)))
     return cv
 
 
 def panel_door():
-    """Page 1, panel 1. From the dark of his flat: his front door forced, the three of them in it against the yellow
-    light of the landing, their shadows thrown long across his floor to us; the torch looking for something."""
-    cv = Cv(1080, 288, hx('#0c0b16'))
-    foot = 226                                                              # the floor at the door
-    night, floor, deep = hx('#15152c'), hx('#0e0e1c'), hx('#08070e')
-    sodium, sodiumD, sodiumDD = hx('#f0b44c'), hx('#b8782a'), hx('#5a3416')
+    """Page 1, panel 2. From the dark of his flat: his front door forced, the three of them in it against the cold
+    tube light of the landing, their shadows thrown long across his floor to us, the neon from his window along their
+    other edge; the torch looking for something."""
+    cv = Cv(1080, 282, hx('#0c0b16'))
+    foot = 222                                                              # the floor at the door
+    night, floor, deep = hx('#141228'), hx('#0e0e1c'), hx('#08070e')
+    tube, tubeD, tubeDD = hx('#7ad8e4'), hx('#2e8a9c'), hx('#164a58')
     beam, beamD = hx('#3a3650'), hx('#24223a')
-    cv.rect(0, 0, 1080, 214, night)
-    cv.rect(0, 214, 1080, 288, floor)
+    cv.rect(0, 0, 1080, 210, night)
+    cv.rect(0, 210, 1080, 282, floor)
     for x in range(-400, 1500, 70):                                        # the boards, running to the door
-        cv.brush([(745 + (x - 745) * 0.3, 214), (745 + (x - 745) * 1.6, 288)], 1.5, 2.5, col=deep)
-    cv.brush([(0, 214), (1080, 214)], 4, 4)
-    # the window on the left wall: the night, the neon of the bar across the street; its light on the floor
-    cv.rect(50, 34, 200, 150, hx('#1a1030'))
-    cv.rect(66, 62, 132, 70, hx('#ff2a6d'))
-    cv.rect(146, 96, 188, 101, hx('#2a8ac8'))
-    cv.ink([(50, 34, 0), (200, 34, 0), (200, 150, 0), (50, 150, 0)], 6, smooth=False)
-    cv.brush([(125, 34), (125, 150)], 5, 5)
-    cv.brush([(50, 92), (200, 92)], 5, 5)
-    cv.fill([(30, 288, 0), (80, 216, 0), (230, 216, 0), (200, 288, 0)], hx('#2a1430'), smooth=False)
-    # his sofa and the low table in front of it, in the dark (lit again below where the torch's beam falls)
+        cv.brush([(745 + (x - 745) * 0.3, 210), (745 + (x - 745) * 1.6, 282)], 1.5, 2.5, col=deep)
+    cv.brush([(0, 210), (1080, 210)], 4, 4)
+    # the window on the left wall, the neon of the bar across the street; its light on the floor
+    window_night(cv, 50, 30, 200, 146, seed=11)
+    cv.fill([(30, 282, 0), (80, 212, 0), (230, 212, 0), (200, 282, 0)], VIOLET, smooth=False)
     torch = (694 - 86, foot - 138)
-    beam_pts = [torch, (290, 288, 0), (570, 288, 0)]
+    beam_pts = [torch, (290, 282, 0), (570, 282, 0)]
 
     def room(c, clip=None):
-        sofa_back = [(240, 150), (470, 146), (476, 192, 0), (236, 196, 0)]
+        sofa_back = [(240, 146), (470, 142), (476, 188, 0), (236, 192, 0)]
         cv.fill(sofa_back, c[0], clip=clip)
         for x in (318, 396):
-            cv.brush([(x, 152), (x + 1, 192)], 2, 2, col=c[2], clip=clip)
-        cv.fill([(226, 190, 0), (488, 186, 0), (492, 226, 0), (222, 230, 0)], c[1], clip=clip, smooth=False)
-        for arm in ([(214, 168), (240, 162), (246, 232, 0), (214, 234, 0)], [(470, 160), (498, 164), (500, 228, 0), (474, 230, 0)]):
+            cv.brush([(x, 148), (x + 1, 188)], 2, 2, col=c[2], clip=clip)
+        cv.fill([(226, 186, 0), (488, 182, 0), (492, 222, 0), (222, 226, 0)], c[1], clip=clip, smooth=False)
+        for arm in ([(214, 164), (240, 158), (246, 228, 0), (214, 230, 0)], [(470, 156), (498, 160), (500, 224, 0), (474, 226, 0)]):
             cv.fill(arm, c[0], clip=clip)
             cv.ink(arm, 3)
-        cv.fill([(300, 236, 0), (440, 234, 0), (444, 246, 0), (296, 248, 0)], c[1], clip=clip, smooth=False)      # the table
-        cv.fill([(310, 248, 0), (318, 248, 0), (318, 270, 0), (310, 270, 0)], c[2], clip=clip, smooth=False)
-        cv.fill([(424, 246, 0), (432, 246, 0), (432, 268, 0), (424, 268, 0)], c[2], clip=clip, smooth=False)
-        cv.fill([(370, 206, 0), (380, 206, 0), (382, 234, 0), (368, 234, 0)], c[3], clip=clip, smooth=False)      # a bottle
-        cv.ellipse(340, 232, 12, 4, c[2], clip=clip)                                                               # an ashtray
-    room((deep, hx('#100e1c'), INK, hx('#121024')))
-    cv.ink([(240, 150), (470, 146), (476, 192, 0), (236, 196, 0)], 3)
-    # the doorway, the landing behind it in sodium yellow, the lamp on its wall
+        cv.fill([(300, 232, 0), (440, 230, 0), (444, 242, 0), (296, 244, 0)], c[1], clip=clip, smooth=False)      # the table
+        cv.fill([(310, 244, 0), (318, 244, 0), (318, 266, 0), (310, 266, 0)], c[2], clip=clip, smooth=False)
+        cv.fill([(424, 242, 0), (432, 242, 0), (432, 264, 0), (424, 264, 0)], c[2], clip=clip, smooth=False)
+        cv.ellipse(340, 228, 12, 4, c[2], clip=clip)                                                               # an ashtray
+    room((deep, hx('#100e1c'), INK))
+    sofa = cv.mask([(240, 146), (470, 142), (476, 188, 0), (236, 192, 0)])
+    backlit(cv, sofa, PINK_DD, ((0, -3),))
+    cv.ink([(240, 146), (470, 142), (476, 188, 0), (236, 192, 0)], 3)
+    # the doorway, the landing behind it in the tube's cold light, the tube on its wall
     dx0, dx1, dy0, dy1 = 664, 828, 8, foot
-    cv.rect(dx0, dy0, dx1, dy1, sodium)
-    cv.rect(dx0, dy0 + 162, dx1, dy1, sodiumD)
-    cv.rect(dx0, dy0 + 156, dx1, dy0 + 162, sodiumDD)
-    cv.rect(dx0, dy0, dx0 + 22, dy1, sodiumD)                              # the landing's far wall, in shade
-    cv.ellipse(806, 60, 10, 8, hx('#fff6d0'))
-    cv.brush([(806, 68), (806, 76)], 6, 6, col=sodiumDD)
-    cv.rect(dx0 - 10, 0, dx0, 288, deep)
-    cv.rect(dx1, 0, dx1 + 10, 288, deep)
+    cv.rect(dx0, dy0, dx1, dy1, tube)
+    cv.rect(dx0, dy0 + 158, dx1, dy1, tubeD)
+    cv.rect(dx0, dy0 + 152, dx1, dy0 + 158, tubeDD)
+    cv.rect(dx0, dy0, dx0 + 22, dy1, tubeD)                                # the landing's far wall, in shade
+    cv.rect(760, 40, 816, 48, hx('#f0ffff'))
+    cv.rect(dx0 - 10, 0, dx0, 282, deep)
+    cv.rect(dx1, 0, dx1 + 10, 282, deep)
     cv.ink([(dx0, dy0, 0), (dx1, dy0, 0), (dx1, dy1, 0), (dx0, dy1, 0)], 6, smooth=False)
     # his door, swung in against the wall, its edge splintered at the lock
-    door = [(dx0 - 10, dy0 - 8, 0), (604, 0, 0), (604, 258, 0), (dx0 - 10, dy1 + 4, 0)]
+    door = [(dx0 - 10, dy0 - 8, 0), (604, 0, 0), (604, 254, 0), (dx0 - 10, dy1 + 4, 0)]
     cv.fill(door, hx('#1c1424'), smooth=False)
-    cv.fill([(604, 0, 0), (616, 2, 0), (616, 254, 0), (604, 258, 0)], hx('#3a2a40'), smooth=False)
+    cv.fill([(604, 0, 0), (616, 2, 0), (616, 250, 0), (604, 254, 0)], hx('#3a2a40'), smooth=False)
     cv.ink(door, 4, smooth=False)
     for k in range(6):
-        y = 116 + k * 5
-        cv.brush([(616, y), (628 + (k % 3) * 5, y - 3 + k)], 3, 0.5, col=hx('#e8c890'))
-    cv.ellipse(632, 128, 4, 4, hx('#c8a050'))                              # the lock's tongue, torn out
+        y = 112 + k * 5
+        cv.brush([(616, y), (628 + (k % 3) * 5, y - 3 + k)], 3, 0.5, col=hx('#d8e8f0'))
+    cv.ellipse(632, 124, 4, 4, hx('#9ab0c0'))                              # the lock's tongue, torn out
     # the light thrown in across the floor, and their shadows long in it
-    spill = [(dx0, dy1, 0), (dx1, dy1, 0), (1000, 288, 0), (430, 288, 0)]
-    cv.fill(spill, sodiumDD, smooth=False)
-    cv.fill([(dx0 + 10, dy1, 0), (dx1 - 10, dy1, 0), (930, 288, 0), (510, 288, 0)], hx('#7a4e1e'), smooth=False)
+    spill = [(dx0, dy1, 0), (dx1, dy1, 0), (1000, 282, 0), (430, 282, 0)]
+    cv.fill(spill, tubeDD, smooth=False)
+    cv.fill([(dx0 + 10, dy1, 0), (dx1 - 10, dy1, 0), (930, 282, 0), (510, 282, 0)], hx('#1e6474'), smooth=False)
     for x0, w0, x1, w1 in [(694, 30, 560, 80), (754, 46, 760, 120), (808, 26, 900, 60)]:
-        cv.fill([(x0 - w0 / 2, dy1, 0), (x0 + w0 / 2, dy1, 0), (x1 + w1 / 2, 288, 0), (x1 - w1 / 2, 288, 0)], hx('#120a0c'),
+        cv.fill([(x0 - w0 / 2, dy1, 0), (x0 + w0 / 2, dy1, 0), (x1 + w1 / 2, 282, 0), (x1 - w1 / 2, 282, 0)], hx('#0a1218'),
                 clip=spill, smooth=False)
-    # the three of them, dark against the light, its edge on them; the torch's beam on the floor
+    # the torch's beam on the floor, the room lit again under it
     cv.fill(beam_pts, beamD, smooth=False)
-    cv.fill([torch, (350, 288, 0), (520, 288, 0)], beam, smooth=False)
-    room((hx('#4a3a5a'), hx('#5a4a6a'), hx('#2a2238'), hx('#6a8a6a')), clip=beam_pts)
+    cv.fill([torch, (350, 282, 0), (520, 282, 0)], beam, smooth=False)
+    room((hx('#4a3a5a'), hx('#5a4a6a'), hx('#2a2238')), clip=beam_pts)
+    # the three of them, black against the light, its edge on them, the neon from the window on their other side
     for j, x, y, sc, f in ((YOUNG, 808, dy1 - 2, 0.95, 1), (HEAVY, 754, dy1 + 2, 1.04, 1), (SLICK, 694, dy1 + 6, 1.0, 1)):
         m = figure(cv, j, x, y, sc, f)
         cv.im.paste(INK, (0, 0), m)
-        backlit(cv, m, sodium, ((3, 0), (-2, 0), (0, -2)))
-    cv.ellipse(*torch, 5, 5, hx('#fff6d0'))
+        backlit(cv, m, tube, ((3, 0), (0, -2)))
+        backlit(cv, m, PINK_D, ((-2, 0),))
+    cv.ellipse(*torch, 5, 5, hx('#f6f0ff'))
     return cv
 
 
 def panel_pry():
-    """Page 1, panel 2. Down at the floor: the heavy on one knee, his weight on a crowbar under one of the boards;
-    it comes up screaming on its nails. A torch from the left lights him and the hole."""
-    cv = Cv(348, 282, hx('#120c10'))
-    wood, wood2, woodD, woodL = hx('#5a3424'), hx('#523020'), hx('#3e2218'), hx('#8a5a3a')
-    sk = dict(skin=hx('#eaa86a'), shade=hx('#7a4026'), lit=hx('#7a5240'))
-    cv.rect(0, 0, 348, 130, hx('#17111c'))
-    cv.rect(0, 112, 348, 130, hx('#22161e'))                                # the skirting, the wall's foot
+    """Page 2, panel 1. Down at the floor: the heavy on one knee, his weight on a crowbar under one of the boards;
+    it comes up screaming on its nails. A torch from the left lights his face cold and the hole; the window's neon
+    behind him runs along his back."""
+    cv = Cv(348, 288, hx('#120c1c'))
+    wood, wood2, woodD, woodL = hx('#2e2240'), hx('#281e3a'), hx('#1c1428'), hx('#6a5a8a')
+    sk = dict(skin=hx('#d8c8e8'), shade=hx('#3e2652'), lit=PINK_D)
+    cv.rect(0, 0, 348, 130, hx('#141022'))
+    cv.rect(0, 112, 348, 130, hx('#1c1630'))                                # the skirting, the wall's foot
     cv.brush([(0, 112), (348, 112)], 2, 2, col=INK)
-    boards(cv, 130, 282, 150, -200, 9, [wood, wood2], gap=hx('#1a0c08'))
+    boards(cv, 130, 288, 150, -200, 9, [hx('#4a3c64'), hx('#42365a')], gap=hx('#140e20'))
+    pool = cv.blank()
+    ImageDraw.Draw(pool).ellipse([-80, 150, 220, 300], fill=255)            # the torch's pool on the boards
+    dark = Cv(348, 288)
+    boards(dark, 130, 288, 150, -200, 9, [wood, wood2], gap=hx('#0e0a16'))
+    cv.im.paste(dark.im, (0, 0), ImageChops.subtract(cv.mask([(0, 130, 0), (348, 130, 0), (348, 288, 0), (0, 288, 0)], False), pool))
     # the hole: a board out, the dark under it, the corner of a tin box catching the light
     hole = [(10, 236, 0), (150, 206, 0), (164, 230, 0), (18, 266, 0)]
     cv.fill(hole, INK, smooth=False)
-    cv.fill([(60, 244, 0), (126, 230, 0), (132, 248, 0), (66, 262, 0)], hx('#6a7480'), smooth=False)
-    cv.fill([(60, 244, 0), (126, 230, 0), (127, 234, 0), (61, 248, 0)], hx('#c8d0d8'), smooth=False)
+    cv.fill([(60, 244, 0), (126, 230, 0), (132, 248, 0), (66, 262, 0)], hx('#4a5a6e'), smooth=False)
+    cv.fill([(60, 244, 0), (126, 230, 0), (127, 234, 0), (61, 248, 0)], hx('#c8e0f0'), smooth=False)
     # the board coming up on its nails, splintering
     board = [(4, 230, 0), (128, 178, 0), (140, 188, 0), (12, 240, 0)]
     cv.shape(board, woodL, 3)
     cv.fill([(4, 230, 0), (12, 240, 0), (10, 246, 0), (2, 236, 0)], woodD, smooth=False)
     for x, y in ((40, 220), (100, 194)):
-        cv.brush([(x, y), (x + 2, y + 18)], 2.5, 1.5, col=hx('#c8ccd4'))
+        cv.brush([(x, y), (x + 2, y + 18)], 2.5, 1.5, col=hx('#c8d0e0'))
     for k in range(5):
-        cv.brush([(128 + k * 3, 182 + k * 2), (146 + k * 5, 172 + k * 5)], 2.5, 0.5, col=hx('#f0d0a0'))   # splinters
+        cv.brush([(128 + k * 3, 182 + k * 2), (146 + k * 5, 172 + k * 5)], 2.5, 0.5, col=hx('#e8e0f8'))   # splinters
     # the crowbar, from his fists down under the board
     cv.brush([(214, 146), (126, 196), (118, 204), (126, 210)], 11, 9)
-    cv.brush([(213, 143), (126, 193)], 3, 3, col=hx('#a83a30'))
-    # him: the bulk of his jacket, his head bent over the work
-    body = [(170, 282), (176, 210), (204, 170), (256, 150), (320, 148), (348, 160), (348, 282)]
-    leather(cv, body, sk['lit'], [[(176, 210), (204, 170), (212, 174), (186, 214)]])
+    cv.brush([(213, 143), (126, 193)], 3, 3, col=hx('#d02a44'))
+    # him: the bulk of his jacket, black, the neon along its back; his head bent over the work
+    body = [(170, 288), (176, 210), (204, 170), (256, 150), (320, 148), (348, 160), (348, 288)]
+    m = cv.fill(body, INK)
+    backlit(cv, m, PINK_D, ((3, 0), (0, -3)))
     head_heavy(cv, T(262, 10, 1.22, -1, -0.28), sk, 'strain')
-    cv.brush([(208, 156), (224, 166), (250, 168), (272, 160)], 3, 3, col=hx('#e8c050'))     # his gold chain
-    cv.brush([(212, 158), (226, 166)], 1, 1, col=hx('#fff0a0'))
+    hm = cv.mask(T(262, 10, 1.22, -1, -0.28)(jaw_heavy()))
+    backlit(cv, hm, PINK, ((3, 0),))
+    cv.brush([(208, 156), (224, 166), (250, 168), (272, 160)], 3, 3, col=hx('#c8d0e0'))     # his chain
     # his arms down to the bar, the gloved fists closed on it
     for arm in ([(272, 168), (238, 166), (216, 152), (204, 170), (204, 204), (230, 222), (268, 212)],
                 [(214, 200), (186, 190), (168, 186), (158, 204), (172, 226), (206, 232)]):
-        backlit(cv, cv.fill(arm, INK), sk['lit'], ((-3, 0), (0, -3)))
+        backlit(cv, cv.fill(arm, INK), hx('#8a7aa8'), ((-3, 0), (0, -3)))
     for k in range(3):
-        finger(cv, [(224 - k * 4, 140 + k * 9), (210 - k * 4, 142 + k * 9), (206 - k * 4, 150 + k * 9)], 10, hx('#1a1422'), sk['lit'], side=-1, band=0.3)
+        finger(cv, [(224 - k * 4, 140 + k * 9), (210 - k * 4, 142 + k * 9), (206 - k * 4, 150 + k * 9)], 10, hx('#16121e'), hx('#8a7aa8'), side=-1, band=0.3)
     for k in range(3):
-        finger(cv, [(176 - k * 4, 176 + k * 9), (162 - k * 4, 178 + k * 9), (158 - k * 4, 186 + k * 9)], 10, hx('#1a1422'), sk['lit'], side=-1, band=0.3)
+        finger(cv, [(176 - k * 4, 176 + k * 9), (162 - k * 4, 178 + k * 9), (158 - k * 4, 186 + k * 9)], 10, hx('#16121e'), hx('#8a7aa8'), side=-1, band=0.3)
     return cv
 
 
 def panel_box():
-    """Page 1, panel 3. From above, in a torch's circle: the tin box open in the hole in the floor, his six years in
-    banded bundles, his passport, a bus ticket and the postcard of a beach; a gloved hand takes it all."""
-    cv = Cv(348, 282, hx('#08060a'))
+    """Page 2, panel 2. From above, in a torch's cold circle: the tin box open in the hole in the floor, his six
+    years in banded bundles, his passport, a bus ticket and the postcard of a beach; a gloved hand takes it all."""
+    cv = Cv(348, 288, hx('#08060e'))
     circle = cv.blank()
-    ImageDraw.Draw(circle).ellipse([14, 10, 340, 290], fill=255)
+    ImageDraw.Draw(circle).ellipse([14, 10, 340, 294], fill=255)
     # under the torch: the boards round the hole, lit; outside it, the dark
-    for i in range(7):
+    for i in range(8):
         y = -20 + i * 46
-        cv.fill([(0, y, 0), (348, y - 20, 0), (348, y + 24, 0), (0, y + 44, 0)], hx('#6a4430') if i % 2 else hx('#5e3c2a'),
+        cv.fill([(0, y, 0), (348, y - 20, 0), (348, y + 24, 0), (0, y + 44, 0)], hx('#3a3050') if i % 2 else hx('#342a48'),
                 clip=circle, smooth=False)
-        cv.brush([(0, y + 44), (348, y + 24)], 3, 3, col=hx('#24140c'), clip=circle)
-    cv.fill([(0, -20, 0), (348, -20, 0), (348, 300, 0), (0, 300, 0)], hx('#1a0f0c'), cut=circle, smooth=False)
+        cv.brush([(0, y + 44), (348, y + 24)], 3, 3, col=hx('#120c1c'), clip=circle)
+    cv.fill([(0, -20, 0), (348, -20, 0), (348, 300, 0), (0, 300, 0)], hx('#0e0a18'), cut=circle, smooth=False)
     hole = [(40, 60, 0), (300, 40, 0), (318, 236, 0), (52, 258, 0)]
     cv.fill(hole, INK, smooth=False)
     # the box, its lid thrown back
     box = [(70, 84, 0), (282, 70, 0), (292, 214, 0), (78, 230, 0)]
-    cv.fill(box, hx('#5a646e'), smooth=False)
-    cv.fill([(80, 92, 0), (274, 80, 0), (282, 206, 0), (86, 220, 0)], hx('#2a3038'), smooth=False)
+    cv.fill(box, hx('#4a5a70'), smooth=False)
+    cv.fill([(80, 92, 0), (274, 80, 0), (282, 206, 0), (86, 220, 0)], hx('#1a2234'), smooth=False)
     cv.ink(box, 3, smooth=False)
     lid = [(70, 84, 0), (282, 70, 0), (276, 50, 0), (66, 62, 0)]
-    cv.fill(lid, hx('#8a949e'), smooth=False)
+    cv.fill(lid, hx('#8a9ab4'), smooth=False)
     cv.ink(lid, 3, smooth=False)
     # the bundles: green notes in a paper band
     for r in range(3):
@@ -764,53 +905,60 @@ def panel_box():
                 continue
             x, y = 90 + c * 46 - r * 1, 96 + r * 40 - c * 3
             note = [(x, y, 0), (x + 42, y - 3, 0), (x + 44, y + 34, 0), (x + 2, y + 37, 0)]
-            cv.fill(note, hx('#5e8a5a'), smooth=False)
-            cv.fill([(x, y, 0), (x + 42, y - 3, 0), (x + 42.5, y + 4, 0), (x + 0.5, y + 7, 0)], hx('#8ab07a'), smooth=False)
-            cv.ellipse(x + 22, y + 17, 7, 7, hx('#3e6a44'))
-            cv.fill([(x + 17, y - 1, 0), (x + 25, y - 2, 0), (x + 28, y + 35, 0), (x + 20, y + 36, 0)], hx('#d8c08a'), smooth=False)
+            cv.fill(note, hx('#3e8a6e'), smooth=False)
+            cv.fill([(x, y, 0), (x + 42, y - 3, 0), (x + 42.5, y + 4, 0), (x + 0.5, y + 7, 0)], hx('#7ad0a8'), smooth=False)
+            cv.ellipse(x + 22, y + 17, 7, 7, hx('#24604c'))
+            cv.fill([(x + 17, y - 1, 0), (x + 25, y - 2, 0), (x + 28, y + 35, 0), (x + 20, y + 36, 0)], hx('#e0d8c0'), smooth=False)
             cv.ink(note, 2, smooth=False)
     # the postcard (a beach at sunset), the ticket, his passport
     dx, dy = -100, 22
     card = [(222 + dx, 88 + dy, 0), (284 + dx, 84 + dy, 0), (286 + dx, 126 + dy, 0), (224 + dx, 130 + dy, 0)]
-    cv.fill(card, hx('#f0a050'), smooth=False)
-    cv.fill([(222 + dx, 110 + dy, 0), (285 + dx, 106 + dy, 0), (286 + dx, 126 + dy, 0), (224 + dx, 130 + dy, 0)], hx('#2a7a9a'), smooth=False)
-    cv.ellipse(266 + dx, 100 + dy, 7, 7, hx('#ffe080'), clip=card)
-    cv.brush([(238 + dx, 120 + dy), (242 + dx, 98 + dy)], 2.5, 1.5, col=hx('#3a2a1a'))         # a palm tree
+    cv.fill(card, hx('#ff7a5a'), smooth=False)
+    cv.fill([(222 + dx, 110 + dy, 0), (285 + dx, 106 + dy, 0), (286 + dx, 126 + dy, 0), (224 + dx, 130 + dy, 0)], hx('#2a6aa8'), smooth=False)
+    cv.ellipse(266 + dx, 100 + dy, 7, 7, FIRE_L, clip=card)
+    cv.brush([(238 + dx, 120 + dy), (242 + dx, 98 + dy)], 2.5, 1.5, col=INK)                     # a palm tree
     cv.fill([(242 + dx, 98 + dy), (230 + dx, 94 + dy), (240 + dx, 96 + dy), (252 + dx, 92 + dy), (244 + dx, 98 + dy),
-             (254 + dx, 104 + dy)], hx('#2a3a1a'))
+             (254 + dx, 104 + dy)], INK)
     cv.ink(card, 2, smooth=False)
-    cv.shape([(108, 176, 0), (150, 172, 0), (152, 186, 0), (110, 190, 0)], hx('#d8d0b4'), 2)
-    cv.brush([(116, 180), (144, 177)], 2, 2, col=hx('#b8262c'))
-    cv.shape([(186, 168, 0), (226, 165, 0), (229, 214, 0), (189, 217, 0)], hx('#24345a'), 2)
+    cv.shape([(108, 176, 0), (150, 172, 0), (152, 186, 0), (110, 190, 0)], hx('#d8d0e0'), 2)
+    cv.brush([(116, 180), (144, 177)], 2, 2, col=PINK)
+    cv.shape([(186, 168, 0), (226, 165, 0), (229, 214, 0), (189, 217, 0)], hx('#1e2a5a'), 2)
     cv.ellipse(208, 184, 8, 8, hx('#c8a040'))
     cv.brush([(196, 204), (220, 202)], 2, 2, col=hx('#c8a040'))
-    # the glove coming in from the top right, a bundle in its fingers
-    lit, glove_ = hx('#6a5a66'), hx('#1a1422')
+    # the glove coming in from the top right, black, the light along its edge, a bundle in its fingers
+    rim = hx('#9ab8d0')
     x, y = 222, 104
-    cv.fill([(x + 4, y + 8, 0), (x + 54, y + 2, 0), (x + 58, y + 44, 0), (x + 8, y + 50, 0)], hx('#14100c'), smooth=False)   # its shadow
-    cv.shape([(x, y, 0), (x + 50, y - 6, 0), (x + 54, y + 36, 0), (x + 4, y + 42, 0)], hx('#6e9a66'), 2)
-    cv.fill([(x + 21, y - 3, 0), (x + 30, y - 4, 0), (x + 34, y + 38, 0), (x + 25, y + 39, 0)], hx('#d8c08a'), smooth=False)
-    leather(cv, [(348, 0, 0), (276, 0, 0), (262, 46), (300, 64), (348, 40, 0)], lit, [[(276, 0, 0), (262, 46), (270, 48), (284, 0, 0)]])
-    cv.shape([(250, 64), (282, 44), (306, 62), (300, 92), (268, 104), (244, 96)], glove_, 3)        # the back of the hand
-    cv.brush([(256, 70), (282, 52)], 4, 2, col=lit)
+    cv.fill([(x + 4, y + 8, 0), (x + 54, y + 2, 0), (x + 58, y + 44, 0), (x + 8, y + 50, 0)], hx('#0c0a14'), smooth=False)   # its shadow
+    cv.shape([(x, y, 0), (x + 50, y - 6, 0), (x + 54, y + 36, 0), (x + 4, y + 42, 0)], hx('#4e9a7e'), 2)
+    cv.fill([(x + 21, y - 3, 0), (x + 30, y - 4, 0), (x + 34, y + 38, 0), (x + 25, y + 39, 0)], hx('#e0d8c0'), smooth=False)
+    arm = cv.fill([(348, 0, 0), (276, 0, 0), (262, 46), (300, 64), (348, 40, 0)], INK)
+    hand = cv.fill([(250, 64), (282, 44), (306, 62), (300, 92), (268, 104), (244, 96)], INK)        # the back of the hand
+    backlit(cv, ImageChops.lighter(arm, hand), rim, ((-3, 0), (0, -3)))
     for k in range(4):
-        finger(cv, [(256 + k * 13, 98 - k * 2), (250 + k * 13, 116 - k), (244 + k * 13, 124 - k)], 12, glove_, lit, side=-1, band=0.3)
-    finger(cv, [(250, 76), (232, 92), (226, 110)], 13, glove_, lit, side=-1, band=0.3)                # the thumb
+        finger(cv, [(256 + k * 13, 98 - k * 2), (250 + k * 13, 116 - k), (244 + k * 13, 124 - k)], 12, hx('#16121e'), rim, side=-1, band=0.25)
+    finger(cv, [(250, 76), (232, 92), (226, 110)], 13, hx('#16121e'), rim, side=-1, band=0.25)        # the thumb
     return cv
 
 
 def panel_count():
-    """Page 1, panel 4. The young one, close, riffling a brick of notes under his nose with his thumb, grinning."""
-    cv = Cv(348, 282, hx('#0e1a16'))
-    cv.fill([(0, 0, 0), (348, 0, 0), (348, 110, 0), (0, 190, 0)], hx('#14261e'), smooth=False)
-    pal = dict(skin=hx('#d8a070'), shade=hx('#6e3e2c'), stubble=hx('#a87656'), hair=hx('#140e0a'), shine=hx('#4a3a30'),
-               glint=hx('#fff4d0'), lit=hx('#4a5a52'))
-    body = [(40, 282), (80, 214), (150, 190), (250, 196), (320, 226), (348, 282)]
-    leather(cv, body, hx('#3a4a44'), [[(80, 214), (150, 190), (160, 198), (90, 224)]])
-    cv.fill([(150, 192), (186, 236), (214, 196)], hx('#d8d0c0'))             # his shirt, open at the neck
-    head_young(cv, T(214, 14, 1.6, -1, 0.12), pal)
+    """Page 2, panel 3. The young one, close, riffling a brick of notes under his nose with his thumb, grinning; the
+    window's pink neon on his face, the landing's cold light along the back of his head."""
+    cv = Cv(348, 288, hx('#140c22'))
+    cv.fill([(0, 0, 0), (348, 0, 0), (348, 110, 0), (0, 190, 0)], hx('#1e1032'), smooth=False)
+    pal = dict(skin=hx('#f08aa8'), shade=hx('#4a1838'), stubble=hx('#b85a7a'), hair=INK, shine=hx('#6a2a50'),
+               glint=hx('#fff4f8'), white=hx('#e8b8c8'), teeth=hx('#f8e0e8'), scar=hx('#ffc8d8'), band=CYAN_D,
+               gold=CYAN)
+    body = [(40, 288), (80, 214), (150, 190), (250, 196), (320, 226), (348, 288)]
+    m = cv.fill(body, INK)
+    backlit(cv, m, PINK_D, ((-3, 0), (0, -3)))
+    cv.fill([(150, 192), (186, 236), (214, 196)], hx('#e8a8c0'))             # his shirt, open at the neck
+    t = T(214, 14, 1.6, -1, 0.12)
+    head_young(cv, t, pal)
+    hm = cv.mask(t([(0, 2), (16, 4), (27, 11), (33, 23), (35, 34, 0), (36, 47), (43, 61, 0), (37, 80), (35, 94), (31, 103, 0),
+                    (14, 106), (-4, 99), (-15, 72), (-28, 60), (-35, 42), (-33, 22), (-20, 7)]))
+    backlit(cv, hm, CYAN, ((4, 0), (2, -2)))
     # the brick of notes, its band, the top notes riffled up by his thumb
-    green, greenD, greenL, band = hx('#6a9462'), hx('#3e6a44'), hx('#9ac08a'), hx('#d8c08a')
+    green, greenD, greenL, band = hx('#4ea886'), hx('#24604c'), hx('#8ae0c0'), hx('#f0e0d8')
     stack = [(30, 214, 0), (130, 196, 0), (150, 232, 0), (52, 254, 0)]
     cv.shape(stack, green, 3)
     side = [(52, 254, 0), (150, 232, 0), (150, 248, 0), (54, 272, 0)]
@@ -827,209 +975,129 @@ def panel_count():
         note = [(x0, y0, 0), (x0 + 104 * c, y0 + 104 * s_, 0), (x0 + 104 * c + 6, y0 + 104 * s_ - 26, 0), (x0 + 6, y0 - 26, 0)]
         cv.shape(note, greenL if k % 2 else green, 2)
         cv.ellipse(x0 + 60 * c + 3, y0 + 60 * s_ - 13, 6, 6, greenD)
-    # his hands: the fingers under the brick, the thumb on the notes
-    glove_ = hx('#1a1422')
+    # his hands, black gloves, the neon on their knuckles: the fingers under the brick, the thumb on the notes
+    glove_ = hx('#16121e')
     for k in range(3):
-        finger(cv, [(20, 250 + k * 9), (44, 262 + k * 7), (70, 264 + k * 5)], 13, glove_, pal['lit'], side=-1, band=0.3)
-    finger(cv, [(150, 260), (156, 236), (146, 214), (130, 204)], 14, glove_, pal['lit'], side=-1, band=0.3)
-    leather(cv, [(0, 240), (22, 246), (28, 282), (0, 282)], pal['lit'])
-    leather(cv, [(150, 282), (148, 256), (176, 250), (190, 282)], pal['lit'])
-    return cv
-
-
-def panel_super():
-    """Page 2, panel 1. Over the shooter's shoulder: the building's super in the doorway, against the landing's
-    light, hit; he sags against the jamb, a hand to his chest, his torch dropping, his face caught in another man's
-    torch. The pistol still smokes (the game draws the smoke, and the blood, 'super_blood', spreading)."""
-    cv = Cv(528, 288, hx('#0c0b16'))
-    sodium, sodiumD, sodiumDD = hx('#f0b44c'), hx('#b8782a'), hx('#5a3416')
-    cv.rect(0, 0, 528, 288, hx('#15152c'))
-    cv.rect(0, 250, 528, 288, hx('#0e0e1c'))
-    # the doorway and the landing, its lamp
-    dx0, dx1 = 286, 476
-    cv.rect(dx0, 0, dx1, 250, sodium)
-    cv.rect(dx0, 190, dx1, 250, sodiumD)
-    cv.rect(dx0, 184, dx1, 190, sodiumDD)
-    cv.rect(dx0, 0, dx0 + 26, 250, sodiumD)                              # the landing's far wall, in shade
-    cv.ellipse(452, 40, 9, 7, hx('#fff6d0'))
-    cv.rect(dx0 - 12, 0, dx0, 288, hx('#08070e'))
-    cv.rect(dx1, 0, dx1 + 14, 288, hx('#08070e'))
-    cv.ink([(dx0, -10, 0), (dx1, -10, 0), (dx1, 250, 0), (dx0, 250, 0)], 6, smooth=False)
-    cv.fill([(dx0, 250, 0), (dx1, 250, 0), (528, 288, 0), (250, 288, 0)], sodiumDD, smooth=False)
-    # him: a cardigan over a shirt and tie, sagging against the jamb on the right
-    cardigan, cardiganD = hx('#8a6a3a'), hx('#4a3418')
-    body = [(344, 288, 0), (348, 196), (352, 170, 0), (382, 152), (400, 148, 0), (424, 150), (452, 162, 0), (462, 196),
-            (466, 288, 0)]
-    m = cv.fill(body, cardigan)
-    cv.fill([(430, 150), (452, 162, 0), (462, 196), (466, 288, 0), (436, 288, 0), (440, 200)], cardiganD, clip=body)
-    shirt = [(382, 152), (400, 148, 0), (424, 150), (412, 196), (404, 222, 0), (394, 196)]
-    cv.fill(shirt, hx('#d8d0c0'), clip=body)                                                           # his shirt
-    cv.fill([(398, 156), (408, 156), (410, 212), (404, 220), (398, 212)], hx('#5a2a2a'), clip=shirt)    # the tie
-    cv.ink(shirt, 2)
-    cv.ink(body, 4)
-    backlit(cv, m, sodium, ((-3, 0),))
-    for y in (232, 254, 276):
-        cv.ellipse(405 - (y - 232) * 0.05, y, 3, 3, hx('#3a2a14'))                                        # buttons
-    cv.brush([(404, 222), (406, 288)], 2, 2, col=cardiganD)
-    # the hand on his chest, the other arm dropping its torch
-    finger(cv, [(356, 176), (346, 214), (360, 236)], 26, cardigan, cardiganD)
-    finger(cv, [(360, 236), (376, 214), (388, 196)], 24, cardigan, cardiganD)
-    hand = [(378, 196), (396, 182), (414, 186), (414, 198), (398, 210), (382, 210)]
-    cv.shape(hand, hx('#d8b098'), 3)
-    for k in range(3):
-        cv.brush([(392 + k * 6, 190 - k), (404 + k * 4, 202 - k * 2)], 1.5, 1)
-    finger(cv, [(452, 170), (466, 214), (468, 246)], 24, cardiganD, INK)
-    cv.shape([(458, 244), (476, 242), (478, 258), (460, 260)], hx('#d8b098'), 3)
-    cv.shape([(440, 262), (470, 256), (474, 270), (444, 276)], hx('#3a3a44'), 3)
-    cv.ellipse(441, 270, 5, 5, hx('#fff4c0'))
-    # his head, three quarters toward the gun, in the torch's cold light
-    pal = dict(skin=hx('#e8c8b0'), shade=hx('#7a5a58'), hair=hx('#c8c4bc'), hairD=hx('#7a7670'), white=hx('#e0dcd8'),
-               iris=hx('#4a5a6a'))
-    head_old(cv, T(414, 26, 1.18, -1, -0.1), pal)
-    cv.shape([(382, 160, 0), (404, 150, 0), (404, 176, 0)], hx('#d8d0c0'), 3)                       # his collar
-    cv.shape([(428, 160, 0), (406, 150, 0), (404, 176, 0)], hx('#c8c0b0'), 3)
-    # the shooter, close, from behind his shoulder: the back of his combed head, the arm out, the pistol
-    m = cv.fill([(0, 288), (0, 190), (40, 160), (100, 152), (150, 164), (176, 200), (190, 288)], INK)
-    backlit(cv, m, hx('#3a3050'), ((3, -1),))
-    m = cv.fill([(130, 176), (232, 148), (246, 162), (150, 212)], INK)
-    backlit(cv, m, hx('#5a4a6a'), ((0, -3),))
-    gun = [(222, 138, 0), (296, 130, 0), (298, 144, 0), (252, 148, 0), (250, 168, 0), (232, 170, 0), (234, 150, 0), (222, 150, 0)]
-    m = cv.fill(gun, INK, smooth=False)
-    backlit(cv, m, sodiumD, ((3, 0), (0, -2)))
-    cv.brush([(232, 132), (292, 128)], 2, 1, col=hx('#6a6a7a'))
-    fist = [(206, 150), (224, 140), (246, 144), (252, 160), (244, 176), (222, 178), (208, 166)]
-    m = cv.fill(fist, hx('#16121c'))
-    backlit(cv, m, hx('#5a4a6a'), ((0, -2), (2, 0)))
-    for k in range(3):
-        cv.brush([(226 + k * 7, 150 + k), (230 + k * 6, 172 - k)], 1.5, 1, col=hx('#3a3048'))       # his knuckles
-    cv.brush([(246, 146), (262, 150), (266, 158)], 4, 3, col=hx('#16121c'))                          # the finger on the trigger
-    m = cv.fill([(66, 104), (96, 94), (124, 100), (138, 122), (140, 150), (132, 170), (104, 180), (78, 174), (60, 146)], hx('#0c0808'))
-    for a_, m_, b_ in (((70, 112), (98, 100), (128, 110)), ((66, 128), (100, 116), (134, 128)), ((64, 144), (100, 134), (136, 146))):
-        cv.brush([a_, m_, b_], 0.5, 0.5, mid=2.2, col=hx('#5a4a6a'), clip=m)                         # the comb's tracks
-    backlit(cv, m, hx('#6a5a7a'), ((3, 0), (0, -2)))
-    cv.shape([(136, 136), (146, 132), (148, 150), (138, 158)], hx('#3a2422'), 3)                          # his ear
-    cv.brush([(140, 140), (143, 150)], 1.5, 1, col=hx('#1a1012'))
-    m = cv.fill([(58, 176), (104, 186), (150, 170), (160, 196), (100, 210), (48, 196)], INK)              # the collar up
-    backlit(cv, m, hx('#3a3050'), ((2, -2),))
-    return cv
-
-
-def panel_super_blood():
-    """Page 2, panel 1's blood, on its own (transparent round it): the game lets it spread from under his hand and
-    run down his shirt."""
-    cv = Cv(528, 288)
-    out = Image.new('RGBA', (528, 288), (0, 0, 0, 0))
-    stain = cv.mask([(388, 208), (404, 205), (418, 210), (420, 230), (412, 252), (416, 272), (410, 288, 0), (394, 288, 0),
-                     (398, 262), (390, 242), (386, 224)])
-    d = ImageDraw.Draw(stain)
-    d.line([(392, 236), (386, 270)], fill=255, width=4)
-    d.line([(416, 226), (424, 258)], fill=255, width=3)
-    stain = ImageChops.subtract(stain, cv.mask([(378, 196), (396, 182), (414, 186), (414, 198), (398, 210), (382, 210)]))
-    d = ImageDraw.Draw(stain)
-    for a_, b_ in (((392, 196), (398, 206)), ((402, 194), (406, 204))):
-        d.line([a_, b_], fill=255, width=3)                 # between his fingers
-    out.paste((140, 12, 22, 255), (0, 0), stain)
-    out.paste((82, 6, 14, 255), (0, 0), ImageChops.multiply(stain, cv.mask([(406, 196), (440, 196), (440, 288, 0), (404, 288, 0)])))
-    cv.im = out
+        finger(cv, [(20, 250 + k * 9), (44, 262 + k * 7), (70, 264 + k * 5)], 13, glove_, PINK_D, side=-1, band=0.3)
+    finger(cv, [(150, 260), (156, 236), (146, 214), (130, 204)], 14, glove_, PINK_D, side=-1, band=0.3)
+    cv.fill([(0, 240), (22, 246), (28, 288), (0, 288)], INK)
+    cv.fill([(150, 288), (148, 256), (176, 250), (190, 288)], INK)
     return cv
 
 
 def panel_pour():
-    """Page 2, panel 2. His living room in the neon from the window: the heavy tips a jerrycan over the sofa, the
-    petrol coming out in a rope and soaking it dark. He says what the boss says (a balloon by the game)."""
-    cv = Cv(528, 288, hx('#110e22'))
-    pink, pinkD, blue = hx('#ff3a7a'), hx('#8a1e50'), hx('#2a5a9a')
-    cv.rect(0, 218, 528, 288, hx('#0c0a18'))
-    cv.brush([(0, 218), (528, 218)], 4, 4)
-    # the window behind, the bar's neon across the street, its light on the floor
-    cv.rect(30, 20, 220, 170, hx('#1c1238'))
-    cv.rect(48, 98, 150, 110, pink)
-    cv.rect(130, 132, 204, 138, blue)
-    cv.ink([(30, 20, 0), (220, 20, 0), (220, 170, 0), (30, 170, 0)], 6, smooth=False)
-    cv.brush([(125, 20), (125, 170)], 5, 5)
-    cv.brush([(30, 92), (220, 92)], 5, 5)
-    cv.fill([(30, 218, 0), (220, 218, 0), (290, 288, 0), (0, 288, 0)], hx('#2a1430'), smooth=False)
-    # the sofa, three quarters: its back, the seat's cushions, the arm; soaked dark where the petrol goes
-    velvet, velvetD, velvetL = hx('#5a2a4a'), hx('#3a1830'), hx('#8a4a70')
-    back = [(14, 168), (250, 160), (256, 214), (16, 222)]
-    cv.shape(back, velvet, 4)
-    cv.fill([(14, 168), (250, 160), (251, 168), (15, 176)], velvetL, clip=back)
-    for x in (92, 172):
-        cv.brush([(x, 166), (x + 1, 214)], 2, 2, col=velvetD)
-    seat = [(24, 214), (262, 206), (270, 240), (20, 252)]
+    """Page 2, panel 4. His living room in the neon from the window: the heavy tips a jerrycan over the sofa, the
+    petrol coming out in a rope and soaking it dark, running off onto the floor, where the window comes back in it
+    broken in ripples, and away in a trail to the back of the flat. He says what the boss says (a balloon by the
+    game)."""
+    cv = Cv(1080, 282, hx('#110e22'))
+    floor_y = 214
+    cv.rect(0, floor_y, 1080, 282, hx('#0c0a18'))
+    cv.brush([(0, floor_y), (1080, floor_y)], 4, 4)
+    # the window behind, the bar's neon across the street; its light down the wall and the floor
+    wx0, wy0, wx1, wy1 = 70, 16, 300, 172
+    cv.fill([(wx0, wy1, 0), (wx1, wy1, 0), (wx1 + 90, 282, 0), (wx0 + 90, 282, 0)], VIOLET, smooth=False)
+    window_night(cv, wx0, wy0, wx1, wy1, seed=21)
+    # the way to the back of the flat on the right: a dark doorway, the corridor beyond
+    cv.rect(980, 30, 1080, floor_y, hx('#07060c'))
+    cv.rect(970, 24, 982, floor_y, hx('#1a1630'))
+    cv.ink([(982, 30, 0), (1080, 30, 0)], 6, closed=False, smooth=False)
+    # the sofa, long, its velvet in the neon; soaked dark where the petrol goes
+    velvet, velvetD, velvetL = hx('#4a2250'), hx('#2a1232'), hx('#7a3a78')
+    back = [(150, 132), (640, 124), (646, 182), (150, 190)]
+    m = cv.shape(back, velvet, 4)
+    cv.fill([(150, 132), (640, 124), (641, 132), (151, 140)], PINK_D, clip=back)
+    for x in (300, 470):
+        cv.brush([(x, 132), (x + 1, 182)], 2, 2, col=velvetD)
+    seat = [(156, 182), (650, 176), (656, 210), (152, 220)]
     cv.shape(seat, velvetL, 4)
-    cv.fill([(20, 240), (270, 230), (270, 240), (20, 252)], velvet, clip=seat)
-    for x in (104, 186):
-        cv.brush([(x, 212), (x + 4, 246)], 2, 2, col=velvetD)
-    cv.shape([(18, 252, 0), (272, 240, 0), (272, 264, 0), (20, 276, 0)], velvetD, 4)
-    cv.shape([(0, 186), (26, 180), (34, 196), (32, 270), (0, 274)], velvet, 4)                    # the arm
-    cv.fill([(0, 186), (26, 180), (28, 188), (0, 194)], velvetL)
-    wet = [(84, 192), (120, 184), (150, 192), (176, 188), (200, 204), (190, 226), (204, 242), (150, 248), (120, 238),
-           (86, 244), (96, 220), (74, 206)]
-    cv.fill(wet, hx('#2e1428'))
-    for a_, b_ in (((96, 204), (140, 198)), ((130, 232), (176, 228)), ((160, 210), (186, 210))):
-        cv.brush([a_, b_], 2.5, 1, col=pinkD)
-    # him, three quarters to the left, the jerrycan up in both gloved hands
-    body = [(300, 288), (296, 230), (306, 186), (340, 160), (400, 150), (470, 164), (510, 220), (528, 288)]
-    leather(cv, body, pinkD, [[(296, 230), (306, 186), (316, 188), (306, 232)], [(306, 186), (340, 160), (346, 166), (314, 190)]])
-    pal = dict(skin=hx('#d898a0'), shade=hx('#4e2a48'), lit=pinkD)
-    head_heavy(cv, T(374, 16, 1.3, -1, 0.04), pal, 'flat')
-    cv.brush([(336, 170), (356, 180), (386, 182), (414, 172)], 3.5, 3.5, col=hx('#e8c050'))       # his gold chain
-    cv.brush([(340, 172), (358, 180)], 1, 1, col=hx('#fff0a0'))
+    cv.fill([(152, 210), (656, 200), (656, 210), (152, 220)], velvet, clip=seat)
+    for x in (318, 486):
+        cv.brush([(x, 180), (x + 4, 214)], 2, 2, col=velvetD)
+    cv.shape([(150, 220, 0), (660, 208, 0), (660, 236, 0), (152, 248, 0)], velvetD, 4)
+    for arm in ([(118, 150), (150, 144), (160, 160), (158, 250), (118, 254)], [(640, 138), (676, 142), (680, 238), (650, 240)]):
+        cv.shape(arm, velvet, 4)
+        cv.fill(arm[:2] + [(arm[1][0] + 2, arm[1][1] + 8), (arm[0][0], arm[0][1] + 8)], velvetL, clip=arm)
+    wet = [(420, 150), (470, 142), (520, 150), (560, 146), (600, 160), (604, 190), (620, 212), (560, 222), (500, 214),
+           (450, 222), (430, 196), (404, 176)]
+    cv.fill(wet, hx('#1e0c26'))
+    for a_, b_ in (((440, 160), (500, 154)), ((470, 206), (540, 202)), ((540, 176), (590, 178))):
+        cv.brush([a_, b_], 2.5, 1, col=PINK)
+    # the petrol off the sofa, a pool on the floor: the window comes back in it, broken; a trail to the doorway
+    pool = [(300, 240), (420, 232), (560, 236), (700, 244), (760, 262), (690, 282, 0), (260, 282, 0), (240, 260)]
+    pm = cv.fill(pool, hx('#140e26'))
+    ripples(cv, 380, 240, 330, 284, 16, 50, (PINK_DD, PINK_D, PINK), hx('#140e26'), seed=5, n=10, breaks=6, clip=pm)
+    ripples(cv, 470, 240, 470, 284, 8, 26, (CYAN_DD, CYAN_D, CYAN), hx('#140e26'), seed=9, n=10, breaks=6, clip=pm)
+    cv.brush([(700, 250), (820, 236), (920, 226), (990, 216)], 22, 8, col=hx('#140e26'))
+    for a_, b_ in (((730, 248), (780, 242)), ((850, 233), (880, 230)), ((940, 223), (960, 221))):
+        cv.brush([a_, b_], 3, 1, col=PINK_D)
+    # him, three quarters to the left, black but for his face in the neon, the jerrycan up in both gloved hands
+    body = [(700, 282), (696, 220), (706, 176), (740, 150), (800, 140), (870, 154), (910, 210), (930, 282)]
+    m = cv.fill(body, INK)
+    backlit(cv, m, PINK_D, ((-3, 0), (0, -3)))
+    backlit(cv, m, CYAN_D, ((3, 0),))
+    pal = dict(skin=hx('#f094ac'), shade=hx('#3a1638'), lit=PINK_D)
+    t = T(774, 6, 1.3, -1, 0.04)
+    head_heavy(cv, t, pal, 'flat')
+    backlit(cv, cv.mask(t(jaw_heavy())), CYAN, ((3, 0),))
+    cv.brush([(736, 160), (756, 170), (786, 172), (814, 162)], 3.5, 3.5, col=hx('#c8d0e0'))       # his chain
     # the arms forward to the can
-    glove_ = hx('#1a1422')
-    for arm in ([(344, 172), (300, 178), (262, 158), (248, 178), (286, 212), (344, 214)],
-                [(476, 186), (370, 210), (272, 196), (256, 226), (370, 248), (486, 240)]):
-        backlit(cv, cv.fill(arm, INK), pinkD, ((-3, 0), (0, -3)))
-    can = [(170, 104, 0), (262, 132, 0), (246, 210, 0), (152, 182, 0)]
-    cv.shape(can, hx('#b02a1c'), 4)
-    cv.fill([(170, 104, 0), (262, 132, 0), (259, 144, 0), (167, 116, 0)], hx('#e04a3a'), clip=can, smooth=False)
-    cv.fill([(152, 182, 0), (246, 210, 0), (248, 198, 0), (154, 170, 0)], hx('#6a140c'), clip=can, smooth=False)
-    cv.brush([(166, 140), (246, 166)], 3, 3, col=hx('#6a140c'))                                   # the pressed cross
-    cv.brush([(212, 120), (198, 194)], 3, 3, col=hx('#6a140c'))
-    cv.shape([(186, 96, 0), (250, 116, 0), (246, 126, 0), (184, 106, 0)], hx('#8a1a10'), 3)       # the handles
-    cv.shape([(166, 118), (144, 120), (140, 132), (162, 134)], hx('#3a3a44'), 3)                 # the spout
-    for pts in ([(270, 176), (258, 160), (250, 146)], [(274, 186), (262, 172), (254, 160)]):
-        finger(cv, pts, 13, glove_, pinkD, side=-1)
-    for pts in ([(270, 214), (252, 206), (240, 198)], [(272, 224), (254, 218), (242, 212)]):
-        finger(cv, pts, 13, glove_, pinkD, side=-1)
-    # the petrol: a twisting rope from the spout down to the sofa, its splash
-    for k in range(10):
-        y = 128 + k * 7
-        x = 140 - k * 2.2 + math.sin(k * 1.3) * 2
-        cv.brush([(x, y), (x - 2, y + 7)], 5, 4, col=hx('#d8a85a'))
-        cv.brush([(x + 1, y + 1), (x - 1, y + 6)], 1.5, 1, col=hx('#fff0c0'))
+    for arm in ([(744, 162), (700, 168), (662, 148), (648, 168), (686, 202), (744, 204)],
+                [(876, 176), (770, 200), (672, 186), (656, 216), (770, 238), (886, 230)]):
+        backlit(cv, cv.fill(arm, INK), PINK_D, ((-3, 0), (0, -3)))
+    can = [(570, 94, 0), (662, 122, 0), (646, 200, 0), (552, 172, 0)]
+    cv.shape(can, hx('#c02a3a'), 4)
+    cv.fill([(570, 94, 0), (662, 122, 0), (659, 134, 0), (567, 106, 0)], hx('#ff5a6a'), clip=can, smooth=False)
+    cv.fill([(552, 172, 0), (646, 200, 0), (648, 188, 0), (554, 160, 0)], hx('#5a0c20'), clip=can, smooth=False)
+    cv.brush([(566, 130), (646, 156)], 3, 3, col=hx('#5a0c20'))                                   # the pressed cross
+    cv.brush([(612, 110), (598, 184)], 3, 3, col=hx('#5a0c20'))
+    cv.shape([(586, 86, 0), (650, 106, 0), (646, 116, 0), (584, 96, 0)], hx('#7a1424'), 3)        # the handles
+    cv.shape([(566, 108), (544, 110), (540, 122), (562, 124)], hx('#2a2a3a'), 3)                 # the spout
+    glove_ = hx('#16121e')
+    for pts in ([(670, 166), (658, 150), (650, 136)], [(674, 176), (662, 162), (654, 150)]):
+        finger(cv, pts, 13, glove_, PINK_D, side=-1)
+    for pts in ([(670, 204), (652, 196), (640, 188)], [(672, 214), (654, 208), (642, 202)]):
+        finger(cv, pts, 13, glove_, PINK_D, side=-1)
+    # the petrol: a twisting rope from the spout down onto the sofa, its splash
+    for k in range(9):
+        y = 118 + k * 7
+        x = 540 - k * 2.2 + math.sin(k * 1.3) * 2
+        cv.brush([(x, y), (x - 2, y + 7)], 5, 4, col=hx('#e0c890'))
+        cv.brush([(x + 1, y + 1), (x - 1, y + 6)], 1.5, 1, col=hx('#fff8e0'))
     for a in range(7):
         ang = math.pi * (0.1 + a * 0.13)
-        cv.brush([(118, 196), (118 + math.cos(ang) * 26, 196 - math.sin(ang) * 16)], 3, 1, col=hx('#e8c070'))
+        cv.brush([(520, 180), (520 + math.cos(ang) * 26, 180 - math.sin(ang) * 16)], 3, 1, col=hx('#f0d8a0'))
     return cv
 
 
 def panel_match(lit):
-    """Page 2, panel 3. Close: the one with the slicked hair strikes a match; it lights his face from below. Behind,
-    lost in the dark but for what the flame catches: the door of the back room where he sleeps, the petrol run across
-    the floor to it. lit False: before the match is struck, a shape in the dark."""
-    cv = Cv(1080, 282, hx('#07050a'))
+    """Page 3, panel 1. Close: the one with the slicked hair strikes a match; it lights his face from below, the
+    window's neon behind him along the back of his head. Behind, lost in the dark but for what the flame catches: the
+    door of the back room where he sleeps, the petrol run across the floor to it, the flame coming back off it. lit
+    False: before the match is struck, a shape in the dark with the neon's edge."""
+    cv = Cv(1080, 282, hx('#08060e'))
     if lit:
-        pal = dict(skin=hx('#f2a45a'), shade=hx('#8e4020'), hair=hx('#0c0808'), shine=hx('#8a4420'), glint=hx('#ffd890'),
-                   white=hx('#c87a40'))
-        glow, glare, wood, woodL = hx('#5a1e0c'), hx('#d0702a'), hx('#2a1008'), hx('#6a2c12')
+        pal = dict(skin=hx('#ffa860'), shade=hx('#8a2a28'), deep=hx('#2a0a14'), hair=INK, shine=hx('#8a3a2a'),
+                   glint=hx('#fff0b0'), white=hx('#d88a50'))
+        glow, glare, wood, woodL = hx('#5a1a1c'), FIRE, hx('#24101a'), hx('#7a2c1c')
     else:
         pal = dict(skin=hx('#16131f'), shade=hx('#100d18'), deep=hx('#0c0a12'), hair=hx('#0a080e'), shine=hx('#1c1a2c'),
                    glint=hx('#2a2a44'), white=hx('#16131f'))
         glow, glare, wood, woodL = hx('#100e1a'), hx('#1e1c30'), hx('#0c0a14'), hx('#14121e')
+    # the window behind him on the right: the night, the neon; its light on the wall
+    window_night(cv, 940, 10, 1100, 200, seed=31)
     # the back room's door, shut; the dark under it; the petrol run across the boards to it, the flame in it
     cv.rect(150, 18, 300, 252, wood)
     for y0, y1 in ((40, 120), (140, 232)):
         cv.ink([(172, y0, 0), (278, y0, 0), (278, y1, 0), (172, y1, 0)], 3, col=woodL, smooth=False)
     cv.rect(286, 128, 294, 140, woodL)                                     # the knob
-    cv.ink([(144, 12, 0), (306, 12, 0), (306, 252, 0), (144, 252, 0)], 8, col=hx('#120806') if lit else INK, smooth=False)
+    cv.ink([(144, 12, 0), (306, 12, 0), (306, 252, 0), (144, 252, 0)], 8, smooth=False)
     cv.rect(300, 18, 306, 252, woodL)
-    cv.rect(0, 252, 1080, 256, hx('#120806') if lit else INK)
+    cv.rect(0, 252, 1080, 256, INK)
     cv.rect(150, 248, 300, 252, INK)
     if lit:
         trail = [(560, 282), (470, 270), (380, 262), (300, 256), (230, 254)]
-        cv.brush(trail, 26, 8, col=hx('#1e0c06'))
+        cv.brush(trail, 26, 8, col=hx('#1e0a10'))
         for a_, b_ in (((520, 276), (470, 271)), ((410, 266), (380, 263)), ((330, 258), (300, 257)), ((262, 255), (246, 255))):
             cv.brush([a_, b_], 3, 1, col=glare)
     # the sofa he soaked, a black bulk with the light along its arm
@@ -1037,21 +1105,26 @@ def panel_match(lit):
     cv.fill(sofa, INK)
     cv.brush([(338, 182), (352, 170), (370, 178)], 3, 1, col=glow)
     cv.brush([(378, 212), (438, 208)], 2, 1, col=glow)
-    # his collar and shoulder: black leather, its edges caught by the flame
-    leather(cv, [(600, 282), (626, 240), (680, 222), (740, 216), (840, 230), (920, 282)], glow,
-            [[(600, 282), (626, 240), (646, 236), (626, 282)]])
-    leather(cv, [(660, 282), (676, 236), (712, 226), (716, 282)], glow, [[(660, 282), (676, 236), (684, 236), (668, 282)]])
-    head_slick(cv, T(712, 14, 2.3, -1), pal, 'under' if lit else 'none')
+    # his collar and shoulder: black leather, the flame on its front edges, the neon along its back
+    coat = cv.fill([(600, 282), (626, 240), (680, 222), (740, 216), (840, 230), (920, 282)], INK)
+    cv.fill([(600, 282), (626, 240), (646, 236), (626, 282)], glow, clip=coat)
+    collar = cv.fill([(660, 282), (676, 236), (712, 226), (716, 282)], INK)
+    cv.fill([(660, 282), (676, 236), (684, 236), (668, 282)], glow, clip=collar)
+    backlit(cv, coat, PINK_D, ((3, 0), (0, -3)))
+    t = T(712, 14, 2.3, -1)
+    head_slick(cv, t, pal, 'under' if lit else 'none')
+    backlit(cv, cv.mask(t([(33, 15), (27, 5), (14, -1), (-4, -3), (-22, 0), (-34, 10), (-40, 26), (-40, 44), (-34, 58),
+                           (-24, 70, 0), (-10, 84), (-4, 89, 0), (-30, 130, 0)])), PINK, ((4, 0), (0, -3)))
     fx, fy = FLAME
-    hand, handD = (hx('#e89a58'), hx('#8a3a1c')) if lit else (hx('#16131f'), hx('#100d18'))
+    hand, handD = (hx('#ffa060'), hx('#8a2a28')) if lit else (hx('#16131f'), hx('#100d18'))
     # the left hand, low: the box in its fingers, the thumb over it
     box = [(456, 228), (536, 218), (540, 240), (460, 252)]
-    cv.shape(box, hx('#c89a3a') if lit else hx('#1a1620'), 3)
-    cv.fill([(460, 246), (540, 234), (540, 240), (460, 252)], hx('#5a2410') if lit else hx('#120e18'))
+    cv.shape(box, hx('#c8903a') if lit else hx('#1a1620'), 3)
+    cv.fill([(460, 246), (540, 234), (540, 240), (460, 252)], hx('#5a1a14') if lit else hx('#120e18'))
     if lit:
-        cv.brush([(474, 232), (506, 228)], 4, 4, col=hx('#8a2a18'))          # the label, the striking strip
-        cv.brush([(462, 249), (538, 237)], 2, 2, col=hx('#3a1408'))
-    leather(cv, [(410, 282), (420, 262), (446, 254), (456, 282)], glow)          # his cuff
+        cv.brush([(474, 232), (506, 228)], 4, 4, col=hx('#8a1a28'))          # the label, the striking strip
+        cv.brush([(462, 249), (538, 237)], 2, 2, col=hx('#3a0a10'))
+    cv.fill([(410, 282), (420, 262), (446, 254), (456, 282)], INK)          # his cuff
     palm = [(440, 282), (444, 258), (466, 248), (512, 248), (524, 262), (500, 282)]
     cv.shape(palm, hand, 3)
     cv.fill([(440, 282), (446, 268), (500, 270), (524, 262), (500, 282)], handD, clip=palm)
@@ -1059,7 +1132,7 @@ def panel_match(lit):
         finger(cv, [(486 + k * 4, 254 + k * 9), (522 + k * 2, 250 + k * 7), (534, 244 + k * 6)], 11, hand, handD)
     finger(cv, [(478, 246), (500, 232), (520, 226)], 12, hand, handD)      # the thumb, over the box
     # the right hand, raised by his chin: the match pinched between thumb and finger, the flame up by his nose
-    leather(cv, [(626, 282), (618, 252), (640, 240), (668, 252), (676, 282)], glow)   # his cuff
+    cv.fill([(626, 282), (618, 252), (640, 240), (668, 252), (676, 282)], INK)   # his cuff
     back = [(630, 256), (600, 236), (588, 214), (598, 202), (620, 206), (642, 226), (650, 246)]
     cv.shape(back, hand, 3)
     cv.fill([(630, 256), (612, 246), (640, 236), (650, 246)], handD, clip=back)
@@ -1067,21 +1140,88 @@ def panel_match(lit):
         finger(cv, [(612 - k * 2, 220 + k * 10), (596 - k * 3, 224 + k * 10), (594 - k * 2, 232 + k * 9)], 11, hand, handD)
     finger(cv, [(598, 208), (580, 198), (568, 200)], 11, hand, handD)      # the index
     finger(cv, [(612, 236), (588, 218), (572, 206)], 12, hand, handD)      # the thumb
-    cv.brush([(568, 202), (fx, fy)], 4, 3, col=hx('#e8d0a0') if lit else hx('#1e1a26'))
+    cv.brush([(568, 202), (fx, fy)], 4, 3, col=hx('#f0d8b0') if lit else hx('#1e1a26'))
     cv.ellipse(fx, fy, 5, 6, hx('#3a0c08') if lit else hx('#160e14'))
+    return cv
+
+
+def panel_fire():
+    """Page 3, panel 2. Back in his room, low on the floor: his door, shut; under it the fire comes through, its
+    light thrown across the boards in ripples where the petrol ran under; his empty bottle on the floor catching it
+    (the game makes the gap burn)."""
+    cv = Cv(528, 288, hx('#0e0a18'))
+    gx0, gx1, gy = GAP
+    floor_y = gy + 4
+    cv.rect(0, floor_y, 528, 288, hx('#120c16'))
+    for x in range(-500, 1100, 56):
+        cv.brush([(280 + (x - 280) * 0.45, floor_y), (280 + (x - 280) * 1.5, 288)], 1.5, 2.5, col=hx('#0a0610'))
+    # the door and its frame, the fire showing round its edges
+    cv.rect(gx0 - 26, 0, gx1 + 26, floor_y, hx('#160f22'))
+    cv.rect(gx0 - 4, 0, gx1 + 4, gy, FIRE_D)                                 # the light round the door, in its frame
+    door = [(gx0, 6, 0), (gx1, 6, 0), (gx1, gy, 0), (gx0, gy, 0)]
+    cv.fill(door, hx('#1a1226'), smooth=False)
+    for y0, y1 in ((26, 108), (126, 214)):
+        cv.ink([(gx0 + 24, y0, 0), (gx1 - 24, y0, 0), (gx1 - 24, y1, 0), (gx0 + 24, y1, 0)], 4, col=hx('#0c0814'), smooth=False)
+    cv.ellipse(gx1 - 22, 124, 6, 6, FIRE_D)
+    cv.brush([(gx1 - 22, 118), (gx1 - 22, 130)], 2, 2, col=FIRE)
+    cv.ink([(gx0 - 26, -10, 0), (gx1 + 26, -10, 0), (gx1 + 26, floor_y, 0), (gx0 - 26, floor_y, 0)], 6, smooth=False)
+    cv.rect(gx0, gy, gx1, floor_y, FIRE)                                     # the gap under it
+    # its light on the boards, broken where the petrol came under
+    spill = [(gx0, floor_y, 0), (gx1, floor_y, 0), (gx1 + 160, 288, 0), (gx0 - 160, 288, 0)]
+    cv.fill(spill, hx('#2a1018'), smooth=False)
+    sm = cv.mask(spill, smooth=False)
+    for i, (x0, x1, w0, w1) in enumerate(((200, 150, 20, 60), (290, 310, 30, 90), (370, 420, 14, 40))):
+        ripples(cv, x0, floor_y + 2, x1, 290, w0, w1, (FIRE_D, FIRE, FIRE_L), hx('#2a1018'), seed=70 + i * 20, n=8, breaks=5, clip=sm)
+    # the empty bottle on the floor by the bed's foot, the fire along it
+    cv.rect(0, 120, 40, floor_y, hx('#0c0814'))
+    bottle = [(30, 262), (96, 256), (102, 250, 0), (128, 250, 0), (128, 258, 0), (102, 258, 0), (96, 266), (30, 274)]
+    m = cv.fill(bottle, hx('#0c1a10'))
+    backlit(cv, m, FIRE, ((2, 0), (0, -2)))
+    return cv
+
+
+def panel_wake(open_):
+    """Page 3, panel 3. So close the panel is his eye: him asleep on his side, his cheek in the pillow, in the dark;
+    the fire coming in under his door lights the planes of his face orange from below, the window's neon edges his
+    hair; his eye shut, then open on it (open_), the flame in it."""
+    cv = Cv(528, 288)
+    pal = dict(skin=hx('#c4542e'), shade=hx('#2a1020'), stubble=hx('#94381e'), white=hx('#e8c0a0'), iris=hx('#3a160e'),
+               glint=FIRE_L, deep=INK)
+    cv.rect(0, 0, 528, 288, pal['shade'])
+    # the planes the fire finds: the cheekbone, the cheek down to the pillow, the side of the nose
+    cv.fill([(110, 200), (200, 186), (300, 190), (360, 230), (380, 288, 0), (90, 288, 0)], pal['skin'])
+    cv.fill([(150, 230), (240, 238), (320, 234), (360, 288, 0), (140, 288, 0)], pal['stubble'])
+    cv.fill([(350, 30), (372, 100), (400, 170), (424, 230), (440, 288, 0), (470, 288, 0), (440, 180), (404, 60), (380, 0, 0),
+             (352, 0, 0)], pal['skin'])
+    cv.brush([(346, 10), (366, 90), (390, 160), (418, 240), (432, 288)], 3, 6)                       # the bridge of the nose
+    # the far eye, past the nose, in the dark; the neon from the window along the far side of his face
+    cv.brush([(452, 92), (474, 88), (496, 94)], 2, 1.5, mid=4)
+    cv.fill([(510, 0, 0), (528, 0, 0), (528, 288, 0), (516, 288, 0), (500, 120)], PINK_D)
+    # the near eye
+    eye34(cv, T(0, 0, 1.0), 236, 136, 120, pal, look=0.7, open_=open_ * 0.85, glint=FIRE_L if open_ else None)
+    cv.brush([(170, 176), (236, 186), (300, 178)], 0.5, 0.5, mid=3, col=INK)                         # the bag under it
+    # the brow, and his hair fallen over it, black, the neon along its strands
+    cv.brush([(150, 92), (210, 70), (280, 68), (330, 84)], 6, 4, mid=16, col=INK)
+    hair = cv.fill([(0, 0, 0), (528, 0, 0), (528, 16, 0), (470, 26), (400, 14), (340, 30), (280, 16), (220, 34), (160, 18),
+                    (100, 40), (50, 24), (0, 36, 0)], INK)
+    for x0, x1, y1, w in ((60, 96, 80, 10), (150, 172, 58, 8), (236, 262, 54, 9), (300, 330, 66, 7), (400, 412, 44, 7)):
+        cv.brush([(x0, 0), (x0 + (x1 - x0) * 0.5, y1 * 0.6), (x1, y1)], w, 1, col=INK)
+    backlit(cv, hair, PINK_D, ((0, 3),))
+    for x0, x1, y1 in ((63, 99, 50), (153, 175, 36), (239, 265, 34)):
+        cv.brush([(x0, 0), (x0 + (x1 - x0) * 0.5, y1)], 2, 0.5, col=PINK_D)
+    # the pillow pressing into his cheek, in the dark, its edge in the fire
+    pillow = [(0, 196), (70, 184), (150, 214), (230, 236), (300, 288, 0), (0, 288, 0)]
+    m = cv.fill(pillow, hx('#20162c'))
+    cv.ink(pillow, 4)
+    backlit(cv, m, FIRE_D, ((0, -3),))
+    cv.brush([(40, 220), (100, 214), (150, 236)], 2, 1, col=hx('#120c1a'))
     return cv
 
 
 # ================================================================ the leap's card and level 1's ending
 # The hero: a dark flat cap, brown hair down to his collar, a Mediterranean tan, three days' beard, a long charcoal
 # coat with its collar up, a grey knit scarf, the strap of his satchel across his chest (generate_assets.py CHARS
-# 'player'). Seen as a silhouette or in profile, his eyes in the shadow of his cap's peak.
-def bead(i):
-    """A number in [0, 1) for the i-th thing scattered somewhere: the same every run (no randomness in this tool)."""
-    s = math.sin(i * 127.1 + 311.7) * 43758.5453
-    return s - math.floor(s)
-
-
+# 'player'). Seen as a silhouette, or in profile with a light on part of his face.
 def head_hero_side(cv, t, pal):
     """Him in profile, facing right (f -1: left), lit from in front of his face (a street lamp through a windscreen):
     the cap's peak throws its shadow over his eyes, the light takes the nose, the mouth, the beard along the jaw; the
@@ -1215,15 +1355,6 @@ def figure_sat(cv, x, y, s=1.0, f=1):
     return m
 
 
-def rain_beads(cv, x0, y0, x1, y1, n, cols, seed=0, clip=None):
-    """Drops of rain standing on a pane: n small drops, each dark with a lit fleck."""
-    dark, lit = cols
-    for i in range(n):
-        x, y = x0 + bead(seed + i) * (x1 - x0), y0 + bead(seed + i + 500) * (y1 - y0)
-        r = 1.5 + bead(seed + i + 900) * 2.5
-        cv.ellipse(x, y, r, r * 1.2, dark, clip=clip)
-        cv.ellipse(x - r * 0.3, y - r * 0.4, max(1, r * 0.4), max(1, r * 0.4), lit, clip=clip)
-
 
 ALLEY_END = (596, 690, 112, 238)   # the alley's far end, where the street is (panel px): the game flickers its neon
 ALLEY_PUDDLES = ((540, 360, 90, 12), (250, 392, 120, 10), (820, 390, 70, 8))   # (cx, cy, rx, ry): the game rings them
@@ -1291,19 +1422,8 @@ def panel_alley():
     # the wet ground: the signs' light broken into ripples on the water, wider as they come toward us; the puddles
     for cx, cy, rx, ry in ALLEY_PUDDLES:
         cv.ellipse(cx, cy, rx, ry, hx('#171428'))
-    for x0, x1, w0, w1, cols, seed in ((636, 600, 26, 90, (pinkDD, pinkD, pink), 30), (668, 720, 14, 46, (hx('#14303a'), hx('#1e6a7a'), cyan), 60)):
-        n = 22
-        edge = lambda i, side: (x0 + (x1 - x0) * (i / n) + side * (w0 + (w1 - w0) * (i / n)) * (0.35 + 0.3 * bead(seed + i * 2 + (side > 0))) +
-                                (bead(seed + i + 40) - 0.5) * 10 * (i / n), oy1 + 4 + (404 - oy1) * (i / n) ** 1.2)
-        outer = None
-        for lvl, (col, k) in enumerate(zip(cols, (1.0, 0.5, 0.16))):
-            pts = [(x0 + (p[0] - x0) * k + (x1 - x0) * (i / n) * (1 - k), p[1]) for i, p in ((i, edge(i, -1)) for i in range(n + 1))]
-            pts += [(x0 + (p[0] - x0) * k + (x1 - x0) * (i / n) * (1 - k), p[1]) for i, p in ((i, edge(i, 1)) for i in range(n, -1, -1))]
-            cv.fill(pts, col)
-            outer = pts if lvl == 0 else outer
-        for i in range(1, 9):                                               # the ripples breaking it
-            y = oy1 + 4 + (404 - oy1) * ((i + bead(seed + i) * 0.6) / 9) ** 1.2
-            cv.brush([(x0 + (x1 - x0) * i / 9 - w1, y), (x0 + (x1 - x0) * i / 9 + w1, y)], 1 + i * 0.5, 1 + i * 0.3, col=hx('#1a1222'), clip=outer)
+    ripples(cv, 636, oy1 + 4, 600, 404, 26, 90, (pinkDD, pinkD, pink), hx('#1a1222'), seed=30)
+    ripples(cv, 668, oy1 + 4, 720, 404, 14, 46, (hx('#14303a'), hx('#1e6a7a'), cyan), hx('#1a1222'), seed=60)
     # him, sat against the left wall where he came down: black, the neon's edge on his cap, back, knee and boot
     m = figure_sat(cv, 236, 340, 1.3)
     cv.im.paste(INK, (0, 0), m)
@@ -1329,14 +1449,14 @@ def panel_drive():
     gm = cv.mask(glass, smooth=False)
     vx, vy = 250, 142
     # the night through the windscreen: the sky, the street's buildings, the road running away
-    cv.fill(glass, hx('#14163a'), smooth=False)
+    cv.fill(glass, hx('#1a1438'), smooth=False)
     cv.fill([(0, 100, 0), (60, 98, 0), (60, 80, 0), (130, 80, 0), (130, 108, 0), (190, 108, 0), (190, 120, 0), (310, 122, 0),
              (310, 112, 0), (380, 112, 0), (380, 94, 0), (470, 94, 0), (470, 70, 0), (640, 66, 0), (640, 150, 0),
              (0, 150, 0)], hx('#0c0c20'), clip=gm, smooth=False)
     for i, (x, y) in enumerate(((84, 104), (100, 90), (148, 114), (330, 118), (356, 120), (402, 102), (420, 116), (488, 84),
                                 (510, 100), (552, 80), (590, 94), (40, 112))):
         cv.rect(x, y, x + 4, y + 5, hx('#3a2c3a') if i % 3 else hx('#5a3a2a'), clip=gm)       # windows still lit, far
-    cv.fill([(vx, vy, 0), (-260, 230, 0), (760, 230, 0)], hx('#121222'), clip=gm, smooth=False)
+    cv.fill([(vx, vy, 0), (-260, 230, 0), (760, 230, 0)], hx('#141228'), clip=gm, smooth=False)
     for k in range(6):                                                       # the line down its middle
         u0, u1 = (k / 6) ** 1.6, ((k + 0.45) / 6) ** 1.6
         cv.brush([(vx + 40 * u0, vy + 88 * u0), (vx + 40 * u1, vy + 88 * u1)], 1 + 4 * u0, 1 + 4 * u1, col=hx('#6a6252'), clip=gm)
@@ -1351,8 +1471,8 @@ def panel_drive():
         cv.ellipse(lx, ly + 10 * s, 30 * s + 4, 16 * s + 3, hx('#3a2a3a'), clip=gm)
         cv.ellipse(lx, ly, 12 * s + 2, 5 * s + 2, hx('#f0a040'), clip=gm)
         cv.ellipse(lx, ly, 7 * s + 1, 3 * s + 1, hx('#fff0c0'), clip=gm)
-        cv.brush([(lx, vy + 16 * s + 2), (lx + 3 * s, vy + 84 * s + 4)], 2 + 6 * s, 1, col=hx('#3e2c2a'), clip=gm)   # its light on the wet road
-        cv.brush([(lx, vy + 16 * s + 2), (lx + 1 * s, vy + 40 * s + 3)], 1 + 3 * s, 0.5, col=hx('#a8642a'), clip=gm)
+        ripples(cv, x - 20 * s, base - 4 * s, x - 14 * s, base + 40 * s + 4, 2 + 3 * s, 6 + 20 * s, (hx('#3e2430'), hx('#a8542a'), FIRE),
+                hx('#141228'), seed=int(s * 100), n=8, breaks=5, clip=gm)                          # its light on the wet road
     rain_beads(cv, 4, 30, 600, 220, 26, (hx('#0e0e2a'), hx('#3e3e6a')), seed=11, clip=gm)
     # the rear-view mirror, the road behind in it
     mx0, my0, mx1, my1 = DRIVE_MIRROR
@@ -1376,39 +1496,33 @@ def panel_drive():
     cv.fill(dash, hx('#0b0a12'), smooth=False)
     cv.brush([(0, 223), (606, 229), (700, 239)], 3, 3, col=hx('#2c2a3c'))
     for cx in (500, 548):
-        cv.ellipse(cx, 256, 17, 12, hx('#0e2a22'))
-        cv.ellipse(cx, 256, 13, 9, hx('#14382c'))
-        cv.brush([(cx, 258), (cx - 8, 250)], 2, 1, col=hx('#8af0b0'))
-    # him: the coat's shoulder and back, the strap of his satchel across it
-    pal = dict(skin=hx('#e3965a'), shade=hx('#4c2e40'), stubble=hx('#a8683e'), stubbleD=hx('#3a2236'), hair=hx('#24160e'),
-               hairL=hx('#4a2c18'), white=hx('#b88a6a'), glint=hx('#ffd890'), shine=hx('#ffc890'), cap=hx('#16171f'),
-               capL=hx('#5a4a50'), coat=hx('#262a36'), coatL=hx('#6a5a5a'), lining=hx('#2a5f6e'), knit=hx('#4a4c58'),
-               knitL=hx('#a8907a'), knitD=hx('#34363f'))
-    coatL = pal['coatL']
-    body = [(1080, 288, 0), (708, 288, 0), (716, 236), (750, 192), (800, 166), (870, 156), (960, 162), (1040, 186), (1080, 196, 0)]
-    m = cv.fill(body, pal['coat'])
-    cv.fill([(708, 288, 0), (716, 236), (750, 192), (800, 166), (808, 176), (764, 202), (734, 244), (730, 288, 0)], coatL, clip=m)
-    cv.ink(body, 4)
-    cv.brush([(900, 160), (840, 220), (790, 288)], 13, 13, col=INK)
-    cv.brush([(900, 160), (840, 220), (790, 288)], 8, 8, col=hx('#6a4024'))
-    cv.brush([(896, 160), (836, 220), (786, 288)], 2, 2, col=hx('#a86a3a'))
-    head_hero_side(cv, T(842, 14, 1.24, -1), pal)
-    # the wheel, seen nearly edge on, its column into the dash, and his arm out to it, his hand closed on its rim
+        cv.ellipse(cx, 256, 17, 12, CYAN_DD)
+        cv.ellipse(cx, 256, 13, 9, hx('#16404c'))
+        cv.brush([(cx, 258), (cx - 8, 250)], 2, 1, col=CYAN)
+    # the wheel, seen nearly edge on, its column into the dash
     rim = [(628 + 16 * math.cos(a) * math.cos(0.32) - 66 * math.sin(a) * math.sin(0.32),
             200 + 16 * math.cos(a) * math.sin(0.32) + 66 * math.sin(a) * math.cos(0.32)) for a in [k * math.pi / 12 for k in range(24)]]
     cv.brush([(628, 200), (560, 236)], 12, 14, col=INK)
     cv.ink(rim, 14)
-    cv.ink(rim, 5, col=hx('#2e2a38'))
+    cv.ink(rim, 5, col=hx('#2e2440'))
     cv.ellipse(628, 200, 8, 10, hx('#16141c'))
-    sleeve = [(840, 196), (780, 226), (700, 198), (650, 158), (668, 138), (712, 160), (790, 178), (836, 172)]
-    m = cv.fill(sleeve, pal['coat'])
-    cv.fill([(650, 158), (668, 138), (712, 160), (790, 178), (786, 188), (708, 172)], coatL, clip=m)
-    cv.ink(sleeve, 4)
-    fist = [(612, 150), (626, 132), (650, 130), (664, 142), (660, 162), (636, 170), (618, 166)]
-    cv.shape(fist, pal['skin'], 3)
-    cv.fill([(636, 170), (660, 162), (664, 142), (654, 152), (630, 160)], pal['shade'], clip=fist)
-    for k in range(3):
-        cv.brush([(622 + k * 10, 138 + k), (618 + k * 10, 160 - k)], 1.5, 1)
+    # him, black: his coat's shoulder, his head under the cap, his arm out to the wheel, his hand closed on its rim;
+    # the street lamps ahead along his profile and his arm, the bar's neon behind him along his back
+    pal = dict(skin=INK, shade=INK, stubble=INK, stubbleD=INK, hair=INK, hairL=INK, white=INK, glint=INK, shine=INK, cap=INK,
+               capL=INK, coat=INK, coatL=INK, lining=INK, knit=INK, knitL=INK, knitD=INK)
+
+    def him(c):
+        c.fill([(1080, 288, 0), (708, 288, 0), (716, 236), (750, 192), (800, 166), (870, 156), (960, 162), (1040, 186),
+                (1080, 196, 0)], INK)
+        head_hero_side(c, T(842, 14, 1.24, -1), pal)
+        c.fill([(840, 196), (780, 226), (700, 198), (650, 158), (668, 138), (712, 160), (790, 178), (836, 172)], INK)
+        c.fill([(612, 150), (626, 132), (650, 130), (664, 142), (660, 162), (636, 170), (618, 166)], INK)
+    m = silhouette(1080, 288, him)
+    cv.im.paste(INK, (0, 0), m)
+    backlit(cv, m, FIRE_D, ((-4, 0), (0, -3)))
+    backlit(cv, m, FIRE, ((0, -2),))
+    backlit(cv, m, PINK_D, ((3, 0),))
+    cv.ellipse(*T(842, 14, 1.24, -1).pt(31.4, 46.6), 2.5, 2.5, FIRE_L)          # his eye, under the peak
     return cv
 
 
@@ -1417,113 +1531,121 @@ OFFICE_DRIP = (446, 203)    # where his blood runs off the desk's edge: the game
 
 
 def panel_office():
-    """Level 1's ending, panel 2. Behind him: the boss's back room, the desk lamp its only light. The boss fallen
-    forward out of his armchair over his desk, his head on its side on the wood by the phone, his eyes shut, his blood
-    spread to the desk's edge; the cigar still burning in the ashtray, a glass knocked over, rounds in the wall and
-    the desk; the phone ringing (its receiver is office_phone, rattled by the game)."""
-    cv = Cv(528, 282, hx('#160a0e'))
-    cream, creamD = hx('#d8c8a4'), hx('#8a7a64')
-    cv.rect(0, 0, 528, 282, hx('#24101a'))
-    cv.fill([(0, 0, 0), (528, 0, 0), (528, 120, 0), (0, 150, 0)], hx('#1a0a12'), smooth=False)
+    """Level 1's ending, panel 2. Behind him: the boss's back room in the dark, the bar's neon coming in through the
+    blinds in stripes across everything. The boss fallen forward out of his armchair over his desk, his head on its
+    side on the wood by the phone, his eyes shut, his blood spread to the desk's edge; the cigar still burning in the
+    ashtray, a glass knocked over, rounds in the wall and the desk; the phone ringing (its receiver is office_phone,
+    rattled by the game)."""
+    cv = Cv(528, 282, hx('#140a1a'))
+    suit, suitD = hx('#2e2440'), hx('#1a1428')
+    cv.rect(0, 0, 528, 282, hx('#1a0e22'))
+    cv.fill([(0, 0, 0), (528, 0, 0), (528, 120, 0), (0, 150, 0)], hx('#150b1c'), smooth=False)
+    # the window on the left, its blinds down, the neon outside showing between the slats
+    cv.rect(0, 14, 92, 160, hx('#4a0e2e'))
+    cv.rect(0, 70, 92, 92, PINK)
+    for y in range(16, 160, 12):
+        cv.rect(0, y, 92, y + 7, hx('#1c0c1a'))
+    cv.ink([(-6, 12, 0), (94, 12, 0), (94, 162, 0), (-6, 162, 0)], 6, smooth=False)
     # a framed picture knocked crooked, two rounds in the wall by it
-    frame = [(26, 64, 0), (104, 56, 0), (110, 116, 0), (32, 124, 0)]
-    cv.fill(frame, hx('#5a3a18'), smooth=False)
+    frame = [(130, 50, 0), (204, 44, 0), (210, 100, 0), (136, 108, 0)]
+    cv.fill(frame, hx('#2a1a2a'), smooth=False)
     cv.ink(frame, 3, smooth=False)
-    cv.fill([(34, 70, 0), (98, 64, 0), (102, 110, 0), (38, 116, 0)], hx('#2a3a4a'), smooth=False)
-    cv.fill([(38, 100, 0), (100, 94, 0), (102, 110, 0), (38, 116, 0)], hx('#3a5a4a'), smooth=False)
-    cv.ellipse(84, 78, 7, 7, hx('#d0a050'))
-    for x, y in ((140, 92), (176, 74)):
+    cv.fill([(138, 56, 0), (198, 51, 0), (202, 94, 0), (142, 100, 0)], hx('#1a1a3a'), smooth=False)
+    cv.fill([(142, 84, 0), (200, 79, 0), (202, 94, 0), (142, 100, 0)], hx('#1a3040'), smooth=False)
+    cv.ellipse(186, 64, 6, 6, FIRE)
+    for x, y in ((228, 84), (254, 66)):
         cv.ellipse(x, y, 4, 4, INK)
         for a in range(5):
             ang = a * 1.3 + x
             cv.brush([(x + math.cos(ang) * 4, y + math.sin(ang) * 4), (x + math.cos(ang) * 10, y + math.sin(ang) * 10)], 1.5, 0.5,
-                     col=hx('#0e0408'))
+                     col=hx('#0a0410'))
     # the armchair, its high back, the leather and its buttons
     chair = [(250, 200, 0), (256, 70), (290, 40), (380, 34), (440, 46), (468, 80), (474, 200, 0)]
-    m = cv.fill(chair, hx('#3a0e10'))
-    cv.fill([(256, 70), (290, 40), (380, 34), (384, 46), (300, 54), (270, 80), (268, 200, 0), (250, 200, 0)], hx('#6a2220'), clip=m)
+    m = cv.fill(chair, hx('#2a0a1a'))
+    cv.fill([(256, 70), (290, 40), (380, 34), (384, 46), (300, 54), (270, 80), (268, 200, 0), (250, 200, 0)], hx('#4a1428'), clip=m)
     for x in (300, 350, 400):
-        cv.ellipse(x, 66 + (x - 300) * 0.02, 3, 3, hx('#1e0608'), clip=m)
+        cv.ellipse(x, 66 + (x - 300) * 0.02, 3, 3, hx('#14040c'), clip=m)
     cv.ink(chair, 4)
-    # the desk across the front, the lamp's pool on it, rounds in its front
+    # the desk across the front, rounds in its front
     top = [(0, 172, 0), (528, 164, 0), (528, 198, 0), (0, 208, 0)]
-    cv.fill(top, hx('#4a2814'), smooth=False)
-    cv.ellipse(150, 186, 210, 24, hx('#a8743a'), clip=top)
-    cv.ellipse(150, 186, 130, 14, hx('#c88c48'), clip=top)
-    cv.fill([(0, 208, 0), (528, 198, 0), (528, 282, 0), (0, 282, 0)], hx('#22120a'), smooth=False)
+    cv.fill(top, hx('#2a1620'), smooth=False)
+    cv.fill([(0, 208, 0), (528, 198, 0), (528, 282, 0), (0, 282, 0)], hx('#140a12'), smooth=False)
     cv.brush([(0, 208), (528, 198)], 4, 4)
-    cv.brush([(0, 211), (528, 201)], 2, 2, col=hx('#6a3a1a'))
+    cv.brush([(0, 211), (528, 201)], 2, 2, col=hx('#3a1a2a'))
     for x in (176, 352):
-        cv.brush([(x, 206 - x * 0.02), (x, 282)], 3, 3, col=hx('#2a160c'))
+        cv.brush([(x, 206 - x * 0.02), (x, 282)], 3, 3, col=hx('#1e0e18'))
     for x, y in ((92, 240), (300, 232)):
         cv.ellipse(x, y, 3.5, 3.5, INK)
         for a in range(4):
             ang = a * 1.6 + y
-            cv.brush([(x, y), (x + math.cos(ang) * 9, y + math.sin(ang) * 6)], 1.5, 0.5, col=hx('#8a5a30'))
+            cv.brush([(x, y), (x + math.cos(ang) * 9, y + math.sin(ang) * 6)], 1.5, 0.5, col=hx('#5a3040'))
     # a paper slid off onto the floor
     pts = [(120, 220, 0), (160, 230, 0), (152, 266, 0), (112, 256, 0)]
-    cv.fill(pts, hx('#d8d0bc'), smooth=False)
+    cv.fill(pts, hx('#8a8098'), smooth=False)
     cv.ink(pts, 2, smooth=False)
-    # the boss, fallen forward out of his chair over the desk: his back in its cream suit, his head down on the wood
-    # on its side by the phone, his eyes shut; his blood spread from under him to the desk's edge
+    # the boss, fallen forward out of his chair over the desk: his back in its suit, his head down on the wood on its
+    # side by the phone, his eyes shut; his blood spread from under him to the desk's edge
     back = [(396, 192), (400, 150), (420, 118), (456, 102), (494, 106), (518, 128), (528, 150, 0), (528, 192, 0)]
-    m = cv.fill(back, cream)
-    cv.fill([(494, 106), (518, 128), (528, 150, 0), (528, 192, 0), (480, 192), (500, 150)], creamD, clip=m)
-    cv.brush([(456, 106), (468, 150), (470, 190)], 1.5, 0.5, mid=3, col=creamD)               # the seam down his back
+    m = cv.fill(back, suit)
+    cv.fill([(494, 106), (518, 128), (528, 150, 0), (528, 192, 0), (480, 192), (500, 150)], suitD, clip=m)
+    cv.brush([(456, 106), (468, 150), (470, 190)], 1.5, 0.5, mid=3, col=suitD)                 # the seam down his back
     cv.ink(back, 4)
     cv.fill([(330, 184), (380, 180), (430, 184), (446, 192), (448, 203, 0), (440, 203, 0), (430, 198), (380, 200), (334, 196)],
-            hx('#6a0a12'))
-    cv.brush([(350, 190), (420, 191)], 1, 1, mid=2.5, col=hx('#a8202a'))
-    cv.fill([(398, 140), (420, 124), (434, 130), (430, 160), (412, 176), (400, 172)], hx('#e8e4d8'))   # his collar
-    cv.ink([(398, 140), (420, 124), (434, 130), (430, 160), (412, 176), (400, 172)], 2)
-    pal = dict(skin=hx('#d49a74'), shade=hx('#7a4a40'), hair=hx('#a8a8b0'), hairD=hx('#5a5a66'), white=hx('#c8b8a8'))
+            hx('#5a0618'))
+    cv.brush([(350, 190), (420, 191)], 1, 1, mid=2.5, col=hx('#c01a3a'))
+    collar = [(398, 140), (420, 124), (434, 130), (430, 160), (412, 176), (400, 172)]
+    cv.fill(collar, hx('#b8b0c8'))                                                               # his collar
+    cv.ink(collar, 2)
+    pal = dict(skin=hx('#b87890'), shade=hx('#4a1e40'), hair=hx('#9a90a8'), hairD=hx('#4a4258'), white=hx('#c8a8b8'))
     head_boss(cv, T(318, 150, 0.84, 1, -math.pi / 2 - 0.08), pal)
-    # the ashtray, the cigar on its edge
-    cv.ellipse(184, 184, 26, 7, hx('#3a4a4a'))
-    cv.ellipse(184, 183, 18, 4, hx('#1a2222'))
+    # the ashtray, the cigar on its edge, its end still lit
+    cv.ellipse(184, 184, 26, 7, hx('#2a2a3a'))
+    cv.ellipse(184, 183, 18, 4, hx('#141420'))
     cv.ink([(158, 184), (184, 177), (210, 184), (184, 191)], 3)
-    cv.brush([(172, 181), (212, 177)], 7, 6, col=hx('#5a3418'))
-    cv.brush([(174, 179), (210, 175)], 1.5, 1.5, col=hx('#8a5a2a'))
-    cv.ellipse(*OFFICE_SMOKE, 3.5, 3.5, hx('#ff6a20'))
+    cv.brush([(172, 181), (212, 177)], 7, 6, col=hx('#3a1a18'))
+    cv.brush([(174, 179), (210, 175)], 1.5, 1.5, col=hx('#6a3a2a'))
+    cv.ellipse(*OFFICE_SMOKE, 3.5, 3.5, FIRE)
     # a glass on its side, its whisky spread across the desk
-    cv.ellipse(492, 184, 30, 5, hx('#a86a22'))
+    cv.ellipse(492, 184, 30, 5, hx('#8a4a1e'))
     glass = [(470, 172, 0), (494, 168, 0), (496, 182, 0), (472, 186, 0)]
-    cv.fill(glass, hx('#a8c0c0'), smooth=False)
-    cv.fill([(470, 172, 0), (494, 168, 0), (494, 171, 0), (470, 175, 0)], hx('#e8f4f4'), smooth=False)
+    cv.fill(glass, hx('#8aa0b8'), smooth=False)
+    cv.fill([(470, 172, 0), (494, 168, 0), (494, 171, 0), (470, 175, 0)], hx('#e0f0ff'), smooth=False)
     cv.ink(glass, 2, smooth=False)
-    # the lamp: a green glass shade, its brass, the light under it
-    cv.brush([(78, 186), (82, 140)], 6, 6, col=hx('#8a6a2a'))
-    cv.ellipse(80, 188, 28, 6, hx('#6a4a1a'))
-    cv.ink([(52, 188), (80, 182), (108, 188), (80, 194)], 3)
-    shade_ = [(30, 140), (40, 116), (80, 106), (120, 116), (132, 140), (80, 146)]
-    cv.shape(shade_, hx('#1e5a34'), 3)
-    cv.fill([(40, 116), (80, 106), (120, 116), (110, 122), (80, 114), (50, 122)], hx('#4aa86a'), clip=shade_)
-    cv.fill([(36, 140), (80, 146), (128, 140), (80, 152)], hx('#fff0b0'))
     # the phone's body and its dial, its cord
     cv.brush([(316, 182), (340, 196), (380, 200), (420, 196)], 2, 2, col=hx('#14121a'))
     cv.fill([(240, 150), (308, 148), (316, 166, 0), (232, 168, 0)], hx('#1e1a24'))
     cv.ink([(240, 150), (308, 148), (316, 166, 0), (232, 168, 0)], 3)
     base = [(232, 168, 0), (316, 164, 0), (322, 186, 0), (226, 190, 0)]
     cv.shape(base, hx('#14121a'), 3)
-    cv.ellipse(274, 176, 16, 7, hx('#c8c0a8'))
-    cv.ellipse(274, 176, 6, 3, hx('#3a3440'))
+    cv.ellipse(274, 176, 16, 7, hx('#9a8aa8'))
+    cv.ellipse(274, 176, 6, 3, hx('#2a2434'))
     for a in range(8):
         ang = math.pi * (0.9 + a * 0.16)
-        cv.ellipse(274 + math.cos(ang) * 11, 176 + math.sin(ang) * 5, 1.6, 1.2, hx('#3a3440'))
+        cv.ellipse(274 + math.cos(ang) * 11, 176 + math.sin(ang) * 5, 1.6, 1.2, hx('#2a2434'))
+    # the neon through the blinds, in stripes across the room, the chair, him and the desk
+    bands = cv.blank()
+    d = ImageDraw.Draw(bands)
+    for k in range(8):
+        y = 10 + k * 30
+        d.polygon([(92, y + 20), (528, y + 116), (528, y + 126), (92, y + 27)], fill=255)
+    layer = Image.new('RGB', (528, 282), (0, 0, 0))
+    layer.paste(hx('#5a1236'), (0, 0), bands)
+    cv.im = ImageChops.screen(cv.im, layer)
     return cv
 
 
 def panel_office_phone():
-    """Level 1's ending, panel 2's receiver on its own (transparent round it): the game rattles it on its cradle."""
+    """Level 1's ending, panel 2's receiver on its own (transparent round it): the game rattles it on its cradle; its
+    edge takes the neon."""
     cv = Cv(528, 282)
     rec = cv.mask([(226, 146), (234, 132), (250, 132), (256, 140), (296, 138), (302, 130), (318, 130), (326, 144), (318, 152),
                    (296, 150), (256, 152), (234, 156)])
     out = Image.new('RGBA', (528, 282), (0, 0, 0, 0))
     out.paste((10, 7, 12, 255), (0, 0), rec)
-    out.paste((34, 30, 42, 255), (0, 0), ImageChops.multiply(rec, ImageChops.offset(rec, 0, 3)))
+    out.paste((40, 26, 44, 255), (0, 0), ImageChops.multiply(rec, ImageChops.offset(rec, 0, 3)))
     out.paste((10, 7, 12, 255), (0, 0), ImageChops.multiply(rec, ImageChops.offset(rec, 0, 7)))
-    out.paste((140, 124, 120, 255), (0, 0), ImageChops.subtract(ImageChops.multiply(rec, ImageChops.offset(rec, 0, 3)),
-                                                                ImageChops.offset(rec, 0, 5)))
+    out.paste(PINK_D + (255,), (0, 0), ImageChops.subtract(ImageChops.multiply(rec, ImageChops.offset(rec, 0, 3)),
+                                                            ImageChops.offset(rec, 0, 5)))
     cv.im = out
     return cv
 
@@ -1532,26 +1654,18 @@ MATCH_COVER = [(96, 82), (360, 64), (366, 150), (102, 168)]   # the matchbook's 
 
 
 def panel_matchbook():
-    """Level 1's ending, panel 3. Close, at the wheel: his hand holds up a matchbook he took off the boss's desk, in
-    the light of a street lamp through the wet windscreen: a flamingo on its pink cover (the game letters the name
-    over it), the strip on its fold scorched where somebody struck a match."""
-    cv = Cv(528, 282, hx('#0c0e22'))
+    """Level 1's ending, panel 3. Close, at the wheel: his hand, black, holds up a matchbook he took off the boss's
+    desk, a street lamp through the wet windscreen along its fingers: a flamingo on its pink cover (the game letters
+    the name over it), the strip on its fold scorched where somebody struck a match."""
+    cv = Cv(528, 282, hx('#0e0c22'))
     # the windscreen behind, out of focus: the lamps of the street, flat discs
-    for cx, cy, r, col in ((60, 200, 46, hx('#1c1834')), (440, 70, 60, hx('#2a1e2c')), (470, 60, 30, hx('#5a3a2a')),
-                           (150, 250, 24, hx('#2a2236')), (330, 30, 20, hx('#1e1a34'))):
+    for cx, cy, r, col in ((60, 200, 46, hx('#1c1634')), (440, 70, 60, hx('#2a1a34')), (470, 60, 30, hx('#6a3a2a')),
+                           (150, 250, 24, hx('#2a1c3a')), (330, 30, 20, hx('#1e1834')), (40, 40, 16, hx('#3a1430'))):
         cv.ellipse(cx, cy, r, r, col)
-    rain_beads(cv, 0, 0, 528, 282, 16, (hx('#0a0c1c'), hx('#34365e')), seed=77)
+    rain_beads(cv, 0, 0, 528, 282, 16, (hx('#0a0a1c'), hx('#34305e')), seed=77)
     # the wheel's rim across the foot of the panel
     cv.brush([(528, 214), (420, 240), (300, 264), (200, 284)], 30, 26, col=INK)
-    cv.brush([(528, 210), (420, 236), (300, 260), (200, 280)], 8, 6, col=hx('#2a2634'))
-    skin, skinD, skinL = hx('#e09a62'), hx('#7a4430'), hx('#f4c08a')
-    # his coat's cuff and the heel of his hand, his fingers behind the matchbook
-    cuff = [(528, 196, 0), (470, 200), (452, 246), (462, 282, 0), (528, 282, 0)]
-    cv.shape(cuff, hx('#262a36'), 4)
-    cv.brush([(470, 202), (454, 246)], 3, 2, col=hx('#6a5a5a'))
-    palm = [(474, 204), (430, 190), (384, 196), (362, 214), (372, 232), (414, 246), (460, 244)]
-    cv.shape(palm, skin, 3)
-    cv.fill([(362, 214), (372, 232), (414, 246), (460, 244), (420, 230)], skinD, clip=palm)
+    cv.brush([(528, 210), (420, 236), (300, 260), (200, 280)], 8, 6, col=hx('#2a2240'))
     # the matchbook: its shadow, the cover, the fold and its striking strip, the staple
     cover = [(96, 82, 0), (360, 64, 0), (372, 210, 0), (106, 228, 0)]
     cv.fill([(104, 92, 0), (368, 74, 0), (380, 220, 0), (112, 238, 0)], hx('#06060e'), smooth=False)
@@ -1559,7 +1673,7 @@ def panel_matchbook():
     cv.fill([(96, 82, 0), (360, 64, 0), (361, 74, 0), (97, 92, 0)], hx('#ff9ab8'), smooth=False)
     cv.fill([(352, 64, 0), (360, 64, 0), (372, 210, 0), (364, 211, 0)], hx('#a83260'), smooth=False)
     cv.fill([(106, 196, 0), (370, 178, 0), (372, 210, 0), (106, 228, 0)], hx('#c8406e'), smooth=False)
-    cv.fill([(110, 204, 0), (370, 186, 0), (371, 200, 0), (111, 218, 0)], hx('#5a3424'), smooth=False)
+    cv.fill([(110, 204, 0), (370, 186, 0), (371, 200, 0), (111, 218, 0)], hx('#3a1a24'), smooth=False)
     for k in range(5):
         x = 150 + k * 18
         cv.brush([(x, 211 - (x - 110) * 0.07), (x + 30, 207 - (x - 110) * 0.07)], 3, 1, col=INK)    # struck there
@@ -1574,26 +1688,34 @@ def panel_matchbook():
     cv.ellipse(184, 84, 6, 5, bird)
     cv.brush([(188, 84), (198, 90), (196, 96)], 3, 1.5, col=INK)
     cv.brush([(130, 140), (118, 146)], 3, 1, col=bird)
-    # his thumb over the cover's corner, its nail
-    finger(cv, [(408, 214), (380, 196), (350, 186)], 17, skin, skinD, side=1)
-    cv.fill([(344, 180), (356, 178), (360, 188), (350, 192)], skinL)
-    cv.ink([(344, 180), (356, 178), (360, 188), (350, 192)], 2)
+
+    # his hand, black: the coat's cuff, the heel of the hand, the fingers behind the matchbook, the thumb over its
+    # corner; the lamp along their tops
+    def hand(c):
+        c.fill([(528, 196, 0), (470, 200), (452, 246), (462, 282, 0), (528, 282, 0)], INK)
+        c.fill([(474, 204), (430, 190), (384, 196), (362, 214), (372, 232), (414, 246), (460, 244)], INK)
+        finger(c, [(408, 214), (380, 196), (350, 186)], 17, INK)
+    m = silhouette(528, 282, hand)
+    cv.im.paste(INK, (0, 0), m)
+    backlit(cv, m, FIRE_D, ((0, -4), (-3, 0)))
+    backlit(cv, m, FIRE, ((0, -2),))
+    cv.brush([(470, 204), (454, 246)], 3, 2, col=PINK_DD)                                           # the cuff's edge
     return cv
 
 
-# name -> (painter, its size in panel px): SC x the panel's size in the title's px (Cinematic.js, Panels.js)
+# name -> (painter, its size in panel px): SC x the panel's size in the title's px (Cinematic.js, Leap.js, Ending.js)
 PANELS = {
-    'eye_shut': (lambda: panel_eye(False), (450, 174)),
-    'eye': (lambda: panel_eye(True), (450, 174)),
-    'door': (panel_door, (1080, 288)),
-    'pry': (panel_pry, (348, 282)),
-    'box': (panel_box, (348, 282)),
-    'count': (panel_count, (348, 282)),
-    'super': (panel_super, (528, 288)),
-    'super_blood': (panel_super_blood, (528, 288)),
-    'pour': (panel_pour, (528, 288)),
+    'sleep': (panel_sleep, (1080, 288)),
+    'door': (panel_door, (1080, 282)),
+    'pry': (panel_pry, (348, 288)),
+    'box': (panel_box, (348, 288)),
+    'count': (panel_count, (348, 288)),
+    'pour': (panel_pour, (1080, 282)),
     'match_dark': (lambda: panel_match(False), (1080, 282)),
     'match': (lambda: panel_match(True), (1080, 282)),
+    'fire': (panel_fire, (528, 288)),
+    'wake_shut': (lambda: panel_wake(False), (528, 288)),
+    'wake': (lambda: panel_wake(True), (528, 288)),
     'alley': (panel_alley, (1008, 408)),
     'drive': (panel_drive, (1080, 288)),
     'office': (panel_office, (528, 282)),
@@ -1604,7 +1726,9 @@ PANELS = {
 
 def main():
     for name, (paint, size) in PANELS.items():
-        paint().save(name, size)
+        cv = paint()
+        cv.im = doubled(cv.im)
+        cv.save(name, size)
     for name, (_, size) in PANELS.items():
         path = os.path.join(OUT_DIR, name + '.png')
         with Image.open(path) as im:

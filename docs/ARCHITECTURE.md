@@ -129,7 +129,7 @@ src/
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
                           TitleScene (the elevated line in the rain from his window) and title/ (Draw pixel tools, Layout, Timeline:
                           everything as a function of t, unit tested; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain),
-                          Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
+                          Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Pane: the title's window, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
     data/                 atmosphere (rain, haze, neon faults: the look of the air), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)

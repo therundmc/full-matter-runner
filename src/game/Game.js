@@ -213,8 +213,6 @@ export default class Game {
     this.cineT = 0;
     this.introT = 0;
     this.introOut = null;
-    // the opening goes on from the title's picture where it was (the window's view keeps its clock)
-    this.titleClock = this.state === 'title' ? this.stateT : 0;
     this.setState(state);
   }
 
@@ -367,14 +365,14 @@ export default class Game {
       return;
     }
     if (this.state === 'cinematic') {
-      // the opening plays by itself; a key or a click goes straight to the game
+      // the opening plays by itself; a key or a click, or its end, goes on to the level's card
       Music.setIntensity(0);
       for (const b of cineBeats(this.cineT, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
       this.cineT = this.stateT;
       const skip = this.stateT > CINE.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
       inp.consume();
       this.updateCamera(dt);
-      if (skip || cineView(this.stateT).over) this.setState('play');
+      if (skip || cineView(this.stateT).over) this.setState('intro');
       return;
     }
     if (this.state === 'intro') {
@@ -602,7 +600,7 @@ export default class Game {
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) drawTitleView(ctx, W, H, this.stateT, this.input.mouse);
-    else if (this.state === 'cinematic') this.safeDraw(ctx, () => this.drawCine(ctx, W, H, t, post));
+    else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));
     else if (this.state === 'fall' && this.stateT >= FALL.fade) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALL.fade));
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
     else this.drawScene(ctx, W, H, t, post);
@@ -624,18 +622,6 @@ export default class Game {
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
     }
     if (!['loading', 'outro', 'ending', 'cinematic', 'fall'].includes(this.state)) this.drawCursor(o, t);
-  }
-
-  // the opening (ui/Cinematic.js): from the title's window into his room, the night's story, then the level seen
-  // from above, painted on a scratch canvas
-  drawCine(ctx, W, H, t, post) {
-    if (!this.cineBuf || this.cineBuf.c.width !== W || this.cineBuf.c.height !== H) {
-      const c = document.createElement('canvas');
-      c.width = W; c.height = H;
-      this.cineBuf = { c, g: c.getContext('2d') };
-    }
-    const world = (g, w, h) => { g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; this.drawScene(g, w, h, t, post); };
-    drawCinematic(ctx, W, H, this.stateT, world, this.cineBuf, this.titleClock);
   }
 
   // the world (or the replay of the run behind the results), lit, before any lens

@@ -1,10 +1,10 @@
-// The opening's comic panels: a black frame with a white gutter and a hard shadow round each, the caption boxes and
-// the balloons. Inside, the opening's stills (drawn by tools/generate_comic.py, finer than the title) with what still
-// moves in them, and the leap's pages, pixel art in the title's logical px: flat colours in a few shades each, a dark
-// outline round what matters, never a gradient or a dither (the user wants plain pixel art). Each painter gets the
-// context clipped to its panel and translated to its top-left corner, its size, and t (s) for what still moves in it.
+// The comics' panels (the opening, the leap's card, a level's closing page): a black frame with a white gutter and a
+// hard shadow round each, the caption boxes and the balloons. Inside, the stills drawn by tools/generate_comic.py
+// (finer than the title) with what still moves in them, pixel art in the stills' px: flat colours, never a gradient
+// or a dither (the user wants plain pixel art). Each painter gets the context clipped to its panel and translated to
+// its top-left corner, its size, and t (s) for what still moves in it.
 import { spriteOpt } from '../../../engine/Assets.js';
-import { clamp, hash, px, tone, poly, disc } from './Ink.js';
+import { clamp, hash, px, tone, poly, disc, line } from './Ink.js';
 
 const INK = '#07050c';
 
@@ -41,13 +41,18 @@ export function balloon(g, x, y, w, h, tx, ty) {
   disc(g, '#f6f2ea', cx, cy, w / 2, h / 2);
 }
 
-// ---------------------------------------------------------------- the opening's stills
-// The opening's panels are drawn like a noir thriller album by tools/generate_comic.py (sprites comic/*, SC panel px
-// per title px): here they are put in their frame and given what moves (a lamp failing, smoke, blood spreading, the
-// match's flame), drawn in the stills' own px. still / fine / smoke serve the other comic pages too (ui/cine/Leap.js,
+// ---------------------------------------------------------------- the stills
+// The comic stills are painted by tools/generate_comic.py (sprites comic/*, SC panel px per title px), printed a
+// little off register like the title: here they are put in their frame and given what moves (a tube failing, rain,
+// smoke, the match's flame, the fire under his door), drawn in the stills' own px. What is bright and drawn live is
+// doubled the same way (ghosted). still / fine / smoke serve the other comic pages too (ui/cine/Leap.js,
 // ui/cine/Ending.js).
 const SC = 3;
+const GHOST = ['#1fa6c4', '#d22a6e'];   // generate_comic.py GHOST_CYAN, GHOST_PINK: left of what is bright, right of it
 const FLAME = [536, 160];   // the match's head in comic/match (generate_comic.py FLAME)
+const PANE = [360, 8, 590, 132];         // his bedroom window in comic/sleep (generate_comic.py panel_sleep)
+const COLON = [172, 154, 5, 12];         // the clock's colon there (generate_comic.py CLOCK)
+const GAP = [150, 410, 236];             // the gap under his door in comic/fire (generate_comic.py GAP)
 
 export function still(g, name, w, h) {
   const img = spriteOpt(`comic/${name}`);
@@ -60,6 +65,13 @@ export function fine(g, draw) {
   draw();
   g.restore();
 }
+// draw(dx, col) twice off register (a cyan ghost SC px to the left, a pink one to the right, col forcing their
+// colour), then itself: what is drawn last covers all but the ghosts' edges
+function ghosted(draw) {
+  draw(-SC, GHOST[0]);
+  draw(SC, GHOST[1]);
+  draw(0, null);
+}
 // smoke going up from (x, y) in a thin wavering thread (stills' px)
 export function smoke(g, x, y, t, n = 14, col = '#8a8494') {
   for (let i = 0; i < n; i++) {
@@ -67,71 +79,68 @@ export function smoke(g, x, y, t, n = 14, col = '#8a8494') {
     px(g, col, x + Math.sin(t * 2 + i * 0.7) * 4 * k + i * 0.8, y - k * 70, 3, 4);
   }
 }
-
-// ---------------------------------------------------------------- his eye in the dark
-// shut, then open all at once on the noise (open 0..1)
-export function paintEye(g, w, h, open) {
-  still(g, open > 0.5 ? 'eye' : 'eye_shut', w, h);
+// rain streaking down a window (stills' px): [x0, y0, x1, y1] its glass
+function rain(g, [x0, y0, x1, y1], t, n = 24) {
+  g.save();
+  g.beginPath();
+  g.rect(x0, y0, x1 - x0, y1 - y0);
+  g.clip();
+  for (let i = 0; i < n; i++) {
+    const u = (t * (0.9 + hash(i) * 0.6) + hash(i + 1)) % 1, x = x0 + hash(i + 2) * (x1 - x0) - u * 12, y = y0 - 20 + u * (y1 - y0 + 40);
+    line(g, i % 3 ? '#2a2450' : '#5a4a8a', x, y, x - 3, y + 10 + hash(i + 3) * 8, 2);
+  }
+  g.restore();
 }
 
-// ================================================================ page 1: what they came for
-// 1. From the dark of his flat: his front door forced, the three of them in it against the landing's yellow light,
-// their shadows long across his floor; the torch looking for something. The landing's lamp fails now and then.
-export function paintDoor(g, w, h, t) {
-  still(g, 'door', w, h);
-  if ((t * 2.3) % 1 < 0.05) fine(g, () => tone(g, '#1a0c04', 664, 8, 164, 218, 0.55));
-}
-
-// 2. Down at the floor: the heavy one prising up a board with a crowbar; dust in the light.
-export function paintPry(g, w, h, t) {
-  still(g, 'pry', w, h);
+// ================================================================ page 1: his last night
+// 1. His bedroom: he sleeps, his suitcase packed by the door; the rain on the window, the clock's colon blinking.
+export function paintSleep(g, w, h, t) {
+  still(g, 'sleep', w, h);
   fine(g, () => {
-    for (let i = 0; i < 10; i++) px(g, '#f0c890', 40 + ((hash(i) * 140 + t * 9 * (0.5 + hash(i + 3))) % 160), 150 + hash(i + 2) * 70 - t * 4, 2, 2);
+    rain(g, PANE, t);
+    if (t % 1 > 0.5) px(g, '#1a0608', ...COLON);
   });
 }
 
-// 3. The tin box open in the hole, his six years in it, in the torch's circle.
+// 2. From the dark of his flat: his front door forced, the three of them in it against the landing's tube light,
+// their shadows long across his floor. The tube fails now and then.
+export function paintDoor(g, w, h, t) {
+  still(g, 'door', w, h);
+  if ((t * 2.3) % 1 < 0.05) fine(g, () => tone(g, '#06141a', 664, 8, 164, 214, 0.6));
+}
+
+// ================================================================ page 2: what they came for
+// 1. Down at the floor: the heavy one prising up a board with a crowbar; dust in the torch's light.
+export function paintPry(g, w, h, t) {
+  still(g, 'pry', w, h);
+  fine(g, () => {
+    for (let i = 0; i < 10; i++) px(g, '#d8d0f0', 40 + ((hash(i) * 140 + t * 9 * (0.5 + hash(i + 3))) % 160), 150 + hash(i + 2) * 70 - t * 4, 2, 2);
+  });
+}
+
+// 2. The tin box open in the hole, his six years in it, in the torch's circle.
 export function paintBox(g, w, h) {
   still(g, 'box', w, h);
 }
 
-// 4. The young one thumbing through the notes, grinning.
+// 3. The young one thumbing through the notes, grinning.
 export function paintCount(g, w, h) {
   still(g, 'count', w, h);
 }
 
-// ================================================================ page 2: no loose ends
-// 1. Over the shooter's shoulder: the building's super in his doorway, hit, a hand to his chest; the gun still smokes
-// and the blood comes out between his fingers (k 0..1).
-export function paintSuper(g, w, h, t, k = 1) {
-  still(g, 'super', w, h);
-  const blood = spriteOpt('comic/super_blood');
-  fine(g, () => {
-    if (blood && k > 0) {
-      const r = 8 + 110 * clamp(k, 0, 1);
-      g.save();
-      g.beginPath();
-      g.ellipse(398, 196, r * 0.5, r, 0, 0, Math.PI * 2);
-      g.clip();
-      g.drawImage(blood, 0, 0);
-      g.restore();
-    }
-    smoke(g, 300, 132, t);
-  });
-}
-
-// 2. The heavy one tipping a jerrycan over the sofa, in the neon from the window; the petrol running.
+// 4. The heavy one tipping a jerrycan over the sofa in the neon from the window; the petrol running.
 export function paintPour(g, w, h, t) {
   still(g, 'pour', w, h);
   fine(g, () => {
     for (let i = 0; i < 4; i++) {
       const k = (t * 1.8 + i / 4) % 1;
-      px(g, '#fff0c0', 182 - k * 28, 128 + k * 54, 2, 4);
+      px(g, '#fff8e0', 540 - k * 22, 122 + k * 58, 2, 4);
     }
   });
 }
 
-// 3. Close: the one with the slicked hair strikes a match (struck 0..1: how far into the strike); before it, the dark.
+// ================================================================ page 3: no loose ends
+// 1. Close: the one with the slicked hair strikes a match (struck 0..1: how far into the strike); before it, the dark.
 export function paintMatch(g, w, h, t, struck = 1) {
   if (struck <= 0) { still(g, 'match_dark', w, h); return; }
   still(g, 'match', w, h);
@@ -139,8 +148,10 @@ export function paintMatch(g, w, h, t, struck = 1) {
   fine(g, () => {
     if (fl < 0.68) tone(g, '#07050a', 0, 0, w * SC, h * SC, 0.18);          // the flame ducks
     const fh = 48 + 16 * fl, sway = Math.sin(t * 20) * 4;
-    disc(g, '#c8381a', fx, fy - 4, 13, 15);
-    poly(g, '#c8381a', [[fx - 12, fy - 4], [fx + 12, fy - 4], [fx + 6, fy - fh * 0.55], [fx + sway, fy - fh]]);
+    ghosted((dx, col) => {
+      disc(g, col || '#c8381a', fx + dx, fy - 4, 13, 15);
+      poly(g, col || '#c8381a', [[fx + dx - 12, fy - 4], [fx + dx + 12, fy - 4], [fx + dx + 6, fy - fh * 0.55], [fx + dx + sway, fy - fh]]);
+    });
     disc(g, '#ff8a20', fx, fy - 4, 9, 11);
     poly(g, '#ff8a20', [[fx - 9, fy - 4], [fx + 9, fy - 4], [fx + sway * 0.7, fy - fh * 0.8]]);
     disc(g, '#fff0a0', fx, fy - 3, 5, 6);
@@ -150,4 +161,28 @@ export function paintMatch(g, w, h, t, struck = 1) {
       tone(g, '#ffd8a0', 0, 0, w * SC, h * SC, 0.4 * (1 - struck));
     }
   });
+}
+
+// 2. His door from inside his room: the fire comes through under it, its tongues licking up from the gap, its light
+// breathing on the boards.
+export function paintFire(g, w, h, t) {
+  still(g, 'fire', w, h);
+  const [x0, x1, y] = GAP, n = 8;
+  const tongue = (i, k) => {
+    const x = x0 + 16 + i * ((x1 - x0 - 32) / (n - 1)), f = 12 + 26 * (0.5 + 0.5 * Math.sin(t * (9 + i * 1.7) + i * 2.1));
+    return [[x - 12 * k, y + 2], [x + 12 * k, y + 2], [x + 4 * k + Math.sin(t * 13 + i) * 3, y - f * k * 0.5], [x + Math.sin(t * 11 + i * 3) * 5, y - f * k]];
+  };
+  fine(g, () => {
+    if (Math.sin(t * 9) * Math.sin(t * 3.7) > 0.55) tone(g, '#120608', 0, y, w * SC, h * SC - y, 0.3);
+    ghosted((dx, col) => {
+      for (let i = 0; i < n; i++) poly(g, col || '#ff8a20', tongue(i, 1).map(([a, b]) => [a + dx, b]));
+    });
+    for (let i = 0; i < n; i++) poly(g, '#fff0a0', tongue(i, 0.5));
+  });
+}
+
+// 3. Close on him on his pillow, his face up, the fire's light breathing on his profile: his eye opens (open).
+export function paintWake(g, w, h, t, open = false) {
+  still(g, open ? 'wake' : 'wake_shut', w, h);
+  if (Math.sin(t * 8) * Math.sin(t * 2.9) > 0.6) fine(g, () => tone(g, '#0a0408', 0, 0, w * SC, h * SC, 0.2));
 }
