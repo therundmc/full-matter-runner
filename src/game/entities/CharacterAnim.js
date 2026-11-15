@@ -6,7 +6,7 @@
 // Optional on a character: stow / lower (how the weapon is carried, ai/Carry.js) and busyHands() (where hands taken
 // by something else are: a pastime, a cigarette, a panic).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
-import { PALETTE, TAKEDOWN } from '../Config.js';
+import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { TELL, GESTURE } from '../data/feel.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
@@ -20,10 +20,7 @@ const lerpA = (a, b, t) => a + angDiff(a, b) * t;
 const ARM = 11;           // a real arm's reach from the shoulder (px)
 const SHOULDER = 6;       // shoulders at torso-local (0, ±6)
 const FOOT = '#1a1214';
-const LEG_STROKES = [[PALETTE.ink, 5.6], ['#3a3148', 4]]; // a leg is not a stick (the user: "disproportionate")
-// everyone on his feet is drawn a little bigger than his body's circle: the user wanted the characters "a bit
-// bigger", in step with the bodies on the floor (engine/Assets.js LYING)
-const BIG = 1.08;
+const LEG_STROKES = [[PALETTE.ink, 5.2], ['#3a3148', 3.6]]; // a leg is not a stick (the user: "disproportionate")
 
 const pt = () => ({ x: 0, y: 0, a: 0 });
 export function newPose() {
@@ -754,7 +751,7 @@ export const riseOf = (ch) => (ch.riseDur > 0 && !ch.executing ? clamp(1 - ch.kn
 // Taken off his feet (fall 0 .. 1): the torso thrown along the blow, the head snapped round with it, the arms left
 // behind, the feet swept out toward whoever hit him.
 function staggerPose(ch, P, V, fall) {
-  const kd = ch.downAngle + Math.PI, c = Math.cos(kd), s = Math.sin(kd);
+  const kd = ch.downAngle, c = Math.cos(kd), s = Math.sin(kd);
   const side = Math.sin(ch.angle - kd) >= 0 ? 1 : -1, e = easeOut(fall);
   copyPose(V, P);
   V.ta = P.ta + side * 0.75 * e;
@@ -890,8 +887,23 @@ function drawTucked(ctx, ch, P, bx, by) {
   ctx.restore();
 }
 
+// The frame a character is drawn in: the world's, scaled about his feet (Config BODY_SCALE). Whatever is drawn from
+// pose numbers (the pose itself, what he holds, a glint on his weapon) goes inside it, between save and restore.
+export function bodyFrame(ctx, ch) {
+  ctx.translate(ch.x, ch.y);
+  ctx.scale(BODY_SCALE, BODY_SCALE);
+  ctx.translate(-ch.x, -ch.y);
+}
+
 export function drawPose(ctx, ch, P, alpha = 1) {
-  const x = ch.x, y = ch.y, s = P.s * BIG, ta = P.ta;
+  ctx.save();
+  bodyFrame(ctx, ch);
+  paintPose(ctx, ch, P, alpha);
+  ctx.restore();
+}
+
+function paintPose(ctx, ch, P, alpha) {
+  const x = ch.x, y = ch.y, s = P.s, ta = P.ta;
   const bx = x + P.tx, by = y + P.ty;
   const ga = ctx.globalAlpha;
   if (alpha !== 1) ctx.globalAlpha = ga * alpha;
@@ -970,16 +982,18 @@ export function drawDown(ctx, ch, P) {
     drawPose(ctx, ch, P, 1 - down);
   }
   if (down <= 0) return;
-  const sc = 1 + 0.12 * (1 - fall);
-  drawSprite(ctx, silhouette(ch.downImg), x + 2 + (1 - fall) * 2, y + 2 + (1 - fall) * 2, ch.downAngle, 0.35 * down, sc);
-  drawSprite(ctx, ch.downImg, x, y, ch.downAngle, down, sc);
+  // on his back, his head where the blow sent it (downAngle), his hips where the body's circle is
+  const sc = 1 + 0.12 * (1 - fall), len = spriteW(ch.downImg);
+  const dc = Math.cos(ch.downAngle), ds = Math.sin(ch.downAngle), mx = x + dc * len * 0.08, my = y + ds * len * 0.08;
+  drawSprite(ctx, silhouette(ch.downImg), mx + 2 + (1 - fall) * 2, my + 2 + (1 - fall) * 2, ch.downAngle, 0.35 * down, sc);
+  drawSprite(ctx, ch.downImg, mx, my, ch.downAngle, down, sc);
   if (ch.asleep) return;
   // dizzy stars
   const t = ch.world.time * 6;
   ctx.fillStyle = PALETTE.yellow;
   const ga = ctx.globalAlpha;
   ctx.globalAlpha = ga * down;
-  const hc = Math.cos(ch.downAngle) * 9, hs = Math.sin(ch.downAngle) * 9;
+  const hc = dc * len * 0.48, hs = ds * len * 0.48; // round his head
   for (let i = 0; i < 3; i++) {
     const sa = t + (i * Math.PI * 2) / 3;
     ctx.fillRect(x + hc + Math.cos(sa) * 6 - 1, y + hs + Math.sin(sa) * 3 - 4, 2, 2);

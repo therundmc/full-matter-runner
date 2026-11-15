@@ -1,4 +1,4 @@
-import { CAT, MASK, LIGHTING } from '../Config.js';
+import { CAT, MASK, LIGHTING, BODY_SCALE } from '../Config.js';
 
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
@@ -543,7 +543,7 @@ export default class Vehicle {
         ctx.beginPath(); ctx.rect(x0, y0, e, this.h - 18); ctx.clip();
         ctx.translate(x0 + n / 2, y0 + (this.h - 18) / 2);
         ctx.rotate(Math.PI / 2 - 0.3);
-        ctx.scale(img.k || 1, img.k || 1); // a weapon is a finer sprite (Assets.js `density`)
+        ctx.scale((img.k || 1) * BODY_SCALE, (img.k || 1) * BODY_SCALE); // a finer sprite (Assets.js `density`), at people's scale
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
         ctx.restore();
       }

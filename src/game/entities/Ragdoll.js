@@ -1,4 +1,4 @@
-import { CAT, MASK, PALETTE } from '../Config.js';
+import { CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
@@ -86,8 +86,8 @@ export default class Ragdoll {
     this.limbs = [
       limb('arm', -tw / 2 + 1, -tht / 2 + 3, rand(...BODY.arms)),
       limb('arm', tw / 2 - 1, -tht / 2 + 3, rand(...BODY.arms)),
-      limb('leg', -3, tht / 2 - 1, rand(...BODY.legs)),
-      limb('leg', 3, tht / 2 - 1, rand(...BODY.legs)),
+      limb('leg', -tw * 0.24, tht / 2 - 1, rand(...BODY.legs)),
+      limb('leg', tw * 0.24, tht / 2 - 1, rand(...BODY.legs)),
     ];
     this.fit(x, y);
 
@@ -507,7 +507,7 @@ export default class Ragdoll {
 
   // where the planted weapon is drawn: out of the torso, its centre some way along the direction it points
   stuckAt() {
-    const t = this.torso.body, a = t.angle - Math.PI / 2 + this.stuck.a, r = sw(this.stuck.img) * 0.3;
+    const t = this.torso.body, a = t.angle - Math.PI / 2 + this.stuck.a, r = sw(this.stuck.img) * 0.3 * BODY_SCALE;
     return { x: t.position.x + Math.cos(a) * r, y: t.position.y + Math.sin(a) * r, a };
   }
 
@@ -552,8 +552,8 @@ export default class Ragdoll {
     }
     if (this.stuck) {
       const s = this.stuckAt();
-      drawSprite(ctx, silhouette(this.stuck.img), s.x + 1, s.y + 1, s.a, 0.3);
-      drawSprite(ctx, this.stuck.img, s.x, s.y, s.a);
+      drawSprite(ctx, silhouette(this.stuck.img), s.x + 1, s.y + 1, s.a, 0.3, BODY_SCALE);
+      drawSprite(ctx, this.stuck.img, s.x, s.y, s.a, 1, BODY_SCALE);
     }
     if (this.headless) stump(ctx, this.neckPos(), 4);
   }

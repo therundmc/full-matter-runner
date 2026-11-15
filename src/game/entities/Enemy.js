@@ -17,7 +17,7 @@ import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureCl
 import { carry, inHand } from '../ai/Carry.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
-import { standPose, postPose, drawPose } from './CharacterAnim.js';
+import { standPose, postPose, drawPose, bodyFrame } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL } from '../data/feel.js';
 import { POSTS, HELD } from '../data/posts.js';
@@ -1851,7 +1851,7 @@ export default class Enemy extends Character {
     this.posture = 0; this.through = false;
     this.director.provoked = true; // nobody floors a guard by accident
     this.world.events.emit('knock', { victim: this, cause, angle });
-    this.downAngle = angle + Math.PI;
+    this.downAngle = angle; // on his back, his head away from the blow
     this.dropWeapon(angle + rand(-0.8, 0.8), rand(2, 4));
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
@@ -1902,6 +1902,8 @@ export default class Enemy extends Character {
     if (!this.alive || this.knocked > 0) return;
     const t = this.world.time;
     const kind = this.pastime;
+    ctx.save();
+    bodyFrame(ctx, this); // what he holds is drawn from his pose
     if (kind) drawPastime(ctx, this, kind, ONE_GO.has(kind) ? this.actT : t);
     // what is in his hands at his post, in his torso's frame
     const P = this.pose, A = { x: this.x + P.tx, y: this.y + P.ty, angle: P.ta, s: P.s, side: this.seat?.side ?? 1, seed: this.seed };
@@ -1912,6 +1914,7 @@ export default class Enemy extends Character {
       drawPost(ctx, A, ph.g, R.k, R.t, t, this.rawHands(ph), { seed: this.seed, reach: 16 });
     }
     if (this.mouth) drawMouth(ctx, A);
+    ctx.restore();
     if (this.state === S.DIZZY) {
       ctx.fillStyle = PALETTE.yellow;
       for (let i = 0; i < 3; i++) {
@@ -1958,6 +1961,7 @@ export default class Enemy extends Character {
     } else if (this.punchSide < 0) { x = this.x + P.hl.x; y = this.y + P.hl.y; }
     const r = 2 + 5 * Math.min(1, k * 1.6), h = 0.9;
     ctx.save();
+    bodyFrame(ctx, this);
     ctx.translate(x, y);
     ctx.rotate(this.world.time * 3);
     ctx.globalAlpha = 0.6 + 0.4 * k;

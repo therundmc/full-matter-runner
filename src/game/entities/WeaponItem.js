@@ -1,4 +1,4 @@
-import { CAT, MASK, PALETTE, AI } from '../Config.js';
+import { CAT, MASK, PALETTE, AI, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
@@ -20,7 +20,9 @@ export default class WeaponItem {
     this.mag = mag ?? this.def.mag ?? 0;
     this.wear = this.def.wear; // melee: kills left in it (whoever drops a worn one sets it)
     this.img = sprite(this.def.sprite);
-    this.body = Bodies.rectangle(x, y, sw(this.img), Math.max(4, sh(this.img)), {
+    // as big on the floor as in a hand (people and what they hold are drawn BODY_SCALE bigger)
+    this.w = sw(this.img) * BODY_SCALE; this.h = sh(this.img) * BODY_SCALE;
+    this.body = Bodies.rectangle(x, y, this.w, Math.max(4, this.h), {
       angle, frictionAir: 0.01, friction: 0.05, restitution: 0.45, label: 'item',
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
@@ -82,8 +84,8 @@ export default class WeaponItem {
 
   draw(ctx, t) {
     const p = this.body.position;
-    drawSprite(ctx, silhouette(this.img), p.x + 1.5, p.y + 1.5, this.body.angle, 0.35);
-    drawSprite(ctx, this.img, p.x, p.y, this.body.angle);
+    drawSprite(ctx, silhouette(this.img), p.x + 1.5, p.y + 1.5, this.body.angle, 0.35, BODY_SCALE);
+    drawSprite(ctx, this.img, p.x, p.y, this.body.angle, 1, BODY_SCALE);
     if (this.hilite > 0) {
       // pulsing outline to show it can be picked up
       ctx.save();
@@ -93,7 +95,7 @@ export default class WeaponItem {
       ctx.lineWidth = 1;
       ctx.translate(p.x, p.y);
       ctx.rotate(this.body.angle);
-      ctx.strokeRect(-sw(this.img) / 2 - 2, -sh(this.img) / 2 - 2, sw(this.img) + 4, sh(this.img) + 4);
+      ctx.strokeRect(-this.w / 2 - 2, -this.h / 2 - 2, this.w + 4, this.h + 4);
       ctx.restore();
     }
   }

@@ -5,6 +5,7 @@
 // and the star bursts out while a hit-stop holds the world still; what follows a motion (trails, wakes) runs on world
 // time, so it slows down with it.
 // The state is plain data; only draw() and the white silhouette cache touch a canvas.
+import { BODY_SCALE } from '../Config.js';
 import { SMEAR_TINT, HEAVY, STROKE, feelOf } from '../data/feel.js';
 import { sprite, sw } from '../../engine/Assets.js';
 import { rand, clamp, lerp, angDiff } from '../../engine/math.js';
@@ -48,7 +49,7 @@ export default class CombatFx {
     if (!f.flash || !ch.torso) return;
     const P = ch.pose, side = Math.sin((P?.ta ?? ch.angle) - dir) >= 0 ? 1 : -1;
     add(this.flashes, {
-      ch, img: ch.torso, x: ch.x, y: ch.y, a: P?.ta ?? ch.angle, s: P?.s ?? 1, dir, t0: real(this.world), dur: f.flash,
+      ch, img: ch.torso, x: ch.x, y: ch.y, a: P?.ta ?? ch.angle, s: (P?.s ?? 1) * BODY_SCALE, dir, t0: real(this.world), dur: f.flash,
       shove: lethal ? f.shove : 0, squash: lethal ? f.squash : 0, twist: lethal ? f.twist * side : 0, live: !lethal,
     });
   }
@@ -152,6 +153,7 @@ export function sampleSmear(ch, P, d, spec, heavy) {
     const h = ch.punchSide < 0 ? P.hl : P.hr;
     tx = h.x; ty = h.y; mx = h.x * 0.6; my = h.y * 0.6;
   }
+  tx *= BODY_SCALE; ty *= BODY_SCALE; mx *= BODY_SCALE; my *= BODY_SCALE; // pose px to the world's (he is drawn bigger)
   const i = S.head;
   S.bx[i] = ch.x; S.by[i] = ch.y; S.t[i] = now;
   S.ta[i] = Math.atan2(ty, tx); S.tr[i] = Math.hypot(tx, ty);
@@ -222,7 +224,7 @@ function white(img) {
 function drawFlash(ctx, f, now) {
   const k = clamp((now - f.t0) / f.dur, 0, 1), img = white(f.img);
   const ch = f.ch, live = f.live && ch.alive;
-  const x = live ? ch.x + (ch.pose?.tx ?? 0) : f.x, y = live ? ch.y + (ch.pose?.ty ?? 0) : f.y, a = live ? ch.pose?.ta ?? f.a : f.a;
+  const x = live ? ch.x + (ch.pose?.tx ?? 0) * BODY_SCALE : f.x, y = live ? ch.y + (ch.pose?.ty ?? 0) * BODY_SCALE : f.y, a = live ? ch.pose?.ta ?? f.a : f.a;
   const e = 1 - (1 - k) * (1 - k); // carried fast, then it settles
   ctx.save();
   ctx.translate(x + Math.cos(f.dir) * f.shove * e, y + Math.sin(f.dir) * f.shove * e);

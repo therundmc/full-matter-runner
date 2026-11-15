@@ -10,6 +10,7 @@ import { WALKER } from '../ai/Civilians.js';
 import { talks } from '../ai/Pastimes.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
+import { bodyFrame } from './CharacterAnim.js';
 
 const { Body, Bounds } = Matter;
 
@@ -161,7 +162,7 @@ export default class Civilian extends Character {
     if (!this.alive || (this.knocked > 0 && !this.asleep)) return;
     this.asleep = false;
     this.knocked = rand(1.2, 2);
-    this.downAngle = angle + Math.PI;
+    this.downAngle = angle; // on his back, his head away from the blow
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE & ~CAT.EDGE, group: 0 };
     this.vel = { x: Math.cos(angle) * 3.5, y: Math.sin(angle) * 3.5 };
     Body.setVelocity(this.body, this.vel);
@@ -178,8 +179,11 @@ export default class Civilian extends Character {
     super.draw(ctx);
     if (k < 1 || shake) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
+    ctx.save();
+    bodyFrame(ctx, this); // what he holds is drawn from his pose
     if (b.state === WALKER.STOP) drawPastime(ctx, this, this.pastime, t);
     else if (b.state === WALKER.WALK && this.habit === 'bag') drawPastime(ctx, this, 'bag', t);
+    ctx.restore();
   }
 
   // what he is at, as a kind of render/PastimeArt.js: a couple chats turn about, a window is looked at hands in

@@ -1,4 +1,4 @@
-import { CAT, MASK, ENEMY, BARREL, PLAYER } from '../Config.js';
+import { CAT, MASK, ENEMY, BARREL, PLAYER, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, chunk, sw } from '../../engine/Assets.js';
 import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
@@ -36,7 +36,8 @@ const LAND_NOISE = 120;  // px a flat landing is heard at
 // cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
 const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
-const STRIDE = 17;      // px between two footfalls
+const STRIDE = 48;      // px between two footfalls heard: a run is three or four a second, a walk under two
+                        // (the user: one at every stride of the drawn legs was "sixteenth notes")
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
 
 // Shared body / weapon / animation logic for the player and enemies.
@@ -47,7 +48,7 @@ export default class Character {
     this.team = team;
     this.look = KINDS[kind];
     this.voice = rand(0.92, 1.1) * (kind === 'brute' || kind === 'heavy' ? 0.88 : 1); // pitch of his shouts and cries
-    this.radius = 8.5;
+    this.radius = PLAYER.radius; // everyone has the same build
     this.body = Bodies.circle(x, y, this.radius, {
       frictionAir: 0, friction: 0, frictionStatic: 0, restitution: 0, label: kind,
       collisionFilter: { category: CAT.CHAR, mask: MASK.CHAR },
@@ -316,7 +317,7 @@ export default class Character {
     const d = this.def;
     const img = sprite(d.sprite);
     const lx = (d.hold === 'two' ? 5 : 10) + sw(img) - d.grip;
-    return local(this.x, this.y, this.angle, lx, d.hold === 'two' ? 2 : 1);
+    return local(this.x, this.y, this.angle, lx * BODY_SCALE, (d.hold === 'two' ? 2 : 1) * BODY_SCALE);
   }
 
   // the barrel that just fired a burst smokes once it falls silent, a thin wisp that rises until it has cooled
