@@ -155,7 +155,7 @@ lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card ta
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.75, 14.5, 270, 'drink')            # on the counter stools
-lv.patron('civ2', 15.6, 17.4, 0, 'drink')               # alone in the first booth
+lv.patron('civ2', 15.6, 16.4, 0, 'drink')               # alone in the first booth
 lv.patron('civ4', 18.7, 17.45, 0, 'cards')              # the poker game
 lv.patron('civ1', 21.3, 18.05, 180, 'cards')
 lv.patron('civ3', 30.15, 13.45, 180, 'cue')             # waiting for his turn at the pool table
@@ -380,8 +380,9 @@ for x in (16.3, 18.0, 20.7):
     lv.prop('ceiling_lamp', x, 13.85)
 
 lv.area('the bar: booths, card table, pool')
-# two booths end to end along the west wall, each with its lamp; a chair across each table
-for y in (17.0, 19.0):
+# two booths end to end along the west wall, each with its lamp; a chair across each table. They stop a metre short
+# of the front: one dives in through the street windows behind them onto clear floor, and can vault on (the user)
+for y in (16.0, 18.0):
     lv.prop('sofa', 15.5, y, 270)
     lv.prop('table', 16.5, y, 90)
     lv.prop('chair', 17.15, y, 180)

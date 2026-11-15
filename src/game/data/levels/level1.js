@@ -168,8 +168,8 @@ export default {
     ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0], ['neon_tube_pink', 18.5, 12.05, 0],
     ['ceiling_lamp', 16.3, 13.85, 0], ['ceiling_lamp', 18, 13.85, 0], ['ceiling_lamp', 19.7, 13.85, 0],
     // the bar: booths, card table, pool
-    ['sofa', 15.5, 17, 270], ['table', 16.5, 17, 90], ['chair', 17.15, 17, 180], ['wall_lamp', 15.09, 17, 270],
-    ['sofa', 15.5, 19, 270], ['table', 16.5, 19, 90], ['chair', 17.15, 19, 180], ['wall_lamp', 15.09, 19, 270],
+    ['sofa', 15.5, 16, 270], ['table', 16.5, 16, 90], ['chair', 17.15, 16, 180], ['wall_lamp', 15.09, 16, 270],
+    ['sofa', 15.5, 18, 270], ['table', 16.5, 18, 90], ['chair', 17.15, 18, 180], ['wall_lamp', 15.09, 18, 270],
     ['card_table', 19.5, 17.75, 90], ['ceiling_lamp', 19.5, 17.75, 0], ['chair', 18.7, 17.45, 0],
     ['chair', 20.3, 18.05, 180], ['plant', 17.85, 19.55, 0], ['pool_table', 26.2, 14, 0], ['pool_lamp', 26.2, 14, 0],
     ['table_round', 22.75, 13.65, 0], ['arcade', 28.5, 12.5, 90], ['wall_lamp', 28.91, 13.3, 90],
@@ -244,7 +244,7 @@ export default {
     // customers posted indoors: [sprite, col, row, deg, pastime]
     patrons: [
       ['civ1', 16.75, 14.5, 270, 'drink'],
-      ['civ2', 15.6, 17.4, 0, 'drink'],
+      ['civ2', 15.6, 16.4, 0, 'drink'],
       ['civ4', 18.7, 17.45, 0, 'cards'],
       ['civ1', 20.3, 18.05, 180, 'cards'],
       ['civ3', 28.15, 13.45, 180, 'cue'],
