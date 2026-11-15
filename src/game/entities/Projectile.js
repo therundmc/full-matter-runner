@@ -14,6 +14,9 @@ import { faceNormal } from '../fx/Spatter.js';
 // left it comes out the far side (exit hole, debris blown forward, slightly deflected), slower. Grazing hits on hard
 // surfaces ricochet. Its streak in flight and the pop where it stops on anything but a man go by its weapon's family
 // (data/feel.js `round`); a heavy round leaves the line of its way hanging a moment (fx/CombatFx.js wake).
+// Its way over each step goes out as 'round', and every point it struck something but a man as 'strike'
+// (systems/Flinch.js: the guards it misses flinch, the player's camera is nudged).
+const STRUCK = new Set(['wall', 'prop', 'door', 'glass']);
 export default class Projectile {
   constructor(world, x, y, angle, speed, opts) {
     this.world = world;
@@ -47,13 +50,20 @@ export default class Projectile {
     let x0 = this.x, y0 = this.y;
     let x1 = x0 + this.vx * dt, y1 = y0 + this.vy * dt;
     if (this.from) { x0 = this.from.x; y0 = this.from.y; this.from = null; }
+    const sx = x0, sy = y0;
     for (let guard = 0; guard < 8; guard++) {
       const hit = w.traceBullet(x0, y0, x1, y1, this.team, this.ignore, this.floor);
       if (!hit) break;
       const skipped = this.bounced;
       const r = this.onHit(hit);
+      if (!this.rocket && STRUCK.has(hit.kind)) w.events.emit('strike', { x: hit.x, y: hit.y, owner: this.owner, team: this.team });
       if (r !== true && this.bounced === skipped && (hit.kind === 'wall' || hit.kind === 'door')) this.through = true;
-      if (r === true) { this.x = hit.x; this.y = hit.y; this.dead = true; if (this.wake) this.trace(hit.x, hit.y); return; }
+      if (r === true) {
+        this.x = hit.x; this.y = hit.y; this.dead = true;
+        if (this.wake) this.trace(hit.x, hit.y);
+        this.passed(sx, sy);
+        return;
+      }
       if (r === false) {
         x0 = hit.x + Math.cos(this.angle) * 0.5;
         y0 = hit.y + Math.sin(this.angle) * 0.5;
@@ -69,10 +79,16 @@ export default class Projectile {
     }
     this.x = x1; this.y = y1;
     if (this.wake) this.trace(x1, y1);
+    this.passed(sx, sy);
     if (this.rocket) {
       w.particles.smoke(this.x - this.vx * 0.02, this.y - this.vy * 0.02, 1, 2, { speed: 15, size: 4, life: 0.9 });
       w.particles.fire(this.x - this.vx * 0.03, this.y - this.vy * 0.03, 1, 30);
     }
+  }
+
+  // its way this step, from (sx, sy) to where it is now (a ricochet's turn is cut short: the chord)
+  passed(sx, sy) {
+    if (!this.rocket) this.world.events.emit('round', { x0: sx, y0: sy, x1: this.x, y1: this.y, owner: this.owner, team: this.team });
   }
 
   // the wake reaches (x, y) and stays fresh; a new leg of it starts at (nx, ny) when the round turns there

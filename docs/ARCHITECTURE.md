@@ -58,6 +58,9 @@ src/
       Power.js            the house's fuse box (level.power): smashed, the lights of its zone stutter and die, the
                           battery lamps (`standby` props) come on, guards come to look (DOM-free, unit-tested)
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
+      Flinch.js           rounds that go by close or strike near somebody ('round', 'strike'): a guard shot at and
+                          missed flinches (head ducked, shoulders hunched, turned away), the player's view is nudged by
+                          rounds striking the wall by him (FLINCH in data/feel.js; looks only; DOM-free, unit-tested)
       Ambience.js         the night heard place by place (level.soundscape, data/soundscape.js): beds crossfaded by
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
@@ -120,8 +123,12 @@ src/
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
-                          WeaponItem, AmmoItem, Projectile
+                          WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per
+                          gun family: data/feel.js `recoil`; pure, unit-tested)
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
+                          Casings (a spent case out of the ejection port, to the gun's right: speed, spin, hops, the
+                          ring of each touchdown; data/feel.js CASING), CombatFx (flashes, stars, muzzle flashes, wakes,
+                          weapon trails, the player's kill mark: KILL)
                           Spatter (the exit spray behind a man shot, splashes on a wall close behind him and the blood
                           that runs down it, data/wounds.js `fling` / `wall` / RUNS)
     debug/
@@ -162,10 +169,12 @@ Rules:
 |---|---|---|---|
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
 | `blow` | `{ x, y, angle, power 0..1, kind, lethal, byPlayer }` | Character / Projectile (a blow or a round landed on somebody) | Lens (colour fringe, zoom kick, impact frame) |
-| `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats |
+| `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats, CombatFx (the player's kill mark) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
+| `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses) |
+| `strike` | `{ x, y, owner, team }` | Projectile (a round hit a wall, a prop, a door or a pane) | Flinch (guards close by, the player's view) |
 | `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |

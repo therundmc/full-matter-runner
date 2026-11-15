@@ -7,13 +7,14 @@
 // by something else are: a pastime, a cigarette, a panic).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 import { GAIT, stanceAt, reachAt, footAt, phaseOf, bodyAt } from './Gait.js';
 import { beginLimbs, flushLimbs, paintLeg, paintArm, drawHand } from '../render/LimbArt.js';
 import { cantedGun, cantPalm } from '../render/HandgunArt.js';
+import { recoilAt } from './Recoil.js';
 
 export const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
@@ -42,24 +43,28 @@ const SHOULDERED = { twist: 0.3, pocket: [-1.6, 3.3], low: [-0.4, 4.6], lowA: -0
 // a machine pistol held canted in one hand (weapons.js 'side', render/HandgunArt.js): the fist on a target, the elbow
 // bent (further out for a gun whose rear would go into the chest: its back end `clear` px ahead of the body's centre),
 // how far the elbow goes out (LimbArt's 0 .. 1), the gun shoulder led forward (rad); held low, the fist by the thigh,
-// the gun pointing at the floor ahead (turned out, foreshortened); the kick throws the muzzle toward the slide's top,
-// half sideways (rad at no kick, and per unit of kick), half up at the eye (`rise`: the gun shows that much shorter);
+// the gun pointing at the floor ahead (turned out, foreshortened); the kick (entities/Recoil.js) throws the muzzle
+// toward the slide's top and the fist back along the arm (`up`: the share of it that goes toward the other shoulder);
 // the hand closed round the grip is a little bigger than an empty fist
-const SIDE = {
-  aim: [10, 4.3], clear: 5, elb: 0.5, twist: -0.3, low: [4.2, 8.4], lowA: 0.35, lowLen: 0.55, flip: [0.08, 0.04], rise: 0.12,
-  fist: 1.1,
-};
+const SIDE = { aim: [10, 4.3], clear: 5, elb: 0.5, twist: -0.3, low: [4.2, 8.4], lowA: 0.35, lowLen: 0.55, up: 0.3, fist: 1.1 };
 const sideReach = (d) => Math.max(SIDE.aim[0], d.grip + SIDE.clear);
 // a pistol held out in both hands (weapons.js 'both'): the gun hand on a target (aim-space px), the other hand closed
 // over it on the butt (`cup`: from the gun hand, in the gun's frame), how far the elbows go out (left, right); running,
 // the hands come in toward the chest by `run` px; held low (low ready), the hands in before the belly, the muzzle
-// pointing at the floor ahead (turned out, foreshortened); the kick lifts the muzzle at the eye (`rise`: the gun shows
-// that much shorter) and over toward the top of the slide (rad per unit of kick); reloading, the gun hand comes in to
-// `reload` and the magazine goes up into the butt (`well`: from the gun hand, in the gun's frame) along the grip's rake
+// pointing at the floor ahead (turned out, foreshortened); the kick (entities/Recoil.js) lifts the muzzle at the eye
+// and over toward the top of the slide; reloading, the gun hand comes in to `reload` and the magazine goes up into the
+// butt (`well`: from the gun hand, in the gun's frame) along the grip's rake
 const PAIR = {
-  aim: [11, 3.2], cup: [0.5, -1.3], elb: [0.2, 0.3], run: 2.5, low: [7, 3], lowA: 0.25, lowLen: 0.6, rise: 0.1, flip: 0.03,
+  aim: [11, 3.2], cup: [0.5, -1.3], elb: [0.2, 0.3], run: 2.5, low: [7, 3], lowA: 0.25, lowLen: 0.6,
   reload: [8, 2], well: [-0.7, 2.4], rake: 0.3,
 };
+// working the action at the end of a reload, where the free hand takes hold of it (in the gun's frame, from the gun
+// hand: x along the barrel, y to its right): a pistol's slide gripped over its rear, a machine pistol's cocking knob
+// on top, a rifle's charging handle at the back of the receiver, a shotgun's bolt handle on its right side
+const RACK = { both: [3.5, -0.6], side: [4, -1.4], two: [0.5, -0.8], shell: [3, 1.6] };
+// a man flinching from a round (systems/Flinch.js): his empty hands come up before his face
+const GUARD = [5.5, 3.2];
+const NO_KICK = { hands: 0, flip: 0, rise: 0, torso: 0, rock: 0, sink: 0, elbow: 0, bx: 0, by: 0 };
 
 const GAIT_WIDTH = GAIT.width;
 
@@ -76,9 +81,12 @@ export const palmOf = (d, fist = false) => (canted(d, fist) ? cantPalm(d) : d.pa
 
 // Where the muzzle is in pose P as it is drawn (pose px about the feet, world orientation; the caller scales by
 // BODY_SCALE) and the way the barrel points: drawWeapon's own transform applied to the muzzle point
-export function muzzleIn(P, d, w, out) {
+export function muzzleIn(P, d, w, out) { return boreIn(P, d, muzzleX(d, w), out); }
+
+// the point `along` world px from the hand down the bore line (the ejection port: d.eject - d.grip), as drawn in P
+export function boreIn(P, d, along, out) {
   const len = Math.sign(P.wpnLen || 1) * Math.max(0.15, Math.abs(P.wpnLen));
-  const u = muzzleX(d, w) * len * P.s, v = ((d.bore ?? 0) - palmOf(d, P.fist)) * P.wpnS * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
+  const u = along * len * P.s, v = ((d.bore ?? 0) - palmOf(d, P.fist)) * P.wpnS * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
   out.x = P.wpn.x + u * c - v * s; out.y = P.wpn.y + u * s + v * c; out.a = P.wpn.a;
   return out;
 }
@@ -109,6 +117,7 @@ export function newPose() {
     // weapon foreshortening (-1 pointing back .. 1), its swelling when it comes up toward the camera, and what is held
     // above the shoulders: 0 nothing, 1 the weapon and its hand, 2 both hands
     wpnLen: 1, wpnS: 1, top: 0,
+    duck: 0, hunch: 0, // flinching: the head ducked in (0 .. 1 of it), the shoulders hunched (narrower by that share)
   };
 }
 
@@ -133,6 +142,13 @@ function freeHand(side, g, r, sw, out) {
 }
 const FH = { x: 0, y: 0 };
 
+// how far into his flinch a man is (0 .. 1 of its strength): in at once, out slowly
+export function flinchAt(ch) {
+  if (!(ch.flinch > 0)) return 0;
+  const u = 1 - ch.flinch / FLINCH.dur;
+  return ch.flinchK * smooth(u / 0.12) * (1 - smooth((u - 0.3) / 0.7));
+}
+
 export function standPose(ch, P, a = ch.angle) {
   const d = ch.def;
   const g = Math.min(1, ch.gait), run = ch.runK * g;
@@ -144,8 +160,8 @@ export function standPose(ch, P, a = ch.angle) {
   const cock = ch.tell > 0 && ch.swing <= 0 ? smooth(Math.min(1, (1 - ch.tell / ch.tellDur) * 2.5)) : 0;
   const striking = ch.swing > 0 || cock > 0;
   const swingP = ch.swing > 0 ? 1 - ch.swing / ch.swingDur : cock > 0 ? TELL.hold * cock : 1;
-  const rk = ch.recoil * ch.recoil; // snappy kick, eased recovery
-  const kick = d.kick ?? 0;
+  // the kick of the last shot (entities/Recoil.js, the family's profile in data/feel.js)
+  const K = d.kind === 'gun' && ch.recoil > 0 ? recoilAt(feelOf(d).recoil, ch.recoil, ch.world.time, ch.breath) : NO_KICK;
   let twist = 0, back = 0, dip = 0, len = 1, thick = 1, top = 0;
 
   // aim-space hands / weapon (x forward, y right)
@@ -183,67 +199,79 @@ export function standPose(ch, P, a = ch.angle) {
       twist = -ch.punchSide * 0.2 * ext;
     }
   } else if (d.hold === 'both' || d.hold === 'side' || d.hold === 'two') {
-    const kp = 1.6 + kick * 0.45;
     // not on a target: a pistol before the belly and a machine pistol down by the thigh, pointing at the floor; a long
     // gun across the chest
     const low = smooth(ch.lower);
     wpnOn = true;
-    wa = -rk * (0.05 + kick * 0.02); // muzzle climb
-    back = rk * kick * 0.12;
+    wa = -K.flip; // muzzle climb
+    back = K.torso;
+    dip = K.sink;
     if (d.hold === 'both') {
       // the arms out in a narrow triangle, the gun hand on the grip, the other one closed over it (paintHand); the
       // kick throws the hands back and the muzzle up at the eye
       const S = PAIR;
-      wa = -rk * kick * S.flip + S.lowA * low;
-      hrx = lerp(S.aim[0] - S.run * run, S.low[0], low) - kp * rk; hry = lerp(S.aim[1], S.low[1], low);
+      wa = -K.flip + S.lowA * low;
+      hrx = lerp(S.aim[0] - S.run * run, S.low[0], low) - K.hands + K.bx; hry = lerp(S.aim[1], S.low[1], low) + K.by;
       wx = hrx; wy = hry;
-      len = lerp(1, S.lowLen, low) * (1 - S.rise * rk);
+      len = lerp(1, S.lowLen, low) * (1 - K.rise);
       const c = Math.cos(wa), sn = Math.sin(wa), ux = S.cup[0] * len;
       hlx = hrx + ux * c - S.cup[1] * sn; hly = hry + ux * sn + S.cup[1] * c;
-      P.elb[0] = S.elb[0] + 0.3 * low; P.elb[1] = S.elb[1] + 0.2 * low + 0.25 * rk;
+      P.elb[0] = S.elb[0] + 0.3 * low + 0.5 * K.elbow; P.elb[1] = S.elb[1] + 0.2 * low + K.elbow;
     } else if (d.hold === 'side') {
       // in one hand, the elbow a little bent, the gun canted, the gun shoulder forward; the other arm hangs at his
       // side and swings with the stride. The kick throws the muzzle toward the top of the slide (sideways and up at
       // the eye, seen from above), the fist back along the arm, the elbow folding.
       const S = SIDE;
-      wa = -rk * (S.flip[0] + kick * S.flip[1]) + S.lowA * low;
-      hrx = lerp(sideReach(d), S.low[0], low) - kp * rk; hry = lerp(S.aim[1], S.low[1], low) - 0.4 * kick * rk;
+      wa = -K.flip + S.lowA * low;
+      hrx = lerp(sideReach(d), S.low[0], low) - K.hands + K.bx; hry = lerp(S.aim[1], S.low[1], low) - S.up * K.hands + K.by;
       wx = hrx; wy = hry;
-      len = lerp(1, S.lowLen, low) * (1 - S.rise * rk);
+      len = lerp(1, S.lowLen, low) * (1 - K.rise);
       stance = S.twist * (1 - 0.6 * low);
       freeHand(-1, g, run, stride, FH);
       const c = Math.cos(stance), sn = Math.sin(stance); // at the side of the turned shoulders
       hlx = FH.x * c - FH.y * sn; hly = FH.x * sn + FH.y * c;
       if (g > 0.4 && run < 0.5) P.hand[0] = 'loose';
-      P.elb[1] = lerp(S.elb, 0.12, low) + 0.25 * rk;
+      P.elb[1] = lerp(S.elb, 0.12, low) + K.elbow;
     } else {
       // shouldered: the butt in the pocket of the right shoulder (on top of it for a launcher), the weapon along the
       // aim, the right hand on its grip, the left one on its forend; held low, it goes down across the body
       const S = SHOULDERED, up = d.onShoulder && low < 0.5, butt = d.butt ?? 0.5; // held low, a launcher too
       wa += S.lowA * low;
-      const bx = (up ? S.onShoulder[0] : lerp(S.pocket[0], S.low[0], low)) - kp * rk;
-      const by = up ? S.onShoulder[1] : lerp(S.pocket[1], S.low[1], low);
+      const bx = (up ? S.onShoulder[0] : lerp(S.pocket[0], S.low[0], low)) - K.hands + K.bx;
+      const by = (up ? S.onShoulder[1] : lerp(S.pocket[1], S.low[1], low)) + K.by;
       const c = Math.cos(wa), sn = Math.sin(wa);
       wx = bx + c * (d.grip - butt); wy = by + sn * (d.grip - butt);
       hrx = wx; hry = wy + 0.3;
       hlx = bx + c * (d.fore - butt); hly = by + sn * (d.fore - butt) - 0.2;
       stance = SHOULDERED.twist * (1 - 0.4 * low);
+      if (!up) len = 1 - K.rise; // the muzzle comes up off the shoulder (a launcher's tube stays put)
       P.elb[0] = 0.3; P.elb[1] = 0.7;
       if (up) top = 1;
     }
+    stance += K.rock;
     if (ch.reloading > 0) {
       const p = 1 - ch.reloading / ch.reloadDur;
       const bx = -1, by = -8; // belt
       if (d.shellReload) {
-        // off hand shuttles shells from the belt to the loading port
-        const k = Math.sin(Math.PI * p);
-        hlx = lerp(bx, wx + 6, k); hly = lerp(by, wy + 3, k);
+        // one round at a time: the free hand fetches it from the belt, brings it under the loading port (a launcher:
+        // to the back of its tube), thumbs it home along the gun, goes back for the next one
+        const L = RELOAD.shell, c = Math.cos(wa - 0.35), sn = Math.sin(wa - 0.35);
+        const at = d.onShoulder ? -(d.butt ?? 0.5) - 3 : 3; // along the gun from the hand
+        const px = wx + c * at - sn * 1.6, py = wy + sn * at + c * 1.6;
+        const push = smooth((p - L.port) / (L.push - L.port)) * 2.2;
+        if (p < L.fetch) { const e = ch.shellsIn ? 1 : smooth(p / L.fetch); hlx = lerp(hlx, bx, e); hly = lerp(hly, by, e); }
+        else if (p < L.port) { const e = easeOut((p - L.fetch) / (L.port - L.fetch)); hlx = lerp(bx, px, e); hly = lerp(by, py, e); }
+        else if (p < L.push) { hlx = px + c * push; hly = py + sn * push; }
+        else { const e = smooth((p - L.push) / (1 - L.push)); hlx = lerp(px + c * push, bx, e); hly = lerp(py + sn * push, by, e); }
         wa -= 0.35;
-        carryImg = sprite('weapons/shell'); cx = hlx; cy = hly; ca = 0;
+        if (p > L.fetch * 0.5 && p < L.push) {
+          carryImg = spriteOpt(d.load); cx = hlx; cy = hly; ca = wa + (d.onShoulder ? 0 : Math.PI / 2); // across the port; a rocket along the tube
+        }
       } else {
         // tilt the gun in, fetch a fresh mag from the belt, slam it in, rack. A handgun comes in before the chest and
         // its magazine goes up into the grip, under the gun hand: the other palm drives it in from the grip's butt.
-        const tilt = smooth(p < 0.12 ? p / 0.12 : p > 0.85 ? (1 - p) / 0.15 : 1), side = d.hold === 'side', both = d.hold === 'both';
+        const L = RELOAD.mag, side = d.hold === 'side', both = d.hold === 'both';
+        const tilt = smooth(p < L.tilt[0] ? p / L.tilt[0] : p > L.tilt[1] ? (1 - p) / (1 - L.tilt[1]) : 1);
         wa -= 0.55 * tilt;
         if (side) { wx = lerp(wx, d.grip + 4.5, tilt); wy = lerp(wy, 2.6, tilt); P.elb[1] = lerp(P.elb[1], 0.6, tilt); }
         else if (both) { wx = lerp(wx, PAIR.reload[0], tilt); wy = lerp(wy, PAIR.reload[1], tilt); P.elb[1] = lerp(P.elb[1], 0.5, tilt); }
@@ -254,16 +282,30 @@ export function standPose(ch, P, a = ch.angle) {
           const c = Math.cos(wa), sn = Math.sin(wa), [ux, uy] = PAIR.well;
           wellX = wx + ux * c - uy * sn; wellY = wy + ux * sn + uy * c;
         }
-        if (p < 0.15) { const e = smooth(p / 0.15); hlx = lerp(hlx, bx, e); hly = lerp(hly, by, e); }
-        else if (p < 0.4) { hlx = bx; hly = by; }
-        else if (p < 0.7) { const e = easeOut((p - 0.4) / 0.3); hlx = lerp(bx, wellX, e); hly = lerp(by, wellY, e); }
-        else { hlx = wellX; hly = wellY; }
-        if (p > 0.25 && p < 0.72 && d.magSprite) {
+        // the action worked: the free hand goes from the well to its handle, draws it back, lets it fly home; the gun
+        // gives a little to the pull
+        const c = Math.cos(wa), sn = Math.sin(wa), [ux, uy] = RACK[d.hold] || RACK.two;
+        const pull = bump(p, L.rack[0] + 0.3 * (L.rack[1] - L.rack[0]), L.rack[1]) * L.pull;
+        const rkx = wx + (ux - pull) * c - uy * sn, rky = wy + (ux - pull) * sn + uy * c;
+        const toRack = smooth((p - L.seat) / (L.rack[0] - L.seat)), off = smooth((p - L.rack[1]) / (1 - L.rack[1]));
+        if (p < L.belt[0]) { const e = smooth(p / L.belt[0]); hlx = lerp(hlx, bx, e); hly = lerp(hly, by, e); }
+        else if (p < L.belt[1]) { hlx = bx; hly = by; }
+        else if (p < L.insert[1]) { const e = easeOut((p - L.insert[0]) / (L.insert[1] - L.insert[0])); hlx = lerp(bx, wellX, e); hly = lerp(by, wellY, e); }
+        else if (p < L.rack[1]) { hlx = lerp(wellX, rkx, toRack); hly = lerp(wellY, rky, toRack); }
+        else { hlx = lerp(rkx, hlx, off); hly = lerp(rky, hly, off); }
+        if (p > L.carry[0] && p < L.carry[1] && d.magSprite) {
           carryImg = spriteOpt(d.magSprite); cx = hlx; cy = hly; ca = side ? wa + Math.PI / 2 : both ? wa + PAIR.rake : Math.PI / 2; // along the grip
         }
-        if (p > 0.86) wx -= Math.sin(((p - 0.86) / 0.14) * Math.PI) * 3;
+        wx -= pull * 0.35;
         if (side || both) hry = wy;
       }
+      hrx = wx;
+    } else if (ch.racking > 0 && !d.onShoulder) {
+      // the last shell in: the free hand goes to the bolt handle on the right of the receiver and works it
+      const k = 1 - ch.racking / RELOAD.shell.racked, c = Math.cos(wa), sn = Math.sin(wa), [ux, uy] = RACK.shell;
+      const on = Math.min(1, bump(k, 0, 1) * 1.6), pull = bump(k, 0.3, 0.85) * RELOAD.shell.pull;
+      hlx = lerp(hlx, wx + (ux - pull) * c - uy * sn, on); hly = lerp(hly, wy + (ux - pull) * sn + uy * c, on);
+      wx -= pull * 0.3;
       hrx = wx;
     }
   } else {
@@ -396,6 +438,19 @@ export function standPose(ch, P, a = ch.angle) {
     back += 1.5;
   }
 
+  // flinching from a round that went by or struck close (systems/Flinch.js): the head ducked in, the shoulders hunched
+  // and turned away from it, the body pulled off its way and lowered; empty hands come up before the face
+  const fl = flinchAt(ch), FP = FLINCH.pose;
+  if (fl) {
+    twist += ch.flinchSide * FP.away * fl;
+    dip += FP.dip * fl;
+    if (d.hold === 'none' && !busy && !ch.yielded) {
+      hlx = lerp(hlx, GUARD[0], fl); hly = lerp(hly, -GUARD[1], fl); hrx = lerp(hrx, GUARD[0], fl); hry = lerp(hry, GUARD[1], fl);
+      P.hand[0] = P.hand[1] = 'loose';
+    }
+  }
+  P.duck = FP.duck * fl; P.hunch = FP.hunch * fl;
+
   // torso: the shoulders turn against the hips with the stride (less with a weapon held on something), the body goes
   // over the planted foot, bobs (up over the foot walking, down onto it running), leans into a run, is carried by
   // a change of speed (Character.carryTorso), breathes standing; recoil pushes it back
@@ -406,8 +461,9 @@ export function standPose(ch, P, a = ch.angle) {
   // standing around, the weight goes from one leg to the other (not the player: his stance answers the keys)
   const shift = ch.isPlayer ? 0 : (1 - g) * clamp(Math.sin(ch.world.time * 0.5 + ch.breath * 3) * 3, -1, 1);
   const sa = ch.strideA, lat = BOB.sway * B.sway * (1 - 0.5 * run) * g, fwd = B.lean * run * (ch.backward ? -0.4 : 1);
-  P.tx = ch.lean.x - Math.cos(a) * back - Math.sin(a) * shift * 0.8 + Math.cos(sa) * fwd - Math.sin(sa) * lat;
-  P.ty = ch.lean.y - Math.sin(a) * back + Math.cos(a) * shift * 0.8 + Math.sin(sa) * fwd + Math.cos(sa) * lat;
+  const fb = fl * FP.back;
+  P.tx = ch.lean.x - Math.cos(a) * back - Math.sin(a) * shift * 0.8 + Math.cos(sa) * fwd - Math.sin(sa) * lat + Math.cos(ch.flinchA ?? 0) * fb;
+  P.ty = ch.lean.y - Math.sin(a) * back + Math.cos(a) * shift * 0.8 + Math.sin(sa) * fwd + Math.cos(sa) * lat + Math.sin(ch.flinchA ?? 0) * fb;
   const settle = Math.hypot(ch.lean.x, ch.lean.y);
   P.s = 1 + BOB.bob * lerp(B.bob[0], B.bob[1], run) * g + 0.012 * (1 - g) * Math.sin(ch.world.time * 2.3 + ch.breath)
     - dip - 0.008 * settle;
@@ -450,6 +506,7 @@ function blendPose(A, B, w) {
   A.tuck = lerp(A.tuck, B.tuck, w); A.over = lerp(A.over, B.over, w);
   A.wpnLen = lerp(A.wpnLen, B.wpnLen, w); A.wpnS = lerp(A.wpnS, B.wpnS, w);
   A.ha = lerpA(A.ha, B.ha, w);
+  A.duck *= 1 - w; A.hunch *= 1 - w;
   if (w > 0.5) { A.top = B.top; A.fist = B.fist; A.hand[0] = B.hand[0]; A.hand[1] = B.hand[1]; }
   for (let i = 0; i < 2; i++) {
     const f = A.feet[i], g = B.feet[i];
@@ -466,7 +523,7 @@ function blendPose(A, B, w) {
 
 function copyPose(A, B) {
   A.tx = B.tx; A.ty = B.ty; A.ta = B.ta; A.s = B.s; A.lift = B.lift; A.legs = B.legs; A.tuck = B.tuck; A.over = B.over;
-  A.ha = B.ha;
+  A.ha = B.ha; A.duck = B.duck; A.hunch = B.hunch;
   for (let i = 0; i < 2; i++) { Object.assign(A.feet[i], B.feet[i]); A.hand[i] = B.hand[i]; A.elb[i] = B.elb[i]; }
   for (const k of ['hl', 'hr', 'wpn', 'carry']) Object.assign(A[k], B[k]);
   A.wpnOn = B.wpnOn; A.carryImg = B.carryImg; A.fist = B.fist;
@@ -1190,6 +1247,17 @@ function drawTucked(ctx, ch, P, bx, by) {
   ctx.restore();
 }
 
+// the shoulders drawn in toward the spine (the sprite's y is across them)
+function drawHunched(ctx, img, x, y, a, s, h) {
+  const k = s * (img.k || 1);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(a);
+  ctx.scale(k, k * (1 - h));
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  ctx.restore();
+}
+
 // The frame a character is drawn in: the world's, scaled about his feet (Config BODY_SCALE). Whatever is drawn from
 // pose numbers (the pose itself, what he holds, a glint on his weapon) goes inside it, between save and restore.
 export function bodyFrame(ctx, ch) {
@@ -1211,8 +1279,9 @@ function paintPose(ctx, ch, P, alpha) {
   const ga = ctx.globalAlpha;
   if (alpha !== 1) ctx.globalAlpha = ga * alpha;
   // the head on the neck, turned toward the aim, bobbing less than the shoulders; hidden in a ball
-  const ha = ta + clamp(angDiff(ta, P.ha), -1, 1), hs = 1 + (s - 1) * 0.6, head = 1 - smooth(P.tuck * 2);
-  const hx = bx + Math.cos(ta) * LIMB.neck * s, hy = by + Math.sin(ta) * LIMB.neck * s;
+  // a ducked head sinks between the shoulders: smaller, pulled back onto the neck
+  const ha = ta + clamp(angDiff(ta, P.ha), -1, 1), hs = (1 + (s - 1) * 0.6) * (1 - 0.5 * P.duck), head = 1 - smooth(P.tuck * 2);
+  const neck = LIMB.neck * s * (1 - 3 * P.duck), hx = bx + Math.cos(ta) * neck, hy = by + Math.sin(ta) * neck;
 
   // shadow: further away, larger and softer as the body rises
   const sh = silhouette(ch.torso), shh = silhouette(ch.head), lift = P.lift;
@@ -1260,6 +1329,7 @@ function paintPose(ctx, ch, P, alpha) {
   for (const i of cup ? HANDS_CUP : HANDS_ORDER) if (i ? !P.top : P.top < 2) paintHand(ctx, ch, P, i, x, y, cup);
 
   if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
+  else if (P.hunch > 0.005) drawHunched(ctx, ch.torso, bx, by, ta, s, P.hunch);
   else drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
   if (head > 0) drawSprite(ctx, ch.head, hx, hy, ha, head, hs);
   if (P.over > 0.35) { beginLimbs(ta); paintLegs(ch, P, 0.15 * P.over); flushLimbs(ctx, x, y); } // up over the body

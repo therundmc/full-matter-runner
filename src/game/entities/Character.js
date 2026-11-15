@@ -13,8 +13,10 @@ import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
-import { feelOf, MOMENTS, TELL, GESTURE } from '../data/feel.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn }
+import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH } from '../data/feel.js';
+import { ejection, casingShown, spentSound } from '../fx/Casings.js';
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+  muzzleX, boreIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
 
@@ -51,7 +53,7 @@ const SETTLE = { gain: 3.2, max: 1.8, carry: 0.85, freq: 12, damp: 0.42 };
 // chest, his feet; the sprite sits a little ahead of the body's centre), the turns tried, rad/s he is turned at
 const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
-const MUZZLE_AT = { x: 0, y: 0, a: 0 };
+const MUZZLE_AT = { x: 0, y: 0, a: 0 }, PORT_AT = { x: 0, y: 0, a: 0 };
 
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
@@ -91,10 +93,16 @@ export default class Character {
     this.reloading = 0;
     this.reloadDur = 1;
     this.reloadStage = 0;
+    this.shellsIn = 0;      // rounds loaded so far by a shell-by-shell reload
+    this.racking = 0;       // s left of working the action after the last shell (RELOAD.shell.racked)
+    this.flinch = 0;        // s left of a flinch from a round gone by (systems/Flinch.js), its strength 0..1, the way
+    this.flinchK = 0;       // he is pulled (away from the round) and the side it went by on (1: his right)
+    this.flinchA = 0;
+    this.flinchSide = 1;
     this.pickAnim = 0;
     this.throwT = 0;        // follow-through of a throw
     this.throwDur = 0.28;
-    this.recoilRate = 9;    // recoil recovery per second (heavy guns recover slower)
+    this.recoilRate = 9;    // recoil recovery per second (the gun family's FEEL recoil.rate: heavy guns recover slower)
     this.glassSafe = 0;     // seconds of immunity to flying shards left after a window vault
     this.vaulting = null;   // { from, to, t, dur, kind, dir, ... } while jumping over something
     this.slideAnim = null;  // { dir, side, k, w } while sliding (driven by Player)
@@ -155,6 +163,8 @@ export default class Character {
     const d = this.def;
     this.reloadDur = this.reloading = d.reload;
     this.reloadStage = 0;
+    this.shellsIn = 0;
+    this.racking = 0;
     this.world.sound(d.shellReload ? 'handle' : 'magOut', this.x, this.y, 0.7, { weapon: this.weapon.type, dur: d.reload });
     return true;
   }
@@ -167,36 +177,43 @@ export default class Character {
     if (d.shellReload) {
       if (this.reloading <= 0) {
         this.weapon.mag++;
+        this.shellsIn++;
         this.takeRound();
         this.world.sound('shellIn', this.x, this.y, 0.6, { weapon: this.weapon.type });
         if (this.weapon.mag < d.mag && this.reserveCount() > 0) this.reloadDur = this.reloading = d.reload;
-        else { this.reloading = 0; this.world.sound('rack', this.x, this.y, 0.8, { weapon: this.weapon.type }); this.recoil = 0.8; }
+        else {
+          this.reloading = 0;
+          this.world.sound('rack', this.x, this.y, 0.8, { weapon: this.weapon.type });
+          this.racking = RELOAD.shell.racked; // the action worked by hand (CharacterAnim)
+        }
       }
       return;
     }
-    if (this.reloadStage === 0 && p > 0.08) {
+    const L = RELOAD.mag;
+    if (this.reloadStage === 0 && p > L.drop) {
       this.reloadStage = 1;
       this.dropMag();
     }
-    if (this.reloadStage === 1 && p > 0.7) {
+    if (this.reloadStage === 1 && p > L.seat) {
       this.reloadStage = 2;
       this.weapon.mag = this.takeMag();
       this.world.sound('magIn', this.x, this.y, 0.8, { weapon: this.weapon.type });
     }
-    if (this.reloadStage === 2 && p > 0.86) {
+    if (this.reloadStage === 2 && p > L.rack[0]) {
       this.reloadStage = 3;
       this.world.sound('rack', this.x, this.y, 0.8, { weapon: this.weapon.type });
-      this.recoil = 0.9;
     }
     if (this.reloading <= 0) this.reloading = 0;
   }
 
-  // the old magazine falls out and clatters on the floor, with whatever rounds were left in it
+  // the old magazine falls out of the well under his hand and clatters on the floor (from RELOAD.mag.fall px up, as
+  // Audio._magOut hears it land), with whatever rounds were left in it
   dropMag() {
     const d = this.def;
     const left = this.weapon.mag;
     this.weapon.mag = 0;
-    const g = local(this.x, this.y, this.angle, d.hold === 'two' ? 9 : 8, 2);
+    const h = this.pose.hr, g = this.pose.wpnOn ? { x: this.x + h.x * BODY_SCALE, y: this.y + h.y * BODY_SCALE }
+      : local(this.x, this.y, this.angle, d.hold === 'two' ? 9 : 8, 2);
     const a = this.angle + Math.PI / 2 + rand(-0.6, 0.6);
     const v = rand(30, 70);
     if (left > 0) {
@@ -207,7 +224,7 @@ export default class Character {
     }
     const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6);
     this.world.addDebris(new Debris(this.world, img, g.x, g.y, this.angle + Math.PI / 2, Math.cos(a) * v, Math.sin(a) * v,
-      rand(-0.4, 0.4), { material: 'metal', air: 0.1, kg: 0.15, mu: 0.4, fly: 0.25, bounce: 0.3 }));
+      rand(-0.4, 0.4), { material: 'metal', air: 0.1, kg: 0.15, mu: 0.4, fly: 0.25, bounce: 0.3, z: RELOAD.mag.fall }));
   }
 
   // desired direction (dx, dy), speed in px/step
@@ -231,6 +248,8 @@ export default class Character {
     this.updateReload(dt);
     this.throwT = Math.max(0, this.throwT - dt);
     this.recoil = Math.max(0, this.recoil - dt * this.recoilRate);
+    this.racking = Math.max(0, this.racking - dt);
+    this.flinch = Math.max(0, this.flinch - dt);
     if (this.barrel > 0) this.fume(dt);
     const v = Body.getVelocity(this.body);
     const sp = Math.hypot(v.x, v.y);
@@ -380,10 +399,37 @@ export default class Character {
     const d = this.def;
     if (!P.wpnOn || d.kind !== 'gun') return;
     const m = muzzleIn(P, d, sw(sprite(d.sprite)), MUZZLE_AT), c = Math.cos(this.angle), s = Math.sin(this.angle);
-    const n = this.muzzleNote ??= { def: d, x: 0, y: 0, da: 0 };
+    const n = this.muzzleNote ??= { def: d, x: 0, y: 0, da: 0, px: 0, py: 0 };
     n.def = d;
     n.x = (m.x * c + m.y * s) * BODY_SCALE; n.y = (m.y * c - m.x * s) * BODY_SCALE;
     n.da = angDiff(this.angle, m.a);
+    if (!d.eject) return;
+    const q = boreIn(P, d, d.eject - d.grip, PORT_AT);
+    n.px = (q.x * c + q.y * s) * BODY_SCALE; n.py = (q.y * c - q.x * s) * BODY_SCALE;
+  }
+
+  // { x, y }: the gun's ejection port (weapons.js `eject`) as last drawn, else where it is with the gun raised
+  portPos() {
+    const d = this.def, n = this.muzzleNote;
+    if (n?.def === d) return local(this.x, this.y, this.angle, n.px, n.py);
+    const w = sw(sprite(d.sprite)), m = muzzleAt(d, w), back = muzzleX(d, w) - (d.eject - d.grip);
+    return local(this.x, this.y, this.angle, (m.x - back) * BODY_SCALE, m.y * BODY_SCALE);
+  }
+
+  // a spent case out of the port, to the gun's right (fx/Casings.js): it arcs, tumbles, lands ringing and skitters
+  eject(d) {
+    if (!casingShown(d, this.isPlayer)) return;
+    const v = Body.getVelocity(this.body), e = ejection(d, this.portPos(), this.angle, { x: v.x * 60, y: v.y * 60 });
+    this.world.addDebris(new Debris(this.world, sprite('weapons/' + d.casing), e.x, e.y, e.angle, e.vx, e.vy, e.spin, {
+      material: 'brass', air: 0.08, shadow: 0, kg: e.spec.kg, mu: e.spec.mu, bounce: 0.5, z: e.z, vz: e.vz, tumble: e.tumble, lift: e.spec.lift,
+      hop: e.spec, tick: { name: 'shell', opts: { kind: spentSound(d), bounces: 1 } },
+    }));
+  }
+
+  // a round went by close or struck near him (systems/Flinch.js): k 0..1, pulled along `away`, on his `side`
+  flinchFrom(k, away, side) {
+    if (this.flinch > 0 && k <= this.flinchK && this.flinch > FLINCH.dur - FLINCH.gap) return;
+    this.flinch = FLINCH.dur; this.flinchK = k; this.flinchA = away; this.flinchSide = side;
   }
 
   // the barrel that just fired a burst smokes once it falls silent, a thin wisp that rises until it has cooled
@@ -411,19 +457,14 @@ export default class Character {
       w.addProjectile(pr);
     }
     muzzleFlash(w, m.x, m.y, m.a, d, this);
-    if (d.casing) {
-      const ca = a + Math.PI / 2 + rand(-0.4, 0.3);
-      const v = rand(70, 140);
-      w.addDebris(new Debris(w, sprite('weapons/' + d.casing), this.x + Math.cos(a) * 6, this.y + Math.sin(a) * 6, a,
-        Math.cos(ca) * v, Math.sin(ca) * v, rand(-0.9, 0.9), { material: 'brass', air: 0.08, shadow: 0, kg: 0.05, mu: 0.3, fly: 0.2, bounce: 0.5 }));
-    }
+    this.eject(d);
     w.sound(d.sound, this.x, this.y, 1, { choke: this });
     // the player's gunfire draws the guards in; a guard firing calls his mates
     if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
     this.recoil = 1;
     this.barrel = Math.min(BARREL.max, this.barrel + (d.pellets > 1 || d.rocket ? BARREL.big : 1));
     this.fumeT = BARREL.wait;
-    this.recoilRate = d.kick >= 6 ? 4.5 : 9;
+    this.recoilRate = feelOf(d).recoil.rate;
     this.weapon.mag--;
     this.vel.x -= Math.cos(a) * d.kick * 0.12;
     this.vel.y -= Math.sin(a) * d.kick * 0.12;

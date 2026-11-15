@@ -135,7 +135,7 @@ export const META = {
   ding: { pri: 1, dur: 0.4, gap: 0.3, max: 1, gain: 0.6 }, derail: { pri: 2, dur: 1.2, gap: 1, max: 1, gain: 0.95 },
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
-  shell: { pri: 0, dur: 0.4, gap: 0.03, gain: 0.4 },
+  shell: { pri: 0, dur: 0.15, gap: 0.02, max: 4, gain: 0.4 }, // a spent case touching down (one play per touchdown)
   magOut: { dur: 0.7, gap: 0.05, max: 3, gain: 0.45 },
   magIn: { dur: 0.35, gap: 0.05, max: 3, gain: 0.45 },
   rack: { dur: 0.5, gap: 0.05, max: 3, gain: 0.45 },
@@ -233,44 +233,44 @@ const FADE = 0.06; // s: fade at the end of a cut gunshot (bank cuts carry their
 //   bolt: the action clattering right after a quiet shot [delay, vol, rate] (bank 'click')
 //   cycle: the action worked by hand after the shot [bank set, delay, vol, rate]
 //   whoosh: rocket motor [f0, f1, dur, vol]   tail: the street answering [dur, lowpass Hz, vol, slap echoes, spacing]
-//   casing: what falls on the floor (CASINGS key, [chance, delay]); jit: pitch randomization (default 3 %)
+//   jit: pitch randomization (default 3 %). (The spent cases are heard where they land: Debris, 'shell'.)
 //   bus: 'sfx' keeps a quiet gun out of the gunfire bus (no drive, no gunfire level)
 const GUNS = {
   // 9 mm: sharp crack, tight thump, short tail
   pistol: {
     crack: [2600, 0.003, 1.0], body: [2300, 520, 0.8, 0.07, 1.3], blast: [1500, 130, 0.12, 1.2],
     thump: [150, 48, 0.15, 1.1], punch: [270, 115, 0.03, 0.45],
-    tail: [0.4, 1700, 0.3, 2, 1], casing: ['9mm', 1, 0.3],
+    tail: [0.4, 1700, 0.3, 2, 1],
   },
   // drier and shorter than the pistol so full auto stays readable
   uzi: {
     crack: [3000, 0.002, 0.85], body: [2600, 760, 0.9, 0.042, 1.1], blast: [1600, 160, 0.065, 0.9],
     thump: [165, 62, 0.075, 0.85], punch: [290, 135, 0.022, 0.35],
-    tail: [0.2, 1500, 0.18, 1, 0.8], casing: ['9mm', 0.45, 0.25], jit: 0.045,
+    tail: [0.2, 1500, 0.18, 1, 0.8], jit: 0.045,
   },
   // suppressed: muffled "pft", almost no crack, audible bolt clatter, a little low thud
   silenced: {
     crack: [5000, 0.0015, 0.05], body: [900, 260, 0.9, 0.05, 0.6], blast: [700, 120, 0.05, 0.3],
     thump: [125, 56, 0.06, 0.3], bolt: [0.012, 0.3, 1.3], bus: 'sfx',
-    tail: [0.08, 800, 0.04, 0, 1], casing: ['9mm', 0.45, 0.25], jit: 0.04,
+    tail: [0.08, 800, 0.04, 0, 1], jit: 0.04,
   },
   // massive boom, wide low end, long tail, then the pump racked
   shotgun: {
     crack: [1800, 0.004, 1.0], body: [1700, 260, 0.6, 0.12, 1.5], blast: [2200, 80, 0.24, 1.35],
     thump: [112, 36, 0.24, 1.25], punch: [220, 90, 0.04, 0.5], sub: [64, 28, 0.42, 0.85],
-    cycle: ['pump', 0.3, 0.3, 1], tail: [1.0, 1500, 0.45, 3, 1.3], casing: ['hull', 1, 0.62],
+    cycle: ['pump', 0.3, 0.3, 1], tail: [1.0, 1500, 0.45, 3, 1.3],
   },
   // 7.62: hard supersonic crack, heavy body, long tail
   rifle: {
     crack: [3600, 0.0028, 1.25], body: [2800, 600, 0.7, 0.07, 1.4], blast: [1800, 110, 0.12, 1.1],
     thump: [136, 44, 0.14, 1.1], punch: [240, 100, 0.03, 0.45],
-    tail: [0.75, 1600, 0.36, 3, 1.1], casing: ['762', 0.6, 0.3],
+    tail: [0.75, 1600, 0.36, 3, 1.1],
   },
   // the biggest crack, deep sub, long rolling echo (no bolt worked between shots: the user was sick of hearing it)
   sniper: {
     crack: [3000, 0.0045, 1.45], body: [2400, 340, 0.6, 0.11, 1.5], blast: [2000, 70, 0.28, 1.4],
     thump: [104, 32, 0.28, 1.3], punch: [200, 80, 0.05, 0.5], sub: [55, 24, 0.62, 0.95],
-    tail: [1.7, 1300, 0.5, 4, 1.9], casing: ['762', 1, 0.75],
+    tail: [1.7, 1300, 0.5, 4, 1.9],
   },
   // launch: back-blast thump + motor whoosh
   rocket: {
@@ -292,11 +292,14 @@ const ARMS = {
   bazooka: { rate: 0.62, rack: 'magIn', load: 'rocket' },
 };
 
-// Casings on the floor: bank set, playback rate (small brass rings higher), bounces
+// Casings on the floor: bank set, playback rate (small brass rings higher), bounces (when a play is not one touchdown
+// of a case seen landing: opts.bounces), and under the recording a synthesized touch of its own: brass, a tick and two short
+// high partials [Hz, ratio of the second, s, level] (a few tens of ms: a glint, never a note); a plastic hull, a dull
+// tap [band Hz, s, level]
 const CASINGS = {
-  '9mm': { set: 'casing', rate: 1.25, n: 3 },
-  '762': { set: 'casing', rate: 0.95, n: 3 },
-  hull: { set: 'plastic', rate: 1.1, n: 2 },
+  '9mm': { set: 'casing', rate: 1.25, n: 3, ring: [6400, 1.47, 0.045, 0.1] },
+  '762': { set: 'casing', rate: 0.95, n: 3, ring: [4900, 1.53, 0.06, 0.11] },
+  hull: { set: 'plastic', rate: 1.1, n: 2, tap: [900, 0.035, 0.32] },
 };
 
 // Sounds made of bank cuts only: layers [bank set, vol, rate = 1, delay s = 0, odds = 1]. A `_<name>` method of
@@ -1058,8 +1061,6 @@ class AudioSystem {
     if (G.bolt) this._cut(o, 'click', { delay: G.bolt[0], vol: G.bolt[1] * hi, rate: G.bolt[2] });
     if (G.cycle) this._cut(o, G.cycle[0], { delay: G.cycle[1], vol: G.cycle[2] * hi, rate: G.cycle[3] });
     this._tail(o, G.tail, rand(0.85, 1.15), hi * u, lo * u);
-    const c = G.casing;
-    if (c && Math.random() < c[1]) this.play('shell', { x: opts.x, y: opts.y, vol: 0.6 * (opts.vol ?? 1), kind: c[0], delay: c[2] });
   }
 
   // the street answering: low rumble, a darker mid wash, and a few discrete slap echoes off nearby walls
@@ -1117,11 +1118,23 @@ class AudioSystem {
   _shell(o, opts) {
     const C = CASINGS[opts.kind] || CASINGS['9mm'];
     let t = opts.delay || 0, gap = rand(0.07, 0.11), vol = 1;
-    for (let i = 0; i < C.n; i++) {
+    for (let i = 0, n = opts.bounces ?? C.n; i < n; i++) {
       this._cut(o, C.set, { vol, rate: C.rate * (1 + 0.05 * i), delay: t });
+      this._touch(o, C, vol, t);
       t += gap;
       gap *= 0.6;
       vol *= 0.45;
+    }
+  }
+  _touch(o, C, vol, delay) {
+    if (C.ring) {
+      const [f, r, dur, v] = C.ring, k = rand(0.92, 1.08);
+      this._noiseBurst(o, { type: 'highpass', f0: 7000, dur: 0.006, vol: v * 0.8 * vol, attack: 0.0003, delay });
+      this._ring(o, f * k, dur, v * vol, delay);
+      this._ring(o, f * k * r, dur * 0.6, v * 0.5 * vol, delay);
+    } else if (C.tap) {
+      const [f, dur, v] = C.tap;
+      this._noiseBurst(o, { f0: f * rand(0.9, 1.1), q: 1.4, dur, vol: v * vol, attack: 0.0006, delay });
     }
   }
   // a round whining off a hard surface: a narrow band of noise falling away after the hit

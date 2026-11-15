@@ -3,6 +3,7 @@ import { drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, chance } from '../../engine/math.js';
 import { setMaterial, scaleInertia } from '../../engine/physics/Body.js';
 import { wipe } from '../fx/Bleeding.js';
+import { touchdown } from '../fx/Casings.js';
 
 const { Bodies, Body } = Matter;
 
@@ -19,6 +20,10 @@ const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 
 // opts.z / opts.vz: fake height (px) and upward speed (px/s): the piece arcs through the air above its shadow,
 // lands, bounces and settles; it skips floor friction while up there. opts.land: sound when it hits the floor;
 // opts.onLand(debris): called the first time it touches the floor (a bottle smashes: world.removeDebris).
+// A spent case (opts.hop: its data/feel.js CASING entry, opts.tick: { name, opts } of its sound) rings at every
+// touchdown, hops back up while it falls fast enough, each hop knocking its way off a little (skitter); opts.tumble
+// (rad/s): it turns end over end while in the air. opts.lift: how much of its height shows as a shift up the screen
+// (0.5 by default; a case keeps closer to its shadow, the view stays top-down).
 // Once settled it is baked into the floor canvas and removed from the simulation.
 export default class Debris {
   constructor(world, img, x, y, angle, vx, vy, spin, opts = {}) {
@@ -45,6 +50,10 @@ export default class Debris {
     // time up in the air (fake height ballistics)
     const air = this.z > 0 || this.vz > 0 ? (this.vz + Math.sqrt(this.vz * this.vz + 2 * GRAVITY * this.z)) / GRAVITY : 0;
     this.land = opts.land || null;
+    this.hop = opts.hop || null;
+    this.tick = opts.tick || null;
+    this.tumble = opts.tumble || 0;
+    this.lift = opts.lift ?? 0.5;
     this.onLand = opts.onLand || null;
     setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.06), mu, world.time + Math.max(opts.fly ?? 0.12, air));
     scaleInertia(this.body, 2);
@@ -101,6 +110,7 @@ export default class Debris {
       if (this.dead) return;
     }
     const b = this.body, v = Body.getVelocity(b);
+    if (this.hop) { this.hopOff(b, v); return; }
     if (this.vz < -90) {
       if (this.land && this.size > 7) this.world.sound(this.land, b.position.x, b.position.y, Math.min(0.7, -this.vz / 400));
       this.vz *= -0.28;
@@ -108,6 +118,18 @@ export default class Debris {
       Body.setAngularVelocity(b, Body.getAngularVelocity(b) * 0.6);
       b.flyUntil = this.world.time + (2 * this.vz) / GRAVITY;
     } else this.vz = 0;
+  }
+
+  // a spent case lands: heard, then up again (its way knocked aside) or down for good, skittering on
+  hopOff(b, v) {
+    const t = touchdown(this.hop, this.vz), p = b.position;
+    if (this.tick && t.vol > 0.05) this.world.sound(this.tick.name, p.x, p.y, t.vol, this.tick.opts);
+    if (!t.up) { this.vz = 0; this.tumble = 0; return; }
+    this.vz = t.up;
+    const turn = rand(-1, 1) * this.hop.skid, c = Math.cos(turn), s = Math.sin(turn);
+    Body.setVelocity(b, { x: (v.x * c - v.y * s) * 0.8, y: (v.x * s + v.y * c) * 0.8 });
+    Body.setAngularVelocity(b, Body.getAngularVelocity(b) * -0.7 + rand(-0.15, 0.15));
+    b.flyUntil = this.world.time + (2 * this.vz) / GRAVITY;
   }
 
   // a fast shard / chunk smashing into an enemy (into anybody with harm.all)
@@ -147,9 +169,20 @@ export default class Debris {
   }
 
   draw(ctx) {
-    const p = this.body.position, z = this.z;
+    const p = this.body.position, z = this.z, up = z * this.lift;
     // the shadow stays on the floor; the piece is drawn up there, a little bigger
-    if (this.shadow) drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.3 / (1 + z * 0.03));
-    drawSprite(ctx, this.img, p.x, p.y - z * 0.5, this.body.angle, 1, z > 0 ? 1 + z * 0.006 : 1);
+    if (this.shadow || z > 0) drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.3 / (1 + z * 0.03));
+    if (z > 0 && this.tumble) {
+      // end over end: it shows shorter as it turns toward the eye
+      const k = this.img.k || 1, l = 0.4 + 0.6 * Math.abs(Math.cos(this.age * this.tumble));
+      ctx.save();
+      ctx.translate(p.x, p.y - up);
+      ctx.rotate(this.body.angle);
+      ctx.scale(k * l, k);
+      ctx.drawImage(this.img, -this.img.width / 2, -this.img.height / 2);
+      ctx.restore();
+      return;
+    }
+    drawSprite(ctx, this.img, p.x, p.y - up, this.body.angle, 1, z > 0 ? 1 + z * 0.006 : 1);
   }
 }

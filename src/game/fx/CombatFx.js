@@ -1,12 +1,12 @@
 // What a fight looks like over the lighting (it has to read in the darkest corner): the victim's white flash, the
-// star at the point of contact, each gun family's muzzle flash, the lingering wake of a heavy round, and the trails
+// star at the point of contact, the thin broken ring that marks the player's kill, each gun family's muzzle flash, the lingering wake of a heavy round, and the trails
 // melee weapons leave through their strokes (sampled by Character.draw into a small ring per character). Numbers in
 // data/feel.js. What marks an instant (the flash, the star, the muzzle flash) runs on the real clock: a frame or two,
 // and the star bursts out while a hit-stop holds the world still; what follows a motion (trails, wakes) runs on world
 // time, so it slows down with it.
 // The state is plain data; only draw() and the white silhouette cache touch a canvas.
 import { BODY_SCALE } from '../Config.js';
-import { SMEAR_TINT, HEAVY, STROKE, feelOf } from '../data/feel.js';
+import { SMEAR_TINT, HEAVY, STROKE, KILL, feelOf } from '../data/feel.js';
 import { sprite, sw } from '../../engine/Assets.js';
 import { rand, clamp, lerp, angDiff } from '../../engine/math.js';
 import { NECK } from '../entities/CharacterAnim.js';
@@ -42,7 +42,18 @@ export default class CombatFx {
     this.bursts = [];  // { x, y, a, t0, life, rays, len, width, shape, tint, rot, j }
     this.muzzles = []; // { ch, x, y, a, t0, dur, shape, len, wide, j }
     this.wakes = [];   // { x0, y0, x1, y1, t0, life, width }
+    this.marks = [];   // { x, y, a, t0 }: a kill of the player's (KILL)
   }
+
+  // mark the player's kills from now on (World, once)
+  listen() {
+    this.world.events.on('kill', ({ victim, killer }) => {
+      if (killer?.isPlayer && victim && !victim.isPlayer) this.mark(victim.x, victim.y, Math.atan2(victim.y - killer.y, victim.x - killer.x));
+    });
+  }
+
+  // the player's kill at (x, y), the blow going along a
+  mark(x, y, a) { add(this.marks, { x, y, a, t0: real(this.world) }); }
 
   // the man shows white for a moment. Alive (knocked down), it follows him; killed, his silhouette as he stood is
   // carried a few px along the blow, flattened and turned by it (f: a FEEL entry), while the body falls under it
@@ -81,12 +92,14 @@ export default class CombatFx {
     prune(this.bursts, t, 'life');
     prune(this.muzzles, t, 'dur');
     prune(this.wakes, now, 'life');
+    pruneMarks(this.marks, t);
     const gco = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
     for (const ch of this.world.chars) if (ch.smear?.n) drawSmear(ctx, ch.smear, now);
     for (const f of this.flashes) drawFlash(ctx, f, t);
     ctx.globalCompositeOperation = 'lighter';
     for (const w of this.wakes) drawWake(ctx, w, now);
     for (const b of this.bursts) drawBurst(ctx, b, t);
+    for (const m of this.marks) drawMark(ctx, m, t);
     ctx.globalCompositeOperation = gco;
     for (const m of this.muzzles) drawMuzzle(ctx, m);
     ctx.globalAlpha = ga;
@@ -97,6 +110,13 @@ function add(list, e) {
   if (list.length >= CAP) list.shift();
   list.push(e);
   return e;
+}
+
+const MARK_LIFE = Math.max(KILL.ring.life, KILL.streak.life);
+function pruneMarks(list, now) {
+  let w = 0;
+  for (const e of list) if (now - e.t0 < MARK_LIFE) list[w++] = e;
+  list.length = w;
 }
 
 // drop what has run its course (in place)
@@ -267,6 +287,30 @@ function drawBurst(ctx, b, now) {
     if (k < 0.4) { const c = b.width * 1.6; ctx.fillRect(-c, -c, c * 2, c * 2); }
   }
   ctx.restore();
+}
+
+// a kill: a thin ring broken in arcs opens round him and fades, turning a little along the blow; a short streak goes
+// on past him the way the blow went
+function drawMark(ctx, m, now) {
+  const R = KILL.ring, S = KILL.streak, age = now - m.t0;
+  ctx.strokeStyle = `rgb(${R.tint})`;
+  ctx.lineCap = 'butt';
+  if (age < R.life) {
+    const k = age / R.life, e = 1 - (1 - k) ** 3, r = lerp(R.r[0], R.r[1], e), span = (Math.PI * 2) / R.arcs;
+    ctx.globalAlpha = R.alpha * (1 - k) ** 1.5;
+    ctx.lineWidth = R.width;
+    for (let i = 0; i < R.arcs; i++) {
+      const a0 = m.a + span * (i + R.gap / 2) + 0.3 * e;
+      ctx.beginPath(); ctx.arc(m.x, m.y, r, a0, a0 + span * (1 - R.gap)); ctx.stroke();
+    }
+  }
+  if (age < S.life) {
+    const k = age / S.life, c = Math.cos(m.a), s = Math.sin(m.a), r0 = R.r[0], r1 = r0 + S.len * (1 - (1 - k) ** 2);
+    ctx.globalAlpha = S.alpha * (1 - k);
+    ctx.lineWidth = S.width;
+    ctx.beginPath(); ctx.moveTo(m.x + c * r0, m.y + s * r0); ctx.lineTo(m.x + c * r1, m.y + s * r1); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawMuzzle(ctx, m) {
