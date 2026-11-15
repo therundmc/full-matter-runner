@@ -9,7 +9,7 @@ import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
 import { drawRainGround, drawRainAir, viewRect } from './WeatherArt.js';
-import HazeArt from './HazeArt.js';
+import SmokeArt from './SmokeArt.js';
 import { RAIN } from '../data/atmosphere.js';
 import { OUTRO } from '../systems/Outro.js';
 import { drawCombat } from '../fx/CombatFx.js';
@@ -38,7 +38,7 @@ export default class WorldRenderer {
   constructor(world) {
     this.world = world;
     this.lightMs = 0; // smoothed cost of the lighting passes
-    this.haze = new HazeArt(world); // the smoke in the air and the mist, lit
+    this.smoke = new SmokeArt(world); // the smoke in the air and the mist, lit
   }
 
   draw(ctx, cam, t) {
@@ -80,14 +80,14 @@ export default class WorldRenderer {
     drawFlying(ctx, w.critters, t);
 
     w.particles.draw(ctx);
-    this.haze.drawWisps(ctx, w.haze, vis);
+    this.smoke.drawThreads(ctx, w.smoke, vis);
     drawRainAir(ctx, w.weather, view, t);
     // night + coloured lights + wall shadows multiplied over the scene (skipped in the F3 overview)
     const lit = w.lighting.active(cam);
     let l0 = performance.now();
     if (lit) {
       w.lighting.apply(ctx, cam, t);
-      this.haze.draw(ctx, w.lighting, t); // the smoke and the mist where the lamps light them
+      this.smoke.draw(ctx, w.lighting); // the smoke and the mist where the lamps light them
     }
     let lightMs = performance.now() - l0;
     if (w.cleared && w.level.exit && !w.outro) this.drawExit(ctx, t);

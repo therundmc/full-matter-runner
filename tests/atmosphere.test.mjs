@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 const { TILE } = await load('game/Config.js');
-const { RAIN, HAZE, NEON } = await load('game/data/atmosphere.js');
+const { RAIN, SMOKE, NEON } = await load('game/data/atmosphere.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { flicker, pickFaults } = await load('game/render/Flicker.js');
 const { default: Weather, skyGrid } = await load('game/systems/Weather.js');
-const { default: Haze } = await load('game/systems/Haze.js');
+const { default: Smoke } = await load('game/systems/Smoke.js');
 const { default: Papers } = await load('game/systems/Papers.js');
 
 // a yard of asphalt and concrete with a small wood-floored room in it (walls '#')
@@ -89,43 +89,98 @@ test('weather: no rain, nothing laid; rain, puddles in the open only, in the sam
   assert.ok(dry.puddles.length > 0, 'the puddles of an earlier rain are still there');
 });
 
-// a bar in a zone of the soundscape, its power, a player, chars that can be moved about
-function bar() {
-  const events = new EventBus();
-  const player = { alive: true, x: 3 * TILE, y: 3 * TILE, body: Matter.Bodies.circle(3 * TILE, 3 * TILE, 8) };
+// a small bar (wood floor, a zone of the soundscape) with a door onto a yard, its power, a player standing outside
+const BAR = [
+  'XXXXXXXXXXXX',
+  'X__________X',
+  'X__#####___X',
+  'X__#...#___X',
+  'X__#...D___X',
+  'X__#...#___X',
+  'X__#####___X',
+  'X__________X',
+  'XXXXXXXXXXXX',
+];
+function bar(cfg = SMOKE) {
+  const map = new TileMap(BAR), events = new EventBus();
+  const player = { alive: true, x: 9.5 * TILE, y: 7.5 * TILE, body: Matter.Bodies.circle(9.5 * TILE, 7.5 * TILE, 8) };
+  const door = { cells: [4 * map.w + 7], a0: Math.PI / 2, locked: false, body: { angle: Math.PI / 2 } };
   const world = {
-    time: 0, events, chars: [player], player, projectiles: [],
-    power: { on: true, inside: () => true },
+    map, events, time: 0, chars: [player], player, projectiles: [], props: [], doors: [door], windows: [],
+    power: { on: true },
   };
-  const haze = new Haze(world, { name: 'bar', soundscape: { zones: [['bar', 0, 0, 7, 5], ['street', 8, 0, 12, 5]] } });
-  return { world, haze, player, run(s) { for (let i = 0; i < s * 60; i++) { world.time += 1 / 60; haze.update(1 / 60); } } };
+  const smoke = new Smoke(world, { name: 'bar', soundscape: { zones: [['bar', 4, 3, 6, 5]] } }, cfg);
+  const at = (c, r) => smoke.fluid.densityAt((c + 0.5) * TILE, (r + 0.5) * TILE);
+  return { world, smoke, door, player, at, run(s) { for (let i = 0; i < s * 60; i++) { world.time += 1 / 60; smoke.update(1 / 60); } } };
 }
 
-test('haze: a smoky place fills with drifting puffs; the power cut thins it, shots thicken it', () => {
-  const s = bar(), z = s.haze.zones[0];
-  assert.equal(s.haze.zones.length, 1, 'only the places with a density');
-  assert.equal(z.k, HAZE.zones.bar);
-  assert.ok(z.puffs.length >= 2);
-  s.world.events.emit('shot', { shooter: { x: 2 * TILE, y: 2 * TILE } });
-  s.world.events.emit('shot', { shooter: { x: 2 * TILE, y: 2 * TILE } });
-  s.run(4);
-  assert.ok(z.k > HAZE.zones.bar, 'gun smoke');
-  assert.ok(z.extra.length > 0, 'a puff at the muzzle');
+test('smoke: a smoky place keeps a faint patchy layer at rest, the yard none; the power cut thins it', () => {
+  const s = bar();
+  s.run(2);
+  const inside = [s.at(4, 3), s.at(5, 4), s.at(6, 5)], top = SMOKE.rest.zones.bar * (1 + SMOKE.rest.patchy);
+  assert.ok(inside.some((v) => v > 0.01), `a layer: ${inside}`);
+  assert.ok(inside.every((v) => v <= top), `faint: ${inside}`);
+  assert.equal(s.at(9, 4), 0, 'nothing in the yard');
+  const before = s.at(5, 4);
   s.world.power.on = false;
-  s.run(20);
-  assert.ok(z.k < HAZE.zones.bar * (HAZE.dark + 0.2), `thinned to ${z.k}`);
-  for (const p of z.puffs) assert.ok(p.x >= z.x0 && p.x <= z.x1 && p.y >= z.y0 && p.y <= z.y1, 'puffs stay in the room');
+  s.run(30);
+  assert.ok(s.at(5, 4) < before * (SMOKE.rest.dark + 0.15), `thinned to ${s.at(5, 4)} from ${before}`);
 });
 
-test('haze: someone running through it pushes the puffs on his way', () => {
-  const s = bar(), z = s.haze.zones[0];
-  const p = z.puffs[0];
-  s.player.x = p.x - 20; s.player.y = p.y;
-  Matter.Body.setPosition(s.player.body, { x: s.player.x, y: s.player.y });
-  Matter.Body.setVelocity(s.player.body, { x: 4, y: 0 });
-  const x0 = p.x;
-  for (let i = 0; i < 10; i++) { s.world.time += 1 / 60; s.haze.update(1 / 60); }
-  assert.ok(p.x - x0 > 1.5, `pushed ${p.x - x0} px`);
+test('smoke: a shot leaves a puff ahead of the muzzle that hangs, then clears back to the layer in 10-30 s', () => {
+  const s = bar();
+  s.run(1);
+  const rest = s.at(5, 4);
+  s.world.events.emit('shot', { shooter: { x: 4.2 * TILE, y: 4.5 * TILE, angle: 0 }, weapon: { sound: 'shotgun' } });
+  s.run(0.5);
+  const puff = s.at(5, 4);
+  assert.ok(puff > rest + 0.2, `a puff: ${puff} over ${rest}`);
+  s.run(5);
+  assert.ok(s.at(5, 4) > rest + 0.05, 'still there after 5 s');
+  s.run(30);
+  assert.ok(s.at(5, 4) < rest + 0.03, `cleared to ${s.at(5, 4)} (rest ${rest})`);
+});
+
+test('smoke: a shut door keeps it in; open, the room is drawn out into the yard', () => {
+  const s = bar();
+  const fire = () => { for (let i = 0; i < 4; i++) s.world.events.emit('shot', { shooter: { x: 5 * TILE, y: 4.5 * TILE, angle: 0 }, weapon: { sound: 'shotgun' } }); };
+  fire();
+  s.run(4);
+  assert.equal(s.at(7, 4), 0, 'nothing in the doorway');
+  assert.equal(s.at(8, 4), 0, 'nothing out of the shut door');
+  s.door.body.angle = s.door.a0 + 1.2; // swung open
+  fire();
+  s.run(4);
+  assert.ok(s.at(8, 4) > 0.02, `out through the door: ${s.at(8, 4)}`);
+  assert.ok(s.smoke.fluid.velocityAt(7.5 * TILE, 4.5 * TILE, {}).x > 1, 'a draft out of the room');
+});
+
+test('smoke: people walking and a ceiling fan stir the air', () => {
+  const s = bar();
+  Matter.Body.setPosition(s.player.body, { x: 9.5 * TILE, y: 4.5 * TILE });
+  s.player.x = 9.5 * TILE; s.player.y = 4.5 * TILE;
+  Matter.Body.setVelocity(s.player.body, { x: 0, y: 2 }); // 120 px/s down the yard
+  s.run(0.25);
+  assert.ok(s.smoke.fluid.velocityAt(s.player.x, s.player.y, {}).y > 15, 'dragged along');
+  const fan = { x: 5.5 * TILE, y: 4.5 * TILE, def: { spin: 5.5 }, dead: false, spun: () => 5.5 * s.world.time };
+  s.world.props.push(fan);
+  s.run(3);
+  const F = s.smoke.fluid, a = F.velocityAt(fan.x + 24, fan.y, {}), b = F.velocityAt(fan.x - 24, fan.y, {});
+  assert.ok(a.y * b.y < 0 && Math.abs(a.y) > 2, `turning: ${a.y} / ${b.y}`);
+});
+
+test('smoke: a smoker lets out a thread that rides the air and leaves its smoke in the layer', () => {
+  const s = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  const guard = { alive: true, pastime: 'smoke', seed: 0.3, angle: 0, x: 5.5 * TILE, y: 4.5 * TILE, body: Matter.Bodies.circle(5.5 * TILE, 4.5 * TILE, 8) };
+  s.world.chars.push(guard);
+  s.run(3);
+  assert.ok(s.smoke.rib.n > 20, `${s.smoke.rib.n} points of thread`);
+  let sum = 0;
+  for (const v of s.smoke.fluid.d) sum += v;
+  assert.ok(sum > 0.05, `left in the layer: ${sum}`);
+  guard.pastime = null;
+  s.run(4);
+  assert.equal(s.smoke.rib.n, 0, 'the thread is gone once he stops');
 });
 
 test('papers: soaked by the rain they are heavier and drawn darker', () => {

@@ -18,6 +18,8 @@ src/
       Friction.js         Coulomb floor friction (top-down "ground"), heavy bodies settle back to static
       PhysicsWorld.js     Matter engine wrapper: sub-stepping, friction, collision dispatch, 'impact' events
       Raycast.js          grid DDA, segment vs polygon / circle / segment
+      Fluid.js            coarse 2D stable fluid: flow grid (vorticity confinement, advection, pressure projection
+                          with volume sources) carrying a finer density (MacCormack); solid cells, a stepped region
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
                           of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
@@ -73,9 +75,9 @@ src/
       Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is
                           off): which tiles see the sky, puddles lying in the open, drip spots (only if it falls); a foot
                           through a puddle splashes. The drops are not stored (render/WeatherArt.js). DOM-free, seeded
-      Haze.js             the smoke under a ceiling (HAZE): smoky places of the soundscape, puffs drifting and turning,
-                          stirred by runners, rounds and blasts, thickened by shots, thinned by the power cut; the
-                          cigarettes' wisps (DOM-free)
+      Smoke.js            the air as a fluid and the smoke it carries (SMOKE): walls, doors and panes, sources (shots,
+                          blasts, fires, the smokers' threads and breaths), stirring (walkers, rounds, fans, drafts,
+                          convection, wind), a faint resting layer in the smoky places (DOM-free)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
@@ -110,7 +112,8 @@ src/
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
-      HazeArt.js          the haze and the mist lit by the light map (squared), dust motes in the beams, smoke wisps
+      SmokeArt.js         the smoke in flat pixel bands, veiling and lit by the light map (squared), the mist, the
+                          cigarettes' threads
       Flicker.js          how bright a light is over time per kind (buzz, broken, pulse, tv...), the letters of a sign,
                           the faulty tubes picked per level (NEON: one dying, a few stuttering); DOM-free
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
@@ -130,7 +133,7 @@ src/
                           TitleScene (the elevated line in the rain from his window) and title/ (Draw pixel tools, Layout, Timeline:
                           everything as a function of t, unit tested; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Pane: the title's window, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
-    data/                 atmosphere (rain, haze, neon faults: the look of the air), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+    data/                 atmosphere (rain, smoke, neon faults: the look of the air), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,
@@ -527,7 +530,7 @@ its customers panic, the radio and the hums stop with the power.
 
 ## The air (data/atmosphere.js)
 
-All of it is a look; nothing reads it but the drawing (the haze's puffs and the rain's puddles are not obstacles,
+All of it is a look; nothing reads it but the drawing (the smoke and the rain's puddles are not obstacles,
 not wet floors: no prints, no grip). Readability first: it is the lamps that make it show.
 - Rain: the user wants none falling, so `RAIN.falls` is off: what is left is the wet of an earlier rain (puddles,
   floors in the open mirroring the lights, a light mist, soaked paper, thicker steam). How wet is the level's
@@ -537,11 +540,24 @@ not wet floors: no prints, no grip). Readability first: it is the lamps that mak
   Drawn before the lighting (the light map colours it: it glitters under a streetlight) and once more, faint
   (`RAIN.after`), over the lit scene. Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
   a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`look.sky`).
-- Haze: a soundscape zone whose kind has a density in `HAZE.zones` is filled (Haze.js); HazeArt lays its density
-  (an even share plus the puffs, domain-warped noise sprites) into a buffer at the light map's size, cuts it to the
-  floors under a roof, adds the open air's mist in the rain, multiplies it twice by the light map and screens it
-  over the lit scene, right after Lighting.apply (so muzzle flames, texts and marks stay crisp above it). Dust
-  motes show where the brightness grid (`levelAt`) is over `motes.from`.
+- Smoke (systems/Smoke.js over engine/physics/Fluid.js, `SMOKE`): the air of the whole map is a coarse fluid seen
+  from above, the layer under the ceilings: flow cells of 16 px (velocity), density cells of 8 px, stepped at 30 Hz
+  (the flow one frame, the smoke the next) and only about the view (`reach`); nothing is stepped while the air
+  there is empty and still. Walls are solid cells; a door is solid while shut on its frame (`shut`), a pane while
+  intact; an open door or a smashed window between a room and the open air draws the room's smoke out (`draft`:
+  a push and a spill over the lintel). Sources: every 'shot' (a puff drawn out along the shot and thrown on by the
+  muzzle blast, `muzzle.by` per weapon sound), 'explosion' (a billow, volume pushed out of its heart, eddies), the
+  fires, the smokers (a thread of points off the ember that rides the air and sways, leaving its smoke in the layer
+  as it fades; a breath after each drag). Stirring: people walking drag the air, rounds along their line, ceiling
+  fans (props with `spin`) turn it and thin it, a slow divergence-free convection under ceilings, the wind and the
+  'gust's outdoors. Loss: what is over the rest level goes at `loss.room` (a fight's smoke hangs 10-20 s) or
+  `loss.open`; a smoky place of the soundscape (`rest.zones`) keeps a faint patchy layer, thinned by the power cut.
+  SmokeArt samples the density at the light map's size on the world's 2 px grid, cuts it into flat bands with edges
+  ragged by a hash of the texel's place (pixel art, no blur, steady as the view moves), refilled only when the smoke
+  stepped or the view moved; it veils the scene a little where it is lit (multiply) and screens its tinted glow, lit
+  twice by the light map (the dark stays clear), right after Lighting.apply (so muzzle flames, texts and marks stay
+  crisp above it); the open air's mist in the rain goes in the same glow. The threads are drawn a world pixel at a
+  time with the scene, before the light.
 - Neon faults: `NEON.faults` picks, by a hash of where they stand, a dying tube and a few stuttering signs/tubes
   (Flicker.pickFaults); their light, its reach and their glow map flicker together.
 

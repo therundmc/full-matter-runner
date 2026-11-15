@@ -1,8 +1,8 @@
 // The air of a level, as it is seen: the wet of a street after the rain, and the rain itself if it is ever wanted
-// back (systems/Weather.js, render/WeatherArt.js; the user: "there is no rain", so `falls` is off), the smoke
-// that hangs in a bar under its lamps (systems/Haze.js, render/HazeArt.js) and the faults of a few neon tubes
-// (render/Flicker.js). Everything here is a look setting: readability first, so it stays thin and it is the lamps
-// that make it show (rain and haze are lit by the lighting, never glowing by themselves).
+// back (systems/Weather.js, render/WeatherArt.js; the user: "there is no rain", so `falls` is off), the smoke in
+// the air (systems/Smoke.js, render/SmokeArt.js) and the faults of a few neon tubes (render/Flicker.js). Everything
+// here is a look setting: readability first, so it stays thin and it is the lamps that make it show (rain and smoke
+// are lit by the lighting, never glowing by themselves).
 // Lengths in world px, times in seconds, alphas 0..1.
 
 // ---- rain. How wet the open air is comes from the level (`soundscape.rain`, 0..1); `look` turns that into what is
@@ -48,37 +48,66 @@ export const RAIN = {
   wet: 0.7,
   after: 0.3,              // the same rain again over the lit scene, this faint: the dark is not quite dry
   headlight: { gain: 0.45, len: 0.8, width: 0.18 }, // of the beam's reach
-  mist: 0.14,              // haze in the open air at full rain (it catches the streetlights; render/HazeArt.js)
+  mist: 0.14,              // haze in the open air at full rain (it catches the streetlights; render/SmokeArt.js)
   // loose paper (systems/Papers.js): soaked, it lies heavier and darker
   papers: { lift: 0.55, friction: 1.6, tints: ['#a39d8e', '#958f80', '#aca697'] },
 };
 
-// ---- haze: the smoke that hangs under a ceiling. A place of the soundscape (its zones) with a density here is
-// filled with it; the lamps light it (the light map squared: the dark stays clear, the lamps glow in it), the
-// smokers feed it, guns thicken it, people running and rounds flying stir it, and it thins once the power is cut.
-export const HAZE = {
-  zones: { bar: 0.4, vip: 0.3, office: 0.3, kitchen: 0.14, shop: 0.06 },
-  gain: 0.85,              // how much it shows (screened over the lit scene)
-  base: 0.25,              // share of the density spread evenly; the puffs add up to the rest
-  range: 520,              // px from the player past which a zone's smoke is left still
-  // the puffs: soft cloudy blobs drifting slowly round the room, turning, pushed about (one per `per` tiles of the zone;
-  // drift px/s2 of their own current, home 1/s2 pull back to where they started, drag 1/s, spin rad/s)
-  puff: { per: 5, r: [40, 80], alpha: [0.45, 0.85], drift: 4, home: 0.05, drag: 0.6, spin: 0.06, sprite: 96, stretch: 1.9 },
-  shafts: { k: 0.35, r: 0.38, min: 60 }, // smoke thicker in each lamp's beam: x density, share of its reach, lamps from r px
-  dark: 0.35,              // density left once the power is cut (no fan, no lamp: what is left is hardly seen)
-  ease: 0.35,              // 1/s the density follows
-  gunsmoke: { add: 0.035, max: 0.45, fade: 0.04, puff: 0.6 }, // per shot fired in the zone, its cap, lost per s
-  // what stirs it: people running (speed px/step), rounds (px either side of their line), blasts
-  stir: { speed: 1.6, r: 40, push: 0.9, spin: 2, round: 16, roundPush: 30, blast: 260 },
-  // dust motes in the light: tiny specks floating where a lamp shines into the smoke
-  motes: { per: 60, alpha: 0.55, color: '#fff0d8', drift: 3, from: 0.38 }, // per 100 tiles; `from`: light level they show at
-  // cigarettes: a thread of smoke curling up off the ember, a breath let out after a drag (fed into the zone)
-  smoke: {
-    every: 0.22, life: [2.2, 3.4], size: [1.6, 2.6], grow: 3.2, rise: [6, 12], sway: 7, alpha: 0.2,
-    exhale: { puffs: 4, speed: 22, life: 2.4, size: 4, alpha: 0.24 },
-    max: 90,               // wisps alive at once
-    color: [214, 216, 226],
+// ---- smoke: the air of the level is a coarse fluid (systems/Smoke.js over engine/physics/Fluid.js) that carries a
+// density of smoke. Seen from above it is the layer under the ceilings: the smokers' threads spread into it, a shot
+// leaves a puff that rolls and lingers, a blast a billow; people walking and rounds flying drag the air, a ceiling
+// fan turns it and thins it, an open door or a smashed window draws it out, and outdoors the wind takes it away.
+// At rest there is hardly any: a faint layer that shows in the lamps' light (render/SmokeArt.js multiplies it by
+// the light map twice, so the dark stays clear). Densities are 0..1 (what is shown is `look.gain` times that).
+export const SMOKE = {
+  cell: 16,                // px of a cell of the flow (2 to a tile)
+  sub: 2,                  // cells of smoke to a side of a flow cell (8 px: the edge of the smoke is that fine)
+  rate: 20,                // steps per s (the flow and the smoke take turns, a frame each, then one frame off)
+  reach: 112,              // px simulated past the edges of the view (what is further waits as it is)
+  sweeps: 10,              // pressure sweeps of a step
+  drag: 0.35,              // 1/s lost by the air's own motion
+  vorticity: 0.55,         // how hard the eddies are kept turning (vorticity confinement)
+  spread: 6,               // px2/s of diffusion
+  // what is over the rest level goes at this rate (1/s): a room keeps it 10-20 s, the open air takes it in a few
+  loss: { room: 0.07, open: 0.45 },
+  recover: 0.04,           // 1/s back up to the rest level once it has been blown away
+  // the resting layer of a smoky place of the soundscape (its zones), patchy: `patchy` share of it varies over
+  // patches of `patch` px; the power cut leaves `dark` of it (no lamp, no fan, nobody smoking at ease)
+  rest: { zones: { bar: 0.13, vip: 0.11, office: 0.1, kitchen: 0.05 }, patchy: 0.75, patch: 90, dark: 0.4, ease: 0.2 },
+  // slow convection under the ceilings: a current of `speed` px/s turning in cells of `size` px, changing over `period`
+  // s, that the air is eased toward at `k` 1/s; outdoors the wind (px/s, its way in rad), gusts (systems/Papers.js)
+  convect: { speed: 3.5, size: 150, period: 40, k: 0.6 },
+  wind: { speed: 7, a: 0.5, gust: 45, k: 0.8 },
+  shut: 0.12,              // rad off its frame under which a door is shut (no air through it)
+  // an opening between a room and the open air draws the room's air out: pushed out at `speed` px/s (k of the way per
+  // step), what is over the rest level in and before the opening spilling out at `spill` 1/s
+  draft: { speed: 22, k: 0.25, spill: 0.6 },
+  // a shot: a puff at the muzzle (`ahead` px in front), thrown forward by the muzzle blast; times `by` its weapon
+  muzzle: {
+    r: 13, amount: 1.4, ahead: 16, jet: 240, reach: 56, k: 0.9,
+    by: { pistol: 1, uzi: 0.55, silenced: 0.25, shotgun: 2.2, rifle: 1.1, sniper: 2, rocket: 3 },
   },
+  // a blast: the billow (`lumps` of smoke over `r` of its radius), the push out of it (volume 1/s at its heart),
+  // eddies turning either way round it
+  blast: { amount: 0.5, lumps: 8, r: 0.8, expand: 14, eddies: 6, spin: 5, vmax: 150 },
+  fire: { r: 10, amount: 0.9 }, // per s over a burning spot (systems/Fires.js)
+  // what stirs the air: someone walking (from `speed` px/s, over r px, k of the way per frame), a round (along its
+  // line, at `speed` px/s), a ceiling fan (the air turning at `turn` times its blades' speed, capped at `vmax`, over
+  // r px, and thinned at `mix` 1/s)
+  stir: { speed: 25, r: 22, k: 0.3 },
+  round: { r: 10, speed: 70, k: 0.3 },
+  fan: { r: 70, turn: 0.12, vmax: 28, k: 0.08, mix: 0.12 },
+  // a cigarette: a thread of smoke off the ember, swaying (px/s), curling (rad/s), carried by the air, that leaves
+  // its smoke in the layer as it fades (`toGrid` of its alpha); a breath let out after a drag
+  cig: {
+    every: 0.05, life: [2.2, 3.2], alpha: 0.55, sway: 5, curl: 1.3, jitter: 3, grow: 1.4, toGrid: 0.03, max: 420,
+    color: '#d8dae4',
+    exhale: { r: 7, amount: 0.22, jet: 30, reach: 14 },
+  },
+  // the look: the density times `gain`, cut into flat bands of `step` (pixel-art steps, no blur; a band shows from
+  // `from` of a step, its edge ragged by `rag` of a step), at most `levels` of them or `max`; it scatters the light
+  // in its `tint` (lit by the light map twice, screened over the scene) and dims the scene under it by `dim` per unit
+  look: { gain: 1, step: 0.06, levels: 7, max: 0.42, from: 0.55, rag: 0.5, tint: [0.86, 0.88, 0.96], dim: 0.55 },
 };
 
 // ---- neon and tubes with a fault. Most of them buzz quietly (flicker 'buzz'); a few picked per level stutter,
