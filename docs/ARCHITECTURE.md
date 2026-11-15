@@ -76,14 +76,10 @@ src/
                           is under it (`how.crushed`, tag LIGHTS OUT), its light dies, the table takes the blow
       Passage.js          two trapdoors (level `passage`): E, the picture goes dark (HUD), up out of the other one; the
                           player is `hidden` meanwhile, the guards know nothing of it
-      Phones.js           the booth calls the bar (level `phones`): a phone rings by turns, the nearest calm guard
-                          leaves his post to answer it (Enemy.errandTo), then goes back: a lure
       Jukebox.js          E turns it up: loud for a while (its own band stays off), small noises around it lost for the guards
                           (Director.emit asks mask())
-      GasValve.js         a stove's tap (prop def `valve`): open, the gas spreads; a shot, a blast, a fire or metal struck
+      GasValve.js         a stove's tap (per-prop level option `valve`, none in level 1): open, the gas spreads; a shot, a blast, a fire or metal struck
                           in the cloud blows it, bigger the fuller
-      Camera.js           the security camera and its monitor (level `camera`): the guard by the monitor raises the
-                          alert on an armed or trespassing stranger in the picture; shot out (or the power cut): snow
       Ambience.js         the night heard place by place (level.soundscape, data/soundscape.js): beds crossfaded by
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)

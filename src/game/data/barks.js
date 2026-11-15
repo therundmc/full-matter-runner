@@ -22,14 +22,11 @@ export const BARKS = {
   door: ["DOOR'S BUSTED!", 'SOMEBODY FORCED THIS!', 'WHO KICKED THIS IN?', 'LOOK AT THIS DOOR...'],
   fuse: ['THE BOX IS SMASHED!', 'SOMEBODY CUT THE POWER!', "IT WASN'T THE FUSES..."],
   missing: ["WHERE'D HE GO?", "HE'S NOT AT HIS POST."],
-  // the level's devices (data/devices.js): down on a slick floor, the fire alarm going off, the phone answered, the
-  // jukebox turned up, the gas smelt, what the camera showed
+  // the level's devices (data/devices.js): down on a slick floor, the fire alarm going off, the
+  // jukebox turned up, the gas smelt
   slip: ['WHOA-', 'AGH! MY BACK...', 'WHO SPILLED...', 'UGH...'],
   sprinkler: ['WHO PULLED THE ALARM?', 'FIRE? WHERE?', 'MY SHOES, MAN!', 'SHUT THAT THING OFF!'],
-  phone: ['YEAH?', 'BAR. WHAT?', 'HELLO? WHO IS THIS?', 'HELLO?... HELLO?'],
-  hangup: ['WRONG NUMBER.', 'NOBODY THERE.', 'KIDS. FUNNY.'],
   loud: ['TURN IT DOWN!', 'WHO PUT THAT ON?', "CAN'T HEAR MYSELF THINK!"],
-  camera: ["HE'S ON THE CAMERA!", 'I SEE HIM ON THE MONITOR!', 'CAMERA ONE! MOVE!'],
   clear: ['...NOTHING.', 'MUST BE RATS.', 'ALL CLEAR.', 'JUMPING AT SHADOWS.', 'FORGET IT.'],
   tracks: ['FOOTPRINTS...', 'WET TRACKS.', 'SOMEONE CAME THROUGH HERE.', 'FRESH TRACKS.'],
   blood: ['BLOOD...', 'BLOODY FOOTPRINTS!', "THAT'S BLOOD. THIS WAY."],
@@ -84,9 +81,9 @@ export const BARKS = {
 // occasions yelled out loud (a recorded shout goes with the line), and those only muttered
 export const SHOUTED = new Set([
   'shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
-  'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn', 'stairs', 'sprinkler', 'loud', 'camera',
+  'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn', 'stairs', 'sprinkler', 'loud',
 ]);
-export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 'sweep', 'tracks', 'blood', 'slip', 'phone', 'hangup']);
+export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 'sweep', 'tracks', 'blood', 'slip']);
 // occasions said at once, over the squad's turn to speak (AI.barkGap): the first call of a contact, a mate killed
 // before his eyes, a man giving up, one getting up off his knees with a gun
 export const URGENT = new Set(['contact', 'call', 'down', 'chief', 'yield', 'turn']);
@@ -96,7 +93,7 @@ export const BARK_TONE = {
   contact: 'pink', panic: 'pink', snap: 'pink', threat: 'pink', brawl: 'pink', revenge: 'pink',
   body: 'orange', help: 'orange', warn: 'orange', flush: 'orange', yield: 'yellow', beg: 'yellow',
   call: 'pink', where: 'pink', turn: 'pink', down: 'orange', found: 'orange', chief: 'orange', run: 'orange',
-  backup: 'orange', alone: 'yellow', stairs: 'pink', camera: 'pink',
+  backup: 'orange', alone: 'yellow', stairs: 'pink',
 };
 
 // what the guards call one another: one each, never twice in a level (Director.nickOf); the boss is 'BOSS'

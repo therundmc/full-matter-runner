@@ -93,7 +93,7 @@ test('the gap right of the bar: a door on the street, one metre wide, off limits
 test('level 1 is fought hand to hand: two guns in the house (the bar room, the boss), one hidden in the liquor store', () => {
   const guards = [];
   level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbkmji'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
-  assert.equal(guards.length, 14);
+  assert.equal(guards.length, 13);
   const guns = guards.filter((g) => 'pushr'.includes(g.ch));
   assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p']);
   const [boss, pool] = guns;
@@ -218,11 +218,11 @@ test('level 1 states its objective: one line while guards remain, one once it is
   for (const line of level.objective) assert.ok(typeof line === 'string' && line.length > 0);
 });
 
-test('level 1: every one of the 14 guards has something to do, at a post or on a round, and can get to every room', async () => {
+test('level 1: every one of the 13 guards has something to do, at a post or on a round, and can get to every room', async () => {
   const { POSTS } = await load('game/data/posts.js');
   const guards = [];
   level.actors.forEach((row, y) => [...row].forEach((ch, x) => { if ('pusrhbkmji'.includes(ch.toLowerCase()) && ch !== ' ') guards.push([x, y]); }));
-  assert.equal(guards.length, 14);
+  assert.equal(guards.length, 13);
   for (const [x, y] of guards) {
     const key = `${x},${y}`, job = level.jobs[key];
     assert.ok(job || level.patrols[key], `the guard at ${key} just stands there`);

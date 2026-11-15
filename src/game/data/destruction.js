@@ -149,9 +149,6 @@ export const DESTRUCTION = {
   },
   // the bar's fire alarm pull station, its bell, the wall phone, the camera on its bracket, the monitor on the desk
   fire_alarm: { height: 1.4, material: 'metal', electric: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
-  wall_phone: { height: 1.5, material: 'plastic', parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
-  cctv: { height: 2.4, material: 'plastic', electric: true, drop: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
-  monitor: { height: 0.9, material: 'plastic', electric: true, screen: [0.14, 0.62, 0.78, 0.88], parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   gas_bottle: { height: 0.6, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   bench: { height: 0.45, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 2, size: 0.08, color: '#2a2a30' } },
   hydrant: { height: 0.7, parts: [{ cut: 'grid', cols: 2, rows: 1 }] }, // never cut: it pops off whole (Prop.burst)

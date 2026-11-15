@@ -147,10 +147,8 @@ export const META = {
   // fire, alarm, UI, street
   alarm: { pri: 1, dur: 0.4, gap: 0.2, max: 2, reach: 1700, gain: 0.2 },
   shopAlarm: { pri: 1, dur: 0.56, gap: 0.3, max: 2, reach: 1500, gain: 0.15 },
-  // the level's devices (data/devices.js): the bar's fire bell, a phone ringing, the booth's dial and ringback
+  // the level's devices (data/devices.js): the bar's fire bell
   fireBell: { pri: 1, dur: 0.5, gap: 0.3, max: 1, reach: 1600, gain: 0.17 },
-  phoneRing: { pri: 1, dur: 1.2, gap: 1, max: 1, reach: 1100, gain: 0.3 },
-  dial: { pri: 1, dur: 2.2, gap: 1.5, max: 1, reach: 500, gain: 0.35 },
   siren: { pri: 0, dur: 4.6, gap: 1.5, max: 2, gain: 0.05, hall: 0.7 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.3 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
@@ -1185,29 +1183,6 @@ class AudioSystem {
       for (let i = 0; i < 9; i++) this._sample(o, buf, { offset, len: Math.min(len, 0.12), rate: 0.62 + (i & 1) * 0.01, vol: i ? 0.5 : 0.6, delay: i * 0.055, fade: 0.05 });
     }
     for (let i = 0; i < 9; i += 2) this._ring(o, 690, 0.1, 0.07, i * 0.055);
-  }
-  // a desk phone of 1986: its two little bells hammered together, a double ring (systems/Phones.js repeats it)
-  _phoneRing(o) {
-    const buf = this.buffers.foley;
-    if (!buf) return;
-    const [offset, len] = BANK.metalBreak[2];
-    for (const t0 of [0, 0.55]) {
-      for (let i = 0; i < 8; i++) {
-        this._sample(o, buf, { offset, len: Math.min(len, 0.06), rate: i & 1 ? 1.62 : 1.38, vol: 0.4, delay: t0 + i * 0.045, fade: 0.03 });
-      }
-    }
-  }
-  // the booth: a coin dropping through, the rotary dial run round and clicking back for each digit, then the bar's
-  // number ringing at the far end (the ringback tone, small in the earpiece)
-  _dial(o) {
-    this._noiseBurst(o, { type: 'bandpass', f0: 3200, q: 4, dur: 0.06, vol: 0.4 });
-    this._noiseBurst(o, { type: 'bandpass', f0: 2400, q: 4, dur: 0.05, vol: 0.3, delay: 0.12 });
-    let t = 0.35;
-    for (const n of [5, 2, 8]) {
-      for (let i = 0; i < n; i++) this._noiseBurst(o, { type: 'highpass', f0: 2500, dur: 0.018, vol: 0.25, delay: t + i * 0.07 });
-      t += n * 0.07 + 0.18;
-    }
-    for (const f of [440, 480]) this._ring(o, f, 0.9, 0.06, t + 0.1);
   }
   // the arcade cabinet's bell when it is shaken: two strokes of the shop bell's cut, short and higher
   _ding(o) {

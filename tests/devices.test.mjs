@@ -1,21 +1,19 @@
 // The level's devices (data/devices.js): what E reaches, the slick floor, the fire alarm, the falling lamp, the passage,
-// the phones, the jukebox, the gas tap, the camera. Each on a stub world (no DOM, no canvas).
+// the jukebox, the gas tap. Each on a stub world (no DOM, no canvas).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 const { TILE } = await load('game/Config.js');
-const { USE, SLIP, SPRINKLERS, JUKEBOX, GAS_VALVE, PASSAGE, PHONES, CAMERA } = await load('game/data/devices.js');
+const { USE, SLIP, SPRINKLERS, JUKEBOX, GAS_VALVE, PASSAGE } = await load('game/data/devices.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Uses } = await load('game/systems/Uses.js');
 const { default: Slips, slips } = await load('game/systems/Slips.js');
 const { default: Sprinklers, heads } = await load('game/systems/Sprinklers.js');
 const { default: LampDrop, under } = await load('game/systems/LampDrop.js');
 const { default: Passage, darkAt } = await load('game/systems/Passage.js');
-const { default: Phones, answerer } = await load('game/systems/Phones.js');
 const { default: Jukebox, masked } = await load('game/systems/Jukebox.js');
 const { default: GasValve, reach } = await load('game/systems/GasValve.js');
-const { default: Camera, inPicture } = await load('game/systems/Camera.js');
 const { default: Liquids } = await load('game/systems/Liquids.js');
 const { default: Director } = await load('game/ai/Director.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
@@ -198,41 +196,6 @@ test('passage: E at one trapdoor, dark, hidden, out of the other one', () => {
   assert.ok(Math.hypot(p.x - 25.75 * TILE, p.y - 10.35 * TILE) < 1, 'out under the rug');
 });
 
-test('phones: the booth calls, the nearest calm guard leaves his post to answer, then goes back; it rings out alone', () => {
-  const booth = prop('phone_booth', 32.6, 31.61), phone = prop('wall_phone', 20.5, 12.07);
-  const guard = (x, y, more = {}) => ({
-    alive: true, x: x * TILE, y: y * TILE, sendable: true, aware: 0, said: [],
-    errandTo(spot, act, t) { this.errand = spot; this.activity = act; this.t = t; },
-    say(k) { this.said.push(k); }, ...more,
-  });
-  const near = guard(17, 12.5), far = guard(17, 12.5 + PHONES.near + 1), boss = guard(19, 12.5, { sendable: false });
-  const w = world({ props: [booth, phone], enemies: [far, near, boss] });
-  assert.equal(answerer(w.enemies, phone.x, phone.y, PHONES.near * TILE), near);
-  const ph = new Phones(w, { booth: [32.6, 31.61], rings: [[20.5, 12.07, 0]] });
-  const spot = w.uses.near({ x: 32.6 * TILE, y: 31 * TILE });
-  assert.equal(spot.kind, 'phone_booth');
-  spot.use(w.player);
-  assert.equal(w.uses.near({ x: 32.6 * TILE, y: 31 * TILE }), null, 'no second call at once');
-  step(w, [ph], PHONES.dial + 0.5);
-  assert.ok(w.log.sound.includes('phoneRing'));
-  assert.equal(near.errand?.face, -Math.PI / 2, 'facing the phone on its wall');
-  assert.ok(Math.abs(near.errand.y - (12.07 * TILE + 15)) < 0.01, 'in front of it');
-  assert.equal(far.errand, undefined);
-  near.atPost = true;
-  step(w, [ph], 0.1);
-  assert.deepEqual(near.said, ['phone']);
-  near.errand = null; // done with it: back to his post
-  step(w, [ph], 0.1);
-  assert.equal(ph.call, null);
-  assert.deepEqual(near.said, ['phone', 'hangup']);
-  // nobody free to go: it rings out
-  w.time += PHONES.again;
-  near.sendable = false;
-  w.uses.near({ x: 32.6 * TILE, y: 31 * TILE }).use(w.player);
-  step(w, [ph], PHONES.dial + PHONES.ring + 1);
-  assert.equal(ph.call, null);
-});
-
 test('jukebox: turned up it drowns the small noises around it for a while, never a gunshot; the Director listens to it', () => {
   assert.equal(masked(100, 'footsteps', 50), 100 * JUKEBOX.mask);
   assert.equal(masked(100, 'gunshot', 50), 100);
@@ -264,7 +227,7 @@ test('jukebox: turned up it drowns the small noises around it for a while, never
 });
 
 test('gas tap: open, the room fills; a shot in the cloud blows it, bigger the fuller; outside it, nothing', () => {
-  const oven = prop('oven', 17.1, 6.38);
+  const oven = prop('oven', 17.1, 6.38, { valve: true });
   const w = world({ props: [oven] });
   const g = new GasValve(w);
   step(w, [g], 0.1);
@@ -288,7 +251,7 @@ test('gas tap: open, the room fills; a shot in the cloud blows it, bigger the fu
   w.events.emit('explosion', { x: oven.x, y: oven.y, radius: 100 });
   assert.equal(w.log.explode.length, 1, 'once');
   // shut again before anything: it thins away
-  const w2 = world({ props: [prop('oven', 17.1, 6.38)] });
+  const w2 = world({ props: [prop('oven', 17.1, 6.38, { valve: true })] });
   const g2 = new GasValve(w2);
   step(w2, [g2], 0.1);
   const s2 = w2.uses.spots[0];
@@ -299,36 +262,13 @@ test('gas tap: open, the room fills; a shot in the cloud blows it, bigger the fu
   assert.equal(g2.taps[0].gas, 0);
 });
 
-test('camera: the guard at the monitor sees an armed stranger in the room and raises the alert; blind, it is snow', () => {
-  assert.deepEqual(inPicture(15, 25, { x0: 10, y0: 20, x1: 30, y1: 30 }), { u: 0.25, v: 0.5 });
-  assert.equal(inPicture(5, 25, { x0: 10, y0: 20, x1: 30, y1: 30 }), null);
-  const cam = prop('cctv', 27.6, 12.12), mon = prop('monitor', 26.7, 6.4);
-  const boss = { alive: true, aware: 0, x: mon.x + 50, y: mon.y, said: [], say(k) { this.said.push(k); } };
-  const calls = [];
-  const w = world({ props: [cam, mon], enemies: [boss], player: { alive: true, x: 20 * TILE, y: 15 * TILE, armed: false } });
-  w.director = { isThreat: (p) => p.armed, sighted: (x, y) => calls.push('sighted'), shout: () => calls.push('shout') };
-  const c = new Camera(w, { cam: [27.6, 12.12, 45], view: [15, 12, 28, 19], monitor: [26.7, 6.4] });
-  step(w, [c], 3);
-  assert.ok(mon.feed && mon.feed.u > 0 && mon.feed.u < 1, 'he is on the screen');
-  assert.ok(cam.pan !== undefined);
-  assert.deepEqual(calls, [], 'a customer: nothing to say');
-  w.player.armed = true;
-  step(w, [c], CAMERA.spot + 0.2);
-  assert.deepEqual(calls, ['sighted', 'shout']);
-  assert.deepEqual(boss.said, ['camera']);
-  cam.dead = true;
-  step(w, [c], 0.1);
-  assert.equal(mon.blind, true);
-  assert.equal(mon.feed, null);
-});
-
 test('level 1: its devices are where they work (a prop at each spot, the passage across the street)', () => {
   const near = (type, [c, r]) => level1.props.some(([t, x, y]) => t === type && Math.hypot(x - c, y - r) < 1);
   assert.ok(near('fire_alarm', level1.sprinklers.pull));
-  assert.ok(level1.phones.rings.every(([c, r]) => near('wall_phone', [c, r])));
-  assert.ok(near('phone_booth', level1.phones.booth));
-  assert.ok(near('cctv', level1.camera.cam) && near('monitor', level1.camera.monitor));
   assert.equal(level1.passage.length, 2);
   assert.ok(level1.props.filter(([t]) => t === 'keg').length >= 2);
-  assert.ok(level1.props.some(([t]) => t === 'oven') && PROPS.oven.valve);
+  // the stove's gas tap is left for later levels: no oven of level 1 has one
+  assert.ok(level1.props.some(([t]) => t === 'oven') && level1.props.every(([t, , , , o]) => !o?.valve));
+  assert.equal(level1.phones, undefined);
+  assert.equal(level1.camera, undefined);
 });

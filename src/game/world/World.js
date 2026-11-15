@@ -51,10 +51,8 @@ import Slips from '../systems/Slips.js';
 import Sprinklers from '../systems/Sprinklers.js';
 import LampDrop from '../systems/LampDrop.js';
 import Passage from '../systems/Passage.js';
-import Phones from '../systems/Phones.js';
 import Jukebox from '../systems/Jukebox.js';
 import GasValve from '../systems/GasValve.js';
-import Camera from '../systems/Camera.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
@@ -141,10 +139,8 @@ export default class World {
     this.sprinklers = new Sprinklers(this, level.sprinklers); // the fire alarm: bell, rain, a slick floor, panic
     this.lampDrop = new LampDrop(this);                     // a hung lamp shot down onto whoever is under it
     this.passage = new Passage(this, level.passage);       // the trapdoors and the way under the street
-    this.phones = new Phones(this, level.phones);          // the booth calls the bar, a guard leaves his post to answer
     this.jukebox = new Jukebox(this);                       // turned up, it drowns the small noises
     this.gasValve = new GasValve(this);                     // a stove's tap left open, and the spark
-    this.cctv = new Camera(this, level.camera);            // the camera, the monitor and whoever watches it
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
@@ -513,10 +509,8 @@ export default class World {
     this.slips.update();
     this.sprinklers.update(dt);
     this.lampDrop.update(dt);
-    this.phones.update(dt);
     this.jukebox.update(dt);
     this.gasValve.update(dt);
-    this.cctv.update(dt);
     this.poolBalls.update(dt);
     this.clouds.update(dt);
     this.steam.update(dt);

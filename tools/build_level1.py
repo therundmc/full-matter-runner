@@ -105,7 +105,7 @@ lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
-# ---------------------------------------------------------------- actors (14 guards)
+# ---------------------------------------------------------------- actors (13 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
@@ -169,8 +169,7 @@ lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weigh
 lv.actor('6', 18, 8)
 lv.actor('k', 21, 9, face=0, job='piss')               # in the toilets: the bowl, the sink, a smoke against the wall
 lv.actor('h', 30, 9, face=180, job='boss', look='boss')  # the boss in his armchair, feet up on the desk, the shotgun on it
-lv.actor('m', 26, 9, face=0, job='couch')               # his two men on the couch: one reads,
-lv.actor('i', 26, 10, face=0, job='couch')              # ... the other one plays with his tire iron
+lv.actor('i', 26, 10, face=0, job='couch')              # his man on the couch plays with his tire iron
 lv.actor('k', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
 lv.actor('1', 8, 17)                                    # what the liquor store keeps behind its counter
@@ -196,7 +195,6 @@ lv.prop('streetlight', 15.5, 30.3, 270)
 lv.prop('streetlight', 28.5, 30.3, 270)
 lv.prop('bench', 12.5, 31.7, 180)
 lv.prop('hydrant', 26.5, 30.35)
-lv.prop('phone_booth', 34.6, 31.61, 180)                # its back to the wall, open on the street
 lv.prop('news_box', 10.7, 31.8, 180)
 lv.dress('papers', 0, 30, 43, 31, 9)
 lv.dress('papers', 20, 32, 23, 36, 3)
@@ -369,9 +367,6 @@ lv.prop('desk', 27.6, 6.75, 270)                        # its seat side toward t
 lv.prop('sofa', 25.5, 8.6, 270)
 lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
                                                         # north of it to get caught in (the QA robot found him there)
-lv.prop('table_round', 27.6, 8.75)                      # 1.2 m off the couch: its men get up and out, and that is
-lv.prop('chair', 28.45, 8.75, 180)                      # the way from the back door to the rest of the room; 0.85 m
-lv.prop('chair', 27.6, 9.57, 270)                       # under the desk, to the boss's corner
 lv.prop('ceiling_lamp', 27.6, 8.75)
 lv.prop('floor_lamp', 25.4, 10.55)
 lv.prop('cash_case', 30.2, 10.45, 84)                   # the boss's takings, open on the floor in front of the man
@@ -425,12 +420,6 @@ lv.area('the bar: what can be used')
 # the fire alarm by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
 # customers run (systems/Sprinklers.js)
 lv.sprinklers(25.0, 12.07, 0, [(15, 12, 30, 19)])
-# the bar's line: a phone behind the counter at its end, one in the back room; the booth across the road calls them
-# by turns and a guard leaves his post to answer (systems/Phones.js)
-lv.phones((34.6, 31.61), [(21.5, 12.07, 0), (26.5, 6.07, 0)])
-# a camera high in the corner over the pool table, watching the room; the monitor on the boss's desk, turned to his
-# armchair (systems/Camera.js)
-lv.camera((28.6, 12.12, 45), (15, 12, 30, 19), (27.7, 6.4), 270)
 # under the street: a trapdoor in the TV shop's back, the other under the rug inside the back room's door
 lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
@@ -554,7 +543,7 @@ ambient = {
 exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], 'radius': [3, 4.2], 'fade': 16}
 
 if __name__ == '__main__':
-    lv.check(guards=14)
+    lv.check(guards=13)
     lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[

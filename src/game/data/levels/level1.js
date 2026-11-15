@@ -12,11 +12,11 @@ export default {
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 22.4, y: 4.0, r: 1.3, route: [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], radius: [3, 4.2], fade: 16 },
-  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 349, '19,16': 90, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,9': 0, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
+  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 349, '19,16': 90, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
   patrols: {
     '17,22': [[16, 22], [26, 22]],
   },
-  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'pool', '19,16': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,9': 'couch', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
+  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'pool', '19,16': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
   looks: { '28,9': 'boss' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -68,7 +68,7 @@ export default {
     "",
     "",
     "            k    j6",
-    "                    k    m  h",
+    "                    k       h",
     "                         i k",
     "    5",
     "                  b",
@@ -105,8 +105,8 @@ export default {
     ['wall_lamp', 19.09, 33.6, 270, { flicker: 'broken' }],
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 27.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
-    ['hydrant', 25.5, 30.35, 0], ['phone_booth', 32.6, 31.61, 180], ['news_box', 10.7, 31.8, 180],
-    ['neon_sign_palm', 17, 31.91, 180], ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
+    ['hydrant', 25.5, 30.35, 0], ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180],
+    ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
     // road: parked along the bar side
     ['car2', 14.6, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180],
     ['van', 34.3, 24.05, 180, { lights: false }],
@@ -157,7 +157,6 @@ export default {
     ['trash_can', 20.4, 10.5, 0],
     // back room
     ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270], ['sofa', 24.5, 8.6, 270], ['armchair', 28.45, 6.6, 180],
-    ['table_round', 26.6, 8.75, 0], ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270],
     ['ceiling_lamp', 26.6, 8.75, 0], ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84],
     ['extinguisher', 24.9, 10.86, 180],
     // the bar: counter along the north wall
@@ -176,8 +175,7 @@ export default {
     ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 22, 15, 0], ['extinguisher', 22.6, 12.14, 0],
     ['plant', 27.65, 12.35, 0],
     // the bar: what can be used
-    ['fire_alarm', 24, 12.07, 0], ['wall_phone', 20.5, 12.07, 0], ['wall_phone', 25.5, 6.07, 0],
-    ['cctv', 27.6, 12.12, 45], ['monitor', 26.7, 6.4, 270],
+    ['fire_alarm', 24, 12.07, 0],
     // the bar: VIP room
     ['dance_stage', 28, 18.9, 0], ['mirror_ball', 27.5, 18.6, 0], ['sofa', 27.15, 17.45, 0],
     ['armchair', 25.5, 17.5, 0], ['armchair', 25.5, 19.45, 0], ['neon_tube_pink', 27, 19.93, 180],
@@ -204,11 +202,9 @@ export default {
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [34, 17, 37, 19], "box": [33.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
   power: {"box": [23.5, 4.92], "zone": [14, 5, 29, 20]},
-  // the devices of the level (data/devices.js): the fire alarm and the rooms it rains on, the phone booth and
-  // the bar's phones, the camera, what it sees and its monitor, the trapdoors of the passage under the street
+  // the devices of the level (data/devices.js): the fire alarm and the rooms it rains on and
+  // the trapdoors of the passage under the street
   sprinklers: {"pull": [24.0, 12.07], "rooms": [[15, 12, 28, 19]]},
-  phones: {"booth": [32.6, 31.61], "rings": [[20.5, 12.07, 0], [25.5, 6.07, 0]]},
-  camera: {"cam": [27.6, 12.12, 45], "view": [15, 12, 28, 19], "monitor": [26.7, 6.4]},
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
   wet: 0.35,

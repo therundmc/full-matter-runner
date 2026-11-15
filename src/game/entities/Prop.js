@@ -866,7 +866,7 @@ export default class Prop {
   draw(ctx) {
     if (this.parts) { this.drawParts(ctx); return; }
     const o = this.centre(), k = this.kick;
-    const x = o.x + k.x, y = o.y + k.y, a = this.body.angle + this.sag + k.r + (this.pan || 0); // pan: a camera's (systems/Camera.js)
+    const x = o.x + k.x, y = o.y + k.y, a = this.body.angle + this.sag + k.r;
     if (this.def.overhead) {
       // drawn later, above characters; what stands on the ground casts a shadow at its foot
       if (!this.def.hung) drawSprite(ctx, this.shadowImg(), o.x + 5, o.y + 7, a, 0.28);

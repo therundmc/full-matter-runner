@@ -49,10 +49,8 @@ player, and reads `window.game` to decide:
   | `throw` | the knife dropped in the gap, then every blade it holds is thrown at a guard 45 to 170 px away |
   | `road` | `--god` only: stands in a traffic lane until a driver brakes and honks (drivers see a man in the road late, by design: he is nearly always run over) |
   | `jukebox` | E at the jukebox: turned up (its band, the guards around deaf to small noises) |
-  | `phone` | E at the phone booth across the road: the bar's phone rings, a guard leaves his post to answer it |
   | `alarm` | E at the fire alarm by the toilets' door: bell, sprinklers, a slick floor, the customers run |
   | `kegs` | strikes the kegs behind the counter a few seconds: beer floods the corner (runners slip, counted in the stats) |
-  | `gas` | E at the storeroom's oven: the gas tap left open (a shot or a blast in the cloud blows it) |
   | `passage` | into the TV shop (its locked door forced, the alarm rings), E at the trapdoor, up under the rug in the back room |
 
   A `use: kind` step walks to the device spot of that kind (systems/Uses.js) and presses E there.

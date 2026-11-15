@@ -70,14 +70,11 @@
       // late by design (Traffic.Driver attention) and he is nearly always run over
       road: { steps: [{ go: [17.5, 26.2] }, { wait: 15 }], ok: () => opts.god },
       throw: { steps: [{ pick: 'knife', near: [30.5, 17.5], r: 3, any: true }], style: 'throw' },
-      // the level's devices: the jukebox turned up, a call from the booth across the road (the bartender goes to the
-      // phone), the fire alarm pulled (rain, panic, a slick floor), the kegs behind the counter holed (beer: runners
-      // slip), the gas tap opened in the storeroom, down the TV shop's trapdoor and up in the back room
+      // the level's devices: the jukebox turned up, the fire alarm pulled (rain, panic, a slick floor), the kegs behind the counter holed (beer: runners
+      // slip), down the TV shop's trapdoor and up in the back room
       jukebox: { steps: [{ use: 'jukebox' }], ok: usable('jukebox') },
-      phone: { steps: [{ use: 'phone_booth' }, { wait: 6 }], ok: usable('phone_booth') },
       alarm: { steps: [{ use: 'fire_alarm' }], ok: usable('fire_alarm') },
       kegs: { steps: [{ smash: 'keg', near: [15.36, 12.45], enough: 3 }], ok: (w) => w.props.some((q) => q.type === 'keg' && !q.dead) },
-      gas: { steps: [{ use: 'gas' }], ok: usable('gas') },
       passage: { steps: [{ use: 'trapdoor', near: [35.55, 17.95] }, { wait: 2.5 }], ok: usable('trapdoor') },
       // off the roof when a failed plan left the bot up there (the grid has no way down: ladders and parapets block)
       offRoof: { steps: DROP_ALLEY, rescue: true },

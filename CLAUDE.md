@@ -105,7 +105,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    clap, hats, pumping bass), sections fightA / fightB / bridge / chase; each chained kill adds a stage
    (`Music.setCombo`: arpeggio, stabs, lead hook + stinger, 16th bass and rolls, doubled lead and toms). Bus
    compressor. Original material only. Nobody has listened to it but him: ask how it sounds.
-6. Level 1 (alley, road, bar, back room, back lot; 14 guards: hand to hand but two guns, the pool player's pistol
+6. Level 1 (alley, road, bar, back room, back lot; 13 guards: hand to hand but two guns, the pool player's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
    against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only).
@@ -146,7 +146,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    a turning ceiling fan (render/PropLife.js) and a mirror ball whose spots are real lights sweeping the VIP room
    (prop light `spots`, Lighting.drawSpots; the user found drawn specks cheap), hung lamps that
    swing on a hit or a blast, wall extinguishers whose white cloud blocks sight (systems/Clouds.js, World.sightLine).
-   Street furniture: a drinks machine that spits cans, a phone booth whose receiver dangles once hit, parking meters
+   Street furniture: a drinks machine that spits cans (the phone booth, the security camera and the gas tap were taken out: "useless"), parking meters
    that bend and shed coins, newspaper boxes, steam from manholes, the oven's vent and pierced pipes
    (systems/Steam.js), a water pipe that leaks, loose papers blown by gusts and passing cars (systems/Papers.js;
    level `street` = dressing without a body, `lv.dress` in tools/levelkit.py).

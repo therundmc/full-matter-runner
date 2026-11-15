@@ -1088,25 +1088,6 @@ export default class Enemy extends Character {
     else set('watch', rand(3, 6));
   }
 
-  // sent somewhere for a while, all calm (a phone ringing: systems/Phones.js): he walks to spot { x, y, face }, is
-  // at `activity` there `time` s facing `face`, then goes back to his post (doIdle, pickActivity)
-  errandTo(spot, activity, time) {
-    this.errand = { angle: spot.face, ...spot }; // angle: what he sweeps about from, should he look round there
-    this.errandT = 0;
-    this.activity = activity;
-    this.activityT = time;
-    this.idleFace = spot.face;
-    this.actT = 0;
-    this.mate = null;
-    if (this.routine) { this.routine.act = null; this.routine.cued = null; this.workSpot = null; this.onSpot = false; }
-  }
-
-  // free to be sent on an errand: calm, at his post, not the boss
-  get sendable() {
-    return this.alive && this.state === S.IDLE && this.aware === 0 && !(this.knocked > 0) && !this.boss && !this.dormant
-      && !this.passive && !this.held && !this.yielded && this.director.phase === 'normal';
-  }
-
   // calm, on his feet, at his post or on his round, with nothing going on
   get idle() {
     return this.aware === 0 && this.knocked <= 0 && !this.held && !this.passive

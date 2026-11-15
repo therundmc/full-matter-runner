@@ -1,4 +1,4 @@
-// A stove's gas tap (prop def `valve`: the storeroom's oven). E opens it: a hiss, the air shimmering over the stove,
+// A stove's gas tap (prop option `valve` of a level's props list). E opens it: a hiss, the air shimmering over the stove,
 // and the gas spreads through the room (its cloud grows to GAS_VALVE.radius over `fill` s; E again shuts it, and what
 // is out thins away). A spark in the cloud blows all of it: a trigger pulled in it, a blast, a fire, metal struck
 // there. The bigger the cloud, the bigger the blast (Explosions), with a flash of flame through it. DOM-free.
@@ -26,7 +26,7 @@ export default class GasValve {
     if (this.taps) return;
     this.taps = [];
     for (const p of this.world.props) {
-      if (!p.def.valve) continue;
+      if (!p.valve) continue;
       const tap = { prop: p, open: false, gas: 0, hiss: 0, blown: false };
       this.taps.push(tap);
       this.world.uses?.add({ kind: 'gas', prop: p, r: 26, label: () => (tap.open ? 'SHUT THE GAS' : 'OPEN THE GAS'),

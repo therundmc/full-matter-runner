@@ -1,8 +1,8 @@
 // The things of a level that change the situation, used (E) or broken: the bar's fire alarm and its sprinklers,
-// the pool table's lamp, the stove's gas tap, the street's phone booth and the bar's phones, the jukebox turned up,
-// the security camera and its monitor, the beer kegs and the floor they leave slippery, the passage under the street.
-// Tuning only: the rules are in systems/Uses.js (what E does where), Sprinklers, Slips, LampDrop, Passage, Phones,
-// Jukebox, GasValve, Camera. Distances in px unless noted (1 m = 32 px), times in s.
+// the pool table's lamp, the stove's gas tap (a level's option, none in level 1), the jukebox turned up,
+// the beer kegs and the floor they leave slippery, the passage under the street.
+// Tuning only: the rules are in systems/Uses.js (what E does where), Sprinklers, Slips, LampDrop, Passage,
+// Jukebox, GasValve. Distances in px unless noted (1 m = 32 px), times in s.
 
 // what E reaches: a spot is used from within `reach` of it (its own `r` when it has one)
 export const USE = { reach: 24 };
@@ -37,27 +37,15 @@ export const SPRINKLERS = {
 // the round that cut it.
 export const LAMP_DROP = { fall: 0.32, reach: [12, 28], shove: 10 };
 
-// The stove's gas tap (prop def `valve`): open (E), the room fills: the cloud reaches `radius` px in `fill` s;
+// The stove's gas tap (prop option `valve`): open (E), the room fills: the cloud reaches `radius` px in `fill` s;
 // a spark in it (a shot, a blast, a fire, metal struck by a round) blows it all: `blast` px at the stove plus
 // `extra` x how full it was, and a flash of flame through the cloud.
 export const GAS_VALVE = { fill: 26, radius: 130, blast: 90, extra: 70, hiss: 0.55, shimmer: 0.12, min: 0.15 };
-
-// The phones (level `phones`: { booth: [col, row], rings: [[col, row, deg], ...] }): E at the booth calls the bar;
-// its phones take turns (`rings`, one per call). It rings `ring` s at most (a double ring every `period`); the calm
-// guard nearest to it within `near` tiles leaves what he does, answers (`talk` s on the line, his back to the room)
-// and goes back. The booth can call again `again` s later.
-export const PHONES = { ring: 22, period: 3, near: 12, talk: [7, 10], again: 25, dial: 2.2 };
 
 // The jukebox turned up (E, prop type `jukebox` powered and on its record): `dur` s loud, its band heard (Music),
 // the beat flashing its light; what is quieter than a door (footsteps, bodies, things knocked over) is not heard by
 // the guards within `cover` px of it (radius x `mask`). Again `again` s after it is back down.
 export const JUKEBOX = { dur: 20, cover: 330, mask: 0.15, masked: ['footsteps', 'body', 'noise', 'door', 'thrown'], again: 8, beat: 60 / 126 };
-
-// The camera (level `camera`: { cam: [col, row, deg], view: [col0, row0, col1, row1], monitor: [col, row] }):
-// a guard within `watch` px of the monitor sees on it whoever is in the view rectangle and in the camera's line
-// of sight; a stranger who is a threat (armed, off limits, made) fills his meter in `spot` s, then he raises the
-// alert. The camera pans `pan` rad either side of its heading, a sweep every `period` s.
-export const CAMERA = { watch: 72, spot: 1.6, pan: 0.55, period: 9 };
 
 // The passage under the street (level `passage`: [[col, row], [col, row]]): E at one trapdoor, down in `down` s
 // (dark from `dark`), along it `under` s, up the other in `up` s.

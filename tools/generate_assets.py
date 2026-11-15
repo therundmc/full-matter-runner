@@ -6314,63 +6314,6 @@ def p_fire_alarm():
     return cv
 
 
-def p_wall_phone():
-    """The bar's telephone on a wall (-y), from above: a cream case, the rotary dial's finger wheel, the handset across
-    the top on its hook, the curly cord hanging down."""
-    cv = Cv(12, 8)
-    case = ramp('#d8cfb8', 0.45, 0.22, 0.32)
-    fill_shape(cv, 6.0, 3.4, 4.6, 2.6, lambda u, v, L: shade(case, L), kind='rect', bevel=0.8, corner=0.8)
-    ring(cv, 5.2, 3.8, 1.2, 1.9, lambda dx, dy, d: case[1] if dx + dy < 0 else case[0])   # the finger wheel
-    for k in range(8):
-        a = -2.4 + k * 0.62
-        cv.dot(5.2 + math.cos(a) * 1.5, 3.8 + math.sin(a) * 1.5, hx('#2a2830'))
-    cv.dot(5.0, 3.6, hx('#f4f0e4'))
-    fill_capsule(cv, [(2.0, 1.8), (10.0, 1.8)], 0.9, lambda k, L, s_, i, t: shade(ramp('#cfc6ae', 0.45, 0.22, 0.4), L))   # the handset
-    for x in (2.0, 10.0):
-        fill_shape(cv, x, 1.8, 1.1, 1.0, lambda u, v, L: shade(ramp('#bfb6a0', 0.45, 0.22, 0.4), L))
-    for y in range(5, 8):                                                 # the curly cord
-        cv.dot(8.5 + (y % 2) * 0.5, y + 0.25, hx('#a89c80'))
-    cv.outline()
-    return cv
-
-
-def p_cctv():
-    """A security camera high on a wall (-y), from above: the bracket out of the wall, the beige housing with its sun
-    hood, the lens at the front (+y), its little red light."""
-    cv = Cv(12, 12)
-    frect(cv, 5.0, 0.0, 7.0, 3.0, hx('#4a4e58'))                         # the bracket
-    frect(cv, 5.0, 0.0, 5.5, 3.0, hx('#7a808c'))
-    housing = ramp('#d2cfc4', 0.45, 0.22, 0.32)
-    fill_shape(cv, 6.0, 6.4, 2.6, 3.8, lambda u, v, L: shade(housing, L), kind='rect', bevel=0.9, corner=0.6)
-    frect(cv, 3.2, 3.0, 8.8, 3.6, housing[3])                            # the sun hood's lip
-    for y in (4.5, 5.5, 6.5):
-        frect(cv, 4.5, y, 7.5, y + 0.3, housing[1])                      # its ribs
-    fill_shape(cv, 6.0, 10.2, 1.6, 0.9, lambda u, v, L: shade(ramp('#1c2030', 0.45, 0.22, 0.6), L))   # the lens
-    cv.dot(5.5, 10.0, hx('#9ab8e8'))
-    cv.dot(8.0, 8.5, hx('#ff3020'))                                      # the red light
-    cv.outline()
-    return cv
-
-
-def p_monitor():
-    """The camera's monitor on the boss's desk, from above, its screen toward +y: a grey steel case with its vents,
-    the handle on top, the screen's tilted face and its knobs at the front."""
-    W, H = 18, 14
-    cv = Cv(W, H)
-    case = ramp('#7a7e88', 0.45, 0.22, 0.38)
-    fill_shape(cv, 9.0, 6.2, 8.0, 5.4, lambda u, v, L: shade(case, L), kind='rect', bevel=1.0, corner=0.8)
-    for x in range(4, 14, 2):
-        frect(cv, x + 0.25, 2.0, x + 0.9, 5.0, case[0])                  # vents
-    frect(cv, 6.0, 1.2, 12.0, 1.8, hx('#2a2830'))                        # the carry handle
-    frect(cv, 2.0, 8.2, 16.0, 12.8, hx('#2a2e2a'))                       # the screen's bezel
-    frect(cv, 2.5, 8.7, 14.0, 12.3, hx('#0e1a14'))                       # the tube, dark (its picture: PropLife)
-    for y in (9.5, 11.5):
-        knob(cv, 15.0, y, 0.55, '#1a1820', -0.8)
-    cv.dot(15.0, 8.7, hx('#3aff8a'))
-    cv.outline()
-    return cv
-
-
 def p_trapdoor():
     """A trapdoor in the floor of the TV shop's back, flush with it: an angle-iron frame, four worn planks, the iron
     ring sunk in its recess, the two strap hinges, grime in the joints and the scuffs of the hatch being dragged."""
@@ -6442,7 +6385,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, velvet_rope=p_velvet_rope,
                     entry_carpet=p_entry_carpet, awning=p_awning, radiator=p_radiator, bike=p_bike,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes,
-                    keg=p_keg, fire_alarm=p_fire_alarm, wall_phone=p_wall_phone, cctv=p_cctv, monitor=p_monitor,
+                    keg=p_keg, fire_alarm=p_fire_alarm,
                     trapdoor=p_trapdoor, rug=p_rug)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
@@ -6451,7 +6394,7 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
                     floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
-                    keg=(18, 18), fire_alarm=(12, 8), wall_phone=(12, 8), cctv=(12, 12), monitor=(18, 14), trapdoor=(26, 26), rug=(40, 28))
+                    keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,
