@@ -14,7 +14,8 @@ const HEAD_AT = 24, TORSO_AT = 10;
 // or snap (a broken neck: a clean body, no blood at all).
 // by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
 // profile (data/wounds.js) sets how much blood goes where and how the body bleeds out; stuck = sprite of what is left
-// planted in the body, launch = speed of a head knocked off (x the usual).
+// planted in the body (stuckItem = { type, mag, wear }: it can be pulled out again), launch = speed of a head
+// knocked off (x the usual).
 // how: the blow (Character.kill: heavy, spin, finisher, thrown...) scales the blood and the throw. A man held from
 // behind (ch.held: a takedown) is let down where he stood; one already down (ch.knocked) is finished where he lies.
 // Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
@@ -88,7 +89,7 @@ export function gore(world, ch, angle, cause, by, how) {
     const lay = ch.knocked > 0 ? ch.downAngle : null;
     const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
     world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + rand(-0.3, 0.3) : lay ?? angle, behead || lay !== null ? 0 : slide, {
-      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying, mark: markOf(wd),
+      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, dying, mark: markOf(wd),
       // he faced his killer: he goes over backwards (a cut throat pitches forward)
       back: !!dying && dying !== 'throes' && dying !== 'throat' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
       killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,

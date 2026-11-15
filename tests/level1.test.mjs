@@ -101,7 +101,8 @@ test('level 1 is fought hand to hand: two guns in the house (the bar room, the b
   assert.equal(level.jobs[`${pool.col},${pool.row}`], 'pool', "the pistol is the pool player's");
   // lying around: knives, a cue by the pool table, one pistol behind the liquor store's locked door; no ammunition
   // anywhere and no weapon in the start alley (the first one is in the trunk of the first parked car)
-  assert.deepEqual([...new Set(level.actors.join('').replace(/[^0-9]/g, ''))].sort(), ['0', '1', '5', '6']);
+  assert.deepEqual([...new Set(level.actors.join('').replace(/[^0-9]/g, ''))].sort(), ['1', '5', '6']);
+  assert.deepEqual(level.lean.map((l) => l[0]), ['cue'], 'the cue stands against a wall of the bar room');
   assert.equal(level.actors[11][4], '5', 'the one bat is up on the liquor store roof');
   assert.equal(level.actors.join('').split('1').length - 1, 1);
   assert.equal(level.actors[17][8], '1');

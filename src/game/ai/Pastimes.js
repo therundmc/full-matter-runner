@@ -80,11 +80,20 @@ export function clap(t, seed) {
 export const pours = (t, left) => t > 0.9 && left > 1.3;
 
 // where a guard standing at (x, y) goes to relieve himself: { x, y, face, wall } or null. Out in a yard or an alley,
-// against the nearest wall; on bathroom tiles, in front of the nearest toilet; nowhere else.
+// against the nearest wall; on bathroom tiles, at the nearest urinal (squarely in front of it), else in front of the
+// nearest toilet; nowhere else.
 export function reliefSpot(map, props, x, y) {
   const c = map.at(Math.floor(x / TILE), Math.floor(y / TILE));
   if (c === '+') {
     let best = null, bd = REACH * 1.2;
+    for (const p of props) {
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (p.type === 'urinal' && !p.dead && d < bd) { bd = d; best = p; }
+    }
+    if (best) {
+      const f = best.body.angle + Math.PI / 2; // the way it faces, off its wall
+      return { x: best.x + Math.cos(f) * 17, y: best.y + Math.sin(f) * 17, face: f + Math.PI, wall: false };
+    }
     for (const p of props) {
       const d = Math.hypot(p.x - x, p.y - y);
       if (p.type === 'toilet' && !p.dead && d < bd) { bd = d; best = p; }

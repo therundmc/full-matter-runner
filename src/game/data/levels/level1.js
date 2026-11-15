@@ -73,7 +73,7 @@ export default {
     "                  b",
     "",
     "                        p",
-    "                         0",
+    "",
     "                    k",
     "        1               b       6",
     "",
@@ -111,11 +111,11 @@ export default {
     ['van', 38.6, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
     ['neon_sign_bar', 30, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['plant', 20.6, 21.3, 0],
-    ['plant', 23.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 35.5, 22.7, 90],
-    ['bench', 37.5, 22.62, 180], ['trash_can', 40.5, 21.35, 0], ['hydrant', 11.6, 22.65, 0],
-    ['vending', 18.5, 21.33, 0], ['news_box', 26.6, 21.19, 0], ['parking_meter', 12.3, 22.78, 0],
-    ['parking_meter', 28.8, 22.78, 0], ['parking_meter', 33.6, 22.78, 0], ['parking_meter', 41.3, 22.78, 0],
-    ['wall_lamp', 2.35, 21.09, 0], ['palm_tree', 41.6, 21.8, 0],
+    ['plant', 23.4, 21.3, 0], ['pergola', 22, 21.62, 0], ['streetlight', 6.5, 22.7, 90],
+    ['streetlight', 35.5, 22.7, 90], ['bench', 37.5, 22.62, 180], ['trash_can', 40.5, 21.35, 0],
+    ['hydrant', 10.6, 22.65, 0], ['vending', 18.5, 21.33, 0], ['news_box', 26.6, 21.19, 0],
+    ['parking_meter', 12.3, 22.78, 0], ['parking_meter', 28.8, 22.78, 0], ['parking_meter', 33.6, 22.78, 0],
+    ['parking_meter', 41.3, 22.78, 0], ['wall_lamp', 2.35, 21.09, 0], ['palm_tree', 41.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],
@@ -153,7 +153,8 @@ export default {
     ['tube_light', 19.93, 8.5, 90], ['dope_table', 17.5, 9.2, 0], ['crate', 19.5, 9.7, 4], ['crate', 19.45, 10.45, -3],
     ['crate', 18.75, 10.5, 12],
     // toilets
-    ['toilet', 21.5, 6.4, 0], ['toilet', 23.4, 6.4, 0], ['sink', 23.7, 9, 90], ['tube_light', 21.07, 8.6, 270],
+    ['toilet', 21.5, 6.4, 0], ['toilet', 23.4, 6.4, 0], ['stall', 22.07, 6.68, 0], ['stall', 22.93, 6.68, 0],
+    ['urinal', 21.19, 7.95, 270], ['urinal', 21.19, 8.85, 270], ['sink', 23.7, 9, 90], ['tube_light', 23.93, 7.7, 90],
     ['trash_can', 21.4, 10.5, 0],
     // back room
     ['table_lamp', 25.45, 7.2, 0], ['plant', 25.45, 6.5, 0], ['desk', 29.5, 6.75, 270], ['sofa', 25.5, 8.6, 270],
@@ -170,7 +171,8 @@ export default {
     // the bar: booths, card table, pool
     ['sofa', 15.5, 16.2, 270], ['table', 16.5, 16.2, 90], ['chair', 17.3, 15.8, 180], ['chair', 17.3, 16.6, 180],
     ['sofa', 15.5, 18.6, 270], ['table', 16.5, 18.6, 90], ['chair', 17.3, 18.2, 180], ['chair', 17.3, 19, 180],
-    ['card_table', 20.4, 17.5, 0], ['chair', 19.25, 17.5, 0], ['chair', 21.55, 17.5, 180],
+    ['card_table', 20.4, 17.5, 0], ['ceiling_lamp', 20.4, 17.5, 0], ['wall_lamp', 15.09, 16.2, 270],
+    ['wall_lamp', 15.09, 18.6, 270], ['chair', 19.25, 17.5, 0], ['chair', 21.55, 17.5, 180],
     ['chair', 19.98, 18.34, 262], ['chair', 20.82, 18.32, 270], ['pool_table', 26.6, 14, 0],
     ['pool_lamp', 26.6, 14, 0], ['arcade', 30.5, 12.5, 90], ['wall_lamp', 30.91, 15.5, 90],
     ['jukebox', 23.6, 19.6, 180], ['ceiling_fan', 23.2, 15.7, 0], ['extinguisher', 23.6, 12.14, 0],
@@ -194,6 +196,8 @@ export default {
   intro: 'swig',
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
   welcome: [[21, 12, 30, 12], [15, 13, 30, 15], [15, 16, 23, 19], [21, 6, 23, 11]],
+  // weapons stood against a wall [type, col, row, deg]
+  lean: [["cue", 25.6, 12.2, 270]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [36, 17, 39, 19], "box": [35.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside

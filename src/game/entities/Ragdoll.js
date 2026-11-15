@@ -1,5 +1,5 @@
 import { CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
-import { sprite, spriteOpt, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
+import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, THROAT, BEHEAD } from '../data/wounds.js';
@@ -23,6 +23,9 @@ const FALL = { crawl: CRAWL.fall, spasm: SPASM.fall, curl: CURL.fall, throat: 0,
 const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
 const MARKS_MAX = 12; // wounds shown on one body (a corpse can be shot again and again)
 const HEAD_R = 4.5;   // the head's radius, for what marks it
+// a weapon planted in him, seen from above: the share of it that shows (from its grip), how short it looks, how
+// much bigger (it comes up toward the eye), px within which the player can pull it out
+export const PLANTED = { part: 0.65, len: 0.75, size: 1.1, reach: 28 };
 
 // rag_* sprites are intact limbs; the gib sprites stand in when they are missing
 export function hasRagdoll(kind) { return !!(spriteOpt(`characters/${kind}_rag_torso`) || spriteOpt(`characters/${kind}_gib_torso`)); }
@@ -49,8 +52,9 @@ export default class Ragdoll {
       hip: { x, y }, killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 } } : null;
     this.throes = how === 'throes' ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
     this.up = false; // lying on his back (opts.back: he went over backwards)
-    // the weapon left planted in him (opts.stuck: its sprite), at an angle off the line of his body
-    this.stuck = opts.stuck ? { img: sprite(opts.stuck), a: rand(-0.6, 0.6) } : null;
+    // the weapon left planted in him (opts.stuck: its sprite): where on his torso (px off its centre), the way its
+    // handle leans; item = { type, mag, wear } when it can be pulled out again (a weapon thrown at him)
+    this.stuck = opts.stuck ? { img: sprite(opts.stuck), a: rand(0, 6.28), x: rand(-2.5, 2.5), y: rand(-4, 2), item: opts.stuckItem || null, hot: -1 } : null;
     const group = Body.nextGroup(true);
     const img = (p) => spriteOpt(`characters/${kind}_rag_${p}`) || sprite(`characters/${kind}_gib_${p}`);
     const th = dir + Math.PI / 2; // head (torso -y) ends up along the travel direction
@@ -275,7 +279,8 @@ export default class Ragdoll {
     bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
       src.position, !going && Body.getSpeed(src) < 0.3);
     this.settle = moving ? 0 : this.settle + dt;
-    if (this.settle > 2 && !this.dying && !this.throes && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0) this.bake();
+    if (this.settle > 2 && !this.dying && !this.throes && this.pool >= this.poolMax && this.fountain <= 0 && this.spurt <= 0
+      && !this.stuck?.item) this.bake(); // with a weapon to pull out he stays a body: baked, it would be lost
   }
 
   // How he dies on the floor, a scripted sequence (fx/CrawlPose.js, fx/DyingPose.js). After a moment of plain physics
@@ -523,10 +528,36 @@ export default class Ragdoll {
     impulse(b, b.angle + (chance(0.5) ? 1 : -1) * Math.PI / 2, kgOf(b) * THROES.kick);
   }
 
-  // where the planted weapon is drawn: out of the torso, its centre some way along the direction it points
+  // where the planted weapon goes into him, and the way its handle leans (the sprite's grip end is its -x end)
   stuckAt() {
-    const t = this.torso.body, a = t.angle - Math.PI / 2 + this.stuck.a, r = sw(this.stuck.img) * 0.3 * BODY_SCALE;
-    return { x: t.position.x + Math.cos(a) * r, y: t.position.y + Math.sin(a) * r, a };
+    const t = this.torso.body, p = local(t.position.x, t.position.y, t.angle, this.stuck.x, this.stuck.y);
+    return { x: p.x, y: p.y, a: t.angle + this.stuck.a };
+  }
+
+  // standing in him: short, mostly its handle, its shadow on his clothes; outlined while it can be pulled out
+  drawStuck(ctx) {
+    const s = this.stuckAt(), k = this.stuck, o = { scale: BODY_SCALE * PLANTED.size, part: PLANTED.part };
+    drawUpright(ctx, silhouette(k.img), s.x + 1.5, s.y + 1.5, s.a, PLANTED.len, { ...o, alpha: 0.3 });
+    drawUpright(ctx, k.img, s.x, s.y, s.a, PLANTED.len, o);
+    if (this.world.time - k.hot > 0.1) return;
+    const len = sw(k.img) * PLANTED.part * PLANTED.len * o.scale, h = sh(k.img) * o.scale;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.35 + Math.sin(this.world.time * 10) * 0.2;
+    ctx.strokeStyle = PALETTE.cyan;
+    ctx.lineWidth = 1;
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    ctx.strokeRect(-len - 2, -h / 2 - 2, len + 4, h + 4);
+    ctx.restore();
+  }
+
+  // pulled out of him: what it was (to go into a hand), a little blood with it
+  pullStuck() {
+    const s = this.stuckAt(), item = this.stuck.item;
+    this.stuck = null;
+    if (!this.dry) this.world.particles.blood(s.x, s.y, s.a + Math.PI, 0.6, 5, 90);
+    return item;
   }
 
   // the part the blood seeps from: the head while it is on, else the torso (its pool forms at the neck)
@@ -541,7 +572,7 @@ export default class Ragdoll {
     w.decals.bakePool(this, n.x, n.y, this.pool);
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
     w.decals.paint?.((g) => { for (const part of [this.torso, this.head]) this.drawMarks(g, part); }, true);
-    if (this.stuck) { const s = this.stuckAt(); w.decals.bake(this.stuck.img, s.x, s.y, s.a, 1, true, BODY_SCALE); }
+    if (this.stuck) w.decals.paint?.((g) => this.drawStuck(g), true);
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
     for (const part of this.parts) w.removeBody(part.body);
     this.dead = true;
@@ -585,11 +616,7 @@ export default class Ragdoll {
       // bloody stump at the root of a torn part
       if (!part.attached) stump(ctx, local(b.position.x, b.position.y, b.angle, part.root.x, part.root.y), 3);
     }
-    if (this.stuck) {
-      const s = this.stuckAt();
-      drawSprite(ctx, silhouette(this.stuck.img), s.x + 1, s.y + 1, s.a, 0.3, BODY_SCALE);
-      drawSprite(ctx, this.stuck.img, s.x, s.y, s.a, 1, BODY_SCALE);
-    }
+    if (this.stuck) this.drawStuck(ctx);
     if (this.headless) stump(ctx, this.neckPos(), 4);
   }
 }

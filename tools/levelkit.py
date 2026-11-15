@@ -34,13 +34,13 @@ SIZES = dict(
     plant=(15, 15), tv=(22, 15), fridge=(22, 22), oven=(20, 20), sink=(26, 18), toilet=(13, 21), bed=(44, 64),
     pool_table=(80, 44), arcade=(22, 27), crate=(19, 19), barrel=(18, 18), bookshelf=(40, 11), speaker=(14, 14),
     dj_booth=(58, 22), bar_counter=(32, 19), dumpster=(58, 34), trash_can=(15, 15), jukebox=(28, 20),
-    hydrant=(8, 8), bench=(50, 15), palm_tree=(9, 9), streetlight=(6, 6), floor_lamp=(10, 10), table_lamp=(15, 15),
+    hydrant=(11, 11), bench=(50, 15), palm_tree=(9, 9), streetlight=(6, 6), floor_lamp=(10, 10), table_lamp=(15, 15),
     car=(136, 54), car2=(130, 52), van=(156, 60), chain_fence=(32, 4), bottle_shelf=(40, 11), back_bar=(40, 8), washer=(22, 22),
     neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None, alarm_box=None,
     neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
-    fuse_box=None, emergency_light=None,
+    fuse_box=None, emergency_light=None, pergola=None, urinal=(12, 10), stall=(4, 40),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
@@ -67,6 +67,7 @@ class Level:
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
         self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key; 'swig':
                               # the same, after he has drunk off a bottle and smashed it on the wall across
+        self.leans = []       # weapons stood against a wall: [type, col, row, deg]
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
@@ -113,6 +114,10 @@ class Level:
 
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
+
+    # ---- a weapon stood against a wall at (col, row), its tip pointing deg (toward the wall)
+    def lean(self, kind, col, row, deg=0):
+        self.leans.append([kind, col, row, deg])
 
     # ---- guarded premises (inclusive tile rectangle): guards leave an unarmed stranger alone anywhere else
     def guard(self, col0, row0, col1, row1):
@@ -278,6 +283,9 @@ class Level:
         if self.welcome:
             L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
             L.append(f'  welcome: {json.dumps(self.welcome)},')
+        if self.leans:
+            L.append('  // weapons stood against a wall [type, col, row, deg]')
+            L.append(f'  lean: {json.dumps(self.leans)},')
         if self.alarms:
             L.append('  // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box')
             L.append(f'  alarms: {json.dumps(self.alarms)},')

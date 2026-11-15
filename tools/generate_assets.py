@@ -4369,6 +4369,60 @@ def p_parapet():
     return cv
 
 
+def p_urinal():
+    """A wall urinal from above (the wall at -y): its back against the wall with the flush, the bowl open toward the
+    room, the drain."""
+    cv = Cv(14, 12)
+    wh = ramp('#ecebf0', 0.4, 0.18, 0.2)
+
+    def body(ly):
+        fill_shape(ly, 7.0, 3.2, 5.6, 2.2, lambda u, v, L: shade(wh, L), kind='rect', bevel=1.2, corner=1.0)
+        fill_shape(ly, 7.0, 6.0, 4.6, 4.4, lambda u, v, L: shade(wh, L))
+        fill_shape(ly, 7.0, 6.2, 2.8, 2.8, lambda u, v, L: shade(ramp('#dcd8c8', 0.4, 0.2, 0.2), 1.1 - L * 0.7))
+        ly.set(6, 7, hx('#6a6a72'))
+        ly.set(7, 7, hx('#6a6a72'))
+        ly.set(7, 2, hx('#b8bcc8'))
+    layer(cv, body)
+    return cv
+
+
+def p_stall():
+    """The partition between two toilets, from above: a thin laminate panel, its bracket on the wall (-y), a steel foot
+    in the middle and the post at its free end."""
+    cv = Cv(6, 42)
+    cv.rect(1, 1, 4, 40, hx('#8a9aa6'))
+    cv.rect(1, 1, 1, 40, hx('#a8b6c0'))
+    cv.rect(4, 1, 4, 40, hx('#6a7a86'))
+    for y in (1, 2, 20, 39, 40):
+        cv.rect(1, y, 4, y, hx('#c8ccd4'))
+    cv.outline()
+    return cv
+
+
+def p_pergola():
+    """The porch over a door, from above (the wall at -y): slats from the wall to the street with the night between
+    them, two beams across, two posts on the street side, a string of warm bulbs along the front beam."""
+    W, H = 74, 42
+    cv = Cv(W, H)
+    wd = ramp('#7a4a2a', 0.45, 0.22, 0.3)
+    for x in range(4, W - 6, 9):
+        cv.rect(x, 2, x + 3, H - 3, wd[2])
+        cv.rect(x, 2, x, H - 3, wd[3])
+        cv.rect(x + 3, 2, x + 3, H - 3, wd[1])
+    for y in (3, H - 9):
+        cv.rect(1, y, W - 2, y + 3, wd[2])
+        cv.rect(1, y, W - 2, y, wd[3])
+        cv.rect(1, y + 3, W - 2, y + 3, wd[0])
+    for x in (1, W - 7):
+        cv.rect(x, H - 10, x + 5, H - 4, wd[1])
+        cv.rect(x + 1, H - 9, x + 4, H - 5, wd[0])
+    for x in range(10, W - 8, 8):
+        cv.set(x, H - 5, hx('#fff0c0'))
+        cv.set(x, H - 4, hx('#ffc98a'))
+    cv.outline()
+    return cv
+
+
 # small dressing added one by one (the details list)
 DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
@@ -4377,11 +4431,13 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     wall_vent=p_wall_vent, manhole=p_manhole, cardboard_bed=p_cardboard_bed,
                     table_flipped=flipped_table(46, '#86552f', '#5a361e'),
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
-                    card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'))
+                    card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
+                    urinal=p_urinal, stall=p_stall, pergola=p_pergola)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
-                    table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27))
+                    table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
+                    urinal=(14, 12), stall=(6, 42), pergola=(74, 42))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

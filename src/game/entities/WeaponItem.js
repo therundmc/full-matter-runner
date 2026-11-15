@@ -1,6 +1,6 @@
 import { CAT, MASK, PALETTE, AI, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { sprite, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
+import { sprite, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 import { blowFrom } from '../fx/Blows.js';
 
@@ -10,6 +10,7 @@ const { Bodies, Body } = Matter;
 
 // a thrown blade at least this fast (px/step) plants itself in the man instead of knocking him down
 const STICK_SPEED = 6;
+const LEAN = 0.5; // how short a weapon stood against a wall looks from above
 
 // A weapon lying on the floor or flying through the air after a throw.
 export default class WeaponItem {
@@ -39,6 +40,13 @@ export default class WeaponItem {
     world.addBody(this.body);
   }
 
+  // stood against a wall (a level's `lean`), its tip up on it: it stays there until somebody takes it
+  leanOn() {
+    this.lean = true;
+    Body.setStatic(this.body, true);
+    return this;
+  }
+
   get x() { return this.body.position.x; }
   get y() { return this.body.position.y; }
   get speed() { return Body.getSpeed(this.body); }
@@ -61,7 +69,7 @@ export default class WeaponItem {
         const stick = this.def.swing === 'blade' && sp >= STICK_SPEED;
         if (stick) {
           // like a blade blow: it stays in the body and is gone from the floor
-          const by = { ...this.def, wound: 'slash', gore: 0, stuck: this.def.sprite };
+          const by = { ...this.def, wound: 'slash', gore: 0, stuck: this.def.sprite, stuckItem: { type: this.type, mag: this.mag, wear: this.wear } };
           c.kill(a, 'slash', this.thrower, by, { thrown: true, from: blowFrom(c.angle, a) });
         } else c.knock(a, 'throw');
         w.sound(stick ? this.def.sound : 'punch', c.x, c.y);
@@ -83,9 +91,14 @@ export default class WeaponItem {
   }
 
   draw(ctx, t) {
-    const p = this.body.position;
-    drawSprite(ctx, silhouette(this.img), p.x + 1.5, p.y + 1.5, this.body.angle, 0.35, BODY_SCALE);
-    drawSprite(ctx, this.img, p.x, p.y, this.body.angle, 1, BODY_SCALE);
+    const p = this.body.position, k = this.lean ? LEAN : 1;
+    if (this.lean) {
+      drawUpright(ctx, silhouette(this.img), p.x + 2.5, p.y + 2.5, this.body.angle, LEAN, { alpha: 0.35, scale: BODY_SCALE });
+      drawUpright(ctx, this.img, p.x, p.y, this.body.angle, LEAN, { scale: BODY_SCALE });
+    } else {
+      drawSprite(ctx, silhouette(this.img), p.x + 1.5, p.y + 1.5, this.body.angle, 0.35, BODY_SCALE);
+      drawSprite(ctx, this.img, p.x, p.y, this.body.angle, 1, BODY_SCALE);
+    }
     if (this.hilite > 0) {
       // pulsing outline to show it can be picked up
       ctx.save();
@@ -95,7 +108,7 @@ export default class WeaponItem {
       ctx.lineWidth = 1;
       ctx.translate(p.x, p.y);
       ctx.rotate(this.body.angle);
-      ctx.strokeRect(-this.w / 2 - 2, -this.h / 2 - 2, this.w + 4, this.h + 4);
+      ctx.strokeRect(-this.w * k / 2 - 2, -this.h / 2 - 2, this.w * k + 4, this.h + 4);
       ctx.restore();
     }
   }

@@ -34,7 +34,7 @@ export const OPTIONAL_LIST = [
   ...GLOWING.map((n) => `props/${n}_glow`),
   ...['chain_fence', 'bottle_shelf', 'washer', 'card_table', 'dance_stage', 'dope_table', 'gas_bottle', 'back_bar', 'alarm_box', 'cash_case', 'ceiling_fan', 'mirror_ball', 'extinguisher',
     'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed', 'ladder', 'parapet', 'fuse_box',
-    'table_flipped', 'table_round_flipped', 'card_table_flipped'].map((n) => `props/${n}`),
+    'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'pergola'].map((n) => `props/${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
     .map((n) => `weapons/${n}`),
@@ -239,6 +239,20 @@ export function drawSprite(ctx, img, x, y, angle = 0, alpha = 1, scale = 1) {
   if (sc !== 1) ctx.scale(sc, sc);
   if (alpha !== 1) ctx.globalAlpha *= alpha;
   ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  ctx.restore();
+}
+
+// A long thing stood on end, seen from above: its sprite squashed to `len` of its length, `scale` bigger because it
+// comes up toward the eye. part < 1: only that share of the sprite from its -x end (the rest is in what it is
+// planted in), the cut end on (x, y); part 1: the whole of it, centred on (x, y).
+export function drawUpright(ctx, img, x, y, angle, len, { alpha = 1, scale = 1, part = 1 } = {}) {
+  const k = scale * (img.k || 1), w = Math.round(img.width * part);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(k * len, k);
+  if (alpha !== 1) ctx.globalAlpha *= alpha;
+  ctx.drawImage(img, 0, 0, w, img.height, part < 1 ? -w : -w / 2, -img.height / 2, w, img.height);
   ctx.restore();
 }
 

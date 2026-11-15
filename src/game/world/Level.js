@@ -71,6 +71,11 @@ export function buildLevel(world, level) {
     }
   }
 
+  // ---- weapons stood against a wall: [type, col, row, deg] (deg: the way its tip points, up the wall)
+  for (const [type, col, row, deg = 0] of level.lean || []) {
+    world.items.push(new WeaponItem(world, type, undefined, col * TILE, row * TILE, (deg * Math.PI) / 180).leanOn());
+  }
+
   // ---- props list: [type, col, row, deg, options?] with col/row in tile units (floats, tile centre = n + 0.5)
   // options: { lights: false } = starts with its lights off (a parked car)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {

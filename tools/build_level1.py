@@ -128,7 +128,7 @@ lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his 
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 24, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
-lv.actor('0', 25, 15)                                   # a cue left against the pool table
+lv.lean('cue', 25.6, 12.2, 270)                         # a cue stood against the wall by the pool table
 lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
@@ -192,12 +192,13 @@ lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.6, 21.09)
 lv.prop('plant', 20.6, 21.3)
 lv.prop('plant', 23.4, 21.3)
+lv.prop('pergola', 22.0, 21.62)                         # a porch over the door, its bulbs warm on the pavement
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window
 lv.prop('trash_can', 40.5, 21.35)
 lv.pigeons(33.3, 21.7, 2)
-lv.prop('hydrant', 11.6, 22.65)
+lv.prop('hydrant', 10.6, 22.65)                       # clear of the alley's mouth (bigger, it snagged whoever came out)
 lv.prop('vending', 18.5, 21.33)                         # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
 for col in (12.3, 28.8, 33.6, 41.3):                    # a meter at the head of each parking bay (none at the tail
@@ -317,8 +318,12 @@ lv.prop('crate', 18.75, 10.5, 12)
 lv.area('toilets')
 lv.prop('toilet', 21.5, 6.4)
 lv.prop('toilet', 23.4, 6.4)
+for x in (22.07, 22.93):                                # a partition each side of the window bay: one lands between
+    lv.prop('stall', x, 6.68)                           # them diving through it
+for y in (7.95, 8.85):
+    lv.prop('urinal', 21.19, y, 270)                    # on the west wall
 lv.prop('sink', 23.7, 9.0, 90)
-lv.prop('tube_light', 21.07, 8.6, 270)
+lv.prop('tube_light', 23.93, 7.7, 90)
 lv.prop('trash_can', 21.4, 10.5)
 
 lv.area('back room')
@@ -355,6 +360,9 @@ for y in (16.2, 18.6):
     lv.prop('chair', 17.3, y - 0.4, 180)
     lv.prop('chair', 17.3, y + 0.4, 180)
 lv.prop('card_table', 20.4, 17.5)
+lv.prop('ceiling_lamp', 20.4, 17.5)                     # the game is played under a lamp
+for y in (16.2, 18.6):                                  # and each booth has its own, on the wall over the sofa
+    lv.prop('wall_lamp', 15.09, y, 270)
 lv.prop('chair', 19.25, 17.5, 0)
 lv.prop('chair', 21.55, 17.5, 180)
 lv.prop('chair', 19.98, 18.34, 262)

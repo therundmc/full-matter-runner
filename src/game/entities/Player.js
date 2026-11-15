@@ -3,6 +3,7 @@ import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand, chance, clamp, angDiff } from '../../engine/math.js';
 import { chunk, spriteOpt } from '../../engine/Assets.js';
 import Debris from './Debris.js';
+import { PLANTED } from './Ragdoll.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
@@ -124,6 +125,15 @@ export default class Player extends Character {
       if (d < best) { best = d; this.nearItem = it; }
     }
     if (this.nearItem) this.nearItem.hilite = 1;
+    // a weapon planted in a body that can be pulled out again (a blade he threw)
+    this.nearPlanted = null;
+    if (!this.nearItem) {
+      for (const c of w.corpses) {
+        if (c.dead || !c.stuck?.item) continue;
+        const s = c.stuckAt();
+        if (Math.hypot(s.x - this.x, s.y - this.y) < PLANTED.reach) { this.nearPlanted = c; c.stuck.hot = w.time; break; }
+      }
+    }
     // the nearest man down within reach: any attack on him, or Space, finishes him (data/finishers.js)
     this.nearDowned = null;
     let down = EXEC.near;
@@ -262,6 +272,12 @@ export default class Player extends Character {
 
   pickUp() {
     const it = this.nearItem;
+    if (!it && this.nearPlanted?.stuck?.item) {
+      const got = this.nearPlanted.pullStuck();
+      this.nearPlanted = null;
+      this.take(got.type, got.mag, got.wear);
+      return;
+    }
     if (!it) return;
     this.world.removeItem(it);
     this.take(it.type, it.mag, it.wear);

@@ -25,6 +25,9 @@ export const PROPS = {
   gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.75, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
     gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
   sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
+  // a wall urinal (the wall behind it) and the partition between two toilets (its bracket end on the wall)
+  urinal: { material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
+  stall: { material: 'wood', w: 4, h: 40, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },
   toilet: { material: 'ceramic', w: 13, h: 21, hp: 6, static: true, chips: '#eee', sound: 'glass', water: true, blocksPath: true },
   bed: { static: true, vault: true, material: 'fabric', w: 44, h: 64, hp: 18, chips: '#7a3aa0', sound: 'wood', blocksPath: true },
   pool_table: { static: true, vault: true, material: 'wood', w: 80, h: 44, hp: 28, chips: '#1e7a3a', sound: 'wood', blocksPath: true },
@@ -135,6 +138,9 @@ export const PROPS = {
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
   pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
+  // a porch over a door, on two posts: people walk under it, its bulbs light the pavement; it never comes down
+  pergola: { fixture: true, hung: true, overhead: true, lasting: true, height: 0.07, static: true, material: 'wood', w: 72, h: 40, hp: 20, chips: '#7a4a2a', sound: 'wood',
+    light: [{ r: 120, color: '#ffc98a', intensity: 0.75, x: -22, y: 10 }, { r: 120, color: '#ffc98a', intensity: 0.75, x: 22, y: 10 }] },
   // strung across the street
   string_lights: { fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
