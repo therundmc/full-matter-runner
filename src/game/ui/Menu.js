@@ -46,7 +46,7 @@ const PAGES = {
   }),
   audio: (c) => ({
     title: 'AUDIO',
-    items: [['master', 'MASTER'], ['music', 'MUSIC'], ['sfx', 'EFFECTS']]
+    items: [['master', 'MASTER'], ['music', 'MUSIC'], ['sfx', 'EFFECTS'], ['ambience', 'AMBIENCE']]
       .map(([key, label]) => ({ label, slider: key, value: c.settings[key] })).concat(BACK),
   }),
   video: (c) => ({

@@ -13,7 +13,7 @@
 //   guns  -> drive (tanh) -> gun level -> sfx              (synthesized shots)
 //   shots -> HP 35 Hz -> low shelf -> high shelf ----------+   (recorded shots: no drive, full crack)
 //   sfx   -> HP 30 Hz -> low shelf -> low-mid cut -> presence -+-> mix -> glue compressor ---+
-//   amb (the beds: per voice gain -> lowpass -> pan) -> sfx                                     |
+//   amb (the beds: per voice gain -> lowpass -> pan) + ambOne (opts.amb one-shots) -> ambience volume -> same EQ -> mix
 //   sfx + shots -> the rooms (ROOMS: warm / small / tiled impulses, an open slap; crossfaded by place) -+ |
 //   per-voice sends -> hall (longer impulse: gunfire, far sounds, the kill chime) -> mix      |
 //   music -> HP 28 Hz -> duck (held dip while it is loud) -> its own compressor -------------+-> bus
@@ -327,7 +327,7 @@ class AudioSystem {
     this.chokes = new WeakMap(); // emitter -> its last voice (a new shot fades the previous tail)
     this.listener = { x: 0, y: 0 };
     this.muted = false;
-    this.vol = { master: 1, music: 1, sfx: 1 }; // player volumes (settings), scale the bus gains
+    this.vol = { master: 1, music: 1, sfx: 1, ambience: 1 }; // player volumes (settings), scale the bus gains
     this.active = [];   // live plays, for the caps and voice stealing
     this.lastPlay = {}; // name -> { t, vol } of the last admitted play
     this.duckUntil = 0;
@@ -407,12 +407,21 @@ class AudioSystem {
     // recorded shots keep their full crack: no drive, no low-mid cut, a bit of weight and air
     this.shots = gain(SHOTS_GAIN * GUN_LEVEL * this.vol.sfx);
     chain(this.shots, bq('highpass', 35, 0.7), bq('lowshelf', 120, 0.7, 3), bq('highshelf', 5000, 0.7, 3.5), mix);
+    // the beds of the night and the one-shots flagged `amb` (systems/Ambience.js, Critters): the AMBIENCE volume
+    // governs both, the effects volume neither. Same EQ as the effects, and the same room sends.
+    this.ambBus = gain(this.vol.ambience);
+    chain(this.ambBus, bq('highpass', 30, 0.7), bq('lowshelf', 110, 0.7, 2), bq('peaking', 350, 0.9, -2), bq('peaking', 3200, 0.8, 1.5), mix);
+    this.amb = gain(AMB_LEVEL * SFX_LEVEL);
+    this.amb.connect(this.ambBus);
+    this.ambOne = gain(SFX_LEVEL);
+    this.ambOne.connect(this.ambBus);
     // the room everything that is not music is heard in: it glues the recordings (all made in different places)
     // together, and tells the street from the bar and the tiled toilets (ROOMS, crossfaded by setAmbience)
     this.rooms = {};
     for (const [name, R] of Object.entries(ROOMS)) {
-      const on = name === 'warm' ? 1 : 0, sends = [gain(R.sfx * on), gain(R.shots * on)];
+      const on = name === 'warm' ? 1 : 0, sends = [gain(R.sfx * on), gain(R.shots * on), gain(R.sfx * on)];
       this.sfx.connect(sends[0]);
+      this.ambBus.connect(sends[2]);
       this.shots.connect(sends[1]);
       const out = gain(1);
       if (R.ir) {
@@ -433,10 +442,7 @@ class AudioSystem {
       chain(out, bq('highpass', 160, 0.7), mix);
       this.rooms[name] = sends;
     }
-    // the beds of the night, into the effects (setAmbience)
-    this.amb = gain(AMB_LEVEL);
-    this.amb.connect(this.sfx);
-    // and a bigger space behind gunfire, far sounds and the kill chime: fed voice by voice (see _out)
+        // and a bigger space behind gunfire, far sounds and the kill chime: fed voice by voice (see _out)
     this.hall = ctx.createConvolver();
     this.hall.normalize = false;
     this.hall.buffer = this._room(ctx, 0.03, 2.4, 0.4);
@@ -499,7 +505,7 @@ class AudioSystem {
     if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : MASTER_GAIN * this.vol.master, this.ctx.currentTime, 0.05);
   }
 
-  // kind: 'master' | 'music' | 'sfx', v: 0..1. Safe before the context exists (_build applies this.vol).
+  // kind: 'master' | 'music' | 'sfx' | 'ambience' (the beds and the `amb` one-shots), v: 0..1. Safe before the context exists (_build applies this.vol).
   setVolume(kind, v) {
     if (!(kind in this.vol)) return;
     v = clamp(Number.isFinite(v) ? v : 1, 0, 1);
@@ -508,6 +514,7 @@ class AudioSystem {
     const set = (node, g) => node && node.gain.setTargetAtTime(g, this.ctx.currentTime, 0.03);
     if (kind === 'master') set(this.master, this.muted ? 0 : MASTER_GAIN * v);
     else if (kind === 'music') set(this.music, MUSIC_GAIN * v);
+    else if (kind === 'ambience') set(this.ambBus, v);
     else { set(this.sfx, SFX_LEVEL * v); set(this.shots, SHOTS_GAIN * GUN_LEVEL * v); }
   }
 
@@ -584,8 +591,9 @@ class AudioSystem {
     for (const name in this.beds) if (!(name in beds)) this._bed(name, null, now);
     if (room) {
       for (const k in this.rooms) {
-        const w = clamp(room[k] ?? 0, 0, 1), [s, g] = this.rooms[k];
+        const w = clamp(room[k] ?? 0, 0, 1), [s, g, am] = this.rooms[k];
         this._glide(s.gain, ROOMS[k].sfx * w, now, 0.15);
+        this._glide(am.gain, ROOMS[k].sfx * w, now, 0.15);
         this._glide(g.gain, ROOMS[k].shots * w, now, 0.15);
       }
     }
@@ -741,7 +749,7 @@ class AudioSystem {
       this.chokes.set(opts.choke, entry);
     }
     const shot = gun && SHOTS[name], buf = shot && this.buffers[shot.key];
-    const o = entry.gain = this._out(sp, opts.dest || (buf ? this.shots : gun ? this[gun.bus || 'guns'] : this.sfx));
+    const o = entry.gain = this._out(sp, opts.dest || (buf ? this.shots : gun ? this[gun.bus || 'guns'] : opts.amb ? this.ambOne : this.sfx));
     if (gun) this._gun(o, gun, sp, opts, buf && shot, buf);
     else {
       o.gain.value = sp.vol * rand(0.88, 1.1); // never twice the same level

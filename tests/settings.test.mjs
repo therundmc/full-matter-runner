@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { loadSettings, saveSettings } = await load('game/systems/Settings.js');
 
-const D = { master: 1, music: 1, sfx: 1, lens: true, shake: 1, fullscreen: false };
+const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false };
 
 const fakeStorage = () => {
   const data = {};
@@ -17,7 +17,7 @@ test('settings: full volume, the lens on, full shake and no fullscreen when noth
 
 test('settings: a saved set comes back as it was', () => {
   const st = fakeStorage();
-  const set = { master: 0.5, music: 0.25, sfx: 0, lens: false, shake: 0.35, fullscreen: true };
+  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, lens: false, shake: 0.35, fullscreen: true };
   saveSettings(set, st);
   assert.deepEqual(loadSettings(st), set);
 });

@@ -9,7 +9,7 @@ const FRESH = { unlocked: ['tutorial'], done: [] };
 // a context made of plain objects; `set` actions are written back into it as Game.js does
 function ctx(more = {}) {
   return {
-    settings: { master: 1, music: 0.5, sfx: 0.02, lens: true, shake: 1, fullscreen: false },
+    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, fullscreen: false },
     progress: FRESH,
     best: (id) => (id === 'tutorial' ? { total: 4200, grade: 'B', time: 95 } : null),
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NEON NIGHTS' }],
@@ -81,7 +81,7 @@ test('menu: sub-pages open and back returns to the line it left; back at the tit
 test('menu: sliders move by a step and clamp, a set is only sent when the value changes', () => {
   const c = ctx(), m = new Menu('main', c);
   choose(m, 'OPTIONS'); choose(m, 'AUDIO');
-  assert.deepEqual(labels(m), ['MASTER', 'MUSIC', 'EFFECTS', 'BACK']);
+  assert.deepEqual(labels(m), ['MASTER', 'MUSIC', 'EFFECTS', 'AMBIENCE', 'BACK']);
   assert.equal(selected(m), 'MASTER');
   assert.equal(m.right(), null, 'already full');
   assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'master', value: 1 - STEP });
@@ -90,8 +90,10 @@ test('menu: sliders move by a step and clamp, a set is only sent when the value 
   m.down();
   assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'sfx', value: 0 }, 'clamped at 0');
   assert.equal(m.left(), null);
+  m.down();
+  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'ambience', value: 0.55 });
   assert.equal(m.activate(), null, 'Enter on a slider does nothing');
-  assert.equal(m.click(2), null, 'a click on a slider is a drag, for the caller');
+  assert.equal(m.click(3), null, 'a click on a slider is a drag, for the caller');
   m.down();
   assert.equal(selected(m), 'BACK');
   assert.equal(m.right(), null);

@@ -476,3 +476,37 @@ test('audio: footsteps never starve the voices, and STEP_LEVEL 0 would silence t
     assert.ok(META.step.pri === 0 && META.step.gain < 0.5);
   });
 });
+
+test('audio volumes: each slider moves its own gain node, ambience has its own, and the defaults come at the build', () => {
+  withContext(() => {
+    const sets = new Map();
+    for (const k of ['master', 'music', 'sfx', 'ambBus', 'shots']) {
+      Audio[k].gain.setTargetAtTime = (x) => sets.set(k, x);
+    }
+    const heard = (kind, v) => { sets.clear(); Audio.setVolume(kind, v); return [...sets.keys()].sort().join(); };
+    assert.equal(heard('master', 0.5), 'master');
+    assert.equal(heard('music', 0.5), 'music');
+    assert.equal(heard('sfx', 0.5), 'sfx,shots');
+    assert.equal(heard('ambience', 0.5), 'ambBus');
+    assert.equal(heard('bogus', 0.5), '');
+    assert.equal(Audio.vol.ambience, 0.5);
+  });
+  // a volume set before the context exists is applied at the build
+  Audio.vol.ambience = 0.4;
+  withContext(() => assert.ok(Math.abs(Audio.ambBus.gain.value - 0.4) < 1e-9));
+  Audio.vol.ambience = 1;
+});
+
+test('audio volumes: an ambience one-shot goes through the ambience bus, a gunshot and an impact through the effects', () => {
+  withContext(() => {
+    const dests = [];
+    Audio._out = function (sp, dest) { dests.push(dest); return { gain: { value: 0 }, _chain: [], _n: 0 }; };
+    const where = (name, opts) => { dests.length = 0; Audio.lastPlay = {}; Audio.active = []; Audio.play(name, { vol: 1, ...opts }); return dests[0]; };
+    assert.equal(where('clink', { amb: true }), Audio.ambOne);
+    assert.equal(where('gust', { amb: true }), Audio.ambOne);
+    assert.notEqual(where('clink', {}), Audio.ambOne);
+    assert.equal(where('clink', {}), Audio.sfx);
+    assert.notEqual(where('pistol', {}), Audio.ambOne);
+    delete Audio._out;
+  });
+});

@@ -33,7 +33,7 @@ import { createPost } from './render/PostGL.js';
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
 // results, play <-> pause; the tutorial ends play -> fall -> the next level's intro
 // (the title and the pause are the menu: ui/Menu.js for its pages, ui/MenuArt.js for its picture)
-const VOLUMES = ['master', 'music', 'sfx'];
+const VOLUMES = ['master', 'music', 'sfx', 'ambience'];
 // ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
 const urlLevel = () => { const id = new URLSearchParams(location.search).get('level'); return LEVELS[id] ? id : null; };
 const has = (id) => !!LEVELS[id];

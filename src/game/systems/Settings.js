@@ -1,11 +1,11 @@
 // Player settings, kept in localStorage. DOM-free like Records.js: the storage is injectable and every access is
 // guarded since storage can be missing, full or forbidden.
-//   master, music, sfx  volumes, 0..1
+//   master, music, sfx, ambience  volumes, 0..1 (sfx = effects, ambience = the beds of the night)
 //   lens                the WebGL last pass of the picture on (render/PostGL.js)
 //   shake               how much the camera shakes, 0..1 (Camera.shakeScale)
 //   fullscreen          the game wants the whole screen (re-entered at the first key or click of a session)
 const KEY = 'fmr.settings.v1';
-const DEFAULTS = { master: 1, music: 1, sfx: 1, lens: true, shake: 1, fullscreen: false };
+const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false };
 
 function defaultStorage() {
   try { return globalThis.localStorage || null; } catch { return null; }

@@ -108,7 +108,7 @@ export default class Ambience {
     this.sendT = 0;
     this.dripT = rand(...cfg.drip.every);
     this.wired = {};           // place -> whether the house's power feeds it (looked up once)
-    world.events.on('gust', (g) => world.sound('gust', undefined, undefined, cfg.gust * (1 - cfg.muffled * (1 - this.out)), { pan: g.dx }));
+    world.events.on('gust', (g) => world.sound('gust', undefined, undefined, cfg.gust * (1 - cfg.muffled * (1 - this.out)), { pan: g.dx, amb: true }));
   }
 
   // the place of a point (null in a wall or an opening)
@@ -253,8 +253,8 @@ export default class Ambience {
     if (!src) return next;
     if (e.crowd) next /= Math.max(1, src.n / 2);
     const name = typeof e.sound === 'string' ? e.sound : weighted(e.sound), vol = rand(...(e.vol || [1, 1]));
-    if (src.far) w.sound(name, undefined, undefined, vol * h.p, { occ: !ZONES[this.here].out, distant: 0.85, side: rand(-0.8, 0.8) });
-    else w.sound(name, src.x, src.y, vol, e.voice ? { pitch: src.pitch } : undefined);
+    if (src.far) w.sound(name, undefined, undefined, vol * h.p, { occ: !ZONES[this.here].out, distant: 0.85, side: rand(-0.8, 0.8), amb: true });
+    else w.sound(name, src.x, src.y, vol, { amb: true, ...(e.voice && { pitch: src.pitch }) });
     return next;
   }
 
@@ -293,6 +293,6 @@ export default class Ambience {
       const d = Math.hypot(q.x - p.x, q.y - p.y);
       if (d < bd) { bd = d; best = q; }
     }
-    if (best) this.world.sound('drip', best.x + rand(-c.spread, c.spread), best.y + rand(-c.spread, c.spread), rand(0.6, 1));
+    if (best) this.world.sound('drip', best.x + rand(-c.spread, c.spread), best.y + rand(-c.spread, c.spread), rand(0.6, 1), { amb: true });
   }
 }

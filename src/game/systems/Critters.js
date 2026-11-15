@@ -71,7 +71,7 @@ export default class Critters {
       c.from = Math.atan2(c.y - y, c.x - x);
       first = first || c;
     }
-    if (first) this.world.sound('flutter', first.x, first.y, 0.8);
+    if (first) this.world.sound('flutter', first.x, first.y, 0.8, { amb: true });
   }
 
   // where the cat slips in under a car, by the middle of the side `side` (+1 / -1) of its body
