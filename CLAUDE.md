@@ -63,7 +63,8 @@
   level 1 is tightened by whole tiles taken out (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`): the builder keeps its drawing's coordinates, the kit moves them; keep things off the cut lines. Two
   columns are cut (CUT_COLS 19, 29); the bar room's row cut was given back ("no room to get through"): 14 x 8 m with
-  walkways of about 1.2 m between its furniture. Coordinates in tests and the QA robot's plans are the level's (after
+  walkways of about 1.2 m between its furniture, in two halves (his wish): a lounge to sit and drink in the
+  south-west (one sofa, a low table, armchairs, a round table), the games in the north (poker by the north wall, pool). Coordinates in tests and the QA robot's plans are the level's (after
   the cuts). A doorway needs room on one side at least; wall pieces have bodies, never hang one across a doorway
   (levelkit `check_on_wall` refuses it). Standing workers are placed square at what they work at (posts `front`).
   No television in front of the boss's door; no window in the boss's office (he had it taken out).

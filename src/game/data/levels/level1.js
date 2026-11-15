@@ -12,11 +12,11 @@ export default {
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 22.4, y: 4.0, r: 1.3, route: [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], radius: [3, 4.2], fade: 16 },
-  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 349, '19,16': 90, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
+  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 349, '23,12': 90, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
   patrols: {
     '17,22': [[16, 22], [26, 22]],
   },
-  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'pool', '19,16': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
+  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'pool', '23,12': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
   looks: { '28,9': 'boss' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -71,11 +71,11 @@ export default {
     "                    k       h",
     "                         i k",
     "    5",
-    "                  b",
+    "                  b    k",
     "",
     "                        p",
     "",
-    "                   k",
+    "",
     "        1              b      6",
     "",
     "",
@@ -167,13 +167,14 @@ export default {
     ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0], ['neon_tube_pink', 18.5, 12.05, 0],
     ['ceiling_lamp', 16.3, 13.85, 0], ['ceiling_lamp', 18, 13.85, 0], ['ceiling_lamp', 19.7, 13.85, 0],
     ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0], ['beer_tap', 15.95, 13.62, 0], ['beer_tap', 17.15, 13.62, 0],
-    // the bar: booths, card table, pool
-    ['sofa', 15.5, 16, 270], ['table', 16.5, 16, 90], ['chair', 17.15, 16, 180], ['wall_lamp', 15.09, 16, 270],
-    ['sofa', 15.5, 18, 270], ['table', 16.5, 18, 90], ['chair', 17.15, 18, 180], ['wall_lamp', 15.09, 18, 270],
-    ['card_table', 19.5, 17.75, 90], ['ceiling_lamp', 19.5, 17.75, 0], ['chair', 18.7, 17.45, 0],
-    ['chair', 20.3, 18.05, 180], ['plant', 17.85, 19.55, 0], ['pool_table', 26.2, 14, 0], ['pool_lamp', 26.2, 14, 0],
-    ['arcade', 28.5, 12.5, 90], ['wall_lamp', 28.91, 13.3, 90], ['jukebox', 22.6, 19.6, 180],
-    ['ceiling_fan', 22, 15, 0], ['extinguisher', 22.6, 12.14, 0], ['plant', 27.65, 12.35, 0],
+    // the bar: the lounge (south-west), the games (north)
+    ['sofa', 15.5, 16.75, 270], ['wall_lamp', 15.09, 16.75, 270], ['table', 16.55, 16.75, 90],
+    ['armchair', 17.55, 16.35, 180], ['armchair', 17.55, 17.3, 180], ['table_round', 18.6, 18.7, 0],
+    ['chair', 17.75, 18.7, 0], ['chair', 19.45, 18.7, 180], ['ceiling_lamp', 18.6, 18.7, 0],
+    ['card_table', 23, 13.6, 0], ['ceiling_lamp', 23, 13.6, 0], ['chair', 22.6, 14.6, 270], ['chair', 23.5, 14.6, 270],
+    ['plant', 17.85, 19.55, 0], ['pool_table', 26.2, 14, 0], ['pool_lamp', 26.2, 14, 0], ['arcade', 28.5, 12.5, 90],
+    ['wall_lamp', 28.91, 13.3, 90], ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 22, 15, 0],
+    ['extinguisher', 22.6, 12.14, 0], ['plant', 27.65, 12.35, 0],
     // the bar: what can be used
     ['fire_alarm', 24, 12.07, 0],
     // the bar: VIP room
@@ -256,9 +257,9 @@ export default {
     // customers posted indoors: [sprite, col, row, deg, pastime]
     patrons: [
       ['civ1', 16.75, 14.5, 270, 'drink'],
-      ['civ2', 15.6, 16.4, 0, 'drink'],
-      ['civ4', 18.7, 17.45, 0, 'cards'],
-      ['civ5', 20.3, 18.05, 180, 'cards'],
+      ['civ2', 15.6, 16.75, 0, 'drink'],
+      ['civ4', 22.6, 14.6, 270, 'cards'],
+      ['civ5', 23.5, 14.6, 270, 'cards'],
       ['civ3', 28.15, 13.45, 180, 'cue'],
       ['civ8', 25.55, 17.5, 40, 'drink'],
       ['civ7', 25.55, 19.45, -27, 'watch'],

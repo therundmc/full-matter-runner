@@ -153,13 +153,13 @@ lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his 
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 25, 14, face=349, job='pool')             # playing pool: the one pistol of the bar room
 lv.lean('cue', 25.6, 12.2, 270)                         # a cue stood against the wall by the pool table
-lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card table
+lv.actor('k', 24, 12, face=90, job='cards')             # dealing at the card table, his back to the north wall
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.75, 14.5, 270, 'drink')            # on the counter stools
-lv.patron('civ2', 15.6, 16.4, 0, 'drink')               # alone in the first booth
-lv.patron('civ4', 18.7, 17.45, 0, 'cards')              # the poker game
-lv.patron('civ5', 21.3, 18.05, 180, 'cards')
+lv.patron('civ2', 15.6, 16.75, 0, 'drink')              # alone on the lounge's sofa
+lv.patron('civ4', 23.6, 14.6, 270, 'cards')             # the poker game, across the table from the dealer
+lv.patron('civ5', 24.5, 14.6, 270, 'cards')
 lv.patron('civ3', 30.15, 13.45, 180, 'cue')             # waiting for his turn at the pool table
 lv.patron('civ8', 26.55, 17.5, 40, 'drink')             # the VIP room: two customers, a dancer
 lv.patron('civ7', 26.55, 19.45, -27, 'watch')
@@ -396,20 +396,26 @@ for y in (12.45, 13.02):                                # two kegs of draught in
 for x in (15.95, 17.15):                                # their taps on the bar, the bartender's side of it
     lv.prop('beer_tap', x, 13.62)
 
-lv.area('the bar: booths, card table, pool')
-# two booths end to end along the west wall, each with its lamp; a chair across each table. They stop a metre short
-# of the front: one dives in through the street windows behind them onto clear floor, and can vault on (the user)
-for y in (16.0, 18.0):
-    lv.prop('sofa', 15.5, y, 270)
-    lv.prop('table', 16.5, y, 90)
-    lv.prop('chair', 17.15, y, 180)
-    lv.prop('wall_lamp', 15.09, y, 270)
-# the poker game, the table lengthwise under its lamp: the dealer at its head, a player each side (an aisle of a metre
-# to the booths, the lane from the door on the other side, and at its foot the way between them along the front)
-lv.prop('card_table', 20.5, 17.75, 90)
-lv.prop('ceiling_lamp', 20.5, 17.75)
-lv.prop('chair', 18.7, 17.45, 0)
-lv.prop('chair', 21.3, 18.05, 180)
+lv.area('the bar: the lounge (south-west), the games (north)')
+# The room in two halves (the user: "a corner down on the left to sit and drink, a corner up top to play"). The lounge:
+# one sofa along the west wall under its lamp, a low table, two armchairs across it, and a small round table with two
+# chairs toward the door; clear of the street windows' foot (one dives in onto clear floor) and a walkway of 1.2 m
+# under the counter's stools.
+lv.prop('sofa', 15.5, 16.75, 270)
+lv.prop('wall_lamp', 15.09, 16.75, 270)
+lv.prop('table', 16.55, 16.75, 90)
+lv.prop('armchair', 17.55, 16.35, 180)
+lv.prop('armchair', 17.55, 17.3, 180)
+lv.prop('table_round', 18.6, 18.7)
+lv.prop('chair', 17.75, 18.7, 0)
+lv.prop('chair', 20.45, 18.7, 180)
+lv.prop('ceiling_lamp', 18.6, 18.7)
+# the games: the poker table against the north wall between the counter and the pool table, the dealer at its north
+# side, his players across it; the lane from the front door up to the toilets' door stays clear west of it
+lv.prop('card_table', 24.0, 13.6)
+lv.prop('ceiling_lamp', 24.0, 13.6)
+lv.prop('chair', 23.6, 14.6, 270)
+lv.prop('chair', 24.5, 14.6, 270)
 lv.prop('plant', 17.85, 19.55)                          # in the corner between the booths and the game
 lv.prop('pool_table', 27.2, 14.0)                       # its west end at the pool player's cue
 lv.prop('pool_lamp', 27.2, 14.0)
