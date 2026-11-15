@@ -95,6 +95,7 @@ class Level:
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
         self.zones = []       # what each place sounds like: [kind, col0, row0, col1, row1] (src/game/data/soundscape.js)
         self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
+        self.wet = None       # how wet the open ground is from an earlier rain, 0..1 (seen: systems/Weather.js)
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -430,6 +431,9 @@ class Level:
         if self.mains:
             L.append('  // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside')
             L.append(f'  power: {json.dumps(self.mains)},')
+        if self.wet is not None:
+            L.append('  // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)')
+            L.append(f'  wet: {self.wet},')
         if self.zones or self.rain:
             L.append('  // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the')
             L.append("  // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)")

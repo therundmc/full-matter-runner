@@ -144,6 +144,7 @@ lv.sound('shop', 36, 17, 39, 19, place='tvshop')
 lv.sound('shop', 27, 33, 31, 35, place='laundry')
 lv.sound('alley', 20, 32, 23, 36)        # the start alley across the road
 lv.rain = 0.35
+lv.wet = 0.35                                           # the street wet from an earlier rain (seen)
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
 lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his pocket, walks the sidewalk

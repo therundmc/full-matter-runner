@@ -200,6 +200,8 @@ export default {
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [34, 17, 37, 19], "box": [33.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
   power: {"box": [23.5, 4.92], "zone": [14, 5, 29, 20]},
+  // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
+  wet: 0.35,
   // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the
   // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)
   soundscape: { rain: 0.35, zones: [['vip', 24, 17, 28, 19], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },

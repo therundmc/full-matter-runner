@@ -47,7 +47,7 @@ export default class Weather {
   constructor(world, level = {}, cfg = RAIN) {
     this.world = world;
     this.cfg = cfg;
-    this.k = clamp((level.soundscape?.rain || 0) * cfg.look, 0, 1); // how hard it is seen to rain
+    this.k = clamp((level.wet ?? level.soundscape?.rain ?? 0) * cfg.look, 0, 1); // how wet it is seen to be (level `wet`)
     this.puddles = [];
     this.drips = [];
     this.walkers = new Map(); // character -> px walked since his last splash
