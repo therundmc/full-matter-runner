@@ -134,6 +134,7 @@ export const META = {
   siren: { pri: 0, dur: 4.6, gap: 1.5, max: 2, gain: 0.05, hall: 0.7 },
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.3 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
+  match: { pri: 2, dur: 0.8, gap: 0.3, max: 1, gain: 0.7 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
   confirm: { pri: 4, dur: 0.3, gap: 0.03, max: 3, duck: 0.85, gain: 0.8, hall: 0.08 },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
@@ -1053,6 +1054,14 @@ class AudioSystem {
     const p = opts.pitch || 1;
     this._noiseBurst(o, { type: 'bandpass', f0: 4600 * p, f1: 5400 * p, q: 1.1, dur: 0.3, vol: 0.55, attack: 0.04 });
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 900, f1: 700, dur: 0.3, vol: 0.6, attack: 0.05 });
+  }
+  // a match struck: the head rasping on the strip in a few uneven grains, the pop as it takes, then its small hiss
+  _match(o) {
+    for (const [d, f, v] of [[0, 2600, 0.5], [0.035, 3400, 0.7], [0.065, 2900, 0.6], [0.1, 3800, 0.45]]) {
+      this._noiseBurst(o, { f0: f, f1: f * 0.8, q: 2.2, dur: 0.03, vol: v, attack: 0.002, delay: d });
+    }
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 500, f1: 3200, dur: 0.22, vol: 0.9, attack: 0.01, delay: 0.13 });
+    this._noiseBurst(o, { type: 'highpass', f0: 5200, f1: 6500, dur: 0.6, vol: 0.12, attack: 0.05, delay: 0.16 });
   }
   _ignite(o) {
     this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 300, f1: 2200, dur: 0.5, vol: 1.1, attack: 0.12 });

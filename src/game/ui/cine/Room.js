@@ -4,7 +4,7 @@
 // a postcard of a beach, a suitcase half packed. Three canvases: what never moves, painted once (wall, furniture);
 // what does, every frame (the fan, the man, his things on their hooks, the door, the light); and a near plane
 // (paintFore: the bicycle, the suitcase, black against the room) that the camera slides a little for depth.
-// It is night and it stays night: the window's neon on the boards, the landing's light under the door; then the fire's.
+// It is night and it stays night: the window's neon on the boards, the next room's light under the door; then fire's.
 import { LW, LH } from '../title/Draw.js';
 import { clamp, smooth, lerp, hash, px, tone, poly, disc, line } from './Ink.js';
 
@@ -316,8 +316,7 @@ function paintMan(g, u, t, rims) {
 
 // The room at this moment, its window's hole left clear.
 // s: { t, rise 0..1 (how far out of bed he is), knock 0..1 (the door jumping), beat (the neon's pulse), feet: [px
-// along the door's foot where somebody stands behind it], gas 0..1 (what runs under the door), fire 0..1 (what
-// follows it) }
+// along the door's foot where somebody passes behind it], fire 0..1 (firelight in the next room, under the door) }
 export function paintRoom(s) {
   if (!room) {
     room = { still: canvas(), live: canvas() };
@@ -337,12 +336,6 @@ export function paintRoom(s) {
   }
   if (s.knock > 0.05) px(g, '#6e4c34', D.x - 1 - s.knock * 2, D.y, 3, D.h);
   if (s.rise < 0.9) paintThings(g);
-  if (s.gas > 0) {
-    // it comes under the door and spreads on the boards, black, with the landing's light in it
-    const r = s.gas;
-    poly(g, '#0c0a10', [[D.x + 2, FLOOR], [D.x + D.w - 2, FLOOR], [D.x + D.w - 4 - r * 6, FLOOR + 4 + r * 16], [D.x + 10 - r * 34, FLOOR + 6 + r * 20], [D.x - r * 22, FLOOR + 2 + r * 6]]);
-    for (let i = 0; i < 5; i++) px(g, '#c89a50', D.x + 6 + hash(i) * 24 - r * 14 * hash(i + 4), FLOOR + 2 + hash(i + 2) * (4 + r * 14), 3 + hash(i) * 4, 1);
-  }
   paintMan(g, s.rise, t, rims);
   // night: everything sinks ...
   g.globalCompositeOperation = 'source-atop';

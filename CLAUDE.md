@@ -163,19 +163,24 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    `dormant` until its wave is called (a guard may be in two stages' waves), slower than real ones (`slack`); the
    shooter's gun keeps 2 rounds (`leaves`, and `owed` on a retry past him); a death starts again at the last place
    reached (`Game.tutorialAt`). The flat burns room after room behind him (level `fires`, systems/Fires.js: looks
-   only). What lies flat (doormats, stairs, the runner, the floor hole) is floor paint (level `floor`, levelkit
+   only); the petrol man in the living room lights it as the player walks in (fires with a `delay`), taken down too
+   late. The corridor's gunman is a `sharp` wave (woken knowing, gun drawn, `standT` holding his ground, quick
+   `slack`, normal `rate` of fire): he fires as the player turns the corner, the slide is what dodges it (his wish).
+   What lies flat (doormats, stairs, the runner, the floor hole) is floor paint (level `floor`, levelkit
    `paint`), not props, so no round stops on it. The dive out ends in state `fall`: a moment of slow motion going
-   black, then the leap seen side on from the alley (ui/cine/Leap.js: the burning facade, he falls, rolls, kneels,
-   looks back up, walks off, "THREE WEEKS LATER."), then level 1. The title screen is the street seen FROM HIS WINDOW
+   black, then the leap as a comic page (ui/cine/Leap.js: through the glass, the fall, the roll in the alley, on one
+   knee under the burning windows), "THE NEXT DAY." (his words; level 1 is dated the next night), then level 1. The title screen is the street seen FROM HIS WINDOW
    (ui/cine/Pane.js: rain running down the glass, the frame, his bottle on the sill; the user's idea). NEW GAME plays
    the opening first (ui/Cinematic.js, state `cinematic`; he wants a real AAA-style intro, pixel art with a real art
    direction, rich detail): the camera pulls back from that window into his bedroom (ui/cine/Room.js: map with his
    rounds, crossed-off calendar, half-packed suitcase, bicycle in the near plane) while the street behind the glass
    drops to the room's coarse pixels and fogs (he found the sharp window "too contrasted" with the room); boards torn
-   up next door, his eye opens, the super shouts and is shot, a comic page (ui/cine/Panels.js, a few colours and
-   screentone per panel, captions, balloons): the tin box out of the hole, the notes counted, the super on his face,
-   a match over the petrol, "TORCH IT."; the petrol runs under his door and goes up, he dresses, the view tips onto
-   the floor plan. Pixel tools for all of it: ui/cine/Ink.js (ordered dither, hard-edged shapes).
+   up next door, his eye opens; comic page one (ui/cine/Page.js lays out panels, captions, balloons, sound words;
+   ui/cine/Panels.js paints them): the men at his front door, the crowbar under his boards, the tin box, the money
+   counted; the super shouts and is shot; page two: the super on his face, the petrol on the sofa ("NO LOOSE ENDS."),
+   a match struck (synthesized `match` sound), "TORCH IT."; he dresses, the view tips onto the floor plan. About
+   30 s, slow on purpose ("go slower so one understands"), skippable. Style: plain pixel art, flat shades, a dark
+   outline, NO dither / screentone ("trop pointille"); pixel tools in ui/cine/Ink.js.
    Check the cinematic and the menu in the browser after touching them; the QA robot plays the tutorial with
    `npm run qa -- --level tutorial` (add `--god` to see it through to the window).
 

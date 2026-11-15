@@ -99,7 +99,7 @@ src/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
     ui/                   HUD, Indicators (off-screen guard markers), Screens, SandboxPanel, Text, Menu / MenuArt,
-                          Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Panels, Leap: the tutorial's exit)
+                          Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit)
     data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
