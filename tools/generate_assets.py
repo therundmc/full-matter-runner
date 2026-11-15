@@ -1212,26 +1212,9 @@ BRASS = ramp('#e0a830', 0.45, 0.22, 0.4)
 DRAB = ramp('#4c5236', 0.45, 0.22, 0.3)    # olive drab polymer (the shotgun's stock and forend)
 
 
-# ---- weapons at FINE density: the 1x drawing doubled, every doubled row split into a lit top and a darker underside,
-# then what makes each one a real object: sights, serrations, a trigger guard, checkering, grain, tape, rust, old blood
-BEVEL = {'L': 'LM', 'M': 'MD', 'D': 'DK', 'S': 'Ss', 's': 'sD', 'w': 'wW', 'W': 'WV', 'o': 'oO', 'O': 'OQ', 'Q': 'Qq',
-         'g': 'gG', 'm': 'mn', 'b': 'bj', 'B': 'Bk', 'f': 'fe', 'c': 'cC', 't': 'tD', 'y': 'yY', 'r': 'rR'}
-
-
-def fine(rows, marks=()):
-    """rows: a 1x drawing (ascii_cv rows). marks: (x, y, 'chars') runs laid over the doubled drawing (' ' leaves the
-    pixel as it is, '.' clears it)."""
-    g = []
-    for r in rows:
-        g.append([BEVEL.get(ch, ch + ch)[0] for ch in r for _ in (0, 1)])
-        g.append([BEVEL.get(ch, ch + ch)[1] for ch in r for _ in (0, 1)])
-    for x, y, s in marks:
-        for i, ch in enumerate(s):
-            if ch != ' ':
-                g[y][x + i] = ch
-    return [''.join(r) for r in g]
-
-
+# ---- weapons at FINE density, each drawn by hand side on as the real thing (sights, serrations, a trigger guard,
+# checkering, grain, tape, rust, old blood), lit from the top. A gun's barrel ends on its last column but one (the
+# outline beyond it): the game fires from there, on the line `bore` (src/game/data/weapons.js, tests/muzzle.test.mjs)
 def drawn(w, h, segs):
     """A drawing laid out by hand at FINE density: segs = { row: [(x, 'chars'), ...] } on a w x h grid of '.', one
     clear pixel kept all round for the outline."""
@@ -1254,7 +1237,9 @@ def weapons():
            'a': DRAB[3], 'A': DRAB[2], 'z': DRAB[1], 'Z': DRAB[0],
            # the pool cue: dark butt, its linen wrap, pale maple, the ferrule, the chalked tip (and their undersides)
            'B': hx('#3a2418'), 'k': hx('#241610'), 'b': hx('#6a4426'), 'j': hx('#4a2e1a'), 'm': hx('#d8c090'),
-           'f': hx('#f0ece0'), 'e': hx('#c8c4b8')}
+           'f': hx('#f0ece0'), 'e': hx('#c8c4b8'), 'l': hx('#a88e5c'),
+           # the bat's ash, lit to shaded
+           'u': hx('#dcb47c'), 'U': hx('#bc9058'), 'i': hx('#8e643a'), 'I': hx('#5e3e24')}
     # an M1911 .45, side on: the blued slide with its rear serrations, the ejection port, the bushing at the muzzle,
     # the hammer spur and the grip safety's beak at the back, the thumb safety and the slide stop on the frame, the
     # trigger in its guard, and the grip raked back under it in checkered walnut panels, a screw top and bottom
@@ -1272,29 +1257,43 @@ def weapons():
         11: [(1, 'D'), (2, 'WVWVWV'), (8, 'K')],
         12: [(1, 'D'), (2, 'VVSVV'), (7, 'K')],
         13: [(1, 'DKKKKK')]}), gun)
-    W['uzi'] = ascii_cv(fine(["............",
-                              ".LLLLLLLLL..",
-                              ".DMMMMMMMMS.",
-                              "..KDGG.D....",
-                              "....GG......",
-                              "....Gg......",
-                              "............"],
-                             [(4, 1, 'K'), (17, 1, 'K'), (6, 3, 'DKDKDK'), (12, 4, 'KKKK'),
-                              (8, 8, 'GgGg'), (8, 10, 'gGgG'), (8, 11, 'GgGG'), (14, 7, 'K'), (13, 8, 'K')]), gun)
-    W['uzi_silenced'] = ascii_cv(fine(["..................",
-                                       ".LLLLLLLLL.SSSSSS.",
-                                       ".DMMMMMMMMMsssssS.",
-                                       "..KDGG.D...DDDDDD.",
-                                       "....GG............",
-                                       "....Gg............",
-                                       ".................."],
-                                      [(4, 1, 'K'), (6, 3, 'DKDKDK'), (12, 4, 'KKKK'), (24, 3, 'D D D D D'),
-                                       (24, 5, 'K K K K K'), (8, 8, 'GgGg'), (8, 10, 'gGgG'), (8, 11, 'GgGG')]), gun)
+    # an Uzi, side on, in its dark parkerized finish: the top cover with the rear sight, the cocking knob and the eared
+    # front sight, the receiver's pressed rib with the ejection port and two rivets, the knurled barrel nut and the stub
+    # of barrel; the stock folded under it (its strut along the belly, the butt plate hanging under the nut); the grip
+    # under the middle with its grip safety, the magazine's base out of its heel, the big trigger guard
+    def uzi(can):
+        rows = {
+            1: [(3, 'MD'), (17, 'LM'), (23, 'DMD')],
+            2: [(3, 'MML' + 'M' * 13 + 'L' + 'M' * 6)],
+            3: [(2, 'D' * 24), (26, 'LSL')],
+            4: [(2, 'K' * 24), (26, 'DKD')],
+            5: [(2, 'MMMSMMMMSMM'), (13, 'nnnn'), (17, 'M' * 9), (26, 'LSL')],
+            6: [(2, 'D' * 11), (13, 'Knnn'), (17, 'D' * 9), (26, 'DKD')],
+            7: [(2, 'S'), (3, 'K' * 23), (26, 'MDM')],
+            8: [(2, 'SM'), (4, 'MMMMMM'), (10, 'M'), (11, 'gGgGgG'), (17, 'DDDDDDD'), (24, 'SMD')],
+            9: [(10, 'M'), (11, 'GgGgGg'), (17, 'K'), (19, 'M'), (23, 'D'), (25, 'MD')],
+            10: [(10, 'M'), (11, 'gGgGgG'), (17, 'K'), (19, 'D'), (22, 'D'), (25, 'MD')],
+            11: [(10, 'D'), (11, 'GgGgGg'), (17, 'DDDDDD'), (25, 'DK')],
+            12: [(11, 'gGgGgG')],
+            13: [(11, 'nnnnnn')],
+            14: [(12, 'MMMD')],
+            15: [(12, 'MMDD')],
+            16: [(11, 'KDDDDK')]}
+        if can:   # a long suppressor screwed on the nut: brushed steel, a ring at each end
+            for y, c in {3: 'S', 4: 'L', 5: 'M', 6: 'D', 7: 'K'}.items():
+                rows[y].append((29, 'D' + c * 14 + 'D'))
+        else:
+            rows[4].append((29, 'LLL'))
+            rows[5].append((29, 'MMM'))
+            rows[6].append((29, 'DDK'))
+        return drawn(46 if can else 33, 18, rows)
+    W['uzi'] = ascii_cv(uzi(False), gun)
+    W['uzi_silenced'] = ascii_cv(uzi(True), gun)
     # a Benelli-style semi-auto combat shotgun: the olive pistol-grip stock and its rubber pad, the black receiver
     # with the ghost-ring rear sight and the rail on top, the ejection port and the bolt handle, a red shell in the
     # loading port under it, the trigger guard; the thick barrel over the round magazine tube (no box magazine: that
     # is the M16), the olive forend on the tube, the barrel clamp, the tube's cap and the winged front sight
-    W['shotgun'] = ascii_cv(drawn(52, 14, {
+    W['shotgun'] = ascii_cv(drawn(51, 14, {
         1: [(16, 'K'), (19, 'K'), (45, 'K'), (47, 'K')],
         2: [(16, 'KMMK'), (20, 'DnDnDnDn'), (45, 'KDK')],
         3: [(1, 'TT'), (3, 'a' * 12), (15, 'g' * 13)],
@@ -1352,40 +1351,73 @@ def weapons():
         13: [(14, 'gGgG'), (25, 'MDDDDMD')],
         14: [(14, 'GgGg'), (25, 'MMMMMMD')],
         15: [(14, 'nnnn'), (24, 'KKKKKKKKK')]}), gun)
-    W['bazooka'] = ascii_cv(fine(["..........................",
-                                  ".QQo..........K...........",
-                                  ".QOoooooooooooooooyyoooOQ.",
-                                  ".qOOOOOOOOOOOOOOOOyyOOOOq.",
-                                  ".qQQQQQQQQQQQQQQQQyyQQQQq.",
-                                  ".qq.......GG.T............",
-                                  ".........................."],
-                                 [(10, 5, 'q'), (10, 6, 'q'), (10, 7, 'q'), (10, 8, 'q'), (30, 5, 'q'), (30, 6, 'q'),
-                                  (30, 7, 'q'), (30, 8, 'q'), (20, 10, 'GgGg'), (20, 11, 'gGgG'), (14, 6, 'x'), (41, 8, 'x')]), gun)
-    # a wooden bat: the knob, the taped handle, the taper, the barrel with its grain and what it has done
-    W['bat'] = ascii_cv(drawn(44, 8, {
-        2: [(1, 'tV'), (24, 'w' * 18)],
-        3: [(1, 'VV'), (3, 'nTnTnTnTnTnT'), (15, 'w' * 9), (24, 'wWwwwwWwwwwwwWwwww'), (42, 'w')],
-        4: [(1, 'Vt'), (3, 'TnTnTnTnTnTn'), (15, 'W' * 9), (24, 'WWWWhhWWWWWWhWWWWW'), (42, 'W')],
-        5: [(1, 'VV'), (17, 'V' * 7), (24, 'VVVVVhhhVVVVVVVVVV'), (42, 'V')]}), gun)
-    # a fighting knife: the grip, the cross-guard, a clip-point blade, dull along the spine, bright along the edge
-    W['knife'] = ascii_cv(drawn(20, 6, {
-        1: [(7, 'KK')],
-        2: [(1, 'KGgGgG'), (7, 'KK'), (9, 'ssssssss')],
-        3: [(1, 'KgGgGg'), (7, 'KK'), (9, 'SSSSSSSSSt')],
-        4: [(7, 'KK')]}), gun)
-    W['cue'] = ascii_cv(fine(['.' * 40, '.BBBBBBBbbbbbb' + 'm' * 22 + 'ffc.', '.' * 40],
-                             [(2, 2, 'e'), (2, 3, 'e'), (15, 2, 'f'), (15, 3, 'e'), (16, 2, 'j j j j j j'), (17, 3, 'b b b b b'),
-                              (27, 2, 'f'), (27, 3, 'e')]), gun)
-    W['cue_half'] = ascii_cv(fine(['.' * 20, '.BBBBBBBbbbbbbmmmmm.', '.' * 20],
-                                  [(2, 2, 'e'), (2, 3, 'e'), (15, 2, 'f'), (15, 3, 'e'), (16, 2, 'j j j j j j'), (17, 3, 'b b b b b'),
-                                   (27, 2, 'f'), (27, 3, 'e'), (36, 2, 'm.'), (37, 3, '.')]), gun)   # where it snapped
-    # a tire iron: a steel bar, a pry tip at one end, the socket bent square at the other, rust along it
-    W['tire_iron'] = ascii_cv(drawn(32, 8, {
-        2: [(1, 'S'), (2, 'L' * 25)],
-        3: [(1, 'D'), (2, 'DDDDDDDxDDDDDDDDxxDDDDDD'), (26, 'MK')],
-        4: [(24, 'MMDK')],
-        5: [(23, 'LMMDDK')],
-        6: [(23, 'DKTTKK')]}), gun)
+    # a bazooka of the M20 kind, side on: the flared venturi at the back, the olive tube with its clamps, the shoulder
+    # rest under it, the pistol grip and trigger, the front grip, the reflex sight and the contact box on top, the
+    # yellow band of a live round, the reinforced muzzle ring
+    W['bazooka'] = ascii_cv(drawn(52, 14, {
+        1: [(1, 'QO'), (21, 'DMMD'), (34, 'aA')],
+        2: [(1, 'QOo'), (21, 'DcCD'), (25, 'K'), (34, 'Az')],
+        3: [(1, 'qOo'), (4, 'o' * 4), (8, 'O'), (9, 'o' * 17), (26, 'O'), (27, 'o' * 13), (40, 'yy'), (42, 'oo'), (44, 'O'), (45, 'ooo'), (48, 'MLL')],
+        4: [(1, 'qOO'), (4, 'O' * 4), (8, 'q'), (9, 'O' * 17), (26, 'q'), (27, 'O' * 13), (40, 'yy'), (42, 'OO'), (44, 'q'), (45, 'OOO'), (48, 'MMM')],
+        5: [(1, 'qQO'), (4, 'O' * 4), (8, 'q'), (9, 'OOOxOOOOOOOOOOOOO'), (26, 'q'), (27, 'O' * 13), (40, 'yY'), (42, 'OO'), (44, 'q'), (45, 'OOO'), (48, 'MMD')],
+        6: [(1, 'qQO'), (4, 'O' * 4), (8, 'q'), (9, 'O' * 17), (26, 'q'), (27, 'OOOOtOtOtOOOO'), (40, 'yY'), (42, 'OO'), (44, 'q'), (45, 'OOO'), (48, 'DMD')],
+        7: [(1, 'qQQ'), (4, 'Q' * 4), (8, 'q'), (9, 'Q' * 17), (26, 'q'), (27, 'Q' * 13), (40, 'YY'), (42, 'QQ'), (44, 'q'), (45, 'QQQ'), (48, 'DMD')],
+        8: [(1, 'qQQ'), (4, 'Q' * 4), (8, 'q'), (9, 'QQQQQQQQQQQQxQQQQ'), (26, 'q'), (27, 'Q' * 13), (40, 'YY'), (42, 'QQ'), (44, 'q'), (45, 'QQQ'), (48, 'DDD')],
+        9: [(1, 'qQq'), (4, 'q' * 4), (8, 'q'), (9, 'q' * 17), (26, 'q'), (27, 'q' * 13), (40, 'qq'), (42, 'qq'), (44, 'q'), (45, 'qqq'), (48, 'DDK')],
+        10: [(1, 'qQ'), (3, 'q' * 45), (48, 'KKK')],
+        11: [(1, 'Qq'), (9, 'gGGGGg'), (17, 'gGG'), (20, 'KnK'), (29, 'gGG')],
+        12: [(9, 'GGGGGG'), (16, 'gGGG'), (20, 'KKK'), (29, 'GGG')]}), gun)
+    # a baseball bat in ash: the knob, the handle wound in black tape (its spiral catching the light, the end of it
+    # ragged), the taper, the barrel's long grain and its burnt-in brand, two dents on top and an old stain under it
+    W['bat'] = ascii_cv(drawn(46, 9, {
+        1: [(28, 'UuuuuuuiuuuuuuU')],
+        2: [(1, 'iu'), (18, 'UUUUUUUUUU'), (28, 'uuuuuuuuuuuiuuuu')],
+        3: [(1, 'iU'), (3, 'gTnTgTnTgTnTgT'), (17, 'uuuuuuuuuuu'), (28, 'uuiIiuUUuuuuUUuuu')],
+        4: [(1, 'iU'), (3, 'TgTnTgTnTgTnTg'), (17, 'UUUUUUUUUUU'), (28, 'UUIiIUUUUhRhUUUUU')],
+        5: [(1, 'iU'), (3, 'nTgTnTgTnTgTn'), (16, 'iiiiiiiiiiii'), (28, 'iiUiiiiiihhhRiiii')],
+        6: [(1, 'iI'), (18, 'IIIIIIIIII'), (28, 'iiiiiiiiihhRiiii')],
+        7: [(28, 'IIIIIIIIhhIIIII')]}), gun)
+    # a big combat knife: the steel pommel, the ridged black rubber grip, a tall cross-guard, a wide clip-point blade
+    # with the saw teeth along its spine, the lit flat, the fuller, the grind and the bright edge sweeping up to the tip
+    W['knife'] = ascii_cv(drawn(30, 10, {
+        1: [(12, 'MD')],
+        2: [(12, 'LD'), (16, 'D'), (18, 'D'), (20, 'D'), (22, 'D')],
+        3: [(1, 'SM'), (3, 'gngngngng'), (12, 'LD'), (14, 'M' * 10)],
+        4: [(1, 'nS'), (3, 'GnGnGnGnG'), (12, 'MD'), (14, 'L' + 'S' * 9 + 'SSt')],
+        5: [(1, 'MD'), (3, 'GnGnGnGnG'), (12, 'MD'), (14, 'DSMMMMMMMSSSStt')],
+        6: [(1, 'DK'), (3, 'nTnTnTnTn'), (12, 'MD'), (14, 'D' + 's' * 12 + 't')],
+        7: [(12, 'DK'), (14, 'D' + 't' * 11)],
+        8: [(12, 'DK')]}), gun)
+    # a pool cue: the rubber bumper, the dark butt with its pearl inlays, the linen wrap, the forearm's spliced points,
+    # the pearl joint collar, the maple shaft tapering to the white ferrule and the chalked blue tip
+    BUTT = {1: [(1, 'n'), (2, 'BBBfBBBBBfBBBBBBBBB'), (21, 'bjbjbjbjbjbjbj'), (35, 'BBBmmmm')],
+            2: [(1, 'n'), (2, 'BBBBBBBBBBBBBBBBBBB'), (21, 'jbjbjbjbjbjbjb'), (35, 'BBBBBBm')],
+            3: [(1, 'n'), (2, 'kkkkkkkkkkkkkkkkkkk'), (21, 'bjbjbjbjbjbjbj'), (35, 'kkkkkkl')],
+            4: [(1, 'n'), (2, 'kkkfkkkkkfkkkkkkkkk'), (21, 'jjjjjjjjjjjjjj'), (35, 'kkkllll')]}
+    W['cue'] = ascii_cv(drawn(80, 6, {
+        1: BUTT[1] + [(42, 'mmm'), (45, 'fe'), (47, 'm' * 14)],
+        2: BUTT[2] + [(42, 'mmm'), (45, 'fe'), (47, 'm' * 28), (75, 'fff'), (78, 'c')],
+        3: BUTT[3] + [(42, 'lll'), (45, 'ee'), (47, 'l' * 28), (75, 'eee'), (78, 'C')],
+        4: BUTT[4] + [(42, 'lll'), (45, 'ee'), (47, 'l' * 14)]}), gun)
+    # what is left of it once snapped across the forearm: the splinters it broke into
+    W['cue_half'] = ascii_cv(drawn(46, 6, {
+        1: BUTT[1] + [(42, 'm')],
+        2: BUTT[2] + [(42, 'mmm')],
+        3: BUTT[3] + [(42, 'll')],
+        4: BUTT[4]}), gun)
+    # a tire iron: black paint worn back to the steel, rust in the chips; the pry end flattened and turned up, the
+    # other bent down into the hex socket
+    W['tire_iron'] = ascii_cv(drawn(34, 15, {
+        4: [(1, 'S')],
+        5: [(1, 'SM')],
+        6: [(2, 'MSMMMMLMMMMMMMSMMMMMMMMMSM')],
+        7: [(2, 'DGGGGGxGGGGGGGGGGGxxGGGGGGGD')],
+        8: [(3, 'nTTTTTTTTTTTTTTTTTTTTTTTTGGD')],
+        9: [(28, 'MGD')],
+        10: [(28, 'MGD')],
+        11: [(27, 'LMMMD')],
+        12: [(27, 'MGGGD')],
+        13: [(27, 'KnnnK')]}), gun)
     W['rocket'] = ascii_cv([".........",
                             ".QooorRt.",
                             ".qQQQRRR.",
@@ -5614,8 +5646,8 @@ EXPECTED = {
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     # the weapons in hand are at FINE density: twice these world sizes
-    'weapons': dict(pistol=(27, 15), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(52, 14), rifle=(56, 16),
-                    sniper=(72, 17), bazooka=(52, 14), bat=(44, 8), knife=(20, 6), cue=(80, 6), cue_half=(40, 6), tire_iron=(32, 8),
+    'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
+                    sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),
                     rocket=(9, 4),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(3, 6), mag_uzi=(3, 9), mag_rifle=(4, 9),
                     mag_sniper=(4, 8), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),

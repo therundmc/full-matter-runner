@@ -41,13 +41,27 @@ const SHOULDERED = { twist: 0.3, pocket: [-1.6, 3.3], low: [-0.4, 4.6], lowA: -0
 
 const GAIT_WIDTH = GAIT.width;
 
-// where the muzzle of gun d (w world px long) is when it is aimed, in the aim's frame (pose px, x forward); the
-// sprite is drawn centred on the hand's line, its bore `bore` px off it
+// The muzzle of gun d is the end of its sprite on the bore line: `bore` world px off the sprite's middle line (- =
+// toward its top), MUZZLE_IN px in from its last column (the dark outline round the steel). w: the sprite's width.
+export const MUZZLE_IN = 0.5;
+export const muzzleX = (d, w) => w - MUZZLE_IN - d.grip; // from the hand along the barrel, world px
+
+// Where the muzzle is in pose P as it is drawn (pose px about the feet, world orientation; the caller scales by
+// BODY_SCALE) and the way the barrel points: drawWeapon's own transform applied to the muzzle point
+export function muzzleIn(P, d, w, out) {
+  const len = Math.sign(P.wpnLen || 1) * Math.max(0.15, Math.abs(P.wpnLen));
+  const u = muzzleX(d, w) * len * P.s, v = (d.bore ?? 0) * P.wpnS * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
+  out.x = P.wpn.x + u * c - v * s; out.y = P.wpn.y + u * s + v * c; out.a = P.wpn.a;
+  return out;
+}
+
+// the same in the aim's frame (pose px, x forward) for the gun raised on a target, standing: for a character not
+// drawn yet
 const MUZZLE = { x: 0, y: 0 };
 export function muzzleAt(d, w) {
-  if (d.hold !== 'two') { MUZZLE.x = 10 + w - d.grip; MUZZLE.y = 1 + (d.bore ?? 0); return MUZZLE; }
+  if (d.hold !== 'two') { MUZZLE.x = 10.4 + muzzleX(d, w); MUZZLE.y = 1 + (d.bore ?? 0); return MUZZLE; }
   const at = d.onShoulder ? SHOULDERED.onShoulder : SHOULDERED.pocket;
-  MUZZLE.x = at[0] + w - (d.butt ?? 0.5); MUZZLE.y = at[1] + (d.bore ?? 0);
+  MUZZLE.x = at[0] + d.grip - (d.butt ?? 0.5) + muzzleX(d, w); MUZZLE.y = at[1] + (d.bore ?? 0);
   return MUZZLE;
 }
 

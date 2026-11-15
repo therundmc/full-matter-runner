@@ -14,7 +14,7 @@ import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE } from '../data/feel.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt }
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
 
@@ -47,6 +47,7 @@ const SETTLE = { gain: 3.2, max: 1.8, carry: 0.85, freq: 12, damp: 0.42 };
 // chest, his feet; the sprite sits a little ahead of the body's centre), the turns tried, rad/s he is turned at
 const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
+const MUZZLE_AT = { x: 0, y: 0, a: 0 };
 
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
@@ -355,10 +356,30 @@ export default class Character {
     if (turn !== undefined) this.downAngle += Math.sign(turn) * Math.min(Math.abs(turn), dt * LIE_RATE);
   }
 
+  // { x, y, a }: the end of the barrel and the way it points, as last drawn (kept in the aim's frame, so that it turns
+  // with him until he is drawn again); a gun not drawn yet: where it is when raised on a target
   muzzlePos() {
-    const d = this.def;
+    const d = this.def, n = this.muzzleNote;
+    if (n?.def === d) {
+      const p = local(this.x, this.y, this.angle, n.x, n.y);
+      p.a = this.angle + n.da;
+      return p;
+    }
     const m = muzzleAt(d, sw(sprite(d.sprite)));
-    return local(this.x, this.y, this.angle, m.x * BODY_SCALE, m.y * BODY_SCALE);
+    const p = local(this.x, this.y, this.angle, m.x * BODY_SCALE, m.y * BODY_SCALE);
+    p.a = this.angle;
+    return p;
+  }
+
+  // the muzzle in the pose he is drawn in (CharacterAnim.muzzleIn), into the aim's frame
+  noteMuzzle(P) {
+    const d = this.def;
+    if (!P.wpnOn || d.kind !== 'gun') return;
+    const m = muzzleIn(P, d, sw(sprite(d.sprite)), MUZZLE_AT), c = Math.cos(this.angle), s = Math.sin(this.angle);
+    const n = this.muzzleNote ??= { def: d, x: 0, y: 0, da: 0 };
+    n.def = d;
+    n.x = (m.x * c + m.y * s) * BODY_SCALE; n.y = (m.y * c - m.x * s) * BODY_SCALE;
+    n.da = angDiff(this.angle, m.a);
   }
 
   // the barrel that just fired a burst smokes once it falls silent, a thin wisp that rises until it has cooled
@@ -373,17 +394,19 @@ export default class Character {
   fire(d) {
     const w = this.world;
     const a = this.angle;
-    const enemy = this.team === 'enemy';
+    const enemy = this.team === 'enemy', m = this.muzzlePos();
     for (let i = 0; i < d.pellets; i++) {
       const sp = d.spread * spread() + (enemy ? rand(-ENEMY.aimError, ENEMY.aimError) : 0);
       const speed = d.speed * (1 + (d.speedVar || 0) * rand(-1, 1));
-      const pr = new Projectile(w, this.x + Math.cos(a) * 4, this.y + Math.sin(a) * 4, a + sp, speed, {
+      // out of the muzzle, its first step traced from his chest: nothing between the two is missed (a man at point
+      // blank, the wall the barrel pokes into)
+      const pr = new Projectile(w, m.x, m.y, a + sp, speed, {
         team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pen: d.pen ?? 10, rocket: d.rocket, floor: this.shootDown,
+        from: { x: this.x + Math.cos(a) * 4, y: this.y + Math.sin(a) * 4 },
       });
       w.addProjectile(pr);
     }
-    const m = this.muzzlePos();
-    muzzleFlash(w, m.x, m.y, a, d, this);
+    muzzleFlash(w, m.x, m.y, m.a, d, this);
     if (d.casing) {
       const ca = a + Math.PI / 2 + rand(-0.4, 0.3);
       const v = rand(70, 140);
@@ -712,6 +735,7 @@ export default class Character {
     if (this.doorHand) doorHandPose(this, P);
     // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
     if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
+    this.noteMuzzle(P);
     drawPose(ctx, this, P);
   }
 }

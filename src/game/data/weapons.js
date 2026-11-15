@@ -2,7 +2,8 @@
 // shellReload). A reload fills a fresh mag from the caliber pool; the old mag drops with whatever was left in it.
 // Out of ammo? Throw the gun.
 // hold: 'one' | 'two' | 'melee'. grip = sprite x (from left, world px) where the hand holds it; bore = how far the
-// barrel runs off the sprite's middle line (world px, - = toward its top: where the muzzle flash and the laser start).
+// barrel runs off the sprite's middle line (world px, - = toward its top). A gun fires from the end of its sprite on
+// that line (CharacterAnim muzzleIn): rounds, muzzle flash, smoke and laser start there (tests/muzzle.test.mjs).
 // A long gun ('two') is shouldered: butt = sprite x that sits in the shoulder, fore = sprite x of the front hand;
 // onShoulder: carried on top of the shoulder (a launcher), over it.
 // melee: swing = 'club' (long, swung with both hands, lies on the shoulder) | 'blade' (held low, stabs and cuts);
@@ -19,7 +20,7 @@ export const WEAPONS = {
     name: 'FISTS', kind: 'melee', hold: 'none', range: 21, arc: 1.1, rate: 0.32, lethal: false, sound: 'punch', windup: 0.05, wound: 'punch',
   },
   bat: {
-    name: 'BAT', kind: 'melee', hold: 'melee', sprite: 'weapons/bat', grip: 3, range: 30, arc: 1.9, rate: 0.42,
+    name: 'BASEBALL BAT', kind: 'melee', hold: 'melee', sprite: 'weapons/bat', grip: 3, range: 30, arc: 1.9, rate: 0.42,
     lethal: true, sound: 'punch', gore: 0.35, wound: 'blunt', windup: 0.07, points: 800, swing: 'club', heft: 2, material: 'wood',
     wear: 5, breaks: 'snap', finisher: 'bat',
   },
@@ -41,22 +42,22 @@ export const WEAPONS = {
     finisher: 'stake', wear: 3, breaks: 'lodge',
   },
   knife: {
-    name: 'KNIFE', kind: 'melee', hold: 'melee', sprite: 'weapons/knife', grip: 2, range: 24, arc: 1.3, rate: 0.26,
+    name: 'COMBAT KNIFE', kind: 'melee', hold: 'melee', sprite: 'weapons/knife', grip: 3.5, range: 24, arc: 1.3, rate: 0.26,
     lethal: true, sound: 'slash', gore: 0.25, wound: 'slash', windup: 0.04, points: 800, bleed: true, swing: 'blade', material: 'metal',
     wear: 4, breaks: 'lodge',
   },
   pistol: {
-    name: '1911', kind: 'gun', hold: 'one', sprite: 'weapons/pistol', grip: 3, bore: -2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
+    name: '1911', kind: 'gun', hold: 'one', sprite: 'weapons/pistol', grip: 3, bore: -1.75, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
     pellets: 1, spread: 0.025, speed: 1700, pen: 16, sound: 'pistol', noise: 640, shake: 0.18, kick: 2.5, casing: 'casing', gore: 0.25, wound: 'small',
     enemyRate: 0.55, points: 500,
   },
   uzi: {
-    name: 'UZI', kind: 'gun', hold: 'one', sprite: 'weapons/uzi', grip: 3, mag: 30, ammo: '9mm', reload: 1.15, magSprite: 'weapons/mag_uzi', rate: 0.065, auto: true,
+    name: 'UZI', kind: 'gun', hold: 'one', sprite: 'weapons/uzi', grip: 7, bore: -1.75, mag: 30, ammo: '9mm', reload: 1.15, magSprite: 'weapons/mag_uzi', rate: 0.065, auto: true,
     pellets: 1, spread: 0.11, speed: 1600, pen: 10, sound: 'uzi', noise: 640, shake: 0.12, kick: 1.5, casing: 'casing', gore: 0.2, wound: 'small',
     enemyRate: 0.09, burst: 5, points: 500,
   },
   uzi_silenced: {
-    name: 'SILENCED UZI', kind: 'gun', hold: 'one', sprite: 'weapons/uzi_silenced', grip: 3, mag: 30, ammo: '9mm', reload: 1.2, magSprite: 'weapons/mag_uzi', rate: 0.07, auto: true,
+    name: 'SILENCED UZI', kind: 'gun', hold: 'one', sprite: 'weapons/uzi_silenced', grip: 7, bore: -1.75, mag: 30, ammo: '9mm', reload: 1.2, magSprite: 'weapons/mag_uzi', rate: 0.07, auto: true,
     pellets: 1, spread: 0.09, speed: 1600, pen: 8, sound: 'silenced', noise: 0, shake: 0.06, kick: 1, casing: 'casing', gore: 0.15, wound: 'quiet',
     enemyRate: 0.1, burst: 5, points: 700,
   },

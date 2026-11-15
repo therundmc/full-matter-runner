@@ -491,7 +491,7 @@ export default class Player extends Character {
         this.weapon.mag--;
         this.recoil = 1;
         const m = this.muzzlePos();
-        muzzleFlash(w, m.x, m.y, this.angle, d, this);
+        muzzleFlash(w, m.x, m.y, m.a, d, this);
         w.sound(d.sound, this.x, this.y);
         if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
       } else if (light) w.sound('punch', x, y, 0.5, { pitch: 0.8 });

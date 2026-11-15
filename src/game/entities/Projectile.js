@@ -18,6 +18,7 @@ export default class Projectile {
     this.world = world;
     this.x = x; this.y = y;
     this.ox = x; this.oy = y; // trail origin
+    this.from = opts.from || null; // where its first step is traced from (the shooter's chest: see Character.fire)
     this.angle = angle;
     this.speed0 = speed;
     this.vx = Math.cos(angle) * speed;
@@ -44,6 +45,7 @@ export default class Projectile {
     if (this.life <= 0) { this.dead = true; return; }
     let x0 = this.x, y0 = this.y;
     let x1 = x0 + this.vx * dt, y1 = y0 + this.vy * dt;
+    if (this.from) { x0 = this.from.x; y0 = this.from.y; this.from = null; }
     for (let guard = 0; guard < 8; guard++) {
       const hit = w.traceBullet(x0, y0, x1, y1, this.team, this.ignore, this.floor);
       if (!hit) break;

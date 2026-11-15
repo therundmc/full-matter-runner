@@ -271,7 +271,7 @@ function drawBurst(ctx, b, now) {
 
 function drawMuzzle(ctx, m) {
   const sh = SHAPES[m.shape], bands = sh.bands || FLAME.length, ch = m.ch;
-  if (ch?.alive && ch.hasGun) { const p = ch.muzzlePos(); m.x = p.x; m.y = p.y; m.a = ch.angle; }
+  if (ch?.alive && ch.hasGun) { const p = ch.muzzlePos(); m.x = p.x; m.y = p.y; m.a = p.a; }
   ctx.save();
   ctx.translate(m.x, m.y);
   ctx.rotate(m.a);
