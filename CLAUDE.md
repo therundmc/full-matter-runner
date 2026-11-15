@@ -44,6 +44,10 @@
   weapons (`fine()`: the 1x drawing doubled, bevelled, then sights, serrations, checkering, grain, tape, rust, old
   blood; pistol, shotgun, bat, knife and tire iron drawn natively as real silhouettes, `drawn()`). Not done:
   furniture, cars, floors.
+- Gait and hands (2026-11-15, he found the walk "too mini-game", the hands squares, a long gun held on a stick arm):
+  entities/Gait.js (cadence and stride grow with speed, planted feet, a torso that carries past a stop), arms and
+  hands painted in render/LimbArt.js (two-bone arms, fist / loose / flat hands), long guns shouldered with `grip`,
+  `fore`, `butt` in data/weapons.js; heads are their own sprite (`_head`). The assault rifle is the M16 (key `rifle`).
 - Size of people (his verdicts, in order: bodies at real length next to small standing sprites were "completely
   different proportions"; then "seen from above they must be bigger too"; then the bodies "a bit too wide"):
   `BODY_SCALE` = 1.3 (Config). A standing pose is drawn as a whole 1.3 x about the feet (CharacterAnim `bodyFrame`;
@@ -82,7 +86,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    the metal "dink" as a bottle),
    the doors, the guards' voices under their recording, the car horn (`_horn`: a driver held up by somebody honks). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
-   Footsteps: one heard every `STRIDE` px (three or four a second at a run; one per drawn stride was "sixteenth
+   Footsteps: one heard when a drawn foot lands (entities/Gait.js: about 1.8 a second walking, 3 at a run; the old cycle was "sixteenth
    notes"), quiet (`STEP_LEVEL`). The jukebox's own band is OFF ("horrible"). The night has a quiet synthesized bed
    (systems/Ambience.js, level `gain` of air / gust / hum / drip / walla in the audio META): the city's far wash, gusts
    with the papers, the hum of props with `hum`, drops off props with `drip`, the customers' murmur while at ease.
