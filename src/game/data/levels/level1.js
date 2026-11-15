@@ -156,8 +156,8 @@ export default {
     ['toilet', 21.5, 6.4, 0], ['toilet', 23.4, 6.4, 0], ['sink', 23.7, 9, 90], ['tube_light', 21.07, 8.6, 270],
     ['trash_can', 21.4, 10.5, 0],
     // back room
-    ['tv', 27.6, 10.5, 180], ['table_lamp', 25.45, 7.2, 0], ['plant', 25.45, 6.5, 0], ['desk', 29.5, 6.75, 270],
-    ['sofa', 25.5, 8.6, 270], ['armchair', 30.45, 6.6, 180], ['table_round', 27.6, 7.9, 0], ['chair', 27.6, 7.05, 90],
+    ['table_lamp', 25.45, 7.2, 0], ['plant', 25.45, 6.5, 0], ['desk', 29.5, 6.75, 270], ['sofa', 25.5, 8.6, 270],
+    ['armchair', 30.45, 6.6, 180], ['table_round', 27.6, 7.9, 0], ['chair', 27.6, 7.05, 90],
     ['chair', 28.45, 7.9, 180], ['chair', 27.6, 8.75, 270], ['ceiling_lamp', 27.6, 7.9, 0],
     ['floor_lamp', 25.4, 10.55, 0], ['cash_case', 30.45, 10.45, 8], ['extinguisher', 27.5, 6.14, 0],
     // the bar: counter along the north wall

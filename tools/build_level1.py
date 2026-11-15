@@ -326,7 +326,6 @@ lv.prop('tube_light', 21.07, 8.6, 270)
 lv.prop('trash_can', 21.4, 10.5)
 
 lv.area('back room')
-lv.prop('tv', 27.6, 10.5, 180)                         # against the south wall, clear of the back door
 lv.prop('table_lamp', 25.45, 7.2)
 lv.prop('plant', 25.45, 6.5)
 lv.prop('desk', 29.5, 6.75, 270)                        # its seat side toward the boss, up against the north wall

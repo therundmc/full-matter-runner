@@ -4,7 +4,7 @@ import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
-import { WOUNDS, BODY, THROAT, THROES, SPASM, woundFor, blowScale } from '../data/wounds.js';
+import { WOUNDS, BODY, THROAT, THROES, SPASM, woundFor, blowScale, markOf } from '../data/wounds.js';
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
@@ -78,7 +78,7 @@ export function gore(world, ch, angle, cause, by, how) {
     const whole = mode === 'corpse' && !detach.length;
     const dying = cause === 'snap' ? null : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
     world.addCorpse(new Ragdoll(world, k, x, y, dying === 'throat' ? ch.angle + rand(-0.3, 0.3) : angle, slide, {
-      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying,
+      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying, mark: markOf(wd),
       // he faced his killer: he goes over backwards (a cut throat pitches forward)
       back: !!dying && dying !== 'throes' && dying !== 'throat' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
       killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,

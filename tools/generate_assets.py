@@ -2782,7 +2782,8 @@ def tiles():
 # --------------------------------------------------------------------------
 
 # ---- a body on the floor, part by part (entities/Ragdoll.js), at FINE density and at the build of the people on their
-# feet (Config BODY_SCALE: shoulders 20 world px, a head of 10, arms 6 thick, legs 7). About 1.5 m from crown to heel:
+# feet (Config BODY_SCALE), a little narrower (shoulders 17 world px, a head of 10, arms 5 thick, legs 6: at the
+# full 20 the user found the bodies too wide). About 1.5 m from crown to heel:
 # between the stubby 1.2 m of the first bodies and a man's real length, which next to the standing characters looked
 # like another game. Painted plainly, two tones a part and what tells each kind apart, no more: every extra (face,
 # buckle, laces, creases) was rejected as clashing with the rest of the picture.
@@ -2799,49 +2800,49 @@ def lying(w, h, fn):
 
 
 def torso_edge(y):
-    """Half-width of a lying torso at row y (40 x 38, head toward -y): round shoulders, the waist, the hips."""
+    """Half-width of a lying torso at row y (34 x 38, head toward -y): round shoulders, the waist, the hips."""
     if y < 4:
-        return 12.0 + 2.2 * y
+        return 9.5 + 2.0 * y
     if y <= 13:
-        return 18.5
+        return 15.5
     if y <= 30:
-        return 18.5 - (y - 13) / 17.0 * 3.0
-    return 15.5 + (y - 30) / 6.0 * 0.8
+        return 15.5 - (y - 13) / 17.0 * 2.5
+    return 13.0 + (y - 30) / 6.0 * 0.7
 
 
 def rag_torso(ch, back=False):
-    """The trunk from the collar to the belt, 40 x 38, his front (the design of chest_px) or his back: the flanks in
+    """The trunk from the collar to the belt, 34 x 38, his front (the design of chest_px) or his back: the flanks in
     shade, the belt, the top of the trousers."""
     k = ch['kind']
 
     def px(x, y):
         if y < 1 or y > 36:
             return None
-        d = abs(x - 19.5)
+        d = abs(x - 16.5)
         hw = torso_edge(y)
         if d > hw:
             return None
-        L = 0.4 if d > hw - 3.2 else 0.66               # the flank turns away
+        L = 0.4 if d > hw - 2.8 else 0.66               # the flank turns away
         i = tidx(L)
-        u, v = (18.5 - y) / 18.5 * 6.9, (x - 19.5) / 18.5 * 5.9
+        u, v = (18.5 - y) / 18.5 * 6.9, (x - 16.5) / 15.5 * 5.9
         if y >= 35:
             return ch['pants'][i]
         if y >= 33:
             return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
-        if y < 3 and d < 4.2:
+        if y < 3 and d < 3.8:
             return ch['skin'][max(1, i)]                 # the neck
         if not back:
             return chest_px(ch, u, v, L, 6.9, 5.9)
-        if k == 'brute' and d > hw - 5:
+        if k == 'brute' and d > hw - 4.5:
             return ch['skin'][i]
-        if k in ('thug', 'player') and y < 6 and d < 7:
+        if k in ('thug', 'player') and y < 6 and d < 6:
             return ch['top'][min(3, i + 1)]              # collar
         if k == 'civ':
             return civ_chest_px(ch, u, v, L, 6.9, 5.9)
         if d < 1:
             return ch['top'][max(0, i - 1)]              # the seam down the back
         return ch['top'][i]
-    return lying(40, 38, px)
+    return lying(34, 38, px)
 
 
 def rag_torso_up(ch):
@@ -2883,56 +2884,56 @@ def rag_head_up(ch):
 
 
 def rag_arm(ch):
-    """An arm from the shoulder (-x) to the hand (+x), 34 x 14: the sleeve, the cuff of those who wear one, the hand."""
+    """An arm from the shoulder (-x) to the hand (+x), 34 x 12: the sleeve, the cuff of those who wear one, the hand."""
     k = ch['kind']
     s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
     cuff = WHITE if k in ('player', 'thug') else None
     skin = ch['skin']
 
     def px(x, y):
-        if x < 1 or x > 32 or y < 1 or y > 12:
+        if x < 1 or x > 32 or y < 1 or y > 10:
             return None
-        if (x < 3 or x > 30) and (y < 3 or y > 10):
+        if (x < 3 or x > 30) and (y < 3 or y > 8):
             return None                                  # rounded ends
-        if x >= 26 and (y < 2 or y > 11):
+        if x >= 26 and (y < 2 or y > 9):
             return None                                  # the wrist is thinner
-        i = 2 if y < 8 else 1
+        i = 2 if y < 7 else 1
         if x >= 26:
             return skin[i]
         if cuff and x >= 23:
             return cuff[i]
-        if k == 'heavy' and y in (6, 7):
+        if k == 'heavy' and y in (5, 6):
             return WHITE[i]                              # the stripe down the sleeve
         return s[i]
-    return lying(34, 14, px)
+    return lying(34, 12, px)
 
 
 def rag_leg(ch):
-    """A leg from the hip (-x) to the toe (+x), 40 x 16: the trouser leg, narrower under the knee, and the shoe."""
+    """A leg from the hip (-x) to the toe (+x), 40 x 14: the trouser leg, narrower under the knee, and the shoe."""
     k = ch['kind']
     p, sh = ch['pants'], ch['shoe']
 
     def px(x, y):
         if x < 1 or x > 38:
             return None
-        top, bot = (1, 14) if x < 19 else (2, 13)
-        if x > 36 and (y < 5 or y > 10):
+        top, bot = (1, 12) if x < 19 else (2, 11)
+        if x > 36 and (y < 4 or y > 9):
             return None                                  # the round of the toe
         if y < top or y > bot:
             return None
-        i = 2 if y < 9 else 1
+        i = 2 if y < 8 else 1
         if x >= 30:
             return sh[i]
-        if k == 'heavy' and y in (7, 8):
+        if k == 'heavy' and y in (6, 7):
             return WHITE[i]
         return p[i]
-    return lying(40, 16, px)
+    return lying(40, 14, px)
 
 
 def knocked_down(ch):
     """A man knocked out cold, built from the parts of a body on the floor so he is the size of one: on his back, an arm
-    thrown out, the other along him, the legs a little apart. 102 x 104, the head toward +x."""
-    W, H = 104, 102
+    thrown out, the other along him, the legs a little apart. 102 x 98, the head toward +x."""
+    W, H = 98, 102
     body = Image.new('RGBA', (W, H), CLEAR)
 
     def limb(cv, rx, ry, deg):
@@ -2943,12 +2944,12 @@ def knocked_down(ch):
         tmp = tmp.rotate(-deg, resample=Image.NEAREST)
         body.alpha_composite(tmp, (int(rx - n // 2), int(ry - n // 2)))
     leg, arm = rag_leg(ch), rag_arm(ch)
-    limb(leg, 42, 56, 98)
-    limb(leg, 61, 56, 80)
-    limb(arm, 36, 29, 114)
-    limb(arm, 68, 29, 18)
+    limb(leg, 41, 56, 98)
+    limb(leg, 57, 56, 80)
+    limb(arm, 35, 29, 114)
+    limb(arm, 63, 29, 18)
     body.alpha_composite(rag_torso_up(ch).img, (32, 21))
-    body.alpha_composite(rag_head_up(ch).img, (42, 3))
+    body.alpha_composite(rag_head_up(ch).img, (39, 3))
     out = Cv(H, W)
     out.img = body.rotate(-90, resample=Image.NEAREST, expand=True)
     out.p = out.img.load()
@@ -3788,20 +3789,27 @@ def p_jukebox():
 
 
 def p_hydrant():
-    """Fire hydrant from above: bonnet dome with its pentagon nut, two hose caps and the front pumper outlet."""
-    S = 10
+    """Fire hydrant from above, 14 x 14: two hose caps on the sides and the pumper outlet in front, each with its own
+    dark edge, under the barrel's flange, the bonnet dome and its brass nut (the user: sharper and a little bigger)."""
+    S = 14
     cv = Cv(S, S)
     red = ramp('#d0262c', 0.55, 0.28, 0.35)
     cap = ramp('#c8c8d8', 0.5, 0.25, 0.4)
-    fill_shape(cv, 1.4, 5.0, 1.2, 1.4, lambda u, v, L: shade(cap, L))
-    fill_shape(cv, 8.6, 5.0, 1.2, 1.4, lambda u, v, L: shade(cap, L))
-    fill_shape(cv, 5.0, 8.5, 1.6, 1.2, lambda u, v, L: shade(cap, L))
-    fill_shape(cv, 5.0, 5.0, 3.6, 3.6, lambda u, v, L: shade(red, L))
-    ring(cv, 5.0, 5.0, 2.2, 2.8, lambda dx, dy, d: red[1] if light(dx / d, dy / d) > 0.5 else red[3])
-    fill_shape(cv, 5.0, 5.0, 1.3, 1.3, lambda u, v, L: shade(ramp('#e0b02a', 0.5, 0.2, 0.4), L))
-    cv.set(4, 4, hx('#fff8d0'))
-    cv.set(7, 6, hx('#8a8a98'))              # paint chipped to the iron
-    cv.outline()
+    nut = ramp('#e0b02a', 0.5, 0.2, 0.4)
+
+    def caps(ly):
+        for (cx, cy, rx, ry) in ((2.3, 7.0, 1.4, 2.0), (11.7, 7.0, 1.4, 2.0), (7.0, 11.7, 2.0, 1.4)):
+            fill_shape(ly, cx, cy, rx, ry, lambda u, v, L: shade(cap, L))
+
+    def barrel(ly):
+        fill_shape(ly, 7.0, 7.0, 4.1, 4.1, lambda u, v, L: red[1] if L < 0.5 else red[2])     # the flange
+    layer(cv, caps)
+    layer(cv, barrel)
+    fill_shape(cv, 7.0, 7.0, 3.0, 3.0, lambda u, v, L: shade(red, L))                          # the bonnet
+    ring(cv, 7.0, 7.0, 2.9, 3.4, lambda dx, dy, d: red[0])                                     # its edge
+    fill_shape(cv, 7.0, 7.0, 1.5, 1.5, lambda u, v, L: shade(nut, L))
+    cv.set(5, 5, hx('#ff9a8a'))               # the light on the dome
+    cv.set(9, 8, hx('#8a8a98'))               # paint chipped to the iron
     return cv
 
 
@@ -5074,7 +5082,7 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dop
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
                   palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
-                  neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(10, 10), bench=(52, 17),
+                  neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(14, 14), bench=(52, 17),
                   chain_fence=(34, 16))
 FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
@@ -5083,10 +5091,10 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (40, 40)), ('_down', (102, 104)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_down', (102, 98)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
-        ('_rag_torso', (40, 38)), ('_rag_head', (20, 20)), ('_rag_arm', (34, 14)), ('_rag_leg', (40, 16)),
-        ('_rag_torso_up', (40, 38)), ('_rag_torso_down', (40, 38)), ('_rag_head_up', (20, 20))]]
+        ('_rag_torso', (34, 38)), ('_rag_head', (20, 20)), ('_rag_arm', (34, 12)), ('_rag_leg', (40, 14)),
+        ('_rag_torso_up', (34, 38)), ('_rag_torso_down', (34, 38)), ('_rag_head_up', (20, 20))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(48, 14),

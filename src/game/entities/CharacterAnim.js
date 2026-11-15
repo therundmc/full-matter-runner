@@ -645,7 +645,7 @@ export function sitPose(ch, P, V) {
 const BASES = {
   // torso pulled back toward the backrest (px), how much lower (smaller) he is, where the feet go [x, y] each
   seat: { back: 3, s: 0.9, feet: [[12.5, -5], [11.8, 4.6]], legs: 1 },
-  desk: { back: 4.5, s: 0.86, feet: [[21, 1.6], [23, -1.1]], legs: 1 },
+  desk: { back: 4.5, s: 0.86, feet: [[15.5, 1.6], [17, -1.1]], legs: 1 }, // pose px: x BODY_SCALE they reach the desk, no further
   wall: { back: 1.5, s: 1, feet: [[2, -3.6], [-3.5, 4.4]], legs: 0 },
 };
 

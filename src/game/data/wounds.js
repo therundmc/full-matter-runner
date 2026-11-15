@@ -51,6 +51,33 @@ export const WOUNDS = {
   crush: { back: [6, 110, 1.1], spray: [14, 240, 0.8], big: true, mist: 5, splat: [6, 6], pool: [10, 14], rate: 3.5, throw: [30, 60] },
 };
 
+// What a wound leaves on the body itself (fx/BodyMarks.js places it, render/BodyMarkArt.js paints it, on the torso
+// or the head of entities/Ragdoll.js), by wound profile: kind, n = [min, max] of them, size = [min, max] px,
+// where = torso | head | neck (the top of the torso) | any (the torso mostly, the head now and then).
+//   hole    a round's entry: a dark point in a red ring, the cloth soaked round it, a run of blood
+//   cut     a blade's stroke: a dark line (size = its length) with a wet middle
+//   gash    a thrust: a short slit in its stain
+//   bruise  a club's blow: split skin, blood smeared round it
+// A punch and a broken neck leave nothing.
+export const MARKS = {
+  blunt: { kind: 'bruise', n: [1, 2], size: [3, 4.5], where: 'head' },
+  crush: { kind: 'bruise', n: [2, 3], size: [4, 5], where: 'head' },
+  impact: { kind: 'bruise', n: [2, 3], size: [3, 5], where: 'any' },
+  stab: { kind: 'gash', n: [1, 1], size: [3.5, 4.5], where: 'torso' },
+  slash: { kind: 'cut', n: [1, 1], size: [7, 10], where: 'torso' },
+  throat: { kind: 'cut', n: [1, 1], size: [6, 8], where: 'neck' },
+  glass: { kind: 'cut', n: [3, 5], size: [3, 6], where: 'any' },
+  small: { kind: 'hole', n: [1, 2], size: [3, 4], where: 'any' },
+  quiet: { kind: 'hole', n: [1, 1], size: [3, 3.5], where: 'any' },
+  pellet: { kind: 'hole', n: [3, 5], size: [2, 2.5], where: 'any' },
+  buckshot: { kind: 'hole', n: [5, 8], size: [2.5, 3.5], where: 'torso' },
+  rifle: { kind: 'hole', n: [1, 2], size: [3.5, 4.5], where: 'any' },
+  heavy: { kind: 'hole', n: [1, 1], size: [5, 6], where: 'torso' },
+};
+const NAME_OF = new Map(Object.entries(WOUNDS).map(([name, w]) => [w, name]));
+// the marks of a wound profile (one of WOUNDS), or nothing
+export const markOf = (wd) => MARKS[NAME_OF.get(wd)] || null;
+
 // What the blow adds to its wound (fx/Gore.js, `how` from Character.kill; x the drops thrown, the stain, the pool's
 // area): heavy = a club's heavy stroke (a blade's heavy stroke is a thrust: the stab profile instead), spin = a club
 // swung all the way round, finisher = a man already down, struck again and again, thrown = a weapon thrown at him;

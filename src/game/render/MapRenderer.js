@@ -475,14 +475,23 @@ export default class MapRenderer {
   }
 
   // permanently paint an image onto the floor (debris), or over the blood (flesh: a corpse, a gib)
-  bake(img, x, y, angle, alpha = 1, flesh = false) {
+  bake(img, x, y, angle, alpha = 1, flesh = false, scale = 1) {
     const g = flesh ? this.fleshCtx : this.floorCtx;
     g.save();
     g.translate(x, y);
     g.rotate(angle);
     g.globalAlpha = alpha;
-    if (img.k && img.k !== 1) g.scale(img.k, img.k); // a finer sprite (Assets.js `density`) baked at the floor's scale
+    const k = (img.k || 1) * scale; // a finer sprite (Assets.js `density`) baked at the floor's scale
+    if (k !== 1) g.scale(k, k);
     g.drawImage(img, -img.width / 2, -img.height / 2);
+    g.restore();
+  }
+
+  // anything else drawn straight into the floor (or the flesh layer): fn(g), in world px
+  paint(fn, flesh = false) {
+    const g = flesh ? this.fleshCtx : this.floorCtx;
+    g.save();
+    fn(g);
     g.restore();
   }
 

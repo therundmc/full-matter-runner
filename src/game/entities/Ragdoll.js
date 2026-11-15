@@ -2,12 +2,14 @@ import { CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
-import { woundFor, BODY, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
+import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
 import { poolArt } from '../render/BloodArt.js';
 import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
 import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from '../fx/DyingPose.js';
 import { jointAngle, clampJoint, partAngle } from '../fx/Joints.js';
+import { bodyMarks, markAt } from '../fx/BodyMarks.js';
+import { drawMark } from '../render/BodyMarkArt.js';
 
 const { Bodies, Body, Constraint, Composite, Query } = Matter;
 const JOINT = 0.75; // stiffness of the pin joints
@@ -19,6 +21,8 @@ const RANGE = { arm: BODY.joints.shoulder, leg: BODY.joints.hip, head: BODY.join
 const FALL = { crawl: CRAWL.fall, spasm: SPASM.fall, curl: CURL.fall, throat: 0 }; // s of plain physics first
 // turns tried, off the way he falls, when he is laid out across a wall or a bolted prop
 const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
+const MARKS_MAX = 12; // wounds shown on one body (a corpse can be shot again and again)
+const HEAD_R = 4.5;   // the head's radius, for what marks it
 
 // rag_* sprites are intact limbs; the gib sprites stand in when they are missing
 export function hasRagdoll(kind) { return !!(spriteOpt(`characters/${kind}_rag_torso`) || spriteOpt(`characters/${kind}_gib_torso`)); }
@@ -90,6 +94,9 @@ export default class Ragdoll {
       limb('leg', tw * 0.24, tht / 2 - 1, rand(...BODY.legs)),
     ];
     this.fit(x, y);
+    // what the wound left on him (opts.mark: its data/wounds.js MARKS entry): holes, a cut, the blood of a blow
+    this.build = { tw, th: tht, head: this.head ? HEAD_R : 0 };
+    this.marks = bodyMarks(opts.mark, this.build);
 
     // thrown as one body, turning a little as a whole; the limbs trail behind the torso
     const spin = rand(...BODY.spin) * (speed / 100) * (chance(0.5) ? 1 : -1) / 60;
@@ -227,6 +234,12 @@ export default class Ragdoll {
     w.decals.stampBlood(p.x, p.y, 3, 3);
     this.pool = Math.min(this.poolMax + 4, this.pool + 1.5);
     this.dry = false;
+    // the round shows where it went in
+    const spec = markOf(woundFor('bullet', weaponDef));
+    if (spec?.kind === 'hole' && (part === this.torso || part === this.head) && this.marks.length < MARKS_MAX) {
+      const m = markAt({ ...spec, where: part === this.head ? 'head' : 'torso' }, this.build);
+      if (m) this.marks.push(m);
+    }
     if (heavy && part !== this.torso && chance(0.5)) this.detach(part, a, 260);
     else w.sound('splat', p.x, p.y, 0.35);
   }
@@ -522,10 +535,25 @@ export default class Ragdoll {
     const n = this.poolAt();
     w.decals.bakePool(this, n.x, n.y, this.pool);
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
-    if (this.stuck) { const s = this.stuckAt(); w.decals.bake(this.stuck.img, s.x, s.y, s.a, 1, true); }
+    w.decals.paint?.((g) => { for (const part of [this.torso, this.head]) this.drawMarks(g, part); }, true);
+    if (this.stuck) { const s = this.stuckAt(); w.decals.bake(this.stuck.img, s.x, s.y, s.a, 1, true, BODY_SCALE); }
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
     for (const part of this.parts) w.removeBody(part.body);
     this.dead = true;
+  }
+
+  // the wounds a part carries, in its frame (the one drawPart draws it in: scaled about its root when it is)
+  drawMarks(ctx, part) {
+    const name = part === this.torso ? 'torso' : part === this.head ? 'head' : null;
+    if (!name || !part?.attached || !this.marks.some((m) => m.part === name)) return;
+    const b = part.body, o = part.root || ZERO, p = local(b.position.x, b.position.y, b.angle, o.x, o.y);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(b.angle);
+    ctx.scale(part.sx ?? 1, part.sy ?? 1);
+    ctx.translate(-o.x, -o.y);
+    for (const m of this.marks) if (m.part === name) drawMark(ctx, m);
+    ctx.restore();
   }
 
   // an arm raised over him (top) is drawn above the torso
@@ -547,6 +575,7 @@ export default class Ragdoll {
       // a part raised off the floor (top) casts its shadow further
       draw(ctx, silhouette(part.img), part, part.top ? 3 : 1, 0.3, this.torso.body.position);
       draw(ctx, part.img, part, 0, 1, this.torso.body.position);
+      this.drawMarks(ctx, part);
       // bloody stump at the root of a torn part
       if (!part.attached) stump(ctx, local(b.position.x, b.position.y, b.angle, part.root.x, part.root.y), 3);
     }

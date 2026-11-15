@@ -63,7 +63,7 @@ export const PROPS = {
   neon_sign_arrow: { hum: 'neon', material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
   jukebox: { static: true, material: 'plastic', w: 28, h: 20, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true,
     light: { r: 70, color: '#ff5a9a', intensity: 0.55, flicker: 'pulse', y: 6 } },
-  hydrant: { material: 'metal', r: 4, hp: 1, static: true, chips: '#c02020', sound: 'metal', fountain: true },
+  hydrant: { material: 'metal', r: 5.5, hp: 1, static: true, chips: '#c02020', sound: 'metal', fountain: true },
   bench: { vault: true, material: 'wood', w: 50, h: 15, hp: 8, static: true, chips: '#6a4026', sound: 'wood' },
   // chest-high chain-link gate panel: seen through and shot through (material 'mesh'), climbed over with Space;
   // guards path through it and vault it too (no blocksPath)
