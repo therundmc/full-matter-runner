@@ -8,6 +8,7 @@
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { TELL, GESTURE } from '../data/feel.js';
+import { EXEC } from '../data/finishers.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 
@@ -689,7 +690,7 @@ export function postPose(ch, P, V, B) {
     const k = smooth(ch.stow);
     P.wpn.x = lerp(P.wpn.x, B.rest.x, k); P.wpn.y = lerp(P.wpn.y, B.rest.y, k);
     P.wpn.a = lerpA(P.wpn.a, B.rest.a, k);
-    P.wpnLen = lerp(P.wpnLen, 1, k); P.wpnS = 1;
+    P.wpnLen = lerp(P.wpnLen, B.rest.len ?? 1, k); P.wpnS = 1;
     if (k > 0.5) P.top = 0;
   }
   return P;
@@ -720,6 +721,96 @@ export function trunkPose(ch, P, V) {
   }
   holdOnTheWay(ch, V, a);
   blendPose(P, V, bend);
+  return P;
+}
+
+// ---------------- finishing a man on the floor (Player.execution, data/finishers.js) ----------------
+// The player set on a man who is down, his head ahead of him (x forward in what follows). Every beat is an
+// anticipation that ends on its blow: u = 0..1 through the wait, the blow at 1; hit = s since the last one landed.
+//   gouge     kneeling astride him, both hands take his head, the thumbs are driven in (he bears down, shaking), then
+//             the head is lifted and beaten on the floor
+//   frenzy    kneeling astride him, the left hand at his throat, the blade raised by the shoulder and driven into his
+//             chest again and again, the shoulders rocking with it
+//   smash     standing over him, a foot on his chest, the weapon raised over the head with both hands (it points
+//             back, up toward the eye) and brought down: on his head, or through him when it stays planted
+//   headshot  standing over him, a foot on his chest, the gun brought down on his head at arm's length, held, fired:
+//             the arm kicks back
+const KNEES = [[-6, -7.5], [-6, 7.5]], STANCE = [[8, -2.5], [-4, 4]]; // where the feet go, kneeling / a foot on him
+const in2 = (k) => { k = clamp(k, 0, 1); return k * k; };
+
+export function execPose(ch, P, V) {
+  const ex = ch.execution, f = ex.f;
+  if (!f.pose || !ex.at) return P; // the standing strikes
+  const a = ex.face, c = Math.cos(a), s = Math.sin(a), d = ch.def;
+  const [wait, what] = f.beats[ex.i], u = ex.done ? 1 : clamp(ex.t / wait, 0, 1), first = ex.i === 0;
+  const thud = Math.exp(-ex.hit * 14); // the blow that just landed, dying away
+  // into the pose as he sets himself, out of it at the very end
+  const m = smooth(ex.age / EXEC.mount) * (ex.done ? 1 - smooth((ex.t / (f.after || 1) - 0.6) / 0.4) : 1);
+  copyPose(V, P);
+  V.ta = a;
+  V.top = 0;
+  const kneel = f.mount === 'astride';
+  (kneel ? KNEES : STANCE).forEach(([lx, ly], i) => { const ft = V.feet[i]; ft.x = lx * c - ly * s; ft.y = lx * s + ly * c; ft.a = kneel ? a + Math.PI : a; });
+  V.legs = kneel ? 1 : 0.7;
+  let lean = 0, size = kneel ? 0.9 : 1, twist = 0;
+  const hands = (lx, ly, rx, ry) => { place(V.hl, V, V.ta, lx, ly); place(V.hr, V, V.ta, rx, ry); };
+  const torso = () => { V.ta = a + twist; V.tx = c * lean; V.ty = s * lean; V.s = P.s * size * (1 - 0.04 * thud); };
+  if (f.pose === 'gouge') {
+    let fwd = 10.5, gap = 2.3, shake = 0;
+    lean = 3;
+    if (what === 'grab') { const k = smooth(u); fwd = lerp(5, 10.5, k); gap = lerp(5, 2.3, k); lean = 3 * k; }
+    else if (what === 'press') { const k = smooth(u); lean = 3 + 1.6 * k; gap = 2.3 - k; shake = Math.sin(ex.age * 70) * 0.4 * k; size -= 0.03 * k; }
+    else if (u < 0.6) { const k = smooth(u / 0.6); fwd = 10.5 - 3 * k; lean = 3 - 2 * k; size += 0.04 * k; } // the head lifted ...
+    else { const k = in2((u - 0.6) / 0.4); fwd = 7.5 + 4.5 * k; lean = 1 + 4 * k; size += 0.04 - 0.09 * k; }   // ... and beaten down
+    torso();
+    hands(fwd + shake, -gap, fwd - shake, gap);
+  } else if (f.pose === 'frenzy') {
+    // the knife hand: up by the shoulder (0) .. buried in him (1)
+    let down = 0;
+    if (what === 'pin') down = 0;
+    else if (ex.i === 1) down = in2((u - 0.5) / 0.5);                     // the first one comes from the raised hand
+    else down = u < 0.5 ? 1 - smooth(u / 0.5) : in2((u - 0.5) / 0.5);
+    if (ex.done) down = 1;
+    const k = first ? smooth(u) : 1;
+    lean = (2.5 + 2 * down) * k;
+    twist = (0.2 - 0.42 * down) * k;
+    torso();
+    hands(lerp(4, 7.5, k), lerp(-5, -2.5, k), lerp(0.5, 7, down), lerp(6.5, 1.2, down));
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a + lerp(0.35, -0.1, down);
+    V.wpnLen = lerp(0.5, 0.3, down); V.wpnS = lerp(1.3, 1, down);
+    V.top = down < 0.5 ? 1 : 0;
+  } else if (f.pose === 'smash') {
+    // the weapon: lying on him (0) .. raised over the head (1)
+    let up;
+    if (u < 0.62) up = smooth(u / 0.62);
+    else up = 1 - in2((u - 0.62) / 0.38);
+    if (ex.done) up = 0;
+    const from = first && u < 0.62 ? smooth(u / 0.3) : 1; // out of the standing pose at the very start
+    lean = lerp(3.5, -1.5, up) * from;
+    size += 0.03 * up - 0.04 * (1 - up) * from;
+    torso();
+    const hx = lerp(9, -1.5, up), hy = lerp(1.2, 1.6, up);
+    hands(lerp(5, hx - 1.5, from), lerp(-5, -hy, from), hx, hy);
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a;
+    V.wpnLen = lerp(f.plant ? 0.35 : 1, -0.6, up); V.wpnS = 1 + 0.35 * up;
+    V.top = up > 0.45 ? 2 : 0;
+  } else {
+    const k = smooth(u / 0.45), kick = ex.done ? Math.exp(-ex.t * 9) : 0, two = d.hold === 'two';
+    lean = 2 * k - 2.5 * kick;
+    size += 0.03 * kick;
+    torso();
+    const rx = lerp(6, two ? 9.5 : 10.5, k) - 3.5 * kick, tremble = Math.sin(ex.age * 50) * 0.15 * k * (1 - kick);
+    if (two) hands(lerp(5, 6.5, k) - 3 * kick, lerp(-4, -1.2, k), rx, 1.2 + tremble);
+    else hands(lerp(4, 1.5, k), lerp(-5, -7.5, k), rx, 0.8 + tremble);
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a;
+    V.wpnLen = lerp(1, 0.7, k) - 0.2 * kick; V.wpnS = 1 + 0.12 * kick;
+  }
+  reach(V.hl, V, -1);
+  reach(V.hr, V, 1);
+  if (V.wpnOn) { V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; }
+  V.carryImg = null;
+  blendPose(P, V, m);
+  P.legs = V.legs * m;
   return P;
 }
 

@@ -15,30 +15,31 @@
 // stops it (cloth on the floor, mu 1.1): a punch or a blade lays him down where he stood, a club sends him a short
 // way, buckshot carries him off.
 // crawl = odds that a guard put down this way is not quite dead yet: he turns onto his belly and drags himself a
-// little way from his killer, then lies still (CRAWL); never after a blow that leaves nothing to crawl with.
+// little way from his killer, then lies still (CRAWL); never after a blow that leaves nothing to crawl with. Rare:
+// about one man in ten (three or four in ten was "too much" for the user).
 // curl = odds that a whole body that does not crawl curls up round its wound before it goes slack (CURL): cuts and
 // bullets only, never a crushed skull or a beating.
 export const WOUNDS = {
   // fists and feet: a split lip, a nose; next to nothing on the floor
   punch: { back: [0, 0, 0], spray: [3, 110, 0.6], mist: 0, splat: [0, 0], pool: [2, 4], rate: 0.8, throw: [40, 70] },
   // bat, tire iron: crushed tissue, a few heavy drops along the blow, a small slow puddle
-  blunt: { back: [2, 90, 1], spray: [7, 210, 0.45], big: true, mist: 0, splat: [3, 2], pool: [5, 8], rate: 1.2, throw: [90, 140], crawl: 0.3 },
+  blunt: { back: [2, 90, 1], spray: [7, 210, 0.45], big: true, mist: 0, splat: [3, 2], pool: [5, 8], rate: 1.2, throw: [90, 140], crawl: 0.1 },
   // knife thrust: a narrow hole, a thin dark line of drops, then it seeps slowly
-  stab: { back: [0, 0, 0], spray: [4, 150, 0.08], mist: 0, splat: [2, 1], pool: [6, 9], rate: 1, throw: [25, 50], crawl: 0.35, curl: 0.25 },
+  stab: { back: [0, 0, 0], spray: [4, 150, 0.08], mist: 0, splat: [2, 1], pool: [6, 9], rate: 1, throw: [25, 50], crawl: 0.12, curl: 0.25 },
   // knife slash: a thin fast arc cast off along the stroke, a wider cut that runs
-  slash: { back: [2, 80, 0.6], spray: [14, 320, 0.06], sweep: 1, mist: 1, splat: [3, 3], pool: [7, 10], rate: 2, throw: [25, 55], crawl: 0.3, curl: 0.2 },
+  slash: { back: [2, 80, 0.6], spray: [14, 320, 0.06], sweep: 1, mist: 1, splat: [3, 3], pool: [7, 10], rate: 2, throw: [25, 55], crawl: 0.1, curl: 0.2 },
   // the throat opened: a short arc off the blade, then the artery pumps it out (THROAT), the biggest pool there is
   throat: { back: [2, 80, 0.5], spray: [16, 340, 0.05], sweep: 0.8, mist: 2, splat: [4, 4], pool: [24, 30], rate: 7, throw: [0, 20] },
   // 9 mm: a small entry, the round usually stays in, a short spray when it does not
-  small: { back: [3, 100, 0.5], spray: [7, 230, 0.3], exit: [6, 270, 0.3], mist: 3, splat: [3, 3], pool: [8, 11], rate: 2.2, throw: [60, 100], crawl: 0.4, curl: 0.2 },
+  small: { back: [3, 100, 0.5], spray: [7, 230, 0.3], exit: [6, 270, 0.3], mist: 3, splat: [3, 3], pool: [8, 11], rate: 2.2, throw: [60, 100], crawl: 0.12, curl: 0.2 },
   // subsonic 9 mm: even less of a mess
-  quiet: { back: [2, 80, 0.5], spray: [5, 190, 0.3], exit: [4, 230, 0.3], mist: 2, splat: [3, 2], pool: [7, 10], rate: 2, throw: [50, 85], crawl: 0.4, curl: 0.2 },
+  quiet: { back: [2, 80, 0.5], spray: [5, 190, 0.3], exit: [4, 230, 0.3], mist: 2, splat: [3, 2], pool: [7, 10], rate: 2, throw: [50, 85], crawl: 0.12, curl: 0.2 },
   // buckshot at close range: a wide wet cone, torn flesh, a lake
   buckshot: { back: [10, 150, 0.9], spray: [64, 380, 0.6], big: true, exit: [12, 320, 0.5], mist: 24, splat: [11, 10], pool: [16, 21], rate: 8, throw: [190, 260], curl: 0.15 },
   // a few pellets from far away: several small punctures
-  pellet: { back: [3, 90, 0.7], spray: [10, 220, 0.5], exit: [4, 220, 0.5], mist: 4, splat: [4, 5], pool: [9, 13], rate: 3, throw: [70, 110], crawl: 0.4, curl: 0.2 },
+  pellet: { back: [3, 90, 0.7], spray: [10, 220, 0.5], exit: [4, 220, 0.5], mist: 4, splat: [4, 5], pool: [9, 13], rate: 3, throw: [70, 110], crawl: 0.12, curl: 0.2 },
   // 7.62: through and through, a long tight jet far behind the body
-  rifle: { back: [6, 130, 0.5], spray: [20, 450, 0.16], exit: [24, 540, 0.13], mist: 12, splat: [5, 4], pool: [12, 16], rate: 5, throw: [100, 150], crawl: 0.2, curl: 0.2 },
+  rifle: { back: [6, 130, 0.5], spray: [20, 450, 0.16], exit: [24, 540, 0.13], mist: 12, splat: [5, 4], pool: [12, 16], rate: 5, throw: [100, 150], crawl: 0.07, curl: 0.2 },
   // sniper round: a fist-sized exit, a plume across the room
   heavy: { back: [9, 170, 0.6], spray: [36, 560, 0.2], big: true, exit: [44, 660, 0.15], mist: 26, splat: [9, 8], pool: [15, 20], rate: 8, throw: [200, 250], curl: 0.15 },
   // thrown through / cut by glass: many cuts all around
@@ -140,6 +141,15 @@ export const CURL = { fall: 0.5, dur: [1.2, 2], roll: 0.35 };
 export const THROAT = {
   odds: 0.35, kneel: 0.45, pitch: 0.35, dur: [2.3, 2.9], slip: 0.22, upright: 0.42,
   beats: [3, 5], gap: 0.34, slow: 1.2, fade: 0.72, jet: [50, 260], beat: 0.2, push: [1, 2],
+};
+
+// A head taken off a man on his feet (entities/Ragdoll.js, fx/DyingPose.js): the body sinks onto its knees where it
+// stood, arms hanging, stays there while the neck throws blood up in spurts that come down all round it, then
+// pitches forward onto the floor. The fields of THROAT, plus hold = s it stays on its knees and odds = chance a
+// beheaded body does this instead of being thrown down like any other.
+export const BEHEAD = {
+  odds: 0.7, kneel: 0.3, hold: 0.9, pitch: 0.4, dur: [2.3, 2.8], slip: 0.2, upright: 0.42,
+  beats: [5, 7], gap: 0.2, slow: 1.12, fade: 0.84, jet: [50, 260], beat: 0.2, push: [0, 1],
 };
 
 // Death throes (entities/Ragdoll.js): his limbs jerking a moment. odds = chance a body that does not crawl moves at

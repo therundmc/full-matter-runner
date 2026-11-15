@@ -137,8 +137,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    burning when they run ('patronLeft', `AMBIENT.leave`).
    A guard killed whole is sometimes not quite dead: he gets onto his belly and drags himself a little way on his
    forearms, head first, away from his killer, uneven pulls, one may fail, then lies still (`crawl` odds per wound in
-   data/wounds.js, `CRAWL`, fx/CrawlPose.js; the user wants it short, rare, organic, and ON HIS BELLY, not on his
-   back); or he curls up on his wound (`curl`), or a leg kicks a few times (`SPASM`), fx/DyingPose.js. Gun guards tip a
+   data/wounds.js, `CRAWL`, fx/CrawlPose.js; the user wants it short, rare (about one man in ten: more was "too much"), organic, and ON
+   HIS BELLY, not on his back); or he curls up on his wound (`curl`), or a leg kicks a few times (`SPASM`), fx/DyingPose.js. A man
+   beheaded on his feet sinks onto his knees, the neck spurting, then pitches forward (`BEHEAD`, the user's idea). Gun guards tip a
    table over for a shield before kneeling behind it (prop def `flips`, `Prop.flip`, `Tactics.tableToFlip`, `AI.flip`).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 
@@ -186,7 +187,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
   by the dropped item): snapped in two (`breaks: 'snap'`, `snaps` left in the hand) or left planted in the body
   (`'lodge'`), `Character.breakWeapon`, drawn on the body by Ragdoll `stuck`. Strike gestures 0-3 (3 = a club's spin,
   a blade's overhead stab). Blow effects: fx/Blows.js; finishers (sequences of `beats`) / takedowns per weapon:
-  data/finishers.js; kill tags (collateral, slide kill, wallbang, from behind, spin, weapon break...): `SCORING.tags`
+  data/finishers.js (a man who is down: ANY attack on him, or Space, starts his execution, and the player is locked in
+  its animation, `CharacterAnim.execPose`: fists = astride him, thumbs in his eyes; knife = astride, stabbed again and
+  again; club = skull crushed from over him; bat = home run; gun = a foot on his chest, his head blown off); kill tags (collateral, slide kill, wallbang, from behind, spin, weapon break...): `SCORING.tags`
   + `Scoring.killTags`, fed by the `how` of `kill`. A body that does not crawl may twitch a moment (`THROES`, data/wounds.js).
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.

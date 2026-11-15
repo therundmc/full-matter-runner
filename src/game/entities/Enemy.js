@@ -5,7 +5,7 @@
 // Director
 // (ai/Director.js) for alert phases, searches and tactical spots. Geometry lives in ai/Tactics.js,
 // perception maths in ai/Perception.js, tuning in Config (ENEMY, AI).
-import { ENEMY, AI, TILE, CAT, MASK, PALETTE } from '../Config.js';
+import { ENEMY, AI, TILE, CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { BARKS, SHOUTED } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
@@ -581,9 +581,13 @@ export default class Enemy extends Character {
       }
     }
     if (S.rest === 'desk' && this.seat) {
-      // his weapon across the desk in front of him, his ashtray on the arm of his chair
+      // his weapon stood on the floor against the end of the desk, on his left, the barrel on its edge (seen from
+      // above it shows short: len); his ashtray on the arm of his chair
       const desk = this.nearest('desk', this.seat, 3 * TILE), f = this.seat.face;
-      if (desk) this.rest = { x: desk.x + Math.cos(f) * 6, y: desk.y + Math.sin(f) * 6, a: f + Math.PI / 2 + 0.2 };
+      if (desk) {
+        const lx = Math.cos(f - Math.PI / 2), ly = Math.sin(f - Math.PI / 2), out = desk.def.w / 2 + 8; // his left
+        this.rest = { x: desk.x + lx * out - Math.cos(f) * 3, y: desk.y + ly * out - Math.sin(f) * 3, a: f + Math.PI / 2 - 0.15, len: 0.6 };
+      }
       this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
     }
     this.routine = new Routine(S, this.seat?.slot ?? 0);
@@ -700,7 +704,8 @@ export default class Enemy extends Character {
       base: this.postureOf, w: this.posture, fwd: b.fwd ?? 0, side: (b.side ?? 0) * side, twist: (b.twist ?? 0) * side,
       dip: b.dip ?? 0, foot: b.foot ? [side > 0 ? b.foot[0] : 1 - b.foot[0], b.foot[1], b.foot[2] * side] : null,
       hands: ph ? this.gestureHands(ph) : null, wpn: null,
-      rest: this.rest && this.posture > 0 ? { x: this.rest.x - this.x, y: this.rest.y - this.y, a: this.rest.a } : null,
+      // (a world point, in pose px: he is drawn BODY_SCALE bigger)
+      rest: this.rest && this.posture > 0 ? { x: (this.rest.x - this.x) / BODY_SCALE, y: (this.rest.y - this.y) / BODY_SCALE, a: this.rest.a, len: this.rest.len } : null,
     };
     if (ph?.g === 'fiddle' && B.hands) {
       // his own weapon in his hands: a blade pointed at his nails, a club turning over in the air

@@ -10,7 +10,8 @@
 //          each, the free one nearest his post; side -1: his gestures mirrored, the other arm along the backrest)
 //          facing `face` (deg, in that frame)
 //   sit, rise   s he takes to sit down, to get up when something is up (frozen meanwhile: a beat the player gets)
-//   rest   'desk': his weapon lies across the nearest desk while he sits, he grabs it getting up
+//   rest   'desk': his weapon stands against the end of the nearest desk, on his left, while he sits; he grabs it
+//          getting up
 //   stay   all calm, he never leaves it for another pastime (a chat, a cigarette, a leak...)
 //   gaze   his eyes follow a stranger coming near in front of him (a doorman)
 //   walk   a patrol: how he carries his hands on his round ('pockets'); his acts are played at the halts

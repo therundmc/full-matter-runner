@@ -4,7 +4,7 @@ import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
-import { WOUNDS, BODY, THROAT, THROES, SPASM, woundFor, blowScale, markOf } from '../data/wounds.js';
+import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, woundFor, blowScale, markOf } from '../data/wounds.js';
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
@@ -76,8 +76,11 @@ export function gore(world, ch, angle, cause, by, how) {
     // physical body; close shotgun blasts tear limbs off
     const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
     const whole = mode === 'corpse' && !detach.length;
-    const dying = cause === 'snap' ? null : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
-    world.addCorpse(new Ragdoll(world, k, x, y, dying === 'throat' ? ch.angle + rand(-0.3, 0.3) : angle, slide, {
+    // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
+    const behead = mode === 'headless' && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
+    const dying = cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
+    const kneels = dying === 'throat' || dying === 'behead'; // where he stood, pitching forward the way he faced
+    world.addCorpse(new Ragdoll(world, k, x, y, kneels ? ch.angle + rand(-0.3, 0.3) : angle, behead ? 0 : slide, {
       headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying, mark: markOf(wd),
       // he faced his killer: he goes over backwards (a cut throat pitches forward)
       back: !!dying && dying !== 'throes' && dying !== 'throat' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,

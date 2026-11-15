@@ -253,3 +253,19 @@ test('throat: on his knees, hands at his throat, forward onto the floor, the art
     end.legs.forEach((q, k) => assert.ok(inRange(G.legs[k], q, J.hip), 'leg ' + k));
   }
 });
+
+test('beheaded: the body kneels where it stood, arms hanging, the neck spurting, then pitches forward and lies', async () => {
+  const { BEHEAD } = await load('game/data/wounds.js');
+  const G = { ...GEOM, half: 8 };
+  for (let seed = 1; seed <= 40; seed++) {
+    const plan = throatPlan(seed, BEHEAD), down = BEHEAD.kneel + BEHEAD.hold + BEHEAD.pitch;
+    assert.ok(plan.dur >= BEHEAD.dur[0] && plan.dur <= BEHEAD.dur[1] && plan.dur > down);
+    assert.ok(plan.beats.filter((b) => b.t0 < BEHEAD.kneel + BEHEAD.hold).length >= 3, 'several spurts while it kneels');
+    const held = throatPose(plan, BEHEAD.kneel + BEHEAD.hold * 0.5, G, BEHEAD);
+    assert.ok(!held.down && held.arch < 0.6, 'still on its knees, foreshortened');
+    for (const a of held.arms) assert.ok(a.s < 0.6, 'the arms hang');
+    const end = throatPose(plan, plan.dur, G, BEHEAD);
+    assert.ok(end.down && Math.abs(end.arch - 1) < 1e-6 && end.jet === 0, 'flat on the floor, bled out');
+    for (const a of end.arms) assert.ok(a.s > 0.95);
+  }
+});

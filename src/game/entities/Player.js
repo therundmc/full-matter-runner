@@ -8,7 +8,7 @@ import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind } from '../systems/Takedown.js';
-import { finisherFor, TAKEDOWNS } from '../data/finishers.js';
+import { finisherFor, TAKEDOWNS, EXEC } from '../data/finishers.js';
 import { MOMENTS, GESTURE } from '../data/feel.js';
 import { blowFx } from '../fx/Blows.js';
 import { landMoment } from '../fx/Impact.js';
@@ -122,9 +122,12 @@ export default class Player extends Character {
       if (d < best) { best = d; this.nearItem = it; }
     }
     if (this.nearItem) this.nearItem.hilite = 1;
+    // the nearest man down within reach: any attack on him, or Space, finishes him (data/finishers.js)
     this.nearDowned = null;
+    let down = EXEC.near;
     for (const e of w.enemies) {
-      if (e.alive && e.knocked > 0 && Math.hypot(e.x - this.x, e.y - this.y) < 26) { this.nearDowned = e; break; }
+      const de = Math.hypot(e.x - this.x, e.y - this.y);
+      if (e.alive && e.knocked > 0 && de < down) { down = de; this.nearDowned = e; }
     }
     this.nearTrunk = w.props.find((p) => p.trunk && !p.trunk.open && !p.dead && p.nearTrunk(this.x, this.y)) || null;
     this.nearBack = (!this.nearDowned && w.enemies.find((e) => behind(this, e) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
@@ -132,7 +135,10 @@ export default class Player extends Character {
     // attack
     const d = this.def;
     if (d.kind === 'gun' ? (d.auto ? input.mouseDown(0) : input.mouseHit(0)) : input.mouseDown(0)) {
-      if (input.mouseHit(0) && !this.armed && this.nearDowned) this.startExecution(this.nearDowned);
+      // on a man who is down, at our feet and under the cursor: his execution, whatever is in the hand
+      const nd = this.nearDowned;
+      if (nd && (down < 14 || Math.abs(angDiff(this.angle, Math.atan2(nd.y - this.y, nd.x - this.x))) < EXEC.aim)
+        && (input.mouseHit(0) || d.kind !== 'gun')) this.startExecution(nd);
       else {
         this.shootDown = d.kind === 'gun' ? this.corpseAt(aim.x, aim.y) : null;
         // dry: reload if we can, otherwise hurl the useless gun at them
@@ -352,11 +358,28 @@ export default class Player extends Character {
     else if ((a.w -= dt / 0.18) <= 0) this.slideAnim = null;
   }
 
-  // ground finisher on a knocked-out enemy: the beats of data/finishers.js one after the other, the last one kills
+  // ground finisher on a knocked-out enemy (data/finishers.js): the player is taken over until it is done. He sets
+  // himself on the man (ex.at, facing ex.face; standing over him where there is no room for it), the beats land one
+  // after the other, the last one kills, and he stays a moment (ex.done). The poses: CharacterAnim execPose.
   startExecution(target) {
-    const f = finisherFor(this.def, this.weapon);
-    this.execution = { target, t: 0, i: 0, f };
+    const f = finisherFor(this.def, this.weapon), w = this.world;
+    const dir = target.downAngle, c = Math.cos(dir), s = Math.sin(dir); // the way his head lies
+    const on = (k) => ({ x: target.x + c * k, y: target.y + s * k });
+    const head = on(EXEC.head);
+    let at = null, face = dir;
+    if (f.mount === 'astride') at = on(EXEC.astride);
+    else if (f.mount === 'over') at = on(EXEC.over);
+    else if (f.mount === 'side') {
+      const side = (this.x - head.x) * -s + (this.y - head.y) * c >= 0 ? 1 : -1; // the side he is already on
+      at = { x: target.x + c * EXEC.side[0] - s * side * EXEC.side[1], y: target.y + s * EXEC.side[0] + c * side * EXEC.side[1] };
+      face = Math.atan2(head.y - at.y, head.x - at.x);
+    }
+    if (at && w.map.solidAt(at.x, at.y)) at = null;
+    // t: s into the beat (it starts once he is in place), hit: s since the last beat landed, age: s since it began
+    this.execution = { target, f, at, face, head, hits: at ? (f.at === 'chest' ? on(EXEC.chest) : head) : target,
+      t: at ? -EXEC.mount : 0, i: 0, age: 0, hit: 9, done: false };
     target.executing = true;
+    this.swing = 0;
     this.steer(0, 0, 0, 1);
     if (f.beats[0][1] === 'windup') this.windup();
   }
@@ -371,41 +394,61 @@ export default class Player extends Character {
 
   updateExecution(dt) {
     const ex = this.execution, tg = ex.target, w = this.world, f = ex.f, d = this.def;
+    ex.age += dt;
+    ex.hit += dt;
+    if (ex.at) {
+      // held in place on him: nothing moves him, he looks where the finisher has him look
+      const k = 1 - Math.exp(-dt * 20);
+      Body.setPosition(this.body, { x: this.x + (ex.at.x - this.x) * k, y: this.y + (ex.at.y - this.y) * k });
+      this.vel = { x: 0, y: 0 };
+      Body.setVelocity(this.body, this.vel);
+      this.angle += angDiff(this.angle, ex.face) * Math.min(1, dt * 16);
+    } else {
+      const dx = tg.x - this.x, dy = tg.y - this.y;
+      this.angle = Math.atan2(dy, dx);
+      this.steer(dx, dy, Math.hypot(dx, dy) > 12 ? 1.5 : 0, 0.5);
+    }
+    if (ex.done) {
+      if ((ex.t += dt) >= (f.after ?? 0)) { this.execution = null; this.cooldown = 0.25; }
+      return;
+    }
     if (!tg.alive) { this.execution = null; this.swing = 0; return; }
-    // stand over the target
-    const dx = tg.x - this.x, dy = tg.y - this.y;
-    this.angle = Math.atan2(dy, dx);
-    this.steer(dx, dy, Math.hypot(dx, dy) > 12 ? 1.5 : 0, 0.5);
     ex.t += dt;
     const [wait, what] = f.beats[ex.i];
     if (ex.t < wait) return;
     ex.t = 0;
-    const last = ex.i === f.beats.length - 1;
+    ex.hit = 0;
+    const last = ex.i === f.beats.length - 1, { x, y } = ex.hits;
     if (what === 'windup') {
       // let go: the swing comes round in slow motion
       if (f.slowmo) w.slowmo(...f.slowmo);
-    } else {
-      this.swingDur = this.swing = 0.22;
-      this.strike = typeof what === 'number' ? what : 2;
-      // a weapon's stroke comes from its own side (as in attack), fists alternate
-      this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
-      w.particles.blood(tg.x, tg.y, rand(0, 6.28), Math.PI, 14, 160);
-      w.decals.stampBlood(tg.x, tg.y, 6, 4);
+    } else if (what === 'grab' || what === 'pin') w.sound('swing', this.x, this.y, 0.4, { pitch: 1.3 }); // his hands on him
+    else {
+      if (!f.pose) {
+        this.swingDur = this.swing = 0.22;
+        this.strike = typeof what === 'number' ? what : 2;
+        // a weapon's stroke comes from its own side (as in attack), fists alternate
+        this.punchSide = d.hold === 'melee' ? (this.strike === 1 ? -1 : 1) : -this.punchSide;
+      }
+      const light = what === 'press';
+      w.particles.blood(x, y, rand(0, 6.28), Math.PI, light ? 6 : 14, light ? 90 : 160);
+      w.decals.stampBlood(x, y, light ? 3 : 6, light ? 2 : 4);
       if (what === 'shot') {
-        if (this.weapon.mag > 0) {
-          this.weapon.mag--;
-          const m = this.muzzlePos();
-          muzzleFlash(w, m.x, m.y, this.angle, d, this);
-          w.sound(d.sound, this.x, this.y);
-          if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
-        } else w.sound('punch', tg.x, tg.y);
-      } else {
-        w.sound(d.hold === 'none' ? 'punch' : d.swing === 'blade' ? 'slash' : 'splat', tg.x, tg.y);
+        this.weapon.mag--;
+        this.recoil = 1;
+        const m = this.muzzlePos();
+        muzzleFlash(w, m.x, m.y, this.angle, d, this);
+        w.sound(d.sound, this.x, this.y);
+        if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
+      } else if (light) w.sound('punch', x, y, 0.5, { pitch: 0.8 });
+      else if (what === 'stab') w.sound('slash', x, y, 0.8, { pitch: rand(0.95, 1.15) });
+      else {
+        w.sound(d.hold === 'none' ? 'punch' : d.swing === 'blade' ? 'slash' : 'splat', x, y);
         if (d.swing === 'club') blowFx(w, d, tg, this.angle, { heavy: true, from: 'side' });
-        if (what === 'stomp') {
-          w.particles.dust(tg.x, tg.y, 8, 12, '#6a6272', { speed: 50, size: 4, life: 0.7, alpha: 0.2 });
+        if (what === 'stomp' || what === 'slam') {
+          w.particles.dust(x, y, 8, 12, '#6a6272', { speed: 50, size: 4, life: 0.7, alpha: 0.2 });
           w.shake(MOMENTS.stomp.shake);
-          w.sound('bodyFall', tg.x, tg.y, 1);
+          w.sound('bodyFall', x, y, 1);
         }
       }
       // every beat but the last lands as a blow of its own (the last one lands as the finisher, once he is dead)
@@ -428,8 +471,8 @@ export default class Player extends Character {
     tg.kill(angle, f.cause, this, by, { finisher: true, label: f.label });
     landMoment(w, tg, angle, d, MOMENTS.finisher, !tg.alive);
     if (f.plant) this.breakWeapon(this.angle, true);
-    this.execution = null;
-    this.cooldown = 0.25;
+    ex.done = true;
+    ex.i = f.beats.length - 1;
   }
 
   // seize a guard from behind: he can do nothing until it is over (Enemy.held), nobody hears it

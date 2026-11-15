@@ -14,7 +14,7 @@ import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE } from '../data/feel.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt }
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt }
   from './CharacterAnim.js';
 
 const { Bodies, Body } = Matter;
@@ -667,6 +667,7 @@ export default class Character {
     if (this.vaulting) vaultPose(this, P, this.pose2);
     if (this.sit > 0) sitPose(this, P, this.pose2);
     if (this.trunkOpen) trunkPose(this, P, this.pose2);
+    if (this.execution) execPose(this, P, this.pose2);
     if (this.doorHand) doorHandPose(this, P);
     // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
     if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');

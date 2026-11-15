@@ -101,19 +101,21 @@ test('blows: a blow takes a man from behind, the side or the front; every weapon
   assert.equal(of('knife'), FINISHERS.blade);
   assert.equal(of('cue_half'), FINISHERS.stake);
   assert.equal(of('cue'), FINISHERS.cue);
-  assert.equal(of('pistol', 7), FINISHERS.doubleTap);
+  assert.equal(of('pistol', 7), FINISHERS.gun);
   assert.equal(of('pistol', 1), FINISHERS.gun);
-  assert.equal(of('pistol', 0), FINISHERS.gun);
-  assert.equal(of('shotgun', 6), FINISHERS.gun, 'buckshot does not double tap');
+  assert.equal(of('pistol', 0), FINISHERS.club, 'an empty gun is a club');
+  assert.equal(of('shotgun', 6), FINISHERS.gun);
   assert.equal(of('bazooka', 1), FINISHERS.gun);
   assert.ok(FINISHERS.cue.plant && WEAPONS[WEAPONS.cue.snaps].swing === 'blade', 'a snapped cue is a stake');
   for (const [name, f] of Object.entries(FINISHERS)) {
     assert.ok(f.label && ['execute', 'slash', 'melee'].includes(f.cause) && f.beats.length > 0, name);
     for (const [wait, what] of f.beats) {
       assert.ok(wait > 0, name);
-      assert.ok([0, 1, 2, 3].includes(what) || ['windup', 'stomp', 'shot'].includes(what), `${name}: ${what}`);
+      assert.ok([0, 1, 2, 3].includes(what) || ['windup', 'stomp', 'shot', 'grab', 'press', 'slam', 'pin', 'stab', 'smash'].includes(what), `${name}: ${what}`);
     }
     assert.notEqual(f.beats[f.beats.length - 1][1], 'windup', `${name} ends on a blow`);
+    assert.ok(['astride', 'over', 'side'].includes(f.mount) && ['head', 'chest'].includes(f.at) && f.after > 0, name);
+    assert.ok(!f.pose || ['gouge', 'frenzy', 'smash', 'headshot'].includes(f.pose), name);
   }
   for (const t of Object.values(TAKEDOWNS)) assert.ok(t.action && t.label);
   for (const d of Object.values(WEAPONS)) if (d.hold === 'melee') assert.ok(['club', 'blade'].includes(d.swing) && d.material, d.name);

@@ -84,8 +84,8 @@ export function curlPose(plan, u, from, geom, up) {
 
 // { dur (s), beats: [{ t0, d (s), k (strength, 0 to 1), sweep (which way its aim runs) }], pushes: [{ t0, d, leg }],
 // side (the cheek he lands on) }
-export function throatPlan(seed) {
-  const R = rng(seed), T = THROAT, J = ([a, b]) => mix(a, b, R());
+export function throatPlan(seed, T = THROAT) {
+  const R = rng(seed), J = ([a, b]) => mix(a, b, R());
   const dur = J(T.dur), n = T.beats[0] + Math.floor(R() * (T.beats[1] - T.beats[0] + 1));
   const beats = [];
   // the heart slows: the spurts come further and further apart, each weaker than the last
@@ -97,7 +97,7 @@ export function throatPlan(seed) {
   }
   // once he is down: a leg pushes, maybe the other one after it
   const np = T.push[0] + Math.floor(R() * (T.push[1] - T.push[0] + 1)), leg = R() < 0.5 ? 0 : 1;
-  const t0 = T.kneel + T.pitch + J([0.05, 0.25]);
+  const t0 = T.kneel + (T.hold || 0) + T.pitch + J([0.05, 0.25]);
   const pushes = Array.from({ length: np }, (_, i) => ({ t0: t0 + i * J([0.45, 0.6]), d: J([0.3, 0.42]), leg: (leg + i) % 2 }));
   return { dur, beats, pushes, side: R() < 0.5 ? -1 : 1 };
 }
@@ -106,9 +106,10 @@ export function throatPlan(seed) {
 // Returns { arch (his length as seen from above: foreshortened while he kneels), rock, roll, top, arms, legs, head
 // (with dy: px it sits back over his shoulders while he kneels), jet (0 to 1: how hard the artery throws now),
 // jetA (rad its aim is off the line of his neck), z (px above the floor it leaves from), down (he lies on the floor) }.
-export function throatPose(plan, u, geom) {
-  const T = THROAT, half = geom.half;
-  const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel) / T.pitch), up = 1 - fall;
+// T: THROAT, or BEHEAD (data/wounds.js): the head is gone, the arms hang, he stays on his knees T.hold s first.
+export function throatPose(plan, u, geom, T = THROAT) {
+  const half = geom.half, stay = T.hold || 0;
+  const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel - stay) / T.pitch), up = 1 - fall;
   const slipAt = plan.dur * (1 - T.slip), slack = smooth((u - slipAt) / (plan.dur - slipAt));
   const arch = mix(mix(0.28, T.upright, kneel), 1, fall);
   let jet = 0, jetA = 0;
@@ -124,7 +125,9 @@ export function throatPose(plan, u, geom) {
   const arms = geom.arms.map((g, k) => {
     const dx = (g.x < 0 ? -1.2 : 1.2) - g.x, dy = -half * arch + 1.5 + k * 1.5 - g.y * arch;
     const held = { a: Math.atan2(dy, dx) + tremble, s: clamp(Math.hypot(dx, dy) / g.len, 0.3, 1) };
-    return mixPose(held, { a: Math.PI / 2 + outward(g) * 0.3, s: 1 }, slack);
+    if (!stay) return mixPose(held, { a: Math.PI / 2 + outward(g) * 0.3, s: 1 }, slack);
+    // no head, no hands to it: the arms hang (short, seen from above), jerking with each spurt, then lie where they fall
+    return mixPose({ a: Math.PI / 2 + outward(g) * 0.3 + tremble * 4, s: 0.45 }, { a: Math.PI / 2 + outward(g) * 0.55, s: 1 }, fall);
   });
   // standing, the legs are under him; kneeling, the shins lie behind him; down, the legs stretch out
   const legs = geom.legs.map((g, k) => {
@@ -139,6 +142,6 @@ export function throatPose(plan, u, geom) {
   return {
     arch, rock, roll: 1, top: fall < 0.5, arms, legs,
     head: { a: plan.side * 0.45 * fall + tremble, s: 1 - 0.1 * jet * fall, dy: up * (half * arch * 0.7 + 4) },
-    jet, jetA: jetA + plan.side * 0.45 * fall, z: mix(3, 15, up), down: u >= T.kneel + T.pitch,
+    jet, jetA: jetA + plan.side * 0.45 * fall, z: mix(3, 15, up), down: u >= T.kneel + stay + T.pitch,
   };
 }
