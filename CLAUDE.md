@@ -153,6 +153,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    HIS BELLY, not on his back); or he curls up on his wound (`curl`), or a leg kicks a few times (`SPASM`), fx/DyingPose.js. A man
    beheaded on his feet sinks onto his knees, the neck spurting, then pitches forward (`BEHEAD`, the user's idea). Gun guards tip a
    table over for a shield before kneeling behind it (prop def `flips`, `Prop.flip`, `Tactics.tableToFlip`, `AI.flip`).
+   A body thrown toward a wall within reach of its slide is slammed against it and stays sat there, legs out, head
+   dropped (Ragdoll.propUp, `SIT`: his wish, he saw them bounce off; a shot or a shove lays it flat).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
 8. Front end and tutorial (2026-11-15, built while he slept: NOT yet validated, expect feedback).
    The title screen and the pause are a real menu (ui/Menu.js = pages and navigation, DOM-free; ui/MenuArt.js = its
@@ -176,8 +178,8 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    `slack`, normal `rate` of fire): he fires as the player turns the corner, the slide is what dodges it (his wish).
    What lies flat (doormats, stairs, the runner, the floor hole) is floor paint (level `floor`, levelkit
    `paint`), not props, so no round stops on it. The dive out ends in state `fall`: a moment of slow motion going
-   black, then the leap as a comic page (ui/cine/Leap.js: through the glass, the fall, the roll in the alley, on one
-   knee under the burning windows), "THE NEXT DAY." (his words; level 1 is dated the next night), then level 1. The title screen is the street seen FROM HIS WINDOW
+   black, then the leap heard in the dark (ui/cine/Leap.js: glass, wind, the landing, the roll; he found the comic
+   page of it "even uglier", it was removed), "THE NEXT DAY." (his words; level 1 is dated the next night), then level 1. The title screen is the street seen FROM HIS WINDOW
    (ui/cine/Pane.js: rain running down the glass, the frame, his bottle on the sill; the user's idea). NEW GAME plays
    the opening first (ui/Cinematic.js, state `cinematic`; he wants a real AAA-style intro, pixel art with a real art
    direction, rich detail): the camera pulls back from that window into his bedroom (ui/cine/Room.js: map with his
