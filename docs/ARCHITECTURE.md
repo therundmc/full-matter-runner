@@ -54,6 +54,7 @@ src/
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
       Ambience.js         the night heard: city wash, gusts, hums, drips, a room's murmur (one-shots repeated; DOM-free)
       Tutorial.js         a level that teaches: rooms played in order, dormant guards woken wave by wave, hints, retry from the last room (DOM-free)
+      Fires.js            things burning for the look of it (level `fires`), caught stage by stage in the tutorial (DOM-free)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
@@ -97,7 +98,8 @@ src/
     debug/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
-    ui/                   HUD, Indicators (off-screen guard markers), Screens, SandboxPanel, Text
+    ui/                   HUD, Indicators (off-screen guard markers), Screens, SandboxPanel, Text, Menu / MenuArt,
+                          Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Panels, Leap: the tutorial's exit)
     data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)

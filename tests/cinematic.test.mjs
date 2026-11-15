@@ -10,24 +10,28 @@ test('cinematic: the camera pulls back from the window into the room, the night 
   let prev = start;
   for (let t = 0; t <= CINE_END + 0.2; t += 0.02) {
     const v = cineView(t);
-    assert.ok(v.zoom <= prev.zoom + 1e-9 && v.tilt >= prev.tilt - 1e-9 && v.rise >= prev.rise - 1e-9 && v.logo <= prev.logo + 1e-9, `it went back at ${t.toFixed(2)}`);
-    assert.ok(!(v.tilt > 0 && (v.zoom > 1 + 1e-9 || v.rise < 1 || v.strip)), 'the room is all there, the man on his feet, before the view tips');
+    for (const key of ['tilt', 'rise', 'gas', 'fire']) assert.ok(v[key] >= prev[key] - 1e-9, `${key} went back at ${t.toFixed(2)}`);
+    assert.ok(v.zoom <= prev.zoom + 1e-9 && v.logo <= prev.logo + 1e-9, `it went back at ${t.toFixed(2)}`);
+    assert.ok(!(v.tilt > 0 && (v.zoom > 1 + 1e-9 || v.rise < 1 || v.page)), 'the room is all there, the man up and dressed, before the view tips');
+    assert.ok(!(v.page && (v.gas > 0 || v.rise > 0)), 'nothing happens in the bedroom behind the page');
     prev = v;
   }
   assert.ok(Math.abs(cineView(CINE.pull).zoom - 1) < 1e-9 && cineView(CINE.pull).logo === 0);
   assert.equal(cineView(CINE_END - 0.01).over, false);
   assert.ok(cineView(CINE_END).over && cineView(CINE_END).tilt === 1);
-  // the story in its order: the noise, his eye, the scream, the shot, the panels, he gets up
-  const order = [CINE.thump, CINE.eye[0], CINE.eyeOpen, CINE.eye[1], CINE.scream[0], CINE.shot, CINE.strip[0], ...CINE.steps, CINE.says, CINE.strip[1], CINE.rise[0], CINE.rise[1], CINE.tiltAt];
+  // the story in its order: the boards, his eye, the super's voice, the shot, the page, the petrol, the fire, he gets up
+  const order = [CINE.thump, CINE.eye[0], CINE.eyeOpen, CINE.eye[1], CINE.voice[0], CINE.shot, CINE.page[0], ...CINE.panels, CINE.says,
+    CINE.page[1], CINE.gas, CINE.rise[0], CINE.fire, CINE.rise[1], CINE.tiltAt];
   for (let i = 1; i < order.length; i++) assert.ok(order[i] >= order[i - 1], `beat ${i} comes before the one it follows`);
-  assert.deepEqual(CINE.panels.map((p) => p >= CINE.strip[0] && p < CINE.strip[1]), [true, true, true]);
-  assert.equal(CINE.scream[1], CINE.shot, 'the shot cuts the scream');
+  assert.equal(CINE.voice[1], CINE.shot, 'the shot cuts him off');
+  assert.equal(CINE.captions.length, CINE.panels.length - 1, 'a caption for each panel but the last, which speaks');
   assert.ok(CINE.skipAfter < 1);
 });
 
 test('cinematic: each sound once, in the order of the story', () => {
   const heard = [];
   for (let t = 0; t < CINE_END; t += 1 / 60) heard.push(...cineBeats(t, t + 1 / 60).map((b) => b.name));
-  assert.deepEqual(heard.filter((n) => n !== 'air'), ['bodyFall', 'door', 'scream', 'pistol', 'bodyFall', 'step', 'step', 'getUp']);
-  assert.ok(heard.filter((n) => n === 'air').length >= 2, 'the night outside all along');
+  assert.deepEqual(heard.filter((n) => n !== 'air'),
+    ['woodBreak', 'door', 'shout', 'pistol', 'bodyFall', 'getUp', 'ignite', 'crackle', 'crackle', 'crackle', 'pickup']);
+  assert.ok(heard.filter((n) => n === 'air').length >= 3, 'the night outside all along');
 });

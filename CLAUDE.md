@@ -33,7 +33,10 @@
 ## Visual rework (2026-11-15: the user's verdicts, after three wrong turns of mine)
 - KEEP THE PIXEL ART. He wants "a bit more detail, more real", not another style: a smooth shaded repaint ("blocs
   degueulasses"), a new hero in a rain poncho ("skin degueulasse") and anything that leaves pixel art were all
-  rejected. Strictly top-down. The hero stays the blond man in the cyan jacket. Never a rooster or animal mask.
+  rejected. Strictly top-down. Never a rooster or animal mask. The hero (his reference picture, 2026-11-15, an
+  original take on it): brown hair to his collar, a Mediterranean tan ("south of France", not brown or dark), a dark
+  cap, a scarf up over his mouth, a long charcoal coat collar up, grey knit, jeans, boots, a leather satchel across
+  him. No bright turquoise on him ("pas joli, ca denote"): the lining and the cap's button are a dark petrol blue.
 - How detail is added: a sprite is painted at TWICE the pixel density (`FINE` in tools/generate_assets.py), plain pixel
   art, and the engine draws it at half size (`density` / `img.k` in engine/Assets.js; `sw` / `sh` give a sprite's size
   in world px; drawSprite, the decal bake and the weapon drawing honour `img.k`; a raw drawImage must scale by it).
@@ -149,16 +152,30 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    options by category (audio, video: lens / shake / fullscreen, controls, game: replay the tutorial, reset). The
    progression (systems/Progress.js, `CAMPAIGN` = tutorial then level1) and the settings are saved in localStorage.
    `Game.startLevel(id)` starts a level, `newGame()` retries the current one, `?level=<id>` still forces a level.
-   The tutorial (level `tutorial`, tools/build_tutorial.py, systems/Tutorial.js): an apartment, six rooms, one move
-   each, said by a key cap and a few words next to what it is done to (`HINTS`); the guards of a room are `dormant`
-   until its wave is called, and slower than real ones (`slack`); a death starts again at the last room reached
-   (`Game.tutorialAt`); it ends by diving through the front room window: state `fall` (black), then level 1 opens on
-   him waking in the alley. The title screen is the street seen FROM HIS WINDOW (ui/cine/Pane.js: rain running down
-   the glass, the frame, his bottle on the sill; the user's idea). NEW GAME plays the opening first (ui/Cinematic.js,
-   state `cinematic`): the camera pulls back from that window into his bedroom (ui/cine/Room.js), then the night
-   goes wrong, told as an 8-bit comic (ui/cine/Panels.js; he asked for dark, with comic effects): a thump, his eye
-   opens, a woman screams, a shot, blood under the door, his face, boots on the landing, "FIND HIM."; he gets up
-   and the view tips onto the floor plan. Her body lies in the tutorial's living room (level `bodies`).
+   The story (his call: the screaming woman was "vu et revu", find another reason for him to snap): he ran packages
+   for the bar's boss for six years and kept every dollar under his floor to leave town; that night the boss's men
+   take the money back, shoot the building's super who came up about the noise, and set the flat on fire with him in it.
+   The tutorial (level `tutorial`, tools/build_tutorial.py, systems/Tutorial.js): his flat (bedroom, living room with
+   the hole in the floor, kitchen, entrance hall with the super's body), his front door, the building's corridor
+   (neighbours' doors, doormats, carpet runner, radiators, a bike, bin bags: he asked that one understands door,
+   flat, corridor, window), the landing where three men come up the stairs, the window at the corridor's end. One move
+   a place, said by a key cap and a few words next to what it is done to (`HINTS`); the guards of a place are
+   `dormant` until its wave is called (a guard may be in two stages' waves), slower than real ones (`slack`); the
+   shooter's gun keeps 2 rounds (`leaves`, and `owed` on a retry past him); a death starts again at the last place
+   reached (`Game.tutorialAt`). The flat burns room after room behind him (level `fires`, systems/Fires.js: looks
+   only). What lies flat (doormats, stairs, the runner, the floor hole) is floor paint (level `floor`, levelkit
+   `paint`), not props, so no round stops on it. The dive out ends in state `fall`: a moment of slow motion going
+   black, then the leap seen side on from the alley (ui/cine/Leap.js: the burning facade, he falls, rolls, kneels,
+   looks back up, walks off, "THREE WEEKS LATER."), then level 1. The title screen is the street seen FROM HIS WINDOW
+   (ui/cine/Pane.js: rain running down the glass, the frame, his bottle on the sill; the user's idea). NEW GAME plays
+   the opening first (ui/Cinematic.js, state `cinematic`; he wants a real AAA-style intro, pixel art with a real art
+   direction, rich detail): the camera pulls back from that window into his bedroom (ui/cine/Room.js: map with his
+   rounds, crossed-off calendar, half-packed suitcase, bicycle in the near plane) while the street behind the glass
+   drops to the room's coarse pixels and fogs (he found the sharp window "too contrasted" with the room); boards torn
+   up next door, his eye opens, the super shouts and is shot, a comic page (ui/cine/Panels.js, a few colours and
+   screentone per panel, captions, balloons): the tin box out of the hole, the notes counted, the super on his face,
+   a match over the petrol, "TORCH IT."; the petrol runs under his door and goes up, he dresses, the view tips onto
+   the floor plan. Pixel tools for all of it: ui/cine/Ink.js (ordered dither, hard-edged shapes).
    Check the cinematic and the menu in the browser after touching them; the QA robot plays the tutorial with
    `npm run qa -- --level tutorial` (add `--god` to see it through to the window).
 

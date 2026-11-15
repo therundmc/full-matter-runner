@@ -19,6 +19,7 @@ import { drawLoading, drawIntro, drawDead, drawResults, drawOutro } from './ui/S
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
+import { LEAP, leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
@@ -33,8 +34,9 @@ const VOLUMES = ['master', 'music', 'sfx'];
 // ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
 const urlLevel = () => { const id = new URLSearchParams(location.search).get('level'); return LEVELS[id] ? id : null; };
 const has = (id) => !!LEVELS[id];
-// out of the tutorial's window (state 'fall'): s to black, s at which he hits the ground, s at which the next level starts
-const FALL = { fade: 0.9, thud: 1.15, end: 2.0, slow: 0.3 };
+// out of the tutorial's window (state 'fall'): s of the world in slow motion going black, then the leap seen from the
+// alley (ui/cine/Leap.js) until the next level starts
+const FALL = { fade: 0.45, slow: 0.3 };
 // what the intro banner calls a level
 const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${CAMPAIGN.filter((l) => l !== 'tutorial').indexOf(id) + 1}` : 'TEST LEVEL');
 
@@ -202,10 +204,11 @@ export default class Game {
     this.setState(state);
   }
 
-  // out of the tutorial by the window: he falls (slow motion, the picture going black), hits the ground, and the
-  // next level opens on him waking
+  // out of the tutorial by the window: a moment of slow motion going black, then the leap seen from the alley (he
+  // falls, rolls, gets up and goes), and the next level opens on him three weeks later
   onTutorialEnd() {
-    this.slowmo(FALL.slow, FALL.end);
+    this.slowmo(FALL.slow, FALL.fade);
+    this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
     this.setState('fall');
   }
@@ -338,15 +341,19 @@ export default class Game {
 
     // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
-    if (this.state === 'fall') {
-      if (this.stateT - dt < FALL.thud && this.stateT >= FALL.thud) { Audio.play('bodyFall', { vol: 1 }); this.camera.shake(0.5); }
-      if (this.stateT >= FALL.end) {
+    if (this.state === 'fall' && this.stateT >= FALL.fade) {
+      // the leap: the world is no longer seen and waits; a key or a click goes on to the next level
+      const lt = this.stateT - FALL.fade;
+      for (const b of leapBeats(this.leapT, lt)) Audio.play(b.name, { vol: b.vol, ...b.opts });
+      this.leapT = lt;
+      const skip = lt > LEAP.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      inp.consume();
+      if (skip || leapView(lt).over) {
         const done = this.levelId;
         this.completeLevel(done);
         this.startLevel(nextLevel(done) || this.firstLevel());
-        inp.consume();
-        return;
       }
+      return;
     }
     const outro = this.state === 'outro' || this.state === 'fall'; // the world plays on by itself
     if (this.state === 'outro') {
@@ -491,6 +498,7 @@ export default class Game {
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) drawTitleView(ctx, W, H, t, this.input.mouse);
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => this.drawCine(ctx, W, H, t, post));
+    else if (this.state === 'fall' && this.stateT >= FALL.fade) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALL.fade));
     else this.drawScene(ctx, W, H, t, post);
     if (post) {
       const now = performance.now() / 1000, view = this.lensView(W, H, inWorld);
@@ -576,7 +584,7 @@ export default class Game {
     }
     this.safeDraw(ctx, () => {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best, levelLabel(this.levelId));
-      if (this.state === 'fall') {
+      if (this.state === 'fall' && this.stateT < FALL.fade) {
         ctx.globalAlpha = clamp(this.stateT / FALL.fade, 0, 1);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
