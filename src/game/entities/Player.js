@@ -237,6 +237,7 @@ export default class Player extends Character {
         w.particles.glass(x, y, a + Math.PI, 1.2, 16, 220);
         w.decals.smear(x, y, a + Math.PI / 2, 9, '#3a2410', 0.35); // what was left of the rum, down the wall
         w.sound('glass', x, y, 0.7);
+        w.critters?.scare(x, y, 220, 280); // the cat on the dumpster is off, the pigeons with it
       });
     }
     return g.t >= T.end;

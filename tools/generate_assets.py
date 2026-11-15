@@ -367,9 +367,13 @@ def bevel_edges(cv, x0, y0, x1, y1, lt_t=0.18, dk_t=0.3):
 
 SKIN = ramp('#eab08a', 0.46, 0.22, 0.3)
 CHARS = {
+    # the runner: a yellow cap (seen from above it is what tells him from everyone else, as his blond head did),
+    # brown hair down to his collar, a Mediterranean tan, a cyan track jacket with a white band across the back, the
+    # strap of a leather satchel across it and the satchel on his left hip, behind
     'player': dict(kind='player', top=ramp('#1fb5b5', 0.5, 0.25, 0.35), sleeve=None,
                    pants=ramp('#2c3a6a'), shoe=ramp('#ecebf2', 0.4, 0.2, 0.2),
-                   hair=ramp('#f2cc58', 0.45, 0.22, 0.45), skin=SKIN, sh=(4.0, 8.0)),
+                   hair=ramp('#4a2e1c', 0.5, 0.25, 0.45), cap=ramp('#f2c230', 0.45, 0.22, 0.4),
+                   strap=ramp('#7a4a26', 0.45, 0.22, 0.35), skin=ramp('#dba274', 0.46, 0.22, 0.3), sh=(4.0, 8.0)),
     'thug': dict(kind='thug', top=ramp('#e6e0cf', 0.42, 0.2, 0.5), pants=ramp('#2a2632'),
                  shoe=ramp('#1e1820', 0.3, 0.15, 0.25), hair=ramp('#3a2c48', 0.55, 0.3, 0.45),
                  shirt=ramp('#2a2236'), skin=SKIN, sh=(4.0, 8.0)),
@@ -392,11 +396,18 @@ def head_top_px(ch, u, v, L, r):
         if L > 0.95:
             return lt(ch['skin'][2], 0.6)
         return ch['skin'][i]
+    if k == 'player':
+        d = math.hypot(u, v)
+        if u < -0.7 and d > r * 0.72:
+            return ch['hair'][i if int(math.floor(v * 1.3 + 40)) % 2 else max(0, i - 1)]   # his hair, under the cap
+        cap = ch['cap']
+        if d < 0.7:
+            return cap[max(0, i - 1)]                                                       # the button
+        if abs(v) < 0.2 or abs(v * 0.5 + u * 0.87) < 0.2 or abs(v * 0.5 - u * 0.87) < 0.2:
+            return cap[max(0, i - 1)]                                                       # the seams of its panels
+        return cap[i]
     if u > r - 1.55:
         return ch['skin'][i]
-    if k == 'player':
-        streak = int(math.floor(v * 0.9 - u * 0.35 + 40)) % 3 == 0
-        return ch['hair'][max(0, i - 1) if streak else i]
     if k == 'thug':
         streak = int(math.floor(v + 40)) % 2 == 0
         if streak and L > 0.6:
@@ -429,8 +440,14 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
         return ch['top'][i]
     if k == 'heavy' and abs(v) > 4.0 and -0.4 <= u < 0.6:
         return WHITE[max(1, i)]
-    if k == 'player' and hr + 0.1 < hd < hr + 1.4 and hu > -1.6:
-        return WHITE[max(1, i)]
+    if k == 'player':
+        if abs(0.782 * u - 0.624 * v + 0.85) < 0.5:
+            return ch['strap'][i]                # the satchel's strap: right shoulder in front, left hip behind
+        if hr + 0.1 < hd < hr + 1.4 and hu > -1.6:
+            return WHITE[max(1, i)]              # collar
+        if -2.3 < u < -1.2:
+            return WHITE[max(1, i)]              # the band across his back
+        return ch['top'][i]
     if k == 'thug' and hr + 0.1 < hd < hr + 1.3 and hu > -0.5:
         return ch['shirt'][1]
     return ch['top'][i]
@@ -498,7 +515,7 @@ def torso_head(ch, rng):
         c = head_top_px(ch, u / S, v / S, L, hr / S)
         if c is None:
             return None
-        if u > hr - 1.4 * S:
+        if u > hr - 1.4 * S and k != 'player':
             # the face: brow in shadow, the nose catching the light
             if abs(v) < 1.1 and u > hr - 1.6:
                 return lt(ch['skin'][2], 0.25)
@@ -507,16 +524,22 @@ def torso_head(ch, rng):
             c = dk(c, 0.14)                      # strands
         return c
     head = Cv(W, W)
+    if k == 'player':
+        # his hair, down to the collar behind the cap
+        fill_shape(head, hcx - 2.3 * S, hcy, 2.6 * S, 3.3 * S,
+                   lambda u, v, L: ch['hair'][max(0, tidx(L) - (1 if strand(u + W, v * 2 + W) > 0.55 else 0))])
     fill_shape(head, hcx, hcy, hr, hr * 0.94, px, pad=0.04)
     for sgn in (-1, 1):                           # ears
         ey = hcy + sgn * (hr * 0.94 + 0.2)
         for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
             head.set(int(hcx + dx), int(ey + dy), ch['skin'][1 if dx < 3 else 2])
     if k == 'player':
-        # dark glasses across the brow
+        # the cap's visor, out over his brow, and the tip of his nose under it
         for dv in range(-5, 6):
-            head.set(int(hcx + hr - 2.6), int(hcy + dv), hx('#0e0a16') if dv else hx('#3a3450'))
-        head.set(int(hcx + hr - 2.6), int(hcy - 5), hx('#36e8f0'))
+            tip = int(hcx + hr + 3.4 - abs(dv) * 0.42)
+            for x in range(int(hcx + hr - 2.0), tip + 1):
+                head.set(x, int(hcy + dv), ch['cap'][1] if x >= tip - 1 else ch['cap'][2 if abs(dv) > 1 else 3])
+        head.set(int(hcx + hr + 4), int(hcy), ch['skin'][2])
     if k == 'brute':
         # bandana knot and its two tails trailing behind
         for (x, y, c) in [(12, 18, 2), (11, 17, 2), (10, 16, 1), (9, 15, 1), (12, 21, 1), (11, 22, 1), (10, 23, 1), (9, 24, 0), (13, 19, 3), (13, 20, 2)]:
@@ -530,6 +553,20 @@ def draw_torso(ch):
     W = 20 * FINE
     rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(ch['kind']) * 7 + int(ch['sh'][1] * 10))
     cv = Cv(W, W)
+    if ch.get('strap'):
+        # the satchel, on his left hip, behind: under the edge of the jacket
+        bag, lea = Cv(W, W), ch['strap']
+        x0, y0 = int((9.6 - ch['sh'][0] - 1.5) * FINE), int((10.0 - 6.6) * FINE)
+        for y in range(9):
+            for x in range(8):
+                if (x in (0, 7)) and (y in (0, 8)):
+                    continue
+                bag.set(x0 + x, y0 + y, lea[3] if x == 7 else lea[1] if y > 5 or x == 0 else lea[2])
+        for x in range(1, 7):
+            bag.set(x0 + x, y0 + 5, lea[0])                              # the flap's edge
+        bag.set(x0 + 4, y0 + 6, hx('#e0b040'))                           # its buckle
+        bag.outline()
+        cv.over(bag)
     cv.over(torso_body(ch, rng))
     cv.over(torso_head(ch, rng))
     return cv
@@ -542,6 +579,8 @@ def chest_px(ch, u, v, L, hx_, hy_):
         return civ_chest_px(ch, u, v, L, hx_, hy_)
     i = tidx(L)
     if k == 'player':
+        if abs(0.6 * u + 0.8 * v - 0.3) < 0.55:
+            return ch['strap'][i]                # the satchel's strap across his chest
         if abs(v) < 1.3 and u < hx_ - 0.6:
             return WHITE[max(1, i)]
         if abs(v) < 2.1:
@@ -576,8 +615,11 @@ def face_px(ch, u, v, L, r):
     if k == 'civ':
         return civ_face_px(ch, u, v, L, r)
     i = tidx(L)
-    if k == 'player' and u > 1.0 - 0.25 * abs(v):
-        return ch['hair'][i]
+    if k == 'player':
+        if u > 1.5:
+            return ch['cap'][i]                  # his cap, pushed back
+        if u > 0.2 and abs(v) > 2.3 - 0.3 * u:
+            return ch['hair'][i]                 # his hair either side of his face
     if k == 'thug' and u > 1.3:
         return ch['hair'][i if int(v + 20) % 2 else max(0, i - 1)]
     if k == 'brute' and u > 1.1:
