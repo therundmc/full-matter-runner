@@ -100,7 +100,7 @@ const LEVEL1 = {
   end: 14.6,
   page: { end: 14.6, panels: [
     { r: { x: 12, y: 10, w: 360, h: 96 }, at: 0.5, paint: (g, w, h, t) => paintDrive(g, w, h, t, clamp(t / 11, 0, 1)),
-      caption: ['THE MIRAGE GOT SMALLER', 'IN THE MIRROR.'] },
+      caption: ['THE BAR GOT SMALLER', 'IN THE MIRROR.'] },
     { r: { x: 12, y: 112, w: 176, h: 94 }, at: 4.2, paint: paintOffice, caption: ["THE BOSS'S PHONE RANG.", 'SOMEBODY WANTED NEWS.'],
       sfx: rings(70, 34, 8, 0.12) },
     { r: { x: 196, y: 112, w: 176, h: 94 }, at: 7.8, paint: paintMatchbook, caption: ["OFF THE BOSS'S DESK."],
