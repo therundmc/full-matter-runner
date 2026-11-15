@@ -358,6 +358,8 @@ export default class Ragdoll {
     for (const j of this.joints) j.c.stiffness = 0;
     this.throes = null;
     this.lie(true);
+    // his head dropped onto his chest: seen from above, the crown of it and his hair, never his eyes
+    if (this.head) this.head.img = spriteOpt(`characters/${this.kind}_rag_head`) || this.head.img;
     this.dying = { kind: 'sit', phase: 'sit', sat: true, t: 0, x, y, A, P, w, from: { x: t.position.x, y: t.position.y, a: t.angle } };
     this.slump(this.dying);
   }
