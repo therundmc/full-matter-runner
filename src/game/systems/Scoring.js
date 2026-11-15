@@ -35,7 +35,7 @@ export function killStyle({ cause, killer, victim, how }) {
 }
 
 // The circumstances of a kill worth a bonus (SCORING.tags keys). how: what whoever killed knew of it (a round:
-// pierced, through, bounced, dist, last; a blow: from, heavy, spin, broke, thrown; smoked); ctx: { now, dodgeT, pickT, streak } where
+// pierced, through, bounced, dist, last; a blow: from, heavy, spin, broke, thrown; smoked; crushed); ctx: { now, dodgeT, pickT, streak } where
 // streak counts the kills of the last instants, this one included.
 export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   const tags = [];
@@ -52,6 +52,7 @@ export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   if (how.broke) tags.push('broke');
   if (how.thrown) tags.push('thrown');
   if (how.smoked) tags.push('smoked');
+  if (how.crushed) tags.push('crushed');
   if (ctx.now - ctx.dodgeT < rules.dodgeWindow) tags.push('dodge');
   if (ctx.now - ctx.pickT < rules.drawWindow) tags.push('quickdraw');
   if (ctx.streak >= 2) tags.push(ctx.streak === 2 ? 'double' : ctx.streak === 3 ? 'triple' : 'massacre');

@@ -129,6 +129,7 @@ export function writeReport(dir, rep) {
   L.push(`- Civilians killed: ${list(st.civilians)}`);
   if (st.clears?.length) L.push(`- Clears: ${st.clears.map((c) => `session ${c.session}: ${c.grade} ${c.score} in ${c.time} s`).join('; ')}`);
   L.push(`- Coverage: ${Object.entries(st.coverage || {}).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  L.push(`- Devices used: ${list(st.devices || {})}; falls on a slick floor: ${st.slips ?? 0}`);
   if (st.notApplicable?.length) L.push(`- Not in this level (no warning): ${st.notApplicable.join(', ')}`);
   L.push(`- How the dead went: ${list(st.dying)}`);
   L.push(`- Plans (started / done / cut short by a death or restart / skipped as pointless, failures): ${planLines(st.plans)}`);

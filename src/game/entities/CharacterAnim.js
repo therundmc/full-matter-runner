@@ -1349,6 +1349,14 @@ function paintPose(ctx, ch, P, alpha) {
   ctx.globalAlpha = ga;
 }
 
+// A man dazed on the floor, t s after he went down: how far his shoulders roll (rad) and how far he heaves himself
+// up on his elbows (0 .. 1), slow and uneven
+function groggy(t) {
+  const roll = 0.07 * Math.sin(t * 1.6) + 0.035 * Math.sin(t * 3.7 + 1);
+  const heave = Math.max(0, Math.sin(t * 1.15 - 1.4));
+  return { roll, lift: heave * heave * heave };
+}
+
 // knocked down: taken off his feet (stagger), the body drops onto the floor (cross-fade + settle), lies dizzy, then
 // gets up through one knee (risePose)
 export function drawDown(ctx, ch, P) {
@@ -1363,10 +1371,14 @@ export function drawDown(ctx, ch, P) {
   if (down <= 0) return;
   // on his back, his head where the blow sent it (downAngle), his hips where the body's circle is
   const sc = 1 + 0.12 * (1 - fall), len = spriteW(ch.downImg);
-  const dc = Math.cos(ch.downAngle), ds = Math.sin(ch.downAngle), mx = x + dc * len * 0.08, my = y + ds * len * 0.08;
-  drawSprite(ctx, silhouette(ch.downImg), mx + 2 + (1 - fall) * 2, my + 2 + (1 - fall) * 2, ch.downAngle, 0.35 * down, sc);
-  drawSprite(ctx, ch.downImg, mx, my, ch.downAngle, down, sc);
-  if (ch.asleep) return;
+  // dazed after a fall (Enemy.slip): no stars, a groggy man: he rolls his head and shoulders from side to side and
+  // now and then heaves himself up an inch on his elbows, and sinks back
+  const g = ch.dazed && !ch.executing ? groggy(ch.downT) : null, ra = ch.downAngle + (g ? g.roll : 0);
+  const lift = g ? g.lift * down : 0;
+  const dc = Math.cos(ch.downAngle), ds = Math.sin(ch.downAngle), mx = x + dc * len * (0.08 - lift * 0.05), my = y + ds * len * (0.08 - lift * 0.05);
+  drawSprite(ctx, silhouette(ch.downImg), mx + 2 + (1 - fall) * 2 + lift * 2, my + 2 + (1 - fall) * 2 + lift * 2, ra, 0.35 * down, sc);
+  drawSprite(ctx, ch.downImg, mx, my, ra, down, sc * (1 + lift * 0.05));
+  if (ch.asleep || ch.dazed) return;
   // dizzy stars
   const t = ch.world.time * 6;
   ctx.fillStyle = PALETTE.yellow;

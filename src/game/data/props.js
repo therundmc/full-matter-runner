@@ -21,7 +21,7 @@ export const PROPS = {
   // gas: a round through it lights a jet at the hole, then it goes off after `fuse` s (systems/Gas.js);
   // rocket: odds that a loose bottle takes off on its own jet
   oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true,
-    gas: { fuse: [1.6, 2.6] }, blast: 84 },
+    gas: { fuse: [1.6, 2.6] }, blast: 84, valve: true }, // valve: its tap can be opened (systems/GasValve.js)
   gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.75, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
     gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
   sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
@@ -42,6 +42,8 @@ export const PROPS = {
     light: { r: 64, color: '#3ae8ff', intensity: 0.7, flicker: 'tv', y: 6 } },
   crate: { vault: true, material: 'wood', w: 19, h: 19, hp: 8, kg: 45, mu: 0.96, chips: '#a07040', sound: 'wood' },
   barrel: { material: 'metal', r: 9, hp: 1, kg: 176, mu: 0.72, chips: '#c02020', explosive: true, blast: 92, sound: 'metal' },
+  // a full steel keg (systems/Slips.js: the beer it gushes when holed floors whoever runs on it)
+  keg: { material: 'metal', r: 8, hp: 7, kg: 62, mu: 0.8, chips: '#c4c8d0', sound: 'metal' },
   bookshelf: { static: true, material: 'wood', w: 40, h: 11, hp: 12, chips: '#6a4026', sound: 'wood', blocksPath: true },
   speaker: { material: 'plastic', w: 14, h: 14, hp: 8, kg: 32, mu: 0.96, chips: '#222', sparks: true, sound: 'wood',
     light: { r: 34, color: '#8a5cff', intensity: 0.35, flicker: 'pulse' } },
@@ -133,6 +135,14 @@ export const PROPS = {
   // its light is a ring of small spots sweeping the room (render/Lighting.js `spots`), and a glint on the ball itself
   mirror_ball: { hung: true, overhead: true, height: 0.06, static: true, material: 'glass', r: 5, hp: 2, chips: '#dfe8f4', glass: true, sound: 'glass',
     light: [{ r: 118, color: '#ffffff', intensity: 0.95, spots: 16 }, { r: 30, color: '#e6ecff', intensity: 0.5 }] },
+  // ---- what a level's devices are made of (data/devices.js). On a wall, facing the room along +y: the fire alarm's
+  // red pull station (systems/Sprinklers.js), the bar's phone (systems/Phones.js), the security camera on its bracket
+  // (systems/Camera.js, `cctv`: it pans); the monitor it feeds, on a desk (a screen that shows snow once it is blind)
+  fire_alarm: { fixture: true, static: true, material: 'metal', w: 10, h: 6, hp: 3, chips: '#c0202a', sparks: true, sound: 'metal' },
+  wall_phone: { static: true, material: 'plastic', w: 10, h: 6, hp: 3, chips: '#d8cfb8', sound: 'wood' },
+  cctv: { fixture: true, hung: true, static: true, material: 'plastic', w: 10, h: 10, hp: 2, chips: '#c8ccd4', sparks: true, sound: 'metal' },
+  monitor: { static: true, material: 'plastic', w: 16, h: 12, hp: 4, chips: '#2a2a32', sparks: true, glass: true, sound: 'glass',
+    light: { r: 60, color: '#9fe0c8', intensity: 0.5, flicker: 'tv', y: 4 } },
   // on a wall, facing the room along +y: pierced, it empties itself in a cloud nobody sees through (systems/Clouds.js)
   extinguisher: { static: true, material: 'metal', w: 6, h: 9, hp: 1, chips: '#c0202a', sound: 'metal', cloud: true },
   // ---- street furniture. handset = [x, y] px from the centre of the hook its receiver hangs on (render/PropLife.js);
@@ -149,7 +159,8 @@ export const PROPS = {
   wall_vent: { static: true, material: 'metal', w: 14, h: 5, hp: 5, chips: '#6a707c', sound: 'metal', steam: 'vent' },
   ceiling_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
-  pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
+  // drops: a round through its chains brings it down on the table (systems/LampDrop.js)
+  pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal', drops: true,
     light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
   // strung across the street
   string_lights: { fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',

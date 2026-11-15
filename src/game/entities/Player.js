@@ -12,6 +12,7 @@ import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind } from '../systems/Takedown.js';
 import { finisherFor, TAKEDOWNS, EXEC } from '../data/finishers.js';
 import { MOMENTS, GESTURE } from '../data/feel.js';
+import { SLIP } from '../data/devices.js';
 import { blowFx } from '../fx/Blows.js';
 import { landMoment } from '../fx/Impact.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
@@ -31,6 +32,9 @@ export default class Player extends Character {
     this.nearBack = null;   // a guard whose back we stand right behind (Space takes him down)
     this.nearTrunk = null;  // a parked car's closed trunk within reach, with something in it (E opens it)
     this.trunkOpen = null;  // { car, t, took } while he opens it (updateTrunk)
+    this.nearUse = null;    // a device of the level within reach (systems/Uses.js): E uses it
+    this.slipped = null;    // { t, a, v } while down on a slick floor (slip)
+    this.passage = null;    // the trip through a passage under the street while it lasts (systems/Passage.js)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
@@ -97,6 +101,8 @@ export default class Player extends Character {
     if (this.execution) { this.updateExecution(dt); return; }
     if (this.takedown) { this.updateTakedown(dt); return; }
     if (this.trunkOpen) { this.updateTrunk(dt); return; }
+    if (this.slipped) { this.updateSlip(dt); return; }
+    if (this.passage) { this.updatePassage(dt); return; }
     this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
     if (this.updateVault(dt)) return;
 
@@ -145,6 +151,11 @@ export default class Player extends Character {
       if (e.alive && e.knocked > 0 && de < down) { down = de; this.nearDowned = e; }
     }
     this.nearTrunk = w.props.find((p) => p.trunk && !p.trunk.open && !p.dead && p.nearTrunk(this.x, this.y)) || null;
+    this.nearUse = this.nearTrunk ? null : w.uses.near(this); // a device of the level (systems/Uses.js)
+    if (this.nearUse) { // ... unless a weapon lies closer at his feet: E picks that up
+      const u = w.uses.at(this.nearUse), it = this.nearItem;
+      if (it && Math.hypot(it.x - this.x, it.y - this.y) < Math.hypot(u.x - this.x, u.y - this.y)) this.nearUse = null;
+    }
     this.nearBack = (!this.nearDowned && w.enemies.find((e) => behind(this, e) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
 
     // attack
@@ -180,8 +191,44 @@ export default class Player extends Character {
     }
     if (input.hit('KeyE')) {
       if (this.nearTrunk) this.startTrunk(this.nearTrunk);
+      else if (this.nearUse) this.nearUse.use(this);
       else this.pickUp();
     }
+  }
+
+  // ---------------- a slick floor, a trapdoor ----------------
+  // his feet went running along a on a slick floor (systems/Slips.js): on his back, sliding on and slowing (the slide's
+  // own pose), then up again; he can do nothing meanwhile, and the same floor spares him a moment after
+  slip(a) {
+    const S = SLIP.player;
+    this.slipped = { t: 0, a, v: PLAYER.speed * S.speed };
+    this.slide = null;
+    this.swing = 0;
+    this.reloading = 0;
+    this.slideAnim = { dir: a, side: Math.cos(this.angle - a) >= 0 ? -1 : 1, k: 0.45, w: this.slideAnim?.w ?? 0 };
+    this.world.shake(0.06);
+  }
+
+  updateSlip(dt) {
+    const s = this.slipped, S = SLIP.player;
+    s.t += dt;
+    if (s.t < S.slide) {
+      s.v *= Math.pow(S.brake, dt);
+      this.vel = { x: Math.cos(s.a) * s.v, y: Math.sin(s.a) * s.v };
+      Body.setVelocity(this.body, this.vel);
+      return;
+    }
+    this.steer(0, 0, 0, 0.3);
+    if (s.t < S.slide + S.up) return;
+    this.slipped = null;
+    this.slipGrace = this.world.time + S.grace;
+    this.world.sound('getUp', this.x, this.y, 0.6);
+  }
+
+  // E at a trapdoor (systems/Passage.js): it runs him down, along and up; nothing he does meanwhile
+  updatePassage(dt) {
+    this.steer(0, 0, 0, 1);
+    this.passage.step(dt);
   }
 
   // Last resort against being squeezed into something solid (a car creeping onto us against another one, a wreck
@@ -407,7 +454,8 @@ export default class Player extends Character {
   updateSlideAnim(dt) {
     const a = this.slideAnim;
     if (!a) return;
-    if (this.slide) { a.k = this.slide.k; a.w = Math.min(1, a.w + dt / 0.07); }
+    const down = this.slipped && this.slipped.t < SLIP.player.slide; // flat on his back on a slick floor (slip)
+    if (this.slide || down) { if (this.slide) a.k = this.slide.k; a.w = Math.min(1, a.w + dt / (down ? 0.08 : 0.07)); }
     else if ((a.w -= dt / 0.18) <= 0) this.slideAnim = null;
   }
 

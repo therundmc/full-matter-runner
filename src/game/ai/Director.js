@@ -124,9 +124,11 @@ export default class Director {
     this.emit(type || 'noise', x, y, radius, source);
   }
 
-  // every guard in range hears it; walls muffle the far half of the radius
+  // every guard in range hears it; walls muffle the far half of the radius; a jukebox turned up drowns the small
+  // noises around it (systems/Jukebox.js)
   emit(type, x, y, radius, source = null) {
     const w = this.world;
+    if (w.jukebox) radius = w.jukebox.mask(x, y, radius, type);
     for (const e of w.enemies) {
       if (!e.alive || e === source || e.knocked > 0) continue;
       const d = Math.hypot(e.x - x, e.y - y);

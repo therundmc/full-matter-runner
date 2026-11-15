@@ -22,9 +22,10 @@
 //   snow       true: its screen shows snow while it is on (render/PropLife.js)
 //   screen     [x0, y0, x1, y1]  a glass screen: cracks, then implodes (light goes out)
 //   electric   sparks, smoke and flicker when hit
-//   leak       { color, on: 'hit'|'break', dur, kind?, flood? }  a jet of liquid for dur s out of each hole (on: 'hit')
-//              or once it gives way; kind (LIQUIDS.kinds): it stands as a puddle, else it only stains;
-//              flood: px2 that pour out of the broken pipe when it falls apart
+//   leak       { color, on: 'hit'|'break', dur, kind?, flood?, rate?, cap?, jet? }  a jet of liquid for dur s out of
+//              each hole (on: 'hit') or once it gives way; kind (LIQUIDS.kinds): it stands as a puddle, else it only
+//              stains; flood: px2 that pour out of the broken pipe when it falls apart; rate: px2/s out of a hole
+//              (LIQUIDS.leak), cap: the radius its puddle may reach, jet: drops a step (a tank under pressure)
 //   rack       bottles or glasses standing in plain sight, burst one by one by what hits them (bit: their BITS
 //              entry, share: how much of a bottle each holds). Either drawn in the sprite on a grid
 //              { x, dx, n, ys, s }: n across from x every dx px, one rank per ys, s px square, front at +y; or set
@@ -36,7 +37,7 @@
 //   puff       the dark smoke it dies in (motors, transformers): number of billows
 //   live       s its torn wires go on spitting sparks where it hung
 //   doors      the doors of a cabinet, hinged on its front (+y) edge: { n, at: damage state they spring open at }
-//   gush       px2 of water that burst out of it all around when it gives way (a tank under pressure)
+//   gush       px2 of what it held (its leak's kind, water by default) that burst out all around when it gives way
 export const DESTRUCTION = {
   table: {
     height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' },
@@ -139,6 +140,18 @@ export const DESTRUCTION = {
   },
   trash_can: { height: 0.7, parts: [{ cut: 'grid', cols: 2, rows: 2 }], floats: ['paper', 8], contents: [{ bit: 'can', n: 2, on: 'break' }] },
   barrel: { height: 0.9, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
+  // a steel keg of draught beer under CO2: every hole jets beer across the floor, and once it splits its 50 l burst out
+  // in one wide slick (systems/Slips.js: whoever runs on it may go down)
+  keg: {
+    height: 0.6, material: 'metal', gush: 15000,
+    parts: [{ cut: 'ring', n: 6, t: 0.22, name: 'stave', fly: 1.1 }, { cut: 'wedges', n: 4, centre: true }],
+    leak: { kind: 'beer', color: 'rgba(222,168,70,0.5)', on: 'hit', dur: 8, rate: 1300, cap: 84, jet: 4 },
+  },
+  // the bar's fire alarm pull station, its bell, the wall phone, the camera on its bracket, the monitor on the desk
+  fire_alarm: { height: 1.4, material: 'metal', electric: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  wall_phone: { height: 1.5, material: 'plastic', parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  cctv: { height: 2.4, material: 'plastic', electric: true, drop: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  monitor: { height: 0.9, material: 'plastic', electric: true, screen: [0.14, 0.62, 0.78, 0.88], parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   gas_bottle: { height: 0.6, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   bench: { height: 0.45, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 2, size: 0.08, color: '#2a2a30' } },
   hydrant: { height: 0.7, parts: [{ cut: 'grid', cols: 2, rows: 1 }] }, // never cut: it pops off whole (Prop.burst)

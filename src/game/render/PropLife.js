@@ -1,23 +1,53 @@
 // Small lives of the furniture, drawn over it: the balls on a pool table (systems/PoolBalls.js), the snow on a
-// television left on (recipe `snow`), the receiver of a phone booth (prop `handset`).
+// television left on (recipe `snow`), the receiver of a phone booth (prop `handset`); the devices of a level
+// (data/devices.js): the camera's monitor and its picture, the camera's red light, the fire alarm flashing.
 
 const RIM = '#0a2a18', WHITE = '#f4f2ea';
 const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const DEVICES = new Set(['monitor', 'cctv', 'fire_alarm']);
 
 // ground pass, right after the props
 export function drawPropLife(ctx, world, t, vis) {
   for (const p of world.props) {
     if (p.dead || p.parts || !vis(p.x, p.y)) continue;
-    const snowy = p.rec?.snow && !p.lightsOut, hook = p.def.handset;
-    if (p.type !== 'pool_table' && !snowy && !hook) continue;
+    const snowy = p.rec?.snow && !p.lightsOut, hook = p.def.handset, device = DEVICES.has(p.type);
+    if (p.type !== 'pool_table' && !snowy && !hook && !device) continue;
     const o = p.centre(), k = p.kick;
     ctx.save();
     ctx.translate(o.x + k.x, o.y + k.y);
-    ctx.rotate(p.body.angle + k.r);
+    ctx.rotate(p.body.angle + k.r + (p.pan || 0));
     if (snowy) snow(ctx, p, t);
     else if (hook) handset(ctx, hook, p.offHook === undefined ? -1 : world.time - p.offHook);
+    else if (p.type === 'monitor') monitor(ctx, p, t);
+    else if (p.type === 'cctv') { if (!p.lightsOut && Math.floor(t * 1.5) % 2) dot(ctx, 2, 2.5, '#ff3020'); }
+    else if (p.type === 'fire_alarm') { if (world.sprinklers?.on && world.sprinklers.live() && Math.floor(t * 4) % 2) dot(ctx, 3.2, -0.2, '#ffe0d0'); }
     else for (const b of world.poolBalls.balls(p)) if (!b.in) ball(ctx, b);
     ctx.restore();
+  }
+}
+
+// a small light (2 x 2 px) on a device
+function dot(ctx, x, y, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x - 1), Math.round(y - 1), 2, 2);
+}
+
+// The security monitor's tube: the bar room seen from the corner, grey-green, its rolling line, and the player a
+// bright blip where he stands in it (feed: systems/Camera.js); snow once the camera is blind; dark without power.
+function monitor(ctx, p, t) {
+  if (p.lightsOut) return;
+  const x0 = -p.W / 2 + 2.6, y0 = -p.H / 2 + 8.8, w = 11.2, h = 3.4;
+  if (p.blind) { snow(ctx, p, t); return; }
+  ctx.fillStyle = '#20382c';
+  ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#2e5040';
+  ctx.fillRect(x0 + 1, y0 + 0.6, w * 0.45, 1);         // the counter, the pool table: shapes of the room
+  ctx.fillRect(x0 + w * 0.62, y0 + 1.6, w * 0.3, 1.2);
+  ctx.fillStyle = 'rgba(160,230,190,0.25)';
+  ctx.fillRect(x0, y0 + ((t * 2.2) % 1) * h, w, 0.6);  // the rolling line
+  if (p.feed && Math.floor(t * 5) % 3) {
+    ctx.fillStyle = '#d8ffe8';
+    ctx.fillRect(x0 + p.feed.u * (w - 1), y0 + p.feed.v * (h - 1), 1, 1);
   }
 }
 

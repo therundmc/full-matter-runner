@@ -46,6 +46,15 @@ import WeaponItem from '../entities/WeaponItem.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Clouds from '../systems/Clouds.js';
 import Gadgets from '../systems/Gadgets.js';
+import Uses from '../systems/Uses.js';
+import Slips from '../systems/Slips.js';
+import Sprinklers from '../systems/Sprinklers.js';
+import LampDrop from '../systems/LampDrop.js';
+import Passage from '../systems/Passage.js';
+import Phones from '../systems/Phones.js';
+import Jukebox from '../systems/Jukebox.js';
+import GasValve from '../systems/GasValve.js';
+import Camera from '../systems/Camera.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
@@ -126,9 +135,21 @@ export default class World {
     this.smoke = new Smoke(this, level);                   // the air and the smoke it carries
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
     this.fires = new Fires(this, level.fires);             // what burns, for the look of it
+    // the level's devices (data/devices.js): what E does at them, and what they do used or broken
+    this.uses = new Uses();                                 // the spots E works at (HUD hint, Player.nearUse)
+    this.slips = new Slips(this);                           // running on a slick floor (a holed keg's beer)
+    this.sprinklers = new Sprinklers(this, level.sprinklers); // the fire alarm: bell, rain, a slick floor, panic
+    this.lampDrop = new LampDrop(this);                     // a hung lamp shot down onto whoever is under it
+    this.passage = new Passage(this, level.passage);       // the trapdoors and the way under the street
+    this.phones = new Phones(this, level.phones);          // the booth calls the bar, a guard leaves his post to answer
+    this.jukebox = new Jukebox(this);                       // turned up, it drowns the small noises
+    this.gasValve = new GasValve(this);                     // a stove's tap left open, and the spark
+    this.cctv = new Camera(this, level.camera);            // the camera, the monitor and whoever watches it
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
+    this.jukebox.wire();  // the devices that are props of the level offer their spots now that the props are there
+    this.gasValve.wire();
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
     const at = game?.tutorialAt;
     this.tutorial = level.tutorial ? new Tutorial(this, level.tutorial, at?.name === level.name ? at.stage : 0) : null;
@@ -157,7 +178,7 @@ export default class World {
   floorGrip(x, y) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
     if (cx < 0 || cy < 0 || cx >= m.w || cy >= m.h) return 1;
-    return (FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1) * (this.liquids?.grip(x, y) ?? 1);
+    return (FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1) * (this.liquids?.grip(x, y) ?? 1) * (this.sprinklers?.grip(x, y) ?? 1);
   }
 
   // ---------------- registry ----------------
@@ -489,6 +510,13 @@ export default class World {
     this.ambience.update(dt);
     this.tutorial?.update();
     this.fires.update(dt);
+    this.slips.update();
+    this.sprinklers.update(dt);
+    this.lampDrop.update(dt);
+    this.phones.update(dt);
+    this.jukebox.update(dt);
+    this.gasValve.update(dt);
+    this.cctv.update(dt);
     this.poolBalls.update(dt);
     this.clouds.update(dt);
     this.steam.update(dt);

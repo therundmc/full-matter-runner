@@ -272,7 +272,7 @@ lv.prop('neon_sign_video', 34.9, 21.09)
 lv.alarm(36, 17, 39, 19, 35.8, 21.1)
 for x in (36.5, 37.5, 38.5):
     lv.prop('tv', x, 19.7)                              # left on all night, facing the street
-lv.prop('tv', 37.7, 18.45)
+lv.prop('tv', 38.55, 18.8)                              # out of the way of the trapdoor in the back
 lv.prop('bookshelf', 36.7, 17.2)
 lv.prop('bookshelf', 38.0, 17.2)
 lv.prop('desk', 39.5, 18.1, 90)
@@ -393,6 +393,8 @@ for x in (17.59, 20.41):                                # the bottles: racked on
 lv.prop('neon_tube_pink', 18.5, 12.05)
 for x in (16.3, 18.0, 20.7):
     lv.prop('ceiling_lamp', x, 13.85)
+for y in (12.45, 13.02):                                # two kegs of draught in the corner behind the counter: holed,
+    lv.prop('keg', 15.36, y)                            # they flood it with beer, and whoever runs on it goes down
 
 lv.area('the bar: booths, card table, pool')
 # two booths end to end along the west wall, each with its lamp; a chair across each table. They stop a metre short
@@ -418,6 +420,19 @@ lv.prop('jukebox', 23.6, 19.6, 180)
 lv.prop('ceiling_fan', 23.0, 15.0)                      # turning over the middle of the room
 lv.prop('extinguisher', 23.6, 12.14)                    # by the toilets' door
 lv.prop('plant', 28.65, 12.35)                          # east of the back room's door, clear of its way
+
+lv.area('the bar: what can be used')
+# the fire alarm by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
+# customers run (systems/Sprinklers.js)
+lv.sprinklers(25.0, 12.07, 0, [(15, 12, 30, 19)])
+# the bar's line: a phone behind the counter at its end, one in the back room; the booth across the road calls them
+# by turns and a guard leaves his post to answer (systems/Phones.js)
+lv.phones((34.6, 31.61), [(21.5, 12.07, 0), (26.5, 6.07, 0)])
+# a camera high in the corner over the pool table, watching the room; the monitor on the boss's desk, turned to his
+# armchair (systems/Camera.js)
+lv.camera((28.6, 12.12, 45), (15, 12, 30, 19), (27.7, 6.4), 270)
+# under the street: a trapdoor in the TV shop's back, the other under the rug inside the back room's door
+lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
 lv.area('the bar: VIP room')
 lv.prop('dance_stage', 30.0, 18.9)

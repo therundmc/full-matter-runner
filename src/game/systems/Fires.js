@@ -4,7 +4,8 @@
 // (systems/Tutorial.js), with a whoosh; one without burns from the start. A room whose stage has `spark` waits for a
 // man to drop a lit match in it (event 'matchDrop', Enemy.dropMatch): the petrol catches where it falls, then runs
 // out from there (SPREAD px/s, plus each fire's delay); if no match comes, it catches on its own `spark` s after the
-// room is reached. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on.
+// room is reached. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on. Water puts
+// them out (douse: the sprinklers).
 // DOM-free: particles, lights and sounds asked of the world.
 import { TILE } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
@@ -47,6 +48,17 @@ export default class Fires {
     const s = this.sparks[f.stage];
     const own = reached + wait + f.delay;
     return s ? Math.min(own, s.t + Math.hypot(f.x - s.x, f.y - s.y) / SPREAD + f.delay) : own;
+  }
+
+  // water on them (systems/Sprinklers.js): the fires burning where `where(x, y)` holds go out in a hiss of steam
+  douse(where) {
+    const w = this.world, out = this.lit().filter((f) => where(f.x, f.y));
+    if (!out.length) return;
+    for (const f of out) {
+      w.particles.smoke(f.x, f.y, 4, 6, { speed: 22, size: 7, life: 1.8 });
+      w.sound('hiss', f.x, f.y, 0.5, { pitch: 0.6 });
+    }
+    this.fires = this.fires.filter((f) => !out.includes(f));
   }
 
   // the fires burning now

@@ -45,6 +45,7 @@ SIZES = dict(
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     awning=None, velvet_rope=(30, 6),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
+    keg=(16, 16), fire_alarm=None, wall_phone=None, cctv=None, monitor=None,
 )
 
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
@@ -52,10 +53,12 @@ SIZES = dict(
 # back door of level 1 had its men jammed in it)
 ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=12, fuse_box=18,
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
-               neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48)
+               neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
+               fire_alarm=10, wall_phone=10, cctv=10)
 
 # sprites that are floor paint (Level.paint)
-FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet')
+FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
+         'trapdoor', 'rug')
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -92,6 +95,7 @@ class Level:
         self.tutorial = None  # a level that teaches: { stages, fall } (src/game/systems/Tutorial.js)
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
+        self.devices = {}     # the level's devices (src/game/data/devices.js): sprinklers, phones, camera, passage
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
         self.spots = []       # beds heard from one tile: [bed, col, row] (src/game/data/soundscape.js SPOTS)
@@ -222,6 +226,31 @@ class Level:
     def power(self, col0, row0, col1, row1, col, row, deg=0):
         self.mains = dict(box=list(self.at(col, row)), zone=self.rect(col0, row0, col1, row1))
         self.prop('fuse_box', col, row, deg)
+
+    # ---- the level's devices (src/game/data/devices.js, a system each)
+    # the fire alarm (systems/Sprinklers.js): its pull station at (col, row) on a wall facing deg, the rooms it rains on
+    def sprinklers(self, col, row, deg, rooms):
+        self.devices['sprinklers'] = dict(pull=list(self.at(col, row)), rooms=[self.rect(*r) for r in rooms])
+        self.prop('fire_alarm', col, row, deg)
+
+    # the phone booth at (col, row) (a `phone_booth` prop placed apart) and the phones it calls: (col, row, deg) on walls
+    def phones(self, booth, rings):
+        self.devices['phones'] = dict(booth=list(self.at(*booth)), rings=[[*self.at(c, r), d] for (c, r, d) in rings])
+        for (c, r, d) in rings:
+            self.prop('wall_phone', c, r, d)
+
+    # the security camera at (col, row) on a wall facing deg, the tile rectangle it sees, its monitor at (col, row)
+    def camera(self, cam, view, monitor, mdeg=0):
+        c, r, d = cam
+        self.devices['camera'] = dict(cam=[*self.at(c, r), d], view=self.rect(*view), monitor=list(self.at(*monitor)))
+        self.prop('cctv', c, r, d)
+        self.prop('monitor', *monitor, mdeg)
+
+    # the passage under the street: two trapdoors (sprite, col, row, deg), painted on the floor
+    def passage(self, *ends):
+        self.devices['passage'] = [list(self.at(c, r)) for (_, c, r, _) in ends]
+        for (sprite, c, r, d) in ends:
+            self.paint(sprite, c, r, d)
 
     # ---- street fauna (systems/Critters.js): a flock of n pigeons pecking about (col, row), a cat sitting at (col, row)
     def pigeons(self, col, row, n):
@@ -437,6 +466,11 @@ class Level:
         if self.mains:
             L.append('  // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside')
             L.append(f'  power: {json.dumps(self.mains)},')
+        if self.devices:
+            L.append('  // the devices of the level (data/devices.js): the fire alarm and the rooms it rains on, the phone booth and')
+            L.append("  // the bar's phones, the camera, what it sees and its monitor, the trapdoors of the passage under the street")
+            for k, v in self.devices.items():
+                L.append(f'  {k}: {json.dumps(v)},')
         if self.wet is not None:
             L.append('  // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)')
             L.append(f'  wet: {self.wet},')

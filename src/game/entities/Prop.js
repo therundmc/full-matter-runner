@@ -124,9 +124,10 @@ export default class Prop {
   // kind: see the header. info (bullets): { nx, ny } surface normal, energy left when it arrived,
   // exit: { x, y, energy } if the round went through, ricochet: it glanced off; (blades): swing direction.
   hit(damage, px, py, dirA, power = 0.6, kind = 'bullet', info = {}) {
-    if (this.dead || this.dying) return;
+    if (this.dead || this.dying || this.falling) return; // falling: a lamp whose chains a round just cut (LampDrop)
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
     w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind });
+    if (this.falling) return;
     if (d.handset) this.offHook ??= w.time; // the receiver jumps off its hook
     if (d.bends) this.lean(dirA, power);
     const swing = info.swing ?? dirA + Math.PI / 2; // a blade's stroke runs across the blow
@@ -531,15 +532,16 @@ export default class Prop {
   leak(sx, sy, dirA) {
     if (this.leaks >= DESTRUCTION.maxLeaks) return;
     this.leaks++;
-    const w = this.world, { color = 'rgba(110,160,200,0.16)', dur = 3, kind } = this.rec.leak || { kind: 'water' };
+    // rate (px2/s) and cap: what a tank under pressure pours out of one hole (a keg floods the floor); jet: drops a step
+    const w = this.world, { color = 'rgba(110,160,200,0.16)', dur = 3, kind, rate = LIQUIDS.leak, cap, jet = 2 } = this.rec.leak || { kind: 'water' };
     const out = dirA + Math.PI + rand(-0.4, 0.4); // the jet comes back out of the hole
     let pos = this.toWorld(sx, sy);
     w.emit(pos.x, pos.y, dur, (e) => {
       if (!this.dead) pos = this.toWorld(sx, sy);
       const k = e.t / dur; // pressure falls
-      w.particles.drops(pos.x, pos.y, out + rand(-0.1, 0.1), 0.15, k > 0.3 ? 2 : 1, color, 40 + 120 * k, 5, kind !== 'water');
+      w.particles.drops(pos.x, pos.y, out + rand(-0.1, 0.1), 0.15, k > 0.3 ? jet : 1, color, 40 + 120 * k * (jet > 2 ? 1.6 : 1), 5, kind !== 'water');
     });
-    if (kind) w.events.emit('spill', { x: pos.x + Math.cos(out) * 14, y: pos.y + Math.sin(out) * 14, kind, area: LIQUIDS.leak * dur, dur });
+    if (kind) w.events.emit('spill', { x: pos.x + Math.cos(out) * 14, y: pos.y + Math.sin(out) * 14, kind, area: rate * dur, dur, cap });
     w.sound('soft', pos.x, pos.y, 0.4);
   }
 
@@ -864,7 +866,7 @@ export default class Prop {
   draw(ctx) {
     if (this.parts) { this.drawParts(ctx); return; }
     const o = this.centre(), k = this.kick;
-    const x = o.x + k.x, y = o.y + k.y, a = this.body.angle + this.sag + k.r;
+    const x = o.x + k.x, y = o.y + k.y, a = this.body.angle + this.sag + k.r + (this.pan || 0); // pan: a camera's (systems/Camera.js)
     if (this.def.overhead) {
       // drawn later, above characters; what stands on the ground casts a shadow at its foot
       if (!this.def.hung) drawSprite(ctx, this.shadowImg(), o.x + 5, o.y + 7, a, 0.28);
@@ -921,10 +923,11 @@ export default class Prop {
 
   // canopies and lamp heads: above everyone, see-through when the player is under
   drawOverhead(ctx, player, cam) {
-    const o = this.centre(), k = this.kick, d = this.def;
+    const o = this.centre(), k = this.kick, d = this.def, hang = this.hang ?? 1; // hang: 1 up there .. 0 come down (LampDrop)
     // parallax: what sits up high leans away from the centre of the view
-    this.ox = (o.x - cam.x) * (d.height || 0);
-    this.oy = (o.y - cam.y) * (d.height || 0);
+    this.ox = (o.x - cam.x) * (d.height || 0) * hang;
+    this.oy = (o.y - cam.y) * (d.height || 0) * hang;
+    if (hang < 1) drawSprite(ctx, this.shadowImg(), o.x + 3 * hang + 1, o.y + 4 * hang + 1, this.body.angle, 0.35 * (1 - hang)); // its shadow meets it
     const b = this.bend || { x: 0, y: 0 }; // a bent post keeps its lean
     const x = o.x + this.ox + k.x + b.x, y = o.y + this.oy + k.y + b.y, a = this.body.angle + this.sag + k.r + this.spun();
     if (d.pole) {

@@ -61,6 +61,26 @@ src/
       Flinch.js           rounds that go by close or strike near somebody ('round', 'strike'): a guard shot at and
                           missed flinches (head ducked, shoulders hunched, turned away), the player's view is nudged by
                           rounds striking the wall by him (FLINCH in data/feel.js; looks only; DOM-free, unit-tested)
+      Uses.js             what E does where: the spots the level's devices offer (Player.nearUse, the HUD's hint, a
+                          diamond over each spot near the player: WorldRenderer.drawUseHints)
+      the level's devices (data/devices.js, DOM-free, tests/devices.test.mjs):
+      Slips.js            running on a slick floor (a liquid kind with `slip`: a holed keg's beer): a guard falls on his
+                          back dazed a few seconds (Enemy.slip, no stars: CharacterAnim.groggy), a customer trips, the
+                          player slides on his back and gets up (Player.slip)
+      Sprinklers.js       the fire alarm (level `sprinklers`): pulled (E) or set off by a fire or a blast in its rooms:
+                          the bell, the heads raining (puddles), a slick floor (World.floorGrip), fires doused, panic
+      LampDrop.js         a hung lamp whose chains a round cuts (prop def `drops`): it falls (`hang`) and crushes whoever
+                          is under it (`how.crushed`, tag LIGHTS OUT), its light dies, the table takes the blow
+      Passage.js          two trapdoors (level `passage`): E, the picture goes dark (HUD), up out of the other one; the
+                          player is `hidden` meanwhile, the guards know nothing of it
+      Phones.js           the booth calls the bar (level `phones`): a phone rings by turns, the nearest calm guard
+                          leaves his post to answer it (Enemy.errandTo), then goes back: a lure
+      Jukebox.js          E turns it up: loud for a while (its own band stays off), small noises around it lost for the guards
+                          (Director.emit asks mask())
+      GasValve.js         a stove's tap (prop def `valve`): open, the gas spreads; a shot, a blast, a fire or metal struck
+                          in the cloud blows it, bigger the fuller
+      Camera.js           the security camera and its monitor (level `camera`): the guard by the monitor raises the
+                          alert on an armed or trespassing stranger in the picture; shot out (or the power cut): snow
       Ambience.js         the night heard place by place (level.soundscape, data/soundscape.js): beds crossfaded by
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
@@ -141,7 +161,7 @@ src/
                           (Draw pixel tools, Layout, Timeline and Cycle: everything as a function of t, unit tested, the day's keyframes
                           in data/daycycle.js; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain: the showers),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
-    data/                 atmosphere (rain, smoke, neon faults: the look of the air), daycycle (the title's day and night), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+    data/                 atmosphere (rain, smoke, neon faults: the look of the air), daycycle (the title's day and night), devices (the level's usable things: tuning), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,

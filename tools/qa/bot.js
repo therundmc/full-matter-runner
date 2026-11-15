@@ -24,7 +24,7 @@
   // level has nothing for it (notApplicable)
   const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'ladderUp', 'ladderDown', 'roofDrop', 'roll', 'slide', 'takedown',
     'finisher', 'trunk', 'doorOpened', 'doorBreached', 'weaponBroken', 'pickup', 'throw', 'thrownKill', 'reload', 'gunKill', 'meleeKill',
-    'powerCut', 'horn', 'dyingCrawl', 'dyingCurl', 'dyingSpasm', 'dyingThroat', 'clear', 'exit'];
+    'powerCut', 'horn', 'dyingCrawl', 'dyingCurl', 'dyingSpasm', 'dyingThroat', 'clear', 'exit', 'deviceUse'];
   const DYING = { crawl: 'dyingCrawl', curl: 'dyingCurl', spasm: 'dyingSpasm', throat: 'dyingThroat' };
 
   // Plans: what the bot sets out to do, drawn at each session start (and again after a while of free play) from a
@@ -37,7 +37,8 @@
   //   trunk             open the first closed trunk (skipped when already armed); a pick `optional` is skipped
   //                     when there is no such weapon
   //   wait: s           stand there s seconds (in a traffic lane: a held-up driver leans on his horn)
-  //   smash: type       go to `stand`, then strike or shoot the prop by `near` until it is gone
+  //   smash: type       go to `stand`, then strike or shoot the prop by `near` until it is gone (`enough`: s of it)
+  //   use: kind         walk to the device spot of that kind (systems/Uses.js; by `near`) and press E there
   // then the bot plays freely, in the plan's `style` ('throw': blades are thrown at guards in range).
   // ok(w, p): whether the plan still makes sense now. Routes through the map are level 1's; a level with no entry
   // here only plays 'free'. A plan marked `rescue` is never drawn, only started when needed.
@@ -54,6 +55,8 @@
   const itemNear = (w, type, at, r) => w.items.find((it) => !it.dead && it.type === type && Math.hypot(it.x - at[0] * TILE, it.y - at[1] * TILE) < r * TILE);
   const TIRE_IRON = [{ trunk: true }, { pick: 'tire_iron', near: [13.5, 24], r: 4, optional: true }];
   const THROW = { steps: [{ pick: 'knife', any: true }], style: 'throw', ok: (w) => w.items.some((it) => !it.dead && it.type === 'knife') };
+  // a device of the level that can be used now (data/devices.js)
+  const usable = (kind) => (w, p) => w.uses.spots.some((s) => s.kind === kind && (!s.ok || s.ok(p)));
   const PLANS = {
     level1: {
       free: { steps: [] },
@@ -67,6 +70,15 @@
       // late by design (Traffic.Driver attention) and he is nearly always run over
       road: { steps: [{ go: [17.5, 26.2] }, { wait: 15 }], ok: () => opts.god },
       throw: { steps: [{ pick: 'knife', near: [30.5, 17.5], r: 3, any: true }], style: 'throw' },
+      // the level's devices: the jukebox turned up, a call from the booth across the road (the bartender goes to the
+      // phone), the fire alarm pulled (rain, panic, a slick floor), the kegs behind the counter holed (beer: runners
+      // slip), the gas tap opened in the storeroom, down the TV shop's trapdoor and up in the back room
+      jukebox: { steps: [{ use: 'jukebox' }], ok: usable('jukebox') },
+      phone: { steps: [{ use: 'phone_booth' }, { wait: 6 }], ok: usable('phone_booth') },
+      alarm: { steps: [{ use: 'fire_alarm' }], ok: usable('fire_alarm') },
+      kegs: { steps: [{ smash: 'keg', near: [15.36, 12.45], enough: 3 }], ok: (w) => w.props.some((q) => q.type === 'keg' && !q.dead) },
+      gas: { steps: [{ use: 'gas' }], ok: usable('gas') },
+      passage: { steps: [{ use: 'trapdoor', near: [35.55, 17.95] }, { wait: 2.5 }], ok: usable('trapdoor') },
       // off the roof when a failed plan left the bot up there (the grid has no way down: ladders and parapets block)
       offRoof: { steps: DROP_ALLEY, rescue: true },
     },
@@ -109,7 +121,7 @@
       kills: 0, playerKills: 0, styles: {}, tags: {}, killWeapons: {}, picked: {}, fired: {}, civilians: {},
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
-      plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0,
+      plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0,
     },
     sessions: [],      // per session summary (Node analyses its samples for leaks)
     newSamples: [],    // leak samples since the last status
@@ -226,6 +238,7 @@
     if (!w.doors.some((d) => d.locked)) na.push('doorBreached');
     if (!w.level.exit) na.push('exit');
     if (!w.enemies.length) na.push('takedown', 'finisher', 'gunKill', 'meleeKill', 'thrownKill', ...Object.values(DYING), 'clear');
+    if (!w.uses?.spots.length) na.push('deviceUse');
     return na;
   }
 
@@ -414,7 +427,7 @@
   const guardsUp = (w) => w.enemies.some((e) => e.alive && !e.yielded);
   const planStat = (name) => S.stats.plans[name] || (S.stats.plans[name] = { started: 0, done: 0, cut: 0, skipped: 0, failed: {} });
   const stepName = (st) => (st.go ? `go ${st.go}` : st.to ? `to ${st.to}` : st.cross ? `cross ${st.cross}` : st.pick ? `pick ${st.pick}`
-    : st.trunk ? 'trunk' : st.wait ? `wait ${st.wait}` : `smash ${st.smash}`);
+    : st.trunk ? 'trunk' : st.wait ? `wait ${st.wait}` : st.use ? `use ${st.use}` : `smash ${st.smash}`);
 
   // the next plan of the deck that makes sense now ('free' only at a session start; rescues are never drawn)
   function drawPlan(w, p, start = true) {
@@ -489,6 +502,16 @@
     if (spot) { st.x = spot[0] * TILE; st.y = spot[1] * TILE; st.best = Infinity; return null; }
     if (st.pick) return p.weapon?.type === st.pick ? nextStep(w, p) : findItem(w, p, st);
     if (st.wait) return null;
+    if (st.use) {
+      const near = st.near && { x: st.near[0] * TILE, y: st.near[1] * TILE };
+      st.spot = w.uses.spots.filter((u) => u.kind === st.use && (!u.ok || u.ok(p)))
+        .sort((a, b) => (near ? Math.hypot(w.uses.at(a).x - near.x, w.uses.at(a).y - near.y) - Math.hypot(w.uses.at(b).x - near.x, w.uses.at(b).y - near.y) : 0))[0];
+      if (!st.spot) return endPlan(false, `no ${st.use} to use`);
+      const at = w.uses.at(st.spot), stand = standBy(w, p, at);
+      if (!stand) return endPlan(false, 'nowhere to stand');
+      st.x = at.x; st.y = at.y; st.best = Infinity; st.stand = stand;
+      return go({ type: 'route', x: stand.x, y: stand.y });
+    }
     if (st.trunk) {
       st.car = B.trunks.find((c) => !c.dead && !c.trunk.open);
       if (!st.car || p.armed) return nextStep(w, p);
@@ -544,6 +567,25 @@
       if (st.car.dead || st.car.trunk.open) return nextStep(w, p);
       if (p.nearTrunk) { press(inp, 'KeyE'); act('open trunk'); }
       return B.goal ? undefined : endPlan(false, 'gave up the way');
+    }
+    if (st.use) {
+      if (st.pressed) return nextStep(w, p);
+      if (p.nearUse === st.spot) {
+        press(inp, 'KeyE');
+        st.pressed = true;
+        act(`use ${st.use}`);
+        cover('deviceUse');
+        bump(S.stats.devices, st.use);
+        return null;
+      }
+      // the grid takes him to the cell by it (again, if he lost the way), the last steps are straight at it
+      const d = Math.hypot(p.x - st.stand.x, p.y - st.stand.y);
+      if (B.goal) { if (d > 8) return undefined; B.goal = B.path = null; }
+      if (d > 48 && S.clock > (st.retry || 0)) {
+        st.retry = S.clock + 2;
+        if (setGoal(w, p, { type: 'route', x: st.stand.x, y: st.stand.y })) return undefined;
+      }
+      return straight(p, inp, st, st.x, st.y);
     }
     // smash: get there, then hit it until it is gone (a roaming smash stops after a few seconds of it)
     const q = st.prop, d = Math.hypot(q.x - p.x, q.y - p.y);
@@ -862,6 +904,10 @@
     B.execWas = p.execution;
     if (w.cleared && !S.sess.cleared) { S.sess.cleared = true; B.clearT = S.clock; cover('clear'); act('LEVEL CLEARED'); }
     for (const c of B.trunks) if (c.trunk?.open && !c.__qaOpen) { c.__qaOpen = true; cover('trunk'); }
+    // feet gone on a slick floor (systems/Slips.js): the player, a guard dazed
+    if (p.slipped && !B.slipWas) { S.stats.slips++; act('slipped'); }
+    B.slipWas = !!p.slipped;
+    for (const e of w.enemies) { if (e.dazed && !e.__qaDazed) S.stats.slips++; e.__qaDazed = !!e.dazed; }
     if (S.steps % 15 === 0) {
       for (const d of B.locked) if (!d.locked) { B.locked.delete(d); cover('doorBreached'); act('door breached'); }
       for (const d of B.doors) {

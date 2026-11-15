@@ -706,7 +706,7 @@ export default class Game {
       // what heats the air: burning wrecks, pierced steam pipes (blasts are the lens' own business)
       heat: inWorld ? [...w.props.filter((q) => q.burning).map((q) => ({ x: q.x, y: q.y, kind: 'fire' })),
         ...w.fires.lit().map((f) => ({ x: f.x, y: f.y, kind: 'fire' })),
-        ...w.steam.leaks.map((l) => ({ x: l.x, y: l.y, kind: 'steam' }))] : [],
+        ...w.steam.leaks.map((l) => ({ x: l.x, y: l.y, kind: 'steam' })), ...w.gasValve.heat()] : [],
       lights: inWorld && !this.overview ? w.lighting?.brightest || [] : [],
     };
   }

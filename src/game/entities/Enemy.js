@@ -25,6 +25,7 @@ import { TELL } from '../data/feel.js';
 import { POSTS, HELD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
 import { HURT } from '../data/wounds.js';
+import { SLIP } from '../data/devices.js';
 import { sprite, spriteOpt, sw } from '../../engine/Assets.js';
 
 const { Body, Bounds } = Matter;
@@ -174,7 +175,7 @@ export default class Enemy extends Character {
 
   // ---------------- perception ----------------
   canSee(p) {
-    if (!p.alive) return false;
+    if (!p.alive || p.hidden) return false; // hidden: under the street (systems/Passage.js), in the getaway van
     const dx = p.x - this.x, dy = p.y - this.y;
     if (!inView(Math.hypot(dx, dy), Math.abs(angDiff(this.angle, Math.atan2(dy, dx))), this.aware)) return false;
     return this.world.sightLine(this.x, this.y, p.x, p.y);
@@ -607,10 +608,11 @@ export default class Enemy extends Character {
     const busy = this.distracted || HANDS.has(this.activity); // dropped as soon as the squad is on edge
     if ((this.activityT -= dt) <= 0 || (busy && this.director.phase !== 'normal')) this.pickActivity();
     this.easeTick(dt);
+    const base = h.angle ?? h.face ?? this.home.angle; // (an errand's spot may only say which way to face)
     if (this.distracted) this.faceAngle(this.idleFace, 2, dt);
     else if (this.activity === 'turn') this.faceAngle(this.turnTo, 2.2, dt);
-    else if (this.activity === 'scan') this.faceAngle(h.angle + Math.sin(this.t * 0.8 + this.seed) * 1.2, 2.2, dt);
-    else this.sweep(dt, h.angle, 0.7, 1.8);
+    else if (this.activity === 'scan') this.faceAngle(base + Math.sin(this.t * 0.8 + this.seed) * 1.2, 2.2, dt);
+    else this.sweep(dt, base, 0.7, 1.8);
   }
 
   // a pastime at his post: he is at it when the level opens and goes back to it as long as all is calm
@@ -1083,6 +1085,25 @@ export default class Enemy extends Character {
     if (q < 0.25) { set('turn', rand(1.5, 2.6)); this.turnTo = this.home.angle + rand(2.3, 4); }
     else if (q < 0.55) set('scan', rand(3, 5));
     else set('watch', rand(3, 6));
+  }
+
+  // sent somewhere for a while, all calm (a phone ringing: systems/Phones.js): he walks to spot { x, y, face }, is
+  // at `activity` there `time` s facing `face`, then goes back to his post (doIdle, pickActivity)
+  errandTo(spot, activity, time) {
+    this.errand = { angle: spot.face, ...spot }; // angle: what he sweeps about from, should he look round there
+    this.errandT = 0;
+    this.activity = activity;
+    this.activityT = time;
+    this.idleFace = spot.face;
+    this.actT = 0;
+    this.mate = null;
+    if (this.routine) { this.routine.act = null; this.routine.cued = null; this.workSpot = null; this.onSpot = false; }
+  }
+
+  // free to be sent on an errand: calm, at his post, not the boss
+  get sendable() {
+    return this.alive && this.state === S.IDLE && this.aware === 0 && !(this.knocked > 0) && !this.boss && !this.dormant
+      && !this.passive && !this.held && !this.yielded && this.director.phase === 'normal';
   }
 
   // calm, on his feet, at his post or on his round, with nothing going on
@@ -2082,26 +2103,39 @@ export default class Enemy extends Character {
   }
 
   // ---------------- knock-down ----------------
-  knock(angle, cause) {
+  // opt (a fall nobody caused, Enemy.slip): time s on the floor, slide: the way he slides on (default: the blow's),
+  // speed px/step, dazed: groggy on the floor rather than knocked silly, no blood, nobody provoked
+  knock(angle, cause, opt = {}) {
     if (!this.alive || this.knocked > 0) return;
     if (this.holding) this.dropHeld();
-    this.knocked = ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
+    this.knocked = opt.time ?? ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
+    this.dazed = !!opt.dazed;
     this.posture = 0; this.through = false;
-    this.director.provoked = true; // nobody floors a guard by accident
+    if (!opt.dazed) this.director.provoked = true; // nobody floors a guard by accident
     this.world.events.emit('knock', { victim: this, cause, angle });
     this.downAngle = angle; // on his back, his head away from the blow
     this.dormant = false;   // that wakes a man
-    this.dropWeapon(angle + rand(-0.8, 0.8), rand(2, 4));
+    const along = opt.slide ?? angle;
+    this.dropWeapon(along + rand(-0.8, 0.8), rand(2, 4));
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
-    const sp = cause === 'punch' ? 3 : 4.5;
-    this.vel = { x: Math.cos(angle) * sp, y: Math.sin(angle) * sp };
+    const sp = opt.speed ?? (cause === 'punch' ? 3 : 4.5);
+    this.vel = { x: Math.cos(along) * sp, y: Math.sin(along) * sp };
     Body.setVelocity(this.body, this.vel);
-    this.world.particles.blood(this.x, this.y, angle, 0.6, 6, 120);
-    this.hurt = rand(...HURT.dur); // his nose bleeds a while (drip)
     this.swing = this.tell = 0;
     this.reloading = 0;
     this.director.release(this);
+    if (opt.dazed) return;
+    this.world.particles.blood(this.x, this.y, angle, 0.6, 6, 120);
+    this.hurt = rand(...HURT.dur); // his nose bleeds a while (drip)
+  }
+
+  // his feet went on a slick floor running along a (systems/Slips.js): on his back, his head where he came from,
+  // sliding on; dazed a few seconds, trying to get up (a free kill)
+  slip(a) {
+    const S = SLIP.enemy;
+    this.knock(a + Math.PI, 'slip', { time: rand(...S.daze), slide: a, speed: S.push, dazed: true });
+    this.say('slip');
   }
 
   // floored but alive: a drop off his face now and then, where he lies and on his way once he is up (HURT)
@@ -2120,6 +2154,7 @@ export default class Enemy extends Character {
     this.layClear(dt);
     if (this.knocked <= 0) {
       this.knocked = 0;
+      this.dazed = false;
       this.body.collisionFilter = { category: CAT.CHAR, mask: MASK.CHAR, group: 0 };
       this.angle = this.downAngle + Math.PI;
       if (this.passive) return;

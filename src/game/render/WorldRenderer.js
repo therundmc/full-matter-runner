@@ -3,6 +3,7 @@
 import { TILE, PALETTE, CAT, LIQUIDS } from '../Config.js';
 import { rand, clamp, TAU } from '../../engine/math.js';
 import { puddleShape } from '../systems/Liquids.js';
+import { gridRaycast } from '../../engine/physics/Raycast.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
@@ -105,6 +106,7 @@ export default class WorldRenderer {
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
     const pl = w.player;
     if (pl && pl.alive && !pl.vaulting && pl.vaultHint) this.drawVaultHint(ctx, pl.vaultHint, t);
+    if (pl && pl.alive && !pl.passage) this.drawUseHints(ctx, pl, t);
     if (w.tutorial) this.drawHints(ctx, w.tutorial.hints(), t);
     if (w.showVision) this.drawAIDebug(ctx);
     this.drawTexts(ctx);
@@ -120,6 +122,14 @@ export default class WorldRenderer {
       for (const [x, y, rx, ry] of shape) { ctx.moveTo(x + rx * k, y); ctx.ellipse(x, y, rx * k, ry * k, 0, 0, TAU); }
       ctx.fill();
     };
+    // it stops at the walls: what of it would lie under one (or past it, in the next room) is clipped off
+    const cells = this.puddleCells(p);
+    ctx.save();
+    if (cells) {
+      ctx.beginPath();
+      for (const [c, r] of cells) ctx.rect(c * TILE, r * TILE, TILE, TILE);
+      ctx.clip();
+    }
     ctx.globalAlpha = p.alpha;
     ctx.fillStyle = look.body;
     blob(1);
@@ -128,7 +138,7 @@ export default class WorldRenderer {
     if (look.foam) {
       // froth pushed to the edge
       ctx.fillStyle = look.foam;
-      ctx.globalAlpha = p.alpha * 0.5;
+      ctx.globalAlpha = Math.min(1, p.alpha * 0.5 * (look.froth ?? 1));
       for (const l of p.lobes) {
         for (let j = -1; j <= 1; j++) {
           if (Math.sin(l.ph * 5 + j * 2) < -0.2) continue; // patchy
@@ -158,6 +168,29 @@ export default class WorldRenderer {
       }
     }
     ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // the floor tiles a puddle may lie on when a wall is within its reach (null: none is, nothing to clip): those on
+  // its side of the walls (a straight line from its centre to theirs crosses none). Kept until it spreads to new
+  // tiles or a wall comes down.
+  puddleCells(p) {
+    const m = this.world.map, R = p.r * 1.3;
+    const c0 = Math.floor((p.x - R) / TILE), c1 = Math.floor((p.x + R) / TILE), r0 = Math.floor((p.y - R) / TILE), r1 = Math.floor((p.y + R) / TILE);
+    const key = `${c0},${r0},${c1},${r1},${Math.round(p.x)},${Math.round(p.y)},${m.version}`;
+    if (p.clip?.key === key) return p.clip.cells;
+    let cells = null;
+    // a wall, or a doorway or a window in one: it stays on its side of them (the tile of its own centre excepted)
+    const pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
+    const shut = (c, r) => m.isSolid(c, r) || ((c !== pc || r !== pr) && 'DLG'.includes(m.at(c, r) || 'X'));
+    for (let r = r0; r <= r1 && !cells; r++) for (let c = c0; c <= c1; c++) if (shut(c, r)) { cells = []; break; }
+    if (cells) {
+      for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) if (!shut(c, r) && !gridRaycast(p.x, p.y, (c + 0.5) * TILE, (r + 0.5) * TILE, shut)) cells.push([c, r]);
+      }
+    }
+    p.clip = { key, cells };
+    return cells;
   }
 
   // lit: the lighting pass already put the transient lights into its light map
@@ -300,6 +333,28 @@ export default class WorldRenderer {
       ctx.moveTo(0, -6); ctx.lineTo(0, 6); // the edge
       for (const c of [o, o + 4]) { ctx.moveTo(c, -3.5); ctx.lineTo(c + 3.5, 0); ctx.lineTo(c, 3.5); }
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // What the devices of the level offer (systems/Uses.js), seen from close by: a small diamond over each spot that can
+  // be used now within a few metres, faint; the one E would use now bright, its corners pulsing round it.
+  drawUseHints(ctx, pl, t) {
+    const u = this.world.uses, R = 3 * TILE;
+    ctx.save();
+    ctx.lineJoin = 'round';
+    for (const s of u.spots) {
+      if (s.prop && (s.prop.dead || s.prop.dying)) continue;
+      const { x, y } = u.at(s), d = Math.hypot(x - pl.x, y - pl.y), on = s === pl.nearUse;
+      if (d > R || (!on && s.ok && !s.ok(pl))) continue;
+      const k = on ? 1 : 0.35 * (1 - d / R), r = on ? 3 + Math.sin(t * 8) : 2.5;
+      for (const [width, color] of [[3, `rgba(8,4,16,${0.8 * k})`], [1.2, on ? '#ffe46a' : `rgba(255,228,106,${k})`]]) {
+        ctx.lineWidth = width;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 14 - r); ctx.lineTo(x + r, y - 14); ctx.lineTo(x, y - 14 + r); ctx.lineTo(x - r, y - 14); ctx.closePath();
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }

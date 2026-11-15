@@ -48,6 +48,14 @@ player, and reads `window.game` to decide:
   | `fuse` | the tire iron if the trunk still has it, then the bar's fuse box in the back lot, struck or shot until the power is cut |
   | `throw` | the knife dropped in the gap, then every blade it holds is thrown at a guard 45 to 170 px away |
   | `road` | `--god` only: stands in a traffic lane until a driver brakes and honks (drivers see a man in the road late, by design: he is nearly always run over) |
+  | `jukebox` | E at the jukebox: turned up (its band, the guards around deaf to small noises) |
+  | `phone` | E at the phone booth across the road: the bar's phone rings, a guard leaves his post to answer it |
+  | `alarm` | E at the fire alarm by the toilets' door: bell, sprinklers, a slick floor, the customers run |
+  | `kegs` | strikes the kegs behind the counter a few seconds: beer floods the corner (runners slip, counted in the stats) |
+  | `gas` | E at the storeroom's oven: the gas tap left open (a shot or a blast in the cloud blows it) |
+  | `passage` | into the TV shop (its locked door forced, the alarm rings), E at the trapdoor, up under the rug in the back room |
+
+  A `use: kind` step walks to the device spot of that kind (systems/Uses.js) and presses E there.
 
   `lab` and `street` have `free` and `throw` (and `road` in `--god` on the street). A plan that breaks (no path,
   timeout, the weapon gone) is a `plan-failed` warning; a plan left on the roof is followed by a way down (`offRoof`);
@@ -94,7 +102,8 @@ occurrence (fast mode puts the camera on the spot and rings it in red).
 Coverage counters: `vault` (furniture, a hood), `windowDive` / `windowVault` (through a whole / broken pane),
 `climb` (a gate, a fence), `ladderUp` / `ladderDown`, `roofDrop` (over a parapet), `roll` (the landing of a drop),
 `slide`, `takedown`, `finisher`, `trunk`, `doorOpened`, `doorBreached` (a locked door forced), `weaponBroken`,
-`pickup`, `throw`, `thrownKill` (a thrown blade kills, `how.thrown`), `reload`, `gunKill`, `meleeKill`, `powerCut`,
+`pickup`, `throw`, `thrownKill` (a thrown blade kills, `how.thrown`), `reload`, `gunKill`, `meleeKill`, `powerCut`, `deviceUse` (E at a
+device of the level; the report lists which, and the falls on a slick floor),
 `horn` (a held-up driver, heard through `world.sound`), `dyingCrawl` / `dyingCurl` / `dyingSpasm` / `dyingThroat`
 (how a guard dies on the floor, `Ragdoll.dying`; plain throes are only counted in the stats), `clear`, `exit` (the
 results screen).

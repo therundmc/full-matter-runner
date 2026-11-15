@@ -13,6 +13,13 @@ export function drawHUD(ctx, game, t) {
   const s = H / 720;
   const pad = 26 * s;
 
+  // down a trapdoor (systems/Passage.js): the picture goes dark while he is under the street
+  const dark = p.passage?.dark ?? 0;
+  if (dark > 0) {
+    ctx.fillStyle = `rgba(4, 2, 8, ${dark})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
   // weapon + ammo
   const def = WEAPONS[p.weapon ? p.weapon.type : 'fists'];
   text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
@@ -66,6 +73,7 @@ export function drawHUD(ctx, game, t) {
   if (p.alive) {
     if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = ['action', p.contextAction];
     else if (p.nearTrunk) hint = ['use', 'OPEN TRUNK'];
+    else if (p.nearUse) hint = ['use', w.uses.label(p.nearUse)];
     else if (p.nearItem) hint = ['use', `${p.armed ? 'SWAP FOR' : 'PICK UP'} ${p.nearItem.def.name}`];
   }
   if (hint) drawPrompts(ctx, [hint], W / 2, H - 50 * s, 24 * s, game.input.device, { alpha: 0.8 + Math.sin(t * 8) * 0.2, font: 0.66 });

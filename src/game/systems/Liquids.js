@@ -1,6 +1,6 @@
 // What is wet on the floor and what it does (no DOM: painting goes through world.decals and WorldRenderer).
 //   puddles  liquid poured on the floor (a burst hydrant, a broken toilet, smashed bottles), spreading in real
-//            time, standing, then drying; one kind each (LIQUIDS.kinds: water, booze)
+//            time, standing, then drying; one kind each (LIQUIDS.kinds: water, booze, beer)
 //   pools    the blood under each body (the corpse owns and draws it; we only know where it is wet)
 //   walkers  whoever steps in one carries it away: fading footprints, a smear when sliding
 // A wet floor also grips less (World.floorGrip), so bodies and loose objects slide further on it.
@@ -71,11 +71,12 @@ export default class Liquids {
     return p;
   }
 
-  // the wet area under a point, if any ({ kind, x, y, r })
+  // the wet area under a point, if any ({ kind, x, y, r }); a puddle does not run under a wall into the next room
   at(x, y) {
+    const map = this.world.map;
     for (const p of this.puddles) {
       const dx = p.x - x, dy = p.y - y, r = p.r * 0.92;
-      if (dx * dx + dy * dy < r * r) return p;
+      if (dx * dx + dy * dy < r * r && !map?.raycast(p.x, p.y, x, y)) return p;
     }
     for (const z of this.pools.values()) {
       const dx = z.x - x, dy = z.y - y;
@@ -87,7 +88,8 @@ export default class Liquids {
   // floor grip multiplier at a point
   grip(x, y) {
     if (!this.puddles.length && !this.pools.size) return 1;
-    return this.at(x, y) ? LIQUIDS.grip : 1;
+    const z = this.at(x, y);
+    return z ? LIQUIDS.kinds[z.kind]?.grip ?? LIQUIDS.grip : 1;
   }
 
   update(dt) {

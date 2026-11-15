@@ -6264,6 +6264,172 @@ def p_shoes():
 
 
 # small dressing added one by one (the details list)
+
+# ---------------------------------------------------------------- the level's devices (src/game/data/devices.js)
+def p_keg():
+    """A 50 l steel keg of draught beer from above: the rolled top chime with its two hand holes, the dished top and
+    its weld seam, the black coupler on the spear with its lever and the beer line curling off to the tap, the
+    brewery's coloured cap ring, a stencilled number, scuffs and a dent from the cellar steps."""
+    S = 18
+    c = S / 2
+    cv = Cv(S, S)
+    st = ramp('#b8bec8', 0.5, 0.26, 0.42)
+    fill_shape(cv, c, c, 8.0, 8.0, lambda u, v, L: shade(st, 0.6 - (u + v) * 0.03))
+    ring(cv, c, c, 7.1, 8.05, lambda dx, dy, d: shade(st, light(dx / d * 0.95, dy / d * 0.95)) if d > 7.6 else st[0])
+    ring(cv, c, c, 6.5, 7.1, lambda dx, dy, d: shade(st, 0.9 - light(dx / d, dy / d) * 0.7))   # the chime's inner wall
+    for (hx0, hy0) in ((c - 4.2, c - 5.6), (c + 2.4, c + 4.6)):            # the hand holes
+        frect(cv, hx0, hy0, hx0 + 2.0, hy0 + 1.0, hx('#1a1820'))
+    ring(cv, c, c, 4.4, 4.8, lambda dx, dy, d: shade(st, 0.25 + light(dx / d, dy / d) * 0.7))  # the weld seam
+    ring(cv, c, c, 2.6, 3.3, lambda dx, dy, d: hx('#2a6ad8') if dx + dy < 0 else hx('#1a4aa0'))   # the brewery's ring
+    fill_shape(cv, c, c, 2.4, 2.4, lambda u, v, L: shade(ramp('#26242c', 0.45, 0.22, 0.5), L))   # the coupler
+    fill_capsule(cv, [(c, c), (c + 3.6, c - 1.4)], 0.55, lambda k, L, s_, i, t: shade(ramp('#3a3844', 0.45, 0.22, 0.5), L))   # its lever
+    fill_capsule(cv, [(c - 1.2, c + 1.0), (c - 4.0, c + 3.5), (c - 6.6, c + 2.6), (c - 8.6, c + 4.2)], 0.42,
+                 lambda k, L, s_, i, t: hx('#e8c070') if L > 0.55 else hx('#b07a2a'))   # the beer line, beer in it
+    for x in (6.0, 7.0, 8.0, 10.0, 11.0):
+        cv.dot(x, 14.5, alpha(hx('#2a2a34'), 170))                       # stencilled number
+    rng = random.Random(4401)
+    smudge(cv, rng, 4, (2, 2, 16, 16), (0.5, 1.0), 0.35, hx('#6a6e78'))   # scuffs
+    smudge(cv, rng, 1, (11, 3, 14, 6), (1.2, 1.6), 0.25)                 # a dent
+    fgrain(cv, random.Random(4402), 3)
+    cv.outline()
+    return cv
+
+
+def p_fire_alarm():
+    """The bar's fire alarm pull station on a wall (-y), from above: a red cast box on its back plate, FIRE in white
+    on its face, the white T-handle to pull down, the little glass rod across it, the bell's red dome beside it."""
+    cv = Cv(12, 8)
+    frect(cv, 1.0, 0.5, 11.0, 1.8, hx('#5a5a66'))                        # the back plate on the wall
+    frect(cv, 1.0, 0.5, 11.0, 1.0, hx('#8a8a96'))
+    red = ramp('#d01e26', 0.5, 0.25, 0.42)
+    fill_shape(cv, 4.6, 4.2, 3.6, 2.8, lambda u, v, L: shade(red, L), kind='rect', bevel=0.8, corner=0.5)
+    frect(cv, 2.2, 3.0, 7.0, 3.6, hx('#f4f2ec'))                         # FIRE
+    frect(cv, 3.8, 5.0, 5.4, 7.2, hx('#f4f2ec'))                         # the T-handle, out toward the room
+    frect(cv, 2.8, 6.4, 6.4, 7.2, hx('#f4f2ec'))
+    frect(cv, 2.8, 6.8, 6.4, 7.2, hx('#c8c4b8'))
+    line(cv, 2.6, 5.4, 6.6, 5.4, hx('#cfeaff'))                          # the glass rod
+    fill_shape(cv, 9.2, 4.0, 1.8, 1.8, lambda u, v, L: shade(ramp('#c2281e', 0.45, 0.22, 0.5), L))   # the bell
+    cv.dot(8.75, 3.5, hx('#ffb0a0'))
+    cv.outline()
+    return cv
+
+
+def p_wall_phone():
+    """The bar's telephone on a wall (-y), from above: a cream case, the rotary dial's finger wheel, the handset across
+    the top on its hook, the curly cord hanging down."""
+    cv = Cv(12, 8)
+    case = ramp('#d8cfb8', 0.45, 0.22, 0.32)
+    fill_shape(cv, 6.0, 3.4, 4.6, 2.6, lambda u, v, L: shade(case, L), kind='rect', bevel=0.8, corner=0.8)
+    ring(cv, 5.2, 3.8, 1.2, 1.9, lambda dx, dy, d: case[1] if dx + dy < 0 else case[0])   # the finger wheel
+    for k in range(8):
+        a = -2.4 + k * 0.62
+        cv.dot(5.2 + math.cos(a) * 1.5, 3.8 + math.sin(a) * 1.5, hx('#2a2830'))
+    cv.dot(5.0, 3.6, hx('#f4f0e4'))
+    fill_capsule(cv, [(2.0, 1.8), (10.0, 1.8)], 0.9, lambda k, L, s_, i, t: shade(ramp('#cfc6ae', 0.45, 0.22, 0.4), L))   # the handset
+    for x in (2.0, 10.0):
+        fill_shape(cv, x, 1.8, 1.1, 1.0, lambda u, v, L: shade(ramp('#bfb6a0', 0.45, 0.22, 0.4), L))
+    for y in range(5, 8):                                                 # the curly cord
+        cv.dot(8.5 + (y % 2) * 0.5, y + 0.25, hx('#a89c80'))
+    cv.outline()
+    return cv
+
+
+def p_cctv():
+    """A security camera high on a wall (-y), from above: the bracket out of the wall, the beige housing with its sun
+    hood, the lens at the front (+y), its little red light."""
+    cv = Cv(12, 12)
+    frect(cv, 5.0, 0.0, 7.0, 3.0, hx('#4a4e58'))                         # the bracket
+    frect(cv, 5.0, 0.0, 5.5, 3.0, hx('#7a808c'))
+    housing = ramp('#d2cfc4', 0.45, 0.22, 0.32)
+    fill_shape(cv, 6.0, 6.4, 2.6, 3.8, lambda u, v, L: shade(housing, L), kind='rect', bevel=0.9, corner=0.6)
+    frect(cv, 3.2, 3.0, 8.8, 3.6, housing[3])                            # the sun hood's lip
+    for y in (4.5, 5.5, 6.5):
+        frect(cv, 4.5, y, 7.5, y + 0.3, housing[1])                      # its ribs
+    fill_shape(cv, 6.0, 10.2, 1.6, 0.9, lambda u, v, L: shade(ramp('#1c2030', 0.45, 0.22, 0.6), L))   # the lens
+    cv.dot(5.5, 10.0, hx('#9ab8e8'))
+    cv.dot(8.0, 8.5, hx('#ff3020'))                                      # the red light
+    cv.outline()
+    return cv
+
+
+def p_monitor():
+    """The camera's monitor on the boss's desk, from above, its screen toward +y: a grey steel case with its vents,
+    the handle on top, the screen's tilted face and its knobs at the front."""
+    W, H = 18, 14
+    cv = Cv(W, H)
+    case = ramp('#7a7e88', 0.45, 0.22, 0.38)
+    fill_shape(cv, 9.0, 6.2, 8.0, 5.4, lambda u, v, L: shade(case, L), kind='rect', bevel=1.0, corner=0.8)
+    for x in range(4, 14, 2):
+        frect(cv, x + 0.25, 2.0, x + 0.9, 5.0, case[0])                  # vents
+    frect(cv, 6.0, 1.2, 12.0, 1.8, hx('#2a2830'))                        # the carry handle
+    frect(cv, 2.0, 8.2, 16.0, 12.8, hx('#2a2e2a'))                       # the screen's bezel
+    frect(cv, 2.5, 8.7, 14.0, 12.3, hx('#0e1a14'))                       # the tube, dark (its picture: PropLife)
+    for y in (9.5, 11.5):
+        knob(cv, 15.0, y, 0.55, '#1a1820', -0.8)
+    cv.dot(15.0, 8.7, hx('#3aff8a'))
+    cv.outline()
+    return cv
+
+
+def p_trapdoor():
+    """A trapdoor in the floor of the TV shop's back, flush with it: an angle-iron frame, four worn planks, the iron
+    ring sunk in its recess, the two strap hinges, grime in the joints and the scuffs of the hatch being dragged."""
+    cv = Cv(26, 26)
+    iron = ramp('#4a4c56', 0.45, 0.22, 0.4)
+    frect(cv, 1.0, 1.0, 25.0, 25.0, iron[1])
+    frect(cv, 1.0, 1.0, 25.0, 1.6, iron[3])
+    frect(cv, 1.0, 1.0, 1.6, 25.0, iron[3])
+    wood_fill(cv, 2, 2, 24, 24, hx('#6a4a30'), plank=5, rng=random.Random(5301), vertical=True)
+    bevel_edges(cv, 2, 2, 23, 23, 0.2, 0.35)
+    for x in (7.5, 12.5, 17.5):
+        frect(cv, x, 2.5, x + 0.5, 23.5, hx('#2a1a10'))                  # the joints
+    for y in (5.0, 19.5):                                                 # the strap hinges
+        frect(cv, 2.5, y, 9.0, y + 1.5, iron[2])
+        frect(cv, 2.5, y, 9.0, y + 0.5, iron[3])
+        cv.dot(4.0, y + 1.0, iron[0])
+        cv.dot(7.5, y + 1.0, iron[0])
+    fill_shape(cv, 19.0, 13.0, 2.2, 2.2, lambda u, v, L: hx('#1a1410'))   # the ring's recess
+    ring(cv, 19.0, 13.0, 1.3, 2.0, lambda dx, dy, d: shade(iron, light(dx / d, dy / d)))
+    smudge(cv, random.Random(5302), 4, (3, 3, 23, 23), (1.0, 2.2), 0.25)
+    cv.outline()
+    return cv
+
+
+def p_rug():
+    """The boss's rug, a worn Persian on the floor of his back room, one corner kicked back over itself: the deep red
+    field and its navy medallion, the patterned border, the fringe, and under the turned corner the edge of the
+    hatch's planks and its frame (what it hides)."""
+    W, H = 40, 28
+    cv = Cv(W, H)
+    rng = random.Random(5311)
+    red, navy, gold = ramp('#8a1a22', 0.45, 0.22, 0.3), ramp('#1e2a56', 0.45, 0.22, 0.3), hx('#c8a050')
+
+    def field(x, y, c):
+        bx = min(x - 2, W - 2 - x, y - 2, H - 2 - y)
+        if bx < 2.0:
+            col = navy[2] if (int(x) + int(y)) % 3 else gold
+        elif bx < 2.5:
+            col = gold
+        else:
+            dx, dy = (x - W / 2) / 10, (y - H / 2) / 7
+            d = abs(dx) + abs(dy)
+            col = navy[2] if d < 0.6 else gold if d < 0.75 else red[2] if (int(x * 0.5) + int(y * 0.5)) % 4 else red[1]
+        return mix(col, hx('#3a2a26'), 0.18 * rng.random())             # worn, uneven
+    px_paint(cv, 2, 2, W - 2, H - 2, field)
+    for x in range(3, W - 3, 2):                                          # the fringe
+        cv.dot(x, 1.25, hx('#e4d8b8'))
+        cv.dot(x, H - 1.25, hx('#e4d8b8'))
+    # the corner kicked back (bottom right): the hatch's planks under it, the fold of the rug's pale back
+    for j in range(0, 9):
+        for i in range(0, 9 - j):
+            cv.set(W - 2.5 - i, H - 2.5 - j, hx('#5a3a20') if (i + j) % 3 else hx('#3a2412'))
+    line(cv, W - 11.0, H - 2.0, W - 2.0, H - 11.0, hx('#2a2a32'))         # the frame's edge
+    for k in range(0, 9):
+        cv.dot(W - 11.5 + k, H - 11.5 + (8 - k), hx('#d8c8a8'))
+    smudge(cv, rng, 3, (4, 4, W - 4, H - 4), (1.5, 3.0), 0.15)
+    cv.outline()
+    return cv
+
 DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
                     vending=p_vending, phone_booth=p_phone_booth, parking_meter=p_parking_meter, news_box=p_news_box,
@@ -6275,14 +6441,17 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
                     floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, velvet_rope=p_velvet_rope,
                     entry_carpet=p_entry_carpet, awning=p_awning, radiator=p_radiator, bike=p_bike,
-                    bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes)
+                    bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes,
+                    keg=p_keg, fire_alarm=p_fire_alarm, wall_phone=p_wall_phone, cctv=p_cctv, monitor=p_monitor,
+                    trapdoor=p_trapdoor, rug=p_rug)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
                     floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
-                    bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9))
+                    bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
+                    keg=(18, 18), fire_alarm=(12, 8), wall_phone=(12, 8), cctv=(12, 12), monitor=(18, 14), trapdoor=(26, 26), rug=(40, 28))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,
