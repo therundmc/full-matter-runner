@@ -49,6 +49,8 @@ export const POST = {
     dark: { sat: 1.08, con: 1.16, gain: [1, 0.97, 0.98], lift: [0.02, 0.005, 0.035], tint: [1, 0.1, 0.1], tintK: 0.1 },
     dead: { sat: 0.32, con: 1.24, gain: [0.92, 0.96, 1.06], lift: [0, 0.02, 0.06], tint: [0.3, 0.5, 1], tintK: 0.14 },
     menu: { sat: 1.1, con: 1.04, gain: [1, 1, 1], lift: [0, 0.03, 0.06], tint: [1, 0.16, 0.75], tintK: 0.06 },
+    // the title by day (its sky bright: view.daylight 1): no blue in the blacks, no pink wash, mixed with menu by the hour
+    menuDay: { sat: 1.04, con: 1.03, gain: [1, 1, 1], lift: [0, 0.01, 0.02], tint: [1, 0.8, 0.55], tintK: 0.03 },
   },
   gradeEase: 2.2,          // 1/s
 

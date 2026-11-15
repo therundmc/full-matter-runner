@@ -3,7 +3,8 @@
 // lamps. As it runs the lights stutter where the shoes cross a gap in the third rail and it spits sparks there (and at
 // its wheels while it brakes), its headlight rakes the rails ahead; the glass of the towers behind gives back its
 // windows, wavy, pane by pane.
-import { LW, canvas, rand, px, oval, poly, centre } from './Draw.js';
+import { LW, canvas, rand, px, oval, poly, centre, tone } from './Draw.js';
+import { lightBands } from './Cycle.js';
 import { hash, TRAIN } from './Timeline.js';
 import { EL, EYE, GAP, TOWERS } from './Layout.js';
 
@@ -14,71 +15,79 @@ const DOORS = [30, 104];                                  // each door's left ed
 // the windows' left edges, 11 px wide, between the doors (going right; the cab's own at the nose)
 export const WINDOWS = [6, 18, 49, 63, 77, 91, 123];
 
-function passenger(g, x, r) {
-  const q = r(), sx = x + 2 + Math.floor(r() * 5), a = '#3c302c', b = '#2c2220';
+function passenger(g, x, r, a = '#3c302c', b = '#2c2220') {
+  const q = r(), sx = x + 2 + Math.floor(r() * 5);
   if (q < 0.3) { px(g, a, sx, WIN + 3, 3, 3); px(g, a, sx - 1, WIN + 6, 5, 4); }                       // sitting
   else if (q < 0.45) { px(g, a, x + 1, WIN + 4, 3, 3); px(g, a, x, WIN + 7, 5, 3); px(g, b, x + 6, WIN + 3, 3, 3); px(g, b, x + 5, WIN + 6, 5, 4); }
   else if (q < 0.6) { px(g, b, sx, WIN + 1, 3, 3); px(g, b, sx - 1, WIN + 4, 5, 6); px(g, b, sx + 3, WIN - 1, 1, 3); }   // at the strap
   else if (q < 0.66) { px(g, a, sx, WIN + 5, 3, 2); px(g, a, sx - 1, WIN + 7, 6, 3); }                 // asleep, head down
 }
 
-// part: 'lead' | 'mid' | 'tail'; drawn going right (the nose at the right), flipped for the other way
+// part: 'lead' | 'mid' | 'tail'; drawn going right (the nose at the right), flipped for the other way. Two pictures:
+// the car by day (its stainless lit by the hour when the palette steps) and its lit windows alone (over it at night)
 function paintCar(part, seed) {
-  const { c, g } = canvas(CAR, CH), r = rand(seed);
-  // the roof's air-conditioning humps against the night, the roof's edge catching the sky
-  for (const hx of [16, 66, 112]) { px(g, '#22242c', hx, 0, 22, 3); px(g, '#3a3e4c', hx + 1, 0, 20, 1); }
-  px(g, '#2a2c36', 0, 3, CAR, SIDE - 3);
-  px(g, '#545868', 0, 3, CAR, 1);
-  px(g, '#1c1e26', 0, SIDE - 1, CAR, 1);
-  // the flank: stainless at night, the letter board, the windows, a thin red line, the fluted skirt
-  px(g, '#5c606e', 0, SIDE, CAR, BODY - SIDE);
-  px(g, '#80849a', 0, SIDE, CAR, 1);
-  px(g, '#6a6e7e', 0, SIDE + 1, CAR, 1);
-  px(g, '#9a2a36', 0, WIN + WH + 2, CAR, 1);
+  const { c, g } = canvas(CAR, CH), L = canvas(CAR, CH), l = L.g;
+  // the roof's air-conditioning humps against the sky, the roof's edge catching it
+  for (const hx of [16, 66, 112]) { px(g, '#5a5e6a', hx, 0, 22, 3); px(g, '#8a8e9c', hx + 1, 0, 20, 1); }
+  px(g, '#6a6e7a', 0, 3, CAR, SIDE - 3);
+  px(g, '#a8acba', 0, 3, CAR, 1);
+  px(g, '#4a4e58', 0, SIDE - 1, CAR, 1);
+  // the flank: stainless, the letter board, the windows, a thin red line, the fluted skirt
+  px(g, '#aeb2be', 0, SIDE, CAR, BODY - SIDE);
+  px(g, '#dadee8', 0, SIDE, CAR, 1);
+  px(g, '#c0c4d0', 0, SIDE + 1, CAR, 1);
+  px(g, '#b0303e', 0, WIN + WH + 2, CAR, 1);
   const flute = WIN + WH + 4;
-  for (let x = 0; x < CAR; x += 2) px(g, '#4e5260', x, flute, 1, BODY - 3 - flute);
-  px(g, '#6e7282', 0, flute - 1, CAR, 1);
-  px(g, '#24262e', 0, BODY - 3, CAR, 3);
+  for (let x = 0; x < CAR; x += 2) px(g, '#949aa8', x, flute, 1, BODY - 3 - flute);
+  px(g, '#c8ccd8', 0, flute - 1, CAR, 1);
+  px(g, '#3a3c44', 0, BODY - 3, CAR, 3);
+  // its windows: dark glass with the sky in it and the people dim behind it by day; lit, the tubes, the seats, a pole,
+  // the late passengers
+  const day = rand(seed), lit = rand(seed), pole = rand(seed + 1);
   for (const x of WINDOWS) {
     if (part === 'lead' && x > CAR - 20) continue;
-    px(g, '#202228', x - 1, WIN - 1, 13, WH + 2);
-    px(g, '#e4dcc0', x, WIN, 11, WH);
-    px(g, '#fffaea', x, WIN, 11, 1);                                                // the ceiling's tubes
-    px(g, '#b4a684', x, WIN + 8, 11, 4);                                            // the seats' backs
-    if (r() < 0.5) px(g, '#9a8a68', x + 2 + Math.floor(r() * 7), WIN + 1, 1, 7);    // a pole
-    passenger(g, x, r);
+    px(g, '#3a3c44', x - 1, WIN - 1, 13, WH + 2);
+    px(g, '#46505e', x, WIN, 11, WH);
+    px(g, '#6a7a92', x + 7, WIN, 3, 1); px(g, '#6a7a92', x + 6, WIN + 1, 2, 1);      // the sky in the glass
+    passenger(g, x, day, '#343a46', '#2c323e');
+    px(l, '#e4dcc0', x, WIN, 11, WH);
+    px(l, '#fffaea', x, WIN, 11, 1);
+    px(l, '#b4a684', x, WIN + 8, 11, 4);
+    if (pole() < 0.5) px(l, '#9a8a68', x + 2 + Math.floor(pole() * 7), WIN + 1, 1, 7);
+    passenger(l, x, lit);
   }
   for (const d of DOORS) {
     for (const lx of [d, d + 9]) {
-      px(g, '#4c505e', lx, SIDE + 2, 7, BODY - SIDE - 5);
-      px(g, '#e0d6b8', lx + 2, WIN - 1, 3, WH);
-      px(g, '#fffaea', lx + 2, WIN - 1, 3, 1);
+      px(g, '#9ca0ae', lx, SIDE + 2, 7, BODY - SIDE - 5);
+      px(g, '#46505e', lx + 2, WIN - 1, 3, WH);
+      px(l, '#e0d6b8', lx + 2, WIN - 1, 3, WH);
+      px(l, '#fffaea', lx + 2, WIN - 1, 3, 1);
     }
-    px(g, '#24262e', d + 7, SIDE + 2, 2, BODY - SIDE - 5);
-    px(g, '#24262e', d - 1, SIDE + 2, 1, BODY - SIDE - 5); px(g, '#24262e', d + 16, SIDE + 2, 1, BODY - SIDE - 5);
+    px(g, '#3a3c44', d + 7, SIDE + 2, 2, BODY - SIDE - 5);
+    px(g, '#3a3c44', d - 1, SIDE + 2, 1, BODY - SIDE - 5); px(g, '#3a3c44', d + 16, SIDE + 2, 1, BODY - SIDE - 5);
   }
   // the trucks, the shoes, what hangs under the floor
-  px(g, '#121216', 42, BODY, 62, 3);
+  px(g, '#24242a', 42, BODY, 62, 3);
   for (const bx of [8, 110]) {
-    px(g, '#0c0c0e', bx, BODY, 32, 5);
-    for (const wx of [bx + 7, bx + 24]) { oval(g, '#1e1e26', wx, RAIL - 3, 4, 3.6); px(g, '#4a4a54', wx, RAIL - 4, 1, 1); }
-    px(g, '#26262c', bx + 13, RAIL - 2, 5, 2);
+    px(g, '#1c1c20', bx, BODY, 32, 5);
+    for (const wx of [bx + 7, bx + 24]) { oval(g, '#34343c', wx, RAIL - 3, 4, 3.6); px(g, '#7a7a84', wx, RAIL - 4, 1, 1); }
+    px(g, '#44444c', bx + 13, RAIL - 2, 5, 2);
   }
   if (part === 'lead') {
-    // the cab: its end, the driver's window with the night in it and the route board, the headlight, a marker
-    px(g, '#4a4e5c', CAR - 14, SIDE, 14, BODY - SIDE - 3);
-    px(g, '#202228', CAR - 12, WIN - 1, 10, WH + 2);
-    px(g, '#141a28', CAR - 11, WIN, 8, WH);
-    px(g, '#3a4a6a', CAR - 11, WIN, 1, 6);
+    // the cab: its end, the driver's window and the route board, the headlight, a marker
+    px(g, '#9a9eac', CAR - 14, SIDE, 14, BODY - SIDE - 3);
+    px(g, '#3a3c44', CAR - 12, WIN - 1, 10, WH + 2);
+    px(g, '#2a3446', CAR - 11, WIN, 8, WH);
+    px(g, '#5a6a8a', CAR - 11, WIN, 1, 6);
     px(g, '#e88a2a', CAR - 10, WIN + 1, 6, 3);
     px(g, '#2a1a10', CAR - 9, WIN + 2, 1, 1); px(g, '#2a1a10', CAR - 7, WIN + 2, 2, 1);
-    px(g, '#2a1c18', CAR - 8, WIN + 6, 3, 3); px(g, '#2a1c18', CAR - 9, WIN + 9, 5, 3);   // the driver
-    px(g, '#24262e', CAR - 1, SIDE, 1, BODY - SIDE - 3);
-    px(g, '#fff8e0', CAR - 2, BODY - 9, 2, 2);
-    px(g, '#ffd080', CAR - 2, SIDE + 2, 1, 1);
+    px(g, '#1e2230', CAR - 8, WIN + 6, 3, 3); px(g, '#1e2230', CAR - 9, WIN + 9, 5, 3);   // the driver
+    px(g, '#3a3c44', CAR - 1, SIDE, 1, BODY - SIDE - 3);
+    px(l, '#fff8e0', CAR - 2, BODY - 9, 2, 2);
+    px(l, '#ffd080', CAR - 2, SIDE + 2, 1, 1);
   }
-  if (part === 'tail') { px(g, '#24262e', 0, SIDE, 1, BODY - SIDE - 3); px(g, '#ff3020', 0, BODY - 9, 2, 2); px(g, '#ff3020', 0, SIDE + 2, 1, 1); }
-  return c;
+  if (part === 'tail') { px(g, '#3a3c44', 0, SIDE, 1, BODY - SIDE - 3); px(l, '#ff3020', 0, BODY - 9, 2, 2); px(l, '#ff3020', 0, SIDE + 2, 1, 1); }
+  return { body: c, lit: L.c };
 }
 function flip(c) {
   const { c: o, g } = canvas(c.width, c.height);
@@ -88,7 +97,20 @@ function flip(c) {
 }
 export function buildTrain() {
   const parts = ['lead', 'mid', 'mid', 'tail'].map((p, i) => paintCar(p, 300 + i * 17));
-  return { right: parts, left: parts.map(flip) };
+  const set = (pick, f) => parts.map((p) => f(pick(p)));
+  const blank = () => parts.map(() => canvas(CAR, CH).c);
+  return {
+    body: { right: set((p) => p.body, (c) => c), left: set((p) => p.body, flip) },
+    lit: { right: set((p) => p.lit, (c) => c), left: set((p) => p.lit, flip) },
+    right: blank(), left: blank(), lamps: 0,
+  };
+}
+// the cars at the hour: their stainless in the light of the line's height, a little more lit at night by the line's
+// own lamps; their windows' light as strong as the city's lamps
+export function paintTrain(set, P) {
+  const b = lightBands(P).find((q) => 110 >= q.y0 && 110 < q.y1).c, c = b.map((v) => v + (255 - v) * 0.25 * P.lamps);
+  for (const side of ['right', 'left']) set[side].forEach((dst, i) => tone(dst, set.body[side][i], [{ y0: -40, y1: 260, c }], 0));
+  set.lamps = P.lamps;
 }
 
 // where each car is: [{ x: its left edge (logical), i }]
@@ -103,9 +125,12 @@ const windowsOf = (tr, c) => WINDOWS.map((w) => (tr.dir > 0 ? c.x + w : c.x + CA
 // a car's lights stutter while its shoes cross a gap in the third rail, only when it runs (true: dark at this instant)
 const blink = (tr, i, t) => tr.v > 40 && hash(Math.floor(t * 7) * 1.7 + i * 3.1 + tr.k) < 0.05 * tr.sparks && hash(Math.floor(t * 30) + i) > 0.4;
 
-// The train's windows given back by the towers' glass, between his eye level and the train's roof: a warm run per
-// window, broken pane by pane (each pane a pixel up or down); (ex, ey) the line's offset, (tx, ty) the towers'.
-export function drawTrainMirror(ctx, tr, cars, t, ex, ey, tx, ty) {
+// The train's lit windows given back by the towers' glass at night, between the eye level and the train's roof: a
+// warm run per window, broken pane by pane (each pane a pixel up or down); (ex, ey) the line's offset, (tx, ty) the
+// towers'; lamps: the city's lamps of the hour (the cars' lights with them).
+export function drawTrainMirror(ctx, tr, cars, t, ex, ey, tx, ty, lamps) {
+  if (lamps < 0.3) return;
+  ctx.globalAlpha = Math.min(1, lamps);
   for (const c of cars) {
     if (blink(tr, c.i, t)) continue;
     for (const wx of windowsOf(tr, c)) {
@@ -122,26 +147,34 @@ export function drawTrainMirror(ctx, tr, cars, t, ex, ey, tx, ty) {
       }
     }
   }
+  ctx.globalAlpha = 1;
 }
 
-// the train itself at the line's offset (ex, ey); H: halo sprites
+// the train itself at the line's offset (ex, ey): the cars lit by the hour (paintTrain), their windows' light over
+// them as strong as the city's lamps (out a moment where the shoes cross a gap); H: halo sprites
 export function drawTrain(ctx, tr, cars, set, t, ex, ey, H) {
-  const sprites = tr.dir > 0 ? set.right : set.left;
+  const side = tr.dir > 0 ? 'right' : 'left', sprites = set[side], lit = set.lit[side];
   for (const c of cars) {
     const x = Math.round(c.x + ex), y = TOP + ey;
     if (x > LW + 30 || x + CAR < -30) continue;
     ctx.drawImage(sprites[c.i], x, y);
     if (c.i < TRAIN.cars - 1) { ctx.fillStyle = '#16161a'; ctx.fillRect(tr.dir > 0 ? x - TRAIN.gap : x + CAR, EL.side + 2 + ey, TRAIN.gap, BODY - SIDE - 4); }
-    if (blink(tr, c.i, t)) { ctx.fillStyle = 'rgba(10,8,16,0.72)'; ctx.fillRect(x, EL.side + 3 + ey, CAR, WH + 2); }
+    if (set.lamps > 0.05 && !blink(tr, c.i, t)) {
+      ctx.globalAlpha = Math.min(1, set.lamps * 1.2);
+      ctx.drawImage(lit[c.i], x, y);
+      ctx.globalAlpha = 1;
+    }
   }
-  // the headlight on the rails ahead, the tail lamps' red
+  // the headlight on the rails ahead, the tail lamps' red (barely seen by day)
   const nose = Math.round(tr.x + ex), tail = Math.round(tr.tail + ex), d = tr.dir, hy = EL.body - 8 + ey;
   ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.25 + 0.75 * set.lamps;
   poly(ctx, 'rgba(255,240,200,0.06)', [[nose, hy - 2], [nose + d * 90, EL.rail - 6 + ey], [nose + d * 90, EL.rail + 4 + ey], [nose, hy + 3]]);
   poly(ctx, 'rgba(255,240,200,0.07)', [[nose, hy - 1], [nose + d * 44, EL.rail - 3 + ey], [nose + d * 44, EL.rail + 2 + ey], [nose, hy + 2]]);
   for (let k = 0; k < 60; k += 3) { ctx.fillStyle = `rgba(255,250,230,${(0.5 - k / 130).toFixed(3)})`; ctx.fillRect(nose + d * (3 + k), EL.rail - 1 + ey, 2, 1); }
   centre(ctx, H.white, nose, hy);
   centre(ctx, H.redSmall, tail, hy);
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
   // sparks where the shoes ride the third rail (or the wheels bite while it brakes): a white-blue spit, beads of it
   // thrown back and down, a flash

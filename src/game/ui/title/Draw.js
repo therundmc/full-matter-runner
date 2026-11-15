@@ -70,6 +70,26 @@ export function halo(rgb, rx, ry, steps = 3, a = 0.12) {
   }
   return c;
 }
+// Light a painted layer: dst (a canvas the size of src) gets src multiplied by flat colour bands [{ y0, y1, c: rgb }]
+// (Cycle.lightBands, in logical px; oy: where logical y 0 falls on the canvas), keeping src's alpha. A layer is
+// painted once as it looks by day; the hour of the day is this.
+export function tone(dst, src, bands, oy = MY) {
+  const g = dst.getContext('2d'), w = src.width, h = src.height;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalCompositeOperation = 'copy';
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'multiply';
+  for (const b of bands) {
+    const y0 = Math.max(0, b.y0 + oy), y1 = Math.min(h, b.y1 + oy);
+    if (y1 <= y0) continue;
+    g.fillStyle = `rgb(${Math.round(b.c[0])},${Math.round(b.c[1])},${Math.round(b.c[2])})`;
+    g.fillRect(0, y0, w, y1 - y0);
+  }
+  g.globalCompositeOperation = 'destination-in';
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  return dst;
+}
 // draw a sprite (a halo: with 'lighter') centred on (x, y), whole pixels
 export function centre(g, c, x, y) { g.drawImage(c, Math.round(x - c.width / 2), Math.round(y - c.height / 2)); }
 

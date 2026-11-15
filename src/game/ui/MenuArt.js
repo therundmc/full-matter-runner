@@ -141,8 +141,17 @@ function footer(ctx, page, depth, where, W, y, s, device) {
   drawPrompts(ctx, list, W / 2, y, 17 * s, device, { alpha: 0.75, gap: 2.2 });
 }
 
-// device: 'kbm' | 'pad', whose caps the prompts show
-export function drawMenu(ctx, W, H, t, menu, where, device) {
+// A shade behind the title's line of items when the sky behind it is bright (shade 0..1: by day), in two flat steps
+// across the picture, so the line reads at every hour.
+function rowShade(ctx, W, y, s, shade) {
+  if (shade <= 0.02) return;
+  ctx.fillStyle = `rgba(20,12,28,${(0.16 * shade).toFixed(3)})`;
+  ctx.fillRect(0, Math.round(y - 30 * s), W, Math.round(60 * s));
+  ctx.fillRect(0, Math.round(y - 21 * s), W, Math.round(42 * s));
+}
+
+// device: 'kbm' | 'pad', whose caps the prompts show; shade 0..1: how bright the title's sky is behind the items
+export function drawMenu(ctx, W, H, t, menu, where, device, shade = 0) {
   const s = H / 720, page = menu.page, sel = menu.sel;
   ctx.textBaseline = 'middle';
   if (where === 'pause') {
@@ -157,6 +166,7 @@ export function drawMenu(ctx, W, H, t, menu, where, device) {
     return rects;
   }
   if (page.row) {
+    rowShade(ctx, W, H * 0.293, s, shade);
     const rects = drawRow(ctx, page, sel, W, H * 0.293, 20 * s, s, t);
     footer(ctx, page, menu.depth, where, W, H * 0.905, s, device);
     return rects;

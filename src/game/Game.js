@@ -22,6 +22,7 @@ import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
 import { titleBeats } from './ui/title/Timeline.js';
+import { lookAt as titleLook } from './ui/title/Cycle.js';
 import { LEAP, leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import { ENDING, ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
@@ -614,7 +615,7 @@ export default class Game {
       o.imageSmoothingEnabled = false;
     }
     if (inWorld) this.drawOver(o, W, H, t);
-    else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title', this.input.device); });
+    else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title', this.input.device, titleLook(this.stateT).bright); });
     if (this.lensNote > t) {
       o.font = `${Math.round(14 * H / 720)}px monospace`;
       o.textAlign = 'left';
@@ -696,6 +697,7 @@ export default class Game {
     return {
       W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
       state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
+      daylight: this.state === 'title' ? titleLook(this.stateT).bright : 0,
       timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {
         x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,

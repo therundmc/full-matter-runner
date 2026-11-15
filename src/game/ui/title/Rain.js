@@ -1,16 +1,17 @@
-// A light rain over the picture, in two depths driven by the wind (Timeline.windState): fine and faint behind the
-// bridge, a few longer drops in front of everything. Each drop falls through its cycle as a pure function of t: it is
-// placed where it crosses the middle of the picture and drifts with the slant of the wind averaged over its fall, so
-// any instant renders on its own and nothing pops when the wind turns. A drop takes the colour of the light it falls
-// through (the floodlights, the train's windows and headlight, a spark, the patrol car's red and blue), discreet in
-// the dark; a gust thickens it a little.
+// The rain of the showers that come and go over the day (Cycle.rainAt), light, in two depths driven by the wind
+// (Timeline.windState): fine and faint behind the bridge, a few longer drops in front of everything. Each drop falls
+// through its cycle as a pure function of t: it is placed where it crosses the middle of the picture and drifts with
+// the slant of the wind averaged over its fall, so any instant renders on its own and nothing pops when the wind
+// turns. A drop takes the colour of the light it falls through (the floodlights, the train's windows and headlight,
+// a spark, the patrol car's red and blue), discreet in the dark, in the sky's own colour by day; a gust thickens it
+// a little.
 import { LW, LH } from './Draw.js';
 import { windState, hash, clamp, smooth } from './Timeline.js';
 import { EL } from './Layout.js';
 
 // what colour a drop takes, by the light it falls through
 const TYPES = [
-  [170, 165, 200],   // 0 the night, a lilac grey
+  [170, 165, 200],   // 0 no light but the sky's (rainColour sets it for the hour)
   [240, 232, 210],   // 1 the train's windows, its headlight
   [205, 232, 255],   // 2 a spark
   [255, 190, 110],   // 3 the floodlights' sodium
@@ -36,8 +37,8 @@ function lightAt(R, x, y) {
 
 // back: between the towers and the bridge, fine and slow; front: in front of everything, a few longer drops
 const DEPTHS = {
-  back: { n: 260, v: 190, len: [1, 3], lvl: [1, 5], bottom: EL.bottom[0], seed: 2 },
-  front: { n: 34, v: 400, len: [4, 7], lvl: [1, 5], bottom: LH, seed: 3 },
+  back: { n: 150, v: 190, len: [1, 3], lvl: [1, 4], bottom: EL.bottom[0], seed: 2 },
+  front: { n: 16, v: 400, len: [3, 6], lvl: [1, 4], bottom: LH, seed: 3 },
 };
 const TOP = -14, MIDY = 108, PAD = 96, EDGE = 12;
 const LEVELS = 7;                        // alpha steps of a bucket
@@ -61,16 +62,22 @@ export function buildRain() {
   R.buckets = R.styles.map(() => []);
   return R;
 }
+// the colour of a drop that falls through no light, for the hour ([r, g, b])
+export function rainColour(R, c) {
+  for (let l = 0; l < LEVELS; l++) R.styles[l] = `rgba(${c.map(Math.round).join(',')},${alphaOf(l).toFixed(2)})`;
+}
 
-// per frame: the wind over the last and next 2 s (for the drift of the drops), how thick it falls, and the lights it
-// falls through (the floodlights, and `moving`: the train's, the sparks', the patrol car's [{ x, y, r, type, k }])
-export function rainFrame(R, t, w, moving) {
+// per frame: the wind over the last and next 2 s (for the drift of the drops), how thick it falls (amount 0..1: the
+// shower of the moment), and the lights it falls through (the floodlights when lit, and `moving`: the train's, the
+// sparks', the patrol car's [{ x, y, r, type, k }])
+export function rainFrame(R, t, w, amount, lamps, moving) {
   R.t0 = t - 2;
   for (let k = 0; k <= 80; k++) R.slant[k] = windState(R.t0 + k * 0.05).slant;
   R.w = w; R.t = t;
-  R.density = 0.6 + 0.35 * w.gust;
+  R.density = amount * (0.75 + 0.25 * w.gust);
   R.lights.length = 0;
-  R.lights.push(...STATIC, ...moving);
+  if (lamps) R.lights.push(...STATIC);
+  R.lights.push(...moving);
 }
 const slantAt = (R, t) => {
   const k = clamp((t - R.t0) / 0.05, 0, 79.999), i = Math.floor(k), f = k - i;
@@ -84,6 +91,7 @@ function add(R, type, lvl, x, y) {
 
 // one depth of rain into g, shifted by (ox, oy) rounded to whole pixels
 export function drawRain(R, name, g, ox, oy) {
+  if (R.density <= 0) return;
   const d = R.depths[name], D = d.D, t = R.t, s = R.w.slant, n = d.vy.length;
   const nx = -s / Math.hypot(1, s), ny = 1 / Math.hypot(1, s);
   for (let i = 0; i < n; i++) {

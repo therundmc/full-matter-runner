@@ -176,3 +176,15 @@ test('lens: every kill of a chain hits harder, and a running chain heats the who
   run(hot, 4, view({ combo: 0 }));
   assert.ok(hot.rampage < 0.01);
 });
+
+test('lens: the title is graded by the hour of its day, barely there by day as by night', () => {
+  const lens = new Lens(), title = (daylight) => view({ state: 'title', player: null, daylight });
+  run(lens, 4, title(0));
+  assert.ok(Math.abs(lens.grade.tintK - POST.grades.menu.tintK) < 0.005 && Math.abs(lens.grade.lift[2] - POST.grades.menu.lift[2]) < 0.005, 'the night: the menu grade');
+  run(lens, 4, title(1));
+  assert.ok(Math.abs(lens.grade.tintK - POST.grades.menuDay.tintK) < 0.005 && Math.abs(lens.grade.lift[2] - POST.grades.menuDay.lift[2]) < 0.005, 'noon: the day grade');
+  run(lens, 4, title(0.5));
+  assert.ok(Math.abs(lens.grade.sat - (POST.grades.menu.sat + POST.grades.menuDay.sat) / 2) < 0.005, 'between, half and half');
+  const day = POST.grades.menuDay;
+  assert.ok(day.tintK <= 0.05 && Math.max(...day.lift) <= 0.03 && Math.abs(day.sat - 1) <= 0.1 && Math.abs(day.con - 1) <= 0.06, 'a light touch');
+});

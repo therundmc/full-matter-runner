@@ -10,9 +10,7 @@
 // flat as he walks in. Everything is a function of t (s since NEW GAME): cineView() is the timeline as plain numbers
 // (unit-tested), drawCinematic() the picture, cineBeats() what is heard.
 import { PALETTE } from '../Config.js';
-import { LW, LH } from './title/Draw.js';
 import { drawTitleScene, drawTitleTexts } from './TitleScene.js';
-import { drawPane } from './cine/Pane.js';
 import { paintSleep, paintDoor, paintPry, paintBox, paintCount, paintPour, paintMatch, paintFire, paintWake } from './cine/Panels.js';
 import { drawPage } from './cine/Page.js';
 import { clamp } from './cine/Ink.js';
@@ -75,16 +73,10 @@ export function cineBeats(t0, t1) {
   return cues.filter(([s]) => t0 < s && t1 >= s).map(([, name, vol, opts]) => ({ name, vol, opts: opts || {} }));
 }
 
-// ---------------------------------------------------------------- the title: the city, from his window
-export function drawTitleView(ctx, W, H, t, mouse, logo = 1) {
-  const fx = drawTitleScene(ctx, W, H, t, mouse, false);
-  const sc = Math.max(W / LW, H / LH);
-  ctx.save();
-  ctx.setTransform(sc, 0, 0, sc, (W - LW * sc) / 2, (H - LH * sc) / 2);
-  ctx.imageSmoothingEnabled = false;
-  drawPane(ctx, t, fx);
-  ctx.restore();
-  drawTitleTexts(ctx, W, H, t, logo);
+// ---------------------------------------------------------------- the title: the elevated line, its day and night
+export function drawTitleView(ctx, W, H, t, mouse) {
+  drawTitleScene(ctx, W, H, t, mouse);
+  drawTitleTexts(ctx, W, H, t);
 }
 
 // ---------------------------------------------------------------- the picture: black, and the page up

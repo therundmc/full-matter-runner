@@ -137,10 +137,11 @@ src/
     ui/                   HUD, Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
                           end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
-                          TitleScene (the elevated line in the rain from his window) and title/ (Draw pixel tools, Layout, Timeline:
-                          everything as a function of t, unit tested; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain),
-                          Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Pane: the title's window, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
-    data/                 atmosphere (rain, smoke, neon faults: the look of the air), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+                          TitleScene (the elevated line in front of two glass towers, through a day and a night in a loop) and title/
+                          (Draw pixel tools, Layout, Timeline and Cycle: everything as a function of t, unit tested, the day's keyframes
+                          in data/daycycle.js; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain: the showers),
+                          Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
+    data/                 atmosphere (rain, smoke, neon faults: the look of the air), daycycle (the title's day and night), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,
