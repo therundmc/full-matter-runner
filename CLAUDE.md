@@ -60,10 +60,12 @@
   zoom on a canvas a little larger than the window and the lens brings it down (Game.resize).
 - Rooms (2026-11-15, his verdict: "the furniture too small or the rooms too big", "maybe shrink the rooms a little"):
   level 1 is tightened by whole tiles taken out (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
-  `cut_rows`): the builder keeps its drawing's coordinates, the kit moves them; keep things off the cut lines. The bar
-  room went from 16 x 8 m to 14 x 7 m. Coordinates in tests and the QA robot's plans are the level's (after the cuts).
-  A doorway needs room on one side at least (a guard jam came from a door between a desk and an armchair, and a battery
-  lamp in front of a door). No television in front of the boss's door.
+  `cut_rows`): the builder keeps its drawing's coordinates, the kit moves them; keep things off the cut lines. Two
+  columns are cut (CUT_COLS 19, 29); the bar room's row cut was given back ("no room to get through"): 14 x 8 m with
+  walkways of about 1.2 m between its furniture. Coordinates in tests and the QA robot's plans are the level's (after
+  the cuts). A doorway needs room on one side at least; wall pieces have bodies, never hang one across a doorway
+  (levelkit `check_on_wall` refuses it). Standing workers are placed square at what they work at (posts `front`).
+  No television in front of the boss's door; no window in the boss's office (he had it taken out).
 
 ## Delivery by blocks (validate each with the user before moving on)
 1. Engine perf & stability — done. The "3 explosions" bug was the lab (no exit) clearing -> exit HUD crash; fixed and
@@ -108,7 +110,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    climb, the dark gap, the liquor store roof reached by a `ladder` from the street corner, the shop itself whose
    own ladder goes up to that roof; the roof is left by a `parapet` drop into the service alley or the back lot; no
    door between the shop and the alley, the user had it removed; the roof is dressed with real props, `sprite` option) and
-   four windows to dive through (toilets and boss's room on the back lot, pool corner and VIP room on the gap).
+   three windows to dive through (the toilets on the back lot, the pool corner and the VIP room on the gap).
    A walkable roof is floor tile `^`. Guards have the keys of the house (`World.pathForGuard`, `Door.unlatch`):
    never lock a door without checking they can still get out (the QA robot reports `guard-stuck`).
    The level ends in the getaway van (systems/Outro.js): it follows the level's `exit.route` (out of the lot in a
