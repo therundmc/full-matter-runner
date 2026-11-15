@@ -177,7 +177,7 @@ test('muzzle: a machine pistol raised on a target is held with the elbow bent, t
 // its squareness)
 const FIST = [2.1, 1.95, 2.4];
 
-test('muzzle: a pistol is held out in both hands, the grip under them, the slide, barrel and trigger guard ahead', () => {
+test('muzzle: a pistol is held out in both hands, on its grip up to the trigger guard (the user), the slide and barrel ahead', () => {
   const both = GUNS.filter(([, d]) => d.hold === 'both');
   assert.deepEqual(both.map(([id]) => id), ['pistol']);
   for (const [id, d] of both) {
@@ -195,21 +195,26 @@ test('muzzle: a pistol is held out in both hands, the grip under them, the slide
       const u = (x + 0.5) * K - d.grip, v = (y + 0.5 - h / 2) * K - d.palm;
       return hands.some(([hu, hv]) => (Math.abs(u - hu) / FIST[0]) ** FIST[2] + (Math.abs(v - hv) / FIST[1]) ** FIST[2] <= 1);
     };
-    // the wooden grips are all under the hands; nothing over the bore line nor ahead of the grip is
+    // the wooden grips under the hands or just behind them (the back of the grip shows past the web of the hand), the
+    // hands reaching the trigger guard ahead of the grips (the trigger finger in it), never over the slide nor the barrel
+    const back = Math.min(...hands.map(([hu]) => hu)) / K + d.grip / K;
     const bore = Math.floor(h / 2 + d.bore / K);
     let front = -1, wood = 0;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const [r, g, b, a] = px(x, y);
-        if (a && r > g && r - b > 40) { wood++; front = Math.max(front, x); assert.ok(under(x, y), `${id}: the grip shows at (${x}, ${y})`); }
+        if (a && r > g && r - b > 40) { wood++; front = Math.max(front, x); assert.ok(under(x, y) || x + 0.5 < back, `${id}: the grip shows ahead of the hands at (${x}, ${y})`); }
       }
     }
     assert.ok(wood > 20, `${id}: no wooden grips found`);
+    let guard = 0;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         if (y <= bore) assert.ok(!under(x, y), `${id}: a hand over the slide at (${x}, ${y})`);
-        if (x > front + 1) assert.ok(!under(x, y), `${id}: a hand over the trigger guard at (${x}, ${y})`);
+        if (x > front + 1 && x <= front + 4 && y > bore && under(x, y)) guard++;
+        if (x > front + 8) assert.ok(!under(x, y), `${id}: a hand over the barrel at (${x}, ${y})`);
       }
     }
+    assert.ok(guard > 0, `${id}: the hands stop short of the trigger guard`);
   }
 });

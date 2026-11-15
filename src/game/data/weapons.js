@@ -63,7 +63,7 @@ export const WEAPONS = {
     wear: 4, breaks: 'lodge',
   },
   pistol: {
-    name: '1911', kind: 'gun', hold: 'both', sprite: 'weapons/pistol', grip: 2.4, bore: -1.75, palm: 2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
+    name: '1911', kind: 'gun', hold: 'both', sprite: 'weapons/pistol', grip: 3.4, bore: -1.75, palm: 2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
     pellets: 1, spread: 0.025, speed: 1700, pen: 16, sound: 'pistol', noise: 640, shake: 0.18, kick: 2.5, casing: 'casing', eject: 12, gore: 0.25, wound: 'small',
     enemyRate: 0.55, points: 500,
     well: [1.9, 2.75, -0.38, 6], rack: [[2.6, -2.4], [0.6, -2.4], [2.6, -2.4]], // the slide drawn back by its serrations
