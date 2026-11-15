@@ -16,14 +16,14 @@ const { Body, Bounds } = Matter;
 
 // arm (sleeve) and hand colours of each civilian sprite (tools/generate_assets.py, CIVILIANS)
 export const CIVILIAN_LOOKS = {
-  civ1: { arm: '#d9a441', skin: '#eab08a' },
-  civ2: { arm: '#f0a08a', skin: '#d99a76' },
-  civ3: { arm: '#bfae86', skin: '#e2b08e' },
-  civ4: { arm: '#8fbf6a', skin: '#c88a60' },
-  // the dancers of a VIP room (bare arms), a tramp in his old coat: posted only, never picked for a passer-by
-  dancer1: { arm: '#eab08a', skin: '#eab08a', posted: true },
-  dancer2: { arm: '#b9774f', skin: '#b9774f', posted: true },
-  tramp: { arm: '#6f7350', skin: '#c8906c', posted: true },
+  civ1: { arm: '#d9a441', skin: '#eab08a', pants: '#4f6a98', shoe: '#e8e4da' },
+  civ2: { arm: '#f0a08a', skin: '#d99a76', pants: '#3a2c4a', shoe: '#7a1f2a' },
+  civ3: { arm: '#bfae86', skin: '#e2b08e', pants: '#55555f', shoe: '#3a2a20' },
+  civ4: { arm: '#8fbf6a', skin: '#c88a60', pants: '#4a4a3a', shoe: '#ecebf2' },
+  // the dancers of a VIP room (bare arms and legs), a tramp in his old coat: posted only, never picked for a passer-by
+  dancer1: { arm: '#eab08a', skin: '#eab08a', pants: '#eab08a', shoe: '#ff3d8a', posted: true },
+  dancer2: { arm: '#b9774f', skin: '#b9774f', pants: '#b9774f', shoe: '#f4f2ec', posted: true },
+  tramp: { arm: '#6f7350', skin: '#c8906c', pants: '#3e3a34', shoe: '#2a2420', posted: true },
 };
 export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS).filter((k) => !CIVILIAN_LOOKS[k].posted);
 // passers-by walk out of the map: the edge barriers are not for them

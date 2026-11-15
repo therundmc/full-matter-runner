@@ -458,38 +458,123 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
 FINE = 2    # characters and weapons are painted at twice the world's pixel density, still plain pixel art (the user
             # wants it kept: a smooth, shaded repaint was the wrong direction); the game draws them at half size
             # (engine/Assets.js `density`)
+def lump(u, v, rx, ry, hz, p=2.0):
+    """Height of a half ellipsoid (radii rx, ry, height hz) at (u, v) from its centre; <= 0 outside it."""
+    e = (abs(u) / rx) ** p + (abs(v) / ry) ** p
+    return hz * math.sqrt(1.0 - e) if e < 1.0 else 0.0
+
+
+def relief_paint(cv, hfun, colour, box=None):
+    """Paint the pixels where the height field hfun(x, y) > 0, each lit by the field's own slope (one light for the
+    whole figure, from behind and to the left of it as all the sprites are): shoulders, a skull, clumps of hair read as
+    the round things they are, and where two of them meet shows as a crease. colour(x, y, L) -> rgba. Then a selective
+    dark outline: the ink colour, softened to a deep shade of the cloth along its lit edge. Returns {(x, y): L}."""
+    x0, y0, x1, y1 = box or (0, 0, cv.w - 1, cv.h - 1)
+    H = {}
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            h = hfun(x + 0.5, y + 0.5)
+            if h > 0:
+                H[(x, y)] = h
+    Ls = {}
+    for (x, y), h in H.items():
+        gx = (H.get((x + 1, y), 0.0) - H.get((x - 1, y), 0.0)) * 0.5
+        gy = (H.get((x, y + 1), 0.0) - H.get((x, y - 1), 0.0)) * 0.5
+        n = math.sqrt(gx * gx + gy * gy + 1.0)
+        L = max(0.0, (-gx * LX - gy * LY + LZ) / n)
+        Ls[(x, y)] = L
+        c = colour(x, y, L)
+        if c is not None:
+            cv.set(x, y, c)
+    add = []
+    for (x, y) in H:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            q = (x + dx, y + dy)
+            if q not in H and cv.ok(*q) and cv.get(*q)[3] < 100:
+                lit = Ls[(x, y)] > 0.8 and dx + dy < 0     # the edge toward the light
+                add.append((q, dk(cv.get(x, y), 0.62) if lit else OUTLINE))
+    for (x, y), c in add:
+        cv.set(x, y, c)
+    return Ls
+
+
+def fold(cv, pts, ok, t=0.17):
+    """A crease of cloth along a curve through pts (pixel coords): a dark line, and the ridge beside it on the side of
+    the light a shade lighter. ok(x, y): the pixel is cloth."""
+    seen = set()
+    for i in range(len(pts) - 1):
+        (ax, ay), (bx, by) = pts[i], pts[i + 1]
+        n = int(max(abs(bx - ax), abs(by - ay)) * 2) + 1
+        for k in range(n + 1):
+            x, y = int(ax + (bx - ax) * k / n), int(ay + (by - ay) * k / n)
+            if (x, y) in seen or not ok(x, y):
+                continue
+            seen.add((x, y))
+            cv.set(x, y, dk(cv.get(x, y), t))
+            if ok(x - 1, y - 1) and (x - 1, y - 1) not in seen:
+                cv.set(x - 1, y - 1, lt(cv.get(x - 1, y - 1), t * 0.5))
+
+
+def curve(p0, p1, p2, n=8):
+    """Points along a quadratic curve."""
+    return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0],
+             (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]) for t in (i / n for i in range(n + 1))]
+
+
+BODY_C = (9.6, 10.0)   # the middle of the shoulders on the 20 x 20 (world px) torso sprite; the head's is (11, 10)
+
+
 def torso_body(ch, rng):
-    """The shoulders from above at FINE density: the design of shoulder_px, then what cloth has: a seam down the back,
-    the sleeve heads, a collar, creases and grime."""
+    """The shoulders from above at FINE density, the arms left off (the game paints them, render/LimbArt.js): a
+    chest-and-back, two round shoulder caps, the upper back bulging behind, each lit as the volume it is, then what
+    cloth has: creases from the armpits down the back, the sleeve heads, a seam down the back, grime."""
     S, W = FINE, 20 * FINE
     rx, ry = ch['sh'][0] * S, ch['sh'][1] * S
+    cx, cy = BODY_C[0] * S, BODY_C[1] * S
     hr = 3.8 * S
-    crease = VNoise(W, W, 4, rng)
-    suit = ch.get('suit')
-    k = ch['kind']
+    k, st = ch['kind'], ch.get('style')
+    cap = ry * 0.38                                  # a shoulder cap's half width
 
-    def px(u, v, L):
-        if suit:
-            c = shade(suit, L)
-        else:
-            c = shoulder_px(ch, u / S, v / S, L, (u - 1.4 * S) / S, v / S, hr / S)
-        n = crease(u + W, v + W)
-        if n > 0.7:
-            c = dk(c, 0.1)                       # a crease of the cloth
-        elif n < 0.24:
-            c = lt(c, 0.07)
-        if k != 'brute' and abs(abs(v) - ry * 0.66) < 0.55 and u < rx * 0.6:
-            c = dk(c, 0.16)                      # where the sleeve is sewn on
-        if abs(v) < 0.55 and u < -1.5 * S:
-            c = dk(c, 0.2)                       # the seam down the back
-        if u < -rx + 1.6 * S:
-            c = dk(c, 0.1)                       # the back falls away from the light
+    def h(x, y):
+        u, v = x - cx, y - cy
+        return max(lump(u + 0.3 * S, v, rx * 0.98, ry * 0.66, 7.0, 2.2),            # chest and back
+                   lump(u + rx * 0.34, v, rx * 0.7, ry * 0.84, 6.0),                 # the upper back, behind
+                   lump(u - 0.5 * S, v - (ry - cap), rx * 0.88, cap, 5.6),           # the shoulder caps, rolled
+                   lump(u - 0.5 * S, v + (ry - cap), rx * 0.88, cap, 5.6))           # a little forward
+
+    def colour(x, y, L):
+        u, v = x + 0.5 - cx, y + 0.5 - cy
+        c = shoulder_px(ch, u / S, v / S, L, (u - 1.4 * S) / S, v / S, hr / S)
+        if k != 'brute' and st != 'dancer' and abs(abs(v) - (ry - cap * 1.7)) < 0.6 and abs(u) < rx * 0.7:
+            c = dk(c, 0.12)                          # where the sleeve is sewn on
+        if abs(v) < 0.55 and u < -1.5 * S and st != 'dancer':
+            c = dk(c, 0.16)                          # the seam down the back
         return c
     body = Cv(W, W)
-    fill_shape(body, 9.6 * S, 10.0 * S, rx, ry, px, kind='super', p=2.4)
-    if suit or k == 'thug':
+    relief_paint(body, h, colour)
+
+    def cloth(x, y):
+        c = body.get(x, y)
+        if c[3] < 100 or c == OUTLINE:
+            return False
+        u, v = x + 0.5 - cx, y + 0.5 - cy
+        if math.hypot(u - 1.4 * S, v) < hr + 1.2 * S:
+            return False                             # under the head
+        if k == 'brute':
+            return abs(v) < 4.4 * S                  # his vest; bare shoulders
+        if st == 'dancer':
+            return -0.9 * S < u < 0.2 * S
+        return True
+    # creases: from each armpit round under the shoulder blade toward the small of the back, and one off the collar
+    for sgn in (-1, 1):
+        j = lambda: rng.uniform(-0.6, 0.6) * S
+        fold(body, curve((cx + 0.4 * S + j(), cy + sgn * (ry - 2.2 * S)), (cx - 1.8 * S, cy + sgn * (ry - 1.6 * S) + j()),
+                         (cx - rx + 1.3 * S, cy + sgn * (ry * 0.36) + j())), cloth)
+        fold(body, curve((cx - 0.8 * S + j(), cy + sgn * (ry - 3.6 * S)), (cx - 2.2 * S, cy + sgn * 2.8 * S + j()),
+                         (cx - rx + 1.0 * S, cy + sgn * 1.5 * S)), cloth, t=0.12)
+    if k == 'thug':
         # shirt collar and tie in front of the neck, the lapels' notch either side
-        shirt, tie = (WHITE, hx('#1a1620')) if suit else (ch['shirt'], hx('#8a1a3a'))
+        shirt, tie = ch['shirt'], hx('#8a1a3a')
         for dv in range(-3, 4):
             for du in range(0, 4 - abs(dv)):
                 x, y = int(13.0 * S + du), int(10.0 * S + dv)
@@ -500,58 +585,197 @@ def torso_body(ch, rng):
                 x, y = int(12.2 * S + i), int(10.0 * S + sgn * (4 + i * 0.9))
                 if body.on(x, y):
                     body.set(x, y, dk(body.get(x, y), 0.3))
-    mottle(body, rng, amt=5, cell=4)
-    smudge(body, rng, 3, (6, 6, W - 7, W - 7), r=(1.5, 3.0), t=0.16)
-    body.outline()
+    mottle(body, rng, amt=4, cell=4)
+    smudge(body, rng, 3, (6, 6, W - 7, W - 7), r=(1.5, 3.0), t=0.14)
     return body
 
 
+def hair_clumps(rng, cx, cy, rx, ry, crown, length=6.0, width=2.8, step=3.0, flow=0.0):
+    """Clumps of hair over an oval (pixel coords): each a small ridge along the way it is combed, from the crown
+    outward (flow > 0 bends them toward the back of the head, -x)."""
+    out = []
+    y = cy - ry
+    while y <= cy + ry:
+        x = cx - rx
+        while x <= cx + rx:
+            px_, py_ = x + rng.uniform(-0.7, 0.7), y + rng.uniform(-0.7, 0.7)
+            if ((px_ - cx) / rx) ** 2 + ((py_ - cy) / ry) ** 2 <= 1.15:
+                dx, dy = px_ - crown[0], py_ - crown[1]
+                a = math.atan2(dy, dx) if dx * dx + dy * dy > 0.5 else math.pi
+                a = math.atan2(math.sin(a) * (1 - flow), math.cos(a) * (1 - flow) - flow)
+                out.append((px_, py_, a, length * rng.uniform(0.8, 1.2), width * rng.uniform(0.85, 1.15)))
+            x += step
+        y += step * 0.87
+    return out
+
+
+def clump_h(clumps, x, y):
+    """Height the clumps add at (x, y): the highest one there."""
+    best = 0.0
+    for (cx, cy, a, l, w) in clumps:
+        u = (x - cx) * math.cos(a) + (y - cy) * math.sin(a)
+        v = -(x - cx) * math.sin(a) + (y - cy) * math.cos(a)
+        best = max(best, lump(u, v, l * 0.5, w * 0.5, 1.1))
+    return best
+
+
+def clump_tone(ramp_, clumps, x, y, L):
+    """A pixel of hair: a shade darker between two clumps, the light only on the top of a clump that faces it."""
+    c = clump_h(clumps, x + 0.5, y + 0.5)
+    i = min(2, tidx(L))
+    if c < 0.45:
+        return ramp_[max(0, i - 1)]
+    if c > 0.85 and L > 0.86:
+        return ramp_[3]
+    return ramp_[i]
+
+
 def torso_head(ch, rng):
-    """The head from above at FINE density, face toward +x: the design of head_top_px, ears, the brow and the nose."""
+    """The head from above at FINE density, face toward +x, on a 40 x 40 canvas laid like the torso's: a skull lit as
+    a skull, hair in clumps combed the way it goes (or a cap, a hood, a bandana over it), the brow and the nose at the
+    front, the ears."""
     S, W = FINE, 20 * FINE
     hcx, hcy, hr = 11.0 * S, 10.0 * S, 3.8 * S
-    k = ch['kind']
-    strand = VNoise(W, W, 2, rng)
-
-    def px(u, v, L):
-        c = head_top_px(ch, u / S, v / S, L, hr / S)
-        if c is None:
-            return None
-        if u > hr - 1.4 * S and k != 'player':
-            # the face: brow in shadow, the nose catching the light
-            if abs(v) < 1.1 and u > hr - 1.6:
-                return lt(ch['skin'][2], 0.25)
-            return ch['skin'][1] if u < hr - 0.9 * S else ch['skin'][2]
-        if k not in ('heavy',) and strand(u * 0.5 + W, v + W) > 0.62:
-            c = dk(c, 0.14)                      # strands
-        return c
+    k, st = ch['kind'], ch.get('style')
     head = Cv(W, W)
+    skull = lambda x, y: lump(x - hcx, y - hcy, hr, hr * 0.94, hr * 0.95)
+    face = lambda x, y, edge: x + 0.5 - hcx > hr - edge * S and abs(y + 0.5 - hcy) < hr * 0.8
+
+    def face_px(x, y, L):
+        u, v = x + 0.5 - hcx, y + 0.5 - hcy
+        if abs(v) < 1.2 and u > hr - 1.4:
+            return lt(ch['skin'][2], 0.25)           # the bridge of the nose catches the light
+        return ch['skin'][1] if u < hr - 0.9 * S else ch['skin'][tidx(L)]   # the brow in shadow
+
     if k == 'player':
-        # his hair, down to the collar behind the cap
-        fill_shape(head, hcx - 2.3 * S, hcy, 2.6 * S, 3.3 * S,
-                   lambda u, v, L: ch['hair'][max(0, tidx(L) - (1 if strand(u + W, v * 2 + W) > 0.55 else 0))])
-    fill_shape(head, hcx, hcy, hr, hr * 0.94, px, pad=0.04)
-    for sgn in (-1, 1):                           # ears
-        ey = hcy + sgn * (hr * 0.94 + 0.2)
-        for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
-            head.set(int(hcx + dx), int(ey + dy), ch['skin'][1 if dx < 3 else 2])
-    if k == 'player':
-        # the cap's visor, out over his brow, and the tip of his nose under it
+        # his hair down to his collar out from under the cap, the cap's six panels to its button, the visor
+        hair = ch['hair']
+        cl = hair_clumps(rng, hcx - 2.8 * S, hcy, 3.0 * S, 3.7 * S, (hcx, hcy), length=6.4, width=2.8, flow=0.5)
+        relief_paint(head, lambda x, y: max(lump(x - hcx + 2.6 * S, y - hcy, 3.0 * S, 3.6 * S, 4.0) + clump_h(cl, x, y)
+                                            * (1 if lump(x - hcx + 2.6 * S, y - hcy, 3.0 * S, 3.6 * S, 1) > 0 else 0), 0),
+                     lambda x, y, L: clump_tone(hair, cl, x, y, L))
+        capc = ch['cap']
+
+        def cap_px(x, y, L):
+            u, v = (x + 0.5 - hcx) / S, (y + 0.5 - hcy) / S
+            i = tidx(L)
+            if math.hypot(u, v) < 0.75:
+                return ch['lining'][1]               # the button
+            if abs(v) < 0.18 or abs(v * 0.5 + u * 0.87) < 0.18 or abs(v * 0.5 - u * 0.87) < 0.18:
+                return capc[max(0, min(2, i) - 1)]   # the seams of its panels
+            return capc[3] if L > 0.95 else capc[min(2, i)]
+        relief_paint(head, lambda x, y: lump(x - hcx, y - hcy, hr, hr * 0.96, hr * 1.1), cap_px)
         for dv in range(-5, 6):
             tip = int(hcx + hr + 3.4 - abs(dv) * 0.42)
-            for x in range(int(hcx + hr - 2.0), tip + 1):
-                head.set(x, int(hcy + dv), ch['cap'][1] if x >= tip - 1 else ch['cap'][2 if abs(dv) > 1 else 3])
-        head.set(int(hcx + hr + 4), int(hcy), ch['skin'][2])
-    if k == 'brute':
-        # bandana knot and its two tails trailing behind
-        for (x, y, c) in [(12, 18, 2), (11, 17, 2), (10, 16, 1), (9, 15, 1), (12, 21, 1), (11, 22, 1), (10, 23, 1), (9, 24, 0), (13, 19, 3), (13, 20, 2)]:
-            head.set(x, y, ch['bandana'][c])
+            for x in range(int(hcx + hr - 1.0), tip + 1):
+                head.set(x, int(hcy + dv), capc[1] if x >= tip - 1 else capc[3] if -3 < dv < 0 else capc[2])
+        for dv in range(-4, 5):
+            head.set(int(hcx + hr - 1.0), int(hcy + dv), capc[0])  # where the visor meets the crown
+        head.set(int(hcx + hr + 4), int(hcy), ch['skin'][2])       # the tip of his nose under it
+    elif k == 'heavy':
+        sk = ch['skin']
+        relief_paint(head, skull, lambda x, y, L: lt(sk[2], 0.55) if L > 0.97 else sk[tidx(L)])
+    elif k == 'brute':
+        band = ch['bandana']
+
+        def band_px(x, y, L):
+            u, v = (x + 0.5 - hcx) / S, (y + 0.5 - hcy) / S
+            if face(x, y, 1.5):
+                return face_px(x, y, L)
+            i = tidx(L)
+            if u > hr / S - 2.4:
+                return band[max(0, i - 1)]           # its folded edge over the brow
+            if (int(math.floor(u * 1.4 + 20)) * 3 + int(math.floor(v * 1.4 + 20)) * 2) % 7 == 0 and i >= 2:
+                return lt(band[2], 0.6)              # its print
+            return band[i]
+        relief_paint(head, skull, band_px)
+        fold(head, curve((hcx - 1 * S, hcy - 3 * S), (hcx - 2.4 * S, hcy - 0.5 * S), (hcx - 3.4 * S, hcy + 0.5 * S)),
+             lambda x, y: head.on(x, y) and head.get(x, y) != OUTLINE)
+        for (x, y, c) in [(12, 18, 2), (11, 17, 2), (10, 16, 1), (9, 15, 1), (12, 21, 1), (11, 22, 1), (10, 23, 1),
+                          (9, 24, 0), (13, 19, 3), (13, 20, 2)]:
+            head.set(x, y, band[c])                  # the knot and its two tails
+    elif st == 'hood':
+        top = ch['top']
+
+        def hood_px(x, y, L):
+            u, v = (x + 0.5 - hcx) / S, (y + 0.5 - hcy) / S
+            if u > hr / S - 1.4 and abs(v) < 2.2:
+                return ch['skin'][max(0, tidx(L) - 1)] if abs(v) < 1.6 else ch['skin'][0]   # his face, in its shadow
+            if u > hr / S - 2.2:
+                return top[max(0, tidx(L) - 2)] if abs(v) < 2.8 else top[tidx(L)]   # the opening's rim
+            return top[tidx(L)]
+        relief_paint(head, lambda x, y: lump(x - hcx + 0.4 * S, y - hcy, hr + 0.9 * S, hr + 0.4 * S, hr), hood_px)
+        fold(head, curve((hcx - 3.6 * S, hcy - 1 * S), (hcx - 1.4 * S, hcy - 0.4 * S), (hcx + 1.6 * S, hcy - 2.6 * S)),
+             lambda x, y: head.on(x, y) and head.get(x, y) != OUTLINE)
+    elif st == 'trench':
+        capc = ch['cap']
+
+        def flat_px(x, y, L):
+            u, v = (x + 0.5 - hcx) / S, (y + 0.5 - hcy) / S
+            if u > hr / S - 1.1:
+                return capc[max(0, tidx(L) - 2)]     # the visor
+            if math.hypot(u + 0.4, v) < 0.8:
+                return lt(capc[2], 0.3)              # the button on top
+            return capc[tidx(L)]
+        relief_paint(head, lambda x, y: lump(x - hcx, y - hcy, hr + 0.2 * S, hr, hr * 0.8, 2.3), flat_px)
+        for dv in range(-5, 6):                      # its short brim, out over the brow
+            tip = int(hcx + hr + 2.8 - abs(dv) * 0.35)
+            for x in range(int(hcx + hr - 0.5), tip + 1):
+                head.set(x, int(hcy + dv), capc[0] if x == int(hcx + hr - 0.5) else capc[1])
+    else:
+        # bare hair: slicked back (the guard), short, or long and full (down the back on the shoulders' sprite)
+        hair = ch['hair']
+        full = st in ('long', 'dancer')
+        if k == 'thug':
+            cl = hair_clumps(rng, hcx - 0.6 * S, hcy, hr, hr, (hcx + 6 * S, hcy), length=7.5, width=2.4, step=2.6)
+        else:
+            cl = hair_clumps(rng, hcx - 0.4 * S, hcy, hr + (0.6 if full else 0) * S, hr + (0.5 if full else 0) * S,
+                             (hcx + 0.6 * S, hcy), length=7.0 if full else 5.6, width=3.2 if full else 2.8, flow=0.25)
+        grow = 1.12 if full else 1.0
+
+        def hh(x, y):
+            base = lump(x - hcx + (0.4 * S if full else 0), y - hcy, hr * grow, hr * 0.94 * grow, hr * 0.95)
+            return base + clump_h(cl, x, y) if base > 0 else 0
+
+        def hair_px(x, y, L):
+            if face(x, y, 1.0 if full else 1.4):
+                return face_px(x, y, L)
+            return clump_tone(hair, cl, x, y, L)
+        relief_paint(head, hh, hair_px)
+    for sgn in (-1, 1):                              # ears
+        ey = hcy + sgn * (hr * 0.94 + 0.2)
+        if k == 'player' or st in ('hood', 'long', 'dancer'):
+            continue
+        for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
+            if head.get(int(hcx + dx), int(ey + dy))[3] < 100 or head.get(int(hcx + dx), int(ey + dy)) == OUTLINE:
+                head.set(int(hcx + dx), int(ey + dy), ch['skin'][1 if dx < 3 else 2])
+    if k == 'player':
+        for sgn in (-1, 1):                          # his ears, just under the cap's edge
+            ey = int(hcy + sgn * (hr * 0.96 + 0.6))
+            for dx in (1, 2):
+                head.set(int(hcx + dx), ey, ch['skin'][1])
     head.outline()
     return head
 
 
+HEAD_W, HEAD_H = 36, 24   # the head sprite, centred on the head (FINE density)
+
+
+def draw_head(ch):
+    """The head of a standing character from straight above, facing +x, centred on its own middle so that it turns
+    about it (CharacterAnim draws it over the shoulders, toward the aim): 36 x 24 pixels for 18 x 12 world px."""
+    rng = random.Random(sum(ch['top'][2][:3]) * 37 + len(ch['kind']) * 11)
+    full = torso_head(ch, rng)
+    cv = Cv(HEAD_W, HEAD_H)
+    x0, y0 = int(11.0 * FINE) - HEAD_W // 2, int(10.0 * FINE) - HEAD_H // 2
+    cv.img = full.img.crop((x0, y0, x0 + HEAD_W, y0 + HEAD_H))
+    cv.p = cv.img.load()
+    return cv
+
+
 def draw_torso(ch):
-    """A standing character from straight above, facing +x: 40 x 40 pixels for 20 x 20 world px (FINE density)."""
+    """The shoulders of a standing character from straight above, facing +x, the head left off (draw_head): 40 x 40
+    pixels for 20 x 20 world px (FINE density)."""
     W = 20 * FINE
     rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(ch['kind']) * 7 + int(ch['sh'][1] * 10))
     cv = Cv(W, W)
@@ -570,7 +794,6 @@ def draw_torso(ch):
         bag.outline()
         cv.over(bag)
     cv.over(torso_body(ch, rng))
-    cv.over(torso_head(ch, rng))
     return cv
 
 
@@ -1068,15 +1291,26 @@ def weapons():
         5: [(1, 'T'), (2, 'V' * 8), (14, 'DDDDDDDK'), (23, 'VWVWVWVWVW'), (34, 'KKKKK')],
         6: [(2, 'VVVVV'), (14, 'K'), (16, 'K'), (21, 'K'), (24, 'V' * 8)],
         7: [(15, 'KKKKKK')]}), gun)
-    W['rifle'] = ascii_cv(fine(["........................",
-                                "..........K.........K...",
-                                ".wwww.LLLLLLwwwwwLLLLLS.",
-                                ".WWWWVMMMMMMVVVVVDDDDDK.",
-                                ".VV....GG.MD............",
-                                "........G..MD...........",
-                                "........................"],
-                               [(2, 4, 'T'), (2, 5, 'T'), (2, 6, 'T'), (2, 7, 'T'), (14, 6, 'KKKK'),
-                                (26, 4, 'w.w.w.w.w'), (26, 6, 'V.V.V.V.V'), (20, 9, 'D'), (22, 11, 'D'), (44, 5, 'S')]), gun)
+    # an M16, side on like the others: the straight black stock in line with the bore, the receiver under its carry
+    # handle (the rear sight at its back, the ejection port, the forward assist), the round ribbed handguard behind
+    # its delta ring, the triangular front sight, the bare barrel, the slotted flash hider; the pistol grip and the
+    # thirty-round magazine curving forward under it. Black and dark greys: nothing like the shotgun's wood.
+    W['rifle'] = ascii_cv(drawn(56, 16, {
+        1: [(17, 'K'), (45, 'K')],
+        2: [(16, 'MMMMMMMMMM'), (44, 'KK')],
+        3: [(16, 'D'), (17, 'DK'), (19, 'nnnnnn'), (25, 'D'), (43, 'KMKK')],
+        4: [(2, 'g'), (15, 'KKKKKKKKKKKK'), (27, 'MM'), (29, 'gGgGgGgGgGgGgG'), (43, 'KKKKK')],
+        5: [(1, 'n'), (2, 'gggggggggggggM'), (16, 'MMMMMMMMMSM'), (27, 'DD'), (29, 'gGgGgGgGgGgGgG'), (43, 'DMDD'),
+            (47, 'MMMM'), (51, 'MKMK')],
+        6: [(1, 'n'), (2, 'GGGGGGGGGGGGGD'), (16, 'DDDDKKKKDMD'), (27, 'DD'), (29, 'GnGnGnGnGnGnGn'), (43, 'KKKK'),
+            (47, 'DDDD'), (51, 'KDKD')],
+        7: [(1, 'n'), (2, 'GGGGGGGGGGGGGK'), (16, 'KKKKKKKKKKK'), (27, 'KK'), (29, 'nnnnnnnnnnnnnn'), (44, 'KK')],
+        8: [(1, 'n'), (2, 'nGGGGGGGGGGn'), (16, 'KKKKKKKDKKKK')],
+        9: [(1, 'n'), (2, 'nnGGGGGGn'), (17, 'GgG'), (20, 'K'), (22, 'K'), (23, 'GgGGG')],
+        10: [(2, 'nnGGn'), (16, 'GgG'), (20, 'KKK'), (24, 'GgGGG')],
+        11: [(16, 'Ggn'), (24, 'GgGGG')],
+        12: [(15, 'Ggn'), (25, 'GgGGG')],
+        13: [(15, 'nn'), (26, 'nnnnn')]}), gun)
     W['sniper'] = ascii_cv(fine(["............................",
                                  ".........SSSSSSSSc..........",
                                  ".GGgggGGMMMMMMMMMMLLLLLLLLS.",
@@ -3008,9 +3242,9 @@ def mags():
           'c': hx('#e07a3a'), 'K': hx('#0e0a14')}
     out['mag_pistol'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "KKK"], st, ol=None)
     out['mag_uzi'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "LMD", "LMD", "LMD", "KKK"], st, ol=None)
-    ak = ramp('#d0602a', 0.5, 0.25, 0.35)
-    out['mag_rifle'] = ascii_cv(["Obc.", "LMD.", "LMD.", "LMMD", ".LMD", ".LMD", ".LMD", ".LMD", ".KKK"],
-                                dict(st, L=ak[3], M=ak[2], D=ak[0]), ol=None)
+    stanag = ramp('#3a3a44', 0.45, 0.22, 0.45)   # the M16's: black, a slight curve forward
+    out['mag_rifle'] = ascii_cv(["Obc.", "LMD.", "LMD.", "LMD.", "LMMD", ".LMD", ".LMD", ".LMD", ".KKK"],
+                                dict(st, L=stanag[3], M=stanag[2], D=stanag[0]), ol=None)
     pol = ramp('#3a3e2c', 0.4, 0.2, 0.45)
     out['mag_sniper'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "KKK"], dict(st, L=pol[3], M=pol[2], D=pol[0]),
                                  ol=None)
@@ -5255,6 +5489,7 @@ def build():
     for i, (cid, ch) in enumerate(CHARS.items()):
         g = 'characters'
         out[(g, cid + '_torso')] = draw_torso(ch)
+        out[(g, cid + '_head')] = draw_head(ch)
         out[(g, cid + '_down')] = knocked_down(ch)
         out[(g, cid + '_dead0')] = draw_body(ch, 30, 22, POSE_DEAD, dead=True, seed=i)
         out[(g, cid + '_dead1')] = draw_body(ch, 30, 22, POSE_DEAD, dead=True, headless=True, seed=i)
@@ -5340,13 +5575,13 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (40, 40)), ('_down', (51, 49)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_head', (HEAD_W, HEAD_H)), ('_down', (51, 49)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (17, 19)), ('_rag_head', (10, 10)), ('_rag_arm', (17, 6)), ('_rag_leg', (20, 7)),
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     # the weapons in hand are at FINE density: twice these world sizes
-    'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(48, 14),
+    'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(56, 16),
                     sniper=(56, 10), bazooka=(52, 14), bat=(44, 8), knife=(20, 6), cue=(80, 6), cue_half=(40, 6), tire_iron=(32, 8),
                     rocket=(9, 4),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(3, 6), mag_uzi=(3, 9), mag_rifle=(4, 9),

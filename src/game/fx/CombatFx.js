@@ -9,6 +9,7 @@ import { BODY_SCALE } from '../Config.js';
 import { SMEAR_TINT, HEAVY, STROKE, feelOf } from '../data/feel.js';
 import { sprite, sw } from '../../engine/Assets.js';
 import { rand, clamp, lerp, angDiff } from '../../engine/math.js';
+import { NECK } from '../entities/CharacterAnim.js';
 
 const CAP = 24;          // effects of each kind alive at once (the oldest gives way)
 const SMEAR_N = 10;      // points kept per character's weapon trail
@@ -37,7 +38,7 @@ const real = (world) => world.game?.time ?? world.time; // the clock of the scre
 export default class CombatFx {
   constructor(world) {
     this.world = world;
-    this.flashes = []; // { ch, img, x, y, a, s, dir, t0, dur, shove, squash, twist, live }
+    this.flashes = []; // { ch, img, head, x, y, a, s, dir, t0, dur, shove, squash, twist, live }
     this.bursts = [];  // { x, y, a, t0, life, rays, len, width, shape, tint, rot, j }
     this.muzzles = []; // { ch, x, y, a, t0, dur, shape, len, wide, j }
     this.wakes = [];   // { x0, y0, x1, y1, t0, life, width }
@@ -49,7 +50,7 @@ export default class CombatFx {
     if (!f.flash || !ch.torso) return;
     const P = ch.pose, side = Math.sin((P?.ta ?? ch.angle) - dir) >= 0 ? 1 : -1;
     add(this.flashes, {
-      ch, img: ch.torso, x: ch.x, y: ch.y, a: P?.ta ?? ch.angle, s: (P?.s ?? 1) * BODY_SCALE, dir, t0: real(this.world), dur: f.flash,
+      ch, img: ch.torso, head: ch.head, x: ch.x, y: ch.y, a: P?.ta ?? ch.angle, s: (P?.s ?? 1) * BODY_SCALE, dir, t0: real(this.world), dur: f.flash,
       shove: lethal ? f.shove : 0, squash: lethal ? f.squash : 0, twist: lethal ? f.twist * side : 0, live: !lethal,
     });
   }
@@ -234,6 +235,7 @@ function drawFlash(ctx, f, now) {
   ctx.scale(f.s * (f.img.k || 1), f.s * (f.img.k || 1)); // the torso is a finer sprite (Assets.js `density`)
   ctx.globalAlpha = k < 0.5 ? 1 : 2 * (1 - k);
   ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  if (f.head) { const h = white(f.head); ctx.drawImage(h, NECK / (f.img.k || 1) - h.width / 2, -h.height / 2); } // on his neck
   ctx.restore();
 }
 

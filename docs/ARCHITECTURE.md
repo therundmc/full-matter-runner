@@ -253,9 +253,17 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   lines `BARKS.chat`) and a leak (`reliefSpot`: a wall of the yard, a toilet; it leaves a puddle). Any character
   may define `busyHands()` (hands taken by something else than the weapon or the walk: guards' and patrons'
   pastimes, a passer-by's pockets or bag, hands up in a panic), read by `standPose`.
-- Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, feet, hands, weapon, as offsets
-  from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended over it so
-  every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and exit speeds.
+- Animation (entities/CharacterAnim.js): each frame a pose (torso offset/angle/scale, head turn, feet, hands, weapon,
+  as offsets from the body) is built from the walk cycle and combat gestures, then vault / slide poses are blended
+  over it so every move starts and ends on the walk pose. Vaults follow a Hermite curve that keeps the run-up and
+  exit speeds. The gait (entities/Gait.js, `GAIT`) is a real one: cadence and stride grow with the speed (a walk
+  under two steps a second, a run three), each foot is planted then swung ahead, the footstep sound is a foot
+  coming down; the torso sits on the hips on a damped spring (`Character.carryTorso`: it leans into a start or a
+  turn and is carried on past the feet when he stops short). The head is its own sprite (`<kind>_head`), turned
+  toward the aim over shoulders that counter-rotate with the stride. Legs, arms (bent at an elbow found from where
+  the hand is) and hands are painted as pixels at the sprites' density by render/LimbArt.js, coloured from the
+  kind's look (`KINDS` in Character.js, `CIVILIAN_LOOKS`). A long gun is shouldered: butt in the right shoulder's
+  pocket, right hand on the grip, left hand on the forend (`butt`, `grip`, `fore` in data/weapons.js).
 - Fire (fx/Particles.js `fire` / `drawFire`, systems/Explosions.js `fireball`): a flame is a square chunk on whole
   pixels in the flat colour of its heat (white, yellow, orange, red, soot), drawn opaque after the lighting with the
   hottest on top; never a soft additive disc. The slow chunks of a burst stay in its heart and stay hot, the fast

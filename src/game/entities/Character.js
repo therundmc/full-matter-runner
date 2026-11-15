@@ -14,16 +14,20 @@ import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE } from '../data/feel.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt }
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt }
   from './CharacterAnim.js';
+import { advanceGait } from './Gait.js';
 
 const { Bodies, Body } = Matter;
 
+// How each kind's limbs are painted (render/LimbArt.js): sleeve, skin, the cuff showing at the wrist, gloves,
+// trousers, shoes (the same colours as their sprites, tools/generate_assets.py CHARS)
 export const KINDS = {
-  player: { arm: '#465062', skin: '#dba274' }, // the sleeves of his charcoal coat, a Mediterranean tan
-  thug: { arm: '#e6e0cf', skin: '#e0a878' },
-  heavy: { arm: '#4b2470', skin: '#c88a60' },
-  brute: { arm: '#d89a70', skin: '#d89a70' },
+  // the sleeves of his charcoal coat over the grey knit, a Mediterranean tan, jeans, brown boots
+  player: { arm: '#465062', skin: '#dba274', cuff: '#868c98', pants: '#3c4a66', shoe: '#3a2a22' },
+  thug: { arm: '#e6e0cf', skin: '#e0a878', cuff: '#2a2236', pants: '#2a2632', shoe: '#1e1820' },
+  heavy: { arm: '#4b2470', skin: '#c88a60', glove: '#24202a', pants: '#4b2470', shoe: '#ecebf2' },
+  brute: { arm: '#d89a70', skin: '#d89a70', pants: '#4c4a2c', shoe: '#5a3a22' },
 };
 
 const VAULT_DUR = 0.5;  // s, windows and furniture alike
@@ -36,11 +40,12 @@ const LAND_NOISE = 120;  // px a flat landing is heard at
 // cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
 const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
+// the torso's spring on the hips (Character.carryTorso): px of lean per px/step of speed change per step, its cap, how
+// much of a stop carries it on forward, its natural frequency (rad/s) and damping ratio (under 1: it swings back)
+const SETTLE = { gain: 3.2, max: 1.8, carry: 0.85, freq: 12, damp: 0.42 };
 // a man lying knocked down (layClear): where along his sprite's length he is checked against walls (his head, his
 // chest, his feet; the sprite sits a little ahead of the body's centre), the turns tried, rad/s he is turned at
 const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
-const STRIDE = 48;      // px between two footfalls heard: a run is three or four a second, a walk under two
-                        // (the user: one at every stride of the drawn legs was "sixteenth notes")
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
 
 // Shared body / weapon / animation logic for the player and enemies.
@@ -86,13 +91,18 @@ export default class Character {
     this.throwDur = 0.28;
     this.recoilRate = 9;    // recoil recovery per second (heavy guns recover slower)
     this.glassSafe = 0;     // seconds of immunity to flying shards left after a window vault
-    this.stride = 0;        // px walked since the last footfall
     this.vaulting = null;   // { from, to, t, dur, kind, dir, ... } while jumping over something
     this.slideAnim = null;  // { dir, side, k, w } while sliding (driven by Player)
     // animation state (see CharacterAnim.js)
     this.gait = 0;          // 0 standing .. 1 full stride, smoothed
-    this.footA = angle;     // smoothed feet direction
-    this.lean = { x: 0, y: 0 };
+    this.strideV = 0;       // smoothed speed of the drawn body (m/s), and how much of a run it is (0 .. 1): Gait.js
+    this.runK = 0;
+    this.footA = angle;     // smoothed direction of the hips and the toes
+    this.strideA = angle;   // smoothed direction the feet stride along
+    this.hipsGoal = angle;
+    this.backward = false;  // walking backwards, facing on
+    this.lean = { x: 0, y: 0 };  // the torso carried off the hips by a change of speed: a damped spring
+    this.leanV = { x: 0, y: 0 };
     this.prevVel = { x: 0, y: 0 };
     this.breath = rand(0, 6.28);
     this.stow = 0;          // weapon put away 1 .. in hand 0 (ai/Carry.js; only the guards ever put theirs away)
@@ -106,6 +116,7 @@ export default class Character {
     this.knocked = 0;
     this.downAngle = 0;
     this.torso = sprite(`characters/${kind}_torso`);
+    this.head = sprite(`characters/${kind}_head`);
     this.downImg = sprite(`characters/${kind}_down`);
     world.addBody(this.body);
   }
@@ -219,7 +230,8 @@ export default class Character {
     const v = Body.getVelocity(this.body);
     const sp = Math.hypot(v.x, v.y);
     this.moving = sp;
-    if (sp > 0.25) { this.walk += sp * dt * 6; this.moveAngle = Math.atan2(v.y, v.x); }
+    if (sp > 0.25) this.moveAngle = Math.atan2(v.y, v.x);
+    const steps = advanceGait(this, sp, dt, this.moveAngle);
     // knocked down: a puff of dust when the body hits the floor
     const wasDown = this.downT;
     this.downT = this.knocked > 0 ? this.downT + dt : 0;
@@ -228,19 +240,36 @@ export default class Character {
     this.updateDoorHand(dt, sp, v);
     // smoothed gait / feet direction / lean into acceleration (frozen while vaulting, so the run resumes on landing)
     if (!this.vaulting) {
-      const kg = 1 - Math.exp(-dt * 12), kf = 1 - Math.exp(-dt * 14), kl = 1 - Math.exp(-dt * 10);
+      const kg = 1 - Math.exp(-dt * 12), kf = 1 - Math.exp(-dt * 9);
       this.gait += (Math.min(1, sp / GAIT_SPEED) - this.gait) * kg;
-      this.footA += angDiff(this.footA, sp > 0.25 ? this.moveAngle : this.angle) * kf;
-      this.lean.x += (clamp((v.x - this.prevVel.x) * 4, -1.6, 1.6) - this.lean.x) * kl;
-      this.lean.y += (clamp((v.y - this.prevVel.y) * 4, -1.6, 1.6) - this.lean.y) * kl;
-      // a foot comes down every STRIDE px on his feet: its sound, by the floor (quiet: audio STEP_LEVEL)
-      if (sp > 0.3 && !this.slideAnim && this.alive && (this.stride += sp * dt * 60) >= STRIDE) {
-        this.stride = 0;
+      this.footA += angDiff(this.footA, this.hipsGoal) * kf; // the hips come round a little after the shoulders
+      if (sp > 0.25) this.strideA += angDiff(this.strideA, this.moveAngle) * kf;
+      this.carryTorso(dt, v);
+      // a foot coming down is heard, by the floor (quiet: audio STEP_LEVEL): under two a second walking, three running
+      if (steps && sp > 0.3 && !this.slideAnim && this.alive) {
         const run = sp > 1.8;
         this.world.sound('step', this.x, this.y, run ? 0.9 : 0.6, { floor: this.world.floorAt(this.x, this.y), run });
       }
     }
     this.prevVel.x = v.x; this.prevVel.y = v.y;
+  }
+
+  // The torso on the hips, as a damped spring: it leans into a start and into a turn, is carried on past the feet
+  // when he stops short and swings back a little before it settles (pose px, world orientation).
+  carryTorso(dt, v) {
+    const ax = (v.x - this.prevVel.x) / (dt * 60), ay = (v.y - this.prevVel.y) / (dt * 60); // px/step per step
+    const pv = Math.hypot(this.prevVel.x, this.prevVel.y);
+    let tx = ax, ty = ay;
+    if (pv > 0.2) {
+      // the share of the change along the way he was going: a start or a stop both throw the torso forward
+      const ux = this.prevVel.x / pv, uy = this.prevVel.y / pv, along = ax * ux + ay * uy;
+      tx += (Math.abs(along) - along) * ux * SETTLE.carry; ty += (Math.abs(along) - along) * uy * SETTLE.carry;
+    }
+    const m = Math.hypot(tx, ty) * SETTLE.gain, k = m > SETTLE.max ? SETTLE.max / m : 1;
+    tx *= SETTLE.gain * k; ty *= SETTLE.gain * k;
+    const w = SETTLE.freq, z = SETTLE.damp, L = this.lean, V = this.leanV;
+    V.x += (w * w * (tx - L.x) - 2 * z * w * V.x) * dt; V.y += (w * w * (ty - L.y) - 2 * z * w * V.y) * dt;
+    L.x += V.x * dt; L.y += V.y * dt;
   }
 
   // walking into a door leaf: a hand comes up flat against it for as long as he pushes (GESTURE.door)
@@ -328,9 +357,8 @@ export default class Character {
 
   muzzlePos() {
     const d = this.def;
-    const img = sprite(d.sprite);
-    const lx = (d.hold === 'two' ? 5 : 10) + sw(img) - d.grip;
-    return local(this.x, this.y, this.angle, lx * BODY_SCALE, (d.hold === 'two' ? 2 : 1) * BODY_SCALE);
+    const m = muzzleAt(d, sw(sprite(d.sprite)));
+    return local(this.x, this.y, this.angle, m.x * BODY_SCALE, m.y * BODY_SCALE);
   }
 
   // the barrel that just fired a burst smokes once it falls silent, a thin wisp that rises until it has cooled

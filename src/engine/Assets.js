@@ -1,7 +1,7 @@
 // Sprite loading + derived caches (silhouettes for drop shadows, slices for debris).
 // civN: ambient passers-by and customers; dancerN: the dancers of a VIP room
 const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'civ1', 'civ2', 'civ3', 'civ4', 'dancer1', 'dancer2', 'tramp'];
-const CHAR_PARTS = ['torso', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
+const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 export const SPRITE_LIST = [
   ...CHARACTERS.flatMap((c) => CHAR_PARTS.map((p) => `characters/${c}_${p}`)),
@@ -53,8 +53,8 @@ export const OPTIONAL_LIST = [
 // The standing characters and the weapons are painted at twice the density (tools/generate_assets.py FINE), still
 // plain pixel art. An image carries its
 // own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
-// (a kind's name has no underscore: `thug_torso` is fine, `thug_rag_torso` and `thug_gib_torso` are not)
-const FINE = /^(characters\/[a-z0-9]+_torso|weapons\/(pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron))$/;
+// (a kind's name has no underscore: `thug_torso` and `thug_head` are fine, `thug_rag_torso` and `thug_gib_head` are not)
+const FINE = /^(characters\/[a-z0-9]+_(torso|head)|weapons\/(pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron))$/;
 const density = (name) => (FINE.test(name) ? 0.5 : 1);
 
 // size of a sprite in world px (a finer sprite is smaller than its pixels)
