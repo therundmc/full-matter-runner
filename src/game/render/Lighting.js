@@ -98,6 +98,8 @@ export default class Lighting {
     this.wet = RAIN.wet * (world.weather?.k || 0); // the rain: floors in the open mirror the lights harder
     this.gradStops = L.falloff;
     this.buildSegments();
+    this.glass = []; this.glassKey = null;
+    this.updateGlass();
     this.lights = (world.level.lights || []).map((d, i) => this.makeLevelLight(d, i));
     for (const d of world.level.roof || []) this.addRoofLight(d);
     this.buildAmbient();
@@ -256,6 +258,35 @@ export default class Lighting {
     this.gridDirty = true;
   }
 
+  // the intact panes (world.windows), each a segment along its glass: a light reaches past one at only LIGHTING.glass
+  // of its strength (a lamp indoors no longer floods the pavement), past a broken one in full. Lights in reach of a
+  // pane that broke are redrawn.
+  updateGlass() {
+    const T = TILE, segs = [], keys = new Set();
+    for (const w of this.world.windows || []) {
+      if (!w.intact) continue;
+      keys.add(w.cx + ',' + w.cy);
+      if (w.vertical) segs.push((w.cx + 0.5) * T, w.cy * T, (w.cx + 0.5) * T, (w.cy + 1) * T);
+      else segs.push(w.cx * T, (w.cy + 0.5) * T, (w.cx + 1) * T, (w.cy + 0.5) * T);
+    }
+    const key = [...keys].join(';');
+    if (key === this.glassKey) return;
+    const before = this.glassKey === null ? null : new Set(this.glassKey ? this.glassKey.split(';') : []);
+    this.glass = segs; this.glassKey = key;
+    if (!before) return;
+    const changed = [...before].filter((k) => !keys.has(k)).map((k) => k.split(',').map((v) => (+v + 0.5) * T));
+    const touch = (l) => { if (changed.some(([x, y]) => Math.hypot(x - l.x, y - l.y) < l.r + T)) l.dirty = true; };
+    for (const l of this.lights) touch(l);
+    for (const p of this.world.props) for (const l of this.propEntries.get(p) || []) touch(l);
+  }
+
+  // whether a pane stands within a light's reach
+  nearGlass(l) {
+    const g = this.glass, R = l.r + TILE;
+    for (let i = 0; i < g.length; i += 4) if (Math.abs(g[i] - l.x) < R && Math.abs(g[i + 1] - l.y) < R) return true;
+    return false;
+  }
+
   propLights(p) {
     let list = this.propEntries.get(p);
     if (list) return list;
@@ -318,21 +349,28 @@ export default class Lighting {
       g.globalCompositeOperation = 'lighter';
       const n = l.shadows ? Math.max(1, L.softSamples) : 1;
       const grad = this.gradient(g, l.x, l.y, R, l.rgb, 1 / n);
+      // a pane in reach: the light drawn twice, past the walls at `glass` of its strength and up to the glass at the rest
+      const glassy = l.shadows && L.glass < 1 && this.nearGlass(l), withGlass = glassy ? this.segs.concat(this.glass) : null;
+      const fill = (pts, a) => {
+        g.save();
+        if (pts) { this.tracePoly(g, pts); g.clip(); }
+        if (l.cone) this.clipCone(g, l);
+        g.globalAlpha = a;
+        g.fillStyle = grad;
+        g.fillRect(l.x - R, l.y - R, R * 2, R * 2);
+        g.restore();
+      };
       for (let k = 0; k < n; k++) {
         const ja = (k / n) * Math.PI * 2 + l.seed, jr = k ? L.softRadius : 0;
         let px = o[0] + Math.cos(ja) * jr, py = o[1] + Math.sin(ja) * jr;
         if (this.map.solidAt(px, py)) { px = o[0]; py = o[1]; }
-        g.save();
-        if (l.shadows) {
-          const v = visibility(px, py, R, this.segs);
-          if (!k) l.poly = v;
-          this.tracePoly(g, v.pts);
-          g.clip();
-        }
-        if (l.cone) this.clipCone(g, l);
-        g.fillStyle = grad;
-        g.fillRect(l.x - R, l.y - R, R * 2, R * 2);
-        g.restore();
+        if (!l.shadows) { fill(null, 1); continue; }
+        const v = visibility(px, py, R, this.segs);
+        if (!glassy) { if (!k) l.poly = v; fill(v.pts, 1); continue; }
+        const vg = visibility(px, py, R, withGlass);
+        if (!k) l.poly = vg; // its reflections and lit faces stop at the glass
+        fill(v.pts, L.glass);
+        fill(vg.pts, 1 - L.glass);
       }
       // lit wall faces along the visible edges
       if (l.poly && L.rimAlpha > 0) {
@@ -536,6 +574,7 @@ export default class Lighting {
   // multiply the light map over the scene (camera transform active on ctx)
   apply(ctx, cam, t) {
     this.sync();
+    this.updateGlass();
     this.setView(cam);
     const { x0, y0, w: vw, h: vh } = this.view, s = L.scale;
     const g = this.lm.getContext('2d');

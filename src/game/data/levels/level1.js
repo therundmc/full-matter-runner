@@ -157,6 +157,7 @@ export default {
     ['trash_can', 20.4, 10.5, 0],
     // back room
     ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270], ['sofa', 24.5, 8.6, 270], ['armchair', 28.45, 6.6, 180],
+    ['table_round', 26.6, 8.75, 0], ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270],
     ['ceiling_lamp', 26.6, 8.75, 0], ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84],
     ['extinguisher', 24.9, 10.86, 180],
     // the bar: counter along the north wall

@@ -367,6 +367,9 @@ lv.prop('desk', 27.6, 6.75, 270)                        # its seat side toward t
 lv.prop('sofa', 25.5, 8.6, 270)
 lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
                                                         # north of it to get caught in (the QA robot found him there)
+lv.prop('table_round', 27.6, 8.75)                      # the boss's men's table, 1.2 m off the couch: the way from the
+lv.prop('chair', 28.45, 8.75, 180)                      # back door to the rest of the room goes round it
+lv.prop('chair', 27.6, 9.57, 270)
 lv.prop('ceiling_lamp', 27.6, 8.75)
 lv.prop('floor_lamp', 25.4, 10.55)
 lv.prop('cash_case', 30.2, 10.45, 84)                   # the boss's takings, open on the floor in front of the man

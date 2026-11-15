@@ -558,6 +558,7 @@ export const LIGHTING = {
   softSamples: 3,          // jittered shadow samples (penumbra)
   softRadius: 3.5,         // px
   shadowBlur: 1,           // light map texels
+  glass: 0.3,              // share of a light that gets through an intact pane (Lighting.updateGlass)
   rimWidth: 12,            // px of wall face lit along the visible edges
   rimAlpha: 1,
   dynamicGain: 1.1,        // muzzle flashes / explosions in the light map
