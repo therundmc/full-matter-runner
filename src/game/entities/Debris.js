@@ -22,14 +22,17 @@ const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 
 // opts.onLand(debris): called the first time it touches the floor (a bottle smashes: world.removeDebris).
 // A spent case (opts.hop: its data/feel.js CASING entry, opts.tick: { name, opts } of its sound) rings at every
 // touchdown, hops back up while it falls fast enough, each hop knocking its way off a little (skitter); opts.tumble
-// (rad/s): it turns end over end while in the air. opts.lift: how much of its height shows as a shift up the screen
-// (0.5 by default; a case keeps closer to its shadow, the view stays top-down).
+// (rad/s): it turns end over end while in the air (opts.flip: that many half-turns, whatever its time up there).
+// opts.lift: how much of its height shows as a shift up the screen (0.5 by default; a case keeps closer to its shadow,
+// the view stays top-down). opts.scale: how big it is drawn on the floor (what people let go of: near their BODY_SCALE),
+// opts.grow: how much bigger a px of height (0.006 by default, none for a piece turning end over end).
 // Once settled it is baked into the floor canvas and removed from the simulation.
 export default class Debris {
   constructor(world, img, x, y, angle, vx, vy, spin, opts = {}) {
     this.world = world;
     this.img = img;
-    const w = Math.max(2, sw(img) - 1), h = Math.max(2, sh(img) - 1);
+    this.scale = opts.scale ?? 1;
+    const w = Math.max(2, sw(img) * this.scale - 1), h = Math.max(2, sh(img) * this.scale - 1);
     this.size = Math.max(w, h);
     this.body = opts.circle
       ? Bodies.circle(x, y, Math.max(1.5, Math.min(w, h) / 2), {})
@@ -52,7 +55,8 @@ export default class Debris {
     this.land = opts.land || null;
     this.hop = opts.hop || null;
     this.tick = opts.tick || null;
-    this.tumble = opts.tumble || 0;
+    this.tumble = opts.flip && air > 0 ? (opts.flip * Math.PI) / air : opts.tumble || 0;
+    this.grow = opts.grow ?? (this.tumble ? 0 : 0.006);
     this.lift = opts.lift ?? 0.5;
     this.onLand = opts.onLand || null;
     setMaterial(this.body, opts.kg ?? Math.max(0.15, w * h * 0.06), mu, world.time + Math.max(opts.fly ?? 0.12, air));
@@ -171,18 +175,19 @@ export default class Debris {
   draw(ctx) {
     const p = this.body.position, z = this.z, up = z * this.lift;
     // the shadow stays on the floor; the piece is drawn up there, a little bigger
-    if (this.shadow || z > 0) drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.3 / (1 + z * 0.03));
+    const s = this.scale * (1 + z * this.grow);
+    if (this.shadow || z > 0) drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.3 / (1 + z * 0.03), this.scale);
     if (z > 0 && this.tumble) {
-      // end over end: it shows shorter as it turns toward the eye
-      const k = this.img.k || 1, l = 0.4 + 0.6 * Math.abs(Math.cos(this.age * this.tumble));
+      // end over end: it shows shorter along its length as it turns toward the eye
+      const k = (this.img.k || 1) * s, l = 0.4 + 0.6 * Math.abs(Math.cos(this.age * this.tumble)), long = this.img.height > this.img.width;
       ctx.save();
       ctx.translate(p.x, p.y - up);
       ctx.rotate(this.body.angle);
-      ctx.scale(k * l, k);
+      ctx.scale(k * (long ? 1 : l), k * (long ? l : 1));
       ctx.drawImage(this.img, -this.img.width / 2, -this.img.height / 2);
       ctx.restore();
       return;
     }
-    drawSprite(ctx, this.img, p.x, p.y - up, this.body.angle, 1, z > 0 ? 1 + z * 0.006 : 1);
+    drawSprite(ctx, this.img, p.x, p.y - up, this.body.angle, 1, s);
   }
 }

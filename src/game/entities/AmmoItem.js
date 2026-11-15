@@ -1,22 +1,24 @@
 import { CAT, MASK } from '../Config.js';
 import { AMMO } from '../data/weapons.js';
-import { spriteOpt, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
+import { spriteOpt, chunk, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 
 const { Bodies, Body } = Matter;
 
 // Rounds of a caliber on the floor: a box, or a dropped magazine with what was left in it (img).
 // Pulled toward the player when close, collected on contact. delay: seconds before it can be picked up.
+// o.angle: how it lies (random by default), o.scale: how big it is drawn (a dropped magazine is as big as in a hand).
 export default class AmmoItem {
-  constructor(world, type, rounds, x, y, vx = 0, vy = 0, delay = 0, img = null) {
+  constructor(world, type, rounds, x, y, vx = 0, vy = 0, delay = 0, img = null, o = {}) {
     this.world = world;
     this.type = type;
     this.cal = AMMO[type];
     this.rounds = rounds ?? this.cal.rounds;
     this.delay = delay;
     this.img = img || spriteOpt(this.cal.sprite) || chunk(this.cal.color, 9, 7);
-    this.body = Bodies.rectangle(x, y, this.img.width, this.img.height, {
-      angle: Math.random() * 6.28, frictionAir: 0.02, restitution: 0.3, label: 'ammo',
+    this.scale = o.scale ?? 1;
+    this.body = Bodies.rectangle(x, y, sw(this.img) * this.scale, sh(this.img) * this.scale, {
+      angle: o.angle ?? Math.random() * 6.28, frictionAir: 0.02, restitution: 0.3, label: 'ammo',
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
     setMaterial(this.body, 1.2, 0.5, world.time + 0.15);
@@ -58,8 +60,8 @@ export default class AmmoItem {
 
   draw(ctx) {
     const p = this.body.position;
-    drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.35);
-    drawSprite(ctx, this.img, p.x, p.y, this.body.angle);
+    drawSprite(ctx, silhouette(this.img), p.x + 1, p.y + 1, this.body.angle, 0.35, this.scale);
+    drawSprite(ctx, this.img, p.x, p.y, this.body.angle, 1, this.scale);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.25 + Math.sin(this.t * 6) * 0.15;

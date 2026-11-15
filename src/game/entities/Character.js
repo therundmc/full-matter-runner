@@ -16,7 +16,7 @@ import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH } from '../data/feel.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
 import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
-  muzzleX, boreIn }
+  muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
 
@@ -53,7 +53,7 @@ const SETTLE = { gain: 3.2, max: 1.8, carry: 0.85, freq: 12, damp: 0.42 };
 // chest, his feet; the sprite sits a little ahead of the body's centre), the turns tried, rad/s he is turned at
 const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
-const MUZZLE_AT = { x: 0, y: 0, a: 0 }, PORT_AT = { x: 0, y: 0, a: 0 };
+const MUZZLE_AT = { x: 0, y: 0, a: 0 }, PORT_AT = { x: 0, y: 0, a: 0 }, MAG_AT = { x: 0, y: 0, a: 0 };
 
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
@@ -141,9 +141,9 @@ export default class Character {
   get hasGun() { return this.def.kind === 'gun'; }
 
   // weapon instance: { type, mag (rounds in the gun), reserve (enemies: spare mags, or loose rounds for shotguns),
-  // wear (melee: kills left in it; only the player's ever wears out) }
+  // wear (melee: kills left in it; only the player's ever wears out), bare (its magazine out: a reload cut short) }
   setWeapon(type, mag, reserve = 0) {
-    this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve, wear: WEAPONS[type].wear } : null;
+    this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve, wear: WEAPONS[type].wear, bare: false } : null;
     this.reloading = 0;
   }
 
@@ -162,10 +162,10 @@ export default class Character {
     if (!this.canReload || !this.alive || this.knocked) return false;
     const d = this.def;
     this.reloadDur = this.reloading = d.reload;
-    this.reloadStage = 0;
+    this.reloadStage = this.weapon.bare ? 2 : 0; // its magazine already out: none to drop
     this.shellsIn = 0;
     this.racking = 0;
-    this.world.sound(d.shellReload ? 'handle' : 'magOut', this.x, this.y, 0.7, { weapon: this.weapon.type, dur: d.reload });
+    if (d.shellReload) this.world.sound('handle', this.x, this.y, 0.7, { weapon: this.weapon.type, dur: d.reload });
     return true;
   }
 
@@ -189,42 +189,60 @@ export default class Character {
       }
       return;
     }
+    // stages: 0 the old magazine in, 1 the catch pressed and it slides out of the well (CharacterAnim draws it), 2 out
+    // of the gun (falling, or on the floor), 3 the fresh one seated, 4 the action worked. A reload cut short leaves
+    // the gun as it is at that stage: past 2 and before 3, the gun is bare and its magazine on the floor.
     const L = RELOAD.mag;
-    if (this.reloadStage === 0 && p > L.drop) {
+    if (this.reloadStage === 0 && p > L.release) {
       this.reloadStage = 1;
+      this.world.sound('magOut', this.x, this.y, 0.7, { weapon: this.weapon.type });
+    }
+    if (this.reloadStage === 1 && p > L.drop) {
+      this.reloadStage = 2;
       this.dropMag();
     }
-    if (this.reloadStage === 1 && p > L.seat) {
-      this.reloadStage = 2;
+    if (this.reloadStage === 2 && p > L.seat) {
+      this.reloadStage = 3;
       this.weapon.mag = this.takeMag();
+      this.weapon.bare = false;
       this.world.sound('magIn', this.x, this.y, 0.8, { weapon: this.weapon.type });
     }
-    if (this.reloadStage === 2 && p > L.rack[0]) {
-      this.reloadStage = 3;
+    if (this.reloadStage === 3 && p > L.rack[0]) {
+      this.reloadStage = 4;
       this.world.sound('rack', this.x, this.y, 0.8, { weapon: this.weapon.type });
     }
     if (this.reloading <= 0) this.reloading = 0;
   }
 
-  // the old magazine falls out of the well under his hand and clatters on the floor (from RELOAD.mag.fall px up, as
-  // Audio._magOut hears it land), with whatever rounds were left in it
+  // The old magazine, clear of the well (where CharacterAnim last drew it), falls by him from the gun's height
+  // (RELOAD.mag: drawn as big as in his hands up there, a touch smaller on the floor, turning end over end), lands with
+  // its clatter and lies there with whatever rounds were left in it: those make it a magazine to pick up (AmmoItem).
   dropMag() {
-    const d = this.def;
-    const left = this.weapon.mag;
-    this.weapon.mag = 0;
-    const h = this.pose.hr, g = this.pose.wpnOn ? { x: this.x + h.x * BODY_SCALE, y: this.y + h.y * BODY_SCALE }
-      : local(this.x, this.y, this.angle, d.hold === 'two' ? 9 : 8, 2);
-    const a = this.angle + Math.PI / 2 + rand(-0.6, 0.6);
-    const v = rand(30, 70);
-    if (left > 0) {
-      // a partial mag: can be picked up again later
-      this.world.ammoItems.push(new AmmoItem(this.world, d.ammo, left, g.x, g.y, Math.cos(a) * v / 60, Math.sin(a) * v / 60, 2.5,
-        spriteOpt(d.magSprite)));
-      return;
-    }
-    const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6);
-    this.world.addDebris(new Debris(this.world, img, g.x, g.y, this.angle + Math.PI / 2, Math.cos(a) * v, Math.sin(a) * v,
-      rand(-0.4, 0.4), { material: 'metal', air: 0.1, kg: 0.15, mu: 0.4, fly: 0.25, bounce: 0.3, z: RELOAD.mag.fall }));
+    const d = this.def, w = this.weapon, L = RELOAD.mag, world = this.world, type = w.type, left = w.mag;
+    w.mag = 0;
+    w.bare = true;
+    const img = spriteOpt(d.magSprite) || chunk('#2a2a33', 3, 6), at = this.magPos(), v = Body.getVelocity(this.body);
+    const out = rand(3, 10), way = at.a + Math.PI / 2 + rand(-0.4, 0.4); // still going the way it slid out
+    const scale = BODY_SCALE / (1 + L.grow * L.fall);
+    const landed = (m) => {
+      const p = m.body.position, u = Body.getVelocity(m.body);
+      world.sound('magLand', p.x, p.y, 0.7, { weapon: type });
+      if (left <= 0) return;
+      world.removeDebris(m);
+      world.ammoItems.push(new AmmoItem(world, d.ammo, left, p.x, p.y, u.x * 0.6, u.y * 0.6, 2.2, img, { angle: m.body.angle, scale }));
+    };
+    world.addDebris(new Debris(world, img, at.x, at.y + L.fall * L.lift, at.a, v.x * 60 + Math.cos(way) * out,
+      v.y * 60 + Math.sin(way) * out, rand(-0.1, 0.1), { material: 'metal', air: 0.1, kg: 0.15, mu: 0.4, bounce: 0.3,
+        z: L.fall, vz: -L.vz, lift: L.lift, flip: L.flip, scale, grow: L.grow, onLand: landed }));
+  }
+
+  // { x, y, a }: the old magazine just clear of the well and the angle of its picture, as last drawn (noteMuzzle);
+  // a gun not drawn yet: under the gun hand
+  magPos() {
+    const n = this.muzzleNote, on = n?.def === this.def && n.ma !== undefined;
+    const p = on ? local(this.x, this.y, this.angle, n.mx, n.my) : local(this.x, this.y, this.angle, 8 * BODY_SCALE, 4 * BODY_SCALE);
+    p.a = this.angle + (on ? n.ma : 0);
+    return p;
   }
 
   // desired direction (dx, dy), speed in px/step
@@ -403,6 +421,11 @@ export default class Character {
     n.def = d;
     n.x = (m.x * c + m.y * s) * BODY_SCALE; n.y = (m.y * c - m.x * s) * BODY_SCALE;
     n.da = angDiff(this.angle, m.a);
+    if (d.well) {
+      const g = looseMagIn(P, d, MAG_AT);
+      n.mx = (g.x * c + g.y * s) * BODY_SCALE; n.my = (g.y * c - g.x * s) * BODY_SCALE;
+      n.ma = angDiff(this.angle, g.a);
+    }
     if (!d.eject) return;
     const q = boreIn(P, d, d.eject - d.grip, PORT_AT);
     n.px = (q.x * c + q.y * s) * BODY_SCALE; n.py = (q.y * c - q.x * s) * BODY_SCALE;
@@ -768,6 +791,7 @@ export default class Character {
     const it = new WeaponItem(w, this.weapon.type, this.weapon.mag,
       this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-0.3, 0.3));
     it.wear = this.weapon.wear;
+    it.setBare(this.weapon.bare);
     w.addItem(it);
     this.weapon = null;
   }

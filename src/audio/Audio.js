@@ -136,7 +136,8 @@ export const META = {
   // weapons in the hands
   ricochet: { dur: 0.3, gap: 0.05, max: 3, gain: 0.8 },
   shell: { pri: 0, dur: 0.15, gap: 0.02, max: 4, gain: 0.4 }, // a spent case touching down (one play per touchdown)
-  magOut: { dur: 0.7, gap: 0.05, max: 3, gain: 0.45 },
+  magOut: { dur: 0.35, gap: 0.05, max: 3, gain: 0.45 },
+  magLand: { pri: 0, dur: 0.4, gap: 0.05, max: 3, gain: 0.45 },
   magIn: { dur: 0.35, gap: 0.05, max: 3, gain: 0.45 },
   rack: { dur: 0.5, gap: 0.05, max: 3, gain: 0.45 },
   shellIn: { dur: 0.5, gap: 0.03, max: 3, gain: 0.42 },
@@ -1082,13 +1083,13 @@ class AudioSystem {
   // ---- reloads and handling (opts.weapon = weapon id, opts.dur = reload length) ----
   _arms(opts) { return ARMS[opts.weapon] || ARMS.pistol; }
 
-  // the mag pulled out, then clattering on the floor (Character drops it at 8 % of the reload)
-  _magOut(o, opts) {
+  // the catch pressed and the mag sliding out of the well
+  _magOut(o, opts) { this._cut(o, 'magOut', { rate: this._arms(opts).rate }); }
+  // the mag clattering on the floor (Character.dropMag: when it lands)
+  _magLand(o, opts) {
     const A = this._arms(opts);
-    this._cut(o, 'magOut', { rate: A.rate });
-    const t = 0.08 * (opts.dur ?? 1) + rand(0.26, 0.32);
-    this._cut(o, 'plastic', { vol: 0.45, rate: 0.9 * A.rate, delay: t });
-    this._cut(o, 'casing', { vol: 0.2, rate: 0.7, delay: t + rand(0.07, 0.1) });
+    this._cut(o, 'plastic', { vol: 0.45, rate: 0.9 * A.rate });
+    this._cut(o, 'casing', { vol: 0.2, rate: 0.7, delay: rand(0.07, 0.1) });
   }
   // fresh mag pushed up the well and seated
   _magIn(o, opts) { this._cut(o, 'magIn', { rate: this._arms(opts).rate }); }

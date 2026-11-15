@@ -131,10 +131,9 @@ test('casings: they hop and ring at each touchdown, then lie still; brass rings,
 // ---------------- reload ----------------
 test('reload: the magazine timeline runs in order, the rounds go in before the action is worked', () => {
   const L = RELOAD.mag;
-  const order = [0, L.drop, L.belt[0], L.belt[1], L.insert[0], L.insert[1], L.seat, L.rack[0], L.rack[1], 1];
-  for (let i = 1; i < order.length; i++) assert.ok(order[i] >= order[i - 1], `RELOAD.mag out of order at ${i}`);
-  assert.ok(L.carry[0] > L.drop && L.carry[1] > L.insert[1] && L.carry[1] < L.rack[0]);
-  assert.ok(L.tilt[0] > L.drop && L.tilt[1] > L.rack[1] - 0.15);
+  const order = [0, L.release, L.drop, L.belt[0], L.belt[1], L.insert, L.seat, L.rack[0], L.rack[1], 1];
+  for (let i = 1; i < order.length; i++) assert.ok(order[i] > order[i - 1], `RELOAD.mag out of order at ${i}`);
+  assert.ok(L.tilt[0] > L.release && L.tilt[1] > L.rack[1] - 0.15);
   const S = RELOAD.shell;
   assert.ok(S.fetch < S.port && S.port < S.push && S.push < 1 && S.racked > 0);
   for (const [id, d] of GUNS.filter(([, g]) => g.shellReload)) assert.ok(d.load, `${id}: what goes in by hand`);

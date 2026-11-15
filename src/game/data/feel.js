@@ -167,16 +167,21 @@ export const CASING = {
     hop: [0.3, 70], skid: 0.4, kg: 0.03, mu: 0.45, loud: 260, guard: 1, lift: 0.2 },
 };
 
-// A reload, as shares of the gun's `reload` time. Magazine: the gun tips in over `tilt`, the old one falls at `drop`
-// (from `fall` px up, so it lands as the clatter of Audio._magOut is heard), the free hand goes to the belt over
-// `belt`, brings the fresh one up to the well over `insert` (`carry`: it shows in the hand), it is seated at `seat`,
-// then the action is worked over `rack` (`pull`: px the hand draws it back). Shells (per round): the hand fetches one
+// A reload, as shares of the gun's `reload` time. Magazine (the gun's `well` and `rack` in data/weapons.js): the gun
+// tips in over the first share of `tilt` and back after its second; at `release` the catch is pressed and the old
+// magazine slides out of the well, clear of it at `drop`, when it falls (from `fall` px up, `vz` px/s downward, drawn
+// `grow` larger a px of height and `lift` of its height up the screen, `flip` half-turns end over end), lands with its
+// clatter (Audio._magLand) and lies there with what was left in it. The free hand leaves the gun at `release`, is at
+// the belt at belt[0], draws the fresh magazine out and leaves with it at belt[1], has it at the well's mouth at
+// `insert`, pushes it home by `seat` (the shove gives the gun `push` px), then works the action over
+// `rack` along the gun's own path (the gun given `give` of the hand's way along it and across it; held `reach` px
+// further out meanwhile, a handgun / a long gun), and goes back. Shells (per round): the hand fetches one
 // from the belt until `fetch`, brings it under the loading port until `port`, thumbs it home until `push` (the
 // shell shows in it until then), then goes back; a round loaded, the next one starts. `racked`: s the action takes to
 // work after the last shell.
 export const RELOAD = {
-  mag: { tilt: [0.12, 0.85], drop: 0.08, fall: 22, belt: [0.15, 0.4], insert: [0.4, 0.7], carry: [0.25, 0.72], seat: 0.7,
-    rack: [0.76, 0.94], pull: 2.6 },
+  mag: { tilt: [0.1, 0.86], release: 0.05, drop: 0.17, fall: 22, vz: 70, grow: 0.006, lift: 0.15, flip: 1,
+    belt: [0.3, 0.38], insert: 0.56, seat: 0.66, push: 0.9, rack: [0.72, 0.94], give: [0.3, 0.2], reach: [2.5, 2.5] },
   shell: { fetch: 0.35, port: 0.65, push: 0.82, racked: 0.3, pull: 2.6 },
 };
 

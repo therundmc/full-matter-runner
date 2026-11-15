@@ -1,6 +1,6 @@
 import { CAT, MASK, PALETTE, AI, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { sprite, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
+import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 import { blowFrom } from '../fx/Blows.js';
 
@@ -38,6 +38,13 @@ export default class WeaponItem {
     this.dead = false;
     this.hilite = 0;
     world.addBody(this.body);
+  }
+
+  // its magazine out (a reload cut short): drawn without it, and whoever takes it has none to drop
+  setBare(bare) {
+    this.bare = !!bare;
+    if (bare) this.img = spriteOpt(this.def.sprite + '_bare') || this.img;
+    return this;
   }
 
   // stood against a wall (a level's `lean`), its tip up on it: it stays there until somebody takes it

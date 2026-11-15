@@ -1860,6 +1860,7 @@ export default class Enemy extends Character {
     if (!it || it.dead) { this.beginLocalSearch(this.x, this.y, 2); return; }
     if (Math.hypot(it.x - this.x, it.y - this.y) < 14) {
       this.setWeapon(it.type, it.mag, it.def.shellReload ? 6 : 1);
+      this.weapon.bare = !!it.bare;
       this.world.removeItem(it);
       this.world.sound('pickup', this.x, this.y, 0.5);
       this.pickAnim = 0.35;

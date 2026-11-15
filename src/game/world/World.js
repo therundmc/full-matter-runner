@@ -248,7 +248,7 @@ export default class World {
   addDebris(d) {
     this.debris.push(d);
     if (this.debris.length > MAX_DEBRIS) {
-      const old = this.debris.find((x) => !x.dead);
+      const old = this.debris.find((x) => !x.dead && !x.onLand); // not one that has yet to land (a magazine's rounds)
       if (old) this.bakeDebris(old);
     }
   }
@@ -257,7 +257,7 @@ export default class World {
     // meat lies on the blood, everything else under it
     const p = d.body.position;
     if (d.body.material === 'flesh') this.decals.bake(d.img, p.x, p.y, d.body.angle, 1, true);
-    else this.decals.wreck(d.img, p.x, p.y, d.body.angle, !!d.shadow);
+    else this.decals.wreck(d.img, p.x, p.y, d.body.angle, !!d.shadow, d.scale);
     this.removeDebris(d);
   }
   // gone without a trace (it shattered, it was consumed)

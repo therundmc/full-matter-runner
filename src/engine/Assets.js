@@ -39,8 +39,8 @@ export const OPTIONAL_LIST = [
     'runner', 'road_edge', 'parking_bay', 'velvet_rope', 'entry_carpet', 'awning', 'radiator', 'bike', 'bin_bag', 'newspaper', 'shoes',
     'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap'].map((n) => `props/${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
-  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket']
-    .map((n) => `weapons/${n}`),
+  ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
+    'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare'].map((n) => `weapons/${n}`),
   // rag_*_up: torso and head of a body lying on its back; rag_torso_down: its back, when it lies on its belly (Ragdoll)
   ...CHARACTERS.flatMap((c) => ['rag_torso', 'rag_head', 'rag_arm', 'rag_leg', 'rag_torso_up', 'rag_head_up', 'rag_torso_down'].map((p) => `characters/${c}_${p}`)),
   // small things in a guard's hands at his post, dropped or left about
@@ -60,7 +60,8 @@ export const OPTIONAL_LIST = [
 // plain pixel art. An image carries its
 // own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
 // (a kind's name has no underscore: `thug_torso` and `thug_head` are fine, `thug_rag_torso` and `thug_gib_head` are not)
-const FINE = /^(characters\/[a-z0-9]+_(torso|head)|weapons\/(pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron))$/;
+// (a magazine gun's `_bare` sprite, its magazine out, and the magazines themselves too)
+const FINE = /^(characters\/[a-z0-9]+_(torso|head)|weapons\/((pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron)(_bare)?|mag_(pistol|uzi|rifle|sniper)))$/;
 // the furniture, the street's dressing and the vehicles (and their emissive maps), painted at the same density
 // (generate_assets.py FINE_PROPS), the lamps' fittings too; the neon signs, neon tubes and party bulbs stay at the world's
 const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back_bar', 'bar_counter', 'barrel', 'bed', 'bench',

@@ -564,8 +564,8 @@ export default class MapRenderer {
   }
 
   // a loose piece come to rest becomes part of the floor, with the shadow it cast while loose: nothing pops
-  wreck(img, x, y, angle, shadow = true) {
-    if (shadow) this.bake(silhouette(img), x + 1, y + 1, angle, 0.3);
-    this.bake(img, x, y, angle);
+  wreck(img, x, y, angle, shadow = true, scale = 1) {
+    if (shadow) this.bake(silhouette(img), x + 1, y + 1, angle, 0.3, false, scale);
+    this.bake(img, x, y, angle, 1, false, scale);
   }
 }

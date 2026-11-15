@@ -330,14 +330,16 @@ export default class Player extends Character {
     }
     if (!it) return;
     this.world.removeItem(it);
-    this.take(it.type, it.mag, it.wear);
+    this.take(it.type, it.mag, it.wear, it.bare);
   }
 
-  // a weapon into the hand (what was in it falls behind him): mag = rounds in it, wear = kills left in a melee one
-  take(type, mag, wear) {
+  // a weapon into the hand (what was in it falls behind him): mag = rounds in it, wear = kills left in a melee one,
+  // bare: a gun with its magazine out
+  take(type, mag, wear, bare = false) {
     if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
     this.setWeapon(type, mag);
     this.weapon.wear = wear ?? this.def.wear;
+    this.weapon.bare = !!bare;
     this.world.sound('pickup', this.x, this.y, 1, { weapon: type });
     this.world.events.emit('pickup', { ch: this, type });
     if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7, { weapon: this.weapon.type });
@@ -353,6 +355,7 @@ export default class Player extends Character {
     const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * 12, this.y + Math.sin(a) * 12,
       a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, (power ? 0.9 : rand(0.4, 0.7)) * (Math.random() < 0.5 ? -1 : 1), this);
     it.wear = this.weapon.wear;
+    it.setBare(this.weapon.bare);
     w.addItem(it);
     this.weapon = null;
     this.reloading = 0;

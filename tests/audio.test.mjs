@@ -43,7 +43,7 @@ test('audio: every weapon sound, reload and handling sound builds valid nodes fo
       Audio.play(d.sound, { x: 0, y: 0 });
       assert.ok(ctx.started > before, `${type}: '${d.sound}' played nothing`);
       if (d.kind !== 'gun') continue;
-      for (const name of ['magOut', 'magIn', 'rack', 'shellIn', 'handle', 'click', 'pickup']) {
+      for (const name of ['magOut', 'magLand', 'magIn', 'rack', 'shellIn', 'handle', 'click', 'pickup']) {
         ctx.currentTime += 0.5;
         const n = ctx.started;
         Audio.play(name, { weapon: type, dur: d.reload });

@@ -1437,6 +1437,11 @@ def drawn(w, h, segs):
     return [''.join(r) for r in g]
 
 
+def without(segs, runs):
+    """segs less the runs that start at the x listed per row ({row: (x, ...)}): a gun with its magazine out"""
+    return {y: [r for r in rs if r[0] not in runs.get(y, ())] for y, rs in segs.items()}
+
+
 def weapons():
     W = {}
     gun = {'L': STEEL[3], 'M': STEEL[2], 'D': STEEL[1], 'K': STEEL[0], 'w': WOOD[3], 'W': WOOD[2],
@@ -1453,7 +1458,7 @@ def weapons():
     # an M1911 .45, side on: the blued slide with its rear serrations, the ejection port, the bushing at the muzzle,
     # the hammer spur and the grip safety's beak at the back, the thumb safety and the slide stop on the frame, the
     # trigger in its guard, and the grip raked back under it in checkered walnut panels, a screw top and bottom
-    W['pistol'] = ascii_cv(drawn(27, 15, {
+    PISTOL = {
         1: [(2, 'K'), (5, 'KK'), (23, 'K')],
         2: [(2, 'DK'), (4, 'M' + 'L' * 20 + 'S')],
         3: [(3, 'K'), (4, 'MKMKMKM'), (11, 'MM'), (13, 'nnnnn'), (18, 'MMMMMM'), (24, 'S'), (25, 'D')],
@@ -1466,12 +1471,15 @@ def weapons():
         10: [(2, 'D'), (3, 'VWwVW'), (8, 'KMMMDK')],
         11: [(1, 'D'), (2, 'WVWVWV'), (8, 'K')],
         12: [(1, 'D'), (2, 'VVSVV'), (7, 'K')],
-        13: [(1, 'DKKKKK')]}), gun)
+        13: [(1, 'DKKKKK')]}
+    W['pistol'] = ascii_cv(drawn(27, 15, PISTOL), gun)
+    # (each magazine gun also has a `_bare` sprite: the same gun, its magazine out of the well; weapons.js `well`)
+    W['pistol_bare'] = ascii_cv(drawn(27, 15, without(PISTOL, {13: (1,)})), gun)
     # an Uzi, side on, in its dark parkerized finish: the top cover with the rear sight, the cocking knob and the eared
     # front sight, the receiver's pressed rib with the ejection port and two rivets, the knurled barrel nut and the stub
     # of barrel; the stock folded under it (its strut along the belly, the butt plate hanging under the nut); the grip
     # under the middle with its grip safety, the magazine's base out of its heel, the big trigger guard
-    def uzi(can):
+    def uzi(can, bare=False):
         rows = {
             1: [(3, 'MD'), (17, 'LM'), (23, 'DMD')],
             2: [(3, 'MML' + 'M' * 13 + 'L' + 'M' * 6)],
@@ -1496,9 +1504,13 @@ def weapons():
             rows[4].append((29, 'LLL'))
             rows[5].append((29, 'MMM'))
             rows[6].append((29, 'DDK'))
+        if bare:   # the magazine's base out of the grip's heel
+            rows = without(rows, {14: (12,), 15: (12,), 16: (11,)})
         return drawn(46 if can else 33, 18, rows)
     W['uzi'] = ascii_cv(uzi(False), gun)
     W['uzi_silenced'] = ascii_cv(uzi(True), gun)
+    W['uzi_bare'] = ascii_cv(uzi(False, True), gun)
+    W['uzi_silenced_bare'] = ascii_cv(uzi(True, True), gun)
     # a Benelli-style semi-auto combat shotgun: the olive pistol-grip stock and its rubber pad, the black receiver
     # with the ghost-ring rear sight and the rail on top, the ejection port and the bolt handle, a red shell in the
     # loading port under it, the trigger guard; the thick barrel over the round magazine tube (no box magazine: that
@@ -1520,7 +1532,7 @@ def weapons():
     # handle (the rear sight at its back, the ejection port, the forward assist), the round ribbed handguard behind
     # its delta ring, the triangular front sight, the bare barrel, the slotted flash hider; the pistol grip and the
     # thirty-round magazine curving forward under it. Black and dark greys, a box magazine: nothing like the shotgun.
-    W['rifle'] = ascii_cv(drawn(56, 16, {
+    RIFLE = {
         1: [(17, 'K'), (45, 'K')],
         2: [(16, 'MMMMMMMMMM'), (44, 'KK')],
         3: [(16, 'D'), (17, 'DK'), (19, 'nnnnnn'), (25, 'D'), (43, 'KMKK')],
@@ -1535,12 +1547,14 @@ def weapons():
         10: [(2, 'nnGGn'), (16, 'GgG'), (20, 'KKK'), (24, 'GgGGG')],
         11: [(16, 'Ggn'), (24, 'GgGGG')],
         12: [(15, 'Ggn'), (25, 'GgGGG')],
-        13: [(15, 'nn'), (26, 'nnnnn')]}), gun)
+        13: [(15, 'nn'), (26, 'nnnnn')]}
+    W['rifle'] = ascii_cv(drawn(56, 16, RIFLE), gun)
+    W['rifle_bare'] = ascii_cv(drawn(56, 16, without(RIFLE, {9: (23,), 10: (24,), 11: (24,), 12: (25,), 13: (26,)})), gun)
     # a heavy .50 anti-materiel rifle: the stock with its cheek rest and thick pad, the long receiver under a big
     # scope (eyepiece, turret, objective bell, a glint of its lens), the folding carry handle, the cooling holes of
     # the barrel shroud, the pistol grip, the trigger guard, the ten-round box magazine, the heavy fluted barrel with
     # the bipod folded under it, and the double-chamber muzzle brake at its end
-    W['sniper'] = ascii_cv(drawn(72, 17, {
+    SNIPER = {
         1: [(11, 'gggg'), (20, 'KSSK'), (31, 'gggggg')],
         2: [(11, 'GGGG'), (15, 'ggggg'), (20, 'DMMD'), (24, 'ggggggg'), (31, 'GGGGGc')],
         3: [(11, 'GGGG'), (15, 'GGGGGGG'), (22, 'S'), (23, 'GGGGGGGG'), (31, 'GGGGGC')],
@@ -1560,7 +1574,9 @@ def weapons():
         12: [(15, 'GgGg'), (19, 'KKKKK'), (25, 'MMMMMMD'), (58, 'K')],
         13: [(14, 'gGgG'), (25, 'MDDDDMD')],
         14: [(14, 'GgGg'), (25, 'MMMMMMD')],
-        15: [(14, 'nnnn'), (24, 'KKKKKKKKK')]}), gun)
+        15: [(14, 'nnnn'), (24, 'KKKKKKKKK')]}
+    W['sniper'] = ascii_cv(drawn(72, 17, SNIPER), gun)
+    W['sniper_bare'] = ascii_cv(drawn(72, 17, without(SNIPER, {11: (25,), 12: (25,), 13: (25,), 14: (25,), 15: (24,)})), gun)
     # a bazooka of the M20 kind, side on: the flared venturi at the back, the olive tube with its clamps, the shoulder
     # rest under it, the pistol grip and trigger, the front grip, the reflex sight and the contact box on top, the
     # yellow band of a live round, the reinforced muzzle ring
@@ -1628,6 +1644,25 @@ def weapons():
         11: [(27, 'LMMMD')],
         12: [(27, 'MGGGD')],
         13: [(27, 'KnnnK')]}), gun)
+    # the magazines, at the guns' density and as wide as their wells (top row: the round on the lips, its bullet toward
+    # the muzzle; bottom row: the base plate). They show sliding out of the well, falling, and lying on the floor.
+    mag = dict(gun, B=BRASS[3], b=BRASS[1], c=hx('#e07a3a'))
+    # the 1911's: blued steel, its witness holes down the side
+    W['mag_pistol'] = ascii_cv(drawn(5, 14, dict([(1, [(1, 'bBc')]), (2, [(1, 'LMD')])]
+                                               + [(y, [(1, 'LKD' if y in (4, 7) else 'LMD')]) for y in range(3, 12)]
+                                               + [(12, [(1, 'KKK')])])), mag)
+    # the Uzi's: a long straight stick of steel, ribbed down its side, a thick base plate
+    W['mag_uzi'] = ascii_cv(drawn(5, 18, dict([(1, [(1, 'bBc')]), (2, [(1, 'LMD')])]
+                                            + [(y, [(1, 'LDD' if y % 4 == 1 else 'LMD')]) for y in range(3, 15)]
+                                            + [(15, [(1, 'DKD')]), (16, [(1, 'KKK')])])), mag)
+    # the M16's: black, curving forward toward its base
+    W['mag_rifle'] = ascii_cv(drawn(8, 16, dict([(1, [(1, 'bBBc')])]
+                                              + [(y, [(1 + (y > 5) + (y > 10), 'gGGn')]) for y in range(2, 14)]
+                                              + [(14, [(3, 'nnnn')])])), mag)
+    # the .50's: a fat steel box, the big round lying on its lips, a rib round it
+    W['mag_sniper'] = ascii_cv(drawn(9, 12, dict([(1, [(1, 'bBBBccc')]), (2, [(1, 'LLLLLMD')])]
+                                               + [(y, [(1, 'LDDDDMD' if y == 5 else 'LMMMMMD')]) for y in range(3, 10)]
+                                               + [(10, [(1, 'KKKKKKK')])])), mag)
     W['rocket'] = ascii_cv([".........",
                             ".QooorRt.",
                             ".qQQQRRR.",
@@ -4077,15 +4112,7 @@ def knocked_down(ch):
 
 def mags():
     out = {}
-    st = {'O': OUTLINE, 'L': STEEL_L[3], 'M': STEEL_L[1], 'D': STEEL[0], 'B': BRASS[3], 'b': BRASS[2],
-          'c': hx('#e07a3a'), 'K': hx('#0e0a14')}
-    out['mag_pistol'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "KKK"], st, ol=None)
-    out['mag_uzi'] = ascii_cv(["Obc", "LMD", "LMD", "LMD", "LMD", "LMD", "LMD", "LMD", "KKK"], st, ol=None)
-    stanag = ramp('#3a3a44', 0.45, 0.22, 0.45)   # the M16's: black, a slight curve forward
-    out['mag_rifle'] = ascii_cv(["Obc.", "LMD.", "LMD.", "LMD.", "LMMD", ".LMD", ".LMD", ".LMD", ".KKK"],
-                                dict(st, L=stanag[3], M=stanag[2], D=stanag[0]), ol=None)
-    # the .50's: a long steel box, a fat round on top
-    out['mag_sniper'] = ascii_cv(["OBbc", "LLMD", "LMMD", "LMMD", "LDDD", "LMMD", "LMMD", "KKKK"], st, ol=None)
+    # (the guns' magazines are painted with the guns, weapons())
     red = ramp('#e8303a', 0.5, 0.25, 0.3)
     out['shells_box'] = ascii_cv(["OAAAAAAO",
                                   "AbBbBbBR",
@@ -7281,8 +7308,10 @@ EXPECTED = {
     'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
                     sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),
                     rocket=(9, 4),
-                    casing=(3, 2), shell=(4, 2), mag_pistol=(3, 6), mag_uzi=(3, 9), mag_rifle=(4, 9),
-                    mag_sniper=(4, 8), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
+                    pistol_bare=(27, 15), uzi_bare=(33, 18), uzi_silenced_bare=(46, 18), rifle_bare=(56, 16),
+                    sniper_bare=(72, 17),
+                    casing=(3, 2), shell=(4, 2), mag_pistol=(5, 14), mag_uzi=(5, 18), mag_rifle=(8, 16),
+                    mag_sniper=(9, 12), shells_box=(8, 6), ammo_9mm=(9, 7), ammo_12g=(9, 7), ammo_762=(9, 7),
                     ammo_rocket=(12, 6)),
     'props': dict((n + g, (w * FINE, h * FINE) if n in FINE_PROPS else (w, h))
                   for n, (w, h) in PROP_SIZES.items() for g in ([''] + (['_glow'] if n in GLOWING else []))),
