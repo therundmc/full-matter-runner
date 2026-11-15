@@ -6,6 +6,7 @@ import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
 import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, TEAR, SKULL, woundFor, blowScale, markOf } from '../data/wounds.js';
 import { fling, wallBehind, splashWall } from './Spatter.js';
+import { WALL_RIM } from '../Config.js';
 import { skullBit, BIT_KINDS } from '../render/GoreArt.js';
 
 // px from the centre of a man lying knocked down to his head (data/finishers.js EXEC.head) and to the middle of
@@ -202,7 +203,7 @@ function burstSkull(world, x, y, angle) {
   if (chance(0.5)) throwGib(world, sprite('characters/gib_eye'), x, y, angle, false, 0.3, 0, 0.7, 0.5);
   if (wall) {
     splashWall(world, wall, angle, S.wall, randi(S.runs[0], S.runs[1]));
-    D.matter(wall.x - wall.nx * 3, wall.y - wall.ny * 3, rand(3, 4.5), angle, true);
+    D.matter(wall.x - wall.nx * (WALL_RIM + 4), wall.y - wall.ny * (WALL_RIM + 4), rand(3, 4.5), angle, true);
   }
 }
 

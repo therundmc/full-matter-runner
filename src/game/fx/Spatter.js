@@ -3,6 +3,7 @@
 // seconds (data/wounds.js `fling`, `wall`, RUNS). DOM-free: it only calls world.decals and world.emit.
 import { rand, randi, chance, spread } from '../../engine/math.js';
 import { RUNS } from '../data/wounds.js';
+import { WALL_RIM } from '../Config.js';
 
 // the first wall along `angle` from (x, y) within `reach` px: { x, y } the last free point before its face, (nx, ny)
 // the face's normal (out of the wall), d the distance; or null
@@ -63,8 +64,8 @@ export function run(world, x, y, nx, ny, deep, color) {
 // running down from it to the floor; the foot of the wall takes what falls straight down.
 export function splashWall(world, hit, angle, r, runs) {
   const D = world.decals, { nx, ny } = hit;
-  // a little way into the wall top, so its spines reach the face
-  const sx = hit.x - nx * (1 + r * 0.5), sy = hit.y - ny * (1 + r * 0.5);
+  // into the wall top, behind its outline, so that its spines reach the face (hit is the last free point before it)
+  const deep = WALL_RIM + 2 + r * 0.3, sx = hit.x - nx * deep, sy = hit.y - ny * deep;
   D.splashWall(sx, sy, r, angle);
   D.stampBlood(hit.x + nx * 2, hit.y + ny * 2, Math.max(1.5, r * 0.45), 3, Math.atan2(ny, nx));
   for (let i = 0; i < runs; i++) {
@@ -96,7 +97,8 @@ export function fling(world, x, y, angle, wd, k = 1, spreadA = 0.12) {
 
 // a body slammed against a wall at (x, y) on its face (nx, ny out of it): his blood on it and a run or two down it
 export function smear(world, x, y, nx, ny) {
-  world.decals.splashWall(x - nx * 3, y - ny * 3, rand(2.5, 3.5), Math.atan2(-ny, -nx));
+  const deep = WALL_RIM + 3;
+  world.decals.splashWall(x - nx * deep, y - ny * deep, rand(2.5, 3.5), Math.atan2(-ny, -nx));
   for (let i = randi(1, 3); i > 0; i--) {
     const t = rand(-5, 5);
     run(world, x - ny * t, y + nx * t, nx, ny, rand(...RUNS.len) * 0.7);

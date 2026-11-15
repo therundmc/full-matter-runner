@@ -18,10 +18,28 @@ export const MATERIALS = {
 
 // what a round knocks out of a wall, by tile: n chips, a puff of dust (puff: soft clouds hanging a moment, burst:
 // a jet of it blown straight back out of the hole), sparks (plaster gives none, brick a few), bare = the material laid
-// bare round the hole, crumbs = [min, max] bits of it left for good at the foot of the wall
+// bare round the hole, crumbs = [min, max] bits of it left for good at the foot of the wall.
+// The hole itself (render/WallScars.js), from its rim inward: bare, then the crater's sides, `lit` on the side the
+// light comes from (lower right of the hole: the light falls from the top left) and `shade` on the other, then the
+// dark `core`; `crack` = the hairlines running off it.
 export const WALL_IMPACT = {
-  '#': { chips: '#e6e0d2', n: 8, dust: '#efe9dc', puff: 5, burst: 6, sparks: 0, bare: '#f2ecdf', crumbs: [2, 4] },
-  X: { chips: '#9a5440', n: 6, dust: '#a8705c', puff: 4, burst: 5, sparks: 3, bare: '#b86a50', crumbs: [1, 3] },
+  '#': { chips: '#e6e0d2', n: 8, dust: '#efe9dc', puff: 5, burst: 6, sparks: 0, bare: '#f2ecdf', crumbs: [2, 4],
+    lit: '#b4aa96', shade: '#6a6050', core: '#140c14', crack: 'rgba(40,30,36,0.7)' },
+  X: { chips: '#9a5440', n: 6, dust: '#a8705c', puff: 4, burst: 5, sparks: 3, bare: '#c27a5c', crumbs: [1, 3],
+    lit: '#8a3c28', shade: '#4c1c14', core: '#120808', crack: 'rgba(24,10,10,0.75)' },
+};
+
+// How each kind of blow carves a wall (render/WallScars.js). r: radius in px of one mark (x its size), core / pit:
+// share of it that is the dark core / the crater's sides (the rest is the bare rim), cracks: [min, max] hairlines,
+// len: their length in px. A mark landing on an older one within `merge` x their radii digs it out instead: the
+// gouge widens by `grow` x the new mark's radius (up to `max` px) and goes darker (core share + `deepen` per hit,
+// up to `deepest`).
+export const WALL_SCAR = {
+  entry: { r: 2.4, core: 0.42, pit: 0.72, cracks: [0, 2], len: [3, 6] },
+  exit: { r: 2.8, core: 0.34, pit: 0.66, cracks: [1, 3], len: [4, 8] },  // spalled: wide and shallow
+  graze: { r: 1.5, core: 0.2, pit: 0.6, cracks: [0, 0], len: [0, 0] },    // a ricochet only scuffs
+  blow: { r: 3.2, core: 0.18, pit: 0.6, cracks: [2, 3], len: [4, 9] },     // a club or a boot: crushed, not pierced
+  merge: 0.9, grow: 0.5, max: 9, deepen: 0.04, deepest: 0.6,
 };
 
 // how grippy each floor is (multiplies the object's own friction coefficient)

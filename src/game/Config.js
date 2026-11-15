@@ -516,8 +516,14 @@ export const PALETTE = {
   blood: ['#780b0f', '#8c1014', '#9a1418', '#560709', '#aa1c1e'], // drops in the air; [3] dark meat, [4] wet flesh
 };
 
-// hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot)
+// hit points of destructible wall tiles (bullet = 1, sniper = 3, explosions a lot). Walls are solid: rounds, blows
+// and impacts only wear them, by WALL_WEAR of their hit points at most; only a blast brings one down
+// (systems/Destruction.js damageWall), the sooner for that wear.
 export const WALL_HP = { '#': 7, 'X': 14 };
+export const WALL_WEAR = 0.5;
+// width in px of the dark outline drawn along a wall's open faces (render/MapRenderer.js): what is painted on a wall
+// (holes, blood, spills) stays behind it, only the dark of a hole may bite into it (render/WallScars.js)
+export const WALL_RIM = 3;
 
 // Vehicle lights in the sprite's local frame (px from the centre, +x forward): two headlight cones at (hx, ±hy)
 // and two red tail light glows at (tx, ±ty). Positions match the lamps of the generated sprites.

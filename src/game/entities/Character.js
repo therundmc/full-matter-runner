@@ -1,4 +1,4 @@
-import { CAT, MASK, ENEMY, BARREL, PLAYER, BODY_SCALE } from '../Config.js';
+import { TILE, CAT, MASK, ENEMY, BARREL, PLAYER, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, chunk, sw } from '../../engine/Assets.js';
 import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
@@ -502,11 +502,16 @@ export default class Character {
         hit = true;
       }
     }
-    // walls crack under heavy swings
-    if (d.lethal) {
-      const hx = x + Math.cos(a) * (d.range * 0.9), hy = y + Math.sin(a) * (d.range * 0.9);
-      const cx = Math.floor(hx / 32), cy = Math.floor(hy / 32);
-      if (w.map.isWallChar(cx, cy)) { w.damageWall(cx, cy, 1, hx, hy, a); w.shake(0.08); hit = true; }
+    // a wall in reach of a heavy swing is dented and cracked where the blow lands on its face (it never gives)
+    const hx = x + Math.cos(a) * (d.range * 0.9), hy = y + Math.sin(a) * (d.range * 0.9);
+    if (d.lethal && w.map.isWallChar(Math.floor(hx / TILE), Math.floor(hy / TILE))) {
+      const f = w.map.raycast(x, y, hx, hy);
+      if (f && f.t > 0 && w.map.isWallChar(f.cx, f.cy)) {
+        w.damageWall(f.cx, f.cy, 1, f.x - f.nx * 4, f.y - f.ny * 4, a);
+        w.decals.wallHit(f.x, f.y, f.nx, f.ny, 'blow', d.swing === 'blade' ? 0.6 : d.heft === 2 ? 1.2 : 0.9);
+        w.shake(0.08);
+        hit = true;
+      }
     }
     // shove whatever loose stuff is in the arc
     for (const list of [w.corpses, w.debris, w.items]) {

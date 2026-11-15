@@ -1,26 +1,34 @@
-// Breaking the level itself: wall tiles crack then collapse, windows are torn out of them, doors get ripped off,
-// fences flattened.
-import { TILE, WALL_HP } from '../Config.js';
+// Breaking the level itself: wall tiles crack then collapse (to a blast only), windows are torn out of them, doors
+// get ripped off, fences flattened.
+import { TILE, WALL_HP, WALL_WEAR } from '../Config.js';
 import { rand, chance, clamp } from '../../engine/math.js';
 import { rubble, chunk } from '../../engine/Assets.js';
 import Debris from '../entities/Debris.js';
 import { splitInTwo } from '../render/DamageArt.js';
 import { heldBy } from '../world/Openings.js';
 
-export function damageWall(world, cx, cy, dmg, x, y, dirA, power = 1) {
+// A blow on wall tile (cx, cy) at (x, y) (in the wall), coming along dirA. Only a blast (`blast`) can bring the wall
+// down, its cracks spreading as it weakens; anything else (rounds, clubs, impacts) only wears it, WALL_WEAR of its hit
+// points at most, and digs its own mark into it (MapRenderer.wallHit).
+export function damageWall(world, cx, cy, dmg, x, y, dirA, power = 1, blast = false) {
   const m = world.map;
   if (!m.canBreak(cx, cy)) return;
   const i = cy * m.w + cx;
   const max = WALL_HP[m.at(cx, cy)];
   const col = m.chipColor(cx, cy);
-  m.hp[i] -= dmg;
-  world.decals.crack(x, y, clamp(1 - m.hp[i] / max, 0, 1));
-  world.particles.chips(x, y, dirA + Math.PI, 1.1, 3 + dmg * 3, col, 150);
-  world.particles.smoke(x, y, 1 + Math.min(4, dmg), 2, { speed: 28, size: 4, life: 0.9 });
-  if (chance(0.3 * dmg)) {
+  const worn = max * (1 - WALL_WEAR);
+  if (blast) m.hp[i] -= dmg;
+  else if (m.hp[i] > worn) m.hp[i] = Math.max(worn, m.hp[i] - dmg);
+  if (blast) world.decals.crack(x, y, clamp(1 - m.hp[i] / max, 0, 1));
+  // what flies off it starts at its face, never inside it
+  let fx = x, fy = y;
+  for (let k = 0; k < 12 && m.solidAt(fx, fy); k++) { fx -= Math.cos(dirA) * 1.5; fy -= Math.sin(dirA) * 1.5; }
+  world.particles.chips(fx, fy, dirA + Math.PI, 1.1, 3 + dmg * 3, col, 150);
+  world.particles.smoke(fx, fy, 1 + Math.min(4, dmg), 2, { speed: 28, size: 4, life: 0.9 });
+  if (chance(0.3 * dmg) && !m.solidAt(fx, fy)) {
     const pcs = rubble(m.at(cx, cy) === 'X' ? 'brick' : 'wall');
     const a = dirA + Math.PI + rand(-0.8, 0.8), v = rand(40, 120);
-    world.addDebris(new Debris(world, pcs[Math.floor(rand(0, 5))], x, y, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
+    world.addDebris(new Debris(world, pcs[Math.floor(rand(0, 5))], fx, fy, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v,
       rand(-0.5, 0.5), { air: 0.08, material: 'concrete' }));
   }
   if (m.hp[i] <= 0) destroyWall(world, cx, cy, dirA, power);

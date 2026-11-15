@@ -1,4 +1,4 @@
-import { MAX_PARTICLES, PALETTE, DESTRUCTION, LITTER } from '../Config.js';
+import { MAX_PARTICLES, PALETTE, DESTRUCTION, LITTER, WALL_RIM } from '../Config.js';
 import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette, sw, sh } from '../../engine/Assets.js';
 import { RUNS } from '../data/wounds.js';
@@ -269,12 +269,11 @@ export default class Particles {
         if (map.solidAt(nx, ny)) {
           // hit a wall while airborne: blood splashes its top and runs down to its foot
           if (p.type === P.BLOOD) {
-            decals.stampWall(nx, ny, p.size * 0.9);
+            // on its top, behind the outline of the face it struck
+            const [fx, fy] = faceNormal(map, p.x, p.y, nx, ny), deep = WALL_RIM + p.size;
+            decals.stampWall(nx - fx * deep, ny - fy * deep, p.size * 0.9);
             if (chance(0.5)) decals.stampBlood(p.x, p.y, p.size * 0.8);
-            if (p.size > 1.8 && chance(RUNS.odds)) {
-              const [fx, fy] = faceNormal(map, p.x, p.y, nx, ny);
-              run(this.world, p.x, p.y, fx, fy, rand(...RUNS.len) * p.size * 0.4);
-            }
+            if (p.size > 1.8 && chance(RUNS.odds)) run(this.world, p.x, p.y, fx, fy, rand(...RUNS.len) * p.size * 0.4);
           }
           alive = false;
         } else if (p.z <= 0) {

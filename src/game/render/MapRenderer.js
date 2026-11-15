@@ -1,11 +1,12 @@
-import { TILE, PALETTE, LITTER } from '../Config.js';
+import { TILE, PALETTE, LITTER, WALL_RIM } from '../Config.js';
 import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
-import { rand, randi, pick, chance, TAU } from '../../engine/math.js';
+import { rand, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
 import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps, poolArt, releasePool } from './BloodArt.js';
 import { matterStain } from './GoreArt.js';
+import WallScars from './WallScars.js';
 
 // seconds after which a stain turns tacky, then dry (a pool takes as long as it stays slippery: LIQUIDS.kinds.blood.wet)
 const STAIN_AGES = [9, 30], POOL_AGES = [20, 45];
@@ -37,7 +38,7 @@ function floorTile(name, x, y) {
 //   floor   tiles, scuffs, spills, footprints, baked debris (at its tiles' density, see render())
 //   blood   stains, spatter and pools (BloodArt stamps), drying in place: over the debris, under the bodies
 //   flesh   baked corpses and gibs
-//   walls   wall tops and roofs, bullet holes, splashes
+//   walls   wall tops and roofs, holes dug into them (WallScars), splashes; every mark is clipped to the wall tiles
 export default class MapRenderer {
   constructor(map) {
     this.map = map;
@@ -45,6 +46,7 @@ export default class MapRenderer {
     this.ageing = [[], []]; // stains waiting to turn tacky / dry, oldest first: { s, x, y, rot, at }
     this.heads = [0, 0];
     this.pools = [];        // baked pools still drying: { art, x, y, r, age, at }
+    this.scars = new WallScars(map);
     this.render();
     warmStamps();
   }
@@ -104,14 +106,15 @@ export default class MapRenderer {
         if (!m.isWallChar(x, y)) continue;
         const px = x * TILE, py = y * TILE;
         const open = (dx, dy) => !m.isWallChar(x + dx, y + dy) && m.at(x + dx, y + dy) !== ' ';
+        const R = WALL_RIM;
         w.fillStyle = PALETTE.ink;
-        if (open(0, -1)) w.fillRect(px, py, TILE, 3);
-        if (open(0, 1)) w.fillRect(px, py + TILE - 3, TILE, 3);
-        if (open(-1, 0)) w.fillRect(px, py, 3, TILE);
-        if (open(1, 0)) w.fillRect(px + TILE - 3, py, 3, TILE);
+        if (open(0, -1)) w.fillRect(px, py, TILE, R);
+        if (open(0, 1)) w.fillRect(px, py + TILE - R, TILE, R);
+        if (open(-1, 0)) w.fillRect(px, py, R, TILE);
+        if (open(1, 0)) w.fillRect(px + TILE - R, py, R, TILE);
         w.fillStyle = 'rgba(255,255,255,0.18)';
-        if (open(0, -1)) w.fillRect(px, py + 3, TILE, 1);
-        if (open(-1, 0)) w.fillRect(px + 3, py, 1, TILE);
+        if (open(0, -1)) w.fillRect(px, py + R, TILE, 1);
+        if (open(-1, 0)) w.fillRect(px + R, py, 1, TILE);
         w.fillStyle = 'rgba(0,0,0,0.25)';
         if (open(0, 1)) w.fillRect(px, py + TILE - 5, TILE, 2);
         if (open(1, 0)) w.fillRect(px + TILE - 5, py, 2, TILE);
@@ -210,11 +213,12 @@ export default class MapRenderer {
     g.restore();
   }
 
-  // dark jagged cracks around an impact, more as the tile weakens
+  // dark jagged cracks around an impact, more as the tile weakens (inside the wall's outline)
   crack(x, y, severity) {
     const g = this.wallCtx;
     g.save();
     g.globalCompositeOperation = 'source-atop';
+    this.scars.clip(g, x, y, 32, true);
     g.strokeStyle = `rgba(20,12,28,${0.45 + severity * 0.5})`;
     g.lineWidth = 1;
     const n = 1 + Math.floor(severity * 4);
@@ -247,6 +251,7 @@ export default class MapRenderer {
     }
     const w = this.wallCtx;
     w.clearRect(px, py, TILE, TILE);
+    this.scars.forget(cx, cy);
     // the roof behind a breached parapet shows its brick edge
     for (let ny = cy - 1; ny <= cy + 1; ny++) {
       for (let nx = cx - 1; nx <= cx + 1; nx++) {
@@ -420,11 +425,12 @@ export default class MapRenderer {
     if (this.pools.some((p) => p.age >= 2)) this.pools = this.pools.filter((p) => p.age < 2);
   }
 
-  // blood thrown on a wall top: drawn only where wall pixels exist
+  // blood thrown on a wall top: drawn only on the wall tiles
   stampWall(x, y, r) {
     const g = this.wallCtx, st = spotStamp(Math.max(1.3, r));
     g.save();
     g.globalCompositeOperation = 'source-atop';
+    this.scars.clip(g, x, y, st.cx + st.cy + 2, true);
     g.drawImage(stampImage(st, 1), Math.round(x) - st.cx, Math.round(y) - st.cy);
     g.restore();
   }
@@ -435,6 +441,7 @@ export default class MapRenderer {
     const g = this.wallCtx, st = splatStamp(r), c = Math.cos(angle), s = Math.sin(angle);
     g.save();
     g.globalCompositeOperation = 'source-atop';
+    this.scars.clip(g, x, y, st.cx + st.cy + 2, true);
     g.setTransform(c, s, -s, c, Math.round(x), Math.round(y));
     g.drawImage(stampImage(st, 0), -st.cx, -st.cy);
     g.restore();
@@ -455,6 +462,7 @@ export default class MapRenderer {
     const g = this.wallCtx;
     g.save();
     g.globalCompositeOperation = 'source-atop';
+    this.scars.clip(g, x, y, r + 1, true);
     g.fillStyle = color;
     for (let i = 0, n = Math.round(r * r * 1.2); i < n; i++) {
       const a = rand(0, TAU), d = r * Math.sqrt(Math.random());
@@ -468,46 +476,21 @@ export default class MapRenderer {
     const img = matterStain(r), c = Math.cos(angle), s = Math.sin(angle);
     const g = wall ? this.wallCtx : this.fleshCtx;
     g.save();
-    if (wall) g.globalCompositeOperation = 'source-atop';
+    if (wall) {
+      g.globalCompositeOperation = 'source-atop';
+      this.scars.clip(g, x, y, img.width + img.height, true);
+    }
     g.setTransform(c, s, -s, c, Math.round(x), Math.round(y));
     g.drawImage(img, -img.width / 2, -img.height / 2);
     g.restore();
   }
 
   // ---------- other persistent decals ----------
-  // size 1 = entry hole; exits are wider (spalling), ricochets just scuff. color: the material under the paint,
-  // laid bare in a ragged ring round the hole (plaster white, brick red); a hairline crack or two off a real hit
-  bulletHole(x, y, size = 1, color = null) {
-    const g = this.wallCtx, X = Math.round(x), Y = Math.round(y);
-    g.save();
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = 'rgba(0,0,0,0.22)';
-    g.beginPath(); g.arc(x, y, 2.6 * size, 0, Math.PI * 2); g.fill();
-    if (color) {
-      const R = 1.4 + size * 1.5;
-      g.fillStyle = color;
-      for (let i = 0, n = Math.round(8 + size * 9); i < n; i++) {
-        const a = rand(0, TAU), d = R * Math.sqrt(rand(0.25, 1));
-        g.globalAlpha = rand(0.55, 0.95);
-        g.fillRect(Math.round(X + Math.cos(a) * d), Math.round(Y + Math.sin(a) * d), 1, 1);
-      }
-      g.globalAlpha = 1;
-    }
-    g.fillStyle = '#0d0710';
-    const r = Math.max(1, Math.round(size * 1.2));
-    g.fillRect(X - r, Y - r, r * 2, r * 2);
-    if (size >= 0.9) {
-      g.fillStyle = 'rgba(16,8,20,0.55)';
-      for (let k = randi(1, 2 + Math.round(size)); k > 0; k--) {
-        let a = rand(0, TAU), px = X, py = Y;
-        for (let i = randi(3, 4 + Math.round(size * 2)); i > 0; i--) {
-          a += rand(-0.5, 0.5);
-          px += Math.cos(a) * 1.2; py += Math.sin(a) * 1.2;
-          g.fillRect(Math.round(px), Math.round(py), 1, 1);
-        }
-      }
-    }
-    g.restore();
+  // a blow on a wall's face at (x, y), (nx, ny) its normal out of the wall: the hole it digs into the wall top
+  // (kind: entry | exit | graze | blow, data/materials.js WALL_SCAR), or the older one it digs out further
+  wallHit(x, y, nx, ny, kind, size = 1) {
+    const s = this.scars.place(x, y, nx, ny, kind, size);
+    if (s) this.scars.paint(this.wallCtx, s);
   }
 
   // what a hole in a wall drops at its foot and keeps there: a few crumbs of the material (x, y: on the floor)

@@ -108,7 +108,7 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
     if (d < R && occ(fe.x, fe.y) > 0.3) destroyFence(world, fe, Math.atan2(fe.y - y, fe.x - x));
   }
 
-  // walls: crushed near the blast, cracked further away
+  // walls: crushed near the blast, cracked further away (the only thing that brings a wall down)
   const rr = Math.ceil(R / TILE) + 1, ccx = Math.floor(x / TILE), ccy = Math.floor(y / TILE);
   for (let ty = ccy - rr; ty <= ccy + rr; ty++) {
     for (let tx = ccx - rr; tx <= ccx + rr; tx++) {
@@ -120,7 +120,7 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
       if (occ(wx, wy, { cx: tx, cy: ty }) <= 0) continue;
       const a = Math.atan2(wy - y, wx - x);
       if (d < R * 0.6) destroyWall(world, tx, ty, a, 1.6);
-      else damageWall(world, tx, ty, Math.ceil(10 * (1 - d / (R * 1.05))), wx - Math.cos(a) * 14, wy - Math.sin(a) * 14, a, 1.3);
+      else damageWall(world, tx, ty, Math.ceil(10 * (1 - d / (R * 1.05))), wx - Math.cos(a) * 14, wy - Math.sin(a) * 14, a, 1.3, true);
     }
   }
 

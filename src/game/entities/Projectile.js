@@ -7,6 +7,7 @@ import { woundFor } from '../data/wounds.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { feelOf, SURFACE } from '../data/feel.js';
 import { combatFx } from '../fx/CombatFx.js';
+import { faceNormal } from '../fx/Spatter.js';
 
 // Fast bullet traced as a segment each step (no tunnelling), or a slow rocket.
 // A bullet carries penetration energy (`pen`): every obstacle eats some of it (systems/Penetration.js); if any is
@@ -124,11 +125,11 @@ export default class Projectile {
       case 'wall': {
         const s = WALL_IMPACT[w.map.at(h.cx, h.cy)] || WALL_IMPACT.X;
         const g = this.glance(h, HARDNESS[w.map.at(h.cx, h.cy)]);
-        if (g) { w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5, 0.6, s.bare); return g; }
+        if (g) { w.decals.wallHit(h.x, h.y, h.nx, h.ny, 'graze'); return g; }
         const na = Math.atan2(h.ny, h.nx), big = clamp(this.energy0 / 30, 0.6, 2);
         combatFx(w).burst(h.x + h.nx, h.y + h.ny, na, SURFACE);
-        // a little way into the wall top, past its dark rim, where it reads
-        w.decals.bulletHole(h.x - h.nx * 3.5, h.y - h.ny * 3.5, Math.max(1, big * 0.8), s.bare);
+        // dug into the wall top where it went in (a second round on the same spot digs it out)
+        w.decals.wallHit(h.x, h.y, h.nx, h.ny, 'entry', Math.max(1, big * 0.8));
         w.decals.crumbs(h.x + h.nx * 2.5, h.y + h.ny * 2.5, s.chips, randi(s.crumbs[0], s.crumbs[1]), 2.5);
         if (s.sparks) w.particles.sparks(h.x, h.y, na, 0.9, s.sparks, 260);
         w.particles.chips(h.x + h.nx, h.y + h.ny, na, 0.8, Math.round(s.n * big), s.chips, 110);
@@ -137,7 +138,7 @@ export default class Projectile {
         w.particles.dust(h.x + h.nx * 3, h.y + h.ny * 3, Math.round(s.puff * big), 2.5, s.dust, { speed: 20, size: 4, life: 2.2, alpha: 0.22, vx: h.nx * 16, vy: h.ny * 16 });
         w.sound('impact', h.x, h.y, 0.6);
         const ex = wallExit(w.map, h.x, h.y, a, this.energy);
-        // the energy left in the wall is what breaks it, tile by tile
+        // the energy left in the wall wears it, tile by tile (only a blast brings one down: Destruction.damageWall)
         ex.cells.forEach((c, i) => {
           const entry = i === 0 || ex.stopped;
           const px = entry ? h.x - h.nx * 2 : ex.x - Math.cos(a) * 2;
@@ -247,10 +248,12 @@ export default class Projectile {
   exitWall(x, y, a) {
     const w = this.world;
     const k = clamp(this.energy0 / 40, 0.6, 2);
+    const c = Math.cos(a), s = Math.sin(a);
     const back = (v, d) => Math.floor((v - d * 3) / TILE);
-    const col = w.map.chipColor(back(x, Math.cos(a)), back(y, Math.sin(a)));
-    w.decals.bulletHole(x - Math.cos(a) * 1.5, y - Math.sin(a) * 1.5, 1 + k * 0.6, col);
-    w.decals.crumbs(x + Math.cos(a) * 3, y + Math.sin(a) * 3, col, Math.round(2 + k * 2), 4);
+    const col = w.map.chipColor(back(x, c), back(y, s));
+    const [nx, ny] = faceNormal(w.map, x + c * 1.5, y + s * 1.5, x - c * 1.5, y - s * 1.5);
+    w.decals.wallHit(x, y, nx, ny, 'exit', 1 + k * 0.6);
+    w.decals.crumbs(x + c * 3, y + s * 3, col, Math.round(2 + k * 2), 4);
     w.particles.chips(x, y, a, 0.7, Math.round(4 + k * 4), col, 160 + k * 60);
     w.particles.smoke(x, y, 1 + Math.round(k), 2, { speed: 40, size: 3 + k * 2, life: 0.8 });
   }

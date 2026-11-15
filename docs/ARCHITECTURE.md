@@ -38,8 +38,9 @@ src/
       Takedown.js         `behind(player, guard)`: who can be seized from behind (rule only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
-      Destruction.js      wall tiles, windows torn out, doors off hinges, fences; `watchOpenings` makes doors and
-                          windows go with the wall tile that holds them (listens to `wallDestroyed`)
+      Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
+                          hinges, fences; `watchOpenings` makes doors and windows go with the wall tile that holds
+                          them (listens to `wallDestroyed`)
       Glass.js            how a pane breaks (DOM-free, unit-tested): shards of three sizes, which ones cut / kill
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
@@ -89,6 +90,8 @@ src/
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing
+      WallScars.js        holes dug into the wall tops (entry, exit, ricochet scuff, club dent), merged into gouges
+                          on repeated hits; every wall mark is clipped to the wall tiles, behind their outline
       GoreArt.js          what a burst skull leaves: bits of bone, scalp and brain, the stains of its matter
       BloodArt.js         what blood looks like: pixel stamps (spots, streaks, splats) built once, in three ages
                           (wet, tacky, dry), and the pool under a bleeding body

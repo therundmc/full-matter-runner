@@ -1,4 +1,4 @@
-import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, LIQUIDS } from '../Config.js';
+import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, LIQUIDS, WALL_RIM } from '../Config.js';
 import { PROPS } from '../data/props.js';
 import { recipeFor, BITS, FLOATS } from '../data/destruction.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
@@ -449,7 +449,8 @@ export default class Prop {
     const back = wallBehind(w.map, p.x, p.y, dirA + Math.PI, smash.wall[0]);
     if (back) {
       const [, r, color] = smash.wall;
-      w.decals.wetWall(back.x - back.nx * r, back.y - back.ny * r, r, color);
+      const deep = WALL_RIM + 2 + r * 0.5; // behind the wall's outline
+      w.decals.wetWall(back.x - back.nx * deep, back.y - back.ny * deep, r, color);
       run(w, back.x - back.ny * rand(-r, r), back.y + back.nx * rand(-r, r), back.nx, back.ny, rand(2, r * 1.5), color);
     }
     w.flashGlass(p.x, p.y);

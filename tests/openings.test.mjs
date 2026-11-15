@@ -6,7 +6,7 @@ import { load } from './setup.mjs';
 const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { TILE } = await load('game/Config.js');
+const { TILE, WALL_HP, WALL_WEAR } = await load('game/Config.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { LEAF, doorLeaves, windowSupports, heldBy } = await load('game/world/Openings.js');
@@ -149,10 +149,14 @@ test('a window frame takes a beating before it is torn out; the glass goes first
   assert.equal(w.map.at(8, 4), '_');
 });
 
-test('a wall worn down by gunfire takes its window along when it finally gives', () => {
+test('gunfire only wears a wall; a blast brings it down, the sooner for that wear, and its window with it', () => {
   const w = world();
-  for (let k = 0; k < 200 && w.map.isSolid(8, 3); k++) damageWall(w, 8, 3, 1, 8.5 * TILE, 3.5 * TILE, 0, 1);
-  assert.equal(w.map.isSolid(8, 3), false);
+  for (let k = 0; k < 200; k++) damageWall(w, 8, 3, 1, 8.5 * TILE, 3.5 * TILE, 0, 1);
+  assert.equal(w.map.isSolid(8, 3), true, 'two hundred rounds and the wall still stands');
+  assert.equal(w.map.hp[3 * w.map.w + 8], WALL_HP['#'] * (1 - WALL_WEAR));
+  assert.ok(windowAt(w, 8, 4));
+  damageWall(w, 8, 3, WALL_HP['#'] * (1 - WALL_WEAR), 8.5 * TILE, 3.5 * TILE, 0, 1.3, true);
+  assert.equal(w.map.isSolid(8, 3), false, 'what the wear left, a blast takes');
   assert.ok(!windowAt(w, 8, 4));
 });
 
