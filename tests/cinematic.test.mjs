@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
 
 const { CINE, CINE_END, PAGES, cineView, cineBeats } = await load('game/ui/Cinematic.js');
+const { OPTIONAL_LIST } = await load('engine/Assets.js');
 
 test('cinematic: the camera pulls back from the window into the room, the night goes wrong, the view tips onto the floor plan', () => {
   const start = cineView(0);
@@ -42,4 +44,16 @@ test('cinematic: each sound once, in the order of the story, the match among the
   for (let t = 0; t < CINE_END; t += 1 / 60) heard.push(...cineBeats(t, t + 1 / 60).map((b) => b.name));
   assert.deepEqual(heard.filter((n) => n !== 'air'), ['woodBreak', 'door', 'door', 'woodBreak', 'shout', 'pistol', 'bodyFall', 'match', 'getUp', 'pickup']);
   assert.ok(heard.filter((n) => n === 'air').length >= 4, 'the night outside all along');
+});
+
+test('cinematic: every comic still is painted at 3 px per title px of a panel it fills', () => {
+  // the panels' sizes in title px: the pages', and his eye's over the room (Cinematic.js drawCinematic)
+  const sizes = new Set([...PAGES.flatMap((p) => p.panels.map((q) => `${q.r.w}x${q.r.h}`)), '150x58']);
+  const stills = OPTIONAL_LIST.filter((n) => n.startsWith('comic/'));
+  assert.ok(stills.length >= 9);
+  for (const name of stills) {
+    const b = readFileSync(new URL(`../assets/sprites/${name}.png`, import.meta.url));
+    const w = b.readUInt32BE(16), h = b.readUInt32BE(20);
+    assert.ok(w % 3 === 0 && h % 3 === 0 && sizes.has(`${w / 3}x${h / 3}`), `${name} is ${w}x${h}`);
+  }
 });

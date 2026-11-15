@@ -1,7 +1,9 @@
-// The opening's comic panels: pixel art in the title's logical px, inked like a comic book. A black frame with a
-// white gutter and a hard shadow; inside, flat colours in a few shades each, a dark outline round what matters, light
-// from one side, never a gradient or a dither (the user wants plain pixel art). Each painter gets the context
-// clipped to its panel and translated to its top-left corner, its size, and t (s) for what still moves in it.
+// The opening's comic panels: a black frame with a white gutter and a hard shadow round each, the caption boxes and
+// the balloons. Inside, the opening's stills (drawn by tools/generate_comic.py, finer than the title) with what still
+// moves in them, and the leap's pages, pixel art in the title's logical px: flat colours in a few shades each, a dark
+// outline round what matters, never a gradient or a dither (the user wants plain pixel art). Each painter gets the
+// context clipped to its panel and translated to its top-left corner, its size, and t (s) for what still moves in it.
+import { spriteOpt } from '../../../engine/Assets.js';
 import { clamp, hash, px, tone, poly, disc, line } from './Ink.js';
 
 const INK = '#07050c';
@@ -29,12 +31,13 @@ export function caption(g, x, y, w, h) {
   px(g, '#d8b030', x, y + h - 1, w, 1);
 }
 
-// a speech balloon whose tail points at (tx, ty)
+// a speech balloon whose tail points at (tx, ty): a wedge, wide where it leaves the balloon, inked
 export function balloon(g, x, y, w, h, tx, ty) {
-  const cx = x + w / 2, cy = y + h / 2;
-  poly(g, INK, [[cx - 7, cy], [cx + 3, cy], [tx, ty]]);
+  const cx = x + w / 2, cy = y + h / 2, d = Math.hypot(tx - cx, ty - cy) || 1, nx = -(ty - cy) / d, ny = (tx - cx) / d;
+  const wedge = (b) => [[cx + nx * b, cy + ny * b], [cx - nx * b, cy - ny * b], [tx, ty]];
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) poly(g, INK, wedge(5).map(([px_, py]) => [px_ + dx, py + dy]));
   disc(g, INK, cx, cy, w / 2 + 1, h / 2 + 1);
-  poly(g, '#f6f2ea', [[cx - 5, cy], [cx + 1, cy], [tx + 1, ty - 2]]);
+  poly(g, '#f6f2ea', wedge(4));
   disc(g, '#f6f2ea', cx, cy, w / 2, h / 2);
 }
 
@@ -65,278 +68,114 @@ function flames(g, x0, x1, y, hgt, t, seed = 0) {
   }
 }
 
-// A man of the boss's, side on, feet at (x, y), facing right (f -1: left). pose: 'stand' | 'crouch'. Returns where
-// his hand is, for what he holds. Leather jacket, slicked hair, dark trousers; lit from the right by default.
-const THUG = { jacket: '#2a2230', jacketL: '#4a3a50', pants: '#1c1a24', skin: '#c88a60', skinD: '#9a6440', hair: '#14100c', shoe: '#0c0a0e' };
-function thug(g, x, y, f = 1, pose = 'stand', pal = THUG) {
-  const X = (dx) => x + dx * f;
-  if (pose === 'crouch') {
-    inked(g, pal.pants, [[X(-8), y], [X(4), y], [X(10), y - 10], [X(2), y - 18], [X(-8), y - 14]]);
-    px(g, pal.shoe, Math.min(X(-9), X(-1)), y - 2, 8, 2); px(g, pal.shoe, Math.min(X(4), X(12)), y - 2, 8, 2);
-    inked(g, pal.jacket, [[X(-9), y - 14], [X(4), y - 18], [X(10), y - 34], [X(-2), y - 38], [X(-10), y - 30]]);
-    poly(g, pal.jacketL, [[X(6), y - 22], [X(10), y - 34], [X(7), y - 35], [X(3), y - 24]]);
-    inkedDisc(g, pal.skin, X(5), y - 42, 5, 6); px(g, pal.skinD, Math.min(X(2), X(8)), y - 39, 6, 2);
-    poly(g, pal.hair, [[X(0), y - 46], [X(9), y - 49], [X(10), y - 44], [X(1), y - 40]]);
-    inked(g, pal.jacket, [[X(4), y - 32], [X(16), y - 26], [X(16), y - 22], [X(4), y - 26]]);
-    return [X(18), y - 24];
+// ---------------------------------------------------------------- the opening's stills
+// The opening's panels are drawn like a noir thriller album by tools/generate_comic.py (sprites comic/*, SC panel px
+// per title px): here they are put in their frame and given what moves (a lamp failing, smoke, blood spreading, the
+// match's flame), drawn in the stills' own px.
+const SC = 3;
+const FLAME = [536, 160];   // the match's head in comic/match (generate_comic.py FLAME)
+
+function still(g, name, w, h) {
+  const img = spriteOpt(`comic/${name}`);
+  if (img) g.drawImage(img, 0, 0, w, h);
+  else px(g, '#0c0812', 0, 0, w, h);
+}
+function fine(g, draw) {
+  g.save();
+  g.scale(1 / SC, 1 / SC);
+  draw();
+  g.restore();
+}
+// smoke going up from (x, y) in a thin wavering thread (stills' px)
+function smoke(g, x, y, t, n = 14, col = '#8a8494') {
+  for (let i = 0; i < n; i++) {
+    const k = (i + (t * 3) % 1) / n;
+    px(g, col, x + Math.sin(t * 2 + i * 0.7) * 4 * k + i * 0.8, y - k * 70, 3, 4);
   }
-  inked(g, pal.pants, [[X(-6), y - 30], [X(5), y - 30], [X(6), y], [X(1), y], [X(0), y - 18], [X(-1), y], [X(-6), y]]);
-  px(g, pal.shoe, Math.min(X(-7), X(1)), y - 2, 8, 3); px(g, pal.shoe, Math.min(X(0), X(8)), y - 2, 8, 3);
-  inked(g, pal.jacket, [[X(-9), y - 56], [X(8), y - 56], [X(9), y - 28], [X(-8), y - 28]]);
-  poly(g, pal.jacketL, [[X(5), y - 54], [X(8), y - 54], [X(9), y - 30], [X(6), y - 30]]);                 // the light on his front
-  px(g, '#0c0a10', Math.min(X(-1), X(0)), y - 54, 1, 26);                                                  // the zip
-  inkedDisc(g, pal.skin, X(1), y - 63, 6, 7); px(g, pal.skinD, Math.min(X(-4), X(4)), y - 59, 9, 2);
-  poly(g, pal.hair, [[X(-6), y - 66], [X(5), y - 71], [X(7), y - 66], [X(-5), y - 61]]);
-  px(g, INK, X(4), y - 64, 1, 1);
-  inked(g, pal.jacket, [[X(4), y - 54], [X(10), y - 52], [X(13), y - 36], [X(9), y - 35]]);
-  return [X(12), y - 34];
 }
 
 // ---------------------------------------------------------------- his eye in the dark
-// shut, then open all at once (open 0..1), looking to the side the noise came from (look -1..1)
-export function paintEye(g, w, h, open, look, t) {
-  px(g, '#2c1e26', 0, 0, w, h);
-  px(g, '#4e3632', 0, 12, w, h - 26);                                     // the skin, what the window lights of it
-  px(g, '#3e2a2c', 0, h - 22, w, 8);
-  px(g, '#3a2418', 0, 0, w, 9);                                           // his brown hair, low on the brow
-  for (let i = 0; i < 10; i++) poly(g, '#5a3a24', [[4 + i * 15, 0], [10 + i * 15, 0], [8 + i * 15 + hash(i) * 4, 8 + hash(i + 3) * 4]]);
-  const cx = Math.round(w / 2), cy = Math.round(h / 2) + 3, rows = [18, 30, 38, 42, 44, 42, 38, 30, 18];
-  const n = Math.round(clamp(open, 0, 1) * rows.length);
-  px(g, '#1a0e10', cx - 26, cy - 10, 52, 3);                              // the brow's shadow
-  if (n <= 0) {
-    px(g, '#140a0c', cx - 22, cy, 44, 2);                                 // shut: the lashes
-    for (let i = 0; i < 6; i++) px(g, '#140a0c', cx - 20 + i * 8, cy + 2, 1, 2);
-  } else {
-    const first = Math.floor((rows.length - n) / 2);
-    for (let j = 0; j < n; j++) px(g, '#e4dcd0', cx - rows[first + j] / 2, cy - n / 2 + j, rows[first + j], 1);
-    const ix = cx + Math.round(look * 9), r = Math.min(6, Math.ceil(n / 2) + 1);
-    px(g, '#3a2414', ix - r, cy - r + 1, r * 2, r * 2 - 2); px(g, '#5a3a1c', ix - r + 1, cy - r + 2, r * 2 - 2, r * 2 - 4);
-    px(g, '#05030a', ix - 2, cy - 2, 4, 4);
-    px(g, '#ffffff', ix - 3, cy - 3, 2, 2);
-    px(g, '#140a0c', cx - 23, cy - n / 2 - 1, 46, 1); px(g, '#2a1a1c', cx - 21, cy + n / 2, 42, 1);
-    for (let i = 0; i < 5; i++) px(g, '#c85a5a', cx - 20 + i * 9 + hash(i) * 3, cy - n / 2 + 1 + hash(i + 2) * (n - 2), 3, 1); // bloodshot
-  }
-  px(g, '#b0306a', w - 3, 10, 2, h - 20);                                 // the neon through the window on his cheek
-  const drop = (t * 9) % 40;
-  px(g, '#9ab0c8', 22, 12 + drop, 2, 3); px(g, '#ffffff', 22, 12 + drop, 1, 1);  // sweat
+// shut, then open all at once on the noise (open 0..1)
+export function paintEye(g, w, h, open) {
+  still(g, open > 0.5 ? 'eye' : 'eye_shut', w, h);
 }
 
 // ================================================================ page 1: what they came for
-// 1. His front door, from the building's corridor: one of them crouched at it with a crowbar in the jamb, another
-// with a jerrycan, a third holding a torch on the lock. The wall lamp's yellow; the men dark against it.
+// 1. From the dark of his flat: his front door forced, the three of them in it against the landing's yellow light,
+// their shadows long across his floor; the torch looking for something. The landing's lamp fails now and then.
 export function paintDoor(g, w, h, t) {
-  const fl = (t * 3) % 1 < 0.06 ? 0.5 : 1;                                // the lamp, failing now and then
-  px(g, '#3a3020', 0, 0, w, 70);                                          // the corridor's wall
-  px(g, '#4a3e28', 0, 0, w, 6); px(g, '#2a2216', 0, 6, w, 2);
-  for (let x = 0; x < w; x += 30) px(g, '#33291c', x, 8, 1, 62);          // the paper's seams
-  px(g, '#5a4a30', 0, 62, w, 3); px(g, '#2a2216', 0, 65, w, 5);           // dado rail, skirting
-  px(g, '#2a1c1c', 0, 70, w, h - 70);                                     // the floor, the carpet runner
-  poly(g, '#5e2a34', [[60, 70], [300, 70], [w, h], [0, h]]); poly(g, '#8a6a3a', [[60, 70], [62, 70], [2, h], [0, h]]); poly(g, '#8a6a3a', [[298, 70], [300, 70], [w, h], [w - 2, h]]);
-  // a neighbour's door on the left, shut, dark
-  px(g, '#1e160e', 20, 14, 34, 56); px(g, '#3a2818', 22, 16, 30, 54); px(g, '#c8a040', 46, 44, 3, 3); px(g, '#c8a040', 32, 24, 7, 3);
-  // his door: number, peephole, the crowbar's work at the lock
-  px(g, '#1e160e', 226, 12, 44, 58); px(g, '#5a3c26', 228, 14, 40, 56); px(g, '#6e4c32', 228, 14, 3, 56); px(g, '#3e2818', 265, 14, 3, 56);
-  px(g, '#4a301e', 234, 20, 28, 20); px(g, '#4a301e', 234, 44, 28, 22);
-  px(g, '#d8b050', 244, 22, 9, 5); px(g, '#2a1a0c', 246, 23, 2, 3); px(g, '#2a1a0c', 249, 23, 2, 3);       // "4B"
-  disc(g, '#8a8e98', 248, 32, 1.5);
-  px(g, '#c8a040', 231, 42, 4, 4);
-  for (let i = 0; i < 4; i++) line(g, '#e8c890', 228, 40 + i * 2, 222 - hash(i) * 6, 38 + i * 3);            // splinters
-  // the lamp over it and its light
-  px(g, '#5a4a30', 288, 18, 10, 4); disc(g, '#fff0b0', 293, 25, 5, 4);
-  tone(g, '#ffd27a', 180, 0, 160, 70, 0.14 * fl); tone(g, '#ffd27a', 240, 8, 100, 62, 0.12 * fl);
-  // the torch on the lock, from the man at the back
-  poly(g, '#fff4c0', [[118, 36], [122, 33], [234, 36], [234, 50]], 0.35);
-  // the three of them
-  const [hx, hy] = thug(g, 92, 92, 1);
-  px(g, '#3a3a44', hx - 2, hy - 2, 8, 4); px(g, '#fff4c0', hx + 6, hy - 2, 2, 3);                             // the torch
-  const [jx, jy] = thug(g, 150, 90, 1, 'stand', { ...THUG, jacket: '#3a2a22', jacketL: '#5a4232' });
-  inked(g, '#b8261c', [[jx - 6, jy], [jx + 6, jy], [jx + 7, jy + 14], [jx - 7, jy + 14]]);                  // the jerrycan
-  px(g, '#e04a3a', jx - 5, jy + 1, 10, 2); px(g, '#c8a040', jx + 2, jy - 3, 3, 3);
-  const [cx, cy] = thug(g, 204, 82, 1, 'crouch');
-  line(g, '#5a2028', cx - 4, cy + 2, 232, 41, 2); line(g, '#8a3a40', cx - 4, cy + 1, 230, 40);               // the crowbar
-  px(g, INK, cx - 2, cy - 2, 5, 5);
+  still(g, 'door', w, h);
+  if ((t * 2.3) % 1 < 0.05) fine(g, () => tone(g, '#1a0c04', 664, 8, 164, 218, 0.55));
 }
 
-// 2. His living room's floor, close: the crowbar under a board, the board coming up on its nails, the dark under it
-// and the corner of a tin box in it; a torch beam from above.
+// 2. Down at the floor: the heavy one prising up a board with a crowbar; dust in the light.
 export function paintPry(g, w, h, t) {
-  px(g, '#1c1424', 0, 0, w, h);
-  for (let i = 0; i < 7; i++) {                                           // long boards across the panel
-    const y = 8 + i * 13, joint = (hash(i * 3) * w) | 0;
-    px(g, i % 2 ? '#4a3226' : '#56392a', 0, y, w, 12); px(g, '#1a1016', 0, y + 12, w, 1);
-    px(g, '#6a4a34', 0, y, w, 1);
-    for (let k = 0; k < 4; k++) px(g, '#3e281e', (hash(i * 5 + k) * w) | 0, y + 3 + k * 2, 10 + hash(k + i) * 20, 1);   // the grain
-    px(g, '#1a1016', joint, y, 1, 12);
-    px(g, '#8a8e98', joint + 3, y + 3, 1, 1); px(g, '#8a8e98', joint + 3, y + 8, 1, 1);                                  // the nails
-  }
-  // the hole: two boards out, the dark, the box's corner catching the torch
-  px(g, '#07050a', 18, 47, 78, 25);
-  inked(g, '#6a7480', [[50, 56], [86, 54], [88, 72], [52, 72]]); px(g, '#aab4c0', 51, 56, 35, 2); px(g, '#3a4048', 52, 66, 34, 1);
-  // the board being prised up, its nails
-  inked(g, '#56392a', [[16, 46], [70, 34], [74, 40], [20, 52]]); line(g, '#6a4a34', 18, 46, 70, 35);
-  px(g, '#e8c890', 68, 35, 4, 4);
-  line(g, '#b8bcc4', 30, 46, 31, 52); line(g, '#b8bcc4', 54, 40, 55, 46);
-  // the crowbar, a gloved hand on it
-  line(g, INK, 64, 42, 112, 10, 4); line(g, '#7a2a30', 64, 42, 112, 10, 2); line(g, '#c85a60', 66, 40, 110, 11);
-  inkedDisc(g, '#1a1820', 104, 16, 8, 6); px(g, '#3a3848', 99, 13, 8, 1);
-  // the torch's beam
-  poly(g, '#fff0b0', [[w, 0], [w, 14], [60, 72], [36, 58]], 0.18);
-  for (let i = 0; i < 8; i++) px(g, '#fff4c0', 40 + ((hash(i) * 50 + t * 5) % 50), 40 + hash(i + 2) * 30, 1, 1);
+  still(g, 'pry', w, h);
+  fine(g, () => {
+    for (let i = 0; i < 10; i++) px(g, '#f0c890', 40 + ((hash(i) * 140 + t * 9 * (0.5 + hash(i + 3))) % 160), 150 + hash(i + 2) * 70 - t * 4, 2, 2);
+  });
 }
 
-// 3. The tin box, open, from above: banded bundles, his passport, a bus ticket, the postcard of a beach he kept on
-// his wall; a gloved hand taking a bundle.
-export function paintBox(g, w, h, t) {
-  px(g, '#07050a', 0, 0, w, h);
-  inked(g, '#5a6470', [[10, 12], [106, 10], [108, 86], [8, 88]]);
-  px(g, '#2a3038', 14, 15, 90, 69);
-  px(g, '#aab4c0', 11, 12, 95, 2);
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
-    const x = 17 + c * 21, y = 19 + r * 21;
-    if (r === 0 && c === 3) continue;
-    inked(g, '#4a7a52', [[x, y], [x + 18, y], [x + 18, y + 18], [x, y + 18]]);
-    px(g, '#6a9a6a', x + 1, y + 1, 17, 2); px(g, '#2e4a32', x + 1, y + 16, 17, 2);
-    disc(g, '#3e6a44', x + 9, y + 9, 3); px(g, '#b88a48', x + 7, y, 3, 18);          // the band round it
-  }
-  // the postcard, the ticket, his passport
-  inked(g, '#f0a050', [[78, 18], [102, 22], [100, 38], [76, 34]]); poly(g, '#3a8aa0', [[77, 28], [101, 32], [100, 38], [76, 34]]);
-  disc(g, '#ffe080', 95, 25, 3);
-  inked(g, '#c8c0a4', [[18, 66], [44, 64], [45, 70], [19, 72]]); px(g, '#b8262c', 22, 67, 18, 1);
-  inked(g, '#2a3a5a', [[56, 64], [72, 63], [73, 82], [57, 83]]); px(g, '#c8a040', 61, 70, 7, 4);
-  // the glove, lifting one
-  const lift = Math.sin(clamp(t * 0.8, 0, 1) * Math.PI / 2) * 6;
-  inked(g, '#4a7a52', [[60, 40 - lift], [78, 40 - lift], [78, 58 - lift], [60, 58 - lift]]); px(g, '#b88a48', 67, 40 - lift, 3, 18);
-  inked(g, '#1a1820', [[56, 44 - lift], [70, 36 - lift], [96, 0], [116, 0], [116, 14], [80, 50 - lift], [62, 56 - lift]]);
-  px(g, '#3a3848', 70, 40 - lift, 14, 1); px(g, '#3a3848', 74, 45 - lift, 10, 1);
+// 3. The tin box open in the hole, his six years in it, in the torch's circle.
+export function paintBox(g, w, h) {
+  still(g, 'box', w, h);
 }
 
-// 4. One of them, close, fanning the notes under his nose, grinning, a gold tooth, a cigarette.
-export function paintCount(g, w, h, t) {
-  px(g, '#1a2a1e', 0, 0, w, h);
-  px(g, '#24382a', 0, 0, w, 40);
-  // his head, three-quarters: slicked hair, sideburn, the grin
-  inked(g, THUG.skin, [[30, 18], [62, 14], [74, 32], [72, 56], [60, 70], [38, 70], [28, 52]]);
-  poly(g, THUG.skinD, [[30, 40], [40, 46], [44, 68], [38, 70], [28, 52]]);
-  poly(g, THUG.hair, [[26, 22], [40, 6], [66, 6], [76, 22], [62, 16], [32, 24], [30, 40], [24, 34]]);
-  px(g, '#e8f0ff', 50, 10, 10, 1);                                        // the shine on his hair
-  px(g, INK, 46, 32, 8, 2); px(g, INK, 62, 30, 6, 2);                    // brows
-  px(g, '#f0ece0', 48, 36, 5, 3); px(g, INK, 51, 36, 2, 3); px(g, '#f0ece0', 63, 34, 4, 3); px(g, INK, 65, 34, 2, 3);
-  poly(g, THUG.skinD, [[58, 36], [64, 46], [58, 48]]);                    // the nose
-  poly(g, INK, [[44, 54], [70, 50], [66, 58], [48, 60]]);                 // the grin
-  px(g, '#f0ece0', 48, 54, 18, 2); px(g, '#e8c040', 58, 54, 3, 2);      // teeth, the gold one
-  px(g, '#d8d2c4', 66, 56, 14, 2); px(g, '#ff8a2a', 80, 56, 2, 2);       // the cigarette
-  for (let i = 0; i < 10; i++) px(g, '#6a7a6c', 82 + Math.sin(t * 1.5 + i * 0.7) * 2 + i * 0.5, 54 - i * 3, 2, 2);
-  inked(g, THUG.jacket, [[24, 70], [78, 68], [92, h], [14, h]]); px(g, '#e8e0d0', 46, 70, 12, 6);
-  // the notes, fanned in his fist
-  for (let i = 0; i < 7; i++) {
-    const a = -2.2 + i * 0.18, cx = 92, cy = 70, ex = cx + Math.cos(a) * 34, ey = cy + Math.sin(a) * 34;
-    inked(g, i % 2 ? '#5e9060' : '#6aa070', [[cx, cy], [ex - Math.sin(a) * 6, ey + Math.cos(a) * 6], [ex + Math.sin(a) * 6, ey - Math.cos(a) * 6]]);
-    disc(g, '#3e6a44', cx + Math.cos(a) * 24, cy + Math.sin(a) * 24, 2);
-  }
-  inkedDisc(g, '#1a1820', 92, 74, 9, 8); px(g, '#3a3848', 86, 70, 8, 1);
+// 4. The young one thumbing through the notes, grinning.
+export function paintCount(g, w, h) {
+  still(g, 'count', w, h);
 }
 
 // ================================================================ page 2: no loose ends
-// 5. His entrance hall from the floor: the front door open on the landing's light, the building's super on his face
-// in his cardigan and slippers, his torch rolled away still lit, the blood coming out (k 0..1); over him the legs of
-// the one who shot him, the gun hanging from his hand, a thread of smoke out of its muzzle.
+// 1. Over the shooter's shoulder: the building's super in his doorway, hit, a hand to his chest; the gun still smokes
+// and the blood comes out between his fingers (k 0..1).
 export function paintSuper(g, w, h, t, k = 1) {
-  px(g, '#1c140e', 0, 0, w, h);
-  px(g, '#e8b860', 96, 0, 48, 62); px(g, '#c8903a', 96, 46, 48, 16);    // the landing, through the door
-  px(g, INK, 90, 0, 6, 64); px(g, INK, 144, 0, 4, 64);
-  inked(g, '#4a301c', [[146, 0], [176, 0], [174, 66], [146, 62]]); px(g, '#c8a040', 168, 34, 3, 3);
-  poly(g, '#e8b860', [[96, 62], [144, 62], [190, h], [40, h]], 0.22);     // its light on the hall's floor
-  for (const y of [70, 80, 90]) px(g, '#2a1e14', 0, y, w, 1);
-  // him: on his face across the threshold, an arm out, grey hair, a slipper off
-  inked(g, '#6a5a48', [[44, 74], [86, 68], [112, 72], [114, 82], [80, 86], [42, 84]]);
-  poly(g, '#857260', [[50, 74], [86, 69], [100, 71], [60, 76]]);
-  inked(g, '#2c2c3a', [[112, 72], [150, 72], [154, 80], [114, 82]]);
-  px(g, '#5a2a24', 152, 72, 10, 4); px(g, '#c8c0b0', 156, 78, 4, 3);
-  inkedDisc(g, '#8a8a90', 38, 76, 7, 6); disc(g, '#b0a898', 36, 73, 5, 3);
-  inked(g, '#6a5a48', [[44, 72], [24, 60], [22, 63], [42, 76]]); inkedDisc(g, '#d8a888', 21, 60, 3, 2);
-  px(g, '#5a2a24', 170, 84, 10, 4);
-  const r = 4 + 20 * clamp(k, 0, 1);                                      // the blood
-  disc(g, '#3a0508', 66, 85, r, r * 0.3); disc(g, '#8a0c12', 66 + r * 0.2, 84, r * 0.7, r * 0.2); px(g, '#e04048', 66 + r * 0.5, 83, 3, 1);
-  px(g, '#3a3a44', 4, 86, 10, 4); poly(g, '#fff4c0', [[2, 86], [-30, 70], [-30, 100]], 0.3); px(g, '#fff4c0', 2, 87, 2, 2);
-  // the shooter: his legs in the doorway, the pistol hanging at his side, smoking
-  inked(g, THUG.pants, [[112, 0], [122, 0], [122, 60], [112, 60]]); inked(g, THUG.pants, [[126, 0], [136, 0], [138, 62], [128, 62]]);
-  px(g, THUG.shoe, 108, 58, 14, 5); px(g, THUG.shoe, 126, 60, 15, 5);
-  inked(g, THUG.skin, [[138, 6], [144, 6], [144, 14], [138, 14]]);
-  inked(g, '#2a2a32', [[140, 12], [144, 12], [145, 30], [141, 30]]); px(g, '#4a4a58', 141, 13, 1, 16);
-  for (let i = 0; i < 12; i++) px(g, '#9a94a4', 143 + Math.sin(t * 2 + i * 0.6) * 2, 32 + i * 2.5, 1, 2);
+  still(g, 'super', w, h);
+  const blood = spriteOpt('comic/super_blood');
+  fine(g, () => {
+    if (blood && k > 0) {
+      const r = 8 + 110 * clamp(k, 0, 1);
+      g.save();
+      g.beginPath();
+      g.ellipse(398, 196, r * 0.5, r, 0, 0, Math.PI * 2);
+      g.clip();
+      g.drawImage(blood, 0, 0);
+      g.restore();
+    }
+    smoke(g, 300, 132, t);
+  });
 }
 
-// 6. The living room: one of them emptying a jerrycan over his sofa, the petrol coming out in a twisting rope and
-// splashing; the hole in the floor at his feet.
+// 2. The heavy one tipping a jerrycan over the sofa, in the neon from the window; the petrol running.
 export function paintPour(g, w, h, t) {
-  px(g, '#1a1426', 0, 0, w, h);
-  px(g, '#221a30', 0, 0, w, 58);
-  px(g, '#2a1e22', 0, 58, w, h - 58);
-  for (const y of [66, 76, 88]) px(g, '#1a1216', 0, y, w, 1);
-  // the window behind, its neon
-  px(g, '#100c1c', 14, 8, 40, 30); px(g, '#ff2a6d', 18, 14, 14, 2); px(g, '#2a5f9a', 34, 22, 16, 2); px(g, INK, 32, 8, 2, 30);
-  // the sofa, soaked dark where the petrol has gone
-  inked(g, '#6a2c50', [[20, 62], [96, 60], [100, 84], [16, 86]]);
-  inked(g, '#7a3a60', [[22, 46], [94, 44], [96, 62], [20, 64]]);
-  px(g, '#8e4a74', 24, 46, 68, 2); px(g, '#4a1c38', 56, 48, 1, 14);
-  disc(g, '#3a1428', 62, 70, 20, 6); disc(g, '#4a1c38', 40, 56, 10, 4);
-  // the hole in the floor and its torn boards
-  px(g, INK, 116, 84, 40, 10); line(g, '#6a4a2a', 114, 84, 120, 78, 2); line(g, '#6a4a2a', 156, 84, 160, 79, 2);
-  // the man, the jerrycan up in both hands
-  thug(g, 126, 92, -1, 'stand', { ...THUG, jacket: '#3a2a22', jacketL: '#5a4232' });
-  inked(g, '#b8261c', [[100, 44], [116, 40], [120, 56], [104, 60]]); px(g, '#e04a3a', 101, 45, 14, 2);
-  px(g, '#8a1810', 106, 48, 8, 1); px(g, '#8a1810', 110, 44, 1, 12);                                   // the pressed cross on it
-  inked(g, '#3a3a44', [[94, 48], [101, 46], [101, 52], [94, 54]]);
-  inkedDisc(g, THUG.skin, 117, 56, 3); inkedDisc(g, THUG.skin, 104, 42, 3);
-  // the petrol: a twisting rope down onto the sofa, the splash
-  for (let y = 52; y < 62; y += 2) px(g, '#c89a50', 93 - (y - 52) * 0.8 + Math.sin(y * 0.5 + t * 16), y, 2, 2);
-  for (let i = 0; i < 8; i++) {
-    const a = hash(i + Math.floor(t * 10)) * Math.PI, r = 4 + hash(i + 2) * 6;
-    px(g, '#e8c070', 76 + Math.cos(a) * r, 58 - Math.sin(a) * r * 0.6, 1, 1);
-  }
+  still(g, 'pour', w, h);
+  fine(g, () => {
+    for (let i = 0; i < 4; i++) {
+      const k = (t * 1.8 + i / 4) % 1;
+      px(g, '#fff0c0', 182 - k * 28, 128 + k * 54, 2, 4);
+    }
+  });
 }
 
-// 7. Close: a match struck on its box between gloved fingers, the head flaring, a face lit from under it.
+// 3. Close: the one with the slicked hair strikes a match (struck 0..1: how far into the strike); before it, the dark.
 export function paintMatch(g, w, h, t, struck = 1) {
-  px(g, '#08050a', 0, 0, w, h);
-  const fl = struck > 0 ? 0.8 + 0.2 * Math.sin(t * 23) * Math.sin(t * 7) : 0;
-  if (fl > 0) {
-    disc(g, '#3a1408', 176, 60, 120 * fl, 50 * fl, 0.9);
-    disc(g, '#6a2a0c', 176, 60, 76 * fl, 36 * fl, 0.9);
-  }
-  // the face, in profile, looking down at the flame: lit from under, the top of it lost in the dark
-  const sk = fl > 0 ? '#a8602c' : '#2a1810', lt = '#ffb060', dk = '#5a2c14';
-  inked(g, sk, [[206, 10], [224, 6], [236, 14], [238, 24], [242, 30], [254, 44], [248, 48], [250, 52], [246, 56], [249, 60],
-    [244, 66], [242, 72], [228, 80], [212, 80], [204, 60], [202, 30]]);
-  poly(g, dk, [[206, 10], [224, 6], [236, 14], [238, 24], [228, 26], [216, 22], [204, 30]]);          // the brow in shadow
-  if (fl > 0) {
-    poly(g, lt, [[242, 44], [252, 45], [248, 48], [240, 48]]);                                            // under the nose
-    poly(g, lt, [[236, 60], [248, 60], [244, 66], [234, 66]]);                                            // the chin, the jaw
-    poly(g, lt, [[214, 74], [240, 70], [228, 80], [212, 80]]);
-    px(g, lt, 224, 46, 10, 2);                                                                            // the cheekbone
-  }
-  disc(g, dk, 211, 44, 3, 5); px(g, '#3a1a0c', 211, 42, 1, 4);                                           // the ear
-  px(g, INK, 228, 28, 8, 3); px(g, '#ffd080', 233, 30, 2, 1);                                             // the eye, a glint
-  poly(g, '#1a0c08', [[236, 50], [250, 50], [248, 54], [238, 54]]);                                       // moustache
-  px(g, INK, 238, 56, 10, 1); px(g, '#6a2a1a', 240, 57, 7, 2);                                           // the mouth
-  poly(g, '#1a1410', [[198, 4], [208, 0], [240, 0], [240, 8], [226, 6], [212, 12], [208, 30], [202, 34], [196, 20]]);   // his hair
-  px(g, '#4a4050', 214, 2, 16, 1);
-  inked(g, '#2a2230', [[196, 80], [236, 80], [250, h], [180, h]]);        // his collar
-  // the hands, the box, the match
-  inked(g, '#1a1820', [[140, 74], [168, 68], [176, 82], [148, 90]]);       // the glove holding the box
-  inked(g, '#c8a048', [[150, 70], [172, 66], [174, 74], [152, 78]]); px(g, '#6a3a1a', 152, 76, 20, 2);
-  inked(g, '#1a1820', [[176, 76], [192, 70], [200, 80], [184, 88]]);
-  line(g, '#e8d8b0', 188, 74, 176, 52, 2);
-  px(g, '#6a1810', 174, 50, 4, 3);
-  if (struck > 0) {
-    const fh = 9 + 4 * fl;
-    poly(g, '#ff8a20', [[172, 50], [180, 50], [176 + Math.sin(t * 20), 50 - fh]]);
-    poly(g, '#fff0a0', [[174, 50], [178, 50], [176 + Math.sin(t * 20) * 0.5, 50 - fh * 0.55]]);
-    if (struck < 1) for (let i = 0; i < 9; i++) px(g, '#ffe080', 176 + (hash(i) - 0.5) * 30 * (1 - struck), 50 - hash(i + 4) * 24 * (1 - struck), 1, 1); // the sparks
-  }
-  // the jerrycan, on the floor at the far left, its spout dripping
-  inked(g, '#7a1810', [[20, 70], [56, 66], [60, 90], [22, h]]); px(g, '#c8281e', 22, 72, 32, 2);
-  for (let i = 0; i < 3; i++) px(g, '#c89a50', 60, 74 + ((t * 30 + i * 7) % 20), 1, 2);
+  if (struck <= 0) { still(g, 'match_dark', w, h); return; }
+  still(g, 'match', w, h);
+  const fl = 0.8 + 0.2 * Math.sin(t * 23) * Math.sin(t * 7), [fx, fy] = FLAME;
+  fine(g, () => {
+    if (fl < 0.68) tone(g, '#07050a', 0, 0, w * SC, h * SC, 0.18);          // the flame ducks
+    const fh = 48 + 16 * fl, sway = Math.sin(t * 20) * 4;
+    disc(g, '#c8381a', fx, fy - 4, 13, 15);
+    poly(g, '#c8381a', [[fx - 12, fy - 4], [fx + 12, fy - 4], [fx + 6, fy - fh * 0.55], [fx + sway, fy - fh]]);
+    disc(g, '#ff8a20', fx, fy - 4, 9, 11);
+    poly(g, '#ff8a20', [[fx - 9, fy - 4], [fx + 9, fy - 4], [fx + sway * 0.7, fy - fh * 0.8]]);
+    disc(g, '#fff0a0', fx, fy - 3, 5, 6);
+    poly(g, '#fff0a0', [[fx - 5, fy - 3], [fx + 5, fy - 3], [fx + sway * 0.4, fy - fh * 0.45]]);
+    if (struck < 1) {
+      for (let i = 0; i < 14; i++) px(g, '#ffe080', fx + (hash(i) - 0.5) * 110 * struck, fy - 10 - hash(i + 4) * 80 * struck, 3, 3);   // the sparks
+      tone(g, '#ffd8a0', 0, 0, w * SC, h * SC, 0.4 * (1 - struck));
+    }
+  });
 }
 
 // ================================================================ page 3: the leap

@@ -1,11 +1,13 @@
 // The opening. The title screen is the street seen from a window (drawTitleView: ui/cine/Pane.js over
 // ui/TitleScene.js): his. NEW GAME pulls the camera back from that window into his bedroom (ui/cine/Room.js), where
 // he sleeps; the street goes soft and coarse behind the wet glass as it becomes a part of the room. Then the night
-// goes wrong, told as comic pages (ui/cine/Page.js, ui/cine/Panels.js), slowly enough to be read. He ran packages
-// for the boss of the bar for six years and kept every dollar under his floor, to leave town. Boards torn up next
-// door, his eye opens; page one: the boss's men at his front door, the crowbar under his floorboards, his tin box,
-// the money counted. The building's super shouts at the front door, a shot cuts him off; page two: the super on
-// his face, the petrol over the sofa ("NO LOOSE ENDS."), a match struck ("TORCH IT."). He gets up, puts on his coat,
+// goes wrong, told as comic pages drawn like a noir thriller album (ui/cine/Page.js lays them out, ui/cine/Panels.js
+// frames the stills of tools/generate_comic.py and moves what moves in them), slowly enough to be read. He ran
+// packages for the boss of the bar for six years and kept every dollar under his floor, to leave town. Boards torn up
+// next door, his eye opens; page one: the boss's three men in his forced front door, the heavy one's crowbar under his
+// floorboards, his tin box, the young one riffling the money. The building's super shouts at the front door, a shot
+// cuts him off; page two: the super hit in his doorway, the heavy one soaking the sofa ("NO LOOSE ENDS."), the one
+// with the slicked hair striking a match ("TORCH IT."), the back room's door behind him. He gets up, puts on his coat,
 // cap and satchel, firelight under his door, and the view tips over onto the floor plan: the tutorial, where the man
 // with the match lights the flat as he walks in. Everything is a function of t (s since NEW GAME): cineView() is the
 // timeline as plain numbers (unit-tested), drawCinematic() the picture, cineBeats() what is heard.
@@ -46,19 +48,19 @@ const SKRITCH = { text: 'SKRITCH', dur: 0.8, size: 9, col: '#ffb040', rot: -0.12
 export const PAGES = [
   { start: CINE.page1[0], end: CINE.page1[1], panels: [
     { r: { x: 12, y: 10, w: 360, h: 96 }, at: 3.8, paint: paintDoor, caption: ["1:05 AM. THE BOSS'S MEN LET THEMSELVES IN."],
-      sfx: [{ text: 'KRAK', at: 0.8, dur: 0.9, x: 214, y: 52, size: 11, col: PALETTE.yellow, rot: -0.15 }] },
+      sfx: [{ text: 'KRAK', at: 0.8, dur: 0.9, x: 198, y: 30, size: 11, col: PALETTE.yellow, rot: -0.15 }] },
     { r: { x: 12, y: 112, w: 116, h: 94 }, at: 5.8, paint: paintPry, caption: ['THEY KNEW WHERE', 'HE HID IT.'],
-      sfx: [{ text: 'KRRIK', at: 0.6, dur: 0.9, x: 84, y: 34, size: 8, col: PALETTE.yellow, rot: 0.1 }] },
+      sfx: [{ text: 'KRRIK', at: 0.6, dur: 0.9, x: 36, y: 46, size: 8, col: PALETTE.yellow, rot: 0.1 }] },
     { r: { x: 134, y: 112, w: 116, h: 94 }, at: 7.8, paint: paintBox, caption: ['SIX YEARS OF RUNS', 'FOR THE BOSS.'] },
     { r: { x: 256, y: 112, w: 116, h: 94 }, at: 9.8, paint: paintCount, caption: ['EVERY DOLLAR.', 'HIS WAY OUT.'] },
   ] },
   { start: CINE.page2[0], end: CINE.page2[1], panels: [
     { r: { x: 12, y: 10, w: 176, h: 96 }, at: 15.0, paint: (g, w, h, t) => paintSuper(g, w, h, t, (t - 0.3) / 1.6), caption: ['THE SUPER CAME UP', 'ABOUT THE NOISE.'] },
-    { r: { x: 196, y: 10, w: 176, h: 96 }, at: 17.2, paint: paintPour, say: { at: 0.7, text: ['THE BOSS SAYS:', 'NO LOOSE ENDS.'], x: 4, y: 4, tail: [118, 28] },
-      sfx: [{ text: 'GLUG GLUG', at: 0.2, dur: 1.4, x: 56, y: 82, size: 7, col: '#c89a50', rot: 0.06 }] },
+    { r: { x: 196, y: 10, w: 176, h: 96 }, at: 17.2, paint: paintPour, say: { at: 0.7, text: ['THE BOSS SAYS:', 'NO LOOSE ENDS.'], x: 4, y: 4, tail: [112, 40] },
+      sfx: [{ text: 'GLUG GLUG', at: 0.2, dur: 1.4, x: 50, y: 82, size: 7, col: '#e8c070', rot: 0.06 }] },
     { r: { x: 12, y: 112, w: 360, h: 94 }, at: 19.4, paint: (g, w, h, t) => paintMatch(g, w, h, t, clamp((t - (CINE.strike - 19.4)) / 0.25, 0, 1)),
-      say: { at: 1.8, text: ['TORCH IT.', "HE'S IN THE BACK ROOM."], x: 268, y: 6, tail: [252, 58] },
-      sfx: [{ ...SKRITCH, at: CINE.strike - 19.4, x: 150, y: 30 }] },
+      say: { at: 1.8, text: ['TORCH IT.', "HE'S IN THE BACK ROOM."], x: 60, y: 6, tail: [158, 40] },
+      sfx: [{ ...SKRITCH, at: CINE.strike - 19.4, x: 150, y: 36 }] },
   ] },
 ];
 
@@ -176,7 +178,7 @@ export function drawCinematic(ctx, W, H, t, world, buf) {
     if (ek > 0 && v.tilt <= 0) {
       logical();
       const open = rt < C.eyeOpen ? 0 : Math.min(1, (rt - C.eyeOpen) / 0.07);
-      drawPanel(ctx, { x: 204, y: 18, w: 150, h: 58 }, ek, (g, w, h) => paintEye(g, w, h, open, open ? 0.8 + Math.sin(rt * 9) * 0.2 : 0, rt));
+      drawPanel(ctx, { x: 204, y: 18, w: 150, h: 58 }, ek, (g, w, h) => paintEye(g, w, h, open));
       screen();
     }
     // the date, typed at the foot of the picture while nothing has happened yet
