@@ -5529,6 +5529,29 @@ def p_runner():
     return cv
 
 
+def road_paint(W, H, seed):
+    """Worn white road paint along x, H rows: the line itself on the middle rows, chipped and stained by tyres."""
+    cv = Cv(W, H)
+    rng = random.Random(seed)
+    paint, worn = hx('#cfcabd'), hx('#9d998f')
+    for y in range(1, H - 1):
+        for x in range(W):
+            if rng.random() < 0.08:
+                continue                                        # chipped: the asphalt shows through
+            cv.set(x, y, worn if rng.random() < 0.22 else paint)
+    return cv
+
+
+def p_road_edge():
+    """A length of the solid white edge line between the parking strip and the lane (laid end to end along x)."""
+    return road_paint(96, 4, 907)
+
+
+def p_parking_bay():
+    """A bay line painted across the parking strip, from the kerb to the edge line."""
+    return road_paint(60, 4, 911)
+
+
 def p_radiator():
     """A cast-iron radiator under a wall (the wall at -y), from above: its columns, the valve."""
     cv = Cv(30, 8)
@@ -5615,14 +5638,14 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
                     urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
-                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, radiator=p_radiator, bike=p_bike,
+                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, radiator=p_radiator, bike=p_bike,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
-                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), radiator=(30, 8), bike=(46, 14),
+                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,

@@ -205,9 +205,20 @@ lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
 
 lv.area('road: parked along the bar side')
+# the parking strip (rows 23-24) marked off from the westbound lane by a solid edge line, its bays painted across it:
+# with it the road reads as two equal lanes either side of the centre line, plus the strip (the user). Positions are
+# worked out in the level's columns (after the cuts) and given back in the drawing's.
+def drawn(col):
+    return col + (2 if col >= 28 else 1 if col >= 19 else 0)
+
+
+for i in range(14):
+    lv.paint('road_edge', drawn(1.5 + 3 * i), 25.0)
+for col in (2.0, 7.0, 12.1, 17.1, 22.1, 26.8, 31.6, 36.9, 41.9):
+    lv.paint('parking_bay', drawn(col), 24.05, 90)
 lv.prop('car2', 14.6, 24.0, 0, lights=False, trunk='tire_iron')   # E at its tail: a tire iron in the trunk
 lv.prop('car', 31.2, 24.0, 180)
-lv.prop('van', 38.6, 24.05, 180, lights=False)
+lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
 
 lv.area('north sidewalk and the facade')
 lv.prop('neon_sign_bar', 30.0, 21.09)
