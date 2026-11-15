@@ -5,6 +5,7 @@ import { load } from './setup.mjs';
 
 const { CINE, CINE_END, PAGES, cineView, cineBeats } = await load('game/ui/Cinematic.js');
 const { OPTIONAL_LIST } = await load('engine/Assets.js');
+const { ENDINGS } = await load('game/ui/cine/Ending.js');
 
 test('cinematic: the camera pulls back from the window into the room, the night goes wrong, the view tips onto the floor plan', () => {
   const start = cineView(0);
@@ -47,8 +48,10 @@ test('cinematic: each sound once, in the order of the story, the match among the
 });
 
 test('cinematic: every comic still is painted at 3 px per title px of a panel it fills', () => {
-  // the panels' sizes in title px: the pages', and his eye's over the room (Cinematic.js drawCinematic)
-  const sizes = new Set([...PAGES.flatMap((p) => p.panels.map((q) => `${q.r.w}x${q.r.h}`)), '150x58']);
+  // the panels' sizes in title px: the opening's pages', his eye's over the room (Cinematic.js drawCinematic), the
+  // leap's card (cine/Leap.js CARD) and the levels' closing pages (cine/Ending.js)
+  const ends = Object.values(ENDINGS).flatMap((e) => e.page.panels.map((q) => `${q.r.w}x${q.r.h}`));
+  const sizes = new Set([...PAGES.flatMap((p) => p.panels.map((q) => `${q.r.w}x${q.r.h}`)), '150x58', '336x136', ...ends]);
   const stills = OPTIONAL_LIST.filter((n) => n.startsWith('comic/'));
   assert.ok(stills.length >= 9);
   for (const name of stills) {

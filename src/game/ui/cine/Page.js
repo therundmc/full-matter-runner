@@ -1,9 +1,10 @@
-// A comic page of the opening (ui/Cinematic.js) or of the leap out of the tutorial (ui/cine/Leap.js): panels that
+// A comic page of the opening (ui/Cinematic.js) or of a level's ending (ui/cine/Ending.js): panels that
 // drop in one after the other, each with its caption (a yellow box, top left), what is said in it (a balloon typed
 // as it is said) and what is heard (a sound word), then the whole page goes. Pure description in, picture out:
 //   page   { end (s the page is gone at), panels: [{ r: { x, y, w, h } in the title's logical px, at (s it drops in),
 //            paint(g, w, h, t) (t: s since it dropped in), caption: [lines], say: { at, text: [lines], x, y, tail: [x, y] }
-//            (panel px; at: s after the panel), sfx: [{ text, at, dur, x, y, size, col, rot }] }] }
+//            (panel px; at: s after the panel), sfx: [{ text, at, dur, x, y, size, col, rot }],
+//            close: { at, text: [lines] } (a caption typed in the panel's bottom right corner, at s after the panel) }] }
 import { LW, LH } from '../title/Draw.js';
 import { text } from '../Text.js';
 import { drawPanel, caption, balloon } from './Panels.js';
@@ -11,7 +12,7 @@ import { clamp, px } from './Ink.js';
 
 const SIZE = 5;     // the lettering, logical px
 const LINE = 7;     // between two lines of it
-const TYPE = 24;    // letters a second when something is said
+export const TYPE = 24; // letters a second when something is said (or a closing caption typed)
 const INK = '#140c10';
 
 // how far a panel has dropped in at rt (0..1), the page going out with it
@@ -40,6 +41,13 @@ export function drawPage(ctx, W, H, rt, page) {
       balloon(ctx, p.r.x + s.x, p.r.y + s.y, bw, bh, p.r.x + s.tail[0], p.r.y + s.tail[1]);
       let n = Math.floor((rt - p.at - s.at) * TYPE);
       s.text.forEach((l, i) => { words.push([l.slice(0, Math.max(0, n)), p.r.x + s.x + bw / 2, p.r.y + s.y + 6.5 + i * LINE, SIZE, INK, {}]); n -= l.length; });
+    }
+    const c = p.close;
+    if (c && rt >= p.at + c.at) {
+      const bw = Math.max(...c.text.map(width)) + 6, bh = c.text.length * LINE + 3, x = p.r.x + p.r.w - 3 - bw, y = p.r.y + p.r.h - 3 - bh;
+      caption(ctx, x, y, bw, bh);
+      let n = Math.floor((rt - p.at - c.at) * TYPE);
+      c.text.forEach((l, i) => { words.push([l.slice(0, Math.max(0, n)), x + bw / 2, y + 3.5 + i * LINE, SIZE, INK, {}]); n -= l.length; });
     }
     for (const f of p.sfx || []) {
       const u = (rt - p.at - f.at) / f.dur;

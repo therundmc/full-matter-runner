@@ -22,6 +22,7 @@ import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
 import { LEAP, leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
+import { ENDING, ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
@@ -29,8 +30,8 @@ import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import { createPost } from './render/PostGL.js';
 
-// Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro ->] results,
-// play <-> pause; the tutorial ends play -> fall -> the next level's intro
+// Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
+// results, play <-> pause; the tutorial ends play -> fall -> the next level's intro
 // (the title and the pause are the menu: ui/Menu.js for its pages, ui/MenuArt.js for its picture)
 const VOLUMES = ['master', 'music', 'sfx'];
 // ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
@@ -243,6 +244,13 @@ export default class Game {
     this.hitstop = 0;
     this.setState('outro');
   }
+  // the van is gone: the level's closing page when it has one (ui/cine/Ending.js), then the results
+  endOutro() {
+    this.ending = ENDINGS[this.levelId] || null;
+    if (!this.ending) { this.showResults(); return; }
+    this.endingT = -1;
+    this.setState('ending');
+  }
   showResults() {
     const w = this.world;
     const tally = w.scoring.tally(levelScoring(this.levelId, w.totalEnemies));
@@ -350,6 +358,17 @@ export default class Game {
       return;
     }
 
+    if (this.state === 'ending') {
+      // the level's closing page: the world waits behind it; a key or a click goes on to the results
+      Music.setIntensity(0);
+      for (const b of endingBeats(this.ending, this.endingT, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
+      this.endingT = this.stateT;
+      const skip = this.stateT > ENDING.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      inp.consume();
+      if (skip || endingView(this.ending, this.stateT).over) this.showResults();
+      return;
+    }
+
     // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
     if (this.state === 'fall' && this.stateT >= FALL.fade) {
@@ -368,10 +387,12 @@ export default class Game {
     }
     const outro = this.state === 'outro' || this.state === 'fall'; // the world plays on by itself
     if (this.state === 'outro') {
-      // the world plays on by itself: no input reaches it; a fresh key press or a click skips to the results
+      // the world plays on by itself: no input reaches it; a fresh key press or a click skips to what follows (the
+      // level's closing page, or the results)
       const skip = this.stateT > OUTRO.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
       inp.consume();
-      if (skip || this.world.outro.van.exploded) { this.showResults(); return; }
+      if (this.world.outro.van.exploded) { this.showResults(); return; }
+      if (skip) { this.endOutro(); return; }
     }
     // Escape / START pauses; so does the gamepad in use going away
     if (this.state === 'play' && (inp.hit('Escape') || inp.padLost)) { inp.padLost = false; this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
@@ -411,7 +432,7 @@ export default class Game {
     }
     this.updateCamera(dt);
     this.flashA = Math.max(0, this.flashA - dt * 3);
-    if (this.state === 'outro' && outroOver(this.world.outro)) this.showResults();
+    if (this.state === 'outro' && outroOver(this.world.outro)) this.endOutro();
   }
 
   // the results (ui/Results.js): R / Y retries; ENTER / SPACE / A / a click first fills the screen at once, then goes
@@ -553,6 +574,7 @@ export default class Game {
     else if (!inWorld) drawTitleView(ctx, W, H, t, this.input.mouse);
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => this.drawCine(ctx, W, H, t, post));
     else if (this.state === 'fall' && this.stateT >= FALL.fade) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALL.fade));
+    else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
     else this.drawScene(ctx, W, H, t, post);
     if (post) {
       const now = performance.now() / 1000, view = this.lensView(W, H, inWorld);
@@ -571,7 +593,7 @@ export default class Game {
       o.fillStyle = '#3cff7a';
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
     }
-    if (!['loading', 'outro', 'cinematic', 'fall'].includes(this.state)) this.drawCursor(o, t);
+    if (!['loading', 'outro', 'ending', 'cinematic', 'fall'].includes(this.state)) this.drawCursor(o, t);
   }
 
   // the opening (ui/Cinematic.js): from the title's window into his room, the night's story, then the level seen

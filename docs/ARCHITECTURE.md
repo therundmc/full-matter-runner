@@ -106,7 +106,7 @@ src/
     ui/                   HUD, Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
                           end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
-                          Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit)
+                          Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
     data/                 controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)

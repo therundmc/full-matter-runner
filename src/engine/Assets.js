@@ -45,8 +45,10 @@ export const OPTIONAL_LIST = [
   ...['butt', 'cigar', 'can', 'magazine', 'ashtray', 'bottle'].map((n) => `items/${n}`),
   // rooftops of the neighbouring buildings (painted on the wall layer)
   'tiles/roof',
-  // the opening's comic panels (tools/generate_comic.py), painted finer than the title they are drawn on
-  ...['eye_shut', 'eye', 'door', 'pry', 'box', 'count', 'super', 'super_blood', 'pour', 'match_dark', 'match'].map((n) => `comic/${n}`),
+  // the comic panels of the opening, of the leap's card and of level 1's ending (tools/generate_comic.py), painted
+  // finer than the title they are drawn on
+  ...['eye_shut', 'eye', 'door', 'pry', 'box', 'count', 'super', 'super_blood', 'pour', 'match_dark', 'match',
+    'alley', 'drive', 'office', 'office_phone', 'matchbook'].map((n) => `comic/${n}`),
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',
     'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
 ];

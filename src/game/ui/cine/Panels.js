@@ -44,23 +44,24 @@ export function balloon(g, x, y, w, h, tx, ty) {
 // ---------------------------------------------------------------- the opening's stills
 // The opening's panels are drawn like a noir thriller album by tools/generate_comic.py (sprites comic/*, SC panel px
 // per title px): here they are put in their frame and given what moves (a lamp failing, smoke, blood spreading, the
-// match's flame), drawn in the stills' own px.
+// match's flame), drawn in the stills' own px. still / fine / smoke serve the other comic pages too (ui/cine/Leap.js,
+// ui/cine/Ending.js).
 const SC = 3;
 const FLAME = [536, 160];   // the match's head in comic/match (generate_comic.py FLAME)
 
-function still(g, name, w, h) {
+export function still(g, name, w, h) {
   const img = spriteOpt(`comic/${name}`);
   if (img) g.drawImage(img, 0, 0, w, h);
   else px(g, '#0c0812', 0, 0, w, h);
 }
-function fine(g, draw) {
+export function fine(g, draw) {
   g.save();
   g.scale(1 / SC, 1 / SC);
   draw();
   g.restore();
 }
 // smoke going up from (x, y) in a thin wavering thread (stills' px)
-function smoke(g, x, y, t, n = 14, col = '#8a8494') {
+export function smoke(g, x, y, t, n = 14, col = '#8a8494') {
   for (let i = 0; i < n; i++) {
     const k = (i + (t * 3) % 1) / n;
     px(g, col, x + Math.sin(t * 2 + i * 0.7) * 4 * k + i * 0.8, y - k * 70, 3, 4);
