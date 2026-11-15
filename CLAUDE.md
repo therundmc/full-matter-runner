@@ -98,11 +98,13 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    stranger off they only mutter. A panic is a crowd: every customer cries out (bank set 'panic', long yells), up
    to 7 at once, never all on the same instant. Effects sit under guns and music (`SFX_LEVEL`). User cannot hear
    what the voice cap drops: check admission (`_admit`: gap / max per name) before blaming a sound's level.
-5. Synthwave music: darker; next to silent while all is quiet (a few spaced plucks), the beat (house, 126 BPM, four
-   on the floor, off-beat open hat, pumping bass; original material only) starts bare with the fight, each chained
-   kill adds a layer and a little volume (`Music.setCombo`), and
-   it gets worked up with the alert phase and the heat of the fight (ai/Tension.js). Parts fade into one another
-   (a filter on the whole mix, `Session.fade`); at the top of a chain a 32nd snare roll fills every fourth bar.
+5. Synthwave music (2026-11-15 rework, his words: "the 3 little notes are lame, push it to the max, angrier, in a
+   fight it must kick: bass, percussion, melody"): data in src/audio/score.js, engine src/audio/Music.js. F minor,
+   126 BPM house, 8-bar sections, changes on bar lines. Calm: a dark pad and a muted pulse (about -30 dB); tense:
+   heartbeat kick, the bass, ticking hats, risers (ai/Tension.js); fight: kicks from its first bar (four on the floor,
+   clap, hats, pumping bass), sections fightA / fightB / bridge / chase; each chained kill adds a stage
+   (`Music.setCombo`: arpeggio, stabs, lead hook + stinger, 16th bass and rolls, doubled lead and toms). Bus
+   compressor. Original material only. Nobody has listened to it but him: ask how it sounds.
 6. Level 1 (alley, road, bar, back room, back lot; 14 guards: hand to hand but two guns, the pool player's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
