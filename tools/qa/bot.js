@@ -17,6 +17,9 @@
   const DT = 1 / 60;
   const MELEE_SPACE = new Set(['EXECUTE']);
   const VAULTS = new Set(['VAULT', 'DIVE THROUGH', 'CLIMB']);
+  // a gun guard who sees him and is about to fire, far enough for a slide to carry him under the round
+  const underFire = (w, p) => w.enemies.some((e) => e.alive && e.sees && e.def.kind === 'gun' && e.react <= 0.1
+    && e.cooldown <= 0.15 && Math.hypot(e.x - p.x, e.y - p.y) > 70);
   // features a long session should exercise at least once (else a 'not-covered' warning, see run.mjs), unless the
   // level has nothing for it (notApplicable)
   const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'ladderUp', 'ladderDown', 'roofDrop', 'roll', 'slide', 'takedown',
@@ -736,8 +739,10 @@
     // context actions
     const ca = p.contextAction;
     if (ca && (MELEE_SPACE.has(ca) || (p.nearBack && !VAULTS.has(ca)))) { press(inp, 'Space'); act(`space (${ca})`); }
-    // (no slide on a plan: one chains into a vault, a ladder too, and off the route)
-    else if (!B.plan && heading !== null && !ca && rnd() < 0.004) { press(inp, 'Space'); act('slide'); }
+    // (no slide on a plan: one chains into a vault, a ladder too, and off the route); a gunman about to fire: under it
+    else if (!B.plan && heading !== null && !ca && (rnd() < 0.004 || (S.clock > (B.dodgeT || 0) && underFire(w, p)))) {
+      press(inp, 'Space'); B.dodgeT = S.clock + 1.2; act('slide');
+    }
     else if (!B.plan && VAULTS.has(ca) && heading !== null && rnd() < 0.01) { press(inp, 'Space'); act(`space (${ca})`); }
     if (B.plan) return; // the plan picks up what it wants
     const it = p.nearItem, thrower = B.style === 'throw';

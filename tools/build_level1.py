@@ -500,7 +500,7 @@ exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9
 
 if __name__ == '__main__':
     lv.check(guards=14)
-    lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM', exit=exit_zone,
+    lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[
                  'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',

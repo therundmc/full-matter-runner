@@ -12,19 +12,20 @@ Each place asks for one move, said next to what it is done to (src/game/systems/
 sleep until its turn, a retry starts again at the last place reached):
 
     bedroom         he wakes by his bed: move, aim
-    living room     a man emptying a jerrycan over it, his back to the door, by the hole they tore in the floor:
-                    seize him from behind
+    living room     a man emptying a jerrycan over it, his back to the door, by the hole they tore in the floor; he
+                    sets it alight as he walks in: seize him from behind, too late, it is going up
     kitchen         a man at the worktop: a punch floors him, a bat lies by the table to finish him with; another
                     comes in from the entrance hall, over the body of the building's super: strike
     the corridor    out of his front door: a man with a pistol at the far end of the long corridor. Run and slide
                     under his fire. The gun he drops has two rounds left in it.
     the landing     three of them come up the stairs: shoot, throw the empty gun, finish the man it floored
-    the window      at the corridor's end: dive through it. He lands in the alley, and three weeks go by.
+    the window      at the corridor's end: dive through it. He lands in the alley, and level 1 is the next night.
 """
 from levelkit import Level
 
 W, H = 40, 20
 lv = Level(W, H)
+SHOOTER = 0.35   # the corridor's gunman fires as he comes round the corner: the shot is what he slides under
 
 # ---------------------------------------------------------------- tiles
 lv.fill(1, 1, 34, 18, '#')            # the building: plaster inside, brick round it
@@ -49,7 +50,7 @@ lv.actor('@', 4, 3, face=0)
 lv.actor('j', 11, 3, face=0)                            # emptying a jerrycan over the living room, his back to the door
 lv.actor('j', 8, 11, face=180)                          # at the kitchen worktop
 lv.actor('m', 16, 9, face=180)                          # in the entrance hall: comes when the first one is dead
-lv.actor('p', 28, 16, face=180)                         # the far end of the corridor, a pistol
+lv.actor('p', 26, 16, face=180)                         # down the corridor, a pistol, close enough to be seen
 lv.actor('j', 30, 12, face=90)                          # up the stairs, when he takes the gun
 lv.actor('m', 32, 12, face=90)
 lv.actor('k', 31, 11, face=90)                          # and a third when those two are dead
@@ -127,13 +128,14 @@ lv.prop('trash_can', 29.45, 15.4)
 lv.prop('bin_bag', 29.95, 15.55, 60)
 
 # ---------------------------------------------------------------- the fire, room after room behind him
-for (col, row, stage) in (
-        (9.3, 3.5, 2), (13.4, 4.4, 2), (11.4, 2.2, 2), (8.2, 5.6, 2),           # the living room, as he reaches the kitchen
+for (col, row, stage, *delay) in (
+        (12.2, 3.1, 1, 1.0), (12.7, 2.0, 1, 1.6), (9.3, 3.5, 1, 2.4),           # the living room: the man pouring the
+        (13.4, 4.4, 1, 3.0), (8.2, 5.6, 1, 3.8),                                # petrol lights it as he walks in
         (2.2, 2.3, 2), (3.4, 5.6, 3),                                           # his bedroom
         (11.6, 10.3, 3), (9.0, 8.6, 3), (12.8, 12.2, 3),                        # the kitchen, as he reaches the entrance
         (15.9, 12.5, 4), (15.5, 8.6, 4),                                        # the entrance hall
         (17.6, 10.5, 5), (18.4, 7.0, 5), (19.5, 12.6, 5)):                      # his door and the corridor, at the landing
-    lv.fire(col, row, stage)
+    lv.fire(col, row, stage, *delay)
 
 # ---------------------------------------------------------------- the lesson
 lv.tutorial = {
@@ -145,9 +147,9 @@ lv.tutorial = {
          'waves': [{'at': [[8, 11]], 'on': 'never', 'blind': True}, {'at': [[16, 9]], 'on': 'kills:1'}]},
         # out of his door, down the corridor: the man at its far end is only pointed at until he turns the corner
         {'zone': [15, 8, 19, 15], 'spawn': [15.5, 10.5, 0], 'marks': {'slide': [19.0, 14.4]}, 'hints': ['slide'],
-         'waves': [{'at': [[28, 16]], 'on': 'never', 'blind': True}]},
-        {'zone': [18, 16, 28, 17], 'spawn': [18.9, 14.2, 90], 'marks': {'slide': [21.4, 16.5]}, 'take': 'pistol', 'leaves': 2,
-         'hints': ['finish', 'take', 'slide'], 'waves': [{'at': [[28, 16]], 'on': 'enter'}]},
+         'waves': [{'at': [[26, 16]], 'on': 'never', 'blind': True}]},
+        {'zone': [18, 16, 28, 17], 'spawn': [18.9, 14.2, 90], 'marks': {'slide': [19.8, 16.5]}, 'take': 'pistol', 'leaves': 2,
+         'hints': ['finish', 'take', 'slide'], 'waves': [{'at': [[26, 16]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True}]},
         {'zone': [29, 11, 34, 17], 'spawn': [27.5, 16.5, 0], 'take': 'pistol', 'marks': {'dive': [34.4, 16.5]},
          'hints': ['finish', 'take', 'throw', 'shoot', 'dive'],
          'waves': [{'at': [[30, 12], [32, 12]], 'on': 'pickup:pistol'}, {'at': [[31, 11]], 'on': 'kills:2'}]},
@@ -167,5 +169,5 @@ if __name__ == '__main__':
              objective=['GET OUT OF THE BUILDING', 'THE WINDOW AT THE END OF THE CORRIDOR'],
              header=[
                  'The tutorial - "BAD NIGHT": his flat set on fire, the corridor of the building, the landing, the window at its end.',
-                 'Six places, one move each (src/game/systems/Tutorial.js); he lands in the alley, and level 1 is three weeks later.',
+                 'Six places, one move each (src/game/systems/Tutorial.js); he lands in the alley, and level 1 is the next night.',
              ])

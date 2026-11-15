@@ -64,7 +64,9 @@ export default class Enemy extends Character {
     this.routeIdx = 0;
     this.roam = roam || !!this.route;
     this.passive = false;      // lab dummies: no perception at all
-    this.slack = 1;            // x his reaction time and the time between his shots (the tutorial's men are slower)
+    this.slack = 1;            // x his reaction time (the tutorial's men are slower) ...
+    this.rate = 1;             // ... and x the time between his shots
+    this.standT = 0;           // s he holds his ground and fires, whatever else he would do (Tutorial: a sharp wave)
     this.dormant = false;      // the tutorial's guards until their wave is called (systems/Tutorial.js): they
                                // stand there, see and hear nothing, and can still be seized from behind
     this.state = this.roam ? S.PATROL : S.IDLE;
@@ -1225,7 +1227,7 @@ export default class Enemy extends Character {
       this.surrender();
       return;
     }
-    this.suppressCD -= dt; this.dodgeCD -= dt; this.stalkCD -= dt;
+    this.suppressCD -= dt; this.dodgeCD -= dt; this.stalkCD -= dt; this.standT -= dt;
     if (this.sees) {
       // re-acquiring after losing sight takes a moment, and the aim has to settle again
       if (this.lostT > 0.4) { this.react = Math.max(this.react, rand(...ENEMY.reacquire)); this.settle *= 0.4; }
@@ -1301,6 +1303,7 @@ export default class Enemy extends Character {
   // pick a tactic (every 0.3-0.5 s): weapon state first, then distance and squad role
   plan(p) {
     const dist = Math.hypot(p.x - this.x, p.y - this.y), prev = this.tactic;
+    if (this.standT > 0 && this.def.kind === 'gun' && this.weapon.mag > 0) return this.setTactic('hold');
     if (this.def.kind === 'gun' && this.weapon.mag <= 0 && this.reloading <= 0 && this.reserveCount() <= 0) {
       // dry: hurl the empty gun at him (or drop it) and go on with fists
       this.dropWeapon(this.sees ? Math.atan2(p.y - this.y, p.x - this.x) : this.angle + rand(-1, 1), this.sees ? 6 : 2);
@@ -1580,7 +1583,7 @@ export default class Enemy extends Character {
       this.burst++;
       this.cooldown = this.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
       if (this.burst >= d.burst) this.burst = 0;
-    } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25) * this.slack;
+    } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25) * this.rate;
     return true;
   }
 

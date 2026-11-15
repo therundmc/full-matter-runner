@@ -9,7 +9,7 @@
 // props: [type, col, row, deg, options?] - lights: false = a parked vehicle with its lights off.
 export default {
   name: 'NEON NIGHTS',
-  subtitle: 'SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM',
+  subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 23.4, y: 4.0, r: 1.3, route: [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], radius: [3, 4.2], fade: 16 },
   facing: { '20,34': 0, '24,21': 90, '18,12': 90, '24,14': 349, '20,16': 90, '24,17': 65, '17,8': 90, '21,9': 0, '30,9': 180, '26,9': 0, '26,10': 0, '29,10': 0, '27,4': 270, '12,8': 180 },

@@ -5,11 +5,13 @@
 // Level data (tiles):
 //   stages  [{ zone: [c0, r0, c1, r1]   the room: walking into it makes it the current stage
 //              spawn: [col, row, deg]    where a retry puts him back once the stage was reached
-//              waves: [{ at: [[col, row]...], on, blind }]   its guards, by the tile they stand on. They are dormant
+//              waves: [{ at: [[col, row]...], on, blind, slack }]   its guards, by the tile they stand on. They are dormant
 //                     (Enemy.dormant: they see and hear nothing, stand where they are) until their wave is called:
 //                     on = 'enter' (he walks in) | 'kills:N' (N guards of the stage are dead) | 'pickup:TYPE' (he
 //                     takes that weapon) | 'never' (a man who is only there to be dealt with). blind: they do not
-//                     wake either when he walks up in front of them.
+//                     wake either when he walks up in front of them. slack: how much slower than a real guard
+//                     they react (SLACK if not given; they always fire SLACK times slower). sharp: they were waiting for him, they know him at
+//                     once when woken (no suspicion to build up first).
 //              hints: [names of HINTS, the first that applies wins a place: two at most are shown]
 //              take: TYPE, marks: { name: [col, row] }   what some hints point at
 //              leaves: N   the gun a dead man of the stage drops has N rounds left in it, no more (a retry further
@@ -23,6 +25,7 @@ const MOVED = 70;      // px walked before MOVE goes away
 const FRONT = 1.7;     // tiles: a dormant guard he walks up to, in front of him, wakes (unless his wave is blind)
 const UP = -24;        // px a hint floats over what it points at
 const SLACK = 1.7;     // how much slower than a real guard its men react and shoot (Enemy.slack): it is a lesson
+const STAND = 2.5;     // s a sharp wave's man holds his ground once woken (Enemy.standT)
 
 const inside = ([c0, r0, c1, r1], x, y) => x >= c0 * TILE && x < (c1 + 1) * TILE && y >= r0 * TILE && y < (r1 + 1) * TILE;
 const at = ([c, r]) => ({ x: c * TILE, y: r * TILE });
@@ -78,9 +81,9 @@ export default class Tutorial {
     const on = (e, [c, r]) => Math.floor(e.x / TILE) === c && Math.floor(e.y / TILE) === r;
     this.stages = def.stages.map((s) => ({
       ...s, kills: 0,
-      waves: (s.waves || []).map((w) => ({ on: w.on || 'enter', blind: !!w.blind, awake: false, guards: world.enemies.filter((e) => w.at.some((t) => on(e, t))) })),
+      waves: (s.waves || []).map((w) => ({ on: w.on || 'enter', blind: !!w.blind, sharp: !!w.sharp, slack: w.slack ?? SLACK, awake: false, guards: world.enemies.filter((e) => w.at.some((t) => on(e, t))) })),
     }));
-    for (const s of this.stages) for (const w of s.waves) for (const g of w.guards) Object.assign(g, { dormant: true, slack: SLACK });
+    for (const s of this.stages) for (const w of s.waves) for (const g of w.guards) Object.assign(g, { dormant: true, slack: w.slack, rate: SLACK });
     world.events.on('kill', ({ victim }) => {
       const s = this.stages[this.stage];
       if (!s || !this.guards(s).includes(victim)) return;
@@ -127,7 +130,12 @@ export default class Tutorial {
     for (const g of w.guards) {
       if (!g.alive || !g.dormant) continue;
       g.dormant = false;
-      g.hear('noise', p.x, p.y, p);
+      if (w.sharp) {
+        g.lastKnown = { x: p.x, y: p.y };
+        g.stow = 0;        // his gun already in his hand
+        g.standT = STAND;  // and he stands there firing down the corridor before he thinks of cover
+        g.spot(false);
+      } else g.hear('noise', p.x, p.y, p);
     }
   }
 

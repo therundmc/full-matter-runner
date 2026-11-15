@@ -16,7 +16,7 @@ function stub(from = 0) {
   level.actors.forEach((row, r) => [...row].forEach((ch, c) => {
     if (!ENEMIES[ch]) return;
     enemies.push({ x: px(c + 0.5), y: px(r + 0.5), angle: ((level.facing[`${c},${r}`] || 0) * Math.PI) / 180, alive: true, knocked: 0, aware: 0,
-      body: {}, heard: 0, hear() { this.heard++; } });
+      body: {}, heard: 0, hear() { this.heard++; }, spot() { this.heard++; } });
   }));
   const body = Matter.Bodies.circle(px(4.5), px(3.5), 10);
   const player = { body, alive: true, isPlayer: true, armed: false, weapon: null, def: { kind: 'none' }, get x() { return body.position.x; }, get y() { return body.position.y; } };
@@ -71,7 +71,7 @@ test('tutorial: every guard sleeps until his wave is called, place after place',
   assert.ok(!second.dormant && second.heard === 1, 'the man in the entrance hall comes once the first is dead');
   s.go(18.5, 10.5); // out of his front door: the man at the far end of the corridor is only pointed at
   assert.equal(s.t.stage, 3);
-  const shooter = s.guardAt(28, 16);
+  const shooter = s.guardAt(26, 16);
   assert.ok(shooter.dormant);
   s.go(18.5, 16.5); // the corner
   assert.equal(s.t.stage, 4);
@@ -102,7 +102,7 @@ test('tutorial: a guard who is not blind wakes when he is walked up to from the 
 test('tutorial: the gun the shooter drops is left with two rounds', () => {
   const s = stub();
   s.go(22.5, 16.5);
-  const shooter = s.guardAt(28, 16), gun = { type: 'pistol', def: { kind: 'gun' }, mag: 5, x: shooter.x + 10, y: shooter.y, dead: false };
+  const shooter = s.guardAt(26, 16), gun = { type: 'pistol', def: { kind: 'gun' }, mag: 5, x: shooter.x + 10, y: shooter.y, dead: false };
   const far = { type: 'pistol', def: { kind: 'gun' }, mag: 7, x: px(4), y: px(4), dead: false };
   shooter.alive = false;
   s.world.events.emit('kill', { victim: shooter });
@@ -157,17 +157,17 @@ test('tutorial: a retry starts again at the last place reached, the rooms before
 test('tutorial: the shooter, pointed at from one stage and fought in the next, is still there on a retry of the second', () => {
   const s = stub(4);
   assert.equal(s.world.enemies.length, 4);
-  assert.ok(s.guardAt(28, 16)?.dormant);
+  assert.ok(s.guardAt(26, 16)?.dormant);
   s.t.update();
-  assert.ok(s.t.stage === 3 && s.guardAt(28, 16).dormant, 'he starts short of the corner');
+  assert.ok(s.t.stage === 3 && s.guardAt(26, 16).dormant, 'he starts short of the corner');
   s.go(18.5, 16.5);
-  assert.ok(!s.guardAt(28, 16).dormant, 'and is shot at as soon as he turns it');
+  assert.ok(!s.guardAt(26, 16).dormant, 'and is shot at as soon as he turns it');
 });
 
 test('tutorial: a retry at the landing finds the shooter gone and his gun, two rounds in it, at its feet', () => {
   const s = stub(5);
   assert.equal(s.world.enemies.length, 3);
-  assert.equal(s.guardAt(28, 16), undefined);
+  assert.equal(s.guardAt(26, 16), undefined);
   assert.deepEqual([s.t.owed.type, s.t.owed.mag], ['pistol', 2]);
   assert.ok(Math.hypot(s.t.owed.x - s.player.x, s.t.owed.y - s.player.y) < TILE * 1.2);
 });

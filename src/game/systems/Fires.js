@@ -1,7 +1,7 @@
-// Fires (level `fires`: [col, row, stage]): something burning at a spot, for the look of it: flames, smoke, embers,
-// a flickering light, the crackle, the air shimmering over it (Game.lensView reads lit()). In the tutorial the flat
-// burns behind him: a fire with a stage catches once that room of the lesson is reached (systems/Tutorial.js); one
-// without burns from the start. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on.
+// Fires (level `fires`: [col, row, stage, delay]): something burning at a spot, for the look of it: flames, smoke,
+// embers, a flickering light, the crackle, the air shimmering over it (Game.lensView reads lit()). In the tutorial the
+// flat burns behind him: a fire with a stage catches `delay` s after that room of the lesson is reached
+// (systems/Tutorial.js), with a whoosh; one without burns from the start. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on.
 // DOM-free: particles, lights and sounds asked of the world.
 import { TILE } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
@@ -13,20 +13,30 @@ const CRACKLE = [0.25, 0.7];
 export default class Fires {
   constructor(world, list = []) {
     this.world = world;
-    this.fires = list.map(([col, row, stage = -1]) => ({ x: col * TILE, y: row * TILE, stage, t: rand(0, FLAMES), lt: rand(0, LIGHT[0]), age: 0 }));
+    this.fires = list.map(([col, row, stage = -1, delay = 0]) => ({ x: col * TILE, y: row * TILE, stage, delay, t: rand(0, FLAMES), lt: rand(0, LIGHT[0]), age: 0 }));
     this.crackle = 0;
+    this.clock = 0;
+    this.reached = [];  // when each stage of the lesson was reached, on this clock
   }
 
   // the fires burning now
   lit() {
     const stage = this.world.tutorial?.stage ?? Infinity;
-    return this.fires.filter((f) => f.stage <= stage);
+    return this.fires.filter((f) => f.stage <= stage && (f.stage < 0 || !Number.isFinite(stage) || this.clock - (this.reached[f.stage] ?? this.clock) >= f.delay));
   }
 
   update(dt) {
-    const w = this.world, burning = this.lit();
+    const w = this.world, stage = w.tutorial?.stage ?? -1;
+    this.clock += dt;
+    for (let i = 0; i <= stage; i++) if (this.reached[i] === undefined) this.reached[i] = this.clock;
+    const burning = this.lit();
     if (!burning.length) return;
     for (const f of burning) {
+      if (f.age === 0 && f.stage >= 0) {
+        // it catches: a whoosh and a burst
+        w.sound('ignite', f.x, f.y, 0.8);
+        w.particles.fire(f.x, f.y, 8, 70, { size: [4, 8], life: [0.3, 0.7], rise: 60 });
+      }
       f.age += dt;
       const grow = Math.min(1, 0.35 + f.age / 2.5); // it catches, then roars
       if ((f.t -= dt) <= 0) {

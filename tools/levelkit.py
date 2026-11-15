@@ -124,15 +124,16 @@ class Level:
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
 
-    # ---- a fire at (col, row); stage: the room of the tutorial he must have reached for it to catch (None: at once)
+    # ---- a fire at (col, row); stage: the room of the tutorial he must have reached for it to catch (None: at once),
+    # delay: s after that before it does
     # ---- something lying flat, painted on the floor once and for all (a doormat, a carpet runner, a flight of stairs):
     # nobody bumps into it and no round stops on it
     def paint(self, sprite, col, row, deg=0):
         assert sprite in FLOOR, f'{sprite} is not floor paint'
         self.floor.append([sprite, col, row, deg])
 
-    def fire(self, col, row, stage=None):
-        self.fires.append([col, row] if stage is None else [col, row, stage])
+    def fire(self, col, row, stage=None, delay=None):
+        self.fires.append([col, row] if stage is None else [col, row, stage] if delay is None else [col, row, stage, delay])
 
     # ---- a dead body at (col, row), its head toward deg, in a pool of `pool` px
     def body(self, kind, col, row, deg=0, pool=18):
