@@ -124,7 +124,7 @@ export default class Enemy extends Character {
     this.seed = rand(0, 100);
     this.sep = { x: 0, y: 0 };
     this.executing = false;
-    this.held = null; // the player while he has us by the neck (Player.startTakedown)
+    this.held = null; // the player while he has us from behind (Player.startTakedown)
     this.nag = 0; this.nagStage = 0; // patience lost with a loitering stranger 0..1, warnings given (see mind)
     this.shooing = null;             // that stranger, while we stare him down
     this.tauntT = rand(1.5, 5);      // until the next curse thrown at the player
@@ -538,6 +538,7 @@ export default class Enemy extends Character {
       // seized from behind: nothing he can do, unless the grip is lost
       if (this.held.alive && this.held.takedown?.target === this) { this.halt(); return; }
       this.held = null;
+      this.body.collisionFilter = { ...this.body.collisionFilter, group: 0 }; // let go: solid to him again
     }
     if (this.updateVault(dt)) return;
     if (this.passive) { this.halt(); return; }
@@ -2183,9 +2184,9 @@ export default class Enemy extends Character {
     if (this.ashtray) drawItem(ctx, 'ashtray', this.ashtray.x, this.ashtray.y, 0.4);
     const k = 1 - this.crouch * 0.12;
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
-    const B = this.postBody();
+    const B = this.held ? null : this.postBody(); // seized at his post: in the hands of the one behind him
     if (B) drawPose(ctx, this, postPose(this, standPose(this, this.pose), this.pose2, B));
-    else if (this.yielded && this.knocked <= 0) drawPose(ctx, this, kneelPose(standPose(this, this.pose)));
+    else if (this.yielded && this.knocked <= 0 && !this.held) drawPose(ctx, this, kneelPose(standPose(this, this.pose)));
     else super.draw(ctx);
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
@@ -2196,7 +2197,7 @@ export default class Enemy extends Character {
     if (kind) drawPastime(ctx, this, kind, ONE_GO.has(kind) ? this.actT : t);
     // what is in his hands at his post, in his torso's frame
     const P = this.pose, A = { x: this.x + P.tx, y: this.y + P.ty, angle: P.ta, s: P.s, side: this.seat?.side ?? 1, seed: this.seed };
-    const ph = this.gestureOn;
+    const ph = this.held ? null : this.gestureOn; // seized: his hands are off his work
     if (ph) {
       const G = GESTURES[ph.g], R = this.routine;
       if (G?.pastime) drawPastime(ctx, A, G.pastime, gestureClock(G, R.k, t, this.seed));

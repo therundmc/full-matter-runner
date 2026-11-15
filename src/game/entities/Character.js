@@ -15,7 +15,7 @@ import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH } from '../data/feel.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
@@ -782,6 +782,8 @@ export default class Character {
     if (this.sit > 0) sitPose(this, P, this.pose2);
     if (this.trunkOpen) trunkPose(this, P, this.pose2);
     if (this.execution) execPose(this, P, this.pose2);
+    if (this.takedown) takedownPose(this, P, this.pose2);
+    if (this.held?.takedown?.target === this) heldPose(this, P);
     if (this.doorHand) doorHandPose(this, P);
     // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
     if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');

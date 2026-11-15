@@ -667,9 +667,10 @@
     // on a plan, only a guard who is on to us is fought; the others are left alone
     const threat = !!tg && (tdist < reach + 24 || (tg.aware >= 2 && tdist < (gun ? range : 170)));
     const foe = B.plan && !threat ? null : tg;
-    // an unaware guard, standing: creep up behind him for a takedown (half the time), instead of rushing him
-    if (foe !== B.sneakFor) { B.sneakFor = foe; B.sneak = !!foe && rnd() < 0.5; }
-    const sneaking = foe && B.sneak && !gun && foe.aware === 0 && !(foe.knocked > 0) && !foe.held;
+    // an unaware guard, standing: creep up behind him for a takedown (half the time; a third with a gun in hand: the
+    // execution from behind, a round or the butt), instead of rushing him or shooting him
+    if (foe !== B.sneakFor) { B.sneakFor = foe; B.sneak = !!foe && rnd() < (gun ? 0.35 : 0.5); }
+    const sneaking = foe && B.sneak && foe.aware === 0 && !(foe.knocked > 0) && !foe.held;
     const back = sneaking && { x: foe.x - Math.cos(foe.angle) * 20, y: foe.y - Math.sin(foe.angle) * 20 };
 
     // plan or goal upkeep
@@ -767,7 +768,7 @@
     if (foe) {
       const aimed = Math.abs(angDiff(p.angle, Math.atan2(foe.y - p.y, foe.x - p.x))) < 0.12;
       if (gun) {
-        if (tdist < range && (p.weapon.mag > 0 || p.reserveCount() === 0)) {
+        if (tdist < range && !sneaking && (p.weapon.mag > 0 || p.reserveCount() === 0)) {
           if (d.auto) { inp.mouse.down[0] = true; if (S.clock > B.fireT) { B.fireT = S.clock + 0.4; act('fire (auto)'); } }
           else if (S.clock > B.fireT && aimed) { inp.mouse.clicked[0] = true; inp.mouse.down[0] = true; B.fireT = S.clock + 0.15 + rnd() * 0.25; act('fire'); }
         }
@@ -898,7 +899,7 @@
     if (v?.rolling && v.rolling !== B.rollWas) { cover('roll'); act('roll'); }
     B.vaultWas = v;
     B.rollWas = v?.rolling;
-    if (p.takedown && p.takedown !== B.takedownWas) { cover('takedown'); act('takedown'); }
+    if (p.takedown && p.takedown !== B.takedownWas) { cover('takedown'); act(`takedown (${p.takedown.f.label})`); }
     B.takedownWas = p.takedown;
     if (p.execution && p.execution !== B.execWas) { cover('finisher'); act('finisher'); }
     B.execWas = p.execution;

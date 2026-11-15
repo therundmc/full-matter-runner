@@ -44,10 +44,64 @@ export function finisherFor(d, weapon) {
   return FINISHERS[d.finisher || (d.hold === 'none' ? 'fists' : d.swing)] || FINISHERS.fists;
 }
 
-// Takedowns (a guard seized from behind, Player.takedownKind): action = the hint on screen, label = the score's
+// Takedowns: a standing guard who has not seen us, seized from behind (Space right at his back, systems/Takedown.js
+// `behind`), put down by what is in the hand (takedownFor). Played like a finisher (Player.updateTakedown, the clock
+// is systems/Takedown.js `advance`): the player is locked in it, the beats = [wait s, what] land in order (the wait
+// is the anticipation, the beat lands at its end), the last one kills, and he stays `after` s in the pose while the
+// body (entities/Ragdoll.js) goes down its own way (`dying`). The poses: CharacterAnim takedownPose / heldPose.
+//   grip   how he is held: 'neck' (an arm round his throat, the other hand on his head) | 'mouth' (the left hand
+//          flat over his mouth, his head pulled back) | 'collar' (the left fist in the back of his collar) | 'cue'
+//          (the cue across his throat in both hands) | none: not touched, struck from a step behind
+//   gap    px between the two (centres) once set: pressed against his back, or a weapon's length behind him; lat =
+//          px off to our right of the line of his back (our head beside his, not over it: he stays readable)
+//   what   'seize' (the hands on him) | 'struggle' (he fights the grip, both shake) | 'twist' (the head wrenched
+//          round) | 'draw' (the blade brought round under his chin) | 'cut' | 'windup' (the weapon raised) | 'nape' (a
+//          blow on the back of his head) | 'muzzle' (the gun brought to his nape) | 'shot' (one round) | 'butt' (a long
+//          gun turned round, its butt driven into the back of his head)
+//   drop   index of the beat that puts him on his knees without killing him (he is shot on the way down)
+//   cause  how fx/Gore.js takes the kill ('shot': the gun's own, Player.shotCause); wound: its profile when not the
+//          weapon's; dying: how the body goes down (data/wounds.js KNEELS)
+//   noise  px the guards hear the blows at (ai/Director.js; a round is heard as the gun's own `noise`, a body let
+//          down as AI.bodyFallRadius x 0.4)
+// action = the hint on screen, label = what the score calls it.
 export const TAKEDOWNS = {
-  neck: { action: 'BREAK NECK', label: 'NECK SNAP' },
-  blade: { action: 'SLIT THROAT', label: 'THROAT CUT' },
-  choke: { action: 'CHOKE OUT', label: 'CHOKED' },       // the cue across his throat
-  club: { action: 'CRACK SKULL', label: 'SKULL CRACK' }, // bat, tire iron: one blow to the back of the head
+  // fists: an arm round his neck, a beat of struggle, the twist; he goes limp and is lowered
+  neck: { action: 'BREAK NECK', label: 'NECK SNAP', grip: 'neck', gap: 11, lat: 7, after: 0.5, cause: 'snap', dying: 'slump', noise: 40,
+    beats: [[0.14, 'seize'], [0.36, 'struggle'], [0.16, 'twist']] },
+  // a blade: the hand over his mouth, the throat opened; he sags clutching it and falls forward
+  blade: { action: 'SLIT THROAT', label: 'THROAT CUT', grip: 'mouth', gap: 11, lat: 6, after: 0.45, cause: 'slash', dying: 'throat', noise: 0,
+    beats: [[0.14, 'seize'], [0.24, 'draw'], [0.12, 'cut']] },
+  // the cue across his throat, pulled back until it is over
+  choke: { action: 'CHOKE OUT', label: 'CHOKED', grip: 'cue', gap: 11, lat: 2, after: 0.5, cause: 'snap', dying: 'slump', noise: 30,
+    beats: [[0.16, 'seize'], [0.5, 'struggle'], [0.2, 'twist']] },
+  // a club: one heavy blow to the nape; he drops straight onto his knees, then onto his face
+  club: { action: 'CRACK SKULL', label: 'SKULL CRACK', gap: 15, lat: 2, after: 0.55, cause: 'melee', wound: 'crush', dying: 'kneel', noise: 110,
+    beats: [[0.34, 'windup'], [0.1, 'nape']] },
+  // a handgun: his collar in the fist, the muzzle to his nape, one round; he pitches forward
+  pistol: { action: 'NAPE SHOT', label: 'EXECUTED', grip: 'collar', gap: 15, lat: 3, after: 0.5, cause: 'shot', dying: 'kneel', noise: 0,
+    beats: [[0.14, 'seize'], [0.28, 'muzzle'], [0.06, 'shot']] },
+  // ... no round left: the butt of it on his nape
+  pistolDry: { action: 'PISTOL WHIP', label: 'PISTOL WHIPPED', grip: 'collar', gap: 14, lat: 3, after: 0.55, cause: 'melee', wound: 'crush', dying: 'kneel', noise: 90,
+    beats: [[0.14, 'seize'], [0.26, 'windup'], [0.1, 'nape']] },
+  // a long gun: the butt to the back of his head, he falls to his knees, a round into him as he goes down
+  long: { action: 'PUT DOWN', label: 'PUT DOWN', gap: 17, lat: -2, after: 0.5, cause: 'shot', dying: 'kneel', drop: 0, noise: 90,
+    beats: [[0.3, 'butt'], [0.34, 'shot']] },
+  // ... no round left (or a launcher): a second butt stroke
+  longDry: { action: 'BUTT STROKE', label: 'BUTT STROKED', gap: 17, lat: -2, after: 0.5, cause: 'melee', wound: 'crush', dying: 'kneel', drop: 0, noise: 110,
+    beats: [[0.3, 'butt'], [0.36, 'butt']] },
 };
+
+// d: weapon definition, weapon: the one in hand (an empty gun, or a launcher, is struck with)
+export function takedownFor(d, weapon) {
+  if (d.kind === 'gun') {
+    const loaded = weapon?.mag > 0 && !d.rocket;
+    if (d.hold === 'two') return loaded ? TAKEDOWNS.long : TAKEDOWNS.longDry;
+    return loaded ? TAKEDOWNS.pistol : TAKEDOWNS.pistolDry;
+  }
+  if (d.swing === 'blade') return TAKEDOWNS.blade;
+  if (d.finisher === 'cue') return TAKEDOWNS.choke;
+  return d.swing === 'club' ? TAKEDOWNS.club : TAKEDOWNS.neck;
+}
+
+// how a round of gun d is taken by fx/Gore.js at point blank (as Character.hit has it: buckshot that close tears)
+export const shotCause = (d) => (d.pellets > 1 ? 'blast' : d.heavy ? 'heavy' : 'bullet');

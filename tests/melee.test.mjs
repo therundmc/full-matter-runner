@@ -91,16 +91,6 @@ test('melee: a spin takes whoever stands round him, a blade comes down overhead 
   assert.ok(k.how.heavy && !k.how.spin);
 });
 
-test('melee: what a guard seized from behind gets depends on what is in the hand', () => {
-  const kind = (type) => fighter(type).takedownKind();
-  assert.equal(kind('bat'), 'club');
-  assert.equal(kind('tire_iron'), 'club');
-  assert.equal(kind('cue'), 'choke');
-  assert.equal(kind('cue_half'), 'blade');
-  assert.equal(kind('knife'), 'blade');
-  assert.equal(kind(null), 'neck');
-});
-
 // a flying weapon thrown by the player, `v` px/step towards a guard facing it
 const { default: WeaponItem } = await load('game/entities/WeaponItem.js');
 function flight(type, v) {

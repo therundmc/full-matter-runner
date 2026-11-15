@@ -4,7 +4,7 @@ import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
-import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, TEAR, SKULL, woundFor, blowScale, markOf } from '../data/wounds.js';
+import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, TEAR, SKULL, KNEELS, woundFor, blowScale, markOf } from '../data/wounds.js';
 import { fling, wallBehind, splashWall } from './Spatter.js';
 import { WALL_RIM } from '../Config.js';
 import { skullBit, BIT_KINDS } from '../render/GoreArt.js';
@@ -23,6 +23,8 @@ const GUNSHOT = new Set(['bullet', 'heavy', 'blast']);
 // knocked off (x the usual).
 // how: the blow (Character.kill: heavy, spin, finisher, thrown...) scales the blood and the throw. A man held from
 // behind (ch.held: a takedown) is let down where he stood; one already down (ch.knocked) is finished where he lies.
+// how.dying: the way down the killer chose (a takedown, data/finishers.js): he goes down whole, that way (kneeling:
+// from his knees).
 // Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
 export function gore(world, ch, angle, cause, by, how) {
   const P = world.particles;
@@ -34,9 +36,9 @@ export function gore(world, ch, angle, cause, by, how) {
   const wd = throat ? WOUNDS.throat : woundFor(cause, by, blow);
   const more = blowScale(wd, by, blow), many = (n) => Math.round(n * more);
 
-  const tear = TEAR[cause];
+  const tear = TEAR[cause], scripted = how?.dying;
   let mode = 'corpse';
-  switch (cause) {
+  if (!scripted) switch (cause) {
     case 'explosion': case 'blast': case 'heavy': mode = chance(tear.gibs) ? 'gibs' : chance(tear.headless ?? 0) ? 'headless' : 'corpse'; break;
     case 'bullet': mode = chance(0.18 * goreMul) ? 'headless' : 'corpse'; break;
     case 'melee': mode = chance(0.3 * goreMul) ? 'headless' : 'corpse'; break;
@@ -46,7 +48,7 @@ export function gore(world, ch, angle, cause, by, how) {
   }
   // a round to the head from close enough bursts the skull (a 9 mm never takes a head off whole: it bursts it too)
   let burst = false;
-  if (mode !== 'gibs' && wd.skull && GUNSHOT.has(cause)) {
+  if (mode !== 'gibs' && wd.skull && GUNSHOT.has(cause) && !scripted) {
     if ((how?.dist ?? 0) <= wd.skull[1] && chance(wd.skull[0])) { mode = 'headless'; burst = true; }
     else burst = mode === 'headless' && cause === 'bullet';
   }
@@ -93,19 +95,20 @@ export function gore(world, ch, angle, cause, by, how) {
   const bleeding = { pool: rand(wd.pool[0], wd.pool[1]) * Math.sqrt(more), poolRate: wd.rate, spurt: wd.spurt || artery, dry: cause === 'snap' };
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
-    const detach = tornLimbs(tear);
+    const detach = scripted ? [] : tornLimbs(tear);
     const whole = mode === 'corpse' && !detach.length;
     // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
     const behead = mode === 'headless' && !burst && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
-    const dying = cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
-    const kneels = dying === 'throat' || dying === 'behead'; // where he stood, pitching forward the way he faced
+    const dying = scripted || (cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
+    const kneels = !!KNEELS[dying]; // where he stood, pitching forward the way he faced
     // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
     const lay = ch.knocked > 0 ? ch.downAngle : null;
     const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
-    world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + rand(-0.3, 0.3) : lay ?? angle, behead || lay !== null ? 0 : slide, {
+    world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + rand(-0.3, 0.3) : lay ?? angle, kneels || lay !== null ? 0 : slide, {
       headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, dying, mark: markOf(wd),
-      // he faced his killer: he goes over backwards (a cut throat pitches forward)
-      back: !!dying && dying !== 'throes' && dying !== 'throat' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
+      kneeling: kneels && !!how?.kneeling,
+      // he faced his killer: he goes over backwards (one who kneels pitches forward)
+      back: !!dying && dying !== 'throes' && !kneels && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
       killer: dying === 'crawl' ? killerOf(world, x, y, angle) : null,
     }));
   } else {

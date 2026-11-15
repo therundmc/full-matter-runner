@@ -37,7 +37,8 @@ src/
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
-      Takedown.js         `behind(player, guard)`: who can be seized from behind (rule only, unit-tested)
+      Takedown.js         `behind(player, guard)`: who can be seized from behind; `advance`: the beat clock of a takedown
+                          (rules only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
@@ -333,9 +334,18 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
   Space = context action: execute > takedown > vault > slide. (A cover system existed and was removed at the user's
   request.)
-- Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown): Space right behind a standing guard who has
-  his back to us. He is `held` (helpless, mute) for the half second it takes, then killed with cause `snap` (a dry
-  body: no blood, no cry, a body fall heard from much closer) or, knife in hand, `slash`. Scored as `takedown`.
+- Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown, data/finishers.js `TAKEDOWNS` / `takedownFor`):
+  Space right behind a standing guard who has his back to us: an execution from behind by the weapon in hand (`swing`,
+  `hold`, `kind`; an empty gun or a launcher is struck with), a short sequence of beats (0.95 to 1.4 s) the player is
+  locked in, the two bodies let through each other (a shared negative collision group). Fists: an arm round his neck,
+  a struggle, the twist (`snap`: a dry body). A blade: a hand over his mouth, the throat cut (`slash`, the cut-throat
+  bleed-out). The cue: across his throat. A club: one blow on the nape. A handgun: his collar, the muzzle on his
+  nape, one round (dry: the butt). A long gun: the butt on the back of his head drops him to his knees, a round into
+  him on the way down (dry: a second butt stroke). He is `held` (helpless, mute) throughout and drawn by CharacterAnim
+  heldPose (the player: takedownPose); the body then goes down by the sequence's `dying` (data/wounds.js `KNEELS`:
+  onto his knees, then onto his face, through Ragdoll's kneeling script; backward when boxed in). The guards hear
+  each sequence's `noise` (a cut throat nothing, a blow on the head ~100 px, a round the gun's own noise) and the body
+  let down. Scored as `takedown`, its label and FROM BEHIND (`how.from`), LAST ROUND when it was.
 - Slide (Player, `PLAYER.slide`): Space while running with nothing to vault. ~0.5 s burst from ~2x run speed decaying to
   a jog (~2.9 m), stays physical (walls stop it, loose props take our momentum), sweeps standing enemies off their
   feet, can chain into a vault, the gun stays usable; 0.5 s cooldown. At its heart (`duck`) the body is under the

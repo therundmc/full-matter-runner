@@ -184,12 +184,27 @@ export const THROAT = {
 
 // A head taken off a man on his feet (entities/Ragdoll.js, fx/DyingPose.js): the body sinks onto its knees where it
 // stood, arms hanging, stays there while the neck throws blood up in spurts that come down all round it, then
-// pitches forward onto the floor. The fields of THROAT, plus hold = s it stays on its knees and odds = chance a
-// beheaded body does this instead of being thrown down like any other.
+// pitches forward onto the floor. The fields of THROAT, plus hold = s it stays on its knees, hang = the arms hang
+// (no hands to the throat) and odds = chance a beheaded body does this instead of being thrown down like any other.
 export const BEHEAD = {
-  odds: 0.7, kneel: 0.3, hold: 0.9, pitch: 0.4, dur: [2.3, 2.8], slip: 0.2, upright: 0.42,
+  odds: 0.7, kneel: 0.3, hold: 0.9, pitch: 0.4, dur: [2.3, 2.8], slip: 0.2, upright: 0.42, hang: true,
   beats: [5, 7], gap: 0.2, slow: 1.12, fade: 0.84, jet: [50, 260], beat: 0.2, push: [0, 1],
 };
+
+// Put down from behind (data/finishers.js TAKEDOWNS `dying`), the fields of THROAT without a spurt:
+//   kneel  a blow on the nape or a round through it: the legs go, he drops straight onto his knees, sways there a
+//          breath, arms hanging, then onto his face
+//   slump  the neck broken (or choked out): limp in the arms that held him, lowered onto his knees, then face down
+export const KNEEL = {
+  kneel: 0.2, hold: 0.25, pitch: 0.3, dur: [1.1, 1.4], slip: 0.2, upright: 0.42, hang: true,
+  beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 1],
+};
+export const SLUMP = {
+  kneel: 0.42, hold: 0.05, pitch: 0.45, dur: [1.2, 1.5], slip: 0.2, upright: 0.42, hang: true,
+  beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 0],
+};
+// the ways of dying that start on his feet, sink to the knees and pitch forward (fx/DyingPose.js throatPose)
+export const KNEELS = { throat: THROAT, behead: BEHEAD, kneel: KNEEL, slump: SLUMP };
 
 // Death throes (entities/Ragdoll.js): his limbs jerking a moment. odds = chance a body that does not crawl moves at
 // all once down (spasm and curl take their share of it first, the rest is throes), dur = [min, max] s it lasts,

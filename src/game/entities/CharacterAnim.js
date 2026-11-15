@@ -408,36 +408,6 @@ export function standPose(ch, P, a = ch.angle) {
     dip = 0.05 * Math.sin(Math.PI * k);
   }
 
-  if (ch.grab) {
-    // takedown from behind (Player.updateTakedown), on its own clock k: the arms close round the neck of the man
-    // standing D px ahead, hold him, then wrench his head to one side. With a knife the left hand holds the head and
-    // the blade is drawn across the throat; a gun or a bat stays in the right hand and the left arm does it alone.
-    const G = ch.grab, D = G.d, s = G.side;
-    const on = smooth(G.k / 0.3) * (1 - smooth((G.k - 0.72) / 0.28));
-    const wr = smooth((G.k - 0.42) / (TAKEDOWN.killAt - 0.42));
-    const ha = s * 1.2 * wr, c = Math.cos(ha), sn = Math.sin(ha);
-    const round = (lx, ly) => [D + lx * c - ly * sn, lx * sn + ly * c]; // a point of his head, turning with it
-    let l, r = null;
-    if (d.hold === 'none') { l = round(-1.5, -4); r = round(-1.5, 4); }
-    else if (G.blade) { l = [D - 1 - 1.5 * wr, -3.5]; r = [D + 3 - 2 * wr, 4 + 3 * wr]; wa = lerp(wa, -1.85 + 0.75 * wr, on); }
-    else l = round(2.5, 1);
-    hlx = lerp(hlx, l[0], on); hly = lerp(hly, l[1], on);
-    if (r) {
-      hrx = lerp(hrx, r[0], on); hry = lerp(hry, r[1], on);
-      if (wpnOn) { wx = hrx; wy = hry; }
-    } else { hrx -= 3 * on; wx -= 3 * on; }
-    twist += s * 0.3 * wr * on;
-    back -= 2.5 * on;
-  }
-  if (ch.held) {
-    // seized from behind: pulled back onto his heels, the free hand clawing at the arm round his neck
-    const j = Math.sin(ch.world.time * 38 + ch.breath) * 0.8;
-    hlx = 4.5 + j; hly = -3;
-    if (wpnOn) wa += 0.5;
-    else { hrx = 4.5 - j; hry = 3; }
-    back += 1.5;
-  }
-
   // flinching from a round that went by or struck close (systems/Flinch.js): the head ducked in, the shoulders hunched
   // and turned away from it, the body pulled off its way and lowered; empty hands come up before the face
   const fl = flinchAt(ch), FP = FLINCH.pose;
@@ -1050,6 +1020,194 @@ export function execPose(ch, P, V) {
   V.carryImg = null;
   blendPose(P, V, m);
   P.legs = V.legs * m;
+  return P;
+}
+
+// ---------------- a guard taken from behind (Player.takedown, data/finishers.js TAKEDOWNS) ----------------
+// The player right behind the man, both looking the same way: x forward in what follows, the man D pose px ahead
+// (his centre; his nape, throat and mouth along x). Every beat is an anticipation that ends on its blow: u = 0..1
+// through the wait, the blow at 1; hit = s since the last one landed. By grip:
+//   neck    the right forearm across his throat, the left hand flat on his head; both shake through the struggle,
+//           and the twist takes the hands round his head
+//   mouth   the left hand flat over his mouth; the blade comes round under his chin, then is drawn across his throat
+//   collar  the left fist in the back of his collar; the gun brought down onto his nape and fired (the hand kicks
+//           back), or raised and its butt brought down on the nape
+//   cue     the cue across his throat in both hands, pulled back
+//   none    a club raised in both hands over the right shoulder (pointing back and out) and brought down on his
+//           nape; a long gun turned round, butt first, driven into the back of his head, then turned on him and
+//           fired down into him as he sinks
+const ON = { nape: -1.8, throat: 2.8, mouth: 3.9, head: NECK }; // pose px off his centre, along his facing
+const ARM_LEN = LIMB.upper + LIMB.fore - 0.6;                     // a hand reaching right out (reach() is the poses')
+function reachOut(h, P, side) {
+  shoulder(SH, P, side);
+  const dx = h.x - SH.x, dy = h.y - SH.y, len = Math.hypot(dx, dy), max = ARM_LEN * P.s;
+  if (len > max) { h.x = SH.x + (dx / len) * max; h.y = SH.y + (dy / len) * max; }
+}
+// px from the hand to the muzzle of a gun, to the far end of anything else
+const ahead = (d) => (d.kind === 'gun' ? muzzleX(d, spriteW(sprite(d.sprite))) : spriteW(sprite(d.sprite)) - d.grip);
+
+export function takedownPose(ch, P, V) {
+  const td = ch.takedown, f = td.f, d = ch.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1), D = td.d, side = td.side;
+  const thud = Math.exp(-td.hit * 14), first = td.i === 0 && !td.done;
+  const kick = td.done && what === 'shot' ? Math.exp(-td.t * 9) : 0;
+  const N = D + ON.nape, T = D + ON.throat, M = D + ON.mouth, H = D + ON.head;
+  // into it as he closes in, out of it over the end of `after`
+  const m = smooth(td.age / TAKEDOWN.set) * (td.done ? 1 - smooth((td.t / f.after - 0.55) / 0.45) : 1);
+  copyPose(V, P);
+  let lean = 0, twist = 0, hl = null, hr = null, wa = 0, len = V.wpnLen, top = 0;
+  V.flat = null;
+  const grab = f.grip && first ? smooth(u) : 1; // the hands closing on him through the seize
+  // from where a hand is in the standing pose (aim frame) to (x, y), k of the way
+  const from = (h, x, y, k) => {
+    const hx = h.x * c + h.y * s, hy = -h.x * s + h.y * c;
+    return [lerp(hx, x, k), lerp(hy, y, k)];
+  };
+  const shake = what === 'struggle' && !td.done ? Math.sin(td.age * 46) * 0.7 * Math.sin(Math.PI * u) : 0;
+  if (f.grip === 'neck' || f.grip === 'cue') {
+    // the twist turns everything round his head; a cue is pulled back hard instead
+    const cue = f.grip === 'cue', w = what === 'twist' ? (td.done ? 1 : in2(u)) : 0;
+    const r = (cue ? 0 : side * 1.15) * w, rc = Math.cos(r), rs = Math.sin(r);
+    const round = (x, y) => [H + (x - H) * rc - y * rs, (x - H) * rs + y * rc];
+    const pull = cue ? 1.2 * w + 0.6 * Math.abs(shake) : 0;
+    const L = cue ? [T - pull, -7.5] : round(H + 0.2, -4.2), R = cue ? [T - pull, 7.5] : round(T + 0.6, -1.2 + shake * 0.5);
+    hl = from(V.hl, L[0], L[1] + shake, grab); hr = from(V.hr, R[0], R[1], grab);
+    lean = -1.2 * grab - pull * 0.6;
+    twist = (cue ? 0 : -side * 0.18 * w) + shake * 0.04;
+    V.hand[0] = cue ? 'fist' : 'flat'; V.hand[1] = cue ? 'fist' : 'loose';
+    if (!cue) { V.flat = 'hl'; V.flatA = a + r + 1.2; }
+    V.elb[0] = V.elb[1] = 0.25;
+    if (cue) { wa = -Math.PI / 2; len = 1; top = 2; }
+  } else if (f.grip === 'mouth') {
+    // the left hand over his mouth; the blade under his chin (draw), then across (cut)
+    hl = from(V.hl, M, -0.6, grab);
+    V.flat = 'hl'; V.flatA = a + 1.35;
+    let k = 0, x = T + 0.6, y = -3.2;
+    if (what === 'draw' && !td.done) { k = smooth(u); wa = -0.6 * k; }
+    else if (what === 'cut') {
+      const e = td.done ? 1 : in2(u);
+      k = 1; x = lerp(T + 0.6, T - 0.4, e); y = lerp(-3.2, 5.5, e); wa = lerp(-0.6, 0.5, e);
+    }
+    hr = from(V.hr, x, y, k);
+    const cut = what === 'cut' ? (td.done ? 1 : u) : 0;
+    lean = -1 * grab - 0.8 * cut;
+    twist = 0.15 * cut;
+    V.elb[0] = 0.2; V.elb[1] = 0.3;
+    len = lerp(V.wpnLen, 0.8, k);
+    top = k > 0.5 ? 1 : 0;
+  } else if (f.grip === 'collar') {
+    hl = from(V.hl, N - 1, -1.8, grab);
+    V.hand[0] = 'fist';
+    V.elb[0] = 0.3;
+    if (what === 'muzzle' || what === 'shot') {
+      // the gun brought down onto his nape, tipped down at it (it shows shorter), held, fired
+      const k = what === 'muzzle' && !td.done ? smooth(u / 0.7) : 1, x = 6.4 - 2.5 * kick, y = 1.6;
+      hr = from(V.hr, x, y, k);
+      len = lerp(V.wpnLen, clamp((N + 0.4 - x) / ahead(d), 0.3, 1), k) - 0.15 * kick;
+      wa = 0.06 * k - 0.25 * kick;
+      lean = 0.6 * k - 1.5 * kick;
+      top = k > 0.5 ? 1 : 0; // the arm out over his back
+      V.elb[1] = 0.6;
+    } else if (what === 'windup' || what === 'nape') {
+      // raised, butt down, over the shoulder; brought down on the nape
+      const up = what === 'windup' ? (td.done ? 0 : smooth(u)) : td.done ? 0 : 1 - in2(u);
+      hr = from(V.hr, lerp(N - 0.8, 0.5, up), lerp(1, 5, up), what === 'windup' ? smooth(u * 1.5) : 1);
+      len = lerp(0.35, -0.6, up); wa = lerp(0.15, -0.7, up);
+      lean = lerp(1.6, -1, up) + 0.6 * thud;
+      top = 1;
+      V.elb[1] = 0.45;
+    }
+  } else if (d.kind === 'gun') {
+    // a long gun: butt first (turned round, the muzzle up over the shoulder), then on him as he sinks
+    const fore = (d.fore ?? d.grip + 6) - d.grip;
+    if (what === 'butt') {
+      const strike = td.done ? 1 : u < 0.6 ? 0 : in2((u - 0.6) / 0.4), back = td.done ? 0 : smooth(Math.min(1, u / 0.5)) * (1 - strike);
+      const k = 0.75, x = lerp(lerp(3.5, 0, back), N - d.grip * k, strike);
+      hr = from(V.hr, x, 1.6, td.i === 0 ? smooth(Math.min(1, td.age / 0.15)) : 1);
+      hl = [hr[0] - fore * k, hr[1] - 1.2];
+      wa = Math.PI; len = k; top = 2;
+      lean = lerp(-1.2 * back, 2, strike) + 0.5 * thud;
+      twist = -0.2 * back;
+    } else {
+      // turned back round onto him, the muzzle down at his back (it shows shorter), fired
+      const k = td.done ? 1 : smooth(u / 0.45), x = 3.6 - 2 * kick;
+      hr = [x, 3];
+      len = lerp(0.55, clamp((D - 1 - x) / ahead(d), 0.3, 1), k) - 0.12 * kick;
+      wa = lerpA(Math.PI, 0.05, k) - 0.2 * kick;
+      hl = [x + fore * Math.cos(wa) * len, 3 + fore * Math.sin(wa) * len - 0.8];
+      lean = 1 * k - 2 * kick;
+      top = k < 0.5 ? 2 : 1;
+    }
+    V.elb[0] = 0.3; V.elb[1] = 0.6;
+  } else {
+    // a club in both hands: raised over the right shoulder (pointing back, up at the eye), brought down on his nape
+    const up = what === 'windup' ? (td.done ? 0 : smooth(u)) : td.done ? 0 : 1 - in2(u);
+    const x = lerp(N - 0.75 * ahead(d) * 0.45, -1, up);
+    hr = from(V.hr, x, lerp(1.2, 3.4, up), what === 'windup' ? smooth(u * 1.4) : 1);
+    hl = [hr[0] - 1.5, lerp(-1.2, 1, up)];
+    len = lerp(0.45, -0.75, up); wa = -0.65 * up;
+    lean = lerp(3, -1.5, up) + 0.8 * thud;
+    top = 2; // over the shoulder, then out over his back
+    V.s = P.s * (1 + 0.03 * up - 0.03 * thud);
+  }
+  V.ta = a + twist;
+  V.tx = P.tx + c * lean; V.ty = P.ty + s * lean;
+  const put = (h, q, i) => { h.x = q[0] * c - q[1] * s; h.y = q[0] * s + q[1] * c; reachOut(h, V, i); };
+  if (hl) put(V.hl, hl, -1);
+  if (hr) put(V.hr, hr, 1);
+  if (V.wpnOn) { V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a + wa; V.wpnLen = len; }
+  V.top = top;
+  V.carryImg = null;
+  blendPose(P, V, m);
+  P.flat = m > 0.5 ? V.flat : null;
+  P.flatA = V.flatA;
+  return P;
+}
+
+// The man being taken (Enemy.held, the player's takedown), in his own frame (x his facing). Seized, he is pulled back
+// onto the one behind him, his hands at what holds him (at the arm or the cue across his throat, at the hand over
+// his mouth; a collar grabbed: hands thrown up), shaking through a struggle; a twist wrenches his head round; a blow
+// on the nape throws his head and shoulders forward; one that does not kill drops him onto his knees (the shins
+// under him, slumped forward, arms hanging).
+export function heldPose(ch, P) {
+  const td = ch.held.takedown, f = td.f, a = P.ta, c = Math.cos(a), s = Math.sin(a), t = ch.world.time;
+  const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1);
+  const grab = !f.grip ? 0 : td.i === 0 && !td.done ? smooth(u) : 1;
+  const landed = td.done ? what : td.i > 0 ? f.beats[td.i - 1][1] : null;
+  const struck = landed === 'nape' || landed === 'butt' ? Math.exp(-td.hit * 10) : 0;
+  const shake = what === 'struggle' && !td.done ? Math.sin(t * 41 + ch.breath) * Math.sin(Math.PI * u) : 0;
+  const down = td.downAt >= 0 ? smooth((td.age - td.downAt) / 0.2) : 0;
+  const twist = what === 'twist' ? (td.done ? 1 : in2(u)) : 0;
+  const j = Math.sin(t * 37 + ch.breath) * 0.7 * grab;
+  let hands = null, pull = 0;
+  if (f.grip === 'neck' || f.grip === 'cue') { hands = [4.6 + j, -2.4, 4.6 - j, 2.4]; pull = 1.3; }
+  else if (f.grip === 'mouth') { hands = [5.2 + j, -1.8, 4.4, 2.8 - j]; pull = 1.5; }
+  else if (f.grip === 'collar') { hands = [2.5 + j * 0.3, -8, 2.5 - j * 0.3, 8]; pull = 0.6; }
+  const put = (h, lx, ly, k) => { h.x = lerp(h.x, P.tx + (lx * c - ly * s) * P.s, k); h.y = lerp(h.y, P.ty + (lx * s + ly * c) * P.s, k); };
+  // his torso: pulled back, thrown forward by a blow, slumped on his knees
+  const fwd = -pull * grab + 2.2 * struck + 2 * down + 0.4 * shake;
+  P.tx += c * fwd; P.ty += s * fwd;
+  P.s *= 1 - 0.14 * down;
+  P.ta = a + 0.12 * shake;
+  P.ha = a + td.side * 1.1 * twist + 0.15 * shake;
+  if (hands) {
+    put(P.hl, hands[0], hands[1], grab);
+    if (!P.wpnOn) put(P.hr, hands[2], hands[3], grab);
+    P.hand[0] = P.hand[1] = f.grip === 'collar' ? 'flat' : 'loose';
+  }
+  if (down > 0) {
+    // on his knees, the arms gone slack by his sides
+    put(P.hl, 2.5, -5.5, down);
+    if (!P.wpnOn) put(P.hr, 2.5, 5.5, down);
+    P.hand[0] = P.hand[1] = 'loose';
+    YIELD_FEET.forEach(([lx, ly], i) => {
+      const ft = P.feet[i];
+      ft.x = lerp(ft.x, lx * c - ly * s, down); ft.y = lerp(ft.y, lx * s + ly * c, down);
+      ft.a = lerpA(ft.a, a + Math.PI, down); ft.lift *= 1 - down; ft.heel *= 1 - down;
+    });
+    P.legs = Math.max(P.legs, down);
+  }
+  P.top = 0;
   return P;
 }
 

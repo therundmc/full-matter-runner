@@ -2,7 +2,7 @@ import { CAT, MASK, PALETTE, BODY_SCALE, TILE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
-import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, THROAT, BEHEAD } from '../data/wounds.js';
+import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, KNEELS } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
 import { smear } from '../fx/Spatter.js';
 import { poolArt } from '../render/BloodArt.js';
@@ -19,7 +19,7 @@ const BLOCKERS = CAT.WALL | CAT.DOOR | CAT.GLASS | CAT.EDGE | CAT.PROP;
 const ZERO = { x: 0, y: 0 };
 const GLANCE = 0.6; // rad his head turns as he glances back at his killer before he crawls
 const RANGE = { arm: BODY.joints.shoulder, leg: BODY.joints.hip, head: BODY.joints.neck };
-const FALL = { crawl: CRAWL.fall, spasm: SPASM.fall, curl: CURL.fall, throat: 0, behead: 0 }; // s of plain physics first
+const FALL = { crawl: CRAWL.fall, spasm: SPASM.fall, curl: CURL.fall }; // s of plain physics first (none for KNEELS)
 // turns tried, off the way he falls, when he is laid out across a wall or a bolted prop
 const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
 // thrown toward a wall, he ends up sitting against it (the user's wish). speed: px/s he must be thrown at; reach: px of
@@ -53,12 +53,13 @@ export default class Ragdoll {
     this.dead = false;
     // how he dies on the floor (opts.dying, fx/Gore.js): 'crawl' (not quite dead, he drags himself away from his
     // killer, opts.killer: { x, y }, along dir), 'spasm', 'curl', 'throat' (his throat cut, he sinks onto his knees
-    // where he stood, at { x, y }, and pitches forward along dir) or 'behead' (the same without a head: the neck
-    // throws blood up while he kneels), each a scripted sequence (script()), phase by
+    // where he stood, at { x, y }, and pitches forward along dir), 'behead' (the same without a head: the neck
+    // throws blood up while he kneels), 'kneel' / 'slump' (struck down from behind: onto his knees, onto his face;
+    // opts.kneeling: he was on his knees already), each a scripted sequence (script()), phase by
     // phase, t = s into the phase, seed = its moves; or 'throes': his limbs jerk a moment (s left of it, s to the next)
     const how = opts.dying;
-    this.dying = how && how !== 'throes' ? { kind: how, phase: 'fall', t: 0, dir, seed: randi(1, 2 ** 30), fall: FALL[how],
-      hip: { x, y }, killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 } } : null;
+    this.dying = how && how !== 'throes' ? { kind: how, phase: 'fall', t: 0, dir, seed: randi(1, 2 ** 30), fall: FALL[how] ?? 0,
+      hip: { x, y }, kneeling: !!opts.kneeling, killer: opts.killer || { x: x - Math.cos(dir) * 60, y: y - Math.sin(dir) * 60 } } : null;
     this.throes = how === 'throes' ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
     this.up = false; // lying on his back (opts.back: he went over backwards)
     // the weapon left planted in him (opts.stuck: its sprite): where on his torso (px off its centre), the way its
@@ -126,8 +127,10 @@ export default class Ragdoll {
     // a body that will move on the floor shows the side it lies on; the others keep the plain sprites
     this.lie(opts.dying && opts.dying !== 'throes' ? !!opts.back : true);
     if (how === 'behead') this.fountain = 0; // the script throws the blood of his neck
-    // thrown toward a wall close enough for his slide to reach it: he is slammed against it and stays sat there
-    if (speed >= SIT.speed && how !== 'throat' && how !== 'behead') this.propUp(Math.cos(dir), Math.sin(dir), SIT.reach[0] + speed * SIT.reach[1]);
+    // on his feet (or his knees) from the first frame, not laid out first; any other thrown toward a wall close
+    // enough for his slide to reach it is slammed against it and stays sat there
+    if (KNEELS[how]) this.script(0);
+    else if (speed >= SIT.speed) this.propUp(Math.cos(dir), Math.sin(dir), SIT.reach[0] + speed * SIT.reach[1]);
   }
 
   addPart(name, img, body, rest, kg) {
@@ -291,7 +294,7 @@ export default class Ragdoll {
     }
     // the pool forms where he ends up: not under a man crawling, nor before a cut throat is down on the floor
     const t = this.torso.body, n = this.neckPos(), src = this.source(), s = this.dying;
-    const going = s && (s.kind === 'crawl' || ((s.kind === 'throat' || s.kind === 'behead') && !s.down));
+    const going = s && (s.kind === 'crawl' || (KNEELS[s.kind] && !s.down));
     bleedOut(this, dt, { x: n.x, y: n.y, angle: t.angle - Math.PI / 2 }, { x: t.position.x, y: t.position.y, angle: t.angle },
       src.position, !going && Body.getSpeed(src) < 0.3);
     this.settle = moving ? 0 : this.settle + dt;
@@ -311,7 +314,7 @@ export default class Ragdoll {
     s.t += dt;
     if (s.phase === 'fall') {
       // he lands first: still sliding, he gets a little longer
-      if (s.t < s.fall || (Body.getSpeed(t) > 0.4 && s.t < s.fall + 0.6)) return;
+      if (!KNEELS[s.kind] && (s.t < s.fall || (Body.getSpeed(t) > 0.4 && s.t < s.fall + 0.6))) return;
       if (!this.begin(s)) { this.dying = null; return; }
     }
     if (s.phase === 'turn') this.turnOver(s);
@@ -401,12 +404,14 @@ export default class Ragdoll {
       const k = this.toLocal(x, y, A, s.killer);
       Object.assign(s, { phase: 'turn', esc, A, over: this.up, look: k.x < 0 ? -GLANCE : GLANCE, pull: -1, planted: -1,
         plan: crawlPlan(s.seed, this.geom.arms[0].len) });
-    } else if (s.kind === 'throat' || s.kind === 'behead') {
-      // he pitches forward, or off to a side when there is no floor for him ahead
-      const esc = escapeDir(s.dir, (a) => !this.clear(s.hip.x, s.hip.y, a, 4, 2 * half + 8));
+    } else if (KNEELS[s.kind]) {
+      // he pitches forward, or off to a side when there is no floor for him ahead (backwards, over the heels of
+      // whoever stood behind him, when he stood at a counter or a wall)
+      const shut = (a) => !this.clear(s.hip.x, s.hip.y, a, 4, 2 * half + 8);
+      const esc = escapeDir(s.dir, shut) ?? escapeDir(s.dir + Math.PI, shut);
       if (esc === null) return false;
-      const T = s.kind === 'behead' ? BEHEAD : THROAT;
-      Object.assign(s, { phase: 'throat', A: esc + Math.PI / 2, T, plan: throatPlan(s.seed, T) });
+      const T = KNEELS[s.kind];
+      Object.assign(s, { phase: 'throat', A: esc + Math.PI / 2, T, plan: throatPlan(s.seed, T), t: s.kneeling ? T.kneel : 0 });
     } else Object.assign(s, { phase: 'writhe', plan: s.kind === 'spasm' ? spasmPlan(s.seed) : curlPlan(s.seed) });
     for (const j of this.joints) j.c.stiffness = 0;
     return true;
@@ -507,6 +512,7 @@ export default class Ragdoll {
     this.limbs[0].top = this.limbs[1].top = P.top;
     this.pose(c.x, c.y, a, P);
     s.down = P.down;
+    if (s.ghost !== !P.down) this.ghost(s.ghost = !P.down);
     if (P.jet > 0 && !this.dry) {
       const n = local(c.x, c.y, a, 0, -half * P.arch);
       // without a head, on his knees: thrown straight up, it comes down all round him
@@ -514,6 +520,12 @@ export default class Ragdoll {
       else squirt(this.world, n.x, n.y, a - Math.PI / 2 + P.jetA, P.jet, P.z);
     }
     if (s.t >= s.plan.dur) this.release();
+  }
+
+  // upright on his knees, his body's flat footprint must not catch on what stands round him (the bar he stood at:
+  // it would shove him out of his script) until he is down on the floor
+  ghost(on) {
+    for (const p of this.parts) p.body.collisionFilter = { ...p.body.collisionFilter, mask: on ? 0 : MASK.CORPSE };
   }
 
   // where the hand of an arm is, as posed
@@ -586,6 +598,7 @@ export default class Ragdoll {
     const s = this.dying;
     if (!s) return;
     this.dying = null;
+    if (s.ghost) this.ghost(false);
     if (s.phase === 'fall') return;
     for (const part of this.parts) {
       part.sx = part.sy = 1;

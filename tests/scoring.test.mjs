@@ -5,7 +5,7 @@ import { load } from './setup.mjs';
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Scoring, killStyle, killTags, comboMultiplier, gradeFor, tally } = await load('game/systems/Scoring.js');
 const { blowFrom } = await load('game/fx/Blows.js');
-const { FINISHERS, TAKEDOWNS, finisherFor } = await load('game/data/finishers.js');
+const { FINISHERS, finisherFor } = await load('game/data/finishers.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { SCORING, LEVEL_SCORING, levelScoring } = await load('game/data/scoring.js');
 const { loadBest, saveBest } = await load('game/systems/Records.js');
@@ -117,7 +117,6 @@ test('blows: a blow takes a man from behind, the side or the front; every weapon
     assert.ok(['astride', 'over', 'side'].includes(f.mount) && ['head', 'chest'].includes(f.at) && f.after > 0, name);
     assert.ok(!f.pose || ['gouge', 'frenzy', 'smash', 'headshot'].includes(f.pose), name);
   }
-  for (const t of Object.values(TAKEDOWNS)) assert.ok(t.action && t.label);
   for (const d of Object.values(WEAPONS)) if (d.hold === 'melee') assert.ok(['club', 'blade'].includes(d.swing) && d.material, d.name);
   assert.equal(WEAPONS.pistol.mag, 7);
 });

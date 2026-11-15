@@ -1,6 +1,6 @@
-import { PLAYER, TAKEDOWN } from '../Config.js';
+import { PLAYER, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
-import { rand, chance, clamp, angDiff } from '../../engine/math.js';
+import { rand, chance, angDiff } from '../../engine/math.js';
 import { chunk, spriteOpt } from '../../engine/Assets.js';
 import Debris from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
@@ -9,8 +9,8 @@ import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
-import { behind } from '../systems/Takedown.js';
-import { finisherFor, TAKEDOWNS, EXEC } from '../data/finishers.js';
+import { behind, newTakedown, advance } from '../systems/Takedown.js';
+import { finisherFor, takedownFor, shotCause, EXEC } from '../data/finishers.js';
 import { MOMENTS, GESTURE } from '../data/feel.js';
 import { SLIP } from '../data/devices.js';
 import { blowFx } from '../fx/Blows.js';
@@ -39,8 +39,7 @@ export default class Player extends Character {
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
     this.rising = false;
-    this.takedown = null;   // { target, t, done, blade, side } while we have him by the neck
-    this.grab = null;       // what CharacterAnim plays of it: { k, d, side, blade }
+    this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d }
     this.slide = null;      // Slide kinematics while sliding
     this.slideCd = 0;
     this.stamina = 1;       // 0..1: what slides cost (PLAYER.slide.cost), back with time
@@ -176,7 +175,7 @@ export default class Player extends Character {
     const busy = sliding || this.nearDowned || this.nearBack;
     this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
     this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
-      : this.nearBack ? TAKEDOWNS[this.takedownKind()].action
+      : this.nearBack ? takedownFor(d, this.weapon).action
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
     if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
@@ -579,57 +578,88 @@ export default class Player extends Character {
     ex.i = f.beats.length - 1;
   }
 
-  // seize a guard from behind: he can do nothing until it is over (Enemy.held), nobody hears it
+  // seize a guard from behind (data/finishers.js TAKEDOWNS, by what is in the hand): he can do nothing until it is
+  // over (Enemy.held) and we are locked in it; the beats land on the clock of systems/Takedown.js (advance). The two
+  // bodies stop pushing each other apart for the length of it: pressed against his back. The poses: CharacterAnim
+  // takedownPose (ours), heldPose (his).
   startTakedown(target) {
-    const kind = this.takedownKind(), blade = kind === 'blade';
-    // bare hands wrench either way; with something in the right hand the left arm pulls his chin round
-    const side = this.def.hold === 'none' && chance(0.5) ? 1 : -1;
-    this.takedown = { target, t: 0, done: false, blade, side, kind };
-    this.grab = { k: 0, d: 17, side, blade };
+    const f = takedownFor(this.def, this.weapon), group = Body.nextGroup(true);
+    this.takedown = Object.assign(newTakedown(f, !!target.yielded), {
+      target, side: chance(0.5) ? 1 : -1, d: Math.hypot(target.x - this.x, target.y - this.y) / BODY_SCALE,
+    });
     this.contextAction = null;
     this.swing = 0;
     target.held = this;
     target.swing = target.tell = 0;
-    this.world.sound('grab', target.x, target.y, 1, { pitch: target.voice });
+    for (const b of [this.body, target.body]) b.collisionFilter = { ...b.collisionFilter, group };
   }
 
   updateTakedown(dt) {
-    const td = this.takedown, tg = td.target, w = this.world, T = TAKEDOWN;
-    td.t += dt;
-    const k = td.t / T.dur;
-    this.grab.k = k;
-    this.steer(0, 0, 0, 0.5);
+    const td = this.takedown, tg = td.target, w = this.world, f = td.f;
     if (!td.done) {
-      if (!tg.alive) { this.takedown = this.grab = null; return; } // somebody got him first
-      // pressed against his back, looking the same way; his head is wrenched round when it comes
-      const dx = tg.x - this.x, dy = tg.y - this.y, dist = Math.hypot(dx, dy);
-      this.angle = Math.atan2(dy, dx);
-      if (dist > 17) this.steer(dx, dy, 1.5, 0.5);
-      this.grab.d = dist;
-      const wr = clamp((k - 0.42) / (T.killAt - 0.42), 0, 1);
-      tg.angle += angDiff(tg.angle, this.angle + td.side * 0.9 * wr * wr) * Math.min(1, dt * 30);
-      if (k >= T.killAt) {
-        td.done = true;
-        const how = { label: TAKEDOWNS[td.kind].label };
-        if (td.blade) tg.kill(this.angle, 'slash', this, this.def, how);
-        else if (td.kind === 'club') {
-          // the back of his skull: one blow, no cry
-          blowFx(w, this.def, tg, this.angle, { heavy: true, from: 'behind' });
-          tg.kill(this.angle, 'melee', this, { gore: 0, wound: 'crush' }, how);
-        } else tg.kill(this.angle + td.side * 1.5, 'snap', this, undefined, how);
-        landMoment(w, tg, this.angle + td.side * 1.5, this.def, MOMENTS.takedown, !tg.alive);
+      if (!tg.alive) { this.endTakedown(); return; } // somebody got him first
+      // set at the sequence's gap behind him (a little to one side), looking at him
+      const c = Math.cos(tg.angle), s = Math.sin(tg.angle), lat = f.lat ?? 0;
+      const at = { x: tg.x - c * f.gap - s * lat, y: tg.y - s * f.gap + c * lat };
+      if (!w.map.solidAt(at.x, at.y)) {
+        const k = 1 - Math.exp(-dt * 3 / TAKEDOWN.set);
+        Body.setPosition(this.body, { x: this.x + (at.x - this.x) * k, y: this.y + (at.y - this.y) * k });
       }
+      this.angle = Math.atan2(tg.y - this.y, tg.x - this.x);
+      td.d = Math.hypot(tg.x - this.x, tg.y - this.y) / BODY_SCALE;
     }
-    if (k >= 1) {
-      this.takedown = this.grab = null;
-      this.cooldown = 0.15;
-    }
+    this.vel = { x: 0, y: 0 };
+    Body.setVelocity(this.body, this.vel);
+    const landed = advance(td, dt);
+    landed.forEach((what, i) => this.landTakedown(what, td.done && i === landed.length - 1));
+    if (td.over) this.endTakedown();
   }
 
-  // how a guard seized from behind is put down with what is in the hand (data/finishers.js TAKEDOWNS)
-  takedownKind() {
-    const d = this.def;
-    return d.swing === 'blade' ? 'blade' : d.finisher === 'cue' ? 'choke' : d.swing === 'club' ? 'club' : 'neck';
+  // a beat of the takedown lands (last: the one that kills)
+  landTakedown(what, last) {
+    const td = this.takedown, tg = td.target, w = this.world, f = td.f, d = this.def, a = this.angle;
+    const nape = { x: tg.x - Math.cos(tg.angle) * 3, y: tg.y - Math.sin(tg.angle) * 3 };
+    if (what === 'seize') w.sound('grab', tg.x, tg.y, f.grip === 'mouth' ? 0.45 : 0.9, { pitch: tg.voice }); // a muffled cry
+    else if (what === 'struggle') w.sound('soft', tg.x, tg.y, 0.5);
+    else if (what === 'windup') w.sound('swing', this.x, this.y, 0.5, { pitch: 0.7, weapon: this.weapon?.type });
+    else if (what === 'nape' || what === 'butt') {
+      // a blow on the back of his head: what it is made of rings over it, a few drops thrown forward
+      if (d.swing === 'club') blowFx(w, d, tg, a, { heavy: true, from: 'behind' });
+      else {
+        w.sound('clubHit', nape.x, nape.y, 0.9, { material: d.hold === 'two' ? 'wood' : 'metal' });
+        w.particles.blood(nape.x, nape.y, a, 0.35, 4, 220);
+      }
+      w.sound('punch', nape.x, nape.y, 0.8, { pitch: 0.75 });
+    } else if (what === 'shot') {
+      this.weapon.mag--;
+      this.recoil = 1;
+      const m = this.muzzlePos();
+      muzzleFlash(w, m.x, m.y, m.a, d, this);
+      w.sound(d.sound, this.x, this.y);
+      if (d.noise) w.noise(this.x, this.y, d.noise, this, 'gunshot');
+    }
+    if (f.noise && (what === 'nape' || what === 'butt' || (last && what !== 'shot'))) w.noise(tg.x, tg.y, f.noise, this);
+    if (!last) {
+      if (what === 'nape' || what === 'butt') landMoment(w, tg, a, d, MOMENTS.beat, false);
+      return;
+    }
+    // the kill: he goes down the sequence's way (data/wounds.js KNEELS), from his knees if he is on them already
+    const how = { label: f.label, from: 'behind', dying: f.dying, kneeling: td.downAt >= 0, last: what === 'shot' && this.weapon.mag === 0 };
+    const cause = f.cause === 'shot' ? shotCause(d) : f.cause;
+    const by = f.wound ? { gore: 0, wound: f.wound } : f.cause === 'snap' ? undefined : d;
+    tg.kill(a, cause, this, by, how);
+    landMoment(w, tg, a, d, MOMENTS.takedown, !tg.alive);
+  }
+
+  endTakedown() {
+    const tg = this.takedown.target;
+    this.takedown = null;
+    this.cooldown = 0.15;
+    this.body.collisionFilter = { ...this.body.collisionFilter, group: 0 };
+    if (tg.held === this) {
+      tg.held = null;
+      tg.body.collisionFilter = { ...tg.body.collisionFilter, group: 0 };
+    }
   }
 
   knock(angle) { this.kill(angle, 'melee'); }

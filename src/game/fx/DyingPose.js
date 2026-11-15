@@ -106,7 +106,8 @@ export function throatPlan(seed, T = THROAT) {
 // Returns { arch (his length as seen from above: foreshortened while he kneels), rock, roll, top, arms, legs, head
 // (with dy: px it sits back over his shoulders while he kneels), jet (0 to 1: how hard the artery throws now),
 // jetA (rad its aim is off the line of his neck), z (px above the floor it leaves from), down (he lies on the floor) }.
-// T: THROAT, or BEHEAD (data/wounds.js): the head is gone, the arms hang, he stays on his knees T.hold s first.
+// T: THROAT, or another of data/wounds.js KNEELS (BEHEAD: the head is gone, the arms hang, he stays on his knees
+// T.hold s first; KNEEL, SLUMP: struck down from behind, no spurt).
 export function throatPose(plan, u, geom, T = THROAT) {
   const half = geom.half, stay = T.hold || 0;
   const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel - stay) / T.pitch), up = 1 - fall;
@@ -125,8 +126,9 @@ export function throatPose(plan, u, geom, T = THROAT) {
   const arms = geom.arms.map((g, k) => {
     const dx = (g.x < 0 ? -1.2 : 1.2) - g.x, dy = -half * arch + 1.5 + k * 1.5 - g.y * arch;
     const held = { a: Math.atan2(dy, dx) + tremble, s: clamp(Math.hypot(dx, dy) / g.len, 0.3, 1) };
-    if (!stay) return mixPose(held, { a: Math.PI / 2 + outward(g) * 0.3, s: 1 }, slack);
-    // no head, no hands to it: the arms hang (short, seen from above), jerking with each spurt, then lie where they fall
+    if (!T.hang) return mixPose(held, { a: Math.PI / 2 + outward(g) * 0.3, s: 1 }, slack);
+    // no hands to the throat (no head, or struck down): the arms hang (short, seen from above), jerking with each
+    // spurt, then lie where they fall
     return mixPose({ a: Math.PI / 2 + outward(g) * 0.3 + tremble * 4, s: 0.45 }, { a: Math.PI / 2 + outward(g) * 0.55, s: 1 }, fall);
   });
   // standing, the legs are under him; kneeling, the shins lie behind him; down, the legs stretch out

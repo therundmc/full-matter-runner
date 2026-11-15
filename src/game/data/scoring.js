@@ -11,7 +11,7 @@ export const SCORING = {
     debris: { points: 900, label: 'WRECKAGE' },         // flying furniture, bricks, car parts
     glass: { points: 900, label: 'GLASS' },             // window shards
     execution: { points: 1000, label: 'EXECUTION' },    // finishing a guard on the floor
-    takedown: { points: 1000, label: 'TAKEDOWN' },      // neck broken or throat cut from behind
+    takedown: { points: 1000, label: 'TAKEDOWN' },      // a guard executed from behind (data/finishers.js TAKEDOWNS)
   },
   // circumstances that add to a kill (Scoring.killTags), each one also a different way of killing
   tags: {
