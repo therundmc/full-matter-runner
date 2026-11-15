@@ -7,7 +7,7 @@ import { load } from './setup.mjs';
 globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
 const { WEAPONS } = await load('game/data/weapons.js');
 const { BODY_SCALE } = await load('game/Config.js');
-const { newPose, muzzleIn, MUZZLE_IN } = await load('game/entities/CharacterAnim.js');
+const { newPose, standPose, muzzleIn, muzzleAt, MUZZLE_IN } = await load('game/entities/CharacterAnim.js');
 const { default: Character } = await load('game/entities/Character.js');
 
 const K = 0.5;                  // world px per sprite px: the weapons are painted at twice the density (Assets.js)
@@ -63,8 +63,10 @@ test('muzzle: muzzleIn is the point the drawn weapon ends at, whatever the pose'
       P.wpn.x = 3; P.wpn.y = -2; P.wpn.a = a; P.s = s; P.wpnLen = len; P.wpnS = thick;
       muzzleIn(P, d, w * K, out);
       // CharacterAnim drawWeapon: at P.wpn, turned by P.wpn.a, scaled (len, wpnS) x P.s x K, the image's left edge
-      // grip / K px behind; the muzzle is the right edge of its last barrel column, on the bore line
-      const u = ((w - 1) - d.grip / K) * len * s * K, v = (h / 2 + (d.bore ?? 0) / K - h / 2) * thick * s * K;
+      // grip / K px behind and its middle line palm / K px above (a handgun held on its side: the fist is under the
+      // slide); the muzzle is the right edge of its last barrel column, on the bore line
+      const top = -h / 2 - (d.palm ?? 0) / K;
+      const u = ((w - 1) - d.grip / K) * len * s * K, v = (top + h / 2 + (d.bore ?? 0) / K) * thick * s * K;
       const x = 3 + u * Math.cos(a) - v * Math.sin(a), y = -2 + u * Math.sin(a) + v * Math.cos(a);
       assert.ok(Math.hypot(out.x - x, out.y - y) < 1e-9 && out.a === a, `${id} at ${a}`);
     }
@@ -90,4 +92,42 @@ test('muzzle: a character fires from his gun as last drawn, and it turns with hi
   const ch = { def: WEAPONS.pistol, x: 0, y: 0, angle: 0, muzzleNote: { def: WEAPONS.rifle, x: 0, y: 0, da: 0 } };
   const m = Character.prototype.muzzlePos.call(ch);
   assert.ok(m.x > 10 && Math.abs(m.y) < 5 && m.a === 0);
+});
+
+// a man standing still, the gun in his hand raised on a target straight ahead (CharacterAnim standPose's inputs)
+const standing = (d) => ({
+  def: d, angle: 0, gait: 0, runK: 0, strideV: 0, walk: 0, strideA: 0, footA: 0, backward: false, lean: { x: 0, y: 0 },
+  recoil: 0, lower: 0, stow: 0, reloading: 0, reloadDur: 1, swing: 0, tell: 0, pickAnim: 0, grab: null, held: null,
+  isPlayer: true, breath: 0, world: { time: 0 },
+});
+
+test('muzzle: where a gun is raised on a target (muzzleAt) is where the standing pose draws it', () => {
+  const P = newPose(), out = {};
+  for (const [id, d] of GUNS) {
+    const w = readPng(d.sprite).w * K;
+    muzzleIn(standPose(standing(d), P), d, w, out);
+    const m = muzzleAt(d, w);
+    assert.ok(Math.hypot(out.x - m.x, out.y - m.y) < 1e-9, `${id}: drawn at (${out.x}, ${out.y}), expected at (${m.x}, ${m.y})`);
+    assert.ok(P.fist === (d.hold === 'side'), `${id}: the hand closed on the grip only for a handgun`);
+  }
+});
+
+test('muzzle: a handgun held on its side shows its slide and barrel out of the fist, and hides its grip in it', () => {
+  const side = GUNS.filter(([, d]) => d.hold === 'side');
+  assert.deepEqual(side.map(([id]) => id).sort(), ['pistol', 'uzi', 'uzi_silenced']);
+  for (const [id, d] of side) {
+    const { w, h, px } = readPng(d.sprite);
+    assert.ok(typeof d.palm === 'number' && typeof d.hide === 'number', `${id}: palm and hide`);
+    const cut = Math.round(h / 2 + d.hide / K), opaque = (x, y) => px(x, y)[3] > 0;
+    // the barrel and the muzzle are above the cut, and so is the whole muzzle column
+    let low = -1;
+    for (let y = 0; y < h; y++) if (opaque(w - 1 - MUZZLE_IN / K, y)) low = y;
+    assert.ok(low >= 0 && low < cut, `${id}: the muzzle (down to row ${low}) is cut at row ${cut}`);
+    // there is a grip under the cut (that is what the hand hides), round the grip point
+    let under = 0;
+    for (let y = cut + 1; y < h; y++) for (let x = Math.floor(d.grip / K) - 2; x <= d.grip / K + 2; x++) under += opaque(x, y);
+    assert.ok(under > 6, `${id}: no grip under the cut`);
+    // the fist sits under the cut, its top edge on it (a fist is about 3 px across)
+    assert.ok(d.palm > d.hide && d.palm - d.hide < 1.6, `${id}: the fist (palm ${d.palm}) does not close on the cut (${d.hide})`);
+  }
 });
