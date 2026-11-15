@@ -14,7 +14,7 @@ import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
 import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
-  sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS } from '../ai/Pastimes.js';
+  sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
 import { backupOdds, backupGroup, recruits, yieldOdds, turnedAway, gunAtHand } from '../ai/Squad.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
@@ -40,6 +40,7 @@ const DUCK = 1.8; // how far down a bartender ducks behind his counter (1 = knee
 const HANDS = new Set(['smoke', 'phone', 'piss', 'stretch', 'wrist', 'cross']);
 const ONE_GO = new Set(['stretch', 'wrist']);
 const PAUSES = ['smoke', 'phone', 'stretch', 'wrist'];
+const JUNK = 10;  // things a man turning a place over leaves lying on its floor (the rest he throws are papers)
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
   SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
@@ -63,6 +64,7 @@ export default class Enemy extends Character {
     this.radius = ENEMY.radius;
     this.setWeapon(weapon, undefined, WEAPONS[weapon].shellReload ? ENEMY.spareShells : ENEMY.spareMags);
     this.home = { x, y, angle };
+    this.spawn = { x, y };     // where the level put him, before his job took him to his post (Tutorial: his tile)
     // optional explicit patrol route (level.patrols['col,row'] = [[col, row], ...] for the guard spawned there)
     const route = world.level.patrols?.[`${Math.floor(x / TILE)},${Math.floor(y / TILE)}`];
     this.route = route ? route.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE })) : null;
@@ -196,6 +198,9 @@ export default class Enemy extends Character {
     return this.aware === 0 && (this.state === S.IDLE ? this.atPost : this.state === S.PATROL && this.pauseT > 0);
   }
 
+  // nothing has reached him: the squad is calm, or he is a tutorial man waiting for his turn, who knows nothing of it
+  get quiet() { return this.dormant || this.director.phase === 'normal'; }
+
   // what his hands are at while at ease (a kind of render/PastimeArt.js), or null: free, or on his weapon
   get pastime() {
     if (!this.atEase || this.stow < 0.6 || (this.routine && this.activity === this.job)) return null;
@@ -227,7 +232,7 @@ export default class Enemy extends Character {
 
   // weapon put away while all is calm, in hand and lowered once something is up, raised on a target
   updateCarry(dt) {
-    const calm = this.aware === 0 && this.director.phase === 'normal' && CALM.has(this.state);
+    const calm = this.aware === 0 && this.quiet && CALM.has(this.state);
     const was = this.stow;
     carry(this, calm, this.aware >= 2 || this.recoil > 0, this.def.hold === 'two', dt);
     if (was >= 0.5 && this.stow < 0.5 && this.weapon) this.world.sound('pickup', this.x, this.y, 0.5);
@@ -527,13 +532,15 @@ export default class Enemy extends Character {
     this.updateCarry(dt);
     this.drip(dt);
     if (this.knocked > 0) { this.updateKnocked(dt); return; }
+    if (this.holding && this.held) this.dropHeld(); // seized: what was in his hands falls
     if (this.held) {
       // seized from behind: nothing he can do, unless the grip is lost
       if (this.held.alive && this.held.takedown?.target === this) { this.halt(); return; }
       this.held = null;
     }
     if (this.updateVault(dt)) return;
-    if (this.passive || this.dormant) { this.halt(); return; }
+    if (this.passive) { this.halt(); return; }
+    if (this.dormant) { this.waitTurn(dt); return; }
     this.seatThrough();
     if (this.yielded) { this.updateYield(dt); return; }
     // a blow wound up (windUp) comes now, whether he is still in reach or not
@@ -577,6 +584,13 @@ export default class Enemy extends Character {
   }
 
   // ---------------- calm behaviours ----------------
+  // a tutorial man waiting for his wave (systems/Tutorial.js): he sees and hears nothing, but goes on at his job
+  waitTurn(dt) {
+    this.t += dt;
+    if (this.updatePosture(dt) || !(this.routine && this.activity === this.job)) { this.halt(); return; }
+    this.work(dt);
+  }
+
   doIdle(dt) {
     if (this.stare(dt)) return;
     if (this.routine && this.activity === this.job) { this.work(dt); return; }
@@ -705,7 +719,7 @@ export default class Enemy extends Character {
   // the body the phase under way asks for ('seat' | 'desk' | 'wall'), while all is calm and he is at it
   get wantBody() {
     const ph = this.routine?.phase;
-    if (!ph || this.activity !== this.job || !this.onSpot || !this.atEase || this.director.phase !== 'normal') return null;
+    if (!ph || this.activity !== this.job || !this.onSpot || !this.atEase || !this.quiet) return null;
     const b = ph.body ?? this.script.body;
     return b && b !== 'stand' ? b : null;
   }
@@ -765,6 +779,7 @@ export default class Enemy extends Character {
       // (a world point, in pose px: he is drawn BODY_SCALE bigger)
       rest: this.rest && this.posture > 0 ? { x: (this.rest.x - this.x) / BODY_SCALE, y: (this.rest.y - this.y) / BODY_SCALE, a: this.rest.a, len: this.rest.len } : null,
     };
+    if (G?.wpn && B.hands) B.wpn = G.wpn(B.hands); // his weapon in his hand at it (the corridor's man, his pistol)
     if (ph?.g === 'fiddle' && B.hands) {
       // his own weapon in his hands: a blade pointed at his nails, a club turning over in the air
       const hr = B.hands.hr;
@@ -802,7 +817,6 @@ export default class Enemy extends Character {
       case 'here': return { x: this.x, y: this.y, face: this.angle };
       case 'toilet': { const s = reliefSpot(w.map, w.props, h.x, h.y); return s && !s.wall ? s : null; }
       case 'wall': { const s = reliefSpot(w.map, w.props, this.x, this.y); return s?.wall ? s : null; }
-      case 'sink': { const p = this.nearest('sink', h, R); return p && frontOf(p, this.radius + 1); }
       case 'car': {
         let best = null, bd = R;
         for (const v of w.props) {
@@ -829,7 +843,7 @@ export default class Enemy extends Character {
           && !w.chars.some((c) => c !== this && c.alive && Math.hypot(c.x - s.x, c.y - s.y) < 22));
         return free.length ? free[Math.floor(Math.random() * free.length)] : null;
       }
-      default: return null;
+      default: { const p = this.nearest(ph.at, h, R); return p && frontOf(p, this.radius + 1); } // a sink, a fridge...
     }
   }
 
@@ -860,7 +874,7 @@ export default class Enemy extends Character {
   // At his post, the routine of his job (data/posts.js): to the spot of each phase, then at it, phase by phase
   work(dt) {
     const R = this.routine;
-    if (this.director.phase !== 'normal' && !WATCHFUL.has(this.job)) { this.pickActivity(); return; }
+    if (!this.quiet && !WATCHFUL.has(this.job)) { this.pickActivity(); return; }
     this.activityT -= dt;
     if (!R.act && !R.cued) { this.nextAct(); if (this.activity !== this.job || !R.act) return; }
     const ph = R.phase;
@@ -897,6 +911,7 @@ export default class Enemy extends Character {
   lookFor(ph, s) {
     switch (ph?.look) {
       case 'sweep': return s.face + Math.sin(this.world.time * 0.42 + this.seed) * 1.05;
+      case 'glance': return s.face + Math.sin(this.world.time * 0.5 + this.seed) * 0.4;
       case 'back': return s.face + Math.PI;
       case 'dance': { const c = this.dancer(); return c ? Math.atan2(c.y - this.y, c.x - this.x) : s.face; }
       default: break;
@@ -950,8 +965,44 @@ export default class Enemy extends Character {
         }
         break;
       case 'chip': if (at(0.5)) w.sound('clack', this.x, this.y, 0.3, { pitch: 1.5 }); break;
+      case 'strike': {
+        // the match takes: a flare that lights his face, a few sparks, then its small flame
+        const p = this.hand(ph);
+        if (at(0.42)) { w.light(p.x, p.y, 72, '#ffd27a', 0.35); w.particles.fire(p.x, p.y, 4, 26, { size: [1, 2.2], life: [0.1, 0.3], rise: 30 }); }
+        else if (k1 > 0.42 && every(0.07)) w.light(p.x, p.y, rand(26, 32), '#ffa040', 0.12);
+        break;
+      }
+      case 'match': if (every(0.07)) { const p = this.hand(ph); w.light(p.x, p.y, rand(26, 32), '#ffa040', 0.12); } break;
+      case 'drop':
+        if (k1 < MATCH_FALLS && every(0.07)) { const p = this.hand(ph); w.light(p.x, p.y, rand(26, 32), '#ffa040', 0.12); }
+        if (at(MATCH_FALLS)) this.dropMatch(this.ahead(16, 4));
+        break;
+      case 'junk': if (at(TOSSED)) this.junk(); break;
+      case 'cold': if (every(0.12)) { const p = this.ahead(12); w.light(p.x, p.y, 44, '#cfe6ff', 0.2); } break;
       default: break;
     }
+  }
+
+  // a lit match let fall at p: the petrol catches there (systems/Fires.js)
+  dropMatch(p) {
+    this.world.particles.fire(p.x, p.y, 3, 18, { size: [1, 2], life: [0.1, 0.25], rise: 20 });
+    this.world.events.emit('matchDrop', { x: p.x, y: p.y, by: this });
+  }
+
+  // something out of a drawer or the fridge thrown over his right shoulder, left lying where it lands (JUNK of them,
+  // then only papers)
+  junk() {
+    const w = this.world, p = this.ahead(2, 7), a = this.angle + 2.2 + rand(-0.4, 0.4);
+    this.tossed = (this.tossed ?? 0) + 1;
+    const name = this.tossed > JUNK || this.tossed % 3 === 0 ? null : this.tossed % 3 === 1 ? 'can' : 'magazine';
+    const img = name && spriteOpt(`items/${name}`);
+    if (!img) {
+      w.particles.floaters(p.x, p.y, FLOATS.paper, 3, a, 0.5, 70, 10);
+      w.sound('flutter', p.x, p.y, 0.3);
+      return;
+    }
+    w.particles.shard(img, p.x, p.y, a, rand(110, 160), { z: 10, vz: 60, bounce: 0.3, spin: rand(-10, 10) });
+    w.after(0.35, () => w.sound(name === 'can' ? 'metal' : 'drop', p.x, p.y, 0.3, { pitch: name === 'can' ? 1.8 : 1.3 }));
   }
 
   // his right hand at phase ph, in the world
@@ -995,6 +1046,8 @@ export default class Enemy extends Character {
       }
       case 'paper': case 'cash': w.particles.floaters(p.x, p.y, FLOATS[it.drop], it.n, a, 1.4, 50, 8); break;
       case 'powder': w.particles.dust(p.x, p.y, 4, 3, '#f2f2ec', { alpha: 0.3 }); break;
+      case 'match': this.dropMatch(this.ahead(12, 3)); break;
+      case 'box': w.sound('drop', p.x, p.y, 0.2, { pitch: 2.2 }); break;
       default: break;
     }
   }
@@ -2022,9 +2075,16 @@ export default class Enemy extends Character {
     return this.glance;
   }
 
+  // what was in his hands falls with him (a lit match on the petrol, a glass...)
+  kill(angle, cause, killer, by, how) {
+    if (this.alive && !this.invulnerable && this.holding) this.dropHeld();
+    super.kill(angle, cause, killer, by, how);
+  }
+
   // ---------------- knock-down ----------------
   knock(angle, cause) {
     if (!this.alive || this.knocked > 0) return;
+    if (this.holding) this.dropHeld();
     this.knocked = ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
     this.posture = 0; this.through = false;
     this.director.provoked = true; // nobody floors a guard by accident

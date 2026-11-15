@@ -9,7 +9,8 @@ export default {
   name: 'BAD NIGHT',
   subtitle: 'SUNSET BAY  -  MARCH 14TH 1986  -  1:05 AM',
   objective: ['GET OUT OF THE BUILDING', 'THE WINDOW AT THE END OF THE CORRIDOR'],
-  facing: { '4,3': 0, '11,3': 0, '8,11': 180, '16,9': 180, '26,16': 180, '30,12': 90, '32,12': 90, '31,11': 90 },
+  facing: { '4,3': 0, '11,3': 0, '8,11': 180, '16,10': 0, '26,16': 180, '30,12': 90, '32,12': 90, '31,11': 90 },
+  jobs: { '11,3': 'arson', '8,11': 'rummage', '16,10': 'hall', '26,16': 'lookout' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "X;;;;;#:::::::#####################XXXXX",
@@ -42,8 +43,8 @@ export default {
     "",
     "",
     "",
-    "                m",
     "",
+    "                m",
     "        j                      k",
     "                              j m",
     "",
@@ -83,13 +84,11 @@ export default {
   // painted on the floor, no body: [sprite, col, row, deg]
   floor: [['floor_hole', 11.9, 5.0, 10], ['runner', 19.0, 4.5, 90], ['runner', 19.0, 7.5, 90], ['runner', 19.0, 10.5, 90], ['runner', 19.0, 13.5, 90], ['runner', 22.5, 17.0, 0], ['runner', 25.5, 17.0, 0], ['runner', 28.5, 17.0, 0], ['runner', 31.5, 17.0, 0], ['doormat', 18.5, 10.5, 90], ['doormat', 19.52, 4.5, 90], ['doormat', 19.52, 13.5, 90], ['newspaper', 19.5, 4.6, 80], ['shoes', 19.52, 13.4, 180], ['doormat', 22.5, 17.52, 180], ['doormat', 26.5, 17.52, 180], ['newspaper', 26.4, 17.5, 10], ['stairs', 31.0, 11.75, 0]],
   // fires [col, row, tutorial stage they catch at] (src/game/systems/Fires.js)
-  fires: [[12.2, 3.1, 1, 1.0], [12.7, 2.0, 1, 1.6], [9.3, 3.5, 1, 2.4], [13.4, 4.4, 1, 3.0], [8.2, 5.6, 1, 3.8], [2.2, 2.3, 2], [3.4, 5.6, 3], [11.6, 10.3, 3], [9.0, 8.6, 3], [12.8, 12.2, 3], [15.9, 12.5, 4], [15.5, 8.6, 4], [17.6, 10.5, 5], [18.4, 7.0, 5], [19.5, 12.6, 5]],
-  // already dead when it starts [kind, col, row, deg, pool px]
-  bodies: [["civ3", 16.3, 11.4, 250, 18]],
+  fires: [[12.2, 3.1, 1, 0], [12.7, 2.0, 1, 0.3], [9.3, 3.5, 1, 0.4], [13.4, 4.4, 1, 0.2], [8.2, 5.6, 1, 0.5], [2.2, 2.3, 2], [3.4, 5.6, 3], [11.6, 10.3, 3], [9.0, 8.6, 3], [12.8, 12.2, 3], [15.9, 12.5, 4], [15.5, 8.6, 4], [17.6, 10.5, 5], [18.4, 7.0, 5], [19.5, 12.6, 5]],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["bat", 11.0, 11.6, 25, null]],
   // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)
-  tutorial: {"stages": [{"zone": [1, 1, 5, 5], "spawn": [4.5, 3.5, 0], "hints": ["move"]}, {"zone": [7, 1, 13, 6], "spawn": [5.4, 3.5, 0], "hints": ["finish", "takedown"], "waves": [{"at": [[11, 3]], "on": "never", "blind": true}]}, {"zone": [7, 8, 13, 12], "spawn": [10.5, 6.2, 90], "take": "bat", "hints": ["finish", "take", "strike", "punch"], "waves": [{"at": [[8, 11]], "on": "never", "blind": true}, {"at": [[16, 9]], "on": "kills:1"}]}, {"zone": [15, 8, 19, 15], "spawn": [15.5, 10.5, 0], "marks": {"slide": [19.0, 14.4]}, "hints": ["slide"], "waves": [{"at": [[26, 16]], "on": "never", "blind": true}]}, {"zone": [18, 16, 28, 17], "spawn": [18.9, 14.2, 90], "marks": {"slide": [19.8, 16.5]}, "take": "pistol", "leaves": 2, "hints": ["finish", "take", "slide"], "waves": [{"at": [[26, 16]], "on": "enter", "slack": 0.35, "sharp": true}]}, {"zone": [29, 11, 34, 17], "spawn": [27.5, 16.5, 0], "take": "pistol", "marks": {"dive": [34.4, 16.5]}, "hints": ["finish", "take", "throw", "shoot", "dive"], "waves": [{"at": [[30, 12], [32, 12]], "on": "pickup:pistol"}, {"at": [[31, 11]], "on": "kills:2"}]}], "fall": [36, 14, 38, 19]},
+  tutorial: {"stages": [{"zone": [1, 1, 5, 5], "spawn": [4.5, 3.5, 0], "hints": ["move"]}, {"zone": [7, 1, 13, 6], "spawn": [5.4, 3.5, 0], "hints": ["finish", "takedown"], "spark": 6, "cues": [{"at": [11, 3], "act": "light"}], "waves": [{"at": [[11, 3]], "on": "never", "blind": true}]}, {"zone": [7, 8, 13, 12], "spawn": [10.5, 6.2, 90], "take": "bat", "hints": ["finish", "take", "strike", "punch"], "waves": [{"at": [[8, 11]], "on": "never", "blind": true}, {"at": [[16, 10]], "on": "kills:1"}]}, {"zone": [15, 8, 19, 15], "spawn": [15.5, 10.5, 0], "marks": {"slide": [19.0, 14.4]}, "hints": ["slide"], "waves": [{"at": [[26, 16]], "on": "never", "blind": true}]}, {"zone": [18, 16, 28, 17], "spawn": [18.9, 14.2, 90], "marks": {"slide": [19.8, 16.5]}, "take": "pistol", "leaves": 2, "hints": ["finish", "take", "slide"], "waves": [{"at": [[26, 16]], "on": "enter", "slack": 0.35, "sharp": true}]}, {"zone": [29, 11, 34, 17], "spawn": [27.5, 16.5, 0], "take": "pistol", "marks": {"dive": [34.4, 16.5]}, "hints": ["finish", "take", "throw", "shoot", "dive"], "waves": [{"at": [[30, 12], [32, 12]], "on": "pickup:pistol", "up": [31.0, 11.35]}, {"at": [[31, 11]], "on": "kills:2", "up": [31.0, 11.35]}]}], "fall": [36, 14, 38, 19]},
   // indirect fill only: every visible light is a prop (lamps, signs, tubes, headlights)
   lights: [
     [3, 3, 5, '#6a5ad8', 0.3],

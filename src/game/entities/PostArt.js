@@ -5,8 +5,8 @@
 // come from tools/generate_assets.py (`items/`), drawn in code when the sprite is missing.
 import { PALETTE } from '../Config.js';
 import { spriteOpt } from '../../engine/Assets.js';
-import { clamp } from '../../engine/math.js';
-import { DEAL, dealAngle, drawn, pageTurn } from '../ai/Pastimes.js';
+import { clamp, lerp } from '../../engine/math.js';
+import { DEAL, dealAngle, drawn, pageTurn, drag, exhale, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 
 const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 const CHIPS = ['#d8202a', '#2a62d8', '#f0ece0', '#1f8a3a'];
@@ -64,6 +64,49 @@ function magazine(ctx, x, y, f) {
     const w = 3 * Math.cos(Math.PI * f);
     ctx.fillStyle = PALETTE.ink; ctx.fillRect(x + Math.min(0, w) - 0.5, y - 4.4, Math.abs(w) + 1, 8.8);
     ctx.fillStyle = '#f6f2e8'; ctx.fillRect(x + Math.min(0, w), y - 4, Math.abs(w), 8);
+  }
+}
+
+// a matchbox held at (x, y): the yellow box, its brown striking strip along one side
+function matchbox(ctx, x, y) {
+  rect(ctx, x, y, 3.6, 2.4, '#d8a838');
+  ctx.fillStyle = '#6a3a1e'; ctx.fillRect(x - 1.8, y + 0.6, 3.6, 0.6);
+  ctx.fillStyle = '#c8302a'; ctx.fillRect(x - 0.6, y - 0.8, 1.2, 1);
+}
+
+// a match held at (x, y) pointing along a, its red head; burning (f > 0: how big the flame, flickering with t)
+function match(ctx, x, y, a, f, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(a);
+  ctx.fillStyle = PALETTE.ink; ctx.fillRect(-0.5, -0.9, 4.2, 1.8);
+  ctx.fillStyle = '#e0c890'; ctx.fillRect(0, -0.4, 2.8, 0.8);
+  ctx.fillStyle = f > 0 ? '#3a2418' : '#c83020'; ctx.fillRect(2.8, -0.6, 1, 1.2);
+  ctx.restore();
+  if (f > 0) flame(ctx, x + Math.cos(a) * 3.9, y + Math.sin(a) * 3.9, f, t);
+}
+
+// a small flame at (x, y), size f (1: a match burning quietly, 2: its flare as it takes)
+function flame(ctx, x, y, f, t) {
+  const j = Math.sin(t * 41) * 0.3 + Math.sin(t * 23) * 0.25, r = 2.6 * f;
+  ctx.fillStyle = 'rgba(255,170,70,0.3)'; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  ctx.fillStyle = '#ff9a3a'; ctx.fillRect(x - 0.9 * f + j * 0.3, y - 0.9 * f, 1.8 * f, 1.8 * f);
+  ctx.fillStyle = '#ffe08a'; ctx.fillRect(x - 0.55 * f + j * 0.4, y - 0.55 * f, 1.1 * f, 1.1 * f);
+  ctx.fillStyle = '#fffbe6'; ctx.fillRect(x - 0.3, y - 0.3, 0.6, 0.6);
+}
+
+// a cigarette between the fingers at (x, y): its ember brighter on a drag (d), a thread of smoke going up and, after a
+// drag, the breath let out at the lips (e: 0..1 through it, -1 none)
+function cig(ctx, x, y, d, e, t, seed) {
+  smoke(ctx, x, y, 0, 2.6, 1, '#e8e2d2', d);
+  const u = (t * 0.6 + seed) % 1;
+  ctx.fillStyle = `rgba(200,200,210,${(0.3 * (1 - u)).toFixed(3)})`;
+  ctx.fillRect(x + 3 + u * 9, y - 1 + Math.sin(u * 6) * 2, 2 + u * 3, 2 + u * 3);
+  if (e < 0) return;
+  ctx.fillStyle = `rgba(205,205,215,${(0.32 * (1 - e)).toFixed(3)})`;
+  for (let i = 0; i < 3; i++) {
+    const sz = 2 + e * (4 + i * 2);
+    ctx.fillRect(6 + e * (10 + i * 5) - sz / 2, Math.sin(e * 5 + i * 2) * (1 + i) - sz / 2, sz, sz);
   }
 }
 
@@ -193,6 +236,54 @@ export function drawPost(ctx, A, g, k, pt, t, h, opts = {}) {
       break;
     }
     case 'read': magazine(ctx, 11, 3.5, pageTurn(pt, opts.seed)); break;
+    // ---- the prologue: the match, the drawers and the fridge, the lookout's cigarette
+    case 'box': matchbox(ctx, hl.x + 0.8, hl.y); match(ctx, hr.x + 0.4, hr.y - 0.5, -0.5, 0, t); break;
+    case 'rattle': matchbox(ctx, hl.x + 0.6, hl.y); break;
+    case 'strike': {
+      // rasped along the strip, it takes with a flare that settles to a small flame
+      matchbox(ctx, hl.x + 0.8, hl.y);
+      match(ctx, hr.x + 0.4, hr.y - 0.5, -0.4, k < 0.42 ? 0 : 1 + 1.2 * (1 - ease((k - 0.42) / 0.4)), t);
+      break;
+    }
+    case 'shield': {
+      match(ctx, hr.x + 0.4, hr.y - 0.5, -0.9, 1, t);
+      ctx.fillStyle = 'rgba(255,170,80,0.28)'; ctx.fillRect(hl.x - 1.6, hl.y - 1.6, 3.2, 3.2); // the hand round it, lit
+      break;
+    }
+    case 'drop': {
+      // still in his fingers, then falling to the floor ahead of him, smaller and smaller as it goes down
+      if (k < MATCH_FALLS) match(ctx, hr.x + 0.4, hr.y - 0.5, 0.3, 1, t);
+      else if (k < MATCH_FALLS + 0.12) {
+        const u = (k - MATCH_FALLS) / 0.12;
+        flame(ctx, lerp(hr.x + 3, 16, u), lerp(hr.y, 4, u), 1 - 0.4 * u, t);
+      }
+      break;
+    }
+    case 'dig': {
+      // the drawer pulled out under the worktop, cutlery and odds and ends in it
+      rect(ctx, 13, 0, 6, 13, '#5a3e28');
+      ctx.fillStyle = '#2e2016'; ctx.fillRect(10.6, -5.6, 4.8, 11.2);
+      ctx.fillStyle = '#b8bcc4';
+      for (const [x, y, w, h] of [[11, -4.5, 3, 0.6], [11.5, -2.5, 3.4, 0.6], [11.2, 1.2, 0.6, 3], [13, 2.4, 1.6, 1.6]]) ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#d8cfa8'; ctx.fillRect(12.2, -1.2, 2.4, 1.8);
+      break;
+    }
+    case 'toss': if (k < TOSSED) rect(ctx, hr.x + 1, hr.y, 2.6, 2.2, '#d8d0b8'); break;
+    case 'fridge': {
+      // the door swung open toward him on its hinge, at his left; the cold light of the inside on him
+      ctx.fillStyle = 'rgba(205,232,255,0.22)'; ctx.fillRect(4, -10, 8, 20);
+      ctx.save();
+      ctx.translate(11, -11);
+      ctx.rotate(3.3); // about 105 deg open from shut (pi / 2)
+      ctx.fillStyle = PALETTE.ink; ctx.fillRect(-0.8, -1.8, 22.6, 3.6);
+      ctx.fillStyle = '#e6e8e4'; ctx.fillRect(0, -1.1, 21, 2.2);
+      ctx.fillStyle = '#c8302a'; ctx.fillRect(4, 1.1, 2, 0.9);  // a carton in the door's shelf
+      ctx.fillStyle = '#4a7a3a'; ctx.fillRect(9, 1.1, 1.4, 0.9); // a bottle
+      ctx.restore();
+      break;
+    }
+    case 'armed': cig(ctx, hl.x + 0.6, hl.y + 1.1, drag(t, opts.seed), exhale(t, opts.seed), t, opts.seed); break;
+    case 'armedAsh': cig(ctx, hl.x + 0.6, hl.y + 1.1, 0, -1, t, opts.seed); break;
     default: break;
   }
   ctx.restore();

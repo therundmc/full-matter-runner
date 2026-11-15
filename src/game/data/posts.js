@@ -22,19 +22,24 @@
 // A phase:
 //   g      gesture (ai/Pastimes.js GESTURES or a render/PastimeArt.js pastime)
 //   dur    [min, max] s
-//   at     where it is done: 'post' (his seat for a seated job) | 'here' (where he stands) | 'toilet' | 'sink' |
+//   at     where it is done: 'post' (his seat for a seated job) | 'here' (where he stands) | 'toilet' |
 //          'wall' (the nearest wall, to relieve himself) | 'car' (beside the nearest parked vehicle) | 'stool' (behind the counter, in
-//          front of a customer at it) | 'pool' (another side of the pool table). Left out: where the phase before
-//          was done (the post for an act's first). A phase whose spot cannot be found is skipped
+//          front of a customer at it) | 'pool' (another side of the pool table) | any other prop type: in front of the
+//          nearest one ('sink', 'fridge'). Left out: where the phase before was done (the post for an act's first). A
+//          phase whose spot cannot be found is skipped
 //   body   overrides the script's body for the phase
-//   look   where his eyes go: 'sweep' (slowly up and down the street, round the way he faces) | 'dance' (the nearest
-//          dancer) | 'back' (behind him: the bottles)
+//   look   where his eyes go: 'sweep' (slowly up and down the street, round the way he faces) | 'glance' (a little
+//          way either side of it, never off it for long) | 'dance' (the nearest dancer) | 'back' (behind him: the bottles)
 //   say    [occasion of data/barks.js, odds]; answer: the act the nearest man at the same job plays when it is said
 //   sound  [name, at (0..1 of the phase), volume, pitch]
 //   fx     what it gives off (Enemy.postFx): 'ember' (a draw lights the face), 'cloud' (a slow thick breath of smoke),
 //          'ash', 'flame' (a lighter cupped in the hands), 'butt' (a flicked cigarette end), 'stream' (into a toilet
 //          bowl), 'tap' (water at a sink), 'can' (kicked down the sidewalk), 'stroke' (a pool shot), 'deal' (a card a
-//          beat), 'chip'
+//          beat), 'chip', 'strike' (a match struck: its flare), 'match' (a match burning in the hands), 'drop' (the lit
+//          match let fall: event 'matchDrop', the petrol catches there: systems/Fires.js), 'junk' (something pulled out
+//          of a drawer or the fridge thrown over his shoulder, left lying), 'cold' (the light of an open fridge)
+// An act:  w, phases, cue as above; next: the act played after it, instead of one picked at random (a cued act that
+//          leads on to another, one that goes on for ever)
 export const POSTS = {
   // a doorman: arms folded, an eye on whoever comes near; a look at his watch, his weight from one foot to the
   // other, his neck cracked, a nod to a customer going in; inside, a glance at the dancers
@@ -169,6 +174,63 @@ export const POSTS = {
       pager: { w: 1, phases: [{ g: 'phone', dur: [3, 5] }] },
     },
   },
+  // ---- the prologue (tools/build_tutorial.py): the boss's men in his flat while he sleeps, each at something until
+  // his turn comes (systems/Tutorial.js keeps them deaf and blind till then)
+  // the man who poured the petrol: the jerrycan is down, the matchbox in his hand, a match ready; he shakes the box,
+  // looks over the soaked floor, wipes his hands. As the player walks in (Tutorial cue 'light') he strikes it, shields
+  // the flame a moment and lets it fall: the room goes up from where it lands; he backs off from the whoosh and
+  // watches it burn
+  arson: {
+    stay: true,
+    acts: {
+      ready: { w: 3, phases: [{ g: 'box', dur: [3, 5], look: 'glance' }] },
+      rattle: { w: 1.5, phases: [{ g: 'rattle', dur: [1.1, 1.4], sound: ['clack', 0.25, 0.14, 2.6] }, { g: 'box', dur: [1, 2] }] },
+      survey: { w: 1.5, phases: [{ g: 'hips', dur: [3, 4.5], look: 'sweep' }] },
+      smear: { w: 1, phases: [{ g: 'smear', dur: [1.5, 1.9] }, { g: 'box', dur: [1, 2] }] },
+      light: { cue: true, next: 'back', phases: [
+        { g: 'strike', dur: [0.4, 0.45], fx: 'strike', sound: ['match', 0.3, 0.9, 1] },
+        { g: 'shield', dur: [0.55, 0.65], fx: 'match' },
+        { g: 'drop', dur: [0.6, 0.7], fx: 'drop' },
+      ] },
+      back: { cue: true, next: 'watch', phases: [{ g: 'shy', dur: [1.1, 1.4] }] },
+      watch: { cue: true, next: 'watch', phases: [{ g: 'hips', dur: [3, 5] }] },
+    },
+  },
+  // the kitchen: he turns the place over for the money - the drawers under the worktop pulled out and dug through,
+  // what is no good thrown over his shoulder; the fridge opened, its light on him, its shelves emptied onto the floor
+  rummage: {
+    front: 'sink', stay: true,
+    acts: {
+      drawer: { w: 3, phases: [{ g: 'dig', dur: [2.2, 3.5], sound: ['clack', 0.3, 0.3, 1.7] }, { g: 'toss', dur: [0.6, 0.7], fx: 'junk' },
+        { g: 'dig', dur: [1.4, 2.6], sound: ['clack', 0.5, 0.25, 1.9] }, { g: 'toss', dur: [0.6, 0.7], fx: 'junk' }] },
+      fridge: { w: 2, phases: [{ g: 'fridge', at: 'fridge', dur: [2.5, 3.5], fx: 'cold' }, { g: 'toss', dur: [0.6, 0.7], fx: 'junk' },
+        { g: 'fridge', dur: [1.5, 2.5], fx: 'cold' }] },
+      look: { w: 1, phases: [{ g: 'hips', dur: [1.6, 2.4], look: 'sweep' }] },
+    },
+  },
+  // the entrance hall: a lookout at the flat's front door, smoking; an eye to the spyhole now and then, a light for
+  // the next one, a look at his watch
+  hall: {
+    stay: true,
+    acts: {
+      smoke: { w: 4, phases: [{ g: 'smoke', dur: [6, 10] }, { g: 'ash', dur: [0.8, 1], fx: 'ash' }] },
+      spy: { w: 2, phases: [{ g: 'peer', dur: [2.5, 4] }] },
+      light: { w: 1, phases: [{ g: 'flick', dur: [0.5, 0.6], fx: 'butt' },
+        { g: 'light', dur: [1.6, 2.2], fx: 'flame', sound: ['click', 0.15, 0.2, 1.6] }] },
+      watch: { w: 0.8, phases: [{ g: 'wrist', dur: [2.4, 2.6] }] },
+    },
+  },
+  // the corridor: waiting for him at its far end, his pistol out and low in his right hand, a cigarette in the
+  // left; his eyes on the corner he will come round, a drag, the ash tapped off, the slide pulled back an inch to see
+  // the round in it. His eyes never leave that corner for long: woken, he fires at once.
+  lookout: {
+    stay: true,
+    acts: {
+      wait: { w: 4, phases: [{ g: 'armed', dur: [5, 9], look: 'glance' }] },
+      ash: { w: 1.5, phases: [{ g: 'armedAsh', dur: [0.8, 1], fx: 'ash' }] },
+      check: { w: 1, phases: [{ g: 'check', dur: [1.4, 1.8], sound: ['click', 0.55, 0.3, 0.9] }] },
+    },
+  },
 };
 
 // what is in his hands when it all kicks off, and what becomes of it (Enemy.dropHeld): broken glass and a splash of
@@ -183,4 +245,6 @@ export const HELD = {
   cards: { drop: 'paper', n: 5 },
   wad: { drop: 'cash', n: 6 },
   bag: { drop: 'powder' },
+  matchbox: { drop: 'box' },
+  match: { drop: 'match' }, // a lit match: it falls on the petrol (event 'matchDrop')
 };

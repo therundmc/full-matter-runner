@@ -81,6 +81,7 @@ export default class World {
 
     this.player = null;
     this.enemies = [];
+    this.offstage = [];   // guards still to come on (holdBack): counted among those left
     this.civilians = [];  // passers-by (systems/Ambient): in `chars`, never level targets
     this.chars = [];
     this.props = [];
@@ -131,7 +132,7 @@ export default class World {
     if (owed) this.addItem(new WeaponItem(this, owed.type, owed.mag, owed.x, owed.y, owed.angle));
     watchOpenings(this); // windows and doors go with the wall that holds them
     this.chars = [this.player, ...this.enemies];
-    this.totalEnemies = this.enemies.length;
+    this.totalEnemies = this.enemies.length + this.offstage.length;
     this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
     this.events.on('surrender', () => this.checkCleared());
     this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
@@ -141,7 +142,7 @@ export default class World {
   }
 
   get engine() { return this.physics.engine; }
-  get enemiesLeft() { return this.enemies.filter((e) => e.alive && !e.yielded).length; } // guards still in the fight
+  get enemiesLeft() { return this.enemies.filter((e) => e.alive && !e.yielded).length + this.offstage.length; } // guards still in the fight
 
   // the floor's name under a point (TileMap floors: 'wood', 'asphalt', 'roof'...), for what depends on it (footsteps)
   floorAt(x, y) {
@@ -197,6 +198,30 @@ export default class World {
     this.totalEnemies++;
     this.cleared = false;
   }
+  // a guard kept off the level until a script brings him on (systems/Tutorial.js: men still on their way up the
+  // stairs): no body, out of `enemies` and `chars`, nothing sees, hears or hits him; but one of those left
+  holdBack(e) {
+    e.offstage = true;
+    this.removeBody(e.body);
+    this.enemies = this.enemies.filter((o) => o !== e);
+    this.chars = this.chars.filter((o) => o !== e);
+    this.offstage.push(e);
+  }
+
+  // ... and on he comes, at (x, y) px facing a
+  bringOn(e, x, y, a) {
+    if (!e.offstage) return;
+    e.offstage = false;
+    this.offstage = this.offstage.filter((o) => o !== e);
+    Body.setPosition(e.body, { x, y });
+    Body.setVelocity(e.body, { x: 0, y: 0 });
+    e.angle = a;
+    e.home = { x, y, angle: a };
+    this.addBody(e.body);
+    this.enemies.push(e);
+    this.chars.push(e);
+  }
+
   removeItem(it) { it.dead = true; this.removeBody(it.body); }
   addCorpse(c) { this.corpses.push(c); }
   addDebris(d) {

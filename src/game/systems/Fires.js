@@ -1,7 +1,10 @@
 // Fires (level `fires`: [col, row, stage, delay]): something burning at a spot, for the look of it: flames, smoke,
 // embers, a flickering light, the crackle, the air shimmering over it (Game.lensView reads lit()). In the tutorial the
 // flat burns behind him: a fire with a stage catches `delay` s after that room of the lesson is reached
-// (systems/Tutorial.js), with a whoosh; one without burns from the start. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on.
+// (systems/Tutorial.js), with a whoosh; one without burns from the start. A room whose stage has `spark` waits for a
+// man to drop a lit match in it (event 'matchDrop', Enemy.dropMatch): the petrol catches where it falls, then runs
+// out from there (SPREAD px/s, plus each fire's delay); if no match comes, it catches on its own `spark` s after the
+// room is reached. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on.
 // DOM-free: particles, lights and sounds asked of the world.
 import { TILE } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
@@ -9,20 +12,47 @@ import { rand, chance } from '../../engine/math.js';
 const FLAMES = 0.045;     // s between two puffs of flame at a fire
 const LIGHT = [0.11, 92]; // s between two flashes of its light, their radius (px)
 const CRACKLE = [0.25, 0.7];
+const SPREAD = 90;        // px/s the flames run along the petrol from where the match fell
+
+const fire = (x, y, stage, delay) => ({ x, y, stage, delay, t: rand(0, FLAMES), lt: rand(0, LIGHT[0]), age: 0 });
 
 export default class Fires {
   constructor(world, list = []) {
     this.world = world;
-    this.fires = list.map(([col, row, stage = -1, delay = 0]) => ({ x: col * TILE, y: row * TILE, stage, delay, t: rand(0, FLAMES), lt: rand(0, LIGHT[0]), age: 0 }));
+    this.fires = list.map(([col, row, stage = -1, delay = 0]) => fire(col * TILE, row * TILE, stage, delay));
     this.crackle = 0;
     this.clock = 0;
     this.reached = [];  // when each stage of the lesson was reached, on this clock
+    this.sparks = [];   // where and when a match fell in each stage: { x, y, t }
+    world.events?.on('matchDrop', ({ x, y }) => this.spark(x, y));
+  }
+
+  // a lit match falls at (x, y): a fire there at once, and the room's petrol catches from it
+  spark(x, y) {
+    const T = this.world.tutorial, i = T ? T.stageAt(x, y) : -1;
+    if (i >= 0 && !this.sparks[i]) this.sparks[i] = { x, y, t: this.clock };
+    const f = fire(x, y, -1, 0);
+    f.whoosh = true;
+    this.fires.push(f);
+  }
+
+  // on this clock, when fire f catches (Infinity: not yet known)
+  catchesAt(f, stage) {
+    if (f.stage < 0) return 0;
+    if (!Number.isFinite(stage)) return 0; // a level that is no lesson: everything burns
+    if (f.stage > stage) return Infinity;
+    const reached = this.reached[f.stage] ?? this.clock; // (reached this very step)
+    const T = this.world.tutorial, wait = T?.def?.stages?.[f.stage]?.spark;
+    if (!wait || (T.from ?? 0) > f.stage) return reached + f.delay; // passed already on a retry: it is burning
+    const s = this.sparks[f.stage];
+    const own = reached + wait + f.delay;
+    return s ? Math.min(own, s.t + Math.hypot(f.x - s.x, f.y - s.y) / SPREAD + f.delay) : own;
   }
 
   // the fires burning now
   lit() {
     const stage = this.world.tutorial?.stage ?? Infinity;
-    return this.fires.filter((f) => f.stage <= stage && (f.stage < 0 || !Number.isFinite(stage) || this.clock - (this.reached[f.stage] ?? this.clock) >= f.delay));
+    return this.fires.filter((f) => this.clock >= this.catchesAt(f, stage));
   }
 
   update(dt) {
@@ -32,7 +62,7 @@ export default class Fires {
     const burning = this.lit();
     if (!burning.length) return;
     for (const f of burning) {
-      if (f.age === 0 && f.stage >= 0) {
+      if (f.age === 0 && (f.stage >= 0 || f.whoosh)) {
         // it catches: a whoosh and a burst
         w.sound('ignite', f.x, f.y, 0.8);
         w.particles.fire(f.x, f.y, 8, 70, { size: [4, 8], life: [0.3, 0.7], rise: 60 });

@@ -11,7 +11,13 @@
 //                     takes that weapon) | 'never' (a man who is only there to be dealt with). blind: they do not
 //                     wake either when he walks up in front of them. slack: how much slower than a real guard
 //                     they react (SLACK if not given; they always fire SLACK times slower). sharp: they were waiting for him, they know him at
-//                     once when woken (no suspicion to build up first).
+//                     once when woken (no suspicion to build up first). up: [col, row] they are not there yet but
+//                     on their way up the stairs (World.holdBack): called, they are heard coming (STEPS), one of them
+//                     shouts, and they come up there one after the other (World.bringOn); he walking up to that
+//                     spot calls them too.
+//              cues: [{ at: [col, row], act, delay }]   walking into the stage cues act `act` of the job of the guard
+//                     standing there (data/posts.js, Routine.cue), dormant or not: the man with the match strikes it
+//              spark: s (systems/Fires.js) its fires wait for a match dropped in it, or catch on their own after that
 //              hints: [names of HINTS, the first that applies wins a place: two at most are shown]
 //              take: TYPE, marks: { name: [col, row] }   what some hints point at
 //              leaves: N   the gun a dead man of the stage drops has N rounds left in it, no more (a retry further
@@ -26,9 +32,14 @@ const FRONT = 1.7;     // tiles: a dormant guard he walks up to, in front of him
 const UP = -24;        // px a hint floats over what it points at
 const SLACK = 1.7;     // how much slower than a real guard its men react and shoot (Enemy.slack): it is a lesson
 const STAND = 2.5;     // s a sharp wave's man holds his ground once woken (Enemy.standT)
+const STEPS = [6, 0.2, 0.25]; // men coming up the stairs: steps heard, s between two, s from the last to the first man
+const NEXT = 0.45;            // s between two of them coming up
+const SIDE = 11;              // px either side of the stairs' middle they come up at
 
 const inside = ([c0, r0, c1, r1], x, y) => x >= c0 * TILE && x < (c1 + 1) * TILE && y >= r0 * TILE && y < (r1 + 1) * TILE;
 const at = ([c, r]) => ({ x: c * TILE, y: r * TILE });
+// is guard e the one the level put on tile [c, r] (his job may have taken him a step off it since: Enemy.spawn)
+const tileOf = (e, [c, r]) => { const p = e.spawn ?? e; return Math.floor(p.x / TILE) === c && Math.floor(p.y / TILE) === r; };
 const nearest = (list, p) => list.reduce((best, e) => (!best || Math.hypot(e.x - p.x, e.y - p.y) < Math.hypot(best.x - p.x, best.y - p.y) ? e : best), null);
 
 // What a hint says and over what: (tutorial, stage, player) -> { x, y, key, text } or null. key: the action whose cap
@@ -42,7 +53,7 @@ export const HINTS = {
     return p.nearBack === g ? { x: g.x, y: g.y, key: 'action', text: 'BREAK HIS NECK' } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
   },
   punch: (T, s, p) => {
-    const g = !p.armed && nearest(T.standing(s), p);
+    const g = !p.armed && nearest(T.present(s), p);
     return g ? { x: g.x, y: g.y, key: 'attack', text: 'PUNCH' } : null;
   },
   finish: (T, s, p) => {
@@ -54,14 +65,14 @@ export const HINTS = {
     return it ? { x: it.x, y: it.y, key: 'use', text: 'TAKE IT' } : null;
   },
   strike: (T, s, p) => {
-    const g = p.armed && p.def.kind !== 'gun' && nearest(T.standing(s), p);
+    const g = p.armed && p.def.kind !== 'gun' && nearest(T.present(s), p);
     return g ? { x: g.x, y: g.y, key: 'attack', text: 'STRIKE' } : null;
   },
   shoot: (T, s, p) => {
-    const g = p.armed && p.def.kind === 'gun' && p.weapon.mag > 0 && nearest(T.standing(s), p);
+    const g = p.armed && p.def.kind === 'gun' && p.weapon.mag > 0 && nearest(T.present(s), p);
     return g ? { x: g.x, y: g.y, key: 'attack', text: 'SHOOT' } : null;
   },
-  throw: (T, s, p) => (p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && T.standing(s).length
+  throw: (T, s, p) => (p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && T.present(s).length
     ? { x: p.x, y: p.y, key: 'throw', text: 'THROW IT' } : null),
   slide: (T, s) => (T.standing(s).length && s.marks?.slide ? { ...at(s.marks.slide), key: 'action', text: 'RUN AND SLIDE UNDER HIS FIRE' } : null),
   dive: (T, s) => (s.marks?.dive && !T.standing(s).length ? { ...at(s.marks.dive), key: 'action', text: 'DIVE' } : null),
@@ -79,12 +90,17 @@ export default class Tutorial {
     this.left = null;  // a gun just dropped by a dead man, to be left with a few rounds: { x, y, n, steps }
     this.owed = null;  // the gun a retry starts past the dropping of, for the world to lay down: { type, mag, x, y, angle }
     this.over = false;
-    const on = (e, [c, r]) => Math.floor(e.x / TILE) === c && Math.floor(e.y / TILE) === r;
+    this.from = from;
+    this.coming = [];  // what is still to happen of men coming up the stairs: { t (world time), step | g }
+    const at = (list) => world.enemies.filter((e) => list.some((t) => tileOf(e, t)));
     this.stages = def.stages.map((s) => ({
       ...s, kills: 0,
-      waves: (s.waves || []).map((w) => ({ on: w.on || 'enter', blind: !!w.blind, sharp: !!w.sharp, slack: w.slack ?? SLACK, awake: false, guards: world.enemies.filter((e) => w.at.some((t) => on(e, t))) })),
+      waves: (s.waves || []).map((w) => ({ on: w.on || 'enter', blind: !!w.blind, sharp: !!w.sharp, slack: w.slack ?? SLACK, up: w.up ?? null, awake: false, guards: at(w.at) })),
+      cues: (s.cues || []).map((c) => ({ act: c.act, delay: c.delay ?? 0, guards: at([c.at]) })),
     }));
     for (const s of this.stages) for (const w of s.waves) for (const g of w.guards) Object.assign(g, { dormant: true, slack: w.slack, rate: SLACK });
+    // the men still on their way up the stairs are not in the building yet
+    for (const s of this.stages) for (const w of s.waves) if (w.up) for (const g of w.guards) world.holdBack(g);
     world.events.on('kill', ({ victim }) => {
       const s = this.stages[this.stage];
       if (!s || !this.guards(s).includes(victim)) return;
@@ -96,8 +112,13 @@ export default class Tutorial {
   }
 
   guards(s) { return s.waves.flatMap((w) => w.guards); }
-  // the guards of a stage still on their feet
+  // the guards of a stage still on their feet (those still to come up the stairs too) ...
   standing(s) { return this.guards(s).filter((e) => e.alive && e.knocked <= 0); }
+  // ... and those of them that are there to be pointed at
+  present(s) { return this.standing(s).filter((e) => !e.offstage); }
+
+  // the stage whose room (x, y) px is in, or -1
+  stageAt(x, y) { return this.stages.findIndex((s) => inside(s.zone, x, y)); }
 
   // a retry: he is put back where stage i starts, the rooms before it are empty
   restore(i) {
@@ -128,6 +149,7 @@ export default class Tutorial {
 
   wake(w, p) {
     w.awake = true;
+    if (w.up) { this.comeUp(w); return; }
     for (const g of w.guards) {
       if (!g.alive || !g.dormant) continue;
       g.dormant = false;
@@ -140,6 +162,34 @@ export default class Tutorial {
     }
   }
 
+  // a wave on its way up the stairs: their steps come up, then they come up one after the other, the first shouting
+  comeUp(w) {
+    const now = this.world.time, [c, r] = w.up, x = c * TILE, y = r * TILE, [n, gap, lead] = STEPS;
+    for (let i = 0; i < n; i++) this.coming.push({ t: now + i * gap, step: { x, y, vol: 0.45 + (0.5 * i) / n } });
+    const t0 = now + (n - 1) * gap + lead;
+    w.guards.filter((g) => g.alive).forEach((g, i) => {
+      const side = i % 2 ? SIDE : i ? -SIDE : 0;
+      this.coming.push({ t: t0 + i * NEXT, g, x: x + side, y, first: i === 0 });
+    });
+  }
+
+  // the steps on the stairs, the men coming up
+  arrive() {
+    const w = this.world, p = w.player;
+    for (const a of this.coming) {
+      if (a.done || w.time < a.t) continue;
+      a.done = true;
+      if (a.step) { w.sound('step', a.step.x, a.step.y, a.step.vol, { floor: w.floorAt?.(a.step.x, a.step.y), run: true }); continue; }
+      const g = a.g;
+      w.bringOn(g, a.x, a.y, Math.atan2(p.y - a.y, p.x - a.x));
+      g.dormant = false;
+      g.crouch = 1; // still a step down: he straightens up as he comes onto the landing
+      if (a.first) { g.barkT = 0; g.say?.('stairs'); }
+      g.hear('noise', p.x, p.y, p);
+    }
+    this.coming = this.coming.filter((a) => !a.done);
+  }
+
   update() {
     const w = this.world, p = w.player;
     if (!p || !p.alive || this.over) return;
@@ -149,7 +199,10 @@ export default class Tutorial {
       if (!inside(this.stages[i].zone, p.x, p.y)) continue;
       this.stage = i;
       if (w.game) w.game.tutorialAt = { name: w.level.name, stage: i };
+      // walking in: what the men there were waiting for (the match struck)
+      for (const c of this.stages[i].cues) for (const g of c.guards) if (g.alive && g.knocked <= 0) g.routine?.cue(c.act, c.delay);
     }
+    if (this.coming.length) this.arrive();
     if (this.left && this.left.steps-- > 0) {
       // what he had not fired is not handed over: the gun he dropped holds a couple of rounds
       for (const it of w.items) {
@@ -159,11 +212,12 @@ export default class Tutorial {
     const s = this.stages[this.stage];
     if (s) {
       this.call(s, p);
-      // walked up to, in front: he looks up
+      // walked up to, in front: he looks up (walked up to the stairs: those coming up them are there)
       for (const wave of s.waves) {
         if (wave.blind || wave.awake) continue;
-        const seen = wave.guards.some((g) => g.alive && Math.hypot(p.x - g.x, p.y - g.y) < FRONT * TILE
-          && Math.cos(g.angle) * (p.x - g.x) + Math.sin(g.angle) * (p.y - g.y) > 0);
+        const seen = wave.up ? Math.hypot(p.x - wave.up[0] * TILE, p.y - wave.up[1] * TILE) < FRONT * TILE
+          : wave.guards.some((g) => g.alive && Math.hypot(p.x - g.x, p.y - g.y) < FRONT * TILE
+            && Math.cos(g.angle) * (p.x - g.x) + Math.sin(g.angle) * (p.y - g.y) > 0);
         if (seen) this.wake(wave, p);
       }
     }

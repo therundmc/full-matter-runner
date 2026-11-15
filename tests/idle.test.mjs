@@ -107,9 +107,10 @@ const { Routine, GESTURES, seatPlace, frontOf, sideOf, wallBehind, poolSpots } =
 const { BARKS } = await load('game/data/barks.js');
 
 const BODIES = ['stand', 'seat', 'desk', 'wall'];
-const SPOTS = ['post', 'here', 'toilet', 'sink', 'wall', 'car', 'stool', 'pool'];
-const LOOKS = ['sweep', 'dance', 'back'];
-const FX = ['ember', 'cloud', 'ash', 'flame', 'butt', 'stream', 'tap', 'can', 'stroke', 'deal', 'chip', 'slide'];
+const SPOTS = ['post', 'here', 'toilet', 'sink', 'fridge', 'wall', 'car', 'stool', 'pool'];
+const LOOKS = ['sweep', 'glance', 'dance', 'back'];
+const FX = ['ember', 'cloud', 'ash', 'flame', 'butt', 'stream', 'tap', 'can', 'stroke', 'deal', 'chip', 'slide', 'strike', 'match',
+  'drop', 'junk', 'cold'];
 const handsOf = (g, k, pt) => {
   const G = GESTURES[g];
   return G.hands ? G.hands(k, pt, pt + 3, 0.4, 'club') : pastimeHands(G.pastime, pt, 0.4);
@@ -135,6 +136,7 @@ test('posts: every job script is well formed, its phases are gestures that put b
         assert.ok(!ph.fx || FX.includes(ph.fx), id);
         assert.ok(!ph.say || (BARKS[ph.say[0]] && ph.say[1] > 0 && ph.say[1] <= 1), id);
         assert.ok(!ph.answer || S.acts[ph.answer]?.cue, `${id}: answered by a cued act`);
+        assert.ok(!act.next || S.acts[act.next], `${id}: followed by an act of the job`);
         if (ph.sound) assert.ok(ph.sound[1] >= 0 && ph.sound[1] <= 1 && ph.sound[2] > 0, id);
         const item = GESTURES[ph.g].item;
         assert.ok(!item || HELD[item], `${id}: what becomes of the ${item}`);
@@ -207,8 +209,9 @@ test('posts: the spots: a place on a couch, in front of a sink, against a plain 
   assert.ok(Math.abs(turned.x + 7 + 11) < 1e-9 && Math.abs(turned.y) < 1e-9, 'a case turned across: its long side to him');
 });
 
-// a guard on his seat in a small room, with the bare world he needs (no physics engine: his velocity is applied by hand)
-async function seatedGuard(job, seatType, seatAngle, actor) {
+// a guard on his seat (none: standing at his post) in a small room, with the bare world he needs (no physics engine:
+// his velocity is applied by hand); emitted: the world events he sent
+async function seatedGuard(job, seatType, seatAngle, actor, dormant = false) {
   globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
   const { default: Enemy } = await load('game/entities/Enemy.js');
   const { default: Director } = await load('game/ai/Director.js');
@@ -216,20 +219,22 @@ async function seatedGuard(job, seatType, seatAngle, actor) {
   const { findPath } = await load('engine/nav/Pathfinding.js');
   const map = new TileMap(['##########', '#;;;;;;;;#', '#;;;;;;;;#', '#;;;;;;;;#', '#;;;;;;;;#', '##########']);
   const def = PROPS[seatType];
-  const prop = { type: seatType, def, x: 2 * TILE, y: 3 * TILE, dead: false,
+  const prop = seatType && { type: seatType, def, x: 2 * TILE, y: 3 * TILE, dead: false,
     body: Matter.Bodies.rectangle(2 * TILE, 3 * TILE, def.w, def.h, { isStatic: true, angle: seatAngle }) };
-  const events = { on() {}, emit() {} };
+  const emitted = [];
+  const events = { on() {}, emit(name, data) { emitted.push([name, data]); } };
   const world = {
-    map, props: [prop], enemies: [], chars: [], doors: [], texts: [], time: 0, level: {}, events,
+    map, props: prop ? [prop] : [], enemies: [], chars: [], doors: [], texts: [], time: 0, level: {}, events,
     player: { alive: false, x: 0, y: 0 },
-    particles: { smoke() {}, dust() {}, glass() {}, floaters() {}, shard() {}, blood() {} },
-    sound() {}, light() {}, emit() {}, addBody() {}, floorAt: () => 'wood', sightLine: () => false, lineOfSight: () => false,
+    particles: { smoke() {}, dust() {}, glass() {}, floaters() {}, shard() {}, blood() {}, fire() {} },
+    sound() {}, light() {}, emit() {}, after() {}, addBody() {}, floorAt: () => 'wood', sightLine: () => false, lineOfSight: () => false,
     pathForGuard: (a, b, c, d) => findPath(map, a, b, c, d),
   };
   world.director = new Director(world);
   const [kind, weapon] = actor;
   const e = new Enemy(world, 3.5 * TILE, 3.5 * TILE, 0, kind, weapon);
   e.perceive = () => {}; e.scanWorld = () => {};
+  e.dormant = dormant;
   e.takeJob(job);
   world.enemies.push(e); world.chars.push(e);
   const step = (s) => {
@@ -240,7 +245,7 @@ async function seatedGuard(job, seatType, seatAngle, actor) {
       Matter.Body.setPosition(e.body, { x: e.x + v.x, y: e.y + v.y });
     }
   };
-  return { e, step, prop };
+  return { e, step, prop, emitted };
 }
 
 test('a seated guard sits on his furniture, and once alerted is up and armed within his get-up time', async () => {
@@ -263,4 +268,37 @@ test('a seated guard sits on his furniture, and once alerted is up and armed wit
     const clear = e.x + r < b.min.x || e.x - r > b.max.x || e.y + r < b.min.y || e.y - r > b.max.y;
     assert.ok(!clear || e.body.collisionFilter.mask & CAT.PROP, `${job}: solid again once off it`);
   }
+});
+
+test('a tutorial man waiting for his turn is busy at his job, deaf and blind: the match struck on cue and let fall', async () => {
+  const { e, step, emitted } = await seatedGuard('arson', null, 0, ['thug', 'fists'], true);
+  const drops = () => emitted.filter(([n]) => n === 'matchDrop').length;
+  step(3);
+  assert.ok(e.dormant && e.aware === 0 && e.gestureOn, 'at it while he waits');
+  assert.ok(!POSTS.arson.acts[e.routine.name].cue, 'only the waiting acts till then');
+  e.routine.cue('light');
+  step(0.05);
+  assert.equal(e.routine.name, 'light');
+  step(2.2);
+  assert.equal(drops(), 1, 'the match falls, once');
+  assert.ok(['back', 'watch'].includes(e.routine.name));
+  step(12);
+  assert.equal(e.routine.name, 'watch', 'then he watches it burn, for good');
+  assert.equal(drops(), 1);
+  // seized with the lit match in his fingers: it falls all the same
+  const s = await seatedGuard('arson', null, 0, ['thug', 'fists'], true);
+  s.e.routine.cue('light');
+  s.step(0.6);
+  assert.equal(s.e.holding, 'match');
+  s.e.held = { alive: true, takedown: { target: s.e } };
+  s.step(0.1);
+  assert.equal(s.emitted.filter(([n]) => n === 'matchDrop').length, 1, 'too late');
+});
+
+test('the corridor man waits with his pistol out in his hand, a cigarette in the other', async () => {
+  const { e, step } = await seatedGuard('lookout', null, 0, ['thug', 'pistol'], true);
+  step(2);
+  const B = e.postBody();
+  assert.ok(B?.wpn && B.wpn.fist, 'the gun gripped in his hand');
+  assert.ok(e.dormant && e.stow === 1);
 });

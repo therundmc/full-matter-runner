@@ -64,6 +64,8 @@ export const BARKS = {
   run: ["I'M GETTING THE BOYS!", 'I NEED BACKUP!', 'HOLD ON! HOLD ON!'],
   backup: ["HE'S HERE! COME ON!", '{N}! I NEED YOU!', 'GRAB YOUR STUFF!', "{N}! HE'S BACK THERE!", 'EVERYBODY, MOVE!'],
   rally: ['SHOW ME!', "LET'S GET HIM!", 'MOVE IT!', 'RIGHT BEHIND YOU!'],
+  // the prologue: the first of the men coming up the stairs to the landing (systems/Tutorial.js)
+  stairs: ["HE'S UP HERE!", 'UP! UP!', 'ON THE LANDING!', 'GO, GO, GO!'],
   // he gives up (Enemy.surrender), then begs for as long as the killer stands over him ...
   yield: ["DON'T SHOOT!", 'I GIVE UP!', "I'M DONE! I'M DONE!"],
   beg: ['PLEASE!', "DON'T KILL ME!", 'I GOT KIDS, MAN!', 'I NEVER SAW YOU!', 'TAKE WHATEVER YOU WANT!', 'NOT LIKE THIS...', "I'M BEGGING YOU!"],
@@ -74,7 +76,7 @@ export const BARKS = {
 // occasions yelled out loud (a recorded shout goes with the line), and those only muttered
 export const SHOUTED = new Set([
   'shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
-  'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn',
+  'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn', 'stairs',
 ]);
 export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 'sweep', 'tracks', 'blood']);
 // occasions said at once, over the squad's turn to speak (AI.barkGap): the first call of a contact, a mate killed
@@ -86,7 +88,7 @@ export const BARK_TONE = {
   contact: 'pink', panic: 'pink', snap: 'pink', threat: 'pink', brawl: 'pink', revenge: 'pink',
   body: 'orange', help: 'orange', warn: 'orange', flush: 'orange', yield: 'yellow', beg: 'yellow',
   call: 'pink', where: 'pink', turn: 'pink', down: 'orange', found: 'orange', chief: 'orange', run: 'orange',
-  backup: 'orange', alone: 'yellow',
+  backup: 'orange', alone: 'yellow', stairs: 'pink',
 };
 
 // what the guards call one another: one each, never twice in a level (Director.nickOf); the boss is 'BOSS'

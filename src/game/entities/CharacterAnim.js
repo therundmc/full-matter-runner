@@ -862,9 +862,10 @@ export function postPose(ch, P, V, B) {
     P.legs = base.legs * w;
   }
   if (B.wpn && P.wpnOn) {
-    // his weapon in his hands at it (a blade cleaning his nails, a club tossed and caught)
+    // his weapon in his hands at it (a blade cleaning his nails, a club tossed and caught, a pistol held low)
     place(P.wpn, P, P.ta, B.wpn.x, B.wpn.y);
     P.wpn.a = P.ta + B.wpn.a; P.wpnLen = B.wpn.len; P.wpnS = B.wpn.s; P.top = B.wpn.top;
+    if (B.wpn.fist) P.fist = true; // gripped, not lying in an open hand
   }
   if (B.rest && P.wpnOn) {
     // his weapon lying in front of him: it comes from there into his hands as he draws it (ch.stow 1 -> 0)

@@ -15,15 +15,25 @@ function stub(from = 0) {
   const enemies = [];
   level.actors.forEach((row, r) => [...row].forEach((ch, c) => {
     if (!ENEMIES[ch]) return;
-    enemies.push({ x: px(c + 0.5), y: px(r + 0.5), angle: ((level.facing[`${c},${r}`] || 0) * Math.PI) / 180, alive: true, knocked: 0, aware: 0,
-      body: {}, heard: 0, hear() { this.heard++; }, spot() { this.heard++; } });
+    const g = { tile: `${c},${r}`, x: px(c + 0.5), y: px(r + 0.5), angle: ((level.facing[`${c},${r}`] || 0) * Math.PI) / 180,
+      alive: true, knocked: 0, aware: 0, body: {}, heard: 0, said: [], cued: [], hear() { this.heard++; }, spot() { this.heard++; },
+      say(kind) { this.said.push(kind); } };
+    g.routine = { cue: (act) => g.cued.push(act) };
+    enemies.push(g);
   }));
   const body = Matter.Bodies.circle(px(4.5), px(3.5), 10);
   const player = { body, alive: true, isPlayer: true, armed: false, weapon: null, def: { kind: 'none' }, get x() { return body.position.x; }, get y() { return body.position.y; } };
-  const world = { events: new EventBus(), enemies, player, items: [], level, game: {}, removed: [], removeBody(b) { this.removed.push(b); } };
+  const sounds = [];
+  const world = { events: new EventBus(), enemies, offstage: [], player, items: [], level, game: {}, removed: [], time: 0,
+    removeBody(b) { this.removed.push(b); }, sound(name) { sounds.push(name); },
+    holdBack(e) { e.offstage = true; this.enemies = this.enemies.filter((o) => o !== e); this.offstage.push(e); },
+    bringOn(e, x, y) { e.offstage = false; this.offstage = this.offstage.filter((o) => o !== e); Object.assign(e, { x, y }); this.enemies.push(e); } };
   const t = new Tutorial(world, level.tutorial, from);
   const go = (col, row) => { Matter.Body.setPosition(body, { x: px(col), y: px(row) }); t.update(); };
-  return { world, t, player, go, guardAt: (c, r) => world.enemies.find((e) => Math.floor(e.x / TILE) === c && Math.floor(e.y / TILE) === r) };
+  const wait = (s) => { for (let k = 0; k < s * 20; k++) { world.time += 0.05; t.update(); } };
+  // the guard of that tile of the actors layer, on the level or still to come up the stairs
+  const guardAt = (c, r) => [...world.enemies, ...world.offstage].find((e) => e.tile === `${c},${r}`);
+  return { world, t, player, go, wait, sounds, guardAt };
 }
 
 test('tutorial: the level holds together (every guard in a wave, zones and spawns on the floor, hints that exist)', () => {
@@ -53,17 +63,19 @@ test('tutorial: the level holds together (every guard in a wave, zones and spawn
 
 test('tutorial: every guard sleeps until his wave is called, place after place', () => {
   const s = stub();
-  assert.ok(s.world.enemies.every((e) => e.dormant));
+  assert.ok([...s.world.enemies, ...s.world.offstage].every((e) => e.dormant));
   assert.equal(s.t.stage, -1);
   s.go(4.5, 3.5);
   assert.equal(s.t.stage, 0);
+  assert.deepEqual(s.guardAt(11, 3).cued, [], 'the match is not struck before he walks in');
   s.go(10.5, 3.5); // the living room: its man is only there to be seized, from any side
   assert.equal(s.t.stage, 1);
   assert.equal(s.world.game.tutorialAt.stage, 1);
+  assert.deepEqual(s.guardAt(11, 3).cued, ['light'], 'walking in, the man with the match strikes it');
   s.go(12.6, 3.5);
   assert.ok(s.guardAt(11, 3).dormant, 'walked round to his face, he still sleeps');
   s.go(10.5, 8.5); // the kitchen
-  const cook = s.guardAt(8, 11), second = s.guardAt(16, 9);
+  const cook = s.guardAt(8, 11), second = s.guardAt(16, 10);
   assert.ok(cook.dormant && second.dormant);
   cook.alive = false;
   s.world.events.emit('kill', { victim: cook });
@@ -78,25 +90,35 @@ test('tutorial: every guard sleeps until his wave is called, place after place',
   assert.ok(!shooter.dormant, 'the shooter wakes as he turns into the long corridor');
   s.go(30.5, 16.5); // the landing
   const two = [s.guardAt(30, 12), s.guardAt(32, 12)], third = s.guardAt(31, 11);
-  assert.ok(two.every((g) => g.dormant) && third.dormant);
+  assert.ok([...two, third].every((g) => g.dormant && g.offstage), 'the men of the landing are still down the stairs');
   s.world.events.emit('pickup', { ch: s.player, type: 'pistol' });
   s.t.update();
-  assert.ok(two.every((g) => !g.dormant) && third.dormant, 'the gun in his hand calls two of them up the stairs');
+  assert.ok(two.every((g) => g.offstage), 'heard before they are seen');
+  s.wait(0.5);
+  assert.ok(s.sounds.filter((n) => n === 'step').length >= 2, 'their steps on the stairs');
+  s.wait(2);
+  assert.ok(two.every((g) => !g.dormant && !g.offstage && g.heard === 1), 'the gun in his hand calls two of them up the stairs');
+  assert.ok(two.every((g) => Math.abs(g.y - px(11.35)) < 1), 'at the top of the stairs');
+  assert.equal(two.filter((g) => g.said.includes('stairs')).length, 1, 'the first of them shouts');
+  assert.ok(third.dormant && third.offstage);
   for (const g of two) {
     g.alive = false;
     s.world.events.emit('kill', { victim: g });
   }
   s.t.update();
-  assert.ok(!third.dormant, 'and the third when they are dead');
+  s.wait(2.5);
+  assert.ok(!third.dormant && !third.offstage, 'and the third when they are dead');
 });
 
-test('tutorial: a guard who is not blind wakes when he is walked up to from the front', () => {
+test('tutorial: walked up to the stairs, those coming up them are there', () => {
   const s = stub();
   s.go(30.5, 15.5); // onto the landing, no gun in hand
-  const man = s.guardAt(30, 12); // he faces south
-  assert.ok(man.dormant);
-  s.go(30.5, 13.6);
-  assert.ok(!man.dormant);
+  const man = s.guardAt(30, 12);
+  s.wait(1);
+  assert.ok(man.dormant && man.offstage);
+  s.go(31, 12.6);
+  s.wait(2);
+  assert.ok(!man.dormant && !man.offstage);
 });
 
 test('tutorial: the gun the shooter drops is left with two rounds', () => {
@@ -136,16 +158,20 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   assert.deepEqual(names(), ['RUN AND SLIDE UNDER HIS FIRE']);
   s.go(30.5, 16.5);
   Object.assign(s.player, { weapon: { type: 'pistol', mag: 2 }, def: { kind: 'gun' } });
+  assert.deepEqual(names(), [], 'nobody to point at till they come up the stairs');
+  s.wait(2.5);
   assert.deepEqual(names(), ['SHOOT']);
   s.player.weapon.mag = 0;
   assert.deepEqual(names(), ['THROW IT'], 'the window is not pointed at while they stand');
-  for (const at of [[30, 12], [32, 12], [31, 11]]) s.guardAt(...at).alive = false;
+  for (const at of [[30, 12], [32, 12]]) s.guardAt(...at).alive = false;
+  assert.deepEqual(names(), [], 'the window is not pointed at while one is still to come');
+  s.guardAt(31, 11).alive = false;
   assert.deepEqual(names(), ['DIVE']);
 });
 
 test('tutorial: a retry starts again at the last place reached, the rooms before it empty', () => {
   const s = stub(3);
-  assert.equal(s.world.enemies.length, 7 - 3, 'the living room and the kitchen are behind him');
+  assert.equal(s.world.enemies.length + s.world.offstage.length, 7 - 3, 'the living room and the kitchen are behind him');
   assert.equal(s.world.removed.length, 3);
   assert.deepEqual([s.player.x, s.player.y], [px(15.5), px(10.5)]);
   assert.equal(s.t.owed, null);
@@ -156,7 +182,7 @@ test('tutorial: a retry starts again at the last place reached, the rooms before
 
 test('tutorial: the shooter, pointed at from one stage and fought in the next, is still there on a retry of the second', () => {
   const s = stub(4);
-  assert.equal(s.world.enemies.length, 4);
+  assert.equal(s.world.enemies.length + s.world.offstage.length, 4);
   assert.ok(s.guardAt(26, 16)?.dormant);
   s.t.update();
   assert.ok(s.t.stage === 3 && s.guardAt(26, 16).dormant, 'he starts short of the corner');
@@ -166,7 +192,7 @@ test('tutorial: the shooter, pointed at from one stage and fought in the next, i
 
 test('tutorial: a retry at the landing finds the shooter gone and his gun, two rounds in it, at its feet', () => {
   const s = stub(5);
-  assert.equal(s.world.enemies.length, 3);
+  assert.equal(s.world.offstage.length, 3);
   assert.equal(s.guardAt(26, 16), undefined);
   assert.deepEqual([s.t.owed.type, s.t.owed.mag], ['pistol', 2]);
   assert.ok(Math.hypot(s.t.owed.x - s.player.x, s.t.owed.y - s.player.y) < TILE * 1.2);
@@ -197,4 +223,27 @@ test('fires: one with a stage catches when that place of the lesson is reached, 
   world.tutorial = null; // a level that is no lesson: everything burns
   assert.equal(f.lit().length, 3);
   assert.equal(new Fires(world).lit().length, 0);
+});
+
+test('fires: a room waiting for a spark catches where the match falls and burns out from there, or on its own later', () => {
+  const T = new Tutorial({ events: new EventBus(), enemies: [], offstage: [], holdBack() {}, player: null }, level.tutorial);
+  T.stage = 1;
+  const world = { events: new EventBus(), tutorial: T, player: { x: 0, y: 0 }, light() {}, sound() {},
+    particles: { fire() {}, smoke() {}, embers() {} } };
+  const f = new Fires(world, [[11, 3, 1, 0], [8, 3, 1, 0], [11, 9, 2, 0]]);
+  const run = (s) => { for (let i = 0; i < s * 60; i++) f.update(1 / 60); };
+  run(3);
+  assert.equal(f.lit().length, 0, 'the petrol waits for the match');
+  world.events.emit('matchDrop', { x: px(11), y: px(2.5) });
+  run(0.05);
+  assert.deepEqual(f.lit().map((x) => [x.x / TILE, x.y / TILE]), [[11, 2.5]], 'a fire where it fell, at once');
+  run(0.3);
+  assert.equal(f.lit().length, 2, 'the petrol next to it');
+  run(1.2);
+  assert.equal(f.lit().length, 3, 'then the far side of the room');
+  const g = new Fires(world, [[11, 3, 1, 0]]);
+  for (let i = 0; i < 5.9 * 60; i++) g.update(1 / 60);
+  assert.equal(g.lit().length, 0);
+  for (let i = 0; i < 0.2 * 60; i++) g.update(1 / 60);
+  assert.equal(g.lit().length, 1, 'no match: it goes up on its own');
 });

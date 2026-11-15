@@ -9,16 +9,22 @@ building with the neighbours' doors, the landing where more of them come up the 
 end. The flat catches fire room after room behind him (`fires`, src/game/systems/Fires.js).
 
 Each place asks for one move, said next to what it is done to (src/game/systems/Tutorial.js: the guards of a place
-sleep until its turn, a retry starts again at the last place reached):
+sleep until its turn, a retry starts again at the last place reached). Till then they see and hear nothing but are
+busy at something (their `job`, src/game/data/posts.js):
 
     bedroom         he wakes by his bed: move, aim
-    living room     a man emptying a jerrycan over it, his back to the door, by the hole they tore in the floor; he
-                    sets it alight as he walks in: seize him from behind, too late, it is going up
-    kitchen         a man at the worktop: a punch floors him, a bat lies by the table to finish him with; another
-                    comes in from the entrance hall, over the body of the building's super: strike
-    the corridor    out of his front door: a man with a pistol at the far end of the long corridor. Run and slide
-                    under his fire. The gun he drops has two rounds left in it.
-    the landing     three of them come up the stairs: shoot, throw the empty gun, finish the man it floored
+    living room     the man who poured the petrol, his back to the door by the hole they tore in the floor, the
+                    jerrycan put down, a matchbox in his hand ('arson'). As he walks in the man strikes a match,
+                    shields it a moment and lets it fall: the room goes up from where it lands (`spark`,
+                    src/game/systems/Fires.js). Seize him from behind: too late, the match falls anyway
+    kitchen         a man turning it over for the money, drawers pulled out, the fridge emptied on the floor
+                    ('rummage'): a punch floors him, a bat lies by the table to finish him with; the lookout smoking at
+                    the front door in the entrance hall ('hall') comes in when he is dead: strike
+    the corridor    out of his front door: at the far end of the long corridor a man waits, his pistol out, smoking,
+                    his eyes on the corner ('lookout'). Run and slide under his fire. The gun he drops has two rounds
+                    left in it.
+    the landing     three of them come up the stairs, heard before they are seen (`up`): shoot, throw the empty gun,
+                    finish the man it floored
     the window      at the corridor's end: dive through it. He lands in the alley, and level 1 is the next night.
 """
 from levelkit import Level
@@ -26,6 +32,7 @@ from levelkit import Level
 W, H = 40, 20
 lv = Level(W, H)
 SHOOTER = 0.35   # the corridor's gunman fires as he comes round the corner: the shot is what he slides under
+STAIRS = [31.0, 11.35]  # where the men coming up the stairs step onto the landing
 
 # ---------------------------------------------------------------- tiles
 lv.fill(1, 1, 34, 18, '#')            # the building: plaster inside, brick round it
@@ -47,14 +54,13 @@ lv.fill(36, 14, 38, 19, '=')          # the night outside, two floors over the a
 
 # ---------------------------------------------------------------- actors (7 men)
 lv.actor('@', 4, 3, face=0)
-lv.actor('j', 11, 3, face=0)                            # emptying a jerrycan over the living room, his back to the door
-lv.actor('j', 8, 11, face=180)                          # at the kitchen worktop
-lv.actor('m', 16, 9, face=180)                          # in the entrance hall: comes when the first one is dead
-lv.actor('p', 26, 16, face=180)                         # down the corridor, a pistol, close enough to be seen
-lv.actor('j', 30, 12, face=90)                          # up the stairs, when he takes the gun
+lv.actor('j', 11, 3, face=0, job='arson')               # the petrol poured, the match to come, his back to the door
+lv.actor('j', 8, 11, face=180, job='rummage')           # at the kitchen worktop, turning the drawers out
+lv.actor('m', 16, 10, face=0, job='hall')               # at the front door, smoking: comes when the first one is dead
+lv.actor('p', 26, 16, face=180, job='lookout')          # down the corridor, a pistol, close enough to be seen
+lv.actor('j', 30, 12, face=90)                          # coming up the stairs when he takes the gun
 lv.actor('m', 32, 12, face=90)
 lv.actor('k', 31, 11, face=90)                          # and a third when those two are dead
-lv.body('civ3', 16.3, 11.4, 250, 18)                    # the super: he came up about the noise
 lv.drop('bat', 11.0, 11.6, 25)
 
 lv.guard(0, 0, W - 1, H - 1)                            # nobody is a guest here
@@ -129,8 +135,8 @@ lv.prop('bin_bag', 29.95, 15.55, 60)
 
 # ---------------------------------------------------------------- the fire, room after room behind him
 for (col, row, stage, *delay) in (
-        (12.2, 3.1, 1, 1.0), (12.7, 2.0, 1, 1.6), (9.3, 3.5, 1, 2.4),           # the living room: the man pouring the
-        (13.4, 4.4, 1, 3.0), (8.2, 5.6, 1, 3.8),                                # petrol lights it as he walks in
+        (12.2, 3.1, 1, 0), (12.7, 2.0, 1, 0.3), (9.3, 3.5, 1, 0.4),             # the living room: from where his match
+        (13.4, 4.4, 1, 0.2), (8.2, 5.6, 1, 0.5),                                # falls, as he walks in (`spark`)
         (2.2, 2.3, 2), (3.4, 5.6, 3),                                           # his bedroom
         (11.6, 10.3, 3), (9.0, 8.6, 3), (12.8, 12.2, 3),                        # the kitchen, as he reaches the entrance
         (15.9, 12.5, 4), (15.5, 8.6, 4),                                        # the entrance hall
@@ -141,10 +147,11 @@ for (col, row, stage, *delay) in (
 lv.tutorial = {
     'stages': [
         {'zone': [1, 1, 5, 5], 'spawn': [4.5, 3.5, 0], 'hints': ['move']},
-        {'zone': [7, 1, 13, 6], 'spawn': [5.4, 3.5, 0], 'hints': ['finish', 'takedown'],
+        {'zone': [7, 1, 13, 6], 'spawn': [5.4, 3.5, 0], 'hints': ['finish', 'takedown'], 'spark': 6,
+         'cues': [{'at': [11, 3], 'act': 'light'}],
          'waves': [{'at': [[11, 3]], 'on': 'never', 'blind': True}]},
         {'zone': [7, 8, 13, 12], 'spawn': [10.5, 6.2, 90], 'take': 'bat', 'hints': ['finish', 'take', 'strike', 'punch'],
-         'waves': [{'at': [[8, 11]], 'on': 'never', 'blind': True}, {'at': [[16, 9]], 'on': 'kills:1'}]},
+         'waves': [{'at': [[8, 11]], 'on': 'never', 'blind': True}, {'at': [[16, 10]], 'on': 'kills:1'}]},
         # out of his door, down the corridor: the man at its far end is only pointed at until he turns the corner
         {'zone': [15, 8, 19, 15], 'spawn': [15.5, 10.5, 0], 'marks': {'slide': [19.0, 14.4]}, 'hints': ['slide'],
          'waves': [{'at': [[26, 16]], 'on': 'never', 'blind': True}]},
@@ -152,7 +159,8 @@ lv.tutorial = {
          'hints': ['finish', 'take', 'slide'], 'waves': [{'at': [[26, 16]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True}]},
         {'zone': [29, 11, 34, 17], 'spawn': [27.5, 16.5, 0], 'take': 'pistol', 'marks': {'dive': [34.4, 16.5]},
          'hints': ['finish', 'take', 'throw', 'shoot', 'dive'],
-         'waves': [{'at': [[30, 12], [32, 12]], 'on': 'pickup:pistol'}, {'at': [[31, 11]], 'on': 'kills:2'}]},
+         'waves': [{'at': [[30, 12], [32, 12]], 'on': 'pickup:pistol', 'up': STAIRS},
+                   {'at': [[31, 11]], 'on': 'kills:2', 'up': STAIRS}]},
     ],
     'fall': [36, 14, 38, 19],
 }

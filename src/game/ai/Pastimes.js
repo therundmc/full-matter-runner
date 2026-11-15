@@ -160,9 +160,11 @@ export class Routine {
 
   enter() { this.t = 0; this.dur = rand(...this.phase.dur); }
 
-  // on to the next phase: 'phase', or 'act' once the act is over
+  // on to the next phase: 'phase' (also the first of the act that follows on, `next`), or 'act' once the act is over
   advance() {
     if (this.act && ++this.i < this.act.phases.length) { this.enter(); return 'phase'; }
+    const next = this.act?.next;
+    if (next) { this.begin(next); return 'phase'; }
     this.act = null;
     return 'act';
   }
@@ -180,8 +182,9 @@ export class Routine {
 }
 
 // ---- gestures: where the hands go (his own frame: +x ahead, +y his right; lips about 4.5 ahead), how the body leans
-// (body: fwd px, side px, twist rad, dip share of height lost, foot [which, x, y] a foot lifted) and what is in the
-// hands (data/posts.js HELD). `pastime`: the hands (and drawing) of that render/PastimeArt.js pastime, `clock`: what
+// (body: fwd px, side px, twist rad, dip share of height lost, foot [which, x, y] a foot lifted), what is in the
+// hands (data/posts.js HELD) and, `wpn(hands)`, his own weapon held at it ({ x, y, a, len, s, top, fist }: his
+// torso's frame, a rad from straight ahead). `pastime`: the hands (and drawing) of that render/PastimeArt.js pastime, `clock`: what
 // drives it ('stroke': one pool stroke over the phase, 'once': a one-go move over the phase, else the world's time).
 // hands(k, pt, t, seed, tool): k 0..1 through the phase, pt s into it, t the world's time, tool his weapon's swing.
 const H = (lx, ly, rx, ry) => ({ hl: { x: lx, y: ly }, hr: { x: rx, y: ry } });
@@ -299,7 +302,75 @@ export const GESTURES = {
     hands: (k, pt) => H(BACK[0], BACK[1], 5 + Math.sin(pt * 15) * 0.4, 1.5),
     body: (k, pt) => ({ dip: 0.03 * Math.abs(Math.sin(pt * 14)), twist: 0.1 * Math.sin(pt * 7), fwd: 1.2 * bump(k, 0, 1) }),
   },
+  // ---- the prologue (data/posts.js arson, rummage, lookout)
+  // the matchbox in the left hand, a match pinched in the right, turned over and over
+  box: { hands: (k, pt) => H(6.2, -1.6, 6.4 + Math.sin(pt * 2.3) * 0.4, 1.6 + Math.cos(pt * 3.1) * 0.3), item: 'matchbox' },
+  // ... shaken by his ear
+  rattle: {
+    hands: (k, pt) => { const up = bump(k, 0, 1), s = Math.sin(pt * 26) * 0.7 * up; return H(lerp(6.2, 2, up) + s, lerp(-1.6, -7.2, up), 4.5, 6); },
+    body: (k) => ({ twist: -0.12 * bump(k, 0, 1) }),
+    item: 'matchbox',
+  },
+  hips: { hands: () => H(1, -7, 1, 7) },
+  // the petrol wiped off his hands down his thighs
+  smear: {
+    hands: (k, pt) => H(lerp(5, 0.5, frac(pt / 0.55)), -5.6, lerp(5, 0.5, frac(pt / 0.55 + 0.5)), 5.6),
+    body: () => ({ fwd: 1, dip: 0.02 }),
+  },
+  // the match drawn along the side of the box: it flares (fx 'strike') ...
+  strike: {
+    hands: (k) => { const r = ease((k - 0.2) / 0.22); return H(6.2, -1.6, lerp(6.2, 10, r), lerp(-0.6, 2.2, r)); },
+    body: (k) => ({ fwd: 0.8 * bump(k, 0.1, 0.9) }),
+    item: 'match',
+  },
+  // ... the flame cupped in the left hand, in front of his face
+  shield: { hands: (k, pt) => H(7.8, -0.6 + Math.sin(pt * 5) * 0.15, 7, 1.4), body: () => ({ fwd: 1, dip: 0.02 }), item: 'match' },
+  // ... and let fall on the petrol at his feet (fx 'drop', at MATCH_FALLS), the hands back at his sides
+  drop: {
+    hands: (k) => {
+      const out = ease(k / 0.3), back = ease((k - 0.5) / 0.5);
+      return H(lerp(7.8, 2, back), lerp(-0.6, -6.5, back), lerp(lerp(7, 11, out), 2, back), lerp(lerp(1.4, 3.6, out), 6.5, back));
+    },
+    body: (k) => ({ fwd: 1.8 * bump(k, 0, 0.55), dip: 0.03 * bump(k, 0, 0.55) }),
+  },
+  // the whoosh: an arm thrown up before his face, leaning away from it
+  shy: {
+    hands: (k) => { const u = ease(k / 0.15) * (1 - ease((k - 0.65) / 0.35)); return H(lerp(1, 6.5, u), lerp(-7, -0.5, u), 1, 7); },
+    body: (k) => { const u = ease(k / 0.15) * (1 - ease((k - 0.65) / 0.35)); return { fwd: -2.5 * u, twist: -0.18 * u }; },
+  },
+  // bent over a drawer pulled out under the worktop, both hands digging through it
+  dig: {
+    hands: (k, pt) => H(10.5 + Math.sin(pt * 7) * 1.6, -2.6 + Math.cos(pt * 5) * 0.8, 10.5 + Math.cos(pt * 6.3) * 1.6, 2.6 + Math.sin(pt * 4.7) * 0.8),
+    body: () => ({ fwd: 2.5, dip: 0.04 }),
+  },
+  // something pulled out and flung over his right shoulder (fx 'junk', at TOSSED)
+  toss: {
+    hands: (k) => {
+      const pull = ease(k / 0.3), fling = ease((k - 0.3) / 0.25), back = ease((k - 0.6) / 0.4);
+      return H(9, -2.5, lerp(lerp(lerp(10.5, 6, pull), -4, fling), 2, back), lerp(lerp(lerp(2.6, 5, pull), 9, fling), 6.5, back));
+    },
+    body: (k) => ({ fwd: 1.5 * (1 - bump(k, 0.2, 0.8)), twist: 0.35 * bump(k, 0.2, 0.75) }),
+  },
+  // the fridge door held open with the left hand, the right one going through the shelves
+  fridge: {
+    hands: (k, pt) => H(6, -9, 12.5 + Math.sin(pt * 3) * 1.2, 1.5 + Math.cos(pt * 2.2) * 2.5),
+    body: () => ({ fwd: 2.5, dip: 0.04 }),
+  },
+  // waiting with his pistol out, low in his right hand, a cigarette in the left brought up for a drag now and then
+  armed: { hands: (k, pt, t, seed) => { const d = drag(t, seed); return H(6.5 - d * 0.5, -5.5 + d * 4, 3, 6.3); }, item: 'cig', wpn: (h) => low(h) },
+  armedAsh: { hands: (k) => { const f = bump(k, 0.3, 0.55); return H(7.5 + 1.6 * f, -5.5 + 1.2 * f, 3, 6.3); }, item: 'cig', wpn: (h) => low(h) },
+  // the gun brought up in front of him, the slide drawn back an inch by the left hand to see the round
+  check: {
+    hands: (k) => H(8.6 - 1.6 * bump(k, 0.35, 0.75), -0.4, 7.4, 1.4),
+    wpn: (h) => ({ x: h.hr.x, y: h.hr.y, a: -0.12, len: 1, s: 1, top: 0, fist: true }),
+  },
 };
+
+// a gun held low at his side, pointing at the floor ahead of him
+const low = (h) => ({ x: h.hr.x, y: h.hr.y, a: 0.35, len: 1, s: 1, top: 0, fist: true });
+// share of the 'drop' phase at which the match leaves his fingers, of the 'toss' one at which the thing flies off
+export const MATCH_FALLS = 0.35;
+export const TOSSED = 0.55;
 
 // the dealer's cards: DEAL a hand, beat b goes this way (rad from his front, + to his right)
 export const DEAL = 4;
