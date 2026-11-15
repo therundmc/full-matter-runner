@@ -11,6 +11,8 @@ import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
 import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
+import Ragdoll from '../entities/Ragdoll.js';
+import { MARKS } from '../data/wounds.js';
 import { doorLeaves } from './Openings.js';
 
 const { Bodies } = Matter;
@@ -74,6 +76,13 @@ export function buildLevel(world, level) {
   // ---- weapons stood against a wall: [type, col, row, deg] (deg: the way its tip points, up the wall)
   for (const [type, col, row, deg = 0] of level.lean || []) {
     world.items.push(new WeaponItem(world, type, undefined, col * TILE, row * TILE, (deg * Math.PI) / 180).leanOn());
+  }
+
+  // ---- somebody already dead when it starts: [kind, col, row, deg (the way the head lies), pool px], shot
+  for (const [kind, col, row, deg = 0, pool = 18] of level.bodies || []) {
+    const x = col * TILE, y = row * TILE;
+    world.decals.stampBlood(x, y, 7, 5);
+    world.addCorpse(new Ragdoll(world, kind, x, y, (deg * Math.PI) / 180, 0, { pool, poolRate: 40, mark: MARKS.small }));
   }
 
   // ---- weapons lying about with a given magazine: [type, col, row, deg, rounds] (rounds null: full)

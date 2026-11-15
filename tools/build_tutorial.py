@@ -6,7 +6,8 @@ Six rooms played one after the other (src/game/systems/Tutorial.js: the guards o
 retry starts again at the last room reached), each asking for one move, said next to what it is done to:
 
     bedroom, hall   he wakes by his bed: move, aim
-    living room     a man stood in front of the television, his back to the door: seize him from behind
+    living room     the woman he heard scream lies there, shot; the man who did it stands in front of the
+                    television, his back to the door: seize him from behind
     kitchen         a man at the worktop: a punch floors him, a bat lies by the table to finish him with; another
                     comes out of the pantry: strike
     corridor        a man with a pistol at its far end: run and slide under his fire
@@ -50,6 +51,7 @@ lv.actor('p', 21, 15, face=180)                         # the far end of the cor
 lv.actor('j', 27, 11, face=90)                          # the study
 lv.actor('m', 28, 13, face=180)
 lv.actor('k', 26, 4, face=90)                           # the front room: comes when the two of the study are dead
+lv.body('civ2', 13.5, 4.75, 195, 20)                    # her: what he heard from his bed. The man stands over her
 lv.drop('bat', 13.2, 12.3, 25)
 lv.drop('pistol', 24.2, 15.5, 200, rounds=2)
 

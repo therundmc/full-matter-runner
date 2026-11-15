@@ -77,6 +77,8 @@ export default {
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[0, 0, 33, 18]],
+  // already dead when it starts [kind, col, row, deg, pool px]
+  bodies: [["civ2", 13.5, 4.75, 195, 20]],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["bat", 13.2, 12.3, 25, null], ["pistol", 24.2, 15.5, 200, 2]],
   // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)

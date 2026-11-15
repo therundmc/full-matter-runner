@@ -173,7 +173,8 @@ let S = null;
 
 // ---------------------------------------------------------------- per frame
 // t: seconds; mouse: { x, y } in canvas pixels, or null
-export function drawTitleScene(ctx, W, H, t, mouse) {
+// texts: false leaves the title's lines out (drawTitleTexts draws them, over what is put on the picture)
+export function drawTitleScene(ctx, W, H, t, mouse, texts = true) {
   if (!S) S = build();
   // eased mouse + idle sway -> camera offset in about [-1, 1]
   const nx = mouse ? clamp(mouse.x / W * 2 - 1, -1, 1) : 0, ny = mouse ? clamp(mouse.y / H * 2 - 1, -1, 1) : 0;
@@ -377,7 +378,16 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   ctx.drawImage(S.vignette, 0, 0);
   ctx.restore();
 
+  if (texts) drawTexts(ctx, W, H, t);
+}
+
+// the title's lines alone, at alpha (the opening fades them as the camera leaves the window)
+export function drawTitleTexts(ctx, W, H, t, alpha = 1) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
   drawTexts(ctx, W, H, t);
+  ctx.restore();
 }
 
 // The two big title lines cost more to rasterize as text every frame than the whole scene: each of their layers

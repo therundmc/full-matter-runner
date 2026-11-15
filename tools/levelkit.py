@@ -40,7 +40,7 @@ SIZES = dict(
     neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
-    fuse_box=None, emergency_light=None, pergola=None, urinal=(12, 10), stall=(4, 40),
+    fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 40),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
@@ -69,6 +69,7 @@ class Level:
                               # the same, after he has drunk off a bottle and smashed it on the wall across
         self.leans = []       # weapons stood against a wall: [type, col, row, deg]
         self.drops = []       # weapons lying about with a given magazine: [type, col, row, deg, rounds]
+        self.bodies = []      # somebody already dead when the level starts: [kind, col, row, deg, pool px]
         self.tutorial = None  # a level that teaches: { stages, fall } (src/game/systems/Tutorial.js)
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
@@ -116,6 +117,10 @@ class Level:
 
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
+
+    # ---- a dead body at (col, row), its head toward deg, in a pool of `pool` px
+    def body(self, kind, col, row, deg=0, pool=18):
+        self.bodies.append([kind, col, row, deg, pool])
 
     # ---- a weapon lying at (col, row) with `rounds` in it (None: full)
     def drop(self, kind, col, row, deg=0, rounds=None):
@@ -289,6 +294,9 @@ class Level:
         if self.welcome:
             L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
             L.append(f'  welcome: {json.dumps(self.welcome)},')
+        if self.bodies:
+            L.append('  // already dead when it starts [kind, col, row, deg, pool px]')
+            L.append(f'  bodies: {json.dumps(self.bodies)},')
         if self.drops:
             L.append('  // weapons lying about [type, col, row, deg, rounds in it (null: full)]')
             L.append(f'  drops: {json.dumps(self.drops)},')

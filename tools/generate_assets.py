@@ -4399,30 +4399,6 @@ def p_stall():
     return cv
 
 
-def p_pergola():
-    """The porch over a door, from above (the wall at -y): slats from the wall to the street with the night between
-    them, two beams across, two posts on the street side, a string of warm bulbs along the front beam."""
-    W, H = 74, 42
-    cv = Cv(W, H)
-    wd = ramp('#7a4a2a', 0.45, 0.22, 0.3)
-    for x in range(4, W - 6, 9):
-        cv.rect(x, 2, x + 3, H - 3, wd[2])
-        cv.rect(x, 2, x, H - 3, wd[3])
-        cv.rect(x + 3, 2, x + 3, H - 3, wd[1])
-    for y in (3, H - 9):
-        cv.rect(1, y, W - 2, y + 3, wd[2])
-        cv.rect(1, y, W - 2, y, wd[3])
-        cv.rect(1, y + 3, W - 2, y + 3, wd[0])
-    for x in (1, W - 7):
-        cv.rect(x, H - 10, x + 5, H - 4, wd[1])
-        cv.rect(x + 1, H - 9, x + 4, H - 5, wd[0])
-    for x in range(10, W - 8, 8):
-        cv.set(x, H - 5, hx('#fff0c0'))
-        cv.set(x, H - 4, hx('#ffc98a'))
-    cv.outline()
-    return cv
-
-
 # small dressing added one by one (the details list)
 DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
@@ -4432,12 +4408,12 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     table_flipped=flipped_table(46, '#86552f', '#5a361e'),
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
-                    urinal=p_urinal, stall=p_stall, pergola=p_pergola)
+                    urinal=p_urinal, stall=p_stall)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
-                    urinal=(14, 12), stall=(6, 42), pergola=(74, 42))
+                    urinal=(14, 12), stall=(6, 42))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

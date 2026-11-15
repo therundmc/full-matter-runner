@@ -138,9 +138,6 @@ export const PROPS = {
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
   pool_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
-  // a porch over a door, on two posts: people walk under it, its bulbs light the pavement; it never comes down
-  pergola: { fixture: true, hung: true, overhead: true, lasting: true, height: 0.07, static: true, material: 'wood', w: 72, h: 40, hp: 20, chips: '#7a4a2a', sound: 'wood',
-    light: [{ r: 120, color: '#ffc98a', intensity: 0.75, x: -22, y: 10 }, { r: 120, color: '#ffc98a', intensity: 0.75, x: 22, y: 10 }] },
   // strung across the street
   string_lights: { fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },

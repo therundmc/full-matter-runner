@@ -107,6 +107,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
+   No pergola over the bar's door (tried, "too ugly"): a wall lamp each side of it.
    The bar hangs on a fuse box on its back wall, in the back lot (level `power`, systems/Power.js, prop `fuse_box`):
    smashed or shot, the lights stutter and die, the jukebox and the fans stop, and only the red battery lamps over the
    doors are left (props with `standby`); guards see far less in it, and those who heard the box come and look.
@@ -152,8 +153,12 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    each, said by a key cap and a few words next to what it is done to (`HINTS`); the guards of a room are `dormant`
    until its wave is called, and slower than real ones (`slack`); a death starts again at the last room reached
    (`Game.tutorialAt`); it ends by diving through the front room window: state `fall` (black), then level 1 opens on
-   him waking in the alley. NEW GAME plays the opening first (ui/Cinematic.js, state `cinematic`): from the title's
-   street into the lit window next door, a bedroom seen side-on, he gets up, the view tips onto the floor plan.
+   him waking in the alley. The title screen is the street seen FROM HIS WINDOW (ui/cine/Pane.js: rain running down
+   the glass, the frame, his bottle on the sill; the user's idea). NEW GAME plays the opening first (ui/Cinematic.js,
+   state `cinematic`): the camera pulls back from that window into his bedroom (ui/cine/Room.js), then the night
+   goes wrong, told as an 8-bit comic (ui/cine/Panels.js; he asked for dark, with comic effects): a thump, his eye
+   opens, a woman screams, a shot, blood under the door, his face, boots on the landing, "FIND HIM."; he gets up
+   and the view tips onto the floor plan. Her body lies in the tutorial's living room (level `bodies`).
    Check the cinematic and the menu in the browser after touching them; the QA robot plays the tutorial with
    `npm run qa -- --level tutorial` (add `--god` to see it through to the window).
 

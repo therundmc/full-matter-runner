@@ -34,8 +34,9 @@ export const FINISHERS = {
 // Where things are on a man lying on his back, px from his body's centre toward his head (his `downAngle`), and how
 // the player comes to him: mount = s to get into place, astride / over = where he sets himself, side = [along,
 // across] for the bat's swing, near = px within which a man down can be finished, aim = rad the cursor may be off
-// him for a click to start it (further: the click is an ordinary attack on somebody else).
-export const EXEC = { head: 24, chest: 9, mount: 0.16, astride: 5, over: -4, side: [15, 15], near: 34, aim: 1 };
+// him for a click to start it (further: the click is an ordinary attack on somebody else), rate = how fast the
+// whole of a finisher is played, x the times written above (the user: 1.3 x faster than first written).
+export const EXEC = { head: 24, chest: 9, mount: 0.16, astride: 5, over: -4, side: [15, 15], near: 34, aim: 1, rate: 1.3 };
 
 // d: weapon definition, weapon: the one in hand (an empty gun is a club)
 export function finisherFor(d, weapon) {

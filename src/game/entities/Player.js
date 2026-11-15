@@ -443,6 +443,7 @@ export default class Player extends Character {
 
   updateExecution(dt) {
     const ex = this.execution, tg = ex.target, w = this.world, f = ex.f, d = this.def;
+    dt *= EXEC.rate;
     ex.age += dt;
     ex.hit += dt;
     if (ex.at) {

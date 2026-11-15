@@ -192,7 +192,8 @@ lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.6, 21.09)
 lv.prop('plant', 20.6, 21.3)
 lv.prop('plant', 23.4, 21.3)
-lv.prop('pergola', 22.0, 21.62)                         # a porch over the door, its bulbs warm on the pavement
+for x in (20.2, 23.8):                                  # a lamp each side of the door (a pergola was tried: the
+    lv.prop('wall_lamp', x, 21.09)                      # user found it ugly)
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window

@@ -16,14 +16,13 @@ import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
 import { drawLoading, drawIntro, drawDead, drawResults, drawOutro } from './ui/Screens.js';
-import { drawTitleScene } from './ui/TitleScene.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
-import { CINE, cineView, cineBeats, cineCaption, drawCinematic } from './ui/Cinematic.js';
+import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
-import { neon, text } from './ui/Text.js';
+import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import { createPost } from './render/PostGL.js';
 
@@ -322,7 +321,7 @@ export default class Game {
     if (this.state === 'cinematic') {
       // the opening plays by itself; a key or a click goes straight to the game
       Music.setIntensity(0);
-      for (const b of cineBeats(this.cineT, this.stateT)) Audio.play(b.name, { vol: b.vol });
+      for (const b of cineBeats(this.cineT, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
       this.cineT = this.stateT;
       const skip = this.stateT > CINE.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
       inp.consume();
@@ -490,7 +489,7 @@ export default class Game {
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
-    else if (!inWorld) drawTitleScene(ctx, W, H, t, this.input.mouse);
+    else if (!inWorld) drawTitleView(ctx, W, H, t, this.input.mouse);
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => this.drawCine(ctx, W, H, t, post));
     else this.drawScene(ctx, W, H, t, post);
     if (post) {
@@ -513,17 +512,16 @@ export default class Game {
     if (!['loading', 'outro', 'cinematic', 'fall'].includes(this.state)) this.drawCursor(o, t);
   }
 
-  // the opening (ui/Cinematic.js): the title's street, the room, then the level seen from above, on a scratch canvas
+  // the opening (ui/Cinematic.js): from the title's window into his room, the night's story, then the level seen
+  // from above, painted on a scratch canvas
   drawCine(ctx, W, H, t, post) {
     if (!this.cineBuf || this.cineBuf.c.width !== W || this.cineBuf.c.height !== H) {
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
       this.cineBuf = { c, g: c.getContext('2d') };
     }
-    drawCinematic(ctx, W, H, this.stateT, {
-      title: (g, w, h) => drawTitleScene(g, w, h, t, null),
-      world: (g, w, h) => { g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; this.drawScene(g, w, h, t, post); },
-    }, this.cineBuf);
+    const world = (g, w, h) => { g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; this.drawScene(g, w, h, t, post); };
+    drawCinematic(ctx, W, H, this.stateT, world, this.cineBuf);
   }
 
   // the world (or the replay of the run behind the results), lit, before any lens
@@ -578,10 +576,6 @@ export default class Game {
     }
     this.safeDraw(ctx, () => {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best, levelLabel(this.levelId));
-      if (this.state === 'cinematic') {
-        const c = cineCaption(this.stateT);
-        if (c) text(ctx, c.str, 40 * H / 720, H - 44 * H / 720, 15 * H / 720, PALETTE.white, { align: 'left', alpha: c.alpha });
-      }
       if (this.state === 'fall') {
         ctx.globalAlpha = clamp(this.stateT / FALL.fade, 0, 1);
         ctx.fillStyle = '#000';
