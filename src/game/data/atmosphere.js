@@ -25,14 +25,12 @@ export const RAIN = {
   splash: { life: 0.2, size: 2.6, odds: 0.55, color: '#e4ecff', alpha: 0.32 },
   // standing water: rings spreading where drops land in it
   ripple: { per: 260, life: 0.85, size: [2.5, 6.5], color: 'rgba(200,220,255,1)', alpha: 0.32, width: 0.6 },
-  // puddles of rain lying in the open (drawn like LIQUIDS water, mirror the lights in Lighting.post): how many per
-  // 100 tiles of open floor, their radius, the floors they lie on, how close to each other
+  // puddles of rain lying in the open (where: the water is liquid on the floor, kind `rain` in data/liquids.js, poured
+  // into a hollow there): how many per 100 tiles of open floor, their radius, the floors they lie on, how close to
+  // each other
   puddles: {
     per: 1.6, r: [9, 21], gap: 70, floors: ['asphalt', 'asphalt_line', 'sidewalk', 'concrete', 'dirt'],
     lobes: 9, squash: [0.5, 0.75], // ragged outline, flattened
-    look: { body: 'rgba(6,10,26,0.34)', sheen: 'rgba(130,170,235,0.04)', glint: '#d4e6ff', ring: 'rgba(170,210,255,0.16)',
-      sky: 'rgba(30,38,74,0.26)' }, // `sky`: the night sky they mirror, added over the lit scene (Lighting.post)
-    splash: { stride: 22, drops: 3, speed: 80, color: 'rgba(200,225,250,0.5)' }, // someone walking through it
   },
   // drips: water running off the eaves and the fire escape, a drop every few seconds on the same spots
   drips: {

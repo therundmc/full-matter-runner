@@ -1,13 +1,13 @@
 // Procedural blood (canvas side). Nothing here is a flat shape: a stain is a small pixel stamp whose every pixel
 // has a thickness (a film the floor shows through -> where it stands thick), generated once from seeded noise and
 // reused rotated by MapRenderer. Each stamp exists in three ages (wet crimson, tacky, dried brown-red).
-// A body's pool is a PoolArt: one irregular outline per body, repainted only when it has grown.
+// The pools under the bodies are liquid on the floor (render/LiquidArt.js takes its blood colours from RAMPS).
 import { TAU } from '../../engine/math.js';
 
-const FILM = 1, THIN = 2, BODY = 3, DEEP = 4, CORE = 5, GLINT = 6;
+const FILM = 1, THIN = 2, BODY = 3, DEEP = 4, CORE = 5;
 
-// [r, g, b, a] per thickness level, for each age of a stain
-const RAMPS = [
+// [r, g, b, a] per thickness level (then a glint, 6), for each age of a stain
+export const RAMPS = [
   [null, [172, 26, 28, 140], [152, 18, 22, 220], [128, 11, 15, 255], [94, 7, 11, 255], [60, 4, 8, 255], [232, 156, 146, 255]],
   [null, [134, 20, 20, 155], [118, 14, 16, 225], [100, 10, 12, 255], [76, 7, 9, 255], [52, 4, 6, 255], [76, 7, 9, 255]],
   [null, [106, 32, 22, 155], [96, 25, 18, 225], [84, 20, 14, 255], [64, 14, 11, 255], [46, 9, 8, 255], [64, 14, 11, 255]],
@@ -165,80 +165,3 @@ export const streakStamp = (w, len) => any(nearest(nearest(stamps().streaks, w),
 export const splatStamp = (r) => any(nearest(stamps().splats, r));
 // builds every stamp now (at level load) instead of in the middle of the first kill
 export const warmStamps = stamps;
-
-// The blood standing under one body: an irregular outline (broad lobes, a few runs where the floor let it creep),
-// a ragged edge, a dark rim, a nearly black centre and a few wet glints. Its shape is fixed, only its radius grows.
-const DIRS = 96;
-class PoolArt {
-  constructor(seed = Math.floor(Math.random() * 1e9)) {
-    const rnd = rng(seed), edge = lobes(rnd, 0.5, 4);
-    const runs = [];
-    for (let i = 0, n = 2 + Math.floor(rnd() * 2.5); i < n; i++) runs.push([rnd() * TAU, 0.14 + rnd() * 0.2, 0.2 + rnd() * 0.35]);
-    this.seed = seed;
-    this.rim = new Float32Array(DIRS); // outline radius by direction, in pool radii
-    let sq = 0;
-    for (let i = 0; i < DIRS; i++) {
-      const a = (i / DIRS) * TAU;
-      let v = 0.85 * edge(a);
-      for (const [ra, rw, rl] of runs) {
-        const d = Math.atan2(Math.sin(a - ra), Math.cos(a - ra));
-        v += rl * Math.exp(-((d / rw) ** 2));
-      }
-      this.rim[i] = v;
-      sq += v * v;
-    }
-    const norm = 1 / Math.sqrt(sq / DIRS); // keeps the area of a disc of that radius
-    this.max = 0;
-    for (let i = 0; i < DIRS; i++) this.max = Math.max(this.max, this.rim[i] *= norm);
-    // highlights: [direction, distance in radii, length px], toward the top left where the light comes from
-    this.glints = [];
-    for (let i = 0; i < 4; i++) this.glints.push([Math.PI * (1 + rnd() * 0.6), 0.15 + rnd() * 0.45, 1 + Math.floor(rnd() * 2.5)]);
-    this.canvas = document.createElement('canvas');
-    this.r = -1;
-    this.age = -1;
-    this.half = 0;
-  }
-
-  // repaints the pool at radius r (px) and age; small (a few thousand pixels) and only done when either changed
-  paint(r, age = 0) {
-    if (r === this.r && age === this.age) return this.canvas;
-    this.r = r; this.age = age;
-    const half = this.half = Math.ceil(r * this.max) + 2, n = half * 2, s = this.seed;
-    const px = new Uint8Array(n * n);
-    for (let y = 0; y < n; y++) {
-      for (let x = 0; x < n; x++) {
-        const dx = x + 0.5 - half, dy = y + 0.5 - half;
-        const f = ((Math.atan2(dy, dx) / TAU + 1) % 1) * DIRS, i = Math.floor(f), k = f - i;
-        const edge = r * (this.rim[i] * (1 - k) + this.rim[(i + 1) % DIRS] * k);
-        // pixels inside the outline, ragged by a noise that stays put while the pool grows
-        const inside = edge - Math.hypot(dx, dy) + (hash(x - half, y - half, s) - 0.5) * 1.7;
-        if (inside <= 0) continue;
-        const patch = hash(Math.floor((x - half) / 3), Math.floor((y - half) / 3), s + 1) - 0.5;
-        const v = (inside / r) * 1.9 + patch * 0.4 + (hash(x - half, y - half, s + 3) - 0.5) * 0.12;
-        px[y * n + x] = inside < 1.2 && hash(x - half, y - half, s + 2) > 0.25 ? DEEP : v < 0.28 ? BODY : v < 0.62 ? DEEP : CORE;
-      }
-    }
-    if (r >= 5) {
-      for (const [a, d, len] of this.glints) {
-        const gx = Math.floor(half + Math.cos(a) * d * r), gy = Math.floor(half + Math.sin(a) * d * r);
-        for (let j = 0; j < len; j++) if (px[gy * n + gx + j] >= DEEP) px[gy * n + gx + j] = GLINT;
-      }
-    }
-    return paint(this.canvas, n, n, px, age);
-  }
-
-  // draws it centred on (x, y), on whole pixels
-  draw(ctx, x, y, r, age = 0) {
-    const img = this.paint(Math.round(r * 2) / 2, age);
-    ctx.drawImage(img, Math.round(x) - this.half, Math.round(y) - this.half);
-  }
-}
-
-// one PoolArt per bleeding body (the body itself stays free of canvases); released once baked into the floor
-const pools = new WeakMap();
-export function poolArt(owner) {
-  let p = pools.get(owner);
-  if (!p) pools.set(owner, p = new PoolArt());
-  return p;
-}
-export function releasePool(owner) { pools.delete(owner); }

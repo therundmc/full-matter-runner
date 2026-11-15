@@ -48,8 +48,8 @@ export function bleedOut(c, dt, neck, wound, src, still) {
   }
   if (c.age < 0.3) return;
   if (c.poolPos && Math.hypot(src.x - c.poolPos.x, src.y - c.poolPos.y) > c.pool * 0.7 + 8) {
-    // shoved out of its pool: what had run out stays behind, the rest starts another, smaller one
-    c.world.decals.bakePool(c, c.poolPos.x, c.poolPos.y, c.pool);
+    // shoved out of its pool: what had run out stays behind (on the floor: systems/Liquids.js), the rest starts
+    // another, smaller one
     c.poolMax = Math.max(3, c.poolMax - c.pool * 0.5);
     c.pool = 0;
     c.poolPos = null;

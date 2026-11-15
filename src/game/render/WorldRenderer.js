@@ -1,9 +1,7 @@
 // Draws a World: floor/decals, entities in layer order, walls, particles, additive effects, floating texts.
 // Also the physics debug overlay (F4).
-import { TILE, PALETTE, CAT, LIQUIDS } from '../Config.js';
-import { rand, clamp, TAU } from '../../engine/math.js';
-import { puddleShape } from '../systems/Liquids.js';
-import { gridRaycast } from '../../engine/physics/Raycast.js';
+import { TILE, PALETTE, CAT } from '../Config.js';
+import { clamp } from '../../engine/math.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
@@ -11,6 +9,7 @@ import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
 import { drawRainGround, drawRainAir, viewRect } from './WeatherArt.js';
 import SmokeArt from './SmokeArt.js';
+import LiquidArt from './LiquidArt.js';
 import { RAIN } from '../data/atmosphere.js';
 import { OUTRO } from '../systems/Outro.js';
 import { drawCombat } from '../fx/CombatFx.js';
@@ -40,6 +39,7 @@ export default class WorldRenderer {
     this.world = world;
     this.lightMs = 0; // smoothed cost of the lighting passes
     this.smoke = new SmokeArt(world); // the smoke in the air and the mist, lit
+    this.liquid = new LiquidArt(world); // what is wet on the floor
   }
 
   draw(ctx, cam, t) {
@@ -53,12 +53,10 @@ export default class WorldRenderer {
     const fs = w.decals.floorScale, fx0 = Math.max(0, Math.floor(cam.x - v.x)), fy0 = Math.max(0, Math.floor(cam.y - v.y));
     const fw = Math.min(w.map.widthPx, Math.ceil(cam.x + v.x)) - fx0, fh = Math.min(w.map.heightPx, Math.ceil(cam.y + v.y)) - fy0;
     if (fw > 0 && fh > 0) ctx.drawImage(w.decals.floorCanvas, fx0 * fs, fy0 * fs, fw * fs, fh * fs, fx0, fy0, fw, fh);
-    for (const p of w.weather.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
-    for (const p of w.liquids.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
-    drawRainGround(ctx, w.weather, view, t);
-    // blood lies over everything baked into the floor; the dead and their pieces lie on the blood
+    // blood lies over everything baked into the floor, what is wet over it; the dead and their pieces lie in it
     ctx.drawImage(w.decals.bloodCanvas, 0, 0);
-    for (const c of w.corpses) if (vis(c.x, c.y)) c.drawPool(ctx);
+    this.liquid.draw(ctx, view);
+    drawRainGround(ctx, w.weather, view, t);
     ctx.drawImage(w.decals.fleshCanvas, 0, 0);
     for (const d of w.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.draw(ctx);
@@ -97,7 +95,7 @@ export default class WorldRenderer {
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
-    if (lit) w.lighting.post(ctx, cam, t);
+    if (lit) w.lighting.post(ctx, cam, t, this.liquid);
     lightMs += performance.now() - l0;
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis);
@@ -111,86 +109,6 @@ export default class WorldRenderer {
     if (w.showVision) this.drawAIDebug(ctx);
     this.drawTexts(ctx);
     if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
-  }
-
-  // standing liquid: a dark wet patch with an irregular edge, a pale sheen, glints, rings while something pours
-  // into it, in the colours of its kind (the lights it mirrors are added by Lighting.post)
-  drawPuddle(ctx, p, t) {
-    const shape = puddleShape(p), look = p.look || LIQUIDS.kinds[p.kind].puddle; // (rain puddles bring their own)
-    const blob = (k) => {
-      ctx.beginPath();
-      for (const [x, y, rx, ry] of shape) { ctx.moveTo(x + rx * k, y); ctx.ellipse(x, y, rx * k, ry * k, 0, 0, TAU); }
-      ctx.fill();
-    };
-    // it stops at the walls: what of it would lie under one (or past it, in the next room) is clipped off
-    const cells = this.puddleCells(p);
-    ctx.save();
-    if (cells) {
-      ctx.beginPath();
-      for (const [c, r] of cells) ctx.rect(c * TILE, r * TILE, TILE, TILE);
-      ctx.clip();
-    }
-    ctx.globalAlpha = p.alpha;
-    ctx.fillStyle = look.body;
-    blob(1);
-    ctx.fillStyle = look.sheen;
-    blob(0.72);
-    if (look.foam) {
-      // froth pushed to the edge
-      ctx.fillStyle = look.foam;
-      ctx.globalAlpha = Math.min(1, p.alpha * 0.5 * (look.froth ?? 1));
-      for (const l of p.lobes) {
-        for (let j = -1; j <= 1; j++) {
-          if (Math.sin(l.ph * 5 + j * 2) < -0.2) continue; // patchy
-          const a = l.a + j * 0.4 + l.ph * 0.1, d = (l.d + l.s * (0.86 - 0.1 * Math.abs(j))) * p.r;
-          ctx.fillRect(Math.round(p.x + Math.cos(a) * d), Math.round(p.y + Math.sin(a) * d), j ? 1 : 2, 1);
-        }
-      }
-      ctx.globalAlpha = p.alpha;
-    }
-    // glints: short pale dashes that come and go
-    ctx.fillStyle = look.glint;
-    for (const l of p.lobes) {
-      const k = Math.sin(t * 1.3 + l.ph);
-      if (k <= 0) continue;
-      const x = p.x + Math.cos(l.a + l.ph) * l.d * p.r * 0.9, y = p.y + Math.sin(l.a + l.ph) * l.d * p.r * 0.8;
-      const len = 2 + l.s * 5;
-      ctx.globalAlpha = p.alpha * k * 0.22;
-      ctx.fillRect(Math.round(x - len / 2), Math.round(y), Math.round(len), 1);
-    }
-    if (p.fed > 0) {
-      ctx.strokeStyle = look.ring;
-      ctx.lineWidth = 0.7;
-      for (let i = 0; i < 3; i++) {
-        const k = (t * 0.7 + i / 3) % 1;
-        ctx.globalAlpha = p.alpha * (1 - k);
-        ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * k * 0.9, p.r * k * 0.8, 0, 0, TAU); ctx.stroke();
-      }
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  }
-
-  // the floor tiles a puddle may lie on when a wall is within its reach (null: none is, nothing to clip): those on
-  // its side of the walls (a straight line from its centre to theirs crosses none). Kept until it spreads to new
-  // tiles or a wall comes down.
-  puddleCells(p) {
-    const m = this.world.map, R = p.r * 1.3;
-    const c0 = Math.floor((p.x - R) / TILE), c1 = Math.floor((p.x + R) / TILE), r0 = Math.floor((p.y - R) / TILE), r1 = Math.floor((p.y + R) / TILE);
-    const key = `${c0},${r0},${c1},${r1},${Math.round(p.x)},${Math.round(p.y)},${m.version}`;
-    if (p.clip?.key === key) return p.clip.cells;
-    let cells = null;
-    // a wall, or a doorway or a window in one: it stays on its side of them (the tile of its own centre excepted)
-    const pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
-    const shut = (c, r) => m.isSolid(c, r) || ((c !== pc || r !== pr) && 'DLG'.includes(m.at(c, r) || 'X'));
-    for (let r = r0; r <= r1 && !cells; r++) for (let c = c0; c <= c1; c++) if (shut(c, r)) { cells = []; break; }
-    if (cells) {
-      for (let r = r0; r <= r1; r++) {
-        for (let c = c0; c <= c1; c++) if (!shut(c, r) && !gridRaycast(p.x, p.y, (c + 0.5) * TILE, (r + 0.5) * TILE, shut)) cells.push([c, r]);
-      }
-    }
-    p.clip = { key, cells };
-    return cells;
   }
 
   // lit: the lighting pass already put the transient lights into its light map

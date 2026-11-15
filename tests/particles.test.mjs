@@ -4,7 +4,8 @@ import { load } from './setup.mjs';
 
 const { default: Particles, P } = await load('game/fx/Particles.js');
 const { PROPS } = await load('game/data/props.js');
-const { LIQUIDS, LITTER } = await load('game/Config.js');
+const { LITTER } = await load('game/Config.js');
+const { LIQUIDS } = await load('game/data/liquids.js');
 const { FLOATS } = await load('game/data/destruction.js');
 
 // a world reduced to what the particles touch: an open floor, decal calls recorded by name
@@ -25,7 +26,7 @@ const run = (particles, sec, dt = 1 / 60) => { for (let t = 0; t < sec; t += dt)
 
 test('hydrant: one hit pops it and the geyser lasts as long as the flood', () => {
   assert.ok(PROPS.hydrant.fountain && PROPS.hydrant.hp <= 1);
-  assert.ok(LIQUIDS.hydrant.dur >= 8 && LIQUIDS.hydrant.cap > 80);
+  assert.ok(LIQUIDS.hydrant.dur >= 8 && LIQUIDS.hydrant.rate * LIQUIDS.hydrant.dur > 20000);
 });
 
 test('jet: water thrown up climbs metres high, falls back around and leaves no permanent stain', () => {

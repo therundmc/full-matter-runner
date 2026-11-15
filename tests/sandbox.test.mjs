@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { LIQUIDS } = await load('game/Config.js');
+const { LIQUIDS } = await load('game/data/liquids.js');
 const { AMMO } = await load('game/data/weapons.js');
 const { default: Sandbox, TOOLS } = await load('game/debug/Sandbox.js');
 

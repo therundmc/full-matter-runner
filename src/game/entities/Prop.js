@@ -1,4 +1,5 @@
-import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, LIQUIDS, WALL_RIM } from '../Config.js';
+import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, WALL_RIM } from '../Config.js';
+import { LIQUIDS } from '../data/liquids.js';
 import { PROPS } from '../data/props.js';
 import { recipeFor, BITS, FLOATS } from '../data/destruction.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
@@ -532,8 +533,8 @@ export default class Prop {
   leak(sx, sy, dirA) {
     if (this.leaks >= DESTRUCTION.maxLeaks) return;
     this.leaks++;
-    // rate (px2/s) and cap: what a tank under pressure pours out of one hole (a keg floods the floor); jet: drops a step
-    const w = this.world, { color = 'rgba(110,160,200,0.16)', dur = 3, kind, rate = LIQUIDS.leak, cap, jet = 2 } = this.rec.leak || { kind: 'water' };
+    // rate (px2/s): what a tank under pressure pours out of one hole (a keg floods the floor); jet: drops a step
+    const w = this.world, { color = 'rgba(110,160,200,0.16)', dur = 3, kind, rate = LIQUIDS.leak, jet = 2 } = this.rec.leak || { kind: 'water' };
     const out = dirA + Math.PI + rand(-0.4, 0.4); // the jet comes back out of the hole
     let pos = this.toWorld(sx, sy);
     w.emit(pos.x, pos.y, dur, (e) => {
@@ -541,7 +542,7 @@ export default class Prop {
       const k = e.t / dur; // pressure falls
       w.particles.drops(pos.x, pos.y, out + rand(-0.1, 0.1), 0.15, k > 0.3 ? jet : 1, color, 40 + 120 * k * (jet > 2 ? 1.6 : 1), 5, kind !== 'water');
     });
-    if (kind) w.events.emit('spill', { x: pos.x + Math.cos(out) * 14, y: pos.y + Math.sin(out) * 14, kind, area: rate * dur, dur, cap });
+    if (kind) w.events.emit('spill', { x: pos.x + Math.cos(out) * 14, y: pos.y + Math.sin(out) * 14, kind, area: rate * dur, dur, a: out });
     w.sound('soft', pos.x, pos.y, 0.4);
   }
 
@@ -561,8 +562,7 @@ export default class Prop {
   gush(x, y, area) {
     const w = this.world, P = w.particles, R = Math.max(this.W, this.H) / 2, dur = 1.8;
     const { color = 'rgba(110,160,200,0.16)', kind = 'water' } = this.rec.leak || {};
-    // it stands wider than anything that leaks (the pool's radius may pass the usual cap)
-    w.events.emit('spill', { x, y, kind, area, dur, cap: Math.sqrt(area / Math.PI) * 1.2 });
+    w.events.emit('spill', { x, y, kind, area, dur });
     P.drops(x, y, 0, Math.PI, 50, color, 240, 12, false);
     w.emit(x, y, dur, (e) => {
       const k = e.t / dur; // time left: the pressure falls

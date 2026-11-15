@@ -7,7 +7,7 @@
 // what E reaches: a spot is used from within `reach` of it (its own `r` when it has one)
 export const USE = { reach: 24 };
 
-// Running on a slippery floor (a liquid kind with `slip`, data in LIQUIDS.kinds): the feet go. speed: px/step from
+// Running on a slippery floor (a liquid kind with `slip`, LIQUIDS.kinds in data/liquids.js): the feet go. speed: px/step from
 // which one is running; odds: of going down per `stride` px run on it; the player's fall: `slide` s sliding on his
 // back (`speed` x his run speed, `brake` share kept per s), then `up` s getting up (he can do nothing meanwhile);
 // a guard: dazed on the floor `daze` s (groggy, trying to get up: no stars), slid on `push` px/step.
@@ -23,11 +23,11 @@ export const SLIP = {
 // The fire alarm (level `sprinklers`: { pull: [col, row], rooms: [[col0, row0, col1, row1], ...] }): pulled (E) or
 // set off by a fire or a blast in its rooms. The bell rings `ring` s (a burst every `period`, the guards around hear it
 // every `call` bursts, `reach` tiles); the heads (one every `spacing` tiles over its rooms) spray `spray` s, each
-// pouring water (px2/s, `rate`) into a puddle up to `cap`; the whole floor under them grips `grip` while it is wet
-// and `dry` s after; fires in the rooms die; customers run for it.
+// raining water (px2/s, `rate`) on the floor within `cover` px of it (systems/Liquids.js: the rooms are soaked and
+// grip less); fires in the rooms die; customers run for it.
 export const SPRINKLERS = {
   ring: 34, period: 0.5, call: 4, reach: 14,
-  spray: 26, spacing: 3.2, rate: 520, cap: 54, grip: 0.62, dry: 50,
+  spray: 26, spacing: 3.2, rate: 520, cover: 56,
   drops: 3,            // drops a head throws a step (particles)
   late: [0.3, 1.6],    // s before each head lets go once the alarm is on
 };

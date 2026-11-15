@@ -2,7 +2,7 @@
 // down: a guard falls on his back and lies there dazed a few seconds (Enemy.slip: a free kill), a customer trips
 // (Civilian.trip), the player slides on his back and gets up (Player.slip). Walking is safe, and so is the player's
 // own slide. DOM-free: the falls are the characters' own.
-import { LIQUIDS } from '../Config.js';
+import { LIQUIDS } from '../data/liquids.js';
 import { SLIP } from '../data/devices.js';
 
 // who a character is for the odds
@@ -33,12 +33,11 @@ export default class Slips {
 
   update() {
     const w = this.world, liq = w.liquids;
-    if (!liq.puddles.some((p) => LIQUIDS.kinds[p.kind]?.slip)) { this.runs.clear(); return; }
     for (const ch of w.chars) {
       const who = slipper(ch);
       if (!who || !this.standing(ch)) { this.runs.delete(ch); continue; }
       const z = liq.at(ch.x, ch.y);
-      if (!z || !LIQUIDS.kinds[z.kind]?.slip) { this.runs.delete(ch); continue; }
+      if (!z?.slip) { this.runs.delete(ch); continue; }
       let t = this.runs.get(ch);
       if (!t) this.runs.set(ch, t = { d: 0, x: ch.x, y: ch.y });
       const dx = ch.x - t.x, dy = ch.y - t.y, d = Math.hypot(dx, dy);

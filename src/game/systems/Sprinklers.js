@@ -1,10 +1,10 @@
 // The bar's fire alarm (level `sprinklers`: { pull: [col, row], rooms: [[col0, row0, col1, row1], ...] }). A red pull
 // station on a wall (a `fire_alarm` prop): pulled (E), or set off by a fire or a blast in its rooms. Its bell rings
 // (and every few bursts the guards around hear it and come to look); the sprinkler heads over the rooms (a grid,
-// `heads`) open one after another and rain on everything: water stands in puddles under them (systems/Liquids.js),
-// the whole floor of the rooms is slick while it is wet (grip, read by World.floorGrip), fires in reach die, and the
-// customers run for the street, and the smoke under them is brought down (systems/Smoke.js wash). Shot off the wall,
-// the station stops the bell (not the water). DOM-free.
+// `heads`) open one after another and rain on everything: the water falls on the floor all round each head and
+// runs (systems/Liquids.js: the rooms are soaked, a wet floor grips less), fires in reach die, the customers run
+// for the street, and the smoke under them is brought down (systems/Smoke.js wash). Shot off the wall, the
+// station stops the bell (not the water). DOM-free.
 import { TILE } from '../Config.js';
 import { SPRINKLERS } from '../data/devices.js';
 import { rand, TAU } from '../../engine/math.js';
@@ -30,7 +30,6 @@ export default class Sprinklers {
     this.cfg = cfg;
     this.on = false;
     this.t = 0;          // s since it went off
-    this.wet = 0;        // s the floor stays slick
     this.box = undefined; // the pull station, looked up at the first step (props are built after the systems)
     if (!def) return;
     this.rooms = def.rooms.map(([c0, r0, c1, r1]) => ({ x0: c0 * TILE, y0: r0 * TILE, x1: (c1 + 1) * TILE, y1: (r1 + 1) * TILE }));
@@ -55,9 +54,6 @@ export default class Sprinklers {
     return !!this.rooms && this.rooms.some((r) => x > r.x0 && x < r.x1 && y > r.y0 && y < r.y1);
   }
 
-  // the floor grip multiplier at a point (World.floorGrip): slick while the rooms are wet
-  grip(x, y) { return this.wet > 0 && this.inside(x, y) ? this.cfg.grip : 1; }
-
   // it goes off (by: who pulled it, if anyone)
   trip(by) {
     if (this.on || !this.rooms) return;
@@ -76,7 +72,6 @@ export default class Sprinklers {
   update(dt) {
     if (!this.rooms) return;
     const w = this.world, c = this.cfg;
-    if (this.wet > 0) this.wet -= dt;
     if (!this.on) {
       // a fire burning in the rooms sets it off
       if (w.fires?.lit().some((f) => this.inside(f.x, f.y))) this.trip(null);
@@ -90,16 +85,15 @@ export default class Sprinklers {
       if (this.n++ % c.call === 0) w.noise(this.pull.x, this.pull.y, c.reach * TILE);
     }
     if (this.t > c.spray) return;
-    this.wet = c.dry;
     for (const h of this.heads) {
       if (this.t < h.late) continue;
       if (!h.open) {
         h.open = true;
         w.sound('hiss', h.x, h.y, 0.35, { pitch: 0.55 });
       }
-      // the rain off the head, the puddle under it, the smoke it brings down
+      // the rain off the head, the water it lays on the floor all round it, the smoke it brings down
       w.particles.drops(h.x + rand(-3, 3), h.y + rand(-3, 3), rand(0, TAU), Math.PI, c.drops, SPRAY, 95, 70, false);
-      w.liquids.feed(h.x, h.y, c.rate * dt, 'water', c.cap);
+      w.liquids.sprinkle(h.x, h.y, c.cover, c.rate * dt);
       w.smoke?.wash(h.x, h.y, dt);
     }
     // what burns in the rooms goes out

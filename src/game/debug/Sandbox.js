@@ -1,7 +1,8 @@
 // Sandbox / debug tools, usable in any level (F1; open from the start in passive test rooms such as ?level=lab).
 // A tool drops something at the cursor (guards, weapons, props, vehicles, blasts, water); cheats bend the rules
 // (god mode, frozen guards, time scale, ammo, teleport). DOM-free: ui/SandboxPanel.js draws `lines()`.
-import { TILE, LIQUIDS } from '../Config.js';
+import { TILE } from '../Config.js';
+import { LIQUIDS } from '../data/liquids.js';
 import { rand, TAU } from '../../engine/math.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
 import { PROPS } from '../data/props.js';

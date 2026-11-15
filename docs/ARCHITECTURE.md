@@ -20,6 +20,9 @@ src/
       Raycast.js          grid DDA, segment vs polygon / circle / segment
       Fluid.js            coarse 2D stable fluid: flow grid (vorticity confinement, advection, pressure projection
                           with volume sources) carrying a finer density (MacCormack); solid cells, a stepped region
+      Shallow.js          liquid on a flat floor: a "virtual pipes" height field (depth per kind per cell, fluxes with
+                          inertia between neighbours, a film under which it stops spreading, floor levels), drying and
+                          soaking, setting kinds (blood), solid cells, chunks that sleep when still
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
                           of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
@@ -53,9 +56,10 @@ src/
       Records.js          best result per level in localStorage (guarded: the game runs without storage)
       Threats.js          which off-screen guards the player can plausibly know about (pure rule + per-guard memory)
       Impacts.js          listens to 'impact': material sounds by speed and mass
-      Liquids.js          what is wet on the floor: puddles of water or booze fed by sources and spills (burst hydrant,
-                          broken toilet, smashed bottles), blood pools, wet floor grip, footprints and slide smears
-                          (DOM-free, unit-tested)
+      Liquids.js          what is wet on the floor, one shallow liquid over the map (engine/physics/Shallow.js,
+                          LIQUIDS in data/liquids.js): the floors' levels, walls / shut doors / furniture holding it,
+                          sources and spills, the bodies' blood, the rain's puddles, wet floor grip, footprints and
+                          slide smears, ripples (DOM-free, unit-tested)
       Alarms.js           closed shops (level.alarms) that ring when broken into: bell, beacon, guards come to look,
                           passers-by hurry on, until the box is shot off the wall (DOM-free, unit-tested)
       Power.js            the house's fuse box (level.power): smashed, the lights of its zone stutter and die, the
@@ -71,7 +75,8 @@ src/
                           back dazed a few seconds (Enemy.slip, no stars: CharacterAnim.groggy), a customer trips, the
                           player slides on his back and gets up (Player.slip)
       Sprinklers.js       the fire alarm (level `sprinklers`): pulled (E) or set off by a fire or a blast in its rooms:
-                          the bell, the heads raining (puddles), a slick floor (World.floorGrip), fires doused, panic
+                          the bell, the heads raining on the floor (Liquids.sprinkle: a soaked, slick floor), fires
+                          doused, panic
       LampDrop.js         a hung lamp whose chains a round cuts (prop def `drops`): it falls (`hang`) and crushes whoever
                           is under it (`how.crushed`, tag LIGHTS OUT), its light dies, the table takes the blow
       Passage.js          two trapdoors (level `passage`): E, the picture goes dark (HUD), up out of the other one; the
@@ -95,8 +100,8 @@ src/
       Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
                           soaked by the rain, heavier and darker
       Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is
-                          off): which tiles see the sky, puddles lying in the open, drip spots (only if it falls); a foot
-                          through a puddle splashes. The drops are not stored (render/WeatherArt.js). DOM-free, seeded
+                          off): which tiles see the sky, where puddles lie in the open (Liquids fills their hollows),
+                          drip spots (only if it falls). The drops are not stored (render/WeatherArt.js). DOM-free, seeded
       Smoke.js            the air as a fluid and what it carries (SMOKE): grey smoke, black soot, white powder, steam;
                           walls, doors and panes, sources (shots and their ejection ports, blasts, what burns, jets, the
                           smokers' threads and breaths, puffs), stirring (walkers, cars, rounds, fans, drafts,
@@ -128,7 +133,11 @@ src/
                           on repeated hits; every wall mark is clipped to the wall tiles, behind their outline
       GoreArt.js          what a burst skull leaves: bits of bone, scalp and brain, the stains of its matter
       BloodArt.js         what blood looks like: pixel stamps (spots, streaks, splats) built once, in three ages
-                          (wet, tacky, dry), and the pool under a bleeding body
+                          (wet, tacky, dry; RAMPS, also the colours of blood on the floor in LiquidArt)
+      LiquidArt.js        the liquid on the floor in flat pixel steps by depth on the world's 2 px grid (edge lit
+                          from the top left, body, deep, core; kinds mixed; foam, glints, petrol sheen), only the
+                          chunks that changed repainted; its mirror mask for Lighting.post; set blood baked as a stain;
+                          ripples
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
@@ -162,7 +171,8 @@ src/
                           (Draw pixel tools, Layout, Timeline and Cycle: everything as a function of t, unit tested, the day's keyframes
                           in data/daycycle.js; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain: the showers),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
-    data/                 atmosphere (rain, smoke, neon faults: the look of the air), daycycle (the title's day and night), devices (the level's usable things: tuning), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+    data/                 atmosphere (rain, smoke, neon faults: the look of the air), liquids (the liquid on the floor:
+                          solver, floors, kinds and their look), daycycle (the title's day and night), devices (the level's usable things: tuning), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,
@@ -204,7 +214,7 @@ Rules:
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
 | `propHit` | `{ prop, x, y, dirA, kind }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster) |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster) |
-| `spill` | `{ x, y, kind, area, dur?, cap? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing) | Liquids (px² of a `LIQUIDS.kinds` liquid, at once or over `dur` seconds) |
+| `spill` | `{ x, y, kind, area, dur?, a? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing), a guard's glass or leak, a customer's glass | Liquids (px2 of floor a `LIQUIDS.kinds` liquid covers, at once or over `dur` seconds, thrown toward `a`) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
@@ -346,8 +356,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   (film to core) coloured through one ramp per age, never circles or gradients. They are baked into `bloodCanvas`,
   drawn over the floor decals and under `fleshCanvas` (baked bodies and meat), so blood covers rubble and the dead
   stay readable on it. `decals.update(dt)` dries stains by re-blitting their tacky then dry variant (a few per step,
-  queue capped). The pool under a body (`poolArt(owner)`, fx/Bleeding.js) is repainted only when it grows or ages,
-  stays where it formed if the body is shoved, and is baked with the body (`decals.bakePool`).
+  queue capped). The pool under a body is liquid on the floor (systems/Liquids.js): fx/Bleeding.js grows its radius,
+  Liquids pours what it grew by at the wound and lets it run; it stays where it ran if the body is shoved, stays wet
+  after the body is baked, and once it has set (`LIQUIDS.kinds.blood.age` s after it was last fed) render/LiquidArt.js
+  paints it into `bloodCanvas` in its dry colours, for good.
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
   Space = context action: execute > takedown > vault > slide. (A cover system existed and was removed at the user's
@@ -393,22 +405,43 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   ones cool at the rim. A blast = a few lobes of such flames, a torn shock front (`rings` entry with `blast`),
   square billows of black smoke (`smoke` with `puff`), burning scraps thrown in arcs (`cinders`) that go on burning
   where they fall, and a ragged burn (`decals.scorch`, BlastArt).
-- Liquids (systems/Liquids.js, `LIQUIDS` in Config.js): a source pours px² of liquid per second into a puddle that
-  spreads up to its cap, stands, then dries (`world.liquids.source` / `feed`; a destroyed `def.fountain` prop is a
-  source). Anything else that pours emits `spill`: a prop's `leak` in data/destruction.js names a `kind` (water for
-  sinks and toilets, which also `flood` when they fall apart), and bottles (`BITS.bottle.smash`) thrown out of a
-  shelf or a crate shatter where they land (`Debris` / shard `onLand`) into a small booze puddle. Bottles in plain
-  sight are a `rack` (data/destruction.js): the grid of bottle tops drawn in a shelf's sprite (liquor shelf, the
-  bar's `back_bar` on the wall behind the counter) or the glasses the game sets out on each metre of counter. What
-  hits the prop bursts the ones on its way one by one (`Prop.burstRack`: wiped off the sprite, glass in their
-  colour, the drink running off the front to a puddle at the foot); only those still standing fall when it breaks.
-  Each kind has its own look (`kinds[k].puddle`: body, sheen, glint, rings, foam), prints and splash; a puddle
-  creeps toward what feeds it, drinks up a smaller one of the same kind it has spread over, and when there are
-  `maxPuddles` the smallest soaks away. The blood under a body is owned and drawn by the corpse; Liquids only tracks where it is wet
-  (`corpse.pool`, `corpse.poolAt()`), including for a while after the body is baked into the floor. Anyone in
-  `world.chars` who steps in a wet area splashes, then prints fading footprints on the dry floor (`decals.footprint`),
-  or one long smear when sliding (`decals.smear`). A wet floor grips less (`World.floorGrip`). Puddles are drawn
-  by WorldRenderer.drawPuddle and mirror the lights in Lighting.post (`LIGHTING.puddle`).
+- Liquids (systems/Liquids.js over engine/physics/Shallow.js, `LIQUIDS` in data/liquids.js): everything wet on the
+  floor is one shallow liquid over the whole map, cells of 4 px (8 to a tile), a depth (mm) of each kind per cell:
+  water, rain, beer, booze, blood, petrol. Between two cells a pipe carries a flux with inertia (pushed by the
+  difference of their levels, slowed by the kind's drag, more so the thinner it is): a gush runs on and sloshes, a
+  pool evens out. A cell runs onto a dry one only with more than its film (`film`, mm: surface tension), so a pool
+  stops spreading at about a film deep and has an edge; under `stick` of its film a cell gives nothing more (the
+  wet trail a flow leaves). Outflows are scaled to what a cell holds: the volume is kept exactly but for what dries.
+  The floor has a level (`LIQUIDS.floors`: indoor floors a step up, a kerb up to the sidewalk, roads cambered from
+  their kerbs so water runs along the gutters, small bumps, the rain's hollows), drinks (`soak`: carpets, dirt, the
+  manholes of `street.manholes` swallow), and each kind evaporates at its own rate; blood does not evaporate but
+  sets (`age` s after it was last fed it is no longer wet and is painted dry into the floor's blood layer). Kinds mix
+  by volume (beer thinned by water loses its slip, blood turns water pink); a cell's film, drag, grip and slip are
+  its mix's. Walls, windows (the sill is above the floor), a door shut on its frame (the cells under its closed leaf)
+  and the furniture standing on the floor (`dams`: counters, fridges, shelves...; tables and beds stand on legs)
+  are solid cells; an open doorway lets it through. Stepped at `rate` Hz, only in chunks of 16 x 16 cells that move
+  (and their neighbours); a still pool sleeps.
+  Sources: `world.liquids.source` (a `def.fountain` prop destroyed: the hydrant) and `spill` events (a prop's `leak`
+  in data/destruction.js: a jet thrown toward `a`, a pipe's flood, a tank's gush; bottles of a `rack` burst one by
+  one, `Prop.burstRack`, the drink running off the front of the shelf; bottles thrown out shatter where they land),
+  `feed` (px2 of floor that much liquid would cover), `sprinkle` (drops over a disc: the sprinklers), the bodies'
+  blood (each corpse's `pool` radius, poured at `poolAt()` as it grows), a car's leaking fuel (petrol), the rain's
+  puddles (level `wet`: Weather lays where, Liquids sinks a hollow there and fills it level under its rim, at rest,
+  never drying), the petrol on the floor of a lesson's room that a match will light (level `fires` of a stage with a
+  `spark`). Drops landing in it ring (`ripple`).
+  What it does: a wet floor grips less (`World.floorGrip` x `Liquids.grip`: the mix's grip, by depth), so bodies and
+  loose things slide further; a slick mix floors runners (systems/Slips.js reads `at(x, y).slip`). Anyone in
+  `world.chars` who steps in it splashes (deep enough), pushes it along, then prints fading footprints on the dry
+  floor (`decals.footprint`, event 'footprint'; the rain marks no sole) or one long smear when sliding
+  (`decals.smear`). The sprinklers douse fires (Fires.douse).
+  The look (render/LiquidArt.js, `LIQUIDS.look`): painted into a map-sized buffer a texel of 2 world px at a time,
+  the depth in films softened over each cell's neighbours, roughened by a still noise, cut into flat steps (edge,
+  its side facing the light lit, thin, body, deep, core) in the kind's colours (blood: BloodArt's RAMPS, wet then
+  tacky), mixed with a second kind; glints, a beer's foam on a fresh flow (in clumps, never a dither), a petrol's
+  thin rainbow bands. Only the chunks whose cells changed are painted again, once in view. Drawn over the blood
+  layer and under the bodies, before the lighting (the light map lights it). A second buffer says how much each texel
+  mirrors (the rain's puddles the night sky too): Lighting.post draws the lights' streaks through it
+  (`LIGHTING.puddle`).
 - Melee (data/weapons.js `swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `wear`, `breaks`): a blow that
   lands is dressed by fx/Blows.js (what struck, the heavy stroke, a spin or a sweep, from the front, the side or
   behind). The player's weapon wears out (`weapon.wear`, kept on the item when dropped): the kill that uses it up
@@ -588,8 +621,8 @@ its customers panic, the radio and the hums stop with the power.
 
 ## The air (data/atmosphere.js)
 
-All of it is a look but for thick smoke, which hides from the guards (the smoke and the rain's puddles are not
-obstacles, not wet floors: no prints, no grip). Readability first: it is the lamps that make it show.
+All of it is a look but for thick smoke, which hides from the guards (the smoke is no obstacle). Readability
+first: it is the lamps that make it show. (The rain's puddles are liquid on the floor: see Liquids above.)
 - Rain: the user wants none falling, so `RAIN.falls` is off: what is left is the wet of an earlier rain (puddles,
   floors in the open mirroring the lights, a light mist, soaked paper, thicker steam). How wet is the level's
   `soundscape.rain` times `RAIN.look`. Only where the sky is (Weather.skyGrid: open floors not in `AMBIENCE.indoors`, outer walls and roofs; never a room nor its walls).
@@ -597,7 +630,7 @@ obstacles, not wet floors: no prints, no grip). Readability first: it is the lam
   streak sprite crossing the picture with the wind, then a crown where it lands, rings where it lands in water.
   Drawn before the lighting (the light map colours it: it glitters under a streetlight) and once more, faint
   (`RAIN.after`), over the lit scene. Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
-  a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`look.sky`).
+  a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`LIQUIDS.look.kinds.rain.sky`).
 - Smoke (systems/Smoke.js over engine/physics/Fluid.js, `SMOKE`): every smoke, steam and dust cloud of the game is
   this one simulation. The air of the whole map is a coarse fluid seen from above, the layer under the ceilings:
   flow cells of 16 px (velocity), density cells of 8 px, stepped at 20 Hz (the flow one frame, what it carries the

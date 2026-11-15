@@ -197,40 +197,6 @@ export const PHYSICS = {
 };
 
 // Wet floors (systems/Liquids.js). Lengths in px, areas in px2, times in s.
-export const LIQUIDS = {
-  maxPuddles: 24, // one more and the smallest soaks away
-  grip: 0.55,     // floor grip multiplier where it is wet (a kind's own `grip` when it has one)
-  minPool: 4,     // a blood pool smaller than this wets no shoe
-  stride: 17,     // between two footprints (alternating feet)
-  gait: 3,        // half the distance between the left and the right foot
-  smear: 7,       // length of one stroke of a slide's smear
-  fade: 6,        // a drying puddle fades out over its last seconds
-  // prints: steps a wet sole keeps marking; wet: seconds it stays wet once nothing feeds it;
-  // color / alpha: of the prints; splash: drops kicked up when running through it (quiet: without the slosh);
-  // puddle: how it stands on the floor: body, the paler sheen inside, glints, the rings while something pours in,
-  // foam at its edge
-  kinds: {
-    blood: { prints: 16, wet: 45, color: '#5c0a0c', alpha: 0.9 },
-    water: {
-      prints: 9, wet: 70, color: '#0b0f1c', alpha: 0.55, splash: 'rgba(110,160,200,0.14)',
-      puddle: { body: 'rgba(6,10,24,0.3)', sheen: 'rgba(120,170,230,0.06)', glint: '#bcd8ff', ring: 'rgba(170,210,255,0.16)' },
-    },
-    // beer, whisky: brown, sticky, a thin film
-    booze: {
-      prints: 7, wet: 55, color: '#2c1806', alpha: 0.5, splash: 'rgba(150,96,36,0.3)', quiet: true,
-      puddle: { body: 'rgba(36,15,3,0.62)', sheen: 'rgba(168,92,22,0.24)', glint: '#ffd9a0', ring: 'rgba(236,190,120,0.2)', foam: '#e8d8b0' },
-    },
-    // draught beer out of a keg: a wide amber flood with a head of foam; slick (grip), and whoever runs on it may
-    // go down (`slip`, systems/Slips.js)
-    beer: {
-      prints: 8, wet: 80, color: '#3a2208', alpha: 0.45, splash: 'rgba(214,160,64,0.4)', grip: 0.3, slip: true,
-      puddle: { body: 'rgba(96,54,8,0.62)', sheen: 'rgba(232,162,48,0.34)', glint: '#ffe6a8', ring: 'rgba(255,226,160,0.24)', foam: '#f4ead0', froth: 1.7 },
-    },
-  },
-  hydrant: { kind: 'water', rate: 2600, dur: 12, cap: 96 }, // a burst hydrant gushes for dur s and floods ~3 m around it
-  leak: 260,      // px2 per second out of a pierced tank, keg or pipe (Prop.leak)
-};
-
 // Ambient street life (systems/Ambient.js): traffic on level.ambient.traffic lanes, passers-by on
 // level.ambient.walkers paths. Distances in m (= tiles), speeds in m/s, times in s, unless noted.
 // shop alarms (systems/Alarms.js)

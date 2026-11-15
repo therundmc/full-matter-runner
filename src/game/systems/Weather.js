@@ -1,14 +1,12 @@
 // The wet of a level after the rain, and the rain itself when `RAIN.falls` is on (it is off: the user wants none;
 // level `soundscape.rain`, 0..1; RAIN in data/atmosphere.js). What is kept here is what does not move: which tiles are under the open sky, the puddles of rain lying in the
-// open and the spots where water drips off the eaves and the fire escape. The drops themselves are not stored:
-// render/WeatherArt.js hashes each one's place and timing from the time (cheap, nothing to update).
-// Someone walking through a puddle of rain splashes. DOM-free; laid out with its own seeded random numbers, so the
+// open (where they lie: the water itself is liquid on the floor, systems/Liquids.js fills their hollows) and the
+// spots where water drips off the eaves and the fire escape. The drops themselves are not stored:
+// render/WeatherArt.js hashes each one's place and timing from the time (cheap, nothing to update). DOM-free; laid out with its own seeded random numbers, so the
 // game's random sequence is not touched and the puddles lie in the same places every time.
 import { TILE, AMBIENCE } from '../Config.js';
 import { RAIN } from '../data/atmosphere.js';
 import { clamp, TAU } from '../../engine/math.js';
-
-const { Body } = Matter;
 
 // small seeded generator (mulberry32)
 export function seeded(seed) {
@@ -50,7 +48,6 @@ export default class Weather {
     this.k = clamp((level.wet ?? level.soundscape?.rain ?? 0) * cfg.look, 0, 1); // how wet it is seen to be (level `wet`)
     this.puddles = [];
     this.drips = [];
-    this.walkers = new Map(); // character -> px walked since his last splash
     if (!this.k) return;
     const map = world.map;
     this.rand = seeded(hashString(level.name || 'level'));
@@ -89,7 +86,7 @@ export default class Weather {
       // flatter and more ragged than a spill: water lying in a dip of the ground
       const lobes = [], n = c.lobes;
       for (let i = 0; i < n; i++) lobes.push({ a: (i + (R() - 0.5) * 0.8) * TAU / n, d: 0.3 + R() * 0.5, s: 0.28 + R() * 0.3, ph: R() * TAU });
-      this.puddles.push({ kind: 'water', look: c.look, x, y, r: c.r[0] + R() * (c.r[1] - c.r[0]), squash: c.squash[0] + R() * (c.squash[1] - c.squash[0]), lobes, alpha: 1, fed: 0, seed: R() * 100 });
+      this.puddles.push({ x, y, r: c.r[0] + R() * (c.r[1] - c.r[0]), squash: c.squash[0] + R() * (c.squash[1] - c.squash[0]), lobes, alpha: 1, seed: R() * 100 });
     }
   }
 
@@ -130,19 +127,5 @@ export default class Weather {
   update() {
     if (!this.k) return;
     if (!this.dripsLaid) this.layDrips();
-    if (!this.puddles.length) return;
-    // feet through a puddle of rain throw a little water about (no sound, no prints: it is only rain)
-    const c = this.cfg.puddles.splash, w = this.world;
-    for (const ch of w.chars) {
-      if (!ch.alive || ch.vaulting) continue;
-      const v = Body.getVelocity(ch.body), sp = Math.hypot(v.x, v.y);
-      if (sp < 0.4) continue;
-      const p = this.puddles.find((q) => Math.abs(q.x - ch.x) < q.r && Math.abs(q.y - ch.y) < q.r && Math.hypot(q.x - ch.x, q.y - ch.y) < q.r * 0.85);
-      if (!p) { this.walkers.delete(ch); continue; }
-      const d = (this.walkers.get(ch) ?? c.stride) + sp;
-      if (d < c.stride) { this.walkers.set(ch, d); continue; }
-      this.walkers.set(ch, 0);
-      w.particles.drops(ch.x, ch.y, Math.atan2(v.y, v.x), 1.3, ch.slide ? c.drops * 2 : c.drops, c.color, c.speed, 3, false);
-    }
   }
 }

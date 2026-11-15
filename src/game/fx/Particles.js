@@ -342,6 +342,7 @@ export default class Particles {
         break;
       case P.DROP:
         if (p.stain) decals.spill(x, y, p.size * rand(1.2, 2.2), p.color);
+        if (chance(0.35)) this.world.liquids?.ripple(x, y, p.size * 2); // a ring where it falls in standing liquid
         break;
       default: break;
     }

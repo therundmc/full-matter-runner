@@ -116,7 +116,7 @@ export default class World {
 
     this.scoring = new Scoring(this);
     this.impacts = new Impacts(this);
-    this.liquids = new Liquids(this); // puddles, wet floors, footprints
+    this.liquids = new Liquids(this); // the liquid on the floor: spills, blood, the rain's puddles, footprints
     this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)
     this.alarms = new Alarms(this, level.alarms); // closed shops that ring when broken into
     this.critters = new Critters(this, level.critters); // rats, pigeons, the cat, flies, moths
@@ -173,7 +173,7 @@ export default class World {
   floorGrip(x, y) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
     if (cx < 0 || cy < 0 || cx >= m.w || cy >= m.h) return 1;
-    return (FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1) * (this.liquids?.grip(x, y) ?? 1) * (this.sprinklers?.grip(x, y) ?? 1);
+    return (FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1) * (this.liquids?.grip(x, y) ?? 1);
   }
 
   // ---------------- registry ----------------

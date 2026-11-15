@@ -15,6 +15,7 @@ const { default: Passage, darkAt } = await load('game/systems/Passage.js');
 const { default: Jukebox, masked } = await load('game/systems/Jukebox.js');
 const { default: GasValve, reach } = await load('game/systems/GasValve.js');
 const { default: Liquids } = await load('game/systems/Liquids.js');
+const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: Director } = await load('game/ai/Director.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
 const { PROPS } = await load('game/data/props.js');
@@ -32,6 +33,8 @@ function world(more = {}) {
   };
   return w;
 }
+// an open room of tiled floor, 16 x 12 tiles (for the liquid on the floor)
+const room = () => new TileMap(['#'.repeat(16), ...Array(10).fill('#' + ','.repeat(14) + '#'), '#'.repeat(16)]);
 const prop = (type, col, row, more = {}) => ({ type, def: PROPS[type], x: col * TILE, y: row * TILE, dead: false, kick: { vr: 0 }, ...more });
 const step = (w, systems, sec) => {
   for (let i = 0; i < Math.round(sec * 60); i++) {
@@ -67,9 +70,10 @@ test('slips: running on a slick floor, a fall at the odds every stride; walking 
 });
 
 test('slips: a guard running across beer goes down dazed, one walking does not, a customer trips, the player slides', () => {
-  const w = world({ map: null });
+  const w = world({ map: room(), level: {}, doors: [], corpses: [] });
   w.liquids = new Liquids(w);
-  w.liquids.feed(200, 200, 30000, 'beer', 90);
+  w.liquids.feed(200, 200, 30000, 'beer', 60);
+  for (let i = 0; i < 90; i++) w.liquids.sim.step(1 / 30);
   const runner = { isEnemy: true, alive: true, x: 120, y: 200, moving: 2.4, fell: null, slip(a) { this.fell = a; } };
   const walker = { isEnemy: true, alive: true, x: 200, y: 240, moving: 1, slip() { assert.fail('walking'); } };
   const civ = { isCivilian: true, alive: true, x: 200, y: 170, moving: 2, trip() { this.tripped = true; } };
@@ -85,16 +89,17 @@ test('slips: a guard running across beer goes down dazed, one walking does not, 
   assert.ok(Math.abs(Math.abs(pl.fell) - Math.PI) < 0.01, 'the player, running west');
   assert.ok(w.log.noise.length >= 3, 'a fall is heard');
   // water is not slick enough to fall on
-  const w2 = world({ map: null });
+  const w2 = world({ map: room(), level: {}, doors: [], corpses: [] });
   w2.liquids = new Liquids(w2);
-  w2.liquids.feed(200, 200, 30000, 'water', 90);
+  w2.liquids.feed(200, 200, 30000, 'water', 60);
+  for (let i = 0; i < 90; i++) w2.liquids.sim.step(1 / 30);
   const r2 = { isEnemy: true, alive: true, x: 120, y: 200, moving: 2.4, slip() { assert.fail('water'); } };
   w2.chars = [r2];
   const s2 = new Slips(w2, { ...SLIP, odds: { enemy: 1 } });
   for (let i = 0; i < 30; i++) { r2.x += 2.4; s2.update(); }
 });
 
-test('sprinklers: heads over the rooms; pulled: the bell, rain, a slick floor, fires out, customers run; once', () => {
+test('sprinklers: heads over the rooms; pulled: the bell, rain on the floor, fires out, customers run; once', () => {
   assert.equal(heads([[15, 12, 28, 19]], 3.2).length, 4 * 3);
   const box = prop('fire_alarm', 24, 12.07);
   const panics = [];
@@ -102,14 +107,14 @@ test('sprinklers: heads over the rooms; pulled: the bell, rain, a slick floor, f
   const w = world({
     props: [box], ambient: { panicAround: (x, y, r) => panics.push(r) },
     fires: { lit: () => fires, douse(where) { for (let i = fires.length - 1; i >= 0; i--) if (where(fires[i].x, fires[i].y)) fires.splice(i, 1); } },
-    liquids: { fed: 0, feed(x, y, a, kind) { this.fed += a; assert.equal(kind, 'water'); } },
+    liquids: { fed: 0, sprinkle(x, y, r, a) { this.fed += a; assert.ok(r === SPRINKLERS.cover && this.inRoom(x, y)); }, inRoom: (x, y) => x > 15 * TILE && x < 29 * TILE && y > 12 * TILE && y < 20 * TILE },
   });
   // a fire already in the rooms would set it off: none at first
   fires.shift();
   const sp = new Sprinklers(w, { pull: [24, 12.07], rooms: [[15, 12, 28, 19]] });
   step(w, [sp], 1);
   assert.equal(sp.on, false);
-  assert.equal(sp.grip(20 * TILE, 15 * TILE), 1);
+  assert.equal(w.liquids.fed, 0);
   const spot = w.uses.near({ x: 24 * TILE, y: 12.5 * TILE });
   assert.equal(spot?.kind, 'fire_alarm');
   fires.push({ x: 20 * TILE, y: 15 * TILE });
@@ -119,9 +124,7 @@ test('sprinklers: heads over the rooms; pulled: the bell, rain, a slick floor, f
   step(w, [sp], 3);
   assert.ok(w.log.sound.filter((n) => n === 'fireBell').length >= 5, 'the bell');
   assert.ok(w.log.noise.length >= 1, 'heard by the guards');
-  assert.ok(w.liquids.fed > 0, 'water on the floor');
-  assert.equal(sp.grip(20 * TILE, 15 * TILE), SPRINKLERS.grip, 'slick in the rooms');
-  assert.equal(sp.grip(40 * TILE, 15 * TILE), 1, 'not outside them');
+  assert.ok(w.liquids.fed > 0, 'water on the floor of the rooms');
   assert.deepEqual(fires.map((f) => f.x), [40 * TILE], 'the fire inside is out, the one outside burns on');
   assert.equal(w.uses.near({ x: 24 * TILE, y: 12.5 * TILE }), null, 'pulled once');
   // the station shot off: the bell stops, the rain does not
@@ -129,18 +132,20 @@ test('sprinklers: heads over the rooms; pulled: the bell, rain, a slick floor, f
   const bells = w.log.sound.filter((n) => n === 'fireBell').length;
   step(w, [sp], 2);
   assert.equal(w.log.sound.filter((n) => n === 'fireBell').length, bells);
-  step(w, [sp], SPRINKLERS.spray + SPRINKLERS.dry + 1);
-  assert.equal(sp.grip(20 * TILE, 15 * TILE), 1, 'dry again');
+  step(w, [sp], SPRINKLERS.spray + 1);
+  const fed = w.liquids.fed;
+  step(w, [sp], 2);
+  assert.equal(w.liquids.fed, fed, 'the heads run dry');
 });
 
 test('sprinklers: a blast in the rooms sets them off, a fire in them too', () => {
-  const w = world({ props: [prop('fire_alarm', 24, 12.07)], fires: { lit: () => [], douse() {} }, liquids: { feed() {} } });
+  const w = world({ props: [prop('fire_alarm', 24, 12.07)], fires: { lit: () => [], douse() {} }, liquids: { sprinkle() {} } });
   const sp = new Sprinklers(w, { pull: [24, 12.07], rooms: [[15, 12, 28, 19]] });
   w.events.emit('explosion', { x: 40 * TILE, y: 15 * TILE, radius: 90 });
   assert.equal(sp.on, false);
   w.events.emit('explosion', { x: 18 * TILE, y: 15 * TILE, radius: 90 });
   assert.equal(sp.on, true);
-  const w2 = world({ props: [prop('fire_alarm', 24, 12.07)], fires: { lit: () => [{ x: 18 * TILE, y: 13 * TILE }], douse() {} }, liquids: { feed() {} } });
+  const w2 = world({ props: [prop('fire_alarm', 24, 12.07)], fires: { lit: () => [{ x: 18 * TILE, y: 13 * TILE }], douse() {} }, liquids: { sprinkle() {} } });
   const sp2 = new Sprinklers(w2, { pull: [24, 12.07], rooms: [[15, 12, 28, 19]] });
   step(w2, [sp2], 0.1);
   assert.equal(sp2.on, true);

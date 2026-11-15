@@ -5,7 +5,6 @@ import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, KNEELS } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
 import { smear } from '../fx/Spatter.js';
-import { poolArt } from '../render/BloodArt.js';
 import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
 import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from '../fx/DyingPose.js';
 import { jointAngle, clampJoint, partAngle } from '../fx/Joints.js';
@@ -660,8 +659,6 @@ export default class Ragdoll {
 
   bake() {
     const w = this.world;
-    const n = this.poolAt();
-    w.decals.bakePool(this, n.x, n.y, this.pool);
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
     w.decals.paint?.((g) => { for (const part of [this.torso, this.head]) this.drawMarks(g, part); }, true);
     if (this.stuck) w.decals.paint?.((g) => this.drawStuck(g), true);
@@ -690,12 +687,6 @@ export default class Ragdoll {
     const arms = this.limbs.filter((p) => p.name === 'arm');
     return [...this.limbs.filter((p) => p.name === 'leg'), ...arms.filter((p) => !p.top), this.torso, ...arms.filter((p) => p.top),
       ...(this.head ? [this.head] : [])];
-  }
-
-  drawPool(ctx) {
-    if (this.pool < 1) return;
-    const n = this.poolAt();
-    poolArt(this).draw(ctx, n.x, n.y, this.pool);
   }
 
   draw(ctx) {

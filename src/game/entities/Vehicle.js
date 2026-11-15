@@ -83,7 +83,7 @@ export default class Vehicle {
     this.windows = { wind: 0, rear: 0 }; // 0 intact, 1 cracked, 2 gone
     this.tires = [true, true, true, true];
     this.fuel = 0;      // fuel leak level
-    this.puddle = 0;    // fuel puddle radius
+    this.puddle = 0;    // radius of the fuel it has leaked (poured on the floor)
     this.fuse = 0;      // burning: seconds before it blows
     this.burning = false;
     this.exploded = false;
@@ -508,8 +508,12 @@ export default class Vehicle {
     const dmg = 1 - clamp(this.hp / this.m.hp, 0, 1);
     if (this.burning) w.smoke?.burn(hood.x, hood.y, 'car', dt);
     else if (!this.exploded && dmg > 0.4) w.smoke?.fume('engine', hood.x, hood.y, dt, dmg);
-    // fuel leak puddle
-    if (this.fuel > 0 && this.puddle < 8 + this.fuel * 5) this.puddle += dt * 2.5;
+    // the fuel leaking under it runs on the floor (systems/Liquids.js), its puddle growing to about that radius
+    if (this.fuel > 0 && this.puddle < 8 + this.fuel * 5) {
+      const r0 = this.puddle;
+      this.puddle += dt * 2.5;
+      w.liquids?.feed(tank.x, tank.y, Math.PI * (this.puddle * this.puddle - r0 * r0), 'petrol');
+    }
     if (this.burning) {
       this.fuse -= dt;
       w.particles.fire(hood.x + rand(-10, 10), hood.y + rand(-10, 10), 2, 40);
@@ -538,14 +542,6 @@ export default class Vehicle {
     ctx.translate(b.position.x, b.position.y);
     ctx.rotate(b.angle);
     const ox = -this.w / 2, oy = -this.h / 2;
-    // fuel puddle (rainbow sheen)
-    if (this.puddle > 0) {
-      const [tx, ty] = [(this.m.tank[0] + this.m.tank[1]) / 2 + ox, oy + this.h / 2];
-      ctx.fillStyle = 'rgba(20,14,30,0.75)';
-      ctx.beginPath(); ctx.ellipse(tx - 4, ty, this.puddle * 1.2, this.puddle * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(120,80,200,0.25)';
-      ctx.beginPath(); ctx.ellipse(tx - 6, ty - 2, this.puddle * 0.6, this.puddle * 0.3, 0.4, 0, Math.PI * 2); ctx.fill();
-    }
     // tyres under the body: flat ones squash and the body sags toward them
     let sagX = 0, sagY = 0;
     const tire = spriteOpt('props/car_tire');

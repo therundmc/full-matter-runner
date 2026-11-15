@@ -4,12 +4,12 @@ import { rand, randi, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
-import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps, poolArt, releasePool } from './BloodArt.js';
+import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps } from './BloodArt.js';
 import { matterStain } from './GoreArt.js';
 import WallScars from './WallScars.js';
 
-// seconds after which a stain turns tacky, then dry (a pool takes as long as it stays slippery: LIQUIDS.kinds.blood.wet)
-const STAIN_AGES = [9, 30], POOL_AGES = [20, 45];
+// seconds after which a stain turns tacky, then dry (the pools are liquid on the floor: systems/Liquids.js)
+const STAIN_AGES = [9, 30];
 const MAX_AGEING = 1500; // stains waiting for an age: beyond that the oldest dry early
 const AGE_BUDGET = 24;   // stains re-tinted per step at most
 // blood running down a wall: on the wall top (bright, wet, it must read on dark brick), then on the floor
@@ -45,7 +45,6 @@ export default class MapRenderer {
     this.clock = 0;
     this.ageing = [[], []]; // stains waiting to turn tacky / dry, oldest first: { s, x, y, rot, at }
     this.heads = [0, 0];
-    this.pools = [];        // baked pools still drying: { art, x, y, r, age, at }
     this.scars = new WallScars(map);
     this.render();
     warmStamps();
@@ -383,25 +382,6 @@ export default class MapRenderer {
     g.globalAlpha = 1;
   }
 
-  // the pool a body (owner) lay in, left on the floor for good; it dries slowly
-  bakePool(owner, x, y, r) {
-    if (r < 1) return;
-    const art = poolArt(owner);
-    releasePool(owner);
-    art.draw(this.bloodCtx, x, y, r);
-    this.pools.push({ art, x, y, r, age: 0, at: this.clock + POOL_AGES[0] });
-    if (this.pools.length > 48) this.agePool(this.pools.shift(), 2);
-  }
-
-  agePool(p, age) {
-    const g = this.bloodCtx;
-    g.globalCompositeOperation = 'source-atop';
-    p.art.draw(g, p.x, p.y, p.r, age);
-    g.globalCompositeOperation = 'source-over';
-    p.age = age;
-    p.at = this.clock + POOL_AGES[1] - POOL_AGES[0];
-  }
-
   // blood dries where it lies: the stamps that reached an age are re-tinted in place (a bounded few per step)
   update(dt) {
     this.clock += dt;
@@ -421,8 +401,6 @@ export default class MapRenderer {
       this.heads[a] = h;
     }
     g.globalCompositeOperation = 'source-over';
-    for (const p of this.pools) if (p.at <= this.clock) this.agePool(p, p.age + 1);
-    if (this.pools.some((p) => p.age >= 2)) this.pools = this.pools.filter((p) => p.age < 2);
   }
 
   // blood thrown on a wall top: drawn only on the wall tiles

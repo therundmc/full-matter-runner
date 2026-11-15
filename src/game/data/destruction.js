@@ -22,10 +22,10 @@
 //   snow       true: its screen shows snow while it is on (render/PropLife.js)
 //   screen     [x0, y0, x1, y1]  a glass screen: cracks, then implodes (light goes out)
 //   electric   sparks, smoke and flicker when hit
-//   leak       { color, on: 'hit'|'break', dur, kind?, flood?, rate?, cap?, jet? }  a jet of liquid for dur s out of
-//              each hole (on: 'hit') or once it gives way; kind (LIQUIDS.kinds): it stands as a puddle, else it only
-//              stains; flood: px2 that pour out of the broken pipe when it falls apart; rate: px2/s out of a hole
-//              (LIQUIDS.leak), cap: the radius its puddle may reach, jet: drops a step (a tank under pressure)
+//   leak       { color, on: 'hit'|'break', dur, kind?, flood?, rate?, jet? }  a jet of liquid for dur s out of
+//              each hole (on: 'hit') or once it gives way; kind (LIQUIDS.kinds, data/liquids.js): it runs on the
+//              floor, thrown the way the jet goes, else it only splashes; flood: px2 that pour out of the broken pipe
+//              when it falls apart; rate: px2/s out of a hole (LIQUIDS.leak), jet: drops a step (a tank under pressure)
 //   rack       bottles or glasses standing in plain sight, burst one by one by what hits them (bit: their BITS
 //              entry, share: how much of a bottle each holds). Either drawn in the sprite on a grid
 //              { x, dx, n, ys, s }: n across from x every dx px, one rank per ys, s px square, front at +y; or set
@@ -147,7 +147,7 @@ export const DESTRUCTION = {
   keg: {
     height: 0.6, material: 'metal', gush: 15000,
     parts: [{ cut: 'ring', n: 6, t: 0.22, name: 'stave', fly: 1.1 }, { cut: 'wedges', n: 4, centre: true }],
-    leak: { kind: 'beer', color: 'rgba(222,168,70,0.5)', on: 'hit', dur: 8, rate: 1300, cap: 84, jet: 4 },
+    leak: { kind: 'beer', color: 'rgba(222,168,70,0.5)', on: 'hit', dur: 8, rate: 1300, jet: 4 },
   },
   // the bar's fire alarm pull station, its bell, the wall phone, the camera on its bracket, the monitor on the desk
   fire_alarm: { height: 1.4, material: 'metal', electric: true, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },

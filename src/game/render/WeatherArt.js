@@ -93,7 +93,7 @@ export function drawRainGround(ctx, weather, r, t, gain = 1) {
     ctx.globalAlpha = sp.alpha * (1 - k) * gain;
     crown(ctx, x, y, k, sp.size, sd);
   });
-  // rings in standing water: rain puddles and any water spilled in the open
+  // rings in standing water: the rain's puddles
   const rp = c.ripple;
   ctx.strokeStyle = rp.color;
   ctx.lineWidth = rp.width;
@@ -111,7 +111,6 @@ export function drawRainGround(ctx, weather, r, t, gain = 1) {
     }
   };
   for (const p of weather.puddles) ring(p);
-  for (const p of weather.world.liquids?.puddles || []) if (p.kind === 'water' && weather.open(p.x, p.y)) ring(p);
   // the drips' splashes
   const dr = c.drips;
   ctx.fillStyle = dr.color;

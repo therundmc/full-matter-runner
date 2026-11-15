@@ -3,7 +3,6 @@ import { POST } from '../data/post.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
-import { puddleShape } from '../systems/Liquids.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { RAIN } from '../data/atmosphere.js';
 import { hash, flicker, signLevel, pickFaults } from './Flicker.js';
@@ -724,7 +723,7 @@ export default class Lighting {
   }
 
   // additive layers after the scene: emissive maps, bloom, flares, reflections
-  post(ctx, cam, t) {
+  post(ctx, cam, t, liquid) {
     if (!this.lm) return;
     const w = this.world, { x0, y0, w: vw, h: vh } = this.view, b = L.bloomScale;
     const lit = this.frameLights || [];
@@ -857,24 +856,23 @@ export default class Lighting {
     r.globalCompositeOperation = 'destination-in';
     r.drawImage(this.reflMask, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
 
-    // ---- standing water (systems/Liquids.js) mirrors the lights harder than a damp floor, and from further away
-    const puddles = [...(w.liquids?.puddles || []), ...(w.weather?.puddles || [])].filter((q) => this.inView(q.x, q.y, q.r * 1.5));
-    if (puddles.length) {
+    // ---- standing liquid (systems/Liquids.js) mirrors the lights harder than a damp floor, and from further away:
+    // its mask (render/LiquidArt.js: how much each texel mirrors, the rain's puddles a dim night sky too), then the
+    // streaks only where there is some
+    let puddles = false;
+    if (liquid) {
       const g = this.pd.getContext('2d');
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 1;
       g.clearRect(0, 0, this.pd.width, this.pd.height);
       g.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
-      // the water itself in black (adds nothing; rain puddles add a dim sky), then the streaks only where there is water
-      for (const q of puddles) {
-        g.fillStyle = q.look?.sky || '#000'; // a rain puddle mirrors the night sky too
-        g.globalAlpha = q.alpha;
-        g.beginPath();
-        for (const [x, y, rx, ry] of puddleShape(q)) { g.moveTo(x + rx, y); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }
-        g.fill();
+      g.imageSmoothingEnabled = true;
+      puddles = liquid.mirrorInto(g, x0, y0, vw, vh);
+      if (puddles) {
+        g.globalCompositeOperation = 'source-atop';
+        streaks(g, L.puddle, 1.6);
       }
-      g.globalCompositeOperation = 'source-atop';
-      streaks(g, L.puddle, 1.6);
     }
 
     // ---- composite everything additively (smooth upscale)
@@ -885,7 +883,7 @@ export default class Lighting {
     ctx.drawImage(this.bl, x0, y0, vw, vh);
     ctx.globalAlpha = 1;
     ctx.drawImage(this.rf, x0, y0, vw, vh);
-    if (puddles.length) ctx.drawImage(this.pd, x0, y0, vw, vh);
+    if (puddles) ctx.drawImage(this.pd, x0, y0, vw, vh);
     ctx.drawImage(this.fl, x0, y0, vw, vh);
     ctx.restore();
     void cam;

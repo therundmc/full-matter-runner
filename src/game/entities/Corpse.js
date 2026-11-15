@@ -3,11 +3,11 @@ import { drawSprite, silhouette } from '../../engine/Assets.js';
 import { rand, local } from '../../engine/math.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 import { startBleeding, bleedOut, wipe } from '../fx/Bleeding.js';
-import { poolArt } from '../render/BloodArt.js';
 
 const { Bodies, Body } = Matter;
 
-// Sliding dead body with a growing blood pool. Headless corpses fountain blood from the neck.
+// Sliding dead body with a growing blood pool (poured on the floor: systems/Liquids.js). Headless corpses fountain
+// blood from the neck.
 export default class Corpse {
   constructor(world, img, x, y, angle, speed, opts = {}) {
     this.world = world;
@@ -49,17 +49,9 @@ export default class Corpse {
   }
 
   bake() {
-    const at = this.poolAt();
-    this.world.decals.bakePool(this, at.x, at.y, this.pool);
     this.world.decals.bake(this.img, this.x, this.y, this.body.angle, 1, true);
     this.world.removeBody(this.body);
     this.dead = true;
-  }
-
-  drawPool(ctx) {
-    if (this.pool < 1) return;
-    const at = this.poolAt();
-    poolArt(this).draw(ctx, at.x, at.y, this.pool);
   }
 
   draw(ctx) {
