@@ -47,7 +47,8 @@
 - Gait and hands (2026-11-15, he found the walk "too mini-game", the hands squares, a long gun held on a stick arm):
   entities/Gait.js (cadence and stride grow with speed, planted feet, a torso that carries past a stop), arms and
   hands painted in render/LimbArt.js (two-bone arms, fist / loose / flat hands), long guns shouldered with `grip`,
-  `fore`, `butt` in data/weapons.js; heads are their own sprite (`_head`). The assault rifle is the M16 (key `rifle`).
+  `fore`, `butt` in data/weapons.js; heads are their own sprite (`_head`). The assault rifle is the M16 (key `rifle`), the pistol a 1911
+  with walnut grips, the shotgun a SUPER 90 (olive and black, tube magazine), the sniper a .50 CAL (his choices).
 - Size of people (his verdicts, in order: bodies at real length next to small standing sprites were "completely
   different proportions"; then "seen from above they must be bigger too"; then the bodies "a bit too wide"):
   `BODY_SCALE` = 1.3 (Config). A standing pose is drawn as a whole 1.3 x about the feet (CharacterAnim `bodyFrame`;
