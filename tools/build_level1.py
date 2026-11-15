@@ -225,17 +225,23 @@ lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
 lv.area('north sidewalk and the facade')
 lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.6, 21.09)
-lv.prop('plant', 20.6, 21.3)
-lv.prop('plant', 23.4, 21.3)
-for x in (20.2, 23.8):                                  # a lamp each side of the door (a pergola was tried: the
-    lv.prop('wall_lamp', x, 21.09)                      # user found it ugly)
+# the club's door (the user wanted it like a strip club's: the wall lamps and the plain pots were "vile"; a pergola
+# was tried before, "too ugly"): a red carpet to the kerb between brass posts and velvet ropes, a palm each side in a
+# lacquered planter lit violet from below, the dancer's neon on the wall to the west; the bouncer at the east rope.
+# The ropes stand clear of the sidewalk patrol's beat (row 22) and leave the carpet 1.9 m wide.
+lv.paint('entry_carpet', 22.0, 21.94)
+lv.prop('palm_planter', 20.62, 21.44)
+lv.prop('palm_planter', 23.38, 21.44)
+lv.prop('velvet_rope', 20.5, 22.0)
+lv.prop('velvet_rope', 23.5, 22.0)
+lv.prop('neon_sign_girls', 18.6, 21.09)
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window
 lv.prop('trash_can', 40.5, 21.35)
 lv.pigeons(33.3, 21.7, 2)
 lv.prop('hydrant', 10.6, 22.65)                       # clear of the alley's mouth (bigger, it snagged whoever came out)
-lv.prop('vending', 18.5, 21.33)                         # drinks machine against the bar's front
+lv.prop('vending', 17.42, 21.33)                        # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
 lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)

@@ -106,6 +106,13 @@ export const PROPS = {
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
   neon_sign_video: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
+  neon_sign_girls: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 130, color: '#ff3a9a', intensity: 0.95, flicker: 'buzz' } },
+  // a club's door palm in its lacquered planter, lit from below (a brass uplight in the soil)
+  palm_planter: { material: 'wood', w: 20, h: 20, hp: 6, kg: 45, mu: 0.96, chips: '#1c1824', dirt: true, sound: 'wood',
+    light: { r: 84, color: '#b45aff', intensity: 0.75, y: 6 } },
+  // two brass posts and the velvet rope between them, at a club's door: knocked about by whoever runs into it
+  velvet_rope: { material: 'metal', w: 30, h: 6, hp: 5, kg: 14, mu: 0.7, chips: '#a0142a', sound: 'metal' },
   neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
