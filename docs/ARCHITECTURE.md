@@ -23,7 +23,9 @@ src/
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
                           of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
-                          Music.js (procedural synthwave / house) playing score.js (its data)
+                          Music.js (the soundtrack: one track at a time out of tracks/index.js), Synthwave.js (the
+                          synthwave track, playing score.js), groove/ (the groove tracks' player, instruments and
+                          harmony) and tracks/ (one data file per groove track)
   game/
     Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
@@ -257,8 +259,26 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   the held duck moves it); the ambience goes round both, so gunfire never pumps the night. Then a soft clip and a
   limiter that only catches peaks (slow release). A kill confirm (`_confirm`) is a deep boom (`CONFIRM_BOOM`) under
   a muted note climbing with the chain; a new one chokes the last (META `choke`).
-- Music (audio/Music.js, its data in audio/score.js): one procedural song in F minor at 126 BPM, planned bar by bar
-  from data (progressions, 16-step patterns, lead phrases, sections, forms) and scheduled 0.3 s ahead on long-lived
+- Soundtrack (audio/Music.js): a registry of tracks (audio/tracks/index.js), one a level (level `music`, `trackOf`;
+  the default is 'synthwave', the score below), the title screen playing `MENU_TRACK`. Music.js keeps the game's
+  state (intensity, fight, chain) and hands it to the player of the track playing; a new track starts on its own
+  downbeat while the old one fades. audition.html (repo root) plays every track live with its levels of intensity;
+  tools/render_music.mjs renders them offline in headless Edge (WAV extracts in audition/, loudness per part and per
+  layer, the kick's timing).
+- Groove tracks (audio/groove/Groove.js, data in audio/tracks/<id>.js, instruments in groove/voices.js, harmony and
+  pattern letters in groove/theory.js): a track is its tempo, swing and drum kit, chord progressions of 8 bars,
+  phrases, layers and sections / forms (calm, tense, fight; or a single menu form). Levels of intensity 0..7 (calm,
+  tense, fight, fight with a chain of 1..5 kills); a layer's part is a step map { level: 16-step pattern or phrase }.
+  `planBar` turns a bar into notes (pure, deterministic); the player picks the level on a bar line (calm and tense
+  share the bar clock, a fight is cued at once and starts its own form on the next bar, plays MIN_FIGHT_BARS, ends on
+  a closing bar with a fill; the chain's stage goes up at once and down one a bar) and schedules each bar 0.3 s ahead
+  as one-shots of instruments synthesized into buffers once (Karplus-Strong guitars and basses, FM Rhodes, saw
+  ensembles, a talkbox, drums; rendered on first use and in idle time). Mix: a bus per layer (level, a sweeping
+  lowpass for the filter-disco loops, pan, room and delay sends, a Rhodes tremolo), the kick unpumped and the rest
+  pumped under it, a lowpass on the whole mix in the calm that opens with the tension, a light saturation at the top
+  of a chain, a glue compressor and a soft clip.
+- The synthwave track (audio/Synthwave.js, its data in audio/score.js): one procedural song in F minor at 126 BPM,
+  planned bar by bar from data (progressions, 16-step patterns, lead phrases, sections, forms) and scheduled 0.3 s ahead on long-lived
   voices (bass + sub + growl, pad, arp, the calm's pulse, a 4-note stab, lead and its octave double) and one-shots
   synthesized once (kick, snare, clap, hats, toms, shaker, rim, clank, crash, reversed cymbal), through a glue
   compressor and a safety clip. Game drives it through `ai/Tension.js`: the intensity is `AI.music[phase]` plus the

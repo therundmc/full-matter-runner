@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { mockContext } from './webaudio.mjs';
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -11,51 +12,14 @@ const { render, LAYER_KINDS } = await load('audio/Synth.js');
 const { FLOORS } = await load('game/world/TileMap.js');
 const { GADGETS } = await load('game/Config.js');
 const CONFIG_SOUNDS = Object.values(GADGETS).map((g) => g.sound).filter(Boolean);
-const { default: Music } = await load('audio/Music.js');
+const { default: Synthwave } = await load('audio/Synthwave.js');
+const Music = new Synthwave(); // the synthwave score's player, driven by hand below
 const { default: Tension } = await load('game/ai/Tension.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { MATERIAL_FX } = await load('game/data/destruction.js');
 const { BANK } = await load('audio/bank.js');
 const { ZONES, CITY } = await load('game/data/soundscape.js');
 const ZONE_SOUNDS = Object.values(ZONES).flatMap((z) => z.events.flatMap((e) => (typeof e.sound === 'string' ? [e.sound] : Object.keys(e.sound))));
-
-// Minimal strict WebAudio stand-in: records every node and rejects what a browser would throw on
-// (non-finite values, exponential ramps to <= 0) and counts sources started. With `noPast` set, anything
-// scheduled before currentTime fails too.
-function mockContext() {
-  const ctx = { currentTime: 0, sampleRate: 8000, state: 'running', started: 0, stopped: 0, noPast: false };
-  const when = (t) => Number.isFinite(t) && t >= (ctx.noPast ? ctx.currentTime : 0);
-  const param = (v = 0) => ({
-    value: v,
-    setValueAtTime(x, t) { assert.ok(Number.isFinite(x) && when(t)); },
-    linearRampToValueAtTime(x, t) { assert.ok(Number.isFinite(x) && when(t)); },
-    exponentialRampToValueAtTime(x, t) { assert.ok(x > 0 && when(t), `exp ramp to ${x}`); },
-    setTargetAtTime(x, t, tau) { assert.ok(Number.isFinite(x) && when(t) && tau > 0, `target at ${t}, now ${ctx.currentTime}`); },
-    setValueCurveAtTime(c, t, d) { assert.ok(c.length > 1 && c.every(Number.isFinite) && when(t) && d > 0, 'value curve'); },
-    cancelScheduledValues() {},
-  });
-  const node = (extra = {}) => ({ connect: (n) => n, disconnect() {}, ...extra });
-  const source = (extra) => node({
-    ...extra,
-    start(t = ctx.currentTime) { assert.ok(when(t), `start at ${t}, now ${ctx.currentTime}`); ctx.started++; },
-    stop(t) { assert.ok(Number.isFinite(t)); ctx.stopped++; },
-  });
-  Object.assign(ctx, {
-    destination: node(),
-    createGain: () => node({ gain: param(1) }),
-    createBiquadFilter: () => node({ frequency: param(350), Q: param(1), gain: param(0) }),
-    createStereoPanner: () => node({ pan: param(0) }),
-    createWaveShaper: () => node(),
-    createConvolver: () => node(),
-    createDynamicsCompressor: () => node({ threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() }),
-    createOscillator: () => source({ frequency: param(440), detune: param(0) }),
-    createDelay: () => node({ delayTime: param(0) }),
-    createChannelMerger: () => node(),
-    createBufferSource: () => source({ playbackRate: param(1) }),
-    createBuffer: (ch, len) => ({ getChannelData: () => new Float32Array(len) }),
-  });
-  return ctx;
-}
 
 const FOLEY = { duration: 80 }; // stands for the decoded foley bank
 
@@ -199,7 +163,7 @@ test('audio: the beds of the night: a looping voice per bed once rendered, let g
   });
 });
 
-// ---------------------------------------------------------------- soundtrack (audio/Music.js, audio/score.js)
+// ---------------------------------------------------------------- soundtrack: the synthwave track (audio/Synthwave.js, audio/score.js)
 const BAR = 240 / 126;
 const FIGHT = ['fightA', 'fightB', 'bridge', 'chase']; // sections of the combat form, in order
 const SCORE = await load('audio/score.js');

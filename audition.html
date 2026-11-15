@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music audition</title>
+<style>
+  :root { --bg: #0d0b12; --card: #17131f; --line: #2c2438; --text: #e9e4f0; --dim: #9d93ad; --neon: #ff4f9a; --cyan: #5fd3e8; --on: #ffd166; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, Segoe UI, sans-serif; padding: 24px 16px 60px; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; letter-spacing: 2px; margin: 0 0 4px; color: var(--neon); }
+  .intro { color: var(--dim); margin: 0 0 22px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 0 0 16px; }
+  .card.playing { border-color: var(--neon); box-shadow: 0 0 18px rgba(255, 79, 154, 0.25); }
+  .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+  .name { font-size: 19px; font-weight: 700; letter-spacing: 1px; }
+  .meta { color: var(--cyan); font-size: 13px; }
+  .about, .hook { margin: 8px 0 0; }
+  .hook b, .about b { color: var(--dim); font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
+  button { background: #241d30; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; font: inherit; font-size: 13px; cursor: pointer; }
+  button:hover { border-color: var(--cyan); }
+  button.play { background: var(--neon); color: #1a0710; border-color: var(--neon); font-weight: 700; min-width: 70px; }
+  button.sel { background: var(--on); color: #1d1600; border-color: var(--on); }
+  .status { color: var(--on); font-size: 13px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+  details { margin-top: 10px; color: var(--dim); font-size: 13px; }
+  details ol { margin: 6px 0 0; padding-left: 20px; }
+  audio { height: 30px; vertical-align: middle; }
+  .wav { color: var(--dim); font-size: 13px; }
+  @media (max-width: 600px) { body { padding: 16px 16px 40px; } .name { font-size: 17px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>FULL MATTER RUNNER - MUSIC AUDITION</h1>
+  <p class="intro">Each proposal plays on the game's real music engine. Press PLAY, then pick a level of intensity:
+    the calm, tense (the guards are looking), the fight, then each kill of a chain (1 to 5) adds a layer. CLIMB goes
+    up through all of them by itself, the way the recorded extract does. Changes land on the next bar line.</p>
+  <div id="list"></div>
+</main>
+<script type="module">
+import Music from './src/audio/Music.js';
+import { TRACKS, MENU_TRACK, DEFAULT_TRACK } from './src/audio/tracks/index.js';
+import Groove, { LEVELS } from './src/audio/groove/Groove.js';
+import Synthwave from './src/audio/Synthwave.js';
+
+// intensity, fight, chain for each button (as the game sets them: ai/Tension.js levels, AI.combatMusic)
+const STEPS = [
+  { label: 'calm', intensity: 0.25, combat: false, combo: 0 },
+  { label: 'tense', intensity: 0.6, combat: false, combo: 0 },
+  { label: 'fight', intensity: 0.85, combat: true, combo: 0 },
+  ...[1, 2, 3, 4, 5].map((n) => ({ label: 'chain ' + n, intensity: 1, combat: true, combo: n })),
+];
+const ORDER = [MENU_TRACK, ...Object.keys(TRACKS).filter((id) => id !== MENU_TRACK && id !== DEFAULT_TRACK), DEFAULT_TRACK];
+
+let ctx = null, current = null, climb = null;
+const cards = {};
+
+function apply(step) {
+  Music.setIntensity(step.intensity);
+  Music.setCombat(step.combat);
+  Music.setCombo(step.combo);
+}
+
+function select(id, i) {
+  for (const [k, b] of cards[id].steps.entries()) b.classList.toggle('sel', k === i);
+}
+
+function stopAll() {
+  clearInterval(climb); climb = null;
+  Music.stop();
+  if (current) { cards[current].card.classList.remove('playing'); cards[current].play.textContent = 'PLAY'; cards[current].status.textContent = ''; }
+  current = null;
+}
+
+function play(id, stepIndex = 0) {
+  if (!ctx) {
+    ctx = new AudioContext();
+    const out = ctx.createGain();
+    out.gain.value = 0.9;
+    out.connect(ctx.destination);
+    Music.ctx = ctx;
+    Music.dest = out;
+  }
+  ctx.resume();
+  stopAll();
+  current = id;
+  const c = cards[id];
+  c.card.classList.add('playing');
+  c.play.textContent = 'STOP';
+  const step = TRACKS[id].forms?.menu ? STEPS[0] : STEPS[stepIndex];
+  apply(step);
+  if (c.steps.length) select(id, stepIndex);
+  Music.setTrack(id);
+  Music.start();
+  Music.player.onBar = (p) => {
+    const lvl = p.level !== undefined ? LEVELS[p.level] : p.stage !== undefined ? 'stage ' + p.stage : '';
+    c.status.textContent = `${p.name}  bar ${p.bar + 1}/8  ${lvl}`;
+  };
+}
+
+// calm 4 bars, tense 4, the fight 4, then a kill every 2 bars up to a chain of 5 (the recorded extract's path)
+function climbFrom(id) {
+  play(id, 0);
+  const bar = 240 / TRACKS[id].bpm;
+  let t = 0;
+  const plan = [[4, 1], [7.5, 2], [12, 3], [14, 4], [16, 5], [18, 6], [20, 7]];
+  clearInterval(climb);
+  climb = setInterval(() => {
+    t += 0.1;
+    while (plan.length && t >= plan[0][0] * bar - 0.4) {
+      const k = plan.shift()[1];
+      apply(STEPS[k]);
+      select(id, k);
+    }
+    if (!plan.length) { clearInterval(climb); climb = null; }
+  }, 100);
+}
+
+function el(tag, attrs = {}, text = '') {
+  const e = document.createElement(tag);
+  Object.assign(e, attrs);
+  if (text) e.textContent = text;
+  return e;
+}
+
+for (const id of ORDER) {
+  const t = TRACKS[id];
+  const card = el('section', { className: 'card' });
+  const head = el('div', { className: 'head' });
+  head.append(el('span', { className: 'name' }, t.name), el('span', { className: 'meta' },
+    `${t.style} - ${t.bpm} BPM - ${t.key}${id === MENU_TRACK ? ' - MENU' : ''}${id === DEFAULT_TRACK ? ' - the music in the game today' : ''}`));
+  card.append(head, el('p', { className: 'about' }, t.about));
+  if (t.hook) { const h = el('p', { className: 'hook' }); h.append(el('b', {}, 'Hook: '), t.hook); card.append(h); }
+  const row = el('div', { className: 'row' });
+  const playB = el('button', { className: 'play' }, 'PLAY');
+  playB.onclick = () => (current === id ? stopAll() : play(id));
+  row.append(playB);
+  const steps = [];
+  if (!t.forms?.menu) {
+    STEPS.forEach((s, i) => {
+      const b = el('button', {}, s.label);
+      b.onclick = () => { if (current !== id) play(id, i); else { clearInterval(climb); climb = null; apply(s); select(id, i); } };
+      row.append(b);
+      steps.push(b);
+    });
+    const c = el('button', {}, 'CLIMB');
+    c.onclick = () => climbFrom(id);
+    row.append(c);
+  }
+  const status = el('span', { className: 'status' });
+  row.append(status);
+  card.append(row);
+  if (t.ladder) {
+    const d = el('details');
+    d.append(el('summary', {}, 'What each level adds'));
+    const ol = el('ol', { start: 0 });
+    for (const l of t.ladder) ol.append(el('li', {}, l));
+    d.append(ol);
+    card.append(d);
+  }
+  if (id !== DEFAULT_TRACK) {
+    const w = el('div', { className: 'row wav' });
+    w.append('Recorded extract: ', el('audio', { controls: true, preload: 'none', src: `audition/${id}.wav` }));
+    card.append(w);
+  }
+  document.getElementById('list').append(card);
+  cards[id] = { card, play: playB, steps, status };
+}
+
+// ---- offline render (tools/render_music.mjs drives this in a headless browser): the real engine on an
+// OfflineAudioContext whose clock is stepped every 100 ms like the game's timer. script: [[seconds, step index]];
+// `only`: layer ids to play (a layer's own loudness). Resolves to the mono mix, 44.1 kHz, as base64 float32.
+window.renderTrack = async (id, { seconds = 60, script = [], only = null, sampleRate = 44100 } = {}) => {
+  const off = new OfflineAudioContext(2, Math.ceil(seconds * sampleRate), sampleRate);
+  const t = TRACKS[id];
+  const p = t.engine === 'synthwave' ? new Synthwave(off, off.destination) : new Groove(t, off, off.destination);
+  if (only) p.only = new Set(only);
+  const first = STEPS[script.length && script[0][0] <= 0 ? script.shift()[1] : 0];
+  p.setIntensity(first.intensity); p.setCombat(first.combat); p.setCombo(first.combo);
+  p._open(off);
+  if (p.warmAll) p.warmAll();
+  p._tick(0.3);
+  for (let s = 0.1; s < seconds - 0.05; s += 0.1) {
+    const at = Math.round(s * 10) / 10;
+    off.suspend(at).then(() => {
+      while (script.length && script[0][0] <= at) {
+        const st = STEPS[script.shift()[1]];
+        p.setIntensity(st.intensity); p.setCombat(st.combat); p.setCombo(st.combo);
+      }
+      p._tick(off.currentTime + 0.3);
+      off.resume();
+    });
+  }
+  const buf = await off.startRendering();
+  const L = buf.getChannelData(0), R = buf.getChannelData(1), mono = new Float32Array(L.length);
+  for (let i = 0; i < L.length; i++) mono[i] = 0.5 * (L[i] + R[i]);
+  let side = 0, mid = 0;
+  for (let i = 0; i < L.length; i++) { side += (L[i] - R[i]) ** 2; mid += (L[i] + R[i]) ** 2; }
+  const bytes = new Uint8Array(mono.buffer);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return { data: btoa(bin), sampleRate, width: Math.sqrt(side / (mid || 1)) };
+};
+window.auditionTracks = () => ORDER.map((id) => ({ id, bpm: TRACKS[id].bpm, engine: TRACKS[id].engine || 'groove',
+  layers: (TRACKS[id].layers || []).map((l) => l.id), menu: !!TRACKS[id].forms?.menu }));
+</script>
+</body>
+</html>

@@ -85,6 +85,7 @@ class Level:
         self.roofs = []       # (area, kind, col, row, deg)
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
+        self.music = None     # the soundtrack's track id (src/audio/tracks/index.js); None: the default one
         self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key; 'swig':
                               # the same, after he has drunk off a bottle and smashed it on the wall across
         self.leans = []       # weapons stood against a wall: [type, col, row, deg]
@@ -437,6 +438,8 @@ class Level:
         if self.premises:
             L.append('  // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away')
             L.append(f'  premises: {json.dumps(self.premises)},')
+        if self.music:
+            L.append(f"  music: '{self.music}',")
         if self.intro:
             L.append(f"  intro: '{self.intro}',")
         if self.welcome:

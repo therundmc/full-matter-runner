@@ -5,6 +5,7 @@ import Input from '../engine/Input.js';
 import Camera, { VIEW } from '../engine/Camera.js';
 import Audio from '../audio/Audio.js';
 import Music from '../audio/Music.js';
+import { MENU_TRACK, trackOf } from '../audio/tracks/index.js';
 import World from './world/World.js';
 import Tension from './ai/Tension.js';
 import PostFX from './render/PostFX.js';
@@ -178,6 +179,7 @@ export default class Game {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
     if (!retry) this.tutorialAt = null;
     this.world = new World(this, LEVELS[this.levelId]);
+    Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
     // he gets up off the ground the first time only: a retry starts on his feet, at once
     if (this.seen === this.levelId) { this.world.player.sit = 0; this.world.player.swig = null; }
     this.seen = this.levelId;
@@ -336,11 +338,12 @@ export default class Game {
       this.lensNote = this.time + 1.6;
     }
     if (this.state === 'title') {
+      Music.setTrack(MENU_TRACK);
       Music.setIntensity(0);
-      // what is heard of the city through his window: the trains going by, the far wash (ui/title/Timeline.js; the
+      // the city the title shows, heard out in the open: the trains going by, the far wash (ui/title/Timeline.js; the
       // scene's clock is the time on the title)
       const t1 = this.stateT, t0 = this.titleT <= t1 && t1 - this.titleT < 0.5 ? this.titleT : t1;
-      for (const b of titleBeats(t0, t1)) Audio.play(b.name, { vol: b.vol, ...b.opts });
+      for (const b of titleBeats(t0, t1)) Audio.play(b.name, { vol: b.vol, ...b.opts, inside: 0 });
       this.titleT = t1;
       this.updateMenu(inp);
       inp.consume();

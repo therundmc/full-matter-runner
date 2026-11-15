@@ -1,3 +1,6 @@
 .claude/worktrees/
 __pycache__/
 qa-report/
+
+# rendered music extracts for listening (tools/render_music.mjs --wav), not kept in history
+audition/

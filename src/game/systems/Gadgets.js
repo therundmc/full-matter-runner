@@ -14,7 +14,7 @@ export default class Gadgets {
     });
   }
 
-  // how well the jukebox's tune (audio/Music.js) is heard from where the player stands, 0..1: nothing once it is
+  // how well the jukebox's tune (audio/Music.js, the synthwave track's band) is heard from where the player stands, 0..1: nothing once it is
   // knocked off its record
   tune() {
     const w = this.world, p = w.player, g = this.cfg.jukebox;
