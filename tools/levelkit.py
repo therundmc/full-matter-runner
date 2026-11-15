@@ -43,7 +43,7 @@ SIZES = dict(
     fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 40),
     apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
-    palm_planter=(20, 20), velvet_rope=(30, 6),
+    palm_planter=(20, 20), awning=None, velvet_rope=(30, 6),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
 

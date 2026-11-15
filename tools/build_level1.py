@@ -234,6 +234,8 @@ lv.prop('palm_planter', 20.62, 21.44)
 lv.prop('palm_planter', 23.38, 21.44)
 lv.prop('velvet_rope', 20.5, 22.0)
 lv.prop('velvet_rope', 23.5, 22.0)
+lv.prop('awning', 22.0, 21.78)                          # a canvas awning over the carpet (the user's wish; a wooden
+                                                        # pergola had been "too ugly")
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window

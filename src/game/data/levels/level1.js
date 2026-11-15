@@ -113,9 +113,10 @@ export default {
     // north sidewalk and the facade
     ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['palm_planter', 19.62, 21.44, 0],
     ['palm_planter', 22.38, 21.44, 0], ['velvet_rope', 19.5, 22, 0], ['velvet_rope', 22.5, 22, 0],
-    ['streetlight', 6.5, 22.7, 90], ['streetlight', 33.5, 22.7, 90], ['bench', 35.5, 22.62, 180],
-    ['trash_can', 38.5, 21.35, 0], ['hydrant', 10.6, 22.65, 0], ['vending', 17.42, 21.33, 0],
-    ['news_box', 25.6, 21.19, 0], ['wall_lamp', 2.35, 21.09, 0], ['palm_tree', 39.6, 21.8, 0],
+    ['awning', 21, 21.78, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 33.5, 22.7, 90],
+    ['bench', 35.5, 22.62, 180], ['trash_can', 38.5, 21.35, 0], ['hydrant', 10.6, 22.65, 0],
+    ['vending', 17.42, 21.33, 0], ['news_box', 25.6, 21.19, 0], ['wall_lamp', 2.35, 21.09, 0],
+    ['palm_tree', 39.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],

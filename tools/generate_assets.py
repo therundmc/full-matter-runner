@@ -6119,10 +6119,10 @@ def p_entry_carpet():
 
     def f(x, y, c):
         k = pile(x * 2, y * 0.7)
-        worn = max(0.0, 1 - abs(x - W / 2) / 13.0) * 0.5
-        dirt = max(0.0, (y - H * 0.55) / (H * 0.45)) * 0.35
-        col = shade(red, 0.55 + (k - 0.5) * 0.5 - worn * 0.35)
-        return mix(col, hx('#2a1e1c'), dirt * (0.6 + k * 0.6))
+        worn = max(0.0, 1 - abs(x - W / 2) / 13.0) * 0.6
+        dirt = max(0.0, (y - H * 0.3) / (H * 0.7)) * 0.5 + worn * 0.25
+        col = shade(red, 0.5 + (k - 0.5) * 0.5 - worn * 0.4)
+        return mix(col, hx('#241a18'), dirt * (0.6 + k * 0.6))
     px_paint(cv, 0, 0, W, H, f)
     gold = ramp('#c89a38', 0.5, 0.26, 0.38)
     for x0 in (3.0, W - 5.0):                                          # the gold bands along its sides
@@ -6130,8 +6130,71 @@ def p_entry_carpet():
         frect(cv, x0 - 0.5, 0, x0, H, dk(red[1], 0.2))
     frect(cv, 0, 0, W, 1.5, BRASS[2])                                  # the brass bar at the door
     frect(cv, 0, 1.0, W, 1.5, BRASS[0])
-    for _ in range(9):                                                 # what the shoes bring in off the street
-        smudge(cv, rng, 1, (14, 30, W - 14, H - 2), (1.4, 3.0), 0.22, hx('#1c1414'))
+    for _ in range(22):                                                # what the shoes bring in off the street
+        smudge(cv, rng, 1, (10, 14, W - 10, H - 1), (1.2, 3.2), 0.3, hx('#1a1210'))
+    for _ in range(5):                                                 # spilled drinks dried dark
+        smudge(cv, rng, 1, (6, 4, W - 6, H - 6), (2.5, 4.5), 0.25, hx('#2a0c10'))
+    for _ in range(9):                                                 # trodden-in gum and ash
+        x, y = rng.uniform(8, W - 8), rng.uniform(6, H - 3)
+        fill_shape(cv, x, y, 0.8, 0.7, lambda u, v, L: hx('#4a4448') if L > 0.5 else hx('#2a2628'))
+    for _ in range(3):                                                 # cigarettes put out on it
+        x, y = rng.uniform(10, W - 10), rng.uniform(10, H - 6)
+        fill_shape(cv, x, y, 1.1, 0.9, lambda u, v, L: hx('#140c0a'))
+        cv.dot(x + 0.5, y - 0.5, hx('#5a4a40'))
+    for x0 in (3.0, W - 5.0):                                          # the gold bands gone dull with grime
+        smudge(cv, rng, 4, (x0, 20, x0 + 2, H), (1.5, 3.0), 0.35, hx('#3a2a18'))
+    smudge(cv, rng, 6, (0, H - 6, W, H), (2.5, 4.0), 0.3, hx('#1a1614'))   # the kerb end, wet and black
+    return cv
+
+
+def p_awning():
+    """A club's canvas awning from above, the wall at the top, the street at the bottom: stripes of oxblood and black
+    canvas from the wall to the kerb, stretched over three steel ribs (lit ridges, the cloth sagging between them), a
+    steel flashing along the wall, the scalloped valance with its cream piping at the kerb end, a brass pole at each
+    front corner. Rain has run down it in streaks and pooled in a sag, soot has settled along the wall, the pigeons
+    have been at it, a tear is taped over."""
+    W, H = 68, 50
+    cv = Cv(W, H)
+    rng = random.Random(2231)
+    reds, blacks = ramp('#6c1828', 0.5, 0.26, 0.36), ramp('#24121a', 0.45, 0.24, 0.42)
+    ribs = (3.0, 22.0, 41.0)
+    weave = VNoise(W * 2, H * 2, 2, rng)
+
+    def cloth(x, y, c):
+        stripe = reds if int(x // 8.5) % 2 == 0 else blacks
+        nb = min(abs(y - r) for r in ribs)                          # the sag between two ribs
+        L = 0.78 - min(nb, 9.5) / 9.5 * 0.42 + (weave(x * 2, y * 2) - 0.5) * 0.12
+        L += 0.08 if (x % 8.5) < 1.0 else 0.0                       # the seams, a little raised
+        return shade(stripe, L)
+    px_paint(cv, 0, 0, W, 44, cloth)
+    for r in ribs:                                                   # the ribs under the cloth
+        px_paint(cv, 0, r - 0.5, W, r + 0.5, lambda x, y, c: lt(c, 0.18))
+    frect(cv, 0, 0, W, 1.5, hx('#5a5e6a'))                           # the flashing along the wall
+    frect(cv, 0, 1.0, W, 1.5, hx('#30323a'))
+    # the valance: a band of oxblood, its cream piping, the scallops hanging off its edge
+    frect(cv, 0, 44, W, 47, reds[1])
+    frect(cv, 0, 44, W, 44.5, hx('#d8c8a0'))
+    for i in range(9):
+        cx = 3.8 + i * 7.55
+        fill_shape(cv, cx, 47.0, 3.6, 2.6, lambda u, v, L: None if v < 0 else shade(reds, 0.35 + 0.3 * L))
+    frect(cv, 0, 46.5, W, 47.0, hx('#b8a47c'))
+    # what the night has done to it
+    smudge(cv, rng, 10, (1, 2, W - 1, 7), (2.0, 4.0), 0.3, hx('#0c0a0c'))       # soot along the wall
+    for _ in range(14):                                                        # rain run down toward the kerb
+        x, y0 = rng.uniform(2, W - 2), rng.uniform(4, 30)
+        for k in range(int(rng.uniform(6, 14))):
+            smudge(cv, rng, 1, (x - 0.2, y0 + k, x + 0.2, y0 + k + 0.6), (0.5, 0.8), 0.22, hx('#0e0a0c'))
+    fill_shape(cv, 44.0, 32.5, 6.0, 3.0, lambda u, v, L: mix(cv.get(44 + u, 32.5 + v), hx('#0a0810'), 0.45))   # water in a sag
+    fill_shape(cv, 42.6, 31.6, 1.6, 0.5, lambda u, v, L: hx('#8a7a98'))
+    for _ in range(6):                                                         # the pigeons
+        x, y = rng.uniform(4, W - 4), rng.uniform(6, 40)
+        fill_shape(cv, x, y, 0.7, 0.6, lambda u, v, L: hx('#d8d4c8') if L > 0.4 else hx('#9a968a'))
+    frect(cv, 14.0, 12.0, 21.0, 14.0, hx('#7a7468'))                           # a tear taped over
+    dash(cv, 14.5, 13.0, 20.5, 13.0, hx('#5a564c'), 1, 1)
+    cv.outline()
+    for x in (3.0, W - 3.0):                                                   # the brass poles' tops
+        fill_shape(cv, x, 45.5, 1.8, 1.8, lambda u, v, L: shade(BRASS, L))
+        cv.dot(x - 0.5, 45.0, hx('#fff2c8'))
     return cv
 
 
@@ -6253,14 +6316,14 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
                     urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
                     floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, palm_planter=p_palm_planter, velvet_rope=p_velvet_rope,
-                    entry_carpet=p_entry_carpet, radiator=p_radiator, bike=p_bike,
+                    entry_carpet=p_entry_carpet, awning=p_awning, radiator=p_radiator, bike=p_bike,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
-                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), palm_planter=(32, 32), velvet_rope=(32, 9), entry_carpet=(60, 60), radiator=(30, 8), bike=(46, 14),
+                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), palm_planter=(32, 32), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
