@@ -96,6 +96,12 @@ export function buildLevel(world, level) {
     world.items.push(new WeaponItem(world, type, mag ?? undefined, col * TILE, row * TILE, (deg * Math.PI) / 180));
   }
 
+  // ---- the barred windows (level `bars`: [[col, row], ...]): no way through them
+  for (const [col, row] of level.bars || []) {
+    const w = world.windows.find((o) => o.cx === col && o.cy === row);
+    if (w) w.barred = true;
+  }
+
   // ---- props list: [type, col, row, deg, options?] with col/row in tile units (floats, tile centre = n + 0.5)
   // options: { lights: false } = starts with its lights off (a parked car); { flicker: kind } = its light is unsteady
   // (render/Flicker.js: 'broken', 'stutter', 'dying'...); { valve: true } = a stove whose gas tap can be opened

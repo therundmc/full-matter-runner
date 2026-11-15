@@ -45,7 +45,7 @@ SIZES = dict(
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     awning=None, velvet_rope=(30, 6),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
-    keg=(16, 16), beer_tap=None, fire_alarm=None,
+    keg=(16, 16), beer_tap=None, curtain=None, fire_alarm=None,
 )
 
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
@@ -103,6 +103,7 @@ class Level:
         self.zones = []       # what each place sounds like: [kind, col0, row0, col1, row1] (src/game/data/soundscape.js)
         self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
         self.wet = None       # how wet the open ground is from an earlier rain, 0..1 (seen: systems/Weather.js)
+        self.bars = []        # barred windows [col, row] (entities/Window.js `barred`)
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -210,6 +211,11 @@ class Level:
         self.drops.append([kind, *self.at(col, row), deg, rounds])
 
     # ---- a weapon stood against a wall at (col, row), its tip pointing deg (toward the wall)
+    # iron bars on the windows at (col, row) (tiles 'G')
+    def bar(self, *cells):
+        for (c, r) in cells:
+            self.bars.append([int(v) for v in self.at(c, r)])
+
     def lean(self, kind, col, row, deg=0):
         self.leans.append([kind, *self.at(col, row), deg])
 
@@ -461,6 +467,9 @@ class Level:
             L.append('  // the trapdoors of the passage under the street')
             for k, v in self.devices.items():
                 L.append(f'  {k}: {json.dumps(v)},')
+        if self.bars:
+            L.append('  // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)')
+            L.append(f'  bars: {json.dumps(self.bars)},')
         if self.wet is not None:
             L.append('  // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)')
             L.append(f'  wet: {self.wet},')

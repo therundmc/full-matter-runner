@@ -138,3 +138,24 @@ test('traversal: the roll is still part of the vault (kills made in it count as 
   while (p.vaulting && !p.vaulting.rolling) p.updateVault(1 / 60);
   assert.ok(p.vaulting?.rolling);
 });
+
+test('traversal: he dives through the liquor store\'s window only once its bars are gone', async () => {
+  const { findVault } = await load('game/systems/Cover.js');
+  const w = world(), p = man(w, 6.5, 21.3);
+  const pane = { cx: 6, cy: 20, x: px(6.5), y: px(20.5), vertical: false, intact: true, barred: false };
+  w.windows.push(pane);
+  assert.equal(findVault(w, p, -Math.PI / 2)?.kind, 'window', 'a bare pane: a dive');
+  pane.barred = true;
+  assert.notEqual(findVault(w, p, -Math.PI / 2)?.kind, 'window', 'barred: no way through');
+  assert.ok(level.bars.some(([c, r]) => c === 6 && r === 20), "level 1's liquor store is barred");
+});
+
+test('a curtain across a doorway is walked through but never seen through', async () => {
+  const { default: World } = await load('game/world/World.js');
+  const curtain = { def: PROPS.curtain, dead: false, x: px(24.5), y: px(18.5), body: { angle: 0 } };
+  const seen = (x0, y0, x1, y1) => !World.prototype.curtained.call({ props: [curtain] }, px(x0), px(y0), px(x1), px(y1));
+  assert.ok(PROPS.curtain.hung, 'no body in the way');
+  assert.equal(seen(23, 18.5, 26, 18.5), false, 'across the doorway');
+  assert.equal(seen(23, 16.5, 26, 16.5), true, 'beside it');
+  assert.ok(level.props.some(([t]) => t === 'curtain'), "level 1's VIP room has one");
+});

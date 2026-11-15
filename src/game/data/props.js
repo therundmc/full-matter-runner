@@ -62,6 +62,9 @@ export const PROPS = {
     light: { r: 110, color: '#ffc8ee', intensity: 0.75, flicker: 'pulse' } },
   // the boss's case, open on the floor by his desk: banknotes fly at every hit
   cash_case: { material: 'plastic', w: 20, h: 14, hp: 4, kg: 9, mu: 0.85, chips: '#2a2a32', sound: 'wood' },
+  // a velvet curtain across a doorway: walked through (hung, drawn over whoever passes, seen through by the player under
+  // it), never seen through (World.sightLine), rounds go through it
+  curtain: { hung: true, overhead: true, height: 0, static: true, curtain: true, material: 'wood', w: 6, h: 32, hp: 99, chips: '#7a0e22', sound: 'wood' },
   // a draught tower standing on the bar (laid over a counter module: it takes no room of its own, rounds go by it)
   beer_tap: { hung: true, static: true, material: 'metal', w: 20, h: 8, hp: 6, chips: '#b8bcc8', sound: 'metal' },
   bar_counter: { vault: true, material: 'wood', w: 32, h: 19, hp: 16, static: true, chips: '#4a2a1a', sound: 'wood', blocksPath: true },
@@ -111,9 +114,8 @@ export const PROPS = {
   neon_sign_video: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
   // a canvas awning over a club's door, on the wall and two poles at the kerb: people walk under it (seen through
-  // then), its bulbs warm on the carpet; rounds go through the cloth
-  awning: { fixture: true, hung: true, overhead: true, height: 0, static: true, material: 'wood', w: 66, h: 48, hp: 30, chips: '#6c1828', sound: 'wood',
-    light: [{ r: 96, color: '#ffb890', intensity: 0.6, x: -18, y: 4 }, { r: 96, color: '#ffb890', intensity: 0.6, x: 18, y: 4 }] },
+  // then); rounds go through the cloth
+  awning: { fixture: true, hung: true, overhead: true, height: 0, static: true, material: 'wood', w: 66, h: 48, hp: 30, chips: '#6c1828', sound: 'wood' },
   // two brass posts and the velvet rope between them, at a club's door (bolted down: the user wants the door tidy)
   velvet_rope: { static: true, material: 'metal', w: 30, h: 6, hp: 5, chips: '#a0142a', sound: 'metal' },
   neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',

@@ -27,6 +27,7 @@ import WorldRenderer from '../render/WorldRenderer.js';
 import Lighting from '../render/Lighting.js';
 import Particles from '../fx/Particles.js';
 import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
+import { segSeg } from '../../engine/physics/Raycast.js';
 import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence, watchOpenings } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
@@ -309,7 +310,16 @@ export default class World {
   // facades over the systems
   lineOfSight(x0, y0, x1, y1) { return lineOfSight(this, x0, y0, x1, y1); }
   // what eyes can make out: no wall in the way, no cloud either
-  sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.clouds.blocks(x0, y0, x1, y1); }
+  sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.clouds.blocks(x0, y0, x1, y1) && !this.curtained(x0, y0, x1, y1); }
+  // whether a curtain hangs across the line (props with def `curtain`: a segment along their length)
+  curtained(x0, y0, x1, y1) {
+    for (const p of this.props) {
+      if (!p.def.curtain || p.dead) continue;
+      const a = p.body.angle, hl = p.def.h / 2, ux = -Math.sin(a) * hl, uy = Math.cos(a) * hl;
+      if (segSeg(x0, y0, x1, y1, p.x - ux, p.y - uy, p.x + ux, p.y + uy) !== null) return true;
+    }
+    return false;
+  }
   canSeeCharacter(viewer, ch) { return canSeeCharacter(this, viewer, ch); }
   traceBullet(x0, y0, x1, y1, team, ignore, floor) { return traceBullet(this, x0, y0, x1, y1, team, ignore, floor); }
   explode(x, y, opts) { explode(this, x, y, opts); }

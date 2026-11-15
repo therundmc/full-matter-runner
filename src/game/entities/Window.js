@@ -12,7 +12,9 @@ const FRAME_HP = 6;  // what the frame takes (blasts, bat blows, heavy rounds) b
 
 // A window at tile (cx, cy): a pane in an aluminium frame, see-through, stops bodies. The glass shatters on bullets,
 // blows and fast objects (shards: systems/Glass.js) and leaves a frame to vault through; the frame itself goes with
-// enough damage or with the wall holding it (`supports`, see Destruction.destroyWindow / watchOpenings).
+// enough damage or with the wall holding it (`supports`, see Destruction.destroyWindow / watchOpenings). A `barred`
+// one (level `bars`: a shop shut for the night) has iron bars outside the glass: its pane still breaks, but nobody
+// goes through it until a blast tears the whole frame out.
 export default class Window {
   constructor(world, cx, cy, vertical) {
     this.world = world;
@@ -23,6 +25,7 @@ export default class Window {
     this.supports = windowSupports(cx, cy, vertical);
     this.wall = this.supports.some(([sx, sy]) => world.map.at(sx, sy) === 'X') ? 'brick' : 'wall'; // what it is set in
     this.intact = true;
+    this.barred = false;
     this.hp = FRAME_HP;
     this.nicks = [];                // dents in the frame: [x, y, w] in sprite space
     this.phase = rand(0, 1);        // so the reflections of a glazed front don't slide in step
@@ -43,7 +46,7 @@ export default class Window {
     if (!this.intact) return;
     this.intact = false;
     const w = this.world;
-    w.map.blocked[this.cy * w.map.w + this.cx] = 0;
+    if (!this.barred) w.map.blocked[this.cy * w.map.w + this.cx] = 0;
     w.removeBody(this.body);
     // the empty frame still stops characters (they vault it), not bullets or thrown things
     this.body = this.makeBody('window-frame', MASK.GLASS_BROKEN);
@@ -117,10 +120,22 @@ export default class Window {
         ctx.fillRect(gx, -3, 3, 6);
         ctx.fillRect(gx + 4, -3, 1, 6);
       }
-    } else {
+    } else if (!this.barred) {
       // passable: a soft pulse along the sill
       ctx.fillStyle = `rgba(5,217,232,${0.25 + 0.2 * Math.sin(this.world.time * 4)})`;
       ctx.fillRect(-H + 4, -1, TILE - 8, 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    if (this.barred) {
+      // the iron grille over the glass, seen from above: a rail along each face of the pane, a bar across every 4 px
+      // between them, each bar lit on one edge
+      const h = img.height, y0 = -h / 2 + 1, y1 = h / 2 - 2;
+      ctx.fillStyle = '#121016';
+      ctx.fillRect(-H + 1, y0, TILE - 2, 1);
+      ctx.fillRect(-H + 1, y1, TILE - 2, 1);
+      for (let x = -H + 2; x < H - 1; x += 4) ctx.fillRect(x, y0, 2, y1 - y0 + 1);
+      ctx.fillStyle = '#6a6876';
+      for (let x = -H + 2; x < H - 1; x += 4) ctx.fillRect(x, y0, 1, y1 - y0 + 1);
     }
     ctx.restore();
   }

@@ -102,6 +102,7 @@ lv.fill(3, 15, 3, 16, '^')     # the shop's own ladder, in its back wall
 lv.put(10, 12, '^')            # the parapet over the service alley
 lv.put(10, 3, '^')             # ... and over the back lot
 lv.fill(5, 20, 7, 20, 'G')
+lv.bar((5, 20), (6, 20), (7, 20))   # the liquor store's windows barred for the night: its door is the way in
 lv.put(8, 20, 'L')
 lv.fill(36, 17, 39, 19, ';')
 lv.fill(36, 20, 38, 20, 'G')
@@ -412,7 +413,6 @@ lv.prop('pool_lamp', 20.8, 16.9)
 lv.prop('sofa', 15.5, 17.0, 270)
 lv.prop('wall_lamp', 15.09, 17.0, 270)
 lv.prop('table', 16.5, 17.0, 90)
-lv.prop('chair', 17.15, 17.6, 180)
 lv.prop('arcade', 23.55, 15.5, 270)                     # against the gaming room's wall, back to it
 lv.prop('jukebox', 23.6, 19.6, 180)
 lv.prop('ceiling_fan', 22.6, 14.2)
@@ -440,6 +440,7 @@ lv.sprinklers(21.5, 12.07, 0, [(15, 12, 30, 19)])
 lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
 lv.area('the bar: VIP room')
+lv.prop('curtain', 25.5, 18.5)                          # velvet across its doorway: walked through, never seen through
 lv.prop('dance_stage', 30.0, 18.9)
 lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round the room
 lv.prop('sofa', 28.15, 17.45)                           # clear of where one lands diving through the window

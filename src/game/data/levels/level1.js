@@ -169,9 +169,8 @@ export default {
     ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0], ['beer_tap', 15.95, 13.62, 0], ['beer_tap', 17.15, 13.62, 0],
     // the bar: the main room
     ['pool_table', 19.8, 16.9, 0], ['pool_lamp', 19.8, 16.9, 0], ['sofa', 15.5, 17, 270],
-    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90], ['chair', 17.15, 17.6, 180], ['arcade', 22.55, 15.5, 270],
-    ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 21.6, 14.2, 0], ['plant', 17.85, 19.55, 0],
-    ['extinguisher', 22.88, 14.5, 90],
+    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90], ['arcade', 22.55, 15.5, 270], ['jukebox', 22.6, 19.6, 180],
+    ['ceiling_fan', 21.6, 14.2, 0], ['plant', 17.85, 19.55, 0], ['extinguisher', 22.88, 14.5, 90],
     // the bar: the gaming room
     ['card_table', 25.9, 14.25, 0], ['pool_lamp', 25.9, 14.25, 0], ['chair', 25.5, 15.25, 270],
     ['chair', 26.4, 15.25, 270], ['chair', 27.35, 14.25, 180], ['bottle_shelf', 24.9, 12.16, 0],
@@ -179,8 +178,9 @@ export default {
     // the bar: what can be used
     ['fire_alarm', 20.5, 12.07, 0],
     // the bar: VIP room
-    ['dance_stage', 28, 18.9, 0], ['mirror_ball', 27.5, 18.6, 0], ['sofa', 27.15, 17.45, 0],
-    ['armchair', 25.5, 17.5, 0], ['armchair', 25.5, 19.45, 0], ['neon_tube_pink', 27, 19.93, 180],
+    ['curtain', 24.5, 18.5, 0], ['dance_stage', 28, 18.9, 0], ['mirror_ball', 27.5, 18.6, 0],
+    ['sofa', 27.15, 17.45, 0], ['armchair', 25.5, 17.5, 0], ['armchair', 25.5, 19.45, 0],
+    ['neon_tube_pink', 27, 19.93, 180],
     // the liquor store roof
     ['ladder', 1.5, 20.5, 0], ['wall_lamp', 9.91, 11.4, 90], ['wall_lamp', 9.91, 4.6, 90],
     ['string_lights', 4, 9.3, 0], ['sofa', 3.9, 8.5, 0], ['crate', 3.9, 9.75, 12], ['chair', 2.7, 9.95, 160],
@@ -208,6 +208,8 @@ export default {
   // the trapdoors of the passage under the street
   sprinklers: {"pull": [20.5, 12.07], "rooms": [[15, 12, 28, 19]]},
   passage: [[35.55, 17.95], [25.75, 10.35]],
+  // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
+  bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
   wet: 0.35,
   // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the

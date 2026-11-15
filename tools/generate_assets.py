@@ -6392,6 +6392,26 @@ def p_beer_tap():
     return cv
 
 
+def p_curtain():
+    """A heavy velvet curtain hung across a doorway, from above (its rod along y): the brass rod and its rings, the
+    cloth falling in deep folds either side of it, lit on the crests, the hem's gold fringe at both ends."""
+    W, H = 8, 34
+    cv = Cv(W, H)
+    velvet = ramp('#7a0e22', 0.5, 0.3, 0.4)
+
+    def folds(x, y, c):
+        k = (math.sin(y * 1.15) + 1) / 2                                  # crest to trough along the curtain
+        return shade(velvet, 0.2 + 0.75 * k - abs(x - W / 2) / W * 0.4)
+    px_paint(cv, 1, 1, W - 1, H - 1, folds)
+    frect(cv, 3.5, 0.5, 4.5, H - 0.5, BRASS[2])                         # the rod over it
+    for y in range(3, H - 2, 4):
+        cv.dot(4.0, y, BRASS[3])                                        # its rings
+    for y in (1.0, H - 2.0):
+        frect(cv, 1.0, y, W - 1.0, y + 1.0, hx('#c89a38'))             # the fringe at each end
+    cv.outline()
+    return cv
+
+
 def p_rug():
     """The boss's rug, a worn Persian on the floor of his back room, one corner kicked back over itself: the deep red
     field and its navy medallion, the patterned border, the fringe, and under the turned corner the edge of the
@@ -6440,7 +6460,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     entry_carpet=p_entry_carpet, awning=p_awning, radiator=p_radiator, bike=p_bike,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes,
                     keg=p_keg, fire_alarm=p_fire_alarm,
-                    trapdoor=p_trapdoor, rug=p_rug, beer_tap=p_beer_tap)
+                    trapdoor=p_trapdoor, rug=p_rug, beer_tap=p_beer_tap, curtain=p_curtain)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
@@ -6448,7 +6468,7 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
                     floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
-                    keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28), beer_tap=(22, 10))
+                    keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28), beer_tap=(22, 10), curtain=(8, 34))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,
