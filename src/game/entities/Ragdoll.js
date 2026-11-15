@@ -1,4 +1,4 @@
-import { CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
+import { CAT, MASK, PALETTE, BODY_SCALE, TILE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
@@ -21,6 +21,10 @@ const RANGE = { arm: BODY.joints.shoulder, leg: BODY.joints.hip, head: BODY.join
 const FALL = { crawl: CRAWL.fall, spasm: SPASM.fall, curl: CURL.fall, throat: 0, behead: 0 }; // s of plain physics first
 // turns tried, off the way he falls, when he is laid out across a wall or a bolted prop
 const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
+// thrown into a wall, he ends up sitting against it (the user's wish): px/step (60 Hz) he must hit it at, px ahead of
+// his torso (his head goes first) it must be within, s after his death it can still happen, px of his torso's centre off it, how short his torso
+// shows seen from above (sat up), px his head comes down over his chest
+const SIT = { speed: 2.2, reach: 20, early: 1.0, back: 11, arch: 0.55, slump: 3 };
 const MARKS_MAX = 12; // wounds shown on one body (a corpse can be shot again and again)
 const HEAD_R = 4.5;   // the head's radius, for what marks it
 // a weapon planted in him, seen from above: the share of it that shows (from its grip), how short it looks, how
@@ -112,6 +116,7 @@ export default class Ragdoll {
       world.addBody(p.body);
     }
     for (const j of this.joints) world.addBody(j.c);
+    this.lastV = { x: Math.cos(dir) * speed / 60, y: Math.sin(dir) * speed / 60 }; // for propUp(): how he was thrown
     for (const i of opts.detach || []) this.detach(this.limbs[i], dir, speed * 1.4);
     // a body that will move on the floor shows the side it lies on; the others keep the plain sprites
     this.lie(opts.dying && opts.dying !== 'throes' ? !!opts.back : true);
@@ -253,6 +258,7 @@ export default class Ragdoll {
   update(dt) {
     this.age += dt;
     const w = this.world;
+    if (this.age < SIT.early && !this.dying?.sat) this.propUp();
     if (this.dying) this.script(dt);
     if (this.throes) this.twitch(dt);
     if (!this.dying || this.dying.phase === 'fall') this.limp(dt);
@@ -303,6 +309,49 @@ export default class Ragdoll {
     if (s.phase === 'last') this.last(s);
     if (s.phase === 'writhe') this.writhe(s);
     if (s.phase === 'throat') this.throat(s);
+    if (s.phase === 'sit') this.pose(s.x, s.y, s.A, s.P);
+  }
+
+  // Thrown into a wall: he does not bounce off it, he slides down it and stays sat against it, his back to the wall,
+  // his legs out on the floor, his arms hanging, his head dropped. Watched over the first moment after his death: a
+  // torso going fast, then a wall just ahead of it, and floor for his legs.
+  propUp() {
+    const s = this.dying, t = this.torso.body, last = this.lastV;
+    this.lastV = Body.getVelocity(t);
+    if (this.headless || (s && s.phase !== 'fall') || !last || Math.hypot(last.x, last.y) < SIT.speed) return;
+    const half = sh(this.torso.img) / 2, ax = Math.abs(last.x) > Math.abs(last.y);
+    const dx = ax ? Math.sign(last.x) : 0, dy = ax ? 0 : Math.sign(last.y);
+    let probe = null;
+    for (let d = half; d <= half + SIT.reach && !probe; d += 2) {
+      const q = { x: t.position.x + dx * d, y: t.position.y + dy * d };
+      if (this.world.map.solidAt(q.x, q.y)) probe = q;
+    }
+    if (!probe) return;
+    // the wall's face, and his torso's centre that far off it
+    const cell = (v, d) => (Math.floor(v / TILE) + (d < 0 ? 1 : 0)) * TILE;
+    const x = ax ? cell(probe.x, dx) - dx * SIT.back : t.position.x, y = ax ? t.position.y : cell(probe.y, dy) - dy * SIT.back;
+    const out = Math.atan2(-dy, -dx); // from the wall into the room
+    if (!this.clear(x, y, out, 4, 30)) return;
+    this.sitDown(x, y, out + 1.5 * Math.PI, { x: x - dx * (SIT.back - 2), y: y - dy * (SIT.back - 2) });
+  }
+
+  // sat at (x, y), torso angle A (his head toward the wall), the wall's face at w
+  sitDown(x, y, A, w) {
+    const r = () => rand(-0.12, 0.12), knee = chance(0.5) ? randi(0, 1) : -1, side = chance(0.5) ? 1 : -1;
+    const P = {
+      arch: SIT.arch,
+      arms: [{ a: Math.PI / 2 + 0.42 + r(), s: rand(0.5, 0.62) }, { a: Math.PI / 2 - 0.42 + r(), s: rand(0.5, 0.62) }],  // by his hips
+      legs: [{ a: Math.PI / 2 + 0.16 + r(), s: knee === 0 ? 0.62 : 1 }, { a: Math.PI / 2 - 0.16 + r(), s: knee === 1 ? 0.62 : 1 }],
+      head: { a: side * rand(0.25, 0.55), s: 0.8, dy: SIT.slump },
+    };
+    for (const j of this.joints) j.c.stiffness = 0;
+    this.throes = null;
+    this.lie(true);
+    this.dying = { kind: 'sit', phase: 'sit', sat: true, t: 0, x, y, A, P };
+    this.pose(x, y, A, P);
+    const wd = this.world.decals;
+    wd.stampBlood(w.x, w.y, 4, 3);
+    this.world.sound('bodyFall', x, y, 0.8);
   }
 
   // he has landed: his pose as he fell (limb angles off the torso's), and for a crawl the way he goes (away from his
