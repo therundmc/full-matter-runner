@@ -5,6 +5,8 @@ import { clamp } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
 import { puddleShape } from '../systems/Liquids.js';
 import { ROOF_DECOR } from '../data/roofs.js';
+import { RAIN } from '../data/atmosphere.js';
+import { hash, flicker, signLevel, pickFaults } from './Flicker.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
 // multiplied over the scene, then additive bloom, anamorphic flares and wet-floor reflections.
@@ -13,8 +15,10 @@ import { ROOF_DECOR } from '../data/roofs.js';
 // Visible sources are props (lamps, tubes, signs, screens, headlights): shoot the lamp and its light dies.
 // Prop lights: `def.light` (or LIGHTING.propLights[type]) = { r, color, intensity, flicker, x, y, dir, cone } or an array,
 // r/x/y in px in the prop's local frame (sprites face +x), dir/cone in radians. Flicker: true|'buzz', 'broken', 'pulse',
-// 'tv', 'disco' (moving unshadowed spot). `spots: n` makes it a mirror ball: instead of one pool of light, n small
-// ones sweep the room round it within r, cut by the walls (drawSpots).
+// 'tv', 'disco' (moving unshadowed spot), and the faults a few tubes get (render/Flicker.js, data/atmosphere.js NEON:
+// 'stutter', 'dying'). `spots: n` makes it a mirror ball: instead of one pool of light, n small ones sweep the room
+// round it within r, cut by the walls (drawSpots). In the rain (systems/Weather.js) the floors in the open mirror
+// the lights harder, the cars' beams lie on the road as a sheen and rain puddles mirror the night sky.
 // Rooftop glows: pieces of `level.roof` with a `light` (data/roofs.js) shine on their roof, unshadowed.
 
 const STREET = new Set(['asphalt', 'asphalt_line', 'sidewalk', 'grass', 'dirt']);
@@ -38,43 +42,6 @@ const toByte = (c) => c.map((v) => Math.round(clamp(v, 0, 1) * 255));
 
 // light i of a prop is on unless that lamp was smashed (vehicles keep one flag per lamp)
 const lampOn = (p, i) => !p.lamps || p.lamps[i];
-function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
-function noise(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i) * (1 - u) + hash(i + 1) * u; }
-
-// brightness multiplier of a flickering light at time t
-function flicker(kind, seed, t) {
-  switch (kind) {
-    case true: case 'buzz': {
-      const dip = hash(Math.floor(t * 9 + seed * 13)) > 0.965 ? 0.45 : 1;
-      return (0.9 + 0.1 * noise(t * 22 + seed)) * dip;
-    }
-    case 'broken': {
-      const cyc = 2.2 + (seed % 1) * 2.5, ph = (t + seed * 7) % cyc;
-      if (ph < 0.7) return hash(Math.floor((t + seed) * 26)) > 0.55 ? 0.95 : 0.06;
-      if (ph < 0.9) return 0.05;
-      return 0.9 + 0.1 * noise(t * 30 + seed);
-    }
-    case 'pulse': {
-      const b = ((t * L.bpm) / 60 + seed * 0.25) % 1;
-      return 0.55 + 0.45 * (1 - b) * (1 - b);
-    }
-    case 'tv': return 0.55 + 0.45 * noise(t * 7 + seed * 5) * (hash(Math.floor(t * 5 + seed)) > 0.15 ? 1 : 0.4);
-    case 'disco': return 0.7 + 0.3 * Math.sin(t * 5 + seed * 3);
-    default: return 1;
-  }
-}
-
-// Animated sign (`def.sign`): how bright letter i of n is. The letters come on one by one, hold, blink, go dark
-// for a beat; the faulty one never quite settles.
-function signLevel(sign, i, seed, t) {
-  const n = sign.letters.length, ph = (t + seed) % 7.5;
-  let a = ph < n * 0.22 ? (ph >= i * 0.22 ? 1 : 0)
-    : ph < 4.8 ? 1
-    : ph < 5.7 ? Math.floor((ph - 4.8) / 0.15) % 2
-    : ph < 7 ? 1 : 0;
-  if (i === sign.faulty) a *= flicker('broken', seed, t);
-  return a;
-}
 
 // ---------- visibility polygon from a point against wall segments ----------
 // segs: flat [ax, ay, bx, by, ...]; returns { pts: [x, y, ...], seg: [segment index or -1 per point] }
@@ -127,6 +94,8 @@ export default class Lighting {
     this.solidCopy = this.map.solid.slice();
     this.blobs = new Map();
     this.propEntries = new WeakMap();
+    this.faults = pickFaults(world.props); // the few tubes that stutter, the one that is dying
+    this.wet = RAIN.wet * (world.weather?.k || 0); // the rain: floors in the open mirror the lights harder
     this.gradStops = L.falloff;
     this.buildSegments();
     this.lights = (world.level.lights || []).map((d, i) => this.makeLevelLight(d, i));
@@ -233,7 +202,9 @@ export default class Lighting {
     this.ambScale = k / TILE;
   }
 
-  // reflective floor mask + static emissive (neon floor) at bloom resolution
+  // reflective floor mask + static emissive (neon floor) at bloom resolution. In the rain the floors in the open
+  // mirror (1 + wet) times harder: the reflections are drawn that much stronger and the floors under a roof masked
+  // back down to what they were
   buildLevelLayers() {
     const m = this.map, b = L.bloomScale, T = TILE * b;
     this.reflMask = canvas(Math.ceil(m.widthPx * b), Math.ceil(m.heightPx * b));
@@ -243,11 +214,15 @@ export default class Lighting {
     const glow = spriteOpt('tiles/neon_floor_glow');
     eg.imageSmoothingEnabled = true;
     rg.fillStyle = '#fff';
+    const sky = this.world.weather?.sky, under = 1 / (1 + this.wet);
     for (let y = 0; y < m.h; y++) {
       for (let x = 0; x < m.w; x++) {
         const f = m.floor[y * m.w + x];
         if (!f || m.isSolid(x, y)) continue;
-        if (refl.has(f)) rg.fillRect(x * T, y * T, T, T);
+        if (refl.has(f)) {
+          rg.globalAlpha = sky?.[y * m.w + x] ? 1 : under;
+          rg.fillRect(x * T, y * T, T, T);
+        }
         if (f === 'neon_floor') {
           if (glow) eg.drawImage(glow, x * T, y * T, T, T);
           else { eg.globalAlpha = 0.8; eg.drawImage(spriteOpt('tiles/neon_floor') || glow, x * T, y * T, T, T); eg.globalAlpha = 1; }
@@ -288,7 +263,8 @@ export default class Lighting {
     const glow = !!spriteOpt(`props/${p.type}_glow`);
     list = [];
     for (const d of def ? (Array.isArray(def) ? def : [def]) : []) {
-      const l = this.makeLight(0, 0, d.r, d.color, d.intensity ?? 1, d.flicker ?? false, hash(p.x * 0.37 + p.y * 0.11) * 10 + list.length);
+      const fl = this.faults.get(p) ?? d.flicker ?? false;
+      const l = this.makeLight(0, 0, d.r, d.color, d.intensity ?? 1, fl, hash(p.x * 0.37 + p.y * 0.11) * 10 + list.length);
       l.lx = d.x || 0; l.ly = d.y || 0; l.ldir = d.dir || 0; l.cone = d.cone || 0;
       l.spots = d.spots || 0;
       l.drawn = glow; // the sprite's emissive map already shows the source
@@ -470,9 +446,11 @@ export default class Lighting {
     this.grid = grid; this.gw = gw; this.gh = gh;
   }
 
-  // 0..1 brightness at a world position (AI stealth: darker = harder to see)
-  levelAt(x, y) {
-    if (this.gridDirty || !this.grid) this.buildGrid();
+  // 0..1 brightness at a world position (AI stealth: darker = harder to see). fresh = false: whatever the grid says
+  // now, never rebuilt for it (the drawing asks every frame; the rebuild is left to the guards' eyes)
+  levelAt(x, y, fresh = true) {
+    if (!fresh && !this.grid) return 0;
+    if (fresh && (this.gridDirty || !this.grid)) this.buildGrid();
     const gx = clamp(Math.floor(x / LIT_GRID), 0, this.gw - 1), gy = clamp(Math.floor(y / LIT_GRID), 0, this.gh - 1);
     let v = this.grid[gy * this.gw + gx];
     for (const l of this.world.lights) {
@@ -810,28 +788,40 @@ export default class Lighting {
       g.globalAlpha = clamp(a * 0.45, 0, 1);
       g.drawImage(bl, x - sw * 3, y - len * 0.1, sw * 6, len);
     };
+    // a car's beam on a wet road: a long sheen laid along it, brightest a little ahead of the lamp
+    const H = RAIN.headlight;
+    const beam = (g, l, a) => {
+      const len = l.r * H.len, wd = l.r * H.width;
+      g.save();
+      g.translate(l.x, l.y);
+      g.rotate(l.dir);
+      g.globalAlpha = clamp(a, 0, 1);
+      g.drawImage(this.blob(l.color), 0, -wd / 2, len, wd);
+      g.restore();
+    };
     const streaks = (g, gain, far) => {
       for (const [l, k] of lit) {
         if (!l.bare && !l.cone) streak(g, l.color, l.x, l.y, l.r, k * gain, far);
+        else if (l.cone && this.wet > 0 && l.r > 120) beam(g, l, k * gain * H.gain * this.wet);
       }
       for (const l of w.lights) streak(g, l.color, l.x, l.y, l.r, clamp(l.t / l.dur, 0, 1) * gain * 1.3, far);
     };
-    streaks(r, L.reflect, 1);
+    streaks(r, L.reflect * (1 + this.wet), 1);
     r.globalAlpha = 1;
     r.globalCompositeOperation = 'destination-in';
     r.drawImage(this.reflMask, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
 
     // ---- standing water (systems/Liquids.js) mirrors the lights harder than a damp floor, and from further away
-    const puddles = w.liquids ? w.liquids.puddles.filter((q) => this.inView(q.x, q.y, q.r * 1.5)) : [];
+    const puddles = [...(w.liquids?.puddles || []), ...(w.weather?.puddles || [])].filter((q) => this.inView(q.x, q.y, q.r * 1.5));
     if (puddles.length) {
       const g = this.pd.getContext('2d');
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'source-over';
       g.clearRect(0, 0, this.pd.width, this.pd.height);
       g.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
-      // the water itself in black (adds nothing), then the streaks only where there is water
-      g.fillStyle = '#000';
+      // the water itself in black (adds nothing; rain puddles add a dim sky), then the streaks only where there is water
       for (const q of puddles) {
+        g.fillStyle = q.look?.sky || '#000'; // a rain puddle mirrors the night sky too
         g.globalAlpha = q.alpha;
         g.beginPath();
         for (const [x, y, rx, ry] of puddleShape(q)) { g.moveTo(x + rx, y); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }

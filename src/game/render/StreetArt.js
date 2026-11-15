@@ -1,6 +1,8 @@
 // Small things lying about that have no body. Loose paper on the pavement (systems/Papers.js): scraps a few
 // pixels across, pale but dimmer than anything that matters on the ground; lifted off their shadow while they
-// fly. Cigarettes left burning in an ashtray by customers who ran (systems/Ambient.js `butts`).
+// fly; darker once soaked by the rain. Cigarettes left burning in an ashtray by customers who ran
+// (systems/Ambient.js `butts`).
+import { RAIN } from '../data/atmosphere.js';
 
 const TINTS = ['#cfc9b8', '#bdb7a6', '#d9d4c6'];
 const SHAPES = [[4, 3], [3, 4], [3, 3], [4, 2]];
@@ -14,7 +16,7 @@ export function drawPapers(ctx, papers, vis) {
       ctx.fillStyle = 'rgba(0,0,0,0.22)';
       ctx.fillRect(x, y, w, h);
     }
-    ctx.fillStyle = TINTS[s.tint];
+    ctx.fillStyle = (s.wet ? RAIN.papers.tints : TINTS)[s.tint];
     ctx.fillRect(x - up, y - up * 2, w, h);
   }
 }

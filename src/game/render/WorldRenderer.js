@@ -8,6 +8,9 @@ import { drawLasers } from './LaserSight.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
+import { drawRainGround, drawRainAir, viewRect } from './WeatherArt.js';
+import HazeArt from './HazeArt.js';
+import { RAIN } from '../data/atmosphere.js';
 import { OUTRO } from '../systems/Outro.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
@@ -35,6 +38,7 @@ export default class WorldRenderer {
   constructor(world) {
     this.world = world;
     this.lightMs = 0; // smoothed cost of the lighting passes
+    this.haze = new HazeArt(world); // the smoke in the air and the mist, lit
   }
 
   draw(ctx, cam, t) {
@@ -42,12 +46,15 @@ export default class WorldRenderer {
     const v = cam.viewRadius();
     const pad = Math.max(v.x, v.y) * 1.1;
     const vis = (x, y) => Math.abs(x - cam.x) < pad && Math.abs(y - cam.y) < pad;
+    const view = viewRect(cam, w.map);
 
     // the floor is finer than the world (MapRenderer.floorScale): only the part in view is drawn
     const fs = w.decals.floorScale, fx0 = Math.max(0, Math.floor(cam.x - v.x)), fy0 = Math.max(0, Math.floor(cam.y - v.y));
     const fw = Math.min(w.map.widthPx, Math.ceil(cam.x + v.x)) - fx0, fh = Math.min(w.map.heightPx, Math.ceil(cam.y + v.y)) - fy0;
     if (fw > 0 && fh > 0) ctx.drawImage(w.decals.floorCanvas, fx0 * fs, fy0 * fs, fw * fs, fh * fs, fx0, fy0, fw, fh);
+    for (const p of w.weather.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
     for (const p of w.liquids.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
+    drawRainGround(ctx, w.weather, view, t);
     // blood lies over everything baked into the floor; the dead and their pieces lie on the blood
     ctx.drawImage(w.decals.bloodCanvas, 0, 0);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.drawPool(ctx);
@@ -73,13 +80,19 @@ export default class WorldRenderer {
     drawFlying(ctx, w.critters, t);
 
     w.particles.draw(ctx);
+    this.haze.drawWisps(ctx, w.haze, vis);
+    drawRainAir(ctx, w.weather, view, t);
     // night + coloured lights + wall shadows multiplied over the scene (skipped in the F3 overview)
     const lit = w.lighting.active(cam);
     let l0 = performance.now();
-    if (lit) w.lighting.apply(ctx, cam, t);
+    if (lit) {
+      w.lighting.apply(ctx, cam, t);
+      this.haze.draw(ctx, w.lighting, t); // the smoke and the mist where the lamps light them
+    }
     let lightMs = performance.now() - l0;
     if (w.cleared && w.level.exit && !w.outro) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
+    if (lit) { drawRainGround(ctx, w.weather, view, t, RAIN.after); drawRainAir(ctx, w.weather, view, t, RAIN.after); }
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
@@ -101,7 +114,7 @@ export default class WorldRenderer {
   // standing liquid: a dark wet patch with an irregular edge, a pale sheen, glints, rings while something pours
   // into it, in the colours of its kind (the lights it mirrors are added by Lighting.post)
   drawPuddle(ctx, p, t) {
-    const shape = puddleShape(p), look = LIQUIDS.kinds[p.kind].puddle;
+    const shape = puddleShape(p), look = p.look || LIQUIDS.kinds[p.kind].puddle; // (rain puddles bring their own)
     const blob = (k) => {
       ctx.beginPath();
       for (const [x, y, rx, ry] of shape) { ctx.moveTo(x + rx * k, y); ctx.ellipse(x, y, rx * k, ry * k, 0, 0, TAU); }

@@ -66,8 +66,16 @@ src/
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Clouds.js           the powder out of a pierced extinguisher: hides from the guards (World.sightLine)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
-      Steam.js            manholes that breathe, wall vents, steam pipes whistling out of a bullet hole (STEAM, level `street`)
-      Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies)
+      Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes
+                          whistling out of a bullet hole (STEAM, level `street`); a passing car tears it along
+      Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
+                          soaked by the rain, heavier and darker
+      Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is
+                          off): which tiles see the sky, puddles lying in the open, drip spots (only if it falls); a foot
+                          through a puddle splashes. The drops are not stored (render/WeatherArt.js). DOM-free, seeded
+      Haze.js             the smoke under a ceiling (HAZE): smoky places of the soundscape, puffs drifting and turning,
+                          stirred by runners, rounds and blasts, thickened by shots, thinned by the power cut; the
+                          cigarettes' wisps (DOM-free)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
@@ -101,6 +109,10 @@ src/
       WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
+      WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
+      HazeArt.js          the haze and the mist lit by the light map (squared), dust motes in the beams, smoke wisps
+      Flicker.js          how bright a light is over time per kind (buzz, broken, pulse, tv...), the letters of a sign,
+                          the faulty tubes picked per level (NEON: one dying, a few stuttering); DOM-free
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
@@ -118,7 +130,7 @@ src/
                           TitleScene (the elevated line in the rain from his window) and title/ (Draw pixel tools, Layout, Timeline:
                           everything as a function of t, unit tested; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain),
                           Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
-    data/                 controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+    data/                 atmosphere (rain, haze, neon faults: the look of the air), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,
@@ -498,6 +510,26 @@ walls) bleed in at `AMBIENCE.through` and less, low-passed, panned toward them; 
 Prop beds (`PROP_BEDS`) follow the nearest working prop of their kind; the traffic (`CARS`) gives each of the nearest
 moving cars a voice of the `engine` bed whose rate follows its speed and the Doppler shift. The bar falls silent when
 its customers panic, the radio and the hums stop with the power.
+
+## The air (data/atmosphere.js)
+
+All of it is a look; nothing reads it but the drawing (the haze's puffs and the rain's puddles are not obstacles,
+not wet floors: no prints, no grip). Readability first: it is the lamps that make it show.
+- Rain: the user wants none falling, so `RAIN.falls` is off: what is left is the wet of an earlier rain (puddles,
+  floors in the open mirroring the lights, a light mist, soaked paper, thicker steam). How wet is the level's
+  `soundscape.rain` times `RAIN.look`. Only where the sky is (Weather.skyGrid: open floors not in `AMBIENCE.indoors`, outer walls and roofs; never a room nor its walls).
+  A drop is hashed from its cell, its slot and its cycle (render/WeatherArt.js, worked out once a frame): a short
+  streak sprite crossing the picture with the wind, then a crown where it lands, rings where it lands in water.
+  Drawn before the lighting (the light map colours it: it glitters under a streetlight) and once more, faint
+  (`RAIN.after`), over the lit scene. Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
+  a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`look.sky`).
+- Haze: a soundscape zone whose kind has a density in `HAZE.zones` is filled (Haze.js); HazeArt lays its density
+  (an even share plus the puffs, domain-warped noise sprites) into a buffer at the light map's size, cuts it to the
+  floors under a roof, adds the open air's mist in the rain, multiplies it twice by the light map and screens it
+  over the lit scene, right after Lighting.apply (so muzzle flames, texts and marks stay crisp above it). Dust
+  motes show where the brightness grid (`levelAt`) is over `motes.from`.
+- Neon faults: `NEON.faults` picks, by a hash of where they stand, a dying tube and a few stuttering signs/tubes
+  (Flicker.pickFaults); their light, its reach and their glow map flicker together.
 
 ## Rooftops
 

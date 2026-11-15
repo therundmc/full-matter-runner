@@ -19,10 +19,11 @@ function lobes() {
   return out;
 }
 
-// the outline of a puddle as overlapping ellipses [x, y, rx, ry] (renderers fill them as one shape)
+// the outline of a puddle as overlapping ellipses [x, y, rx, ry] (renderers fill them as one shape); `squash` (a rain
+// puddle's) flattens it
 export function puddleShape(p) {
-  const out = [[p.x, p.y, p.r * 0.8, p.r * 0.72]];
-  for (const l of p.lobes) out.push([p.x + Math.cos(l.a) * l.d * p.r, p.y + Math.sin(l.a) * l.d * p.r, l.s * p.r, l.s * p.r]);
+  const q = p.squash ?? 1, out = [[p.x, p.y, p.r * 0.8, p.r * 0.72 * q]];
+  for (const l of p.lobes) out.push([p.x + Math.cos(l.a) * l.d * p.r, p.y + Math.sin(l.a) * l.d * p.r * q, l.s * p.r, l.s * p.r * q]);
   return out;
 }
 

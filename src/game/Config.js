@@ -307,9 +307,12 @@ export const STEAM = {
   color: '#d4dade',
   range: 620,        // px from the player past which nothing is puffed
   drift: [-9, -5],   // px/s: the night air carries it
-  manhole: { breath: 3.5, rest: [4, 9], every: 0.14, size: 5, life: 2.8, alpha: 0.26 },
+  manhole: { breath: 3.5, rest: [4, 9], every: 0.14, size: 5, life: 2.8, alpha: 0.26,
+    seep: { every: 0.7, size: 3, life: 3, alpha: 0.05 } }, // between two breaths a thin seep never quite stops
   vent: { every: 0.18, size: 4, life: 2.4, alpha: 0.32, speed: 22 },
   leak: { dur: 7, every: 0.05, speed: 90, max: 3 }, // max holes per pipe
+  wet: 0.5,          // puffs this much bigger and thicker at full rain (cold rain on a warm cover)
+  wake: { r: 54, pull: 0.45, aside: 30 }, // a car going by tears the steam along: px round it, share of its speed, px/s thrown aside
 };
 
 // Loose paper on the pavement (systems/Papers.js); speeds of bodies in px/step, the rest in px and seconds

@@ -193,7 +193,7 @@ export default class Particles {
       const a = rand(0, Math.PI * 2), v = rand(4, opts.speed ?? 30);
       const life = rand(1.4, opts.life ?? 3.4);
       this.add({ type: P.DUST, x: x + rand(-r, r), y: y + rand(-r, r) * 0.7, vx: Math.cos(a) * v + (opts.vx || 0), vy: Math.sin(a) * v + (opts.vy || 0),
-        size: rand(1.5, opts.size ?? 5), grow: rand(1, 3.5), life, maxLife: life, drag: 1.6, color, alpha: opts.alpha ?? 0.18 });
+        size: rand(1.5, opts.size ?? 5), grow: rand(1, 3.5), life, maxLife: life, drag: 1.6, color, alpha: opts.alpha ?? 0.18, tag: opts.tag });
     }
   }
 

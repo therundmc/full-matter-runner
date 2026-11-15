@@ -47,6 +47,8 @@ import Gadgets from '../systems/Gadgets.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
+import Weather from '../systems/Weather.js';
+import Haze from '../systems/Haze.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
 import { OUTRO, routePath, routeSpeed, slideStep, crossed } from '../systems/Outro.js';
@@ -114,8 +116,10 @@ export default class World {
     this.clouds = new Clouds(this);               // extinguisher powder nobody sees through
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
-    this.steam = new Steam(this, level.street?.manholes);  // manholes, vents, pierced steam pipes
-    this.papers = new Papers(this, level.street?.papers);  // loose sheets the wind and the cars blow about
+    this.weather = new Weather(this, level);               // the rain: open sky, its puddles, drips off the eaves
+    this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
+    this.haze = new Haze(this, level);                     // the smoke hanging under the bar's lamps
+    this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
     this.fires = new Fires(this, level.fires);             // what burns, for the look of it
     this.lastShot = { owner: null, t: -1 };
 
@@ -460,6 +464,8 @@ export default class World {
     this.clouds.update(dt);
     this.steam.update(dt);
     this.papers.update(dt);
+    this.weather.update();
+    this.haze.update(dt);
     this.threats.update(this.view());
 
     // 4. cleanup

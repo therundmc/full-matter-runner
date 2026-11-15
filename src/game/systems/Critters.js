@@ -345,7 +345,7 @@ export default class Critters {
   lamps() {
     const M = C.moths;
     this.lit ??= this.world.props.filter((p) => p.type in M.at);
-    return this.lit.filter((p) => !p.dead).map((p) => {
+    return this.lit.filter((p) => !p.dead && !p.lightsOut).map((p) => { // a lamp gone dark (power cut) lets them go
       const off = M.at[p.type], a = p.body.angle;
       return { x: p.x + Math.cos(a) * off, y: p.y + Math.sin(a) * off, n: M.n, seed: p.x * 7 + p.y * 13 };
     });

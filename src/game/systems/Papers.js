@@ -1,21 +1,25 @@
 // Loose sheets of paper on the pavement (level `street.papers`: [[col0, row0, col1, row1, n]], n sheets dropped at
 // random in each inclusive tile rectangle). They have no body: a gust of wind now and then sends them tumbling
 // along the street, a car going by drags them in its wake, someone running through them kicks them aside, a wall
-// stops them. DOM-free and silent; drawn by render/StreetArt.js.
+// stops them. In the rain they are soaked (`wet`, 0..1: how hard it rains, RAIN.papers): heavier, they settle
+// sooner and are drawn darker. DOM-free and silent; drawn by render/StreetArt.js.
 import { TILE, PAPERS } from '../Config.js';
+import { RAIN } from '../data/atmosphere.js';
 import { rand, chance } from '../../engine/math.js';
 
 const { Body } = Matter;
 
 export default class Papers {
-  constructor(world, zones = [], cfg = PAPERS) {
+  constructor(world, zones = [], cfg = PAPERS, wet = 0) {
     this.world = world;
     this.cfg = cfg;
+    this.friction = cfg.friction * (1 + wet * RAIN.papers.friction);
+    const soaked = 1 - wet * RAIN.papers.lift;
     this.list = [];
     for (const [c0, r0, c1, r1, n] of zones) {
       for (let i = 0; i < n; i++) {
         // light: how easily the wind takes it; rot: which way up it lies (its shape turns as it tumbles)
-        this.list.push({ x: rand(c0, c1 + 1) * TILE, y: rand(r0, r1 + 1) * TILE, vx: 0, vy: 0, rot: rand(0, 8), light: rand(0.5, 1.2), tint: i % 3 });
+        this.list.push({ x: rand(c0, c1 + 1) * TILE, y: rand(r0, r1 + 1) * TILE, vx: 0, vy: 0, rot: rand(0, 8), light: rand(0.5, 1.2) * soaked, tint: i % 3, wet: wet > 0 });
       }
     }
     this.gust = null;              // { dx, dy, f, t }: the one blowing now
@@ -58,7 +62,7 @@ export default class Papers {
       }
       const v = Math.hypot(s.vx, s.vy);
       if (v < 0.5) { s.vx = s.vy = 0; continue; }
-      const f = Math.exp(-c.friction * dt);
+      const f = Math.exp(-this.friction * dt);
       s.vx *= f;
       s.vy *= f;
       const nx = s.x + s.vx * dt, ny = s.y + s.vy * dt;
