@@ -6040,48 +6040,6 @@ def p_parking_bay():
     return road_paint(60, 4, 911)
 
 
-def p_palm_planter():
-    """A club's door palm: a kentia in a square planter of black lacquer (the hitbox) with a chrome lip, its soil and,
-    at the front edge, the brass uplight that throws violet up into the fronds (+y: the street); the fronds arch
-    out past the box in four tiers, the lowest in the shade of the others."""
-    S, c = 32, 16.0
-    cv, gl = Cv(S, S), Cv(S, S)
-    lac = ramp('#1c1824', 0.42, 0.22, 0.55)
-    fill_shape(cv, c, c, 10.0, 10.0, lambda u, v, L: shade(lac, L), kind='rect', bevel=1.6, corner=1.0)
-    frect(cv, 6.5, 6.5, 25.5, 7.5, CHROME[3])                          # the chrome lip, lit on top and left
-    frect(cv, 6.5, 6.5, 7.5, 25.5, CHROME[2])
-    frect(cv, 6.5, 24.5, 25.5, 25.5, CHROME[1])
-    frect(cv, 24.5, 6.5, 25.5, 25.5, CHROME[1])
-    for (x, y) in ((7.0, 7.0), (25.0, 7.0), (7.0, 25.0), (25.0, 25.0)):   # the lip's mitred corners catch the light
-        cv.dot(x, y, hx('#ffffff'))
-    rng = random.Random(2203)
-    soil = VNoise(S, S, 2, rng)
-    fill_shape(cv, c, c, 8.5, 8.5, lambda u, v, L: mix(hx('#160e08'), hx('#3e2818'), soil(c + u, c + v) * 0.8),
-               kind='rect', corner=0.4)
-    for _ in range(5):                                                 # white bark chips over the soil
-        x, y = rng.uniform(9.5, 22.5), rng.uniform(9.5, 22.5)
-        fill_shape(cv, x, y, 0.5, 0.4, lambda u, v, L: hx('#cfc4ae') if L > 0.5 else hx('#8a8070'))
-    smudge(cv, rng, 3, (8, 8, 24, 24), (1.0, 2.0), 0.18, hx('#6a6070'))   # dust on the lacquer
-    cv.outline()
-    greens = [ramp('#173e22', 0.6, 0.32, 0.3), ramp('#1f5a2c', 0.58, 0.3, 0.32), ramp('#2e7a38', 0.55, 0.3, 0.33),
-              ramp('#4a9a44', 0.5, 0.28, 0.36)]
-    rng = random.Random(2207)
-    for lay, n, ln in ((0, 4, 15.4), (1, 4, 12.4), (2, 4, 9.0), (3, 3, 5.6)):
-        leaves = Cv(S, S)
-        for i in range(n):
-            # the long fronds go out over the box's sides, so its corners and its lip show between them
-            a = i * 2 * math.pi / n + rng.uniform(-0.15, 0.15) + (0.0 if lay < 2 else math.pi / 4) + lay * 0.28
-            frond(leaves, c, a, ln * rng.uniform(0.9, 1.04), rng.uniform(-0.5, 0.5), greens[lay], rng,
-                  3.0 if lay < 2 else 2.4 if lay < 3 else 1.8)
-        leaves.outline(hx('#0a1e10'))
-        cv.over(leaves)
-    # the uplight's lens at the front edge, between the fronds' stems
-    fill_shape(cv, c, 22.6, 1.9, 1.3, lambda u, v, L: shade(BRASS, L), kind='rect', corner=0.6)
-    fill_shape(cv, c, 22.6, 1.2, 0.7, lambda u, v, L: hx('#f6e8ff') if L > 0.45 else hx('#c890ff'))
-    fill_shape(gl, c, 22.6, 1.4, 0.9, lambda u, v, L: (214, 150, 255, 230))
-    return cv, gl
-
-
 def p_velvet_rope():
     """A length of queue rope from above: two brass posts on their weighted bases, a red velvet rope hung between
     their caps by its brass hooks, sagging a little toward the street (+y)."""
@@ -6315,7 +6273,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
                     urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
-                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, palm_planter=p_palm_planter, velvet_rope=p_velvet_rope,
+                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, velvet_rope=p_velvet_rope,
                     entry_carpet=p_entry_carpet, awning=p_awning, radiator=p_radiator, bike=p_bike,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
@@ -6323,7 +6281,7 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
                     urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
-                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), palm_planter=(32, 32), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
+                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), awning=(68, 50), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
@@ -7136,7 +7094,7 @@ FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
 PROP_SIZES.update(SHOP_SIZES)
 PROP_SIZES.update(DETAIL_SIZES)
-GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING + ['palm_planter']
+GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 # the furniture, the street's dressing and the vehicles are painted at FINE density (their emissive maps too), like
 # the people and the weapons: the sizes above are in world px. The neon signs, neon tubes and party bulbs stay at the
 # world's: they are light (the lamps' fittings are painted fine, their glow maps with them).

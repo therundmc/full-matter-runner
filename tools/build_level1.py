@@ -225,16 +225,14 @@ lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
 lv.area('north sidewalk and the facade')
 lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.6, 21.09)
-# the club's door (the user wanted it like a strip club's: the wall lamps and the plain pots were "vile"; a pergola
-# was tried before, "too ugly"): a red carpet to the kerb between brass posts and velvet ropes, a palm each side in a
-# lacquered planter lit violet from below (a GIRLS neon was tried: "too much"); the bouncer at the east rope.
+# the club's door (the user wanted it like a strip club's; the wall lamps and plain pots were "vile", palms in
+# planters and a GIRLS neon "too much"): a canvas awning flush on the facade over a red carpet to the kerb, brass posts
+# and velvet ropes bolted down either side of it; the bouncer at the east rope.
 # The ropes stand clear of the sidewalk patrol's beat (row 22) and leave the carpet 1.9 m wide.
 lv.paint('entry_carpet', 22.0, 21.94)
-lv.prop('palm_planter', 20.62, 21.44)
-lv.prop('palm_planter', 23.38, 21.44)
 lv.prop('velvet_rope', 20.5, 22.0)
 lv.prop('velvet_rope', 23.5, 22.0)
-lv.prop('awning', 22.0, 21.78)                          # a canvas awning over the carpet (the user's wish; a wooden
+lv.prop('awning', 22.0, 21.72)                          # a canvas awning over the carpet (the user's wish; a wooden
                                                         # pergola had been "too ugly")
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
