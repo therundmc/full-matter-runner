@@ -1,6 +1,7 @@
-// The title screen is seen from a window: his. Over the street (ui/TitleScene.js) come the glass and what is on it,
+// The title screen is seen from a window: his. Over the city (ui/TitleScene.js) come the glass and what is on it,
 // the rain gathering in beads that run down, the mist in its corners; then the window's frame, a curtain on each
-// side, and on the sill what he left there: an ashtray, a cigarette burning out, a bottle, a glass.
+// side, and on the sill what he left there: an ashtray, a cigarette burning out, a bottle, a glass. The glass feels
+// what goes on outside: it shivers as a train goes by, the beads catch a patrol car's red and blue, and lightning.
 // Drawn in the title's logical px (ui/title/Draw.js LW x LH), the frame painted once.
 import { LW, LH } from '../title/Draw.js';
 
@@ -45,9 +46,10 @@ function paintFrame() {
   return c;
 }
 
-// one bead of rain: it gathers a while where it landed, then lets go and runs, faster and faster, leaving its track
-function bead(g, i, t) {
-  const F = FRAME, x0 = F.side + 2 + hash(i) * (LW - 2 * F.side - 4), y0 = F.top + 2 + hash(i + 0.31) * (LH - F.sill) * 0.55;
+// one bead of rain: it gathers a while where it landed, then lets go and runs, faster and faster, leaving its track;
+// (jx, jy): the glass shivering; tint: [r, g, b, k] a light outside caught in it, or null
+function bead(g, i, t, jx, jy, tint) {
+  const F = FRAME, x0 = F.side + 2 + hash(i) * (LW - 2 * F.side - 4) + jx, y0 = F.top + 2 + hash(i + 0.31) * (LH - F.sill) * 0.55 + jy;
   const period = 3.5 + hash(i + 0.57) * 7, ph = (t / period + hash(i + 0.83)) % 1, hold = 0.3 + hash(i + 0.11) * 0.3;
   const foot = LH - F.sill - 1;
   let x = x0, y = y0, big = ph < hold ? 1 + (ph / hold > 0.6 ? 1 : 0) : 2;
@@ -63,21 +65,26 @@ function bead(g, i, t) {
     if (y > foot) return;
   }
   px(g, 'rgba(120,160,220,0.5)', x, y, big, big + 1);
+  if (tint) px(g, `rgba(${tint[0]},${tint[1]},${tint[2]},${(0.7 * tint[3] * y / LH).toFixed(3)})`, x, y, big, big + 1);
   px(g, 'rgba(255,255,255,0.75)', x, y, 1, 1);
   px(g, 'rgba(6,4,18,0.45)', x, y + big + 1, big, 1);
 }
 
-// g: a context in the title's logical px
-export function drawPane(g, t) {
+// g: a context in the title's logical px; fx: what the glass feels of the outside (TitleScene.drawTitleScene):
+// { shake 0..1, tint [r, g, b, k] or null, flash 0..1 }
+export function drawPane(g, t, fx = null) {
   if (!still) still = paintFrame();
-  const F = FRAME;
-  // droplets that sit there, catching the neon
+  const F = FRAME, shake = fx?.shake || 0, tint = fx?.tint && fx.tint[3] > 0.05 ? fx.tint : null, flash = fx?.flash || 0;
+  // the train shakes the pane: what is on it trembles by a pixel, quicker than the eye
+  const n = Math.floor(t * 30), jx = shake > 0.15 ? Math.round((hash(n) - 0.5) * 2.4 * shake) : 0, jy = shake > 0.3 ? Math.round((hash(n + 0.5) - 0.5) * 2 * shake) : 0;
+  // droplets that sit there, catching the neon (and whatever flashes outside)
   for (let i = 0; i < SPECKS; i++) {
-    const x = F.side + hash(i + 7.7) * (LW - 2 * F.side), y = F.top + hash(i + 3.3) * (LH - F.sill - F.top);
-    const a = 0.12 + 0.2 * hash(i + 1.9) * (0.6 + 0.4 * Math.sin(t * (0.6 + hash(i)) + i));
-    px(g, `rgba(200,225,255,${a.toFixed(3)})`, x, y, 1, 1);
+    const x = F.side + hash(i + 7.7) * (LW - 2 * F.side) + jx, y = F.top + hash(i + 3.3) * (LH - F.sill - F.top) + jy;
+    const a = Math.min(0.8, 0.12 + 0.2 * hash(i + 1.9) * (0.6 + 0.4 * Math.sin(t * (0.6 + hash(i)) + i)) + flash * 0.4);
+    const lit = tint && hash(i + 5.5) < y / LH;                                      // the lower on the glass, the nearer the street
+    px(g, lit ? `rgba(${tint[0]},${tint[1]},${tint[2]},${(a * (0.5 + tint[3])).toFixed(3)})` : `rgba(200,225,255,${a.toFixed(3)})`, x, y, 1, 1);
   }
-  for (let i = 0; i < BEADS; i++) bead(g, i, t);
+  for (let i = 0; i < BEADS; i++) bead(g, i, t, jx, jy, tint);
   g.drawImage(still, 0, 0);
   // the cigarette: its ember breathing, a thread of smoke leaning in the draught
   const y = LH - F.sill, glow = 0.55 + 0.45 * Math.sin(t * 1.7) * Math.sin(t * 0.6 + 2);

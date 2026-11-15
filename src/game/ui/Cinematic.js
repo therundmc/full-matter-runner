@@ -1,6 +1,6 @@
-// The opening. The title screen is the street seen from a window (drawTitleView: ui/cine/Pane.js over
+// The opening. The title screen is the city seen from a window (drawTitleView: ui/cine/Pane.js over
 // ui/TitleScene.js): his. NEW GAME pulls the camera back from that window into his bedroom (ui/cine/Room.js), where
-// he sleeps; the street goes soft and coarse behind the wet glass as it becomes a part of the room. Then the night
+// he sleeps; the city goes soft and coarse behind the wet glass as it becomes a part of the room. Then the night
 // goes wrong, told as comic pages drawn like a noir thriller album (ui/cine/Page.js lays them out, ui/cine/Panels.js
 // frames the stills of tools/generate_comic.py and moves what moves in them), slowly enough to be read. He ran
 // packages for the boss of the bar for six years and kept every dollar under his floor, to leave town. Boards torn up
@@ -98,14 +98,14 @@ export function cineBeats(t0, t1, C = CINE) {
   return cues.filter(([at]) => t0 < at && t1 >= at).map(([, name, vol, opts]) => ({ name, vol, opts: opts || {} }));
 }
 
-// ---------------------------------------------------------------- the title: the street, from his window
+// ---------------------------------------------------------------- the title: the city, from his window
 export function drawTitleView(ctx, W, H, t, mouse, logo = 1) {
-  drawTitleScene(ctx, W, H, t, mouse, false);
+  const fx = drawTitleScene(ctx, W, H, t, mouse, false);
   const sc = Math.max(W / LW, H / LH);
   ctx.save();
   ctx.setTransform(sc, 0, 0, sc, (W - LW * sc) / 2, (H - LH * sc) / 2);
   ctx.imageSmoothingEnabled = false;
-  drawPane(ctx, t);
+  drawPane(ctx, t, fx);
   ctx.restore();
   drawTitleTexts(ctx, W, H, t, logo);
 }
@@ -120,8 +120,9 @@ function scratch(old, w, h) {
   return { c, g: c.getContext('2d') };
 }
 
-// world(g, W, H) paints the game seen from above on a W x H canvas; buf: such a canvas { c, g } kept by the caller
-export function drawCinematic(ctx, W, H, t, world, buf) {
+// world(g, W, H) paints the game seen from above on a W x H canvas; buf: such a canvas { c, g } kept by the caller;
+// t0: the title's clock when NEW GAME was chosen (the view from the window goes on from there)
+export function drawCinematic(ctx, W, H, t, world, buf, t0 = 0) {
   const v = cineView(t), C = CINE, rt = v.rt;
   const sc = Math.max(W / LW, H / LH), ox = (W - LW * sc) / 2, oy = (H - LH * sc) / 2;
   const logical = () => { ctx.setTransform(sc, 0, 0, sc, ox, oy); ctx.imageSmoothingEnabled = false; };
@@ -139,7 +140,7 @@ export function drawCinematic(ctx, W, H, t, world, buf) {
     // the window's view on its own canvas, brought down to the room's coarse pixels and fogged as the camera pulls
     // back: on the title it is the whole picture, in the room a part of the wall
     pane = scratch(pane, W, H);
-    drawTitleView(pane.g, W, H, t, null, v.logo);
+    drawTitleView(pane.g, W, H, t0 + t, null, v.logo);
     const k = (v.zoom - 1) / (C.zoom - 1), sw = Math.min(W, (H * LW) / LH), sh = (sw * LH) / LW;
     const f = 1 + (sw / WIN.w - 1) * k ** 1.5;
     low = scratch(low, Math.max(WIN.w, Math.round(WIN.w * f)), Math.max(WIN.h, Math.round(WIN.h * f)));

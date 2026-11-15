@@ -109,6 +109,8 @@ src/
     ui/                   HUD, Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
                           end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
+                          TitleScene (the city in the rain from his window) and title/ (Draw pixel tools, Layout, Timeline:
+                          everything as a function of t, unit tested; Sky, City, Street, Train: the elevated line, Rain, Life),
                           Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
     data/                 controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade

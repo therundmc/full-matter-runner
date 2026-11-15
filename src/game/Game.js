@@ -21,6 +21,7 @@ import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
+import { titleBeats } from './ui/title/Timeline.js';
 import { LEAP, leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import { ENDING, ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
@@ -212,6 +213,8 @@ export default class Game {
     this.cineT = 0;
     this.introT = 0;
     this.introOut = null;
+    // the opening goes on from the title's picture where it was (the window's view keeps its clock)
+    this.titleClock = this.state === 'title' ? this.stateT : 0;
     this.setState(state);
   }
 
@@ -335,6 +338,11 @@ export default class Game {
     }
     if (this.state === 'title') {
       Music.setIntensity(0);
+      // what is heard of the city through his window: the trains going by, the far wash (ui/title/Timeline.js; the
+      // scene's clock is the time on the title)
+      const t1 = this.stateT, t0 = this.titleT <= t1 && t1 - this.titleT < 0.5 ? this.titleT : t1;
+      for (const b of titleBeats(t0, t1)) Audio.play(b.name, { vol: b.vol, ...b.opts });
+      this.titleT = t1;
       this.updateMenu(inp);
       inp.consume();
       return;
@@ -593,7 +601,7 @@ export default class Game {
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
-    else if (!inWorld) drawTitleView(ctx, W, H, t, this.input.mouse);
+    else if (!inWorld) drawTitleView(ctx, W, H, this.stateT, this.input.mouse);
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => this.drawCine(ctx, W, H, t, post));
     else if (this.state === 'fall' && this.stateT >= FALL.fade) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALL.fade));
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
@@ -627,7 +635,7 @@ export default class Game {
       this.cineBuf = { c, g: c.getContext('2d') };
     }
     const world = (g, w, h) => { g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; this.drawScene(g, w, h, t, post); };
-    drawCinematic(ctx, W, H, this.stateT, world, this.cineBuf);
+    drawCinematic(ctx, W, H, this.stateT, world, this.cineBuf, this.titleClock);
   }
 
   // the world (or the replay of the run behind the results), lit, before any lens

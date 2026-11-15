@@ -1,20 +1,12 @@
-// The title picture's frame and the pixel helpers its layers are painted with. The picture is pixel art at a low
+// The title picture's frame and the pixel tools its layers are painted with. The picture is pixel art at a low
 // logical resolution (LW x LH); each layer is a canvas with margins (M, MY) so it can be shifted for the parallax.
-// Layer canvases use layer coordinates (logical + margins); the painters translate by (M, MY) first.
-import { clamp, smooth } from './Timeline.js';
+// Layer canvases use layer coordinates (logical + margins): the painters translate by (M, MY) first.
+// Flat colours and hard edges only: a light is a few flat steps, never a smooth gradient, never a dither.
 
 export const LW = 384, LH = 216;           // logical picture
 export const M = 58, MY = 16;              // layer margins: room for the parallax shift
-export const CW = LW + 2 * M, CH = LH + 2 * MY;
+const CW = LW + 2 * M, CH = LH + 2 * MY;
 export const RX = 110, RY = 26;            // parallax range in logical px for a factor of 1
-export const GY = 146;                     // foot of the facades
-export const KERB = 158;                   // kerb top
-export const ROAD = 165;                   // road starts (after kerb face + gutter)
-export const F = { far: 0.02, mid: 0.05, bar: 0.1, near: 0.24, fg: 0.36 };
-// ground row parallax: the far edge of the pavement moves with the facades, the bottom of the screen with the near plane
-export const rowF = (y) => F.bar + clamp((y - GY) / (LH - GY), 0, 1) * (F.near - F.bar);
-// how much bigger things look at that ground row (0.6 at the foot of the facades, 1.3 at the bottom of the picture)
-export const persp = (y) => 0.6 + 0.7 * smooth(GY, LH, y);
 
 export function canvas(w = CW, h = CH) {
   const c = document.createElement('canvas');
@@ -22,6 +14,12 @@ export function canvas(w = CW, h = CH) {
   const g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
   return { c, g };
+}
+// a layer canvas whose painters work in logical px (its margins already applied)
+export function layer(w = CW, h = CH) {
+  const L = canvas(w, h);
+  L.g.translate(M, MY);
+  return L;
 }
 // seeded generator for the painters (the same picture every time)
 export function rand(seed) {
@@ -34,7 +32,7 @@ export function rand(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-export function px(g, col, x, y, w = 1, h = 1) { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), w, h); }
+export function px(g, col, x, y, w = 1, h = 1) { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
 export function line(g, col, x0, y0, x1, y1) {
   g.fillStyle = col;
   x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
@@ -48,97 +46,66 @@ export function line(g, col, x0, y0, x1, y1) {
     if (e2 <= dx) { err += dx; y0 += sy; }
   }
 }
+// a filled polygon with hard edges: one run of whole pixels per row. pts: [[x, y]...]
 export function poly(g, col, pts) {
+  let y0 = Infinity, y1 = -Infinity;
+  for (const p of pts) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
   g.fillStyle = col;
-  g.beginPath();
-  pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-  g.closePath();
-  g.fill();
-}
-// hard alpha edges after path fills (pixel art, no soft fringes)
-export function crisp(c) {
-  const g = c.getContext('2d'), id = g.getImageData(0, 0, c.width, c.height), d = id.data;
-  for (let i = 3; i < d.length; i += 4) d[i] = d[i] < 110 ? 0 : 255;
-  g.putImageData(id, 0, 0);
-}
-// a little per pixel noise on the albedo: grit, and no flat programmer colour
-export function grain(c, amt, seed) {
-  const g = c.getContext('2d'), id = g.getImageData(0, 0, c.width, c.height), d = id.data, r = rand(seed);
-  for (let i = 0; i < d.length; i += 4) {
-    if (!d[i + 3]) continue;
-    const n = 1 + (r() - 0.5) * amt;
-    d[i] *= n; d[i + 1] *= n; d[i + 2] *= n;
-  }
-  g.putImageData(id, 0, 0);
-}
-// lit = albedo * (ambient + lights); light { x, y, r, c, k, sy (vertical squash on the ground), up (factor above it) }.
-// The albedo may be a cropped piece of a layer (ox, oy). Without ambient the result is cropped to the lights' reach.
-// The result carries its place in the layer (ox, oy): draw it with put().
-export function shade(src, lights, amb, ambY = null) {
-  const w = src.width, h = src.height, sx = src.ox || 0, sy = src.oy || 0;
-  const d = src.px || (src.px = src.getContext('2d').getImageData(0, 0, w, h).data);   // read once per albedo
-  let x0 = 0, y0 = 0, x1 = w, y1 = h;
-  if (!amb) {
-    x0 = w; y0 = h; x1 = 0; y1 = 0;
-    for (const L of lights) {
-      const ry = L.r / (L.sy || 1);
-      x0 = Math.min(x0, L.x - L.r + M - sx); x1 = Math.max(x1, L.x + L.r + M - sx);
-      y0 = Math.min(y0, L.y - ry + MY - sy); y1 = Math.max(y1, L.y + ry + MY - sy);
+  for (let y = Math.floor(y0); y <= Math.ceil(y1); y++) {
+    const yc = y + 0.5, xs = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) xs.push(a[0] + ((yc - a[1]) / (b[1] - a[1])) * (b[0] - a[0]));
     }
-    x0 = clamp(Math.floor(x0), 0, w - 1); y0 = clamp(Math.floor(y0), 0, h - 1);
-    x1 = clamp(Math.ceil(x1), x0 + 1, w); y1 = clamp(Math.ceil(y1), y0 + 1, h);
-  }
-  const ow = x1 - x0, oh = y1 - y0, { c, g } = canvas(ow, oh);
-  const od = g.createImageData(ow, oh), o = od.data;
-  const a = amb || [0, 0, 0];
-  for (let y = y0; y < y1; y++) {
-    const ly = y + sy - MY, ka = ambY ? ambY(ly) : 1;
-    for (let x = x0; x < x1; x++) {
-      const i = (y * w + x) * 4;
-      if (!d[i + 3]) continue;
-      const lx = x + sx - M;
-      let lr = a[0] * ka, lg = a[1] * ka, lb = a[2] * ka;
-      for (const L of lights) {
-        const dx = lx - L.x, dy = (ly - L.y) * (L.sy || 1), q = dx * dx + dy * dy;
-        if (q >= L.r * L.r) continue;
-        let f = 1 - Math.sqrt(q) / L.r;
-        f *= f * L.k;
-        if (L.up !== undefined && ly < L.y) f *= L.up;
-        lr += L.c[0] * f; lg += L.c[1] * f; lb += L.c[2] * f;
-      }
-      const j = ((y - y0) * ow + x - x0) * 4;
-      o[j] = d[i] * lr; o[j + 1] = d[i + 1] * lg; o[j + 2] = d[i + 2] * lb; o[j + 3] = d[i + 3];
+    xs.sort((p, q) => p - q);
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+      const xa = Math.round(xs[i]), xb = Math.round(xs[i + 1]);
+      if (xb > xa) g.fillRect(xa, y, xb - xa, 1);
     }
   }
-  g.putImageData(od, 0, 0);
-  c.ox = x0 + sx; c.oy = y0 + sy;
+}
+// a filled ellipse with hard edges (cx, cy its centre, rx, ry its radii)
+export function oval(g, col, cx, cy, rx, ry) {
+  g.fillStyle = col;
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    const k = (y + 0.5 - cy) / ry;
+    if (k * k >= 1) continue;
+    const w = rx * Math.sqrt(1 - k * k), xa = Math.round(cx - w), xb = Math.round(cx + w);
+    if (xb > xa) g.fillRect(xa, y, xb - xa, 1);
+  }
+}
+// a light as a few flat steps: nested hard ellipses, each step adding `a` of the colour (draw it with 'lighter')
+export function halo(rgb, rx, ry, steps = 3, a = 0.12) {
+  const { c, g } = canvas(Math.ceil(rx * 2) + 2, Math.ceil(ry * 2) + 2);
+  for (let i = 0; i < steps; i++) {
+    const k = 1 - i / steps;
+    oval(g, `rgba(${rgb},${a})`, c.width / 2, c.height / 2, rx * k, ry * k);
+  }
   return c;
 }
-// draw a (possibly cropped) layer piece at its place, shifted by (dx, dy)
-export function put(g, c, dx = 0, dy = 0) { g.drawImage(c, (c.ox || 0) + dx, (c.oy || 0) + dy); }
-// keep only the part of a layer-sized canvas that holds anything (with a margin), remembering where it was
-export function cropTo(src, x0, y0, x1, y1) {
-  const { c, g } = canvas(x1 - x0, y1 - y0);
-  g.drawImage(src, -x0, -y0);
-  c.ox = x0; c.oy = y0;
-  return c;
+// draw a sprite (a halo: with 'lighter') centred on (x, y), whole pixels
+export function centre(g, c, x, y) { g.drawImage(c, Math.round(x - c.width / 2), Math.round(y - c.height / 2)); }
+
+// ---------------------------------------------------------------- a 3 x 5 pixel font, for the signs far away
+const GLYPHS = {
+  A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111',
+  F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101101110101101',
+  L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010', P: '110101110100100',
+  R: '110101110101101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010',
+  W: '101101111111101', Y: '101101010010010', Z: '111001010100111', 0: '111101101101111', 1: '010110010010111',
+  2: '110001010100111', 4: '101101111001001', 9: '111101111001110', '-': '000000111000000', '.': '000000000000010',
+  ' ': '000000000000000', '$': '011110010011110',
+};
+// the pixels of one letter: [[x, y]...]
+export function glyph(ch) {
+  const s = GLYPHS[ch] || GLYPHS[' '], out = [];
+  for (let i = 0; i < 15; i++) if (s[i] === '1') out.push([i % 3, Math.floor(i / 3)]);
+  return out;
 }
-// soft glow sprite: radial gradient, drawn scaled with smoothing on
-export function glowSprite(rgb, size = 64) {
-  const { c, g } = canvas(size, size);
-  const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gr.addColorStop(0, `rgba(${rgb},1)`);
-  gr.addColorStop(0.25, `rgba(${rgb},0.45)`);
-  gr.addColorStop(0.6, `rgba(${rgb},0.12)`);
-  gr.addColorStop(1, `rgba(${rgb},0)`);
-  g.fillStyle = gr;
-  g.fillRect(0, 0, size, size);
-  return c;
-}
-// cheap blur (works everywhere): down then up with smoothing
-export function blur(src, k) {
-  const w = Math.max(1, Math.round(src.width / k)), h = Math.max(1, Math.round(src.height / k));
-  const a = canvas(w, h); a.g.imageSmoothingEnabled = true; a.g.drawImage(src, 0, 0, w, h);
-  const b = canvas(src.width, src.height); b.g.imageSmoothingEnabled = true; b.g.drawImage(a.c, 0, 0, src.width, src.height);
-  return b.c;
+// a line of it, top-left at (x, y), each pixel `k` px wide, `gap` px between letters
+export function pixText(g, str, x, y, col, k = 1, gap = 1) {
+  g.fillStyle = col;
+  [...str].forEach((ch, i) => {
+    for (const [gx, gy] of glyph(ch)) g.fillRect(x + i * (3 * k + gap) + gx * k, y + gy * k, k, k);
+  });
 }
