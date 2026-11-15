@@ -1,147 +1,171 @@
-"""Build src/game/data/levels/tutorial.js: the tutorial, an apartment, a memory of the night it went wrong.
+"""Build src/game/data/levels/tutorial.js: the tutorial, the night his flat burned.
 
     python tools/build_tutorial.py
 
-Six rooms played one after the other (src/game/systems/Tutorial.js: the guards of a room sleep until its turn, a
-retry starts again at the last room reached), each asking for one move, said next to what it is done to:
+He ran packages for the bar's boss for six years and kept every dollar under his floor, to leave town. Tonight the
+boss closes the account: his men take the money back and burn the place with him in it (the opening tells it:
+src/game/ui/Cinematic.js). He wakes in his bedroom and has to get out: his flat, its front door, the corridor of the
+building with the neighbours' doors, the landing where more of them come up the stairs, the window at the corridor's
+end. The flat catches fire room after room behind him (`fires`, src/game/systems/Fires.js).
 
-    bedroom, hall   he wakes by his bed: move, aim
-    living room     the woman he heard scream lies there, shot; the man who did it stands in front of the
-                    television, his back to the door: seize him from behind
+Each place asks for one move, said next to what it is done to (src/game/systems/Tutorial.js: the guards of a place
+sleep until its turn, a retry starts again at the last place reached):
+
+    bedroom         he wakes by his bed: move, aim
+    living room     a man emptying a jerrycan over it, his back to the door, by the hole they tore in the floor:
+                    seize him from behind
     kitchen         a man at the worktop: a punch floors him, a bat lies by the table to finish him with; another
-                    comes out of the pantry: strike
-    corridor        a man with a pistol at its far end: run and slide under his fire
-    study           a pistol with two rounds on the floor, two men come at him, a third from the next room: shoot,
-                    then throw the empty gun, then finish the man it floored
-    front room      the big window: dive through it. He falls, and wakes in the alley of level 1.
+                    comes in from the entrance hall, over the body of the building's super: strike
+    the corridor    out of his front door: a man with a pistol at the far end of the long corridor. Run and slide
+                    under his fire. The gun he drops has two rounds left in it.
+    the landing     three of them come up the stairs: shoot, throw the empty gun, finish the man it floored
+    the window      at the corridor's end: dive through it. He lands in the alley, and three weeks go by.
 """
 from levelkit import Level
 
-W, H = 34, 19
+W, H = 40, 20
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
-lv.fill(1, 1, 29, 17, '#')            # the flat: plaster inside, brick round it
-lv.fill(1, 1, 5, 5, ';')              # bedroom
-lv.put(0, 3, 'G')                     # its window on the street (the title's travelling comes in by it)
+lv.fill(1, 1, 34, 18, '#')            # the building: plaster inside, brick round it
+lv.fill(1, 1, 5, 5, ';')              # his bedroom
+lv.put(0, 3, 'G')                     # its window on the street: the title looks out of it
 lv.put(6, 3, 'D')
-lv.fill(7, 1, 8, 6, '.')              # hall
-lv.put(9, 3, 'D')
-lv.fill(10, 1, 16, 6, ':')            # living room
-lv.put(12, 7, 'D')
-lv.fill(10, 8, 16, 13, ',')           # kitchen
-lv.put(17, 10, 'D')
-lv.fill(18, 9, 19, 11, '_')           # pantry
-lv.put(13, 14, 'D')
-lv.fill(12, 15, 21, 16, '.')          # corridor: eight metres to cross under his fire
-lv.put(22, 15, 'D')
-lv.fill(23, 10, 28, 17, ';')          # study
-lv.put(25, 9, 'D')
-lv.fill(23, 2, 28, 8, '.')            # front room
-for row in (4, 5, 6):
-    lv.put(29, row, 'G')              # the big window
-lv.fill(30, 1, 32, 9, '=')            # the night outside, four floors down
+lv.fill(7, 1, 13, 6, ':')             # living room
+lv.put(10, 7, 'D')
+lv.fill(7, 8, 13, 12, '+')            # kitchen
+lv.put(14, 10, 'D')
+lv.fill(15, 8, 16, 12, '.')           # entrance hall
+lv.put(17, 10, 'D')                   # his front door
+lv.fill(18, 2, 19, 17, ',')           # the building's corridor, north to south ...
+lv.fill(20, 16, 34, 17, ',')          # ... then east to its window
+lv.fill(29, 11, 33, 15, '_')          # the landing, open on the corridor; the stairs go down from its north side
+for row in (16, 17):
+    lv.put(35, row, 'G')              # the window at the corridor's end
+lv.fill(36, 14, 38, 19, '=')          # the night outside, two floors over the alley
 
 # ---------------------------------------------------------------- actors (7 men)
 lv.actor('@', 4, 3, face=0)
-lv.actor('j', 14, 3, face=0)                            # in front of the television, his back to the door
-lv.actor('j', 11, 11, face=180)                         # at the worktop
-lv.actor('m', 19, 10, face=180)                         # in the pantry: comes out when the first one is dead
-lv.actor('p', 21, 15, face=180)                         # the far end of the corridor, a pistol
-lv.actor('j', 27, 11, face=90)                          # the study
-lv.actor('m', 28, 13, face=180)
-lv.actor('k', 26, 4, face=90)                           # the front room: comes when the two of the study are dead
-lv.body('civ2', 13.5, 4.75, 195, 20)                    # her: what he heard from his bed. The man stands over her
-lv.drop('bat', 13.2, 12.3, 25)
-lv.drop('pistol', 24.2, 15.5, 200, rounds=2)
+lv.actor('j', 11, 3, face=0)                            # emptying a jerrycan over the living room, his back to the door
+lv.actor('j', 8, 11, face=180)                          # at the kitchen worktop
+lv.actor('m', 16, 9, face=180)                          # in the entrance hall: comes when the first one is dead
+lv.actor('p', 28, 16, face=180)                         # the far end of the corridor, a pistol
+lv.actor('j', 30, 12, face=90)                          # up the stairs, when he takes the gun
+lv.actor('m', 32, 12, face=90)
+lv.actor('k', 31, 11, face=90)                          # and a third when those two are dead
+lv.body('civ3', 16.3, 11.4, 250, 18)                    # the super: he came up about the noise
+lv.drop('bat', 11.0, 11.6, 25)
 
 lv.guard(0, 0, W - 1, H - 1)                            # nobody is a guest here
 
 # ---------------------------------------------------------------- props
-lv.area('bedroom')
+lv.area('his bedroom')
 lv.prop('bed', 2.2, 2.05)
 lv.prop('table_lamp', 3.45, 1.4)
 lv.prop('bookshelf', 3.4, 5.78, 180)
 lv.prop('plant', 5.45, 5.45)
 lv.prop('chair', 5.4, 1.5, 200)
 
-lv.area('hall')
-lv.prop('ceiling_lamp', 8.0, 3.5)
-lv.prop('plant', 7.45, 6.45)
-lv.prop('crate', 8.5, 1.45, 8)
-
 lv.area('living room')
-lv.prop('tv', 16.6, 3.5, 90)
-lv.prop('sofa', 12.3, 3.5, 270)
-lv.prop('floor_lamp', 16.5, 1.45)
-lv.prop('bookshelf', 13.5, 1.22)
-lv.prop('plant', 10.5, 1.5)
-lv.prop('armchair', 15.4, 5.5, 215)
-lv.prop('table_round', 11.2, 5.5)
-lv.prop('speaker', 16.5, 5.6)
+lv.prop('tv', 13.6, 4.4, 90)
+lv.prop('sofa', 9.3, 3.5, 270)
+lv.prop('floor_lamp', 13.5, 1.45)
+lv.prop('bookshelf', 10.5, 1.22)
+lv.prop('plant', 7.5, 1.5)
+lv.prop('armchair', 12.6, 5.9, 215)
+lv.prop('table_round', 8.2, 5.6)
+lv.paint('floor_hole', 11.9, 5.0, 10)                   # where he kept it
+lv.prop('jerrycan', 12.4, 2.6, 40)
 
 lv.area('kitchen')
-lv.prop('fridge', 10.42, 9.0, 270)
-lv.prop('oven', 10.38, 10.6, 270)
-lv.prop('sink', 10.34, 12.2, 270)
-lv.prop('table', 14.2, 10.4)
-lv.prop('chair', 14.2, 9.55, 90)
-lv.prop('chair', 15.25, 10.5, 180)
-lv.prop('tube_light', 13.5, 8.07)
-lv.prop('trash_can', 16.5, 13.5)
-lv.prop('crate', 19.5, 9.4, 6)                          # the pantry
-lv.prop('crate', 19.5, 11.5, -8)
+lv.prop('fridge', 7.42, 8.85, 270)
+lv.prop('oven', 7.38, 10.1, 270)
+lv.prop('sink', 7.34, 11.55, 270)
+lv.prop('table', 11.6, 10.3)
+lv.prop('chair', 11.6, 9.45, 90)
+lv.prop('chair', 12.65, 10.4, 180)
+lv.prop('tube_light', 11.5, 8.07)
+lv.prop('trash_can', 13.5, 12.5)
 
-lv.area('corridor')
-lv.prop('wall_lamp', 14.5, 15.09)
-lv.prop('wall_lamp', 18.5, 15.09)
-lv.prop('plant', 12.45, 16.5)
+lv.area('entrance hall')
+lv.prop('bookshelf', 15.9, 12.78, 180)
+lv.prop('ceiling_lamp', 16.0, 10.0)
 
-lv.area('study')
-lv.prop('desk', 26.6, 16.5, 180)
-lv.prop('armchair', 26.6, 15.4, 0)
-lv.prop('bookshelf', 27.2, 10.22)                     # clear of the front room's door
-lv.prop('floor_lamp', 28.5, 10.5)
-lv.prop('sofa', 23.5, 12.2, 270)
-lv.prop('plant', 23.45, 17.5)
-lv.prop('table_lamp', 28.45, 17.4)
+lv.area('the corridor of the building')
+for row in (4.5, 7.5, 10.5, 13.5):                      # a worn carpet runner down its middle
+    lv.paint('runner', 19.0, row, 90)
+for col in (22.5, 25.5, 28.5, 31.5):
+    lv.paint('runner', col, 17.0)
+lv.paint('doormat', 18.5, 10.5, 90)                     # his
+for (row, lamp) in ((4.5, 6.5), (13.5, 11.8)):          # the neighbours on the east side
+    lv.prop('apt_door', 19.91, row, 90)
+    lv.paint('doormat', 19.52, row, 90)
+    lv.prop('wall_lamp', 19.91, lamp, 90)
+lv.paint('newspaper', 19.5, 4.6, 80)
+lv.paint('shoes', 19.52, 13.4, 180)
+lv.prop('apt_door', 18.09, 5.5, 270)                    # ... and across from them
+lv.prop('radiator', 18.09, 7.9, 270)
+lv.prop('plant', 18.5, 2.5)
+lv.prop('bike', 19.74, 3.0, 90)
+lv.prop('extinguisher', 18.09, 14.2, 270)
+for col in (22.5, 26.5):                                # along the long corridor: doors on its south wall
+    lv.prop('apt_door', col, 17.91, 180)
+    lv.paint('doormat', col, 17.52, 180)
+lv.paint('newspaper', 26.4, 17.5, 10)
+for col in (21.0, 24.5, 28.0):
+    lv.prop('wall_lamp', col, 16.09)
+lv.prop('radiator', 26.3, 16.09)
+lv.prop('bin_bag', 24.3, 17.62, 20)                     # somebody's rubbish, put out for the morning
+lv.prop('bin_bag', 24.75, 17.55, 140)
+lv.prop('apt_door', 32.5, 17.91, 180)
 
-lv.area('front room')
-lv.prop('sofa', 25.6, 2.5)
-lv.prop('plant', 23.45, 2.5)
-lv.prop('floor_lamp', 28.5, 2.5)
-lv.prop('tv', 23.4, 5.5, 270)
-lv.prop('ceiling_lamp', 26.0, 5.5)
-lv.prop('armchair', 24.4, 7.5, 300)
+lv.area('the landing')
+lv.paint('stairs', 31.0, 11.75)
+lv.prop('ceiling_lamp', 31.0, 14.4)
+lv.prop('plant', 33.5, 15.4)
+lv.prop('trash_can', 29.45, 15.4)
+lv.prop('bin_bag', 29.95, 15.55, 60)
+
+# ---------------------------------------------------------------- the fire, room after room behind him
+for (col, row, stage) in (
+        (9.3, 3.5, 2), (13.4, 4.4, 2), (11.4, 2.2, 2), (8.2, 5.6, 2),           # the living room, as he reaches the kitchen
+        (2.2, 2.3, 2), (3.4, 5.6, 3),                                           # his bedroom
+        (11.6, 10.3, 3), (9.0, 8.6, 3), (12.8, 12.2, 3),                        # the kitchen, as he reaches the entrance
+        (15.9, 12.5, 4), (15.5, 8.6, 4),                                        # the entrance hall
+        (17.6, 10.5, 5), (18.4, 7.0, 5), (19.5, 12.6, 5)):                      # his door and the corridor, at the landing
+    lv.fire(col, row, stage)
 
 # ---------------------------------------------------------------- the lesson
 lv.tutorial = {
     'stages': [
-        {'zone': [1, 1, 8, 6], 'spawn': [4.5, 3.5, 0], 'hints': ['move']},
-        {'zone': [10, 1, 16, 6], 'spawn': [8.0, 3.5, 0], 'hints': ['finish', 'takedown'],
-         'waves': [{'at': [[14, 3]], 'on': 'never', 'blind': True}]},
-        {'zone': [10, 8, 16, 13], 'spawn': [12.5, 6.2, 90], 'take': 'bat', 'hints': ['finish', 'take', 'strike', 'punch'],
-         'waves': [{'at': [[11, 11]], 'on': 'never', 'blind': True}, {'at': [[19, 10]], 'on': 'kills:1'}]},
-        {'zone': [12, 15, 21, 16], 'spawn': [13.5, 13.2, 90], 'marks': {'slide': [14.3, 15.5]}, 'hints': ['finish', 'slide'],
-         'waves': [{'at': [[21, 15]], 'on': 'enter'}]},
-        {'zone': [23, 10, 28, 17], 'spawn': [20.5, 15.5, 0], 'take': 'pistol', 'hints': ['finish', 'take', 'throw', 'shoot'],
-         'waves': [{'at': [[27, 11], [28, 13]], 'on': 'pickup:pistol'}, {'at': [[26, 4]], 'on': 'kills:2'}]},
-        {'zone': [23, 2, 28, 8], 'spawn': [25.5, 10.6, 270], 'marks': {'dive': [28.4, 5.5]}, 'hints': ['finish', 'dive']},
+        {'zone': [1, 1, 5, 5], 'spawn': [4.5, 3.5, 0], 'hints': ['move']},
+        {'zone': [7, 1, 13, 6], 'spawn': [5.4, 3.5, 0], 'hints': ['finish', 'takedown'],
+         'waves': [{'at': [[11, 3]], 'on': 'never', 'blind': True}]},
+        {'zone': [7, 8, 13, 12], 'spawn': [10.5, 6.2, 90], 'take': 'bat', 'hints': ['finish', 'take', 'strike', 'punch'],
+         'waves': [{'at': [[8, 11]], 'on': 'never', 'blind': True}, {'at': [[16, 9]], 'on': 'kills:1'}]},
+        # out of his door, down the corridor: the man at its far end is only pointed at until he turns the corner
+        {'zone': [15, 8, 19, 15], 'spawn': [15.5, 10.5, 0], 'marks': {'slide': [19.0, 14.4]}, 'hints': ['slide'],
+         'waves': [{'at': [[28, 16]], 'on': 'never', 'blind': True}]},
+        {'zone': [18, 16, 28, 17], 'spawn': [18.9, 14.2, 90], 'marks': {'slide': [21.4, 16.5]}, 'take': 'pistol', 'leaves': 2,
+         'hints': ['finish', 'take', 'slide'], 'waves': [{'at': [[28, 16]], 'on': 'enter'}]},
+        {'zone': [29, 11, 34, 17], 'spawn': [27.5, 16.5, 0], 'take': 'pistol', 'marks': {'dive': [34.4, 16.5]},
+         'hints': ['finish', 'take', 'throw', 'shoot', 'dive'],
+         'waves': [{'at': [[30, 12], [32, 12]], 'on': 'pickup:pistol'}, {'at': [[31, 11]], 'on': 'kills:2'}]},
     ],
-    'fall': [30, 1, 32, 9],
+    'fall': [36, 14, 38, 19],
 }
 
 lights = [
     [3, 3, 5, '#6a5ad8', 0.3],
-    [13, 4, 6, '#7a5ad8', 0.25],
-    [26, 5, 6, '#5a6ad8', 0.25],
+    [10, 4, 6, '#7a5ad8', 0.25],
+    [26, 16.5, 8, '#5a6ad8', 0.22],
 ]
 
 if __name__ == '__main__':
     lv.check(guards=7)
     lv.write('tutorial', name='BAD NIGHT', subtitle='SUNSET BAY  -  MARCH 14TH 1986  -  1:05 AM', lights=lights,
-             objective=['GET OUT OF THE APARTMENT', 'THROUGH THE FRONT ROOM WINDOW'],
+             objective=['GET OUT OF THE BUILDING', 'THE WINDOW AT THE END OF THE CORRIDOR'],
              header=[
-                 'The tutorial - "BAD NIGHT": an apartment, a memory. Six rooms, one move each (src/game/systems/Tutorial.js);',
-                 'it ends through the front room window, and he wakes in the alley of level 1.',
+                 'The tutorial - "BAD NIGHT": his flat set on fire, the corridor of the building, the landing, the window at its end.',
+                 'Six places, one move each (src/game/systems/Tutorial.js); he lands in the alley, and level 1 is three weeks later.',
              ])

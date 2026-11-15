@@ -70,7 +70,7 @@
     lab: { free: { steps: [] }, throw: THROW },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
-    tutorial: { free: { steps: [] }, out: { steps: [{ go: [27.4, 5.5] }, { cross: [30.7, 5.5] }], rescue: true } },
+    tutorial: { free: { steps: [] }, out: { steps: [{ go: [34.3, 16.5] }, { cross: [36.6, 16.5] }], rescue: true } },
     street: {
       free: { steps: [] },
       throw: THROW,

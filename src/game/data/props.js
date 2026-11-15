@@ -25,6 +25,13 @@ export const PROPS = {
   gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.75, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
     gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
   sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
+  // a block of flats: a neighbour's door (shut for good, on its wall), a radiator under a wall, a bicycle leant on
+  // one, a bin bag, a jerrycan. What lies flat on its floors (doormats, the stairs, a carpet) is paint: level `floor`.
+  apt_door: { fixture: true, static: true, lasting: true, material: 'wood', w: 32, h: 6, hp: 99, chips: '#6a4426', sound: 'wood' },
+  radiator: { fixture: true, static: true, lasting: true, material: 'metal', w: 28, h: 6, hp: 99, chips: '#8a8e98', sparks: true, sound: 'metal' },
+  bike: { static: true, material: 'metal', w: 44, h: 10, hp: 6, chips: '#c8402c', sparks: true, sound: 'metal' },
+  bin_bag: { material: 'fabric', r: 6.5, hp: 3, kg: 6, mu: 0.9, chips: '#2c2e3a', sound: 'wood' },
+  jerrycan: { material: 'metal', w: 9, h: 11, hp: 8, kg: 9, mu: 0.8, chips: '#c8281e', sound: 'metal' },
   // a wall urinal (the wall behind it) and the partition between two toilets (its bracket end on the wall)
   urinal: { material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
   stall: { material: 'wood', w: 4, h: 40, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },

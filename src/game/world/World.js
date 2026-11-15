@@ -39,6 +39,8 @@ import Critters from '../systems/Critters.js';
 import Sirens from '../systems/Sirens.js';
 import Ambience from '../systems/Ambience.js';
 import Tutorial from '../systems/Tutorial.js';
+import Fires from '../systems/Fires.js';
+import WeaponItem from '../entities/WeaponItem.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Clouds from '../systems/Clouds.js';
 import Gadgets from '../systems/Gadgets.js';
@@ -114,12 +116,15 @@ export default class World {
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
     this.steam = new Steam(this, level.street?.manholes);  // manholes, vents, pierced steam pipes
     this.papers = new Papers(this, level.street?.papers);  // loose sheets the wind and the cars blow about
+    this.fires = new Fires(this, level.fires);             // what burns, for the look of it
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
     const at = game?.tutorialAt;
     this.tutorial = level.tutorial ? new Tutorial(this, level.tutorial, at?.name === level.name ? at.stage : 0) : null;
+    const owed = this.tutorial?.owed;
+    if (owed) this.addItem(new WeaponItem(this, owed.type, owed.mag, owed.x, owed.y, owed.angle));
     watchOpenings(this); // windows and doors go with the wall that holds them
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
@@ -448,6 +453,7 @@ export default class World {
     this.sirens.update(dt);
     this.ambience.update(dt);
     this.tutorial?.update();
+    this.fires.update(dt);
     this.poolBalls.update(dt);
     this.clouds.update(dt);
     this.steam.update(dt);

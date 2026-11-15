@@ -41,9 +41,13 @@ SIZES = dict(
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
     fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 40),
+    apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
 )
+
+# sprites that are floor paint (Level.paint)
+FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes')
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -70,6 +74,8 @@ class Level:
         self.leans = []       # weapons stood against a wall: [type, col, row, deg]
         self.drops = []       # weapons lying about with a given magazine: [type, col, row, deg, rounds]
         self.bodies = []      # somebody already dead when the level starts: [kind, col, row, deg, pool px]
+        self.fires = []       # something burning, for the look of it: [col, row, stage of the tutorial it catches at]
+        self.floor = []       # what is painted on the floor, without a body: [sprite, col, row, deg]
         self.tutorial = None  # a level that teaches: { stages, fall } (src/game/systems/Tutorial.js)
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
@@ -117,6 +123,16 @@ class Level:
 
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
+
+    # ---- a fire at (col, row); stage: the room of the tutorial he must have reached for it to catch (None: at once)
+    # ---- something lying flat, painted on the floor once and for all (a doormat, a carpet runner, a flight of stairs):
+    # nobody bumps into it and no round stops on it
+    def paint(self, sprite, col, row, deg=0):
+        assert sprite in FLOOR, f'{sprite} is not floor paint'
+        self.floor.append([sprite, col, row, deg])
+
+    def fire(self, col, row, stage=None):
+        self.fires.append([col, row] if stage is None else [col, row, stage])
 
     # ---- a dead body at (col, row), its head toward deg, in a pool of `pool` px
     def body(self, kind, col, row, deg=0, pool=18):
@@ -294,6 +310,12 @@ class Level:
         if self.welcome:
             L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
             L.append(f'  welcome: {json.dumps(self.welcome)},')
+        if self.floor:
+            L.append('  // painted on the floor, no body: [sprite, col, row, deg]')
+            L.append(f'  floor: {js(self.floor)},')
+        if self.fires:
+            L.append('  // fires [col, row, tutorial stage they catch at] (src/game/systems/Fires.js)')
+            L.append(f'  fires: {json.dumps(self.fires)},')
         if self.bodies:
             L.append('  // already dead when it starts [kind, col, row, deg, pool px]')
             L.append(f'  bodies: {json.dumps(self.bodies)},')

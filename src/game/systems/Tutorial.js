@@ -11,7 +11,10 @@
 //                     takes that weapon) | 'never' (a man who is only there to be dealt with). blind: they do not
 //                     wake either when he walks up in front of them.
 //              hints: [names of HINTS, the first that applies wins a place: two at most are shown]
-//              take: TYPE, marks: { name: [col, row] }   what some hints point at }]
+//              take: TYPE, marks: { name: [col, row] }   what some hints point at
+//              leaves: N   the gun a dead man of the stage drops has N rounds left in it, no more (a retry further
+//                     on finds that gun, `take`, by where it starts: `owed`) }]
+//           A guard may stand in the waves of two stages running (pointed at from one, fought in the next).
 //   fall    [c0, r0, c1, r1]: beyond the window. Once he is there the lesson is over ('tutorialEnd').
 import { TILE } from '../Config.js';
 
@@ -57,7 +60,7 @@ export const HINTS = {
   throw: (T, s, p) => (p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && T.standing(s).length
     ? { x: p.x, y: p.y, key: 'RIGHT CLICK', text: 'THROW IT' } : null),
   slide: (T, s) => (T.standing(s).length && s.marks?.slide ? { ...at(s.marks.slide), key: 'SPACE', text: 'RUN AND SLIDE UNDER HIS FIRE' } : null),
-  dive: (T, s) => (s.marks?.dive ? { ...at(s.marks.dive), key: 'SPACE', text: 'DIVE' } : null),
+  dive: (T, s) => (s.marks?.dive && !T.standing(s).length ? { ...at(s.marks.dive), key: 'SPACE', text: 'DIVE' } : null),
 };
 
 export default class Tutorial {
@@ -69,6 +72,8 @@ export default class Tutorial {
     this.moved = 0;    // px walked so far
     this.last = null;
     this.picked = null;
+    this.left = null;  // a gun just dropped by a dead man, to be left with a few rounds: { x, y, n, steps }
+    this.owed = null;  // the gun a retry starts past the dropping of, for the world to lay down: { type, mag, x, y, angle }
     this.over = false;
     const on = (e, [c, r]) => Math.floor(e.x / TILE) === c && Math.floor(e.y / TILE) === r;
     this.stages = def.stages.map((s) => ({
@@ -78,7 +83,9 @@ export default class Tutorial {
     for (const s of this.stages) for (const w of s.waves) for (const g of w.guards) Object.assign(g, { dormant: true, slack: SLACK });
     world.events.on('kill', ({ victim }) => {
       const s = this.stages[this.stage];
-      if (s && this.guards(s).includes(victim)) s.kills++;
+      if (!s || !this.guards(s).includes(victim)) return;
+      s.kills++;
+      if (s.leaves !== undefined) this.left = { x: victim.x, y: victim.y, n: s.leaves, steps: 30 };
     });
     world.events.on('pickup', ({ ch, type }) => { if (ch.isPlayer) this.picked = type; });
     if (from > 0 && from < this.stages.length) this.restore(from);
@@ -91,12 +98,15 @@ export default class Tutorial {
   // a retry: he is put back where stage i starts, the rooms before it are empty
   restore(i) {
     const w = this.world, p = w.player, [col, row, deg = 0] = this.stages[i].spawn;
-    const gone = new Set(this.stages.slice(0, i).flatMap((s) => this.guards(s)));
+    const ahead = new Set(this.stages.slice(i).flatMap((s) => this.guards(s)));
+    const gone = new Set(this.stages.slice(0, i).flatMap((s) => this.guards(s)).filter((e) => !ahead.has(e)));
     for (const e of gone) w.removeBody(e.body);
     w.enemies = w.enemies.filter((e) => !gone.has(e));
     for (const s of this.stages.slice(0, i)) for (const wave of s.waves) Object.assign(wave, { guards: [], awake: true });
     Matter.Body.setPosition(p.body, { x: col * TILE, y: row * TILE });
     p.angle = (deg * Math.PI) / 180;
+    const armed = this.stages.slice(0, i).reverse().find((s) => s.leaves !== undefined && s.take);
+    if (armed) this.owed = { type: armed.take, mag: armed.leaves, x: col * TILE + Math.cos(p.angle) * TILE * 0.8, y: row * TILE + Math.sin(p.angle) * TILE * 0.8, angle: 0.6 };
     p.sit = 0;
     this.stage = i - 1;
     this.moved = MOVED;
@@ -130,6 +140,12 @@ export default class Tutorial {
       if (!inside(this.stages[i].zone, p.x, p.y)) continue;
       this.stage = i;
       if (w.game) w.game.tutorialAt = { name: w.level.name, stage: i };
+    }
+    if (this.left && this.left.steps-- > 0) {
+      // what he had not fired is not handed over: the gun he dropped holds a couple of rounds
+      for (const it of w.items) {
+        if (!it.dead && it.def.kind === 'gun' && Math.hypot(it.x - this.left.x, it.y - this.left.y) < 90) it.mag = Math.min(it.mag, this.left.n);
+      }
     }
     const s = this.stages[this.stage];
     if (s) {

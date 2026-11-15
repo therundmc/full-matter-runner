@@ -367,13 +367,15 @@ def bevel_edges(cv, x0, y0, x1, y1, lt_t=0.18, dk_t=0.3):
 
 SKIN = ramp('#eab08a', 0.46, 0.22, 0.3)
 CHARS = {
-    # the runner: a yellow cap (seen from above it is what tells him from everyone else, as his blond head did),
-    # brown hair down to his collar, a Mediterranean tan, a cyan track jacket with a white band across the back, the
-    # strap of a leather satchel across it and the satchel on his left hip, behind
-    'player': dict(kind='player', top=ramp('#1fb5b5', 0.5, 0.25, 0.35), sleeve=None,
-                   pants=ramp('#2c3a6a'), shoe=ramp('#ecebf2', 0.4, 0.2, 0.2),
-                   hair=ramp('#4a2e1c', 0.5, 0.25, 0.45), cap=ramp('#f2c230', 0.45, 0.22, 0.4),
-                   strap=ramp('#7a4a26', 0.45, 0.22, 0.35), skin=ramp('#dba274', 0.46, 0.22, 0.3), sh=(4.0, 8.0)),
+    # the runner: a dark cap, brown hair down to his collar, a Mediterranean tan, a scarf pulled up over his mouth, a
+    # long charcoal coat with its collar turned up, the strap of a leather satchel across it and the satchel on his
+    # left hip, behind, jeans and boots. Dark from head to foot (the user found a bright cyan lining ugly and out of
+    # place): the lining inside the collar and the cap's button are a deep petrol blue, a quiet accent.
+    'player': dict(kind='player', top=ramp('#465062', 0.5, 0.25, 0.35), sleeve=None,
+                   pants=ramp('#3c4a66'), shoe=ramp('#3a2a22', 0.4, 0.2, 0.3),
+                   hair=ramp('#4a2e1c', 0.5, 0.25, 0.45), cap=ramp('#2e323e', 0.45, 0.22, 0.5),
+                   lining=ramp('#2a5f6e', 0.45, 0.22, 0.3), knit=ramp('#868c98', 0.45, 0.22, 0.3),
+                   strap=ramp('#8a5630', 0.45, 0.22, 0.35), skin=ramp('#dba274', 0.46, 0.22, 0.3), sh=(4.0, 8.0)),
     'thug': dict(kind='thug', top=ramp('#e6e0cf', 0.42, 0.2, 0.5), pants=ramp('#2a2632'),
                  shoe=ramp('#1e1820', 0.3, 0.15, 0.25), hair=ramp('#3a2c48', 0.55, 0.3, 0.45),
                  shirt=ramp('#2a2236'), skin=SKIN, sh=(4.0, 8.0)),
@@ -401,8 +403,8 @@ def head_top_px(ch, u, v, L, r):
         if u < -0.7 and d > r * 0.72:
             return ch['hair'][i if int(math.floor(v * 1.3 + 40)) % 2 else max(0, i - 1)]   # his hair, under the cap
         cap = ch['cap']
-        if d < 0.7:
-            return cap[max(0, i - 1)]                                                       # the button
+        if d < 0.8:
+            return ch['lining'][1]                                                          # the button
         if abs(v) < 0.2 or abs(v * 0.5 + u * 0.87) < 0.2 or abs(v * 0.5 - u * 0.87) < 0.2:
             return cap[max(0, i - 1)]                                                       # the seams of its panels
         return cap[i]
@@ -443,10 +445,10 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
     if k == 'player':
         if abs(0.782 * u - 0.624 * v + 0.85) < 0.5:
             return ch['strap'][i]                # the satchel's strap: right shoulder in front, left hip behind
-        if hr + 0.1 < hd < hr + 1.4 and hu > -1.6:
-            return WHITE[max(1, i)]              # collar
-        if -2.3 < u < -1.2:
-            return WHITE[max(1, i)]              # the band across his back
+        if hr + 0.1 < hd < hr + 0.75 and hu > -2.2:
+            return ch['lining'][max(1, i)]       # the coat's lining, inside the collar
+        if hr + 0.75 <= hd < hr + 1.7 and hu > -2.2:
+            return ch['top'][min(3, i + 1)]      # the collar, turned up
         return ch['top'][i]
     if k == 'thug' and hr + 0.1 < hd < hr + 1.3 and hu > -0.5:
         return ch['shirt'][1]
@@ -582,11 +584,13 @@ def chest_px(ch, u, v, L, hx_, hy_):
         if abs(0.6 * u + 0.8 * v - 0.3) < 0.55:
             return ch['strap'][i]                # the satchel's strap across his chest
         if abs(v) < 1.3 and u < hx_ - 0.6:
-            return WHITE[max(1, i)]
+            return ch['knit'][i]                 # his sweater, the coat open on it
+        if 1.3 <= abs(v) < 1.75:
+            return ch['top'][min(3, i + 1)]      # the coat's lapels
         if abs(v) < 2.1:
             return ch['top'][max(0, i - 1)]
         if u > hx_ - 1.0 and abs(v) < 3.2:
-            return WHITE[max(1, i)]   # collar
+            return ch['top'][min(3, i + 1)]      # collar
         return ch['top'][i]
     if k == 'thug':
         if abs(v) < 0.3 + 0.38 * (u + hx_) and u > -hx_ + 1.0:
@@ -620,6 +624,8 @@ def face_px(ch, u, v, L, r):
             return ch['cap'][i]                  # his cap, pushed back
         if u > 0.2 and abs(v) > 2.3 - 0.3 * u:
             return ch['hair'][i]                 # his hair either side of his face
+        if u < -0.9:
+            return ch['cap'][min(3, i + 1)]      # the scarf pulled up over his mouth
     if k == 'thug' and u > 1.3:
         return ch['hair'][i if int(v + 20) % 2 else max(0, i - 1)]
     if k == 'brute' and u > 1.1:
@@ -737,11 +743,9 @@ def draw_body(ch, w, h, pose, dead=False, headless=False, seed=0):
             ex, ey = rot(hcx, hcy, ha, 0.1, vv)
             head.set(ex, ey, eye)
         if k == 'player':
-            # sunglasses knocked askew
-            for vv in (-2.4, -1.5, -0.6, 0.6, 1.5):
-                ex, ey = rot(hcx, hcy, ha, 0.1 + vv * 0.15, vv)
-                head.set(ex, ey, hx('#0e0a16'))
-            head.set(*rot(hcx, hcy, ha, 0.0, -1.5), hx('#36e8f0'))
+            # his scarf, pulled down off his mouth
+            for vv in (-1.5, -0.5, 0.5, 1.5):
+                head.set(*rot(hcx, hcy, ha, -3.0, vv), ch['cap'][2])
         mx, my = rot(hcx, hcy, ha, -2.0, 0.2)
         head.set(mx, my, BLOOD[0] if dead else dk(ch['skin'][1], 0.3))
         if dead:
@@ -2930,7 +2934,7 @@ def rag_arm(ch):
     """An arm from the shoulder (-x) to the hand (+x), 17 x 6: the sleeve, the cuff of those who wear one, the hand."""
     k = ch['kind']
     s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
-    cuff = WHITE if k in ('player', 'thug') else None
+    cuff = WHITE if k == 'thug' else None
     skin = ch['skin']
 
     def px(x, y):
@@ -4441,6 +4445,177 @@ def p_stall():
     return cv
 
 
+def p_apt_door():
+    """A neighbour's door, shut, from above (the wall at -y): the leaf in its frame, a brass number, the knob."""
+    cv = Cv(34, 8)
+    cv.rect(1, 1, 32, 6, hx('#2a2030'))
+    cv.rect(3, 2, 30, 5, hx('#6a4426'))
+    cv.rect(3, 2, 30, 2, hx('#8a5a34'))
+    cv.rect(3, 5, 30, 5, hx('#4a2e1a'))
+    cv.rect(15, 3, 18, 4, hx('#e0b040'))
+    cv.set(27, 4, hx('#c8ccd4'))
+    cv.outline()
+    return cv
+
+
+def p_doormat():
+    """A doormat: coir, a darker border, worn in the middle."""
+    cv = Cv(26, 14)
+    cv.rect(1, 1, 24, 12, hx('#5a4a32'))
+    cv.rect(3, 3, 22, 10, hx('#7a6644'))
+    rng = random.Random(77)
+    for _ in range(40):
+        cv.set(rng.randint(3, 22), rng.randint(3, 10), hx('#8a7650') if rng.random() < 0.5 else hx('#665436'))
+    cv.rect(9, 5, 16, 8, hx('#6e5c3e'))
+    cv.outline()
+    return cv
+
+
+def p_stairs():
+    """A flight of stairs going down (toward -y), from above: the treads darker and darker, a rail each side."""
+    W, H = 66, 46
+    cv = Cv(W, H)
+    st = ramp('#6e6c74', 0.5, 0.25, 0.3)
+    n = 9
+    for i in range(n):
+        y0 = 1 + int(i * (H - 2) / n)
+        y1 = int((i + 1) * (H - 2) / n)
+        f = 1.0 - 0.75 * (n - 1 - i) / (n - 1)          # the deeper, the darker
+        c = tuple(int(v * f) for v in st[2][:3]) + (255,)
+        cv.rect(4, y0, W - 5, y1, c)
+        cv.rect(4, y1, W - 5, y1, tuple(int(v * f * 0.55) for v in st[2][:3]) + (255,))   # the nosing's shadow
+        cv.rect(4, y0, W - 5, y0, tuple(min(255, int(v * f * 1.25)) for v in st[2][:3]) + (255,))
+    for x in (1, W - 4):
+        cv.rect(x, 1, x + 2, H - 2, hx('#2a2630'))
+        cv.rect(x + 1, 1, x + 1, H - 2, hx('#4a4654'))
+    cv.outline()
+    return cv
+
+
+def p_floor_hole():
+    """Floorboards torn up over a hiding place: the dark hole, splintered ends, a tin box left open and empty beside it."""
+    cv = Cv(30, 22)
+    cv.rect(2, 3, 19, 18, hx('#0c0810'))
+    cv.rect(3, 4, 18, 17, hx('#1a1218'))
+    for (x, y, w) in ((1, 2, 7), (9, 2, 5), (15, 3, 6), (1, 19, 5), (8, 18, 8), (17, 19, 4)):
+        cv.rect(x, y, x + w, y + 1, hx('#8a5a34'))
+        cv.set(x + w, y, hx('#d8b070'))
+    cv.rect(21, 7, 28, 15, hx('#5a6470'))
+    cv.rect(22, 8, 27, 14, hx('#2a3038'))
+    cv.rect(21, 5, 28, 6, hx('#8a94a0'))
+    cv.set(24, 11, hx('#3fa66a'))
+    cv.outline()
+    return cv
+
+
+def p_jerrycan():
+    """A jerrycan on the floor, from above: red, its handle, the cap, the pressed cross on its side."""
+    cv = Cv(11, 13)
+    red = ramp('#c8281e', 0.5, 0.25, 0.3)
+    cv.rect(1, 1, 9, 11, red[2])
+    cv.rect(1, 1, 9, 2, red[3])
+    cv.rect(1, 10, 9, 11, red[1])
+    cv.rect(3, 4, 7, 4, red[0])
+    cv.rect(5, 3, 5, 9, red[1])
+    cv.rect(2, 7, 8, 7, red[1])
+    cv.rect(7, 1, 8, 2, hx('#e0b040'))
+    cv.outline()
+    return cv
+
+
+def p_runner():
+    """A length of corridor carpet, worn, from above (its long way along x). No outline: lengths are laid end to end."""
+    W, H = 96, 18
+    cv = Cv(W, H)
+    red = ramp('#5e2a34', 0.5, 0.25, 0.3)
+    cv.rect(0, 0, W - 1, H - 1, red[1])
+    cv.rect(0, 3, W - 1, H - 4, red[2])
+    for y in (1, H - 2):
+        cv.rect(0, y, W - 1, y, hx('#8a6a3a'))                    # its ochre piping
+    rng = random.Random(311)
+    for _ in range(150):                                          # the pile, trodden flat down the middle
+        x, y = rng.randint(0, W - 1), rng.randint(3, H - 4)
+        worn = abs(y - (H - 1) / 2) < 3.2
+        cv.set(x, y, red[1] if worn and rng.random() < 0.75 else red[3] if rng.random() < 0.2 else red[2])
+    return cv
+
+
+def p_radiator():
+    """A cast-iron radiator under a wall (the wall at -y), from above: its columns, the valve."""
+    cv = Cv(30, 8)
+    cv.rect(1, 1, 28, 6, hx('#8a8e98'))
+    for x in range(2, 27, 3):
+        cv.rect(x, 1, x, 6, hx('#c4c8d0'))
+        cv.rect(x + 1, 1, x + 1, 6, hx('#6a6e78'))
+    cv.rect(1, 6, 28, 6, hx('#4a4e58'))
+    cv.rect(27, 3, 28, 4, hx('#b8262c'))
+    cv.outline()
+    return cv
+
+
+def p_bike():
+    """A bicycle leant on a wall, from above: both tyres end on, the frame's tube, the handlebar across, the saddle."""
+    cv = Cv(46, 14)
+    tyre, steel = hx('#1a1a20'), hx('#aab2bc')
+    for x0 in (2, 30):
+        cv.rect(x0, 6, x0 + 13, 7, tyre)
+        cv.rect(x0 + 2, 6, x0 + 11, 6, hx('#3a3a44'))
+    cv.rect(9, 6, 36, 7, hx('#c8402c'))
+    cv.rect(9, 6, 36, 6, hx('#e86a50'))
+    cv.rect(33, 2, 34, 11, steel)                                 # the handlebar and its grips
+    cv.rect(33, 2, 34, 3, tyre)
+    cv.rect(33, 10, 34, 11, tyre)
+    cv.rect(14, 5, 19, 8, hx('#2a2026'))                          # the saddle
+    cv.rect(15, 5, 18, 5, hx('#4a3a40'))
+    cv.rect(22, 4, 24, 4, hx('#6a6e78'))                          # the pedals
+    cv.rect(22, 9, 24, 9, hx('#6a6e78'))
+    cv.outline()
+    return cv
+
+
+def p_bin_bag():
+    """A full bin bag, from above: black plastic, the folds catching the light, the knot."""
+    W, H = 15, 14
+    cv = Cv(W, H)
+    b = ramp('#2c2e3a', 0.5, 0.25, 0.45)
+    for y in range(H):
+        for x in range(W):
+            u, v = (x - 7) / 6.6, (y - 6.5) / 6.1
+            d = u * u + v * v
+            if d > 1.0:
+                continue
+            fold = math.sin(math.atan2(v, u) * 3 + 0.6) > 0.86
+            cv.set(x, y, b[3] if fold and 0.15 < d < 0.8 else b[1] if d > 0.62 else b[2])
+    cv.rect(6, 5, 8, 7, b[0])
+    cv.set(7, 6, hx('#8a8e9c'))
+    cv.outline()
+    return cv
+
+
+def p_newspaper():
+    """A folded newspaper left at a door: the headline, grey lines of text, a picture."""
+    cv = Cv(13, 10)
+    cv.rect(1, 1, 11, 8, hx('#d8d2c0'))
+    cv.rect(2, 2, 10, 3, hx('#2a2630'))
+    for y in (5, 7):
+        cv.rect(2, y, 6, y, hx('#8a8678'))
+    cv.rect(8, 5, 10, 7, hx('#6a6e78'))
+    cv.rect(1, 8, 11, 8, hx('#b0a890'))
+    cv.outline()
+    return cv
+
+
+def p_shoes():
+    """A pair of shoes left on a doormat, from above (toes toward +x)."""
+    cv = Cv(10, 9)
+    for y0 in (1, 5):
+        cv.rect(1, y0, 8, y0 + 2, hx('#5a3a22'))
+        cv.rect(1, y0, 4, y0 + 2, hx('#1c1418'))                  # the opening
+        cv.rect(6, y0, 8, y0, hx('#8a5c38'))
+    cv.outline()
+    return cv
+
+
 # small dressing added one by one (the details list)
 DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     cash_case=p_cash_case, ceiling_fan=p_ceiling_fan, mirror_ball=p_mirror_ball, extinguisher=p_extinguisher,
@@ -4450,12 +4625,16 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     table_flipped=flipped_table(46, '#86552f', '#5a361e'),
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
-                    urinal=p_urinal, stall=p_stall)
+                    urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
+                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, radiator=p_radiator, bike=p_bike,
+                    bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes)
 DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_case=(22, 16), ceiling_fan=(44, 44), mirror_ball=(12, 12), extinguisher=(8, 11),
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
-                    urinal=(14, 12), stall=(6, 42))
+                    urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
+                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), radiator=(30, 8), bike=(46, 14),
+                    bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,

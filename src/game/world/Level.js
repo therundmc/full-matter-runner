@@ -39,6 +39,12 @@ export function buildLevel(world, level) {
   const bed = spriteOpt('props/cardboard_bed');
   if (bed) for (const [c, r, deg = 0] of level.street?.beds || []) world.decals.bake(bed, c * TILE, r * TILE, (deg * Math.PI) / 180);
 
+  // what lies flat on the floor (level `floor`: [sprite, col, row, deg]): a doormat, a carpet runner, a flight of stairs
+  for (const [name, c, r, deg = 0] of level.floor || []) {
+    const img = spriteOpt(`props/${name}`);
+    if (img) world.decals.bake(img, c * TILE, r * TILE, (deg * Math.PI) / 180);
+  }
+
   // ---- doors (runs of D), windows (G), fences (F)
   const used = new Set();
   const isD = (x, y) => map.at(x, y) === 'D' || map.at(x, y) === 'L';
