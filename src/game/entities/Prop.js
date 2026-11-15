@@ -10,6 +10,7 @@ import { RESIST } from '../systems/Penetration.js';
 import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot,
   gash, rip, wear, brokenEdge, soilSpill, ductStump } from '../render/DamageArt.js';
 import Debris from './Debris.js';
+import { wallBehind, run } from '../fx/Spatter.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 import { ignite } from '../systems/Gas.js';
 
@@ -440,9 +441,17 @@ export default class Prop {
     popSlot(this.canvas, this.img, b, wet);
     const p = this.toWorld(b.x + b.s / 2, b.y + b.s / 2), foot = this.toWorld(b.x + b.s / 2, this.H + 2);
     const front = this.body.angle + Math.PI / 2;
-    P.glass(p.x, p.y, dirA, 1.5, 5, 90);
-    P.chips(p.x, p.y, dirA, 1.5, 4, b.color, 90);
-    P.drops(p.x, p.y, dirA, 1.3, 6, wet, 80, 3, false);
+    P.glass(p.x, p.y, dirA, 1.6, smash.glass, 120);
+    P.chips(p.x, p.y, dirA, 1.5, 5, b.color, 110);
+    P.drops(p.x, p.y, dirA, 1.4, smash.drops, wet, 110, 5, false);
+    // what it held, thrown on the wall it stands against, runs down it
+    const back = wallBehind(w.map, p.x, p.y, dirA + Math.PI, smash.wall[0]);
+    if (back) {
+      const [, r, color] = smash.wall;
+      w.decals.wetWall(back.x - back.nx * r, back.y - back.ny * r, r, color);
+      run(w, back.x - back.ny * rand(-r, r), back.y + back.nx * rand(-r, r), back.nx, back.ny, rand(2, r * 1.5), color);
+    }
+    w.flashGlass(p.x, p.y);
     w.emit(foot.x, foot.y, 0.9, () => {
       if (chance(0.45)) P.drops(foot.x + rand(-1.5, 1.5), foot.y, front, 0.6, 1, wet, 22, 9, false);
     });
@@ -509,9 +518,9 @@ export default class Prop {
   // what it held, standing on the floor
   smashBit(smash, color, x, y, dirA) {
     const w = this.world, P = w.particles;
-    P.glass(x, y, dirA, 1.5, 5, 90);
+    P.glass(x, y, dirA, 1.5, Math.round(smash.glass * 0.6), 90);
     P.chips(x, y, dirA, 1.5, 4, color, 90);
-    P.drops(x, y, dirA, 1.3, 6, LIQUIDS.kinds[smash.kind].splash, 80, 3, false);
+    P.drops(x, y, dirA, 1.3, Math.round(smash.drops * 0.6), LIQUIDS.kinds[smash.kind].splash, 80, 3, false);
     w.events.emit('spill', { x, y, kind: smash.kind, area: smash.area * rand(0.6, 1.3) });
     w.sound('glassHit', x, y, 0.45, { pitch: rand(0.9, 1.25) });
   }

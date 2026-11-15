@@ -22,6 +22,7 @@ import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL } from '../data/feel.js';
 import { POSTS, HELD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
+import { HURT } from '../data/wounds.js';
 import { sprite, spriteOpt, sw } from '../../engine/Assets.js';
 
 const { Body, Bounds } = Matter;
@@ -64,6 +65,8 @@ export default class Enemy extends Character {
     this.routeIdx = 0;
     this.roam = roam || !!this.route;
     this.passive = false;      // lab dummies: no perception at all
+    this.hurt = 0;             // s his face still bleeds after he was floored (drip), dripT: s to the next drop
+    this.dripT = 0;
     this.slack = 1;            // x his reaction time (the tutorial's men are slower) ...
     this.rate = 1;             // ... and x the time between his shots
     this.standT = 0;           // s he holds his ground and fires, whatever else he would do (Tutorial: a sharp wave)
@@ -486,6 +489,7 @@ export default class Enemy extends Character {
     this.chatCd = Math.max(0, this.chatCd - dt);
     this.reliefCd = Math.max(0, this.reliefCd - dt);
     this.updateCarry(dt);
+    this.drip(dt);
     if (this.knocked > 0) { this.updateKnocked(dt); return; }
     if (this.held) {
       // seized from behind: nothing he can do, unless the grip is lost
@@ -1882,9 +1886,19 @@ export default class Enemy extends Character {
     this.vel = { x: Math.cos(angle) * sp, y: Math.sin(angle) * sp };
     Body.setVelocity(this.body, this.vel);
     this.world.particles.blood(this.x, this.y, angle, 0.6, 6, 120);
+    this.hurt = rand(...HURT.dur); // his nose bleeds a while (drip)
     this.swing = this.tell = 0;
     this.reloading = 0;
     this.director.release(this);
+  }
+
+  // floored but alive: a drop off his face now and then, where he lies and on his way once he is up (HURT)
+  drip(dt) {
+    if (this.hurt <= 0) return;
+    this.hurt -= dt;
+    if ((this.dripT -= dt) > 0) return;
+    this.dripT = rand(...HURT.every);
+    this.world.particles.blood(this.x + rand(-3, 3), this.y + rand(-3, 3), rand(0, 6.28), 0.3, 1, rand(5, 30), { z: 5 });
   }
 
   updateKnocked(dt) {

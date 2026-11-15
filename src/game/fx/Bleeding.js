@@ -1,7 +1,10 @@
 // How a body bleeds once it is down (shared by Corpse and Ragdoll; no DOM): the jets of a severed neck or an
 // opened artery, pumped beat by beat, the pool seeping under it once it lies still, the trail it wipes while it slides.
-import { rand } from '../../engine/math.js';
+import { rand, chance } from '../../engine/math.js';
 import { THROAT } from '../data/wounds.js';
+
+// a pool runs out fast while there is pressure behind it and slows as it nears its size: x the rate at a share k of it
+const flow = (k) => 0.35 + 1.3 * (1 - k);
 
 // sets the bleeding state of a body from its wound (opts: headless, pool, poolRate, spurt; see data/wounds.js)
 export function startBleeding(c, opts) {
@@ -52,13 +55,17 @@ export function bleedOut(c, dt, neck, wound, src, still) {
     c.poolPos = null;
   }
   if (!c.poolPos && still) c.poolPos = { x: src.x, y: src.y };
-  if (c.poolPos && c.pool < c.poolMax) c.pool += dt * c.poolRate;
+  if (c.poolPos && c.pool < c.poolMax) c.pool = Math.min(c.poolMax, c.pool + dt * c.poolRate * flow(c.pool / c.poolMax));
 }
 
 // something bleeding that slides on the floor wipes thin streaks (w px wide) behind it; o keeps its last wiped point
 export function wipe(world, o, x, y, w) {
   const d = o.wx === undefined ? Infinity : Math.hypot(x - o.wx, y - o.wy);
   if (d < 2) return;
-  if (d < 30) world.decals.drag(o.wx, o.wy, x, y, w);
+  if (d < 30) {
+    world.decals.drag(o.wx, o.wy, x, y, w);
+    // now and then a clot or a drop along it, so it reads as blood, not paint
+    if (chance(0.3)) world.decals.stampBlood(x + rand(-w, w) * 0.5, y + rand(-w, w) * 0.5, rand(0.9, 1.3 + w * 0.15));
+  }
   o.wx = x; o.wy = y;
 }

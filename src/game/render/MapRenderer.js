@@ -1,15 +1,18 @@
 import { TILE, PALETTE, LITTER } from '../Config.js';
 import { sprite, spriteOpt, silhouette } from '../../engine/Assets.js';
-import { rand, pick, chance, TAU } from '../../engine/math.js';
+import { rand, randi, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
 import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps, poolArt, releasePool } from './BloodArt.js';
+import { matterStain } from './GoreArt.js';
 
 // seconds after which a stain turns tacky, then dry (a pool takes as long as it stays slippery: LIQUIDS.kinds.blood.wet)
 const STAIN_AGES = [9, 30], POOL_AGES = [20, 45];
 const MAX_AGEING = 1500; // stains waiting for an age: beyond that the oldest dry early
 const AGE_BUDGET = 24;   // stains re-tinted per step at most
+// blood running down a wall: on the wall top (bright, wet, it must read on dark brick), then on the floor
+const RUN = '#6c0a0e', RUN_WALL = '#a0161a';
 
 // sole (toe toward +x) and heel of a shoe print, in px
 const SHOE = [[0, -1], [1, -1], [2, -1], [3, -1], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [1, 1], [2, 1], [3, 1],
@@ -422,18 +425,96 @@ export default class MapRenderer {
     g.restore();
   }
 
-  // ---------- other persistent decals ----------
-  // size 1 = entry hole; exits are wider (spalling), ricochets just scuff
-  bulletHole(x, y, size = 1) {
+  // ---------- on walls (fx/Spatter.js) ----------
+  // blood thrown hard against a wall: a ragged splash with its spines toward `angle`, on the wall tops only
+  splashWall(x, y, r, angle) {
+    const g = this.wallCtx, st = splatStamp(r), c = Math.cos(angle), s = Math.sin(angle);
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    g.setTransform(c, s, -s, c, Math.round(x), Math.round(y));
+    g.drawImage(stampImage(st, 0), -st.cx, -st.cy);
+    g.restore();
+  }
+
+  // one step of something running down a wall: w px of it, on the wall top while it is on the wall, then on the floor
+  runDot(x, y, w = 1, color = RUN) {
+    const px = Math.round(x), py = Math.round(y), wall = this.map.solidAt(px + 0.5, py + 0.5);
+    const g = wall ? this.wallCtx : color === RUN ? this.bloodCtx : this.floorCtx;
+    if (wall) g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = wall && color === RUN ? RUN_WALL : color;
+    g.fillRect(px, py, w, w);
+    g.globalCompositeOperation = 'source-over';
+  }
+
+  // a liquid (not blood) thrown on a wall: a wet stipple in its colour, wall tops only
+  wetWall(x, y, r, color) {
     const g = this.wallCtx;
     g.save();
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = 'rgba(0,0,0,0.25)';
-    g.beginPath(); g.arc(x, y, 3 * size, 0, Math.PI * 2); g.fill();
+    g.fillStyle = color;
+    for (let i = 0, n = Math.round(r * r * 1.2); i < n; i++) {
+      const a = rand(0, TAU), d = r * Math.sqrt(Math.random());
+      g.fillRect(Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d), 1, 1);
+    }
+    g.restore();
+  }
+
+  // what was inside a burst skull, thrown toward `angle`: on the floor (over the blood, under the bodies) or on a wall
+  matter(x, y, r, angle, wall = false) {
+    const img = matterStain(r), c = Math.cos(angle), s = Math.sin(angle);
+    const g = wall ? this.wallCtx : this.fleshCtx;
+    g.save();
+    if (wall) g.globalCompositeOperation = 'source-atop';
+    g.setTransform(c, s, -s, c, Math.round(x), Math.round(y));
+    g.drawImage(img, -img.width / 2, -img.height / 2);
+    g.restore();
+  }
+
+  // ---------- other persistent decals ----------
+  // size 1 = entry hole; exits are wider (spalling), ricochets just scuff. color: the material under the paint,
+  // laid bare in a ragged ring round the hole (plaster white, brick red); a hairline crack or two off a real hit
+  bulletHole(x, y, size = 1, color = null) {
+    const g = this.wallCtx, X = Math.round(x), Y = Math.round(y);
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(0,0,0,0.22)';
+    g.beginPath(); g.arc(x, y, 2.6 * size, 0, Math.PI * 2); g.fill();
+    if (color) {
+      const R = 1.4 + size * 1.5;
+      g.fillStyle = color;
+      for (let i = 0, n = Math.round(8 + size * 9); i < n; i++) {
+        const a = rand(0, TAU), d = R * Math.sqrt(rand(0.25, 1));
+        g.globalAlpha = rand(0.55, 0.95);
+        g.fillRect(Math.round(X + Math.cos(a) * d), Math.round(Y + Math.sin(a) * d), 1, 1);
+      }
+      g.globalAlpha = 1;
+    }
     g.fillStyle = '#0d0710';
     const r = Math.max(1, Math.round(size * 1.2));
-    g.fillRect(Math.round(x) - r, Math.round(y) - r, r * 2, r * 2);
+    g.fillRect(X - r, Y - r, r * 2, r * 2);
+    if (size >= 0.9) {
+      g.fillStyle = 'rgba(16,8,20,0.55)';
+      for (let k = randi(1, 2 + Math.round(size)); k > 0; k--) {
+        let a = rand(0, TAU), px = X, py = Y;
+        for (let i = randi(3, 4 + Math.round(size * 2)); i > 0; i--) {
+          a += rand(-0.5, 0.5);
+          px += Math.cos(a) * 1.2; py += Math.sin(a) * 1.2;
+          g.fillRect(Math.round(px), Math.round(py), 1, 1);
+        }
+      }
+    }
     g.restore();
+  }
+
+  // what a hole in a wall drops at its foot and keeps there: a few crumbs of the material (x, y: on the floor)
+  crumbs(x, y, color, n, spread = 3) {
+    const g = this.floorCtx;
+    g.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      g.globalAlpha = rand(0.5, 0.9);
+      g.fillRect(Math.round(x + rand(-spread, spread)), Math.round(y + rand(-spread, spread)), chance(0.3) ? 2 : 1, 1);
+    }
+    g.globalAlpha = 1;
   }
 
   // the burn of a blast or a fire (ragged soot, see BlastArt)

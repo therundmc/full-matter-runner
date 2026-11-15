@@ -257,13 +257,15 @@ export const DEFAULT_PARTS = {
 
 // Loose bits: real size in metres (drawn at least a couple of pixels), material, how they move.
 //   round: rolls (circle body), float: drifts down slowly instead of being thrown,
-//   smash: { kind, area, share }: that share of them shatters on the floor and spills area px2 of that liquid
+//   smash: { kind, area, share }: that share of them shatters on the floor and spills area px2 of that liquid;
+//   glass / drops: shards and splashes it bursts into; wall: [reach px, radius px, color] what it throws on a wall that
+//   close behind it (a bottle on a shelf: the wall it stands against), and a run of it down to the floor
 export const BITS = {
   ball: { size: [0.06, 0.06], material: 'ceramic', round: true, bounce: 0.6, mu: 0.12,
     colors: ['#f2d22a', '#2850c8', '#d02828', '#6a2a9a', '#f07a1a', '#1f8a3a', '#7a1a1a', '#141414', '#f6f2e6'] },
   book: { size: [0.22, 0.16], material: 'wood', colors: ['#c03030', '#2a5aa8', '#e0a020', '#2a8a4a', '#7a3a9a', '#d8d0c0', '#3a2a2a'] },
   disc: { size: [0.18, 0.18], material: 'plastic', round: true, bounce: 0.3, mu: 0.25, colors: ['#ff2a6d', '#05d9e8', '#f9c80e', '#e8e0d0'] },
-  bottle: { size: [0.08, 0.28], material: 'glass', colors: ['#2a6a2a', '#7a4a10', '#a8c8b8', '#5a2a10'], smash: { kind: 'booze', area: 300, share: 0.75 } },
+  bottle: { size: [0.08, 0.28], material: 'glass', colors: ['#2a6a2a', '#7a4a10', '#a8c8b8', '#5a2a10'], smash: { kind: 'booze', area: 300, share: 0.75, glass: 12, drops: 14, wall: [18, 4, 'rgba(120,70,22,0.55)'] } },
   can: { size: [0.07, 0.12], material: 'metal', round: true, bounce: 0.35, mu: 0.3, colors: ['#c02020', '#d8d8e0', '#2050c0', '#e0c020'] },
   bag: { size: [0.42, 0.34], material: 'fabric', colors: ['#2c322c', '#23272a', '#3a3530'] },
   food: { size: [0.12, 0.1], material: 'fabric', colors: ['#d8c060', '#c84020', '#e8e0d0', '#6aa040', '#a06030'] },

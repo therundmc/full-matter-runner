@@ -1,7 +1,7 @@
 import { sprite, drawSprite } from '../../engine/Assets.js';
 import { impulse } from '../../engine/physics/Body.js';
 import { TILE } from '../Config.js';
-import { rand, clamp } from '../../engine/math.js';
+import { rand, randi, clamp } from '../../engine/math.js';
 import { RESIST, COST, HARDNESS, wallExit, bodyExit, afterCost, ricochet } from '../systems/Penetration.js';
 import { woundFor } from '../data/wounds.js';
 import { WALL_IMPACT } from '../data/materials.js';
@@ -120,15 +120,19 @@ export default class Projectile {
     }
     switch (h.kind) {
       case 'wall': {
-        const g = this.glance(h, HARDNESS[w.map.at(h.cx, h.cy)]);
-        if (g) { w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5, 0.6); return g; }
-        const na = Math.atan2(h.ny, h.nx);
-        combatFx(w).burst(h.x + h.nx, h.y + h.ny, na, SURFACE);
-        w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5);
         const s = WALL_IMPACT[w.map.at(h.cx, h.cy)] || WALL_IMPACT.X;
+        const g = this.glance(h, HARDNESS[w.map.at(h.cx, h.cy)]);
+        if (g) { w.decals.bulletHole(h.x - h.nx * 1.5, h.y - h.ny * 1.5, 0.6, s.bare); return g; }
+        const na = Math.atan2(h.ny, h.nx), big = clamp(this.energy0 / 30, 0.6, 2);
+        combatFx(w).burst(h.x + h.nx, h.y + h.ny, na, SURFACE);
+        // a little way into the wall top, past its dark rim, where it reads
+        w.decals.bulletHole(h.x - h.nx * 3.5, h.y - h.ny * 3.5, Math.max(1, big * 0.8), s.bare);
+        w.decals.crumbs(h.x + h.nx * 2.5, h.y + h.ny * 2.5, s.chips, randi(s.crumbs[0], s.crumbs[1]), 2.5);
         if (s.sparks) w.particles.sparks(h.x, h.y, na, 0.9, s.sparks, 260);
-        w.particles.chips(h.x + h.nx, h.y + h.ny, na, 0.8, s.n, s.chips, 90);
-        w.particles.dust(h.x + h.nx * 2, h.y + h.ny * 2, s.puff, 2, s.dust, { speed: 24, size: 4, life: 2, alpha: 0.32, vx: h.nx * 16, vy: h.ny * 16 });
+        w.particles.chips(h.x + h.nx, h.y + h.ny, na, 0.8, Math.round(s.n * big), s.chips, 110);
+        // the plaster or brick dust: a jet blown back out of the hole, then a cloud that hangs and settles
+        w.particles.dust(h.x + h.nx * 2, h.y + h.ny * 2, s.burst, 1, s.dust, { speed: 12, size: 2.5, life: 0.7, alpha: 0.4, vx: h.nx * 70, vy: h.ny * 70 });
+        w.particles.dust(h.x + h.nx * 3, h.y + h.ny * 3, Math.round(s.puff * big), 2.5, s.dust, { speed: 20, size: 4, life: 2.2, alpha: 0.22, vx: h.nx * 16, vy: h.ny * 16 });
         w.sound('impact', h.x, h.y, 0.6);
         const ex = wallExit(w.map, h.x, h.y, a, this.energy);
         // the energy left in the wall is what breaks it, tile by tile
@@ -243,7 +247,8 @@ export default class Projectile {
     const k = clamp(this.energy0 / 40, 0.6, 2);
     const back = (v, d) => Math.floor((v - d * 3) / TILE);
     const col = w.map.chipColor(back(x, Math.cos(a)), back(y, Math.sin(a)));
-    w.decals.bulletHole(x - Math.cos(a) * 1.5, y - Math.sin(a) * 1.5, 1 + k * 0.6);
+    w.decals.bulletHole(x - Math.cos(a) * 1.5, y - Math.sin(a) * 1.5, 1 + k * 0.6, col);
+    w.decals.crumbs(x + Math.cos(a) * 3, y + Math.sin(a) * 3, col, Math.round(2 + k * 2), 4);
     w.particles.chips(x, y, a, 0.7, Math.round(4 + k * 4), col, 160 + k * 60);
     w.particles.smoke(x, y, 1 + Math.round(k), 2, { speed: 40, size: 3 + k * 2, life: 0.8 });
   }

@@ -83,6 +83,7 @@ src/
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing
+      GoreArt.js          what a burst skull leaves: bits of bone, scalp and brain, the stains of its matter
       BloodArt.js         what blood looks like: pixel stamps (spots, streaks, splats) built once, in three ages
                           (wet, tacky, dry), and the pool under a bleeding body
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
@@ -97,6 +98,8 @@ src/
     entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
+                          Spatter (the exit spray behind a man shot, splashes on a wall close behind him and the blood
+                          that runs down it, data/wounds.js `fling` / `wall` / RUNS)
     debug/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested

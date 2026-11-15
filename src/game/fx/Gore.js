@@ -1,14 +1,18 @@
 import { sprite } from '../../engine/Assets.js';
-import { rand, chance, angDiff } from '../../engine/math.js';
+import { rand, randi, chance, angDiff, pick } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
-import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, woundFor, blowScale, markOf } from '../data/wounds.js';
+import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, TEAR, SKULL, woundFor, blowScale, markOf } from '../data/wounds.js';
+import { fling, wallBehind, splashWall } from './Spatter.js';
+import { skullBit, BIT_KINDS } from '../render/GoreArt.js';
 
 // px from the centre of a man lying knocked down to his head (data/finishers.js EXEC.head) and to the middle of
 // his torso, as his sprite is drawn (CharacterAnim drawDown)
 const HEAD_AT = 24, TORSO_AT = 10;
+// what a round does: the causes whose spray goes on past the body (fx/Spatter.js)
+const GUNSHOT = new Set(['bullet', 'heavy', 'blast']);
 
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
@@ -29,16 +33,21 @@ export function gore(world, ch, angle, cause, by, how) {
   const wd = throat ? WOUNDS.throat : woundFor(cause, by, blow);
   const more = blowScale(wd, by, blow), many = (n) => Math.round(n * more);
 
+  const tear = TEAR[cause];
   let mode = 'corpse';
   switch (cause) {
-    case 'explosion': mode = 'gibs'; break;
-    case 'blast': mode = chance(0.7) ? 'gibs' : 'headless'; break;
-    case 'heavy': mode = chance(0.45) ? 'headless' : chance(0.35) ? 'gibs' : 'corpse'; break;
+    case 'explosion': case 'blast': case 'heavy': mode = chance(tear.gibs) ? 'gibs' : chance(tear.headless ?? 0) ? 'headless' : 'corpse'; break;
     case 'bullet': mode = chance(0.18 * goreMul) ? 'headless' : 'corpse'; break;
     case 'melee': mode = chance(0.3 * goreMul) ? 'headless' : 'corpse'; break;
     case 'execute': mode = 'headless'; break;
     case 'glass': mode = chance(0.25) ? 'headless' : 'corpse'; break;
     default: mode = 'corpse';
+  }
+  // a round to the head from close enough bursts the skull (a 9 mm never takes a head off whole: it bursts it too)
+  let burst = false;
+  if (mode !== 'gibs' && wd.skull && GUNSHOT.has(cause)) {
+    if ((how?.dist ?? 0) <= wd.skull[1] && chance(wd.skull[0])) { mode = 'headless'; burst = true; }
+    else burst = mode === 'headless' && cause === 'bullet';
   }
 
   // the wound itself: blow-back toward the attacker, spray along the blow, a cloud, a stain under the body
@@ -54,6 +63,8 @@ export function gore(world, ch, angle, cause, by, how) {
   } else if (sn) P.blood(x, y, angle, sc, many(sn), sv, opt);
   if (wd.mist) P.mist(x, y, many(wd.mist), 10, angle);
   if (wd.splat[0]) world.decals.stampBlood(x, y, wd.splat[0] * Math.sqrt(more), many(wd.splat[1]), angle);
+  // what goes on out of the far side of him: streaks on the floor behind him, a wall close behind splashed and running
+  if (GUNSHOT.has(cause)) fling(world, x, y, angle, wd, more * (mode === 'gibs' ? 1.6 : 1), sc * 0.6 + 0.08);
 
   if (mode === 'gibs') {
     const radial = cause === 'explosion';
@@ -76,13 +87,15 @@ export function gore(world, ch, angle, cause, by, how) {
   }
 
   const slide = rand(wd.throw[0], wd.throw[1]) * throwScale(ch, blow);
-  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]) * Math.sqrt(more), poolRate: wd.rate, spurt: wd.spurt, dry: cause === 'snap' };
+  // an opened artery (a wound's `artery`) spurts a while once he is down
+  const artery = wd.artery && chance(wd.artery[0]) ? wd.artery[1] * rand(0.8, 1.2) : 0;
+  const bleeding = { pool: rand(wd.pool[0], wd.pool[1]) * Math.sqrt(more), poolRate: wd.rate, spurt: wd.spurt || artery, dry: cause === 'snap' };
   if (hasRagdoll(k)) {
     // physical body; close shotgun blasts tear limbs off
-    const detach = cause === 'blast' ? [0, 1, 2, 3].filter(() => chance(0.4)) : cause === 'heavy' && chance(0.4) ? [Math.floor(rand(0, 4))] : [];
+    const detach = tornLimbs(tear);
     const whole = mode === 'corpse' && !detach.length;
     // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
-    const behead = mode === 'headless' && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
+    const behead = mode === 'headless' && !burst && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
     const dying = cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
     const kneels = dying === 'throat' || dying === 'behead'; // where he stood, pitching forward the way he faced
     // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
@@ -106,6 +119,9 @@ export function gore(world, ch, angle, cause, by, how) {
       world.decals.stampBlood(x + Math.cos(angle) * 10, y + Math.sin(angle) * 10, 10, 12);
       for (let i = 0; i < 4; i++) throwGib(world, sprite('characters/gib_chunk' + (i % 3)), x, y, angle, true, 0.5, 0, 0.5);
       throwGib(world, sprite('characters/gib_eye'), x, y, angle, true, 0.2, 0, 0.6);
+    } else if (burst) {
+      const down = ch.knocked > 0;
+      burstSkull(world, down ? x + Math.cos(ch.downAngle) * HEAD_AT : x, down ? y + Math.sin(ch.downAngle) * HEAD_AT : y, angle);
     } else {
       // a head knocked off flies somewhere along the blow; sent off on purpose (by.launch: the bat's home run) it
       // leaves from where it lay, straight along the swing, trailing blood
@@ -153,6 +169,41 @@ function killerOf(world, x, y, angle) {
   const p = world.player, cx = Math.cos(angle), cy = Math.sin(angle);
   if (p && (p.x - x) * cx + (p.y - y) * cy < 0) return p;
   return { x: x - cx * 60, y: y - cy * 60 };
+}
+
+// the limbs a blow tears off (TEAR: each at its odds, at most `most`; a .50 takes one, now and then a second)
+function tornLimbs(tear) {
+  if (!tear?.limb) return [];
+  const all = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
+  if (tear.second !== undefined) return chance(tear.limb) ? all.slice(0, chance(tear.second) ? 2 : 1) : [];
+  return all.filter(() => chance(tear.limb)).slice(0, tear.most);
+}
+
+// A skull burst by a round going along `angle` at (x, y) (SKULL): bone, scalp and brain thrown along the shot, a
+// red cloud, what was inside spread on the floor behind him, and on the wall if one is that close.
+function burstSkull(world, x, y, angle) {
+  const P = world.particles, D = world.decals, S = SKULL;
+  P.blood(x, y, angle, S.drops[2], S.drops[0], S.drops[1], { big: true });
+  P.blood(x, y, angle + Math.PI, 0.9, Math.round(S.drops[0] / 5), 140);
+  P.mist(x, y, S.mist, 8, angle);
+  const wall = wallBehind(world.map, x, y, angle, S.reach);
+  const far = wall ? Math.min(S.matter[2], wall.d) : S.matter[2];
+  for (let i = randi(S.bits[0], S.bits[1]); i > 0; i--) {
+    const a = angle + rand(-0.55, 0.55), v = rand(...S.speed) * (far / S.matter[2] * 0.7 + 0.3);
+    P.shard(skullBit(pick(BIT_KINDS)), x, y, a, v, { z: rand(6, 12), vz: rand(20, 110), bounce: 0.15, drag: 2.2,
+      onLand: (p) => { D.bake(p.img, p.x, p.y, p.rot, 1, true); if (chance(0.5)) D.stampBlood(p.x, p.y, rand(1, 1.8)); } });
+  }
+  for (let i = randi(S.chunks[0], S.chunks[1]); i > 0; i--) throwGib(world, sprite('characters/gib_chunk' + (i % 3)), x, y, angle, false, 0.6, 0, 0.8, 0.4);
+  for (let i = S.matter[0]; i > 0; i--) {
+    const d = rand(S.matter[1], far), a = angle + rand(-0.3, 0.3) * (1 - d / (S.matter[2] * 1.5));
+    const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d;
+    if (!world.map.solidAt(px, py)) D.matter(px, py, rand(2.5, 4.5) * (1.2 - d / S.matter[2] * 0.5), a);
+  }
+  if (chance(0.5)) throwGib(world, sprite('characters/gib_eye'), x, y, angle, false, 0.3, 0, 0.7, 0.5);
+  if (wall) {
+    splashWall(world, wall, angle, S.wall, randi(S.runs[0], S.runs[1]));
+    D.matter(wall.x - wall.nx * 3, wall.y - wall.ny * 3, rand(3, 4.5), angle, true);
+  }
 }
 
 // spread: rad either side of angle; sure: thrown at the top of the speed range (a head sent off with a bat)

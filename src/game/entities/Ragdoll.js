@@ -4,6 +4,7 @@ import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, THROAT, BEHEAD } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
+import { smear } from '../fx/Spatter.js';
 import { poolArt } from '../render/BloodArt.js';
 import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
 import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from '../fx/DyingPose.js';
@@ -28,6 +29,8 @@ const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
 // slump: px his head comes down over his chest; slam: s he takes to be thrown against it
 const SIT = { speed: 35, reach: [14, 0.4], fast: 2.2, near: 20, early: 1.0, back: 11, arch: 0.55, slump: 3, slam: 0.16 };
 const MARKS_MAX = 12; // wounds shown on one body (a corpse can be shot again and again)
+// the stump of a torn limb pumps: s it lasts, beats per s (rad/s of the beat), how hard it throws at first (0 to 1)
+const STUMP = { dur: 2.6, rate: 11, jet: 0.75 };
 const HEAD_R = 4.5;   // the head's radius, for what marks it
 // a weapon planted in him, seen from above: the share of it that shows (from its grip), how short it looks, how
 // much bigger (it comes up toward the eye), px within which the player can pull it out
@@ -277,11 +280,14 @@ export default class Ragdoll {
         if (chance(0.5)) w.particles.blood(pos.x, pos.y, rand(0, 6.28), 0.3, 1, rand(40, 120), { z: 3 });
       }
     }
-    // stumps of torn limbs keep bleeding on the torso side
-    for (const part of this.limbs) {
-      if (part.attached || !chance(0.15) || this.age > 3) continue;
-      const pos = this.torso.body.position;
-      w.particles.blood(pos.x, pos.y, rand(0, 6.28), 0.4, 1, rand(60, 140), { z: 3 });
+    // stumps of torn limbs pump blood out of the shoulder or the hip, beat by beat, weaker each time
+    if (this.age < STUMP.dur) {
+      const t = this.torso.body, beat = Math.sin(this.age * STUMP.rate);
+      for (const part of this.limbs) {
+        if (part.attached || beat < 0.2) continue;
+        const j = local(t.position.x, t.position.y, t.angle, part.jt.x, part.jt.y);
+        squirt(w, j.x, j.y, t.angle + Math.atan2(part.jt.y, part.jt.x) + rand(-0.3, 0.3), STUMP.jet * beat * (1 - this.age / STUMP.dur), 3);
+      }
     }
     // the pool forms where he ends up: not under a man crawling, nor before a cut throat is down on the floor
     const t = this.torso.body, n = this.neckPos(), src = this.source(), s = this.dying;
@@ -371,6 +377,9 @@ export default class Ragdoll {
     if (k < 1 || s.hit) return;
     s.hit = true;
     this.world.decals.stampBlood(s.w.x, s.w.y, 4, 3);
+    // his back leaves its blood on the wall, and it runs down
+    const ox = s.x - s.w.x, oy = s.y - s.w.y, ol = Math.hypot(ox, oy) || 1;
+    if (!this.dry) smear(this.world, s.w.x, s.w.y, ox / ol, oy / ol);
     this.world.sound('bodyFall', s.x, s.y, 0.9);
     this.world.shake?.(0.08);
   }

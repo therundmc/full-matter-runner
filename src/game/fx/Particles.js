@@ -1,6 +1,8 @@
 import { MAX_PARTICLES, PALETTE, DESTRUCTION, LITTER } from '../Config.js';
 import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette } from '../../engine/Assets.js';
+import { RUNS } from '../data/wounds.js';
+import { run, faceNormal } from './Spatter.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
 // FLOAT: stuffing / feathers / paper drifting down slowly; DUST: clouds that hang and settle; DROP: liquid;
@@ -269,6 +271,10 @@ export default class Particles {
           if (p.type === P.BLOOD) {
             decals.stampWall(nx, ny, p.size * 0.9);
             if (chance(0.5)) decals.stampBlood(p.x, p.y, p.size * 0.8);
+            if (p.size > 1.8 && chance(RUNS.odds)) {
+              const [fx, fy] = faceNormal(map, p.x, p.y, nx, ny);
+              run(this.world, p.x, p.y, fx, fy, rand(...RUNS.len) * p.size * 0.4);
+            }
           }
           alive = false;
         } else if (p.z <= 0) {

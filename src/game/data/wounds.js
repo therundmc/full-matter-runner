@@ -19,6 +19,12 @@
 // about one man in ten (three or four in ten was "too much" for the user).
 // curl = odds that a whole body that does not crawl curls up round its wound before it goes slack (CURL): cuts and
 // bullets only, never a crushed skull or a beating.
+// What a round throws out of him and past him (fx/Spatter.js), gunshot wounds only:
+//   fling   [stains, near px, far px]: the exit spray landing on the floor behind him along the shot, long streaks
+//   wall    [reach px, splash radius px, min runs, max runs]: a wall that close behind him (traced along the shot)
+//           takes a splash and blood runs down it to its foot over a few seconds (RUNS)
+//   skull   [odds, range px]: a round from at most this far bursts his skull (SKULL) instead of leaving it whole
+//   artery  [odds, s]: an artery opened: it spurts that long once he is down (a glass cut's own `spurt` aside)
 export const WOUNDS = {
   // fists and feet: a split lip, a nose; next to nothing on the floor
   punch: { back: [0, 0, 0], spray: [3, 110, 0.6], mist: 0, splat: [0, 0], pool: [2, 4], rate: 0.8, throw: [40, 70] },
@@ -31,17 +37,23 @@ export const WOUNDS = {
   // the throat opened: a short arc off the blade, then the artery pumps it out (THROAT), the biggest pool there is
   throat: { back: [2, 80, 0.5], spray: [16, 340, 0.05], sweep: 0.8, mist: 2, splat: [4, 4], pool: [24, 30], rate: 7, throw: [0, 20] },
   // 9 mm: a small entry, the round usually stays in, a short spray when it does not
-  small: { back: [3, 100, 0.5], spray: [7, 230, 0.3], exit: [6, 270, 0.3], mist: 3, splat: [3, 3], pool: [8, 11], rate: 2.2, throw: [60, 100], crawl: 0.12, curl: 0.2 },
+  small: { back: [3, 100, 0.5], spray: [9, 250, 0.3], exit: [8, 290, 0.3], mist: 5, splat: [3, 3], pool: [8, 11], rate: 2.2, throw: [60, 100], crawl: 0.12, curl: 0.2,
+    fling: [6, 14, 64], wall: [60, 6, 3, 5], skull: [0.3, 70], artery: [0.15, 2.5] },
   // subsonic 9 mm: even less of a mess
-  quiet: { back: [2, 80, 0.5], spray: [5, 190, 0.3], exit: [4, 230, 0.3], mist: 2, splat: [3, 2], pool: [7, 10], rate: 2, throw: [50, 85], crawl: 0.12, curl: 0.2 },
+  quiet: { back: [2, 80, 0.5], spray: [5, 190, 0.3], exit: [4, 230, 0.3], mist: 2, splat: [3, 2], pool: [7, 10], rate: 2, throw: [50, 85], crawl: 0.12, curl: 0.2,
+    fling: [3, 10, 40], wall: [44, 4, 2, 3], skull: [0.2, 48], artery: [0.1, 2] },
   // buckshot at close range: a wide wet cone, torn flesh, a lake
-  buckshot: { back: [10, 150, 0.9], spray: [64, 380, 0.6], big: true, exit: [12, 320, 0.5], mist: 24, splat: [11, 10], pool: [16, 21], rate: 8, throw: [190, 260], curl: 0.15 },
+  buckshot: { back: [10, 150, 0.9], spray: [72, 400, 0.6], big: true, exit: [16, 340, 0.5], mist: 30, splat: [11, 10], pool: [16, 21], rate: 8, throw: [190, 260], curl: 0.15,
+    fling: [14, 10, 96], wall: [90, 10, 5, 8], skull: [0.5, 120], artery: [0.3, 3] },
   // a few pellets from far away: several small punctures
-  pellet: { back: [3, 90, 0.7], spray: [10, 220, 0.5], exit: [4, 220, 0.5], mist: 4, splat: [4, 5], pool: [9, 13], rate: 3, throw: [70, 110], crawl: 0.12, curl: 0.2 },
+  pellet: { back: [3, 90, 0.7], spray: [10, 220, 0.5], exit: [4, 220, 0.5], mist: 4, splat: [4, 5], pool: [9, 13], rate: 3, throw: [70, 110], crawl: 0.12, curl: 0.2,
+    fling: [4, 10, 50], wall: [50, 3, 1, 3], artery: [0.1, 2] },
   // 7.62: through and through, a long tight jet far behind the body
-  rifle: { back: [6, 130, 0.5], spray: [20, 450, 0.16], exit: [24, 540, 0.13], mist: 12, splat: [5, 4], pool: [12, 16], rate: 5, throw: [100, 150], crawl: 0.07, curl: 0.2 },
+  rifle: { back: [6, 130, 0.5], spray: [20, 450, 0.16], exit: [24, 540, 0.13], mist: 12, splat: [5, 4], pool: [12, 16], rate: 5, throw: [100, 150], crawl: 0.07, curl: 0.2,
+    fling: [9, 20, 120], wall: [100, 7, 3, 6], skull: [0.3, 150], artery: [0.25, 3] },
   // sniper round: a fist-sized exit, a plume across the room
-  heavy: { back: [9, 170, 0.6], spray: [36, 560, 0.2], big: true, exit: [44, 660, 0.15], mist: 26, splat: [9, 8], pool: [15, 20], rate: 8, throw: [200, 250], curl: 0.15 },
+  heavy: { back: [9, 170, 0.6], spray: [40, 580, 0.2], big: true, exit: [48, 680, 0.15], mist: 32, splat: [9, 8], pool: [15, 20], rate: 8, throw: [200, 250], curl: 0.15,
+    fling: [16, 24, 190], wall: [160, 11, 6, 9], skull: [0.6, 99999], artery: [0.35, 3.5] },
   // thrown through / cut by glass: many cuts all around
   glass: { back: [30, 160, Math.PI], spray: [34, 330, 0.45], mist: 8, splat: [6, 6], pool: [12, 16], rate: 5, spurt: 1.2, throw: [100, 160], curl: 0.2 },
   // run over: broken more than opened, the car does the throwing (systems/Ambient.js)
@@ -75,6 +87,33 @@ export const MARKS = {
   rifle: { kind: 'hole', n: [1, 2], size: [3.5, 4.5], where: 'any' },
   heavy: { kind: 'hole', n: [1, 1], size: [5, 6], where: 'torso' },
 };
+// What tears a body apart, by cause (fx/Gore.js): the odds of it going to pieces (gibs) or losing its head, the odds
+// each limb of what is left is torn off (shotgun up close, a .50) and at most how many; scale = x by the weapon's `gore`
+export const TEAR = {
+  blast: { gibs: 0.4, headless: 0.35, limb: 0.45, most: 3 },
+  heavy: { gibs: 0.2, headless: 0.4, limb: 0.55, most: 2, second: 0.3 },
+  explosion: { gibs: 1 },
+};
+
+// A skull burst by a round (fx/Gore.js, a wound's `skull`): bits = [min, max] pieces of bone, scalp and brain thrown
+// along the shot at speed [min, max] px/s; chunks = gib chunks (bleeding, physical); drops / mist = the red cloud and
+// spray; matter = [floor stains, near px, far px] of what was inside, thrown behind him; wall = splash radius px on a
+// wall that close behind (traced up to `reach` px), runs = [min, max] drips down it
+export const SKULL = {
+  bits: [12, 18], speed: [120, 380], chunks: [2, 4], drops: [44, 520, 0.35], mist: 30,
+  matter: [7, 10, 80], reach: 110, wall: 10, runs: [4, 7],
+};
+
+// Blood running down a wall to its foot (fx/Spatter.js): px/s it starts at [min, max] (it slows as it thins and
+// stops at the foot), len = [min, max] px of wall top it crosses (x the splash's size), foot = [min, max] radius of
+// the drop it leaves there, odds a heavy drop hitting a wall starts one, the most running at once, odds per px it
+// wavers sideways
+export const RUNS = { speed: [3, 8], len: [3, 9], foot: [1.2, 2.4], odds: 0.2, max: 48, wobble: 0.12 };
+
+// A man floored but alive (Enemy.knock): his nose or his brow bleeds, a drop now and then while he lies there and
+// for a while after he is up (s), every [min, max] s
+export const HURT = { dur: [5, 9], every: [0.18, 0.5] };
+
 const NAME_OF = new Map(Object.entries(WOUNDS).map(([name, w]) => [w, name]));
 // the marks of a wound profile (one of WOUNDS), or nothing
 export const markOf = (wd) => MARKS[NAME_OF.get(wd)] || null;

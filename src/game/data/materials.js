@@ -16,10 +16,12 @@ export const MATERIALS = {
   brass: { mu: 0.3, bounce: 0.5, sound: 'shell', chips: '#d8a040' },
 };
 
-// what a round knocks out of a wall, by tile: n chips, a puff of dust, sparks (plaster gives none, brick a few)
+// what a round knocks out of a wall, by tile: n chips, a puff of dust (puff: soft clouds hanging a moment, burst:
+// a jet of it blown straight back out of the hole), sparks (plaster gives none, brick a few), bare = the material laid
+// bare round the hole, crumbs = [min, max] bits of it left for good at the foot of the wall
 export const WALL_IMPACT = {
-  '#': { chips: '#e6e0d2', n: 6, dust: '#efe9dc', puff: 3, sparks: 0 },
-  X: { chips: '#9a5440', n: 4, dust: '#a8705c', puff: 2, sparks: 2 },
+  '#': { chips: '#e6e0d2', n: 8, dust: '#efe9dc', puff: 5, burst: 6, sparks: 0, bare: '#f2ecdf', crumbs: [2, 4] },
+  X: { chips: '#9a5440', n: 6, dust: '#a8705c', puff: 4, burst: 5, sparks: 3, bare: '#b86a50', crumbs: [1, 3] },
 };
 
 // how grippy each floor is (multiplies the object's own friction coefficient)
