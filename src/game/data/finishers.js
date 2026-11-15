@@ -19,7 +19,9 @@
 export const FINISHERS = {
   fists: { label: 'EYES OUT', cause: 'execute', mount: 'astride', pose: 'gouge', at: 'head', after: 0.3,
     beats: [[0.26, 'grab'], [0.3, 'press'], [0.24, 'press'], [0.24, 'press'], [0.38, 'slam']] },
-  bat: { label: 'HOME RUN', cause: 'melee', mount: 'side', at: 'head', after: 0.25, beats: [[0.5, 'windup'], [0.12, 0]], launch: 3.2, slowmo: [0.3, 0.5] },
+  // the head is sent off like a ball: `flight` = [scale, s] of slow motion once it is hit, to see it go
+  bat: { label: 'HOME RUN', cause: 'melee', mount: 'side', at: 'head', after: 0.45, beats: [[0.5, 'windup'], [0.12, 0]], launch: 3.2, slowmo: [0.3, 0.5],
+    flight: [0.25, 0.9] },
   club: { label: 'SKULL CRUSH', cause: 'execute', mount: 'over', pose: 'smash', at: 'head', after: 0.3,
     beats: [[0.42, 'smash'], [0.36, 'smash'], [0.4, 'smash']] },
   blade: { label: 'BUTCHERED', cause: 'slash', mount: 'astride', pose: 'frenzy', at: 'chest', after: 0.35,

@@ -470,6 +470,7 @@ export default class Player extends Character {
     } else if (f.cause === 'slash') by = { gore: 0, wound: 'slash' };
     tg.kill(angle, f.cause, this, by, { finisher: true, label: f.label });
     landMoment(w, tg, angle, d, MOMENTS.finisher, !tg.alive);
+    if (f.flight) w.slowmo(...f.flight);
     if (f.plant) this.breakWeapon(this.angle, true);
     ex.done = true;
     ex.i = f.beats.length - 1;

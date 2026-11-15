@@ -36,6 +36,9 @@ const LAND_NOISE = 120;  // px a flat landing is heard at
 // cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
 const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
 const GAIT_SPEED = 1.6; // px/step at which the walk cycle reaches its full stride
+// a man lying knocked down (layClear): where along his sprite's length he is checked against walls (his head, his
+// chest, his feet; the sprite sits a little ahead of the body's centre), the turns tried, rad/s he is turned at
+const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
 const STRIDE = 48;      // px between two footfalls heard: a run is three or four a second, a walk under two
                         // (the user: one at every stride of the drawn legs was "sixteenth notes")
 const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
@@ -311,6 +314,16 @@ export default class Character {
     if (d.swing === 'club' && chained && this.strike !== 3 && chance(0.2)) return 3;
     if (this.strike < 2 && chance(chained ? 0.25 : 0.3)) return d.swing === 'blade' && chance(0.5) ? 3 : 2;
     return chained && this.strike === 0 ? 1 : 0;
+  }
+
+  // Lying knocked down (his sprite: head toward downAngle), thrown against a wall: he crumples along it instead of
+  // lying with his head or his feet in it. Turned a little each step toward the nearest way he fits.
+  layClear(dt) {
+    const m = this.world.map, len = sw(this.downImg);
+    const fits = (a) => LIE_AT.every((k) => !m.solidAt(this.x + Math.cos(a) * len * k, this.y + Math.sin(a) * len * k));
+    if (fits(this.downAngle)) return;
+    const turn = LIE_TURNS.find((t) => fits(this.downAngle + t));
+    if (turn !== undefined) this.downAngle += Math.sign(turn) * Math.min(Math.abs(turn), dt * LIE_RATE);
   }
 
   muzzlePos() {

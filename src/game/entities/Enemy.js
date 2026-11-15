@@ -1873,6 +1873,7 @@ export default class Enemy extends Character {
     if (this.executing) { this.steer(0, 0, 0, 0.5); return; }
     this.knocked -= dt;
     this.steer(0, 0, 0, 0.08);
+    this.layClear(dt);
     if (this.knocked <= 0) {
       this.knocked = 0;
       this.body.collisionFilter = { category: CAT.CHAR, mask: MASK.CHAR, group: 0 };

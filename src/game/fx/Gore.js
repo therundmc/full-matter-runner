@@ -6,6 +6,10 @@ import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
 import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, woundFor, blowScale, markOf } from '../data/wounds.js';
 
+// px from the centre of a man lying knocked down to his head (data/finishers.js EXEC.head) and to the middle of
+// his torso, as his sprite is drawn (CharacterAnim drawDown)
+const HEAD_AT = 24, TORSO_AT = 10;
+
 // Turns a living character into a mess. cause: bullet | heavy | blast | explosion | melee | slash | glass | execute,
 // or snap (a broken neck: a clean body, no blood at all).
 // by: what did it (a weapon definition, or { gore, wound }): its `gore` scales the dismemberment odds, its wound
@@ -80,7 +84,10 @@ export function gore(world, ch, angle, cause, by, how) {
     const behead = mode === 'headless' && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
     const dying = cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole);
     const kneels = dying === 'throat' || dying === 'behead'; // where he stood, pitching forward the way he faced
-    world.addCorpse(new Ragdoll(world, k, x, y, kneels ? ch.angle + rand(-0.3, 0.3) : angle, behead ? 0 : slide, {
+    // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
+    const lay = ch.knocked > 0 ? ch.downAngle : null;
+    const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
+    world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + rand(-0.3, 0.3) : lay ?? angle, behead || lay !== null ? 0 : slide, {
       headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, dying, mark: markOf(wd),
       // he faced his killer: he goes over backwards (a cut throat pitches forward)
       back: !!dying && dying !== 'throes' && dying !== 'throat' && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
@@ -99,8 +106,12 @@ export function gore(world, ch, angle, cause, by, how) {
       for (let i = 0; i < 4; i++) throwGib(world, sprite('characters/gib_chunk' + (i % 3)), x, y, angle, true, 0.5, 0, 0.5);
       throwGib(world, sprite('characters/gib_eye'), x, y, angle, true, 0.2, 0, 0.6);
     } else {
-      throwGib(world, sprite(`characters/${k}_gib_head`), x, y, angle, false, 1.2, 0.6, by?.launch ?? 1.4);
-      P.blood(x, y, angle, 0.25, 30, 420, { big: true });
+      // a head knocked off flies somewhere along the blow; sent off on purpose (by.launch: the bat's home run) it
+      // leaves from where it lay, straight along the swing, trailing blood
+      const down = ch.knocked > 0, hx = down ? x + Math.cos(ch.downAngle) * HEAD_AT : x, hy = down ? y + Math.sin(ch.downAngle) * HEAD_AT : y;
+      if (by?.launch) throwGib(world, sprite(`characters/${k}_gib_head`), hx, hy, angle, false, 2.2, 1, by.launch, 0.12, true);
+      else throwGib(world, sprite(`characters/${k}_gib_head`), hx, hy, angle, false, 1.2, 0.6, 1.4);
+      P.blood(hx, hy, angle, 0.25, 30, 420, { big: true });
     }
     world.sound('gore', x, y, 0.8);
     world.shake(0.2);
@@ -143,9 +154,10 @@ function killerOf(world, x, y, angle) {
   return { x: x - cx * 60, y: y - cy * 60 };
 }
 
-function throwGib(world, img, x, y, angle, radial, bleed, spurt, speedMul = 1) {
-  const a = radial ? rand(0, Math.PI * 2) : angle + rand(-0.9, 0.9);
-  const v = rand(110, 330) * speedMul;
+// spread: rad either side of angle; sure: thrown at the top of the speed range (a head sent off with a bat)
+function throwGib(world, img, x, y, angle, radial, bleed, spurt, speedMul = 1, spread = 0.9, sure = false) {
+  const a = radial ? rand(0, Math.PI * 2) : angle + rand(-spread, spread);
+  const v = (sure ? rand(170, 200) : rand(110, 330)) * speedMul;
   world.addDebris(new Debris(world, img, x + rand(-4, 4), y + rand(-4, 4), rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v,
     rand(-0.6, 0.6), { bleed: bleed * rand(0.7, 1.3), spurt, bounce: 0.3, air: 0.035, material: 'flesh' }));
 }

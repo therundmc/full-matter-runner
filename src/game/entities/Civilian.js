@@ -89,6 +89,7 @@ export default class Civilian extends Character {
       }
       this.knocked -= dt;
       this.steer(0, 0, 0, 0.08);
+      if (!this.asleep) this.layClear(dt);
       if (this.knocked <= 0) {
         this.knocked = 0;
         this.asleep = false;

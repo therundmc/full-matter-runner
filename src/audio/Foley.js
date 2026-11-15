@@ -233,7 +233,10 @@ export const RECIPES = {
       iron: { level: 0.7, dur: 0.22, layers: [whoosh(0, 0.2, [[220, 280], [700, 850]], { q: 1.4, peak: 0.62, edge: 0.1, amp: 1 }), sleeve(0.15)] },
       cue: { level: 0.6, dur: 0.26, layers: [whoosh(0, 0.24, [[450, 550], [1600, 1900]], { q: 1.8, peak: 0.6, amp: 1 }), sleeve(0.2)] },
       stake: { level: 0.45, dur: 0.15, layers: [whoosh(0, 0.13, [[700, 850], [2300, 2700]], { q: 1.3, amp: 1 }), sleeve(0.5)] },
-      knife: { level: 0.4, dur: 0.13, layers: [whoosh(0, 0.11, [[1100, 1300], [3400, 4000]], { q: 1.2, amp: 1 }), sleeve(0.6)] },
+      // a blade cutting the air: a thin bright whistle over the stroke, the steel singing a little (the user: the knife
+      // had no cutting sound of its own)
+      knife: { level: 0.8, dur: 0.24, layers: [whoosh(0, 0.12, [[1900, 2400], [5200, 6400]], { q: 2.6, peak: 0.55, amp: 1 }),
+        whoosh(0.005, 0.11, [[900, 1100], [2600, 3200]], { q: 1.1, amp: 0.5 }), knock(0.03, BLADE, { contact: 0.003, amp: 0.2 }), sleeve(0.35)] },
     },
   },
   // a weapon thrown (opts.weapon): the arm, then the thing turning over and over through the air
