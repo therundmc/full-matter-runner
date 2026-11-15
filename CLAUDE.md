@@ -63,8 +63,9 @@
   level 1 is tightened by whole tiles taken out (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`): the builder keeps its drawing's coordinates, the kit moves them; keep things off the cut lines. Two
   columns are cut (CUT_COLS 19, 29); the bar room's row cut was given back ("no room to get through"): 14 x 8 m with
-  walkways of about 1.2 m between its furniture, in two halves (his wish): a lounge to sit and drink in the
-  south-west (one sofa, a low table, armchairs, a round table), the games in the north (poker by the north wall, pool). Coordinates in tests and the QA robot's plans are the level's (after
+  walkways of about 1.2 m between its furniture, in three rooms (his wish: "a real bar plan"): the main room
+  (counter, pool in the middle, a booth, arcade, jukebox), a clandestine gaming room walled off in the north-east
+  (poker, the dealer has the house's pistol, the boss's back room opens into it, its window on the gap), the VIP room. Coordinates in tests and the QA robot's plans are the level's (after
   the cuts). A doorway needs room on one side at least; wall pieces have bodies, never hang one across a doorway
   (levelkit `check_on_wall` refuses it). Standing workers are placed square at what they work at (posts `front`).
   No television in front of the boss's door; no window in the boss's office (he had it taken out).
@@ -106,7 +107,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    clap, hats, pumping bass), sections fightA / fightB / bridge / chase; each chained kill adds a stage
    (`Music.setCombo`: arpeggio, stabs, lead hook + stinger, 16th bass and rolls, doubled lead and toms). Bus
    compressor. Original material only. Nobody has listened to it but him: ask how it sounds.
-6. Level 1 (alley, road, bar, back room, back lot; 13 guards: hand to hand but two guns, the pool player's pistol
+6. Level 1 (alley, road, bar, back room, back lot; 13 guards: hand to hand but two guns, the poker dealer's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
    against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only).
@@ -114,7 +115,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    climb, the dark gap, the liquor store roof reached by a `ladder` from the street corner, the shop itself whose
    own ladder goes up to that roof; the roof is left by a `parapet` drop into the service alley or the back lot; no
    door between the shop and the alley, the user had it removed; the roof is dressed with real props, `sprite` option) and
-   three windows to dive through (the toilets on the back lot, the pool corner and the VIP room on the gap).
+   three windows to dive through (the toilets on the back lot, the gaming room and the VIP room on the gap).
    A walkable roof is floor tile `^`. Guards have the keys of the house (`World.pathForGuard`, `Door.unlatch`):
    never lock a door without checking they can still get out (the QA robot reports `guard-stuck`).
    The level ends in the getaway van (systems/Outro.js): it follows the level's `exit.route` (out of the lot in a

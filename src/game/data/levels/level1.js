@@ -12,11 +12,11 @@ export default {
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 22.4, y: 4.0, r: 1.3, route: [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], radius: [3, 4.2], fade: 16 },
-  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 349, '23,12': 90, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
+  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 0, '17,16': 0, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
   patrols: {
     '17,22': [[16, 22], [26, 22]],
   },
-  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'pool', '23,12': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
+  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '17,16': 'pool', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
   looks: { '28,9': 'boss' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -31,11 +31,11 @@ export default {
     "X^^^^^^^^^X___X____#+++#;;;;;X_XXXXXXXXXXX",
     "X^^^^^^^^^X___X____#+++#;;;;;X_XXXXXXXXXXX",
     "X^^^^^^^^^X___X#D####D####L##X_XXXXXXXXXXX",
-    "X^^^^^^^^^^___X..............X_XXXXXXXXXXX",
-    "X^^^^^^^^^X___X..............X_XXXXXXXXXXX",
-    "X^^^^^^^^^X___X..............G_XXXXXXXXXXX",
-    "X^X^XXXXXXX___X..............X_XXXXXXXXXXX",
-    "X^X^XXXXXXX___X.........#####X_XXXXXXXXXXX",
+    "X^^^^^^^^^^___X........#;;;;;X_XXXXXXXXXXX",
+    "X^^^^^^^^^X___X........D;;;;;X_XXXXXXXXXXX",
+    "X^^^^^^^^^X___X........#;;;;;G_XXXXXXXXXXX",
+    "X^X^XXXXXXX___X........#;;;;;X_XXXXXXXXXXX",
+    "X^X^XXXXXXX___X........######X_XXXXXXXXXXX",
     "X^X,,,,,,XX___X.........#::::G_XXX;;;;XXXX",
     "X^X,,,,,,XX___X.........:::::X_XXX;;;;XXXX",
     "X^X,,,,,,XX___X.........#::::X_XXX;;;;XXXX",
@@ -71,11 +71,11 @@ export default {
     "                    k       h",
     "                         i k",
     "    5",
-    "                  b    k",
+    "                  b",
     "",
     "                        p",
     "",
-    "",
+    "                 k",
     "        1              b      6",
     "",
     "",
@@ -167,16 +167,17 @@ export default {
     ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0], ['neon_tube_pink', 18.5, 12.05, 0],
     ['ceiling_lamp', 16.3, 13.85, 0], ['ceiling_lamp', 18, 13.85, 0], ['ceiling_lamp', 19.7, 13.85, 0],
     ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0], ['beer_tap', 15.95, 13.62, 0], ['beer_tap', 17.15, 13.62, 0],
-    // the bar: the lounge (south-west), the games (north)
-    ['sofa', 15.5, 16.75, 270], ['wall_lamp', 15.09, 16.75, 270], ['table', 16.55, 16.75, 90],
-    ['armchair', 17.55, 16.35, 180], ['armchair', 17.55, 17.3, 180], ['table_round', 18.6, 18.7, 0],
-    ['chair', 17.75, 18.7, 0], ['chair', 19.45, 18.7, 180], ['ceiling_lamp', 18.6, 18.7, 0],
-    ['card_table', 23, 13.6, 0], ['ceiling_lamp', 23, 13.6, 0], ['chair', 22.6, 14.6, 270], ['chair', 23.5, 14.6, 270],
-    ['plant', 17.85, 19.55, 0], ['pool_table', 26.2, 14, 0], ['pool_lamp', 26.2, 14, 0], ['arcade', 28.5, 12.5, 90],
-    ['wall_lamp', 28.91, 13.3, 90], ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 22, 15, 0],
-    ['extinguisher', 22.6, 12.14, 0], ['plant', 27.65, 12.35, 0],
+    // the bar: the main room
+    ['pool_table', 19.8, 16.9, 0], ['pool_lamp', 19.8, 16.9, 0], ['sofa', 15.5, 17, 270],
+    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90], ['chair', 17.15, 17.6, 180], ['arcade', 22.55, 15.5, 270],
+    ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 21.6, 14.2, 0], ['plant', 17.85, 19.55, 0],
+    ['extinguisher', 22.88, 14.5, 90],
+    // the bar: the gaming room
+    ['card_table', 25.9, 14.25, 0], ['pool_lamp', 25.9, 14.25, 0], ['chair', 25.5, 15.25, 270],
+    ['chair', 26.4, 15.25, 270], ['chair', 27.35, 14.25, 180], ['bottle_shelf', 24.9, 12.16, 0],
+    ['cash_case', 27.8, 12.6, 15], ['wall_lamp', 28.91, 13, 90],
     // the bar: what can be used
-    ['fire_alarm', 24, 12.07, 0],
+    ['fire_alarm', 20.5, 12.07, 0],
     // the bar: VIP room
     ['dance_stage', 28, 18.9, 0], ['mirror_ball', 27.5, 18.6, 0], ['sofa', 27.15, 17.45, 0],
     ['armchair', 25.5, 17.5, 0], ['armchair', 25.5, 19.45, 0], ['neon_tube_pink', 27, 19.93, 180],
@@ -191,27 +192,27 @@ export default {
     ['crate', 9.5, 6.3, 5], ['chair', 9.3, 4.4, 80], ['wall_vent', 8.4, 3.08, 0],
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
-  premises: [[11, 0, 30, 4], [11, 5, 13, 20], [30, 5, 30, 19], [14, 5, 19, 11], [23, 5, 29, 11], [15, 12, 19, 12], [24, 16, 28, 19]],
+  premises: [[11, 0, 30, 4], [11, 5, 13, 20], [30, 5, 30, 19], [14, 5, 19, 11], [23, 5, 29, 11], [15, 12, 19, 12], [24, 16, 28, 19], [23, 12, 28, 15]],
   intro: 'swig',
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
-  welcome: [[20, 12, 28, 12], [15, 13, 28, 15], [15, 16, 22, 19], [20, 6, 22, 11]],
+  welcome: [[20, 12, 22, 12], [15, 13, 22, 15], [15, 16, 22, 19], [20, 6, 22, 11]],
   // painted on the floor, no body: [sprite, col, row, deg]
   floor: [['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_carpet', 21.0, 21.94, 0], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
   // weapons stood against a wall [type, col, row, deg]
-  lean: [["cue", 24.6, 12.2, 270]],
+  lean: [["cue", 22.5, 12.2, 270]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [34, 17, 37, 19], "box": [33.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
   power: {"box": [23.5, 4.92], "zone": [14, 5, 29, 20]},
   // the devices of the level (data/devices.js): the fire alarm and the rooms it rains on and
   // the trapdoors of the passage under the street
-  sprinklers: {"pull": [24.0, 12.07], "rooms": [[15, 12, 28, 19]]},
+  sprinklers: {"pull": [20.5, 12.07], "rooms": [[15, 12, 28, 19]]},
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
   wet: 0.35,
   // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the
   // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)
-  soundscape: { rain: 0, zones: [['vip', 24, 17, 28, 19], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },
+  soundscape: { rain: 0, zones: [['vip', 24, 17, 28, 19], ['office', 24, 12, 28, 15], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[22.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [31.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
   // beds heard from one tile (data/soundscape.js SPOTS): [bed, col, row]
@@ -257,10 +258,10 @@ export default {
     // customers posted indoors: [sprite, col, row, deg, pastime]
     patrons: [
       ['civ1', 16.75, 14.5, 270, 'drink'],
-      ['civ2', 15.6, 16.75, 0, 'drink'],
-      ['civ4', 22.6, 14.6, 270, 'cards'],
-      ['civ5', 23.5, 14.6, 270, 'cards'],
-      ['civ3', 28.15, 13.45, 180, 'cue'],
+      ['civ2', 15.6, 17.0, 0, 'drink'],
+      ['civ4', 25.5, 15.25, 270, 'cards'],
+      ['civ5', 26.4, 15.25, 270, 'cards'],
+      ['civ3', 21.2, 15.6, 180, 'cue'],
       ['civ8', 25.55, 17.5, 40, 'drink'],
       ['civ7', 25.55, 19.45, -27, 'watch'],
       ['dancer1', 28.0, 18.9, 180, 'dance'],

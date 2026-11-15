@@ -90,15 +90,16 @@ test('the gap right of the bar: a door on the street, one metre wide, off limits
   assert.equal(m.at(29, 17), 'G');
 });
 
-test('level 1 is fought hand to hand: two guns in the house (the bar room, the boss), one hidden in the liquor store', () => {
+test('level 1 is fought hand to hand: two guns in the house (the gaming room, the boss), one hidden in the liquor store', () => {
   const guards = [];
   level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbkmji'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
   assert.equal(guards.length, 13);
   const guns = guards.filter((g) => 'pushr'.includes(g.ch));
   assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p']);
-  const [boss, pool] = guns;
+  const [boss, dealer] = guns;
   assert.ok(boss.col >= 24 && boss.col <= 28 && boss.row >= 6 && boss.row <= 10, "the shotgun is the boss's, in the back room");
-  assert.equal(level.jobs[`${pool.col},${pool.row}`], 'pool', "the pistol is the pool player's");
+  assert.equal(level.jobs[`${dealer.col},${dealer.row}`], 'cards', "the pistol is the poker dealer's");
+  assert.ok(dealer.col >= 24 && dealer.col <= 28 && dealer.row >= 12 && dealer.row <= 15, 'in the gaming room');
   // lying around: knives, a cue by the pool table, one pistol behind the liquor store's locked door; no ammunition
   // anywhere and no weapon in the start alley (the first one is in the trunk of the first parked car)
   assert.deepEqual([...new Set(level.actors.join('').replace(/[^0-9]/g, ''))].sort(), ['1', '5', '6']);

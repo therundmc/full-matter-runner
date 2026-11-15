@@ -28,11 +28,11 @@ test('a level without premises is hostile everywhere; level 1 starts the player 
 
 test('level 1: the bar room and its toilets are open, the private rooms are not, and customers are left alone', () => {
   const d = new Director(world(LEVELS.level1));
-  for (const [col, row, what] of [[21, 13, 'by the door'], [26, 13, 'the pool table'], [19, 17, 'the card table'], [21, 8, 'the toilets']]) {
+  for (const [col, row, what] of [[21, 13, 'by the door'], [19, 18, 'the pool table'], [16, 18, 'the booth'], [21, 8, 'the toilets']]) {
     assert.equal(d.isThreat(at(col, row)), false, what);
     assert.equal(d.isGuest(at(col, row)), true, `${what}: a customer`);
   }
-  for (const [col, row, what] of [[26, 18, 'the VIP room'], [24, 18, 'its doorway'], [26, 8, 'the back room'], [17, 8, 'the storeroom'],
+  for (const [col, row, what] of [[26, 18, 'the VIP room'], [24, 18, 'its doorway'], [26, 13, 'the gaming room'], [24, 14, 'inside its door'], [26, 8, 'the back room'], [17, 8, 'the storeroom'],
     [17, 12, 'behind the counter'], [12, 10, 'the service alley'], [19, 2, 'the back lot']]) {
     assert.equal(d.isThreat(at(col, row)), true, what);
   }
