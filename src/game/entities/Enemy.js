@@ -64,6 +64,9 @@ export default class Enemy extends Character {
     this.routeIdx = 0;
     this.roam = roam || !!this.route;
     this.passive = false;      // lab dummies: no perception at all
+    this.slack = 1;            // x his reaction time and the time between his shots (the tutorial's men are slower)
+    this.dormant = false;      // the tutorial's guards until their wave is called (systems/Tutorial.js): they
+                               // stand there, see and hear nothing, and can still be seized from behind
     this.state = this.roam ? S.PATROL : S.IDLE;
     this.aware = 0;
     this.meter = 0;            // detection meter 0..1
@@ -298,7 +301,7 @@ export default class Enemy extends Character {
   spot(recent) {
     if (this.state === S.COMBAT || this.state === S.FETCH || this.state === S.FLEE || this.state === S.DIZZY) return;
     this.setState(S.COMBAT);
-    this.react = rand(...(recent ? ENEMY.reacquire : ENEMY.reaction));
+    this.react = rand(...(recent ? ENEMY.reacquire : ENEMY.reaction)) * this.slack;
     this.settle = 0;
     this.showIcon('!', 1);
     this.world.sound('shout', this.x, this.y, 1, { pitch: this.voice });
@@ -308,7 +311,7 @@ export default class Enemy extends Character {
 
   // noise heard (types: see ENEMY.hear); localisation gets worse with distance
   hear(type, x, y, source = null) {
-    if (this.passive || this.yielded || !this.alive || this.knocked > 0 || this.state === S.DIZZY) return;
+    if (this.passive || this.dormant || this.yielded || !this.alive || this.knocked > 0 || this.state === S.DIZZY) return;
     // a bartender at the first shots: down behind his counter for a moment
     if (this.job === 'wipe' && !this.ducked && this.atPost && this.aware < 2 && (type === 'gunshot' || type === 'explosion')) {
       this.ducked = true;
@@ -488,7 +491,7 @@ export default class Enemy extends Character {
       this.held = null;
     }
     if (this.updateVault(dt)) return;
-    if (this.passive) { this.halt(); return; }
+    if (this.passive || this.dormant) { this.halt(); return; }
     this.seatThrough();
     if (this.yielded) { this.updateYield(dt); return; }
     // a blow wound up (windUp) comes now, whether he is still in reach or not
@@ -1577,7 +1580,7 @@ export default class Enemy extends Character {
       this.burst++;
       this.cooldown = this.burst >= d.burst ? rand(0.7, 1.1) : d.rate * ENEMY.fireRateMul;
       if (this.burst >= d.burst) this.burst = 0;
-    } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25);
+    } else this.cooldown = d.enemyRate * ENEMY.fireRateMul * rand(0.85, 1.25) * this.slack;
     return true;
   }
 
@@ -1857,6 +1860,7 @@ export default class Enemy extends Character {
     this.director.provoked = true; // nobody floors a guard by accident
     this.world.events.emit('knock', { victim: this, cause, angle });
     this.downAngle = angle; // on his back, his head away from the blow
+    this.dormant = false;   // that wakes a man
     this.dropWeapon(angle + rand(-0.8, 0.8), rand(2, 4));
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };

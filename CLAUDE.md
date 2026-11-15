@@ -142,6 +142,20 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    beheaded on his feet sinks onto his knees, the neck spurting, then pitches forward (`BEHEAD`, the user's idea). Gun guards tip a
    table over for a shield before kneeling behind it (prop def `flips`, `Prop.flip`, `Tactics.tableToFlip`, `AI.flip`).
 7. Sandbox (F1 panel in any level) + `?level=lab` physics lab, `?level=street` street-life testbed.
+8. Front end and tutorial (2026-11-15, built while he slept: NOT yet validated, expect feedback).
+   The title screen and the pause are a real menu (ui/Menu.js = pages and navigation, DOM-free; ui/MenuArt.js = its
+   picture; Game.updateMenu / applyMenu): continue, new game, level select with locked levels and best results,
+   options by category (audio, video: lens / shake / fullscreen, controls, game: replay the tutorial, reset). The
+   progression (systems/Progress.js, `CAMPAIGN` = tutorial then level1) and the settings are saved in localStorage.
+   `Game.startLevel(id)` starts a level, `newGame()` retries the current one, `?level=<id>` still forces a level.
+   The tutorial (level `tutorial`, tools/build_tutorial.py, systems/Tutorial.js): an apartment, six rooms, one move
+   each, said by a key cap and a few words next to what it is done to (`HINTS`); the guards of a room are `dormant`
+   until its wave is called, and slower than real ones (`slack`); a death starts again at the last room reached
+   (`Game.tutorialAt`); it ends by diving through the front room window: state `fall` (black), then level 1 opens on
+   him waking in the alley. NEW GAME plays the opening first (ui/Cinematic.js, state `cinematic`): from the title's
+   street into the lit window next door, a bedroom seen side-on, he gets up, the view tips onto the floor plan.
+   Check the cinematic and the menu in the browser after touching them; the QA robot plays the tutorial with
+   `npm run qa -- --level tutorial` (add `--god` to see it through to the window).
 
 ## Run / test
 - index.html starts the game through a small service worker (sw.js) that fetches every file fresh, because the user

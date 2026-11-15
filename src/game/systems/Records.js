@@ -31,3 +31,8 @@ export function saveBest(levelId, result, storage = defaultStorage()) {
   }
   return { prev, record };
 }
+
+// forgets every level's best result (the menu's RESET PROGRESSION)
+export function clearBest(storage = defaultStorage()) {
+  try { storage.removeItem(KEY); } catch { /* nothing stored, or storage refused */ }
+}

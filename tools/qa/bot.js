@@ -68,6 +68,9 @@
       offRoof: { steps: DROP_ALLEY, rescue: true },
     },
     lab: { free: { steps: [] }, throw: THROW },
+    // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
+    // started by hand when the level is cleared: it has no exit zone)
+    tutorial: { free: { steps: [] }, out: { steps: [{ go: [27.4, 5.5] }, { cross: [30.7, 5.5] }], rescue: true } },
     street: {
       free: { steps: [] },
       throw: THROW,
@@ -631,6 +634,7 @@
       const name = drawPlan(w, p, false);
       if (name) startPlan(w, p, name); else B.nextPlanT = S.clock + 40;
     }
+    if (!B.plan && w.cleared && !w.level.exit && PLANS[opts.level]?.out && S.clock > (B.outT || 0)) { B.outT = S.clock + 12; startPlan(w, p, 'out'); }
     if (B.plan) planHeading = runPlan(w, p, inp);
     else if (!B.goal || S.clock - B.goalT > 25 || (w.cleared && w.level.exit && B.goal.type !== 'exit')) chooseGoal(w, p);
     else if (B.goal.type === 'guard' && (!B.goal.guard.alive || B.goal.guard.yielded)) chooseGoal(w, p);
@@ -779,8 +783,15 @@
   // before a step (fast) or a frame (realtime): the state machine and the inputs
   function tick(dt) {
     const g = game, inp = g.input, st = g.state;
-    if (st === 'title') { inp.mouse.clicked[0] = true; inp.anyPressed = true; act('title: click'); return; }
+    // the title is a menu: the level under test is started straight away (a click when the game has no startLevel)
+    if (st === 'title') {
+      if (g.startLevel) { g.tutorialAt = null; g.startLevel(opts.level); act('title: start'); }
+      else { inp.mouse.clicked[0] = true; inp.anyPressed = true; act('title: click'); }
+      return;
+    }
     if (!g.world) return;
+    // out of the tutorial the game goes on to the next level: back to the one under test, from its beginning
+    if (opts.level === 'tutorial' && !g.world.tutorial && g.startLevel) { g.tutorialAt = null; g.startLevel(opts.level); act('tutorial: again'); return; }
     if (g.world !== S.world) onNewWorld(g.world);
     const w = g.world, p = w.player;
     if (st === 'intro') { inp.keys.clear(); if (g.stateT > 0.35) { inp.anyPressed = true; act('intro: key'); } return; }
@@ -803,6 +814,7 @@
       if (g.stateT > 1.2) { press(inp, 'KeyR'); act('results: restart'); }
       return;
     }
+    if (w.tutorial?.over && !S.sess.exited) { S.sess.exited = true; cover('exit'); act('tutorial: out by the window'); }
     if (st !== 'play') return;
     // a session going nowhere: start over
     if (S.clock - B.sessionStart > opts.sessionCap && S.clock - S.sess.lastKillT > 60) {

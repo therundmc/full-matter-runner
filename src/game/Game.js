@@ -11,19 +11,34 @@ import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
 import { loadSettings, saveSettings } from './systems/Settings.js';
+import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel } from './systems/Progress.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawLoading, drawIntro, drawDead, drawPause, drawResults, drawOutro, pauseSliders } from './ui/Screens.js';
+import { drawLoading, drawIntro, drawDead, drawResults, drawOutro } from './ui/Screens.js';
 import { drawTitleScene } from './ui/TitleScene.js';
+import Menu from './ui/Menu.js';
+import { drawMenu } from './ui/MenuArt.js';
+import { CINE, cineView, cineBeats, cineCaption, drawCinematic } from './ui/Cinematic.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
-import { neon } from './ui/Text.js';
+import { neon, text } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import { createPost } from './render/PostGL.js';
 
-// Top-level loop and state machine: loading -> title -> intro -> play -> dead | [outro ->] results
+// Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro ->] results,
+// play <-> pause; the tutorial ends play -> fall -> the next level's intro
+// (the title and the pause are the menu: ui/Menu.js for its pages, ui/MenuArt.js for its picture)
+const VOLUMES = ['master', 'music', 'sfx'];
+// ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
+const urlLevel = () => { const id = new URLSearchParams(location.search).get('level'); return LEVELS[id] ? id : null; };
+const has = (id) => !!LEVELS[id];
+// out of the tutorial's window (state 'fall'): s to black, s at which he hits the ground, s at which the next level starts
+const FALL = { fade: 0.9, thud: 1.15, end: 2.0, slow: 0.3 };
+// what the intro banner calls a level
+const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${CAMPAIGN.filter((l) => l !== 'tutorial').indexOf(id) + 1}` : 'TEST LEVEL');
+
 export default class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -45,18 +60,27 @@ export default class Game {
     this.loadP = 0;
     this.musicOn = true;
     this.settings = loadSettings();
-    for (const k in this.settings) Audio.setVolume(k, this.settings[k]);
-    this.sel = 0;      // selected slider of the pause screen
-    this.grab = null;  // slider held by the mouse
+    this.progress = loadProgress();
+    this.menu = new Menu('main', () => this.menuContext());
+    this.menuRects = [];               // where the menu's items were drawn last frame (MenuArt), for the mouse
+    this.grab = null;                  // index of the slider held by the mouse
     this.lastMouse = { x: 0, y: 0 };
     this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
     this.lens = new Lens();            // what the last pass of the picture does this frame
     this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
-    this.lensOn = true;                // F6 shows the picture without it, to compare
+    this.lensOn = true;                // the VIDEO option; F6 flips it for the session, to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
+    // the fullscreen toggle tells the truth: whoever left it (Esc, the browser), the setting follows
+    this.wantFull = this.settings.fullscreen; // asked last session: taken again at the first key or click
+    this.settings.fullscreen = !!document.fullscreenElement;
+    document.addEventListener('fullscreenchange', () => {
+      this.settings.fullscreen = !!document.fullscreenElement;
+      saveSettings(this.settings);
+    });
+    for (const k of [...VOLUMES, 'lens', 'shake']) this.applySetting(k);
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -81,43 +105,67 @@ export default class Game {
     this.setState('title');
   }
 
-  setState(s) { this.state = s; this.stateT = 0; this.grab = null; }
+  setState(s) { this.state = s; this.stateT = 0; this.grab = null; this.menuRects = []; }
 
-  // pause screen sliders: mouse (grab a track, drag, release saves) and keyboard (up/down select, left/right +-5%)
-  updateSliders(inp) {
-    const rows = pauseSliders(this.canvas.width, this.canvas.height);
-    const { x, y } = inp.mouse, tol = 8 * this.canvas.height / 720;
-    const moved = x !== this.lastMouse.x || y !== this.lastMouse.y;
-    this.lastMouse = { x, y };
-    const set = (key, v) => {
-      v = Math.round(clamp(v, 0, 1) * 100) / 100;
-      if (v === this.settings[key]) return false;
-      this.settings[key] = v;
-      Audio.setVolume(key, v);
-      return true;
-    };
-    const audible = (key) => { if (key !== 'music') Audio.play('ui'); }; // hear the new level
-    const hover = rows.findIndex((r) => y >= r.y - tol && y <= r.y + r.h + tol && x >= r.x - tol && x <= r.x + r.w + tol);
-    if (inp.mouseHit(0) && hover >= 0) this.grab = hover;
-    if (this.grab !== null) {
-      const r = rows[this.grab];
-      this.sel = this.grab;
-      if (inp.mouseDown(0)) set(r.key, (x - r.x) / r.w);
-      else { saveSettings(this.settings); audible(r.key); this.grab = null; }
-    } else if (hover >= 0 && moved) this.sel = hover;
-    const dv = (inp.hit('ArrowDown') || inp.hit('KeyS') ? 1 : 0) - (inp.hit('ArrowUp') || inp.hit('KeyW') ? 1 : 0);
-    if (dv) this.sel = (this.sel + dv + rows.length) % rows.length;
-    const dh = (inp.hit('ArrowRight') || inp.hit('KeyD') ? 1 : 0) - (inp.hit('ArrowLeft') || inp.hit('KeyA') ? 1 : 0);
-    if (dh) {
-      const key = rows[this.sel].key;
-      if (set(key, this.settings[key] + dh * 0.05)) { saveSettings(this.settings); audible(key); }
-    }
+  // ---------------- settings ----------------
+  // what a setting does once changed (the value is already in this.settings; fullscreen goes by setFullscreen)
+  applySetting(key) {
+    const v = this.settings[key];
+    if (VOLUMES.includes(key)) Audio.setVolume(key, v);
+    else if (key === 'lens') { this.lensOn = v; this.post?.show(v); }
+    else if (key === 'shake') this.camera.shakeScale = v;
   }
 
-  newGame() {
-    // ?level=<id> picks a level (e.g. ?level=lab for the physics test room)
-    const id = new URLSearchParams(location.search).get('level');
-    this.levelId = LEVELS[id] ? id : 'level1';
+  // save: false while a slider is dragged (saved on release)
+  setSetting(key, value, save = true) {
+    if (key === 'fullscreen') { this.setFullscreen(value); return; } // the setting follows fullscreenchange
+    if (this.settings[key] === value) return;
+    this.settings[key] = value;
+    this.applySetting(key);
+    if (save) saveSettings(this.settings);
+  }
+
+  // must run within a key press or a click (the browser's rule): update() is called on the frame after one
+  setFullscreen(on) {
+    try {
+      const d = document, p = on ? d.documentElement.requestFullscreen?.() : d.fullscreenElement && d.exitFullscreen?.();
+      p?.catch?.(() => {});
+    } catch { /* refused: the toggle keeps showing the truth */ }
+  }
+
+  // ---------------- progression ----------------
+  // the campaign levels there are, in order, for the menu
+  campaign() { return CAMPAIGN.filter(has).map((id) => ({ id, name: LEVELS[id].name || id.toUpperCase() })); }
+  firstLevel() { return this.campaign()[0]?.id || Object.keys(LEVELS)[0]; }
+
+  menuContext() {
+    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok };
+  }
+
+  // a level finished: marked done, the next one opened (the tutorial calls it too)
+  completeLevel(id) {
+    this.progress = complete(this.progress, id);
+    saveProgress(this.progress);
+  }
+
+  // ---------------- starting a level ----------------
+  // NEW GAME: the first campaign level there is
+  startNewGame() {
+    const id = urlLevel() || this.firstLevel();
+    this.startLevel(id, { state: id === 'tutorial' && !urlLevel() ? 'cinematic' : 'intro' });
+  }
+
+  // CONTINUE: the furthest level opened
+  continueGame() { this.startLevel(urlLevel() || latest(this.progress, has) || this.firstLevel()); }
+
+  // the current level again (R, Backspace, a retry after a death)
+  newGame() { this.startLevel(this.levelId || urlLevel() || this.firstLevel(), { retry: true }); }
+
+  // retry: the same level again (the tutorial then starts at the last room reached: this.tutorialAt, kept by
+  // systems/Tutorial.js); state: what it opens on ('intro': the banner; 'cinematic': the opening, ui/Cinematic.js)
+  startLevel(id, { retry = false, state = 'intro' } = {}) {
+    this.levelId = LEVELS[id] ? id : this.firstLevel();
+    if (!retry) this.tutorialAt = null;
     this.world = new World(this, LEVELS[this.levelId]);
     // he gets up off the ground the first time only: a retry starts on his feet, at once
     if (this.seen === this.levelId) { this.world.player.sit = 0; this.world.player.swig = null; }
@@ -149,8 +197,18 @@ export default class Game {
     Music.setCombat(false);
     Music.setCombo(0);
     Music.setIntensity(this.tension.level('normal'));
+    ev.on('tutorialEnd', () => this.onTutorialEnd());
     this.sandbox.attach(this.world);
-    this.setState('intro');
+    this.cineT = 0;
+    this.setState(state);
+  }
+
+  // out of the tutorial by the window: he falls (slow motion, the picture going black), hits the ground, and the
+  // next level opens on him waking
+  onTutorialEnd() {
+    this.slowmo(FALL.slow, FALL.end);
+    Audio.play('gust', { vol: 0.8 });
+    this.setState('fall');
   }
 
   // ---------------- hooks called by the world ----------------
@@ -181,6 +239,7 @@ export default class Game {
     const w = this.world;
     const tally = w.scoring.tally(levelScoring(this.levelId, w.totalEnemies));
     // a run helped by the sandbox is shown but never kept as a record
+    this.completeLevel(this.levelId);
     const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.time }) : { prev: this.best, record: false };
     this.results = { ...tally, best: kept.prev, record: kept.record, ranked: this.ranked };
     this.replay.start();
@@ -191,6 +250,7 @@ export default class Game {
     this.world = null;
     this.replay.stop();
     this.recorder.release();
+    this.menu.reset('main');
     this.setState('title');
   }
 
@@ -221,7 +281,10 @@ export default class Game {
 
   update(dt) {
     const inp = this.input;
-    if (inp.anyPressed) Audio.unlock().then(() => { if (this.musicOn) Music.start(); });
+    if (inp.anyPressed) {
+      Audio.unlock().then(() => { if (this.musicOn) Music.start(); });
+      if (this.wantFull) { this.wantFull = false; this.setFullscreen(true); }
+    }
 
     if (this.state === 'loading') return;
     // debug: the picture with / without the lens
@@ -232,18 +295,19 @@ export default class Game {
     }
     if (this.state === 'title') {
       Music.setIntensity(0);
-      if (inp.mouseHit(0) || inp.hit('Enter') || inp.hit('Space')) { Audio.play('ui'); this.newGame(); }
+      this.updateMenu(inp);
       inp.consume();
       return;
     }
     if (inp.hit('KeyM')) { this.musicOn = !this.musicOn; this.musicOn ? Music.start() : Music.stop(); }
 
     if (this.state === 'pause') {
-      this.updateSliders(inp);
-      if (inp.hit('Escape')) this.setState('play');
-      else if (inp.hit('KeyR')) this.newGame();
+      if (inp.hit('KeyR')) this.newGame();
       else if (inp.hit('KeyQ')) this.toTitle();
-      else if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
+      else {
+        if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
+        this.updateMenu(inp);
+      }
       inp.consume();
       return;
     }
@@ -255,6 +319,17 @@ export default class Game {
       inp.consume();
       return;
     }
+    if (this.state === 'cinematic') {
+      // the opening plays by itself; a key or a click goes straight to the game
+      Music.setIntensity(0);
+      for (const b of cineBeats(this.cineT, this.stateT)) Audio.play(b.name, { vol: b.vol });
+      this.cineT = this.stateT;
+      const skip = this.stateT > CINE.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      inp.consume();
+      this.updateCamera(dt);
+      if (skip || cineView(this.stateT).over) this.setState('play');
+      return;
+    }
     if (this.state === 'intro') {
       this.updateCamera(dt);
       if (this.stateT > 2.6 || (this.stateT > 0.3 && (inp.mouseHit(0) || inp.anyPressed))) { inp.consume(); this.setState('play'); }
@@ -264,19 +339,29 @@ export default class Game {
 
     // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
-    const outro = this.state === 'outro';
-    if (outro) {
+    if (this.state === 'fall') {
+      if (this.stateT - dt < FALL.thud && this.stateT >= FALL.thud) { Audio.play('bodyFall', { vol: 1 }); this.camera.shake(0.5); }
+      if (this.stateT >= FALL.end) {
+        const done = this.levelId;
+        this.completeLevel(done);
+        this.startLevel(nextLevel(done) || this.firstLevel());
+        inp.consume();
+        return;
+      }
+    }
+    const outro = this.state === 'outro' || this.state === 'fall'; // the world plays on by itself
+    if (this.state === 'outro') {
       // the world plays on by itself: no input reaches it; a fresh key press or a click skips to the results
       const skip = this.stateT > OUTRO.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
       inp.consume();
       if (skip || this.world.outro.van.exploded) { this.showResults(); return; }
     }
-    if (this.state === 'play' && inp.hit('Escape')) { this.setState('pause'); inp.consume(); return; }
+    if (this.state === 'play' && inp.hit('Escape')) { this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
     if (this.state === 'dead' && this.stateT > 0.8 && inp.mouseHit(0)) { this.newGame(); inp.consume(); return; }
 
     // time scale (slow motion)
-    let target = outro ? 1 : this.sandbox.timeScale;
-    if (this.slow && !outro) {
+    let target = this.state === 'outro' ? 1 : this.sandbox.timeScale;
+    if (this.slow && this.state !== 'outro') {
       target = Math.min(target, this.slow.scale);
       this.slow.t -= dt;
       if (this.slow.t <= 0) this.slow = null;
@@ -318,6 +403,58 @@ export default class Game {
     if (this.sandbox.on) this.ranked = false;
   }
 
+  // ---------------- menu (title and pause) ----------------
+  // keyboard: arrows / ZQSD move, Enter / Space activate, Escape / Backspace go back; mouse: hover selects, a click
+  // activates, a slider is dragged (saved on release), right click goes back. On the title's first page a click
+  // beside the items starts the game, as the title always did (CONTINUE or NEW GAME).
+  updateMenu(inp) {
+    const nav = this.menu, before = `${nav.top.id}:${nav.sel}`, acts = [];
+    const { x, y } = inp.mouse, moved = x !== this.lastMouse.x || y !== this.lastMouse.y;
+    this.lastMouse = { x, y };
+    const rects = this.menuRects, at = rects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    const key = (...codes) => codes.some((c) => inp.hit(c));
+    if (this.grab === null && inp.mouseHit(0) && at?.track && nav.page.items[at.i]?.slider) { nav.hover(at.i); this.grab = at.i; }
+    if (this.grab !== null) {
+      const r = rects.find((q) => q.i === this.grab), it = nav.page.items[this.grab];
+      if (!r?.track || !it?.slider) this.grab = null;
+      else if (inp.mouseDown(0)) this.setSetting(it.slider, Math.round(clamp((x - r.track.x) / r.track.w, 0, 1) * 100) / 100, false);
+      else { saveSettings(this.settings); this.audible(it.slider); this.grab = null; }
+    } else {
+      if (at && moved) nav.hover(at.i);
+      if (inp.mouseHit(0)) acts.push(at ? nav.click(at.i) : this.state === 'title' ? nav.primary() : null);
+      else if (inp.mouseHit(2)) acts.push(nav.back());
+      if (key('ArrowUp', 'KeyW')) acts.push(nav.up());
+      if (key('ArrowDown', 'KeyS')) acts.push(nav.down());
+      if (key('ArrowLeft', 'KeyA')) acts.push(nav.left());
+      if (key('ArrowRight', 'KeyD')) acts.push(nav.right());
+      if (key('Enter', 'Space', 'NumpadEnter')) acts.push(nav.activate());
+      if (key('Escape', 'Backspace')) acts.push(nav.back());
+    }
+    const done = acts.filter(Boolean), turned = `${nav.top.id}:${nav.sel}` !== before;
+    for (const a of done) { if (this.applyMenu(a)) break; }
+    // a tick for every move and action, after it: a volume set is heard at its new level (the music speaks for itself)
+    if (turned || done.some((a) => a.type !== 'set' || a.key !== 'music')) Audio.play('ui');
+  }
+
+  // a menu action (ui/Menu.js); true when it left the menu
+  applyMenu(a) {
+    switch (a.type) {
+      case 'set': this.setSetting(a.key, a.value); return false;
+      case 'reset': this.progress = resetProgress(); this.best = null; return false;
+      case 'newGame': this.startNewGame(); return true;
+      case 'continue': this.continueGame(); return true;
+      case 'start': this.startLevel(a.level); return true;
+      case 'replayTutorial': this.startLevel('tutorial'); return true;
+      case 'resume': this.setState('play'); return true;
+      case 'restart': this.newGame(); return true;
+      case 'quit': this.toTitle(); return true;
+      default: return false;
+    }
+  }
+
+  // a volume changed: heard at its new level (the music speaks for itself)
+  audible(key) { if (key === 'master' || key === 'sfx') Audio.play('ui'); }
+
   updateCamera(dt) {
     const w = this.world;
     if (!w) return;
@@ -354,6 +491,7 @@ export default class Game {
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) drawTitleScene(ctx, W, H, t, this.input.mouse);
+    else if (this.state === 'cinematic') this.safeDraw(ctx, () => this.drawCine(ctx, W, H, t, post));
     else this.drawScene(ctx, W, H, t, post);
     if (post) {
       const now = performance.now() / 1000, view = this.lensView(W, H, inWorld);
@@ -365,13 +503,27 @@ export default class Game {
       o.imageSmoothingEnabled = false;
     }
     if (inWorld) this.drawOver(o, W, H, t);
+    else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title'); });
     if (this.lensNote > t) {
       o.font = `${Math.round(14 * H / 720)}px monospace`;
       o.textAlign = 'left';
       o.fillStyle = '#3cff7a';
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
     }
-    if (this.state !== 'loading' && this.state !== 'outro') this.drawCursor(o, t);
+    if (!['loading', 'outro', 'cinematic', 'fall'].includes(this.state)) this.drawCursor(o, t);
+  }
+
+  // the opening (ui/Cinematic.js): the title's street, the room, then the level seen from above, on a scratch canvas
+  drawCine(ctx, W, H, t, post) {
+    if (!this.cineBuf || this.cineBuf.c.width !== W || this.cineBuf.c.height !== H) {
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      this.cineBuf = { c, g: c.getContext('2d') };
+    }
+    drawCinematic(ctx, W, H, this.stateT, {
+      title: (g, w, h) => drawTitleScene(g, w, h, t, null),
+      world: (g, w, h) => { g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; this.drawScene(g, w, h, t, post); },
+    }, this.cineBuf);
   }
 
   // the world (or the replay of the run behind the results), lit, before any lens
@@ -425,9 +577,19 @@ export default class Game {
       this.world.renderer.debugStats().forEach((l, i) => ctx.fillText(l, 12, H - 80 * H / 720 + i * 16 * H / 720));
     }
     this.safeDraw(ctx, () => {
-      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best);
+      if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.world.level, this.best, levelLabel(this.levelId));
+      if (this.state === 'cinematic') {
+        const c = cineCaption(this.stateT);
+        if (c) text(ctx, c.str, 40 * H / 720, H - 44 * H / 720, 15 * H / 720, PALETTE.white, { align: 'left', alpha: c.alpha });
+      }
+      if (this.state === 'fall') {
+        ctx.globalAlpha = clamp(this.stateT / FALL.fade, 0, 1);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = 1;
+      }
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
-      if (this.state === 'pause') drawPause(ctx, W, H, t, this.settings, this.sel);
+      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, 'pause');
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
     });

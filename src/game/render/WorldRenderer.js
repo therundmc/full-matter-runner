@@ -71,6 +71,7 @@ export default class WorldRenderer {
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
     const pl = w.player;
     if (pl && pl.alive && !pl.vaulting && pl.vaultHint) this.drawVaultHint(ctx, pl.vaultHint, t);
+    if (w.tutorial) this.drawHints(ctx, w.tutorial.hints(), t);
     if (w.showVision) this.drawAIDebug(ctx);
     this.drawTexts(ctx);
     if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
@@ -163,6 +164,33 @@ export default class WorldRenderer {
       ctx.fillText(tx.str, tx.x, tx.y);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // the tutorial's hints (systems/Tutorial.js): a key cap and a few words over what they are about
+  drawHints(ctx, hints, t) {
+    ctx.save();
+    ctx.font = '8px joystix';
+    ctx.textBaseline = 'middle';
+    const bob = Math.sin(t * 5) * 1.2;
+    for (const h of hints) {
+      const kw = h.key ? Math.ceil(ctx.measureText(h.key).width) + 6 : 0, tw = Math.ceil(ctx.measureText(h.text).width);
+      const gap = h.key ? 4 : 0, x0 = Math.round(h.x - (kw + gap + tw) / 2), y = Math.round(h.y + bob);
+      ctx.fillStyle = 'rgba(8, 4, 16, 0.72)';
+      ctx.fillRect(x0 - 3, y - 7, kw + gap + tw + 6, 14);
+      if (h.key) {
+        ctx.fillStyle = PALETTE.cyan;
+        ctx.fillRect(x0, y - 5, kw, 10);
+        ctx.fillStyle = PALETTE.ink;
+        ctx.textAlign = 'center';
+        ctx.fillText(h.key, x0 + kw / 2, y + 0.5);
+      }
+      ctx.textAlign = 'left';
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillText(h.text, x0 + kw + gap + 1, y + 1.5);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(h.text, x0 + kw + gap, y + 0.5);
+    }
+    ctx.restore();
   }
 
   // F2: incidents (x: orange = unreported, cyan = reported) and the squad search points (filled once checked)

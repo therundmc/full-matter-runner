@@ -76,6 +76,11 @@ export function buildLevel(world, level) {
     world.items.push(new WeaponItem(world, type, undefined, col * TILE, row * TILE, (deg * Math.PI) / 180).leanOn());
   }
 
+  // ---- weapons lying about with a given magazine: [type, col, row, deg, rounds] (rounds null: full)
+  for (const [type, col, row, deg = 0, mag] of level.drops || []) {
+    world.items.push(new WeaponItem(world, type, mag ?? undefined, col * TILE, row * TILE, (deg * Math.PI) / 180));
+  }
+
   // ---- props list: [type, col, row, deg, options?] with col/row in tile units (floats, tile centre = n + 0.5)
   // options: { lights: false } = starts with its lights off (a parked car)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {

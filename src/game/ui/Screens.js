@@ -32,7 +32,7 @@ export function drawLoading(ctx, W, H, p) {
 }
 
 // best: the level's best result so far ({ total, grade }), if any
-export function drawIntro(ctx, W, H, t, level, best) {
+export function drawIntro(ctx, W, H, t, level, best, label = 'LEVEL 1') {
   const s = H / 720;
   const a = clamp(Math.min(t * 3, (2.6 - t) * 2.5), 0, 1);
   ctx.globalAlpha = a;
@@ -44,7 +44,7 @@ export function drawIntro(ctx, W, H, t, level, best) {
   ctx.fillRect(0, H / 2 + band / 2 - 3 * s, W, 3 * s);
   ctx.globalAlpha = 1;
   const slide = (1 - clamp(t * 2.5, 0, 1)) * W * 0.3;
-  text(ctx, 'LEVEL 1', W / 2 - slide, H / 2 - 38 * s, 18 * s, PALETTE.yellow, { alpha: a });
+  text(ctx, label, W / 2 - slide, H / 2 - 38 * s, 18 * s, PALETTE.yellow, { alpha: a });
   glitchText(ctx, level.name, W / 2 + slide, H / 2 + 2 * s, 50 * s, t, { alpha: a });
   text(ctx, level.subtitle, W / 2, H / 2 + 42 * s, 13 * s, PALETTE.white, { alpha: a * 0.85 });
   if (level.objective) text(ctx, level.objective[0], W / 2, H / 2 + 68 * s, 16 * s, PALETTE.yellow, { alpha: a });
@@ -75,47 +75,6 @@ export function drawOutro(ctx, W, H, out) {
   }
   ctx.fillRect(0, 0, W, bar);
   ctx.fillRect(0, H - bar, W, bar);
-}
-
-// volume sliders of the pause screen: track rectangles in canvas pixels (shared by drawing and mouse input)
-export function pauseSliders(W, H) {
-  const s = H / 720, w = 260 * s, h = 8 * s;
-  return [['master', 'MASTER'], ['music', 'MUSIC'], ['sfx', 'EFFECTS']]
-    .map(([key, label], i) => ({ key, label, x: W / 2 - w / 2, y: H * 0.43 + i * 34 * s, w, h }));
-}
-
-// what the pause screen lists (keys are physical positions, so ZQSD on AZERTY); see entities/Player.js, Game.js
-const CONTROLS = [
-  [['ZQSD/WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['LEFT CLICK', 'ATTACK / SHOOT'],
-    ['RIGHT CLICK', 'THROW / PICK UP'], ['E', 'PICK UP / SWAP / TRUNK']],
-  [['R', 'RELOAD'], ['SPACE', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'TAKE DOWN / FINISH'],
-    ['BACKSPACE', 'RESTART'], ['M', 'MUSIC ON / OFF']],
-];
-
-export function drawPause(ctx, W, H, t, settings, selected) {
-  const s = H / 720;
-  ctx.fillStyle = 'rgba(8,2,16,0.7)';
-  ctx.fillRect(0, 0, W, H);
-  glitchText(ctx, 'PAUSED', W / 2, H * 0.27, 70 * s, t);
-  pauseSliders(W, H).forEach((r, i) => {
-    const v = settings[r.key], col = i === selected ? PALETTE.yellow : PALETTE.white, my = r.y + r.h / 2;
-    text(ctx, r.label, r.x - 24 * s, my, 16 * s, col, { align: 'right' });
-    ctx.fillStyle = PALETTE.ink;
-    ctx.fillRect(r.x, r.y, r.w, r.h);
-    ctx.fillStyle = col;
-    ctx.fillRect(r.x, r.y, r.w * v, r.h);
-    ctx.fillRect(r.x + r.w * v - 4 * s, my - 11 * s, 8 * s, 22 * s);
-    text(ctx, `${Math.round(v * 100)}%`, r.x + r.w + 24 * s, my, 16 * s, col, { align: 'left' });
-  });
-  ['ESC  RESUME', 'R  RESTART LEVEL', 'F1  SANDBOX', 'F2  SHOW ENEMY VISION', 'Q  QUIT TO TITLE']
-    .forEach((l, i) => text(ctx, l, W / 2, H * 0.6 + i * 22 * s, 14 * s, i === 0 ? PALETTE.yellow : PALETTE.white));
-  // the controls, two columns: key in the accent colour, then what it does (a blank key continues the line above)
-  const cw = 450 * s, top = H * 0.6 + 5 * 22 * s + 22 * s;
-  CONTROLS.forEach((col, c) => col.forEach(([key, what], i) => {
-    const x = W / 2 - cw + c * cw + 20 * s, y = top + i * 18 * s;
-    text(ctx, key, x, y, 12 * s, PALETTE.yellow, { align: 'left' });
-    text(ctx, what, x + 138 * s, y, 12 * s, PALETTE.white, { align: 'left', alpha: 0.85 });
-  }));
 }
 
 const LINE_EVERY = 0.38, COUNT = 0.3; // s between two lines of the breakdown, s a figure takes to count up
@@ -172,5 +131,5 @@ export function drawResults(ctx, W, H, t, r, replay) {
     else if (r.record) text(ctx, r.best ? `NEW RECORD   WAS ${thousands(r.best.total)}` : 'NEW RECORD', cx, by, 13 * s, PALETTE.yellow, { alpha: 0.65 + 0.35 * Math.sin(t * 7) });
     else text(ctx, `BEST ${thousands(r.best.total)}  ${r.best.grade}`, cx, by, 12 * s, PALETTE.cyan, { alpha: 0.8 });
   }
-  if (gt > 1 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'R  RETRY        CLICK  TITLE', cx, bottom - 26 * s, 13 * s, PALETTE.white);
+  if (gt > 1 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'R  RETRY        CLICK  MENU', cx, bottom - 26 * s, 13 * s, PALETTE.white);
 }

@@ -7,7 +7,7 @@
 // wind's work and the street's life (title/Life.js). Everything is a function of t (title/Timeline.js) but for the
 // eased camera.
 import { PALETTE } from '../Config.js';
-import { text, glitchText, neon } from './Text.js';
+import { text, glitchText } from './Text.js';
 import { LW, LH, M, MY, CW, CH, RX, RY, GY, ROAD, F, rowF, canvas, shade, put, cropTo, glowSprite } from './title/Draw.js';
 import { hash, clamp, smooth, windState, signState, bulbState, sweepState, lightningState, tubeState } from './title/Timeline.js';
 import { LAMP, TUBE, WIN, HYD, BOOTH, COLD, WARM, AMBER, BOOTHC, PINK, CYAN, VIOLET, BULB, AMB } from './title/Layout.js';
@@ -428,6 +428,5 @@ function drawTexts(ctx, W, H, t) {
     glitchText(ctx, 'FULL MATTER', W / 2, H * 0.1 + bob, 72 * s, t, { rot: Math.sin(t * 1.3) * 0.02, color: PALETTE.white });
     glitchText(ctx, 'RUNNER', W / 2, H * 0.205 + bob, 86 * s, t + 1, { rot: Math.sin(t * 1.3 + 1) * 0.02, color: PALETTE.yellow });
   }
-  if (Math.floor(t * 2.5) % 2 === 0) text(ctx, 'CLICK TO START', W / 2, H * 0.293, 22 * s, neon(t, 3));
   text(ctx, 'ONE HIT AND YOU ARE DEAD. SO ARE THEY.', W / 2, H * 0.95, 13 * s, PALETTE.pink);
 }

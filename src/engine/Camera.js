@@ -18,6 +18,7 @@ export default class Camera {
     this.time = 0;
     this.sway = true;
     this.bounds = null;        // { w, h } of the world in px: the view never leaves it
+    this.shakeScale = 1;       // the player's screen shake setting, 0..1: scales every shake and recoil kick
   }
 
   resize(w, h) {
@@ -37,14 +38,14 @@ export default class Camera {
     this.y = h < hh * 2 ? h / 2 : Math.min(Math.max(this.y, hh), h - hh);
   }
 
-  shake(amount) { this.trauma = Math.min(1.2, this.trauma + amount); }
+  shake(amount) { this.trauma = Math.min(1.2, this.trauma + amount * this.shakeScale); }
 
   // brief zoom kick on big impacts
   punch(amount) { this.punchZ = Math.max(this.punchZ, amount); }
   get z() { return this.zoom * (1 + this.punchZ); }
 
   // directional kick (recoil feel)
-  push(dx, dy) { this.kick.x += dx; this.kick.y += dy; }
+  push(dx, dy) { this.kick.x += dx * this.shakeScale; this.kick.y += dy * this.shakeScale; }
 
   update(dt, tx, ty) {
     this.time += dt;

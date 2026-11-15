@@ -38,6 +38,7 @@ import Power from '../systems/Power.js';
 import Critters from '../systems/Critters.js';
 import Sirens from '../systems/Sirens.js';
 import Ambience from '../systems/Ambience.js';
+import Tutorial from '../systems/Tutorial.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Clouds from '../systems/Clouds.js';
 import Gadgets from '../systems/Gadgets.js';
@@ -116,6 +117,9 @@ export default class World {
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
+    // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
+    const at = game?.tutorialAt;
+    this.tutorial = level.tutorial ? new Tutorial(this, level.tutorial, at?.name === level.name ? at.stage : 0) : null;
     watchOpenings(this); // windows and doors go with the wall that holds them
     this.chars = [this.player, ...this.enemies];
     this.totalEnemies = this.enemies.length;
@@ -443,6 +447,7 @@ export default class World {
     this.critters.update(dt);
     this.sirens.update(dt);
     this.ambience.update(dt);
+    this.tutorial?.update();
     this.poolBalls.update(dt);
     this.clouds.update(dt);
     this.steam.update(dt);

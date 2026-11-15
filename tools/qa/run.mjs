@@ -118,7 +118,7 @@ process.on('SIGINT', async () => {
 
 async function main() {
   server = await startServer({ port: opts.port, quiet: true });
-  const url = server.url + (opts.level === 'level1' ? '' : `?level=${encodeURIComponent(opts.level)}`);
+  const url = server.url + `?level=${encodeURIComponent(opts.level)}`; // always: a new game starts the campaign
   say(`server ${server.url}, report folder ${dir}`);
   browser = await launchBrowser({ width: W, height: H });
   const page = browser.page;

@@ -68,6 +68,8 @@ class Level:
         self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key; 'swig':
                               # the same, after he has drunk off a bottle and smashed it on the wall across
         self.leans = []       # weapons stood against a wall: [type, col, row, deg]
+        self.drops = []       # weapons lying about with a given magazine: [type, col, row, deg, rounds]
+        self.tutorial = None  # a level that teaches: { stages, fall } (src/game/systems/Tutorial.js)
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
@@ -114,6 +116,10 @@ class Level:
 
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, col, row, deg, opt))
+
+    # ---- a weapon lying at (col, row) with `rounds` in it (None: full)
+    def drop(self, kind, col, row, deg=0, rounds=None):
+        self.drops.append([kind, col, row, deg, rounds])
 
     # ---- a weapon stood against a wall at (col, row), its tip pointing deg (toward the wall)
     def lean(self, kind, col, row, deg=0):
@@ -283,6 +289,12 @@ class Level:
         if self.welcome:
             L.append('  // rooms open to the public: a stranger may hang about there, no guard tells him to clear off')
             L.append(f'  welcome: {json.dumps(self.welcome)},')
+        if self.drops:
+            L.append('  // weapons lying about [type, col, row, deg, rounds in it (null: full)]')
+            L.append(f'  drops: {json.dumps(self.drops)},')
+        if self.tutorial:
+            L.append('  // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)')
+            L.append(f'  tutorial: {json.dumps(self.tutorial)},')
         if self.leans:
             L.append('  // weapons stood against a wall [type, col, row, deg]')
             L.append(f'  lean: {json.dumps(self.leans)},')
