@@ -17,7 +17,7 @@ export const PROPS = {
   plant: { material: 'ceramic', r: 7.5, hp: 4, kg: 18, mu: 0.96, chips: '#3a8a3a', dirt: true, sound: 'wood' },
   tv: { material: 'plastic', w: 22, h: 15, hp: 4, kg: 30, mu: 0.8, chips: '#222', sparks: true, glass: true, sound: 'glass',
     light: { r: 100, color: '#7fc8ff', intensity: 1, flicker: 'tv', y: 7 } },
-  fridge: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true },
+  fridge: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true },
   // gas: a round through it lights a jet at the hole, then it goes off after `fuse` s (systems/Gas.js);
   // rocket: odds that a loose bottle takes off on its own jet
   oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true,
@@ -58,9 +58,9 @@ export const PROPS = {
     height: 0.06, pole: ['#4a3424', 6] },
   // the pole is at the sprite centre, the arm reaches 56 px along +x (rotate it over the road)
   streetlight: { material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true },
-  neon_sign_palm: { material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
-  neon_sign_bar: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
-  neon_sign_arrow: { material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_palm: { hum: 'neon', material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_bar: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_arrow: { hum: 'neon', material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
   jukebox: { static: true, material: 'plastic', w: 28, h: 20, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true,
     light: { r: 70, color: '#ff5a9a', intensity: 0.55, flicker: 'pulse', y: 6 } },
   hydrant: { material: 'metal', r: 4, hp: 1, static: true, chips: '#c02020', sound: 'metal', fountain: true },
@@ -87,16 +87,16 @@ export const PROPS = {
   // a closed shop's alarm (level `alarms`, systems/Alarms.js): shot off the wall, it shuts up
   alarm_box: { fixture: true, static: true, material: 'metal', w: 10, h: 5, hp: 3, chips: '#c4c8ce', sparks: true, sound: 'metal' },
   // the house's fuse box on an outside wall (level `power`, systems/Power.js): smashed, the lights go out inside
-  fuse_box: { fixture: true, static: true, material: 'metal', w: 18, h: 8, hp: 3, chips: '#8a909c', sparks: true, sound: 'metal',
+  fuse_box: { hum: 'mains', fixture: true, static: true, material: 'metal', w: 18, h: 8, hp: 3, chips: '#8a909c', sparks: true, sound: 'metal',
     light: { r: 64, color: '#ffe6a8', intensity: 0.6, y: 4 } }, // the pilot lamp over it: it has to be found
   // a battery lamp over a door: dark as long as the mains are on (`standby`), all that is left once they are cut
   emergency_light: { fixture: true, static: true, standby: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffb0a0', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff5a3c', intensity: 0.95, y: 3 } },
-  neon_sign_liquor: { material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
+  neon_sign_liquor: { hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
-  neon_sign_video: { material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+  neon_sign_video: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
-  neon_sign_wash: { material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
+  neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
@@ -108,9 +108,9 @@ export const PROPS = {
     light: { r: 160, color: '#ffd9a0', intensity: 0.9, y: 3 } },
   tube_light: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#cfe6ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 200, color: '#d4e8ff', intensity: 0.9, flicker: 'buzz', y: 3 } },
-  neon_tube_pink: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+  neon_tube_pink: { hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff2a6d', intensity: 0.95, flicker: 'buzz', y: 3 } },
-  neon_tube_cyan: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+  neon_tube_cyan: { hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#2af0ff', intensity: 0.95, flicker: 'buzz', y: 3 } },
   // turns (`spin`, rad/s) with the shadow of its blades on the floor
   ceiling_fan: { hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 5, hp: 3, chips: '#6e4e36', sparks: true, sound: 'metal', spin: 5.5 },
@@ -122,14 +122,14 @@ export const PROPS = {
   // ---- street furniture. handset = [x, y] px from the centre of the hook its receiver hangs on (render/PropLife.js);
   // bends = px its head gives way, all told, under blows; steam = 'vent': it breathes steam along its +y,
   // 'leak': a pipe that whistles steam out of every bullet hole (systems/Steam.js)
-  vending: { static: true, material: 'metal', w: 26, h: 20, hp: 9, chips: '#7a2630', sparks: true, sound: 'metal', blocksPath: true,
+  vending: { hum: 'fridge', static: true, material: 'metal', w: 26, h: 20, hp: 9, chips: '#7a2630', sparks: true, sound: 'metal', blocksPath: true,
     light: { r: 64, color: '#eaf2ff', intensity: 0.6, y: 12 } },
   phone_booth: { static: true, material: 'glass', w: 24, h: 24, hp: 6, chips: '#8fd0e6', glass: true, sound: 'glass', blocksPath: true, handset: [5, -6],
     light: { r: 44, color: '#cfeeff', intensity: 0.45 } },
   parking_meter: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#8a909c', sound: 'metal', bends: 6 },
   news_box: { static: true, material: 'metal', w: 14, h: 11, hp: 4, chips: '#2a5aa8', sound: 'metal' },
   pipe_steam: { static: true, material: 'metal', w: 96, h: 4, hp: 40, chips: '#8a5a3a', sound: 'metal', steam: 'leak' },
-  pipe_water: { static: true, material: 'metal', w: 96, h: 4, hp: 40, chips: '#4a6a7a', sound: 'metal' },
+  pipe_water: { drip: true, static: true, material: 'metal', w: 96, h: 4, hp: 40, chips: '#4a6a7a', sound: 'metal' },
   wall_vent: { static: true, material: 'metal', w: 14, h: 5, hp: 5, chips: '#6a707c', sound: 'metal', steam: 'vent' },
   ceiling_lamp: { fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 7, hp: 2, chips: '#2f5a48', sparks: true, glass: true, sound: 'metal',
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },

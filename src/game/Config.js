@@ -231,6 +231,19 @@ export const SIRENS = {
   cars: [{ pan: -0.5, pitch: 1, vol: 1, late: 0 }, { pan: 0.6, pitch: 0.93, vol: 0.7, late: 7 }], // each its side and voice
 };
 
+// The night heard around the player (systems/Ambience.js; the sounds, all synthesized, in audio/Audio.js). Their
+// levels are the `gain` of air / gust / hum / drip / walla in the audio META table.
+export const AMBIENCE = {
+  air: 4.5,                // s between two swells of the city's far-off wash (each lasts 9 s: they overlap)
+  indoors: ['wood', 'checker', 'tile_blue', 'neon_floor', 'carpet_red', 'carpet_purple'], // floors under a roof
+  ease: 1.5,               // 1/s the bed follows him in and out of doors
+  gust: 1,                 // a gust of wind (systems/Papers.js), out of doors ...
+  muffled: 0.7,            // ... and how much of it is lost indoors
+  hum: { every: 2, reach: 230, max: 3 },            // props with `hum`: within reach px, the nearest max of them
+  drip: { every: [0.8, 3], reach: 300, spread: 14 }, // props with `drip`: s between two drops, px around the prop
+  walla: { every: 2.4, min: 2, full: 7 },            // calm customers: from `min` of them, full voice at `full`
+};
+
 // a barrel smokes for a moment after a burst (Character.fume)
 export const BARREL = {
   max: 8,                  // rounds' worth of heat it holds

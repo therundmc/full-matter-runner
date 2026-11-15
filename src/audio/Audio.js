@@ -39,6 +39,12 @@ const CONFIRM_SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
 const CONFIRM_ROOT = 196; // Hz
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
+// what hums (Ambience): [multiple of the mains' 60 Hz, wave, level, filter, its frequency] per partial
+const HUMS = {
+  neon: [[2, 'sawtooth', 0.6, 'lowpass', 420], [2, 'square', 0.035, 'highpass', 2500]],
+  fridge: [[1, 'sine', 0.45], [2, 'sine', 0.3], [3, 'sine', 0.12], [1, 'sawtooth', 0.12, 'lowpass', 300]],
+  mains: [[2, 'sine', 0.45], [4, 'sine', 0.2], [1, 'sawtooth', 0.15, 'bandpass', 360]],
+};
 const STEP_LEVEL = 0.2; // footsteps, far under everything else (the user: quiet, not too loud; 0: none at all)
 const VARIATIONS = 5;   // baked renders of each synthesized foley form
 const PREBAKE = [3, 0.03]; // s after the unlock the background baking starts; s between two renders without idle callbacks
@@ -133,6 +139,13 @@ export const META = {
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
+  // the night around (systems/Ambience.js): long swells that overlap, hums, drips, a room's murmur; all far under
+  // the rest and the first voices dropped in a fight
+  air: { pri: 0, dur: 9, gap: 2, max: 3, gain: 0.1 },
+  gust: { pri: 0, dur: 3.6, gap: 2, max: 2, gain: 0.22 },
+  hum: { pri: 0, dur: 2.6, gap: 0, max: 3, reach: 230, gain: 0.1 },
+  drip: { pri: 0, dur: 0.3, gap: 0.2, max: 2, reach: 300, gain: 0.18 },
+  walla: { pri: 0, dur: 3.2, gap: 1, max: 2, reach: 560, gain: 0.4, hall: 0.3 },
   horn: { pri: 2, dur: 0.8, gap: 1.2, max: 2, gain: 0.5, reach: 1400, hall: 0.25 },
 };
 for (const k in META) META[k] = { ...DEFAULT_META, ...META[k] };
@@ -753,8 +766,8 @@ class AudioSystem {
   // a buzzing source (two saws a few cents apart, shaken by `rough`: a growl) through three vowel formants that
   // glide `from` -> `to`; its pitch follows `bend` ([time 0..1, ratio] points); `syl` cuts it in syllables
   // ([start, end] 0..1); `breath` is the air let out with it
-  _voice(o, { f = 120, bend = [[0, 1], [1, 0.8]], from = VOWEL.a, to = from, dur = 0.3, vol = 0.5, rough = 0, breath = 0.08, syl = [[0, 1]] }) {
-    const ctx = this.ctx, t = ctx.currentTime, f0 = f * this.pv, g = ctx.createGain(), nodes = [g];
+  _voice(o, { f = 120, bend = [[0, 1], [1, 0.8]], from = VOWEL.a, to = from, dur = 0.3, vol = 0.5, rough = 0, breath = 0.08, syl = [[0, 1]], delay = 0 }) {
+    const ctx = this.ctx, t = ctx.currentTime + delay, f0 = f * this.pv, g = ctx.createGain(), nodes = [g];
     const srcs = [-8, 8].map((cents) => {
       const src = ctx.createOscillator();
       src.type = 'sawtooth';
@@ -796,7 +809,7 @@ class AudioSystem {
     o._n++;
     srcs[0].onended = () => this._release(o, ...srcs, ...nodes);
     for (const src of srcs) { src.start(t); src.stop(t + dur + 0.05); }
-    if (breath) this._noiseBurst(o, { f0: from[1], f1: to[1], q: 1.2, dur, vol: breath, attack: 0.02 });
+    if (breath) this._noiseBurst(o, { f0: from[1], f1: to[1], q: 1.2, dur, vol: breath, attack: 0.02, delay });
   }
   // a guard grumbling at a stranger to clear off, under his breath: "hm?" at first, "hey, hey" when he warns
   _mutter(o, opts, v) {
@@ -1092,6 +1105,155 @@ class AudioSystem {
     ws.connect(lp); lp.connect(g); g.connect(o);
     o._n++;
     srcs[0].onended = () => this._release(o, ...srcs, ws, lp, g);
+  }
+
+  // ---- the night around (systems/Ambience.js) ----
+  // one long swell of the city's far-off wash: brown noise kept low (lower still from indoors, opts.inside 0..1) under
+  // a breath of tyre hiss; each swell sits a little to one side and overlaps the next, so the bed never stands still
+  _air(o, { inside = 0, dur = 9 }) {
+    const ctx = this.ctx, t = ctx.currentTime, end = t + dur;
+    const env = ctx.createGain(), pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(1 - 0.45 * inside, t + dur * 0.45);
+    env.gain.linearRampToValueAtTime(0.0001, end);
+    if (pan) { pan.pan.value = rand(-0.5, 0.5); env.connect(pan); pan.connect(o); } else env.connect(o);
+    const low = ctx.createBufferSource(), lp = ctx.createBiquadFilter();
+    low.buffer = this.brown; low.loop = true;
+    lp.type = 'lowpass'; lp.Q.value = 0.4;
+    lp.frequency.value = (380 - 240 * inside) * rand(0.85, 1.15);
+    low.connect(lp); lp.connect(env);
+    const hiss = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), hg = ctx.createGain();
+    hiss.buffer = this.noise; hiss.loop = true;
+    bp.type = 'bandpass'; bp.Q.value = 0.5;
+    bp.frequency.value = rand(600, 1100);
+    hg.gain.value = 0.05 * (1 - inside);
+    hiss.connect(bp); bp.connect(hg); hg.connect(env);
+    this._pair(o, [low, lp], [hiss, bp, hg], [env, pan], t, end);
+  }
+
+  // two looped sources of one sound, their own nodes after them, started together and let go together with what they share
+  _pair(o, a, b, shared, t, end) {
+    o._n += 2;
+    let left = 2;
+    const fin = () => { if (--left === 0) for (const n of shared) n?.disconnect(); };
+    for (const nodes of [a, b]) {
+      nodes[0].onended = () => { fin(); this._release(o, ...nodes); };
+      nodes[0].start(t, Math.random() * 1.5);
+      nodes[0].stop(end + 0.05);
+    }
+  }
+
+  // a gust of wind down the street: air through a band that rises and falls with it over a low rumble, crossing from
+  // the side it comes from (opts.pan: -1 from the right to the left .. 1)
+  _gust(o, { pan = 0, dur = 3.6 }) {
+    const ctx = this.ctx, t = ctx.currentTime, end = t + dur, mid = t + dur * rand(0.35, 0.5);
+    const env = ctx.createGain(), sp = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(1, mid);
+    env.gain.exponentialRampToValueAtTime(0.0001, end);
+    if (sp) {
+      sp.pan.setValueAtTime(-0.7 * pan, t);
+      sp.pan.linearRampToValueAtTime(0.7 * pan, end);
+      env.connect(sp); sp.connect(o);
+    } else env.connect(o);
+    const air = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ag = ctx.createGain();
+    air.buffer = this.noise; air.loop = true;
+    bp.type = 'bandpass'; bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(260, t);
+    bp.frequency.linearRampToValueAtTime(rand(520, 760), mid);
+    bp.frequency.linearRampToValueAtTime(300, end);
+    ag.gain.value = 0.5;
+    air.connect(bp); bp.connect(ag); ag.connect(env);
+    const low = ctx.createBufferSource(), lp = ctx.createBiquadFilter();
+    low.buffer = this.brown; low.loop = true;
+    lp.type = 'lowpass'; lp.frequency.value = 220;
+    low.connect(lp); lp.connect(env);
+    this._pair(o, [air, bp, ag], [low, lp], [env, sp], t, end);
+  }
+
+  // something electric humming close by, a few seconds of it (the system plays the next before this one ends):
+  // partials of the mains ([multiple of 60 Hz, wave, level, filter, its frequency]); opts.kind: neon | fridge | mains.
+  // Every hum starts on the mains' cycle, so two in a row add up instead of beating.
+  _hum(o, { kind = 'neon', dur = 2.6, fade = 0.6 }) {
+    const ctx = this.ctx, cycle = 1 / 60, t = Math.ceil((ctx.currentTime + 0.01) / cycle) * cycle, end = t + dur;
+    const env = ctx.createGain(), nodes = [env];
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(1, t + fade);
+    env.gain.setValueAtTime(1, end - fade);
+    env.gain.linearRampToValueAtTime(0.0001, end);
+    env.connect(o);
+    const srcs = (HUMS[kind] || HUMS.neon).map(([mult, type, level, filter, f]) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = 60 * mult;
+      g.gain.value = level;
+      nodes.push(g);
+      if (filter) {
+        const bq = ctx.createBiquadFilter();
+        bq.type = filter; bq.frequency.value = f; bq.Q.value = 1;
+        osc.connect(bq); bq.connect(g);
+        nodes.push(bq);
+      } else osc.connect(g);
+      g.connect(env);
+      osc.start(t); osc.stop(end + 0.02);
+      return osc;
+    });
+    o._n++;
+    srcs[0].onended = () => this._release(o, ...srcs, ...nodes);
+  }
+
+  // a drop of water on a wet floor: a short note that climbs as the drop closes over, then a smaller one behind it
+  _drip(o) {
+    const ctx = this.ctx, t = ctx.currentTime, f = rand(850, 1500), nodes = [];
+    const drop = (at, f0, vol) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.frequency.setValueAtTime(f0 * this.pv, at);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 1.7 * this.pv, at + 0.03);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(vol, at + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
+      osc.connect(g); g.connect(o);
+      osc.start(at); osc.stop(at + 0.09);
+      nodes.push(osc, g);
+      return osc;
+    };
+    drop(t, f, 0.9);
+    const last = drop(t + rand(0.07, 0.11), f * rand(1.15, 1.35), 0.3);
+    o._n++;
+    last.onended = () => this._release(o, ...nodes);
+  }
+
+  // a room of people talking over one another, no word to be made out: air shaped like speech, cut in syllables, and
+  // a few voices mumbling in it (opts.n: how many people)
+  _walla(o, { n = 4, dur = 3.2 }) {
+    const ctx = this.ctx, t = ctx.currentTime, end = t + dur;
+    const env = ctx.createGain(), steps = Math.round(dur * 5); // five syllables a second
+    env.gain.setValueAtTime(0.0001, t);
+    for (let i = 1; i < steps; i++) env.gain.linearRampToValueAtTime(rand(0.15, 1) * Math.min(1, i / 3, (steps - i) / 3), t + (i / steps) * dur);
+    env.gain.linearRampToValueAtTime(0.0001, end);
+    env.connect(o);
+    const src = ctx.createBufferSource(), nodes = [env];
+    src.buffer = this.noise; src.loop = true;
+    for (const [f, q, level] of [[430, 1.1, 1], [1500, 1.4, 0.22]]) {
+      const bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = f * rand(0.9, 1.1); bp.Q.value = q;
+      g.gain.value = level * 0.5;
+      src.connect(bp); bp.connect(g); g.connect(env);
+      nodes.push(bp, g);
+    }
+    o._n++;
+    src.onended = () => this._release(o, src, ...nodes);
+    src.start(t, Math.random() * 1.5);
+    src.stop(end + 0.05);
+    const vowels = Object.values(VOWEL), pv = this.pv;
+    for (let i = 0; i < Math.min(4, n - 1); i++) {
+      const len = rand(0.45, 0.9), cut = rand(0.35, 0.6);
+      this.pv = 1;
+      this._voice(o, { f: rand(92, 185), bend: [[0, 1], [0.5, rand(0.9, 1.12)], [1, rand(0.78, 0.95)]], from: vowels[i % vowels.length],
+        to: vowels[Math.floor(rand(0, vowels.length - 0.01))], dur: len, vol: 0.16, breath: 0, syl: [[0, cut - 0.08], [cut, 1]],
+        delay: rand(0, dur - len - 0.1) });
+    }
+    this.pv = pv;
   }
 
   // ---- ambient traffic ----

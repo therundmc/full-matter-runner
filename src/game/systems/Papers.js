@@ -30,6 +30,7 @@ export default class Papers {
       // along the street, one way or the other
       const a = (chance(0.5) ? 0 : Math.PI) + rand(-0.5, 0.5);
       this.gust = { dx: Math.cos(a), dy: Math.sin(a), f: rand(...c.force), t: c.blow };
+      w.events.emit('gust', this.gust); // heard (systems/Ambience.js)
       this.next = rand(...c.gust);
     }
     const cars = [];
