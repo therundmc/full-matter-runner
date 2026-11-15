@@ -52,6 +52,7 @@ src/
       Power.js            the house's fuse box (level.power): smashed, the lights of its zone stutter and die, the
                           battery lamps (`standby` props) come on, guards come to look (DOM-free, unit-tested)
       Sirens.js           far-off police sirens once a firefight drags on (ambience only; DOM-free, unit-tested)
+      Ambience.js         the night heard: city wash, gusts, hums, drips, a room's murmur (one-shots repeated; DOM-free)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Clouds.js           the powder out of a pierced extinguisher: hides from the guards (World.sightLine)

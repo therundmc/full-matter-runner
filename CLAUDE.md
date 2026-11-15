@@ -39,10 +39,20 @@
   in world px; drawSprite, the decal bake and the weapon drawing honour `img.k`; a raw drawImage must scale by it).
   Done: the standing characters (`_torso`, 40 x 40: seams, creases, collar, ears, nose, strands) and the twelve
   weapons (`fine()`: the 1x drawing doubled, bevelled, then sights, serrations, checkering, grain, tape, rust, old
-  blood). Not done: bodies on the floor (ragdoll parts make a man 1.2 m long instead of 1.75), furniture, cars, floors.
+  blood; pistol, shotgun, bat, knife and tire iron drawn natively as real silhouettes, `drawn()`). Not done:
+  furniture, cars, floors.
+- Size of people (his verdicts, in order: bodies at real length next to small standing sprites were "completely
+  different proportions"; then "seen from above they must be bigger too"; then the bodies "a bit too wide"):
+  `BODY_SCALE` = 1.3 (Config). A standing pose is drawn as a whole 1.3 x about the feet (CharacterAnim `bodyFrame`;
+  pose numbers stay in unscaled px, so anything drawn or placed from a pose goes through it: muzzle, trails, what a
+  guard holds), weapons follow in the hand and on the floor, the body's circle is 10 px. Bodies on the floor are
+  painted at that build, about 1.5 m long, shoulders 17 px, PLAINLY (two tones a part: any more detail "clashes
+  with the rest"). A wound shows on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js: bullet
+  holes, a cut, the blood of a blow). A man knocked down falls on his back, head AWAY from the blow (`downAngle`).
 - Camera: `VIEW` = 330 world px high (engine/Camera.js); he said this zoom is right. The scene is drawn at a whole
   zoom on a canvas a little larger than the window and the lens brings it down (Game.resize).
-- Still asked and not done: tighten the oversized rooms (toilets, the boss's office, the storeroom), more furniture.
+- Rooms: not moved. With people 1.3 x bigger the back rooms are about right in body widths; move walls only if he
+  still finds them too big (asked before the scale change). No television in front of the boss's door.
 
 ## Delivery by blocks (validate each with the user before moving on)
 1. Engine perf & stability — done. The "3 explosions" bug was the lab (no exit) clearing -> exit HUD crash; fixed and
@@ -65,6 +75,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    the metal "dink" as a bottle),
    the doors, the guards' voices under their recording, the car horn (`_horn`: a driver held up by somebody honks). No bolt sound between sniper shots. No meat / wet / squish
    recording for flesh, ever: blows are dry punches and thuds. Guards shout, the dying cry out. Music is liked as is.
+   Footsteps: one heard every `STRIDE` px (three or four a second at a run; one per drawn stride was "sixteenth
+   notes"), quiet (`STEP_LEVEL`). The jukebox's own band is OFF ("horrible"). The night has a quiet synthesized bed
+   (systems/Ambience.js, level `gain` of air / gust / hum / drip / walla in the audio META): the city's far wash, gusts
+   with the papers, the hum of props with `hum`, drops off props with `drip`, the customers' murmur while at ease.
    Doors are synthesized whole (struck-panel partials, `_door` / `_doorSlam`; user hated every door recording), no
    hinge creak. Guards' voices = their recording pushed back + a synthesized voice under it (`_voice`); telling a
    stranger off they only mutter. A panic is a crowd: every customer cries out (bank set 'panic', long yells), up
