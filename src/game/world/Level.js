@@ -97,11 +97,13 @@ export function buildLevel(world, level) {
   }
 
   // ---- props list: [type, col, row, deg, options?] with col/row in tile units (floats, tile centre = n + 0.5)
-  // options: { lights: false } = starts with its lights off (a parked car)
+  // options: { lights: false } = starts with its lights off (a parked car); { flicker: kind } = its light is unsteady
+  // (render/Flicker.js: 'broken', 'stutter', 'dying'...)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
     if (opt?.lights === false) p.lightsOut = true;
+    if (opt?.flicker) p.flicker = opt.flicker;
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);

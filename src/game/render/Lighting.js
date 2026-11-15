@@ -263,7 +263,7 @@ export default class Lighting {
     const glow = !!spriteOpt(`props/${p.type}_glow`);
     list = [];
     for (const d of def ? (Array.isArray(def) ? def : [def]) : []) {
-      const fl = this.faults.get(p) ?? d.flicker ?? false;
+      const fl = this.faults.get(p) ?? p.flicker ?? d.flicker ?? false;
       const l = this.makeLight(0, 0, d.r, d.color, d.intensity ?? 1, fl, hash(p.x * 0.37 + p.y * 0.11) * 10 + list.length);
       l.lx = d.x || 0; l.ly = d.y || 0; l.ldir = d.dir || 0; l.cone = d.cone || 0;
       l.spots = d.spots || 0;

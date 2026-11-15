@@ -109,7 +109,7 @@ lv.put(30, 32, 'D')
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
-lv.actor('@', 20, 34, face=0)
+lv.actor('@', 20, 33, face=0)
 lv.intro = 'swig'                                       # on the ground, his back to the wall, the last of a bottle of
                                                         # rum in his hand: he drinks it off, smashes it, gets up
 
@@ -189,7 +189,7 @@ lv.cat(23.4, 34.5)                                      # on the dumpster, watch
 lv.pigeons(16.5, 30.6, 3)
 lv.prop('string_lights', 22.0, 33.9)
 lv.prop('string_lights', 22.0, 36.1)
-lv.prop('wall_lamp', 20.09, 34.6, 270)
+lv.prop('wall_lamp', 20.09, 33.6, 270, flicker='broken')   # over him, on its last legs
 
 lv.area('south sidewalk')
 lv.prop('streetlight', 15.5, 30.3, 270)
