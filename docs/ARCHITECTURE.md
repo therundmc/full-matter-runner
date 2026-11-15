@@ -206,16 +206,23 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   synthesized part where no recording fits (blasts, fire, tyres, alarm, traffic). Reload / handling sounds take
   `{ weapon }` to pick that gun's parts (`ARMS`), voices take `{ pitch }` (one per character, `Character.voice`).
   Space: every positional voice is panned and loses level and highs with distance while more of it is sent to a
-  long hall reverb (also behind every gunshot and the kill chime); `World.sound` flags what the player hears
+  long hall reverb (also behind every gunshot and the kill's boom); `World.sound` flags what the player hears
   through a wall or a closed door (`occ`): quieter and dull. The room's own reverb follows the place he is in
-  (`ROOMS`: an open slap outdoors, a warm bar, small rooms, tiled toilets). The ambience is not made of voices but of
-  beds (`setAmbience`, fed by systems/Ambience.js through `World.atmosphere` ten times a second): long seamless loops
-  rendered once by audio/Beds.js (rain, the city, a room's talk, a radio, hums, a fan, rain on a car roof, an
-  engine), each voice with its gain / lowpass / pan / playback rate gliding; a voice not refreshed fades out by itself
-  (pause, menu) and its loop is let go.
+  (`ROOMS`: per room its impulse, pre-delay, RT60, damping and size, and what the effects, the shots and the
+  ambience send into it; out of doors a short dark wash and a slap off the facades; a warm bar, small rooms, tiled
+  toilets). The ambience is not made of voices but of beds (`setAmbience`, fed by systems/Ambience.js through
+  `World.atmosphere` ten times a second): long seamless loops rendered once by audio/Beds.js (the city and its far
+  traffic, a room's talk, a radio, a radio behind a window, the hush of a building, hums, a fan, an engine), each
+  voice with its gain / lowpass / pan / playback rate gliding; a voice not refreshed fades out by itself (pause,
+  menu) and its loop is let go. The far city's long one-shots (the elevated train, a dog, a car alarm) are rendered
+  the same way (`once`) and played by `_cue`; a far police car (`_farSiren`) is synthesized live.
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
-  (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
-  (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
+  (never hand-edit bank.js). Mix: `LEVELS` holds one reference level per bus (music, effects, guns, recorded shots,
+  voices, ambience beds, ambience one-shots), `META[name].gain` each sound in its bus. Effects (and voices, through
+  their own presence EQ) and shots share a glue compressor; the music has its own, so gunfire never pumps it (only
+  the held duck moves it); the ambience goes round both, so gunfire never pumps the night. Then a soft clip and a
+  limiter that only catches peaks (slow release). A kill confirm (`_confirm`) is a deep boom (`CONFIRM_BOOM`) under
+  a muted note climbing with the chain; a new one chokes the last (META `choke`).
 - Music (audio/Music.js, its data in audio/score.js): one procedural song in F minor at 126 BPM, planned bar by bar
   from data (progressions, 16-step patterns, lead phrases, sections, forms) and scheduled 0.3 s ahead on long-lived
   voices (bass + sub + growl, pad, arp, the calm's pulse, a 4-note stab, lead and its octave double) and one-shots
@@ -232,7 +239,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   (`STAGES`): each kill adds a layer (section `from` and stage-indexed lists: arp and rolling bass; stabs, rim and
   metal; the lead's hook; 16th bass, driving kick, crashes and 32nd rolls; the lead doubled an octave up, tribal
   toms, every filter open) and a little volume (`STAGE_GAIN`), with a stinger on the bar line when the chain reaches
-  `STINGS`; the layers go a bar apart once the chain breaks. A riser, a reversed cymbal and a snare roll announce
+  `STINGS`; the layers go a bar apart once the chain breaks. The mix gets dirtier as the fight does: a section's
+  `grit` (by stage in a fight) plus the heat drive the whole music mix into a tanh blended with the clean mix
+  (`GRIT`, `gritDrive` in score.js: the drive, the wet share, the level matched to the clean one, the fizz cut, the
+  lows driven less), clean out of a fight. A riser, a reversed cymbal and a snare roll announce
   the fight at once, the combat form takes over on the next bar line, plays at least `MIN_FIGHT_BARS`, and hands
   back through a closing bar (fill) to the song's break. Sections end on fills and reversed cymbals into crashes.
 - Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
@@ -500,13 +510,17 @@ ambient: {
 
 ## Soundscape (systems/Ambience.js, data/soundscape.js)
 
-Optional level field: `soundscape: { rain: 0..1, zones: [[kind, col0, row0, col1, row1], ...] }` (written by the level
-kit's `lv.sound(kind, ...)` / `lv.rain`). Every floor tile gets a kind of place, the first zone that holds it, else
+Optional level fields: `soundscape: { rain, zones: [[kind, col0, row0, col1, row1], ...] }` and `soundSpots:
+[[bed, col, row], ...]` (written by the level kit's `lv.sound(kind, ...)` / `lv.sound_spot(bed, col, row)`). No rain
+is heard (`rain` is not read: a dry night). Every floor tile gets a kind of place, the first zone that holds it, else
 `street` (outdoors), `roof` (`^`) or `room` (indoor floors, `AMBIENCE.indoors`); doors and windows keep the last one.
 A kind (`ZONES`) has a reverb class, beds (`{ bed: level }`, a crowd of calm customers or the mains may drive them)
-and events (one-shots on random clocks, from a calm customer, a guard at his job, a prop, a spot of the zone, or far
-off). Where the player stands its beds play openly; the other kinds within `carry` tiles (a distance field through
+and events (one-shots on random clocks, from a calm customer, a guard at his job, a prop or a spot of the zone).
+Where the player stands its beds play openly; the other kinds within `carry` tiles (a distance field through
 walls) bleed in at `AMBIENCE.through` and less, low-passed, panned toward them; levels ease at `AMBIENCE.ease`.
+A spot (`SPOTS`, the level's `soundSpots`) is a bed heard from its tile (a radio behind a window). The far city
+(`CITY`) plays everywhere on its own clocks, each sound from a random side and distance (the elevated train every one
+or two minutes, a police car crossing, horns, a car alarm, a dog), lower and dull from under a roof (`AMBIENCE.city`).
 Prop beds (`PROP_BEDS`) follow the nearest working prop of their kind; the traffic (`CARS`) gives each of the nearest
 moving cars a voice of the `engine` bed whose rate follows its speed and the Doppler shift. The bar falls silent when
 its customers panic, the radio and the hums stop with the power.

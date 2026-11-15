@@ -231,20 +231,22 @@ LEADS.fight = LEADS.drop.map((bar) => bar.flatMap(restrike));
 //   fills (a fill on the last bar, a small one every 4th at fillRate), crash / impact / down (downlifter) on bar 0;
 //   riser: bars of noise riser before the next section; breath: the last quarter of the last bar drops out;
 //   bite: brighter bass and arp; sweep: the pad's filter opens over the section; hot: only while the fight is hot;
-//   breathe: the pulse and the arp swell and sink over every two bars, the arp muted.
+//   breathe: the pulse and the arp swell and sink over every two bars, the arp muted;
+//   grit: how hard the whole mix is driven into its saturation (0..1, see GRIT), the heat of the fight adding to it.
+
 const DROP = {
   prog: 'drop', energy: 1, level: 0.86, pad: 0.75, kick: 'drive', snare: 'back', clap: true, hats: ['eights', 'sixteen', 'drive'],
   bass: ['gallop', 'drive'], arp: ['up', 'cascade'], lead: 'drop', leadMin: 0.85, fills: true, crash: true, impact: true, duck: 0.25,
-  stab: 'offbeat', growl: 0.4, perc: [['shaker', 'shake16', 0]],
+  stab: 'offbeat', growl: 0.4, perc: [['shaker', 'shake16', 0]], grit: 0.12,
 };
 // the fight: house, four on the floor, the open hat off the beat, a driven bass that pumps between the kicks, the
 // clap: it kicks from its first bar. Each kill of a chain adds: 1 the arp and a rolling bass; 2 the stabs, rim and
 // metal; 3 the lead's hook; 4 the 16th bass, the driving kick and hats, crashes and rolls every 4 bars; 5 the lead
-// doubled an octave up, tribal toms, every filter open
+// doubled an octave up, tribal toms, every filter open. And the mix gets dirtier with each (grit)
 const FIGHT = {
   ...DROP, level: 0.85, pad: 0.6, leadMin: 0, fillRate: 1, duck: 0.3, stab: 'tresillo',
   kick: ['four', 'four', 'four', 'four', 'drive', 'drive'], hats: ['house16', 'house16', 'house16', 'house16', 'drive', 'drive'],
-  bass: ['pump', 'roll', 'roll', 'roll', 'rush', 'rush'], growl: [0.55, 0.65, 0.75, 0.85, 1, 1],
+  bass: ['pump', 'roll', 'roll', 'roll', 'rush', 'rush'], growl: [0.55, 0.65, 0.75, 0.85, 1, 1], grit: [0.18, 0.28, 0.4, 0.52, 0.64, 0.75],
   bite: [1.3, 1.4, 1.5, 1.6, 1.8, 2.1],
   perc: [['shaker', 'shake16', 0], ['rim', 'rim', 2], ['clank', 'clank', 2], ['tom', 'tribal', 5]],
   from: { arp: 1, stab: 2, lead: 3, hook: 5 },
@@ -305,6 +307,27 @@ export const FORMS = {
   combat: ['fightA', 'fightB', 'bridge', 'chase'],
 };
 for (const [name, s] of Object.entries(SECTIONS)) if (!PROGRESSIONS[s.prog]) throw new Error('Music: no progression for ' + name);
+
+// The saturation of the whole music mix (Music.js Session.setGrit), set per bar from the section's `grit` plus the
+// heat of the fight (`heat`, at the hottest), never over `max`; it glides to its new value over `glide` s.
+//   pre: the drive into the shaper at 0 and at 1 (a tanh: grit, never a hard clip); wet: share of the driven signal
+//   at 1 (the dry mix keeps the rest: the kick and the transients stay whole); tone: Hz the driven signal is cut at,
+//   at 0 and at 1 (the fizz taken off); shelf: [Hz, dB] the lows are lowered by before the shaper and given back
+//   after it (the bass and the kick are driven less: no mud); ref: the amplitude the level is matched at (a typical
+//   peak of the mix there)
+export const GRIT = { heat: 0.2, max: 0.9, glide: 0.5, pre: [1, 9], wet: 0.6, tone: [7000, 3800], shelf: [150, 6], ref: 0.35 };
+export const GRIT_RANGE = 8; // the shaper's curve spans +-GRIT_RANGE: the drive comes from the gain before it
+export const gritCurve = (x) => Math.tanh(x); // the shaper's transfer (input already multiplied by the drive)
+
+// the settings of the saturation for grit g (0..1): { pre (drive), wet, dry, makeup (of the wet, so that its level
+// matches the dry at GRIT.ref), tone (Hz) }
+export function gritDrive(g, G = GRIT) {
+  g = Math.max(0, Math.min(G.max, g || 0));
+  const pre = G.pre[0] + (G.pre[1] - G.pre[0]) * g ** 1.3, wet = G.wet * Math.min(1, g / 0.5) ** 0.7;
+  const rms = (f) => { let s = 0; for (let i = 0; i < 64; i++) { const v = f(G.ref * Math.sin((2 * Math.PI * (i + 0.5)) / 64)); s += v * v; } return Math.sqrt(s / 64); };
+  const makeup = rms((x) => x) / rms((x) => gritCurve(pre * x));
+  return { pre, wet, dry: 1 - wet, makeup, tone: G.tone[0] + (G.tone[1] - G.tone[0]) * g };
+}
 
 // the jukebox's band (an old slow rock): bass (R root, F fifth, O octave), two tune lines taken in turn (digits:
 // chord tones upward), drums

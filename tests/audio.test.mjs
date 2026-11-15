@@ -5,7 +5,7 @@ import { load } from './setup.mjs';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const { default: Audio, META } = await load('audio/Audio.js');
+const { default: Audio, META, LEVELS } = await load('audio/Audio.js');
 const { RECIPES, formOf, FLOOR_OF, HANDLING } = await load('audio/Foley.js');
 const { render, LAYER_KINDS } = await load('audio/Synth.js');
 const { FLOORS } = await load('game/world/TileMap.js');
@@ -16,7 +16,7 @@ const { default: Tension } = await load('game/ai/Tension.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { MATERIAL_FX } = await load('game/data/destruction.js');
 const { BANK } = await load('audio/bank.js');
-const { ZONES } = await load('game/data/soundscape.js');
+const { ZONES, CITY } = await load('game/data/soundscape.js');
 const ZONE_SOUNDS = Object.values(ZONES).flatMap((z) => z.events.flatMap((e) => (typeof e.sound === 'string' ? [e.sound] : Object.keys(e.sound))));
 
 // Minimal strict WebAudio stand-in: records every node and rejects what a browser would throw on
@@ -31,6 +31,7 @@ function mockContext() {
     linearRampToValueAtTime(x, t) { assert.ok(Number.isFinite(x) && when(t)); },
     exponentialRampToValueAtTime(x, t) { assert.ok(x > 0 && when(t), `exp ramp to ${x}`); },
     setTargetAtTime(x, t, tau) { assert.ok(Number.isFinite(x) && when(t) && tau > 0, `target at ${t}, now ${ctx.currentTime}`); },
+    setValueCurveAtTime(c, t, d) { assert.ok(c.length > 1 && c.every(Number.isFinite) && when(t) && d > 0, 'value curve'); },
     cancelScheduledValues() {},
   });
   const node = (extra = {}) => ({ connect: (n) => n, disconnect() {}, ...extra });
@@ -185,10 +186,10 @@ test('audio: the beds of the night: a looping voice per bed once rendered, let g
     const make = ctx.createBufferSource;
     ctx.createBufferSource = () => { const s = make(); made.push(s); return s; };
     const mix = (beds) => Audio.setAmbience({ beds, room: { open: 1, warm: 0 } });
-    mix({ city: { gain: 0.3, lp: 14000, pan: 0 }, car0: { bed: 'engine', gain: 0.2, lp: 9000, pan: 0.5, rate: 1.1 }, rain: { gain: 0.2 } });
+    mix({ city: { gain: 0.3, lp: 14000, pan: 0 }, car0: { bed: 'engine', gain: 0.2, lp: 9000, pan: 0.5, rate: 1.1 }, radio: { gain: 0.2 } });
     assert.equal(made.length, 2, 'a loop per voice whose bed is ready');
     assert.ok(made.every((s) => s.loop && s.buffer === buf));
-    assert.deepEqual(Audio.bedQueue, ['rain'], 'the other one is queued to be rendered');
+    assert.deepEqual(Audio.bedQueue, ['radio'], 'the other one is queued to be rendered');
     assert.equal(Audio.beds.car0.src.playbackRate.value, 1.1);
     for (let t = 0; t < 10; t += 0.1) { ctx.currentTime += 0.1; mix({ city: { gain: 0.3, lp: 14000, pan: 0 } }); }
     assert.equal(Audio.beds.car0.src, null, 'the car gone, its loop is let go');
@@ -507,6 +508,107 @@ test('audio volumes: an ambience one-shot goes through the ambience bus, a gunsh
     assert.notEqual(where('clink', {}), Audio.ambOne);
     assert.equal(where('clink', {}), Audio.sfx);
     assert.notEqual(where('pistol', {}), Audio.ambOne);
+    for (const n of ['shout', 'cry', 'scream', 'whimper', 'mutter', 'pant', 'sob']) assert.equal(where(n, {}), Audio.voice, `${n}: a voice`);
+    assert.equal(where('confirm', { n: 1 }), Audio.sfx);
     delete Audio._out;
   });
+});
+
+test('audio mix: the night sits under the effects and the music, its small sounds over its beds', () => {
+  assert.ok(LEVELS.beds < LEVELS.ambOne && LEVELS.ambOne < LEVELS.sfx && LEVELS.sfx <= LEVELS.music + 0.2);
+  assert.ok(LEVELS.beds / LEVELS.music < 0.25, 'the beds far under the music');
+  withContext(() => {
+    assert.ok(Math.abs(Audio.amb.gain.value - LEVELS.beds) < 1e-9 && Math.abs(Audio.ambOne.gain.value - LEVELS.ambOne) < 1e-9);
+    assert.ok(Audio.glue && Audio.limiter && Audio.musicComp, 'the dynamics are reachable (for measurement)');
+    assert.ok(Audio.limiter.release.value >= 0.2 && Audio.limiter.threshold.value > -4, 'the limiter catches peaks and never pumps');
+  });
+});
+
+test('audio: the far city plays its long sounds from far, moving across, and lets them go', () => {
+  withContext((ctx) => {
+    for (const k of ['train', 'dog', 'carAlarm']) Audio.bedBufs[k] = { duration: 22 };
+    Audio.bedMarks.dog = [[0, 2], [3, 2]];
+    const pans = [];
+    const mk = ctx.createStereoPanner;
+    ctx.createStereoPanner = () => { const p = mk(); const ramp = p.pan.linearRampToValueAtTime; p.pan.linearRampToValueAtTime = (x, t) => { pans.push(x); ramp(x, t); }; return p; };
+    for (const e of CITY) {
+      ctx.currentTime += 60;
+      const n = ctx.started;
+      Audio.play(e.sound, { vol: 0.8, distant: e.distant[0], side: 0.4, amb: true, dir: -1, honks: 2 });
+      assert.ok(ctx.started > n, `${e.sound} played nothing`);
+      assert.ok(Audio.active.some((a) => a.name === e.sound));
+    }
+    assert.ok(pans.filter((x) => x < -0.5).length >= 2, 'the train and the siren cross to the other side');
+    assert.equal(Audio.bedQueue.length, 0, 'nothing waited to be rendered');
+    // not rendered yet: nothing plays, the voice is freed and the render is queued
+    Audio.bedBufs = {};
+    Audio.bedQueue = ['busy'];
+    ctx.currentTime += 60;
+    Audio.play('train', { vol: 1, amb: true });
+    assert.ok(!Audio.active.some((a) => a.name === 'train' && a.end > ctx.currentTime), 'a silent voice is let go');
+    assert.ok(Audio.bedQueue.includes('train'));
+    Audio.bedQueue = [];
+  });
+});
+
+test('audio: a kill gives a deep boom under its note, and the next kill of a chain chokes the last one', () => {
+  withContext((ctx) => {
+    const sines = [];
+    const mk = ctx.createOscillator;
+    ctx.createOscillator = () => {
+      const o = mk(), set = o.frequency.setValueAtTime, ramp = o.frequency.exponentialRampToValueAtTime, rec = { o, f: [] };
+      o.frequency.setValueAtTime = (f, t) => { rec.f.push(f); set(f, t); };
+      o.frequency.exponentialRampToValueAtTime = (f, t) => { rec.f.push(f); ramp(f, t); };
+      sines.push(rec);
+      return o;
+    };
+    ctx.currentTime = 10;
+    Audio.play('confirm', { n: 1 });
+    const boom = sines.find((s) => s.f[0] < 100);
+    assert.ok(boom && boom.f[1] <= 45 && boom.f[1] >= 30, 'a sine falling to the low 40s: ' + (boom && boom.f));
+    const notes = sines.filter((s) => s.f[0] > 180).map((s) => s.f[0]);
+    assert.ok(notes.length >= 1, 'the muted note is still there');
+    const first = Audio.active.find((a) => a.name === 'confirm'), fades = [];
+    first.gain.gain.setTargetAtTime = (x) => fades.push(x);
+    ctx.currentTime += 0.4;
+    Audio.play('confirm', { n: 2 });
+    assert.deepEqual(fades, [0], 'the first boom is choked');
+    assert.equal(Audio.active.filter((a) => a.name === 'confirm').length, 1);
+    const second = sines.filter((s) => s.f[0] > 180).map((s) => s.f[0]);
+    assert.ok(Math.max(...second) > Math.max(...notes), 'the note climbs with the chain');
+  });
+});
+
+test('music: the grit drives harder and wetter with its value, at the level of the clean mix, never past its cap', () => {
+  const { gritDrive, gritCurve, GRIT } = SCORE;
+  let last = null;
+  const rms = (f, a) => { let s = 0; for (let i = 0; i < 256; i++) { const v = f(a * Math.sin((2 * Math.PI * (i + 0.5)) / 256)); s += v * v; } return Math.sqrt(s / 256); };
+  for (let g = 0; g <= 1.0001; g += 0.05) {
+    const d = gritDrive(g);
+    assert.ok(Math.abs(d.dry + d.wet - 1) < 1e-9 && d.wet >= 0 && d.wet <= GRIT.wet && d.pre >= 1 && d.tone > 1000);
+    if (last) assert.ok(d.pre >= last.pre && d.wet >= last.wet && d.tone <= last.tone, 'monotonic at ' + g);
+    // the clean and the driven blended, at the reference level: within 0.5 dB of the clean one
+    const out = rms((x) => d.dry * x + d.wet * d.makeup * gritCurve(d.pre * x), GRIT.ref), dB = 20 * Math.log10(out / rms((x) => x, GRIT.ref));
+    assert.ok(Math.abs(dB) < 0.5, `level at grit ${g.toFixed(2)}: ${dB.toFixed(2)} dB`);
+    last = d;
+  }
+  assert.equal(gritDrive(0).wet, 0, 'clean at 0');
+  assert.deepEqual(gritDrive(5), gritDrive(GRIT.max), 'capped');
+  // the drive grows: a louder reference is squashed more at high grit (harmonics), not at 0
+  const crest = (d) => rms((x) => gritCurve(d.pre * x), 1) / gritCurve(d.pre);
+  assert.ok(crest(gritDrive(0.8)) > crest(gritDrive(0.1)) + 0.1);
+});
+
+test('music: the calm and the tense are clean, a fight gets dirtier with each kill of the chain and with its heat', () => {
+  const calm = playMusic(BAR * 6, [], 0.3), tense = playMusic(BAR * 6, [], 0.55);
+  assert.ok([...calm, ...tense].every((b) => b.plan.grit === 0), 'no grit out of a fight');
+  const bars = playMusic(BAR * 16, [
+    [0, () => Music.setCombat(true)],
+    [BAR * 4, () => Music.setCombo(2)],
+    [BAR * 8, () => Music.setCombo(5)],
+  ], 0.85);
+  const fight = bars.filter((b) => FIGHT.includes(b.name)), at = (stage) => fight.find((b) => b.plan.stage === stage)?.plan.grit;
+  assert.ok(at(0) > 0 && at(2) > at(0) && at(5) > at(2), `grit by stage: ${at(0)} ${at(2)} ${at(5)}`);
+  const hot = playMusic(BAR * 4, [[0, () => Music.setCombat(true)]], 1);
+  assert.ok(hot.filter((b) => FIGHT.includes(b.name)).at(-1).plan.grit > at(0), 'the heat adds to it');
 });

@@ -93,6 +93,7 @@ class Level:
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
+        self.spots = []       # beds heard from one tile: [bed, col, row] (src/game/data/soundscape.js SPOTS)
         self.zones = []       # what each place sounds like: [kind, col0, row0, col1, row1] (src/game/data/soundscape.js)
         self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
         self.wet = None       # how wet the open ground is from an earlier rain, 0..1 (seen: systems/Weather.js)
@@ -250,6 +251,10 @@ class Level:
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
         self.welcome.append(self.rect(col0, row0, col1, row1))
+
+    # ---- a bed heard from one tile (src/game/data/soundscape.js SPOTS: a radio behind a window)
+    def sound_spot(self, bed, col, row):
+        self.spots.append([bed, *self.tile(col, row, 'sound spot')])
 
     # ---- rooftop dressing: scenery on the flat roofs of the neighbouring buildings
     def roof(self, kind, col, row, deg=0):
@@ -441,6 +446,9 @@ class Level:
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')
+        if self.spots:
+            L.append('  // beds heard from one tile (data/soundscape.js SPOTS): [bed, col, row]')
+            L.append(f'  soundSpots: {js(self.spots)},')
         if self.street:
             L.append('  // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]')
             L.append(f'  street: {json.dumps(self.street)},')

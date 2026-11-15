@@ -204,9 +204,11 @@ export default {
   wet: 0.35,
   // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the
   // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)
-  soundscape: { rain: 0.35, zones: [['vip', 24, 17, 28, 19], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },
+  soundscape: { rain: 0, zones: [['vip', 24, 17, 28, 19], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[22.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [31.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
+  // beds heard from one tile (data/soundscape.js SPOTS): [bed, col, row]
+  soundSpots: [['window', 9, 31]],
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
   street: {"papers": [[0, 30, 41, 31, 9], [19, 32, 22, 36, 3], [0, 21, 41, 22, 9], [0, 23, 41, 29, 6], [11, 1, 13, 19, 4], [14, 1, 30, 4, 4], [1, 8, 9, 14, 3]], "beds": [[21.1, 36.5, 0], [18.1, 2.5, -12], [2.7, 13.75, 8]], "manholes": [[9.5, 25.2], [26.3, 28.5], [12.5, 10.6]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer

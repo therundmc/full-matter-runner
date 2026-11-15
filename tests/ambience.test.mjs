@@ -6,7 +6,7 @@ const { AMBIENCE, TILE } = await load('game/Config.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: Ambience, zoneMap, hearing } = await load('game/systems/Ambience.js');
-const { ZONES, PROP_BEDS, CARS } = await load('game/data/soundscape.js');
+const { ZONES, PROP_BEDS, CARS, CITY, SPOTS } = await load('game/data/soundscape.js');
 const { PROPS } = await load('game/data/props.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
 const { BEDS, renderBed, finish, renderLaugh } = await load('audio/Beds.js');
@@ -27,10 +27,10 @@ const ZONED = [['bar', 1, 1, 4, 3], ['toilets', 6, 1, 7, 3], ['office', 9, 1, 10
 const at = (c, r) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE });
 
 // a world on that map: every sound and every mix handed over is recorded
-function stub({ rain = 0.5, where = at(2, 2) } = {}) {
+function stub({ where = at(2, 2), spots = [] } = {}) {
   const heard = [], mixes = [];
   const world = {
-    events: new EventBus(), map: new TileMap(ROWS), level: { soundscape: { rain, zones: ZONED } },
+    events: new EventBus(), map: new TileMap(ROWS), level: { soundscape: { zones: ZONED }, soundSpots: spots },
     player: { ...where }, props: [], civilians: [], enemies: [], power: null, ambient: null, walled: false,
     walledOff() { return this.walled; },
     sound: (name, x, y, vol, opts) => heard.push({ name, x, y, vol, ...opts }),
@@ -55,7 +55,14 @@ test('soundscape: every place a level names is known, with beds that exist and e
     }
   }
   for (const pb of PROP_BEDS) assert.ok(BEDS[pb.bed], pb.bed);
+  for (const s of Object.values(SPOTS)) assert.ok(BEDS[s.bed] && !BEDS[s.bed].once && s.reach > 0, s.bed);
+  for (const [bed] of level1.soundSpots) assert.ok(SPOTS[bed], bed);
+  for (const e of CITY) {
+    assert.ok(META[e.sound], e.sound);
+    assert.ok(e.every[0] > 0 && e.every[1] >= e.every[0] && e.distant[0] >= 0 && e.distant[1] <= 1, e.sound);
+  }
   assert.ok(BEDS.engine && CARS.slots >= 1);
+  assert.ok(!level1.soundscape.rain && !BEDS.rain, 'a dry night: no rain heard');
 });
 
 test('ambience: the places of level 1 come from its data, the rest by the floor (street, roof, room)', () => {
@@ -86,7 +93,7 @@ test('ambience: where he stands is heard in full, the places around through thei
 test('ambience: walking in from the street crossfades the beds and the room, no jump', () => {
   const s = stub({ where: at(2, 6) });
   s.run(3);
-  assert.ok(s.bed('city').gain > 0.4 * ZONES.street.beds.city && s.bed('rain').gain > 0);
+  assert.ok(s.bed('city').gain > 0.4 * ZONES.street.beds.city);
   assert.equal(s.mixes.at(-1).room.open, 1);
   Object.assign(s.world.player, at(2, 2));
   s.run(0.2);
@@ -98,7 +105,7 @@ test('ambience: walking in from the street crossfades the beds and the room, no 
   assert.ok(city.gain < ZONES.street.beds.city * AMBIENCE.through, 'the street is behind the facade now');
   assert.ok(Math.abs(city.lp - AMBIENCE.muffle) < 30, 'muffled: ' + city.lp);
   assert.ok(s.mixes.at(-1).room.warm > 0.95);
-  assert.ok(s.bed('rain').lp < ZONES.bar.beds.rain.lp + 10, 'the rain on the roof, dull');
+  assert.ok(s.bed('hush').gain > 0.4 * ZONES.bar.beds.hush, 'the hush of the building around him');
 });
 
 test('ambience: the bar talks while its customers sit at ease, louder the more of them, and falls silent when they panic', () => {
@@ -151,21 +158,20 @@ test('ambience: the radio and what hums die with the power, broken or dark props
   assert.ok(!s.bed('fridge') || s.bed('fridge').gain < 0.01);
 });
 
-test('ambience: a prop is heard from its side, nearest first, muffled through a wall; rain drums on a parked car', () => {
-  const s = stub({ where: at(2, 6) });
+test('ambience: a prop is heard from its side, nearest first, muffled through a wall; a spot of the level too', () => {
+  const s = stub({ where: at(2, 6), spots: [['window', 0, 7]] });
   s.world.props.push(prop('neon_sign_bar', at(5, 5).x, at(5, 5).y), prop('neon_sign_palm', at(9, 5).x, at(9, 5).y));
-  s.world.props.push({ type: 'car', isVehicle: true, moving: false, x: at(0, 7).x, y: at(0, 7).y, dead: false });
   s.run(3);
-  const neon = s.bed('neon');
+  const neon = s.bed('neon'), radio = s.bed('window');
   assert.ok(neon.gain > 0 && neon.pan > 0 && neon.lp === AMBIENCE.open);
-  assert.ok(s.bed('rainMetal').gain > 0 && s.bed('rainMetal').pan < 0);
+  assert.ok(radio.gain > 0 && radio.pan < 0 && Math.abs(radio.lp - SPOTS.window.lp) < 1, 'the radio in the window, to his left');
   s.world.walled = true;
   s.run(3);
   assert.ok(s.bed('neon').gain < neon.gain && Math.abs(s.bed('neon').lp - AMBIENCE.props.muffle) < 50);
-  const dry = stub({ rain: 0, where: at(2, 6) });
-  dry.world.props.push({ type: 'car', isVehicle: true, x: at(0, 7).x, y: at(0, 7).y, dead: false });
-  dry.run(2);
-  assert.equal(dry.bed('rainMetal'), undefined, 'no rain, no drumming');
+  assert.ok(s.bed('window').gain < radio.gain && s.bed('window').lp < radio.lp, 'through a wall');
+  const far = stub({ where: at(11, 6), spots: [['window', 0, 7]] });
+  far.run(2);
+  assert.equal(far.bed('window'), undefined, 'out of its reach');
 });
 
 test('ambience: the traffic car by car: a voice each, kept while it passes, higher coming than going', () => {
@@ -188,16 +194,27 @@ test('ambience: the traffic car by car: a voice each, kept while it passes, high
   assert.ok(s.bed('car' + slot).rate < CARS.rate.car, 'past him now');
 });
 
-test('ambience: far sirens and horns from across the city, muffled from indoors', () => {
+test('ambience: the far city is alive: trains, a police car, horns, an alarm, a dog, each now and then, dull from indoors', () => {
   const s = stub({ where: at(6, 6) });
-  s.run(400);
-  const far = s.heard.filter((h) => h.name === 'siren' || h.name === 'horn');
-  assert.ok(far.length >= 3, 'now and then: ' + far.length);
-  assert.ok(far.every((h) => h.x === undefined && h.distant > 0 && !h.occ));
+  s.run(1200);
+  const names = CITY.map((e) => e.sound), far = s.heard.filter((h) => names.includes(h.name));
+  for (const e of CITY) {
+    const n = s.of(e.sound).length, mean = (e.every[0] + e.every[1]) / 2;
+    assert.ok(n >= 1200 / e.every[1] - 1 && n <= 1200 / e.every[0] + 2, `${e.sound}: ${n} in 20 minutes (every ${mean} s on average)`);
+  }
+  for (const h of far) {
+    const e = CITY.find((c) => c.sound === h.name);
+    assert.ok(h.x === undefined && h.distant >= e.distant[0] && h.distant <= e.distant[1] && Math.abs(h.side) <= 0.8 && !h.occ, h.name);
+  }
+  assert.ok(s.of('train').every((h) => h.dir === 1 || h.dir === -1), 'a train goes one way or the other');
+  assert.ok(new Set(s.of('train').map((h) => h.dir)).size === 2, 'both ways');
+  assert.ok(s.of('horn').every((h) => h.honks >= 1 && h.honks <= 3));
   const t = stub();
-  t.run(400);
-  const muffled = t.heard.filter((h) => h.name === 'horn' || h.name === 'siren');
-  assert.ok(muffled.every((h) => h.occ), 'through the walls of the bar');
+  t.run(1200);
+  const muffled = t.heard.filter((h) => names.includes(h.name));
+  assert.ok(muffled.length > 10 && muffled.every((h) => h.occ), 'through the walls of the bar');
+  const loud = (list, name) => list.filter((h) => h.name === name).reduce((a, h) => a + h.vol, 0) / list.filter((h) => h.name === name).length;
+  assert.ok(loud(muffled, 'horn') < loud(far, 'horn') * 0.7, 'and lower');
 });
 
 test('ambience: a leaking pipe drips, and only close by', () => {
@@ -226,7 +243,7 @@ test('ambience: a gust of wind is heard, less from indoors', () => {
 });
 
 test('beds: every bed renders a clean seamless loop at one loudness, in small slices', () => {
-  for (const name of Object.keys(BEDS)) {
+  for (const name of Object.keys(BEDS).filter((k) => !BEDS[k].once)) {
     const gen = renderBed(name, 3);
     let slices = 0, s;
     while (!(s = gen.next()).done) slices++;
@@ -246,4 +263,22 @@ test('beds: every bed renders a clean seamless loop at one loudness, in small sl
   assert.deepEqual(finish(renderBed('mains', 9)).data[0].slice(0, 50), finish(renderBed('mains', 9)).data[0].slice(0, 50), 'seeded');
   const laugh = renderLaugh(5, true);
   assert.ok(laugh.length > 0.3 * 22050 && laugh.every(Number.isFinite));
+});
+
+test('beds: the one-shots of the far city render at one peak, the train swelling from far and back, the dog in bouts', () => {
+  const env = (d, sr, a, b) => { let s = 0; for (let i = Math.floor(a * sr); i < b * sr; i++) s += d[i] * d[i]; return Math.sqrt(s / ((b - a) * sr)); };
+  for (const name of Object.keys(BEDS).filter((k) => BEDS[k].once)) {
+    const { sr, data, marks } = finish(renderBed(name, 7)), d = data[0], len = BEDS[name].len;
+    let peak = 0;
+    for (const v of d) { assert.ok(Number.isFinite(v), name); peak = Math.max(peak, Math.abs(v)); }
+    assert.ok(Math.abs(peak - 0.9) < 1e-6, `${name}: peak ${peak}`);
+    assert.equal(d.length, Math.round(len * sr), name);
+    assert.ok(marks.length >= 1 && marks.every(([a, l]) => a >= 0 && l > 0 && a + l <= len + 1e-9), name);
+  }
+  const train = finish(renderBed('train', 3));
+  const [edge, mid] = [env(train.data[0], train.sr, 0, 1.5), env(train.data[0], train.sr, 10, 12)];
+  assert.ok(mid > edge * 10, `it comes from far: ${edge} -> ${mid}`);
+  const dog = finish(renderBed('dog', 3));
+  assert.equal(dog.marks.length, BEDS.dog.bouts);
+  for (const [a, l] of dog.marks) assert.ok(env(dog.data[0], dog.sr, a, a + l) > 0.05, 'a bout barks');
 });

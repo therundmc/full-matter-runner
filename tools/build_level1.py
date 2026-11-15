@@ -130,7 +130,8 @@ lv.host(15, 16, 23, 19)
 lv.host(21, 6, 23, 11)
 
 # what each place sounds like (src/game/data/soundscape.js), the first that holds a tile wins; the street, the roofs and
-# the rest under a roof need none. A drizzle over the wet street.
+# the rest under a roof need none. A dry night: no rain heard.
+lv.sound_spot('window', 9, 31)            # a radio left on behind a window above the shops across the road
 lv.sound('vip', 25, 17, 30, 19)          # the dancer's corner, its doorway on the bar room
 lv.sound('bar', 15, 12, 30, 19)          # the bar room: talk, glasses, the bartender
 lv.sound('toilets', 21, 6, 23, 10)
@@ -143,7 +144,7 @@ lv.sound('shop', 3, 17, 8, 19, place='liquor')    # liquor store, TV shop, laund
 lv.sound('shop', 36, 17, 39, 19, place='tvshop')
 lv.sound('shop', 27, 33, 31, 35, place='laundry')
 lv.sound('alley', 20, 32, 23, 36)        # the start alley across the road
-lv.rain = 0.35
+lv.rain = 0                                             # no rain heard
 lv.wet = 0.35                                           # the street wet from an earlier rain (seen)
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer

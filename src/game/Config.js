@@ -263,6 +263,7 @@ export const AMBIENCE = {
   gust: 1,                 // a gust of wind (systems/Papers.js), out of doors ...
   muffled: 0.7,            // ... and how much of it is lost indoors
   drip: { every: [0.8, 3], reach: 300, spread: 14 }, // props with `drip`: s between two drops, px around the prop
+  city: { inside: 0.45 },  // the far city (data/soundscape.js CITY) from under a roof: that much of its level, muffled
 };
 
 // a barrel smokes for a moment after a burst (Character.fume)

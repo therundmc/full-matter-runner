@@ -1,16 +1,20 @@
 // The long beds of the night, played on and on by the mixer (audio/Audio.js setAmbience, driven by
-// systems/Ambience.js): rain, the city far off, a room of people talking, a radio, what hums (neon, fluorescent tubes,
-// fridges, the mains), an extractor fan, rain drumming on a car roof, a television's snow, a car's engine and wet
-// tyres. Plain JS on Float32Arrays, DOM-free and seeded: each bed is a seamless loop of several seconds (its end
-// crossfaded into its start), at its own sample rate (what is muffled anyway needs no highs), normalized to one
-// loudness so that the mix levels live in the data (data/soundscape.js). Loops of different lengths run side by side,
-// so the whole never repeats; the events of the zones (glasses, laughs, a chair...) fall on top at random.
+// systems/Ambience.js): the city far off and its traffic, a room of people talking, a radio, a radio left on behind
+// a window, the hush of a building, what hums (neon, fluorescent tubes, fridges, the mains), an extractor fan, a
+// television's snow, a car's engine and tyres. Plain JS on Float32Arrays, DOM-free and seeded: each bed is a seamless
+// loop of several seconds (its end crossfaded into its start), at its own sample rate (what is muffled anyway needs no
+// highs), normalized to one loudness so that the mix levels live in the data (data/soundscape.js). Loops of different
+// lengths run side by side, so the whole never repeats; the events of the zones (glasses, laughs, a chair...) and of
+// the city (a train, a siren, a dog...) fall on top at random.
+// A few long one-shots of the far city are rendered the same way but not looped (`once`: the elevated train going by,
+// a dog's barking, a car alarm), normalized to one peak, cut in `marks` where the mixer may start them.
 // renderBed is a generator: it yields every slice of work, so the mixer bakes the beds in the idle time between frames.
 // Speech is never words: glottal pulses through three formants gliding from sound to sound, cut in syllables and
 // phrases, low-passed as heard across a room (plan / talker below; renderLaugh uses the same voice).
 
 const TAU = Math.PI * 2;
 const RMS = 0.1;  // every bed's loudness once rendered
+const PEAK = 0.9; // a one-shot's peak
 const XF = 0.4;   // s of crossfade that closes a loop
 
 // seeded generator (mulberry32)
@@ -24,6 +28,7 @@ function rng(seed) {
   };
 }
 const white = (r) => r() * 2 - 1;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---- filters, as steppers x -> y ----
 function lp1(fc, sr) { const k = 1 - Math.exp((-TAU * fc) / sr); let s = 0; return (x) => (s += k * (x - s)); }
@@ -176,7 +181,8 @@ function person(r, woman) {
 
 // ---- the beds: make(channels, sr, r, spec) fills each channel (length: the loop + its crossfade) ----
 const BED_MAKERS = {
-  // the city far off: a low wash that swells and settles, distant wet roads breathing in it
+  // the city far off: a low wash that swells and settles, the hum of the avenues breathing in it, and now and then a
+  // car going by a block or two away (its tyres on the dry road, the engine under them), from one side to the other
   *city(ch, sr, r) {
     const n = ch[0].length, shared = brown(r), low = ch.map(() => lp1(300, sr)), own = ch.map(() => brown(r));
     const road = ch.map(() => biquad('bp', 650, 0.7, sr)), swell = wander(r, sr, 0.09, 0.25), far = ch.map(() => wander(r, sr, 0.2, 0.6));
@@ -185,31 +191,7 @@ const BED_MAKERS = {
       const s = shared(), k = swell();
       ch.forEach((c, j) => { c[i] = (low[j](0.6 * s + 0.4 * own[j]()) + road[j](white(r)) * 0.25 * far[j]()) * k; });
     }
-  },
-  // rain falling on everything: a hiss, a dust of tiny drops, now and then one into a puddle (independent in each ear)
-  *rain(ch, sr, r) {
-    const n = ch[0].length;
-    for (const c of ch) {
-      yield;
-      const hp = biquad('hp', 450, 0.7, sr), lp = biquad('lp', 6000, 0.7, sr), sw = wander(r, sr, 0.5, 0.15);
-      for (let i = 0; i < n; i++) { if ((i & 32767) === 0) yield; c[i] = lp(hp(white(r))) * 0.35 * sw(); }
-      yield;
-      yield* scatter(r, sr, n, 650, (at) => ping(c, at, sr, 1800 + 6000 * r(), 0.0006 + 0.0025 * r(), 0.015 + 0.35 * r() ** 6));
-      yield* scatter(r, sr, n, 1.6, (at) => ping(c, at, sr, 900 + 1300 * r(), 0.008 + 0.008 * r(), 0.05 + 0.1 * r(), 1.6));
-    }
-  },
-  // rain drumming on a car's roof: ticks ringing the panel, the bigger drops a dull drum under them
-  *rainMetal(ch, sr, r) {
-    const c = ch[0], n = c.length, f1 = 950 + 300 * r(), wash = lp1(1500, sr);
-    for (let i = 0; i < n; i++) { if ((i & 32767) === 0) yield; c[i] = wash(white(r)) * 0.08; }
-    yield;
-    yield* scatter(r, sr, n, 110, (at) => {
-      const a = 0.05 + 0.6 * r() ** 4, f = f1 * (0.85 + 0.3 * r());
-      ping(c, at, sr, f, 0.012, a);
-      ping(c, at, sr, f * 2.37, 0.007, a * 0.5);
-      ping(c, at, sr, f * 3.9, 0.004, a * 0.3);
-      if (a > 0.3) ping(c, at, sr, 190 + 50 * r(), 0.035, a * 0.4);
-    });
+    yield* scatter(r, sr, n - Math.round(5 * sr), 0.3, (at) => farCar(ch, sr, r, at));
   },
   // a room of people talking, none of them to be made out (spec.voices: [woman?] per talker)
   *talk(ch, sr, r, spec) {
@@ -222,16 +204,19 @@ const BED_MAKERS = {
       yield;
       for (let k = 0; k < n; k++) for (let j = 0; j < 2; j++) ch[j][k] += mono[k] * g[j] * level;
     }
+    // heard across a warm room: no boom, the consonants rounded off (a crowd must never sound harsh)
     for (const c of ch) {
-      const hp = hp1(110, sr), lp = biquad('lp', 2600, 0.6, sr);
-      for (let k = 0; k < n; k++) { if ((k & 32767) === 0) yield; c[k] = lp(hp(c[k])); }
+      const hp = hp1(120, sr), lp = biquad('lp', 1900, 0.5, sr), lp2 = lp1(3200, sr);
+      for (let k = 0; k < n; k++) { if ((k & 32767) === 0) yield; c[k] = lp2(lp(hp(c[k]))); }
     }
   },
-  // a late-night radio on a desk: a host talking, his guest now and then, through a small speaker, a breath of static
-  *radio(ch, sr, r) {
-    const c = ch[0], n = c.length;
-    yield* talker(c, sr, r, plan(r, n / sr, { rate: 4.2, talk: 0.85 }), person(r, false));
-    yield* talker(c, sr, r, plan(r, n / sr, { rate: 5, talk: 0.15 }), { ...person(r, true), gain: 0.8 });
+  // a late-night radio on a desk: a host talking, his guest now and then, through a small speaker, a breath of static;
+  // spec.song (bpm): a slow soul record under them, the host only now and then (a radio left on behind a window)
+  *radio(ch, sr, r, spec) {
+    const c = ch[0], n = c.length, music = !!spec.song;
+    yield* talker(c, sr, r, plan(r, n / sr, { rate: 4.2, talk: music ? 0.2 : 0.85 }), { ...person(r, false), gain: music ? 0.5 : 1 });
+    if (music) yield* song(c, sr, r, spec.song);
+    else yield* talker(c, sr, r, plan(r, n / sr, { rate: 5, talk: 0.15 }), { ...person(r, true), gain: 0.8 });
     const hp = biquad('hp', 380, 0.7, sr), lp = biquad('lp', 3000, 1, sr), st = lp1(5000, sr);
     let peak = 1e-9;
     for (let k = 0; k < n; k++) { if ((k & 32767) === 0) yield; c[k] = lp(hp(c[k])); peak = Math.max(peak, Math.abs(c[k])); }
@@ -283,27 +268,152 @@ const BED_MAKERS = {
     for (let i = 0; i < n; i++) c[i] += lp(hp(white(r))) * 0.5;
     yield;
   },
-  // a car going: the engine's firing and its harmonics, the roar of the tyres, the spray off a wet road (the mixer
-  // changes its speed with the car's and the Doppler shift)
+  // a car going: the engine's firing and its harmonics, the roar of the tyres on the dry asphalt, the tread's hiss
+  // (the mixer changes its speed with the car's and the Doppler shift)
   *engine(ch, sr, r) {
     const c = ch[0], n = c.length, parts = [];
     for (let k = 1; k <= 14; k++) parts.push([50 * k, k ** -0.8 * (k * 50 > 600 ? 0.4 : 1), r() * TAU]);
     yield* tones(c, sr, parts, 0.25);
     yield;
-    const roar = biquad('bp', 500, 0.7, sr), rumble = brown(r), spray = biquad('bp', 3000, 0.6, sr);
-    for (let i = 0; i < n; i++) c[i] += roar(rumble()) * 0.5 + spray(white(r)) * 0.4;
+    const roar = biquad('bp', 500, 0.7, sr), rumble = brown(r), tread = biquad('bp', 1100, 0.9, sr), hiss = biquad('bp', 2600, 0.7, sr);
+    for (let i = 0; i < n; i++) c[i] += roar(rumble()) * 0.55 + tread(white(r)) * 0.3 * (1 + 0.25 * Math.sin((TAU * 6 * i) / sr)) + hiss(white(r)) * 0.08;
+  },
+  // the hush of a building at night: the structure's low rumble, the air in the ducts far off
+  *hush(ch, sr, r) {
+    const c = ch[0], n = c.length, low = lp1(110, sr), rumble = brown(r), duct = biquad('bp', 380, 0.8, sr), sw = wander(r, sr, 0.15, 0.3);
+    for (let i = 0; i < n; i++) { if ((i & 32767) === 0) yield; c[i] = low(rumble()) * 1.2 + duct(white(r)) * 0.25 * sw(); }
+  },
+
+  // ---- long one-shots of the far city (`once`) ----
+  // the elevated train a block away (the title's train, heard from the street): spec.cars cars at spec.speed m/s pass
+  // `spec.off` m from the ear, the middle of the train closest half way through; their wheels knock over the rail
+  // joints axle by axle, the steel structure rumbles under them, the motors whine, the flanges screech in the curve;
+  // each part as loud as it is near (the side and the Doppler shift are the mixer's)
+  *train(ch, sr, r, spec) {
+    const c = ch[0], n = c.length, mid = n / sr / 2, { cars, speed: v, off: D } = spec, L = 15, train = cars * L;
+    const axles = [];
+    for (let k = 0; k < cars; k++) for (const a of [1.5, 3.8, 11.2, 13.5]) axles.push(k * L + a);
+    const near = (x) => D / Math.hypot(D, x); // level of what happens x m along the track from the closest point
+    // the body: as loud as its nearest car is near (the train spans [head - train, head] along the track)
+    const rum = brown(r), lp = biquad('lp', 160, 0.7, sr), air = lp1(500, sr), whine = 210 + 40 * r();
+    let ph = 0;
+    for (let i = 0; i < n; i++) {
+      if ((i & 16383) === 0) yield;
+      const t = i / sr, head = v * (t - mid) + train / 2, x = clamp(0, head - train, head);
+      ph += (TAU * whine * (1 - 0.03 * Math.tanh((t - mid) / 3))) / sr;
+      c[i] = (lp(rum()) * 1.4 + air(white(r)) * 0.1 + (Math.sin(ph) + 0.3 * Math.sin(2 * ph)) * 0.025) * near(x) ** 2;
+    }
+    yield;
+    // the wheels over the joints (every 13 m of rail): a heavy knock and its ring, a little uneven
+    for (let j = -60; j <= 60; j++) {
+      const xj = j * 13 + 6 * r(), g = near(xj) ** 2;
+      if (g < 0.05) continue;
+      for (const a of axles) {
+        const at = Math.floor((mid + (xj + a - train / 2) / v) * sr);
+        if (at < 0 || at >= n - sr * 0.2) continue;
+        ping(c, at, sr, 70 + 25 * r(), 0.03, 0.45 * g, 0.7);
+        ping(c, at, sr, 650 + 500 * r(), 0.006, 0.16 * g);
+      }
+      if ((j & 7) === 0) yield;
+    }
+    // the flanges screeching in the curve: two or three cries while it is close, wavering
+    for (let k = 0, m = 2 + Math.floor(r() * 2); k < m; k++) {
+      yield;
+      const t0 = mid - 4 + 7 * r(), dur = 0.8 + 1.6 * r(), f0 = 2300 + 1300 * r(), a = 0.04 + 0.05 * r();
+      const bp = biquad('bp', f0, 30, sr), i0 = Math.floor(t0 * sr), i1 = Math.min(n, i0 + Math.floor(dur * sr));
+      let p2 = 0;
+      for (let i = i0; i < i1; i++) {
+        const u = (i - i0) / (i1 - i0), wob = 1 + 0.012 * Math.sin(TAU * 5.5 * (i / sr));
+        p2 += (TAU * f0 * wob) / sr;
+        c[i] += (bp(white(r)) * 5 + Math.sin(p2) * 0.5) * a * Math.sin(Math.PI * u) ** 0.7;
+      }
+    }
+    for (let i = 0, m = 3 * sr; i < m; i++) { const k = (i / m) ** 2; c[i] *= k; c[n - 1 - i] *= k; } // from and into the distance
+  },
+  // a dog barking down the block: spec.bouts bouts of two to five barks (a rough voiced "rouf": a burst through an
+  // open vowel, its pitch falling), silence between the bouts; each bout is a mark
+  *dog(ch, sr, r, spec) {
+    const c = ch[0], n = c.length, slot = n / sr / spec.bouts, big = 0.8 + 0.4 * r();
+    spec.marks = [];
+    for (let b = 0; b < spec.bouts; b++) {
+      const syl = [], t0 = b * slot + 0.05;
+      let t = t0;
+      for (let k = 0, m = 2 + Math.floor(r() * 4); k < m && t < (b + 1) * slot - 0.6; k++) {
+        const d = 0.12 + 0.06 * r();
+        syl.push({ t, d, v: [620 / big, 1250 / big, 2500], c: CONS[k ? 0 : 4], f: 1.1 - 0.15 * r(), a: 0.8 + 0.2 * r() });
+        t += d + 0.16 + 0.3 * r();
+      }
+      yield* talker(c, sr, r, syl, { f0: 300 / big, scale: 1, breath: 0.35 });
+      spec.marks.push([t0 - 0.05, t - t0 + 0.35]);
+    }
+    const lp = biquad('lp', 2800, 0.7, sr);
+    let peak = 1e-9;
+    for (let i = 0; i < n; i++) { c[i] = lp(c[i]); peak = Math.max(peak, Math.abs(c[i])); }
+    for (let i = 0; i < n; i++) c[i] = Math.tanh((2 * c[i]) / peak);
+  },
+  // a car alarm going off streets away, one cycle of an 80s siren module: a wail, quick whoops, a two-tone, beeps,
+  // each a square through the little horn's band
+  *carAlarm(ch, sr, r) {
+    const c = ch[0], n = c.length, seg = Math.floor(n / 4), bp = biquad('bp', 1900, 1.2, sr), lp = lp1(3500, sr);
+    let ph = r();
+    for (let i = 0; i < n; i++) {
+      if ((i & 16383) === 0) yield;
+      const k = Math.min(3, Math.floor(i / seg)), u = (i - k * seg) / sr;
+      let f = 1700, on = 1;
+      if (k === 0) f = 900 + 700 * (0.5 - 0.5 * Math.cos((TAU * u) / 1.25));  // wail
+      else if (k === 1) f = 800 + 900 * ((u * 5) % 1);                       // whoops
+      else if (k === 2) f = (u * 2.4) % 1 < 0.5 ? 1500 : 1100;               // two-tone
+      else on = (u * 7) % 1 < 0.55 ? 1 : 0;                                  // beeps
+      ph += f / sr;
+      c[i] = lp(bp(ph % 1 < 0.5 ? on : -on));
+    }
   },
 };
 
-// sr: Hz, len: s of the loop (a whole number where the bed is tonal), ch: channels, tonal: a linear crossfade (its
-// tones are the same on both sides of the seam), voices: [woman?] of a room's talkers
+// a car going by a block or two away, into a stereo bed from sample `at`: its tyres and engine swelling and fading
+// over three or four seconds, crossing from one side to the other
+function farCar(ch, sr, r, at) {
+  const len = Math.floor((3 + 1.5 * r()) * sr), a = 0.6 + 0.6 * r(), dir = r() < 0.5 ? -1 : 1;
+  const tyre = biquad('bp', 700 + 400 * r(), 0.8, sr), body = lp1(220, sr), rum = brown(r), f = 38 + 20 * r();
+  let ph = 0;
+  for (let i = 0; i < len && at + i < ch[0].length; i++) {
+    const u = i / len, e = Math.sin(Math.PI * u) ** 2, side = dir * (u * 2 - 1);
+    ph += (f * (1.03 - 0.06 * u)) / sr;
+    const x = (tyre(white(r)) * 0.8 + body(rum()) * 0.6 + ((ph % 1) - 0.5) * 0.05) * e * a;
+    ch[0][at + i] += x * (0.5 - 0.4 * side);
+    if (ch[1]) ch[1][at + i] += x * (0.5 + 0.4 * side);
+  }
+}
+
+// a slow soul record through a small radio, `bpm` (radio spec.song): a minor progression on a soft electric piano, a
+// round bass, brushes; whole bars over the loop's length, so it closes without a seam
+function* song(c, sr, r, bpm) {
+  const n = c.length, beat = 60 / bpm, bar = 4 * beat, out = new Float32Array(n);
+  const prog = [[53, 56, 60, 63], [49, 53, 56, 60], [44, 48, 51, 55], [46, 49, 53, 56]]; // Fm7 Db Ab Bbm (the score's key)
+  const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
+  for (let b = 0; b * bar * sr < n; b++) {
+    yield;
+    const chd = prog[b % prog.length], t0 = b * bar, at = (s) => Math.floor((t0 + s * beat) * sr);
+    for (const [s, v] of [[0, 1], [1.5, 0.6], [2, 0.8], [3.5, 0.5]]) for (const m of chd) ping(out, at(s), sr, mtof(m), 0.5, 0.05 * v);
+    for (const [s, k] of [[0, 0], [2.5, 7], [3, 0]]) ping(out, at(s), sr, mtof(chd[0] - 24 + k), 0.35, 0.22);
+    for (let s = 0; s < 4; s++) {
+      const i0 = at(s + 0.5), m = Math.floor(0.08 * sr);
+      for (let i = 0; i < m && i0 + i < n; i++) out[i0 + i] += white(r) * 0.04 * (1 - i / m);
+    }
+  }
+  for (let i = 0; i < n; i++) c[i] += out[i];
+}
+
+// sr: Hz, len: s of the loop (a whole number where the bed is tonal; whole bars of a song), ch: channels, tonal: a
+// linear crossfade (its tones are the same on both sides of the seam), voices: [woman?] of a room's talkers, song: the
+// radio plays a record (bpm); once: a one-shot (not looped, normalized to PEAK) and what its maker needs
 export const BEDS = {
-  city: { make: 'city', sr: 16000, len: 14.3, ch: 2 },
-  rain: { make: 'rain', sr: 24000, len: 10.7, ch: 2 },
-  rainMetal: { make: 'rainMetal', sr: 32000, len: 8.3 },
+  city: { make: 'city', sr: 16000, len: 23.3, ch: 2 },
   talkA: { make: 'talk', sr: 22050, len: 13.7, ch: 2, voices: [false, true, false] },
   talkB: { make: 'talk', sr: 22050, len: 17.3, ch: 2, voices: [true, false, true] },
   radio: { make: 'radio', sr: 16000, len: 19.1 },
+  window: { make: 'radio', sr: 16000, len: (12 * 4 * 60) / 76, song: 76 },
+  hush: { make: 'hush', sr: 8000, len: 9.7 },
   neon: { make: 'neon', sr: 24000, len: 6, tonal: true },
   tube: { make: 'tube', sr: 24000, len: 6, tonal: true },
   fridge: { make: 'fridge', sr: 16000, len: 8, tonal: true },
@@ -311,6 +421,9 @@ export const BEDS = {
   fan: { make: 'fan', sr: 22050, len: 6, tonal: true },
   snow: { make: 'snow', sr: 22050, len: 5 },
   engine: { make: 'engine', sr: 22050, len: 3, tonal: true },
+  train: { make: 'train', sr: 16000, len: 22, once: true, cars: 6, speed: 14, off: 45 },
+  dog: { make: 'dog', sr: 16000, len: 12, once: true, bouts: 4 },
+  carAlarm: { make: 'carAlarm', sr: 16000, len: 10, once: true },
 };
 
 // closes a loop: the `x` samples after the end are faded into the start (equal power, or linear for tones)
@@ -329,16 +442,19 @@ const rmsOf = (chs) => {
   return Math.sqrt(s / Math.max(1, m));
 };
 
-// one bed: { sr, data: [Float32Array per channel] }, a loop at RMS loudness. A generator: run it to its end (see top)
+// one bed: { sr, data: [Float32Array per channel], marks: [[start s, length s]] }, a loop at RMS loudness, or a `once`
+// one-shot at PEAK whose marks say where it may be started. A generator: run it to its end (see top)
 export function* renderBed(name, seed = 1) {
-  const spec = BEDS[name], { sr, len, ch = 1 } = spec;
-  const n = Math.round(len * sr), x = Math.round(XF * sr), r = rng(seed);
+  const spec = { ...BEDS[name] }, { sr, len, ch = 1 } = spec;
+  const n = Math.round(len * sr), x = spec.once ? 0 : Math.round(XF * sr), r = rng(seed);
   const data = Array.from({ length: ch }, () => new Float32Array(n + x));
   yield* BED_MAKERS[spec.make](data, sr, r, spec);
-  const out = data.map((d) => close(d, n, x, spec.tonal));
-  const k = RMS / (rmsOf(out) || 1);
+  const out = spec.once ? data : data.map((d) => close(d, n, x, spec.tonal));
+  let peak = 1e-9;
+  if (spec.once) for (const c of out) for (const v of c) peak = Math.max(peak, Math.abs(v));
+  const k = spec.once ? PEAK / peak : RMS / (rmsOf(out) || 1);
   for (const c of out) for (let i = 0; i < c.length; i++) c[i] *= k;
-  return { sr, data: out };
+  return { sr, data: out, marks: spec.marks || [[0, len]] };
 }
 
 // runs a generator to its end (tests, or no idle time to wait for)

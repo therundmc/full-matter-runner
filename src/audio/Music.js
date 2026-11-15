@@ -11,8 +11,8 @@
 // The constructor takes an optional (context, destination) so the song can be rendered offline for analysis.
 import Audio from './Audio.js';
 import {
-  PROGRESSIONS, SECTIONS, FORMS, KICK, SNARE, HATS, FILLS, PERC, BASS, PULSE, ARP, STABS, LEADS, JUKE,
-  chord, bassMidi, chordTone, voiceLead, arpPool,
+  PROGRESSIONS, SECTIONS, FORMS, KICK, SNARE, HATS, FILLS, PERC, BASS, PULSE, ARP, STABS, LEADS, JUKE, GRIT, GRIT_RANGE,
+  chord, bassMidi, chordTone, voiceLead, arpPool, gritDrive, gritCurve,
 } from './score.js';
 
 const BPM = 126;
@@ -69,6 +69,8 @@ function curve(fn, n = 2048) {
 const TAPE = curve((x) => Math.tanh(1.6 * x) / Math.tanh(1.6));
 const DRIVE = curve((x) => Math.tanh(3 * x) / Math.tanh(3)); // bass, stabs: fattens and flattens the attack spikes
 const FUZZ = curve((x) => Math.tanh(7 * x) / Math.tanh(7));  // the bass's growl: next to a square
+// the saturation that dirties the mix in a fight (score.js GRIT): tanh over +-GRIT_RANGE, the drive set by a gain
+const GRIT_CURVE = curve((x) => gritCurve(x * GRIT_RANGE), 4096);
 // bus safety clip: linear below 0.45, soft knee up to a 0.68 ceiling (-3.3 dBFS)
 const CLIP = curve((x) => Math.sign(x) * (Math.abs(x) < 0.45 ? Math.abs(x) : 0.45 + 0.23 * Math.tanh((Math.abs(x) - 0.45) / 0.23)));
 
@@ -223,14 +225,28 @@ class Session {
     };
     this.gainNode = gain;
 
-    // buses: drums (dry) + duck (sidechained synths) -> mix -> glue compressor -> safety clip -> out
+    // buses: drums (dry) + duck (sidechained synths) -> mix -> tone -> grit (dry + driven) -> glue compressor ->
+    // safety clip -> out
     this.out = gain(MIX.out);
     this.out.connect(dest);
     this.mix = gain(0); // the first bar fades in (setLevel)
     this.tone = filt('lowpass', OPEN, 0.6); // the fades between parts close and open it (see fade)
     const comp = ctx.createDynamicsCompressor();
     for (const [k, v] of Object.entries({ threshold: -12, knee: 8, ratio: 3, attack: 0.005, release: 0.15 })) comp[k].value = v;
-    chain(this.mix, filt('highpass', 28), this.tone, comp, shaper(CLIP), this.out);
+    chain(this.mix, filt('highpass', 28), this.tone);
+    // the grit: the mix driven into a tanh (oversampled: no fizz from aliasing), its lows driven less (a shelf down
+    // before, the same back up after: the clean part of it stays in phase with the dry), its top cut, its level
+    // matched to the dry one, blended in (setGrit)
+    const shelf = (g) => { const f = filt('lowshelf', GRIT.shelf[0]); f.gain.value = g; return f; };
+    this.gritDry = gain(1);
+    this.gritPre = gain(1 / GRIT_RANGE);
+    this.gritTone = filt('lowpass', GRIT.tone[0], 0.5);
+    this.gritWet = gain(0);
+    const drive = shaper(GRIT_CURVE);
+    drive.oversample = '4x';
+    chain(this.tone, this.gritDry, comp);
+    chain(this.tone, shelf(-GRIT.shelf[1]), this.gritPre, drive, shelf(GRIT.shelf[1]), this.gritTone, this.gritWet, comp);
+    chain(comp, shaper(CLIP), this.out);
     this.drums = gain(1); this.drums.connect(this.mix);
     this.duck = gain(1); this.duck.connect(this.mix);
 
@@ -358,6 +374,15 @@ class Session {
   }
 
   setGrowl(t, v) { this.growl.gain.setTargetAtTime(MIX.growl * v, t, 0.05); }
+
+  // the mix driven into its saturation, g 0..1 (score.js gritDrive), gliding there from t
+  setGrit(t, g) {
+    const d = gritDrive(g), tau = GRIT.glide / 3;
+    this.gritPre.gain.setTargetAtTime(d.pre / GRIT_RANGE, t, tau);
+    this.gritWet.gain.setTargetAtTime(d.wet * d.makeup, t, tau);
+    this.gritDry.gain.setTargetAtTime(d.dry, t, tau);
+    this.gritTone.frequency.setTargetAtTime(d.tone, t, tau);
+  }
 
   chord(t, voicing) {
     voicing.forEach((m, i) => {
@@ -761,10 +786,12 @@ class Music {
     }
 
     const bite = part('bite') ?? 1;
+    // the grit: the section's, and in a fight the heat on top of it
+    const grit = Math.min(GRIT.max, (part('grit') ?? 0) + (fight ? GRIT.heat * heat : 0));
     const nextSec = SECTIONS[after];
     const plan = {
       name, pass, bar: b, e, stage: st, chords, kick, snare, clap, hat, tom, perc, bass, pulse, arp, stab, lead, hook,
-      growl: part('growl') ?? 0, level: sec.level * (1 + STAGE_GAIN * st), duck: sec.duck, pad: sec.pad, leadVol: sec.leadVol ?? 1,
+      growl: part('growl') ?? 0, grit, level: sec.level * (1 + STAGE_GAIN * st), duck: sec.duck, pad: sec.pad, leadVol: sec.leadVol ?? 1,
       padCut: (300 + 2400 * e) * (sec.padCut ?? 1) * (sec.sweep ? 0.35 + 0.65 * (b / 7) : 1) * (fight ? 0.8 + 0.1 * st : 1),
       bassCut: [(90 + 260 * e) * bite, (500 + 2200 * e) * bite], arpDecay: sec.arpDecay ?? 0.05 + 0.1 * e,
       arpCut: (1200 + 3200 * e) * bite * (sec.breathe ? 0.45 : 1), pulseCut: 380 + 900 * e,
@@ -788,6 +815,7 @@ class Music {
     if (p.fade) S.fade(t0, p.fade);
     S.padLevel(t0, p.pad, p.padCut);
     S.setGrowl(t0, p.growl);
+    S.setGrit(t0, p.grit);
     for (const c of p.chords) S.chord(at(c.s), c.voicing);
     for (const n of p.bass) S.bass(at(n.s), n.m, n.gate * STEP, n.v, p.bassCut[0], p.bassCut[1]);
     for (const n of p.pulse) S.pulse(at(n.s), n.m, n.v, 0.09 + 0.08 * p.e, p.pulseCut * (0.6 + 0.6 * n.v));

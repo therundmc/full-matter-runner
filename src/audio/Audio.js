@@ -6,19 +6,24 @@
 //   - the body and its moves, hands and objects, doors, small things: physically modelled foley (Foley.js recipes
 //     rendered by Synth.js), a few variations of each baked once into buffers and played with live variations
 //   - noise-based synthesis where nothing else fits: blast bodies, tyres, the car alarm, the far-off sirens
-//   - the beds of the night (setAmbience, driven by systems/Ambience.js): long loops rendered once by Beds.js (rain,
-//     the city, a room talking, what hums, the traffic's engines...), each voice with its own level, tone, side, speed
+//   - the beds of the night (setAmbience, driven by systems/Ambience.js): long loops rendered once by Beds.js (the
+//     city, a room talking, a radio, what hums, the traffic's engines...), each voice with its own level, tone, side,
+//     speed; and the far city's long one-shots rendered the same way (a train, a dog, a car alarm: _cue)
 //
-// Bus chain (all created in _build):
+// The mix (LEVELS: one reference level per bus, a close recorded gunshot being the loudest thing there is). Bus chain
+// (all created in _build):
 //   guns  -> drive (tanh) -> gun level -> sfx              (synthesized shots)
+//   voice -> HP 110 Hz -> presence -> sfx                  (shouts, cries, screams: META bus 'voice')
 //   shots -> HP 35 Hz -> low shelf -> high shelf ----------+   (recorded shots: no drive, full crack)
 //   sfx   -> HP 30 Hz -> low shelf -> low-mid cut -> presence -+-> mix -> glue compressor ---+
-//   amb (the beds: per voice gain -> lowpass -> pan) + ambOne (opts.amb one-shots) -> ambience volume -> same EQ -> mix
-//   sfx + shots -> the rooms (ROOMS: warm / small / tiled impulses, an open slap; crossfaded by place) -+ |
-//   per-voice sends -> hall (longer impulse: gunfire, far sounds, the kill chime) -> mix      |
-//   music -> HP 28 Hz -> duck (held dip while it is loud) -> its own compressor -------------+-> bus
+//   sfx + shots + ambience -> the rooms (ROOMS: an impulse each, its size, pre-delay, decay and damping; the street's  |
+//       slap off the facades; crossfaded by place) -> mix                                                            |
+//   per-voice sends -> hall (gunfire, far sounds, the kill's boom) -> mix                                            |
+//   amb (the beds: per voice gain -> lowpass -> pan) + ambOne (opts.amb one-shots) -> ambience volume -> EQ ---------+
+//       (round the glue: gunfire never pumps the night)                                                             |
+//   music -> HP 28 Hz -> duck (held dip while it is loud) -> its own compressor -------------------------------------+-> bus
 //   bus -> filter (lowpass: slow motion / death muffle) -> soft clip (linear under its knee, oversampled)
-//       -> limiter (safety) -> master -> destination
+//       -> limiter (peaks only, slow release: never pumps) -> master -> destination
 // The music has its own compressor so that gunfire never pumps it: only the duck moves it, slowly.
 //
 // Space: each positional voice is panned, loses level and highs with distance while more of it goes to the hall,
@@ -33,14 +38,27 @@ import { RECIPES, formOf } from './Foley.js';
 import { render } from './Synth.js';
 import { BEDS, renderBed, renderLaugh } from './Beds.js';
 
-const MASTER_GAIN = 0.8;
-const MUSIC_GAIN = 0.6;
-const SHOTS_GAIN = 0.65; // recorded gunshots, times GUN_LEVEL
+// The mix: each bus's level (measured headless: the reference loudness of each in the street, the bar and a fight is
+// in the report of the 2026-11-15 mix pass). Guns and impacts punch, voices read, the music drives the fights, the
+// night sits well under all of it (its beds about 10 dB under the music at rest, its small sounds on top of them).
+export const LEVELS = {
+  master: 0.8,
+  music: 0.6,    // the soundtrack (audio/Music.js), its own compressor after it
+  sfx: 0.72,     // the effects: impacts, bodies, foley, the synthesized layers of the guns; under the guns and the music
+  guns: 0.37,    // gunfire against everything else: loud, but under the master's clip so that bursts stay clean
+  shots: 0.65,   // the recorded shots, times `guns`
+  voice: 1.12,   // voices into the effects, after their own presence EQ
+  beds: 0.11,    // the beds of the night (Ambience: data/soundscape.js gives each its level on this bus)
+  ambOne: 0.3,   // the small sounds of the night and of the far city (opts.amb one-shots, their META gain on top)
+};
 
 // kill confirm: the semitones over its lowest note that its tone climbs over a chain, one step per kill (a minor
 // pentatonic scale: a run of kills plays a rising line)
 const CONFIRM_SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
 const CONFIRM_ROOT = 196; // Hz
+// and under it the reward, a deep boom: [start Hz, end Hz, s, level] of its sine, of its upper body (a triangle, for
+// small speakers), and [lowpass Hz, s, level] of the low air after it
+const CONFIRM_BOOM = { sub: [78, 41, 0.62, 0.4], body: [150, 82, 0.16, 0.15], air: [320, 0.5, 0.12] };
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
 const STEP_LEVEL = 0.2; // footsteps, far under everything else (the user: quiet, not too loud; 0: none at all)
@@ -84,15 +102,15 @@ export const META = {
   slash: { pri: 2, dur: 0.3, gap: 0.04, max: 3, duck: 0.9, gain: 0.95 },
   punch: { pri: 3, dur: 0.35, gap: 0.04, max: 3, duck: 0.85, gain: 1 },
   bodyFall: { pri: 1, dur: 0.4, gap: 0.05, max: 3, gain: 0.55 },
-  shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.75, reach: 1900 },
-  cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.65, reach: 1900 },
+  shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.75, reach: 1900, bus: 'voice' },
+  cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.65, reach: 1900, bus: 'voice' },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
-  whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.5, reach: 1200 },
+  whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.5, reach: 1200, bus: 'voice' },
   // a crowd: many at once, each his own cry, carried by the room
-  scream: { pri: 3, dur: 1.1, gap: 0.08, max: 5, gain: 0.6, reach: 2000, hall: 0.22 },
-  mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.5, reach: 900 },
-  pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.4, reach: 800 },
-  sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700 },
+  scream: { pri: 3, dur: 1.1, gap: 0.08, max: 5, gain: 0.55, reach: 2000, hall: 0.22, bus: 'voice' },
+  mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.5, reach: 900, bus: 'voice' },
+  pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.36, reach: 800, bus: 'voice' },
+  sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700, bus: 'voice' },
   // doors, movement
   door: { dur: 0.3, gap: 0.08, max: 2, gain: 0.34 },
   doorSlam: { pri: 3, dur: 0.5, gap: 0.06, max: 2, duck: 0.85, gain: 0.4 },
@@ -134,24 +152,30 @@ export const META = {
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   match: { pri: 2, dur: 0.8, gap: 0.3, max: 1, gain: 0.7 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
-  confirm: { pri: 4, dur: 0.3, gap: 0.03, max: 3, duck: 0.85, gain: 0.8, hall: 0.08 },
+  // the kill's reward: a new one chokes the boom of the last (a chain never muds), the music dips under it
+  confirm: { pri: 4, dur: 0.6, gap: 0.03, max: 2, duck: 0.8, gain: 0.8, hall: 0.06, choke: true },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
   skid: { pri: 2, dur: 1, gap: 0.25, max: 2, gain: 0.3, reach: 1800 },
   // the night around (systems/Ambience.js; its beds are not voices, see setAmbience): the city's swell of the opening
-  // cinematic, the wind, drops, and the life of the bar and its toilets; far under the rest, the first dropped in a fight
+  // cinematic, the wind, drops, and the life of the bar and its toilets; far under the rest, the first dropped in a fight.
+  // The far city (soundscape CITY): a police car crossing it, the elevated train, a car alarm, a dog; long, quiet, wet.
+  farSiren: { pri: 0, dur: 15, gap: 20, max: 1, gain: 0.135, hall: 0.45 },
+  train: { pri: 0, dur: 22, gap: 30, max: 1, gain: 0.35, hall: 0.3 },
+  farAlarm: { pri: 0, dur: 9, gap: 30, max: 1, gain: 0.025, hall: 0.45 },
+  dog: { pri: 0, dur: 4, gap: 8, max: 1, gain: 0.1, hall: 0.4 },
   air: { pri: 0, dur: 9, gap: 2, max: 3, gain: 0.1 },
   gust: { pri: 0, dur: 3.6, gap: 2, max: 2, gain: 0.22 },
   drip: { pri: 0, dur: 0.3, gap: 0.2, max: 2, reach: 300, gain: 0.18 },
-  clink: { pri: 0, dur: 0.5, gap: 0.3, max: 2, reach: 700, gain: 0.3 },
-  ice: { pri: 0, dur: 0.6, gap: 1, max: 1, reach: 600, gain: 0.25 },
-  laugh: { pri: 0, dur: 1.2, gap: 1.5, max: 1, reach: 900, gain: 0.35, hall: 0.06 },
+  clink: { pri: 0, dur: 0.5, gap: 0.6, max: 2, reach: 700, gain: 0.26 },
+  ice: { pri: 0, dur: 0.6, gap: 1, max: 1, reach: 600, gain: 0.22 },
+  laugh: { pri: 0, dur: 1.2, gap: 3, max: 1, reach: 900, gain: 0.3, hall: 0.06 },
   pour: { pri: 0, dur: 1.6, gap: 1, max: 1, reach: 600, gain: 0.3 },
   bottle: { pri: 0, dur: 0.4, gap: 0.4, max: 1, reach: 700, gain: 0.35 },
   till: { pri: 0, dur: 1.2, gap: 2, max: 1, reach: 700, gain: 0.25 },
   cistern: { pri: 0, dur: 3.5, gap: 3, max: 1, reach: 500, gain: 0.3 },
-  horn: { pri: 2, dur: 0.8, gap: 1.2, max: 2, gain: 0.5, reach: 1400, hall: 0.25 },
+  horn: { pri: 2, dur: 1, gap: 1.2, max: 2, gain: 0.5, reach: 1400, hall: 0.25 },
 };
 for (const k in META) META[k] = { ...DEFAULT_META, ...META[k] };
 const GLOBAL_SOFT_CAP = 26; // above this, only louder / higher priority sounds get in (stealing the quietest)
@@ -163,20 +187,21 @@ const FAR_HALL = 0.3;         // more of it for what is far away: distance is he
 const OCCLUDED = [0.6, 1100]; // behind a wall: level factor, lowpass (Hz)
 const DUCK_HOLD = 0.25, DUCK_RELEASE = 0.3; // s: the music stays down through a burst, then comes back slowly
 const CHOKE = 0.05; // s: how fast a shooter's previous shot fades under his next one
-const SFX_LEVEL = 0.72; // everything that is not a recorded shot: under the guns and the music, never in their way
-const GUN_LEVEL = 0.37; // gunfire in the mix: loud, but under the master's clip so that bursts stay clean
 
-// The rooms effects are heard in (systems/Ambience.js crossfades them by place): sends from the effects and from the
-// recorded shots, and the impulse [pre-delay s, length s, decay s, brightness]; 'open' has none: the street's facades
-// throw a slap back ([delay s, level]). Until told otherwise everything is in the warm one.
+// The rooms everything but the music is heard in (systems/Ambience.js crossfades them by place): what each source
+// sends into it (sfx: the effects and the voices; shots: recorded gunfire; amb: the night's beds and small sounds) and
+// its impulse (see _room): pre-delay s, RT60 s, damping (Hz the tail starts at before its highs die away) and size
+// (spacing of the early reflections, 1 = the bar). Out of doors a short dark wash, and the facades across the street
+// throw a slap back ([delay s, level], low-passed). Until told otherwise everything is in the warm one.
 const ROOMS = {
-  open: { sfx: 0.12, shots: 0.1, slap: [[0.09, 0.45], [0.17, 0.25]] },
-  warm: { sfx: 0.2, shots: 0.1, ir: [0.012, 1, 0.15, 1] },
-  small: { sfx: 0.15, shots: 0.08, ir: [0.005, 0.5, 0.07, 0.8] },
-  tiled: { sfx: 0.26, shots: 0.14, ir: [0.004, 0.9, 0.14, 1.6] },
+  open: { sfx: 0.1, shots: 0.09, amb: 0.05, ir: { pre: 0.025, rt: 0.9, damp: 2600, size: 2.4 }, slap: [[0.085, 0.36], [0.155, 0.2], [0.27, 0.09]] },
+  warm: { sfx: 0.2, shots: 0.1, amb: 0.24, ir: { pre: 0.012, rt: 1.1, damp: 4200, size: 1 } },
+  small: { sfx: 0.15, shots: 0.08, amb: 0.14, ir: { pre: 0.004, rt: 0.45, damp: 5200, size: 0.5 } },
+  tiled: { sfx: 0.26, shots: 0.14, amb: 0.22, ir: { pre: 0.003, rt: 1.0, damp: 9000, size: 0.6 } },
 };
+const HALL = { pre: 0.03, rt: 2.6, damp: 3200, size: 3 }; // the city's space behind gunfire and far sounds
+const SLAP_TONE = 2500; // Hz: the facades give back no highs
 // The beds (setAmbience)
-const AMB_LEVEL = 0.5;  // all of them, under everything else
 const BED_TAU = 0.12;   // s: how fast a voice follows its level, tone, side and speed (the mix comes ~10 times a second)
 const BED_HOLD = 0.6;   // s a voice keeps its level without a new mix (pause, menu, a level left), then fades out
 const BED_IDLE = 6;     // s a silent voice keeps its loop running before it is let go
@@ -338,6 +363,7 @@ class AudioSystem {
     this.baked = {};    // synthesized foley form -> its variations, rendered on first use or in the background
     this.beds = {};     // bed voice -> { g, lp, pan, src, quiet } (setAmbience)
     this.bedBufs = {};  // bed -> its rendered loop (null: being rendered)
+    this.bedMarks = {}; // bed -> [[start s, length s]] where a one-shot of it may be played (_cue)
     this.bedQueue = []; // beds waiting to be rendered, one at a time in idle time
     this.laughs = {};   // 'm' | 'f' -> rendered laughs
   }
@@ -374,6 +400,7 @@ class AudioSystem {
     this.baked = {};
     this.beds = {};
     this.bedBufs = {};
+    this.bedMarks = {};
     this.bedQueue = [];
     this.laughs = {};
     const param = (n, v) => { for (const k in v) n[k].value = v[k]; return n; };
@@ -392,8 +419,9 @@ class AudioSystem {
       return s;
     };
 
-    this.sfx = gain(SFX_LEVEL * this.vol.sfx);
-    this.music = gain(MUSIC_GAIN * this.vol.music);
+    const L = LEVELS;
+    this.sfx = gain(L.sfx * this.vol.sfx);
+    this.music = gain(L.music * this.vol.music);
     this.duck = gain(1);
     this.bus = gain(1);
     const mix = gain(1);
@@ -403,35 +431,36 @@ class AudioSystem {
     // gun drive: unity gain for quiet (distant) shots, rounds the peaks of close ones off like an overdriven
     // mic, which is a big part of what makes a recorded gunshot sound heavy. In: +-2 -> out: +-0.96.
     this.guns = gain(0.5);
-    chain(this.guns, shaper((x) => Math.tanh(2 * x), '2x'), gain(GUN_LEVEL * 0.9 / SFX_LEVEL), this.sfx);
+    chain(this.guns, shaper((x) => Math.tanh(2 * x), '2x'), gain(L.guns * 0.9 / L.sfx), this.sfx);
+    // voices: no rumble, a little presence so that a shout reads through the gunfire
+    this.voice = gain(L.voice);
+    chain(this.voice, bq('highpass', 110, 0.7), bq('peaking', 2500, 1, 2.5), this.sfx);
     // recorded shots keep their full crack: no drive, no low-mid cut, a bit of weight and air
-    this.shots = gain(SHOTS_GAIN * GUN_LEVEL * this.vol.sfx);
+    this.shots = gain(L.shots * L.guns * this.vol.sfx);
     chain(this.shots, bq('highpass', 35, 0.7), bq('lowshelf', 120, 0.7, 3), bq('highshelf', 5000, 0.7, 3.5), mix);
     // the beds of the night and the one-shots flagged `amb` (systems/Ambience.js, Critters): the AMBIENCE volume
-    // governs both, the effects volume neither. Same EQ as the effects, and the same room sends.
+    // governs both, the effects volume neither. No boom, a soft top, and round the glue: gunfire never pumps them.
     this.ambBus = gain(this.vol.ambience);
-    chain(this.ambBus, bq('highpass', 30, 0.7), bq('lowshelf', 110, 0.7, 2), bq('peaking', 350, 0.9, -2), bq('peaking', 3200, 0.8, 1.5), mix);
-    this.amb = gain(AMB_LEVEL * SFX_LEVEL);
+    chain(this.ambBus, bq('highpass', 40, 0.7), bq('peaking', 350, 0.9, -2), bq('highshelf', 6000, 0.7, -2), this.bus);
+    this.amb = gain(L.beds);
     this.amb.connect(this.ambBus);
-    this.ambOne = gain(SFX_LEVEL);
+    this.ambOne = gain(L.ambOne);
     this.ambOne.connect(this.ambBus);
     // the room everything that is not music is heard in: it glues the recordings (all made in different places)
     // together, and tells the street from the bar and the tiled toilets (ROOMS, crossfaded by setAmbience)
     this.rooms = {};
     for (const [name, R] of Object.entries(ROOMS)) {
-      const on = name === 'warm' ? 1 : 0, sends = [gain(R.sfx * on), gain(R.shots * on), gain(R.sfx * on)];
+      const on = name === 'warm' ? 1 : 0, sends = [gain(R.sfx * on), gain(R.shots * on), gain(R.amb * on)];
       this.sfx.connect(sends[0]);
-      this.ambBus.connect(sends[2]);
       this.shots.connect(sends[1]);
-      const out = gain(1);
-      if (R.ir) {
-        const conv = ctx.createConvolver();
-        conv.normalize = false;
-        conv.buffer = this._room(ctx, ...R.ir);
-        for (const s of sends) s.connect(conv);
-        conv.connect(out);
-      } else {
-        const dark = bq('lowpass', 2500, 0.7);
+      this.ambBus.connect(sends[2]);
+      const out = gain(1), conv = ctx.createConvolver();
+      conv.normalize = false;
+      conv.buffer = this._room(ctx, R.ir);
+      for (const s of sends) s.connect(conv);
+      conv.connect(out);
+      if (R.slap) {
+        const dark = bq('lowpass', SLAP_TONE, 0.7);
         for (const s of sends) s.connect(dark);
         for (const [t, v] of R.slap) {
           const d = ctx.createDelay(0.5);
@@ -442,17 +471,17 @@ class AudioSystem {
       chain(out, bq('highpass', 160, 0.7), mix);
       this.rooms[name] = sends;
     }
-        // and a bigger space behind gunfire, far sounds and the kill chime: fed voice by voice (see _out)
+    // and a bigger space behind gunfire, far sounds and the kill's boom: fed voice by voice (see _out)
     this.hall = ctx.createConvolver();
     this.hall.normalize = false;
-    this.hall.buffer = this._room(ctx, 0.03, 2.4, 0.4);
+    this.hall.buffer = this._room(ctx, HALL);
     chain(this.hall, bq('highpass', 220, 0.7), mix);
 
     // glue on the effects only: loud bursts are held together, the music bed is left alone. (The browser adds
     // makeup gain from these settings: a low threshold would push clicks and casings up towards the gunshots.)
-    const comp = () => param(ctx.createDynamicsCompressor(), { threshold: -10, knee: 8, ratio: 2.5, attack: 0.008, release: 0.18 });
-    chain(mix, comp(), this.bus);
-    chain(this.music, bq('highpass', 28, 0.7), this.duck, comp(), this.bus);
+    const comp = () => param(ctx.createDynamicsCompressor(), { threshold: -10, knee: 8, ratio: 2.5, attack: 0.008, release: 0.22 });
+    chain(mix, this.glue = comp(), this.bus);
+    chain(this.music, bq('highpass', 28, 0.7), this.duck, this.musicComp = comp(), this.bus);
 
     this.filter = bq('lowpass', 20000, 0.7);
     // soft clip: transparent up to the knee (with the gain the mix was balanced on), rounding off above it
@@ -461,9 +490,10 @@ class AudioSystem {
       const a = Math.abs(x);
       return a <= KNEE ? G * x : Math.sign(x) * (Y + (1 - Y) * Math.tanh(G * (a - KNEE) / (1 - Y)));
     }, '4x');
-    const limiter = param(ctx.createDynamicsCompressor(), { threshold: -3, knee: 0, ratio: 20, attack: 0.001, release: 0.08 });
-    this.master = gain(this.muted ? 0 : MASTER_GAIN * this.vol.master);
-    chain(this.bus, this.filter, gain(0.85), clip, limiter, this.master, ctx.destination);
+    // the limiter only catches what the clip let through, and lets go slowly: it never pumps
+    this.limiter = param(ctx.createDynamicsCompressor(), { threshold: -2, knee: 0, ratio: 20, attack: 0.002, release: 0.3 });
+    this.master = gain(this.muted ? 0 : L.master * this.vol.master);
+    chain(this.bus, this.filter, gain(0.85), clip, this.limiter, this.master, ctx.destination);
 
     // shared noise: white (texture) and brown (rumble), 2 s each, looped by the sources
     const len = ctx.sampleRate * 2;
@@ -478,31 +508,35 @@ class AudioSystem {
     }
   }
 
-  // impulse response of a room: `delay` s of air, a few early reflections off the nearest walls, then a `len` s
-  // noise tail that gets darker as it dies (less so the brighter: tiles); unit energy per channel, so the send gain
-  // is the wet level
-  _room(ctx, delay = 0.012, len = 1, tau = 0.15, bright = 1) {
-    const R = ctx.sampleRate, pre = Math.round(R * delay), n = pre + Math.round(R * len);
+  // impulse response of a room: `pre` s of air, early reflections off the nearest walls (spaced by its `size`), then
+  // a noise tail dying in `rt` s (RT60) whose highs die faster: it starts low-passed at `damp` Hz and darkens as it
+  // goes; unit energy per channel, so the send gain is the wet level. Each channel is its own: a wide tail.
+  _room(ctx, { pre = 0.012, rt = 1, damp = 4000, size = 1 } = {}) {
+    const R = ctx.sampleRate, p0 = Math.round(R * pre), n = p0 + Math.round(R * rt * 1.1), tau = rt / 6.91;
     const ir = ctx.createBuffer(2, n, R);
     for (let c = 0; c < 2; c++) {
       const d = ir.getChannelData(c);
-      let lp = 0, energy = 0;
-      for (let i = pre; i < n; i++) {
-        const t = (i - pre) / R;
-        lp += Math.min(1, (0.2 + 0.6 * Math.exp(-t / 0.12)) * bright) * (Math.random() * 2 - 1 - lp);
+      let lp = 0, k = 1, energy = 0;
+      for (let i = p0; i < n; i++) {
+        const t = (i - p0) / R;
+        if (((i - p0) & 63) === 0) k = 1 - Math.exp((-2 * Math.PI * (180 + damp * Math.exp((-3 * t) / rt))) / R);
+        lp += k * (Math.random() * 2 - 1 - lp);
         d[i] = lp * Math.exp(-t / tau);
       }
-      for (const [t, v] of [[0.007, 1.4], [0.017, -1.1], [0.029, 0.8], [0.043, -0.6]]) d[pre + Math.round(R * t * rand(0.85, 1.15))] += v;
-      for (let i = pre; i < n; i++) energy += d[i] * d[i];
-      const k = 1 / Math.sqrt(energy || 1);
-      for (let i = pre; i < n; i++) d[i] *= k;
+      for (const [t, v] of [[0.007, 1.4], [0.017, -1.1], [0.029, 0.8], [0.043, -0.6], [0.061, 0.4]]) {
+        const i = p0 + Math.round(R * t * size * rand(0.85, 1.15));
+        if (i < n) d[i] += v;
+      }
+      for (let i = p0; i < n; i++) energy += d[i] * d[i];
+      const g = 1 / Math.sqrt(energy || 1);
+      for (let i = p0; i < n; i++) d[i] *= g;
     }
     return ir;
   }
 
   toggleMute() {
     this.muted = !this.muted;
-    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : MASTER_GAIN * this.vol.master, this.ctx.currentTime, 0.05);
+    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : LEVELS.master * this.vol.master, this.ctx.currentTime, 0.05);
   }
 
   // kind: 'master' | 'music' | 'sfx' | 'ambience' (the beds and the `amb` one-shots), v: 0..1. Safe before the context exists (_build applies this.vol).
@@ -512,10 +546,11 @@ class AudioSystem {
     this.vol[kind] = v;
     if (!this.ctx) return;
     const set = (node, g) => node && node.gain.setTargetAtTime(g, this.ctx.currentTime, 0.03);
-    if (kind === 'master') set(this.master, this.muted ? 0 : MASTER_GAIN * v);
-    else if (kind === 'music') set(this.music, MUSIC_GAIN * v);
+    const L = LEVELS;
+    if (kind === 'master') set(this.master, this.muted ? 0 : L.master * v);
+    else if (kind === 'music') set(this.music, L.music * v);
     else if (kind === 'ambience') set(this.ambBus, v);
-    else { set(this.sfx, SFX_LEVEL * v); set(this.shots, SHOTS_GAIN * GUN_LEVEL * v); }
+    else { set(this.sfx, L.sfx * v); set(this.shots, L.shots * L.guns * v); }
   }
 
   // 0 = clear, 1 = heavily muffled (death / slow motion)
@@ -593,8 +628,8 @@ class AudioSystem {
       for (const k in this.rooms) {
         const w = clamp(room[k] ?? 0, 0, 1), [s, g, am] = this.rooms[k];
         this._glide(s.gain, ROOMS[k].sfx * w, now, 0.15);
-        this._glide(am.gain, ROOMS[k].sfx * w, now, 0.15);
         this._glide(g.gain, ROOMS[k].shots * w, now, 0.15);
+        this._glide(am.gain, ROOMS[k].amb * w, now, 0.15);
       }
     }
   }
@@ -672,9 +707,10 @@ class AudioSystem {
       let s;
       do s = gen.next(); while (!s.done && deadline.timeRemaining() > 3);
       if (!s.done) { idle(step); return; }
-      const { sr, data } = s.value, buf = ctx.createBuffer(data.length, data[0].length, sr);
+      const { sr, data, marks } = s.value, buf = ctx.createBuffer(data.length, data[0].length, sr);
       data.forEach((d, i) => buf.getChannelData(i).set(d));
       this.bedBufs[key] = buf;
+      this.bedMarks[key] = marks;
       this.bedQueue.shift();
       this._bakeNext();
     };
@@ -743,13 +779,15 @@ class AudioSystem {
     if (sp.vol < 0.012) return; // inaudible
     const entry = this._admit(name, meta, sp.vol);
     if (!entry) return;
-    if (opts.choke) {
-      const prev = this.chokes.get(opts.choke);
+    const choke = opts.choke ?? (meta.choke ? meta : null); // META choke: every play of that name chokes the last
+    if (choke) {
+      const prev = this.chokes.get(choke);
       if (prev && prev.end > this.ctx.currentTime) this._kill(prev, this.ctx.currentTime, CHOKE);
-      this.chokes.set(opts.choke, entry);
+      this.chokes.set(choke, entry);
     }
     const shot = gun && SHOTS[name], buf = shot && this.buffers[shot.key];
-    const o = entry.gain = this._out(sp, opts.dest || (buf ? this.shots : gun ? this[gun.bus || 'guns'] : opts.amb ? this.ambOne : this.sfx));
+    const bus = buf ? this.shots : gun ? this[gun.bus || 'guns'] : opts.amb ? this.ambOne : meta.bus === 'voice' ? this.voice : this.sfx;
+    const o = entry.gain = this._out(sp, opts.dest || bus);
     if (gun) this._gun(o, gun, sp, opts, buf && shot, buf);
     else {
       o.gain.value = sp.vol * rand(0.88, 1.1); // never twice the same level
@@ -1231,16 +1269,20 @@ class AudioSystem {
     this._thump(o, { f0: 60, f1: 85, dur: 0.4, vol: 0.5 });
   }
   // a kill confirmed (synthesized, asked for by the user; he found a chime too arcade, then a struck-metal "dink" too
-  // much like a bottle, and wanted it less loud and satisfying): a punch one feels, a dry knock, a tick, and one short
-  // muted note that climbs a scale with each kill of the chain (opts.n), so a rampage plays a rising line.
+  // much like a bottle, then wanted a deep, low reward, not too strong): a boom felt more than heard (CONFIRM_BOOM: a
+  // sine falling an octave, its upper body for small speakers, a breath of low air after it), a dry knock, and one
+  // short muted note that climbs a scale with each kill of the chain (opts.n), so a rampage plays a rising line. A new
+  // kill chokes the last one's boom (META confirm.choke) and each boom of a chain is a little shorter: no mud.
   _confirm(o, opts) {
-    const step = CONFIRM_SCALE[Math.min((opts.n || 1) - 1, CONFIRM_SCALE.length - 1)], f = CONFIRM_ROOT * 2 ** (step / 12), d = 0.015;
+    const n = opts.n || 1, step = CONFIRM_SCALE[Math.min(n - 1, CONFIRM_SCALE.length - 1)], f = CONFIRM_ROOT * 2 ** (step / 12), d = 0.012;
+    const { sub, body, air } = CONFIRM_BOOM, short = 1 / (1 + 0.08 * Math.min(n - 1, 5));
     this.pv = 1;
-    this._thump(o, { f0: 150, f1: 52, dur: 0.12, vol: 0.85, delay: d });                                  // the punch, felt
-    this._noiseBurst(o, { f0: 820, f1: 420, q: 1.1, dur: 0.045, vol: 0.4, attack: 0.0005, delay: d });      // the knock
-    this._noiseBurst(o, { type: 'highpass', f0: 4200, dur: 0.008, vol: 0.2, attack: 0.0003, delay: d });    // the tick
+    this._thump(o, { f0: sub[0], f1: sub[1], dur: sub[2] * short, vol: sub[3], delay: d });
+    this._thump(o, { type: 'triangle', f0: body[0], f1: body[1], dur: body[2], vol: body[3], delay: d });
+    this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: air[0], f1: 60, dur: air[1] * short, vol: air[2], attack: 0.008, delay: d });
+    this._noiseBurst(o, { f0: 820, f1: 420, q: 1.1, dur: 0.04, vol: 0.22, attack: 0.0005, delay: d });      // the knock
     // the note: harmonic partials dying fast, a muted pluck (inharmonic ones rang like a bottle: the user's word)
-    for (const [ratio, vol, dur] of [[1, 0.42, 0.14], [2, 0.14, 0.08], [3, 0.05, 0.045]]) this._ring(o, f * ratio, dur, vol, d);
+    for (const [ratio, vol, dur] of [[1, 0.24, 0.14], [2, 0.08, 0.08], [3, 0.03, 0.045]]) this._ring(o, f * ratio, dur, vol, d + 0.01);
   }
   // level cleared: one dark boom rolling away
   _clear(o) {
@@ -1249,10 +1291,19 @@ class AudioSystem {
     this._noiseBurst(o, { f0: 2500, f1: 600, q: 0.5, dur: 1.2, vol: 0.1, attack: 0.3 });
   }
 
-  // a car horn: two notes a third apart (two detuned saws each), softly clipped and kept dark for the reedy honk;
-  // opts.pitch: that vehicle's horn
+  // a car horn: opts.honks honks (1: one held, more: short and quick, an impatient driver); opts.pitch: its horn
   _horn(o, opts) {
-    const ctx = this.ctx, t = ctx.currentTime, p = opts.pitch || 1, hold = rand(0.35, 0.7), end = t + 0.01 + hold + 0.06;
+    const n = Math.max(1, Math.round(opts.honks || 1));
+    let at = 0;
+    for (let i = 0; i < n; i++) {
+      const hold = n > 1 ? rand(0.1, 0.2) : rand(0.35, 0.7);
+      this._honk(o, opts.pitch || 1, at, hold);
+      at += hold + rand(0.09, 0.16);
+    }
+  }
+  // one honk: two notes a third apart (two detuned saws each), softly clipped and kept dark for the reedy sound
+  _honk(o, p, delay, hold) {
+    const ctx = this.ctx, t = ctx.currentTime + delay, end = t + 0.01 + hold + 0.06;
     const g = ctx.createGain(), lp = ctx.createBiquadFilter(), ws = ctx.createWaveShaper(), srcs = [];
     if (!this.hornCurve) {
       this.hornCurve = new Float32Array(1025);
@@ -1278,6 +1329,105 @@ class AudioSystem {
     ws.connect(lp); lp.connect(g); g.connect(o);
     o._n++;
     srcs[0].onended = () => this._release(o, ...srcs, ws, lp, g);
+  }
+
+  // ---- the far city (soundscape CITY): long one-shots, rendered by Beds.js or synthesized here ----
+  // a cut of a rendered one-shot (BEDS `once`) for voice o (into node `to`, o itself by default): mark i of it (or a
+  // random one), from `skip` s into it, for `len` s (looping if that is longer than the rest of the mark), its playback
+  // rate gliding through `rate` ([[s, rate]...]); returns its source, or null while it is not rendered yet
+  _cue(o, key, { to = o, mark = null, skip = 0, len = Infinity, rate = [[0, 1]], vol = 1, fade = 0.05, delay = 0 } = {}) {
+    const buf = this._bakeBed(key), ctx = this.ctx;
+    if (!buf) return null;
+    const marks = this.bedMarks[key] || [[0, buf.duration]], [m0, mLen] = marks[mark ?? Math.floor(Math.random() * marks.length)];
+    const t = ctx.currentTime + delay, dur = Math.min(len, Number.isFinite(len) ? len : mLen - skip);
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf;
+    s.loop = dur > mLen - skip;
+    s.playbackRate.setValueAtTime(rate[0][1], t);
+    for (const [at, r] of rate.slice(1)) s.playbackRate.linearRampToValueAtTime(r, t + at);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.setValueAtTime(vol, t + Math.max(0, dur - fade));
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    s.connect(g);
+    g.connect(to);
+    o._n++;
+    s.onended = () => this._release(o, s, g);
+    s.start(t, m0 + skip);
+    s.stop(t + dur + 0.02);
+    return s;
+  }
+
+  // a moving source: a panner sweeping from one side to the other (dir +-1, width 0..1) over dur s, into o
+  _sweep(o, dir, width, dur) {
+    const ctx = this.ctx, t = ctx.currentTime, g = ctx.createGain();
+    if (!ctx.createStereoPanner) { g.connect(o); return g; }
+    const p = ctx.createStereoPanner();
+    p.pan.setValueAtTime(-dir * width, t);
+    p.pan.linearRampToValueAtTime(dir * width, t + dur);
+    g.connect(p);
+    p.connect(o);
+    g._pan = p;
+    return g;
+  }
+
+  // the elevated train going by a block away (the title's train, heard from the street): its rendered passage, the
+  // wheels on the joints, the rumble and the screech, crossing from one side to the other, its pitch dropping as it
+  // goes past (Doppler); opts.dir: which way
+  _train(o, opts) {
+    const dur = 22, mid = dur / 2, mix = this._sweep(o, opts.dir < 0 ? -1 : 1, 0.75, dur), k = rand(0.94, 1.06);
+    const s = this._cue(o, 'train', { to: mix, rate: [[0, k * 1.012], [mid - 3, k * 1.01], [mid + 3, k * 0.99], [dur, k * 0.988]] });
+    this._let(o, mix, s);
+  }
+  // a car alarm going off streets away: a few seconds of its cycle, from wherever it is in it, then somebody shuts it
+  _farAlarm(o) {
+    this._cue(o, 'carAlarm', { skip: rand(0, 8), len: rand(5, 8.5), rate: [[0, rand(0.94, 1.06)]], fade: 0.03 });
+  }
+  // a dog barking down the block, another answering it now and then
+  _dog(o) {
+    this._cue(o, 'dog', { rate: [[0, rand(0.92, 1.08)]] });
+    if (Math.random() < 0.35) this._cue(o, 'dog', { rate: [[0, rand(0.8, 0.9)]], vol: 0.6, delay: rand(1.2, 2.4) });
+  }
+  // the node chain of a moving cut, let go with its source
+  _let(o, mix, s) {
+    if (!s) { mix.disconnect(); return; }
+    const end = s.onended;
+    s.onended = () => { end(); mix.disconnect(); mix._pan?.disconnect(); };
+  }
+
+  // a police car crossing the city a few blocks away: its siren swelling as it comes and dying as it goes, wailing,
+  // then yelping a while, its pitch dropping as it passes (Doppler), from one side to the other, through its small
+  // horn speaker (the distance takes the rest: _out). opts.dir: which way it goes.
+  _farSiren(o, opts) {
+    const ctx = this.ctx, t = ctx.currentTime, dur = rand(10, 15), mid = dur * rand(0.4, 0.6), k = rand(0.93, 1.07);
+    const N = 1200, freq = new Float32Array(N), level = new Float32Array(N), yelp = [rand(0.2, 0.5), rand(0.55, 0.8)];
+    let ph = 0;
+    for (let i = 0; i < N; i++) {
+      const u = (i / (N - 1)) * dur, fast = u > yelp[0] * dur && u < yelp[1] * dur; // the yelp a while
+      ph += dur / (N - 1) / (fast ? 0.33 : 4.2);
+      const sweep = 0.5 - 0.5 * Math.cos(2 * Math.PI * ph), dop = 1 - 0.028 * Math.tanh((u - mid) / 1.6);
+      freq[i] = (560 + 640 * sweep) * dop * k;
+      level[i] = Math.min(1, u / 1.5, (dur - u) / 1.5) / (1 + ((u - mid) / 3.2) ** 2);
+    }
+    const mix = this._sweep(o, opts.dir < 0 ? -1 : 1, 0.7, dur), env = ctx.createGain(), horn = ctx.createBiquadFilter();
+    horn.type = 'lowpass';
+    horn.frequency.value = 1600;
+    horn.Q.value = 0.6;
+    env.gain.setValueCurveAtTime(level, t, dur);
+    env.connect(horn);
+    horn.connect(mix);
+    const oscs = [['sawtooth', 1], ['square', 1.006]].map(([type, d]) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueCurveAtTime(freq.map((f) => f * d), t, dur);
+      g.gain.value = 0.3;
+      osc.connect(g);
+      g.connect(env);
+      o._n++;
+      osc.start(t);
+      osc.stop(t + dur + 0.01);
+      return [osc, g];
+    });
+    oscs.forEach(([osc, g], i) => { osc.onended = () => this._release(o, osc, g, ...(i ? [env, horn, mix, ...(mix._pan ? [mix._pan] : [])] : [])); });
   }
 
   // ---- the night around: the wind, drops (systems/Ambience.js), the opening cinematic's city ----

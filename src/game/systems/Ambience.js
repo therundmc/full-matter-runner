@@ -4,18 +4,19 @@
 //     and muffled the further they lie (a distance field per kind, through walls), from their side. Moving from one
 //     to the next crossfades them (AMBIENCE.ease), and the reverb follows the room he is in.
 //   - Beds come alive with the place: the talk of a bar only while its customers sit at ease (it dies down when they
-//     panic), the radio and what hums only while the power is on, the rain by `soundscape.rain`.
-//   - Props with a bed of their own (data/soundscape.js PROP_BEDS: neon, fridges, tubes, fans, a TV's snow, rain on a
-//     parked car): the nearest that still works, from its side, muffled through a wall.
+//     panic), the radio and what hums only while the power is on.
+//   - Props with a bed of their own (data/soundscape.js PROP_BEDS: neon, fridges, tubes, fans, a TV's snow): the
+//     nearest that still works, from its side, muffled through a wall; and the level's spots (SPOTS: a radio behind
+//     a window).
 //   - The traffic car by car (systems/Ambient.js): each of the nearest cars drives a voice of its own, its level by
 //     distance, its side, its engine speed and the Doppler shift as it goes by.
 //   - One-shots on top, each on its own random clock while its place is heard (glasses, ice, a laugh, a chair, the
-//     bartender, a drip, the cistern, a far siren or horn); a gust of wind (systems/Papers.js 'gust'); drops off a
-//     leaking pipe (props with `drip`).
+//     bartender, a drip, the cistern); the far city everywhere (CITY: the elevated train, a police car, horns, a car
+//     alarm, a dog), dull from indoors; a gust of wind (systems/Papers.js 'gust'); drops off a leaking pipe.
 // DOM-free: the mix is handed to the world (World.atmosphere -> audio/Audio.js setAmbience) every AMBIENCE.send s;
 // the one-shots go through World.sound like any other sound, so walls muffle them.
 import { AMBIENCE, TILE } from '../Config.js';
-import { ZONES, PROP_BEDS, CARS } from '../data/soundscape.js';
+import { ZONES, PROP_BEDS, CARS, CITY, SPOTS } from '../data/soundscape.js';
 import { rand, clamp } from '../../engine/math.js';
 import { WALKER } from '../ai/Civilians.js';
 
@@ -80,7 +81,6 @@ function matches(q, pb) {
   if (pb.hum) return q.def?.hum === pb.hum;
   if (pb.types) return pb.types.includes(q.type);
   if (pb.screen) return !q.isVehicle && !!q.rec?.snow;
-  if (pb.parked) return !!q.isVehicle && !q.moving && !q.exploded;
   return false;
 }
 
@@ -97,13 +97,13 @@ export default class Ambience {
     this.world = world;
     this.cfg = cfg;
     const def = world.level?.soundscape || {};
-    this.rain = def.rain ?? 0;
     this.zones = zoneMap(world.map, def, cfg);
+    this.spots = (world.level?.soundSpots || []).filter(([bed]) => SPOTS[bed]).map(([bed, c, r]) => ({ ...SPOTS[bed], x: (c + 0.5) * TILE, y: (r + 0.5) * TILE }));
     this.here = null;          // the place he is in
     this.out = 1;              // 0 under a roof .. 1 out of doors, eased (gusts)
     this.mix = {};             // bed voice -> { gain, lp, pan, bed?, rate? } as last handed over (eased)
     this.room = null;          // reverb class -> weight, eased
-    this.clocks = new Map();   // place + event -> s to its next one
+    this.clocks = new Map();   // place + event (or 'city.' + i) -> s to its next one
     this.slots = new Array(CARS.slots).fill(null); // the car each traffic voice follows
     this.sendT = 0;
     this.dripT = rand(...cfg.drip.every);
@@ -124,6 +124,7 @@ export default class Ambience {
     this.here = at;
     this.out += ((ZONES[at].out ? 1 : 0) - this.out) * Math.min(1, dt * c.ease);
     this.events(dt, heard);
+    this.city(dt);
     if ((this.dripT -= dt) <= 0) { this.dripT = rand(...c.drip.every); this.drip(p); }
     if ((this.sendT -= dt) > 0) return;
     this.sendT = c.send;
@@ -160,7 +161,7 @@ export default class Ambience {
       const h = heard[k];
       for (const [bed, v] of Object.entries(ZONES[k].beds)) {
         const b = typeof v === 'number' ? { level: v } : v;
-        let g = b.level * h.p * (bed === 'rain' ? this.rain : 1);
+        let g = b.level * h.p;
         if (b.crowd) g *= clamp((calm.filter((m) => m.kind === k).length - b.crowd[0] + 1) / (b.crowd[1] - b.crowd[0] + 1), 0, 1);
         if (b.mains && this.dark(k)) g = 0;
         put(bed, g, Math.min(b.lp ?? c.open, h.inside ? c.open : c.muffle), h.pan);
@@ -198,8 +199,14 @@ export default class Ambience {
       }
       if (!best) continue;
       const walled = w.walledOff(best.x, best.y);
-      const g = pb.level * (1 - bd / pb.reach) ** 2 * (walled ? P.through : 1) * (pb.parked ? this.rain : 1);
+      const g = pb.level * (1 - bd / pb.reach) ** 2 * (walled ? P.through : 1);
       put(pb.bed, g, walled ? P.muffle : this.cfg.open, clamp((best.x - p.x) / P.pan, -0.8, 0.8));
+    }
+    for (const s of this.spots) {
+      const d = Math.hypot(s.x - p.x, s.y - p.y);
+      if (d >= s.reach) continue;
+      const walled = w.walledOff(s.x, s.y);
+      put(s.bed, s.level * (1 - d / s.reach) ** 2 * (walled ? P.through : 1), walled ? P.muffle : s.lp, clamp((s.x - p.x) / P.pan, -0.8, 0.8));
     }
   }
 
@@ -240,28 +247,43 @@ export default class Ambience {
       ZONES[k].events.forEach((e, j) => {
         const key = `${k}.${j}`;
         let t = this.clocks.get(key) ?? rand(...e.every) * rand(0.15, 0.8);
-        if ((t -= dt) <= 0) t = this.fire(k, e, heard[k]);
+        if ((t -= dt) <= 0) t = this.fire(k, e);
         this.clocks.set(key, t);
       });
     }
   }
 
-  // plays event e of place k (h: how it is heard) from where it comes; returns the s to the next one
-  fire(k, e, h) {
+  // plays event e of place k from where it comes; returns the s to the next one
+  fire(k, e) {
     const w = this.world, src = this.source(k, e);
     let next = rand(...e.every);
     if (!src) return next;
     if (e.crowd) next /= Math.max(1, src.n / 2);
     const name = typeof e.sound === 'string' ? e.sound : weighted(e.sound), vol = rand(...(e.vol || [1, 1]));
-    if (src.far) w.sound(name, undefined, undefined, vol * h.p, { occ: !ZONES[this.here].out, distant: 0.85, side: rand(-0.8, 0.8), amb: true });
-    else w.sound(name, src.x, src.y, vol, { amb: true, ...(e.voice && { pitch: src.pitch }) });
+    w.sound(name, src.x, src.y, vol, { amb: true, ...(e.voice && { pitch: src.pitch }) });
     return next;
   }
 
-  // where event e of place k comes from: { x, y, n (how many could have made it), pitch } | { far } | null
+  // the far city (CITY), each sound on its own clock (the first one comes sooner): from a side and a distance, lower
+  // and dull from under a roof
+  city(dt) {
+    const c = this.cfg.city, inside = 1 - this.out;
+    CITY.forEach((e, i) => {
+      const key = 'city.' + i;
+      let t = this.clocks.get(key) ?? rand(...e.every) * rand(0.1, 0.6);
+      if ((t -= dt) <= 0) {
+        t = rand(...e.every);
+        const opts = { amb: true, occ: inside > 0.5, distant: rand(...e.distant), side: rand(-0.8, 0.8) };
+        for (const [k, v] of Object.entries(e.opts || {})) opts[k] = v === true ? (Math.random() < 0.5 ? -1 : 1) : Array.isArray(v) ? rand(...v) : v;
+        this.world.sound(e.sound, undefined, undefined, rand(...e.vol) * (1 - (1 - c.inside) * inside), opts);
+      }
+      this.clocks.set(key, t);
+    });
+  }
+
+  // where event e of place k comes from: { x, y, n (how many could have made it), pitch } | null
   source(k, e) {
     const w = this.world, pick = (list) => list[Math.floor(Math.random() * list.length)];
-    if (e.at === 'far') return { far: true };
     if (e.at === 'zone') {
       const rects = this.zones.rects.filter(([z]) => z === k);
       if (!rects.length) return null;
