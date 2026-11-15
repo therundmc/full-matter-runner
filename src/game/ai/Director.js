@@ -3,21 +3,17 @@
 // routes noises to the guards who can hear them, keeps the incidents left in the world (bodies, wrecked
 // doors / windows / walls) as evidence, runs search sweeps and the claims on tactical spots, and hands out a
 // per-step budget for expensive work (path-finding, cover searches). It also keeps the trail of prints the
-// player's wet or bloody soles leave behind (ai/Trail.js), which one guard at a time may follow.
+// player's wet or bloody soles leave behind (ai/Trail.js), which one guard at a time may follow. It voices the
+// squad: one bark at a time, never a line just said (bark), each guard's name (nickOf), and where the player is
+// (report).
 // Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken', 'footprint'.
 // Emits: 'alertPhase' { phase, prev }.
 import { AI, PALETTE, TILE } from '../Config.js';
-import { chance } from '../../engine/math.js';
-import { BARK_TONE } from '../data/barks.js';
+import { chance, rand } from '../../engine/math.js';
+import { BARKS, BARK_TONE, URGENT } from '../data/barks.js';
+import { lineFor, freeName, placeOf } from './Barks.js';
 import { searchPoints } from './Tactics.js';
 import Trail from './Trail.js';
-
-// A line among `lines` that is not in `recent` (any of them once they have all been used).
-export function freshLine(lines, recent, rnd = Math.random) {
-  const fresh = lines.filter((l) => !recent.includes(l));
-  const from = fresh.length ? fresh : lines;
-  return from[Math.floor(rnd() * from.length)];
-}
 
 // is the point inside one of the [col0, row0, col1, row1] tile rectangles (inclusive)?
 function inZones(zones, p) {
@@ -43,6 +39,13 @@ export default class Director {
     this.budgetLeft = AI.planBudget;
     this.barkAt = -99;
     this.said = [];             // the last lines barked (see bark)
+    this.kindAt = {};           // occasion -> when it was last said
+    this.place = null;          // where the player is (playerPlace), worked out at placeT
+    this.placeT = -99;
+    this.placeSaid = null;      // the last place of his called out (report), and when
+    this.placeSaidAt = -99;
+    this.bossSpoke = false;     // the boss has had his word (Enemy.bossLine)
+    for (const e of world.enemies || []) this.nickOf(e);
     this.provoked = false;      // the player gave himself away (see isThreat)
     this.trail = new Trail();   // the player's footprints
     const ev = world.events;
@@ -161,7 +164,7 @@ export default class Director {
     const w = this.world;
     this.provoked = true; // a guard is down: no more benefit of the doubt
     this.release(victim);
-    const inc = this.incident('body', victim.x, victim.y);
+    const inc = this.incident('body', victim.x, victim.y, { who: victim });
     // a guard who never comes back to his post is missed after a while
     if (!victim.roam) this.incident('missing', victim.home.x, victim.home.y, { after: w.time + 10 });
     this.emit('body', victim.x, victim.y, AI.bodyFallRadius * (victim.held ? 0.4 : 1), victim); // let down quietly
@@ -170,8 +173,16 @@ export default class Director {
       if (e.canSeePoint(victim.x, victim.y, 1, 120)) { inc.seen.add(e); e.witnessKill(victim); }
     }
     // the last man standing may lose his nerve the next time he faces the killer (Enemy.surrender)
-    const left = this.alive, R = AI.surrender;
+    const left = this.alive, R = AI.surrender, B = AI.barks;
     if (left.length === 1 && w.totalEnemies >= R.squad) left[0].shaken = chance(left[0].kind === 'brute' ? R.brute : R.odds);
+    // the last two of a real squad feel it: a moment later, they call out for the ones who are gone (Enemy.update)
+    if (left.length <= 2 && w.totalEnemies >= R.squad) {
+      for (const e of left) {
+        if (e.lonely || !chance(B.lonely)) continue;
+        e.lonely = true;
+        e.mourn = { at: w.time + rand(...B.alone), N: victim.nick };
+      }
+    }
   }
 
   // a guard reports something: the squad goes to CAUTION and sends a pair of idle guards to look around
@@ -203,16 +214,23 @@ export default class Director {
     if (this.phase !== 'alert') this.setPhase('alert');
   }
 
-  // "contact!": a few nearby guards converge, the others hold and watch the area
+  // "contact!": a few nearby guards converge, the others hold and watch the area. Returns the ones sent in.
   shout(from) {
-    if (!this.lastKnown) return;
+    if (!this.lastKnown) return [];
     const { x, y } = this.lastKnown;
     let hunters = this.hunters();
     const near = this.alive.filter((e) => e !== from && e.aware < 2 && e.knocked <= 0 && Math.hypot(e.x - from.x, e.y - from.y) < AI.shoutRadius)
       .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    const sent = [];
     for (const e of near) {
-      if (hunters < AI.maxHunters) { e.joinHunt(x, y); hunters++; } else e.guard(x, y);
+      if (hunters < AI.maxHunters) { e.joinHunt(x, y); hunters++; sent.push(e); } else e.guard(x, y);
     }
+    return sent;
+  }
+
+  // is another guard in the fight within r px of e?
+  engagedNear(e, r) {
+    return this.alive.some((o) => o !== e && o.aware === 2 && o.knocked <= 0 && Math.hypot(o.x - e.x, o.y - e.y) < r);
   }
 
   // guards currently fighting / hunting the player
@@ -263,7 +281,7 @@ export default class Director {
     const lk = this.lastKnown;
     if (!lk) return;
     this.ensureSearch();
-    const searchers = this.alive.filter((e) => e.knocked <= 0 && (e.aware === 2 || e.state === 'search' || Math.hypot(e.x - lk.x, e.y - lk.y) < 450))
+    const searchers = this.alive.filter((e) => e.knocked <= 0 && e.state !== 'backup' && (e.aware === 2 || e.state === 'search' || Math.hypot(e.x - lk.x, e.y - lk.y) < 450))
       .sort((a, b) => Math.hypot(a.x - lk.x, a.y - lk.y) - Math.hypot(b.x - lk.x, b.y - lk.y)).slice(0, AI.searchers);
     for (const e of searchers) if (e.state !== 'search' || e.localPts) e.beginSearch();
   }
@@ -291,16 +309,59 @@ export default class Director {
   }
 
   // ---------------- barks ----------------
-  // short floating line over a guard (world texts); one at a time for the whole squad so it stays readable,
-  // and never a line the squad has just used
-  bark(e, kind, lines) {
-    const w = this.world;
-    if (w.time - this.barkAt < AI.barkGap && kind !== 'contact') return false;
+  // Short floating line over a guard (world texts): one at a time for the whole squad so it stays readable (but the
+  // URGENT ones), one man only says a given occasion (AI.barks.same), never a line the squad has just used, and the
+  // most telling line its blanks can be filled for (ai/Barks.js lineFor; vars: { N, AT, P }). False if none is said.
+  bark(e, kind, vars = {}) {
+    const w = this.world, lines = BARKS[kind];
+    if (!lines) return false;
+    if (w.time - this.barkAt < AI.barkGap && !URGENT.has(kind)) return false;
+    if (w.time - (this.kindAt[kind] ?? -99) < AI.barks.same) return false;
+    const str = lineFor(lines, vars, this.said);
+    if (!str) return false;
     this.barkAt = w.time;
-    const str = freshLine(lines, this.said);
+    this.kindAt[kind] = w.time;
     this.said.push(str);
     if (this.said.length > AI.barkMemory) this.said.shift();
-    w.texts.push({ x: e.x, y: e.y - 16, str, t: 1.4, dur: 1.4, color: PALETTE[BARK_TONE[kind]] || PALETTE.white });
+    // stacked over a line still floating there (two men side by side), not written across it
+    let y = e.y - 16;
+    for (let moved = true, n = 0; moved && n < 4; n++) {
+      moved = false;
+      for (const t of w.texts) if (!t.bubble && Math.abs(t.x - e.x) < 70 && Math.abs(t.y - y) < 9) { y = t.y - 9; moved = true; }
+    }
+    w.texts.push({ x: e.x, y, str, t: 1.4, dur: 1.4, color: PALETTE[BARK_TONE[kind]] || PALETTE.white });
+    return true;
+  }
+
+  // his name for the others (data/barks.js NAMES, never two the same; the boss is BOSS), given on first need
+  nickOf(e) {
+    if (!e.nick) e.nick = e.boss ? 'BOSS' : freeName(new Set(this.world.enemies.map((o) => o.nick).filter(Boolean)));
+    return e.nick;
+  }
+
+  // the named place (x, y) lies in ({ key, at, the }, ai/Barks.js placeOf), or null
+  placeAt(x, y) {
+    const w = this.world;
+    return placeOf(w.level, w.map, w.props, x, y, AI.barks.landmark);
+  }
+
+  // where the player is now (worked out again every AI.barks.place s)
+  playerPlace() {
+    const w = this.world;
+    if (w.time - this.placeT >= AI.barks.place) {
+      this.placeT = w.time;
+      this.place = this.placeAt(w.player.x, w.player.y);
+    }
+    return this.place;
+  }
+
+  // a guard with the player in sight calls out where he is, when it is somewhere new ("HE'S IN THE TOILETS!")
+  report(e) {
+    const pl = this.playerPlace(), now = this.world.time;
+    if (!pl || pl.key === this.placeSaid || now - this.placeSaidAt < AI.barks.where) return false;
+    if (!e.say('where', { AT: pl.at })) return false;
+    this.placeSaid = pl.key;
+    this.placeSaidAt = now;
     return true;
   }
 }

@@ -7,7 +7,8 @@ const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { detectionRate, inView, aimError, hearingError, loiterRate } = await load('game/ai/Perception.js');
 const { searchPoints, findCover, isCovered, randomPoint, throughDoor, tableToFlip } = await load('game/ai/Tactics.js');
-const { default: Director, freshLine } = await load('game/ai/Director.js');
+const { default: Director } = await load('game/ai/Director.js');
+const { lineFor } = await load('game/ai/Barks.js');
 const { BARKS, SHOUTED, BARK_TONE } = await load('game/data/barks.js');
 const { PALETTE } = await load('game/Config.js');
 
@@ -80,16 +81,16 @@ test('barks: short readable lines, no doubles, known tones, and the squad does n
   for (const [kind, lines] of Object.entries(BARKS)) {
     assert.ok(lines.length > 0, kind);
     assert.equal(new Set(lines).size, lines.length, `${kind}: a line twice`);
-    for (const l of lines) assert.ok(l === l.toUpperCase() && l.length <= 26, `${kind}: ${l}`);
+    for (const l of lines) assert.ok(l === l.toUpperCase(), `${kind}: ${l}`);
   }
   for (const kind of SHOUTED) assert.ok(BARKS[kind], kind);
   for (const [kind, tone] of Object.entries(BARK_TONE)) assert.ok(BARKS[kind] && PALETTE[tone], kind);
   const lines = ['A', 'B', 'C'];
-  assert.equal(freshLine(lines, ['A', 'C']), 'B');
-  assert.equal(freshLine(lines, ['A', 'B', 'C'], () => 0.99), 'C', 'all used: any of them');
+  assert.equal(lineFor(lines, {}, ['A', 'C']), 'B');
+  assert.equal(lineFor(lines, {}, ['B', 'A', 'C'], () => 0.99), 'B', 'all used: the one said the longest ago');
   const d = new Director({ time: 0, enemies: [], texts: [], events: { on() {}, emit() {} } });
   const said = [];
-  for (let i = 0; i < 3; i++) { d.world.time += 1; d.bark({ x: 0, y: 0 }, 'clear', lines); said.push(d.world.texts.at(-1).str); }
+  for (let i = 0; i < 3; i++) { d.world.time += 2; d.bark({ x: 0, y: 0 }, 'clear'); said.push(d.world.texts.at(-1).str); }
   assert.equal(new Set(said).size, 3);
 });
 

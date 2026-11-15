@@ -1,13 +1,14 @@
 // A guard. Organic, readable behaviour: a detection meter fills while he sees the player ('?' then '!'),
 // he turns toward noises before walking over, reacts with a human delay, aims badly at first and better with
-// time, reloads, picks weapons back up, talks to his mates and curses the player (barks, lines in data/barks.js),
-// follows the player's wet or bloody footprints, may give up when he is the last one left, and follows the squad
-// Director
+// time, reloads, picks weapons back up, talks to his mates and curses the player (barks, lines in data/barks.js:
+// his mates by name, where the player is), follows the player's wet or bloody footprints, may run to fetch the
+// others when he is alone or outgunned, may give up when he is the last one left or on his own with nothing left to
+// fight with (and go for a gun once the player turns his back: ai/Squad.js), and follows the squad Director
 // (ai/Director.js) for alert phases, searches and tactical spots. Geometry lives in ai/Tactics.js,
 // perception maths in ai/Perception.js, tuning in Config (ENEMY, AI).
 import { ENEMY, AI, TILE, CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { BARKS, SHOUTED } from '../data/barks.js';
+import { BARKS, SHOUTED, MUTTERED, BOSS } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, tableToFlip } from '../ai/Tactics.js';
@@ -15,9 +16,10 @@ import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai
 import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
   sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
+import { backupOdds, backupGroup, recruits, yieldOdds, turnedAway, gunAtHand } from '../ai/Squad.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
-import { standPose, postPose, drawPose, bodyFrame } from './CharacterAnim.js';
+import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL } from '../data/feel.js';
 import { POSTS, HELD } from '../data/posts.js';
@@ -41,16 +43,18 @@ const PAUSES = ['smoke', 'phone', 'stretch', 'wrist'];
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
   SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
-  YIELD: 'yield', TRACK: 'track',
+  YIELD: 'yield', TRACK: 'track', BACKUP: 'backup',
 };
 const CALM = new Set([S.IDLE, S.PATROL, S.RETURN]);
 // awareness implied by each state: 0 unaware, 1 suspicious ('?'), 2 alert ('!')
 const AWARE = {
   idle: 0, patrol: 0, return: 0, suspicious: 1, investigate: 1, check: 1, search: 1, guard: 1, dizzy: 1,
-  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2, track: 1,
+  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2, track: 1, backup: 2,
 };
 const TRACKERS = new Set([S.IDLE, S.PATROL, S.RETURN, S.SEARCH]); // states a guard leaves to follow footprints
 const RANGES = ENEMY.ranges;
+// what he says on coming upon each kind of incident (Director incidents; the rest: 'damage')
+const FOUND = { missing: 'sight', window: 'window', door: 'door', power: 'fuse' };
 
 export default class Enemy extends Character {
   constructor(world, x, y, angle, kind, weapon, roam = false) {
@@ -126,6 +130,16 @@ export default class Enemy extends Character {
     this.shaken = false;             // last man standing, about to give up (Director.onKill)
     this.yielded = false;            // on his knees, hands up: out of the fight for good (see surrender)
     this.begT = 0;
+    this.nerveT = 0;                 // s to the next roll of his nerve (giving up / going for a gun, see loseNerve)
+    this.turnT = 0;                  // s the player has had his back to him while he kneels (see updateYield)
+    this.turncoat = false;           // he got up off his knees for a gun
+    this.nick = null;                // what the others call him (Director.nickOf)
+    this.boss = false;               // the boss of the place (his job): a word when he first sees the player
+    this.fetched = false;            // he has had his chance to run for help (goForBackup) ...
+    this.backupAt = null;            // ... and where he runs to
+    this.lonely = false;             // one of the last two: he called out for the others once (mourn: when, for whom)
+    this.mourn = null;
+    this.rallyT = 0;                 // s until the man fetched for help answers (doBackup)
     // his job's life at his post (data/posts.js, see takeJob / work)
     this.script = null;    // the script of his job, played by
     this.routine = null;   // ... an ai/Pastimes.js Routine
@@ -253,6 +267,7 @@ export default class Enemy extends Character {
         this.lastKnown = { x: p.x, y: p.y };
         this.seenAt = this.world.time;
         this.director.sighted(p.x, p.y);
+        if (this.state === S.COMBAT && this.shoutT <= 0) this.director.report(this);
       }
     } else if (this.aware < 2) this.meter = Math.max(0, this.meter - step * ENEMY.meterDecay[this.aware]);
   }
@@ -304,7 +319,7 @@ export default class Enemy extends Character {
 
   // meter full: combat ('!'), then call it in
   spot(recent) {
-    if (this.state === S.COMBAT || this.state === S.FETCH || this.state === S.FLEE || this.state === S.DIZZY) return;
+    if (this.state === S.COMBAT || this.state === S.FETCH || this.state === S.FLEE || this.state === S.DIZZY || this.state === S.BACKUP) return;
     this.setState(S.COMBAT);
     this.react = rand(...(recent ? ENEMY.reacquire : ENEMY.reaction)) * this.slack;
     this.settle = 0;
@@ -312,6 +327,20 @@ export default class Enemy extends Character {
     this.world.sound('shout', this.x, this.y, 1, { pitch: this.voice });
     this.shoutT = 0.35;
     this.thinkT = 0;
+    if (this.boss && !this.director.bossSpoke) this.bossLine();
+  }
+
+  // The boss lays eyes on the player for the first time: his word to him, big over his head in a bubble
+  // (data/barks.js BOSS, WorldRenderer.drawBubble), the game slowed down a moment, his fire held while he says it.
+  bossLine() {
+    const w = this.world;
+    this.director.bossSpoke = true;
+    const str = BOSS.lines[Math.floor(Math.random() * BOSS.lines.length)];
+    w.texts.push({ who: this, x: this.x, y: this.y, str, t: BOSS.dur, dur: BOSS.dur, color: PALETTE.pink, bubble: true });
+    w.slowmo(...BOSS.slowmo);
+    this.react = Math.max(this.react, BOSS.hold);
+    this.barkT = BOSS.hold + 0.5;
+    w.sound('mutter', this.x, this.y, 1, { pitch: this.voice * 0.9 });
   }
 
   // noise heard (types: see ENEMY.hear); localisation gets worse with distance
@@ -378,19 +407,25 @@ export default class Enemy extends Character {
     const now = this.world.time;
     this.witnessed = this.witnessed.filter((t) => now - t < 5);
     this.witnessed.push(now);
+    const named = victim.boss ? 'chief' : 'down', who = { N: victim.nick };
     if (this.witnessed.length >= 2 && this.panicT <= 0 && chance(this.kind === 'brute' ? 0.3 : 0.6)) {
       this.panicT = rand(3, 5);
       this.say('panic');
       this.thinkT = 0;
-    } else if (this.aware === 2 && chance(0.7)) this.say('revenge');
+    } else if (this.aware === 2 && chance(0.7)) {
+      this.barkT = 0; // the cry cuts short whatever he was saying
+      if (!(chance(0.5) && this.say(named, who))) this.say('revenge');
+    }
     if (this.aware === 2) return;
     this.director.callIn(this, victim.x, victim.y);
     this.meter = Math.max(this.meter, 0.8);
     // he saw where it came from only if the killer is in view too
     const p = this.world.player;
     const src = p.alive && this.canSeePoint(p.x, p.y) ? p : victim;
+    // his cry for the man who fell comes before anything else he would say
+    this.barkT = 0;
+    if (!this.say(named, who)) this.say('body');
     this.suspect(src.x + rand(-24, 24), src.y + rand(-24, 24), 'witness', true);
-    this.say('body');
   }
 
   // look for evidence: knocked-out mates, bodies, wrecked walls/doors/windows, empty posts
@@ -433,7 +468,7 @@ export default class Enemy extends Character {
     this.checkTarget = inc;
     this.meter = Math.max(this.meter, 0.5);
     this.showIcon('?', 1.5);
-    this.say(inc.kind === 'missing' ? 'sight' : 'damage');
+    this.say(FOUND[inc.kind] ?? 'damage');
   }
 
   // ---------------- squad orders ----------------
@@ -456,7 +491,7 @@ export default class Enemy extends Character {
 
   // director-run sweep after losing the target
   beginSearch() {
-    if (!this.alive || this.knocked > 0) return;
+    if (!this.alive || this.knocked > 0 || this.state === S.BACKUP) return;
     this.setState(S.SEARCH);
     this.localPts = null;
     this.meter = Math.max(this.meter, 0.5);
@@ -486,6 +521,7 @@ export default class Enemy extends Character {
     if (!this.alive) return;
     this.iconT = Math.max(0, this.iconT - dt);
     this.barkT = Math.max(0, this.barkT - dt);
+    if (this.rallyT > 0 && (this.rallyT -= dt) <= 0) { this.barkT = 0; this.say('rally'); }
     this.chatCd = Math.max(0, this.chatCd - dt);
     this.reliefCd = Math.max(0, this.reliefCd - dt);
     this.updateCarry(dt);
@@ -507,6 +543,8 @@ export default class Enemy extends Character {
     this.kneel = false;
     this.perceive(dt);
     if ((this.scanT -= dt) <= 0) { this.scanT = 0.3; this.scanWorld(); }
+    // one of the last two: a moment after a mate fell, he calls out for the others (Director.onKill)
+    if (this.mourn && this.world.time >= this.mourn.at) { const m = this.mourn; this.mourn = null; this.barkT = 0; this.say('alone', m); }
     this.nodT = Math.max(0, this.nodT - dt);
     if (this.holding && !(this.atEase && this.activity === this.job)) {
       if (this.aware > 0 || this.director.phase !== 'normal') this.dropHeld(); else this.holding = null;
@@ -523,12 +561,13 @@ export default class Enemy extends Character {
       case S.SUSPICIOUS: this.doSuspicious(dt); break;
       case S.INVESTIGATE: this.doInvestigate(dt); break;
       case S.CHECK: this.doCheck(dt); break;
-      case S.SEARCH: this.doSearch(dt); break;
+      case S.SEARCH: this.taunt(dt); this.doSearch(dt); break;
       case S.GUARD: this.doGuard(dt); break;
       case S.DIZZY: this.doDizzy(dt); break;
       case S.COMBAT: this.doCombat(dt); break;
-      case S.HUNT: this.doHunt(dt); break;
+      case S.HUNT: this.taunt(dt); this.doHunt(dt); break;
       case S.FETCH: this.doFetch(dt); break;
+      case S.BACKUP: this.doBackup(dt); break;
       case S.FLEE: this.doFlee(dt); break;
       case S.TRACK: this.doTrack(dt); break;
       default: break;
@@ -564,6 +603,7 @@ export default class Enemy extends Character {
   takeJob(job) {
     if (!job) return;
     this.job = job;
+    this.boss = job === 'boss';
     this.activity = job;
     this.activityT = rand(8, 14);
     const S = POSTS[job];
@@ -1157,8 +1197,9 @@ export default class Enemy extends Character {
     if (this.t < 0.5) this.faceTo(x, y, 4, dt);
     else this.sweep(dt, this.lookBase + Math.PI, 1.6);
     if (this.t < (kneel ? 1.4 : 1.8)) return;
-    if (f) { f.knocked = Math.min(f.knocked, 0.2); this.say('wake'); }
-    else this.say(c.kind === 'body' ? 'body' : c.kind === 'missing' ? 'missing' : 'damage');
+    if (f) { f.knocked = Math.min(f.knocked, 0.2); this.say('wake', { N: f.nick }); }
+    else if (c.kind === 'body') { if (!this.say(c.who?.boss ? 'chief' : 'found', { N: c.who?.nick })) this.say('body'); }
+    else this.say(c.kind === 'missing' ? 'missing' : 'damage');
     this.director.callIn(this, x, y);
     this.beginLocalSearch(x, y, 2);
   }
@@ -1174,6 +1215,11 @@ export default class Enemy extends Character {
         return;
       }
       this.sub = 'go';
+      // off to another room: he says which ("CHECK THE STOREROOM!")
+      if (this.director.phase !== 'normal' && chance(0.35)) {
+        const there = this.director.placeAt(this.searchPt.x, this.searchPt.y);
+        if (there && there.key !== this.director.placeAt(this.x, this.y)?.key) this.say('sweep', { P: there.the });
+      }
     }
     const pt = this.searchPt;
     const hurry = this.director.phase === 'evasion' || this.director.phase === 'alert';
@@ -1225,6 +1271,14 @@ export default class Enemy extends Character {
     this.beginLocalSearch(this.x, this.y, 2);
   }
 
+  // curses thrown into the dark while hunting him down (not before he has given himself away)
+  taunt(dt) {
+    if ((this.tauntT -= dt) > 0) return;
+    this.tauntT = rand(...AI.tauntGap);
+    const d = this.director;
+    if (d.provoked && (d.phase === 'alert' || d.phase === 'evasion') && chance(0.6)) this.say('taunt');
+  }
+
   doHunt(dt) {
     const lk = this.lastKnown;
     if (!lk) { this.beginSearch(); return; }
@@ -1235,11 +1289,9 @@ export default class Enemy extends Character {
   doCombat(dt) {
     const p = this.world.player;
     if (!p.alive) { this.halt(); return; }
-    // the last man standing, face to face with the armed killer of all the others: he may lose his nerve
-    if (this.shaken && this.sees && this.react <= 0 && p.armed && Math.hypot(p.x - this.x, p.y - this.y) < AI.surrender.range) {
-      this.surrender();
-      return;
-    }
+    // the last man standing, face to face with the armed killer of all the others, or a man on his own with nothing
+    // left to fight with: he may lose his nerve
+    if (this.react <= 0 && this.loseNerve(dt)) return;
     this.suppressCD -= dt; this.dodgeCD -= dt; this.stalkCD -= dt; this.standT -= dt;
     if (this.sees) {
       // re-acquiring after losing sight takes a moment, and the aim has to settle again
@@ -1249,7 +1301,7 @@ export default class Enemy extends Character {
       if (this.react <= 0) this.settle = Math.min(1, this.settle + dt / ENEMY.aimSettle);
       this.ambushed = false;
     } else this.lostT += dt;
-    if (this.shoutT > 0 && (this.shoutT -= dt) <= 0) { this.say('contact'); this.director.shout(this); }
+    if (this.shoutT > 0 && (this.shoutT -= dt) <= 0 && this.callOut()) return;
     // curses: at the man in his sights, or at the corner he vanished behind
     if ((this.tauntT -= dt) <= 0) {
       this.tauntT = rand(...AI.tauntGap);
@@ -1290,19 +1342,116 @@ export default class Enemy extends Character {
     this.world.events.emit('surrender', { who: this });
   }
 
+  // gives up on the spot: the last man standing who was shaken, or (ai/Squad.js yieldOdds, a roll every few s) a
+  // man on his own with no weapon or no rounds left, the armed player close in front of him. True if he did.
+  loseNerve(dt) {
+    const p = this.world.player, R = AI.surrender;
+    if (!this.sees || !p.armed) return false;
+    const dist = Math.hypot(p.x - this.x, p.y - this.y);
+    if (this.shaken && dist < R.range) { this.surrender(); return true; }
+    if ((this.nerveT -= dt) > 0 || this.world.tutorial) return false;
+    this.nerveT = R.every;
+    const w = this.weapon, dry = !!w && this.def.kind === 'gun' && w.mag <= 0 && this.reloading <= 0 && this.reserveCount() <= 0;
+    const odds = yieldOdds(this.kind, {
+      unarmed: !w || dry, alone: !this.director.engagedNear(this, R.alone), playerArmed: p.armed, dist, boss: this.boss,
+    });
+    if (!chance(odds)) return false;
+    this.surrender();
+    return true;
+  }
+
+  // On his knees: he begs while the player stands over him. Once the player has had his back to him a moment, and
+  // a loaded gun lies at hand, he may get up and go for it (ai/Squad.js; never once the level is cleared).
   updateYield(dt) {
-    const p = this.world.player;
+    const p = this.world.player, w = this.world, R = AI.surrender;
     this.halt();
     this.crouch = Math.min(1, this.crouch + dt * 5);
     if (!p.alive) return;
     const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy);
-    if (d > ENEMY.viewDist || !this.world.lineOfSight(this.x, this.y, p.x, p.y)) return;
+    const seen = d <= ENEMY.viewDist && w.lineOfSight(this.x, this.y, p.x, p.y);
+    if (!w.cleared && !w.tutorial) {
+      this.turnT = turnedAway(p, this, seen) ? this.turnT + dt : 0;
+      if (this.turnT > R.wait && (this.nerveT -= dt) <= 0) {
+        this.nerveT = 1;
+        const gun = chance(R.treachery[this.kind] ?? 0) && gunAtHand(w.items, this);
+        if (gun) { this.betray(gun); return; }
+      }
+    }
+    if (!seen) return;
     this.faceAngle(Math.atan2(dy, dx), 4, dt);
     if (d < AI.surrender.range && (this.begT -= dt) <= 0) {
       this.begT = rand(...AI.surrender.beg);
       this.barkT = 0;
       if (this.say('beg')) this.world.sound('whimper', this.x, this.y, 0.8, { pitch: this.voice });
     }
+  }
+
+  // up off his knees, quiet, for the gun lying at hand; back in the fight (and counted again) once he is up
+  betray(gun) {
+    const p = this.world.player;
+    this.yielded = false;
+    this.turncoat = true;
+    this.setState(S.FETCH);
+    this.fetchTarget = gun;
+    this.lastKnown = { x: p.x, y: p.y };
+    this.react = 0.4;
+  }
+
+  // "contact!" a moment after spotting him: the squad around is sent in (a mate called by name), then, if that left
+  // him on his own or outgunned, he may run for the others instead (true: he is off)
+  callOut() {
+    const sent = this.director.shout(this);
+    this.barkT = 0; // the call cuts short whatever he was saying
+    if (!(sent.length && chance(0.6) && this.say('call', { N: this.director.nickOf(sent[0]) }))) this.say('contact');
+    return this.goForBackup(sent);
+  }
+
+  // one roll per guard: alone (the shout reached nobody, nobody of his fighting near) or outgunned, he may go and
+  // fetch the free guards of another room (ai/Squad.js) rather than take the player on by himself; one at a time
+  goForBackup(sent) {
+    const p = this.world.player, d = this.director, w = this.world;
+    if (this.fetched || this.boss || w.tutorial || !p.alive) return false;
+    if (w.enemies.some((o) => o.alive && o.state === S.BACKUP)) return false; // one man runs, the others fight
+    const alone = !sent.length && !d.engagedNear(this, AI.shoutRadius);
+    const outgunned = p.def.kind === 'gun' && this.def.kind !== 'gun';
+    if (!alone && !outgunned) return false;
+    this.fetched = true;
+    const dist = Math.hypot(p.x - this.x, p.y - this.y);
+    if (!chance(backupOdds(this.kind, { alone, outgunned, dist, boss: this.boss }))) return false;
+    const g = backupGroup(w.enemies, this);
+    if (!g) return false;
+    this.setState(S.BACKUP);
+    this.backupAt = { x: g.to.x, y: g.to.y, to: g.to };
+    this.lastKnown = { x: p.x, y: p.y };
+    this.showIcon('!', 1);
+    return true;
+  }
+
+  // Running for help: off to the others (saying so once his breath allows); the player on top of him = he turns and
+  // fights. There, he sends the free men around in (one of them answers) and goes back with them.
+  doBackup(dt) {
+    const p = this.world.player, B = AI.backup, at = this.backupAt, d = this.director;
+    if (!p.alive || this.t > B.give || (this.sees && Math.hypot(p.x - this.x, p.y - this.y) < B.near * 0.7)) {
+      this.setState(S.COMBAT);
+      this.thinkT = 0;
+      return;
+    }
+    if (this.sub === '' && this.t > 0.5 && (this.say('run') || this.t > 3)) this.sub = 'run';
+    // the man he runs to may have got up and moved: he goes where he is now
+    if (at.to.alive && !at.to.yielded && at.to.knocked <= 0) { at.x = at.to.x; at.y = at.to.y; }
+    if (!this.travel(dt, at.x, at.y, ENEMY.runSpeed * 1.05, { near: 40, look: false }) && !this.blockedAt(dt, at.x, at.y)) return;
+    const lk = this.lastKnown ?? d.lastKnown ?? { x: p.x, y: p.y };
+    const men = recruits(this.world.enemies, this, this.x, this.y);
+    if (men.length) {
+      const first = men[0];
+      this.barkT = 0;
+      this.say('backup', { N: d.nickOf(first) });
+      for (const e of men) e.joinHunt(lk.x, lk.y);
+      first.barkT = 0;
+      first.rallyT = 0.7;
+    }
+    this.setState(S.HUNT);
+    this.lastKnown = lk;
   }
 
   setTactic(t) {
@@ -1650,6 +1799,7 @@ export default class Enemy extends Character {
   }
 
   doFetch(dt) {
+    if (!this.turncoat && this.loseNerve(dt)) return;
     const it = this.fetchTarget;
     if (!it || it.dead) { this.beginLocalSearch(this.x, this.y, 2); return; }
     if (Math.hypot(it.x - this.x, it.y - this.y) < 14) {
@@ -1657,6 +1807,7 @@ export default class Enemy extends Character {
       this.world.removeItem(it);
       this.world.sound('pickup', this.x, this.y, 0.5);
       this.pickAnim = 0.35;
+      if (this.turncoat) { this.turncoat = false; this.barkT = 0; this.say('turn'); }
       if (this.lastKnown) { this.setState(S.COMBAT); this.thinkT = 0; this.react = Math.max(this.react, 0.3); }
       else this.beginLocalSearch(this.x, this.y, 2);
       return;
@@ -1676,11 +1827,12 @@ export default class Enemy extends Character {
     if (!best) return false;
     this.setState(S.FLEE);
     this.friend = best;
-    this.say('help');
+    this.say('help', { N: this.director.nickOf(best) });
     return true;
   }
 
   doFlee(dt) {
+    if (this.loseNerve(dt)) return;
     const f = this.friend, lk = this.lastKnown;
     if (!f || !f.alive) { this.setState(S.COMBAT); return; }
     if (this.t > 1.5 && this.lookForWeapon()) return;
@@ -1920,12 +2072,15 @@ export default class Enemy extends Character {
   // ---------------- feedback ----------------
   showIcon(ch, t) { this.icon = ch; this.iconT = t; }
 
-  // whether the line was actually said (one's own breath and the squad's turn to speak allowing)
-  say(kind) {
+  // whether the line was actually said (one's own breath and the squad's turn to speak allowing); vars fill its
+  // blanks (Director.bark). A yelled occasion goes with his shout, a muttered one with his mutter (the voice cap of
+  // audio/Audio.js decides whether that is heard).
+  say(kind, vars) {
     if (this.barkT > 0 || !BARKS[kind]) return false;
-    if (!this.director.bark(this, kind, BARKS[kind])) return false;
+    if (!this.director.bark(this, kind, vars)) return false;
     this.barkT = 1.5;
     if (SHOUTED.has(kind)) this.world.sound('shout', this.x, this.y, 0.8, { pitch: this.voice });
+    else if (MUTTERED.has(kind)) this.world.sound('mutter', this.x, this.y, 0.6, { pitch: this.voice });
     return true;
   }
 
@@ -1935,6 +2090,7 @@ export default class Enemy extends Character {
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
     const B = this.postBody();
     if (B) drawPose(ctx, this, postPose(this, standPose(this, this.pose), this.pose2, B));
+    else if (this.yielded && this.knocked <= 0) drawPose(ctx, this, kneelPose(standPose(this, this.pose)));
     else super.draw(ctx);
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;

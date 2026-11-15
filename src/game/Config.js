@@ -164,9 +164,28 @@ export const AI = {
   barkGap: 0.4,           // seconds between two barks in the whole squad
   barkMemory: 8,          // lines the squad has just used and will not repeat
   tauntGap: [6, 12],      // seconds between two curses of a guard in a fight
+  // barks (Director.bark, ai/Barks.js): one man at a time says a given occasion (`same` s apart); `where`: s at
+  // least between two calls of where the player is (only when it changed); `landmark`: px around a landmark's box
+  // it names the spot; `place`: s his place is worked out again; the last two of a squad may say they are alone
+  // (odds `lonely`) `alone` s after the fall of a mate
+  barks: { same: 1.5, where: 4, landmark: 24, place: 0.25, lonely: 0.7, alone: [0.8, 2] },
+  // Running for help (Enemy.goForBackup / doBackup, ai/Squad.js): on contact, a guard alone (nobody the shout reaches,
+  // nobody in the fight within shoutRadius) or outgunned (bare hands or a blade against a gun) may run for the others
+  // instead: odds by kind (times `outgunned` when he is), never with the player within `near` px. He runs to the
+  // free guards (`group` px from one another) between `far` and `reach` px away, brings back up to `bring` of them,
+  // and gives up after `give` s on the way. One man at a time.
+  backup: { odds: { thug: 0.3, heavy: 0.15, brute: 0.05 }, outgunned: 1.5, near: 110, far: 260, reach: 1000, group: 150, bring: 3, give: 9 },
   // The last guard alive may give up when he next faces the armed player within `range` px (Enemy.surrender):
   // only in a squad of at least `squad`, with these odds (a brute rarely does); beg: s between two pleas.
-  surrender: { squad: 4, odds: 0.55, brute: 0.15, range: 230, beg: [2.4, 4.5] },
+  // Any guard on his own (nobody of his fighting within `alone` px), empty-handed or out of rounds, with the armed
+  // player within `close` px, may give up too: odds by kind, one roll every `every` s (ai/Squad.js yieldOdds).
+  // On his knees, once the player has turned more than `turned` rad away from him (or lost sight of him) for `wait`
+  // s, a loaded gun within `grab` px tempts him: odds by kind, one roll a second (Enemy.updateYield).
+  surrender: {
+    squad: 4, odds: 0.55, brute: 0.15, range: 230, beg: [2.4, 4.5],
+    unarmed: { thug: 0.45, heavy: 0.3, brute: 0.06 }, close: 170, alone: 420, every: 2.5,
+    turned: 1.6, wait: 1.2, grab: 220, treachery: { thug: 0.25, heavy: 0.3, brute: 0.4 },
+  },
   // An unarmed stranger hanging about in front of a guard on public ground (Perception.loiterRate, Enemy.mind):
   // bothered within `near` px; patience = seconds before he snaps at `near` / at `close` px; shares of it at which
   // he tells him to clear off (`first`) and warns him a last time (`last`); `forget` = share won back per second.

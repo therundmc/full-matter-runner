@@ -238,9 +238,10 @@ class Level:
         self.street.setdefault(kind, []).append(v)
 
     # ---- what a place sounds like (src/game/data/soundscape.js ZONES): its kind over an inclusive tile rectangle, the
-    # first given wins where two overlap; a tile in none is a street, a roof or a room by its floor
-    def sound(self, kind, col0, row0, col1, row1):
-        self.zones.append([kind, *self.rect(col0, row0, col1, row1)])
+    # first given wins where two overlap; a tile in none is a street, a roof or a room by its floor. place: what the
+    # guards call it when it is not its kind's name (a PLACES key of src/game/data/barks.js)
+    def sound(self, kind, col0, row0, col1, row1, place=None):
+        self.zones.append([kind, *self.rect(col0, row0, col1, row1), *([place] if place else [])])
 
     # ---- a room open to the public (inclusive tile rectangle): a stranger may hang about there
     def host(self, col0, row0, col1, row1):
@@ -425,7 +426,8 @@ class Level:
             L.append('  // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside')
             L.append(f'  power: {json.dumps(self.mains)},')
         if self.zones or self.rain:
-            L.append('  // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1] (the first wins)')
+            L.append('  // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the')
+            L.append("  // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)")
             L.append(f"  soundscape: {{ rain: {self.rain or 0}, zones: {js(self.zones)} }},")
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')

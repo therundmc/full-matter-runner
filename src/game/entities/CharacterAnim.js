@@ -959,6 +959,20 @@ export function execPose(ch, P, V) {
   return P;
 }
 
+// ---------------- given up (Enemy.surrender) ----------------
+// On his knees: the shins flat on the floor behind him, knees together, the feet turned back (pose px, aim frame);
+// the hands up either side of his head are the standing pose's for a man who has given up (standPose).
+const YIELD_FEET = [[-6.5, -3.4], [-6.5, 3.4]];
+export function kneelPose(P) {
+  const c = Math.cos(P.ta), s = Math.sin(P.ta);
+  YIELD_FEET.forEach(([lx, ly], i) => {
+    const f = P.feet[i];
+    f.x = lx * c - ly * s; f.y = lx * s + ly * c; f.a = P.ta + Math.PI; f.lift = 0; f.heel = 0;
+  });
+  P.legs = 1;
+  return P;
+}
+
 // ---------------- a hand flat on a door leaf (Character.doorHand, GESTURE.door) ----------------
 // The hand on the leaf's side comes up flat against it while he pushes; with something in the right hand it is
 // always the left one (the weapon stays where it is).

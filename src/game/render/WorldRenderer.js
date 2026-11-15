@@ -15,6 +15,22 @@ import { capWidth, drawCap } from '../ui/Glyphs.js';
 
 const { Body } = Matter;
 
+// the big speech bubble (drawBubble), world px and s: font size, line height, inner margin, wrap width, height over
+// his centre, tail length; it opens in `pop` s, the line is typed out in `type` s, it fades out over its last `fade` s
+const BUBBLE = { font: 9, line: 11, pad: 4, wrap: 120, lift: 24, tail: 6, pop: 0.12, type: 0.5, fade: 0.4 };
+
+// str cut into lines no wider than max px at the context's font (by words)
+function wrapText(ctx, str, max) {
+  const out = [];
+  let cur = '';
+  for (const word of str.split(' ')) {
+    const next = cur ? `${cur} ${word}` : word;
+    if (cur && ctx.measureText(next).width > max) { out.push(cur); cur = word; } else cur = next;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
 export default class WorldRenderer {
   constructor(world) {
     this.world = world;
@@ -156,9 +172,11 @@ export default class WorldRenderer {
   }
 
   drawTexts(ctx) {
+    for (const tx of this.world.texts) if (tx.bubble) this.drawBubble(ctx, tx);
     ctx.font = '8px joystix';
     ctx.textAlign = 'center';
     for (const tx of this.world.texts) {
+      if (tx.bubble) continue;
       ctx.globalAlpha = clamp((tx.t / tx.dur) * 2, 0, 1);
       ctx.fillStyle = PALETTE.ink;
       ctx.fillText(tx.str, tx.x + 1, tx.y + 1);
@@ -166,6 +184,40 @@ export default class WorldRenderer {
       ctx.fillText(tx.str, tx.x, tx.y);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // A line said big (the boss's word, Enemy.bossLine): a speech bubble over the head of who says it, following him,
+  // that pops open and fades out at the end; the text wrapped to BUBBLE.wrap px.
+  drawBubble(ctx, tx) {
+    const who = tx.who ?? tx, B = BUBBLE, age = tx.dur - tx.t;
+    const pop = clamp(age / B.pop, 0, 1), alpha = clamp(tx.t / B.fade, 0, 1) * (who.alive === false ? 0.6 : 1);
+    ctx.save();
+    ctx.font = `${B.font}px joystix`;
+    const lines = wrapText(ctx, tx.str, B.wrap), lw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    const w = Math.ceil(lw) + B.pad * 2, h = lines.length * B.line + B.pad * 2 - 2;
+    const x = Math.round(who.x), y = Math.round(who.y - B.lift);
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(0.5 + 0.5 * pop, 0.5 + 0.5 * pop);
+    const x0 = -Math.round(w / 2), y0 = -h;
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(x0 - 1, y0 - 1, w + 2, h + 2);
+    ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.lineTo(0, B.tail + 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = tx.color;
+    ctx.fillRect(x0, y0, w, h);
+    ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(0, B.tail); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(x0 + 1, y0 + 1, w - 2, h - 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = tx.color;
+    // typed out as it opens, each line centred as it will stand once whole
+    let left = Math.floor(clamp(age / B.type, 0, 1) * tx.str.length);
+    lines.forEach((l, i) => {
+      if (left > 0) ctx.fillText(l.slice(0, left), -Math.round(ctx.measureText(l).width / 2), y0 + B.pad + i * B.line);
+      left -= l.length + 1;
+    });
+    ctx.restore();
   }
 
   // the tutorial's hints (systems/Tutorial.js): the cap of the device in use (ui/Glyphs.js) and a few words over what

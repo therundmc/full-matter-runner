@@ -137,11 +137,11 @@ lv.sound('toilets', 21, 6, 23, 10)
 lv.sound('office', 25, 6, 30, 10)        # the boss's back room: his radio
 lv.sound('kitchen', 15, 6, 19, 10)       # the storeroom
 lv.sound('lot', 11, 0, 32, 4)            # the back lot, the service alley and the gap: the bar's back
-lv.sound('lot', 11, 5, 13, 20)
-lv.sound('lot', 32, 5, 32, 19)
-lv.sound('shop', 3, 17, 8, 19)           # liquor store, TV shop, laundromat
-lv.sound('shop', 36, 17, 39, 19)
-lv.sound('shop', 27, 33, 31, 35)
+lv.sound('lot', 11, 5, 13, 20, place='service')   # (what the guards call them: src/game/data/barks.js PLACES)
+lv.sound('lot', 32, 5, 32, 19, place='gap')
+lv.sound('shop', 3, 17, 8, 19, place='liquor')    # liquor store, TV shop, laundromat
+lv.sound('shop', 36, 17, 39, 19, place='tvshop')
+lv.sound('shop', 27, 33, 31, 35, place='laundry')
 lv.sound('alley', 20, 32, 23, 36)        # the start alley across the road
 lv.rain = 0.35
 # street

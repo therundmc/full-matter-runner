@@ -78,6 +78,9 @@ src/
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point, the way through a doorway,
                           the table worth tipping over in front of a cover spot (`tableToFlip`)
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
+      Barks.js            what a guard says: blanks filled ({N} a name, {AT} / {P} a place), the line picked, the names
+                          handed out, the named place of a point (level soundscape zones, landmarks)
+      Squad.js            a guard's nerve: running for backup (odds, which group), giving up, going for a gun on his knees
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
       Civilians.js        passers-by Walker brain (stroll, stop, panic, then by temperament flee / hide curled up / freeze) + escapeRoute, hideRoute
       Pastimes.js         what people do with themselves while all is calm (pool, cards, a drink, a cigarette,
@@ -379,7 +382,8 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
 - **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
   pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /
   `investigate` / `check` (body, knocked-out mate, wreckage, empty post) / `search` / `guard` / `dizzy`;
-  alert `combat` / `hunt` / `fetch` (pick a weapon up) / `flee` (unarmed: run to an armed mate).
+  alert `combat` / `hunt` / `fetch` (pick a weapon up) / `flee` (unarmed: run to an armed mate) / `backup` (run
+  to fetch the free guards of another room).
 - **Detection meter** 0..1 (`ai/Perception.js`): fills while the player is in view, faster close / in the centre
   of the cone / running / lit (`world.lighting.levelAt`) / in a vigilant phase, slower when distracted;
   `?` from `ENEMY.suspicious`, `!` at 1. Noises set the meter to a level (`ENEMY.hear`), never straight to `!`.
@@ -394,14 +398,31 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
   (durations in `AI`), contact shout (up to `AI.maxHunters` converge, the others hold and watch), call-ins on
   incidents, evasion sweep over search points around the last known position, claims on tactical spots,
   a per-step `budget()` for path-finding (1) and cover / flank searches (3) so the cost is spread over frames.
-- Barks are short world texts (`world.texts`), one at a time for the squad, never a line it has just used
-  (`Director.bark`, `freshLine`); the lines, which ones are yelled and their colour are data (data/barks.js). In a
-  fight a guard curses the player every few seconds (`AI.tauntGap`: at the man in his sights, at the corner he
-  vanished behind, at the killer of a mate).
+- Barks are short world texts (`world.texts`), one at a time for the squad (but the `URGENT` occasions), one man
+  per occasion (`AI.barks.same`), never a line it has just used (`Director.bark`, ai/Barks.js `lineFor`); the
+  lines, their blanks, which ones are yelled / muttered (the voice: `shout` / `mutter`, under the audio voice cap)
+  and their colour are data (data/barks.js). Every guard has a name (`Director.nickOf`, NAMES; the boss is BOSS):
+  a contact calls in a mate by name, a mate's death is cried by name ("MIKEY'S DOWN!"), a body found is named, the
+  last two call out for the fallen. A guard with the player in sight calls out where he is when it is somewhere new
+  (`Director.report`: the level's soundscape zones, a zone's 6th element naming it, `PLACES`, and `LANDMARKS`
+  props: "HE'S IN THE TOILETS!", "BY THE POOL TABLE!"); searchers say which room they take; broken windows, forced
+  doors and the smashed fuse box each have their lines. In a fight a guard curses the player every few seconds
+  (`AI.tauntGap`: at the man in his sights, at the corner he vanished behind, at the killer of a mate), and
+  taunts him while hunting him down.
+- Backup (`Enemy.goForBackup` / `doBackup`, ai/Squad.js, `AI.backup`): at contact, a guard the shout left alone,
+  or outgunned (bare hands or a blade against a gun), may run to the biggest group of free guards within reach
+  (one roll per guard, one runner at a time, never the boss); there he sends them in by name and leads them back.
 - Surrender: when a kill leaves one guard of a real squad (`AI.surrender`), he may be `shaken`; the next time he
   faces the armed player he throws his weapon down, kneels with his hands up and begs (`Enemy.surrender`, state
-  `yield`). He is out of the fight for good: `world.enemiesLeft` and `Director.alive` count him out, the
-  'surrender' event clears the level, sparing him pays the `mercy` end bonus, killing him scores as any kill.
+  `yield`, the pose CharacterAnim `kneelPose`). Any guard on his own, empty-handed or out of rounds, facing the
+  armed player close may give up too (`Enemy.loseNerve`, odds by kind). He is out of the fight:
+  `world.enemiesLeft` and `Director.alive` count him out, the 'surrender' event clears the level once nobody is
+  left, sparing him pays the `mercy` end bonus, killing him scores as any kill. Until the level is cleared, if
+  the player turns his back on him a moment with a loaded gun at hand, he may get up for it (`Enemy.betray`) and
+  is back in the fight ("SUCKER!").
+- The boss (the guard whose job is 'boss') says his word the first time he sees the player: big, in a bubble over
+  his head (`Enemy.bossLine`, WorldRenderer `drawBubble`, data/barks.js `BOSS`), the game slowed a moment, his
+  fire held while he says it.
 - Footprints: Liquids emits 'footprint' for every print; the Director keeps the player's in `director.trail`
   (ai/Trail.js, `AI.trail`: they dry after `fresh` s). A guard who sees one (`Enemy.scanWorld`) follows the run of
   prints hop by hop (state `track`, one tracker at a time), then goes and looks where they were heading. Bloody
