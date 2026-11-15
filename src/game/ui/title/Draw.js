@@ -33,19 +33,6 @@ export function rand(seed) {
   };
 }
 export function px(g, col, x, y, w = 1, h = 1) { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
-export function line(g, col, x0, y0, x1, y1) {
-  g.fillStyle = col;
-  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
-  const dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1, dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  let err = dx + dy;
-  for (;;) {
-    g.fillRect(x0, y0, 1, 1);
-    if (x0 === x1 && y0 === y1) break;
-    const e2 = 2 * err;
-    if (e2 >= dy) { err += dy; x0 += sx; }
-    if (e2 <= dx) { err += dx; y0 += sy; }
-  }
-}
 // a filled polygon with hard edges: one run of whole pixels per row. pts: [[x, y]...]
 export function poly(g, col, pts) {
   let y0 = Infinity, y1 = -Infinity;
@@ -92,7 +79,7 @@ const GLYPHS = {
   F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101101110101101',
   L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010', P: '110101110100100',
   R: '110101110101101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010',
-  W: '101101111111101', Y: '101101010010010', Z: '111001010100111', 0: '111101101101111', 1: '010110010010111',
+  Q: '010101101110011', W: '101101111111101', Y: '101101010010010', Z: '111001010100111', 0: '111101101101111', 1: '010110010010111',
   2: '110001010100111', 4: '101101111001001', 9: '111101111001110', '-': '000000111000000', '.': '000000000000010',
   ' ': '000000000000000', '$': '011110010011110',
 };
