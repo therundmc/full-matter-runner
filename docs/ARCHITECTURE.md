@@ -20,7 +20,7 @@ src/
       Raycast.js          grid DDA, segment vs polygon / circle / segment
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
-                          of the foley cuts), Music.js (procedural synthwave)
+                          of the foley cuts), Music.js (procedural synthwave / house) playing score.js (its data)
   game/
     Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
@@ -188,18 +188,25 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
   (never hand-edit bank.js). Mix: SFX and music each have their own compressor, so gunfire never pumps the music
   (only the held duck moves it); `GUN_LEVEL` sets gunfire against everything else, `META[name].gain` each sound.
-- Music (audio/Music.js): one procedural song, planned bar by bar from data (progressions, patterns, sections, forms)
-  and scheduled 0.3 s ahead. Game drives it through `ai/Tension.js`: the intensity is `AI.music[phase]` plus the
+- Music (audio/Music.js, its data in audio/score.js): one procedural song in F minor at 126 BPM, planned bar by bar
+  from data (progressions, 16-step patterns, lead phrases, sections, forms) and scheduled 0.3 s ahead on long-lived
+  voices (bass + sub + growl, pad, arp, the calm's pulse, a 4-note stab, lead and its octave double) and one-shots
+  synthesized once (kick, snare, clap, hats, toms, shaker, rim, clank, crash, reversed cymbal), through a glue
+  compressor and a safety clip. Game drives it through `ai/Tension.js`: the intensity is `AI.music[phase]` plus the
   heat of the fight itself (`AI.heat`: shots, kills and blasts, cooling in a few seconds). 0 = menu loop; then,
-  picked on a bar line, a near-silent calm (a few spaced plucks), a tense heartbeat (`TENSE`) and the song with
-  its beat (`BEAT`, thicker layers and brighter filters with the value). The phases in `AI.combatMusic` switch it
-  to its combat variant (`FORMS.combat`: same key and motif, house at 126 BPM: four on the floor, an open hat off
-  the beat, a bass pumping between the kicks), whose double-time chase section only comes while the fight is hot
-  (`HOT`). It starts bare: `Music.setCombo(kills in the chain)` sets a stage (`STAGES`) that brings the layers in
-  one kill at a time (section `from`: clap, arp and 16ths, chopped pad, motif) with a little volume
-  (`STAGE_GAIN`), and lets them go a bar apart once the chain breaks.
-  A riser and a snare roll announce the fight at once, the variant takes over on the next bar line, plays at least
-  `MIN_FIGHT_BARS`, and hands back through a closing bar (fill) to the song's break.
+  picked on a bar line, the calm (`FORMS.calm`: a dark pad, a muted pulse and a slow arpeggio that swell and sink
+  every two bars, no drums), tense (`TENSE`: a heartbeat, the bass, ticking hats and rim, a riser into each return)
+  and the song with its beat (`BEAT`, thicker layers and brighter filters with the value). The phases in
+  `AI.combatMusic` switch it to the combat form (`FORMS.combat`: theme A on the drop's chords and motif, theme B on
+  its own hook (VI - VII - i), a half-time breakdown that builds back on a rising bass, and a double-time chase that
+  only comes while the fight is hot, `HOT`). A fight kicks from its first bar (four on the floor, clap, closed and
+  open hats, shaker, a driven bass pumping between the kicks); `Music.setCombo(kills in the chain)` sets a stage
+  (`STAGES`): each kill adds a layer (section `from` and stage-indexed lists: arp and rolling bass; stabs, rim and
+  metal; the lead's hook; 16th bass, driving kick, crashes and 32nd rolls; the lead doubled an octave up, tribal
+  toms, every filter open) and a little volume (`STAGE_GAIN`), with a stinger on the bar line when the chain reaches
+  `STINGS`; the layers go a bar apart once the chain breaks. A riser, a reversed cymbal and a snare roll announce
+  the fight at once, the combat form takes over on the next bar line, plays at least `MIN_FIGHT_BARS`, and hands
+  back through a closing bar (fill) to the song's break. Sections end on fills and reversed cymbals into crashes.
 - Prop destruction (entities/Prop.js, systems/Fracture.js, render/DamageArt.js, data/destruction.js):
   - every hit paints a mark at the real impact point into the prop's own canvas (so it moves with it): 9 mm holes,
     pellet pocks, 7.62 entry + exit blow-out (Penetration exit point and remaining energy), grazing furrows / metal
