@@ -9,6 +9,7 @@ const { WEAPONS } = await load('game/data/weapons.js');
 const { BODY_SCALE } = await load('game/Config.js');
 const { newPose, standPose, muzzleIn, muzzleAt, MUZZLE_IN } = await load('game/entities/CharacterAnim.js');
 const { default: Character } = await load('game/entities/Character.js');
+const { CANT, cantRows, cantHide, cantPalm } = await load('game/render/HandgunArt.js');
 
 const K = 0.5;                  // world px per sprite px: the weapons are painted at twice the density (Assets.js)
 const OUTLINE = [20, 12, 28];   // tools/generate_assets.py OUTLINE, the dark line round every sprite
@@ -59,17 +60,20 @@ test('muzzle: muzzleIn is the point the drawn weapon ends at, whatever the pose'
   const P = newPose(), out = {};
   for (const [id, d] of GUNS) {
     const { w, h } = readPng(d.sprite);
-    for (const [a, s, len, thick] of [[0, 1, 1, 1], [2.2, 1.04, 0.75, 1.1], [-1.3, 0.96, -0.6, 1]]) {
-      P.wpn.x = 3; P.wpn.y = -2; P.wpn.a = a; P.s = s; P.wpnLen = len; P.wpnS = thick;
-      muzzleIn(P, d, w * K, out);
-      // CharacterAnim drawWeapon: at P.wpn, turned by P.wpn.a, scaled (len, wpnS) x P.s x K, the image's left edge
-      // grip / K px behind and its middle line palm / K px above (a handgun held on its side: the fist is under the
-      // slide); the muzzle is the right edge of its last barrel column, on the bore line
-      const top = -h / 2 - (d.palm ?? 0) / K;
-      const u = ((w - 1) - d.grip / K) * len * s * K, v = (top + h / 2 + (d.bore ?? 0) / K) * thick * s * K;
-      const x = 3 + u * Math.cos(a) - v * Math.sin(a), y = -2 + u * Math.sin(a) + v * Math.cos(a);
-      assert.ok(Math.hypot(out.x - x, out.y - y) < 1e-9 && out.a === a, `${id} at ${a}`);
-    }
+    for (const fist of d.hide === undefined ? [false] : [false, true])
+      for (const [a, s, len, thick] of [[0, 1, 1, 1], [2.2, 1.04, 0.75, 1.1], [-1.3, 0.96, -0.6, 1]]) {
+        P.wpn.x = 3; P.wpn.y = -2; P.wpn.a = a; P.s = s; P.wpnLen = len; P.wpnS = thick; P.fist = fist;
+        muzzleIn(P, d, w * K, out);
+        // CharacterAnim drawWeapon: at P.wpn, turned by P.wpn.a, scaled (len, wpnS) x P.s x K, the image's left edge
+        // grip / K px behind and its middle line palm / K px above (a handgun: the fist is under the slide). In the
+        // fist a handgun is its canted image, CANT.pad rows taller each side, the fist at cantPalm; its barrel rows
+        // stay on the sprite's (next test). The muzzle is the right edge of its last barrel column, on the bore line.
+        const H = fist ? h + 2 * CANT.pad : h, top = -H / 2 - (fist ? cantPalm(d) : d.palm ?? 0) / K;
+        const row = (fist ? CANT.pad : 0) + h / 2 + (d.bore ?? 0) / K;
+        const u = ((w - 1) - d.grip / K) * len * s * K, v = (top + row) * thick * s * K;
+        const x = 3 + u * Math.cos(a) - v * Math.sin(a), y = -2 + u * Math.sin(a) + v * Math.cos(a);
+        assert.ok(Math.hypot(out.x - x, out.y - y) < 1e-9 && out.a === a, `${id} at ${a}${fist ? ' in the fist' : ''}`);
+      }
   }
 });
 
@@ -129,5 +133,42 @@ test('muzzle: a handgun held on its side shows its slide and barrel out of the f
     assert.ok(under > 6, `${id}: no grip under the cut`);
     // the fist sits under the cut, its top edge on it (a fist is about 3 px across)
     assert.ok(d.palm > d.hide && d.palm - d.hide < 1.6, `${id}: the fist (palm ${d.palm}) does not close on the cut (${d.hide})`);
+  }
+});
+
+test('muzzle: a handgun in the fist is drawn canted, its barrel where it was, the top of its slide over its side', () => {
+  for (const [id, d] of GUNS.filter(([, g]) => g.hide !== undefined)) {
+    const { w, h, px } = readPng(d.sprite), on = (x, y) => y >= 0 && y < h && px(x, y)[3] > 0;
+    // the slide's top outline: the row most columns start on (as HandgunArt finds it)
+    const count = new Array(h).fill(0);
+    for (let x = 0; x < w; x++) { let y = 0; while (y < h && !on(x, y)) y++; if (y < h) count[y]++; }
+    const rim = count.indexOf(Math.max(...count)), P = CANT.pad;
+    const { map, band, cut, cutFrom } = cantRows(h, K, d, rim);
+    assert.equal(map.length, h + 2 * P, `${id}: as tall as the sprite and the padding`);
+    // the side turns about the bore: the row under the bore line stays in place, and so do the barrel and its muzzle
+    const line = h / 2 + d.bore / K, under = Math.ceil(line - 0.5);
+    assert.equal(map[P + under], under, `${id}: row ${under} moved`);
+    const col = w - 1 - MUZZLE_IN / K;
+    assert.ok(on(col, map[P + Math.floor(line)]) || on(col, map[P + Math.floor(line) - 1]), `${id}: no muzzle on the bore line`);
+    // the side is squashed toward the bore: less of it shows, its top edge first, the band of the slide's top over it
+    const side = map.slice(band[1], cut).filter((y) => y >= 0);
+    assert.ok(side.length < cutFrom - rim - 1 && side.length >= (cutFrom - rim - 1) * CANT.f - 1, `${id}: ${side.length} rows of side`);
+    assert.equal(map[band[1]], rim + 1, `${id}: the side starts with its top edge`);
+    assert.ok(band[1] - band[0] === Math.round(d.deck / K) && map.slice(...band).every((y) => y === -1), `${id}: the band`);
+    assert.equal(map[band[0] - 1], rim, `${id}: the outline over the band`);
+    // the fist closes on the cut as it does side-on, and the cut is where the pose puts it
+    assert.equal(cut - P, Math.round(h / 2 + cantHide(d) / K), `${id}: cut row`);
+    assert.ok(Math.abs(cantPalm(d) - cantHide(d) - (d.palm - d.hide)) < 1e-9 && cantPalm(d) < d.palm, `${id}: the fist comes up`);
+    assert.ok(map.slice(cut + 1).every((y) => y === -1), `${id}: something shows under the fist`);
+  }
+});
+
+test('muzzle: a handgun raised on a target is held with the elbow bent, the fist pulled in', () => {
+  const P = newPose();
+  for (const [id, d] of GUNS.filter(([, g]) => g.hold === 'side')) {
+    standPose(standing(d), P);
+    const reach = Math.hypot(P.hr.x, P.hr.y);
+    assert.ok(P.elb[1] >= 0.4, `${id}: elbow out ${P.elb[1]}`);
+    assert.ok(reach < (id === 'pistol' ? 11.2 : 13), `${id}: the fist ${reach.toFixed(2)} px out`);
   }
 });

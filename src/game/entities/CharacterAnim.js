@@ -13,6 +13,7 @@ import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW } from '../../
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 import { GAIT, stanceAt, reachAt, footAt, phaseOf, bodyAt } from './Gait.js';
 import { beginLimbs, flushLimbs, paintLeg, paintArm, drawHand } from '../render/LimbArt.js';
+import { cantedGun, cantPalm } from '../render/HandgunArt.js';
 
 export const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
@@ -38,12 +39,16 @@ const BODY = { turn: [0.1, 0.16], gun: 0.3, two: 0.15, melee: 0.6, sway: 0.55, b
 // a long gun shouldered: the shoulders bladed to its side (rad), the butt in the pocket of the right shoulder
 // (aim-space px), where it goes held low across the body and how far it turns down, a launcher on top of the shoulder
 const SHOULDERED = { twist: 0.3, pocket: [-1.6, 3.3], low: [-0.4, 4.6], lowA: -0.55, onShoulder: [-1.2, 5.2] };
-// a handgun held on its side in one hand (weapons.js 'side'): the fist with the arm out on a target (further out for
-// a gun whose rear would go into the chest: its back end `clear` px ahead of the body's centre), the gun shoulder led
-// forward (rad); held low, the fist by the thigh, the gun pointing at the floor ahead (turned out, foreshortened);
-// the kick throws the muzzle toward the slide's top (rad at no kick, and per unit of kick); the hand closed round the
-// grip is a little bigger than an empty fist
-const SIDE = { aim: [11.8, 4.6], clear: 6.2, twist: -0.3, low: [4.2, 8.4], lowA: 0.35, lowLen: 0.55, flip: [0.1, 0.05], fist: 1.1 };
+// a handgun held canted in one hand (weapons.js 'side', render/HandgunArt.js): the fist on a target, the elbow a little
+// bent (further out for a gun whose rear would go into the chest: its back end `clear` px ahead of the body's centre),
+// how far the elbow goes out (LimbArt's 0 .. 1), the gun shoulder led forward (rad); held low, the fist by the thigh,
+// the gun pointing at the floor ahead (turned out, foreshortened); the kick throws the muzzle toward the slide's top,
+// half sideways (rad at no kick, and per unit of kick), half up at the eye (`rise`: the gun shows that much shorter);
+// the hand closed round the grip is a little bigger than an empty fist
+const SIDE = {
+  aim: [10, 4.3], clear: 5, elb: 0.5, twist: -0.3, low: [4.2, 8.4], lowA: 0.35, lowLen: 0.55, flip: [0.08, 0.04], rise: 0.12,
+  fist: 1.1,
+};
 const sideReach = (d) => Math.max(SIDE.aim[0], d.grip + SIDE.clear);
 
 const GAIT_WIDTH = GAIT.width;
@@ -53,15 +58,17 @@ const GAIT_WIDTH = GAIT.width;
 export const MUZZLE_IN = 0.5;
 export const muzzleX = (d, w) => w - MUZZLE_IN - d.grip; // from the hand along the barrel, world px
 
-// The pose holds a gun by the point of its sprite under the hand: x = grip, and off the middle line `palm` (a handgun
-// held on its side: the fist's centre is under the slide, on the grip) or 0.
-export const palmOf = (d) => d.palm ?? 0;
+// The pose holds a gun by the point of its sprite under the hand: x = grip, and off the middle line `palm` (a handgun:
+// the fist's centre is under the slide, on the grip) or 0. In the fist (P.fist) a handgun is drawn canted
+// (render/HandgunArt.js), its side squashed toward the bore: the fist comes up with it.
+const canted = (d, fist) => fist && d.hide !== undefined;
+export const palmOf = (d, fist = false) => (canted(d, fist) ? cantPalm(d) : d.palm ?? 0);
 
 // Where the muzzle is in pose P as it is drawn (pose px about the feet, world orientation; the caller scales by
 // BODY_SCALE) and the way the barrel points: drawWeapon's own transform applied to the muzzle point
 export function muzzleIn(P, d, w, out) {
   const len = Math.sign(P.wpnLen || 1) * Math.max(0.15, Math.abs(P.wpnLen));
-  const u = muzzleX(d, w) * len * P.s, v = ((d.bore ?? 0) - palmOf(d)) * P.wpnS * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
+  const u = muzzleX(d, w) * len * P.s, v = ((d.bore ?? 0) - palmOf(d, P.fist)) * P.wpnS * P.s, c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
   out.x = P.wpn.x + u * c - v * s; out.y = P.wpn.y + u * s + v * c; out.a = P.wpn.a;
   return out;
 }
@@ -70,7 +77,7 @@ export function muzzleIn(P, d, w, out) {
 // drawn yet
 const MUZZLE = { x: 0, y: 0 };
 export function muzzleAt(d, w) {
-  if (d.hold !== 'two') { MUZZLE.x = sideReach(d) + muzzleX(d, w); MUZZLE.y = SIDE.aim[1] + (d.bore ?? 0) - palmOf(d); return MUZZLE; }
+  if (d.hold !== 'two') { MUZZLE.x = sideReach(d) + muzzleX(d, w); MUZZLE.y = SIDE.aim[1] + (d.bore ?? 0) - palmOf(d, true); return MUZZLE; }
   const at = d.onShoulder ? SHOULDERED.onShoulder : SHOULDERED.pocket;
   MUZZLE.x = at[0] + d.grip - (d.butt ?? 0.5) + muzzleX(d, w); MUZZLE.y = at[1] + (d.bore ?? 0);
   return MUZZLE;
@@ -172,20 +179,20 @@ export function standPose(ch, P, a = ch.angle) {
     wa = -rk * (0.05 + kick * 0.02); // muzzle climb
     back = rk * kick * 0.12;
     if (d.hold === 'side') {
-      // in one hand, the arm out, the gun on its side, the gun shoulder forward; the other arm hangs at his side and
-      // swings with the stride. The kick throws the muzzle toward the top of the slide (sideways, seen from above)
-      // and the fist back along the arm.
+      // in one hand, the elbow a little bent, the gun canted, the gun shoulder forward; the other arm hangs at his
+      // side and swings with the stride. The kick throws the muzzle toward the top of the slide (sideways and up at
+      // the eye, seen from above), the fist back along the arm, the elbow folding.
       const S = SIDE;
       wa = -rk * (S.flip[0] + kick * S.flip[1]) + S.lowA * low;
       hrx = lerp(sideReach(d), S.low[0], low) - kp * rk; hry = lerp(S.aim[1], S.low[1], low) - 0.4 * kick * rk;
       wx = hrx; wy = hry;
-      len = lerp(1, S.lowLen, low);
+      len = lerp(1, S.lowLen, low) * (1 - S.rise * rk);
       stance = S.twist * (1 - 0.6 * low);
       freeHand(-1, g, run, stride, FH);
       const c = Math.cos(stance), sn = Math.sin(stance); // at the side of the turned shoulders
       hlx = FH.x * c - FH.y * sn; hly = FH.x * sn + FH.y * c;
       if (g > 0.4 && run < 0.5) P.hand[0] = 'loose';
-      P.elb[1] = lerp(0.25, 0.12, low);
+      P.elb[1] = lerp(S.elb, 0.12, low) + 0.25 * rk;
     } else {
       // shouldered: the butt in the pocket of the right shoulder (on top of it for a launcher), the weapon along the
       // aim, the right hand on its grip, the left one on its forend; held low, it goes down across the body
@@ -1055,29 +1062,10 @@ function risePose(ch, P, V, k) {
 // ---------------- rendering ----------------
 const TMP = { x: 0, y: 0 };
 
-// A handgun as it shows out of the fist closed on it (P.fist): its sprite with all under its `hide` line taken out
-// (the grip, the guard, the magazine), the cut edged with the outline. Same size as the sprite.
-const IN_FIST = new WeakMap();
-function inFist(img, d) {
-  let c = IN_FIST.get(img);
-  if (c) return c;
-  const w = img.width, h = img.height, cut = Math.round(h / 2 + d.hide / (img.k || 1));
-  c = document.createElement('canvas');
-  c.width = w; c.height = h; c.k = img.k;
-  const g = c.getContext('2d');
-  g.drawImage(img, 0, 0);
-  g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = PALETTE.ink;
-  g.fillRect(0, cut, w, 1);
-  g.clearRect(0, cut + 1, w, h);
-  IN_FIST.set(img, c);
-  return c;
-}
-
-// the weapon at torso-local point `at` (where the hand holds it: weapons.js grip, palm); over the shoulders it casts a
-// little shadow on them
+// the weapon at torso-local point `at` (where the hand holds it: weapons.js grip, palm); a handgun in the fist is drawn
+// canted, all that is in the fist taken out (render/HandgunArt.js); over the shoulders it casts a little shadow on them
 function drawWeapon(ctx, P, d, ta, at, shadow) {
-  const src = sprite(d.sprite), k = src.k || 1, img = P.fist && d.hide !== undefined ? inFist(src, d) : src;
+  const src = sprite(d.sprite), k = src.k || 1, img = canted(d, P.fist) ? cantedGun(src, d) : src;
   const len = Math.sign(P.wpnLen || 1) * Math.max(0.15, Math.abs(P.wpnLen));
   for (let i = shadow ? 0 : 1; i < 2; i++) {
     ctx.save();
@@ -1085,7 +1073,7 @@ function drawWeapon(ctx, P, d, ta, at, shadow) {
     ctx.rotate(P.wpn.a - ta);
     ctx.scale(len * k, P.wpnS * k); // k: the weapon is a finer sprite (Assets.js `density`); d.grip is in world px
     if (!i) ctx.globalAlpha *= 0.3;
-    ctx.drawImage(i ? img : silhouette(img), -d.grip / k, -img.height / 2 - palmOf(d) / k);
+    ctx.drawImage(i ? img : silhouette(img), -d.grip / k, -img.height / 2 - palmOf(d, P.fist) / k);
     ctx.restore();
   }
 }
