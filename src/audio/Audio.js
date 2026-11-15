@@ -139,6 +139,7 @@ export const META = {
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
+  skid: { pri: 2, dur: 1, gap: 0.25, max: 2, gain: 0.3, reach: 1800 },
   // the night around (systems/Ambience.js): long swells that overlap, hums, drips, a room's murmur; all far under
   // the rest and the first voices dropped in a fight
   air: { pri: 0, dur: 9, gap: 2, max: 3, gain: 0.1 },
@@ -1254,6 +1255,33 @@ class AudioSystem {
         delay: rand(0, dur - len - 0.1) });
     }
     this.pv = pv;
+  }
+
+  // tyres sliding on the road: a squeal, three narrow bands of air that wander together and fall as the slide ends
+  // (opts.dur). Synthesized: the user allows it for everything but guns and explosions.
+  _skid(o, { dur = 0.9 }) {
+    const ctx = this.ctx, t = ctx.currentTime, end = t + dur, f = rand(950, 1250) * this.pv;
+    const env = ctx.createGain(), src = ctx.createBufferSource(), nodes = [env];
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(1, t + 0.05);
+    env.gain.setValueAtTime(0.8, end - Math.min(0.3, dur * 0.4));
+    env.gain.exponentialRampToValueAtTime(0.0001, end);
+    env.connect(o);
+    src.buffer = this.noise; src.loop = true;
+    for (const [k, q, level] of [[1, 10, 1], [1.52, 12, 0.5], [2.1, 8, 0.2]]) {
+      const bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = 'bandpass'; bp.Q.value = q;
+      bp.frequency.setValueAtTime(f * k * 1.06, t);
+      bp.frequency.linearRampToValueAtTime(f * k * rand(0.96, 1.04), t + dur * 0.5);
+      bp.frequency.linearRampToValueAtTime(f * k * 0.86, end);
+      g.gain.value = level * 3; // a narrow band lets little through
+      src.connect(bp); bp.connect(g); g.connect(env);
+      nodes.push(bp, g);
+    }
+    o._n++;
+    src.onended = () => this._release(o, src, ...nodes);
+    src.start(t, Math.random() * 1.5);
+    src.stop(end + 0.05);
   }
 
   // ---- ambient traffic ----

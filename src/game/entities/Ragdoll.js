@@ -552,7 +552,8 @@ export default class Ragdoll {
     ctx.rotate(b.angle);
     ctx.scale(part.sx ?? 1, part.sy ?? 1);
     ctx.translate(-o.x, -o.y);
-    for (const m of this.marks) if (m.part === name) drawMark(ctx, m);
+    const grid = ((sw(part.img) / (part.img.k || 1)) % 2) / 2; // the part's pixel grid, off its centre or not
+    for (const m of this.marks) if (m.part === name) drawMark(ctx, m, grid);
     ctx.restore();
   }
 

@@ -46,7 +46,7 @@ import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
-import { OUTRO, vanSpeed, crossed } from '../systems/Outro.js';
+import { OUTRO, routePath, routeSpeed, slideStep, crossed } from '../systems/Outro.js';
 
 const { Body } = Matter;
 
@@ -95,7 +95,7 @@ export default class World {
     this.cleared = false;
     this.endT = null; // time of the player's death: the run's clock stops there
     this.exited = false;
-    this.outro = null; // the getaway playing (startOutro): { t, van, door, angle, from, done, inside }
+    this.outro = null; // the getaway playing (startOutro; its state is described in systems/Outro.js)
     this.showVision = false;
     this.debugPhysics = false;
 
@@ -122,6 +122,8 @@ export default class World {
     this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
     this.events.on('surrender', () => this.checkCleared());
     this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
+    const van = this.getaway();
+    if (van) van.armoured = true; // the way out cannot be shot up or blown up before it is needed
     this.lighting = new Lighting(this);
   }
 
@@ -299,11 +301,18 @@ export default class World {
 
   // the player stepped into the exit zone: from now on stepOutro runs him instead of the input; nothing can hurt him
   startOutro(van) {
-    const p = this.player;
+    const p = this.player, ex = this.level.exit, a = van.body.angle;
     p.invulnerable = true;
     p.vaultHint = null;
     p.slide = null;
-    this.outro = { t: 0, van, door: this.cabDoor(van, p.x, p.y), angle: van.body.angle, from: { x: van.x, y: van.y }, done: 0, inside: false };
+    // its way out: the level's route, or straight ahead
+    const pts = [[van.x, van.y], ...(ex.route ? ex.route.map(([c, r]) => [c * TILE, r * TILE])
+      : [[van.x + Math.cos(a) * OUTRO.maxDist, van.y + Math.sin(a) * OUTRO.maxDist]])];
+    this.outro = {
+      t: 0, van, door: this.cabDoor(van, p.x, p.y), inside: false,
+      path: routePath(pts, (ex.radius || []).map((r) => r * TILE)), fadeFrom: (ex.fade ?? OUTRO.fade) * TILE,
+      s: 0, v: 0, slip: 0, slipV: 0, heading: a, fadeAt: null, sliding: false, hit: new Map(), ruts: null,
+    };
   }
 
   stepOutro(dt) {
@@ -325,15 +334,40 @@ export default class World {
     };
     if (crossed(t0, t, O.lights)) {
       v.lightsOut = false;
-      // the engine turns over and swells as it pulls away (panned the way it goes)
-      this.sound('passby', undefined, undefined, 0.6, { lead: 1.5, dur: 2.1, dir: Math.sign(Math.cos(o.angle)) || 1, side: 0.1, f: 34 });
+      // the engine turns over, then roars as it tears off
+      this.sound('passby', undefined, undefined, 0.75, { lead: 1.3, dur: 5.5, dir: Math.sign(Math.cos(o.heading)) || 1, side: 0.1, f: 36 });
       exhaust(3);
     }
     if (t >= O.lights && chance(t < O.go ? 0.08 : 0.3)) exhaust(1);
-    // idling shudder, a little rock as it moves off, then smooth
-    v.bob = t < O.lights ? 0 : Math.sin(this.time * 38) * (t < O.go ? 0.25 : 0.45 * Math.max(0, 1 - (t - O.go) / 0.6));
-    o.done = (v.x - o.from.x) * Math.cos(o.angle) + (v.y - o.from.y) * Math.sin(o.angle);
-    v.driveOff(vanSpeed(t, o.done));
+    v.bob = t >= O.lights && t < O.go ? Math.sin(this.time * 38) * 0.25 : 0; // the idling shudder
+    if (t < O.go) return;
+    // along the route: flat out, braking into a bend, the tail stepping out in it
+    const path = o.path, bend = path.at(o.s).turn || path.at(o.s + O.look).turn;
+    o.v = routeSpeed(o.v, bend, dt);
+    o.s = Math.min(path.length, o.s + o.v * dt * 60);
+    const q = path.at(o.s);
+    [o.slip, o.slipV] = slideStep(o.slip, o.slipV, q.turn, o.v, dt);
+    o.heading = q.a;
+    v.driveTo(q.x, q.y, q.a + o.slip);
+    if (o.s < path.length && v.ram(q.a, o.hit, O.ram)) this.shake(O.ram.shake);
+    // the rear tyres: spinning as it pulls away, sliding in a bend. Smoke, a squeal, black marks on the floor
+    const sliding = t < O.go + O.spin || Math.abs(o.slip) > O.smoke;
+    if (sliding && !o.sliding) this.sound('skid', v.x, v.y, 1, { dur: t < O.go + O.spin ? 0.7 : 1 });
+    o.sliding = sliding;
+    const rear = v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy));
+    if (sliding) {
+      for (const r of rear) if (chance(0.7)) this.particles.smoke(r.x, r.y, 1, 3, { speed: 22, size: 5, life: 0.8 });
+      if (o.ruts) {
+        this.decals.paint?.((g) => {
+          g.strokeStyle = 'rgba(10, 8, 14, 0.4)';
+          g.lineWidth = 3;
+          g.lineCap = 'round';
+          rear.forEach((r, i) => { g.beginPath(); g.moveTo(o.ruts[i].x, o.ruts[i].y); g.lineTo(r.x, r.y); g.stroke(); });
+        });
+      }
+    }
+    o.ruts = sliding ? rear : null;
+    if (o.fadeAt === null && o.s >= path.length - o.fadeFrom) o.fadeAt = t;
   }
 
   // at the door: he gets in (no longer drawn, no body, out of `chars`: no light of his own, no laser out of the cab)

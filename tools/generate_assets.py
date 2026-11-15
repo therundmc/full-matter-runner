@@ -2781,12 +2781,12 @@ def tiles():
 # Ragdoll segments (intact, they match each character's palette)
 # --------------------------------------------------------------------------
 
-# ---- a body on the floor, part by part (entities/Ragdoll.js), at FINE density and at the build of the people on their
-# feet (Config BODY_SCALE), a little narrower (shoulders 17 world px, a head of 10, arms 5 thick, legs 6: at the
-# full 20 the user found the bodies too wide). About 1.5 m from crown to heel:
-# between the stubby 1.2 m of the first bodies and a man's real length, which next to the standing characters looked
-# like another game. Painted plainly, two tones a part and what tells each kind apart, no more: every extra (face,
-# buckle, laces, creases) was rejected as clashing with the rest of the picture.
+# ---- a body on the floor, part by part (entities/Ragdoll.js), at the WORLD's pixel size, like the furniture and the
+# floors he lies on: at the finer density of the standing characters the user found the bodies "too high a
+# resolution next to the rest of the assets". The build is that of the people on their feet (Config BODY_SCALE), a
+# little narrower: shoulders 17 px, a head of 10, arms 4 thick, legs 5, about 1.5 m from crown to heel (between the
+# stubby 1.2 m of the first bodies and a man's real length, which looked like another game). Painted plainly, two
+# tones a part and what tells each kind apart, no more: every extra was rejected as clashing with the picture.
 def lying(w, h, fn):
     """fn(x, y) -> colour or None for each pixel of a w x h part, then the outline."""
     cv = Cv(w, h)
@@ -2800,49 +2800,49 @@ def lying(w, h, fn):
 
 
 def torso_edge(y):
-    """Half-width of a lying torso at row y (34 x 38, head toward -y): round shoulders, the waist, the hips."""
-    if y < 4:
-        return 9.5 + 2.0 * y
-    if y <= 13:
-        return 15.5
-    if y <= 30:
-        return 15.5 - (y - 13) / 17.0 * 2.5
-    return 13.0 + (y - 30) / 6.0 * 0.7
+    """Half-width of a lying torso at row y (17 x 19, head toward -y): round shoulders, the waist, the hips."""
+    if y < 2:
+        return 5.0 + 1.3 * y
+    if y <= 6:
+        return 7.5
+    if y <= 14:
+        return 7.5 - (y - 6) / 8.0 * 1.2
+    return 6.3 + (y - 14) / 3.0 * 0.4
 
 
 def rag_torso(ch, back=False):
-    """The trunk from the collar to the belt, 34 x 38, his front (the design of chest_px) or his back: the flanks in
+    """The trunk from the collar to the belt, 17 x 19, his front (the design of chest_px) or his back: the flanks in
     shade, the belt, the top of the trousers."""
     k = ch['kind']
 
     def px(x, y):
-        if y < 1 or y > 36:
+        if y < 1 or y > 17:
             return None
-        d = abs(x - 16.5)
+        d = abs(x - 8)
         hw = torso_edge(y)
         if d > hw:
             return None
-        L = 0.4 if d > hw - 2.8 else 0.66               # the flank turns away
+        L = 0.4 if d > hw - 1.4 else 0.66               # the flank turns away
         i = tidx(L)
-        u, v = (18.5 - y) / 18.5 * 6.9, (x - 16.5) / 15.5 * 5.9
-        if y >= 35:
+        u, v = (9 - y) / 9.0 * 6.9, (x - 8) / 7.5 * 5.9
+        if y == 17:
             return ch['pants'][i]
-        if y >= 33:
+        if y == 16:
             return hx('#1a1420') if k != 'heavy' else ch['pants'][max(0, i - 1)]
-        if y < 3 and d < 3.8:
+        if y < 2 and d < 2:
             return ch['skin'][max(1, i)]                 # the neck
         if not back:
             return chest_px(ch, u, v, L, 6.9, 5.9)
-        if k == 'brute' and d > hw - 4.5:
+        if k == 'brute' and d > hw - 2.3:
             return ch['skin'][i]
-        if k in ('thug', 'player') and y < 6 and d < 6:
+        if k in ('thug', 'player') and y < 3 and d < 3:
             return ch['top'][min(3, i + 1)]              # collar
         if k == 'civ':
             return civ_chest_px(ch, u, v, L, 6.9, 5.9)
-        if d < 1:
+        if d < 0.5:
             return ch['top'][max(0, i - 1)]              # the seam down the back
         return ch['top'][i]
-    return lying(34, 38, px)
+    return lying(17, 19, px)
 
 
 def rag_torso_up(ch):
@@ -2856,84 +2856,73 @@ def rag_torso_down(ch):
 
 
 def rag_skull(ch, fn, ang):
-    cv = Cv(20, 20)
-    fill_shape(cv, 10.0, 10.0, 8.4, 8.4, lambda u, v, L: fn(ch, u / 2.25, v / 2.25, L, 3.7), ang=ang, pad=0.05)
-    for sgn in (-1, 1):
-        for y in (10, 11):
-            cv.set(10 + sgn * 9 - (1 if sgn > 0 else 0), y, ch['skin'][1])     # ears
+    cv = Cv(10, 10)
+    fill_shape(cv, 5.0, 5.0, 4.2, 4.2, lambda u, v, L: fn(ch, u / 1.13, v / 1.13, L, 3.7), ang=ang, pad=0.05)
     return cv
 
 
 def rag_head(ch):
-    """The head of a body lying face down (20 x 20): the back of the skull, the nape toward the shoulders (+y)."""
+    """The head of a body lying face down (10 x 10): the back of the skull, the nape toward the shoulders (+y)."""
     cv = rag_skull(ch, head_top_px, math.pi / 2)
     cv.outline()
     return cv
 
 
 def rag_head_up(ch):
-    """The head of a body lying on its back (20 x 20, crown toward -y): his face, the eyes shut, nothing else."""
+    """The head of a body lying on its back (10 x 10, crown toward -y): his face, the eyes shut, nothing else."""
     cv = rag_skull(ch, face_px, -math.pi / 2)
-    dark = hx('#2a1820')
-    for x in (5, 6, 7, 12, 13, 14):
-        cv.set(x, 11, dark)
-    for x in (8, 9, 10, 11):
-        cv.set(x, 15, ch['skin'][1])                     # the mouth, a shade
+    for x in (3, 6):
+        cv.set(x, 5, hx('#2a1820'))
     cv.outline()
     return cv
 
 
 def rag_arm(ch):
-    """An arm from the shoulder (-x) to the hand (+x), 34 x 12: the sleeve, the cuff of those who wear one, the hand."""
+    """An arm from the shoulder (-x) to the hand (+x), 17 x 6: the sleeve, the cuff of those who wear one, the hand."""
     k = ch['kind']
     s = ch.get('sleeve') or (ch['skin'] if k == 'brute' else ch['top'])
     cuff = WHITE if k in ('player', 'thug') else None
     skin = ch['skin']
 
     def px(x, y):
-        if x < 1 or x > 32 or y < 1 or y > 10:
+        if x < 1 or x > 15 or y < 1 or y > 4:
             return None
-        if (x < 3 or x > 30) and (y < 3 or y > 8):
+        if (x < 2 or x > 14) and (y < 2 or y > 3):
             return None                                  # rounded ends
-        if x >= 26 and (y < 2 or y > 9):
-            return None                                  # the wrist is thinner
-        i = 2 if y < 7 else 1
-        if x >= 26:
+        i = 2 if y < 3 else 1
+        if x >= 13:
             return skin[i]
-        if cuff and x >= 23:
+        if cuff and x == 12:
             return cuff[i]
-        if k == 'heavy' and y in (5, 6):
+        if k == 'heavy' and y == 2:
             return WHITE[i]                              # the stripe down the sleeve
         return s[i]
-    return lying(34, 12, px)
+    return lying(17, 6, px)
 
 
 def rag_leg(ch):
-    """A leg from the hip (-x) to the toe (+x), 40 x 14: the trouser leg, narrower under the knee, and the shoe."""
+    """A leg from the hip (-x) to the toe (+x), 20 x 7: the trouser leg and the shoe."""
     k = ch['kind']
     p, sh = ch['pants'], ch['shoe']
 
     def px(x, y):
-        if x < 1 or x > 38:
+        if x < 1 or x > 18 or y < 1 or y > 5:
             return None
-        top, bot = (1, 12) if x < 19 else (2, 11)
-        if x > 36 and (y < 4 or y > 9):
+        if x > 17 and (y < 2 or y > 4):
             return None                                  # the round of the toe
-        if y < top or y > bot:
-            return None
-        i = 2 if y < 8 else 1
-        if x >= 30:
+        i = 2 if y < 3 else 1
+        if x >= 15:
             return sh[i]
-        if k == 'heavy' and y in (6, 7):
+        if k == 'heavy' and y == 3:
             return WHITE[i]
         return p[i]
-    return lying(40, 14, px)
+    return lying(20, 7, px)
 
 
 def knocked_down(ch):
     """A man knocked out cold, built from the parts of a body on the floor so he is the size of one: on his back, an arm
-    thrown out, the other along him, the legs a little apart. 102 x 98, the head toward +x."""
-    W, H = 98, 102
+    thrown out, the other along him, the legs a little apart. 51 x 49, the head toward +x."""
+    W, H = 49, 51
     body = Image.new('RGBA', (W, H), CLEAR)
 
     def limb(cv, rx, ry, deg):
@@ -2944,12 +2933,12 @@ def knocked_down(ch):
         tmp = tmp.rotate(-deg, resample=Image.NEAREST)
         body.alpha_composite(tmp, (int(rx - n // 2), int(ry - n // 2)))
     leg, arm = rag_leg(ch), rag_arm(ch)
-    limb(leg, 41, 56, 98)
-    limb(leg, 57, 56, 80)
-    limb(arm, 35, 29, 114)
-    limb(arm, 63, 29, 18)
-    body.alpha_composite(rag_torso_up(ch).img, (32, 21))
-    body.alpha_composite(rag_head_up(ch).img, (39, 3))
+    limb(leg, 20, 28, 98)
+    limb(leg, 28, 28, 80)
+    limb(arm, 18, 15, 114)
+    limb(arm, 31, 15, 18)
+    body.alpha_composite(rag_torso_up(ch).img, (16, 10))
+    body.alpha_composite(rag_head_up(ch).img, (19, 1))
     out = Cv(H, W)
     out.img = body.rotate(-90, resample=Image.NEAREST, expand=True)
     out.p = out.img.load()
@@ -5091,10 +5080,10 @@ PROP_SIZES.update(DETAIL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 EXPECTED = {
     'characters': dict([(c + s, sz) for c in CHARS for s, sz in [
-        ('_torso', (40, 40)), ('_down', (102, 98)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
+        ('_torso', (40, 40)), ('_down', (51, 49)), ('_dead0', (30, 22)), ('_dead1', (30, 22)),
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
-        ('_rag_torso', (34, 38)), ('_rag_head', (20, 20)), ('_rag_arm', (34, 12)), ('_rag_leg', (40, 14)),
-        ('_rag_torso_up', (34, 38)), ('_rag_torso_down', (34, 38)), ('_rag_head_up', (20, 20))]]
+        ('_rag_torso', (17, 19)), ('_rag_head', (10, 10)), ('_rag_arm', (17, 6)), ('_rag_leg', (20, 7)),
+        ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(22, 10), uzi=(24, 14), uzi_silenced=(36, 14), shotgun=(44, 10), rifle=(48, 14),

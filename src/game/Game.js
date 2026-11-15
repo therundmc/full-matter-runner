@@ -16,7 +16,7 @@ import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
 import { drawLoading, drawIntro, drawDead, drawPause, drawResults, drawOutro, pauseSliders } from './ui/Screens.js';
 import { drawTitleScene } from './ui/TitleScene.js';
-import { OUTRO, camBlend } from './systems/Outro.js';
+import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
@@ -306,7 +306,7 @@ export default class Game {
     }
     this.updateCamera(dt);
     this.flashA = Math.max(0, this.flashA - dt * 3);
-    if (this.state === 'outro' && this.world.outro.t >= OUTRO.end) this.showResults();
+    if (this.state === 'outro' && outroOver(this.world.outro)) this.showResults();
   }
 
   // read once per simulation step (key presses live until a step consumes them)
@@ -334,8 +334,8 @@ export default class Game {
     if (o) {
       // from the player over to the van's cab, a little ahead of it
       const cab = o.van.toWorld(OUTRO.door, o.van.h / 2), k = camBlend(o.t);
-      tx += (cab.x + Math.cos(o.angle) * OUTRO.lead - tx) * k;
-      ty += (cab.y + Math.sin(o.angle) * OUTRO.lead - ty) * k;
+      tx += (cab.x + Math.cos(o.heading) * OUTRO.lead - tx) * k;
+      ty += (cab.y + Math.sin(o.heading) * OUTRO.lead - ty) * k;
     }
     this.camera.update(dt, tx, ty);
     Audio.listener.x = this.camera.x;
@@ -429,7 +429,7 @@ export default class Game {
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
       if (this.state === 'pause') drawPause(ctx, W, H, t, this.settings, this.sel);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying);
-      if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro.t);
+      if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
     });
   }
 

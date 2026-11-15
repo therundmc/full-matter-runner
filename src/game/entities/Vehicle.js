@@ -8,7 +8,7 @@ import Debris from './Debris.js';
 import { WEAPONS } from '../data/weapons.js';
 import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/Body.js';
 
-const { Bodies, Body, Sleeping } = Matter;
+const { Bodies, Body, Sleeping, Query } = Matter;
 
 // Sprite-space layout of each model (real size, facing +x; must match tools/generate_assets.py).
 // Regions: [x0, x1, y0, y1]; hood: [x0, x1]; wheels: tyre centres (they stick out a little past the sides).
@@ -318,7 +318,7 @@ export default class Vehicle {
   }
 
   popTire(i, dirA) {
-    if (!this.tires[i]) return;
+    if (!this.tires[i] || this.armoured) return;
     this.tires[i] = false;
     const w = this.world;
     const [px, py] = this.wpos(...this.m.wheels[i]);
@@ -335,14 +335,14 @@ export default class Vehicle {
   }
 
   damage(n) {
-    if (this.exploded) return;
+    if (this.exploded || this.armoured) return; // armoured: the getaway van (World)
     this.hp -= n;
     if (this.hp <= this.m.hp * 0.45 || this.fuel >= 3) this.ignite();
     if (this.hp <= 0) this.explode();
   }
 
   ignite() {
-    if (this.burning || this.exploded) return;
+    if (this.burning || this.exploded || this.armoured) return;
     this.burning = true;
     this.fuse = rand(3.5, 5.5);
     this.world.sound('ignite', this.x, this.y);
@@ -362,7 +362,7 @@ export default class Vehicle {
   break() { this.explode(); }
 
   explode() {
-    if (this.exploded) return;
+    if (this.exploded || this.armoured) return;
     this.exploded = true;
     this.burning = false;
     this.alarm = 0;
@@ -419,33 +419,64 @@ export default class Vehicle {
     this.wreckFire = rand(9, 13);
   }
 
-  // driven by a script (the getaway, systems/Outro): straight ahead at sp px/step, over the bodies on the floor;
-  // anything too heavy to push by hand that it noses into is woken for the physics to shove. sp 0: it stops there
-  driveOff(sp) {
-    const b = this.body, w = this.world;
-    if (sp <= 0) {
-      if (!this.moving) return;
-      this.moving = false;
-      this.bob = 0;
-      Body.setVelocity(b, { x: 0, y: 0 });
-      b.sleepThreshold = 60; // Matter's default
-      b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP };
-      return;
-    }
+  // driven by a script (the getaway, systems/Outro.js): put where its route says. Nothing pushes it or stops it: its
+  // hull no longer collides with anything, what it runs into is dealt with by ram()
+  driveTo(x, y, angle) {
+    const b = this.body;
     if (!this.moving) {
       this.moving = true;
       wake(b);
-      b.sleepThreshold = Infinity; // never dozing off between two velocity commands
-      b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP & ~CAT.CORPSE };
+      b.sleepThreshold = Infinity;
+      b.collisionFilter = { ...b.collisionFilter, mask: 0 };
     }
     if (b.isSleeping) Sleeping.set(b, false);
-    for (const pair of w.physics.activePairs()) {
-      const o = pair.bodyA === b ? pair.bodyB : pair.bodyB === b ? pair.bodyA : null;
-      if (o?.frozen) wake(o);
-    }
+    Body.setPosition(b, { x, y });
+    Body.setAngle(b, angle);
+    Body.setVelocity(b, { x: 0, y: 0 });
     Body.setAngularVelocity(b, 0);
-    Body.setVelocity(b, { x: Math.cos(b.angle) * sp, y: Math.sin(b.angle) * sp });
-    b.flyUntil = w.time + 0.05; // no floor friction fighting the engine
+  }
+
+  // What its hull runs into while it is driven along `heading`: a loose thing takes the blow and, if it holds, is
+  // thrown to the side it was on; a bolted one is torn off; a parked car is shoved round, its alarm set off; anyone
+  // standing there is run down. Things that never give (`lasting`), what hangs or sits on a wall are left alone.
+  // seen: Map of what was hit -> when (a thing still under the wheels is hit again after R.again s); R: OUTRO.ram.
+  // Returns how many things were hit this step.
+  ram(heading, seen, R) {
+    const w = this.world, b = this.body, t = w.time, bodies = [];
+    for (const p of w.props) {
+      const d = p.def || {};
+      if (p !== this && !p.dead && !p.dying && p.body && !d.lasting && !d.fixture && !d.hung) bodies.push(p.body);
+    }
+    for (const c of w.characters()) if (c.alive && !c.hidden) bodies.push(c.body);
+    let hits = 0;
+    for (const col of Query.collides(b, bodies)) {
+      const ob = col.parentA === b ? col.parentB : col.parentA, e = ob.entity;
+      if (!e || e === this || t - (seen.get(e) ?? -Infinity) < R.again) continue;
+      seen.set(e, t);
+      hits++;
+      const side = this.toSprite(e.x, e.y).sy < this.h / 2 ? -1 : 1, dir = heading + side * rand(...R.aside);
+      const cx = e.x, cy = e.y;
+      if (e.isVehicle) {
+        wake(ob);
+        Body.setVelocity(ob, { x: Math.cos(dir) * R.car, y: Math.sin(dir) * R.car });
+        Body.setAngularVelocity(ob, side * R.carSpin);
+        ob.flyUntil = t + R.fly;
+        e.hit(0, cx, cy, heading, 1, 'blunt');
+        w.sound('carHit', cx, cy, 1);
+        w.particles.sparks(cx, cy, dir, 1, 10, 320);
+      } else if (e.isPlayer || e.isEnemy || e.isCivilian) e.kill(heading, 'vehicle', this);
+      else if (e.def.static) e.break(heading, R.tear);
+      else {
+        e.hit(R.crush, cx, cy, heading, 1.5, 'blunt');
+        if (e.dead || e.dying) continue;
+        wake(ob);
+        const sp = rand(...R.fling);
+        Body.setVelocity(ob, { x: Math.cos(dir) * sp, y: Math.sin(dir) * sp });
+        Body.setAngularVelocity(ob, rand(-R.spin, R.spin));
+        ob.flyUntil = t + R.fly;
+      }
+    }
+    return hits;
   }
 
   update(dt) {

@@ -47,7 +47,7 @@
   pose numbers stay in unscaled px, so anything drawn or placed from a pose goes through it: muzzle, trails, what a
   guard holds), weapons follow in the hand and on the floor, the body's circle is 10 px. Bodies on the floor are
   painted at that build, about 1.5 m long, shoulders 17 px, PLAINLY (two tones a part: any more detail "clashes
-  with the rest"). A wound shows on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js: bullet
+  with the rest") and at the WORLD's pixel size, not the finer one ("too high a resolution next to the rest"). A wound shows on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js: bullet
   holes, a cut, the blood of a blow). A man knocked down falls on his back, head AWAY from the blow (`downAngle`).
 - Camera: `VIEW` = 330 world px high (engine/Camera.js); he said this zoom is right. The scene is drawn at a whole
   zoom on a canvas a little larger than the window and the lens brings it down (Game.resize).
@@ -100,7 +100,10 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    four windows to dive through (toilets and boss's room on the back lot, pool corner and VIP room on the gap).
    A walkable roof is floor tile `^`. Guards have the keys of the house (`World.pathForGuard`, `Door.unlatch`):
    never lock a door without checking they can still get out (the QA robot reports `guard-stuck`).
-   The level ends in the getaway van (systems/Outro.js)
+   The level ends in the getaway van (systems/Outro.js): it follows the level's `exit.route` (out of the lot in a
+   slide, down the service alley, through the gate, onto the road, fade to black), flat out; nothing stops or pushes
+   it, what it runs into is smashed or thrown (`Vehicle.driveTo` / `ram`), and it cannot be destroyed during the
+   level (`armoured`). The user wants this scene to look good: check it in the browser after touching the route.
    & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
@@ -113,7 +116,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
    `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public
    (he walks in like a customer, level `welcome`; the back door is locked, the back way in has to be forced); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime
-   (level `jobs`: pool, cards, the pimp counting his dope in the storeroom), customers and VIP-room dancers (`ambient.patrons`, sprites dancerN) who panic each his own way (`AMBIENT.panic`: most run, a few trip, some curl up sobbing in a corner or behind furniture, some freeze hands up) and run for
+   (level `jobs`: pool, cards, the pimp counting his dope in the storeroom), a few customers and a VIP-room dancer (`ambient.patrons`, sprites dancerN; eight in all: thirteen was "too many") who panic each his own way (`AMBIENT.panic`: most run, a few trip, some curl up sobbing in a corner or behind furniture, some freeze hands up) and run for
    the street when it kicks off. Guards at ease (user: "too flat", wants many animations, be creative): weapon put
    away while calm, in hand and low on alert, raised on a target (ai/Carry.js); they smoke, read a pager, stretch,
    fold their arms, chat in pairs, go for a leak (Enemy.pickActivity, ai/Pastimes.js); civilians use their hands

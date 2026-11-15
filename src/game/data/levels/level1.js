@@ -11,7 +11,7 @@ export default {
   name: 'NEON NIGHTS',
   subtitle: 'SUNSET BAY  -  APRIL 3RD 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
-  exit: { x: 23.4, y: 4.0, r: 1.3 },
+  exit: { x: 23.4, y: 4.0, r: 1.3, route: [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], radius: [3, 4.2], fade: 16 },
   facing: { '20,34': 0, '24,21': 90, '18,12': 90, '24,14': 349, '20,16': 90, '24,17': 65, '17,8': 90, '21,9': 0, '30,9': 180, '26,9': 0, '26,10': 0, '29,10': 0, '27,4': 270, '12,8': 180 },
   patrols: {
     '17,22': [[16, 22], [27, 22]],
@@ -241,18 +241,13 @@ export default {
     // customers posted indoors: [sprite, col, row, deg, pastime]
     patrons: [
       ['civ1', 16.8, 14.15, 270, 'drink'],
-      ['civ3', 19.2, 14.15, 270, 'drink'],
       ['civ2', 15.6, 16.2, 0, 'drink'],
-      ['civ4', 17.3, 15.8, 180, 'watch'],
       ['civ4', 19.25, 17.5, 0, 'cards'],
       ['civ1', 21.55, 17.5, 180, 'cards'],
-      ['civ2', 20.82, 18.32, 270, 'cards'],
       ['civ3', 28.35, 14.0, 180, 'cue'],
       ['civ1', 26.55, 17.5, 40, 'drink'],
       ['civ3', 26.55, 19.45, -27, 'watch'],
-      ['civ4', 28.6, 17.5, 60, 'drink'],
       ['dancer1', 29.5, 18.9, 180, 'dance'],
-      ['dancer2', 27.9, 18.75, 190, 'dance'],
       ['tramp', 22.1, 36.5, 180, 'sleep'],
     ],
   },

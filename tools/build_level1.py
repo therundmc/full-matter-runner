@@ -132,18 +132,13 @@ lv.actor('k', 20, 16, face=90, job='cards')             # dealing at the card ta
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.8, 14.15, 270, 'drink')            # on the counter stools
-lv.patron('civ3', 19.2, 14.15, 270, 'drink')
-lv.patron('civ2', 15.6, 16.2, 0, 'drink')               # a couple in the first booth
-lv.patron('civ4', 17.3, 15.8, 180, 'watch')
+lv.patron('civ2', 15.6, 16.2, 0, 'drink')               # alone in the first booth
 lv.patron('civ4', 19.25, 17.5, 0, 'cards')              # the poker game
 lv.patron('civ1', 21.55, 17.5, 180, 'cards')
-lv.patron('civ2', 20.82, 18.32, 270, 'cards')
 lv.patron('civ3', 28.35, 14.0, 180, 'cue')              # waiting for his turn at the pool table
-lv.patron('civ1', 26.55, 17.5, 40, 'drink')             # the VIP room: three customers, two dancers
+lv.patron('civ1', 26.55, 17.5, 40, 'drink')             # the VIP room: two customers, a dancer
 lv.patron('civ3', 26.55, 19.45, -27, 'watch')
-lv.patron('civ4', 28.6, 17.5, 60, 'drink')
 lv.patron('dancer1', 29.5, 18.9, 180, 'dance')
-lv.patron('dancer2', 27.9, 18.75, 190, 'dance')
 # back of house
 lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weighing and bagging his dope
 lv.actor('6', 19, 7)
@@ -487,7 +482,11 @@ ambient = {
     ],
 }
 
-exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3}   # by the getaway van's cab door: he gets in and drives off (systems/Outro.js)
+# by the getaway van's cab door: he gets in and tears off (systems/Outro.js). Its way out: west along the back lot,
+# a slide into the service alley (the junk and the two barrels of the lot's corner are in its way), down the alley
+# over what stands in it, through the gate, across the pavement (the hydrant, the meter) and round onto the road,
+# west, clipping the tail of the car parked there. `fade`: black from the second bend on.
+exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], 'radius': [3, 4.2], 'fade': 16}
 
 if __name__ == '__main__':
     lv.check(guards=14)

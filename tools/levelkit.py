@@ -235,7 +235,9 @@ class Level:
         if passive:
             L.append('  passive: true,')
         if exit:
-            L.append(f"  exit: {{ x: {exit['x']}, y: {exit['y']}, r: {exit['r']} }},")
+            # route / radius / fade: the getaway's way out (systems/Outro.js), tiles
+            more = ''.join(f', {k}: {json.dumps(exit[k])}' for k in ('route', 'radius', 'fade') if k in exit)
+            L.append(f"  exit: {{ x: {exit['x']}, y: {exit['y']}, r: {exit['r']}{more} }},")
         if self.facing:
             L.append('  facing: { ' + ', '.join(f"'{k}': {v}" for k, v in self.facing.items()) + ' },')
         if self.patrols:

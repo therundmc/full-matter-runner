@@ -65,8 +65,8 @@ export function drawDead(ctx, W, H, t, seed, cause) {
 }
 
 // the getaway (systems/Outro): the picture fades to black, letterbox bars slide in over it
-export function drawOutro(ctx, W, H, t) {
-  const fade = fadeAlpha(t), bar = Math.ceil(H * OUTRO.bars * barsK(t));
+export function drawOutro(ctx, W, H, out) {
+  const fade = fadeAlpha(out), bar = Math.ceil(H * OUTRO.bars * barsK(out.t));
   ctx.fillStyle = '#000';
   if (fade > 0) {
     ctx.globalAlpha = fade;
