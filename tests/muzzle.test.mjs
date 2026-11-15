@@ -116,9 +116,9 @@ test('muzzle: where a gun is raised on a target (muzzleAt) is where the standing
   }
 });
 
-test('muzzle: a handgun held on its side shows its slide and barrel out of the fist, and hides its grip in it', () => {
+test('muzzle: a machine pistol held on its side shows its slide and barrel out of the fist, and hides its grip in it', () => {
   const side = GUNS.filter(([, d]) => d.hold === 'side');
-  assert.deepEqual(side.map(([id]) => id).sort(), ['pistol', 'uzi', 'uzi_silenced']);
+  assert.deepEqual(side.map(([id]) => id).sort(), ['uzi', 'uzi_silenced']);
   for (const [id, d] of side) {
     const { w, h, px } = readPng(d.sprite);
     assert.ok(typeof d.palm === 'number' && typeof d.hide === 'number', `${id}: palm and hide`);
@@ -163,12 +163,53 @@ test('muzzle: a handgun in the fist is drawn canted, its barrel where it was, th
   }
 });
 
-test('muzzle: a handgun raised on a target is held with the elbow bent, the fist pulled in', () => {
+test('muzzle: a machine pistol raised on a target is held with the elbow bent, the fist pulled in', () => {
   const P = newPose();
   for (const [id, d] of GUNS.filter(([, g]) => g.hold === 'side')) {
     standPose(standing(d), P);
     const reach = Math.hypot(P.hr.x, P.hr.y);
     assert.ok(P.elb[1] >= 0.4, `${id}: elbow out ${P.elb[1]}`);
-    assert.ok(reach < (id === 'pistol' ? 11.2 : 13), `${id}: the fist ${reach.toFixed(2)} px out`);
+    assert.ok(reach < 13, `${id}: the fist ${reach.toFixed(2)} px out`);
+  }
+});
+
+// a closed hand as LimbArt paints it, outline included (world px, half length along the gun and half width across;
+// its squareness)
+const FIST = [2.1, 1.95, 2.4];
+
+test('muzzle: a pistol is held out in both hands, the grip under them, the slide, barrel and trigger guard ahead', () => {
+  const both = GUNS.filter(([, d]) => d.hold === 'both');
+  assert.deepEqual(both.map(([id]) => id), ['pistol']);
+  for (const [id, d] of both) {
+    const { w, h, px } = readPng(d.sprite), P = standPose(standing(d), newPose());
+    assert.ok(!P.fist && P.wpnLen === 1, `${id}: level, drawn side on as it is`);
+    // the arms a narrow triangle: both hands out in front, together, the left one from the left
+    assert.ok(P.hr.x > 9 && P.hl.x > 9 && Math.hypot(P.hl.x - P.hr.x, P.hl.y - P.hr.y) < 2.5 && P.hl.y < P.hr.y, `${id}: the hands`);
+    // the hands in the gun's frame (world px from the gun hand along the barrel, and across it)
+    const c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a);
+    const hands = [P.hr, P.hl].map((H) => {
+      const dx = (H.x - P.wpn.x) / P.s, dy = (H.y - P.wpn.y) / P.s;
+      return [dx * c + dy * s, -dx * s + dy * c];
+    });
+    const under = (x, y) => {
+      const u = (x + 0.5) * K - d.grip, v = (y + 0.5 - h / 2) * K - d.palm;
+      return hands.some(([hu, hv]) => (Math.abs(u - hu) / FIST[0]) ** FIST[2] + (Math.abs(v - hv) / FIST[1]) ** FIST[2] <= 1);
+    };
+    // the wooden grips are all under the hands; nothing over the bore line nor ahead of the grip is
+    const bore = Math.floor(h / 2 + d.bore / K);
+    let front = -1, wood = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const [r, g, b, a] = px(x, y);
+        if (a && r > g && r - b > 40) { wood++; front = Math.max(front, x); assert.ok(under(x, y), `${id}: the grip shows at (${x}, ${y})`); }
+      }
+    }
+    assert.ok(wood > 20, `${id}: no wooden grips found`);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (y <= bore) assert.ok(!under(x, y), `${id}: a hand over the slide at (${x}, ${y})`);
+        if (x > front + 1) assert.ok(!under(x, y), `${id}: a hand over the trigger guard at (${x}, ${y})`);
+      }
+    }
   }
 });

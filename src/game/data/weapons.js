@@ -1,14 +1,16 @@
 // Weapon definitions. ammo = caliber (see AMMO), mag = magazine capacity, reload = seconds (per round when
 // shellReload). A reload fills a fresh mag from the caliber pool; the old mag drops with whatever was left in it.
 // Out of ammo? Throw the gun.
-// hold: 'side' | 'two' | 'melee'. grip = sprite x (from left, world px) where the hand holds it; bore = how far the
-// barrel runs off the sprite's middle line (world px, - = toward its top). A gun fires from the end of its sprite on
-// that line (CharacterAnim muzzleIn): rounds, muzzle flash, smoke and laser start there (tests/muzzle.test.mjs).
-// A handgun ('side') is held in one hand, arm out, turned on its side (the top of the slide toward the other
-// shoulder), so that from above its side shows: palm = where the fist's centre is on it (world px off the
-// middle line, + = toward the grip), hide = the line under which it is all in the fist (grip, guard, magazine well):
-// that part is not drawn while the hand is closed on it. In the fist it is turned three-quarters (render/HandgunArt.js):
-// deck = how wide (world px) the top of its slide shows then.
+// hold: 'both' | 'side' | 'two' | 'melee'. grip = sprite x (from left, world px) where the hand holds it; bore = how far
+// the barrel runs off the sprite's middle line (world px, - = toward its top). A gun fires from the end of its sprite
+// on that line (CharacterAnim muzzleIn): rounds, muzzle flash, smoke and laser start there (tests/muzzle.test.mjs).
+// palm = where the gun hand's centre is on a handgun (world px off the middle line, + = toward the grip).
+// A pistol ('both') is held out in both hands, the arms a narrow triangle: the gun hand on the grip, under the slide
+// and behind the trigger guard, the other hand closed over it on the butt; the two hide the grip.
+// A machine pistol ('side') is held in one hand, arm out, turned on its side (the top of the slide toward the other
+// shoulder), so that from above its side shows: hide = the line under which it is all in the fist (grip, guard,
+// magazine well): that part is not drawn while the hand is closed on it. In the fist it is turned three-quarters
+// (render/HandgunArt.js): deck = how wide (world px) the top of its slide shows then.
 // A long gun ('two') is shouldered: butt = sprite x that sits in the shoulder, fore = sprite x of the front hand;
 // onShoulder: carried on top of the shoulder (a launcher), over it.
 // melee: swing = 'club' (long, swung with both hands, lies on the shoulder) | 'blade' (held low, stabs and cuts);
@@ -52,7 +54,7 @@ export const WEAPONS = {
     wear: 4, breaks: 'lodge',
   },
   pistol: {
-    name: '1911', kind: 'gun', hold: 'side', sprite: 'weapons/pistol', grip: 3, bore: -1.75, palm: 1.05, hide: -0.25, deck: 1, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
+    name: '1911', kind: 'gun', hold: 'both', sprite: 'weapons/pistol', grip: 2.4, bore: -1.75, palm: 2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
     pellets: 1, spread: 0.025, speed: 1700, pen: 16, sound: 'pistol', noise: 640, shake: 0.18, kick: 2.5, casing: 'casing', gore: 0.25, wound: 'small',
     enemyRate: 0.55, points: 500,
   },
