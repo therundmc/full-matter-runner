@@ -106,6 +106,9 @@ export default class Player extends Character {
     if (input.down('KeyS') || input.down('ArrowDown')) dy += 1;
     if (input.down('KeyA') || input.down('ArrowLeft')) dx -= 1;
     if (input.down('KeyD') || input.down('ArrowRight')) dx += 1;
+    // a gamepad's left stick, when no key moves him: its direction, and its push for the pace (a light push walks)
+    const stick = !dx && !dy ? input.move?.() : null;
+    if (stick) { dx = stick.x; dy = stick.y; }
     const moving = !!(dx || dy);
     const moveA = moving ? Math.atan2(dy, dx) : this.angle;
     if (this.slide) {
@@ -113,7 +116,7 @@ export default class Player extends Character {
       if (this.vaulting) return; // chained into a vault
     }
     const sliding = !!this.slide;
-    if (!sliding) this.steer(dx, dy, PLAYER.speed, PLAYER.accel);
+    if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1), PLAYER.accel);
 
     // what is around us
     this.nearItem = null;

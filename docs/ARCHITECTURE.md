@@ -9,7 +9,9 @@ src/
   main.js                 boot: new Game(canvas)
   engine/                 generic, knows nothing about this game (never imports from game/)
     EventBus.js           synchronous pub/sub
-    Input.js Camera.js Assets.js math.js
+    Input.js Camera.js Assets.js math.js   Input: keyboard + mouse + gamepad (poll() once a frame, `device` = last used)
+    Gamepad.js            gamepads, standard mapping (DOM-free, pads source injected): dead zones, trigger hysteresis,
+                          menu steps with repeat from the d-pad / left stick, hot-plug
     physics/
       Units.js            scale contract: 1 m = 32 px = 1 tile, kg, px/step velocities
       Body.js             kg mass, sliding friction coefficient, momentum impulses, freeze/wake of heavy bodies
@@ -98,9 +100,11 @@ src/
     debug/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
-    ui/                   HUD, Indicators (off-screen guard markers), Screens, SandboxPanel, Text, Menu / MenuArt,
+    ui/                   HUD, Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
+                          end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
+                          buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
                           Cinematic (the opening) and cine/ (Ink pixel tools, Pane, Room, Page + Panels: comic pages, Leap: the tutorial's exit)
-    data/                 weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
+    data/                 controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
                           thresholds per level), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,

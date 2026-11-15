@@ -271,7 +271,7 @@ export default class World {
   // how: the circumstances of the kill, when whoever did it knows them (a round's way there, a blow's side)
   onKill(ch, cause, killer, how) {
     this.events.emit('kill', { victim: ch, cause, killer, how });
-    if (ch.isPlayer) { this.endT = this.time; this.game.onPlayerDeath(cause); return; }
+    if (ch.isPlayer) { this.endT = this.time; this.game.onPlayerDeath(cause, killer); return; }
     if (ch.isCivilian) return;
     // no spare magazine on a guard: a gun picked up holds what was left in it, and that is all (user: count your rounds).
     // The freeze and the slow motion of a kill are the blow's business (fx/Impact.js, data/feel.js).

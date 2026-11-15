@@ -1,7 +1,8 @@
 // The menu as data, and the navigator that walks it (DOM-free: no canvas, no Audio, no Game). Pages are built from a
 // context each time they are read, so they always show the current settings and progression:
 //   { settings, progress, best: (id) => { total, grade, time } | null, levels: [{ id, name }] (campaign levels that
-//     exist, in order), lensOk: false when the picture has no lens to turn on (optional) }
+//     exist, in order), lensOk: false when the picture has no lens to turn on (optional), device: 'kbm' | 'pad' (the
+//     controls page lists that one's; optional) }
 // The navigator answers with plain actions that Game.js applies:
 //   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' | 'quit'
 //   | 'reset' | 'replayTutorial'
@@ -9,17 +10,12 @@
 // { label, toggle: key, value }, { level, label, n, locked, best } a level to start, { info: [key, what], col } a
 // read-only line, { label, back: true } goes back (an `act` may come with it); `disabled` greys an item out.
 import { isUnlocked } from '../systems/Progress.js';
+import { KBM_CONTROLS, PAD_CONTROLS } from '../data/controls.js';
 
 export const STEP = 0.05; // how far a slider moves on a key press
 
-// what the controls page lists, two columns (keys are physical positions, so ZQSD on AZERTY; see entities/Player.js,
-// Game.js); a blank key continues the line above
-export const CONTROLS = [
-  [['ZQSD/WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['LEFT CLICK', 'ATTACK / SHOOT'],
-    ['RIGHT CLICK', 'THROW / PICK UP'], ['E', 'PICK UP / SWAP / TRUNK'], ['ESC', 'PAUSE']],
-  [['R', 'RELOAD'], ['SPACE', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'TAKE DOWN / FINISH'],
-    ['BACKSPACE', 'RESTART'], ['M', 'MUSIC ON / OFF'], ['F1 / F2', 'SANDBOX / VISION']],
-];
+// what the controls page lists (data/controls.js): the keyboard's, or the gamepad's when one is in use
+export const CONTROLS = KBM_CONTROLS;
 
 const BACK = { label: 'BACK', back: true };
 // something to continue: a level finished, or more than the first one open
@@ -62,9 +58,9 @@ const PAGES = {
       BACK,
     ],
   }),
-  controls: () => ({
-    title: 'CONTROLS',
-    items: [...CONTROLS.flatMap((col, k) => col.map((info) => ({ info, col: k }))), BACK],
+  controls: (c) => ({
+    title: c.device === 'pad' ? 'CONTROLS - GAMEPAD' : 'CONTROLS',
+    items: [...(c.device === 'pad' ? PAD_CONTROLS : CONTROLS).flatMap((col, k) => col.map((info) => ({ info, col: k }))), BACK],
   }),
   game: (c) => ({
     title: 'GAME',

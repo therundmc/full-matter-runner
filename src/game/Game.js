@@ -1,6 +1,6 @@
 import { FIXED_DT, PLAYER, PALETTE, TILE, AI } from './Config.js';
 import { loadAssets } from '../engine/Assets.js';
-import { clamp, lerp } from '../engine/math.js';
+import { clamp, lerp, angDiff } from '../engine/math.js';
 import Input from '../engine/Input.js';
 import Camera, { VIEW } from '../engine/Camera.js';
 import Audio from '../audio/Audio.js';
@@ -15,7 +15,9 @@ import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, 
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawLoading, drawIntro, drawDead, drawResults, drawOutro } from './ui/Screens.js';
+import { drawLoading, drawIntro, drawDead, drawOutro, describeDeath } from './ui/Screens.js';
+import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
+import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
@@ -45,6 +47,8 @@ export default class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.input = new Input(canvas);
+    this.input.bindPad(PAD_BINDINGS); // the gamepad plays the keys and buttons (data/controls.js)
+    this.padAimAt = null;              // the right stick's virtual cursor: { angle, reach, idle } (padAim)
     this.camera = new Camera();
     this.state = 'loading';
     this.stateT = 0;
@@ -140,7 +144,7 @@ export default class Game {
   firstLevel() { return this.campaign()[0]?.id || Object.keys(LEVELS)[0]; }
 
   menuContext() {
-    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok };
+    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok, device: this.input.device };
   }
 
   // a level finished: marked done, the next one opened (the tutorial calls it too)
@@ -186,6 +190,7 @@ export default class Game {
     this.slow = null;
     this.flashA = 0;
     this.clearedT = 0;
+    this.padAimAt = null;
     Audio.setMuffle(0);
     // the soundtrack: calm until the squad wakes up or blood is shed (Tension, fed every frame in update), its
     // combat variant while the squad fights
@@ -216,9 +221,10 @@ export default class Game {
   // ---------------- hooks called by the world ----------------
   slowmo(scale, dur) { this.slow = { scale, t: dur }; }
   flash(color, a) { this.flashColor = color; this.flashA = Math.max(this.flashA, a); }
-  onPlayerDeath(cause) {
+  // killer: whoever the kill is credited to (a guard, a vehicle, himself for his own blast), told on the death screen
+  onPlayerDeath(cause, killer) {
     this.deaths++;
-    this.deathCause = cause;
+    this.death = { cause, by: describeDeath(cause, killer), n: this.deaths };
     this.setState('dead');
     this.slowmo(0.18, 1.6);
     this.camera.shake(0.8);
@@ -243,7 +249,12 @@ export default class Game {
     // a run helped by the sandbox is shown but never kept as a record
     this.completeLevel(this.levelId);
     const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.time }) : { prev: this.best, record: false };
-    this.results = { ...tally, best: kept.prev, record: kept.record, ranked: this.ranked };
+    const next = nextLevel(this.levelId);
+    this.results = {
+      ...tally, best: kept.prev, record: kept.record, ranked: this.ranked,
+      level: { label: levelLabel(this.levelId), name: w.level.name || '' }, nextLevel: next && has(next) ? next : null,
+    };
+    this.resultsT = 0;
     this.replay.start();
     Audio.play('clear');
     this.setState('results');
@@ -283,6 +294,7 @@ export default class Game {
 
   update(dt) {
     const inp = this.input;
+    inp.poll(dt);
     if (inp.anyPressed) {
       Audio.unlock().then(() => { if (this.musicOn) Music.start(); });
       if (this.wantFull) { this.wantFull = false; this.setFullscreen(true); }
@@ -316,8 +328,7 @@ export default class Game {
     if (this.state === 'results') {
       this.updateCamera(dt);
       this.replay.update(dt);
-      if (inp.hit('KeyR')) this.newGame();
-      else if (this.stateT > 1 && (inp.mouseHit(0) || inp.hit('Enter'))) this.toTitle();
+      this.updateResults(inp);
       inp.consume();
       return;
     }
@@ -362,8 +373,11 @@ export default class Game {
       inp.consume();
       if (skip || this.world.outro.van.exploded) { this.showResults(); return; }
     }
-    if (this.state === 'play' && inp.hit('Escape')) { this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
-    if (this.state === 'dead' && this.stateT > 0.8 && inp.mouseHit(0)) { this.newGame(); inp.consume(); return; }
+    // Escape / START pauses; so does the gamepad in use going away
+    if (this.state === 'play' && (inp.hit('Escape') || inp.padLost)) { inp.padLost = false; this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
+    // once dead: R and the pad's A / Y restart at once, a click after a moment (he may have died clicking)
+    if (this.state === 'dead' && (inp.hit('PadA') || (this.stateT > 0.5 && inp.mouseHit(0)))) { this.newGame(); inp.consume(); return; }
+    this.padAim(dt);
 
     // time scale (slow motion)
     let target = this.state === 'outro' ? 1 : this.sandbox.timeScale;
@@ -400,6 +414,43 @@ export default class Game {
     if (this.state === 'outro' && outroOver(this.world.outro)) this.showResults();
   }
 
+  // the results (ui/Results.js): R / Y retries; ENTER / SPACE / A / a click first fills the screen at once, then goes
+  // on to the next level (the menu after the last); ESC / START / B go to the menu. Its ticks and stamp are heard here.
+  updateResults(inp) {
+    const r = this.results, end = resultsTimeline(r).end, key = (...codes) => codes.some((c) => inp.hit(c));
+    for (const b of resultsBeats(r, this.resultsT ?? 0, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
+    this.resultsT = this.stateT;
+    const go = key('Enter', 'NumpadEnter', 'Space') || inp.mouseHit(0);
+    if (key('KeyR')) this.newGame();
+    else if (this.stateT > 0.3 && key('Escape', 'PadB')) this.toTitle();
+    else if (go && this.stateT < end) { this.stateT = end; this.resultsT = end; }
+    else if (go && this.stateT > 0.3) {
+      if (r.nextLevel) this.startLevel(r.nextLevel);
+      else this.toTitle();
+    }
+  }
+
+  // The right stick's virtual cursor (data/controls.js PAD_AIM): a point round the player, nearer or further with the
+  // push, put where the mouse would be, so that the aim, the camera's look-ahead and the cursor all follow it. With
+  // the stick at rest the aim stays put, and turns to where he walks after a moment. No aim assist.
+  padAim(dt) {
+    const inp = this.input, p = this.world?.player;
+    if (inp.device !== 'pad' || !p?.alive || this.state !== 'play') return;
+    const A = this.padAimAt || (this.padAimAt = { angle: p.angle, reach: PAD_AIM.near, idle: 0 });
+    const r = inp.aimStick(), m = inp.move();
+    if (r) {
+      A.angle = Math.atan2(r.y, r.x);
+      A.reach = lerp(PAD_AIM.near, PAD_AIM.far, r.mag);
+      A.idle = 0;
+    } else {
+      A.idle += dt;
+      if (m && A.idle > PAD_AIM.follow) A.angle += angDiff(A.angle, Math.atan2(m.y, m.x)) * Math.min(1, dt * 10);
+    }
+    const at = this.camera.worldToScreen(p.x + Math.cos(A.angle) * A.reach, p.y + Math.sin(A.angle) * A.reach);
+    inp.mouse.x = at.x;
+    inp.mouse.y = at.y;
+  }
+
   // read once per simulation step (key presses live until a step consumes them)
   debugKeys(inp, aim) {
     if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
@@ -410,7 +461,8 @@ export default class Game {
   }
 
   // ---------------- menu (title and pause) ----------------
-  // keyboard: arrows / ZQSD move, Enter / Space activate, Escape / Backspace go back; mouse: hover selects, a click
+  // keyboard: arrows / ZQSD move, Enter / Space activate, Escape / Backspace go back; gamepad: d-pad / left stick
+  // move, A activates, B / START go back (data/controls.js); mouse: hover selects, a click
   // activates, a slider is dragged (saved on release), right click goes back. On the title's first page a click
   // beside the items starts the game, as the title always did (CONTINUE or NEW GAME).
   updateMenu(inp) {
@@ -419,7 +471,9 @@ export default class Game {
     this.lastMouse = { x, y };
     const rects = this.menuRects, at = rects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
     const key = (...codes) => codes.some((c) => inp.hit(c));
-    if (this.grab === null && inp.mouseHit(0) && at?.track && nav.page.items[at.i]?.slider) { nav.hover(at.i); this.grab = at.i; }
+    // a gamepad's RT plays the left button: it does not click in a menu (A does)
+    const click = inp.device !== 'pad' && inp.mouseHit(0);
+    if (this.grab === null && click && at?.track && nav.page.items[at.i]?.slider) { nav.hover(at.i); this.grab = at.i; }
     if (this.grab !== null) {
       const r = rects.find((q) => q.i === this.grab), it = nav.page.items[this.grab];
       if (!r?.track || !it?.slider) this.grab = null;
@@ -427,14 +481,14 @@ export default class Game {
       else { saveSettings(this.settings); this.audible(it.slider); this.grab = null; }
     } else {
       if (at && moved) nav.hover(at.i);
-      if (inp.mouseHit(0)) acts.push(at ? nav.click(at.i) : this.state === 'title' ? nav.primary() : null);
-      else if (inp.mouseHit(2)) acts.push(nav.back());
-      if (key('ArrowUp', 'KeyW')) acts.push(nav.up());
-      if (key('ArrowDown', 'KeyS')) acts.push(nav.down());
-      if (key('ArrowLeft', 'KeyA')) acts.push(nav.left());
-      if (key('ArrowRight', 'KeyD')) acts.push(nav.right());
+      if (click) acts.push(at ? nav.click(at.i) : this.state === 'title' ? nav.primary() : null);
+      else if (inp.device !== 'pad' && inp.mouseHit(2)) acts.push(nav.back());
+      if (key('ArrowUp', 'KeyW', 'NavUp')) acts.push(nav.up());
+      if (key('ArrowDown', 'KeyS', 'NavDown')) acts.push(nav.down());
+      if (key('ArrowLeft', 'KeyA', 'NavLeft')) acts.push(nav.left());
+      if (key('ArrowRight', 'KeyD', 'NavRight')) acts.push(nav.right());
       if (key('Enter', 'Space', 'NumpadEnter')) acts.push(nav.activate());
-      if (key('Escape', 'Backspace')) acts.push(nav.back());
+      if (key('Escape', 'Backspace', 'PadB')) acts.push(nav.back());
     }
     const done = acts.filter(Boolean), turned = `${nav.top.id}:${nav.sel}` !== before;
     for (const a of done) { if (this.applyMenu(a)) break; }
@@ -510,7 +564,7 @@ export default class Game {
       o.imageSmoothingEnabled = false;
     }
     if (inWorld) this.drawOver(o, W, H, t);
-    else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title'); });
+    else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title', this.input.device); });
     if (this.lensNote > t) {
       o.font = `${Math.round(14 * H / 720)}px monospace`;
       o.textAlign = 'left';
@@ -590,9 +644,9 @@ export default class Game {
         ctx.fillRect(0, 0, W, H);
         ctx.globalAlpha = 1;
       }
-      if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.deathCause);
-      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, 'pause');
-      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying);
+      if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.death, this.input.device);
+      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, 'pause', this.input.device);
+      if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
     });
   }
@@ -648,6 +702,8 @@ export default class Game {
   }
 
   drawCursor(ctx, t) {
+    // with a gamepad: the virtual cursor while playing (padAim), none in the menus and screens
+    if (this.input.device === 'pad' && !(this.state === 'play' && this.padAimAt)) return;
     const { x, y } = this.input.mouse;
     const s = this.canvas.height / 720;
     const r = (9 + Math.sin(t * 8) * 1.5) * s;

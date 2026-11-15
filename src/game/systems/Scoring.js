@@ -71,8 +71,10 @@ export function gradeFor(total, grades) {
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 // End-of-level breakdown from the run's figures (pure).
-// stats: { points, kills, guards, maxCombo, methods, shots, hits, alerts, civilians, spared, time }
-// -> { lines: [{ key, label, detail, points }], total, grade, next: { grade, at } | null }
+// stats: { points, kills, guards, maxCombo, methods, shots, hits, alerts, civilians, spared, time, styled? }
+//   styled: { key: n } kills done in a named style or circumstance (SCORING.styles with a label, SCORING.tags)
+// -> { lines: [{ key, label, detail, points }], total, grade, next: { grade, at } | null,
+//      tags: [{ key, label, n }] (the styled kills, most done first), run: { kills, guards, maxCombo, time, par } }
 export function tally(stats, level, rules = SCORING) {
   const lines = [];
   const line = (key, label, detail, points) => lines.push({ key, label, detail, points: Math.round(points) });
@@ -92,7 +94,12 @@ export function tally(stats, level, rules = SCORING) {
   const grade = gradeFor(total, level.grades);
   const i = level.grades.findIndex(([g]) => g === grade);
   const next = i > 0 ? { grade: level.grades[i - 1][0], at: level.grades[i - 1][1] } : null;
-  return { lines, total, grade, next };
+  const named = (k) => rules.tags[k] || rules.styles[k];
+  const tags = Object.entries(stats.styled || {}).filter(([k, n]) => n > 0 && named(k)?.label)
+    .map(([key, n]) => ({ key, label: named(key).label, n }))
+    .sort((a, b) => b.n - a.n || (named(b.key).points - named(a.key).points));
+  const run = { kills: stats.kills, guards: stats.guards, maxCombo: stats.maxCombo, time: stats.time, par: level.par };
+  return { lines, total, grade, next, tags, run };
 }
 
 export default class Scoring {
@@ -114,6 +121,7 @@ export default class Scoring {
     this.dodgeT = this.pickT = this.killT = -99; // world time of the last dodge, pick-up, kill by the player
     this.streak = 0;          // kills in quick succession (rules.multiWindow)
     this.tags = [];           // circumstances of the last kill
+    this.styled = {};         // kills by named style / circumstance over the run (the results' tally)
     const ev = world.events;
     ev.on('kill', (e) => this.onKill(e));
     ev.on('knock', (e) => this.onKnock(e));
@@ -169,6 +177,7 @@ export default class Scoring {
     this.tags = killTags({ killer: k, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);
     let bonus = unseen ? R.unseen : 0;
     for (const t of this.tags) { bonus += R.tags[t].points; this.methods.add(t); }
+    for (const k of [how.style, ...this.tags]) if (R.tags[k] || R.styles[k]?.label) this.styled[k] = (this.styled[k] || 0) + 1;
     const pts = Math.round((style.points + bonus) * this.multiplier);
     // the three that pay most are spelled out
     const best = [...this.tags].sort((a, b) => R.tags[b].points - R.tags[a].points);
@@ -198,6 +207,7 @@ export default class Scoring {
       points: this.points, kills: this.kills, guards: this.world.totalEnemies, maxCombo: this.maxCombo,
       methods: this.methods.size, shots: this.shots, hits: this.hits, alerts: this.alerts,
       civilians: this.civilians, spared: this.world.enemies.filter((e) => e.alive && e.yielded).length, time: this.world.time,
+      styled: this.styled,
     }, level, this.rules);
   }
 }

@@ -31,39 +31,40 @@ const inside = ([c0, r0, c1, r1], x, y) => x >= c0 * TILE && x < (c1 + 1) * TILE
 const at = ([c, r]) => ({ x: c * TILE, y: r * TILE });
 const nearest = (list, p) => list.reduce((best, e) => (!best || Math.hypot(e.x - p.x, e.y - p.y) < Math.hypot(best.x - p.x, best.y - p.y) ? e : best), null);
 
-// What a hint says and over what: (tutorial, stage, player) -> { x, y, key, text } or null. key: the cap shown before
-// the words ('' : none). Keys are named for an AZERTY keyboard first, as everywhere in the game.
+// What a hint says and over what: (tutorial, stage, player) -> { x, y, key, text } or null. key: the action whose cap
+// is shown before the words ('' : none), named for the device in use when drawn (data/controls.js ACTIONS: ZQSD or
+// the left stick, SPACE or A...).
 export const HINTS = {
-  move: (T, s, p) => (T.moved < MOVED ? { x: p.x, y: p.y, key: 'ZQSD', text: 'MOVE' } : null),
+  move: (T, s, p) => (T.moved < MOVED ? { x: p.x, y: p.y, key: 'move', text: 'MOVE' } : null),
   takedown: (T, s, p) => {
     const g = T.guards(s).find((e) => e.alive && e.knocked <= 0 && e.aware === 0);
     if (!g) return null;
-    return p.nearBack === g ? { x: g.x, y: g.y, key: 'SPACE', text: 'BREAK HIS NECK' } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
+    return p.nearBack === g ? { x: g.x, y: g.y, key: 'action', text: 'BREAK HIS NECK' } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
   },
   punch: (T, s, p) => {
     const g = !p.armed && nearest(T.standing(s), p);
-    return g ? { x: g.x, y: g.y, key: 'CLICK', text: 'PUNCH' } : null;
+    return g ? { x: g.x, y: g.y, key: 'attack', text: 'PUNCH' } : null;
   },
   finish: (T, s, p) => {
     const g = nearest(T.guards(s).filter((e) => e.alive && e.knocked > 0), p);
-    return g ? { x: g.x, y: g.y, key: 'CLICK', text: 'FINISH HIM' } : null;
+    return g ? { x: g.x, y: g.y, key: 'attack', text: 'FINISH HIM' } : null;
   },
   take: (T, s, p) => {
     const it = p.weapon?.type !== s.take && T.world.items.find((i) => !i.dead && i.type === s.take && inside(s.zone, i.x, i.y));
-    return it ? { x: it.x, y: it.y, key: 'E', text: 'TAKE IT' } : null;
+    return it ? { x: it.x, y: it.y, key: 'use', text: 'TAKE IT' } : null;
   },
   strike: (T, s, p) => {
     const g = p.armed && p.def.kind !== 'gun' && nearest(T.standing(s), p);
-    return g ? { x: g.x, y: g.y, key: 'CLICK', text: 'STRIKE' } : null;
+    return g ? { x: g.x, y: g.y, key: 'attack', text: 'STRIKE' } : null;
   },
   shoot: (T, s, p) => {
     const g = p.armed && p.def.kind === 'gun' && p.weapon.mag > 0 && nearest(T.standing(s), p);
-    return g ? { x: g.x, y: g.y, key: 'CLICK', text: 'SHOOT' } : null;
+    return g ? { x: g.x, y: g.y, key: 'attack', text: 'SHOOT' } : null;
   },
   throw: (T, s, p) => (p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && T.standing(s).length
-    ? { x: p.x, y: p.y, key: 'RIGHT CLICK', text: 'THROW IT' } : null),
-  slide: (T, s) => (T.standing(s).length && s.marks?.slide ? { ...at(s.marks.slide), key: 'SPACE', text: 'RUN AND SLIDE UNDER HIS FIRE' } : null),
-  dive: (T, s) => (s.marks?.dive && !T.standing(s).length ? { ...at(s.marks.dive), key: 'SPACE', text: 'DIVE' } : null),
+    ? { x: p.x, y: p.y, key: 'throw', text: 'THROW IT' } : null),
+  slide: (T, s) => (T.standing(s).length && s.marks?.slide ? { ...at(s.marks.slide), key: 'action', text: 'RUN AND SLIDE UNDER HIS FIRE' } : null),
+  dive: (T, s) => (s.marks?.dive && !T.standing(s).length ? { ...at(s.marks.dive), key: 'action', text: 'DIVE' } : null),
 };
 
 export default class Tutorial {

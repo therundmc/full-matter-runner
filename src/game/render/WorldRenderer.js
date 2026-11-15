@@ -10,6 +10,8 @@ import { drawPropLife } from './PropLife.js';
 import { drawPapers, drawButts } from './StreetArt.js';
 import { OUTRO } from '../systems/Outro.js';
 import { drawCombat } from '../fx/CombatFx.js';
+import { keyLabel } from '../data/controls.js';
+import { capWidth, drawCap } from '../ui/Glyphs.js';
 
 const { Body } = Matter;
 
@@ -166,24 +168,23 @@ export default class WorldRenderer {
     ctx.globalAlpha = 1;
   }
 
-  // the tutorial's hints (systems/Tutorial.js): a key cap and a few words over what they are about
+  // the tutorial's hints (systems/Tutorial.js): the cap of the device in use (ui/Glyphs.js) and a few words over what
+  // they are about
   drawHints(ctx, hints, t) {
+    const device = this.world.game?.input?.device, H = 11;
     ctx.save();
     ctx.font = '8px joystix';
     ctx.textBaseline = 'middle';
     const bob = Math.sin(t * 5) * 1.2;
     for (const h of hints) {
-      const kw = h.key ? Math.ceil(ctx.measureText(h.key).width) + 6 : 0, tw = Math.ceil(ctx.measureText(h.text).width);
-      const gap = h.key ? 4 : 0, x0 = Math.round(h.x - (kw + gap + tw) / 2), y = Math.round(h.y + bob);
+      const label = h.key ? keyLabel(h.key, device) : '';
+      const kw = label ? Math.ceil(capWidth(ctx, label, H)) : 0, tw = Math.ceil(ctx.measureText(h.text).width);
+      const gap = label ? 4 : 0, x0 = Math.round(h.x - (kw + gap + tw) / 2), y = Math.round(h.y + bob);
       ctx.fillStyle = 'rgba(8, 4, 16, 0.72)';
-      ctx.fillRect(x0 - 3, y - 7, kw + gap + tw + 6, 14);
-      if (h.key) {
-        ctx.fillStyle = PALETTE.cyan;
-        ctx.fillRect(x0, y - 5, kw, 10);
-        ctx.fillStyle = PALETTE.ink;
-        ctx.textAlign = 'center';
-        ctx.fillText(h.key, x0 + kw / 2, y + 0.5);
-      }
+      ctx.fillRect(x0 - 3, y - 8, kw + gap + tw + 6, 16);
+      if (label) drawCap(ctx, label, x0, y, H);
+      ctx.font = '8px joystix';
+      ctx.textBaseline = 'middle';
       ctx.textAlign = 'left';
       ctx.fillStyle = PALETTE.ink;
       ctx.fillText(h.text, x0 + kw + gap + 1, y + 1.5);

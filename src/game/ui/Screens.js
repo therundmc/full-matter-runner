@@ -2,6 +2,8 @@ import { PALETTE } from '../Config.js';
 import { text, glitchText, thousands } from './Text.js';
 import { clamp } from '../../engine/math.js';
 import { OUTRO, fadeAlpha, barsK } from '../systems/Outro.js';
+import { WEAPONS } from '../data/weapons.js';
+import { drawPrompts } from './Glyphs.js';
 
 const TAUNTS = [
   'ONE BULLET. THAT IS ALL IT TAKES.',
@@ -51,17 +53,102 @@ export function drawIntro(ctx, W, H, t, level, best, label = 'LEVEL 1') {
   if (best) text(ctx, `BEST ${thousands(best.total)}  ${best.grade}`, W / 2, H / 2 + 92 * s, 11 * s, PALETTE.cyan, { alpha: a * 0.8 });
 }
 
-export function drawDead(ctx, W, H, t, seed, cause) {
-  const s = H / 720;
-  const a = clamp(t * 1.5, 0, 1);
-  ctx.fillStyle = `rgba(90,0,10,${0.35 * a})`;
+// What killed him, told on the death screen: { verb, by } ('SHOT', 'BY A THUG  -  UZI'). cause: Character.kill's;
+// killer: whoever it was credited to (a guard, a vehicle, himself for his own blast). Pure.
+export function describeDeath(cause, killer) {
+  const weapon = killer?.weapon && WEAPONS[killer.weapon.type];
+  const who = killer?.isEnemy ? `BY A ${String(killer.kind || 'guard').toUpperCase()}` : '';
+  const arm = weapon && weapon.name !== 'FISTS' ? weapon.name : '';
+  const by = () => [who, arm].filter(Boolean).join('  -  ');
+  switch (cause) {
+    case 'bullet': case 'heavy': return { verb: 'SHOT', by: by() };
+    case 'blast': return { verb: 'BUCKSHOT', by: by() };
+    case 'melee': return killer?.isEnemy ? { verb: 'BEATEN TO DEATH', by: by() } : { verb: 'CRUSHED', by: '' };
+    case 'slash': return killer?.isEnemy ? { verb: 'CUT DOWN', by: by() } : { verb: 'CUT TO PIECES', by: '' };
+    case 'glass': return { verb: 'CUT TO PIECES', by: 'BY FLYING GLASS' };
+    case 'explosion': return { verb: 'BLOWN APART', by: killer?.isPlayer ? 'BY YOUR OWN BLAST' : '' };
+    case 'vehicle': return { verb: 'RUN OVER', by: `BY A ${killer?.type === 'van' ? 'VAN' : 'CAR'}` };
+    default: return { verb: 'KILLED', by: by() };
+  }
+}
+
+const DEAD = { slam: 0.14, line: 0.24, taunt: 0.38, prompt: 0.3 }; // s: the title lands, the cause, the taunt, the prompt
+
+// The death screen: a red wash, black bars slammed in, YOU'RE DEAD stamped down, what killed him on a red band, a
+// taunt and the restart prompt at once (R restarts from the first frame; the prompt only says so).
+// death: { cause, by: describeDeath(...), n: deaths so far }; device: whose caps the prompt shows
+export function drawDead(ctx, W, H, t, seed, death, device) {
+  const s = H / 720, ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+  // the picture goes red and dark, darker at the edges
+  const a = ease(t / 0.25);
+  ctx.fillStyle = `rgba(110,0,14,${0.38 * a})`;
   ctx.fillRect(0, 0, W, H);
-  if (t < 0.35) return;
-  const sc = 1 + Math.max(0, 0.6 - t) * 0.8;
-  glitchText(ctx, "YOU'RE DEAD", W / 2, H * 0.4, 80 * s * sc, t, { rot: Math.sin(t * 2) * 0.04, color: PALETTE.pink });
-  const lines = CAUSE_TAUNTS[cause] || TAUNTS;
-  text(ctx, lines[seed % lines.length], W / 2, H * 0.52, 16 * s, PALETTE.white, { alpha: a });
-  if (t > 0.6 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'PRESS R TO RESTART', W / 2, H * 0.62, 24 * s, PALETTE.yellow);
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, Math.hypot(W, H) * 0.6);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, `rgba(0,0,0,${0.75 * a})`);
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, W, H);
+  // black bars slam in, a red edge on each
+  const bar = H * 0.16 * ease(t / 0.12);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, bar);
+  ctx.fillRect(0, H - bar, W, bar);
+  ctx.fillStyle = PALETTE.pink;
+  ctx.fillRect(0, bar, W, 3 * s);
+  ctx.fillRect(0, H - bar - 3 * s, W, 3 * s);
+
+  // the title stamped down: big, fast, a jolt when it lands
+  const k = clamp(t / DEAD.slam, 0, 1), land = t - DEAD.slam;
+  const sc = 1 + (1 - ease(k)) * 1.6, jolt = land > 0 && land < 0.18 ? (1 - land / 0.18) * 9 * s : 0;
+  const jx = jolt * Math.sin(t * 90), jy = jolt * Math.cos(t * 77);
+  const ty = H * 0.4;
+  ctx.save();
+  ctx.globalAlpha = clamp(k * 2, 0, 1);
+  // red on a hard black shadow, a white ghost of it where it hit
+  text(ctx, "YOU'RE DEAD", W / 2 + 9 * s + jx, ty + 10 * s + jy, 96 * s * sc, '#000', { shadow: null, rot: -0.035 });
+  if (land > 0 && land < 0.3) text(ctx, "YOU'RE DEAD", W / 2, ty, 96 * s * (1 + land * 0.8), PALETTE.white, { shadow: null, outline: false, rot: -0.035, alpha: 0.5 * (1 - land / 0.3) });
+  glitchText(ctx, "YOU'RE DEAD", W / 2 + jx, ty + jy, 96 * s * sc, t, { rot: -0.035, color: '#ff1e3c' });
+  ctx.restore();
+  if (land > 0 && land < 0.12) {
+    ctx.fillStyle = `rgba(255,255,255,${0.35 * (1 - land / 0.12)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // what killed him, on a red band sliding in from the left
+  const lt = t - DEAD.line;
+  if (lt > 0 && death?.by) {
+    const bw = Math.min(W, 760 * s), bh = 58 * s, by = H * 0.555, slide = (1 - ease(lt / 0.16)) * -W;
+    ctx.save();
+    ctx.translate(W / 2 + slide, by);
+    ctx.rotate(-0.012);
+    ctx.fillStyle = '#c4001c';
+    ctx.fillRect(-bw / 2 + 6 * s, -bh / 2 + 6 * s, bw, bh);
+    ctx.fillStyle = '#050003';
+    ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+    ctx.fillStyle = '#ff1e3c';
+    ctx.fillRect(-bw / 2, -bh / 2, 10 * s, bh);
+    ctx.fillRect(bw / 2 - 10 * s, -bh / 2, 10 * s, bh);
+    const two = !!death.by.by;
+    text(ctx, death.by.verb, 0, two ? -9 * s : 0, 26 * s, PALETTE.white, { shadow: '#7a0010' });
+    if (two) text(ctx, death.by.by, 0, 15 * s, 13 * s, '#ff5a70');
+    ctx.restore();
+  }
+  const tt = t - DEAD.taunt;
+  if (tt > 0) {
+    const lines = CAUSE_TAUNTS[death?.cause] || TAUNTS;
+    text(ctx, lines[seed % lines.length], W / 2, H * 0.655, 15 * s, PALETTE.white, { alpha: ease(tt / 0.2) * 0.85 });
+  }
+  // the way back in, big, in the bottom bar
+  const pt = t - DEAD.prompt;
+  if (pt > 0) {
+    const pulse = 0.82 + 0.18 * Math.sin(t * 9);
+    const list = device === 'pad' ? [['restart', 'RESTART']] : [['retry', ''], ['attack', 'RESTART']];
+    ctx.save();
+    ctx.globalAlpha = ease(pt / 0.15);
+    drawPrompts(ctx, list, W / 2, H - bar / 2, 40 * s * pulse ** 0.3, device, { color: PALETTE.yellow, gap: 0.5, font: 0.7 });
+    ctx.restore();
+    if (death?.n > 1) text(ctx, `DEATH ${death.n}`, W - 30 * s, bar / 2, 13 * s, PALETTE.pink, { align: 'right', alpha: 0.8 * ease(pt / 0.3) });
+  }
 }
 
 // the getaway (systems/Outro): the picture fades to black, letterbox bars slide in over it
@@ -75,61 +162,4 @@ export function drawOutro(ctx, W, H, out) {
   }
   ctx.fillRect(0, 0, W, bar);
   ctx.fillRect(0, H - bar, W, bar);
-}
-
-const LINE_EVERY = 0.38, COUNT = 0.3; // s between two lines of the breakdown, s a figure takes to count up
-
-// Level-clear breakdown. r: Scoring.tally() + { best: previous best | null, record, ranked }.
-// `replay`: the replay is playing behind: the breakdown then stands in a column on the right, clear of the action.
-export function drawResults(ctx, W, H, t, r, replay) {
-  const s = H / 720, half = 222 * s, edge = half + 26 * s;
-  const cx = replay ? W - edge - 36 * s : W / 2;
-  if (!replay) {
-    ctx.fillStyle = `rgba(8,2,16,${clamp(t * 2, 0, 0.85)})`;
-    ctx.fillRect(0, 0, W, H);
-  }
-  const top = 44 * s, bottom = 676 * s;
-  ctx.fillStyle = `rgba(8,2,16,${clamp(t * 3, 0, replay ? 0.82 : 0.4)})`;
-  ctx.fillRect(cx - edge, top, edge * 2, bottom - top);
-  ctx.fillStyle = PALETTE.pink;
-  ctx.fillRect(cx - edge, top, edge * 2, 2 * s);
-  ctx.fillRect(cx - edge, bottom - 2 * s, edge * 2, 2 * s);
-  glitchText(ctx, 'LEVEL COMPLETE', cx, top + 46 * s, 32 * s, t, { color: PALETTE.white });
-
-  // one line after the other, each figure counting up
-  let y = top + 108 * s;
-  r.lines.forEach((l, i) => {
-    const k = clamp((t - 0.5 - i * LINE_EVERY) / COUNT, 0, 1);
-    if (k > 0) {
-      const a = Math.min(1, k * 3), neg = l.points < 0;
-      text(ctx, l.label, cx - half, y, 17 * s, PALETTE.cyan, { align: 'left', alpha: a });
-      text(ctx, l.detail, cx + 44 * s, y, 11 * s, PALETTE.white, { alpha: a * 0.7 });
-      text(ctx, thousands(Math.round(l.points * k)), cx + half, y, 17 * s,
-        neg ? PALETTE.pink : l.points ? PALETTE.white : '#8a7f96', { align: 'right', alpha: a });
-    }
-    y += 33 * s;
-  });
-  const tt = t - 0.5 - r.lines.length * LINE_EVERY;
-  if (tt <= 0) return;
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.fillRect(cx - half, y - 10 * s, half * 2, s);
-  y += 16 * s;
-  const kt = 1 - (1 - clamp(tt / 0.7, 0, 1)) ** 3;
-  text(ctx, 'TOTAL', cx - half, y, 24 * s, PALETTE.yellow, { align: 'left' });
-  text(ctx, thousands(Math.round(r.total * kt)), cx + half, y, 24 * s, PALETTE.yellow, { align: 'right' });
-
-  const gt = tt - 0.95;
-  if (gt <= 0) return;
-  const sc = 1 + Math.max(0, 0.3 - gt) * 4;
-  text(ctx, 'GRADE', cx, y + 44 * s, 13 * s, PALETTE.white, { alpha: 0.8 });
-  glitchText(ctx, r.grade, cx, y + 106 * s, 96 * s * sc, t, { color: r.grade === 'S' ? PALETTE.yellow : PALETTE.pink, rot: Math.sin(t * 3) * 0.05 });
-  if (gt > 0.5) {
-    const hint = r.next ? `${r.next.grade} FROM ${thousands(r.next.at)}` : 'TOP GRADE';
-    text(ctx, hint, cx, y + 172 * s, 12 * s, PALETTE.white, { alpha: 0.6 });
-    const by = y + 194 * s;
-    if (!r.ranked) text(ctx, 'SANDBOX RUN - NOT RANKED', cx, by, 12 * s, PALETTE.cyan, { alpha: 0.8 });
-    else if (r.record) text(ctx, r.best ? `NEW RECORD   WAS ${thousands(r.best.total)}` : 'NEW RECORD', cx, by, 13 * s, PALETTE.yellow, { alpha: 0.65 + 0.35 * Math.sin(t * 7) });
-    else text(ctx, `BEST ${thousands(r.best.total)}  ${r.best.grade}`, cx, by, 12 * s, PALETTE.cyan, { alpha: 0.8 });
-  }
-  if (gt > 1 && Math.floor(t * 2.5) % 2 === 0) text(ctx, 'R  RETRY        CLICK  MENU', cx, bottom - 26 * s, 13 * s, PALETTE.white);
 }

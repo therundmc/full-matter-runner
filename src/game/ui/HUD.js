@@ -2,6 +2,7 @@ import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { text, neon, thousands } from './Text.js';
 import { drawIndicators } from './Indicators.js';
+import { drawPrompts } from './Glyphs.js';
 import { clamp } from '../../engine/math.js';
 
 const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
@@ -60,14 +61,14 @@ export function drawHUD(ctx, game, t) {
 
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
 
-  // context hints
-  let hint = '';
+  // context hints: the cap of the device in use (ui/Glyphs.js), then what it does
+  let hint = null;
   if (p.alive) {
-    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = `SPACE : ${p.contextAction}`;
-    else if (p.nearTrunk) hint = 'E : OPEN TRUNK';
-    else if (p.nearItem) hint = `${p.armed ? 'E : SWAP FOR' : 'RMB / E : PICK UP'} ${p.nearItem.def.name}`;
+    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = ['action', p.contextAction];
+    else if (p.nearTrunk) hint = ['use', 'OPEN TRUNK'];
+    else if (p.nearItem) hint = ['use', `${p.armed ? 'SWAP FOR' : 'PICK UP'} ${p.nearItem.def.name}`];
   }
-  if (hint) text(ctx, hint, W / 2, H - 50 * s, 16 * s, PALETTE.white, { alpha: 0.75 + Math.sin(t * 8) * 0.25 });
+  if (hint) drawPrompts(ctx, [hint], W / 2, H - 50 * s, 24 * s, game.input.device, { alpha: 0.8 + Math.sin(t * 8) * 0.2, font: 0.66 });
 
   // level cleared
   // levels without an exit (the lab) have nothing to point at

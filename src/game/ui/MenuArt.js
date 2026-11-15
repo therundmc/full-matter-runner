@@ -6,6 +6,7 @@
 import { PALETTE } from '../Config.js';
 import { text, glitchText, neon, thousands } from './Text.js';
 import { selectable } from './Menu.js';
+import { drawPrompts } from './Glyphs.js';
 
 const GREY = '#6c6478';
 
@@ -132,15 +133,16 @@ function drawRow(ctx, page, sel, W, y, size, s, t) {
   });
 }
 
-// one line of hints at the bottom
-function footer(ctx, page, depth, where, W, y, s) {
+// one line of prompts at the bottom, with the caps of the device in use
+function footer(ctx, page, depth, where, W, y, s, device) {
   const adjust = page.items.some((it) => it.slider || it.toggle);
-  const back = depth > 0 ? 'ESC  BACK' : where === 'pause' ? 'ESC  RESUME' : '';
-  const hints = [page.row ? 'ARROWS  CHOOSE' : 'UP DOWN  CHOOSE', adjust ? 'LEFT RIGHT  ADJUST' : '', 'ENTER  SELECT', back];
-  text(ctx, hints.filter(Boolean).join('      '), W / 2, y, 11 * s, PALETTE.white, { alpha: 0.6 });
+  const back = depth > 0 ? 'BACK' : where === 'pause' ? 'RESUME' : '';
+  const list = [['choose', adjust ? 'CHOOSE / ADJUST' : 'CHOOSE'], ['confirm', 'SELECT'], ...(back ? [['back', back]] : [])];
+  drawPrompts(ctx, list, W / 2, y, 17 * s, device, { alpha: 0.75, gap: 2.2 });
 }
 
-export function drawMenu(ctx, W, H, t, menu, where) {
+// device: 'kbm' | 'pad', whose caps the prompts show
+export function drawMenu(ctx, W, H, t, menu, where, device) {
   const s = H / 720, page = menu.page, sel = menu.sel;
   ctx.textBaseline = 'middle';
   if (where === 'pause') {
@@ -151,12 +153,12 @@ export function drawMenu(ctx, W, H, t, menu, where) {
     let top = H * 0.42;
     if (page.note) { text(ctx, page.note, W / 2, top - 20 * s, 14 * s, PALETTE.white, { alpha: 0.85 }); top += 26 * s; }
     const rects = drawColumn(ctx, page, sel, W / 2, top, H * 0.88, 36 * s, 18 * s, s, t);
-    footer(ctx, page, menu.depth, where, W, H * 0.94, s);
+    footer(ctx, page, menu.depth, where, W, H * 0.94, s, device);
     return rects;
   }
   if (page.row) {
     const rects = drawRow(ctx, page, sel, W, H * 0.293, 20 * s, s, t);
-    footer(ctx, page, menu.depth, where, W, H * 0.905, s);
+    footer(ctx, page, menu.depth, where, W, H * 0.905, s, device);
     return rects;
   }
   // the other title pages stand in the street, on a shade that leaves the sign above in the clear
@@ -171,6 +173,6 @@ export function drawMenu(ctx, W, H, t, menu, where) {
   let top = H * 0.665;
   if (page.note) { text(ctx, page.note, W / 2, top, 13 * s, PALETTE.white, { alpha: 0.85 }); top += 32 * s; }
   const rects = drawColumn(ctx, page, sel, W / 2, top, H * 0.87, 30 * s, 16 * s, s, t);
-  footer(ctx, page, menu.depth, where, W, H * 0.905, s);
+  footer(ctx, page, menu.depth, where, W, H * 0.905, s, device);
   return rects;
 }
