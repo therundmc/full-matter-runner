@@ -6,10 +6,10 @@ import { load } from './setup.mjs';
 const { VEHICLES } = await load('game/entities/Vehicle.js');
 const { LIGHTING } = await load('game/Config.js');
 
-// width / height from the PNG header (IHDR)
+// size in world px, from the PNG header (IHDR): the vehicles are painted at twice the world's density (FINE)
 function pngSize(sprite) {
   const b = readFileSync(new URL(`../assets/sprites/${sprite}.png`, import.meta.url));
-  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+  return { w: b.readUInt32BE(16) / 2, h: b.readUInt32BE(20) / 2 };
 }
 
 test('vehicles: sprites at real size (1 m = 32 px)', () => {

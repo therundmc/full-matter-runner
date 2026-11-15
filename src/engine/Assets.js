@@ -1,6 +1,7 @@
 // Sprite loading + derived caches (silhouettes for drop shadows, slices for debris).
 // civN: ambient passers-by and customers; dancerN: the dancers of a VIP room
-const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'civ1', 'civ2', 'civ3', 'civ4', 'dancer1', 'dancer2', 'tramp'];
+const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8',
+  'dancer1', 'dancer2', 'tramp'];
 const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 export const SPRITE_LIST = [
@@ -59,7 +60,20 @@ export const OPTIONAL_LIST = [
 // own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
 // (a kind's name has no underscore: `thug_torso` and `thug_head` are fine, `thug_rag_torso` and `thug_gib_head` are not)
 const FINE = /^(characters\/[a-z0-9]+_(torso|head)|weapons\/(pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron))$/;
-const density = (name) => (FINE.test(name) ? 0.5 : 1);
+// the furniture, the street's dressing and the vehicles (and their emissive maps), painted at the same density
+// (generate_assets.py FINE_PROPS); the neon signs and the lamps stay at the world's
+const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back_bar', 'bar_counter', 'barrel', 'bed', 'bench',
+  'bike', 'bin_bag', 'bookshelf', 'bottle_shelf', 'car', 'car2', 'van', 'car_tire', 'car_hood', 'car_door', 'car2_hood',
+  'car2_door', 'van_hood', 'van_door', 'card_table', 'card_table_flipped', 'cardboard_bed', 'cash_case', 'ceiling_fan',
+  'chain_fence', 'chair', 'crate', 'dance_stage', 'desk', 'dj_booth', 'doormat', 'dope_table', 'dumpster', 'extinguisher',
+  'floor_hole', 'fridge', 'fuse_box', 'gas_bottle', 'hydrant', 'jerrycan', 'jukebox', 'ladder', 'manhole', 'mirror_ball',
+  'news_box', 'newspaper', 'oven', 'palm_tree', 'parapet', 'parking_meter', 'phone_booth', 'pipe_steam', 'pipe_water', 'plant',
+  'pool_table', 'radiator', 'runner', 'shoes', 'sink', 'sofa', 'speaker', 'stairs', 'stall', 'streetlight', 'table',
+  'table_flipped', 'table_round', 'table_round_flipped', 'toilet', 'trash_can', 'tv', 'urinal', 'vending', 'wall_vent', 'washer']);
+// the floor tiles too (64 x 64 pixels a tile); the wall tops and the roofs stay at the world's
+const fine = (name) => FINE.test(name) || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
+  || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v1|v2|glow)$/, '')));
+const density = (name) => (fine(name) ? 0.5 : 1);
 
 // size of a sprite in world px (a finer sprite is smaller than its pixels)
 export const sw = (img) => img.width * (img.k || 1);
@@ -145,6 +159,7 @@ export function slices(img, cols = 2, rows = 2) {
       g.closePath();
       g.clip();
       g.drawImage(img, c * pw, r * ph, cv.width, cv.height, 0, 0, cv.width, cv.height);
+      if (img.k) cv.k = img.k; // a piece of a finer sprite is as fine
       cached.push(cv);
     }
   }

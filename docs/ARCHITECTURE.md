@@ -242,6 +242,16 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
     (`DamageArt.remains`) is baked where the object stood.
   - Melee blows carry their kind from `Character.meleeStrike`: 'cut' (blade, with its swing direction), 'punch', 'blunt'.
   Only small objects are movable; everything else is `static` (bolted).
+  - Sprite space is in world px whatever the sprite's density: the furniture, the street's dressing and the vehicles
+    are painted at twice the world's density (engine/Assets.js `density`, tools/generate_assets.py FINE_PROPS), so
+    `Prop.W/H` are `sw/sh(img)`, and a damage canvas (DamageArt `canvas(w, h, k)`) keeps the sprite's pixels, carries
+    its `k` and has its context scaled: marks, cuts and pieces are all given in world px; `put()` draws any image at
+    its world size. A Vehicle's canvas works the same way (its glass pixels found at the sprite's density).
+- Sprite density: the people, the weapons, the furniture, the street's dressing, the vehicles and the floor tiles are
+  painted at twice the world's pixel density, plain pixel art (`FINE` in tools/generate_assets.py, whose `Cv` is
+  addressed in world px and reaches the single pixels of such a canvas); the engine draws them at half size
+  (`img.k`). The floor canvas (MapRenderer) is that much larger, its context scaled, and only the part in view is
+  drawn. The wall tops, the roofs, the lamps and the neon signs stay at the world's density.
 - Bleeding is calibrated per weapon (data/wounds.js): a weapon names its `wound` profile (blow-back, spray along the
   blow, exit plume, mist, stain, final pool size and spreading rate, arterial spurts, how far the body is thrown).
   `Character.kill(angle, cause, killer, by)` hands what killed (`by`: a weapon definition or `{ gore, wound }`) to
@@ -436,6 +446,8 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
   and drops it as soon as the squad is on edge. Two of them leave his eyes free: a doorman ('door') stands arms
   folded and follows the player with his eyes (`AI.gaze`), a bartender ('wipe') polishes a glass and ducks behind
   his counter for a moment at the first shots (`AI.duck`).
+  `looks: { 'col,row': kind }` = a guard who is his own man: the kind of his sprites and his limbs' colours (the
+  boss: `boss`, built like a heavy, `heavyBuild` in Character.js); his letter still gives his weapon.
 
 ## Street life (systems/Ambient.js)
 
@@ -464,7 +476,7 @@ ambient: {
   too), the others floor it; no new traffic until the street has calmed down. Above `AMBIENT.lethal` a car kills whoever it hits and
   throws the ragdoll (`cause: 'vehicle'`); it drives over bodies. Driven cars skip the static shadow caches (unshadowed
   lights redrawn every frame, brake lights flare). Heard car by car by systems/Ambience.js (an engine voice each).
-- **Passers-by**: `Civilian` (Character subclass, team `civilian`, sprites civ1-4) with a `Walker` brain. They are in
+- **Passers-by**: `Civilian` (Character subclass, team `civilian`, sprites civ1-8) with a `Walker` brain. They are in
   `world.chars` (bullets, blasts, melee, cars hit them) and `world.civilians` (drawing), never in `enemies`: no target,
   no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
   or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra

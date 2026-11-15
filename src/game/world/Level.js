@@ -124,7 +124,8 @@ export function buildLevel(world, level) {
       }
       else if (ENEMIES[ch.toLowerCase()]) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
-        const e = new Enemy(world, px, py, face, kind, weapon, ch !== ch.toLowerCase());
+        // a guard may be his own man (level.looks['col,row'] = a kind of his own: the boss)
+        const e = new Enemy(world, px, py, face, level.looks?.[`${x},${y}`] || kind, weapon, ch !== ch.toLowerCase());
         e.passive = !!level.passive;
         e.takeJob(level.jobs?.[`${x},${y}`]);
         world.enemies.push(e);

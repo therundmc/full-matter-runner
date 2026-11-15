@@ -1,6 +1,6 @@
 import { MAX_PARTICLES, PALETTE, DESTRUCTION, LITTER } from '../Config.js';
 import { rand, randi, pick, chance, spread } from '../../engine/math.js';
-import { silhouette } from '../../engine/Assets.js';
+import { silhouette, sw, sh } from '../../engine/Assets.js';
 import { RUNS } from '../data/wounds.js';
 import { run, faceNormal } from './Spatter.js';
 
@@ -300,7 +300,7 @@ export default class Particles {
 
   // a shard that has come to rest becomes part of the floor; of the tiny ones only some stay (LITTER)
   _rest(p) {
-    if (p.img.width * p.img.height < LITTER.small && !chance(LITTER.keep)) return;
+    if (sw(p.img) * sh(p.img) < LITTER.small && !chance(LITTER.keep)) return;
     this.world.decals.wreck(p.img, p.x, p.y, p.rot);
   }
 
@@ -355,8 +355,9 @@ export default class Particles {
       switch (p.type) {
         case P.SHARD: {
           // the shadow stays on the floor while the piece is up in the air
-          const hw = p.img.width / 2, hh = p.img.height / 2;
-          const c = Math.cos(p.rot), s = Math.sin(p.rot);
+          // a piece of a finer sprite (Assets.js `density`) is drawn at its world size
+          const hw = p.img.width / 2, hh = p.img.height / 2, d = p.img.k || 1;
+          const c = Math.cos(p.rot) * d, s = Math.sin(p.rot) * d;
           ctx.save();
           ctx.globalAlpha = 0.3 / (1 + p.z * 0.03);
           ctx.transform(c, s, -s, c, p.x + 1, p.y + 1);

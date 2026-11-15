@@ -2,7 +2,7 @@ import { CAT, MASK, LIGHTING, BODY_SCALE } from '../Config.js';
 
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
-import { sprite, spriteOpt, silhouette, chunk, glassShards, slices } from '../../engine/Assets.js';
+import { sprite, spriteOpt, silhouette, chunk, glassShards, slices, sw, sh } from '../../engine/Assets.js';
 import { rand, chance, clamp, local } from '../../engine/math.js';
 import Debris from './Debris.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -34,13 +34,14 @@ export const VEHICLES = {
 const TYRE_HIT = [11, 5]; // half extents of a tyre's hit box (sprite px)
 const LAMP_END = 10;      // a hit this close to the nose / tail (sprite px) lands on a lamp
 
-// glass pixels (tinted blue-black) of a window region of the sprite's ImageData, so a shattered window keeps its shape
-function glassPixels(img, r) {
+// glass pixels (tinted blue-black) of a window region of the sprite's ImageData, so a shattered window keeps its shape:
+// sprite px, k = sprite px per pixel (a sprite painted finer than the world, Assets.js `density`)
+function glassPixels(img, r, k) {
   const px = [];
-  for (let y = r[2]; y <= r[3]; y++) {
-    for (let x = r[0]; x <= r[1]; x++) {
+  for (let y = Math.round(r[2] / k); y < Math.round((r[3] + 1) / k); y++) {
+    for (let x = Math.round(r[0] / k); x < Math.round((r[1] + 1) / k); x++) {
       const i = (y * img.width + x) * 4, d = img.data, R = d[i], G = d[i + 1], B = d[i + 2];
-      if (d[i + 3] > 200 && B - R >= 14 && B >= G && R + G + B < 520) px.push([x, y]);
+      if (d[i + 3] > 200 && B - R >= 14 && B >= G && R + G + B < 520) px.push([x * k, y * k]);
     }
   }
   return px;
@@ -55,14 +56,17 @@ export default class Vehicle {
     this.isVehicle = true;
     const base = spriteOpt(this.m.sprite) || sprite('props/car');
     this.base = base;
-    this.w = base.width; this.h = base.height;
+    // sprite space is in world px whatever the sprite's density; the canvas keeps its pixels (k: world px per pixel)
+    this.k = base.k || 1;
+    this.w = sw(base); this.h = sh(base);
     this.canvas = document.createElement('canvas');
-    this.canvas.width = this.w; this.canvas.height = this.h;
+    this.canvas.width = base.width; this.canvas.height = base.height;
     this.g = this.canvas.getContext('2d');
     this.g.drawImage(base, 0, 0);
-    const img = this.g.getImageData(0, 0, this.w, this.h);
+    const img = this.g.getImageData(0, 0, base.width, base.height);
+    this.g.setTransform(1 / this.k, 0, 0, 1 / this.k, 0, 0);
     this.glassPx = {};
-    for (const key of ['wind', 'rear']) if (this.m[key]) this.glassPx[key] = glassPixels(img, this.m[key]);
+    for (const key of ['wind', 'rear']) if (this.m[key]) this.glassPx[key] = glassPixels(img, this.m[key], this.k);
     this.glow = spriteOpt(this.m.sprite + '_glow');
     this.def = { static: true, hp: this.m.hp, chips: this.m.color, sound: 'metal', blocksPath: true, vault: true };
     this.body = Bodies.rectangle(x, y, this.w - 4, this.h - 4, {
@@ -245,10 +249,10 @@ export default class Vehicle {
     w.sound('glass', px, py, 0.45);
   }
 
-  // the emissive map, one quarter of the sprite per lamp still alive
+  // the emissive map, one quarter of the sprite per lamp still alive (x, y and the quarters in the map's own pixels)
   drawLamps(ctx, img, x, y) {
     if (this.lamps.every(Boolean)) { ctx.drawImage(img, x, y); return; }
-    const hw = this.w / 2, hh = this.h / 2;
+    const hw = img.width / 2, hh = img.height / 2;
     this.lamps.forEach((on, i) => {
       if (!on) return;
       const sx = i < 2 ? hw : 0, sy = i % 2 ? hh : 0;
@@ -285,7 +289,7 @@ export default class Vehicle {
     const px = this.glassPx[which], my = (r[2] + r[3]) / 2;
     g.save();
     g.fillStyle = 'rgba(190,240,255,0.6)';
-    for (let k = 0; k < 14 && px.length; k++) g.fillRect(...px[Math.floor(rand(0, px.length))], 1, 1);
+    for (let k = 0; k < 14 && px.length; k++) g.fillRect(...px[Math.floor(rand(0, px.length))], this.k, this.k);
     g.fillStyle = '#3a2a3a';
     const hx = which === 'wind' ? r[0] + 1 : r[1] - 4; // seat headrests, next to the roof
     g.fillRect(hx, my - 11, 4, 7);
@@ -308,7 +312,7 @@ export default class Vehicle {
 
   clearGlass(which, color) {
     this.g.fillStyle = color;
-    for (const [x, y] of this.glassPx[which]) this.g.fillRect(x, y, 1, 1);
+    for (const [x, y] of this.glassPx[which]) this.g.fillRect(x, y, this.k, this.k);
   }
 
   // a slide across this vehicle (entry and exit points, world) is only allowed over the hood
@@ -553,16 +557,16 @@ export default class Vehicle {
       ctx.translate(ox + wx, oy + wy);
       if (wx > this.w / 2 && this.steer) ctx.rotate(this.steer);
       if (flat) ctx.scale(1.15, 0.6);
-      if (tire) ctx.drawImage(tire, -tire.width / 2, -tire.height / 2);
+      if (tire) ctx.drawImage(tire, -sw(tire) / 2, -sh(tire) / 2, sw(tire), sh(tire));
       else { ctx.fillStyle = '#141418'; ctx.fillRect(-10, -3.5, 20, 7); }
       ctx.restore();
     });
     const jx = this.flash > 0 ? rand(-1, 1) : 0;
     sagY += this.bob;
     ctx.globalAlpha = 0.4;
-    ctx.drawImage(silhouette(this.base), ox + 3, oy + 3);
+    ctx.drawImage(silhouette(this.base), ox + 3, oy + 3, this.w, this.h);
     ctx.globalAlpha = 1;
-    ctx.drawImage(this.canvas, ox + sagX + jx, oy + sagY);
+    ctx.drawImage(this.canvas, ox + sagX + jx, oy + sagY, this.w, this.h);
     if (this.trunk?.open && !this.exploded) {
       // the open trunk: its dark well (with what is still in it), the lid standing up against the rear window; seen
       // from above, its edge runs from the bumper to the window as it comes up
@@ -585,7 +589,11 @@ export default class Vehicle {
       const blink = this.alarm > 0 ? (Math.floor(this.alarm * 2.4) % 2 === 0 ? 1 : 0.15) : 0.85;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = blink;
-      this.drawLamps(ctx, this.glow, ox + sagX, oy + sagY);
+      ctx.save();
+      ctx.translate(ox + sagX, oy + sagY);
+      ctx.scale(this.glow.k || 1, this.glow.k || 1);
+      this.drawLamps(ctx, this.glow, 0, 0);
+      ctx.restore();
       // brake lights: the tail lamps flare up
       if (this.brake > 0.05) {
         ctx.fillStyle = '#ff2040';

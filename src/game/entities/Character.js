@@ -28,7 +28,11 @@ export const KINDS = {
   thug: { arm: '#e6e0cf', skin: '#e0a878', cuff: '#2a2236', pants: '#2a2632', shoe: '#1e1820' },
   heavy: { arm: '#4b2470', skin: '#c88a60', glove: '#24202a', pants: '#4b2470', shoe: '#ecebf2' },
   brute: { arm: '#d89a70', skin: '#d89a70', pants: '#4c4a2c', shoe: '#5a3a22' },
+  // the boss (a guard's own look, level `looks`): built like a heavy, in his cream suit, the black shirt's cuffs
+  boss: { arm: '#e2d6b6', skin: '#d49a74', cuff: '#2a2228', pants: '#d6c8a6', shoe: '#4a2a1a' },
 };
+// the heavy build: a deeper voice, more weight, a slower step
+export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss';
 
 const VAULT_DUR = 0.5;  // s, windows and furniture alike
 const CLIMB_DUR = 0.72; // s, over a chain-link gate
@@ -56,13 +60,13 @@ export default class Character {
     this.kind = kind;
     this.team = team;
     this.look = KINDS[kind];
-    this.voice = rand(0.92, 1.1) * (kind === 'brute' || kind === 'heavy' ? 0.88 : 1); // pitch of his shouts and cries
+    this.voice = rand(0.92, 1.1) * (kind === 'brute' || heavyBuild(kind) ? 0.88 : 1); // pitch of his shouts and cries
     this.radius = PLAYER.radius; // everyone has the same build
     this.body = Bodies.circle(x, y, this.radius, {
       frictionAir: 0, friction: 0, frictionStatic: 0, restitution: 0, label: kind,
       collisionFilter: { category: CAT.CHAR, mask: MASK.CHAR },
     });
-    setKg(this.body, kind === 'brute' ? 110 : kind === 'heavy' ? 100 : 80);
+    setKg(this.body, kind === 'brute' ? 110 : heavyBuild(kind) ? 100 : 80);
     Body.setInertia(this.body, Infinity);
     this.pushFactor = 1; // < 1 while leaning into something heavy (set by World from contacts)
     this.body.sleepThreshold = Infinity;

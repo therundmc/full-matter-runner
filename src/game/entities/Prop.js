@@ -2,12 +2,12 @@ import { CAT, MASK, MAX_DEBRIS, DESTRUCTION, LIQUIDS } from '../Config.js';
 import { PROPS } from '../data/props.js';
 import { recipeFor, BITS, FLOATS } from '../data/destruction.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
-import { sprite, spriteOpt, chunk, drawSprite, silhouette } from '../../engine/Assets.js';
+import { sprite, spriteOpt, chunk, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 import { rand, chance, clamp, pick } from '../../engine/math.js';
 import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble, tearShape } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
-import { canvas, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot,
+import { canvas, put, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot,
   gash, rip, wear, brokenEdge, soilSpill, ductStump } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { wallBehind, run } from '../fx/Spatter.js';
@@ -87,8 +87,9 @@ export default class Prop {
   get look() { return this.canvas || this.img; }
   get x() { return this.body.position.x; }
   get y() { return this.body.position.y; }
-  get W() { return this.img.width; }
-  get H() { return this.img.height; }
+  // the sprite's size in world px: sprite space (marks, zones, pieces) is in world px whatever its density
+  get W() { return sw(this.img); }
+  get H() { return sh(this.img); }
 
   // world position of the sprite centre
   centre() {
@@ -110,8 +111,8 @@ export default class Prop {
 
   ensureCanvas() {
     if (!this.canvas) {
-      this.canvas = canvas(this.W, this.H);
-      this.canvas.getContext('2d').drawImage(this.img, 0, 0);
+      this.canvas = canvas(this.W, this.H, this.img.k);
+      put(this.canvas.getContext('2d'), this.img);
     }
     this.shadow = null;
     return this.canvas.getContext('2d');
@@ -226,7 +227,7 @@ export default class Prop {
     const e = ejecta(side, dirA, energy, info.nx, info.ny);
     const a = e.a + rand(-e.spread, e.spread), v = rand(e.vmin, e.vmax);
     const p = this.toWorld(sx, sy);
-    this.throwPiece(piece, p.x, p.y, a, v, { z: this.lift() * 0.6, vz: rand(30, 90), physical: !this.def.static && piece.width > 6 });
+    this.throwPiece(piece, p.x, p.y, a, v, { z: this.lift() * 0.6, vz: rand(30, 90), physical: !this.def.static && sw(piece) > 6 });
   }
 
   // how high (fake px) pieces start from: the object's height
@@ -323,7 +324,7 @@ export default class Prop {
     brokenEdge(this.canvas, poly, this.rec.material, dirA - this.body.angle);
     if (pc) {
       const L = launch(dirA, 0, 0, Math.max(1, power), 1);
-      this.throwPiece(pc.img, p.x, p.y, L.a, L.v, { z: this.lift() * 0.7, vz: L.vz, spin: L.spin, physical: pc.img.width * pc.img.height > 60 });
+      this.throwPiece(pc.img, p.x, p.y, L.a, L.v, { z: this.lift() * 0.7, vz: L.vz, spin: L.spin, physical: sw(pc.img) * sh(pc.img) > 60 });
     }
     if (fx.dust) w.particles.dust(p.x, p.y, 3, 2, fx.dust, { speed: 25, size: 4, vx: Math.cos(dirA) * 20, vy: Math.sin(dirA) * 20 });
     w.particles.chips(p.x, p.y, dirA, 1, 6, this.def.chips, 120);
@@ -704,8 +705,8 @@ export default class Prop {
     this.dying = true;
     this.sag = 0;
     // cut the (damaged) sprite along the recipe's seams
-    const work = canvas(this.W, this.H);
-    work.getContext('2d').drawImage(this.look, 0, 0);
+    const work = canvas(this.W, this.H, this.img.k);
+    put(work.getContext('2d'), this.look);
     const pieces = [];
     for (const g of [...rec.parts, { cut: 'grid', cols: 2, rows: 2 }]) {
       for (const c of cutPolys(g, this.W, this.H, Math.random, this.lastHit)) {
@@ -713,13 +714,13 @@ export default class Prop {
         if (pc) pieces.push({ ...pc, name: c.name, fly: c.fly ?? 1 });
       }
     }
-    pieces.sort((p, q) => q.img.width * q.img.height - p.img.width * p.img.height);
+    pieces.sort((p, q) => sw(q.img) * sh(q.img) - sw(p.img) * sh(p.img));
     // heavy furniture gives way where it stands: its big parts slump and slide a little, the crumbs are only chips.
     // Only a blast throws it around.
     const heavy = power < 2 && this.W * this.H > DESTRUCTION.heavyArea;
     if (heavy) pieces.length = Math.min(pieces.length, DESTRUCTION.heavyParts);
     let physical = d.static ? Math.min(DESTRUCTION.maxPhysicalParts, 3) : DESTRUCTION.maxPhysicalParts;
-    for (const pc of pieces) pc.physical = pc.img.width * pc.img.height > 50 && physical-- > 0;
+    for (const pc of pieces) pc.physical = sw(pc.img) * sh(pc.img) > 50 && physical-- > 0;
     // parts the top view hid (table legs)
     if (rec.legs) {
       const s = Math.max(2, rec.legs.size * PX_PER_M), n = rec.legs.n;
@@ -849,12 +850,12 @@ export default class Prop {
   shadowImg() {
     if (!this.canvas) return silhouette(this.img);
     if (!this.shadow) {
-      const s = this.shadow = canvas(this.W, this.H);
+      const s = this.shadow = canvas(this.W, this.H, this.canvas.k);
       const g = s.getContext('2d');
-      g.drawImage(this.canvas, 0, 0);
+      put(g, this.canvas);
       g.globalCompositeOperation = 'source-in';
       g.fillStyle = '#000';
-      g.fillRect(0, 0, s.width, s.height);
+      g.fillRect(0, 0, this.W, this.H);
     }
     return this.shadow;
   }

@@ -157,16 +157,16 @@ lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VI
 lv.patron('civ1', 16.75, 14.5, 270, 'drink')            # on the counter stools
 lv.patron('civ2', 15.6, 16.4, 0, 'drink')               # alone in the first booth
 lv.patron('civ4', 18.7, 17.45, 0, 'cards')              # the poker game
-lv.patron('civ1', 21.3, 18.05, 180, 'cards')
+lv.patron('civ5', 21.3, 18.05, 180, 'cards')
 lv.patron('civ3', 30.15, 13.45, 180, 'cue')             # waiting for his turn at the pool table
-lv.patron('civ1', 26.55, 17.5, 40, 'drink')             # the VIP room: two customers, a dancer
-lv.patron('civ3', 26.55, 19.45, -27, 'watch')
+lv.patron('civ8', 26.55, 17.5, 40, 'drink')             # the VIP room: two customers, a dancer
+lv.patron('civ7', 26.55, 19.45, -27, 'watch')
 lv.patron('dancer1', 30.0, 18.9, 180, 'dance')
 # back of house
 lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weighing and bagging his dope
 lv.actor('6', 18, 8)
 lv.actor('k', 21, 9, face=0, job='piss')               # in the toilets: the bowl, the sink, a smoke against the wall
-lv.actor('h', 30, 9, face=180, job='boss')              # the boss in his armchair, feet up on the desk, the shotgun on it
+lv.actor('h', 30, 9, face=180, job='boss', look='boss')  # the boss in his armchair, feet up on the desk, the shotgun on it
 lv.actor('m', 26, 9, face=0, job='couch')               # his two men on the couch: one reads,
 lv.actor('i', 26, 10, face=0, job='couch')              # ... the other one plays with his tire iron
 lv.actor('k', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case

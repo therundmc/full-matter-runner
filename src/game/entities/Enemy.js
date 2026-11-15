@@ -18,7 +18,7 @@ import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureCl
 import { carry, inHand } from '../ai/Carry.js';
 import { backupOdds, backupGroup, recruits, yieldOdds, turnedAway, gunAtHand } from '../ai/Squad.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
-import Character from './Character.js';
+import Character, { heavyBuild } from './Character.js';
 import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL } from '../data/feel.js';
@@ -117,7 +117,7 @@ export default class Enemy extends Character {
     this.fetchTarget = null; this.friend = null;
     this.scanT = rand(0, 0.3);
     this.icon = ''; this.iconT = 0; this.barkT = 0;
-    this.pace = rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : kind === 'heavy' ? 0.9 : 1);
+    this.pace = rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : heavyBuild(kind) ? 0.9 : 1);
     this.seed = rand(0, 100);
     this.sep = { x: 0, y: 0 };
     this.executing = false;

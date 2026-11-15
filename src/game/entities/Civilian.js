@@ -20,6 +20,10 @@ export const CIVILIAN_LOOKS = {
   civ2: { arm: '#f0a08a', skin: '#d99a76', pants: '#3a2c4a', shoe: '#7a1f2a' },
   civ3: { arm: '#bfae86', skin: '#e2b08e', pants: '#55555f', shoe: '#3a2a20' },
   civ4: { arm: '#8fbf6a', skin: '#c88a60', pants: '#4a4a3a', shoe: '#ecebf2' },
+  civ5: { arm: '#4a4e5a', skin: '#e6ae8a', cuff: '#f4f2ec', pants: '#3e424c', shoe: '#2a1a14' },
+  civ6: { arm: '#2a46a8', skin: '#b8805a', cuff: '#f4f2ec', pants: '#2a46a8', shoe: '#ecebf2' },
+  civ7: { arm: '#1f8a5a', skin: '#efc2a0', pants: '#22202a', shoe: '#b8202a' },
+  civ8: { arm: '#6a8ab8', skin: '#e2b08e', pants: '#2e3a52', shoe: '#5a3a22' },
   // the dancers of a VIP room (bare arms and legs), a tramp in his old coat: posted only, never picked for a passer-by
   dancer1: { arm: '#eab08a', skin: '#eab08a', pants: '#eab08a', shoe: '#ff3d8a', posted: true },
   dancer2: { arm: '#b9774f', skin: '#b9774f', pants: '#b9774f', shoe: '#f4f2ec', posted: true },

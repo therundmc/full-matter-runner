@@ -675,6 +675,7 @@ export default class Lighting {
     g.save();
     g.translate(p.x + (p.ox || 0) + (p.def.hung ? p.kick.x : 0), p.y + (p.oy || 0) + (p.def.hung ? p.kick.y : 0));
     g.rotate(p.body.angle);
+    if (gl.k) g.scale(gl.k, gl.k); // the map of a finer sprite (Assets.js `density`): coordinates below are its pixels
     if (p.drawLamps) {
       g.globalAlpha = k;
       p.drawLamps(g, gl, x0, y0);

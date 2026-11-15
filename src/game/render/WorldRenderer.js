@@ -43,7 +43,10 @@ export default class WorldRenderer {
     const pad = Math.max(v.x, v.y) * 1.1;
     const vis = (x, y) => Math.abs(x - cam.x) < pad && Math.abs(y - cam.y) < pad;
 
-    ctx.drawImage(w.decals.floorCanvas, 0, 0);
+    // the floor is finer than the world (MapRenderer.floorScale): only the part in view is drawn
+    const fs = w.decals.floorScale, fx0 = Math.max(0, Math.floor(cam.x - v.x)), fy0 = Math.max(0, Math.floor(cam.y - v.y));
+    const fw = Math.min(w.map.widthPx, Math.ceil(cam.x + v.x)) - fx0, fh = Math.min(w.map.heightPx, Math.ceil(cam.y + v.y)) - fy0;
+    if (fw > 0 && fh > 0) ctx.drawImage(w.decals.floorCanvas, fx0 * fs, fy0 * fs, fw * fs, fh * fs, fx0, fy0, fw, fh);
     for (const p of w.liquids.puddles) if (vis(p.x, p.y)) this.drawPuddle(ctx, p, t);
     // blood lies over everything baked into the floor; the dead and their pieces lie on the blood
     ctx.drawImage(w.decals.bloodCanvas, 0, 0);

@@ -34,7 +34,7 @@ function floorTile(name, x, y) {
 }
 
 // Pre-rendered layers of a TileMap and everything painted on them for good, bottom to top:
-//   floor   tiles, scuffs, spills, footprints, baked debris
+//   floor   tiles, scuffs, spills, footprints, baked debris (at its tiles' density, see render())
 //   blood   stains, spatter and pools (BloodArt stamps), drying in place: over the debris, under the bodies
 //   flesh   baked corpses and gibs
 //   walls   wall tops and roofs, bullet holes, splashes
@@ -53,9 +53,13 @@ export default class MapRenderer {
   render() {
     const m = this.map;
     const W = m.widthPx, H = m.heightPx;
+    // the floor keeps the pixels of its tiles, painted finer than the world (Assets.js `density`): it is that many
+    // times larger, its context scaled so that everything is still drawn on it in world px
+    const fs = this.floorScale = Math.round(1 / (sprite('tiles/concrete').k || 1));
     this.floorCanvas = document.createElement('canvas');
-    this.floorCanvas.width = W; this.floorCanvas.height = H;
+    this.floorCanvas.width = W * fs; this.floorCanvas.height = H * fs;
     const g = this.floorCanvas.getContext('2d');
+    g.setTransform(fs, 0, 0, fs, 0, 0);
     g.imageSmoothingEnabled = false;
     for (let y = 0; y < m.h; y++) {
       for (let x = 0; x < m.w; x++) {
@@ -293,7 +297,7 @@ export default class MapRenderer {
     }
     lg.globalAlpha = 1;
     lg.globalCompositeOperation = 'destination-in';
-    lg.drawImage(mask, 0, 0);
+    lg.drawImage(mask, 0, 0, W, H);
     g.save();
     g.globalCompositeOperation = 'soft-light';
     g.globalAlpha = strength;

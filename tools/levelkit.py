@@ -98,6 +98,7 @@ class Level:
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
+        self.looks = {}       # 'x,y' -> a kind of his own for the guard there (his sprites: the boss)
         self.patrons = []     # [sprite, col, row, deg, pastime]: civilians posted indoors
         self.spawns = []      # centre of every character, for the overlap check
         self._area = ''
@@ -149,7 +150,7 @@ class Level:
         self.tiles[y][x] = ch
 
     # ---- actors: player, guards (UPPERCASE = patrols along `route`), weapons, ammo
-    def actor(self, ch, x, y, face=None, route=None, job=None):
+    def actor(self, ch, x, y, face=None, route=None, job=None, look=None):
         x, y = self.tile(x, y, f'actor {ch}')
         route = route and [list(self.at(*q)) for q in route]
         t = self.tiles[y][x]
@@ -162,6 +163,8 @@ class Level:
             self.patrols[f'{x},{y}'] = route
         if job:
             self.jobs[f'{x},{y}'] = job
+        if look:
+            self.looks[f'{x},{y}'] = look
         if ch == '@' or ch.lower() in GUARDS:
             self.spawns.append((x + 0.5, y + 0.5))
 
@@ -370,6 +373,8 @@ class Level:
             L.append('  },')
         if self.jobs:
             L.append('  jobs: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.jobs.items()) + ' },')
+        if self.looks:
+            L.append('  looks: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.looks.items()) + ' },')
         L.append('  tiles: [')
         L += [f'    {json.dumps("".join(r))},' for r in self.tiles]
         L.append('  ],')

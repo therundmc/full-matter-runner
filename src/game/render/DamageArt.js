@@ -15,12 +15,22 @@ const SOLID = new Set(['stone', 'ceramic']);
 
 // Damage canvases live in CPU memory (willReadFrequently): pieces are cut from them and tested for opacity on every
 // hit, and a GPU canvas would be read back each time.
-export function canvas(w, h) {
+// w, h in sprite px (= world px); k: world px per pixel of a sprite painted finer than the world (engine/Assets.js
+// `density`). A fine canvas keeps its sprite's pixels and carries its k: its context is scaled so that everything is
+// still painted in sprite px.
+export function canvas(w, h, k = 1) {
   const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h));
-  c.getContext('2d', { willReadFrequently: true });
+  c.width = Math.max(1, Math.ceil(w / k)); c.height = Math.max(1, Math.ceil(h / k));
+  const g = c.getContext('2d', { willReadFrequently: true });
+  if (k !== 1) { c.k = k; g.setTransform(1 / k, 0, 0, 1 / k, 0, 0); }
   return c;
 }
+
+// a canvas's size in sprite px
+const lw = (c) => c.width * (c.k || 1), lh = (c) => c.height * (c.k || 1);
+
+// draw img (whatever its density) with its top-left corner at (x, y) sprite px
+export function put(g, img, x = 0, y = 0) { g.drawImage(img, x, y, lw(img), lh(img)); }
 
 // irregular blob path of radius r around (x, y)
 function blobPath(g, x, y, r, n = 7, j = 0.45) {
@@ -42,6 +52,7 @@ function polyPath(g, poly, ox = 0, oy = 0) {
 function opaqueEnough(c, min = 6) {
   const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
   let n = 0;
+  min = Math.ceil(min / (c.k || 1) ** 2);
   for (let i = 3; i < d.length; i += 4) if (d[i] > 40 && ++n >= min) return true;
   return false;
 }
@@ -244,14 +255,14 @@ function ragged(r, a, stretch = 1.25) {
 // or the stuffing of upholstery.
 export function bite(src, x, y, r, mat, a = rand(0, TAU)) {
   const size = Math.ceil(r * 3.6) + 2;
-  const piece = canvas(size, size);
+  const piece = canvas(size, size, src.k);
   const pg = piece.getContext('2d');
   const g = src.getContext('2d');
   // the same outline for the piece and the hole
   const pts = ragged(r, a);
   polyPath(pg, pts.map(([px, py]) => [px + size / 2, py + size / 2]));
   pg.clip();
-  pg.drawImage(src, size / 2 - x, size / 2 - y);
+  put(pg, src, size / 2 - x, size / 2 - y);
   const at = (k) => pts.map(([px, py]) => [px * k + x, py * k + y]);
   g.save();
   g.globalCompositeOperation = 'source-atop';
@@ -424,14 +435,14 @@ export function cutPiece(src, poly, { erase = true, min = 8, wreck = false } = {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [x, y] of poly) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   x0 = Math.floor(Math.max(0, x0)); y0 = Math.floor(Math.max(0, y0));
-  x1 = Math.ceil(Math.min(src.width, x1)); y1 = Math.ceil(Math.min(src.height, y1));
+  x1 = Math.ceil(Math.min(lw(src), x1)); y1 = Math.ceil(Math.min(lh(src), y1));
   if (x1 - x0 < 1 || y1 - y0 < 1) return null;
-  const piece = canvas(x1 - x0, y1 - y0);
+  const piece = canvas(x1 - x0, y1 - y0, src.k);
   const pg = piece.getContext('2d');
   pg.save();
   polyPath(pg, poly, x0, y0);
   pg.clip();
-  pg.drawImage(src, -x0, -y0);
+  put(pg, src, -x0, -y0);
   pg.restore();
   // a dark broken edge
   pg.save();
@@ -442,7 +453,7 @@ export function cutPiece(src, poly, { erase = true, min = 8, wreck = false } = {
   pg.stroke();
   if (wreck) {
     pg.fillStyle = 'rgba(14,8,14,0.22)';
-    pg.fillRect(0, 0, piece.width, piece.height);
+    pg.fillRect(0, 0, x1 - x0, y1 - y0);
     pg.globalCompositeOperation = 'destination-out';
     for (let i = 0; i < poly.length; i++) {
       const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length], len = Math.hypot(bx - ax, by - ay);
@@ -471,7 +482,7 @@ export function cutPiece(src, poly, { erase = true, min = 8, wreck = false } = {
 // a dark gap, a pale lip of fresh material on one side, a hairline of light through it here and there.
 export function splitLine(src, along, mat = 'wood') {
   const g = src.getContext('2d');
-  const W = src.width, H = src.height, pts = [];
+  const W = lw(src), H = lh(src), pts = [];
   if (along === 'x') {
     let y = H * rand(0.35, 0.65);
     for (let x = 0; x <= W; x += 2) { y += rand(-0.8, 0.8); pts.push([x, y]); }
@@ -544,7 +555,7 @@ export function rackSlots(src, rack, seed) {
     }
     return slots;
   }
-  const at = (x, y) => g.getImageData(x, y, 1, 1).data;
+  const k = src.k || 1, at = (x, y) => g.getImageData(Math.floor(x / k), Math.floor(y / k), 1, 1).data;
   for (const y of rack.ys) {
     for (let i = 0; i < rack.n; i++) {
       const x = rack.x + i * rack.dx, c = at(x + 1, y), o = at(x + rack.s, y);
@@ -559,12 +570,13 @@ export function rackSlots(src, rack, seed) {
 // glass left standing, and what it held (wet: its colour) running toward the front
 export function popSlot(src, img, b, wet) {
   const g = src.getContext('2d');
+  const k = img.k || 1;
   if (b.bg) { g.fillStyle = b.bg; g.fillRect(b.x, b.y, b.s, b.s); }
-  else g.drawImage(img, b.x, b.y, b.s + 1, b.s + 1, b.x, b.y, b.s + 1, b.s + 1);
+  else g.drawImage(img, b.x / k, b.y / k, (b.s + 1) / k, (b.s + 1) / k, b.x, b.y, b.s + 1, b.s + 1);
   g.fillStyle = 'rgba(214,236,244,0.7)';
   g.fillRect(b.x + (chance(0.5) ? 0 : b.s - 1), b.y + (chance(0.5) ? 0 : b.s - 1), 1, 1);
   g.fillStyle = wet.replace(/[\d.]+\)$/, '0.55)');
-  g.fillRect(b.x + Math.floor(rand(0, b.s)), b.y + b.s - 1, 1, Math.min(src.height - b.y - b.s, Math.round(rand(2, 4))));
+  g.fillRect(b.x + Math.floor(rand(0, b.s)), b.y + b.s - 1, 1, Math.min(lh(src) - b.y - b.s, Math.round(rand(2, 4))));
 }
 
 // two halves of a long piece (a door leaf), cut across with a splintered edge
