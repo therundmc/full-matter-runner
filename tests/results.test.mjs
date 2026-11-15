@@ -49,7 +49,7 @@ test('death screen: the cause and the killer, told plainly', () => {
   assert.deepEqual(describeDeath('bullet', guard('thug', 'uzi')), { verb: 'SHOT', by: 'BY A THUG  -  UZI' });
   assert.deepEqual(describeDeath('blast', guard('heavy', 'shotgun')), { verb: 'BUCKSHOT', by: 'BY A HEAVY  -  SUPER 90' });
   assert.deepEqual(describeDeath('melee', guard('brute', 'bat')), { verb: 'BEATEN TO DEATH', by: 'BY A BRUTE  -  BASEBALL BAT' });
-  assert.deepEqual(describeDeath('slash', guard('thug', 'knife')), { verb: 'CUT DOWN', by: 'BY A THUG  -  KNIFE' });
+  assert.deepEqual(describeDeath('slash', guard('thug', 'knife')), { verb: 'CUT DOWN', by: 'BY A THUG  -  COMBAT KNIFE' });
   assert.deepEqual(describeDeath('explosion', { isPlayer: true }), { verb: 'BLOWN APART', by: 'BY YOUR OWN BLAST' });
   assert.deepEqual(describeDeath('vehicle', { isVehicle: true, type: 'van' }), { verb: 'RUN OVER', by: 'BY A VAN' });
   assert.deepEqual(describeDeath('melee', null), { verb: 'CRUSHED', by: '' });
