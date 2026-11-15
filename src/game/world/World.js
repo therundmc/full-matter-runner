@@ -45,7 +45,6 @@ import Tutorial from '../systems/Tutorial.js';
 import Fires from '../systems/Fires.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import PoolBalls from '../systems/PoolBalls.js';
-import Clouds from '../systems/Clouds.js';
 import Gadgets from '../systems/Gadgets.js';
 import Uses from '../systems/Uses.js';
 import Slips from '../systems/Slips.js';
@@ -126,12 +125,11 @@ export default class World {
     combatFx(this).listen();                      // a fight's marks over the lighting: the player's kills from now on
     this.ambience = new Ambience(this);           // the night heard, place by place: beds, traffic, one-shots
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
-    this.clouds = new Clouds(this);               // extinguisher powder nobody sees through
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
     this.weather = new Weather(this, level);               // the rain: open sky, its puddles, drips off the eaves
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
-    this.smoke = new Smoke(this, level);                   // the air and the smoke it carries
+    this.smoke = new Smoke(this, level);                   // the air and what it carries: smoke, soot, powder, steam
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
     this.fires = new Fires(this, level.fires);             // what burns, for the look of it
     // the level's devices (data/devices.js): what E does at them, and what they do used or broken
@@ -288,7 +286,7 @@ export default class World {
   slowmo(scale, dur) { this.game.slowmo(scale, dur); }
   light(x, y, r, color, dur) { this.lights.push({ x, y, r, color, t: dur, dur }); }
   // run fn(e) every step for dur seconds (fountains, fires...)
-  emit(x, y, dur, fn) { this.emitters.push({ x, y, t: dur, fn }); }
+  emit(x, y, dur, fn) { this.emitters.push({ x, y, t: dur, fn }); } // fn(e, dt), e: { x, y, t: s left }
   flashGlass(x, y) { this.light(x, y, 45, '#bff6ff', 0.08); }
   pickupFlash(x, y, color = PALETTE.cyan) {
     this.rings.push({ x, y, r: 2, max: 18, t: 0, dur: 0.25 });
@@ -310,7 +308,7 @@ export default class World {
   // facades over the systems
   lineOfSight(x0, y0, x1, y1) { return lineOfSight(this, x0, y0, x1, y1); }
   // what eyes can make out: no wall in the way, no cloud either
-  sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.clouds.blocks(x0, y0, x1, y1) && !this.curtained(x0, y0, x1, y1); }
+  sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.smoke.blocks(x0, y0, x1, y1) && !this.curtained(x0, y0, x1, y1); }
   // whether a curtain hangs across the line (props with def `curtain`: a segment along their length)
   curtained(x0, y0, x1, y1) {
     for (const p of this.props) {
@@ -503,7 +501,7 @@ export default class World {
     for (const d of this.debris) if (!d.dead) d.update(dt);
     for (const c of this.corpses) if (!c.dead) c.update(dt);
     for (const p of this.props) if (p.update) p.update(dt);
-    for (const e of this.emitters) { e.t -= dt; e.fn(e); }
+    for (const e of this.emitters) { e.t -= dt; e.fn(e, dt); }
     this.particles.update(dt);
     this.decals.update(dt);
     this.scoring.update(dt);
@@ -522,7 +520,6 @@ export default class World {
     this.jukebox.update(dt);
     this.gasValve.update(dt);
     this.poolBalls.update(dt);
-    this.clouds.update(dt);
     this.steam.update(dt);
     this.papers.update(dt);
     this.weather.update();

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { TILE, STEAM, PAPERS } = await load('game/Config.js');
+const { TILE, PAPERS } = await load('game/Config.js');
+const { SMOKE } = await load('game/data/atmosphere.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Steam } = await load('game/systems/Steam.js');
 const { default: Papers } = await load('game/systems/Papers.js');
@@ -16,50 +17,55 @@ function mover(x, y, vx = 0, vy = 0, more = {}) {
 }
 
 function stub() {
-  const log = { dust: [], sounds: [] };
+  const log = { emit: [], blow: [], jets: [] };
   const world = {
     events: new EventBus(), props: [], player: mover(0, 0), enemies: [], civilians: [],
-    particles: { dust: (x, y, n, r, color, o) => log.dust.push({ x, y, ...o }) },
-    sound: (name) => log.sounds.push(name),
+    // the air (systems/Smoke.js): what is put in it
+    smoke: {
+      emit: (kind, x, y, rate, dt, r) => log.emit.push({ kind, x, y, rate }),
+      blow: (x, y, r, vx, vy) => log.blow.push({ x, y, vx, vy }),
+      jet: (name, x, y, a) => log.jets.push({ name, x, y, a }),
+    },
     map: { isSolid: (cx) => cx >= 10, isBlocked: () => false }, // a wall from the tenth column on
   };
   return { world, log };
 }
 const run = (sys, sec) => { for (let i = 0; i < sec * 60; i++) sys.update(1 / 60); };
 
-test('steam: a manhole breathes in puffs near the player only, a vent blows off its wall while it lives', () => {
+test('steam: a manhole breathes steam into the air in slow breaths and seeps between; a vent blows off its wall while it lives', () => {
   const { world, log } = stub();
   const vent = { def: { steam: 'vent' }, x: 100, y: 200, body: { angle: Math.PI }, dead: false }; // on a wall to the south
   world.props.push(vent, { def: {}, x: 0, y: 0, body: { angle: 0 } });
-  const steam = new Steam(world, [[2, 2], [200, 2]]);
+  const steam = new Steam(world, [[2, 2]]);
   run(steam, 30);
-  const hole = log.dust.filter((d) => Math.abs(d.x - 2 * TILE) < 6 && Math.abs(d.y - 2 * TILE) < 6);
-  assert.ok(hole.length > 20, 'the near one puffs');
-  assert.ok(hole.length < 30 / STEAM.manhole.every * 0.8, 'not all the time');
-  assert.ok(!log.dust.some((d) => d.x > 100 * TILE), 'the far one keeps it for later');
-  const blown = log.dust.filter((d) => Math.abs(d.x - vent.x) < 2);
-  assert.ok(blown.length > 50 && blown.every((d) => d.y < vent.y && d.vy < 0), 'northward, off its wall');
+  const hole = log.emit.filter((d) => d.x === 2 * TILE && d.y === 2 * TILE);
+  assert.ok(hole.length && hole.every((d) => d.kind === 'steam'), 'steam, every step');
+  const M = SMOKE.steam.manhole, breaths = hole.filter((d) => d.rate === M.rate).length / hole.length;
+  assert.ok(breaths > 0.15 && breaths < 0.6, `breathing ${breaths} of the time`);
+  assert.ok(hole.some((d) => Math.abs(d.rate - M.rate * M.seep) < 1e-9), 'a seep between two');
+  assert.ok(log.emit.some((d) => d.x === vent.x && d.y < vent.y), 'the vent');
+  assert.ok(log.blow.length && log.blow.every((b) => b.y < vent.y && b.vy < 0), 'northward, off its wall');
   vent.dead = true;
-  log.dust.length = 0;
+  log.emit.length = 0;
   run(steam, 3);
-  assert.ok(!log.dust.some((d) => Math.abs(d.x - vent.x) < 2));
+  assert.ok(!log.emit.some((d) => d.x === vent.x));
+  const wet = new Steam(world, [[2, 2]], SMOKE, 1);
+  log.emit.length = 0;
+  run(wet, 30);
+  assert.ok(Math.max(...log.emit.map((d) => d.rate)) > M.rate * 1.2, 'thicker in the rain');
 });
 
-test('steam: a round through a steam pipe whistles a jet out of the wall, three holes at most, then the pressure is gone', () => {
+test('steam: a round through a steam pipe starts a jet out of its wall, three holes at most', () => {
   const { world, log } = stub();
   const pipe = { def: { steam: 'leak' }, x: 50, y: 20, body: { angle: 0 } }; // on a wall to the north
-  const steam = new Steam(world);
+  new Steam(world);
   world.events.emit('propHit', { prop: pipe, x: 40, y: 22, kind: 'blunt' });
   world.events.emit('propHit', { prop: { def: {} }, x: 40, y: 22, kind: 'bullet' });
-  assert.equal(steam.leaks.length, 0, 'a bat or another prop: nothing');
+  assert.equal(log.jets.length, 0, 'a bat or another prop: nothing');
   world.events.emit('propHit', { prop: pipe, x: 40, y: 22, kind: 'bullet' });
-  run(steam, 1);
-  assert.ok(log.dust.length > 10 && log.dust.every((d) => d.vy > 0 && Math.abs(d.vx) < 1e-6), 'southward');
-  assert.ok(log.sounds.includes('hiss'));
+  assert.deepEqual(log.jets, [{ name: 'leak', x: 40, y: 22, a: Math.PI / 2 }], 'southward, out of the hole');
   for (let i = 0; i < 5; i++) world.events.emit('propHit', { prop: pipe, x: 60 + i, y: 22, kind: 'pellet' });
-  assert.equal(steam.leaks.length, STEAM.leak.max);
-  run(steam, STEAM.leak.dur + 0.1);
-  assert.equal(steam.leaks.length, 0);
+  assert.equal(log.jets.length, SMOKE.jets.leak.max);
 });
 
 test('papers: sheets lie still, a gust sends them along the street until a wall stops them', () => {

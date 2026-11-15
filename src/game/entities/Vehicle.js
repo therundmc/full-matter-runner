@@ -504,11 +504,10 @@ export default class Vehicle {
         }
       }
     }
-    // engine smoke once badly damaged
+    // engine smoke once badly damaged, black soot once it burns (systems/Smoke.js)
     const dmg = 1 - clamp(this.hp / this.m.hp, 0, 1);
-    if (!this.exploded && dmg > 0.4 && chance(dmg * 0.5)) {
-      w.particles.smoke(hood.x, hood.y, 1, 4, { speed: 18, size: 4 + dmg * 4, life: 1.6, dark: this.burning });
-    }
+    if (this.burning) w.smoke?.burn(hood.x, hood.y, 'car', dt);
+    else if (!this.exploded && dmg > 0.4) w.smoke?.fume('engine', hood.x, hood.y, dt, dmg);
     // fuel leak puddle
     if (this.fuel > 0 && this.puddle < 8 + this.fuel * 5) this.puddle += dt * 2.5;
     if (this.burning) {
@@ -525,7 +524,7 @@ export default class Vehicle {
       this.wreckFire -= dt;
       const p = this.toWorld(rand(8, this.w - 8), rand(6, this.h - 6));
       w.particles.fire(p.x, p.y, 2, 50);
-      if (chance(0.4)) w.particles.smoke(p.x, p.y, 1, 4, { speed: 25, size: 7, life: 2.4, dark: true });
+      w.smoke?.burn(p.x, p.y, 'wreck', dt);
       if (chance(0.15)) w.particles.embers(p.x, p.y, 1, 90);
       if (chance(0.06)) w.sound('crackle', p.x, p.y, 0.5);
       if (chance(0.5)) w.light(this.x, this.y, 130 + rand(0, 30), '#ff6a18', 0.05);

@@ -3,7 +3,8 @@
 // (and every few bursts the guards around hear it and come to look); the sprinkler heads over the rooms (a grid,
 // `heads`) open one after another and rain on everything: water stands in puddles under them (systems/Liquids.js),
 // the whole floor of the rooms is slick while it is wet (grip, read by World.floorGrip), fires in reach die, and the
-// customers run for the street. Shot off the wall, the station stops the bell (not the water). DOM-free.
+// customers run for the street, and the smoke under them is brought down (systems/Smoke.js wash). Shot off the wall,
+// the station stops the bell (not the water). DOM-free.
 import { TILE } from '../Config.js';
 import { SPRINKLERS } from '../data/devices.js';
 import { rand, TAU } from '../../engine/math.js';
@@ -96,9 +97,10 @@ export default class Sprinklers {
         h.open = true;
         w.sound('hiss', h.x, h.y, 0.35, { pitch: 0.55 });
       }
-      // the rain off the head, and the puddle under it
+      // the rain off the head, the puddle under it, the smoke it brings down
       w.particles.drops(h.x + rand(-3, 3), h.y + rand(-3, 3), rand(0, TAU), Math.PI, c.drops, SPRAY, 95, 70, false);
       w.liquids.feed(h.x, h.y, c.rate * dt, 'water', c.cap);
+      w.smoke?.wash(h.x, h.y, dt);
     }
     // what burns in the rooms goes out
     w.fires?.douse((x, y) => this.inside(x, y));

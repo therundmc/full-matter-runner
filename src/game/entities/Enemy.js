@@ -944,7 +944,7 @@ export default class Enemy extends Character {
       case 'cloud':
         // a slow thick cloud rolled out of his mouth, in a few breaths
         for (const k of [0.05, 0.25, 0.45]) {
-          if (at(k)) { const p = this.ahead(7); w.particles.smoke(p.x, p.y, 2, 2, { speed: 12, life: 3, size: 6 }); }
+          if (at(k)) w.smoke?.breath(this, 'cloud');
         }
         break;
       case 'ash': if (at(0.45)) { const p = this.hand(ph); w.particles.dust(p.x, p.y, 3, 1, '#8a8a90', { speed: 5, size: 1.2, life: 1.2, alpha: 0.55 }); } break;
@@ -1021,9 +1021,7 @@ export default class Enemy extends Character {
     w.particles.shard(img, x, y, a, speed, { z: 8, vz: 40, bounce: 0, spin: rand(-8, 8), onLand: (p) => {
       p.life = 0;
       w.decals.bake(img, p.x, p.y, p.rot);
-      w.emit(p.x, p.y, rand(4, 7), (e) => {
-        if (Math.random() < 0.04) w.particles.dust(e.x, e.y - 1, 1, 1, '#c8c8d2', { speed: 2, size: 2, life: 1.8, alpha: 0.22, vy: -7 });
-      });
+      w.emit(p.x, p.y, rand(4, 7), (e, dt) => w.smoke?.wisp(e, e.x, e.y - 1, dt)); // it smoulders a while
     } });
   }
 

@@ -161,7 +161,7 @@ export default class Prop {
     if (rec.screen && (kind === 'blunt' || this.inRect(rec.screen, sx, sy))) this.hitScreen(sx, sy, kind === 'blunt' || kind === 'blast' ? 2 : 1);
     if (rec.electric && kind !== 'punch') {
       w.particles.sparks(px, py, dirA + Math.PI, 0.9, chance(0.5) ? 6 : 2, 240, chance(0.5) ? '#9ff' : undefined);
-      if (chance(0.3)) w.particles.smoke(px, py, 1, 2, { speed: 15, size: 3, life: 0.8, dark: true });
+      if (chance(0.3)) w.smoke?.burst('short', px, py);
     }
     this.spillOnHit(px, py, dirA);
     if (rec.rack) this.burstRack(sx, sy, tr ? tr.x : sx, tr ? tr.y : sy, dirA, kind);
@@ -387,7 +387,7 @@ export default class Prop {
     w.light(q.x, q.y, 70, '#d8f0ff', 0.12);
     w.particles.glass(q.x, q.y, 0, Math.PI, 26, 150);
     w.particles.sparks(q.x, q.y, 0, Math.PI, 14, 260, '#bff');
-    w.particles.smoke(q.x, q.y, 6, 3, { speed: 20, size: 5, life: 1.8, dark: true });
+    w.smoke?.burst('screen', q.x, q.y);
     w.sound('glass', q.x, q.y, 0.8);
     this.lightsOut = true;
   }
@@ -639,10 +639,10 @@ export default class Prop {
   // sparks and smoke for a while (shorted electronics)
   smoulder(dur) {
     const w = this.world;
-    w.emit(this.x, this.y, dur, () => {
+    w.emit(this.x, this.y, dur, (e, dt) => {
       if (this.dead) return;
       if (chance(0.06)) w.particles.sparks(this.x + rand(-4, 4), this.y + rand(-4, 4), rand(0, TAU), 1, 3, 160, '#bff');
-      if (chance(0.1)) w.particles.smoke(this.x, this.y, 1, 3, { speed: 12, size: 4, life: 1.4, dark: true });
+      w.smoke?.burn(this.x, this.y, 'short', dt);
     });
   }
 
@@ -751,9 +751,9 @@ export default class Prop {
     P.dust(x, y, Math.round(4 + R / 3), R, fx.dust || '#5a5462', { speed: 25 * power, size: 5, life: 3.5, alpha: fx.dust ? 0.2 : 0.14 });
     P.chips(x, y, dirA, Math.PI, heavy ? 8 : 14, d.chips, heavy ? 90 : 160);
     if (fx.glass || d.glass) { P.glass(x, y, dirA, 1.5, 18); w.sound('glass', x, y, 0.6); }
-    if (rec.electric) { P.sparks(x, y, 0, Math.PI, 16, 260, '#bff'); P.smoke(x, y, 6, 4, { speed: 20, size: 5, life: 2, dark: true }); }
+    if (rec.electric) { P.sparks(x, y, 0, Math.PI, 16, 260, '#bff'); w.smoke?.burst('short', x, y, 2); }
     // a motor dying: a black puff that rolls out of it and hangs
-    if (rec.puff) P.smoke(x, y, rec.puff, R * 0.5, { speed: 30, size: 8, life: 2.6, dark: true });
+    if (rec.puff) w.smoke?.burst('motor', x, y, rec.puff);
     if (rec.live) this.liveWires(x, y, rec.live);
     if (rec.gush) this.gush(x, y, rec.gush);
     if (d.dirt || rec.contents.some((c) => c.bit === 'soil')) P.chips(x, y, 0, Math.PI, 18, '#4a2e1a', 120);
@@ -825,7 +825,7 @@ export default class Prop {
       const k = Math.min(1, e.t / (dur * 0.33)) * (0.86 + 0.14 * Math.sin(e.t * 9));
       P.jet(e.x, e.y, 6, { vz: 440 * k, speed: 20, size: 2.5, alpha: 0.95 });   // the column
       P.jet(e.x, e.y, 3, { vz: 370 * k, speed: 115 * k, size: 1.8, alpha: 0.6 }); // its crown, falling back all around
-      if (chance(0.3)) P.smoke(e.x, e.y, 1, 6 + 22 * k, { speed: 26, size: 6, life: 1.3 });
+      if (chance(0.3)) w.smoke?.burst('spray', e.x, e.y, k); // the mist off it
       if (w.time >= hiss) {
         hiss = w.time + rand(0.4, 0.7);
         w.sound('splash', e.x, e.y, 0.3 * k, { pitch: rand(0.5, 0.7) });

@@ -1,12 +1,12 @@
-// Fires (level `fires`: [col, row, stage, delay]): something burning at a spot, for the look of it: flames, smoke,
-// embers, a flickering light, the crackle, the air shimmering over it (Game.lensView reads lit()). In the tutorial the
+// Fires (level `fires`: [col, row, stage, delay]): something burning at a spot, for the look of it: flames, black
+// smoke (the air's: systems/Smoke.js burns every fire lit()), embers, a flickering light, the crackle, the air shimmering over it (Game.lensView reads lit()). In the tutorial the
 // flat burns behind him: a fire with a stage catches `delay` s after that room of the lesson is reached
 // (systems/Tutorial.js), with a whoosh; one without burns from the start. A room whose stage has `spark` waits for a
 // man to drop a lit match in it (event 'matchDrop', Enemy.dropMatch): the petrol catches where it falls, then runs
 // out from there (SPREAD px/s, plus each fire's delay); if no match comes, it catches on its own `spark` s after the
 // room is reached. They hurt nobody and spread to nothing: scenery, laid on what cannot be walked on. Water puts
 // them out (douse: the sprinklers).
-// DOM-free: particles, lights and sounds asked of the world.
+// DOM-free: particles, smoke, lights and sounds asked of the world.
 import { TILE } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
 
@@ -55,7 +55,7 @@ export default class Fires {
     const w = this.world, out = this.lit().filter((f) => where(f.x, f.y));
     if (!out.length) return;
     for (const f of out) {
-      w.particles.smoke(f.x, f.y, 4, 6, { speed: 22, size: 7, life: 1.8 });
+      w.smoke?.burst('douse', f.x, f.y);
       w.sound('hiss', f.x, f.y, 0.5, { pitch: 0.6 });
     }
     this.fires = this.fires.filter((f) => !out.includes(f));
@@ -84,7 +84,6 @@ export default class Fires {
       if ((f.t -= dt) <= 0) {
         f.t = FLAMES;
         w.particles.fire(f.x + rand(-7, 7) * grow, f.y + rand(-7, 7) * grow, 1 + (chance(grow * 0.7) ? 1 : 0), 34 * grow, { size: [3, 7], life: [0.25, 0.6], rise: 46 });
-        if (chance(0.06)) w.particles.smoke(f.x, f.y, 1, 5, { speed: 16, size: 7, life: 1.6 });
         if (chance(0.03)) w.particles.embers(f.x, f.y, 1, 120);
       }
       if ((f.lt -= dt) <= 0) {

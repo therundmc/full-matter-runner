@@ -138,13 +138,12 @@ export function combatFx(world) {
 export function drawCombat(ctx, world) { combatFx(world).draw(ctx); }
 
 // a gun of definition d goes off at (x, y) along a: its family's flash, the light it throws on the shooter for a
-// moment, sparks and smoke out of the barrel
+// moment, sparks out of the barrel (its smoke is the air's: systems/Smoke.js, on 'shot')
 export function muzzleFlash(world, x, y, a, d, ch) {
   const m = feelOf(d).muzzle;
   combatFx(world).muzzle(x, y, a, m, ch);
   world.light(x, y, m.light, '#ffb347', Math.max(0.05, m.dur * 1.2));
   if (m.sparks) world.particles.sparks(x, y, a, 0.35, m.sparks, 380);
-  if (m.smoke) world.particles.smoke(x, y, m.smoke, 2, { speed: 30, size: 4, life: 0.6 });
 }
 
 // ---------------- weapon trails ----------------

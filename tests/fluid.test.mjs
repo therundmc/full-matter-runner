@@ -6,9 +6,9 @@ const { default: Fluid } = await load('engine/physics/Fluid.js');
 
 const DT = 1 / 30;
 // a closed box of w x h flow cells of 16 px (a ring of wall), optional wall column at x = `wall` with a gap
-function box(w = 30, h = 20, { wall = -1, gap = null, loss = 0 } = {}) {
-  const F = new Fluid(w, h, 16, 2);
-  Object.assign(F, { spread: 0, drag: 0.3, vorticity: 0.4 });
+function box(w = 30, h = 20, { wall = -1, gap = null, loss = 0, kinds = 1 } = {}) {
+  const F = new Fluid(w, h, 16, 2, kinds);
+  Object.assign(F, { drag: 0.3, vorticity: 0.4 });
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const ring = x === 0 || y === 0 || x === w - 1 || y === h - 1;
@@ -16,10 +16,10 @@ function box(w = 30, h = 20, { wall = -1, gap = null, loss = 0 } = {}) {
       if (ring || inWall) F.setSolid(y * w + x, 1);
     }
   }
-  for (let j = 0; j < F.d.length; j++) F.setLoss(j, loss);
+  for (let k = 0; k < kinds; k++) F.setLoss(k, 0, loss);
   return F;
 }
-const total = (F) => F.d.reduce((s, v) => s + v, 0);
+const total = (F, k = 0) => F.kinds[k].d.reduce((s, v) => s + v, 0);
 const step = (F, n, each) => { for (let i = 0; i < n; i++) { each?.(); F.flow(DT); F.carry(DT); } };
 const side = (F, x0, x1) => {
   let s = 0;
@@ -38,9 +38,9 @@ test('fluid: carrying the smoke through a stirred box keeps its amount (no loss 
 
 test('fluid: what is over the rest level decays at its loss rate, what is under it comes back', () => {
   const F = box(20, 12, { loss: 0.2 });
-  F.recover = 0.5;
+  F.kinds[0].recover = 0.5;
   const j = 6 * F.W + 10, k = 6 * F.W + 20;
-  F.rest[j] = 0.1; F.rest[k] = 0.1;
+  F.setRest(0, j, 0.1); F.setRest(0, k, 0.1);
   F.d[j] = 0.6; F.d[k] = 0;
   step(F, 150); // 5 s, no flow
   const want = 0.1 + 0.5 * Math.exp(-0.2 * 5);
@@ -99,4 +99,51 @@ test('fluid: a blast pushes the air out of its heart', () => {
   F.flow(DT);
   const v = {};
   assert.ok(F.velocityAt(300, 160, v).x > 1 && F.velocityAt(180, 160, v).x < -1);
+});
+
+test('fluid: kinds ride the same flow, each lost at its own rate in each place', () => {
+  const F = box(30, 20, { kinds: 2 });
+  F.setLoss(1, 0, 0.5);
+  F.setLoss(1, 1, 2);
+  F.addDensity(150, 160, 30, 0.8, 0);
+  F.addDensity(150, 160, 30, 0.8, 1);
+  step(F, 60, () => F.push(150, 160, 60, 60, 0, 0.3));
+  const at = (k) => F.densityAt(200, 160, k);
+  assert.ok(at(0) > 0.05 && at(1) > 0.01, 'both carried along');
+  assert.ok(Math.abs(total(F, 0) - total(F, 1) / Math.exp(-0.5 * 2)) / total(F, 0) < 0.1, 'kind 1 lost at its rate');
+  // the open place (1) takes kind 1 four times faster
+  const G = box(20, 12, { kinds: 2 });
+  G.setLoss(1, 0, 0.5);
+  G.setLoss(1, 1, 2);
+  for (let j = 0; j < G.place.length; j++) G.place[j] = 1;
+  G.addDensity(150, 100, 30, 0.8, 1);
+  const m0 = total(G, 1);
+  step(G, 30);
+  assert.ok(Math.abs(total(G, 1) / m0 - Math.exp(-2)) < 0.03, `${total(G, 1) / m0}`);
+});
+
+test('fluid: a kind with nothing in the stepped region is not carried; one carried into it is', () => {
+  const F = box(30, 20, { kinds: 2 });
+  F.setLoss(1, 0, 1);
+  step(F, 3);
+  assert.equal(F.kinds[1].peak, 0);
+  assert.equal(total(F, 1), 0, 'left empty');
+  F.setRegion(16, 16, 200, 300);  // the left of the box only
+  F.kinds[1].d[10 * F.W + 50] = 0.5; // smoke waiting further right, not stepped
+  step(F, 3);
+  assert.equal(F.kinds[1].d[10 * F.W + 50], 0.5, 'waits where nothing is stepped');
+  F.setRegion(16, 16, 464, 304);   // the view moved over it
+  step(F, 3);
+  assert.ok(F.kinds[1].peak > 0 && F.kinds[1].d[10 * F.W + 50] < 0.5, 'found and carried');
+});
+
+test('fluid: how far along a segment the air is thick', () => {
+  const F = box(30, 20, { kinds: 2 });
+  F.addDensity(240, 160, 40, 1.5, 1);
+  const w = [0, 1];
+  const across = F.thickAlong(100, 160, 380, 160, w, 0.5);
+  assert.ok(across > 30 && across < 80, `${across} px thick`);
+  assert.equal(F.thickAlong(100, 260, 380, 260, w, 0.5), 0, 'past it');
+  assert.equal(F.thickAlong(100, 160, 380, 160, [1, 0], 0.5), 0, 'a kind that does not count');
+  assert.ok(F.thickAlong(100, 160, 380, 160, w, 0.5, 16) <= 24, 'stops counting at enough');
 });

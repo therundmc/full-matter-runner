@@ -308,19 +308,6 @@ export const GADGETS = {
   parking_meter: { sound: 'coin', gap: 0.15 },                       // its coins ring at every blow
 };
 
-// Steam in the street (systems/Steam.js): manholes breathing, wall vents, steam pipes a round went through
-export const STEAM = {
-  color: '#d4dade',
-  range: 620,        // px from the player past which nothing is puffed
-  drift: [-9, -5],   // px/s: the night air carries it
-  manhole: { breath: 3.5, rest: [4, 9], every: 0.14, size: 5, life: 2.8, alpha: 0.26,
-    seep: { every: 0.7, size: 3, life: 3, alpha: 0.05 } }, // between two breaths a thin seep never quite stops
-  vent: { every: 0.18, size: 4, life: 2.4, alpha: 0.32, speed: 22 },
-  leak: { dur: 7, every: 0.05, speed: 90, max: 3 }, // max holes per pipe
-  wet: 0.5,          // puffs this much bigger and thicker at full rain (cold rain on a warm cover)
-  wake: { r: 54, pull: 0.45, aside: 30 }, // a car going by tears the steam along: px round it, share of its speed, px/s thrown aside
-};
-
 // Loose paper on the pavement (systems/Papers.js); speeds of bodies in px/step, the rest in px and seconds
 export const PAPERS = {
   gust: [6, 14],     // s between two gusts of wind
@@ -335,20 +322,6 @@ export const PAPERS = {
   kick: 11,          // px: someone running this close kicks it
   runFast: 1.4,
   kickV: 55,         // px/s
-};
-
-// the cloud out of a pierced extinguisher (systems/Clouds.js); px and seconds
-export const CLOUD = {
-  jet: 2.4,                // s it sprays
-  speed: 105,              // px/s of the powder leaving the nozzle
-  reach: 40,               // how far from the wall the heart of the cloud ends up
-  r: 46,                   // its radius once swollen (`grow` s)
-  grow: 1.4,
-  life: 9,                 // s in all, the last `fade` thinning away
-  fade: 2.5,
-  every: 0.04,             // s between two puffs of the jet
-  core: 0.8,               // share of the radius nobody sees through
-  color: '#eef1f4',
 };
 
 // street fauna (systems/Critters.js); distances in tiles, speeds in px/s unless said otherwise
@@ -436,9 +409,9 @@ export const AMBIENT = {
   stop: [3, 7],            // s
   hurry: 1.8,              // pace of a passer-by walking away from a ringing alarm (x his walk)
   // a customer running off his spot: the chair within `chair` px is shoved back (`shove`, kg.px/step), odds his
-  // glass goes over, odds he leaves a cigarette burning in the ashtray (for `burn` s, a wisp every `wisp` s).
+  // glass goes over, odds he leaves a cigarette burning in the ashtray (for `burn` s, a thread of smoke off it).
   // A sleeper is woken by feet running (`tread` px/step) within `wake` px
-  leave: { chair: 20, shove: [12, 26], glass: 0.6, butt: 0.45, burn: [30, 50], wisp: 0.5, wake: 15, tread: 1.5 },
+  leave: { chair: 20, shove: [12, 26], glass: 0.6, butt: 0.45, burn: [30, 50], wake: 15, tread: 1.5 },
   panic: {
     hear: 1,               // fraction of a gunshot / explosion noise radius that panics passers-by
     witness: 9,            // m: a kill seen that close

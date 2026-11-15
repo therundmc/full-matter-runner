@@ -10,8 +10,9 @@ import { occlusion } from './Ballistics.js';
 const { Body } = Matter;
 
 // What a blast looks like: a torn shock front and the dust it lifts, a fireball in a few lobes (never one disc)
-// that cools from its rim inward and turns to black smoke rolling up, burning scraps thrown in arcs that go on
-// burning where they fall, flames dying on the ground, and a ragged burn.
+// that cools from its rim inward, burning scraps thrown in arcs that go on burning where they fall, flames dying on
+// the ground, and a ragged burn. Its black smoke is the air's (systems/Smoke.js, on 'explosion'), and so is what
+// rises off the small fires it leaves.
 function fireball(world, x, y, R) {
   const P = world.particles;
   world.rings.push({ x, y, r: 6, max: R * 1.7, t: 0, dur: 0.35, blast: true });
@@ -21,7 +22,6 @@ function fireball(world, x, y, R) {
     P.fire(x + Math.cos(a) * d, y + Math.sin(a) * d, 12, R * rand(1.2, 1.9), { size: [4, 10], life: [0.3, 0.7], heat: 0, rise: 24 });
   }
   P.fire(x, y, 22, R * 4.2, { size: [2, 5], life: [0.15, 0.4], heat: 0 }); // tongues thrown past it
-  P.smoke(x, y, 32, R * 0.15, { dark: true, puff: true, speed: 120, size: 11, life: 2.4 });
   P.sparks(x, y, 0, Math.PI, 60, 620);
   P.embers(x, y, 40, 260);
   P.chips(x, y, 0, Math.PI, 30, '#2a2020', 260);
@@ -30,10 +30,10 @@ function fireball(world, x, y, R) {
     P.dust(x + c * R * 0.4, y + s * R * 0.4, 1, 4, 'rgb(150,135,120)', { vx: c * v, vy: s * v, size: 6, life: 1.6, alpha: 0.2 });
   }
   // a small fire on the floor: flames licking up from one spot, dying down over dur seconds
-  const burn = (bx, by, dur) => world.emit(bx, by, dur, (e) => {
+  const burn = (bx, by, dur) => world.emit(bx, by, dur, (e, dt) => {
     const k = e.t / dur;
     if (chance(0.35 + 0.5 * k)) P.fire(bx + rand(-2.5, 2.5), by + rand(-2, 2), 1, 10, { size: [2, 3 + 3 * k], life: [0.2, 0.5], rise: 50 });
-    if (chance(0.07)) P.smoke(bx, by, 1, 2, { dark: true, puff: true, speed: 14, size: 5, life: 1.5, h: 6 });
+    world.smoke?.burn(bx, by, 'spot', dt);
   });
   for (let i = 0; i < 6; i++) {
     const a = rand(0, TAU), d = R * 0.5 * Math.sqrt(Math.random());

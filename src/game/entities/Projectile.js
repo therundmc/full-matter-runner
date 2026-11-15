@@ -81,7 +81,7 @@ export default class Projectile {
     if (this.wake) this.trace(x1, y1);
     this.passed(sx, sy);
     if (this.rocket) {
-      w.particles.smoke(this.x - this.vx * 0.02, this.y - this.vy * 0.02, 1, 2, { speed: 15, size: 4, life: 0.9 });
+      w.smoke?.burst('trail', this.x - this.vx * 0.02, this.y - this.vy * 0.02);
       w.particles.fire(this.x - this.vx * 0.03, this.y - this.vy * 0.03, 1, 30);
     }
   }

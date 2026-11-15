@@ -2,43 +2,20 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { CLOUD, GADGETS } = await load('game/Config.js');
+const { GADGETS } = await load('game/Config.js');
 const { default: EventBus } = await load('engine/EventBus.js');
-const { default: Clouds } = await load('game/systems/Clouds.js');
 const { default: Gadgets } = await load('game/systems/Gadgets.js');
 
 function stub() {
-  const log = { dust: 0, sounds: [], lights: 0, sparks: 0, later: [] };
+  const log = { sounds: [], lights: 0, sparks: 0, later: [] };
   const world = {
     events: new EventBus(), time: 0,
-    particles: { dust: (x, y, n) => { log.dust += n; }, sparks: () => log.sparks++ },
+    particles: { sparks: () => log.sparks++ },
     sound: (name) => log.sounds.push(name), light: () => log.lights++,
     after: (sec, fn) => log.later.push([world.time + sec, fn]),
   };
   return { world, log };
 }
-
-test('clouds: a pierced extinguisher sprays away from its wall, hides what is in or behind its cloud, then clears', () => {
-  const { world, log } = stub();
-  const clouds = new Clouds(world);
-  const run = (sec) => { for (let i = 0; i < sec * 60; i++) clouds.update(1 / 60); };
-  world.events.emit('propDestroyed', { prop: { def: {}, x: 0, y: 0, body: { angle: 0 } } });
-  assert.equal(clouds.list.length, 0, 'any other prop');
-  // on a wall to the north, facing south
-  world.events.emit('propDestroyed', { prop: { def: { cloud: true }, x: 200, y: 100, body: { angle: 0 } } });
-  assert.ok(!clouds.blocks(100, 140, 300, 140), 'nothing yet');
-  run(CLOUD.jet);
-  const k = clouds.list[0];
-  assert.ok(Math.abs(k.x - 200) < 1 && Math.abs(k.y - (100 + CLOUD.reach)) < 1, 'pushed into the room');
-  assert.ok(log.dust > 60 && log.sounds.includes('hiss'));
-  assert.ok(clouds.blocks(100, 140, 300, 140), 'across it');
-  assert.ok(clouds.blocks(200, 140, 400, 140), 'from inside it');
-  assert.ok(!clouds.blocks(100, 240, 300, 240), 'past it');
-  assert.ok(!clouds.blocks(300, 100, 400, 140), 'a segment that stops short');
-  run(CLOUD.life);
-  assert.equal(clouds.list.length, 0);
-  assert.ok(!clouds.blocks(100, 140, 300, 140));
-});
 
 test('gadgets: the jukebox is heard from close, less behind a wall, and not at all once it is knocked off its record', () => {
   const { world } = stub();

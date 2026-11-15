@@ -50,7 +50,7 @@ export function destroyWall(world, cx, cy, dirA, power = 1) {
       rand(-0.5, 0.5), { air: 0.07, bounce: 0.2, material: 'concrete', harm: { kind: 'blunt', knock: 3.2, lethal: 7.5 } }));
   }
   world.particles.chips(x, y, dirA, Math.PI, 30, col, 220);
-  world.particles.smoke(x, y, 22, 14, { speed: 70, size: 10, life: 2.2 });
+  world.smoke?.burst('wall', x, y);
   world.sound('crumble', x, y);
   world.shake(0.3);
   world.noise(x, y, 420, null, 'wall');
@@ -107,7 +107,7 @@ export function destroyWindow(world, win, dirA = 0, power = 1) {
   const lumps = rubble(win.wall);
   for (let k = 0; k < 4; k++) fling(lumps[Math.floor(rand(0, 6))], { air: 0.07, bounce: 0.2, material: 'concrete' });
   world.particles.chips(x, y, dirA, Math.PI, 14, '#9aa0b0', 200);
-  world.particles.smoke(x, y, 10, 10, { speed: 50, size: 8, life: 1.8 });
+  world.smoke?.burst('window', x, y);
   world.sound('metalBreak', x, y, 0.8);
   world.sound('crumble', x, y, 0.6);
   world.shake(0.2);

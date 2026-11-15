@@ -142,7 +142,7 @@ export const PROPS = {
   // ---- what a level's devices are made of (data/devices.js). On a wall, facing the room along +y: the fire alarm's
   // red pull station (systems/Sprinklers.js)
   fire_alarm: { fixture: true, static: true, material: 'metal', w: 10, h: 6, hp: 3, chips: '#c0202a', sparks: true, sound: 'metal' },
-  // on a wall, facing the room along +y: pierced, it empties itself in a cloud nobody sees through (systems/Clouds.js)
+  // on a wall, facing the room along +y: pierced, it empties itself in a white cloud nobody sees through (systems/Smoke.js)
   extinguisher: { static: true, material: 'metal', w: 6, h: 9, hp: 1, chips: '#c0202a', sound: 'metal', cloud: true },
   // ---- street furniture. handset = [x, y] px from the centre of the hook its receiver hangs on (render/PropLife.js);
   // bends = px its head gives way, all told, under blows; steam = 'vent': it breathes steam along its +y,

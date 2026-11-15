@@ -21,7 +21,7 @@
 //   fire     camera on the player's own shot: shake, push (px back along the barrel)
 //   muzzle   the flash: shape 'star' | 'burst' | 'puff' | 'tongue' | 'spear' | 'brake' | 'blast', len and wide (px),
 //            dur (s on the real clock: 0.01 one frame, 0.025 two), light (px radius of the transient light that shows
-//            the shooter), sparks, smoke (puffs)
+//            the shooter), sparks (its smoke is the air's: SMOKE.muzzle in data/atmosphere.js)
 //   round    the round in flight: len (s of travel the streak covers), width, core (px), wake (s the line of its
 //            whole way lingers; 0 = none)
 //   recoil   what the shot does to the man holding it (entities/Recoil.js), in pose px / rad, scaled by his recoil
@@ -56,7 +56,7 @@ export const FEEL = {
     kind: 'bullet', power: [0.4, 0.45], stop: [0, 0.03], shake: [0, 0.05], push: [0, 1], flash: 0.025,
     shove: 2, squash: 0, twist: 0.2, burst: { rays: 4, len: 6, width: 1.3, life: 0.05, shape: 'pop' },
     fire: { shake: 0.18, push: 2.5 },
-    muzzle: { shape: 'star', len: 11, wide: 6, dur: 0.025, light: 80, sparks: 3, smoke: 2 },
+    muzzle: { shape: 'star', len: 11, wide: 6, dur: 0.025, light: 80, sparks: 3 },
     round: { len: 0.022, width: 3, core: 1.2, wake: 0 },
     recoil: { rate: 6.5, ease: 2.4, hands: 2.2, flip: 0.2, rise: 0.24, over: 0.3, torso: 0.5, rock: 0, sink: 0, elbow: 0.35, buzz: 0, hz: 0 },
   },
@@ -64,7 +64,7 @@ export const FEEL = {
     kind: 'bullet', power: [0.3, 0.35], stop: [0, 0.02], shake: [0, 0.03], push: [0, 0.6], flash: 0.025,
     shove: 1.5, squash: 0, twist: 0.15, burst: { rays: 4, len: 5, width: 1.1, life: 0.05, shape: 'pop' },
     fire: { shake: 0.06, push: 1 },
-    muzzle: { shape: 'puff', len: 5, wide: 3.5, dur: 0.01, light: 30, sparks: 0, smoke: 1 },
+    muzzle: { shape: 'puff', len: 5, wide: 3.5, dur: 0.01, light: 30, sparks: 0 },
     round: { len: 0.018, width: 2.4, core: 1, wake: 0 },
     recoil: { rate: 12, ease: 1.4, hands: 0.9, flip: 0.05, rise: 0.05, over: 0, torso: 0.25, rock: 0, sink: 0, elbow: 0.15, buzz: 0.35, hz: 88 },
   },
@@ -72,7 +72,7 @@ export const FEEL = {
     kind: 'bullet', power: [0.3, 0.4], stop: [0, 0.02], shake: [0, 0.04], push: [0, 0.8], flash: 0.025,
     shove: 1.5, squash: 0, twist: 0.2, burst: { rays: 4, len: 5, width: 1.2, life: 0.05, shape: 'pop' },
     fire: { shake: 0.12, push: 1.5 },
-    muzzle: { shape: 'burst', len: 10, wide: 6, dur: 0.01, light: 70, sparks: 2, smoke: 1 },
+    muzzle: { shape: 'burst', len: 10, wide: 6, dur: 0.01, light: 70, sparks: 2 },
     round: { len: 0.02, width: 2.6, core: 1.1, wake: 0 },
     recoil: { rate: 12, ease: 1.4, hands: 1.3, flip: 0.1, rise: 0.08, over: 0, torso: 0.35, rock: 0.02, sink: 0, elbow: 0.2, buzz: 0.6, hz: 95 },
   },
@@ -80,7 +80,7 @@ export const FEEL = {
     kind: 'bullet', power: [0.55, 0.65], stop: [0, 0.035], shake: [0, 0.07], push: [0, 1.5], flash: 0.025,
     shove: 3, squash: 0.05, twist: 0.25, burst: { rays: 5, len: 8, width: 1.4, life: 0.06, shape: 'pop' },
     fire: { shake: 0.2, push: 2.5 },
-    muzzle: { shape: 'spear', len: 21, wide: 5, dur: 0.025, light: 90, sparks: 3, smoke: 2 },
+    muzzle: { shape: 'spear', len: 21, wide: 5, dur: 0.025, light: 90, sparks: 3 },
     round: { len: 0.03, width: 3, core: 1.3, wake: 0 },
     recoil: { rate: 11, ease: 1.3, hands: 2.1, flip: 0.03, rise: 0.04, over: 0.1, torso: 1.1, rock: 0.05, sink: 0.006, elbow: 0, buzz: 0, hz: 0 },
   },
@@ -88,7 +88,7 @@ export const FEEL = {
     kind: 'bullet', power: [0.6, 1], stop: [0.02, 0.07], shake: [0.05, 0.16], push: [1, 3], flash: 0.042,
     shove: 9, squash: 0.15, twist: 0.3, burst: { rays: 7, len: 10, width: 1.8, life: 0.07, shape: 'pop' },
     fire: { shake: 0.5, push: 7 },
-    muzzle: { shape: 'tongue', len: 25, wide: 13, dur: 0.042, light: 115, sparks: 10, smoke: 5 },
+    muzzle: { shape: 'tongue', len: 25, wide: 13, dur: 0.042, light: 115, sparks: 10 },
     round: { len: 0.012, width: 2.2, core: 1, wake: 0 },
     recoil: { rate: 3.2, ease: 1.7, hands: 3.2, flip: 0.1, rise: 0.12, over: 0.15, torso: 2.6, rock: 0.22, sink: 0.025, elbow: 0, buzz: 0, hz: 0 },
   },
@@ -96,7 +96,7 @@ export const FEEL = {
     kind: 'bullet', power: [0.95, 1], stop: [0.04, 0.09], shake: [0.1, 0.2], push: [2, 4], flash: 0.042,
     shove: 8, squash: 0.1, twist: 0.35, burst: { rays: 7, len: 12, width: 2, life: 0.08, shape: 'pop' },
     fire: { shake: 0.7, push: 9 },
-    muzzle: { shape: 'brake', len: 28, wide: 7, dur: 0.042, light: 130, sparks: 5, smoke: 4 },
+    muzzle: { shape: 'brake', len: 28, wide: 7, dur: 0.042, light: 130, sparks: 5 },
     round: { len: 0.035, width: 3.6, core: 1.6, wake: 0.22 },
     recoil: { rate: 2.6, ease: 2, hands: 3.4, flip: 0.05, rise: 0.07, over: 0.1, torso: 3.4, rock: 0.12, sink: 0.045, elbow: 0, buzz: 0, hz: 0 },
   },
@@ -104,7 +104,7 @@ export const FEEL = {
     kind: 'bullet', power: [1, 1], stop: [0, 0], shake: [0, 0], push: [0, 0], flash: 0,
     shove: 0, squash: 0, twist: 0, burst: { rays: 0, len: 0, width: 0, life: 0, shape: 'pop' },
     fire: { shake: 0.4, push: 6 },
-    muzzle: { shape: 'blast', len: 12, wide: 10, dur: 0.058, light: 130, sparks: 6, smoke: 8 },
+    muzzle: { shape: 'blast', len: 12, wide: 10, dur: 0.058, light: 130, sparks: 6 },
     round: { len: 0, width: 0, core: 0, wake: 0 },
     recoil: { rate: 3, ease: 1.6, hands: 2.6, flip: 0.04, rise: 0.04, over: 0.05, torso: 2.2, rock: 0.1, sink: 0.02, elbow: 0, buzz: 0, hz: 0 },
   },

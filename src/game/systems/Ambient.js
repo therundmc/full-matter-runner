@@ -62,7 +62,7 @@ export default class Ambient {
     this.scaredUntil = -1; // no new passers-by until then (after gunfire / explosions)
     this.nooks = new Set(); // cells where someone has curled up: one corner each
     this.obstacles = [];
-    this.butts = [];       // cigarettes left burning in an ashtray: { x, y, until, puff } (render/StreetArt.js)
+    this.butts = [];       // cigarettes left burning in an ashtray: { x, y, until } (render/StreetArt.js)
     world.events.on('patronLeft', (e) => this.onLeave(e));
     world.events.on('noise', (e) => this.onNoise(e));
     world.events.on('kill', (e) => this.onKill(e));
@@ -201,7 +201,7 @@ export default class Ambient {
     // exhaust
     if (this.r() < 0.06 && d.speed > 30) {
       const p = v.toWorld(1, v.h * 0.7);
-      w.particles.smoke(p.x, p.y, 1, 2, { speed: 10, size: 3, life: 0.9 });
+      w.smoke?.burst('exhaust', p.x, p.y);
     }
   }
 
@@ -337,11 +337,7 @@ export default class Ambient {
       if (this.civilians.some((c) => Math.hypot(c.x - s.x, c.y - s.y) < 20)) continue;
       this.spawnWalker(p, 0);
     }
-    for (const b of this.butts) {
-      if ((b.puff -= dt) > 0) continue;
-      b.puff = A.leave.wisp;
-      w.particles.dust(b.x + 3, b.y - 1, 1, 1, '#c8c8d2', { speed: 2, size: 2, life: 1.8, alpha: 0.22, vy: -7 });
-    }
+    for (const b of this.butts) w.smoke?.wisp(b, b.x + 3, b.y - 1, dt);
     if (this.butts.length) this.butts = this.butts.filter((b) => b.until > w.time);
     // sight checks (staggered): an armed player close by, a corpse in view
     this.checkT -= dt;
@@ -434,7 +430,7 @@ export default class Ambient {
     }
     const bx = x + fx * 24, by = y + fy * 24;
     if ((activity === 'drink' || activity === 'cards') && r() < L.butt && w.map.isBlocked(Math.floor(bx / TILE), Math.floor(by / TILE))) {
-      this.butts.push({ x: bx, y: by, until: w.time + between(r, L.burn), puff: 0 });
+      this.butts.push({ x: bx, y: by, until: w.time + between(r, L.burn) });
     }
   }
 

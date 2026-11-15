@@ -1,19 +1,23 @@
 // A coarse 2D fluid: the air of a level seen from above, as a "stable fluids" solver (Stam 1999). The flow lives on
-// a grid of `cell` px cells (velocity in px/s); what it carries (a density: smoke) lives on a grid `sub` times finer,
-// so the smoke keeps a finer edge than the flow that moves it. One step of the flow: vorticity confinement (gives
-// the curls back that the coarse grid smooths away), semi-Lagrangian advection of the velocity, drag, then a
-// pressure projection (Gauss-Seidel over-relaxed sweeps) that makes it divergence-free but for the `expand` sources
-// (volume pushed in: a blast). One step of the density: MacCormack advection through that flow (sharper than plain
-// semi-Lagrangian), a little diffusion, then its loss: what is over the cell's `rest` level decays at the cell's `loss` rate,
-// what is under it comes back at `recover`.
+// a grid of `cell` px cells (velocity in px/s); what it carries lives on a grid `sub` times finer, so it keeps a
+// finer edge than the flow that moves it. One step of the flow: vorticity confinement (gives the curls back that the
+// coarse grid smooths away), semi-Lagrangian advection of the velocity, drag, then a pressure projection
+// (Gauss-Seidel over-relaxed sweeps) that makes it divergence-free but for the `expand` sources (volume pushed in: a
+// blast). What it carries comes in `kinds` (each its own density: in the game grey smoke, black soot, white powder,
+// steam), all moved by the same flow. One step of a kind: MacCormack advection (sharper than plain semi-Lagrangian),
+// a little diffusion (its `spread`), then its loss: what is over the cell's rest level decays at the kind's rate for
+// the cell's `place` (a room keeps it, the open air takes it), what is under it comes back at `recover`. A kind with
+// nothing in the stepped region is not carried at all.
 // Solid cells (walls, a shut door, a pane) carry nothing and let nothing through. Only the cells of the `region`
 // are stepped (the rooms about the player); the rest of the grid waits as it is. Typed arrays, no allocation per
 // step. DOM-free.
 const clampI = (v, a, b) => (v < a ? a : v > b ? b : v);
+const EMPTY = 1e-3; // a kind whose densest cell in the region is under this is left as it is
 
 export default class Fluid {
-  // w x h flow cells of `cell` px, density cells `sub` to a side in each
-  constructor(w, h, cell, sub = 2) {
+  // w x h flow cells of `cell` px, density cells `sub` to a side in each, `kinds` densities carried, `places` kinds
+  // of place (each kind loses what it carries at its own rate in each)
+  constructor(w, h, cell, sub = 2, kinds = 1, places = 2) {
     this.w = w; this.h = h; this.cell = cell; this.sub = sub;
     this.W = w * sub; this.H = h * sub; this.fcell = cell / sub;
     const n = w * h, N = this.W * this.H;
@@ -23,24 +27,27 @@ export default class Fluid {
     this.curl = new Float32Array(n);
     this.expand = new Float32Array(n);  // volume sources, 1/s (decay with `expandFade`)
     this.solid = new Uint8Array(n);
-    this.d = new Float32Array(N); this.d0 = new Float32Array(N);  // density, 0..~1
-    this.hat = new Float32Array(N); this.lo = new Float32Array(N); this.hi = new Float32Array(N); // carrying scratch
+    this.d0 = new Float32Array(N);      // carrying scratch, shared by the kinds
+    this.hat = new Float32Array(N); this.lo = new Float32Array(N); this.hi = new Float32Array(N);
     this.mvx = new Float32Array(N); this.mvy = new Float32Array(N);
     this.fsolid = new Uint8Array(N);
-    this.rest = new Float32Array(N);    // the level the density settles to
-    this.loss = new Float32Array(N);    // 1/s: how fast what is over the rest level goes
-    this.keep = new Float32Array(N);    // exp(-loss dt), for the dt it was worked out for
-    this.keepDt = -1;
+    this.place = new Uint8Array(N);     // the kind of place of each density cell (0..places-1)
+    // each kind: its density (0..~1), the level it settles to (`rest`, made by setRest: none = 0), its loss per
+    // place (1/s, of what is over the rest level), how fast it comes back up to the rest level (1/s), its diffusion
+    // (px2/s), its densest cell in the region after its last step (raised at once by what is added)
+    this.kinds = Array.from({ length: kinds }, () => ({
+      d: new Float32Array(N), rest: null, loss: new Float32Array(places), keep: new Float32Array(places), keepDt: -1,
+      recover: 0.05, spread: 0, peak: 0,
+    }));
+    this.d = this.kinds[0].d;           // the first kind's density
     this.restK = 1;                     // scale of the rest levels (a power cut takes them down)
-    this.recover = 0.05;                // 1/s back up to the rest level
-    this.spread = 0;                    // px2/s of diffusion
     this.drag = 0.5;                    // 1/s
     this.vorticity = 0.3;               // confinement strength
     this.sweeps = 12;                   // pressure sweeps per step
     this.relax = 1.6;                   // over-relaxation of the sweeps
     this.expandFade = 6;                // 1/s
     this.region = { x0: 1, y0: 1, x1: w - 1, y1: h - 1 }; // flow cells stepped: [x0, x1) x [y0, y1)
-    this.peak = 0;                      // highest density in the region after the last density step
+    this.peak = 0;                      // highest density of any kind in the region after the last step
     this.steps = 0;                     // density steps taken (a drawing of it is good until the next one)
   }
 
@@ -54,13 +61,21 @@ export default class Fluid {
       for (let x = 0; x < sub; x++) {
         const j = (cy + y) * W + cx + x;
         this.fsolid[j] = s;
-        if (s) this.d[j] = 0;
+        if (s) for (const K of this.kinds) K.d[j] = 0;
       }
     }
     if (s) { this.u[i] = 0; this.v[i] = 0; }
   }
 
-  setLoss(j, rate) { this.loss[j] = rate; this.keepDt = -1; }
+  // kind k's loss rate (1/s) in place c
+  setLoss(k, c, rate) { const K = this.kinds[k]; K.loss[c] = rate; K.keepDt = -1; }
+
+  // the level kind k settles back to in density cell j
+  setRest(k, j, level) {
+    const K = this.kinds[k];
+    K.rest ||= new Float32Array(this.W * this.H);
+    K.rest[j] = level;
+  }
 
   // the flow cells to step: those under the world rectangle (px), never the outer ring of the grid
   setRegion(x0, y0, x1, y1) {
@@ -71,26 +86,30 @@ export default class Fluid {
 
   // ---- sources (world px)
 
-  // density laid in a disc of radius r, `amount` at its heart, fading to nothing at its rim
-  addDensity(x, y, r, amount, cap = 2) {
-    const f = this.fcell, W = this.W, rr = Math.max(r, f * 0.5);
+  // density of kind k laid in a disc of radius r, `amount` at its heart, fading to nothing at its rim; no cell is
+  // made denser than `cap` by it
+  addDensity(x, y, r, amount, k = 0, cap = 2) {
+    const f = this.fcell, W = this.W, rr = Math.max(r, f * 0.5), K = this.kinds[k], d = K.d;
     const x0 = clampI(Math.floor((x - rr) / f), 0, W - 1), x1 = clampI(Math.floor((x + rr) / f), 0, W - 1);
     const y0 = clampI(Math.floor((y - rr) / f), 0, this.H - 1), y1 = clampI(Math.floor((y + rr) / f), 0, this.H - 1);
     for (let gy = y0; gy <= y1; gy++) {
       for (let gx = x0; gx <= x1; gx++) {
         const j = gy * W + gx;
         if (this.fsolid[j]) continue;
-        const dx = (gx + 0.5) * f - x, dy = (gy + 0.5) * f - y, k = 1 - (dx * dx + dy * dy) / (rr * rr);
-        if (k > 0) this.d[j] = Math.min(cap, this.d[j] + amount * k);
+        const dx = (gx + 0.5) * f - x, dy = (gy + 0.5) * f - y, q = 1 - (dx * dx + dy * dy) / (rr * rr);
+        if (q > 0 && d[j] < cap) d[j] = Math.min(cap, d[j] + amount * q);
       }
     }
+    K.peak = Math.max(K.peak, Math.min(cap, amount));
   }
 
-  // a little density dropped at a point, shared out to the four nearest cells (what a thread of smoke leaves)
-  deposit(x, y, amount) {
+  // a little density of kind k dropped at a point, shared out to the four nearest cells (what a thread of smoke
+  // leaves)
+  deposit(x, y, amount, k = 0) {
     const f = this.fcell, gx = x / f - 0.5, gy = y / f - 0.5, i = Math.floor(gx), j = Math.floor(gy);
     if (i < 0 || j < 0 || i >= this.W - 1 || j >= this.H - 1) return;
-    const sx = gx - i, sy = gy - j, W = this.W, a = j * W + i, fs = this.fsolid, d = this.d;
+    const sx = gx - i, sy = gy - j, W = this.W, a = j * W + i, fs = this.fsolid, K = this.kinds[k], d = K.d;
+    K.peak = Math.max(K.peak, amount);
     if (!fs[a]) d[a] += amount * (1 - sx) * (1 - sy);
     if (!fs[a + 1]) d[a + 1] += amount * sx * (1 - sy);
     if (!fs[a + W]) d[a + W] += amount * (1 - sx) * sy;
@@ -157,11 +176,29 @@ export default class Fluid {
     return out;
   }
 
-  densityAt(x, y) {
+  // kind k's density at (x, y), bilinear
+  densityAt(x, y, k = 0) {
     const f = this.fcell, W = this.W;
     const gx = clampI(x / f - 0.5, 0, W - 1.001), gy = clampI(y / f - 0.5, 0, this.H - 1.001);
-    const i = gx | 0, j = gy | 0, sx = gx - i, sy = gy - j, a = j * W + i, d = this.d;
+    const i = gx | 0, j = gy | 0, sx = gx - i, sy = gy - j, a = j * W + i, d = this.kinds[k].d;
     return (d[a] * (1 - sx) + d[a + 1] * sx) * (1 - sy) + (d[a + W] * (1 - sx) + d[a + W + 1] * sx) * sy;
+  }
+
+  // how far (px) along the segment the air is thick: where the densities weighted by `weights` (one per kind, 0
+  // for a kind that does not count) add up to `thick` or more, sampled once per density cell crossed; it stops
+  // counting at `enough`
+  thickAlong(x0, y0, x1, y1, weights, thick, enough = Infinity) {
+    const f = this.fcell, W = this.W, len = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(len / f)), ds = len / n;
+    let out = 0;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const gx = clampI(Math.floor((x0 + (x1 - x0) * t) / f), 0, W - 1), gy = clampI(Math.floor((y0 + (y1 - y0) * t) / f), 0, this.H - 1);
+      const j = gy * W + gx;
+      let s = 0;
+      for (let k = 0; k < weights.length; k++) if (weights[k]) s += this.kinds[k].d[j] * weights[k];
+      if (s >= thick && (out += ds) >= enough) return out;
+    }
+    return out;
   }
 
   // ---- stepping
@@ -249,32 +286,61 @@ export default class Fluid {
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) expand[y * w + x] *= fade;
   }
 
-  // one step of the density: carried by the flow, spread a little, lost down to its rest level
+  // one step of what the air carries: each kind carried by the flow, spread a little, lost down to its rest level
   carry(dt) {
-    const { w, u, v, d, d0, hat, lo, hi, mvx, mvy, fsolid, rest, keep, W, sub, fcell } = this, r = this.region;
-    if (dt !== this.keepDt) {
-      for (let j = 0; j < keep.length; j++) keep[j] = Math.exp(-this.loss[j] * dt);
-      this.keepDt = dt;
-    }
+    const { w, u, v, mvx, mvy, fsolid, W, sub } = this, r = this.region;
     const fx0 = r.x0 * sub, fx1 = r.x1 * sub, fy0 = r.y0 * sub, fy1 = r.y1 * sub, toFlow = 1 / sub;
     if (fx1 <= fx0 || fy1 <= fy0) return;
-    d0.set(d);
-    hat.set(d);
-    const back = dt / fcell, diff = Math.min(0.2, (this.spread * dt) / (fcell * fcell));
-    // carried (MacCormack: a semi-Lagrangian step back along the flow, then one forward again to measure what the
-    // first one smeared, half of which is given back, kept within what the cell was made from): sharp edges, curls
-    // that stay; walls mirror the cell's own value
+    // the way back along the flow from each density cell's centre (in density cells), the same for every kind
+    const back = dt / this.fcell;
     for (let gy = fy0; gy < fy1; gy++) {
-      // the flow sampled at the cell's centre: flow-cell coordinates of the density cell
       const cy = clampI((gy + 0.5) * toFlow - 0.5, 0, this.h - 1.001), iy = cy | 0, sy = cy - iy;
       for (let gx = fx0; gx < fx1; gx++) {
         const j = gy * W + gx;
         if (fsolid[j]) continue;
         const cx = clampI((gx + 0.5) * toFlow - 0.5, 0, w - 1.001), ix = cx | 0, sx = cx - ix, a = iy * w + ix;
-        const ox = ((u[a] * (1 - sx) + u[a + 1] * sx) * (1 - sy) + (u[a + w] * (1 - sx) + u[a + w + 1] * sx) * sy) * back;
-        const oy = ((v[a] * (1 - sx) + v[a + 1] * sx) * (1 - sy) + (v[a + w] * (1 - sx) + v[a + w + 1] * sx) * sy) * back;
-        mvx[j] = ox; mvy[j] = oy;
-        const bx = clampI(gx - ox, 0, W - 1.001), by = clampI(gy - oy, 0, this.H - 1.001), own = d0[j];
+        mvx[j] = ((u[a] * (1 - sx) + u[a + 1] * sx) * (1 - sy) + (u[a + w] * (1 - sx) + u[a + w + 1] * sx) * sy) * back;
+        mvy[j] = ((v[a] * (1 - sx) + v[a + 1] * sx) * (1 - sy) + (v[a + w] * (1 - sx) + v[a + w + 1] * sx) * sy) * back;
+      }
+    }
+    let peak = 0;
+    for (const K of this.kinds) {
+      // nothing of it here (it may have come in with the region, from cells that were not stepped: looked for)
+      if (K.peak < EMPTY && !K.rest && this.densest(K.d) < EMPTY) { K.peak = 0; continue; }
+      this.carryKind(K, dt, fx0, fx1, fy0, fy1);
+      peak = Math.max(peak, K.peak);
+    }
+    this.peak = peak;
+    this.steps++;
+  }
+
+  // the densest cell of d in the stepped region
+  densest(d) {
+    const W = this.W, sub = this.sub, r = this.region;
+    let m = 0;
+    for (let gy = r.y0 * sub; gy < r.y1 * sub; gy++) {
+      for (let j = gy * W + r.x0 * sub, e = gy * W + r.x1 * sub; j < e; j++) if (d[j] > m) m = d[j];
+    }
+    return m;
+  }
+
+  carryKind(K, dt, fx0, fx1, fy0, fy1) {
+    const { d0, hat, lo, hi, mvx, mvy, fsolid, place, W } = this, d = K.d, rest = K.rest, keep = K.keep;
+    if (dt !== K.keepDt) {
+      for (let c = 0; c < keep.length; c++) keep[c] = Math.exp(-K.loss[c] * dt);
+      K.keepDt = dt;
+    }
+    d0.set(d);
+    hat.set(d);
+    const diff = Math.min(0.2, (K.spread * dt) / (this.fcell * this.fcell));
+    // carried (MacCormack: a semi-Lagrangian step back along the flow, then one forward again to measure what the
+    // first one smeared, half of which is given back, kept within what the cell was made from): sharp edges, curls
+    // that stay; walls mirror the cell's own value
+    for (let gy = fy0; gy < fy1; gy++) {
+      for (let gx = fx0; gx < fx1; gx++) {
+        const j = gy * W + gx;
+        if (fsolid[j]) continue;
+        const bx = clampI(gx - mvx[j], 0, W - 1.001), by = clampI(gy - mvy[j], 0, this.H - 1.001), own = d0[j];
         const jx = bx | 0, jy = by | 0, tx = bx - jx, ty = by - jy, b = jy * W + jx;
         const q00 = fsolid[b] ? own : d0[b], q10 = fsolid[b + 1] ? own : d0[b + 1];
         const q01 = fsolid[b + W] ? own : d0[b + W], q11 = fsolid[b + W + 1] ? own : d0[b + W + 1];
@@ -301,7 +367,7 @@ export default class Fluid {
     // that carrying is not conservative: what it made or lost is given back evenly; then the diffusion
     // (on what was there before the step: cheap, stable for diff < 0.25) and the loss down to the rest level
     const fix = after > 1e-6 ? clampI(before / after, 0.9, 1.1) : 1;
-    const up = 1 - Math.exp(-this.recover * dt), restK = this.restK;
+    const up = 1 - Math.exp(-K.recover * dt), restK = this.restK;
     let peak = 0;
     for (let gy = fy0; gy < fy1; gy++) {
       for (let gx = fx0; gx < fx1; gx++) {
@@ -317,13 +383,12 @@ export default class Fluid {
           if (!fsolid[j + W]) { s += d0[j + W]; n++; }
           val += diff * (s - n * own);
         }
-        const rs = rest[j] * restK;
-        val = val > rs ? rs + (val - rs) * keep[j] : val + (rs - val) * up;
+        const rs = rest ? rest[j] * restK : 0;
+        val = val > rs ? rs + (val - rs) * keep[place[j]] : val + (rs - val) * up;
         d[j] = val;
         if (val > peak) peak = val;
       }
     }
-    this.peak = peak;
-    this.steps++;
+    K.peak = peak;
   }
 }

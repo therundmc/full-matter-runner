@@ -174,7 +174,8 @@ export default class Scoring {
     const k = e.killer, R = this.rules;
     this.streak = w.time - this.killT <= R.multiWindow ? this.streak + 1 : 1;
     this.killT = w.time;
-    const circ = { ...e.how, smoked: !!(k && w.clouds?.blocks(k.x, k.y, victim.x, victim.y)) };
+    // smoked: through air too thick to see through (never the blast's own soot: it is the blast that killed)
+    const circ = { ...e.how, smoked: !!(k && e.cause !== 'explosion' && w.smoke?.blocks(k.x, k.y, victim.x, victim.y)) };
     this.tags = killTags({ killer: k, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);
     let bonus = unseen ? R.unseen : 0;
     for (const t of this.tags) { bonus += R.tags[t].points; this.methods.add(t); }

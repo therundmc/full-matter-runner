@@ -1,6 +1,6 @@
 // Canvas side of the pastimes (ai/Pastimes.js): where busy hands go and the cue, cards, glass, cigarette... in them.
 // Everything is in the character's own frame: +x = where he faces, +y = his right (his lips are about 4.5 ahead).
-import { cueShift, sip, drag, exhale, stretch, clap } from '../ai/Pastimes.js';
+import { cueShift, sip, drag, stretch, clap } from '../ai/Pastimes.js';
 import { PALETTE } from '../Config.js';
 
 // line of a pool cue: from the back hand, under the chin, to the bridge hand on the table
@@ -113,21 +113,10 @@ export function drawPastime(ctx, ch, kind, t) {
     box(ctx, h.hl.x + 1.5, h.hl.y, 3.4, 2.4, '#5a8a4a');
     ctx.fillStyle = '#86b070'; ctx.fillRect(h.hr.x + 0.5, h.hr.y - 0.8, 2.6, 1.6);
   } else if (kind === 'smoke') {
-    // the cigarette between two fingers, its ember brighter on a drag, a thread of smoke, the breath let out after
+    // the cigarette between two fingers, its ember brighter on a drag (its smoke is the air's: systems/Smoke.js)
     const k = drag(t, ch.seed), x = h.hr.x + 1.4 - 2.4 * k, y = h.hr.y; // brought back to the lips on a drag
     ctx.fillStyle = '#e8e2d2'; ctx.fillRect(x, y - 1.6, 2.6, 1);
     ctx.fillStyle = k > 0.6 ? '#ffd27a' : PALETTE.orange; ctx.fillRect(x + 2.6, y - 1.8, 1.4, 1.4);
-    const ph = (t * 0.6 + ch.seed) % 1;
-    ctx.fillStyle = `rgba(200,200,210,${(0.3 * (1 - ph)).toFixed(3)})`;
-    ctx.fillRect(x + 2.6 + ph * 9, y - 2 + Math.sin(ph * 6) * 2, 2 + ph * 3, 2 + ph * 3);
-    const e = exhale(t, ch.seed);
-    if (e >= 0) {
-      ctx.fillStyle = `rgba(205,205,215,${(0.32 * (1 - e)).toFixed(3)})`;
-      for (let i = 0; i < 3; i++) {
-        const s = 2 + e * (4 + i * 2);
-        ctx.fillRect(6 + e * (10 + i * 5) - s / 2, Math.sin(e * 5 + i * 2) * (1 + i) - s / 2, s, s);
-      }
-    }
   } else if (kind === 'phone') {
     // a pager: its little screen lights his hand
     ctx.fillStyle = 'rgba(5,217,232,0.22)'; ctx.fillRect(h.hr.x - 2.5, h.hr.y - 3, 7, 6);

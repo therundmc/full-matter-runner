@@ -183,6 +183,104 @@ test('smoke: a smoker lets out a thread that rides the air and leaves its smoke 
   assert.equal(s.smoke.rib.n, 0, 'the thread is gone once he stops');
 });
 
+// the mass of a kind in the room (cols 4-6, rows 3-5) and in the yard east of its door (cols 8-10)
+const mass = (s, kind, c0, c1, r0 = 1, r1 = 7) => {
+  const F = s.smoke.fluid, d = F.kinds[s.smoke.kind[kind]].d, n = TILE / F.fcell;
+  let m = 0;
+  for (let gy = r0 * n; gy < (r1 + 1) * n; gy++) for (let gx = c0 * n; gx < (c1 + 1) * n; gx++) m += d[gy * F.W + gx];
+  return m;
+};
+const across = (s) => s.smoke.blocks(4.05 * TILE, 4.3 * TILE, 6.95 * TILE, 4.3 * TILE);
+
+test('smoke: the shot puffs out of the ejection port too, smaller, to the right of the gun', () => {
+  const s = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  const port = { x: 5 * TILE, y: 4.5 * TILE };
+  const shooter = { x: 4.6 * TILE, y: 4.5 * TILE, angle: 0, muzzlePos: () => ({ x: 5.4 * TILE, y: 4.5 * TILE, a: 0 }), portPos: () => port };
+  s.world.events.emit('shot', { shooter, weapon: { sound: 'pistol', eject: 12, casing: 'casing' } });
+  const F = s.smoke.fluid, right = F.densityAt(port.x, port.y + 4), left = F.densityAt(port.x, port.y - 8);
+  assert.ok(right > 0.1 && right > left * 2, `at the port ${right}, on its left ${left}`);
+  assert.ok(right < F.densityAt(5.4 * TILE + SMOKE.muzzle.ahead, 4.5 * TILE), 'less than out of the muzzle');
+  s.run(0.3);
+  assert.ok(F.velocityAt(port.x, port.y + 8, {}).y > 1, 'thrown to the right with the case');
+  const t = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  t.world.events.emit('shot', { shooter, weapon: { sound: 'pistol' } });
+  assert.ok(t.smoke.fluid.densityAt(port.x, port.y + 4) < right * 0.5, 'no case, no port puff');
+});
+
+test('smoke: an extinguisher fills the room with a white cloud guards cannot see through, gone in some 20 s', () => {
+  const s = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  const sounds = [];
+  s.world.sound = (name) => sounds.push(name);
+  assert.ok(!across(s));
+  s.world.events.emit('propDestroyed', { prop: { def: {}, x: 5.5 * TILE, y: 3.1 * TILE, body: { angle: 0 } } });
+  assert.equal(s.smoke.jets.length, 0, 'any other prop');
+  s.world.events.emit('propDestroyed', { prop: { def: { cloud: true }, x: 5.5 * TILE, y: 3.1 * TILE, body: { angle: 0 } } }); // on the north wall
+  s.run(SMOKE.jets.powder.dur + 0.1);
+  assert.ok(sounds.includes('hiss') && !s.smoke.jets.length);
+  const F = s.smoke.fluid, d = F.kinds[s.smoke.kind.powder].d;
+  let m = 0, my = 0;
+  for (let j = 0; j < d.length; j++) { m += d[j]; my += d[j] * (Math.floor(j / F.W) + 0.5) * F.fcell; }
+  assert.ok(my / m > 3.1 * TILE + 20, `thrown off its wall into the room: its heart ${(my / m / TILE).toFixed(2)} tiles down`);
+  assert.ok(across(s), 'across the room');
+  s.run(3);
+  assert.ok(across(s), 'it hangs');
+  assert.ok(!s.smoke.blocks(9 * TILE, 1.5 * TILE, 9 * TILE, 7.5 * TILE), 'not out in the yard');
+  s.run(20);
+  assert.ok(!across(s), 'cleared');
+  // gunfire never hides anyone, however much of it
+  const g = bar();
+  for (let i = 0; i < 8; i++) g.world.events.emit('shot', { shooter: { x: 4.2 * TILE, y: 4.3 * TILE, angle: 0 }, weapon: { sound: 'shotgun' } });
+  g.run(0.3);
+  assert.ok(g.smoke.fluid.peak > 1 && !across(g));
+});
+
+test('smoke: steam is gone in a few s where smoke hangs on', () => {
+  const s = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  const F = s.smoke.fluid, K = s.smoke.kind;
+  F.addDensity(5.5 * TILE, 4.5 * TILE, 20, 1, K.steam);
+  F.addDensity(5.5 * TILE, 4.5 * TILE, 20, 1, K.smoke);
+  const st0 = mass(s, 'steam', 4, 6), sm0 = mass(s, 'smoke', 4, 6);
+  s.run(3);
+  const st = mass(s, 'steam', 4, 6) / st0, sm = mass(s, 'smoke', 4, 6) / sm0;
+  assert.ok(st < 0.3 && sm > 0.7, `steam ${st}, smoke ${sm}`);
+  // out in the yard, faster still
+  F.addDensity(9.5 * TILE, 4.5 * TILE, 20, 1, K.steam);
+  const y0 = mass(s, 'steam', 8, 10);
+  s.run(3);
+  assert.ok(mass(s, 'steam', 8, 10) / y0 < st, 'the open air takes it sooner');
+});
+
+test('smoke: a blast leaves black soot that hangs for most of a minute, and drifts out of an open door', () => {
+  const shut = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  shut.world.events.emit('explosion', { x: 5.5 * TILE, y: 4.5 * TILE, radius: 80 });
+  const m0 = mass(shut, 'soot', 4, 6);
+  assert.ok(shut.smoke.fluid.densityAt(5.5 * TILE, 4.5 * TILE, shut.smoke.kind.soot) > 0.8, 'opaque at its heart');
+  shut.run(45);
+  const m45 = mass(shut, 'soot', 4, 6);
+  assert.ok(m45 > m0 * 0.25, `still ${(m45 / m0).toFixed(2)} of it after 45 s`);
+  assert.ok(mass(shut, 'soot', 4, 6) / 9 / ((TILE / 8) ** 2) > 0.1, 'still seen');
+  shut.run(45);
+  assert.ok(mass(shut, 'soot', 4, 6) < m0 * 0.25, 'thinning');
+  const open = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  open.door.body.angle = open.door.a0 + 1.2;
+  open.world.events.emit('explosion', { x: 5.5 * TILE, y: 4.5 * TILE, radius: 80 });
+  open.run(20);
+  assert.ok(mass(open, 'soot', 8, 10) > 0.5, 'out into the yard');
+  open.run(25);
+  assert.ok(mass(open, 'soot', 4, 6) < m45 * 0.8, 'the room clears sooner with its door open');
+});
+
+test('smoke: what burns gives off soot for as long as it burns; nothing is laid where the air is not stepped', () => {
+  const s = bar({ ...SMOKE, rest: { ...SMOKE.rest, zones: {} } });
+  for (let i = 0; i < 60 * 5; i++) { s.smoke.burn(5.5 * TILE, 4.5 * TILE, 'car', 1 / 60); s.world.time += 1 / 60; s.smoke.update(1 / 60); }
+  const near = s.smoke.fluid.densityAt(5.5 * TILE, 4.5 * TILE, s.smoke.kind.soot);
+  assert.ok(near > 0.3 && near <= SMOKE.burn.cap + 0.05, `soot over it: ${near}`);
+  s.smoke.fluid.setRegion(0, 0, 3 * TILE, 3 * TILE);
+  const before = mass(s, 'soot', 8, 10);
+  s.smoke.burn(9.5 * TILE, 4.5 * TILE, 'wreck', 1);
+  assert.equal(mass(s, 'soot', 8, 10), before);
+});
+
 test('papers: soaked by the rain they are heavier and drawn darker', () => {
   const world = { map: new TileMap(ROWS), events: new EventBus(), props: [], player: {}, enemies: [], civilians: [] };
   const dry = new Papers(world, [[1, 1, 3, 2, 20]]), wet = new Papers(world, [[1, 1, 3, 2, 20]], undefined, 0.8);

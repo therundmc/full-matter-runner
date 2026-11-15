@@ -6,7 +6,7 @@
 import { PALETTE } from '../Config.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import { clamp, lerp } from '../../engine/math.js';
-import { DEAL, dealAngle, drawn, pageTurn, drag, exhale, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
+import { DEAL, dealAngle, drawn, pageTurn, drag, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 
 const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 const CHIPS = ['#d8202a', '#2a62d8', '#f0ece0', '#1f8a3a'];
@@ -95,19 +95,10 @@ function flame(ctx, x, y, f, t) {
   ctx.fillStyle = '#fffbe6'; ctx.fillRect(x - 0.3, y - 0.3, 0.6, 0.6);
 }
 
-// a cigarette between the fingers at (x, y): its ember brighter on a drag (d), a thread of smoke going up and, after a
-// drag, the breath let out at the lips (e: 0..1 through it, -1 none)
-function cig(ctx, x, y, d, e, t, seed) {
+// a cigarette between the fingers at (x, y): its ember brighter on a drag (d); its smoke is the air's
+// (systems/Smoke.js: the thread off the ember, the breath after a drag)
+function cig(ctx, x, y, d) {
   smoke(ctx, x, y, 0, 2.6, 1, '#e8e2d2', d);
-  const u = (t * 0.6 + seed) % 1;
-  ctx.fillStyle = `rgba(200,200,210,${(0.3 * (1 - u)).toFixed(3)})`;
-  ctx.fillRect(x + 3 + u * 9, y - 1 + Math.sin(u * 6) * 2, 2 + u * 3, 2 + u * 3);
-  if (e < 0) return;
-  ctx.fillStyle = `rgba(205,205,215,${(0.32 * (1 - e)).toFixed(3)})`;
-  for (let i = 0; i < 3; i++) {
-    const sz = 2 + e * (4 + i * 2);
-    ctx.fillRect(6 + e * (10 + i * 5) - sz / 2, Math.sin(e * 5 + i * 2) * (1 + i) - sz / 2, sz, sz);
-  }
 }
 
 // what is in his hands at gesture g (time k of the phase, pt s into it, t the world's time), drawn at anchor A
@@ -282,8 +273,8 @@ export function drawPost(ctx, A, g, k, pt, t, h, opts = {}) {
       ctx.restore();
       break;
     }
-    case 'armed': cig(ctx, hl.x + 0.6, hl.y + 1.1, drag(t, opts.seed), exhale(t, opts.seed), t, opts.seed); break;
-    case 'armedAsh': cig(ctx, hl.x + 0.6, hl.y + 1.1, 0, -1, t, opts.seed); break;
+    case 'armed': cig(ctx, hl.x + 0.6, hl.y + 1.1, drag(t, opts.seed)); break;
+    case 'armedAsh': cig(ctx, hl.x + 0.6, hl.y + 1.1, 0); break;
     default: break;
   }
   ctx.restore();

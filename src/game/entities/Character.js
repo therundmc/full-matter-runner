@@ -455,13 +455,13 @@ export default class Character {
     this.flinch = FLINCH.dur; this.flinchK = k; this.flinchA = away; this.flinchSide = side;
   }
 
-  // the barrel that just fired a burst smokes once it falls silent, a thin wisp that rises until it has cooled
+  // the barrel that just fired a burst smokes once it falls silent, a thin thread that the air carries off until it
+  // has cooled (systems/Smoke.js)
   fume(dt) {
     this.barrel = Math.max(0, this.barrel - dt * BARREL.cool);
     if ((this.fumeT -= dt) > 0 || this.barrel < BARREL.from || !this.hasGun) return;
-    this.fumeT = BARREL.every;
     const m = this.muzzlePos();
-    this.world.particles.smoke(m.x, m.y, 1, 0.5, { speed: 7, size: 3, life: 1, puff: true, h: 4 });
+    this.world.smoke?.wisp(this, m.x, m.y, dt, BARREL.every);
   }
 
   fire(d) {

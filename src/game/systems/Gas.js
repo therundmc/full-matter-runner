@@ -21,7 +21,7 @@ export function ignite(prop, sx, sy, dirA) {
   w.sound('ignite', prop.x, prop.y, 0.7);
   w.noise(prop.x, prop.y, 260);
   let hiss = 0, glow = 0;
-  w.emit(prop.x, prop.y, fuse, (e) => {
+  w.emit(prop.x, prop.y, fuse, (e, dt) => {
     if (prop.dead || prop.dying) { e.t = 0; return; }
     const k = clamp(1 - e.t / fuse, 0, 1); // pressure building
     const a = prop.body.angle + jet, o = prop.toWorld(sx, sy), ca = Math.cos(a), sa = Math.sin(a);
@@ -31,7 +31,7 @@ export function ignite(prop, sx, sy, dirA) {
       P.fire(o.x + ca * len * u, o.y + sa * len * u, 1, 16, { size: [2 + 3 * u, 3 + 6 * u], life: [0.08, 0.2], heat: 0.25 - 0.3 * u, rise: 10 });
     }
     if (chance(0.25)) P.sparks(o.x, o.y, a, 0.35, 2, 260, '#ffd9a0');
-    if (chance(0.1)) P.smoke(o.x + ca * len, o.y + sa * len, 1, 3, { speed: 20, size: 5, life: 0.9, dark: true });
+    w.smoke?.burn(o.x + ca * len, o.y + sa * len, 'flame', dt);
     if (w.time >= glow) {
       glow = w.time + 0.08;
       w.light(o.x + ca * len * 0.5, o.y + sa * len * 0.5, 70 + 30 * k, '#ffb060', 0.13);

@@ -88,18 +88,20 @@ src/
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
-      Clouds.js           the powder out of a pierced extinguisher: hides from the guards (World.sightLine)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
       Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes
-                          whistling out of a bullet hole (STEAM, level `street`); a passing car tears it along
+                          whistling out of a bullet hole (SMOKE.steam / jets.leak, level `street`): steam put in the air
+                          of Smoke.js, which carries it (a passing car tears it along)
       Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
                           soaked by the rain, heavier and darker
       Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is
                           off): which tiles see the sky, puddles lying in the open, drip spots (only if it falls); a foot
                           through a puddle splashes. The drops are not stored (render/WeatherArt.js). DOM-free, seeded
-      Smoke.js            the air as a fluid and the smoke it carries (SMOKE): walls, doors and panes, sources (shots,
-                          blasts, fires, the smokers' threads and breaths), stirring (walkers, rounds, fans, drafts,
-                          convection, wind), a faint resting layer in the smoky places (DOM-free)
+      Smoke.js            the air as a fluid and what it carries (SMOKE): grey smoke, black soot, white powder, steam;
+                          walls, doors and panes, sources (shots and their ejection ports, blasts, what burns, jets, the
+                          smokers' threads and breaths, puffs), stirring (walkers, cars, rounds, fans, drafts,
+                          convection, wind), a faint resting layer in the smoky places; what hides from the guards
+                          (blocks(), World.sightLine) (DOM-free)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
@@ -134,8 +136,8 @@ src/
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
-      SmokeArt.js         the smoke in flat pixel bands, veiling and lit by the light map (squared), the mist, the
-                          cigarettes' threads
+      SmokeArt.js         the air's kinds in flat pixel bands, each its own look (glow lit twice, white lit once, a
+                          veil where lit, soot whatever the light), the mist, the threads
       Flicker.js          how bright a light is over time per kind (buzz, broken, pulse, tv...), the letters of a sign,
                           the faulty tubes picked per level (NEON: one dying, a few stuttering); DOM-free
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
@@ -586,8 +588,8 @@ its customers panic, the radio and the hums stop with the power.
 
 ## The air (data/atmosphere.js)
 
-All of it is a look; nothing reads it but the drawing (the smoke and the rain's puddles are not obstacles,
-not wet floors: no prints, no grip). Readability first: it is the lamps that make it show.
+All of it is a look but for thick smoke, which hides from the guards (the smoke and the rain's puddles are not
+obstacles, not wet floors: no prints, no grip). Readability first: it is the lamps that make it show.
 - Rain: the user wants none falling, so `RAIN.falls` is off: what is left is the wet of an earlier rain (puddles,
   floors in the open mirroring the lights, a light mist, soaked paper, thicker steam). How wet is the level's
   `soundscape.rain` times `RAIN.look`. Only where the sky is (Weather.skyGrid: open floors not in `AMBIENCE.indoors`, outer walls and roofs; never a room nor its walls).
@@ -596,24 +598,47 @@ not wet floors: no prints, no grip). Readability first: it is the lamps that mak
   Drawn before the lighting (the light map colours it: it glitters under a streetlight) and once more, faint
   (`RAIN.after`), over the lit scene. Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
   a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`look.sky`).
-- Smoke (systems/Smoke.js over engine/physics/Fluid.js, `SMOKE`): the air of the whole map is a coarse fluid seen
-  from above, the layer under the ceilings: flow cells of 16 px (velocity), density cells of 8 px, stepped at 30 Hz
-  (the flow one frame, the smoke the next) and only about the view (`reach`); nothing is stepped while the air
-  there is empty and still. Walls are solid cells; a door is solid while shut on its frame (`shut`), a pane while
-  intact; an open door or a smashed window between a room and the open air draws the room's smoke out (`draft`:
-  a push and a spill over the lintel). Sources: every 'shot' (a puff drawn out along the shot and thrown on by the
-  muzzle blast, `muzzle.by` per weapon sound), 'explosion' (a billow, volume pushed out of its heart, eddies), the
-  fires, the smokers (a thread of points off the ember that rides the air and sways, leaving its smoke in the layer
-  as it fades; a breath after each drag). Stirring: people walking drag the air, rounds along their line, ceiling
-  fans (props with `spin`) turn it and thin it, a slow divergence-free convection under ceilings, the wind and the
-  'gust's outdoors. Loss: what is over the rest level goes at `loss.room` (a fight's smoke hangs 10-20 s) or
-  `loss.open`; a smoky place of the soundscape (`rest.zones`) keeps a faint patchy layer, thinned by the power cut.
-  SmokeArt samples the density at the light map's size on the world's 2 px grid, cuts it into flat bands with edges
-  ragged by a hash of the texel's place (pixel art, no blur, steady as the view moves), refilled only when the smoke
-  stepped or the view moved; it veils the scene a little where it is lit (multiply) and screens its tinted glow, lit
-  twice by the light map (the dark stays clear), right after Lighting.apply (so muzzle flames, texts and marks stay
-  crisp above it); the open air's mist in the rain goes in the same glow. The threads are drawn a world pixel at a
-  time with the scene, before the light.
+- Smoke (systems/Smoke.js over engine/physics/Fluid.js, `SMOKE`): every smoke, steam and dust cloud of the game is
+  this one simulation. The air of the whole map is a coarse fluid seen from above, the layer under the ceilings:
+  flow cells of 16 px (velocity), density cells of 8 px, stepped at 20 Hz (the flow one frame, what it carries the
+  next) and only about the view (`reach`); nothing is stepped while the air there is empty and still. It carries
+  four kinds (`SMOKE.kinds`, each its own density in Fluid.kinds, all moved by the same flow; a kind with nothing
+  in the stepped region is not carried at all), each with its loss in a room and in the open air, its spread, its
+  look and how much it hides:
+  - smoke (grey): gunfire, cigarettes, a car's exhaust, a damaged engine, dust of a wall or a window torn out; a fight's smoke hangs 10-20 s in a room; it never hides anyone;
+  - soot (near black, opaque at its heart): blasts (a big billow, volume pushed out of its heart, eddies), what
+    burns (`burn` by size: the level's fires, the small fires a blast leaves, a burning car and its wreck, a pierced
+    gas bottle's flame, shorted electronics), a screen caving in, a dying motor; it hangs 40-90 s in a room, the
+    wind takes it sooner outdoors;
+  - powder (white): a pierced wall extinguisher's jet (`jets.powder`, thrashing as it empties, swelling into a
+    cloud), gone in about 15 s;
+  - steam (white): manholes, wall vents, a pierced steam pipe's jet (`jets.leak`, systems/Steam.js), a fire doused,
+    the spray of a burst water main; it condenses away in a few s.
+  Walls are solid cells; a door is solid while shut on its frame (`shut`), a pane while intact; an open door or a
+  smashed window between a room and the open air draws the room's air out (`draft`: a push and a spill over the
+  lintel, every kind). Every 'shot' leaves a puff drawn out along the shot and thrown on by the muzzle blast
+  (`muzzle.by` per weapon sound) and a smaller one out of the ejection port with the case, thrown to the gun's
+  right (`muzzle.port`). Threads (a pool of points that rides the air, sways and leaves its smoke in the layer as
+  it fades): the smokers' cigarettes and cigars (a breath after each drag, the boss's slow cloud after a draw), a
+  cigar clamped in the teeth, butts smouldering on the floor or in an ashtray, a barrel just after a burst.
+  Stirring: people walking and cars going by drag the air, rounds along their line, ceiling fans (props with `spin`)
+  turn it and thin it, sprinkler heads bring it down (`wash`), a slow divergence-free convection under ceilings, the
+  wind and the 'gust's outdoors. A smoky place of the soundscape (`rest.zones`) keeps a faint patchy grey layer,
+  thinned by the power cut. Sight: `Smoke.blocks` (World.sightLine, Scoring's 'smoked') is true when a line crosses
+  `sight.len` px of air at least `sight.thick` thick, the kinds weighted by their `sight` (Fluid.thickAlong); quick
+  to say no while nothing thick is about.
+  SmokeArt samples each kind's density at the light map's size on the world's 2 px grid (softened by a 1-2-1 kernel
+  each way, so the carrying's cell-to-cell grain never shows), adds them into an opacity cut into flat bands whose
+  edges waver along a smooth noise laid on the world's grid (pixel art, no blur, no dither, steady as the view
+  moves), each kind capped (`look.max`); one kind alone is painted from its own band table, mixed kinds by their
+  shares. It is refilled only when the air stepped or the view moved, and only the buffers the kinds in view use are
+  written: the glow (screened, lit twice by the light map: the dark stays clear), the white of powder and steam
+  (lit once), the veil (taken off where lit) and the soot (taken off whatever the light), all right after
+  Lighting.apply (so muzzle flames, texts and marks stay crisp above it); the open air's mist in the rain goes in
+  the glow. The threads are drawn a world pixel at a time with the scene, before the light.
+  Still particles, not the air: dust that is not a cloud (plaster off a bullet hole, a slide's or a vault's scuff,
+  a body hitting the floor, a tyre bursting), the getaway van's exhaust and tyre smoke (puffs that read in the dark
+  street, the outro's look kept as it was) and the trails of burning scraps in flight (they have a height).
 - Neon faults: `NEON.faults` picks, by a hash of where they stand, a dying tube and a few stuttering signs/tubes
   (Flicker.pickFaults); their light, its reach and their glow map flicker together.
 
