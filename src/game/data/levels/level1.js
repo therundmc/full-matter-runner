@@ -191,7 +191,7 @@ export default {
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[11, 0, 32, 4], [11, 5, 13, 20], [32, 5, 32, 19], [14, 5, 20, 11], [24, 5, 31, 11], [15, 12, 20, 12], [25, 16, 30, 19]],
-  intro: 'sit',
+  intro: 'swig',
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
   welcome: [[21, 12, 30, 12], [15, 13, 30, 15], [15, 16, 23, 19], [21, 6, 23, 11]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box

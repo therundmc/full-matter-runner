@@ -1109,6 +1109,13 @@ def items():
                               "........"], {'t': hx('#f0e6d0'), 'T': hx('#d8202a'), 'p': hx('#e8508a'), 'P': hx('#f0b090'),
                                             'b': hx('#4a7ab0'), 'l': hx('#d8d2c0')})
     I['ashtray'] = layer(Cv(10, 10), lambda ly: ashtray(ly, 5.0, 5.0, random.Random(901), 2.8))
+    # a bottle of rum lying down, its neck toward +x: amber glass, the label, the cap
+    I['bottle'] = ascii_cv(['...........',
+                            '.bbLLbb....',
+                            '.BbLLbbnnk.',
+                            '.BBLLBB....',
+                            '...........'], {'b': hx('#8a5424'), 'B': hx('#5a3416'), 'L': hx('#e8d8a8'), 'n': hx('#6a4020'),
+                                            'k': hx('#c8a040')})
     return I
 
 
@@ -5096,7 +5103,7 @@ EXPECTED = {
     'tiles': dict([(n + s, (32, 32)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof', 'neon_floor_glow')]),
     'roof': dict(list(ROOF_SIZES.items()) + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
-    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10)),
+    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
 }

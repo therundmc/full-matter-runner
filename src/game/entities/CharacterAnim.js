@@ -633,8 +633,31 @@ export function sitPose(ch, P, V) {
     h.x = V.tx - c - s * side * 9; h.y = V.ty - s + c * side * 9;
     reach(h, V, side);
   }
+  if (ch.swig) swigPose(ch, V);
   blendPose(P, V, w);
+  P.carryImg = w > 0.5 ? V.carryImg : null; // the bottle: his as long as he sits
   return P;
+}
+
+// The bottle he finishes first (Player.swig, GESTURE.swig), in his right hand: on his thigh, up to his mouth (he
+// tips back with each gulp), down again, drawn back behind him, flung at the wall across; then the empty hand
+// comes back down. [x, y, the bottle's turn] of the hand in his frame at each of those.
+const SWIG = { lap: [5, 4.5, 0.3], mouth: [7, 1.2, Math.PI - 0.35], back: [-2.5, 7.5, 2.2], out: [10.5, 1.5, 0] };
+function swigPose(ch, V) {
+  const g = ch.swig, T = GESTURE.swig, t = g.t, a = ch.angle;
+  const drink = smooth((t - T.drink[0]) / 0.28) * (1 - smooth((t - T.drink[1]) / 0.24));
+  const back = smooth((t - T.back[0]) / (T.back[1] - T.back[0])), fling = clamp((t - T.back[1]) / (T.throw - T.back[1]), 0, 1) ** 2;
+  const settle = smooth((t - T.throw) / (T.end - T.throw));
+  const held = (i) => lerp(lerp(lerp(SWIG.lap[i], SWIG.mouth[i], drink), SWIG.back[i], back), SWIG.out[i], fling);
+  // each gulp tips him back a little; the throw takes his shoulders forward
+  const gulp = drink * Math.max(0, Math.sin(((t - T.drink[0]) / (T.drink[1] - T.drink[0])) * Math.PI * T.gulps)) * 0.9;
+  const lean = gulp - 1.5 * fling * (1 - settle);
+  V.tx -= Math.cos(a) * lean; V.ty -= Math.sin(a) * lean;
+  place(V.hr, V, a, lerp(held(0), SWIG.lap[0], settle), lerp(held(1), SWIG.lap[1], settle));
+  reach(V.hr, V, 1);
+  if (g.thrown) return;
+  V.carryImg = spriteOpt('items/bottle');
+  V.carry.x = V.hr.x; V.carry.y = V.hr.y; V.carry.a = a + held(2);
 }
 
 // ---------------- at his post (Enemy.postBody, data/posts.js) ----------------

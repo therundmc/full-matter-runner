@@ -135,10 +135,14 @@ export const MOMENTS = {
 //   door   a hand flat on a door leaf he walks into: gap (px between his body and the leaf at which it is on),
 //          speed (px/step he must push at it with), on / off (s to raise / drop it)
 //   getup  getting up after a knock-down: dur (s at the end of the time on the floor)
+//   swig   how level 1 opens (level intro 'swig'): sat against the wall he drinks off a bottle (drink: [from, to] s,
+//          gulps of them), looks at it, draws his arm back (back: [from, to]) and smashes it on the wall across
+//          (throw: s it leaves his hand, speed px/s, reach: px it flies at most), end: s he is free again
 export const GESTURE = {
   trunk: { dur: 0.5, lift: [0.2, 0.62], take: 0.78 },
   door: { gap: 4, speed: 0.25, on: 0.08, off: 0.16 },
   getup: { dur: 0.85 },
+  swig: { drink: [0.45, 1.6], gulps: 3, back: [1.9, 2.15], throw: 2.3, speed: 560, reach: 200, end: 2.75 },
 };
 
 // d: a weapon definition -> its FEEL family

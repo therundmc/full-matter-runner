@@ -92,7 +92,10 @@ export function buildLevel(world, level) {
       const face = facing(level, map, x, y);
       if (ch === '@') {
         world.player = new Player(world, px, py, face);
-        if (level.intro === 'sit') world.player.sit = 1; // he starts sitting on the ground, his back to the wall
+        // he starts sitting on the ground, his back to the wall; 'swig': a bottle in his hand, that he drinks off and
+        // smashes before anything else (Player.updateSwig)
+        if (level.intro === 'sit' || level.intro === 'swig') world.player.sit = 1;
+        if (level.intro === 'swig') world.player.swig = { t: 0, thrown: false, go: false };
       }
       else if (ENEMIES[ch.toLowerCase()]) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];

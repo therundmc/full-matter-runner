@@ -104,7 +104,8 @@ lv.put(30, 32, 'D')
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
 lv.actor('@', 20, 34, face=0)
-lv.intro = 'sit'                                        # on the ground, his back to the wall: he gets up
+lv.intro = 'swig'                                       # on the ground, his back to the wall, the last of a bottle of
+                                                        # rum in his hand: he drinks it off, smashes it, gets up
 
 # The street, the start alley, the bar room and its toilets are public ground: anyone may walk in for a drink.
 # Off limits: the back lot, the service alley behind its gate, the gap, and inside the bar the storeroom, the

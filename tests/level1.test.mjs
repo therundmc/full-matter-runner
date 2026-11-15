@@ -110,7 +110,7 @@ test('level 1 is fought hand to hand: two guns in the house (the bar room, the b
   const trunks = level.props.filter((p) => p[4]?.trunk);
   assert.deepEqual(trunks.map((p) => [p[0], p[4].trunk]), [['car2', 'tire_iron']]);
   assert.ok(trunks[0][1] < 20, 'the first car on the left');
-  assert.equal(level.intro, 'sit');
+  assert.equal(level.intro, 'swig');
 });
 
 // the shop fronts of the street: room (inclusive tiles), display panes and door on the facade row, neon sign

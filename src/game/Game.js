@@ -120,7 +120,7 @@ export default class Game {
     this.levelId = LEVELS[id] ? id : 'level1';
     this.world = new World(this, LEVELS[this.levelId]);
     // he gets up off the ground the first time only: a retry starts on his feet, at once
-    if (this.seen === this.levelId) this.world.player.sit = 0;
+    if (this.seen === this.levelId) { this.world.player.sit = 0; this.world.player.swig = null; }
     this.seen = this.levelId;
     this.best = loadBest(this.levelId);
     this.ranked = true; // until the sandbox panel is opened

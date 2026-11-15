@@ -1,7 +1,8 @@
 import { PLAYER, TAKEDOWN } from '../Config.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand, chance, clamp, angDiff } from '../../engine/math.js';
-import { chunk } from '../../engine/Assets.js';
+import { chunk, spriteOpt } from '../../engine/Assets.js';
+import Debris from './Debris.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
 import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
@@ -31,6 +32,7 @@ export default class Player extends Character {
     this.trunkOpen = null;  // { car, t, took } while he opens it (updateTrunk)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
+    this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
     this.rising = false;
     this.takedown = null;   // { target, t, done, blade, side } while we have him by the neck
     this.grab = null;       // what CharacterAnim plays of it: { k, d, side, blade }
@@ -189,7 +191,10 @@ export default class Player extends Character {
   updateSit(dt, input) {
     if (!this.rising) {
       this.steer(0, 0, 0, 1);
-      if (!input.anyPressed && !input.mouseDown(0)) return false;
+      const key = input.anyPressed || input.mouseDown(0);
+      if (this.swig && !this.updateSwig(dt, key)) return false;
+      if (!key && !this.swig?.go) return false;
+      this.swig = null;
       this.rising = true;
       this.world.sound('getUp', this.x, this.y, 0.7);
     }
@@ -197,6 +202,34 @@ export default class Player extends Character {
     if (this.sit <= 0.3) return true;
     this.steer(0, 0, 0, 1);
     return false;
+  }
+
+  // The level opens on him sat against the wall, the last of a bottle of rum in his hand (GESTURE.swig): he drinks
+  // it off, looks at it and smashes it on the wall across, then waits for the first key. A key before that hurries
+  // the throw and has him up right after it. Nobody hears it. Returns whether it is over.
+  updateSwig(dt, key) {
+    const g = this.swig, T = GESTURE.swig, w = this.world;
+    if (key) { g.go = true; g.t = Math.max(g.t, T.back[0]); }
+    g.t += dt;
+    if (!g.thrown && g.t >= T.throw) {
+      g.thrown = true;
+      // out of his hand, straight ahead, to the first wall (or the floor, where there is none)
+      const a = this.angle, c = Math.cos(a), s = Math.sin(a), x0 = this.x + c * 14, y0 = this.y + s * 14;
+      let d = 0;
+      while (d < T.reach && !w.map.solidAt(x0 + c * (d + 6), y0 + s * (d + 6))) d += 4;
+      const dur = d / T.speed, img = spriteOpt('items/bottle');
+      const bottle = img && new Debris(w, img, x0, y0, a, c * T.speed, s * T.speed, 0.5, { material: 'glass', kg: 0.5, fly: dur + 0.1 });
+      if (bottle) w.addDebris(bottle);
+      w.sound('throw', this.x, this.y, 0.6);
+      w.after(dur, () => {
+        const x = x0 + c * d, y = y0 + s * d;
+        if (bottle) w.removeDebris(bottle);
+        w.particles.glass(x, y, a + Math.PI, 1.2, 16, 220);
+        w.decals.smear(x, y, a + Math.PI / 2, 9, '#3a2410', 0.35); // what was left of the rum, down the wall
+        w.sound('glass', x, y, 0.7);
+      });
+    }
+    return g.t >= T.end;
   }
 
   // E at the tail of a parked car (GESTURE.trunk): he bends over it, lifts the lid with both hands and takes what is

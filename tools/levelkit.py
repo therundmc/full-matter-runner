@@ -65,7 +65,8 @@ class Level:
         self.roofs = []       # (area, kind, col, row, deg)
         self.premises = []    # guarded tile rectangles [col0, row0, col1, row1]
         self.welcome = []     # rectangles where a stranger is a customer: guards never tell him to clear off
-        self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key
+        self.intro = None     # 'sit': the player starts sitting on the ground and gets up at the first key; 'swig':
+                              # the same, after he has drunk off a bottle and smashed it on the wall across
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
         self.mains = None     # the house's electricity: { box: [col, row], zone: tile rectangle it feeds }
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
