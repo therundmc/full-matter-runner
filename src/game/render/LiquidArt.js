@@ -194,7 +194,7 @@ export default class LiquidArt {
     const tx0 = Math.floor((cx0 * cell) / px), ty0 = Math.floor((cy0 * cell) / px);
     const tx1 = Math.min(this.TW, Math.floor(((cx0 + CH) * cell) / px)), ty1 = Math.min(this.TH, Math.floor(((cy0 + CH) * cell) / px));
     const col = this.color.px, mir = this.mirror.px, TW = this.TW, lut = this.lut, mlut = this.mlut, flags = this.flags;
-    const [T0, T1, T2, T3, T4] = look.levels, grain = this.grain, gl = look.glint;
+    const [T0, T1, T2, T3, T4] = look.levels, grain = this.grain, gl = look.glint, G = look.gap;
     const fe = look.foam.edge * look.rag, fd = look.foam.deep * look.rag;
     for (let ty = ty0; ty < ty1; ty++) {
       const row = ty * TW;
@@ -206,6 +206,10 @@ export default class LiquidArt {
         const own = oy * L + Math.floor(wx / cell) - cx0 + 1, j = ly * L + jx - cx0 + 1;
         const a = lv[j], b = lv[j + 1], c2 = lv[j + L], d2 = lv[j + L + 1];
         if (sol[own] || a + b + c2 + d2 <= 0) { col[o] = 0; mir[o] = 0; continue; }
+        // `gap` px short of what holds it: no texel by a solid cell
+        const ax = Math.floor((wx - G) / cell) - cx0 + 1, bx = Math.floor((wx + G) / cell) - cx0 + 1;
+        const ay = (Math.floor((wy - G) / cell) - cy0 + 1) * L, by = (Math.floor((wy + G) / cell) - cy0 + 1) * L;
+        if (sol[ay + ax] || sol[ay + bx] || sol[by + ax] || sol[by + bx]) { col[o] = 0; mir[o] = 0; continue; }
         const g = grain[(ty % GRAIN) * GRAIN + (tx % GRAIN)];
         const v = (a + (b - a) * sx) * (1 - sy) + (c2 + (d2 - c2) * sx) * sy + g;
         if (v < T0) { col[o] = 0; mir[o] = 0; continue; }
@@ -258,15 +262,20 @@ export default class LiquidArt {
       }
     }
     list.length = 0;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let q = 0; q < 5; q++) {
       const r = rects[q];
       if (!r.length) continue;
       const c = RAMPS[2][shade[q]];
       g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] / 255})`;
       g.beginPath();
-      for (let k = 0; k < r.length; k += 2) g.rect(r[k], r[k + 1], px, px);
+      for (let k = 0; k < r.length; k += 2) {
+        g.rect(r[k], r[k + 1], px, px);
+        x0 = Math.min(x0, r[k]); y0 = Math.min(y0, r[k + 1]); x1 = Math.max(x1, r[k] + px); y1 = Math.max(y1, r[k + 1] + px);
+      }
       g.fill();
     }
+    if (x1 > x0) this.world.decals.trim(g, x0, y0, x1, y1); // off the walls, as every stain
   }
 
   // with the floor, before the lighting: the liquid in view (rect { x0, y0, x1, y1 } world px), its ripples

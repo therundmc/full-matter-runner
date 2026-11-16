@@ -5,7 +5,7 @@ import Corpse from '../entities/Corpse.js';
 import Ragdoll, { hasRagdoll } from '../entities/Ragdoll.js';
 import { blowFrom } from './Blows.js';
 import { WOUNDS, BODY, THROAT, BEHEAD, THROES, SPASM, TEAR, SKULL, KNEELS, woundFor, blowScale, markOf } from '../data/wounds.js';
-import { fling, wallBehind, splashWall } from './Spatter.js';
+import { fling, wallBehind, splashWall, floorLine } from './Spatter.js';
 import { WALL_RIM } from '../Config.js';
 import { skullBit, BIT_KINDS } from '../render/GoreArt.js';
 
@@ -190,8 +190,8 @@ function burstSkull(world, x, y, angle) {
   P.blood(x, y, angle, S.drops[2], S.drops[0], S.drops[1], { big: true });
   P.blood(x, y, angle + Math.PI, 0.9, Math.round(S.drops[0] / 5), 140);
   P.mist(x, y, S.mist, 8, angle);
-  const wall = wallBehind(world.map, x, y, angle, S.reach);
-  const far = wall ? Math.min(S.matter[2], wall.d) : S.matter[2];
+  const stop = wallBehind(world.map, x, y, angle, S.reach, world), wall = stop?.shut ? null : stop;
+  const far = stop ? Math.min(S.matter[2], stop.d) : S.matter[2];
   for (let i = randi(S.bits[0], S.bits[1]); i > 0; i--) {
     const a = angle + rand(-0.55, 0.55), v = rand(...S.speed) * (far / S.matter[2] * 0.7 + 0.3);
     P.shard(skullBit(pick(BIT_KINDS)), x, y, a, v, { z: rand(6, 12), vz: rand(20, 110), bounce: 0.15, drag: 2.2,
@@ -201,12 +201,12 @@ function burstSkull(world, x, y, angle) {
   for (let i = S.matter[0]; i > 0; i--) {
     const d = rand(S.matter[1], far), a = angle + rand(-0.3, 0.3) * (1 - d / (S.matter[2] * 1.5));
     const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d;
-    if (!world.map.solidAt(px, py)) D.matter(px, py, rand(2.5, 4.5) * (1.2 - d / S.matter[2] * 0.5), a);
+    if (floorLine(world, x, y, px, py)) D.matter(px, py, rand(2.5, 4.5) * (1.2 - d / S.matter[2] * 0.5), a);
   }
   if (chance(0.5)) throwGib(world, sprite('characters/gib_eye'), x, y, angle, false, 0.3, 0, 0.7, 0.5);
   if (wall) {
     splashWall(world, wall, angle, S.wall, randi(S.runs[0], S.runs[1]));
-    D.matter(wall.x - wall.nx * (WALL_RIM + 4), wall.y - wall.ny * (WALL_RIM + 4), rand(3, 4.5), angle, true);
+    D.matter(wall.x - wall.nx * (WALL_RIM + 4), wall.y - wall.ny * (WALL_RIM + 4), rand(3, 4.5), angle, true, wall.nx, wall.ny);
   }
 }
 

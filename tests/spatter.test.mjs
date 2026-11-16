@@ -73,3 +73,80 @@ test('spatter: calibrated by weapon (a .50 throws farther and bursts more skulls
   assert.ok(SKULL.bits[0] <= SKULL.bits[1] && SKULL.runs[0] <= SKULL.runs[1]);
   assert.ok(TEAR.blast.limb > 0 && TEAR.heavy.limb > 0 && TEAR.explosion.gibs === 1);
 });
+
+// Blood against a wall (BLOOD_EDGE): a real tile map, a thin wall at column 4, an intact window at (4, 1) and a door
+// leaf shut across (4, 5); everything the spray lays on the floor is recorded with its reach
+const { TILE } = await load('game/Config.js');
+const { default: TileMap } = await load('game/world/TileMap.js');
+const { BLOOD_EDGE } = await load('game/data/wounds.js');
+const { offFloor, shutBetween } = await load('game/fx/Spatter.js');
+const ROOMS = [
+  '#########',
+  '#...G...#',
+  '#...#...#',
+  '#...#...#',
+  '#...#...#',
+  '#...D...#',
+  '#########',
+];
+function rooms(pane = true) {
+  const calls = [], rec = (name) => (...a) => calls.push([name, ...a]);
+  const map = new TileMap(ROOMS);
+  const world = {
+    map, emitters: [], emit() {},
+    windows: [{ x: 4.5 * TILE, y: 1.5 * TILE, vertical: true, intact: pane }],
+    doors: [{ hx: 4.5 * TILE, hy: 5 * TILE, len: TILE, back: 0, body: { angle: Math.PI / 2 } }],
+    decals: { runDot: rec('run'), stampBlood: rec('blood'), stampStreak: rec('streak'), splashWall: rec('splash') },
+  };
+  return { world, calls };
+}
+// the farthest point a floor mark recorded by fling reaches along +x (a streak's tail and droplets run on ahead; a
+// stain at the foot of the wall is cut back from it by the drawing, MapRenderer.trim)
+const reach = ([n, x, , , , len]) => (n === 'streak' ? x + len * 1.8 : x);
+
+test('blood edge: a spray fired at a wall never lands in it nor beyond it, whatever the gun', () => {
+  for (const name of ['small', 'buckshot', 'rifle', 'heavy']) {
+    for (let i = 0; i < 20; i++) {
+      const { world, calls } = rooms();
+      fling(world, 3.6 * TILE, 3.5 * TILE, 0, WOUNDS[name], 1.6, 0.3);
+      for (const c of calls.filter(([n]) => n === 'streak' || n === 'blood')) {
+        assert.ok(!world.map.solidAt(c[1], c[2]), `${name}: a mark inside the wall`);
+        assert.ok(reach(c) < 4 * TILE, `${name}: a mark running past the wall face (${reach(c)})`);
+      }
+    }
+  }
+});
+
+test('blood edge: a shut door and an intact pane take the spray as a wall does; a broken pane lets it by', () => {
+  const beyond = (calls) => calls.filter(([n, x]) => (n === 'streak' || n === 'blood') && x > 5 * TILE).length;
+  let through = 0;
+  for (let i = 0; i < 20; i++) {
+    for (const y of [1.5, 5.5]) {
+      const { world, calls } = rooms();
+      const stop = fling(world, 3.5 * TILE, y * TILE, 0, WOUNDS.heavy, 1.6, 0.05);
+      assert.equal(stop, null, 'no wall face splashed through a door or a pane');
+      assert.equal(beyond(calls), 0);
+      assert.ok(!calls.some(([n]) => n === 'splash'));
+    }
+    const broken = rooms(false);
+    fling(broken.world, 3.5 * TILE, 1.5 * TILE, 0, WOUNDS.heavy, 1.6, 0.05);
+    through += beyond(broken.calls);
+  }
+  assert.ok(through > 0, 'out through the empty frame');
+  const { world } = rooms();
+  assert.ok(shutBetween(world, 4 * TILE, 5.5 * TILE, 5 * TILE, 5.5 * TILE) && !shutBetween(world, 2 * TILE, 3 * TILE, 3 * TILE, 3 * TILE));
+});
+
+test('blood edge: the floor left bare by the walls and windows is BLOOD_EDGE.floor px wide', () => {
+  const map = new TileMap(ROOMS), rects = offFloor(map);
+  const off = (x, y) => rects.some(([rx, ry, w, h]) => x >= rx && x < rx + w && y >= ry && y < ry + h);
+  assert.ok(BLOOD_EDGE.floor >= 2 && BLOOD_EDGE.floor <= 3 && BLOOD_EDGE.face >= 6);
+  for (let y = 1 * TILE + 4; y < 5 * TILE - 4; y++) {
+    // the wall at column 4 (its window tile too), seen from both sides
+    for (let d = 0; d <= 2; d++) assert.ok(off(4 * TILE - 1 - d, y) && off(5 * TILE + d, y), `${d} px from the face at y ${y}`);
+    if (y > 2 * TILE && y < 5 * TILE) assert.ok(!off(4 * TILE - 1 - BLOOD_EDGE.floor, y) && !off(5 * TILE + BLOOD_EDGE.floor, y));
+  }
+  assert.ok(off(4.5 * TILE, 1.5 * TILE), 'a window is no floor');
+  assert.ok(!off(4.5 * TILE, 5.5 * TILE), 'a doorway is');
+  assert.ok(!off(2 * TILE, 3 * TILE));
+});

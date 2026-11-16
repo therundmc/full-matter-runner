@@ -576,3 +576,56 @@ test('music: the calm and the tense are clean, a fight gets dirtier with each ki
   const hot = playMusic(BAR * 4, [[0, () => Music.setCombat(true)]], 1);
   assert.ok(hot.filter((b) => FIGHT.includes(b.name)).at(-1).plan.grit > at(0), 'the heat adds to it');
 });
+
+test('audio: the car horn is a 1980s car\'s, two buzzy notes a third apart, quick short beeps, not a truck\'s blare', () => {
+  withContext((ctx) => {
+    const oscs = [], gains = [], filters = [];
+    const mkO = ctx.createOscillator, mkG = ctx.createGain, mkF = ctx.createBiquadFilter;
+    ctx.createOscillator = () => {
+      const o = mkO(), start = o.start, stop = o.stop, rec = { o };
+      o.start = (t) => { rec.t0 = t; start(t); };
+      o.stop = (t) => { rec.t1 = t; stop(t); };
+      oscs.push(rec);
+      return o;
+    };
+    ctx.createGain = () => {
+      const g = mkG(), rec = { g, pts: [] };
+      g.gain.setValueAtTime = (v, t) => rec.pts.push([t, v]);
+      g.gain.linearRampToValueAtTime = (v, t) => rec.pts.push([t, v]);
+      gains.push(rec);
+      return g;
+    };
+    ctx.createBiquadFilter = () => { const f = mkF(); filters.push(f); return f; };
+    ctx.currentTime = 5;
+    // a driver held up: honk-honk
+    Audio._horn(ctx.createGain(), { honks: 2 });
+    assert.equal(oscs.length, 4, 'two horns a beep, two beeps');
+    for (const { o } of oscs) assert.equal(o.type, 'square', 'odd harmonics: a buzz');
+    const pair = oscs.slice(0, 2).map(({ o }) => o.frequency.value).sort((a, b) => a - b);
+    assert.ok(pair[0] >= 380 && pair[0] <= 470 && pair[1] >= 470 && pair[1] <= 560, `around 400-500 Hz: ${pair}`);
+    const third = pair[1] / pair[0];
+    assert.ok(third > 1.17 && third < 1.28, `a minor to a major third apart: ${third}`);
+    const starts = [...new Set(oscs.map((r) => r.t0))].sort((a, b) => a - b);
+    assert.equal(starts.length, 2, 'two beeps');
+    const beeps = oscs.filter((r) => r.t0 === starts[0]).map((r) => r.t1 - r.t0);
+    assert.ok(Math.max(...beeps) < 0.25, `short beeps: ${beeps}`);
+    // the envelope speaks in a few ms and lets go fast
+    const env = gains.find((r) => r.pts.length === 4);
+    assert.ok(env && env.pts[1][0] - env.pts[0][0] <= 0.01 && env.pts[3][0] - env.pts[2][0] <= 0.05, 'quick attack and release');
+    // bright: the boom thinned, a nasal band pushed between 1 and 3 kHz
+    const hp = filters.filter((f) => f.type === 'highpass'), band = filters.find((f) => f.type === 'peaking');
+    assert.ok(hp.length && hp.every((f) => f.frequency.value >= 300));
+    assert.ok(band && band.frequency.value >= 1000 && band.frequency.value <= 3000 && band.gain.value > 0);
+    // one held honk is longer, three is three
+    oscs.length = 0;
+    Audio._horn(ctx.createGain(), { honks: 1 });
+    assert.equal(oscs.length, 2);
+    assert.ok(oscs[0].t1 - oscs[0].t0 > 0.25 && oscs[0].t1 - oscs[0].t0 < 0.6, 'one held');
+    oscs.length = 0;
+    Audio._horn(ctx.createGain(), { honks: 3 });
+    assert.equal(new Set(oscs.map((r) => r.t0)).size, 3);
+  });
+  // a held up driver gives two or three beeps each time
+  const src = readFileSync(fileURLToPath(new URL('../src/game/systems/Ambient.js', import.meta.url)), 'utf8');
+  assert.match(src, /sound\('horn',.*honks: .*\? 2 : 3/);
+});

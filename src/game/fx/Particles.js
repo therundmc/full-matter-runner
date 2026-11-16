@@ -2,7 +2,7 @@ import { MAX_PARTICLES, PALETTE, DESTRUCTION, LITTER, WALL_RIM } from '../Config
 import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette, sw, sh } from '../../engine/Assets.js';
 import { RUNS } from '../data/wounds.js';
-import { run, faceNormal } from './Spatter.js';
+import { run, faceNormal, shutBetween } from './Spatter.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
 // FLOAT: stuffing / feathers / paper drifting down slowly; DUST: clouds that hang and settle; DROP: liquid;
@@ -244,7 +244,8 @@ export default class Particles {
           if ((p.life < 1.5 && p.vx * p.vx + p.vy * p.vy < 4) || p.life <= 0) { this._rest(p); alive = false; }
         }
         if (!alive && !p.landed) { p.landed = true; this._rest(p); }
-        if (map.solidAt(nx, ny)) { p.vx *= -0.3; p.vy *= -0.3; p.x += p.vx * dt; p.y += p.vy * dt; if (alive) list[w++] = p; continue; }
+        // a wall, a shut door or a pane: it bounces back off it
+        if (map.solidAt(nx, ny) || (!p.landed && shutBetween(this.world, p.x, p.y, nx, ny))) { p.vx *= -0.3; p.vy *= -0.3; p.x += p.vx * dt; p.y += p.vy * dt; if (alive) list[w++] = p; continue; }
       } else if (p.type === P.FLOAT) {
         // pops up, then flutters down, swaying
         p.vz = Math.max(-p.fall, p.vz - 140 * dt);
@@ -266,12 +267,14 @@ export default class Particles {
       } else if (p.z !== undefined) {
         p.vz -= 520 * dt;
         p.z += p.vz * dt;
-        if (map.solidAt(nx, ny)) {
+        if (p.type === P.BLOOD && shutBetween(this.world, p.x, p.y, nx, ny)) {
+          alive = false; // a shut door or a pane takes it: nothing beyond
+        } else if (map.solidAt(nx, ny)) {
           // hit a wall while airborne: blood splashes its top and runs down to its foot
           if (p.type === P.BLOOD) {
             // on its top, behind the outline of the face it struck
             const [fx, fy] = faceNormal(map, p.x, p.y, nx, ny), deep = WALL_RIM + p.size;
-            decals.stampWall(nx - fx * deep, ny - fy * deep, p.size * 0.9);
+            decals.stampWall(nx - fx * deep, ny - fy * deep, p.size * 0.9, fx, fy);
             if (chance(0.5)) decals.stampBlood(p.x, p.y, p.size * 0.8);
             if (p.size > 1.8 && chance(RUNS.odds)) run(this.world, p.x, p.y, fx, fy, rand(...RUNS.len) * p.size * 0.4);
           }
@@ -285,6 +288,8 @@ export default class Particles {
         }
       } else if ((p.type === P.SPARK) && map.solidAt(nx, ny)) {
         p.vx *= -0.4; p.vy *= -0.4;
+      } else if (p.type === P.MIST && shutBetween(this.world, p.x, p.y, nx, ny)) {
+        continue; // a shut door or a pane takes the fine spray too
       } else if (p.type === P.MIST && !alive && chance(0.6) && !map.solidAt(nx, ny)) {
         decals.speck(nx, ny);
       }

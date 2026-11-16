@@ -110,6 +110,11 @@ export const SKULL = {
 // wavers sideways
 export const RUNS = { speed: [3, 8], len: [3, 9], foot: [1.2, 2.4], odds: 0.2, max: 48, wobble: 0.12 };
 
+// Blood against a wall: what lies on the floor stops `floor` px short of a wall face and of a window (the user saw
+// it painted over the walls); what is thrown on a wall stays on the strip of its top within `face` px of the face it
+// struck (the splash and what runs down it), never across the top nor on the far side
+export const BLOOD_EDGE = { floor: 3, face: 10 };
+
 // A man floored but alive (Enemy.knock): his nose or his brow bleeds, a drop now and then while he lies there and
 // for a while after he is up (s), every [min, max] s
 export const HURT = { dur: [5, 9], every: [0.18, 0.5] };

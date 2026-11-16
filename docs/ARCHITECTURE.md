@@ -141,7 +141,10 @@ src/
       DamageArt.js        canvas side of prop destruction: marks, tracks, bites, piece cutting, loose bits
       BlastArt.js         canvas side of a blast: the ragged burn it leaves and its torn shock front
       PastimeArt.js       canvas side of the pastimes: where busy hands go, the cue, cards, glass, cigarette in them
-      WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4)
+      WorldRenderer.js    draw order, additive effects, floating texts, physics debug overlay (F4); what stands or lies
+                          on the floor (bodies, items, props and cars, people, doors) is drawn on a picture-sized layer
+                          of its own, then laid on the scene: Lighting.post cuts its pixels out of the floor's
+                          reflections, so no puddle or wet sheen is ever drawn over a man or a car
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
@@ -360,6 +363,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   Liquids pours what it grew by at the wound and lets it run; it stays where it ran if the body is shoved, stays wet
   after the body is baked, and once it has set (`LIQUIDS.kinds.blood.age` s after it was last fed) render/LiquidArt.js
   paints it into `bloodCanvas` in its dry colours, for good.
+  Blood against a wall (`BLOOD_EDGE`, data/wounds.js): nothing of it lies on the floor within `floor` px of a wall
+  or of a window tile (MapRenderer.trim takes off what each stamp, speck, streak, drag or set stain laid there, through
+  a mask of fx/Spatter.js `offFloor`; the liquid itself is drawn `LIQUIDS.look.gap` px short of what holds it). What
+  is thrown on a wall stays on the strip of its top within `face` px of the face it struck (MapRenderer.faceBand:
+  splashes, drops, brain, a spilt drink; runs start in it). Nothing flies through a door leaf or an intact pane
+  (Spatter.shutBetween): the exit spray (`fling`, `wallBehind` given the world) stops there, and so do airborne drops,
+  the fine mist and the bits of bone (fx/Particles.js); a streak is laid only if its whole length is in the clear.
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
   Space = context action: execute > takedown > vault > slide. (A cover system existed and was removed at the user's
@@ -439,9 +449,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   its side facing the light lit, thin, body, deep, core) in the kind's colours (blood: BloodArt's RAMPS, wet then
   tacky), mixed with a second kind; glints, a beer's foam on a fresh flow (in clumps, never a dither), a petrol's
   thin rainbow bands. Only the chunks whose cells changed are painted again, once in view. Drawn over the blood
-  layer and under the bodies, before the lighting (the light map lights it). A second buffer says how much each texel
-  mirrors (the rain's puddles the night sky too): Lighting.post draws the lights' streaks through it
-  (`LIGHTING.puddle`).
+  layer and under the bodies, before the lighting (the light map lights it), `look.gap` px short of a wall, a window,
+  a shut door or standing furniture. A second buffer says how much each texel mirrors (the rain's puddles the night
+  sky too): Lighting.post draws the lights' streaks through it (`LIGHTING.puddle`), and like every reflection of the
+  floor never over what stands on it (the standing layer of WorldRenderer is cut out of them).
 - Melee (data/weapons.js `swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `wear`, `breaks`): a blow that
   lands is dressed by fx/Blows.js (what struck, the heavy stroke, a spin or a sweep, from the front, the side or
   behind). The player's weapon wears out (`weapon.wear`, kept on the item when dropped): the kill that uses it up
@@ -629,8 +640,8 @@ first: it is the lamps that make it show. (The rain's puddles are liquid on the 
   `soundscape.rain` times `RAIN.look`. Only where the sky is (Weather.skyGrid: open floors not in `AMBIENCE.indoors`, outer walls and roofs; never a room nor its walls).
   A drop is hashed from its cell, its slot and its cycle (render/WeatherArt.js, worked out once a frame): a short
   streak sprite crossing the picture with the wind, then a crown where it lands, rings where it lands in water.
-  Drawn before the lighting (the light map colours it: it glitters under a streetlight) and once more, faint
-  (`RAIN.after`), over the lit scene. Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
+  Drawn before the lighting (the light map colours it: it glitters under a streetlight) and the drops in the air
+  once more, faint (`RAIN.after`), over the lit scene (not the crowns and rings: they would lie over people). Floors in the open mirror the lights `1 + wet` times harder (Lighting.post),
   a car's beam lies on the wet road as a sheen, rain puddles mirror the night sky (`LIQUIDS.look.kinds.rain.sky`).
 - Smoke (systems/Smoke.js over engine/physics/Fluid.js, `SMOKE`): every smoke, steam and dust cloud of the game is
   this one simulation. The air of the whole map is a coarse fluid seen from above, the layer under the ceilings:
@@ -650,9 +661,9 @@ first: it is the lamps that make it show. (The rain's puddles are liquid on the 
     the spray of a burst water main; it condenses away in a few s.
   Walls are solid cells; a door is solid while shut on its frame (`shut`), a pane while intact; an open door or a
   smashed window between a room and the open air draws the room's air out (`draft`: a push and a spill over the
-  lintel, every kind). Every 'shot' leaves a puff drawn out along the shot and thrown on by the muzzle blast
-  (`muzzle.by` per weapon sound) and a smaller one out of the ejection port with the case, thrown to the gun's
-  right (`muzzle.port`). Threads (a pool of points that rides the air, sways and leaves its smoke in the layer as
+  lintel, every kind). Every 'shot' leaves a puff of small lumps strung along the bore and thrown on by the muzzle
+  blast in a narrow jet (`muzzle`: `lumps`, `ahead`, `width`; `muzzle.by` per weapon sound) and a smaller one out of
+  the ejection port with the case, thrown to the gun's right (`muzzle.port`). Threads (a pool of points that rides the air, sways and leaves its smoke in the layer as
   it fades): the smokers' cigarettes and cigars (a breath after each drag, the boss's slow cloud after a draw), a
   cigar clamped in the teeth, butts smouldering on the floor or in an ashtray, a barrel just after a burst.
   Stirring: people walking and cars going by drag the air, rounds along their line, ceiling fans (props with `spin`)

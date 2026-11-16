@@ -219,9 +219,12 @@ export default class Smoke {
   shot(shooter, weapon) {
     const M = this.cfg.muzzle, F = this.fluid, m = shooter.muzzlePos ? shooter.muzzlePos() : { x: shooter.x, y: shooter.y, a: shooter.angle };
     const a = m.a ?? shooter.angle ?? 0, c = Math.cos(a), s = Math.sin(a), k = M.by[weapon?.sound] ?? 1, rk = Math.sqrt(k);
-    // the puff, drawn out along the first stretch of the shot, and the blast of air that throws it on
-    for (let i = 1; i <= 3; i++) F.addDensity(m.x + c * M.ahead * i * 0.5, m.y + s * M.ahead * i * 0.5, M.r * rk * (0.6 + i * 0.2), M.amount * Math.min(1.5, k) * (1.2 - i * 0.2));
-    F.push(m.x + c * M.reach * 0.5, m.y + s * M.reach * 0.5, M.reach * 0.5, c * M.jet * rk, s * M.jet * rk, M.k);
+    // the puff, strung along the first stretch of the shot, and the blast of air that throws it on along the bore
+    for (let i = 1; i <= M.lumps; i++) {
+      const u = i / M.lumps;
+      F.addDensity(m.x + c * M.ahead * u, m.y + s * M.ahead * u, M.r * rk * (0.7 + 0.5 * u), M.amount * Math.min(1.5, k) * (1.15 - 0.35 * u));
+    }
+    for (let j = 1; j <= 2; j++) F.push(m.x + (c * M.reach * j) / 3, m.y + (s * M.reach * j) / 3, M.width * rk, c * M.jet * rk, s * M.jet * rk, M.k);
     // the spent case leaves the port with a breath of it, to the gun's right (fx/Casings.js)
     if (weapon?.eject && weapon.casing && shooter.portPos) {
       const P = M.port, q = shooter.portPos(), sc = Math.cos(a + Math.PI / 2), ss = Math.sin(a + Math.PI / 2);

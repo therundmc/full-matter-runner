@@ -452,7 +452,7 @@ export default class Prop {
     if (back) {
       const [, r, color] = smash.wall;
       const deep = WALL_RIM + 2 + r * 0.5; // behind the wall's outline
-      w.decals.wetWall(back.x - back.nx * deep, back.y - back.ny * deep, r, color);
+      w.decals.wetWall(back.x - back.nx * deep, back.y - back.ny * deep, r, color, back.nx, back.ny);
       run(w, back.x - back.ny * rand(-r, r), back.y + back.nx * rand(-r, r), back.nx, back.ny, rand(2, r * 1.5), color);
     }
     w.flashGlass(p.x, p.y);

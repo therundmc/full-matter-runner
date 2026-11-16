@@ -7,6 +7,8 @@ import { scorchArt } from './BlastArt.js';
 import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps } from './BloodArt.js';
 import { matterStain } from './GoreArt.js';
 import WallScars from './WallScars.js';
+import { BLOOD_EDGE } from '../data/wounds.js';
+import { offFloor } from '../fx/Spatter.js';
 
 // seconds after which a stain turns tacky, then dry (the pools are liquid on the floor: systems/Liquids.js)
 const STAIN_AGES = [9, 30];
@@ -36,9 +38,11 @@ function floorTile(name, x, y) {
 
 // Pre-rendered layers of a TileMap and everything painted on them for good, bottom to top:
 //   floor   tiles, scuffs, spills, footprints, baked debris (at its tiles' density, see render())
-//   blood   stains, spatter and pools (BloodArt stamps), drying in place: over the debris, under the bodies
+//   blood   stains, spatter and pools (BloodArt stamps), drying in place: over the debris, under the bodies; never
+//           within BLOOD_EDGE.floor px of a wall or a window (trim)
 //   flesh   baked corpses and gibs
-//   walls   wall tops and roofs, holes dug into them (WallScars), splashes; every mark is clipped to the wall tiles
+//   walls   wall tops and roofs, holes dug into them (WallScars), splashes; every mark is clipped to the wall tiles,
+//           blood to the strip of top by the face it struck (faceBand)
 export default class MapRenderer {
   constructor(map) {
     this.map = map;
@@ -314,7 +318,50 @@ export default class MapRenderer {
   put(s, x, y, rot) {
     const d = { s, x: Math.round(x), y: Math.round(y), rot, at: this.clock + STAIN_AGES[0] };
     this.blit(this.bloodCtx, stampImage(s), d);
+    const r = Math.hypot(Math.max(s.cx, s.w - s.cx), Math.max(s.cy, s.h - s.cy)) + 1;
+    this.trim(this.bloodCtx, d.x - r, d.y - r, d.x + r, d.y + r);
     this.ageing[0].push(d);
+  }
+
+  // what was just laid on a floor layer (blood, flesh) in the box (x0, y0)-(x1, y1) is taken off wherever it is not
+  // floor: on and near the walls and windows (offFloor)
+  trim(g, x0, y0, x1, y1) {
+    const m = this.offMask();
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
+    const w = Math.min(m.width, Math.ceil(x1)) - x0, h = Math.min(m.height, Math.ceil(y1)) - y0;
+    if (w <= 0 || h <= 0) return;
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'destination-out';
+    g.drawImage(m, x0, y0, w, h, x0, y0, w, h);
+    g.restore();
+  }
+
+  // the map's not-floor as a mask (opaque where blood may not lie), drawn again when the walls change
+  offMask() {
+    const m = this.map;
+    if (this.off && this.offV === m.version) return this.off;
+    const c = this.off || document.createElement('canvas');
+    c.width = m.widthPx; c.height = m.heightPx;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000';
+    for (const [x, y, w, h] of offFloor(m)) g.fillRect(x, y, w, h);
+    this.off = c; this.offV = m.version;
+    return c;
+  }
+
+  // restrict g to the strip of wall top within BLOOD_EDGE.face px of the face struck at (x, y) (a point inside the
+  // wall, just behind the face), (nx, ny) the face's normal out of the wall; no normal: no restriction
+  faceBand(g, x, y, nx, ny) {
+    if (!nx && !ny) return;
+    const T = TILE, b = BLOOD_EDGE.face, big = 1e5;
+    let x0 = -big, x1 = big, y0 = -big, y1 = big;
+    if (nx > 0) { x1 = (Math.floor(x / T) + 1) * T; x0 = x1 - b; } else if (nx < 0) { x0 = Math.floor(x / T) * T; x1 = x0 + b; }
+    if (ny > 0) { y1 = (Math.floor(y / T) + 1) * T; y0 = y1 - b; } else if (ny < 0) { y0 = Math.floor(y / T) * T; y1 = y0 + b; }
+    g.beginPath();
+    g.rect(x0, y0, x1 - x0, y1 - y0);
+    g.clip();
   }
 
   blit(g, img, d) {
@@ -346,6 +393,7 @@ export default class MapRenderer {
     g.globalAlpha = rand(0.55, 0.95);
     g.fillRect(Math.round(x), Math.round(y), r > 0.85 && chance(0.5) ? 2 : 1, r > 0.85 && chance(0.4) ? 2 : 1);
     g.globalAlpha = 1;
+    this.trim(g, x - 1, y - 1, x + 3, y + 3);
   }
 
   // a drop that landed at an angle, travelling along (dx, dy): an elongated stain, its tail and satellites ahead
@@ -359,11 +407,15 @@ export default class MapRenderer {
     for (let i = 0; i < len; i++) g.fillRect(Math.round(x + c * i), Math.round(y + s * i), 1, 1);
     if (chance(0.5)) g.fillRect(Math.round(x + c * (len + 2)), Math.round(y + s * (len + 2)), 1, 1);
     g.globalAlpha = 1;
+    const ex = x + c * (len + 2), ey = y + s * (len + 2);
+    this.trim(g, Math.min(x, ex) - 2, Math.min(y, ey) - 2, Math.max(x, ex) + 3, Math.max(y, ey) + 3);
   }
 
   // something bleeding wiped over the floor from (x0, y0) to (x1, y1): w px of thin broken streaks, never a band
   drag(x0, y0, x1, y1, w) {
     this.streaks(this.bloodCtx, x0, y0, x1, y1, w, SPECK, 0.8);
+    const p = w / 2 + 2;
+    this.trim(this.bloodCtx, Math.min(x0, x1) - p, Math.min(y0, y1) - p, Math.max(x0, x1) + p, Math.max(y0, y1) + p);
   }
 
   streaks(g, x0, y0, x1, y1, w, colors, alpha) {
@@ -404,22 +456,25 @@ export default class MapRenderer {
   }
 
   // blood thrown on a wall top: drawn only on the wall tiles
-  stampWall(x, y, r) {
+  stampWall(x, y, r, nx = 0, ny = 0) {
     const g = this.wallCtx, st = spotStamp(Math.max(1.3, r));
     g.save();
     g.globalCompositeOperation = 'source-atop';
     this.scars.clip(g, x, y, st.cx + st.cy + 2, true);
+    this.faceBand(g, x, y, nx, ny);
     g.drawImage(stampImage(st, 1), Math.round(x) - st.cx, Math.round(y) - st.cy);
     g.restore();
   }
 
   // ---------- on walls (fx/Spatter.js) ----------
-  // blood thrown hard against a wall: a ragged splash with its spines toward `angle`, on the wall tops only
-  splashWall(x, y, r, angle) {
+  // blood thrown hard against a wall: a ragged splash with its spines toward `angle`, on the wall tops only, by the
+  // face (nx, ny) it struck
+  splashWall(x, y, r, angle, nx = 0, ny = 0) {
     const g = this.wallCtx, st = splatStamp(r), c = Math.cos(angle), s = Math.sin(angle);
     g.save();
     g.globalCompositeOperation = 'source-atop';
     this.scars.clip(g, x, y, st.cx + st.cy + 2, true);
+    this.faceBand(g, x, y, nx, ny);
     g.setTransform(c, s, -s, c, Math.round(x), Math.round(y));
     g.drawImage(stampImage(st, 0), -st.cx, -st.cy);
     g.restore();
@@ -433,14 +488,16 @@ export default class MapRenderer {
     g.fillStyle = wall && color === RUN ? RUN_WALL : color;
     g.fillRect(px, py, w, w);
     g.globalCompositeOperation = 'source-over';
+    if (g === this.bloodCtx) this.trim(g, px, py, px + w, py + w);
   }
 
   // a liquid (not blood) thrown on a wall: a wet stipple in its colour, wall tops only
-  wetWall(x, y, r, color) {
+  wetWall(x, y, r, color, nx = 0, ny = 0) {
     const g = this.wallCtx;
     g.save();
     g.globalCompositeOperation = 'source-atop';
     this.scars.clip(g, x, y, r + 1, true);
+    this.faceBand(g, x, y, nx, ny);
     g.fillStyle = color;
     for (let i = 0, n = Math.round(r * r * 1.2); i < n; i++) {
       const a = rand(0, TAU), d = r * Math.sqrt(Math.random());
@@ -450,17 +507,19 @@ export default class MapRenderer {
   }
 
   // what was inside a burst skull, thrown toward `angle`: on the floor (over the blood, under the bodies) or on a wall
-  matter(x, y, r, angle, wall = false) {
-    const img = matterStain(r), c = Math.cos(angle), s = Math.sin(angle);
+  matter(x, y, r, angle, wall = false, nx = 0, ny = 0) {
+    const img = matterStain(r), c = Math.cos(angle), s = Math.sin(angle), reach = (img.width + img.height) / 2 + 1;
     const g = wall ? this.wallCtx : this.fleshCtx;
     g.save();
     if (wall) {
       g.globalCompositeOperation = 'source-atop';
       this.scars.clip(g, x, y, img.width + img.height, true);
+      this.faceBand(g, x, y, nx, ny);
     }
     g.setTransform(c, s, -s, c, Math.round(x), Math.round(y));
     g.drawImage(img, -img.width / 2, -img.height / 2);
     g.restore();
+    if (!wall) this.trim(g, x - reach, y - reach, x + reach, y + reach);
   }
 
   // ---------- other persistent decals ----------

@@ -42,6 +42,24 @@ export default class WorldRenderer {
     this.liquid = new LiquidArt(world); // what is wet on the floor
   }
 
+  // the layer of what stands on the floor: the size of the picture, cleared, drawn with the scene's transform
+  standing(ctx) {
+    const c = ctx.canvas;
+    let L = this.layer;
+    if (!L || L.width !== c.width || L.height !== c.height) {
+      L = this.layer = document.createElement('canvas');
+      L.width = c.width; L.height = c.height;
+    }
+    const g = L.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, L.width, L.height);
+    g.setTransform(ctx.getTransform());
+    g.imageSmoothingEnabled = ctx.imageSmoothingEnabled;
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    return g;
+  }
+
   draw(ctx, cam, t) {
     const w = this.world;
     const v = cam.viewRadius();
@@ -58,6 +76,10 @@ export default class WorldRenderer {
     this.liquid.draw(ctx, view);
     drawRainGround(ctx, w.weather, view, t);
     ctx.drawImage(w.decals.fleshCanvas, 0, 0);
+    // what stands or lies on the floor is drawn on a layer of its own, then laid on the scene: its pixels are what the
+    // floor's reflections (Lighting.post) must not cover
+    const floor = ctx;
+    ctx = this.standing(floor);
     for (const d of w.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.draw(ctx);
     for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
@@ -75,6 +97,11 @@ export default class WorldRenderer {
     if (w.player.alive && !w.player.hidden) w.player.draw(ctx); // hidden: in the getaway van
     for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
     for (const d of w.doors) d.draw(ctx);
+    ctx = floor;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(this.layer, 0, 0);
+    ctx.restore();
     ctx.drawImage(w.decals.wallCanvas, 0, 0);
     drawFlying(ctx, w.critters, t);
 
@@ -91,11 +118,11 @@ export default class WorldRenderer {
     let lightMs = performance.now() - l0;
     if (w.cleared && w.level.exit && !w.outro) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
-    if (lit) { drawRainGround(ctx, w.weather, view, t, RAIN.after); drawRainAir(ctx, w.weather, view, t, RAIN.after); }
+    if (lit) drawRainAir(ctx, w.weather, view, t, RAIN.after); // in the air only: crowns and rings would lie over people
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
-    if (lit) w.lighting.post(ctx, cam, t, this.liquid);
+    if (lit) w.lighting.post(ctx, cam, t, this.liquid, this.layer);
     lightMs += performance.now() - l0;
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis);

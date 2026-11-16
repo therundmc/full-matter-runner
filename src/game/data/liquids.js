@@ -107,8 +107,11 @@ export const LIQUIDS = {
   // a pale pixel in the deep (`glint` here: the odds of one); `foam` on a fresh flow's edge and in clumps (beer);
   // `sheen`: a petrol's rainbow bands (`stripe`: the share of each band that shows); `ring`: the ripples; `mirror`: how
   // much of the lights it mirrors (Lighting.post), `matte` once aged; `sky` (rain): the night sky it mirrors too.
+  // `gap`: px of floor left dry along what holds it (a wall, a window, a shut door, standing furniture): it never
+  // reads as painted over them (blood set into a stain keeps BLOOD_EDGE.floor, data/wounds.js)
   look: {
     px: 2,
+    gap: 2,
     levels: [0.2, 0.34, 0.55, 1.3, 2.3],
     soften: [0.25, 0.125, 0.0625],
     rag: 0.32,

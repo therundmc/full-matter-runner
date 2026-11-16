@@ -3,8 +3,8 @@
 // the cell, the slot and the cycle it is on. A drop is a short pale streak crossing the picture with the wind, then
 // a crown of a few pixels where it lands; in standing water, a ring spreading. Water drips off the eaves on its own
 // spots. All of it is drawn before the lighting, so it is the lamps that make it show: the rain glitters in the
-// light of a streetlight; the same drops are drawn again over the lit scene, faintly (`gain` RAIN.after), so that
-// the dark is not quite dry.
+// light of a streetlight; the drops in the air are drawn again over the lit scene, faintly (`gain` RAIN.after), so
+// that the dark is not quite dry (not what lies on the ground: it would go over the people standing in it).
 import { RAIN } from '../data/atmosphere.js';
 import { hash } from './Flicker.js';
 

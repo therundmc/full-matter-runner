@@ -723,7 +723,7 @@ export default class Lighting {
   }
 
   // additive layers after the scene: emissive maps, bloom, flares, reflections
-  post(ctx, cam, t, liquid) {
+  post(ctx, cam, t, liquid, standing = null) {
     if (!this.lm) return;
     const w = this.world, { x0, y0, w: vw, h: vh } = this.view, b = L.bloomScale;
     const lit = this.frameLights || [];
@@ -882,10 +882,38 @@ export default class Lighting {
     ctx.globalAlpha = L.bloom;
     ctx.drawImage(this.bl, x0, y0, vw, vh);
     ctx.globalAlpha = 1;
-    ctx.drawImage(this.rf, x0, y0, vw, vh);
-    if (puddles) ctx.drawImage(this.pd, x0, y0, vw, vh);
+    this.mirrors(ctx, puddles, standing);
     ctx.drawImage(this.fl, x0, y0, vw, vh);
     ctx.restore();
     void cam;
+  }
+
+  // the floor's reflections (and the puddles' if any) added to the picture, but only on the floor: the pixels of
+  // what stands or lies on it (`standing`, the picture-sized layer WorldRenderer drew them on) are cut out first
+  mirrors(ctx, puddles, standing) {
+    const { x0, y0, w: vw, h: vh } = this.view;
+    if (!standing) {
+      ctx.drawImage(this.rf, x0, y0, vw, vh);
+      if (puddles) ctx.drawImage(this.pd, x0, y0, vw, vh);
+      return;
+    }
+    const c = ctx.canvas;
+    if (!this.mr || this.mr.width !== c.width || this.mr.height !== c.height) this.mr = canvas(c.width, c.height);
+    const g = this.mr.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = 1;
+    g.imageSmoothingEnabled = true;
+    g.setTransform(ctx.getTransform());
+    g.drawImage(this.rf, x0, y0, vw, vh);
+    if (puddles) g.drawImage(this.pd, x0, y0, vw, vh);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'destination-out';
+    g.drawImage(standing, 0, 0);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(this.mr, 0, 0);
+    ctx.restore();
   }
 }

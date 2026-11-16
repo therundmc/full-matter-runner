@@ -7,7 +7,7 @@ import { woundFor } from '../data/wounds.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { feelOf, SURFACE } from '../data/feel.js';
 import { combatFx } from '../fx/CombatFx.js';
-import { faceNormal } from '../fx/Spatter.js';
+import { faceNormal, floorLine } from '../fx/Spatter.js';
 
 // Fast bullet traced as a segment each step (no tunnelling), or a slow rocket.
 // A bullet carries penetration energy (`pen`): every obstacle eats some of it (systems/Penetration.js); if any is
@@ -226,7 +226,8 @@ export default class Projectile {
         const exit = woundFor('bullet', this.weapon).exit;
         if (exit) {
           w.particles.blood(ex, ey, a, exit[2], exit[0], exit[1]);
-          w.decals.stampBlood(ex + Math.cos(a) * rand(10, 30), ey + Math.sin(a) * rand(10, 30), 2 + exit[0] / 8, 4);
+          const d = rand(10, 30), sx = ex + Math.cos(a) * d, sy = ey + Math.sin(a) * d;
+          if (floorLine(w, ex, ey, sx, sy)) w.decals.stampBlood(sx, sy, 2 + exit[0] / 8, 4);
         }
         return { x: ex, y: ey, a: this.deflect(COST.flesh) };
       }

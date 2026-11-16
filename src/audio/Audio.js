@@ -60,6 +60,16 @@ const CONFIRM_ROOT = 196; // Hz
 // small speakers), and [lowpass Hz, s, level] of the low air after it
 const CONFIRM_BOOM = { sub: [78, 41, 0.62, 0.4], body: [150, 82, 0.16, 0.15], air: [320, 0.5, 0.12] };
 // formants (Hz) of the vowels the synthesized voices speak (m: a closed-mouth hum)
+// A 1980s car horn (the old one was "a truck": two low saw notes, kept dark, held long): two disc horns a major third
+// apart (`notes` Hz, each a few `cents` off the other's beat), a square's odd harmonics through a soft clip (`drive`,
+// a little lopsided by `bias`: the diaphragm's rattle) for the buzz, two highpass stages that thin the fundamentals
+// (`hp` Hz), the nasal band of the horn's trumpet (`band`: Hz, Q, dB) and a top cut (`lp`). It speaks in `attack` s and stops in
+// `release` s. Beeps: `beep` s each with `space` between them (a driver held up: two or three), or one `held` s
+// (opts.honks 1); `level`: its gain.
+const HORN = {
+  notes: [420, 525], cents: 4, drive: 2.6, bias: 0.12, hp: 620, band: [2200, 0.9, 9], lp: 6000,
+  attack: 0.006, release: 0.03, beep: [0.11, 0.16], space: [0.08, 0.12], held: [0.3, 0.45], level: 0.26,
+};
 const VOWEL = { a: [730, 1090, 2440], e: [530, 1840, 2480], i: [270, 2290, 3010], o: [570, 840, 2410], m: [250, 1100, 2100] };
 const STEP_LEVEL = 0.2; // footsteps, far under everything else (the user: quiet, not too loud; 0: none at all)
 const VARIATIONS = 5;   // baked renders of each synthesized foley form
@@ -1317,44 +1327,48 @@ class AudioSystem {
     this._noiseBurst(o, { f0: 2500, f1: 600, q: 0.5, dur: 1.2, vol: 0.1, attack: 0.3 });
   }
 
-  // a car horn: opts.honks honks (1: one held, more: short and quick, an impatient driver); opts.pitch: its horn
+  // a car horn (HORN): opts.honks beeps (1: one held, more: short and quick, an impatient driver); opts.pitch: its horn
   _horn(o, opts) {
     const n = Math.max(1, Math.round(opts.honks || 1));
     let at = 0;
     for (let i = 0; i < n; i++) {
-      const hold = n > 1 ? rand(0.1, 0.2) : rand(0.35, 0.7);
+      const hold = rand(...(n > 1 ? HORN.beep : HORN.held));
       this._honk(o, opts.pitch || 1, at, hold);
-      at += hold + rand(0.09, 0.16);
+      at += hold + rand(...HORN.space);
     }
   }
-  // one honk: two notes a third apart (two detuned saws each), softly clipped and kept dark for the reedy sound
+  // one beep: both horns at once, square waves softly clipped, the boom cut, the nasal band pushed, the fizz taken off
   _honk(o, p, delay, hold) {
-    const ctx = this.ctx, t = ctx.currentTime + delay, end = t + 0.01 + hold + 0.06;
-    const g = ctx.createGain(), lp = ctx.createBiquadFilter(), ws = ctx.createWaveShaper(), srcs = [];
+    const ctx = this.ctx, H = HORN, t = ctx.currentTime + delay, end = t + H.attack + hold + H.release;
+    const g = ctx.createGain(), ws = ctx.createWaveShaper(), srcs = [];
+    const [hp, hp2, band, lp] = ['highpass', 'highpass', 'peaking', 'lowpass'].map((type) => { const f = ctx.createBiquadFilter(); f.type = type; return f; });
     if (!this.hornCurve) {
       this.hornCurve = new Float32Array(1025);
-      for (let i = 0; i < 1025; i++) this.hornCurve[i] = Math.tanh((i / 512 - 1) * 2.2);
+      const k = (x) => Math.tanh((x + H.bias) * H.drive) - Math.tanh(H.bias * H.drive);
+      for (let i = 0; i < 1025; i++) this.hornCurve[i] = k(i / 512 - 1) / k(1);
     }
     ws.curve = this.hornCurve;
-    lp.type = 'lowpass';
-    lp.frequency.value = 1800;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.5, t + 0.01);
-    g.gain.setValueAtTime(0.5, t + 0.01 + hold);
+    hp.frequency.value = hp2.frequency.value = H.hp;
+    [band.frequency.value, band.Q.value, band.gain.value] = H.band;
+    lp.frequency.value = H.lp;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(H.level, t + H.attack);
+    g.gain.setValueAtTime(H.level, t + H.attack + hold);
     g.gain.linearRampToValueAtTime(0, end);
-    for (const f of [415, 520]) for (const cents of [-7, 7]) {
-      const src = ctx.createOscillator();
-      src.type = 'sawtooth';
+    H.notes.forEach((f, i) => {
+      const src = ctx.createOscillator(), share = ctx.createGain();
+      src.type = 'square';
       src.frequency.value = f * p;
-      src.detune.value = cents;
-      src.connect(ws);
+      src.detune.value = i ? H.cents : -H.cents;
+      share.gain.value = 0.5;
+      src.connect(share); share.connect(ws);
       src.start(t);
       src.stop(end + 0.02);
-      srcs.push(src);
-    }
-    ws.connect(lp); lp.connect(g); g.connect(o);
+      srcs.push(src, share);
+    });
+    ws.connect(hp); hp.connect(hp2); hp2.connect(band); band.connect(lp); lp.connect(g); g.connect(o);
     o._n++;
-    srcs[0].onended = () => this._release(o, ...srcs, ws, lp, g);
+    srcs[0].onended = () => this._release(o, ...srcs, ws, hp, hp2, band, lp, g);
   }
 
   // ---- the far city (soundscape CITY): long one-shots, rendered by Beds.js or synthesized here ----

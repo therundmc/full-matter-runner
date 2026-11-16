@@ -205,7 +205,8 @@ export default class Ambient {
     }
   }
 
-  // a driver held up by a person leans on the horn: once after a beat, then every few seconds, three times at most
+  // a driver held up by a person honks: two or three short beeps after a beat, then every few seconds, three times at
+  // most
   honk(c, dt) {
     const d = c.d, held = d.state === 'drive' && !c.v.exploded && d.speed < 10 && d.noticeT > 0.3;
     if (!held) { c.honks = 0; c.honkT = 0; return; }
@@ -215,7 +216,7 @@ export default class Ambient {
     if (c.honkT > 0) return;
     c.honkT = 0;
     c.honks++;
-    this.world.sound('horn', c.v.x, c.v.y, 1, { pitch: c.pitch });
+    this.world.sound('horn', c.v.x, c.v.y, 1, { pitch: c.pitch, honks: this.r() < 0.6 ? 2 : 3 });
   }
 
   // nearest living person in front of the car, in its band (px), Infinity if none

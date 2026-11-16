@@ -216,3 +216,29 @@ test('liquids: the petrol on the floor of a lesson room that is set alight; the 
   }
   assert.ok(wet >= spots * 0.7, `${wet} of ${spots} spots wet`);
 });
+
+test('liquids: a pool of blood against a wall is drawn short of it (LIQUIDS.look.gap)', async () => {
+  const { default: LiquidArt } = await load('game/render/LiquidArt.js');
+  // the drawing's buffers only: pixels in arrays
+  const ctx = { createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }), putImageData() {}, drawImage() {} };
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+  try {
+    const { world, liquids } = stub();
+    world.events.emit('spill', { x: 9 * TILE, y: 3 * TILE, kind: 'blood', area: 9000 });
+    run(liquids, 2);
+    const S = liquids.sim, px = LIQUIDS.look.px, face = 10 * TILE;
+    assert.ok(LIQUIDS.look.gap >= 2);
+    assert.ok(S.depthAt(face - 2, 3 * TILE) > 0, 'the blood is right up against the wall');
+    const art = new LiquidArt(world);
+    art.setup(S);
+    for (let c = 0; c < S.cw * S.ch; c++) art.fill(c);
+    const at = (x, y) => art.color.px[Math.floor(y / px) * art.TW + Math.floor(x / px)];
+    let near = 0, open = 0;
+    for (let y = 2 * TILE; y < 4 * TILE; y += px) {
+      for (let x = face - 2; x < face + TILE; x += px) if (at(x + 0.5, y + 0.5)) near++;
+      if (at(face - 12, y + 0.5)) open++;
+    }
+    assert.equal(near, 0, 'nothing drawn on the wall nor within the gap');
+    assert.ok(open > 0, 'drawn on the floor by it');
+  } finally { delete globalThis.document; }
+});

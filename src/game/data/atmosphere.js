@@ -44,7 +44,7 @@ export const RAIN = {
   // the wet: floors in the open mirror the lights harder (Lighting.post, x (1 + wet)), and the beams of the cars
   // lie on the road as a long sheen
   wet: 0.7,
-  after: 0.3,              // the same rain again over the lit scene, this faint: the dark is not quite dry
+  after: 0.3,              // the drops in the air again over the lit scene, this faint: the dark is not quite dry
   headlight: { gain: 0.45, len: 0.8, width: 0.18 }, // of the beam's reach
   mist: 0.14,              // haze in the open air at full rain (it catches the streetlights; render/SmokeArt.js)
   // loose paper (systems/Papers.js): soaked, it lies heavier and darker
@@ -78,10 +78,11 @@ export const SMOKE = {
       loss: { room: 0.07, open: 0.45 }, spread: 6, recover: 0.04, sight: 0,
       look: { gain: 1, max: 0.42, glow: [0.86, 0.88, 0.96], pale: null, veil: 0.55, soot: 0 },
     },
-    // what burns and what blows up: near black, opaque at its heart, it hangs 40-90 s in a room
+    // what burns and what blows up: near black, all but opaque at its heart (a little less than it was: the user),
+    // it hangs 40-90 s in a room
     soot: {
       loss: { room: 0.022, open: 0.1 }, spread: 8, sight: 0.8,
-      look: { gain: 1.3, max: 0.88, glow: [0.07, 0.065, 0.065], pale: null, veil: 0, soot: 1 },
+      look: { gain: 1.1, max: 0.75, glow: [0.07, 0.065, 0.065], pale: null, veil: 0, soot: 1 },
     },
     // an extinguisher's powder: white, dense, gone in about ten s
     powder: {
@@ -110,13 +111,15 @@ export const SMOKE = {
   // an opening between a room and the open air draws the room's air out: pushed out at `speed` px/s (k of the way per
   // step), what is over the rest level in and before the opening spilling out at `spill` 1/s
   draft: { speed: 22, k: 0.25, spill: 0.6 },
-  // a shot: a puff at the muzzle (`ahead` px in front), thrown forward by the muzzle blast; times `by` its weapon.
+  // a shot: a puff out of the muzzle, `lumps` small ones strung along the bore over `ahead` px (r px each, growing
+  // a little toward the far end), thrown on by the muzzle blast in a narrow jet (`jet` px/s over `reach` px, `width`
+  // px either side of the bore: the user wanted it finer, tight along the line of the barrel); times `by` its weapon.
   // `port`: a smaller one out of the ejection port with the spent case (`off` px to the gun's right of it), thrown to
   // the right at `side` px/s
   muzzle: {
-    r: 13, amount: 1.4, ahead: 16, jet: 240, reach: 56, k: 0.9,
+    r: 8.75, amount: 1.3, ahead: 26, lumps: 4, jet: 240, reach: 56, width: 16, k: 0.9,
     by: { pistol: 1, uzi: 0.55, silenced: 0.25, shotgun: 2.2, rifle: 1.1, sniper: 2, rocket: 3 },
-    port: { r: 7, amount: 0.9, off: 5, side: 80, reach: 24, k: 0.7 },
+    port: { r: 9.5, amount: 1, off: 5, side: 80, reach: 24, k: 0.7 },
   },
   // a blast: a billow of soot (`lumps` of it over `r` of its radius), the push out of it (volume 1/s at its heart),
   // eddies turning either way round it
