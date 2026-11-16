@@ -199,7 +199,7 @@ export default {
   // painted on the floor, no body: [sprite, col, row, deg]
   floor: [['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_carpet', 21.0, 21.94, 0], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
   // weapons stood against a wall [type, col, row, deg]
-  lean: [["cue", 22.5, 12.2, 270]],
+  lean: [["cue", 18.6, 19.8, 90]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [34, 17, 37, 19], "box": [33.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside

@@ -107,7 +107,7 @@ export const PROPS = {
   fuse_box: { hum: 'mains', fixture: true, static: true, material: 'metal', w: 18, h: 8, hp: 3, chips: '#8a909c', sparks: true, sound: 'metal',
     light: { r: 64, color: '#ffe6a8', intensity: 0.6, y: 4 } }, // the pilot lamp over it: it has to be found
   // a battery lamp over a door: dark as long as the mains are on (`standby`), all that is left once they are cut
-  emergency_light: { fixture: true, static: true, standby: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffb0a0', sparks: true, glass: true, sound: 'glass',
+  emergency_light: { fixture: true, static: true, standby: true, material: 'glass', w: 6, h: 4, hp: 2, chips: '#ffb0a0', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff5a3c', intensity: 0.95, y: 3 } },
   neon_sign_liquor: { hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },

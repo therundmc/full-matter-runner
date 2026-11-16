@@ -5393,21 +5393,15 @@ def p_fuse_box():
 
 
 def p_emergency_light():
-    """A battery lamp on a wall (-y): a cream case with its vents and the green charge light, the test button, two
-    round heads in their sockets, dull red until the mains fail."""
-    cv, gl = Cv(14, 7), Cv(14, 7)
-    case = ramp('#cfc8b4', 0.45, 0.22, 0.3)
-    fill_shape(cv, 7.0, 1.5, 5.0, 1.5, lambda u, v, L: shade(case, L), kind='rect', corner=0.5, bevel=0.6)
-    for x in (3.0, 4.0, 9.5, 10.5):
-        frect(cv, x, 0.8, x + 0.5, 2.0, case[1])                       # vents
-    cv.dot(6.5, 1.25, hx('#3aff8a'))                                   # charging
-    cv.dot(7.5, 1.25, hx('#c83a2a'))                                   # test button
-    for x0 in (4.0, 10.0):
-        ring(cv, x0, 4.4, 1.2, 1.7, lambda dx, dy, d: shade(case, light(dx / d, dy / d)))   # the socket
-        fill_shape(cv, x0, 4.4, 1.2, 1.2, lambda u, v, L: hx('#b04a3c') if L > 0.7 else hx('#7a2a22'))
-        cv.dot(x0 - 0.5, 4.0, hx('#d87a6a'))
-        fill_shape(gl, x0, 4.4, 1.6, 1.6, lambda u, v, L: (255, 110, 80, 200))
-        fill_shape(gl, x0, 4.4, 0.7, 0.7, lambda u, v, L: (255, 230, 210, 255))
+    """A small battery lamp on a wall (-y): a dark case and one red lens, dull until the mains fail (the user wanted a
+    single discreet one, not two heads)."""
+    cv, gl = Cv(8, 5), Cv(8, 5)
+    case = ramp('#4a4650', 0.45, 0.22, 0.35)
+    fill_shape(cv, 4.0, 1.6, 3.2, 1.4, lambda u, v, L: shade(case, L), kind='rect', corner=0.5, bevel=0.5)
+    fill_shape(cv, 4.0, 3.2, 1.3, 1.1, lambda u, v, L: hx('#9a3a30') if L > 0.6 else hx('#6a221c'))
+    cv.dot(3.6, 2.9, hx('#c86a5a'))
+    fill_shape(gl, 4.0, 3.2, 1.5, 1.3, lambda u, v, L: (255, 110, 80, 190))
+    fill_shape(gl, 4.0, 3.2, 0.6, 0.6, lambda u, v, L: (255, 220, 200, 255))
     cv.outline()
     return cv, gl
 
@@ -6761,7 +6755,7 @@ LIGHT_PROPS = dict(floor_lamp=p_floor_lamp, table_lamp=p_table_lamp, wall_lamp=p
                    ceiling_lamp=p_ceiling_lamp, pool_lamp=p_pool_lamp, emergency_light=p_emergency_light)
 LIGHT_SIZES = dict(floor_lamp=(16, 16), table_lamp=(18, 18), wall_lamp=(14, 7), tube_light=(30, 5),
                    neon_tube_pink=(30, 5), neon_tube_cyan=(30, 5), ceiling_lamp=(18, 18), pool_lamp=(46, 12),
-                   emergency_light=(14, 7))
+                   emergency_light=(8, 5))
 
 
 # --------------------------------------------------------------------------

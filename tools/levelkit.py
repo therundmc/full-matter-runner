@@ -51,7 +51,7 @@ SIZES = dict(
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
 # wall in px (keep in sync with src/game/data/props.js): never across a doorway, where it bars the way (a lamp over the
 # back door of level 1 had its men jammed in it)
-ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=12, fuse_box=18,
+ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=6, fuse_box=18,
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
                fire_alarm=10)

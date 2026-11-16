@@ -161,7 +161,7 @@ lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his 
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 25, 14, face=0, job='cards')              # dealing poker in the gaming room: the one pistol of the bar
 lv.actor('k', 17, 16, face=0, job='pool')               # playing pool in the main room
-lv.lean('cue', 23.5, 12.2, 270)                         # a cue stood against the wall by the toilets' door
+lv.lean('cue', 18.6, 19.8, 90)                          # a cue stood against the front wall, by the pool table
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.75, 14.5, 270, 'drink')            # on the counter stools
