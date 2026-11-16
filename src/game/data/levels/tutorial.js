@@ -65,7 +65,7 @@ export default {
     // kitchen
     ['fridge', 7.42, 8.85, 270], ['oven', 7.38, 10.1, 270], ['sink', 7.34, 11.55, 270], ['table', 11.6, 10.3, 0],
     ['chair', 11.6, 9.45, 90], ['chair', 12.65, 10.4, 180], ['tube_light', 11.5, 8.07, 0],
-    ['trash_can', 13.5, 12.5, 0],
+    ['trash_can', 13.5, 12.5, 0, { tips: false }],
     // entrance hall
     ['bookshelf', 15.9, 12.78, 180], ['ceiling_lamp', 16, 10, 0],
     // the corridor of the building
@@ -76,7 +76,7 @@ export default {
     ['wall_lamp', 24.5, 16.09, 0], ['wall_lamp', 28, 16.09, 0], ['radiator', 26.3, 16.09, 0],
     ['bin_bag', 24.3, 17.62, 20], ['bin_bag', 24.75, 17.55, 140], ['apt_door', 32.5, 17.91, 180],
     // the landing
-    ['ceiling_lamp', 31, 14.4, 0], ['plant', 33.5, 15.4, 0], ['trash_can', 29.45, 15.4, 0],
+    ['ceiling_lamp', 31, 14.4, 0], ['plant', 33.5, 15.4, 0], ['trash_can', 29.45, 15.4, 0, { tips: false }],
     ['bin_bag', 29.95, 15.55, 60],
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away

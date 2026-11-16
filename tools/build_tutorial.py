@@ -92,7 +92,7 @@ lv.prop('table', 11.6, 10.3)
 lv.prop('chair', 11.6, 9.45, 90)
 lv.prop('chair', 12.65, 10.4, 180)
 lv.prop('tube_light', 11.5, 8.07)
-lv.prop('trash_can', 13.5, 12.5)
+lv.prop('trash_can', 13.5, 12.5, tips=False)           # indoors: stays up
 
 lv.area('entrance hall')
 lv.prop('bookshelf', 15.9, 12.78, 180)
@@ -130,7 +130,7 @@ lv.area('the landing')
 lv.paint('stairs', 31.0, 11.75)
 lv.prop('ceiling_lamp', 31.0, 14.4)
 lv.prop('plant', 33.5, 15.4)
-lv.prop('trash_can', 29.45, 15.4)
+lv.prop('trash_can', 29.45, 15.4, tips=False)
 lv.prop('bin_bag', 29.95, 15.55, 60)
 
 # ---------------------------------------------------------------- the fire, room after room behind him

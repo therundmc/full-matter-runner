@@ -99,6 +99,8 @@ export const META = {
   ceramic: { gain: 0.55 }, glassHit: { gain: 0.5 }, flesh: { gain: 0.7 },
   woodBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.85 },
   flip: { pri: 2, dur: 0.6, gap: 0.2, max: 2, gain: 0.8 },
+  binTip: { pri: 2, dur: 0.7, gap: 0.15, max: 2, gain: 0.75 },
+  binLid: { pri: 1, dur: 0.4, gap: 0.1, max: 2, gain: 0.6 },
   metalBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.8 },
   ceramicBreak: { pri: 2, dur: 0.5, gap: 0.05, max: 3, gain: 0.75 },
   plasticBreak: { pri: 2, dur: 0.4, gap: 0.05, max: 3, gain: 0.7 },
@@ -330,6 +332,9 @@ const FOLEY = {
   // the thing giving way
   woodBreak: [['woodBreak', 1], ['wood', 0.5, 0.85]],
   flip: [['wood', 0.8, 0.7], ['thud', 0.9, 0.8, 0.05], ['wood', 0.5, 1.1, 0.12]], // a table going over on its side
+  // a galvanised bin going over: the body on the ground, then a few rattles as it rocks and rolls; its lid landing
+  binTip: [['sheet', 0.9, 0.85], ['thud', 0.5, 1.1, 0.02], ['metal', 0.6, 0.8, 0.14], ['metal', 0.4, 0.9, 0.29], ['metal', 0.25, 1, 0.42, 0.7]],
+  binLid: [['metal', 0.8, 1.35], ['metal', 0.4, 1.5, 0.11, 0.8]],
   metalBreak: [['metalBreak', 1], ['sheet', 0.6]],
   ceramicBreak: [['ceramic', 1], ['glassHit', 0.5, 0.8], ['stone', 0.5]],
   plasticBreak: [['plastic', 1, 0.8], ['woodBreak', 0.45, 1.5]],

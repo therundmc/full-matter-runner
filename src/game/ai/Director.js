@@ -23,7 +23,7 @@ import Trail from './Trail.js';
 // what brings every guard who hears it, whatever the phase; any other noise only the nearest ones while all is calm
 export const ALARMS = new Set(['gunshot', 'allyFire', 'explosion', 'body', 'wall', 'footsteps']);
 // the stranger's own noises (made where he stands), that a guard who sees him takes him to task for
-const ODD = new Set(['glass', 'thrown', 'door', 'noise']);
+const ODD = new Set(['glass', 'thrown', 'door', 'noise', 'clatter']);
 const gunInHand = (p) => !!p.armed && p.hasGun !== false;
 
 // is the point inside one of the [col0, row0, col1, row1] tile rectangles (inclusive)?

@@ -97,11 +97,14 @@ src/
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
+      Tipping.js          street bins (prop def `tips`) go over instead of breaking: struck, shot, run into, a body or a
+                          car ('impact'), a blast; lid off, rubbish out of the mouth (bits, a bag, Papers sheets), a
+                          clatter heard; lying, only a blast or a car at speed wrecks it (DOM-free, unit-tested)
       Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes
                           whistling out of a bullet hole (SMOKE.steam / jets.leak, level `street`): steam put in the air
                           of Smoke.js, which carries it (a passing car tears it along)
       Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
-                          soaked by the rain, heavier and darker
+                          soaked by the rain, heavier and darker; `drop` adds sheets that fell out of something
       Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is
                           off): which tiles see the sky, where puddles lie in the open (Liquids fills their hollows),
                           drip spots (only if it falls). The drops are not stored (render/WeatherArt.js). DOM-free, seeded
@@ -229,9 +232,10 @@ Rules:
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
 | `propHit` | `{ prop, x, y, dirA, kind }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster) |
+| `propTipped` | `{ prop, x, y, dirA, by }` | systems/Tipping.tipOver (a street bin knocked over; `by`: who, when known) | - |
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster) |
 | `spill` | `{ x, y, kind, area, dur?, a? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing), a guard's glass or leak, a customer's glass | Liquids (px2 of floor a `LIQUIDS.kinds` liquid covers, at once or over `dur` seconds, thrown toward `a`) |
-| `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
+| `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles, a bin knocked over: `clatter`) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
 | `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack combat variant; intensity through Tension), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
@@ -526,6 +530,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   bolted, vaultable shield with the health it had left, and what stood on it is thrown (`Prop.empty`). A gun guard
   taking cover prefers a spot with such a table before it (`AI.flip`, the `bonus` of `Tactics.findCover`), steps
   up to it and shoves it over toward the threat (`Enemy.tCover`, sub `flip`).
+  A prop whose def has `tips` (the street's `trash_can`) is knocked over in place instead (systems/Tipping.js): the
+  same Prop gets the lying sprite and a rectangle body (`tipped`), its lid and rubbish are thrown once, and from then
+  on hits only mark and roll it (`Prop.hit`), a blast wears it down, a car at speed (`Vehicle.ram`, an 'impact')
+  wrecks it. A level keeps one standing with the prop option `{ tips: false }` (`noTip`: the indoor bins).
 - Floor litter (`LITTER` in Config.js): everything still flies, but only a share of the crumbs (chips, glass slivers,
   fluff, cinders, tiny visual shards) leaves a mark where it lands, and a faint one; real pieces, casings, magazines
   and blood always stay. Blood has its own layer above the floor, so it always covers rubble.

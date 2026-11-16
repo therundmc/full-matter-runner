@@ -45,7 +45,7 @@ export const GAS_VALVE = { fill: 26, radius: 130, blast: 90, extra: 70, hiss: 0.
 // The jukebox turned up (E, prop type `jukebox` powered and on its record): `dur` s loud, its band heard (Music),
 // the beat flashing its light; what is quieter than a door (footsteps, bodies, things knocked over) is not heard by
 // the guards within `cover` px of it (radius x `mask`). Again `again` s after it is back down.
-export const JUKEBOX = { dur: 20, cover: 330, mask: 0.15, masked: ['footsteps', 'body', 'noise', 'door', 'thrown'], again: 8, beat: 60 / 126 };
+export const JUKEBOX = { dur: 20, cover: 330, mask: 0.15, masked: ['footsteps', 'body', 'noise', 'door', 'thrown', 'clatter'], again: 8, beat: 60 / 126 };
 
 // The passage under the street (level `passage`: [[col, row], [col, row]]): E at one trapdoor, down in `down` s
 // (dark from `dark`), along it `under` s, up the other in `up` s.

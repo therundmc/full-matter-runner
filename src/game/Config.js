@@ -94,7 +94,7 @@ export const ENEMY = {
   meterDecay: [0.16, 0.05], // meter loss per second out of sight (unaware / suspicious)
   visionTick: 0.05,       // line-of-sight check period while unaware (staggered between guards)
   // meter level a noise brings a guard to (footsteps add up instead, capped below alert)
-  hear: { gunshot: 0.75, allyFire: 0.6, explosion: 0.75, wall: 0.6, glass: 0.5, door: 0.4, thrown: 0.5, body: 0.45, noise: 0.45, footsteps: 0.18 },
+  hear: { gunshot: 0.75, allyFire: 0.6, explosion: 0.75, wall: 0.6, glass: 0.5, door: 0.4, thrown: 0.5, clatter: 0.45, body: 0.45, noise: 0.45, footsteps: 0.18 },
   hearError: 0.12,        // noise localisation error, fraction of the distance
   // reaction & aim: guards must telegraph before they fire
   reaction: [0.65, 0.95], // seconds from '!' to the first possible shot

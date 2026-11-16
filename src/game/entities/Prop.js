@@ -14,6 +14,7 @@ import Debris from './Debris.js';
 import { wallBehind, run } from '../fx/Spatter.js';
 import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
 import { ignite } from '../systems/Gas.js';
+import { tipOver } from '../systems/Tipping.js';
 
 const { Bodies } = Matter;
 
@@ -129,6 +130,8 @@ export default class Prop {
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
     w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind });
     if (this.falling) return;
+    // a street bin goes over instead (systems/Tipping.js), sent along by the blow; it then lands on the can lying there
+    const fell = d.tips && kind !== 'graze' && tipOver(this, dirA, power * 0.6);
     if (d.handset) this.offHook ??= w.time; // the receiver jumps off its hook
     if (d.bends) this.lean(dirA, power);
     const swing = info.swing ?? dirA + Math.PI / 2; // a blade's stroke runs across the blow
@@ -170,11 +173,12 @@ export default class Prop {
     if (rec.leak?.on === 'hit' || d.water) this.leak(sx, sy, dirA);
     w.sound(fx.glass || (d.glass && this.inRect(rec.screen, sx, sy)) ? 'glassHit' : fx.hit, px, py, kind === 'pellet' ? 0.35 : 0.55);
     this.recoil(dirA, power);
-    if (!d.static) impulse(this.body, dirA, 25 * power, (Math.random() - 0.5) * 0.05);
+    if (!d.static && !fell) impulse(this.body, dirA, 25 * power * (this.tipped ? d.tips.give : 1), (Math.random() - 0.5) * 0.05);
 
     if (this.doors) this.swingDoors(power);
-    // a way through a wall (data/props.js `lasting`) takes the marks, never gives: no zone of it is torn, it never breaks
-    if (d.lasting) return;
+    // a way through a wall (data/props.js `lasting`) takes the marks, never gives: no zone of it is torn, it never breaks;
+    // nor does a knocked-over bin, but to a blast
+    if (d.lasting || (this.tipped && kind !== 'blast')) return;
     // the zone it landed in wears down: corners come off, a line of torn zones saws it in two
     if (!this.zones) this.zones = new ZoneGrid(this.W, this.H, d.hp);
     const torn = this.zones.damage(sx, sy, damage * (ZONE_WEAR[kind] ?? 1), kind === 'blast' ? 0.5 : 0.15);
@@ -465,6 +469,7 @@ export default class Prop {
 
   // what stood on it or in it goes flying (it breaks up, or it is tipped over)
   empty(x, y, dirA, power, z0 = this.lift()) {
+    if (this.tipped) return; // what a knocked-over bin held spilled when it went over
     const rec = this.rec;
     let bits = DESTRUCTION.maxBits;
     for (const c of rec.contents) {

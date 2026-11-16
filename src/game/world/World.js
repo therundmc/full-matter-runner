@@ -46,6 +46,7 @@ import Fires from '../systems/Fires.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Gadgets from '../systems/Gadgets.js';
+import Tipping from '../systems/Tipping.js';
 import Uses from '../systems/Uses.js';
 import Slips from '../systems/Slips.js';
 import Sprinklers from '../systems/Sprinklers.js';
@@ -127,6 +128,7 @@ export default class World {
     this.ambience = new Ambience(this);           // the night heard, place by place: beds, traffic, one-shots
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
+    this.tipping = new Tipping(this);             // street bins run into go over
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
     this.weather = new Weather(this, level);               // the rain: open sky, its puddles, drips off the eaves
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes

@@ -289,7 +289,7 @@ for x in (27.4, 28.12, 28.84):
 lv.prop('washer', 31.6, 34.1, 90)
 lv.prop('washer', 31.6, 34.82, 90)
 lv.prop('bench', 28.3, 33.4)
-lv.prop('trash_can', 31.6, 33.35)
+lv.prop('trash_can', 31.6, 33.35, tips=False)            # indoors: stays up (the street's go over)
 lv.prop('plant', 31.55, 35.6)
 lv.prop('tube_light', 28.5, 35.93, 180)
 lv.prop('tube_light', 30.5, 35.93, 180)
@@ -364,7 +364,7 @@ for y in (7.95, 8.85):
     lv.prop('urinal', 21.19, y, 270)                    # on the west wall
 lv.prop('sink', 23.7, 9.0, 90)
 lv.prop('tube_light', 23.93, 8.15, 90)                  # between the stall and the sink
-lv.prop('trash_can', 21.4, 10.5)
+lv.prop('trash_can', 21.4, 10.5, tips=False)
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)

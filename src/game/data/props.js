@@ -69,7 +69,19 @@ export const PROPS = {
   beer_tap: { hung: true, static: true, material: 'metal', w: 20, h: 8, hp: 6, chips: '#b8bcc8', sound: 'metal' },
   bar_counter: { vault: true, material: 'wood', w: 32, h: 19, hp: 16, static: true, chips: '#4a2a1a', sound: 'wood', blocksPath: true },
   dumpster: { static: true, vault: true, material: 'metal', w: 58, h: 34, hp: 36, chips: '#2a6a3a', sound: 'metal', blocksPath: true },
-  trash_can: { material: 'metal', r: 7.5, hp: 6, kg: 15, mu: 0.8, chips: '#555', sound: 'metal' },
+  // a street bin: knocked over rather than broken (systems/Tipping.js); a level can keep one standing ({ tips: false })
+  trash_can: { material: 'metal', r: 7.5, hp: 6, kg: 15, mu: 0.8, chips: '#555', sound: 'metal',
+    // tips: what goes over instead of breaking. down: its sprite lying along x (base at -x, open mouth at +x); body:
+    // [length, width] px of it lying, off: px from that body's centre to the sprite's; kg, mu once down; roll: px/s it
+    // slides on along the blow as it falls; lid: the standing sprite comes off as its lid; spill: what falls out of the
+    // mouth (n: [min, max]; bit: BITS, prop: a prop left lying, papers: loose sheets, systems/Papers.js); bump: closing
+    // speed (px/step) of a body of `heavy` kg or more that knocks it over, `rock` that only rocks it; give: share of a
+    // blow's shove it takes once down; wreck: px/step of a car that flattens it lying; noise: px the clatter carries.
+    tips: {
+      down: 'props/trash_can_down', body: [21, 14], off: 1, kg: 12, mu: 0.45, roll: [40, 75], lid: true,
+      spill: [{ prop: 'bin_bag', n: [1, 2] }, { bit: 'can', n: [2, 3] }, { bit: 'food', n: [2, 4] }, { papers: true, n: [4, 7] }],
+      bump: 2.2, heavy: 10, rock: 0.4, give: 0.35, wreck: 3, noise: 220,
+    } },
   // street & neon dressing (overhead = drawn above characters, fades when the player walks under)
   palm_tree: { material: 'wood', r: 4.5, hp: 12, static: true, chips: '#2f8f3a', sound: 'wood', overhead: true, dirt: true,
     height: 0.06, pole: ['#4a3424', 6] },

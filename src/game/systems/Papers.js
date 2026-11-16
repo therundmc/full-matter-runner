@@ -14,16 +14,27 @@ export default class Papers {
     this.world = world;
     this.cfg = cfg;
     this.friction = cfg.friction * (1 + wet * RAIN.papers.friction);
-    const soaked = 1 - wet * RAIN.papers.lift;
+    const soaked = this.soaked = 1 - wet * RAIN.papers.lift;
+    this.wet = wet > 0;
     this.list = [];
     for (const [c0, r0, c1, r1, n] of zones) {
       for (let i = 0; i < n; i++) {
         // light: how easily the wind takes it; rot: which way up it lies (its shape turns as it tumbles)
-        this.list.push({ x: rand(c0, c1 + 1) * TILE, y: rand(r0, r1 + 1) * TILE, vx: 0, vy: 0, rot: rand(0, 8), light: rand(0.5, 1.2) * soaked, tint: i % 3, wet: wet > 0 });
+        this.list.push({ x: rand(c0, c1 + 1) * TILE, y: rand(r0, r1 + 1) * TILE, vx: 0, vy: 0, rot: rand(0, 8), light: rand(0.5, 1.2) * soaked, tint: i % 3, wet: this.wet });
       }
     }
     this.gust = null;              // { dx, dy, f, t }: the one blowing now
     this.next = rand(...cfg.gust); // s to the next one
+  }
+
+  // n sheets that fell out of something at (x, y) (a bin knocked over, systems/Tipping.js), thrown on along a at up to
+  // v px/s; from then on they are the street's like the others
+  drop(x, y, n, a, v) {
+    for (let i = 0; i < n; i++) {
+      const d = a + rand(-0.9, 0.9), s = rand(0.3, 1) * v;
+      this.list.push({ x: x + rand(-2, 2), y: y + rand(-2, 2), vx: Math.cos(d) * s, vy: Math.sin(d) * s, rot: rand(0, 8),
+        light: rand(0.5, 1.2) * this.soaked, tint: i % 3, wet: this.wet });
+    }
   }
 
   update(dt) {

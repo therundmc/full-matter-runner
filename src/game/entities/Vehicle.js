@@ -469,15 +469,16 @@ export default class Vehicle {
         w.sound('carHit', cx, cy, 1);
         w.particles.sparks(cx, cy, dir, 1, 10, 320);
       } else if (e.isPlayer || e.isEnemy || e.isCivilian) e.kill(heading, 'vehicle', this);
-      else if (e.def.static) e.break(heading, R.tear);
+      else if (e.def.static || e.tipped) e.break(heading, R.tear); // a bin already down is flattened
       else {
         e.hit(R.crush, cx, cy, heading, 1.5, 'blunt');
         if (e.dead || e.dying) continue;
-        wake(ob);
+        const eb = e.body; // a new one if the blow knocked it over (systems/Tipping.js)
+        wake(eb);
         const sp = rand(...R.fling);
-        Body.setVelocity(ob, { x: Math.cos(dir) * sp, y: Math.sin(dir) * sp });
-        Body.setAngularVelocity(ob, rand(-R.spin, R.spin));
-        ob.flyUntil = t + R.fly;
+        Body.setVelocity(eb, { x: Math.cos(dir) * sp, y: Math.sin(dir) * sp });
+        Body.setAngularVelocity(eb, rand(-R.spin, R.spin));
+        eb.flyUntil = t + R.fly;
       }
     }
     return hits;
