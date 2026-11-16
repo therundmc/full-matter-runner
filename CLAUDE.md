@@ -126,9 +126,9 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    & MGS-style enemy AI (ai/Director.js), street life
    (traffic, passers-by), dressed rooftops. Closed shops (LIQUOR, VIDEO; level `alarms`, systems/Alarms.js) ring when
    broken into: a bell made of a recorded cut, a red beacon, guards nearby come to look, until the box is shot off.
-   The bar's door is a club's (2026-11-15, his wish): a striped canvas awning (overhead prop `awning`, seen through
-   when he walks under it, flush on the facade; a wooden pergola was "too ugly"), a soiled red carpet, velvet ropes
-   bolted down; the wall lamps, palms in planters and a GIRLS neon were taken off ("du bordel pour rien").
+   The bar's door is a club's (2026-11-15, his wish): a soiled red carpet, velvet ropes bolted down; the wall lamps,
+   palms in planters, a GIRLS neon ("du bordel pour rien") and a canvas awning (it hid the door: "ça gâche la
+   visibilité"; a wooden pergola was "too ugly") were taken off.
    The bar hangs on a fuse box on its back wall, in the back lot (level `power`, systems/Power.js, prop `fuse_box`):
    smashed or shot, the lights stutter and die, the jukebox and the fans stop, and only the red battery lamps over the
    doors are left (props with `standby`); guards see far less in it, and those who heard the box come and look.

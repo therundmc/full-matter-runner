@@ -113,9 +113,6 @@ export const PROPS = {
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
   neon_sign_video: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
-  // a canvas awning over a club's door, on the wall and two poles at the kerb: people walk under it (seen through
-  // then); rounds go through the cloth
-  awning: { fixture: true, hung: true, overhead: true, height: 0, static: true, material: 'wood', w: 66, h: 48, hp: 30, chips: '#6c1828', sound: 'wood' },
   // two brass posts and the velvet rope between them, at a club's door (bolted down: the user wants the door tidy)
   velvet_rope: { static: true, material: 'metal', w: 30, h: 6, hp: 5, chips: '#a0142a', sound: 'metal' },
   neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
