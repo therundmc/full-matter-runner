@@ -35,7 +35,7 @@ export const SPRINKLERS = {
 // The pool table's lamp (prop def `drops`): a round through its chain and it comes down, `fall` s from the ceiling to
 // the table; whoever is within its footprint grown by `reach` [along, across] is crushed. It lands `shove` px along
 // the round that cut it.
-export const LAMP_DROP = { fall: 0.32, reach: [12, 28], shove: 10 };
+export const LAMP_DROP = { fall: 0.32, reach: [12, 36], shove: 10 }; // 36: it gets the man bent over the table's long side
 
 // The stove's gas tap (prop option `valve`): open (E), the room fills: the cloud reaches `radius` px in `fill` s;
 // a spark in it (a shot, a blast, a fire, metal struck by a round) blows it all: `blast` px at the stove plus
