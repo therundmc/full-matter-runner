@@ -169,7 +169,7 @@ lv.patron('civ2', 15.6, 17.0, 0, 'drink')               # alone in the booth
 lv.patron('civ4', 26.5, 15.25, 270, 'cards')            # the poker game, across the table from the dealer
 lv.patron('civ5', 27.4, 15.25, 270, 'cards')
 lv.patron('civ3', 22.2, 15.6, 180, 'cue')               # waiting for his turn at the pool table
-lv.patron('civ8', 26.55, 17.5, 40, 'drink')             # the VIP room: two customers, a dancer
+lv.patron('civ8', 27.6, 17.45, 90, 'drink')              # the VIP room: two customers, a dancer (the doorway kept clear)
 lv.patron('civ7', 26.55, 19.45, -27, 'watch')
 lv.patron('dancer1', 30.0, 18.9, 180, 'dance')
 # back of house
@@ -444,7 +444,6 @@ lv.prop('curtain', 25.5, 18.5)                          # velvet across its door
 lv.prop('dance_stage', 30.0, 18.9)
 lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round the room
 lv.prop('sofa', 28.15, 17.45)                           # clear of where one lands diving through the window
-lv.prop('armchair', 26.5, 17.5, 0)
 lv.prop('armchair', 26.5, 19.45, 0)
 lv.prop('neon_tube_pink', 28.0, 19.93, 180)
 

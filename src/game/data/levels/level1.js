@@ -179,8 +179,7 @@ export default {
     ['fire_alarm', 20.5, 12.07, 0],
     // the bar: VIP room
     ['curtain', 24.5, 18.5, 0], ['dance_stage', 28, 18.9, 0], ['mirror_ball', 27.5, 18.6, 0],
-    ['sofa', 27.15, 17.45, 0], ['armchair', 25.5, 17.5, 0], ['armchair', 25.5, 19.45, 0],
-    ['neon_tube_pink', 27, 19.93, 180],
+    ['sofa', 27.15, 17.45, 0], ['armchair', 25.5, 19.45, 0], ['neon_tube_pink', 27, 19.93, 180],
     // the liquor store roof
     ['ladder', 1.5, 20.5, 0], ['wall_lamp', 9.91, 11.4, 90], ['wall_lamp', 9.91, 4.6, 90],
     ['string_lights', 4, 9.3, 0], ['sofa', 3.9, 8.5, 0], ['crate', 3.9, 9.75, 12], ['chair', 2.7, 9.95, 160],
@@ -264,7 +263,7 @@ export default {
       ['civ4', 25.5, 15.25, 270, 'cards'],
       ['civ5', 26.4, 15.25, 270, 'cards'],
       ['civ3', 21.2, 15.6, 180, 'cue'],
-      ['civ8', 25.55, 17.5, 40, 'drink'],
+      ['civ8', 26.6, 17.45, 90, 'drink'],
       ['civ7', 25.55, 19.45, -27, 'watch'],
       ['dancer1', 28.0, 18.9, 180, 'dance'],
       ['tramp', 21.1, 36.5, 180, 'sleep'],
