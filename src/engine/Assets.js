@@ -38,6 +38,9 @@ export const OPTIONAL_LIST = [
     'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'apt_door', 'doormat', 'stairs', 'floor_hole', 'jerrycan',
     'runner', 'road_edge', 'parking_bay', 'velvet_rope', 'entry_carpet', 'awning', 'radiator', 'bike', 'bin_bag', 'newspaper', 'shoes',
     'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain'].map((n) => `props/${n}`),
+  // the physics lab's stencilled floor labels (tools/build_lab.py)
+  ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
+    'vehicles'].map((n) => `props/label_${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare'].map((n) => `weapons/${n}`),

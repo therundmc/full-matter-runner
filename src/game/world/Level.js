@@ -135,7 +135,8 @@ export function buildLevel(world, level) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
         // a guard may be his own man (level.looks['col,row'] = a kind of his own: the boss)
         const e = new Enemy(world, px, py, face, level.looks?.[`${x},${y}`] || kind, weapon, ch !== ch.toLowerCase());
-        e.passive = !!level.passive;
+        // a passive level (the lab): dummies that neither see nor hear, but those it keeps `awake` ('col,row')
+        e.passive = !!level.passive && !level.awake?.includes(`${x},${y}`);
         e.takeJob(level.jobs?.[`${x},${y}`]);
         world.enemies.push(e);
       } else if (WEAPON_CHARS[ch]) {

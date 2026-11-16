@@ -59,6 +59,8 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug')
+LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
+          'trapdoor', 'vehicles')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -108,6 +110,7 @@ class Level:
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
         self.looks = {}       # 'x,y' -> a kind of his own for the guard there (his sprites: the boss)
+        self.awake = []       # 'x,y' of the guards who see and hear in a passive level (the lab's sight tests)
         self.patrons = []     # [sprite, col, row, deg, pastime]: civilians posted indoors
         self.spawns = []      # centre of every character, for the overlap check
         self._area = ''
@@ -159,7 +162,7 @@ class Level:
         self.tiles[y][x] = ch
 
     # ---- actors: player, guards (UPPERCASE = patrols along `route`), weapons, ammo
-    def actor(self, ch, x, y, face=None, route=None, job=None, look=None):
+    def actor(self, ch, x, y, face=None, route=None, job=None, look=None, awake=False):
         x, y = self.tile(x, y, f'actor {ch}')
         route = route and [list(self.at(*q)) for q in route]
         t = self.tiles[y][x]
@@ -174,6 +177,8 @@ class Level:
             self.jobs[f'{x},{y}'] = job
         if look:
             self.looks[f'{x},{y}'] = look
+        if awake:
+            self.awake.append(f'{x},{y}')
         if ch == '@' or ch.lower() in GUARDS:
             self.spawns.append((x + 0.5, y + 0.5))
 
@@ -195,7 +200,7 @@ class Level:
     # ---- something lying flat, painted on the floor once and for all (a doormat, a carpet runner, a flight of stairs):
     # nobody bumps into it and no round stops on it
     def paint(self, sprite, col, row, deg=0):
-        assert sprite in FLOOR, f'{sprite} is not floor paint'
+        assert sprite in FLOOR or sprite[6:] in LABELS and sprite.startswith('label_'), f'{sprite} is not floor paint'
         self.floor.append([sprite, *self.at(col, row), deg])
 
     def fire(self, col, row, stage=None, delay=None):
@@ -405,6 +410,9 @@ class Level:
             L.append('  jobs: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.jobs.items()) + ' },')
         if self.looks:
             L.append('  looks: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.looks.items()) + ' },')
+        if self.awake:
+            L.append("  // in a passive level, the guards who still see and hear (by their tile 'col,row')")
+            L.append(f'  awake: {js(self.awake)},')
         L.append('  tiles: [')
         L += [f'    {json.dumps("".join(r))},' for r in self.tiles]
         L.append('  ],')

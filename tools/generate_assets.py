@@ -6067,6 +6067,78 @@ def p_parking_bay():
     return road_paint(60, 4, 911)
 
 
+# Stencilled floor labels of the physics lab's stations (tools/build_lab.py, painted with Level.paint): worn yellow
+# floor-marking paint, 5 x 7 capitals, each font pixel 2 x 2 world px (letters 14 px = 0.44 m tall).
+FONT_STENCIL = {
+    'A': [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    'B': ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    'C': [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
+    'D': ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    'E': ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    'G': [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
+    'I': ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
+    'J': ["....#", "....#", "....#", "....#", "....#", "#...#", ".###."],
+    'H': ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    'V': ["#...#", "#...#", "#...#", "#...#", ".#.#.", ".#.#.", "..#.."],
+    'Y': ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
+    'K': ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
+    'L': ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    'M': ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
+    'N': ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
+    'O': [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    'P': ["####.", "#...#", "#...#", "####.", "#....", "#....", "#...."],
+    'Q': [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
+    'R': ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+    'S': [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+    'T': ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
+    'U': ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    'W': ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
+    'X': ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"],
+    '1': ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    '2': [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+    '3': ["####.", "....#", "....#", ".###.", "....#", "....#", "####."],
+    '4': ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+    '5': ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+    '6': [".###.", "#....", "#....", "####.", "#...#", "#...#", ".###."],
+    '7': ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+    '8': [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+    '9': [".###.", "#...#", "#...#", ".####", "....#", "....#", ".###."],
+    ' ': [".....", ".....", ".....", ".....", ".....", ".....", "....."],
+}
+LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', powder='4 POWDER', steam='5 STEAM',
+                  liquids='6 LIQUIDS', curtain='7 CURTAIN', bars='7 BARS', pool='8 POOL', power='9 POWER',
+                  jukebox='9 JUKEBOX', trapdoor='9 TRAPDOOR', vehicles='VEHICLES')
+STENCIL_K = 2   # world px per font pixel
+
+
+def stencil_size(text):
+    return (len(text) * 6 - 1) * STENCIL_K + 2, 7 * STENCIL_K + 2
+
+
+def stencil(text, seed):
+    """A label stencilled on the floor: worn yellow paint, chipped where it was walked on (1 px clear margin)."""
+    W, H = stencil_size(text)
+    cv = Cv(W, H)
+    rng = random.Random(seed)
+    paint, worn = hx('#d8b240', 210), hx('#9a8040', 170)
+    k = STENCIL_K
+    for n, ch in enumerate(text):
+        for gy, row in enumerate(FONT_STENCIL[ch]):
+            for gx, c in enumerate(row):
+                if c != '#':
+                    continue
+                for j in range(k):
+                    for i in range(k):
+                        if rng.random() < 0.1:
+                            continue                            # chipped: the floor shows through
+                        cv.set(1 + (n * 6 + gx) * k + i, 1 + gy * k + j, worn if rng.random() < 0.25 else paint)
+    return cv
+
+
+LABEL_PROPS = dict(('label_' + n, (lambda t=t, s=i: stencil(t, 1201 + s))) for i, (n, t) in enumerate(LAB_LABELS.items()))
+LABEL_SIZES = dict(('label_' + n, stencil_size(t)) for n, t in LAB_LABELS.items())
+
+
 def p_velvet_rope():
     """A length of queue rope from above: two brass posts on their weighted bases, a red velvet rope hung between
     their caps by its brass hooks, sagging a little toward the street (+y)."""
@@ -7234,6 +7306,7 @@ def build():
                  hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
     props.update(SHOP_PROPS)
     props.update(DETAIL_PROPS)
+    props.update(LABEL_PROPS)
     for name, fn in props.items():
         r = fine(fn, name) if name in FINE_PROPS else fn()
         if isinstance(r, tuple):   # (sprite, emissive map)
@@ -7280,12 +7353,14 @@ FLOOR_NAMES = [t[0] for t in FLOOR_TILES]
 PROP_SIZES.update(LIGHT_SIZES)
 PROP_SIZES.update(SHOP_SIZES)
 PROP_SIZES.update(DETAIL_SIZES)
+PROP_SIZES.update(LABEL_SIZES)
 GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
 # the furniture, the street's dressing and the vehicles are painted at FINE density (their emissive maps too), like
 # the people and the weapons: the sizes above are in world px. The neon signs, neon tubes and party bulbs stay at the
-# world's: they are light (the lamps' fittings are painted fine, their glow maps with them).
+# world's: they are light (the lamps' fittings are painted fine, their glow maps with them); the lab's stencilled
+# labels too.
 # (keep in step with FINE in src/engine/Assets.js)
-FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING)
+FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING) - set(LABEL_SIZES)
               - {'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'neon_tube_pink', 'neon_tube_cyan', 'string_lights'})
 
 

@@ -560,7 +560,8 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
   after the lighting (`Enemy.drawMarks`). HUD: small CAUTION / ALERT / EVASION label with the time left.
 - Level fields (optional): `patrols: { 'col,row': [[col, row], ...] }` = explicit route for the guard spawned
   at col,row (he loops through it, pausing at each point); without it uppercase guards wander around their
-  spawn. `passive: true` = dummies with no perception (lab). `jobs: { 'col,row': 'pool' | 'cards' | 'count' | 'door' | 'wipe' }` = the pastime
+  spawn. `passive: true` = dummies with no perception that still go on at their job (lab), but the guards whose
+  tile is listed in `awake: ['col,row']`. `jobs: { 'col,row': 'pool' | 'cards' | 'count' | 'door' | 'wipe' }` = the pastime
   of the guard posted there (ai/Pastimes.js): he is at it while all is calm, less watchful (`Enemy.distracted`),
   and drops it as soon as the squad is on edge. Two of them leave his eyes free: a doorman ('door') stands arms
   folded and follows the player with his eyes (`AI.gaze`), a bartender ('wipe') polishes a glass and ducks behind
@@ -718,7 +719,9 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 
 ## Debug
 
-- `?level=lab` loads the physics lab (all props/weapons/ammo on three floors, a street with vehicles, passive dummies).
+- `?level=lab` loads the physics lab (tools/build_lab.py): a station per system, its name stencilled on the floor (range,
+  executions, soot, powder, steam, liquids, curtain and bars, pool lamp, power / jukebox / trapdoor), a street with the
+  vehicles; passive dummies but two `awake` guards for the sight tests.
 - `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,
   prop, vehicle, blast, water; same key or mouse wheel = next variant), B rotates, F / middle click drops it at the

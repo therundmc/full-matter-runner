@@ -79,7 +79,16 @@
       // off the roof when a failed plan left the bot up there (the grid has no way down: ladders and parapets block)
       offRoof: { steps: DROP_ALLEY, rescue: true },
     },
-    lab: { free: { steps: [] }, throw: THROW },
+    lab: {
+      free: { steps: [] },
+      throw: THROW,
+      // the lab's stations that need a hand: its jukebox, its fire alarm, its kegs, its trapdoors, its fuse box
+      jukebox: { steps: [{ use: 'jukebox' }], ok: usable('jukebox') },
+      alarm: { steps: [{ use: 'fire_alarm' }], ok: usable('fire_alarm') },
+      kegs: { steps: [{ smash: 'keg', near: [44.4, 12.4], enough: 3 }], ok: (w) => w.props.some((q) => q.type === 'keg' && !q.dead) },
+      passage: { steps: [{ use: 'trapdoor', near: [45.4, 5.0] }, { wait: 2.5 }], ok: usable('trapdoor') },
+      fuse: { steps: [{ smash: 'fuse_box', near: [35.5, 7.08], stand: [35.5, 7.7] }], ok: (w) => w.power.on },
+    },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
     tutorial: { free: { steps: [] }, out: { steps: [{ go: [34.3, 16.5] }, { cross: [36.6, 16.5] }], rescue: true } },

@@ -55,7 +55,8 @@ player, and reads `window.game` to decide:
 
   A `use: kind` step walks to the device spot of that kind (systems/Uses.js) and presses E there.
 
-  `lab` and `street` have `free` and `throw` (and `road` in `--god` on the street). A plan that breaks (no path,
+  `lab` and `street` have `free` and `throw` (and `road` in `--god` on the street); the lab also `jukebox`, `alarm`,
+  `kegs`, `passage` and `fuse`. A plan that breaks (no path,
   timeout, the weapon gone) is a `plan-failed` warning; a plan left on the roof is followed by a way down (`offRoof`);
 - picks a goal and walks there along the guards' own grid path-finding (`engine/nav/Pathfinding.js`): the nearest
   living guard, a weapon on the floor (a loaded gun first when it has none), rounds on the floor, the car trunk, a

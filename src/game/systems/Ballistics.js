@@ -1,6 +1,8 @@
 // Hit-scan queries: what a bullet segment hits first, and who can see whom.
 import { segPoly, segCircle, segSeg } from '../../engine/physics/Raycast.js';
 
+const LAMP_LOOK = 96; // px past a step's end a lamp hung over the table it struck is looked for
+
 // Nearest thing hit by the segment (x0,y0)->(x1,y1).
 // Returns { t, kind, x, y, target?, part?, nx?, ny?, cx?, cy? } or null.
 // kind: wall | char | prop | door | glass | corpse | item | debris
@@ -30,6 +32,18 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore, floor = null) {
     }
   };
   test(world.props, 'prop', (p) => !p.dead);
+  // a lamp hung over a table (def `drops`: the pool table's) lies wholly over it, so the table's edge would always take
+  // the round first: one that strikes the table where the lamp hangs over it flies over into the lamp (systems/LampDrop.js).
+  // The lamp may lie past the end of this step's segment (k: how far it is looked along, in segments)
+  if (best?.kind === 'prop' && !best.target.def.hung) {
+    const k = 1 + LAMP_LOOK / Math.max(1, Math.hypot(x1 - x0, y1 - y0)), ex = x0 + (x1 - x0) * k, ey = y0 + (y1 - y0) * k;
+    for (const q of world.props) {
+      if (q.dead || !q.def.drops || ignore.has(q)) continue;
+      const r = segPoly(x0, y0, ex, ey, q.body.vertices);
+      const at = r && { x: x0 + (ex - x0) * r.t, y: y0 + (ey - y0) * r.t };
+      if (at && Matter.Vertices.contains(best.target.body.vertices, at)) best = { t: r.t * k, kind: 'prop', target: q, nx: r.nx, ny: r.ny };
+    }
+  }
   test(world.doors, 'door', () => true);
   test(world.windows, 'glass', (g) => g.intact);
   // the body shot at on purpose: every ragdoll part can be hit

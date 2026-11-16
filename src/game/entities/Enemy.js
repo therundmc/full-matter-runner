@@ -71,7 +71,7 @@ export default class Enemy extends Character {
     this.route = route ? route.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE })) : null;
     this.routeIdx = 0;
     this.roam = roam || !!this.route;
-    this.passive = false;      // lab dummies: no perception at all
+    this.passive = false;      // lab dummies: no perception at all (they still go on at their job, see waitTurn)
     this.hurt = 0;             // s his face still bleeds after he was floored (drip), dripT: s to the next drop
     this.dripT = 0;
     this.slack = 1;            // x his reaction time (the tutorial's men are slower) ...
@@ -199,8 +199,9 @@ export default class Enemy extends Character {
     return this.aware === 0 && (this.state === S.IDLE ? this.atPost : this.state === S.PATROL && this.pauseT > 0);
   }
 
-  // nothing has reached him: the squad is calm, or he is a tutorial man waiting for his turn, who knows nothing of it
-  get quiet() { return this.dormant || this.director.phase === 'normal'; }
+  // nothing has reached him: the squad is calm, or he is a tutorial man waiting for his turn or a lab dummy (passive),
+  // who knows nothing of it
+  get quiet() { return this.dormant || this.passive || this.director.phase === 'normal'; }
 
   // what his hands are at while at ease (a kind of render/PastimeArt.js), or null: free, or on his weapon
   get pastime() {
@@ -541,8 +542,7 @@ export default class Enemy extends Character {
       this.body.collisionFilter = { ...this.body.collisionFilter, group: 0 }; // let go: solid to him again
     }
     if (this.updateVault(dt)) return;
-    if (this.passive) { this.halt(); return; }
-    if (this.dormant) { this.waitTurn(dt); return; }
+    if (this.passive || this.dormant) { this.waitTurn(dt); return; } // blind and deaf, at his job if he has one
     this.seatThrough();
     if (this.yielded) { this.updateYield(dt); return; }
     // a blow wound up (windUp) comes now, whether he is still in reach or not
@@ -586,7 +586,8 @@ export default class Enemy extends Character {
   }
 
   // ---------------- calm behaviours ----------------
-  // a tutorial man waiting for his wave (systems/Tutorial.js): he sees and hears nothing, but goes on at his job
+  // a tutorial man waiting for his wave (systems/Tutorial.js), a lab dummy (passive): he sees and hears nothing, but
+  // goes on at his job
   waitTurn(dt) {
     this.t += dt;
     if (this.updatePosture(dt) || !(this.routine && this.activity === this.job)) { this.halt(); return; }
