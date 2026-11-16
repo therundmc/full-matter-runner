@@ -128,6 +128,10 @@
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
       plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0,
+      // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
+      // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
+      // the stage they reached, drivers held up at gunpoint
+      ai: { engaged: 0, reached: 0, stall3: 0, challenges: {}, stages: {}, heldUp: {} },
     },
     sessions: [],      // per session summary (Node analyses its samples for leaks)
     newSamples: [],    // leak samples since the last status
@@ -211,6 +215,12 @@
     ev.on('kill', (e) => onKill(w, e));
     ev.on('powerCut', () => { cover('powerCut'); act('POWER CUT'); B.powerCheckT = w.time + 1.5; });
     ev.on('slide', ({ ch }) => { if (ch?.isPlayer) cover('slide'); });
+    ev.on('challenge', ({ act: what, stage }) => {
+      if (stage === 1) bump(S.stats.ai.challenges, what);
+      bump(S.stats.ai.stages, stage);
+      act(`challenged (${what}, ${stage})`);
+    });
+    ev.on('heldUp', ({ how }) => bump(S.stats.ai.heldUp, how));
     ev.on('pickup', ({ ch, type }) => { if (ch?.isPlayer) { cover('pickup'); bump(S.stats.picked, type); } });
     ev.on('shot', ({ shooter, weapon }) => { if (shooter?.isPlayer) bump(S.stats.fired, weapon?.type || weapon?.name || 'gun'); });
     // what the bot knows of the level
@@ -960,6 +970,7 @@
       nanCheck(w);
       outOfMap(w);
       guardStuck(w);
+      aiCheck(w);
       lastingCheck(w);
       powerCheck(w);
       if (opts.mode === 'realtime') audioCheck();
@@ -1024,6 +1035,7 @@
         && tr && w.time - tr.t < 0.25 && Math.hypot(tr.x - e.x, tr.y - e.y) > Math.max(40, tr.near + 24);
       if (!travelling) { q.anchor = null; continue; }
       if (!q.anchor || Math.hypot(e.x - q.anchor.x, e.y - q.anchor.y) > 6) { q.anchor = { x: e.x, y: e.y, t: w.time, reported: false }; continue; }
+      if (!q.anchor.stalled && w.time - q.anchor.t > 3) { q.anchor.stalled = true; S.stats.ai.stall3++; }
       if (!q.anchor.reported && w.time - q.anchor.t > 6) {
         q.anchor.reported = true;
         report('guard-stuck', 'warn', `${e.state}@${cellOf(e.x, e.y)}`, posOf(e.x, e.y), {
@@ -1031,6 +1043,22 @@
           dist: Math.round(Math.hypot(tr.x - e.x, tr.y - e.y)), path: e.path ? e.path.length - e.pathIdx : 0,
           doorWait: r1(e.doorT || 0), gateWait: r1(e.gateWait || 0), speed: r1(e.moving || 0), front: inFront(w, e, Math.atan2(tr.y - e.y, tr.x - e.x)),
         });
+      }
+    }
+  }
+
+  // the guards at work: each one entering a fight, and a guard in the fight who got within reach of the player (once
+  // per guard every 4 s)
+  function aiCheck(w) {
+    const p = w.player;
+    for (const e of w.enemies) {
+      const q = e.__qa;
+      if (!q || !e.alive) continue;
+      if (e.aware === 2 && !q.engaged) { q.engaged = true; S.stats.ai.engaged++; }
+      else if (e.aware < 2) q.engaged = false;
+      if (p.alive && e.aware === 2 && !(e.knocked > 0) && Math.hypot(e.x - p.x, e.y - p.y) < 40 && w.time - (q.reachedT ?? -9) > 4) {
+        q.reachedT = w.time;
+        S.stats.ai.reached++;
       }
     }
   }

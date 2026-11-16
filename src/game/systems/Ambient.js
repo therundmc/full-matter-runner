@@ -10,8 +10,10 @@
 // Traffic vehicles are ordinary Vehicles (same wrecking, lights, explosion) driven by a Driver brain
 // (systems/Traffic.js); once disabled they coast to a stop and stay as parked wrecks. Passers-by are
 // Civilians with a Walker brain (ai/Civilians.js). Rules and numbers: Config AMBIENT.
-// Listens to 'noise' (gunshots, explosions), 'kill' and 'patronLeft'
-// (a customer running off shoves his chair back, drops his glass, leaves a cigarette burning: `butts`).
+// Listens to 'noise' (gunshots, explosions, small noises a passer-by looks round at), 'kill', 'knock' (a fight:
+// those who see it back off), 'challenge' (a guard telling the player off: those around look), 'patronLeft' (a
+// customer running off shoves his chair back, drops his glass, leaves a cigarette burning: `butts`).
+// Emits 'heldUp' { car, how } when a driver has a gun pointed at him (Traffic Driver.heldUp).
 import { TILE, CAT, MASK, AMBIENT as A } from '../Config.js';
 import { angDiff } from '../../engine/math.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
@@ -19,6 +21,7 @@ import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Civilian, { CIVILIAN_KINDS } from '../entities/Civilian.js';
 import { Lane, Driver, gapAhead, findBypass, steerAngle, seeded, between, hashString } from './Traffic.js';
 import { Walker, WALKER, escapeRoute, hideRoute, pathLength, pointAlong } from '../ai/Civilians.js';
+import { giveWay, cellAhead, CellMemory } from '../ai/Nav.js';
 import { markBlocked } from '../world/Level.js';
 
 const { Body } = Matter;
@@ -35,6 +38,7 @@ const BARKS = {
   whine: ['OH GOD!', 'NO NO NO!', 'PLEASE!', 'MOVE!'],
   sob: ['please...', 'oh god...', 'no... no...', "don't..."],
   trip: ['AH!', 'OOF!'],
+  look: ["WHAT'S GOING ON?", 'HEY, EASY...', 'UH-OH.', 'OH BOY.', 'NOT AGAIN...'],
 };
 // the voice that goes with a bark (audio/Audio.js); a scream otherwise
 const VOICES = { beg: 'whimper', whine: 'whimper', sob: 'sob', pant: 'pant' };
@@ -62,11 +66,14 @@ export default class Ambient {
     this.scaredUntil = -1; // no new passers-by until then (after gunfire / explosions)
     this.nooks = new Set(); // cells where someone has curled up: one corner each
     this.obstacles = [];
+    this.jams = new CellMemory(); // spots where runners were held up (Civilian: their next way out goes round)
     this.butts = [];       // cigarettes left burning in an ashtray: { x, y, until } (render/StreetArt.js)
     world.events.on('patronLeft', (e) => this.onLeave(e));
     world.events.on('noise', (e) => this.onNoise(e));
     world.events.on('kill', (e) => this.onKill(e));
     world.events.on('alarm', (e) => this.onAlarm(e));
+    world.events.on('knock', (e) => this.onKnock(e));
+    world.events.on('challenge', (e) => this.onChallenge(e));
     this.prewarm();
     for (const [kind, col, row, deg, pastime] of def.patrons || []) {
       this.spawnPatron(kind, col * TILE, row * TILE, (deg * Math.PI) / 180, pastime);
@@ -119,9 +126,14 @@ export default class Ambient {
     for (const c of [...this.cars]) this.drive(c, dt);
   }
 
-  // boxes of everything a driver must not hit: other vehicles, props, wrecks
+  // boxes of everything a driver must not hit: other vehicles, props, wrecks, and the bodies lying in the road
+  // (soft: crept over when there is no way round)
   collectObstacles() {
-    const out = [];
+    const out = [], B = A.body.box / 2;
+    for (const c of this.world.corpses) {
+      if (c.dead || c.y < this.bandY0 || c.y > this.bandY1) continue;
+      out.push({ x0: c.x - B, x1: c.x + B, y0: c.y - B, y1: c.y + B, ref: c, moving: false, speed: 0, soft: true });
+    }
     const traffic = new Map(this.cars.map((c) => [c.v, c]));
     for (const p of this.world.props) {
       if (p.dead || p.def.hung || p.def.overhead) continue;
@@ -169,11 +181,12 @@ export default class Ambient {
     c.stall = !b.isStatic && d.speed > 40 && fwd < 12 ? c.stall + dt : 0;
     const car = { x: v.x, y: v.y, hl: c.hl, hw: c.hw, dir: lane.dir, ref: v };
     const band = d.bypass ? d.bypass.y : v.y;
-    const ahead = gapAhead(car, this.obstacles, band);
+    const ahead = gapAhead(car, d.creep > 0 ? this.obstacles.filter((q) => !q.soft) : this.obstacles, band);
     const o = ahead.obstacle;
     c.hitT = Math.max(0, c.hitT - dt);
+    const aimed = this.aimedAt(c, dt);
     d.update(dt, {
-      x: v.x, y: v.y, hw: c.hw, gap: ahead.gap,
+      x: v.x, y: v.y, hw: c.hw, gap: ahead.gap, aimed, soft: !!o?.soft,
       lead: o ? Math.max(0, o.speed * lane.dir) : 0,
       leadStatic: !!o && !o.moving,
       person: this.personAhead(car, band),
@@ -217,6 +230,22 @@ export default class Ambient {
     c.honkT = 0;
     c.honks++;
     this.world.sound('horn', c.v.x, c.v.y, 1, { pitch: c.pitch, honks: this.r() < 0.6 ? 2 : 3 });
+  }
+
+  // Is the player pointing a gun at this car from close, in plain view? Once he has held it on the windscreen
+  // A.heldUp.notice s, the driver does what his nature tells him (Driver.heldUp) and 'heldUp' is emitted.
+  aimedAt(c, dt) {
+    const p = this.world.player, v = c.v, H = A.heldUp;
+    const dx = v.x - p.x, dy = v.y - p.y, d = Math.hypot(dx, dy);
+    const on = p.alive && !p.hidden && p.armed && p.hasGun && d < H.range * TILE && d > 1
+      && Math.abs(angDiff(p.angle, Math.atan2(dy, dx))) < Math.atan2(c.hw + 6, d) + H.slack
+      && this.world.lineOfSight(p.x, p.y, v.x, v.y);
+    c.aimT = on ? (c.aimT ?? 0) + dt : 0;
+    if (c.aimT > H.notice && !c.held) {
+      c.held = c.d.heldUp();
+      if (c.held) this.world.events.emit('heldUp', { car: v, how: c.held });
+    }
+    return on;
   }
 
   // nearest living person in front of the car, in its band (px), Infinity if none
@@ -345,7 +374,21 @@ export default class Ambient {
     const look = this.checkT <= 0;
     if (look) this.checkT = A.panic.check;
     const sense = {
-      escape: (x, y, danger) => escapeRoute(w.map, x, y, danger),
+      // the people around him he gives way to (ai/Nav.js), heading (ux, uy)
+      giveWay: (civ, ux, uy) => {
+        const near = this.near || (this.near = []);
+        near.length = 0;
+        for (const c of w.chars) {
+          if (c !== civ && c.alive && !(c.knocked > 0) && !c.hidden && !c.seated && Math.abs(c.x - civ.x) < 50 && Math.abs(c.y - civ.y) < 50) near.push(c);
+        }
+        return giveWay(civ, ux, uy, near);
+      },
+      escape: (x, y, danger, jammed) => escapeRoute(w.map, x, y, danger, jammed ? { cost: (i) => this.jams.cost(i, w.time) } : undefined),
+      // a runner held up on his way: the spot ahead of him is kept off for a while (ai/Nav.js)
+      jam: (civ, dx, dy) => {
+        const l = Math.hypot(dx, dy) || 1, cell = cellAhead(w.map, civ.x, civ.y, dx / l, dy / l);
+        if (cell !== null) this.jams.mark(cell, A.runJam.cost, w.time + A.runJam.forget);
+      },
       hide: (x, y, danger) => hideRoute(w.map, x, y, danger, (px, py) => w.lineOfSight(px, py, danger.x, danger.y), this.nooks),
     };
     for (const civ of [...this.civilians]) {
@@ -487,7 +530,11 @@ export default class Ambient {
   }
 
   onNoise({ x, y, radius, type }) {
-    if (type !== 'gunshot' && type !== 'explosion') return;
+    if (type !== 'gunshot' && type !== 'explosion') {
+      // something smashed, a door banged: those near enough look round at it
+      if (type) this.lookAt(x, y, radius * A.look.noise, A.look.time);
+      return;
+    }
     this.panicAround(x, y, radius * A.panic.hear, type);
     this.scaredUntil = this.world.time + A.panic.calm;
     // at the wheel: most stop dead and run for it, the others floor it
@@ -496,6 +543,33 @@ export default class Ambient {
       c.scare = { x, y };
       if (this.r() < A.flee.odds) c.d.flee(between(this.r, A.flee.delay));
       else c.d.panic = true;
+    }
+  }
+
+  // a man floored in a fight: those who see it close back off from it, crying out
+  onKnock({ victim }) {
+    const R = A.look.fight * TILE, w = this.world;
+    for (const civ of [...this.civilians]) {
+      if (civ === victim || Math.hypot(civ.x - victim.x, civ.y - victim.y) > R) continue;
+      if (w.lineOfSight(civ.x, civ.y, victim.x, victim.y)) this.alarm(civ, victim.x, victim.y, 'fight');
+    }
+  }
+
+  // a guard telling the player off: the people around look; a shove and they back away a step (a whisper of it)
+  onChallenge({ guard, stage }) {
+    if (stage < 1) return;
+    this.lookAt(guard.x, guard.y, A.look.word * TILE, A.look.time * (stage >= 3 ? 1.6 : 1), stage >= 3);
+  }
+
+  // Everyone within r px with an eye on (x, y) looks at it for `time` s (Walker.notice); one of them may say something
+  lookAt(x, y, r, time, mutter = false) {
+    const w = this.world;
+    let said = !mutter && this.r() > A.look.say;
+    for (const civ of this.civilians) {
+      if (!civ.alive || civ.asleep || civ.brain.panicked || Math.hypot(civ.x - x, civ.y - y) > r) continue;
+      if (!w.lineOfSight(civ.x, civ.y, x, y)) continue;
+      civ.brain.notice(x, y, time * (0.7 + this.r() * 0.6));
+      if (!said && this.barkT <= 0) { said = true; this.bark(civ, 'look'); }
     }
   }
 
@@ -510,6 +584,13 @@ export default class Ambient {
   // a passer-by's own voice, and a floating scream over him (world texts) rate limited so the screen stays
   // readable; a runner's breath has no words
   bark(civ, kind) {
+    if (kind === 'look') {
+      // a word under his breath, no scream
+      if (this.barkT > 0) return;
+      this.barkT = A.barkGap;
+      this.world.texts.push({ x: civ.x, y: civ.y - 16, str: BARKS.look[Math.floor(this.r() * BARKS.look.length)], t: 1.1, dur: 1.1, color: BARK_COLOR });
+      return;
+    }
     const voice = VOICES[kind] || 'scream';
     const cry = () => { if (civ.alive) this.world.sound(voice, civ.x, civ.y, 1, { pitch: civ.voice }); };
     if (voice === 'scream') this.world.after(this.r() * A.cryLag, cry); else cry();

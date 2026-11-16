@@ -124,9 +124,10 @@ export function steerAngle(dir, y, targetY, max = A.maxSteer) {
 }
 
 // The driver of one traffic vehicle: cruise speed with a personal spread, car following, late braking for
-// people, patience then a detour around a stuck obstacle, panic (floor it) under fire, fleeing (stand on the
-// brake, leave the car where it stops) when shots ring out, coasting to a stop once disabled.
-// state: drive | coast | stopped (handed over to the world as a parked / wrecked car).
+// people, patience then a detour around a stuck obstacle (a body in the road is gone round, or crept over when
+// there is no way round), panic (floor it) under fire, fleeing (stand on the brake, leave the car where it stops)
+// when shots ring out, held up at gunpoint (heldUp), coasting to a stop once disabled.
+// state: drive | held | coast | stopped (handed over to the world as a parked / wrecked car).
 export class Driver {
   constructor(lane, r) {
     this.lane = lane;
@@ -150,11 +151,27 @@ export class Driver {
     this.coastY = lane.y;
     this.reason = null;
     this.fleeT = null;  // s before the scared driver hits the brake (null: not fleeing)
+    this.heldT = 0;     // held up: s the gun has been off him
+    this.creep = 0;     // s left he rolls over a body there is no way round (see update)
+  }
+
+  // A gun pointed at him from close (Ambient.aimedAt): what he does is his nature's (A.heldUp odds, drawn with r):
+  // 'flee' (stop, get out and run: flee), 'duck' (stop dead, hands up, until the gun has been off him A.heldUp.resume
+  // s, then away flat out), 'floor' (foot down, through). Returns what he does, or null when he is past caring
+  // (already scared off, coasting, held up once already).
+  heldUp() {
+    if (this.state !== 'drive' || this.fleeT !== null || this.wasHeld) return null;
+    this.wasHeld = true; // once: what he does next is up to him
+    const H = A.heldUp, k = this.r();
+    if (k < H.flee) { this.flee(between(this.r, A.flee.delay) * 0.5); return 'flee'; }
+    if (k < H.flee + H.duck) { this.state = 'held'; this.heldT = 0; return 'duck'; }
+    this.panic = true;
+    return 'floor';
   }
 
   // gunfire close by: after `delay` s of shock, stop dead and abandon the car (reason 'scared')
   flee(delay) {
-    if (this.state === 'drive' && this.fleeT === null) this.fleeT = delay;
+    if ((this.state === 'drive' || this.state === 'held') && this.fleeT === null) { this.state = 'drive'; this.fleeT = delay; }
   }
 
   get moving() { return this.state !== 'stopped'; }
@@ -165,6 +182,15 @@ export class Driver {
   update(dt, s) {
     if (this.state === 'stopped') return;
     this.phase += dt * A.wobble[1] * Math.PI * 2;
+    if (this.state === 'held') {
+      // stopped dead, hands up, until the gun has been off him a while; then away, foot down
+      this.speed = Math.max(0, this.speed - A.emergency * TILE * dt);
+      this.brake = 1;
+      this.targetY = s.y;
+      this.heldT = s.aimed ? 0 : this.heldT + dt;
+      if (this.heldT > A.heldUp.resume) { this.state = 'drive'; this.panic = true; }
+      return;
+    }
     if (this.state === 'coast') {
       this.speed = Math.max(0, this.speed - this.decel * dt);
       // still stops behind whatever is in front (it does not plough through a wreck)
@@ -203,14 +229,17 @@ export class Driver {
     else this.noticeT = 0;
     let hard = false;
     if (this.noticeT > 0.3) { want = Math.min(want, safeSpeed(s.person, 0)); hard = true; }
-    // stuck behind something that will not move: wait a little, then go around it on another lane
+    // stuck behind something that will not move: wait a little, then go around it on another lane; a body with no
+    // way round it is crept over (s.soft: what is in front is a body)
     const stuck = this.speed < 10 && s.leadStatic && s.gap < (A.minGap + A.detour.room) * TILE * 1.5;
     this.waitT = stuck || (hard && this.speed < 10) ? this.waitT + dt : 0;
     if (this.bypass && s.passed) this.bypass = null;
     if (!this.bypass && this.waitT > this.patience) {
       this.bypass = s.bypass?.() || null;
       if (this.bypass) this.waitT = 0;
+      else if (s.soft) { this.creep = A.body.creep; this.waitT = 0; }
     }
+    this.creep = Math.max(0, this.creep - dt);
     const b = (hard || want < this.speed - A.brake * TILE * 0.5 ? A.emergency : A.brake) * TILE;
     this.speed = want > this.speed ? Math.min(want, this.speed + A.accel * TILE * dt) : Math.max(want, this.speed - b * dt);
     this.brake = want < this.speed + 2 && (want < this.cruise * 0.9 || this.speed < 5) ? 1 : 0;
@@ -219,7 +248,7 @@ export class Driver {
 
   // dead driver / burst tyre / fire: let go, drift toward `side` (-1 | 1) and roll to a stop
   disable(reason, side) {
-    if (this.state !== 'drive') return;
+    if (this.state !== 'drive' && this.state !== 'held') return;
     this.state = 'coast';
     this.reason = reason;
     this.decel = between(this.r, A.coast) * TILE;

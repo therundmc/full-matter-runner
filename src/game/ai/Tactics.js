@@ -9,6 +9,8 @@ import { findPath } from '../../engine/nav/Pathfinding.js';
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIRS8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
 const centre = (c) => (c + 0.5) * TILE;
+// a door frame: never a spot to settle in (cover, a peek), it is everyone's way through
+const doorway = (map, cx, cy) => map.at(cx, cy) === 'D' || map.at(cx, cy) === 'L';
 
 // cell test "stops a bullet" (cached per map)
 const coverFns = new WeakMap();
@@ -41,6 +43,19 @@ export function throughDoor(map, cx, cy, x, y, ux, uy) {
   return { x: dx / d, y: dy / d };
 }
 
+// Just out of the doorway of cell (cx, cy), gone through it the way s (+1 / -1 along its passage): straight on down
+// the passage's middle for a tile and a bit before turning (a leaf swung open stands right beside it). Unit vector,
+// or null once he is clear of it.
+export function pastDoor(map, cx, cy, s, x, y) {
+  const free = (i, j) => i >= 0 && j >= 0 && i < map.w && j < map.h && !map.blocked[j * map.w + i];
+  const vert = free(cx, cy - 1) && free(cx, cy + 1);
+  if (!vert && !(free(cx - 1, cy) && free(cx + 1, cy))) return null;
+  const along = (vert ? y - centre(cy) : x - centre(cx)) * s, side = vert ? centre(cx) - x : centre(cy) - y;
+  if (along < TILE / 2 || along > TILE * 1.35 || Math.abs(side) > TILE) return null;
+  const dx = vert ? side * 0.6 : 18 * s, dy = vert ? 18 * s : side * 0.6, d = Math.hypot(dx, dy);
+  return { x: dx / d, y: dy / d };
+}
+
 export function isCovered(world, x, y, sx, sy) { return hidden(coverCell(world.map), sx, sy, x, y); }
 
 // clear shot both ways (vision and bullets)
@@ -51,7 +66,7 @@ function clearShot(world, x0, y0, x1, y1) {
 // Nearest spot (from `from`) hidden from the threat (tx, ty), with a free "peek" cell next to it that has a clear
 // shot at it. prefDist = preferred distance to the threat; isClaimed(x, y) filters spots taken by squad mates.
 // approach = true allows moving toward the threat (melee stalking, shotgun ambush). bonus(x, y) = px of extra way
-// a spot is worth (a table to tip over in front of it).
+// a spot is worth (a table to tip over in front of it). Never in a doorway, the spot or its peek: the others need it.
 export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, approach = false, bonus = null) {
   const map = world.map, blocks = coverCell(map);
   const ecx = Math.floor(from.x / TILE), ecy = Math.floor(from.y / TILE);
@@ -59,7 +74,7 @@ export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, 
   const cands = [];
   for (let cy = ecy - radius; cy <= ecy + radius; cy++) {
     for (let cx = ecx - radius; cx <= ecx + radius; cx++) {
-      if (map.isBlocked(cx, cy)) continue;
+      if (map.isBlocked(cx, cy) || doorway(map, cx, cy)) continue;
       const x = centre(cx), y = centre(cy);
       const dE = Math.hypot(x - from.x, y - from.y), dT = Math.hypot(x - tx, y - ty);
       if (dE > radius * TILE || dT < 48 || (isClaimed && isClaimed(x, y))) continue;
@@ -77,7 +92,7 @@ export function findCover(world, from, tx, ty, prefDist, isClaimed, radius = 5, 
     let peek = null;
     for (const [dx, dy] of DIRS8) {
       const px = c.cx + dx, py = c.cy + dy;
-      if (map.isBlocked(px, py) || (dx && dy && (map.isBlocked(c.cx + dx, c.cy) || map.isBlocked(c.cx, c.cy + dy)))) continue;
+      if (map.isBlocked(px, py) || doorway(map, px, py) || (dx && dy && (map.isBlocked(c.cx + dx, c.cy) || map.isBlocked(c.cx, c.cy + dy)))) continue;
       if (clearShot(world, centre(px), centre(py), tx, ty)) { peek = { x: centre(px), y: centre(py) }; break; }
     }
     if (!peek) continue;
@@ -143,7 +158,8 @@ export function findFlank(world, from, tx, ty, avoid, dist) {
   return null;
 }
 
-// Spots worth checking around (x, y) within maxTiles of walking: doorways, corners, places hidden from (x, y).
+// Spots worth checking around (x, y) within maxTiles of walking: doorways, corners, behind furniture (a man crouched
+// behind a counter or a sofa), places hidden from (x, y).
 // The first point is (x, y) itself (origin: true); the others are spread at least 3.5 tiles apart.
 // Each point has `look`: the direction to sweep once there.
 export function searchPoints(map, x, y, maxTiles, count) {
@@ -170,6 +186,8 @@ export function searchPoints(map, x, y, maxTiles, count) {
       if (door) score += 4;                                                   // doorway
       else if ((L && R && !U && !Dn) || (U && Dn && !L && !R)) score += 3;    // corridor
       else if ((L || R) && (U || Dn)) score += 2;                             // corner
+      const furn = (i, j) => map.isBlocked(i, j) && !map.isSolid(i, j) && !'GFDL'.includes(map.at(i, j));
+      if (furn(nx - 1, ny) || furn(nx + 1, ny) || furn(nx, ny - 1) || furn(nx, ny + 1)) score += 2; // behind furniture
       if (map.raycast(x, y, px, py)) score += 2;                              // out of sight of the origin
       if (score >= 2) cands.push({ x: px, y: py, d: dist[j], score, look: Math.atan2(py - y, px - x) });
     }

@@ -39,6 +39,19 @@ export const BARKS = {
   shoo: ['BEAT IT.', 'KEEP WALKING.', 'GET LOST, PAL.', 'MOVE ALONG.', "WHAT'RE YOU LOOKING AT?", 'NOTHING TO SEE HERE.'],
   warn: ['LAST WARNING!', 'I SAID MOVE!', 'YOU DEAF? WALK!', 'BACK OFF. NOW!'],
   snap: ["THAT'S IT!", 'YOU ASKED FOR IT!', 'I WARNED YOU!'],
+  // a word with a stranger caught at something odd (Enemy.doChallenge, data/conduct.js ACTS): calling him on the way
+  // over, telling him (by what he did), warning him, shoving him, letting him off, letting it go once he is gone
+  hey: ['HEY! YOU!', 'HEY, PAL!', 'YOU! HOLD IT.', 'HEY! OVER HERE.', 'WHOA, WHOA. YOU.'],
+  out: ['OUT. NOW.', "YOU CAN'T BE BACK HERE.", 'PRIVATE. OUT.', 'WRONG DOOR, PAL. OUT.', 'STAFF ONLY. MOVE.'],
+  drop: ['PUT THAT DOWN.', 'DROP IT, PAL.', "WHAT'S THAT FOR? DROP IT.", 'LOSE THE HARDWARE.'],
+  cut: ['HEY! CUT THAT OUT.', 'KNOCK IT OFF.', 'WHAT ARE YOU DOING?', 'YOU DRUNK OR WHAT?'],
+  what: ['WHAT ARE YOU DOING?', 'WHAT THE HELL WAS THAT?', 'YOU BREAK IT, YOU PAY.', 'YOU GOT A PROBLEM?'],
+  staff: ['STAFF ONLY, PAL.', 'NOTHING BACK THERE.', 'AWAY FROM THE DOOR.', 'LOOKING FOR SOMETHING?'],
+  watch: ['WATCH IT!', 'HEY! EYES OPEN, PAL.', 'YOU BLIND?'],
+  press: ['LAST WARNING.', "DON'T MAKE ME ASK AGAIN.", "I WON'T SAY IT TWICE.", 'YOU DEAF? NOW!'],
+  shove: ['GET OUT OF HERE!', 'MOVE IT!', 'OUT!', 'BEAT IT!'],
+  settle: ["THAT'S RIGHT.", 'SMART MAN.', 'KEEP IT THAT WAY.', "DON'T DO THAT AGAIN."],
+  letgo: ['PUNK.', 'YEAH, YOU BETTER RUN.', 'WHATEVER.', 'TOURISTS...'],
   // the fight
   contact: ['HEY!', 'OVER HERE!', 'THERE HE IS!', "IT'S HIM!", 'GOT HIM!'],
   // contact, calling by his name a mate the shout sends in (Director.shout)
@@ -82,11 +95,15 @@ export const BARKS = {
 export const SHOUTED = new Set([
   'shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
   'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn', 'stairs', 'sprinkler', 'loud',
+  'hey', 'press', 'shove', 'cut', 'what', 'watch',
 ]);
-export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 'sweep', 'tracks', 'blood', 'slip']);
+export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 'sweep', 'tracks', 'blood', 'slip', 'out', 'drop',
+  'staff', 'settle', 'letgo']);
 // occasions said at once, over the squad's turn to speak (AI.barkGap): the first call of a contact, a mate killed
 // before his eyes, a man giving up, one getting up off his knees with a gun
-export const URGENT = new Set(['contact', 'call', 'down', 'chief', 'yield', 'turn']);
+// and the lines of a word with a stranger (one guard at a time has one)
+export const URGENT = new Set(['contact', 'call', 'down', 'chief', 'yield', 'turn', 'hey', 'out', 'drop', 'cut', 'what', 'staff',
+  'watch', 'press', 'shove']);
 
 // occasions not written in white (PALETTE keys)
 export const BARK_TONE = {
@@ -94,6 +111,8 @@ export const BARK_TONE = {
   body: 'orange', help: 'orange', warn: 'orange', flush: 'orange', yield: 'yellow', beg: 'yellow',
   call: 'pink', where: 'pink', turn: 'pink', down: 'orange', found: 'orange', chief: 'orange', run: 'orange',
   backup: 'orange', alone: 'yellow', stairs: 'pink',
+  hey: 'orange', out: 'orange', drop: 'orange', cut: 'orange', what: 'orange', staff: 'orange', watch: 'orange',
+  press: 'orange', shove: 'pink',
 };
 
 // what the guards call one another: one each, never twice in a level (Director.nickOf); the boss is 'BOSS'

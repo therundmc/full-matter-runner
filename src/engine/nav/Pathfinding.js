@@ -1,7 +1,10 @@
 import { TILE } from '../physics/Units.js';
+import { gridRaycast } from '../physics/Raycast.js';
 
 // A* on the tile grid (8-neighbour, no corner cutting) + string pulling.
-export function findPath(map, sx, sy, tx, ty, maxNodes = 4000) {
+// cost(i): optional extra cost (in tiles of walking, >= 0) of stepping onto cell i (a spot to keep away from);
+// string pulling never cuts across a cell that costs a tile or more.
+export function findPath(map, sx, sy, tx, ty, maxNodes = 4000, cost = null) {
   const W = map.w, H = map.h;
   const start = cellOf(map, sx, sy), goal = cellOf(map, tx, ty);
   if (start < 0 || goal < 0) return null;
@@ -34,11 +37,12 @@ export function findPath(map, sx, sy, tx, ty, maxNodes = 4000) {
         const ni = ny * W + nx;
         if (blocked[ni] && ni !== goal) continue;
         if (dx && dy && (blocked[cy * W + nx] || blocked[ny * W + cx])) continue;
-        const cost = g[cur] + (dx && dy ? Math.SQRT2 : 1);
-        if (cost < g[ni]) {
-          g[ni] = cost;
+        const step = (dx && dy ? Math.SQRT2 : 1) * (cost && ni !== goal ? 1 + cost(ni) : 1);
+        const c = g[cur] + step;
+        if (c < g[ni]) {
+          g[ni] = c;
           came[ni] = cur;
-          heap.push(ni, cost + h(ni));
+          heap.push(ni, c + h(ni));
         }
       }
     }
@@ -49,7 +53,7 @@ export function findPath(map, sx, sy, tx, ty, maxNodes = 4000) {
   cells.reverse();
   const pts = cells.map((c) => ({ x: (c % W + 0.5) * TILE, y: (((c / W) | 0) + 0.5) * TILE }));
   pts[pts.length - 1] = { x: tx, y: ty };
-  return smooth(map, sx, sy, pts);
+  return smooth(map, sx, sy, pts, cost && ((i) => i !== start && i !== goal && cost(i) >= 1));
 }
 
 function cellOf(map, x, y) {
@@ -58,13 +62,16 @@ function cellOf(map, x, y) {
   return cy * map.w + cx;
 }
 
-// drop intermediate points when a straight walkable line exists
-function smooth(map, sx, sy, pts) {
+// drop intermediate points when a straight walkable line exists (that crosses no costly cell)
+function smooth(map, sx, sy, pts, costly) {
+  const W = map.w;
+  const avoid = costly && ((cx, cy) => cx >= 0 && cy >= 0 && cx < W && costly(cy * W + cx));
+  const clear = (ax, ay, bx, by) => map.walkLine(ax, ay, bx, by) && !(avoid && gridRaycast(ax, ay, bx, by, avoid));
   const out = [];
   let ax = sx, ay = sy, i = 0;
   while (i < pts.length) {
     let j = pts.length - 1;
-    while (j > i && !map.walkLine(ax, ay, pts[j].x, pts[j].y)) j--;
+    while (j > i && !clear(ax, ay, pts[j].x, pts[j].y)) j--;
     out.push(pts[j]);
     ax = pts[j].x; ay = pts[j].y;
     i = j + 1;

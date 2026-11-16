@@ -19,6 +19,7 @@ import { muzzleFlash } from '../fx/CombatFx.js';
 import { smooth } from './CharacterAnim.js';
 
 const { Body, Query } = Matter;
+const SHOVE_T = 0.28; // s a guard's shove carries him back (Enemy.shove)
 let scuff = null; // floor scuff stamp, made on first use
 
 export default class Player extends Character {
@@ -41,6 +42,7 @@ export default class Player extends Character {
     this.rising = false;
     this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d }
     this.slide = null;      // Slide kinematics while sliding
+    this.shove = null;      // a guard's shove carrying him back { a, v, t } (see shoved)
     this.slideCd = 0;
     this.stamina = 1;       // 0..1: what slides cost (PLAYER.slide.cost), back with time
     this.winded = 0;        // s left of the HUD flash after a slide refused for lack of it
@@ -121,7 +123,13 @@ export default class Player extends Character {
       if (this.vaulting) return; // chained into a vault
     }
     const sliding = !!this.slide;
-    if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1), PLAYER.accel);
+    const sh = this.shove;
+    if (sh) {
+      // a guard's flat hand in his chest (Enemy.shove): thrown back a step or two, then his legs are his own again
+      sh.t -= dt;
+      this.steer(Math.cos(sh.a), Math.sin(sh.a), sh.v * Math.max(0, sh.t / SHOVE_T), 0.6);
+      if (sh.t <= 0) this.shove = null;
+    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1), PLAYER.accel);
 
     // what is around us
     this.nearItem = null;
@@ -193,6 +201,12 @@ export default class Player extends Character {
       else if (this.nearUse) this.nearUse.use(this);
       else this.pickUp();
     }
+  }
+
+  // shoved along a at `speed` px/step (a guard telling him to get out: Enemy.shove)
+  shoved(a, speed) {
+    if (this.slide || this.vaulting || this.sit > 0) return;
+    this.shove = { a, v: speed, t: SHOVE_T };
   }
 
   // ---------------- a slick floor, a trapdoor ----------------

@@ -1,12 +1,14 @@
 // Passers-by brains, DOM-free and unit tested: a stroll along a path (with an optional stop: cigarette, shop
 // window, phone, a chat for couples), then panic (hands up / duck for a beat) and, by temperament, a sprint off
 // the map along a route that keeps away from the danger (escapeRoute; a few trip on the way), a corner to curl
-// up in out of sight (hideRoute), or a long freeze on the spot, hands up. Units: px, px/s, s.
+// up in out of sight (hideRoute), or a long freeze on the spot, hands up. Short of a fright, a commotion (a guard
+// telling somebody off, a smash) gets a look (notice), and a fist fight close by sends him off like a weapon would.
+// Units: px, px/s, s.
 import { TILE, AMBIENT as A } from '../Config.js';
 import { between } from '../systems/Traffic.js';
 
 export const WALKER = { WALK: 'walk', STOP: 'stop', PANIC: 'panic', FLEE: 'flee', HIDE: 'hide', COWER: 'cower', DONE: 'done' };
-const BOLTS = ['armed', 'weapon', 'gunshot', 'explosion']; // what sets a frozen one running, from close
+const BOLTS = ['armed', 'weapon', 'fight', 'gunshot', 'explosion']; // what sets a frozen one running, from close
 const ACTIVITIES = ['smoke', 'window', 'phone'];
 const REACH = 6; // px: a waypoint counts as reached
 
@@ -34,6 +36,9 @@ export class Walker {
     this.danger = null;
     this.route = null;
     this.bark = null;          // set when he has something to voice: scream, beg, pant, sob... (read and cleared by Ambient)
+    this.look = null;          // something going on he looks at { x, y } for lookT s (see notice)
+    this.lookT = 0;
+    this.stuck = 0;            // times his run was blocked on the way (see blocked)
     // one stop somewhere along the way, at a distance from the start
     this.walked = 0;
     this.stopAt = !partner && !post && r() < A.stopChance ? between(r, [0.25, 0.75]) * pathLength(path) : -1;
@@ -43,7 +48,22 @@ export class Walker {
   get panicked() { return [WALKER.PANIC, WALKER.FLEE, WALKER.HIDE, WALKER.COWER].includes(this.state); }
   get frozen() { return this.state === WALKER.PANIC && this.temper === 'stay'; }
 
-  // Something scary at (x, y). kind: gunshot | explosion | kill | corpse | armed (a gun) | weapon (a bat, a knife) | scream | hit.
+  // something going on at (x, y) worth a look for t s (a guard telling somebody off, a smash, a door banged): he looks
+  // at it; a stroller slows down to
+  notice(x, y, t) {
+    if (this.panicked || this.state === WALKER.DONE) return;
+    this.look = { x, y };
+    this.lookT = Math.max(this.lookT, t);
+  }
+
+  // his run blocked on the way (Civilian: pushed in vain): a new way out is found, round it (the caller notes the spot)
+  blocked() {
+    this.stuck++;
+    if (this.state === WALKER.FLEE) this.route = null;
+  }
+
+  // Something scary at (x, y). kind: gunshot | explosion | kill | corpse | armed (a gun) | weapon (a bat, a knife) |
+  // fight (a man floored close by) | scream | hit.
   // Returns true when this makes him panic (first time, or a much closer danger while fleeing).
   alarm(x, y, kind, from) {
     if (this.state === WALKER.DONE) return false;
@@ -64,7 +84,8 @@ export class Walker {
     this.danger = { x, y };
     this.pose = kind === 'armed' || (kind === 'gunshot' && this.r() < 0.4) ? 'hands' : 'duck';
     this.t = kind === 'scream' ? between(this.r, A.panic.freeze) * 0.5 : between(this.r, A.panic.freeze);
-    this.bark = kind === 'armed' ? 'beg' : kind === 'weapon' ? 'back' : 'scream';
+    this.bark = kind === 'armed' ? 'beg' : kind === 'weapon' || kind === 'fight' ? 'back' : 'scream';
+    this.look = null;
     if (!this.temper) {
       const k = this.r();
       this.temper = k < A.panic.hide ? 'hide' : k < A.panic.hide + A.panic.stay ? 'stay' : 'run';
@@ -95,13 +116,20 @@ export class Walker {
   update(dt, x, y, sense) {
     this.t -= dt;
     this.rush -= dt;
+    if ((this.lookT -= dt) <= 0) this.look = null;
+    const eyes = this.look && Math.atan2(this.look.y - y, this.look.x - x);
     switch (this.state) {
-      case WALKER.WALK: return this.walk(dt, x, y);
+      case WALKER.WALK: {
+        const it = this.walk(dt, x, y);
+        if (eyes !== null && it.x !== null) { it.speed *= A.look.slow; it.look = eyes; }
+        else if (eyes !== null) it.face = eyes;
+        return it;
+      }
       case WALKER.STOP: {
         const p = this.partner;
         const done = p ? p.state !== WALKER.STOP : this.t <= 0 || this.rush > 0;
         if (done) { this.state = WALKER.WALK; this.activity = null; return this.walk(dt, x, y); }
-        return { x: null, y: null, speed: 0, face: this.face };
+        return { x: null, y: null, speed: 0, face: eyes ?? this.face };
       }
       case WALKER.PANIC:
         if (this.t > 0) return { x: null, y: null, speed: 0, face: Math.atan2(this.danger.y - y, this.danger.x - x) };
@@ -126,7 +154,7 @@ export class Walker {
       }
       case WALKER.FLEE: {
         if (!this.route) {
-          this.route = sense.escape(x, y, this.danger);
+          this.route = sense.escape(x, y, this.danger, this.stuck > 0);
           this.ri = 0;
           if (!this.route) { this.state = WALKER.COWER; this.pose = 'duck'; this.t = between(this.r, [6, 10]); return this.update(0, x, y, sense); }
         }
@@ -202,8 +230,9 @@ export function pointAlong(path, d) {
 // (8-neighbour, no corner cutting) to any open border cell, where cells near the danger cost more and every step
 // taken in the danger's direction costs extra (nobody runs past the gunman); the route ends `margin` px outside.
 // map: TileMap-like { w, h, blocked, walkLine? }. Returns [{x, y}] or null.
-export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10, closing = 10, margin = 2 * TILE } = {}) {
-  const W = map.w, H = map.h, T = TILE;
+// cost(i): optional extra cost of cell i (spots found blocked on the way).
+export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10, closing = 10, margin = 2 * TILE, cost = null } = {}) {
+  const W = map.w, H = map.h, T = TILE, extra = cost;
   const out = (cx, cy) => {
     // push the border cell centre straight out of the nearest side
     const px = (cx + 0.5) * T, py = (cy + 0.5) * T;
@@ -253,7 +282,7 @@ export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10,
         const ni = ny * W + nx;
         if (blocked[ni]) continue;
         if (dx && dy && (blocked[cy * W + nx] || blocked[ny * W + cx])) continue;
-        const c = cost + (dx && dy ? Math.SQRT2 : 1) * (1 + fearAt(ni)) + closing * Math.max(0, dx * ux + dy * uy);
+        const c = cost + (dx && dy ? Math.SQRT2 : 1) * (1 + fearAt(ni) + (extra ? extra(ni) : 0)) + closing * Math.max(0, dx * ux + dy * uy);
         if (c < g[ni]) { g[ni] = c; came[ni] = cur; heap.push(ni, c); }
       }
     }

@@ -8,7 +8,7 @@
 //   'explosion'     a blast went off           { x, y, radius, source }
 //   'wallDestroyed' a wall tile collapsed      { cx, cy, x, y, dirA, power }
 //   'noise'         something audible          { x, y, radius, source, type }
-//   'windowBroken'  a window shattered         { x, y }
+//   'windowBroken'  a window shattered         { x, y, by }
 //   'windowDestroyed' a window torn out, frame and all  { x, y, cx, cy, dirA, power }
 //   'doorBroken'    a lock burst / door ripped { x, y }
 //   'alertPhase'    squad alert phase changed  { phase, prev }   (ai/Director)
@@ -194,11 +194,12 @@ export default class World {
   }
 
   // a guard's way from s to t: the locked doors of the house do not stop him (he unlocks them as he comes to them,
-  // Enemy.follow); everyone else's are walls to him too
-  pathForGuard(sx, sy, tx, ty) {
+  // Enemy.follow); everyone else's are walls to him too. cost(cell): what each tile is worth to him on top of the
+  // walk (Director.pathCost: spots he keeps away from)
+  pathForGuard(sx, sy, tx, ty, cost = null) {
     const b = this.map.blocked, open = [];
     for (const d of this.doors) if (d.locked && this.isHouseDoor(d)) for (const i of d.cells) { b[i] = 0; open.push(i); }
-    const path = findPath(this.map, sx, sy, tx, ty);
+    const path = findPath(this.map, sx, sy, tx, ty, cost ? 6000 : 4000, cost);
     for (const i of open) b[i] = 1;
     return path;
   }

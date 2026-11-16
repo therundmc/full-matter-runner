@@ -432,3 +432,67 @@ test('patrons: boxed in by the furniture he sits on, a patron still finds his wa
   for (let y = 1; y <= 3; y++) for (let x = 3; x <= 5; x++) m.blocked[y * W + x] = 1;
   assert.equal(escapeRoute(m, 1.5 * T, 2.5 * T, null), null);
 });
+
+test('traffic: a gun held on a driver: he runs for it, stops dead hands up until it is off him, or floors it', () => {
+  const lane = new Lane(laneDef, 80 * TILE);
+  const s = { x: 0, y: lane.y, hw: 27, gap: Infinity, lead: 0, leadStatic: false, person: Infinity, passed: false, stalled: false };
+  const seen = {};
+  for (let seed = 1; seed < 80; seed++) {
+    const d = new Driver(lane, seeded(seed));
+    d.update(1 / 60, s);
+    const how = d.heldUp();
+    seen[how] = (seen[how] || 0) + 1;
+    assert.equal(d.heldUp(), null, 'once is enough');
+  }
+  assert.ok(seen.flee > 15 && seen.duck > 10 && seen.floor > 5, JSON.stringify(seen));
+  // the one who ducks: stopped dead while the gun is on him, off flat out once it has been away a while
+  let d;
+  for (let seed = 1; !d; seed++) { const c = new Driver(lane, seeded(seed)); c.update(1 / 60, s); if (c.heldUp() === 'duck') d = c; }
+  let t = 0;
+  for (; t < 3; t += 1 / 60) d.update(1 / 60, { ...s, aimed: true });
+  assert.equal(d.speed, 0, 'stopped');
+  assert.equal(d.state, 'held');
+  for (let k = 0; k < A.heldUp.resume * 0.8; k += 1 / 60) d.update(1 / 60, s);
+  assert.equal(d.state, 'held', 'not yet: he waits a while');
+  for (let k = 0; k < A.heldUp.resume; k += 1 / 60) d.update(1 / 60, s);
+  assert.equal(d.state, 'drive');
+  for (let k = 0; k < 3; k += 1 / 60) d.update(1 / 60, s);
+  assert.ok(d.speed > d.cruise * 1.2, 'away, foot down');
+  // shots while he sits there: he gets out and runs like the others
+  const h = new Driver(lane, seeded(1));
+  h.state = 'held';
+  h.flee(0.1);
+  assert.equal(h.state, 'drive');
+  for (let k = 0; k < 2; k += 1 / 60) h.update(1 / 60, { ...s, aimed: true });
+  assert.equal(h.reason, 'scared');
+});
+
+test('traffic: a body in the road is gone round when a lane is free, crept over when none is', () => {
+  const lane = new Lane(laneDef, 80 * TILE), d = new Driver(lane, seeded(5));
+  d.speed = 0;
+  const s = { x: 0, y: lane.y, hw: 27, gap: 60, lead: 0, leadStatic: true, soft: true, person: Infinity, passed: false, stalled: false, bypass: () => null };
+  for (let t = 0; t < d.patience + 0.2; t += 1 / 60) d.update(1 / 60, s);
+  assert.ok(d.creep > 0, 'no way round: he creeps over it');
+  const r = new Driver(lane, seeded(5));
+  r.speed = 0;
+  for (let t = 0; t < r.patience + 0.2; t += 1 / 60) r.update(1 / 60, { ...s, bypass: () => ({ y: lane.y + TILE, passX: 200 }) });
+  assert.ok(r.bypass && !(r.creep > 0), 'a free lane: round it');
+});
+
+test('walkers: a commotion gets a look (a stroller slows down for it), a fight close by sends them off; not once they panic', () => {
+  const w = new Walker(path, { r: seeded(3), speed: 40, run: 150, temper: 'run' });
+  const before = w.update(1 / 60, 0, 0, {});
+  w.notice(0, 100, 2);
+  const it = w.update(1 / 60, 0, 0, {});
+  assert.ok(it.speed < before.speed, 'slows down');
+  assert.ok(Math.abs(it.look - Math.PI / 2) < 1e-9, 'looking at it');
+  for (let t = 0; t < 2.1; t += 1 / 60) w.update(1 / 60, 0, 0, {});
+  assert.equal(w.update(1 / 60, 0, 0, {}).look, undefined, 'for a while');
+  const p = new Walker([{ x: 100, y: 100 }], { r: seeded(5), speed: 40, run: 150, post: { activity: 'drink', face: 0 } });
+  p.notice(100, 0, 2);
+  assert.ok(Math.abs(p.update(1 / 60, 100, 100, {}).face + Math.PI / 2) < 1e-9, 'a customer on his stool turns to look');
+  assert.ok(w.alarm(0, 0, 'fight', { x: 10, y: 0 }), 'a man floored close by: a fright');
+  assert.equal(w.bark, 'back');
+  w.notice(0, 100, 2);
+  assert.equal(w.look, null, 'too scared to stare');
+});

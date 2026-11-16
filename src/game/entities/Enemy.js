@@ -3,7 +3,9 @@
 // time, reloads, picks weapons back up, talks to his mates and curses the player (barks, lines in data/barks.js:
 // his mates by name, where the player is), follows the player's wet or bloody footprints, may run to fetch the
 // others when he is alone or outgunned, may give up when he is the last one left or on his own with nothing left to
-// fight with (and go for a gun once the player turns his back: ai/Squad.js), and follows the squad Director
+// fight with (and go for a gun once the player turns his back: ai/Squad.js), has a word with a stranger caught at
+// something odd before it comes to a fight (ai/Conduct.js), finds his way round what blocks it and gives way to the
+// people around him (ai/Nav.js), and follows the squad Director
 // (ai/Director.js) for alert phases, searches and tactical spots. Geometry lives in ai/Tactics.js,
 // perception maths in ai/Perception.js, tuning in Config (ENEMY, AI).
 import { ENEMY, AI, TILE, CAT, MASK, PALETTE, BODY_SCALE } from '../Config.js';
@@ -11,11 +13,14 @@ import { WEAPONS } from '../data/weapons.js';
 import { BARKS, SHOUTED, MUTTERED, BOSS } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
-import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, tableToFlip } from '../ai/Tactics.js';
+import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, pastDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
 import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
   sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
+import { CellMemory, cellAhead, giveWay } from '../ai/Nav.js';
+import { Case, STAGE, judge, complies } from '../ai/Conduct.js';
+import { ALARMS } from '../ai/Director.js';
 import { backupOdds, backupGroup, recruits, yieldOdds, turnedAway, gunAtHand } from '../ai/Squad.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character, { heavyBuild } from './Character.js';
@@ -45,13 +50,13 @@ const JUNK = 10;  // things a man turning a place over leaves lying on its floor
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
   SEARCH: 'search', GUARD: 'guard', DIZZY: 'dizzy', COMBAT: 'combat', HUNT: 'hunt', FETCH: 'fetch', FLEE: 'flee',
-  YIELD: 'yield', TRACK: 'track', BACKUP: 'backup',
+  YIELD: 'yield', TRACK: 'track', BACKUP: 'backup', CHALLENGE: 'challenge',
 };
 const CALM = new Set([S.IDLE, S.PATROL, S.RETURN]);
 // awareness implied by each state: 0 unaware, 1 suspicious ('?'), 2 alert ('!')
 const AWARE = {
   idle: 0, patrol: 0, return: 0, suspicious: 1, investigate: 1, check: 1, search: 1, guard: 1, dizzy: 1,
-  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2, track: 1, backup: 2,
+  combat: 2, hunt: 2, fetch: 2, flee: 2, yield: 2, track: 1, backup: 2, challenge: 1,
 };
 const TRACKERS = new Set([S.IDLE, S.PATROL, S.RETURN, S.SEARCH]); // states a guard leaves to follow footprints
 const RANGES = ENEMY.ranges;
@@ -111,6 +116,13 @@ export default class Enemy extends Character {
     this.pauseT = rand(0.5, 2); this.doorT = 0; this.doorKey = -1;
     this.gate = -1; this.gateT = -9; this.gateFor = -1; this.gateWait = 0; // the doorway he holds / waits for
     this.probeT = 0; this.probeX = x; this.probeY = y;                     // ground covered lately (see follow)
+    this.jams = new CellMemory();    // tiles he found jammed: his paths go round them a while (ai/Nav.js, see jammed)
+    this.jamTo = null; this.jamTries = 0; this.blockCell = -1; this.blockN = 0;
+    this.near = [];                  // the people around him he gives way to (see giveWay)
+    this.rushHeld = 0;               // s a rush straight at him made no headway (see tRush)
+    this.doorOut = null;             // the doorway he has just gone through { cx, cy, s } (see follow)
+    this.case = null;                // a word he is having with the stranger (ai/Conduct.js, see challenge)
+    this.eyes = null;                // something he glances at a moment, carrying on { x, y, until } (see glanceAt)
     this.react = 0; this.tactic = null; this.thinkT = 0; this.cover = null; this.coverT = 0;
     this.burst = 0; this.volleys = 0; this.burstLeft = 0; this.suppressCD = rand(0, 1.5);
     this.dodge = 0; this.dodgeCD = 0; this.strafe = 0; this.strafeT = rand(1, 2);
@@ -162,11 +174,12 @@ export default class Enemy extends Character {
   get director() { return this.world.director; }
 
   setState(s) {
+    if (this.case && s !== S.CHALLENGE) this.endCase(false);
     this.state = s;
     this.aware = AWARE[s];
     if (this.aware === 2) this.meter = 1;
     this.sub = ''; this.t = 0;
-    this.path = null; this.dest = null; this.repath = 0; this.stuck = 0;
+    this.path = null; this.dest = null; this.repath = 0; this.stuck = 0; this.jamTo = null;
     this.goal = null; this.target = null; this.searchPt = null;
     this.tactic = null; this.cover = null;
     this.errand = null; this.mate = null;
@@ -234,7 +247,9 @@ export default class Enemy extends Character {
 
   // weapon put away while all is calm, in hand and lowered once something is up, raised on a target
   updateCarry(dt) {
-    const calm = this.aware === 0 && this.quiet && CALM.has(this.state);
+    // (a word with a stranger over a trifle: his weapon stays put away until he warns him)
+    const c = this.case, word = !!c && c.stage < STAGE.WARNED && !c.rules.lasting && this.quiet;
+    const calm = word || (this.aware === 0 && this.quiet && CALM.has(this.state));
     const was = this.stow;
     carry(this, calm, this.aware >= 2 || this.recoil > 0, this.def.hold === 'two', dt);
     if (was >= 0.5 && this.stow < 0.5 && this.weapon) this.world.sound('pickup', this.x, this.y, 0.5);
@@ -250,15 +265,14 @@ export default class Enemy extends Character {
     const p = this.world.player;
     const recent = this.world.time - this.seenAt < 3;
     this.sees = !!p && this.canSee(p);
-    // a stranger minding his own business on public ground is none of a guard's concern, unless he hangs about
-    const stranger = this.sees && this.aware < 2 && !this.director.isThreat(p);
+    // A stranger minding his own business on public ground is none of a guard's concern, unless he hangs about; one
+    // who walked into the premises unarmed, or does something odd, gets a word first (Director.conduct)
+    const d = this.director, stranger = this.sees && this.aware < 2 && (!d.isThreat(p) || d.isIntruder(p));
     if (stranger) this.sees = false;
-    this.mind(stranger && !this.director.isGuest(p) ? p : null, step);
+    this.mind(stranger && this.state !== S.CHALLENGE && !d.isGuest(p) && !d.isIntruder(p) ? p : null, step);
     if (this.sees) {
       if (this.aware < 2) {
         const dx = p.x - this.x, dy = p.y - this.y;
-        // a stranger stepping into a private room under our nose: no need to stare at him to wonder
-        if (Math.hypot(dx, dy) <= AI.loiter.near && this.director.isIntruder(p)) this.meter = Math.max(this.meter, ENEMY.suspicious);
         this.meter = Math.min(1, this.meter + step * detectionRate({
           dist: Math.hypot(dx, dy),
           off: Math.abs(angDiff(this.angle, Math.atan2(dy, dx))),
@@ -279,8 +293,9 @@ export default class Enemy extends Character {
     } else if (this.aware < 2) this.meter = Math.max(0, this.meter - step * ENEMY.meterDecay[this.aware]);
   }
 
-  // A harmless stranger (or null) loitering in front of us: told to clear off, warned a last time, then we lose it
-  // and the squad takes him for a threat for good. Patience comes back slowly once he has gone.
+  // A harmless stranger (or null) loitering in front of us: told to clear off, warned a last time, then we go and
+  // shove him (a word that ends in a fight if he still stands there: doChallenge). Patience comes back slowly once
+  // he has gone.
   mind(p, step) {
     const L = AI.loiter;
     let rate = 0;
@@ -297,13 +312,11 @@ export default class Enemy extends Character {
     }
     this.nag += step * rate;
     if (this.nag >= 1) {
+      // out of patience: up to him and a shove, then the fight if he still stands there (a word: doChallenge)
+      const busy = this.director.challenger;
+      if (busy && busy !== this && busy.case) { this.nag = L.last; return; } // a mate is already at him: wait
       this.nag = 0; this.nagStage = 0; this.shooing = null;
-      this.director.provoked = true;
-      this.barkT = 0;
-      this.say('snap');
-      this.sees = true;
-      this.lastKnown = { x: p.x, y: p.y };
-      this.spot(false);
+      this.challenge('loiter', p.x, p.y, STAGE.SHOVED);
     } else if (this.nag >= L.last && this.nagStage < 2) {
       this.nagStage = 2;
       this.barkT = 0;
@@ -362,6 +375,8 @@ export default class Enemy extends Character {
       if ((type === 'gunshot' || type === 'explosion') && !this.sees) this.lastKnown = { x, y };
       return;
     }
+    // having a word with the stranger: a small noise gets a glance, no more
+    if (this.state === S.CHALLENGE && (type === 'footsteps' || !ALARMS.has(type))) { this.glanceAt(x, y, AI.listen.glance); return; }
     const err = hearingError(Math.hypot(x - this.x, y - this.y));
     const sx = x + rand(-err, err), sy = y + rand(-err, err);
     if (type === 'footsteps') {
@@ -478,6 +493,127 @@ export default class Enemy extends Character {
     this.say(FOUND[inc.kind] ?? 'damage');
   }
 
+  // ---------------- a word with the stranger (ai/Conduct.js) ----------------
+  // Could he have seen the stranger at it (Director.conduct): on his feet and free (not in a fight, not on his knees,
+  // not down behind a counter), the stranger in sight within AI.challenge.sight px (close by, if his mind is on his
+  // game); a noise (heard) turns his head to it, so no view cone then.
+  witness(p, heard = false) {
+    if (this.passive || this.dormant || this.yielded || this.knocked > 0 || this.held || this.aware === 2 || this.vaulting) return false;
+    if (this.state === S.DIZZY || this.state === S.BACKUP || this.duckT > 0) return false;
+    const d = Math.hypot(p.x - this.x, p.y - this.y);
+    if (d > (this.distracted ? AI.loiter.near : AI.challenge.sight)) return false;
+    return heard ? this.world.sightLine(this.x, this.y, p.x, p.y) : this.canSee(p);
+  }
+
+  // a look at (x, y) for dur s, whatever he is at
+  glanceAt(x, y, dur) { this.eyes = { x, y, until: this.world.time + dur }; }
+
+  // He saw the stranger do something odd (act, data/conduct.js ACTS) at (x, y): over to him to have a word. open: the
+  // stage the word starts at once there (ai/Conduct.js opening: warned at once, a man let off not long ago).
+  challenge(act, x, y, open = STAGE.TOLD) {
+    const p = this.world.player;
+    this.setState(S.CHALLENGE);
+    this.case = new Case(act, { x, y }, this.world.time, open);
+    this.director.challenger = this;
+    this.barkT = 0;
+    if (Math.hypot(p.x - this.x, p.y - this.y) > AI.challenge.talk * 2) this.say('hey');
+    this.world.events.emit('challenge', { guard: this, act, stage: STAGE.GO });
+  }
+
+  // the word is over (letOff: let off, or the stranger got away from it): the Director remembers him a while
+  endCase(letOff) {
+    if (!this.case) return;
+    this.case = null;
+    this.director?.closeCase(this, letOff);
+  }
+
+  // Over to him, then talk: told, warned, shoved, and the fight is on unless he does as he is told (ai/Conduct.js
+  // judge); out of sight too long, he lets it go.
+  doChallenge(dt) {
+    const w = this.world, p = w.player, c = this.case, C = AI.challenge, now = w.time;
+    if (!c || !p.alive || p.hidden) { this.endCase(false); this.setState(S.RETURN); return; }
+    const dist = Math.hypot(p.x - this.x, p.y - this.y);
+    const seen = dist <= ENEMY.viewDist && w.sightLine(this.x, this.y, p.x, p.y);
+    c.lost = seen ? 0 : c.lost + dt;
+    if (seen) c.seen = { x: p.x, y: p.y };
+    const tg = seen ? p : c.seen ?? c.at;
+    if (c.stage === STAGE.GO) {
+      if (c.lost > C.lost) { this.letGo(); return; }
+      if (!seen || dist > C.talk + 8) {
+        // a man he cannot get to (over a counter, up on a roof) is called from where he stands
+        const stuck = this.travel(dt, tg.x, tg.y, ENEMY.walkSpeed * C.pace, { near: C.talk, look: !(seen && dist < 200) });
+        if (seen && dist < 200) this.faceTo(p.x, p.y, 5, dt);
+        if (!(stuck && seen && dist < 160)) return;
+      }
+      this.stageUp(c);
+    }
+    if (c.stage === STAGE.SHOVED && !c.shoved) {
+      // up to him, and a flat hand in his chest
+      if (dist > C.reach && now - c.t < 2.5) {
+        this.travel(dt, p.x, p.y, ENEMY.walkSpeed * C.pace * 1.3, { near: C.reach - 4, look: false });
+        this.faceTo(p.x, p.y, 6, dt);
+        return;
+      }
+      c.shoved = true;
+      c.t = now;
+      if (dist <= C.reach + 8) this.shove(p);
+    }
+    // talking: a word's distance off, his eyes on him
+    if (seen && dist > C.talk + 40) this.travel(dt, p.x, p.y, ENEMY.walkSpeed * C.pace, { near: C.talk, look: false });
+    else this.halt();
+    this.faceTo(tg.x, tg.y, 5, dt);
+    const out = !this.director.inPremises(p);
+    const v = judge(c, { complied: complies(c, p, !out) || (out && dist > C.gone), lost: c.lost }, now, dt);
+    if (v === 'settle') this.letOff('settle');
+    else if (v === 'drop') this.letGo();
+    else if (v === 'escalate') this.stageUp(c);
+  }
+
+  // the next stage of the word: told (what he did), warned, shoved, the fight
+  stageUp(c) {
+    const from = c.stage, s = c.next(this.world.time);
+    this.barkT = 0;
+    this.world.events.emit('challenge', { guard: this, act: c.act, stage: s });
+    if (s === STAGE.TOLD || (from === STAGE.GO && s === STAGE.WARNED)) this.say(c.rules.order);
+    else if (s === STAGE.WARNED) this.say('press');
+    if (s === STAGE.WARNED) this.showIcon('!', 1.2);
+    else if (s === STAGE.SHOVED) c.shoved = false;
+    else if (s === STAGE.FIGHT) this.snapAt();
+  }
+
+  // a flat hand in his chest (the hand comes up as on a door leaf: CharacterAnim doorHandPose), thrown back a step
+  shove(p) {
+    const a = Math.atan2(p.y - this.y, p.x - this.x);
+    this.doorHand = { x: p.x - Math.cos(a) * p.radius, y: p.y - Math.sin(a) * p.radius, a: a + Math.PI, w: 1 };
+    p.shoved?.(a, AI.challenge.shove);
+    this.say('shove');
+    this.world.sound('punch', p.x, p.y, 0.35, { pitch: 1.3 });
+  }
+
+  // he would not listen: the fight is on, and the squad takes him for a threat for good
+  snapAt() {
+    const p = this.world.player;
+    this.endCase(false);
+    this.director.provoked = true;
+    this.barkT = 0;
+    this.say('snap');
+    this.sees = true;
+    this.lastKnown = { x: p.x, y: p.y };
+    this.spot(false);
+  }
+
+  // he did as he was told: a last word, and back to what he was at
+  letOff(line) {
+    this.barkT = 0;
+    this.say(line);
+    this.endCase(true);
+    this.meter = 0;
+    this.setState(S.RETURN);
+  }
+
+  // gone out of sight before a word could be had: let it go
+  letGo() { this.letOff('letgo'); }
+
   // ---------------- squad orders ----------------
   joinHunt(x, y) {
     if (this.knocked > 0 || this.aware === 2) return;
@@ -579,7 +715,14 @@ export default class Enemy extends Character {
       case S.BACKUP: this.doBackup(dt); break;
       case S.FLEE: this.doFlee(dt); break;
       case S.TRACK: this.doTrack(dt); break;
+      case S.CHALLENGE: this.doChallenge(dt); break;
       default: break;
+    }
+    // a glance at something (a noise he leaves to the others, the stranger another one is talking to): his head
+    // turns, the rest of him carries on
+    if (this.eyes) {
+      if (this.world.time < this.eyes.until && this.aware === 0 && !this.held) this.faceTo(this.eyes.x, this.eyes.y, 4, dt);
+      else this.eyes = null;
     }
     const k = !this.kneel ? 0 : this.duckT > 0 && this.aware < 2 ? DUCK : 1;
     this.crouch = this.crouch < k ? Math.min(k, this.crouch + dt * 5) : Math.max(k, this.crouch - dt * 5);
@@ -1334,10 +1477,14 @@ export default class Enemy extends Character {
     if (d.provoked && (d.phase === 'alert' || d.phase === 'evasion') && chance(0.6)) this.say('taunt');
   }
 
+  // after him to where he was last seen; where a mate just fell, carefully: a brisk walk, weapon up on that spot
   doHunt(dt) {
     const lk = this.lastKnown;
     if (!lk) { this.beginSearch(); return; }
-    if (this.travel(dt, lk.x, lk.y, ENEMY.runSpeed * 0.85 * this.pace, { near: 20 })) this.beginSearch();
+    const wary = this.director.wary(lk.x, lk.y) && Math.hypot(lk.x - this.x, lk.y - this.y) < AI.wary.r * 1.5;
+    const speed = wary ? ENEMY.walkSpeed * AI.wary.pace : ENEMY.runSpeed * 0.85 * this.pace;
+    if (this.travel(dt, lk.x, lk.y, speed, { near: 20, look: !wary })) { this.beginSearch(); return; }
+    if (wary) this.aimAt(lk.x, lk.y, dt, 0.7);
   }
 
   // ---------------- combat ----------------
@@ -1627,11 +1774,14 @@ export default class Enemy extends Character {
     const side = this.dodge !== 0 ? Math.sign(this.dodge) * 1.6 : Math.sin(this.world.time * 4 + this.seed) * 0.35;
     if (this.dodge !== 0) this.dodge = Math.sign(this.dodge) * Math.max(0, Math.abs(this.dodge) - dt) || 0;
     const ux = dx / (dist || 1), uy = dy / (dist || 1);
-    if (this.world.map.walkLine(this.x, this.y, p.x, p.y, 6)) {
-      const sep = this.separation();
+    // straight at him while the way is open; held up there (a mate in a doorway) he takes the path, which goes round
+    const sp = ENEMY.runSpeed * this.pace;
+    this.rushHeld = this.moving < sp * 0.25 && dist > 40 ? this.rushHeld + dt : Math.max(0, this.rushHeld - dt);
+    if (this.rushHeld < 0.6 && this.world.map.walkLine(this.x, this.y, p.x, p.y, 6)) {
+      const gw = this.giveWay(ux, uy);
       const k = dist < 50 ? 0 : 1, planted = this.tell > 0 ? TELL.pace : 1; // winding up, he plants his feet
-      this.steer(ux - uy * side * k + sep.x, uy + ux * side * k + sep.y, ENEMY.runSpeed * this.pace * planted * (this.dodge ? 1.25 : 1), 0.3);
-    } else if (this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 }) && dist > 30) {
+      this.steer(ux - uy * side * k + gw.x, uy + ux * side * k + gw.y, sp * gw.slow * planted * (this.dodge ? 1.25 : 1), 0.3);
+    } else if (this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 }) && dist > 30 && this.jamTries < AI.nav.jam.tries) {
       // no way round on foot (he stands behind a counter, on a roof edge): straight at him, over what is in the way
       if (!this.tryVault(Math.atan2(dy, dx))) this.steer(ux, uy, ENEMY.runSpeed * this.pace, 0.3);
     }
@@ -1905,11 +2055,47 @@ export default class Enemy extends Character {
   goTo(x, y) {
     if (!this.director.budget(1)) return null;
     this.dest = { x, y };
-    const path = this.world.pathForGuard(this.x, this.y, x, y);
+    const path = this.world.pathForGuard(this.x, this.y, x, y, this.director.pathCost(this));
     if (!path || !path.length) { this.path = null; return false; }
     this.path = path;
     this.pathIdx = 0;
+    this.director.shareRoute(this, path);
     return true;
+  }
+
+  // Pushed in vain at something on his way: the tile in it is noted (ai/Nav.js) and his next path goes round it while
+  // he remembers (a thing from the second time it holds him there, people from AI.nav.jam.people: they move on).
+  // True once he has been held up AI.nav.jam.tries times on his way to the same spot: he gives it up.
+  jammed(ux, uy) {
+    const J = AI.nav.jam, w = this.world;
+    const cell = cellAhead(w.map, this.x, this.y, ux, uy);
+    if (cell === null) return false;
+    this.blockN = cell === this.blockCell ? this.blockN + 1 : 1;
+    this.blockCell = cell;
+    const people = w.chars.some((c) => c !== this && c.alive && !(c.knocked > 0) && Math.hypot(c.x - this.x - ux * 16, c.y - this.y - uy * 16) < 20);
+    if (this.blockN < (people ? J.people : 2)) return false;
+    return this.noteJam(cell);
+  }
+
+  // the tile `cell` is in the way: his paths go round it while he remembers (ai/Nav.js); true once that has happened
+  // AI.nav.jam.tries times on his way to the same spot (he gives it up)
+  noteJam(cell) {
+    const J = AI.nav.jam, to = this.dest;
+    if (to && (!this.jamTo || Math.hypot(this.jamTo.x - to.x, this.jamTo.y - to.y) > 20)) { this.jamTo = { x: to.x, y: to.y }; this.jamTries = 0; }
+    this.jams.mark(cell, J.cost, this.world.time + J.forget);
+    return ++this.jamTries >= J.tries;
+  }
+
+  // how he gives way to the people around him, heading (ux, uy) (ai/Nav.js giveWay): in a fight the player is not
+  // among them, he goes for him
+  giveWay(ux, uy) {
+    const near = this.near;
+    near.length = 0;
+    for (const c of this.world.chars) {
+      if (c === this || !c.alive || c.knocked > 0 || c.hidden || c.seated || c.vaulting || (c.isPlayer && this.aware === 2)) continue;
+      if (Math.abs(c.x - this.x) < 60 && Math.abs(c.y - this.y) < 60) near.push(c);
+    }
+    return giveWay(this, ux, uy, near);
   }
 
   // True when we have been a few steps from (x, y) for too long without getting there: something stands on the
@@ -1961,7 +2147,15 @@ export default class Enemy extends Character {
     // one at a time through a doorway: whoever is in the frame, or was first to it, goes; the others stand back
     const want = inside ? my * map.w + mx : ahead ? key : this.gateWait > 0 ? this.gateFor : -1;
     if (want < 0) this.gate = -1;
-    else if (!inside && this.gateWait < (speed > 1.6 ? AI.gate.rush : AI.gate.calm) && this.gateTaken(want)) {
+    else if (!inside && this.gateTaken(want)) {
+      if (this.gateWait >= (speed > 1.6 ? AI.gate.rush : AI.gate.calm)) {
+        // the doorway is not clearing (a man stuck in it, coming the other way): another way round, if there is one
+        this.gateWait = 0;
+        if (this.noteJam(want)) { this.path = null; this.halt(); return true; }
+        this.repath = 0; this.dest = null;
+        this.halt();
+        return false;
+      }
       this.gate = -1;
       this.gateFor = want;
       this.gateWait += dt;
@@ -1983,14 +2177,24 @@ export default class Enemy extends Character {
       this.sweep(dt, heading, 0.9);
       return false;
     }
-    // organic gait: slight sway, pace drift, separation from mates, smooth acceleration
+    // organic gait: slight sway, pace drift, giving way to the people around (stepping aside, falling in behind one
+    // going his way), smooth acceleration
     const sway = Math.sin(this.world.time * 1.7 + this.seed) * (speed > 1.6 ? 0.08 : 0.16);
-    const sep = this.separation();
-    const sp = speed * this.pace * (1 + Math.sin(this.world.time * 0.6 + this.seed) * 0.06);
-    // a doorway is taken down its middle, not across the corner where the leaf hangs
-    const way = (inside || ahead) && throughDoor(map, inside ? mx : cx, inside ? my : cy, this.x, this.y, ux, uy);
-    if (way) this.steer(way.x + sep.x, way.y + sep.y, sp, 0.16);
-    else this.steer(ux - uy * sway + sep.x, uy + ux * sway + sep.y, sp, speed > 1.6 ? 0.16 : 0.09);
+    const gw = this.giveWay(ux, uy);
+    const sp = speed * this.pace * (1 + Math.sin(this.world.time * 0.6 + this.seed) * 0.06) * gw.slow;
+    // a doorway is taken down its middle, not across the corner where the leaf hangs, and left straight on for a
+    // tile before turning (a leaf swung open stands beside it)
+    let way = (inside || ahead) && throughDoor(map, inside ? mx : cx, inside ? my : cy, this.x, this.y, ux, uy);
+    if (inside) {
+      const vert = !map.isBlocked(mx, my - 1) && !map.isBlocked(mx, my + 1);
+      this.doorOut = { cx: mx, cy: my, s: Math.sign(vert ? uy : ux) || 1 };
+    } else if (!way && this.doorOut) {
+      const o = this.doorOut;
+      way = pastDoor(map, o.cx, o.cy, o.s, this.x, this.y);
+      if (!way) this.doorOut = null;
+    }
+    if (way) this.steer(way.x + gw.x * 0.4, way.y + gw.y * 0.4, sp, 0.16);
+    else this.steer(ux - uy * sway + gw.x, uy + ux * sway + gw.y, sp, speed > 1.6 ? 0.16 : 0.09);
     if (opts.look !== false) {
       // the head leads: look into the next leg of the path before the feet turn
       const n = this.path[this.pathIdx + 1];
@@ -2004,12 +2208,13 @@ export default class Enemy extends Character {
       held = Math.hypot(this.x - this.probeX, this.y - this.probeY) < sp * 6; // a fifth of half a second's walk
       this.probeT = 0; this.probeX = this.x; this.probeY = this.y;
     }
-    // stuck on furniture or bodies: vault it, else sidestep and re-plan
-    if (held || this.moving < speed * 0.25) {
+    // stuck on furniture or bodies: vault it, else note what is in the way, sidestep and re-plan round it
+    if (held || this.moving < sp * 0.25) {
       this.stuck += held ? 1 : dt;
       if (this.stuck > 0.25 && this.tryVault(heading)) { this.stuck = 0; return false; }
       if (this.stuck > 0.7) {
         this.stuck = 0;
+        if (this.jammed(ux, uy)) { this.path = null; this.halt(); return true; } // no way through: he gives it up
         // in a door frame there is no room at the sides: back out of it
         const side = heading + (inside ? Math.PI : chance(0.5) ? 1.4 : -1.4);
         Body.setVelocity(this.body, { x: Math.cos(side) * speed, y: Math.sin(side) * speed });
@@ -2027,23 +2232,53 @@ export default class Enemy extends Character {
       && ((e.gate === key && now - e.gateT < 0.3) || Math.floor(e.y / TILE) * w + Math.floor(e.x / TILE) === key));
   }
 
-  // wait for a doorway: off to one side of the frame, eyes on it; false when it is no longer on his way
+  // Wait for a doorway: clear of its mouth (a tile out from it and a tile and a bit to one side, out of the way of
+  // whoever comes through), eyes on it; false when it is no longer on his way.
   standBack(dt, key, heading) {
-    const w = this.world.map.w;
-    const dx = this.x - (key % w + 0.5) * TILE, dy = this.y - (Math.floor(key / w) + 0.5) * TILE, d = Math.hypot(dx, dy);
-    if (d > AI.gate.far) return false;
-    if (d < AI.gate.room) {
-      const a = Math.atan2(dy, dx) + (this.seed < 50 ? 0.9 : -0.9), s = this.separation();
-      this.steer(Math.cos(a) + s.x, Math.sin(a) + s.y, 0.8, 0.15);
+    const map = this.world.map, w = map.w, cx = key % w, cy = Math.floor(key / w);
+    const dcx = (cx + 0.5) * TILE, dcy = (cy + 0.5) * TILE, dx = this.x - dcx, dy = this.y - dcy;
+    if (Math.hypot(dx, dy) > AI.gate.far) return false;
+    const vert = !map.isBlocked(cx, cy - 1) && !map.isBlocked(cx, cy + 1);
+    const out = (vert ? Math.sign(dy) : Math.sign(dx)) || 1; // the side of the doorway he is on
+    let spot = null;
+    for (const side of this.seed < 50 ? [1, -1, 0] : [-1, 1, 0]) {
+      const along = side ? 1.1 : 1.6, across = side * 1.25;
+      const x = vert ? dcx + across * TILE : dcx + out * along * TILE, y = vert ? dcy + out * along * TILE : dcy + across * TILE;
+      if (!map.isBlocked(Math.floor(x / TILE), Math.floor(y / TILE))) { spot = { x, y }; break; }
+    }
+    const d = spot ? Math.hypot(spot.x - this.x, spot.y - this.y) : 0;
+    if (d > 4) {
+      const s = this.separation();
+      this.steer((spot.x - this.x) / d + s.x, (spot.y - this.y) / d + s.y, Math.min(1.3, d / 8), 0.2);
     } else this.halt();
-    this.faceAngle(heading, 4, dt);
+    this.faceTo(dcx, dcy, 4, dt);
     return true;
   }
 
   // stand still, only nudged apart from mates
   halt() {
+    if (this.outOfDoorway()) return;
     const s = this.separation(), m = Math.hypot(s.x, s.y);
     this.steer(s.x, s.y, m > 0.01 ? Math.min(1, m) * 1.2 : 0, 0.2);
+  }
+
+  // Standing still in a door frame with somebody close by: he steps out of it along the passage, away from them
+  // (a doorway is everyone's way through). True while he does.
+  outOfDoorway() {
+    const map = this.world.map, cx = Math.floor(this.x / TILE), cy = Math.floor(this.y / TILE), c = map.at(cx, cy);
+    if ((c !== 'D' && c !== 'L') || this.vaulting || this.held) return false;
+    const vert = !map.isBlocked(cx, cy - 1) && !map.isBlocked(cx, cy + 1);
+    if (!vert && (map.isBlocked(cx - 1, cy) || map.isBlocked(cx + 1, cy))) return false;
+    let other = null, od = 40;
+    for (const o of this.world.chars) {
+      const d = o !== this && o.alive && !(o.knocked > 0) ? Math.hypot(o.x - this.x, o.y - this.y) : Infinity;
+      if (d < od) { od = d; other = o; }
+    }
+    if (!other) return false;
+    const side = vert ? Math.sign(this.y - other.y) || 1 : Math.sign(this.x - other.x) || 1;
+    const tx = vert ? (cx + 0.5) * TILE : (cx + 0.5 + side) * TILE, ty = vert ? (cy + 0.5 + side) * TILE : (cy + 0.5) * TILE;
+    this.steer(tx - this.x, ty - this.y, ENEMY.walkSpeed, 0.2);
+    return true;
   }
 
   // push away from mates closer than 26 px (reused vector)
@@ -2212,8 +2447,10 @@ export default class Enemy extends Character {
       ctx.fillText(ch, this.x, this.y - 14);
       ctx.globalAlpha = 1;
     }
-    // the same gauge shows his suspicion, or his patience running out with a loiterer
-    const m = Math.max(this.meter, this.nagStage ? this.nag : 0);
+    // the same gauge shows his suspicion, or his patience running out with a loiterer, or with a stranger he is having
+    // a word with (a third of it per stage: told, warned, shoved)
+    const c = this.case, word = c && c.stage >= STAGE.TOLD ? Math.min(1, (c.stage - 1 + Math.min(1, (this.world.time - c.t) / c.wait())) / 3) : 0;
+    const m = Math.max(this.meter, this.nagStage ? this.nag : 0, word);
     if (this.aware < 2 && m > 0.04) {
       ctx.fillStyle = PALETTE.ink;
       ctx.fillRect(this.x - 7, this.y - 12, 14, 3);

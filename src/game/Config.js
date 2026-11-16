@@ -136,14 +136,32 @@ export const AI = {
   searchers: 6,           // guards sent on an evasion sweep
   searchTiles: 16,        // sweep radius (path distance in tiles) around the last known position
   searchSpots: 14,
+  widen: 1.7,             // the sweep goes this much further out once every spot near where he vanished is done
+  // a hunter going where a mate fell not long ago (`time` s, within `r` px of the body) comes on carefully: brisk walk,
+  // weapon up, eyes ahead (`pace` x his walk)
+  wary: { time: 25, r: 200, pace: 1.6 },
   noiseGap: 0.25,         // the same source is heard at most this often (automatic fire)
   planBudget: 6,          // expensive AI work per step (path = 1, cover / flank search = 3)
   // The player's wet or bloody footprints (ai/Trail.js, Enemy.doTrack). fresh: s a print stays readable; max: prints
   // kept; gap: px between two prints of the same run; hop: px a tracker walks at a time; sight: share of the view
   // distance at which a print is noticed, close: px all around; ahead: px he goes on past the last print.
-  // doorways, one at a time: how long a guard waits for a mate in the frame (s, walking / running) and how far
-  // back from it he stands (px)
-  gate: { calm: 3, rush: 1.2, room: 46, far: 96 },
+  // doorways, one at a time: how long a guard waits for a mate in the frame (s, walking / running), clear of its
+  // mouth (Enemy.standBack), and how far from it a doorway still counts as on his way (px)
+  gate: { calm: 3, rush: 1.2, far: 96 },
+  // Finding his way (ai/Nav.js, Enemy.follow / pathCost). jam: a tile he pushed at in vain is worth `cost` tiles of
+  // detour to him for `forget` s (held up by people, only from the `people`-th time on the same tile); after `tries`
+  // jams on the way to one spot he gives that spot up. danger: the tiles around where a mate fell (r tiles) cost
+  // that much to the squad for `forget` s. shared: per tile of a mate's route to the same fight (`routeFor` s: the
+  // hunters spread over the ways in). fire: a tile by a fire; slick: a tile whose grip is under `grip`.
+  // avoid (ai/Nav.js giveWay): personal space px, the push off it, px ahead he looks, his step aside, the pace (px/step)
+  // above which one ahead counts as going his way, the share of his pace he keeps behind him, the least.
+  nav: {
+    jam: { cost: 14, forget: 15, people: 2, tries: 3 },
+    danger: { cost: 4, forget: 25, r: 1 },
+    shared: 0.6, routeFor: 3,
+    fire: 12, slick: 3, grip: 0.55,
+    avoid: { space: 4, push: 0.9, ahead: 38, side: 0.85, queue: 0.5, keep: 0.75, minPace: 0.35 },
+  },
   trail: { fresh: 45, max: 48, gap: 60, hop: 70, sight: 0.45, close: 36, ahead: 96 },
   // a doorman's eyes follow whoever comes within `range` px and `arc` rad of the way he stands, at `turn` rad/s
   gaze: { range: 176, arc: 1.9, turn: 4 },
@@ -189,6 +207,21 @@ export const AI = {
   // bothered within `near` px; patience = seconds before he snaps at `near` / at `close` px; shares of it at which
   // he tells him to clear off (`first`) and warns him a last time (`last`); `forget` = share won back per second.
   loiter: { near: 120, close: 40, patience: [8, 2.4], first: 0.12, last: 0.55, forget: 0.1 },
+  // A stranger seen doing something odd while nobody has anything against him (ai/Conduct.js, data/conduct.js
+  // ACTS, Director.conduct, Enemy.doChallenge): the nearest guard who saw it within `sight` px walks over (`pace` x his
+  // walk) and stops `talk` px from him; he gives him `wait` s per stage (told, warned, shoved; an act's own `wait`
+  // wins), `settle` s of complying lets him off, `lost` s out of sight and he lets it go; for the shove he steps within
+  // `reach` px and throws him back at `shove` px/step. A man let off is remembered `memory` s (the next case opens
+  // at the warning). The others who saw it look at him `glance` s. lurk: s hanging about within `lurkR` px of a door
+  // into the premises; bump: px/step at which running into a guard is noticed; gone: px off a guard who stays out of
+  // the premises: he walked away, that will do.
+  challenge: {
+    sight: 300, pace: 1.45, talk: 44, wait: [5, 4, 3], settle: 1.2, lost: 5, reach: 24, shove: 5.5, memory: 60,
+    glance: 1.8, lurk: 4, lurkR: 44, bump: 1.6, gone: 260,
+  },
+  // Noises while all is calm: only the `go` guards nearest one go and look; the others glance toward it a moment.
+  // Alarms (gunshots, a blast, a body falling, a wall coming down) bring everyone in range as before.
+  listen: { go: 2, glance: 1.4 },
 };
 
 export const PHYSICS = {
@@ -363,6 +396,12 @@ export const AMBIENT = {
   bailOut: 0.8,            // chance the driver of a burning / shot-up car gets out alive and runs
   // gunfire heard from the wheel: most drivers stop dead and run, the others floor it
   flee: { odds: 0.8, delay: [0.15, 0.9], passenger: 0.35 }, // delay: s of reaction; passenger: odds of a second runner
+  // a gun held on a driver from within `range` m (on the car's width, give or take `slack` rad, in plain view) for
+  // `notice` s (Ambient.aimedAt, Driver.heldUp): odds he stops and runs for it, stops dead hands up (until the gun has
+  // been off him `resume` s, then away flat out), else floors it
+  heldUp: { range: 9, slack: 0.08, notice: 0.35, flee: 0.45, duck: 0.35, resume: 2.2 },
+  // a body in the road: px of the box a driver keeps off, s he creeps over it when there is no way round
+  body: { box: 26, creep: 4 },
   // people vs cars
   lethal: 3.2,             // m/s: faster than this, a hit kills (one hit kills, guards and player alike)
   shove: 1.3,              // ragdoll launch speed as a fraction of the car speed
@@ -401,6 +440,11 @@ export const AMBIENT = {
     cry: [1.3, 2.9],
     scream: 0.7,
   },
+  // looking round at a commotion (Walker.notice): m of a noise's radius they turn at (share), m around a word a guard
+  // has with the player, m around a man floored in a fight within which they back off, s they look, odds nobody says
+  // anything about it (a shove always gets a word), the share of his pace a stroller keeps while he looks
+  look: { noise: 0.35, word: 6, fight: 5, time: 2.5, say: 0.65, slow: 0.55 },
+  runJam: { cost: 12, forget: 12 }, // a spot a runner was held up at: tiles of detour it is worth to the others, for s
   barkGap: 0.35,           // s between two civilian screams on screen
   cryLag: 0.9,             // s: each waits up to this long before he cries out, so a crowd does not scream as one
 };

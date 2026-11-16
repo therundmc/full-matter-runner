@@ -5,7 +5,7 @@
 // Moved by a Walker brain (ai/Civilians.js) that systems/Ambient.js ticks. Same body, death and gore as anyone;
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
 import { CAT, MASK, TILE } from '../Config.js';
-import { rand, approachAngle } from '../../engine/math.js';
+import { rand, approachAngle, angDiff } from '../../engine/math.js';
 import { WALKER } from '../ai/Civilians.js';
 import { talks } from '../ai/Pastimes.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
@@ -51,6 +51,7 @@ export default class Civilian extends Character {
     // how a passer-by carries his hands on a walk: in the pockets, on a bag, or swinging
     this.habit = this.seed < 22 ? 'pockets' : this.seed < 42 ? 'bag' : null;
     this.stuckT = 0;
+    this.blocks = 0;       // sidesteps on the way (see update)
     this.dodge = 0;
     this.post = null;      // a patron's spot { x, y, face } (see sit)
     this.seated = false;   // on his seat: furniture is not in his way
@@ -132,10 +133,18 @@ export default class Civilian extends Character {
       return;
     }
     let dx = it.x - this.x, dy = it.y - this.y;
-    // walked into something (a parked car on the sidewalk, a crowd): sidestep for a moment
-    const want = it.speed / 60;
+    // giving way to the people around (ai/Nav.js): stepping aside, falling in behind one going his way
+    const len = Math.hypot(dx, dy) || 1, gw = sense.giveWay?.(this, dx / len, dy / len);
+    if (gw) { dx = dx / len + gw.x; dy = dy / len + gw.y; }
+    // walked into something (a parked car on the sidewalk, a crowd): sidestep for a moment; a runner held up a third
+    // time on his way finds another way out, round that spot (Ambient notes it)
+    const want = (it.speed / 60) * (gw ? gw.slow : 1);
     if (this.moving < want * 0.3) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt);
-    if (this.stuckT > 0.8) { this.dodge = rand(0.5, 0.9) * (Math.random() < 0.5 ? -1 : 1); this.stuckT = 0; }
+    if (this.stuckT > 0.8) {
+      this.dodge = rand(0.5, 0.9) * (Math.random() < 0.5 ? -1 : 1);
+      this.stuckT = 0;
+      if (++this.blocks >= 3 && b.state === WALKER.FLEE) { this.blocks = 0; sense.jam?.(this, dx, dy); b.blocked(); }
+    }
     if (this.dodge) {
       const s = Math.sign(this.dodge);
       [dx, dy] = [dx - dy * s * 1.5, dy + dx * s * 1.5];
@@ -145,8 +154,8 @@ export default class Civilian extends Character {
     const running = b.state === WALKER.FLEE || b.state === WALKER.HIDE;
     this.steer(dx, dy, want, running ? 0.3 : 0.15);
     const ma = Math.atan2(dy, dx);
-    // strollers look around a little; runners look where they go
-    const look = b.state === WALKER.WALK ? Math.sin(this.world.time * 0.7 + this.seed) * 0.35 : 0;
+    // strollers look around a little, or half round at something going on; runners look where they go
+    const look = it.look !== undefined ? angDiff(ma, it.look) * 0.5 : b.state === WALKER.WALK ? Math.sin(this.world.time * 0.7 + this.seed) * 0.35 : 0;
     this.angle = approachAngle(this.angle, ma + look, dt * (running ? 10 : 3));
   }
 

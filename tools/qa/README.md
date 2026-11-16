@@ -112,6 +112,11 @@ and no spare magazine on a dead guard: the only rounds are the partial magazine 
 reloads early out of sight (`Enemy.needsReload`), rare; the bot goes for any it sees (the report counts "ammunition
 seen on the floor"). `horn` only in `--god` (the `road` plan) or by chance while crossing. The lab covers `reload`.
 
+The statistics also count the AI at work (`aiCheck`, the game's 'challenge' and 'heldUp' events): guards entering a
+fight, a guard in a fight getting within reach of the player, guards held 3 s on one spot on their way (a softer
+`guard-stuck`), the words had with the player by act and by the stage they reached (0 on his way .. 4 the fight), and
+the drivers held up at gunpoint by what they did.
+
 ## The report
 
 `qa-report/<yyyymmdd-hhmmss>/` (ignored by git):

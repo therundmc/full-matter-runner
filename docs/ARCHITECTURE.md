@@ -23,7 +23,8 @@ src/
       Shallow.js          liquid on a flat floor: a "virtual pipes" height field (depth per kind per cell, fluxes with
                           inertia between neighbours, a film under which it stops spreading, floor levels), drying and
                           soaking, setting kinds (blood), solid cells, chunks that sleep when still
-    nav/Pathfinding.js    A* on the tile grid + string pulling
+    nav/Pathfinding.js    A* on the tile grid + string pulling; an optional extra cost per cell (spots to keep away
+                          from), which string pulling never cuts across
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
                           of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
                           Motor.js (a V8's cycle, a gearbox, the tyres' squeal as numbers; DOM-free),
@@ -113,10 +114,18 @@ src/
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
-      Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain
+      Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain (held up
+                          at gunpoint, a body in the road gone round or crept over)
     ai/                   enemy AI, DOM-free (unit tested)
       Tension.js          soundtrack intensity: alert phase + heat of the fight (shots, kills, blasts)
-      Director.js         squad brain: alert phases, noise routing, incidents, search sweeps, spot claims, budget
+      Director.js         squad brain: alert phases, noise routing (only the nearest go and look while calm), incidents,
+                          search sweeps (widened once), spot claims, budget, the squad's path costs (where mates fell, the
+                          routes of the others in the fight, fire, slick floors), the stranger watched for odd acts and the
+                          word one guard has with him (conduct)
+      Nav.js              finding the way: tiles remembered as jammed (CellMemory), a path's cells, the tile in the way,
+                          giving way to the people around (step aside, queue behind, personal space), the cost function
+      Conduct.js          a word with a stranger: the Case (on his way, told, warned, shoved, fight), the verdict at each
+                          moment (judge), what complying means (complies), the stage a repeat offender starts at
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point, the way through a doorway,
                           the table worth tipping over in front of a cover spot (`tableToFlip`)
       Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
@@ -124,7 +133,8 @@ src/
                           handed out, the named place of a point (level soundscape zones, landmarks)
       Squad.js            a guard's nerve: running for backup (odds, which group), giving up, going for a gun on his knees
       Trail.js            the player's wet / bloody footprints in order, and how a guard picks them up and follows them
-      Civilians.js        passers-by Walker brain (stroll, stop, panic, then by temperament flee / hide curled up / freeze) + escapeRoute, hideRoute
+      Civilians.js        passers-by Walker brain (stroll, stop, look round at a commotion, panic, then by temperament flee /
+                          hide curled up / freeze) + escapeRoute (round spots runners were held up at), hideRoute
       Pastimes.js         what people do with themselves while all is calm (pool, cards, a drink, a cigarette,
                           a chat, a leak...): timing and spots only
       Carry.js            how a guard carries his weapon: put away, in hand and low, raised on a target
@@ -179,7 +189,8 @@ src/
     data/                 atmosphere (rain, smoke, neon faults: the look of the air), liquids (the liquid on the floor:
                           solver, floors, kinds and their look), daycycle (the title's day and night), devices (the level's usable things: tuning), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade
-                          thresholds per level), levels/ (index.js = registry)
+                          thresholds per level), barks (what the guards say), conduct (the odd acts a stranger gets a word
+                          for), levels/ (index.js = registry)
 tests/                    node --test (no browser): engine, physics, map/pathfinding, systems, ai, ambient, sandbox, roofs,
                           scoring, threats, replay
 ```
@@ -208,7 +219,7 @@ Rules:
 | `blow` | `{ x, y, angle, power 0..1, kind, lethal, byPlayer }` | Character / Projectile (a blow or a round landed on somebody) | Lens (colour fringe, zoom kick, impact frame) |
 | `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats, CombatFx (the player's kill mark) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
-| `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring |
+| `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
 | `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses) |
 | `strike` | `{ x, y, owner, team }` | Projectile (a round hit a wall, a prop, a door or a pane) | Flinch (guards close by, the player's view) |
@@ -221,11 +232,13 @@ Rules:
 | `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster) |
 | `spill` | `{ x, y, kind, area, dur?, a? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing), a guard's glass or leak, a customer's glass | Liquids (px2 of floor a `LIQUIDS.kinds` liquid covers, at once or over `dur` seconds, thrown toward `a`) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles) | Director (hearing), Threats (a guard who makes noise can be placed) |
-| `windowBroken` | `{ x, y }` | Window.shatter | Director (incident) |
+| `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident) |
 | `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack combat variant; intensity through Tension), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
 | `powerCut` | `{ x, y }` (the fuse box) | Power (the lights of the house just went out) | Director (an incident at the box: whoever sees it raises the alert) |
 | `alarm` | `{ x, y, radius }` | Alarms (a shop's bell ringing, every few bursts) | Ambient (passers-by within `radius` walk on faster: `Walker.hurry`) |
+| `challenge` | `{ guard, act, stage }` | Enemy (a word with the stranger: 0 on his way, 1 told, 2 warned, 3 shoved, 4 the fight) | Ambient (the people around look; a shove and they stare longer) |
+| `heldUp` | `{ car, how }` | Ambient (a gun held on a driver: `flee` / `duck` / `floor`) | (QA statistics) |
 | `poolStroke` | `{ x, y }` | Enemy (a guard at the pool table plays his shot) | PoolBalls |
 | `patronLeft` | `{ civilian, activity }` | Civilian (a posted customer runs off his spot) | Ambient (his chair is shoved back, his glass goes over, a cigarette is left burning: `AMBIENT.leave`) |
 
@@ -525,17 +538,35 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 ## Enemy AI
 
-Guards mind their own business until the player gives himself away (`Director.isThreat`): empty-handed and
-outside the level's `premises` (tile rectangles, `lv.guard()` in tools/levelkit.py) he is a passer-by; a weapon in
-hand, trespassing, a shot heard, a guard floored or killed make him a target for good. No `premises` = hostile
-ground everywhere (lab, street testbed). Level 1's bar room and toilets are public: only the VIP room, the back
+Guards mind their own business until the player gives himself away (`Director.isThreat`): with no gun in his hand
+and outside the level's `premises` (tile rectangles, `lv.guard()` in tools/levelkit.py) he is a passer-by; a gun in
+hand, a weapon in hand inside the premises, a shot heard, a guard floored or killed, a word that turned into a fight
+make him a target for good. Short of that, what he does that no customer does gets him a word (below). No
+`premises` = hostile ground everywhere (lab, street testbed, tutorial). Level 1's bar room and toilets are public: only the VIP room, the back
 room, the storeroom, behind the counter and the yards are premises. A passer-by must not hang about either, except
 in the level's `welcome` rectangles (`lv.host()`, `Director.isGuest`: a customer in the bar room) (`Enemy.mind`, `AI.loiter`,
 `Perception.loiterRate`): a guard who has him in front of him within a few metres stops, stares him down and tells
 him to clear off, warns him a last time ('!'), then snaps: the whole squad is provoked. His patience (shown on the
 detection gauge) runs out faster the closer the stranger stands and comes back slowly once he has gone.
-An unarmed stranger who steps into premises under a guard's nose (`Director.isIntruder`, within `AI.loiter.near`)
-makes him suspicious at once: he goes after him, finds him, and the fight is on (the VIP room's bouncer).
+An unarmed stranger seen in the premises (`Director.isIntruder`) is told to get out (a word, below) rather than
+fought on sight. The loiterer's last stage is a shove (a word opened at the shove), then the fight.
+
+**A word with a stranger** (`Director.watchConduct` / `conduct`, ai/Conduct.js, data/conduct.js `ACTS`,
+`Enemy.doChallenge`, `AI.challenge`). While nobody has anything against him, the odd things he is seen doing are
+acts: `trespass` (unarmed in the premises), `weapon` (a blade or a club in hand on public ground), `vault` (over the
+furniture), `slide`, `window` (a pane put in), `smash` (a blow on the furniture), `noise` (his own glass / door /
+thrown noise), `lurk` (hanging about a door into the premises, `AI.challenge.lurk` s), `bump` (running into a guard),
+`loiter` (the doormen's patience run out). The nearest guard who saw it (`Enemy.witness`: in sight within
+`AI.challenge.sight` px; a noise turns his head, so no view cone for those) leaves what he was at (state `challenge`,
+'?', weapon still put away over a trifle) and walks over, calling him ('hey'); a word's distance off he tells him (the
+act's `order`: "OUT. NOW.", "PUT THAT DOWN.", "HEY! CUT THAT OUT."...), then gives him the act's `wait` s to comply
+(`comply`: off the premises, empty-handed, off the spot, or simply not again while watched). He warns him ('press',
+'!', weapon in hand), shoves him (a flat hand in his chest: `Player.shoved`), and the fight is on ('snap', the squad
+provoked). Doing it again moves him on at once (a worse act becomes the case); complying long enough lets him off
+('settle'); out of sight `lost` s, he lets it go ('letgo'). One guard at a time has a word (`Director.challenger`):
+the others who saw it only glance at the stranger (`Enemy.glanceAt`: the head turns, the rest carries on), and a man
+let off is remembered `memory` s (his next word opens at the warning). His gauge shows his patience running out, a
+third per stage. A gun in hand is no matter for words: it is a threat, as before.
 
 - **Guard** (`entities/Enemy.js`), states by awareness: unaware `idle` (post: watch, scan, look behind, smoke,
   pager) / `patrol` / `return`; suspicious `suspicious` (freeze + turn toward the stimulus: the tell) /
@@ -545,6 +576,18 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
 - **Detection meter** 0..1 (`ai/Perception.js`): fills while the player is in view, faster close / in the centre
   of the cone / running / lit (`world.lighting.levelAt`) / in a vigilant phase, slower when distracted;
   `?` from `ENEMY.suspicious`, `!` at 1. Noises set the meter to a level (`ENEMY.hear`), never straight to `!`.
+- **Hearing while all is calm** (`Director.emit`): only the `AI.listen.go` guards nearest a noise go and look; the
+  others glance toward it and carry on. Alarms (`ALARMS`: gunshots, a mate's fire, blasts, a body falling, a wall
+  coming down, footsteps) reach everyone in range, and once the squad is on edge every noise does. A guard having a
+  word only glances at a small noise.
+- **Finding the way** (ai/Nav.js, `AI.nav`): a guard's path-finding (`World.pathForGuard` with `Director.pathCost`)
+  weighs each tile: the ones he pushed at in vain (`Enemy.jammed`: a thing from the second time, people from the
+  `people`-th; remembered `forget` s, his own `CellMemory`), around where a mate fell (`Director.danger`, shared: it is
+  called out), the routes his mates in the fight already take (`shareRoute`: the hunters spread over the ways in, one
+  through the bar, another round by the gaming room), fire, a slick floor. After `tries` jams on his way to the same
+  spot he gives it up (travel reports it done). On the way he gives way to the people around him (`giveWay`: personal
+  space, a step to the side round one standing or coming, falling in behind one going his way: a queue at a doorway,
+  in a corridor), takes doorways one at a time (`AI.gate`) down their middle, vaults low furniture he is stuck on.
 - **Fairness**: human reaction delay before the first shot (`ENEMY.reaction`, `reacquire`), turn-rate limited aim,
   aim error that shrinks with steady sight (`aimErrorMax`, `aimSettle`), no shot from off screen, no psychic
   knowledge (last known positions only, noise localisation error).
@@ -554,7 +597,10 @@ makes him suspicious at once: he goes after him, finds him, and the fight is on 
   dodging a pointed gun) and `stalk` (cover to cover while a gun is on them). Dry guns are thrown at the player.
 - **Director** (`ai/Director.js`): phases `normal -> caution -> alert -> evasion -> caution -> normal`
   (durations in `AI`), contact shout (up to `AI.maxHunters` converge, the others hold and watch), call-ins on
-  incidents, evasion sweep over search points around the last known position, claims on tactical spots,
+  incidents, evasion sweep over search points around the last known position (doorways, corridors, corners, behind
+  furniture, out of sight of it; once they are all done the sweep goes `AI.widen` further out), claims on tactical
+  spots, a hunter going where a mate fell lately coming on carefully (`Director.wary`, `AI.wary`: brisk walk, weapon
+  up),
   a per-step `budget()` for path-finding (1) and cover / flank searches (3) so the cost is spread over frames.
 - Barks are short world texts (`world.texts`), one at a time for the squad (but the `URGENT` occasions), one man
   per occasion (`AI.barks.same`), never a line it has just used (`Director.bark`, ai/Barks.js `lineFor`); the
@@ -622,12 +668,21 @@ ambient: {
   a dead driver (windshield gone / heavy damage) or a fire makes the car coast, drift and stop: it becomes an ordinary
   parked car / wreck (tiles marked blocked, driver bails out). Gunfire heard from the wheel (`AMBIENT.flee`): most
   drivers stand on the brake after a moment of shock, leave the car in the road and run (sometimes a passenger
-  too), the others floor it; no new traffic until the street has calmed down. Above `AMBIENT.lethal` a car kills whoever it hits and
+  too), the others floor it; no new traffic until the street has calmed down. A gun held on a driver from close
+  (`Ambient.aimedAt`, `AMBIENT.heldUp`) for a beat: he stops and runs for it, stops dead hands up until the gun has
+  been off him a while (then away flat out: Driver state `held`), or floors it, his nature's call (`Driver.heldUp`,
+  once). A body lying in the lane is an obstacle like a stopped car (`soft`): gone round through a free lane after
+  the driver's patience, crept over (`AMBIENT.body.creep` s) when there is none. Above `AMBIENT.lethal` a car kills whoever it hits and
   throws the ragdoll (`cause: 'vehicle'`); it drives over bodies. Driven cars skip the static shadow caches (unshadowed
   lights redrawn every frame, brake lights flare). Heard car by car by systems/Ambience.js (an engine voice each).
 - **Passers-by**: `Civilian` (Character subclass, team `civilian`, sprites civ1-8) with a `Walker` brain. They are in
   `world.chars` (bullets, blasts, melee, cars hit them) and `world.civilians` (drawing), never in `enemies`: no target,
-  no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
+  no HUD count, guards ignore them. They give way to one another and to everyone else (ai/Nav.js `giveWay`), and a
+  runner held up three times on his way finds another way out round that spot (`Ambient.jams`, `escapeRoute` cost).
+  A commotion short of a fright gets a look (`Walker.notice`: a stroller slows and turns his head, a customer turns on
+  his stool, one may mutter "WHAT'S GOING ON?"): a guard telling the player off ('challenge'), a smash or a door
+  banged near enough (`AMBIENT.look`). A man floored in a fight close by sends them off like a weapon ('knock': kind
+  `fight`). Gunshots / explosions (noise), a kill or a body in view, the armed player close by
   or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra
   that avoids the danger), screaming (world texts and the `scream` / `whimper` voices, one pitch per passer-by): a
   cry at the fright (each up to `AMBIENT.cryLag` s late), then one every `AMBIENT.panic.cry` s on the run, a scream

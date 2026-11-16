@@ -6,14 +6,25 @@
 // player's wet or bloody soles leave behind (ai/Trail.js), which one guard at a time may follow. It voices the
 // squad: one bark at a time, never a line just said (bark), each guard's name (nickOf), and where the player is
 // (report).
-// Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken', 'footprint'.
-// Emits: 'alertPhase' { phase, prev }.
+// It watches the stranger nobody has anything against yet (watchConduct): something odd under a guard's eyes (in the
+// premises, a blade in his hand, over the furniture, a window put in...) gets him a word from the nearest one
+// (conduct, ai/Conduct.js) instead of the alarm; and while all is calm only the nearest guards go and look at a noise.
+// Listens on world.events: 'noise', 'kill', 'wallDestroyed', 'windowBroken', 'doorBroken', 'footprint', 'slide',
+// 'propHit'. Emits: 'alertPhase' { phase, prev }; Enemy emits 'challenge' { guard, act, stage } at each stage of a word.
 import { AI, PALETTE, TILE } from '../Config.js';
+import { opening } from './Conduct.js';
 import { chance, rand } from '../../engine/math.js';
 import { BARKS, BARK_TONE, URGENT } from '../data/barks.js';
 import { lineFor, freeName, placeOf } from './Barks.js';
 import { searchPoints } from './Tactics.js';
+import { CellMemory, routeCells, pathCost } from './Nav.js';
 import Trail from './Trail.js';
+
+// what brings every guard who hears it, whatever the phase; any other noise only the nearest ones while all is calm
+export const ALARMS = new Set(['gunshot', 'allyFire', 'explosion', 'body', 'wall', 'footsteps']);
+// the stranger's own noises (made where he stands), that a guard who sees him takes him to task for
+const ODD = new Set(['glass', 'thrown', 'door', 'noise']);
+const gunInHand = (p) => !!p.armed && p.hasGun !== false;
 
 // is the point inside one of the [col0, row0, col1, row1] tile rectangles (inclusive)?
 function inZones(zones, p) {
@@ -31,6 +42,7 @@ export default class Director {
     this.incidents = [];
     this.searchPts = [];
     this.searchOrigin = null;
+    this.widened = false;       // the sweep has been taken further out once (nextSearchPoint)
     this.claims = new Map();    // guard -> {x, y} tactical spot
     this.heardAt = new Map();   // noise source -> last time heard (automatic fire throttling)
     this.doorSeen = new Map();
@@ -47,7 +59,14 @@ export default class Director {
     this.bossSpoke = false;     // the boss has had his word (Enemy.bossLine)
     for (const e of world.enemies || []) this.nickOf(e);
     this.provoked = false;      // the player gave himself away (see isThreat)
+    this.challenger = null;     // the guard having a word with the stranger (Enemy.challenge), one at a time
+    this.letOff = [];           // when the stranger was last let off with a word (ai/Conduct.js opening)
+    this.conductT = 0; this.lurkT = 0; this.lastVault = null; this.lastAct = null;
     this.trail = new Trail();   // the player's footprints
+    this.danger = new CellMemory(); // where mates fell: the squad keeps off those tiles a while (ai/Nav.js)
+    this.routes = new Map();    // guard in the fight -> { cells, t }: the way he takes, which the others avoid
+    this.hot = new Set();       // tiles by a fire (worked out again every second: hotT)
+    this.hotT = 0;
     const ev = world.events;
     ev.on('noise', (e) => this.onNoise(e));
     ev.on('kill', (e) => this.onKill(e));
@@ -56,6 +75,13 @@ export default class Director {
     ev.on('doorBroken', (e) => this.incident('door', e.x, e.y));
     ev.on('powerCut', (e) => this.incident('power', e.x, e.y)); // whoever comes to look finds the box smashed
     ev.on('footprint', (e) => { if (e.who.isPlayer) this.trail.add(e.x, e.y, e.angle, e.kind, world.time); });
+    ev.on('slide', (e) => { if (e.ch?.isPlayer) this.conduct('slide', e.x, e.y); });
+    ev.on('windowBroken', (e) => { if (e.by?.isPlayer) this.conduct('window', e.x, e.y, true); });
+    // a blow of his landing on the furniture
+    ev.on('propHit', (e) => {
+      const p = world.player;
+      if (p?.swing > 0 && Math.hypot(e.x - p.x, e.y - p.y) < 60) this.conduct('smash', e.x, e.y, true);
+    });
   }
 
   get vigilance() { return AI.vigilance[this.phase]; }
@@ -97,6 +123,7 @@ export default class Director {
       const t = d.tip(), mx = (d.hx + t.x) / 2, my = (d.hy + t.y) / 2;
       for (const e of w.enemies) if (e.alive && e.aware < 2 && e.canSeePoint(mx, my, 0.8)) e.hear('door', mx, my);
     }
+    this.watchConduct(dt);
     this.tick(dt);
   }
 
@@ -104,6 +131,7 @@ export default class Director {
   tick(dt) {
     const w = this.world;
     this.trail.prune(w.time);
+    if ((this.hotT -= dt) <= 0) { this.hotT = 1; this.findHot(); }
     if (this.phase === 'alert' && w.time - this.lastSightT > AI.alertLinger) this.startEvasion();
     else if (this.phase === 'evasion' && (this.phaseT -= dt) <= 0) {
       this.setPhase('caution', AI.caution);
@@ -124,29 +152,154 @@ export default class Director {
     this.emit(type || 'noise', x, y, radius, source);
   }
 
-  // every guard in range hears it; walls muffle the far half of the radius; a jukebox turned up drowns the small
-  // noises around it (systems/Jukebox.js)
+  // Every guard in range hears it; walls muffle the far half of the radius; a jukebox turned up drowns the small
+  // noises around it (systems/Jukebox.js). The stranger's own odd noise under a guard's eyes gets him a word
+  // (conduct) and those who saw him do not go and look; while all is calm, only the AI.listen.go nearest go and look
+  // at anything but an alarm (ALARMS), the others glance toward it.
   emit(type, x, y, radius, source = null) {
     const w = this.world;
     if (w.jukebox) radius = w.jukebox.mask(x, y, radius, type);
+    const heard = [];
     for (const e of w.enemies) {
       if (!e.alive || e === source || e.knocked > 0) continue;
       const d = Math.hypot(e.x - x, e.y - y);
       if (d > radius) continue;
       if (d > radius * 0.55 && !w.lineOfSight(e.x, e.y, x, y)) continue;
       if (type === 'gunshot' && source === w.player) this.provoked = true;
+      heard.push(e);
+    }
+    if (!heard.length) return;
+    const p = w.player;
+    const saw = ODD.has(type) && p && (source === p || (!source && Math.hypot(p.x - x, p.y - y) < 48)) ? this.conduct('noise', x, y, true) : null;
+    const calm = this.phase === 'normal' && !ALARMS.has(type);
+    if (calm) heard.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    let go = 0;
+    for (const e of heard) {
+      if (saw?.includes(e)) continue;
+      if (calm && e.aware === 0 && go >= AI.listen.go) { e.glanceAt?.(x, y, AI.listen.glance); continue; }
       e.hear(type, x, y, source);
+      go++;
+    }
+  }
+
+  // ---------------- a word with the stranger (ai/Conduct.js) ----------------
+  // The stranger did something odd (an act of data/conduct.js) at (x, y) while nobody has anything against him: the
+  // guard already having a word with him takes it in (whoever saw it); else the nearest guard who saw it goes over
+  // to him; the others who saw it look at him. heard: a noise, seen by whoever turns to it and has him in sight (no
+  // view cone). Returns the guards who saw it (empty: nobody), or null when it is no longer a matter for words (he
+  // gave himself away, or has a gun in his hand: a threat).
+  conduct(act, x, y, heard = false) {
+    const w = this.world, p = w.player;
+    if (!p?.alive || p.hidden || this.provoked || !w.level?.premises || (this.isThreat(p) && !this.isIntruder(p))) return null;
+    if (this.challenger && (!this.challenger.alive || !this.challenger.case)) this.challenger = null;
+    const saw = this.alive.filter((e) => e.witness?.(p, heard));
+    if (!saw.length) return saw;
+    // the same doing, seen another way at once (a pane put in: the window and its glass), is one act
+    const last = this.lastAct, same = !!last && w.time - last.t < 0.2 && Math.hypot(last.x - x, last.y - y) < 64;
+    this.lastAct = { t: w.time, x, y };
+    const cur = this.challenger;
+    if (cur) {
+      if (cur.case.saw(act, !same)) for (const e of saw) if (e !== cur) e.glanceAt(p.x, p.y, AI.challenge.glance);
+      return saw;
+    }
+    let best = null, bd = Infinity; // (a man already looking about, at his footsteps say, will do as well)
+    for (const e of saw) {
+      const d = Math.hypot(e.x - p.x, e.y - p.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    if (!best) return saw;
+    best.challenge(act, x, y, opening(this.letOff, w.time));
+    for (const e of saw) if (e !== best) e.glanceAt(p.x, p.y, AI.challenge.glance);
+    return saw;
+  }
+
+  // the word is over (letOff: he complied, or got away before it): the stranger is remembered a while
+  closeCase(e, letOff) {
+    if (this.challenger === e) this.challenger = null;
+    if (letOff) this.letOff.push(this.world.time);
+  }
+
+  // What he is up to, as the guards around can see it (a few times a second): unarmed in the premises, a blade or a
+  // club in his hand on public ground, over the furniture, hanging about a door into the premises, running into a
+  // guard. Noises, slides, blows on the furniture and broken windows come in through their events.
+  watchConduct(dt) {
+    const w = this.world, p = w.player, C = AI.challenge;
+    if (this.provoked || !p?.alive || !w.level?.premises) return;
+    const v = p.vaulting;
+    if (v && v !== this.lastVault) {
+      this.lastVault = v;
+      if (v.kind === 'prop' && !v.over?.def?.climb && !v.over?.def?.land) this.conduct('vault', p.x, p.y);
+    }
+    if ((this.conductT -= dt) > 0) return;
+    this.conductT = 0.2;
+    if (this.isIntruder(p)) { this.conduct('trespass', p.x, p.y); return; }
+    if (p.armed && !this.isThreat(p)) this.conduct('weapon', p.x, p.y);
+    // a door into the premises he hangs about (unless a guard is already staring him away from there: Enemy.mind)
+    const door = !this.isGuest(p) && (w.doors || []).find((d) => w.isHouseDoor?.(d) && Math.hypot(d.hx - p.x, d.hy - p.y) < C.lurkR + 16);
+    this.lurkT = door && p.moving < 1 && !w.enemies.some((e) => e.shooing) ? this.lurkT + 0.2 : Math.max(0, this.lurkT - 0.4);
+    if (this.lurkT >= C.lurk) { this.lurkT = 0; this.conduct('lurk', p.x, p.y); }
+    // running into one of them
+    if (p.moving < C.bump) return;
+    for (const e of w.enemies) {
+      if (e.alive && e.aware === 0 && !(e.knocked > 0) && Math.hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius + 3) { this.conduct('bump', p.x, p.y); break; }
+    }
+  }
+
+  // ---------------- finding the way (ai/Nav.js) ----------------
+  // the extra cost of each tile to guard e's path-finding: what he ran into himself, where a mate fell, the routes
+  // his mates in the fight already take (he goes round another way), fire, a slick floor
+  pathCost(e) {
+    const w = this.world, now = w.time, N = AI.nav, W = w.map.w;
+    const shared = e.aware === 2 ? this.sharedCells(e) : null;
+    const liq = w.liquids;
+    return pathCost([
+      e.jams?.size ? (i) => e.jams.cost(i, now) : null,
+      this.danger.size ? (i) => this.danger.cost(i, now) : null,
+      shared?.size ? (i) => (shared.has(i) ? N.shared : 0) : null,
+      this.hot.size ? (i) => (this.hot.has(i) ? N.fire : 0) : null,
+      liq?.grip ? (i) => (liq.grip(((i % W) + 0.5) * TILE, (Math.floor(i / W) + 0.5) * TILE) < N.grip ? N.slick : 0) : null,
+    ]);
+  }
+
+  // a guard in the fight sets off along `path`: the others will take another way if there is one
+  shareRoute(e, path) {
+    if (e.aware !== 2 || !path) { this.routes.delete(e); return; }
+    this.routes.set(e, { cells: routeCells(this.world.map, e.x, e.y, path), t: this.world.time });
+  }
+
+  // the tiles of the fresh routes of e's mates in the fight
+  sharedCells(e) {
+    const now = this.world.time, out = new Set();
+    for (const [o, r] of this.routes) {
+      if (!o.alive || o.aware !== 2 || now - r.t > AI.nav.routeFor) { this.routes.delete(o); continue; }
+      if (o !== e) for (const c of r.cells) out.add(c);
+    }
+    return out;
+  }
+
+  // the tiles around a fire burning now (systems/Fires.js)
+  findHot() {
+    const w = this.world, m = w.map;
+    this.hot.clear();
+    for (const f of w.fires?.lit?.() || []) {
+      const cx = Math.floor(f.x / TILE), cy = Math.floor(f.y / TILE);
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (cx + i >= 0 && cy + j >= 0 && cx + i < m.w && cy + j < m.h) this.hot.add((cy + j) * m.w + cx + i);
     }
   }
 
   // ---------------- the player's cover ----------------
-  // Guards mind their own business as long as the player is empty-handed, outside the level's guarded `premises`
-  // ([col0, row0, col1, row1] tile rectangles), and nobody caught him at anything. A level without premises is
-  // hostile ground everywhere. Once he is made (spotted as a threat, heard shooting, a guard down) it is for good.
+  // Guards mind their own business as long as the player has no gun in his hand, keeps outside the level's guarded
+  // `premises` ([col0, row0, col1, row1] tile rectangles), and nobody caught him at anything. A level without
+  // premises is hostile ground everywhere. Once he is made (spotted as a threat, heard shooting, a guard down, a
+  // word with him that turned into a fight) it is for good. A blade or a club in his hand on public ground, or
+  // walking into the premises unarmed, only gets him a word (conduct).
   isThreat(p) {
     const zones = this.world.level?.premises;
-    return this.provoked || !zones || !!p.armed || inZones(zones, p);
+    return this.provoked || !zones || gunInHand(p) || inZones(zones, p);
   }
+
+  // is he in the guarded premises
+  inPremises(p) { return inZones(this.world.level?.premises, p); }
 
   // where a stranger is a customer (level `welcome` rectangles: a bar room), nobody tells him to clear off
   isGuest(p) { return inZones(this.world.level?.welcome, p); }
@@ -167,6 +320,8 @@ export default class Director {
     this.provoked = true; // a guard is down: no more benefit of the doubt
     this.release(victim);
     const inc = this.incident('body', victim.x, victim.y, { who: victim });
+    const N = AI.nav.danger;
+    if (w.map) this.danger.markAround(w.map, victim.x, victim.y, N.r, N.cost, w.time + N.forget);
     // a guard who never comes back to his post is missed after a while
     if (!victim.roam) this.incident('missing', victim.home.x, victim.home.y, { after: w.time + 10 });
     this.emit('body', victim.x, victim.y, AI.bodyFallRadius * (victim.held ? 0.4 : 1), victim); // let down quietly
@@ -293,6 +448,7 @@ export default class Director {
     const lk = this.lastKnown, o = this.searchOrigin;
     if (!lk || (o && Math.hypot(o.x - lk.x, o.y - lk.y) < 96 && this.searchPts.some((p) => !p.done))) return;
     this.searchOrigin = { x: lk.x, y: lk.y };
+    this.widened = false;
     this.searchPts = searchPoints(this.world.map, lk.x, lk.y, AI.searchTiles, AI.searchSpots).map((p) => ({ ...p, owner: null, done: false }));
   }
 
@@ -307,7 +463,24 @@ export default class Director {
       if (s < bs) { bs = s; best = p; }
     }
     if (best) best.owner = e;
+    else if (!this.widened && this.phase === 'evasion' && this.searchOrigin) {
+      // every spot near where he vanished has been looked at: the sweep goes further out, once
+      this.widened = true;
+      const o = this.searchOrigin, near = AI.searchTiles * TILE * 0.6;
+      const more = searchPoints(this.world.map, o.x, o.y, Math.round(AI.searchTiles * AI.widen), AI.searchSpots * 2)
+        .filter((p) => Math.hypot(p.x - o.x, p.y - o.y) > near).slice(0, AI.searchSpots);
+      if (more.length) {
+        this.searchPts.push(...more.map((p) => ({ ...p, owner: null, done: false })));
+        return this.nextSearchPoint(e);
+      }
+    }
     return best;
+  }
+
+  // a guard who knows a mate fell near (x, y) not long ago (a body incident within AI.wary.r px, AI.wary.time s old)
+  wary(x, y) {
+    const W = AI.wary, now = this.world.time;
+    return this.incidents.some((i) => i.kind === 'body' && now - i.t < W.time && Math.hypot(i.x - x, i.y - y) < W.r);
   }
 
   // ---------------- barks ----------------
