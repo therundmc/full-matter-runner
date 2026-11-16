@@ -3925,15 +3925,21 @@ def t_roof(cv, rng):
 # ---- light details for variety (variants 3 to 5 of every floor): cracks, chips, stains, burns. All kept inside the
 # variant margin and faint: the map's own grime and the lighting do the rest.
 
+# the user: the hole-like marks showed too much, the cracks not enough: cracks are drawn CRACK times darker and
+# HOLE scales every pit, chip, burn and dot
+CRACK, HOLE = 1.5, 0.5
+
+
 def d_crack(cv, rng, d=-10, branches=2, n=(9, 15)):
-    """A hairline crack with a branch or two off it."""
-    x, y, a = rng.uniform(9, 15), rng.uniform(9, 23), rng.uniform(-0.6, 0.6) + rng.choice([0, 3.1416])
-    ln = rng.randint(*n)
-    scratch(cv, rng, int(x), int(y), a, ln, d, 0.5)
-    for _ in range(branches):
-        k = rng.uniform(0.3, 0.7)
+    """A hairline crack with a few branches off it, wandering."""
+    d *= CRACK
+    x, y, a = rng.uniform(8, 14), rng.uniform(9, 23), rng.uniform(-0.6, 0.6) + rng.choice([0, 3.1416])
+    ln = int(rng.randint(*n) * 1.3)
+    scratch(cv, rng, int(x), int(y), a, ln, d, 0.55)
+    for _ in range(branches + 1):
+        k = rng.uniform(0.25, 0.8)
         bx, by = x + math.cos(a) * ln * k, y + math.sin(a) * ln * k
-        scratch(cv, rng, int(bx), int(by), a + rng.choice([-1, 1]) * rng.uniform(0.6, 1.1), rng.randint(3, 6), d * 0.7, 0.5)
+        scratch(cv, rng, int(bx), int(by), a + rng.choice([-1, 1]) * rng.uniform(0.5, 1.1), rng.randint(4, 8), d * 0.75, 0.55)
 
 
 def d_chip(cv, rng, d=-10, rim=5, r=(1.4, 2.4)):
@@ -3943,9 +3949,9 @@ def d_chip(cv, rng, d=-10, rim=5, r=(1.4, 2.4)):
 
     def fn(x, y, c, w):
         if w > 0.45:
-            return tint(c, d)
+            return tint(c, d * HOLE)
         dx, dy = x / U - cx, y / U - cy
-        return tint(c, rim if dx + dy > 0 else d * 0.4)
+        return tint(c, rim * HOLE if dx + dy > 0 else d * 0.4 * HOLE)
     apply_patch(cv, m, fn)
 
 
@@ -3953,7 +3959,7 @@ def d_stain(cv, rng, col, k=0.22, r=(3.0, 5.5), d=-3):
     """An old spill or grime: a soft patch pulled toward col."""
     rr = rng.uniform(*r)
     m = patch(rng, rng.uniform(11, 21), rng.uniform(11, 21), rr, rr * rng.uniform(0.6, 0.9), 0.12)
-    apply_patch(cv, m, lambda x, y, c, w: tint(c, d * w, col, k * w))
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, d * w * 0.7, col, k * w * 0.65))   # a stain, not a hole
 
 
 def d_burn(cv, rng, n=(1, 2)):
@@ -3961,7 +3967,8 @@ def d_burn(cv, rng, n=(1, 2)):
     for _ in range(rng.randint(*n)):
         cx, cy = rng.uniform(9, 23), rng.uniform(9, 23)
         m = patch(rng, cx, cy, 1.1, 0.9, 0.2)
-        apply_patch(cv, m, lambda x, y, c, w: tint(c, -26, hx('#140c08'), 0.6) if w > 0.6 else tint(c, -8, hx('#5a3a20'), 0.3 * w))
+        apply_patch(cv, m, lambda x, y, c, w: tint(c, -26 * HOLE, hx('#140c08'), 0.6 * HOLE) if w > 0.6
+                    else tint(c, -8 * HOLE, hx('#5a3a20'), 0.3 * w * HOLE))
 
 
 def d_dots(cv, rng, col, n=(3, 6), d=-4):
@@ -3969,14 +3976,14 @@ def d_dots(cv, rng, col, n=(3, 6), d=-4):
     for _ in range(rng.randint(*n)):
         cx, cy = rng.uniform(8, 24), rng.uniform(8, 24)
         m = patch(rng, cx, cy, 0.7, 0.6, 0.2)
-        apply_patch(cv, m, lambda x, y, c, w: tint(c, d, col, 0.45 * w))
+        apply_patch(cv, m, lambda x, y, c, w: tint(c, d * HOLE, col, 0.45 * w * HOLE))
 
 
 def d_knot(cv, rng):
     """A knot in a board: a dark eye in rings of grain."""
     cx, cy = rng.uniform(10, 22), rng.uniform(10, 22)
     m = patch(rng, cx, cy, 1.8, 1.0, 0.15)
-    apply_patch(cv, m, lambda x, y, c, w: tint(c, -16 if w > 0.7 else -6 if w > 0.35 else -2))
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, (-16 if w > 0.7 else -6 if w > 0.35 else -2) * HOLE))
 
 
 def d_wear(cv, rng, d=4, r=(4.0, 6.5)):
@@ -3991,7 +3998,7 @@ def d_stones(cv, rng, n=(3, 6)):
     for _ in range(rng.randint(*n)):
         cx, cy = rng.uniform(8, 24), rng.uniform(8, 24)
         m = patch(rng, cx, cy, rng.uniform(0.5, 0.9), 0.5, 0.3)
-        apply_patch(cv, m, lambda x, y, c, w: tint(c, 9 if w > 0.5 else -5))
+        apply_patch(cv, m, lambda x, y, c, w: tint(c, (9 if w > 0.5 else -5) * HOLE))
 
 
 OIL = hx('#16141c')
