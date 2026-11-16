@@ -308,7 +308,7 @@ const BED_MAKERS = {
   },
 
   // ---- long one-shots of the far city (`once`) ----
-  // the elevated train a block away (the title's train, heard from the street): spec.cars cars at spec.speed m/s pass
+  // the elevated train a block away (the far city's, heard in play): spec.cars cars at spec.speed m/s pass
   // `spec.off` m from the ear, the middle of the train closest half way through; their wheels knock over the rail
   // joints axle by axle, the steel structure rumbles under them, the motors whine, the flanges screech in the curve;
   // each part as loud as it is near (the side and the Doppler shift are the mixer's)

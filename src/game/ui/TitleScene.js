@@ -12,7 +12,7 @@
 import { PALETTE } from '../Config.js';
 import { text, glitchText } from './Text.js';
 import { LW, LH, M, MY, RX, RY, canvas, halo } from './title/Draw.js';
-import { hash, clamp, windState, trainState, policeState } from './title/Timeline.js';
+import { hash, clamp, windState, trainState, policeState, cloudDrift } from './title/Timeline.js';
 import { lookAt, sunAt, moonAt, rainAt, lampLit, planeAt, birdsAt, mix } from './title/Cycle.js';
 import { F, RGB } from './title/Layout.js';
 import { buildSky, paintSky, buildCloud, paintCloud, drawCloud, drawSun, drawMoon } from './title/Sky.js';
@@ -103,7 +103,7 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   ctx.drawImage(S.sky.c, 0, 0);
   drawSun(ctx, sun, P, cx, cy);
   drawMoon(ctx, moonAt(t), cx, cy);
-  drawCloud(ctx, S.cloud, t * (0.8 + wind.speed), cx, cy);
+  drawCloud(ctx, S.cloud, cloudDrift(t), -F.clouds * vx * RX, cy, 1 / sc);       // gliding: the eye's shift unrounded too
   drawPlane(ctx, planeAt(t), cx, cy);
   put(S.far.c, F.far);
   drawFarBeacon(ctx, S.far, P, t, sx(F.far), sy(F.far));

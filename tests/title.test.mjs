@@ -1,11 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
+import { mockContext } from './webaudio.mjs';
 
 const {
   windState, GUST, trainState, trainSlot, TRAIN, TRAIN_LEN, TRAIN_DUR, policeState, PATROL, lampOn, titleBeats,
+  cloudDrift, CLOUD, RAIL, trainKnocks, trainHeard, trainSound,
 } = await load('game/ui/title/Timeline.js');
 const { LW } = await load('game/ui/title/Draw.js');
+const { DAY } = await load('game/data/daycycle.js');
+const { ElevatedVoice } = await load('audio/Elevated.js');
 
 const DT = 1 / 60;
 
@@ -121,25 +125,130 @@ test('title offices: most lamps on, going off and on over the minutes', () => {
   assert.ok(changes > 60 * 600 / 150 && changes < 60 * 600 / 10, `${changes} changes`);
 });
 
-test('title sounds: each train heard as it comes, its horn now and then; one that pulls up sighs and goes on', () => {
+test('title clouds: the deck drifts left slowly and steadily, never back, without a jump at the palette steps', () => {
+  const top = CLOUD.speed * (1 + CLOUD.swell.reduce((a, [k]) => a + k, 0));
+  assert.ok(top <= 2, `at most ${top} px/s`);
+  let lo = Infinity, hi = 0;
+  for (let t = 0; t < 1200; t += DT) {
+    const v = (cloudDrift(t + DT) - cloudDrift(t)) / DT;
+    lo = Math.min(lo, v); hi = Math.max(hi, v);
+  }
+  assert.ok(lo > 0.3 && hi <= top + 1e-6, `speed ${lo} .. ${hi} px/s`);
+  // across every step of the palette (the deck is repainted in its new colours then) it carries on where it was
+  for (let t = DAY.STEP; t < 600; t += DAY.STEP) {
+    const jump = cloudDrift(t + 1e-4) - cloudDrift(t - 1e-4);
+    assert.ok(jump > 0 && jump < 1e-3, `jump ${jump} at ${t}`);
+  }
+  // over a minute it moves a little, nothing like the gusts of the street
+  const minute = cloudDrift(90) - cloudDrift(30);
+  assert.ok(minute > 40 && minute < 105, `${minute} px in a minute`);
+});
+
+// every cue of the title over `secs` s, with the time it was given at
+function cuesOver(secs) {
   const cues = [];
-  for (let t = 0; t < 600; t += DT) cues.push(...titleBeats(t, t + DT).map((c) => ({ ...c, t: t + DT })));
+  for (let t = 0; t < secs; t += DT) cues.push(...titleBeats(t, t + DT).map((c) => ({ ...c, t: t + DT })));
+  return cues;
+}
+
+test('title sounds: no horn, each train heard piece by piece from far off to far off, cued ahead of its time', () => {
+  const cues = cuesOver(600), names = new Set(cues.map((c) => c.name));
+  assert.deepEqual([...names].sort(), ['air', 'elTrain'], 'the train and the far wash only: no horn, no hiss, no car passing');
   const slots = [];
   for (let k = 0; trainSlot(k).start < 600 - 30; k++) slots.push(trainSlot(k));
-  const rumbles = cues.filter((c) => c.name === 'passby'), horns = cues.filter((c) => c.name === 'horn');
-  const stops = slots.filter((s) => s.stop);
-  assert.ok(stops.length > 0);
-  assert.ok(rumbles.length >= slots.length + stops.length, `${rumbles.length} rumbles for ${slots.length} trains`);
-  assert.ok(horns.length >= stops.length && horns.length < slots.length + stops.length, `${horns.length} horns`);
-  for (const s of slots.filter((q) => !q.stop)) {
-    const r = rumbles.find((c) => Math.abs(c.t - (s.start - TRAIN.approach)) < 2 * DT);
-    const tr = trainState(r.t + r.opts.lead);
-    assert.ok(tr && Math.abs((tr.x + tr.tail) / 2 - LW / 2) < 4, 'loudest when the middle of the train crosses the middle of the window');
+  for (const s of slots) {
+    const mine = cues.filter((c) => c.name === 'elTrain' && c.opts.el.k === s.k).map((c) => c.opts.el);
+    assert.ok(Math.abs(mine[0].a0 + TRAIN.approach) < 1e-9, 'heard from its approach');
+    for (let i = 1; i < mine.length; i++) assert.ok(Math.abs(mine[i].a0 - mine[i - 1].a0 - RAIL.seg) < 1e-9, 'pieces one after another');
+    assert.ok(mine[mine.length - 1].a0 + RAIL.seg >= s.dur + TRAIN.leave, 'heard until it has gone');
   }
-  for (const s of stops) {
-    assert.ok(cues.some((c) => c.name === 'hiss' && Math.abs(c.t - (s.start + s.stand)) < 2 * DT), 'its brakes let go as it stands');
-    assert.ok(rumbles.some((c) => Math.abs(c.t - (s.start + s.go)) < 2 * DT), 'heard pulling away');
+  for (const c of cues.filter((q) => q.name === 'elTrain')) {
+    assert.ok(c.opts.delay > RAIL.lead - 2 * DT && c.opts.delay <= RAIL.lead + 1e-9, `delay ${c.opts.delay}`);
+    assert.ok(Math.abs(c.t + c.opts.delay - (trainSlot(c.opts.el.k).start + c.opts.el.a0)) < 1e-9, 'its delay lands it on its time');
   }
-  assert.ok(cues.some((c) => c.name === 'air'));
   assert.deepEqual(titleBeats(5, 5), [], 'nothing twice');
+});
+
+// the drawn axles of a train (Train.carsOf + TRAIN.wheels, the car flipped when it runs left), logical px
+function axlesDrawn(tr) {
+  const out = [];
+  for (let i = 0; i < TRAIN.cars; i++) {
+    const x = tr.dir > 0 ? tr.x - (i + 1) * TRAIN.car - i * TRAIN.gap : tr.x + i * (TRAIN.car + TRAIN.gap);
+    for (const w of TRAIN.wheels) out.push(tr.dir > 0 ? x + w : x + TRAIN.car - w);
+  }
+  return out;
+}
+
+test('title sounds: the wheels knock on the joints as the drawn axles roll over them, in the rhythm of the trucks', () => {
+  for (let k = 0; k < 12; k++) {
+    const s = trainSlot(k), knocks = trainKnocks(s, -TRAIN.approach, s.dur + TRAIN.leave);
+    assert.ok(knocks.length > 40, `${knocks.length} knocks`);
+    for (const c of knocks) {
+      const tr = trainState(s.start + c.at);
+      assert.ok(axlesDrawn(tr).some((x) => Math.abs(x - c.x) < 0.5), `an axle is on the joint at ${c.x} when it knocks`);
+      assert.ok(c.g > 0 && c.g <= 1 && Math.abs(c.pan) <= 0.7);
+    }
+    // the joint in front of the ear: every axle of a train running past knocks on it once, the loudest of all
+    const front = knocks.filter((c) => c.x === RAIL.joint.at);
+    if (s.stop) continue;
+    assert.equal(front.length, TRAIN.cars * TRAIN.wheels.length);
+    const loudest = Math.max(...knocks.map((q) => q.g));
+    assert.ok(front.every((c) => c.g >= loudest - 1e-9));
+    // da-dum, da-dum: the two axles of a truck close together, two trucks a little apart, then a car
+    const gaps = front.slice(1).map((c, i) => c.at - front[i].at);
+    assert.ok(Math.abs(gaps[0] - (TRAIN.wheels[3] - TRAIN.wheels[2]) / TRAIN.speed) < 1e-6);
+    assert.ok(Math.max(...gaps) < 0.6 && Math.min(...gaps) > 0.05);
+  }
+});
+
+test('title sounds: a train swells from far, is loudest passing, idles low standing, its pieces render as one sound', () => {
+  const pass = trainSlot(0), stop = trainSlot(1);
+  assert.ok(!pass.stop && stop.stop);
+  assert.ok(trainHeard(pass, -2).near < 0.05 && trainHeard(pass, pass.dur / 2).near > 0.9, 'from far to near');
+  assert.ok(trainHeard(pass, -1).pan * pass.dir < -0.5 && trainHeard(pass, pass.dur + 1).pan * pass.dir > 0.5, 'from one side to the other');
+  const still = trainHeard(stop, (stop.stand + stop.go) / 2);
+  assert.ok(still.stand > 0.9 && still.roll === 0 && still.pace === 0, 'standing');
+  assert.ok(trainHeard(stop, (stop.brakeAt + 2 * stop.stand) / 3).brake > 0.3, 'its shoes sing as it stops');
+
+  // rendered piece by piece as the mixer chains them, it is the same as rendered in one go
+  const a0 = 1, n = 4, one = new ElevatedVoice(3).render(trainSound(pass, a0, n * RAIL.seg), true);
+  const v = new ElevatedVoice(3), sr = v.sr, len = Math.round(n * RAIL.seg * sr), sum = [new Float32Array(len), new Float32Array(len)];
+  for (let i = 0; i < n; i++) {
+    const { data } = v.render(trainSound(pass, a0 + i * RAIL.seg), i === 0), off = Math.round(i * RAIL.seg * sr);
+    for (let c = 0; c < 2; c++) for (let j = 0; j < data[c].length && off + j < len; j++) sum[c][off + j] += data[c][j];
+  }
+  let err = 0, peak = 0;
+  for (let c = 0; c < 2; c++) for (let j = 0; j < len; j++) { err = Math.max(err, Math.abs(sum[c][j] - one.data[c][j])); peak = Math.max(peak, Math.abs(one.data[c][j])); }
+  assert.ok(peak > 0.05 && err < 1e-4 * peak, `pieces differ from the whole by ${err} (peak ${peak})`);
+
+  // loud passing, low standing, faint far off, never past full scale
+  const rms = (s, a) => {
+    const d = new ElevatedVoice(5).render(trainSound(s, a, 1), true).data, from = Math.round(sr * 0.2);
+    let q = 0;
+    for (const c of d) for (let j = from; j < c.length; j++) { q += c[j] * c[j]; assert.ok(Math.abs(c[j]) < 1); }
+    return Math.sqrt(q / (2 * (d[0].length - from)));
+  };
+  const loud = rms(pass, pass.dur / 2 - 0.5), idle = rms(stop, (stop.stand + stop.go) / 2), far = rms(pass, -2.3);
+  assert.ok(20 * Math.log10(loud / idle) > 12, `standing ${20 * Math.log10(loud / idle)} dB under passing`);
+  assert.ok(20 * Math.log10(loud / far) > 20, `far off ${20 * Math.log10(loud / far)} dB under passing`);
+});
+
+test('title sounds: the mixer starts each piece of a train where the last one hands over, a new train afresh', async () => {
+  const { default: Audio, META } = await load('audio/Audio.js');
+  const ctx = mockContext(), starts = [];
+  Object.assign(Audio, { ctx, active: [], lastPlay: {}, buffers: {}, elevated: null });
+  Audio._build(ctx);
+  const make = ctx.createBufferSource;
+  ctx.createBufferSource = () => { const s = make(); const go = s.start; s.start = (t, ...r) => { starts.push(t); go(t, ...r); }; return s; };
+  const s = trainSlot(0), play = (a, delay) => Audio.play('elTrain', { vol: 1, el: trainSound(s, a), delay, inside: 0 });
+  play(-2.5, 0.3);
+  assert.ok(Math.abs(starts[0] - 0.3) < 1e-9, 'a first piece starts when it is due');
+  ctx.currentTime = 0.5;
+  play(-2, 0.29);                                  // a frame late: still joined on exactly
+  assert.ok(Math.abs(starts[1] - (starts[0] + RAIL.seg)) < 1e-9, 'the next starts where the last hands over');
+  ctx.currentTime = 30;
+  Audio.play('elTrain', { vol: 1, el: trainSound(trainSlot(1), -2.5), delay: 0.3 });
+  assert.ok(Math.abs(starts[2] - 30.3) < 1e-9, 'another train starts afresh');
+  assert.ok(META.elTrain.gain < 0.3, 'under the music');
+  Audio.ctx = null;
 });

@@ -26,7 +26,8 @@ src/
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
                           of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
-                          Motor.js (a V8's cycle, a gearbox, the tyres' squeal as numbers; DOM-free), Music.js (the
+                          Motor.js (a V8's cycle, a gearbox, the tyres' squeal as numbers; DOM-free),
+                          Elevated.js (the title's elevated train, rendered piece by piece as it goes; DOM-free), Music.js (the
                           soundtrack: one track at a time out of tracks/index.js), Synthwave.js (the
                           synthwave track, playing score.js), groove/ (the groove tracks' player, instruments and
                           harmony) and tracks/ (one data file per groove track)
@@ -172,8 +173,8 @@ src/
                           end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
                           TitleScene (the elevated line in front of two glass towers, through a day and a night in a loop) and title/
-                          (Draw pixel tools, Layout, Timeline and Cycle: everything as a function of t, unit tested, the day's keyframes
-                          in data/daycycle.js; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain: the showers),
+                          (Draw pixel tools, Layout, Timeline and Cycle: everything as a function of t, unit tested (the cloud
+                          deck's slow drift, the train's sound), the day's keyframes in data/daycycle.js; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain: the showers),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
     data/                 atmosphere (rain, smoke, neon faults: the look of the air), liquids (the liquid on the floor:
                           solver, floors, kinds and their look), daycycle (the title's day and night), devices (the level's usable things: tuning), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
@@ -274,6 +275,12 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   shift out of first; exhaust pops as it catches and at each upshift. While it runs the music dips a little (`dip`,
   VOICE.duck); it fades with the picture and by itself VOICE.hold s after its last update. Before it, the starter
   (`crank`) turns it over from the lights on (OUTRO.lights) to the catch (OUTRO.catch).
+  The title's elevated train (`_elTrain`) is heard as the picture shows it: ui/title/Timeline.js (`RAIL`,
+  `trainSound`) cues it in half-second pieces, a little ahead, each with its curves (nearness, speed, side, the
+  motors, the stand, the brakes, the flanges on the bend) and the knocks of every drawn axle on the rail joints
+  near the window; audio/Elevated.js renders each piece (rumble, the truss's low modes, the wheels' roar, the
+  knocks, soft tones), keeping its state from one piece to the next, and the mixer starts each where the last one
+  hands over, so they run on as one sound and stop within a piece when the title is left. No horn.
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
   (never hand-edit bank.js). Mix: `LEVELS` holds one reference level per bus (music, effects, guns, recorded shots,
   voices, ambience beds, ambience one-shots), `META[name].gain` each sound in its bus. Effects (and voices, through

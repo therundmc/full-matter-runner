@@ -1,8 +1,8 @@
 // The sky over the towers, at the hour of the moment (ui/title/Cycle.js): bands of flat colour from the top down to
 // the city's horizon, their edges a little wavy like thin layers of cloud; the stars coming out one by one; a deck
 // of cloud drifting across, lit from below by the sunset or the city, white by day; the sun and the moon on their way.
-// The bands, the stars and the deck are repainted when the palette steps (paintSky, paintCloud), the sun and the moon
-// drawn per frame.
+// The bands, the stars and the deck are repainted when the palette steps (paintSky, paintCloud: the same shapes in the
+// new colours), the sun and the moon drawn per frame, the deck slid along by Timeline.cloudDrift.
 import { LW, canvas, rand, oval } from './Draw.js';
 import { mix, css } from './Cycle.js';
 
@@ -71,11 +71,12 @@ export function paintCloud(C, P) {
     oval(g, back, x + dx - w * 0.12, y - h * 0.4, w * 0.6, h * 0.5);
   }
 }
-// the deck, scrolled by `off` (px) and shifted by the parallax (ox, oy)
-export function drawCloud(ctx, C, off, ox, oy) {
-  const x = -(((off % TILE) + TILE) % TILE) + ox;
-  ctx.drawImage(C.c, Math.round(x), Math.round(oy));
-  ctx.drawImage(C.c, Math.round(x + TILE), Math.round(oy));
+// the deck, scrolled by `off` (px, Timeline.cloudDrift) and shifted by the parallax (ox, oy). It glides: its x is
+// snapped to the screen's pixels (`dot`: one of them in logical px), not to the picture's, so a drift of a pixel or
+// two a second moves it a screen pixel at a time instead of a whole logical one at a time
+export function drawCloud(ctx, C, off, ox, oy, dot = 1) {
+  const x = Math.round((-(((off % TILE) + TILE) % TILE) + ox) / dot) * dot, y = Math.round(oy);
+  for (const dx of [-TILE, 0, TILE]) ctx.drawImage(C.c, x + dx, y);
 }
 
 // ---------------------------------------------------------------- the sun and the moon

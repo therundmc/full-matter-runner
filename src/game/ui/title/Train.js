@@ -68,9 +68,11 @@ function paintCar(part, seed) {
   }
   // the trucks, the shoes, what hangs under the floor
   px(g, '#24242a', 42, BODY, 62, 3);
-  for (const bx of [8, 110]) {
+  const W = TRAIN.wheels;                                  // the axles: what knocks on the joints (Timeline.RAIL)
+  for (const [w0, w1] of [[W[0], W[1]], [W[2], W[3]]]) {
+    const bx = w0 - 7;
     px(g, '#1c1c20', bx, BODY, 32, 5);
-    for (const wx of [bx + 7, bx + 24]) { oval(g, '#34343c', wx, RAIL - 3, 4, 3.6); px(g, '#7a7a84', wx, RAIL - 4, 1, 1); }
+    for (const wx of [w0, w1]) { oval(g, '#34343c', wx, RAIL - 3, 4, 3.6); px(g, '#7a7a84', wx, RAIL - 4, 1, 1); }
     px(g, '#44444c', bx + 13, RAIL - 2, 5, 2);
   }
   if (part === 'lead') {
@@ -196,7 +198,7 @@ export function drawTrain(ctx, tr, cars, set, t, ex, ey, H) {
 function sparksOf(tr, cars, t) {
   const out = [], slot = Math.floor(t * 9), a = t * 9 - slot, pace = Math.min(1, tr.v / TRAIN.speed);
   if (pace < 0.25) return out;
-  for (const c of cars) for (const sx of tr.braking ? [15, 32, 117, 134] : [21, 123]) {
+  for (const c of cars) for (const sx of tr.braking ? TRAIN.wheels : [21, 123]) {
     const x = c.x + sx, seed = slot * 1.31 + c.i * 7.7 + sx * 0.13 + tr.k * 3.3;
     const odds = tr.braking ? 0.16 : 0.07 * tr.sparks * pace;
     if (hash(seed) <= odds && x > -10 && x < LW + 10) out.push({ x, a, seed, brake: tr.braking });
