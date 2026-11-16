@@ -135,7 +135,11 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    run out from under a dumpster that is hit, pigeons go up at a shot or when run at, a cat bolts over a bin, flies, moths.
    User: a small level is fine, every detail polished, real scale, ambiance
    first. No MIRAGE marquee (rejected twice: ugly, useless). Guards ignore an unarmed player outside the level's
-   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive. The bar room is public
+   `premises` until he gives himself away (Director.isThreat): realistic, organic, immersive.
+   A stranger who acts up without open hostility (a blade in hand, trespassing, vaulting, a slide, a smashed pane,
+   lurking at a staff door, bumping a guard) is CHALLENGED, not fought (his wish, 2026-11-16: ai/Conduct.js,
+   data/conduct.js): the nearest guard walks up, tells him off, warns, shoves, and only then fights; complying lets
+   him off. Calm noises bring the two nearest guards only. Guards remember jams and replan (ai/Nav.js). The bar room is public
    (he walks in like a customer, level `welcome`; the back door is locked, the back way in has to be forced); the VIP room, the boss's back room and the back of house are not. Bar life: guards at a pastime
    (level `jobs`: pool, cards, the pimp counting his dope in the storeroom), a few customers and a VIP-room dancer (`ambient.patrons`, sprites dancerN; eight in all: thirteen was "too many") who panic each his own way (`AMBIENT.panic`: most run, a few trip, some curl up sobbing in a corner or behind furniture, some freeze hands up) and run for
    the street when it kicks off. Guards at ease (user: "too flat", wants many animations, be creative): weapon put
