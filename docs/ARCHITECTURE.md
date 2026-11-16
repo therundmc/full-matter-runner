@@ -26,7 +26,8 @@ src/
     nav/Pathfinding.js    A* on the tile grid + string pulling
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
                           of the foley cuts), Beds.js (the long ambience loops, rendered once in idle time; DOM-free),
-                          Music.js (the soundtrack: one track at a time out of tracks/index.js), Synthwave.js (the
+                          Motor.js (a V8's cycle, a gearbox, the tyres' squeal as numbers; DOM-free), Music.js (the
+                          soundtrack: one track at a time out of tracks/index.js), Synthwave.js (the
                           synthwave track, playing score.js), groove/ (the groove tracks' player, instruments and
                           harmony) and tracks/ (one data file per groove track)
   game/
@@ -250,7 +251,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 - Sound (audio/Audio.js): a gunshot is a recorded shot (`SHOTS`) over synthesized bass / room layers (`GUNS`), choked
   per shooter (`choke`). Every other physical sound is one or several cuts of the recorded foley bank
   (`assets/sound/foley.wav`, indexed by audio/bank.js), layered per sound name in `FOLEY`; a `_<name>` method adds the
-  synthesized part where no recording fits (blasts, fire, tyres, alarm, traffic). Reload / handling sounds take
+  synthesized part where no recording fits (blasts, fire, the starter's crank, alarm, traffic). Reload / handling sounds take
   `{ weapon }` to pick that gun's parts (`ARMS`), voices take `{ pitch }` (one per character, `Character.voice`).
   Space: every positional voice is panned and loses level and highs with distance while more of it is sent to a
   long hall reverb (also behind every gunshot and the kill's boom); `World.sound` flags what the player hears
@@ -263,6 +264,16 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   voice with its gain / lowpass / pan / playback rate gliding; a voice not refreshed fades out by itself (pause,
   menu) and its loop is let go. The far city's long one-shots (the elevated train, a dog, a car alarm) are rendered
   the same way (`once`) and played by `_cue`; a far police car (`_farSiren`) is synthesized live.
+  A vehicle driven live (the getaway van: `Audio.motor(key, state)` every frame from World.stepOutro, the state from
+  `motorState` in systems/Outro.js) is one synthesized voice on the effects bus: a V8's cycle (audio/Motor.js
+  `v8Cycle`, a PeriodicWave: eight firings, the two banks' lumpy pattern) driven into a soft clip through the
+  exhaust's tone, noise pulsed by the firing (the growl), the gearbox's whine, the tyres' roar and hiss, and the squeal
+  (narrow bands of noise, wandering, chattering) - every part following revs / load / squeal / speed within 25 ms. A
+  `Gearbox` turns the van's real speed and throttle into revs (they climb in a gear, drop at the shift, blip up on a
+  downshift into a bend); `squealOf` turns its slide and speed into the squeal, with a chirp at the launch and the
+  shift out of first; exhaust pops as it catches and at each upshift. While it runs the music dips a little (`dip`,
+  VOICE.duck); it fades with the picture and by itself VOICE.hold s after its last update. Before it, the starter
+  (`crank`) turns it over from the lights on (OUTRO.lights) to the catch (OUTRO.catch).
   The bank is built by `node tools/build_sounds.mjs <packs-dir>` from the CC0 packs listed in `tools/sounds.json`
   (never hand-edit bank.js). Mix: `LEVELS` holds one reference level per bus (music, effects, guns, recorded shots,
   voices, ambience beds, ambience one-shots), `META[name].gain` each sound in its bus. Effects (and voices, through
@@ -611,7 +622,9 @@ ambient: {
   `world.chars` (bullets, blasts, melee, cars hit them) and `world.civilians` (drawing), never in `enemies`: no target,
   no HUD count, guards ignore them. Gunshots / explosions (noise), a kill or a body in view, the armed player close by
   or a screaming neighbour make them panic (hands up or duck), then sprint off the map along `escapeRoute` (Dijkstra
-  that avoids the danger), screaming (world texts and the `scream` / `whimper` voices, one pitch per passer-by).
+  that avoids the danger), screaming (world texts and the `scream` / `whimper` voices, one pitch per passer-by): a
+  cry at the fright (each up to `AMBIENT.cryLag` s late), then one every `AMBIENT.panic.cry` s on the run, a scream
+  `panic.scream` of the time; the mixer lets four screams at most sound at once (META `scream`).
   No new passers-by for `AMBIENT.panic.calm` s after gunfire.
 
 ## Soundscape (systems/Ambience.js, data/soundscape.js)
@@ -628,8 +641,10 @@ A spot (`SPOTS`, the level's `soundSpots`) is a bed heard from its tile (a radio
 (`CITY`) plays everywhere on its own clocks, each sound from a random side and distance (the elevated train every one
 or two minutes, a police car crossing, horns, a car alarm, a dog), lower and dull from under a roof (`AMBIENCE.city`).
 Prop beds (`PROP_BEDS`) follow the nearest working prop of their kind; the traffic (`CARS`) gives each of the nearest
-moving cars a voice of the `engine` bed whose rate follows its speed and the Doppler shift. The bar falls silent when
-its customers panic, the radio and the hums stop with the power.
+moving cars two voices: the `engine` bed (a V8's cycle, its growl and rasp; audio/Motor.js) whose rate follows its
+speed and the Doppler shift and whose tone opens with the speed (`CARS.tone`), and the `road` bed (the tyres' roar
+and hiss, by the speed, the Doppler only); through a wall both are muffled and lower still (`CARS.walled`). The bar
+falls silent when its customers panic, the radio and the hums stop with the power.
 
 ## The air (data/atmosphere.js)
 

@@ -396,9 +396,13 @@ export const AMBIENT = {
     tripAfter: [0.6, 2.5], // s of running before he does
     check: 0.25,           // s between two sight checks (staggered)
     calm: 20,              // s without new passers-by after gunfire / an explosion (word gets around)
+    // a runner cries out every `cry` s, a scream `scream` of the time (else a whine); his first cry on the run comes
+    // one such wait after his fright's own (the user, 2026-11-16: a bit too often; was every 0.8-1.9 s, 3 in 4)
+    cry: [1.3, 2.9],
+    scream: 0.7,
   },
   barkGap: 0.35,           // s between two civilian screams on screen
-  cryLag: 0.7,             // s: each waits up to this long before he cries out, so a crowd does not scream as one
+  cryLag: 0.9,             // s: each waits up to this long before he cries out, so a crowd does not scream as one
 };
 
 export const MAX_DEBRIS = 180;    // physical loose pieces alive at once (oldest get baked into the floor)

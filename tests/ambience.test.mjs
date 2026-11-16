@@ -194,6 +194,26 @@ test('ambience: the traffic car by car: a voice each, kept while it passes, high
   assert.ok(s.bed('car' + slot).rate < CARS.rate.car, 'past him now');
 });
 
+test('ambience: a car is heard by its engine and its tyres, the engine opening up with the speed, dull through a wall', () => {
+  const s = stub({ where: at(6, 5) });
+  const car = { v: { x: at(5, 6).x, y: at(0, 6).y, type: 'car', body: { angle: 0 } }, d: { speed: CARS.cruise } };
+  s.world.ambient = { cars: [car] };
+  s.run(0.3);
+  const i = s.amb.slots.indexOf(car), engine = s.bed('car' + i), road = s.bed('road' + i);
+  assert.ok(engine && road && engine.bed === 'engine' && road.bed === 'road', 'two voices');
+  assert.ok(engine.gain > 1 && road.gain > 0.5, `heard on the sidewalk: ${engine.gain} ${road.gain}`);
+  assert.ok(Math.abs(engine.pan - road.pan) < 1e-9 && Math.abs(engine.rate / road.rate - CARS.rate.car) < 0.02, 'from the same place, the same Doppler');
+  const fast = engine.lp;
+  car.d.speed = CARS.cruise * 0.2;
+  s.run(0.3);
+  assert.ok(s.bed('car' + i).lp < fast && s.bed('road' + i).gain < road.gain * 0.2, 'slow: darker, the tyres quiet');
+  car.d.speed = CARS.cruise;
+  s.world.walled = true;
+  s.run(0.3);
+  const muffled = s.bed('car' + i);
+  assert.ok(muffled.lp <= AMBIENCE.muffle && muffled.gain < engine.gain * AMBIENCE.through, 'through a wall: muffled, and quieter than a place');
+});
+
 test('ambience: the far city is alive: trains, a police car, horns, an alarm, a dog, each now and then, dull from indoors', () => {
   const s = stub({ where: at(6, 6) });
   s.run(1200);

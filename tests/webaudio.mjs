@@ -27,12 +27,16 @@ export function mockContext() {
   Object.assign(ctx, {
     destination: node(),
     createGain: () => node({ gain: param(1) }),
-    createBiquadFilter: () => node({ frequency: param(350), Q: param(1), gain: param(0) }),
+    createBiquadFilter: () => node({ frequency: param(350), Q: param(1), gain: param(0), detune: param(0) }),
     createStereoPanner: () => node({ pan: param(0) }),
     createWaveShaper: () => node(),
     createConvolver: () => node(),
     createDynamicsCompressor: () => node({ threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() }),
-    createOscillator: () => source({ frequency: param(440), detune: param(0) }),
+    createOscillator: () => source({ frequency: param(440), detune: param(0), setPeriodicWave(w) { assert.ok(w && w.periodic, 'a periodic wave'); } }),
+    createPeriodicWave: (real, imag) => {
+      assert.ok(real.length === imag.length && real.length > 1 && [...real, ...imag].every(Number.isFinite), 'periodic wave');
+      return { periodic: true };
+    },
     createDelay: () => node({ delayTime: param(0) }),
     createChannelMerger: () => node(),
     createBufferSource: () => source({ playbackRate: param(1) }),

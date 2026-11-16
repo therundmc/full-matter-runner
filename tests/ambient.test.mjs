@@ -368,6 +368,27 @@ test('walkers: by temperament they run (a few trip), curl up in a corner sobbing
   assert.ok(heard.has('pant') && heard.has('scream'), [...heard].join());
 });
 
+test('walkers: a runner cries out now and then, not on every breath: about one scream every three seconds', () => {
+  const path = [{ x: 0, y: 100 }, { x: 900, y: 100 }];
+  let screams = 0, firstOnTheRun = null, secs = 0;
+  for (let seed = 1; seed <= 12; seed++) {
+    const w = new Walker(path, { r: seeded(seed), speed: 40, run: 150, temper: 'run' });
+    w.alarm(50, 100, 'gunshot');
+    assert.equal(w.bark, 'scream', 'his fright');
+    w.bark = null;
+    for (let t = 0; t < 30; t += 0.05) {
+      w.update(0.05, 0, 100, { escape: () => [{ x: -9000, y: 100 }] });
+      if (w.bark === 'scream') { screams++; if (seed === 1 && firstOnTheRun === null) firstOnTheRun = t; }
+      w.bark = null;
+    }
+    secs += 30;
+  }
+  const P = A.panic, rate = screams / secs, mean = (P.cry[0] + P.cry[1]) / 2;
+  assert.ok(Math.abs(rate - P.scream / mean) < 0.06, `${rate.toFixed(3)} a second`);
+  assert.ok(rate < 0.75 / 1.35 * 0.7, 'at least 30 % fewer than the old 3 in 4 every 0.8-1.9 s');
+  assert.ok(firstOnTheRun > P.freeze[0] + P.cry[0] * 0.9, 'not again the moment he starts running: ' + firstOnTheRun);
+});
+
 test('walkers: a hiding corner is close, tucked in and out of sight of the danger, one person each', () => {
   // a room with a recess in the north-east, behind a wall stub
   const m = new TileMap([

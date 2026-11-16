@@ -12,6 +12,8 @@
 // Speech is never words: glottal pulses through three formants gliding from sound to sound, cut in syllables and
 // phrases, low-passed as heard across a room (plan / talker below; renderLaugh uses the same voice).
 
+import { v8Cycle } from './Motor.js';
+
 const TAU = Math.PI * 2;
 const RMS = 0.1;  // every bed's loudness once rendered
 const PEAK = 0.9; // a one-shot's peak
@@ -268,15 +270,36 @@ const BED_MAKERS = {
     for (let i = 0; i < n; i++) c[i] += lp(hp(white(r))) * 0.5;
     yield;
   },
-  // a car going: the engine's firing and its harmonics, the roar of the tyres on the dry asphalt, the tread's hiss
-  // (the mixer changes its speed with the car's and the Doppler shift)
-  *engine(ch, sr, r) {
-    const c = ch[0], n = c.length, parts = [];
-    for (let k = 1; k <= 14; k++) parts.push([50 * k, k ** -0.8 * (k * 50 > 600 ? 0.4 : 1), r() * TAU]);
-    yield* tones(c, sr, parts, 0.25);
-    yield;
-    const roar = biquad('bp', 500, 0.7, sr), rumble = brown(r), tread = biquad('bp', 1100, 0.9, sr), hiss = biquad('bp', 2600, 0.7, sr);
-    for (let i = 0; i < n; i++) c[i] += roar(rumble()) * 0.55 + tread(white(r)) * 0.3 * (1 + 0.25 * Math.sin((TAU * 6 * i) / sr)) + hiss(white(r)) * 0.08;
+  // a car's engine (a V8, audio/Motor.js): its cycle (spec.cycle Hz, a whole number of them in the loop) driven into
+  // a soft clip, the body's boom and the pipe's rasp, and the exhaust's growl, noise pulsed by the firing. The mixer
+  // changes its speed with the car's and the Doppler shift, and opens its tone as it speeds up; the tyres are `road`
+  *engine(ch, sr, r, spec) {
+    const c = ch[0], n = c.length, N = 4096, { real, imag } = v8Cycle(spec.harmonics, 11), wave = new Float32Array(N + 1);
+    for (let k = 1; k <= spec.harmonics; k++) {
+      const w = (TAU * k) / N;
+      for (let j = 0; j < N; j++) wave[j] += real[k] * Math.cos(w * j) + imag[k] * Math.sin(w * j);
+      if ((k & 15) === 0) yield;
+    }
+    let peak = 1e-9;
+    for (let j = 0; j < N; j++) peak = Math.max(peak, Math.abs(wave[j]));
+    for (let j = 0; j < N; j++) wave[j] /= peak;
+    wave[N] = wave[0];
+    const boom = biquad('bp', 110, 1.1, sr), rasp = biquad('bp', 760, 1.3, sr), growl = biquad('bp', 1000, 0.8, sr), hp = hp1(70, sr);
+    for (let i = 0; i < n; i++) {
+      if ((i & 16383) === 0) yield;
+      const u = (((i * spec.cycle) / sr) % 1) * N, j = Math.floor(u), x = wave[j] + (wave[j + 1] - wave[j]) * (u - j);
+      const y = Math.tanh(2.4 * x);
+      c[i] = hp(y * 0.35 + boom(y) * 0.35 + rasp(y) * 1.1 + growl(white(r)) * Math.abs(x) * 2.2);
+    }
+  },
+  // a car's tyres on the dry asphalt: the roar of the rubber, the tread's hiss, the road's surface going by
+  *road(ch, sr, r) {
+    const c = ch[0], n = c.length, roar = biquad('bp', 460, 0.6, sr), rumble = brown(r), low = lp1(140, sr), rumble2 = brown(r);
+    const hiss = biquad('bp', 2400, 0.8, sr), surface = wander(r, sr, 4, 0.18);
+    for (let i = 0; i < n; i++) {
+      if ((i & 32767) === 0) yield;
+      c[i] = (roar(rumble()) * 0.9 + low(rumble2()) * 0.6) * surface() + hiss(white(r)) * 0.25;
+    }
   },
   // the hush of a building at night: the structure's low rumble, the air in the ducts far off
   *hush(ch, sr, r) {
@@ -420,7 +443,8 @@ export const BEDS = {
   mains: { make: 'mains', sr: 16000, len: 4, tonal: true },
   fan: { make: 'fan', sr: 22050, len: 6, tonal: true },
   snow: { make: 'snow', sr: 22050, len: 5 },
-  engine: { make: 'engine', sr: 22050, len: 3, tonal: true },
+  engine: { make: 'engine', sr: 22050, len: 3, tonal: true, cycle: 14, harmonics: 160 },
+  road: { make: 'road', sr: 16000, len: 4.3 },
   train: { make: 'train', sr: 16000, len: 22, once: true, cars: 6, speed: 14, off: 45 },
   dog: { make: 'dog', sr: 16000, len: 12, once: true, bouts: 4 },
   carAlarm: { make: 'carAlarm', sr: 16000, len: 10, once: true },

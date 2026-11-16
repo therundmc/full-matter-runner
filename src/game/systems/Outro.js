@@ -8,11 +8,14 @@
 // { t: s since he stepped into the zone, s: px along the route, v: px/step, slip: rad, heading, fadeAt: s | null }.
 import { TILE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
+import { MOTOR, squealOf, launchChirp } from '../../audio/Motor.js';
 
 export const OUTRO = {
   walk: 0.6,        // he walks to the cab door (snapped there if not reached) and gets in
-  lights: 0.8,      // lights on, engine started
-  go: 1.0,          // it pulls away
+  lights: 0.8,      // lights on, the key turned: the starter cranks the engine over ...
+  catch: 1.1,       // ... until it catches, flaring (`flare`: revs, share of the redline, for s) then idling
+  flare: [0.6, 0.16],
+  go: 1.3,          // it pulls away
   skipAfter: 0.4,   // any key or click from then on goes straight to the results
   speed: 8.6,       // px per step flat out on a straight
   corner: 5.2,      // ... and through a bend
@@ -101,6 +104,27 @@ export function slideStep(slip, slipV, turn, v, dt, o = OUTRO) {
   const [k, d] = o.spring, want = turn * o.slip * Math.min(1, v / o.corner);
   const sv = slipV + ((want - slip) * k - slipV * d) * dt;
   return [slip + sv * dt, sv];
+}
+
+// What the van sounds like this step, from what it does (audio/Motor.js; World.stepOutro hands it to Audio.motor):
+// its gearbox (out.box, a Gearbox) stepped with its real speed, the throttle read off its speed a step ago
+// (out.lastV: floored while it gains or holds flat out, off while it brakes), the rear wheels spinning for `spin` s
+// from `go`; the tyres squeal with the slide and the speed, chirp at the launch and the shift out of first
+// (out.chirpT). Returns { revs, load, squeal, road, pops } or null before the engine has caught.
+export function motorState(out, t, dt, o = OUTRO, m = MOTOR) {
+  if (t < o.catch) return null;
+  const first = t - dt < o.catch, speed = out.v / o.speed, u = (t - o.go) / o.spin, dv = out.v - (out.lastV ?? 0);
+  const flare = t < o.catch + o.flare[1];
+  const throttle = t < o.go ? (flare ? 1 : 0.15) : dv > 1e-6 || out.v >= o.speed ? 1 : dv < -1e-6 ? 0 : 0.6;
+  const box = out.box.step(speed, throttle, u >= 0 && u < 1, dt, flare ? o.flare[0] : 0);
+  out.lastV = out.v;
+  const [chirp, len] = m.squeal.shiftChirp;
+  out.chirpT = box.shifted > 0 && box.gear === 1 ? len : Math.max(0, (out.chirpT ?? 0) - dt);
+  return {
+    revs: box.revs, load: box.load, road: speed,
+    squeal: squealOf(out.slip, speed, Math.max(launchChirp(u, m), (chirp * out.chirpT) / len), m),
+    pops: first ? m.pops.catch : box.shifted > 0 ? m.pops.shift : 0,
+  };
 }
 
 // 0..1 black over the picture (out: the outro's state)

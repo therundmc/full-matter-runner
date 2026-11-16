@@ -109,7 +109,8 @@ export class Walker {
         this.route = this.temper === 'hide' ? sense.hide?.(x, y, this.danger) ?? null : null;
         this.ri = 0;
         this.state = this.route ? WALKER.HIDE : WALKER.FLEE;
-        this.t = this.route ? 5 : 0; // a corner he cannot reach in time: he drops where he is
+        // a corner he cannot reach in time: he drops where he is; a runner's next cry comes one wait after his fright's
+        this.t = this.route ? 5 : between(this.r, A.panic.cry);
         return this.update(0, x, y, sense);
       case WALKER.HIDE: {
         while (this.ri < this.route.length && Math.hypot(this.route[this.ri].x - x, this.route[this.ri].y - y) < REACH * 1.5) this.ri++;
@@ -133,7 +134,7 @@ export class Walker {
         if (this.ri >= this.route.length) { this.state = WALKER.DONE; return { x: null, y: null, speed: 0, face: null }; }
         if (this.tripIn !== null && (this.tripIn -= dt) <= 0) { this.tripIn = null; this.fall = true; }
         // a scream or a whine now and then, his breath in between
-        if (this.t <= 0) { this.t = between(this.r, [0.8, 1.9]); this.bark = this.r() < 0.75 ? 'scream' : 'whine'; }
+        if (this.t <= 0) { this.t = between(this.r, A.panic.cry); this.bark = this.r() < A.panic.scream ? 'scream' : 'whine'; }
         else if ((this.air -= dt) <= 0) { this.air = between(this.r, [0.5, 0.85]); this.bark = 'pant'; }
         const p = this.route[this.ri];
         return { x: p.x, y: p.y, speed: this.run, face: null };

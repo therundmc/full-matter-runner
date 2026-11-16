@@ -8,8 +8,9 @@
 //   - Props with a bed of their own (data/soundscape.js PROP_BEDS: neon, fridges, tubes, fans, a TV's snow): the
 //     nearest that still works, from its side, muffled through a wall; and the level's spots (SPOTS: a radio behind
 //     a window).
-//   - The traffic car by car (systems/Ambient.js): each of the nearest cars drives a voice of its own, its level by
-//     distance, its side, its engine speed and the Doppler shift as it goes by.
+//   - The traffic car by car (systems/Ambient.js): each of the nearest cars drives two voices of its own (its engine
+//     and its tyres on the road), their level by distance and speed, its side, its engine's speed and tone, and the
+//     Doppler shift as it goes by.
 //   - One-shots on top, each on its own random clock while its place is heard (glasses, ice, a laugh, a chair, the
 //     bartender, a drip, the cistern); the far city everywhere (CITY: the elevated train, a police car, horns, a car
 //     alarm, a dog), dull from indoors; a gust of wind (systems/Papers.js 'gust'); drops off a leaking pipe.
@@ -23,6 +24,7 @@ import { WALKER } from '../ai/Civilians.js';
 const OPENINGS = new Set(['D', 'L', 'G', 'F']); // doors and windows: between two places, they keep the last one
 const SOUND = 343 * 32;                          // px/s: the speed of sound (1 m = 32 px)
 const ROOMS = [...new Set(Object.values(ZONES).map((z) => z.room))];
+const CAR_BEDS = new Set(['engine', 'road']); // the traffic's voices follow their cars at once (the mixer glides them)
 
 // tiles from every tile to the nearest tile of kind k (8 neighbours, through walls), capped at 255
 function spread(kinds, k, w, h) {
@@ -138,7 +140,8 @@ export default class Ambience {
     const mix = {};
     for (const name of new Set([...Object.keys(t), ...Object.keys(this.mix)])) {
       const to = t[name], was = this.mix[name];
-      if (to?.bed === 'engine' || !was) { if (to) mix[name] = { ...to, gain: to.bed === 'engine' ? to.gain : to.gain * k }; continue; }
+      const car = CAR_BEDS.has(to?.bed);
+      if (car || !was) { if (to) mix[name] = { ...to, gain: car ? to.gain : to.gain * k }; continue; }
       const gain = was.gain + ((to?.gain ?? 0) - was.gain) * k;
       if (!to && gain < 1e-4) continue;
       mix[name] = {
@@ -224,10 +227,12 @@ export default class Ambience {
       if (!car) return;
       const v = car.v, dx = v.x - p.x, dy = v.y - p.y, d = Math.hypot(dx, dy) || 1, sp = Math.max(0, car.d.speed);
       const a = v.body?.angle ?? v.angle ?? 0, closing = -(dx * Math.cos(a) + dy * Math.sin(a)) * sp / d;
-      const pace = clamp(sp / C.cruise, 0, 1.3), walled = w.walledOff(v.x, v.y);
-      const rate = (C.rate[v.type] ?? 1) * (C.idle + (1 - C.idle) * pace) * (1 + (C.doppler * closing) / SOUND);
-      const g = C.level * (1 - d / C.reach) ** 2 * (0.4 + 0.6 * Math.min(1, pace)) * (walled ? c.through : 1);
-      put('car' + i, g, walled ? c.muffle : c.open, clamp(dx / 400, -0.9, 0.9), { bed: 'engine', rate });
+      const pace = clamp(sp / C.cruise, 0, 1.3), walled = w.walledOff(v.x, v.y), dop = 1 + (C.doppler * closing) / SOUND;
+      const rate = (C.rate[v.type] ?? 1) * (C.idle + (1 - C.idle) * pace) * dop, pan = clamp(dx / 400, -0.9, 0.9);
+      const near = (1 - d / C.reach) ** 2 * (walled ? c.through * C.walled : 1), on = Math.min(1, pace);
+      const tone = C.tone[0] + (C.tone[1] - C.tone[0]) * on;
+      put('car' + i, C.level * near * (C.quiet + (1 - C.quiet) * on), walled ? Math.min(c.muffle, tone) : tone, pan, { bed: 'engine', rate });
+      put('road' + i, C.road * near * on ** 1.5, walled ? c.muffle : c.open, pan, { bed: 'road', rate: dop });
     });
   }
 

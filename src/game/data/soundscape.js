@@ -105,6 +105,11 @@ export const PROP_BEDS = [
 // 'engine' bed, its level by distance (gone at `reach` px), its side, and its speed: `rate` per model at `cruise`
 // px/s, down to `idle` of it at a standstill, shifted by the Doppler effect (`doppler`: exaggerated that many times).
 export const CARS = {
-  slots: 3, reach: 900, level: 0.9, cruise: 320, idle: 0.55, doppler: 2.5,
+  slots: 3, reach: 900, cruise: 320, idle: 0.55, doppler: 2.5,
+  // the engine (bed `engine`): its level (2.5 x on 2026-11-16, the user could not hear the cars go by) and the share
+  // of it left idling at a standstill (`quiet`), the Hz its tone opens from at a standstill to cruising (the
+  // exhaust's growl rising with the speed); the tyres (bed `road`);
+  // through a wall they lose that much more than a place's beds (a muffled rumble, about where they were before)
+  level: 2.3, quiet: 0.25, tone: [1400, 9000], road: 1.8, walled: 0.5,
   rate: { car: 1, car2: 1.15, van: 0.78 },
 };

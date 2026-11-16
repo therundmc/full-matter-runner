@@ -60,7 +60,8 @@ import Weather from '../systems/Weather.js';
 import Smoke from '../systems/Smoke.js';
 import Director from '../ai/Director.js';
 import Ambient from '../systems/Ambient.js';
-import { OUTRO, routePath, routeSpeed, slideStep, crossed } from '../systems/Outro.js';
+import { OUTRO, routePath, routeSpeed, slideStep, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
+import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
 
@@ -380,7 +381,8 @@ export default class World {
     this.outro = {
       t: 0, van, door: this.cabDoor(van, p.x, p.y), inside: false,
       path: routePath(pts, (ex.radius || []).map((r) => r * TILE)), fadeFrom: (ex.fade ?? OUTRO.fade) * TILE,
-      s: 0, v: 0, slip: 0, slipV: 0, heading: a, fadeAt: null, sliding: false, hit: new Map(), ruts: null,
+      s: 0, v: 0, slip: 0, slipV: 0, heading: a, fadeAt: null, hit: new Map(), ruts: null,
+      box: new Gearbox(), lastV: 0, chirpT: 0, // its engine and tyres heard (motorState)
     };
   }
 
@@ -403,13 +405,20 @@ export default class World {
     };
     if (crossed(t0, t, O.lights)) {
       v.lightsOut = false;
-      // the engine turns over, then roars as it tears off
-      this.sound('passby', undefined, undefined, 0.75, { lead: 1.3, dur: 5.5, dir: Math.sign(Math.cos(o.heading)) || 1, side: 0.1, f: 36 });
-      exhaust(3);
+      this.sound('crank', v.x, v.y, 1, { dur: O.catch - O.lights }); // the starter turns it over, then it catches
     }
-    if (t >= O.lights && chance(t < O.go ? 0.08 : 0.3)) exhaust(1);
-    v.bob = t >= O.lights && t < O.go ? Math.sin(this.time * 38) * 0.25 : 0; // the idling shudder
-    if (t < O.go) return;
+    if (crossed(t0, t, O.catch)) exhaust(3);
+    if (t >= O.catch && chance(t < O.go ? 0.08 : 0.3)) exhaust(1);
+    v.bob = t >= O.lights && t < O.go ? Math.sin(this.time * (t < O.catch ? 16 : 38)) * 0.25 : 0; // cranking, then idling
+    if (t >= O.go) this.driveOutro(o, t, dt);
+    // its engine, gearbox and tyres, every step, fading with the picture
+    const m = motorState(o, t, dt);
+    if (m) Audio.motor('getaway', { ...m, x: v.x, y: v.y, fade: 1 - fadeAlpha(o) ** 1.5 });
+  }
+
+  // the van along its route (stepOutro, from OUTRO.go on)
+  driveOutro(o, t, dt) {
+    const v = o.van, O = OUTRO;
     // along the route: flat out, braking into a bend, the tail stepping out in it
     const path = o.path, bend = path.at(o.s).turn || path.at(o.s + O.look).turn;
     o.v = routeSpeed(o.v, bend, dt);
@@ -419,10 +428,9 @@ export default class World {
     o.heading = q.a;
     v.driveTo(q.x, q.y, q.a + o.slip);
     if (o.s < path.length && v.ram(q.a, o.hit, O.ram)) this.shake(O.ram.shake);
-    // the rear tyres: spinning as it pulls away, sliding in a bend. Smoke, a squeal, black marks on the floor
+    // the rear tyres: spinning as it pulls away, sliding in a bend. Smoke and black marks on the floor (their squeal:
+    // motorState)
     const sliding = t < O.go + O.spin || Math.abs(o.slip) > O.smoke;
-    if (sliding && !o.sliding) this.sound('skid', v.x, v.y, 1, { dur: t < O.go + O.spin ? 0.7 : 1 });
-    o.sliding = sliding;
     const rear = v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy));
     if (sliding) {
       for (const r of rear) if (chance(0.7)) this.particles.smoke(r.x, r.y, 1, 3, { speed: 22, size: 5, life: 0.8 });

@@ -5,7 +5,8 @@
 //     built by tools/build_sounds.mjs), layered per sound in FOLEY and / or by a `_<name>` method
 //   - the body and its moves, hands and objects, doors, small things: physically modelled foley (Foley.js recipes
 //     rendered by Synth.js), a few variations of each baked once into buffers and played with live variations
-//   - noise-based synthesis where nothing else fits: blast bodies, tyres, the car alarm, the far-off sirens
+//   - noise-based synthesis where nothing else fits: blast bodies, the car alarm, the far-off sirens
+//   - a vehicle driven live (motor: the getaway van), its engine, gearbox and tyres following it every frame (Motor.js)
 //   - the beds of the night (setAmbience, driven by systems/Ambience.js): long loops rendered once by Beds.js (the
 //     city, a room talking, a radio, what hums, the traffic's engines...), each voice with its own level, tone, side,
 //     speed; and the far city's long one-shots rendered the same way (a train, a dog, a car alarm: _cue)
@@ -21,7 +22,7 @@
 //   per-voice sends -> hall (gunfire, far sounds, the kill's boom) -> mix                                            |
 //   amb (the beds: per voice gain -> lowpass -> pan) + ambOne (opts.amb one-shots) -> ambience volume -> EQ ---------+
 //       (round the glue: gunfire never pumps the night)                                                             |
-//   music -> HP 28 Hz -> duck (held dip while it is loud) -> its own compressor -------------------------------------+-> bus
+//   music -> HP 28 Hz -> duck (held dip while it is loud) -> dip (a vehicle roaring) -> its own compressor ----+-> bus
 //   bus -> filter (lowpass: slow motion / death muffle) -> soft clip (linear under its knee, oversampled)
 //       -> limiter (peaks only, slow release: never pumps) -> master -> destination
 // The music has its own compressor so that gunfire never pumps it: only the duck moves it, slowly.
@@ -37,6 +38,7 @@ import { BANK, BANK_URL } from './bank.js';
 import { RECIPES, formOf } from './Foley.js';
 import { render } from './Synth.js';
 import { BEDS, renderBed, renderLaugh } from './Beds.js';
+import { VOICE, v8Cycle, cycleHz } from './Motor.js';
 
 // The mix: each bus's level (measured headless: the reference loudness of each in the street, the bar and a fight is
 // in the report of the 2026-11-15 mix pass). Guns and impacts punch, voices read, the music drives the fights, the
@@ -116,8 +118,9 @@ export const META = {
   cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.65, reach: 1900, bus: 'voice' },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
   whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.5, reach: 1200, bus: 'voice' },
-  // a crowd: many at once, each his own cry, carried by the room
-  scream: { pri: 3, dur: 1.1, gap: 0.08, max: 5, gain: 0.55, reach: 2000, hall: 0.22, bus: 'voice' },
+  // a crowd: several at once, each his own cry, carried by the room (the user: a bit loud and a bit often: -4.7 dB
+  // since 2026-11-16, never more than four at once, a little apart)
+  scream: { pri: 3, dur: 1.1, gap: 0.12, max: 4, gain: 0.32, reach: 2000, hall: 0.22, bus: 'voice' },
   mutter: { pri: 1, dur: 0.6, gap: 0.8, max: 1, gain: 0.5, reach: 900, bus: 'voice' },
   pant: { pri: 1, dur: 0.45, gap: 0.1, max: 3, gain: 0.36, reach: 800, bus: 'voice' },
   sob: { pri: 1, dur: 0.8, gap: 0.5, max: 2, gain: 0.42, reach: 700, bus: 'voice' },
@@ -170,7 +173,7 @@ export const META = {
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
-  skid: { pri: 2, dur: 1, gap: 0.25, max: 2, gain: 0.3, reach: 1800 },
+  crank: { pri: 3, dur: 0.6, gap: 0.5, max: 1, gain: 0.45, reach: 2000 }, // a starter turning an engine over (the getaway)
   // the night around (systems/Ambience.js; its beds are not voices, see setAmbience): the city's swell of the opening
   // cinematic, the wind, drops, and the life of the bar and its toilets; far under the rest, the first dropped in a fight.
   // The far city (soundscape CITY): a police car crossing it, the elevated train, a car alarm, a dog; long, quiet, wet.
@@ -382,6 +385,7 @@ class AudioSystem {
     this.bedMarks = {}; // bed -> [[start s, length s]] where a one-shot of it may be played (_cue)
     this.bedQueue = []; // beds waiting to be rendered, one at a time in idle time
     this.laughs = {};   // 'm' | 'f' -> rendered laughs
+    this.motors = {};   // key -> a vehicle's live voice (motor)
   }
 
   // must be called from a user gesture
@@ -419,6 +423,8 @@ class AudioSystem {
     this.bedMarks = {};
     this.bedQueue = [];
     this.laughs = {};
+    this.motors = {};
+    this.v8Wave = null;
     const param = (n, v) => { for (const k in v) n[k].value = v[k]; return n; };
     const gain = (v) => param(ctx.createGain(), { gain: v });
     const bq = (type, frequency, Q, g = 0) => {
@@ -439,6 +445,7 @@ class AudioSystem {
     this.sfx = gain(L.sfx * this.vol.sfx);
     this.music = gain(L.music * this.vol.music);
     this.duck = gain(1);
+    this.dip = gain(1); // a held dip of the music while a vehicle roars (motor)
     this.bus = gain(1);
     const mix = gain(1);
 
@@ -497,7 +504,7 @@ class AudioSystem {
     // makeup gain from these settings: a low threshold would push clicks and casings up towards the gunshots.)
     const comp = () => param(ctx.createDynamicsCompressor(), { threshold: -10, knee: 8, ratio: 2.5, attack: 0.008, release: 0.22 });
     chain(mix, this.glue = comp(), this.bus);
-    chain(this.music, bq('highpass', 28, 0.7), this.duck, this.musicComp = comp(), this.bus);
+    chain(this.music, bq('highpass', 28, 0.7), this.duck, this.dip, this.musicComp = comp(), this.bus);
 
     this.filter = bq('lowpass', 20000, 0.7);
     // soft clip: transparent up to the knee (with the gain the mix was balanced on), rounding off above it
@@ -1624,31 +1631,168 @@ class AudioSystem {
     this._sample(o, list[i].buf, { len: list[i].len, rate: rand(0.96, 1.04), fade: 0.05 });
   }
 
-  // tyres sliding on the road: a squeal, three narrow bands of air that wander together and fall as the slide ends
-  // (opts.dur). Synthesized: the user allows it for everything but guns and explosions.
-  _skid(o, { dur = 0.9 }) {
-    const ctx = this.ctx, t = ctx.currentTime, end = t + dur, f = rand(950, 1250) * this.pv;
-    const env = ctx.createGain(), src = ctx.createBufferSource(), nodes = [env];
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.linearRampToValueAtTime(1, t + 0.05);
-    env.gain.setValueAtTime(0.8, end - Math.min(0.3, dur * 0.4));
-    env.gain.exponentialRampToValueAtTime(0.0001, end);
-    env.connect(o);
-    src.buffer = this.noise; src.loop = true;
-    for (const [k, q, level] of [[1, 10, 1], [1.52, 12, 0.5], [2.1, 8, 0.2]]) {
-      const bp = ctx.createBiquadFilter(), g = ctx.createGain();
-      bp.type = 'bandpass'; bp.Q.value = q;
-      bp.frequency.setValueAtTime(f * k * 1.06, t);
-      bp.frequency.linearRampToValueAtTime(f * k * rand(0.96, 1.04), t + dur * 0.5);
-      bp.frequency.linearRampToValueAtTime(f * k * 0.86, end);
-      g.gain.value = level * 3; // a narrow band lets little through
-      src.connect(bp); bp.connect(g); g.connect(env);
-      nodes.push(bp, g);
+  // ---- a vehicle driven live (the getaway: World.stepOutro; its numbers: Motor.js) ----
+  // key: whose; m: { x, y, revs (share of the redline), load (0..1 throttle), squeal (0..1), road (0..1 its speed),
+  // fade (0..1), pops (exhaust pops to fire now) }, or null to let it go. Called every frame; each part follows its
+  // value within VOICE.tau, and the voice fades out by itself VOICE.hold s after its last update (a skip, a pause).
+  // While it runs the music dips a little under it (VOICE.duck).
+  motor(key, m) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const now = this.ctx.currentTime, V = VOICE;
+    let mv = this.motors[key];
+    if (!m) { if (mv) this._motorStop(key, mv, now); return; }
+    if (!mv) mv = this.motors[key] = this._motorVoice(key);
+    const P = mv.p, set = (param, v) => param.setTargetAtTime(v, now, V.tau), lerp = (a, b, k) => a + (b - a) * k;
+    const sp = this._spatial({ x: m.x, y: m.y }, V.reach), fade = clamp(m.fade ?? 1, 0, 1);
+    const revs = clamp(m.revs, 0, 1.05), load = clamp(m.load, 0, 1), road = clamp(m.road, 0, 1.2), sq = clamp(m.squeal, 0, 1);
+    this._glide(mv.out.gain, sp.vol * V.gain * fade, now, V.tau, V.hold);
+    if (mv.pan.pan) set(mv.pan.pan, sp.pan);
+    const fire = cycleHz(revs) * 8; // the firing frequency
+    set(P.osc.frequency, cycleHz(revs));
+    set(P.pre.gain, lerp(V.drive[0], V.drive[1], load) / 4);
+    set(P.tone.frequency, lerp(V.tone[0], V.tone[1], revs) * (0.55 + 0.45 * load));
+    set(P.body.gain, V.body * (0.5 + 0.5 * load));
+    set(P.growlBp.frequency, clamp(fire * V.growlBand[0], V.growlBand[1], V.growlBand[2]));
+    set(P.growl.gain, V.growl * (0.2 + 0.8 * load) * (0.3 + 0.7 * revs));
+    set(P.whine.frequency, lerp(V.whineK[0], V.whineK[1], Math.min(1, road)));
+    set(P.whineG.gain, V.whine * load * Math.min(1, road * 2));
+    set(P.road.gain, V.road * road ** 1.5);
+    set(P.hiss.gain, V.hiss * road * road);
+    set(P.squeal.gain, V.squeal * sq);
+    P.parts.forEach((bp, i) => set(bp.frequency, lerp(V.squealHz[0], V.squealHz[1], sq) * V.squealParts[i][0]));
+    for (const s of mv.srcs) s.stop(now + V.hold + 1.5); // without news it stops by itself
+    // the music under it: down while it roars, back up once it is gone
+    const g = this.dip.gain;
+    g.cancelScheduledValues(now);
+    g.setTargetAtTime(1 - (1 - V.duck) * fade, now, 0.2);
+    g.setTargetAtTime(1, now + V.hold, 0.5);
+    if (m.pops > 0) this._pops(mv.mix, m.pops, fade);
+  }
+
+  // the parts of a vehicle's voice, all running from now on (see motor and VOICE)
+  _motorVoice(key) {
+    const ctx = this.ctx, V = VOICE, srcs = [], nodes = [];
+    const gain = (v) => { const n = ctx.createGain(); n.gain.value = v; nodes.push(n); return n; };
+    const bq = (type, f, q, db = 0) => {
+      const n = ctx.createBiquadFilter();
+      n.type = type; n.frequency.value = f; n.Q.value = q; n.gain.value = db;
+      nodes.push(n);
+      return n;
+    };
+    const loop = (buf) => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; srcs.push(s); return s; };
+    const osc = (type, f) => { const s = ctx.createOscillator(); s.type = type; s.frequency.value = f; srcs.push(s); return s; };
+    const chain = (...n) => n.reduce((a, b) => (a.connect(b), b));
+    const out = gain(0), mix = gain(1), pan = ctx.createStereoPanner ? ctx.createStereoPanner() : gain(1), hall = gain(V.hall);
+    nodes.push(pan);
+    chain(mix, pan, out, this.sfx);
+    out.connect(hall);
+    hall.connect(this.hall);
+    mix._n = 0; mix._chain = []; // the pops' one-shots go into it (_noiseBurst)
+    // the engine: the V8's cycle, driven into a soft clip, through the exhaust's tone, its boom and its rasp
+    if (!this.v8Wave) {
+      const { real, imag } = v8Cycle();
+      this.v8Wave = ctx.createPeriodicWave(real, imag);
+      const c = new Float32Array(1025);
+      for (let i = 0; i < c.length; i++) c[i] = Math.tanh(4 * (i / 512 - 1)) / Math.tanh(4);
+      this.motorCurve = c;
     }
+    const p = {};
+    p.osc = osc('sine', cycleHz(0.14));
+    p.osc.setPeriodicWave(this.v8Wave);
+    const ws = ctx.createWaveShaper();
+    ws.curve = this.motorCurve;
+    ws.oversample = '2x';
+    nodes.push(ws);
+    p.pre = gain(V.drive[0] / 4);
+    p.tone = bq('lowpass', V.tone[0], 0.8);
+    p.body = gain(V.body);
+    chain(p.osc, p.pre, ws, p.tone, bq('peaking', ...V.boom), bq('peaking', ...V.rasp), p.body, mix);
+    // the exhaust's growl: noise pulsed by the firing (the cycle wave sets its level, sample by sample)
+    p.growlBp = bq('bandpass', 600, V.growlBand[3]);
+    const am = gain(0);
+    p.growl = gain(V.growl);
+    chain(loop(this.noise), p.growlBp, am, p.growl, mix);
+    p.osc.connect(am.gain);
+    // the gearbox's whine, the tyres' roar and the tread's hiss
+    p.whine = osc('sine', V.whineK[0]);
+    p.whineG = gain(0);
+    chain(p.whine, p.whineG, mix);
+    p.road = gain(0);
+    chain(loop(this.brown), bq('bandpass', ...V.roadBand), p.road, mix);
+    p.hiss = gain(0);
+    chain(loop(this.noise), bq('bandpass', ...V.hissBand), p.hiss, mix);
+    // the squeal: narrow bands of noise at the rubber's pitch and its overtones, wandering, chattering
+    p.squeal = gain(0);
+    const flutter = gain(1 - V.flutter[1] / 2), sq = loop(this.noise);
+    p.parts = V.squealParts.map(([k, q, level]) => {
+      const bp = bq('bandpass', V.squealHz[0] * k, q);
+      chain(sq, bp, gain(level * 4), p.squeal); // a narrow band lets little through
+      return bp;
+    });
+    chain(p.squeal, flutter, mix);
+    for (const [hz, cents] of V.wobble) {
+      const depth = gain(cents);
+      osc('sine', hz).connect(depth);
+      for (const bp of p.parts) depth.connect(bp.detune);
+    }
+    const chatter = gain(V.flutter[1] / 2);
+    chain(osc('sine', V.flutter[0]), chatter, flutter.gain);
+    const now = ctx.currentTime, mv = { out, mix, pan, p, srcs, nodes };
+    srcs.forEach((s, i) => s.start(now, s.loop ? Math.random() * 1.5 : 0));
+    srcs[0].onended = () => {
+      srcs.forEach((s) => s.disconnect());
+      nodes.forEach((n) => n.disconnect());
+      if (this.motors[key] === mv) delete this.motors[key];
+    };
+    return mv;
+  }
+
+  _motorStop(key, mv, now) {
+    this._glide(mv.out.gain, 0, now, 0.08);
+    for (const s of mv.srcs) s.stop(now + 0.6);
+    delete this.motors[key];
+  }
+
+  // the exhaust popping as the throttle lifts: a few sharp cracks of gas, a little apart, with a dull thud under the
+  // first ones (into the voice's mix)
+  _pops(mix, n, vol) {
+    this.pv = 1;
+    let at = 0;
+    for (let i = 0; i < n; i++) {
+      at += rand(0.02, 0.07);
+      const v = vol * rand(0.5, 1) * (1 - i / (n + 2));
+      this._noiseBurst(mix, { type: 'bandpass', f0: rand(900, 1500), f1: rand(500, 800), q: 1.1, dur: rand(0.025, 0.05), vol: 1.6 * v, attack: 0.001, delay: at });
+      if (i < 2) this._noiseBurst(mix, { src: 'brown', type: 'lowpass', f0: 420, f1: 120, q: 0.7, dur: 0.07, vol: 1.2 * v, attack: 0.002, delay: at });
+    }
+  }
+
+  // the starter turning the engine over (opts.dur s) before it catches: the solenoid's clunk, the starter's whine
+  // climbing, the compression's chugs quickening as it spins up
+  _crank(o, { dur = 0.3 }) {
+    const ctx = this.ctx, t = ctx.currentTime;
+    this._cut(o, 'click', { vol: 0.9, rate: 0.5 });
+    this._cut(o, 'metal', { vol: 0.35, rate: 0.6 });
+    const saw = ctx.createOscillator(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    saw.type = 'sawtooth';
+    saw.frequency.setValueAtTime(120, t + 0.03);
+    saw.frequency.linearRampToValueAtTime(175, t + dur);
+    bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 1.6;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.05);
+    g.gain.setValueAtTime(0.16, t + dur);
+    g.gain.linearRampToValueAtTime(0, t + dur + 0.05);
+    saw.connect(bp); bp.connect(g); g.connect(o);
     o._n++;
-    src.onended = () => this._release(o, src, ...nodes);
-    src.start(t, Math.random() * 1.5);
-    src.stop(end + 0.05);
+    saw.onended = () => this._release(o, saw, bp, g);
+    saw.start(t + 0.03);
+    saw.stop(t + dur + 0.08);
+    let at = 0.05, gap = 0.11;
+    while (at < dur) {
+      this._noiseBurst(o, { src: 'brown', type: 'lowpass', f0: 520, f1: 140, q: 0.7, dur: 0.075, vol: 0.9, attack: 0.008, delay: at });
+      this._thump(o, { f0: 72, f1: 44, dur: 0.08, vol: 0.45, delay: at });
+      at += gap;
+      gap = Math.max(0.07, gap * 0.86);
+    }
   }
 
   // ---- ambient traffic ----
