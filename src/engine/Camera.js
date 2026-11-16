@@ -2,8 +2,8 @@ import { rand, lerp } from './math.js';
 
 // Follow camera with look-ahead, trauma shake and a slow tilt sway.
 // World px of vertical view. It was 380; the user wanted the camera closer to see the detail (300), then "a tiny bit"
-// further out.
-export const VIEW = 330;
+// further out (330), then closer again to make it more visceral (2026-11-16: 290; a zoom that follows the action may come).
+export const VIEW = 290;
 
 export default class Camera {
   constructor() {

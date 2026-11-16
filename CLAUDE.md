@@ -57,7 +57,8 @@
   painted at that build, about 1.5 m long, shoulders 17 px, PLAINLY (two tones a part: any more detail "clashes
   with the rest") and at the WORLD's pixel size, not the finer one ("too high a resolution next to the rest"). A wound shows on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js: bullet
   holes, a cut, the blood of a blow). A man knocked down falls on his back, head AWAY from the blow (`downAngle`).
-- Camera: `VIEW` = 330 world px high (engine/Camera.js); he said this zoom is right. The scene is drawn at a whole
+- Camera: `VIEW` = 290 world px high (engine/Camera.js; 330 was right, then he wanted it closer, "more visceral";
+  a zoom that follows the action may come later). The scene is drawn at a whole
   zoom on a canvas a little larger than the window and the lens brings it down (Game.resize).
 - Rooms (2026-11-15, his verdict: "the furniture too small or the rooms too big", "maybe shrink the rooms a little"):
   level 1 is tightened by whole tiles taken out (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
