@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>music render</title>
+<script type="module">
+import { loadLib, pitchOf, SR } from './engine.js';
+import { SONGS } from './songs.js';
+
+const b64 = (arr) => {
+  const u8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+// pitched libraries: the parsed note against the measured one, for a few zones
+window.probe = async (keys) => {
+  const ctx = new OfflineAudioContext(1, SR, SR), out = {};
+  for (const k of keys) {
+    const lib = await loadLib(ctx, k), rows = [];
+    for (const [art, zones] of Object.entries(lib.arts)) {
+      const byNote = new Map(); for (const z of zones) if (!byNote.has(z.note)) byNote.set(z.note, z);
+      const notes = [...byNote.keys()].sort((a, b) => a - b);
+      for (const n of notes.filter((_, i) => i % Math.max(1, Math.floor(notes.length / 6)) === 0)) {
+        const p = pitchOf(byNote.get(n).buf);
+        rows.push(`${art} ${n}: ${p == null ? '?' : p.toFixed(2)}`);
+      }
+    }
+    out[k] = rows.join(' | ');
+  }
+  return out;
+};
+window.songs = () => Object.entries(SONGS).map(([id, s]) => ({ id, title: s.title, bpm: s.bpm, key: s.key, style: s.style, hook: s.hook, seconds: s.seconds, aim: s.aim || {} }));
+let last = null;
+window.renderSong = async (id, solo = null, mix = null) => {
+  const t0 = performance.now();
+  if (!mix) { try { mix = (await (await fetch('mix.json', { cache: 'no-store' })).json())[id]; } catch { mix = {}; } }
+  last = await SONGS[id].render(solo, mix);
+  return { ms: Math.round(performance.now() - t0), n: last[0].length };
+};
+window.channel = (i) => b64(last[i]);
+// the RMS and peak of the last render, in dBFS (silence: peak 0)
+// active: the RMS over the 400 ms blocks within 20 dB of the loudest one (a part that plays half the time is
+// measured where it plays)
+window.level = () => {
+  const B = Math.round(0.4 * SR), blocks = [];
+  let p = 0;
+  for (let a = 0; a + B <= last[0].length; a += B) {
+    let s = 0;
+    for (const c of last) for (let i = a; i < a + B; i++) { s += c[i] * c[i]; p = Math.max(p, Math.abs(c[i])); }
+    blocks.push(s / (2 * B));
+  }
+  const top = Math.max(...blocks), act = blocks.filter((e) => e > top / 100);
+  const db = (v) => +(10 * Math.log10(v)).toFixed(1);
+  return { rms: db(act.reduce((a, b) => a + b, 0) / act.length), share: +(act.length / blocks.length).toFixed(2), peak: p > 0 ? +(20 * Math.log10(p)).toFixed(1) : 0 };
+};
+// a smaller copy for listening: the mastered WAV played in real time into an Opus recorder (WebM)
+window.encodeOpus = async (url) => {
+  const ctx = new AudioContext({ sampleRate: SR });
+  const buf = await ctx.decodeAudioData(await (await fetch(url, { cache: 'no-store' })).arrayBuffer());
+  const dest = ctx.createMediaStreamDestination(), src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(dest);
+  const rec = new MediaRecorder(dest.stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 192000 }), parts = [];
+  rec.ondataavailable = (e) => parts.push(e.data);
+  const done = new Promise((r) => { rec.onstop = r; });
+  await ctx.resume();
+  rec.start(); src.start();
+  await new Promise((r) => { src.onended = r; });
+  await new Promise((r) => setTimeout(r, 300));
+  rec.stop(); await done; ctx.close();
+  return b64(new Uint8Array(await new Blob(parts).arrayBuffer()));
+};
+window.ready = true;
+</script>

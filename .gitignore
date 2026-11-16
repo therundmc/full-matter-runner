@@ -4,3 +4,6 @@ qa-report/
 
 # rendered music extracts for listening (tools/render_music.mjs --wav), not kept in history
 audition/
+
+# recorded instrument samples downloaded for the music extracts (tools/music_sources.json lists them)
+tools/music-samples/

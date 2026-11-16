@@ -1,0 +1,58 @@
+{
+ "mirador": {
+  "bass": 1.161,
+  "snare": 1.738,
+  "hat": 1.97,
+  "perc": 0.684,
+  "cym": 0.871,
+  "rhodes": 0.422,
+  "gtr": 0.759,
+  "lead": 1.058,
+  "strings": 0.157
+ },
+ "backroom": {
+  "bass": 1.001,
+  "snare": 0.989,
+  "clap": 14.127,
+  "hat": 2.086,
+  "perc": 1.406,
+  "cym": 1.109,
+  "piano": 0.526,
+  "strings": 0.445,
+  "sax": 0.507
+ },
+ "filtre": {
+  "bass": 1.38,
+  "snare": 0.669,
+  "clap": 13.336,
+  "hat": 0.683,
+  "perc": 1.782,
+  "cym": 0.944,
+  "rhodes": 1.175,
+  "gtr": 0.452,
+  "strings": 1.224,
+  "horns": 0.792
+ },
+ "cassette": {
+  "synthbass": 1.188,
+  "snare": 2.138,
+  "clap": 7.412,
+  "hat": 3.048,
+  "perc": 4.324,
+  "cym": 0.924,
+  "gtr": 0.501,
+  "lead": 2.4,
+  "arp": 5.433,
+  "strings": 1.016
+ },
+ "escape": {
+  "bass": 0.912,
+  "snare": 3.273,
+  "hat": 2.565,
+  "perc": 1.008,
+  "cym": 0.881,
+  "rhodes": 1.396,
+  "gtr": 0.556,
+  "horns": 0.411
+ }
+}
