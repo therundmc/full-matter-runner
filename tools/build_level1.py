@@ -111,7 +111,7 @@ lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
 
-# ---------------------------------------------------------------- actors (13 guards)
+# ---------------------------------------------------------------- actors (12 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
 # in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
 # (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
@@ -160,7 +160,6 @@ lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his 
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 25, 14, face=0, job='cards')              # dealing poker in the gaming room: the one pistol of the bar
-lv.actor('k', 17, 16, face=0, job='pool')               # playing pool in the main room
 lv.lean('cue', 18.6, 19.8, 90)                          # a cue stood against the front wall, by the pool table
 lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
 # customers (civilians): they run for the street when it kicks off
@@ -559,7 +558,7 @@ ambient = {
 exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], 'radius': [3, 4.2], 'fade': 16}
 
 if __name__ == '__main__':
-    lv.check(guards=13)
+    lv.check(guards=12)
     lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[

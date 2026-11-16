@@ -107,7 +107,7 @@ Blocks 4-7 are implemented but NOT yet validated by the user (built while he was
    clap, hats, pumping bass), sections fightA / fightB / bridge / chase; each chained kill adds a stage
    (`Music.setCombo`: arpeggio, stabs, lead hook + stinger, 16th bass and rolls, doubled lead and toms). Bus
    compressor. Original material only. Nobody has listened to it but him: ask how it sounds.
-6. Level 1 (alley, road, bar, back room, back lot; 13 guards: hand to hand but two guns, the poker dealer's pistol
+6. Level 1 (alley, road, bar, back room, back lot; 12 guards: hand to hand but two guns, the poker dealer's pistol
    and the boss's shotgun; a pistol hidden in the liquor store; no weapon in the start alley: a tire iron in the trunk
    of the first parked car, E at its tail (prop option `trunk`); a cue by the pool table; the player starts sitting
    against the alley wall and gets up at the first key, level `intro: 'sit'`, first try only).
