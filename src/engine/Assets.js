@@ -37,7 +37,7 @@ export const OPTIONAL_LIST = [
     'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed', 'ladder', 'parapet', 'fuse_box',
     'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'apt_door', 'doormat', 'stairs', 'floor_hole', 'jerrycan',
     'runner', 'road_edge', 'parking_bay', 'velvet_rope', 'entry_carpet', 'radiator', 'bike', 'bin_bag', 'newspaper', 'shoes',
-    'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain'].map((n) => `props/${n}`),
+    'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
     'vehicles'].map((n) => `props/label_${n}`),
@@ -76,7 +76,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'parking_bay', 'velvet_rope', 'entry_carpet', 'pool_table', 'radiator', 'road_edge', 'runner', 'shoes', 'sink', 'sofa', 'speaker', 'stairs', 'stall', 'streetlight', 'table',
   'table_flipped', 'table_round', 'table_round_flipped', 'toilet', 'trash_can', 'tv', 'urinal', 'vending', 'wall_vent', 'washer',
   'floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'ceiling_lamp', 'pool_lamp', 'emergency_light',
-  'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain']);
+  'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down']);
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
 // the floor tiles too (64 x 64 pixels a tile); the wall tops stay at the world's

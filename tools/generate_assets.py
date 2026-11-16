@@ -3283,6 +3283,42 @@ def p_dumpster():
     return cv
 
 
+def p_trash_can_down():
+    """The galvanised can knocked over, from above, its lid gone (the lid is the standing can's sprite, rolled off):
+    the corrugated body lying along x with its pressed bands, the base at -x, the open mouth at +x black inside with
+    the night's rubbish spilling out of it (a split bag, papers, a can), a fresh dent where it was hit."""
+    W, H = 26, 17
+    cv = Cv(W, H)
+    m = ramp('#7a808c', 0.5, 0.25, 0.35)
+    cy = H / 2
+
+    def body(x, y, c):
+        v = (y - cy) / 7.2                                            # across the cylinder: lit on its top side
+        if abs(v) > 1:
+            return None
+        L = 0.95 - (v + 1) * 0.42
+        if int(x) in (5, 6, 11, 12, 17):
+            L += 0.12 if int(x) % 2 else -0.14                         # the pressed bands
+        return shade(m, L)
+    px_paint(cv, 1.5, cy - 7.2, 20.5, cy + 7.2, body)
+    fill_shape(cv, 1.8, cy, 1.2, 7.0, lambda u, v, L: shade(m, 0.3 + 0.4 * L))   # the base's rim
+    fill_shape(cv, 20.5, cy, 2.2, 7.2, lambda u, v, L: lt(m[3], 0.1) if u > 0.4 else m[2])   # the mouth's rim
+    fill_shape(cv, 20.6, cy, 1.4, 6.2, lambda u, v, L: hx('#141216'))  # inside
+    rng = random.Random(281)
+    mottle(cv, rng, 8, 4)
+    smudge(cv, rng, 2, (7, 3, 13, 9), (1.8, 2.6), 0.32)               # the dent
+    smudge(cv, rng, 4, (2, 2, 20, 15), (0.4, 0.9), 0.6, hx('#7a3a1c'))   # rust
+    cv.outline()
+
+    def spill(ly):                                                     # what came out of it
+        fill_shape(ly, 23.0, cy + 1.5, 2.6, 2.4, lambda u, v, L: shade(ramp('#26282c', 0.45, 0.25, 0.45), L))   # a split bag
+        frect(ly, 21.5, cy - 4.5, 24.5, cy - 2.0, hx('#d8d2c0'))     # papers
+        frect(ly, 22.0, cy - 4.0, 24.0, cy - 3.5, hx('#9a948a'))
+        fill_shape(ly, 24.6, cy + 4.6, 1.0, 0.8, lambda u, v, L: hx('#b8262c') if L > 0.4 else hx('#7a1420'))   # a can
+    layer(cv, spill, hx('#0c0a0c'))
+    return cv
+
+
 def p_trash_can():
     """Galvanised can lid: pressed concentric ribs, a handle bar on its clips, a dent, rust at the rim and grime."""
     S = 17
@@ -7241,7 +7277,7 @@ def build():
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
                  barrel=p_barrel, bookshelf=p_bookshelf, speaker=p_speaker, dj_booth=p_dj_booth,
-                 bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can,
+                 bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can, trash_can_down=p_trash_can_down,
                  car2=p_car2, van=p_van, car_tire=p_car_tire, car_hood=p_car_hood, car_door=p_car_door,
                  car2_hood=p_car2_hood, car2_door=p_car2_door, van_hood=p_van_hood, van_door=p_van_door,
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
@@ -7286,7 +7322,7 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dop
                   sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
                   toilet=(15, 23), bed=(46, 66), pool_table=(82, 46), arcade=(24, 29), crate=(21, 21),
                   barrel=(20, 20), bookshelf=(42, 13), speaker=(16, 16), dj_booth=(60, 24),
-                  bar_counter=(32, 21), car=(140, 58), dumpster=(60, 36), trash_can=(17, 17),
+                  bar_counter=(32, 21), car=(140, 58), dumpster=(60, 36), trash_can=(17, 17), trash_can_down=(26, 17),
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
                   palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
