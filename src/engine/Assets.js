@@ -14,7 +14,7 @@ export const SPRITE_LIST = [
     'dumpster', 'trash_can'].map((n) => `props/${n}`),
   ...['wood', 'checker', 'tile_blue', 'carpet_red', 'carpet_purple', 'concrete', 'grass', 'asphalt', 'asphalt_line',
     'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
-  ...['door', 'door_locked', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
+  ...['door', 'door_locked', 'stall_door', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
     .map((n) => `structure/${n}`),
 ];
 

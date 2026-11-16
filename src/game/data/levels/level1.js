@@ -151,9 +151,8 @@ export default {
     ['bookshelf', 15.7, 6.2, 0], ['oven', 17.1, 6.38, 0], ['sink', 18.35, 6.3, 0], ['fridge', 18.62, 7.5, 90],
     ['tube_light', 18.93, 8.6, 90], ['dope_table', 17, 9.2, 0], ['crate', 18.55, 10.55, 4], ['crate', 15.4, 6.85, 10],
     // toilets
-    ['toilet', 20.5, 6.4, 0], ['toilet', 22.4, 6.4, 0], ['stall', 21.07, 6.68, 0], ['stall', 21.93, 6.68, 0],
-    ['urinal', 20.19, 7.95, 270], ['urinal', 20.19, 8.85, 270], ['sink', 22.7, 9, 90], ['tube_light', 22.93, 7.7, 90],
-    ['trash_can', 20.4, 10.5, 0],
+    ['toilet', 22.5, 6.4, 0], ['stall', 22.06, 6.78, 0], ['urinal', 20.19, 7.95, 270], ['urinal', 20.19, 8.85, 270],
+    ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0],
     // back room
     ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270], ['sofa', 24.5, 8.6, 270], ['armchair', 28.45, 6.6, 180],
     ['table_round', 26.6, 8.75, 0], ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270],
@@ -206,6 +205,8 @@ export default {
   // the trapdoors of the passage under the street
   sprinklers: {"pull": [20.5, 12.07], "rooms": [[15, 12, 28, 19]]},
   passage: [[35.55, 17.95], [25.75, 10.35]],
+  // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
+  leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)

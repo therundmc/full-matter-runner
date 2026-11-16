@@ -20,7 +20,7 @@ const CAP_HINGE = 8, CAP_LATCH = 12;
 // real holes, damage warps and splits the leaf, and at 0 HP it is ripped off (Destruction.detachDoor).
 // support / strike: the wall tiles [cx, cy] carrying the hinges and receiving the latch.
 export default class Door {
-  constructor(world, hx, hy, angle0, length, { locked = false, cells = [], support = null, strike = null } = {}) {
+  constructor(world, hx, hy, angle0, length, { locked = false, cells = [], support = null, strike = null, image = null } = {}) {
     this.world = world;
     this.hx = hx; this.hy = hy;
     this.a0 = angle0;
@@ -30,7 +30,7 @@ export default class Door {
     this.strike = strike;
     // seen from above the light comes from the top left: leaves hinged the other way round show their other face
     this.flip = Math.abs(angle0) > 3 || angle0 > 1 ? -1 : 1;
-    this.img = sprite(locked ? 'structure/door_locked' : 'structure/door');
+    this.img = sprite(locked ? 'structure/door_locked' : image || 'structure/door'); // image: a stall's, a gate's...
     this.canvas = this.compose(this.img, Math.round(length + this.back));
     const c = (length - this.back) / 2;
     this.body = Bodies.rectangle(hx + Math.cos(angle0) * c, hy + Math.sin(angle0) * c, length + this.back, LEAF.thick, {

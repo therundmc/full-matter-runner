@@ -96,6 +96,12 @@ export function buildLevel(world, level) {
     world.items.push(new WeaponItem(world, type, mag ?? undefined, col * TILE, row * TILE, (deg * Math.PI) / 180));
   }
 
+  // ---- free door leaves (level `leaves`: [[col, row, deg, length px, sprite], ...]): hinged at (col, row), closed
+  // along deg, in no wall (a toilet stall's door): they swing like any door
+  for (const [col, row, deg, len, img] of level.leaves || []) {
+    world.doors.push(new Door(world, col * TILE, row * TILE, (deg * Math.PI) / 180, len, { image: img }));
+  }
+
   // ---- the barred windows (level `bars`: [[col, row], ...]): no way through them
   for (const [col, row] of level.bars || []) {
     const w = world.windows.find((o) => o.cx === col && o.cy === row);

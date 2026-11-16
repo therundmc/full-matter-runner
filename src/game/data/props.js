@@ -34,7 +34,7 @@ export const PROPS = {
   jerrycan: { material: 'metal', w: 9, h: 11, hp: 8, kg: 9, mu: 0.8, chips: '#c8281e', sound: 'metal' },
   // a wall urinal (the wall behind it) and the partition between two toilets (its bracket end on the wall)
   urinal: { material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
-  stall: { material: 'wood', w: 4, h: 40, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },
+  stall: { material: 'wood', w: 4, h: 48, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },
   toilet: { material: 'ceramic', w: 13, h: 21, hp: 6, static: true, chips: '#eee', sound: 'glass', water: true, blocksPath: true },
   bed: { static: true, vault: true, material: 'fabric', w: 44, h: 64, hp: 18, chips: '#7a3aa0', sound: 'wood', blocksPath: true },
   pool_table: { static: true, vault: true, material: 'wood', w: 80, h: 44, hp: 28, chips: '#1e7a3a', sound: 'wood', blocksPath: true },

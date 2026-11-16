@@ -355,14 +355,15 @@ lv.prop('crate', 18.55, 10.55, 4)                       # the stock, in corners 
 lv.prop('crate', 15.4, 6.85, 10)                        # it they made a pocket where two men jammed)
 
 lv.area('toilets')
-lv.prop('toilet', 21.5, 6.4)
-lv.prop('toilet', 23.4, 6.4)
-for x in (22.07, 22.93):                                # a partition each side of the window bay: one lands between
-    lv.prop('stall', x, 6.68)                           # them diving through it
+# an American restroom (the user): one stall in the north-east corner, its partition on chrome feet and a swinging
+# door, clear of the window's foot (one dives in from the back lot); the urinals on the west wall, the sink on the east
+lv.prop('toilet', 23.5, 6.4)
+lv.prop('stall', 23.06, 6.78)                           # the stall's side, from the wall to its front
+lv.leaf(23.1, 7.57, 0, 24)                              # its door, hinged on the partition, shut across the front
 for y in (7.95, 8.85):
     lv.prop('urinal', 21.19, y, 270)                    # on the west wall
 lv.prop('sink', 23.7, 9.0, 90)
-lv.prop('tube_light', 23.93, 7.7, 90)
+lv.prop('tube_light', 23.93, 8.15, 90)                  # between the stall and the sink
 lv.prop('trash_can', 21.4, 10.5)
 
 lv.area('back room')

@@ -5895,23 +5895,25 @@ def p_urinal():
 
 
 def p_stall():
-    """The partition between two toilets, from above: a thin laminate panel, its bracket on the wall (-y), a steel foot
-    in the middle and the post at its free end, graffiti scratched into its edge."""
-    cv = Cv(6, 42)
+    """A restroom stall's partition, from above (its length along y, the wall at -y): a laminate panel in the bar's
+    sea-green, its top edge lit, the chrome bracket on the wall, a chrome foot under it in the middle and the pilaster
+    shoe at its free end, a strip of floor showing under it (it stops short of the floor), names scratched in."""
+    cv = Cv(6, 50)
+    lam = ramp('#6f8f86', 0.45, 0.24, 0.32)
 
     def panel(x, y, c):
-        if x < 1.5:
-            return hx('#b0bec8')
-        if x >= 4.5:
-            return hx('#62727e')
-        return shift(hx('#8a9aa6'), int(math.sin(y * 1.7) * 2))
-    px_paint(cv, 1, 1, 5, 41, panel)
-    for y in (1, 20, 39.5):
-        frect(cv, 1, y, 5, y + 1.5, hx('#c8ccd4'))
-        frect(cv, 1, y + 1.0, 5, y + 1.5, hx('#8a8e9a'))
-        stud(cv, 2.5, y + 0.5, hx('#8a8e9a'))
-    for (y, ln) in ((7.0, 2.5), (11.5, 1.5), (28.0, 3.0)):
-        line(cv, 2.5, y, 2.8, y + ln, hx('#5a6874'))
+        if x < 1.6:
+            return lt(lam[3], 0.1)                                      # the lit top edge
+        if x >= 4.4:
+            return lam[0]
+        return shade(lam, 0.6 + (math.sin(y * 0.9) * 0.04))
+    px_paint(cv, 1, 1, 5, 49, panel)
+    for y in (1.0, 24.0, 47.0):                                         # bracket, foot, shoe
+        frect(cv, 0.5, y, 5.5, y + 2.0, CHROME[2])
+        frect(cv, 0.5, y + 1.5, 5.5, y + 2.0, CHROME[1])
+        cv.dot(1.0, y + 0.5, CHROME[3])
+    for (y, ln) in ((8.0, 3.0), (15.5, 2.0), (33.0, 3.5), (40.0, 1.5)):  # scratched names
+        line(cv, 2.8, y, 3.1, y + ln, dk(lam[1], 0.2))
     cv.outline()
     return cv
 
@@ -6516,7 +6518,7 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     vending=(28, 22), phone_booth=(26, 26), parking_meter=(7, 8), news_box=(16, 13),
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
-                    urinal=(14, 12), stall=(6, 42), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
+                    urinal=(14, 12), stall=(6, 50), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
                     floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
                     keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28), beer_tap=(22, 10), curtain=(8, 34))
@@ -7080,6 +7082,19 @@ def s_door():
     return cv
 
 
+def s_stall_door():
+    """A restroom stall's door from above, hinge at x = 0: a thinner laminate leaf in the partitions' sea-green, the
+    chrome slide latch and its red / green tell-tale at the free end, a coat hook on the inside face."""
+    cv = _leaf(ramp('#6f8f86', 0.45, 0.24, 0.32))
+    for x in (26, 27, 28):                                              # the slide latch, both faces
+        cv.set(x, 1, CHROME[3] if x == 27 else CHROME[2])
+        cv.set(x, 7, CHROME[2] if x == 27 else CHROME[1])
+    cv.set(29, 1, hx('#3aa05a'))                                        # vacant
+    cv.set(14, 7, CHROME[3])                                            # the coat hook
+    cv.set(14, 8, CHROME[1])
+    return cv
+
+
 def s_door_locked():
     """Reinforced door: the same leaf under steel straps, a lock case through it and a dead bolt in the edge."""
     cv = _leaf(ramp('#8a5a36', 0.5, 0.24, 0.3))
@@ -7305,6 +7320,7 @@ def build():
         out[('tiles', name)] = cv
     out[('structure', 'door')] = s_door()
     out[('structure', 'door_locked')] = s_door_locked()
+    out[('structure', 'stall_door')] = s_stall_door()
     out[('structure', 'door_jamb')] = s_jamb(ramp('#6e4a32', 0.5, 0.26, 0.34))
     out[('structure', 'door_jamb_steel')] = s_jamb(STEEL_L)
     out[('structure', 'threshold')] = s_threshold()
@@ -7394,7 +7410,7 @@ EXPECTED = {
     'roof': dict([(n, (w * FINE, h * FINE) if n in ROOF_FINE else (w, h)) for n, (w, h) in ROOF_SIZES.items()]
                  + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
     'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5)),
-    'structure': dict(door=(32, 9), door_locked=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
+    'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
 }
 

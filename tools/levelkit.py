@@ -40,7 +40,7 @@ SIZES = dict(
     neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
-    fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 40),
+    fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 48),
     apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     velvet_rope=(30, 6),
@@ -106,6 +106,7 @@ class Level:
         self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
         self.wet = None       # how wet the open ground is from an earlier rain, 0..1 (seen: systems/Weather.js)
         self.bars = []        # barred windows [col, row] (entities/Window.js `barred`)
+        self.leaves = []      # free door leaves [col, row, deg, length, sprite] (a stall's door)
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -216,6 +217,10 @@ class Level:
         self.drops.append([kind, *self.at(col, row), deg, rounds])
 
     # ---- a weapon stood against a wall at (col, row), its tip pointing deg (toward the wall)
+    # a door leaf hinged at (col, row) in no wall, closed along deg, `length` px long (a toilet stall's door)
+    def leaf(self, col, row, deg, length, sprite='structure/stall_door'):
+        self.leaves.append([*self.at(col, row), deg, length, sprite])
+
     # iron bars on the windows at (col, row) (tiles 'G')
     def bar(self, *cells):
         for (c, r) in cells:
@@ -475,6 +480,9 @@ class Level:
             L.append('  // the trapdoors of the passage under the street')
             for k, v in self.devices.items():
                 L.append(f'  {k}: {json.dumps(v)},')
+        if self.leaves:
+            L.append('  // door leaves in no wall (a toilet stall\'s): [col, row (the hinge), deg, length px, sprite]')
+            L.append(f'  leaves: {json.dumps(self.leaves)},')
         if self.bars:
             L.append('  // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)')
             L.append(f'  bars: {json.dumps(self.bars)},')
