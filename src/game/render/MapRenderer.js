@@ -28,11 +28,12 @@ function cellHash(x, y) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-// texture variants: _v1 (subtle wear) on ~1 cell in 7, _v2 (a landmark: manhole, drain...) on ~1 in 40
+// texture variants: _v1 (subtle wear) on ~1 cell in 7, _v2 (a landmark: manhole, drain...) on ~1 in 40, _v3.._v5 (a
+// light detail: a crack, a chip, a stain, a burn...) on ~1 in 14 each
+const VARIANTS = [[0.025, 2], [0.17, 1], [0.24, 3], [0.31, 4], [0.38, 5]];
 function floorTile(name, x, y) {
   const r = cellHash(x, y);
-  if (r < 0.025) return spriteOpt(`tiles/${name}_v2`) || sprite('tiles/' + name);
-  if (r < 0.17) return spriteOpt(`tiles/${name}_v1`) || sprite('tiles/' + name);
+  for (const [p, k] of VARIANTS) if (r < p) return spriteOpt(`tiles/${name}_v${k}`) || sprite('tiles/' + name);
   return sprite('tiles/' + name);
 }
 

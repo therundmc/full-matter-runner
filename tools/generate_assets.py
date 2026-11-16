@@ -3922,6 +3922,120 @@ def t_roof(cv, rng):
     surface(cv, hx('#7e808e'), rng, 3.0, 1.6, 1, (0.03, 8), (0.035, 11))
 
 
+# ---- light details for variety (variants 3 to 5 of every floor): cracks, chips, stains, burns. All kept inside the
+# variant margin and faint: the map's own grime and the lighting do the rest.
+
+def d_crack(cv, rng, d=-10, branches=2, n=(9, 15)):
+    """A hairline crack with a branch or two off it."""
+    x, y, a = rng.uniform(9, 15), rng.uniform(9, 23), rng.uniform(-0.6, 0.6) + rng.choice([0, 3.1416])
+    ln = rng.randint(*n)
+    scratch(cv, rng, int(x), int(y), a, ln, d, 0.5)
+    for _ in range(branches):
+        k = rng.uniform(0.3, 0.7)
+        bx, by = x + math.cos(a) * ln * k, y + math.sin(a) * ln * k
+        scratch(cv, rng, int(bx), int(by), a + rng.choice([-1, 1]) * rng.uniform(0.6, 1.1), rng.randint(3, 6), d * 0.7, 0.5)
+
+
+def d_chip(cv, rng, d=-10, rim=5, r=(1.4, 2.4)):
+    """A small piece broken out of the surface: its hollow in shade, its lower-right rim catching the light."""
+    cx, cy, rr = rng.uniform(10, 22), rng.uniform(10, 22), rng.uniform(*r)
+    m = patch(rng, cx, cy, rr, rr * rng.uniform(0.7, 1.0), 0.45)
+
+    def fn(x, y, c, w):
+        if w > 0.45:
+            return tint(c, d)
+        dx, dy = x / U - cx, y / U - cy
+        return tint(c, rim if dx + dy > 0 else d * 0.4)
+    apply_patch(cv, m, fn)
+
+
+def d_stain(cv, rng, col, k=0.22, r=(3.0, 5.5), d=-3):
+    """An old spill or grime: a soft patch pulled toward col."""
+    rr = rng.uniform(*r)
+    m = patch(rng, rng.uniform(11, 21), rng.uniform(11, 21), rr, rr * rng.uniform(0.6, 0.9), 0.12)
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, d * w, col, k * w))
+
+
+def d_burn(cv, rng, n=(1, 2)):
+    """Cigarettes put out on it: a black pit and a brown ring."""
+    for _ in range(rng.randint(*n)):
+        cx, cy = rng.uniform(9, 23), rng.uniform(9, 23)
+        m = patch(rng, cx, cy, 1.1, 0.9, 0.2)
+        apply_patch(cv, m, lambda x, y, c, w: tint(c, -26, hx('#140c08'), 0.6) if w > 0.6 else tint(c, -8, hx('#5a3a20'), 0.3 * w))
+
+
+def d_dots(cv, rng, col, n=(3, 6), d=-4):
+    """Small dots trodden in: chewing gum, drops of something."""
+    for _ in range(rng.randint(*n)):
+        cx, cy = rng.uniform(8, 24), rng.uniform(8, 24)
+        m = patch(rng, cx, cy, 0.7, 0.6, 0.2)
+        apply_patch(cv, m, lambda x, y, c, w: tint(c, d, col, 0.45 * w))
+
+
+def d_knot(cv, rng):
+    """A knot in a board: a dark eye in rings of grain."""
+    cx, cy = rng.uniform(10, 22), rng.uniform(10, 22)
+    m = patch(rng, cx, cy, 1.8, 1.0, 0.15)
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, -16 if w > 0.7 else -6 if w > 0.35 else -2))
+
+
+def d_wear(cv, rng, d=4, r=(4.0, 6.5)):
+    """A patch worn pale by feet."""
+    rr = rng.uniform(*r)
+    m = patch(rng, rng.uniform(12, 20), rng.uniform(12, 20), rr, rr * 0.7, 0.35)
+    apply_patch(cv, m, lambda x, y, c, w: tint(c, d * w))
+
+
+def d_stones(cv, rng, n=(3, 6)):
+    """Grit and small stones."""
+    for _ in range(rng.randint(*n)):
+        cx, cy = rng.uniform(8, 24), rng.uniform(8, 24)
+        m = patch(rng, cx, cy, rng.uniform(0.5, 0.9), 0.5, 0.3)
+        apply_patch(cv, m, lambda x, y, c, w: tint(c, 9 if w > 0.5 else -5))
+
+
+OIL = hx('#16141c')
+GRIME = hx('#2a2420')
+DETAIL_VARIANTS = {
+    'wood': (lambda cv, r: (d_crack(cv, r, -9, 0, (8, 13)), d_knot(cv, r)),
+             lambda cv, r: d_burn(cv, r),
+             lambda cv, r: d_stain(cv, r, hx('#3a2418'), 0.25)),
+    'checker': (lambda cv, r: d_crack(cv, r, -8, 1),
+                lambda cv, r: d_chip(cv, r, -9, 4),
+                lambda cv, r: (d_stain(cv, r, GRIME, 0.18), d_burn(cv, r, (1, 1)))),
+    'tile_blue': (lambda cv, r: d_crack(cv, r, -10, 1, (6, 10)),
+                  lambda cv, r: d_chip(cv, r, -11, 5, (1.2, 1.8)),
+                  lambda cv, r: d_stain(cv, r, hx('#3a3a2a'), 0.2)),
+    'carpet_red': (lambda cv, r: d_burn(cv, r),
+                   lambda cv, r: d_stain(cv, r, hx('#2a0c10'), 0.3),
+                   lambda cv, r: d_wear(cv, r, 5)),
+    'carpet_purple': (lambda cv, r: d_burn(cv, r),
+                      lambda cv, r: d_stain(cv, r, hx('#1a0c20'), 0.3),
+                      lambda cv, r: d_wear(cv, r, 5)),
+    'concrete': (lambda cv, r: d_crack(cv, r, -11, 2, (11, 17)),
+                 lambda cv, r: d_stain(cv, r, OIL, 0.3, (3.5, 6.0), -4),
+                 lambda cv, r: d_chip(cv, r, -10, 5)),
+    'grass': (lambda cv, r: d_stones(cv, r),
+              lambda cv, r: d_stain(cv, r, hx('#2a3a1a'), 0.25),
+              lambda cv, r: d_stain(cv, r, hx('#5a4a30'), 0.2, (2.5, 4.0))),
+    'asphalt': (lambda cv, r: d_crack(cv, r, -9, 3, (10, 16)),
+                lambda cv, r: d_stain(cv, r, OIL, 0.35, (4.0, 6.5), -5),
+                lambda cv, r: d_chip(cv, r, -12, 3, (1.8, 2.8))),
+    'asphalt_line': (lambda cv, r: d_crack(cv, r, -9, 2, (8, 13)),
+                     lambda cv, r: d_stain(cv, r, OIL, 0.3, (3.0, 5.0), -4),
+                     lambda cv, r: d_stones(cv, r, (2, 4))),
+    'dirt': (lambda cv, r: d_stones(cv, r, (4, 8)),
+             lambda cv, r: d_stain(cv, r, hx('#2a2018'), 0.25),
+             lambda cv, r: d_crack(cv, r, -7, 1, (6, 10))),
+    'sidewalk': (lambda cv, r: d_crack(cv, r, -12, 1, (10, 16)),
+                 lambda cv, r: d_dots(cv, r, hx('#3a3438')),
+                 lambda cv, r: d_chip(cv, r, -11, 6)),
+    'neon_floor': (lambda cv, r: d_crack(cv, r, -7, 0, (6, 9)),
+                   lambda cv, r: d_dots(cv, r, hx('#1a1018'), (2, 4)),
+                   lambda cv, r: d_wear(cv, r, 3)),
+}
+
+
 FLOOR_TILES = [
     ('wood', t_wood, v_wood1, v_wood2),
     ('checker', t_checker, v_checker1, v_checker2),
@@ -3952,7 +4066,8 @@ def tiles():
         base = Cv(T, T)
         base_fn(base, random.Random(500 + i))
         out[name] = base
-        for k, fn in ((1, v1), (2, v2)):
+        d3, d4, d5 = DETAIL_VARIANTS[name]
+        for k, fn in ((1, v1), (2, v2), (3, d3), (4, d4), (5, d5)):
             cv = Cv(T, T)
             cv.img = base.img.copy()
             cv.p = cv.img.load()
@@ -7405,7 +7520,7 @@ EXPECTED = {
                     ammo_rocket=(12, 6)),
     'props': dict((n + g, (w * FINE, h * FINE) if n in FINE_PROPS else (w, h))
                   for n, (w, h) in PROP_SIZES.items() for g in ([''] + (['_glow'] if n in GLOWING else []))),
-    'tiles': dict([(n + s, (32 * FINE, 32 * FINE)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2')]
+    'tiles': dict([(n + s, (32 * FINE, 32 * FINE)) for n in FLOOR_NAMES for s in ('', '_v1', '_v2', '_v3', '_v4', '_v5')]
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof')] + [('neon_floor_glow', (32 * FINE, 32 * FINE))]),
     'roof': dict([(n, (w * FINE, h * FINE) if n in ROOF_FINE else (w, h)) for n, (w, h) in ROOF_SIZES.items()]
                  + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),

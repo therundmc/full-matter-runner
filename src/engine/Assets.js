@@ -28,7 +28,7 @@ const FIXTURES = ['floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'neon_t
   'string_lights', 'emergency_light'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
-  ...FLOOR_TILES.flatMap((t) => [`tiles/${t}_v1`, `tiles/${t}_v2`]),
+  ...FLOOR_TILES.flatMap((t) => [1, 2, 3, 4, 5].map((k) => `tiles/${t}_v${k}`)),
   'tiles/neon_floor_glow',
   ...['palm_tree', 'streetlight', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'jukebox', 'car2', 'van',
     'car_tire', 'car_hood', 'car_door', 'car2_hood', 'car2_door', 'van_hood', 'van_door', 'hydrant', 'bench'].map((n) => `props/${n}`),
@@ -82,7 +82,7 @@ const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank'
 // the floor tiles too (64 x 64 pixels a tile); the wall tops stay at the world's
 const fine = (name) => FINE.test(name) || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
   || (name.startsWith('roof/') && ROOF_FINE.has(name.slice(5)))
-  || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v1|v2|glow)$/, '')));
+  || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v[1-5]|glow)$/, '')));
 const density = (name) => (fine(name) ? 0.5 : 1);
 
 // size of a sprite in world px (a finer sprite is smaller than its pixels)
