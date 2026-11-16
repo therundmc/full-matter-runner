@@ -3283,6 +3283,27 @@ def p_dumpster():
     return cv
 
 
+def p_bin_lid():
+    """A trash can's lid fallen off, lying upside down and tipped on its handle, from above: the dished underside in
+    shade with its pressed rings, the rolled rim lit along its top edge, oval because it lies askew, grime inside."""
+    W, H = 16, 12
+    cv = Cv(W, H)
+    m = ramp('#7a808c', 0.5, 0.25, 0.35)
+    cx, cy = W / 2, H / 2
+    fill_shape(cv, cx, cy, 7.2, 5.2, lambda u, v, L: shade(m, 0.25 + 0.35 * L))              # the dish, in shade
+    fill_shape(cv, cx, cy, 5.4, 3.8, lambda u, v, L: shade(m, 0.12 + 0.3 * (1 - L)))         # deeper in the middle
+    fill_shape(cv, cx, cy, 3.0, 2.0, lambda u, v, L: shade(m, 0.3 + 0.2 * L))                # a pressed ring
+    fill_shape(cv, cx, cy, 2.2, 1.4, lambda u, v, L: shade(m, 0.15))
+    for x in range(2, W - 2):                                                                  # the rim lit on top
+        y = cy - 5.2 * math.sqrt(max(0.0, 1 - ((x + 0.5 - cx) / 7.2) ** 2))
+        cv.dot(x + 0.5, y + 0.4, lt(m[3], 0.12))
+    rng = random.Random(291)
+    smudge(cv, rng, 3, (3, 3, 13, 9), (0.8, 1.6), 0.35, hx('#3a3228'))                         # grime
+    smudge(cv, rng, 3, (2, 2, 14, 10), (0.4, 0.8), 0.5, hx('#7a3a1c'))                         # rust
+    cv.outline()
+    return cv
+
+
 def p_trash_can_down():
     """The galvanised can knocked over, from above, its lid gone (the lid is the standing can's sprite, rolled off):
     the corrugated body lying along x with its pressed bands, the base at -x, the open mouth at +x black inside with
@@ -7414,7 +7435,7 @@ def build():
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
                  barrel=p_barrel, bookshelf=p_bookshelf, speaker=p_speaker, dj_booth=p_dj_booth,
-                 bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can, trash_can_down=p_trash_can_down,
+                 bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can, trash_can_down=p_trash_can_down, bin_lid=p_bin_lid,
                  car2=p_car2, van=p_van, car_tire=p_car_tire, car_hood=p_car_hood, car_door=p_car_door,
                  car2_hood=p_car2_hood, car2_door=p_car2_door, van_hood=p_van_hood, van_door=p_van_door,
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
@@ -7460,7 +7481,7 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dop
                   sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
                   toilet=(15, 23), bed=(46, 66), pool_table=(82, 46), arcade=(24, 29), crate=(21, 21),
                   barrel=(20, 20), bookshelf=(42, 13), speaker=(16, 16), dj_booth=(60, 24),
-                  bar_counter=(32, 21), car=(140, 58), dumpster=(60, 36), trash_can=(17, 17), trash_can_down=(26, 17),
+                  bar_counter=(32, 21), car=(140, 58), dumpster=(60, 36), trash_can=(17, 17), trash_can_down=(26, 17), bin_lid=(16, 12),
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
                   palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),

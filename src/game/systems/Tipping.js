@@ -50,7 +50,7 @@ export function tipOver(p, dirA, power = 1, by = null) {
   const t = p.def.tips, w = p.world;
   if (!t || p.noTip || p.tipped || p.dead || p.dying) return false;
   const blocked = blocker(w);
-  const lid = p.look;
+  const lid = t.lid && sprite(t.lid); // the lid off it, lying upside down
   const at = lieAt(p.x, p.y, dirA, t.body, blocked);
   w.removeBody(p.body);
   p.tipped = true;
