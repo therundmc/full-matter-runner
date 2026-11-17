@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds src/game/data/levels/level1.js ("NEON NIGHTS": the MIRAGE bar) with tools/levelkit.py.
+"""Builds src/game/data/levels/level1.js ("NO LOOSE ENDS": the MIRAGE bar) with tools/levelkit.py.
 
     python tools/build_level1.py
 
@@ -659,10 +659,10 @@ exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9
 
 if __name__ == '__main__':
     lv.check(guards=12)
-    lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
+    lv.write('level1', name='NO LOOSE ENDS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[
-                 'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
+                 'Level 1 - "NO LOOSE ENDS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
                  'Ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
                  'anonymous door right of the bar (east), the liquor store and its roof (far west), three windows.',
                  'Lit shop fronts on the street: liquor, TV, laundromat.',
