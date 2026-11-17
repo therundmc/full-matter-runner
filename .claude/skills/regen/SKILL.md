@@ -17,7 +17,7 @@ Run everything from the repo root.
 | changed | run | output |
 |---|---|---|
 | tools/generate_assets.py | `python tools/generate_assets.py` | assets/sprites/<group>/<name>.png |
-| tools/generate_comic.py | `python tools/generate_comic.py` | assets/sprites/comic/*.png |
+| tools/generate_comic.py, tools/comic/** | `python tools/generate_comic.py` | assets/sprites/comic/*.png |
 | tools/build_level1.py | `python tools/build_level1.py` | src/game/data/levels/level1.js |
 | tools/build_tutorial.py | `python tools/build_tutorial.py` | src/game/data/levels/tutorial.js |
 | tools/build_lab.py | `python tools/build_lab.py` | src/game/data/levels/lab.js |
