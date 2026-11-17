@@ -1,8 +1,8 @@
 // A level's closing page, played once the getaway is over and before the results (Game state 'ending'): a comic page
 // in the opening's manner (ui/cine/Page.js lays it out, tools/generate_comic.py paints its stills). Level 1's: he
-// drives the boss's van away in the rain, the bar's neon getting smaller in the mirror; back in the bar the boss lies
-// over his desk and his phone will not stop ringing; in his hand a matchbook off that desk, a motel's, and the man who
-// struck the match on his flat is still out there. ENDINGS maps a level to its page; endingView() is the timeline as
+// drives the boss's van away in the rain, the bar's neon getting smaller in the mirror; back in the bar CUEBALL lies
+// over the back room's desk and the phone will not stop ringing: the boss, wanting news; a matchbook off that desk, a
+// motel's, a cigar in its flamingo's bill: one down, the boss still out there. ENDINGS maps a level to its page; endingView() is the timeline as
 // plain numbers (unit-tested), endingBeats() what is heard, drawEnding() the picture. t: s since the page began.
 import { spriteOpt } from '../../../engine/Assets.js';
 import { text } from '../Text.js';
@@ -18,7 +18,7 @@ const GLASS = [[0, 24], [636, 30], [606, 228], [0, 222]];
 const WIPER = { x: 330, y: 240, len: 160 };
 // the road in comic/drive: its vanishing point, where its line and its lamps run to, how low a lamp's foot goes
 const ROAD = { vp: [236, 150], line: [150, 236], lamps: [590, 56], foot: 228 };
-const CIGAR = [214, 177];
+const MUZZLE = [204, 242];   // the dropped shotgun's muzzle in comic/office (ending.py OFFICE_SMOKE)
 const DRIP = [446, 203];
 const COVER = [[96, 82], [360, 64], [366, 150], [102, 168]];   // the matchbook's printed face (ending.py MATCH_COVER)
 // the phone rings in bursts: the first at `first` s into its panel, one every `every` s, each `dur` s long
@@ -88,7 +88,8 @@ export function paintDrive(g, w, h, t, behind) {
   });
 }
 
-// 2. The boss's back room: the phone rattling on its cradle while it rings, the cigar's smoke, a drop off the desk.
+// 2. The bar's back room, CUEBALL dead over the desk: the phone rattling on its cradle while it rings (the boss), the
+// smoke off his dropped shotgun, a drop of blood off the desk.
 export function paintOffice(g, w, h, t) {
   still(g, 'office', w, h);
   const rec = spriteOpt('comic/office_phone');
@@ -97,8 +98,7 @@ export function paintOffice(g, w, h, t) {
       const f = Math.floor(t * 28), on = ringing(t);
       g.drawImage(rec, on ? Math.round((hash(f) - 0.5) * 4) : 0, on ? -Math.round(hash(f + 5) * 4) : 0);
     }
-    smoke(g, CIGAR[0], CIGAR[1] - 4, t, '#5a5462');
-    disc(g, (t * 1.3) % 1 < 0.35 ? '#fff0a0' : '#ff8a20', CIGAR[0], CIGAR[1], 3);            // its ember, drawing
+    smoke(g, MUZZLE[0] - 4, MUZZLE[1] - 4, t, '#5a5462', 60);
     const u = (t * 0.7) % 1, [dx, dy] = DRIP;
     if (u < 0.4) px(g, '#7a0e16', dx - 1, dy, 3, 2 + u * 8);
     else px(g, '#7a0e16', dx - 1, dy + ((u - 0.4) / 0.6) ** 2 * 80, 3, 5);
@@ -128,10 +128,10 @@ const LEVEL1 = {
   page: { end: 14.6, panels: [
     { r: { x: 12, y: 10, w: 360, h: 96 }, at: 0.5, paint: (g, w, h, t) => paintDrive(g, w, h, t, clamp(t / 11, 0, 1)),
       caption: ['THE BAR GOT SMALLER', 'IN THE MIRROR.'] },
-    { r: { x: 12, y: 112, w: 176, h: 94 }, at: 4.2, paint: paintOffice, caption: ["THE BOSS'S PHONE RANG.", 'SOMEBODY WANTED NEWS.'],
+    { r: { x: 12, y: 112, w: 176, h: 94 }, at: 4.2, paint: paintOffice, caption: ['THE PHONE RANG.', 'THE BOSS WANTED NEWS.'],
       sfx: rings(70, 34, 8, 0.12) },
-    { r: { x: 196, y: 112, w: 176, h: 94 }, at: 7.8, paint: paintMatchbook, caption: ["OFF THE BOSS'S DESK."],
-      close: { at: 2.2, text: ['THE MAN WITH THE MATCH', 'WAS STILL OUT THERE.'] } },
+    { r: { x: 196, y: 112, w: 176, h: 94 }, at: 7.8, paint: paintMatchbook, caption: ["OFF CUEBALL'S DESK."],
+      close: { at: 2.2, text: ['ONE DOWN. THE BOSS', 'WAS STILL OUT THERE.'] } },
   ] },
   // what is heard: [at, name, vol, opts] for Audio.play
   cues: [

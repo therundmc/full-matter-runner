@@ -84,10 +84,10 @@ table (top-down, a man is about 26 px across the shoulders; `ABOVE` in poster.py
 
 | name | who | build | signature | ink | from above (26 px) |
 |---|---|---|---|---|---|
-| **CUEBALL** | the heavy: the torch and the crowbar, the one who speaks for the boss | a wall on short legs, twice a man's width, no neck, a bald bone dome | huge wrap-round shades, wider than his head | fluo yellow | the widest shoulders in the game (about 30 px), black; in their middle a bone disc of 12 px; across its front a fluo yellow band 4 px deep and as wide as the disc and more (it shows where he faces) |
+| **CUEBALL** | the heavy: the torch and the crowbar, the one who speaks for the boss; level 1's mini-boss, with a shotgun, dead in its ending (his shades off, cracked, on the floor) | a wall on short legs, twice a man's width, no neck, a bald bone dome | huge wrap-round shades, wider than his head | fluo yellow | the widest shoulders in the game (about 30 px), black; in their middle a bone disc of 12 px; across its front a fluo yellow band 4 px deep and as wide as the disc and more (it shows where he faces) |
 | **LUCKY** | the slick one, the man with the match | a beanpole, a head taller than anyone, in a coat to his ankles; hair slicked flat to a point at the nape; pointed shoes | a backpack, square on his back, a darker flap across it, a strap over his shoulder (the hero's money leaves in it) | pink | narrow black shoulders (about 22 px), a small black head; behind them a pink block as wide as the shoulders and 10 to 11 px deep, a 2 px darker band across it: it shows where he faces by where it is not |
 | **JITTERS** | the young one: the jerrycan | a runt, three quarters of a man, hunched, knees bent | a saw-tooth crest | cyan | small black shoulders (about 20 px); a cyan saw-tooth lozenge from the nape to past the brow, its teeth on both sides |
-| **THE BOSS** | level 1's boss, dead in the ending | wide, soft, double-breasted | he is the one man cut in bone: the suit, with a black tie; a slick of black hair; a cigar, no bigger than a cigar | bone body | bone shoulders (about 27 px), a black head; the cigar 5 px straight ahead, its tip 2 px of fire |
+| **THE BOSS** | he owns the bar; the campaign's last target, never seen in level 1: in its ending he is the telephone ringing (bone, his ink) and the cigar in the matchbook's flamingo's bill | wide, soft, double-breasted | he is the one man cut in bone: the suit, with a black tie; a slick of black hair; a cigar, no bigger than a cigar | bone body | bone shoulders (about 27 px), a black head; the cigar 5 px straight ahead, its tip 2 px of fire |
 | **THE RUNNER** | the player | a long coat, its collar up in two points | the CAP: flat, low, with a strong peak, a petrol button on top and a petrol edge under the peak; under it a fitted gaiter pulled up over his nose (petrol), and between the two a slit of tan that is all his face; brown hair to the collar behind | black, petrol blue (`CYAN_D`) | black shoulders; the cap a dark lozenge (`CAP`, a shade off the coat) with its peak 7 to 8 px ahead of the head, a 2 px petrol button at its middle and a petrol edge on the peak's front; behind, 2 px of brown hair and the gaiter's petrol band at the nape. Never a scarf's tail, never a mask of an animal, never bright turquoise (CLAUDE.md, Art) |
 
 Rules for the three:
@@ -132,7 +132,7 @@ Ending.js): never a blur, never a gradient, nothing that hides a sign or crosses
 | `wake` | the fire alive in his pupil, the light breathing | `PUPIL` |
 | `alley` | rain, rings on the puddles, both signs flickering, a drip off the fire escape | `SIGN`, `PUDDLES` |
 | `drive` | the road's line and the street lamps coming at him (they are not in the still), rain, the wiper, the bar in the mirror | `ROAD`, `GLASS`, `WIPER`, `MIRROR` |
-| `office` | the handset shaken by each ring, the cigar's smoke in puffs, its ember, the blood's drip | `CIGAR`, `DRIP` |
+| `office` | the handset shaken by each ring, the smoke off the dropped shotgun in puffs, the blood's drip | `MUZZLE`, `DRIP` |
 | `matchbook` | a glint sliding across the cover, FLAMINGO MOTEL lettered | `COVER` |
 
 ## 5. Staging a panel

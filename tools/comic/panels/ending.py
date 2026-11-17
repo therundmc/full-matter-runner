@@ -1,10 +1,10 @@
 """Level 1's closing page (drive, office and its phone, matchbook)."""
 from .. import poster
-from ..kit import BLOOD, BONE, BONE_D, BROWN, CYAN_D, FIRE, FIRE_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, TAN, Cv, panel, slab, turned
+from ..kit import BLOOD, BONE, BONE_D, BROWN, CYAN_D, FIRE, FIRE_D, FLUO, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, TAN, Cv, panel, slab, turned
 
 DRIVE_MIRROR = (438, 44, 626, 84)   # the rear-view mirror's glass: the game draws the bar going away in it
 DRIVE_GLASS = [(0, 24), (636, 30), (606, 228), (0, 222)]   # the windscreen: the game runs the rain and the wiper on it
-OFFICE_SMOKE = (214, 177)   # the cigar's lit end in the ashtray: the game draws its smoke
+OFFICE_SMOKE = (204, 242)   # the dropped shotgun's muzzle: the game draws its smoke
 OFFICE_DRIP = (446, 203)    # where his blood runs off the desk's edge: the game lets it drip
 MATCH_COVER = [(96, 82), (360, 64), (366, 150), (102, 168)]   # the matchbook's printed face: the game letters it
 HANDSET = [(84, 150), (188, 146), (190, 160), (86, 164)]     # the phone's handset (office_phone, shaken by the game)
@@ -66,44 +66,47 @@ def office_phone(cv):
 
 @panel('office', (528, 282))
 def panel_office():
-    """"THE BOSS'S PHONE RANG. SOMEBODY WANTED NEWS." His back room: the blind's bars thrown across the wall, the
-    desk a black slab, THE BOSS in bone fallen across it, his blood to its edge; the bone telephone, his cigar still lit
-    in the ashtray."""
+    """"THE PHONE RANG. THE BOSS WANTED NEWS." The bar's back room: the blind's bars thrown across the wall, the desk a
+    black slab, CUEBALL fallen across it, the bald dome down in his blood, which runs to the desk's edge; his yellow
+    shades on the floor, cracked, his shotgun dropped by them, still smoking; and the telephone, bone, the one thing
+    of THE BOSS's in the room."""
     W, H = 528, 282
     cv = Cv(W, H, NIGHT)
     for i in range(7):                                                                      # the blind's bars, on a slant
         y = 20 + i * 30
         cv.poly([(-10, y + 40), (W + 10, y - 44), (W + 10, y - 30), (-10, y + 54)], PINK_D if i % 2 else NIGHT_L)
-    cv.poly([(322, 52), (486, 44), (510, 190), (310, 190)], NIGHT_LL)                         # his chair
+    cv.poly([(322, 52), (486, 44), (510, 190), (310, 190)], NIGHT_LL)                         # the chair
     cv.poly([(336, 66), (474, 60), (490, 180), (326, 180)], NIGHT_L)
     # the desk
     cv.poly([(26, 184), (506, 170), (W + 10, desk_edge(W + 10)), (-10, desk_edge(-10))], NIGHT_L)
     cv.poly([(-10, desk_edge(-10)), (W + 10, desk_edge(W + 10)), (W + 10, H), (-10, H)], INK)
-    # the boss, fallen across it: the suit, an arm thrown out, the head down, the blood
-    cv.poly([(296, 192), (316, 138), (392, 112), (478, 122), (W + 10, 164), (W + 10, 200), (300, 202)], BONE)
-    cv.poly([(392, 112), (478, 122), (W + 10, 164), (W + 10, 178), (470, 140), (400, 128)], BONE_D)
-    cv.poly([(300, 176), (256, 186), (254, 199), (304, 198)], BONE)
-    cv.poly(poster.ngon(250, 193, 10, 8, 6, 0), BONE_D)                                      # his hand, open
+    # CUEBALL, fallen across it: the wall of his back, an arm thrown out, the dome down, the blood
+    cv.poly([(292, 194), (312, 132), (392, 100), (492, 112), (W + 10, 156), (W + 10, 202), (298, 204)], INK)
+    cv.poly([(300, 174), (250, 184), (236, 190), (238, 200), (304, 199)], INK)
     blood = [(318, 188), (400, 186), (444, 196), (452, desk_edge(452) + 1), (438, desk_edge(438) + 1), (350, 204), (306, 200)]
     cv.poly(blood, BLOOD)
-    cv.poly(poster.ngon(338, 172, 30, 24, 7, 8), INK)                                        # his hair
-    # the telephone (its handset is office_phone), the ashtray, the cigar
+    cv.poly(poster.ngon(340, 174, 27, 23, 8, 10), BONE)                                      # his head, bare
+    cv.poly([(322, 184), (360, 190), (352, 198), (324, 194)], BONE_D)
+    # the telephone (its handset is office_phone)
     cv.poly(slab(92, 160, 184, 194, 3, 3), BONE_D)
     cv.disc(138, 178, 15, 11, BONE)
     cv.disc(138, 178, 6, 4, BONE_D)
-    sx, sy = OFFICE_SMOKE
-    cv.poly([(sx - 26, sy + 10), (sx + 24, sy + 8), (sx + 18, sy + 18), (sx - 20, sy + 20)], NIGHT_LL)
-    cv.bar((sx + 30, sy + 8), (sx + 2, sy + 1), 7, BONE_D)                                    # his cigar, still lit
-    cv.disc(sx, sy, 4, col=FIRE)
-    # papers on the floor in front
-    for x, y, d in ((70, 250, -12), (150, 262, 20), (420, 256, 8)):
-        cv.poly(turned([(-22, -8), (22, -8), (22, 8), (-22, 8)], x, y, d), NIGHT_L)
+    # on the floor before the desk: his shades, cracked, a piece off them; his shotgun
+    lens = turned([(-36, -10), (36, -11), (37, 10), (-35, 11)], 96, 248, -11)
+    cv.poly(lens, FLUO)
+    cv.poly(turned([(-4, -12), (2, -12), (-3, -2), (5, 2), (0, 12), (-6, 12), (-1, 3), (-9, -2)], 100, 248, -11), INK)   # the crack
+    cv.poly(turned([(-9, -6), (8, -8), (10, 5), (-6, 7)], 160, 264, 24), FLUO)
+    mx, my = OFFICE_SMOKE
+    cv.bar((mx, my), (332, 256), 10, BONE_D)                                                 # its barrel
+    cv.poly([(256, 254), (312, 260), (311, 271), (255, 264)], NIGHT_LL)                       # its pump
+    cv.poly([(326, 248), (396, 258), (404, 280), (386, 282), (334, 264)], NIGHT_LL)           # its stock
     return cv
 
 
 @panel('office_phone', (528, 282))
 def panel_office_phone():
-    """The handset of the boss's telephone alone, on a clear sheet: the game shakes it on its cradle while it rings."""
+    """The telephone's handset alone, on a clear sheet: the game shakes it on its cradle while it rings (the boss is
+    calling). Bone, his ink: that is all the picture says of him."""
     cv = Cv(528, 282, None)
     office_phone(cv)
     return cv
@@ -111,8 +114,8 @@ def panel_office_phone():
 
 @panel('matchbook', (528, 282))
 def panel_matchbook():
-    """"OFF THE BOSS'S DESK." The matchbook, pink, on the black of the desk (the game letters FLAMINGO MOTEL on it):
-    a bone flamingo, the striker, loose matches beside it; across the desk the shadow of the man who picked it up, his
+    """"OFF CUEBALL'S DESK." The matchbook, pink, on the black of the desk (the game letters FLAMINGO MOTEL on it):
+    a bone flamingo with a cigar in its bill (the boss's sign), the striker, loose matches beside it; across the desk the shadow of the man who picked it up, his
     cap's peak."""
     W, H = 528, 282
     cv = Cv(W, H, NIGHT)
@@ -126,11 +129,13 @@ def panel_matchbook():
     cv.poly(MATCH_COVER, PINK)
     cv.poly([(a[0], a[1]), (b[0], b[1]), (b[0] + 1, b[1] + 8), (a[0] + 1, a[1] + 8)], PINK_D)
     # the flamingo: a body, an S of a neck, a head and its black bill, one leg straight and one folded
-    fx, fy = 146, 128
+    fx, fy = 132, 128
     cv.poly([(fx - 22, fy - 4), (fx - 4, fy - 14), (fx + 16, fy - 8), (fx + 22, fy + 4), (fx + 4, fy + 12), (fx - 14, fy + 8)], BONE)
     cv.path([(fx + 14, fy - 6), (fx + 24, fy - 18), (fx + 16, fy - 28), (fx + 22, fy - 36)], 6, BONE)
     cv.poly([(fx + 17, fy - 41), (fx + 30, fy - 41), (fx + 30, fy - 32), (fx + 19, fy - 32)], BONE)
     cv.poly([(fx + 30, fy - 41), (fx + 39, fy - 35), (fx + 30, fy - 30)], INK)
+    cv.bar((fx + 38, fy - 35), (fx + 54, fy - 38), 5, BONE_D)                                 # the cigar in its bill
+    cv.disc(fx + 56, fy - 38, 3.5, col=FIRE)
     cv.bar((fx + 3, fy + 9), (fx + 5, fy + 34), 4, BONE)
     cv.bar((fx - 6, fy + 7), (fx - 13, fy + 20), 4, BONE)
     cv.bar((fx - 13, fy + 20), (fx - 3, fy + 26), 4, BONE)
