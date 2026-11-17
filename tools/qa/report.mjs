@@ -121,7 +121,7 @@ export function writeReport(dir, rep) {
   L.push('## Statistics');
   L.push('');
   L.push(`- Sessions: ${st.sessions ?? 0}, deaths: ${sum(st.deaths)}, clears (results screen): ${st.clears?.length ?? 0}, give-ups (no kill for long, restarted): ${st.giveUps ?? 0}, forced restarts: ${st.forcedRestarts ?? 0}${st.restartsAfterClear ? `, restarts a minute after clearing a level with no exit: ${st.restartsAfterClear}` : ''}`);
-  L.push(`- Deaths by cause: ${list(st.deaths)}; by killer: ${list(st.deathsBy)}`);
+  L.push(`- Deaths by cause: ${list(st.deaths)}; by killer: ${list(st.deathsBy)}; while: ${list(st.deathsIn)}`);
   L.push(`- Guards killed: ${st.kills ?? 0} (by the player ${st.playerKills ?? 0}); most in one session: ${st.maxKills ?? 0} (session ${st.maxKillsSession ?? '-'}) of ${rep.guards ?? '?'}`);
   L.push(`- Kills by style: ${list(st.styles)}`);
   L.push(`- Kill tags seen: ${list(st.tags)}`);

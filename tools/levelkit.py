@@ -69,7 +69,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug', 'entry_mat')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
-          'trapdoor', 'vehicles')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'trapdoor', 'vehicles', 'takedowns')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -125,6 +125,7 @@ class Level:
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
         self.looks = {}       # 'x,y' -> a kind of his own for the guard there (his sprites: the boss)
         self.awake = []       # 'x,y' of the guards who see and hear in a passive level (the lab's sight tests)
+        self.stand = {}       # 'x,y' -> [col, row]: where in his tile a guard stands, off its centre (actor `at`)
         self.patrons = []     # [sprite, col, row, deg, pastime]: civilians posted indoors
         self.spawns = []      # centre of every character, for the overlap check
         self._area = ''
@@ -176,7 +177,8 @@ class Level:
         self.tiles[y][x] = ch
 
     # ---- actors: player, guards (UPPERCASE = patrols along `route`), weapons, ammo
-    def actor(self, ch, x, y, face=None, route=None, job=None, look=None, awake=False):
+    def actor(self, ch, x, y, face=None, route=None, job=None, look=None, awake=False, at=None):
+        """at: (col, row) where he stands, off his tile's centre (a dummy right at a urinal, a sink, a counter)."""
         x, y = self.tile(x, y, f'actor {ch}')
         route = route and [list(self.at(*q)) for q in route]
         t = self.tiles[y][x]
@@ -193,8 +195,12 @@ class Level:
             self.looks[f'{x},{y}'] = look
         if awake:
             self.awake.append(f'{x},{y}')
+        if at:
+            ax, ay = self.at(*at)
+            assert int(ax) == x and int(ay) == y, f'actor {ch} stands off his tile ({ax},{ay} for {x},{y})'
+            self.stand[f'{x},{y}'] = [ax, ay]
         if ch == '@' or ch.lower() in GUARDS:
-            self.spawns.append((x + 0.5, y + 0.5))
+            self.spawns.append(tuple(self.stand.get(f'{x},{y}', (x + 0.5, y + 0.5))))
 
     def patron(self, kind, x, y, deg, pastime):
         """A civilian posted indoors at (x, y) in tiles, facing deg, busy with `pastime`: he may sit on furniture."""
@@ -490,6 +496,9 @@ class Level:
             L.append('  jobs: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.jobs.items()) + ' },')
         if self.looks:
             L.append('  looks: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.looks.items()) + ' },')
+        if self.stand:
+            L.append("  // where in his tile a guard stands, off its centre ('col,row': [col, row] in tiles)")
+            L.append('  stand: { ' + ', '.join(f"'{k}': {json.dumps(v)}" for k, v in self.stand.items()) + ' },')
         if self.awake:
             L.append("  // in a passive level, the guards who still see and hear (by their tile 'col,row')")
             L.append(f'  awake: {js(self.awake)},')

@@ -48,8 +48,12 @@ src/
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
-      Takedown.js         `behind(player, guard)`: who can be seized from behind; `advance`: the beat clock of a takedown
-                          (rules only, unit-tested); `slamAt`: how far a head driven into something is, off that clock
+      Takedown.js         `within(player, guard)`: who can be seized; `behind`: from behind, else face to face;
+                          `unspotted(guard, phase)`: never once he is after us or the squad has us located;
+                          `advance`: the beat clock of a takedown (rules only, unit-tested); `slamAt`: how far
+                          a head driven into something is, off that clock
+      Danger.js           `threatened(player, guards, ...)`: is somebody on the player (a guard after him in sight, a
+                          round at him a moment ago, the squad on alert with a guard close): quick kill or long execution
       TakedownSpot.js     `spotFor(guard, map, props)`: what stands right in front of a guard seized from behind that his
                           head can be driven into (a toilet, a urinal, a sink, a ledge: data/finishers.js SLAMS; a wall,
                           never one beyond a doorway), the most specific first (DOM-free, unit-tested)
@@ -253,6 +257,7 @@ Rules:
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
 | `blow` | `{ x, y, angle, power 0..1, kind, lethal, byPlayer }` | Character / Projectile (a blow or a round landed on somebody) | Lens (colour fringe, zoom kick, impact frame) |
 | `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats, CombatFx (the player's kill mark) |
+| `finisher` | `{ killer, x, y, label }` | Player.endExecution (a long ground execution watched to its end) | Scoring (`SCORING.watched`: the bonus, the chain's window back) |
 | `scored` | `{ x, y, points, labels, combo, multiplier, streak, kind }` (kind: `kill`, `knock`, `bonus`, `civilian`; labels best first, at most 3) | Scoring (points earned, or a passer-by's penalty) | KillFeed (stamps, feed, chain count, fuse refill) |
 | `multiKill` | `{ n, tag, x, y }` (tag: `double`, `triple`, `massacre`) | Scoring (the streak's tag) | KillFeed (banner), fx/Impact.listenMoments (MOMENTS.multi: slow motion, hit-stop) |
 | `chainEnd` | `{ kills, points }` | Scoring (a chain of 2+ ran out) | KillFeed (the cash-out) |
@@ -483,7 +488,15 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   heldPose (the player: takedownPose); the body then goes down by the sequence's `dying` (data/wounds.js `KNEELS`:
   onto his knees, then onto his face, through Ragdoll's kneeling script; backward when boxed in). The guards hear
   each sequence's `noise` (a cut throat nothing, a blow on the head ~100 px, a round the gun's own noise) and the body
-  let down. Scored as `takedown`, its label and FROM BEHIND (`how.from`), LAST ROUND when it was.
+  let down. Scored as `takedown`, its label and FROM BEHIND (`how.from`), LAST ROUND when it was. Only while nobody has
+  spotted us (`unspotted`: not on a guard who is after us, not while the director is on `alert`; open again in
+  `evasion` / `caution`): spotted, `nearTakedown` stays null, no hint, the click is an ordinary attack. Each weapon has
+  several of them (`TAKEDOWN_VARIANTS`, `takedownChoice`: never the same twice in a row, by the rounds left), picked ahead so the
+  hint names it (`Player.pickTakedown`); the variants' own gestures are CharacterAnim `variantPose`. It does not
+  need his back: any guard within reach who is not aware of us (`within`, `unspotted`) can be taken; not behind
+  him (`behind` false), it is one done face to face (`TAKEDOWN_FRONT`, entries with `front`: we stand before him,
+  he is turned to us and thrown back; a headbutt and the knee, a fist in the throat and a sweep, a blade under
+  the ribs, the muzzle under the chin, a club across the temple), with no FROM BEHIND tag.
   With a hand free (`freeHand`: bare hands, a handgun, a blade, a short club) and something right in front of him
   (systems/TakedownSpot.js), his head is driven into it instead (TAKEDOWNS by `context`, grip 'hair'; the hint names
   it: TOILET, URINAL, SINK, SLAM ON BAR / TABLE / DESK..., WALL SMASH): he is pulled to it and turned square to it
@@ -578,7 +591,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   behind). The player's weapon wears out (`weapon.wear`, kept on the item when dropped): the kill that uses it up
   breaks it over the man (`Character.breakWeapon`: snapped in two, or left planted in him, drawn and baked with the
   Ragdoll as `stuck`). Ground finishers and takedowns go by the weapon in hand (data/finishers.js): a finisher is a
-  sequence of `beats` (blows, a held windup, a stomp, shots) played by `Player.updateExecution`, the last one kills;
+  sequence of `beats` (blows, a held windup, a stomp, shots) played by `Player.updateExecution` / `landBeat`. Which one
+  is `finisherChoice`: with somebody on him (systems/Danger.js) the family's QUICK KILL (one beat, free within 0.35 s),
+  else one of its long executions (`EXECUTIONS`, never the same twice in a row). The man dies on the beat `kill`, within
+  about half a second; the beats after it land on his Ragdoll (`struck`, `loseHead`, `plant`), and from the kill on the
+  player walks out of it with a fresh move, a right click or Space (`leaving`; the pose lets go over `EXEC.blend`). The
+  score: `quickKill` < `execution` (paid at the kill) < the same plus `SCORING.watched` when it is seen to its end
+  (the `finisher` event);
   a cue is driven through the man and snaps, one half left in him, the other a stake in the hand. The circumstances of a kill (`how` of the `kill` event, the killer
   sliding or vaulting, a dodge or a pick-up just before, several in a row) are tags that add points and count as
   ways of killing (`Scoring.killTags`, `SCORING.tags`).

@@ -874,7 +874,7 @@ export default class Character {
     if (this.vaulting) vaultPose(this, P, this.pose2);
     if (this.sit > 0) sitPose(this, P, this.pose2);
     if (this.trunkOpen) trunkPose(this, P, this.pose2);
-    if (this.execution) execPose(this, P, this.pose2);
+    if (this.execution || this.execOut) execPose(this, P, this.pose2);
     if (this.takedown) takedownPose(this, P, this.pose2);
     if (this.held?.takedown?.target === this) heldPose(this, P);
     if (this.doorHand) doorHandPose(this, P);

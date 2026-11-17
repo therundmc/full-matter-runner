@@ -38,6 +38,7 @@ import Power from '../systems/Power.js';
 import Critters from '../systems/Critters.js';
 import Sirens from '../systems/Sirens.js';
 import Flinch from '../systems/Flinch.js';
+import Danger from '../systems/Danger.js';
 import { combatFx } from '../fx/CombatFx.js';
 import { listenMoments } from '../fx/Impact.js';
 import KillFeed from '../ui/KillFeed.js';
@@ -130,6 +131,7 @@ export default class World {
     this.critters = new Critters(this, level.critters); // rats, pigeons, the cat, flies, moths
     this.sirens = new Sirens(this);               // far off, once the shooting drags on
     this.flinch = new Flinch(this);               // guards shot at and missed flinch, rounds striking by the player nudge his view
+    this.danger = new Danger(this);               // is somebody on the player: a quick kill or the long execution
     combatFx(this).listen();                      // a fight's marks over the lighting: the player's kills from now on
     this.ambience = new Ambience(this);           // the night heard, place by place: beds, traffic, one-shots
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll

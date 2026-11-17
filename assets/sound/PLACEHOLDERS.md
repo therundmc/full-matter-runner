@@ -27,6 +27,12 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |
 | curtainRings | the curtain's rings run along the rod as it parts or falls back | brass rings sliding on a brass rod, a light metallic rattle |
 | curtainWhoosh | something fast (a body thrown, a slide) goes through a curtain | a heavy cloth whoosh, the velvet thrown aside |
+| kneeShot | a round into a knee, on a man down or from behind (Player.landBeat, landTakedown) | a bullet through a kneecap: a wet crack of bone under the shot |
+| boneCrack | a club brought down on a knee, or into the back of one (Player.landBeat, landTakedown) | a long bone or a kneecap breaking under a bat, dry and short |
+| stomp | a heel driven down on the head of a man on the floor (finishers `curb`, `heel`) | a boot stamping on a skull against concrete, a crunch under it |
+| skullSlam | a head lifted and beaten on the floor, a weapon's butt driven down on it (finishers `fists`, `slam`, `pile`) | a skull hitting the floor, dull and wet, heavier each time |
+| throatCut | a blade drawn slowly across a throat (finisher `slit`) | a slow wet cut, a gargle |
+| bladeTwist | a blade twisted in a wound, or torn out of it (finisher `gut`, takedown `kidney`) | a knife turned in flesh, then pulled out with a suck |
 | handPlant | the speed vault's hand comes down flat on a table, a counter, a crate (Character.updateVault, TRAVERSE.vault.plant) | a palm slapped on wood / metal / stone (per material if the library has them) |
 | vaultSwish | the coat swung over the obstacle in the same vault (Character.updateVault) | a quick heavy cloth / coat whoosh |
 | landThud | the feet coming down after a vault or a drop (Character.updateVault) | a two-footed landing thud with a shoe scuff, per floor |

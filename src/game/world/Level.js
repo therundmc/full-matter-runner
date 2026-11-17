@@ -132,7 +132,8 @@ export function buildLevel(world, level) {
     for (let x = 0; x < rows[y].length; x++) {
       const ch = rows[y][x];
       if (ch === ' ' || ch === '.') continue;
-      const px = cx(x), py = cx(y);
+      // the middle of his tile, or where the level stands him in it (level.stand['col,row'] = [col, row], tiles)
+      const at = level.stand?.[`${x},${y}`], px = at ? at[0] * TILE : cx(x), py = at ? at[1] * TILE : cx(y);
       const face = facing(level, map, x, y);
       if (ch === '@') {
         world.player = new Player(world, px, py, face);

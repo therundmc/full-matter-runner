@@ -1236,85 +1236,185 @@ export function trunkPose(ch, P, V) {
 }
 
 // ---------------- finishing a man on the floor (Player.execution, data/finishers.js) ----------------
-// The player set on a man who is down, his head ahead of him (x forward in what follows). Every beat is an
+// The player set on a man who is down, what he strikes ahead of him (x forward in what follows). Every beat is an
 // anticipation that ends on its blow: u = 0..1 through the wait, the blow at 1; hit = s since the last one landed.
 //   gouge     kneeling astride him, both hands take his head, the thumbs are driven in (he bears down, shaking), then
 //             the head is lifted and beaten on the floor
-//   frenzy    kneeling astride him, the left hand at his throat, the blade raised by the shoulder and driven into his
-//             chest again and again, the shoulders rocking with it
+//   pound     kneeling astride him, one fist after the other brought down from the ear, the other hand on his chest;
+//             then the right elbow, the whole body dropped behind it
+//   hair      kneeling astride him, the left hand on his chest, the right fist in his hair: the head lifted and beaten
+//             on the floor
+//   stomp     standing over him, the right heel raised (arms out) and driven down on his head
+//   frenzy    kneeling astride him, the left hand at his throat, the blade raised by the shoulder and driven into
+//             him again and again, the shoulders rocking with it; twist: it is turned in the wound; rip: torn out
+//             sideways
+//   slit      kneeling on his chest, the left hand pushing his brow back, the blade set on the far side of his
+//             throat and drawn across; then he holds the head back while it empties
 //   smash     standing over him, a foot on his chest, the weapon raised over the head with both hands (it points
-//             back, up toward the eye) and brought down: on his head, or through him when it stays planted
-//   headshot  standing over him, a foot on his chest, the gun brought down on his head at arm's length, held, fired:
-//             the arm kicks back
-const KNEES = [[-6, -7.5], [-6, 7.5]], STANCE = [[8, -2.5], [-4, 4]]; // where the feet go, kneeling / a foot on him
+//             back, up toward the eye) and brought down: on him, or through him when it stays planted; lean: he bears
+//             down on it
+//   pile      standing over him, the weapon upright in both hands (a gun butt down), lifted and driven straight down
+//   headshot  standing, the gun brought down on him at arm's length (aim: pressed on his brow), held, fired: the arm
+//             kicks back after every round
+// Walked out of (Player.execOut), the pose lets go over EXEC.blend s.
+const KNEES = [[-6, -7.5], [-6, 7.5]], STANCE = [[8, -2.5], [-4, 4]], APART = [[1.5, -4.2], [-1.5, 4.2]]; // the feet: kneeling / a foot on him / stood by him
 const in2 = (k) => { k = clamp(k, 0, 1); return k * k; };
 
 export function execPose(ch, P, V) {
-  const ex = ch.execution, f = ex.f;
-  if (!f.pose || !ex.at) return P; // the standing strikes
+  const out = ch.execution ? null : ch.execOut, ex = out ? out.ex : ch.execution, f = ex.f;
+  if (!f.pose) return P; // the standing strikes
   const a = ex.face, c = Math.cos(a), s = Math.sin(a), d = ch.def;
   const [wait, what] = f.beats[ex.i], u = ex.done ? 1 : clamp(ex.t / wait, 0, 1), first = ex.i === 0;
   const thud = Math.exp(-ex.hit * 14); // the blow that just landed, dying away
-  // into the pose as he sets himself, out of it at the very end
-  const m = smooth(ex.age / EXEC.mount) * (ex.done ? 1 - smooth((ex.t / (f.after || 1) - 0.6) / 0.4) : 1);
+  // into the pose as he sets himself, out of it at the very end (or as he walks out of it)
+  const m = smooth(ex.age / (f.quick ? EXEC.quickMount : EXEC.mount)) * (ex.done ? 1 - smooth((ex.t / (f.after || 1) - 0.6) / 0.4) : 1)
+    * (out ? clamp(out.t / EXEC.blend, 0, 1) : 1);
   copyPose(V, P);
   V.ta = V.ha = a;
   V.top = 0;
   const kneel = f.mount === 'astride';
-  (kneel ? KNEES : STANCE).forEach(([lx, ly], i) => { const ft = V.feet[i]; ft.x = lx * c - ly * s; ft.y = lx * s + ly * c; ft.a = kneel ? a + Math.PI : a; });
-  V.legs = kneel ? 1 : 0.7;
+  (kneel ? KNEES : f.mount === 'over' ? STANCE : APART).forEach(([lx, ly], i) => {
+    const ft = V.feet[i];
+    ft.x = lx * c - ly * s; ft.y = lx * s + ly * c; ft.a = kneel ? a + Math.PI : a; ft.lift = 0;
+  });
+  V.legs = kneel ? 1 : f.mount === 'over' ? 0.7 : 0;
   let lean = 0, size = kneel ? 0.9 : 1, twist = 0;
   const hands = (lx, ly, rx, ry) => { place(V.hl, V, V.ta, lx, ly); place(V.hr, V, V.ta, rx, ry); };
   const torso = () => { V.ta = a + twist; V.tx = c * lean; V.ty = s * lean; V.s = P.s * size * (1 - 0.04 * thud); };
+  // the head lifted (0 .. 0.55 of the beat), then beaten down: [how far the hands reach, the lean, the size]
+  const beat = () => {
+    if (u < 0.55) { const k = smooth(u / 0.55); return [10.5 - 3 * k, 3 - 2 * k, 0.04 * k]; }
+    const k = in2((u - 0.55) / 0.45);
+    return [7.5 + 4.5 * k, 1 + 4 * k, 0.04 - 0.09 * k];
+  };
   if (f.pose === 'gouge') {
     let fwd = 10.5, gap = 2.3, shake = 0;
     lean = 3;
     if (what === 'grab') { const k = smooth(u); fwd = lerp(5, 10.5, k); gap = lerp(5, 2.3, k); lean = 3 * k; }
     else if (what === 'press') { const k = smooth(u); lean = 3 + 1.6 * k; gap = 2.3 - k; shake = Math.sin(ex.age * 70) * 0.4 * k; size -= 0.03 * k; }
-    else if (u < 0.6) { const k = smooth(u / 0.6); fwd = 10.5 - 3 * k; lean = 3 - 2 * k; size += 0.04 * k; } // the head lifted ...
-    else { const k = in2((u - 0.6) / 0.4); fwd = 7.5 + 4.5 * k; lean = 1 + 4 * k; size += 0.04 - 0.09 * k; }   // ... and beaten down
+    else { const [x, l, z] = beat(); fwd = x; lean = l; size += z; }
     torso();
     hands(fwd + shake, -gap, fwd - shake, gap);
+  } else if (f.pose === 'hair') {
+    let fwd = 10.5;
+    lean = 3;
+    if (what === 'grab') { const k = smooth(u); fwd = lerp(5, 10.5, k); lean = 3 * k; }
+    else { const [x, l, z] = beat(); fwd = x; lean = l; size += z; twist = 0.2 * (x < 10.5 ? (10.5 - x) / 3 : -0.6); }
+    torso();
+    hands(lerp(4, 5.5, first ? smooth(u) : 1), -3, fwd, 0.6);
+    V.hand[0] = 'flat'; V.hand[1] = 'fist';
+  } else if (f.pose === 'pound') {
+    // the fist of this beat: up by the ear (0) .. on his face (1); the other hand holds him down
+    const right = ex.i % 2 === 0, elbow = what === 'elbow';
+    let down = u < 0.45 ? 0 : in2((u - 0.45) / 0.55);
+    if (ex.done) down = 1;
+    const side = right ? 1 : -1, k = first ? smooth(u / 0.45) : 1;
+    if (elbow) {
+      // he rears up, the forearm folded across him, and drops everything behind the elbow
+      const up = u < 0.6 ? smooth(u / 0.6) : 1 - in2((u - 0.6) / 0.4), fall = ex.done ? 1 : u < 0.6 ? 0 : in2((u - 0.6) / 0.4);
+      lean = lerp(2, -1.5, up) + 5.5 * fall;
+      size += 0.07 * up - 0.09 * fall;
+      twist = 0.35 * up - 0.75 * fall;
+      torso();
+      hands(5.5, -3.5, lerp(3.5, 5, fall), lerp(4, -0.5, fall));
+      V.elb[1] = 1;
+    } else {
+      lean = (2 + 2.2 * down) * k;
+      twist = side * (0.3 - 0.6 * down) * k;
+      torso();
+      const fx = lerp(1.5, 10.5, down), fy = lerp(6.5, 1, down), rest = [6, 3.2];
+      if (right) hands(rest[0], -rest[1], fx, fy);
+      else hands(fx, -fy, rest[0], rest[1]);
+      V.top = down < 0.5 ? 1 : 0;
+    }
+    V.hand[0] = V.hand[1] = 'fist';
+  } else if (f.pose === 'stomp') {
+    // the right foot: on him (0) .. drawn back and up, the knee high (1) .. driven down on him
+    const up = ex.done ? 0 : u < 0.55 ? smooth(u / 0.55) : 1 - in2((u - 0.55) / 0.45), from = first ? smooth(u / 0.3) : 1;
+    const put = (ft, lx, ly) => { ft.x = lx * c - ly * s; ft.y = lx * s + ly * c; ft.a = a; };
+    put(V.feet[0], -1.5, -4);
+    put(V.feet[1], lerp(11, -5.5, up), lerp(1, 5, up));
+    V.feet[1].lift = 0.9 * up;
+    V.legs = 0;
+    lean = lerp(3, -2, up) * from;
+    size += 0.06 * up - 0.04 * (1 - up) * from;
+    twist = 0.3 * up;
+    torso();
+    hands(lerp(3, 0.5, up), lerp(-7, -9.5, up), lerp(2, -1, up), lerp(7, 9.5, up));
   } else if (f.pose === 'frenzy') {
-    // the knife hand: up by the shoulder (0) .. buried in him (1)
+    // the knife hand: up by the shoulder (0) .. buried in him (1); its mark: his chest, or under his ribs
+    const tx = f.at === 'belly' ? 5 : 7, turn = what === 'twist', rip = what === 'rip';
     let down = 0;
     if (what === 'pin') down = 0;
+    else if (turn || rip) down = 1;
     else if (ex.i === 1) down = in2((u - 0.5) / 0.5);                     // the first one comes from the raised hand
     else down = u < 0.5 ? 1 - smooth(u / 0.5) : in2((u - 0.5) / 0.5);
-    if (ex.done) down = 1;
-    const k = first ? smooth(u) : 1;
-    lean = (2.5 + 2 * down) * k;
-    twist = (0.2 - 0.42 * down) * k;
+    if (ex.done && !rip) down = 1;
+    const k = first ? smooth(u) : 1, out2 = rip ? (ex.done ? 1 : in2(u)) : 0, wr = turn ? smooth(u) : rip ? 1 : 0;
+    const shake = turn && !ex.done ? Math.sin(ex.age * 60) * 0.35 * Math.sin(Math.PI * u) : 0;
+    lean = (2.5 + 2 * down) * k + 1.2 * wr - 2.5 * out2;
+    twist = (0.2 - 0.42 * down) * k + 0.55 * out2 + shake * 0.05;
+    size -= 0.03 * wr * (1 - out2);
     torso();
-    hands(lerp(4, 7.5, k), lerp(-5, -2.5, k), lerp(0.5, 7, down), lerp(6.5, 1.2, down));
-    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a + lerp(0.35, -0.1, down);
-    V.wpnLen = lerp(0.5, 0.3, down); V.wpnS = lerp(1.3, 1, down);
-    V.top = down < 0.5 ? 1 : 0;
+    hands(lerp(4, 7.5, k), lerp(-5, -2.5, k), lerp(lerp(0.5, tx, down), 3.5, out2) + shake, lerp(lerp(6.5, 1.2, down), 9, out2));
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a + lerp(0.35, -0.1, down) + 0.9 * wr + 0.5 * out2;
+    V.wpnLen = lerp(lerp(0.5, 0.3, down), 0.9, out2); V.wpnS = lerp(1.3, 1, down);
+    V.top = down < 0.5 || out2 > 0.3 ? 1 : 0;
+  } else if (f.pose === 'slit') {
+    // the blade: by his hip (0) .. set on the far side of the throat (1), then drawn across (cut 0 .. 1)
+    const set = what === 'pin' ? smooth(u) : 1, cut = what === 'cut' ? (ex.done ? 1 : smooth(u)) : what === 'bleed' ? 1 : 0;
+    const hold = what === 'bleed' ? smooth(u / 0.3) : 0;
+    lean = 3.5 * set + 0.8 * cut - 1.5 * hold;
+    twist = -0.25 * set + 0.5 * cut;
+    size -= 0.03 * cut * (1 - hold);
+    torso();
+    hands(lerp(4, 12, set), lerp(-5, -0.8, set), lerp(lerp(2, 10, set), 8, cut) - hold, lerp(lerp(6, -3.6, set), 5.5, cut) + 1.5 * hold);
+    V.hand[0] = 'flat';
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a + lerp(-0.3, -1.25, set) + 0.9 * cut;
+    V.wpnLen = 0.8; V.wpnS = 1.1;
+    V.top = set > 0.4 ? 1 : 0;
   } else if (f.pose === 'smash') {
-    // the weapon: lying on him (0) .. raised over the head (1)
+    // the weapon: lying on him (0) .. raised over the head (1); planted, or a blade: point down
+    const bear = what === 'lean' ? Math.sin(Math.PI * u) : 0;
     let up;
-    if (u < 0.62) up = smooth(u / 0.62);
+    if (what === 'lean') up = 0;
+    else if (u < 0.62) up = smooth(u / 0.62);
     else up = 1 - in2((u - 0.62) / 0.38);
     if (ex.done) up = 0;
     const from = first && u < 0.62 ? smooth(u / 0.3) : 1; // out of the standing pose at the very start
-    lean = lerp(3.5, -1.5, up) * from;
-    size += 0.03 * up - 0.04 * (1 - up) * from;
+    const point = f.point || (f.plant !== undefined && ex.i >= f.plant);
+    lean = lerp(3.5, -1.5, up) * from + 1.3 * bear;
+    size += 0.03 * up - 0.04 * (1 - up) * from - 0.03 * bear;
+    twist = bear * Math.sin(ex.age * 9) * 0.06;
     torso();
     const hx = lerp(9, -1.5, up), hy = lerp(1.2, 1.6, up);
     hands(lerp(5, hx - 1.5, from), lerp(-5, -hy, from), hx, hy);
     V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a;
-    V.wpnLen = lerp(f.plant ? 0.35 : 1, -0.6, up); V.wpnS = 1 + 0.35 * up;
+    V.wpnLen = lerp(point ? 0.35 : 1, -0.6, up); V.wpnS = 1 + 0.35 * up;
     V.top = up > 0.45 ? 2 : 0;
-  } else {
-    const k = smooth(u / 0.45), kick = ex.done ? Math.exp(-ex.t * 9) : 0, two = d.hold === 'two';
-    lean = 2 * k - 2.5 * kick;
-    size += 0.03 * kick;
+  } else if (f.pose === 'pile') {
+    // upright in both hands: lifted (1), driven straight down (0)
+    const up = ex.done ? 0 : u < 0.55 ? smooth(u / 0.55) : 1 - in2((u - 0.55) / 0.45), from = first ? smooth(u / 0.3) : 1;
+    lean = lerp(4, -1.5, up) * from;
+    size += (0.07 * up - 0.05 * (1 - up)) * from;
     torso();
-    const rx = lerp(6, two ? 9.5 : 10.5, k) - 3.5 * kick, tremble = Math.sin(ex.age * 50) * 0.15 * k * (1 - kick);
+    const hx = lerp(10, 7, up);
+    hands(lerp(5, hx - 0.6, from), lerp(-5, -1.4, from), hx, 1.4);
+    V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a + (d.kind === 'gun' ? Math.PI : 0);
+    V.wpnLen = lerp(1, 0.25, from); V.wpnS = 1 + 0.4 * up * from;
+    V.top = 2;
+  } else {
+    const k = first ? smooth(u / 0.45) : 1, kick = ex.last === 'shot' ? Math.exp(-ex.hit * 9) : 0, two = d.hold === 'two';
+    const press = what === 'aim' ? smooth(u) : ex.i === 1 && f.beats[0][1] === 'aim' ? 1 - kick : 0;
+    const low = what === 'hold' ? 0.5 * smooth(u) : 0; // the gun let down a little once it is done
+    lean = 2 * k - 2.5 * kick + 1.5 * press - low;
+    size += 0.03 * kick - 0.02 * press;
+    torso();
+    const rx = lerp(6, two ? 9.5 : 10.5, k) - 3.5 * kick + press - 2 * low, tremble = Math.sin(ex.age * 50) * (0.15 + 0.25 * press) * k * (1 - kick);
     if (two) hands(lerp(5, 6.5, k) - 3 * kick, lerp(-4, -1.2, k), rx, 1.2 + tremble);
     else hands(lerp(4, 1.5, k), lerp(-5, -7.5, k), rx, 0.8 + tremble);
     V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = a;
-    V.wpnLen = lerp(1, 0.7, k) - 0.2 * kick; V.wpnS = 1 + 0.12 * kick;
+    V.wpnLen = lerp(1, 0.7, k) - 0.2 * kick - 0.1 * press; V.wpnS = 1 + 0.12 * kick;
   }
   reach(V.hl, V, -1);
   reach(V.hr, V, 1);
@@ -1371,6 +1471,179 @@ function reachOut(h, P, side) {
 // px from the hand to the muzzle of a gun, to the far end of anything else
 const ahead = (d) => (d.kind === 'gun' ? muzzleX(d, spriteW(sprite(d.sprite))) : spriteW(sprite(d.sprite)) - d.grip);
 
+// The variants' own gestures (TAKEDOWNS `pose`), in takedownPose's frame; null where the grip's or the weapon's own
+// pose does for this beat. Returns what takedownPose places: { lean, twist, hl, hr (aim frame, or null: as he
+// stands), wa, len, top }; C: { N, T, M, H, D, from, kick, shake, a }.
+//   sleeper  the arm round his neck squeezed tighter and tighter; he goes slack and is let down (we bend over him)
+//   rabbit   the right fist raised by the ear and brought down on his nape; he folds, both hands take his head and
+//            the knee goes into the back of it
+//   kidney   the left hand over his mouth, the blade low by the hip driven in under his ribs, then turned there
+//   spike    the left hand over his mouth, the blade raised point down by the shoulder and driven into his neck
+//   low      a club (or the cue) swung low from the right into the back of his knee
+//   pistol   the gun tipped down at the back of one knee, then the other (the hand kicks back each time), raised to
+//            his nape once he is on his knees, fired
+//   double   his collar in the left fist, the muzzle in his back, fired, raised to his nape, fired
+// Face to face (`front`: he stands D ahead, turned to us):
+//   headbutt his shoulders taken, our head into his face; he folds, his head brought down on the knee
+//   throat   the right fist drawn back and driven into his throat, then his collar taken and his legs swept
+//   kidney   (the same blade under the ribs, the left hand on his shoulder)
+//   chin     his collar taken, the muzzle up under his chin, fired
+//   temple   the club drawn back out to the right and swung flat across the side of his head
+function variantPose(f, what, u, td, d, V, C) {
+  const { N, T, M, H, D, from, kick, shake } = C, done = td.done;
+  const out = { lean: 0, twist: 0, hl: null, hr: null, wa: 0, len: V.wpnLen, top: 0 };
+  const jolt = td.i > 0 || done ? Math.exp(-td.hit * 9) : 0; // the last beat that landed, dying away
+  if (f.pose === 'sleeper') {
+    const grab = td.i === 0 && !done ? smooth(u) : 1, tight = what === 'struggle' ? smooth(u) : what === 'limp' ? 1 : 0;
+    const low = what === 'limp' ? (done ? 1 : smooth(u)) : 0;
+    out.hl = from(V.hl, H + 0.2, -4.2 + shake, grab);
+    out.hr = from(V.hr, T + 0.6 - 0.9 * tight, -1.2 + shake * 0.5, grab);
+    out.lean = -1.2 * grab - 0.8 * tight + 3.2 * low;
+    out.twist = shake * 0.04 - 0.12 * tight * C.side;
+    V.s *= 1 - 0.07 * low;
+    V.hand[0] = 'flat'; V.hand[1] = 'loose';
+    V.flat = 'hl'; V.flatA = C.a + 1.2;
+    V.elb[0] = V.elb[1] = 0.25;
+  } else if (f.pose === 'rabbit') {
+    if (what === 'windup') {
+      const k = smooth(u);
+      out.hr = from(V.hr, 0.5, 5.5, k);
+      out.lean = -0.8 * k; out.twist = 0.3 * k; out.top = 1;
+    } else if (what === 'nape') {
+      const e = in2(u);
+      out.hr = [lerp(0.5, N - 0.5, e), lerp(5.5, 1, e)];
+      out.lean = lerp(-0.8, 2.2, e); out.twist = lerp(0.3, -0.35, e); out.top = 1;
+    } else {
+      // he is on his knees: his head taken in both hands, the knee driven into the back of it
+      const k = smooth(u / 0.45), e = done ? 1 : in2((u - 0.5) / 0.5);
+      out.hl = from(V.hl, N + 1.2 - 2 * e, -3, k);
+      out.hr = from(V.hr, N + 1.2 - 2 * e, 3, k);
+      out.lean = 2.2 * (1 - k) - 1.5 * k * (1 - e) + 4.5 * e;
+      V.s *= 1 + 0.05 * k * (1 - e) - 0.04 * e;
+    }
+    V.hand[0] = V.hand[1] = 'fist';
+  } else if (f.pose === 'headbutt') {
+    const F = D - 2.6, k = td.i === 0 && !done ? smooth(u) : 1;
+    if (what === 'knee') {
+      // he has folded: his head taken in both hands and brought down on the knee
+      const g = smooth(u / 0.45), e = done ? 1 : in2((u - 0.5) / 0.5);
+      out.hl = [F - 2 * e, -3]; out.hr = [F - 2 * e, 3];
+      out.lean = -1.5 * g * (1 - e) + 4.5 * e;
+      V.s *= 1 + 0.05 * g * (1 - e) - 0.04 * e;
+    } else {
+      // his shoulders taken, the head drawn back and driven into his face
+      const e = what !== 'headbutt' ? 0 : u < 0.5 ? -0.5 * smooth(u / 0.5) : lerp(-0.5, 1, in2((u - 0.5) / 0.5));
+      out.hl = from(V.hl, F + 1.5, -5, k); out.hr = from(V.hr, F + 1.5, 5, k);
+      out.lean = 4.5 * e;
+    }
+    V.hand[0] = V.hand[1] = 'fist';
+  } else if (f.pose === 'throat') {
+    const F = D - 2.6;
+    if (what === 'windup') {
+      const k = smooth(u);
+      out.hr = from(V.hr, 0, 6, k);
+      out.twist = 0.4 * k; out.lean = -0.6 * k;
+    } else if (what === 'throat') {
+      const e = in2(u);
+      out.hr = [lerp(0, F, e), lerp(6, 0.5, e)];
+      out.twist = lerp(0.4, -0.4, e); out.lean = lerp(-0.6, 2.2, e);
+    } else {
+      // his collar taken, the hips turned through him: his legs go from under him
+      const k = smooth(u / 0.3), e = done ? 1 : in2(u);
+      out.hl = from(V.hl, F + 2, -4, k);
+      out.hr = [lerp(F, F + 1.5, k), lerp(0.5, 3.5, k)];
+      out.twist = lerp(-0.4, 0.95, e); out.lean = 2.2 - 1.2 * e;
+    }
+    V.hand[0] = V.hand[1] = 'fist';
+  } else if (f.pose === 'chin') {
+    // his collar in the left fist (a long gun: both hands on it), the muzzle brought up under his chin, fired
+    const F = D - 2.6, two = d.hold === 'two', k = td.i === 0 && !done ? smooth(u) : 1;
+    const up = what === 'muzzle' ? smooth(u / 0.6) : what === 'shot' ? 1 : 0;
+    out.len = lerp(V.wpnLen, 0.45, up) - 0.12 * kick;
+    out.hr = from(V.hr, Math.max(2, F - 0.5 - ahead(d) * 0.45) - 2.5 * kick, 1.2, up);
+    if (two) out.hl = [out.hr[0] + ((d.fore ?? d.grip + 6) - d.grip) * out.len, out.hr[1] - 0.8];
+    else { out.hl = from(V.hl, D + 0.5, -5, k); V.hand[0] = 'fist'; }
+    out.wa = -0.2 * kick;
+    out.lean = 0.8 * up - 1.5 * kick;
+    out.top = up > 0.5 ? 1 : 0;
+  } else if (f.pose === 'temple') {
+    // drawn back out to the right, swung flat across the side of his head
+    const F = D - 1.5, b = what === 'windup' ? smooth(u) : 1, e = what === 'temple' ? (done ? 1 : in2(u)) : 0;
+    out.hr = from(V.hr, lerp(1, F - 3, e), lerp(8, -3, e), b);
+    if (d.hold !== 'both' && d.hold !== 'side' && !d.short) out.hl = [out.hr[0] - 1.5, out.hr[1] - 1.6];
+    out.wa = lerp(1.4 * b, -1, e);
+    out.len = 1;
+    out.twist = lerp(0.5 * b, -0.55, e);
+    out.lean = lerp(-b, 2.2, e);
+  } else if (f.pose === 'kidney' || f.pose === 'spike') {
+    const grab = td.i === 0 && !done ? smooth(u) : 1;
+    // the left hand over his mouth; face to face, on his shoulder
+    out.hl = f.front ? from(V.hl, D + 0.5, -5.5, grab) : from(V.hl, M, -0.6, grab);
+    V.flat = 'hl'; V.flatA = C.a + 1.35;
+    V.elb[0] = 0.2; V.elb[1] = 0.3;
+    out.lean = -grab;
+    if (f.pose === 'kidney') {
+      const e = what === 'stab' ? in2(u) : what === 'wrench' ? 1 : 0, turn = what === 'wrench' ? (done ? 1 : smooth(u)) : 0;
+      const q = what === 'wrench' && !done ? Math.sin(td.age * 50) * 0.3 * Math.sin(Math.PI * u) : 0;
+      out.hr = from(V.hr, lerp(2, D - (f.front ? 3 : 1.5), e) + q, lerp(5.5, 3.2, e), grab);
+      out.len = lerp(V.wpnLen, 0.45, e);
+      out.wa = 1.1 * turn;
+      out.lean += 1.6 * e + 0.8 * turn;
+      out.twist = -0.2 * e;
+    } else {
+      const up = what === 'windup' ? smooth(u) : what === 'stab' ? 1 : 0, e = what === 'stab' ? (done ? 1 : in2(u)) : 0;
+      out.hr = from(V.hr, lerp(lerp(1.5, 0, up), T - 0.5, e), lerp(lerp(4.5, 3, up), 1.5, e), grab);
+      out.len = lerp(lerp(V.wpnLen, -0.5, up), 0.3, e);
+      out.wa = -0.5 * up * (1 - e);
+      out.lean += -0.4 * up + 2.6 * e;
+      out.twist = 0.2 * up - 0.35 * e;
+      out.top = up > 0.3 ? 1 : 0;
+      V.s *= 1 + 0.03 * up * (1 - e);
+    }
+  } else if (f.pose === 'low') {
+    if (what !== 'kneeHit') return null;
+    const back = smooth(u / 0.5), sw = u < 0.5 ? 0 : in2((u - 0.5) / 0.5);
+    out.hr = from(V.hr, lerp(lerp(3, -1, back), D - 4, sw), lerp(lerp(4, 8, back), 2.5, sw), smooth(u / 0.25));
+    out.hl = [out.hr[0] - 1.5, out.hr[1] - 1.6];
+    out.wa = lerp(1.3 * back, -0.5, sw);
+    out.len = 1;
+    out.lean = lerp(-back, 2.5, sw);
+    out.twist = lerp(0.45 * back, -0.35, sw);
+    V.s *= 1 - 0.05 * sw;
+  } else if (f.pose === 'pistol') {
+    const nape = clamp((N + 0.4 - 6.4) / ahead(d), 0.3, 1);
+    if (what === 'kneeShot') {
+      const k = td.i === 0 ? smooth(u / 0.5) : 1, sd = td.i ? -1 : 1;
+      out.hr = from(V.hr, 5.5 - 2.2 * jolt, 1.6 + 1.8 * sd, k);
+      out.len = lerp(V.wpnLen, 0.5, k) - 0.12 * jolt;
+      out.wa = 0.25 * sd * k;
+      out.lean = 0.8 * k - 1.2 * jolt;
+      V.s *= 1 - 0.04 * k;
+    } else {
+      const k = what === 'muzzle' ? smooth(u / 0.7) : 1, j = what === 'muzzle' ? jolt : 0;
+      out.hr = [lerp(5.5, 6.4, k) - 2.2 * j - 2.5 * kick, lerp(-0.2, 1.6, k)];
+      out.len = lerp(0.5, nape, k) - 0.12 * j - 0.15 * kick;
+      out.wa = -0.25 * (1 - k) - 0.25 * kick;
+      out.lean = 0.8 - 1.2 * j - 1.5 * kick;
+    }
+    out.top = 1;
+    V.elb[1] = 0.6;
+  } else if (f.pose === 'double') {
+    if (what === 'seize') return null;
+    const back = clamp((D - 1 - 4.6) / ahead(d), 0.3, 1), nape = clamp((N + 0.4 - 6.4) / ahead(d), 0.3, 1);
+    const k = what === 'muzzle' ? smooth(u / 0.7) : 1, e = what === 'shot' ? (done ? 1 : smooth(u / 0.6)) : 0, j = what === 'shot' ? jolt * (1 - e) : 0;
+    out.hl = from(V.hl, N - 1, -1.8, 1);
+    out.hr = from(V.hr, lerp(4.6, 6.4, e) - 2.2 * j - 2.5 * kick, lerp(2, 1.6, e), k);
+    out.len = lerp(V.wpnLen, lerp(back, nape, e), k) - 0.12 * j - 0.15 * kick;
+    out.wa = -0.2 * j - 0.25 * kick;
+    out.lean = 0.6 * k - 1.2 * j - 1.5 * kick;
+    out.top = k > 0.5 ? 1 : 0;
+    V.hand[0] = 'fist';
+    V.elb[0] = 0.3; V.elb[1] = 0.6;
+  } else return null;
+  return out;
+}
+
 export function takedownPose(ch, P, V) {
   const td = ch.takedown, f = td.f, d = ch.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
   const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1), D = td.d, side = td.side;
@@ -1382,14 +1655,18 @@ export function takedownPose(ch, P, V) {
   copyPose(V, P);
   let lean = 0, twist = 0, hl = null, hr = null, wa = 0, len = V.wpnLen, top = 0;
   V.flat = null;
-  const grab = f.grip && first ? smooth(u) : 1; // the hands closing on him through the seize
+  const seizeAt = f.beats.findIndex((b) => b[1] === 'seize');
+  const grab = f.grip && td.i === seizeAt && !td.done ? smooth(u) : 1; // the hands closing on him through the seize
   // from where a hand is in the standing pose (aim frame) to (x, y), k of the way
   const from = (h, x, y, k) => {
     const hx = h.x * c + h.y * s, hy = -h.x * s + h.y * c;
     return [lerp(hx, x, k), lerp(hy, y, k)];
   };
   const shake = what === 'struggle' && !td.done ? Math.sin(td.age * 46) * 0.7 * Math.sin(Math.PI * u) : 0;
-  if (f.grip === 'neck' || f.grip === 'cue') {
+  // a variant's own gesture for this beat, else the grip's or the weapon's
+  const mv = f.pose ? variantPose(f, what, u, td, d, V, { N, T, M, H, D, from, kick, shake, side, a }) : null;
+  if (mv) ({ lean, twist, hl, hr, wa, len, top } = mv);
+  else if (f.grip === 'neck' || f.grip === 'cue') {
     // the twist turns everything round his head; a cue is pulled back hard instead
     const cue = f.grip === 'cue', w = what === 'twist' ? (td.done ? 1 : in2(u)) : 0;
     const r = (cue ? 0 : side * 1.15) * w, rc = Math.cos(r), rs = Math.sin(r);
@@ -1514,9 +1791,11 @@ export function heldPose(ch, P) {
   const td = ch.held.takedown, f = td.f, a = P.ta, c = Math.cos(a), s = Math.sin(a), t = ch.world.time;
   if (f.grip === 'hair') return hairHeld(ch, P, td, a, c, s, t);
   const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1);
-  const grab = !f.grip ? 0 : td.i === 0 && !td.done ? smooth(u) : 1;
+  const seizeAt = f.beats.findIndex((b) => b[1] === 'seize');
+  const grab = !f.grip || td.i < seizeAt ? 0 : td.i === seizeAt && !td.done ? smooth(u) : 1;
   const landed = td.done ? what : td.i > 0 ? f.beats[td.i - 1][1] : null;
-  const struck = landed === 'nape' || landed === 'butt' ? Math.exp(-td.hit * 10) : 0;
+  const struck = STRUCK.has(landed) ? Math.exp(-td.hit * 10) : 0;
+  const limp = what === 'limp' ? smooth(u) : 0; // choked out: his hands fall from the arm that holds him
   const shake = what === 'struggle' && !td.done ? Math.sin(t * 41 + ch.breath) * Math.sin(Math.PI * u) : 0;
   const down = td.downAt >= 0 ? smooth((td.age - td.downAt) / 0.2) : 0;
   const twist = what === 'twist' ? (td.done ? 1 : in2(u)) : 0;
@@ -1527,14 +1806,14 @@ export function heldPose(ch, P) {
   else if (f.grip === 'collar') { hands = [2.5 + j * 0.3, -8, 2.5 - j * 0.3, 8]; pull = 0.6; }
   const put = (h, lx, ly, k) => { h.x = lerp(h.x, P.tx + (lx * c - ly * s) * P.s, k); h.y = lerp(h.y, P.ty + (lx * s + ly * c) * P.s, k); };
   // his torso: pulled back, thrown forward by a blow, slumped on his knees
-  const fwd = -pull * grab + 2.2 * struck + 2 * down + 0.4 * shake;
+  const fwd = -pull * grab + 2.2 * struck * (f.front ? -1 : 1) + 2 * down + 0.4 * shake;
   P.tx += c * fwd; P.ty += s * fwd;
-  P.s *= 1 - 0.14 * down;
+  P.s *= 1 - 0.14 * down - 0.05 * limp;
   P.ta = a + 0.12 * shake;
   P.ha = a + td.side * 1.1 * twist + 0.15 * shake;
   if (hands) {
-    put(P.hl, hands[0], hands[1], grab);
-    if (!P.wpnOn) put(P.hr, hands[2], hands[3], grab);
+    put(P.hl, lerp(hands[0], 2.5, limp), lerp(hands[1], -6, limp), grab);
+    if (!P.wpnOn) put(P.hr, lerp(hands[2], 2.5, limp), lerp(hands[3], 6, limp), grab);
     P.hand[0] = P.hand[1] = f.grip === 'collar' ? 'flat' : 'loose';
   }
   if (down > 0) {
@@ -1589,6 +1868,7 @@ function hairHeld(ch, P, td, a, c, s, t) {
 // On his knees: the shins flat on the floor behind him, knees together, the feet turned back (pose px, aim frame);
 // the hands up either side of his head are the standing pose's for a man who has given up (standPose).
 const YIELD_FEET = [[-6.5, -3.4], [-6.5, 3.4]];
+const STRUCK = new Set(['nape', 'butt', 'stab', 'kneeHit', 'kneeShot', 'backShot', 'headbutt', 'throat']); // the beats that throw a held man forward (back: face to face)
 export function kneelPose(P) {
   const c = Math.cos(P.ta), s = Math.sin(P.ta);
   YIELD_FEET.forEach(([lx, ly], i) => {
@@ -1948,9 +2228,12 @@ export function drawDown(ctx, ch, P) {
   const sc = 1 + 0.12 * (1 - fall), len = spriteW(ch.downImg);
   // dazed after a fall (Enemy.slip): no stars, a groggy man: he rolls his head and shoulders from side to side and
   // now and then heaves himself up an inch on his elbows, and sinks back
-  const g = ch.dazed && !ch.executing ? groggy(ch.downT) : null, ra = ch.downAngle + (g ? g.roll : 0);
+  // struck where he lies (a finisher's beat on a man still alive, Player.landBeat): he jerks
+  const jk = ch.jerk ? ch.jerk.side * ch.jerk.k * Math.exp(-(ch.world.time - ch.jerk.t) * 11) : 0;
+  const g = ch.dazed && !ch.executing ? groggy(ch.downT) : null, ra = ch.downAngle + (g ? g.roll : 0) + jk * 0.16;
   const lift = g ? g.lift * down : 0;
-  const dc = Math.cos(ch.downAngle), ds = Math.sin(ch.downAngle), mx = x + dc * len * (0.08 - lift * 0.05), my = y + ds * len * (0.08 - lift * 0.05);
+  const dc = Math.cos(ch.downAngle), ds = Math.sin(ch.downAngle);
+  const mx = x + dc * len * (0.08 - lift * 0.05) - ds * jk * 1.5, my = y + ds * len * (0.08 - lift * 0.05) + dc * jk * 1.5;
   drawSprite(ctx, silhouette(ch.downImg), mx + 2 + (1 - fall) * 2 + lift * 2, my + 2 + (1 - fall) * 2 + lift * 2, ra, 0.35 * down, sc);
   drawSprite(ctx, ch.downImg, mx, my, ra, down, sc * (1 + lift * 0.05));
   if (ch.asleep || ch.dazed) return;

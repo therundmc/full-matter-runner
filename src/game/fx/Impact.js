@@ -38,6 +38,15 @@ export function landMoment(world, victim, angle, d, m, lethal) {
   fx.burst(victim.x - Math.cos(angle) * 4, victim.y - Math.sin(angle) * 4, angle, f.burst, 1.2);
 }
 
+// The same on a man lying on the floor, or on his body (the beats of a finisher), at the point struck (x, y): no
+// flash (it is a standing man's), the star and the screen only.
+export function landOnBody(world, x, y, angle, d, m, lethal = false) {
+  const f = FEEL[familyOf(d)];
+  emit(world, x, y, angle, m.power, m.kind || f.kind, lethal, true);
+  jolt(world, angle, m.stop, m.shake, m.push);
+  combatFx(world).burst(x, y, angle, f.burst, 1);
+}
+
 // Of the guards still in the fight, is none left in the player's sight within `radius` once `victim` is down?
 // sees(e): whether the player has a line to e
 export function lastInSight(player, victim, enemies, radius, sees) {
