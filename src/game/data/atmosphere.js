@@ -27,9 +27,9 @@ export const RAIN = {
   ripple: { per: 260, life: 0.85, size: [2.5, 6.5], color: 'rgba(200,220,255,1)', alpha: 0.32, width: 0.6 },
   // puddles of rain lying in the open (where: the water is liquid on the floor, kind `rain` in data/liquids.js, poured
   // into a hollow there): how many per 100 tiles of open floor, their radius, the floors they lie on, how close to
-  // each other
+  // each other. The user (2026-11-17): the puddles did not look good, so none are laid (`per` 0); the wet sheen stays
   puddles: {
-    per: 1.6, r: [9, 21], gap: 70, floors: ['asphalt', 'asphalt_line', 'sidewalk', 'concrete', 'dirt'],
+    per: 0, r: [9, 21], gap: 70, floors: ['asphalt', 'asphalt_line', 'sidewalk', 'concrete', 'dirt'],
     lobes: 9, squash: [0.5, 0.75], // ragged outline, flattened
   },
   // drips: water running off the eaves and the fire escape, a drop every few seconds on the same spots

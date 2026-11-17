@@ -219,7 +219,7 @@ export default {
   // beds heard from one tile (data/soundscape.js SPOTS): [bed, col, row]
   soundSpots: [['window', 9, 31]],
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
-  street: {"papers": [[0, 30, 41, 31, 9], [19, 32, 22, 36, 3], [0, 21, 41, 22, 9], [0, 23, 41, 29, 6], [11, 1, 13, 19, 4], [14, 1, 30, 4, 4], [1, 8, 9, 14, 3]], "beds": [[21.1, 36.5, 0], [18.1, 2.5, -12], [2.7, 13.75, 8]], "manholes": [[9.5, 25.2], [26.3, 28.5], [12.5, 10.6]]},
+  street: {"papers": [[0, 30, 41, 31, 9], [19, 32, 22, 36, 3], [0, 21, 41, 22, 9], [0, 23, 41, 29, 6], [11, 1, 13, 19, 4], [14, 1, 30, 4, 4], [1, 8, 9, 14, 3]], "beds": [[21.1, 36.5, 0], [18.1, 2.5, -12], [2.7, 13.75, 8]], "manholes": [[26.3, 28.5], [12.5, 10.6]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer
   roof: [
     // west block, round the roof

@@ -247,8 +247,7 @@ lv.prop('vending', 17.42, 21.33)                        # drinks machine against
 lv.prop('news_box', 26.6, 21.19)
 lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
-lv.dress('manholes', 9.5, 25.2)
-lv.dress('manholes', 27.3, 28.5)
+lv.dress('manholes', 27.3, 28.5)                        # (the one by the parking bays sat astride their line: removed)
 lv.prop('palm_tree', 41.6, 21.8)
 
 lv.area('liquor store')
