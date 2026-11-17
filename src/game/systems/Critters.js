@@ -6,8 +6,8 @@
 //            (slips in by the middle of its side, two eye glints left at the edge); it leaves when the car moves, is
 //            hit hard, burns or blows, or a shot rings close, for the next car. No car in reach: over a bin on its
 //            way (a noise guards may come and look at) and away
-//   flies    hang over dumpsters and bodies gone cold; moths round the street lamps and signs (anchors only: the
-//            insects themselves are drawn from the clock, render/CritterArt.js)
+//   flies    hang over dumpsters and bodies gone cold; moths round the lamps and signs, in the street and indoors
+//            (anchors only: the insects themselves are drawn from the clock, render/CritterArt.js)
 // Bullets, swings and blasts kill the ones on the ground. No bodies: a few numbers each. DOM-free.
 import { TILE, CRITTERS as C } from '../Config.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
@@ -341,14 +341,17 @@ export default class Critters {
     return out;
   }
 
-  // where the moths turn: [{ x, y, n, seed }] at the street lamps and signs still lit
+  // where the moths turn: [{ x, y, n, r, lift, seed }] at the lamps and signs still lit, a bulb at a time (lift: the
+  // height of a hung lamp, its parallax, Prop.drawOverhead)
   lamps() {
-    const M = C.moths;
+    const M = C.moths, out = [];
     this.lit ??= this.world.props.filter((p) => p.type in M.at);
-    return this.lit.filter((p) => !p.dead && !p.lightsOut).map((p) => { // a lamp gone dark (power cut) lets them go
-      const off = M.at[p.type], a = p.body.angle;
-      return { x: p.x + Math.cos(a) * off, y: p.y + Math.sin(a) * off, n: M.n, seed: p.x * 7 + p.y * 13 };
-    });
+    for (const p of this.lit) {
+      if (p.dead || p.lightsOut) continue; // a lamp gone dark (power cut) lets them go
+      const a = p.body.angle, cos = Math.cos(a), sin = Math.sin(a), lift = p.def.height || 0;
+      M.at[p.type].forEach(([x, y, n, r], i) => out.push({ x: p.x + cos * x - sin * y, y: p.y + sin * x + cos * y, n, r, lift, seed: p.x * 7 + p.y * 13 + i * 5 }));
+    }
+    return out;
   }
 }
 

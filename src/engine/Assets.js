@@ -16,6 +16,10 @@ export const SPRITE_LIST = [
     'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
   ...['door', 'door_locked', 'stall_door', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
     .map((n) => `structure/${n}`),
+  // the street fauna, a frame for each step of their gaits (render/CritterArt.js)
+  ...['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low', 'cat_dead',
+    ...[0, 1, 2].flatMap((i) => [`pigeon_walk${i}`, `pigeon_fly${i}`, `rat_run${i}`, `cat_run${i}`]),
+    ...[0, 1, 2, 3].map((i) => `cat_walk${i}`)].map((n) => `critters/${n}`),
 ];
 
 // Sprites that may not exist (yet): loaded when present, `spriteOpt()` returns null otherwise.
@@ -80,8 +84,9 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid', 'sandwich_board', 'ash_urn', 'entry_mat']);
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
-// the floor tiles too (64 x 64 pixels a tile); the wall tops stay at the world's
-const fine = (name) => FINE.test(name) || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
+// the floor tiles too (64 x 64 pixels a tile), and the street fauna; the wall tops stay at the world's
+const fine = (name) => FINE.test(name) || name.startsWith('critters/')
+  || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
   || (name.startsWith('roof/') && ROOF_FINE.has(name.slice(5)))
   || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v[1-5]|glow)$/, '')));
 const density = (name) => (fine(name) ? 0.5 : 1);

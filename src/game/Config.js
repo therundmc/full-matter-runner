@@ -362,10 +362,20 @@ export const CRITTERS = {
     hurt: 0.15,            // share of the car's hit points lost that makes it no shelter
     bin: 5,                // a bin within this on its way gets jumped on: it rattles, it does not move
     noise: 5,              // the clatter carries this far
+    prowl: 60,             // px/s of its walk (its frames' pace, render/CritterArt.js; it only ever runs for now)
   },
   // flies per swarm, px it spreads over; s before a body draws them, bodies at most
   flies: { dumpster: 6, wide: 26, body: 4, close: 9, cold: 20, bodies: 4 },
-  moths: { n: 2, at: { streetlight: 56, wall_lamp: 0, neon_sign_bar: 0, neon_sign_palm: 0, neon_sign_liquor: 0 } }, // px along the prop to its lamp
+  // moths round the lamps still lit, by kind of lamp: [x, y, n, r] = px from the prop's middle to its bulb (in the
+  // prop's own frame), how many, px they wander off; fewer indoors than under a streetlight
+  moths: {
+    at: {
+      streetlight: [[56, 0, 3, 17]], neon_sign_bar: [[0, 0, 2, 16]], neon_sign_palm: [[0, 0, 2, 15]], neon_sign_liquor: [[0, 0, 2, 16]],
+      string_lights: [[-40, 0, 1, 9], [40, 0, 1, 9]], wall_lamp: [[0, 3, 2, 12]],
+      ceiling_lamp: [[0, 0, 2, 11]], pool_lamp: [[-12, 0, 1, 9], [12, 0, 1, 9]], tube_light: [[0, 3, 1, 10]],
+      floor_lamp: [[0, 0, 1, 8]], table_lamp: [[0, 0, 1, 7]],
+    },
+  },
 };
 
 export const AMBIENT = {

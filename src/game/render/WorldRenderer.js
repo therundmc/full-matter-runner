@@ -125,7 +125,7 @@ export default class WorldRenderer {
     if (lit) w.lighting.post(ctx, cam, t, this.liquid, this.layer);
     lightMs += performance.now() - l0;
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
-    drawMoths(ctx, w.critters, t, vis);
+    drawMoths(ctx, w.critters, t, vis, cam);
     drawLasers(ctx, w);
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
