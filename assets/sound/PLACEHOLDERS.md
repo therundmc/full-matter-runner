@@ -35,3 +35,8 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | fluteClink | a champagne flute knocked off a table landing whole, or one lying on the floor kicked (systems/Clutter.js, systems/Litter.js) | a thin crystal flute clinking and rolling on a carpet |
 | fluteShatter | a champagne flute shot where it stands or lies, or smashing where it lands (systems/Clutter.js, systems/Litter.js) | a thin crystal flute bursting, a light splash |
 | bucketKnock | the champagne bucket knocked off the VIP room's table lands (systems/Clutter.js) | a steel ice bucket clanging down, ice cubes skittering, water sloshing out |
+| headSlamWood | a man's face slammed down on a table, a counter, a crate (a takedown with a spot: Player.slamFx) | a skull hitting a wooden table top hard, glasses on it jumping, a grunt knocked out of him |
+| headSlamWall | a man's face smashed into a wall (a takedown: WALL SMASH) | a head driven into plaster / brick, a dull crack, plaster crumbling |
+| headSlamMetal | a man's face brought down on a steel sink or a stove (a takedown: SINK) | a skull on a steel edge, a dull clang ringing in the basin |
+| headSlamPorcelain | a man's face smashed into a urinal (a takedown: URINAL) | a head on porcelain, a hard knock and a crack in it |
+| toiletDunk | a man's head dunked into a toilet bowl (a takedown: TOILET) | a head plunged into a toilet, a splash and a knock on the porcelain, a gurgle |

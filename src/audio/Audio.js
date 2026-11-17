@@ -128,6 +128,12 @@ export const META = {
   shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.75, reach: 1900, bus: 'voice' },
   cry: { pri: 2, dur: 0.6, gap: 0.12, max: 3, gain: 0.65, reach: 1900, bus: 'voice' },
   grab: { pri: 2, dur: 0.4, gain: 0.7 }, neck: { pri: 3, dur: 0.6, gain: 0.95 },
+  // a head driven into a wall, an edge, a sink, a urinal, a toilet (placeholders, assets/sound/PLACEHOLDERS.md)
+  headSlamWood: { pri: 3, dur: 0.45, gap: 0.05, max: 2, duck: 0.85, gain: 0.95 },
+  headSlamWall: { pri: 3, dur: 0.45, gap: 0.05, max: 2, duck: 0.85, gain: 0.95 },
+  headSlamMetal: { pri: 3, dur: 0.45, gap: 0.05, max: 2, duck: 0.85, gain: 0.9 },
+  headSlamPorcelain: { pri: 3, dur: 0.45, gap: 0.05, max: 2, duck: 0.85, gain: 0.9 },
+  toiletDunk: { pri: 3, dur: 0.5, gap: 0.05, max: 2, duck: 0.85, gain: 0.9 },
   whimper: { pri: 1, dur: 0.5, gap: 1.2, max: 1, gain: 0.5, reach: 1200, bus: 'voice' },
   // a crowd: several at once, each his own cry, carried by the room (the user: a bit loud and a bit often: -4.7 dB
   // since 2026-11-16, never more than four at once, a little apart)
@@ -390,6 +396,12 @@ const FOLEY = {
   // a guard seized from behind: sleeves, his stifled grunt; then his neck, a dry crack, and the body let down
   grab: [['swish', 0.35, 1.2], ['soft', 0.7, 1.1, 0.04], ['pain', 0.3, 0.9, 0.1]],
   neck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14], ['thud', 0.6, 0.8, 0.32]],
+  // PLACEHOLDERS (assets/sound/PLACEHOLDERS.md): a face driven into something, a dull blow and what it is made of
+  headSlamWood: [['punch', 1, 0.75], ['wood', 0.8, 0.8, 0.005], ['thud', 0.7, 0.75, 0.01]],
+  headSlamWall: [['punch', 1, 0.7], ['stone', 0.7, 0.75, 0.005], ['thud', 0.8, 0.7, 0.01]],
+  headSlamMetal: [['punch', 1, 0.75], ['sheet', 0.6, 0.9, 0.005], ['thud', 0.6, 0.8, 0.01]],
+  headSlamPorcelain: [['punch', 1, 0.8], ['ceramic', 0.8, 0.8, 0.005], ['thud', 0.6, 0.8, 0.01]],
+  toiletDunk: [['splash', 1, 0.85], ['ceramic', 0.6, 0.75, 0.01], ['punch', 0.7, 0.8, 0.005]],
   // doors, movement
   creak: [['creak', 1]],
   splash: [['splash', 1]],

@@ -9,7 +9,7 @@ import { rand, chance, clamp, pick } from '../../engine/math.js';
 import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble, tearShape } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
 import { canvas, put, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot,
-  gash, rip, wear, brokenEdge, soilSpill, ductStump } from '../render/DamageArt.js';
+  gash, rip, wear, brokenEdge, soilSpill, ductStump, bloodOn } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { wallBehind, run } from '../fx/Spatter.js';
 import { setMaterial, setShapeInertia, impulseAt } from '../../engine/physics/Body.js';
@@ -208,6 +208,13 @@ export default class Prop {
     if (this.hp <= 0) { this.break(dirA, kind === 'blast' ? Math.max(2, power) : Math.min(power, 1.6)); return; }
     const frac = this.hp / d.hp;
     while (this.stage < STAGES.length && frac <= STAGES[this.stage]) this.enterStage(++this.stage, px, py, dirA);
+  }
+
+  // blood on it at (px, py), r px (a head slammed on it: Player.landTakedown)
+  bloody(px, py, r) {
+    if (this.dead || this.dying) return;
+    const { sx, sy } = this.toSprite(px, py);
+    bloodOn(this.ensureCanvas(), sx, sy, r);
   }
 
   // where a blow along dirA through (px, py) meets the object's outline (and the surface normal there)

@@ -50,7 +50,9 @@ export const HINTS = {
   takedown: (T, s, p) => {
     const g = T.guards(s).find((e) => e.alive && e.knocked <= 0 && e.aware === 0);
     if (!g) return null;
-    return p.nearBack === g ? { x: g.x, y: g.y, key: 'attack', text: 'BREAK HIS NECK' } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
+    // what the takedown will be: his neck, or his head driven into what stands in front of him (WALL SMASH...)
+    const text = p.backMove?.spot ? p.contextAction : 'BREAK HIS NECK';
+    return p.nearBack === g ? { x: g.x, y: g.y, key: 'attack', text } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
   },
   punch: (T, s, p) => {
     const g = !p.armed && nearest(T.present(s), p);

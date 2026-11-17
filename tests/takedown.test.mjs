@@ -55,15 +55,16 @@ test('takedown: the sequence goes by what is in the hand (swing, hold, kind), an
 });
 
 test('takedown: every sequence is short, ends on a kill, and goes down a known way', () => {
-  const WHAT = ['seize', 'struggle', 'twist', 'draw', 'cut', 'windup', 'nape', 'muzzle', 'shot', 'butt'];
-  const KILLS = ['twist', 'cut', 'nape', 'shot', 'butt'];
+  const WHAT = ['seize', 'struggle', 'twist', 'draw', 'cut', 'windup', 'nape', 'muzzle', 'shot', 'butt', 'smash', 'dunk'];
+  const KILLS = ['twist', 'cut', 'nape', 'shot', 'butt', 'smash', 'dunk'];
   const actions = new Set();
   for (const [name, f] of Object.entries(TAKEDOWNS)) {
     const n = f.beats.length, lock = lockedFor(f);
-    assert.ok(lock >= 0.8 && lock <= 1.4, `${name}: ${lock.toFixed(2)} s`);
+    // a head driven into something takes longer (two blows, the toilet a struggle between them)
+    assert.ok(lock >= 0.8 && lock <= (f.context ? 1.8 : 1.4), `${name}: ${lock.toFixed(2)} s`);
     for (const [wait, what] of f.beats) assert.ok(wait > 0 && WHAT.includes(what), `${name}: ${what}`);
     assert.ok(KILLS.includes(f.beats[n - 1][1]), `${name} ends on a kill`);
-    assert.ok(KNEELS[f.dying], `${name}: ${f.dying}`);
+    assert.ok(KNEELS[f.dying] || f.dying === 'wall', `${name}: ${f.dying}`);
     assert.ok(['snap', 'slash', 'melee', 'shot'].includes(f.cause), name);
     assert.ok(f.drop === undefined || f.drop < n - 1, `${name}: he drops before the kill`);
     assert.ok(!f.grip || f.beats[0][1] === 'seize', `${name}: a grip starts on the seize`);
@@ -131,7 +132,8 @@ function scene(type, mag) {
   const w = {
     particles: sink, decals: sink, camera: sink, events: sink, time: 0, slowmo: noop, hitstop: noop, shake: noop, light: noop,
     sound: (name) => sounds.push(name), noise: (x, y, r, src, kind) => heard.push([r, kind]),
-    map: { solidAt: () => false }, lineOfSight: () => true, enemies: [], props: [], items: [], corpses: [],
+    map: { solidAt: () => false, raycast: () => null, isWallChar: () => false, at: () => '.' }, lineOfSight: () => true,
+    enemies: [], props: [], items: [], corpses: [],
   };
   const p = Object.create(Player.prototype);
   Object.assign(p, { world: w, isPlayer: true, team: 'player', alive: true, knocked: 0, angle: 0, strike: 0, punchSide: 1, recoil: 0,

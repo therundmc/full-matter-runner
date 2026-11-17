@@ -49,7 +49,10 @@ src/
       Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Takedown.js         `behind(player, guard)`: who can be seized from behind; `advance`: the beat clock of a takedown
-                          (rules only, unit-tested)
+                          (rules only, unit-tested); `slamAt`: how far a head driven into something is, off that clock
+      TakedownSpot.js     `spotFor(guard, map, props)`: what stands right in front of a guard seized from behind that his
+                          head can be driven into (a toilet, a urinal, a sink, a ledge: data/finishers.js SLAMS; a wall,
+                          never one beyond a doorway), the most specific first (DOM-free, unit-tested)
       Lunge.js            `lungeTarget`: the guard a melee swing of the player's is drawn to (PLAYER.lunge): the aim
                           turned a little onto him, a short step in, never into a wall (rules only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
@@ -480,6 +483,17 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   onto his knees, then onto his face, through Ragdoll's kneeling script; backward when boxed in). The guards hear
   each sequence's `noise` (a cut throat nothing, a blow on the head ~100 px, a round the gun's own noise) and the body
   let down. Scored as `takedown`, its label and FROM BEHIND (`how.from`), LAST ROUND when it was.
+  With a hand free (`freeHand`: bare hands, a handgun, a blade, a short club) and something right in front of him
+  (systems/TakedownSpot.js), his head is driven into it instead (TAKEDOWNS by `context`, grip 'hair'; the hint names
+  it: TOILET, URINAL, SINK, SLAM ON BAR / TABLE / DESK..., WALL SMASH): he is pulled to it and turned square to it
+  (Player.pullTo), each 'smash' / 'dunk' a pull back by the hair then the drive in (systems/Takedown.js `slamAt`,
+  shared by heldPose and takedownPose; the pose's `bow`: bent over, the head on ahead of the shoulders), held on the
+  contact frame (MOMENTS.slam, slamKill). Player.slamFx: his blood thrown back out, the surface marked (Prop.hit
+  'blunt': a crack in the porcelain, splinters, the clutter on it knocked off; Prop.bloody; a wall dented, its dust,
+  splashed and running), a toilet's water thrown over the floor, a placeholder sound, heard (`noise`). He goes down
+  by `dying`: 'bowl' (left kneeling folded over it for good), 'ledge' (slid off it onto his knees, then down beside
+  it; folded over it when boxed in), 'wall' (sat against it: Ragdoll `opts.sit`, propUp). Tagged ENVIRONMENTAL
+  (`slammed`) or FLUSHED (`flushed`) by `how.env`.
 - Slide (Player, `PLAYER.slide`): Space while running with nothing to vault. ~0.5 s burst from ~2x run speed decaying to
   a jog (~2.9 m), stays physical (walls stop it, loose props take our momentum), sweeps standing enemies off their
   feet, can chain into a vault, the gun stays usable; 0.5 s cooldown. At its heart (`duck`) the body is under the

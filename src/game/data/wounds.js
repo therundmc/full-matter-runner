@@ -208,8 +208,22 @@ export const SLUMP = {
   kneel: 0.42, hold: 0.05, pitch: 0.45, dur: [1.2, 1.5], slip: 0.2, upright: 0.42, hang: true,
   beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 0],
 };
+// His head driven into something in front of him (TAKEDOWNS with a spot): he starts bent over it, `from` = how much
+// of his length shows from above then; nod = share of the kneeling head's sitting back over his shoulders (0: it
+// stays down, ahead of them); over = share of the pitch he goes through; stay: he never lets go of his pose (folded
+// over the toilet for good, like a body sat against a wall), straight along the way he faced
+//   ledge  slid off the edge onto his knees in front of it, then down to one side of it (off it if boxed in)
+//   bowl   onto his knees, folded over the bowl, his head left in it
+export const LEDGE = {
+  kneel: 0.3, hold: 0.3, pitch: 0.42, dur: [1.3, 1.6], slip: 0.2, upright: 0.5, from: 0.85, nod: 0.6, hang: true,
+  beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 1],
+};
+export const BOWL = {
+  kneel: 0.28, hold: 0, pitch: 0.5, dur: [1.2, 1.4], slip: 0.2, upright: 0.82, from: 0.85, nod: 0, over: 0.3, stay: true, hang: true,
+  beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 0],
+};
 // the ways of dying that start on his feet, sink to the knees and pitch forward (fx/DyingPose.js throatPose)
-export const KNEELS = { throat: THROAT, behead: BEHEAD, kneel: KNEEL, slump: SLUMP };
+export const KNEELS = { throat: THROAT, behead: BEHEAD, kneel: KNEEL, slump: SLUMP, ledge: LEDGE, bowl: BOWL };
 
 // Death throes (entities/Ragdoll.js): his limbs jerking a moment. odds = chance a body that does not crawl moves at
 // all once down (spasm and curl take their share of it first, the rest is throes), dur = [min, max] s it lasts,

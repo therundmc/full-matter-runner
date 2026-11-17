@@ -11,6 +11,7 @@
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
+import { slamAt } from '../systems/Takedown.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW, sh as spriteH } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
 import { GAIT, stanceAt, reachAt, footAt, phaseOf, bodyAt } from './Gait.js';
@@ -159,6 +160,7 @@ export function newPose() {
     // above the shoulders: 0 nothing, 1 the weapon and its hand, 2 both hands
     wpnLen: 1, wpnS: 1, top: 0,
     duck: 0, hunch: 0, // flinching: the head ducked in (0 .. 1 of it), the shoulders hunched (narrower by that share)
+    bow: 0,           // bent at the waist (0 .. 1, BOW; < 0: the head thrown back): the head ahead and lower, the back long
   };
 }
 
@@ -578,6 +580,7 @@ export function standPose(ch, P, a) {
   P.tuck = 0;
   P.over = 0;
   P.sq = P.sqW = 1;
+  P.bow = 0;
 
   // feet: along the way he goes, toes the way his hips face (ch.footA), each one planted then swung ahead; standing
   // still, the weight on one leg puts the other foot a little forward
@@ -636,6 +639,7 @@ function blendPose(A, B, w) {
   A.wpnLen = lerp(A.wpnLen, B.wpnLen, w); A.wpnS = lerp(A.wpnS, B.wpnS, w);
   A.ha = lerpA(A.ha, B.ha, w);
   A.duck *= 1 - w; A.hunch *= 1 - w;
+  A.bow = lerp(A.bow, B.bow, w);
   if (w > 0.5) { A.top = B.top; A.fist = B.fist; A.hand[0] = B.hand[0]; A.hand[1] = B.hand[1]; }
   for (let i = 0; i < 2; i++) {
     const f = A.feet[i], g = B.feet[i];
@@ -653,7 +657,7 @@ function blendPose(A, B, w) {
 function copyPose(A, B) {
   A.tx = B.tx; A.ty = B.ty; A.ta = B.ta; A.s = B.s; A.lift = B.lift; A.legs = B.legs; A.tuck = B.tuck; A.over = B.over;
   A.sq = B.sq; A.sqW = B.sqW; A.sqA = B.sqA;
-  A.ha = B.ha; A.duck = B.duck; A.hunch = B.hunch;
+  A.ha = B.ha; A.duck = B.duck; A.hunch = B.hunch; A.bow = B.bow;
   for (let i = 0; i < 2; i++) { Object.assign(A.feet[i], B.feet[i]); A.hand[i] = B.hand[i]; A.elb[i] = B.elb[i]; }
   for (const k of ['hl', 'hr', 'wpn', 'carry']) Object.assign(A[k], B[k]);
   A.wpnOn = B.wpnOn; A.carryImg = B.carryImg; A.fist = B.fist; A.bare = B.bare; A.magIn = B.magIn;
@@ -1335,6 +1339,29 @@ export function execPose(ch, P, V) {
 //           nape; a long gun turned round, butt first, driven into the back of his head, then turned on him and
 //           fired down into him as he sinks
 const ON = { nape: -1.8, throat: 2.8, mouth: 3.9, head: NECK }; // pose px off his centre, along his facing
+// bent at the waist (P.bow = 1): px the head goes on ahead of the neck, share it shrinks (lower: further from the
+// eye), share the back shows longer
+const BOW = { reach: 5, low: 0.2, long: 0.22 };
+// A head driven into what is in front of him (grip 'hair', systems/Takedown.js slamAt), by the spot's kind (pose
+// px along his facing): fwd = his shoulders thrown at it at the blow, bow = how far he is bent over it then (BOW),
+// back = his shoulders yanked back by the hair, kneel = forced onto his knees first (on them by the end of the
+// second beat), grab = px behind the centre of his head our fist is in his hair
+const SLAM_POSE = {
+  bowl: { fwd: 6, bow: 1.4, back: 3.5, kneel: 1, grab: 1.5 },
+  urinal: { fwd: 5, bow: 0.9, back: 3.5, kneel: 1, grab: 1.5 },
+  sink: { fwd: 5.5, bow: 1, back: 3.5, kneel: 0, grab: 1.5 },
+  ledge: { fwd: 6, bow: 1.2, back: 3.5, kneel: 0, grab: 1.5 },
+  wall: { fwd: 5.5, bow: 0.6, back: 3.5, kneel: 0, grab: 1.5 },
+};
+// where his head is in his own pose (pose px along his facing, from his centre) for slamAt state sl, and how far
+// down his knees have gone
+function slamHead(td, sl) {
+  const S = SLAM_POSE[td.f.context], f = td.f;
+  const kneel = S.kneel ? smooth(td.age / (f.beats[0][0] + f.beats[1][0])) : 0;
+  const fwd = S.fwd * sl.drive - S.back * sl.back, bow = S.bow * sl.drive - 0.5 * sl.back;
+  const s = 1 - 0.05 * sl.drive - 0.12 * kneel;
+  return { S, kneel, fwd, bow, s, head: fwd + (NECK + BOW.reach * bow) * s };
+}
 const ARM_LEN = LIMB.upper + LIMB.fore - 0.6;                     // a hand reaching right out (reach() is the poses')
 function reachOut(h, P, side) {
   shoulder(SH, P, side);
@@ -1415,6 +1442,22 @@ export function takedownPose(ch, P, V) {
       top = 1;
       V.elb[1] = 0.45;
     }
+  } else if (f.grip === 'hair') {
+    // his head driven into what is in front of him: the left fist in his hair follows it (yanked back, driven in), the
+    // right hand on his upper back pins him (fists: in his collar; a weapon in it, held there out of the way); we
+    // go in with each blow, the shoulders behind it
+    const sl = slamAt(td), G = slamHead(td, sl), tg = td.target, r = angDiff(a, tg.facing?.sh ?? tg.angle), rc = Math.cos(r), rs = Math.sin(r);
+    const on = (x, y) => [D + x * rc - y * rs, x * rs + y * rc]; // a point of his pose (his frame) in ours
+    const free = td.done ? smooth(td.t / (f.after * 0.6)) : 0;
+    const L = on(G.head - G.S.grab - 3 * free, -0.6), R = on(G.fwd - 3, 2.6);
+    hl = from(V.hl, L[0], L[1] - 2.5 * free, grab);
+    hr = from(V.hr, R[0], R[1], grab);
+    V.hand[0] = free > 0.5 ? 'loose' : 'fist'; V.hand[1] = 'fist';
+    lean = 1 + 5.5 * sl.drive - 2 * sl.back + 0.8 * thud;
+    twist = -0.12 * sl.back + 0.1 * sl.drive + 0.03 * sl.shake;
+    V.elb[0] = 0.25; V.elb[1] = 0.35;
+    if (V.wpnOn) { wa = 0.5; len = 0.55; top = 1; }
+    V.s = P.s * (1 + 0.03 * sl.back - 0.03 * thud);
   } else if (d.kind === 'gun') {
     // a long gun: butt first (turned round, the muzzle up over the shoulder), then on him as he sinks
     const fore = (d.fore ?? d.grip + 6) - d.grip;
@@ -1469,6 +1512,7 @@ export function takedownPose(ch, P, V) {
 // under him, slumped forward, arms hanging).
 export function heldPose(ch, P) {
   const td = ch.held.takedown, f = td.f, a = P.ta, c = Math.cos(a), s = Math.sin(a), t = ch.world.time;
+  if (f.grip === 'hair') return hairHeld(ch, P, td, a, c, s, t);
   const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1);
   const grab = !f.grip ? 0 : td.i === 0 && !td.done ? smooth(u) : 1;
   const landed = td.done ? what : td.i > 0 ? f.beats[td.i - 1][1] : null;
@@ -1504,6 +1548,38 @@ export function heldPose(ch, P) {
       ft.a = lerpA(ft.a, a + Math.PI, down); ft.lift *= 1 - down; ft.heel *= 1 - down;
     });
     P.legs = Math.max(P.legs, down);
+  }
+  P.top = 0;
+  return P;
+}
+
+// His head driven into what is in front of him by a fist in his hair: yanked back (his head thrown back, the
+// shoulders onto the man behind), then thrown at it bent over, his head on ahead of his shoulders and down (P.bow);
+// his hands go out to brace on it and claw at the grip, flail through a struggle, and hang slacker with every blow;
+// at a toilet he is forced onto his knees first.
+function hairHeld(ch, P, td, a, c, s, t) {
+  const sl = slamAt(td), G = slamHead(td, sl), grab = td.i === 0 && !td.done ? smooth(td.t / td.f.beats[0][0]) : 1;
+  const j = Math.sin(t * 37 + ch.breath) * (0.5 + 1.2 * sl.shake) * (1 - 0.5 * Math.min(1, sl.hits));
+  const slack = Math.min(1, sl.hits / 2), put = (h, lx, ly, k) => { h.x = lerp(h.x, P.tx + (lx * c - ly * s) * P.s, k); h.y = lerp(h.y, P.ty + (lx * s + ly * c) * P.s, k); };
+  P.tx += c * G.fwd; P.ty += s * G.fwd;
+  P.s *= G.s;
+  P.bow = G.bow;
+  P.ta = a + 0.08 * sl.shake * Math.sin(t * 29);
+  P.ha = a + 0.3 * sl.shake * Math.sin(t * 23 + ch.breath);
+  // braced on it at the blow, up at the grip while yanked back, slack by his sides once beaten
+  const bx = lerp(lerp(5.5, 9 + G.fwd, sl.drive), 2.5, slack * (1 - sl.drive * 0.5)), by = lerp(lerp(4, 7.5, sl.drive), 6.5, slack);
+  put(P.hl, bx + j, -by + j * 0.6, grab);
+  if (!P.wpnOn) put(P.hr, bx - j, by - j * 0.6, grab);
+  P.hand[0] = P.hand[1] = sl.drive > 0.6 ? 'flat' : 'loose';
+  P.elb[0] = P.elb[1] = 0.55;
+  const k = G.kneel;
+  if (k > 0) {
+    YIELD_FEET.forEach(([lx, ly], i) => {
+      const ft = P.feet[i];
+      ft.x = lerp(ft.x, lx * c - ly * s, k); ft.y = lerp(ft.y, lx * s + ly * c, k);
+      ft.a = lerpA(ft.a, a + Math.PI, k); ft.lift *= 1 - k; ft.heel *= 1 - k;
+    });
+    P.legs = Math.max(P.legs, k);
   }
   P.top = 0;
   return P;
@@ -1742,13 +1818,13 @@ function drawTucked(ctx, ch, P, bx, by) {
   ctx.restore();
 }
 
-// the shoulders drawn in toward the spine (the sprite's y is across them)
-function drawHunched(ctx, img, x, y, a, s, h) {
+// the shoulders drawn in toward the spine (the sprite's y is across them); long: the back shown longer (bent over)
+function drawHunched(ctx, img, x, y, a, s, h, long = 0) {
   const k = s * (img.k || 1);
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(a);
-  ctx.scale(k, k * (1 - h));
+  ctx.scale(k * (1 + long), k * (1 - h));
   ctx.drawImage(img, -img.width / 2, -img.height / 2);
   ctx.restore();
 }
@@ -1775,8 +1851,10 @@ function paintPose(ctx, ch, P, alpha) {
   if (alpha !== 1) ctx.globalAlpha = ga * alpha;
   // the head on the neck, turned toward the aim, bobbing less than the shoulders; hidden in a ball
   // a ducked head sinks between the shoulders: smaller, pulled back onto the neck
-  const ha = ta + clamp(angDiff(ta, P.ha), -1, 1), hs = (1 + (s - 1) * 0.6) * (1 - 0.5 * P.duck), head = 1 - smooth(P.tuck * 2);
-  const neck = LIMB.neck * s * (1 - 3 * P.duck), hx = bx + Math.cos(ta) * neck, hy = by + Math.sin(ta) * neck;
+  // bent over (P.bow), the head goes on ahead of the shoulders and down (smaller), the back shows longer
+  const bow = P.bow, ha = ta + clamp(angDiff(ta, P.ha), -1, 1), head = 1 - smooth(P.tuck * 2);
+  const hs = (1 + (s - 1) * 0.6) * (1 - 0.5 * P.duck) * (1 - BOW.low * bow);
+  const neck = (LIMB.neck * (1 - 3 * P.duck) + BOW.reach * bow) * s, hx = bx + Math.cos(ta) * neck, hy = by + Math.sin(ta) * neck;
 
   // shadow: further away, larger and softer as the body rises
   const sh = silhouette(ch.torso), shh = silhouette(ch.head), lift = P.lift;
@@ -1826,7 +1904,7 @@ function paintPose(ctx, ch, P, alpha) {
   for (const i of cup ? HANDS_CUP : HANDS_ORDER) if (i ? !P.top : P.top < 2) paintHand(ctx, ch, P, i, x, y, cup);
 
   if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
-  else if (P.hunch > 0.005) drawHunched(ctx, ch.torso, bx, by, ta, s, P.hunch);
+  else if (P.hunch > 0.005 || bow > 0.005) drawHunched(ctx, ch.torso, bx, by, ta, s, P.hunch, Math.max(0, bow) * BOW.long);
   else drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
   if (head > 0) drawSprite(ctx, ch.head, hx, hy, ha, head, hs);
   if (P.over > 0.35) { beginLimbs(ta); paintLegs(ch, P, 0.15 * P.over); flushLimbs(ctx, x, y); } // up over the body

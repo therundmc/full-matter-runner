@@ -29,6 +29,8 @@ export const SCORING = {
     broke: { points: 400, label: 'WEAPON BREAK' },      // the blow that broke the weapon over him
     smoked: { points: 400, label: 'SMOKED' },           // through air too thick to see (powder, soot, steam)
     crushed: { points: 700, label: 'LIGHTS OUT' },      // under a lamp whose chains he shot (systems/LampDrop.js)
+    slammed: { points: 600, label: 'ENVIRONMENTAL' },   // his head driven into a wall, an edge, a sink (a takedown's spot)
+    flushed: { points: 800, label: 'FLUSHED' },         // ... into a toilet or a urinal
     dodge: { points: 600, label: 'DODGE KILL' },        // right after a round passed over a slide
     quickdraw: { points: 300, label: 'QUICK DRAW' },    // with a weapon picked up a moment ago
     double: { points: 400, label: 'DOUBLE KILL' },      // two, three, more within `multiWindow`

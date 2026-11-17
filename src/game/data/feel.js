@@ -133,6 +133,10 @@ export const MOMENTS = {
   stomp: { shake: 0.3 },                                                    // a finisher's stamp on the head
   finisher: { kind: 'finisher', power: 1, stop: 0.12, shake: 0.35, push: 4 }, // the last beat of a finisher
   takedown: { kind: 'finisher', power: 0.8, stop: 0.07, shake: 0.12, push: 2 },
+  // a head driven into a wall, an edge, a toilet (a takedown with a spot): each blow held on its contact frame, the
+  // last one harder
+  slam: { kind: 'blunt', power: 0.75, stop: 0.08, shake: 0.24, push: 3 },
+  slamKill: { kind: 'finisher', power: 1, stop: 0.12, shake: 0.34, push: 4 },
   slide: { kind: 'blunt', power: 0.35, stop: 0.04, shake: 0.15, push: 2 },   // swept off his feet by a slide
   // every slide of the player's opens a moment of bullet time: [time scale, real seconds]. He aims at full speed in it.
   slideTime: { slowmo: [0.42, 0.55] },

@@ -12,6 +12,7 @@ import { skullBit, BIT_KINDS } from '../render/GoreArt.js';
 // px from the centre of a man lying knocked down to his head (data/finishers.js EXEC.head) and to the middle of
 // his torso, as his sprite is drawn (CharacterAnim drawDown)
 const HEAD_AT = 24, TORSO_AT = 10;
+const SIT_REACH = 26; // px of floor between a man put against a wall (how.dying 'wall') and its face
 // what a round does: the causes whose spray goes on past the body (fx/Spatter.js)
 const GUNSHOT = new Set(['bullet', 'heavy', 'blast']);
 
@@ -24,7 +25,7 @@ const GUNSHOT = new Set(['bullet', 'heavy', 'blast']);
 // how: the blow (Character.kill: heavy, spin, finisher, thrown...) scales the blood and the throw. A man held from
 // behind (ch.held: a takedown) is let down where he stood; one already down (ch.knocked) is finished where he lies.
 // how.dying: the way down the killer chose (a takedown, data/finishers.js): he goes down whole, that way (kneeling:
-// from his knees).
+// from his knees; 'wall': sat against the wall in front of him); how.env: his head was driven into something.
 // Returns what is left of him: 'corpse' | 'headless' | 'gibs'.
 export function gore(world, ch, angle, cause, by, how) {
   const P = world.particles;
@@ -99,13 +100,15 @@ export function gore(world, ch, angle, cause, by, how) {
     const whole = mode === 'corpse' && !detach.length;
     // his head taken off as he stood: the body goes down on its knees first (BEHEAD)
     const behead = mode === 'headless' && !burst && cause !== 'execute' && !detach.length && !ch.held && !(ch.knocked > 0) && chance(BEHEAD.odds);
-    const dying = scripted || (cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
-    const kneels = !!KNEELS[dying]; // where he stood, pitching forward the way he faced
+    // his face smashed into a wall (how.dying 'wall'): he slumps down it and stays sat against it (Ragdoll.propUp)
+    const sit = scripted === 'wall';
+    const dying = sit ? null : scripted || (cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
+    const kneels = !!KNEELS[dying]; // where he stood, pitching forward the way he faced (square to what he was driven into)
     // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
     const lay = ch.knocked > 0 ? ch.downAngle : null;
     const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
-    world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + rand(-0.3, 0.3) : lay ?? angle, kneels || lay !== null ? 0 : slide, {
-      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, dying, mark: markOf(wd),
+    world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + (how?.env ? 0 : rand(-0.3, 0.3)) : lay ?? angle, kneels || sit || lay !== null ? 0 : slide, {
+      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, dying, mark: markOf(wd), sit: sit ? SIT_REACH : 0,
       kneeling: kneels && !!how?.kneeling,
       // he faced his killer: he goes over backwards (one who kneels pitches forward)
       back: !!dying && dying !== 'throes' && !kneels && Math.abs(angDiff(ch.angle, angle)) > Math.PI / 2,
