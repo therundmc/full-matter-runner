@@ -1442,6 +1442,42 @@ def without(segs, runs):
     return {y: [r for r in rs if r[0] not in runs.get(y, ())] for y, rs in segs.items()}
 
 
+def weapon_breaks(W, pal, bat, knife, iron):
+    """What the player's melee weapons break into (src/game/data/weapons.js `parts`, `bends`), cut from their own
+    drawings so that every piece keeps its place on the weapon's line: the bat snapped across the taper of its
+    handle (the handle with its splinters, the barrel with its own, raw pale wood at the break), the knife snapped
+    at the guard (the handle with a stub of its tang, the blade), the tire iron bent up past the middle of its bar."""
+    def put(rows, x, y, ch):
+        rows[y] = rows[y][:x] + ch + rows[y][x + 1:]
+    # the bat: where each row of the taper gives, the raw wood of the break, splinters left standing out of it
+    cut = {2: 22, 3: 21, 4: 23, 5: 22, 6: 24}
+    handle = [r[:cut[y]].ljust(25, '.') if y in cut else r[:25] for y, r in enumerate(bat)]
+    head = [('.' * cut[y] + r[cut[y]:])[20:] if y in cut else r[20:] for y, r in enumerate(bat)]
+    for y, c in cut.items():
+        put(handle, c - 1, y, 'm')
+        put(head, c - 20, y, 'm')
+    put(handle, 21, 3, 'm'); put(handle, 22, 3, 'l'); put(handle, 22, 5, 'l')   # long splinters off the handle
+    put(head, 22 - 20, 4, 'm'); put(head, 23 - 20, 6, 'l')                       # ... and off the barrel
+    W['bat_handle'] = ascii_cv(handle, pal)
+    W['bat_head'] = ascii_cv(head, pal)
+    # the knife: the grip and guard with the stub of the tang; the blade, its base chipped
+    hilt = [r[:14] + '..' for r in knife]
+    put(hilt, 14, 4, 'M'); put(hilt, 14, 5, 'D')
+    blade = ['.' + r[14:] for r in knife]
+    put(blade, 1, 3, '.'); put(blade, 1, 7, '.')
+    W['knife_handle'] = ascii_cv(hilt, pal)
+    W['knife_blade'] = ascii_cv(blade, pal)
+    # the tire iron bent up from the middle of its bar (each column past the bend raised a little more), a bright
+    # stress mark on the outside of the bend
+    rows = ['.' * len(iron[0]) for _ in range(len(iron) + 1)]
+    for y, r in enumerate(iron):
+        for x, ch in enumerate(r):
+            if ch != '.':
+                put(rows, x, y + 1 - (round((x - 15) * 0.32) if x > 15 else 0), ch)
+    put(rows, 15, 9, 'S'); put(rows, 16, 9, 'S')
+    W['tire_iron_bent'] = ascii_cv(rows, pal)
+
+
 def weapons():
     W = {}
     gun = {'L': STEEL[3], 'M': STEEL[2], 'D': STEEL[1], 'K': STEEL[0], 'w': WOOD[3], 'W': WOOD[2],
@@ -1595,17 +1631,18 @@ def weapons():
         12: [(9, 'GGGGGG'), (16, 'gGGG'), (20, 'KKK'), (29, 'GGG')]}), gun)
     # a baseball bat in ash: the knob, the handle wound in black tape (its spiral catching the light, the end of it
     # ragged), the taper, the barrel's long grain and its burnt-in brand, two dents on top and an old stain under it
-    W['bat'] = ascii_cv(drawn(46, 9, {
+    BAT = drawn(46, 9, {
         1: [(28, 'UuuuuuuiuuuuuuU')],
         2: [(1, 'iu'), (18, 'UUUUUUUUUU'), (28, 'uuuuuuuuuuuiuuuu')],
         3: [(1, 'iU'), (3, 'gTnTgTnTgTnTgT'), (17, 'uuuuuuuuuuu'), (28, 'uuiIiuUUuuuuUUuuu')],
         4: [(1, 'iU'), (3, 'TgTnTgTnTgTnTg'), (17, 'UUUUUUUUUUU'), (28, 'UUIiIUUUUhRhUUUUU')],
         5: [(1, 'iU'), (3, 'nTgTnTgTnTgTn'), (16, 'iiiiiiiiiiii'), (28, 'iiUiiiiiihhhRiiii')],
         6: [(1, 'iI'), (18, 'IIIIIIIIII'), (28, 'iiiiiiiiihhRiiii')],
-        7: [(28, 'IIIIIIIIhhIIIII')]}), gun)
+        7: [(28, 'IIIIIIIIhhIIIII')]})
+    W['bat'] = ascii_cv(BAT, gun)
     # a big combat knife: the steel pommel, the ridged black rubber grip, a tall cross-guard, a wide clip-point blade
     # with the saw teeth along its spine, the lit flat, the fuller, the grind and the bright edge sweeping up to the tip
-    W['knife'] = ascii_cv(drawn(30, 10, {
+    KNIFE = drawn(30, 10, {
         1: [(12, 'MD')],
         2: [(12, 'LD'), (16, 'D'), (18, 'D'), (20, 'D'), (22, 'D')],
         3: [(1, 'SM'), (3, 'gngngngng'), (12, 'LD'), (14, 'M' * 10)],
@@ -1613,7 +1650,8 @@ def weapons():
         5: [(1, 'MD'), (3, 'GnGnGnGnG'), (12, 'MD'), (14, 'DSMMMMMMMSSSStt')],
         6: [(1, 'DK'), (3, 'nTnTnTnTn'), (12, 'MD'), (14, 'D' + 's' * 12 + 't')],
         7: [(12, 'DK'), (14, 'D' + 't' * 11)],
-        8: [(12, 'DK')]}), gun)
+        8: [(12, 'DK')]})
+    W['knife'] = ascii_cv(KNIFE, gun)
     # a pool cue: the rubber bumper, the dark butt with its pearl inlays, the linen wrap, the forearm's spliced points,
     # the pearl joint collar, the maple shaft tapering to the white ferrule and the chalked blue tip
     BUTT = {1: [(1, 'n'), (2, 'BBBfBBBBBfBBBBBBBBB'), (21, 'bjbjbjbjbjbjbj'), (35, 'BBBmmmm')],
@@ -1633,7 +1671,7 @@ def weapons():
         4: BUTT[4]}), gun)
     # a tire iron: black paint worn back to the steel, rust in the chips; the pry end flattened and turned up, the
     # other bent down into the hex socket
-    W['tire_iron'] = ascii_cv(drawn(34, 15, {
+    IRON = drawn(34, 15, {
         4: [(1, 'S')],
         5: [(1, 'SM')],
         6: [(2, 'MSMMMMLMMMMMMMSMMMMMMMMMSM')],
@@ -1643,7 +1681,9 @@ def weapons():
         10: [(28, 'MGD')],
         11: [(27, 'LMMMD')],
         12: [(27, 'MGGGD')],
-        13: [(27, 'KnnnK')]}), gun)
+        13: [(27, 'KnnnK')]})
+    W['tire_iron'] = ascii_cv(IRON, gun)
+    weapon_breaks(W, gun, BAT, KNIFE, IRON)
     # the magazines, at the guns' density and as wide as their wells (top row: the round on the lips, its bullet toward
     # the muzzle; bottom row: the base plate). They show sliding out of the well, falling, and lying on the floor.
     mag = dict(gun, B=BRASS[3], b=BRASS[1], c=hx('#e07a3a'))
@@ -8768,6 +8808,8 @@ EXPECTED = {
     'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
                     sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),
                     rocket=(9, 4),
+                    # what they break into (weapon_breaks)
+                    bat_handle=(25, 9), bat_head=(26, 9), knife_handle=(16, 10), knife_blade=(17, 10), tire_iron_bent=(34, 16),
                     pistol_bare=(27, 15), uzi_bare=(33, 18), uzi_silenced_bare=(46, 18), rifle_bare=(56, 16),
                     sniper_bare=(72, 17),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(5, 14), mag_uzi=(5, 18), mag_rifle=(8, 16),

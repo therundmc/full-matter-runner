@@ -34,44 +34,11 @@ function swing(ch, victims, strike = 0) {
   return victims;
 }
 
-test('melee: every weapon the player can wear out says how it breaks', () => {
-  const worn = Object.entries(WEAPONS).filter(([, d]) => d.wear);
-  assert.deepEqual(worn.map(([id]) => id).sort(), ['bat', 'cue', 'cue_half', 'knife', 'tire_iron']);
-  for (const [id, d] of worn) {
-    assert.ok(d.kind === 'melee' && d.wear >= 2 && ['snap', 'lodge'].includes(d.breaks), id);
-    assert.ok(!d.snaps || WEAPONS[d.snaps].kind === 'melee', id);
-  }
+// (the player's weapon wearing out and breaking: tests/weaponbreak.test.mjs)
+test('melee: the cue snaps into a weapon of its own, no other wears out into nothing', () => {
   assert.equal(WEAPONS.cue.snapOdds, undefined);
+  assert.ok(WEAPONS[WEAPONS.cue.snaps].kind === 'melee');
   assert.equal(fighter('pistol').weapon.wear, undefined);
-});
-
-test('melee: the kill that uses a knife up leaves it planted in the body', () => {
-  const p = fighter('knife'), d = WEAPONS.knife;
-  for (let i = d.wear; i > 1; i--) {
-    const [g] = swing(p, [guard()]);
-    assert.ok(!g.alive && !g.how.broke && !g.by.stuck);
-    assert.equal(p.weapon.wear, i - 1);
-  }
-  assert.equal(p.ammoText, '1 BLOW LEFT');
-  const [g] = swing(p, [guard()]);
-  assert.ok(g.how.broke && g.how.heavy);
-  assert.equal(g.by.stuck, d.sprite);
-  assert.equal(g.by.wound, 'slash');
-  assert.equal(p.weapon, null);
-  assert.equal(p.ammoText, '');
-});
-
-test('melee: a cue snaps over the last one, half in him, half in the hand; two men in one swing break it once', () => {
-  const p = fighter('cue');
-  assert.equal(p.ammoText, `${WEAPONS.cue.wear} BLOWS LEFT`);
-  p.weapon.wear = 1;
-  const [a, b] = swing(p, [guard(12, 0), guard(14, 3)]);
-  assert.ok(!a.alive && !b.alive);
-  assert.ok(a.how.broke && !b.how.broke, 'only one break');
-  assert.equal(a.by.stuck, WEAPONS.cue_half.sprite);
-  assert.equal(a.by.wound, 'crush');
-  assert.equal(p.weapon.type, 'cue_half');
-  assert.equal(p.weapon.wear, WEAPONS.cue_half.wear, 'what is left is fresh');
 });
 
 test('melee: guards never wear their weapons out', () => {
