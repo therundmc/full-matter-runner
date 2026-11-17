@@ -270,7 +270,7 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   s.guardAt(11, 11).aware = 2;
   assert.deepEqual(names(), ['PUNCH', 'TAKE IT'], 'he turned round: a punch');
   s.guardAt(11, 11).knocked = 2;
-  assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['action FINISH HIM', 'use TAKE IT'], 'a man on the floor comes first: SPACE');
+  assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['attack FINISH HIM', 'use TAKE IT'], 'a man on the floor comes first: the left click');
   Object.assign(s.player, { armed: true, weapon: { type: 'bat' }, def: { kind: 'melee' } });
   s.guardAt(11, 11).alive = false;
   assert.deepEqual(names(), [], 'the man behind the door is not pointed at before he is called');

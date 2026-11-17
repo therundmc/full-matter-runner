@@ -1,8 +1,8 @@
 // How the player finishes a guard, by what is in his hand (data only; entities/Player.js plays them, the animations
 // are entities/CharacterAnim.js execPose).
 
-// Ground finishers (a guard knocked down, on his back). Any attack on him, or Space, starts one, chosen by what is in
-// the hand and by whether somebody is on the player (finisherChoice):
+// Ground finishers (a guard knocked down, on his back). Any attack on him (the left click) starts one, chosen by
+// what is in the hand and by whether somebody is on the player (finisherChoice):
 //   threatened (systems/Danger.js)  the QUICK KILL of the weapon's family: one decisive beat, then he is free
 //   left alone                      one of the family's long executions, never the same twice in a row
 // He sets himself by `mount`, the `beats` = [wait s, what, where] land in order (the wait is the anticipation, the

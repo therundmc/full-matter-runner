@@ -69,7 +69,7 @@ player, and reads `window.game` to decide:
   sidesteps, then gives the goal up. It waits on the kerb while a car comes down the lane it is about to step into;
 - aims at the nearest guard in sight (knocked ones first), strikes in reach, fires guns once on target and within a
   sensible range (360 px, 210 with a shotgun; it holds its ground closer in), half the time creeps up behind an
-  unaware guard for a takedown, finishes downed guards (Space), slides now and then, picks things up (E), opens the
+  unaware guard for a takedown, finishes downed guards (left click), slides now and then, picks things up (E), opens the
   trunk, throws its weapon sometimes, reloads when it can. On a plan it only fights a guard who is on to it;
 - handles the intro, gets up at the start (the player starts seated), restarts after death (R) and after the
   results screen (R), starts over when a session goes nowhere (5 game minutes, no kill for a minute), and a minute

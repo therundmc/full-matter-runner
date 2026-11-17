@@ -498,7 +498,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   rollPhases); everyone moves the same, the player alone throws the flourish (fx/TraversalFx.js, `TRAVERSE_FX`: dust
   by floor, a slide's streaks of light and skid mark, the plant's puff, a rim of light through the swing, a landing's
   ring of dust and camera dip).
-  Space = context action: execute > vault > slide; the takedown from behind is the left click. (A cover system
+  Space = vault > slide; the left click takes down from behind and finishes a man on the floor. (A cover system
   existed and was removed at the user's request.)
 - Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown, data/finishers.js `TAKEDOWNS` / `takedownFor`):
   Left click right behind a standing guard who has his back to us: an execution from behind by the weapon in hand (`swing`,

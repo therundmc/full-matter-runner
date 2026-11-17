@@ -73,7 +73,7 @@ export function drawHUD(ctx, game, t) {
   // context hints: the cap of the device in use (ui/Glyphs.js), then what it does
   let hint = null;
   if (p.alive) {
-    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown ? 'attack' : 'action', p.contextAction];
+    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown || p.nearDowned ? 'attack' : 'action', p.contextAction];
     else if (p.nearTrunk) hint = ['use', 'OPEN TRUNK'];
     else if (p.nearUse) hint = ['use', w.uses.label(p.nearUse)];
     else if (p.nearItem) hint = ['use', `${p.armed ? 'SWAP FOR' : 'PICK UP'} ${p.nearItem.def.name}`];
