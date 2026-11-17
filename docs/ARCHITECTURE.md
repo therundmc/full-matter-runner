@@ -144,6 +144,9 @@ src/
     render/
       MapRenderer.js      floor / blood / flesh / wall canvases and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing
+      FloorWear.js        the wear of the floors painted once over the tiles, free of their grid (WEAR in
+                          data/floorwear.js): cracks over several tiles, potholes, a patched road, oil down the lanes,
+                          dirt along the walls, split and gaping boards, rings, burns, gum, weeds; seeded by the level
       WallScars.js        holes dug into the wall tops (entry, exit, ricochet scuff, club dent), merged into gouges
                           on repeated hits; every wall mark is clipped to the wall tiles, behind their outline
       GoreArt.js          what a burst skull leaves: bits of bone, scalp and brain, the stains of its matter

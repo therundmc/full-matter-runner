@@ -82,7 +82,7 @@ export default class World {
       pushForce: PHYSICS.pushForce,
       substeps: PHYSICS.substeps,
     });
-    this.decals = new MapRenderer(this.map);
+    this.decals = new MapRenderer(this.map, level);
     this.renderer = new WorldRenderer(this);
     this.wallBodies = this.map.buildBodies();
     this.addBody(this.wallBodies);

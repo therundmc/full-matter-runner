@@ -7,6 +7,7 @@ import { scorchArt } from './BlastArt.js';
 import { SPECK, stampImage, spotStamp, streakStamp, splatStamp, warmStamps } from './BloodArt.js';
 import { matterStain } from './GoreArt.js';
 import WallScars from './WallScars.js';
+import { paintWear } from './FloorWear.js';
 import { BLOOD_EDGE } from '../data/wounds.js';
 import { offFloor } from '../fx/Spatter.js';
 
@@ -45,8 +46,9 @@ function floorTile(name, x, y) {
 //   walls   wall tops and roofs, holes dug into them (WallScars), splashes; every mark is clipped to the wall tiles,
 //           blood to the strip of top by the face it struck (faceBand)
 export default class MapRenderer {
-  constructor(map) {
+  constructor(map, level = {}) {
     this.map = map;
+    this.level = level;
     this.clock = 0;
     this.ageing = [[], []]; // stains waiting to turn tacky / dry, oldest first: { s, x, y, rot, at }
     this.heads = [0, 0];
@@ -73,6 +75,10 @@ export default class MapRenderer {
         if (f) g.drawImage(floorTile(f, x, y), x * TILE, y * TILE, TILE, TILE);
       }
     }
+    // the wear of years, free of the tiles' grid (FloorWear: cracks over several tiles, potholes, split boards...)
+    const px = g.getImageData(0, 0, W * fs, H * fs);
+    paintWear(px, fs, m, this.level);
+    g.putImageData(px, 0, 0);
     this.grime(g, W, H);
     // soft drop shadow of walls on the floor
     const sh = document.createElement('canvas');
