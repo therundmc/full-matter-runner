@@ -24,6 +24,7 @@ import { drawMenu } from './ui/MenuArt.js';
 import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
 import { titleBeats } from './ui/title/Timeline.js';
 import { lookAt as titleLook } from './ui/title/Cycle.js';
+import { titleProposal } from './ui/title/Proposals.js';
 import { LEAP, leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import { ENDING, ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
@@ -88,6 +89,8 @@ export default class Game {
     this.progress = loadProgress();
     this.menu = new Menu('main', () => this.menuContext());
     this.menuRects = [];               // where the menu's items were drawn last frame (MenuArt), for the mouse
+    this.titleAlt = titleProposal();   // a title proposal asked by the address (?title=a|b|c|ab), or null: the title
+    this.altRects = null;              // where that proposal drew the menu's items, when it draws them itself
     this.grab = null;                  // index of the slider held by the mouse
     this.lastMouse = { x: 0, y: 0 };
     this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
@@ -229,6 +232,7 @@ export default class Game {
     ev.on('shot', () => this.tension.bump('shot'));
     ev.on('kill', ({ victim }) => { if (!victim.isPlayer) this.tension.bump('kill'); });
     ev.on('explosion', () => this.tension.bump('blast'));
+    ev.on('boss', () => this.tension.bump('boss')); // a boss's beat: the soundtrack at its fullest
     ev.on('alertPhase', ({ phase }) => Music.setCombat(AI.combatMusic.includes(phase)));
     Music.setCombat(false);
     Music.setCombo(0);
@@ -365,7 +369,7 @@ export default class Game {
       // the city the title shows, heard out in the open: the trains going by, the far wash (ui/title/Timeline.js; the
       // scene's clock is the time on the title)
       const t1 = this.stateT, t0 = this.titleT <= t1 && t1 - this.titleT < 0.5 ? this.titleT : t1;
-      for (const b of titleBeats(t0, t1)) Audio.play(b.name, { vol: b.vol, ...b.opts, inside: 0 });
+      if (!this.titleAlt || this.titleAlt.city) for (const b of titleBeats(t0, t1)) Audio.play(b.name, { vol: b.vol, ...b.opts, inside: 0 });
       this.titleT = t1;
       this.updateMenu(inp);
       inp.consume();
@@ -473,6 +477,7 @@ export default class Game {
     if (this.world.cleared) this.clearedT += dt;
     this.tension.update(dt);
     this.world.killFeed.update(dt); // on the real clock: a hit-stop never holds a stamp up
+    this.world.bossStage.update(dt);
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 
@@ -613,7 +618,7 @@ export default class Game {
     if (len > max) { ox *= max / len; oy *= max / len; }
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
-    const D = this.direction, shot = w.tutorial?.shot();
+    const D = this.direction, shot = w.tutorial?.shot() ?? w.bossStage.shot(); // ... or a boss's beat (systems/BossStage.js)
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom;
@@ -642,7 +647,11 @@ export default class Game {
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
-    else if (!inWorld) drawTitleView(ctx, W, H, this.stateT, this.input.mouse);
+    else if (!inWorld && this.titleAlt) {
+      this.safeDraw(ctx, () => {
+        this.altRects = this.titleAlt.scene(ctx, W, H, this.stateT, this.input.mouse, { menu: this.menu, progress: this.progress, device: this.input.device });
+      });
+    } else if (!inWorld) drawTitleView(ctx, W, H, this.stateT, this.input.mouse);
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));
     else if (this.state === 'fall' && this.stateT >= FALLEN) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALLEN));
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
@@ -657,6 +666,7 @@ export default class Game {
       o.imageSmoothingEnabled = false;
     }
     if (inWorld) this.drawOver(o, W, H, t);
+    else if (this.state === 'title' && this.titleAlt) this.safeDraw(o, () => { this.menuRects = this.altRects || drawMenu(o, W, H, t, this.menu, 'title', this.input.device, 0); });
     else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title', this.input.device, titleLook(this.stateT).bright); });
     if (this.lensNote > t) {
       o.font = `${Math.round(14 * H / 720)}px monospace`;
@@ -743,7 +753,7 @@ export default class Game {
     return {
       W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
       state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
-      daylight: this.state === 'title' ? titleLook(this.stateT).bright : 0,
+      daylight: this.state === 'title' && !this.titleAlt ? titleLook(this.stateT).bright : 0,
       timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {
         x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,

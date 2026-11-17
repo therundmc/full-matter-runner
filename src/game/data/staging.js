@@ -16,6 +16,10 @@ export const SHOTS = {
   threat: { zoom: 1, ease: 2.2, pull: 0.45, look: 0.5 },   // a man called into the fight: he and the player both in frame
   run: { zoom: 0.75, ease: 1.5, pull: 0.35, look: 0.5 },   // the run for the window, the fire coming down the corridor
   dive: { zoom: 0.7, ease: 2.5, pull: 0, look: 0 },
+  // a boss's beats (systems/BossStage.js, data/bosses.js `shot`)
+  bossIntro: { zoom: 1.35, ease: 6, pull: 0.6, look: 0.2 },  // he lays eyes on the player: pushed in, mostly on him
+  bossHurt: { zoom: 1.3, ease: 8, pull: 0.4, look: 0.5 },    // the first hit
+  bossDown: { zoom: 1.6, ease: 3, pull: 0.75, look: 0 },     // he goes down: it lingers on him
 };
 export const DIRECTION = {
   focus: 3.2,              // 1/s the view goes to (and comes back from) what a shot looks at

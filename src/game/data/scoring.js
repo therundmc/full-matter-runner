@@ -39,6 +39,7 @@ export const SCORING = {
     double: { points: 400, label: 'DOUBLE KILL' },      // two, three, more within `multiWindow`
     triple: { points: 900, label: 'TRIPLE KILL' },
     massacre: { points: 1500, label: 'MASSACRE' },
+    cueball: { points: 5000, label: 'CUEBALL' },        // a boss put down, by his name (data/bosses.js; `how.boss`)
   },
   longShot: 420,            // px
   multiWindow: 0.7,         // s between two kills of a multiple one

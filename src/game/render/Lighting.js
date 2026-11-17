@@ -5,6 +5,7 @@ import { clamp } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { RAIN } from '../data/atmosphere.js';
+import { DOORS } from '../data/doors.js';
 import { hash, flicker, signLevel, pickFaults } from './Flicker.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
@@ -667,6 +668,12 @@ export default class Lighting {
       g.globalAlpha = a;
       g.drawImage(cb, c.x - r, c.y - r, r * 2, r * 2);
     }
+    // the lamps by the doors' locks: a small pool of their colour (red locked, green open)
+    const LA = DOORS.lamp;
+    for (const l of this.doorLamps(t)) {
+      g.globalAlpha = clamp(l.k * LA.k, 0, 1);
+      g.drawImage(this.blob(l.color), l.x - LA.glow, l.y - LA.glow, LA.glow * 2, LA.glow * 2);
+    }
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
 
@@ -686,6 +693,16 @@ export default class Lighting {
       ctx.drawImage(this.lm, x0, y0, vw, vh);
     }
     ctx.restore();
+  }
+
+  // the lamps of the doors that lock, in view: [{ x, y, color, k }] (entities/Door.js lamp)
+  doorLamps(t) {
+    const out = [];
+    for (const d of this.world.doors || []) {
+      const l = d.lamp?.(t);
+      if (l && this.inView(l.x, l.y, DOORS.lamp.glow)) out.push(l);
+    }
+    return out;
   }
 
   // a prop's emissive map, where the prop is drawn (overhead ones shift with parallax)
@@ -743,6 +760,12 @@ export default class Lighting {
       const rc = 4 + l.r * 0.03;
       ctx.globalAlpha = clamp(k * L.bulb, 0, 1);
       ctx.drawImage(this.blob(l.color), l.x - rc, l.y - rc, rc * 2, rc * 2);
+    }
+    // the doors' lock lamps, crisp over the dark
+    const LA = DOORS.lamp;
+    for (const l of this.doorLamps(t)) {
+      ctx.globalAlpha = clamp(l.k, 0, 1);
+      ctx.drawImage(this.blob(l.color), l.x - LA.core, l.y - LA.core, LA.core * 2, LA.core * 2);
     }
     ctx.globalAlpha = 1;
     for (const p of w.props) this.drawGlow(ctx, p, t);

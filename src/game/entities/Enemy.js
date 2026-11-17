@@ -401,7 +401,7 @@ export default class Enemy extends Character {
     const now = this.world.time;
     this.witnessed = this.witnessed.filter((t) => now - t < 5);
     this.witnessed.push(now);
-    const named = victim.boss ? 'chief' : 'down', who = { N: victim.nick };
+    const named = victim.boss && !victim.traits ? 'chief' : 'down', who = { N: victim.nick }; // (a boss with a name: by it)
     if (this.witnessed.length >= 2 && this.panicT <= 0 && chance(this.kind === 'brute' ? 0.3 : 0.6)) {
       this.panicT = rand(3, 5);
       this.say('panic');
@@ -785,13 +785,13 @@ export default class Enemy extends Character {
     }
     if (S.rest === 'desk' && this.seat) {
       // his weapon stood on the floor against the end of the desk, on his left, the barrel on its edge (seen from
-      // above it shows short: len); his ashtray on the arm of his chair
+      // above it shows short: len); a smoker's ashtray on the arm of his chair (the script's `ash`)
       const desk = this.nearest('desk', this.seat, 3 * TILE), f = this.seat.face;
       if (desk) {
         const lx = Math.cos(f - Math.PI / 2), ly = Math.sin(f - Math.PI / 2), out = desk.def.w / 2 + 8; // his left
         this.rest = { x: desk.x + lx * out - Math.cos(f) * 3, y: desk.y + ly * out - Math.sin(f) * 3, a: f + Math.PI / 2 - 0.15, len: 0.6 };
       }
-      this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
+      if (S.ash) this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
     }
     this.routine = new Routine(S, this.seat?.slot ?? 0);
     if (!S.walk) this.routine.begin(this.routine.pick(), true);
@@ -1444,7 +1444,7 @@ export default class Enemy extends Character {
     else this.sweep(dt, this.lookBase + Math.PI, 1.6);
     if (this.t < (kneel ? 1.4 : 1.8)) return;
     if (f) { f.knocked = Math.min(f.knocked, 0.2); this.say('wake', { N: f.nick }); }
-    else if (c.kind === 'body') { if (!this.say(c.who?.boss ? 'chief' : 'found', { N: c.who?.nick })) this.say('body'); }
+    else if (c.kind === 'body') { if (!this.say(c.who?.boss && !c.who.traits ? 'chief' : 'found', { N: c.who?.nick })) this.say('body'); }
     else this.say(c.kind === 'missing' ? 'missing' : 'damage');
     this.director.callIn(this, x, y);
     this.beginLocalSearch(x, y, 2);

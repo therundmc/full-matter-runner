@@ -218,6 +218,9 @@ export const KILLFEED = {
   banner: {
     size: { double: 40, triple: 52, massacre: 64 }, color: { double: 'yellow', triple: 'orange', massacre: 'neon' },
     y: 0.24, slam: 0.08, from: 2, jolt: 7, joltT: 0.15, ghost: 0.2, life: 0.7, fade: 0.2,
+    // a boss's name card, slammed the same way when he first sees the player (the 'boss' event): bigger, held longer,
+    // low on the screen (he is in the middle of it)
+    card: { size: 84, color: '#e6ff1a', life: 1.7, y: 0.8 },
   },
 };
 

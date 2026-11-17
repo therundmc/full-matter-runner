@@ -73,7 +73,7 @@ export function drawHUD(ctx, game, t) {
   // context hints: the cap of the device in use (ui/Glyphs.js), then what it does
   let hint = null;
   if (p.alive) {
-    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown ? 'attack' : 'action', p.contextAction];
+    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown || p.nearDowned ? 'attack' : 'action', p.contextAction];
     else if (p.nearTrunk) hint = ['use', 'OPEN TRUNK'];
     else if (p.nearUse) hint = ['use', w.uses.label(p.nearUse)];
     else if (p.nearItem) hint = ['use', `${p.armed ? 'SWAP FOR' : 'PICK UP'} ${p.nearItem.def.name}`];
@@ -191,17 +191,18 @@ function drawCash(ctx, v, x, cy, s) {
   ctx.restore();
 }
 
-// DOUBLE KILL / TRIPLE KILL / MASSACRE, centred high, stamped like the death screen's title (smaller, gone at once)
+// DOUBLE KILL / TRIPLE KILL / MASSACRE, centred high, stamped like the death screen's title (smaller, gone at once);
+// a boss's name card the same, low on the screen (KILLFEED.banner.card)
 function drawBanner(ctx, feed, W, H, s, t) {
   const v = feed.bannerView();
   if (!v) return;
-  const B = KILLFEED.banner, size = v.size * s * v.scale, j = v.jolt * s, rot = -0.035;
-  const x = W / 2 + j * Math.sin(t * 90), y = H * B.y + j * Math.cos(t * 77);
+  const size = v.size * s * v.scale, j = v.jolt * s, rot = -0.035;
+  const x = W / 2 + j * Math.sin(t * 90), y = H * v.y + j * Math.cos(t * 77);
   ctx.save();
   ctx.globalAlpha *= v.alpha;
   // on a hard black shadow, a white ghost of it where it hit
   text(ctx, v.label, x + size * 0.09, y + size * 0.1, size, '#000', { shadow: null, rot });
-  if (v.ghost > 0) text(ctx, v.label, W / 2, H * B.y, v.size * s * (1 + (1 - v.ghost) * 0.6), PALETTE.white, { shadow: null, outline: false, rot, alpha: 0.5 * v.ghost });
+  if (v.ghost > 0) text(ctx, v.label, W / 2, H * v.y, v.size * s * (1 + (1 - v.ghost) * 0.6), PALETTE.white, { shadow: null, outline: false, rot, alpha: 0.5 * v.ghost });
   glitchText(ctx, v.label, x, y, size, t, { rot, color: tone(v.color, t) });
   ctx.restore();
 }

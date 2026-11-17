@@ -14,7 +14,7 @@
 //          he faces, his belly against it (it is placed for him: the tile he starts on only says which side)
 //   sit, rise   s he takes to sit down, to get up when something is up (frozen meanwhile: a beat the player gets)
 //   rest   'desk': his weapon stands against the end of the nearest desk, on his left, while he sits; he grabs it
-//          getting up
+//          getting up; ash: an ashtray on the arm of his chair
 //   stay   all calm, he never leaves it for another pastime (a chat, a cigarette, a leak...)
 //   gaze   his eyes follow a stranger coming near in front of him (a doorman)
 //   walk   a patrol: how he carries his hands on his round ('pockets'); his acts are played at the halts
@@ -142,13 +142,25 @@ export const POSTS = {
   // it (the ember lights his face), blows a thick slow cloud, taps the ash, rolls it between his fingers. The shotgun
   // lies across the desk: alerted, he swings his legs down, grabs it and stands.
   boss: {
-    body: 'desk', seat: { prop: 'armchair', places: [[2, 0]], face: 0 }, sit: 1, rise: 0.6, rest: 'desk', stay: true,
+    body: 'desk', seat: { prop: 'armchair', places: [[2, 0]], face: 0 }, sit: 1, rise: 0.6, rest: 'desk', ash: true, stay: true,
     acts: {
       hold: { w: 3, phases: [{ g: 'cigar', dur: [3, 6] }] },
       puff: { w: 3, phases: [{ g: 'draw', dur: [1.4, 1.8], fx: 'ember' }, { g: 'blow', dur: [2.4, 3.2], fx: 'cloud' }] },
       ash: { w: 1.5, phases: [{ g: 'tap', dur: [1.1, 1.4], fx: 'ash' }] },
       roll: { w: 1, phases: [{ g: 'roll', dur: [2, 3] }] },
       word: { w: 0.6, phases: [{ g: 'cigar', dur: [2, 3], say: ['boss', 0.8] }] },
+    },
+  },
+  // CUEBALL (data/bosses.js), who holds the back room: in the armchair behind the desk, his feet up on it, his hands
+  // folded on his belly; he cracks his knuckles, pushes his shades back up his nose, has a word for his men. The
+  // pump-action stands against the desk: alerted, he is up faster than the old man was.
+  cueball: {
+    body: 'desk', seat: { prop: 'armchair', places: [[2, 0]], face: 0 }, sit: 1, rise: 0.4, rest: 'desk', stay: true,
+    acts: {
+      sit: { w: 4, phases: [{ g: 'clasp', dur: [4, 8] }] },
+      knuckles: { w: 1.5, phases: [{ g: 'knuckles', dur: [1.6, 2], sound: ['click', 0.5, 0.2, 0.45] }] },
+      shades: { w: 1.5, phases: [{ g: 'shades', dur: [1.4, 1.8] }] },
+      word: { w: 0.8, phases: [{ g: 'clasp', dur: [2, 3], say: ['cueball', 0.8] }] },
     },
   },
   // his two men on the couch, slumped, legs out, an arm along the backrest: one reads a magazine on his knee, the

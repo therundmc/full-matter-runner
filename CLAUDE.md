@@ -92,6 +92,9 @@
   systems/Papers.js.
 
 ## Level 1
+- The boss is CUEBALL, the comic's heavy (kind `cueball`: data/bosses.js `BOSSES`, entities/Boss.js, systems/BossStage.js):
+  his name card and a camera push-in on first sight, a fast pump-action fired from the hip (each shot told: the pump,
+  then a glint at the muzzle), TWO hits (the first wounds him and sends him berserk), no takedown while he is whole.
 - 12 guards, two guns in the house (the poker dealer's pistol, the boss's shotgun), a pistol behind the liquor
   store's counter, a cue by the pool table, a tire iron in the trunk of the first parked car (prop option `trunk`,
   E at its tail); the player starts on the ground and gets up (level `intro`).

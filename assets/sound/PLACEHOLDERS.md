@@ -22,6 +22,9 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | holster | a guard's hand closes on a pistol or a knife on his hip, or puts it back (Enemy.updateCarry) | leather holster draw / snap, a blade out of a sheath |
 | sling | a guard takes a long gun off his back, or slings it back (Enemy.updateCarry) | sling strap and swivel rattle, the gun swung round in the hands |
 | doorPush | a hand comes flat against a door leaf and pushes it (Character.updateDoorHand) | a palm on a wooden door, the leaf giving |
+| doorLatch | a door comes shut slowly and its latch catches: a closer bringing it back, a hand pulling it to (Door.latchShut) | a door latch clicking home in its strike plate, the leaf settling in the frame (now: the click cut low, a touch of the door) |
+| doorCloserHiss | a door's hydraulic closer swinging it back shut (Door.hiss, data/doors.js `closer`) | the soft hydraulic sigh of a door closer, a faint creak of its arm (now: the swish cut slowed right down, very low) |
+| lockBeep | the lamp by a lock turns green once a guard's key has turned in it (Door.tickLamp) | a short electronic beep of an access control, or a lock's bolt drawn back with a clack (now: the click cut pitched up) |
 | cloth | the shoulders whip round on a quick turn (Character.animate, FACING.cloth) | a short cloth / coat rustle |
 | scuff | a foot set down on a pivot step or a hop round (Character.animate) | a shoe scuffing on the floor (per floor if the library has them) |
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |
@@ -56,3 +59,9 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | batSnap | the player's bat (or cue) snaps in two on the blow that uses it up (Character.breakWeapon `snap`) | a wooden baseball bat cracking in two over a skull: a dry splintering crack, the barrel's knock as it flies off |
 | knifeSnap | the player's knife breaks at the guard, its blade left in what it struck (Character.breakWeapon `lodge`) | a steel blade snapping at the tang: a sharp metallic ping and the click of the handle letting go |
 | snatch | the player takes a dead guard's weapon into his hand as the man goes down (Player.grab) | a hand slapping onto a gun and closing on it, a quick leather-and-steel rattle, a twirl's swish |
+| bossCard | a boss's name card slams in the first time he sees the player (entities/Boss.js bossLine, ui/KillFeed.js card) | a heavy cinematic slam / stinger: a low hit with a metallic tail, 0.6 s |
+| bossHowl | the boss takes his FIRST hit and is only wounded (entities/Boss.js wound) | a big man's howl of pain, raw and short (0.9 s) |
+| bossRoar | wounded, he throws his head back and goes berserk; again with each of his roared lines (Boss.goBerserk, update) | a furious male roar, throat torn, 1 s; two or three takes |
+| bossShake | the boss throws the player off when seized from behind while still whole (Boss.shakeOff) | a grunt, cloth yanked, a body shoved hard |
+| bossDeath | the boss's second hit: he dies (Boss.kill) | a heavy man's last bellow dying into a groan, then his knees hitting the floor |
+| shadesDrop | his shades come off as he dies and skitter over the floor (Boss.kill, the Debris' tick) | plastic sunglasses clattering and skidding on a hard floor |

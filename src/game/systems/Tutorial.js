@@ -80,7 +80,7 @@ export const HINTS = {
   },
   finish: (T, s, p) => {
     const g = nearest(T.guards(s).filter((e) => e.alive && e.knocked > 0), p);
-    return g ? { x: g.x, y: g.y, up: MAN, key: 'action', text: 'FINISH HIM' } : null;
+    return g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text: 'FINISH HIM' } : null;
   },
   take: (T, s, p) => {
     const it = p.weapon?.type !== s.take && T.world.items.find((i) => !i.dead && i.type === s.take && inside(s.zone, i.x, i.y));

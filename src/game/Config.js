@@ -134,7 +134,7 @@ export const AI = {
   // soundtrack intensity per phase (Music: beatless under 0.45, a heartbeat, the beat from 0.7), and what the
   // fight itself adds on top: heat 0..1 gained per event, lost in `cool` s, worth `gain` of intensity
   music: { normal: 0.25, caution: 0.55, evasion: 0.75, alert: 0.85 },
-  heat: { shot: 0.12, kill: 0.7, blast: 0.6, cool: 14, gain: 0.5 },
+  heat: { shot: 0.12, kill: 0.7, blast: 0.6, boss: 1, cool: 14, gain: 0.5 }, // boss: a beat of a boss's (the 'boss' event)
   combatMusic: ['alert'], // phases during which the soundtrack plays its combat variant
   alertLinger: 4,         // seconds without a sighting before ALERT turns into EVASION
   evasion: 18,

@@ -15,7 +15,7 @@
 
   const TILE = 32;
   const DT = 1 / 60;
-  const MELEE_SPACE = new Set(['EXECUTE']);
+  const MELEE_CLICK = new Set(['EXECUTE']); // context actions done with the left click
   const VAULTS = new Set(['VAULT', 'DIVE THROUGH', 'CLIMB']);
   // a gun guard who sees him and is about to fire, far enough for a slide to carry him under the round
   const underFire = (w, p) => w.enemies.some((e) => e.alive && e.sees && e.def.kind === 'gun' && e.react <= 0.1
@@ -805,7 +805,7 @@
     // context actions
     const ca = p.contextAction;
     if (ca && p.nearTakedown && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
-    else if (ca && MELEE_SPACE.has(ca)) { press(inp, 'Space'); act(`space (${ca})`); }
+    else if (ca && MELEE_CLICK.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     // (no slide on a plan: one chains into a vault, a ladder too, and off the route); a gunman about to fire: under it
     else if (!B.plan && heading !== null && !ca && (rnd() < 0.004 || (S.clock > (B.dodgeT || 0) && underFire(w, p)))) {
       press(inp, 'Space'); B.dodgeT = S.clock + 1.2; act('slide');

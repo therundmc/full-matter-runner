@@ -16,8 +16,8 @@ export default {
   patrols: {
     '17,22': [[16, 22], [26, 22]],
   },
-  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
-  looks: { '28,9': 'boss' },
+  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'cueball', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
+  looks: { '28,9': 'cueball' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "XXXXXXXXXXX____________________XXXXXXXXXXX",
@@ -155,7 +155,7 @@ export default {
     ['toilet', 22.5, 6.4, 0], ['stall', 22.06, 6.78, 0], ['urinal', 20.19, 7.95, 270], ['urinal', 20.19, 8.85, 270],
     ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0, { tips: false }],
     // back room
-    ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'boss_desk' }], ['sofa', 24.5, 8.6, 270],
+    ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'cueball_desk' }], ['sofa', 24.5, 8.6, 270],
     ['armchair', 28.45, 6.6, 180], ['table_round', 26.6, 8.75, 0, { clutter: 'men_table' }],
     ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270], ['ceiling_lamp', 26.6, 8.75, 0],
     ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84, { clutter: 'cash_floor' }],
@@ -222,6 +222,8 @@ export default {
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
+  // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
+  doors: { '20,20': {"closer": true}, '21,11': {"closer": true}, '24,5': {"closer": true}, '14,8': {"closer": true} },
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)

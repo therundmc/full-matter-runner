@@ -110,6 +110,13 @@ lv.put(39, 20, 'L')
 lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
+# door closers (a hydraulic arm swings the leaf back shut, src/game/data/doors.js), where a real bar has them: the
+# front double door (the heat and the noise kept in, the street kept out), the toilets' (the smell), the back door
+# and the storeroom's door on the service alley (steel service doors on the outside: they shut and lock behind the
+# deliveries). Inside, the house's own doors swing free (behind the counter to the storeroom, the gaming room, the
+# boss's back room): the staff go in and out with their hands full. The VIP room has its curtain.
+for x, y in ((21, 20), (22, 11), (25, 5), (14, 8)):
+    lv.door(x, y, closer=True)
 
 # ---------------------------------------------------------------- actors (12 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
@@ -177,7 +184,8 @@ lv.patron('dancer1', 30.0, 18.9, 180, 'dance')
 lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weighing and bagging his dope
 lv.actor('6', 18, 8)
 lv.actor('k', 21, 9, face=0, job='piss')               # in the toilets: the bowl, the sink, a smoke against the wall
-lv.actor('h', 30, 9, face=180, job='boss', look='boss')  # the boss in his armchair, feet up on the desk, the shotgun on it
+lv.actor('h', 30, 9, face=180, job='cueball', look='cueball')  # CUEBALL, the level's boss (data/bosses.js), in the
+#                                                     armchair, feet up on the desk, his pump-action against it
 lv.actor('i', 26, 10, face=0, job='couch')              # his man on the couch plays with his tire iron
 lv.actor('k', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
@@ -373,7 +381,7 @@ lv.prop('trash_can', 21.4, 10.5, tips=False)
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
-lv.prop('desk', 27.6, 6.75, 270, clutter='boss_desk')                       # its seat side toward the boss, up against the north wall
+lv.prop('desk', 27.6, 6.75, 270, clutter='cueball_desk')                       # its seat side toward the boss, up against the north wall
 lv.prop('sofa', 25.5, 8.6, 270)
 lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
                                                         # north of it to get caught in (the QA robot found him there)

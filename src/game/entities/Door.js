@@ -1,26 +1,39 @@
 import { CAT, MASK } from '../Config.js';
 import { sprite, silhouette } from '../../engine/Assets.js';
 import { angDiff, clamp, rand } from '../../engine/math.js';
-import { setKg } from '../../engine/physics/Body.js';
+import { setKg, setShapeInertia } from '../../engine/physics/Body.js';
+import { leafInertia, spinOf, pushLeaf, blowOn, swing } from '../../engine/physics/Hinge.js';
+import { PX_PER_M, STEP } from '../../engine/physics/Units.js';
 import { LEAF } from '../world/Openings.js';
+import { DOORS } from '../data/doors.js';
+import { GESTURE } from '../data/feel.js';
+import { doorHandSide } from './Gesture.js';
+import { flicker } from '../render/Flicker.js';
 
 const { Bodies, Body } = Matter;
 
-const MAX_SWING = 1.75;      // rad either side of closed
-const HINGE_FRICTION = 2.2;  // 1/s angular damping of the hinge
 const MAX_HP = 9;            // a solid wooden door
 const LATCH_HP = 3;          // lock strength (bullets in the lock, kicks, bat blows)
 const LOCK_ZONE = 10;        // px from the latch end: where the lock sits
+const LAMP_AT = 5;           // px from the latch end: the lock's lamp, on the lock case
+const SHUT = 0.012;          // rad off shut that counts as shut, for the latch
 // the leaf sprite is cut in three along its length: hinge end, middle (tiled to the leaf length), latch end
 const CAP_HINGE = 8, CAP_LATCH = 12;
+// the closer seen from above (px): its body on the leaf's face [from, to] along it, its depth, the pinion's arm and
+// the one to the shoe, the shoe screwed to the wall beside the hinge: [along the doorway (behind the pivot, over the
+// jamb), out from the leaf's line to the wall's face]
+const CLOSER = { body: [2, 12], depth: 3, pinion: 4, arm: [8, 9], shoe: [-7, 12] };
 
 // Physical swinging door on a kinematically enforced hinge: (hx, hy) is the pivot, `len` the pivot-to-latch
 // length, the leaf runs LEAF.back further behind the pivot (see world/Openings.js for the layout in a wall).
-// Locked doors (reinforced leaf, red lock) don't move until the lock is shot / kicked / blasted open. Bullets punch
-// real holes, damage warps and splits the leaf, and at 0 HP it is ripped off (Destruction.detachDoor).
+// It has the weight of its kind (data/doors.js): pushed by a man walking into it with a limited force
+// (systems/Doors.js), slowed to a stop by its hinge, slammed open by kicks and blows. A closer swings it back shut;
+// shut slowly, it latches. Locked doors (reinforced leaf, a lamp by the lock: red locked, green open) don't move
+// until the lock is shot / kicked / blasted open, or a guard of the house lets himself through with his key.
+// Bullets punch real holes, damage warps and splits the leaf, and at 0 HP it is ripped off (Destruction.detachDoor).
 // support / strike: the wall tiles [cx, cy] carrying the hinges and receiving the latch.
 export default class Door {
-  constructor(world, hx, hy, angle0, length, { locked = false, cells = [], support = null, strike = null, image = null } = {}) {
+  constructor(world, hx, hy, angle0, length, { locked = false, cells = [], support = null, strike = null, image = null, closer = false, kind = null, relock = 0 } = {}) {
     this.world = world;
     this.hx = hx; this.hy = hy;
     this.a0 = angle0;
@@ -30,14 +43,21 @@ export default class Door {
     this.strike = strike;
     // seen from above the light comes from the top left: leaves hinged the other way round show their other face
     this.flip = Math.abs(angle0) > 3 || angle0 > 1 ? -1 : 1;
-    this.img = sprite(locked ? 'structure/door_locked' : image || 'structure/door'); // image: a stall's, a gate's...
+    const name = locked ? 'structure/door_locked' : image || 'structure/door'; // image: a stall's, a gate's...
+    this.img = sprite(name);
     this.canvas = this.compose(this.img, Math.round(length + this.back));
+    this.kind = kind || DOORS.sprites[name] || 'wood';
+    this.spec = DOORS.kinds[this.kind];
+    this.kg = this.spec.kg;
+    this.I = leafInertia(this.kg, -this.back, length, LEAF.thick); // kg.px2 about the pivot
+    this.closer = closer ? { ...DOORS.closer, ...(closer === true ? {} : closer) } : null;
     const c = (length - this.back) / 2;
     this.body = Bodies.rectangle(hx + Math.cos(angle0) * c, hy + Math.sin(angle0) * c, length + this.back, LEAF.thick, {
       angle: angle0, frictionAir: 0, friction: 0.05, restitution: 0.2, label: 'door',
+      sleepThreshold: Infinity, // never put to sleep by Matter: a closer's slow swing would be stopped dead
       collisionFilter: { category: CAT.DOOR, mask: MASK.DOOR },
     });
-    setKg(this.body, 25);
+    this.weigh();
     this.body.material = 'wood';
     this.body.entity = this;
     this.pushedByPlayer = 0;
@@ -45,12 +65,29 @@ export default class Door {
     this.hp = MAX_HP;
     this.latch = LATCH_HP;
     this.locked = false;
+    this.lockable = locked; // it has a lock and its lamp
+    this.keyT = 0;          // s left of a guard's key turning in it (the lamp amber)
+    this.burst = false;     // its lock was burst open
+    this.relock = relock;   // s shut on its latch after which it locks itself again (0: never; the lab's door)
+    this.shutT = 0;
+    this.latched = true;    // shut on its latch
+    this.drive = null;      // a hand on it (E: use): { to, by, t, along }
+    this.hissed = false;    // the closer was heard on this way shut
     this.cells = cells;     // tiles it covers (blocked for path-finding while locked)
     this.shakeT = 0;
     this.warpSign = Math.random() < 0.5 ? -1 : 1;
     this.lastA = angle0;    // the leaf's angle at the end of the previous step (see stopAt)
+    this.lastRel = 0;       // how far open it was then (the latch watches it cross shut)
+    this.lampSeed = Math.random() * 10;
     world.addBody(this.body);
     if (locked) this.lock();
+  }
+
+  // its mass and its real moment of inertia on the Matter body (again when it comes loose: setStatic restores
+  // Matter's own)
+  weigh() {
+    setKg(this.body, this.kg);
+    setShapeInertia(this.body);
   }
 
   // per-door copy of the leaf at its real length (gets the bullet holes and splits): both ends of the sprite as
@@ -72,9 +109,29 @@ export default class Door {
 
   get warp() { return 1 - this.hp / MAX_HP; }
 
+  // how far open (rad, signed: + toward the leaf's +normal side when shut)
+  get rel() { return angDiff(this.a0, this.body.angle); }
+
+  isOpen() { return Math.abs(this.rel) >= DOORS.use.shut; }
+
+  // the side of the shut leaf (x, y) is on: 1 or -1
+  sideOf(x, y) { return -(x - this.hx) * Math.sin(this.a0) + (y - this.hy) * Math.cos(this.a0) >= 0 ? 1 : -1; }
+
   tip() {
     const a = this.body.angle;
     return { x: this.hx + Math.cos(a) * this.len, y: this.hy + Math.sin(a) * this.len };
+  }
+
+  // the middle of the leaf (where E reaches it)
+  mid() {
+    const a = this.body.angle, m = this.len / 2;
+    return { x: this.hx + Math.cos(a) * m, y: this.hy + Math.sin(a) * m };
+  }
+
+  // a point of the leaf `along` px from the pivot, on its face toward `face` (1 / -1 its normal's side)
+  pointAt(along, face) {
+    const a = this.body.angle, c = Math.cos(a), s = Math.sin(a), n = (face * LEAF.thick) / 2;
+    return { x: this.hx + c * along - s * n, y: this.hy + s * along + c * n };
   }
 
   // the point of the leaf's face nearest to (px, py) when it lies within `reach` of it (a hand laid on the door:
@@ -100,30 +157,38 @@ export default class Door {
 
   lock() {
     this.locked = true;
+    this.keyT = 0;
+    this.drive = null;
     Body.setStatic(this.body, true);
     for (const i of this.cells) this.world.map.blocked[i] = 1;
   }
 
-  // a guard lets himself through with his key: hardly a sound, and it stays unlocked behind him
-  unlatch() {
-    if (!this.locked) return;
+  // the leaf free on its hinge again
+  free() {
     this.locked = false;
     Body.setStatic(this.body, false);
-    setKg(this.body, 25);
+    this.weigh();
     for (const i of this.cells) this.world.map.blocked[i] = 0;
+  }
+
+  // a guard lets himself through with his key: hardly a sound, the lamp amber while the key turns, then green with
+  // a beep; it stays unlocked behind him
+  unlatch() {
+    if (!this.locked) return;
+    this.free();
+    this.keyT = DOORS.lamp.turn;
     this.world.sound('door', this.hx, this.hy, 0.5);
   }
 
   // the lock gives: the door bursts open away from the hit
   unlock(px, py, dirA, power = 1) {
     if (!this.locked) return;
-    this.locked = false;
-    Body.setStatic(this.body, false);
-    setKg(this.body, 25);
-    for (const i of this.cells) this.world.map.blocked[i] = 0;
+    this.free();
+    this.burst = true;
+    this.latched = false;
     const rx = px - this.hx, ry = py - this.hy;
     const torque = Math.sign(rx * Math.sin(dirA) - ry * Math.cos(dirA)) || 1;
-    Body.setAngularVelocity(this.body, torque * 0.32 * power);
+    this.setSpin(torque * DOORS.burst * power);
     this.burstLock();
     const t = this.tip();
     this.world.particles.chips(t.x, t.y, dirA, 1.2, 14, '#c08a54', 200);
@@ -134,42 +199,151 @@ export default class Door {
     this.world.events.emit('doorBroken', { x: t.x, y: t.y });
   }
 
-  // keep the door on its hinge: hinge friction, soft end stops that knock when it swings into them
+  // its turning speed (rad/step), set with the leaf's middle going round the pivot with it
+  get spin() { return Body.getAngularVelocity(this.body); }
+
+  setSpin(av) {
+    const b = this.body, h = (this.len - this.back) / 2, a = b.angle;
+    Body.setAngularVelocity(b, av);
+    Body.setVelocity(b, { x: -av * Math.sin(a) * h, y: av * Math.cos(a) * h });
+  }
+
+  // a man walking into it at contact c ({ nx, ny, x, y }), closing at vIn px/step, leaning with `force` N
+  // (systems/Doors.js): the leaf gets what that force can give it this step; returns the speed he may keep
+  pushed(c, vIn, force, dt) {
+    if (this.locked) return 0;
+    const K = this.spec, rel = this.rel, w0 = this.spin;
+    const hold = K.friction * DOORS.push.stick + (this.latched ? DOORS.latch.hold : 0);
+    const resist = K.friction + (this.closer ? this.closer.preload + this.closer.k * Math.abs(rel) : 0);
+    const { w, keep } = pushLeaf(this.hx, this.hy, w0, this.I, c, vIn, force, dt, hold, resist);
+    // flat against its stop it goes no further: he is held
+    if (Math.abs(rel) >= this.limit() - 0.02 && w * rel > 0 && Math.abs(w) >= Math.abs(w0)) return 0;
+    if (w !== w0) { this.latched = false; this.setSpin(w); }
+    return keep;
+  }
+
+  // how far it opens either side (a warped door less)
+  limit() { return DOORS.stop.swing - this.warp * DOORS.stop.warp; }
+
+  // E at it (systems/Doors.js spot): shut, a hand swings it open away from him; open, it pulls it to
+  use(ch) {
+    const U = DOORS.use, G = GESTURE.door, rel = this.rel, side = this.sideOf(ch.x, ch.y);
+    const to = Math.abs(rel) < U.shut ? -side * U.open : 0;
+    const p = this.touch(ch.x, ch.y, U.hand, { x: 0, y: 0, a: 0 }) || this.mid();
+    const along = clamp(this.along(p.x, p.y), this.len * 0.4, this.len * 0.85);
+    this.drive = { to, by: ch, t: U.dur, along };
+    this.latched = false;
+    // the leaf going away from him is a push, coming to him a pull
+    const away = to ? true : Math.sign(rel) === side;
+    const rightBusy = (ch.armed && !(ch.stow >= 0.6)) || !!ch.busyHands?.();
+    const at = this.pointAt(along, this.faceOf(ch));
+    ch.doorHand = {
+      x: at.x, y: at.y, a: this.body.angle, w: Math.max(ch.doorHand?.w || 0, 0.3), push: away ? 1 : 0.35, hold: G.follow,
+      side: doorHandSide(ch.facing?.sh ?? ch.angle, ch.x, ch.y, at, this.tip(), rightBusy), door: this,
+    };
+    this.world.sound('doorPush', at.x, at.y, 0.8);
+  }
+
+  // the face of the leaf as it stands that (x, y) is in front of
+  faceOf(ch) {
+    const a = this.body.angle;
+    return -(ch.x - this.hx) * Math.sin(a) + (ch.y - this.hy) * Math.cos(a) >= 0 ? 1 : -1;
+  }
+
+  // the hand on the leaf (use): it drives it toward where it goes with a limited force, follows it, and lets go
+  // once there, after a while or when the leaf has gone out of his reach (it goes on by itself)
+  steer(av, rel, dt) {
+    const U = DOORS.use, G = GESTURE.door, d = this.drive, ch = d.by, err = d.to - rel;
+    const p = this.pointAt(d.along, this.faceOf(ch));
+    d.t -= dt;
+    if (d.t <= 0 || (d.to && Math.abs(err) < 0.03) || !ch.alive || Math.hypot(p.x - ch.x, p.y - ch.y) > U.hand) {
+      this.drive = null;
+      return av;
+    }
+    const H = ch.doorHand;
+    if (H?.door === this) {
+      H.x = p.x; H.y = p.y; H.a = this.body.angle;
+      H.w = Math.min(1, H.w + dt / G.on);
+      H.hold = G.follow;
+    }
+    if (!d.to) this.stepBack(ch, rel, d.to);
+    // opening it eases onto where it goes; pulling it to keeps it coming till the latch catches it
+    const want = Math.sign(err) * clamp(Math.abs(err) * U.gain, d.to ? 0 : U.latch, U.speed) * STEP;
+    const most = spinOf((U.force * d.along) / PX_PER_M, this.I, dt);
+    return av + clamp(want - av, -most, most);
+  }
+
+  // keep the door on its hinge: what it picked up this step taken about the hinge, its hinge's friction, its closer
+  // and a hand on it, soft end stops that knock when it swings into them, the latch when it comes shut
   constrain(dt) {
+    this.tickLamp(dt);
     const b = this.body;
     if (this.locked) return;
+    const S = DOORS.stop, K = this.spec;
     let rel = angDiff(this.a0, b.angle);
     // what the leaf picked up this step counts about the hinge, not about its middle: a push on the middle of the
     // leaf opens it, and one near the hinge cannot swing it the wrong way
     const h = (this.len - this.back) / 2; // pivot to the middle of the leaf
     const v = Body.getVelocity(b), along = v.y * Math.cos(b.angle) - v.x * Math.sin(b.angle);
-    let av = (b.inertia * Body.getAngularVelocity(b) + b.mass * h * along) / (b.inertia + b.mass * h * h)
-      * Math.max(0, 1 - HINGE_FRICTION * dt);
-    const lim = MAX_SWING - this.warp * 0.25; // a warped door doesn't open as far
+    let av = (b.inertia * Body.getAngularVelocity(b) + b.mass * h * along) / (b.inertia + b.mass * h * h);
+    // on its latch, a knock under what the latch holds leaves it shut
+    if (this.latched && !this.drive && Math.abs(rel) < 0.02 && Math.abs(av) < spinOf(DOORS.latch.hold, this.I, dt)) { rel = 0; av = 0; }
+    else this.latched = false;
+    if (this.drive) av = this.steer(av, rel, dt);
+    av = swing(av, rel, this.I, dt, { friction: K.friction, drag: K.drag, closer: this.drive ? null : this.closer });
+    if (this.closer) this.hiss(av, rel);
+    const lim = this.limit();
     if (Math.abs(rel) > lim) {
       rel = clamp(rel, -lim, lim);
       if (Math.abs(av) > 0.12 && this.slamCooldown <= 0) {
         this.world.sound('door', this.hx, this.hy, Math.min(1, Math.abs(av) * 4));
         this.slamCooldown = 0.2;
       }
-      av = -av * 0.25;
-    } else if (Math.abs(rel) > lim - 0.25 && Math.sign(av) === Math.sign(rel)) {
+      av = -av * S.bounce;
+    } else if (Math.abs(rel) > lim - S.cushion && Math.sign(av) === Math.sign(rel)) {
       av *= 0.85; // cushion before the stop
     }
+    // coming shut slowly enough, it latches (it crossed shut, or got there)
+    const last = this.lastRel;
+    if (!this.latched && last && (Math.sign(rel) !== Math.sign(last) || (Math.abs(rel) < SHUT && av * rel <= 0))
+      && Math.abs(av) < DOORS.latch.catch * STEP) this.latchShut(av);
+    if (this.latched) { rel = 0; av = 0; }
     let a = this.a0 + rel;
     // the hinge is enforced, not simulated: without this the leaf would sweep straight through whoever stands in
     // its way and throw him out the other side, into a wall at times. It stops against a body and bounces off.
     const stop = this.stopAt(a);
-    if (stop) { a = stop.a; av = -av * 0.2; }
+    if (stop) { a = stop.a; av = -av * S.stopped; }
     this.lastA = a;
+    this.lastRel = angDiff(this.a0, a);
     const c = Math.cos(a), s = Math.sin(a);
     Body.setAngle(b, a);
     Body.setPosition(b, { x: this.hx + c * h, y: this.hy + s * h });
-    Body.setAngularVelocity(b, av);
     // linear velocity consistent with rotation about the hinge
-    Body.setVelocity(b, { x: -av * s * h, y: av * c * h });
+    this.setSpin(av);
     this.pushedByPlayer = Math.max(0, this.pushedByPlayer - dt);
     this.slamCooldown -= dt;
+    // an electric strike: shut a while, it locks itself again (only where a level asks for it: guards path round
+    // a locked door that is not the house's)
+    if (this.relock && this.lockable && !this.burst && this.latched && this.keyT <= 0) {
+      if ((this.shutT += dt) >= this.relock) { this.shutT = 0; this.lock(); this.world.sound('doorLatch', this.hx, this.hy, 0.8); }
+    } else this.shutT = 0;
+  }
+
+  // shut on its latch: a click, or a bang when it came shut fast
+  latchShut(av) {
+    this.latched = true;
+    this.drive = null;
+    this.hissed = false;
+    const fast = Math.abs(av) > DOORS.latch.catch * STEP * 0.6;
+    this.world.sound(fast ? 'doorSlam' : 'doorLatch', this.hx, this.hy, fast ? 0.5 : 0.7);
+  }
+
+  // the closer heard once on its way shut
+  hiss(av, rel) {
+    if (Math.abs(rel) > 0.4 && av * rel > 0) this.hissed = false; // opened again
+    if (this.hissed || av * rel >= 0 || Math.abs(av) < this.closer.hiss * STEP) return;
+    this.hissed = true;
+    this.world.sound('doorCloserHiss', this.hx, this.hy, 0.6);
   }
 
   // would the leaf, going from its last angle to `a`, sweep onto someone standing within its reach? Returns the
@@ -188,6 +362,20 @@ export default class Door {
       this.slam(ch);
     }
     return best;
+  }
+
+  // the man with his hand on it, in the way of the leaf between where it is and where he takes it (`to`), steps back
+  // away from the hinge as he pulls (`back` px a step, where there is room: no wall under him); it stops against
+  // him meanwhile (stopAt)
+  stepBack(ch, rel, to) {
+    const dx = ch.x - this.hx, dy = ch.y - this.hy, r = Math.hypot(dx, dy) || 1;
+    if (r >= this.len + ch.radius) return;
+    const at = angDiff(this.a0, Math.atan2(dy, dx)), half = Math.asin(Math.min(1, (ch.radius + LEAF.thick / 2) / r));
+    if (at < Math.min(rel, to) - half || at > Math.max(rel, to) + half) return;
+    const k = Math.min(DOORS.use.back, this.len + ch.radius - r), x = ch.x + (dx / r) * k, y = ch.y + (dy / r) * k;
+    const m = this.world.map, e = ch.radius * 0.9;
+    if ([[0, 0], [e, 0], [-e, 0], [0, e], [0, -e]].some(([ox, oy]) => m.solidAt(x + ox, y + oy))) return;
+    Body.setPosition(ch.body, { x, y });
   }
 
   // a door thrown open by the player lands on a guard: he goes down
@@ -237,12 +425,41 @@ export default class Door {
     if (this.latch < latch) this.dentLock();
     if (this.locked && this.latch <= 0) { this.unlock(px, py, dirA, kind === 'bullet' ? 0.6 : 1.3); }
     else if (!this.locked) {
-      const push = kind === 'bullet' ? 0.0008 * dmg : kind === 'kick' ? 0.006 : 0.008;
-      Body.applyForce(this.body, { x: px, y: py }, { x: Math.cos(dirA) * push, y: Math.sin(dirA) * push });
+      // a round barely turns it (a heavy one a little), a kick or a blow slams it open
+      const H = DOORS.hits, J = kind === 'bullet' ? H.bullet * dmg : kind === 'kick' ? H.kick : H.melee * dmg;
+      this.latched = false;
+      this.setSpin(this.spin + blowOn(this.hx, this.hy, this.I, px, py, dirA, J));
     }
     this.hp -= kind === 'bullet' ? dmg : dmg * 1.5;
     this.split();
     if (this.hp <= 0) w.detachDoor(this, dirA, kind === 'bullet' ? 0.9 : 1.4);
+  }
+
+  // ---- the lamp by the lock (doors that lock only): 'locked' red, 'turning' amber, 'open' green; null: none
+  lampState() {
+    if (!this.lockable) return null;
+    return this.locked ? 'locked' : this.keyT > 0 ? 'turning' : 'open';
+  }
+
+  // the key done turning: the lamp goes green with a beep
+  tickLamp(dt) {
+    if (this.keyT <= 0) return;
+    this.keyT -= dt;
+    if (this.keyT <= 0) this.world.sound('lockBeep', this.hx, this.hy, 0.6);
+  }
+
+  // where it is and how it glows now (render/Lighting.js): { x, y, color, k } or null
+  lamp(t = this.world.time) {
+    const st = this.lampState();
+    if (!st) return null;
+    let k = 1;
+    if (st === 'locked' && this.latch < LATCH_HP) k = 0.45 + 0.4 * Math.sin(t * 18); // the lock took a hit
+    else if (this.burst) k = flicker('stutter', this.lampSeed, t);                    // torn about with it
+    const a = this.body.angle, along = this.len - LAMP_AT, n = -2.5 * this.flip;
+    return {
+      x: this.hx + Math.cos(a) * along - Math.sin(a) * n, y: this.hy + Math.sin(a) * along + Math.cos(a) * n,
+      color: DOORS.lamp.colors[st], k,
+    };
   }
 
   // bullet hole through the leaf
@@ -309,12 +526,64 @@ export default class Door {
     ctx.translate(x0 + inner, 0);
     ctx.rotate(this.warp * 0.22 * this.warpSign);
     ctx.drawImage(this.canvas, inner, 0, outer, h, 0, -h / 2, outer, h);
-    if (this.locked) {
-      // locked: a red tell-tale on the lock case, flickering once the lock has been hit
-      const lit = this.latch < LATCH_HP ? 0.45 + 0.4 * Math.sin(this.world.time * 18) : 1;
-      ctx.fillStyle = `rgba(255,42,74,${lit})`;
-      ctx.fillRect(outer - 6, -3.5, 2, 2);
+    const lamp = this.lamp();
+    if (lamp) {
+      // the lamp on the lock case: a dark housing, its lit core (its glow: render/Lighting.js)
+      const x = outer - LAMP_AT - 2;
+      ctx.fillStyle = '#120a18';
+      ctx.fillRect(x, -4.5, 4, 4);
+      ctx.globalAlpha = 0.25 + 0.75 * clamp(lamp.k, 0, 1);
+      ctx.fillStyle = lamp.color;
+      ctx.fillRect(x + 1, -3.5, 2, 2);
+      ctx.globalAlpha = 1;
     }
+    ctx.restore();
+    if (this.closer) this.drawCloser(ctx);
+  }
+
+  // The closer from above, on the leaf's lit face: its body near the hinge, the arm from its pinion folded to a
+  // shoe on the frame head (two bars and their elbow)
+  drawCloser(ctx) {
+    const C = CLOSER, f = this.flip, off = f * (LEAF.thick / 2 + 1), a = this.body.angle;
+    const at = (ang, u, v) => ({ x: this.hx + Math.cos(ang) * u - Math.sin(ang) * v, y: this.hy + Math.sin(ang) * u + Math.cos(ang) * v });
+    const P = at(a, C.pinion, off), S = at(this.a0, C.shoe[0], f * C.shoe[1]);
+    // the elbow: where the two bars meet, bent out away from the leaf
+    const dx = S.x - P.x, dy = S.y - P.y, d = Math.hypot(dx, dy) || 1, [l1, l2] = C.arm;
+    let E;
+    if (d >= l1 + l2) E = { x: P.x + (dx / d) * l1, y: P.y + (dy / d) * l1 };
+    else {
+      const u = (l1 * l1 - l2 * l2 + d * d) / (2 * d), k = Math.sqrt(Math.max(0, l1 * l1 - u * u));
+      const nx = -dy / d, ny = dx / d, out = (-Math.sin(a) * nx + Math.cos(a) * ny) * f >= 0 ? 1 : -1;
+      E = { x: P.x + (dx / d) * u + nx * k * out, y: P.y + (dy / d) * u + ny * k * out };
+    }
+    ctx.save();
+    // the arm: a dark outline under a lit steel bar, so it reads on any floor
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#121018';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(P.x, P.y); ctx.lineTo(E.x, E.y); ctx.lineTo(S.x, S.y);
+    ctx.stroke();
+    ctx.strokeStyle = '#c4c2d4';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // the elbow's pin and the shoe: a bracket screwed to the wall
+    ctx.fillStyle = '#121018';
+    ctx.fillRect(Math.round(S.x) - 2, Math.round(S.y) - 2, 4, 4);
+    ctx.fillStyle = '#9a98aa';
+    ctx.fillRect(Math.round(S.x) - 1, Math.round(S.y) - 1, 2, 2);
+    ctx.fillStyle = '#e8e6f4';
+    ctx.fillRect(Math.round(E.x), Math.round(E.y), 1, 1);
+    // its body: a dark steel box on the face, a lit edge
+    ctx.translate(this.hx, this.hy);
+    ctx.rotate(a);
+    const dp = C.depth, v0 = f > 0 ? LEAF.thick / 2 : -LEAF.thick / 2 - dp;
+    ctx.fillStyle = '#121018';
+    ctx.fillRect(C.body[0] - 1, v0 - 1, C.body[1] - C.body[0] + 2, dp + 2);
+    ctx.fillStyle = '#3a3846';
+    ctx.fillRect(C.body[0], v0, C.body[1] - C.body[0], dp);
+    ctx.fillStyle = '#b4b2c4';
+    ctx.fillRect(C.body[0], f > 0 ? v0 + dp - 1 : v0, C.body[1] - C.body[0], 1);
     ctx.restore();
   }
 }

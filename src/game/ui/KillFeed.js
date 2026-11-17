@@ -31,11 +31,12 @@ export default class KillFeed {
     this.panel = null;   // { chain, multiplier, tier, hitT, openT, endT (once the chain is over) }
     this.refillT = -99;  // when a knock-down last gave the chain some time back
     this.cash = null;    // { kills, points, t0 }
-    this.banner = null;  // { tag, label, size, color, t0 }
+    this.banner = null;  // { tag, label, size, color, t0; life, y: its own, a boss's card }
     this.n = 0;          // stamps made (each turns the other way)
     events.on('scored', (e) => this.scored(e));
     events.on('multiKill', (e) => this.multi(e));
     events.on('chainEnd', (e) => this.chainEnd(e));
+    events.on('boss', ({ boss, beat }) => { if (beat === 'intro') this.card(boss.traits.name); });
   }
 
   update(dt) {
@@ -44,7 +45,7 @@ export default class KillFeed {
     this.lines = this.lines.filter((l) => t < l.end);
     if (this.panel?.endT !== undefined && t - this.panel.endT >= C.panel.collapse) this.panel = null;
     if (this.cash && t - this.cash.t0 >= C.cash.slam + C.cash.hold + C.cash.fade) this.cash = null;
-    if (this.banner && t - this.banner.t0 >= C.banner.life) this.banner = null;
+    if (this.banner && t - this.banner.t0 >= (this.banner.life ?? C.banner.life)) this.banner = null;
   }
 
   scored({ x, y, points, labels = [], combo = 0, multiplier = 1, kind }) {
@@ -87,6 +88,12 @@ export default class KillFeed {
     const B = this.cfg.banner;
     if (!B.size[tag]) return;
     this.banner = { tag, label: SCORING.tags[tag]?.label ?? tag.toUpperCase(), size: B.size[tag], color: B.color[tag], t0: this.t };
+  }
+
+  // a boss's name, slammed like a multi-kill's banner and held longer
+  card(name) {
+    const K = this.cfg.banner.card;
+    this.banner = { tag: 'card', label: name, size: K.size, color: K.color, life: K.life, y: K.y, t0: this.t };
   }
 
   chainEnd({ kills, points }) {
@@ -154,15 +161,15 @@ export default class KillFeed {
     };
   }
 
-  // the multi-kill banner: null, or { label, size, color, scale, jolt (px), alpha, ghost }
+  // the multi-kill banner: null, or { label, size, color, y (share of the screen's height), scale, jolt (px), alpha, ghost }
   bannerView() {
     const b = this.banner, B = this.cfg.banner;
     if (!b) return null;
     const age = this.t - b.t0, k = ease(age / B.slam), land = age - B.slam;
     return {
-      label: b.label, size: b.size, color: b.color, scale: lerp(B.from, 1, k),
+      label: b.label, size: b.size, color: b.color, y: b.y ?? B.y, scale: lerp(B.from, 1, k),
       jolt: land > 0 && land < B.joltT ? B.jolt * (1 - land / B.joltT) : 0,
-      alpha: clamp(age / (B.slam * 0.5), 0, 1) * clamp((B.life - age) / B.fade, 0, 1),
+      alpha: clamp(age / (B.slam * 0.5), 0, 1) * clamp(((b.life ?? B.life) - age) / B.fade, 0, 1),
       ghost: land > 0 && land < B.ghost ? 1 - land / B.ghost : 0,
     };
   }

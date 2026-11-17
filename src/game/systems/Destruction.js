@@ -73,7 +73,7 @@ export function detachDoor(world, door, dirA, power = 1) {
     const v = rand(160, 320) * power, a = dirA + (halves.length > 1 ? rand(-0.4, 0.4) : 0);
     world.addDebris(new Debris(world, img, b.position.x + ca * off, b.position.y + sa * off, b.angle,
       Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5),
-      { kg: 25 / halves.length, mu: 0.5, fly: 0.3, air: 0.05, bounce: 0.3, material: 'wood', z: 8, vz: 60 * power, land: 'wood', harm: { ...harm } }));
+      { kg: door.kg / halves.length, mu: 0.5, fly: 0.3, air: 0.05, bounce: 0.3, material: 'wood', z: 8, vz: 60 * power, land: 'wood', harm: { ...harm } }));
   });
   world.particles.chips(b.position.x, b.position.y, dirA, Math.PI, 24, '#8a5a34', 200);
   world.particles.dust(b.position.x, b.position.y, 8, 10, '#9a7a58', { speed: 40, size: 6, life: 2.5 });

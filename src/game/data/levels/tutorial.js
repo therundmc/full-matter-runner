@@ -28,8 +28,8 @@ export default {
     "XXXX######+++++++#..#,,XXXXXX",
     "===X######+++++++####,,XXXXXX",
     "===X#################,,XXXXXX",
-    "===G,,,,,,,,,,,,,,,,,,,XXXXXX",
-    "===G,,,,,,,,,,,,,,,,,,,XXXXXX",
+    "===G,,,,,,,D,,,,,,,,,,,XXXXXX",
+    "===G,,,,,,,D,,,,,,,,,,,XXXXXX",
     "===X##_____############XXXXXX",
     "===X##_____############XXXXXX",
     "XXXX##_____############XXXXXX",
@@ -114,6 +114,8 @@ export default {
   drops: [["bat", 12.5, 10.7, 25, null]],
   // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)
   tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.6, 4.6, 0], "cam": "flat", "marks": {"flee": [13.5, 6.9]}, "hints": ["flee"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[13, 6, 14, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hold": 3, "keep": [[21, 3, 22, 8]], "marks": {"slide": [21.5, 14.2]}, "hints": ["slide"], "waves": [{"at": [[14, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "hold": 6, "marks": {"slide": [21.5, 14.2]}, "take": "pistol", "leaves": 2, "spare": 1, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[14, 14]], "on": "enter", "slack": 0.35, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "hold": 8, "take": "pistol", "spare": 1, "marks": {"dive": [4.6, 15.0]}, "hints": ["finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[7, 19], [9, 19]], "on": "pickup:pistol", "up": [8.0, 20.65]}, {"at": [[8, 20]], "on": "kills:2", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "blast": {"zone": [4, 14, 8, 15], "at": [14.6, 12.68], "breach": [14.6, 14.3], "chain": [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68], [7.0, 14.4, 72], [6.2, 14.5, 74]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
+  // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
+  doors: { '20,2': {"closer": true}, '11,14': {"closer": true} },
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
   // paths worn by feet [col0, row0, col1, row1, width px]
   grime: [['stain', 4, 1, 8, 5, 2], ['burns', 4, 3, 8, 5, 2], ['butts', 6, 3, 8, 5, 3], ['rings', 10, 3, 12, 5, 4], ['sticky', 10, 3, 13, 6, 2], ['napkin', 10, 3, 14, 6, 4], ['butts', 10, 1, 16, 6, 5], ['stain', 13, 1, 16, 6, 2, {'col': '#3a2418'}], ['sticky', 10, 8, 16, 12, 3], ['stain', 10, 10, 13, 12, 3, {'col': '#5a5a3a'}], ['napkin', 13, 9, 16, 12, 3], ['butts', 18, 9, 19, 11, 3], ['stain', 21, 2, 22, 13, 4, {'col': '#3a3020'}], ['butts', 21, 2, 22, 13, 4], ['sticky', 21, 8, 22, 13, 2], ['stain', 4, 14, 20, 15, 6, {'col': '#3a3020'}], ['butts', 11, 14, 20, 15, 6], ['napkin', 4, 14, 20, 15, 3], ['butts', 6, 16, 10, 20, 4], ['stain', 6, 16, 10, 20, 3]],

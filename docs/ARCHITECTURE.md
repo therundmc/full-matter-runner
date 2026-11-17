@@ -14,6 +14,8 @@ src/
                           menu steps with repeat from the d-pad / left stick, hot-plug
     physics/
       Units.js            scale contract: 1 m = 32 px = 1 tile, kg, px/step velocities
+      Hinge.js            a leaf on a hinge as numbers: its inertia about the pivot, a force-limited push on it, a blow,
+                          its swing (dry friction, drag, a closer's spring and valve); DOM-free, unit-tested
       Body.js             kg mass, sliding friction coefficient, momentum impulses, freeze/wake of heavy bodies
       Friction.js         Coulomb floor friction (top-down "ground"), heavy bodies settle back to static
       PhysicsWorld.js     Matter engine wrapper: sub-stepping, friction, collision dispatch, 'impact' events
@@ -86,7 +88,10 @@ src/
                           missed flinches (head ducked, shoulders hunched, turned away), the player's view is nudged by
                           rounds striking the wall by him (FLINCH in data/feel.js; looks only; DOM-free, unit-tested)
       Uses.js             what E does where: the spots the level's devices offer (Player.nearUse, the HUD's hint, a
-                          diamond over each spot near the player: WorldRenderer.drawUseHints)
+                          diamond over each spot near the player: WorldRenderer.drawUseHints; none over a `quiet` one)
+      Doors.js            the doors' part of a step (DOORS in data/doors.js): walkers lean on a leaf with a limited force
+                          (`prePush`, like PropPhysics), E opens / closes a door (a quiet Uses spot), the lab's doorbell
+                          (level `buzzers`: the man inside comes and unlocks)
       the level's devices (data/devices.js, DOM-free, tests/devices.test.mjs):
       Slips.js            running on a slick floor (a liquid kind with `slip`: a holed keg's beer): a guard falls on his
                           back dazed a few seconds (Enemy.slip, no stars: CharacterAnim.groggy), a customer trips, the
@@ -117,6 +122,8 @@ src/
                           FireSpread), level `fires` burning from the start; bounded (DOM-free; drawn by render/FireArt.js)
       Direction.js        the camera's shots (SHOTS in data/staging.js): a zoom on top of the usual view and something to look
                           at, eased; the zoom rests on a whole number of px a world px (pure, unit-tested)
+      BossStage.js        the camera on a boss's beats (the 'boss' event; data/bosses.js `shot`): a SHOTS name and the
+                          real seconds it holds, asked by Game like a staged level's shot (pure state, unit-tested)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
@@ -219,7 +226,8 @@ src/
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
-    entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
+    entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
+                          kind level `looks` draws him as), Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per
                           gun family: data/feel.js `recoil`; pure, unit-tested)
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
@@ -278,6 +286,7 @@ Rules:
 | `scored` | `{ x, y, points, labels, combo, multiplier, streak, kind }` (kind: `kill`, `knock`, `bonus`, `civilian`; labels best first, at most 3) | Scoring (points earned, or a passer-by's penalty) | KillFeed (stamps, feed, chain count, fuse refill) |
 | `multiKill` | `{ n, tag, x, y }` (tag: `double`, `triple`, `massacre`) | Scoring (the streak's tag) | KillFeed (banner), fx/Impact.listenMoments (MOMENTS.multi: slow motion, hit-stop) |
 | `chainEnd` | `{ kills, points }` | Scoring (a chain of 2+ ran out) | KillFeed (the cash-out) |
+| `boss` | `{ boss, beat }` (beat: `intro`, `wounded`, `berserk`, `down`) | entities/Boss.js | KillFeed (the name card on `intro`), systems/BossStage (the camera's shot), Game (the soundtrack's heat: `AI.heat.boss`) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy), Litter (the blast at the muzzle blows the bills on the floor) |
@@ -492,7 +501,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   rollPhases); everyone moves the same, the player alone throws the flourish (fx/TraversalFx.js, `TRAVERSE_FX`: dust
   by floor, a slide's streaks of light and skid mark, the plant's puff, a rim of light through the swing, a landing's
   ring of dust and camera dip).
-  Space = context action: execute > vault > slide; the takedown from behind is the left click. (A cover system
+  Space = vault > slide; the left click takes down from behind and finishes a man on the floor. (A cover system
   existed and was removed at the user's request.)
 - Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown, data/finishers.js `TAKEDOWNS` / `takedownFor`):
   Left click right behind a standing guard who has his back to us: an execution from behind by the weapon in hand (`swing`,
@@ -780,6 +789,24 @@ third per stage. A gun in hand is no matter for words: it is a threat, as before
 - The boss (the guard whose job is 'boss') says his word the first time he sees the player: big, in a bubble over
   his head (`Enemy.bossLine`, WorldRenderer `drawBubble`, data/barks.js `BOSS`), the game slowed a moment, his
   fire held while he says it.
+- A boss of his own kind (`entities/Boss.js`, data/bosses.js `BOSSES`; level 1's is CUEBALL, the comic's heavy):
+  - his beat on first sight: his line, the name card slammed low on the screen (KillFeed `card`), the camera pushed
+    in (systems/BossStage.js), the soundtrack's heat full; his fire held `intro.hold` s;
+  - he walks at the player firing from the hip (`plan` / `tAdvance`), his pump-action every `fire.interval` s; every
+    shot is told: the pump racked `fire.pump` s after the last one (heard, the forend worked), then a glint growing
+    at the muzzle for `fire.tell` s (`tellK`, render/BossArt.js); he reloads on his feet with a word (the opening);
+    furniture in his way goes over or is sent off (`clearWay`);
+  - TWO hits: every death goes through `kill`, and the first one only wounds him (`wound`): thrown back, reeling
+    `wound.stagger` s, blood, his head's `_hurt` sprite (shades askew, a lens cracked), the wound drawn where the
+    blow struck (`struckSide`, BOSSES `spots`) and his free hand on it, a slow-motion beat, WOUNDED on the feed;
+    then he roars and is berserk (BOSSES `berserk`: faster on his feet and on the trigger, wilder), bleeding as he
+    goes. `wound.grace` s nothing else touches him (the other pellets of the blast). The second hit kills him: his
+    gun thrown, his shades skittering off (items/shades), onto his knees then his face (`dying: 'kneel'`), a long
+    slow motion, the camera on him, the kill tagged by his name (`how.boss` -> SCORING.tags);
+  - bare blows (a punch, a slide's kick, a door: `knock`) he shrugs off `wound.fists` times, the next one wounds
+    him; wounded, a knock floors him like anyone and he can be finished on the floor (any finisher);
+  - seized from behind while whole, he throws the player off (`shakeOff`, asked by `Player.startTakedown`: the
+    player shoved back, he comes round with `shake.react` s before he can fire); wounded, he can be taken down.
 - Footprints: Liquids emits 'footprint' for every print; the Director keeps the player's in `director.trail`
   (ai/Trail.js, `AI.trail`: they dry after `fresh` s). A guard who sees one (`Enemy.scanWorld`) follows the run of
   prints hop by hop (state `track`, one tracker at a time), then goes and looks where they were heading. Bloody
@@ -933,8 +960,18 @@ The big brick masses around a level are the neighbouring buildings seen from abo
 
 ## Doors and windows
 
-`Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out);
-what a contact gives the leaf is taken about the hinge (`Door.constrain`), so a push anywhere on it opens it.
+`Door` = a leaf of its kind's weight (data/doors.js DOORS: a wooden door 30 kg, a locked door's reinforced leaf 55,
+a toilet stall's 9) on a kinematic hinge (engine/physics/Hinge.js: its real moment of inertia, dry friction and drag
+that bring it to a stop, cushioned end stops, creaks, slams knock enemies out); what a contact gives the leaf is taken
+about the hinge (`Door.constrain`), so a push anywhere on it opens it. A man walking into it leans on it with a
+limited force, more at a run (systems/Doors.js `prePush`, `Door.pushed`), and is held to the speed it really goes;
+kicks and blows slam it open, rounds barely turn it (`DOORS.hits`). Coming shut slowly it latches (a click). A
+closer (level option `doors: { 'col,row': { closer: true } }`, levelkit `door()`) swings it back shut in about two
+seconds and latches it, stopping against whoever or whatever stands in its arc; its arm is drawn from the leaf to the
+frame. E at a door opens it away from the player or pulls it to (`Door.use`: his hand on the leaf, he steps back out
+of its way); a weapon within reach comes first. A door that locks has a lamp by its lock (`Door.lamp`, its glow in
+render/Lighting.js): red locked, amber while a guard turns his key (`unlatch`), then green with a beep; green
+stuttering once the lock was burst. `relock` (the lab only) locks it again after a while shut.
 Guards take a doorway one at a time and down its middle (`Enemy.follow`: `gateTaken` / `standBack`, `AI.gate`,
 `Tactics.throughDoor`), and re-plan when the ground covered says they push at something that will not give.
 Level tile `L` = locked door: static, blocks path-finding; shooting the lock (latch end) or kicking / hitting it
@@ -962,8 +999,8 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 
 - `?level=lab` loads the physics lab (tools/build_lab.py): a lit concourse with the range at its west end and a bay or
   room per system on either side, its number and name stencilled on the floor at its entrance (1 range, 2 executions,
-  3 soot, 4 pool, 5 bars, 6 curtain, 7 jukebox, 8 trapdoor, 9 powder, 10 steam, 11 power, 12 liquids, 13 vehicles in
-  the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
+  3 soot, 4 pool, 5 bars, 6 curtain, 7 takedowns, 8 jukebox, 9 trapdoor, 10 powder, 11 steam, 12 power, 13 liquids,
+  14 doors, 15 vehicles in the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
   `awake` guards for the sight tests.
 - `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,

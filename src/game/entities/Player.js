@@ -196,7 +196,7 @@ export default class Player extends Character {
         if (Math.hypot(s.x - this.x, s.y - this.y) < PLANTED.reach) { this.nearPlanted = c; c.stuck.hot = w.time; break; }
       }
     }
-    // the nearest man down within reach: any attack on him, or Space, finishes him (data/finishers.js)
+    // the nearest man down within reach: any attack on him (the left click) finishes him (data/finishers.js)
     this.nearDowned = null;
     let down = EXEC.near;
     for (const e of w.enemies) {
@@ -234,17 +234,14 @@ export default class Player extends Character {
       }
     }
     if (input.hit('KeyR')) this.reload();
-    // Space = context action: execute > vault > slide (the slide needs a running start, no HUD label); the takedown
-    // from behind is the left click
+    // Space = vault > slide (the slide needs a running start, no HUD label); the left click takes a man down from
+    // behind and finishes a man on the floor
     const busy = sliding || this.nearDowned || this.nearTakedown;
     this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
     this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
       : this.nearTakedown ? hintOf(this.takeMove.f, this.takeMove.spot)
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
-    if (input.hit('Space') && !sliding) {
-      if (this.nearDowned) this.startExecution(this.nearDowned);
-      else if (!this.tryVault(moveA) && moving) this.startSlide(moveA);
-    }
+    if (input.hit('Space') && !sliding && !this.tryVault(moveA) && moving) this.startSlide(moveA);
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap
     if (input.mouseHit(2)) {
@@ -915,6 +912,7 @@ export default class Player extends Character {
   // the length of it: pressed against him. The poses: CharacterAnim takedownPose (ours), heldPose (his).
   // move: { f, spot, front } (takedownMove; a given one: the tests).
   startTakedown(target, move = this.takedownMove(target)) {
+    if (target.shakeOff?.(this)) return; // a boss still whole throws him off (entities/Boss.js)
     const { f, spot = null, front = false } = move, group = Body.nextGroup(true);
     this.lastTakedown = f;
     this.nextTakedown = null;
