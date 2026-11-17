@@ -11,6 +11,7 @@ import { BOSSES } from '../data/bosses.js';
 import Prop from '../entities/Prop.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
+import { DOORS } from '../data/doors.js';
 import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import Ragdoll from '../entities/Ragdoll.js';
@@ -65,13 +66,15 @@ export function buildLevel(world, level) {
           used.add(horizontal ? `${x + i},${y}` : `${x},${y + i}`);
           cells.push(horizontal ? y * map.w + x + i : (y + i) * map.w + x);
         }
-        // any 'L' in the run makes it a locked door; level `doors` by any tile of the run: { closer, kind }
+        // any 'L' in the run makes it a locked door; level `doors` by any tile of the run: { kind, closer, relock,
+        // inside } (data/doors.js DOORS.kinds: a swinging door's kind hangs a pair of half-leaves)
         const more = cells.map((i) => level.doors?.[`${i % map.w},${Math.floor(i / map.w)}`]).find(Boolean) || {};
         const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells, ...more };
-        for (const l of doorLeaves(x, y, n, horizontal)) {
+        const spec = DOORS.kinds[more.kind];
+        for (const l of doorLeaves(x, y, n, horizontal, !!spec?.pair)) {
           world.doors.push(new Door(world, l.hx, l.hy, l.angle, l.len, { ...opts, support: l.support, strike: l.strike }));
         }
-        world.decals.doorway(x, y, n, horizontal);
+        world.decals.doorway(x, y, n, horizontal, spec?.jamb);
       } else if (ch === 'G') {
         const horizontal = wallish(x - 1, y) || wallish(x + 1, y);
         world.windows.push(new Window(world, x, y, !horizontal));

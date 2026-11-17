@@ -91,7 +91,8 @@ test('hinge: the same push gets a heavier leaf going slower, and it slows to a s
     let w = 2.5 * STEP, rel = 0.3, prev = w, n = 0;
     while (w > 0 && n++ < 600) { rel += w; w = swing(w, rel, I, DT, kinds[k]); assert.ok(w <= prev && w >= 0, 'only ever slower'); prev = w; }
     assert.equal(w, 0, `${k} comes to rest`);
-    assert.ok(n < 120 && rel - 0.3 < 1.2, `${k}: stopped in ${n} steps, ${(rel - 0.3).toFixed(2)} rad on`);
+    // a touch of inertia: it goes on a while, but stops well short of a flap
+    assert.ok(n < 100 && rel - 0.3 > 0.6 && rel - 0.3 < 1.5, `${k}: stopped in ${n} steps, ${(rel - 0.3).toFixed(2)} rad on`);
   }
   // a stall's leaf is easy, a reinforced one hard
   const stall = leafInertia(kinds.stall.kg, -3, len, 6);
@@ -226,4 +227,58 @@ test('lock lamp: red locked, amber while a guard turns his key, green once it tu
   // a plain door has no lamp
   const w2 = world();
   assert.equal(door(w2).lamp(), null);
+});
+
+test('closer: as it comes shut it overshoots a few degrees, settles in a swing or two, then latches', () => {
+  const w = world(), d = door(w, { closer: true }), sys = new Doors(w);
+  openAt(d, 1.2);
+  let crossings = 0, prev = d.rel, over = 0, latchedAt = null;
+  run(w, sys, 4, () => {
+    const r = d.rel;
+    if (r && prev && Math.sign(r) !== Math.sign(prev)) crossings++;
+    if (crossings && !d.latched) over = Math.max(over, Math.abs(r));
+    if (r) prev = r;
+    if (latchedAt === null && d.latched) latchedAt = w.time;
+  });
+  assert.ok(crossings >= 1 && crossings <= 4, `swung through shut ${crossings} times`);
+  assert.ok(over > 0.02 && over < 0.15, `overshot ${(over * 57.3).toFixed(1)} degrees`);
+  assert.ok(latchedAt !== null && latchedAt < 3.2 && d.rel === 0, `latched at ${latchedAt}`);
+});
+
+test('swinging doors: a pair of half-leaves pushed either way, back to the middle in a few swings, never latched', () => {
+  const pair = (w) => doorLeaves(5, 3, 1, true, true).map((l) => {
+    const d = new Door(w, l.hx, l.hy, l.angle, l.len, { kind: 'swing', cells: [3 * w.map.w + 5] });
+    w.doors.push(d);
+    return d;
+  });
+  for (const from of [1, -1]) {                       // from the south, then from the north
+    const w = world(), [a, b] = pair(w), sys = new Doors(w);
+    assert.ok(a.len < 16 && b.len < 16 && a.closer && !a.latched, 'two short leaves on springs');
+    const c = walker(w, 5.5 * 32, 3.5 * 32 + from * 30);
+    let most = 0, way = 0;
+    run(w, sys, 0.6, () => { c.steer(0, -from, PLAYER.speed * 0.5); if (Math.abs(a.rel) > most) { most = Math.abs(a.rel); way = Math.sign(a.rel); } });
+    assert.ok(most > 0.8, `pushed open ${most}`);
+    // a leaf along +x (a0 0) opens toward -y (rel < 0) pushed from the south, toward +y from the north
+    assert.equal(way, -from, 'away from whoever pushed it');
+    Body.setPosition(c.body, { x: 9 * 32, y: 1.5 * 32 }); c.stand();
+    let crossings = 0, prev = a.rel;
+    run(w, sys, 5, () => { if (a.rel && prev && Math.sign(a.rel) !== Math.sign(prev)) crossings++; if (a.rel) prev = a.rel; });
+    assert.ok(crossings >= 2, `swung back through the middle ${crossings} times`);
+    assert.ok(Math.abs(a.rel) < 0.08 && Math.abs(b.rel) < 0.08 && !a.latched, `back to the middle (${a.rel}, ${b.rel})`);
+  }
+});
+
+test('kinds: each its sprite and weight; the emergency exit on a closer with its EXIT sign; glass that breaks', () => {
+  const w = world();
+  const fire = door(w, { kind: 'fire', inside: [0, 1] }), plain = door(w), bar = door(w, { kind: 'bar' });
+  assert.ok(fire.kg > plain.kg && fire.closer && !plain.closer && bar.closer);
+  const sign = fire.lights().find((l) => l.color === DOORS.exit.color);
+  assert.ok(sign && sign.y > fire.hy, 'the EXIT sign glows on the room side');
+  assert.equal(fire.lights().length, 1, 'no lock, no lamp');
+  // a round through the porthole breaks its glass; one through the wood does not
+  const sAt = (x) => ({ x: bar.hx + x, y: bar.hy });
+  bar.hit(sAt(24).x, sAt(24).y, -Math.PI / 2, 1, 'bullet');
+  assert.equal(bar.glassBroken, false);
+  bar.hit(sAt(9).x, sAt(9).y, -Math.PI / 2, 1, 'bullet');
+  assert.ok(bar.glassBroken && w.heard.includes('glass'));
 });

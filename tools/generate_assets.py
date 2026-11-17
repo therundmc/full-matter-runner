@@ -8170,6 +8170,285 @@ def s_door_locked():
     return cv
 
 
+# ---- door skins: one kind of door per place (src/game/data/doors.js DOORS.kinds), painted at FINE density. A leaf
+# seen from above is a long thin plank: what tells the kinds apart is its colour, its edges and what stands proud of
+# its faces (rows 0-1 and 7-8: a push bar, plates, a chain), a glass strip where it has glass. Hinge at x = 0, the
+# latch end at the far end; Door.js keeps both ends and tiles the middle to the leaf's length (its kind's `caps`).
+
+def _plank(w, n=32, grain=()):
+    """The leaf's body in the ramp w, rows 2..6 (lit top edge, dark bottom), end stiles; grain: (x, y, len) streaks."""
+    cv = Cv(n, 9)
+    for x in range(1, n - 1):
+        cv.set(x, 2, w[3])
+        for y in (3, 4, 5):
+            cv.set(x, y, w[2])
+        cv.set(x, 6, w[1])
+    for x, y, k in grain:
+        for i in range(k):
+            cv.dot(x + i * 0.5, y + 0.25, mix(w[2], w[1], 0.5))
+    for x in (1, n - 2):
+        for y in range(2, 7):
+            cv.set(x, y, mix(cv.get(x, y), w[0], 0.45))
+    return cv
+
+
+def _knuckles(cv, steel=STEEL_L):
+    """Two hinge knuckles proud of the faces, the pin in the leaf's end."""
+    for x in (2, 3, 4):
+        cv.set(x, 1, steel[3] if x == 3 else steel[2])
+        cv.set(x, 7, steel[1])
+    cv.rect(2, 3, 3, 5, STEEL[0])
+    cv.set(2, 3, steel[3])
+    cv.set(3, 3, steel[2])
+
+
+def _lever(cv, x, col=BRASS):
+    """A lever handle on each face near the latch: the rose, the lever proud of it."""
+    for y, c0, c1 in ((0, col[3], col[2]), (8, col[2], col[1])):
+        cv.rect(x, y, x + 4, y, c1)
+        cv.rect(x + 3, y, x + 4, y, c0)
+        cv.set(x - 1, y, OUTLINE)
+        cv.set(x + 5, y, OUTLINE)
+    cv.set(x + 4, 1, col[2])
+    cv.set(x + 4, 7, col[1])
+
+
+def _latch_plate(cv, n=32):
+    cv.rect(n - 2, 3, n - 2, 5, STEEL_L[2])
+
+
+def _glass(cv, x0, x1, y0=3, y1=5, tint='#a8d0e4', wire=None):
+    """A glass strip through the leaf: pale, a glint; wire: the mesh of wired glass."""
+    g = ramp(tint, 0.35, 0.18, 0.3)
+    for x in range(x0, x1 + 1):
+        for y in range(y0, y1 + 1):
+            cv.set(x, y, g[2] if y > y0 else g[3])
+    cv.dot(x0 + 0.5, y0 + 0.5, hx('#f4fbff'))
+    cv.dot(x0 + 1.0, y0 + 0.5, hx('#f4fbff'))
+    if wire:
+        s = cv.s
+        for j in range(y0 * s, (y1 + 1) * s):
+            for i in range(x0 * s, (x1 + 1) * s):
+                if (i + j) % 4 == 0 or (i - j) % 4 == 0:
+                    cv.p[i, j] = hx(wire)
+
+
+def _shatter(cv, x0, x1, y0=3, y1=5, keep_wire=None):
+    """The glass gone out of its strip: a few shards left at the edges (the wire of wired glass holds)."""
+    s = cv.s
+    rng = random.Random(x0 * 31 + x1)
+    for j in range(y0 * s, (y1 + 1) * s):
+        for i in range(x0 * s, (x1 + 1) * s):
+            if keep_wire and cv.p[i, j] == hx(keep_wire):
+                continue
+            edge = min(i - x0 * s, (x1 + 1) * s - 1 - i)
+            cv.p[i, j] = hx('#d8ecf6') if edge == 0 and rng.random() < 0.45 else CLEAR
+    return cv
+
+
+def s_door_fire():
+    """The emergency exit: a heavy grey steel leaf, a red push bar across its inside face on two housings, a brushed
+    kick plate on the other, scuffs."""
+    w = ramp('#7c828e', 0.5, 0.25, 0.36)
+    cv = _plank(w, 32, ((6, 3, 10), (19, 5, 12)))
+    for x, y in ((7, 4), (8.5, 5), (13, 3), (21, 4), (25.5, 5), (11, 5)):
+        cv.dot(x, y + 0.25, w[0])                                   # scuffs
+    cv.outline()
+    _knuckles(cv)
+    red = ramp('#d0262c', 0.45, 0.22, 0.32)
+    for x in range(8, 27):                                          # the push bar, proud of the face on its housings
+        cv.set(x, 8, red[2])
+        cv.dot(x, 8.0, red[3])
+    for x in (6, 7, 27, 28):
+        cv.set(x, 7, STEEL[1])
+        cv.set(x, 8, STEEL[0] if x in (6, 28) else STEEL[2])
+    cv.set(5, 8, OUTLINE)
+    cv.set(29, 8, OUTLINE)
+    for x in range(4, 28):                                          # the kick plate on the other face
+        cv.dot(x, 1.5, STEEL_L[3] if x % 3 else STEEL_L[2])
+    _latch_plate(cv)
+    return cv
+
+
+def _door_bar():
+    """The bar's front: dark varnished wood, a round porthole of glass in a brass ring, a brass push plate on the
+    street face and a pull bar on the other."""
+    w = ramp('#5c3424', 0.5, 0.24, 0.38)
+    cv = _plank(w, 32, ((3, 3, 6), (17, 5, 10), (20, 3, 6)))
+    cv.rect(9, 2, 14, 6, BRASS[1])                                  # the porthole's ring
+    cv.rect(9, 2, 14, 2, BRASS[3])
+    _glass(cv, 10, 13)
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(20, 1, 25, 1, BRASS[2])                                 # the push plate, flat on the face
+    cv.rect(20, 1, 21, 1, BRASS[3])
+    for x in range(20, 26):                                         # the pull bar on its standoffs
+        cv.set(x, 8, BRASS[2] if x % 2 else BRASS[3])
+    cv.set(20, 7, BRASS[1])
+    cv.set(25, 7, BRASS[1])
+    cv.set(19, 8, OUTLINE)
+    cv.set(26, 8, OUTLINE)
+    cv.rect(3, 7, 7, 7, BRASS[1])                                   # the kick plate's edge
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_bar():
+    return _door_bar()
+
+
+def s_door_bar_broken():
+    return _shatter(_door_bar(), 10, 13)
+
+
+def s_door_swing():
+    """Half of the toilets' swinging doors (a cafe pair): a short teal-painted leaf of louvres on a double-action
+    pivot, a white MEN plate, a chrome push plate on each face; no latch."""
+    w = ramp('#4f8c80', 0.45, 0.22, 0.34)
+    cv = _plank(w, 16)
+    s = cv.s
+    for i in range(4 * s, 13 * s):                                  # the louvres' slats, one in two pixels
+        if i % 2 == 0:
+            for j in range(3 * s, 6 * s):
+                cv.p[i, j] = w[1]
+    cv.outline()
+    cv.rect(1, 3, 2, 5, STEEL[1])                                   # the pivot: a steel boss at its foot
+    cv.set(1, 3, STEEL_L[3])
+    cv.rect(6, 1, 9, 1, hx('#e8e6dc'))                              # the plate: MEN
+    cv.dot(7.5, 1.5, hx('#2a4ca0'))
+    cv.dot(8.0, 1.5, hx('#2a4ca0'))
+    for y in (1, 7):
+        cv.rect(11, y, 13, y, CHROME[2] if y == 1 else CHROME[1])   # push plates
+    return cv
+
+
+def s_door_staff():
+    """A storeroom / staff door: a plain institutional blue-grey paint, chipped and scuffed low, a white STAFF ONLY
+    plate, a steel lever."""
+    w = ramp('#5d6e82', 0.5, 0.24, 0.32)
+    cv = _plank(w, 32)
+    for x, y, c in ((5, 5, w[0]), (6.5, 5, w[0]), (9, 4, hx('#8d8a82')), (24, 5, w[0]), (14, 5, w[0]), (15, 3, hx('#8d8a82'))):
+        cv.dot(x, y + 0.25, c)                                      # scuffs and chipped paint (the grey undercoat)
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(11, 1, 18, 1, hx('#e6e2d6'))                            # STAFF ONLY
+    for x in range(11, 18):
+        cv.dot(x + 0.25, 1.5, hx('#2a2430'))
+    _lever(cv, 22, CHROME)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_office():
+    """The boss's door: oxblood leather buttoned in diamonds over padding, brass studs round its faces, a brass
+    lever."""
+    w = ramp('#6c1e26', 0.5, 0.26, 0.3)
+    cv = _plank(w, 32)
+    for k, x in enumerate(range(5, 28, 3)):                         # the buttons, diamond-tufted
+        y = 3 if k % 2 else 5
+        cv.dot(x, y + 0.25, w[0])
+        cv.dot(x + 0.5, y - 0.25, w[3])
+    cv.outline()
+    _knuckles(cv)
+    for x in range(5, 29, 2):                                       # brass studs along both faces
+        cv.dot(x + 0.25, 1.75, BRASS[3])
+        cv.dot(x + 0.25, 7.25, BRASS[2])
+    _lever(cv, 22)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_gaming():
+    """The gaming room's door: a deep green gloss with a gold pinstripe on its top edge, a brass peephole through
+    it, a brass lever."""
+    w = ramp('#2a5a3c', 0.5, 0.24, 0.36)
+    cv = _plank(w, 32)
+    for x in range(3, 29):
+        cv.dot(x + 0.25, 2.75, BRASS[2])                            # the pinstripe
+    cv.rect(15, 3, 16, 5, BRASS[1])                                 # the peephole through the leaf
+    cv.dot(15.5, 4.0, OUTLINE)
+    cv.outline()
+    _knuckles(cv)
+    cv.set(15, 1, BRASS[3])
+    cv.set(15, 7, BRASS[2])
+    _lever(cv, 22)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_flat():
+    """A cheap flat's door: a thin oak-effect laminate, a brass number on the corridor face, a peephole, the security
+    chain hanging on its track inside."""
+    w = ramp('#a27c54', 0.45, 0.22, 0.3)
+    cv = _plank(w, 32, ((4, 3, 14), (14, 5, 18)))
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(12, 1, 14, 1, BRASS[2])                                 # the number
+    cv.dot(12.5, 1.5, OUTLINE)
+    cv.dot(13.5, 1.5, OUTLINE)
+    cv.set(16, 1, BRASS[3])                                         # the peephole's lens
+    cv.rect(25, 7, 28, 7, CHROME[2])                                # the chain's track ...
+    for k, x in enumerate((24, 23, 22, 21.5)):                      # ... and the chain hanging off it
+        cv.dot(x + 0.5, 8.0 + (0.5 if k % 2 else 0), CHROME[3] if k % 2 else CHROME[1])
+    _lever(cv, 22, CHROME)
+    _latch_plate(cv)
+    return cv
+
+
+def _door_wired():
+    """A corridor fire door: cream-painted steel, a long panel of wired glass, a steel push plate."""
+    w = ramp('#b9ae92', 0.45, 0.22, 0.3)
+    cv = _plank(w, 32)
+    _glass(cv, 8, 20, tint='#b4d2c8', wire='#56645e')
+    cv.outline()
+    _knuckles(cv)
+    for y in (1, 7):
+        cv.rect(22, y, 26, y, STEEL_L[2] if y == 1 else STEEL_L[1])
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_wired():
+    return _door_wired()
+
+
+def s_door_wired_broken():
+    return _shatter(_door_wired(), 8, 20, keep_wire='#56645e')
+
+
+def _door_shop():
+    """A shop's glass door: an aluminium frame round a pane the length of it, a pull bar on each face."""
+    alu = ramp('#b2b8c4', 0.45, 0.22, 0.3)
+    cv = _plank(alu, 32)
+    _glass(cv, 5, 26, tint='#94c0d8')
+    cv.outline()
+    _knuckles(cv)
+    for y, c in ((0, CHROME[3]), (8, CHROME[2])):
+        cv.rect(22, y, 26, y, c)
+        cv.set(21, y, OUTLINE)
+        cv.set(27, y, OUTLINE)
+    for y in (1, 7):
+        cv.set(22, y, CHROME[1])
+        cv.set(26, y, CHROME[1])
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_shop():
+    return _door_shop()
+
+
+def s_door_shop_broken():
+    return _shatter(_door_shop(), 5, 26)
+
+
+DOOR_SKINS = dict(door_fire=s_door_fire, door_bar=s_door_bar, door_bar_broken=s_door_bar_broken, door_swing=s_door_swing,
+                  door_staff=s_door_staff, door_office=s_door_office, door_gaming=s_door_gaming, door_flat=s_door_flat,
+                  door_wired=s_door_wired, door_wired_broken=s_door_wired_broken, door_shop=s_door_shop,
+                  door_shop_broken=s_door_shop_broken)
+DOOR_SKIN_SIZES = dict((n, (16, 9) if n == 'door_swing' else (32, 9)) for n in DOOR_SKINS)
+
+
 def s_jamb(w):
     """Door frame post set into the end of a wall (5 px wide across the 32 px of wall): x = 4 faces the opening."""
     cv = Cv(5, 32)
@@ -8871,6 +9150,8 @@ def build():
     out[('structure', 'door')] = s_door()
     out[('structure', 'door_locked')] = s_door_locked()
     out[('structure', 'stall_door')] = s_stall_door()
+    for name, fn in DOOR_SKINS.items():
+        out[('structure', name)] = fine(fn, name)
     out[('structure', 'door_jamb')] = s_jamb(ramp('#6e4a32', 0.5, 0.26, 0.34))
     out[('structure', 'door_jamb_steel')] = s_jamb(STEEL_L)
     out[('structure', 'threshold')] = s_threshold()
@@ -8975,7 +9256,9 @@ EXPECTED = {
                                               for i in range(3)] + ['cat_walk%d' % i for i in range(4)]),
     'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
-                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
+                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6),
+                      # the door skins at FINE density (keep in step with DOOR_SKINS in src/engine/Assets.js)
+                      **dict((n, (w * FINE, h * FINE)) for n, (w, h) in DOOR_SKIN_SIZES.items())),
 }
 
 

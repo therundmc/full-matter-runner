@@ -223,7 +223,7 @@ export default {
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
   // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
-  doors: { '20,20': {"closer": true}, '21,11': {"closer": true}, '24,5': {"closer": true}, '14,8': {"closer": true} },
+  doors: { '20,20': {"kind": "bar"}, '21,11': {"kind": "swing"}, '24,5': {"kind": "fire", "inside": [0, 1]}, '16,11': {"kind": "staff"}, '14,8': {"kind": "staff", "closer": true}, '26,11': {"kind": "office"}, '23,13': {"kind": "gaming"}, '8,20': {"kind": "shop"}, '37,20': {"kind": "shop"}, '28,32': {"kind": "shop"} },
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
