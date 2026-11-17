@@ -83,6 +83,7 @@ export const TAKEDOWN = {
   rear: 1.3,     // half-angle (rad) of the arc behind his back we must stand in
   facing: 1.45,  // how far (rad) we may be aiming away from him
   set: 0.12,     // s to close in to the sequence's gap behind him
+  spotted: ['alert'], // the squad's phases (ai/Director.js) in which they have us located: no takedown then
 };
 
 // One guard (entities/Enemy.js, ai/Perception.js). Times in seconds, distances in px, angles in rad.

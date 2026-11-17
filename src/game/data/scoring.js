@@ -10,7 +10,10 @@ export const SCORING = {
     explosion: { points: 600, label: 'BLAST' },
     debris: { points: 900, label: 'WRECKAGE' },         // flying furniture, bricks, car parts
     glass: { points: 900, label: 'GLASS' },             // window shards
-    execution: { points: 1000, label: 'EXECUTION' },    // finishing a guard on the floor
+    // a guard on the floor finished (data/finishers.js): the long execution pays this at the kill, walked out of or
+    // not (and `watched` on top when it is seen to its end); the quick kill, somebody on the player, pays less
+    execution: { points: 900, label: 'EXECUTION' },
+    quickKill: { points: 500, label: 'QUICK KILL' },
     takedown: { points: 1000, label: 'TAKEDOWN' },      // a guard executed from behind (data/finishers.js TAKEDOWNS)
   },
   // circumstances that add to a kill (Scoring.killTags), each one also a different way of killing
@@ -41,6 +44,9 @@ export const SCORING = {
   dodgeWindow: 1.5,         // s after the dodge
   drawWindow: 1.2,          // s after the pick-up
   unseen: 300,              // added when the victim never knew we were there
+  // a long execution watched to its end ('finisher'): points added then (x the multiplier), and the chain gets this
+  // share of its window back
+  watched: { points: 600, label: 'FULL EXECUTION', refill: 1 },
   // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself.
   // kick: the foot in his head at the end of a slide; hood: the legs off a car's hood. Shown as knockLabels (else
   // the cause in capitals)

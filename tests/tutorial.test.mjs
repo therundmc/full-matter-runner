@@ -142,7 +142,7 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   assert.deepEqual(names(), [], 'he has walked: nothing more to say here');
   s.go(10.5, 3.5);
   assert.deepEqual(names(), ['GET BEHIND HIM']);
-  s.player.nearBack = s.guardAt(11, 3);
+  s.player.nearTakedown = s.guardAt(11, 3);
   assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['attack BREAK HIS NECK']);
   s.go(10.5, 8.5);
   s.world.items.push({ type: 'bat', x: px(11.0), y: px(11.6), dead: false });

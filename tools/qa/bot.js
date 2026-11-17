@@ -123,7 +123,7 @@
     findings: new Map(), dirty: new Set(), freshKinds: [],
     actions: [],
     stats: {
-      sessions: 0, deaths: {}, deathsBy: {}, clears: [], exits: 0, giveUps: 0, forcedRestarts: 0,
+      sessions: 0, deaths: {}, deathsBy: {}, deathsIn: {}, clears: [], exits: 0, giveUps: 0, forcedRestarts: 0,
       kills: 0, playerKills: 0, styles: {}, tags: {}, killWeapons: {}, picked: {}, fired: {}, civilians: {},
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
@@ -274,6 +274,8 @@
     if (victim.isPlayer) {
       bump(S.stats.deaths, cause || '?');
       bump(S.stats.deathsBy, killer ? (killer.isPlayer ? 'self' : killer.kind || killer.label || 'other') : 'world');
+      // what he was locked in when it got him (a ground finisher, a takedown), or free
+      bump(S.stats.deathsIn, victim.execution ? 'finisher' : victim.takedown ? 'takedown' : 'free');
       S.sess.died = cause;
       act(`DIED (${cause})`);
       return;
@@ -795,9 +797,11 @@
     }
     if (gun && p.reserveCount() > 0 && !p.reloading && (p.weapon.mag === 0 || (!foe && p.weapon.mag < d.mag && rnd() < 0.01))) { press(inp, 'KeyR'); act('reload'); }
 
+    // a long execution whose man is dead, somebody on him: he walks out of it, as a player would (Space)
+    if (p.execution?.dead && !p.execution.f.quick && w.danger?.threatened(p)) { press(inp, 'Space'); act('walk out of the execution'); }
     // context actions
     const ca = p.contextAction;
-    if (ca && p.nearBack && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
+    if (ca && p.nearTakedown && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     else if (ca && MELEE_SPACE.has(ca)) { press(inp, 'Space'); act(`space (${ca})`); }
     // (no slide on a plan: one chains into a vault, a ladder too, and off the route); a gunman about to fire: under it
     else if (!B.plan && heading !== null && !ca && (rnd() < 0.004 || (S.clock > (B.dodgeT || 0) && underFire(w, p)))) {
@@ -922,7 +926,7 @@
       act(`takedown (${p.takedown.f.label})`);
     }
     B.takedownWas = p.takedown;
-    if (p.execution && p.execution !== B.execWas) { cover('finisher'); act('finisher'); }
+    if (p.execution && p.execution !== B.execWas) { cover('finisher'); act(`finisher (${p.execution.f.quick ? 'quick' : p.execution.f.label})`); }
     B.execWas = p.execution;
     if (w.cleared && !S.sess.cleared) { S.sess.cleared = true; B.clearT = S.clock; cover('clear'); act('LEVEL CLEARED'); }
     for (const c of B.trunks) if (c.trunk?.open && !c.__qaOpen) { c.__qaOpen = true; cover('trunk'); }

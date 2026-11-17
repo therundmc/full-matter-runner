@@ -1,6 +1,7 @@
 // Score of a run (DOM-free). Fed by world events only:
 //   'kill'       points by style (+ the circumstances: killTags) x combo multiplier, different ways of killing, hits
 //   'dodge', 'pickup'  remembered a moment: a kill right after one is tagged
+//   'finisher'   a long execution watched to its end: its bonus, the chain's window given back
 //   'knock'      small bonus for flooring a guard (thrown gun, slide, a kick), keeps the chain alive
 //   'shot'       trigger pulls of the player (accuracy)
 //   'explosion'  remembers what blew up (a rocket kill is a hit)
@@ -24,7 +25,7 @@ const GUN_CAUSES = new Set(['bullet', 'blast', 'heavy']);
 export function killStyle({ cause, killer, victim, how }) {
   if (cause === 'explosion') return { style: 'explosion', method: 'explosion' };
   if (!killer?.isPlayer) return null;
-  if (cause === 'execute' || how?.finisher) return { style: 'execution', method: 'execution' };
+  if (cause === 'execute' || how?.finisher) return how?.quick ? { style: 'quickKill', method: 'quickKill' } : { style: 'execution', method: 'execution' };
   if (victim?.held === killer) return { style: 'takedown', method: 'takedown' };
   if (cause === 'slash') return { style: 'blade', method: 'knife' };
   if (cause === 'glass') return { style: 'glass', method: 'glass' };
@@ -132,6 +133,7 @@ export default class Scoring {
     const ev = world.events;
     ev.on('kill', (e) => this.onKill(e));
     ev.on('knock', (e) => this.onKnock(e));
+    ev.on('finisher', (e) => this.onFinisher(e));
     ev.on('shot', ({ shooter }) => { if (shooter?.isPlayer) this.shots++; });
     ev.on('explosion', ({ source }) => { this.blast = { t: world.time, source }; });
     ev.on('alertPhase', ({ phase }) => { if (phase === 'alert') this.alerts++; });
@@ -210,6 +212,13 @@ export default class Scoring {
     const multi = this.tags.find((t) => t === 'double' || t === 'triple' || t === 'massacre');
     if (multi) w.events.emit('multiKill', { n: this.streak, tag: multi, x: victim.x, y: victim.y });
     Audio.play('confirm', { n: this.combo });
+  }
+
+  // a long execution watched to its end (Player.endExecution): what watching it is worth, the chain wound back up
+  onFinisher({ x, y }) {
+    const W = this.rules.watched, c = this.rules.combo;
+    this.add(Math.round(W.points * this.multiplier), x, y, W.label);
+    if (this.combo > 0) this.comboEnd = Math.max(this.comboEnd, this.world.time + c.window * W.refill);
   }
 
   // a guard floored by the player's doing: a few points, and the chain gets some air back

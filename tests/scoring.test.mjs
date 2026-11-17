@@ -5,7 +5,7 @@ import { load } from './setup.mjs';
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Scoring, killStyle, killTags, comboMultiplier, gradeFor, tally } = await load('game/systems/Scoring.js');
 const { blowFrom } = await load('game/fx/Blows.js');
-const { FINISHERS, finisherFor } = await load('game/data/finishers.js');
+const { FINISHERS, EXEC, finisherFor } = await load('game/data/finishers.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { SCORING, LEVEL_SCORING, levelScoring } = await load('game/data/scoring.js');
 const { loadBest, saveBest } = await load('game/systems/Records.js');
@@ -115,17 +115,18 @@ test('blows: a blow takes a man from behind, the side or the front; every weapon
   assert.equal(of('pistol', 1), FINISHERS.gun);
   assert.equal(of('pistol', 0), FINISHERS.club, 'an empty gun is a club');
   assert.equal(of('shotgun', 6), FINISHERS.gun);
-  assert.equal(of('bazooka', 1), FINISHERS.gun);
-  assert.ok(FINISHERS.cue.plant && WEAPONS[WEAPONS.cue.snaps].swing === 'blade', 'a snapped cue is a stake');
+  assert.equal(of('bazooka', 1), FINISHERS.club, 'never a rocket into a man at his feet');
+  assert.ok(FINISHERS.cue.plant === 0 && WEAPONS[WEAPONS.cue.snaps].swing === 'blade', 'a snapped cue is a stake');
   for (const [name, f] of Object.entries(FINISHERS)) {
     assert.ok(f.label && ['execute', 'slash', 'melee'].includes(f.cause) && f.beats.length > 0, name);
     for (const [wait, what] of f.beats) {
       assert.ok(wait > 0, name);
-      assert.ok([0, 1, 2, 3].includes(what) || ['windup', 'stomp', 'shot', 'grab', 'press', 'slam', 'pin', 'stab', 'smash'].includes(what), `${name}: ${what}`);
+      assert.ok([0, 1, 2, 3].includes(what) || ['windup', 'stomp', 'shot', 'grab', 'press', 'slam', 'pin', 'stab', 'smash', 'punch', 'elbow', 'twist', 'rip',
+        'cut', 'bleed', 'pile', 'aim', 'lean', 'hold'].includes(what), `${name}: ${what}`);
     }
-    assert.notEqual(f.beats[f.beats.length - 1][1], 'windup', `${name} ends on a blow`);
-    assert.ok(['astride', 'over', 'side'].includes(f.mount) && ['head', 'chest'].includes(f.at) && f.after > 0, name);
-    assert.ok(!f.pose || ['gouge', 'frenzy', 'smash', 'headshot'].includes(f.pose), name);
+    assert.notEqual(f.beats[f.beats.length - 1][1], 'windup', `${name} does not end on a windup`);
+    assert.ok(['astride', 'over', 'side', 'beside', 'here'].includes(f.mount) && EXEC.spots[f.at] && f.after > 0, name);
+    assert.ok(!f.pose || ['gouge', 'pound', 'hair', 'stomp', 'frenzy', 'slit', 'smash', 'pile', 'headshot'].includes(f.pose), name);
   }
   for (const d of Object.values(WEAPONS)) if (d.hold === 'melee') assert.ok(['club', 'blade'].includes(d.swing) && d.material, d.name);
   assert.equal(WEAPONS.pistol.mag, 7);

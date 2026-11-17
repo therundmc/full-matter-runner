@@ -272,6 +272,48 @@ export default class Ragdoll {
     else w.sound('splat', p.x, p.y, 0.35);
   }
 
+  // A blow or a round on the body where it lies (a finisher that goes on after the kill, a takedown's rounds in his
+  // knees): the part it lands on jerks (push: kg px/step along a), the wound shows there (spec: a data/wounds.js MARKS
+  // entry), his script is left alone. where: 'head' | 'knee0' | 'knee1' | anything else: the torso.
+  struck(where, a, spec, push = 0) {
+    const leg = where === 'knee0' ? this.limbs[2] : where === 'knee1' ? this.limbs[3] : null;
+    const part = leg?.attached ? leg : where === 'head' && this.head?.attached ? this.head : this.torso;
+    if (push && !this.dying) impulse(part.body, a, push, rand(-0.25, 0.25), 3);
+    if (spec && this.marks.length < MARKS_MAX) {
+      const m = part === leg ? { part: where, kind: spec.kind, size: Math.min(3, rand(...spec.size)), x: rand(-1.5, 0.5), y: 0, a: 0, j: [rand(-1, 1), rand(0, 1), rand(-1, 1)] }
+        : markAt({ ...spec, where: part === this.head ? 'head' : 'torso' }, this.build);
+      if (m) this.marks.push(m);
+    }
+    this.pool = Math.min(this.poolMax + 4, this.pool + 1);
+    this.dry = false;
+    this.settle = 0;
+  }
+
+  // nothing is left of his head (the last blow of a finisher): it goes from the body, the neck pumps; what flies off
+  // is fx/Gore.js `pulp`. Returns where it was, or null when it was gone already.
+  loseHead() {
+    const h = this.head;
+    if (!h?.attached) return null;
+    const at = { x: h.body.position.x, y: h.body.position.y };
+    const j = this.joints.find((k) => k.part === h);
+    if (j) Composite.remove(this.world.engine.world, j.c);
+    this.joints = this.joints.filter((k) => k !== j);
+    this.world.removeBody(h.body);
+    this.parts = this.parts.filter((p) => p !== h);
+    this.marks = this.marks.filter((m) => m.part !== 'head');
+    this.head = null;
+    this.build.head = 0;
+    this.headless = true;
+    this.fountain = rand(1, 1.6);
+    this.settle = 0;
+    return at;
+  }
+
+  // a weapon driven through the body where it lies and left there (img: its sprite's name)
+  plant(img) {
+    this.stuck = { img: sprite(img), a: rand(0, 6.28), x: rand(-2.5, 2.5), y: rand(-4, 2), item: null, hot: -1 };
+  }
+
   update(dt) {
     this.age += dt;
     const w = this.world;
@@ -681,7 +723,7 @@ export default class Ragdoll {
   bake() {
     const w = this.world;
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
-    w.decals.paint?.((g) => { for (const part of [this.torso, this.head]) this.drawMarks(g, part); }, true);
+    w.decals.paint?.((g) => { for (const part of [this.limbs[2], this.limbs[3], this.torso, this.head]) this.drawMarks(g, part); }, true);
     if (this.stuck) w.decals.paint?.((g) => this.drawStuck(g), true);
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
     for (const part of this.parts) w.removeBody(part.body);
@@ -690,7 +732,7 @@ export default class Ragdoll {
 
   // the wounds a part carries, in its frame (the one drawPart draws it in: scaled about its root when it is)
   drawMarks(ctx, part) {
-    const name = part === this.torso ? 'torso' : part === this.head ? 'head' : null;
+    const name = part === this.torso ? 'torso' : part === this.head ? 'head' : part === this.limbs[2] ? 'knee0' : part === this.limbs[3] ? 'knee1' : null;
     if (!name || !part?.attached || !this.marks.some((m) => m.part === name)) return;
     const b = part.body, o = part.root || ZERO, p = local(b.position.x, b.position.y, b.angle, o.x, o.y);
     ctx.save();

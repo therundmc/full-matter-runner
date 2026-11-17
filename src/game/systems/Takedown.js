@@ -3,13 +3,26 @@
 import { TAKEDOWN } from '../Config.js';
 import { angDiff } from '../../engine/math.js';
 
-// Whether `p` stands right behind the standing guard `e`, facing his back, close enough to seize him.
-export function behind(p, e, T = TAKEDOWN) {
+// Whether `p` stands close enough to the standing guard `e` to seize him, turned to him: from whatever side.
+export function within(p, e, T = TAKEDOWN) {
   if (!e.alive || e.knocked > 0 || e.vaulting || e.held) return false;
   const dx = e.x - p.x, dy = e.y - p.y;
-  if (Math.hypot(dx, dy) > T.reach) return false;
-  const a = Math.atan2(dy, dx);
-  return Math.abs(angDiff(p.angle, a)) <= T.facing && Math.abs(angDiff(e.angle, a)) <= T.rear;
+  return Math.hypot(dx, dy) <= T.reach && Math.abs(angDiff(p.angle, Math.atan2(dy, dx))) <= T.facing;
+}
+
+// ... and right behind him, facing his back: the takedowns from behind; else it is one done face to face
+export function behind(p, e, T = TAKEDOWN) {
+  return within(p, e, T) && Math.abs(angDiff(e.angle, Math.atan2(e.y - p.y, e.x - p.x))) <= T.rear;
+}
+
+// Whether a takedown is still open on guard `e` with the squad in `phase` (ai/Director.js): it needs a man who is
+// not aware of us, not one whose back is turned. Never on a man who is after us (aware 2; one who gave up is no
+// longer) or who has just made us out (his detection meter full), never while they have us located (T.spotted:
+// 'alert'). Once they have lost us ('evasion') or only suspect something ('caution'), it is open again. Spotted, a
+// click at a guard is an ordinary attack.
+export function unspotted(e, phase, T = TAKEDOWN) {
+  if (e.yielded) return !T.spotted.includes(phase);
+  return e.aware !== 2 && !((e.meter ?? 0) >= 1) && !T.spotted.includes(phase);
 }
 
 // A takedown under way: f = its TAKEDOWNS entry. i = the beat coming, t = s into its wait (into `after` once done),

@@ -24,6 +24,7 @@ const GUNSHOT = new Set(['bullet', 'heavy', 'blast']);
 // knocked off (x the usual).
 // how: the blow (Character.kill: heavy, spin, finisher, thrown...) scales the blood and the throw. A man held from
 // behind (ch.held: a takedown) is let down where he stood; one already down (ch.knocked) is finished where he lies.
+// how.still: he lies where he is and does not move again (a finisher that goes on over his body).
 // how.dying: the way down the killer chose (a takedown, data/finishers.js): he goes down whole, that way (kneeling:
 // from his knees; 'wall': sat against the wall in front of him; 'sit': against how.against, the furniture his head
 // was driven into); how.env: his head was driven into something.
@@ -104,7 +105,7 @@ export function gore(world, ch, angle, cause, by, how) {
     // his face smashed into a wall (how.dying 'wall'): he slumps down it and stays sat against it (Ragdoll.propUp);
     // into something low ('sit'): he sits against its side (how.against, Ragdoll.sitAgainst)
     const sit = scripted === 'wall' || scripted === 'sit';
-    const dying = sit ? null : scripted || (cause === 'snap' ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
+    const dying = sit ? null : scripted || (cause === 'snap' || how?.still ? null : behead ? 'behead' : throat && whole ? 'throat' : lastMoves(ch, wd, whole));
     const kneels = !!KNEELS[dying]; // where he stood, pitching forward the way he faced (square to what he was driven into)
     // a man finished on the floor stays as he lay: his body where his sprite was, head the same way
     const lay = ch.knocked > 0 ? ch.downAngle : null;
@@ -143,9 +144,20 @@ export function gore(world, ch, angle, cause, by, how) {
     world.sound('gore', x, y, 0.8);
     world.shake(0.2);
   } else {
-    world.sound(cause === 'slash' ? 'slash' : cause === 'snap' ? 'neck' : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
+    // (choked out, how.limp: no crack)
+    world.sound(cause === 'slash' ? 'slash' : cause === 'snap' ? (how?.limp ? 'soft' : 'neck') : 'splat', x, y, wd === WOUNDS.punch ? 0.5 : 1);
   }
   return mode;
+}
+
+// The head of a body on the floor pulped at (x, y) by a blow along `angle` (the end of a finisher, entities/Ragdoll.js
+// loseHead): what `execute` throws about
+export function pulp(world, x, y, angle) {
+  world.particles.blood(x, y, 0, Math.PI, 60, 200, { big: true });
+  world.decals.stampBlood(x, y, 10, 12);
+  for (let i = 0; i < 4; i++) throwGib(world, sprite('characters/gib_chunk' + (i % 3)), x, y, angle, true, 0.5, 0, 0.5);
+  throwGib(world, sprite('characters/gib_eye'), x, y, angle, true, 0.2, 0, 0.6);
+  world.sound('gore', x, y, 0.8);
 }
 
 // a blade across his throat: always when he is held from behind (a takedown), now and then on a slash from the front

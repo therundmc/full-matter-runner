@@ -6312,8 +6312,9 @@ FONT_STENCIL = {
     ' ': [".....", ".....", ".....", ".....", ".....", ".....", "....."],
 }
 LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', pool='4 POOL', bars='5 BARS',
-                  curtain='6 CURTAIN', jukebox='7 JUKEBOX', trapdoor='8 TRAPDOOR', powder='9 POWDER',
-                  steam='10 STEAM', power='11 POWER', liquids='12 LIQUIDS', vehicles='13 VEHICLES')
+                  curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
+                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='14 VEHICLES',
+                  takedowns='7 TAKEDOWNS')   # (the last one added: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 

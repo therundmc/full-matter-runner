@@ -131,7 +131,8 @@ export const SMEAR_TINT = { wood: '255,226,180', metal: '214,236,255', none: '25
 export const MOMENTS = {
   beat: { power: 0.6, stop: 0.05, shake: 0.18, push: 2 },                   // a blow of a finisher that is not the last
   stomp: { shake: 0.3 },                                                    // a finisher's stamp on the head
-  finisher: { kind: 'finisher', power: 1, stop: 0.12, shake: 0.35, push: 4 }, // the last beat of a finisher
+  finisher: { kind: 'finisher', power: 1, stop: 0.12, shake: 0.35, push: 4 }, // the beat of a finisher that kills, its last
+  quick: { kind: 'finisher', power: 0.9, stop: 0.1, shake: 0.3, push: 4 },    // a quick kill on a man down
   takedown: { kind: 'finisher', power: 0.8, stop: 0.07, shake: 0.12, push: 2 },
   // a head driven into a wall, an edge, a toilet (a takedown with a spot): each blow held on its contact frame, the
   // last one harder
