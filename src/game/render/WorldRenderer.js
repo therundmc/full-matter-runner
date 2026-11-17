@@ -15,6 +15,7 @@ import { OUTRO } from '../systems/Outro.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
 import { capWidth, drawCap } from '../ui/Glyphs.js';
+import { drawCurtains } from './ClothArt.js';
 
 const { Body } = Matter;
 
@@ -95,7 +96,8 @@ export default class WorldRenderer {
     for (const e of w.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
     for (const c of w.civilians) if (c.alive && vis(c.x, c.y)) c.draw(ctx);
     if (w.player.alive && !w.player.hidden) w.player.draw(ctx); // hidden: in the getaway van
-    for (const p of w.props) if (p.def.overhead && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
+    for (const p of w.props) if (p.def.overhead && !p.def.curtain && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
+    drawCurtains(ctx, w.curtains, w.player, vis); // their cloth (systems/Curtains.js)
     for (const d of w.doors) d.draw(ctx);
     ctx = floor;
     ctx.save();

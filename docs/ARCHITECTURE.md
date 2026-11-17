@@ -23,6 +23,9 @@ src/
       Shallow.js          liquid on a flat floor: a "virtual pipes" height field (depth per kind per cell, fluxes with
                           inertia between neighbours, a film under which it stops spreading, floor levels), drying and
                           soaking, setting kinds (blood), solid cells, chunks that sleep when still
+      Cloth.js            a hung cloth (a curtain) seen from above: a small rope mesh under rings that slide on a rod,
+                          real gravity, upright cylinders pushing it (parting round them, a grip, tearing when driven
+                          through fast), fixed sub-steps, what it hides along a line
     nav/Pathfinding.js    A* on the tile grid + string pulling; an optional extra cost per cell (spots to keep away
                           from), which string pulling never cuts across
   audio/                  Audio.js (mixer, recorded shots + foley bank, a little synthesis), bank.js (generated index
@@ -113,6 +116,10 @@ src/
                           smokers' threads and breaths, puffs), stirring (walkers, cars, rounds, fans, drafts,
                           convection, wind), a faint resting layer in the smoky places; what hides from the guards
                           (blocks(), World.sightLine) (DOM-free)
+      Curtains.js         the curtains across doorways (props with def `curtain`, CURTAIN in data/cloth.js): a Cloth each,
+                          pushed by people, the dead and debris, nudged by rounds ('round'), thrown by blasts
+                          ('explosion'); asleep when still with nobody near; hides from the guards (World.sightLine)
+                          unless parted wide; placeholder sounds (DOM-free, unit-tested; drawn by render/ClothArt.js)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
@@ -163,6 +170,8 @@ src/
                           on the floor (bodies, items, props and cars, people, doors) is drawn on a picture-sized layer
                           of its own, then laid on the scene: Lighting.post cuts its pixels out of the floor's
                           reflections, so no puddle or wet sheen is ever drawn over a man or a car
+      ClothArt.js         the curtains' cloth in flat pixel quads at the furniture's density (tone by facing and height,
+                          ink round it), the brass rod and rings on top; painted again only when it moved
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
@@ -227,9 +236,9 @@ Rules:
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
-| `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses) |
+| `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses), Curtains (the cloth it crosses) |
 | `strike` | `{ x, y, owner, team }` | Projectile (a round hit a wall, a prop, a door or a pane) | Flinch (guards close by, the player's view) |
-| `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit) |
+| `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit), Curtains (the cloth thrown) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
