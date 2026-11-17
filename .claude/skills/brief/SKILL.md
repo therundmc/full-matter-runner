@@ -35,6 +35,10 @@ TESTS TO ADD
 - tests/<name>.test.mjs: <case> -> <expected value>
 - <how to build the situation: helpers used by the neighbouring tests>
 
+LAB STATION (any new gameplay / AI / physics / animation feature)
+- tools/build_lab.py: a station to try it at once (dummies, props, weapons), its stencil numbered in reading order
+  (LAB_LABELS in tools/generate_assets.py, then regenerate and run the builder).
+
 REPO RULES
 - No commit, no push, no server left running, never `git add`.
 - ASCII only in source, comments and docs.

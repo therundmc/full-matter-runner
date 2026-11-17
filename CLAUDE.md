@@ -132,6 +132,9 @@
 - The QA robot plays the tutorial with `npm run qa -- --level tutorial` (add `--god` to reach the window).
 
 ## Run / test
+- EVERY NEW FEATURE GETS A STATION IN THE LAB (the user's rule): tools/build_lab.py (`?level=lab`), its floor stencil
+  numbered in reading order (LAB_LABELS in tools/generate_assets.py), passive dummies / props / weapons set up so the
+  user can try it at once. A brief for a new gameplay, AI, physics or animation feature always asks for its station.
 - index.html starts the game through a service worker (sw.js) that fetches every file fresh (mixed cached modules
   gave "does not provide an export named ..."). If it comes back: Ctrl+Shift+R once.
 - `npm run play` (tools/play.mjs, port 8100): serves the LAST COMMIT. This is what the user plays while agents edit
