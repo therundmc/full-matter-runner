@@ -5,7 +5,8 @@
 // Moved by a Walker brain (ai/Civilians.js) that systems/Ambient.js ticks. Same body, death and gore as anyone;
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
 import { CAT, MASK, TILE } from '../Config.js';
-import { rand, approachAngle, angDiff } from '../../engine/math.js';
+import { rand, approachAngle, angDiff, clamp } from '../../engine/math.js';
+import { GESTURE } from '../data/feel.js';
 import { WALKER } from '../ai/Civilians.js';
 import { talks } from '../ai/Pastimes.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
@@ -34,8 +35,11 @@ export const CIVILIAN_KINDS = Object.keys(CIVILIAN_LOOKS).filter((k) => !CIVILIA
 const MASK_CIV = MASK.CHAR & ~CAT.EDGE;
 const MASK_SEATED = MASK_CIV & ~CAT.PROP;
 const OVER_HEAD = { hl: { x: 1, y: -4 }, hr: { x: 1, y: 4 } }; // arms over the head
+const MOOD = { hunch: 0, duck: 0, lift: 0, lean: 0, look: 0, twist: 0, shake: 0 };
 const BALL = 1.6;      // how far down a curled-up one is (1 = ducking)
 const TREMBLE = 46;    // rad/s of the shakes
+const COVER = 0.5;     // how far down one running with his arms over his head goes
+const bump = (k) => (k <= 0 || k >= 1 ? 0 : Math.sin(Math.PI * k));
 
 export default class Civilian extends Character {
   constructor(world, x, y, angle, kind, brain) {
@@ -57,6 +61,13 @@ export default class Civilian extends Character {
     this.seated = false;   // on his seat: furniture is not in his way
     this.left = false;     // a patron has run off his spot
     this.asleep = false;   // lying down until something wakes him (see sleep)
+    // how he runs for it once scared, each his own way: arms over his head and ducked, a stumbling start, or flat
+    // out, looking back over his shoulder now and then
+    this.runStyle = this.seed < 30 ? 'cover' : this.seed < 60 ? 'stumble' : 'flail';
+    this.startle = 0;      // s left of the jump at his fright (mood)
+    this.scared = false;   // panicked at the last step
+    this.fleeT = 0;        // s he has been running for it
+    this.backT = rand(...GESTURE.panic.look.every); // s to his next look back
     this.solid();
   }
 
@@ -105,9 +116,16 @@ export default class Civilian extends Character {
     }
     const b = this.brain;
     const it = b.update(dt, this.x, this.y, sense);
+    if (b.panicked && !this.scared) this.startle = GESTURE.panic.startle.dur; // (scared whenever: by Ambient, a blow)
+    this.scared = b.panicked;
+    this.startle = Math.max(0, this.startle - dt);
+    const fleeing = b.state === WALKER.FLEE || b.state === WALKER.HIDE;
+    this.fleeT = fleeing ? this.fleeT + dt : 0;
+    if (fleeing && (this.backT -= dt) < -GESTURE.panic.look.dur) this.backT = rand(...GESTURE.panic.look.every);
     if (b.fall) { b.fall = false; if (!this.seated) { this.trip(); return; } }
     const ducking = b.state === WALKER.PANIC && b.pose === 'duck' || b.state === WALKER.COWER;
-    this.crouch += ((b.pose === 'ball' ? BALL : ducking ? 1 : 0) - this.crouch) * Math.min(1, dt * 10);
+    const cover = fleeing && this.runStyle === 'cover';
+    this.crouch += ((b.pose === 'ball' ? BALL : ducking ? 1 : cover ? COVER : 0) - this.crouch) * Math.min(1, dt * 10);
     if (this.seated && (b.state === WALKER.FLEE || b.state === WALKER.HIDE)
       && !this.world.props.some((p) => p.body && !p.dead && !p.def?.fixture && Bounds.overlaps(p.body.bounds, this.body.bounds))) {
       this.seated = false;
@@ -187,11 +205,10 @@ export default class Civilian extends Character {
   draw(ctx) {
     const b = this.brain, t = this.world.time;
     const k = 1 - this.crouch * 0.14;
-    // curled up or frozen stiff, he shakes
-    const shake = this.alive && !this.knocked && (b.pose === 'ball' || b.frozen) ? Math.sin(t * TREMBLE + this.seed) * 0.4 : 0;
-    if (k < 1 || shake) { ctx.save(); ctx.translate(this.x + shake, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
+    // (curled up or frozen stiff, he shakes: his mood, over feet that stay put)
+    if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
     super.draw(ctx);
-    if (k < 1 || shake) ctx.restore();
+    if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
     ctx.save();
     bodyFrame(ctx, this); // what he holds is drawn from his pose
@@ -212,7 +229,14 @@ export default class Civilian extends Character {
   // pockets or on a bag on a walk; null lets the arms swing
   busyHands() {
     const b = this.brain, t = this.world.time;
+    // the fright: his arms fly up and out
+    const st = this.startle / GESTURE.panic.startle.dur;
+    if (st > 0.45) return { hl: { x: 4, y: -9.5 }, hr: { x: 4, y: 9.5 } };
     if (b.state === WALKER.STOP) return pastimeHands(this.pastime, t, this.seed);
+    if ((b.state === WALKER.FLEE || b.state === WALKER.HIDE) && this.runStyle === 'cover') {
+      const k = Math.sin(this.walk) * 0.6; // arms over his head, bounced by his stride
+      return { hl: { x: 2 + k, y: -4.5 }, hr: { x: 2 - k, y: 4.5 } };
+    }
     if (b.state === WALKER.PANIC && b.pose === 'hands') {
       const sh = Math.sin(t * 30) * 0.6; // trembling
       return { hl: { x: 3 + sh, y: -9 }, hr: { x: 3 - sh, y: 9 } };
@@ -226,5 +250,36 @@ export default class Civilian extends Character {
     const h = pastimeHands(this.habit, t, this.seed);
     if (this.habit === 'bag') h.hl.x -= Math.sin(this.walk) * 2.6 * Math.min(1, this.gait); // the free arm swings
     return h;
+  }
+
+  // CharacterAnim hook, how fright bends him (GESTURE.panic): the jump at his fright, the shoulders up and the head
+  // drawn in, frozen or curled up shaking, a lurching start, a look back over his shoulder as he runs
+  mood() {
+    const b = this.brain, G = GESTURE.panic, S = G.startle;
+    if (!b.panicked && !this.startle) return null;
+    const m = MOOD;
+    m.hunch = m.duck = m.lift = m.lean = m.look = m.twist = m.shake = 0;
+    const k = 1 - this.startle / S.dur;
+    if (this.startle > 0) { m.lift = S.hop * bump(k / 0.5); m.hunch = S.hunch * bump(k); m.duck = S.duck * bump(k); }
+    if (b.frozen || (b.state === WALKER.PANIC && b.pose === 'hands')) { m.hunch = Math.max(m.hunch, 0.14); m.duck = Math.max(m.duck, 0.16); m.shake = G.tremble.px; }
+    else if (b.pose === 'ball') { m.hunch = Math.max(m.hunch, 0.3); m.duck = Math.max(m.duck, 0.5); m.shake = G.tremble.px; }
+    else if (b.state === WALKER.COWER || b.pose === 'duck') { m.hunch = Math.max(m.hunch, 0.2); m.duck = Math.max(m.duck, 0.35); }
+    if (b.state === WALKER.FLEE || b.state === WALKER.HIDE) {
+      if (this.runStyle === 'cover') { m.hunch = Math.max(m.hunch, 0.18); m.duck = Math.max(m.duck, 0.3); }
+      else if (this.runStyle === 'stumble' && this.fleeT < G.stumble.dur) {
+        // the first strides lurch, the body ahead of the feet, thrown from side to side
+        const u = 1 - this.fleeT / G.stumble.dur;
+        m.lean = G.stumble.lurch * u * (0.6 + 0.4 * Math.sin(this.fleeT * 14));
+        m.twist = 0.3 * u * Math.sin(this.fleeT * 9 + this.seed);
+      }
+      // a look back over the shoulder, toward where the danger is
+      const L = G.look, w = this.backT < 0 ? bump(-this.backT / L.dur) : 0, d = b.danger;
+      if (w > 0 && d) {
+        const side = angDiff(this.angle, Math.atan2(d.y - this.y, d.x - this.x)) >= 0 ? 1 : -1;
+        m.look = side * w; m.twist += side * L.turn * w;
+      }
+    }
+    m.twist = clamp(m.twist, -0.6, 0.6);
+    return m;
   }
 }

@@ -493,6 +493,7 @@ export default class World {
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
     this.ambient?.update(dt);
+    for (const c of this.chars) if (c.alive) c.animate(dt); // the drawn body after this step's aim (Facing.js)
 
     // 2. physics
     this.physics.step(dt, this.time);
