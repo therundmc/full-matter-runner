@@ -35,12 +35,12 @@ const GENERATED = [
   [/^src\/game\/data\/levels\/lab\.js$/, ['tools/build_lab.py', 'tools/levelkit.py']],
   [/^src\/game\/data\/levels\/tutorial\.js$/, ['tools/build_tutorial.py', 'tools/levelkit.py']],
   [/^(src\/audio\/bank\.js|assets\/sound\/foley\.wav)$/, ['tools/build_sounds.mjs', 'tools/sounds.json']],
-  [/^assets\/sprites\/comic\//, ['tools/generate_comic.py']],
+  [/^assets\/sprites\/comic\//, ['tools/generate_comic.py', 'tools/comic/']],
   [/^assets\/sprites\//, ['tools/generate_assets.py']],
 ];
 for (const f of touched) {
   const rule = GENERATED.find(([re]) => re.test(f));
-  if (rule && !rule[1].some((g) => touched.has(g))) {
+  if (rule && !rule[1].some((g) => (g.endsWith('/') ? [...touched].some((t) => t.startsWith(g)) : touched.has(g)))) {
     problems.push(`generated  ${f} changed but not ${rule[1].join(' / ')}: hand edit? regenerate and compare`);
   }
 }
