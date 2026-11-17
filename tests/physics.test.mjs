@@ -76,7 +76,7 @@ test('light objects stay pushable', () => {
   setMaterial(chair, 6, 0.55);
   phys.freezeIfHeavy(chair);
   assert.equal(chair.isStatic, false);
-  assert.ok(phys.breakaway(chair) < 40);
+  assert.ok(phys.breakaway(chair) < 50); // static friction: 1.25 x mu.kg.g
 });
 
 test('fast bodies do not tunnel through a 1 m wall', () => {

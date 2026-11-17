@@ -12,7 +12,9 @@ import { canvas, put, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, 
   gash, rip, wear, brokenEdge, soilSpill, ductStump } from '../render/DamageArt.js';
 import Debris from './Debris.js';
 import { wallBehind, run } from '../fx/Spatter.js';
-import { setMaterial, impulse, scaleInertia } from '../../engine/physics/Body.js';
+import { setMaterial, setShapeInertia, impulseAt } from '../../engine/physics/Body.js';
+import { MATERIALS } from '../data/materials.js';
+import { BLOW } from '../data/physics.js';
 import { ignite } from '../systems/Gas.js';
 import { tipOver } from '../systems/Tipping.js';
 
@@ -28,6 +30,7 @@ const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 2
 const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
 const TAU = Math.PI * 2;
 const COAST = 1.6; // s a fan takes to run down once the power is cut
+const d0 = (d) => d.w * d.h; // area of a prop's whole box (none for a round one)
 const INK_DOOR = '#141018'; // outline of a cabinet's open doors
 
 // Furniture and street dressing, destroyed piece by piece (data/destruction.js says how each one comes apart):
@@ -49,7 +52,7 @@ export default class Prop {
     const d = this.def;
     this.opts = {
       isStatic: !!d.static, angle, label: 'prop',
-      frictionAir: 0.02, friction: 0.4, restitution: 0.1,
+      frictionAir: 0, friction: 0.4, restitution: 0.1, // the floor brakes it (Friction.groundFriction), not the air
       // hanging from the ceiling: nothing on the floor bumps into it
       collisionFilter: { category: CAT.PROP, mask: d.hung ? 0 : MASK.PROP },
     };
@@ -74,16 +77,26 @@ export default class Prop {
     world.addBody(this.body);
   }
 
-  makeBody(x, y, w, h, kg) {
+  // kg: its mass (what is left of it once sawn: its share of the whole by area)
+  makeBody(x, y, w, h, kg = this.def.kg * (d0(this.def) ? (w * h) / d0(this.def) : 1)) {
     const d = this.def;
     this.body = d.r ? Bodies.circle(x, y, d.r, this.opts) : Bodies.rectangle(x, y, w, h, this.opts);
-    if (!d.static) {
-      setMaterial(this.body, kg, d.mu);
-      scaleInertia(this.body, 4);
-      this.world.physics.freezeIfHeavy(this.body);
-    }
     this.body.entity = this;
     this.body.material = d.material;
+    if (!d.static) {
+      this.loosen(kg, d.mu);
+      this.world.physics.freezeIfHeavy(this.body);
+    }
+  }
+
+  // a loose body: its mass, its friction on the floor (by what it stands on: `feet`, or its material) and the moment
+  // of inertia of its shape
+  loosen(kg, mu) {
+    const b = this.body, feet = this.def.feet ?? this.def.material;
+    setMaterial(b, kg, mu);
+    b.feet = feet;
+    b.stick = MATERIALS[feet]?.stick;
+    setShapeInertia(b);
   }
 
   get look() { return this.canvas || this.img; }
@@ -173,7 +186,11 @@ export default class Prop {
     if (rec.leak?.on === 'hit' || d.water) this.leak(sx, sy, dirA);
     w.sound(fx.glass || (d.glass && this.inRect(rec.screen, sx, sy)) ? 'glassHit' : fx.hit, px, py, kind === 'pellet' ? 0.35 : 0.55);
     this.recoil(dirA, power);
-    if (!d.static && !fell) impulse(this.body, dirA, 25 * power * (this.tipped ? d.tips.give : 1), (Math.random() - 0.5) * 0.05);
+    if (!d.static && !fell) {
+      // the blow's momentum where it landed (data/physics.js BLOW): off its centre it spins it
+      const J = (BLOW.per[kind] ?? BLOW.per.bullet) * power * (BLOW.heft[info.heft] ?? 1) * (this.tipped ? d.tips.give : 1);
+      impulseAt(this.body, px, py, dirA, J * PX_PER_M / 60);
+    }
 
     if (this.doors) this.swingDoors(power);
     // a way through a wall (data/props.js `lasting`) takes the marks, never gives: no zone of it is torn, it never breaks;

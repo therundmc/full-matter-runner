@@ -473,7 +473,8 @@ export default class Player extends Character {
       const o = pair.bodyA === this.body ? pair.bodyB : pair.bodyB === this.body ? pair.bodyA : null;
       if (!o || o.mu === undefined || (o.isStatic && !o.frozen) || this.slideHits.has(o)) continue;
       this.slideHits.add(o);
-      impulse(o, sl.angle, kgOf(this.body) * sl.speed * cfg.hitMomentum, rand(-0.3, 0.3), 10);
+      // a light thing is sent off no faster than the feet that hit it
+      impulse(o, sl.angle, kgOf(this.body) * sl.speed * cfg.hitMomentum, rand(-0.3, 0.3), sl.speed);
     }
     this.setSlideVelocity();
     // friction: dust off the hip and heel, a faint scuff on the floor

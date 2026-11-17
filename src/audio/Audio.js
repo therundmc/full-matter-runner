@@ -149,6 +149,10 @@ export const META = {
   drop: { pri: 0, dur: 0.4, gap: 0.05, max: 3, gain: 0.5 }, clubHit: { pri: 2, dur: 0.3, gap: 0.04, max: 3, gain: 1 },
   trunk: { dur: 0.45, gap: 0.3, max: 1, gain: 0.32 }, chairScrape: { pri: 0, dur: 0.4, gap: 0.1, max: 2, gain: 0.22 },
   flutter: { pri: 1, dur: 0.5, gap: 0.25, max: 2, gain: 0.45 },
+  // loose furniture dragged or rolled along the floor (systems/PropPhysics.js): placeholders, assets/sound/PLACEHOLDERS.md
+  scrapeWood: { pri: 0, dur: 0.35, gap: 0.12, max: 3, gain: 0.3 }, scrapeMetal: { pri: 0, dur: 0.35, gap: 0.12, max: 3, gain: 0.3 },
+  scrapePlastic: { pri: 0, dur: 0.35, gap: 0.12, max: 3, gain: 0.3 }, scrapeCeramic: { pri: 0, dur: 0.35, gap: 0.12, max: 3, gain: 0.3 },
+  dragSoft: { pri: 0, dur: 0.35, gap: 0.12, max: 2, gain: 0.3 }, rollMetal: { pri: 0, dur: 0.4, gap: 0.12, max: 2, gain: 0.3 },
   splash: { pri: 0, dur: 0.3, gap: 0.06, max: 3, gain: 0.6 },
   pool: { pri: 0, dur: 0.3, gap: 0.2, max: 2, gain: 0.33 },
   clack: { pri: 0, dur: 0.12, gap: 0.04, max: 3, gain: 1 }, pocket: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.5 },
@@ -340,6 +344,13 @@ const FOLEY = {
   // a galvanised bin going over: the body on the ground, then a few rattles as it rocks and rolls; its lid landing
   binTip: [['sheet', 0.9, 0.85], ['thud', 0.5, 1.1, 0.02], ['metal', 0.6, 0.8, 0.14], ['metal', 0.4, 0.9, 0.29], ['metal', 0.25, 1, 0.42, 0.7]],
   binLid: [['metal', 0.8, 1.35], ['metal', 0.4, 1.5, 0.11, 0.8]],
+  // PLACEHOLDERS (assets/sound/PLACEHOLDERS.md) until a pack brings real drags: furniture scraping over the floor as
+  // a few low knocks of its material (legs juddering), the soft drag and the rolling can silent
+  scrapeWood: [['wood', 0.35, 0.55], ['wood', 0.22, 0.6, 0.07], ['wood', 0.15, 0.65, 0.14, 0.7]],
+  scrapeMetal: [['sheet', 0.3, 0.6], ['metal', 0.15, 0.55, 0.08, 0.6]],
+  scrapePlastic: [['plastic', 0.3, 0.6], ['plastic', 0.2, 0.7, 0.08, 0.7]],
+  scrapeCeramic: [['stone', 0.25, 0.6], ['stone', 0.18, 0.7, 0.08, 0.7]],
+  dragSoft: [], rollMetal: [],
   metalBreak: [['metalBreak', 1], ['sheet', 0.6]],
   ceramicBreak: [['ceramic', 1], ['glassHit', 0.5, 0.8], ['stone', 0.5]],
   plasticBreak: [['plastic', 1, 0.8], ['woodBreak', 0.45, 1.5]],

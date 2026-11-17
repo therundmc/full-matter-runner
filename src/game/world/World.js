@@ -18,7 +18,7 @@ import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
 import { rand, chance } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
-import { FLOOR_GRIP } from '../data/materials.js';
+import { gripOn } from '../data/materials.js';
 import Audio from '../../audio/Audio.js';
 import TileMap from './TileMap.js';
 import { buildLevel } from './Level.js';
@@ -50,6 +50,7 @@ import PoolBalls from '../systems/PoolBalls.js';
 import Clutter from '../systems/Clutter.js';
 import Gadgets from '../systems/Gadgets.js';
 import Tipping from '../systems/Tipping.js';
+import PropPhysics from '../systems/PropPhysics.js';
 import Uses from '../systems/Uses.js';
 import Slips from '../systems/Slips.js';
 import Sprinklers from '../systems/Sprinklers.js';
@@ -81,7 +82,7 @@ export default class World {
     this.map = new TileMap(level.tiles);
     this.physics = new PhysicsWorld({
       events: this.events,
-      muAt: (x, y) => this.floorGrip(x, y),
+      muAt: (x, y, body) => this.floorGrip(x, y, body),
       pushForce: PHYSICS.pushForce,
       substeps: PHYSICS.substeps,
     });
@@ -135,6 +136,7 @@ export default class World {
     this.clutter = new Clutter(this);             // glasses, ashtrays, the till on the furniture: shot, knocked off, thrown
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
     this.tipping = new Tipping(this);             // street bins run into go over
+    this.propPhysics = new PropPhysics(this);     // loose furniture pushed with its weight, scuffing the floor
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
     this.weather = new Weather(this, level);               // the rain: open sky, its puddles, drips off the eaves
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
@@ -179,10 +181,11 @@ export default class World {
     return cx < 0 || cy < 0 || cx >= m.w || cy >= m.h ? 'concrete' : m.floor[cy * m.w + cx] || 'concrete';
   }
 
-  floorGrip(x, y) {
+  // grip multiplier of the floor at a point; for a loose prop, how its feet (`feet`: Prop.loosen) take to that floor
+  floorGrip(x, y, body) {
     const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE), m = this.map;
     if (cx < 0 || cy < 0 || cx >= m.w || cy >= m.h) return 1;
-    return (FLOOR_GRIP[m.floor[cy * m.w + cx]] ?? 1) * (this.liquids?.grip(x, y) ?? 1);
+    return gripOn(m.floor[cy * m.w + cx], body?.feet) * (this.liquids?.grip(x, y) ?? 1);
   }
 
   // ---------------- registry ----------------
@@ -471,19 +474,6 @@ export default class World {
     this.particles.dust(x, y, 6, 6, '#6a6272', { speed: 30, size: 3, life: 0.5, alpha: 0.2 });
   }
 
-  // characters leaning into a movable object slow down with its weight and grip
-  updatePushContacts() {
-    for (const pair of this.physics.activePairs()) {
-      let c = pair.bodyA.entity, o = pair.bodyB;
-      if (!(c && (c.isPlayer || c.isEnemy))) { c = pair.bodyB.entity; o = pair.bodyA; }
-      if (!(c && (c.isPlayer || c.isEnemy)) || o.isStatic || o.mu === undefined || o.label === 'debris') continue;
-      const dx = o.position.x - c.x, dy = o.position.y - c.y;
-      if (dx * c.vel.x + dy * c.vel.y <= 0) continue;
-      const f = Math.max(0.12, 1 - this.physics.breakaway(o) / this.physics.pushForce);
-      c.pushFactor = Math.min(c.pushFactor, f);
-    }
-  }
-
   // ---------------- simulation ----------------
   step(dt, input, aim) {
     this.time += dt;
@@ -500,9 +490,9 @@ export default class World {
     for (const e of this.enemies) e.update(dt);
     this.ambient?.update(dt);
 
-    // 2. physics
+    // 2. physics (characters walking into loose props push them with their limited force first)
+    this.propPhysics.prePush(dt);
     this.physics.step(dt, this.time);
-    this.updatePushContacts();
     for (const d of this.doors) d.constrain(dt);
     if (this.wallsDirty) {
       this.wallsDirty = false;
@@ -524,6 +514,7 @@ export default class World {
     this.scoring.update(dt);
     this.impacts.update(dt);
     this.liquids.update(dt);
+    this.propPhysics.update(dt);
     this.alarms.update(dt);
     this.power.update();
     this.critters.update(dt);
