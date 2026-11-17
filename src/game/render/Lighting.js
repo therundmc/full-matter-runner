@@ -21,6 +21,10 @@ import { hash, flicker, signLevel, pickFaults } from './Flicker.js';
 // Rooftop glows: pieces of `level.roof` with a `light` (data/roofs.js) shine on their roof, unshadowed.
 
 const STREET = new Set(['asphalt', 'asphalt_line', 'sidewalk', 'grass', 'dirt']);
+
+// the night tint per area: LIGHTING.ambient, with the level's own tints over it (`level.light`: { inside: [r, g, b],
+// street: ... }, rgb 0..1; the lab's brighter night)
+export const ambientOf = (level) => ({ ...L.ambient, ...level?.light });
 const LIT_GRID = 16; // px per cell of the brightness grid (levelAt)
 
 function canvas(w, h) {
@@ -101,6 +105,7 @@ export default class Lighting {
     this.updateGlass();
     this.lights = (world.level.lights || []).map((d, i) => this.makeLevelLight(d, i));
     for (const d of world.level.roof || []) this.addRoofLight(d);
+    this.amb = ambientOf(world.level);
     this.buildAmbient();
     this.buildLevelLayers();
     this.gridDirty = true;
@@ -183,14 +188,14 @@ export default class Lighting {
     const m = this.map, k = 4;
     const raw = canvas(m.w * k, m.h * k), g = raw.getContext('2d');
     const amb = {};
-    for (const key in L.ambient) amb[key] = css(toByte(L.ambient[key]));
+    for (const key in this.amb) amb[key] = css(toByte(this.amb[key]));
     this.ambGrid = new Float32Array(m.w * m.h);
     for (let y = 0; y < m.h; y++) {
       for (let x = 0; x < m.w; x++) {
         const a = this.areaOf(x, y);
         g.fillStyle = amb[a];
         g.fillRect(x * k, y * k, k, k);
-        this.ambGrid[y * m.w + x] = lum(toByte(L.ambient[a]));
+        this.ambGrid[y * m.w + x] = lum(toByte(this.amb[a]));
       }
     }
     if (!this.ambient) this.ambient = canvas(raw.width, raw.height);
@@ -584,7 +589,7 @@ export default class Lighting {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = 1;
-    g.fillStyle = css(toByte(L.ambient.void));
+    g.fillStyle = css(toByte(this.amb.void));
     g.fillRect(0, 0, this.lm.width, this.lm.height);
     g.imageSmoothingEnabled = true;
     const as = this.ambScale;

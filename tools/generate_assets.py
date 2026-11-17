@@ -6293,6 +6293,7 @@ FONT_STENCIL = {
     'U': ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
     'W': ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
     'X': ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"],
+    '0': [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."],
     '1': ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
     '2': [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
     '3': ["####.", "....#", "....#", ".###.", "....#", "....#", "####."],
@@ -6304,22 +6305,33 @@ FONT_STENCIL = {
     '9': [".###.", "#...#", "#...#", ".####", "....#", "....#", ".###."],
     ' ': [".....", ".....", ".....", ".....", ".....", ".....", "....."],
 }
-LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', powder='4 POWDER', steam='5 STEAM',
-                  liquids='6 LIQUIDS', curtain='7 CURTAIN', bars='7 BARS', pool='8 POOL', power='9 POWER',
-                  jukebox='9 JUKEBOX', trapdoor='9 TRAPDOOR', vehicles='VEHICLES')
+LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', pool='4 POOL', bars='5 BARS',
+                  curtain='6 CURTAIN', jukebox='7 JUKEBOX', trapdoor='8 TRAPDOOR', powder='9 POWDER',
+                  steam='10 STEAM', power='11 POWER', liquids='12 LIQUIDS', vehicles='13 VEHICLES')
 STENCIL_K = 2   # world px per font pixel
+STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
 
 def stencil_size(text):
-    return (len(text) * 6 - 1) * STENCIL_K + 2, 7 * STENCIL_K + 2
+    return (len(text) * 6 - 1) * STENCIL_K + 2 * STENCIL_PAD, 7 * STENCIL_K + 2 * STENCIL_PAD
 
 
 def stencil(text, seed):
-    """A label stencilled on the floor: worn yellow paint, chipped where it was walked on (1 px clear margin)."""
+    """A label stencilled on the floor: bright yellow paint on a dark painted plate (it reads on any floor), worn and
+    chipped where it was walked on (1 px clear margin)."""
     W, H = stencil_size(text)
     cv = Cv(W, H)
     rng = random.Random(seed)
-    paint, worn = hx('#d8b240', 210), hx('#9a8040', 170)
+    plate, scuff = hx('#17141e', 205), hx('#2a2530', 190)
+    paint, worn = hx('#ffd23a', 240), hx('#c8a640', 215)
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            edge = x in (1, W - 2) or y in (1, H - 2)
+            if edge and (x in (1, W - 2)) and (y in (1, H - 2)):
+                continue                                        # the plate's corners clipped
+            if edge and rng.random() < 0.3:
+                continue                                        # its edge worn ragged
+            cv.set(x, y, scuff if rng.random() < 0.08 else plate)
     k = STENCIL_K
     for n, ch in enumerate(text):
         for gy, row in enumerate(FONT_STENCIL[ch]):
@@ -6328,9 +6340,10 @@ def stencil(text, seed):
                     continue
                 for j in range(k):
                     for i in range(k):
-                        if rng.random() < 0.1:
-                            continue                            # chipped: the floor shows through
-                        cv.set(1 + (n * 6 + gx) * k + i, 1 + gy * k + j, worn if rng.random() < 0.25 else paint)
+                        if rng.random() < 0.07:
+                            continue                            # chipped: the plate shows through
+                        cv.set(STENCIL_PAD + (n * 6 + gx) * k + i, STENCIL_PAD + gy * k + j,
+                               worn if rng.random() < 0.2 else paint)
     return cv
 
 
