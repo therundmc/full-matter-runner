@@ -4,17 +4,23 @@
 // their neighbours nor further apart than the heading lets them; the ring at each end of the rod is fixed. The
 // cloth falls `drop` px under them in `rows - 1` links and is cut into `panels` side by side (two: it parts in the
 // middle). Every link is a rope (it pulls, never pushes), so the cloth bunches as the rings close up and hangs
-// straight under them at rest; the heading's pleats (`fold`) give it its folds. Gravity is real (in z): a lower
-// point pushed out rises on its links and swings back like a pendulum.
+// straight under them at rest; the heading's pleats (`fold`: out, in, out the other way, in, every four columns)
+// give it its folds. Gravity is real (in z): a lower point pushed out rises on its links and falls back, braked
+// far harder on its way out and up than on its way back (`catch`): dead weight, it does not swing through.
 // Colliders are upright cylinders in the same frame ({ s, n, vs, vn, r, top, speed }: a man, a body, a piece of
-// debris): they push the points out of their disc and drag them along with them a little (grip). A rope stretched
+// debris): they push the points out of their disc, hand them only part of their speed (`give`: the cloth is dead
+// weight) and hold them by friction (`grip`): the harder a point is pressed on, the more it sticks, so the cloth
+// wraps round whoever pushes into it and slips off his sides and back once it only hangs on him. A collider that
+// was touched is marked (`touch`). A rope stretched
 // past `tear.stretch` by something faster than `tear.speed` tears (a body thrown through). Verlet on fixed
 // sub-steps of `sub` s (an accumulator: one step of 2 dt is two of dt). Typed arrays, no allocation per step.
 // DOM-free.
 import { segSeg } from './Raycast.js';
 
 export default class Cloth {
-  // cfg: { len, panels, cols (per panel), rows, top, drop, fold, gravity, drag, iters, sub, grip, slack, part, thick, jamb,
+  // cfg: { len, panels, cols (per panel), rows, top, drop, fold, gravity, drag, catch, iters, sub,
+  //        grip: { stick, slide, drape },
+  //        give, slack, part, thick, jamb,
   //        ring: { w, drag, home, gap }, tear: { stretch, speed }, sight: { rows, gap } }
   constructor(cfg) {
     this.cfg = cfg;
@@ -28,11 +34,12 @@ export default class Cloth {
     this.lo = new Float64Array(C); this.hi = new Float64Array(C); // how far each ring may slide
     this.panel = new Int32Array(C);
     this.cut = new Uint8Array(N);          // r * C + c: the rope across from column c at row r is torn
+    this.pen = f();                        // how far each point was pushed into a collider this sub-step
     const pw = len / panels, sp = this.sp = (pw - 1) / (cols - 1);
     for (let c = 0; c < C; c++) {
       const p = this.panel[c] = Math.floor(c / cols), j = c % cols, l0 = -len / 2 + p * pw;
       this.home[c] = l0 + 0.5 + j * sp;
-      this.nr[c] = c % 2 ? cfg.fold : -cfg.fold;
+      this.nr[c] = [-1, 0, 1, 0][j % 4] * cfg.fold;
       this.lo[c] = l0 + 0.5; this.hi[c] = l0 + pw - 0.5;
     }
     const dz = cfg.drop / (rows - 1);
@@ -74,6 +81,7 @@ export default class Cloth {
     // let it find its own sag under gravity (a few seconds), then still
     for (let k = 0; k < 4 / this.cfg.sub; k++) this.sub(this.cfg.sub, [], 0);
     this.ps.set(this.s); this.pn.set(this.n); this.pz.set(this.z);
+    this.hung = this.s.slice(0, C); // where its rings rest, the cloth's weight on them
     this.version++;
   }
 
@@ -90,8 +98,8 @@ export default class Cloth {
   }
 
   sub(h, colliders, back) {
-    const cfg = this.cfg, { C, s, n, z, ps, pn, pz, w } = this, N = s.length, top = cfg.top - 1, half = cfg.len / 2 - 0.5, jamb = cfg.jamb;
-    const damp = Math.exp(-cfg.drag * h), ringDamp = Math.exp(-cfg.ring.drag * h), g = cfg.gravity * h * h;
+    const cfg = this.cfg, { C, s, n, z, ps, pn, pz, w, pen } = this, N = s.length, top = cfg.top - 1, half = cfg.len / 2 - 0.5, jamb = cfg.jamb;
+    const damp = Math.exp(-cfg.drag * h), held = Math.exp(-(cfg.drag + cfg.catch) * h), ringDamp = Math.exp(-cfg.ring.drag * h), g = cfg.gravity * h * h;
     for (let i = 0; i < N; i++) {
       if (!w[i]) continue;
       if (i < C) {
@@ -100,13 +108,17 @@ export default class Cloth {
         ps[i] = s[i]; s[i] += v;
         continue;
       }
-      const vs = (s[i] - ps[i]) * damp, vn = (n[i] - pn[i]) * damp, vz = (z[i] - pz[i]) * damp;
+      // braked hard going away from where it hangs (out of its plane, or up) and hardly coming back: heavy, it is
+      // barely carried off and falls back into place without swinging through
+      const un = n[i] - pn[i], uz = z[i] - pz[i];
+      const vs = (s[i] - ps[i]) * damp, vn = un * ((n[i] - this.nr[i % C]) * un > 0 ? held : damp), vz = uz * (uz > 0 ? held : damp);
       ps[i] = s[i]; pn[i] = n[i]; pz[i] = z[i];
       s[i] += vs; n[i] += vn; z[i] += vz - g;
     }
     // where the colliders were at this sub-step (they are given where they end the frame)
     const cols = colliders.map((c) => ({ c, s: c.s - c.vs * back, n: c.n - c.vn * back, rr: c.r + cfg.thick }));
     for (const q of cols) if (q.c.speed > cfg.tear.speed) this.tear(q, true); // driven through it: it gives
+    pen.fill(0);
     for (let it = 0; it < cfg.iters; it++) {
       for (const l of this.links) {
         if (l.broken) continue;
@@ -126,6 +138,7 @@ export default class Cloth {
           const ds = s[i] - q.s, dn = n[i] - q.n, d2 = ds * ds + dn * dn;
           if (d2 >= q.rr * q.rr) continue;
           const d = Math.sqrt(d2);
+          pen[i] += q.rr - d;
           if (d < 1e-6) { n[i] = q.n + (pn[i] >= q.n ? q.rr : -q.rr); continue; }
           s[i] = q.s + (ds / d) * q.rr; n[i] = q.n + (dn / d) * q.rr;
         }
@@ -136,11 +149,12 @@ export default class Cloth {
         if (n[i] < jamb && n[i] > -jamb) { if (s[i] < -half) s[i] = -half; else if (s[i] > half) s[i] = half; } // the jambs
       }
     }
-    // a point touched leaves the collider no faster than it goes (the cloth is not shot off it: velvet is dead
-    // weight), is dragged along a little (its sliding speed toward the collider's), and may tear
-    const out = cfg.slack * h;
+    // a point touched leaves the collider at only part of its speed (velvet is dead weight, it is not shot off),
+    // sticks to it by friction as hard as it was pressed on (else slides, braked), slips aside a little at his gap
+    // (a split curtain opens there), and may tear
+    const out = cfg.slack * h, { stick, slide } = cfg.grip, lay = cfg.grip.drape * h;
     for (const q of cols) {
-      const c = q.c, reach = q.rr + 0.5;
+      const c = q.c, reach = q.rr + 0.5, cs = c.vs * h, cn = c.vn * h;
       let hit = false;
       for (let i = C; i < N; i++) {
         if (z[i] > c.top) continue;
@@ -148,12 +162,16 @@ export default class Cloth {
         if (d > reach || d < 1e-6) continue;
         hit = true;
         const rs = ds / d, rn = dn / d, ts = -rn, tn = rs;
-        const vs = s[i] - ps[i], vn = n[i] - pn[i];
-        const over = vs * rs + vn * rn - Math.max(0, (c.vs * rs + c.vn * rn) * h) - out;
+        // friction: its slide along his surface this sub-step (against his own) is taken off whole while under
+        // `stick` x the push it got (and its weight laid on him, `drape`), else braked by `slide` x the push
+        const rel = (s[i] - ps[i] - cs) * ts + (n[i] - pn[i] - cn) * tn, a = Math.abs(rel);
+        if (a > 1e-9) {
+          const k = a <= pen[i] * stick + lay ? rel : rel * ((pen[i] * slide + lay) / a);
+          s[i] -= ts * k; n[i] -= tn * k;
+        }
+        const over = (s[i] - ps[i]) * rs + (n[i] - pn[i]) * rn - Math.max(0, (cs * rs + cn * rn) * cfg.give) - out;
         if (over > 0) { ps[i] += rs * over; pn[i] += rn * over; }
-        const rel = (c.vs * ts + c.vn * tn) * h - (vs * ts + vn * tn);
-        ps[i] -= ts * rel * cfg.grip; pn[i] -= tn * rel * cfg.grip;
-        // and it parts round him: slides off to the side of his way it lies on (a split curtain opens at its gap)
+        // and it parts round him: slides off to the side of his way it lies on, slowly
         if (c.speed > 1) {
           const ws = -c.vn / c.speed, wn = c.vs / c.speed, side = ds * ws + dn * wn;
           const k = (side > 0.01 ? 1 : side < -0.01 ? -1 : s[i] >= 0 ? (ws >= 0 ? 1 : -1) : ws >= 0 ? -1 : 1) * Math.min(1, c.speed / 100) * cfg.part * h;
@@ -162,6 +180,7 @@ export default class Cloth {
       }
       if (!hit) continue;
       this.touched = c;
+      c.touch = true;
       if (c.speed > cfg.tear.speed) this.tear(q, false);
     }
   }
@@ -221,6 +240,13 @@ export default class Cloth {
       const k = (1 - d / radius) * h;
       ps[i] -= vs * k; pn[i] -= vn * k;
     }
+  }
+
+  // how far the furthest ring is from where it rests, px (they creep back slowly: still is not home yet)
+  drift() {
+    let d = 0;
+    for (let c = 0; c < this.C; c++) d = Math.max(d, Math.abs(this.s[c] - this.hung[c]));
+    return d;
   }
 
   // mean squared speed of its points, (px/s)^2

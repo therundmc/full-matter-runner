@@ -2,8 +2,9 @@
 // (engine/physics/Cloth.js) on the prop's rod, pushed by whoever goes through it (people, the dead, debris), nudged
 // by the rounds that pass ('round'), thrown by blasts ('explosion'). It sleeps once still with nobody near and wakes
 // at the first touch, so a curtain nobody goes near costs nothing. What it hides from the guards follows the cloth
-// (blocks(), World.sightLine): parted wide enough, a man is seen through the gap. Placeholder sounds (brush, rings,
-// whoosh). DOM-free; drawn by render/ClothArt.js.
+// (blocks(), World.sightLine): parted wide enough, a man is seen through the gap, and a man it wraps (in the
+// doorway, it clings to him) is seen, and sees. Placeholder sounds (brush, rings, whoosh). DOM-free; drawn by
+// render/ClothArt.js.
 import Cloth from '../../engine/physics/Cloth.js';
 import { CURTAIN } from '../data/cloth.js';
 import { clamp } from '../../engine/math.js';
@@ -14,7 +15,7 @@ export default class Curtains {
   constructor(world, cfg = CURTAIN) {
     this.world = world;
     this.cfg = cfg;
-    this.list = [];  // { prop, cloth, x, y, ux, uy (along the rod), awake, still, box, heard }
+    this.list = [];  // { prop, cloth, x, y, ux, uy (along the rod), awake, still, box, heard, wraps }
     this.seen = -1;  // how many props there were at the last look (a sandbox may add one)
     world.events.on('round', (e) => this.round(e));
     world.events.on('explosion', (e) => this.blast(e));
@@ -30,7 +31,7 @@ export default class Curtains {
 
   attach(prop) {
     const cloth = new Cloth({ ...this.cfg.cloth, len: prop.def.h });
-    const c = { prop, cloth, x: 0, y: 0, ux: 0, uy: 1, awake: false, still: 0, box: null, heard: { brush: -9, rings: -9, whoosh: -9 } };
+    const c = { prop, cloth, x: 0, y: 0, ux: 0, uy: 1, awake: false, still: 0, box: null, heard: { brush: -9, rings: -9, whoosh: -9 }, wraps: [] };
     this.place(c);
     c.box = this.box(c);
     this.list.push(c);
@@ -99,12 +100,13 @@ export default class Curtains {
         c.still = 0;
       }
       c.cloth.step(dt, cols);
+      c.wraps = cols.filter((q) => q.person && q.touch && Math.abs(q.n) < q.r); // the men in it, in its frame
       this.hear(c);
       // asleep once still, with nobody about and nothing moving near it
       const half = c.prop.def.h / 2, R = cfg.reach;
       const near = cols.some((q) => Math.abs(q.s) < half + R && Math.abs(q.n) < R && (q.person || q.speed > 10));
-      if (near || c.cloth.energy() > cfg.still) c.still = 0;
-      else if ((c.still += dt) > cfg.nap) { c.awake = false; c.box = this.box(c); }
+      if (near || c.cloth.energy() > cfg.still || c.cloth.drift() > cfg.home) c.still = 0;
+      else if ((c.still += dt) > cfg.nap) { c.awake = false; c.box = this.box(c); c.wraps = []; }
     }
   }
 
@@ -149,12 +151,15 @@ export default class Curtains {
     }
   }
 
-  // does a curtain hide the line from (x0, y0) to (x1, y1)?
+  // does a curtain hide the line from (x0, y0) to (x1, y1)? Not to a man it wraps: he is half through, his shape
+  // in the cloth, and he sees past it
   blocks(x0, y0, x1, y1) {
+    const r2 = this.cfg.person.r ** 2;
     for (const c of this.list) {
       const a = this.local(c, x0, y0), b = this.local(c, x1, y1), lim = c.cloth.cfg.drop, half = c.prop.def.h / 2 + lim;
       if ((a.n > lim && b.n > lim) || (a.n < -lim && b.n < -lim)) continue;
       if ((a.s > half && b.s > half) || (a.s < -half && b.s < -half)) continue;
+      if (c.wraps.some((q) => (q.s - a.s) ** 2 + (q.n - a.n) ** 2 < r2 || (q.s - b.s) ** 2 + (q.n - b.n) ** 2 < r2)) continue;
       if (c.cloth.blocks(a.s, a.n, b.s, b.n)) return true;
     }
     return false;
