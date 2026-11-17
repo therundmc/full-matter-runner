@@ -1,0 +1,12 @@
+{
+  "query": "?level=level1",
+  "steps": [
+    { "wait": 2500 },
+    { "click": [640, 360] },
+    { "wait": 400, "key": "Space" },
+    { "eval": "game.setState('play'); game.world.player.sit = 0; game.state" },
+    { "wait": 800, "shot": "start" },
+    { "eval": "const p = game.world.player; p.body && Matter.Body.setPosition(p.body, { x: 20.5 * 32, y: 16.5 * 32 }); 'moved'" },
+    { "wait": 800, "shot": "bar" }
+  ]
+}

@@ -100,13 +100,15 @@ test('reload: the magazine timeline runs in order and the old magazine is in the
 
 // a man standing, facing east, a gun in hand, in a world that keeps what he drops
 function shooter(type, mag, reserve, player = false) {
-  const debris = [], ammoItems = [], items = [], sounds = [];
+  const debris = [], ammoItems = [], items = [], sounds = [], baked = [];
   const world = {
-    time: 0, debris, ammoItems, items, sounds,
+    time: 0, debris, ammoItems, items, sounds, baked,
     sound: (name) => sounds.push(name),
     addBody() {}, removeBody() {},
     addDebris: (d) => debris.push(d),
     removeDebris: (d) => { d.dead = true; },
+    // a piece that settles is baked into the floor (World.bakeDebris), as early as 0.9 s still after 1.2 s of age
+    bakeDebris: (d) => { if (!d.dead) { baked.push(d); d.dead = true; } },
     addItem: (it) => items.push(it),
     events: { emit() {} }, pickupFlash() {},
   };
@@ -180,7 +182,8 @@ test('reload: an empty magazine lands as a piece of the floor, nothing to pick u
   ch.reload();
   for (let i = 0; i < 150; i++) frame(ch, world);
   assert.equal(world.debris.length, 1);
-  assert.ok(!world.debris[0].dead && world.debris[0].z === 0, 'not lying on the floor');
+  const m = world.debris[0]; // still a loose piece, or already baked into the floor if it came to rest quickly
+  assert.ok(m.z === 0 && (!m.dead || world.baked.includes(m)), 'not lying on the floor');
   assert.equal(world.ammoItems.length, 0);
   assert.ok(world.sounds.includes('magLand'));
 });
