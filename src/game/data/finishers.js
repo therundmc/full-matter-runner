@@ -44,7 +44,7 @@ export function finisherFor(d, weapon) {
   return FINISHERS[d.finisher || (d.hold === 'none' ? 'fists' : d.swing)] || FINISHERS.fists;
 }
 
-// Takedowns: a standing guard who has not seen us, seized from behind (Space right at his back, systems/Takedown.js
+// Takedowns: a standing guard who has not seen us, seized from behind (left click right at his back, systems/Takedown.js
 // `behind`), put down by what is in the hand (takedownFor). Played like a finisher (Player.updateTakedown, the clock
 // is systems/Takedown.js `advance`): the player is locked in it, the beats = [wait s, what] land in order (the wait
 // is the anticipation, the beat lands at its end), the last one kills, and he stays `after` s in the pose while the

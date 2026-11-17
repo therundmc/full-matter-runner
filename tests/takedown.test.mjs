@@ -20,6 +20,8 @@ test('takedown: only right behind a standing guard, facing his back', () => {
   assert.ok(!behind(me(), guard({ angle: Math.PI / 2 })), 'we are at his side');
   assert.ok(!behind(me({ angle: Math.PI }), guard()), 'we have our back to him');
   assert.ok(!behind(me(), guard({ x: TAKEDOWN.reach + 1 })), 'out of reach');
+  assert.ok(behind(me(), guard({ x: 32 })), 'the widened reach');
+  assert.ok(behind(me(), guard({ angle: 1.2 })), 'the widened rear arc');
 });
 
 test('takedown: not on a guard who is down, vaulting or already held', () => {

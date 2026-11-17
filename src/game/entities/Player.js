@@ -30,7 +30,7 @@ export default class Player extends Character {
     this.execution = null;
     this.nearItem = null;
     this.nearDowned = null;
-    this.nearBack = null;   // a guard whose back we stand right behind (Space takes him down)
+    this.nearBack = null;   // a guard whose back we stand right behind (left click takes him down)
     this.nearTrunk = null;  // a parked car's closed trunk within reach, with something in it (E opens it)
     this.trunkOpen = null;  // { car, t, took } while he opens it (updateTrunk)
     this.nearUse = null;    // a device of the level within reach (systems/Uses.js): E uses it
@@ -167,7 +167,9 @@ export default class Player extends Character {
 
     // attack
     const d = this.def;
-    if (d.kind === 'gun' ? (d.auto ? input.mouseDown(0) : input.mouseHit(0)) : input.mouseDown(0)) {
+    const nb = this.nearBack;
+    if (nb) { if (input.mouseHit(0)) this.startTakedown(nb); } // never swing or fire at his back
+    else if (d.kind === 'gun' ? (d.auto ? input.mouseDown(0) : input.mouseHit(0)) : input.mouseDown(0)) {
       // on a man who is down, at our feet and under the cursor: his execution, whatever is in the hand
       const nd = this.nearDowned;
       if (nd && (down < 14 || Math.abs(angDiff(this.angle, Math.atan2(nd.y - this.y, nd.x - this.x))) < EXEC.aim)
@@ -179,7 +181,8 @@ export default class Player extends Character {
       }
     }
     if (input.hit('KeyR')) this.reload();
-    // Space = context action: execute > takedown > vault > slide (the slide needs a running start, no HUD label)
+    // Space = context action: execute > vault > slide (the slide needs a running start, no HUD label); the takedown
+    // from behind is the left click
     const busy = sliding || this.nearDowned || this.nearBack;
     this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
     this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
@@ -187,7 +190,6 @@ export default class Player extends Character {
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
     if (input.hit('Space') && !sliding) {
       if (this.nearDowned) this.startExecution(this.nearDowned);
-      else if (this.nearBack) this.startTakedown(this.nearBack);
       else if (!this.tryVault(moveA) && moving) this.startSlide(moveA);
     }
 

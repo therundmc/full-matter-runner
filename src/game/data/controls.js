@@ -4,11 +4,11 @@
 // gamepad (standard mapping, Xbox names) -> the key or mouse button it plays. The rest is read by name ('PadB',
 // 'NavUp'...) where it means something: B goes back in the menus, the sticks move and aim (Game.padAim).
 export const PAD_BINDINGS = {
-  A: 'Space',      // slide, vault, climb, dive, take down, finish; a menu's ENTER
+  A: 'Space',      // slide, vault, climb, dive, finish; a menu's ENTER
   X: 'KeyE',       // pick up / swap / open a trunk
   Y: 'KeyR',       // reload; restart once dead; retry on the results
   Start: 'Escape', // pause (and back out of it)
-  RT: 'Mouse0',    // attack / shoot
+  RT: 'Mouse0',    // attack / shoot / take down
   LT: 'Mouse2',    // throw (pick up when the hands are empty)
   RB: 'ShiftLeft', // look further
 };
@@ -41,14 +41,14 @@ export const keyLabel = (action, device) => ACTIONS[action]?.[isPad(device) ? 'p
 
 // what the CONTROLS page lists, two columns; a blank key continues the line above
 export const KBM_CONTROLS = [
-  [['ZQSD/WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['LEFT CLICK', 'ATTACK / SHOOT'],
+  [['ZQSD/WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['LEFT CLICK', 'ATTACK / TAKE DOWN'],
     ['RIGHT CLICK', 'THROW / PICK UP'], ['E', 'PICK UP / SWAP / TRUNK'], ['ESC', 'PAUSE']],
-  [['R', 'RELOAD'], ['SPACE', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'TAKE DOWN / FINISH'],
+  [['R', 'RELOAD'], ['SPACE', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'FINISH A MAN DOWN'],
     ['BACKSPACE', 'RESTART'], ['M', 'MUSIC ON / OFF'], ['F1 / F2', 'SANDBOX / VISION']],
 ];
 export const PAD_CONTROLS = [
-  [['L STICK', 'MOVE'], ['R STICK', 'AIM'], ['RB', 'LOOK FURTHER'], ['RT', 'ATTACK / SHOOT'],
+  [['L STICK', 'MOVE'], ['R STICK', 'AIM'], ['RB', 'LOOK FURTHER'], ['RT', 'ATTACK / TAKE DOWN'],
     ['LT', 'THROW / PICK UP'], ['X', 'PICK UP / SWAP / TRUNK'], ['START', 'PAUSE']],
-  [['Y', 'RELOAD'], ['A', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'TAKE DOWN / FINISH'],
+  [['Y', 'RELOAD'], ['A', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['', 'FINISH A MAN DOWN'],
     ['A / Y', 'RESTART WHEN DEAD'], ['D-PAD', 'MENUS'], ['B', 'BACK']],
 ];

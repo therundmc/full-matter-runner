@@ -67,12 +67,12 @@ export const PLAYER = {
   },
 };
 
-// Space right behind a standing guard who has his back to us (systems/Takedown.js): who can be seized. What is done
+// Left click right behind a standing guard who has his back to us (systems/Takedown.js): who can be seized. What is done
 // to him, by the weapon in hand, is data/finishers.js TAKEDOWNS.
 export const TAKEDOWN = {
-  reach: 26,     // px between the two
-  rear: 1.05,    // half-angle (rad) of the arc behind his back we must stand in
-  facing: 1.2,   // how far (rad) we may be aiming away from him
+  reach: 34,     // px between the two
+  rear: 1.3,     // half-angle (rad) of the arc behind his back we must stand in
+  facing: 1.45,  // how far (rad) we may be aiming away from him
   set: 0.12,     // s to close in to the sequence's gap behind him
 };
 

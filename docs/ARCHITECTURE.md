@@ -410,10 +410,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   the fine mist and the bits of bone (fx/Particles.js); a streak is laid only if its whole length is in the clear.
 - Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
   furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
-  Space = context action: execute > takedown > vault > slide. (A cover system existed and was removed at the user's
-  request.)
+  Space = context action: execute > vault > slide; the takedown from behind is the left click. (A cover system
+  existed and was removed at the user's request.)
 - Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown, data/finishers.js `TAKEDOWNS` / `takedownFor`):
-  Space right behind a standing guard who has his back to us: an execution from behind by the weapon in hand (`swing`,
+  Left click right behind a standing guard who has his back to us: an execution from behind by the weapon in hand (`swing`,
   `hold`, `kind`; an empty gun or a launcher is struck with), a short sequence of beats (0.95 to 1.4 s) the player is
   locked in, the two bodies let through each other (a shared negative collision group). Fists: an arm round his neck,
   a struggle, the twist (`snap`: a dry body). A blade: a hand over his mouth, the throat cut (`slash`, the cut-throat

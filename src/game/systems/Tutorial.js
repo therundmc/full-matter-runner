@@ -50,7 +50,7 @@ export const HINTS = {
   takedown: (T, s, p) => {
     const g = T.guards(s).find((e) => e.alive && e.knocked <= 0 && e.aware === 0);
     if (!g) return null;
-    return p.nearBack === g ? { x: g.x, y: g.y, key: 'action', text: 'BREAK HIS NECK' } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
+    return p.nearBack === g ? { x: g.x, y: g.y, key: 'attack', text: 'BREAK HIS NECK' } : { x: g.x, y: g.y, key: '', text: 'GET BEHIND HIM' };
   },
   punch: (T, s, p) => {
     const g = !p.armed && nearest(T.present(s), p);

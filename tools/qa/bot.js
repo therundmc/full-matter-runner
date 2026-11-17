@@ -797,7 +797,8 @@
 
     // context actions
     const ca = p.contextAction;
-    if (ca && (MELEE_SPACE.has(ca) || (p.nearBack && !VAULTS.has(ca)))) { press(inp, 'Space'); act(`space (${ca})`); }
+    if (ca && p.nearBack && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
+    else if (ca && MELEE_SPACE.has(ca)) { press(inp, 'Space'); act(`space (${ca})`); }
     // (no slide on a plan: one chains into a vault, a ladder too, and off the route); a gunman about to fire: under it
     else if (!B.plan && heading !== null && !ca && (rnd() < 0.004 || (S.clock > (B.dodgeT || 0) && underFire(w, p)))) {
       press(inp, 'Space'); B.dodgeT = S.clock + 1.2; act('slide');
