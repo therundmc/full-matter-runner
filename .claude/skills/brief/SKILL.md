@@ -1,8 +1,8 @@
 ---
 name: brief
 description: Write the self-contained brief for a subagent that will implement a change in FULL MATTER RUNNER, and
-  pick its model (Sonnet for small fully specified edits, Opus for multi-file or subtle work, never the strongest
-  model for typing). Use every time work is delegated through the Agent tool, after the analysis is done.
+  pick its model (Opus 5.5 at the minimum, never Sonnet or Haiku, never the strongest model for typing). Use every
+  time work is delegated through the Agent tool, after the analysis is done.
 ---
 
 # brief: hand the typing to a cheaper model
@@ -12,8 +12,7 @@ into instructions a subagent can follow COLD: it has not seen this conversation,
 
 ## Choose the model
 
-- `sonnet`: small and fully specified (one or two files, the exact functions, numbers given, tests described).
-- `opus`: several files, a subtle rule (physics, AI timing, rendering order), or a judgement call inside the spec.
+- `opus` (Opus 5.5) for every delegated job, small or large: the minimum the user allows. Never `sonnet` or `haiku`.
 - Never the strongest model to type. Not delegated at all: one-line fixes, level design, the shader layer, sprites.
 
 ## Template (fill every section; write "none" rather than drop one)

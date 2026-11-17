@@ -4,8 +4,8 @@
 - The main session (the most capable model) does the analysis: reading the code, reproducing and diagnosing bugs,
   measuring (headless browser), designing the change, writing the brief, then reviewing the diff, checking it in the
   game and committing.
-- The implementation is delegated to a subagent on a cheaper model fitted to the job (Agent tool, `model`): Sonnet
-  for small, fully specified edits; Opus for larger multi-file work or anything subtle. Never the strongest to type.
+- The implementation is delegated to a subagent (Agent tool, `model: 'opus'`): Opus 5.5 at the minimum, never
+  Sonnet or Haiku (the user's call: those limits run out first). Never the strongest model to type.
 - A brief is self-contained (the subagent starts cold): files and functions to touch, exact behaviour and numbers,
   tests to add, and the repo rules: no commit, no push, no server, ASCII-only source, `npm test` green, generated
   levels and sprites only through their tools. The subagent reports deviations; the main session decides.
