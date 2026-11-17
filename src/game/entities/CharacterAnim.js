@@ -9,7 +9,7 @@
 // bends him: { hunch, duck, lift, lean, look, twist, shake }).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, feelOf } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { slamAt } from '../systems/Takedown.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW, sh as spriteH } from '../../engine/Assets.js';
@@ -2026,6 +2026,31 @@ export function lockHandPose(ch, P) {
   reachOut(h, P, i ? 1 : -1);
   if (w > 0.3) { P.flat = i ? 'hr' : 'hl'; P.flatA = L.a + Math.PI / 2 + Math.sin(smooth((k - 0.3) / 0.5) * Math.PI * 2 * U.turns) * U.twist; }
   if (i) P.fist = false;
+  return P;
+}
+
+// The beat after his weapon gave out (Character.breakWeapon, BREAK): the right hand comes up before his chest and is
+// shaken (it stings); the stub of a snapped one is held up across him and looked at, until it is let fall
+// (Player.updateBroke); with nothing left in it, the hand is open
+const BROKE_AT = { x: 0, y: 0 };
+export function brokePose(ch, P) {
+  const b = ch.broke, k = b.t / BREAK.beat;
+  if (k >= 1) return P;
+  const a = ch.angle, w = smooth(k / 0.15) * (1 - smooth((k - 0.8) / 0.2)), shake = Math.sin(ch.world.time * 46) * 1.1 * (1 - k);
+  place(BROKE_AT, P, a, 7.5, 4 + shake);
+  P.hr.x = lerp(P.hr.x, BROKE_AT.x, w); P.hr.y = lerp(P.hr.y, BROKE_AT.y, w);
+  P.fist = false;
+  if (b.stub) {
+    // held by its broken end's grip, its broken end up and across him
+    const sa = a - 1 + shake * 0.06, off = (spriteW(b.stub) * 0.5 - b.d.grip) * P.s;
+    P.carryImg = b.stub;
+    P.carry.x = P.hr.x + Math.cos(sa) * off; P.carry.y = P.hr.y + Math.sin(sa) * off; P.carry.a = sa;
+    P.ha = lerpA(P.ha, Math.atan2(P.carry.y - P.ty, P.carry.x - P.tx), 0.7 * w);
+    P.hand[1] = 'fist';
+  } else {
+    P.hand[1] = 'loose';
+    if (w > 0.4) { P.flat = 'hr'; P.flatA = a + 0.4 + shake * 0.25; }
+  }
   return P;
 }
 

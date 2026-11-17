@@ -53,3 +53,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | fireRun | the fire's front racing along a trail of petrol (systems/FireSpread.js) | a whoosh of petrol catching and running, 0.5 s |
 | fireRoar | a room on fire, heard now and then while a lot of it burns (systems/Fires.js) | the low roar and rush of a big indoor fire, loopable |
 | heatCrack | a window pane cracking in the heat of the fire before it bursts (systems/FireSpread.js) | glass ticking and cracking under heat, then a sharp crack |
+| batSnap | the player's bat (or cue) snaps in two on the blow that uses it up (Character.breakWeapon `snap`) | a wooden baseball bat cracking in two over a skull: a dry splintering crack, the barrel's knock as it flies off |
+| knifeSnap | the player's knife breaks at the guard, its blade left in what it struck (Character.breakWeapon `lodge`) | a steel blade snapping at the tang: a sharp metallic ping and the click of the handle letting go |
+| snatch | the player takes a dead guard's weapon into his hand as the man goes down (Player.grab) | a hand slapping onto a gun and closing on it, a quick leather-and-steel rattle, a twirl's swish |

@@ -1,5 +1,5 @@
 import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
-import { WEAPONS, AMMO } from '../data/weapons.js';
+import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
 import { rand, chance, angDiff } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import Debris from './Debris.js';
@@ -15,13 +15,13 @@ import { lungeTarget } from '../systems/Lunge.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherChoice, killBeat, takedownFor, takedownChoice, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
 import { MARKS } from '../data/wounds.js';
-import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX } from '../data/feel.js';
+import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH } from '../data/feel.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { splashWall } from '../fx/Spatter.js';
 import { SLIP } from '../data/devices.js';
 import { blowFx } from '../fx/Blows.js';
-import { landMoment, landOnBody } from '../fx/Impact.js';
+import { landMoment, landOnBody, slowAtLeast } from '../fx/Impact.js';
 import { pulp } from '../fx/Gore.js';
 import { squirt } from '../fx/Bleeding.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
@@ -36,6 +36,7 @@ const GUN_BUTT = { swing: 'club', material: 'metal' }; // an empty gun brought d
 // a takedown's beats that land on his head, and those of them done with our own body whatever is in the hand
 const HEAD_BLOWS = new Set(['nape', 'butt', 'knee', 'headbutt', 'throat', 'sweep', 'temple']), BODY_BLOWS = new Set(['knee', 'headbutt', 'throat', 'sweep']);
 const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+const WORN = 1e-6; // what is left of a weapon's wear (in blows) once it is used up
 // what a beat of a finisher leaves on a body already dead (data/wounds.js MARKS): a round's hole, a blade's, a blow's
 const beatMark = (what, d) => (what === 'shot' ? MARKS[d.wound] : what === 'stab' || what === 'rip' ? MARKS.stab : what === 'cut' ? MARKS.throat
   : what === 'twist' || what === 'press' ? null : MARKS.blunt);
@@ -75,6 +76,9 @@ export default class Player extends Character {
     this.slideEnd = { t: -9, a: 0 }; // when the last slide ended and its way (a kick may still come out of it)
     this.kick = null;       // the kick out of a slide's end (startKick): { target, a, t, v, side, landed, planted, hitAt }
     this.shootDown = null;  // the corpse under the crosshair when firing (rounds fly over the others)
+    this.broke = null;      // { t, d, stub, toss } the beat after his weapon gave out (Character.breakWeapon)
+    this.brokeAt = null;    // { name, t } when it did, for the HUD
+    this.snatch = null;     // { item, at } a dead man's weapon his hand is going to (snatches)
     // spare rounds per caliber
     this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
   }
@@ -119,6 +123,8 @@ export default class Player extends Character {
     this.baseUpdate(dt);
     if (!this.alive) return;
     const w = this.world;
+    if (this.broke) this.updateBroke(dt);
+    if (this.snatch && !this.execution && !this.takedown && w.time >= this.snatch.at) this.grab();
     this.slideCd -= dt;
     this.winded = Math.max(0, this.winded - dt);
     if (!this.slide) this.stamina = recover(this.stamina, dt, PLAYER.slide);
@@ -209,7 +215,8 @@ export default class Player extends Character {
     this.nearTakedown = (!this.nearDowned && w.enemies.find((e) => within(this, e) && unspotted(e, phase) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
     this.takeMove = this.nearTakedown ? this.takedownMove(this.nearTakedown) : null;
 
-    // attack
+    // attack (a stub of a broken weapon still in the hand is let fall first)
+    if (this.broke?.stub && (input.mouseDown(0) || input.mouseHit(2))) this.dropStub();
     const d = this.def;
     const nb = this.nearTakedown;
     if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
@@ -409,9 +416,10 @@ export default class Player extends Character {
     this.pickFrom = { x: it.x, y: it.y }; // the hand goes down to where it lay (CharacterAnim)
   }
 
-  // a weapon into the hand (what was in it falls behind him): mag = rounds in it, wear = kills left in a melee one,
+  // a weapon into the hand (what was in it falls behind him): mag = rounds in it, wear = blows left in a melee one,
   // bare: a gun with its magazine out
   take(type, mag, wear, bare = false) {
+    if (this.broke?.stub) this.dropStub();
     if (this.armed) this.dropWeapon(this.angle + Math.PI + rand(-0.5, 0.5), 1.5);
     this.setWeapon(type, mag);
     this.weapon.wear = wear ?? this.def.wear;
@@ -440,6 +448,54 @@ export default class Player extends Character {
     this.throwT = this.throwDur;
     w.sound('throw', this.x, this.y, power ? 1 : 0.8, { weapon: it.type });
     if (power) { w.slowmo(...MOMENTS.throw.slowmo); w.shake(MOMENTS.throw.shake); }
+  }
+
+  // ---------------- a weapon given out, a dead man's taken ----------------
+  // the beat after his weapon broke (Character.breakWeapon, BREAK; the pose: CharacterAnim brokePose): the stub of it
+  // let fall (or thrown away) on its cue
+  updateBroke(dt) {
+    const b = this.broke;
+    b.t += dt;
+    if (b.stub && b.t >= BREAK.beat * BREAK.drop) this.dropStub();
+    if (b.t >= BREAK.beat) this.broke = null;
+  }
+
+  // the stub out of his hand: it falls by him, a bent iron is thrown away
+  dropStub() {
+    const b = this.broke;
+    this.letGo(b.stub, b.d.material, b.toss ? 1.3 : 0.3, b.toss);
+    if (b.toss) this.world.sound('throw', this.x, this.y, 0.6);
+    b.stub = null;
+  }
+
+  // Is the weapon of the man he just killed (victim) his for the taking (SNATCH)? The man was killed by his hand up
+  // close (how.close: a blow, a takedown, a finisher), his own hands are free, or his weapon broke on that kill with
+  // nothing left in the hand; what the man had is in his hand, or lies where it fell as he was floored (lastDrop).
+  snatches(victim, how) {
+    if (!SNATCH.on || !how?.close || this.snatch) return false;
+    if (this.weapon && !(how.broke && !keepsOne(this.def))) return false;
+    if (victim.weapon) return Math.hypot(victim.x - this.x, victim.y - this.y) <= SNATCH.reach;
+    const it = victim.lastDrop;
+    return !!it && !it.dead && Math.hypot(it.x - this.x, it.y - this.y) <= SNATCH.far;
+  }
+
+  // the weapon he will take (Character.kill), as soon as his hands are his own again (not in a takedown or a
+  // finisher) and it has fallen (SNATCH.delay)
+  snatchFrom(item) {
+    if (item) this.snatch = { item, at: this.world.time + SNATCH.delay };
+  }
+
+  // his hand closes on it: the pick-up's reach and twirl into his grip (CharacterAnim, pickAnim), with the rounds left
+  // in it, a breath of slow motion (MOMENTS.snatch)
+  grab() {
+    const it = this.snatch.item, w = this.world;
+    this.snatch = null;
+    if (it.dead || this.weapon || Math.hypot(it.x - this.x, it.y - this.y) > SNATCH.far) return;
+    w.removeItem(it);
+    this.take(it.type, it.mag, it.wear, it.bare);
+    this.pickFrom = { x: it.x, y: it.y };
+    slowAtLeast(w, ...MOMENTS.snatch.slowmo);
+    w.sound('snatch', this.x, this.y, 1, { weapon: it.type });
   }
 
   // ---------------- slide ----------------
@@ -651,8 +707,12 @@ export default class Player extends Character {
     const loose = !at || w.map.solidAt(at.x, at.y);
     if (loose) at = { x: this.x, y: this.y };
     // t: s into the beat (it starts once he is in place), hit: s since the last beat landed, age: s since it began
+    // wears: it takes a blow out of the weapon in hand (one that does not break it by design: snap, plant), on the kill;
+    // breaks: that blow used it up, it gives out on the last beat (execBreak)
+    const wears = !!this.def.wear && !!this.weapon && f.snap === undefined && f.plant === undefined;
     this.execution = { target, f, at, pts, dir, turns: loose || f.mount === 'side' || f.mount === 'beside', face: dir,
-      t: -(f.quick ? EXEC.quickMount : EXEC.mount), i: 0, age: 0, hit: 9, done: false, dead: false, corpse: null, wounds: [], held: false };
+      t: -(f.quick ? EXEC.quickMount : EXEC.mount), i: 0, age: 0, hit: 9, done: false, dead: false, corpse: null, wounds: [], held: false,
+      wears, breaks: false, broken: false };
     this.execOut = null;
     this.contextAction = null;
     target.executing = true;
@@ -709,7 +769,7 @@ export default class Player extends Character {
     // the next one; a gun run dry drops the rounds it had left to fire into the body
     let n = ex.i + 1;
     while (n < f.beats.length && f.beats[n][1] === 'shot' && !(this.weapon?.mag > 0)) n++;
-    if (n >= f.beats.length) { ex.done = true; return; }
+    if (n >= f.beats.length) { ex.done = true; this.execBreak(ex); return; }
     ex.i = n;
     if (f.beats[n][1] === 'windup') this.windup();
   }
@@ -802,7 +862,9 @@ export default class Player extends Character {
       by = { gore: 99, wound: 'blunt', launch: f.launch };
       angle = this.angle - this.punchSide * 1.2;
     }
-    tg.kill(angle, f.cause, this, by, { finisher: true, label: f.label, quick: !!f.quick, still: true });
+    // the blow it takes out of the weapon (startExecution: wears); the one that uses it up breaks it on the last beat
+    if (ex.wears && this.weapon) ex.breaks = (this.weapon.wear -= WEAR.man) <= WORN;
+    tg.kill(angle, f.cause, this, by, { finisher: true, label: f.label, quick: !!f.quick, still: true, close: true, broke: ex.breaks || undefined });
     ex.dead = true;
     const body = w.corpses.length > n ? w.corpses[w.corpses.length - 1] : null;
     ex.corpse = body?.struck ? body : null;
@@ -813,10 +875,21 @@ export default class Player extends Character {
     if (f.plant === ex.i) this.breakWeapon(this.angle, true);
   }
 
+  // a finisher that used the weapon up (ex.breaks) breaks it, once, where its last beat landed: a blade stays in the
+  // body, a bat snaps over him
+  execBreak(ex) {
+    if (!ex.breaks || ex.broken || !this.weapon) return;
+    ex.broken = true;
+    const d = this.def, where = ex.f.beats[ex.i][2] ?? ex.f.at, p = ex.pts[where], lodge = d.breaks === 'lodge' && !!ex.corpse;
+    if (lodge) ex.corpse.plant(plantedOf(d));
+    this.breakWeapon(this.angle, lodge, { x: p.x, y: p.y });
+  }
+
   // out of the finisher. watched: played to its end (a long one watched to the end is told to the score); else he
   // walked out of it, or somebody else killed the man: the pose lets go over EXEC.blend s
   endExecution(watched) {
     const ex = this.execution, tg = ex.target;
+    this.execBreak(ex); // walked out of it before its last beat: it gives out now
     this.execution = null;
     tg.executing = false;
     this.swing = 0;
@@ -846,8 +919,10 @@ export default class Player extends Character {
     this.lastTakedown = f;
     this.nextTakedown = null;
     // wounds: what the beats before the kill did to him, shown on his body after ([where, what])
+    // wears: done with the weapon in hand (not a hand in his hair), it takes a blow out of it on the kill
     this.takedown = Object.assign(newTakedown(f, !!target.yielded), {
       target, spot, front, side: chance(0.5) ? 1 : -1, d: Math.hypot(target.x - this.x, target.y - this.y) / BODY_SCALE, wounds: [],
+      wears: !spot && !!this.weapon && !!this.def.wear,
     });
     this.contextAction = null;
     this.swing = 0;
@@ -990,12 +1065,18 @@ export default class Player extends Character {
     // (driven into a piece of furniture: he stays against it, folded over it or sat against its side); one without
     // a way of its own (face to face) is thrown back like any man killed
     const sp = td.spot, against = sp?.prop ? { prop: sp.prop, x: sp.x, y: sp.y, nx: sp.nx, ny: sp.ny } : null;
+    // the blow it takes out of the weapon it was done with (td.wears): the one that uses it up breaks it on this beat,
+    // a blade left in him
+    const breaks = td.wears && !!this.weapon && (this.weapon.wear -= WEAR.man) <= WORN, lodge = breaks && d.breaks === 'lodge';
     const how = { label: f.label, from: td.front ? 'front' : 'behind', dying: sp?.rest === 'sit' ? 'sit' : f.dying,
-      kneeling: td.downAt >= 0, last: what === 'shot' && this.weapon.mag === 0, limp: !!f.limp, env: sp?.kind, against };
+      kneeling: td.downAt >= 0, last: what === 'shot' && this.weapon.mag === 0, limp: !!f.limp, env: sp?.kind, against, close: true };
+    if (breaks) how.broke = true;
     const cause = f.cause === 'shot' ? shotCause(d) : f.cause;
-    const by = f.wound ? { gore: 0, wound: f.wound } : f.cause === 'snap' ? undefined : d;
+    let by = f.wound ? { gore: 0, wound: f.wound } : f.cause === 'snap' ? undefined : d;
+    if (lodge) by = { ...by, stuck: plantedOf(d) };
     const n = w.corpses.length;
     tg.kill(a, cause, this, by, how);
+    if (breaks) this.breakWeapon(a, lodge, nape);
     // what was done to him on the way shows on his body
     const body = w.corpses.length > n ? w.corpses[w.corpses.length - 1] : null;
     if (body?.struck) for (const [where, did] of td.wounds) body.struck(where, a, did === 'kneeHit' ? MARKS.blunt : MARKS[d.wound]);
@@ -1027,8 +1108,8 @@ export default class Player extends Character {
 
   get ammoText() {
     if (!this.weapon) return '';
-    const d = WEAPONS[this.weapon.type], n = this.weapon.wear;
-    if (d.kind === 'gun') return `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()} ${AMMO[d.ammo].name}`;
-    return d.wear ? `${n} BLOW${n === 1 ? '' : 'S'} LEFT` : '';
+    const d = WEAPONS[this.weapon.type];
+    // (a melee weapon's wear is shown as notches: ui/HUD.js)
+    return d.kind === 'gun' ? `${Math.max(0, this.weapon.mag)} | ${this.reserveCount()} ${AMMO[d.ammo].name}` : '';
   }
 }

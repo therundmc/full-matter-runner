@@ -73,7 +73,7 @@ export const weakerSlow = (cur, scale, dur) => !!cur && (1 - cur.scale) * cur.t 
 
 // slow motion that never cuts short a stronger one already running (a multi-kill and the last guard in sight, the
 // same instant: the stronger stays)
-function slowAtLeast(world, scale, dur) {
+export function slowAtLeast(world, scale, dur) {
   if (weakerSlow(world.game?.slow, scale, dur)) return false;
   world.slowmo(scale, dur);
   return true;

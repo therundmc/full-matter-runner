@@ -193,6 +193,10 @@ export const META = {
   slideScrape: { pri: 0, dur: 0.5, gap: 0.2, max: 1, gain: 0.12 },
   kickWhoosh: { pri: 1, dur: 0.25, gap: 0.15, max: 2, gain: 0.3 },
   kickHit: { pri: 3, dur: 0.4, gap: 0.08, max: 2, duck: 0.85, gain: 0.95 },
+  // the player's weapon giving out, a dead man's weapon snatched (Character.breakWeapon, Player.grab)
+  batSnap: { pri: 3, dur: 0.5, gap: 0.05, max: 2, duck: 0.85, gain: 0.95 },
+  knifeSnap: { pri: 2, dur: 0.35, gap: 0.05, max: 2, gain: 0.85 },
+  snatch: { pri: 1, dur: 0.35, gap: 0.1, max: 2, gain: 0.5 },
   hoodLean: { pri: 0, dur: 0.4, gap: 0.5, max: 1, gain: 0.2 },
   click: { dur: 0.12, gap: 0.05, max: 3, gain: 0.7 },
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
@@ -460,6 +464,9 @@ const FOLEY = {
   kickWhoosh: [['swish', 0.55, 0.8]],
   kickHit: [['punch', 1, 0.75], ['thud', 0.8, 0.7, 0.01], ['soft', 0.4, 0.9, 0.03]],
   hoodLean: [['sheet', 0.25, 0.7], ['soft', 0.35, 0.8, 0.04]],
+  batSnap: [['woodBreak', 1, 1.15], ['wood', 0.8, 0.8, 0.01]],
+  knifeSnap: [['metal', 0.9, 1.7], ['click', 0.7, 0.75, 0.01]],
+  snatch: [['swish', 0.6, 1.2], ['handle', 0.5, 1.3, 0.04]],
   clear: [['doorSlam', 0.6, 0.6]],
   // the flat on fire (systems/Tutorial.js, FireSpread.js, Fires.js): placeholders too
   arsonLaugh: [['yell', 0.55, 0.85], ['yell', 0.5, 0.95, 0.24], ['yell', 0.45, 1.05, 0.48]],

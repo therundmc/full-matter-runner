@@ -18,9 +18,16 @@
 // rest: angle a club is carried at when it does not lie on the shoulder (a cue is held across the body, by its middle);
 // thrust: its heavy stroke is a lunge, not an overhead smash; finisher: its own ground finisher (data/finishers.js);
 // short: a club short enough for one hand (the other is free to take a man by the hair: data/finishers.js freeHand).
-// wear: kills the player's weapon survives; the one that uses it up breaks it (Character.breakWeapon) as `breaks`:
-// 'snap' = it breaks in two over him (what is left in the hand is `snaps`, or nothing), 'lodge' = it stays planted
-// in the body.
+// wear: the blows the player's weapon takes (WEAR: a man counts one, a thing struck a share, the air nothing); the
+// blow that uses it up breaks it (Character.breakWeapon) as `breaks`:
+//   'snap'  it breaks in two: the far end (parts[0]) flies on along the swing, what is left in the hand is `snaps`
+//           (a weapon of its own), else the stub (parts[1]) he looks at a beat and lets fall;
+//   'lodge' it stays planted in what it struck (parts[0], the blade; without parts all of it), the handle (parts[1])
+//           falls from the hand;
+//   'bend'  steel: it bends into `bends`, a worse one;
+//   'toss'  bent past use: he looks at it a beat and throws it away.
+// parts: the sprites of its two pieces once broken, [far end, the end in the hand], cut from its own drawing
+// (tools/generate_assets.py weapons()).
 // gore: chance multiplier for dismemberment. wound: how the victim bleeds (data/wounds.js). noise: alert radius (0 = silent).
 // pen: penetration energy of one round (systems/Penetration.js: plaster wall ~27, brick ~67, a body 14).
 // casing: what the gun throws out after a shot (its sprite, and its kind in data/feel.js CASING), from its ejection
@@ -39,29 +46,35 @@ export const WEAPONS = {
   bat: {
     name: 'BASEBALL BAT', kind: 'melee', hold: 'melee', sprite: 'weapons/bat', grip: 3, range: 30, arc: 1.9, rate: 0.42,
     lethal: true, sound: 'punch', gore: 0.35, wound: 'blunt', windup: 0.07, points: 800, swing: 'club', heft: 2, material: 'wood',
-    wear: 5, breaks: 'snap', finisher: 'bat',
+    wear: 3, breaks: 'snap', parts: ['weapons/bat_head', 'weapons/bat_handle'], finisher: 'bat',
   },
   // heavier and shorter than a bat: it breaks what it lands on
   tire_iron: {
     name: 'TIRE IRON', kind: 'melee', hold: 'melee', sprite: 'weapons/tire_iron', grip: 3, range: 27, arc: 1.7, rate: 0.37,
     lethal: true, sound: 'punch', gore: 0.6, wound: 'blunt', windup: 0.06, points: 800, swing: 'club', heft: 2, material: 'metal',
-    wear: 7, breaks: 'lodge', short: true,
+    wear: 3, breaks: 'bend', bends: 'tire_iron_bent', short: true,
+  },
+  // ... bent over a man: slower, shorter, and it soon has to go
+  tire_iron_bent: {
+    name: 'BENT IRON', kind: 'melee', hold: 'melee', sprite: 'weapons/tire_iron_bent', grip: 3, range: 24, arc: 1.4, rate: 0.46,
+    lethal: true, sound: 'punch', gore: 0.5, wound: 'blunt', windup: 0.08, points: 800, swing: 'club', heft: 2, material: 'metal',
+    wear: 2, breaks: 'toss', short: true,
   },
   // long reach, quick; it soon snaps over a skull, and what is left is a stake
   cue: {
     name: 'POOL CUE', kind: 'melee', hold: 'melee', sprite: 'weapons/cue', grip: 13, rest: 0.5, range: 38, arc: 1.5, rate: 0.36,
     lethal: true, sound: 'punch', gore: 0.2, wound: 'blunt', windup: 0.06, points: 800, swing: 'club', heft: 1, material: 'wood',
-    thrust: true, snaps: 'cue_half', finisher: 'cue', wear: 3, breaks: 'snap',
+    thrust: true, snaps: 'cue_half', finisher: 'cue', wear: 2, breaks: 'snap',
   },
   cue_half: {
     name: 'BROKEN CUE', kind: 'melee', hold: 'melee', sprite: 'weapons/cue_half', grip: 3, range: 26, arc: 1.2, rate: 0.25,
     lethal: true, sound: 'slash', gore: 0.2, wound: 'slash', windup: 0.04, points: 800, swing: 'blade', material: 'wood', bleed: true,
-    finisher: 'stake', wear: 3, breaks: 'lodge',
+    finisher: 'stake', wear: 2, breaks: 'lodge',
   },
   knife: {
     name: 'COMBAT KNIFE', kind: 'melee', hold: 'melee', sprite: 'weapons/knife', grip: 3.5, range: 24, arc: 1.3, rate: 0.26,
     lethal: true, sound: 'slash', gore: 0.25, wound: 'slash', windup: 0.04, points: 800, bleed: true, swing: 'blade', material: 'metal',
-    wear: 4, breaks: 'lodge',
+    wear: 3, breaks: 'lodge', parts: ['weapons/knife_blade', 'weapons/knife_handle'],
   },
   pistol: {
     name: '1911', kind: 'gun', hold: 'both', sprite: 'weapons/pistol', grip: 3.4, bore: -1.75, palm: 2, mag: 7, ammo: '9mm', reload: 0.95, magSprite: 'weapons/mag_pistol', rate: 0.2, auto: false,
@@ -104,6 +117,14 @@ export const WEAPONS = {
     enemyRate: 2, points: 600,
   },
 };
+
+// What a blow that lands takes out of a weapon that wears (`wear`): a man (whatever comes of him), a thing (a piece
+// of furniture, a door, a pane, a wall). A blow in the air takes nothing; one swing that lands on both counts the man.
+export const WEAR = { man: 1, thing: 0.25 };
+// what stays in a man weapon d breaks on (a sprite): its blade (all of a stake), the half a cue snaps into
+export const plantedOf = (d) => (d.breaks === 'lodge' ? d.parts?.[0] ?? d.sprite : d.breaks === 'snap' && d.snaps ? WEAPONS[d.snaps].sprite : undefined);
+// whether the hand keeps a weapon when d breaks (a cue's butt half, a bent iron)
+export const keepsOne = (d) => !!(d.snaps || d.bends);
 
 // map chars in level "actors" layers to weapon ids
 export const WEAPON_CHARS = {

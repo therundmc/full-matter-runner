@@ -2,7 +2,7 @@ import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { text, neon, thousands, tone, glitchText } from './Text.js';
 import { tierColor } from './KillFeed.js';
-import { KILLFEED } from '../data/feel.js';
+import { KILLFEED, BREAK } from '../data/feel.js';
 import { drawIndicators } from './Indicators.js';
 import { drawPrompts } from './Glyphs.js';
 import { clamp } from '../../engine/math.js';
@@ -22,18 +22,17 @@ export function drawHUD(ctx, game, t) {
     ctx.fillRect(0, 0, W, H);
   }
 
-  // weapon + ammo
+  // weapon + ammo; the weapon that just gave out flashes BROKEN in its place (Character.breakWeapon, BREAK.hud)
   const def = WEAPONS[p.weapon ? p.weapon.type : 'fists'];
-  text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
-  const ammo = p.ammoText;
+  const bk = p.brokeAt && w.time - p.brokeAt.t < BREAK.hud ? w.time - p.brokeAt.t : -1;
+  if (bk >= 0) text(ctx, Math.floor(bk * 7) % 2 ? p.brokeAt.name : 'BROKEN', pad, pad + 14 * s, 30 * s, PALETTE.pink, { align: 'left', rot: -0.04 });
+  else text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
+  const ammo = p.ammoText, worn = def.wear && p.weapon ? drawWear(ctx, def.wear, p.weapon.wear, pad, pad + 38 * s, s) : false;
   if (ammo) {
-    // a melee weapon shows the kills left in it, in the warning colour on its last one
-    const gun = def.kind === 'gun';
-    const dry = gun && p.weapon.mag <= 0 && p.reloading <= 0;
+    const dry = p.weapon.mag <= 0 && p.reloading <= 0;
     const noReserve = p.reserveCount() <= 0;
     let label = ammo, col = PALETTE.white;
-    if (!gun) col = p.weapon.wear <= 1 ? PALETTE.pink : PALETTE.white;
-    else if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
+    if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
     else if (dry && noReserve) { label = 'EMPTY - THROW IT!'; col = PALETTE.pink; }
     else if (dry) { label = 'RELOAD [R]'; col = PALETTE.yellow; }
     const blink = dry && Math.floor(t * 6) % 2 === 0 ? 0.45 : 1;
@@ -47,7 +46,7 @@ export function drawHUD(ctx, game, t) {
     }
   }
   // guards left: a small head-and-shoulders mark and the count, right under the weapon (or its ammo line)
-  const gy = pad + (ammo ? (p.reloading > 0 ? 82 : 70) : 42) * s, u = 2 * s;
+  const gy = pad + (ammo ? (p.reloading > 0 ? 82 : 70) : worn ? 56 : 42) * s, u = 2 * s;
   ctx.fillStyle = PALETTE.yellow;
   ctx.fillRect(pad + u, gy - 5 * u, 3 * u, 3 * u);  // head
   ctx.fillRect(pad, gy - 1.5 * u, 5 * u, 2.5 * u);  // shoulders
@@ -93,6 +92,21 @@ export function drawHUD(ctx, game, t) {
     }
     drawExitArrow(ctx, game, t, s);
   }
+}
+
+// What is left of a melee weapon that wears (data/weapons.js wear, in blows: a thing struck takes a share of one): a
+// small notch a blow, emptied as it goes, pink on its last; at (x, y) top left. Returns true.
+function drawWear(ctx, of, left, x, y, s) {
+  const nw = 12 * s, nh = 4 * s, gap = 3 * s, last = left <= 1;
+  for (let i = 0; i < of; i++) {
+    const nx = x + i * (nw + gap), k = clamp(left - i, 0, 1);
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(nx - s, y - s, nw + 2 * s, nh + 2 * s);
+    if (k <= 0) continue;
+    ctx.fillStyle = last ? PALETTE.pink : PALETTE.white;
+    ctx.fillRect(nx, y, nw * k, nh);
+  }
+  return true;
 }
 
 // Top right corner: score and run time, kept small, then the chain under them.

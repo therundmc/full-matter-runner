@@ -4,7 +4,7 @@ import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '
 import { setMaterial } from '../../engine/physics/Body.js';
 import { blowFrom } from '../fx/Blows.js';
 
-const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3, cue: 0.6, cue_half: 0.3, tire_iron: 1.3 };
+const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3, cue: 0.6, cue_half: 0.3, tire_iron: 1.3, tire_iron_bent: 1.3 };
 
 const { Bodies, Body } = Matter;
 
@@ -19,7 +19,7 @@ export default class WeaponItem {
     this.type = type;
     this.def = WEAPONS[type];
     this.mag = mag ?? this.def.mag ?? 0;
-    this.wear = this.def.wear; // melee: kills left in it (whoever drops a worn one sets it)
+    this.wear = this.def.wear; // melee: blows left in it (whoever drops a worn one sets it)
     this.img = sprite(this.def.sprite);
     // as big on the floor as in a hand (people and what they hold are drawn BODY_SCALE bigger)
     this.w = sw(this.img) * BODY_SCALE; this.h = sh(this.img) * BODY_SCALE;

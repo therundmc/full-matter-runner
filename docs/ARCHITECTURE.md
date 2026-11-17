@@ -612,9 +612,17 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   floor never over what stands on it (the standing layer of WorldRenderer is cut out of them).
 - Melee (data/weapons.js `swing` club | blade, `heft`, `material`, `thrust`, `snaps`, `wear`, `breaks`): a blow that
   lands is dressed by fx/Blows.js (what struck, the heavy stroke, a spin or a sweep, from the front, the side or
-  behind). The player's weapon wears out (`weapon.wear`, kept on the item when dropped): the kill that uses it up
-  breaks it over the man (`Character.breakWeapon`: snapped in two, or left planted in him, drawn and baked with the
-  Ragdoll as `stuck`). Ground finishers and takedowns go by the weapon in hand (data/finishers.js): a finisher is a
+  behind). The player's weapon wears out (`weapon.wear` in blows, kept on the item when dropped; `WEAR`: a man struck
+  takes one, a thing struck - furniture, a door, a pane, a wall - a share, a whiff nothing; a takedown or a finisher
+  done with it one, a finisher breaking it on its last beat): the blow that uses it up breaks it there
+  (`Character.breakWeapon`, `breaks`): `snap` in two (the far end, `parts[0]`, flies on along the swing as Debris,
+  splinters burst, the stub `parts[1]` is held and looked at a beat - `Player.broke`, CharacterAnim `brokePose` - then
+  let fall, or the hand keeps `snaps`), `lodge` (the blade stays in the man as the Ragdoll's `stuck`, or painted in
+  the wall or the furniture it struck; the handle falls), `bend` (into `bends`, worse), `toss` (thrown away); the HUD
+  shows the wear as notches and flashes BROKEN (data/feel.js BREAK). A guard killed up close by the player's own hand
+  (`how.close`) while his hands are free, or his weapon broke on that kill, has his weapon snatched: it falls, his hand
+  goes to it and twirls it into his grip (`Player.snatches` / `grab`, data/feel.js SNATCH; the `disarm` tag,
+  SNATCHED). Ground finishers and takedowns go by the weapon in hand (data/finishers.js): a finisher is a
   sequence of `beats` (blows, a held windup, a stomp, shots) played by `Player.updateExecution` / `landBeat`. Which one
   is `finisherChoice`: with somebody on him (systems/Danger.js) the family's QUICK KILL (one beat, free within 0.35 s),
   else one of its long executions (`EXECUTIONS`, never the same twice in a row). The man dies on the beat `kill`, within
