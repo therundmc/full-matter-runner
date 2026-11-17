@@ -222,6 +222,8 @@ export default {
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
+  // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
+  doors: { '20,20': {"closer": true}, '21,11': {"closer": true}, '24,5': {"closer": true}, '14,8': {"closer": true} },
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)

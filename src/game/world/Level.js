@@ -63,8 +63,9 @@ export function buildLevel(world, level) {
           used.add(horizontal ? `${x + i},${y}` : `${x},${y + i}`);
           cells.push(horizontal ? y * map.w + x + i : (y + i) * map.w + x);
         }
-        // any 'L' in the run makes it a locked door
-        const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells };
+        // any 'L' in the run makes it a locked door; level `doors` by any tile of the run: { closer, kind }
+        const more = cells.map((i) => level.doors?.[`${i % map.w},${Math.floor(i / map.w)}`]).find(Boolean) || {};
+        const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells, ...more };
         for (const l of doorLeaves(x, y, n, horizontal)) {
           world.doors.push(new Door(world, l.hx, l.hy, l.angle, l.len, { ...opts, support: l.support, strike: l.strike }));
         }

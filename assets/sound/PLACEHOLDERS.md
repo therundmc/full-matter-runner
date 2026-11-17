@@ -22,6 +22,9 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | holster | a guard's hand closes on a pistol or a knife on his hip, or puts it back (Enemy.updateCarry) | leather holster draw / snap, a blade out of a sheath |
 | sling | a guard takes a long gun off his back, or slings it back (Enemy.updateCarry) | sling strap and swivel rattle, the gun swung round in the hands |
 | doorPush | a hand comes flat against a door leaf and pushes it (Character.updateDoorHand) | a palm on a wooden door, the leaf giving |
+| doorLatch | a door comes shut slowly and its latch catches: a closer bringing it back, a hand pulling it to (Door.latchShut) | a door latch clicking home in its strike plate, the leaf settling in the frame (now: the click cut low, a touch of the door) |
+| doorCloserHiss | a door's hydraulic closer swinging it back shut (Door.hiss, data/doors.js `closer`) | the soft hydraulic sigh of a door closer, a faint creak of its arm (now: the swish cut slowed right down, very low) |
+| lockBeep | the lamp by a lock turns green once a guard's key has turned in it (Door.tickLamp) | a short electronic beep of an access control, or a lock's bolt drawn back with a clack (now: the click cut pitched up) |
 | cloth | the shoulders whip round on a quick turn (Character.animate, FACING.cloth) | a short cloth / coat rustle |
 | scuff | a foot set down on a pivot step or a hop round (Character.animate) | a shoe scuffing on the floor (per floor if the library has them) |
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |

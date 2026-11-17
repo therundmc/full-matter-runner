@@ -110,6 +110,13 @@ lv.put(39, 20, 'L')
 lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
+# door closers (a hydraulic arm swings the leaf back shut, src/game/data/doors.js), where a real bar has them: the
+# front double door (the heat and the noise kept in, the street kept out), the toilets' (the smell), the back door
+# and the storeroom's door on the service alley (steel service doors on the outside: they shut and lock behind the
+# deliveries). Inside, the house's own doors swing free (behind the counter to the storeroom, the gaming room, the
+# boss's back room): the staff go in and out with their hands full. The VIP room has its curtain.
+for x, y in ((21, 20), (22, 11), (25, 5), (14, 8)):
+    lv.door(x, y, closer=True)
 
 # ---------------------------------------------------------------- actors (12 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol

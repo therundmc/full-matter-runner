@@ -56,6 +56,9 @@ lv.fill(4, 14, 20, 15, ',')           # ... then west to its window, under his k
 lv.fill(6, 16, 10, 20, '_')           # the landing, open on the corridor; the stairs go down from its south side
 for row in (14, 15):
     lv.put(3, row, 'G')               # the window at the corridor's end
+    lv.put(11, row, 'D')              # the fire door across the corridor, between the landing and his end of it
+lv.door(20, 2, closer=True)           # his front door, on a closer like every flat's in the building: it slams shut
+lv.door(11, 14, closer=True)          # the fire door: it swings back shut behind whoever goes through
 lv.fill(0, 12, 2, 17, '=')            # the night outside, two floors over the alley
 
 # ---------------------------------------------------------------- actors (7 men)

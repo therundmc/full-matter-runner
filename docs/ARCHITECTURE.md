@@ -14,6 +14,8 @@ src/
                           menu steps with repeat from the d-pad / left stick, hot-plug
     physics/
       Units.js            scale contract: 1 m = 32 px = 1 tile, kg, px/step velocities
+      Hinge.js            a leaf on a hinge as numbers: its inertia about the pivot, a force-limited push on it, a blow,
+                          its swing (dry friction, drag, a closer's spring and valve); DOM-free, unit-tested
       Body.js             kg mass, sliding friction coefficient, momentum impulses, freeze/wake of heavy bodies
       Friction.js         Coulomb floor friction (top-down "ground"), heavy bodies settle back to static
       PhysicsWorld.js     Matter engine wrapper: sub-stepping, friction, collision dispatch, 'impact' events
@@ -86,7 +88,10 @@ src/
                           missed flinches (head ducked, shoulders hunched, turned away), the player's view is nudged by
                           rounds striking the wall by him (FLINCH in data/feel.js; looks only; DOM-free, unit-tested)
       Uses.js             what E does where: the spots the level's devices offer (Player.nearUse, the HUD's hint, a
-                          diamond over each spot near the player: WorldRenderer.drawUseHints)
+                          diamond over each spot near the player: WorldRenderer.drawUseHints; none over a `quiet` one)
+      Doors.js            the doors' part of a step (DOORS in data/doors.js): walkers lean on a leaf with a limited force
+                          (`prePush`, like PropPhysics), E opens / closes a door (a quiet Uses spot), the lab's doorbell
+                          (level `buzzers`: the man inside comes and unlocks)
       the level's devices (data/devices.js, DOM-free, tests/devices.test.mjs):
       Slips.js            running on a slick floor (a liquid kind with `slip`: a holed keg's beer): a guard falls on his
                           back dazed a few seconds (Enemy.slip, no stars: CharacterAnim.groggy), a customer trips, the
@@ -930,8 +935,18 @@ The big brick masses around a level are the neighbouring buildings seen from abo
 
 ## Doors and windows
 
-`Door` = 25 kg leaf on a kinematic hinge (hinge friction, cushioned end stops, creaks, slams knock enemies out);
-what a contact gives the leaf is taken about the hinge (`Door.constrain`), so a push anywhere on it opens it.
+`Door` = a leaf of its kind's weight (data/doors.js DOORS: a wooden door 30 kg, a locked door's reinforced leaf 55,
+a toilet stall's 9) on a kinematic hinge (engine/physics/Hinge.js: its real moment of inertia, dry friction and drag
+that bring it to a stop, cushioned end stops, creaks, slams knock enemies out); what a contact gives the leaf is taken
+about the hinge (`Door.constrain`), so a push anywhere on it opens it. A man walking into it leans on it with a
+limited force, more at a run (systems/Doors.js `prePush`, `Door.pushed`), and is held to the speed it really goes;
+kicks and blows slam it open, rounds barely turn it (`DOORS.hits`). Coming shut slowly it latches (a click). A
+closer (level option `doors: { 'col,row': { closer: true } }`, levelkit `door()`) swings it back shut in about two
+seconds and latches it, stopping against whoever or whatever stands in its arc; its arm is drawn from the leaf to the
+frame. E at a door opens it away from the player or pulls it to (`Door.use`: his hand on the leaf, he steps back out
+of its way); a weapon within reach comes first. A door that locks has a lamp by its lock (`Door.lamp`, its glow in
+render/Lighting.js): red locked, amber while a guard turns his key (`unlatch`), then green with a beep; green
+stuttering once the lock was burst. `relock` (the lab only) locks it again after a while shut.
 Guards take a doorway one at a time and down its middle (`Enemy.follow`: `gateTaken` / `standBack`, `AI.gate`,
 `Tactics.throughDoor`), and re-plan when the ground covered says they push at something that will not give.
 Level tile `L` = locked door: static, blocks path-finding; shooting the lock (latch end) or kicking / hitting it
@@ -959,8 +974,8 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 
 - `?level=lab` loads the physics lab (tools/build_lab.py): a lit concourse with the range at its west end and a bay or
   room per system on either side, its number and name stencilled on the floor at its entrance (1 range, 2 executions,
-  3 soot, 4 pool, 5 bars, 6 curtain, 7 jukebox, 8 trapdoor, 9 powder, 10 steam, 11 power, 12 liquids, 13 vehicles in
-  the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
+  3 soot, 4 pool, 5 bars, 6 curtain, 7 takedowns, 8 jukebox, 9 trapdoor, 10 powder, 11 steam, 12 power, 13 liquids,
+  14 doors, 15 vehicles in the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
   `awake` guards for the sight tests.
 - `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,

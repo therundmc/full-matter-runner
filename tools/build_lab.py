@@ -21,15 +21,15 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
          8    X# west                                            X
          9    X#                <=====  the concourse  =====>          7 open  X
         10    X#                                                 X
-        11    X#         ##   ###  ##  ##    #####D#####D########X
-        12    X#         #8JUK #9TR #10#      #12lobb #13 LIQUIDSX
-        13    X#         #     #    #  #11 YD #       #          X
-        14    X#         ############  #      ##G#G#D##          X
-        15    X#         # 10 POWDER corridor #lit rm #          X
-        16    X#         #             #      #       #          X
-        17    X##########################    ##############D#####X
+        11    X#         ##   ###  ##  ##    #####D#####D########X##D##D###L##X
+        12    X#         #8JUK #9TR #10#      #12lobb #13 LIQUIDSX#   #  #   #X
+        13    X#         #     #    #  #11 YD #       #          X#14 DOORS  #X
+        14    X#         ############  #      ##G#G#D##          X#   #  #   #X
+        15    X#         # 10 POWDER corridor #lit rm #          X#   #  #   #X
+        16    X#         #             #      #       #          X#   #  #   #X
+        17    X##########################    ##############D#####X############X
         18    X  sidewalk: the trapdoor (west end), the hydrant  X
-        21    X  road: 14 VEHICLES (car, van, leaking car)       X
+        21    X  road: 15 VEHICLES (car, van, leaking car)       X
         25    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
@@ -53,7 +53,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     12 POWER       a dim lobby, the fuse box on its wall, a lit room behind its windows (emergency lights over its door)
     13 LIQUIDS     a little bar on tiles: kegs behind the counter, the fire alarm and its sprinklers, a water pipe, two
                    dummies to bleed; the hydrant on the kerb outside, a car in the road whose tank leaks petrol
-    14 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+    14 DOORS       three rooms behind three doors off the concourse's east end: a heavy one (a stall's light leaf
+                   inside), one on a closer, a locked one with its lamp (red / amber / green): ring its bell (E) and the
+                   man inside comes and turns his key; it shuts behind you on its closer and locks itself again
+    15 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
 The guards are passive dummies (they see and hear nothing but go on at their job), except the two `awake` ones.
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
@@ -106,12 +109,22 @@ lv.put(38, 14, 'D')
 lv.fill(41, 12, 50, 16, '+')               # 13 LIQUIDS: a little bar on tiles, doors on the concourse and the sidewalk
 lv.put(42, 11, 'D')
 lv.put(45, 17, 'D')
+lv.fill(51, 11, 62, 17, '#')               # 14 DOORS: three rooms off the concourse's south wall, behind three doors
+lv.fill(52, 12, 54, 16, '.')               # a heavy one (and a stall's light leaf inside) ...
+lv.put(53, 11, 'D')
+lv.fill(56, 12, 57, 16, '.')               # ... one on a closer ...
+lv.put(56, 11, 'D')
+lv.fill(59, 12, 61, 16, '.')               # ... and a locked one with its lamp, a man inside with the key
+lv.put(60, 11, 'L')
+lv.door(53, 11, kind='reinforced')
+lv.door(56, 11, closer=True)
+lv.door(60, 11, closer=True, relock=4)
 # the street
 lv.fill(1, 18, 62, 19, 's')
 lv.fill(1, 20, 62, 24, '=')
 lv.fill(1, 22, 62, 22, '-')
 
-# ---------------------------------------------------------------- actors (25 guards)
+# ---------------------------------------------------------------- actors (26 guards)
 lv.actor('@', 27, 9, face=270)
 
 lv.area('the concourse')
@@ -265,7 +278,19 @@ lv.actor('b', 42, 14, face=0)              # dummies to bleed
 lv.actor('u', 44, 15, face=90)
 lv.prop('hydrant', 43.5, 19.62)            # on the kerb: the water runs down the gutter
 
-lv.area('14 vehicles: the street, to ram, hole and blow up')
+lv.area('14 doors')
+# the doors (src/game/data/doors.js): their weight when walked into, kicked, shot; E opens and closes one; the closer
+# swings its door back shut and latches it; the locked one's lamp is red. Ring its bell (E): the man inside comes,
+# turns his key (the lamp amber, then green) and goes back; walk in, the closer shuts it behind you and it locks
+# itself again a few seconds later (red)
+lv.paint('label_doors', 56.5, 10.65)
+lv.leaf(52.1, 14.5, 0, 24)                                   # a toilet stall's light leaf on the west wall
+lv.actor('m', 60, 15, face=270)                              # the man with the key, at his post
+lv.buzzer(61.6, 10.75, door=(60, 11), guard=(60, 15))        # the bell by the locked door
+for x in (53.5, 56.5, 60.0):
+    lv.prop('ceiling_lamp', x, 14.0)
+
+lv.area('15 vehicles: the street, to ram, hole and blow up')
 lv.paint('label_vehicles', 28.5, 18.6)
 lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
 lv.prop('car', 8.0, 21.1, 0)
@@ -294,11 +319,11 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=25)
+    lv.check(guards=26)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids) and a street with the vehicles. Load with',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors) and a street with the vehicles. Load with',
                  '?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but the two kept `awake` for the sight tests.',
              ])

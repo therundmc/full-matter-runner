@@ -53,6 +53,7 @@ import Gadgets from '../systems/Gadgets.js';
 import Tipping from '../systems/Tipping.js';
 import PropPhysics from '../systems/PropPhysics.js';
 import Uses from '../systems/Uses.js';
+import Doors from '../systems/Doors.js';
 import Slips from '../systems/Slips.js';
 import Sprinklers from '../systems/Sprinklers.js';
 import Passage from '../systems/Passage.js';
@@ -161,6 +162,7 @@ export default class World {
 
     buildLevel(this, level);
     this.curtains = new Curtains(this); // the curtains' cloth: pushed by whoever goes through, parted, hiding or not
+    this.doorWork = new Doors(this);    // leaves leaned on with a limited force, E opens / closes a door
     this.jukebox.wire();  // the devices that are props of the level offer their spots now that the props are there
     this.gasValve.wire();
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
@@ -498,8 +500,9 @@ export default class World {
     this.ambient?.update(dt);
     for (const c of this.chars) if (c.alive) c.animate(dt); // the drawn body after this step's aim (Facing.js)
 
-    // 2. physics (characters walking into loose props push them with their limited force first)
+    // 2. physics (characters walking into loose props and door leaves push them with their limited force first)
     this.propPhysics.prePush(dt);
+    this.doorWork.prePush(dt);
     this.physics.step(dt, this.time);
     for (const d of this.doors) d.constrain(dt);
     if (this.wallsDirty) {
