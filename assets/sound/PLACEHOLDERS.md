@@ -49,3 +49,7 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | kickWhoosh | the player pops up out of a slide's end into a kick at a guard ahead (Player.startKick) | a leg whipped through the air, a coat's flap with it |
 | kickHit | the foot lands in a guard's head, out of a slide or off a car's hood (Player.footOn) | a boot heel smacking into a jaw, heavy and dry, the man's grunt cut short |
 | hoodLean | a guard sits back against a parked car's hood (Enemy.updatePosture, body 'hood') | a body settling on sheet metal, the car's springs giving a little, jeans on paint |
+| arsonLaugh | the man who poured the petrol laughs at him before he lights it (systems/Tutorial.js, the prologue's opening) | a man's short hard laugh, three bursts, in a small room |
+| fireRun | the fire's front racing along a trail of petrol (systems/FireSpread.js) | a whoosh of petrol catching and running, 0.5 s |
+| fireRoar | a room on fire, heard now and then while a lot of it burns (systems/Fires.js) | the low roar and rush of a big indoor fire, loopable |
+| heatCrack | a window pane cracking in the heat of the fire before it bursts (systems/FireSpread.js) | glass ticking and cracking under heat, then a sharp crack |

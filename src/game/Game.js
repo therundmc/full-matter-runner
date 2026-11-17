@@ -31,6 +31,9 @@ import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
+import Direction from './systems/Direction.js';
+import { drawMurk } from './render/Murk.js';
+import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
@@ -40,9 +43,18 @@ const VOLUMES = ['master', 'music', 'sfx', 'ambience'];
 // ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
 const urlLevel = () => { const id = new URLSearchParams(location.search).get('level'); return LEVELS[id] ? id : null; };
 const has = (id) => !!LEVELS[id];
-// out of the tutorial's window (state 'fall'): s of the world in slow motion going black, then the leap seen from the
-// alley (ui/cine/Leap.js) until the next level starts
-const FALL = { fade: 0.45, slow: 0.3 };
+// out of the tutorial's window (state 'fall'): the world in slow motion (he lands and rolls) for `hold` s, going black
+// over `fade` s more, then the leap seen from the alley (ui/cine/Leap.js) until the next level starts
+const FALL = { hold: 0.7, fade: 0.55, slow: 0.4 };
+const FALLEN = FALL.hold + FALL.fade;
+// which keys do an action (data/controls.js ACTIONS), for a lesson waiting on it (systems/Tutorial.js pace)
+const DOES = {
+  move: (inp) => !!inp.move() || ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some((c) => inp.down(c)),
+  attack: (inp) => inp.mouseDown(0),
+  throw: (inp) => inp.mouseDown(2),
+  use: (inp) => inp.down('KeyE'),
+  action: (inp) => inp.down('Space'),
+};
 // what the intro banner calls a level
 const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${CAMPAIGN.filter((l) => l !== 'tutorial').indexOf(id) + 1}` : 'TEST LEVEL');
 
@@ -54,6 +66,9 @@ export default class Game {
     this.input.bindPad(PAD_BINDINGS); // the gamepad plays the keys and buttons (data/controls.js)
     this.padAimAt = null;              // the right stick's virtual cursor: { angle, reach, idle } (padAim)
     this.camera = new Camera();
+    this.direction = new Direction();  // the camera's shots where a level is staged (the prologue)
+    this.taught = new Set();           // the lessons already given this run (systems/Tutorial.js)
+    this.murk = 0;                     // 0..1: how far thick smoke has closed the view in (render/Murk.js)
     this.state = 'loading';
     this.stateT = 0;
     this.time = 0;
@@ -177,11 +192,11 @@ export default class Game {
   // systems/Tutorial.js); state: what it opens on ('intro': the banner; 'cinematic': the opening, ui/Cinematic.js)
   startLevel(id, { retry = false, state = 'intro' } = {}) {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
-    if (!retry) this.tutorialAt = null;
+    if (!retry) { this.tutorialAt = null; this.taught = new Set(); }
     this.world = new World(this, LEVELS[this.levelId]);
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
     // he gets up off the ground the first time only: a retry starts on his feet, at once
-    if (this.seen === this.levelId) { this.world.player.sit = 0; this.world.player.swig = null; }
+    if (this.seen === this.levelId && !this.world.tutorial?.scene) { this.world.player.sit = 0; this.world.player.swig = null; }
     this.seen = this.levelId;
     this.best = loadBest(this.levelId);
     this.ranked = true; // until the sandbox panel is opened
@@ -191,12 +206,18 @@ export default class Game {
     this.lens.bind(this.world.events);
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
+    // a staged level opens on its first shot, no easing
+    const shot = this.world.tutorial?.shot();
+    this.direction.reset();
+    this.direction.set(shot?.name, shot?.at, true, this.camera.zoom);
+    this.camera.scale = this.direction.zoom;
     this.camera.snap(p.x, p.y);
     this.acc = 0;
     this.hitstop = 0;
     this.timeScale = 1;
     this.slow = null;
     this.flashA = 0;
+    this.murk = 0;
     this.clearedT = 0;
     this.padAimAt = null;
     Audio.setMuffle(0);
@@ -219,10 +240,10 @@ export default class Game {
     this.setState(state);
   }
 
-  // out of the tutorial by the window: a moment of slow motion going black, then the leap seen from the alley (he
-  // falls, rolls, gets up and goes), and the next level opens on him three weeks later
+  // out of the tutorial by the window: a moment of slow motion (he lands in a roll) going black, then the leap seen
+  // from the alley (he falls, rolls, gets up and goes), and the next level opens on him three weeks later
   onTutorialEnd() {
-    this.slowmo(FALL.slow, FALL.fade);
+    this.slowmo(FALL.slow, FALLEN);
     this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
     this.setState('fall');
@@ -403,9 +424,9 @@ export default class Game {
 
     // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
-    if (this.state === 'fall' && this.stateT >= FALL.fade) {
+    if (this.state === 'fall' && this.stateT >= FALLEN) {
       // the leap: the world is no longer seen and waits; a key or a click goes on to the next level
-      const lt = this.stateT - FALL.fade;
+      const lt = this.stateT - FALLEN;
       for (const b of leapBeats(this.leapT, lt)) Audio.play(b.name, { vol: b.vol, ...b.opts });
       this.leapT = lt;
       const skip = lt > LEAP.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
@@ -439,6 +460,8 @@ export default class Game {
       this.slow.t -= dt;
       if (this.slow.t <= 0) this.slow = null;
     }
+    // a lesson shown for the first time slows the world until he does it (he acts at once: the key lets time go)
+    if (this.state === 'play' && this.world.tutorial) target = Math.min(target, this.world.tutorial.pace(dt, (action) => !!DOES[action]?.(inp)));
     this.timeScale = lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;
@@ -464,6 +487,9 @@ export default class Game {
       if (steps >= 5) this.acc = 0;
     }
     this.updateCamera(dt);
+    // thick smoke about him closes the view in, slowly
+    const p = this.world.player;
+    this.murk += (this.world.smoke.murk(p.x, p.y) - this.murk) * (1 - Math.exp(-SMOKE.murk.ease * dt));
     this.flashA = Math.max(0, this.flashA - dt * 3);
     if (this.state === 'outro' && outroOver(this.world.outro)) this.endOutro();
   }
@@ -580,7 +606,13 @@ export default class Game {
     const len = Math.hypot(ox, oy);
     if (len > max) { ox *= max / len; oy *= max / len; }
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
-    let tx = p.x + ox, ty = p.y + oy;
+    // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
+    const D = this.direction, shot = w.tutorial?.shot();
+    D.set(shot?.name, shot?.at);
+    D.update(dt, this.camera.zoom);
+    this.camera.scale = D.zoom;
+    const seen = D.aim(p.x + ox * D.look, p.y + oy * D.look);
+    let tx = seen.x, ty = seen.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {
       // from the player over to the van's cab, a little ahead of it
@@ -606,7 +638,7 @@ export default class Game {
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) drawTitleView(ctx, W, H, this.stateT, this.input.mouse);
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));
-    else if (this.state === 'fall' && this.stateT >= FALL.fade) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALL.fade));
+    else if (this.state === 'fall' && this.stateT >= FALLEN) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALLEN));
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
     else this.drawScene(ctx, W, H, t, post);
     if (post) {
@@ -651,6 +683,10 @@ export default class Game {
     } else {
       this.camera.apply(ctx);
       this.safeDraw(ctx, () => this.world.draw(ctx, this.camera, t));
+      if (this.murk > 0.001) {
+        const at = this.camera.worldToScreen(this.world.player.x, this.world.player.y);
+        this.safeDraw(ctx, () => drawMurk(ctx, W, H, at.x, at.y, this.murk));
+      }
       if (!post) this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma));
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -682,8 +718,8 @@ export default class Game {
     this.safeDraw(ctx, () => {
       if (this.state === 'intro') drawIntro(ctx, W, H, this.stateT, this.introCard());
       else if (this.state === 'play' && this.introOut != null && this.stateT < INTRO.out) drawIntro(ctx, W, H, this.introOut, this.introCard(), this.stateT);
-      if (this.state === 'fall' && this.stateT < FALL.fade) {
-        ctx.globalAlpha = clamp(this.stateT / FALL.fade, 0, 1);
+      if (this.state === 'fall' && this.stateT < FALLEN) {
+        ctx.globalAlpha = clamp((this.stateT - FALL.hold) / FALL.fade, 0, 1);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
         ctx.globalAlpha = 1;
@@ -709,7 +745,7 @@ export default class Game {
       },
       // what heats the air: burning wrecks, pierced steam pipes (blasts are the lens' own business)
       heat: inWorld ? [...w.props.filter((q) => q.burning).map((q) => ({ x: q.x, y: q.y, kind: 'fire' })),
-        ...w.fires.lit().map((f) => ({ x: f.x, y: f.y, kind: 'fire' })),
+        ...w.fires.near(w.player.x, w.player.y, 3).map((f) => ({ x: f.x, y: f.y, kind: 'fire' })),
         ...w.smoke.heat(), ...w.gasValve.heat()] : [],
       lights: inWorld && !this.overview ? w.lighting?.brightest || [] : [],
     };

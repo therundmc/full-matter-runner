@@ -10,6 +10,7 @@ import { drawClutter, drawLitter } from './ClutterArt.js';
 import { drawPapers, drawButts } from './StreetArt.js';
 import { drawRainGround, drawRainAir, viewRect } from './WeatherArt.js';
 import SmokeArt from './SmokeArt.js';
+import { drawFlames } from './FireArt.js';
 import LiquidArt from './LiquidArt.js';
 import { RAIN } from '../data/atmosphere.js';
 import { OUTRO } from '../systems/Outro.js';
@@ -128,6 +129,7 @@ export default class WorldRenderer {
     for (const p of w.projectiles) p.draw(ctx);
     if (lit) drawRainAir(ctx, w.weather, view, t, RAIN.after); // in the air only: crowns and rings would lie over people
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
+    drawFlames(ctx, w.fires.lit(), w.time, vis); // what burns, over the smoke: a fire is seen through it
     this.drawAdditive(ctx, lit);
     l0 = performance.now();
     if (lit) w.lighting.post(ctx, cam, t, this.liquid, this.layer);

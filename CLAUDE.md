@@ -110,7 +110,12 @@
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
   next night, at the bar.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
-  `leaves` / `owed` rounds, restart at `Game.tutorialAt`), fires in systems/Fires.js.
+  `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
+  match, `OPENING`), lessons that slow time (`LESSONS`, `pace`), the camera's shots (`SHOTS`, systems/Direction.js,
+  `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
+  along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
+  while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
+  render/Murk.js).
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
   ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.

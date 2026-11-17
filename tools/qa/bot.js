@@ -91,7 +91,7 @@
     },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
-    tutorial: { free: { steps: [] }, out: { steps: [{ go: [34.3, 16.5] }, { cross: [36.6, 16.5] }], rescue: true } },
+    tutorial: { free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true } },
     street: {
       free: { steps: [] },
       throw: THROW,
@@ -395,14 +395,17 @@
     return { type: 'window', x: win.x + ux * s * TILE, y: win.y + uy * s * TILE, win, far: { x: win.x - ux * s * TILE, y: win.y - uy * s * TILE } };
   }
 
+  // a way round what burns (systems/FireSpread.js): a tile with fire in it costs a long detour
+  const fireCost = (w) => (w.fireSpread?.burning.length ? (i) => (w.fireSpread.hot(i) ? 30 : 0) : null);
+
   function setGoal(w, p, g) {
-    let path = findPath(w.map, p.x, p.y, g.x, g.y, 8000);
+    let path = findPath(w.map, p.x, p.y, g.x, g.y, 8000, fireCost(w));
     g.breach = false;
     if (!path && w.doors.some((d) => d.locked)) {
       // through a locked door, to be broken open on the way: plan as if its cells were free (restored at once)
       const m = w.map.blocked, cells = w.doors.filter((d) => d.locked).flatMap((d) => d.cells), was = cells.map((i) => m[i]);
       for (const i of cells) m[i] = 0;
-      try { path = findPath(w.map, p.x, p.y, g.x, g.y, 8000); } finally { cells.forEach((i, k) => { m[i] = was[k]; }); }
+      try { path = findPath(w.map, p.x, p.y, g.x, g.y, 8000, fireCost(w)); } finally { cells.forEach((i, k) => { m[i] = was[k]; }); }
       g.breach = !!path;
     }
     if (!path || !path.length) { B.blacklist.push({ x: g.x, y: g.y, until: S.clock + 20 }); return false; }

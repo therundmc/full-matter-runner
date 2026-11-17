@@ -1,6 +1,8 @@
 import { rand, lerp } from './math.js';
 
-// Follow camera with look-ahead, trauma shake and a slow tilt sway.
+// Follow camera with look-ahead, trauma shake and a slow tilt sway. `zoom` is the whole number of picture px to a
+// world px that suits the window (crisp pixel art); `scale` is a director's zoom on top of it, eased by whoever sets
+// it and left on a value that keeps zoom x scale whole when it rests.
 // World px of vertical view. It was 380; the user wanted the camera closer to see the detail (300), then "a tiny bit"
 // further out (330), then closer again to make it more visceral (2026-11-16: 290; a zoom that follows the action may come).
 export const VIEW = 290;
@@ -9,6 +11,7 @@ export default class Camera {
   constructor() {
     this.x = 0; this.y = 0;
     this.zoom = 2;
+    this.scale = 1;            // a director's zoom on top of it (1: the usual view; 2: twice as close)
     this.rot = 0;
     this.trauma = 0;
     this.punchZ = 0;
@@ -33,7 +36,7 @@ export default class Camera {
   // keep the view inside the world (a world smaller than the view is centred); the margin hides the sway's corners
   clamp() {
     if (!this.bounds) return;
-    const hw = this.w / this.zoom / 2 + 10, hh = this.h / this.zoom / 2 + 10, { w, h } = this.bounds;
+    const z = this.zoom * this.scale, hw = this.w / z / 2 + 10, hh = this.h / z / 2 + 10, { w, h } = this.bounds;
     this.x = w < hw * 2 ? w / 2 : Math.min(Math.max(this.x, hw), w - hw);
     this.y = h < hh * 2 ? h / 2 : Math.min(Math.max(this.y, hh), h - hh);
   }
@@ -42,7 +45,7 @@ export default class Camera {
 
   // brief zoom kick on big impacts
   punch(amount) { this.punchZ = Math.max(this.punchZ, amount); }
-  get z() { return this.zoom * (1 + this.punchZ); }
+  get z() { return this.zoom * this.scale * (1 + this.punchZ); }
 
   // directional kick (recoil feel)
   push(dx, dy) { this.kick.x += dx * this.shakeScale; this.kick.y += dy * this.shakeScale; }
@@ -87,6 +90,7 @@ export default class Camera {
 
   // half-size of the visible world rectangle (with margin for rotation)
   viewRadius() {
-    return { x: this.w / this.zoom / 2 + 40, y: this.h / this.zoom / 2 + 40 };
+    const z = this.zoom * this.scale;
+    return { x: this.w / z / 2 + 40, y: this.h / z / 2 + 40 };
   }
 }

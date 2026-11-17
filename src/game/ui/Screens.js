@@ -222,6 +222,7 @@ export function describeDeath(cause, killer) {
     case 'melee': return killer?.isEnemy ? { verb: 'BEATEN TO DEATH', by: by() } : { verb: 'CRUSHED', by: '' };
     case 'slash': return killer?.isEnemy ? { verb: 'CUT DOWN', by: by() } : { verb: 'CUT TO PIECES', by: '' };
     case 'glass': return { verb: 'CUT TO PIECES', by: 'BY FLYING GLASS' };
+    case 'fire': return { verb: 'BURNED ALIVE', by: '' };
     case 'explosion': return { verb: 'BLOWN APART', by: killer?.isPlayer ? 'BY YOUR OWN BLAST' : '' };
     case 'vehicle': return { verb: 'RUN OVER', by: `BY A ${killer?.type === 'van' ? 'VAN' : 'CAR'}` };
     default: return { verb: 'KILLED', by: by() };

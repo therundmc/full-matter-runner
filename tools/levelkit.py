@@ -67,7 +67,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
-         'trapdoor', 'rug', 'entry_mat')
+         'trapdoor', 'rug', 'entry_mat', 'bed')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
@@ -102,7 +102,8 @@ class Level:
         self.leans = []       # weapons stood against a wall: [type, col, row, deg]
         self.drops = []       # weapons lying about with a given magazine: [type, col, row, deg, rounds]
         self.bodies = []      # somebody already dead when the level starts: [kind, col, row, deg, pool px]
-        self.fires = []       # something burning, for the look of it: [col, row, stage of the tutorial it catches at]
+        self.fires = []       # something burning from the start: [col, row]
+        self.petrol = []      # petrol poured in trails, for a match: [width px, [col, row], ...] (systems/FireSpread.js)
         self.floor = []       # what is painted on the floor, without a body: [sprite, col, row, deg]
         self.tutorial = None  # a level that teaches: { stages, fall } (src/game/systems/Tutorial.js)
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
@@ -215,17 +216,24 @@ class Level:
     def prop(self, kind, col, row, deg=0, **opt):
         self.props.append((self._area, kind, *self.at(col, row), deg, opt))
 
-    # ---- a fire at (col, row); stage: the room of the tutorial he must have reached for it to catch (None: at once),
-    # delay: s after that before it does
     # ---- something lying flat, painted on the floor once and for all (a doormat, a carpet runner, a flight of stairs):
     # nobody bumps into it and no round stops on it
     def paint(self, sprite, col, row, deg=0):
         assert sprite in FLOOR or sprite[6:] in LABELS and sprite.startswith('label_'), f'{sprite} is not floor paint'
         self.floor.append([sprite, *self.at(col, row), deg])
 
-    def fire(self, col, row, stage=None, delay=None):
-        col, row = self.at(col, row)
-        self.fires.append([col, row] if stage is None else [col, row, stage] if delay is None else [col, row, stage, delay])
+    # ---- a fire burning at (col, row) from the start
+    def fire(self, col, row):
+        self.fires.append(list(self.at(col, row)))
+
+    # ---- petrol poured on the floor along a line of points (col, row), `width` px wide (one point: a pool that wide):
+    # liquid on the floor (systems/Liquids.js) that the fire runs along (systems/FireSpread.js)
+    def pour(self, width, *points):
+        pts = [list(self.at(c, r)) for (c, r) in points]
+        for (c, r) in pts:
+            t = self.tiles[int(r)][int(c)]
+            assert t not in SOLID and t != 'G', f'petrol poured in {t!r} at {c},{r}'
+        self.petrol.append([width, *pts])
 
     # ---- a dead body at (col, row), its head toward deg, in a pool of `pool` px
     def body(self, kind, col, row, deg=0, pool=18):
@@ -539,8 +547,13 @@ class Level:
             L.append('  // painted on the floor, no body: [sprite, col, row, deg]')
             L.append(f'  floor: {js(self.floor)},')
         if self.fires:
-            L.append('  // fires [col, row, tutorial stage they catch at] (src/game/systems/Fires.js)')
+            L.append('  // fires burning from the start [col, row] (src/game/systems/Fires.js)')
             L.append(f'  fires: {json.dumps(self.fires)},')
+        if self.petrol:
+            L.append('  // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)')
+            L.append('  petrol: [')
+            L += [f'    {json.dumps(t)},' for t in self.petrol]
+            L.append('  ],')
         if self.bodies:
             L.append('  // already dead when it starts [kind, col, row, deg, pool px]')
             L.append(f'  bodies: {json.dumps(self.bodies)},')

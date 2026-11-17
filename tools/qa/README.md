@@ -58,6 +58,8 @@ player, and reads `window.game` to decide:
   `lab` and `street` have `free` and `throw` (and `road` in `--god` on the street); the lab also `jukebox`, `alarm`,
   `kegs`, `passage` and `fuse`. A plan that breaks (no path,
   timeout, the weapon gone) is a `plan-failed` warning; a plan left on the roof is followed by a way down (`offRoof`);
+- keeps off what burns: its paths cost a long detour through a tile with fire in it, or with petrol the fire is
+  coming to (`world.fireSpread.hot`); it still dies in a fire that closes on it (the tutorial, without `--god`);
 - picks a goal and walks there along the guards' own grid path-finding (`engine/nav/Pathfinding.js`): the nearest
   living guard, a weapon on the floor (a loaded gun first when it has none), rounds on the floor, the car trunk, a
   door (to the cell past it), a window (it squares up and jumps through), a prop to strike or shoot for a few seconds

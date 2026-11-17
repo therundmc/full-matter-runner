@@ -88,6 +88,11 @@ export const SETS = {
   vip_sofa: [['lowball', 29, 3, 0]],
   vip_armchair: [['lowball', -10, 3, 0]],
   vip_table: [['bucket', -3.5, -3, 0], ['flute', 4.5, -4.5, 0], ['flute', 6, 1, 0], ['singles', -3, 5, 14], ['ashtray_lit', 4, 6.5, 30]],
+  // the flat of the prologue (tools/build_tutorial.py): the low table he ate and drank at, the kitchen table, the
+  // glasses left in the sink
+  flat_table: [['beer_bottle', -5, -4, 0], ['beer_bottle', 3, 5, 0], ['ashtray_lit', 6, -5, 0], ['napkin_crumpled', -6, 5, 0]],
+  flat_kitchen: [['liquor', -14, -5, 0], ['lowball', -8, 2, 0], ['pint_empty', 12, 4, 0], ['napkin', 2, 6, 20], ['ashtray', 14, -6, 0]],
+  flat_sink: [['pint_empty', -6, -2, 0], ['lowball', -1, 2, 0], ['shot', 4, -3, 0], ['pint_empty', 8, 2, 0]],
   stage: [['single', 9, -12, 20], ['single', -13, 7, -40], ['single', 15, 9, 75], ['single', -4, 16, 10], ['single', 3, 12, -60],
     ['bill_crumpled', -9, -9, 0], ['single', -15, -3, 110], ['bill_crumpled', 6, 15, 0], ['single', 11, 2, 160],
     ['bill_folded', -20, 2, 95], ['bill_folded', -15, 13.5, 130], ['bill_folded', -14.5, -14, 45], ['bill_folded', -3, 20, 170],

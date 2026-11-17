@@ -194,13 +194,14 @@ test('liquids: the rain lies in hollows of the open ground, at rest, never dries
   assert.equal(prints.length, 0);
 });
 
-test('liquids: the petrol on the floor of a lesson room that is set alight; the sprinklers wet a whole room', () => {
-  const level = { fires: [[4, 4, 1], [6, 6, 1], [15, 4, 2]], tutorial: { stages: [{}, { spark: 6 }, {}] } };
+test('liquids: the petrol poured in trails lies along them; the sprinklers wet a whole room', () => {
+  const level = { petrol: [[10, [4, 4], [6, 6]], [14, [9, 4]]] };
   const { liquids } = stub({ level });
   liquids.update(1 / 30);
   const S = liquids.sim, k = liquids.names.indexOf('petrol');
   const petrol = (x, y) => S.vol[S.index(x, y) * S.K + k];
-  assert.ok(petrol(4 * TILE, 4 * TILE) > 0 && petrol(6 * TILE, 6 * TILE) > 0);
+  assert.ok(petrol(4 * TILE, 4 * TILE) > 0 && petrol(5 * TILE, 5 * TILE) > 0 && petrol(6 * TILE, 6 * TILE) > 0, 'all along the trail');
+  assert.ok(petrol(9 * TILE, 4 * TILE) > 0, 'a pool');
   assert.equal(petrol(15 * TILE, 4 * TILE), 0, 'not where nobody poured any');
   const { liquids: room } = stub();
   for (let t = 0; t < 10; t += 1 / 30) room.sprinkle(15 * TILE, 5 * TILE, 56, 520 / 30);

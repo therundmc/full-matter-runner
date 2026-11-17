@@ -45,6 +45,7 @@ import KillFeed from '../ui/KillFeed.js';
 import Ambience from '../systems/Ambience.js';
 import Tutorial from '../systems/Tutorial.js';
 import Fires from '../systems/Fires.js';
+import FireSpread from '../systems/FireSpread.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import PoolBalls from '../systems/PoolBalls.js';
 import Clutter from '../systems/Clutter.js';
@@ -147,7 +148,8 @@ export default class World {
     this.smoke = new Smoke(this, level);                   // the air and what it carries: smoke, soot, powder, steam
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
     this.litter = new Litter(this, level.litter);          // bills, feathers, a flute on a floor: kicked, blown, lifted by rounds
-    this.fires = new Fires(this, level.fires);             // what burns, for the look of it
+    this.fires = new Fires(this, level.fires);             // the flames of what burns
+    this.fireSpread = new FireSpread(this, level);         // where it burns: along the petrol, over the floors, up the furniture
     // the level's devices (data/devices.js): what E does at them, and what they do used or broken
     this.uses = new Uses();                                 // the spots E works at (HUD hint, Player.nearUse)
     this.slips = new Slips(this);                           // running on a slick floor (a holed keg's beer)
@@ -258,6 +260,13 @@ export default class World {
     this.addBody(e.body);
     this.enemies.push(e);
     this.chars.push(e);
+  }
+
+  // a guard who leaves the level for good, alive (systems/Tutorial.js: the man with the match, out by the door)
+  leave(e) {
+    this.removeBody(e.body);
+    this.enemies = this.enemies.filter((o) => o !== e);
+    this.chars = this.chars.filter((o) => o !== e);
   }
 
   removeItem(it) { it.dead = true; this.removeBody(it.body); }
@@ -520,6 +529,7 @@ export default class World {
     this.sirens.update(dt);
     this.ambience.update(dt);
     this.tutorial?.update();
+    this.fireSpread.update(dt);
     this.fires.update(dt);
     this.slips.update();
     this.sprinklers.update(dt);
