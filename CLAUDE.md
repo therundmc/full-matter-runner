@@ -112,8 +112,14 @@
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), fires in systems/Fires.js.
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
-  tools/generate_comic.py; title screen ui/TitleScene.js + ui/title/*. Style: plain pixel art, flat shades, a dark
-  outline, NO dither / screentone / gradient. Check cinematics and menu in the browser after touching them.
+  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
+  ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+- Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
+  a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
+  signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as
+  spikes; repetition tells the story; caricature over realism. The boss's three men are caricatures with a name and
+  ONE loud signature each (a colour and a shape) that reads the same in the comic and from above in the game.
+  Check cinematics and menu in the browser after touching them.
 - The QA robot plays the tutorial with `npm run qa -- --level tutorial` (add `--god` to reach the window).
 
 ## Run / test
