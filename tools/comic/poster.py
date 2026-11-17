@@ -37,13 +37,14 @@ def cueball(pose='stand'):
     return parts, dict(hand=hand, hand_b=(-36, -39), head=(0, -98), mouth=(5, -89), top=(0, -109))
 
 
-LUCKY_GEAR = 'pack'    # his pink thing: 'pack' (the pick), or 'gloves', 'braces', 'scarf', 'bag' (the options sheet)
+LUCKY_GEAR = 'scarf'   # his pink thing: 'scarf' (the user's pick), or 'pack', 'gloves', 'braces', 'bag' (the options sheet)
 
 
 def lucky(pose='stand', gear=None):
     """LUCKY, the slick one, the man with the match: a beanpole, a head taller than anyone, in a coat to his ankles,
-    his hair slicked flat to a point at the nape; his sign a PINK backpack, square on his back (LUCKY_GEAR; the other
-    pink things tried are kept for the options sheet: gloves, braces over a shirt, a scarf, a bag across him)."""
+    his hair slicked flat to a point at the nape; his sign a long PINK scarf, a loud band round his neck, one end down
+    his front, the other flying behind (LUCKY_GEAR; the other pink things tried are kept for the options sheet: a
+    pack, gloves, braces over a shirt, a bag across him)."""
     gear = gear or LUCKY_GEAR
     coat = BONE if gear == 'braces' else 'body'              # braces: no coat, a pale shirt
     parts = [
@@ -64,8 +65,9 @@ def lucky(pose='stand', gear=None):
         parts += [(PINK, [(-7, -98), (-3, -98), (-4, -52), (-8, -52)]), (PINK, [(4, -98), (8, -98), (9, -52), (5, -52)]),
                   ('body', [(-16, -54), (16, -54), (17, -13), (-19, -11)])]                # his trousers, high
     elif gear == 'scarf':
-        parts += [(PINK, [(-8, -100), (9, -101), (10, -93), (-9, -92)]),
-                  (PINK, [(-8, -99), (-14, -95), (-34, -62), (-28, -58), (-12, -86)])]     # its tail, behind
+        parts += [(PINK, [(-10, -102), (10, -103), (12, -91), (-12, -90)]),               # the band, round his neck
+                  (PINK, [(3, -92), (11, -92), (12, -66), (5, -65)]),                      # one end, down his front
+                  (PINK, [(-9, -100), (-17, -97), (-42, -68), (-47, -52), (-38, -49), (-33, -61), (-12, -88)])]   # the other, flying
     elif gear == 'bag':
         parts += [(PINK, [(8, -97), (12, -95), (-14, -52), (-18, -55)]),                   # the strap across him
                   (PINK, [(-27, -58), (-9, -60), (-8, -40), (-26, -38)])]                  # the bag at his hip
@@ -88,7 +90,7 @@ def lucky_above(gear=None):
     if gear == 'braces':
         return [(BONE, sh), (PINK, [(-6, -10), (6, -10), (6, -6), (-6, -6)]), (PINK, [(-6, 6), (6, 6), (6, 10), (-6, 10)])] + head
     if gear == 'scarf':
-        return [('body', sh), (PINK, [(-7, -8), (-1, -9), (-1, 9), (-7, 8)]), (PINK, [(-6, 2), (-22, 8), (-22, 13), (-6, 8)])] + head
+        return [('body', sh), (PINK, ngon(1, 0, 10, 10, 8)), (PINK, [(-5, -4), (-30, 5), (-34, 14), (-26, 15), (-5, 6)])] + head
     return [('body', sh), (PINK, [(4, -14), (8, -11), (-5, 13), (-9, 10)]), (PINK, [(-14, 8), (-3, 9), (-3, 20), (-14, 19)])] + head
 
 
@@ -126,9 +128,9 @@ def boss(pose='stand'):
 
 
 def runner(pose='stand'):
-    """THE RUNNER (the player): a long coat, its collar up; his sign the CAP, flat, with a strong peak, a petrol-blue
-    button and a petrol edge under the peak; a fitted petrol gaiter up over his nose: between the two, a slit of tan
-    is all his face; brown hair to the collar behind."""
+    """THE RUNNER (the player): a long coat, its collar up; his sign the CAP, a sports cap: a round crown, a curved
+    brim, a petrol-blue button and a petrol edge under the brim; a fitted petrol gaiter up over his nose: between the
+    two, a slit of tan is all his face; brown hair to the collar behind."""
     parts = [
         ('body', [(-10, -30), (-2, -30), (-3, 0), (-10, 0)]), ('body', [(2, -30), (10, -30), (10, 0), (3, 0)]),
         ('body', [(-13, -86), (13, -86), (16, -26), (-17, -25)]),
@@ -137,10 +139,11 @@ def runner(pose='stand'):
         (TAN, [(-4, -99), (9, -99), (9, -94), (-4, -94)]),                                # the slit
         (CYAN_D, [(-5, -95.5), (9.5, -95.5), (10, -89), (7, -84), (-7, -84), (-6, -90)]),  # the gaiter
         ('body', [(-14, -85), (-11, -95), (-5, -86)]), ('body', [(5, -86), (12, -93), (14, -85)]),   # the collar, up
-        ('body', [(-10, -98), (-9, -105), (-1, -109), (9, -107), (14, -102), (24, -98.5), (24, -97), (-10, -97)]),   # the cap
-        (CYAN_D, [(9, -97), (24, -97), (23, -95.5), (9, -96)]), (CYAN_D, ngon(0, -109, 1.8, 1.4, 6, 0)),
+        ('body', [(-9, -97), (-9.5, -103), (-6, -108), (0, -110.5), (6, -109.5), (10, -105.5), (11, -97)]),   # the cap's crown
+        ('body', [(9, -101), (17, -100.5), (22, -98), (23, -95.5), (16, -97), (9, -97)]),                      # its brim, curved
+        (CYAN_D, [(10, -97), (16, -97), (23, -95.5), (22, -94), (15, -95.5), (10, -95.5)]), (CYAN_D, ngon(0, -110.5, 1.8, 1.4, 6, 0)),
     ]
-    return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -109))
+    return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -110.5))
 
 
 def man(cv, who, cx, foot, h, pose='stand', face=1, body=INK, clip=None, lean=0.0):
@@ -166,8 +169,9 @@ ABOVE = {
              (BONE_D, [(10, 1), (18, 2), (18, 4), (10, 4)]), (FIRE, [(18, 2), (21, 2), (21, 4), (18, 4)])],
     'runner': [('body', [(-6, -17), (4, -18), (8, -11), (8, 11), (4, 18), (-6, 17), (-9, 0)]),
                (BROWN, [(-11, -5), (-6, -6), (-6, 6), (-11, 5)]), (CYAN_D, [(-8, -6), (-5, -7), (-5, 7), (-8, 6)]),
-               (CAP, [(-7, -8), (2, -9), (9, -7), (17, -3), (17, 3), (9, 7), (2, 9), (-7, 8), (-9, 0)]),
-               (CYAN_D, [(14, -4.5), (17, -3), (17, 3), (14, 4.5), (15.5, 0)]), (CYAN_D, ngon(1, 0, 1.8, 1.8, 6, 0))],
+               (CAP, [(6, -7.5), (11, -7), (15, -4), (16.5, 0), (15, 4), (11, 7), (6, 7.5)]),             # the brim
+               (CYAN_D, [(13.5, -5), (15, -4), (16.5, 0), (15, 4), (13.5, 5), (14.8, 0)]),
+               (CAP, ngon(1, 0, 8.5, 8.5, 8)), (CYAN_D, ngon(1, 0, 1.8, 1.8, 6, 0))],
 }
 
 

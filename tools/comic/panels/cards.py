@@ -8,10 +8,10 @@ SIZE = (1152, 648)
 #       what he is, his sign in two lines, the tag over his name)
 CARDS = {
     'cueball': ('CUEBALL', poster.cueball, 430, PINK, PINK, 'THE HEAVY', ['FLUO YELLOW SHADES', 'ON A BALD DOME'], 'TARGET - LEVEL 1'),
-    'lucky': ('LUCKY', poster.lucky, 380, CYAN, CYAN, 'THE MAN WITH THE MATCH', ['A PINK PACK', 'SQUARE ON HIS BACK'], 'TARGET'),
+    'lucky': ('LUCKY', poster.lucky, 380, CYAN, CYAN, 'THE MAN WITH THE MATCH', ['A LONG PINK SCARF,', 'ITS END FLYING'], 'TARGET'),
     'jitters': ('JITTERS', poster.jitters, 430, BONE, BONE, 'THE YOUNG ONE', ['A CYAN', 'SAW-TOOTH CREST'], 'TARGET'),
-    'boss': ('THE BOSS', poster.boss, 430, PINK_D, PINK, 'HE OWNS THE BAR', ['A BONE SUIT, A BLACK TIE,', 'A CIGAR'], 'THE LAST TARGET'),
-    'runner': ('THE RUNNER', poster.runner, 430, FIRE_D, FIRE, 'SIX YEARS OF PACKAGES', ['A FLAT CAP, A PETROL', 'GAITER UP TO HIS EYES'], None),
+    'boss': ('THE BOSS', poster.boss, 430, PINK_D, PINK, 'HE OWNS THE CITY', ['A BONE SUIT, A BLACK TIE,', 'A CIGAR'], 'THE LAST TARGET'),
+    'runner': ('THE RUNNER', poster.runner, 430, FIRE_D, FIRE, 'SIX YEARS OF PACKAGES', ['A DARK CAP, A PETROL', 'GAITER UP TO HIS EYES'], None),
 }
 
 

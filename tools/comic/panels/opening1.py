@@ -42,9 +42,10 @@ def panel_sleep():
     # the door, his cap on its hook, the suitcase packed by it
     cv.poly(slab(962, 26, 1056, 236, 21, 5), NIGHT_L)
     cv.disc(978, 136, 5, col=PINK_D)
-    cv.poly([(984, 62), (988, 46), (1010, 38), (1034, 42), (1044, 53), (1068, 58), (1066, 63)], INK)     # his cap
-    cv.poly([(1044, 58), (1068, 58), (1066, 63), (1044, 63)], CYAN_D)
-    cv.disc(1011, 39, 3, col=CYAN_D)
+    cv.poly([(986, 62), (986, 50), (994, 41), (1010, 37), (1026, 40), (1036, 49), (1038, 62)], INK)     # his cap: the crown
+    cv.poly([(1034, 54), (1052, 55), (1064, 60), (1066, 65), (1050, 62), (1034, 62)], INK)              # its brim
+    cv.poly([(1036, 62), (1050, 62), (1066, 65), (1064, 68), (1049, 65), (1036, 65)], CYAN_D)
+    cv.disc(1010, 37, 3, col=CYAN_D)
     case = slab(826, 150, 944, 236, 31, 3)
     cv.poly(case, BONE_D)
     for x in (848, 908):
@@ -57,7 +58,7 @@ def panel_sleep():
 def panel_door():
     """Page 1, panel 2 ("THE BOSS'S MEN LET THEMSELVES IN."). His front door thrown open, its lock a burst of
     splinters; the three of them cut out against the landing's tube: CUEBALL filling the doorway, his torch into
-    the room, the crowbar hanging from his other fist; LUCKY a head above him, the pink pack on his back; JITTERS at
+    the room, the crowbar hanging from his other fist; LUCKY a head above him, his pink scarf flying; JITTERS at
     the jamb with the can. The light lies on the floor in one wedge, their shadows three spikes in it."""
     W, H = 1080, 282
     cv = Cv(W, H, NIGHT)

@@ -21,12 +21,12 @@ from comic import poster  # noqa: E402
 # words, px per unit from above
 CAST = [
     ('CUEBALL', poster.cueball, 'cueball', 250, PINK, ['THE HEAVY. A WALL ON', 'SHORT LEGS, A BALD DOME.', 'HIS SIGN: HUGE FLUO', 'YELLOW SHADES.'], 0.56),
-    ('LUCKY', poster.lucky, 'lucky', 232, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'PINK PACK ON HIS BACK.'], 0.74),
+    ('LUCKY', poster.lucky, 'lucky', 232, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'LONG PINK SCARF.'], 0.74),
     ('JITTERS', poster.jitters, 'jitters', 250, BONE, ['THE YOUNG ONE. A RUNT,', 'HUNCHED, NEVER STILL.', 'HIS SIGN: A CYAN', 'SAW-TOOTH CREST.'], 0.74),
     ('THE BOSS', poster.boss, 'boss', 250, PINK_D, ['THE ONLY MAN CUT IN', 'BONE: A WIDE PALE SUIT,', 'A BLACK TIE, A CIGAR.', ''], 0.62),
-    ('THE RUNNER', poster.runner, 'runner', 250, FIRE_D, ['THE PLAYER. HIS SIGN:', 'THE FLAT CAP, ITS PEAK;', 'A PETROL GAITER UP TO', 'HIS EYES. COLLAR UP.'], 0.68),
+    ('THE RUNNER', poster.runner, 'runner', 250, FIRE_D, ['THE PLAYER. HIS SIGN:', 'A DARK SPORTS CAP;', 'A PETROL GAITER UP TO', 'HIS EYES. COLLAR UP.'], 0.68),
 ]
-GEAR = [('pack', 'A PACK'), ('gloves', 'GLOVES'), ('braces', 'BRACES'), ('scarf', 'A SCARF'), ('bag', 'A BAG ACROSS')]
+GEAR = [('scarf', 'A SCARF'), ('pack', 'A PACK'), ('gloves', 'GLOVES'), ('braces', 'BRACES'), ('bag', 'A BAG ACROSS')]
 SPRITES = ['heavy', 'brute', 'thug', 'boss', 'player']
 FLOOR = (70, 66, 80)
 

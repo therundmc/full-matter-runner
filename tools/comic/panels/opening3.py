@@ -9,8 +9,8 @@ GAP = (150, 410, 236)  # fire: the gap under his door, x0, x1, y (the game makes
 
 def panel_match(lit):
     """Page 3, panel 1 ("TORCH IT. HE'S IN THE BACK ROOM."). Close on LUCKY, in profile: a black wedge of a face
-    under the slicked hair, the pink pack on his back, its strap over his shoulder, the match held up before him.
-    Dark: the pack is all there is. Struck: the flame's light is two discs on the wall, his profile cut black out of them; the door to the
+    under the slicked hair, the pink scarf round his neck, one end flying behind him, the match held up before him.
+    Dark: the scarf is all there is. Struck: the flame's light is two discs on the wall, his profile cut black out of them; the door to the
     back room shows."""
     W, H = 1080, 282
     cv = Cv(W, H, NIGHT)
@@ -22,15 +22,16 @@ def panel_match(lit):
         cv.disc(fx, fy, 190, col=FIRE_D)                                                    # the flame's light on the wall
         cv.disc(fx, fy, 96, col=FIRE)
     cv.disc(262, 150, 7, col=BONE_D if lit else NIGHT_LL)
-    # his coat and collar, the pack on his back, its strap over his shoulder; his head: the hair slicked to a point,
-    # the nose and chin cut forward
-    cv.poly([(664, 172), (700, 186), (792, 178), (886, 200), (906, H + 6), (620, H + 6), (650, 206)], INK)
+    # his coat, the scarf's end flying behind him; then his head (the hair slicked to a point, the nose and chin cut
+    # forward) and over it the scarf's band round his neck, its other end down his front
     pink = PINK if lit else PINK_D
-    cv.poly([(870, 148), (1006, 156), (1014, H + 6), (890, H + 6)], pink)
-    cv.poly([(872, 184), (1008, 192), (1009, 214), (873, 206)], PINK_D if lit else NIGHT_L)    # its flap
-    cv.poly([(794, 182), (872, 152), (880, 176), (820, 200), (808, H + 6), (780, H + 6)], pink)   # its strap, over his shoulder
+    cv.poly([(776, 150), (850, 116), (930, 126), (1010, 92), (1084, 100), (1084, 146), (1016, 138), (936, 172), (856, 162), (800, 190)],
+            pink)
+    cv.poly([(664, 172), (700, 186), (792, 178), (886, 200), (906, H + 6), (620, H + 6), (650, 206)], INK)
     profile = [(662, 60), (650, 94), (620, 114), (644, 122), (638, 134), (650, 140), (644, 158), (664, 172)]
     cv.poly([(700, 44), (744, 50), (778, 68), (822, 114), (790, 110), (786, 128), (760, 164), (700, 184)] + profile[::-1], INK)
+    cv.poly([(660, 160), (700, 176), (770, 160), (800, 140), (806, 180), (780, 204), (700, 214), (652, 196)], pink)
+    cv.poly([(668, 200), (716, 210), (706, H + 6), (662, H + 6)], pink)
     # the fist and the match
     fist = [(578, 252), (610, 240), (636, 258), (660, H + 6), (590, H + 6)]
     cv.poly(fist, INK)

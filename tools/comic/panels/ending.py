@@ -1,6 +1,6 @@
 """Level 1's closing page (drive, office and its phone, matchbook)."""
 from .. import poster
-from ..kit import BLOOD, BONE, BONE_D, BROWN, CYAN_D, FIRE, FIRE_D, FLUO, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, TAN, Cv, panel, slab, turned
+from ..kit import BLOOD, BONE, BONE_D, BROWN, CYAN, CYAN_D, FIRE_D, FLUO, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, TAN, Cv, panel, slab, turned
 
 DRIVE_MIRROR = (438, 44, 626, 84)   # the rear-view mirror's glass: the game draws the bar going away in it
 DRIVE_GLASS = [(0, 24), (636, 30), (606, 228), (0, 222)]   # the windscreen: the game runs the rain and the wiper on it
@@ -14,7 +14,7 @@ HANDSET = [(84, 150), (188, 146), (190, 160), (86, 164)]     # the phone's hands
 def panel_drive():
     """"THE BAR GOT SMALLER IN THE MIRROR." From inside the van: the windscreen a slab of night, the road a black
     wedge to its vanishing point (the game runs its line and the street lamps past); the mirror; THE RUNNER at the
-    wheel, the cap's peak over the gaiter, in profile against his side window."""
+    wheel, the cap's brim over the gaiter, in profile against his side window."""
     W, H = 1080, 288
     cv = Cv(W, H, INK)
     glass = cv.poly(DRIVE_GLASS, NIGHT)
@@ -35,16 +35,17 @@ def panel_drive():
     cv.disc(660, 262, 74, 86, INK)
     cv.bar((660, 262), (596, 196), 12, NIGHT_LL)
     cv.bar((660, 262), (742, 216), 12, NIGHT_LL)
-    # his side window behind him, and him against it: the cap's peak, the gaiter, the coat
+    # his side window behind him, and him against it: the cap's brim, the gaiter, the coat
     cv.poly([(770, 14), (W, 2), (W, 176), (800, 190)], NIGHT_LL)
     cv.poly([(984, 92), (W, 86), (W, 112), (988, 120)], PINK_D)
     cv.poly([(750, H), (800, 196), (880, 168), (980, 176), (W, 220), (W, H)], INK)            # his shoulders
     cv.poly([(940, 66), (966, 96), (972, 156), (944, 160), (930, 100)], BROWN)                 # his hair, to the collar
     cv.poly([(846, 84), (940, 78), (944, 104), (842, 106)], TAN)                              # the slit of his face
     cv.poly([(840, 104), (946, 100), (958, 150), (940, 184), (860, 186), (834, 156), (822, 132)], CYAN_D)   # the gaiter, over his nose
-    cv.poly([(966, 78), (944, 44), (884, 32), (834, 52), (760, 78), (764, 88), (842, 88), (900, 80)], INK)   # the cap, its peak
-    cv.poly([(764, 88), (842, 88), (842, 95), (772, 94)], CYAN_D)
-    cv.disc(890, 34, 6, col=CYAN_D)
+    cv.poly([(968, 86), (966, 62), (948, 42), (912, 30), (876, 34), (852, 50), (842, 86)], INK)   # the cap: its crown
+    cv.poly([(852, 60), (812, 66), (784, 80), (776, 92), (814, 84), (846, 86)], INK)              # its brim, curved
+    cv.poly([(776, 92), (814, 84), (846, 86), (846, 94), (816, 92), (782, 99)], CYAN_D)
+    cv.disc(910, 31, 6, col=CYAN_D)
     cv.poly([(930, 190), (990, 124), (1012, 196)], INK)                                      # the collar, up
     cv.bar((846, 232), (704, 222), 34, INK, w1=22)                                            # his arm to the wheel
     cv.poly(poster.ngon(700, 220, 17, 15, 6, 0), INK)
@@ -115,8 +116,8 @@ def panel_office_phone():
 @panel('matchbook', (528, 282))
 def panel_matchbook():
     """"OFF CUEBALL'S DESK." The matchbook, pink, on the black of the desk (the game letters FLAMINGO MOTEL on it):
-    a bone flamingo with a cigar in its bill (the boss's sign), the striker, loose matches beside it; across the desk the shadow of the man who picked it up, his
-    cap's peak."""
+    a bone flamingo, and scrawled across its corner in cyan a saw-tooth mark, JITTERS' own (it is his room there);
+    the striker, loose matches beside it; across the desk the shadow of the man who picks it up, his cap's brim."""
     W, H = 528, 282
     cv = Cv(W, H, NIGHT)
     for i in range(6):                                                                      # the blind's bars across the desk
@@ -134,17 +135,18 @@ def panel_matchbook():
     cv.path([(fx + 14, fy - 6), (fx + 24, fy - 18), (fx + 16, fy - 28), (fx + 22, fy - 36)], 6, BONE)
     cv.poly([(fx + 17, fy - 41), (fx + 30, fy - 41), (fx + 30, fy - 32), (fx + 19, fy - 32)], BONE)
     cv.poly([(fx + 30, fy - 41), (fx + 39, fy - 35), (fx + 30, fy - 30)], INK)
-    cv.bar((fx + 38, fy - 35), (fx + 54, fy - 38), 5, BONE_D)                                 # the cigar in its bill
-    cv.disc(fx + 56, fy - 38, 3.5, col=FIRE)
     cv.bar((fx + 3, fy + 9), (fx + 5, fy + 34), 4, BONE)
     cv.bar((fx - 6, fy + 7), (fx - 13, fy + 20), 4, BONE)
     cv.bar((fx - 13, fy + 20), (fx - 3, fy + 26), 4, BONE)
+    # JITTERS' mark, in his cyan, across the cover's corner: his crest, scrawled
+    cv.poly([(300, 90), (305, 72), (312, 83), (319, 68), (326, 81), (334, 66), (341, 79), (349, 70), (352, 86), (345, 83), (340, 90),
+             (333, 80), (326, 92), (319, 80), (312, 93), (306, 84)], CYAN)
     # loose matches
     for x, y, deg in ((430, 96, 28), (452, 150, -40), (410, 190, 80), (476, 204, 12)):
         p, q = turned([(-30, 0), (30, 0)], x, y, deg)
         cv.bar(p, q, 6, BONE)
         cv.disc(q[0], q[1], 6, col=FIRE_D)
-    # the shadow of the man who picks it up, across the desk's corner: his cap, its peak
-    cv.poly([(-10, H + 10), (-10, 262), (40, 248), (62, 232), (106, 222), (150, 226), (172, 240), (238, 252), (236, 260), (176, 262),
-             (196, H + 10)], INK)
+    # the shadow of the man who picks it up, across the desk's corner: his cap, its brim
+    cv.poly([(-10, H + 10), (-10, 264), (34, 252), (52, 234), (80, 220), (116, 215), (148, 221), (168, 236), (174, 247), (212, 249),
+             (236, 256), (238, 263), (180, 264), (196, H + 10)], INK)
     return cv

@@ -2,8 +2,9 @@
 // in the opening's manner (ui/cine/Page.js lays it out, tools/generate_comic.py paints its stills). Level 1's: he
 // drives the boss's van away in the rain, the bar's neon getting smaller in the mirror; back in the bar CUEBALL lies
 // over the back room's desk and the phone will not stop ringing: the boss, wanting news; a matchbook off that desk, a
-// motel's, a cigar in its flamingo's bill: one down, the boss still out there. ENDINGS maps a level to its page; endingView() is the timeline as
-// plain numbers (unit-tested), endingBeats() what is heard, drawEnding() the picture. t: s since the page began.
+// motel's, JITTERS' saw-tooth mark scrawled on it: one down, and where the next one sleeps. ENDINGS maps a level to
+// its page; endingView() is the timeline as plain numbers (unit-tested), endingBeats() what is heard, drawEnding() the
+// picture. t: s since the page began.
 import { spriteOpt } from '../../../engine/Assets.js';
 import { text } from '../Text.js';
 import { drawPage } from './Page.js';
@@ -127,11 +128,11 @@ const LEVEL1 = {
   end: 14.6,
   page: { end: 14.6, panels: [
     { r: { x: 12, y: 10, w: 360, h: 96 }, at: 0.5, paint: (g, w, h, t) => paintDrive(g, w, h, t, clamp(t / 11, 0, 1)),
-      caption: ['THE BAR GOT SMALLER', 'IN THE MIRROR.'] },
+      caption: ['HE TOOK THEIR VAN.', 'HE LEFT THEM A BODY.'] },
     { r: { x: 12, y: 112, w: 176, h: 94 }, at: 4.2, paint: paintOffice, caption: ['THE PHONE RANG.', 'THE BOSS WANTED NEWS.'],
       sfx: rings(70, 34, 8, 0.12) },
     { r: { x: 196, y: 112, w: 176, h: 94 }, at: 7.8, paint: paintMatchbook, caption: ["OFF CUEBALL'S DESK."],
-      close: { at: 2.2, text: ['ONE DOWN. THE BOSS', 'WAS STILL OUT THERE.'] } },
+      close: { at: 2.2, text: ['ONE DOWN. JITTERS', 'HAD A ROOM THERE.'] } },
   ] },
   // what is heard: [at, name, vol, opts] for Audio.play
   cues: [

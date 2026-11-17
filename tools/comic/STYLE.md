@@ -37,7 +37,7 @@ what is written in the scene (the clock's 1:05).
 | violet night | `NIGHT` `#170b2b`, `NIGHT_L` `#2a1548`, `NIGHT_LL` `#3d2a6a` | the ground: a wall, a dark thing lifted off it, a thing a light finds |
 | black | `INK` `#0a070c` | floors, people, shadows, furniture against a light |
 | bone | `BONE` `#f2e8d2`, `BONE_D` `#b8a890` | paper, money, metal, CUEBALL's bald head, THE BOSS |
-| pink | `PINK` `#ff3a7a`, `PINK_D` `#8a1d5c` | the bar's neon and its light, LUCKY's pack |
+| pink | `PINK` `#ff3a7a`, `PINK_D` `#8a1d5c` | the bar's neon and its light, LUCKY's scarf |
 | cyan | `CYAN` `#3ad8e8`, `CYAN_D` `#17566e` | the tube on the landing, the torch's pool, JITTERS' crest; `CYAN_D` is also the runner's petrol blue |
 | fire | `FIRE` `#ff8a20`, `FIRE_D` `#c8381a` | from the match on (page 3), the jerrycan, a lit cigar, sodium street lamps |
 | blood | `BLOOD` `#a0141e` | blood, nothing else |
@@ -48,7 +48,7 @@ what is written in the scene (the clock's 1:05).
   core in the full ink (the match's two discs, a wedge and its rays).
 - A panel uses black, the violets and two or three inks, one of them dominant. Pages have a temperature: page 1 pink
   and cyan, page 2 cyan, page 3 fire.
-- **A man never stands against his own ink** (CUEBALL's shades on yellow or bone, LUCKY's pack on pink, JITTERS on
+- **A man never stands against his own ink** (CUEBALL's shades on yellow or bone, LUCKY's scarf on pink, JITTERS on
   cyan): his sign would go.
   Put him on another ink, on its dark (`CYAN` on `CYAN_D` reads), or on black.
 
@@ -85,10 +85,10 @@ table (top-down, a man is about 26 px across the shoulders; `ABOVE` in poster.py
 | name | who | build | signature | ink | from above (26 px) |
 |---|---|---|---|---|---|
 | **CUEBALL** | the heavy: the torch and the crowbar, the one who speaks for the boss; level 1's mini-boss, with a shotgun, dead in its ending (his shades off, cracked, on the floor) | a wall on short legs, twice a man's width, no neck, a bald bone dome | huge wrap-round shades, wider than his head | fluo yellow | the widest shoulders in the game (about 30 px), black; in their middle a bone disc of 12 px; across its front a fluo yellow band 4 px deep and as wide as the disc and more (it shows where he faces) |
-| **LUCKY** | the slick one, the man with the match | a beanpole, a head taller than anyone, in a coat to his ankles; hair slicked flat to a point at the nape; pointed shoes | a backpack, square on his back, a darker flap across it, a strap over his shoulder (the hero's money leaves in it) | pink | narrow black shoulders (about 22 px), a small black head; behind them a pink block as wide as the shoulders and 10 to 11 px deep, a 2 px darker band across it: it shows where he faces by where it is not |
+| **LUCKY** | the slick one, the man with the match | a beanpole, a head taller than anyone, in a coat to his ankles; hair slicked flat to a point at the nape; pointed shoes | a long scarf: a loud band round his neck, one end down his front, the other flying behind him | pink | narrow black shoulders (about 22 px), a small black head in a pink ring 2 px wide all round it (the band, seen from above), and the scarf's end flying out behind: a pink streamer 5 px wide and 12 to 14 px long, off to one side of his back, swinging as he turns (it shows where he faces by where it trails) |
 | **JITTERS** | the young one: the jerrycan | a runt, three quarters of a man, hunched, knees bent | a saw-tooth crest | cyan | small black shoulders (about 20 px); a cyan saw-tooth lozenge from the nape to past the brow, its teeth on both sides |
-| **THE BOSS** | he owns the bar; the campaign's last target, never seen in level 1: in its ending he is the telephone ringing (bone, his ink) and the cigar in the matchbook's flamingo's bill | wide, soft, double-breasted | he is the one man cut in bone: the suit, with a black tie; a slick of black hair; a cigar, no bigger than a cigar | bone body | bone shoulders (about 27 px), a black head; the cigar 5 px straight ahead, its tip 2 px of fire |
-| **THE RUNNER** | the player | a long coat, its collar up in two points | the CAP: flat, low, with a strong peak, a petrol button on top and a petrol edge under the peak; under it a fitted gaiter pulled up over his nose (petrol), and between the two a slit of tan that is all his face; brown hair to the collar behind | black, petrol blue (`CYAN_D`) | black shoulders; the cap a dark lozenge (`CAP`, a shade off the coat) with its peak 7 to 8 px ahead of the head, a 2 px petrol button at its middle and a petrol edge on the peak's front; behind, 2 px of brown hair and the gaiter's petrol band at the nape. Never a scarf's tail, never a mask of an animal, never bright turquoise (CLAUDE.md, Art) |
+| **THE BOSS** | he owns the city, the bar with it; the campaign's last target, never seen in level 1: in its ending he is the telephone ringing (bone, his ink) | wide, soft, double-breasted | he is the one man cut in bone: the suit, with a black tie; a slick of black hair; a cigar, no bigger than a cigar | bone body | bone shoulders (about 27 px), a black head; the cigar 5 px straight ahead, its tip 2 px of fire |
+| **THE RUNNER** | the player | a long coat, its collar up in two points | the CAP: a dark sports cap (a round crown, a curved brim: never a flat cap), a petrol button on top and a petrol edge under the brim; under it a fitted gaiter pulled up over his nose (petrol), and between the two a slit of tan that is all his face; brown hair to the collar behind | black, petrol blue (`CYAN_D`) | black shoulders; the cap a round dark crown (`CAP`, a shade off the coat) of 9 to 10 px with a 2 px petrol button at its middle, its brim a short rounded bill 4 px ahead of it with a petrol rim; behind, 2 px of brown hair and the gaiter's petrol band at the nape. Never a scarf (that is LUCKY's), never a mask of an animal, never bright turquoise (CLAUDE.md, Art) |
 
 Rules for the three:
 - The sign is always there and readable: never under a caption or a balloon, never against its own ink, never
@@ -97,13 +97,12 @@ Rules for the three:
 - Sizes side on, for the same floor line: CUEBALL 100, LUCKY about 90 (his own units make him taller and thinner),
   JITTERS about 90 (he is 70 of them tall); see `door` and `pour`.
 - Who does what in the opening: CUEBALL forces the door and the board, holds the torch and says "NO LOOSE ENDS.";
-  LUCKY, the pack on his back, stands over the money and strikes the match ("TORCH IT.");
+  LUCKY, his scarf flying, stands over the money and strikes the match ("TORCH IT.");
   JITTERS carries the can and pours.
-- LUCKY's pink thing was chosen on a sheet (`sheet.py`, lucky_options.png: a pack, gloves, braces, a scarf, a bag
-  across him; `poster.LUCKY_GEAR` switches the figure and its top-down drawing, the panels are staged for the pack).
-  The pack is the only one that is one big block from above; gloves are two dots, braces need a pale shirt (the
-  boss's ink), a scarf is the runner's old sign, a bag across him is a thin strap from above. An earlier bat was
-  too big and a pompadour too close to JITTERS: a sign is not a hairdo (he has the only one) nor a weapon.
+- LUCKY's pink thing was chosen by the user on a sheet (`sheet.py`, lucky_options.png: a scarf, a pack, gloves,
+  braces, a bag across him): the scarf. `poster.LUCKY_GEAR` switches the figure and its top-down drawing; the panels
+  are staged for the scarf. An earlier bat was too big and a pompadour too close to JITTERS: a sign is not a hairdo
+  (he has the only one) nor a weapon.
 
 
 ## The cards

@@ -10,7 +10,7 @@ ALLEY_PUDDLES = ((540, 360, 90, 12), (250, 392, 120, 10), (820, 390, 70, 8))   #
 def panel_alley():
     """"THE NEXT DAY." The alley where he came down, looking along it to the street: two walls closing on a slab of
     neon, its light come back off the wet ground in broken bars; THE RUNNER sat against the left wall in a patch of
-    that pink, the cap's peak over the gaiter; a fire escape and a skip on the right."""
+    that pink, the cap's brim over the gaiter; a fire escape and a skip on the right."""
     W, H = 1008, 408
     cv = Cv(W, H, NIGHT_L)
     vx = 648
@@ -41,9 +41,10 @@ def panel_alley():
     cv.poly([(248, 214), (262, 214), (262, 244), (246, 248)], BROWN)                          # his hair, to the collar
     cv.poly([(262, 212), (314, 212), (314, 222), (262, 222)], TAN)                           # the slit of his face
     cv.poly([(258, 221), (316, 220), (318, 238), (306, 250), (266, 252), (258, 240)], CYAN_D)   # the gaiter, up over his nose
-    cv.poly([(248, 214), (254, 192), (280, 182), (306, 186), (318, 200), (348, 209), (346, 215)], INK)   # the cap, its peak
-    cv.poly([(318, 209), (348, 209), (346, 215), (318, 215)], CYAN_D)
-    cv.disc(280, 183, 4, col=CYAN_D)
+    cv.poly([(250, 214), (249, 200), (257, 188), (280, 180), (302, 184), (314, 196), (316, 214)], INK)   # the cap: its crown
+    cv.poly([(312, 203), (334, 204), (346, 210), (350, 217), (332, 213), (312, 214)], INK)               # its brim, curved
+    cv.poly([(314, 214), (332, 213), (350, 217), (348, 221), (331, 217), (314, 218)], CYAN_D)
+    cv.disc(280, 181, 4, col=CYAN_D)
     cv.poly([(240, 262), (250, 232), (262, 250)], INK)                                       # the collar, up
     cv.poly([(300, 252), (322, 236), (322, 262)], INK)
     cv.poly([(428, 338), (438, 318), (444, 318), (448, 362), (426, 362)], BONE_D)             # a bottle
