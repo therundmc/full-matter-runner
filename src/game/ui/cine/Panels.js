@@ -42,13 +42,11 @@ export function balloon(g, x, y, w, h, tx, ty) {
 }
 
 // ---------------------------------------------------------------- the stills
-// The comic stills are painted by tools/generate_comic.py (sprites comic/*, SC panel px per title px), printed a
-// little off register like the title: here they are put in their frame and given what moves (a tube failing, rain,
-// smoke, the match's flame, the fire under his door), drawn in the stills' own px. What is bright and drawn live is
-// doubled the same way (ghosted). still / fine / smoke serve the other comic pages too (ui/cine/Leap.js,
-// ui/cine/Ending.js).
+// The comic stills are painted by tools/generate_comic.py (sprites comic/*, SC panel px per title px): here they are
+// put in their frame and given what moves (a tube failing, rain, smoke, the match's flame, the fire under his door),
+// drawn in the stills' own px, flat and never doubled. still / fine / smoke serve the other comic pages too
+// (ui/cine/Leap.js, ui/cine/Ending.js).
 const SC = 3;
-const GHOST = ['#1fa6c4', '#d22a6e'];   // generate_comic.py GHOST_CYAN, GHOST_PINK: left of what is bright, right of it
 const FLAME = [536, 160];   // the match's head in comic/match (generate_comic.py FLAME)
 const PANE = [360, 8, 590, 132];         // his bedroom window in comic/sleep (generate_comic.py panel_sleep)
 const COLON = [172, 154, 5, 12];         // the clock's colon there (generate_comic.py CLOCK)
@@ -64,13 +62,6 @@ export function fine(g, draw) {
   g.scale(1 / SC, 1 / SC);
   draw();
   g.restore();
-}
-// draw(dx, col) twice off register (a cyan ghost SC px to the left, a pink one to the right, col forcing their
-// colour), then itself: what is drawn last covers all but the ghosts' edges
-function ghosted(draw) {
-  draw(-SC, GHOST[0]);
-  draw(SC, GHOST[1]);
-  draw(0, null);
 }
 // smoke going up from (x, y) in a thin wavering thread (stills' px)
 export function smoke(g, x, y, t, n = 14, col = '#8a8494') {
@@ -123,7 +114,7 @@ export function paintBox(g, w, h) {
   still(g, 'box', w, h);
 }
 
-// 3. The young one thumbing through the notes, grinning.
+// 3. The slick one riffling the notes, smiling at them.
 export function paintCount(g, w, h) {
   still(g, 'count', w, h);
 }
@@ -148,10 +139,8 @@ export function paintMatch(g, w, h, t, struck = 1) {
   fine(g, () => {
     if (fl < 0.68) tone(g, '#07050a', 0, 0, w * SC, h * SC, 0.18);          // the flame ducks
     const fh = 48 + 16 * fl, sway = Math.sin(t * 20) * 4;
-    ghosted((dx, col) => {
-      disc(g, col || '#c8381a', fx + dx, fy - 4, 13, 15);
-      poly(g, col || '#c8381a', [[fx + dx - 12, fy - 4], [fx + dx + 12, fy - 4], [fx + dx + 6, fy - fh * 0.55], [fx + dx + sway, fy - fh]]);
-    });
+    disc(g, '#c8381a', fx, fy - 4, 13, 15);
+    poly(g, '#c8381a', [[fx - 12, fy - 4], [fx + 12, fy - 4], [fx + 6, fy - fh * 0.55], [fx + sway, fy - fh]]);
     disc(g, '#ff8a20', fx, fy - 4, 9, 11);
     poly(g, '#ff8a20', [[fx - 9, fy - 4], [fx + 9, fy - 4], [fx + sway * 0.7, fy - fh * 0.8]]);
     disc(g, '#fff0a0', fx, fy - 3, 5, 6);
@@ -174,9 +163,7 @@ export function paintFire(g, w, h, t) {
   };
   fine(g, () => {
     if (Math.sin(t * 9) * Math.sin(t * 3.7) > 0.55) tone(g, '#120608', 0, y, w * SC, h * SC - y, 0.3);
-    ghosted((dx, col) => {
-      for (let i = 0; i < n; i++) poly(g, col || '#ff8a20', tongue(i, 1).map(([a, b]) => [a + dx, b]));
-    });
+    for (let i = 0; i < n; i++) poly(g, '#ff8a20', tongue(i, 1));
     for (let i = 0; i < n; i++) poly(g, '#fff0a0', tongue(i, 0.5));
   });
 }

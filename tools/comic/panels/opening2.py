@@ -2,11 +2,10 @@
 from PIL import Image, ImageChops, ImageDraw
 
 from .. import props
-from ..anatomy import flat
-from ..cast import SLICK, Figure, Light
+from ..cast import SLICK, Figure, Light, in_hand, wrist_for
 from ..kit import INK, PINK, PINK_D, FIRE_L, Cv, T, backlit, boards, hx, panel
 from ..legacy import finger, head_heavy, jaw_heavy
-from ..solid import Scene, Xf, add, frame, mv, sub, unit, ypr
+from ..solid import Scene, Xf, add, cross, dot, frame, mm, mul, sub, unit, ypr
 
 
 @panel('pry', (348, 288))
@@ -128,56 +127,62 @@ def panel_box():
 @panel('count', (348, 288))
 def panel_count():
     """Page 2, panel 3 ("EVERY DOLLAR. HIS WAY OUT."). The slick one, close, holds the hero's money up to his face:
-    the banded brick flat on his left hand, his right hand under its far end, the right thumb riffling the top notes
-    up in a fan; he looks down at it with a half smile. The lamp low in front lights his face from below (the brow
-    and the forehead in shadow) and the money; the window's pink neon behind him runs along his back and his skull;
-    his shadow climbs the wall behind, thrown up by the lamp."""
+    his left hand grips the banded brick by its near edge, the knuckles toward us, the fingers wrapped under it, the
+    thumb on top; his right thumb riffles the far end, the top notes fanned up under it. He looks down at it with a
+    half smile. The lamp low in front lights his face from below (the brow and the forehead go black) and the
+    money; the window's pink neon behind him runs along his back and his skull; his shadow climbs the wall."""
     W, H = 348, 288
     cv = Cv(W, H, hx('#170e26'))
     s = 1.2
-    place = Xf(266, 30 + 750 * s, s, ypr(-40))
-    light = Light(key=hx('#ffc890'), fill=hx('#5a4a90'), gain=1.12)
-    # his left hand under the brick, palm up and tipped toward us, the fingers across to his right
-    fwd_l, palm_l = unit((-0.9, 0.1, 0.42)), unit((0.05, -0.8, 0.6))
-    pose = dict(chest=ypr(4, 10, 0), head=ypr(-14, 10, 4), wrist_l=(46, -612, 116), elbow_l=(1, 0.7, -0.3))
-    hands = dict(l=dict(shape=flat(curl=10, thumb=(-8, 47, 21)), fwd=fwd_l, palm=palm_l))
-    face = dict(smile=(0.15, 0.85), gaze=(-1.8, 2.8), lids=0.5, squint=0.45, brow_lift=(0.0, 0.6))
-    Hl = Figure(SLICK, pose=pose, hands=hands).hand_frame('l')
-    Wl = Figure(SLICK, pose=pose, hands=hands).body.wrist['l']
-    on_brick = lambda p: add(Wl, mv(Hl, p))           # the left hand's own space -> body space
-    # the right hand under the brick's far end, palm up, its fingers back along under it, its thumb up over the edge
-    # on the riffled notes
-    fwd_r, palm_r = mv(Hl, (0, -1, 0)), mv(Hl, (0, 0, 1))
-    Hr = frame(fwd_r, palm_r)
-    Wr = on_brick((2, 140, 0.5))
-    inv = tuple(tuple(Hr[j][i] for j in range(3)) for i in range(3))
-    thumb = mv(inv, sub(on_brick((5, 104, 36)), Wr))
-    pose.update(wrist_r=Wr, elbow_r=(-0.5, 1, -0.2))
-    hands['r'] = dict(shape=dict(fingers=[(-3, 2, 4, 3), (0, 2, 4, 3), (3, 3, 5, 3), (7, 4, 6, 4)],
-                                 thumb=(40, 40, 0, 0), thumb_tip=thumb), fwd=fwd_r, palm=palm_r)
-    fig = Figure(SLICK, pose=pose, hands=hands, face=face, t_face=0.2, hand_shadows=False,
-                 head_light=(0.12, 0.92, 0.36))
-    sc = Scene(W, H, light=(-0.5, -0.45, 0.75), rims=[((0.85, -0.25, -0.45), PINK, 0.62)], scale=s, rim_px=3,
-               simplify=7, ink=2, inner=1)
+    place = Xf(268, 30 + 750 * s, s, ypr(-40))
+    light = Light(key=hx('#ffc890'), fill=hx('#5a4a90'), gain=1.12, deep=1.0)
+    # the brick, in body space: its length bx toward his right and forward, its top bz tipped up toward us, its
+    # near long side (-by) toward us; C the middle of its bottom
+    bx = unit((-0.9, 0.05, 0.4))
+    bz0 = (0.05, -0.85, 0.5)
+    bz = unit(sub(bz0, mul(bx, dot(bz0, bx))))
+    by = cross(bz, bx)
+    C = (-6.0, -566.0, 168.0)
+    at = lambda u, v, w: add(C, add(mul(bx, u), add(mul(by, v), mul(bz, w))))
+    # the left hand under the brick, its fingers out past the near edge and curled up round it, so their backs and
+    # knuckles face us and their tips hook over the top; the thumb along the near end
+    fwd_l, palm_l = mul(by, -1.0), bz
+    wrist_l = wrist_for(fwd_l, palm_l, at(-14, 1.0, -7.0))
+    thumb_l = in_hand('l', fwd_l, palm_l, wrist_l, at(-30, -8, 9))
+    # the right hand under the far end, palm up, its fingers back along under it, its thumb up on the fanned notes
+    fwd_r, palm_r = mul(bx, -1.0), bz
+    wrist_r = wrist_for(fwd_r, palm_r, at(26, 1, -7.0))
+    thumb_r = in_hand('r', fwd_r, palm_r, wrist_r, at(31, 5, 29))
+    pose = dict(chest=ypr(4, 12, 0), head=ypr(-12, 20, 5), wrist_l=wrist_l, elbow_l=(1, 0.6, -0.4),
+                wrist_r=wrist_r, elbow_r=(-0.5, 1, -0.2))
+    hands = dict(l=dict(shape=dict(fingers=[(-3, 4, 92, 62), (0, 2, 94, 64), (3, 4, 94, 64), (6, 8, 96, 64)],
+                                   thumb=(30, 30, 0, 0), thumb_tip=thumb_l), fwd=fwd_l, palm=palm_l),
+                 r=dict(shape=dict(fingers=[(-3, 4, 8, 6), (0, 4, 8, 6), (3, 5, 9, 6), (7, 6, 10, 6)],
+                                   thumb=(40, 40, 0, 0), thumb_tip=thumb_r), fwd=fwd_r, palm=palm_r))
+    face = dict(smile=(0.15, 0.85), gaze=(-1.6, 2.6), lids=0.45, squint=0.45, brow_lift=(0.0, 0.6))
+    fig = Figure(SLICK, pose=pose, hands=hands, face=face, t_face=0.22, hand_shadows=False,
+                 head_light=(-0.75, 0.5, 0.45), face_black=-0.35)
+    sc = Scene(W, H, light=(-0.6, 0.3, 0.75), rims=[((0.85, -0.25, -0.45), PINK, 0.62)], scale=s, rim_px=3,
+               simplify=7, ink=2, inner=2, blacks=0.0)
     fig.add(sc, place, light)
-    lxf = fig.hand_xf('l', place)
+    brick = Xf.raw(mm(place.m, frame(bx, bz)), place(C))
     m, sk = props.brick(light)
-    sc.add(m, sk, lxf.at((0, 74, 7.5)), cast=False)
+    sc.add(m, sk, brick, cast=False)
     m, sk = props.riffled(light, lift=17.0)
-    sc.add(m, sk, lxf.at((0, 74, 19.7)), cast=False)
+    sc.add(m, sk, Xf.raw(brick.m, place(at(0, 0, 12.2))), cast=False)
     # the wall: the lamp's warm light fanned up it from below, the window's neon at the right
     wall, glow, glow2 = hx('#170e26'), hx('#2e1830'), hx('#3e2034')
-    cv.fill([(0, H, 0), (0, 70, 0), (150, -10, 0), (348, -10, 0), (348, 40, 0), (190, H, 0)], glow, smooth=False)
+    lit_wall = [(0, H, 0), (0, 70, 0), (150, -10, 0), (348, -10, 0), (348, 40, 0), (190, H, 0)]
+    cv.fill(lit_wall, glow, smooth=False)
     cv.fill([(0, H, 0), (0, 150, 0), (120, 40, 0), (215, 40, 0), (110, H, 0)], glow2, smooth=False)
     cv.rect(316, 0, 348, 176, hx('#3a1232'))
     cv.rect(316, 0, 348, 4, PINK_D)
     cv.rect(328, 0, 334, 176, wall)
     cv.ink([(316, -4, 0), (352, -4, 0), (352, 176, 0), (316, 176, 0)], 4, smooth=False)
-    # his shadow up the wall, thrown by the lamp below: his shape, larger, up and to the right
+    # his shadow up the wall, thrown by the lamp below: his shape, larger, up and to the right, solid black
     probe = Cv(W, H)
     sil = sc.render(probe)
     big = sil.transform((W, H), Image.AFFINE, (1 / 1.35, 0, -40 / 1.35, 0, 1 / 1.35, 70 / 1.35), Image.NEAREST)
-    cv.im.paste(wall, (0, 0), ImageChops.multiply(big, cv.mask([(0, H, 0), (0, 70, 0), (150, -10, 0), (348, -10, 0),
-                                                                 (348, 40, 0), (190, H, 0)], False)))
+    cv.im.paste(INK, (0, 0), ImageChops.multiply(big, cv.mask(lit_wall, False)))
     sc.render(cv)
     return cv

@@ -16,10 +16,11 @@ hand's thumb on -x, a left hand's on +x). Read tools/comic/STYLE.md first.
 """
 import math
 
-from .anatomy import (RELAXED, Body, Build, Curve, Hand, Head, bell, hair_off, mirrored, phi_of, place_ring, section,
+from .anatomy import (RELAXED, Body, Build, Curve, Hand, Head, bell, bend_of, fold_tex, hair_off, mirrored, phi_of,
+                      place_ring, section, sleeve_folds, trouser_folds,
                       shoe, smooth, tone3)
 from .kit import INK, hx
-from .solid import Skin, Xf, add, box, frame, grid, lerp, mm, sub, tube, unit
+from .solid import Skin, Xf, add, box, frame, grid, lerp, mm, mv, sub, tube, unit
 
 
 def mix(a, b, k):
@@ -45,26 +46,76 @@ class Light:
         return Skin(t['lit'], t['shade'], t['deep'], hi=t['hi'] if shine else None, tex=tex, **kw)
 
 
-def hand_parts(hand, light, colour, side='r'):
+def hand_parts(hand, light, colour, side='r', creases=True):
     """A Hand's meshes with their skins (colour: the skin's own; its nails painted on the last bones), mirrored for
     a left hand: [(mesh, skin)] in the hand's own space."""
     t = light.tones(colour)
     nails = tone3(mix(t['lit'], (255, 255, 255), 0.25), t['shade'], t['deep'])
 
     def tex(a, level, n):
-        u, ang, tip = a
-        if tip > 0.5 and 0.32 < u < 0.92 and (ang < 52 or ang > 308):
+        u, ang, tip, L = a
+        back = ang < 55 or ang > 305
+        if tip > 0.5 and 0.32 < u < 0.92 and back:
             return nails[level]
+        if back and level != 'deep' and abs(u * L - 1.4) < 0.35 and (ang < 40 or ang > 320):
+            return INK                                   # the wrinkle over a knuckle
         return None
-    palm, fingers = light.skin(colour), light.skin(colour, tex=tex)
+
+    def back_tex(a, level, n):
+        # the tendons on the back of the hand, fanning from the wrist to the knuckles
+        if len(a) == 3 and a[2] < -3.0 and level == 'lit' and 18 < a[1] < 34:
+            k = a[1] / 40.0
+            for kx in (-11.5, -3.5, 4.5):
+                if abs(a[0] - kx * (0.35 + 0.65 * k)) < 0.3 * (34 - a[1]) / 16:
+                    return INK
+        return None
+    palm, fingers = light.skin(colour, tex=back_tex, creases=creases), light.skin(colour, tex=tex, creases=creases)
     return [(mirrored(m) if side == 'l' else m, palm if part == 'palm' else fingers) for m, part in hand.meshes()]
+
+
+def wrist_for(fwd, palm, at, point=(0.0, 43.0, 0.0)):
+    """Where a wrist must be for its hand (fingers along fwd, palm toward palm, body space) to put its own point
+    `point` (the knuckle of the middle finger by default) at the body point `at`."""
+    F = frame(fwd, palm)
+    return sub(at, mv(F, point))
+
+
+def in_hand(side, fwd, palm, wrist, p):
+    """A body point p in the coordinates a hand shape's thumb_tip is given in (a right hand's, also for a left)."""
+    F = frame(fwd, palm)
+    q = sub(p, wrist)
+    q = (F[0][0] * q[0] + F[1][0] * q[1] + F[2][0] * q[2], F[0][1] * q[0] + F[1][1] * q[1] + F[2][1] * q[2],
+         F[0][2] * q[0] + F[1][2] * q[1] + F[2][2] * q[2])
+    return (-q[0], q[1], q[2]) if side == 'l' else q
+
+
+# a long coat's drape: folds falling from the hips to the hem, each a line that starts thin and opens out
+DRAPES = [(-150, -440, 0.0), (-118, -400, 4.0), (-62, -430, -3.0), (-30, -360, 2.0), (34, -380, -2.0), (66, -420, 3.0),
+          (112, -400, -4.0), (152, -440, 2.0)]
+
+
+def drape_tex(a, level, n):
+    """A coat skirt's tex: its front edge and the drape's folds, inked (attr: the standing point x, y, z)."""
+    x, y, z = a
+    if z > 0 and abs(x) < 2.2:
+        return INK
+    if level == 'deep':
+        return None
+    phi = math.degrees(math.atan2(x, z))
+    for p0, top, wig in DRAPES:
+        if y > top:
+            k = (y - top) / 230.0
+            if abs(phi - (p0 + wig * k * 3)) < 1.0 + 2.6 * k:
+                return INK if k > 0.08 else None
+    return None
 
 
 # ---------------------------------------------------------------- the characters
 # Their own colours (under a white light): the panel's Light makes their tones.
 HERO = dict(
     name='hero', build=Build(width=1.0, depth=0.98, shoulder=74),
-    head=dict(chin=0.8, jaw=0.06, brow=0.4, cheek=-0.25, nose=1.0, neck=17.5),
+    head=dict(chin=0.9, jaw=0.12, brow=0.8, cheek=-0.35, nose=1.1, hook=0.3, neck=17.5,
+              lines=('naso', 'jaw', 'cheek', 'bags', 'chin')),
     hair='hero', beard=True, outfit='coat', cap=True, scarf=True, satchel=True,
     colours=dict(skin=hx('#c48a62'), lip=hx('#b0745c'), stubble=hx('#a87458'), hair=hx('#4a2e1e'),
                  brow=hx('#2e1c14'), iris=hx('#3a2216'), white=hx('#e0d6c4'), coat=hx('#3a3a42'),
@@ -72,28 +123,33 @@ HERO = dict(
                  leather=hx('#6a3e22'), cap=hx('#26262c'), scarf=hx('#56565c'), button=hx('#1e4650')))
 HEAVY = dict(
     name='heavy', build=Build(width=1.16, depth=1.12, belly=8, chest=4, hips=1.08, shoulder=84, limb=1.2),
-    head=dict(width=1.05, jaw=0.18, brow=1.1, nose=1.05, hook=0.6, chin=0.6, neck=24.0, eye=0.85, skull=0.97),
+    head=dict(width=1.05, jaw=0.22, brow=1.3, nose=1.1, hook=0.6, chin=0.7, neck=24.0, eye=0.85, skull=0.97,
+              lines=('naso', 'jaw', 'forehead', 'furrow', 'bags', 'crows')),
     hair='shaved', outfit='leather', chain=True,
     colours=dict(skin=hx('#d8a48c'), lip=hx('#c08470'), scalp=hx('#c09078'), brow=hx('#3a2a22'),
                  iris=hx('#3a3a30'), white=hx('#e0d6c4'), jacket=hx('#1c1a1e'), shirt=hx('#2a2a30'),
                  trousers=hx('#24242c'), shoes=hx('#161214'), chain=hx('#d8b048')))
 SLICK = dict(
     name='slick', build=Build(width=0.94, depth=0.94, shoulder=71, hips=0.95, limb=0.92),
-    head=dict(width=0.95, jaw=-0.02, cheek=-0.9, nose=1.15, hook=1.0, chin=0.7, brow=0.5, neck=16.5),
-    hair='slick', moustache=True, outfit='suit', overcoat=True, ring=True, square=True,
-    colours=dict(skin=hx('#c49674'), lip=hx('#a8705c'), hair=hx('#141016'), brow=hx('#141016'), iris=hx('#241612'),
+    head=dict(width=0.95, jaw=0.04, cheek=-0.9, nose=1.2, hook=1.0, chin=0.8, brow=0.7, neck=16.5,
+              lines=('naso', 'cheek', 'jaw', 'crows', 'marionette')),
+    hair='slick', moustache=True, beard=True, outfit='suit', overcoat=True, ring=True, square=True,
+    colours=dict(skin=hx('#c49674'), lip=hx('#a8705c'), stubble=hx('#6a5a50'), hair=hx('#141016'), brow=hx('#141016'),
+                 iris=hx('#241612'),
                  white=hx('#e0d6c4'), jacket=hx('#26222e'), shirt=hx('#e8e2d6'), coat=hx('#1a1820'),
                  trousers=hx('#26222e'), shoes=hx('#120e10'), ring=hx('#e0b040'), square=hx('#b02a3a')))
 YOUNG = dict(
     name='young', build=Build(width=1.04, depth=0.96, shoulder=78, hips=0.94),
-    head=dict(jaw=0.12, chin=0.4, brow=0.7, nose=1.0, hook=0.35, cheek=-0.2, neck=18.5),
+    head=dict(jaw=0.16, chin=0.5, brow=0.9, nose=1.05, hook=0.4, cheek=-0.3, neck=18.5,
+              lines=('naso', 'jaw', 'cheek', 'chin')),
     hair='ponytail', beard=True, scar=True, outfit='bomber',
     colours=dict(skin=hx('#dcaa90'), lip=hx('#c08470'), stubble=hx('#b48a74'), hair=hx('#1e1612'), brow=hx('#1e1612'),
                  iris=hx('#2a3a3a'), white=hx('#e0d6c4'), jacket=hx('#5a1e26'), rib=hx('#2a1418'), shirt=hx('#d8d4cc'),
                  trousers=hx('#34405a'), shoes=hx('#d0ccc4'), band=hx('#1e4650'), scar=hx('#f0c4b4')))
 BOSS = dict(
     name='boss', build=Build(width=1.1, depth=1.18, belly=16, hips=1.1, shoulder=78),
-    head=dict(width=1.07, jowl=1.0, jaw=0.1, nose=1.3, tip=1.0, brow=0.7, chin=0.2, neck=23.0),
+    head=dict(width=1.07, jowl=1.0, jaw=0.1, nose=1.3, tip=1.0, brow=0.9, chin=0.2, neck=23.0, heavy_lids=1.0,
+              lids=0.7, lines=('naso', 'bags', 'forehead', 'crows', 'marionette', 'jaw', 'furrow')),
     hair='boss', outfit='suit', ring=True, square=True,
     colours=dict(skin=hx('#cc8c7c'), lip=hx('#b07466'), hair=hx('#b0acb0'), brow=hx('#8a8488'), iris=hx('#2a2a26'),
                  white=hx('#ddd2c0'), jacket=hx('#d8ccb0'), shirt=hx('#3a2a2e'), trousers=hx('#d0c4a8'),
@@ -103,7 +159,7 @@ BOSS = dict(
 HAIRLINES = {
     'hero': ([(0, 22), (25, 23), (45, 27), (66, 34), (78, 58), (88, 60), (96, 44), (122, 44), (150, 78), (180, 82)],
              lambda phi, y: 5.0 + 2.0 * smooth(40, 0, y)),
-    'slick': ([(0, 17), (30, 20), (55, 27), (72, 38), (80, 57), (86, 57), (93, 42), (125, 42), (150, 70), (180, 72)],
+    'slick': ([(0, 17), (30, 20), (55, 27), (72, 38), (80, 57), (86, 57), (93, 42), (125, 44), (150, 62), (180, 64)],
               lambda phi, y: 2.4 + 0.8 * smooth(30, 0, y)),
     'ponytail': ([(0, 22.5), (8, 19), (30, 20), (55, 27), (72, 38), (80, 52), (86, 52), (93, 42), (125, 42), (150, 70),
                   (180, 72)], lambda phi, y: 2.8 + 0.8 * smooth(30, 0, y)),
@@ -122,12 +178,13 @@ class Figure:
     default; face: the head's expression (smile=(right, left), gaze=(x, y), lids, squint, brow_lift=(right, left));
     bare: no coat, cap, scarf or satchel (the hero at home, in his knit); t_face: how squarely the face must take the
     light to be lit (higher: harder, more of it in shadow); hand_shadows False: his hands throw no shadow (on his
-    own face from a lamp below them, say); head_light: a key light of the head's own (Skin.light)."""
+    own face from a lamp below them, say); head_light: a key light of the head's own (Skin.light); face_black: the
+    face's own threshold for solid black (Skin.blacks), lower than the scene's to keep the eyes."""
 
     def __init__(self, who, pose=None, hands=None, face=None, bare=False, t_face=0.1, hand_shadows=True,
-                 head_light=None):
+                 head_light=None, face_black=True):
         self.who, self.bare, self.t_face, self.hand_shadows = who, bare, t_face, hand_shadows
-        self.head_light = head_light
+        self.head_light, self.face_black = head_light, face_black
         self.C = who['colours']
         self.outfit = 'knit' if bare else who['outfit']
         self.body = Body(who['build'], pose or {})
@@ -157,29 +214,33 @@ class Figure:
     def add(self, sc, xf, light):
         """Add him to the scene sc, placed by xf (body space -> panel px), in the colours of light."""
         b, C = self.body, self.C
+        px = 1.0 / max(1e-3, xf.scale())                 # a panel px in model units: lines no thinner than that
+        small = xf.scale() < 0.6
         t = {k: light.tones(v) for k, v in C.items()}
         lk = self.who['build'].limb
         # the legs in their trousers, the shoes
-        trousers = light.skin(C['trousers'])
         shiny = self.who['name'] in ('slick', 'boss')
         shoes = light.skin(C['shoes'], shine=0.3 if shiny else 0.0, tex=self.shoe_tex(t))
         for s in ('r', 'l'):
-            sc.add(b.limb(b.hip[s], b.knee[s], b.ankle[s], 30 * lk, 20 * lk, 16.5, (0, 0, 1), bulge=(2 * lk, 1.5), n=18),
-                   trousers, xf)
+            l1 = math.dist(b.hip[s], b.knee[s])
+            folds = trouser_folds(l1 / (l1 + math.dist(b.knee[s], b.ankle[s])), bend_of(b.hip[s], b.knee[s], b.ankle[s]))
+            sc.add(b.limb(b.hip[s], b.knee[s], b.ankle[s], 30 * lk, 20 * lk, 17.5, (0, 0, -1), bulge=(2 * lk, 1.5), n=18,
+                          folds=folds), light.skin(C['trousers'], tex=fold_tex(folds, least=1.1 * px)), xf)
             sc.add(shoe(b.ankle[s], b.toe[s], height=30 if self.outfit in ('coat', 'leather') else 26), shoes, xf)
         # the torso and, for a long coat, its skirt
         sc.add(b.torso(), self.top_skin(light, t), xf)
         if self.outfit == 'coat' or self.who.get('overcoat'):
-            sc.add(self.skirt(), light.skin(C['coat'], tex=lambda a, level, n: INK if (a[2] > 0 and abs(a[0]) < 3)
-                                            else None), xf)
+            sc.add(self.skirt(), light.skin(C['coat'], tex=drape_tex), xf)
         # the arms in their sleeves, the hands
-        sleeve = self.sleeve_skin(light, t)
         for s in ('r', 'l'):
             hf = self.hand_frame(s)
             palm_dir = (hf[0][2], hf[1][2], hf[2][2])
             cuff = lerp(b.wrist[s], b.elbow[s], 0.1)          # the sleeve stops short of the wrist
-            sc.add(b.limb(b.shoulder[s], b.elbow[s], cuff, 19 * lk, 16 * lk, 14.0, palm_dir, bulge=(1.5 * lk, 2.0 * lk),
-                          n=16, squash=lambda u: 1.0 + 0.2 * smooth(0.6, 1.0, u)), sleeve, xf)
+            l1 = math.dist(b.shoulder[s], b.elbow[s])
+            folds = sleeve_folds(l1 / (l1 + math.dist(b.elbow[s], cuff)), bend_of(b.shoulder[s], b.elbow[s], cuff))
+            sc.add(b.limb(b.shoulder[s], b.elbow[s], cuff, 19 * lk, 16.5 * lk, 15.0, palm_dir, bulge=(1.5 * lk, 2.0 * lk),
+                          n=16, squash=lambda u: 1.0 + 0.2 * smooth(0.6, 1.0, u), folds=folds),
+                   self.sleeve_skin(light, t, folds, 1.1 * px), xf)
             if self.outfit == 'suit' or self.who.get('overcoat'):
                 sc.add(tube([lerp(b.wrist[s], b.elbow[s], 0.13), lerp(b.wrist[s], b.elbow[s], 0.03)],
                             lambda u, a: 12.0, n=12, up=palm_dir, squash=lambda u: 1.15), light.skin(C['shirt']), xf)
@@ -188,7 +249,7 @@ class Figure:
                             squash=lambda u: 1.2), light.skin(C['skin']), xf)
             hand = Hand(self.hands[s]['shape'])
             hx_ = self.hand_xf(s, xf)
-            for m, skin in hand_parts(hand, light, C['skin'], s):
+            for m, skin in hand_parts(hand, light, C['skin'], s, creases=not small):
                 sc.add(m, skin, hx_, cast=self.hand_shadows)
             if self.who.get('ring') and s == 'l':
                 a_, b_ = hand.bones[9][0], hand.bones[9][1]           # a gold ring on his little finger
@@ -198,11 +259,11 @@ class Figure:
         hxf = b.head_xf(xf)
         hd = self.head
         hl = self.head_light
-        sc.add(hd.mesh(), light.skin(C['skin'], tex=hd.face(self.face_pal(t), self.face_extra(t)), t_lit=self.t_face,
-                                     light=hl), hxf)
-        sc.add(hd.neck(), light.skin(C['skin'], t_lit=self.t_face, light=hl), hxf)
+        sc.add(hd.mesh(), light.skin(C['skin'], tex=hd.face(self.face_pal(t), self.face_extra(t), 0.9 * px), t_lit=self.t_face,
+                                     light=hl, blacks=self.face_black), hxf)
+        sc.add(hd.neck(), light.skin(C['skin'], t_lit=self.t_face, light=hl, blacks=self.face_black), hxf)
         st = t['skin']
-        ear = light.skin(C['skin'], light=hl, tex=lambda a, level, n: (st['shade'] if level in ('lit', 'hi') else
+        ear = light.skin(C['skin'], light=hl, blacks=self.face_black, tex=lambda a, level, n: (st['shade'] if level in ('lit', 'hi') else
                                                                        st['deep'])
                          if (0.36 < a[0] < 0.76 and 62 < a[1] < 118) else None)
         for side in (-1, 1):
@@ -264,7 +325,7 @@ class Figure:
                 lips = ax < 10 and my - 3.0 < y < my + 3.4
                 low = y > 64 + 6 * bell(ax / 22) + (8 if ax > 22 else 0)
                 if low and not lips and y > 70.5 - 0.15 * ax:
-                    return t['stubble'][level]
+                    return mix(t['skin'][level], t['stubble'][level], 0.45)
             return None
         return extra
 
@@ -346,22 +407,15 @@ class Figure:
         base = {'knit': 'knit', 'coat': 'coat', 'overcoat': 'coat'}.get(outfit, 'jacket')
         return light.skin(C[base], shine=0.15 if outfit == 'leather' else 0.0, tex=tex)
 
-    def sleeve_skin(self, light, t):
+    def sleeve_skin(self, light, t, folds, least=0.0):
         C, outfit = self.C, self.outfit
         base = C['coat'] if (outfit == 'coat' or self.who.get('overcoat')) and not self.bare else \
             C['knit'] if outfit == 'knit' else C['jacket']
-        cuff = t['rib'] if outfit == 'bomber' else None
+        cuff = t['rib'] if outfit == 'bomber' else t['knit'] if outfit == 'knit' else None
 
-        def tex(a, level, n):
-            u, ang, ue = a
-            if cuff and u > 0.93:
-                return cuff[level]
-            if abs(u - ue) < 0.05 and (ang < 40 or ang > 320):    # creases inside the elbow
-                k = abs(u - ue) / 0.05
-                if (k < 0.2 or abs(k - 0.7) < 0.12) and level != 'lit':
-                    return INK
-            return None
-        return light.skin(base, shine=0.15 if outfit == 'leather' else 0.0, tex=tex)
+        def ribbed(a, level, n):
+            return cuff[level] if cuff and a[0] > 0.92 else None
+        return light.skin(base, shine=0.15 if outfit == 'leather' else 0.0, tex=fold_tex(folds, ribbed, least))
 
     def shoe_tex(self, t):
         sole = t['shoes']
@@ -390,7 +444,7 @@ class Figure:
             x, y, z = a
             # the comb's tracks run front to back: lines round the axis through the ears
             th = math.degrees(math.atan2(x, 52.0 - y))
-            if style in ('slick', 'ponytail', 'boss') and level in ('lit', 'hi') and (th + 2.0 * math.sin(th * 0.7)) % 9.0 < 0.9:
+            if style in ('slick', 'ponytail', 'boss') and level in ('lit', 'hi') and (th + 2.0 * math.sin(th * 0.7)) % 15.0 < 2.2:
                 return shine
             return None
         skin = light.skin(who['colours']['hair'], tex=tex, light=self.head_light)
@@ -401,10 +455,11 @@ class Figure:
             off = lambda p, phi: off0(p, phi) if p[1] > band(phi) - 4 else -1.5
         sc.add(hd.shell(off, y_max=84), skin, hxf)
         if style == 'ponytail':
-            path = [(0, 44, -44), (0, 58, -50), (0, 76, -53), (0, 92, -50)]
-            sc.add(tube(path, lambda u, a: 6.5 * (1 - 0.5 * u) + 2.5 * bell((u - 0.25) / 0.3), n=12, up=(1, 0, 0)),
+            # tied at the back of the head, it stands out from the nape and falls: it shows against any light
+            path = [(0, 42, -44), (0, 50, -54), (0, 64, -61), (0, 82, -63), (0, 100, -58)]
+            sc.add(tube(path, lambda u, a: 7.5 * (1 - 0.55 * u) + 3.0 * bell((u - 0.3) / 0.35), n=12, up=(1, 0, 0)),
                    skin, hxf)
-            sc.add(tube([(0, 45, -46.5), (0, 50, -48.5)], lambda u, a: 7.8, n=12), light.skin(self.C['band']), hxf)
+            sc.add(tube([(0, 44, -47), (0, 50, -52)], lambda u, a: 8.2, n=12), light.skin(self.C['band']), hxf)
         if style == 'hero':
             # down to his collar at the back: a fall of hair over the nape
             rows, centers = [], []
@@ -443,7 +498,7 @@ class Figure:
                                                        if a[0] > 0.86 else None), xf)
         if self.has('scarf'):
             # wound round his neck and pulled up over his mouth, to the nose
-            rn = hd.m['neck'] + 7
+            rn = hd.m['neck'] + 4.5
             rows, centers = [], []
             ang = [i * 10.0 for i in range(37)]
             for y in (70.5, 75.0, 80.0, 86.0, 92.0, 98.0, 104.0, 112.0, 122.0):
@@ -452,7 +507,7 @@ class Figure:
                     s_, c_ = math.sin(math.radians(a)), math.cos(math.radians(a))
                     q = (s_ * rn, y, -8 + c_ * rn * 1.05)
                     if y <= 104:
-                        p = hd.point(min(y, 95.0), a, 3.5 + 3.0 * bell((y - 70) / 7) * max(0.0, c_))
+                        p = hd.point(min(y, 95.0), a, 2.2 + 1.6 * bell((y - 70) / 7) * max(0.0, c_))
                         p = (p[0], y, p[2] - 2.0 * smooth(92, 104, y) * max(0.0, c_))
                         if math.hypot(p[0], p[2] + 8) > math.hypot(q[0], q[2] + 8):
                             q = p
@@ -470,49 +525,48 @@ class Figure:
                 sc.add(tube([p0, p1], lambda u, a: 5.5 - 2 * u, n=8, up=(0, 0, 1), squash=lambda u: 0.45), shirt, xf)
 
     def add_cap(self, sc, hxf, light):
-        """His flat cap: a band round the head at the brow, its crown puffed out and flat on top, pulled forward over
-        the peak; the peak low over his eyes; a button on top."""
+        """His flat cap: soft, low on the head; its crown a sloping top wider than the skull, high at the back and
+        pulled down forward onto a short stiff peak low over his eyes; a seam down its top, a button."""
         C, hd = self.C, self.head
-        band = Curve([(0, 31), (40, 33), (80, 40), (120, 44), (180, 46)])
-        ang = [i * 7.5 - 180 for i in range(49)]
-        rows, centers = [], []
-        for k in (0.0, 0.25, 0.5, 0.7, 0.85, 0.94, 1.0):
-            row = []
-            for a in ang:
-                p = hd.point(band(abs(a)), a, 2.5)
-                s_, c_ = math.sin(math.radians(a)), math.cos(math.radians(a))
-                # the edge of the flat top: wider than the head, reaching forward over the peak
-                top = (s_ * 37.0, 0.0, 6.0 + c_ * (50.0 if c_ > 0 else 42.0))
-                top = (top[0], -5.0 + 0.26 * top[2], top[2])
-                if k <= 0.7:
-                    u = k / 0.7
-                    q = lerp(p, top, u * u * (3 - 2 * u))
-                    bulge = 5.0 * bell((u - 0.65) / 0.5)
-                    q = (q[0] + s_ * bulge, q[1], q[2] + c_ * bulge)
-                else:
-                    u = (k - 0.7) / 0.3            # across the flat top to its middle
-                    mid = (0.0, -5.0 + 0.26 * 4.0, 4.0)
-                    q = lerp(top, mid, u)
-                    q = (q[0], q[1] - 1.5 * math.sin(math.pi * u), q[2])
-                row.append(q)
-            rows.append(row)
-            centers.append((0.0, 20.0 - k * 20, 0.0))
-        cap = light.skin(C['cap'], tex=lambda a, level, n: INK if (abs(a[0]) < 0.8 and a[1] < 4 and a[2] > 10) else None)
-        sc.add(grid(rows, rows, centers), cap, hxf)
+        band = Curve([(0, 29), (40, 31), (80, 38), (120, 43), (180, 45)])
+
+        def off(p, phi):
+            k = (band(phi) - p[1]) / 2.0
+            return 4.5 * min(1.0, k) if k > 0 else 1.5 * max(-1.0, k)
+        crown = hd.shell(off, y_max=50)
+        verts = []
+        for v in crown.verts:
+            # soft: wider than the skull above the band, its top pulled forward and down over the peak
+            up = smooth(30, 8, v[1])
+            front = smooth(-10, 30, v[2])
+            x = v[0] * (1 + 0.07 * up)
+            y = v[1] + 3.0 * up * front * smooth(10, 30, v[2])
+            z = v[2] + 11.0 * up * front * smooth(4, 20, v[1])
+            verts.append((x, y, z))
+        crown.verts, crown.normals = verts, None
+        crown.attrs = verts
+        def tex(a, level, n):
+            x, y, z = a
+            if abs(x) < 0.7 and y < 16:
+                return INK                                            # the seam down its top
+            return None
+        cap = light.skin(C['cap'], tex=tex)
+        sc.add(crown, cap, hxf)
+        # the peak: short and stiff, from the cap's front edge, tipped down over the brow
         rows = []
-        for j in range(5):
-            k = j / 4
+        for j in range(4):
+            k = j / 3
             row = []
             for i in range(13):
-                a = -70 + i * (140 / 12)
-                p = hd.point(30.0, a, 4.0)
-                reach = 17.0 * k * math.cos(math.radians(a * 0.9)) ** 0.6
-                row.append(add(p, (math.sin(math.radians(a)) * reach * 0.5, 4.0 * k * k + 1.0 * k,
+                a = -62 + i * (124 / 12)
+                p = hd.point(band(abs(a)), a, 2.6)
+                reach = 13.0 * k * math.cos(math.radians(a * 1.1)) ** 0.5
+                row.append(add(p, (math.sin(math.radians(a)) * reach * 0.4, 5.0 * k + 1.0 * k * k,
                                    math.cos(math.radians(a)) * reach)))
             rows.append(row)
         top = grid(rows)
-        under = grid([[add(p, (0, 1.8, 0)) for p in r] for r in rows])
+        under = grid([[add(p, (0, 1.6, 0)) for p in r] for r in rows])
         under.tris = [(i, k, j) for i, j, k in under.tris]
         sc.add(top, cap, hxf)
         sc.add(under, cap, hxf)
-        sc.add(tube([(0, -3.0, 4), (0, -5.5, 4.5)], lambda u, a: 3.2, n=10), light.skin(C['button']), hxf)
+        sc.add(tube([(0, -1.5, 2.0), (0, -3.5, 2.5)], lambda u, a: 3.0, n=10), light.skin(C['button']), hxf)

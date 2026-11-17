@@ -79,6 +79,41 @@ HEAD = dict(
            (8.5, 66.5, 4.5, 3.5, 3.5), (13, 71, 7, 7, 1.8), (11.5, 77, 3, 3, -1.2), (27, 36, 6, 8, -1.5)],
 )
 
+# the lines an inker puts in a face, in its front view (|x|, y): (name, polyline, width at its start, at its end,
+# the least z it is drawn at); Head(lines=(...)) picks them
+FACE_LINES = [
+    ('naso', [(9.5, 65.0), (12.8, 70.5), (14.2, 76.0), (14.6, 81.0)], 1.1, 0.25, 20),        # nose to mouth
+    ('bags', [(9.5, 52.8), (14.5, 54.4), (20.0, 52.6)], 0.8, 0.2, 15),                      # under the eyes
+    ('cheek', [(26.5, 52.0), (24.0, 60.0), (20.5, 67.0)], 0.9, 0.2, 0),                     # the cheekbone's edge
+    ('jaw', [(28.5, 72.0), (24.0, 85.0), (15.0, 94.5)], 1.0, 0.3, -12),                     # the jaw's side plane
+    ('forehead', [(3.0, 25.5), (11.0, 24.2), (19.0, 26.0)], 0.7, 0.2, 20),
+    ('forehead', [(4.0, 30.5), (12.0, 29.4), (18.5, 31.0)], 0.6, 0.2, 20),
+    ('crows', [(21.0, 46.0), (24.5, 44.2)], 0.6, 0.2, 5),
+    ('crows', [(21.0, 47.6), (24.5, 49.0)], 0.6, 0.2, 5),
+    ('chin', [(0.0, 90.5), (0.0, 96.0)], 0.9, 0.3, 20),                                     # a cleft chin
+    ('marionette', [(12.4, 78.5), (13.6, 85.0)], 0.7, 0.2, 15),                             # mouth corners down
+    ('furrow', [(2.6, 38.0), (3.2, 44.0)], 0.7, 0.3, 30),                                   # between the brows
+]
+
+
+def near(x, y, pts, w0, w1):
+    """Is (x, y) on the polyline pts drawn w0 wide at its start thinning to w1 at its end?"""
+    total = sum(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)) or 1.0
+    run = 0.0
+    for i in range(len(pts) - 1):
+        (ax_, ay), (bx, by) = pts[i], pts[i + 1]
+        dx, dy = bx - ax_, by - ay
+        L2 = dx * dx + dy * dy or 1e-9
+        t = max(0.0, min(1.0, ((x - ax_) * dx + (y - ay) * dy) / L2))
+        d = math.hypot(x - ax_ - dx * t, y - ay - dy * t)
+        seg = math.sqrt(L2)
+        w = w0 + (w1 - w0) * (run + seg * t) / total
+        if d < w / 2:
+            return True
+        run += seg
+    return False
+
+
 # the face's features, in its front view (x, y): eyes, brows, mouth
 EYE = dict(x=14.5, y=46.5, hw=6.4, up=2.6, lo=1.6, iris=2.8)
 CENTRE = (0.0, 48.0, -2.0)    # the middle of the skull: hair and cap stand out from it
@@ -122,7 +157,7 @@ class Head:
 
     def __init__(self, **mods):
         self.m = dict(jaw=0.0, chin=0.0, nose=1.0, hook=0.0, brow=0.0, cheek=0.0, jowl=0.0, neck=18.0, smile=(0.0, 0.0),
-                      squint=0.0, lids=1.0, gaze=(0.0, 0.0), skull=1.0, width=1.0, tip=0.0, eye=1.0)
+                      squint=0.0, lids=1.0, gaze=(0.0, 0.0), skull=1.0, width=1.0, tip=0.0, eye=1.0, lines=(), heavy_lids=0.0)
         self.m.update(mods)
         m = self.m
         self.W = Curve(HEAD['W'])
@@ -177,10 +212,19 @@ class Head:
             p = add(p, mul(d, off))
         return p
 
+    GEOMETRY = ('jaw', 'chin', 'nose', 'hook', 'brow', 'cheek', 'jowl', 'skull', 'width', 'tip')
+    _meshes = {}
+
     def mesh(self):
-        ang = head_angles()
-        rows = [[self.point(y, a) for a in ang] for y in head_rows()]
-        return grid(rows, centers=[(0, y, self.zm(y)) for y in head_rows()])
+        """The head's loft (the same build gives the same mesh: kept)."""
+        key = tuple(self.m[k] for k in self.GEOMETRY)
+        if key not in Head._meshes:
+            ang = head_angles()
+            rows = [[self.point(y, a) for a in ang] for y in head_rows()]
+            m = grid(rows, centers=[(0, y, self.zm(y)) for y in head_rows()])
+            m.normals_()
+            Head._meshes[key] = m
+        return Head._meshes[key]
 
     def shell(self, off, y_max=100.0):
         """A shell over the head (hair, a cap): off(p, phi) -> how far it stands out at the surface point p (phi:
@@ -215,8 +259,9 @@ class Head:
         u = min(1.0, abs(x) / 11.0)
         return 77.0 - sm * 3.2 * u ** 2.2 + abs(sm) * 0.3 * u
 
-    def face(self, pal, extra=None):
-        """The skin's tex: eyes, brows, lids, lips, nostrils painted per px from the model point (x, y, z)."""
+    def face(self, pal, extra=None, least=0.0):
+        """The skin's tex: eyes, brows, lids, lips, nostrils and the face's lines painted per px from the model point
+        (x, y, z); least: the narrowest a line may be (model units)."""
         m = self.m
         E = dict(EYE, hw=EYE['hw'] * m['eye'], up=EYE['up'] * m['eye'], lo=EYE['lo'] * m['eye'],
                  iris=EYE['iris'] * m['eye'])
@@ -225,6 +270,8 @@ class Head:
         brow = pal['brow']
         gx, gy = m['gaze']
         open_ = m['lids'] * (1 - 0.45 * m['squint'])
+        lines = set(m['lines'])
+        heavy = m['heavy_lids']
 
         def tex(a, level, n):
             x, y, z = a[0], a[1], a[2]
@@ -259,10 +306,17 @@ class Head:
                         return INK                               # the upper lid's lashes
                     if bot <= ye < bot + 0.6:
                         return skin['shade'] if level in ('lit', 'hi') else skin['deep']
-                    if top - 3.4 < ye <= top - 2.4 and open_ > 0.3:
-                        return skin['shade'] if level in ('lit', 'hi') else None   # the lid's crease
+                    if top - 3.4 - heavy * 1.5 < ye <= top - 2.4 and open_ > 0.3 and level != 'deep':
+                        return INK if heavy else (skin['shade'] if level in ('lit', 'hi') else None)   # the lid's crease
+                    if heavy and top - 2.4 < ye <= top - 1.3:
+                        return skin['shade']                                    # the heavy lid hanging over it
                 if 1 <= u < 1.25 and abs(ye) < 0.8:
                     return INK                                   # the outer corner
+            # what a penciller draws in: the planes' breaks, the folds and lines of a face that has lived
+            if level != 'deep':
+                for key, pts, w0, w1, zmin in FACE_LINES:
+                    if key in lines and zmin < z and near(ax, y, pts, max(w0, least), max(w1, least * 0.6)):
+                        return INK
             # the brows
             bx = ax - 6.0
             if 0 <= bx < 20 and 34 < y < 44:
@@ -362,6 +416,93 @@ def mm_(a, b):
     return tuple(tuple(sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)) for i in range(3))
 
 
+class Fold:
+    """A fold of cloth round a limb, drawn as an inker draws it: a line across the limb at u (0..1 along it, 0 at
+    the shoulder or the hip) centred on angle a0 (0: inside the bend), span degrees either side, bent along by
+    slope (u's change from its middle to its ends: + a smile, - a frown, kind 's' a spiral), w its width (model
+    units) in the middle, thinning to nothing at its ends; depth: how far the cloth bunches out along it."""
+
+    def __init__(self, u, a0=0.0, span=80.0, slope=0.0, w=1.6, depth=1.0, kind='v'):
+        self.u, self.a0, self.span, self.slope, self.w, self.depth, self.kind = u, a0, span, slope, w, depth, kind
+
+    def at(self, u, ang, L):
+        """How far (model units, along the limb) the point (u, ang) is from the fold's line, and the line's width
+        there; None outside its span."""
+        da = (ang - self.a0 + 180.0) % 360.0 - 180.0
+        if abs(da) >= self.span:
+            return None
+        k = da / self.span
+        uc = self.u + self.slope * (k if self.kind == 's' else abs(k))
+        return abs(u - uc) * L, self.w * math.cos(k * math.pi / 2)
+
+    def ridge(self, u, ang, L):
+        if not self.depth:
+            return 0.0
+        hit = self.at(u, ang, L)
+        if hit is None:
+            return 0.0
+        d, w = hit
+        return self.depth * bell(d / 3.5) * (w / self.w)
+
+
+def fold_tex(folds, under=None, least=0.0):
+    """A sleeve's or a leg's tex: its folds inked (not where the light has gone to black), then under's tex. least:
+    the narrowest a fold's line may be (model units: a px at the scene's scale, so that it still shows small)."""
+    def tex(a, level, n):
+        u, ang, ue, L = a
+        if level != 'deep':
+            for f in folds:
+                hit = f.at(u, ang, L)
+                if hit and hit[0] < max(hit[1], least * (hit[1] / f.w) ** 0.3) / 2:
+                    return INK
+        return under(a, level, n) if under else None
+    return tex
+
+
+def sleeve_folds(ue, bend):
+    """The folds of a sleeve bent bend degrees at the elbow (u ue): bunched inside the elbow, pulled round the
+    forearm, a drag line from the armpit; cuffs bunch at the wrist."""
+    k = min(1.0, bend / 60.0)
+    return [Fold(ue - 0.025, 0, 70, -0.02, 1.8, 1.4 * k), Fold(ue + 0.01, 0, 85, 0.03, 2.0, 1.8 * k),
+            Fold(ue + 0.05, 10, 60, 0.025, 1.4, 1.0 * k), Fold(ue + 0.16, 40, 95, 0.05, 1.3, 0.6, 's'),
+            Fold(ue + 0.3, -30, 80, -0.04, 1.1, 0.4, 's'), Fold(0.16, 200, 70, 0.08, 1.2, 0.0, 's'),
+            Fold(0.95, 180, 110, -0.012, 1.2, 0.8)]
+
+
+def trouser_folds(ue, bend):
+    """A trouser leg's folds: behind the knee as it bends, across the front of the knee, the break over the shoe."""
+    k = min(1.0, bend / 45.0)
+    return [Fold(ue - 0.02, 0, 70, -0.015, 1.8, 1.4 * k), Fold(ue + 0.015, 0, 80, 0.02, 1.6, 1.2 * k),
+            Fold(ue - 0.06, 180, 60, 0.02, 1.2, 0.0), Fold(0.2, 140, 70, 0.06, 1.2, 0.0, 's'),
+            Fold(0.935, 180, 100, -0.012, 1.5, 1.6), Fold(0.965, 150, 70, 0.01, 1.3, 1.2)]
+
+
+def bend_of(a, b, c):
+    """The angle (degrees) a limb a-b-c bends at b: 0 straight."""
+    u, v = unit(sub(b, a)), unit(sub(c, b))
+    return math.degrees(math.acos(max(-1.0, min(1.0, dot(u, v)))))
+
+
+def stance(weight='l', hips=7.0, shoulders=5.0, turn=0.0, lean=0.0, spread=26.0, step=24.0, drop=8.0, head=None):
+    """A standing pose with its weight on one leg (contrapposto): that leg under him, its hip up, the pelvis's
+    turn and tilt, the shoulders tilted against the hips, the free leg out (spread) and forward (step) with its knee
+    bent, the head tilted back toward the weight. Returns Body's pose keys (add arms, hands, a head turn after)."""
+    sg = 1 if weight == 'l' else -1
+    free = 'r' if weight == 'l' else 'l'
+    hx_ = BONES['hip_x']
+    return {
+        'root': (sg * 9.0, PELVIS_Y + drop, 0.0),
+        'pelvis': mm_(rot((0, 1, 0), turn), rot((0, 0, 1), -sg * hips)),
+        'chest': mm_(rot((0, 0, 1), sg * (hips + shoulders)), rot((1, 0, 0), -lean)),
+        'head': head or rot((0, 0, 1), -sg * shoulders * 0.8),
+        'ankle_' + weight: (sg * 6.0, -BONES['ankle'], -2.0),
+        'ankle_' + free: (-sg * (hx_ + spread), -BONES['ankle'], step),
+        'knee_' + free: (-sg * 0.3, 0.0, 1.0),
+        'toe_' + weight: (sg * 0.25, 0.0, 1.0),
+        'toe_' + free: (-sg * 0.45, 0.0, 1.0),
+    }
+
+
 class Build:
     """How a man is built: width (chest and shoulders' bulk), depth, belly (more front at the waist), chest (more
     front at the ribs), hips, shoulder (half the distance between the shoulder joints), limb (thickness of arms and
@@ -450,19 +591,31 @@ class Body:
         m = mm_(xf.m, self.Rh)
         return Xf.raw(m, sub(xf(pivot), mv(m, pivot_model)))
 
-    def limb(self, a, b, c, r_top, r_mid, r_end, up, bulge=(0.0, 0.0), n=16, ends=(True, True), squash=None):
+    def limb(self, a, b, c, r_top, r_mid, r_end, up=None, bulge=(0.0, 0.0), n=16, ends=(True, True), squash=None,
+             folds=()):
         """A limb (an arm, a leg, in its sleeve) through a, b (the elbow or the knee), c: its radius r_top at a, r_mid
-        at the joint, r_end at c; bulge (upper, lower): more at the middle of each bone. attr: (u, angle, u at b)."""
+        at the joint, r_end at c; bulge (upper, lower): more at the middle of each bone; folds: [Fold] the cloth
+        bunched there (the radius ridged where each one runs). Its angle 0 looks into the bend (inside the elbow,
+        behind the knee: `up` when the limb is straight). attr: (u, angle, u at b, length)."""
         l1, l2 = math.dist(a, b), math.dist(b, c)
-        ue = l1 / (l1 + l2)
+        L = l1 + l2
+        ue = l1 / L
+        inside = sub(lerp(a, c, ue), b)
+        if dot(inside, inside) > 1.0:
+            up = unit(inside)
+        up = up or (0, 0, 1)
 
         def radius(u, ang):
             if u <= ue:
                 k = u / ue
-                return r_top + (r_mid - r_top) * k + bulge[0] * bell((k - 0.4) / 0.6)
-            k = (u - ue) / (1 - ue)
-            return r_mid + (r_end - r_mid) * k + bulge[1] * bell((k - 0.3) / 0.6)
-        return tube([a, b, c], radius, n=n, up=up, caps=ends, squash=squash, attr=lambda u, ang, p: (u, ang, ue))
+                r = r_top + (r_mid - r_top) * k + bulge[0] * bell((k - 0.4) / 0.6)
+            else:
+                k = (u - ue) / (1 - ue)
+                r = r_mid + (r_end - r_mid) * k + bulge[1] * bell((k - 0.3) / 0.6)
+            for f in folds:
+                r += f.ridge(u, ang, L)
+            return r
+        return tube([a, b, c], radius, n=n, up=up, caps=ends, squash=squash, attr=lambda u, ang, p: (u, ang, ue, L))
 
 
 # ---------------------------------------------------------------- feet
@@ -494,7 +647,7 @@ THUMB = ((-9.0, 5.0, 2.0), (21.0, 14.0, 11.5), 5.4, 4.0)
 
 # Shapes: each finger (spread toward the little finger, bend at the knuckle, at the middle joint, at the last), the
 # thumb (spread away from the hand toward -x, lift out of the palm toward +z, bend, bend), in degrees.
-RELAXED = dict(fingers=[(-2, 20, 30, 14), (0, 24, 34, 16), (2, 28, 36, 16), (5, 32, 38, 16)], thumb=(18, 26, 14, 16))
+RELAXED = dict(fingers=[(-1, 26, 40, 18), (0, 30, 44, 20), (1, 34, 46, 20), (3, 38, 48, 20)], thumb=(12, 24, 16, 18))
 OPEN = dict(fingers=[(-9, 2, 4, 2), (-1, 0, 4, 2), (6, 2, 5, 3), (14, 4, 6, 4)], thumb=(48, 22, 2, 4))
 FIST = dict(fingers=[(-2, 86, 100, 56), (0, 90, 102, 56), (2, 92, 102, 56), (4, 94, 102, 56)], thumb=(10, 30, 0, 0),
             thumb_tip=(1.0, 37.0, 24.0))
@@ -595,8 +748,9 @@ class Hand:
         out.append((tube([m0, lerp(m1, k, 0.5), k], lambda u, ang: 4.6 - 1.0 * u, n=10, up=(0, 0, 1),
                          squash=lambda u: 0.6, attr=lambda u, ang, p: p), 'palm'))
         for a, b, ra, rb, back, tip in self.bones:
+            L = math.dist(a, b)
             out.append((tube([a, b], lambda u, ang, ra=ra, rb=rb: ra + (rb - ra) * u, n=10, up=back,
-                             attr=lambda u, ang, p, t=tip: (u, ang, 1.0 if t else 0.0)), 'tip' if tip else 'finger'))
+                             attr=lambda u, ang, p, t=tip, L=L: (u, ang, 1.0 if t else 0.0, L)), 'tip' if tip else 'finger'))
         return out
 
 
