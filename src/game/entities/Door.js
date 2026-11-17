@@ -19,9 +19,10 @@ const LAMP_AT = 5;           // px from the latch end: the lock's lamp, on the l
 const SHUT = 0.012;          // rad off shut that counts as shut, for the latch
 // the leaf sprite is cut in three along its length: hinge end, middle (tiled to the leaf length), latch end
 const CAP_HINGE = 8, CAP_LATCH = 12;
-// the closer seen from above (px): its body on the leaf's face [from, to] along it, the pinion's arm and the one to
-// the shoe on the frame head, the shoe's place along the shut leaf
-const CLOSER = { body: [2, 10], pinion: 3, arm: [7, 9], shoe: 14 };
+// the closer seen from above (px): its body on the leaf's face [from, to] along it, its depth, the pinion's arm and
+// the one to the shoe, the shoe screwed to the wall beside the hinge: [along the doorway (behind the pivot, over the
+// jamb), out from the leaf's line to the wall's face]
+const CLOSER = { body: [2, 12], depth: 3, pinion: 4, arm: [8, 9], shoe: [-7, 12] };
 
 // Physical swinging door on a kinematically enforced hinge: (hx, hy) is the pivot, `len` the pivot-to-latch
 // length, the leaf runs LEAF.back further behind the pivot (see world/Openings.js for the layout in a wall).
@@ -545,7 +546,7 @@ export default class Door {
   drawCloser(ctx) {
     const C = CLOSER, f = this.flip, off = f * (LEAF.thick / 2 + 1), a = this.body.angle;
     const at = (ang, u, v) => ({ x: this.hx + Math.cos(ang) * u - Math.sin(ang) * v, y: this.hy + Math.sin(ang) * u + Math.cos(ang) * v });
-    const P = at(a, C.pinion, off), S = at(this.a0, C.shoe, off);
+    const P = at(a, C.pinion, off), S = at(this.a0, C.shoe[0], f * C.shoe[1]);
     // the elbow: where the two bars meet, bent out away from the leaf
     const dx = S.x - P.x, dy = S.y - P.y, d = Math.hypot(dx, dy) || 1, [l1, l2] = C.arm;
     let E;
@@ -556,21 +557,33 @@ export default class Door {
       E = { x: P.x + (dx / d) * u + nx * k * out, y: P.y + (dy / d) * u + ny * k * out };
     }
     ctx.save();
-    ctx.strokeStyle = '#8a8898';
-    ctx.lineWidth = 1;
+    // the arm: a dark outline under a lit steel bar, so it reads on any floor
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#121018';
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(P.x, P.y); ctx.lineTo(E.x, E.y); ctx.lineTo(S.x, S.y);
     ctx.stroke();
-    ctx.fillStyle = '#1c1a22';
-    ctx.fillRect(Math.round(S.x) - 1, Math.round(S.y) - 1, 2, 2); // the shoe
+    ctx.strokeStyle = '#c4c2d4';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // the elbow's pin and the shoe: a bracket screwed to the wall
+    ctx.fillStyle = '#121018';
+    ctx.fillRect(Math.round(S.x) - 2, Math.round(S.y) - 2, 4, 4);
+    ctx.fillStyle = '#9a98aa';
+    ctx.fillRect(Math.round(S.x) - 1, Math.round(S.y) - 1, 2, 2);
+    ctx.fillStyle = '#e8e6f4';
+    ctx.fillRect(Math.round(E.x), Math.round(E.y), 1, 1);
     // its body: a dark steel box on the face, a lit edge
     ctx.translate(this.hx, this.hy);
     ctx.rotate(a);
-    const v0 = f > 0 ? LEAF.thick / 2 : -LEAF.thick / 2 - 2;
-    ctx.fillStyle = '#24222c';
-    ctx.fillRect(C.body[0], v0, C.body[1] - C.body[0], 2);
-    ctx.fillStyle = '#9a98aa';
-    ctx.fillRect(C.body[0], f > 0 ? v0 + 1 : v0, C.body[1] - C.body[0], 1);
+    const dp = C.depth, v0 = f > 0 ? LEAF.thick / 2 : -LEAF.thick / 2 - dp;
+    ctx.fillStyle = '#121018';
+    ctx.fillRect(C.body[0] - 1, v0 - 1, C.body[1] - C.body[0] + 2, dp + 2);
+    ctx.fillStyle = '#3a3846';
+    ctx.fillRect(C.body[0], v0, C.body[1] - C.body[0], dp);
+    ctx.fillStyle = '#b4b2c4';
+    ctx.fillRect(C.body[0], f > 0 ? v0 + dp - 1 : v0, C.body[1] - C.body[0], 1);
     ctx.restore();
   }
 }
