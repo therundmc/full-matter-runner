@@ -4,7 +4,8 @@
 // than FACING.twist off the shoulders. Walking, the hips go along the way (Gait.js footA). Standing, the feet stay
 // planted where they are in the world: the hips turn over them up to FACING.hipFoot, and once they want to go
 // further round he steps, one foot then the other (a pivot), or hops round on both for a sudden about-turn.
-// Feet are world points here (planted means planted), turned into pose px by CharacterAnim.
+// Feet are world points here (planted means planted), turned into pose px by CharacterAnim. A pastime that moves him
+// itself (ch.lead: a dancer) owns them and the layers while it lasts (see lead).
 import { FACING } from '../data/feel.js';
 import { GAIT } from './Gait.js';
 import { BODY_SCALE } from '../Config.js';
@@ -14,7 +15,7 @@ const H = 1 / 240; // s: the springs' longest sub-step (the same motion at any f
 const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 
 function newFacing(a) {
-  return { head: a, headV: 0, sh: a, shV: 0, hip: a, hipV: 0, feet: null, step: null, plantW: 0, hop: 0, rest: 0 };
+  return { head: a, headV: 0, sh: a, shV: 0, hip: a, hipV: 0, feet: null, step: null, plantW: 0, hop: 0, rest: 0, led: null };
 }
 
 // an angle x (rad) with its speed v (rad/s) pulled toward `to` by a spring [w, z] for dt s: F[k], F[kv] in place
@@ -64,8 +65,8 @@ function startStep(F, x, y, goal, i, hop) {
   F.step = { t: 0, dur: S.dur, lift: S.lift, hop, goal, to };
 }
 
-// Turn the layers of ch toward its angle over dt s. ch: { angle, x, y, footA, world.time, headTo?, aware? }; still:
-// standing (feet planted).
+// Turn the layers of ch toward its angle over dt s. ch: { angle, x, y, footA, world.time, headTo?, aware?, lead? };
+// still: standing (feet planted).
 // Returns what happened that is heard: 0, 'step' (a foot set down), 'hop', or 'cloth' (a quick turn).
 export function updateFacing(ch, dt, still) {
   const F = (ch.facing ??= newFacing(ch.angle)), A = FACING, a = ch.angle;
@@ -80,6 +81,9 @@ export function updateFacing(ch, dt, still) {
   if (Math.abs(F.shV) > A.cloth && shV <= A.cloth) heard = 'cloth';
   // walking: the hips along the way; standing: over the planted feet
   F.plantW = clamp(F.plantW + (still ? dt : -dt) / 0.1, 0, 1);
+  const L = ch.lead;
+  if (L && still) return lead(F, ch, L);
+  F.led = null;
   if (!still) {
     F.hip = ch.footA; F.hipV = 0;
     F.feet = null; F.step = null; F.hop = 0;
@@ -94,6 +98,25 @@ export function updateFacing(ch, dt, still) {
     heard = stepFeet(F, ch, fa, dt) || heard;
   }
   return heard;
+}
+
+// A pastime that moves the body itself (ch.lead, a dancer: ai/Dance.js { head, sh, hip, feet, w, landed }) owns the
+// layers and the feet, weighed in by w from where they were when it took them: no step of ours fights it. Let go,
+// the springs go on from there and the feet stay where it left them.
+function lead(F, ch, L) {
+  const w = L.w;
+  if (!F.feet) plant(F, ch.x, ch.y, F.hip);
+  F.led ??= { head: F.head, sh: F.sh, hip: F.hip, feet: F.feet.map((f) => ({ ...f })) };
+  const o = F.led;
+  F.head = o.head + angDiff(o.head, L.head) * w; F.sh = o.sh + angDiff(o.sh, L.sh) * w; F.hip = o.hip + angDiff(o.hip, L.hip) * w;
+  F.headV = F.shV = F.hipV = 0;
+  for (let i = 0; i < 2; i++) {
+    const f = F.feet[i], a = o.feet[i], b = L.feet[i];
+    f.x = lerp(a.x, b.x, w); f.y = lerp(a.y, b.y, w); f.a = a.a + angDiff(a.a, b.a) * w;
+    f.lift = b.lift * w; f.heel = b.heel * w;
+  }
+  F.step = null; F.hop = 0; F.rest = 0;
+  return L.landed ? 'step' : 0;
 }
 
 // the feet: a step under way goes on; a new one starts when the hips are too far round, or a foot strayed

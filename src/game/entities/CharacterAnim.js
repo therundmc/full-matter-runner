@@ -145,6 +145,7 @@ const pt = () => ({ x: 0, y: 0, a: 0, lift: 0, heel: 0 });
 export function newPose() {
   return {
     tx: 0, ty: 0, ta: 0, s: 1, lift: 0, legs: 0, // legs: how far the legs are thrown out in front (sit, slide...)
+    px: 0, py: 0,     // the hips' own offset (pose px), over the share of the torso's they follow (a dancer's sway)
     tuck: 0, over: 0, // curled up in a ball, the back up (a roll); the legs up over the body
     sq: 1, sqW: 1, sqA: 0, // the curled body's length along axis sqA and its width across it (a roll seen from above)
     ha: 0,            // where the head looks: it keeps to the aim while the shoulders turn under it
@@ -577,6 +578,7 @@ export function standPose(ch, P, a) {
     - dip - 0.008 * settle) * (1 + (m?.lift || 0));
   P.lift = 0;
   P.legs = 0;
+  P.px = P.py = 0;
   P.tuck = 0;
   P.over = 0;
   P.sq = P.sqW = 1;
@@ -634,6 +636,7 @@ function blendPose(A, B, w) {
   A.s = lerp(A.s, B.s, w);
   A.lift = lerp(A.lift, B.lift, w);
   A.legs = lerp(A.legs, B.legs, w);
+  A.px = lerp(A.px, B.px, w); A.py = lerp(A.py, B.py, w);
   A.tuck = lerp(A.tuck, B.tuck, w); A.over = lerp(A.over, B.over, w);
   A.sq = lerp(A.sq, B.sq, w); A.sqW = lerp(A.sqW, B.sqW, w); A.sqA = B.sqA;
   A.wpnLen = lerp(A.wpnLen, B.wpnLen, w); A.wpnS = lerp(A.wpnS, B.wpnS, w);
@@ -656,6 +659,7 @@ function blendPose(A, B, w) {
 
 function copyPose(A, B) {
   A.tx = B.tx; A.ty = B.ty; A.ta = B.ta; A.s = B.s; A.lift = B.lift; A.legs = B.legs; A.tuck = B.tuck; A.over = B.over;
+  A.px = B.px; A.py = B.py;
   A.sq = B.sq; A.sqW = B.sqW; A.sqA = B.sqA;
   A.ha = B.ha; A.duck = B.duck; A.hunch = B.hunch; A.bow = B.bow;
   for (let i = 0; i < 2; i++) { Object.assign(A.feet[i], B.feet[i]); A.hand[i] = B.hand[i]; A.elb[i] = B.elb[i]; }
@@ -1207,6 +1211,26 @@ export function postPose(ch, P, V, B) {
   return P;
 }
 
+// ---------------- a dancer at her pole (Civilian, ai/Dance.js) ----------------
+// Over her standing pose, weighed in by w: the chest carried by the move (the hands with it), the hips swayed under
+// it, bent or thrown back, up and down; the hands where the move has them, the right one closed on the pole (a
+// world-fixed point) while she holds it. Her feet and her layers are the dance's already (Facing.js lead).
+const DH = { x: 0, y: 0 };
+export function dancePose(ch, P, d, w) {
+  if (w <= 0) return P;
+  const o = d.f.pose, a = d.f.face, c = Math.cos(a), s = Math.sin(a);
+  moveTorso(P, (c * o.chX - s * o.chY) * w, (s * o.chX + c * o.chY) * w, 0, 1 + o.rise * w);
+  P.px += (c * o.hipX - s * o.hipY) * w; P.py += (s * o.hipX + c * o.hipY) * w;
+  P.bow = lerp(P.bow, o.bow, w);
+  for (const [k, h, i] of [['hl', o.hl, 0], ['hr', o.hr, 1]]) {
+    place(DH, P, P.ta, h.x, h.y);
+    if (i && o.pole > 0) { DH.x = lerp(DH.x, (d.x - ch.x) / BODY_SCALE, o.pole); DH.y = lerp(DH.y, (d.y - ch.y) / BODY_SCALE, o.pole); }
+    P[k].x = lerp(P[k].x, DH.x, w); P[k].y = lerp(P[k].y, DH.y, w);
+  }
+  if (w > 0.5) { P.top = o.top; P.hand[0] = 'loose'; P.hand[1] = o.pole > 0.5 ? 'fist' : 'loose'; }
+  return P;
+}
+
 // ---------------- opening a car trunk (Player.trunkOpen, GESTURE.trunk) ----------------
 // He bends over the tail, both hands under the edge of the lid; it comes up (the hands go up and forward with it),
 // the right one reaches in and comes back out with what was there; he straightens up.
@@ -1741,7 +1765,7 @@ const SJ = { x: 0, y: 0 }, EJ = { x: 0, y: 0 }, WJ = { x: 0, y: 0 }, ELB = [{ x:
 function paintLegs(ch, P, up = 0) {
   const f0 = P.feet[0], f1 = P.feet[1];
   const ha = Math.atan2(Math.sin(f0.a) + Math.sin(f1.a), Math.cos(f0.a) + Math.cos(f1.a));
-  const hx = P.tx * 0.6, hy = P.ty * 0.6, ox = -Math.sin(ha) * LIMB.hip, oy = Math.cos(ha) * LIMB.hip;
+  const hx = P.tx * 0.6 + P.px, hy = P.ty * 0.6 + P.py, ox = -Math.sin(ha) * LIMB.hip, oy = Math.cos(ha) * LIMB.hip;
   // the far foot first: the one further back goes under the other where they cross
   const order = f0.lift > f1.lift ? [1, 0] : [0, 1];
   for (const i of order) {

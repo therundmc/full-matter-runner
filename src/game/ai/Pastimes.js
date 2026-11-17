@@ -3,7 +3,7 @@
 // the drawing is in render/PastimeArt.js.
 //   pool   lining up shots over the table, one stroke per cycle     cue     waiting for his turn, cue upright
 //   cards  a hand of cards held up                                  drink   a glass, raised now and then
-//   watch  sitting back, hands on the knees, clapping now and then  dance   arms waving, steps around her spot
+//   watch  sitting back, hands on the knees, clapping now and then  dance   at her pole, on the beat (ai/Dance.js)
 //   smoke  a cigarette, a drag now and then                         phone   his pager read
 //   talk / listen  the two halves of a chat, turn about             cross   arms folded
 //   stretch, wrist  a stretch, a look at his watch (one go)         piss    against a wall or at a toilet

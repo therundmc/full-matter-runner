@@ -6,12 +6,13 @@
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
 import { CAT, MASK, TILE } from '../Config.js';
 import { rand, approachAngle, angDiff, clamp } from '../../engine/math.js';
-import { GESTURE } from '../data/feel.js';
+import { GESTURE, DANCE } from '../data/feel.js';
 import { WALKER } from '../ai/Civilians.js';
 import { talks } from '../ai/Pastimes.js';
+import { Dance, beatAt } from '../ai/Dance.js';
 import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character from './Character.js';
-import { bodyFrame } from './CharacterAnim.js';
+import { bodyFrame, dancePose } from './CharacterAnim.js';
 
 const { Body, Bounds } = Matter;
 
@@ -61,6 +62,9 @@ export default class Civilian extends Character {
     this.seated = false;   // on his seat: furniture is not in his way
     this.left = false;     // a patron has run off his spot
     this.asleep = false;   // lying down until something wakes him (see sleep)
+    this.dance = null;     // a dancer's routine at her pole (ai/Dance.js), how far she is into it (0 .. 1)
+    this.danceW = 0;
+    this.lead = null;      // what moves her body, feet and layers while she dances (Facing.js lead)
     // how he runs for it once scared, each his own way: arms over his head and ducked, a stumbling start, or flat
     // out, looking back over his shoulder now and then
     this.runStyle = this.seed < 30 ? 'cover' : this.seed < 60 ? 'stumble' : 'flail';
@@ -95,6 +99,9 @@ export default class Civilian extends Character {
   // called by Ambient (step 1, before physics)
   update(dt, sense) {
     this.baseUpdate(dt);
+    this.lead = null;
+    const danceW = this.danceW;
+    this.danceW = Math.max(0, danceW - dt / DANCE.out); // out of it unless she dances on (danceOn)
     if (!this.alive) return;
     if (this.knocked > 0) {
       if (this.asleep && this.knocked === Infinity && this.brain.panicked) {
@@ -136,13 +143,12 @@ export default class Civilian extends Character {
       this.world.events.emit('patronLeft', { civilian: this, activity: b.activity });
     }
     if (it.x === null) {
+      if (this.post && b.state === WALKER.STOP && b.activity === 'dance') { this.danceOn(dt, danceW); this.stuckT = 0; return; }
       let face = it.face, hx = 0, hy = 0;
       if (this.post && b.state === WALKER.STOP) {
-        // shoved off his seat, he gets back on it; a dancer steps around her spot and sways
-        const d = b.activity === 'dance', t = this.world.time + this.seed;
-        hx = this.post.x + (d ? Math.cos(t * 1.3) * 5 : 0) - this.x;
-        hy = this.post.y + (d ? Math.sin(t * 1.9) * 4 : 0) - this.y;
-        if (d) face += Math.sin(t * 2.6) * 0.7;
+        // shoved off his seat, he gets back on it
+        hx = this.post.x - this.x;
+        hy = this.post.y - this.y;
       }
       if (Math.hypot(hx, hy) > 1.5) this.steer(hx, hy, 0.4, 0.2); else this.steer(0, 0, 0, 0.25);
       if (b.activity === 'chat' && this.mate?.alive) face = Math.atan2(this.mate.y - this.y, this.mate.x - this.x);
@@ -175,6 +181,33 @@ export default class Civilian extends Character {
     // strollers look around a little, or half round at something going on; runners look where they go
     const look = it.look !== undefined ? angDiff(ma, it.look) * 0.5 : b.state === WALKER.WALK ? Math.sin(this.world.time * 0.7 + this.seed) * 0.35 : 0;
     this.angle = approachAngle(this.angle, ma + look, dt * (running ? 10 : 3));
+  }
+
+  // A dancer at her pole (her post): the routine moves her (ai/Dance.js), her feet and her layers with it (lead).
+  // Shoved off her place in it, she walks back there and comes into it again (DANCE.in).
+  danceOn(dt, w) {
+    const p = this.post, fresh = !this.dance;
+    const D = (this.dance ??= new Dance(p.x, p.y, p.face, this.seed));
+    const f = D.at(beatAt(this.world.time, this.seed)), dx = f.x - this.x, dy = f.y - this.y;
+    if (fresh && Math.hypot(this.x - p.x, this.y - p.y) < DANCE.join) w = 1; // at it from the start
+    else if (w <= 0 && Math.hypot(dx, dy) > DANCE.join) {
+      this.steer(dx, dy, 0.6, 0.2);
+      this.angle = approachAngle(this.angle, Math.atan2(dy, dx), dt * 5);
+      return;
+    }
+    this.danceW = Math.min(1, w + dt / DANCE.in);
+    const k = this.danceW < 1 ? Math.min(1, dt * 12) : 1;
+    Body.setPosition(this.body, { x: this.x + dx * k, y: this.y + dy * k });
+    this.vel.x = this.vel.y = 0;
+    Body.setVelocity(this.body, this.vel);
+    this.angle = f.face;
+    f.w = this.danceW;
+    this.lead = f;
+  }
+
+  // a dancer's moves over her stance (Character.draw)
+  ownPose(P) {
+    if (this.dance && this.danceW > 0) dancePose(this, P, this.dance, this.danceW * this.danceW * (3 - 2 * this.danceW));
   }
 
   // a runner's feet go from under him: flat out for a moment, sliding, then up and off again

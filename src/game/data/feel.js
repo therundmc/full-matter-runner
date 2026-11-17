@@ -322,6 +322,40 @@ export const FACING = {
   lean: 0.8, cloth: 11,
 };
 
+// A dancer at her pole (ai/Dance.js; Civilian leads her body, her feet and her layers with it, CharacterAnim
+// dancePose draws the rest). Her post is the pole, `front` the way it faces (the room). On the stage light's beat
+// (bpm: Config LIGHTING.bpm, a test keeps them in step), a routine of moves that loops, each `beats` long, its pose
+// crossfaded from the last one's over `blend` beats. She comes into it over `in` s once back within `join` px of her
+// place in it, and out of it over `out` s when scared off.
+// Where she is, from the start of a move to its end: th (turns round the pole, + clockwise on screen, 0 = between it
+// and the room), r (world px from the pole), face (rad, her facing off the way out from the pole: 0 her back to it,
+// PI facing it); travel 'beat': on in a surge each beat (else eased over the move). Her feet: steps [[beat it lands
+// on, foot 0 left | 1 right]], each `step` beats in the air and `lift` up, landing where she will be halfway to its
+// next step, `width` pose px either side, toes turned out `toe` rad. Her right hand on the pole: pole [from, to,
+// beats over (u0, u1)]. sway: share of the hip sway (below) the move keeps; the moves' own amounts (pose px, rad):
+// arm (circle: the free arm out at `reach` from its shoulder, swept from `from` to `to` rad off ahead), lean (lean:
+// the chest `back`, the hips to the pole, `bow` < 0 the head thrown back, `sink` share of size, in / out over beats),
+// roll (roll: the chest and, `lag` rad behind, the hips forward and back, bent / thrown back by `bow`, `rise`).
+// sway: the hips to the side of the foot she is on (`hip` px, lingering there), the chest the other way
+// (`counter` share of it, `lag` beats behind), the shoulders turned against them (`twist`), the head after (`head`).
+export const DANCE = {
+  bpm: 108, blend: 0.6, step: 0.45, lift: 0.7, toe: 0.12, in: 0.5, out: 0.3, join: 2.5,
+  sway: { hip: 2.2, counter: 0.4, lag: 0.18, twist: 0.18, head: 0.3 },
+  routine: [
+    { move: 'sway', beats: 8, th: [0, 0], r: [10, 10], face: [0, 0], width: 4.4, pole: [1, 1], sway: 1 },
+    { move: 'turn', beats: 2, th: [0, 0], r: [10, 14], face: [0, 2.02], width: 2.8, steps: [[1, 1], [2, 0]], pole: [1, 1], sway: 0.5 },
+    { move: 'circle', beats: 8, th: [0, 1], r: [14, 14], face: [2.02, 2.02], travel: 'beat', width: 2.6, pole: [1, 1], sway: 0.8,
+      steps: [[1, 1], [2, 0], [3, 1], [4, 0], [5, 1], [6, 0], [7, 1], [8, 0]], arm: { reach: 7.5, from: 0.6, to: 2 } },
+    { move: 'turn', beats: 2, th: [1, 1], r: [14, 11], face: [2.02, Math.PI], width: 4, steps: [[1, 1], [2, 0]], pole: [1, 1], sway: 0.4 },
+    { move: 'lean', beats: 4, th: [1, 1], r: [11, 11], face: [Math.PI, Math.PI], width: 4, pole: [1, 1], sway: 0,
+      lean: { back: 2.6, hips: 1.2, bow: -0.75, sink: 0.04, in: 1.5, out: 1.5 } },
+    { move: 'turn', beats: 4, th: [1, 1], r: [11, 10], face: [Math.PI, 0], width: 4.4, steps: [[1, 0], [2, 1], [3, 0], [4, 1]], pole: [1, 1], sway: 0.4 },
+    { move: 'arms', beats: 4, th: [1, 1], r: [10, 10], face: [0, 0], width: 4.4, pole: [1, 0, 0, 1], sway: 1 },
+    { move: 'roll', beats: 4, th: [1, 1], r: [10, 10], face: [0, 0], width: 4.4, pole: [0, 1, 2.5, 4], sway: 0,
+      roll: { chest: 1.8, hips: 1.6, lag: 1.4, bow: 0.3, rise: 0.03 } },
+  ],
+};
+
 // Getting over things, sliding, rolling (CharacterAnim vaultPose / slidePose / rollPose; everyone moves the same):
 // shares of each move's own clock.
 //   vault  the one-hand speed vault over furniture (Character.tryVault): a dip in the last step until `dip`, the
