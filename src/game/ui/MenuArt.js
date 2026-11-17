@@ -179,10 +179,18 @@ export function drawMenu(ctx, W, H, t, menu, where, device, shade = 0) {
   ctx.fillRect(0, H * 0.54, W, H * 0.1);
   ctx.fillStyle = 'rgba(6,2,10,0.78)';
   ctx.fillRect(0, H * 0.64, W, H * 0.36);
+  return drawTitlePage(ctx, W, H, t, menu, device);
+}
+
+// A page of the title that is not its first, without its shade: its name, its note, its column and the prompts, in
+// the lower part of the screen (the title proposals lay their own paper under it, ui/title/Paper.js band)
+export function drawTitlePage(ctx, W, H, t, menu, device) {
+  const s = H / 720, page = menu.page;
+  ctx.textBaseline = 'middle';
   glitchText(ctx, page.title || '', W / 2, H * 0.6, fit(ctx, page.title || '', 28 * s, W * 0.9), t, { color: PALETTE.white });
   let top = H * 0.665;
   if (page.note) { text(ctx, page.note, W / 2, top, 13 * s, PALETTE.white, { alpha: 0.85 }); top += 32 * s; }
-  const rects = drawColumn(ctx, page, sel, W / 2, top, H * 0.87, 30 * s, 16 * s, s, t);
-  footer(ctx, page, menu.depth, where, W, H * 0.905, s, device);
+  const rects = drawColumn(ctx, page, menu.sel, W / 2, top, H * 0.87, 30 * s, 16 * s, s, t);
+  footer(ctx, page, menu.depth, 'title', W, H * 0.905, s, device);
   return rects;
 }

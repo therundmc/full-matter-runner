@@ -36,6 +36,7 @@ const GENERATED = [
   [/^src\/game\/data\/levels\/tutorial\.js$/, ['tools/build_tutorial.py', 'tools/levelkit.py']],
   [/^(src\/audio\/bank\.js|assets\/sound\/foley\.wav)$/, ['tools/build_sounds.mjs', 'tools/sounds.json']],
   [/^assets\/sprites\/comic\//, ['tools/generate_comic.py', 'tools/comic/']],
+  [/^assets\/sprites\/title\//, ['tools/comic/']],
   [/^assets\/sprites\//, ['tools/generate_assets.py']],
 ];
 for (const f of touched) {
