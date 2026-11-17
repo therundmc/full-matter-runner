@@ -16,6 +16,4 @@ export const ACTS = {
   slide: { order: 'cut', comply: 'calm', rank: 1 },
   noise: { order: 'what', comply: 'calm', rank: 1 },
   bump: { order: 'watch', comply: 'calm', rank: 1, wait: [3, 3, 3] },
-  // hanging about in front of a guard who told him off twice (Enemy.mind): the word opens at the shove
-  loiter: { order: 'shoo', comply: 'away', away: 120, rank: 1, wait: [3, 3, 3] },
 };

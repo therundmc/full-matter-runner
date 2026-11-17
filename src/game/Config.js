@@ -207,10 +207,6 @@ export const AI = {
     unarmed: { thug: 0.45, heavy: 0.3, brute: 0.06 }, close: 170, alone: 420, every: 2.5,
     turned: 1.6, wait: 1.2, grab: 220, treachery: { thug: 0.25, heavy: 0.3, brute: 0.4 },
   },
-  // An unarmed stranger hanging about in front of a guard on public ground (Perception.loiterRate, Enemy.mind):
-  // bothered within `near` px; patience = seconds before he snaps at `near` / at `close` px; shares of it at which
-  // he tells him to clear off (`first`) and warns him a last time (`last`); `forget` = share won back per second.
-  loiter: { near: 120, close: 40, patience: [8, 2.4], first: 0.12, last: 0.55, forget: 0.1 },
   // A stranger seen doing something odd while nobody has anything against him (ai/Conduct.js, data/conduct.js
   // ACTS, Director.conduct, Enemy.doChallenge): the nearest guard who saw it within `sight` px walks over (`pace` x his
   // walk) and stops `talk` px from him; he gives him `wait` s per stage (told, warned, shoved; an act's own `wait`
@@ -221,7 +217,7 @@ export const AI = {
   // the premises: he walked away, that will do.
   challenge: {
     sight: 300, pace: 1.45, talk: 44, wait: [5, 4, 3], settle: 1.2, lost: 5, reach: 24, shove: 5.5, memory: 60,
-    glance: 1.8, lurk: 4, lurkR: 44, bump: 1.6, gone: 260,
+    glance: 1.8, lurk: 4, lurkR: 44, bump: 1.6, gone: 260, near: 120,
   },
   // Noises while all is calm: only the `go` guards nearest one go and look; the others glance toward it a moment.
   // Alarms (gunshots, a blast, a body falling, a wall coming down) bring everyone in range as before.

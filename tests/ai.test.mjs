@@ -5,7 +5,7 @@ import { load } from './setup.mjs';
 const { ENEMY, AI } = await load('game/Config.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: EventBus } = await load('engine/EventBus.js');
-const { detectionRate, inView, aimError, hearingError, loiterRate } = await load('game/ai/Perception.js');
+const { detectionRate, inView, aimError, hearingError } = await load('game/ai/Perception.js');
 const { searchPoints, findCover, isCovered, randomPoint, throughDoor, tableToFlip } = await load('game/ai/Tactics.js');
 const { default: Director } = await load('game/ai/Director.js');
 const { lineFor } = await load('game/ai/Barks.js');
@@ -92,16 +92,6 @@ test('barks: short readable lines, no doubles, known tones, and the squad does n
   const said = [];
   for (let i = 0; i < 3; i++) { d.world.time += 2; d.bark({ x: 0, y: 0 }, 'clear'); said.push(d.world.texts.at(-1).str); }
   assert.equal(new Set(said).size, 3);
-});
-
-test('loitering: a guard only minds a stranger close by, and loses patience faster the closer he stands', () => {
-  const L = AI.loiter;
-  assert.equal(loiterRate(L.near + 1), 0);
-  assert.ok(Math.abs(1 / loiterRate(L.near) - L.patience[0]) < 1e-9, 'at the edge: the long patience');
-  assert.ok(Math.abs(1 / loiterRate(L.close) - L.patience[1]) < 1e-9, 'in his face: the short one');
-  assert.equal(loiterRate(0), loiterRate(L.close));
-  assert.ok(loiterRate(60) > loiterRate(100));
-  assert.ok(L.first < L.last && L.last < 1);
 });
 
 // ---------------- tactics ----------------

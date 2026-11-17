@@ -289,7 +289,7 @@ export const GESTURE = {
 // (an arm out at him: an order, a threat), palm (an open hand: a word), shrug, wave (waved off), beckon (come on),
 // hands (both palms up: pleading), nod (the head only; any occasion not listed)
 export const TALK = {
-  point: ['shoo', 'warn', 'out', 'drop', 'staff', 'press', 'shove', 'threat', 'brawl', 'snap', 'where', 'hunt', 'sweep',
+  point: ['out', 'drop', 'staff', 'press', 'shove', 'threat', 'brawl', 'snap', 'where', 'hunt', 'sweep',
     'watch', 'cut', 'what', 'flush', 'revenge', 'contact', 'stairs'],
   palm: ['chat', 'hey', 'settle', 'joke', 'boss', 'sight', 'damage', 'window', 'door', 'fuse', 'tracks', 'blood', 'loud', 'dark'],
   shrug: ['clear', 'lost', 'missing', 'noise', 'alone'],

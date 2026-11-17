@@ -236,7 +236,7 @@ export default class Director {
     if (p.armed && !this.isThreat(p)) this.conduct('weapon', p.x, p.y);
     // a door into the premises he hangs about (unless a guard is already staring him away from there: Enemy.mind)
     const door = !this.isGuest(p) && (w.doors || []).find((d) => w.isHouseDoor?.(d) && Math.hypot(d.hx - p.x, d.hy - p.y) < C.lurkR + 16);
-    this.lurkT = door && p.moving < 1 && !w.enemies.some((e) => e.shooing) ? this.lurkT + 0.2 : Math.max(0, this.lurkT - 0.4);
+    this.lurkT = door && p.moving < 1 ? this.lurkT + 0.2 : Math.max(0, this.lurkT - 0.4);
     if (this.lurkT >= C.lurk) { this.lurkT = 0; this.conduct('lurk', p.x, p.y); }
     // running into one of them
     if (p.moving < C.bump) return;

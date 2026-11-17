@@ -75,7 +75,7 @@ test('conduct: what doing as told means, act by act, and a man let off not long 
 
 // a bare world: a room whose west half is premises (the east half public), one guard in the east half facing west, the player (unarmed)
 // somewhere; no physics engine (velocities applied by hand)
-async function room(playerAt) {
+async function room(playerAt, level = { premises: [[1, 1, 4, 4]], welcome: [[5, 1, 10, 4]] }) {
   globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
   const { default: Enemy } = await load('game/entities/Enemy.js');
   const { findPath } = await load('engine/nav/Pathfinding.js');
@@ -87,7 +87,7 @@ async function room(playerAt) {
     shoves: 0, shoved() { this.shoves++; } };
   const world = {
     map, props: [], enemies: [], chars: [player], doors: [], windows: [], fences: [], items: [], texts: [], time: 0, events, player,
-    level: { premises: [[1, 1, 4, 4]], welcome: [[5, 1, 10, 4]] }, // the east half: a bar room, nobody minds him there
+    level, // by default the east half is a bar room: nobody minds him there
     particles: { smoke() {}, dust() {}, glass() {}, floaters() {}, shard() {}, blood() {}, fire() {} },
     sound() {}, light() {}, emit() {}, after() {}, addBody() {}, floorAt: () => 'wood', sightLine: () => true, lineOfSight: () => true,
     camera: { x: 0, y: 0, viewRadius: () => ({ x: 9999, y: 9999 }) },
@@ -160,4 +160,14 @@ test('while all is calm only the two nearest go and look at a noise; the others 
   d.setPhase('caution', 10);
   d.emit('door', 0, 0, 400);
   assert.deepEqual(guards.map((g) => g.heard), [3, 3, 2, 2], 'on edge: everyone looks');
+});
+
+test('a stranger standing about on public ground in front of a guard is let be, however long he stays', async () => {
+  // the east half a sidewalk (outside the premises, no bar room): in his face
+  const { world, e, step, stages } = await room([7, 2.5], { premises: [[1, 1, 4, 4]], welcome: [] });
+  step(20);
+  assert.deepEqual(stages(), [], 'no word, no shove');
+  assert.equal(world.director.provoked, false);
+  assert.notEqual(e.state, 'combat');
+  assert.ok(!world.texts.length, 'not a word said');
 });

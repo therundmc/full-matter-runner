@@ -31,12 +31,5 @@ export function aimError(settle, targetMoving = 0) {
   return e * (targetMoving > 1.6 ? ENEMY.aimMoveMul : 1);
 }
 
-// Share of his patience a guard loses per second with a harmless stranger standing `dist` px in front of him:
-// none beyond L.near, faster the closer he hangs about.
-export function loiterRate(dist, L = AI.loiter) {
-  if (dist > L.near) return 0;
-  return 1 / lerp(L.patience[0], L.patience[1], clamp((L.near - dist) / (L.near - L.close), 0, 1));
-}
-
 // Localisation error radius (px) of a noise heard from `dist` away.
 export const hearingError = (dist) => dist * ENEMY.hearError;

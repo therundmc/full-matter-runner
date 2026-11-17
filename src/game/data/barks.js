@@ -35,9 +35,6 @@ export const BARKS = {
   sweep: ['CHECK {P}!', "I'LL DO {P}.", 'I GOT {P}.'],
   taunt: ['HERE, KITTY KITTY...', "WE'LL FIND YOU, PAL.", 'NOWHERE TO RUN!', 'I CAN SMELL YOU...', "YOU'RE ALREADY DEAD!",
     'COME SAY HELLO!', "IT'S OVER, FRIEND."],
-  // a stranger hanging about (Enemy.mind)
-  shoo: ['BEAT IT.', 'KEEP WALKING.', 'GET LOST, PAL.', 'MOVE ALONG.', "WHAT'RE YOU LOOKING AT?", 'NOTHING TO SEE HERE.'],
-  warn: ['LAST WARNING!', 'I SAID MOVE!', 'YOU DEAF? WALK!', 'BACK OFF. NOW!'],
   snap: ["THAT'S IT!", 'YOU ASKED FOR IT!', 'I WARNED YOU!'],
   // a word with a stranger caught at something odd (Enemy.doChallenge, data/conduct.js ACTS): calling him on the way
   // over, telling him (by what he did), warning him, shoving him, letting him off, letting it go once he is gone
@@ -108,7 +105,7 @@ export const URGENT = new Set(['contact', 'call', 'down', 'chief', 'yield', 'tur
 // occasions not written in white (PALETTE keys)
 export const BARK_TONE = {
   contact: 'pink', panic: 'pink', snap: 'pink', threat: 'pink', brawl: 'pink', revenge: 'pink',
-  body: 'orange', help: 'orange', warn: 'orange', flush: 'orange', yield: 'yellow', beg: 'yellow',
+  body: 'orange', help: 'orange', flush: 'orange', yield: 'yellow', beg: 'yellow',
   call: 'pink', where: 'pink', turn: 'pink', down: 'orange', found: 'orange', chief: 'orange', run: 'orange',
   backup: 'orange', alone: 'yellow', stairs: 'pink',
   hey: 'orange', out: 'orange', drop: 'orange', cut: 'orange', what: 'orange', staff: 'orange', watch: 'orange',

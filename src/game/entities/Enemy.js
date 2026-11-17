@@ -14,7 +14,7 @@ import { BARKS, SHOUTED, MUTTERED, BOSS } from '../data/barks.js';
 import { rand, angDiff, approachAngle, chance, clamp, spread } from '../../engine/math.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, pastDoor, tableToFlip } from '../ai/Tactics.js';
-import { detectionRate, inView, aimError, hearingError, loiterRate } from '../ai/Perception.js';
+import { detectionRate, inView, aimError, hearingError } from '../ai/Perception.js';
 import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
   sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
@@ -137,8 +137,6 @@ export default class Enemy extends Character {
     this.sep = { x: 0, y: 0 };
     this.executing = false;
     this.held = null; // the player while he has us from behind (Player.startTakedown)
-    this.nag = 0; this.nagStage = 0; // patience lost with a loitering stranger 0..1, warnings given (see mind)
-    this.shooing = null;             // that stranger, while we stare him down
     this.tauntT = rand(1.5, 5);      // until the next curse thrown at the player
     this.trackAt = null;             // the footprint we are walking to (see doTrack)
     this.nearT = 0;                  // time spent a few steps from a spot without reaching it (see blockedAt)
@@ -276,14 +274,14 @@ export default class Enemy extends Character {
     const p = this.world.player;
     const recent = this.world.time - this.seenAt < 3;
     this.sees = !!p && this.canSee(p);
-    // A stranger minding his own business on public ground is none of a guard's concern, unless he hangs about; one
-    // who walked into the premises unarmed, or does something odd, gets a word first (Director.conduct)
+    // A stranger minding his own business on public ground is none of a guard's concern, however long he stands
+    // there (the user: the men at the bar's door getting worked up at a man standing about was a nuisance); one who
+    // walked into the premises unarmed, or does something odd, gets a word first (Director.conduct)
     const d = this.director, stranger = this.sees && this.aware < 2 && (!d.isThreat(p) || d.isIntruder(p));
     if (stranger) {
       this.sees = false;
       if (Math.hypot(p.x - this.x, p.y - this.y) < AI.gaze.range) this.turnHead(p.x, p.y, ENEMY.visionTick + 0.25); // his eyes on him
     }
-    this.mind(stranger && this.state !== S.CHALLENGE && !d.isGuest(p) && !d.isIntruder(p) ? p : null, step);
     if (this.sees) {
       if (this.aware < 2) {
         const dx = p.x - this.x, dy = p.y - this.y;
@@ -305,50 +303,6 @@ export default class Enemy extends Character {
         if (this.state === S.COMBAT && this.shoutT <= 0) this.director.report(this);
       }
     } else if (this.aware < 2) this.meter = Math.max(0, this.meter - step * ENEMY.meterDecay[this.aware]);
-  }
-
-  // A harmless stranger (or null) loitering in front of us: told to clear off, warned a last time, then we go and
-  // shove him (a word that ends in a fight if he still stands there: doChallenge). Patience comes back slowly once
-  // he has gone.
-  mind(p, step) {
-    const L = AI.loiter;
-    let rate = 0;
-    if (p && this.aware === 0) {
-      const dx = p.x - this.x, dy = p.y - this.y;
-      // in front of us only: a quiet man behind our back bothers nobody
-      if (Math.abs(angDiff(this.angle, Math.atan2(dy, dx))) <= ENEMY.fov / 2) rate = loiterRate(Math.hypot(dx, dy)) * (this.distracted ? 0.6 : 1);
-    }
-    this.shooing = rate > 0 && this.nagStage > 0 ? p : null;
-    if (!rate) {
-      this.nag = Math.max(0, this.nag - step * L.forget);
-      if (!this.nag) this.nagStage = 0;
-      return;
-    }
-    this.nag += step * rate;
-    if (this.nag >= 1) {
-      // out of patience: up to him and a shove, then the fight if he still stands there (a word: doChallenge)
-      const busy = this.director.challenger;
-      if (busy && busy !== this && busy.case) { this.nag = L.last; return; } // a mate is already at him: wait
-      this.nag = 0; this.nagStage = 0; this.shooing = null;
-      this.challenge('loiter', p.x, p.y, STAGE.SHOVED);
-    } else if (this.nag >= L.last && this.nagStage < 2) {
-      this.nagStage = 2;
-      this.barkT = 0;
-      if (this.say('warn')) this.world.sound('mutter', this.x, this.y, 1, { pitch: this.voice });
-      this.showIcon('!', 1.2);
-    } else if (this.nag >= L.first && this.nagStage < 1 && this.say('shoo')) {
-      this.nagStage = 1;
-      this.world.sound('mutter', this.x, this.y, 0.6, { pitch: this.voice });
-    }
-  }
-
-  // stand and stare down the stranger we are telling to clear off
-  stare(dt) {
-    const p = this.shooing;
-    if (!p) return false;
-    this.halt();
-    this.faceAngle(Math.atan2(p.y - this.y, p.x - this.x), 6, dt);
-    return true;
   }
 
   // meter full: combat ('!'), then call it in
@@ -516,7 +470,7 @@ export default class Enemy extends Character {
     if (this.passive || this.dormant || this.yielded || this.knocked > 0 || this.held || this.aware === 2 || this.vaulting) return false;
     if (this.state === S.DIZZY || this.state === S.BACKUP || this.duckT > 0) return false;
     const d = Math.hypot(p.x - this.x, p.y - this.y);
-    if (d > (this.distracted ? AI.loiter.near : AI.challenge.sight)) return false;
+    if (d > (this.distracted ? AI.challenge.near : AI.challenge.sight)) return false;
     return heard ? this.world.sightLine(this.x, this.y, p.x, p.y) : this.canSee(p);
   }
 
@@ -756,7 +710,6 @@ export default class Enemy extends Character {
   }
 
   doIdle(dt) {
-    if (this.stare(dt)) return;
     if (this.routine && this.activity === this.job) { this.work(dt); return; }
     const h = this.errand ?? this.home;
     this.atPost = Math.hypot(h.x - this.x, h.y - this.y) <= 14;
@@ -1302,7 +1255,6 @@ export default class Enemy extends Character {
   }
 
   doPatrol(dt) {
-    if (this.stare(dt)) return;
     const calm = this.director.phase === 'normal';
     if (this.pauseT > 0) {
       if (this.routine && this.activity === this.job) {
@@ -1350,7 +1302,6 @@ export default class Enemy extends Character {
   }
 
   doReturn(dt) {
-    if (this.stare(dt)) return;
     if (this.roam) {
       if (this.route) {
         let bi = 0, bd = Infinity;
@@ -2466,10 +2417,9 @@ export default class Enemy extends Character {
       ctx.fillText(ch, this.x, this.y - 14);
       ctx.globalAlpha = 1;
     }
-    // the same gauge shows his suspicion, or his patience running out with a loiterer, or with a stranger he is having
-    // a word with (a third of it per stage: told, warned, shoved)
+    // the same gauge shows his suspicion, or his patience running out with a stranger he is having a word with (a third of it per stage: told, warned, shoved)
     const c = this.case, word = c && c.stage >= STAGE.TOLD ? Math.min(1, (c.stage - 1 + Math.min(1, (this.world.time - c.t) / c.wait())) / 3) : 0;
-    const m = Math.max(this.meter, this.nagStage ? this.nag : 0, word);
+    const m = Math.max(this.meter, word);
     if (this.aware < 2 && m > 0.04) {
       ctx.fillStyle = PALETTE.ink;
       ctx.fillRect(this.x - 7, this.y - 12, 14, 3);
