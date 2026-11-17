@@ -6,8 +6,9 @@
 // static = bolted down / too big to budge (never moves; it erodes and bursts into short-lived shards). Objects too heavy to push (stick.mu.kg.g > PHYSICS.pushForce) stay put
 // until something big (an explosion) shoves them.
 // light = light(s) cast by the object (see render/Lighting.js); fixture = a lamp: it flickers once damaged and its
-// light dies with it. hung = hangs from the ceiling: nobody bumps into it. high = a light fitting up on the ceiling or
-// a wall (lamps, neons, signs, a streetlight's head): rounds, blows and anything thrown go under it, only a blast breaks it.
+// light dies with it. hung = hangs from the ceiling: nobody bumps into it. high = a fitting up on the ceiling (lamps,
+// the fan, the mirror ball, string lights): rounds, blows and anything thrown go under it (a round passing under
+// shakes it a little: Ballistics.brushFittings), only a blast breaks it; what is on the walls breaks as anything else.
 // height = how high an overhead object sits, as parallax (fraction of its distance to the centre of the view);
 // pole = [colour, width] of the post drawn from its foot to its head. sign = animated neon lettering (render/Lighting.js).
 export const PROPS = {
@@ -91,10 +92,10 @@ export const PROPS = {
   palm_tree: { material: 'wood', r: 4.5, hp: 12, static: true, chips: '#2f8f3a', sound: 'wood', overhead: true, dirt: true,
     height: 0.06, pole: ['#4a3424', 6] },
   // the pole is at the sprite centre, the arm reaches 56 px along +x (rotate it over the road)
-  streetlight: { high: true, material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true },
-  neon_sign_palm: { high: true, hum: 'neon', material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
-  neon_sign_bar: { high: true, hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
-  neon_sign_arrow: { high: true, hum: 'neon', material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
+  streetlight: { material: 'metal', r: 3, hp: 4, static: true, chips: '#888', sparks: true, glass: true, sound: 'metal', overhead: true },
+  neon_sign_palm: { hum: 'neon', material: 'glass', w: 38, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_bar: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass' },
+  neon_sign_arrow: { hum: 'neon', material: 'glass', w: 28, h: 6, hp: 4, static: true, chips: '#f9c80e', sparks: true, glass: true, sound: 'glass' },
   jukebox: { static: true, material: 'plastic', w: 28, h: 20, hp: 8, chips: '#ff2a6d', sparks: true, glass: true, sound: 'metal', blocksPath: true,
     light: { r: 70, color: '#ff5a9a', intensity: 0.55, flicker: 'pulse', y: 6 } },
   hydrant: { material: 'metal', r: 5.5, hp: 1, static: true, chips: '#c02020', sound: 'metal', fountain: true },
@@ -124,23 +125,23 @@ export const PROPS = {
   fuse_box: { hum: 'mains', fixture: true, static: true, material: 'metal', w: 18, h: 8, hp: 3, chips: '#8a909c', sparks: true, sound: 'metal',
     light: { r: 64, color: '#ffe6a8', intensity: 0.6, y: 4 } }, // the pilot lamp over it: it has to be found
   // a battery lamp over a door: dark as long as the mains are on (`standby`), all that is left once they are cut
-  emergency_light: { high: true, fixture: true, static: true, standby: true, material: 'glass', w: 6, h: 4, hp: 2, chips: '#ffb0a0', sparks: true, glass: true, sound: 'glass',
+  emergency_light: { fixture: true, static: true, standby: true, material: 'glass', w: 6, h: 4, hp: 2, chips: '#ffb0a0', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff5a3c', intensity: 0.95, y: 3 } },
-  neon_sign_liquor: { high: true, hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
+  neon_sign_liquor: { hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#3aff8a', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#3aff8a', intensity: 0.9, flicker: 'buzz' } },
-  neon_sign_video: { high: true, hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+  neon_sign_video: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
   // two brass posts and the velvet rope between them, at a club's door (bolted down: the user wants the door tidy)
   velvet_rope: { static: true, material: 'metal', w: 30, h: 6, hp: 5, chips: '#a0142a', sound: 'metal' },
   // the bar's own signs on its front, either side of the door: its name, and the OPEN of an American bar
-  neon_sign_mirage: { high: true, hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+  neon_sign_mirage: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 110, color: '#ff3a8a', intensity: 0.85, flicker: 'buzz' } },
-  neon_sign_open: { high: true, hum: 'neon', material: 'glass', w: 26, h: 6, hp: 3, static: true, chips: '#ff3a30', sparks: true, glass: true, sound: 'glass',
+  neon_sign_open: { hum: 'neon', material: 'glass', w: 26, h: 6, hp: 3, static: true, chips: '#ff3a30', sparks: true, glass: true, sound: 'glass',
     light: { r: 70, color: '#ff4a3a', intensity: 0.6, flicker: 'buzz' } },
   // by the bar's door on the sidewalk: the chalkboard of the night's specials, the steel ashtray post
   sandwich_board: { material: 'wood', w: 16, h: 12, hp: 3, kg: 6, mu: 0.45, chips: '#7a4a2a', sound: 'wood' },
   ash_urn: { material: 'metal', r: 5, hp: 4, kg: 9, mu: 0.4, chips: '#8a90a0', sound: 'metal' },
-  neon_sign_wash: { high: true, hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
+  neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
   // a bar's walls, hung on the wall face (the wall at -y, the room along +y, like the wall lamps): framed pictures and
   // posters behind glass, a dartboard, a coin phone (its receiver jumps off the hook when hit: `handset`, coins
@@ -153,15 +154,15 @@ export const PROPS = {
   pay_phone: { static: true, material: 'metal', w: 8, h: 5, hp: 4, chips: '#8a909c', sparks: true, sound: 'metal', handset: [-2.5, 0] },
   coat_hooks: { static: true, material: 'fabric', w: 16, h: 4, hp: 4, chips: '#3a3440', sound: 'wood' },
   towel_dispenser: { static: true, material: 'plastic', w: 7, h: 3, hp: 2, chips: '#e8e8ec', sound: 'wood' },
-  neon_sign_beer: { high: true, hum: 'neon', material: 'glass', w: 34, h: 6, hp: 3, static: true, chips: '#ffb02a', sparks: true, glass: true, sound: 'glass',
+  neon_sign_beer: { hum: 'neon', material: 'glass', w: 34, h: 6, hp: 3, static: true, chips: '#ffb02a', sparks: true, glass: true, sound: 'glass',
     light: { r: 80, color: '#ffb84a', intensity: 0.55, flicker: 'buzz' } },
-  neon_sign_bay: { high: true, hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+  neon_sign_bay: { hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff4a8a', intensity: 0.9, flicker: 'buzz', y: 3 } },
   // the VIP room's: two show bills, a strip of mirror behind the stage, red neon lips
   poster_pinup: { static: true, material: 'glass', w: 12, h: 3, hp: 2, chips: '#e8508a', glass: true, sound: 'glass' },
   poster_revue: { static: true, material: 'glass', w: 14, h: 3, hp: 2, chips: '#1e1a26', glass: true, sound: 'glass' },
   mirror_strip: { static: true, material: 'glass', w: 42, h: 3, hp: 3, chips: '#d8d0e8', glass: true, sound: 'glass' },
-  neon_sign_lips: { high: true, hum: 'neon', material: 'glass', w: 22, h: 6, hp: 3, static: true, chips: '#ff2a4a', sparks: true, glass: true, sound: 'glass',
+  neon_sign_lips: { hum: 'neon', material: 'glass', w: 22, h: 6, hp: 3, static: true, chips: '#ff2a4a', sparks: true, glass: true, sound: 'glass',
     light: { r: 90, color: '#ff3a5a', intensity: 0.6, flicker: 'buzz', y: 3 } },
   // the VIP room's low table: smoked glass in a chrome rim on one foot
   cocktail_table: { static: true, vault: true, material: 'metal', r: 12, hp: 8, chips: '#2a2030', sparks: true, sound: 'metal' },
@@ -171,13 +172,13 @@ export const PROPS = {
     light: { r: 175, color: '#ffc98a', intensity: 0.95 } },
   table_lamp: { fixture: true, material: 'wood', r: 7.5, hp: 3, kg: 14, mu: 0.5, chips: '#6a4026', sparks: true, glass: true, sound: 'wood',
     light: { r: 130, color: '#ffb070', intensity: 0.85 } },
-  wall_lamp: { high: true, fixture: true, static: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffe2a8', sparks: true, glass: true, sound: 'glass',
+  wall_lamp: { fixture: true, static: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffe2a8', sparks: true, glass: true, sound: 'glass',
     light: { r: 160, color: '#ffd9a0', intensity: 0.9, y: 3 } },
-  tube_light: { high: true, fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#cfe6ff', sparks: true, glass: true, sound: 'glass',
+  tube_light: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#cfe6ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 200, color: '#d4e8ff', intensity: 0.9, flicker: 'buzz', y: 3 } },
-  neon_tube_pink: { high: true, hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+  neon_tube_pink: { hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff2a6d', intensity: 0.95, flicker: 'buzz', y: 3 } },
-  neon_tube_cyan: { high: true, hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
+  neon_tube_cyan: { hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#2af0ff', intensity: 0.95, flicker: 'buzz', y: 3 } },
   // turns (`spin`, rad/s) with the shadow of its blades on the floor
   ceiling_fan: { high: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', r: 5, hp: 3, chips: '#6e4e36', sparks: true, sound: 'metal', spin: 5.5 },

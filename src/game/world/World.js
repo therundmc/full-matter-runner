@@ -26,7 +26,7 @@ import MapRenderer from '../render/MapRenderer.js';
 import WorldRenderer from '../render/WorldRenderer.js';
 import Lighting from '../render/Lighting.js';
 import Particles from '../fx/Particles.js';
-import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
+import { traceBullet, lineOfSight, canSeeCharacter, brushFittings } from '../systems/Ballistics.js';
 import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence, watchOpenings } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
@@ -78,6 +78,8 @@ export default class World {
     this.time = 0;
     this.timers = [];
     this.events = new EventBus();
+    // a round going under a ceiling fitting shakes it a little (it only breaks to a blast)
+    this.events.on('round', (e) => brushFittings(this, e.x0, e.y0, e.x1, e.y1));
 
     this.map = new TileMap(level.tiles);
     this.physics = new PhysicsWorld({
