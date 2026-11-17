@@ -27,7 +27,6 @@ import WorldRenderer from '../render/WorldRenderer.js';
 import Lighting from '../render/Lighting.js';
 import Particles from '../fx/Particles.js';
 import { traceBullet, lineOfSight, canSeeCharacter } from '../systems/Ballistics.js';
-import { segSeg } from '../../engine/physics/Raycast.js';
 import { explode } from '../systems/Explosions.js';
 import { damageWall, destroyWall, destroyWindow, detachDoor, destroyFence, watchOpenings } from '../systems/Destruction.js';
 import Scoring from '../systems/Scoring.js';
@@ -61,6 +60,7 @@ import GasValve from '../systems/GasValve.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
+import Curtains from '../systems/Curtains.js';
 import Weather from '../systems/Weather.js';
 import Smoke from '../systems/Smoke.js';
 import Director from '../ai/Director.js';
@@ -154,6 +154,7 @@ export default class World {
     this.lastShot = { owner: null, t: -1 };
 
     buildLevel(this, level);
+    this.curtains = new Curtains(this); // the curtains' cloth: pushed by whoever goes through, parted, hiding or not
     this.jukebox.wire();  // the devices that are props of the level offer their spots now that the props are there
     this.gasValve.wire();
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
@@ -322,15 +323,8 @@ export default class World {
   lineOfSight(x0, y0, x1, y1) { return lineOfSight(this, x0, y0, x1, y1); }
   // what eyes can make out: no wall in the way, no cloud either
   sightLine(x0, y0, x1, y1) { return this.lineOfSight(x0, y0, x1, y1) && !this.smoke.blocks(x0, y0, x1, y1) && !this.curtained(x0, y0, x1, y1); }
-  // whether a curtain hangs across the line (props with def `curtain`: a segment along their length)
-  curtained(x0, y0, x1, y1) {
-    for (const p of this.props) {
-      if (!p.def.curtain || p.dead) continue;
-      const a = p.body.angle, hl = p.def.h / 2, ux = -Math.sin(a) * hl, uy = Math.cos(a) * hl;
-      if (segSeg(x0, y0, x1, y1, p.x - ux, p.y - uy, p.x + ux, p.y + uy) !== null) return true;
-    }
-    return false;
-  }
+  // whether a curtain's cloth hangs across the line (systems/Curtains.js: parted wide enough, it does not)
+  curtained(x0, y0, x1, y1) { return this.curtains.blocks(x0, y0, x1, y1); }
   canSeeCharacter(viewer, ch) { return canSeeCharacter(this, viewer, ch); }
   traceBullet(x0, y0, x1, y1, team, ignore, floor) { return traceBullet(this, x0, y0, x1, y1, team, ignore, floor); }
   explode(x, y, opts) { explode(this, x, y, opts); }
@@ -532,6 +526,7 @@ export default class World {
     this.clutter.update(dt);
     this.steam.update(dt);
     this.papers.update(dt);
+    this.curtains.update(dt);
     this.weather.update();
     this.smoke.update(dt);
     this.threats.update(this.view());

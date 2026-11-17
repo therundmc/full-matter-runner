@@ -151,9 +151,10 @@ test('traversal: he dives through the liquor store\'s window only once its bars 
 });
 
 test('a curtain across a doorway is walked through but never seen through', async () => {
-  const { default: World } = await load('game/world/World.js');
+  const { default: Curtains } = await load('game/systems/Curtains.js');
   const curtain = { def: PROPS.curtain, dead: false, x: px(24.5), y: px(18.5), body: { angle: 0 } };
-  const seen = (x0, y0, x1, y1) => !World.prototype.curtained.call({ props: [curtain] }, px(x0), px(y0), px(x1), px(y1));
+  const curtains = new Curtains({ props: [curtain], events: { on: noop } });
+  const seen = (x0, y0, x1, y1) => !curtains.blocks(px(x0), px(y0), px(x1), px(y1));
   assert.ok(PROPS.curtain.hung, 'no body in the way');
   assert.equal(seen(23, 18.5, 26, 18.5), false, 'across the doorway');
   assert.equal(seen(23, 16.5, 26, 16.5), true, 'beside it');

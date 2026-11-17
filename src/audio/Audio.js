@@ -388,6 +388,10 @@ const FOLEY = {
   splash: [['splash', 1]],
   // pigeons going up: a clatter of wings, short quick beats of air
   flutter: [['swish', 0.5, 2.6], ['swish', 0.4, 2.9, 0.07], ['swish', 0.4, 2.4, 0.15], ['swish', 0.3, 2.8, 0.24], ['swish', 0.2, 2.5, 0.34]],
+  // the velvet curtain (systems/Curtains.js), placeholders until the bought library (assets/sound/PLACEHOLDERS.md)
+  curtainBrush: [['soft', 0.45, 0.7], ['swish', 0.25, 0.55, 0.03]],
+  curtainRings: [['click', 0.25, 1.6], ['click', 0.18, 1.8, 0.05], ['click', 0.12, 1.7, 0.11, 0.6]],
+  curtainWhoosh: [['swish', 0.7, 0.5], ['soft', 0.4, 0.6, 0.02]],
   // small things
   ricochet: [['stone', 0.5, 1.5]],
   ammo: [['rattle', 1], ['handle', 0.35, 1.2]],

@@ -64,8 +64,9 @@ export const PROPS = {
     light: { r: 110, color: '#ffc8ee', intensity: 0.75, flicker: 'pulse' } },
   // the boss's case, open on the floor by his desk: banknotes fly at every hit
   cash_case: { material: 'plastic', w: 20, h: 14, hp: 4, kg: 9, mu: 0.4, chips: '#2a2a32', sound: 'wood' },
-  // a velvet curtain across a doorway: walked through (hung, drawn over whoever passes, seen through by the player under
-  // it), never seen through (World.sightLine), rounds go through it
+  // a velvet curtain across a doorway, its rod h px long: a cloth walked through (systems/Curtains.js, CURTAIN in
+  // data/cloth.js: pushed, parted, drawn over whoever passes, seen through by the player in it), hiding what is beyond
+  // unless parted wide (World.sightLine), rounds go through it
   curtain: { hung: true, overhead: true, height: 0, static: true, curtain: true, material: 'wood', w: 6, h: 32, hp: 99, chips: '#7a0e22', sound: 'wood' },
   // a draught tower standing on the bar (laid over a counter module: it takes no room of its own, rounds go by it)
   beer_tap: { hung: true, static: true, material: 'metal', w: 20, h: 8, hp: 6, chips: '#b8bcc8', sound: 'metal' },
