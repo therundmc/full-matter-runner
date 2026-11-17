@@ -13,7 +13,8 @@ import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
-import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING } from '../data/feel.js';
+import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE } from '../data/feel.js';
+import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
 import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
@@ -712,17 +713,30 @@ export default class Character {
     const ladder = def.climb === 'rungs' ? this.ladderPlan(v, dir) : null;
     const dur = ladder ? LADDER_DUR : climb ? CLIMB_DUR : VAULT_DUR;
     const side = angDiff(dir, this.angle) >= 0 ? 1 : -1; // hip slides roll the chest toward the aim
+    // furniture: the one-hand speed vault (CharacterAnim), the hand that is free planted (the left one when the right
+    // holds something, else the one on the aim's side), the legs swung past on the other side of it; a hood: the hip
+    // slide (TRAVERSE.vault.hip)
+    const T = TRAVERSE.vault, style = hoist ? 'hoist' : v.over.isVehicle && T.hip.vehicle ? 'hip' : 'speed';
+    const hand = this.def.hold !== 'none' ? -1 : side, c = Math.cos(dir), s = Math.sin(dir);
+    // the hand goes where the body will be at the heart of the swing (so it passes over it), on the top: at least
+    // `into` px past the near edge, `out` to its side
+    const m0 = clamp((along * 60 * dur) / dist, 0, hoist ? 0.6 : 1.1), m1 = hoist ? 0.8 : 1.2;
+    const mid = hermite(T.mid, m0, m1) * dist - ((L.x - this.x) * c + (L.y - this.y) * s);
+    const far = (v.to.x - L.x) * c + (v.to.y - L.y) * s - this.radius - 5; // short of the far edge
+    const into = clamp(mid, T.into, Math.max(T.into, far));
+    const plant = { x: L.x + c * into - s * hand * T.out, y: L.y + s * into + c * hand * T.out };
     this.vaulting = {
-      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur, kind: v.kind, over: v.over, dir, dist, hoist, ladder,
+      from: { x: this.x, y: this.y }, to: v.to, t: 0, dur, kind: v.kind, over: v.over, dir, dist, hoist, ladder, style,
       roll: this.isPlayer && def.land === 'roll' && !onRoof(w, v.to.x, v.to.y), rolling: null,
-      hands: flip ? [h1, h0] : [h0, h1], side, legSide: hoist ? (Math.random() < 0.5 ? -1 : 1) : -side,
-      m0: clamp((along * 60 * dur) / dist, 0, hoist ? 0.6 : 1.1), m1: ladder ? 0.5 : hoist ? 0.8 : 1.2, landed: false,
+      hands: flip ? [h1, h0] : [h0, h1], side, hand, plant, planted: false,
+      legSide: hoist ? (Math.random() < 0.5 ? -1 : 1) : style === 'speed' ? -hand : -side,
+      m0, m1: ladder ? 0.5 : m1, landed: false,
     };
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
     if (ladder) return true; // each rung is heard as it is climbed (climbLadder)
-    w.sound(climb ? 'climb' : v.kind === 'window' && v.over.intact ? 'dive' : hoist ? 'vault' : 'hipSlide', this.x, this.y, 0.8, { land: !this.vaulting.roll, material: v.over.isVehicle ? 'metal' : def.material });
+    w.sound(climb ? 'climb' : v.kind === 'window' && v.over.intact ? 'dive' : style === 'hip' ? 'hipSlide' : 'vault', this.x, this.y, 0.8, { land: !this.vaulting.roll, material: v.over.isVehicle ? 'metal' : def.material });
     if (climb) w.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
     else if (v.kind === 'window' && !v.over.intact) w.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60); // a whole pane shatters in updateVault
     return true;
@@ -754,7 +768,7 @@ export default class Character {
       // leaves with the run-up speed, lands with the exit speed, no jerk in between
       e = hermite(k, v.m0, v.m1);
       // skidding over a hood throws sparks, over wood a bit of dust
-      if (!v.hoist && k > 0.25 && k < 0.75 && Math.random() < 0.35) {
+      if (v.style === 'hip' && k > 0.25 && k < 0.75 && Math.random() < 0.35) {
         const metal = v.over?.isVehicle || v.over?.def?.material === 'metal';
         if (metal) w.particles.sparks(this.x, this.y, v.dir + Math.PI, 0.6, 1, 140);
         else w.particles.smoke(this.x, this.y, 1, 3, { speed: 15, size: 3, life: 0.5 });
@@ -764,12 +778,20 @@ export default class Character {
     Body.setVelocity(this.body, { x: 0, y: 0 });
     // a whole pane bursts as the body goes through (its own noise and glass; the diver is never cut by it)
     if (k >= 0.3 && v.kind === 'window' && v.over.intact) v.over.shatter(v.dir, this, 1);
-    // touch-down: dust, noise (less of it when he rolls), a small camera kick for the player
-    if (!v.ladder && !v.landed && k >= (v.roll ? 1 : v.hoist ? 0.78 : 0.84)) {
+    // the speed vault's hand on the top, the coat swung past it (placeholder sounds: assets/sound/PLACEHOLDERS.md)
+    if (v.style === 'speed' && !v.planted && k >= TRAVERSE.vault.plant) {
+      v.planted = true;
+      w.sound('handPlant', v.plant.x, v.plant.y, 0.7, { material: v.over?.def?.material });
+      w.sound('vaultSwish', this.x, this.y, 0.6);
+      plantFx(this, v);
+    }
+    // touch-down: dust, noise (less of it when he rolls), the player's landing (fx/TraversalFx.js)
+    if (!v.ladder && !v.landed && k >= (v.roll ? 1 : v.hoist ? 0.78 : TRAVERSE.vault.land)) {
       v.landed = true;
       for (const sd of [-1, 1]) w.particles.smoke(this.x - s * sd * 6, this.y + c * sd * 6, 1, 2, { speed: 22, size: 3, life: 0.45 });
       w.noise(this.x, this.y, this.isPlayer ? (v.roll ? PLAYER.roll.noise : LAND_NOISE) : 0, this);
-      if (this.isPlayer) { w.shake(0.05); w.camera.push(c * 1.5, s * 1.5); }
+      w.sound('landThud', this.x, this.y, v.roll || v.hoist ? 0.8 : 0.5, { floor: w.floorAt(this.x, this.y) });
+      landFx(this, v.dir, v.hoist ? 1 : 0.6);
     }
     if (k < 1) return true;
     if (v.roll) { this.startRoll(v); return this.updateRoll(dt, v); }
@@ -819,6 +841,7 @@ export default class Character {
       r.up = true;
       w.particles.smoke(this.x + c * 5, this.y + s * 5, 2, 2, { speed: 18, size: 3, life: 0.4 });
       w.sound('rollUp', this.x, this.y, 0.7);
+      rollFx(this, v.dir);
     }
     if (k < 1) return true;
     this.endVault(v, (r.m1 * r.len) / (r.dur * 60));

@@ -9,7 +9,7 @@
 // bends him: { hunch, duck, lift, lean, look, twist, shake }).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE, RELOAD, FLINCH, FACING, feelOf } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW, sh as spriteH } from '../../engine/Assets.js';
 import { lerp, clamp, angDiff } from '../../engine/math.js';
@@ -145,6 +145,7 @@ export function newPose() {
   return {
     tx: 0, ty: 0, ta: 0, s: 1, lift: 0, legs: 0, // legs: how far the legs are thrown out in front (sit, slide...)
     tuck: 0, over: 0, // curled up in a ball, the back up (a roll); the legs up over the body
+    sq: 1, sqW: 1, sqA: 0, // the curled body's length along axis sqA and its width across it (a roll seen from above)
     ha: 0,            // where the head looks: it keeps to the aim while the shoulders turn under it
     feet: [pt(), pt()],
     hand: ['loose', 'loose'], elb: [0.45, 0.45], // how each hand is ('fist' | 'loose' | 'flat'), elbows out 0 .. 1
@@ -576,6 +577,7 @@ export function standPose(ch, P, a) {
   P.legs = 0;
   P.tuck = 0;
   P.over = 0;
+  P.sq = P.sqW = 1;
 
   // feet: along the way he goes, toes the way his hips face (ch.footA), each one planted then swung ahead; standing
   // still, the weight on one leg puts the other foot a little forward
@@ -630,6 +632,7 @@ function blendPose(A, B, w) {
   A.lift = lerp(A.lift, B.lift, w);
   A.legs = lerp(A.legs, B.legs, w);
   A.tuck = lerp(A.tuck, B.tuck, w); A.over = lerp(A.over, B.over, w);
+  A.sq = lerp(A.sq, B.sq, w); A.sqW = lerp(A.sqW, B.sqW, w); A.sqA = B.sqA;
   A.wpnLen = lerp(A.wpnLen, B.wpnLen, w); A.wpnS = lerp(A.wpnS, B.wpnS, w);
   A.ha = lerpA(A.ha, B.ha, w);
   A.duck *= 1 - w; A.hunch *= 1 - w;
@@ -649,6 +652,7 @@ function blendPose(A, B, w) {
 
 function copyPose(A, B) {
   A.tx = B.tx; A.ty = B.ty; A.ta = B.ta; A.s = B.s; A.lift = B.lift; A.legs = B.legs; A.tuck = B.tuck; A.over = B.over;
+  A.sq = B.sq; A.sqW = B.sqW; A.sqA = B.sqA;
   A.ha = B.ha; A.duck = B.duck; A.hunch = B.hunch;
   for (let i = 0; i < 2; i++) { Object.assign(A.feet[i], B.feet[i]); A.hand[i] = B.hand[i]; A.elb[i] = B.elb[i]; }
   for (const k of ['hl', 'hr', 'wpn', 'carry']) Object.assign(A[k], B[k]);
@@ -670,8 +674,11 @@ function track(times, vals, k) {
 const LEGS = {
   // over a sill: crouch, legs tucked and swung to one side, reaching for the floor, landing stance
   window: { t: [0, 0.18, 0.45, 0.72, 1], x: [1, -1, -4, 5, 1], ys: [3.6, 3.2, 2.2, 3, 3.6], yl: [0, 0, 5.5, 1.5, 0] },
-  // hip slide on a hood / table: legs thrown forward together and swung round
+  // hip slide on a hood: legs thrown forward together and swung round
   prop: { t: [0, 0.15, 0.4, 0.7, 1], x: [1, 2, 9, 8, 1], ys: [3.6, 3, 2.4, 2.4, 3.6], yl: [0, 0, 4, 3, 0] },
+  // speed vault: the last step, the feet off together and tucked, carried past the hand on the far side, reaching
+  // for the floor ahead, down
+  speed: { t: [0, 0.12, 0.26, 0.44, 0.62, 0.8, 1], x: [1, -1.5, -2.5, 2.5, 7, 6, 1], ys: [3.6, 3.4, 1.5, 1.2, 1.6, 3, 3.6], yl: [0, 0, 3.5, 7.5, 6, 1.5, 0] },
 };
 
 function legsPose(P, keys, k, dir, legSide) {
@@ -699,13 +706,95 @@ function reach(h, P, side) {
 }
 
 // ---------------- vault ----------------
-// hoist (a sill, a gate, a parapet): anticipation crouch, hands planted on the edge, body hoisted over with tucked
-// legs, squash on landing (or straight on into a roll after a drop).
-// prop: action-movie hip slide over the top, the gun arm stays on target, one palm skidding on the surface.
+// Three ways over (Character.tryVault sets v.style):
+// - 'speed' (furniture): the one-hand speed vault. A dip in the last step, the leading hand flat on the top at the
+//   obstacle's line (world-fixed: it does not slide while he passes), the hips lifted and swung past it on the other
+//   side of that arm, the legs tucked together, the torso over the arm; the free arm out for balance (a gun stays
+//   on the target, muzzle forward). He lands moving on, the hand off last, then one quick step.
+// - 'hip' (a car's hood): the action-movie hip slide over the top, the gun arm on target, one palm skidding.
+// - 'hoist' (a sill, a gate, a parapet): hands planted on the edge, the body hoisted over with tucked legs, squash on
+//   landing (or straight on into a roll after a drop).
+
+// The phases of the speed vault at k (0 .. 1 of its clock, TRAVERSE.vault), each 0 .. 1: the dip before the plant,
+// the planted hand's hold (1 from the plant until it lifts off), the body up, the legs swung past (0 .. 1 across),
+// the landing's squash, the step on after it
+export function vaultPhases(k, out = {}) {
+  const T = TRAVERSE.vault;
+  out.dip = bump(k, 0, T.dip);
+  out.hand = smooth((k - 0.02) / (T.plant - 0.02)) * (1 - smooth((k - T.lift) / 0.1));
+  out.up = bump(k, T.plant - 0.04, T.land + 0.02);
+  out.swing = smooth((k - T.swing[0]) / (T.swing[1] - T.swing[0]));
+  out.land = bump(k, T.land - 0.05, 1);
+  out.step = smooth((k - T.land) / (1 - T.land));
+  return out;
+}
+const VP = {};
+
+// a world point as a pose offset of ch (pose px about his feet: he is drawn BODY_SCALE larger)
+function onWorld(out, ch, x, y) { out.x = (x - ch.x) / BODY_SCALE; out.y = (y - ch.y) / BODY_SCALE; return out; }
+
+// the one-hand speed vault; v.hand: the planted hand's side (-1 left, 1 right of the move), v.plant: where it goes
+// (world), the legs on the other side (v.legSide)
+function speedVaultPose(ch, P, V, v) {
+  const T = TRAVERSE.vault, k = clamp(v.t / v.dur, 0, 1), ph = vaultPhases(k, VP);
+  const dir = v.dir, c = Math.cos(dir), s = Math.sin(dir), hs = v.hand, pi = hs > 0 ? 1 : 0;
+  copyPose(V, P);
+  const d = ch.def, held = V.wpnOn && d.hold !== 'none';
+  // the torso: down in the dip, then up and over the planted arm, the hips side-on; an armed man's chest stays
+  // toward his target
+  const over = ph.up * (1 - 0.6 * ph.step);
+  const turn = dir + hs * T.turn * over;
+  V.ta = held && d.kind === 'gun' ? lerpA(turn, P.ta, 0.5) : turn;
+  const fwd = -1.2 * ph.dip + 1.6 * ph.up - 1.4 * ph.land, lat = hs * T.lean * over;
+  V.tx = P.tx * (1 - over) + c * fwd - s * lat; V.ty = P.ty * (1 - over) + s * fwd + c * lat;
+  V.s = 1 + T.rise * ph.up - 0.05 * ph.dip - 0.07 * ph.land;
+  V.lift = 0.75 * ph.up;
+  V.legs = ph.up;
+  V.top = 0;
+  V.flat = null;
+  // the legs tucked together and carried past on the far side, toes turned with the hips; the hand side's foot steps
+  // on after the landing
+  legsPose(V, LEGS.speed, k, dir, v.legSide);
+  for (let i = 0; i < 2; i++) {
+    const f = V.feet[i];
+    f.lift = 0.7 * ph.up; f.heel = 0;
+    f.a = dir - v.legSide * 0.5 * ph.swing * (1 - ph.step);
+    if (i === pi) { f.x += c * 4 * ph.step; f.y += s * 4 * ph.step; f.lift = Math.max(f.lift, 0.5 * bump(ph.step, 0, 1)); }
+  }
+  // the hands go with the torso; the planted one onto its spot and held there
+  const dx = V.tx - P.tx, dy = V.ty - P.ty, plant = pi ? V.hr : V.hl, free = pi ? V.hl : V.hr;
+  for (const h of [V.hl, V.hr, V.wpn]) { h.x += dx; h.y += dy; }
+  onWorld(TMP, ch, v.plant.x, v.plant.y);
+  plant.x = lerp(plant.x, TMP.x, ph.hand); plant.y = lerp(plant.y, TMP.y, ph.hand);
+  if (ph.hand < 1) reachOut(plant, V, hs); // planted, it stays put (the plant is where the body passes over it)
+  if (ph.hand > 0.4) { V.flat = pi ? 'hr' : 'hl'; V.flatA = dir + hs * 0.35; }
+  V.elb[pi] = lerp(V.elb[pi], 0.15, ph.hand); // the arm braced, near straight
+  if (held) {
+    // the weapon in the right hand alone, muzzle forward along the way (a long gun let go of its forend)
+    if (d.hold === 'two') { V.wpn.a = lerpA(V.wpn.a, dir - 0.25, over); V.wpnLen = lerp(V.wpnLen, 0.85, over); }
+  } else {
+    // the free arm out for balance, away from the plant, a little back
+    const fb = smooth(ph.up * 1.4);
+    TO.x = V.tx + (0.5 - 2 * ph.swing) * c + hs * 10.5 * s; TO.y = V.ty + (0.5 - 2 * ph.swing) * s - hs * 10.5 * c;
+    free.x = lerp(free.x, TO.x, fb); free.y = lerp(free.y, TO.y, fb);
+    reach(free, V, -hs);
+    V.hand[1 - pi] = 'loose';
+  }
+  V.carryImg = null;
+  // in from the run, and out to it over the step after the landing
+  const w = smooth(k / 0.1) * (v.roll ? 1 : 1 - smooth((k - 0.86) / 0.14));
+  blendPose(P, V, w);
+  if (w > 0.5) { P.flat = V.flat; P.flatA = V.flatA; }
+  P.lift = V.lift * w;
+  P.duck = Math.max(P.duck, 0.3 * ph.dip * w); // the head down into the dip
+  return P;
+}
+
 export function vaultPose(ch, P, V) {
   const v = ch.vaulting;
   if (v.rolling) return rollPose(ch, P, V);
   if (v.ladder) return ladderPose(ch, P, V);
+  if (v.style === 'speed') return speedVaultPose(ch, P, V, v);
   const k = clamp(v.t / v.dur, 0, 1);
   const win = v.hoist;
   const dir = v.dir, c = Math.cos(dir), s = Math.sin(dir);
@@ -728,18 +817,19 @@ export function vaultPose(ch, P, V) {
   V.lift = win ? h : h * 0.6;
   V.legs = win ? 0 : h;
   V.top = 0;
+  V.flat = null;
   legsPose(V, win ? LEGS.window : LEGS.prop, k, dir, v.legSide);
 
   if (win) {
     // both palms on the sill until the body has passed them, the gun hand keeps its weapon flat along the move
     const hw = smooth(k / 0.16) * (1 - smooth((k - 0.55) / 0.25));
-    const bx = ch.x, by = ch.y;
     for (let i = 0; i < 2; i++) {
       const hp = v.hands[i], hand = i ? V.hr : V.hl;
-      const px = hp.x - bx, py = hp.y - by;
-      hand.x = lerp(hand.x, px, hw); hand.y = lerp(hand.y, py, hw);
+      onWorld(TMP, ch, hp.x, hp.y);
+      hand.x = lerp(hand.x, TMP.x, hw); hand.y = lerp(hand.y, TMP.y, hw);
       reach(hand, V, i ? 1 : -1);
     }
+    if (hw > 0.5 && !V.wpnOn) { V.flat = 'hl'; V.flatA = dir; }
     if (V.wpnOn) { V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = lerpA(P.wpn.a, dir + 0.15, hw); }
     V.carryImg = null;
   } else if (ch.def.hold !== 'two') {
@@ -749,6 +839,7 @@ export function vaultPose(ch, P, V) {
     const ox = -Math.sin(V.ta), oy = Math.cos(V.ta);
     const px = SH.x - ox * 5 * V.s - c * 2, py = SH.y - oy * 5 * V.s - s * 2;
     V.hl.x = lerp(V.hl.x, px, hw); V.hl.y = lerp(V.hl.y, py, hw);
+    if (hw > 0.5) { V.flat = 'hl'; V.flatA = dir; }
     V.carryImg = null;
   }
 
@@ -756,6 +847,7 @@ export function vaultPose(ch, P, V) {
   // take-off and squash on landing on top
   const w = smooth(k / 0.14) * (v.roll ? 1 : 1 - smooth((k - 0.82) / 0.18));
   blendPose(P, V, w);
+  if (w > 0.5 && V.flat) { P.flat = V.flat; P.flatA = V.flatA; }
   const land = win ? 0.78 : 0.82;
   P.s *= 1 - 0.05 * bump(k, 0, 0.18) - 0.07 * bump(k, land - 0.02, 1);
   P.lift = V.lift * w;
@@ -867,32 +959,50 @@ function holdOnTheWay(ch, V, f) {
 }
 
 // ---------------- roll ----------------
-// After a drop: a forward roll over one shoulder, seen from above. The body tucks into a ball (the head goes under,
-// the back shows), the legs come up over it and unfold in front, he sits up over his feet and rises running. The free
-// hand takes the floor first and pushes him up at the end; the weapon stays in the other one, tucked in.
+// After a drop: a forward shoulder roll, seen from above. He tucks (the head goes down along the leading shoulder and
+// under, the hunched back shows), the body balls up and goes over along the way (faked by squashing it along the
+// travel axis as it turns over: its outline shrinks, then grows), the legs pass up over him and come down in front,
+// then he unfolds explosively onto his feet, running. The free hand takes the floor first and pushes him up at the
+// end; the weapon stays in the other one, tucked in.
 const ROLL = {
   t: [0, 0.14, 0.3, 0.46, 0.62, 0.8, 1],
-  fwd: [0, 3.5, 2, -0.5, -3, -1.5, 0],  // torso ahead of the body centre
-  s: [1, 0.88, 0.8, 0.8, 0.86, 0.95, 1],
-  tuck: [0, 0.6, 1, 1, 0.4, 0, 0],
-  fx: [1, -2, -3, 1, 8, 4, 1],          // feet: forward, and half their spread
-  fy: [3.6, 3.2, 3.4, 3.4, 3.2, 3.4, 3.6],
+  fwd: [0, 3.5, 2, -0.5, -3, -1, 0],    // torso ahead of the body centre
+  s: [1, 0.86, 0.78, 0.78, 0.84, 0.97, 1],
+  fx: [1, -2, -4, 1, 6, 2.5, 1],        // feet: forward (back under him for the unfold), and half their spread
+  fy: [3.6, 2.8, 2.2, 2.2, 2.6, 3.6, 3.6],
   legs: [0, 0, 0.7, 1, 1, 0.3, 0],
-  hx: [6, 10, 3, 2, -1, 1, 6],          // the free hand: on the floor ahead, tucked in, pushing off beside the hip
-  hy: [6, 5, 3.5, 3.5, 8.5, 7, 6],
+  hx: [6, 10, 3, 1.5, -1, 1.5, 6],      // the free hand: on the floor ahead, tucked in, pushing off beside the hip
+  hy: [6, 5, 3, 3, 8.5, 7, 6],
 };
 
+// The phases of the roll at k (0 .. 1 of it, TRAVERSE.roll): how curled up he is (tuck), how far over he has gone
+// (turn, rad: 2 pi a full turn), his length along the way and his width across it (1 standing: the squash), the
+// unfold's spring (0 .. 1)
+export function rollPhases(k, out = {}) {
+  const R = TRAVERSE.roll, [o0, o1] = R.over, [u0, u1] = R.unfold;
+  out.tuck = smooth(k / 0.16) * (1 - smooth((k - u0) / (u1 - u0)));
+  out.turn = Math.PI * 2 * R.turns * smooth((k - o0) / (o1 - o0));
+  const sn = Math.sin(out.turn / 2);
+  out.along = 1 - out.tuck * (1 - R.squash[0]) * (0.55 + 0.45 * sn * sn);
+  out.across = 1 - out.tuck * (1 - R.squash[1]);
+  out.pop = bump(k, u0, 1);
+  return out;
+}
+const RP = {};
+
 function rollPose(ch, P, V) {
-  const v = ch.vaulting, r = v.rolling, k = clamp(r.t / r.dur, 0, 1);
+  const v = ch.vaulting, r = v.rolling, k = clamp(r.t / r.dur, 0, 1), ph = rollPhases(k, RP);
   const dir = v.dir, c = Math.cos(dir), s = Math.sin(dir), key = (n) => track(ROLL.t, ROLL[n], k);
   const mv = (out, lx, ly) => { out.x = lx * c - ly * s; out.y = lx * s + ly * c; }; // move space -> pose space
   copyPose(V, P);
   const fwd = key('fwd');
-  V.ta = dir + r.side * 0.5 * bump(k, 0.06, 0.72);
+  // over the leading shoulder: the torso turned to it, rocking with the turn
+  V.ta = dir + r.side * (0.5 * bump(k, 0.06, 0.72) + 0.22 * Math.sin(ph.turn) * ph.tuck);
   V.tx = c * fwd; V.ty = s * fwd;
-  V.s = key('s');
-  V.tuck = clamp(key('tuck'), 0, 1);
-  V.over = bump(k, 0.22, 0.6);
+  V.s = key('s') * (1 + TRAVERSE.roll.pop * ph.pop);
+  V.tuck = ph.tuck;
+  V.sq = ph.along; V.sqW = ph.across; V.sqA = dir;
+  V.over = Math.max(0, Math.sin(ph.turn / 2)) * ph.tuck; // the legs up over him through the middle of the turn
   V.legs = clamp(key('legs'), 0, 1);
   V.lift = 0.25 * V.over;
   V.top = 0;
@@ -914,39 +1024,71 @@ function rollPose(ch, P, V) {
   }
   V.carryImg = null;
   blendPose(P, V, 1 - smooth((k - 0.8) / 0.2));
+  P.duck = Math.max(P.duck, 0.8 * smooth(ph.tuck * 2)); // the head down between the shoulders before it goes under
   return P;
 }
 
 // ---------------- slide ----------------
-// low knee / hip slide: legs thrown forward, torso leaning back but still facing the aim, trailing palm on the floor
+// The phases of a slide (TRAVERSE.slide), each 0 .. 1, at k (0 .. 1 of the slide) and `out` (0 .. 1 of the push
+// back up once it is over, Player.updateSlideAnim): the drop (the lead leg shot out, leaning back), how far reclined
+// he is, the push back up onto his feet
+export function slidePhases(k, out = 0, ph = {}) {
+  const T = TRAVERSE.slide;
+  ph.drop = easeOut(k / T.drop);
+  ph.up = Math.max(smooth((k - T.up) / (1 - T.up)) * 0.35, smooth(out));
+  ph.recline = smooth(k / T.drop) * (1 - ph.up);
+  return ph;
+}
+const SP = {};
+
+// A knee slide, seen from above. The drop: a quick lean back and down, the lead leg shot out ahead, the other folded
+// under, the trailing hand going down behind. The slide: the torso reclined and turned side-on (the free shoulder
+// back toward the palm), the trailing hand flat on the floor, the gun still on the target. The way up: the hand
+// pushes off last, the folded leg takes him, the torso is thrown forward past the hips and settles (`pop`).
+// ch.slideAnim: { dir, side (-1: the palm on the left of the way), k, w, out }
 export function slidePose(ch, P, V) {
   const sl = ch.slideAnim;
   const w = smooth(sl.w);
   if (w <= 0) return P;
+  const T = TRAVERSE.slide, ph = slidePhases(sl.k, sl.out ?? 0, SP);
   copyPose(V, P);
-  const dir = sl.dir, c = Math.cos(dir), s = Math.sin(dir), side = sl.side;
+  const dir = sl.dir, c = Math.cos(dir), s = Math.sin(dir), side = sl.side, rec = ph.recline, up = ph.up;
   // side-on: the free shoulder drops back toward the palm, the gun shoulder leads, the arms still hold the aim
-  V.ta = ch.angle - 0.9;
-  V.tx = P.tx * 0.3 - c * 3.5; V.ty = P.ty * 0.3 - s * 3.5;
-  V.s = 0.88;
-  V.legs = 1;
+  V.ta = P.ta + side * T.turn * rec;
+  const back = -T.back * rec + T.pop * bump(up, 0.15, 1);
+  V.tx = P.tx * (1 - 0.7 * rec) + c * back; V.ty = P.ty * (1 - 0.7 * rec) + s * back;
+  V.s = 1 - 0.12 * rec + 0.03 * bump(up, 0.3, 1);
+  V.legs = rec;
   V.top = 0;
-  // lead leg straight out (opposite the palm), the other bent under, a slight tremor of the floor
-  const shake = Math.sin(ch.world.time * 70) * 0.35 * (1 - sl.k);
+  V.flat = null;
+  // the hands on the weapon go with the shoulders, the arms reaching on to keep it on the target
+  const dx = (V.tx - P.tx) * 0.5, dy = (V.ty - P.ty) * 0.5;
+  for (const h of [V.hl, V.hr, V.wpn]) { h.x += dx; h.y += dy; }
+  // lead leg shot out ahead (on the other side from the palm), the other folded under him; a tremor of the floor;
+  // getting up, the folded one takes the weight and the lead one comes back under him
+  const shake = Math.sin(ch.world.time * 70) * 0.35 * rec * (1 - sl.k);
+  const ext = ph.drop * (1 - up);
   for (let i = 0; i < 2; i++) {
-    const lead = (i ? 1 : -1) === -side;
-    const lx = lead ? 13 : 6, ly = (lead ? -side * 1.5 : side * 4.5) + shake;
-    const f = V.feet[i];
-    f.x = V.tx + lx * c - ly * s; f.y = V.ty + lx * s + ly * c; f.a = dir;
+    const lead = (i ? 1 : -1) === -side, f = V.feet[i];
+    const lx = lead ? lerp(2, 13, ext) - 2 * bump(up, 0, 0.7) : lerp(0.5, 6, ext) - 1.5 * up;
+    const ly = (lead ? lerp(-side * 3.6, -side * 1.5, ext) : lerp(side * 3.6, side * 4.5, ext)) + shake;
+    f.x = V.tx * rec + lx * c - ly * s; f.y = V.ty * rec + lx * s + ly * c; f.a = dir + (lead ? 0 : side * 0.6 * ext);
+    f.lift = lead ? 0.5 * bump(up, 0.1, 0.8) : 0; f.heel = 0;
   }
   if (ch.def.hold !== 'two') {
-    // trailing hand skimming the floor behind, beside the hip
-    const px = V.tx - c * 5 - s * side * 9, py = V.ty - s * 5 + c * side * 9;
-    V.hl.x = px; V.hl.y = py;
+    // the trailing hand: down behind him in the drop, flat on the floor beside the hip, a last push off it on the
+    // way up (it comes forward under the shoulder), then off
+    const on = smooth(sl.k / T.drop) * (1 - smooth((up - 0.55) / 0.45)), push = smooth(up / 0.55);
+    const lx = lerp(-5, -1, push), ly = side * lerp(9, 8, push);
+    V.hl.x = lerp(V.hl.x, V.tx + lx * c - ly * s, on); V.hl.y = lerp(V.hl.y, V.ty + lx * s + ly * c, on);
     reach(V.hl, V, -1);
+    if (on > 0.5) { V.flat = 'hl'; V.flatA = dir + side * 0.4; }
     V.carryImg = null;
   }
-  blendPose(P, V, w);
+  // back into the run as he comes up
+  const bw = w * (1 - smooth(((sl.out ?? 0) - 0.55) / 0.45));
+  blendPose(P, V, bw);
+  if (bw > 0.5 && V.flat) { P.flat = V.flat; P.flatA = V.flatA; }
   return P;
 }
 
@@ -1573,12 +1715,15 @@ function paintHand(ctx, ch, P, i, x, y, cup) {
   drawHand(ctx, ch.look, flat ? 'flat' : grip ? 'fist' : P.hand[i], i ? 1 : -1, x + H.x, y + H.y, a, P.s * (fist ? SIDE.fist : 1));
 }
 
-// curled up in a roll: the torso shorter and rounder, the head tucked under, the hunched back on top of it
+// curled up in a roll: the torso shorter and rounder (squashed along the way it rolls: P.sq, P.sqW about P.sqA), the
+// head tucked under, the hunched back on top of it
 function drawTucked(ctx, ch, P, bx, by) {
   const t = smooth(P.tuck), img = ch.torso;
   ctx.save();
   ctx.translate(bx, by);
-  ctx.rotate(P.ta);
+  ctx.rotate(P.sqA);
+  ctx.scale(P.sq, P.sqW);
+  ctx.rotate(P.ta - P.sqA);
   ctx.scale(P.s * (1 - 0.22 * t), P.s * (1 + 0.05 * t));
   drawSprite(ctx, img, 0, 0);
   // the head gone under the shoulders: the jacket's back where it was, lit on its round top, the spine down the

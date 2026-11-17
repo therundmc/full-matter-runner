@@ -27,7 +27,7 @@ function world(tiles = [], extra = []) {
     return { type, def, body, dead: false, x: px(col), y: px(row) };
   });
   return {
-    map, props, windows: [], particles: sink, camera: sink, sound: noop, noise: noop, shake: noop,
+    map, props, windows: [], particles: sink, camera: sink, sound: noop, noise: noop, shake: noop, floorAt: () => 'concrete',
     physics: { bodies: () => props.map((p) => p.body) },
   };
 }

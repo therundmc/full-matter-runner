@@ -10,6 +10,7 @@ import { SMEAR_TINT, HEAVY, STROKE, KILL, feelOf } from '../data/feel.js';
 import { sprite, sw } from '../../engine/Assets.js';
 import { rand, clamp, lerp, angDiff } from '../../engine/math.js';
 import { NECK } from '../entities/CharacterAnim.js';
+import { rimOf } from './TraversalFx.js';
 
 const CAP = 24;          // effects of each kind alive at once (the oldest gives way)
 const SMEAR_N = 10;      // points kept per character's weapon trail
@@ -43,6 +44,7 @@ export default class CombatFx {
     this.muzzles = []; // { ch, x, y, a, t0, dur, shape, len, wide, j }
     this.wakes = [];   // { x0, y0, x1, y1, t0, life, width }
     this.marks = [];   // { x, y, a, t0 }: a kill of the player's (KILL)
+    this.streaks = []; // { x0, y0, x1, y1, t0, life, alpha }: the light left along a slide (fx/TraversalFx.js)
   }
 
   // mark the player's kills from now on (World, once)
@@ -86,18 +88,25 @@ export default class CombatFx {
     return add(this.wakes, { x0, y0, x1: x0, y1: y0, t0: this.world.time, life, width });
   }
 
+  // a thin line of light from (x0, y0) to (x1, y1), fading over life s of world time
+  streak(x0, y0, x1, y1, life, alpha) { add(this.streaks, { x0, y0, x1, y1, t0: this.world.time, life, alpha }); }
+
   draw(ctx) {
     const now = this.world.time, t = real(this.world);
     prune(this.flashes, t, 'dur');
     prune(this.bursts, t, 'life');
     prune(this.muzzles, t, 'dur');
     prune(this.wakes, now, 'life');
+    prune(this.streaks, now, 'life');
     pruneMarks(this.marks, t);
     const gco = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
     for (const ch of this.world.chars) if (ch.smear?.n) drawSmear(ctx, ch.smear, now);
     for (const f of this.flashes) drawFlash(ctx, f, t);
     ctx.globalCompositeOperation = 'lighter';
     for (const w of this.wakes) drawWake(ctx, w, now);
+    for (const st of this.streaks) drawStreak(ctx, st, now);
+    const pl = this.world.player, rim = pl?.alive ? rimOf(pl) : 0;
+    if (rim > 0.01) drawRim(ctx, pl, rim);
     for (const b of this.bursts) drawBurst(ctx, b, t);
     for (const m of this.marks) drawMark(ctx, m, t);
     ctx.globalCompositeOperation = gco;
@@ -346,4 +355,49 @@ function drawWake(ctx, w, now) {
   ctx.globalAlpha = 0.5 * f;
   ctx.lineWidth = Math.max(0.5, w.width * 0.4 * f);
   ctx.beginPath(); ctx.moveTo(w.x0, w.y0); ctx.lineTo(w.x1, w.y1); ctx.stroke();
+}
+
+// a streak of a slide: a line of whole pixels' width, its far end thinner and fading first
+function drawStreak(ctx, st, now) {
+  const f = 1 - (now - st.t0) / st.life, mx = (st.x0 + st.x1) / 2, my = (st.y0 + st.y1) / 2;
+  ctx.lineCap = 'butt';
+  ctx.strokeStyle = 'rgb(236,240,255)';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = st.alpha * f;
+  ctx.beginPath(); ctx.moveTo(st.x0, st.y0); ctx.lineTo(mx, my); ctx.stroke();
+  ctx.globalAlpha = st.alpha * f * f * 0.5;
+  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(st.x1, st.y1); ctx.stroke();
+}
+
+// The player's rim of light through a vault's swing: the edges of his torso and head on the side of the light (top
+// left), a sprite pixel wide, cut out of their own shapes on a scratch canvas, then laid on him
+let scratch = null;
+const RIM = 64, RIM_K = 2; // scratch canvas side (px) and its px per world px
+function drawRim(ctx, ch, alpha) {
+  const P = ch.pose;
+  if (!P || !ch.torso || !ch.head) return;
+  if (!scratch) { scratch = document.createElement('canvas'); scratch.width = scratch.height = RIM; }
+  const g = scratch.getContext('2d'), s = P.s * BODY_SCALE, ta = P.ta;
+  const hx = (P.tx + Math.cos(ta) * NECK * P.s) * BODY_SCALE, hy = (P.ty + Math.sin(ta) * NECK * P.s) * BODY_SCALE;
+  const ha = ta + clamp(angDiff(ta, P.ha), -1, 1);
+  const put = (img, x, y, a, ox, oy, k = img.k || 1) => { // k: the sprite's density (its white copy has none)
+    g.setTransform(RIM_K, 0, 0, RIM_K, RIM / 2 + ox, RIM / 2 + oy);
+    g.translate(x, y); g.rotate(a); g.scale(s * k, s * k);
+    g.drawImage(img, -img.width / 2, -img.height / 2);
+  };
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, RIM, RIM);
+  g.globalCompositeOperation = 'source-over';
+  for (const [ox, oy] of [[-1, 0], [0, -1], [-1, -1]]) {
+    put(white(ch.torso), P.tx * BODY_SCALE, P.ty * BODY_SCALE, ta, ox, oy, ch.torso.k || 1);
+    put(white(ch.head), hx, hy, ha, ox, oy, ch.head.k || 1);
+  }
+  g.globalCompositeOperation = 'destination-out';
+  put(ch.torso, P.tx * BODY_SCALE, P.ty * BODY_SCALE, ta, 0, 0);
+  put(ch.head, hx, hy, ha, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(scratch, ch.x - RIM / RIM_K / 2, ch.y - RIM / RIM_K / 2, RIM / RIM_K, RIM / RIM_K);
+  ctx.globalAlpha = 1;
 }

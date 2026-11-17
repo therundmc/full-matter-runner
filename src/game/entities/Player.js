@@ -1,7 +1,7 @@
 import { PLAYER, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand, chance, angDiff } from '../../engine/math.js';
-import { chunk, spriteOpt } from '../../engine/Assets.js';
+import { spriteOpt } from '../../engine/Assets.js';
 import Debris from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
@@ -11,16 +11,16 @@ import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind, newTakedown, advance } from '../systems/Takedown.js';
 import { finisherFor, takedownFor, shotCause, EXEC } from '../data/finishers.js';
-import { MOMENTS, GESTURE } from '../data/feel.js';
+import { MOMENTS, GESTURE, TRAVERSE } from '../data/feel.js';
 import { SLIP } from '../data/devices.js';
 import { blowFx } from '../fx/Blows.js';
 import { landMoment } from '../fx/Impact.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
+import { slideFx } from '../fx/TraversalFx.js';
 import { smooth } from './CharacterAnim.js';
 
 const { Body, Query } = Matter;
 const SHOVE_T = 0.28; // s a guard's shove carries him back (Enemy.shove)
-let scuff = null; // floor scuff stamp, made on first use
 
 export default class Player extends Character {
   constructor(world, x, y, angle) {
@@ -395,6 +395,7 @@ export default class Player extends Character {
     this.slideAnim = { dir: a, side: Math.cos(this.angle - a) >= 0 ? -1 : 1, k: 0, w: this.slideAnim?.w ?? 0 };
     this.setSlideVelocity();
     w.sound('slide', this.x, this.y, 0.9);
+    w.sound('slideScrape', this.x, this.y, 0.7, { floor: w.floorAt(this.x, this.y) }); // placeholder (PLACEHOLDERS.md)
     w.noise(this.x, this.y, 110, this);
     w.events.emit('slide', { ch: this, x: this.x, y: this.y, angle: a });
     w.camera.push(Math.cos(a) * 2.5, Math.sin(a) * 2.5);
@@ -453,11 +454,8 @@ export default class Player extends Character {
       impulse(o, sl.angle, kgOf(this.body) * sl.speed * cfg.hitMomentum, rand(-0.3, 0.3), 10);
     }
     this.setSlideVelocity();
-    // friction: dust off the hip and heel, a faint scuff on the floor
-    const fx = this.x + sl.dx * 8, fy = this.y + sl.dy * 8;
-    if (Math.random() < 0.3) w.particles.smoke(this.x - sl.dx * 3, this.y - sl.dy * 3, 1, 1.5, { speed: 10, size: 1.8, life: 0.3 });
-    if (Math.random() < 0.25) w.particles.smoke(fx, fy, 1, 2, { speed: 10, size: 2, life: 0.3 });
-    w.decals.bake(scuff ??= chunk('#140c1c', 4, 2), fx, fy, sl.angle, 0.05);
+    // friction: dust off the trailing hand and the lead foot, streaks of light, a faint skid mark (fx/TraversalFx.js)
+    slideFx(this, sl, this.slideAnim, dt);
   }
 
   // hand the remaining speed back to the run
@@ -469,13 +467,14 @@ export default class Player extends Character {
     Body.setVelocity(this.body, this.vel);
   }
 
-  // blend weight of the slide pose: quick drop into it, smooth get-up
+  // blend weight of the slide pose: quick drop into it, then up off the floor in one motion (`out`: the push back
+  // up once the slide is over, TRAVERSE.slide.rec s, CharacterAnim.slidePose)
   updateSlideAnim(dt) {
     const a = this.slideAnim;
     if (!a) return;
     const down = this.slipped && this.slipped.t < SLIP.player.slide; // flat on his back on a slick floor (slip)
-    if (this.slide || down) { if (this.slide) a.k = this.slide.k; a.w = Math.min(1, a.w + dt / (down ? 0.08 : 0.07)); }
-    else if ((a.w -= dt / 0.18) <= 0) this.slideAnim = null;
+    if (this.slide || down) { if (this.slide) a.k = this.slide.k; a.w = Math.min(1, a.w + dt / (down ? 0.08 : 0.07)); a.out = 0; }
+    else if ((a.out = Math.min(1, (a.out ?? 0) + dt / TRAVERSE.slide.rec)) >= 1) this.slideAnim = null;
   }
 
   // ground finisher on a knocked-out enemy (data/finishers.js): the player is taken over until it is done. He sets
