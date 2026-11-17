@@ -26,7 +26,7 @@ Plan (north is up, 1 tile = 1 m; columns and rows of the level):
     6 LIQUIDS     a little bar on tiles: kegs behind the counter, the fire alarm and its sprinklers, a water pipe, two
                   dummies to bleed; the hydrant on the kerb outside, a car in the road whose tank leaks petrol
     7 CURTAIN     a velvet curtain in the VIP room's doorway, a man (awake) behind it facing it; BARS: the barred window
-    8 POOL        a man at the pool table under its lamp: shoot the chains
+    8 POOL        a man bent over the pool table, its balls to send rolling (a round, a blow, a body into it)
     9 POWER       the bar room: lit behind its windows on the dark lobby, on the fuse box in the lobby (emergency
                   lights over its doors), the jukebox (E), a trapdoor (E) to the one in the yard; in the yard a wall
                   lamp that is going (flicker 'broken')
@@ -151,7 +151,7 @@ lv.area('9 power: the bar room')
 lv.paint('label_pool', 35.5, 1.5)
 lv.prop('pool_table', 35.5, 3.0)
 lv.prop('pool_lamp', 35.5, 3.0)
-lv.actor('i', 35, 4, face=270, job='pool')  # 8 POOL: bent over the table, the lamp over him
+lv.actor('i', 35, 4, face=270, job='pool')  # 8 POOL: bent over the table
 lv.prop('jukebox', 41.5, 1.35, 0)
 lv.paint('label_jukebox', 41.5, 2.4)
 lv.prop('table', 44.0, 3.2)
@@ -215,6 +215,6 @@ if __name__ == '__main__':
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights,
              header=[
                  'Physics lab: a test ground, one station each (range, executions, soot, powder, steam, liquids, curtain and bars,',
-                 'pool lamp, power / jukebox / trapdoor) and a street with the vehicles. Load with ?level=lab. Guards here are passive',
+                 'pool, power / jukebox / trapdoor) and a street with the vehicles. Load with ?level=lab. Guards here are passive',
                  'dummies (blind and deaf, at their job), but the two kept `awake` for the sight tests.',
              ])

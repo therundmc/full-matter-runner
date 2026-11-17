@@ -24,6 +24,8 @@ const STAGES = [0.7, 0.45, 0.2];
 const ZONE_WEAR = { pellet: 0.6, bullet: 1, rifle: 1.4, graze: 0.4, blunt: 1.7, blast: 2.2, cut: 0.5, punch: 0.3, shrapnel: 0.3 };
 // penetration energy assumed when the caller does not give one
 const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 24, cut: 3, punch: 2, shrapnel: 3 };
+// what reaches a light fitting up high (def `high`)
+const BLASTS = new Set(['blast', 'shrapnel']);
 // what holes a gas bottle or a stove (see gasHit)
 const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
 const TAU = Math.PI * 2;
@@ -126,10 +128,9 @@ export default class Prop {
   // kind: see the header. info (bullets): { nx, ny } surface normal, energy left when it arrived,
   // exit: { x, y, energy } if the round went through, ricochet: it glanced off; (blades): swing direction.
   hit(damage, px, py, dirA, power = 0.6, kind = 'bullet', info = {}) {
-    if (this.dead || this.dying || this.falling) return; // falling: a lamp whose chains a round just cut (LampDrop)
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
+    if (this.dead || this.dying || (d.high && !BLASTS.has(kind))) return; // up high: only a blast reaches it
     w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind });
-    if (this.falling) return;
     // a street bin goes over instead (systems/Tipping.js), sent along by the blow; it then lands on the can lying there
     const fell = d.tips && kind !== 'graze' && tipOver(this, dirA, power * 0.6);
     if (d.handset) this.offHook ??= w.time; // the receiver jumps off its hook
@@ -928,11 +929,10 @@ export default class Prop {
 
   // canopies and lamp heads: above everyone, see-through when the player is under
   drawOverhead(ctx, player, cam) {
-    const o = this.centre(), k = this.kick, d = this.def, hang = this.hang ?? 1; // hang: 1 up there .. 0 come down (LampDrop)
+    const o = this.centre(), k = this.kick, d = this.def;
     // parallax: what sits up high leans away from the centre of the view
-    this.ox = (o.x - cam.x) * (d.height || 0) * hang;
-    this.oy = (o.y - cam.y) * (d.height || 0) * hang;
-    if (hang < 1) drawSprite(ctx, this.shadowImg(), o.x + 3 * hang + 1, o.y + 4 * hang + 1, this.body.angle, 0.35 * (1 - hang)); // its shadow meets it
+    this.ox = (o.x - cam.x) * (d.height || 0);
+    this.oy = (o.y - cam.y) * (d.height || 0);
     const b = this.bend || { x: 0, y: 0 }; // a bent post keeps its lean
     const x = o.x + this.ox + k.x + b.x, y = o.y + this.oy + k.y + b.y, a = this.body.angle + this.sag + k.r + this.spun();
     if (d.pole) {

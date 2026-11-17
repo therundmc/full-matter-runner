@@ -535,7 +535,7 @@ export default class Character {
       landBlow(w, c, (x + c.x * 2) / 3, (y + c.y * 2) / 3, ba, d, { lethal: !c.alive, byPlayer: this.isPlayer, heavy: hard });
     }
     for (const p of w.props) {
-      if (p.dead) continue;
+      if (p.dead || p.def.high) continue; // a light fitting is out of reach (def `high`)
       let hx = x + Math.cos(a) * d.range * 0.8, hy = y + Math.sin(a) * d.range * 0.8;
       if (p.isVehicle) {
         // a long body: what counts is the panel in front of the blow, not how far its centre is
