@@ -57,6 +57,9 @@
 
 ## Audio
 - Sounds and music will come from PAID packs bought online. Do not add new synthesized sounds.
+- A full SFX library will be bought later: a feature that wants a sound gets a NAMED PLACEHOLDER (played through the
+  normal Audio path, mapped to the closest recorded foley cut or silent), listed in assets/sound/PLACEHOLDERS.md
+  (name, trigger, wanted sound) so the library can fill it.
 - The synthesized audio is temporary, replaced pack by pack: sounds in src/audio/Foley.js, Synth.js, Beds.js and the
   synthesized part of Audio.js; music in Synthwave.js, groove/, score.js, tracks/.
 - Recorded today: gunshots in assets/sound/shots; the foley bank assets/sound/foley.wav + src/audio/bank.js, built by
