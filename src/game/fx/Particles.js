@@ -6,8 +6,9 @@ import { run, faceNormal, shutBetween } from './Spatter.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
 // FLOAT: stuffing / feathers / paper drifting down slowly; DUST: clouds that hang and settle; DROP: liquid;
+// MOTE: a fleck of floor dust kicked up low (a slide, a landing): a whole pixel or two that fades in steps.
 // JET: water thrown high (a geyser), seen from above: it grows and leans away from the middle of the view as it rises.
-export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7, SHARD: 8, FLOAT: 9, DUST: 10, DROP: 11, JET: 12 };
+export const P = { BLOOD: 0, SPARK: 1, SMOKE: 2, FIRE: 3, GLASS: 4, CHIP: 5, MIST: 6, EMBER: 7, SHARD: 8, FLOAT: 9, DUST: 10, DROP: 11, JET: 12, MOTE: 13 };
 const SHARD_REST = 0.5; // seconds a landed shard lies still before it is baked into the floor
 const GRAVITY = 520;    // px/s2 of fake height
 // what goes really high (JET, shards thrown with opts.high) comes toward the camera: per px of height it grows by
@@ -194,6 +195,25 @@ export default class Particles {
       const life = rand(1.4, opts.life ?? 3.4);
       this.add({ type: P.DUST, x: x + rand(-r, r), y: y + rand(-r, r) * 0.7, vx: Math.cos(a) * v + (opts.vx || 0), vy: Math.sin(a) * v + (opts.vy || 0),
         size: rand(1.5, opts.size ?? 5), grow: rand(1, 3.5), life, maxLife: life, drag: 1.6, color, alpha: opts.alpha ?? 0.18, tag: opts.tag });
+    }
+  }
+
+  // flecks of floor dust kicked along a (within spread rad) off (x, y) (r: px they start scattered over), alpha at most
+  motes(x, y, a, spread, count, color, speed = 40, alpha = 0.6, r = 1) {
+    for (let i = 0; i < count; i++) {
+      const d = a + rand(-spread, spread), v = speed * rand(0.35, 1.1), life = rand(0.25, 0.55);
+      this.add({ type: P.MOTE, x: x + rand(-r, r), y: y + rand(-r, r), vx: Math.cos(d) * v, vy: Math.sin(d) * v,
+        size: chance(0.3) ? 2 : 1, color, alpha, life, maxLife: life, drag: 4.5 });
+    }
+  }
+
+  // a ring of them thrown out from (x, y) all round, starting r px out: the dust a landing pushes off the floor
+  ring(x, y, count, r, speed, color, alpha = 0.6) {
+    const a0 = rand(0, Math.PI * 2);
+    for (let i = 0; i < count; i++) {
+      const a = a0 + (i / count) * Math.PI * 2 + rand(-0.2, 0.2), v = speed * rand(0.75, 1.15), life = rand(0.3, 0.5);
+      this.add({ type: P.MOTE, x: x + Math.cos(a) * r, y: y + Math.sin(a) * r, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+        size: chance(0.4) ? 2 : 1, color, alpha, life, maxLife: life, drag: 5 });
     }
   }
 
@@ -461,6 +481,13 @@ export default class Particles {
           ctx.globalAlpha = 1;
           break;
         }
+        case P.MOTE:
+          // on whole pixels, thinning in three flat steps
+          ctx.globalAlpha = p.alpha * Math.ceil((p.life / p.maxLife) * 3) / 3;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, 1); // a fleck of two lies along the floor
+          ctx.globalAlpha = 1;
+          break;
         case P.GLASS:
           ctx.fillStyle = '#c8faff';
           ctx.fillRect(p.x, p.y - p.z * 0.25, p.size, 1);

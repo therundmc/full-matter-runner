@@ -27,3 +27,7 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |
 | curtainRings | the curtain's rings run along the rod as it parts or falls back | brass rings sliding on a brass rod, a light metallic rattle |
 | curtainWhoosh | something fast (a body thrown, a slide) goes through a curtain | a heavy cloth whoosh, the velvet thrown aside |
+| handPlant | the speed vault's hand comes down flat on a table, a counter, a crate (Character.updateVault, TRAVERSE.vault.plant) | a palm slapped on wood / metal / stone (per material if the library has them) |
+| vaultSwish | the coat swung over the obstacle in the same vault (Character.updateVault) | a quick heavy cloth / coat whoosh |
+| landThud | the feet coming down after a vault or a drop (Character.updateVault) | a two-footed landing thud with a shoe scuff, per floor |
+| slideScrape | the start of the player's slide (Player.startSlide), over the synthesized slide | denim and a shoe sole scraping along concrete / wood / tiles, falling off in a half second |

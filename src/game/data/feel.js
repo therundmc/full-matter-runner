@@ -318,6 +318,52 @@ export const FACING = {
   lean: 0.8, cloth: 11,
 };
 
+// Getting over things, sliding, rolling (CharacterAnim vaultPose / slidePose / rollPose; everyone moves the same):
+// shares of each move's own clock.
+//   vault  the one-hand speed vault over furniture (Character.tryVault): a dip in the last step until `dip`, the
+//          hand flat on the top at `plant` (world-fixed from then on: where the body is at `mid` of the move, at least
+//          `into` px past the near edge, `out` px to its side), the hips lifted and swung past it over `swing`, the
+//          hand off last at `lift`, the feet down at
+//          `land` (Character.updateVault), one quick step on after it; `rise`: share of size the body comes up by,
+//          `lean`: px the torso goes over the planted arm, `turn`: rad the hips turn side-on. hip.vehicle: a car's
+//          hood is slid across on the hip instead
+//   slide  the drop until `drop` (leaning back, the lead leg shot out), the slide (the torso reclined `back` px,
+//          turned `turn` rad side-on, the trailing hand flat on the floor), the push back up from `up` and over
+//          `rec` s once it is over (Player.updateSlideAnim); `pop`: px the torso is thrown forward getting up
+//   roll   squash: [least share of length along the way, across it] of the curled body; turns: how far round he
+//          goes (1 = once) between `over` [from, to]; unfold [from, to]: back onto his feet, `pop` share of size
+export const TRAVERSE = {
+  vault: { dip: 0.12, plant: 0.14, mid: 0.45, into: 3, out: 7, swing: [0.18, 0.66], lift: 0.68, land: 0.84, rise: 0.12, lean: 3.4, turn: 0.75,
+    hip: { vehicle: true } },
+  slide: { drop: 0.16, up: 0.8, rec: 0.2, back: 4.2, turn: 0.75, pop: 2.2 },
+  roll: { squash: [0.68, 0.9], turns: 1, over: [0.12, 0.66], unfold: [0.6, 0.84], pop: 0.05 },
+};
+
+// What only the player's moves throw (fx/TraversalFx.js; the guards move the same, without the flourish). Kept
+// faint, crisp, no blur.
+//   ground  what flies off each kind of floor (World.floorAt; a wet one: its liquid's drops): dust puffs (colour,
+//           alpha) or specks (colour)
+//   slide   per second while sliding: dust off the trailing hand and the lead foot (rate, first share of the slide
+//           only after `till`); streaks of light along the way (rate, len px, life s, alpha, spread px across) over
+//           the first `streak` share; the skid mark (colour, alpha, a stroke every px)
+//   plant   the hand on the top: a puff (count, r), chips of what it is (count, speed)
+//   rim     a thin light outline on him through the swing (alpha, over the vault's swing)
+//   land    a vault or a drop coming down: a ring of dust (count, r px, speed px/s), specks, the camera (shake trauma,
+//           dip px along the way); roll: the dust he throws as he unfolds
+export const TRAVERSE_FX = {
+  ground: {
+    dust: { color: '#a49c8c', alpha: 0.2, speck: '#6e675c' },
+    wood: { color: '#8a6a48', alpha: 0.14, speck: '#c08a58' },
+    carpet: { color: '#7a5a6a', alpha: 0.1, speck: '#5a3a4a' },
+    floors: { wood: 'wood', carpet_red: 'carpet', carpet_purple: 'carpet' },
+  },
+  slide: { dust: 26, till: 0.75, streak: 0.4, streaks: 30, len: [10, 20], life: 0.14, alpha: 0.35, spread: 9, skid: { color: '#140c1c', alpha: 0.05, every: 5 } },
+  plant: { puff: 3, r: 2, chips: 3, speed: 50 },
+  rim: { alpha: 0.55 },
+  land: { ring: 10, r: 5, speed: 46, specks: 3, shake: 0.06, dip: 1.8 },
+  roll: { ring: 7, r: 4, speed: 40, puff: 3 },
+};
+
 // d: a weapon definition -> its FEEL family
 export function familyOf(d) {
   if (!d || d.kind !== 'gun') return !d || d.hold === 'none' ? 'fists' : d.swing === 'blade' ? 'blade' : d.heft >= 2 ? 'club' : 'stick';

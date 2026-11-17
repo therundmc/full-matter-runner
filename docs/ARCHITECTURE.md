@@ -196,6 +196,7 @@ src/
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per
                           gun family: data/feel.js `recoil`; pure, unit-tested)
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
+                          TraversalFx (the player's flourish on a vault, a slide, a landing, a roll)
                           Casings (a spent case out of the ejection port, to the gun's right: speed, spin, hops, the
                           ring of each touchdown; data/feel.js CASING), CombatFx (flashes, stars, muzzle flashes, wakes,
                           weapon trails, the player's kill mark: KILL)
@@ -453,8 +454,13 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   splashes, drops, brain, a spilt drink; runs start in it). Nothing flies through a door leaf or an intact pane
   (Spatter.shutBetween): the exit spray (`fling`, `wallBehind` given the world) stops there, and so do airborne drops,
   the fine mist and the bits of bone (fx/Particles.js); a streak is laid only if its whole length is in the clear.
-- Traversal (Character): `tryVault(angle, moving)`. Broken window = hands planted on the sill (arm reach clamped);
-  furniture / car hood = action-movie slide on the hip, gun kept on target, sparks on metal.
+- Traversal (Character): `tryVault(angle, moving)`. Broken window, gate, parapet = hands planted on the edge, hoisted
+  over (`style` 'hoist'); furniture = a one-hand speed vault (`speed`: the free hand flat on the top, world-fixed while
+  the body swings past it on the other side, a gun kept on the target); a car's hood = the action-movie slide on the
+  hip (`hip`), sparks on metal. Phases in data/feel.js `TRAVERSE` (CharacterAnim vaultPhases / slidePhases /
+  rollPhases); everyone moves the same, the player alone throws the flourish (fx/TraversalFx.js, `TRAVERSE_FX`: dust
+  by floor, a slide's streaks of light and skid mark, the plant's puff, a rim of light through the swing, a landing's
+  ring of dust and camera dip).
   Space = context action: execute > vault > slide; the takedown from behind is the left click. (A cover system
   existed and was removed at the user's request.)
 - Takedown (`TAKEDOWN`, systems/Takedown.js, Player.updateTakedown, data/finishers.js `TAKEDOWNS` / `takedownFor`):

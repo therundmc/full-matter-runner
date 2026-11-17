@@ -174,6 +174,10 @@ export const META = {
   doorPush: { pri: 0, dur: 0.3, gap: 0.15, max: 2, gain: 0.25 },
   cloth: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.1 },
   scuff: { pri: 0, dur: 0.15, gap: 0.06, max: 2, gain: 0.12 },
+  handPlant: { pri: 0, dur: 0.2, gap: 0.1, max: 2, gain: 0.2 },
+  vaultSwish: { pri: 0, dur: 0.3, gap: 0.15, max: 2, gain: 0.14 },
+  landThud: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.22 },
+  slideScrape: { pri: 0, dur: 0.5, gap: 0.2, max: 1, gain: 0.12 },
   click: { dur: 0.12, gap: 0.05, max: 3, gain: 0.7 },
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
   // fire, alarm, UI, street
@@ -411,6 +415,10 @@ const FOLEY = {
   doorPush: [['door', 0.4, 1.15]],
   cloth: [['swish', 0.35, 0.6]],
   scuff: [['soft', 0.35, 1.5]],
+  handPlant: [['soft', 0.6, 1.2], ['wood', 0.15, 1.4]],
+  vaultSwish: [['swish', 0.45, 0.7]],
+  landThud: [['thud', 0.55, 0.9], ['soft', 0.4, 0.8, 0.03]],
+  slideScrape: [['rubble', 0.25, 1.3], ['soft', 0.3, 0.7, 0.05]],
   clear: [['doorSlam', 0.6, 0.6]],
 };
 
