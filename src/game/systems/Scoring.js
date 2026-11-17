@@ -5,9 +5,13 @@
 //   'shot'       trigger pulls of the player (accuracy)
 //   'explosion'  remembers what blew up (a rocket kill is a hit)
 //   'alertPhase' every ALERT eats into the stealth bonus
+// It tells what it scored (ui/KillFeed.js shows it, apart from the guards' barks):
+//   'scored'     { x, y (where it happened), points, labels (best first, at most 3), combo, multiplier, streak,
+//                kind 'kill' | 'knock' | 'bonus' | 'civilian' }
+//   'multiKill'  { n, tag 'double' | 'triple' | 'massacre', x, y } several kills in a breath (fx/Impact.js: a moment)
+//   'chainEnd'   { kills, points } a chain of 2+ ran out (points: all it earned while it ran)
 // The live score only holds what was earned on the spot; `tally()` adds the end bonuses (chain, variety, time,
 // stealth, accuracy, mercy), the penalties and the grade. Rules are data (data/scoring.js).
-import { PALETTE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
 import { WEAPONS } from '../data/weapons.js';
 import { SCORING, levelScoring } from '../data/scoring.js';
@@ -112,6 +116,7 @@ export default class Scoring {
     this.combo = 0;           // kills in the current chain
     this.maxCombo = 0;
     this.comboEnd = -99;      // world time the chain breaks at
+    this.chainPts = 0;        // points earned while the current chain runs
     this.methods = new Set(); // different ways of killing used
     this.shots = 0;
     this.hits = 0;
@@ -139,12 +144,27 @@ export default class Scoring {
   // share of the chain window left, 0..1
   get comboLeft() { return this.combo > 0 ? clamp((this.comboEnd - this.world.time) / this.rules.combo.window, 0, 1) : 0; }
 
-  // direct bonus (door slam...): floating text at x, y
-  add(points, x, y, label) {
+  // direct bonus (door slam...) earned at x, y
+  add(points, x, y, label, kind = 'bonus') {
+    this.earn(points, x, y, label ? [label] : [], kind);
+  }
+
+  earn(points, x, y, labels, kind) {
     this.points += points;
     this.lastT = this.world.time;
-    const str = label ? `${label} +${points}` : `+${points}`;
-    this.world.texts.push({ x, y, str, t: 1.1, dur: 1.1, color: label ? PALETTE.yellow : PALETTE.white });
+    if (this.combo > 0) this.chainPts += points;
+    this.tell(points, x, y, labels, kind);
+  }
+
+  tell(points, x, y, labels, kind) {
+    this.world.events.emit('scored', { x, y, points, labels, combo: this.combo, multiplier: this.multiplier, streak: this.streak, kind });
+  }
+
+  // the chain ran out: told when it was worth one
+  endChain() {
+    if (this.combo >= 2) this.world.events.emit('chainEnd', { kills: this.combo, points: this.chainPts });
+    this.combo = 0;
+    this.chainPts = 0;
   }
 
   onKill(e) {
@@ -155,7 +175,7 @@ export default class Scoring {
       // passers-by are not targets
       if (e.killer?.isPlayer || e.cause === 'explosion') {
         this.civilians++;
-        w.texts.push({ x: victim.x, y: victim.y - 10, str: `CIVILIAN -${this.rules.civilian}`, t: 1.1, dur: 1.1, color: PALETTE.pink });
+        this.tell(-this.rules.civilian, victim.x, victim.y, ['CIVILIAN'], 'civilian');
       }
       return;
     }
@@ -166,6 +186,7 @@ export default class Scoring {
     this.methods.add(how.method);
     if (how.style === 'shot' || how.style === 'pointBlank') this.hits++;
     else if (how.style === 'explosion' && this.blast?.source === 'rocket' && w.time - this.blast.t < 0.05) this.hits++;
+    if (w.time >= this.comboEnd && this.combo > 0) this.endChain(); // ran out this very step, before update() saw it
     this.combo = w.time < this.comboEnd ? this.combo + 1 : 1;
     this.comboEnd = w.time + this.rules.combo.window;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -184,7 +205,9 @@ export default class Scoring {
     // the three that pay most are spelled out
     const best = [...this.tags].sort((a, b) => R.tags[b].points - R.tags[a].points);
     const labels = [unseen ? 'UNSEEN' : circ.label || style.label, ...best.map((t) => R.tags[t].label)].filter(Boolean);
-    this.add(pts, victim.x, victim.y - 10, labels.slice(0, 3).join(' + '));
+    this.earn(pts, victim.x, victim.y, labels.slice(0, 3), 'kill');
+    const multi = this.tags.find((t) => t === 'double' || t === 'triple' || t === 'massacre');
+    if (multi) w.events.emit('multiKill', { n: this.streak, tag: multi, x: victim.x, y: victim.y });
     Audio.play('confirm', { n: this.combo });
   }
 
@@ -192,15 +215,15 @@ export default class Scoring {
   onKnock({ victim, cause }) {
     const pts = this.rules.knock[cause];
     if (!pts || !victim?.isEnemy) return;
-    this.add(pts, victim.x, victim.y - 10, cause === 'debris' ? 'WRECKAGE' : cause.toUpperCase());
     if (this.combo > 0) {
       const c = this.rules.combo;
       this.comboEnd = Math.max(this.comboEnd, this.world.time + c.window * c.knockRefill);
     }
+    this.add(pts, victim.x, victim.y, cause === 'debris' ? 'WRECKAGE' : cause.toUpperCase(), 'knock');
   }
 
   update() {
-    if (this.combo > 0 && this.world.time >= this.comboEnd) this.combo = 0;
+    if (this.combo > 0 && this.world.time >= this.comboEnd) this.endChain();
   }
 
   // level: { par, grades } (data/scoring.js); defaults to the generic per-guard scale

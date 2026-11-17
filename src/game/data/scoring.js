@@ -1,7 +1,7 @@
 // Score rules (data only). systems/Scoring.js applies them; the HUD and the results screen only display the outcome.
 
 export const SCORING = {
-  // points of a kill by the way it was done (Scoring.killStyle); `label` is shown over the body
+  // points of a kill by the way it was done (Scoring.killStyle); `label` is shown in the HUD's feed (ui/KillFeed.js)
   styles: {
     shot: { points: 400 },                              // a round from any gun
     pointBlank: { points: 500, label: 'POINT BLANK' },  // buckshot at arm's length

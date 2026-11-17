@@ -54,6 +54,28 @@ export function killBeat(world, victim, killer) {
   const R = MOMENTS.lastInRoom, p = world.player;
   if (!killer?.isPlayer || !victim.isEnemy || world.cleared || world.scoring.combo < R.chain) return false;
   if (!lastInSight(p, victim, world.enemies, R.radius, (e) => world.lineOfSight(p.x, p.y, e.x, e.y))) return false;
-  world.slowmo(...R.slowmo);
+  slowAtLeast(world, ...R.slowmo);
   return true;
+}
+
+// Is a slow motion (scale, dur s) weaker than the one running (Game.slow: { scale, t s left })? Measured by the time it
+// takes away: (1 - scale) x seconds.
+export const weakerSlow = (cur, scale, dur) => !!cur && (1 - cur.scale) * cur.t > (1 - scale) * dur;
+
+// slow motion that never cuts short a stronger one already running (a multi-kill and the last guard in sight, the
+// same instant: the stronger stays)
+function slowAtLeast(world, scale, dur) {
+  if (weakerSlow(world.game?.slow, scale, dur)) return false;
+  world.slowmo(scale, dur);
+  return true;
+}
+
+// several kills in a breath (Scoring's 'multiKill'): MOMENTS.multi of its tag. World, once.
+export function listenMoments(world) {
+  world.events.on('multiKill', ({ tag }) => {
+    const m = MOMENTS.multi[tag];
+    if (!m) return;
+    slowAtLeast(world, ...m.slowmo);
+    if (m.stop) world.hitstop(m.stop);
+  });
 }

@@ -443,6 +443,7 @@ export default class Game {
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;
     this.tension.update(dt);
+    this.world.killFeed.update(dt); // on the real clock: a hit-stop never holds a stamp up
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 

@@ -65,6 +65,10 @@ export const PLAYER = {
     exit: 0.75,       // speed handed back to the run at the end, x the roll's mean speed
     noise: 70,        // px the guards hear the landing at (a flat landing: 120)
   },
+  // a melee swing (fists, blade, club) started near a standing guard (systems/Lunge.js): the nearest one within the
+  // weapon's reach + `extra` px and `cone` rad of the aim draws it: the aim turns up to `turn` rad onto him and he
+  // closes in up to `push` px over `dur` s, to `gap` px short of contact, never into a wall
+  lunge: { extra: 12, cone: 0.5, turn: 0.25, push: 10, dur: 0.08, gap: 1 },
 };
 
 // Space right behind a standing guard who has his back to us (systems/Takedown.js): who can be seized. What is done

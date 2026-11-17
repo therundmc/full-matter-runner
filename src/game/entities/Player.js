@@ -10,6 +10,7 @@ import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { behind, newTakedown, advance } from '../systems/Takedown.js';
+import { lungeTarget } from '../systems/Lunge.js';
 import { finisherFor, takedownFor, shotCause, EXEC } from '../data/finishers.js';
 import { MOMENTS, GESTURE } from '../data/feel.js';
 import { SLIP } from '../data/devices.js';
@@ -36,6 +37,7 @@ export default class Player extends Character {
     this.nearUse = null;    // a device of the level within reach (systems/Uses.js): E uses it
     this.slipped = null;    // { t, a, v } while down on a slick floor (slip)
     this.passage = null;    // the trip through a passage under the street while it lasts (systems/Passage.js)
+    this.lunge = null;      // { a, dir, v, stop, until } a swing drawn to a guard (startLunge)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
@@ -105,6 +107,10 @@ export default class Player extends Character {
     if (this.slipped) { this.updateSlip(dt); return; }
     if (this.passage) { this.updatePassage(dt); return; }
     this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    // a swing drawn to a guard keeps its aim on him until the blow is struck (Character.meleeStrike reads the angle)
+    const lg = this.lunge;
+    if (lg && w.time >= lg.until) this.lunge = null;
+    else if (lg) this.angle = lg.a;
     if (this.updateVault(dt)) return;
 
     // movement (KeyW/A/S/D are physical positions: ZQSD on AZERTY)
@@ -130,6 +136,11 @@ export default class Player extends Character {
       this.steer(Math.cos(sh.a), Math.sin(sh.a), sh.v * Math.max(0, sh.t / SHOVE_T), 0.6);
       if (sh.t <= 0) this.shove = null;
     } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1), PLAYER.accel);
+    if (this.lunge && !sliding && !sh && w.time < this.lunge.stop) {
+      const L = this.lunge;
+      this.vel = { x: Math.cos(L.dir) * L.v, y: Math.sin(L.dir) * L.v };
+      Body.setVelocity(this.body, this.vel);
+    }
 
     // what is around us
     this.nearItem = null;
@@ -175,7 +186,9 @@ export default class Player extends Character {
       else {
         this.shootDown = d.kind === 'gun' ? this.corpseAt(aim.x, aim.y) : null;
         // dry: reload if we can, otherwise hurl the useless gun at them
-        if (this.attack() === 'empty' && input.mouseHit(0) && !this.reload()) this.throwWeapon(true);
+        const did = this.attack();
+        if (did === 'empty' && input.mouseHit(0) && !this.reload()) this.throwWeapon(true);
+        else if (did === true && d.kind !== 'gun' && !sliding) this.startLunge(d);
       }
     }
     if (input.hit('KeyR')) this.reload();
@@ -201,6 +214,17 @@ export default class Player extends Character {
       else if (this.nearUse) this.nearUse.use(this);
       else this.pickUp();
     }
+  }
+
+  // a melee swing just started: drawn to the guard in front of him, if one stands close (systems/Lunge.js): the aim
+  // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur
+  startLunge(d) {
+    const w = this.world, L = PLAYER.lunge;
+    const r = lungeTarget(this, d, w.enemies, this.angle, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y));
+    if (!r) return;
+    this.angle = r.a;
+    // px per base step that covers `push` over `dur` s
+    this.lunge = { a: r.a, dir: r.dir, v: r.push / (L.dur * 60), stop: w.time + L.dur, until: w.time + Math.max(L.dur, d.windup) };
   }
 
   // shoved along a at `speed` px/step (a guard telling him to get out: Enemy.shove)

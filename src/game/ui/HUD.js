@@ -1,6 +1,8 @@
 import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { text, neon, thousands } from './Text.js';
+import { text, neon, thousands, tone, glitchText } from './Text.js';
+import { tierColor } from './KillFeed.js';
+import { KILLFEED } from '../data/feel.js';
 import { drawIndicators } from './Indicators.js';
 import { drawPrompts } from './Glyphs.js';
 import { clamp } from '../../engine/math.js';
@@ -63,7 +65,8 @@ export function drawHUD(ctx, game, t) {
     ctx.fillRect(pad + bw * PLAYER.slide.cost - s, y, 2 * s, 5 * s); // what one slide takes
   }
 
-  drawScore(ctx, w, W - pad, pad, s);
+  drawScore(ctx, w, W - pad, pad, s, t);
+  drawBanner(ctx, w.killFeed, W, H, s, t);
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
@@ -92,22 +95,101 @@ export function drawHUD(ctx, game, t) {
   }
 }
 
-// Top right corner, kept small: score, run time, and the chain multiplier with the time left to keep it going.
-function drawScore(ctx, w, x, y, s) {
+// Top right corner: score and run time, kept small, then the chain under them.
+function drawScore(ctx, w, x, y, s, t) {
   const sc = w.scoring;
   const pop = Math.max(0, 0.25 - (w.time - sc.lastT)); // swells for a moment when points come in
   text(ctx, thousands(sc.score), x, y + 10 * s, 22 * s * (1 + pop * 0.6), PALETTE.white, { align: 'right' });
   text(ctx, clock(w.runTime), x, y + 32 * s, 11 * s, PALETTE.white, { align: 'right', alpha: 0.5 });
-  if (sc.combo < 1) return;
-  const left = sc.comboLeft, bw = 84 * s, by = y + 60 * s;
-  // the first kill of a chain only lights the fuse; the multiplier shows once it is worth something
-  if (sc.combo > 1) text(ctx, `x${sc.multiplier.toFixed(1)}`, x, y + 49 * s, 15 * s, PALETTE.pink, { align: 'right' });
-  ctx.globalAlpha = 0.7;
-  ctx.fillStyle = PALETTE.ink;
-  ctx.fillRect(x - bw, by, bw, 3 * s);
-  ctx.fillStyle = left < 0.3 ? PALETTE.yellow : PALETTE.pink;
-  ctx.fillRect(x - bw * left, by, bw * left, 3 * s);
-  ctx.globalAlpha = 1;
+  drawChain(ctx, w.killFeed, sc, x, y + 44 * s, s, t);
+}
+
+// Under the score (ui/KillFeed.js, KILLFEED in data/feel.js), right-aligned on x from y down, in the right margin
+// (at 720 p within about 200 x 150 px): the chain count from its 2nd kill, or the cash-out of the chain that just ran
+// out; the fuse draining over the chain's window (from its 1st kill); the labels of the last kills.
+function drawChain(ctx, feed, sc, x, y, s, t) {
+  const K = KILLFEED, pv = feed.panelView(), cv = feed.cashView();
+  let top = y;
+  if (cv) {
+    drawCash(ctx, cv, x, top + K.panel.h * s / 2, s);
+    top += K.panel.h * s;
+  } else if (pv) {
+    drawCount(ctx, pv, x, top + K.panel.h * s * pv.open / 2, s, t);
+    top += K.panel.h * s * pv.open;
+  }
+  if (sc.combo >= 1) {
+    const F = K.fuse, left = sc.comboLeft, bw = F.w * s, bh = F.h * s, by = top + 4 * s;
+    const low = left < F.low, blink = low && Math.floor(t * F.blink * 2) % 2 === 0;
+    const tier = pv?.tier ?? 0;
+    ctx.fillStyle = PALETTE.ink;
+    ctx.globalAlpha = 0.75;
+    ctx.fillRect(x - bw - s, by - s, bw + 2 * s, bh + 2 * s);
+    ctx.globalAlpha = blink ? 0.45 : 1;
+    ctx.fillStyle = left < F.low / 2 ? F.red : low ? PALETTE.yellow : tone(tierColor(tier), t);
+    ctx.fillRect(x - bw * left, by, bw * left, bh);
+    // a knock-down won some time back: the bar flashes white
+    const r = feed.refill();
+    if (r > 0) {
+      ctx.globalAlpha = r;
+      ctx.fillStyle = PALETTE.white;
+      ctx.fillRect(x - bw * left, by - s, bw * left, bh + 2 * s);
+    }
+    ctx.globalAlpha = 1;
+    top = by + bh + 8 * s;
+  }
+  const L = K.feed;
+  feed.lineViews().forEach((l, i) => {
+    text(ctx, l.str, x + l.x * s, top + (i + 0.5) * L.line * s, L.size * s, tone(l.color, t), { align: 'right', alpha: l.alpha });
+  });
+}
+
+// the chain count: big digits, KILLS and the multiplier in a column at their right; it slams on each kill
+function drawCount(ctx, v, x, cy, s, t) {
+  const P = KILLFEED.panel, col = tone(tierColor(v.tier), t), j = v.jolt * s;
+  const jx = j * Math.sin(t * 90), jy = j * Math.cos(t * 77);
+  ctx.save();
+  ctx.translate(Math.round(x + jx), Math.round(cy + jy));
+  ctx.scale(1, v.open);
+  const mult = `x${v.multiplier.toFixed(1)}`, lw = Math.max(widthAt(ctx, 'KILLS', P.label * s), widthAt(ctx, mult, P.label * 1.4 * s));
+  text(ctx, 'KILLS', 0, -9 * s, P.label * s, col, { align: 'right' });
+  text(ctx, mult, 0, 8 * s, P.label * 1.4 * s, col, { align: 'right' });
+  const dx = -lw - P.gap * s, size = P.size * s * (1 + v.punch), str = String(v.chain);
+  text(ctx, str, dx, 0, size, v.flash ? PALETTE.white : col, { align: 'right', shadow: PALETTE.ink });
+  // a white ghost of the digits swelling off them as they land
+  const g = v.punch / P.punch;
+  if (g > 0) text(ctx, str, dx, 0, size * (1 + (1 - g) * 0.5), PALETTE.white, { align: 'right', shadow: null, outline: false, alpha: 0.5 * g });
+  ctx.restore();
+}
+
+function widthAt(ctx, str, size) {
+  ctx.font = `${Math.round(size)}px joystix, monospace`;
+  return ctx.measureText(str).width;
+}
+
+// a chain of 2+ that just ran out: CHAIN x6 over the points it made, slammed in where the count was
+function drawCash(ctx, v, x, cy, s) {
+  const C = KILLFEED.cash, k = v.scale, pts = `+${thousands(v.points)}`;
+  ctx.save();
+  ctx.globalAlpha *= v.alpha;
+  text(ctx, `CHAIN x${v.kills}`, x, cy - 12 * s, C.size * s * k, PALETTE.white, { align: 'right' });
+  text(ctx, pts, x, cy + 8 * s, C.big * s * k, PALETTE.yellow, { align: 'right' });
+  if (v.ghost > 0) text(ctx, pts, x, cy + 8 * s, C.big * s * (1 + (1 - v.ghost) * 0.5), PALETTE.white, { align: 'right', shadow: null, outline: false, alpha: 0.5 * v.ghost });
+  ctx.restore();
+}
+
+// DOUBLE KILL / TRIPLE KILL / MASSACRE, centred high, stamped like the death screen's title (smaller, gone at once)
+function drawBanner(ctx, feed, W, H, s, t) {
+  const v = feed.bannerView();
+  if (!v) return;
+  const B = KILLFEED.banner, size = v.size * s * v.scale, j = v.jolt * s, rot = -0.035;
+  const x = W / 2 + j * Math.sin(t * 90), y = H * B.y + j * Math.cos(t * 77);
+  ctx.save();
+  ctx.globalAlpha *= v.alpha;
+  // on a hard black shadow, a white ghost of it where it hit
+  text(ctx, v.label, x + size * 0.09, y + size * 0.1, size, '#000', { shadow: null, rot });
+  if (v.ghost > 0) text(ctx, v.label, W / 2, H * B.y, v.size * s * (1 + (1 - v.ghost) * 0.6), PALETTE.white, { shadow: null, outline: false, rot, alpha: 0.5 * v.ghost });
+  glitchText(ctx, v.label, x, y, size, t, { rot, color: tone(v.color, t) });
+  ctx.restore();
 }
 
 const PHASES = { caution: ['CAUTION', PALETTE.yellow], alert: ['ALERT', PALETTE.pink], evasion: ['EVASION', PALETTE.orange] };

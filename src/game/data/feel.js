@@ -141,6 +141,50 @@ export const MOMENTS = {
   // the last guard in sight goes down after a real fight (others still about the level): a breath of slow motion.
   // radius: px about the player in which no other guard may stand in sight, chain: kills of the chain at least
   lastInRoom: { slowmo: [0.3, 0.55], radius: 420, chain: 2 },
+  // several kills in a breath (Scoring's 'multiKill', by its SCORING tag): slow motion [time scale, real s] that never
+  // cuts short a stronger one already running (Impact.slowAtLeast), and a hit-stop (s)
+  multi: {
+    double: { slowmo: [0.5, 0.2], stop: 0.05 },
+    triple: { slowmo: [0.4, 0.3], stop: 0.08 },
+    massacre: { slowmo: [0.3, 0.45], stop: 0.1 },
+  },
+};
+
+// How kills and chains are shown (ui/KillFeed.js keeps the state on the real clock, render/WorldRenderer.js draws the
+// stamps, ui/HUD.js the rest). Sizes in world px for the stamps, in screen px at 720 p for the HUD (x H / 720).
+// Colours: a PALETTE key, a CSS colour, or 'neon' (pink / cyan cycle).
+//   tiers   [chain length it starts at, colour] of a kill's stamp and of the chain count; at the top multiplier: neon
+//   stamp   the points at the body, BELOW it (the barks are above heads): lift (px under his centre), size [font at
+//           x1, at the top multiplier], knock (font of a knock-down's or a bonus's), slam (s from `from` x its size
+//           to 1 x, turned `tilt` rad, alternately left and right), ghost (s the white ghost of its landing shows),
+//           drift (px it sinks over its life), life (s), fade (s at the end), spread (px apart under which two stamps
+//           stack), max (alive at once), colors by kind (knock, bonus, civilian)
+//   panel   the chain count under the score (from the 2nd kill): size (digits), label (KILLS / x2.5), gap (px between
+//           the digits and that column), h (px the block takes), punch (extra scale on a kill, gone in punchT s), jolt
+//           (px, gone in joltT s), flash (s the digits show white), open / collapse (s it takes to open / fold)
+//   fuse    the bar draining over the chain's window: w, h (px), low (share under which it turns yellow and blinks,
+//           red under half of it), red, blink (Hz), refill (s a knock-down's refill flashes white)
+//   feed    the last labels (UNSEEN, SLIDE KILL...), newest on top: max lines, size, line (px), stagger (s between the
+//           lines of one kill), slide (s to slide in from `dist` px right), life (s), fade (s at the end), end (s they
+//           fade in once the chain is over)
+//   cash    a chain of 2+ over: CHAIN x6 then +12 400 where the count was: size, big (the points), slam (s from `from`
+//           x), hold (s), fade (s)
+//   banner  DOUBLE KILL / TRIPLE KILL / MASSACRE centred high (y: share of the screen height): size and colour per tag,
+//           slam (s from `from` x), jolt (px, gone in joltT s), ghost (s), life (s), fade (s at the end)
+export const KILLFEED = {
+  tiers: [[1, 'white'], [3, 'yellow'], [4, 'orange'], [5, 'pink']],
+  stamp: {
+    lift: 12, size: [8, 14], knock: 7, slam: 0.08, from: 1.8, tilt: 0.14, ghost: 0.16, drift: 4, life: 1.2, fade: 0.35,
+    spread: 30, max: 12, colors: { knock: 'white', bonus: 'white', civilian: '#ff1e3c' },
+  },
+  panel: { size: 40, label: 12, gap: 8, h: 50, punch: 0.4, punchT: 0.14, jolt: 5, joltT: 0.18, flash: 0.08, open: 0.08, collapse: 0.2 },
+  fuse: { w: 200, h: 6, low: 0.3, red: '#ff1e3c', blink: 8, refill: 0.2 },
+  feed: { max: 4, size: 13, line: 18, stagger: 0.06, slide: 0.12, dist: 70, life: 1.8, fade: 0.3, end: 0.25 },
+  cash: { size: 14, big: 24, slam: 0.1, from: 1.8, hold: 1, fade: 0.3 },
+  banner: {
+    size: { double: 40, triple: 52, massacre: 64 }, color: { double: 'yellow', triple: 'orange', massacre: 'neon' },
+    y: 0.24, slam: 0.08, from: 2, jolt: 7, joltT: 0.15, ghost: 0.2, life: 0.7, fade: 0.2,
+  },
 };
 
 // the player's kill, marked where the man stood (fx/CombatFx.js, on the real clock, over the white flash): a thin ring

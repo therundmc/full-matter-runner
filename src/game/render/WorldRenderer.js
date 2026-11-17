@@ -15,8 +15,10 @@ import { OUTRO } from '../systems/Outro.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
 import { capWidth, drawCap } from '../ui/Glyphs.js';
+import { thousands, tone } from '../ui/Text.js';
 
 const { Body } = Matter;
+const OUTLINE = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // a stamp's 1 px dark outline
 
 // the big speech bubble (drawBubble), world px and s: font size, line height, inner margin, wrap width, height over
 // his centre, tail length; it opens in `pop` s, the line is typed out in `type` s, it fades out over its last `fade` s
@@ -134,6 +136,7 @@ export default class WorldRenderer {
     if (pl && pl.alive && !pl.passage) this.drawUseHints(ctx, pl, t);
     if (w.tutorial) this.drawHints(ctx, w.tutorial.hints(), t);
     if (w.showVision) this.drawAIDebug(ctx);
+    this.drawStamps(ctx, w.killFeed, t);
     this.drawTexts(ctx);
     if (w.debugPhysics) this.drawPhysicsDebug(ctx, vis);
   }
@@ -163,6 +166,36 @@ export default class WorldRenderer {
       ctx.beginPath(); ctx.arc(r.x, r.y, r.r + (r.max - r.r) * Math.sqrt(p), 0, Math.PI * 2); ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // The points of the player's kills stamped at the body, under it (ui/KillFeed.js): slammed down, a 1 px dark outline
+  // and a hard shadow, the colour of the chain's tier; drawn before the barks, which stay on top
+  drawStamps(ctx, feed, t) {
+    if (!feed?.stamps.length) return;
+    for (const s of feed.stamps) {
+      const v = feed.stampView(s), str = s.points < 0 ? `-${thousands(-s.points)}` : `+${thousands(s.points)}`;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `${s.size}px joystix`;
+      ctx.translate(v.x, v.y);
+      if (v.rot) ctx.rotate(v.rot);
+      if (v.scale !== 1) ctx.scale(v.scale, v.scale);
+      ctx.globalAlpha = v.alpha;
+      ctx.fillStyle = PALETTE.ink;
+      ctx.fillText(str, 1, 2); // the hard shadow
+      for (const [dx, dy] of OUTLINE) ctx.fillText(str, dx, dy);
+      ctx.fillStyle = tone(s.color, t);
+      ctx.fillText(str, 0, 0);
+      if (v.ghost > 0) {
+        // a white ghost of it where it landed
+        ctx.globalAlpha = v.alpha * 0.55 * v.ghost;
+        ctx.scale(1 + (1 - v.ghost) * 0.6, 1 + (1 - v.ghost) * 0.6);
+        ctx.fillStyle = PALETTE.white;
+        ctx.fillText(str, 0, 0);
+      }
+      ctx.restore();
+    }
   }
 
   drawTexts(ctx) {
