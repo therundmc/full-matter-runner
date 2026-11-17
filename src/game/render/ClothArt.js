@@ -124,10 +124,13 @@ function paint(c, art) {
   // the rod, its ends and its rings
   fill([ra[0], rb[0]], [ra[1], rb[1]], BRASS[1], 0.5, 0);
   for (const e of [ra, rb]) fill([e[0] - 0.75, e[0] + 0.75, e[0] + 0.75, e[0] - 0.75], [e[1] - 0.75, e[1] - 0.75, e[1] + 0.75, e[1] + 0.75], BRASS[0], 0, 0);
+  const cols = cl.cfg.cols;
   for (let k = 0; k < C; k++) {
-    // a ring round the rod where it has slid to: a short bar across it
+    // a ring round the rod where it has slid to, one every other column (the pleats'): a short bar across it
+    const j = k % cols;
+    if (j % 2) continue;
     const rx = c.x + cl.s[k] * c.ux, ry = c.y + cl.s[k] * c.uy, ex = c.uy * 0.9, ey = -c.ux * 0.9;
-    fill([rx - ex, rx + ex], [ry - ey, ry + ey], BRASS[k % 2 ? 2 : 0], 0.3, 0);
+    fill([rx - ex, rx + ex], [ry - ey, ry + ey], BRASS[j % 4 ? 2 : 0], 0.3, 0);
   }
   // ink round the whole
   for (let j = 0; j < H; j++) {
