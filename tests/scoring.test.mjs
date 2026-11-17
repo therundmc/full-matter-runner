@@ -14,6 +14,13 @@ const S = SCORING.styles;
 const player = (type, swing = 0) => ({ isPlayer: true, weapon: type ? { type } : null, swing });
 const guard = (over = {}) => ({ isEnemy: true, x: 0, y: 0, aware: 2, knocked: 0, ...over });
 const world = (guards = 5) => ({ events: new EventBus(), time: 0, texts: [], totalEnemies: guards, enemies: [] });
+// what Scoring tells of what it scored ('scored', 'multiKill', 'chainEnd'), in order
+const told = (w) => {
+  const out = [];
+  for (const name of ['scored', 'multiKill', 'chainEnd']) w.events.on(name, (e) => out.push({ name, ...e }));
+  return out;
+};
+const scored = (log) => log.filter((e) => e.name === 'scored');
 const kill = (w, cause, killer, victim = guard()) => w.events.emit('kill', { victim, cause, killer });
 
 test('scoring: a kill is read from its cause and the weapon in hand', () => {
@@ -66,16 +73,19 @@ test('scoring: the circumstances of a kill are read from the round, the blow and
 });
 
 test('scoring: a tagged kill pays its bonuses, shows them and counts each as a way of killing', () => {
-  const w = world(), sc = new Scoring(w), T = SCORING.tags;
-  w.events.emit('kill', { victim: guard(), cause: 'bullet', killer: { ...player('pistol'), slide: {} }, how: { pierced: 1, dist: 80 } });
+  const w = world(), sc = new Scoring(w), T = SCORING.tags, log = told(w);
+  w.events.emit('kill', { victim: guard({ x: 40, y: 50 }), cause: 'bullet', killer: { ...player('pistol'), slide: {} }, how: { pierced: 1, dist: 80 } });
   assert.deepEqual(sc.tags, ['collateral', 'slide']);
   assert.equal(sc.points, S.shot.points + T.collateral.points + T.slide.points);
-  assert.equal(w.texts[0].str, `COLLATERAL + SLIDE KILL +${sc.points}`);
+  assert.deepEqual(scored(log)[0], { name: 'scored', x: 40, y: 50, points: sc.points, labels: ['COLLATERAL', 'SLIDE KILL'], combo: 1, multiplier: 1, streak: 1, kind: 'kill' });
+  assert.equal(w.texts.length, 0, 'nothing written over the heads: that is for the barks');
   assert.deepEqual([...sc.methods].sort(), ['collateral', 'pistol', 'slide']);
   // a second one right behind it is a double; later, alone, it is not
   w.time = 0.3;
   kill(w, 'bullet', player('pistol'));
   assert.deepEqual(sc.tags, ['double']);
+  assert.deepEqual(log.at(-1), { name: 'multiKill', n: 2, tag: 'double', x: 0, y: 0 });
+  assert.deepEqual(scored(log).at(-1).labels, [S.shot.label, T.double.label].filter(Boolean));
   w.time = 3;
   kill(w, 'bullet', player('pistol'));
   assert.deepEqual(sc.tags, []);
@@ -86,7 +96,7 @@ test('scoring: a tagged kill pays its bonuses, shows them and counts each as a w
   w.time = 10.5;
   w.events.emit('kill', { victim: guard(), cause: 'slash', killer: player('cue'), how: { finisher: true, label: 'IMPALED' } });
   assert.deepEqual(sc.tags, ['dodge', 'quickdraw']);
-  assert.ok(w.texts[w.texts.length - 1].str.startsWith('IMPALED + DODGE KILL + QUICK DRAW'));
+  assert.deepEqual(scored(log).at(-1).labels, ['IMPALED', 'DODGE KILL', 'QUICK DRAW']);
 });
 
 test('blows: a blow takes a man from behind, the side or the front; every weapon has its finisher and its takedown', () => {
@@ -155,10 +165,11 @@ test('scoring: kills inside the window chain, a pause breaks the chain', () => {
 });
 
 test('scoring: a guard who never knew is worth more, a floored one is not "unseen"', () => {
-  const w = world(), sc = new Scoring(w);
+  const w = world(), sc = new Scoring(w), log = told(w);
   kill(w, 'slash', player('knife', 1), guard({ aware: 0 }));
   assert.equal(sc.points, S.blade.points + SCORING.unseen);
-  assert.match(w.texts[0].str, /UNSEEN/);
+  assert.equal(scored(log)[0].labels[0], 'UNSEEN');
+  assert.equal(scored(log)[0].points, sc.points);
   const w2 = world(), sc2 = new Scoring(w2);
   kill(w2, 'execute', player(), guard({ aware: 0, knocked: 2 }));
   assert.equal(sc2.points, S.execution.points);
@@ -182,6 +193,35 @@ test('scoring: flooring a guard pays a little and gives the chain some air', () 
   kill(w2, 'bullet', player('pistol'));
   w2.events.emit('knock', { victim: guard(), cause: 'slide', angle: 0 });
   assert.equal(sc2.comboLeft, 1);
+});
+
+test('scoring: knock-downs, bonuses and passers-by are told with their kind; a chain of 2+ that runs out tells its points', () => {
+  const w = world(), sc = new Scoring(w), log = told(w), c = SCORING.combo;
+  kill(w, 'bullet', player('pistol'));
+  w.events.emit('knock', { victim: guard({ x: 5, y: 6 }), cause: 'debris', angle: 0 });
+  assert.deepEqual(scored(log).at(-1), { name: 'scored', x: 5, y: 6, points: SCORING.knock.debris, labels: ['WRECKAGE'], combo: 1, multiplier: 1, streak: 1, kind: 'knock' });
+  sc.add(300, 1, 2, 'DOOR SLAM');
+  assert.deepEqual([scored(log).at(-1).kind, scored(log).at(-1).labels], ['bonus', ['DOOR SLAM']]);
+  w.time = 1;
+  kill(w, 'bullet', player('pistol'));
+  kill(w, 'bullet', player('pistol'), { isCivilian: true, x: 3, y: 4 });
+  assert.deepEqual(scored(log).at(-1), { name: 'scored', x: 3, y: 4, points: -SCORING.civilian, labels: ['CIVILIAN'], combo: 2, multiplier: 1 + c.step, streak: 1, kind: 'civilian' });
+  const earned = sc.points;
+  w.time = 1 + c.window + 0.1;
+  sc.update();
+  assert.deepEqual(log.at(-1), { name: 'chainEnd', kills: 2, points: earned });
+  // a chain of one ends quietly; one that runs out the very step a new kill comes still tells its end
+  kill(w, 'bullet', player('pistol'));
+  w.time += c.window + 0.1;
+  sc.update();
+  assert.equal(log.filter((e) => e.name === 'chainEnd').length, 1);
+  kill(w, 'bullet', player('pistol'));
+  w.time += 1;
+  kill(w, 'bullet', player('pistol'));
+  w.time += c.window + 0.1;
+  kill(w, 'bullet', player('pistol'));
+  assert.deepEqual(log.filter((e) => e.name === 'chainEnd').at(-1), { name: 'chainEnd', kills: 2, points: S.shot.points * (2 + c.step) });
+  assert.equal(sc.combo, 1);
 });
 
 test('scoring: accuracy counts trigger pulls of the player only', () => {

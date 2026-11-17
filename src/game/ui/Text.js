@@ -35,6 +35,9 @@ export function neon(t, speed = 2) {
   return `rgb(${Math.round(a[0] + (b[0] - a[0]) * k)},${Math.round(a[1] + (b[1] - a[1]) * k)},${Math.round(a[2] + (b[2] - a[2]) * k)})`;
 }
 
+// a colour given as data: a PALETTE key, a CSS colour, or 'neon' (the pink / cyan cycle)
+export const tone = (c, t) => (c === 'neon' ? neon(t, 7) : PALETTE[c] || c);
+
 // chromatic split title text
 export function glitchText(ctx, str, x, y, size, t, opts = {}) {
   const off = size * 0.06 * (1 + Math.sin(t * 13) * 0.5 * (Math.sin(t * 2.3) > 0.85 ? 4 : 1));

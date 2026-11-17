@@ -40,6 +40,8 @@ import Critters from '../systems/Critters.js';
 import Sirens from '../systems/Sirens.js';
 import Flinch from '../systems/Flinch.js';
 import { combatFx } from '../fx/CombatFx.js';
+import { listenMoments } from '../fx/Impact.js';
+import KillFeed from '../ui/KillFeed.js';
 import Ambience from '../systems/Ambience.js';
 import Tutorial from '../systems/Tutorial.js';
 import Fires from '../systems/Fires.js';
@@ -117,6 +119,8 @@ export default class World {
     this.debugPhysics = false;
 
     this.scoring = new Scoring(this);
+    this.killFeed = new KillFeed(this.events);    // what is shown of kills and chains (advanced by Game on the real clock)
+    listenMoments(this);                          // a multi-kill's slow motion and hit-stop
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // the liquid on the floor: spills, blood, the rain's puddles, footprints
     this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)

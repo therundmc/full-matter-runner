@@ -47,6 +47,8 @@ src/
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
       Takedown.js         `behind(player, guard)`: who can be seized from behind; `advance`: the beat clock of a takedown
                           (rules only, unit-tested)
+      Lunge.js            `lungeTarget`: the guard a melee swing of the player's is drawn to (PLAYER.lunge): the aim
+                          turned a little onto him, a short step in, never into a wall (rules only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
@@ -185,7 +187,9 @@ src/
     debug/
       Sandbox.js          F1 sandbox: tools dropping guards / weapons / props / vehicles / blasts / water at the
                           cursor, cheats (god mode, frozen guards, time scale, ammo, teleport); DOM-free, unit tested
-    ui/                   HUD, Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
+    ui/                   HUD, KillFeed (what is shown of kills and chains: stamps at the body, the chain count, its
+                          fuse, the labels, the cash-out, the multi-kill banner; DOM-free state on the real clock,
+                          KILLFEED in data/feel.js), Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
                           end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
                           TitleScene (the elevated line in front of two glass towers, through a day and a night in a loop) and title/
@@ -224,6 +228,9 @@ Rules:
 | `impact` | `{ a, b, speed, x, y }` | PhysicsWorld (collision start) | Impacts (sound) |
 | `blow` | `{ x, y, angle, power 0..1, kind, lethal, byPlayer }` | Character / Projectile (a blow or a round landed on somebody) | Lens (colour fringe, zoom kick, impact frame) |
 | `kill` | `{ victim, cause, killer, how }` (`how`: what the killer knew of it: a round's `pierced / through / bounced / dist / last`, a blow's `from / heavy`, a finisher's `label`) | World.onKill | Scoring (`killTags`), ReplayRecorder (clips), Threats, CombatFx (the player's kill mark) |
+| `scored` | `{ x, y, points, labels, combo, multiplier, streak, kind }` (kind: `kill`, `knock`, `bonus`, `civilian`; labels best first, at most 3) | Scoring (points earned, or a passer-by's penalty) | KillFeed (stamps, feed, chain count, fuse refill) |
+| `multiKill` | `{ n, tag, x, y }` (tag: `double`, `triple`, `massacre`) | Scoring (the streak's tag) | KillFeed (banner), fx/Impact.listenMoments (MOMENTS.multi: slow motion, hit-stop) |
+| `chainEnd` | `{ kills, points }` | Scoring (a chain of 2+ ran out) | KillFeed (the cash-out) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
@@ -506,8 +513,14 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   a guard gives it some air back). `tally(level)` adds the end bonuses (best chain, variety of methods, time under
   the level's par, stealth lost by ALERT phases, accuracy, mercy for a guard left alive on his knees) and penalties (passers-by), then the grade from the
   level's thresholds (`LEVEL_SCORING`, or a per-guard scale for test rooms). Game.onExit keeps the best result per
-  level (systems/Records.js); a run where the sandbox was opened is not ranked. The HUD shows the score, the run
-  clock, the multiplier and its fuse; Screens.drawResults counts the lines up one after the other.
+  level (systems/Records.js); a run where the sandbox was opened is not ranked. Scoring tells what it scores by events
+  (`scored`, `multiKill`, `chainEnd`), never by world texts (those are the guards' barks): ui/KillFeed.js keeps what
+  is shown of it on the real clock (KILLFEED in data/feel.js): the points stamped under the body (WorldRenderer,
+  sized and coloured by the chain), and under the HUD's score and clock the chain count from its 2nd kill, the fuse
+  draining over the chain's window, the labels of the last kills, the cash-out of a chain that ran out; a multi-kill
+  puts up a banner and a moment of slow motion (MOMENTS.multi, never cutting short a stronger one). A melee swing of
+  the player's is drawn a little to the guard in front of him (systems/Lunge.js). Screens.drawResults counts the
+  lines up one after the other.
 - Replay (render/Replay.js, `REPLAY` in Config.js): while playing, Game.render hands the finished frame (before the
   vignette and the HUD) to `ReplayRecorder.capture`, which copies it downscaled into a rolling atlas 15 times a
   second of world time. A kill closes a clip 0.75 s later (more kills in the meantime stretch it); the atlas is
