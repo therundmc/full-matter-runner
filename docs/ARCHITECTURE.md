@@ -97,6 +97,11 @@ src/
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
+      Clutter.js          what stands on the furniture (prop option `clutter`, CLUTTER / SETS in data/clutter.js): no body,
+                          kept in its prop's px so it rides on it; a round bursts the glass on its line (shards, the drink
+                          run off the edge: 'spill'), a blow knocks off what stands by it, the prop tipped over or broken
+                          ('propFlipped', 'propDestroyed') throws it all as Debris; an ashtray left burning smokes
+                          (Smoke.wisp); drawn by render/ClutterArt.js (DOM-free, unit-tested)
       Tipping.js          street bins (prop def `tips`) go over instead of breaking: struck, shot, run into, a body or a
                           car ('impact'), a blast; lid off, rubbish out of the mouth (bits, a bag, Papers sheets), a
                           clatter heard; lying, only a blast or a car at speed wrecks it (DOM-free, unit-tested)
@@ -111,7 +116,8 @@ src/
       Smoke.js            the air as a fluid and what it carries (SMOKE): grey smoke, black soot, white powder, steam;
                           walls, doors and panes, sources (shots and their ejection ports, blasts, what burns, jets, the
                           smokers' threads and breaths, puffs), stirring (walkers, cars, rounds, fans, drafts,
-                          convection, wind), a faint resting layer in the smoky places; what hides from the guards
+                          convection, wind), a faint resting layer in the smoky places (thicker under a few lamps: level
+                          `haze`); what hides from the guards
                           (blocks(), World.sightLine) (DOM-free)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
                           that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
@@ -146,7 +152,9 @@ src/
                           baked bodies), flat roofs of the neighbouring buildings and their dressing
       FloorWear.js        the wear of the floors painted once over the tiles, free of their grid (WEAR in
                           data/floorwear.js): cracks over several tiles, potholes, a patched road, oil down the lanes,
-                          dirt along the walls, split and gaping boards, rings, burns, gum, weeds; seeded by the level
+                          dirt along the walls, split and gaping boards, rings, burns, gum, weeds; seeded by the level;
+                          plus what the level lays itself (`grime`: drink rings, sticky spills, butts, peanut shells,
+                          napkins by the counter; `worn`: the paths feet wear pale)
       WallScars.js        holes dug into the wall tops (entry, exit, ricochet scuff, club dent), merged into gouges
                           on repeated hits; every wall mark is clipped to the wall tiles, behind their outline
       GoreArt.js          what a burst skull leaves: bits of bone, scalp and brain, the stains of its matter
@@ -234,9 +242,10 @@ Rules:
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
 | `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
-| `propHit` | `{ prop, x, y, dirA, kind }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster) |
+| `propHit` | `{ prop, x, y, dirA, kind, power }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster), PoolBalls, Clutter |
+| `propFlipped` | `{ prop, to, x, y, dirA }` | Prop.flip (a table tipped on its side; `to`: the upended table) | Clutter (what stood on it flies) |
 | `propTipped` | `{ prop, x, y, dirA, by }` | systems/Tipping.tipOver (a street bin knocked over; `by`: who, when known) | - |
-| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster) |
+| `propDestroyed` | `{ prop, x, y, dirA, power }` | Prop.collapse | Liquids (a `fountain` prop floods the floor), Critters (the last rats of a dumpster), Clutter |
 | `spill` | `{ x, y, kind, area, dur?, a? }` | Prop (a pierced keg or pipe leaking, a broken pipe flooding, a bottle smashing), a guard's glass or leak, a customer's glass | Liquids (px2 of floor a `LIQUIDS.kinds` liquid covers, at once or over `dur` seconds, thrown toward `a`) |
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles, a bin knocked over: `clatter`) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |

@@ -237,6 +237,18 @@ export const DESTRUCTION = {
     parts: [{ cut: 'ring', n: 8, t: 0.2, name: 'rim' }, { cut: 'planks', n: 4, axis: 'long', snap: true }],
   },
   string_lights: { height: 3, drop: true, electric: true, material: 'glass', parts: [{ cut: 'grid', cols: 6, rows: 1 }] },
+  // a bar's walls: the glass of a frame flies, the pictures fall; the coin phone spits its coins
+  frame_photo: { height: 1.6, material: 'glass', parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  frame_gold: { height: 1.6, material: 'glass', parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  poster_fight: { height: 1.6, material: 'glass', floats: ['paper', 4], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  poster_band: { height: 1.6, material: 'glass', floats: ['paper', 4], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  dartboard: { height: 1.7, parts: [{ cut: 'wedges', n: 4 }] },
+  pay_phone: { height: 1.5, electric: true, material: 'metal', parts: [{ cut: 'grid', cols: 2, rows: 1 }],
+    contents: [{ bit: 'coin', n: 8, on: 'break' }, { bit: 'coin', n: 1, on: 'hit', perHit: 0.5 }] },
+  coat_hooks: { height: 1.7, floats: ['stuffing', 6], parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
+  towel_dispenser: { height: 1.3, sheds: 'paper', floats: ['paper', 12], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  neon_sign_beer: { height: 2.2, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
+  neon_sign_bay: { height: 2.3, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
   // `lasting` (data/props.js): marked by every hit, never torn nor sawn
   ladder: { height: 3, material: 'metal' },
   parapet: { height: 1, material: 'stone' },

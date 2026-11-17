@@ -128,7 +128,7 @@ export default class Prop {
   hit(damage, px, py, dirA, power = 0.6, kind = 'bullet', info = {}) {
     if (this.dead || this.dying || this.falling) return; // falling: a lamp whose chains a round just cut (LampDrop)
     const d = this.def, w = this.world, rec = this.rec, fx = rec.fx;
-    w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind });
+    w.events.emit('propHit', { prop: this, x: px, y: py, dirA, kind, power });
     if (this.falling) return;
     // a street bin goes over instead (systems/Tipping.js), sent along by the blow; it then lands on the can lying there
     const fell = d.tips && kind !== 'graze' && tipOver(this, dirA, power * 0.6);
@@ -499,6 +499,7 @@ export default class Prop {
     this.empty(x, y, dirA, 1);
     w.particles.dust(x, y, 6, this.W * 0.4, this.rec.fx.dust || '#5a5462', { speed: 30, size: 4, life: 2, alpha: 0.16 });
     w.sound('flip', x, y);
+    w.events.emit('propFlipped', { prop: this, to: p, x, y, dirA });
     return p;
   }
 

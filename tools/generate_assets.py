@@ -6767,6 +6767,428 @@ SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_s
 
 
 # --------------------------------------------------------------------------
+# A bar's life: what stands on its furniture (the `clutter` group, systems/Clutter.js) and what hangs on its walls
+# (props, the wall at -y, the room along +y). Small, flat, a few shades off what they stand on: they must never read
+# as a weapon on the floor or as something in the way. Painted at FINE density; the two beer neons at the world's.
+# --------------------------------------------------------------------------
+
+BEER = ramp('#d89a2a', 0.45, 0.22, 0.35)
+FOAM = hx('#f2ead6')
+GLASS_RIM = hx('#d8e4ea')
+WHISKY = hx('#c47a26')
+
+
+def drink_glass(cv, cx, cy, r, level, rng):
+    """A straight glass from above: its lit rim, what is in it (level 1 full with a head of foam, 0.5 half, 0 the
+    foam's lacing on the empty glass), the bottom's ring through it, a glint."""
+    fill_shape(cv, cx, cy, r, r, lambda u, v, L: GLASS_RIM if L > 0.62 else hx('#9aaab4'))
+    inner = r - 0.6
+    if level >= 1:
+        fill_shape(cv, cx, cy, inner, inner, lambda u, v, L: FOAM if math.hypot(u + 0.25, v + 0.25) < inner * 0.72 else BEER[2])
+        cv.dot(cx + inner * 0.45, cy + inner * 0.45, BEER[1])
+    elif level > 0:
+        fill_shape(cv, cx, cy, inner, inner, lambda u, v, L: shade(BEER, 0.35 + 0.3 * L))
+        ring(cv, cx, cy, inner * 0.55, inner * 0.7, lambda dx, dy, d: lt(BEER[2], 0.25) if dx + dy < 0 else None)
+    else:
+        fill_shape(cv, cx, cy, inner, inner, lambda u, v, L: hx('#6c7a84') if L < 0.5 else hx('#86949e'))
+        for _ in range(4):                                             # the foam's lacing down the inside
+            a = rng.uniform(0, 2 * math.pi)
+            cv.dot(cx + math.cos(a) * inner * 0.75, cy + math.sin(a) * inner * 0.75, hx('#d8d4c8'))
+    cv.dot(cx - r * 0.5, cy - r * 0.5, hx('#ffffff'))
+
+
+def c_pint(level, seed):
+    def paint():
+        cv = Cv(5, 5)
+        drink_glass(cv, 2.5, 2.5, 1.95, level, random.Random(seed))
+        cv.outline()
+        return cv
+    return paint
+
+
+def c_pitcher():
+    """A plastic pitcher of draught: the round jug, its handle and spout, the beer under a head."""
+    cv = Cv(8, 7)
+    fill_capsule(cv, [(5.6, 2.4), (7.0, 2.4), (7.0, 4.6), (5.6, 4.6)], 0.45, lambda k, L, s, i, t: hx('#c8d4dc') if L > 0.6 else hx('#8a98a2'))
+    drink_glass(cv, 3.4, 3.5, 2.8, 1, random.Random(7101))
+    fill_shape(cv, 0.9, 3.5, 0.6, 0.8, lambda u, v, L: GLASS_RIM)     # the spout
+    cv.outline()
+    return cv
+
+
+def c_shot():
+    cv = Cv(3, 3)
+    fill_shape(cv, 1.5, 1.5, 1.2, 1.2, lambda u, v, L: GLASS_RIM if L > 0.6 else hx('#8a98a2'))
+    fill_shape(cv, 1.55, 1.55, 0.7, 0.7, lambda u, v, L: hx('#8a4418'))
+    cv.dot(1.0, 1.0, hx('#ffffff'))
+    cv.outline()
+    return cv
+
+
+def c_lowball():
+    """A heavy whisky glass: two fingers of whisky, an ice cube in it."""
+    cv = Cv(5, 5)
+    fill_shape(cv, 2.5, 2.5, 2.0, 2.0, lambda u, v, L: GLASS_RIM if L > 0.6 else hx('#8a98a2'))
+    fill_shape(cv, 2.55, 2.55, 1.35, 1.35, lambda u, v, L: WHISKY if u + v > -0.5 else lt(WHISKY, 0.2))
+    fill_shape(cv, 2.2, 2.4, 0.65, 0.6, lambda u, v, L: hx('#eef4f6') if L > 0.5 else hx('#c4d4dc'), ang=0.4, kind='rect', corner=0.2, bevel=0.3)
+    cv.dot(1.25, 1.25, hx('#ffffff'))
+    cv.outline()
+    return cv
+
+
+def c_beer_bottle():
+    """A brown beer bottle standing, from above: its shoulders round the neck, the gold cap."""
+    cv = Cv(4, 4)
+    fill_shape(cv, 2.0, 2.0, 1.6, 1.6, lambda u, v, L: shade(ramp('#5a3410', 0.5, 0.25, 0.5), L))
+    fill_shape(cv, 2.0, 2.0, 0.75, 0.75, lambda u, v, L: hx('#e0b448') if L > 0.5 else hx('#a8802a'))
+    cv.outline()
+    return cv
+
+
+def c_liquor():
+    """A square whisky bottle from above: dark amber glass, its black cap, the label's edge."""
+    cv = Cv(5, 5)
+    fill_shape(cv, 2.5, 2.5, 1.9, 1.9, lambda u, v, L: shade(ramp('#7a3c12', 0.5, 0.25, 0.5), L), kind='rect', corner=0.5, bevel=0.7)
+    frect(cv, 0.7, 3.4, 4.3, 4.0, hx('#e8dcc0'))                      # the label round its foot
+    fill_shape(cv, 2.5, 2.5, 0.8, 0.8, lambda u, v, L: hx('#2a2628') if L < 0.6 else hx('#4a4448'))
+    cv.outline()
+    return cv
+
+
+def c_ashtray():
+    cv = Cv(6, 6)
+    ashtray(cv, 3.0, 3.0, random.Random(7102), 2.4)
+    cv.outline()
+    return cv
+
+
+def c_cigar():
+    """A cigar laid down to burn: brown leaf, the gold band, grey ash and the ember at its tip."""
+    cv = Cv(7, 3)
+    fill_capsule(cv, [(1.4, 1.5), (5.6, 1.5)], 0.75, lambda k, L, s, i, t: shade(ramp('#6a4022', 0.5, 0.25, 0.3), L))
+    frect(cv, 4.3, 0.8, 4.9, 2.2, hx('#d8a838'))
+    frect(cv, 0.8, 0.9, 1.6, 2.1, hx('#9a9690'))
+    cv.dot(0.75, 1.5, hx('#ff6a1a'))
+    cv.outline()
+    return cv
+
+
+def c_coaster():
+    """A cardboard beer mat: cream, a red ring printed round it."""
+    cv = Cv(5, 5)
+    fill_shape(cv, 2.5, 2.5, 2.0, 2.0, lambda u, v, L: hx('#e4dac4') if L > 0.4 else hx('#cfc4ac'))
+    ring(cv, 2.5, 2.5, 1.2, 1.6, lambda dx, dy, d: hx('#b8323a'))
+    cv.outline(dk(hx('#cfc4ac'), 0.55))
+    return cv
+
+
+def c_napkin():
+    """A paper napkin folded in four, a corner turned back."""
+    cv = Cv(5, 5)
+    fill_shape(cv, 2.5, 2.5, 1.9, 1.9, lambda u, v, L: hx('#d8d2c4') if u - v < 0 else hx('#beb6a8'), kind='rect', corner=0.3, bevel=0.5)
+    line(cv, 0.8, 0.8, 4.2, 4.2, hx('#aaa294'))
+    cv.outline(dk(hx('#beb6a8'), 0.55))
+    return cv
+
+
+def c_napkin_crumpled():
+    cv = Cv(4, 4)
+    rng = random.Random(7103)
+    fill_shape(cv, 2.0, 2.0, 1.5, 1.3, lambda u, v, L: hx('#d4ccbe') if L > 0.5 else hx('#b4ac9c'), ang=0.5)
+    for _ in range(3):
+        cv.dot(rng.uniform(1.0, 3.0), rng.uniform(1.0, 3.0), hx('#b0a898'))
+    cv.outline(dk(hx('#c8c0b0'), 0.55))
+    return cv
+
+
+def c_peanuts():
+    """A steel bowl of peanuts in their shells."""
+    cv = Cv(6, 6)
+    ring(cv, 3.0, 3.0, 2.0, 2.5, lambda dx, dy, d: shade(STEEL_L, 0.2 + 0.85 * light(dx / d, dy / d)))
+    fill_shape(cv, 3.0, 3.0, 2.0, 2.0, lambda u, v, L: hx('#8a6a3a'))
+    rng = random.Random(7104)
+    for _ in range(7):
+        x, y, a = rng.uniform(1.8, 4.2), rng.uniform(1.8, 4.2), rng.uniform(0, math.pi)
+        fill_shape(cv, x, y, 0.75, 0.42, lambda u, v, L: hx('#d8b070') if L > 0.55 else hx('#b08848'), ang=a)
+    cv.outline()
+    return cv
+
+
+def c_till():
+    """The bar's cash register, its keys toward the bartender (-y): a cream steel case, rows of keys, the green
+    display at the back, the drawer's lip and the paper roll."""
+    cv = Cv(13, 10)
+    case = ramp('#b8b09c', 0.5, 0.25, 0.35)
+    fill_shape(cv, 6.5, 5.0, 5.5, 4.0, lambda u, v, L: shade(case, L), kind='rect', corner=0.8, bevel=1.0)
+    frect(cv, 2.0, 7.0, 11.0, 8.3, hx('#5a5448'))                     # the display's hood, at the back
+    frect(cv, 3.0, 7.3, 8.0, 8.0, hx('#3aff8a'))                      # its digits' glow
+    for k in range(4):
+        for j in range(5):
+            c = hx('#e8e2d0') if (j + k) % 4 else hx('#c8323a')
+            frect(cv, 2.2 + j * 1.6, 1.8 + k * 1.2, 3.2 + j * 1.6, 2.6 + k * 1.2, c)
+    fill_shape(cv, 11.0, 2.2, 0.9, 0.9, lambda u, v, L: hx('#f4f0e6') if L > 0.5 else hx('#d0c8b8'))   # the paper roll
+    frect(cv, 1.5, 0.9, 11.5, 1.3, lambda c: dk(c, 0.3) if c[3] else None)   # the drawer's lip
+    cv.outline()
+    return cv
+
+
+def c_cards():
+    """A hand of three cards fanned out, face up."""
+    cv = Cv(7, 6)
+    for (x, a, pip) in ((2.0, -0.5, '#c01828'), (3.5, 0.0, '#1a1420'), (5.0, 0.5, '#c01828')):
+        fill_shape(cv, x, 3.0, 1.15, 1.7, lambda u, v, L: hx('#f2ece0') if L > 0.5 else hx('#d8d0c2'), ang=a, kind='rect', corner=0.3, bevel=0.5)
+        fill_shape(cv, x + math.sin(a) * 0.6, 3.0 - math.cos(a) * 0.6, 0.4, 0.5, lambda u, v, L, pip=pip: hx(pip), ang=a, kind='super', p=1.2)
+    cv.outline()
+    return cv
+
+
+def c_chips():
+    """A short stack of poker chips: the top one's rim marks."""
+    cv = Cv(4, 4)
+    fill_shape(cv, 2.0, 2.0, 1.5, 1.5, lambda u, v, L: shade(ramp('#c8303a', 0.45, 0.22, 0.35), L))
+    for a in (0.3, 1.9, 3.5, 5.1):
+        cv.dot(2.0 + math.cos(a) * 1.15, 2.0 + math.sin(a) * 1.15, hx('#f0ece0'))
+    cv.dot(2.0, 2.0, hx('#e8a0a4'))
+    cv.outline()
+    return cv
+
+
+def banknote(cv, cx, cy, w, h, a):
+    green = ramp('#5a8a4a', 0.4, 0.2, 0.3)
+    fill_shape(cv, cx, cy, w, h, lambda u, v, L: shade(green, L) if abs(u) > w * 0.25 else hx('#86b070'), ang=a, kind='rect', corner=0.2, bevel=0.4)
+
+
+def c_bands():
+    """A bundle of banknotes in its paper band."""
+    cv = Cv(7, 4)
+    banknote(cv, 3.5, 2.0, 2.6, 1.3, 0.0)
+    frect(cv, 3.0, 0.7, 4.0, 3.3, hx('#e4d8b4'))
+    cv.dot(3.25, 1.5, hx('#b8a878'))
+    cv.outline()
+    return cv
+
+
+def c_bill():
+    cv = Cv(5, 3)
+    banknote(cv, 2.5, 1.5, 1.9, 1.0, 0.0)
+    cv.outline(dk(hx('#5a8a4a'), 0.55))
+    return cv
+
+
+def c_rubber_bands():
+    cv = Cv(5, 5)
+    for (x, y, r, col) in ((2.2, 2.4, 1.3, '#c8a058'), (3.0, 2.8, 1.1, '#b84a3a'), (2.6, 2.0, 0.9, '#c8a058')):
+        ring(cv, x, y, r - 0.35, r, lambda dx, dy, d, col=col: hx(col))
+    return cv
+
+
+def c_baggies():
+    """Two small zip bags of white powder."""
+    cv = Cv(6, 4)
+    for (x, y, a) in ((2.0, 2.0, 0.2), (4.0, 2.2, -0.3)):
+        fill_shape(cv, x, y, 1.4, 1.1, lambda u, v, L: hx('#f0eee8') if L > 0.45 else hx('#cfcac0'), ang=a, kind='rect', corner=0.3, bevel=0.5)
+        cv.dot(x - 0.9, y - 0.6, hx('#9ab8cc'))                       # the zip
+    cv.outline()
+    return cv
+
+
+def c_glass_broken():
+    """What a glass shot where it stood leaves: its foot, a few shards, the drink in a wet ring round them."""
+    cv = Cv(6, 6)
+    fill_shape(cv, 3.0, 3.0, 2.6, 2.2, lambda u, v, L: hx('#5a3810', 120), ang=0.4)
+    rng = random.Random(7105)
+    ring(cv, 3.0, 3.0, 1.0, 1.4, lambda dx, dy, d: GLASS_RIM if rng.random() < 0.6 else None)
+    for _ in range(4):
+        cv.dot(rng.uniform(1.0, 5.0), rng.uniform(1.0, 5.0), hx('#e8f4fa'))
+    return cv
+
+
+CLUTTER_PAINT = dict(pint_full=c_pint(1, 7110), pint_half=c_pint(0.5, 7111), pint_empty=c_pint(0, 7112), pitcher=c_pitcher,
+                     shot=c_shot, lowball=c_lowball, beer_bottle=c_beer_bottle, liquor=c_liquor, ashtray=c_ashtray,
+                     cigar=c_cigar, coaster=c_coaster, napkin=c_napkin, napkin_crumpled=c_napkin_crumpled,
+                     peanuts=c_peanuts, till=c_till, cards=c_cards, chips=c_chips, bands=c_bands, bill=c_bill,
+                     rubber_bands=c_rubber_bands, baggies=c_baggies, glass_broken=c_glass_broken)
+# world px (keep in step with CLUTTER_SPRITES in src/engine/Assets.js)
+CLUTTER_SIZES = dict(pint_full=(5, 5), pint_half=(5, 5), pint_empty=(5, 5), pitcher=(8, 7), shot=(3, 3), lowball=(5, 5),
+                     beer_bottle=(4, 4), liquor=(5, 5), ashtray=(6, 6), cigar=(7, 3), coaster=(5, 5), napkin=(5, 5),
+                     napkin_crumpled=(4, 4), peanuts=(6, 6), till=(13, 10), cards=(7, 6), chips=(4, 4), bands=(7, 4),
+                     bill=(5, 3), rubber_bands=(5, 5), baggies=(6, 4), glass_broken=(6, 6))
+
+
+def wall_frame(W, frame, face, seed):
+    """Something framed on a wall, seen from above (the wall at -y): the top of its frame along the wall, and below it,
+    leaning out a little, a sliver of what it shows (face(cv, x0, x1, y0, y1)) under glass that catches the light."""
+    cv = Cv(W, 5)
+    fr = ramp(frame, 0.5, 0.25, 0.4)
+    fill_shape(cv, W / 2, 1.5, W / 2 - 1, 0.6, lambda u, v, L: shade(fr, L), kind='rect', corner=0.2, bevel=0.3)
+    frect(cv, 1.0, 2.0, W - 1.0, 4.0, fr[1])
+    face(cv, 1.6, W - 1.6, 2.2, 3.8)
+    for i in range(3):                                                 # the glass's glint
+        cv.dot(2.5 + i * 0.5, 2.25 + i * 0.5, hx('#ffffff', 150))
+    smudge(cv, random.Random(seed), 2, (1, 1, W - 1, 4), (0.8, 1.4), 0.15)
+    cv.outline()
+    return cv
+
+
+def p_frame_photo():
+    """An old signed photo in a black frame: two men shaking hands, in greys."""
+    def face(cv, x0, x1, y0, y1):
+        frect(cv, x0, y0, x1, y1, hx('#a8a49c'))
+        frect(cv, x0, y0 + 1.0, x1, y1, hx('#8a867e'))
+        for x in (x0 + 2.0, x1 - 3.0):
+            frect(cv, x, y0 + 0.2, x + 1.0, y1, hx('#3a3836'))
+        cv.dot(x1 - 1.0, y1 - 0.5, hx('#2a2a40'))
+    return wall_frame(12, '#2a2628', face, 7120)
+
+
+def p_frame_gold():
+    """A gilt frame: a dark old painting in it, a red sky."""
+    def face(cv, x0, x1, y0, y1):
+        frect(cv, x0, y0, x1, y1, hx('#7a2a22'))
+        frect(cv, x0, y0 + 0.8, x1, y1, hx('#3a2a3a'))
+        frect(cv, x0 + 3.0, y0 + 0.5, x0 + 5.0, y1, hx('#1e1a22'))
+    return wall_frame(14, '#c8a040', face, 7121)
+
+
+def p_poster_fight():
+    """A boxing bill behind a thin frame: cream paper, the red band of the date, two fighters squared up."""
+    def face(cv, x0, x1, y0, y1):
+        frect(cv, x0, y0, x1, y1, hx('#e2d6b4'))
+        frect(cv, x0, y0, x1, y0 + 0.6, hx('#b8282e'))
+        for x in (x0 + 3.0, x1 - 4.0):
+            frect(cv, x, y0 + 0.7, x + 1.0, y1, hx('#2a2228'))
+        frect(cv, x0 + 6.0, y0 + 1.0, x1 - 6.0, y0 + 1.5, hx('#2a2228'))
+    return wall_frame(16, '#4a4448', face, 7122)
+
+
+def p_poster_band():
+    """A gig poster: black paper, a pink and a cyan stroke of a band's name."""
+    def face(cv, x0, x1, y0, y1):
+        frect(cv, x0, y0, x1, y1, hx('#1e1a26'))
+        frect(cv, x0 + 1.0, y0 + 0.3, x1 - 2.0, y0 + 0.8, hx('#e83a8a'))
+        frect(cv, x0 + 2.0, y0 + 1.2, x1 - 1.0, y0 + 1.6, hx('#3ad8e8'))
+    return wall_frame(14, '#2a2a30', face, 7123)
+
+
+def p_dartboard():
+    """A dartboard on the wall, seen from above: the black ring of its rim, the board's top half leaning out at us,
+    the sectors black and cream, the red and green rings, two darts in it, their flights toward us."""
+    cv = Cv(11, 5)
+    cx, cy = 5.5, 1.2
+
+    def board(u, v, L):
+        if v < -0.05:
+            return None
+        d = math.hypot(u / 4.5, v / 3.2)
+        if d > 0.86:
+            return shade(ramp('#2a2428', 0.5, 0.25, 0.4), L)
+        a = int((math.atan2(v, u) + math.pi) / (math.pi / 10))
+        if 0.62 < d < 0.72 or d < 0.12:
+            return hx('#c8282e') if a % 2 else hx('#2a8a4a')
+        return hx('#e6dcc0') if a % 2 else hx('#1e1a1c')
+    fill_shape(cv, cx, cy, 4.5, 3.2, board)
+    for (x, y, col) in ((4.2, 2.2, '#3a6ad8'), (6.8, 1.8, '#e8c040')):
+        line(cv, x, y, x + 0.5, y + 1.6, hx('#c8ccd4'))
+        cv.dot(x + 0.5, y + 1.8, hx(col))
+    cv.outline()
+    return cv
+
+
+def p_pay_phone():
+    """A coin phone on the wall: its steel box with the keypad and the coin slot, the armoured cord (the receiver on
+    its hook is drawn live, render/PropLife.js `handset`)."""
+    cv = Cv(10, 7)
+    steel = ramp('#7a808c', 0.5, 0.25, 0.4)
+    fill_shape(cv, 5.0, 2.7, 4.0, 2.2, lambda u, v, L: shade(steel, L), kind='rect', corner=0.5, bevel=0.7)
+    frect(cv, 1.0, 0.6, 9.0, 1.2, hx('#c8282e'))                       # the red band of its top
+    for k in range(9):
+        cv.dot(5.5 + (k % 3) * 0.9, 2.0 + (k // 3) * 0.8, hx('#d8dce4'))
+    frect(cv, 8.3, 2.0, 8.7, 3.2, hx('#2a2a30'))                       # the coin slot
+    fill_capsule(cv, [(3.5, 4.4), (3.0, 5.6), (3.8, 6.2)], 0.35, lambda k, L, s, i, t: shade(STEEL, L))
+    cv.outline()
+    return cv
+
+
+def p_coat_hooks():
+    """A brass rail of hooks by the door: a leather jacket and a grey raincoat hung on it, a hat on the last hook."""
+    cv = Cv(18, 7)
+    frect(cv, 1.0, 0.7, 17.0, 1.4, hx('#8a6a30'))
+    for x in (3.0, 7.5, 12.0, 15.5):
+        stud(cv, x, 1.0, BRASS[2], big=True)
+
+    def coat(x, base, seed):
+        r = ramp(base, 0.5, 0.25, 0.3)
+        fill_shape(cv, x, 3.3, 2.8, 2.4, lambda u, v, L: shade(r, L) if v > -1.6 else None, kind='super', p=2.6)
+        line(cv, x, 1.6, x, 5.4, dk(r[1], 0.2))                         # its fold down the middle
+        smudge(cv, random.Random(seed), 2, (int(x - 2), 2, int(x + 2), 5), (0.8, 1.4), 0.2)
+    coat(4.0, '#3a2a22', 7124)
+    coat(9.0, '#6a6a62', 7125)
+    fill_shape(cv, 15.2, 3.0, 1.9, 1.7, lambda u, v, L: shade(ramp('#2a2a34', 0.5, 0.25, 0.4), L))   # the hat
+    ring(cv, 15.2, 3.0, 1.0, 1.3, lambda dx, dy, d: hx('#5a2a2a'))
+    cv.outline()
+    return cv
+
+
+def p_towel_dispenser():
+    """A paper towel dispenser: a white plastic box on the wall, a towel hanging out of its slot."""
+    cv = Cv(9, 5)
+    fill_shape(cv, 4.5, 2.0, 3.6, 1.4, lambda u, v, L: shade(ramp('#e8eaee', 0.35, 0.18, 0.2), L), kind='rect', corner=0.5, bevel=0.6)
+    frect(cv, 3.0, 3.2, 6.0, 4.2, hx('#e8e2d2'))
+    frect(cv, 3.0, 3.2, 6.0, 3.5, hx('#c8c0b0'))
+    cv.outline()
+    return cv
+
+
+BAR_GLYPHS = {
+    'B': ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    'Y': ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
+}
+
+
+def bar_text(ne, x, y, text, col):
+    font = {**FONT_SHOP, **BAR_GLYPHS}
+    for ch in text:
+        for gy, row in enumerate(font[ch]):
+            for gx, c in enumerate(row):
+                if c == '#':
+                    ne.dot(x + gx, y + gy, col)
+        x += len(font[ch][0]) + 1
+    return x
+
+
+def p_neon_sign_beer():
+    """A small beer neon: an amber mug with its white head, BEER in red."""
+    cv, gl = sign_backing(36, 14), Cv(36, 14)
+    ne = Neon(36, 14)
+    ne.line([(3, 4), (3, 11), (8, 11), (8, 4)], NEON_AMBER)
+    ne.line([(9, 6), (10, 6), (10, 9), (9, 9)], NEON_AMBER)
+    ne.line([(3, 3), (8, 3)], hx('#f4f0e6'))
+    bar_text(ne, 12, 3, 'BEER', hx('#ff3a30'))
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_bay():
+    """BAY, the town's lager, in pink over a cyan wave: the neon behind the bar."""
+    cv, gl = sign_backing(26, 14), Cv(26, 14)
+    ne = Neon(26, 14)
+    bar_text(ne, 4, 2, 'BAY', NEON_PINK)
+    pts = [(4 + k, 11 + (0 if k % 4 in (0, 1) else -1 if k % 4 == 2 else 1)) for k in range(18)]
+    for (x, y) in pts:
+        ne.dot(x, y, NEON_CYAN)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+BAR_PROPS = dict(frame_photo=p_frame_photo, frame_gold=p_frame_gold, poster_fight=p_poster_fight, poster_band=p_poster_band,
+                 dartboard=p_dartboard, pay_phone=p_pay_phone, coat_hooks=p_coat_hooks, towel_dispenser=p_towel_dispenser,
+                 neon_sign_beer=p_neon_sign_beer, neon_sign_bay=p_neon_sign_bay)
+BAR_SIZES = dict(frame_photo=(12, 5), frame_gold=(14, 5), poster_fight=(16, 5), poster_band=(14, 5), dartboard=(11, 5),
+                 pay_phone=(10, 7), coat_hooks=(18, 7), towel_dispenser=(9, 5), neon_sign_beer=(36, 14), neon_sign_bay=(26, 14))
+BAR_NEON = ['neon_sign_beer', 'neon_sign_bay']   # light: at the world's density, with their glow maps
+
+
+# --------------------------------------------------------------------------
 # Glow maps for existing props
 # --------------------------------------------------------------------------
 
@@ -7534,6 +7956,7 @@ def build():
                  hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
     props.update(SHOP_PROPS)
     props.update(DETAIL_PROPS)
+    props.update(BAR_PROPS)
     props.update(LABEL_PROPS)
     for name, fn in props.items():
         r = fine(fn, name) if name in FINE_PROPS else fn()
@@ -7552,6 +7975,8 @@ def build():
             out[('roof', name)] = r
     for name, cv in tiles().items():
         out[('tiles', name)] = cv
+    for name, fn in CLUTTER_PAINT.items():
+        out[('clutter', name)] = fine(fn, 'clutter_' + name)
     out[('structure', 'door')] = s_door()
     out[('structure', 'door_locked')] = s_door_locked()
     out[('structure', 'stall_door')] = s_stall_door()
@@ -7583,13 +8008,14 @@ PROP_SIZES.update(LIGHT_SIZES)
 PROP_SIZES.update(SHOP_SIZES)
 PROP_SIZES.update(DETAIL_SIZES)
 PROP_SIZES.update(LABEL_SIZES)
-GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING
+PROP_SIZES.update(BAR_SIZES)
+GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING + BAR_NEON
 # the furniture, the street's dressing and the vehicles are painted at FINE density (their emissive maps too), like
 # the people and the weapons: the sizes above are in world px. The neon signs, neon tubes and party bulbs stay at the
 # world's: they are light (the lamps' fittings are painted fine, their glow maps with them); the lab's stencilled
 # labels too.
 # (keep in step with FINE in src/engine/Assets.js)
-FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING) - set(LABEL_SIZES)
+FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING) - set(LABEL_SIZES) - set(BAR_NEON)
               - {'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'neon_tube_pink', 'neon_tube_cyan', 'string_lights'})
 
 
@@ -7643,6 +8069,7 @@ EXPECTED = {
                   + [(n, (32, 32)) for n in ('wall', 'brick', 'roof')] + [('neon_floor_glow', (32 * FINE, 32 * FINE))]),
     'roof': dict([(n, (w * FINE, h * FINE) if n in ROOF_FINE else (w, h)) for n, (w, h) in ROOF_SIZES.items()]
                  + [(n + '_glow', ROOF_SIZES[n]) for n in ROOF_GLOWING]),
+    'clutter': dict((n, (w * FINE, h * FINE)) for n, (w, h) in CLUTTER_SIZES.items()),
     'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),

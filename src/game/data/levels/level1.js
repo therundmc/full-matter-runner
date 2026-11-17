@@ -150,35 +150,48 @@ export default {
     ['pipe_water', 19.2, 1.07, 0], ['tube_light', 25.55, 4.93, 180], ['gas_bottle', 28.4, 4.74, 0],
     // storeroom
     ['bookshelf', 15.7, 6.2, 0], ['oven', 17.1, 6.38, 0], ['sink', 18.35, 6.3, 0], ['fridge', 18.62, 7.5, 90],
-    ['tube_light', 18.93, 8.6, 90], ['dope_table', 17, 9.2, 0], ['crate', 18.55, 10.55, 4], ['crate', 15.4, 6.85, 10],
+    ['tube_light', 18.93, 8.6, 90], ['dope_table', 17, 9.2, 0, { clutter: 'dope' }], ['crate', 18.55, 10.55, 4],
+    ['crate', 15.4, 6.85, 10],
     // toilets
     ['toilet', 22.5, 6.4, 0], ['stall', 22.06, 6.78, 0], ['urinal', 20.19, 7.95, 270], ['urinal', 20.19, 8.85, 270],
     ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0, { tips: false }],
     // back room
-    ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270], ['sofa', 24.5, 8.6, 270], ['armchair', 28.45, 6.6, 180],
-    ['table_round', 26.6, 8.75, 0], ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270],
-    ['ceiling_lamp', 26.6, 8.75, 0], ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84],
+    ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'boss_desk' }], ['sofa', 24.5, 8.6, 270],
+    ['armchair', 28.45, 6.6, 180], ['table_round', 26.6, 8.75, 0, { clutter: 'men_table' }],
+    ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270], ['ceiling_lamp', 26.6, 8.75, 0],
+    ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84, { clutter: 'cash_floor' }],
     ['extinguisher', 24.9, 10.86, 180],
     // the bar: counter along the north wall
-    ['bar_counter', 15.5, 13.85, 0], ['bar_counter', 16.5, 13.85, 0], ['bar_counter', 17.5, 13.85, 0],
-    ['bar_counter', 18.5, 13.85, 0], ['bar_counter', 19.5, 13.85, 0], ['chair', 15.65, 14.5, 270],
+    ['bar_counter', 15.5, 13.85, 0, { clutter: 'counter_kegs' }],
+    ['bar_counter', 16.5, 13.85, 0, { clutter: 'counter_regular' }],
+    ['bar_counter', 17.5, 13.85, 0, { clutter: 'counter_middle' }],
+    ['bar_counter', 18.5, 13.85, 0, { clutter: 'counter_pour' }],
+    ['bar_counter', 19.5, 13.85, 0, { clutter: 'counter_till' }], ['chair', 15.65, 14.5, 270],
     ['chair', 16.75, 14.5, 270], ['chair', 17.85, 14.5, 270], ['chair', 18.95, 14.5, 270],
-    ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0], ['neon_tube_pink', 18.5, 12.05, 0],
+    ['back_bar', 17.59, 12.16, 0], ['back_bar', 19.41, 12.16, 0], ['neon_sign_bay', 18.5, 12.09, 0],
     ['ceiling_lamp', 16.3, 13.85, 0], ['ceiling_lamp', 18, 13.85, 0], ['ceiling_lamp', 19.7, 13.85, 0],
     ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0], ['beer_tap', 15.95, 13.62, 0], ['beer_tap', 17.15, 13.62, 0],
     // the bar: the main room
-    ['pool_table', 19.8, 16.9, 0], ['pool_lamp', 19.8, 16.9, 0], ['sofa', 15.5, 17, 270],
-    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90], ['arcade', 22.55, 15.5, 270], ['jukebox', 22.6, 19.6, 180],
-    ['ceiling_fan', 21.6, 14.2, 0], ['plant', 17.85, 19.55, 0], ['extinguisher', 22.88, 14.5, 90],
+    ['pool_table', 19.8, 16.9, 0, { clutter: 'pool_rail' }], ['pool_lamp', 19.8, 16.9, 0], ['sofa', 15.5, 17, 270],
+    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90, { clutter: 'booth' }], ['arcade', 22.55, 15.5, 270],
+    ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 21.6, 14.2, 0], ['plant', 17.85, 19.55, 0],
+    ['extinguisher', 22.88, 14.5, 90],
     // the bar: the gaming room
-    ['card_table', 25.9, 14.25, 0], ['pool_lamp', 25.9, 14.25, 0], ['chair', 25.5, 15.25, 270],
+    ['card_table', 25.9, 14.25, 0, { clutter: 'poker' }], ['pool_lamp', 25.9, 14.25, 0], ['chair', 25.5, 15.25, 270],
     ['chair', 26.4, 15.25, 270], ['chair', 27.35, 14.25, 180], ['bottle_shelf', 24.9, 12.16, 0],
-    ['cash_case', 27.8, 12.6, 15], ['wall_lamp', 28.91, 13, 90],
+    ['cash_case', 27.8, 12.6, 15, { clutter: 'cash_floor' }], ['wall_lamp', 28.91, 13, 90],
     // the bar: what can be used
     ['fire_alarm', 20.5, 12.07, 0],
     // the bar: VIP room
-    ['curtain', 24.5, 18.5, 0], ['dance_stage', 28, 18.9, 0], ['mirror_ball', 27.5, 18.6, 0],
-    ['sofa', 27.15, 17.45, 0], ['armchair', 25.5, 19.45, 0], ['neon_tube_pink', 27, 19.93, 180],
+    ['curtain', 24.5, 18.5, 0], ['dance_stage', 28, 18.9, 0, { clutter: 'stage' }], ['mirror_ball', 27.5, 18.6, 0],
+    ['sofa', 27.15, 17.45, 0, { clutter: 'vip_sofa' }], ['armchair', 25.5, 19.45, 0],
+    ['neon_tube_pink', 27, 19.93, 180],
+    // the bar: on its walls
+    ['coat_hooks', 15.09, 15.3, 270], ['frame_photo', 15.09, 16.2, 270], ['poster_fight', 15.09, 17.85, 270],
+    ['poster_band', 19.3, 19.91, 180], ['dartboard', 22.91, 16.55, 90], ['pay_phone', 23.91, 19.35, 90],
+    ['neon_sign_beer', 28, 12.09, 0], ['frame_gold', 24.09, 15.4, 270], ['frame_photo', 28.2, 15.91, 180],
+    ['frame_gold', 25.5, 17.09, 0], ['frame_photo', 24.09, 8.6, 270], ['coat_hooks', 25.35, 6.09, 0],
+    ['towel_dispenser', 22.93, 9.8, 90],
     // the liquor store roof
     ['ladder', 1.5, 20.5, 0], ['wall_lamp', 9.91, 11.4, 90], ['wall_lamp', 9.91, 4.6, 90],
     ['string_lights', 4, 9.3, 0], ['sofa', 3.9, 8.5, 0], ['crate', 3.9, 9.75, 12], ['chair', 2.7, 9.95, 160],
@@ -215,6 +228,12 @@ export default {
   // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the
   // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)
   soundscape: { rain: 0, zones: [['vip', 24, 17, 28, 19], ['office', 24, 12, 28, 15], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },
+  // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
+  // paths worn by feet [col0, row0, col1, row1, width px]
+  grime: [['rings', 15, 14, 19, 15, 4], ['sticky', 15, 14, 19, 15, 3], ['butts', 15, 14, 19, 15, 5], ['shells', 15, 14, 19, 15, 6], ['napkin', 15, 14, 19, 15, 2], ['sticky', 15, 12, 19, 13, 2], ['rings', 15, 12, 19, 13, 2], ['butts', 15, 16, 17, 18, 2], ['sticky', 15, 16, 17, 18, 1], ['napkin', 15, 16, 17, 19, 1], ['butts', 18, 15, 22, 19, 4], ['sticky', 19, 15, 22, 18, 2], ['butts', 24, 12, 28, 15, 4], ['burns', 24, 12, 28, 15, 2], ['sticky', 24, 13, 28, 15, 1], ['sticky', 25, 17, 28, 19, 2], ['butts', 25, 17, 28, 19, 2], ['butts', 24, 6, 28, 10, 4], ['burns', 24, 6, 28, 10, 2], ['napkin', 21, 8, 22, 10, 4], ['stain', 22, 8, 22, 10, 1, {'col': '#3a4a50'}], ['butts', 20, 6, 22, 10, 2], ['butts', 15, 6, 18, 10, 2], ['sticky', 15, 7, 18, 10, 1]],
+  worn: [[20.5, 19.5, 17.8, 15.1, 12], [20.5, 19.5, 21.4, 12.3, 10]],
+  // cigarette haze hanging under the lamps (systems/Smoke.js): [col, row, radius tiles, density]
+  haze: [[19.8, 16.9, 2.3, 0.1], [25.9, 14.25, 1.9, 0.1], [17.6, 13.6, 2.0, 0.05]],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"cats": [[22.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [31.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
   // beds heard from one tile (data/soundscape.js SPOTS): [bed, col, row]

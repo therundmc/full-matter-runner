@@ -46,6 +46,8 @@ SIZES = dict(
     velvet_rope=(30, 6), sandwich_board=(16, 12), ash_urn=(10, 10), neon_sign_mirage=None, neon_sign_open=None,
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
     keg=(16, 16), beer_tap=None, curtain=None, fire_alarm=None,
+    frame_photo=None, frame_gold=None, poster_fight=None, poster_band=None, dartboard=None, pay_phone=None,
+    coat_hooks=None, towel_dispenser=None, neon_sign_beer=None, neon_sign_bay=None,
 )
 
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
@@ -54,7 +56,8 @@ SIZES = dict(
 ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=6, fuse_box=18,
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
-               fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26)
+               fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26, frame_photo=10, frame_gold=12, poster_fight=14,
+               poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -101,6 +104,9 @@ class Level:
         self.devices = {}     # the level's devices (src/game/data/devices.js): sprinklers, passage
         self.critters = {}    # street fauna: { pigeons: [[col, row, n]], cats: [[col, row]] }
         self.street = {}      # dressing without a body: { manholes: [[col, row]], papers: [[col0, row0, col1, row1, n]] }
+        self.grimes = []      # the life of a room on its floor: [kind, col0, row0, col1, row1, n, options] (render/FloorWear.js)
+        self.worn = []        # paths worn by feet: [col0, row0, col1, row1, width px]
+        self.haze = []        # cigarette haze under a lamp: [col, row, radius tiles, density] (systems/Smoke.js)
         self.spots = []       # beds heard from one tile: [bed, col, row] (src/game/data/soundscape.js SPOTS)
         self.zones = []       # what each place sounds like: [kind, col0, row0, col1, row1] (src/game/data/soundscape.js)
         self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
@@ -275,6 +281,18 @@ class Level:
     def dress(self, kind, *v):
         v = [*self.rect(*v[:4]), *v[4:]] if kind == 'papers' else [*self.at(*v[:2]), *v[2:]]
         self.street.setdefault(kind, []).append(v)
+
+    # ---- the life of a room painted into its floor (render/FloorWear.js): n marks of `kind` (rings, sticky, butts,
+    # shells, napkin, stain, burns...) somewhere in the inclusive tile rectangle; a path worn by feet from one point to
+    # another, w px wide; the cigarettes' haze hanging under a lamp at (col, row), r tiles across (systems/Smoke.js)
+    def grime(self, kind, col0, row0, col1, row1, n, **o):
+        self.grimes.append([kind, *self.rect(col0, row0, col1, row1), n, *([o] if o else [])])
+
+    def wear_path(self, col0, row0, col1, row1, w=12):
+        self.worn.append([*self.at(col0, row0), *self.at(col1, row1), w])
+
+    def smoke_haze(self, col, row, r, density):
+        self.haze.append([*self.at(col, row), r, density])
 
     # ---- what a place sounds like (src/game/data/soundscape.js ZONES): its kind over an inclusive tile rectangle, the
     # first given wins where two overlap; a tile in none is a street, a roof or a room by its floor. place: what the
@@ -493,6 +511,16 @@ class Level:
             L.append('  // what each place sounds like (data/soundscape.js): rain 0..1, zones [kind, col0, row0, col1, row1, place?] (the')
             L.append("  // first wins; place: the guards' name for it, data/barks.js PLACES, when not its kind's)")
             L.append(f"  soundscape: {{ rain: {self.rain or 0}, zones: {js(self.zones)} }},")
+        if self.grimes or self.worn:
+            L.append('  // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],')
+            L.append('  // paths worn by feet [col0, row0, col1, row1, width px]')
+            if self.grimes:
+                L.append(f'  grime: {js(self.grimes)},')
+            if self.worn:
+                L.append(f'  worn: {json.dumps(self.worn)},')
+        if self.haze:
+            L.append('  // cigarette haze hanging under the lamps (systems/Smoke.js): [col, row, radius tiles, density]')
+            L.append(f'  haze: {json.dumps(self.haze)},')
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')

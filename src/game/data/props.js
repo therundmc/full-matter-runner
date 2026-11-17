@@ -137,6 +137,21 @@ export const PROPS = {
   ash_urn: { material: 'metal', r: 5, hp: 4, kg: 9, mu: 0.75, chips: '#8a90a0', sound: 'metal' },
   neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
+  // a bar's walls, hung on the wall face (the wall at -y, the room along +y, like the wall lamps): framed pictures and
+  // posters behind glass, a dartboard, a coin phone (its receiver jumps off the hook when hit: `handset`, coins
+  // spill), coats on their hooks, the towels in the toilets; two small beer neons (read one way up: never rotated)
+  frame_photo: { static: true, material: 'glass', w: 10, h: 3, hp: 2, chips: '#c8c0b0', glass: true, sound: 'glass' },
+  frame_gold: { static: true, material: 'glass', w: 12, h: 3, hp: 2, chips: '#c8a040', glass: true, sound: 'glass' },
+  poster_fight: { static: true, material: 'glass', w: 14, h: 3, hp: 2, chips: '#d8c8a0', glass: true, sound: 'glass' },
+  poster_band: { static: true, material: 'glass', w: 12, h: 3, hp: 2, chips: '#2a2a3a', glass: true, sound: 'glass' },
+  dartboard: { static: true, material: 'wood', w: 9, h: 3, hp: 3, chips: '#2a2420', sound: 'wood' },
+  pay_phone: { static: true, material: 'metal', w: 8, h: 5, hp: 4, chips: '#8a909c', sparks: true, sound: 'metal', handset: [-2.5, 0] },
+  coat_hooks: { static: true, material: 'fabric', w: 16, h: 4, hp: 4, chips: '#3a3440', sound: 'wood' },
+  towel_dispenser: { static: true, material: 'plastic', w: 7, h: 3, hp: 2, chips: '#e8e8ec', sound: 'wood' },
+  neon_sign_beer: { hum: 'neon', material: 'glass', w: 34, h: 6, hp: 3, static: true, chips: '#ffb02a', sparks: true, glass: true, sound: 'glass',
+    light: { r: 80, color: '#ffb84a', intensity: 0.55, flicker: 'buzz' } },
+  neon_sign_bay: { hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 150, color: '#ff4a8a', intensity: 0.9, flicker: 'buzz', y: 3 } },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
   floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.8, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',
