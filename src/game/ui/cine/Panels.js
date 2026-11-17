@@ -4,7 +4,7 @@
 // or a dither (the user wants plain pixel art). Each painter gets the context clipped to its panel and translated to
 // its top-left corner, its size, and t (s) for what still moves in it.
 import { spriteOpt } from '../../../engine/Assets.js';
-import { clamp, hash, px, tone, poly, disc, line } from './Ink.js';
+import { clamp, lerp, hash, px, tone, poly, disc, line } from './Ink.js';
 
 const INK = '#07050c';
 
@@ -51,6 +51,11 @@ const FLAME = [548, 200];   // the match's head in comic/match (tools/comic/pane
 const PANE = [360, 8, 590, 132];         // his bedroom window in comic/sleep (tools/comic/panels/opening1.py PANE)
 const COLON = [172, 154, 5, 12];         // the clock's colon there (opening1.py CLOCK)
 const DOORWAY = [670, 0, 240, 196];      // the doorway in comic/door, x, y, w, h (opening1.py DOORWAY)
+const NEON = [374, 84, 88, 24];           // the bar's pink sign in that window (poster.window): it buzzes
+const LOCK = [634, 134];                 // the burst of his lock in comic/door (opening1.py): splinters fly from it
+const BEAM = [[643, 85], [385, 286]];    // the torch's beam there, from the lens to the floor
+const SPLASH = [518, 182];               // where the petrol lands in comic/pour (opening2.py)
+const PUPIL = [268, 174];                // his pupil in comic/wake (opening3.py)
 const GAP = [150, 410, 236];             // the gap under his door in comic/fire (opening3.py GAP)
 
 export function still(g, name, w, h) {
@@ -64,12 +69,18 @@ export function fine(g, draw) {
   draw();
   g.restore();
 }
-// smoke going up from (x, y) in a thin wavering thread (stills' px)
-export function smoke(g, x, y, t, n = 14, col = '#8a8494') {
-  for (let i = 0; i < n; i++) {
-    const k = (i + (t * 3) % 1) / n;
-    px(g, col, x + Math.sin(t * 2 + i * 0.7) * 4 * k + i * 0.8, y - k * 70, 3, 4);
+// smoke going up from (x, y) (stills' px): flat puffs that grow as they rise and thin out, one after the other
+export function smoke(g, x, y, t, col = '#8a8494', rise = 90) {
+  for (let i = 0; i < 4; i++) {
+    const k = (t * 0.4 + i / 4) % 1;
+    disc(g, col, x + Math.sin(k * 5 + i * 2.1) * 12 * k, y - k * rise, 2 + 9 * k, 2 + 7 * k, 0.85 * (1 - k));
   }
+}
+// a glint on something that shines: a small cross that opens and shuts (k 0..1)
+function glint(g, x, y, k, col = '#fff8e0') {
+  const l = Math.round(7 * Math.sin(k * Math.PI));
+  px(g, col, x - l, y - 1, l * 2 + 2, 2);
+  px(g, col, x - 1, y - l, 2, l * 2 + 2);
 }
 // rain streaking down a window (stills' px): [x0, y0, x1, y1] its glass
 function rain(g, [x0, y0, x1, y1], t, n = 24) {
@@ -89,6 +100,7 @@ function rain(g, [x0, y0, x1, y1], t, n = 24) {
 export function paintSleep(g, w, h, t) {
   still(g, 'sleep', w, h);
   fine(g, () => {
+    if (hash(Math.floor(t * 12)) < 0.1 || (t % 5.3) < 0.12) px(g, '#1e0e38', ...NEON);   // the sign buzzes
     rain(g, PANE, t);
     if (t % 1 > 0.5) px(g, '#1a0608', ...COLON);
   });
@@ -98,26 +110,60 @@ export function paintSleep(g, w, h, t) {
 // the landing's tube light, their shadows long across his floor. The tube fails now and then.
 export function paintDoor(g, w, h, t) {
   still(g, 'door', w, h);
-  if ((t * 2.3) % 1 < 0.05) fine(g, () => tone(g, '#06141a', ...DOORWAY, 0.6));
+  fine(g, () => {
+    // dust in the torch's beam (not over the sofa, which stands in front of it)
+    const [[bx, by], [ex, ey]] = BEAM;
+    for (let i = 0; i < 14; i++) {
+      const u = (hash(i) + t * 0.04 * (0.5 + hash(i + 7))) % 1, x = lerp(bx, ex, u) + (hash(i + 3) - 0.5) * 120 * u, y = lerp(by, ey, u) + Math.sin(t + i) * 3;
+      if (!(x > 210 && x < 514 && y > 142 && y < 222)) px(g, '#8a7ab8', x, y, 2, 2);
+    }
+    // the lock goes: splinters thrown out of it, falling
+    const k = (t - 0.8) / 0.7;
+    if (k > 0 && k < 1) {
+      for (let i = 0; i < 9; i++) {
+        const a = hash(i + 20) * Math.PI * 2, d = (30 + 70 * hash(i + 30)) * k;
+        px(g, '#f2e8d2', LOCK[0] + Math.cos(a) * d, LOCK[1] + Math.sin(a) * d * 0.7 + 60 * k * k, i % 2 ? 5 : 3, 2);
+      }
+    }
+    if ((t * 2.3) % 1 < 0.05) tone(g, '#06141a', ...DOORWAY, 0.6);
+  });
 }
 
 // ================================================================ page 2: what they came for
 // 1. From above: CUEBALL prising up a board with the crowbar; dust in the torch's light.
 export function paintPry(g, w, h, t) {
+  const k = clamp((t - 0.6) / 0.3, 0, 1), jolt = k > 0 && k < 1 ? Math.round((hash(Math.floor(t * 40)) - 0.5) * 4) : 0;   // the board gives
+  g.save();
+  g.translate(jolt / SC, -Math.abs(jolt) / SC);
   still(g, 'pry', w, h);
   fine(g, () => {
     for (let i = 0; i < 10; i++) px(g, '#d8d0f0', 40 + ((hash(i) * 140 + t * 9 * (0.5 + hash(i + 3))) % 160), 150 + hash(i + 2) * 70 - t * 4, 2, 2);
   });
+  g.restore();
 }
 
-// 2. The tin box open in the hole, his six years in it, the three of them leaning in round it.
-export function paintBox(g, w, h) {
+// 2. The tin box open in the hole, his six years in it, the three of them leaning in round it: the bricks glint.
+export function paintBox(g, w, h, t) {
   still(g, 'box', w, h);
+  fine(g, () => {
+    for (let i = 0; i < 8; i++) {
+      const k = ((t + i * 0.37) % 2.6) / 0.35, r = i >> 1, c = i & 1;
+      if (k < 1) glint(g, 112 + c * 54 + (r % 2) * 2, 114 + r * 30, k);
+    }
+  });
 }
 
-// 3. Every brick laid out in rows, LUCKY standing over them.
-export function paintCount(g, w, h) {
+// 3. Every brick laid out in rows, LUCKY standing over them; a few loose notes still coming down, turning.
+export function paintCount(g, w, h, t) {
   still(g, 'count', w, h);
+  fine(g, () => {
+    for (let i = 0; i < 4; i++) {
+      const y = ((t * 34 * (0.7 + 0.5 * hash(i + 2)) + hash(i + 5) * 330) % 330) - 24, x = 50 + hash(i) * 250 + Math.sin(t * 1.3 + i * 2) * 16;
+      const ww = Math.round(Math.abs(Math.cos(t * 2.6 + i * 1.7)) * 22) + 2;
+      px(g, '#f2e8d2', x - ww / 2, y, ww, 10);
+      if (ww > 9) px(g, '#8a1d5c', x - 2, y, 4, 10);
+    }
+  });
 }
 
 // 4. JITTERS tipping the jerrycan over the sofa against the window's neon, CUEBALL over him; the petrol running.
@@ -127,6 +173,17 @@ export function paintPour(g, w, h, t) {
     for (let i = 0; i < 4; i++) {
       const k = (t * 1.8 + i / 4) % 1;
       px(g, '#fff8e0', 540 - k * 22, 122 + k * 58, 2, 4);
+    }
+    // where it lands: drops thrown up, and rings going out over the stain
+    const [sx, sy] = SPLASH;
+    for (let i = 0; i < 5; i++) {
+      const k = (t * 2.1 + i / 5) % 1;
+      px(g, '#fff8e0', sx + (i - 2) * 9 * k, sy - Math.sin(k * Math.PI) * 16, 2, 2);
+    }
+    const rings = [0, 1].map((r) => (t * 0.6 + r / 2) % 1).sort((a, b) => b - a);            // the widest first
+    for (const k of rings) {
+      disc(g, '#3d2a6a', sx - 2, sy + 6, 8 + 36 * k, 2 + 8 * k);
+      disc(g, '#0a070c', sx - 2, sy + 6, 5 + 36 * k, 1 + 7 * k);
     }
   });
 }
@@ -166,11 +223,23 @@ export function paintFire(g, w, h, t) {
     if (Math.sin(t * 9) * Math.sin(t * 3.7) > 0.55) tone(g, '#120608', 0, y, w * SC, h * SC - y, 0.3);
     for (let i = 0; i < n; i++) poly(g, '#ff8a20', tongue(i, 1));
     for (let i = 0; i < n; i++) poly(g, '#fff0a0', tongue(i, 0.5));
+    for (let i = 0; i < 12; i++) {                                      // embers going up off it
+      const k = (t * 0.45 * (0.6 + hash(i)) + hash(i + 3)) % 1;
+      if (k < 0.85) px(g, i % 3 ? '#ff8a20' : '#fff0a0', x0 + hash(i + 9) * (x1 - x0) + Math.sin(t * 2 + i) * 9, y - 6 - k * 170, 3, 3);
+    }
   });
 }
 
 // 3. His eye, as large as the panel, the fire's light breathing on it: it opens (open).
 export function paintWake(g, w, h, t, open = false) {
   still(g, open ? 'wake' : 'wake_shut', w, h);
-  if (Math.sin(t * 8) * Math.sin(t * 2.9) > 0.6) fine(g, () => tone(g, '#0a0408', 0, 0, w * SC, h * SC, 0.2));
+  fine(g, () => {
+    if (open) {                                                         // the fire, alive in his pupil
+      const [cx, cy] = PUPIL, f = (i) => 12 + 12 * (0.5 + 0.5 * Math.sin(t * (9 + i * 2.3) + i * 1.9));
+      disc(g, '#0a070c', cx, cy, 21, 21);
+      poly(g, '#ff8a20', [[cx - 13, cy + 11], [cx - 7, cy + 11 - f(0)], [cx - 1, cy + 2], [cx + 6, cy + 5 - f(1)], [cx + 14, cy + 11]]);
+      poly(g, '#fff0a0', [[cx - 5, cy + 11], [cx + 2, cy + 11 - f(2) * 0.5], [cx + 8, cy + 11]]);
+    }
+    if (Math.sin(t * 8) * Math.sin(t * 2.9) > 0.6) tone(g, '#0a0408', 0, 0, w * SC, h * SC, 0.2);
+  });
 }

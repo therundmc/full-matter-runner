@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""The cast sheet and the overview of the stills (not shipped):
+"""The sheets (not shipped):
 
-    python3 tools/comic/sheet.py <cast.png> [<overview.png>]
+    python3 tools/comic/sheet.py <out-dir>
 
-The cast sheet: each character as a cut-paper figure, his name, his signature in words, and how he reads from
-straight above at the game's scale (about 26 px across the shoulders, shown 4x), beside the game's current top-down
-sprites. The overview: the 16 stills as painted by tools/generate_comic.py, on one sheet."""
+writes cast.png (each character as a cut-paper figure, his name, his sign in words, and how he reads from straight
+above at the game's scale, about 26 px across the shoulders, shown 1x and 4x, beside the game's top-down sprites of
+today), lucky_options.png (the pink things tried on LUCKY, side on and from above; poster.LUCKY_GEAR picks one),
+cards.png (the five cards at half size) and overview.png (the 16 stills as painted by tools/generate_comic.py)."""
 import os
 import sys
 
@@ -13,25 +14,27 @@ from PIL import Image, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from comic.kit import BONE, CYAN, INK, NIGHT, NIGHT_L, NIGHT_LL, OUT_DIR, PINK, ROOT, Cv, hx, slab, text_mask  # noqa: E402
+from comic.kit import BONE, CYAN, FIRE_D, INK, NIGHT, NIGHT_L, NIGHT_LL, OUT_DIR, PINK, PINK_D, ROOT, Cv, hx, slab, text_mask, turned  # noqa: E402
 from comic import poster  # noqa: E402
 
-# name, the function, his height on the sheet (px for his 100 units), the slab behind him, the words, px across from above
+# name, the function, his key from above, his height on the sheet (px for his 100 units), the slab behind him, the
+# words, px per unit from above
 CAST = [
     ('CUEBALL', poster.cueball, 'cueball', 250, PINK, ['THE HEAVY. A WALL ON', 'SHORT LEGS, A BALD DOME.', 'HIS SIGN: HUGE FLUO', 'YELLOW SHADES.'], 0.56),
-    ('LUCKY', poster.lucky, 'lucky', 232, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'BIG PINK BASEBALL BAT.'], 0.62),
+    ('LUCKY', poster.lucky, 'lucky', 232, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'PINK PACK ON HIS BACK.'], 0.74),
     ('JITTERS', poster.jitters, 'jitters', 250, BONE, ['THE YOUNG ONE. A RUNT,', 'HUNCHED, NEVER STILL.', 'HIS SIGN: A CYAN', 'SAW-TOOTH CREST.'], 0.74),
-    ('THE BOSS', poster.boss, 'boss', 250, hx('#8a1d5c'), ['THE ONLY MAN CUT IN', 'BONE. A BLACK TIE, AND', 'A CIGAR FAR TOO BIG,', 'ITS EMBER, ITS SMOKE.'], 0.5),
-    ('THE RUNNER', poster.runner, 'runner', 250, NIGHT_LL, ['THE PLAYER. CAP, LONG', 'COAT. HIS SIGN: THE', 'PETROL-BLUE SCARF', 'OVER HIS MOUTH.'], 0.68),
+    ('THE BOSS', poster.boss, 'boss', 250, PINK_D, ['THE ONLY MAN CUT IN', 'BONE: A WIDE PALE SUIT,', 'A BLACK TIE, A CIGAR.', ''], 0.62),
+    ('THE RUNNER', poster.runner, 'runner', 250, FIRE_D, ['THE PLAYER. HIS SIGN:', 'THE FLAT CAP, ITS PEAK;', 'A PETROL GAITER UP TO', 'HIS EYES. COLLAR UP.'], 0.68),
 ]
+GEAR = [('pack', 'A PACK'), ('gloves', 'GLOVES'), ('braces', 'BRACES'), ('scarf', 'A SCARF'), ('bag', 'A BAG ACROSS')]
 SPRITES = ['heavy', 'brute', 'thug', 'boss', 'player']
 FLOOR = (70, 66, 80)
 
 
-def top_down(name, s):
+def top_down(name, s, parts=None):
     """The character from above at the game's scale, facing right, with the game's dark outline: a 40 x 40 tile."""
     cv = Cv(40, 40, None)
-    poster.above(cv, name, 17 if name in ('lucky', 'cueball') else 13 if name == 'boss' else 19, 16 if name == 'lucky' else 20, s, 0, body=hx('#1c1824'))
+    poster.above(cv, name, 20, 20, s, 0, body=hx('#1c1824'), parts=parts)
     a = cv.im.split()[3]
     out = Image.new('RGB', (40, 40), FLOOR)
     out.paste(INK, (0, 0), a.filter(ImageFilter.MaxFilter(3)))
@@ -47,33 +50,59 @@ def sprite(name):
     return tile.convert('RGB').resize((20, 20), Image.NEAREST)      # painted at twice the density: the game draws it at half
 
 
+def letter(cv, s, x, y, px, col=BONE):
+    cv.im.paste(col, (x, y), text_mask(s, px))
+
+
+def figure_tile(cv, x, cw, who, h, ground, seed, tile, **kw):
+    """One column: the figure on its slab, and under it how it reads from above (1x and 4x)."""
+    cv.poly(slab(x + 30, 70, x + cw - 30, 430, seed, 10), ground)
+    cv.poly(slab(x + 20, 404, x + cw - 20, 436, seed + 3, 4), INK)
+    parts, _ = who('stand', **kw)
+    for ink, pts in parts:
+        cv.poly(turned(pts, x + cw / 2 - 8, 414, 0, h / 100.0), INK if ink == 'body' else ink)
+    cv.im.paste(tile, (x + 30, 550))
+    cv.im.paste(tile.resize((160, 160), Image.NEAREST), (x + 90, 548))
+
+
 def cast_sheet(path):
     cw, W, H = 330, 330 * len(CAST), 860
     cv = Cv(W, H, NIGHT)
     for i, (name, who, key, h, ground, words, s) in enumerate(CAST):
         x = i * cw
-        cv.poly(slab(x + 30, 70, x + cw - 30, 430, i * 7, 10), ground)
-        cv.poly(slab(x + 20, 404, x + cw - 20, 436, i * 7 + 3, 4), INK)
-        poster.man(cv, who, x + cw / 2 - 8, 414, h, body=INK)
+        figure_tile(cv, x, cw, who, h, ground, i * 7, top_down(key, s))
         t = text_mask(name, 30)
         cv.im.paste(BONE, (x + (cw - t.size[0]) // 2, 22), t)
         for k, line in enumerate(words):
             if line:
-                t = text_mask(line, 12)
-                cv.im.paste(BONE, (x + 30, 452 + k * 18), t)
-        # from above: at the game's scale, then four times that
-        tile = top_down(key, s)
-        cv.im.paste(tile, (x + 30, 550))
-        cv.im.paste(tile.resize((160, 160), Image.NEAREST), (x + 90, 548))
-    t = text_mask('FROM ABOVE, AT THE GAME\'S SCALE (1X AND 4X)', 12)
-    cv.im.paste(NIGHT_LL, (30, 524), t)
-    t = text_mask('THE GAME\'S TOP-DOWN SPRITES TODAY (4X)', 12)
-    cv.im.paste(NIGHT_LL, (30, 718), t)
+                letter(cv, line, x + 30, 452 + k * 18, 12)
+    letter(cv, 'FROM ABOVE, AT THE GAME\'S SCALE (1X AND 4X)', 30, 524, 12, NIGHT_LL)
+    letter(cv, 'THE GAME\'S TOP-DOWN SPRITES TODAY (4X)', 30, 718, 12, NIGHT_LL)
     for i, n in enumerate(SPRITES):
         cv.im.paste(sprite(n).resize((80, 80), Image.NEAREST), (30 + i * 100, 740))
-        t = text_mask(n.upper(), 9)
-        cv.im.paste(NIGHT_LL, (30 + i * 100, 826), t)
+        letter(cv, n.upper(), 30 + i * 100, 826, 9, NIGHT_LL)
     cv.im.save(path)
+
+
+def options_sheet(path):
+    cw, W, H = 330, 330 * len(GEAR), 730
+    cv = Cv(W, H, NIGHT)
+    for i, (gear, words) in enumerate(GEAR):
+        x = i * cw
+        figure_tile(cv, x, cw, poster.lucky, 232, CYAN, i * 5, top_down('lucky', 0.74, poster.lucky_above(gear)), gear=gear)
+        t = text_mask(words + (' (THE PICK)' if gear == poster.LUCKY_GEAR else ''), 18)
+        cv.im.paste(PINK if gear == poster.LUCKY_GEAR else BONE, (x + (cw - t.size[0]) // 2, 28), t)
+    letter(cv, 'LUCKY\'S PINK THING: SIDE ON, AND FROM ABOVE AT THE GAME\'S SCALE (1X AND 4X)', 30, 524, 12, NIGHT_LL)
+    cv.im.save(path)
+
+
+def cards_sheet(path):
+    names = ['target_cueball', 'target_lucky', 'target_jitters', 'target_boss', 'card_runner']
+    sheet = Image.new('RGB', (2 * 586 + 10, 3 * 334 + 10), (60, 58, 66))
+    for i, n in enumerate(names):
+        im = Image.open(os.path.join(OUT_DIR, n + '.png')).convert('RGB').resize((576, 324), Image.NEAREST)
+        sheet.paste(im, (10 + (i % 2) * 586, 10 + (i // 2) * 334))
+    sheet.save(path)
 
 
 def overview(path):
@@ -96,6 +125,8 @@ def overview(path):
 
 
 if __name__ == '__main__':
-    cast_sheet(sys.argv[1])
-    if len(sys.argv) > 2:
-        overview(sys.argv[2])
+    out = sys.argv[1]
+    cast_sheet(os.path.join(out, 'cast.png'))
+    options_sheet(os.path.join(out, 'lucky_options.png'))
+    cards_sheet(os.path.join(out, 'cards.png'))
+    overview(os.path.join(out, 'overview.png'))

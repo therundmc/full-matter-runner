@@ -1,6 +1,6 @@
 """The opening, page 3: no loose ends (match, fire, wake)."""
 from .. import poster
-from ..kit import BONE, BONE_D, FIRE, FIRE_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, panel, slab
+from ..kit import BONE, BONE_D, BROWN, FIRE, FIRE_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, panel, slab
 
 FLAME = (548, 200)    # match: where the match's head is (the game draws its flame there)
 MOUTH = (638, 134)    # match: LUCKY's mouth (the balloon's tail, ui/Cinematic.js)
@@ -9,8 +9,8 @@ GAP = (150, 410, 236)  # fire: the gap under his door, x0, x1, y (the game makes
 
 def panel_match(lit):
     """Page 3, panel 1 ("TORCH IT. HE'S IN THE BACK ROOM."). Close on LUCKY, in profile: a black wedge of a face
-    under the slicked hair, the pink bat on his far shoulder, the match held up before him. Dark: the bat is all
-    there is. Struck: the flame's light is two discs on the wall, his profile cut black out of them; the door to the
+    under the slicked hair, the pink pack on his back, its strap over his shoulder, the match held up before him.
+    Dark: the pack is all there is. Struck: the flame's light is two discs on the wall, his profile cut black out of them; the door to the
     back room shows."""
     W, H = 1080, 282
     cv = Cv(W, H, NIGHT)
@@ -22,12 +22,15 @@ def panel_match(lit):
         cv.disc(fx, fy, 190, col=FIRE_D)                                                    # the flame's light on the wall
         cv.disc(fx, fy, 96, col=FIRE)
     cv.disc(262, 150, 7, col=BONE_D if lit else NIGHT_LL)
-    # the bat on his far shoulder, his coat and collar, his head: the hair slicked to a point, the nose and chin cut forward
-    for pts in poster.bat((720, 236), (1004, 30), 78):
-        cv.poly(pts, PINK if lit else PINK_D)
-    cv.poly([(676, 164), (800, 120), (960, H + 6), (610, H + 6), (650, 200)], INK)
+    # his coat and collar, the pack on his back, its strap over his shoulder; his head: the hair slicked to a point,
+    # the nose and chin cut forward
+    cv.poly([(664, 172), (700, 186), (792, 178), (886, 200), (906, H + 6), (620, H + 6), (650, 206)], INK)
+    pink = PINK if lit else PINK_D
+    cv.poly([(870, 148), (1006, 156), (1014, H + 6), (890, H + 6)], pink)
+    cv.poly([(872, 184), (1008, 192), (1009, 214), (873, 206)], PINK_D if lit else NIGHT_L)    # its flap
+    cv.poly([(794, 182), (872, 152), (880, 176), (820, 200), (808, H + 6), (780, H + 6)], pink)   # its strap, over his shoulder
     profile = [(662, 60), (650, 94), (620, 114), (644, 122), (638, 134), (650, 140), (644, 158), (664, 172)]
-    cv.poly([(700, 44), (744, 50), (778, 68), (812, 104), (784, 104), (784, 124), (760, 164), (700, 184)] + profile[::-1], INK)
+    cv.poly([(700, 44), (744, 50), (778, 68), (822, 114), (790, 110), (786, 128), (760, 164), (700, 184)] + profile[::-1], INK)
     # the fist and the match
     fist = [(578, 252), (610, 240), (636, 258), (660, H + 6), (590, H + 6)]
     cv.poly(fist, INK)
@@ -75,7 +78,7 @@ def panel_wake(open_):
     """Page 3, panel 3. His eye, as large as the panel: shut, a black line; open, bone, the fire in it."""
     W, H = 528, 288
     cv = Cv(W, H, FIRE_D)
-    cv.poly([(0, 0), (W, 0), (W, 56), (452, 96), (400, 50), (320, 92), (236, 48), (150, 96), (70, 56), (0, 90)], INK)    # his hair
+    cv.poly([(0, 0), (W, 0), (W, 56), (452, 96), (400, 50), (320, 92), (236, 48), (150, 96), (70, 56), (0, 90)], BROWN)  # his hair
     cv.poly([(430, 96), (W, 70), (W, H), (476, H), (440, 200)], PINK_D)                      # the bridge of his nose, in shade
     cv.poly([(0, 232), (300, 250), (470, H), (0, H)], NIGHT_L)                               # the sheet
     cv.poly([(0, 244), (290, 262), (430, H), (0, H)], NIGHT_LL)

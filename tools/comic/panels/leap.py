@@ -1,6 +1,6 @@
 """The leap's card: the alley in the rain, the next day (alley)."""
 from .. import poster
-from ..kit import BONE_D, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, PINK, PINK_D, Cv, bead, panel, slab
+from ..kit import BONE_D, BROWN, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, PINK, PINK_D, TAN, Cv, bead, panel, slab
 
 ALLEY_SIGN = (604, 134, 62, 10)   # the street's neon at the alley's far end, x, y, w, h (the game flickers it)
 ALLEY_PUDDLES = ((540, 360, 90, 12), (250, 392, 120, 10), (820, 390, 70, 8))   # (cx, cy, rx, ry): the game rings them
@@ -10,7 +10,7 @@ ALLEY_PUDDLES = ((540, 360, 90, 12), (250, 392, 120, 10), (820, 390, 70, 8))   #
 def panel_alley():
     """"THE NEXT DAY." The alley where he came down, looking along it to the street: two walls closing on a slab of
     neon, its light come back off the wet ground in broken bars; THE RUNNER sat against the left wall in a patch of
-    that pink, cap down, scarf up; a fire escape and a skip on the right."""
+    that pink, the cap's peak over the gaiter; a fire escape and a skip on the right."""
     W, H = 1008, 408
     cv = Cv(W, H, NIGHT_L)
     vx = 648
@@ -24,24 +24,28 @@ def panel_alley():
     cv.poly([(sx, sy), (sx + sw, sy), (sx + sw, sy + sh), (sx, sy + sh)], PINK)
     cv.poly(slab(650, 152, 682, 160, 3, 1), CYAN)
     cv.poly([(596, 206), (700, 204), (700, 244), (596, 244)], NIGHT)
+    for cx, cy, rx, ry in ALLEY_PUDDLES:
+        cv.disc(cx, cy, rx, ry, NIGHT_L)
     # the neon come back off the wet ground: bars, wider as they come nearer
     for i in range(9):
         u = (i + 0.5) / 9
         y = 248 + (H - 248) * u ** 1.25
         w = 26 + 150 * u
         x = vx - 30 + (bead(i) - 0.5) * 30 * u
-        cv.poly(slab(x - w * 0.5, y, x + w * 0.1, y + 5 + 12 * u, i, 2 + 3 * u), PINK if i % 3 else PINK_D)
-        cv.poly(slab(x + w * 0.2, y + 2, x + w * 0.62, y + 6 + 9 * u, i + 20, 2 + 2 * u), CYAN_D if i % 2 else CYAN)
-    for cx, cy, rx, ry in ALLEY_PUDDLES:
-        cv.disc(cx, cy, rx, ry, NIGHT_L)
+        cv.poly(slab(x - w * 0.5, y, x + w * 0.1, y + 6 + 12 * u, i, 1 + 2 * u), PINK if i % 3 else PINK_D)
+        cv.poly(slab(x + w * 0.2, y + 2, x + w * 0.62, y + 7 + 9 * u, i + 20, 1 + 2 * u), CYAN_D if i % 2 else CYAN)
     # the pink thrown on the left wall, and him sat in it: knees up, head down
     cv.poly([(196, 150), (420, 164), (420, 330), (170, 356)], PINK_D)
     cv.poly([(238, 348), (232, 268), (250, 230), (300, 222), (318, 250), (322, 300), (352, 262), (384, 268), (396, 344), (420, 352),
              (420, 364), (236, 366)], INK)
-    cv.poly(poster.ngon(280, 214, 22, 21, 7, 12), INK)                                       # his head
-    cv.poly([(254, 204), (268, 190), (300, 190), (314, 204), (338, 214), (312, 212), (256, 212)], INK)   # the cap, its peak down
-    cv.poly([(258, 226), (306, 222), (312, 242), (262, 250), (240, 290), (228, 286), (244, 240)], CYAN_D)   # the scarf
-    cv.poly(slab(196, 318, 226, 364, 7, 2), INK)                                             # his satchel
+    cv.poly([(248, 214), (262, 214), (262, 244), (246, 248)], BROWN)                          # his hair, to the collar
+    cv.poly([(262, 212), (314, 212), (314, 222), (262, 222)], TAN)                           # the slit of his face
+    cv.poly([(258, 221), (316, 220), (318, 238), (306, 250), (266, 252), (258, 240)], CYAN_D)   # the gaiter, up over his nose
+    cv.poly([(248, 214), (254, 192), (280, 182), (306, 186), (318, 200), (348, 209), (346, 215)], INK)   # the cap, its peak
+    cv.poly([(318, 209), (348, 209), (346, 215), (318, 215)], CYAN_D)
+    cv.disc(280, 183, 4, col=CYAN_D)
+    cv.poly([(240, 262), (250, 232), (262, 250)], INK)                                       # the collar, up
+    cv.poly([(300, 252), (322, 236), (322, 262)], INK)
     cv.poly([(428, 338), (438, 318), (444, 318), (448, 362), (426, 362)], BONE_D)             # a bottle
     # the right wall: a fire escape, a skip
     for y0, y1 in ((60, 96), (150, 180)):

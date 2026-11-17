@@ -46,7 +46,11 @@ const PUDDLES = [[540, 360, 90, 12], [250, 392, 120, 10], [820, 390, 70, 8]];
 export function paintAlley(g, w, h, t) {
   still(g, 'alley', w, h);
   fine(g, () => {
-    if (hash(Math.floor(t * 14)) < 0.07) px(g, '#2a1430', ...SIGN);
+    if (hash(Math.floor(t * 14)) < 0.07) px(g, '#8a1d5c', ...SIGN);
+    if (hash(Math.floor(t * 9) + 40) < 0.05) px(g, '#8a1d5c', 648, 150, 36, 12);        // the cyan one too, less often
+    const dk = (t % 1.6) / 0.5;                                                         // a drip off the fire escape
+    if (dk < 1) px(g, '#5a5e96', 846, 170 + dk * dk * 76, 2, 7);
+    else if (dk < 1.3) px(g, '#5a5e96', 842, 246, 10, 2);
     g.lineWidth = 2;
     PUDDLES.forEach(([cx, cy, rx], j) => {
       for (let r = 0; r < 2; r++) {

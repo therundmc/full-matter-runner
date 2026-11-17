@@ -69,7 +69,9 @@ export const OPTIONAL_LIST = [
   // the comic panels of the opening, of the leap's card and of level 1's ending (tools/generate_comic.py), painted
   // finer than the title they are drawn on
   ...['sleep', 'door', 'pry', 'box', 'count', 'pour', 'match_dark', 'match', 'fire', 'wake_shut', 'wake',
-    'alley', 'drive', 'office', 'office_phone', 'matchbook'].map((n) => `comic/${n}`),
+    'alley', 'drive', 'office', 'office_phone', 'matchbook',
+    // one full-screen card a man, front on (the targets, for a screen between levels; the runner's for a menu)
+    'target_cueball', 'target_lucky', 'target_jitters', 'target_boss', 'card_runner'].map((n) => `comic/${n}`),
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',
     'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
 ];

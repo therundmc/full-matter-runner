@@ -8,7 +8,7 @@ import { spriteOpt } from '../../../engine/Assets.js';
 import { text } from '../Text.js';
 import { drawPage } from './Page.js';
 import { still, fine, smoke } from './Panels.js';
-import { clamp, smooth, lerp, hash, px, disc, line } from './Ink.js';
+import { clamp, smooth, lerp, hash, px, poly, disc, line } from './Ink.js';
 
 export const ENDING = { skipAfter: 0.4 };   // s after which a key or a click goes on to the results
 
@@ -16,8 +16,11 @@ export const ENDING = { skipAfter: 0.4 };   // s after which a key or a click go
 const MIRROR = [438, 44, 626, 84];
 const GLASS = [[0, 24], [636, 30], [606, 228], [0, 222]];
 const WIPER = { x: 330, y: 240, len: 160 };
+// the road in comic/drive: its vanishing point, where its line and its lamps run to, how low a lamp's foot goes
+const ROAD = { vp: [236, 150], line: [150, 236], lamps: [590, 56], foot: 228 };
 const CIGAR = [214, 177];
 const DRIP = [446, 203];
+const COVER = [[96, 82], [360, 64], [366, 150], [102, 168]];   // the matchbook's printed face (ending.py MATCH_COVER)
 // the phone rings in bursts: the first at `first` s into its panel, one every `every` s, each `dur` s long
 export const RING = { first: 0.4, every: 1.7, dur: 1.0, n: 3 };
 export const ringing = (t) => t >= RING.first && (t - RING.first) % RING.every < RING.dur;
@@ -40,6 +43,18 @@ export function paintDrive(g, w, h, t, behind) {
   still(g, 'drive', w, h);
   fine(g, () => {
     within(g, GLASS, () => {
+      // the road coming at him: its line, the street lamps going by
+      const [vx, vy] = ROAD.vp;
+      for (let i = 0; i < 6; i++) {
+        const u = ((i / 6 + t * 0.8) % 1) ** 2, v = Math.min(1, u + 0.03 + 0.07 * u);
+        line(g, '#b8a890', lerp(vx, ROAD.line[0], u), lerp(vy, ROAD.line[1], u), lerp(vx, ROAD.line[0], v), lerp(vy, ROAD.line[1], v), Math.round(1 + 6 * u));
+      }
+      for (let i = 4; i >= 0; i--) {
+        const s = ((i / 5 + t * 0.16) % 1) ** 2 * 1.3, x = lerp(vx, ROAD.lamps[0], s), y = lerp(vy, ROAD.lamps[1], s);
+        line(g, '#0a070c', x, y, x + 4 * s, lerp(vy, ROAD.foot, s), Math.round(1 + 5 * s));
+        disc(g, '#c8381a', x, y, 3 + 13 * s);
+        disc(g, '#ff8a20', x, y, 1.5 + 7 * s);
+      }
       for (let i = 0; i < 34; i++) {
         const u = (t * (0.3 + hash(i + 3) * 0.4) + hash(i)) % 1, x = hash(i + 11) * 620 + u * 40, y = 226 - u * 200;
         line(g, i % 5 ? '#2a2c5a' : '#5a5e96', x, y, x + 5, y - 9 - hash(i + 5) * 8, 2);
@@ -48,8 +63,12 @@ export function paintDrive(g, w, h, t, behind) {
       line(g, '#07050c', WIPER.x, WIPER.y, ex, ey, 6);
       line(g, '#3a3650', WIPER.x + 2, WIPER.y - 2, ex + 2, ey - 2, 1);
     });
-    // the bar in the mirror, seen back to front, smaller and smaller: its front, its sign, its light on the wet road
+    // the mirror over all that (its frame and stalk again: the lamps pass behind them); the bar in it, seen back to
+    // front, smaller and smaller: its front, its sign, its light on the wet road
     const [x0, y0, x1, y1] = MIRROR;
+    poly(g, '#0a070c', [[x0 - 8, y0 - 8], [x1 + 8, y0 - 6], [x1 + 6, y1 + 8], [x0 - 6, y1 + 6]]);
+    px(g, '#0a070c', 525, 24, 12, 16);
+    px(g, '#0c0812', x0, y0, x1 - x0, y1 - y0);
     g.save();
     g.beginPath();
     g.rect(x0, y0, x1 - x0, y1 - y0);
@@ -78,7 +97,8 @@ export function paintOffice(g, w, h, t) {
       const f = Math.floor(t * 28), on = ringing(t);
       g.drawImage(rec, on ? Math.round((hash(f) - 0.5) * 4) : 0, on ? -Math.round(hash(f + 5) * 4) : 0);
     }
-    smoke(g, CIGAR[0], CIGAR[1], t, 12, '#5a5462');
+    smoke(g, CIGAR[0], CIGAR[1] - 4, t, '#5a5462');
+    disc(g, (t * 1.3) % 1 < 0.35 ? '#fff0a0' : '#ff8a20', CIGAR[0], CIGAR[1], 3);            // its ember, drawing
     const u = (t * 0.7) % 1, [dx, dy] = DRIP;
     if (u < 0.4) px(g, '#7a0e16', dx - 1, dy, 3, 2 + u * 8);
     else px(g, '#7a0e16', dx - 1, dy + ((u - 0.4) / 0.6) ** 2 * 80, 3, 5);
@@ -86,8 +106,15 @@ export function paintOffice(g, w, h, t) {
 }
 
 // 3. The matchbook in his hand: the motel's name printed on it.
-export function paintMatchbook(g, w, h) {
+export function paintMatchbook(g, w, h, t = 0) {
   still(g, 'matchbook', w, h);
+  const k = (t % 3.6) / 0.6;                                             // a glint slides across its cover now and then
+  if (k < 1) {
+    fine(g, () => within(g, COVER, () => {
+      const x = 60 + k * 360;
+      poly(g, '#fff0f4', [[x, 50], [x + 26, 50], [x - 14, 180], [x - 40, 180]], 0.45);
+    }));
+  }
   const a = Math.atan2(64 - 82, 360 - 96);    // the slant of its top edge (generate_comic.py panel_matchbook)
   text(g, 'FLAMINGO', 95, 37, 7, '#f8ecd8', { rot: a, outline: false, shadow: '#a83260' });
   text(g, 'MOTEL', 97, 48.5, 4, '#f8ecd8', { rot: a, outline: false, shadow: '#a83260' });

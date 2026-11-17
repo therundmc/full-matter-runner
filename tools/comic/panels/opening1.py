@@ -1,6 +1,6 @@
 """The opening, page 1: his last night (sleep, door)."""
 from .. import poster
-from ..kit import BONE, BONE_D, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, digits, hx, panel, slab, star
+from ..kit import BONE, BONE_D, BROWN, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, digits, hx, panel, slab, star
 
 # Each panel is painted at SC x its size in the title's px (Cinematic.js PAGES gives the same sizes). What the game
 # draws over a still is at fixed points, named here and in ui/cine/Panels.js: move one, move the other.
@@ -13,7 +13,7 @@ DOORWAY = (670, 0, 910, 196)   # door: the doorway (the game's tube flickers ove
 def panel_sleep():
     """Page 1, panel 1 ("1:05 AM. HIS LAST NIGHT IN TOWN."). His bedroom, side on: the bar's neon comes in through
     the window in one pink wedge (a cyan sliver along it) across the bed, where he is a range of hills under the
-    sheet, a black head on a bone pillow. The clock says 1:05; by the door his suitcase stands packed, his cap on
+    sheet, a brown head on a bone pillow. The clock says 1:05; by the door his suitcase stands packed, his cap on
     the hook."""
     W, H = 1080, 288
     cv = Cv(W, H, NIGHT)
@@ -32,8 +32,7 @@ def panel_sleep():
     cv.poly(hills, NIGHT_LL)
     cv.poly(hills, PINK, clip=wedge)
     cv.poly([(600, 128), (650, 150), (712, 184), (744, 198), (620, 198)], PINK_D, clip=wedge)   # the far side of his knees
-    cv.poly(poster.ngon(318, 174, 17, 15, 7, 10), INK)                                       # his head, turned to the wall
-    cv.poly([(326, 162), (346, 170), (340, 186)], INK)
+    cv.poly(poster.ngon(320, 176, 19, 15, 7, 10), BROWN)                                     # his head, turned to the wall
     # the clock on the night table
     cv.poly(slab(128, 180, 244, 240, 11, 3), NIGHT_L)
     cv.poly(slab(148, 138, 238, 180, 13, 2), INK)
@@ -43,13 +42,14 @@ def panel_sleep():
     # the door, his cap on its hook, the suitcase packed by it
     cv.poly(slab(962, 26, 1056, 236, 21, 5), NIGHT_L)
     cv.disc(978, 136, 5, col=PINK_D)
-    cv.poly([(990, 52), (1004, 40), (1030, 40), (1042, 54), (1060, 58), (1042, 62), (990, 62)], INK)
+    cv.poly([(984, 62), (988, 46), (1010, 38), (1034, 42), (1044, 53), (1068, 58), (1066, 63)], INK)     # his cap
+    cv.poly([(1044, 58), (1068, 58), (1066, 63), (1044, 63)], CYAN_D)
+    cv.disc(1011, 39, 3, col=CYAN_D)
     case = slab(826, 150, 944, 236, 31, 3)
     cv.poly(case, BONE_D)
     for x in (848, 908):
         cv.poly(slab(x, 148, x + 12, 238, x, 1), INK)
-    cv.path([(866, 150), (868, 136), (902, 136), (904, 150)], 6, INK)
-    cv.poly([(826, 236), (944, 236), (1000, 262), (860, 264)], NIGHT)                         # its shadow
+    cv.path([(868, 152), (868, 136), (902, 136), (902, 152)], 6, INK)
     return cv
 
 
@@ -57,9 +57,8 @@ def panel_sleep():
 def panel_door():
     """Page 1, panel 2 ("THE BOSS'S MEN LET THEMSELVES IN."). His front door thrown open, its lock a burst of
     splinters; the three of them cut out against the landing's tube: CUEBALL filling the doorway, his torch into
-    the room, the crowbar hanging from his other fist; LUCKY a head above him, the pink bat on his shoulder; JITTERS
-    at the jamb with the can. The light
-    lies on the floor in one wedge, their shadows three spikes in it."""
+    the room, the crowbar hanging from his other fist; LUCKY a head above him, the pink pack on his back; JITTERS at
+    the jamb with the can. The light lies on the floor in one wedge, their shadows three spikes in it."""
     W, H = 1080, 282
     cv = Cv(W, H, NIGHT)
     dx0, dy0, dx1, fl = DOORWAY
@@ -68,21 +67,21 @@ def panel_door():
     # the doorway: the tube's cyan, the landing's wall in shade to the right, the tube itself
     cv.poly([(dx0, dy0 - 6), (dx1, dy0 - 6), (dx1, fl), (dx0, fl + 3)], CYAN)
     cv.poly([(852, -6), (dx1, -6), (dx1, fl), (846, fl + 1)], CYAN_D)
-    cv.poly(slab(716, 20, 800, 30, 3, 1.5), BONE)
+    cv.poly(slab(684, 12, 728, 21, 3, 1.5), BONE)
     # his door, thrown open: a lighter slab, its lock a burst
     cv.poly([(dx0, -6), (604, -6), (592, 228), (dx0 - 2, fl + 3)], NIGHT_L)
     cv.poly(star(634, 134, 34, 11, 7, seed=4, turn=8, squash=0.85), BONE)
     cv.disc(634, 134, 6, col=INK)
     # the light on his floor, their shadows in it
     wedge = cv.poly([(dx0, fl + 3), (dx1, fl), (1040, H + 4), (280, H + 4)], CYAN_D)
-    for cx, tip, w in ((752, 560, 110), (842, 900, 44), (894, 1040, 52)):
+    for cx, tip, w in ((752, 560, 110), (832, 880, 44), (894, 1040, 52)):
         cv.poly([(cx - 16, fl), (cx + 16, fl), (tip + w, H + 4), (tip - w, H + 4)], INK, clip=wedge)
     # the torch's beam down into the room, the sofa black across it
     beam = cv.poly([(640, 78), (646, 92), (470, H + 4), (300, H + 4)], NIGHT_LL)
     cv.poly([(214, 168), (236, 150), (480, 146), (506, 164), (510, 214), (214, 218)], INK)
     cv.poly([(236, 150), (480, 146), (486, 170), (232, 174)], NIGHT_LL, clip=beam)
     # the three of them
-    poster.man(cv, poster.lucky, 842, fl + 3, 146, face=-1)
+    poster.man(cv, poster.lucky, 832, fl + 3, 146, face=-1)
     a = poster.man(cv, poster.cueball, 752, fl + 3, 164, 'reach', face=-1)
     poster.torch(cv, a['hand'], face=-1)
     poster.crowbar(cv, (a['hand_b'][0], a['hand_b'][1] - 4), (a['hand_b'][0] + 6, fl - 14))

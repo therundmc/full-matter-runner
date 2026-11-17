@@ -19,7 +19,7 @@ def floor(cv, pool, light, gap):
 def panel_pry():
     """Page 2, panel 1 ("THEY KNEW WHERE HE HID IT."). From above, in the torch's pool: CUEBALL's shoulders and bone
     dome over the crowbar, the board coming up off the black of the hole, its nails with it; LUCKY looking on, the
-    pink bat on his shoulder; their torch left on the boards."""
+    pink pack on his back."""
     W, H = 348, 288
     cv = Cv(W, H, NIGHT)
     floor(cv, (196, 176, 150), CYAN_D, NIGHT)
@@ -33,11 +33,9 @@ def panel_pry():
             cv.disc(*turned([(x, y)], 262, 150, 4)[0], 3, col=INK)
     poster.crowbar(cv, (128, 214), (226, 148), 8)
     cv.poly(star(228, 146, 16, 5, 5, seed=2), BONE)
-    cv.bar((62, 236), (136, 210), 24, INK)                                                  # his arms on the bar
-    cv.bar((118, 288), (140, 214), 24, INK)
+    cv.poly([(50, 228), (128, 196), (150, 216), (128, 290), (60, 290)], INK)                 # his arms down on the bar
     poster.above(cv, 'cueball', 92, 262, 2.3, -42)
     poster.above(cv, 'lucky', 306, 204, 2.0, 172)
-    poster.torch(cv, (150, 110), face=1, s=1.3)
     return cv
 
 
@@ -45,7 +43,7 @@ def panel_pry():
 def panel_box():
     """Page 2, panel 2 ("SIX YEARS OF RUNS FOR THE BOSS."). Straight down the hole: his tin box open, the bricks in
     rows, his passport, a postcard of a beach. Round it the three of them lean in: the dome and its yellow
-    shades, the pink bat's end tapping the tin, the crest."""
+    shades, the pink pack, the crest."""
     W, H = 348, 288
     cv = Cv(W, H, NIGHT)
     floor(cv, (176, 172, 150), CYAN_D, NIGHT)
@@ -56,38 +54,32 @@ def panel_box():
         for c in range(2):
             poster.brick(cv, 128 + c * 54 + (r % 2) * 2, 122 + r * 30, -2 + (r * 3 + c * 5) % 5, 1.0)
     cv.poly(turned([(-20, -27), (20, -27), (20, 27), (-20, 27)], 236, 138, 8), CYAN_D)       # his passport
-    cv.poly(star(236, 136, 9, 4, 6, seed=1), BONE)
+    cv.poly(turned([(-8, -8), (8, -8), (8, 8), (-8, 8)], 236, 134, 53), BONE)
     card = turned([(-24, -17), (24, -17), (24, 17), (-24, 17)], 234, 202, -9)               # the postcard: a beach, a sun
     cm = cv.poly(card, PINK)
     cv.poly(turned([(-24, 2), (24, 2), (24, 17), (-24, 17)], 234, 202, -9), CYAN, clip=cm)
     cv.disc(240, 198, 9, col=BONE, clip=cm)
     cv.poly(turned([(-24, 6), (24, 6), (24, 17), (-24, 17)], 234, 202, -9), CYAN, clip=cm)
     poster.above(cv, 'cueball', 30, 262, 2.3, -40)
-    for pts in poster.bat((356, 58), (272, 112), 24):                                        # LUCKY's bat, tapping the tin
-        cv.poly(pts, PINK)
-    poster.above(cv, 'lucky', 352, 30, 2.2, 150)
-    poster.above(cv, 'jitters', 258, 268, 2.2, -112)
+    poster.above(cv, 'lucky', 304, 162, 1.9, 176)
+    poster.above(cv, 'jitters', 150, 284, 2.2, -78)
     return cv
 
 
 @panel('count', (348, 288))
 def panel_count():
     """Page 2, panel 3 ("EVERY DOLLAR. HIS WAY OUT."). From above: every brick laid out in rows on his boards,
-    counted; the emptied duffel at the corner; LUCKY standing over them, the pink bat on his
-    shoulder, his shadow one long spike laid up the rows."""
+    counted; his tin, emptied, at the corner; LUCKY standing over them, the pink pack on his
+    back, his shadow one long spike laid up the rows."""
     W, H = 348, 288
     cv = Cv(W, H, NIGHT)
     floor(cv, (176, 250, 236), CYAN, CYAN_D)
-    # the duffel, emptied, top right: a black lozenge, its zip two bone strips, two bricks left in its mouth
-    cv.poly(turned([(-70, -30), (-52, -40), (56, -38), (72, -26), (72, 26), (54, 38), (-54, 38), (-72, 26)], 300, 44, -24), INK)
-    mouth = cv.poly(turned([(-52, -4), (-36, -16), (40, -16), (54, -2), (40, 14), (-38, 14)], 300, 44, -24), NIGHT)
-    poster.brick(cv, 290, 50, -20, 0.9, clip=mouth)
-    poster.brick(cv, 322, 30, -30, 0.9, clip=mouth)
-    for y in (-17, 15):
-        a, b = turned([(-37, y), (40, y)], 300, 44, -24)
-        cv.bar(a, b, 3, BONE)
+    # his tin, emptied, top right: one brick left in it
+    cv.poly(turned([(-58, -40), (58, -42), (60, 40), (-56, 42)], 296, 40, -16), NIGHT_LL)
+    tin = cv.poly(turned([(-50, -32), (50, -34), (52, 32), (-48, 34)], 296, 40, -16), INK)
+    poster.brick(cv, 280, 52, -22, 0.9, clip=tin)
     # his shadow up the rows: one long spike
-    sm = cv.mask([(96, H + 4), (214, H + 4), (214, 66), (190, 62)])
+    sm = cv.mask([(112, 214), (200, 214), (214, 66), (190, 62)])
     rows = []
     for r in range(4):
         for c in range(5):
@@ -99,7 +91,7 @@ def panel_count():
     cv.paste(INK, sm)
     for x, y, d in rows:
         poster.brick(cv, x, y, d, clip=sm, shade=True)
-    poster.above(cv, 'lucky', 154, 236, 3.2, -92)
+    poster.above(cv, 'lucky', 156, 216, 3.2, -92)
     return cv
 
 
@@ -116,12 +108,12 @@ def panel_pour():
     cv.disc(134, 128, 5, col=BONE_D)
     # the window behind them: the bar across the street, its sign
     glass = cv.poly(slab(566, 18, 880, 176, 9, 6), PINK_D)
-    cv.poly(slab(610, 62, 790, 92, 11, 3), PINK, clip=glass)
-    cv.poly(slab(700, 112, 850, 126, 13, 2), CYAN, clip=glass)
+    cv.poly(slab(600, 58, 706, 88, 11, 3), PINK, clip=glass)                                 # one slab of neon to a pane
+    cv.poly(slab(756, 116, 856, 132, 13, 2), CYAN, clip=glass)
     cv.bar((722, 10), (726, 184), 9, NIGHT)
     cv.bar((556, 100), (890, 94), 9, NIGHT)
     wedge = cv.poly([(566, fl), (880, fl - 2), (1010, H + 4), (470, H + 4)], PINK_D)
-    for cx, tip, w in ((604, 520, 50), (742, 760, 110)):
+    for cx, tip, w in ((604, 500, 70), (742, 760, 110)):
         cv.poly([(cx - 16, fl), (cx + 16, fl), (tip + w, H + 4), (tip - w, H + 4)], INK, clip=wedge)
     # his sofa, long and low, the stain spreading where the petrol falls
     cv.poly([(232, 132), (548, 124), (556, 178), (226, 184)], NIGHT_LL)
@@ -130,8 +122,7 @@ def panel_pour():
     cv.poly([(206, 176), (574, 168), (578, fl), (204, fl + 4)], NIGHT_L)
     for arm in (slab(196, 150, 232, fl + 4, 3, 3), slab(552, 144, 588, fl + 2, 7, 3)):
         cv.poly(arm, NIGHT_LL)
-    cv.poly([(470, 172), (552, 170), (566, 198), (500, 212), (452, 196)], INK)
-    cv.poly(star(518, 182, 13, 4, 6, seed=6, squash=0.5), BONE)
+    cv.disc(516, 188, 50, 13, INK)                                                          # the stain
     # the two of them
     poster.man(cv, poster.cueball, 742, fl + 4, 150, face=-1)
     a = poster.man(cv, poster.jitters, 604, fl + 3, 150, 'tip', face=-1)
