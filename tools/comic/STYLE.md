@@ -121,10 +121,10 @@ Ending.js): never a blur, never a gradient, nothing that hides a sign or crosses
 | still | what moves | fixed points (JS) |
 |---|---|---|
 | `sleep` | rain down the pane, the pink sign buzzing, the clock's colon | `PANE`, `NEON`, `COLON` |
-| `door` | the tube failing, dust in the torch's beam, splinters thrown from the lock on KRAK | `DOORWAY`, `BEAM`, `LOCK` |
+| `door` | the tube failing, dust in the torch's beam (no burst at the lock, no splinters: too much) | `DOORWAY`, `BEAM` |
 | `pry` | dust, the panel jolting on KRRIK | |
 | `box` | glints opening and shutting on the bricks | the tin's grid |
-| `count` | a few loose notes coming down, turning | |
+| `count` | nothing (falling notes were too much) | |
 | `pour` | the petrol's drops, drops thrown up where it lands, rings going out over the stain | `SPOUT` (540, 122), `SPLASH` |
 | `match` | sparks and the flame, its light ducking | `FLAME` |
 | `fire` | the tongues under the door, embers going up, the light breathing | `GAP` |
