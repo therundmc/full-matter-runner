@@ -1,7 +1,7 @@
 """The opening, page 2: what they came for (pry, box, count)."""
 from PIL import Image, ImageChops, ImageDraw
 
-from .. import painted, props
+from .. import props
 from ..cast import SLICK, Figure, Light
 from ..kit import INK, PINK, PINK_D, FIRE_L, Cv, T, backlit, boards, hx, panel
 from ..legacy import finger, head_heavy, jaw_heavy
@@ -144,12 +144,15 @@ def panel_count():
     by = cross(bz, bx)
     C = (-4.0, -586.0, 176.0)
     at = lambda u, v, w: add(C, add(mul(bx, u), add(mul(by, v), mul(bz, w))))
-    # the arms reach where the painted hands begin: the left wrist below the brick's near edge, the right one
-    # beyond its far end (the cuffs the hands come out of)
+    # the arms reach where the drawn hands begin: the left wrist below the brick's near edge, the right one beyond
+    # its far end
     pose = dict(chest=ypr(4, 12, 0), head=ypr(-12, 22, 5), wrist_l=at(-12, -26, -30), elbow_l=(0.4, 1, -0.3),
                 wrist_r=at(58, 10, -12), elbow_r=(-0.5, 1, -0.2))
+    hands = dict(l=dict(pose='hook', view='front', aim=('edge', at(-12, -14.5, 12.0)), size=1.15),
+                 r=dict(pose='riffle', view='side', aim=('thumb', at(28, 2, 30)), size=1.15))
     face = dict(smile=(0.1, 1.0), gaze=(-1.6, 2.8), lids=0.42, squint=0.55, brow_lift=(-0.3, 0.9))
-    fig = Figure(SLICK, pose=pose, face=face, t_face=0.22, head_light=(-0.75, 0.5, 0.45), face_black=-0.3)
+    fig = Figure(SLICK, pose=pose, hands=hands, face=face, t_face=0.22, head_light=(-0.75, 0.5, 0.45),
+                 face_black=-0.3)
     sc = Scene(W, H, light=(-0.6, 0.3, 0.75), rims=[((0.85, -0.25, -0.45), PINK, 0.62)], scale=s, rim_px=3,
                simplify=9, ink=4, inner=2, blacks=0.05)
     fig.add(sc, place, light)
@@ -173,8 +176,5 @@ def panel_count():
     big = sil.transform((W, H), Image.AFFINE, (1 / 1.3, 0, -30 / 1.3, 0, 1 / 1.3, 50 / 1.3), Image.NEAREST)
     cv.im.paste(INK, (0, 0), ImageChops.multiply(big, cv.mask(lit_wall, False)))
     sc.render(cv)
-    # his hands, painted by hand (painted.py) over the cuffs the render leaves: the right one at the brick's far
-    # end, its thumb over the fanned notes; the left one under the brick, its fingers hooked over the near edge
-    painted.stamp(cv, 'count_riffle', 12, 154)
-    painted.stamp(cv, 'count_hold', 98, 190)
+    fig.draw_hands(cv, sc, place, light)
     return cv
