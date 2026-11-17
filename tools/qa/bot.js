@@ -22,7 +22,7 @@
     && e.cooldown <= 0.15 && Math.hypot(e.x - p.x, e.y - p.y) > 70);
   // features a long session should exercise at least once (else a 'not-covered' warning, see run.mjs), unless the
   // level has nothing for it (notApplicable)
-  const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'ladderUp', 'ladderDown', 'roofDrop', 'roll', 'slide', 'takedown',
+  const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'ladderUp', 'ladderDown', 'roofDrop', 'roll', 'slide', 'takedown', 'envTakedown',
     'finisher', 'trunk', 'doorOpened', 'doorBreached', 'weaponBroken', 'pickup', 'throw', 'thrownKill', 'reload', 'gunKill', 'meleeKill',
     'powerCut', 'horn', 'dyingCrawl', 'dyingCurl', 'dyingSpasm', 'dyingThroat', 'clear', 'exit', 'deviceUse'];
   const DYING = { crawl: 'dyingCrawl', curl: 'dyingCurl', spasm: 'dyingSpasm', throat: 'dyingThroat' };
@@ -127,7 +127,7 @@
       kills: 0, playerKills: 0, styles: {}, tags: {}, killWeapons: {}, picked: {}, fired: {}, civilians: {},
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
-      plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0,
+      plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0, envTakedowns: {},
       // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
       // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
       // the stage they reached, drivers held up at gunpoint
@@ -253,7 +253,7 @@
     if (!w.windows.length) na.push('windowDive', 'windowVault');
     if (!w.doors.some((d) => d.locked)) na.push('doorBreached');
     if (!w.level.exit) na.push('exit');
-    if (!w.enemies.length) na.push('takedown', 'finisher', 'gunKill', 'meleeKill', 'thrownKill', ...Object.values(DYING), 'clear');
+    if (!w.enemies.length) na.push('takedown', 'envTakedown', 'finisher', 'gunKill', 'meleeKill', 'thrownKill', ...Object.values(DYING), 'clear');
     if (!w.uses?.spots.length) na.push('deviceUse');
     return na;
   }
@@ -916,7 +916,11 @@
     if (v?.rolling && v.rolling !== B.rollWas) { cover('roll'); act('roll'); }
     B.vaultWas = v;
     B.rollWas = v?.rolling;
-    if (p.takedown && p.takedown !== B.takedownWas) { cover('takedown'); act(`takedown (${p.takedown.f.label})`); }
+    if (p.takedown && p.takedown !== B.takedownWas) {
+      cover('takedown');
+      if (p.takedown.spot) { cover('envTakedown'); S.stats.envTakedowns[p.takedown.spot.kind] = (S.stats.envTakedowns[p.takedown.spot.kind] || 0) + 1; }
+      act(`takedown (${p.takedown.f.label})`);
+    }
     B.takedownWas = p.takedown;
     if (p.execution && p.execution !== B.execWas) { cover('finisher'); act('finisher'); }
     B.execWas = p.execution;

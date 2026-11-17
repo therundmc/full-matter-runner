@@ -107,12 +107,13 @@ export function throatPlan(seed, T = THROAT) {
 // (with dy: px it sits back over his shoulders while he kneels), jet (0 to 1: how hard the artery throws now),
 // jetA (rad its aim is off the line of his neck), z (px above the floor it leaves from), down (he lies on the floor) }.
 // T: THROAT, or another of data/wounds.js KNEELS (BEHEAD: the head is gone, the arms hang, he stays on his knees
-// T.hold s first; KNEEL, SLUMP: struck down from behind, no spurt).
+// T.hold s first; KNEEL, SLUMP: struck down from behind, no spurt; LEDGE, BOWL: from bent over what his head was
+// driven into, T.from, partly pitched when T.over). fall: 0..1 of the pitch.
 export function throatPose(plan, u, geom, T = THROAT) {
   const half = geom.half, stay = T.hold || 0;
-  const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel - stay) / T.pitch), up = 1 - fall;
+  const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel - stay) / T.pitch) * (T.over ?? 1), up = 1 - fall;
   const slipAt = plan.dur * (1 - T.slip), slack = smooth((u - slipAt) / (plan.dur - slipAt));
-  const arch = mix(mix(0.28, T.upright, kneel), 1, fall);
+  const arch = mix(mix(T.from ?? 0.28, T.upright, kneel), 1, fall);
   let jet = 0, jetA = 0;
   for (const b of plan.beats) {
     const v = (u - b.t0) / b.d;
@@ -143,7 +144,9 @@ export function throatPose(plan, u, geom, T = THROAT) {
   for (const p of plan.pushes) rock += (p.leg ? -1 : 1) * 0.05 * jerk((u - p.t0) / p.d);
   return {
     arch, rock, roll: 1, top: fall < 0.5, arms, legs,
-    head: { a: plan.side * 0.45 * fall + tremble, s: 1 - 0.1 * jet * fall, dy: up * (half * arch * 0.7 + 4) },
-    jet, jetA: jetA + plan.side * 0.45 * fall, z: mix(3, 15, up), down: u >= T.kneel + stay + T.pitch,
+    // the head sits back over his shoulders while he kneels (nod: how much of it; bent over something it comes up
+    // as his knees go)
+    head: { a: plan.side * 0.45 * fall + tremble, s: 1 - 0.1 * jet * fall, dy: up * (half * arch * 0.7 + 4) * (T.nod ?? 1) * (T.from ? kneel : 1) },
+    jet, jetA: jetA + plan.side * 0.45 * fall, z: mix(3, 15, up), down: u >= T.kneel + stay + T.pitch, fall,
   };
 }

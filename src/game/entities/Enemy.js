@@ -645,7 +645,9 @@ export default class Enemy extends Character {
     if (this.holding && this.held) this.dropHeld(); // seized: what was in his hands falls
     if (this.held) {
       // seized from behind: nothing he can do, unless the grip is lost
-      if (this.held.alive && this.held.takedown?.target === this) { this.halt(); return; }
+      // (pulled to what his head is driven into: he goes where he is put)
+      const td = this.held.alive && this.held.takedown?.target === this ? this.held.takedown : null;
+      if (td) { if (!td.spot) this.halt(); return; }
       this.held = null;
       this.body.collisionFilter = { ...this.body.collisionFilter, group: 0 }; // let go: solid to him again
     }

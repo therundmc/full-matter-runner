@@ -2,6 +2,7 @@
 // cuts pieces out of it along polygons, and draws the small loose bits (balls, books, records...).
 // Shapes and sizes are decided by systems/Fracture.js.
 import { rand, chance } from '../../engine/math.js';
+import { spotStamp, stampImage } from './BloodArt.js';
 
 const INK = '#0d0710';
 const TAU = Math.PI * 2;
@@ -200,6 +201,15 @@ export function paintMark(g, x, y, m, a, mat) {
   g.restore();
   if (m.cracks) cracks(g, x, y, m.cracks, mat === 'glass' ? 9 : 5 + m.r * 2, mat === 'glass' ? 'rgba(235,250,255,0.85)' : undefined);
   if (m.pocks) pocks(g, x, y, m.pocks, Math.max(4, (m.scorch || 6) * 0.9), hard ? rim : null);
+}
+
+// blood thrown on the object at (x, y), r px: a stain of the floor's own blood, only where the object is
+export function bloodOn(g, x, y, r) {
+  const s = spotStamp(r);
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  g.drawImage(stampImage(s), Math.round(x - s.cx), Math.round(y - s.cy));
+  g.restore();
 }
 
 // the channel a round dug through the object (seen from above): a dark groove with a torn, lighter lip

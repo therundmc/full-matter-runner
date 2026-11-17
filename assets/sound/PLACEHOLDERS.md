@@ -27,3 +27,8 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |
 | curtainRings | the curtain's rings run along the rod as it parts or falls back | brass rings sliding on a brass rod, a light metallic rattle |
 | curtainWhoosh | something fast (a body thrown, a slide) goes through a curtain | a heavy cloth whoosh, the velvet thrown aside |
+| headSlamWood | a man's face slammed down on a table, a counter, a crate (a takedown with a spot: Player.slamFx) | a skull hitting a wooden table top hard, glasses on it jumping, a grunt knocked out of him |
+| headSlamWall | a man's face smashed into a wall (a takedown: WALL SMASH) | a head driven into plaster / brick, a dull crack, plaster crumbling |
+| headSlamMetal | a man's face brought down on a steel sink or a stove (a takedown: SINK) | a skull on a steel edge, a dull clang ringing in the basin |
+| headSlamPorcelain | a man's face smashed into a urinal (a takedown: URINAL) | a head on porcelain, a hard knock and a crack in it |
+| toiletDunk | a man's head dunked into a toilet bowl (a takedown: TOILET) | a head plunged into a toilet, a splash and a knock on the porcelain, a gurgle |

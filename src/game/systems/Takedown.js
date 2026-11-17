@@ -40,3 +40,38 @@ export function advance(td, dt) {
 
 // s the player is locked in it, start to end
 export const lockedFor = (f) => f.beats.reduce((s, [wait]) => s + wait, 0) + f.after;
+
+// A head driven into what stands in front of him (a takedown with a spot: data/finishers.js `grip: 'hair'`), read
+// off the clock: drive 0..1 (1: his face in it), back 0..1 (his head yanked back by the hair: the anticipation),
+// shake 0..1 (he fights the grip), hits = blows landed. Each contact beat stays in a breath (`hold` of its wait: the
+// follow-through), pulls back up to `pull` of it, then drives in, faster and faster, to land at its end; a struggle
+// after one keeps his head in it (`held`).
+export const SLAM = { hold: 0.14, pull: 0.55, held: 0.8, grab: 0.4 };
+const CONTACT = new Set(['smash', 'dunk']);
+const ease = (k) => k * k * (3 - 2 * k);
+// where beat i ends: [drive, back]
+function endOf(f, i, C) {
+  const what = f.beats[i]?.[1];
+  if (CONTACT.has(what)) return [1, 0];
+  if (what === 'struggle' && i > 0 && CONTACT.has(f.beats[i - 1][1])) return [C.held, 0];
+  return [0, C.grab];
+}
+export function slamAt(td, C = SLAM) {
+  const f = td.f, i = td.i, what = f.beats[i][1], u = td.done ? 1 : Math.min(1, td.t / f.beats[i][0]);
+  let hits = 0;
+  for (let j = 0; j < (td.done ? f.beats.length : i); j++) if (CONTACT.has(f.beats[j][1])) hits++;
+  if (td.done) return { drive: 1, back: 0, shake: 0, hits };
+  const [d0, b0] = i > 0 ? endOf(f, i - 1, C) : [0, 0];
+  const [d1, b1] = endOf(f, i, C);
+  let drive, back, shake = 0;
+  if (CONTACT.has(what)) {
+    if (u < C.hold) { drive = d0; back = b0; }
+    else if (u < C.pull) { const k = ease((u - C.hold) / (C.pull - C.hold)); drive = d0 * (1 - k); back = b0 + (1 - b0) * k; }
+    else { const k = ((u - C.pull) / (1 - C.pull)) ** 2; drive = k; back = 1 - k; }
+  } else {
+    const k = ease(Math.min(1, u / 0.4));
+    drive = d0 + (d1 - d0) * k; back = b0 + (b1 - b0) * k;
+    if (what === 'struggle') shake = Math.sin(Math.PI * u);
+  }
+  return { drive, back, shake, hits };
+}

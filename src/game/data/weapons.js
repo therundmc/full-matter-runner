@@ -16,7 +16,8 @@
 // melee: swing = 'club' (long, swung with both hands, lies on the shoulder) | 'blade' (held low, stabs and cuts);
 // heft 2 = smashes panes and doors; material = what it is made of (the crack of a blow, the item on the floor);
 // rest: angle a club is carried at when it does not lie on the shoulder (a cue is held across the body, by its middle);
-// thrust: its heavy stroke is a lunge, not an overhead smash; finisher: its own ground finisher (data/finishers.js).
+// thrust: its heavy stroke is a lunge, not an overhead smash; finisher: its own ground finisher (data/finishers.js);
+// short: a club short enough for one hand (the other is free to take a man by the hair: data/finishers.js freeHand).
 // wear: kills the player's weapon survives; the one that uses it up breaks it (Character.breakWeapon) as `breaks`:
 // 'snap' = it breaks in two over him (what is left in the hand is `snaps`, or nothing), 'lodge' = it stays planted
 // in the body.
@@ -44,7 +45,7 @@ export const WEAPONS = {
   tire_iron: {
     name: 'TIRE IRON', kind: 'melee', hold: 'melee', sprite: 'weapons/tire_iron', grip: 3, range: 27, arc: 1.7, rate: 0.37,
     lethal: true, sound: 'punch', gore: 0.6, wound: 'blunt', windup: 0.06, points: 800, swing: 'club', heft: 2, material: 'metal',
-    wear: 7, breaks: 'lodge',
+    wear: 7, breaks: 'lodge', short: true,
   },
   // long reach, quick; it soon snaps over a skull, and what is left is a stake
   cue: {
