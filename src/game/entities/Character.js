@@ -887,6 +887,7 @@ export default class Character {
   draw(ctx) {
     if (this.knocked > 0) { drawDown(ctx, this, this.pose); return; }
     const P = standPose(this, this.pose);
+    this.ownPose?.(P); // a pose of his own over the stance (Civilian: a dancer's moves)
     // a slide can chain into a vault: the vault blends out of whatever the slide pose was
     if (this.slideAnim) slidePose(this, P, this.pose2);
     if (this.kick) kickPose(this, P, this.pose2);

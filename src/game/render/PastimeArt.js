@@ -2,6 +2,7 @@
 // Everything is in the character's own frame: +x = where he faces, +y = his right (his lips are about 4.5 ahead).
 import { cueShift, sip, drag, stretch, clap } from '../ai/Pastimes.js';
 import { PALETTE } from '../Config.js';
+import { danceHands } from '../ai/Dance.js';
 
 // line of a pool cue: from the back hand, under the chin, to the bridge hand on the table
 const CUE = { x: -2, y: 4.5, dx: 0.97, dy: -0.243, wood: '#d8b070', butt: '#4a2a1a' };
@@ -67,10 +68,7 @@ export function pastimeHands(kind, t, seed) {
     }
     case 'pockets': return { hl: { x: 0.5, y: -6.6 }, hr: { x: 0.5, y: 6.6 } };
     case 'bag': return { hl: { x: 6, y: -6 }, hr: { x: 1.5, y: 7.5 } };
-    case 'dance': {
-      const a = t * 3.1 + seed;
-      return { hl: { x: 2 + Math.sin(a) * 5, y: -8 + Math.cos(a) * 1.5 }, hr: { x: 2 - Math.sin(a) * 5, y: 8 - Math.cos(a * 0.7) * 1.5 } };
-    }
+    case 'dance': return danceHands(t, seed); // her routine's (ai/Dance.js; the pole hand put on it by dancePose)
     default: return null;
   }
 }
