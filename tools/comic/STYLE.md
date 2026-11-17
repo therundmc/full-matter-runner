@@ -35,17 +35,19 @@ what is written in the scene (the clock's 1:05).
 |---|---|---|
 | violet night | `NIGHT` `#170b2b`, `NIGHT_L` `#2a1548`, `NIGHT_LL` `#3d2a6a` | the ground: a wall, a dark thing lifted off it, a thing a light finds |
 | black | `INK` `#0a070c` | floors, people, shadows, furniture against a light |
-| bone | `BONE` `#f2e8d2`, `BONE_D` `#b8a890` | paper, money, metal, CUEBALL's head, THE BOSS |
-| pink | `PINK` `#ff3a7a`, `PINK_D` `#8a1d5c` | the bar's neon and its light, LUCKY's pompadour |
+| bone | `BONE` `#f2e8d2`, `BONE_D` `#b8a890` | paper, money, metal, CUEBALL's bald head, THE BOSS, his cigar's smoke |
+| pink | `PINK` `#ff3a7a`, `PINK_D` `#8a1d5c` | the bar's neon and its light, LUCKY's bat |
 | cyan | `CYAN` `#3ad8e8`, `CYAN_D` `#17566e` | the tube on the landing, the torch's pool, JITTERS' crest; `CYAN_D` is also the runner's petrol blue |
 | fire | `FIRE` `#ff8a20`, `FIRE_D` `#c8381a` | from the match on (page 3), the jerrycan, a lit cigar, sodium street lamps |
 | blood | `BLOOD` `#a0141e` | blood, nothing else |
+| fluo yellow | `FLUO` `#e6ff1a` | CUEBALL's shades, nothing else |
 
 - Flat, always: no gradient, no dither, no screentone, no blur, no outline. A light is a shape in its `_D` ink, its
   core in the full ink (the match's two discs, a wedge and its rays).
 - A panel uses black, the violets and two or three inks, one of them dominant. Pages have a temperature: page 1 pink
   and cyan, page 2 cyan, page 3 fire.
-- **A man never stands against his own ink** (CUEBALL on bone, LUCKY on pink, JITTERS on cyan): his sign would go.
+- **A man never stands against his own ink** (CUEBALL's shades on yellow or bone, LUCKY's bat on pink, JITTERS on
+  cyan): his sign would go.
   Put him on another ink, on its dark (`CYAN` on `CYAN_D` reads), or on black.
 
 ## 2. The shapes
@@ -65,7 +67,7 @@ what is written in the scene (the clock's 1:05).
 
 ## 3. People: cut-out signs
 
-No anatomy, no face, no fingers. A man is a body of two to five black slabs and ONE signature on his head. `man(cv,
+No anatomy, no face, no fingers. A man is a body of two to five black slabs and ONE signature, on his head or carried. `man(cv,
 who, cx, foot, h, pose, face, body)` cuts him side on; `above(cv, name, cx, cy, s, deg)` from straight above. A fist is
 a black lump at the end of a slab; what he holds (a bar, a can, a torch, a match) is cut in bone or fire and says
 what the hand does. A close-up is still a sign: a profile is one black shape with a nose and a chin, an eye is an
@@ -73,26 +75,31 @@ almond, a disc and a lid.
 
 ## 4. The cast
 
-Each of the boss's three men has a name, a build pushed to caricature, and one loud signature: a colour and a shape
-on the head, the same in the comic and from above in the game. The game's guards take their signatures from this
+Each of the boss's three men has a name, a build pushed to caricature, and one loud signature: a colour and a shape,
+on the head or carried, the same in the comic and from above in the game. Only one of them is a hairdo (JITTERS).
+The game's guards take their signatures from this
 table (top-down, a man is about 26 px across the shoulders; `ABOVE` in poster.py is the drawing to follow).
 
 | name | who | build | signature | ink | from above (26 px) |
 |---|---|---|---|---|---|
-| **CUEBALL** | the heavy: the crowbar, the one who speaks for the boss | a wall on short legs, twice a man's width, no neck | a bald dome, a black bar of shades across it | bone | the widest shoulders in the game (about 30 px), black; in their middle a bone disc of 12 px, a 2 px black sliver on its front edge (the shades: it shows where he faces) |
-| **LUCKY** | the slick one, the man with the match | a beanpole in a long coat, a head taller than anyone, pointed shoes | an enormous pompadour thrown forward | pink | narrow black shoulders (about 22 px); a pink wedge that covers the head and juts 8 to 10 px beyond it, pointing where he faces |
+| **CUEBALL** | the heavy: the torch and the crowbar, the one who speaks for the boss | a wall on short legs, twice a man's width, no neck, a bald bone dome | huge wrap-round shades, wider than his head | fluo yellow | the widest shoulders in the game (about 30 px), black; in their middle a bone disc of 12 px; across its front a fluo yellow band 4 px deep and as wide as the disc and more (it shows where he faces) |
+| **LUCKY** | the slick one, the man with the match | a beanpole, a head taller than anyone, in a coat to his ankles; hair slicked flat to a point at the nape; pointed shoes | a big baseball bat, his weapon, over his shoulder (`stand`) or planted like a cane (`plant`); `bat(knob, end, width)` | pink | narrow black shoulders (about 22 px), a small black head with the slick's point behind; the bat a pink bar about 24 px long from his fist before his right shoulder, back and out at some 50 degrees, thin at the handle, 4 to 5 px across the barrel, a knob at the fist. When he swings it, it is the same bar, forward |
 | **JITTERS** | the young one: the jerrycan | a runt, three quarters of a man, hunched, knees bent | a saw-tooth crest | cyan | small black shoulders (about 20 px); a cyan saw-tooth lozenge from the nape to past the brow, its teeth on both sides |
-| **THE BOSS** | level 1's boss, dead in the ending | wide, soft, double-breasted | he is the one man cut in bone: the suit; a slick of black hair, a cigar | bone body | bone shoulders (about 27 px), a black head, the cigar's fire a pixel in front |
+| **THE BOSS** | level 1's boss, dead in the ending | wide, soft, double-breasted | he is the one man cut in bone: the suit, with a black tie; a slick of black hair; a cigar far too big (a third of his height), its ember, its smoke in three growing bone puffs | bone body | bone shoulders (about 27 px), a black head; the cigar a bar of 10 px straight ahead, its ember 2 px of fire, a puff or two of bone drifting off it |
 | **THE RUNNER** | the player | a long coat, collar up, a cap | the scarf over his mouth, its tail behind | petrol blue (`CYAN_D`) | black shoulders, the cap's peak forward, the scarf a petrol band round the nape with a tail (see CLAUDE.md, Art, for his full description in the game) |
 
 Rules for the three:
-- The sign is always there and always whole: never cropped by the frame, a caption or a balloon, never against its
-  own ink.
+- The sign is always there and readable: never under a caption or a balloon, never against its own ink. A head sign
+  is never cropped by the frame; the bat may run out of it.
 - Their bodies are black and nothing else; no second colour on them. What they carry is the only other ink.
-- Sizes side on, for the same floor line: CUEBALL 100, LUCKY about 80 (his own units make him taller and thinner),
+- Sizes side on, for the same floor line: CUEBALL 100, LUCKY about 90 (his own units make him taller and thinner),
   JITTERS about 90 (he is 70 of them tall); see `door` and `pour`.
-- Who does what in the opening: CUEBALL forces the door and the board and says "NO LOOSE ENDS."; LUCKY holds the
-  torch, stands over the money and strikes the match ("TORCH IT."); JITTERS carries the can and pours.
+- Who does what in the opening: CUEBALL forces the door and the board, holds the torch and says "NO LOOSE ENDS.";
+  LUCKY, the bat on his shoulder, taps the tin with it, stands over the money and strikes the match ("TORCH IT.");
+  JITTERS carries the can and pours.
+- A pink bag was weighed against the bat for LUCKY: the bat won everywhere (a bag is a lump from above and hides
+  behind him side on; the bat is a long bar in both views).
+
 
 ## 5. Staging a panel
 

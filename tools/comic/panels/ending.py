@@ -76,8 +76,8 @@ def office_phone(cv):
 @panel('office', (528, 282))
 def panel_office():
     """"THE BOSS'S PHONE RANG. SOMEBODY WANTED NEWS." His back room: the blind's bars thrown across the wall, the
-    desk a black slab, THE BOSS in bone fallen across it, his blood to its edge; the bone telephone, the cigar still
-    lit in the ashtray."""
+    desk a black slab, THE BOSS in bone fallen across it, his blood to its edge; the bone telephone, his cigar, far too
+    big, still lit by his hand."""
     W, H = 528, 282
     cv = Cv(W, H, NIGHT)
     for i in range(7):                                                                      # the blind's bars, on a slant
@@ -103,8 +103,11 @@ def panel_office():
     cv.disc(138, 178, 6, 4, BONE_D)
     sx, sy = OFFICE_SMOKE
     cv.poly([(sx - 26, sy + 10), (sx + 24, sy + 8), (sx + 18, sy + 18), (sx - 20, sy + 20)], NIGHT_LL)
-    cv.bar((sx + 30, sy + 8), (sx + 2, sy + 1), 7, BONE_D)
-    cv.disc(sx, sy, 4, col=FIRE)
+    cv.bar((sx + 74, sy + 14), (sx + 6, sy + 1), 20, BONE_D, w1=17)                           # the cigar, far too big, still lit
+    cv.bar((sx + 50, sy + 9.5), (sx + 42, sy + 8), 20, PINK_D, w1=19)
+    cv.poly(poster.ngon(sx + 2, sy, 11, 10, 6, 0), FIRE_D)
+    cv.poly(poster.ngon(sx, sy, 6.5, 6, 6, 0), FIRE)
+    cv.poly([(300, 196), (318, 204), (312, 232), (300, 240), (292, 230)], INK)                # his tie, over the desk's edge
     # papers on the floor in front
     for x, y, d in ((70, 250, -12), (150, 262, 20), (420, 256, 8)):
         cv.poly(turned([(-22, -8), (22, -8), (22, 8), (-22, 8)], x, y, d), NIGHT_L)

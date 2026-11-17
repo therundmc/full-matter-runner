@@ -132,7 +132,7 @@ export function paintPour(g, w, h, t) {
 }
 
 // ================================================================ page 3: no loose ends
-// 1. Close: LUCKY, the one with the pompadour, strikes a match (struck 0..1: how far into the strike); before it, the dark.
+// 1. Close: LUCKY, his pink bat on his shoulder, strikes a match (struck 0..1: how far into the strike); before it, the dark.
 export function paintMatch(g, w, h, t, struck = 1) {
   if (struck <= 0) { still(g, 'match_dark', w, h); return; }
   still(g, 'match', w, h);

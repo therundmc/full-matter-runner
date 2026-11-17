@@ -56,8 +56,9 @@ def panel_sleep():
 @panel('door', (1080, 282))
 def panel_door():
     """Page 1, panel 2 ("THE BOSS'S MEN LET THEMSELVES IN."). His front door thrown open, its lock a burst of
-    splinters; the three of them cut out against the landing's tube: LUCKY in first, his torch into the room,
-    CUEBALL filling the doorway, the crowbar hanging from his fist, JITTERS at his elbow with the can. The light
+    splinters; the three of them cut out against the landing's tube: CUEBALL filling the doorway, his torch into
+    the room, the crowbar hanging from his other fist; LUCKY a head above him, the pink bat on his shoulder; JITTERS
+    at the jamb with the can. The light
     lies on the floor in one wedge, their shadows three spikes in it."""
     W, H = 1080, 282
     cv = Cv(W, H, NIGHT)
@@ -74,17 +75,17 @@ def panel_door():
     cv.disc(634, 134, 6, col=INK)
     # the light on his floor, their shadows in it
     wedge = cv.poly([(dx0, fl + 3), (dx1, fl), (1040, H + 4), (280, H + 4)], CYAN_D)
-    for cx, tip, w in ((692, 430, 44), (776, 700, 110), (884, 1000, 52)):
+    for cx, tip, w in ((752, 560, 110), (842, 900, 44), (894, 1040, 52)):
         cv.poly([(cx - 16, fl), (cx + 16, fl), (tip + w, H + 4), (tip - w, H + 4)], INK, clip=wedge)
     # the torch's beam down into the room, the sofa black across it
-    beam = cv.poly([(646, 68), (650, 82), (470, H + 4), (300, H + 4)], NIGHT_LL)
+    beam = cv.poly([(640, 78), (646, 92), (470, H + 4), (300, H + 4)], NIGHT_LL)
     cv.poly([(214, 168), (236, 150), (480, 146), (506, 164), (510, 214), (214, 218)], INK)
     cv.poly([(236, 150), (480, 146), (486, 170), (232, 174)], NIGHT_LL, clip=beam)
     # the three of them
-    a = poster.man(cv, poster.cueball, 776, fl + 3, 164, 'bar')
-    poster.crowbar(cv, (a['hand'][0], a['hand'][1] - 4), (a['hand'][0] + 6, fl - 14))
-    a = poster.man(cv, poster.jitters, 884, fl + 2, 150, face=-1)
-    poster.jerrycan(cv, a['hand_b'][0] + 2, a['hand_b'][1] + 2, 0.8)
-    a = poster.man(cv, poster.lucky, 692, fl + 5, 128, 'reach', face=-1)
+    poster.man(cv, poster.lucky, 842, fl + 3, 146, face=-1)
+    a = poster.man(cv, poster.cueball, 752, fl + 3, 164, 'reach', face=-1)
     poster.torch(cv, a['hand'], face=-1)
+    poster.crowbar(cv, (a['hand_b'][0], a['hand_b'][1] - 4), (a['hand_b'][0] + 6, fl - 14))
+    a = poster.man(cv, poster.jitters, 894, fl + 2, 150, face=-1)
+    poster.jerrycan(cv, a['hand_b'][0] + 2, a['hand_b'][1] + 2, 0.8)
     return cv

@@ -18,8 +18,8 @@ def floor(cv, pool, light, gap):
 @panel('pry', (348, 288))
 def panel_pry():
     """Page 2, panel 1 ("THEY KNEW WHERE HE HID IT."). From above, in the torch's pool: CUEBALL's shoulders and bone
-    dome over the crowbar, the board coming up off the black of the hole, its nails with it; LUCKY's pompadour at the
-    corner, holding the light."""
+    dome over the crowbar, the board coming up off the black of the hole, its nails with it; LUCKY looking on, the
+    pink bat on his shoulder; their torch left on the boards."""
     W, H = 348, 288
     cv = Cv(W, H, NIGHT)
     floor(cv, (196, 176, 150), CYAN_D, NIGHT)
@@ -36,15 +36,16 @@ def panel_pry():
     cv.bar((62, 236), (136, 210), 24, INK)                                                  # his arms on the bar
     cv.bar((118, 288), (140, 214), 24, INK)
     poster.above(cv, 'cueball', 92, 262, 2.3, -42)
-    poster.above(cv, 'lucky', 318, 52, 2.2, 132)
+    poster.above(cv, 'lucky', 306, 204, 2.0, 172)
+    poster.torch(cv, (150, 110), face=1, s=1.3)
     return cv
 
 
 @panel('box', (348, 288))
 def panel_box():
     """Page 2, panel 2 ("SIX YEARS OF RUNS FOR THE BOSS."). Straight down the hole: his tin box open, the bricks in
-    rows, his passport, a postcard of a beach. Round it the three of them lean in: the dome, the pompadour, the
-    crest."""
+    rows, his passport, a postcard of a beach. Round it the three of them lean in: the dome and its yellow
+    shades, the pink bat's end tapping the tin, the crest."""
     W, H = 348, 288
     cv = Cv(W, H, NIGHT)
     floor(cv, (176, 172, 150), CYAN_D, NIGHT)
@@ -62,7 +63,9 @@ def panel_box():
     cv.disc(240, 198, 9, col=BONE, clip=cm)
     cv.poly(turned([(-24, 6), (24, 6), (24, 17), (-24, 17)], 234, 202, -9), CYAN, clip=cm)
     poster.above(cv, 'cueball', 30, 262, 2.3, -40)
-    poster.above(cv, 'lucky', 330, 96, 2.2, 168)
+    for pts in poster.bat((356, 58), (272, 112), 24):                                        # LUCKY's bat, tapping the tin
+        cv.poly(pts, PINK)
+    poster.above(cv, 'lucky', 352, 30, 2.2, 150)
     poster.above(cv, 'jitters', 258, 268, 2.2, -112)
     return cv
 
@@ -70,8 +73,8 @@ def panel_box():
 @panel('count', (348, 288))
 def panel_count():
     """Page 2, panel 3 ("EVERY DOLLAR. HIS WAY OUT."). From above: every brick laid out in rows on his boards,
-    counted; the emptied duffel at the corner; LUCKY standing over them, his shadow one long spike laid up
-    the rows."""
+    counted; the emptied duffel at the corner; LUCKY standing over them, the pink bat on his
+    shoulder, his shadow one long spike laid up the rows."""
     W, H = 348, 288
     cv = Cv(W, H, NIGHT)
     floor(cv, (176, 250, 236), CYAN, CYAN_D)
@@ -84,7 +87,7 @@ def panel_count():
         a, b = turned([(-37, y), (40, y)], 300, 44, -24)
         cv.bar(a, b, 3, BONE)
     # his shadow up the rows: one long spike
-    sm = cv.mask([(132, H + 4), (262, H + 4), (214, 66), (188, 62)])
+    sm = cv.mask([(96, H + 4), (214, H + 4), (214, 66), (190, 62)])
     rows = []
     for r in range(4):
         for c in range(5):
@@ -96,7 +99,7 @@ def panel_count():
     cv.paste(INK, sm)
     for x, y, d in rows:
         poster.brick(cv, x, y, d, clip=sm, shade=True)
-    poster.above(cv, 'lucky', 196, 272, 3.2, -94)
+    poster.above(cv, 'lucky', 154, 236, 3.2, -92)
     return cv
 
 

@@ -1,6 +1,6 @@
 """The NEON POSTER's cast and set pieces (see STYLE.md). The cast are cut-paper signs: a body of two or three black
-slabs and ONE loud signature on the head, the same seen from the side (`man`) and from straight above (`above`), as
-the game shows them. No anatomy, no face, no hand.
+slabs and ONE loud signature (on the head, or carried), the same seen from the side (`man`) and from straight above
+(`above`), as the game shows them. No anatomy, no face, no hand.
 
 A character is a function of a pose returning (parts, anchors) in its own units: 100 is a man's height (CUEBALL's
 shoulders-to-floor plus head), the feet at y 0, up is -y, he faces +x. parts: [(ink, points)], ink 'body' for his
@@ -8,7 +8,7 @@ black (the caller may lift it against a dark ground) or a colour; anchors: name 
 mouth) for what the panel hangs on him."""
 import math
 
-from .kit import BONE, BONE_D, CYAN, CYAN_D, FIRE, FIRE_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, bead, slab, turned
+from .kit import BONE, BONE_D, CYAN, CYAN_D, FIRE, FIRE_D, FLUO, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, bead, slab, turned
 
 
 BLOCK = (30, 14, 56)        # the buildings across the street, in a window
@@ -19,48 +19,65 @@ def ngon(cx, cy, rx, ry, n=8, turn=22.5):
 
 
 # ---------------------------------------------------------------- the three men, the boss, the runner
+def bat(a, b, w):
+    """LUCKY's bat from its knob a to the end of its barrel b, w across the barrel: [points] of its three shapes (the
+    stick, thin at the handle; the barrel's round end; the knob)."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    d = math.hypot(dx, dy) or 1.0
+    nx, ny = -dy / d, dx / d
+    at = lambda u, k: (a[0] + dx * u + nx * k, a[1] + dy * u + ny * k)
+    h, r = w * 0.2, w * 0.5
+    return [[at(0, h), at(0.42, h), at(0.72, r), at(1, r), at(1, -r), at(0.72, -r), at(0.42, -h), at(0, -h)],
+            ngon(b[0], b[1], r, r, 8), ngon(a[0], a[1], w * 0.34, w * 0.34, 6, 0)]
+
+
 def cueball(pose='stand'):
-    """CUEBALL, the heavy: a wall of a man on short legs; his sign a bald BONE dome, a black bar of shades across it."""
+    """CUEBALL, the heavy: a wall of a man on short legs, a bald bone dome; his sign the huge FLUO YELLOW shades
+    across it."""
     parts = [
         ('body', [(-21, -36), (-3, -36), (-5, 0), (-23, 0)]), ('body', [(3, -36), (21, -36), (24, 0), (5, 0)]),
         ('body', [(-27, -84), (-8, -91), (8, -91), (27, -84), (31, -58), (25, -33), (-25, -33), (-31, -58)]),
         ('body', [(-27, -84), (-38, -75), (-41, -42), (-31, -39)]),
     ]
     hand = (36, -39)
-    if pose == 'bar':                                        # his near arm out a little, a bar hanging from the fist
-        parts.append(('body', [(27, -84), (40, -76), (45, -46), (35, -42)]))
-        hand = (40, -43)
+    if pose == 'reach':                                      # his near arm held out level: the torch
+        parts.append(('body', [(27, -85), (54, -77), (55, -64), (29, -66)]))
+        hand = (57, -70)
     else:
         parts.append(('body', [(27, -84), (38, -75), (41, -42), (31, -39)]))
-    parts += [(BONE, ngon(0, -98, 10.5, 11)), ('body', [(-11, -99), (11, -100), (11, -95), (-11, -94)])]
-    return parts, dict(hand=hand, hand_b=(-36, -39), head=(0, -98), mouth=(5, -91), top=(0, -109))
+    parts += [(BONE, ngon(0, -98, 10.5, 11)),
+              (FLUO, [(-16, -105), (16, -106), (17, -93), (2, -92), (0, -96), (-2, -92), (-15, -91)])]
+    return parts, dict(hand=hand, hand_b=(-36, -39), head=(0, -98), mouth=(5, -89), top=(0, -109))
 
 
 def lucky(pose='stand'):
-    """LUCKY, the slick one, the man with the match: a beanpole in a long coat; his sign an enormous PINK pompadour
-    thrown forward."""
+    """LUCKY, the slick one, the man with the match: a beanpole, a head taller than anyone, in a coat to his ankles,
+    his hair slicked flat to a point at the nape; his sign a big PINK baseball bat, over his shoulder ('stand') or
+    planted before him like a cane ('plant')."""
     parts = [
-        ('body', [(-10, -34), (-2, -34), (-3, 0), (-9, 0)]), ('body', [(2, -34), (10, -34), (9, 0), (3, 0)]),
-        ('body', [(3, 0), (9, -4), (18, 0)]),
-        ('body', [(-11, -98), (11, -98), (13, -90), (12, -33), (-14, -31), (-13, -90)]),
-        ('body', [(-11, -97), (-17, -92), (-18, -52), (-13, -51)]),
+        ('body', [(-9, -20), (-2, -20), (-3, 0), (-9, 0)]), ('body', [(2, -20), (9, -20), (9, 0), (3, 0)]),
+        ('body', [(3, 0), (9, -4), (19, 0)]),
+        ('body', [(-10, -98), (10, -98), (13, -90), (17, -13), (-19, -11), (-13, -90)]),
+        ('body', [(-11, -97), (-17, -92), (-19, -52), (-14, -51)]),
+        ('body', ngon(1, -105, 6, 7, 6, 0)), ('body', [(5, -107), (11, -103), (5, -100)]),
+        ('body', [(-3, -112), (-12, -103), (-4, -103)]),                                  # the slick's point
     ]
-    hand = (16, -51)
-    if pose == 'reach':                                      # his near arm held out level: the torch, the match
-        parts.append(('body', [(9, -96), (34, -91), (35, -86), (10, -86)]))
-        hand = (36, -88)
+    if pose == 'plant':
+        parts.append(('body', [(11, -97), (17, -92), (25, -63), (19, -61)]))
+        hand, knob, tip = (22, -62), (22, -66), (24, -4)
     else:
-        parts.append(('body', [(11, -97), (17, -92), (18, -52), (13, -51)]))
-    parts += [('body', ngon(1, -105, 6, 7, 6, 0)), ('body', [(5, -107), (11, -103), (5, -100)]),
-              (PINK, [(-10, -108), (-8, -119), (3, -128), (18, -131), (29, -122), (23, -112), (12, -115), (6, -109)])]
+        parts.append(('body', [(11, -97), (18, -91), (15, -72), (8, -73)]))
+        hand, knob, tip = (11, -74), (13, -68), (-36, -126)
+    parts += [(PINK, pts) for pts in bat(knob, tip, 11)]
     thin = lambda p: (p[0] * 0.84, p[1] * 1.1)               # a beanpole: narrower, taller than a man
     parts = [(ink, [thin(q) for q in pts]) for ink, pts in parts]
-    anchors = dict(hand=hand, hand_b=(-16, -51), head=(1, -105), mouth=(8, -100), top=(8, -131))
+    anchors = dict(hand=hand, hand_b=(-16, -51), head=(1, -105), mouth=(8, -100), top=(1, -112), bat=tip)
     return parts, {k: thin(v) for k, v in anchors.items()}
 
 
 def jitters(pose='stand'):
-    """JITTERS, the young one: a runt, hunched, knees bent, never still; his sign a CYAN saw-tooth crest."""
+    """JITTERS, the young one: a runt, hunched, knees bent, never still; his sign a CYAN saw-tooth crest (the only
+    hair that is a sign)."""
     parts = [
         ('body', [(-11, -33), (-2, -33), (-7, -17), (-3, 0), (-12, 0), (-16, -17)]),
         ('body', [(3, -33), (12, -33), (17, -17), (13, 0), (5, 0), (8, -17)]), ('body', [(5, 0), (12, -4), (19, 0)]),
@@ -79,16 +96,19 @@ def jitters(pose='stand'):
 
 
 def boss(pose='stand'):
-    """THE BOSS: the one man cut in BONE, a wide double-breasted suit, a black slick of hair, a cigar."""
+    """THE BOSS: the one man cut in BONE, a wide double-breasted suit, a black tie, a black slick of hair; and a
+    cigar far too big for him, its ember and its smoke part of his shape."""
     parts = [
         (BONE_D, [(-15, -38), (-2, -38), (-3, 0), (-15, 0)]), (BONE_D, [(2, -38), (15, -38), (16, 0), (4, 0)]),
         (BONE, [(-20, -84), (-6, -89), (6, -89), (20, -84), (23, -52), (20, -35), (-20, -35), (-23, -52)]),
         (BONE, [(-20, -84), (-28, -77), (-29, -44), (-22, -43)]), (BONE, [(20, -84), (28, -77), (29, -44), (22, -43)]),
-        (INK, [(-2, -89), (2, -89), (5, -60), (0, -52), (-5, -60)]),                      # his shirt and tie
+        (INK, [(-3, -89), (3, -89), (6, -58), (0, -48), (-6, -58)]),                      # his shirt and tie
         (PINK_D, ngon(1, -96, 8, 8.5)), (INK, [(-8, -98), (-5, -106), (6, -107), (10, -101), (2, -101)]),
-        (BONE_D, [(8, -93), (19, -92), (19, -89), (8, -90)]), (FIRE, [(19, -92), (22, -92), (22, -89), (19, -89)]),
+        (BONE_D, [(7, -95), (40, -91), (40, -83), (7, -88)]), (PINK_D, [(15, -94), (19, -93.5), (19, -86.5), (15, -87)]),
+        (FIRE_D, ngon(41, -87, 6.5, 6.5, 6, 0)), (FIRE, ngon(42, -87, 4, 4, 6, 0)),
+        (BONE, ngon(47, -101, 5, 4.5, 6, 10)), (BONE, ngon(53, -113, 7, 6, 7, 30)), (BONE, ngon(46, -128, 9.5, 8, 7, 5)),
     ]
-    return parts, dict(hand=(26, -43), head=(1, -96), mouth=(8, -91), top=(2, -107))
+    return parts, dict(hand=(26, -43), head=(1, -96), mouth=(8, -91), top=(2, -107), ember=(41, -87))
 
 
 def runner(pose='stand'):
@@ -114,17 +134,20 @@ def man(cv, who, cx, foot, h, pose='stand', face=1, body=INK, clip=None, lean=0.
     return {k: turned([p], cx, foot, lean, h / 100.0, face)[0] for k, p in anchors.items()}
 
 
-# seen from straight above, facing +x: (parts, how far the shoulders reach)
+# seen from straight above, facing +x: [(ink, points)] in the same units
 ABOVE = {
     'cueball': [('body', [(-10, -26), (4, -28), (11, -19), (12, 19), (4, 28), (-10, 26), (-14, 10), (-14, -10)]),
-                (BONE, ngon(1, 0, 11, 11)), ('body', [(9.5, -7), (12.5, -5), (12.5, 5), (9.5, 7)])],
+                (BONE, ngon(0, 0, 11, 11)), (FLUO, [(5, -13), (13, -9), (14, 9), (5, 13), (8, 0)])],
     'lucky': [('body', [(-5, -14), (3, -15), (7, -9), (7, 9), (3, 15), (-5, 14), (-8, 0)]),
-              ('body', ngon(1, 0, 6.5, 6.5, 6, 0)), (PINK, [(-5, -6), (6, -8), (18, -4), (22, 1), (9, 7), (-5, 6)])],
+              ('body', ngon(1, 0, 6.5, 6.5, 6, 0)), ('body', [(-4, -4), (-11, 0), (-4, 4)])] +
+             [(PINK, pts) for pts in bat((9, 8), (-24, 34), 8)],
     'jitters': [('body', [(-5, -12), (3, -13), (7, -8), (7, 8), (3, 13), (-5, 12), (-8, 0)]),
                 ('body', ngon(2, 0, 6.5, 6.5, 6, 0)),
                 (CYAN, [(-6, -2), (-3, -6), (0, -2), (3, -6), (6, -2), (9, -6), (14, 0), (9, 6), (6, 2), (3, 6), (0, 2), (-3, 6), (-6, 2)])],
     'boss': [(BONE, [(-8, -21), (4, -22), (9, -15), (9, 15), (4, 22), (-8, 21), (-11, 0)]),
-             (INK, ngon(2, 0, 8, 8)), (PINK_D, [(6, -5), (10, -4), (10, 4), (6, 5)]), (BONE_D, [(10, 1), (18, 2), (18, 4), (10, 4)])],
+             (INK, ngon(2, 0, 8, 8)), (PINK_D, [(6, -5), (10, -4), (10, 4), (6, 5)]),
+             (BONE_D, [(9, -2), (30, 0), (30, 6), (9, 4)]), (FIRE, ngon(31, 3, 4, 4, 6, 0)),
+             (BONE, ngon(37, -5, 4, 4, 6, 10)), (BONE, ngon(42, -14, 6, 6, 7, 30))],
     'runner': [('body', [(-6, -17), (4, -18), (8, -11), (8, 11), (4, 18), (-6, 17), (-9, 0)]),
                (CYAN_D, [(-9, -9), (-2, -10), (-2, 10), (-9, 9), (-16, 5), (-15, 1)]),
                ('body', ngon(2, 0, 7, 7, 6, 0)), ('body', [(4, -7), (13, -4), (13, 4), (4, 7)])],

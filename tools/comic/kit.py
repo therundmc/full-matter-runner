@@ -25,6 +25,7 @@ BONE, BONE_D = hx('#f2e8d2'), hx('#b8a890')
 PINK, PINK_D = hx('#ff3a7a'), hx('#8a1d5c')            # the bar's neon, a lamp
 CYAN, CYAN_D = hx('#3ad8e8'), hx('#17566e')            # a tube, a torch
 FIRE, FIRE_D = hx('#ff8a20'), hx('#c8381a')            # the match, the fire (page 3 on)
+FLUO = hx('#e6ff1a')                                   # fluorescent yellow: CUEBALL's shades, nothing else
 BLOOD = hx('#a0141e')
 
 

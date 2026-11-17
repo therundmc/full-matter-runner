@@ -18,10 +18,10 @@ from comic import poster  # noqa: E402
 
 # name, the function, his height on the sheet (px for his 100 units), the slab behind him, the words, px across from above
 CAST = [
-    ('CUEBALL', poster.cueball, 'cueball', 250, PINK, ['THE HEAVY. A WALL ON', 'SHORT LEGS. HIS SIGN:', 'A BALD BONE DOME,', 'BLACK SHADES ACROSS.'], 0.56),
-    ('LUCKY', poster.lucky, 'lucky', 225, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'HUGE PINK POMPADOUR.'], 0.74),
+    ('CUEBALL', poster.cueball, 'cueball', 250, PINK, ['THE HEAVY. A WALL ON', 'SHORT LEGS, A BALD DOME.', 'HIS SIGN: HUGE FLUO', 'YELLOW SHADES.'], 0.56),
+    ('LUCKY', poster.lucky, 'lucky', 232, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'BIG PINK BASEBALL BAT.'], 0.62),
     ('JITTERS', poster.jitters, 'jitters', 250, BONE, ['THE YOUNG ONE. A RUNT,', 'HUNCHED, NEVER STILL.', 'HIS SIGN: A CYAN', 'SAW-TOOTH CREST.'], 0.74),
-    ('THE BOSS', poster.boss, 'boss', 250, hx('#8a1d5c'), ['THE ONLY MAN CUT IN', 'BONE: A WIDE PALE SUIT,', 'BLACK HAIR, A CIGAR.', ''], 0.62),
+    ('THE BOSS', poster.boss, 'boss', 250, hx('#8a1d5c'), ['THE ONLY MAN CUT IN', 'BONE. A BLACK TIE, AND', 'A CIGAR FAR TOO BIG,', 'ITS EMBER, ITS SMOKE.'], 0.5),
     ('THE RUNNER', poster.runner, 'runner', 250, NIGHT_LL, ['THE PLAYER. CAP, LONG', 'COAT. HIS SIGN: THE', 'PETROL-BLUE SCARF', 'OVER HIS MOUTH.'], 0.68),
 ]
 SPRITES = ['heavy', 'brute', 'thug', 'boss', 'player']
@@ -31,7 +31,7 @@ FLOOR = (70, 66, 80)
 def top_down(name, s):
     """The character from above at the game's scale, facing right, with the game's dark outline: a 40 x 40 tile."""
     cv = Cv(40, 40, None)
-    poster.above(cv, name, 19, 20, s, 0, body=hx('#1c1824'))
+    poster.above(cv, name, 17 if name in ('lucky', 'cueball') else 13 if name == 'boss' else 19, 16 if name == 'lucky' else 20, s, 0, body=hx('#1c1824'))
     a = cv.im.split()[3]
     out = Image.new('RGB', (40, 40), FLOOR)
     out.paste(INK, (0, 0), a.filter(ImageFilter.MaxFilter(3)))

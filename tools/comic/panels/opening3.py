@@ -8,8 +8,8 @@ GAP = (150, 410, 236)  # fire: the gap under his door, x0, x1, y (the game makes
 
 
 def panel_match(lit):
-    """Page 3, panel 1 ("TORCH IT. HE'S IN THE BACK ROOM."). Close on LUCKY, in profile: the pompadour thrown
-    forward over a black wedge of a face, the match held up before it. Dark: his sign and the window's neon are all
+    """Page 3, panel 1 ("TORCH IT. HE'S IN THE BACK ROOM."). Close on LUCKY, in profile: a black wedge of a face
+    under the slicked hair, the pink bat on his far shoulder, the match held up before him. Dark: the bat is all
     there is. Struck: the flame's light is two discs on the wall, his profile cut black out of them; the door to the
     back room shows."""
     W, H = 1080, 282
@@ -22,13 +22,12 @@ def panel_match(lit):
         cv.disc(fx, fy, 190, col=FIRE_D)                                                    # the flame's light on the wall
         cv.disc(fx, fy, 96, col=FIRE)
     cv.disc(262, 150, 7, col=BONE_D if lit else NIGHT_LL)
-    poster.window(cv, 960, 30, 1070, 150, seed=5)
-    # his coat and collar, his head, the nose and chin cut forward
+    # the bat on his far shoulder, his coat and collar, his head: the hair slicked to a point, the nose and chin cut forward
+    for pts in poster.bat((720, 236), (1004, 30), 78):
+        cv.poly(pts, PINK if lit else PINK_D)
     cv.poly([(676, 164), (800, 120), (960, H + 6), (610, H + 6), (650, 200)], INK)
     profile = [(662, 60), (650, 94), (620, 114), (644, 122), (638, 134), (650, 140), (644, 158), (664, 172)]
-    cv.poly([(770, 76), (784, 120), (760, 164), (700, 184)] + profile[::-1] + [(700, 44), (744, 50)], INK)
-    cv.poly([(796, 84), (790, 34), (716, 2), (616, 6), (548, 44), (584, 70), (640, 54), (700, 60), (744, 84), (770, 110)],
-            PINK if lit else PINK_D)
+    cv.poly([(700, 44), (744, 50), (778, 68), (812, 104), (784, 104), (784, 124), (760, 164), (700, 184)] + profile[::-1], INK)
     # the fist and the match
     fist = [(578, 252), (610, 240), (636, 258), (660, H + 6), (590, H + 6)]
     cv.poly(fist, INK)
