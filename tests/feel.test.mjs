@@ -5,7 +5,7 @@ import { load } from './setup.mjs';
 const { WEAPONS } = await load('game/data/weapons.js');
 const { FEEL, MOMENTS, GESTURE, TELL, STROKE, HEAVY, familyOf } = await load('game/data/feel.js');
 const { lastInSight } = await load('game/fx/Impact.js');
-const { riseDurAt } = await load('game/entities/CharacterAnim.js');
+const { riseDurAt, newPose, doorHandPose } = await load('game/entities/CharacterAnim.js');
 const { default: Character } = await load('game/entities/Character.js');
 const { default: Player } = await load('game/entities/Player.js');
 const { default: Door } = await load('game/entities/Door.js');
@@ -225,4 +225,22 @@ test('door hand: up as he comes at the leaf, pushing against it, on it a moment 
   assert.ok(ch.doorHand.push < 1);
   for (let i = 0; i < Math.ceil((G.follow + G.off) / dt) + 1; i++) ch.updateDoorHand(dt, 0, { x: 0, y: 0 });
   assert.equal(ch.doorHand, null);
+});
+
+test('door hand: a guard shoving the player keeps a whole body and lets the hand down after', async () => {
+  globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
+  const { default: Enemy } = await load('game/entities/Enemy.js');
+  // the bouncer's flat hand in the player's chest (Enemy.shove) goes through the door hand's pose: it must be a whole one
+  const g = fighter(null, false);
+  g.say = () => {};
+  g.world = { doors: [], sound() {} };
+  Object.defineProperty(g, 'x', { value: 0 }); Object.defineProperty(g, 'y', { value: 0 });
+  Enemy.prototype.shove.call(g, { x: 14, y: 0, radius: 10, shoved() {} });
+  const P = newPose();
+  P.tx = P.ty = P.ta = 0;
+  doorHandPose(g, P);
+  for (const k of ['tx', 'ty', 'ta']) assert.ok(Number.isFinite(P[k]), `torso ${k} ${P[k]}`);
+  const dt = 1 / 60, G = GESTURE.door;
+  for (let i = 0; i < Math.ceil((G.follow + G.off + G.on) / dt) + 2; i++) g.updateDoorHand(dt, 0, { x: 0, y: 0 });
+  assert.equal(g.doorHand, null, 'the hand comes down');
 });

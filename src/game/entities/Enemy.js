@@ -599,7 +599,10 @@ export default class Enemy extends Character {
   // a flat hand in his chest (the hand comes up as on a door leaf: CharacterAnim doorHandPose), thrown back a step
   shove(p) {
     const a = Math.atan2(p.y - this.y, p.x - this.x);
-    this.doorHand = { x: p.x - Math.cos(a) * p.radius, y: p.y - Math.sin(a) * p.radius, a: a + Math.PI, w: 1 };
+    // a whole door hand (Character.updateDoorHand lets it down after GESTURE.door.follow): pushing, the free hand
+    const side = this.armed && !(this.stow >= 0.6) ? -1 : 1;
+    this.doorHand = { x: p.x - Math.cos(a) * p.radius, y: p.y - Math.sin(a) * p.radius, a: a + Math.PI, w: 1, push: 1,
+      hold: GESTURE.door.follow, side, door: null };
     p.shoved?.(a, AI.challenge.shove);
     this.say('shove');
     this.world.sound('punch', p.x, p.y, 0.35, { pitch: 1.3 });
