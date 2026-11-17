@@ -5446,6 +5446,10 @@ FONT_SHOP = {
     'H': ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
     '2': [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
     '4': ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+    'M': ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
+    'G': [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
+    'N': ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
+    'P': ["####.", "#...#", "#...#", "####.", "#....", "#....", "#...."],
 }
 NEON_GREEN, NEON_AMBER, NEON_YELLOW = hx('#3aff8a'), hx('#ffa62a'), hx('#f9c80e')
 
@@ -5479,6 +5483,26 @@ def p_neon_sign_video():
     ne.line([(7, 4), (9, 2)], NEON_PINK)
     ne.line([(5, 8), (6, 7), (7, 8), (8, 7)], NEON_YELLOW)
     neon_text(ne, 15, 3, 'VIDEO', NEON_CYAN)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_mirage():
+    """The bar's name over the street, by its door: MIRAGE in pink tubes, a cyan stroke under it."""
+    cv, gl = sign_backing(44, 14), Cv(44, 14)
+    ne = Neon(44, 14)
+    neon_text(ne, 7, 3, 'MIRAGE', NEON_PINK)
+    ne.line([(7, 11), (37, 11)], NEON_CYAN)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_open():
+    """The OPEN sign of an American bar: red letters in a blue tube frame."""
+    cv, gl = sign_backing(34, 16), Cv(34, 16)
+    ne = Neon(34, 16)
+    ne.line([(2, 2), (31, 2), (31, 13), (2, 13), (2, 2)], hx('#3a6aff'))
+    neon_text(ne, 6, 5, 'OPEN', hx('#ff3a30'))
     ne.render(cv, gl)
     return cv, gl
 
@@ -6339,6 +6363,70 @@ def p_velvet_rope():
     return cv
 
 
+def p_sandwich_board():
+    """A chalkboard A-frame on the sidewalk, from above: two black boards hinged along its top bar (the ridge across
+    the middle, lit on its near side), a wooden frame, chalk lines of the night's specials, a brass hinge each end."""
+    W, H = 18, 14
+    cv = Cv(W, H)
+    wood = ramp('#7a4a2a', 0.5, 0.25, 0.3)
+    slate = ramp('#262a2c', 0.5, 0.25, 0.3)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(wood, L), kind='rect', bevel=0.8, corner=0.6)
+    for (y0, y1, lit) in ((2.0, 6.5, 0.62), (7.5, 12.0, 0.42)):     # the two boards, the far one in the light
+        px_paint(cv, 2.5, y0, W - 2.5, y1, lambda x, y, c, lit=lit: shade(slate, lit + 0.05 * math.sin(x * 1.7)))
+    frect(cv, 1.5, 6.5, W - 1.5, 7.5, wood[3])                       # the ridge
+    for (y, x0, x1) in ((3.0, 4.0, 13.0), (4.5, 4.5, 11.0), (5.5, 4.0, 12.0), (9.0, 4.0, 12.5), (10.5, 5.0, 10.0)):
+        for x in range(int(x0 * 2), int(x1 * 2)):
+            if (x * 7 + int(y * 3)) % 5:
+                cv.dot(x / 2, y, hx('#d8d4c8') if x % 3 else hx('#e8a8b8'))   # chalk, now and then a pink word
+    for x in (2.0, W - 3.0):
+        stud(cv, x, 6.5, BRASS[2], big=True)                         # the hinges
+    smudge(cv, random.Random(6811), 3, (2, 2, W - 2, H - 2), (1.0, 2.0), 0.18, hx('#5a5a58'))   # rubbed-out chalk
+    cv.outline()
+    return cv
+
+
+def p_ash_urn():
+    """A steel ashtray post by a bar's door, from above: a round brushed steel drum, its sand-filled bowl on top
+    with butts stubbed out in it, a dent and a dull ring where hands steady it."""
+    S = 12
+    cv = Cv(S, S)
+    steel = ramp('#8a90a0', 0.45, 0.22, 0.4)
+    fill_shape(cv, S / 2, S / 2, S / 2 - 1, S / 2 - 1, lambda u, v, L: shade(steel, L))
+    ring(cv, S / 2, S / 2, 3.0, 3.6, lambda dx, dy, d: steel[0] if dx + dy < 0 else steel[3])   # the bowl's rim
+    fill_shape(cv, S / 2, S / 2, 3.0, 3.0, lambda u, v, L: shade(ramp('#b8a888', 0.5, 0.25, 0.3), 0.4 + L * 0.3))   # sand
+    for (x, y, a) in ((4.6, 5.4, 0.3), (6.8, 4.6, 2.0), (6.0, 7.0, 4.1), (5.0, 6.6, 1.2)):   # the butts
+        line(cv, x, y, x + math.cos(a) * 1.4, y + math.sin(a) * 1.4, hx('#e8e0cc'))
+        cv.dot(x, y, hx('#c88a4a'))
+    cv.dot(3.5, 3.0, hx('#e8ecf4'))                                  # the light on the drum
+    smudge(cv, random.Random(6812), 2, (2, 2, S - 2, S - 2), (0.6, 1.0), 0.3)
+    cv.outline()
+    return cv
+
+
+def p_entry_mat():
+    """A rubber entrance mat at a bar's door, from above (the door at its top): black ribbed rubber worn grey where
+    every customer wipes his feet, the bar's name moulded in it faded to a ghost, its bevelled edge."""
+    W, H = 60, 22
+    cv = Cv(W, H)
+    rub = ramp('#24222a', 0.5, 0.25, 0.3)
+    rng = random.Random(6813)
+
+    def mat(x, y, c):
+        rib = 0.55 if int(y * 2) % 2 else 0.4                         # the ribs across it
+        worn = max(0.0, 1 - math.hypot((x - W / 2) / 18.0, (y - H / 2) / 8.0)) * 0.25
+        return shade(rub, rib + worn + rng.uniform(-0.03, 0.03))
+    px_paint(cv, 1, 1, W - 1, H - 1, mat)
+    bevel_edges(cv, 1, 1, W - 2, H - 2, 0.2, 0.35)
+    for n, ch in enumerate('MIRAGE'):                                # the name moulded in, nearly worn away
+        for gy, row in enumerate(FONT_SHOP[ch]):
+            for gx, c in enumerate(row):
+                if c == '#' and rng.random() < 0.7:
+                    cv.dot(15 + n * 5 + gx * 0.8, 8 + gy * 0.9, lt(rub[2], 0.12))
+    smudge(cv, rng, 6, (8, 4, W - 8, H - 4), (1.5, 3.0), 0.2, hx('#4a4440'))   # what the shoes left
+    cv.outline()
+    return cv
+
+
 def p_entry_carpet():
     """The red carpet from the club's door to the kerb, from above (its long way along y, the door at the top): deep
     crimson pile between two gold bands, a brass bar holding it at the door, trodden flat and darker down the middle
@@ -6654,6 +6742,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
                     floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, velvet_rope=p_velvet_rope,
                     entry_carpet=p_entry_carpet, radiator=p_radiator, bike=p_bike,
+                    sandwich_board=p_sandwich_board, ash_urn=p_ash_urn, entry_mat=p_entry_mat,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes,
                     keg=p_keg, fire_alarm=p_fire_alarm,
                     trapdoor=p_trapdoor, rug=p_rug, beer_tap=p_beer_tap, curtain=p_curtain)
@@ -6664,15 +6753,17 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     urinal=(14, 12), stall=(6, 50), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
                     floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
+                    sandwich_board=(18, 14), ash_urn=(12, 12), entry_mat=(60, 22),
                     keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28), beer_tap=(22, 10), curtain=(8, 34))
 
 SHOP_PROPS = dict(bottle_shelf=p_bottle_shelf, back_bar=p_back_bar, washer=p_washer, neon_sign_liquor=p_neon_sign_liquor,
                   alarm_box=p_alarm_box,
-                  neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash)
+                  neon_sign_video=p_neon_sign_video, neon_sign_wash=p_neon_sign_wash,
+                  neon_sign_mirage=p_neon_sign_mirage, neon_sign_open=p_neon_sign_open)
 SHOP_SIZES = dict(bottle_shelf=(42, 13), back_bar=(42, 10), washer=(24, 24), neon_sign_liquor=(46, 14), neon_sign_video=(44, 14),
                   alarm_box=(12, 8),
-                  neon_sign_wash=(50, 14))
-SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash']
+                  neon_sign_wash=(50, 14), neon_sign_mirage=(44, 14), neon_sign_open=(34, 16))
+SHOP_GLOWING = ['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_mirage', 'neon_sign_open']
 
 
 # --------------------------------------------------------------------------

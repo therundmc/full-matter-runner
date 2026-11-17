@@ -43,7 +43,7 @@ SIZES = dict(
     fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 48),
     apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
-    velvet_rope=(30, 6),
+    velvet_rope=(30, 6), sandwich_board=(16, 12), ash_urn=(10, 10), neon_sign_mirage=None, neon_sign_open=None,
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
     keg=(16, 16), beer_tap=None, curtain=None, fire_alarm=None,
 )
@@ -54,11 +54,11 @@ SIZES = dict(
 ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=6, fuse_box=18,
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
-               fire_alarm=10)
+               fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
-         'trapdoor', 'rug')
+         'trapdoor', 'rug', 'entry_mat')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 

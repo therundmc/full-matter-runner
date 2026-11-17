@@ -127,6 +127,14 @@ export const PROPS = {
     light: { r: 120, color: '#2af0ff', intensity: 0.9, flicker: 'buzz' } },
   // two brass posts and the velvet rope between them, at a club's door (bolted down: the user wants the door tidy)
   velvet_rope: { static: true, material: 'metal', w: 30, h: 6, hp: 5, chips: '#a0142a', sound: 'metal' },
+  // the bar's own signs on its front, either side of the door: its name, and the OPEN of an American bar
+  neon_sign_mirage: { hum: 'neon', material: 'glass', w: 42, h: 6, hp: 4, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 110, color: '#ff3a8a', intensity: 0.85, flicker: 'buzz' } },
+  neon_sign_open: { hum: 'neon', material: 'glass', w: 26, h: 6, hp: 3, static: true, chips: '#ff3a30', sparks: true, glass: true, sound: 'glass',
+    light: { r: 70, color: '#ff4a3a', intensity: 0.6, flicker: 'buzz' } },
+  // by the bar's door on the sidewalk: the chalkboard of the night's specials, the steel ashtray post
+  sandwich_board: { material: 'wood', w: 16, h: 12, hp: 3, kg: 6, mu: 0.8, chips: '#7a4a2a', sound: 'wood' },
+  ash_urn: { material: 'metal', r: 5, hp: 4, kg: 9, mu: 0.75, chips: '#8a90a0', sound: 'metal' },
   neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face

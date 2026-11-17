@@ -111,10 +111,11 @@ export default {
     ['car2', 14.6, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180, { lights: false }],
     ['van', 34.3, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
-    ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['velvet_rope', 19.5, 22, 0],
-    ['velvet_rope', 22.5, 22, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 33.5, 22.7, 90],
-    ['bench', 35.5, 22.62, 180], ['trash_can', 38.5, 21.35, 0], ['hydrant', 10.6, 22.65, 0],
-    ['vending', 17.42, 21.33, 0], ['news_box', 25.6, 21.19, 0], ['palm_tree', 39.6, 21.8, 0],
+    ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['neon_sign_mirage', 18.9, 21.09, 0],
+    ['neon_sign_open', 22.5, 21.09, 0], ['sandwich_board', 18.75, 21.55, 0], ['ash_urn', 24.4, 21.3, 0],
+    ['streetlight', 6.5, 22.7, 90], ['streetlight', 33.5, 22.7, 90], ['bench', 35.5, 22.62, 180],
+    ['trash_can', 38.5, 21.35, 0], ['hydrant', 10.6, 22.65, 0], ['vending', 17.42, 21.33, 0],
+    ['news_box', 25.6, 21.19, 0], ['palm_tree', 39.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],
@@ -194,7 +195,7 @@ export default {
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
   welcome: [[20, 12, 22, 12], [15, 13, 22, 15], [15, 16, 22, 19], [20, 6, 22, 11]],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_carpet', 21.0, 21.94, 0], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
+  floor: [['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_mat', 21.0, 21.4, 0], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
   // weapons stood against a wall [type, col, row, deg]
   lean: [["cue", 18.6, 19.8, 90]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box

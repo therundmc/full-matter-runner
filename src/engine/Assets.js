@@ -37,11 +37,12 @@ export const OPTIONAL_LIST = [
     'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed', 'ladder', 'parapet', 'fuse_box',
     'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'apt_door', 'doormat', 'stairs', 'floor_hole', 'jerrycan',
     'runner', 'road_edge', 'parking_bay', 'velvet_rope', 'entry_carpet', 'radiator', 'bike', 'bin_bag', 'newspaper', 'shoes',
-    'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid'].map((n) => `props/${n}`),
+    'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid',
+    'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
     'vehicles'].map((n) => `props/label_${n}`),
-  ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_mirage', 'neon_sign_open'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare'].map((n) => `weapons/${n}`),
   // rag_*_up: torso and head of a body lying on its back; rag_torso_down: its back, when it lies on its belly (Ragdoll)
@@ -76,7 +77,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'parking_bay', 'velvet_rope', 'entry_carpet', 'pool_table', 'radiator', 'road_edge', 'runner', 'shoes', 'sink', 'sofa', 'speaker', 'stairs', 'stall', 'streetlight', 'table',
   'table_flipped', 'table_round', 'table_round_flipped', 'toilet', 'trash_can', 'tv', 'urinal', 'vending', 'wall_vent', 'washer',
   'floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'ceiling_lamp', 'pool_lamp', 'emergency_light',
-  'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid']);
+  'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid', 'sandwich_board', 'ash_urn', 'entry_mat']);
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
 // the floor tiles too (64 x 64 pixels a tile); the wall tops stay at the world's

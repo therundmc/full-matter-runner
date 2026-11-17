@@ -230,13 +230,18 @@ lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
 lv.area('north sidewalk and the facade')
 lv.prop('neon_sign_bar', 30.0, 21.09)
 lv.prop('neon_sign_arrow', 9.6, 21.09)
-# the club's door (the user wanted it like a strip club's; the wall lamps and plain pots were "vile", palms in
-# planters and a GIRLS neon "too much", a canvas awning hid the door, a wooden pergola was "too ugly"): a red carpet
-# to the kerb, brass posts and velvet ropes bolted down either side of it; the bouncer at the east rope.
-# The ropes stand clear of the sidewalk patrol's beat (row 22) and leave the carpet 1.9 m wide.
-lv.paint('entry_carpet', 22.0, 21.94)
-lv.prop('velvet_rope', 20.5, 22.0)
-lv.prop('velvet_rope', 23.5, 22.0)
+# the bar's door, an American bar's (the user, 2026-11-17: the red carpet and velvet ropes "do not look like an
+# American bar's entrance"; before that the wall lamps and plain pots were "vile", palms in planters and a GIRLS neon
+# "too much", a canvas awning hid the door, a wooden pergola was "too ugly"): the bar's name in neon on the wall west
+# of the door, a red OPEN in the window, a rubber mat at the step, the night's specials chalked on an A-frame and a
+# steel ashtray post where the bouncer stands. All clear of the doorway and of the sidewalk patrol's beat (row 22).
+# (drawing columns: the level's are one less east of the cut at 19. The leaves swing a metre out onto the sidewalk:
+# nothing within it; no sign in front of a window, one dives through them)
+lv.prop('neon_sign_mirage', 18.9, 21.09)                # on the wall between the windows and the door
+lv.prop('neon_sign_open', 23.5, 21.09)                  # on the pier east of the door, before the bouncer's window
+lv.paint('entry_mat', 22.0, 21.4)                       # at the step, as wide as the double door
+lv.prop('sandwich_board', 18.75, 21.55)                 # under the name, clear of the west leaf's swing
+lv.prop('ash_urn', 25.4, 21.3)                          # past the bouncer, against the wall
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window
