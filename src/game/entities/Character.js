@@ -40,6 +40,9 @@ export const KINDS = {
   // CUEBALL (data/bosses.js): all in black, bone white hands; `wide`: his shoulder joints further out (pose px), under
   // the widest shoulders in the game
   cueball: { arm: '#2a2832', skin: '#eee4cc', pants: '#1e1c26', shoe: '#16141c', wide: 8.6 },
+  // LUCKY, the man with the match (level `looks`; tools/comic/STYLE.md): all in black, and his pink scarf, whose end
+  // flies behind him (`tail`: its sprite, swung from his nape by Enemy.drawTail)
+  lucky: { arm: '#24212c', skin: '#e0a878', cuff: '#1a1820', pants: '#1c1a22', shoe: '#141218', tail: 'characters/lucky_scarf' },
 };
 // the heavy build: a deeper voice, more weight, a slower step
 export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss' || kind === 'cueball';

@@ -932,6 +932,8 @@ def draw_head(ch):
     x0, y0 = int(11.0 * FINE) - HEAD_W // 2, int(10.0 * FINE) - HEAD_H // 2
     cv.img = full.img.crop((x0, y0, x0 + HEAD_W, y0 + HEAD_H))
     cv.p = cv.img.load()
+    if ch.get('scarf'):
+        scarf_ring(cv, ch['scarf'])
     return cv
 
 
@@ -1450,6 +1452,60 @@ def shades_item():
                      '.d.........d.',
                      '.d.........d.',
                      '.............'], {'Y': FLUO[3], 'y': FLUO[2], 'd': FLUO[1], 'k': FLUO[0], 'K': hx('#3a4406')})
+
+
+# ---- LUCKY, the man with the match (tools/comic/STYLE.md, the cast; level `looks`): a beanpole all in black, his
+# hair slicked flat, and his sign from above: a pink scarf, a ring of it round his neck (painted on his head's sprite,
+# round the head) and its end flying out behind him (a sprite of its own, lucky_scarf, that the game swings from his
+# nape: entities/Enemy.js). Painted like a thug under it; the scarf is the only colour on him.
+CHARS['lucky'] = dict(kind='thug', top=ramp('#24212c', 0.42, 0.2, 0.45), pants=ramp('#1c1a22'),
+                      shoe=ramp('#141218', 0.3, 0.15, 0.25), hair=ramp('#17141c', 0.55, 0.3, 0.6),
+                      shirt=ramp('#1a1820'), skin=SKIN, sh=(3.6, 7.4), scarf=ramp('#ff3a7a', 0.5, 0.25, 0.3))
+SCARF_W, SCARF_H = 28, 12   # the scarf's flying end (FINE density: 14 x 6 world px), its knot end at x = 0
+
+
+def scarf_ring(cv, sc):
+    """The scarf round his neck seen from above, on the head's sprite (draw_head): a ring 2 world px wide all round
+    the head, lit from the top left, a fold across it where it is knotted behind."""
+    cx, cy = HEAD_W / 2, HEAD_H / 2
+    for y in range(HEAD_H):
+        for x in range(HEAD_W):
+            if cv.p[x, y][3] > 100:
+                continue
+            u, v = x + 0.5 - cx, y + 0.5 - cy
+            d = math.hypot(u, v)
+            if 6.0 <= d < 11.0:
+                lit = (-u - v) / (d * 1.414)                        # toward the top left
+                c = sc[3] if lit > 0.55 and d > 8.5 else sc[2] if lit > -0.35 else sc[1]
+                if u < -6 and abs(v - 1.5) < 0.8:
+                    c = sc[0]                                       # the knot's fold, at the nape
+                cv.p[x, y] = c
+            elif 11.0 <= d < 12.0:
+                cv.p[x, y] = OUTLINE
+
+
+def lucky_scarf(sc):
+    """The end of his scarf flying behind him: a band 5 world px wide and 14 long from its knot (x = 0, the middle of
+    the left edge) to a forked tip, a wave along it, its upper edge lit, a fold down its length."""
+    cv = Cv(SCARF_W, SCARF_H)
+    for x in range(SCARF_W - 1):
+        k = x / (SCARF_W - 1)
+        mid = SCARF_H / 2 - 0.5 + math.sin(k * 5.2) * 1.3 * k         # it waves more toward its free end
+        half = 2.4 + 2.2 * min(1, k * 2.2) - 0.8 * max(0, k - 0.7) / 0.3
+        for y in range(SCARF_H):
+            v = y + 0.5 - mid
+            if abs(v) > half:
+                continue
+            if k > 0.86 and abs(v) < (k - 0.86) * 14:                # the fork at its tip
+                continue
+            c = sc[3] if v < -half + 1.4 else sc[1] if v > half - 1.6 else sc[2]
+            if abs(v - 0.6) < 0.6 and 0.12 < k < 0.8:
+                c = sc[1]                                           # the fold
+            if x % 9 == 8 and abs(v) < half - 1:
+                c = sc[0]                                           # creases across it
+            cv.p[x, y] = c
+    cv.outline()
+    return cv
 
 
 def civ_head_px(ch, u, v, L, r):
@@ -6461,6 +6517,7 @@ FONT_STENCIL = {
     'C': [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
     'D': ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
     'E': ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    'F': ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
     'G': [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
     'I': ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
     'J': ["....#", "....#", "....#", "....#", "....#", "#...#", ".###."],
@@ -6494,8 +6551,8 @@ FONT_STENCIL = {
 }
 LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', pool='4 POOL', bars='5 BARS',
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
-                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='16 VEHICLES',
-                  takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL')   # (the last ones added: the others keep their seed)
+                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
+                  takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -8820,6 +8877,7 @@ def build():
     for i in range(3):
         out[('characters', 'gib_chunk%d' % i)] = gib_chunk(i)
     out[('characters', 'gib_eye')] = gib_eye()
+    out[('characters', 'lucky_scarf')] = lucky_scarf(CHARS['lucky']['scarf'])
     for name, cv in weapons().items():
         out[('weapons', name)] = cv
     for i, (cid, ch) in enumerate(CHARS.items()):
@@ -8947,7 +9005,8 @@ EXPECTED = {
         ('_rag_torso', (17, 19)), ('_rag_head', (10, 10)), ('_rag_arm', (17, 6)), ('_rag_leg', (20, 7)),
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3)),
-           ('cueball_torso', (48, 48)), ('cueball_head_hurt', (HEAD_W, HEAD_H))]),   # his own: wider, and his head hurt
+           ('cueball_torso', (48, 48)), ('cueball_head_hurt', (HEAD_W, HEAD_H)),
+           ('lucky_scarf', (SCARF_W, SCARF_H))]),   # his own: wider, and his head hurt
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
                     sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),

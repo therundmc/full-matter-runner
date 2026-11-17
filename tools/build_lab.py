@@ -29,7 +29,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
         16    X#         #             #      #       #          X#   #  #   #X
         17    X##########################    ##############D#####X############X
         18    X  sidewalk: the trapdoor (west end), the hydrant  X
-        21    X  road: 16 VEHICLES (car, van, leaking car)       X
+        21    X  road: 17 VEHICLES (car, van, leaking car)       X
         25    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
@@ -60,7 +60,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    east end (cols 64-73, rows 7-11, its door at col 63, row 9), AWAKE: his name card and the camera on
                    first sight, his pump-action from the hip, the first hit (wounded, then berserk), the second (his
                    death); crates and a table for cover; a 1911, a bat and a knife on the floor before his door
-    16 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+    16 FIRE        in the soot room (3): petrol poured from its gas bottles to a rug and an armchair; a round through
+                   a bottle and the fire runs along the trail, takes what burns, kills who stands in it. LUCKY (his
+                   pink scarf, a dummy) stands in the concourse before it
+    17 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -186,6 +189,16 @@ lv.prop('gas_bottle', 37.4, 3.7)
 lv.prop('crate', 38.3, 1.5, 6)
 lv.prop('jerrycan', 34.5, 1.4)
 lv.prop('ceiling_lamp', 36.5, 3.5)
+# 16 FIRE, in the same room: petrol poured from the bottles to a rug and an armchair. Blow a bottle (a round through
+# it) and the petrol catches, runs along its trail, takes the rug and the chair, and kills who stands in it
+# (src/game/systems/FireSpread.js). LUCKY, the prologue's man with the match, watches from the concourse.
+lv.paint('label_fire', 36.0, 9.25)
+lv.paint('rug', 36.2, 5.3)
+lv.prop('armchair', 37.9, 5.7, 200)
+lv.pour(14, (35.9, 3.3))
+lv.pour(10, (35.9, 3.3), (35.3, 4.4), (36.0, 5.2), (37.5, 5.5))
+lv.pour(10, (36.0, 5.2), (34.6, 6.3))
+lv.actor('j', 38, 9, face=180, look='lucky')
 
 lv.area('4 pool, 5 bars')
 lv.paint('label_pool', 41.4, 8.35)
@@ -312,7 +325,7 @@ lv.prop('wall_lamp', 68.5, 7.08, 0)
 for x, kind in ((61.3, 'pistol'), (61.9, 'bat'), (62.5, 'knife')):
     lv.drop(kind, x, 9.9, 0)
 
-lv.area('16 vehicles: the street, to ram, hole and blow up')
+lv.area('17 vehicles: the street, to ram, hole and blow up')
 lv.paint('label_vehicles', 28.5, 18.6)
 lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
 lv.prop('car', 8.0, 21.1, 0)
@@ -341,11 +354,11 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=27)
+    lv.check(guards=28)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL) and a street with the',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire) and a street with the',
                  'vehicles. Load with ?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
                  'tests, and CUEBALL in his room (level 1\'s boss: he fights).',

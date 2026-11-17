@@ -177,6 +177,11 @@ export const BREAK = {
 // kill, and the man was killed by them up close (a blow, a takedown, a finisher; how.close). on: the switch; reach:
 // px from the man (a weapon he dropped as he was floored: px from where it lies); delay: s before the hand closes
 // on it (it has fallen); far: px past which it is let go
+// A scarf's end flying behind a man (entities/Character.js KINDS `tail`, Enemy.drawTail: LUCKY): nape: px behind
+// the middle of his head it hangs from; side: rad off straight behind it lies when he stands; moving: px/step from
+// which it trails where he comes from; follow: 1/s it catches up with him; beat, wave: its flutter (rad/s, rad)
+export const TAIL = { nape: 4.5, side: 0.5, moving: 0.4, follow: 7, beat: 6, wave: 0.12 };
+
 export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 
 // How kills and chains are shown (ui/KillFeed.js keeps the state on the real clock, render/WorldRenderer.js draws the

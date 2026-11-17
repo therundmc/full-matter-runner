@@ -14,6 +14,7 @@ import { drawFlames } from './FireArt.js';
 import LiquidArt from './LiquidArt.js';
 import { RAIN } from '../data/atmosphere.js';
 import { OUTRO } from '../systems/Outro.js';
+import { EXIT } from '../data/staging.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
 import { capWidth, drawCap } from '../ui/Glyphs.js';
@@ -25,6 +26,11 @@ const OUTLINE = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // a stamp's 1 px dark outli
 
 // the big speech bubble (drawBubble), world px and s: font size, line height, inner margin, wrap width, height over
 // his centre, tail length; it opens in `pop` s, the line is typed out in `type` s, it fades out over its last `fade` s
+// a name slammed down at a man's feet (a text with `card`: the prologue's LUCKY): font px, px under him, s it takes to
+// land from `from` x its size, rad it sits askew, s it fades over
+const CARD = { font: 14, drop: 30, slam: 0.14, from: 2.4, tilt: -0.07, fade: 0.3, pad: 4 };
+// a hint whose object is off the picture is kept `inset` px inside it, an arrow of `arrow` px toward the object
+const HINT = { inset: 14, arrow: 6 };
 const BUBBLE = { font: 9, line: 11, pad: 4, wrap: 120, lift: 24, tail: 6, pop: 0.12, type: 0.5, fade: 0.4 };
 
 // str cut into lines no wider than max px at the context's font (by words)
@@ -142,7 +148,11 @@ export default class WorldRenderer {
     const pl = w.player;
     if (pl && pl.alive && !pl.vaulting && pl.vaultHint) this.drawVaultHint(ctx, pl.vaultHint, t);
     if (pl && pl.alive && !pl.passage) this.drawUseHints(ctx, pl, t);
-    if (w.tutorial) this.drawHints(ctx, w.tutorial.hints(), t);
+    if (w.tutorial) {
+      const exit = w.tutorial.exit();
+      if (exit) this.drawWayOut(ctx, exit, t);
+      this.drawHints(ctx, w.tutorial.hints(), t);
+    }
     if (w.showVision) this.drawAIDebug(ctx);
     this.drawStamps(ctx, w.killFeed, t);
     this.drawTexts(ctx);
@@ -207,11 +217,11 @@ export default class WorldRenderer {
   }
 
   drawTexts(ctx) {
-    for (const tx of this.world.texts) if (tx.bubble) this.drawBubble(ctx, tx);
+    for (const tx of this.world.texts) if (tx.bubble) this.drawBubble(ctx, tx); else if (tx.card) this.drawCard(ctx, tx);
     ctx.font = '8px joystix';
     ctx.textAlign = 'center';
     for (const tx of this.world.texts) {
-      if (tx.bubble) continue;
+      if (tx.bubble || tx.card) continue;
       ctx.globalAlpha = clamp((tx.t / tx.dur) * 2, 0, 1);
       ctx.fillStyle = PALETTE.ink;
       ctx.fillText(tx.str, tx.x + 1, tx.y + 1);
@@ -219,6 +229,68 @@ export default class WorldRenderer {
       ctx.fillText(tx.str, tx.x, tx.y);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // A man's name slammed down at his feet (tx.card; tx.who: where): a slab of his colour askew, the name cut out of
+  // it in black, landing from big with a white flash, gone in a fade
+  drawCard(ctx, tx) {
+    const C = CARD, age = tx.dur - tx.t, k = clamp(age / C.slam, 0, 1), s = C.from + (1 - C.from) * k * k;
+    ctx.save();
+    ctx.font = `${C.font}px joystix`;
+    const w = Math.ceil(ctx.measureText(tx.str).width) + C.pad * 2, h = C.font + C.pad * 2 - 2;
+    ctx.translate(Math.round(tx.who.x), Math.round(tx.who.y + C.drop));
+    ctx.rotate(C.tilt);
+    ctx.scale(s, s);
+    ctx.globalAlpha = clamp(tx.t / C.fade, 0, 1) * (0.35 + 0.65 * k);
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(-w / 2 + 2, -h / 2 + 2, w, h);
+    ctx.fillStyle = k >= 1 && age < C.slam + 0.06 ? '#fff' : tx.color;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillText(tx.str, 0, 1);
+    ctx.restore();
+  }
+
+  // The way out marked on the floor (Tutorial.exit(), EXIT in data/staging.js): chevrons marching across the zone to
+  // the window and a frame round the window, pulsing, in flat neon (drawn over the lighting: it glows in the dark)
+  drawWayOut(ctx, exit, t) {
+    const E = EXIT, [zx0, zy0, zx1, zy1] = exit.zone, [wx0, wy0, wx1, wy1] = exit.window;
+    const zx = (zx0 + zx1) / 2, zy = (zy0 + zy1) / 2, wx = (wx0 + wx1) / 2, wy = (wy0 + wy1) / 2;
+    const d = Math.hypot(wx - zx, wy - zy) || 1, ux = (wx - zx) / d, uy = (wy - zy) / d;
+    ctx.save();
+    ctx.fillStyle = E.color;
+    // the zone: a wash of the colour on the floor, its corners bracketed
+    const beat = 0.5 + 0.5 * Math.sin(t * E.pulse * Math.PI * 2), b = E.bracket;
+    ctx.globalAlpha = E.wash * (0.6 + 0.4 * beat);
+    ctx.fillRect(zx0, zy0, zx1 - zx0, zy1 - zy0);
+    ctx.globalAlpha = 0.5 + 0.4 * beat;
+    for (const [cx, cy, sx, sy] of [[zx0, zy0, 1, 1], [zx1, zy0, -1, 1], [zx0, zy1, 1, -1], [zx1, zy1, -1, -1]]) {
+      ctx.fillRect(sx > 0 ? cx : cx - b, sy > 0 ? cy : cy - 2, b, 2);
+      ctx.fillRect(sx > 0 ? cx : cx - 2, sy > 0 ? cy : cy - b, 2, b);
+    }
+    // the chevrons, each brightest as the pulse passes it on its way to the window
+    for (let i = 0; i < E.chevrons; i++) {
+      const along = (E.chevrons - 1 - i) * E.gap - (E.chevrons - 1) * E.gap * 0.5 - 4;
+      const cx = zx - ux * along, cy = zy - uy * along, ph = (t * E.pulse - i * 0.33) % 1;
+      ctx.globalAlpha = 0.45 + 0.55 * Math.max(0, 1 - Math.abs(((ph + 1) % 1) - 0.5) * 3.2);
+      for (let k = 0; k <= E.size; k++) {
+        // two arms of 2 px squares, the point toward the window
+        for (const side of [-1, 1]) {
+          const px = cx + ux * (E.size - k) * 0.7 - uy * side * k, py = cy + uy * (E.size - k) * 0.7 + ux * side * k;
+          ctx.fillRect(Math.round(px) - 1, Math.round(py) - 1, 2, 2);
+        }
+      }
+    }
+    // the frame round the window
+    const f = E.frame;
+    ctx.globalAlpha = 0.5 + 0.5 * beat;
+    ctx.fillRect(wx0 - f, wy0 - f, wx1 - wx0 + f * 2, f);
+    ctx.fillRect(wx0 - f, wy1, wx1 - wx0 + f * 2, f);
+    ctx.fillRect(wx0 - f, wy0, f, wy1 - wy0);
+    ctx.fillRect(wx1, wy0, f, wy1 - wy0);
+    ctx.restore();
   }
 
   // A line said big (the boss's word, Enemy.bossLine): a speech bubble over the head of who says it, following him,
@@ -262,11 +334,19 @@ export default class WorldRenderer {
     ctx.save();
     ctx.font = '8px joystix';
     ctx.textBaseline = 'middle';
-    const bob = Math.sin(t * 5) * 1.2;
+    const bob = Math.sin(t * 5) * 1.2, v = this.world.view(), placed = [];
     for (const h of hints) {
       const label = h.key ? keyLabel(h.key, device) : '';
       const kw = label ? Math.ceil(capWidth(ctx, label, H)) : 0, tw = Math.ceil(ctx.measureText(h.text).width);
-      const gap = label ? 4 : 0, x0 = Math.round(h.x - (kw + gap + tw) / 2), y = Math.round(h.y + bob);
+      const gap = label ? 4 : 0, half = (kw + gap + tw) / 2 + 3;
+      // kept inside the picture: what it is about may be off it, or at its edge (an arrow then points there)
+      const hx = clamp(h.x, v.x - v.hw + half + HINT.inset, v.x + v.hw - half - HINT.inset);
+      let hy = clamp(h.y, v.y - v.hh + 8 + HINT.inset, v.y + v.hh - 8 - HINT.inset);
+      // never one box over another: the second goes under the first
+      for (const q of placed) if (Math.abs(q.x - hx) < q.half + half && Math.abs(q.y - hy) < 18) hy = q.y + 18;
+      placed.push({ x: hx, y: hy, half });
+      const x0 = Math.round(hx - (kw + gap + tw) / 2), y = Math.round(hy + bob);
+      if (hx !== h.x || hy !== h.y) this.drawPointer(ctx, hx, y, half, h.ax ?? h.x, h.ay ?? h.y, t);
       ctx.fillStyle = 'rgba(8, 4, 16, 0.72)';
       ctx.fillRect(x0 - 3, y - 8, kw + gap + tw + 6, 16);
       if (label) drawCap(ctx, label, x0, y, H);
@@ -279,6 +359,21 @@ export default class WorldRenderer {
       ctx.fillText(h.text, x0 + kw + gap, y + 0.5);
     }
     ctx.restore();
+  }
+
+  // an arrow off the side of a hint's box (centre (x, y), half width `half`) toward what it is about at (ax, ay),
+  // off the picture: a pink head of stacked bars, beating
+  drawPointer(ctx, x, y, half, ax, ay, t) {
+    const a = Math.atan2(ay - y, ax - x), c = Math.cos(a), s = Math.sin(a), A = HINT.arrow;
+    // where the way to it leaves the box
+    const k = Math.min(Math.abs(c) > 0.01 ? (half + 2) / Math.abs(c) : Infinity, Math.abs(s) > 0.01 ? 10 / Math.abs(s) : Infinity);
+    const bx = x + c * (k + 3 + Math.sin(t * 9) * 1.5), by = y + s * (k + 3 + Math.sin(t * 9) * 1.5);
+    ctx.fillStyle = PALETTE.pink;
+    for (let i = 0; i <= A; i++) {
+      const w = (A - i) * 2 + 1;
+      // a bar across the way, narrower toward the point
+      for (let j = 0; j < w; j++) ctx.fillRect(Math.round(bx + c * i - s * (j - (w - 1) / 2)), Math.round(by + s * i + c * (j - (w - 1) / 2)), 1, 1);
+    }
   }
 
   // F2: incidents (x: orange = unreported, cyan = reported) and the squad search points (filled once checked)

@@ -122,7 +122,11 @@
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
-  render/Murk.js).
+  render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
+  Enemy.drawTail, his name card). A lesson waits for its object to be on screen and near (`LESSONS.within`); a man
+  called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
+  spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
+  fire-balls down the corridor (`BLAST.chain`, level `blast.chain`) and the way out is marked (`EXIT`, level `exit`).
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
   ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.

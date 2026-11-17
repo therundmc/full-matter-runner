@@ -1,5 +1,5 @@
 // Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,
-// curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL) and a street with the
+// curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire) and a street with the
 // vehicles. Load with ?level=lab.
 // Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight
 // tests, and CUEBALL in his room (level 1's boss: he fights).
@@ -12,9 +12,9 @@ export default {
   name: 'PHYSICS LAB',
   subtitle: 'SANDBOX  -  A STATION FOR EVERY SYSTEM',
   passive: true,
-  facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '60,15': 270, '72,9': 180 },
+  facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '38,9': 180, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '60,15': 270, '72,9': 180 },
   jobs: { '43,5': 'pool', '48,3': 'hall', '12,15': 'hall' },
-  looks: { '72,9': 'cueball' },
+  looks: { '38,9': 'lucky', '72,9': 'cueball' },
   // where in his tile a guard stands, off its centre ('col,row': [col, row] in tiles)
   stand: { '53,2': [53.5, 2.45], '52,4': [52.95, 4.5], '54,3': [54.75, 3.5], '58,2': [58.5, 2.6], '61,2': [61.0, 2.4] },
   // in a passive level, the guards who still see and hear (by their tile 'col,row')
@@ -57,7 +57,7 @@ export default {
     "   m     n",
     "         nz",
     "         n",
-    "     r   vw                @                               u            h",
+    "     r   vw                @          j                    u            h",
     "         gg",
     "         v",
     "   k     qq             z",
@@ -92,7 +92,7 @@ export default {
     ['ceiling_lamp', 16, 3.5, 0], ['ceiling_lamp', 22, 3.5, 0], ['ceiling_lamp', 28, 3.5, 0],
     // 3 soot
     ['gas_bottle', 35.6, 3, 0], ['gas_bottle', 37.4, 3.7, 0], ['crate', 38.3, 1.5, 6], ['jerrycan', 34.5, 1.4, 0],
-    ['ceiling_lamp', 36.5, 3.5, 0],
+    ['ceiling_lamp', 36.5, 3.5, 0], ['armchair', 37.9, 5.7, 200],
     // 4 pool, 5 bars
     ['pool_table', 43, 3.9, 0], ['pool_lamp', 43, 3.9, 0], ['wall_lamp', 40.08, 2, 270], ['wall_lamp', 45.92, 2, 90],
     // 6 curtain
@@ -126,7 +126,7 @@ export default {
     // 15 cueball
     ['table', 67.5, 9.6, 0], ['crate', 65.6, 7.7, 0], ['crate', 70.2, 7.7, 0], ['crate', 65.6, 10.8, 0],
     ['armchair', 72.9, 10.8, 180], ['ceiling_lamp', 68.5, 9, 0], ['wall_lamp', 68.5, 7.08, 0],
-    // 16 vehicles: the street, to ram, hole and blow up
+    // 17 vehicles: the street, to ram, hole and blow up
     ['car', 8, 21.1, 0], ['van', 24, 23.5, 180], ['car2', 47.2, 21.1, 0], ['barrel', 14.5, 23.4, 0],
     ['barrel', 33, 23.5, 0], ['streetlight', 10.5, 19.7, 90], ['streetlight', 20.5, 19.7, 90],
     ['streetlight', 32.5, 19.7, 90], ['streetlight', 41, 19.7, 90], ['vending', 5.5, 18.35, 0],
@@ -135,7 +135,13 @@ export default {
     ['wall_lamp', 47.5, 18.08, 0],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 56.5, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 56.5, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0]],
+  // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
+  petrol: [
+    [14, [35.9, 3.3]],
+    [10, [35.9, 3.3], [35.3, 4.4], [36.0, 5.2], [37.5, 5.5]],
+    [10, [36.0, 5.2], [34.6, 6.3]],
+  ],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["pistol", 8.55, 6.5, 180, null], ["uzi", 8.55, 7.5, 180, null], ["uzi_silenced", 8.55, 8.5, 180, null], ["rifle", 8.55, 9.5, 180, null], ["shotgun", 8.55, 10.5, 180, null], ["sniper", 8.55, 11.5, 180, null], ["bazooka", 8.55, 12.5, 180, null], ["knife", 13.5, 4.35, 0, null], ["bat", 15.5, 4.35, 0, null], ["tire_iron", 17.5, 4.35, 0, null], ["cue", 19.5, 4.35, 0, null], ["pistol", 23.5, 4.35, 0, null], ["uzi", 25.5, 4.35, 0, null], ["rifle", 27.5, 4.35, 0, null], ["shotgun", 29.5, 4.35, 0, null], ["sniper", 31.5, 4.35, 0, null], ["pistol", 55.5, 9.7, 0, null], ["knife", 56.3, 9.7, 0, null], ["tire_iron", 57.1, 9.7, 0, null], ["uzi_silenced", 23.6, 12.4, 0, null], ["pistol", 61.3, 9.9, 0, null], ["bat", 61.9, 9.9, 0, null], ["knife", 62.5, 9.9, 0, null]],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside

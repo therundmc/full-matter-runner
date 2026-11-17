@@ -1,12 +1,13 @@
 // Sprite loading + derived caches (silhouettes for drop shadows, slices for debris).
 // civN: ambient passers-by and customers; dancerN: the dancers of a VIP room
-const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'cueball', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8',
+const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'cueball', 'lucky', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8',
   'dancer1', 'dancer2', 'tramp'];
 const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 export const SPRITE_LIST = [
   ...CHARACTERS.flatMap((c) => CHAR_PARTS.map((p) => `characters/${c}_${p}`)),
   'characters/gib_chunk0', 'characters/gib_chunk1', 'characters/gib_chunk2', 'characters/gib_eye',
+  'characters/lucky_scarf', // the flying end of LUCKY's scarf (entities/Enemy.js)
   ...['pistol', 'uzi', 'uzi_silenced', 'shotgun', 'rifle', 'sniper', 'bazooka', 'bat', 'knife', 'cue', 'cue_half', 'tire_iron', 'tire_iron_bent', 'rocket', 'casing', 'shell']
     .map((n) => `weapons/${n}`),
   ...['table', 'table_round', 'desk', 'chair', 'armchair', 'sofa', 'plant', 'tv', 'fridge', 'oven', 'sink', 'toilet',
@@ -50,7 +51,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -88,7 +89,7 @@ export const OPTIONAL_LIST = [
 // own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
 // (a kind's name has no underscore: `thug_torso` and `thug_head` are fine, `thug_rag_torso` and `thug_gib_head` are not)
 // (a magazine gun's `_bare` sprite, its magazine out, and the magazines themselves too; the pieces a weapon breaks into)
-const FINE = /^(characters\/[a-z0-9]+_(torso|head|head_hurt)|weapons\/((pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron|tire_iron_bent|bat_head|bat_handle|knife_blade|knife_handle)(_bare)?|mag_(pistol|uzi|rifle|sniper)))$/;
+const FINE = /^(characters\/[a-z0-9]+_(torso|head|head_hurt|scarf)|weapons\/((pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron|tire_iron_bent|bat_head|bat_handle|knife_blade|knife_handle)(_bare)?|mag_(pistol|uzi|rifle|sniper)))$/;
 // the furniture, the street's dressing and the vehicles (and their emissive maps), painted at the same density
 // (generate_assets.py FINE_PROPS), the lamps' fittings too; the neon signs, neon tubes and party bulbs stay at the world's
 const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back_bar', 'bar_counter', 'barrel', 'bed', 'bench',
