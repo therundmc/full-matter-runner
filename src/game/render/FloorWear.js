@@ -14,7 +14,7 @@ const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const OIL = rgb('#16141c'), GRIME = rgb('#2a2420'), TAR = rgb('#34343f'), GRAVEL = rgb('#8a857c'), GLASS = rgb('#b4dcd2');
 const HOLE = rgb('#2e2c2c'), SOOT = rgb('#140c08'), SCORCH = rgb('#5a3a20'), RUBBER = rgb('#141018');
 const FILTER = rgb('#c88a4a'), PAPER = rgb('#e2dccc'), ASHEN = rgb('#6a6670'), SHELL = rgb('#a8804a'), SHELL_L = rgb('#d0ac70');
-const DRINK = rgb('#4a3010');
+const DRINK = rgb('#4a3010'), GLITTER = ['#f4e4b0', '#e8eef8', '#ffc8e8', '#c8f4ff'].map(rgb);
 const GUM = rgb('#2a262c'), LEAF = rgb('#3c5430'), TIP = rgb('#6c8a46'), BACKING = rgb('#c8bca0');
 const PATCHED = rgb('#4a4c56'), CEMENT = rgb('#55525a'), WORN = rgb('#8a8078'), WOOD_DARK = rgb('#3a2418');
 // the boards of the wood floor, world px from the top of a tile (kept in step with FL_WOOD_ROWS in
@@ -94,6 +94,12 @@ export function planWear(map, level = {}, cfg = WEAR) {
     return tx < 0 || ty < 0 || tx >= W || ty >= map.h ? -1 : surf[ty * W + tx];
   };
   for (const [kind, c0, r0, c1, r1, n, o = {}] of level.grime || []) {
+    if (o.at === 'point') {
+      // the one mark at (c0, r0) exactly (a ring round a stage), seeded by where it is: it moves no other mark
+      const x = c0 * TILE, y = r0 * TILE, s = surfAt(x, y);
+      if (s >= 0) marks.push({ kind, s, x, y, seed: hashName(`${kind}${x},${y}`), o });
+      continue;
+    }
     for (let k = 0, tries = 0; k < n && tries < n * 12; tries++) {
       const x = (c0 + R() * (c1 + 1 - c0)) * TILE, y = (r0 + R() * (r1 + 1 - r0)) * TILE, s = surfAt(x, y);
       if (s < 0 || marks.some((m) => m.kind === kind && Math.hypot(m.x - x, m.y - y) < (o.gap ?? 8))) continue;
@@ -502,14 +508,38 @@ const KINDS = {
     });
   },
 
-  // a drink spilt and dried sticky: a faint darker patch, its rim a touch darker, glossy here and there
-  sticky(P, R, x, y) {
-    const r = 3 + R() * 4;
+  // a drink spilt and dried sticky: a faint darker patch, its rim a touch darker, glossy here and there (o.col: the
+  // drink's colour, champagne paler than beer)
+  sticky(P, R, x, y, o) {
+    const r = 3 + R() * 4, col = o.col ? rgb(o.col) : DRINK;
     blob(P, x, y, r, r * (0.55 + R() * 0.35), R() * TAU, ragged(R, 0.4), (px, py, e) => {
       const w = smooth((1 - e) / 0.5);
-      P.tint(px, py, -4 * w + (e > 0.85 ? -3 : 0), DRINK, 0.12 * w);
+      P.tint(px, py, -4 * w + (e > 0.85 ? -3 : 0), col, 0.12 * w);
       if (e < 0.5 && R() < 0.02) P.tint(px, py, 7);
     });
+  },
+
+  // glitter shed by the dancers: single specks of gold, silver, pink, a few of them caught bright, scattered thin
+  glitter(P, R, x, y, o) {
+    const s = P.s, rad = o.r ?? 12;
+    for (let n = 10 + Math.floor(R() * 14); n > 0; n--) {
+      const a = R() * TAU, d = Math.sqrt(R()) * rad;
+      P.tint(Math.floor((x + Math.cos(a) * d) * s), Math.floor((y + Math.sin(a) * d) * s), 6 + R() * 10, GLITTER[Math.floor(R() * GLITTER.length)], 0.3 + R() * 0.25);
+    }
+  },
+
+  // the pile worn flat in a ring by the feet round something (a stage): o.r px from (x, y), o.w px across, paler and
+  // greyer, broken along its way
+  halo(P, R, x, y, o) {
+    const s = P.s, r = o.r, w = o.w, noise = valueNoise(R), out = r + w;
+    for (let py = Math.floor((y - out) * s); py <= Math.ceil((y + out) * s); py++) {
+      for (let px = Math.floor((x - out) * s); px <= Math.ceil((x + out) * s); px++) {
+        const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y, off = Math.abs(Math.hypot(wx, wy) - r);
+        if (off >= w) continue;
+        const k = smooth(1 - off / w) * smooth((noise((px / s) / 7, (py / s) / 7) - 0.2) / 0.5);
+        if (k > 0) P.tint(px, py, (o.d ?? 4) * k, WORN, (o.grey ?? 0.12) * k);
+      }
+    }
   },
 
   // the way feet go, worn a little paler and greyer: a soft band from (x, y) to o.to, w px wide, its edges broken

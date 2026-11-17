@@ -7,7 +7,8 @@
 //  - a blow knocks off what stands by it, a heavy one shakes off more; a blast throws everything;
 //  - the prop tipped over ('propFlipped') or falling apart ('propDestroyed'): everything still on it goes flying.
 // Knocked off, a piece is a real loose thing (entities/Debris.js: it slides, it is kicked about, it is baked into the
-// floor once still), a glass smashing where it lands as often as not; paper and banknotes flutter down. An ashtray
+// floor once still), a glass smashing where it lands as often as not; paper flutters down, banknotes land as bills
+// that lie on the floor (systems/Litter.js); a champagne bucket pours out its ice water. An ashtray
 // with a cigarette left in it smokes (Smoke.wisp) as long as it stands. DOM-free.
 import { CLUTTER, CLUTTER_HIT, SETS } from '../data/clutter.js';
 import { FLOATS } from '../data/destruction.js';
@@ -17,7 +18,7 @@ import { spriteOpt } from '../../engine/Assets.js';
 import { rand, chance, clamp } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 
-const ASH = '#8a8690', NUTS = '#c49a5a';
+const ASH = '#8a8690', NUTS = '#c49a5a', ICE = '#e4f2f8';
 
 export default class Clutter {
   constructor(world, sets = SETS, kinds = CLUTTER, cfg = CLUTTER_HIT) {
@@ -97,7 +98,7 @@ export default class Clutter {
       P.drops(p.x, p.y, dirA, 1.3, 6, wet, 100, 4, false);
       w.events.emit('spill', { x: e.x, y: e.y, kind: g.kind, area: g.area * rand(0.7, 1.2), dur: 0.6 });
     }
-    w.sound('clutterShatter', p.x, p.y, 0.55, { pitch: rand(0.95, 1.2) });
+    w.sound(i.def.shatter || 'clutterShatter', p.x, p.y, 0.55, { pitch: rand(0.95, 1.2) });
   }
 
   // where a splash thrown along dirA from a piece leaves the prop (2 px past its outline), world px
@@ -116,7 +117,10 @@ export default class Clutter {
     if (d.ash) P.dust(p.x, p.y, 3, 2, ASH, { speed: 22, size: 3, life: 1.4, alpha: 0.25 });
     if (d.nuts) P.chips(p.x, p.y, a, 1.1, 7, NUTS, 90);
     if (d.flutter) {
-      P.floaters(p.x, p.y, FLOATS[d.flutter], 3, a, 0.9, 60 * clamp(power, 0.5, 2), 8);
+      // banknotes land as bills that lie on the floor and are kicked about (systems/Litter.js), while there is room
+      const n = d.flutter === 'cash' && !d.kg ? d.bills ?? 1 : 0, v = 60 * clamp(power, 0.5, 2);
+      const laid = n && w.litter ? w.litter.drop('bill', p.x, p.y, n, a, v, this.cfg.z) : 0;
+      if (!n || laid < n) P.floaters(p.x, p.y, FLOATS[d.flutter], 3, a, 0.9, v, 8);
       w.sound('clutterPaper', p.x, p.y, 0.4);
     }
     if (d.kg) this.toss(i, p, a, power);
@@ -129,26 +133,34 @@ export default class Clutter {
     if (!img) return;
     const v = rand(...H.speed) * clamp(power, 0.5, 2), vz = rand(...H.lift), g = d.glass, smash = !!g && chance(g.share);
     const land = (x, y) => {
-      if (smash) this.shatter(x, y, a, g);
+      if (smash) this.shatter(x, y, a, g, d.shatter);
       else if (d.land) w.sound(d.land, x, y, 0.5, { pitch: rand(0.9, 1.15) });
+      if (d.spill) this.pour(x, y, a, d);
     };
     if (w.debris.length < MAX_DEBRIS * DESTRUCTION.physicalShare) {
       w.addDebris(new Debris(w, img, p.x, p.y, p.a, Math.cos(a) * v, Math.sin(a) * v, rand(-0.3, 0.3), {
         material: d.material, kg: d.kg, mu: d.mu, z: H.z, vz, bounce: 0.25,
         onLand: (b) => { land(b.body.position.x, b.body.position.y); if (smash) w.removeDebris(b); },
       }));
-    } else w.particles.shard(img, p.x, p.y, a, v, { z: H.z, vz, rot: p.a, onLand: smash ? (q) => land(q.x, q.y) : null });
+    } else w.particles.shard(img, p.x, p.y, a, v, { z: H.z, vz, rot: p.a, onLand: smash || d.spill ? (q) => land(q.x, q.y) : null });
+  }
+
+  // what it held poured out where it landed (a champagne bucket's ice water), its ice cubes skittering on
+  pour(x, y, a, d) {
+    const w = this.world;
+    w.events.emit('spill', { x, y, kind: d.spill.kind, area: d.spill.area * rand(0.7, 1.1), a });
+    if (d.ice) w.particles.chips(x, y, a, 1.4, 6, ICE, 80);
   }
 
   // a piece of glass smashing on the floor: shards, and what was left in it
-  shatter(x, y, a, g) {
+  shatter(x, y, a, g, sound = 'clutterShatter') {
     const w = this.world, P = w.particles;
     P.glass(x, y, a, 1.5, 7, 90);
     if (g.area) {
       P.drops(x, y, a, 1.3, 4, LIQUIDS.kinds[g.kind].splash, 80, 3, false);
       w.events.emit('spill', { x, y, kind: g.kind, area: g.area * rand(0.6, 1.1) });
     }
-    w.sound('clutterShatter', x, y, 0.45, { pitch: rand(1, 1.25) });
+    w.sound(sound, x, y, 0.45, { pitch: rand(1, 1.25) });
   }
 
   // the cigarettes left in the ashtrays smoke on; what is gone with its prop is let go

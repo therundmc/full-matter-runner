@@ -249,6 +249,13 @@ export const DESTRUCTION = {
   towel_dispenser: { height: 1.3, sheds: 'paper', floats: ['paper', 12], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
   neon_sign_beer: { height: 2.2, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
   neon_sign_bay: { height: 2.3, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
+  poster_pinup: { height: 1.6, material: 'glass', floats: ['paper', 4], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  poster_revue: { height: 1.6, material: 'glass', floats: ['paper', 4], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  mirror_strip: { height: 1.4, material: 'glass', parts: [{ cut: 'grid', cols: 5, rows: 1 }] },
+  neon_sign_lips: { height: 2.2, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 4 }] },
+  // the smoked glass top shatters off its chrome rim, the foot falls
+  cocktail_table: { height: 0.45, material: 'glass', parts: [{ cut: 'ring', n: 6, t: 0.12 }, { cut: 'wedges', n: 5 }],
+    legs: { n: 1, size: 0.12, color: '#8a909c' } },
   // `lasting` (data/props.js): marked by every hit, never torn nor sawn
   ladder: { height: 3, material: 'metal' },
   parapet: { height: 1, material: 'stone' },

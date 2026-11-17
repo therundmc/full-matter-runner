@@ -106,7 +106,12 @@ src/
                           kept in its prop's px so it rides on it; a round bursts the glass on its line (shards, the drink
                           run off the edge: 'spill'), a blow knocks off what stands by it, the prop tipped over or broken
                           ('propFlipped', 'propDestroyed') throws it all as Debris; an ashtray left burning smokes
-                          (Smoke.wisp); drawn by render/ClutterArt.js (DOM-free, unit-tested)
+                          (Smoke.wisp); banknotes knocked off land as Litter bills; drawn by render/ClutterArt.js
+                          (DOM-free, unit-tested)
+      Litter.js           small things loose on a floor (level `litter`, LITTER in data/litter.js): bills, feathers, a
+                          flute, corks; no body, bounded; kicked by runners, lifted by passing rounds ('round'), a muzzle
+                          blast ('shot'), a blast ('explosion') and a curtain's swinging hem; the light ones flutter down
+                          and settle; a flute shot bursts; drawn by render/ClutterArt.js (DOM-free, unit-tested)
       Tipping.js          street bins (prop def `tips`) go over instead of breaking: struck, shot, run into, a body or a
                           car ('impact'), a blast; lid off, rubbish out of the mouth (bits, a bag, Papers sheets), a
                           clatter heard; lying, only a blast or a car at speed wrecks it (DOM-free, unit-tested)
@@ -251,10 +256,10 @@ Rules:
 | `chainEnd` | `{ kills, points }` | Scoring (a chain of 2+ ran out) | KillFeed (the cash-out) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
-| `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy) |
-| `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses), Curtains (the cloth it crosses) |
+| `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy), Litter (the blast at the muzzle blows the bills on the floor) |
+| `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses), Curtains (the cloth it crosses), Litter (bills lifted along its way, a flute burst) |
 | `strike` | `{ x, y, owner, team }` | Projectile (a round hit a wall, a prop, a door or a pane) | Flinch (guards close by, the player's view) |
-| `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit), Curtains (the cloth thrown) |
+| `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit), Curtains (the cloth thrown), Litter (thrown) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |
 | `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |

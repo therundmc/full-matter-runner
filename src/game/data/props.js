@@ -156,6 +156,14 @@ export const PROPS = {
     light: { r: 80, color: '#ffb84a', intensity: 0.55, flicker: 'buzz' } },
   neon_sign_bay: { hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff4a8a', intensity: 0.9, flicker: 'buzz', y: 3 } },
+  // the VIP room's: two show bills, a strip of mirror behind the stage, red neon lips
+  poster_pinup: { static: true, material: 'glass', w: 12, h: 3, hp: 2, chips: '#e8508a', glass: true, sound: 'glass' },
+  poster_revue: { static: true, material: 'glass', w: 14, h: 3, hp: 2, chips: '#1e1a26', glass: true, sound: 'glass' },
+  mirror_strip: { static: true, material: 'glass', w: 42, h: 3, hp: 3, chips: '#d8d0e8', glass: true, sound: 'glass' },
+  neon_sign_lips: { hum: 'neon', material: 'glass', w: 22, h: 6, hp: 3, static: true, chips: '#ff2a4a', sparks: true, glass: true, sound: 'glass',
+    light: { r: 90, color: '#ff3a5a', intensity: 0.6, flicker: 'buzz', y: 3 } },
+  // the VIP room's low table: smoked glass in a chrome rim on one foot
+  cocktail_table: { static: true, vault: true, material: 'metal', r: 12, hp: 8, chips: '#2a2030', sparks: true, sound: 'metal' },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
   floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.4, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',

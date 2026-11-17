@@ -102,6 +102,9 @@ export const META = {
   clutterBottle: { gap: 0.05, max: 2, gain: 0.45 }, clutterAshtray: { gap: 0.05, max: 2, gain: 0.45 },
   clutterChips: { gap: 0.08, max: 2, gain: 0.4 }, clutterTill: { pri: 2, dur: 0.5, gap: 0.1, max: 1, gain: 0.7 },
   clutterPaper: { gap: 0.15, max: 1, gain: 0.3 },
+  // the VIP room's (placeholders too): the bills on the floor lifted, a flute, the champagne bucket
+  cashFlutter: { gap: 0.2, max: 1, gain: 0.25 }, fluteClink: { gap: 0.04, max: 2, gain: 0.35 },
+  fluteShatter: { pri: 2, dur: 0.4, gap: 0.04, max: 2, gain: 0.5 }, bucketKnock: { pri: 2, dur: 0.6, gap: 0.1, max: 1, gain: 0.6 },
   woodBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.85 },
   flip: { pri: 2, dur: 0.6, gap: 0.2, max: 2, gain: 0.8 },
   binTip: { pri: 2, dur: 0.7, gap: 0.15, max: 2, gain: 0.75 },
@@ -404,6 +407,10 @@ const FOLEY = {
   clutterChips: [['plastic', 0.45, 1.7], ['plastic', 0.3, 1.9, 0.05], ['plastic', 0.2, 1.8, 0.11, 0.7]],
   clutterTill: [['metal', 0.8, 0.75], ['thud', 0.6, 0.9, 0.01]],
   clutterPaper: [['swish', 0.15, 1.9]],
+  cashFlutter: [['swish', 0.1, 2.2]],
+  fluteClink: [['glassHit', 0.4, 1.8]],
+  fluteShatter: [['glassHit', 0.7, 1.55], ['glassFall', 0.25, 1.6, 0.03, 0.6]],
+  bucketKnock: [['metal', 0.6, 1.25], ['glassHit', 0.3, 0.9, 0.04], ['plastic', 0.2, 1.8, 0.08, 0.7]],
   ui: [['click', 1, 0.8], ['thud', 0.4, 1.5]],
   // placeholders (assets/sound/PLACEHOLDERS.md): the nearest cuts of the bank until the bought library
   holster: [['handle', 0.6, 1.2]],

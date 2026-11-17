@@ -27,3 +27,7 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |
 | curtainRings | the curtain's rings run along the rod as it parts or falls back | brass rings sliding on a brass rod, a light metallic rattle |
 | curtainWhoosh | something fast (a body thrown, a slide) goes through a curtain | a heavy cloth whoosh, the velvet thrown aside |
+| cashFlutter | banknotes lying on the floor lifted by someone running through them, a round passing, a muzzle blast or an explosion (systems/Litter.js) | a few paper bills flipping and fluttering, very soft |
+| fluteClink | a champagne flute knocked off a table landing whole, or one lying on the floor kicked (systems/Clutter.js, systems/Litter.js) | a thin crystal flute clinking and rolling on a carpet |
+| fluteShatter | a champagne flute shot where it stands or lies, or smashing where it lands (systems/Clutter.js, systems/Litter.js) | a thin crystal flute bursting, a light splash |
+| bucketKnock | the champagne bucket knocked off the VIP room's table lands (systems/Clutter.js) | a steel ice bucket clanging down, ice cubes skittering, water sloshing out |

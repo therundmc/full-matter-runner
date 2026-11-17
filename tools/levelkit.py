@@ -20,6 +20,7 @@ rooftop dressing in src/game/data/roofs.js (scenery on the flat roofs: the brick
 import json
 import math
 import os
+import random
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOLID = set(' #X')
@@ -48,7 +49,11 @@ SIZES = dict(
     keg=(16, 16), beer_tap=None, curtain=None, fire_alarm=None,
     frame_photo=None, frame_gold=None, poster_fight=None, poster_band=None, dartboard=None, pay_phone=None,
     coat_hooks=None, towel_dispenser=None, neon_sign_beer=None, neon_sign_bay=None,
+    poster_pinup=None, poster_revue=None, mirror_strip=None, neon_sign_lips=None, cocktail_table=(24, 24),
 )
+
+# furniture that is round: what lies on the floor beside it is kept off its circle, not its box
+ROUND = {'dance_stage', 'table_round', 'cocktail_table'}
 
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
 # wall in px (keep in sync with src/game/data/props.js): never across a doorway, where it bars the way (a lamp over the
@@ -57,7 +62,8 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
                fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26, frame_photo=10, frame_gold=12, poster_fight=14,
-               poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24)
+               poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24,
+               poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -107,6 +113,7 @@ class Level:
         self.grimes = []      # the life of a room on its floor: [kind, col0, row0, col1, row1, n, options] (render/FloorWear.js)
         self.worn = []        # paths worn by feet: [col0, row0, col1, row1, width px]
         self.haze = []        # cigarette haze under a lamp: [col, row, radius tiles, density] (systems/Smoke.js)
+        self.litters = []     # small things lying loose on a floor: [kind, col, row, deg, look] (systems/Litter.js)
         self.spots = []       # beds heard from one tile: [bed, col, row] (src/game/data/soundscape.js SPOTS)
         self.zones = []       # what each place sounds like: [kind, col0, row0, col1, row1] (src/game/data/soundscape.js)
         self.rain = None      # how hard it rains, 0..1 (heard: systems/Ambience.js)
@@ -287,6 +294,55 @@ class Level:
     # another, w px wide; the cigarettes' haze hanging under a lamp at (col, row), r tiles across (systems/Smoke.js)
     def grime(self, kind, col0, row0, col1, row1, n, **o):
         self.grimes.append([kind, *self.rect(col0, row0, col1, row1), n, *([o] if o else [])])
+
+    # one mark exactly at (col, row) (a ring worn round a stage: grime_at('halo', col, row, r=px, w=px))
+    def grime_at(self, kind, cx, cy, **o):
+        x, y = self.at(cx, cy)
+        self.grimes.append([kind, x, y, x, y, 1, {**o, 'at': 'point'}])
+
+    # ---- small things lying loose on a floor (src/game/systems/Litter.js, data/litter.js LITTER): n of `kind` thrown
+    # round (col, row) between r0 and r1 px from it, thicker toward r0 (`arc`: (deg0, deg1), only that way round), never
+    # in a wall nor under a piece of furniture already placed; `looks`: the odds of each of the kind's sprites. The
+    # scatter is done in the level's coordinates (after the cuts), seeded: the same every build.
+    def litter(self, kind, col, row, r0, r1, n, looks=(1,), arc=None, seed=1):
+        rng = random.Random(seed)
+        cx, cy = self.at(col, row)
+        laid = tries = 0
+        while laid < n and tries < n * 40:
+            tries += 1
+            a = math.radians(rng.uniform(*arc) if arc else rng.uniform(0, 360))
+            d = (r0 + (r1 - r0) * rng.random() ** 1.8) / 32
+            x, y = cx + math.cos(a) * d, cy + math.sin(a) * d
+            if not self.free_floor(x, y):
+                continue
+            look = rng.choices(range(len(looks)), weights=looks)[0]
+            self.litters.append([kind, round(x, 3), round(y, 3), rng.randrange(360), look])
+            laid += 1
+        assert laid == n, f'only {laid} of {n} {kind} round {col},{row}'
+
+    # one of them at (col, row), turned deg
+    def litter_at(self, kind, col, row, deg=0, look=0):
+        x, y = self.at(col, row)
+        assert self.free_floor(x, y), f'{kind} at {col},{row} is not on free floor'
+        self.litters.append([kind, x, y, deg, look])
+
+    # a point of floor (the level's tiles) in no wall and under no piece of furniture (round ones by their circle),
+    # 3 px from any other piece of litter
+    def free_floor(self, x, y):
+        t = self.tiles[int(y)][int(x)]
+        if t in SOLID or t in 'DLG':
+            return False
+        for (_, kind, col, row, deg, _) in self.props:
+            if SIZES.get(kind) is None:
+                continue
+            if kind in ROUND:
+                if math.hypot(x - col, y - row) < SIZES[kind][0] / 64 + 0.03:
+                    return False
+                continue
+            b = self.box(kind, col, row, deg)
+            if b[0] - 0.03 < x < b[2] + 0.03 and b[1] - 0.03 < y < b[3] + 0.03:
+                return False
+        return all(math.hypot(x - q[1], y - q[2]) >= 3 / 32 for q in self.litters)
 
     def wear_path(self, col0, row0, col1, row1, w=12):
         self.worn.append([*self.at(col0, row0), *self.at(col1, row1), w])
@@ -522,6 +578,12 @@ class Level:
         if self.haze:
             L.append('  // cigarette haze hanging under the lamps (systems/Smoke.js): [col, row, radius tiles, density]')
             L.append(f'  haze: {json.dumps(self.haze)},')
+        if self.litters:
+            L.append('  // small things lying loose on the floor (systems/Litter.js): [kind, col, row, deg, look]')
+            L.append('  litter: [')
+            for i in range(0, len(self.litters), 4):
+                L.append('    ' + ' '.join(json.dumps(q) + ',' for q in self.litters[i:i + 4]))
+            L.append('  ],')
         if self.critters:
             L.append('  // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)')
             L.append(f'  critters: {json.dumps(self.critters)},')
