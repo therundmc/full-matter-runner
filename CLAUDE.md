@@ -108,7 +108,9 @@
   and systems/Settings.js in localStorage; `Game.startLevel(id)`, `newGame()`, `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
-  next night, at the bar.
+  next night, at the bar. The three men (CUEBALL, LUCKY, JITTERS: tools/comic/STYLE.md) are his targets: CUEBALL is
+  level 1's mini-boss in the back room; THE BOSS (bone suit, cigar), who owns the bar, is the big boss to bring down
+  at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
   match, `OPENING`), lessons that slow time (`LESSONS`, `pace`), the camera's shots (`SHOTS`, systems/Direction.js,
