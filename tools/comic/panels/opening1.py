@@ -1,11 +1,12 @@
 """The opening, page 1: his last night (sleep, door)."""
+import math
+
 from PIL import ImageChops
 
 from .. import props
-from ..anatomy import grip
-from ..cast import HEAVY, SLICK, YOUNG, Figure, Light
-from ..kit import INK, PINK, PINK_D, PINK_DD, VIOLET, FLOOR, NIGHT, Cv, backlit, hx, panel, window_night
-from ..legacy import figure_asleep
+from ..anatomy import FIST, RELAXED, grip, stance
+from ..cast import HERO, HEAVY, SLICK, YOUNG, Figure, Light
+from ..kit import INK, PINK, PINK_D, PINK_DD, VIOLET, Cv, backlit, hx, panel, window_night
 from ..solid import Scene, Xf, rot, ypr
 
 # ================================================================ the opening
@@ -38,78 +39,122 @@ def digits(cv, x, y, s, h, col):
 
 @panel('sleep', (1080, 288))
 def panel_sleep():
-    """Page 1, panel 1. His bedroom in the dark, the bar's neon across the street through the rain on the window: him
-    asleep on his side, a black shape under the sheet with the neon along its edge, his arm hanging out of the bed
-    over an empty bottle; the clock on the table says 1:05; by the door his suitcase stands packed, his cap on the
-    hook: he was leaving in the morning."""
-    cv = Cv(1080, 288, hx('#110e20'))
+    """Page 1, panel 1 ("1:05 AM. HIS LAST NIGHT IN TOWN."). His bedroom in the dark, the room in big blacks: the
+    bar's neon across the street comes in through the rain on the window (the game runs the rain on PANE) and lays
+    its pink across the wall, the bed and him. He sleeps on his right side, his knees drawn up under the sheet, his
+    left arm hanging out over the bed's edge to the floor, its hand open over an empty bottle; his face turned to
+    us, eyes shut, the neon along its upturned side. The clock says 1:05 (the game blinks its colon); by the door his
+    suitcase stands packed, his cap on the hook: he was leaving in the morning."""
+    W, H = 1080, 288
+    cv = Cv(W, H, INK)
     floor_y, top = 236, 190
-    cv.rect(0, floor_y, 1080, 288, FLOOR)
-    for x in range(-600, 1700, 64):                                             # the boards, running to the far wall
-        cv.brush([(540 + (x - 540) * 0.5, floor_y), (540 + (x - 540) * 1.4, 288)], 1.5, 2.5, col=NIGHT)
-    cv.brush([(0, floor_y), (1080, floor_y)], 4, 4)
-    # the window over the bed, and the neon it throws down across the wall, the bed and the floor
+    wall, wallL, floor = hx('#0a0812'), hx('#24142e'), hx('#0c0a14')
+    neon, neonD = hx('#5a1e4a'), hx('#3a1434')
+    cv.rect(0, 0, W, floor_y, wall)
+    cv.rect(0, floor_y, W, H, floor)
+    # the window over the bed, and the neon it throws down the wall, across the bed and onto the floor
     wx0, wy0, wx1, wy1 = 360, 8, 590, 132
-    cv.fill([(wx0, wy1, 0), (wx1, wy1, 0), (wx1 + 150, floor_y + 52, 0), (wx0 + 150, floor_y + 52, 0)], hx('#1e1430'), smooth=False)
-    cv.brush([((wx0 + wx1) / 2, wy1), ((wx0 + wx1) / 2 + 150, floor_y + 52)], 8, 12, col=hx('#110e20'))
+    throw = [(wx0, wy1, 0), (wx1, wy1, 0), (wx1 + 170, H, 0), (wx0 + 120, H, 0)]
+    cv.fill(throw, neonD, smooth=False)
+    cv.fill([(wx0 + 20, wy1, 0), (wx1 - 20, wy1, 0), (wx1 + 120, H, 0), (wx0 + 160, H, 0)], neon, smooth=False)
+    cv.brush([((wx0 + wx1) / 2, wy1), ((wx0 + wx1) / 2 + 150, H)], 7, 12, col=neonD)      # the window's cross
     window_night(cv, wx0, wy0, wx1, wy1, seed=3)
-    cv.rect(wx0 - 14, wy1 + 2, wx1 + 14, wy1 + 12, hx('#1a1428'))              # the sill
+    cv.rect(wx0 - 14, wy1 + 2, wx1 + 14, wy1 + 10, INK)                                   # the sill
     cv.brush([(wx0 - 14, wy1 + 2), (wx1 + 14, wy1 + 2)], 2, 2, col=PINK_D)
-    # the bed: its head, the mattress, the frame, in the dark, the neon along their tops
-    head = [(258, 112), (276, 106), (282, floor_y, 0), (256, floor_y, 0)]
-    m = cv.fill(head, hx('#16122a'))
-    backlit(cv, m, PINK_D, ((0, -3), (3, 0)))
-    cv.ink(head, 3)
-    side = [(276, top, 0), (800, top, 0), (800, 226, 0), (276, 226, 0)]
-    cv.fill(side, hx('#1a1630'), smooth=False)
-    cv.fill([(wx0 + 60, top, 0), (wx1 + 110, top, 0), (wx1 + 130, 226, 0), (wx0 + 80, 226, 0)], hx('#2a1a3a'), smooth=False)
-    cv.rect(276, 222, 800, 230, hx('#0e0b18'))
-    for x in (284, 788):
-        cv.rect(x, 230, x + 10, floor_y, INK)
-    cv.ink(side, 3, smooth=False)
-    pillow = [(282, 172), (300, 162), (360, 160), (372, 176), (360, top, 0), (284, top, 0)]
-    m = cv.fill(pillow, hx('#2a2440'))
-    backlit(cv, m, PINK_D, ((0, -3),))
-    # him under the sheet, black, the neon along his back, his shoulder, his hip
-    m = figure_asleep(cv, 322, top, 1.0)
-    cv.im.paste(INK, (0, 0), m)
-    backlit(cv, m, PINK_D, ((0, -4), (4, 0)))
-    backlit(cv, m, PINK, ((1, -2),))
-    # the empty bottle on its side on the floor, under his hand
-    bottle = [(424, 266), (474, 262), (480, 256, 0), (500, 255, 0), (500, 262, 0), (480, 262, 0), (474, 272), (424, 276)]
-    m = cv.fill(bottle, hx('#0c1a10'))
-    backlit(cv, m, hx('#5ac08a'), ((0, -2), (2, 0)))
-    # the bedside table, the clock on it: 1:05 in red
+    # the bed: its head, the mattress, the frame, black, the neon along their tops
+    cv.fill([(258, 112), (276, 106), (282, floor_y, 0), (256, floor_y, 0)], INK)
+    cv.brush([(258, 113), (276, 107)], 2, 2, col=PINK_D)
+    mattress = [(276, top, 0), (804, top, 0), (804, 228, 0), (276, 228, 0)]
+    cv.fill(mattress, INK, smooth=False)
+    lit_side = cv.fill([(wx0 + 70, top, 0), (wx1 + 120, top, 0), (wx1 + 150, 228, 0), (wx0 + 100, 228, 0)], neonD, smooth=False)
+    for x in (286, 790):
+        cv.rect(x, 228, x + 10, floor_y, INK)
+    pillow = [(282, 168), (298, 158), (352, 156), (380, 170), (372, top, 0), (284, top, 0)]
+    cv.fill(pillow, hx('#1c1426'))
+    cv.fill([(298, 158), (352, 156), (380, 170), (366, 172), (330, 166), (300, 168)], hx('#3a2440'))
+    cv.ink(pillow, 2)
+    # him, asleep on his right side: the body's feet origin at (ox, oy), his head to the left, his front to us
+    s = 0.5
+    light = Light(key=hx('#ff7aa8'), fill=hx('#4a3a70'), gain=0.95, deep=1.0)
+    pose = dict(chest=ypr(0, 16, 0), head=ypr(-4, 8, 0),
+                ankle_l=(30, -120, 150), ankle_r=(-26, -90, 110), knee_l=(0.1, -0.6, 1), knee_r=(-0.1, -0.6, 1),
+                toe_l=(0, 1, 0.2), toe_r=(0, 1, 0.2),
+                wrist_l=(-150, -548, 150), elbow_l=(0.6, 0.2, 1), wrist_r=(-40, -730, 70), elbow_r=(0, 1, 0.6))
+    fig = Figure(HERO, pose=pose, bare=True, face=dict(lids=0.0, smile=(-0.1, -0.1)),
+                 hands=dict(l=dict(shape=RELAXED, fwd=(-1, 0.1, 0.25), palm=(0, 0, 1))))
+    place = Xf(706, 151, s, ypr(0, 0, -90))
+    sc = Scene(W, H, light=(0.15, -0.9, 0.05), scale=s, ink=1, inner=1, blacks=0.08, simplify=5,
+               rims=[((0.0, -1.0, -0.2), PINK, 0.8)], rim_px=2)
+    fig.add(sc, place, light)
+    # the bottle, on its side on the floor under his hand
+    bottle = [(388, 266), (438, 262), (444, 256, 0), (464, 255, 0), (464, 262, 0), (444, 262, 0), (438, 272), (388, 276)]
+    bm = cv.fill(bottle, hx('#0c1a10'))
+    backlit(cv, bm, hx('#5ac08a'), ((0, -2), (2, 0)))
+    sc.render(cv)
+    # the sheet over him from the waist down, laid over the real shape of his hips and his drawn-up legs: its top
+    # is the envelope of them (their joints and girths seen from here) a little out, then it falls to the mattress
+    # and over the bed's edge; lit along its top by the neon, black underneath, folds pulled from the hip and knees
+    b_ = fig.body
+    spans = [(b_.pelvis_pt((0, -470, 0)), b_.root, 62), (b_.root, b_.pelvis_pt((0, -380, 0)), 74)]
+    for side in ('r', 'l'):
+        spans += [(b_.hip[side], b_.knee[side], 30), (b_.knee[side], b_.ankle[side], 22)]
+    tops = {}
+    for p0, p1, r in spans:
+        for k in range(41):
+            q = place(tuple(p0[i] + (p1[i] - p0[i]) * k / 40 for i in range(3)))
+            for dx in range(-int(r * s), int(r * s) + 1):
+                x = int(q[0]) + dx
+                y = q[1] - math.sqrt(max(0.0, (r * s) ** 2 - dx * dx))
+                tops[x] = min(tops.get(x, 1e9), y)
+    xs = sorted(tops)
+    x0, x1 = max(xs[0], int(place(b_.pelvis_pt((0, -470, 0)))[0]) + 4), xs[-1]
+    smooth_top = []
+    for x in range(x0, x1 + 1, 4):
+        near = [tops[q] for q in range(x - 10, x + 11) if q in tops]
+        smooth_top.append((x, min(top - 6, sum(near) / len(near) - 6)))
+    contour = [(x0 - 8, top - 4)] + smooth_top + [(x1 + 18, top - 8), (x1 + 34, top, 0)]
+    sheet = contour + [(x1 + 40, 238, 0), (x0 - 20, 238, 0), (x0 - 24, 214), (x0 - 16, top - 2)]
+    sm = cv.fill(sheet, hx('#2a1c38'))
+    cv.fill([(x, y + 1) for x, y in smooth_top] + [(x, y + 16) for x, y in reversed(smooth_top)], hx('#7a3a68'), clip=sm)
+    cv.fill([(x0 - 40, 238, 0), (x1 + 60, 238, 0), (x1 + 60, 214, 0), (x0 - 40, 216, 0)], INK, clip=sm, smooth=False)
+    # the folds: a few, bold, curved, each opening into a black hollow where it meets the mattress
+    hip = min(smooth_top, key=lambda q: q[1])
+    for dx, ex, bow, w in ((-4, -46, -10, 4.0), (30, 40, 12, 3.5), (96, 70, -8, 3.0), (170, 150, 10, 3.0)):
+        a0 = (hip[0] + dx, dict(smooth_top).get(hip[0] + dx - (hip[0] + dx - x0) % 4, hip[1]) + 5)
+        a1 = (hip[0] + ex, top + 22)
+        mid = ((a0[0] + a1[0]) / 2 + bow, (a0[1] + a1[1]) / 2)
+        cv.brush([a0, mid, a1], w * 0.4, w, col=INK, clip=sm)
+        cv.fill([(a1[0] - w * 2, a1[1] - 2), (a1[0] + w * 2, a1[1] - 2), (a1[0] + w * 3, 240, 0), (a1[0] - w * 3, 240, 0)],
+                INK, clip=sm, smooth=False)
+    cv.ink(sheet, 2)
+    backlit(cv, sm, PINK, ((0, -2),))
+    # the bedside table, the clock on it: 1:05 in red (the game blinks the colon on COLON)
     table = [(130, 176, 0), (240, 176, 0), (240, floor_y, 0), (130, floor_y, 0)]
-    m = cv.fill(table, hx('#141024'), smooth=False)
-    backlit(cv, m, PINK_DD, ((0, -3),))
-    cv.ink(table, 3, smooth=False)
-    cv.brush([(136, 204), (234, 204)], 2, 2, col=INK)
+    tm = cv.fill(table, INK, smooth=False)
+    backlit(cv, tm, PINK_DD, ((0, -3),))
     clock = [(150, 140, 0), (236, 140, 0), (238, 176, 0), (148, 176, 0)]
-    cv.shape(clock, hx('#0c0a12'), 3, )
+    cv.shape(clock, hx('#0c0a12'), 3)
     cv.rect(156, 146, 230, 172, hx('#1a0608'))
     digits(cv, CLOCK[0] - 6, CLOCK[1], '1:05', 18, hx('#ff2a3a'))
-    # his suitcase by the door, packed and strapped, and the door, his cap on its hook
+    cv.fill([(150, 176, 0), (238, 176, 0), (250, 190, 0), (140, 190, 0)], hx('#2a0810'), smooth=False)   # its glow
+    # his suitcase by the door, packed and strapped, and the door, his cap on its hook: black, the neon on their edges
     case = [(836, 160), (930, 156), (936, floor_y, 0), (830, floor_y, 0)]
-    m = cv.fill(case, hx('#2a1a24'))
-    cv.fill([(836, 160), (930, 156), (931, 166), (835, 170)], hx('#4a2a3a'), clip=case)
-    for x in (860, 904):
-        cv.rect(x, 158, x + 6, floor_y, hx('#120a10'))
-    cv.ink(case, 3)
-    backlit(cv, m, PINK_D, ((-3, 0), (0, -3)))
+    cm = cv.fill(case, INK)
+    backlit(cv, cm, PINK_D, ((-3, 0), (0, -3)))
     cv.ink([(866, 156), (870, 140), (896, 139), (900, 155)], 6, closed=False)            # the handle
-    cv.shape([(918, 170), (934, 172), (932, 192), (916, 190)], hx('#d8d0b4'), 2)            # its tag
+    cv.shape([(918, 170), (934, 172), (932, 192), (916, 190)], hx('#8a7a88'), 2)            # its tag
     door = [(960, 34, 0), (1060, 34, 0), (1060, floor_y, 0), (960, floor_y, 0)]
-    cv.fill(door, hx('#17132a'), smooth=False)
+    cv.fill(door, hx('#0e0b16'), smooth=False)
     for y0, y1 in ((52, 128), (144, 220)):
-        cv.ink([(976, y0, 0), (1044, y0, 0), (1044, y1, 0), (976, y1, 0)], 3, col=hx('#0c0a16'), smooth=False)
-    cv.ink(door, 7, smooth=False)
-    cv.ellipse(970, 140, 5, 5, PINK_D)
+        cv.ink([(976, y0, 0), (1044, y0, 0), (1044, y1, 0), (976, y1, 0)], 2, col=hx('#1c1426'), smooth=False)
+    cv.ink(door, 5, smooth=False)
+    cv.ellipse(970, 140, 4, 4, PINK_D)
     cv.brush([(1000, 44), (1000, 54)], 3, 3, col=INK)                                       # the hook, his cap on it
-    cap = [(978, 74, 0), (980, 60), (994, 50), (1012, 50), (1024, 60), (1028, 66), (1046, 70, 0), (1044, 74, 0)]
-    m = cv.fill(cap, INK)
-    backlit(cv, m, PINK_D, ((-3, 0), (0, -3)))
+    cap = [(980, 74, 0), (984, 60), (996, 52), (1012, 52), (1022, 58), (1034, 66), (1046, 70, 0), (1044, 74, 0)]
+    m2 = cv.fill(cap, INK)
+    backlit(cv, m2, PINK_D, ((-2, 0), (0, -2)))
     return cv
+
 
 @panel('door', (1080, 282))
 def panel_door():
@@ -169,25 +214,30 @@ def panel_door():
         y = 112 + k * 5
         cv.brush([(616, y), (628 + (k % 3) * 5, y - 3 + k)], 3, 0.5, col=hx('#d8e8f0'))
     cv.ellipse(632, 124, 4, 4, hx('#9ab0c0'))                              # the lock's tongue, torn out
-    # the three of them: where they stand (body space -> panel px), how they stand
+    # the three of them, seen from low in the dark room (the camera's eye near the floor, looking up: they tower,
+    # their heads drawn in): where they stand (body space -> panel px), how they stand, weight on a leg
     s = 0.245
-    light = Light(key=tube, fill=hx('#3a3658'), gain=1.0, deep=0.7)
-    young = Figure(YOUNG, pose=dict(chest=ypr(-6, 0, 0), head=ypr(-14, 4, 0),
-                                    ankle_r=(-40, -24, -6), ankle_l=(44, -24, 10), toe_r=(-0.3, 0, 1), toe_l=(0.1, 0, 1),
-                                    wrist_l=(84, -362, 10), elbow_l=(0.4, 0, -1)),
-                   hands=dict(l=dict(shape=grip(2.6), fwd=(0, 1, 0), palm=(-1, 0, 0))))
-    heavy = Figure(HEAVY, pose=dict(head=ypr(-4, 6, 0), ankle_r=(-58, -24, 4), ankle_l=(58, -24, 0),
-                                    toe_r=(-0.35, 0, 1), toe_l=(0.35, 0, 1),
-                                    wrist_r=(-104, -372, 18), elbow_r=(-0.4, 0, -1)),
-                   hands=dict(r=dict(shape=grip(4.0), fwd=(0, 0.3, 1), palm=(1, 0, 0))))
+    light = Light(key=tube, fill=hx('#3a3658'), gain=1.0, deep=1.0)
+    sc = Scene(W, H, light=(0.15, -0.35, -0.92), scale=s, ink=1, inner=1, shadows=False, blacks=-0.55,
+               keystone=(746.0, float(foot), 0.22))
+    young_pose = stance('r', hips=8, shoulders=6, turn=-8, spread=18, step=10)
+    young_pose.update(head=ypr(-16, 6, -6), wrist_l=(92, -360, 6), elbow_l=(0.5, 0, -1), wrist_r=(-60, -420, 46),
+                      elbow_r=(-0.8, 0.2, -0.6))
+    young = Figure(YOUNG, pose=young_pose, hands=dict(l=dict(shape=grip(2.6), fwd=(0, 1, 0), palm=(-1, 0, 0)),
+                                                      r=dict(shape=FIST)))
+    heavy_pose = stance('l', hips=4, shoulders=3, turn=4, spread=34, step=6, drop=12, lean=6)
+    heavy_pose.update(head=ypr(-6, 12, 3), wrist_r=(-102, -376, 26), elbow_r=(-0.4, 0, -1), wrist_l=(96, -380, 18),
+                      elbow_l=(0.4, 0, -1))
+    heavy = Figure(HEAVY, pose=heavy_pose, hands=dict(r=dict(shape=grip(4.0), fwd=(0, 0.3, 1), palm=(1, 0, 0)),
+                                                      l=dict(shape=FIST)))
     torch_at = (-46, -566, 200)                                            # his torch hand, held out into the room
-    slick = Figure(SLICK, pose=dict(chest=ypr(10, 0, 0), head=ypr(8, 8, 0), ankle_r=(-30, -24, 40),
-                                    ankle_l=(40, -24, -36), toe_r=(-0.2, 0, 1), toe_l=(0.25, 0, 1),
-                                    wrist_r=torch_at, elbow_r=(-0.6, 0.6, -0.4)),
-                   hands=dict(r=dict(shape=grip(5.4), fwd=(0.05, 0.3, 1), palm=(1, 0, 0))))
-    places = {'young': Xf(800, foot - 2, s * 0.96, ypr(-26)), 'heavy': Xf(744, foot + 2, s * 1.02, ypr(-8)),
-              'slick': Xf(676, foot + 7, s * 1.04, ypr(-58))}
-    lens = slick.hand_xf('r', places['slick'])((-46, 40, 12.5))
+    slick_pose = stance('r', hips=6, shoulders=4, turn=10, spread=10, step=-46)
+    slick_pose.update(head=ypr(8, 10, 4), wrist_r=torch_at, elbow_r=(-0.6, 0.6, -0.4), wrist_l=(70, -400, 40),
+                      elbow_l=(0.6, 0, -1))
+    slick = Figure(SLICK, pose=slick_pose, hands=dict(r=dict(shape=grip(5.4), fwd=(0.05, 0.3, 1), palm=(1, 0, 0))))
+    places = {'young': Xf(802, foot - 2, s * 0.96, ypr(-26, -5)), 'heavy': Xf(744, foot + 2, s * 1.04, ypr(-8, -5)),
+              'slick': Xf(676, foot + 7, s * 1.04, ypr(-58, -5))}
+    lens = sc.project(slick.hand_xf('r', places['slick'])((-46, 40, 12.5)))
     # the light thrown in across the floor, and their shadows long in it
     spill = [(dx0, dy1, 0), (dx1, dy1, 0), (1000, 282, 0), (430, 282, 0)]
     cv.fill(spill, tubeDD, smooth=False)
@@ -202,7 +252,6 @@ def panel_door():
     room((hx('#4a3a5a'), hx('#5a4a6a'), hx('#2a2238')), clip=beam_pts)
     # the three of them, black against the light: the tube along their edges and over their heads, the window's
     # neon on their other side
-    sc = Scene(W, H, light=(0.15, -0.35, -0.92), scale=s, ink=1, inner=1, shadows=False)
     young.add(sc, places['young'], light)
     heavy.add(sc, places['heavy'], light)
     slick.add(sc, places['slick'], light)
@@ -217,4 +266,9 @@ def panel_door():
     # the window's neon only where they stand against the dark of the room, not against the landing's light
     backlit(cv, ImageChops.multiply(m, cv.mask([(0, 0, 0), (dx0, 0, 0), (dx0, H, 0), (0, H, 0)], False)), PINK_D, ((-2, 0),))
     cv.ellipse(lens[0], lens[1], 3, 3, hx('#f6f0ff'))
+    # in the foreground, close to us in the dark: the back of his armchair, black, the window's neon along its top
+    chair = [(-10, 282, 0), (-10, 168), (40, 150), (120, 146), (176, 160), (184, 282, 0)]
+    cm = cv.fill(chair, INK)
+    backlit(cv, cm, PINK_D, ((0, -3),))
+    backlit(cv, cm, PINK, ((0, -1),))
     return cv

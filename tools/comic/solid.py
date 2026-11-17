@@ -127,20 +127,24 @@ class Mesh:
     def normals_(self):
         if self.normals is not None:
             return self.normals
-        acc = {}
+        V = self.verts
         fn = []
         for i, j, k in self.tris:
-            a, b, c = self.verts[i], self.verts[j], self.verts[k]
-            n = cross(sub(b, a), sub(c, a))
-            fn.append(n)
-            if self.smooth:
-                for v in (a, b, c):
-                    key = (round(v[0], 3), round(v[1], 3), round(v[2], 3))
-                    acc[key] = add(acc.get(key, (0, 0, 0)), n)
-        if self.smooth:
-            self.normals = [unit(acc.get((round(v[0], 3), round(v[1], 3), round(v[2], 3)), (0, 0, 1))) for v in self.verts]
-        else:
+            a, b, c = V[i], V[j], V[k]
+            ux, uy, uz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+            vx, vy, vz = c[0] - a[0], c[1] - a[1], c[2] - a[2]
+            fn.append((uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx))
+        if not self.smooth:
             self.normals = [unit(n) for n in fn]
+            return self.normals
+        # shared by every vertex at the same place (a ring's seam, a pole), so no seam shows in the light
+        keys = [(int(v[0] * 256 + 0.5), int(v[1] * 256 + 0.5), int(v[2] * 256 + 0.5)) for v in V]
+        acc = {}
+        for (i, j, k), n in zip(self.tris, fn):
+            for key in (keys[i], keys[j], keys[k]):
+                a = acc.get(key)
+                acc[key] = n if a is None else (a[0] + n[0], a[1] + n[1], a[2] + n[2])
+        self.normals = [unit(acc.get(key, (0, 0, 1))) for key in keys]
         return self.normals
 
 
@@ -310,12 +314,14 @@ class Skin:
     level, n) -> a colour or None (None: the tone), a: the point's attribute, level one of 'hi lit shade deep'.
     t_lit / t_hi / t_deep: the thresholds on n . light. ink: an outline where it passes in front of another surface.
     light: a direction of its own for the key light (a cheat of the illustrator's: the face lit from below by the
-    lamp, what he holds from in front), its shadows cast along it."""
+    lamp, what he holds from in front), its shadows cast along it by the surfaces that share it alone. blacks False: it never goes to solid black (paper,
+    an eye's white), a number: its own threshold for them (see Scene). creases False: no line where it folds sharply (fingers side by side, seen small)."""
 
     def __init__(self, lit, shade, deep=None, hi=None, rim=None, tex=None, t_lit=0.1, t_hi=0.8, t_deep=-0.5,
-                 ink=True, light=None):
+                 ink=True, light=None, blacks=True, creases=True):
         self.tones = {'lit': lit, 'shade': shade, 'deep': deep or shade, 'hi': hi or lit}
-        self.rim, self.tex, self.ink = rim, tex, ink
+        self.rim, self.tex, self.ink, self.creases = rim, tex, ink, creases
+        self.blacks = blacks       # True: the scene's threshold; a number: its own; False: never
         self.light = unit(light) if light else None
         self.t_lit, self.t_hi, self.t_deep = t_lit, t_hi, t_deep
 
@@ -390,11 +396,19 @@ class Scene:
     into the silhouette their band may reach, None: anywhere); scale: px per model unit, for the ink's weight and
     the depth a line needs (gap, in model units). lamp (x, y, z): a lamp at that panel point instead of a light from
     far away (its shadows are still cast along `light`: aim that from the lamp at what matters). simplify: an odd
-    size (3, 5, 7): the shapes of light and shadow cleaned of specks smaller than about that, as an inker would."""
+    size (3, 5, 7): the shapes of light and shadow cleaned of specks smaller than about that, as an inker would.
+    blacks: the inker's solid blacks: what is turned further from the key than this (n . light below it) or in a cast
+    shadow goes to the skins' deep tone (make it INK with Light(deep=1)). persp (D, cx, cy): a camera D px in front
+    of the picture, looking at (cx, cy): what is nearer grows (a close foreground). keystone (cx, y0, k): seen from
+    low, looking up: what stands higher than y0 drawn in toward x cx, by k of itself a panel's height up. inner / crease_w:
+    the weight of a line where one form passes in front of another / where a form folds."""
 
     def __init__(self, w, h, light=(0, -0.6, 0.8), shadows=True, rims=(), scale=1.0, ink=None, inner=None, gap=6.0,
-                 rim_px=None, crease=0.2, lamp=None, simplify=0):
+                 rim_px=None, crease=0.2, lamp=None, simplify=0, blacks=None, persp=None, crease_w=1, keystone=None):
         self.w, self.h = w, h
+        self.blacks = blacks
+        self.persp, self.keystone = persp, keystone
+        self.crease_w = crease_w
         self.light = unit(light)
         self.lamp = lamp
         self.simplify = simplify
@@ -413,6 +427,8 @@ class Scene:
         """Add a mesh with its skin, placed by xf (model -> panel px); cast False: it throws no shadow."""
         nr = mesh.normals_()
         V = [xf(v) for v in mesh.verts]
+        if self.persp or self.keystone:
+            V = [self.project(p) for p in V]
         if mesh.smooth:
             N = [xf.normal(n) for n in nr]
         A = mesh.attrs
@@ -427,11 +443,12 @@ class Scene:
                 self.data.append((skin, n, n, n, A[i], A[j], A[k]))
 
     # -------------------------------------------------------------- the passes
-    def _shadow_map(self, L):
+    def _shadow_map(self, L, own=False):
         ax = unit(cross((0, 1, 0) if abs(L[1]) < 0.9 else (1, 0, 0), L))
         ay = cross(L, ax)
         P = [(dot(t[0:3], ax), dot(t[0:3], ay), dot(t[0:3], L), dot(t[3:6], ax), dot(t[3:6], ay), dot(t[3:6], L),
-              dot(t[6:9], ax), dot(t[6:9], ay), dot(t[6:9], L)) for t, c in zip(self.tris, self.casts) if c]
+              dot(t[6:9], ax), dot(t[6:9], ay), dot(t[6:9], L)) for t, c, d in zip(self.tris, self.casts, self.data)
+             if c and (not own or d[0].light == L)]
         if not P:
             return None
         mx = min(min(p[0], p[3], p[6]) for p in P) - 2
@@ -457,7 +474,7 @@ class Scene:
 
         def shadow_map(L):
             if L not in maps:
-                maps[L] = self._shadow_map(L)
+                maps[L] = self._shadow_map(L, own=L != self.light)
             return maps[L]
         bias0 = max(1.5, 2.5 * self.scale)
         lamp = self.lamp
@@ -465,7 +482,7 @@ class Scene:
         levels = bytearray(n)
         rim = [None] * n
         nb = [None] * n
-        inked = [True] * n
+        inked = bytearray(n)
         cover = bytearray(n)
         for i in range(n):
             t = ids[i]
@@ -493,7 +510,12 @@ class Scene:
                 bias = bias0 + 2.0 * math.sqrt(max(0.0, 1 - d * d)) / max(d, 0.15)
                 if 0 <= u < sw and 0 <= v < sh and szb[v * sw + u] > dot(p, az) + bias:
                     shadowed = True
-            levels[i] = CODE[skin.level(d, shadowed)]
+            lv = skin.level(d, shadowed)
+            if self.blacks is not None and skin.blacks is not False:
+                tb = self.blacks if skin.blacks is True else skin.blacks
+                if shadowed or d < tb:
+                    lv = 'deep'
+            levels[i] = CODE[lv]
             if isinstance(a0[0], str) or len(a0) == 0:
                 a = a0
             else:
@@ -507,7 +529,7 @@ class Scene:
                         rim[i] = rcol
                         break
             nb[i] = nrm
-            inked[i] = skin.ink
+            inked[i] = (2 if skin.creases else 1) if skin.ink else 0
             cover[i] = 255
         if self.simplify:
             # the light's shapes made simple, as an inker would: specks and slivers of a tone go to their neighbours'
@@ -536,6 +558,7 @@ class Scene:
         gap = self.gap * self.scale
         crease = self.crease
         lines = bytearray(n)
+        folds = bytearray(n)
         for y in range(H):
             row = y * W
             for x in range(W):
@@ -551,13 +574,18 @@ class Scene:
                         lines[j] = 255
                     elif -dz > gap and inked[j]:
                         lines[i] = 255
-                    elif crease is not None and inked[i] and inked[j] and dot(nb[i], nb[j]) < crease:
-                        lines[j if dz > 0 else i] = 255
-        lm = Image.frombytes('L', (W, H), bytes(lines))
-        if self.inner == 2:
-            lm = ImageChops.lighter(lm, shift(lm, 1, 1))
-        elif self.inner > 2:
-            lm = lm.filter(ImageFilter.MaxFilter(3 if self.inner < 5 else 5))
+                    elif crease is not None and inked[i] == 2 and inked[j] == 2 and dot(nb[i], nb[j]) < crease:
+                        folds[j if dz > 0 else i] = 255
+
+        def weigh(m, w):
+            if w == 2:
+                return ImageChops.lighter(m, shift(m, 1, 1))
+            if w > 2:
+                return m.filter(ImageFilter.MaxFilter(3 if w < 5 else 5))
+            return m
+        # a contour that breaks (one form in front of another) inked heavier than a fold within a form
+        lm = ImageChops.lighter(weigh(Image.frombytes('L', (W, H), bytes(lines)), self.inner),
+                                weigh(Image.frombytes('L', (W, H), bytes(folds)), self.crease_w))
         # the outline: ink - 1 px all round (1 at the least), one more on the side away from the light
         k = self.ink
         grown = cov.filter(ImageFilter.MaxFilter(2 * max(1, k - 1) + 1))
@@ -573,6 +601,17 @@ class Scene:
         cv.im.paste(img, (0, 0), cov)
         cv.im.paste(INK, (0, 0), ImageChops.lighter(ring, lm))
         return ImageChops.lighter(cov, ring)
+
+    def project(self, p):
+        """A panel point (after its Xf) where the scene draws it: through the camera's perspective, if any."""
+        if self.persp:
+            D, cx, cy = self.persp
+            k = D / (D - p[2])
+            p = (cx + (p[0] - cx) * k, cy + (p[1] - cy) * k, p[2])
+        if self.keystone:
+            cx, y0, k = self.keystone
+            p = (cx + (p[0] - cx) * (1 - k * (y0 - p[1]) / self.h), p[1], p[2])
+        return p
 
     # -------------------------------------------------------------- after the render
     def visible(self, p, tol=None):

@@ -173,29 +173,6 @@ def finger(cv, pts, w, col, shade=None, side=1, band=0.45):
         cv.brush([(p[0] + ox, p[1] + oy) for p in pts], w * band, w * band * 0.7, col=shade)
 
 
-def figure_asleep(cv, x, y, s=1.0):
-    """Him asleep on his side under a sheet, seen from the side, as one mask: his head on the pillow at the origin,
-    the sheet over his shoulder, his hip and his drawn-up knees, his feet at +x; one arm hanging out over the bed's
-    edge to the floor (local px, the mattress's top at y 0, the floor at y 46)."""
-    P = lambda p: (x + p[0] * s, y + p[1] * s) + ((0,) if len(p) > 2 else ())
-    m = cv.blank()
-    d = ImageDraw.Draw(m)
-    for pts in ([(-34, -40), (-26, -66), (-4, -80), (22, -76), (36, -60), (38, -42), (30, -30), (14, -26), (-12, -26), (-28, -30)],
-                [(-30, -64), (-46, -62), (-52, -48), (-44, -40), (-36, -44)],                                 # his hair on the pillow
-                [(26, -30, 0), (34, -60), (56, -88), (96, -98), (134, -86), (170, -62), (214, -60), (262, -84),
-                 (300, -88), (340, -72), (380, -64), (420, -58), (444, -40), (452, -16), (454, 0, 0), (26, 0, 0)]):       # under the sheet
-        d.polygon(spline([P(p) for p in pts]), fill=255)
-    limb(m, [P((76, -50)), P((92, -6)), P((96, 14))], 20 * s, 16 * s)         # the arm over the edge ...
-    limb(m, [P((96, 14)), P((98, 26)), P((100, 34))], 15 * s, 12 * s)         # ... the forearm down
-    d.polygon(spline([P(p) for p in [(90, 30), (110, 30), (116, 42), (112, 52), (104, 54), (94, 48)]]), fill=255)   # the hand, open
-    for k in range(3):
-        limb(m, [P((97 + k * 6, 48)), P((96 + k * 6.5, 58 + (k % 2) * 3))], 5 * s, 4 * s)                    # its fingers
-    return m
-
-
-# The hero: a dark flat cap, brown hair down to his collar, a Mediterranean tan, three days' beard, a long charcoal
-# coat with its collar up, a grey knit scarf, the strap of his satchel across his chest (generate_assets.py CHARS
-# 'player'). Seen as a silhouette, or in profile with a light on part of his face.
 def head_hero_side(cv, t, pal):
     """Him in profile, facing right (f -1: left), lit from in front of his face (a street lamp through a windscreen):
     the cap's peak throws its shadow over his eyes, the light takes the nose, the mouth, the beard along the jaw; the

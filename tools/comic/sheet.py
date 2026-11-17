@@ -12,28 +12,37 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image  # noqa: E402
 
-from comic.anatomy import FIST, OPEN, PINCH, RELAXED, Hand, flat, grip  # noqa: E402
+from comic.anatomy import FIST, OPEN, PINCH, RELAXED, Hand, flat, grip, stance  # noqa: E402
 from comic.cast import BOSS, HEAVY, HERO, SLICK, YOUNG, Figure, Light, hand_parts  # noqa: E402
 from comic.kit import Cv, hx  # noqa: E402
 from comic.solid import Scene, Xf, frame, ypr  # noqa: E402
 
 BG = hx('#2a2440')
-LIGHT = Light(key=(255, 238, 214), fill=(120, 104, 170))
-KEY = (-0.45, -0.55, 0.7)
+LIGHT = Light(key=(255, 238, 214), fill=(120, 104, 170), deep=1.0)
+KEY = (-0.7, -0.45, 0.55)
 RIMS = [((0.9, -0.2, -0.45), hx('#ff5a8a'), 0.72)]
 
 
 def tile(w, h, paint, scale):
     cv = Cv(w, h, BG)
-    sc = Scene(w, h, light=KEY, rims=RIMS, scale=scale, rim_px=2)
+    sc = Scene(w, h, light=KEY, rims=RIMS, scale=scale, rim_px=2, blacks=-0.05, simplify=5 if scale > 0.8 else 3)
     paint(sc)
     sc.render(cv)
     return cv.im
 
 
+def posed(who, k, bare=False):
+    """The character at ease, his weight on one leg (k: which way round), his head turned a little."""
+    pose = stance('l' if k else 'r', turn=8 if k else -6)
+    sg = 1 if k else -1
+    pose.update(wrist_l=(80, -372, 22 + 14 * sg), wrist_r=(-82, -380, 14 - 10 * sg), elbow_l=(0.4, 0, -1),
+                elbow_r=(-0.4, 0, -1))
+    return Figure(who, pose=pose, bare=bare, face=dict(gaze=(1.0 * sg, 0.0)))
+
+
 def figure_tile(who, yaw, bare=False):
     s = 0.4
-    return tile(150, 330, lambda sc: Figure(who, bare=bare).add(sc, Xf(75, 318, s, ypr(yaw)), LIGHT), s)
+    return tile(150, 330, lambda sc: posed(who, yaw > 0, bare).add(sc, Xf(75, 318, s, ypr(yaw)), LIGHT), s)
 
 
 def head_tile(who, yaw, bare=False):

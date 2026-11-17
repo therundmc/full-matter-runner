@@ -1,10 +1,10 @@
 // The opening, told as a comic in the game's one art direction (neon noir: people as black shapes rimmed with neon,
-// the night's blues and purples, the print a little off register like the title; tools/generate_comic.py paints the
+// the night's blues and purples, flat shades and a dark ink line; tools/generate_comic.py paints the
 // stills, ui/cine/Page.js lays the pages out, ui/cine/Panels.js frames them and moves what moves in them), slowly
 // enough to be read. He ran packages for the boss of the bar for six years and kept every dollar under his floor, to
 // leave town in the morning. Page one, his last night: he sleeps, his suitcase packed by the door; the boss's three
 // men force his front door. Page two, what they came for: the heavy one's crowbar under his floorboards, his tin box,
-// the young one riffling the money, the heavy one soaking his sofa in petrol ("NO LOOSE ENDS."). Page three: the one
+// the slick one riffling the money, the heavy one soaking his sofa in petrol ("NO LOOSE ENDS."). Page three: the one
 // with the slicked hair strikes a match ("TORCH IT. HE'S IN THE BACK ROOM."); the fire comes in under his door; his eye
 // opens. Then a moment of black and the tutorial's card (Game state 'intro'), where the man with the match lights the
 // flat as he walks in. Everything is a function of t (s since NEW GAME): cineView() is the timeline as plain numbers

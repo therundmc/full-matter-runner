@@ -66,12 +66,12 @@ def brick(light, thick=12.0, length=NOTE_W, width=NOTE_H):
             # the notes' edges, a few layers marked; paper never goes black
             lv = 'shade' if level == 'deep' else level
             k = z / thick
-            if any(abs(k - c) < 0.04 for c in (0.22, 0.5, 0.74)):
+            if face in ('x0', 'x1') and any(abs(k - c) < 0.04 for c in (0.22, 0.5, 0.74)):
                 return t['dark'][lv]
             return t['paper'][lv]
         return t['green'][level]
     m = box(-Wd / 2, -L / 2, 0.0, Wd / 2, L / 2, thick, attr=attr)
-    return m, Skin(t['green']['lit'], t['green']['shade'], t['green']['deep'], tex=tex, t_lit=-0.15)
+    return m, Skin(t['green']['lit'], t['green']['shade'], t['green']['deep'], tex=tex, t_lit=-0.15, blacks=False)
 
 
 def riffled(light, n=5, lift=30.0, length=NOTE_W, width=NOTE_H):
@@ -99,7 +99,7 @@ def riffled(light, n=5, lift=30.0, length=NOTE_W, width=NOTE_H):
         if abs(v - 0.5) < 0.085:
             return t['green'][level]
         return note_print(t, v, u, level) or t['green'][level]
-    return merge(meshes), Skin(t['green']['lit'], t['green']['shade'], t['green']['deep'], tex=tex, t_lit=-0.25)
+    return merge(meshes), Skin(t['green']['lit'], t['green']['shade'], t['green']['deep'], tex=tex, t_lit=-0.25, blacks=False)
 
 
 def torch(light, on=True):
