@@ -831,9 +831,11 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 
 ## Debug
 
-- `?level=lab` loads the physics lab (tools/build_lab.py): a station per system, its name stencilled on the floor (range,
-  executions, soot, powder, steam, liquids, curtain and bars, pool lamp, power / jukebox / trapdoor), a street with the
-  vehicles; passive dummies but two `awake` guards for the sight tests.
+- `?level=lab` loads the physics lab (tools/build_lab.py): a lit concourse with the range at its west end and a bay or
+  room per system on either side, its number and name stencilled on the floor at its entrance (1 range, 2 executions,
+  3 soot, 4 pool, 5 bars, 6 curtain, 7 jukebox, 8 trapdoor, 9 powder, 10 steam, 11 power, 12 liquids, 13 vehicles in
+  the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
+  `awake` guards for the sight tests.
 - `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,
   prop, vehicle, blast, water; same key or mouse wheel = next variant), B rotates, F / middle click drops it at the

@@ -377,7 +377,8 @@ class Level:
                 assert self.tiles[y][x] not in 'DL', f'{kind} at {col},{row} hangs across the doorway at {x},{y}'
 
     # ---- output: src/game/data/levels/<module>.js
-    def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None, objective=None):
+    def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None, objective=None,
+              light=None):
         assert not (self.tutorial and (self.cut_x or self.cut_y)), 'a tutorial is not moved by the cuts'
         # what the builder hands over in its own coordinates
         if exit:
@@ -525,6 +526,9 @@ class Level:
             L.append('  lights: [')
             L += [f'    {js(l)},' for l in lights]
             L.append('  ],')
+        if light:
+            L.append('  // night tint per area over LIGHTING.ambient (render/Lighting.js ambientOf)')
+            L.append(f'  light: {js(light)},')
         if ambient:
             L.append('  // street life (systems/Ambient.js): traffic lanes and passers-by')
             L.append('  ambient: {')
