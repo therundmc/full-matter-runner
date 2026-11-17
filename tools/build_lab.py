@@ -38,7 +38,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
      2 EXECUTIONS  ten men facing the north wall, their backs to the lane; a weapon on the floor behind each (knife,
                    bat, tire iron, cue, nothing: fists, 1911, Uzi, M16, SUPER 90, .50 CAL): left click behind one
      3 SOOT        a closed room (a door, a window on the concourse) with two gas bottles: the soot hangs and drifts out
-     4 POOL        a man at the pool table under its lamp: shoot the chains
+     4 POOL        a man bent over the pool table, its balls to send rolling (a round, a blow, a body into it)
      5 BARS        the pool room's barred window on the concourse
      6 CURTAIN     a velvet curtain in the VIP room's doorway, a man (awake) behind it facing it
      7 JUKEBOX     a jukebox (E) in a niche

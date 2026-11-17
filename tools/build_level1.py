@@ -424,7 +424,7 @@ lv.prop('plant', 17.85, 19.55)                          # in the corner by the w
 lv.prop('extinguisher', 23.88, 14.5, 90)                # on the gaming room's wall
 
 lv.area('the bar: the gaming room')
-# 5 x 4 m behind its door: poker under a green-shaded lamp (shoot its chain...), the dealer at the west end with the
+# 5 x 4 m behind its door: poker under a green-shaded lamp, the dealer at the west end with the
 # house's pistol, his players across from the boss's door (kept clear: one comes in from the back room), an empty
 # chair at the east end, the money in its case, the bottles on a shelf; the window's foot on the gap left clear.
 lv.prop('card_table', 26.9, 14.25, clutter='poker')

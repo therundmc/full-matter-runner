@@ -53,7 +53,6 @@ import PropPhysics from '../systems/PropPhysics.js';
 import Uses from '../systems/Uses.js';
 import Slips from '../systems/Slips.js';
 import Sprinklers from '../systems/Sprinklers.js';
-import LampDrop from '../systems/LampDrop.js';
 import Passage from '../systems/Passage.js';
 import Jukebox from '../systems/Jukebox.js';
 import GasValve from '../systems/GasValve.js';
@@ -149,7 +148,6 @@ export default class World {
     this.uses = new Uses();                                 // the spots E works at (HUD hint, Player.nearUse)
     this.slips = new Slips(this);                           // running on a slick floor (a holed keg's beer)
     this.sprinklers = new Sprinklers(this, level.sprinklers); // the fire alarm: bell, rain, a slick floor, panic
-    this.lampDrop = new LampDrop(this);                     // a hung lamp shot down onto whoever is under it
     this.passage = new Passage(this, level.passage);       // the trapdoors and the way under the street
     this.jukebox = new Jukebox(this);                       // turned up, it drowns the small noises
     this.gasValve = new GasValve(this);                     // a stove's tap left open, and the spark
@@ -521,7 +519,6 @@ export default class World {
     this.fires.update(dt);
     this.slips.update();
     this.sprinklers.update(dt);
-    this.lampDrop.update(dt);
     this.jukebox.update(dt);
     this.gasValve.update(dt);
     this.poolBalls.update(dt);

@@ -1,8 +1,6 @@
 // Hit-scan queries: what a bullet segment hits first, and who can see whom.
 import { segPoly, segCircle, segSeg } from '../../engine/physics/Raycast.js';
 
-const LAMP_LOOK = 96; // px past a step's end a lamp hung over the table it struck is looked for
-
 // Nearest thing hit by the segment (x0,y0)->(x1,y1).
 // Returns { t, kind, x, y, target?, part?, nx?, ny?, cx?, cy? } or null.
 // kind: wall | char | prop | door | glass | corpse | item | debris
@@ -31,19 +29,7 @@ export function traceBullet(world, x0, y0, x1, y1, team, ignore, floor = null) {
       if (r) best = { t: r.t, kind, target: o, nx: r.nx, ny: r.ny };
     }
   };
-  test(world.props, 'prop', (p) => !p.dead);
-  // a lamp hung over a table (def `drops`: the pool table's) lies wholly over it, so the table's edge would always take
-  // the round first: one that strikes the table where the lamp hangs over it flies over into the lamp (systems/LampDrop.js).
-  // The lamp may lie past the end of this step's segment (k: how far it is looked along, in segments)
-  if (best?.kind === 'prop' && !best.target.def.hung) {
-    const k = 1 + LAMP_LOOK / Math.max(1, Math.hypot(x1 - x0, y1 - y0)), ex = x0 + (x1 - x0) * k, ey = y0 + (y1 - y0) * k;
-    for (const q of world.props) {
-      if (q.dead || !q.def.drops || ignore.has(q)) continue;
-      const r = segPoly(x0, y0, ex, ey, q.body.vertices);
-      const at = r && { x: x0 + (ex - x0) * r.t, y: y0 + (ey - y0) * r.t };
-      if (at && Matter.Vertices.contains(best.target.body.vertices, at)) best = { t: r.t * k, kind: 'prop', target: q, nx: r.nx, ny: r.ny };
-    }
-  }
+  test(world.props, 'prop', (p) => !p.dead && !p.def.high); // rounds go under the light fittings (def `high`)
   test(world.doors, 'door', () => true);
   test(world.windows, 'glass', (g) => g.intact);
   // the body shot at on purpose: every ragdoll part can be hit
@@ -75,7 +61,8 @@ export function lineOfSight(world, x0, y0, x1, y1) {
 }
 
 // How much of a blast travels from (x0,y0) to (x1,y1): 0 = fully blocked, 1 = open air.
-// Walls block everything, closed doors and heavy furniture soak most of it, intact glass a little.
+// Walls block everything, closed doors and heavy furniture soak most of it, intact glass a little; what hangs or is
+// mounted up high (def `hung`, `high`) lets it by.
 // `target` (an entity or { cx, cy } wall tile) and `origin` (what blew up) never count as obstacles.
 export function occlusion(world, x0, y0, x1, y1, target = null, origin = null) {
   const wall = world.map.raycast(x0, y0, x1, y1);
@@ -87,7 +74,7 @@ export function occlusion(world, x0, y0, x1, y1, target = null, origin = null) {
     if (segSeg(x0, y0, x1, y1, s.x0, s.y0, s.x1, s.y1) !== null) f *= 0.3;
   }
   for (const p of world.props) {
-    if (p === target || p === origin || p.dead || p.def.hung || !(p.isVehicle || p.def.static || p.def.blocksPath)) continue;
+    if (p === target || p === origin || p.dead || p.def.hung || p.def.high || !(p.isVehicle || p.def.static || p.def.blocksPath)) continue;
     if (segPoly(x0, y0, x1, y1, p.body.vertices)) f *= 0.4;
   }
   for (const g of world.windows) {

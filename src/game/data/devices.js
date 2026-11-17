@@ -1,8 +1,7 @@
 // The things of a level that change the situation, used (E) or broken: the bar's fire alarm and its sprinklers,
-// the pool table's lamp, the stove's gas tap (a level's option, none in level 1), the jukebox turned up,
-// the beer kegs and the floor they leave slippery, the passage under the street.
-// Tuning only: the rules are in systems/Uses.js (what E does where), Sprinklers, Slips, LampDrop, Passage,
-// Jukebox, GasValve. Distances in px unless noted (1 m = 32 px), times in s.
+// the stove's gas tap (a level's option, none in level 1), the jukebox turned up, the beer kegs and the floor they
+// leave slippery, the passage under the street.
+// Tuning only: the rules are in systems/Uses.js (what E does where), Sprinklers, Slips, Passage, Jukebox, GasValve. Distances in px unless noted (1 m = 32 px), times in s.
 
 // what E reaches: a spot is used from within `reach` of it (its own `r` when it has one)
 export const USE = { reach: 24 };
@@ -31,11 +30,6 @@ export const SPRINKLERS = {
   drops: 3,            // drops a head throws a step (particles)
   late: [0.3, 1.6],    // s before each head lets go once the alarm is on
 };
-
-// The pool table's lamp (prop def `drops`): a round through its chain and it comes down, `fall` s from the ceiling to
-// the table; whoever is within its footprint grown by `reach` [along, across] is crushed. It lands `shove` px along
-// the round that cut it.
-export const LAMP_DROP = { fall: 0.32, reach: [12, 36], shove: 10 }; // 36: it gets the man bent over the table's long side
 
 // The stove's gas tap (prop option `valve`): open (E), the room fills: the cloud reaches `radius` px in `fill` s;
 // a spark in it (a shot, a blast, a fire, metal struck by a round) blows it all: `blast` px at the stove plus

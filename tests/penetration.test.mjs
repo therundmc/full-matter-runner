@@ -75,25 +75,3 @@ test('ballistics: rounds fly over the dead, except the body the shooter aims dow
   other.dead = true;
   assert.equal(shoot(other).target, guard);
 });
-
-test('ballistics: a lamp hung over a table is reached over the table, other hung things are not', async () => {
-  const { traceBullet } = await load('game/systems/Ballistics.js');
-  const table = { dead: false, def: {}, body: Matter.Bodies.rectangle(90, mid, 80, 44) };
-  const lamp = { dead: false, def: { hung: true, drops: true }, body: Matter.Bodies.rectangle(90, mid, 44, 10) };
-  const world = { map: map(), chars: [], props: [table, lamp], doors: [], windows: [], items: [], debris: [], corpses: [] };
-  const shoot = (y = mid) => traceBullet(world, 40, y, 150, y, 'player', new Set());
-  assert.equal(shoot().target, lamp, 'through the lamp: it takes the round');
-  assert.equal(shoot(mid + 15).target, table, 'beside the lamp: the table');
-  lamp.def = { hung: true };
-  assert.equal(shoot().target, table, 'a tap or a ceiling lamp over it does not');
-});
-
-test('ballistics: a round whose step ends inside the table still finds the lamp hung over it', async () => {
-  const { traceBullet } = await load('game/systems/Ballistics.js');
-  const table = { dead: false, def: {}, body: Matter.Bodies.rectangle(90, mid, 80, 44) };
-  const lamp = { dead: false, def: { hung: true, drops: true }, body: Matter.Bodies.rectangle(90, mid, 44, 10) };
-  const world = { map: map(), chars: [], props: [table, lamp], doors: [], windows: [], items: [], debris: [], corpses: [] };
-  const hit = traceBullet(world, 40, mid, 60, mid, 'player', new Set());
-  assert.equal(hit.target, lamp);
-  assert.ok(Math.abs(hit.x - 68) < 0.5, 'struck at its own edge');
-});

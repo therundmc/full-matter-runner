@@ -1,4 +1,4 @@
-// The level's devices (data/devices.js): what E reaches, the slick floor, the fire alarm, the falling lamp, the passage,
+// The level's devices (data/devices.js): what E reaches, the slick floor, the fire alarm, the passage,
 // the jukebox, the gas tap. Each on a stub world (no DOM, no canvas).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,6 @@ const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Uses } = await load('game/systems/Uses.js');
 const { default: Slips, slips } = await load('game/systems/Slips.js');
 const { default: Sprinklers, heads } = await load('game/systems/Sprinklers.js');
-const { default: LampDrop, under } = await load('game/systems/LampDrop.js');
 const { default: Passage, darkAt } = await load('game/systems/Passage.js');
 const { default: Jukebox, masked } = await load('game/systems/Jukebox.js');
 const { default: GasValve, reach } = await load('game/systems/GasValve.js');
@@ -149,36 +148,6 @@ test('sprinklers: a blast in the rooms sets them off, a fire in them too', () =>
   const sp2 = new Sprinklers(w2, { pull: [24, 12.07], rooms: [[15, 12, 28, 19]] });
   step(w2, [sp2], 0.1);
   assert.equal(sp2.on, true);
-});
-
-test('lamp drop: a round through its chains brings it down on whoever is under it, a kill for the shooter', () => {
-  assert.ok(under(10, 30, 0, 0, 0, 44, 10, [12, 28]));
-  assert.ok(!under(10, 40, 0, 0, 0, 44, 10, [12, 28]));
-  assert.ok(under(30, 10, 0, 0, Math.PI / 2, 44, 10, [12, 28]), 'turned with it');
-  const shooter = { isPlayer: true };
-  const kills = [];
-  const man = (x, y) => ({ alive: true, x, y, kill(a, cause, killer, by, how) { this.alive = false; kills.push({ cause, killer, how }); } });
-  const under1 = man(800, 420), away = man(800, 500);
-  const table = { x: 800, y: 400, dead: false, def: {}, hits: 0, hit() { this.hits++; } };
-  const body = globalThis.Matter.Bodies.rectangle(800, 400, 44, 10, { isStatic: true });
-  const lamp = { get x() { return body.position.x; }, get y() { return body.position.y; }, W: 44, H: 10, def: PROPS.pool_lamp, kick: { vr: 0 }, rec: {}, body,
-    broke: 0, break() { this.broke++; } };
-  const w = world({ chars: [under1, away], props: [lamp, table], lastShot: { owner: shooter } });
-  const ld = new LampDrop(w);
-  w.events.emit('propHit', { prop: table, dirA: 0, kind: 'bullet' });
-  assert.equal(ld.falls.length, 0, 'only what hangs by chains');
-  w.events.emit('propHit', { prop: lamp, dirA: Math.PI / 2, kind: 'blunt' });
-  assert.equal(ld.falls.length, 0, 'a blow swings it');
-  w.events.emit('propHit', { prop: lamp, dirA: Math.PI / 2, kind: 'bullet' });
-  assert.ok(lamp.falling && lamp.sputter);
-  step(w, [ld], 0.5);
-  assert.equal(lamp.falling, null);
-  assert.equal(lamp.lightsOut, true);
-  assert.equal(lamp.broke, 1);
-  assert.equal(table.hits, 1, 'the table takes the blow');
-  assert.equal(under1.alive, false);
-  assert.equal(away.alive, true);
-  assert.deepEqual(kills, [{ cause: 'melee', killer: shooter, how: { crushed: true } }]);
 });
 
 test('passage: E at one trapdoor, dark, hidden, out of the other one', () => {

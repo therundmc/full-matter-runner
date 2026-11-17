@@ -88,8 +88,6 @@ src/
       Sprinklers.js       the fire alarm (level `sprinklers`): pulled (E) or set off by a fire or a blast in its rooms:
                           the bell, the heads raining on the floor (Liquids.sprinkle: a soaked, slick floor), fires
                           doused, panic
-      LampDrop.js         a hung lamp whose chains a round cuts (prop def `drops`): it falls (`hang`) and crushes whoever
-                          is under it (`how.crushed`, tag LIGHTS OUT), its light dies, the table takes the blow
       Passage.js          two trapdoors (level `passage`): E, the picture goes dark (HUD), up out of the other one; the
                           player is `hidden` meanwhile, the guards know nothing of it
       Jukebox.js          E turns it up: loud for a while (its own band stays off), small noises around it lost for the guards
@@ -423,6 +421,9 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
     `wreck`: dulled, edges bitten) so they never read as live furniture, and a patch of grime and crumbs
     (`DamageArt.remains`) is baked where the object stood.
   - Melee blows carry their kind from `Character.meleeStrike`: 'cut' (blade, with its swing direction), 'punch', 'blunt'.
+  - Light fittings up high (prop def `high`: ceiling, pool and wall lamps, tubes, neons and signs, the fan, the mirror
+    ball, string lights, a streetlight): rounds, blows and anything thrown go under them (`traceBullet`, `meleeStrike`,
+    `Prop.hit`); only a blast breaks them (Explosions: 'blast' / 'shrapnel').
   Only small objects are movable; everything else is `static` (bolted).
   - Sprite space is in world px whatever the sprite's density: the furniture, the street's dressing and the vehicles
     are painted at twice the world's density (engine/Assets.js `density`, tools/generate_assets.py FINE_PROPS), so
