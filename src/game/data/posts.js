@@ -5,7 +5,8 @@
 // A script:
 //   body   how he is at it: 'stand' (default) | 'seat' (on a sofa or an armchair, slumped, legs out) | 'desk' (in his
 //          armchair, leaning back, both feet up on the desk, ankles crossed) | 'wall' (his back flat against the wall
-//          behind his post, a sole up on it)
+//          behind his post, a sole up on it) | 'hood' (his backside against a parked car by its hood, half sat, the
+//          ankles crossed out in front: HOOD)
 //   seat   the furniture he sits on: the nearest prop of type `prop`, places [x, y, side] in its own px frame (one man
 //          each, the free one nearest his post; side -1: his gestures mirrored, the other arm along the backrest)
 //          facing `face` (deg, in that frame)
@@ -17,13 +18,16 @@
 //   stay   all calm, he never leaves it for another pastime (a chat, a cigarette, a leak...)
 //   gaze   his eyes follow a stranger coming near in front of him (a doorman)
 //   walk   a patrol: how he carries his hands on his round ('pockets'); his acts are played at the halts
+//   open   { act, phase, odds }: with those odds the level opens on him at that act, from that phase (somewhere into
+//          it), already in place (a patrol caught at a halt)
 //   acts   short sequences of phases, picked at random by weight `w` (a number, or one per seat taken: [first, second])
 //          never twice in a row unless alone; `cue`: played only when asked (Routine.cue: a nod, a laugh)
 // A phase:
 //   g      gesture (ai/Pastimes.js GESTURES or a render/PastimeArt.js pastime)
 //   dur    [min, max] s
 //   at     where it is done: 'post' (his seat for a seated job) | 'here' (where he stands) | 'toilet' |
-//          'wall' (the nearest wall, to relieve himself) | 'car' (beside the nearest parked vehicle) | 'stool' (behind the counter, in
+//          'wall' (the nearest wall, to relieve himself) | 'car' (beside the nearest parked vehicle) | 'hood' (his back
+//          to the nearest parked car's hood, off the road: ai/Pastimes.js hoodSpot) | 'stool' (behind the counter, in
 //          front of a customer at it) | 'pool' (another side of the pool table) | any other prop type: in front of the
 //          nearest one ('sink', 'fridge'). Left out: where the phase before was done (the post for an act's first). A
 //          phase whose spot cannot be found is skipped
@@ -56,15 +60,22 @@ export const POSTS = {
     },
   },
   // a patrol on the sidewalk: hands in his pockets on the way; at a halt he lights up cupping the flame, looks into
-  // a parked car, kicks a can down the pavement
+  // a parked car, kicks a can down the pavement, or sits back against the hood of a parked car for a smoke (the
+  // level sometimes opens on him there)
   beat: {
     walk: 'pockets',
+    open: { act: 'hood', phase: 1, odds: 0.5 },
     acts: {
       smoke: { w: 2, phases: [{ g: 'light', dur: [1.6, 2.2], fx: 'flame', sound: ['click', 0.15, 0.2, 1.6] },
         { g: 'smoke', dur: [5, 8] }, { g: 'flick', dur: [0.5, 0.6], fx: 'butt' }] },
       car: { w: 1.5, phases: [{ g: 'peer', at: 'car', dur: [2.5, 4] }] },
       kick: { w: 1, phases: [{ g: 'kick', dur: [0.8, 1], fx: 'can' }] },
       watch: { w: 0.7, phases: [{ g: 'wrist', dur: [2.4, 2.6] }] },
+      hood: { w: 2, phases: [
+        { g: 'light', at: 'hood', body: 'hood', dur: [1.6, 2.2], fx: 'flame', sound: ['click', 0.15, 0.2, 1.6] },
+        { g: 'hood', body: 'hood', dur: [10, 16], look: 'glance' },
+        { g: 'flick', body: 'hood', dur: [0.5, 0.6], fx: 'butt' },
+      ] },
     },
   },
   // the bartender: polishes glasses; takes a bottle off the back bar, pours, slides the glass to a customer on a
@@ -232,6 +243,11 @@ export const POSTS = {
     },
   },
 };
+
+// Leaning on a parked car (body 'hood', at 'hood'): gap: px between his body's circle and the car's bodywork (its
+// hitbox is 2 px inside it); reach: px from him the car may be; settle: s to back onto it and settle, off: s to push
+// off it (he can move meanwhile); turned: rad he must be square to the spot's way before he sits back
+export const HOOD = { gap: 2, reach: 128, settle: 0.7, off: 0.3, turned: 0.5 };
 
 // what is in his hands when it all kicks off, and what becomes of it (Enemy.dropHeld): broken glass and a splash of
 // drink, a cigarette end smoking on the floor (a cigar may stay clamped in his teeth: `keep` odds), a magazine sliding

@@ -56,7 +56,7 @@ test('pastimes: a drag then a breath of smoke, a chat turn about, a stretch, a c
 
 test('pastimes: every kind puts both hands somewhere', () => {
   for (const kind of ['pool', 'cue', 'cards', 'count', 'drink', 'watch', 'dance', 'smoke', 'phone', 'talk', 'listen', 'cross',
-    'piss', 'stretch', 'wrist', 'pockets', 'bag', 'wipe']) {
+    'piss', 'stretch', 'wrist', 'pockets', 'bag', 'wipe', 'hood']) {
     for (const t of [0, 0.7, 3.1, 9.4]) {
       const h = pastimeHands(kind, t, 0.4);
       assert.ok(h && [h.hl.x, h.hl.y, h.hr.x, h.hr.y].every((v) => Number.isFinite(v) && Math.abs(v) < 14), kind);
@@ -106,8 +106,8 @@ const { POSTS, HELD } = await load('game/data/posts.js');
 const { Routine, GESTURES, seatPlace, frontOf, sideOf, wallBehind, poolSpots } = await load('game/ai/Pastimes.js');
 const { BARKS } = await load('game/data/barks.js');
 
-const BODIES = ['stand', 'seat', 'desk', 'wall'];
-const SPOTS = ['post', 'here', 'toilet', 'sink', 'fridge', 'wall', 'car', 'stool', 'pool'];
+const BODIES = ['stand', 'seat', 'desk', 'wall', 'hood'];
+const SPOTS = ['post', 'here', 'toilet', 'sink', 'fridge', 'wall', 'car', 'stool', 'pool', 'hood'];
 const LOOKS = ['sweep', 'glance', 'dance', 'back'];
 const FX = ['ember', 'cloud', 'ash', 'flame', 'butt', 'stream', 'tap', 'can', 'stroke', 'deal', 'chip', 'slide', 'strike', 'match',
   'drop', 'junk', 'cold'];

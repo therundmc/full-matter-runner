@@ -32,6 +32,11 @@ export function pastimeHands(kind, t, seed) {
       const k = drag(t, seed);
       return { hl: { x: 5.5, y: -6 }, hr: { x: 6.5 - k * 0.5, y: 5.5 - k * 4 } };
     }
+    case 'hood': {
+      // leant back on a car: the left hand flat on the hood behind his hip, the cigarette in the right
+      const k = drag(t, seed);
+      return { hl: { x: -7, y: -8 }, hr: { x: 5 - k * 0.5, y: 6.5 - k * 5 } };
+    }
     case 'phone': return { hl: { x: 5.5, y: -6 }, hr: { x: 7, y: 1.5 } };
     case 'talk': {
       // talking with his hands
@@ -79,7 +84,7 @@ function stick(ctx, x0, y0, x1, y1, w, color) {
 }
 
 const BAGS = ['#7a4a2a', '#2c3a52', '#5a5248'];
-const PROPS = new Set(['pool', 'cue', 'cards', 'count', 'drink', 'smoke', 'phone', 'piss', 'bag', 'wipe']);
+const PROPS = new Set(['pool', 'cue', 'cards', 'count', 'drink', 'smoke', 'hood', 'phone', 'piss', 'bag', 'wipe']);
 
 function box(ctx, x, y, w, h, color) {
   ctx.fillStyle = PALETTE.ink; ctx.fillRect(x - w / 2 - 0.7, y - h / 2 - 0.7, w + 1.4, h + 1.4);
@@ -112,7 +117,7 @@ export function drawPastime(ctx, ch, kind, t) {
   } else if (kind === 'count') {
     box(ctx, h.hl.x + 1.5, h.hl.y, 3.4, 2.4, '#5a8a4a');
     ctx.fillStyle = '#86b070'; ctx.fillRect(h.hr.x + 0.5, h.hr.y - 0.8, 2.6, 1.6);
-  } else if (kind === 'smoke') {
+  } else if (kind === 'smoke' || kind === 'hood') {
     // the cigarette between two fingers, its ember brighter on a drag (its smoke is the air's: systems/Smoke.js)
     const k = drag(t, ch.seed), x = h.hr.x + 1.4 - 2.4 * k, y = h.hr.y; // brought back to the lips on a drag
     ctx.fillStyle = '#e8e2d2'; ctx.fillRect(x, y - 1.6, 2.6, 1);

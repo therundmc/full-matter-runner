@@ -1,4 +1,4 @@
-import { PLAYER, TAKEDOWN, BODY_SCALE, TILE } from '../Config.js';
+import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
 import { WEAPONS, AMMO } from '../data/weapons.js';
 import { rand, chance, angDiff } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
@@ -9,11 +9,12 @@ import Character from './Character.js';
 import WeaponItem from './WeaponItem.js';
 import { findVault } from '../systems/Cover.js';
 import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
+import { kickReady, kickTarget, standing, throwSpeed } from '../systems/Kick.js';
 import { behind, newTakedown, advance, slamAt } from '../systems/Takedown.js';
 import { lungeTarget } from '../systems/Lunge.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherFor, takedownFor, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
-import { MOMENTS, GESTURE, TRAVERSE } from '../data/feel.js';
+import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX } from '../data/feel.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { splashWall } from '../fx/Spatter.js';
@@ -21,7 +22,8 @@ import { SLIP } from '../data/devices.js';
 import { blowFx } from '../fx/Blows.js';
 import { landMoment } from '../fx/Impact.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
-import { slideFx } from '../fx/TraversalFx.js';
+import { slideFx, landFx } from '../fx/TraversalFx.js';
+import { combatFx } from '../fx/CombatFx.js';
 import { smooth } from './CharacterAnim.js';
 
 const { Body, Query } = Matter;
@@ -54,6 +56,8 @@ export default class Player extends Character {
     this.stamina = 1;       // 0..1: what slides cost (PLAYER.slide.cost), back with time
     this.winded = 0;        // s left of the HUD flash after a slide refused for lack of it
     this.slideHits = new Set(); // loose bodies already shoved by the current slide
+    this.slideEnd = { t: -9, a: 0 }; // when the last slide ended and its way (a kick may still come out of it)
+    this.kick = null;       // the kick out of a slide's end (startKick): { target, a, t, v, side, landed, planted, hitAt }
     this.shootDown = null;  // the corpse under the crosshair when firing (rounds fly over the others)
     // spare rounds per caliber
     this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
@@ -117,6 +121,9 @@ export default class Player extends Character {
     if (lg && w.time >= lg.until) this.lunge = null;
     else if (lg) this.angle = lg.a;
     if (this.updateVault(dt)) return;
+    if (this.kick) { this.updateKick(dt); return; }
+    // a guard just ahead as the slide's get-up begins: the kick still comes
+    if (!this.slide && this.slideAnim && this.tryKick(this.slideEnd.a, null, w.time - this.slideEnd.t)) return;
 
     // movement (KeyW/A/S/D are physical positions: ZQSD on AZERTY)
     let dx = 0, dy = 0;
@@ -462,6 +469,8 @@ export default class Player extends Character {
       this.tryVault(sl.angle);
       return;
     }
+    // the end of it, a standing guard just ahead: up into a kick
+    if (this.tryKick(sl.angle, sl.k)) return;
     if (sl.speed >= cfg.knockSpeed * sl.run) {
       for (const e of w.enemies) {
         if (!e.alive || e.knocked > 0) continue;
@@ -475,6 +484,7 @@ export default class Player extends Character {
     const v = Body.getVelocity(this.body);
     sl.step(dt, v.x * sl.dx + v.y * sl.dy);
     if (sl.done) {
+      if (this.tryKick(sl.angle, sl.k, 0, sl.stalled)) return; // stopped short by him, or at its very end
       if (sl.stalled) w.shake(0.08);
       this.endSlide();
       return;
@@ -495,6 +505,7 @@ export default class Player extends Character {
   endSlide() {
     const sl = this.slide;
     this.slide = null;
+    this.slideEnd.t = this.world.time; this.slideEnd.a = sl.angle;
     this.slideCd = PLAYER.slide.cooldown;
     this.vel = { x: sl.dx * sl.speed, y: sl.dy * sl.speed };
     Body.setVelocity(this.body, this.vel);
@@ -508,6 +519,93 @@ export default class Player extends Character {
     const down = this.slipped && this.slipped.t < SLIP.player.slide; // flat on his back on a slick floor (slip)
     if (this.slide || down) { if (this.slide) a.k = this.slide.k; a.w = Math.min(1, a.w + dt / (down ? 0.08 : 0.07)); a.out = 0; }
     else if ((a.out = Math.min(1, (a.out ?? 0) + dt / TRAVERSE.slide.rec)) >= 1) this.slideAnim = null;
+  }
+
+  // ---------------- the kick out of a slide (systems/Kick.js, PLAYER.slide.kick, TRAVERSE.kick) ----------------
+  // At the end of a slide (k: its progress, null once it is over, `since` s ago; stalled: stopped short), a standing
+  // guard just ahead along a: up into the kick. Whether it started.
+  tryKick(a, k, since = 0, stalled = false) {
+    const K = PLAYER.slide.kick, w = this.world;
+    if (!kickReady(k, since, K, stalled)) return false;
+    const e = kickTarget(this.x, this.y, a, w.enemies, K, (g) => w.lineOfSight(this.x, this.y, g.x, g.y));
+    if (!e) return false;
+    this.startKick(e);
+    return true;
+  }
+
+  // up out of the slide, the lead knee drawn up, the leg driven out at his head: the slide's way carried on up to him,
+  // planted at the contact (landKick), then a step on (the pose: CharacterAnim kickPose)
+  startKick(target) {
+    const sl = this.slide, w = this.world;
+    const v = sl ? sl.speed : Math.hypot(this.vel.x, this.vel.y);
+    if (sl) {
+      this.slide = null;
+      this.slideEnd.t = w.time; this.slideEnd.a = sl.angle;
+      this.slideCd = PLAYER.slide.cooldown;
+    }
+    // side: the slide's (its palm's side: the lead leg, the one that kicks, is on the other)
+    this.kick = { target, a: Math.atan2(target.y - this.y, target.x - this.x), t: 0, v, side: this.slideAnim?.side ?? 1,
+      landed: false, planted: false, hitAt: null };
+    this.swing = 0;
+    this.reloading = 0;
+    w.sound('kickWhoosh', this.x, this.y, 0.8); // placeholder (PLACEHOLDERS.md)
+  }
+
+  updateKick(dt) {
+    const k = this.kick, T = TRAVERSE.kick, K = PLAYER.slide.kick, w = this.world, tg = k.target;
+    k.t += dt;
+    const u = Math.min(1, k.t / T.dur), hitT = T.hit * T.dur;
+    let sp = 0;
+    if (!k.landed) {
+      // on toward him, square to him, to the kick's distance by the contact
+      if (standing(tg)) k.a = Math.atan2(tg.y - this.y, tg.x - this.x);
+      const left = Math.max(1 / 60, hitT - k.t), d = Math.hypot(tg.x - this.x, tg.y - this.y) - K.gap;
+      sp = Math.max(0, Math.min(k.v, d / (left * 60)));
+    } else if (u > T.hold) sp = k.v * 0.35 * Math.sin(Math.PI * Math.min(1, (u - T.hold) / (1 - T.hold))); // the step on
+    this.vel = { x: Math.cos(k.a) * sp, y: Math.sin(k.a) * sp };
+    Body.setVelocity(this.body, this.vel);
+    if (!k.landed && k.t >= hitT) this.landKick();
+    if (!k.planted && u >= T.plant) {
+      // the kicking foot set down a step ahead
+      k.planted = true;
+      w.sound('landThud', this.x, this.y, 0.5, { floor: w.floorAt(this.x, this.y) });
+      landFx(this, k.a, TRAVERSE_FX.kick.land);
+    }
+    if (u >= 1) { this.kick = null; this.cooldown = 0.1; }
+  }
+
+  // the foot on his head: floored, thrown back along the kick (a whiff when he is no longer there to take it)
+  landKick() {
+    const k = this.kick, K = PLAYER.slide.kick, tg = k.target, w = this.world;
+    k.landed = true;
+    if (!standing(tg) || Math.hypot(tg.x - this.x, tg.y - this.y) > K.range + 6) return;
+    k.hitAt = { x: tg.x, y: tg.y }; // the foot stays out where it met him (CharacterAnim kickPose)
+    this.footOn(tg, k.a, 'kick', K.back, K.noise);
+  }
+
+  // A foot (or both) driven into a standing guard along a: knocked down (cause 'kick' | 'hood', data/scoring.js),
+  // thrown `back` px; the hit-stop and the star on his head, the crack of it heard `noise` px
+  footOn(tg, a, cause, back, noise) {
+    const w = this.world, F = TRAVERSE_FX.kick;
+    tg.knock(a, cause, { speed: throwSpeed(back, ENEMY.knockBrake) });
+    landMoment(w, tg, a, null, MOMENTS.slideKick, false);
+    const hx = tg.x - Math.cos(a) * 3, hy = tg.y - Math.sin(a) * 3;
+    combatFx(w).burst(hx, hy, a, F.burst, 1);
+    w.particles.drops(hx, hy, a, 0.6, F.drops, F.color, F.speed, 3, false);
+    w.sound('kickHit', hx, hy, 1); // placeholder (PLACEHOLDERS.md)
+    w.noise(tg.x, tg.y, noise, this);
+  }
+
+  // over a car's hood (Character.updateVault, style 'hip', TRAVERSE.vault.hip.strike): the legs coming off it take
+  // the standing guard on the far side, the one Character.tryVault found in the way (v.strike)
+  vaultStrike(v, k) {
+    const S = TRAVERSE.vault.hip.strike, st = v.strike;
+    if (!st || st.done || k < S.from) return;
+    const tg = st.target;
+    if (!standing(tg)) { st.done = true; return; }
+    if (Math.hypot(tg.x - this.x, tg.y - this.y) > S.reach) return;
+    st.done = st.hit = true;
+    this.footOn(tg, v.dir, 'hood', S.back, PLAYER.slide.kick.noise);
   }
 
   // ground finisher on a knocked-out enemy (data/finishers.js): the player is taken over until it is done. He sets

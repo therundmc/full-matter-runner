@@ -48,6 +48,8 @@ src/
       Ballistics.js       traceBullet, lineOfSight, canSeeCharacter, occlusion (blast transmission)
       Cover.js            findVault (broken windows, def.vault furniture / car hoods, def.climb gates) + landing spot
       Slide.js            slide kinematics (speed curve, stall, cooldown), pure and unit-tested
+      Kick.js             the player's feet on a standing guard: who a slide's end kicks (range, cone, timing), who is in
+                          the way of a hip slide off a car's hood, the speed that throws a floored man a given distance
       Takedown.js         `behind(player, guard)`: who can be seized from behind; `advance`: the beat clock of a takedown
                           (rules only, unit-tested); `slamAt`: how far a head driven into something is, off that clock
       TakedownSpot.js     `spotFor(guard, map, props)`: what stands right in front of a guard seized from behind that his
@@ -500,6 +502,14 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   feet, can chain into a vault, the gun stays usable; 0.5 s cooldown. At its heart (`duck`) the body is under the
   line of fire: rounds carry on over it (`Player.ducking`, Projectile) and the first one earns a breath of bullet
   time (`dodge` event). Each slide costs stamina (`cost`, back with `regen`; small HUD bar while it recovers).
+  Its end pops up into a kick (`PLAYER.slide.kick`, systems/Kick.js, Player.startKick, CharacterAnim kickPose,
+  TRAVERSE.kick): a standing guard within about a metre ahead takes the foot in the head, floored (cause 'kick', SLIDE
+  KICK) and thrown back 0.8 m. Over a car's hood (style 'hip') the player's legs take a standing guard where he comes
+  down (TRAVERSE.vault.hip.strike, Player.vaultStrike: HOOD SLIDE): the one leaning on its far side.
+- Leaning on a car (body 'hood', spot 'hood': ai/Pastimes.js hoodSpot, data/posts.js HOOD): his backside against a
+  parked car's flank by the hood, off the road, ankles crossed, smoking, a hand on the hood; off it when the car moves,
+  is struck or burns (leanBroken), for good. Level 1's sidewalk patrol does it at his halts (job 'beat', `open`: the
+  level sometimes opens on him there).
 - Life at ease: while the squad is calm a guard's weapon is put away (`ai/Carry.js`: `stow`, `lower`; a pistol or
   a blade on the hip, anything long across the back), in hand and low as soon as something is up, raised on a
   target (he cannot fire before it is out: `AI.carry`). Idle picks (`Enemy.pickActivity`) mix watching with a

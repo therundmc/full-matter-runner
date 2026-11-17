@@ -9,7 +9,7 @@
 //   stretch, wrist  a stretch, a look at his watch (one go)         piss    against a wall or at a toilet
 //   pockets, bag   how a passer-by carries his hands                count   bills peeled off a wad, one by one
 //   door   a doorman: arms folded, his eyes on whoever comes near   wipe    a bartender polishing a glass
-//   sleep  lying on his cardboard until something wakes him
+//   sleep  lying on his cardboard until something wakes him   hood    leant on a parked car, a hand on its hood, smoking
 import { TILE } from '../Config.js';
 import { clamp, angDiff, lerp, rand } from '../../engine/math.js';
 
@@ -160,6 +160,14 @@ export class Routine {
 
   enter() { this.t = 0; this.dur = rand(...this.phase.dur); }
 
+  // start act `name` at its phase i, somewhere into it (how a level may open on him: a script's `open`)
+  beginAt(name, i) {
+    this.begin(name);
+    this.i = Math.min(i, this.act.phases.length - 1);
+    this.enter();
+    this.t = rand(0, this.dur);
+  }
+
   // on to the next phase: 'phase' (also the first of the act that follows on, `next`), or 'act' once the act is over
   advance() {
     if (this.act && ++this.i < this.act.phases.length) { this.enter(); return 'phase'; }
@@ -199,6 +207,7 @@ export const GESTURES = {
   cross: { pastime: 'cross' },
   wrist: { pastime: 'wrist', clock: 'once' },
   smoke: { pastime: 'smoke', item: 'cig' },
+  hood: { pastime: 'hood', item: 'cig' }, // leant on a car, a hand on the hood behind him, smoking (body 'hood')
   phone: { pastime: 'phone' },
   cue: { pastime: 'cue' },
   cards: { pastime: 'cards', item: 'cards', body: () => OVER },
@@ -445,3 +454,21 @@ export function besideCar(car, x, y, gap = 13) {
   const side = (y - car.y) * c - (x - car.x) * s >= 0 ? 1 : -1, ly = side * (h / 2 + gap);
   return { x: car.x + lx * c - ly * s, y: car.y + lx * s + ly * c, face: ang(car) - side * Math.PI / 2 };
 }
+
+// Leaning on a parked car's hood (data/posts.js HOOD): his backside against its flank by the hood, or against its
+// nose, `gap` px off the bodywork, facing away from it. The place nearest (x, y) that ok(x, y) allows (on the
+// sidewalk, never out in the road), or null. { x, y, face, car, at (where the car stood) }
+export function hoodSpot(car, x, y, gap, ok = () => true) {
+  const a = ang(car), c = Math.cos(a), s = Math.sin(a), [h0, h1] = car.m.hood;
+  const mid = (h0 + h1) / 2 - car.w / 2; // the hood's middle along the car, from its centre
+  const spots = [[mid, car.h / 2 + gap, Math.PI / 2], [mid, -car.h / 2 - gap, -Math.PI / 2], [car.w / 2 + gap, 0, 0]]
+    .map(([lx, ly, f]) => ({ x: car.x + lx * c - ly * s, y: car.y + lx * s + ly * c, face: a + f, car, at: { x: car.x, y: car.y } }))
+    .filter((p) => ok(p.x, p.y));
+  spots.sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y));
+  return spots[0] ?? null;
+}
+
+// is a lean on that car over? It drives off or was shoved (it is no longer where it stood, `at`), it was struck a
+// moment ago (Vehicle.flash), it burns or blew up
+export const leanBroken = (car, at) => !!(car.dead || car.moving || car.burning || car.exploded || car.flash > 0
+  || Math.hypot(car.x - at.x, car.y - at.y) > 2);

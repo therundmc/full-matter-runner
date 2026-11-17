@@ -16,7 +16,7 @@ import { findPath } from '../../engine/nav/Pathfinding.js';
 import { findCover, findFlank, searchPoints, isCovered, randomPoint, throughDoor, pastDoor, tableToFlip } from '../ai/Tactics.js';
 import { detectionRate, inView, aimError, hearingError } from '../ai/Perception.js';
 import { talks, pours, reliefSpot, gazeAt, STRETCH, Routine, GESTURES, gestureClock, seatPlace, frontOf, wallBehind,
-  sideOf, poolSpots, besideCar, STRIKE, drawn, TOSS, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
+  sideOf, poolSpots, besideCar, hoodSpot, leanBroken, STRIKE, drawn, TOSS, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 import { carry, inHand } from '../ai/Carry.js';
 import { CellMemory, cellAhead, giveWay } from '../ai/Nav.js';
 import { Case, STAGE, judge, complies } from '../ai/Conduct.js';
@@ -27,7 +27,7 @@ import Character, { heavyBuild } from './Character.js';
 import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
 import { TELL, GESTURE } from '../data/feel.js';
-import { POSTS, HELD } from '../data/posts.js';
+import { POSTS, HELD, HOOD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
 import { HURT } from '../data/wounds.js';
 import { SLIP } from '../data/devices.js';
@@ -161,6 +161,8 @@ export default class Enemy extends Character {
     this.onSpot = false;   // ... and he is there
     this.posture = 0;      // 0 on his feet .. 1 sat down / leant back on his wall (the job's `body`)
     this.postureOf = null; // ... which of them
+    this.leanAt = null;    // the spot by a car's hood he leans on (posture 'hood'), its way kept while he gets off
+    this.shunned = null;   // a car he got off (struck, burning, driven): never leant on again
     this.through = false;  // going through furniture: on his seat, onto it, off it
     this.holding = null;   // what is in his hands at it (data/posts.js HELD)
     this.mouth = false;    // a cigar left clamped in his teeth
@@ -784,6 +786,23 @@ export default class Enemy extends Character {
     }
     this.routine = new Routine(S, this.seat?.slot ?? 0);
     if (!S.walk) this.routine.begin(this.routine.pick(), true);
+    if (S.open && chance(S.open.odds)) this.openAt(S.open);
+  }
+
+  // the level opens on him at act O.act, phase O.phase, already in place there (a patrol caught at a halt: on the
+  // spot of the act's first phase, in its body)
+  openAt(O) {
+    const act = this.script.acts[O.act], first = act.phases[0], ph = act.phases[Math.min(O.phase, act.phases.length - 1)];
+    const spot = this.spotFor(first);
+    if (!spot) return;
+    this.routine.beginAt(O.act, O.phase);
+    this.activity = this.job;
+    this.pauseT = Infinity;
+    this.workSpot = spot; this.onSpot = this.atPost = true;
+    Body.setPosition(this.body, spot);
+    this.angle = spot.face;
+    const body = ph.body ?? this.script.body;
+    if (body && body !== 'stand') { this.posture = 1; this.postureOf = body; this.leanAt = spot; }
   }
 
   // ---------------- at his post (data/posts.js) ----------------
@@ -841,6 +860,11 @@ export default class Enemy extends Character {
     const ph = this.routine?.phase;
     if (!ph || this.activity !== this.job || !this.onSpot || !this.atEase || !this.quiet) return null;
     const b = ph.body ?? this.script.body;
+    // against a car: once he has turned his back to it (he backs onto it), while it stays put
+    if (b === 'hood') {
+      const s = this.workSpot;
+      if (!s?.car || (this.posture <= 0 && Math.abs(angDiff(this.angle, s.face)) > HOOD.turned)) return null;
+    }
     return b && b !== 'stand' ? b : null;
   }
 
@@ -850,13 +874,15 @@ export default class Enemy extends Character {
     if (!this.script) return false;
     const want = this.wantBody, S = this.script;
     if (want && (want === this.postureOf || this.posture <= 0)) {
+      if (want === 'hood' && this.posture <= 0) { this.leanAt = this.workSpot; this.world.sound('hoodLean', this.x, this.y, 0.5); }
       this.postureOf = want;
-      this.posture = Math.min(1, this.posture + dt / (want === 'wall' ? 0.4 : S.sit ?? 0.8));
+      this.posture = Math.min(1, this.posture + dt / (want === 'wall' ? 0.4 : want === 'hood' ? HOOD.settle : S.sit ?? 0.8));
       return false;
     }
     if (this.posture <= 0) return false;
-    const seated = this.postureOf !== 'wall';
-    this.posture = Math.max(0, this.posture - dt / (seated ? S.rise ?? 0.5 : 0.35));
+    // off a wall or a car he pushes himself up and goes on at once; out of a seat he stands up first
+    const seated = this.postureOf !== 'wall' && this.postureOf !== 'hood';
+    this.posture = Math.max(0, this.posture - dt / (seated ? S.rise ?? 0.5 : this.postureOf === 'hood' ? HOOD.off : 0.35));
     if (!seated || this.posture <= 0) return false;
     // up and off the front of it as he rises, turning to what called him
     const h = this.home, d = Math.hypot(h.x - this.x, h.y - this.y);
@@ -893,7 +919,7 @@ export default class Enemy extends Character {
     if (!ph && this.posture <= 0) return null;
     const G = ph && GESTURES[ph.g], b = G?.body?.(R.k, R.t, this.seed) ?? {};
     const B = {
-      base: this.postureOf, w: this.posture, fwd: b.fwd ?? 0, side: (b.side ?? 0) * side, twist: (b.twist ?? 0) * side,
+      base: this.postureOf, w: this.posture, face: this.postureOf === 'hood' ? this.leanAt?.face : undefined, fwd: b.fwd ?? 0, side: (b.side ?? 0) * side, twist: (b.twist ?? 0) * side,
       dip: b.dip ?? 0, foot: b.foot ? [side > 0 ? b.foot[0] : 1 - b.foot[0], b.foot[1], b.foot[2] * side] : null,
       hands: ph ? this.gestureHands(ph) : null, wpn: null,
       // (a world point, in pose px: he is drawn BODY_SCALE bigger)
@@ -944,6 +970,21 @@ export default class Enemy extends Character {
           if (d < bd) { bd = d; best = v; }
         }
         return best && besideCar(best, this.x, this.y);
+      }
+      case 'hood': {
+        // his back to the nearest parked car's hood, on the sidewalk side, nobody else leaning there already
+        const ok = (x, y) => {
+          const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
+          return !w.map.isBlocked(cx, cy) && !'=-'.includes(w.map.at(cx, cy));
+        };
+        let best = null, bd = HOOD.reach;
+        for (const v of w.props) {
+          if (!v.isVehicle || v.moving || v.dead || v.burning || v.exploded || v.armoured || v === this.shunned) continue;
+          if (w.enemies.some((e) => e !== this && e.alive && e.workSpot?.car === v)) continue;
+          const s = hoodSpot(v, this.x, this.y, ENEMY.radius + HOOD.gap, ok), d = s ? Math.hypot(s.x - this.x, s.y - this.y) : Infinity;
+          if (d < bd) { bd = d; best = s; }
+        }
+        return best;
       }
       case 'stool': {
         // behind the counter, square in front of a customer having a drink at it
@@ -1002,6 +1043,13 @@ export default class Enemy extends Character {
       this.workSpot = this.spotFor(ph);
       this.errandT = 0;
       if (!this.workSpot) { this.onSpot = false; if (R.advance() === 'phase') this.startPhase(); return; }
+    }
+    // the car he leans on drives off, is struck or catches fire: he is off it and never goes back to it
+    if (this.workSpot?.car && leanBroken(this.workSpot.car, this.workSpot.at)) {
+      this.shunned = this.workSpot.car;
+      R.act = null; this.workSpot = null; this.onSpot = false;
+      this.nextAct();
+      return;
     }
     const s = this.workSpot ?? { x: this.x, y: this.y, face: this.angle }, d = Math.hypot(s.x - this.x, s.y - this.y);
     this.onSpot = d < 10 || (this.posture > 0 && this.onSpot);
@@ -2338,7 +2386,7 @@ export default class Enemy extends Character {
   updateKnocked(dt) {
     if (this.executing) { this.steer(0, 0, 0, 0.5); return; }
     this.knocked -= dt;
-    this.steer(0, 0, 0, 0.08);
+    this.steer(0, 0, 0, ENEMY.knockBrake);
     this.layClear(dt);
     if (this.knocked <= 0) {
       this.knocked = 0;

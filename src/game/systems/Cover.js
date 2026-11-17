@@ -2,6 +2,7 @@
 // and the room there is to roll on after a drop.
 import { TILE, CAT } from '../Config.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
+import { standing } from './Kick.js';
 
 const { Query } = Matter;
 
@@ -23,13 +24,13 @@ function closestOnPolygon(px, py, verts) {
   return best;
 }
 
-// is a character-sized spot free of walls, furniture, glass and people?
-export function spotIsFree(world, x, y, r, ignore) {
+// is a character-sized spot free of walls, furniture, glass and people? (but ignore, and the bodies pass(b) lets by)
+export function spotIsFree(world, x, y, r, ignore, pass = null) {
   const m = world.map;
   for (const [ox, oy] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
     if (m.solidAt(x + ox, y + oy)) return false;
   }
-  const near = world.physics.bodies().filter((b) => (b.collisionFilter.category & BLOCKERS) && b !== ignore?.body
+  const near = world.physics.bodies().filter((b) => (b.collisionFilter.category & BLOCKERS) && b !== ignore?.body && !pass?.(b)
     && b.bounds.min.x < x + r && b.bounds.max.x > x - r && b.bounds.min.y < y + r && b.bounds.max.y > y - r);
   for (const [ox, oy] of [[0, 0], [r * 0.8, 0], [-r * 0.8, 0], [0, r * 0.8], [0, -r * 0.8]]) {
     if (Query.point(near, { x: x + ox, y: y + oy }).length) return false;
@@ -50,13 +51,16 @@ export function rollRoom(world, ch, x, y, a, max, step = 3) {
 }
 
 // first free spot beyond (x, y) along (ux, uy): a chair or a body right behind the obstacle must not cancel the vault
-function landing(world, ch, x, y, ux, uy, gaps) {
+function landing(world, ch, x, y, ux, uy, gaps, pass) {
   for (const g of gaps) {
     const to = { x: x + ux * (ch.radius + g), y: y + uy * (ch.radius + g) };
-    if (spotIsFree(world, to.x, to.y, ch.radius, ch)) return to;
+    if (spotIsFree(world, to.x, to.y, ch.radius, ch, pass)) return to;
   }
   return null;
 }
+
+// over a car's hood the player comes down on a standing guard as on free ground: his legs take him (Player.vaultStrike)
+const struck = (b) => b.entity?.isEnemy && standing(b.entity);
 
 // over prop p from its closest point c, along (ux, uy): cast back from beyond the object to find where we come out
 function crossProp(world, ch, p, c, ux, uy) {
@@ -66,7 +70,7 @@ function crossProp(world, ch, p, c, ux, uy) {
   const ex = far.x + (c.x - far.x) * exit.t, ey = far.y + (c.y - far.y) * exit.t;
   // vehicles: across the hood only (never over the roof or end to end)
   if (p.isVehicle ? !p.canSlide(c.x, c.y, ex, ey) : Math.hypot(ex - c.x, ey - c.y) > MAX_VAULT_DEPTH) return null;
-  const to = landing(world, ch, ex, ey, ux, uy, [3, 10, 18]);
+  const to = landing(world, ch, ex, ey, ux, uy, [3, 10, 18], p.isVehicle && ch.isPlayer ? struck : null);
   return to && { kind: p.def.climb ? 'climb' : 'prop', over: p, to, ledge: { x: c.x, y: c.y, tx: -uy, ty: ux } };
 }
 

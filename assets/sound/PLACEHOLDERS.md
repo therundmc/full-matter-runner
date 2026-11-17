@@ -40,3 +40,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | headSlamMetal | a man's face brought down on a steel sink or a stove (a takedown: SINK) | a skull on a steel edge, a dull clang ringing in the basin |
 | headSlamPorcelain | a man's face smashed into a urinal (a takedown: URINAL) | a head on porcelain, a hard knock and a crack in it |
 | toiletDunk | a man's head dunked into a toilet bowl (a takedown: TOILET) | a head plunged into a toilet, a splash and a knock on the porcelain, a gurgle |
+| kickWhoosh | the player pops up out of a slide's end into a kick at a guard ahead (Player.startKick) | a leg whipped through the air, a coat's flap with it |
+| kickHit | the foot lands in a guard's head, out of a slide or off a car's hood (Player.footOn) | a boot heel smacking into a jaw, heavy and dry, the man's grunt cut short |
+| hoodLean | a guard sits back against a parked car's hood (Enemy.updatePosture, body 'hood') | a body settling on sheet metal, the car's springs giving a little, jeans on paint |

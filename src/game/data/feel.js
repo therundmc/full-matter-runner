@@ -138,6 +138,8 @@ export const MOMENTS = {
   slam: { kind: 'blunt', power: 0.75, stop: 0.08, shake: 0.24, push: 3 },
   slamKill: { kind: 'finisher', power: 1, stop: 0.12, shake: 0.34, push: 4 },
   slide: { kind: 'blunt', power: 0.35, stop: 0.04, shake: 0.15, push: 2 },   // swept off his feet by a slide
+  // the foot in his head at the end of a slide, or off a car's hood (Player.landKick, Player.vaultStrike)
+  slideKick: { kind: 'blunt', power: 0.6, stop: 0.09, shake: 0.24, push: 3 },
   // every slide of the player's opens a moment of bullet time: [time scale, real seconds]. He aims at full speed in it.
   slideTime: { slowmo: [0.42, 0.55] },
   break: { slowmo: [0.35, 0.3], stop: 0.1, shake: 0.35 },                   // the player's weapon gives out over a man
@@ -330,16 +332,26 @@ export const FACING = {
 //          hand off last at `lift`, the feet down at
 //          `land` (Character.updateVault), one quick step on after it; `rise`: share of size the body comes up by,
 //          `lean`: px the torso goes over the planted arm, `turn`: rad the hips turn side-on. hip.vehicle: a car's
-//          hood is slid across on the hip instead
+//          hood is slid across on the hip instead; hip.strike: the player's legs coming off it take a standing guard
+//          on the far side (Player.vaultStrike): within `reach` px of his body (centre to centre) once the legs are
+//          swung over (`from` of the slide on), `kick` pose px the feet shoot out at him, `lead` the share of the
+//          move they start before the contact, thrown `back` px; the player comes down `short` px before where he stood,
+//          `check` of his speed kept
 //   slide  the drop until `drop` (leaning back, the lead leg shot out), the slide (the torso reclined `back` px,
 //          turned `turn` rad side-on, the trailing hand flat on the floor), the push back up from `up` and over
 //          `rec` s once it is over (Player.updateSlideAnim); `pop`: px the torso is thrown forward getting up
+//   kick   out of a slide's end (Player.kick, CharacterAnim kickPose), `dur` s: up out of the recline, the lead knee
+//          drawn up (chambered) by `chamber`, the leg driven out at his head, the foot on it at `hit` (held by the
+//          hit-stop), kept out until `hold`, set down a step ahead by `plant`; reach: pose px the foot may go from the
+//          hip, lift: how near the eye the foot comes at full stretch, lean: px the torso goes back off the kick,
+//          twist: rad the shoulders turn away from the kicking hip, pop: px the torso goes on over the planted foot
 //   roll   squash: [least share of length along the way, across it] of the curled body; turns: how far round he
 //          goes (1 = once) between `over` [from, to]; unfold [from, to]: back onto his feet, `pop` share of size
 export const TRAVERSE = {
   vault: { dip: 0.12, plant: 0.14, mid: 0.45, into: 3, out: 7, swing: [0.18, 0.66], lift: 0.68, land: 0.84, rise: 0.12, lean: 3.4, turn: 0.75,
-    hip: { vehicle: true } },
+    hip: { vehicle: true, strike: { from: 0.35, reach: 30, kick: 6, lead: 0.14, back: 32, short: 6, check: 0.25 } } },
   slide: { drop: 0.16, up: 0.8, rec: 0.2, back: 4.2, turn: 0.75, pop: 2.2 },
+  kick: { dur: 0.44, chamber: 0.24, hit: 0.36, hold: 0.58, plant: 0.84, reach: 16, lift: 1.6, lean: 2.6, twist: 0.45, pop: 1.8 },
   roll: { squash: [0.68, 0.9], turns: 1, over: [0.12, 0.66], unfold: [0.6, 0.84], pop: 0.05 },
 };
 
@@ -354,6 +366,8 @@ export const TRAVERSE = {
 //   rim     a thin light outline on him through the swing (alpha, over the vault's swing)
 //   land    a vault or a drop coming down: a ring of dust (count, r px, speed px/s), specks, the camera (shake trauma,
 //           dip px along the way); roll: the dust he throws as he unfolds
+//   kick    the foot on a head (Player.landKick): the star where it lands (CombatFx burst), spit and sweat thrown on
+//           along the kick (drops: count, colour, speed px/s); the foot set down after it: landFx at `land` of a landing
 export const TRAVERSE_FX = {
   ground: {
     dust: { color: '#a49c8c', alpha: 0.2, speck: '#6e675c' },
@@ -366,6 +380,7 @@ export const TRAVERSE_FX = {
   rim: { alpha: 0.55 },
   land: { ring: 10, r: 5, speed: 46, specks: 3, shake: 0.06, dip: 1.8 },
   roll: { ring: 7, r: 4, speed: 40, puff: 3 },
+  kick: { burst: { rays: 7, len: 12, width: 2, life: 0.09, shape: 'star' }, drops: 5, color: 'rgba(216,210,196,0.5)', speed: 120, land: 0.55 },
 };
 
 // d: a weapon definition -> its FEEL family

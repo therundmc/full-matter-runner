@@ -156,7 +156,9 @@ lv.rain = 0                                             # no rain heard
 lv.wet = 0.35                                           # the street wet from an earlier rain (seen)
 # street
 lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
-lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')  # a blade in his pocket, walks the sidewalk
+# the sidewalk patrol, a blade in his pocket: at either end of his beat a parked car's hood to sit back against for a
+# smoke (data/posts.js 'beat' hood; the level opens on him there one time in two, by the coupe's hood)
+lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')
 # the bar
 lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
 lv.actor('p', 25, 14, face=0, job='cards')              # dealing poker in the gaming room: the one pistol of the bar
