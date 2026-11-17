@@ -3,8 +3,8 @@
 
 Run from the repo root:  python tools/comic/dodont.py <out-dir> [<old-stills-dir>]
 Writes do_dont_face.png (a face lit flat without blacks or lines / lit hard with its blacks and inked lines) and, given
-a folder of the first pass's stills (git show <rev>:assets/sprites/comic/<name>.png), do_dont_hands.png and
-do_dont_figures.png (paddle hands and stick figures doubled off register / the hands and bodies of now).
+a folder of older stills (git show <rev>:assets/sprites/comic/<name>.png), do_dont_hands.png and do_dont_figures.png
+(their hands and bodies / the hands and bodies of now: the money in count, the men at the door).
 """
 import os
 import sys
@@ -47,8 +47,8 @@ def main(out, old=None):
     os.makedirs(out, exist_ok=True)
     pair(head(False), head(True), 2).save(os.path.join(out, 'do_dont_face.png'))
     if old:
-        a = Image.open(os.path.join(old, 'count.png')).convert('RGB').crop((0, 170, 200, 288))
-        b = Image.open(os.path.join(OUT_DIR, 'count.png')).convert('RGB').crop((20, 170, 220, 288))
+        a = Image.open(os.path.join(old, 'count.png')).convert('RGB').crop((0, 140, 200, 288))
+        b = Image.open(os.path.join(OUT_DIR, 'count.png')).convert('RGB').crop((0, 140, 200, 288))
         pair(a, b, 3).save(os.path.join(out, 'do_dont_hands.png'))
         a = Image.open(os.path.join(old, 'door.png')).convert('RGB').crop((560, 0, 880, 282))
         b = Image.open(os.path.join(OUT_DIR, 'door.png')).convert('RGB').crop((560, 0, 880, 282))

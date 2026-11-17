@@ -315,7 +315,7 @@ class Head:
             # what a penciller draws in: the planes' breaks, the folds and lines of a face that has lived
             if level != 'deep':
                 for key, pts, w0, w1, zmin in FACE_LINES:
-                    if key in lines and zmin < z and near(ax, y, pts, max(w0, least), max(w1, least * 0.6)):
+                    if key in lines and zmin < z and near(ax, y, pts, max(w0, least), max(w1, least * 0.5)):
                         return INK
             # the brows
             bx = ax - 6.0

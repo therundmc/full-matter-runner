@@ -7,9 +7,10 @@ colours under them (no gradient, no dither, no screentone, no blur). Every still
 
 Reference panels: `count` and `door` (tools/comic/panels/opening2.py, opening1.py), `sleep` (opening1.py) for a wide
 scene with the hero. Do / don't crops: `python tools/comic/dodont.py <out-dir> [<dir of the old stills>]` writes
-`do_dont_face.png` (flat light, no blacks, no lines / Vance light), `do_dont_hands.png` (paddle claws / a hand that
-grips) and `do_dont_figures.png` (stick figures doubled off register / bodies with weight). The main session keeps a
-rendered set in its scratchpad (`.../scratchpad/comic/dodont/`).
+`do_dont_face.png` (flat light, no blacks, no lines / Vance light), `do_dont_hands.png` (rendered mitts / inked
+hands) and `do_dont_figures.png` (thin-lined bodies / bodies with weight and the bold line), each against the stills
+of the folder given. The hand library: `python tools/comic/sheet.py <sheet.png> <hands.png>` (all the designs, 2x).
+The main session keeps a rendered set in its scratchpad (`.../scratchpad/comic/`).
 
 ## The package
 
@@ -19,7 +20,8 @@ rendered set in its scratchpad (`.../scratchpad/comic/dodont/`).
 | `comic/kit.py` | 2D: `Cv` (fill, ink, brush, rect, ellipse, mask), `T`, `spline`, the palette, `backlit`, `ripples`, `window_night`, `rain_beads`, `@panel(name, size)` |
 | `comic/solid.py` | the 3D toon renderer: `Scene`, `Skin`, `Xf`, meshes (`tube`, `grid`, `box`, `sheet`, `merge`), `ypr`, `frame`, `rot` |
 | `comic/anatomy.py` | the parts: `Head` (lofted, features and inked lines painted on, `FACE_LINES`), `Body` (spine, IK arms and legs), `stance` (contrapposto), `Fold` / `sleeve_folds` / `trouser_folds`, `Hand` and its shapes, `shoe` |
-| `comic/cast.py` | the characters (`HERO`, `HEAVY`, `SLICK`, `YOUNG`, `BOSS`), `Figure`, `Light`, `hand_parts`, `wrist_for`, `in_hand`, `drape_tex` |
+| `comic/cast.py` | the characters (`HERO`, `HEAVY`, `SLICK`, `YOUNG`, `BOSS`), `Figure` (with `hand_place`, `draw_hands`), `Light`, `wrist_for`, `drape_tex` |
+| `comic/hands.py` | the hands, drawn not rendered: `DESIGNS[pose][view]`, `draw`, `place`, `aim`, `MITTEN` |
 | `comic/props.py` | `brick` and `riffled` (money), `torch`, `crowbar`, `jerrycan` |
 | `comic/legacy.py` | the first pass's 2D heads and silhouettes, for the panels not yet redrawn: never in new work |
 | `comic/panels/<page>.py` | one module per page; each panel a function decorated `@panel('name', (w, h))` |
@@ -33,17 +35,18 @@ if one has to move, stop and say so. Nothing is ever doubled off register, in th
 
 ## 1. The ink line
 
-The line IS the drawing, not an outline round coloured shapes. At our resolution (SC = 3 panel px per title px; the
-game shows a still at about 1 to 2 screen px per panel px):
+The line IS the drawing, not an outline round coloured shapes, and it is BOLD: the stills are seen smaller than
+their px on screen, so a 1 px line thins out to nothing. At our resolution (SC = 3 panel px per title px):
 
 | line | weight (panel px) | how |
 |---|---|---|
-| a figure's contour, close-up (s 1.0..1.6) | 2, +1 on the side away from the light | `Scene(ink=2)` (the +1 is automatic) |
-| a figure's contour, full figure (s 0.2..0.5) | 1, +1 away from the light at s >= 0.4 | `Scene(ink=1 or 2)` |
-| a contour break (one form in front of another: the jaw over the neck, an arm over the chest) | 2 close-up, 1 small | `Scene(inner=...)` |
-| a fold inside a form (a crease, the fingers side by side) | 1 | `Scene(crease_w=1)`; `Skin(creases=False)` to drop them (small hands) |
-| a penciller's interior line (plane breaks, folds of cloth, the lines of a face, tendons) | 1..2 model-unit wide, never under 1 px | painted by the skins (`FACE_LINES`, `Fold`, `drape_tex`): `Figure` keeps them >= 1 px at any scale |
-| furniture, walls, props in 2D | 3..5 for big shapes, 2 for small, brushes tapered 3 -> 0.5 for folds and cracks | `cv.ink`, `cv.brush` |
+| a form against the background, close-up (s 1.0..1.6) | 4 on its dark side, 3 round the rest | `Scene(ink=4)` (ink - 1 all round, +1 away from the light; the default at s >= 0.9) |
+| a figure's contour, full figure (s 0.2..0.6) | 2 at the least, 3 on its dark side | `Scene(ink=3)` (the default under s 0.9) |
+| a contour break (one form in front of another: the jaw over the neck, an arm over the chest) | 2 | `Scene(inner=2)` (the default) |
+| a fold inside a form (a crease, the fingers side by side) | 1 | `Scene(crease_w=1)`; `Skin(creases=False)` to drop them |
+| a penciller's interior line (plane breaks, folds of cloth, the lines of a face, tendons) | 2 tapering to 1 | painted by the skins (`FACE_LINES`, `Fold`, `drape_tex`); `Figure` keeps them at least 2 px at any scale |
+| a drawn hand | 3 round it (2 small), 1..2 between its parts, interior lines 2 -> 1 | `hands.draw` |
+| furniture, walls, props in 2D | 3..5 for big shapes, 3 for small, brushes tapered 3 -> 1 for folds and cracks | `cv.ink`, `cv.brush` |
 
 Lines thin out inside the light and thicken where they meet a shadow; where a line runs into a black, let the
 black swallow it (it does by itself: inked lines are skipped where the light has gone to black).
@@ -55,7 +58,8 @@ Vance spots big solid blacks. They are designed shapes, not computed specks.
 - `Light(deep=1.0)` makes the deepest tone pure INK; `Scene(blacks=t)` sends what is turned further from the key
   than t (n . light < t) and what is in a cast shadow to it. Close-ups: `blacks=0.0`; a back-lit group:
   `blacks=-0.55` (a little modelling left in the dark); the model sheet: `-0.05`.
-- `Scene(simplify=5..7)` (an odd size) cleans the shapes of specks: always on a close-up.
+- `Scene(simplify=7..9)` (an odd size) cleans the shapes of specks and merges small planes into a few big ones:
+  always on a close-up (9 on `count`), 5..7 on full figures.
 - A face goes half black where the light dictates (`do_dont_face.png`); keep the eyes readable: give the face its own
   threshold (`Figure(face_black=-0.1..-0.35)`) so the jaw and the neck stay off black when the hair and the collar
   already are (a black jaw joined to black hair reads as long hair).
@@ -105,7 +109,9 @@ Realistic, adult, characterful, strong noses and brows. Vance's men are square-j
 - Head mods in each character's dict: jaw, chin, nose, hook, brow, cheek, jowl, eye, width; `lines` picks the inked
   ones from `FACE_LINES` (naso, bags, cheek, jaw, forehead, crows, chin, marionette, furrow); `heavy_lids` for the
   boss (older, heavy lids). Stubble (`beard`) darkens the jaw: use it on every man but the boss.
-- Expression: `smile` (right, left corners), `gaze`, `lids`, `squint`, `brow_lift`.
+- Expression: `smile` (right, left corners), `gaze`, `lids`, `squint`, `brow_lift`. Push them: nobody's face is at
+  rest. The sheet's moods (sheet.py `MOODS`): the hero hard, the heavy scowling (brows down, squint, mouth down), the
+  slick one smug (one brow and one corner up), the young one grinning, the boss heavy-lidded and sour.
 
 ## Light, per panel
 
@@ -124,26 +130,48 @@ Realistic, adult, characterful, strong noses and brows. Vance's men are square-j
 light = Light(key=hx('#ffc890'), fill=hx('#5a4a90'), deep=1.0)
 pose = stance('l', hips=7, shoulders=5, turn=8)                  # weight on his left leg
 pose.update(head=ypr(-12, 10, 5), wrist_r=(...), elbow_r=(...))   # IK target and elbow pole, body space
-fig = Figure(SLICK, pose=pose, hands=dict(r=dict(shape=grip(5.4), fwd=(...), palm=(...))),
+fig = Figure(SLICK, pose=pose, hands=dict(r=dict(pose='torch', view='side', angle=-8, mirror=True)),
              face=dict(smile=(0.15, 0.85), gaze=(-1.6, 2.6), lids=0.45), face_black=-0.3)
 place = Xf(ox, oy, s, ypr(-40))          # body space -> panel px: (ox, oy) is where his feet stand
-sc = Scene(W, H, light=(-0.6, 0.3, 0.75), scale=s, ink=2, inner=2, blacks=0.0, simplify=7)
-fig.add(sc, place, light)
-for m, skin in props.torch(light):
-    sc.add(m, skin, fig.hand_xf('r', place).at((22, 40, 12.5), rot((0, 0, 1), 90)))
+sc = Scene(W, H, light=(-0.6, 0.3, 0.75), scale=s, ink=4, inner=2, blacks=0.05, simplify=9)
+fig.add(sc, place, light)                # the body; its hands are not rendered
+sc.add(prop_mesh, prop_skin, fig.hand_xf('l', place).at(...))   # a 3D prop, if any, in a hand's 3D frame
 mask = sc.render(cv)                     # then backlit(cv, mask, ...) for rims on a black figure
+fig.draw_hands(cv, sc, place, light)     # the hands, inked, where the arms end
 ```
 
 - Body space: he faces +z, his right ('r') on -x, the floor at y 0, up -y, 7.5 heads (a head 100, 1 unit 2.3 mm).
   Arms 144 + 120: a wrist out of reach floats the hand off its prop: check.
-- A hand's own space: wrist at the origin, fingers +y, palm +z; a right hand's thumb on -x, a left's on +x.
-- Hold things for real: put the prop in body space (or in one hand's space), then place each hand on it with
-  `wrist_for(fwd, palm, at=<body point>)` (where its middle knuckle goes) and aim its thumb with
-  `thumb_tip=in_hand(side, fwd, palm, wrist, <body point>)`. Shapes: `RELAXED`, `OPEN`, `FIST`, `PINCH`, `grip(r)`,
-  `flat(curl, thumb)` or a dict `fingers=[(spread, bend, bend, bend)] * 4, thumb=(spread, lift, bend, bend),
-  thumb_tip=...`. Fingers that wrap an edge: knuckle bend small, middle joint 90..96, last 60..64 (`count`'s left
-  hand: we see the knuckles, the tips hook over the top). No paddle hands: a flat open palm under an object is a
-  don't.
+- A hand's 3D frame (for its arm and for a 3D prop): wrist at the origin, fingers +y, palm +z; a right hand's thumb
+  on -x, a left's on +x; `fwd` and `palm` in the hands dict, else along the forearm.
+
+## 7. Hands: drawn, never rendered
+
+A rendered hand at our resolution is a mitt. Hands are inked drawings (tools/comic/hands.py), placed where the 3D
+arm ends:
+- A design is a right hand in its own units (100 from the wrist to the middle fingertip, wrist at (0, 0), fingers
+  up): shapes in order (the back or the palm, the thumb with its fleshy base, fingers as tapered planes broken at the
+  joints, square knuckles, nails), each with a black plane cut along its own length on the side away from the light
+  (`shadow`: how much of it, 0.25..0.45), a thin line where the shapes lie on each other and a heavy one round the
+  whole hand, two or three interior lines (the knuckle row, a tendon, the thumb's crease). Never a grid of finger
+  lines.
+- The library (`DESIGNS[pose][view]`): relaxed (back, palm, side), fist and grip (front, side: round a bar),
+  hook (front: holding a flat thing by its edge, the knuckles to us), pinch and match (side), point (side), open
+  (back, palm), riffle (side: the thumb over a stack's edge), torch (side, the torch drawn with it), can (back:
+  hooked on a handle). See `.../scratchpad/comic/hands.png`. A new pose is a new function: draw it there, look at it
+  at 3x, give it anchors.
+- Drawn a little larger than life: 95 units (life is 82; about the face from chin to brow and more), a little
+  shorter when it points at us. Small (under 44 px), it becomes a silhouette: a mitten, its thumb, one line
+  (`MITTEN`, `MITT_FIST`).
+- In a figure: the hands dict's `pose`, `view` (else from where the palm looks), `angle` (else along the fingers),
+  `mirror` (else from the thumb's side), `size`, `aim=(anchor, body point)`: turned and sized so that the design's
+  anchor ('edge', 'thumb', 'bar', 'pinch', 'lens', 'tip') lands on that point of the prop. `Figure.hand_place`
+  gives where a hand goes before drawing (to start a torch's beam at `hands.place(..., name='lens')`).
+- What is behind and in front: parts on the design's 'back' layer hide behind what is nearer in the render (the
+  brick over the palm), 'front' parts show over it (the fingers hooked over its edge); both hide behind the body when
+  it is nearer.
+- No paddle hands (a flat open palm under an object), no claws (fingers splayed for nothing): hold, grip, hook,
+  press, point.
 - `Figure(bare=True)`: the hero at home (grey knit, hair to his collar, no cap, coat, scarf or satchel). Lying down:
   roll the placement (`ypr(0, 0, -90)`: on his right side, head to the left, facing us).
 
@@ -154,7 +182,8 @@ mask = sc.render(cv)                     # then backlit(cv, mask, ...) for rims 
 
 ## Checklist before handing a panel over
 
-- Hands grip things: fingers round the bar, the thumb on the object's surface, no finger through a prop.
+- Hands are drawn (section 7) and grip things: fingers round the bar, the thumb on the object's surface; crop
+  each at 3x and ask whether a comic artist would sign it.
 - Nothing floats: feet on the floor, props in hands or on a surface, a contact shadow (a black) where things touch.
 - Every figure passes the gesture checklist (section 4); clothes fold (section 3).
 - One light per surface, its direction readable; big blacks designed, no specks; rims only where a light is.

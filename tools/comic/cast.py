@@ -16,11 +16,17 @@ hand's thumb on -x, a left hand's on +x). Read tools/comic/STYLE.md first.
 """
 import math
 
-from .anatomy import (RELAXED, Body, Build, Curve, Hand, Head, bell, bend_of, fold_tex, hair_off, mirrored, phi_of,
+from PIL import Image
+
+from .anatomy import (FIST as FIST_, RELAXED, Body, Build, Curve, Hand, Head, bell, bend_of, fold_tex, hair_off, mirrored, phi_of,
                       place_ring, section, sleeve_folds, trouser_folds,
                       shoe, smooth, tone3)
 from .kit import INK, hx
 from .solid import Skin, Xf, add, box, frame, grid, lerp, mm, mv, sub, tube, unit
+
+
+def mul_(v, k):
+    return (v[0] * k, v[1] * k, v[2] * k)
 
 
 def mix(a, b, k):
@@ -78,15 +84,6 @@ def wrist_for(fwd, palm, at, point=(0.0, 43.0, 0.0)):
     `point` (the knuckle of the middle finger by default) at the body point `at`."""
     F = frame(fwd, palm)
     return sub(at, mv(F, point))
-
-
-def in_hand(side, fwd, palm, wrist, p):
-    """A body point p in the coordinates a hand shape's thumb_tip is given in (a right hand's, also for a left)."""
-    F = frame(fwd, palm)
-    q = sub(p, wrist)
-    q = (F[0][0] * q[0] + F[1][0] * q[1] + F[2][0] * q[2], F[0][1] * q[0] + F[1][1] * q[1] + F[2][1] * q[2],
-         F[0][2] * q[0] + F[1][2] * q[1] + F[2][2] * q[2])
-    return (-q[0], q[1], q[2]) if side == 'l' else q
 
 
 # a long coat's drape: folds falling from the hips to the hem, each a line that starts thin and opens out
@@ -182,8 +179,9 @@ class Figure:
     face's own threshold for solid black (Skin.blacks), lower than the scene's to keep the eyes."""
 
     def __init__(self, who, pose=None, hands=None, face=None, bare=False, t_face=0.1, hand_shadows=True,
-                 head_light=None, face_black=True):
+                 head_light=None, face_black=True, drawn_hands=True):
         self.who, self.bare, self.t_face, self.hand_shadows = who, bare, t_face, hand_shadows
+        self.drawn_hands = drawn_hands
         self.head_light, self.face_black = head_light, face_black
         self.C = who['colours']
         self.outfit = 'knit' if bare else who['outfit']
@@ -225,7 +223,7 @@ class Figure:
             l1 = math.dist(b.hip[s], b.knee[s])
             folds = trouser_folds(l1 / (l1 + math.dist(b.knee[s], b.ankle[s])), bend_of(b.hip[s], b.knee[s], b.ankle[s]))
             sc.add(b.limb(b.hip[s], b.knee[s], b.ankle[s], 30 * lk, 20 * lk, 17.5, (0, 0, -1), bulge=(2 * lk, 1.5), n=18,
-                          folds=folds), light.skin(C['trousers'], tex=fold_tex(folds, least=1.1 * px)), xf)
+                          folds=folds), light.skin(C['trousers'], tex=fold_tex(folds, least=2.0 * px)), xf)
             sc.add(shoe(b.ankle[s], b.toe[s], height=30 if self.outfit in ('coat', 'leather') else 26), shoes, xf)
         # the torso and, for a long coat, its skirt
         sc.add(b.torso(), self.top_skin(light, t), xf)
@@ -240,13 +238,15 @@ class Figure:
             folds = sleeve_folds(l1 / (l1 + math.dist(b.elbow[s], cuff)), bend_of(b.shoulder[s], b.elbow[s], cuff))
             sc.add(b.limb(b.shoulder[s], b.elbow[s], cuff, 19 * lk, 16.5 * lk, 15.0, palm_dir, bulge=(1.5 * lk, 2.0 * lk),
                           n=16, squash=lambda u: 1.0 + 0.2 * smooth(0.6, 1.0, u), folds=folds),
-                   self.sleeve_skin(light, t, folds, 1.1 * px), xf)
+                   self.sleeve_skin(light, t, folds, 2.0 * px), xf)
             if self.outfit == 'suit' or self.who.get('overcoat'):
                 sc.add(tube([lerp(b.wrist[s], b.elbow[s], 0.13), lerp(b.wrist[s], b.elbow[s], 0.03)],
                             lambda u, a: 12.0, n=12, up=palm_dir, squash=lambda u: 1.15), light.skin(C['shirt']), xf)
             else:
                 sc.add(tube([cuff, lerp(b.wrist[s], b.elbow[s], -0.02)], lambda u, a: 10.0 - 1.5 * u, n=12, up=palm_dir,
                             squash=lambda u: 1.2), light.skin(C['skin']), xf)
+            if self.drawn_hands:
+                continue                  # drawn in ink after the render: draw_hands
             hand = Hand(self.hands[s]['shape'])
             hx_ = self.hand_xf(s, xf)
             for m, skin in hand_parts(hand, light, C['skin'], s, creases=not small):
@@ -259,7 +259,7 @@ class Figure:
         hxf = b.head_xf(xf)
         hd = self.head
         hl = self.head_light
-        sc.add(hd.mesh(), light.skin(C['skin'], tex=hd.face(self.face_pal(t), self.face_extra(t), 0.9 * px), t_lit=self.t_face,
+        sc.add(hd.mesh(), light.skin(C['skin'], tex=hd.face(self.face_pal(t), self.face_extra(t), 2.0 * px), t_lit=self.t_face,
                                      light=hl, blacks=self.face_black), hxf)
         sc.add(hd.neck(), light.skin(C['skin'], t_lit=self.t_face, light=hl, blacks=self.face_black), hxf)
         st = t['skin']
@@ -279,6 +279,65 @@ class Figure:
         if self.has('satchel'):
             bag = light.skin(C['leather'], tex=lambda a, level, n: INK if (a[3] == 'x1' and abs(a[1] + 8) < 1.2) else None)
             sc.add(box(-9, -26, -24, 9, 24, 24), bag, Xf.raw(mm(xf.m, b.Rp), xf(b.pelvis_pt((64, -420, 8)))))
+
+    # -------------------------------------------------------------- the hands, drawn
+    def hand_place(self, s, sc, xf):
+        """How his hand s is drawn (hands.py): (design, wrist (panel px), angle, size, mirror). Its keys: 'pose' (a
+        DESIGNS name: 'relaxed', 'fist', 'grip', 'hook', 'pinch', 'match', 'point', 'open', 'riffle', 'torch', 'can';
+        by default from its shape), 'view' ('back', 'palm', 'side', 'front'; by default from where its palm looks),
+        'angle' (degrees; by default along the fingers' 3D direction), 'mirror' (by default from the thumb's side),
+        'size' (times the drawn size: a hand drawn a little larger than life, 95 units from the wrist to the tips,
+        a little shorter when it points toward us), 'aim' (anchor name, body point: turned and sized so that the
+        design's anchor lands there)."""
+        from . import hands as H
+        b, h, k = self.body, self.hands[s], xf.scale()
+        F = self.hand_frame(s)
+        col = lambda j: (F[0][j], F[1][j], F[2][j])
+        wrist = sc.project(xf(b.wrist[s]))
+        tip = sc.project(xf(add(b.wrist[s], mul_(col(1), 60.0))))
+        palm_z = xf.normal(col(2))[2]
+        pose = h.get('pose') or ('fist' if h.get('shape') is FIST_ else 'relaxed')
+        view = h.get('view') or ('palm' if palm_z > 0.35 else 'back' if palm_z < -0.35 else 'side')
+        if view not in H.DESIGNS[pose]:
+            view = next(iter(H.DESIGNS[pose]))
+        d = H.design(pose, view)
+        ang = h.get('angle')
+        if ang is None:
+            ang = math.degrees(math.atan2(tip[0] - wrist[0], -(tip[1] - wrist[1])))
+        mirror = h.get('mirror')
+        if mirror is None:
+            # the thumb's side: a right hand's on its own -x, a left (mirrored) hand's on +x; the design's is on
+            # its -x, but in a palm view
+            thumb = sc.project(xf(add(b.wrist[s], mul_(col(0), -30.0 if s == 'r' else 30.0))))
+            c_, s_ = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+            side_sign = 1.0 if view == 'palm' else -1.0
+            mirror = ((-c_) * (thumb[0] - wrist[0]) + (-s_) * (thumb[1] - wrist[1])) * (-side_sign) < 0
+        reach = math.hypot(tip[0] - wrist[0], tip[1] - wrist[1]) / (60.0 * k)
+        size = 95.0 * k * h.get('size', 1.0) * (0.6 + 0.4 * min(1.0, reach))
+        if h.get('aim'):
+            name, p = h['aim']
+            ang, sz = H.aim(d, wrist, sc.project(xf(p)), name, mirror)
+            size = max(0.6 * size, min(1.3 * size, sz))
+        return d, wrist, ang, size, mirror
+
+    def draw_hands(self, cv, sc, xf, light, layers=('back', 'front'), sides=('r', 'l')):
+        """Ink his hands (hands.py designs, placed by hand_place) where his arms end, after sc.render(cv); hidden
+        where the render is nearer than the hand ('back' layers hide behind what he holds, 'front' ones show over
+        it). Returns {side: hand_place's tuple}, to find a design's anchors (hands.place)."""
+        from . import hands as H
+        b, k = self.body, xf.scale()
+        t = light.tones(self.C['skin'])
+        L = sc.light
+        out = {}
+        for s in sides:
+            d, wrist, ang, size, mirror = out[s] = self.hand_place(s, sc, xf)
+            zh = sc.project(xf(b.wrist[s]))[2]
+            for lay in layers:
+                tol = (60.0 if lay == 'front' else 6.0) * k + 2.0
+                vis = bytes(255 if z < zh + tol else 0 for z in sc.zbuf)
+                H.draw(cv, d, wrist, ang, size, mirror=mirror, light=(L[0], L[1]), skin=(t['lit'], t['shade']),
+                       ink=3 if size >= 80 else 2, layers=(lay,), visible=Image.frombytes('L', (sc.w, sc.h), vis))
+        return out
 
     # -------------------------------------------------------------- the coat's skirt
     def skirt(self):

@@ -3,8 +3,8 @@ import math
 
 from PIL import ImageChops
 
-from .. import props
-from ..anatomy import FIST, RELAXED, grip, stance
+from .. import hands, props
+from ..anatomy import RELAXED, grip, stance
 from ..cast import HERO, HEAVY, SLICK, YOUNG, Figure, Light
 from ..kit import INK, PINK, PINK_D, PINK_DD, VIOLET, Cv, backlit, hx, panel, window_night
 from ..solid import Scene, Xf, rot, ypr
@@ -81,9 +81,10 @@ def panel_sleep():
                 toe_l=(0, 1, 0.2), toe_r=(0, 1, 0.2),
                 wrist_l=(-150, -548, 150), elbow_l=(0.6, 0.2, 1), wrist_r=(-40, -730, 70), elbow_r=(0, 1, 0.6))
     fig = Figure(HERO, pose=pose, bare=True, face=dict(lids=0.0, smile=(-0.1, -0.1)),
-                 hands=dict(l=dict(shape=RELAXED, fwd=(-1, 0.1, 0.25), palm=(0, 0, 1))))
+                 hands=dict(l=dict(shape=RELAXED, fwd=(-1, 0.1, 0.25), palm=(0, 0, 1), pose='relaxed', view='back',
+                                   size=1.15)))
     place = Xf(706, 151, s, ypr(0, 0, -90))
-    sc = Scene(W, H, light=(0.15, -0.9, 0.05), scale=s, ink=1, inner=1, blacks=0.08, simplify=5,
+    sc = Scene(W, H, light=(0.15, -0.9, 0.05), scale=s, ink=3, inner=2, blacks=0.08, simplify=7,
                rims=[((0.0, -1.0, -0.2), PINK, 0.8)], rim_px=2)
     fig.add(sc, place, light)
     # the bottle, on its side on the floor under his hand
@@ -126,8 +127,10 @@ def panel_sleep():
         cv.brush([a0, mid, a1], w * 0.4, w, col=INK, clip=sm)
         cv.fill([(a1[0] - w * 2, a1[1] - 2), (a1[0] + w * 2, a1[1] - 2), (a1[0] + w * 3, 240, 0), (a1[0] - w * 3, 240, 0)],
                 INK, clip=sm, smooth=False)
-    cv.ink(sheet, 2)
+    cv.ink(sheet, 3)
     backlit(cv, sm, PINK, ((0, -2),))
+    # his hand hanging over the edge to the bottle, drawn
+    fig.draw_hands(cv, sc, place, light, sides=('l',))
     # the bedside table, the clock on it: 1:05 in red (the game blinks the colon on COLON)
     table = [(130, 176, 0), (240, 176, 0), (240, floor_y, 0), (130, floor_y, 0)]
     tm = cv.fill(table, INK, smooth=False)
@@ -218,26 +221,30 @@ def panel_door():
     # their heads drawn in): where they stand (body space -> panel px), how they stand, weight on a leg
     s = 0.245
     light = Light(key=tube, fill=hx('#3a3658'), gain=1.0, deep=1.0)
-    sc = Scene(W, H, light=(0.15, -0.35, -0.92), scale=s, ink=1, inner=1, shadows=False, blacks=-0.55,
+    sc = Scene(W, H, light=(0.15, -0.35, -0.92), scale=s, ink=3, inner=2, shadows=False, blacks=-0.55,
                keystone=(746.0, float(foot), 0.22))
     young_pose = stance('r', hips=8, shoulders=6, turn=-8, spread=18, step=10)
     young_pose.update(head=ypr(-16, 6, -6), wrist_l=(92, -360, 6), elbow_l=(0.5, 0, -1), wrist_r=(-60, -420, 46),
                       elbow_r=(-0.8, 0.2, -0.6))
-    young = Figure(YOUNG, pose=young_pose, hands=dict(l=dict(shape=grip(2.6), fwd=(0, 1, 0), palm=(-1, 0, 0)),
-                                                      r=dict(shape=FIST)))
+    young = Figure(YOUNG, pose=young_pose, hands=dict(l=dict(shape=grip(2.6), fwd=(0, 1, 0), palm=(-1, 0, 0),
+                                                             pose='can', view='back', size=1.2),
+                                                      r=dict(pose='fist', view='front', size=1.15)))
     heavy_pose = stance('l', hips=4, shoulders=3, turn=4, spread=34, step=6, drop=12, lean=6)
     heavy_pose.update(head=ypr(-6, 12, 3), wrist_r=(-102, -376, 26), elbow_r=(-0.4, 0, -1), wrist_l=(96, -380, 18),
                       elbow_l=(0.4, 0, -1))
-    heavy = Figure(HEAVY, pose=heavy_pose, hands=dict(r=dict(shape=grip(4.0), fwd=(0, 0.3, 1), palm=(1, 0, 0)),
-                                                      l=dict(shape=FIST)))
+    heavy = Figure(HEAVY, pose=heavy_pose, hands=dict(r=dict(shape=grip(4.0), fwd=(0, 0.3, 1), palm=(1, 0, 0),
+                                                             pose='grip', view='front', size=1.3, angle=180),
+                                                      l=dict(pose='fist', view='front', size=1.2, angle=180)))
     torch_at = (-46, -566, 200)                                            # his torch hand, held out into the room
     slick_pose = stance('r', hips=6, shoulders=4, turn=10, spread=10, step=-46)
     slick_pose.update(head=ypr(8, 10, 4), wrist_r=torch_at, elbow_r=(-0.6, 0.6, -0.4), wrist_l=(70, -400, 40),
                       elbow_l=(0.6, 0, -1))
-    slick = Figure(SLICK, pose=slick_pose, hands=dict(r=dict(shape=grip(5.4), fwd=(0.05, 0.3, 1), palm=(1, 0, 0))))
+    slick = Figure(SLICK, pose=slick_pose, hands=dict(r=dict(shape=grip(5.4), fwd=(0.05, 0.3, 1), palm=(1, 0, 0),
+                                                             pose='torch', view='side', angle=-8, mirror=True,
+                                                             size=1.45)))
     places = {'young': Xf(802, foot - 2, s * 0.96, ypr(-26, -5)), 'heavy': Xf(744, foot + 2, s * 1.04, ypr(-8, -5)),
               'slick': Xf(676, foot + 7, s * 1.04, ypr(-58, -5))}
-    lens = sc.project(slick.hand_xf('r', places['slick'])((-46, 40, 12.5)))
+    lens = hands.place(*slick.hand_place('r', sc, places['slick']), name='lens')
     # the light thrown in across the floor, and their shadows long in it
     spill = [(dx0, dy1, 0), (dx1, dy1, 0), (1000, 282, 0), (430, 282, 0)]
     cv.fill(spill, tubeDD, smooth=False)
@@ -259,12 +266,15 @@ def panel_door():
         sc.add(m, sk, young.hand_xf('l', places['young']).at((0, 116, 9.4)))
     for m, sk in props.crowbar(light, 250.0):
         sc.add(m, sk, heavy.hand_xf('r', places['heavy']).at((-14, 40, 11), rot((0, 0, 1), -90)))
-    for m, sk in props.torch(light):
-        sc.add(m, sk, slick.hand_xf('r', places['slick']).at((22, 40, 12.5), rot((0, 0, 1), 90)))
     m = sc.render(cv)
     backlit(cv, m, tube, ((2, 0), (0, -2)))
     # the window's neon only where they stand against the dark of the room, not against the landing's light
     backlit(cv, ImageChops.multiply(m, cv.mask([(0, 0, 0), (dx0, 0, 0), (dx0, H, 0), (0, H, 0)], False)), PINK_D, ((-2, 0),))
+    # their hands, drawn: the torch in the slick one's fist, the heavy's knuckles on the crowbar, the can's handle;
+    # the landing's light on them from behind, a little
+    hand_light = Light(key=tube, fill=hx('#3a3658'), gain=0.62, deep=1.0)
+    for fig, name in ((young, 'young'), (heavy, 'heavy'), (slick, 'slick')):
+        fig.draw_hands(cv, sc, places[name], hand_light, sides=('r',) if name == 'slick' else ('r', 'l'))
     cv.ellipse(lens[0], lens[1], 3, 3, hx('#f6f0ff'))
     # in the foreground, close to us in the dark: the back of his armchair, black, the window's neon along its top
     chair = [(-10, 282, 0), (-10, 168), (40, 150), (120, 146), (176, 160), (184, 282, 0)]
