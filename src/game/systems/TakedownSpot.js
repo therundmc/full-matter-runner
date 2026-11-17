@@ -11,7 +11,8 @@ const STRUCT = new Set(['D', 'L', 'G', 'F']); // a doorway, a window, a gate: ne
 
 // g: the guard { x, y, angle }; map: TileMap; props: the level's (anything with def, body.vertices, dead).
 // -> { kind, x, y (the point of the surface struck, just off it), nx, ny (its normal, toward him), d (px from his
-// centre), prop (null for a wall), name (a ledge's, for the hint) } or null
+// centre), prop (null for a wall), name (a ledge's, for the hint), rest (how the dead man stays against it: SLAMS) }
+// or null
 export function spotFor(g, map, props, S = SPOT) {
   let best = null;
   const rank = (k) => S.order.indexOf(k), top = Math.max(...Object.values(S.reach));
@@ -26,7 +27,7 @@ export function spotFor(g, map, props, S = SPOT) {
       const slam = SLAMS[hit.p.type];
       if (slam) {
         const d = hit.t * far;
-        spot = { kind: slam.kind, x: g.x + c * d + hit.nx, y: g.y + s * d + hit.ny, nx: hit.nx, ny: hit.ny, d, prop: hit.p, name: slam.name };
+        spot = { kind: slam.kind, x: g.x + c * d + hit.nx, y: g.y + s * d + hit.ny, nx: hit.nx, ny: hit.ny, d, prop: hit.p, name: slam.name, rest: slam.rest };
       }
     } else if (wall && map.isWallChar(wall.cx, wall.cy) && !throughOpening(map, g.x, g.y, c, s, wd)) {
       spot = { kind: 'wall', x: wall.x + wall.nx, y: wall.y + wall.ny, nx: wall.nx, ny: wall.ny, d: wd, prop: null };

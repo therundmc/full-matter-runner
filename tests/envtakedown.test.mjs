@@ -261,24 +261,25 @@ test('env takedown: the kill is scored as a takedown, ENVIRONMENTAL or FLUSHED o
   assert.ok(MOMENTS.slam.stop > 0 && MOMENTS.slamKill.stop > MOMENTS.slam.stop, 'each blow held a moment, the last longer');
 });
 
-test('env takedown: folded over the bowl he stays on his knees, his head in it; off an edge he goes down beside it', () => {
+test('env takedown: folded over the bowl or a table he stays on his knees, his head on it, for good', () => {
   const G = { arms: [{ x: -6, y: -5, len: 8 }, { x: 6, y: -5, len: 8 }], legs: [{ x: -3, y: 6, len: 10 }, { x: 3, y: 6, len: 10 }], half: 7 };
-  // both start bent over what his head was driven into (his length long from above, the head not sat back)
   for (const T of [LEDGE, BOWL]) {
-    const p0 = throatPose(throatPlan(3, T), 0, G, T);
+    // he starts bent over what his head was driven into (his length long from above, the head not sat back)
+    const plan = throatPlan(3, T), p0 = throatPose(plan, 0, G, T), end = throatPose(plan, plan.dur, G, T);
     assert.ok(p0.arch > 0.8 && Math.abs(p0.head.dy) < 1e-9, `starts bent over: ${p0.arch}`);
+    assert.ok(T.stay && end.fall <= T.over + 1e-9 && end.arch < 0.95, 'still folded over it, for good');
+    for (const l of end.legs) assert.ok(l.s < 0.8, 'still on his knees');
   }
-  const plan = throatPlan(3, BOWL);
-  const end = throatPose(plan, plan.dur, G, BOWL);
-  assert.ok(BOWL.stay && end.fall <= BOWL.over + 1e-9 && end.arch < 0.9, 'still folded over it, for good');
-  for (const l of end.legs) assert.ok(l.s < 0.75, 'still on his knees');
-  const lp = throatPlan(3, LEDGE), down = throatPose(lp, LEDGE.kneel + LEDGE.hold + LEDGE.pitch + 0.01, G, LEDGE);
-  assert.ok(down.down && down.fall > 0.99 && down.arch > 0.95, 'down on the floor');
   assert.ok(KNEELS.ledge === LEDGE && KNEELS.bowl === BOWL);
+  // a crate or a keg is too low to be folded over: he is sat against it
+  assert.equal(SLAMS.crate.rest, 'sit');
+  assert.equal(SLAMS.keg.rest, 'sit');
+  for (const t of ['table', 'pool_table', 'bar_counter', 'desk']) assert.equal(SLAMS[t].rest, undefined, t);
 });
 
-test('env takedown: smashed into a wall he slumps down it and stays sat against it, head lolled', async () => {
-  // no DOM in Node: the sprites are 8 px placeholders on a canvas that draws nothing
+// a dead body made by fx/Gore.js in a world that only knows what it needs (no DOM in Node: the sprites are 8 px
+// placeholders on a canvas that draws nothing)
+async function deadWorld() {
   globalThis.document ??= { createElement: () => ({ width: 8, height: 8, getContext: () => sink }) };
   const { sprite } = await load('engine/Assets.js');
   const { gore } = await load('game/fx/Gore.js');
@@ -287,8 +288,38 @@ test('env takedown: smashed into a wall he slumps down it and stays sat against 
   const w = {
     particles: sink, decals: sink, events: new EventBus(), sound: noop, shake: noop, hitstop: noop, emit: noop, time: 0,
     map: map(), addBody: (b) => b.collisionFilter && bodies.push(b), physics: { bodies: () => bodies }, addCorpse: (c) => corpses.push(c),
-    items: [], windows: [], doors: [],
+    items: [], windows: [], doors: [], engine: { world: Matter.Composite.create() }, removeBody: noop,
   };
+  return { w, corpses, gore };
+}
+
+test('env takedown: slammed on furniture he stays against it, square to it, and does not move', async () => {
+  const { w, corpses, gore } = await deadWorld();
+  // the furniture's face at x = 120, facing west (the room); he stood 10 px off it, facing it (east)
+  const face = { x: 119, y: 96, nx: -1, ny: 0 };
+  for (const [rest, dying] of [['fold', 'ledge'], ['sit', 'sit']]) {
+    const prop = { dead: false, dying: false, bloody: noop };
+    const ch = { x: face.x - 10, y: 96, angle: 0, kind: 'thug', held: {}, knocked: 0, isEnemy: true };
+    gore(w, ch, 0, 'melee', { gore: 0, wound: 'crush' }, { dying, env: 'ledge', from: 'behind', against: { prop, ...face } });
+    const r = corpses.at(-1), t = r.torso.body;
+    for (let i = 0; i < 90; i++) r.update(1 / 60);
+    const at = { x: t.position.x, y: t.position.y, a: t.angle };
+    // the head (the torso's -y) toward the furniture: along his facing whether folded over it or sat against it
+    const head = t.angle - Math.PI / 2;
+    assert.ok(Math.abs(Math.atan2(Math.sin(head), Math.cos(head))) < 0.5, `${rest}: square to it (${head.toFixed(2)})`);
+    assert.ok(Math.abs(at.y - 96) < 1.5 && at.x < 120 && at.x > 120 - 14, `${rest}: against its edge: ${at.x.toFixed(1)}`);
+    assert.ok(rest === 'sit' ? r.dying.sat : r.dying.T.stay, rest);
+    for (let i = 0; i < 180; i++) r.update(1 / 60);
+    assert.ok(Math.hypot(t.position.x - at.x, t.position.y - at.y) < 0.01 && Math.abs(t.angle - at.a) < 0.01, `${rest}: still 3 s on`);
+    // the table tipped over or broken: he drops where he is
+    prop.dead = true;
+    r.update(1 / 60);
+    assert.equal(r.dying, null, `${rest}: let go`);
+  }
+});
+
+test('env takedown: smashed into a wall he slumps down it and stays sat against it, head lolled', async () => {
+  const { w, corpses, gore } = await deadWorld();
   // he stood 11 px off the west wall (its face at x = 32), facing it; the blow along his facing
   const ch = { x: 32 + 11, y: 80, angle: Math.PI, kind: 'thug', held: {}, knocked: 0, isEnemy: true };
   gore(w, ch, Math.PI, 'melee', { gore: 0, wound: 'crush' }, { dying: 'wall', env: 'wall', from: 'behind' });

@@ -212,11 +212,11 @@ export const SLUMP = {
 // of his length shows from above then; nod = share of the kneeling head's sitting back over his shoulders (0: it
 // stays down, ahead of them); over = share of the pitch he goes through; stay: he never lets go of his pose (folded
 // over the toilet for good, like a body sat against a wall), straight along the way he faced
-//   ledge  slid off the edge onto his knees in front of it, then down to one side of it (off it if boxed in)
+//   ledge  onto his knees against the edge, his torso and head left down on the top (a table, a counter, a sink)
 //   bowl   onto his knees, folded over the bowl, his head left in it
 export const LEDGE = {
-  kneel: 0.3, hold: 0.3, pitch: 0.42, dur: [1.3, 1.6], slip: 0.2, upright: 0.5, from: 0.85, nod: 0.6, hang: true,
-  beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 1],
+  kneel: 0.32, hold: 0, pitch: 0.45, dur: [1.2, 1.4], slip: 0.2, upright: 0.82, from: 0.85, nod: 0, over: 0.4, stay: true, hang: true,
+  beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 0],
 };
 export const BOWL = {
   kneel: 0.28, hold: 0, pitch: 0.5, dur: [1.2, 1.4], slip: 0.2, upright: 0.82, from: 0.85, nod: 0, over: 0.3, stay: true, hang: true,

@@ -852,8 +852,10 @@ export default class Player extends Character {
       return;
     }
     // the kill: he goes down the sequence's way (data/wounds.js KNEELS), from his knees if he is on them already
-    const how = { label: f.label, from: 'behind', dying: f.dying, kneeling: td.downAt >= 0, last: what === 'shot' && this.weapon.mag === 0,
-      env: td.spot?.kind };
+    // (driven into a piece of furniture: he stays against it, folded over it or sat against its side)
+    const sp = td.spot, against = sp?.prop ? { prop: sp.prop, x: sp.x, y: sp.y, nx: sp.nx, ny: sp.ny } : null;
+    const how = { label: f.label, from: 'behind', dying: sp?.rest === 'sit' ? 'sit' : f.dying, kneeling: td.downAt >= 0,
+      last: what === 'shot' && this.weapon.mag === 0, env: sp?.kind, against };
     const cause = f.cause === 'shot' ? shotCause(d) : f.cause;
     const by = f.wound ? { gore: 0, wound: f.wound } : f.cause === 'snap' ? undefined : d;
     tg.kill(a, cause, this, by, how);

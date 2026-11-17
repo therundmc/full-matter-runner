@@ -106,11 +106,12 @@ export const TAKEDOWNS = {
   urinal: { context: 'urinal', action: 'URINAL', label: 'URINAL SMASH', grip: 'hair', gap: 13, lat: 7, lunge: [4, 3], stand: 11, into: 2, after: 0.5,
     cause: 'melee', wound: 'crush', dying: 'bowl', noise: 90,
     beats: [[0.15, 'seize'], [0.22, 'struggle'], [0.3, 'smash'], [0.28, 'smash']] },
-  // a sink: his face brought down on its edge, twice; he slides down in front of it
+  // a sink: his face brought down on its edge, twice; he is left folded over it
   sink: { context: 'sink', action: 'SINK', label: 'SINK SMASH', grip: 'hair', gap: 13, lat: 7, lunge: [4, 3], stand: 11, into: 3, after: 0.5,
     cause: 'melee', wound: 'crush', dying: 'ledge', noise: 100,
     beats: [[0.15, 'seize'], [0.32, 'smash'], [0.3, 'smash']] },
-  // a table, a counter, a crate (anything at his waist): his face slammed down on the edge, twice
+  // a table, a counter, a crate (anything at his waist): his face slammed down on the edge, twice; he is left folded
+  // over it, or sat against something low (SLAMS `rest`)
   ledge: { context: 'ledge', action: 'SLAM ON {ON}', label: 'HEAD SLAM', grip: 'hair', gap: 13, lat: 7, lunge: [4, 3], stand: 10, into: 4, after: 0.5,
     cause: 'melee', wound: 'crush', dying: 'ledge', noise: 100,
     beats: [[0.15, 'seize'], [0.36, 'smash'], [0.32, 'smash']] },
@@ -121,13 +122,15 @@ export const TAKEDOWNS = {
 };
 
 // What a head can be slammed on, by prop type (systems/TakedownSpot.js): the move it takes (a TAKEDOWNS `context`)
-// and, for a ledge, the name the hint gives it. Only what stands about waist high is a ledge.
-const ledge = (name) => ({ kind: 'ledge', name });
+// and, for a ledge, the name the hint gives it. Only what stands about waist high is a ledge. rest: how the dead man
+// stays against it: folded over its top on his knees (the move's `dying`), or, something low, 'sit': slid down to sit
+// on the floor, his back against its side (Ragdoll.sitAgainst).
+const ledge = (name, rest) => ({ kind: 'ledge', name, rest });
 export const SLAMS = {
   toilet: { kind: 'bowl' }, urinal: { kind: 'urinal' }, sink: { kind: 'sink' },
   table: ledge('TABLE'), table_round: ledge('TABLE'), card_table: ledge('TABLE'), dope_table: ledge('TABLE'),
   pool_table: ledge('POOL TABLE'), desk: ledge('DESK'), bar_counter: ledge('BAR'), dj_booth: ledge('DECKS'),
-  crate: ledge('CRATE'), keg: ledge('KEG'), washer: ledge('WASHER'), oven: ledge('STOVE'),
+  crate: ledge('CRATE', 'sit'), keg: ledge('KEG', 'sit'), washer: ledge('WASHER'), oven: ledge('STOVE'),
 };
 
 // what a head driven into it sounds like (placeholders, assets/sound/PLACEHOLDERS.md): by the spot's kind, else by

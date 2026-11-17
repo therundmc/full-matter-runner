@@ -494,8 +494,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   contact frame (MOMENTS.slam, slamKill). Player.slamFx: his blood thrown back out, the surface marked (Prop.hit
   'blunt': a crack in the porcelain, splinters, the clutter on it knocked off; Prop.bloody; a wall dented, its dust,
   splashed and running), a toilet's water thrown over the floor, a placeholder sound, heard (`noise`). He goes down
-  by `dying`: 'bowl' (left kneeling folded over it for good), 'ledge' (slid off it onto his knees, then down beside
-  it; folded over it when boxed in), 'wall' (sat against it: Ragdoll `opts.sit`, propUp). Tagged ENVIRONMENTAL
+  by `dying` and stays against what he was driven into: 'bowl' / 'ledge' (left kneeling, folded over the bowl, the
+  table, the counter, the sink, for good), 'sit' (something low, SLAMS `rest`: sat on the floor against its side,
+  Ragdoll `opts.against`, sitAgainst), 'wall' (sat against it: Ragdoll `opts.sit`, propUp); out of the furniture's
+  way (no collisions), he drops where he is once it is tipped over or broken. Tagged ENVIRONMENTAL
   (`slammed`) or FLUSHED (`flushed`) by `how.env`.
 - Slide (Player, `PLAYER.slide`): Space while running with nothing to vault. ~0.5 s burst from ~2x run speed decaying to
   a jog (~2.9 m), stays physical (walls stop it, loose props take our momentum), sweeps standing enemies off their
