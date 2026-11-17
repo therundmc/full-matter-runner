@@ -14,7 +14,12 @@
 //   ash      a puff of ash when it is knocked off
 //   kg, material, mu  of the loose piece it becomes; land: the sound it makes landing whole (a placeholder of
 //            src/audio/Audio.js FOLEY, assets/sound/PLACEHOLDERS.md); a glass bursting is `clutterShatter`
-//   flutter  light and flat (cards, banknotes, a napkin): thrown off it floats down (Particles.floaters), no piece
+//   flutter  light and flat (cards, banknotes, a napkin): thrown off it floats down (Particles.floaters), no piece;
+//            banknotes (`flutter: 'cash'`) land as real bills that lie on the floor and are kicked about
+//            (systems/Litter.js), `bills` of them (a stack of singles), while there is room for them
+//   shatter  the sound it bursts with (default clutterShatter)
+//   spill    { kind, area }: what it pours out on the floor where it lands (the ice water of a champagne bucket),
+//            `ice` and its cubes skitter
 export const CLUTTER = {
   pint: { sprite: 'pint_full', r: 2.5, glass: { kind: 'beer', area: 55, share: 0.85 }, broken: 'glass_broken', kg: 0.6, material: 'glass', land: 'clutterClink' },
   pint_half: { sprite: 'pint_half', r: 2.5, glass: { kind: 'beer', area: 30, share: 0.85 }, broken: 'glass_broken', kg: 0.45, material: 'glass', land: 'clutterClink' },
@@ -39,6 +44,13 @@ export const CLUTTER = {
   bill: { sprite: 'bill', r: 2, flutter: 'cash' },
   rubber_bands: { sprite: 'rubber_bands', r: 2, kg: 0.02, material: 'fabric' },
   baggies: { sprite: 'baggies', r: 2, kg: 0.05, material: 'fabric' },
+  // the VIP room: champagne in its bucket, flutes, singles to throw at the dancer, bills tucked in the stage's edge
+  flute: { sprite: 'flute', r: 1.8, glass: { kind: 'booze', area: 14, share: 0.85 }, broken: 'glass_broken', kg: 0.15, material: 'glass', land: 'fluteClink', shatter: 'fluteShatter' },
+  bucket: { sprite: 'bucket', r: 4, kg: 2.5, material: 'metal', mu: 0.5, land: 'bucketKnock', spill: { kind: 'water', area: 150 }, ice: true },
+  singles: { sprite: 'singles', r: 3, flutter: 'cash', bills: 4 },
+  single: { sprite: 'single', r: 2, flutter: 'cash' },
+  bill_crumpled: { sprite: 'bill_crumpled', r: 1.8, flutter: 'cash' },
+  bill_folded: { sprite: 'bill_folded', r: 2, flutter: 'cash' },
 };
 
 // what a shot or a blow does to the clutter of a prop: a round hits what stands within `r` (+ `pad`) of its line,
@@ -70,7 +82,14 @@ export const SETS = {
   cash_floor: [['bands', -15, 2, 70], ['bands', -14.5, -5, 100], ['bill', -18, -1, 30]],
   // the dope table: the rubber bands and the banknotes it is bagged and counted with
   dope: [['rubber_bands', -11, 10, 0], ['bands', -2, -10, 5], ['baggies', 9, 3, 0]],
-  // the VIP room: a whisky on the sofa's arm, banknotes thrown on the dancer's stage
+  // the VIP room: a whisky on the sofa's arm and one on the armchair's; on the low table champagne in its bucket, two
+  // flutes, a stack of singles and a cigarette burning in the ashtray; banknotes thrown on the dancer's stage, some
+  // tucked folded into its brass edge (r 20 px) on the side the customers sit
   vip_sofa: [['lowball', 29, 3, 0]],
-  stage: [['bill', 9, -12, 20], ['bill', -13, 7, -40], ['bill', 15, 9, 75], ['bill', -4, 16, 10], ['bill', 3, 12, -60]],
+  vip_armchair: [['lowball', -10, 3, 0]],
+  vip_table: [['bucket', -3.5, -3, 0], ['flute', 4.5, -4.5, 0], ['flute', 6, 1, 0], ['singles', -3, 5, 14], ['ashtray_lit', 4, 6.5, 30]],
+  stage: [['single', 9, -12, 20], ['single', -13, 7, -40], ['single', 15, 9, 75], ['single', -4, 16, 10], ['single', 3, 12, -60],
+    ['bill_crumpled', -9, -9, 0], ['single', -15, -3, 110], ['bill_crumpled', 6, 15, 0], ['single', 11, 2, 160],
+    ['bill_folded', -20, 2, 95], ['bill_folded', -15, 13.5, 130], ['bill_folded', -14.5, -14, 45], ['bill_folded', -3, 20, 170],
+    ['bill_folded', -19.5, -6, 70]],
 };

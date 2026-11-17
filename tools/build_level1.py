@@ -444,12 +444,35 @@ lv.sprinklers(21.5, 12.07, 0, [(15, 12, 30, 19)])
 lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
 lv.area('the bar: VIP room')
+# 4 x 3 m behind the velvet (2 AM, the user: "more details on the floor, like banknotes"): the dancer's stage at the east
+# end, the sofa along the north wall with a low table in the corner at its end, the armchair by the door; the way in
+# from the curtain (row 18) and the window's foot on the gap (north-east corner) clear
 lv.prop('curtain', 25.5, 18.5)                          # velvet across its doorway: walked through, never seen through
-lv.prop('dance_stage', 30.0, 18.9, clutter='stage')    # banknotes thrown at the dancer
+lv.prop('dance_stage', 30.0, 18.9, clutter='stage')    # banknotes thrown at the dancer, a few tucked in its brass edge
 lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round the room
 lv.prop('sofa', 28.15, 17.45, clutter='vip_sofa')                         # clear of where one lands diving through the window
-lv.prop('armchair', 26.5, 19.45, 0)
+lv.prop('cocktail_table', 26.5, 17.47, clutter='vip_table')  # champagne on ice, flutes, singles, a cigarette burning
+lv.prop('armchair', 26.5, 19.45, 0, clutter='vip_armchair')
 lv.prop('neon_tube_pink', 28.0, 19.93, 180)
+# on its walls: a strip of mirror behind the stage, red neon lips beside it, a pin-up over the sofa, a revue's bill
+# over the armchair (none across the doorway)
+lv.prop('mirror_strip', 30.91, 18.95, 90)
+lv.prop('neon_sign_lips', 30.64, 19.91, 180)
+lv.prop('poster_pinup', 27.75, 17.09)
+lv.prop('poster_revue', 26.09, 19.5, 270)
+# what the night left on its carpet (systems/Litter.js: kicked, blown by a shot, lifted by the rounds): bills thrown at
+# the dancer lying thickest round the stage's edge, a few by the sofa, the feathers her boa shed on the side the
+# customers sit, a flute knocked over by the armchair and one by the stage, the corks, a garter, an ashtray put down by
+# the sofa's foot
+lv.litter_at('flute', 27.2, 19.2, 115)
+lv.litter_at('flute', 28.12, 18.3, 200)
+lv.litter_at('cork', 27.95, 18.55, 0)
+lv.litter_at('cork', 28.1, 19.78, 0)
+lv.litter_at('garter', 28.4, 19.55, 30)
+lv.litter_at('ashtray', 27.05, 18.03, 0)
+lv.litter('bill', 30.0, 18.9, 27, 60, 26, looks=(5, 3, 2), seed=1712)
+lv.litter('bill', 27.3, 18.12, 0, 13, 5, looks=(4, 4, 1), seed=1713)
+lv.litter('feather', 30.0, 18.9, 27, 42, 6, looks=(1, 1), arc=(130, 235), seed=1714)
 
 lv.area('the bar: on its walls')
 # pictures and posters behind glass, the dartboard, the coin phone, the coats on their hooks, a beer neon in the poker
@@ -488,6 +511,16 @@ lv.grime('burns', 25, 12, 30, 15, 2)
 lv.grime('sticky', 25, 13, 30, 15, 1)
 lv.grime('sticky', 26, 17, 30, 19, 2)
 lv.grime('butts', 26, 17, 30, 19, 2)
+# the VIP room: the pile worn flat in a ring round the stage, glitter shed by the dancer, butts and rings by the sofa,
+# the champagne of the knocked-over flute dried sticky (each mark at its point: the other rooms' marks do not move)
+lv.grime_at('halo', 30.0, 18.9, r=31, w=9, d=-14, grey=0.25)
+for (x, y) in ((28.85, 18.25), (28.7, 19.2), (28.95, 19.8), (28.2, 18.6), (27.6, 18.15), (30.6, 19.85)):
+    lv.grime_at('glitter', x, y, r=10)
+for (x, y) in ((26.3, 18.2), (27.4, 18.15), (27.9, 18.8)):
+    lv.grime_at('butts', x, y)
+for (x, y) in ((27.0, 18.3), (28.4, 18.05)):
+    lv.grime_at('rings', x, y)
+lv.grime_at('sticky', 27.4, 19.3, col='#a89048')
 lv.grime('butts', 25, 6, 30, 10, 4)
 lv.grime('burns', 25, 6, 30, 10, 2)
 lv.grime('napkin', 22, 8, 23, 10, 4)
@@ -501,6 +534,7 @@ lv.wear_path(21.5, 19.5, 22.4, 12.3, 10)
 lv.smoke_haze(20.8, 16.9, 2.3, 0.1)
 lv.smoke_haze(26.9, 14.25, 1.9, 0.1)
 lv.smoke_haze(17.6, 13.6, 2.0, 0.05)
+lv.smoke_haze(30.0, 18.9, 1.4, 0.12)                     # thicker in the stage's light
 
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
 lv.area('the liquor store roof')
