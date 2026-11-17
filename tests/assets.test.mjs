@@ -54,3 +54,12 @@ test('assets: every look a level gives a guard, and every civilian look, has its
   const patrons = level1.ambient.patrons.map((p) => p[0]).filter((k) => k !== 'tramp');
   assert.equal(new Set(patrons).size, patrons.length);
 });
+
+test('assets: the street fauna is painted at the people\'s density, every frame it is drawn with on disk', () => {
+  assert.match(src, /name\.startsWith\('critters\/'\)/);
+  for (const n of ['pigeon_idle', 'pigeon_fly1', 'pigeon_dead', 'rat_run2', 'rat_dead', 'cat_sit', 'cat_run0', 'cat_walk3', 'cat_low', 'cat_dead']) {
+    const { w, h } = png('critters/' + n);
+    assert.ok(w % 2 === 0 && h % 2 === 0, `critters/${n} is ${w}x${h}`);
+  }
+  assert.deepEqual(png('critters/cat_run0'), { w: 66, h: 30 });
+});

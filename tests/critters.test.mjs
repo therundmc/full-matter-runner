@@ -5,6 +5,7 @@ import { load } from './setup.mjs';
 const { TILE, CRITTERS } = await load('game/Config.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Critters } = await load('game/systems/Critters.js');
+const { critterFrame } = await load('game/render/CritterArt.js');
 
 const { Bodies, Body } = Matter;
 
@@ -35,7 +36,7 @@ function stub(def) {
 const run = (critters, sec) => { for (let i = 0; i < sec * 60; i++) critters.update(1 / 60); };
 const prop = (type, col, row, w = 58, h = 34) => {
   const body = Bodies.rectangle(col * TILE, row * TILE, w, h);
-  return { type, body, dead: false, kick: { x: 0, y: 0, vr: 0 }, get x() { return body.position.x; }, get y() { return body.position.y; } };
+  return { type, def: {}, body, dead: false, kick: { x: 0, y: 0, vr: 0 }, get x() { return body.position.x; }, get y() { return body.position.y; } };
 };
 const of = (critters, kind, state) => critters.list.filter((c) => c.kind === kind && (!state || c.state === state));
 
@@ -237,8 +238,46 @@ test('critters: a blast kills the ones on the ground within its radius; flies ov
   assert.equal(swarms.length, 2);
   assert.deepEqual([swarms[1].x, swarms[1].y], [90, 90]);
   const lamps = critters.lamps();
-  assert.deepEqual([lamps.length, lamps[0].x], [1, lamp.x + CRITTERS.moths.at.streetlight]);
+  assert.deepEqual([lamps.length, lamps[0].x, lamps[0].n], [1, lamp.x + CRITTERS.moths.at.streetlight[0][0], 3]);
   d.dead = lamp.dead = true;
   assert.equal(critters.swarms().length, 1);
   assert.equal(critters.lamps().length, 0);
+});
+
+test('critters: moths round the bar\'s lamps too, at each bulb of a turned lamp, fewer than under a streetlight; gone when it goes dark', () => {
+  const { world, critters } = stub({});
+  const street = prop('streetlight', 4, 4), pool = prop('pool_lamp', 10, 10), ceiling = prop('ceiling_lamp', 14, 10), sofa = prop('sofa', 16, 10);
+  Body.setAngle(pool.body, Math.PI / 2);
+  ceiling.def = { height: 0.05 };
+  world.props.push(street, pool, ceiling, sofa);
+  const lamps = critters.lamps();
+  assert.equal(lamps.length, 4, 'the streetlight, the pool table lamp\'s two bulbs, the ceiling lamp; no sofa');
+  const bulbs = lamps.filter((l) => Math.abs(l.x - pool.x) < 1);
+  assert.deepEqual(bulbs.map((l) => Math.round(l.y - pool.y)).sort((a, b) => a - b), [-12, 12], 'turned with the lamp');
+  for (const l of lamps) assert.ok(l.n >= 1 && l.n <= 3 && l.r > 0);
+  assert.equal(lamps.find((l) => Math.abs(l.x - ceiling.x) < 1).lift, 0.05, 'up round a hung lamp, where it is drawn');
+  assert.ok(lamps.filter((l) => l !== lamps[0]).every((l) => l.n <= lamps[0].n && l.r < lamps[0].r));
+  pool.lightsOut = true;
+  assert.equal(critters.lamps().length, 2, 'a power cut lets them go');
+});
+
+test('critters: the frame drawn follows the state, and a run cycles faster the faster it goes', () => {
+  assert.equal(critterFrame({ kind: 'pigeon', state: 'dead', ph: 0 }, 3), 'pigeon_dead');
+  assert.equal(critterFrame({ kind: 'rat', state: 'dead', ph: 0 }, 3), 'rat_dead');
+  assert.equal(critterFrame({ kind: 'cat', state: 'idle', ph: 0 }, 3), 'cat_sit');
+  assert.equal(critterFrame({ kind: 'cat', state: 'run', low: true, ph: 0 }, 3), 'cat_low');
+  const seen = (c, sec, step = 1 / 600) => {
+    const out = [];
+    for (let t = 0; t < sec; t += step) { const f = critterFrame(c, t); if (f !== out[out.length - 1]) out.push(f); }
+    return out;
+  };
+  const slow = seen({ kind: 'rat', state: 'run', speed: 95, ph: 0 }, 1), fast = seen({ kind: 'rat', state: 'run', speed: 190, ph: 0 }, 1);
+  assert.deepEqual(slow.slice(0, 5), ['rat_run0', 'rat_run1', 'rat_run2', 'rat_run1', 'rat_run0'], 'stretched, bunched, stretched');
+  assert.ok(Math.abs(fast.length / slow.length - 2) < 0.2, `${fast.length} frames against ${slow.length}`);
+  assert.deepEqual(new Set(seen({ kind: 'cat', state: 'run', ph: 1 }, 1)), new Set(['cat_run0', 'cat_run1', 'cat_run2']));
+  assert.deepEqual(new Set(seen({ kind: 'pigeon', state: 'fly', ph: 0 }, 1)), new Set(['pigeon_fly0', 'pigeon_fly1', 'pigeon_fly2']));
+  const walk = seen({ kind: 'pigeon', state: 'idle', walking: true, ph: 0 }, 1);
+  assert.ok(walk.length >= 7 && walk.every((f) => f.startsWith('pigeon_walk')), 'a few bobs of the head a second');
+  const idle = seen({ kind: 'pigeon', state: 'idle', ph: 0 }, 6);
+  assert.ok(idle.includes('pigeon_peck') && idle.includes('pigeon_idle'), 'standing, it pecks now and then');
 });
