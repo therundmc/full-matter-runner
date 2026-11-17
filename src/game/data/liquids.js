@@ -47,9 +47,9 @@ export const LIQUIDS = {
   // the rain's puddles (systems/Weather.js lays them): hollows `hollow` mm deep at their heart, the water standing
   // level `margin` mm under the lowest point of the rim (none where it would be under `min` mm); they never dry
   rain: { hollow: 3.2, margin: 0.4, min: 0.2 },
-  // the petrol poured on the floor of a lesson's room that is set alight (level `fires` of a stage with a `spark`),
-  // px2 at each fire
-  petrol: { area: 1400, r: 8 },
+  // the petrol poured in trails on the floor (level `petrol`: [width px, [col, row], ...]; the fire runs along them:
+  // systems/FireSpread.js): a pour every `step` px of a trail, `fill` times the floor it is to cover
+  petrol: { step: 4, fill: 1.2 },
   minPool: 4,              // a body's pool (px) under which it is not fed yet
   stride: 17,              // px between two footprints (alternating feet)
   gait: 3,                 // half the distance between the left and the right foot

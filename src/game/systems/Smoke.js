@@ -189,10 +189,11 @@ export default class Smoke {
     this.quietT = 0;
   }
 
-  // something burning at (x, y), `what` its size (SMOKE.burn.size): soot rising off it, the hot air welling out
-  burn(x, y, what, dt) {
-    const B = this.cfg.burn, k = B.size[what];
-    this.emit('soot', x, y, B.rate * k, dt, B.r * Math.sqrt(k), B.cap, B.swell * Math.sqrt(k));
+  // something burning at (x, y), `what` its size (SMOKE.burn.size; `share` of it: one fire of a whole room burning):
+  // soot rising off it, the hot air welling out
+  burn(x, y, what, dt, share = 1) {
+    const B = this.cfg.burn, k = B.size[what] * share;
+    this.emit('soot', x, y, B.rate * k, dt, B.r * Math.sqrt(B.size[what]), B.cap, B.swell * Math.sqrt(k));
   }
 
   // one of SMOKE.fumes going on at (x, y), at k of its rate
@@ -283,6 +284,21 @@ export default class Smoke {
     for (let k = 0; k < wts.length; k++) most += F.kinds[k].peak * wts[k];
     if (most < S.thick) return false;
     return F.thickAlong(x0, y0, x1, y1, wts, S.thick, S.len) >= S.len;
+  }
+
+  // how thick the air is about (x, y) for whoever stands in it: 0 clear .. 1 choked (SMOKE.murk; what hides, by its
+  // `sight`, averaged over a few points round him)
+  murk(x, y) {
+    const F = this.fluid, M = this.cfg.murk, wts = this.sight;
+    let sum = 0, n = 0;
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const px = x + i * M.r * 0.7, py = y + j * M.r * 0.7;
+        for (let k = 0; k < wts.length; k++) if (wts[k]) sum += F.densityAt(px, py, k) * wts[k];
+        n++;
+      }
+    }
+    return Math.max(0, Math.min(1, (sum / n - M.from) / (M.full - M.from)));
   }
 
   // ---- stepping
@@ -413,7 +429,7 @@ export default class Smoke {
       F.swirl(p.x, p.y, c.fan.r, omega * c.fan.turn, c.fan.vmax * k, c.fan.k);
       this.thin(p.x, p.y, c.fan.r, c.fan.mix * k, dt);
     }
-    if (w.fires?.fires.length) for (const f of w.fires.lit()) this.burn(f.x, f.y, 'fire', dt);
+    if (w.fires?.fires.length) for (const f of w.fires.lit()) this.burn(f.x, f.y, 'fire', dt, f.soot ?? 1);
     const D = c.draft;
     for (const o of this.openings) {
       if (!o.open || !o.out || !this.within(o.x, o.y)) continue;

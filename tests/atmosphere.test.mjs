@@ -299,3 +299,32 @@ test('papers: soaked by the rain they are heavier and drawn darker', () => {
   assert.ok(wet.list.every((q) => q.wet) && !dry.list.some((q) => q.wet));
   assert.ok(wet.friction > dry.friction);
 });
+
+test('smoke: soot builds up in a shut room on fire and the view closes in, in flat rings; outdoors it does not', async () => {
+  const { murkView } = await load('game/render/Murk.js');
+  const s = bar();
+  s.door.body.angle = s.door.a0; // shut
+  const x = 5.5 * TILE, y = 4.5 * TILE, seen = [];
+  assert.equal(s.smoke.murk(x, y), 0, 'clear to start with');
+  for (let k = 0; k < 6; k++) {
+    for (let i = 0; i < 300; i++) {
+      s.world.time += 1 / 60;
+      // the room burning: a fire every half tile of it
+      for (let fy = 3.25; fy < 6; fy += 0.5) for (let fx = 4.25; fx < 7; fx += 0.5) s.smoke.burn(fx * TILE, fy * TILE, 'fire', 1 / 60, 0.28);
+      s.smoke.update(1 / 60);
+    }
+    seen.push(s.smoke.murk(x, y));
+  }
+  assert.ok(seen.every((v, i) => i === 0 || v >= seen[i - 1] - 0.02), `it thickens: ${seen.map((v) => v.toFixed(2))}`);
+  assert.ok(seen[5] > 0.5, `half a minute of fire in a shut room: ${seen[5].toFixed(2)}`);
+  assert.ok(s.smoke.murk(9.5 * TILE, 7.5 * TILE) < 0.05, 'the yard stays clear');
+  // what is seen of it: the radius seen plainly shrinks as it thickens, never under `near`; rings darker outward
+  const M = SMOKE.murk, views = seen.map((v) => murkView(v));
+  assert.deepEqual(murkView(0), { clear: Infinity, rings: [] });
+  assert.ok(views.every((v, i) => i === 0 || v.clear <= views[i - 1].clear + 1e-9), 'the view closes in');
+  assert.ok(views[5].clear < M.far - 0.2 && murkView(1).clear >= M.near - 1e-9, 'down to a room\'s width, no less');
+  const rings = murkView(1).rings;
+  assert.equal(rings.length, M.steps);
+  assert.ok(rings.every((r, i) => i === 0 || (r.r > rings[i - 1].r && r.a > rings[i - 1].a)), 'flat steps, the further the darker');
+  assert.ok(rings.at(-1).a <= M.max + 1e-9 && M.max < 0.7, 'never black: what is in it still reads');
+});

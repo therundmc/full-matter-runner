@@ -5,7 +5,8 @@
 // Where it comes from: sources pouring a while (a burst hydrant, a holed keg, a broken pipe: `source`, 'spill'
 // with a `dur`), spills at once ('spill': smashed bottles), what rains on the floor (the sprinklers: `sprinkle`),
 // the bodies bleeding (the pool each corpse lets out, fed as it grows), the rain's puddles lying in the hollows
-// of the open ground (systems/Weather.js lays them), the petrol on the floor of a room the lesson sets alight.
+// of the open ground (systems/Weather.js lays them), the petrol poured in trails that a match sets alight (level
+// `petrol`, systems/FireSpread.js).
 // What it does: a wet floor grips less (World.floorGrip; a slick kind floors runners, systems/Slips.js); whoever
 // walks in it splashes, pushes it along, then prints fading footprints on the dry floor or one long smear when
 // sliding (`decals.footprint` / `decals.smear`, event 'footprint' for the guards); drops landing in it ring.
@@ -192,9 +193,16 @@ export default class Liquids {
         S.rest[i] = h;
       }
     }
-    const lv = this.world.level, stages = lv?.tutorial?.stages, P = this.cfg.petrol;
-    for (const [col, row, stage = -1] of lv?.fires || []) {
-      if (stages?.[stage]?.spark) this.feed(col * TILE, row * TILE, P.area, 'petrol', P.r);
+    // the petrol poured in trails (level `petrol`: [width px, [col, row], ...]), a pour every `step` px of them
+    const P = this.cfg.petrol;
+    for (const [width, ...pts] of this.world.level?.petrol || []) {
+      for (let k = 0; k < pts.length; k++) {
+        const [x0, y0] = pts[k], [x1, y1] = pts[k + 1] || pts[k], len = Math.hypot(x1 - x0, y1 - y0) * TILE;
+        for (let d = 0; d <= len; d += P.step) {
+          const u = len ? d / len : 0;
+          this.feed((x0 + (x1 - x0) * u) * TILE, (y0 + (y1 - y0) * u) * TILE, width * P.step * P.fill, 'petrol', width / 2);
+        }
+      }
     }
   }
 

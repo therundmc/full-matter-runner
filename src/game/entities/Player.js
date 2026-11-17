@@ -40,6 +40,7 @@ export default class Player extends Character {
     this.lunge = null;      // { a, dir, v, stop, until } a swing drawn to a guard (startLunge)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
+    this.pinned = false;    // sat there, no key gets him up yet
     this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
     this.rising = false;
     this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d }
@@ -290,6 +291,7 @@ export default class Player extends Character {
   updateSit(dt, input) {
     if (!this.rising) {
       this.steer(0, 0, 0, 1);
+      if (this.pinned) return false; // a scene keeps him down (systems/Tutorial.js: the opening)
       const key = input.anyPressed || input.mouseDown(0);
       if (this.swig && !this.updateSwig(dt, key)) return false;
       if (!key && !this.swig?.go) return false;

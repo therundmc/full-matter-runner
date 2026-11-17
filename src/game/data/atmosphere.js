@@ -100,6 +100,11 @@ export const SMOKE = {
   look: { step: 0.06, from: 0.55, rag: 0.6 },
   // a guard does not see through `len` px or more of air at least `thick` thick (the kinds' densities times `sight`)
   sight: { thick: 0.55, len: 20 },
+  // the player sees less in it too (systems/Smoke.js murk, render/Murk.js): how thick the air is about him (what
+  // hides, as for the guards, averaged over `r` px round him) from `from` (nothing yet) to `full`; the view closes
+  // in round him from `far` to `near` (picture heights still seen plainly), in `steps` flat rings over `width`, the
+  // last `max` dark; eased at `ease` 1/s. Readability first: at its worst a room's width is still seen.
+  murk: { r: 56, from: 0.08, full: 0.6, far: 0.8, near: 0.3, width: 0.24, steps: 5, max: 0.6, ease: 0.9, color: '#0c0808' },
   // the resting layer of grey of a smoky place of the soundscape (its zones), patchy: `patchy` share of it varies over
   // patches of `patch` px; the power cut leaves `dark` of it (no lamp, no fan, nobody smoking at ease)
   rest: { zones: { bar: 0.13, vip: 0.11, office: 0.1, kitchen: 0.05 }, patchy: 0.75, patch: 90, dark: 0.4, ease: 0.2 },

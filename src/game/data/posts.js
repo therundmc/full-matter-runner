@@ -36,7 +36,7 @@
 //          'ash', 'flame' (a lighter cupped in the hands), 'butt' (a flicked cigarette end), 'stream' (into a toilet
 //          bowl), 'tap' (water at a sink), 'can' (kicked down the sidewalk), 'stroke' (a pool shot), 'deal' (a card a
 //          beat), 'chip', 'strike' (a match struck: its flare), 'match' (a match burning in the hands), 'drop' (the lit
-//          match let fall: event 'matchDrop', the petrol catches there: systems/Fires.js), 'junk' (something pulled out
+//          match let fall: event 'matchDrop', the petrol catches there: systems/FireSpread.js), 'junk' (something pulled out
 //          of a drawer or the fridge thrown over his shoulder, left lying), 'cold' (the light of an open fridge)
 // An act:  w, phases, cue as above; next: the act played after it, instead of one picked at random (a cued act that
 //          leads on to another, one that goes on for ever)
@@ -177,9 +177,9 @@ export const POSTS = {
   // ---- the prologue (tools/build_tutorial.py): the boss's men in his flat while he sleeps, each at something until
   // his turn comes (systems/Tutorial.js keeps them deaf and blind till then)
   // the man who poured the petrol: the jerrycan is down, the matchbox in his hand, a match ready; he shakes the box,
-  // looks over the soaked floor, wipes his hands. As the player walks in (Tutorial cue 'light') he strikes it, shields
-  // the flame a moment and lets it fall: the room goes up from where it lands; he backs off from the whoosh and
-  // watches it burn
+  // looks over the soaked floor, wipes his hands. When the man on the mattress wakes (systems/Tutorial.js: the
+  // opening cues 'laugh') he laughs at him, strikes it, shields the flame a moment and lets it fall: the petrol
+  // catches where it lands (systems/FireSpread.js); he backs off from the whoosh, and is sent running for the door
   arson: {
     stay: true,
     acts: {
@@ -187,6 +187,7 @@ export const POSTS = {
       rattle: { w: 1.5, phases: [{ g: 'rattle', dur: [1.1, 1.4], sound: ['clack', 0.25, 0.14, 2.6] }, { g: 'box', dur: [1, 2] }] },
       survey: { w: 1.5, phases: [{ g: 'hips', dur: [3, 4.5], look: 'sweep' }] },
       smear: { w: 1, phases: [{ g: 'smear', dur: [1.5, 1.9] }, { g: 'box', dur: [1, 2] }] },
+      laugh: { cue: true, next: 'light', phases: [{ g: 'laugh', dur: [1.05, 1.1] }] },
       light: { cue: true, next: 'back', phases: [
         { g: 'strike', dur: [0.4, 0.45], fx: 'strike', sound: ['match', 0.3, 0.9, 1] },
         { g: 'shield', dur: [0.55, 0.65], fx: 'match' },

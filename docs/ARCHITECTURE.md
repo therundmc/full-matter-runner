@@ -96,8 +96,17 @@ src/
       Ambience.js         the night heard place by place (level.soundscape, data/soundscape.js): beds crossfaded by
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
-      Tutorial.js         a level that teaches: rooms played in order, dormant guards woken wave by wave, hints, retry from the last room (DOM-free)
-      Fires.js            things burning for the look of it (level `fires`), caught stage by stage in the tutorial (DOM-free)
+      Tutorial.js         a level that teaches, and its staging (data/staging.js): rooms played in order, dormant guards woken
+                          wave by wave, hints, a lesson slowing time the first time its hint shows (`pace`), the opening scene
+                          (the man with the match: `open` / `play`), the camera's shot (`shot`), the flat blowing up at the end
+                          (`blow`), a retry from the last room with the fire where it would be (DOM-free, unit-tested)
+      FireSpread.js       fire that spreads (FIRE in data/fire.js): a front running over a grid of cells, fast along the petrol
+                          (level `petrol` trails), slowly over floors that burn, up the furniture; one touch kills; a stage's
+                          `hold` keeps it out of a room for a while (deterministic, DOM-free, unit-tested)
+      Fires.js            the flames, light and sound of what burns: a fire a block of burning floor (lit and put out by
+                          FireSpread), level `fires` burning from the start; bounded (DOM-free; drawn by render/FireArt.js)
+      Direction.js        the camera's shots (SHOTS in data/staging.js): a zoom on top of the usual view and something to look
+                          at, eased; the zoom rests on a whole number of px a world px (pure, unit-tested)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
@@ -190,6 +199,9 @@ src/
       PropLife.js         pool balls, snow on a TV left on, a phone booth's receiver
       StreetArt.js        the loose sheets of systems/Papers.js, the cigarettes left burning by customers who ran
       WeatherArt.js       the rain: streaks, crowns where drops land, rings in standing water, drips (hashed per frame)
+      FireArt.js          the standing flames of what burns (Fires.lit()): a bed of embers and a few tongues a fire, flat
+                          squares flickering in steps, nothing stored
+      Murk.js             thick smoke about the player closes his view in, in flat rings of soot (SMOKE.murk; no blur)
       SmokeArt.js         the air's kinds in flat pixel bands, each its own look (glow lit twice, white lit once, a
                           veil where lit, soot whatever the light), the mist, the threads
       Flicker.js          how bright a light is over time per kind (buzz, broken, pulse, tv...), the letters of a sign,
@@ -542,8 +554,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   `feed` (px2 of floor that much liquid would cover), `sprinkle` (drops over a disc: the sprinklers), the bodies'
   blood (each corpse's `pool` radius, poured at `poolAt()` as it grows), a car's leaking fuel (petrol), the rain's
   puddles (level `wet`: Weather lays where, Liquids sinks a hollow there and fills it level under its rim, at rest,
-  never drying), the petrol on the floor of a lesson's room that a match will light (level `fires` of a stage with a
-  `spark`). Drops landing in it ring (`ripple`).
+  never drying), the petrol poured in trails that a match will light (level `petrol`: [width px, [col, row], ...];
+  systems/FireSpread.js runs the fire along them). Drops landing in it ring (`ripple`).
   What it does: a wet floor grips less (`World.floorGrip` x `Liquids.grip`: the mix's grip, by depth), so bodies and
   loose things slide further; a slick mix floors runners (systems/Slips.js reads `at(x, y).slip`). Anyone in
   `world.chars` who steps in it splashes (deep enough), pushes it along, then prints fading footprints on the dry

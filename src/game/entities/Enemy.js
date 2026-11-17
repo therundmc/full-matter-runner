@@ -82,6 +82,7 @@ export default class Enemy extends Character {
     this.slack = 1;            // x his reaction time (the tutorial's men are slower) ...
     this.rate = 1;             // ... and x the time between his shots
     this.standT = 0;           // s he holds his ground and fires, whatever else he would do (Tutorial: a sharp wave)
+    this.bolt = null;          // { x, y } a script sends him to at a run while he waits his turn (waitTurn)
     this.dormant = false;      // the tutorial's guards until their wave is called (systems/Tutorial.js): they
                                // stand there, see and hear nothing, and can still be seized from behind
     this.state = this.roam ? S.PATROL : S.IDLE;
@@ -705,6 +706,14 @@ export default class Enemy extends Character {
   // goes on at his job
   waitTurn(dt) {
     this.t += dt;
+    // a script sends him somewhere at a run, straight there (systems/Tutorial.js: the man with the match makes for
+    // the door)
+    if (this.bolt) {
+      const dx = this.bolt.x - this.x, dy = this.bolt.y - this.y;
+      this.steer(dx, dy, ENEMY.runSpeed, 0.3);
+      this.faceAngle(Math.atan2(dy, dx), 10, dt);
+      return;
+    }
     if (this.updatePosture(dt) || !(this.routine && this.activity === this.job)) { this.halt(); return; }
     this.work(dt);
   }
@@ -1101,7 +1110,7 @@ export default class Enemy extends Character {
     }
   }
 
-  // a lit match let fall at p: the petrol catches there (systems/Fires.js)
+  // a lit match let fall at p: the petrol catches there (systems/FireSpread.js)
   dropMatch(p) {
     this.world.particles.fire(p.x, p.y, 3, 18, { size: [1, 2], life: [0.1, 0.25], rise: 20 });
     this.world.events.emit('matchDrop', { x: p.x, y: p.y, by: this });

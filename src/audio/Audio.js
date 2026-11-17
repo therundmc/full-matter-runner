@@ -192,6 +192,12 @@ export const META = {
   crackle: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.3 },
   ignite: { pri: 2, dur: 0.6, gap: 0.1, max: 2, gain: 0.6 },
   match: { pri: 2, dur: 0.8, gap: 0.3, max: 1, gain: 0.7 },
+  // the flat on fire (placeholders, assets/sound/PLACEHOLDERS.md): the man's laugh, the front running along the
+  // petrol, the roar of a room burning, a pane cracking in the heat
+  arsonLaugh: { pri: 3, dur: 1.2, gap: 1, max: 1, gain: 0.8, reach: 1900, bus: 'voice' },
+  fireRun: { pri: 2, dur: 0.5, gap: 0.3, max: 2, gain: 0.55 },
+  fireRoar: { pri: 1, dur: 0.9, gap: 0.6, max: 2, gain: 0.4 },
+  heatCrack: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
   // the kill's reward: a new one chokes the boom of the last (a chain never muds), the music dips under it
   confirm: { pri: 4, dur: 0.6, gap: 0.03, max: 2, duck: 0.8, gain: 0.8, hall: 0.06, choke: true },
@@ -427,6 +433,11 @@ const FOLEY = {
   landThud: [['thud', 0.55, 0.9], ['soft', 0.4, 0.8, 0.03]],
   slideScrape: [['rubble', 0.25, 1.3], ['soft', 0.3, 0.7, 0.05]],
   clear: [['doorSlam', 0.6, 0.6]],
+  // the flat on fire (systems/Tutorial.js, FireSpread.js, Fires.js): placeholders too
+  arsonLaugh: [['yell', 0.55, 0.85], ['yell', 0.5, 0.95, 0.24], ['yell', 0.45, 1.05, 0.48]],
+  fireRun: [['swish', 0.7, 0.4], ['soft', 0.45, 0.5, 0.04]],
+  fireRoar: [['rubble', 0.3, 0.45], ['swish', 0.3, 0.3, 0.1]],
+  heatCrack: [['glassHit', 0.6, 0.7], ['click', 0.35, 2.2, 0.07], ['glassHit', 0.3, 1.1, 0.16]],
 };
 
 class AudioSystem {
