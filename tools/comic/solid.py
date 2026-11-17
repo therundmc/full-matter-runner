@@ -415,8 +415,8 @@ class Scene:
         self.shadows = shadows
         self.rims = [(unit(d), c, t) for d, c, t in rims]
         self.scale = scale
-        self.ink = ink if ink is not None else max(1, min(4, round(1 + scale)))
-        self.inner = inner if inner is not None else max(1, self.ink - 1)
+        self.ink = ink if ink is not None else (4 if scale >= 0.9 else 3)
+        self.inner = inner if inner is not None else 2
         self.gap = gap
         self.rim_px = rim_px
         self.crease = crease
