@@ -19,8 +19,34 @@ const { Body } = Matter;
 // a prop the characters push and that marks the floor: loose, on the floor, not a vehicle
 const loose = (p) => !p.dead && !p.isVehicle && !p.def?.hung && p.body && !p.body.isStatic && p.body.mu !== undefined;
 
+// a vehicle standing or rolling: a man on foot leans on it as on a wall (a tonne on its brakes does not go anywhere
+// for a shoulder; it is the vehicle that hits people, in Vehicle.js)
+const car = (p) => p.isVehicle && !p.dead && p.body;
+
+// a character on his feet or sliding (not vaulting, knocked flying, gone)
+const onFoot = (c) => c.alive && c.body && !c.vaulting && !(c.knocked > 0) && !c.hidden && !c.passage;
+
 // a character walking (not sliding, vaulting, flying, sitting, gone)
 const walking = (c) => c.alive && c.body && !c.slide && !c.vaulting && !(c.knocked > 0) && !c.hidden && !c.slipped && !c.passage;
+
+// Into a vehicle a man on foot (walking, running, sliding) goes no faster than it gives way by itself: his velocity
+// into it is taken off before the step, so Matter has nothing to hand it
+function holdAtCars(c, cars) {
+  const b = c.body, v = Body.getVelocity(b), r = c.radius ?? PLAYER.radius, x = b.position.x + v.x, y = b.position.y + v.y;
+  let held = false;
+  for (const p of cars) {
+    const bb = p.body.bounds;
+    if (x < bb.min.x - r || x > bb.max.x + r || y < bb.min.y - r || y > bb.max.y + r) continue;
+    const k = contactOf(x, y, r, p.body);
+    if (!k) continue;
+    const ov = Body.getVelocity(p.body), vn = v.x * k.nx + v.y * k.ny, on = Math.max(0, ov.x * k.nx + ov.y * k.ny);
+    if (vn <= on) continue;
+    v.x -= k.nx * (vn - on); v.y -= k.ny * (vn - on);
+    if (c.vel) { c.vel.x -= k.nx * (vn - on); c.vel.y -= k.ny * (vn - on); }
+    held = true;
+  }
+  if (held) Body.setVelocity(b, v);
+}
 
 export default class PropPhysics {
   constructor(world) {
@@ -33,10 +59,11 @@ export default class PropPhysics {
 
   // ---- pushing
   prePush(dt) {
-    const w = this.world, props = w.props.filter(loose), was = this.touching;
+    const w = this.world, props = w.props.filter(loose), cars = w.props.filter(car), was = this.touching;
     this.touching = new Map();
-    if (!props.length) return;
+    if (!props.length && !cars.length) return;
     for (const c of w.chars) {
+      if (cars.length && onFoot(c)) holdAtCars(c, cars);
       if (!walking(c)) continue;
       const b = c.body, v = Body.getVelocity(b), sp = Math.hypot(v.x, v.y);
       if (sp < 0.05) continue;

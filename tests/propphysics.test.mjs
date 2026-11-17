@@ -183,3 +183,17 @@ test('pushes still count as bumps: a street bin run into goes over', () => {
   run(w, 0.6, () => c.steer(1, 0, PLAYER.speed));
   assert.ok(p.tipped);
 });
+
+test('push: a man walking or running into a car stopped in the road does not shove it along', () => {
+  const w = world('asphalt'), body = Bodies.rectangle(640, 480, 140, 60, { frictionAir: 0, collisionFilter: { category: CAT.PROP, mask: MASK.PROP } });
+  w.physics.add(body);
+  setMaterial(body, 1200, 0.9);
+  setShapeInertia(body);
+  const car = { isVehicle: true, dead: false, body, x: 640, y: 480 };
+  body.entity = car;
+  w.props.push(car);
+  const c = walker(w, 640 - 70 - PLAYER.radius - 20, 485);
+  run(w, 2, () => c.steer(1, 0, PLAYER.speed));
+  assert.ok(Math.hypot(body.position.x - 640, body.position.y - 480) < 1, `the car went ${(body.position.x - 640).toFixed(1)} px`);
+  assert.ok(Math.abs(body.angle) < 0.01, 'nor turned');
+});
