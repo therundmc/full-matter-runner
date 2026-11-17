@@ -14,7 +14,9 @@
 
 ## Git
 - Commit messages: one single sentence, no body/bullet list (attribution trailer allowed).
-- Work on branch `feature/hotline-rework`. `main` holds the old prototype. Do not push unless asked.
+- `main` is the up-to-date, current version of the game (the old prototype is gone). Fetch and pull `main` before starting.
+- Never work directly on `main`: each task gets its own clean, short-lived branch cut from `main`
+  (`feature/<topic>`, `fix/<topic>`), merged back into `main` when done. Do not push unless asked.
 - Never `git add -A` blindly: `.claude/worktrees/` holds agent worktrees (ignored in .gitignore).
 
 ## Vision (user's brief, in French; reply in French)
