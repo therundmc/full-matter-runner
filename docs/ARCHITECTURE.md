@@ -483,6 +483,17 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   the hand is) and hands are painted as pixels at the sprites' density by render/LimbArt.js, coloured from the
   kind's look (`KINDS` in Character.js, `CIVILIAN_LOOKS`). A long gun is shouldered: butt in the right shoulder's
   pocket, right hand on the grip, left hand on the forend (`butt`, `grip`, `fore` in data/weapons.js).
+- Turning and gestures: the gameplay `angle` (aim, shots, sight cones) is never eased; only the drawn body lags it.
+  entities/Facing.js (`FACING` in data/feel.js, run by `Character.animate` after the step's intentions in
+  `World.step`) keeps layers on springs: the head leads (or glances: `turnHead`), the shoulders follow (the torso
+  sprite), the hips after them within `twist`; the hands and the weapon keep to the aim within `hands` of the
+  shoulders. Standing, the feet are world points, planted: past `stepAt` he steps one foot then the other (a hop
+  on both for a sudden about-turn), squares up once still. entities/Gesture.js (DOM-free, `GESTURE` / `TALK` in
+  data/feel.js) times and picks the gestures: a hand reaching for the door leaf ahead and pushing it
+  (`updateDoorHand`, `doorHandPose`), a guard's key in a lock (`turnKey`), the phases of drawing a weapon from
+  `stow` (to the hip or the sling, grip, pull, present, the other hand last), the gesture going with a line
+  (`Character.speak` from `Enemy.say`: point, palm, shrug, wave, beckon, hands, a nod). A character's `mood()`
+  (panic, a man on his knees) bends his pose: shoulders up, head drawn in, a lurch, a look back, shaking.
 - Fire (fx/Particles.js `fire` / `drawFire`, systems/Explosions.js `fireball`): a flame is a square chunk on whole
   pixels in the flat colour of its heat (white, yellow, orange, red, soot), drawn opaque after the lighting with the
   hottest on top; never a soft additive disc. The slow chunks of a burst stay in its heart and stay hot, the fast

@@ -202,7 +202,7 @@ test('trunk: he lifts the lid over the gesture, takes what is inside at its mome
   for (let i = 1; i < lifts.length; i++) assert.ok(lifts[i] >= lifts[i - 1], 'the lid only comes up');
 });
 
-test('door hand: up while he pushes into the leaf, down once he lets go', () => {
+test('door hand: up as he comes at the leaf, pushing against it, on it a moment after, then down', () => {
   const door = Object.create(Door.prototype);
   Object.assign(door, { hx: 0, hy: 0, len: 30, back: 2, body: { angle: 0 } }); // a leaf along x from the hinge
   const out = { x: 0, y: 0, a: 0 };
@@ -212,15 +212,17 @@ test('door hand: up while he pushes into the leaf, down once he lets go', () => 
   assert.equal(door.touch(80, 0, 12.5, out), null, 'past its end');
   const ch = fighter(null);
   ch.radius = 8.5;
-  ch.world = { doors: [door] };
+  ch.world = { doors: [door], sound() {} };
   Object.defineProperty(ch, 'x', { value: 15 }); Object.defineProperty(ch, 'y', { value: 12 });
   const dt = 1 / 60, G = GESTURE.door;
   ch.updateDoorHand(dt, 1, { x: 0, y: -1 });
   assert.ok(ch.doorHand && ch.doorHand.w > 0 && ch.doorHand.y === 3);
   for (let i = 0; i < 20; i++) ch.updateDoorHand(dt, 1, { x: 0, y: -1 });
   assert.equal(ch.doorHand.w, 1);
+  assert.equal(ch.doorHand.push, 1, 'against it: pushing');
   ch.updateDoorHand(dt, 1, { x: 0, y: 1 }); // walking away from it
-  assert.ok(ch.doorHand.w < 1);
-  for (let i = 0; i < Math.ceil(G.off / dt) + 1; i++) ch.updateDoorHand(dt, 0, { x: 0, y: 0 });
+  assert.equal(ch.doorHand.w, 1, 'still on it a moment');
+  assert.ok(ch.doorHand.push < 1);
+  for (let i = 0; i < Math.ceil((G.follow + G.off) / dt) + 1; i++) ch.updateDoorHand(dt, 0, { x: 0, y: 0 });
   assert.equal(ch.doorHand, null);
 });

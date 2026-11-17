@@ -175,7 +175,7 @@ export const AI = {
   duck: [2.5, 4],          // s a bartender stays down behind his counter at the first shots
   // how a guard carries his weapon (ai/Carry.js), in s: putting it away, drawing a pistol or a blade, bringing a
   // long gun round from his back, raising it on a target; ready: how far out (0..1) it must be to fire
-  carry: { holster: 0.7, draw: 0.22, unsling: 0.34, raise: 0.16, ready: 0.3 },
+  carry: { holster: 0.8, draw: 0.3, unsling: 0.45, raise: 0.16, ready: 0.3 },
   // two calm guards within `near` px (one of them walking by: `pass`) stop for a word: for `time` s, then not
   // again for `every` s; line: odds a turn to talk comes with a line over his head
   chat: { near: 84, pass: 56, time: [6, 11], every: [25, 50], line: 0.7 },

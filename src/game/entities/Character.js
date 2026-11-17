@@ -13,12 +13,14 @@ import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
-import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH } from '../data/feel.js';
+import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING } from '../data/feel.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
+import { updateFacing } from './Facing.js';
+import { doorAhead, doorHandSide, talkGesture } from './Gesture.js';
 
 const { Bodies, Body } = Matter;
 
@@ -52,7 +54,7 @@ const SETTLE = { gain: 3.2, max: 1.8, carry: 0.85, freq: 12, damp: 0.42 };
 // a man lying knocked down (layClear): where along his sprite's length he is checked against walls (his head, his
 // chest, his feet; the sprite sits a little ahead of the body's centre), the turns tried, rad/s he is turned at
 const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
-const TOUCH = { x: 0, y: 0, a: 0 }; // where a door leaf is touched (Door.touch)
+const AHEAD = { x: 0, y: 0, a: 0, d: 0, door: null }; // the door leaf a hand goes to (Gesture.doorAhead)
 const MUZZLE_AT = { x: 0, y: 0, a: 0 }, PORT_AT = { x: 0, y: 0, a: 0 }, MAG_AT = { x: 0, y: 0, a: 0 };
 
 // Shared body / weapon / animation logic for the player and enemies.
@@ -99,6 +101,7 @@ export default class Character {
     this.flinchA = 0;
     this.flinchSide = 1;
     this.pickAnim = 0;
+    this.pickFrom = null;   // where a weapon picked up lay: the hand goes down to it (CharacterAnim)
     this.throwT = 0;        // follow-through of a throw
     this.throwDur = 0.28;
     this.recoilRate = 9;    // recoil recovery per second (the gun family's FEEL recoil.rate: heavy guns recover slower)
@@ -121,7 +124,11 @@ export default class Character {
     this.lower = 0;         // gun held low 1 .. raised on a target 0
     this.downT = 0;         // time since knocked down
     this.riseDur = 0;       // s the getting up takes, once it has started (CharacterAnim.riseDurAt)
-    this.doorHand = null;   // { x, y, a, w }: a hand flat on the door leaf he pushes (updateDoorHand)
+    this.doorHand = null;   // { x, y, a, w, push, hold, side, door }: a hand on the door leaf ahead (updateDoorHand)
+    this.lockHand = null;   // { x, y, a, t, wait, side }: a key turned in a locked door (turnKey)
+    this.facing = null;     // the drawn layers turning about the aim, the planted feet (entities/Facing.js, animate)
+    this.headTo = null;     // { x, y, until, max }: something his head turns to a moment (turnHead)
+    this.talk = null;       // { g, t, at }: the gesture going with a line just said (speak)
     this.pose = newPose();
     this.pose2 = newPose();
     this.alive = true;
@@ -311,22 +318,64 @@ export default class Character {
     L.x += V.x * dt; L.y += V.y * dt;
   }
 
-  // walking into a door leaf: a hand comes up flat against it for as long as he pushes (GESTURE.door)
+  // Going at a door leaf: a hand comes up and reaches for it before he is there (the nearer, the further out),
+  // pushes against it, and stays on it a moment once it has gone by (GESTURE.door, Gesture.js; the pose:
+  // CharacterAnim.doorHandPose)
   updateDoorHand(dt, sp, v) {
     const G = GESTURE.door, doors = this.world.doors;
-    let on = false;
-    if (sp > G.speed && !this.vaulting && !(this.knocked > 0) && doors?.length) {
-      for (const door of doors) {
-        const t = door.touch(this.x, this.y, this.radius + G.gap, TOUCH);
-        if (t && (t.x - this.x) * v.x + (t.y - this.y) * v.y > 0) { on = true; break; }
-      }
-    }
+    const at = sp > G.speed && !this.vaulting && !(this.knocked > 0) && doors?.length
+      ? doorAhead(doors, this.x, this.y, this.radius, v.x / sp, v.y / sp, AHEAD) : null;
     const H = this.doorHand;
-    if (on) {
-      const h = (this.doorHand = H || { x: 0, y: 0, a: 0, w: 0 });
-      h.x = TOUCH.x; h.y = TOUCH.y; h.a = TOUCH.a;
-      h.w = Math.min(1, h.w + dt / G.on);
-    } else if (H && (H.w -= dt / G.off) <= 0) this.doorHand = null;
+    if (at) {
+      const h = (this.doorHand ??= { x: 0, y: 0, a: 0, w: 0, push: 0, hold: 0, side: 0, door: null });
+      if (h.door !== at.door || h.w <= 0) {
+        const rightBusy = this.armed && !(this.stow >= 0.6) || !!this.busyHands?.();
+        h.side = doorHandSide(this.facing?.sh ?? this.angle, this.x, this.y, at, at.door.tip(), rightBusy);
+      }
+      h.x = at.x; h.y = at.y; h.a = at.a; h.door = at.door; h.hold = G.follow;
+      const want = clamp((this.radius + G.ahead - at.d) / (G.ahead - G.gap), 0, 1);
+      h.w = h.w < want ? Math.min(want, h.w + dt / G.on) : Math.max(want, h.w - dt / G.off);
+      const against = at.d <= this.radius + G.gap;
+      if (against && h.push === 0) this.world.sound('doorPush', at.x, at.y, Math.min(1, sp / 2));
+      h.push = clamp(h.push + (against ? dt : -dt) / G.on, 0, 1);
+    } else if (H) {
+      H.push = Math.max(0, H.push - dt / G.on);
+      if ((H.hold -= dt) <= 0 && (H.w -= dt / G.off) <= 0) this.doorHand = null;
+    }
+  }
+
+  // a guard's key in a locked door of the house (Enemy.follow, Door.unlatch): his hand to the lock, a turn
+  turnKey(door) {
+    const t = door.tip(), x = door.hx + (t.x - door.hx) * 0.88, y = door.hy + (t.y - door.hy) * 0.88;
+    const rightBusy = this.armed && !(this.stow >= 0.6);
+    this.lockHand = { x, y, a: door.body.angle, t: 0, wait: 0, side: doorHandSide(this.facing?.sh ?? this.angle, this.x, this.y, { x, y }, t, rightBusy) };
+  }
+
+  // The drawn body turned about the aim (entities/Facing.js), the clocks of what the hands and the head are at.
+  // After the step's intentions (World.step), so the layers follow this step's aim. A foot set down on a pivot, or a
+  // quick turn, is heard (placeholder sounds: assets/sound/PLACEHOLDERS.md).
+  animate(dt) {
+    const still = this.gait < FACING.plant && !this.vaulting && !this.slideAnim && !(this.knocked > 0) && !(this.sit > 0);
+    const heard = updateFacing(this, dt, still);
+    if (heard === 'step' || heard === 'hop') this.world.sound('scuff', this.x, this.y, heard === 'hop' ? 0.8 : 0.45, { floor: this.world.floorAt(this.x, this.y) });
+    else if (heard === 'cloth') this.world.sound('cloth', this.x, this.y, 0.5);
+    if (this.talk && (this.talk.t += dt) >= GESTURE.talk.dur) this.talk = null;
+    const L = this.lockHand, U = GESTURE.door.unlatch;
+    if (L && (Math.hypot(L.x - this.x, L.y - this.y) <= U.reach[0] || (L.wait += dt) > U.wait) && (L.t += dt) >= U.dur) this.lockHand = null;
+  }
+
+  // his head (only: the drawn one) turns to (x, y) for dur s, no further than a turn of the neck off where he faces
+  turnHead(x, y, dur, max = 0.9) { this.headTo = { x, y, until: this.world.time + dur, max }; }
+
+  // A line said on that occasion (data/barks.js): the gesture that goes with it (Gesture.talkGesture, data/feel.js
+  // TALK), at `at` (who he says it to: the player by default); those standing near look at him.
+  speak(kind, at = null) {
+    const w = this.world, T = GESTURE.talk, p = w.player;
+    const to = at ?? (p?.alive && p !== this && Math.hypot(p.x - this.x, p.y - this.y) < 260 ? p : null);
+    this.talk = { g: talkGesture(kind), t: 0, at: to && { x: to.x, y: to.y } };
+    for (const c of w.chars) {
+      if (c !== this && !c.isPlayer && c.alive && !(c.knocked > 0) && Math.hypot(c.x - this.x, c.y - this.y) < T.listen) c.turnHead(this.x, this.y, T.look);
+    }
   }
 
   // ---------------- combat ----------------
@@ -806,6 +855,7 @@ export default class Character {
     if (this.takedown) takedownPose(this, P, this.pose2);
     if (this.held?.takedown?.target === this) heldPose(this, P);
     if (this.doorHand) doorHandPose(this, P);
+    if (this.lockHand) lockHandPose(this, P);
     // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
     if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
     this.noteMuzzle(P);

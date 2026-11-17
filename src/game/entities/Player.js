@@ -363,14 +363,16 @@ export default class Player extends Character {
   pickUp() {
     const it = this.nearItem;
     if (!it && this.nearPlanted?.stuck?.item) {
-      const got = this.nearPlanted.pullStuck();
+      const at = this.nearPlanted.stuckAt(), got = this.nearPlanted.pullStuck();
       this.nearPlanted = null;
       this.take(got.type, got.mag, got.wear);
+      this.pickFrom = at; // the hand goes down to it (CharacterAnim)
       return;
     }
     if (!it) return;
     this.world.removeItem(it);
     this.take(it.type, it.mag, it.wear, it.bare);
+    this.pickFrom = { x: it.x, y: it.y }; // the hand goes down to where it lay (CharacterAnim)
   }
 
   // a weapon into the hand (what was in it falls behind him): mag = rounds in it, wear = kills left in a melee one,
@@ -384,6 +386,7 @@ export default class Player extends Character {
     this.world.events.emit('pickup', { ch: this, type });
     if (this.def.kind === 'gun') this.world.sound('rack', this.x, this.y, 0.7, { weapon: this.weapon.type });
     this.pickAnim = 0.35;
+    this.pickFrom = null;
     this.cooldown = 0.2;
     this.world.pickupFlash(this.x + Math.cos(this.angle) * 10, this.y + Math.sin(this.angle) * 10);
   }

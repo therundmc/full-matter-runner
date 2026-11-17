@@ -26,7 +26,7 @@ import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character, { heavyBuild } from './Character.js';
 import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
-import { TELL } from '../data/feel.js';
+import { TELL, GESTURE } from '../data/feel.js';
 import { POSTS, HELD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
 import { HURT } from '../data/wounds.js';
@@ -245,14 +245,25 @@ export default class Enemy extends Character {
     return k && pastimeHands(k, ONE_GO.has(k) ? this.actT : this.world.time, this.seed);
   }
 
+  // CharacterAnim hook: on his knees, his shoulders up, his head drawn in, shaking
+  mood() {
+    if (!this.yielded) return null;
+    const Y = GESTURE.panic.yield;
+    return { hunch: Y.hunch, duck: Y.duck, shake: Y.px };
+  }
+
   // weapon put away while all is calm, in hand and lowered once something is up, raised on a target
   updateCarry(dt) {
     // (a word with a stranger over a trifle: his weapon stays put away until he warns him)
     const c = this.case, word = !!c && c.stage < STAGE.WARNED && !c.rules.lasting && this.quiet;
     const calm = word || (this.aware === 0 && this.quiet && CALM.has(this.state));
-    const was = this.stow;
+    const was = this.stow, long = this.def.hold === 'two' || this.def.swing === 'club';
     carry(this, calm, this.aware >= 2 || this.recoil > 0, this.def.hold === 'two', dt);
-    if (was >= 0.5 && this.stow < 0.5 && this.weapon) this.world.sound('pickup', this.x, this.y, 0.5);
+    if (!this.weapon) return;
+    // the hand on it, out of the holster (or off the back: swung round), put back (placeholders: PLACEHOLDERS.md)
+    if (was >= 1 && this.stow < 1) this.world.sound(long ? 'sling' : 'holster', this.x, this.y, 0.6, { weapon: this.weapon.type });
+    if (was >= 0.5 && this.stow < 0.5) this.world.sound('pickup', this.x, this.y, 0.5);
+    if (was < 0.9 && this.stow >= 0.9) this.world.sound(long ? 'sling' : 'holster', this.x, this.y, 0.45, { weapon: this.weapon.type });
   }
 
   // sight check: every step once alert, staggered ticks before (the meter integrates the elapsed time)
@@ -268,7 +279,10 @@ export default class Enemy extends Character {
     // A stranger minding his own business on public ground is none of a guard's concern, unless he hangs about; one
     // who walked into the premises unarmed, or does something odd, gets a word first (Director.conduct)
     const d = this.director, stranger = this.sees && this.aware < 2 && (!d.isThreat(p) || d.isIntruder(p));
-    if (stranger) this.sees = false;
+    if (stranger) {
+      this.sees = false;
+      if (Math.hypot(p.x - this.x, p.y - this.y) < AI.gaze.range) this.turnHead(p.x, p.y, ENEMY.visionTick + 0.25); // his eyes on him
+    }
     this.mind(stranger && this.state !== S.CHALLENGE && !d.isGuest(p) && !d.isIntruder(p) ? p : null, step);
     if (this.sees) {
       if (this.aware < 2) {
@@ -360,6 +374,7 @@ export default class Enemy extends Character {
     w.slowmo(...BOSS.slowmo);
     this.react = Math.max(this.react, BOSS.hold);
     this.barkT = BOSS.hold + 0.5;
+    this.speak('threat');
     w.sound('mutter', this.x, this.y, 1, { pitch: this.voice * 0.9 });
   }
 
@@ -2136,7 +2151,7 @@ export default class Enemy extends Character {
     for (const door of this.world.doors) {
       if (!door.locked || !this.world.isHouseDoor(door)) continue;
       const tip = door.tip();
-      if (Math.hypot((door.hx + tip.x) / 2 - this.x - ux * 14, (door.hy + tip.y) / 2 - this.y - uy * 14) < 22) door.unlatch();
+      if (Math.hypot((door.hx + tip.x) / 2 - this.x - ux * 14, (door.hy + tip.y) / 2 - this.y - uy * 14) < 22) { door.unlatch(); this.turnKey(door); }
     }
     const map = this.world.map;
     const cx = Math.floor((this.x + ux * 20) / TILE), cy = Math.floor((this.y + uy * 20) / TILE), key = cy * map.w + cx;
@@ -2391,6 +2406,7 @@ export default class Enemy extends Character {
     if (this.barkT > 0 || !BARKS[kind]) return false;
     if (!this.director.bark(this, kind, vars)) return false;
     this.barkT = 1.5;
+    this.speak(kind, kind === 'chat' && this.mate?.alive ? this.mate : null);
     if (SHOUTED.has(kind)) this.world.sound('shout', this.x, this.y, 0.8, { pitch: this.voice });
     else if (MUTTERED.has(kind)) this.world.sound('mutter', this.x, this.y, 0.6, { pitch: this.voice });
     return true;

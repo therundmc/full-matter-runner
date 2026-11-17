@@ -168,6 +168,12 @@ export const META = {
   shellIn: { dur: 0.5, gap: 0.03, max: 3, gain: 0.42 },
   handle: { dur: 0.5, gap: 0.05, max: 3, gain: 0.35 },
   pickup: { dur: 0.5, gap: 0.05, max: 3, gain: 0.3 },
+  // placeholders for a bought library (assets/sound/PLACEHOLDERS.md): bank cuts standing in, kept low
+  holster: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.22 },
+  sling: { pri: 0, dur: 0.4, gap: 0.1, max: 2, gain: 0.22 },
+  doorPush: { pri: 0, dur: 0.3, gap: 0.15, max: 2, gain: 0.25 },
+  cloth: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.1 },
+  scuff: { pri: 0, dur: 0.15, gap: 0.06, max: 2, gain: 0.12 },
   click: { dur: 0.12, gap: 0.05, max: 3, gain: 0.7 },
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
   // fire, alarm, UI, street
@@ -395,6 +401,12 @@ const FOLEY = {
   clutterTill: [['metal', 0.8, 0.75], ['thud', 0.6, 0.9, 0.01]],
   clutterPaper: [['swish', 0.15, 1.9]],
   ui: [['click', 1, 0.8], ['thud', 0.4, 1.5]],
+  // placeholders (assets/sound/PLACEHOLDERS.md): the nearest cuts of the bank until the bought library
+  holster: [['handle', 0.6, 1.2]],
+  sling: [['swish', 0.45, 0.75], ['handle', 0.4, 0.9, 0.06]],
+  doorPush: [['door', 0.4, 1.15]],
+  cloth: [['swish', 0.35, 0.6]],
+  scuff: [['soft', 0.35, 1.5]],
   clear: [['doorSlam', 0.6, 0.6]],
 };
 

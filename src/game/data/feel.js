@@ -240,20 +240,82 @@ export const FLINCH = {
   camera: { radius: 52, whiz: 14, push: 1.6, shake: 0.03, gap: 0.09 },
 };
 
-// gestures (entities/Player.js, Character.js, CharacterAnim.js)
+// gestures (entities/Player.js, Character.js, CharacterAnim.js, Gesture.js)
 //   trunk  opening a car trunk: dur (s, he cannot attack), lift [from, to] share of it the lid comes up over,
 //          take: share at which what is inside is in his hand
-//   door   a hand flat on a door leaf he walks into: gap (px between his body and the leaf at which it is on),
-//          speed (px/step he must push at it with), on / off (s to raise / drop it)
 //   getup  getting up after a knock-down: dur (s at the end of the time on the floor)
 //   swig   how level 1 opens (level intro 'swig'): sat against the wall he drinks off a bottle (drink: [from, to] s,
 //          gulps of them), looks at it, draws his arm back (back: [from, to]) and smashes it on the wall across
 //          (throw: s it leaves his hand, speed px/s, reach: px it flies at most), end: s he is free again
+//   door   a hand reaching for a door leaf ahead and pushing it (Character.updateDoorHand, entities/Gesture.js):
+//          ahead (px past his body at which the hand starts to come up, the leaf ahead within `cone`: the cosine of
+//          the angle off his way), gap (px: in contact, he pushes), speed (px/step he must go at it with), open (rad
+//          a leaf may stand open and still be reached for: further, it is walked past), on / off (s to raise it /
+//          drop it), follow (s the hand stays on its point once the leaf has gone by), lean (px the shoulders go
+//          into the push), bend (how far out the pushing elbow goes, 0..1); unlatch: a guard's key in a locked door
+//          (dur s, the turn of the wrist in rad, how many times it goes; reach: px from the lock at which the hand is
+//          on it / starts to go to it, its clock running once on it, or after `wait` s whatever)
+//   draw   drawing a weapon (ai/Carry.js `stow` 1 -> 0) and putting it back (the same, backwards), as shares of the
+//          way out: the hand to the holster or over the shoulder by reach[1] (it leaves its swing at reach[0]),
+//          closed on it by `grip`, the weapon out of it by `pull`, turned up and brought onto its hold by 1; the
+//          other hand comes on it from `support`. dip: the shoulders dropped to the holster (rad of turn, share of
+//          size); pick: the player's pickup (s of reach down to where it lay, of the whole Character.pickAnim)
+//   talk   body language on a line (Character.speak, TALK): dur (s), in / out (s), reach (px of a pointing arm),
+//          beat (rad/s of the jabs and nods on the words), head (rad of a nod), listen: px within which the others
+//          look at who talks, for `look` s
+//   panic  a passer-by's fright (Civilian.mood): startle (s; hop: share of size he jumps, hunch, duck), look (s
+//          between two looks back over the shoulder as he runs, s each lasts, rad of the shoulders turned with it),
+//          stumble (s of lurching start, px of it), tremble (px of the shakes, rad/s), yield: a guard on his knees
 export const GESTURE = {
   trunk: { dur: 0.5, lift: [0.2, 0.62], take: 0.78 },
-  door: { gap: 4, speed: 0.25, on: 0.08, off: 0.16 },
+  door: {
+    ahead: 22, cone: 0.55, gap: 4, speed: 0.25, open: 0.9, on: 0.16, off: 0.22, follow: 0.12, lean: 1, bend: 0.85,
+    unlatch: { dur: 0.4, twist: 0.7, turns: 1.5, reach: [20, 34], wait: 0.8 },
+  },
+  draw: { reach: [0.05, 0.32], grip: 0.4, pull: 0.66, support: 0.72, dip: [0.12, 0.03], pick: 0.4 },
+  talk: { dur: 1.15, in: 0.14, out: 0.3, reach: 12, beat: 11, head: 0.16, listen: 150, look: 1.3 },
+  panic: {
+    startle: { dur: 0.42, hop: 0.07, hunch: 0.22, duck: 0.3 },
+    look: { every: [1.1, 2.4], dur: 0.45, turn: 0.4 },
+    stumble: { dur: 0.7, lurch: 2.6 },
+    tremble: { px: 0.45, hz: 37 },
+    yield: { hunch: 0.12, duck: 0.16, px: 0.35 },
+  },
   getup: { dur: 0.85 },
   swig: { drink: [0.45, 1.6], gulps: 3, back: [1.9, 2.15], throw: 2.3, speed: 560, reach: 200, end: 2.75 },
+};
+
+// The gesture that goes with a line, by the occasion said (data/barks.js; entities/Gesture.js talkGesture): point
+// (an arm out at him: an order, a threat), palm (an open hand: a word), shrug, wave (waved off), beckon (come on),
+// hands (both palms up: pleading), nod (the head only; any occasion not listed)
+export const TALK = {
+  point: ['shoo', 'warn', 'out', 'drop', 'staff', 'press', 'shove', 'threat', 'brawl', 'snap', 'where', 'hunt', 'sweep',
+    'watch', 'cut', 'what', 'flush', 'revenge', 'contact', 'stairs'],
+  palm: ['chat', 'hey', 'settle', 'joke', 'boss', 'sight', 'damage', 'window', 'door', 'fuse', 'tracks', 'blood', 'loud', 'dark'],
+  shrug: ['clear', 'lost', 'missing', 'noise', 'alone'],
+  wave: ['letgo', 'laugh'],
+  beckon: ['call', 'rally', 'backup', 'run', 'help', 'wake'],
+  hands: ['yield', 'beg', 'panic'],
+};
+
+// The drawn body's layers turning about the aim (entities/Facing.js): the head leads, the shoulders follow, the hips
+// after them, the feet stay planted until the hips are too far round, then step. Springs: [natural frequency rad/s,
+// damping ratio]; `alarmed`: the shoulders' damping for a guard in a fight (a snap turn overshoots a little).
+// twist: rad the shoulders may turn off the hips; hands: rad the hands and the weapon may be off the shoulders (they
+// keep to the aim within it); hipFoot: rad the hips may turn off the planted feet; plant: gait (0..1) under which
+// the feet are planted; stepAt: rad the hips' aim may be off the feet before a step; settle: rad a foot may be off
+// once the turn is done, squared up after the shoulders have been still `square` s; stray: pose px a planted foot
+// may be off its place under him before it steps back there (lost: so far it is put back at once: a vault, a
+// teleport); step: s a step takes, how high the foot comes up, rad the feet may be splayed at most; hop: a turn of
+// more than `at` rad with the shoulders going round faster than `speed` rad/s is a hop on both feet (dur s, lift,
+// rise: share of size up); lean: px the body goes over the foot that stays down while the other steps; cloth: rad/s
+// of the shoulders over which a turn rustles
+export const FACING = {
+  head: [80, 1], shoulders: [44, 1], alarmed: 0.6, hips: [17, 1],
+  twist: 0.9, hands: 0.9, hipFoot: 0.6, plant: 0.12, stepAt: 0.6, settle: 0.25, square: 0.4, stray: 4.5, lost: 14,
+  step: { dur: 0.15, lift: 0.6, splay: 1.6 },
+  hop: { at: 2.1, speed: 9, dur: 0.18, lift: 0.85, rise: 0.04 },
+  lean: 0.8, cloth: 11,
 };
 
 // d: a weapon definition -> its FEEL family
