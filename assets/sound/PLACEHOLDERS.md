@@ -25,6 +25,9 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | doorLatch | a door comes shut slowly and its latch catches: a closer bringing it back, a hand pulling it to (Door.latchShut) | a door latch clicking home in its strike plate, the leaf settling in the frame (now: the click cut low, a touch of the door) |
 | doorCloserHiss | a door's hydraulic closer swinging it back shut (Door.hiss, data/doors.js `closer`) | the soft hydraulic sigh of a door closer, a faint creak of its arm (now: the swish cut slowed right down, very low) |
 | lockBeep | the lamp by a lock turns green once a guard's key has turned in it (Door.tickLamp) | a short electronic beep of an access control, or a lock's bolt drawn back with a clack (now: the click cut pitched up) |
+| pushBar | the emergency exit's push bar pushed in and the latch drawn as someone walks into it shut (Door.pushed, kind `bar`) | the clack of a fire door's panic bar, a steel latch retracting (now: the handle cut slowed, a low click) |
+| doorFlap | a swinging (cafe) door swinging through its middle (Door.constrain, kind `spring`) | a light louvred leaf flapping past its stop, a soft wooden clap and the hinge's spring (now: the door cut pitched up, a light wood knock) |
+| doorBoom | a steel fire door slammed shut, kicked or thrown open (kinds with `steel`) | a heavy steel door booming in its frame, a hollow metallic slam (now: the door slam slowed under a sheet-metal hit) |
 | cloth | the shoulders whip round on a quick turn (Character.animate, FACING.cloth) | a short cloth / coat rustle |
 | scuff | a foot set down on a pivot step or a hop round (Character.animate) | a shoe scuffing on the floor (per floor if the library has them) |
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |

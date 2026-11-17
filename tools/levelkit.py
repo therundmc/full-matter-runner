@@ -27,6 +27,8 @@ SOLID = set(' #X')
 WALLS = set('#X')
 OPENINGS = set('DLGF')
 GUARDS = set('pushrbkmji')
+# the kinds of door (keep in step with DOORS.kinds in src/game/data/doors.js)
+DOOR_KINDS = ('wood', 'reinforced', 'stall', 'fire', 'bar', 'swing', 'staff', 'office', 'gaming', 'flat', 'wired', 'shop')
 
 # hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
 # None = hangs from the ceiling / sits on a wall: never in the way
@@ -122,7 +124,7 @@ class Level:
         self.bars = []        # barred windows [col, row] (entities/Window.js `barred`)
         self.leaves = []      # free door leaves [col, row, deg, length, sprite] (a stall's door)
         self.buzzers = []     # doorbells: { at: [col, row], door: [x, y], guard: [x, y] } (src/game/systems/Doors.js)
-        self.doors = {}       # 'x,y' of a door tile -> its options: closer (a hydraulic arm shuts it), kind (data/doors.js)
+        self.doors = {}       # 'x,y' of a door tile -> its options: kind (data/doors.js), closer, relock, inside
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -250,13 +252,18 @@ class Level:
     def leaf(self, col, row, deg, length, sprite='structure/stall_door'):
         self.leaves.append([*self.at(col, row), deg, length, sprite])
 
-    # options of the door on tile (x, y) ('D' or 'L', any tile of its run): closer=True, a hydraulic arm swings it
-    # back shut (src/game/entities/Door.js); kind: its weight, a kind of src/game/data/doors.js (default: by sprite);
-    # relock: s shut after which a locked door locks itself again (never on a door the guards must get through)
+    # options of the door on tile (x, y) ('D' or 'L', any tile of its run): kind, one of DOOR_KINDS (its skin, its
+    # weight, its fittings: src/game/data/doors.js); closer=True / False over its kind's (a hydraulic arm swings it
+    # back shut); relock: s shut after which a locked door locks itself again (never on a door the guards must get
+    # through); inside: the room side, 'n' / 's' / 'e' / 'w' (an emergency exit's EXIT sign)
     def door(self, x, y, **opt):
         x, y = self.tile(x, y, 'door')
         assert self.tiles[y][x] in 'DL', f'no door at {x},{y}'
-        assert set(opt) <= {'closer', 'kind', 'relock'}, f'door options {sorted(opt)}'
+        assert set(opt) <= {'closer', 'kind', 'relock', 'inside'}, f'door options {sorted(opt)}'
+        assert opt.get('kind', 'wood') in DOOR_KINDS, f'door kind {opt.get("kind")}'
+        assert not (opt.get('kind') == 'swing' and self.tiles[y][x] == 'L'), 'a swinging door never locks'
+        if 'inside' in opt:   # the room side ('n', 's', 'e', 'w'): an EXIT sign hangs there
+            opt['inside'] = {'n': [0, -1], 's': [0, 1], 'e': [1, 0], 'w': [-1, 0]}[opt['inside']]
         self.doors[f'{x},{y}'] = opt
 
     # a doorbell at (col, row): E rings it, the guard posted at `guard` (col, row) comes and unlocks the locked door

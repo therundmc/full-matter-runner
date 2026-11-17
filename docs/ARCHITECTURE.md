@@ -960,17 +960,23 @@ The big brick masses around a level are the neighbouring buildings seen from abo
 
 ## Doors and windows
 
-`Door` = a leaf of its kind's weight (data/doors.js DOORS: a wooden door 30 kg, a locked door's reinforced leaf 55,
-a toilet stall's 9) on a kinematic hinge (engine/physics/Hinge.js: its real moment of inertia, dry friction and drag
-that bring it to a stop, cushioned end stops, creaks, slams knock enemies out); what a contact gives the leaf is taken
-about the hinge (`Door.constrain`), so a push anywhere on it opens it. A man walking into it leans on it with a
-limited force, more at a run (systems/Doors.js `prePush`, `Door.pushed`), and is held to the speed it really goes;
-kicks and blows slam it open, rounds barely turn it (`DOORS.hits`). Coming shut slowly it latches (a click). A
-closer (level option `doors: { 'col,row': { closer: true } }`, levelkit `door()`) swings it back shut in about two
-seconds and latches it, stopping against whoever or whatever stands in its arc; its arm is drawn from the leaf to the
-frame. E at a door opens it away from the player or pulls it to (`Door.use`: his hand on the leaf, he steps back out
-of its way); a weapon within reach comes first. A door that locks has a lamp by its lock (`Door.lamp`, its glow in
-render/Lighting.js): red locked, amber while a guard turns his key (`unlatch`), then green with a beep; green
+`Door` = a leaf of a kind, one per place (data/doors.js `DOORS.kinds`, level option `doors: { 'col,row': { kind } }`,
+levelkit `door()`): its skin (tools/generate_assets.py DOOR_SKINS, at FINE density: the emergency exit's grey steel
+and red push bar, the bar's dark wood and porthole, the toilets' swinging louvres, STAFF ONLY, the boss's leather,
+the gaming room's green, a flat's, the corridor's wired glass, a shop's glass), its weight (a flat's 20 kg to the
+fire door's 65), its jambs, its sounds, a closer or not, glass that breaks (`glass`, `broken`), an EXIT sign (`exit`,
+level option `inside`). It turns on a kinematic hinge (engine/physics/Hinge.js: its real moment of inertia, dry
+friction and drag that let it swing on a touch and bring it to a stop, cushioned end stops, creaks, slams knock
+enemies out); what a contact gives the leaf is taken about the hinge (`Door.constrain`), so a push anywhere on it
+opens it. A man walking into it leans on it with a limited force, more at a run (systems/Doors.js `prePush`,
+`Door.pushed`), and is held to the speed it really goes; kicks and blows slam it open, rounds barely turn it
+(`DOORS.hits`). Coming shut slowly it latches (a click). A closer swings it back shut in about two seconds, overshoots
+a few degrees, settles in a swing or two and latches, stopping against whoever or whatever stands in its arc; its arm
+is drawn from the leaf to the wall. A swinging door (`spring`) hangs a pair of half-leaves (Openings `doorLeaves`
+`pair`) on spring hinges: pushed either way, back to the middle in a few swings, never latched, never locked. E at a
+door opens it away from the player or pulls it to (`Door.use`: his hand on the leaf, he steps back out of its way); a
+weapon within reach or another device comes first. A door that locks has a lamp by its lock (`Door.lights`, their
+glow in render/Lighting.js): red locked, amber while a guard turns his key (`unlatch`), then green with a beep; green
 stuttering once the lock was burst. `relock` (the lab only) locks it again after a while shut.
 Guards take a doorway one at a time and down its middle (`Enemy.follow`: `gateTaken` / `standBack`, `AI.gate`,
 `Tactics.throughDoor`), and re-plan when the ground covered says they push at something that will not give.

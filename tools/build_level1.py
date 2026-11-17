@@ -110,13 +110,27 @@ lv.put(39, 20, 'L')
 lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
-# door closers (a hydraulic arm swings the leaf back shut, src/game/data/doors.js), where a real bar has them: the
-# front double door (the heat and the noise kept in, the street kept out), the toilets' (the smell), the back door
-# and the storeroom's door on the service alley (steel service doors on the outside: they shut and lock behind the
-# deliveries). Inside, the house's own doors swing free (behind the counter to the storeroom, the gaming room, the
-# boss's back room): the staff go in and out with their hands full. The VIP room has its curtain.
-for x, y in ((21, 20), (22, 11), (25, 5), (14, 8)):
-    lv.door(x, y, closer=True)
+# the doors, one kind per place (src/game/data/doors.js DOORS.kinds: its skin, weight, closer, sounds), nothing to do
+# with each other:
+#   the front     an American bar's double door: dark varnished wood, a porthole, brass plates, on a closer (the
+#                 heat and the noise kept in, the street kept out)
+#   the toilets   a pair of swinging cafe doors: pushed either way, back to the middle on their springs, no latch
+#   the back door the emergency exit: heavy grey steel, a red push bar inside, the green EXIT sign over it, a closer
+#   staff doors   blue-grey paint and a STAFF ONLY plate: behind the counter to the storeroom, and the storeroom's
+#                 own door on the service alley (on a closer: it shuts behind the deliveries)
+#   the boss      his back room's door into the gaming room: oxblood leather buttoned over padding, brass studs
+#   gaming room   a deep green gloss with a brass peephole
+#   the shops     glass doors in aluminium (the liquor store, the TV shop, the laundromat)
+# The gap's anonymous door on the street keeps the plain wooden one. The VIP room has its curtain.
+lv.door(21, 20, kind='bar')
+lv.door(22, 11, kind='swing')
+lv.door(25, 5, kind='fire', inside='s')
+lv.door(16, 11, kind='staff')
+lv.door(14, 8, kind='staff', closer=True)
+lv.door(27, 11, kind='office')
+lv.door(24, 13, kind='gaming')
+for x, y in ((8, 20), (39, 20), (30, 32)):
+    lv.door(x, y, kind='shop')
 
 # ---------------------------------------------------------------- actors (12 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol

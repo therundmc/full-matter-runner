@@ -17,8 +17,6 @@ const LATCH_HP = 3;          // lock strength (bullets in the lock, kicks, bat b
 const LOCK_ZONE = 10;        // px from the latch end: where the lock sits
 const LAMP_AT = 5;           // px from the latch end: the lock's lamp, on the lock case
 const SHUT = 0.012;          // rad off shut that counts as shut, for the latch
-// the leaf sprite is cut in three along its length: hinge end, middle (tiled to the leaf length), latch end
-const CAP_HINGE = 8, CAP_LATCH = 12;
 // the closer seen from above (px): its body on the leaf's face [from, to] along it, its depth, the pinion's arm and
 // the one to the shoe, the shoe screwed to the wall beside the hinge: [along the doorway (behind the pivot, over the
 // jamb), out from the leaf's line to the wall's face]
@@ -26,14 +24,16 @@ const CLOSER = { body: [2, 12], depth: 3, pinion: 4, arm: [8, 9], shoe: [-7, 12]
 
 // Physical swinging door on a kinematically enforced hinge: (hx, hy) is the pivot, `len` the pivot-to-latch
 // length, the leaf runs LEAF.back further behind the pivot (see world/Openings.js for the layout in a wall).
-// It has the weight of its kind (data/doors.js): pushed by a man walking into it with a limited force
-// (systems/Doors.js), slowed to a stop by its hinge, slammed open by kicks and blows. A closer swings it back shut;
-// shut slowly, it latches. Locked doors (reinforced leaf, a lamp by the lock: red locked, green open) don't move
-// until the lock is shot / kicked / blasted open, or a guard of the house lets himself through with his key.
+// It is of a kind (data/doors.js DOORS.kinds: the emergency exit, the bar's front, the toilets' swinging doors...)
+// that gives it its sprite, its weight and its fittings: pushed by a man walking into it with a limited force
+// (systems/Doors.js), slowed to a stop by its hinge, slammed open by kicks and blows. A closer swings it back shut,
+// overshoots and settles, then latches; a swinging door's spring brings it back to the middle in a few swings. Its
+// glass breaks. Locked doors (a lamp by the lock: red locked, green open) don't move until the lock is shot /
+// kicked / blasted open, or a guard of the house lets himself through with his key.
 // Bullets punch real holes, damage warps and splits the leaf, and at 0 HP it is ripped off (Destruction.detachDoor).
 // support / strike: the wall tiles [cx, cy] carrying the hinges and receiving the latch.
 export default class Door {
-  constructor(world, hx, hy, angle0, length, { locked = false, cells = [], support = null, strike = null, image = null, closer = false, kind = null, relock = 0 } = {}) {
+  constructor(world, hx, hy, angle0, length, { locked = false, cells = [], support = null, strike = null, image = null, closer, kind = null, relock = 0, inside = null } = {}) {
     this.world = world;
     this.hx = hx; this.hy = hy;
     this.a0 = angle0;
@@ -43,14 +43,21 @@ export default class Door {
     this.strike = strike;
     // seen from above the light comes from the top left: leaves hinged the other way round show their other face
     this.flip = Math.abs(angle0) > 3 || angle0 > 1 ? -1 : 1;
-    const name = locked ? 'structure/door_locked' : image || 'structure/door'; // image: a stall's, a gate's...
-    this.img = sprite(name);
-    this.canvas = this.compose(this.img, Math.round(length + this.back));
-    this.kind = kind || DOORS.sprites[name] || 'wood';
-    this.spec = DOORS.kinds[this.kind];
+    // its kind: the level's, else a locked door's, else that of its sprite (a free leaf: a stall's...)
+    const K = DOORS.kinds;
+    this.kind = kind || (locked ? 'reinforced' : Object.keys(K).find((n) => K[n].sprite === image) || 'wood');
+    this.spec = K[this.kind] || K.wood;
+    this.img = sprite(image && !kind && this.spec.sprite !== image ? image : this.spec.sprite);
+    this.canvas = this.compose(this.img, length + this.back);
     this.kg = this.spec.kg;
     this.I = leafInertia(this.kg, -this.back, length, LEAF.thick); // kg.px2 about the pivot
-    this.closer = closer ? { ...DOORS.closer, ...(closer === true ? {} : closer) } : null;
+    // a closer (the kind's unless the level says), or a swinging door's spring hinge (a spring all the way)
+    const shuts = closer ?? this.spec.closer;
+    this.closer = this.spec.spring ? { ...DOORS.spring, zone: Infinity }
+      : shuts ? { ...DOORS.closer, ...(shuts === true ? {} : shuts) } : null;
+    // the room side of an emergency exit, for its sign (inside: a step [dx, dy] from the doorway into the room)
+    this.inside = inside ? (-Math.sin(angle0) * inside[0] + Math.cos(angle0) * inside[1] >= 0 ? 1 : -1) : this.flip;
+    this.glassBroken = false;
     const c = (length - this.back) / 2;
     this.body = Bodies.rectangle(hx + Math.cos(angle0) * c, hy + Math.sin(angle0) * c, length + this.back, LEAF.thick, {
       angle: angle0, frictionAir: 0, friction: 0.05, restitution: 0.2, label: 'door',
@@ -70,7 +77,7 @@ export default class Door {
     this.burst = false;     // its lock was burst open
     this.relock = relock;   // s shut on its latch after which it locks itself again (0: never; the lab's door)
     this.shutT = 0;
-    this.latched = true;    // shut on its latch
+    this.latched = !this.spec.spring; // shut on its latch (a swinging door has none)
     this.drive = null;      // a hand on it (E: use): { to, by, t, along }
     this.hissed = false;    // the closer was heard on this way shut
     this.cells = cells;     // tiles it covers (blocked for path-finding while locked)
@@ -91,20 +98,30 @@ export default class Door {
   }
 
   // per-door copy of the leaf at its real length (gets the bullet holes and splits): both ends of the sprite as
-  // they are, its middle repeated in between
+  // they are (its kind's caps), its middle repeated in between. In the sprite's own pixels (a finer sprite: `k`)
   compose(img, width) {
+    const k = img.k || 1, q = 1 / k, [c0, c1] = (this.spec.caps || DOORS.caps).map((c) => Math.round(c * q));
     const cv = document.createElement('canvas');
-    cv.width = width;
+    cv.width = Math.round(width * q);
     cv.height = img.height;
-    const g = cv.getContext('2d');
-    const h = img.height, mid = Math.max(1, img.width - CAP_HINGE - CAP_LATCH); // (a missing sprite is 8 px wide)
-    for (let x = CAP_HINGE; x < width - CAP_LATCH; x += mid) {
-      const w = Math.min(mid, width - CAP_LATCH - x);
-      g.drawImage(img, CAP_HINGE, 0, w, h, x, 0, w, h);
+    cv.k = k;
+    const g = cv.getContext('2d'), W = cv.width;
+    const h = img.height, mid = Math.max(1, img.width - c0 - c1); // (a missing sprite is 8 px wide)
+    for (let x = c0; x < W - c1; x += mid) {
+      const w = Math.min(mid, W - c1 - x);
+      g.drawImage(img, c0, 0, w, h, x, 0, w, h);
     }
-    g.drawImage(img, 0, 0, CAP_HINGE, h, 0, 0, CAP_HINGE, h);
-    g.drawImage(img, img.width - CAP_LATCH, 0, CAP_LATCH, h, width - CAP_LATCH, 0, CAP_LATCH, h);
+    g.drawImage(img, 0, 0, c0, h, 0, 0, c0, h);
+    g.drawImage(img, img.width - c1, 0, c1, h, W - c1, 0, c1, h);
     return cv;
+  }
+
+  // a place along the sprite (world px from its hinge end) on this leaf's canvas (its pixels): the hinge cap and
+  // the first of the middle as they are, the latch cap moved to the leaf's end
+  onCanvas(x) {
+    const k = this.canvas.k || 1, sw = this.img.width * k, [c0, c1] = this.spec.caps || DOORS.caps, W = this.canvas.width * k;
+    const latch = sw > c0 + c1 && x >= sw - c1; // (a missing sprite has no caps)
+    return Math.round((latch ? x - sw + W : Math.min(x, W - c1)) / k);
   }
 
   get warp() { return 1 - this.hp / MAX_HP; }
@@ -193,7 +210,7 @@ export default class Door {
     const t = this.tip();
     this.world.particles.chips(t.x, t.y, dirA, 1.2, 14, '#c08a54', 200);
     this.world.particles.sparks(t.x, t.y, dirA, 1, 8, 260);
-    this.world.sound('doorSlam', t.x, t.y);
+    this.world.sound(this.spec.steel ? 'doorBoom' : 'doorSlam', t.x, t.y);
     this.world.shake(0.25);
     this.pushedByPlayer = 0.8;
     this.world.events.emit('doorBroken', { x: t.x, y: t.y });
@@ -214,12 +231,22 @@ export default class Door {
     if (this.locked) return 0;
     const K = this.spec, rel = this.rel, w0 = this.spin;
     const hold = K.friction * DOORS.push.stick + (this.latched ? DOORS.latch.hold : 0);
-    const resist = K.friction + (this.closer ? this.closer.preload + this.closer.k * Math.abs(rel) : 0);
-    const { w, keep } = pushLeaf(this.hx, this.hy, w0, this.I, c, vIn, force, dt, hold, resist);
+    const { w, keep } = pushLeaf(this.hx, this.hy, w0, this.I, c, vIn, force, dt, hold, K.friction + this.closerTorque(rel));
     // flat against its stop it goes no further: he is held
     if (Math.abs(rel) >= this.limit() - 0.02 && w * rel > 0 && Math.abs(w) >= Math.abs(w0)) return 0;
-    if (w !== w0) { this.latched = false; this.setSpin(w); }
+    if (w !== w0) {
+      if (this.latched && K.bar) this.world.sound('pushBar', this.hx, this.hy, 0.8); // the push bar clacks it open
+      this.latched = false;
+      this.setSpin(w);
+    }
     return keep;
+  }
+
+  // what its closer or its spring pulls it back with, rel rad open (N.m)
+  closerTorque(rel) {
+    const C = this.closer;
+    if (!C) return 0;
+    return C.zone === Infinity ? this.I / (PX_PER_M * PX_PER_M) * C.freq * C.freq * Math.abs(rel) : C.preload + C.k * Math.abs(rel);
   }
 
   // how far it opens either side (a warped door less)
@@ -256,7 +283,9 @@ export default class Door {
     const U = DOORS.use, G = GESTURE.door, d = this.drive, ch = d.by, err = d.to - rel;
     const p = this.pointAt(d.along, this.faceOf(ch));
     d.t -= dt;
-    if (d.t <= 0 || (d.to && Math.abs(err) < 0.03) || !ch.alive || Math.hypot(p.x - ch.x, p.y - ch.y) > U.hand) {
+    // pulled to on a closer (a swinging door's spring), it is let go of near shut: the closer settles it
+    const settles = !d.to && this.closer && Math.abs(rel) < Math.min(this.closer.zone, 0.3);
+    if (d.t <= 0 || settles || (d.to && Math.abs(err) < 0.03) || !ch.alive || Math.hypot(p.x - ch.x, p.y - ch.y) > U.hand) {
       this.drive = null;
       return av;
     }
@@ -291,7 +320,7 @@ export default class Door {
     else this.latched = false;
     if (this.drive) av = this.steer(av, rel, dt);
     av = swing(av, rel, this.I, dt, { friction: K.friction, drag: K.drag, closer: this.drive ? null : this.closer });
-    if (this.closer) this.hiss(av, rel);
+    if (this.closer && !K.spring) this.hiss(av, rel);
     const lim = this.limit();
     if (Math.abs(rel) > lim) {
       rel = clamp(rel, -lim, lim);
@@ -303,10 +332,13 @@ export default class Door {
     } else if (Math.abs(rel) > lim - S.cushion && Math.sign(av) === Math.sign(rel)) {
       av *= 0.85; // cushion before the stop
     }
-    // coming shut slowly enough, it latches (it crossed shut, or got there)
-    const last = this.lastRel;
-    if (!this.latched && last && (Math.sign(rel) !== Math.sign(last) || (Math.abs(rel) < SHUT && av * rel <= 0))
-      && Math.abs(av) < DOORS.latch.catch * STEP) this.latchShut(av);
+    // coming shut slowly enough, it latches (it crossed shut, or got there); a closer only once it has settled, a
+    // swinging door never (a flap heard as it swings through)
+    const last = this.lastRel, through = last && Math.sign(rel) !== Math.sign(last);
+    if (K.spring) {
+      if (through && Math.abs(av) > DOORS.spring.flap * STEP) this.world.sound('doorFlap', this.hx, this.hy, Math.min(1, Math.abs(av) * 8));
+    } else if (!this.latched && last && (through || (Math.abs(rel) < (this.closer?.near ?? SHUT) && av * rel <= 0))
+      && Math.abs(av) < (this.closer ? this.closer.catch : DOORS.latch.catch) * STEP) this.latchShut(av);
     if (this.latched) { rel = 0; av = 0; }
     let a = this.a0 + rel;
     // the hinge is enforced, not simulated: without this the leaf would sweep straight through whoever stands in
@@ -335,7 +367,8 @@ export default class Door {
     this.drive = null;
     this.hissed = false;
     const fast = Math.abs(av) > DOORS.latch.catch * STEP * 0.6;
-    this.world.sound(fast ? 'doorSlam' : 'doorLatch', this.hx, this.hy, fast ? 0.5 : 0.7);
+    if (fast) this.world.sound(this.spec.steel ? 'doorBoom' : 'doorSlam', this.hx, this.hy, 0.5);
+    else this.world.sound('doorLatch', this.hx, this.hy, 0.7);
   }
 
   // the closer heard once on its way shut
@@ -411,12 +444,13 @@ export default class Door {
     w.particles.chips(px, py, dirA + Math.PI, 1, 5, '#8a5a34');
     w.particles.chips(px, py, dirA, 0.6, 4, '#c08a54', 160);
     const latch = this.latch;
+    if (this.glassAt(s)) this.breakGlass(px, py, dirA);
     if (kind === 'bullet') {
       this.hole(s);
-      w.sound('wood', px, py, 0.4);
+      w.sound(this.spec.steel ? 'metal' : 'wood', px, py, 0.4);
       if (this.locked && s > this.len - LOCK_ZONE) this.latch -= dmg * 1.5; // shooting the lock
     } else {
-      w.sound('doorSlam', px, py, kind === 'kick' ? 0.8 : 1);
+      w.sound(this.spec.steel ? 'doorBoom' : 'doorSlam', px, py, kind === 'kick' ? 0.8 : 1);
       w.shake(0.12);
       this.shakeT = 0.18;
       w.noise(px, py, 300, null, 'door');
@@ -462,48 +496,86 @@ export default class Door {
     };
   }
 
-  // bullet hole through the leaf
+  // the EXIT sign over an emergency exit, on its room side of the doorway: { x, y, a } (null: none)
+  exitSign() {
+    if (!this.spec.exit) return null;
+    const E = DOORS.exit, u = (this.len - this.back) / 2, v = this.inside * E.out, a = this.a0;
+    return { x: this.hx + Math.cos(a) * u - Math.sin(a) * v, y: this.hy + Math.sin(a) * u + Math.cos(a) * v, a };
+  }
+
+  // what glows on it (render/Lighting.js): the lock's lamp, the EXIT sign: [{ x, y, color, k, glow? }]
+  lights(t = this.world.time) {
+    const out = [], l = this.lamp(t), e = this.exitSign();
+    if (l) out.push(l);
+    if (e) out.push({ x: e.x, y: e.y, color: DOORS.exit.color, k: DOORS.exit.k, glow: DOORS.exit.glow });
+    return out;
+  }
+
+  // ---- its glass (kinds with `glass`): a point `s` px along the leaf in its glass strip, and the glass broken
+  glassAt(s) {
+    const G = this.spec.glass;
+    if (!G || this.glassBroken) return false;
+    const k = this.canvas.k || 1, x = (s + this.back) / k;
+    return x >= this.onCanvas(G[0]) - 1 && x <= this.onCanvas(G[1]) + 1;
+  }
+
+  breakGlass(px, py, dirA) {
+    const G = this.spec.glass, w = this.world;
+    this.glassBroken = true;
+    if (this.spec.broken) {
+      // the strip of the leaf painted again from its broken sprite (laid the same way: compose)
+      const broken = this.compose(sprite(this.spec.broken), this.len + this.back);
+      const x0 = this.onCanvas(G[0]) - 1, x1 = this.onCanvas(G[1]) + 1, g = this.canvas.getContext('2d');
+      g.clearRect(x0, 0, x1 - x0 + 1, this.canvas.height);
+      g.drawImage(broken, x0, 0, x1 - x0 + 1, this.canvas.height, x0, 0, x1 - x0 + 1, this.canvas.height);
+    }
+    w.particles.chips(px, py, dirA, 1.2, 12, '#cfe8ff', 220);
+    w.sound('glass', px, py, 0.6);
+    w.noise?.(px, py, 260, null, 'glass');
+  }
+
+  // bullet hole through the leaf (the canvas in its sprite's pixels: q of them a world px)
   hole(s) {
-    const g = this.canvas.getContext('2d');
-    const x = Math.round(s + this.back), y = Math.round(rand(2, this.canvas.height - 3));
+    const g = this.canvas.getContext('2d'), q = 1 / (this.canvas.k || 1);
+    const x = Math.round((s + this.back) * q), y = Math.round(rand(2 * q, this.canvas.height - 3 * q));
     g.save();
     g.globalCompositeOperation = 'source-atop';
     g.fillStyle = 'rgba(30,14,8,0.8)';
-    g.fillRect(x - 1, y - 1, 3, 3);
+    g.fillRect(x - q, y - q, 3 * q, 3 * q);
     g.restore();
-    g.clearRect(x, y, 1, 1);
+    g.clearRect(x, y, q, q);
   }
 
   // heavy damage splits the wood along its grain
   split() {
     if (this.warp < 0.4 || Math.random() > 0.5) return;
-    const g = this.canvas.getContext('2d');
-    const y = Math.round(rand(2, this.canvas.height - 3)), x0 = rand(0, this.canvas.width * 0.6);
-    g.clearRect(x0, y, rand(4, this.canvas.width * 0.4), 1);
+    const g = this.canvas.getContext('2d'), q = 1 / (this.canvas.k || 1);
+    const y = Math.round(rand(2 * q, this.canvas.height - 3 * q)), x0 = rand(0, this.canvas.width * 0.6);
+    g.clearRect(x0, y, rand(4 * q, this.canvas.width * 0.4), q);
   }
 
   // a blow the lock took: dents in its case
   dentLock() {
-    const g = this.canvas.getContext('2d'), cw = this.canvas.width;
+    const g = this.canvas.getContext('2d'), cw = this.canvas.width, q = 1 / (this.canvas.k || 1);
     g.save();
     g.globalCompositeOperation = 'source-atop';
     g.fillStyle = 'rgba(20,12,28,0.75)';
-    for (let k = 0; k < 2; k++) g.fillRect(cw - Math.round(rand(4, 10)), Math.round(rand(1, 6)), 2, 1);
+    for (let k = 0; k < 2; k++) g.fillRect(cw - Math.round(rand(4, 10) * q), Math.round(rand(1, 6) * q), 2 * q, q);
     g.restore();
   }
 
   // the lock burst: bolt and edge torn out of the leaf, the case blackened
   burstLock() {
-    const g = this.canvas.getContext('2d'), cw = this.canvas.width, h = this.canvas.height;
+    const g = this.canvas.getContext('2d'), cw = this.canvas.width, h = this.canvas.height, q = 1 / (this.canvas.k || 1);
     g.save();
     g.globalCompositeOperation = 'source-atop';
     g.fillStyle = 'rgba(20,12,28,0.55)';
-    g.fillRect(cw - 11, 0, 11, h);
+    g.fillRect(cw - 11 * q, 0, 11 * q, h);
     g.restore();
-    g.clearRect(cw - 3, 3, 3, 3);
-    g.clearRect(cw - 5, 4, 2, 1);
-    g.clearRect(cw - 2, Math.round(rand(1, 2)), 2, 1);
-    g.clearRect(cw - 2, Math.round(rand(6, 7)), 2, 1);
+    g.clearRect(cw - 3 * q, 3 * q, 3 * q, 3 * q);
+    g.clearRect(cw - 5 * q, 4 * q, 2 * q, q);
+    g.clearRect(cw - 2 * q, Math.round(rand(1, 2)) * q, 2 * q, q);
+    g.clearRect(cw - 2 * q, Math.round(rand(6, 7)) * q, 2 * q, q);
   }
 
   draw(ctx) {
@@ -513,23 +585,25 @@ export default class Door {
     ctx.save();
     ctx.translate(b.position.x + jx, b.position.y);
     ctx.rotate(b.angle);
-    const cw = this.canvas.width, h = this.canvas.height, inner = cw >> 1, outer = cw - inner;
+    // the canvas in its sprite's pixels (a finer skin: k world px a pixel), drawn at world size
+    const cv = this.canvas, k = cv.k || 1, cw = cv.width, h = cv.height, inner = cw >> 1, outer = cw - inner;
+    const H = h * k, wi = inner * k, wo = outer * k;
     const x0 = -(this.len + this.back) / 2; // hinge end of the leaf
     // shadow on the floor, toward the bottom right whatever the leaf angle
     const ca = Math.cos(b.angle), sa = Math.sin(b.angle);
     ctx.globalAlpha = 0.35;
-    ctx.drawImage(silhouette(this.canvas), x0 + 2 * (ca + sa), -h / 2 + 2 * (ca - sa));
+    ctx.drawImage(silhouette(cv), x0 + 2 * (ca + sa), -H / 2 + 2 * (ca - sa), cw * k, H);
     ctx.globalAlpha = 1;
     ctx.scale(1, this.flip);
-    ctx.drawImage(this.canvas, 0, 0, inner, h, x0, -h / 2, inner, h);
+    ctx.drawImage(cv, 0, 0, inner, h, x0, -H / 2, wi, H);
     // warped door: the outer half bends away
-    ctx.translate(x0 + inner, 0);
+    ctx.translate(x0 + wi, 0);
     ctx.rotate(this.warp * 0.22 * this.warpSign);
-    ctx.drawImage(this.canvas, inner, 0, outer, h, 0, -h / 2, outer, h);
+    ctx.drawImage(cv, inner, 0, outer, h, 0, -H / 2, wo, H);
     const lamp = this.lamp();
     if (lamp) {
       // the lamp on the lock case: a dark housing, its lit core (its glow: render/Lighting.js)
-      const x = outer - LAMP_AT - 2;
+      const x = wo - LAMP_AT - 2;
       ctx.fillStyle = '#120a18';
       ctx.fillRect(x, -4.5, 4, 4);
       ctx.globalAlpha = 0.25 + 0.75 * clamp(lamp.k, 0, 1);
@@ -538,7 +612,25 @@ export default class Door {
       ctx.globalAlpha = 1;
     }
     ctx.restore();
-    if (this.closer) this.drawCloser(ctx);
+    if (this.closer && !this.spec.spring) this.drawCloser(ctx);
+    if (this.spec.exit) this.drawExit(ctx);
+  }
+
+  // the EXIT sign over an emergency exit, seen from above: a small lit green box on the lintel, its dark letters
+  drawExit(ctx) {
+    const e = this.exitSign(), [w, h] = DOORS.exit.size;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.a);
+    ctx.fillStyle = '#121018';
+    ctx.fillRect(-w / 2 - 1, -h / 2 - 1, w + 2, h + 2);
+    ctx.fillStyle = DOORS.exit.color;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.fillStyle = '#c8ffd8';
+    ctx.fillRect(-w / 2, -h / 2, w, 0.5);
+    ctx.fillStyle = '#0e3a1c';
+    for (let i = 0; i < 4; i++) ctx.fillRect(-w / 2 + 1 + i * 1.6, -0.5, 1, 1.5); // E X I T
+    ctx.restore();
   }
 
   // The closer from above, on the leaf's lit face: its body near the hinge, the arm from its pinion folded to a

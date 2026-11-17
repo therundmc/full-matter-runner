@@ -12,7 +12,7 @@ export default {
   name: 'PHYSICS LAB',
   subtitle: 'SANDBOX  -  A STATION FOR EVERY SYSTEM',
   passive: true,
-  facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '38,9': 180, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '60,15': 270, '72,9': 180 },
+  facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '38,9': 180, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '57,13': 270, '72,9': 180 },
   jobs: { '43,5': 'pool', '48,3': 'hall', '12,15': 'hall' },
   looks: { '38,9': 'lucky', '72,9': 'cueball' },
   // where in his tile a guard stands, off its centre ('col,row': [col, row] in tiles)
@@ -31,13 +31,13 @@ export default {
     "X#_____________________________________________________________X;;;;;;;;;;#X",
     "X#_____________________________________________________________D;;;;;;;;;;#X",
     "X#_____________________________________________________________X;;;;;;;;;;#X",
-    "X#_________##...###__##++##____#####D#####D##########D##D###L##X;;;;;;;;;;#X",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#...#..#...#X###########X",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#...#..#...#XXXXXXXXXXXXX",
-    "X#_________############++#______##G#G#D##++++++++++#...#..#...#XXXXXXXXXXXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#...#..#...#XXXXXXXXXXXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#...#..#...#XXXXXXXXXXXXX",
-    "X##########################____##############D#################XXXXXXXXXXXXX",
+    "X#_________##...###__##++##____#####D#####D#########D#DD#L#DD##X;;;;;;;;;;#X",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#X###########X",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXXXXXXXXXXXX",
+    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXXXXXXXXXXXX",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXXXXXXXXXXXX",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXXXXXXXXXXXX",
+    "X##########################____##############D########D####L###XXXXXXXXXXXXX",
     "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssXXXXXXXXXXXXX",
     "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssXXXXXXXXXXXXX",
     "X==============================================================XXXXXXXXXXXXX",
@@ -61,9 +61,9 @@ export default {
     "         gg",
     "         v",
     "   k     qq             z",
-    "",
+    "                                                         m",
     "                                          b",
-    "            j                               u               m",
+    "            j                               u",
     "",
     "",
     "",
@@ -122,7 +122,8 @@ export default {
     ['pipe_water', 50.93, 15, 90], ['wall_lamp', 45.5, 12.08, 0], ['ceiling_lamp', 45, 15, 0],
     ['hydrant', 43.5, 19.62, 0],
     // 14 doors
-    ['ceiling_lamp', 53.5, 14, 0], ['ceiling_lamp', 56.5, 14, 0], ['ceiling_lamp', 60, 14, 0],
+    ['ceiling_lamp', 53, 12.6, 0], ['ceiling_lamp', 53, 15.6, 0], ['ceiling_lamp', 56.5, 12.6, 0],
+    ['ceiling_lamp', 56.5, 15.6, 0], ['ceiling_lamp', 60, 12.6, 0], ['ceiling_lamp', 60, 15.6, 0],
     // 15 cueball
     ['table', 67.5, 9.6, 0], ['crate', 65.6, 7.7, 0], ['crate', 70.2, 7.7, 0], ['crate', 65.6, 10.8, 0],
     ['armchair', 72.9, 10.8, 180], ['ceiling_lamp', 68.5, 9, 0], ['wall_lamp', 68.5, 7.08, 0],
@@ -135,7 +136,7 @@ export default {
     ['wall_lamp', 47.5, 18.08, 0],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 56.5, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],
@@ -151,11 +152,11 @@ export default {
   sprinklers: {"pull": [43.5, 12.07], "rooms": [[41, 12, 50, 16]]},
   passage: [[20.0, 12.9], [2.5, 18.6]],
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
-  leaves: [[52.1, 14.5, 0, 24, "structure/stall_door"]],
+  leaves: [[61.9, 15.5, 180, 24, "structure/stall_door"]],
   // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
-  doors: { '53,11': {"kind": "reinforced"}, '56,11': {"closer": true}, '60,11': {"closer": true, "relock": 4} },
+  doors: { '52,11': {"kind": "shop"}, '54,11': {"kind": "bar"}, '59,11': {"kind": "wired"}, '52,14': {"kind": "swing"}, '54,14': {"kind": "staff"}, '56,14': {"kind": "office"}, '58,14': {"kind": "gaming"}, '60,14': {"kind": "flat"}, '54,17': {"kind": "wood"}, '59,17': {"kind": "reinforced"}, '57,11': {"kind": "fire", "inside": [0, 1], "relock": 4} },
   // doorbells (systems/Doors.js): E rings, the guard posted at `guard` unlocks the locked door on tile `door`
-  buzzers: [{"at": [61.6, 10.75], "door": [60, 11], "guard": [60, 15]}],
+  buzzers: [{"at": [58.4, 10.75], "door": [57, 11], "guard": [57, 13]}],
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[44, 7]],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)

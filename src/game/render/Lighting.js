@@ -668,11 +668,12 @@ export default class Lighting {
       g.globalAlpha = a;
       g.drawImage(cb, c.x - r, c.y - r, r * 2, r * 2);
     }
-    // the lamps by the doors' locks: a small pool of their colour (red locked, green open)
+    // the lamps by the doors' locks, the EXIT signs: a small pool of their colour (red locked, green open)
     const LA = DOORS.lamp;
     for (const l of this.doorLamps(t)) {
+      const r = l.glow || LA.glow;
       g.globalAlpha = clamp(l.k * LA.k, 0, 1);
-      g.drawImage(this.blob(l.color), l.x - LA.glow, l.y - LA.glow, LA.glow * 2, LA.glow * 2);
+      g.drawImage(this.blob(l.color), l.x - r, l.y - r, r * 2, r * 2);
     }
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
@@ -695,12 +696,12 @@ export default class Lighting {
     ctx.restore();
   }
 
-  // the lamps of the doors that lock, in view: [{ x, y, color, k }] (entities/Door.js lamp)
+  // what glows on the doors, in view: the lamps by their locks, the EXIT signs [{ x, y, color, k, glow? }]
+  // (entities/Door.js lights)
   doorLamps(t) {
     const out = [];
     for (const d of this.world.doors || []) {
-      const l = d.lamp?.(t);
-      if (l && this.inView(l.x, l.y, DOORS.lamp.glow)) out.push(l);
+      for (const l of d.lights?.(t) || []) if (this.inView(l.x, l.y, l.glow || DOORS.lamp.glow)) out.push(l);
     }
     return out;
   }
