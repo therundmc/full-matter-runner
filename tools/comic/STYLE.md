@@ -22,6 +22,7 @@ The main session keeps a rendered set in its scratchpad (`.../scratchpad/comic/`
 | `comic/anatomy.py` | the parts: `Head` (lofted, features and inked lines painted on, `FACE_LINES`), `Body` (spine, IK arms and legs), `stance` (contrapposto), `Fold` / `sleeve_folds` / `trouser_folds`, `Hand` and its shapes, `shoe` |
 | `comic/cast.py` | the characters (`HERO`, `HEAVY`, `SLICK`, `YOUNG`, `BOSS`), `Figure` (with `hand_place`, `draw_hands`), `Light`, `wrist_for`, `drape_tex` |
 | `comic/hands.py` | the hands, drawn not rendered: `DESIGNS[pose][view]`, `draw`, `place`, `aim`, `MITTEN` |
+| `comic/painted.py` | hands painted by hand, pixel by pixel, kept as text rows under a palette: `stamp(cv, name, x, y)`, `sheet` (the contact sheet); used by `count`, `door`, `sleep` |
 | `comic/props.py` | `brick` and `riffled` (money), `torch`, `crowbar`, `jerrycan` |
 | `comic/legacy.py` | the first pass's 2D heads and silhouettes, for the panels not yet redrawn: never in new work |
 | `comic/panels/<page>.py` | one module per page; each panel a function decorated `@panel('name', (w, h))` |
@@ -170,6 +171,11 @@ arm ends:
 - What is behind and in front: parts on the design's 'back' layer hide behind what is nearer in the render (the
   brick over the palm), 'front' parts show over it (the fingers hooked over its edge); both hide behind the body when
   it is nearer.
+- Where a hand carries the panel (a close-up, a back-lit fist on a prop), it is PAINTED, not drawn from the library:
+  tools/comic/painted.py holds it as text, one character a panel px, with the bit of prop it touches (the torch,
+  the crowbar, the jerrycan). Leave the figure's hands undrawn (no `draw_hands`), render, look where the cuffs are,
+  `painted.stamp(cv, name, x, y)`. Retouch by changing characters, then crop at 5x. `python tools/comic/painted.py
+  <out.png>` writes them all at 6x. `count`, `door` and `sleep` do it; hands.py stays for the other panels.
 - No paddle hands (a flat open palm under an object), no claws (fingers splayed for nothing): hold, grip, hook,
   press, point.
 - `Figure(bare=True)`: the hero at home (grey knit, hair to his collar, no cap, coat, scarf or satchel). Lying down:
