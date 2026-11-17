@@ -47,6 +47,7 @@ import Tutorial from '../systems/Tutorial.js';
 import Fires from '../systems/Fires.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import PoolBalls from '../systems/PoolBalls.js';
+import Clutter from '../systems/Clutter.js';
 import Gadgets from '../systems/Gadgets.js';
 import Tipping from '../systems/Tipping.js';
 import Uses from '../systems/Uses.js';
@@ -131,6 +132,7 @@ export default class World {
     combatFx(this).listen();                      // a fight's marks over the lighting: the player's kills from now on
     this.ambience = new Ambience(this);           // the night heard, place by place: beds, traffic, one-shots
     this.poolBalls = new PoolBalls(this);         // the balls on the pool tables roll
+    this.clutter = new Clutter(this);             // glasses, ashtrays, the till on the furniture: shot, knocked off, thrown
     this.gadgets = new Gadgets(this);             // the arcade rings, the jukebox derails
     this.tipping = new Tipping(this);             // street bins run into go over
     this.power = new Power(this, level.power);    // the house's fuse box: smashed, only the battery lamps are left
@@ -535,6 +537,7 @@ export default class World {
     this.jukebox.update(dt);
     this.gasValve.update(dt);
     this.poolBalls.update(dt);
+    this.clutter.update(dt);
     this.steam.update(dt);
     this.papers.update(dt);
     this.weather.update();

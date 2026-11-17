@@ -354,7 +354,7 @@ lv.prop('oven', 17.1, 6.38)
 lv.prop('sink', 18.35, 6.3)
 lv.prop('fridge', 18.62, 7.5, 90)
 lv.prop('tube_light', 18.93, 8.6, 90)
-lv.prop('dope_table', 17.0, 9.2)                        # in the middle of the room, a way round it on every side
+lv.prop('dope_table', 17.0, 9.2, clutter='dope')                       # in the middle of the room, a way round it on every side
 lv.prop('crate', 18.55, 10.55, 4)                       # the stock, in corners off every way round the table (behind
 lv.prop('crate', 15.4, 6.85, 10)                        # it they made a pocket where two men jammed)
 
@@ -372,16 +372,16 @@ lv.prop('trash_can', 21.4, 10.5, tips=False)
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
-lv.prop('desk', 27.6, 6.75, 270)                        # its seat side toward the boss, up against the north wall
+lv.prop('desk', 27.6, 6.75, 270, clutter='boss_desk')                       # its seat side toward the boss, up against the north wall
 lv.prop('sofa', 25.5, 8.6, 270)
 lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
                                                         # north of it to get caught in (the QA robot found him there)
-lv.prop('table_round', 27.6, 8.75)                      # the boss's men's table, 1.2 m off the couch: the way from the
+lv.prop('table_round', 27.6, 8.75, clutter='men_table')                    # the boss's men's table, 1.2 m off the couch: the way from the
 lv.prop('chair', 28.45, 8.75, 180)                      # back door to the rest of the room goes round it
 lv.prop('chair', 27.6, 9.57, 270)
 lv.prop('ceiling_lamp', 27.6, 8.75)
 lv.prop('floor_lamp', 25.4, 10.55)
-lv.prop('cash_case', 30.2, 10.45, 84)                   # the boss's takings, open on the floor in front of the man
+lv.prop('cash_case', 30.2, 10.45, 84, clutter='cash_floor')                  # the boss's takings, open on the floor in front of the man
                                                         # who counts them
 lv.prop('extinguisher', 25.9, 10.86, 180)              # on the wall by the door
 
@@ -391,13 +391,16 @@ lv.area('the bar: counter along the north wall')
 # the booths and the card game 1.2 m, the whole of row 15; from the front door a lane 1.5 m wide up to it, the card
 # game on its left, the jukebox on its right; the middle of the room left clear (a high table there was "useless"). The men at the
 # counter, the cards, the dope and the money stand square at what they work at (data/posts.js `front`).
-for x in (15.5, 16.5, 17.5, 18.5, 20.5):                # (no module on the cut line)
-    lv.prop('bar_counter', x, 13.85)
+# what stands on it, module by module (data/clutter.js SETS): napkins and peanuts, the regulars' glasses and ashtrays,
+# the bottle the bartender pours from, the till at his end
+for x, things in ((15.5, 'counter_kegs'), (16.5, 'counter_regular'), (17.5, 'counter_middle'), (18.5, 'counter_pour'),
+                  (20.5, 'counter_till')):               # (no module on the cut line)
+    lv.prop('bar_counter', x, 13.85, clutter=things)
 for x in (15.65, 16.75, 17.85, 18.95):
     lv.prop('chair', x, 14.5, 270)
 for x in (17.59, 20.41):                                # the bottles: racked on the wall, either side of the
     lv.prop('back_bar', x, 12.16)                       # bartender and of the neon over his head
-lv.prop('neon_tube_pink', 18.5, 12.05)
+lv.prop('neon_sign_bay', 18.5, 12.09)                  # the town's lager in neon over the bartender's head
 for x in (16.3, 18.0, 20.7):
     lv.prop('ceiling_lamp', x, 13.85)
 for y in (12.45, 13.02):                                # two kegs of draught in the corner behind the counter: holed,
@@ -410,11 +413,11 @@ lv.area('the bar: the main room')
 # west wall, the arcade against the gaming room's wall and the jukebox by the door; 1.2 m and more of floor along every
 # way across, the lane from the front door to the toilets' door clear, the foot of the street windows clear (one dives
 # in onto open floor); a table to slide over everywhere one runs.
-lv.prop('pool_table', 20.8, 16.9)
+lv.prop('pool_table', 20.8, 16.9, clutter='pool_rail')  # a beer and a smoking ashtray on its rail
 lv.prop('pool_lamp', 20.8, 16.9)
 lv.prop('sofa', 15.5, 17.0, 270)
 lv.prop('wall_lamp', 15.09, 17.0, 270)
-lv.prop('table', 16.5, 17.0, 90)
+lv.prop('table', 16.5, 17.0, 90, clutter='booth')
 lv.prop('arcade', 23.55, 15.5, 270)                     # against the gaming room's wall, back to it
 lv.prop('jukebox', 23.6, 19.6, 180)
 lv.prop('ceiling_fan', 22.6, 14.2)
@@ -425,13 +428,13 @@ lv.area('the bar: the gaming room')
 # 5 x 4 m behind its door: poker under a green-shaded lamp (shoot its chain...), the dealer at the west end with the
 # house's pistol, his players across from the boss's door (kept clear: one comes in from the back room), an empty
 # chair at the east end, the money in its case, the bottles on a shelf; the window's foot on the gap left clear.
-lv.prop('card_table', 26.9, 14.25)
+lv.prop('card_table', 26.9, 14.25, clutter='poker')
 lv.prop('pool_lamp', 26.9, 14.25)
 lv.prop('chair', 26.5, 15.25, 270)
 lv.prop('chair', 27.4, 15.25, 270)
 lv.prop('chair', 28.35, 14.25, 180)
 lv.prop('bottle_shelf', 25.9, 12.16)
-lv.prop('cash_case', 28.8, 12.6, 15)
+lv.prop('cash_case', 28.8, 12.6, 15, clutter='cash_floor')
 lv.prop('wall_lamp', 30.91, 13.0, 90)
 
 lv.area('the bar: what can be used')
@@ -443,11 +446,62 @@ lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
 lv.area('the bar: VIP room')
 lv.prop('curtain', 25.5, 18.5)                          # velvet across its doorway: walked through, never seen through
-lv.prop('dance_stage', 30.0, 18.9)
+lv.prop('dance_stage', 30.0, 18.9, clutter='stage')    # banknotes thrown at the dancer
 lv.prop('mirror_ball', 28.5, 18.6)                      # its specks turn round the room
-lv.prop('sofa', 28.15, 17.45)                           # clear of where one lands diving through the window
+lv.prop('sofa', 28.15, 17.45, clutter='vip_sofa')                         # clear of where one lands diving through the window
 lv.prop('armchair', 26.5, 19.45, 0)
 lv.prop('neon_tube_pink', 28.0, 19.93, 180)
+
+lv.area('the bar: on its walls')
+# pictures and posters behind glass, the dartboard, the coin phone, the coats on their hooks, a beer neon in the poker
+# room (the wall at their back; never across a doorway, levelkit check_on_wall; none on the cut lines)
+lv.prop('coat_hooks', 15.09, 15.3, 270)                 # by the end of the counter, on the west wall
+lv.prop('frame_photo', 15.09, 16.2, 270)                # over the booth, either side of its lamp
+lv.prop('poster_fight', 15.09, 17.85, 270)
+lv.prop('poster_band', 20.3, 19.91, 180)                # on the front wall, between the windows and the door
+lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the arcade
+lv.prop('pay_phone', 24.91, 19.35, 90)                  # by the jukebox, on the VIP room's wall
+lv.prop('neon_sign_beer', 30.0, 12.09)                  # the poker room
+lv.prop('frame_gold', 25.09, 15.4, 270)
+lv.prop('frame_photo', 30.2, 15.91, 180)
+lv.prop('frame_gold', 26.5, 17.09)                      # the VIP room, by the sofa
+lv.prop('frame_photo', 25.09, 8.6, 270)                 # the boss's room: over his couch, his coats by the back door
+lv.prop('coat_hooks', 26.35, 6.09)
+lv.prop('towel_dispenser', 23.93, 9.8, 90)              # the toilets, by the sink
+
+# the life of the rooms on their floors, kept faint (render/FloorWear.js): rings and dried spills by the counter and the
+# tables, butts and peanut shells under the stools, napkins; the way from the door to the counter and to the toilets
+# worn pale; paper towels under the sink
+lv.grime('rings', 15, 14, 20, 15, 4)
+lv.grime('sticky', 15, 14, 20, 15, 3)
+lv.grime('butts', 15, 14, 20, 15, 5)
+lv.grime('shells', 15, 14, 20, 15, 6)
+lv.grime('napkin', 15, 14, 20, 15, 2)
+lv.grime('sticky', 15, 12, 20, 13, 2)
+lv.grime('rings', 15, 12, 20, 13, 2)
+lv.grime('butts', 15, 16, 17, 18, 2)
+lv.grime('sticky', 15, 16, 17, 18, 1)
+lv.grime('napkin', 15, 16, 17, 19, 1)
+lv.grime('butts', 18, 15, 23, 19, 4)
+lv.grime('sticky', 19, 15, 23, 18, 2)
+lv.grime('butts', 25, 12, 30, 15, 4)
+lv.grime('burns', 25, 12, 30, 15, 2)
+lv.grime('sticky', 25, 13, 30, 15, 1)
+lv.grime('sticky', 26, 17, 30, 19, 2)
+lv.grime('butts', 26, 17, 30, 19, 2)
+lv.grime('butts', 25, 6, 30, 10, 4)
+lv.grime('burns', 25, 6, 30, 10, 2)
+lv.grime('napkin', 22, 8, 23, 10, 4)
+lv.grime('stain', 23, 8, 23, 10, 1, col='#3a4a50')
+lv.grime('butts', 21, 6, 23, 10, 2)
+lv.grime('butts', 15, 6, 18, 10, 2)
+lv.grime('sticky', 15, 7, 18, 10, 1)
+lv.wear_path(21.5, 19.5, 17.8, 15.1)
+lv.wear_path(21.5, 19.5, 22.4, 12.3, 10)
+# the smoke of the night hanging under the lamps over the pool and the poker tables, and over the counter
+lv.smoke_haze(20.8, 16.9, 2.3, 0.1)
+lv.smoke_haze(26.9, 14.25, 1.9, 0.1)
+lv.smoke_haze(17.6, 13.6, 2.0, 0.05)
 
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
 lv.area('the liquor store roof')

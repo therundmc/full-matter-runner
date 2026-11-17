@@ -97,6 +97,11 @@ export const META = {
   // impacts (one per material) and what gives way
   wood: { gain: 0.6 }, metal: { gain: 0.55 }, stone: { gain: 0.6 }, plastic: { gain: 0.7 }, soft: { gain: 0.6 },
   ceramic: { gain: 0.55 }, glassHit: { gain: 0.5 }, flesh: { gain: 0.7 },
+  // the clutter on the furniture (placeholders, assets/sound/PLACEHOLDERS.md): many at once when a table goes over
+  clutterClink: { gap: 0.03, max: 3, gain: 0.4 }, clutterShatter: { pri: 2, dur: 0.5, gap: 0.03, max: 3, gain: 0.55 },
+  clutterBottle: { gap: 0.05, max: 2, gain: 0.45 }, clutterAshtray: { gap: 0.05, max: 2, gain: 0.45 },
+  clutterChips: { gap: 0.08, max: 2, gain: 0.4 }, clutterTill: { pri: 2, dur: 0.5, gap: 0.1, max: 1, gain: 0.7 },
+  clutterPaper: { gap: 0.15, max: 1, gain: 0.3 },
   woodBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.85 },
   flip: { pri: 2, dur: 0.6, gap: 0.2, max: 2, gain: 0.8 },
   binTip: { pri: 2, dur: 0.7, gap: 0.15, max: 2, gain: 0.75 },
@@ -369,6 +374,15 @@ const FOLEY = {
   // small things
   ricochet: [['stone', 0.5, 1.5]],
   ammo: [['rattle', 1], ['handle', 0.35, 1.2]],
+  // what stands on the furniture (systems/Clutter.js): placeholders made of the closest cuts until the SFX library
+  // comes (assets/sound/PLACEHOLDERS.md)
+  clutterClink: [['glassHit', 0.55, 1.45]],
+  clutterShatter: [['glassHit', 0.8, 1.2], ['glassFall', 0.3, 1.35, 0.04, 0.7]],
+  clutterBottle: [['glassHit', 0.5, 0.85], ['glassHit', 0.25, 0.95, 0.13, 0.6]],
+  clutterAshtray: [['glassHit', 0.55, 0.7], ['ceramic', 0.35, 0.9, 0.02]],
+  clutterChips: [['plastic', 0.45, 1.7], ['plastic', 0.3, 1.9, 0.05], ['plastic', 0.2, 1.8, 0.11, 0.7]],
+  clutterTill: [['metal', 0.8, 0.75], ['thud', 0.6, 0.9, 0.01]],
+  clutterPaper: [['swish', 0.15, 1.9]],
   ui: [['click', 1, 0.8], ['thud', 0.4, 1.5]],
   clear: [['doorSlam', 0.6, 0.6]],
 };

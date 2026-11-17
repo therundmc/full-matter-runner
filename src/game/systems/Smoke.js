@@ -88,6 +88,20 @@ export default class Smoke {
         }
       }
     }
+    // the haze of the cigarettes hanging under a few lamps (level `haze`: [col, row, radius tiles, density]), on top of
+    // the resting layer, thinning to nothing at its edge (smoke never hides anything from the guards: sight 0)
+    for (const [c, r, rad, v] of level.haze || []) {
+      const cx = c * TILE, cy = r * TILE, rr = rad * TILE, f = F.fcell;
+      for (let gy = Math.max(0, Math.floor((cy - rr) / f)); gy <= Math.min(F.H - 1, Math.ceil((cy + rr) / f)); gy++) {
+        for (let gx = Math.max(0, Math.floor((cx - rr) / f)); gx <= Math.min(F.W - 1, Math.ceil((cx + rr) / f)); gx++) {
+          const x = (gx + 0.5) * f, y = (gy + 0.5) * f, e = Math.hypot(x - cx, y - cy) / rr, j = gy * F.W + gx;
+          if (e >= 1 || !this.inside[Math.floor(gy / cfg.sub) * F.w + Math.floor(gx / cfg.sub)]) continue;
+          const add = v * (1 - e * e) * (1 - R.patchy * 0.5 + R.patchy * noise(x + 40, y + 40));
+          F.setRest(0, j, (F.kinds[0].rest?.[j] || 0) + add);
+          F.d[j] += add;
+        }
+      }
+    }
     this.version = -1;
     this.openings = null;     // doors and windows, linked at the first step (they are built after the systems)
     this.fans = new Map();    // ceiling fan -> how far round it had turned

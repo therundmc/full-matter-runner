@@ -127,6 +127,16 @@ test('smoke: a smoky place keeps a faint patchy layer at rest, the yard none; th
   assert.ok(s.at(5, 4) < before * (SMOKE.rest.dark + 0.15), `thinned to ${s.at(5, 4)} from ${before}`);
 });
 
+test('smoke: the haze a level hangs under a lamp thickens the resting layer there only, and hides nothing', () => {
+  const s = bar();
+  const level = { name: 'bar', soundscape: { zones: [['bar', 4, 3, 6, 5]] }, haze: [[5.5, 4.5, 1.2, 0.1]] };
+  const hazy = new Smoke(s.world, level);
+  const at = (sm, c, r) => sm.fluid.densityAt((c + 0.5) * TILE, (r + 0.5) * TILE);
+  assert.ok(at(hazy, 5, 4) > at(s.smoke, 5, 4) + 0.05, 'thicker under the lamp');
+  assert.equal(at(hazy, 9, 4), 0, 'nothing outside');
+  assert.ok(!hazy.blocks(4.2 * TILE, 4.5 * TILE, 6.8 * TILE, 4.5 * TILE), 'the guards see through it');
+});
+
 test('smoke: a shot leaves a puff ahead of the muzzle that hangs, then clears back to the layer in 10-30 s', () => {
   const s = bar();
   s.run(1);

@@ -13,6 +13,8 @@ const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const OIL = rgb('#16141c'), GRIME = rgb('#2a2420'), TAR = rgb('#34343f'), GRAVEL = rgb('#8a857c'), GLASS = rgb('#b4dcd2');
 const HOLE = rgb('#2e2c2c'), SOOT = rgb('#140c08'), SCORCH = rgb('#5a3a20'), RUBBER = rgb('#141018');
+const FILTER = rgb('#c88a4a'), PAPER = rgb('#e2dccc'), ASHEN = rgb('#6a6670'), SHELL = rgb('#a8804a'), SHELL_L = rgb('#d0ac70');
+const DRINK = rgb('#4a3010');
 const GUM = rgb('#2a262c'), LEAF = rgb('#3c5430'), TIP = rgb('#6c8a46'), BACKING = rgb('#c8bca0');
 const PATCHED = rgb('#4a4c56'), CEMENT = rgb('#55525a'), WORN = rgb('#8a8078'), WOOD_DARK = rgb('#3a2418');
 // the boards of the wood floor, world px from the top of a tile (kept in step with FL_WOOD_ROWS in
@@ -84,6 +86,25 @@ export function planWear(map, level = {}, cfg = WEAR) {
       }
     }
   });
+  // the life of a room, laid by the level (`grime`: [kind, col0, row0, col1, row1, n, options?], n marks of that kind
+  // somewhere in the tile rectangle: drink rings and spills by a counter, butts and peanut shells along it...) and the
+  // paths worn by feet (`worn`: [col0, row0, col1, row1, width px], from one point to the other)
+  const surfAt = (x, y) => {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    return tx < 0 || ty < 0 || tx >= W || ty >= map.h ? -1 : surf[ty * W + tx];
+  };
+  for (const [kind, c0, r0, c1, r1, n, o = {}] of level.grime || []) {
+    for (let k = 0, tries = 0; k < n && tries < n * 12; tries++) {
+      const x = (c0 + R() * (c1 + 1 - c0)) * TILE, y = (r0 + R() * (r1 + 1 - r0)) * TILE, s = surfAt(x, y);
+      if (s < 0 || marks.some((m) => m.kind === kind && Math.hypot(m.x - x, m.y - y) < (o.gap ?? 8))) continue;
+      marks.push({ kind, s, x, y, seed: Math.floor(R() * 4294967296), o });
+      k++;
+    }
+  }
+  for (const [c0, r0, c1, r1, w = 12] of level.worn || []) {
+    const x = c0 * TILE, y = r0 * TILE, s = surfAt(x, y);
+    if (s >= 0) marks.push({ kind: 'path', s, x, y, seed: Math.floor(R() * 4294967296), o: { to: [c1 * TILE, r1 * TILE], w } });
+  }
   return { names, surf, marks };
 }
 
@@ -443,6 +464,66 @@ const KINDS = {
         if (e < 0.35) P.tint(px, py, -26, SOOT, 0.5);
         else P.tint(px, py, -8 * (1 - e), SCORCH, 0.25 * (1 - e));
       });
+    }
+  },
+
+  // cigarette butts trodden out: the filter's tan end, the paper, a smear of ash (a few of them)
+  butts(P, R, x, y) {
+    const s = P.s;
+    for (let n = 1 + Math.floor(R() * 3); n > 0; n--) {
+      const bx = x + (R() - 0.5) * 10, by = y + (R() - 0.5) * 10, a = R() * TAU, l = (1.6 + R()) * s;
+      for (let i = 0; i <= l; i++) {
+        const px = bx * s + Math.cos(a) * i, py = by * s + Math.sin(a) * i;
+        P.tint(px, py, 0, i < s * 0.7 ? FILTER : PAPER, i < s * 0.7 ? 0.5 : 0.45);
+        P.tint(px + 1, py + 1, -5);
+      }
+      if (R() < 0.6) P.tint(bx * s - Math.cos(a) * 2, by * s - Math.sin(a) * 2, -4, ASHEN, 0.3);
+    }
+  },
+
+  // peanut shells dropped under the stools: small tan halves, a few pale
+  shells(P, R, x, y) {
+    const s = P.s;
+    for (let n = 4 + Math.floor(R() * 6); n > 0; n--) {
+      const a = R() * TAU, d = Math.sqrt(R()) * 9, px = Math.floor((x + Math.cos(a) * d) * s), py = Math.floor((y + Math.sin(a) * d) * s);
+      const pale = R() < 0.35;
+      P.tint(px, py, 0, pale ? SHELL_L : SHELL, 0.5);
+      P.tint(px + (R() < 0.5 ? 1 : 0), py + 1, 0, SHELL, 0.4);
+      P.tint(px + 1, py + 2, -5);
+    }
+  },
+
+  // a paper napkin crumpled and trodden flat: pale, its creases a shade darker
+  napkin(P, R, x, y) {
+    const r = 1.5 + R() * 0.8;
+    blob(P, x, y, r, r * (0.7 + R() * 0.3), R() * TAU, ragged(R, 0.35), (px, py, e, ux, uy) => {
+      P.tint(px, py, R() < 0.2 ? -6 : 0, PAPER, e > 0.8 ? 0.3 : 0.48);
+      if (e > 0.85 && ux + uy > 0) P.tint(px + 1, py + 1, -5);
+    });
+  },
+
+  // a drink spilt and dried sticky: a faint darker patch, its rim a touch darker, glossy here and there
+  sticky(P, R, x, y) {
+    const r = 3 + R() * 4;
+    blob(P, x, y, r, r * (0.55 + R() * 0.35), R() * TAU, ragged(R, 0.4), (px, py, e) => {
+      const w = smooth((1 - e) / 0.5);
+      P.tint(px, py, -4 * w + (e > 0.85 ? -3 : 0), DRINK, 0.12 * w);
+      if (e < 0.5 && R() < 0.02) P.tint(px, py, 7);
+    });
+  },
+
+  // the way feet go, worn a little paler and greyer: a soft band from (x, y) to o.to, w px wide, its edges broken
+  path(P, R, x, y, o) {
+    const s = P.s, [x1, y1] = o.to, w = o.w, dx = x1 - x, dy = y1 - y, L = Math.hypot(dx, dy) || 1, noise = valueNoise(R);
+    const x0 = Math.min(x, x1) - w, y0 = Math.min(y, y1) - w, xm = Math.max(x, x1) + w, ym = Math.max(y, y1) + w;
+    for (let py = Math.floor(y0 * s); py <= Math.ceil(ym * s); py++) {
+      for (let px = Math.floor(x0 * s); px <= Math.ceil(xm * s); px++) {
+        const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y, t = (wx * dx + wy * dy) / (L * L);
+        if (t < 0 || t > 1) continue;
+        const off = Math.abs(wx * dy - wy * dx) / L, n = noise((px / s) / 9, (py / s) / 9);
+        const k = smooth(1 - off / (w * (0.6 + 0.6 * n))) * smooth(Math.min(t, 1 - t) * L / 16);
+        if (k > 0) P.tint(px, py, (o.d ?? 3) * k, WORN, (o.grey ?? 0.06) * k);
+      }
     }
   },
 
