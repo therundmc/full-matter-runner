@@ -29,7 +29,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
         16    X#         #             #      #       #          X#   #  #   #X
         17    X##########################    ##############D#####X############X
         18    X  sidewalk: the trapdoor (west end), the hydrant  X
-        21    X  road: 15 VEHICLES (car, van, leaking car)       X
+        21    X  road: 16 VEHICLES (car, van, leaking car)       X
         25    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
@@ -56,13 +56,18 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     14 DOORS       three rooms behind three doors off the concourse's east end: a heavy one (a stall's light leaf
                    inside), one on a closer, a locked one with its lamp (red / amber / green): ring its bell (E) and the
                    man inside comes and turns his key; it shuts behind you on its closer and locks itself again
-    15 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
-The guards are passive dummies (they see and hear nothing but go on at their job), except the two `awake` ones.
+    15 CUEBALL     level 1's boss (data/bosses.js, entities/Boss.js) in a room of his own beyond the concourse's
+                   east end (cols 64-73, rows 7-11, its door at col 63, row 9), AWAKE: his name card and the camera on
+                   first sight, his pump-action from the hip, the first hit (wounded, then berserk), the second (his
+                   death); crates and a table for cover; a 1911, a bat and a knife on the floor before his door
+    16 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
+sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
 
-W, H = 64, 26
+W, H = 76, 26                              # (the 12 columns east of col 63 are 15 CUEBALL's room, in the brick)
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -119,6 +124,9 @@ lv.put(60, 11, 'L')
 lv.door(53, 11, kind='reinforced')
 lv.door(56, 11, closer=True)
 lv.door(60, 11, closer=True, relock=4)
+lv.fill(64, 6, 74, 12, '#')                # 15 CUEBALL: his room beyond the concourse's east end, behind a door
+lv.fill(64, 7, 73, 11, ';')
+lv.put(63, 9, 'D')
 # the street
 lv.fill(1, 18, 62, 19, 's')
 lv.fill(1, 20, 62, 24, '=')
@@ -290,7 +298,21 @@ lv.buzzer(61.6, 10.75, door=(60, 11), guard=(60, 15))        # the bell by the l
 for x in (53.5, 56.5, 60.0):
     lv.prop('ceiling_lamp', x, 14.0)
 
-lv.area('15 vehicles: the street, to ram, hole and blow up')
+lv.area('15 cueball')
+# level 1's boss, awake (he fights: his card, his pump-action, the two hits), in a room behind a door so that he is
+# met when one chooses; what to hit him with on the floor before it
+lv.paint('label_cueball', 60.8, 8.35)
+lv.actor('h', 72, 9, face=180, look='cueball', awake=True)
+lv.prop('table', 67.5, 9.6)                                  # he tips it over or walks through what is in his way
+for x, y in ((65.6, 7.7), (70.2, 7.7), (65.6, 10.8)):
+    lv.prop('crate', x, y)                                   # cover from his buckshot
+lv.prop('armchair', 72.9, 10.8, 180)
+lv.prop('ceiling_lamp', 68.5, 9.0)
+lv.prop('wall_lamp', 68.5, 7.08, 0)
+for x, kind in ((61.3, 'pistol'), (61.9, 'bat'), (62.5, 'knife')):
+    lv.drop(kind, x, 9.9, 0)
+
+lv.area('16 vehicles: the street, to ram, hole and blow up')
 lv.paint('label_vehicles', 28.5, 18.6)
 lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
 lv.prop('car', 8.0, 21.1, 0)
@@ -319,11 +341,12 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=26)
+    lv.check(guards=27)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors) and a street with the vehicles. Load with',
-                 '?level=lab.',
-                 'Guards here are passive dummies (blind and deaf, at their job), but the two kept `awake` for the sight tests.',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL) and a street with the',
+                 'vehicles. Load with ?level=lab.',
+                 'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
+                 'tests, and CUEBALL in his room (level 1\'s boss: he fights).',
              ])

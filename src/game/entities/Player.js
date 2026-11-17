@@ -915,6 +915,7 @@ export default class Player extends Character {
   // the length of it: pressed against him. The poses: CharacterAnim takedownPose (ours), heldPose (his).
   // move: { f, spot, front } (takedownMove; a given one: the tests).
   startTakedown(target, move = this.takedownMove(target)) {
+    if (target.shakeOff?.(this)) return; // a boss still whole throws him off (entities/Boss.js)
     const { f, spot = null, front = false } = move, group = Body.nextGroup(true);
     this.lastTakedown = f;
     this.nextTakedown = null;

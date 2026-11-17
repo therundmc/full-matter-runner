@@ -2174,9 +2174,9 @@ function paintLegs(ch, P, up = 0) {
 function paintArms(ch, P) {
   const ta = P.ta, c = Math.cos(ta), sn = Math.sin(ta), s = P.s, Lu = LIMB.upper * s, Lf = LIMB.fore * s;
   for (let i = 0; i < 2; i++) {
-    const side = i ? 1 : -1, H = i ? P.hr : P.hl;
-    SJ.x = P.tx + (LIMB.sx * c - side * LIMB.sy * sn) * s;
-    SJ.y = P.ty + (LIMB.sx * sn + side * LIMB.sy * c) * s;
+    const side = i ? 1 : -1, H = i ? P.hr : P.hl, sy = ch.look.wide ?? LIMB.sy; // (a wider man's joints: KINDS `wide`)
+    SJ.x = P.tx + (LIMB.sx * c - side * sy * sn) * s;
+    SJ.y = P.ty + (LIMB.sx * sn + side * sy * c) * s;
     let dx = H.x - SJ.x, dy = H.y - SJ.y, d = Math.hypot(dx, dy) || 1e-6;
     // the wrist, a little short of the middle of the fist
     WJ.x = H.x - (dx / d) * 0.9 * s; WJ.y = H.y - (dy / d) * 0.9 * s;

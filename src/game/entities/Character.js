@@ -37,9 +37,12 @@ export const KINDS = {
   brute: { arm: '#d89a70', skin: '#d89a70', pants: '#4c4a2c', shoe: '#5a3a22' },
   // the boss (a guard's own look, level `looks`): built like a heavy, in his cream suit, the black shirt's cuffs
   boss: { arm: '#e2d6b6', skin: '#d49a74', cuff: '#2a2228', pants: '#d6c8a6', shoe: '#4a2a1a' },
+  // CUEBALL (data/bosses.js): all in black, bone white hands; `wide`: his shoulder joints further out (pose px), under
+  // the widest shoulders in the game
+  cueball: { arm: '#2a2832', skin: '#eee4cc', pants: '#1e1c26', shoe: '#16141c', wide: 8.6 },
 };
 // the heavy build: a deeper voice, more weight, a slower step
-export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss';
+export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss' || kind === 'cueball';
 
 const VAULT_DUR = 0.5;  // s, windows and furniture alike
 const CLIMB_DUR = 0.72; // s, over a chain-link gate

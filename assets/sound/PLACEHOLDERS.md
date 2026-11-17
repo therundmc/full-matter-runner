@@ -59,3 +59,9 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | batSnap | the player's bat (or cue) snaps in two on the blow that uses it up (Character.breakWeapon `snap`) | a wooden baseball bat cracking in two over a skull: a dry splintering crack, the barrel's knock as it flies off |
 | knifeSnap | the player's knife breaks at the guard, its blade left in what it struck (Character.breakWeapon `lodge`) | a steel blade snapping at the tang: a sharp metallic ping and the click of the handle letting go |
 | snatch | the player takes a dead guard's weapon into his hand as the man goes down (Player.grab) | a hand slapping onto a gun and closing on it, a quick leather-and-steel rattle, a twirl's swish |
+| bossCard | a boss's name card slams in the first time he sees the player (entities/Boss.js bossLine, ui/KillFeed.js card) | a heavy cinematic slam / stinger: a low hit with a metallic tail, 0.6 s |
+| bossHowl | the boss takes his FIRST hit and is only wounded (entities/Boss.js wound) | a big man's howl of pain, raw and short (0.9 s) |
+| bossRoar | wounded, he throws his head back and goes berserk; again with each of his roared lines (Boss.goBerserk, update) | a furious male roar, throat torn, 1 s; two or three takes |
+| bossShake | the boss throws the player off when seized from behind while still whole (Boss.shakeOff) | a grunt, cloth yanked, a body shoved hard |
+| bossDeath | the boss's second hit: he dies (Boss.kill) | a heavy man's last bellow dying into a groan, then his knees hitting the floor |
+| shadesDrop | his shades come off as he dies and skitter over the floor (Boss.kill, the Debris' tick) | plastic sunglasses clattering and skidding on a hard floor |

@@ -6,6 +6,8 @@ import { rand } from '../../engine/math.js';
 import { gridRaycast } from '../../engine/physics/Raycast.js';
 import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
+import Boss from '../entities/Boss.js';
+import { BOSSES } from '../data/bosses.js';
 import Prop from '../entities/Prop.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
@@ -146,8 +148,9 @@ export function buildLevel(world, level) {
       }
       else if (ENEMIES[ch.toLowerCase()]) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
-        // a guard may be his own man (level.looks['col,row'] = a kind of his own: the boss)
-        const e = new Enemy(world, px, py, face, level.looks?.[`${x},${y}`] || kind, weapon, ch !== ch.toLowerCase());
+        // a guard may be his own man (level.looks['col,row'] = a kind of his own), a boss among them (data/bosses.js)
+        const look = level.looks?.[`${x},${y}`] || kind;
+        const e = new (BOSSES[look] ? Boss : Enemy)(world, px, py, face, look, weapon, ch !== ch.toLowerCase());
         // a passive level (the lab): dummies that neither see nor hear, but those it keeps `awake` ('col,row')
         e.passive = !!level.passive && !level.awake?.includes(`${x},${y}`);
         e.takeJob(level.jobs?.[`${x},${y}`]);

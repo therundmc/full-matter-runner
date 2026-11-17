@@ -228,6 +228,7 @@ export default class Game {
     ev.on('shot', () => this.tension.bump('shot'));
     ev.on('kill', ({ victim }) => { if (!victim.isPlayer) this.tension.bump('kill'); });
     ev.on('explosion', () => this.tension.bump('blast'));
+    ev.on('boss', () => this.tension.bump('boss')); // a boss's beat: the soundtrack at its fullest
     ev.on('alertPhase', ({ phase }) => Music.setCombat(AI.combatMusic.includes(phase)));
     Music.setCombat(false);
     Music.setCombo(0);
@@ -467,6 +468,7 @@ export default class Game {
     if (this.world.cleared) this.clearedT += dt;
     this.tension.update(dt);
     this.world.killFeed.update(dt); // on the real clock: a hit-stop never holds a stamp up
+    this.world.bossStage.update(dt);
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 
@@ -607,7 +609,7 @@ export default class Game {
     if (len > max) { ox *= max / len; oy *= max / len; }
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
-    const D = this.direction, shot = w.tutorial?.shot();
+    const D = this.direction, shot = w.tutorial?.shot() ?? w.bossStage.shot(); // ... or a boss's beat (systems/BossStage.js)
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom;

@@ -504,6 +504,8 @@ def head_top_px(ch, u, v, L, r):
         if L > 0.95:
             return lt(ch['skin'][2], 0.6)
         return ch['skin'][i]
+    if k == 'cueball':
+        return cueball_top_px(ch, u, v, L, r)
     if k == 'player':
         d = math.hypot(u, v)
         if u < -0.7 and d > r * 0.72:
@@ -560,6 +562,8 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
         return ch['shirt'][1]
     if k == 'boss' and hr + 0.1 < hd < hr + 1.1 and hu > -1.2:
         return ch['top'][min(3, i + 1)]          # the suit's collar, up round his thick neck
+    if k == 'cueball':
+        return cueball_shoulder_px(ch, u, v, i, hd, hr)
     return ch['top'][i]
 
 
@@ -636,10 +640,11 @@ def torso_body(ch, rng):
     """The shoulders from above at FINE density, the arms left off (the game paints them, render/LimbArt.js): a
     chest-and-back, two round shoulder caps, the upper back bulging behind, each lit as the volume it is, then what
     cloth has: creases from the armpits down the back, the sleeve heads, a seam down the back, grime."""
-    S, W = FINE, 20 * FINE
+    S, W = FINE, ch.get('canvas', 20) * FINE
     rx, ry = ch['sh'][0] * S, ch['sh'][1] * S
-    cx, cy = BODY_C[0] * S, BODY_C[1] * S
-    hr = 3.8 * S
+    pad = (W - 20 * FINE) / 2                        # a wider man's canvas grows round the same middle
+    cx, cy = BODY_C[0] * S + pad, BODY_C[1] * S + pad
+    hr = ch.get('head', 3.8) * S
     k, st = ch['kind'], ch.get('style')
     cap = ry * 0.38                                  # a shoulder cap's half width
 
@@ -715,6 +720,8 @@ def torso_body(ch, rng):
                 x, y = int(12.4 * S + i), int(10.0 * S + sgn * (5.4 + i * 0.8))
                 if body.on(x, y):
                     body.set(x, y, dk(body.get(x, y), 0.28))   # the lapel's edge
+    if k == 'cueball':
+        cueball_jacket(body, ch, cx, cy, rx, ry)
     mottle(body, rng, amt=4, cell=4)
     smudge(body, rng, 3, (6, 6, W - 7, W - 7), r=(1.5, 3.0), t=0.14)
     return body
@@ -766,7 +773,7 @@ def torso_head(ch, rng):
     front, the ears."""
     S, W = FINE, 20 * FINE
     k, st = ch['kind'], ch.get('style')
-    hcx, hcy, hr = 11.0 * S, 10.0 * S, (4.1 if k == 'boss' else 3.8) * S
+    hcx, hcy, hr = 11.0 * S, 10.0 * S, ch.get('head', 4.1 if k == 'boss' else 3.8) * S
     head = Cv(W, W)
     skull = lambda x, y: lump(x - hcx, y - hcy, hr, hr * 0.94, hr * 0.95)
     face = lambda x, y, edge: x + 0.5 - hcx > hr - edge * S and abs(y + 0.5 - hcy) < hr * 0.8
@@ -805,6 +812,8 @@ def torso_head(ch, rng):
     elif k == 'heavy':
         sk = ch['skin']
         relief_paint(head, skull, lambda x, y, L: lt(sk[2], 0.55) if L > 0.97 else sk[tidx(L)])
+    elif k == 'cueball':
+        cueball_dome(head, ch, skull, hcx, hcy, hr)
     elif k == 'brute':
         band = ch['bandana']
 
@@ -897,7 +906,7 @@ def torso_head(ch, rng):
                 head.set(x, y + d, c)
     for sgn in (-1, 1):                              # ears
         ey = hcy + sgn * (hr * 0.94 + 0.2)
-        if k == 'player' or st in ('hood', 'long', 'dancer'):
+        if k in ('player', 'cueball') or st in ('hood', 'long', 'dancer'):
             continue
         for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
             if head.get(int(hcx + dx), int(ey + dy))[3] < 100 or head.get(int(hcx + dx), int(ey + dy)) == OUTLINE:
@@ -929,7 +938,7 @@ def draw_head(ch):
 def draw_torso(ch):
     """The shoulders of a standing character from straight above, facing +x, the head left off (draw_head): 40 x 40
     pixels for 20 x 20 world px (FINE density)."""
-    W = 20 * FINE
+    W = ch.get('canvas', 20) * FINE
     rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(ch['kind']) * 7 + int(ch['sh'][1] * 10))
     cv = Cv(W, W)
     if ch.get('strap'):
@@ -1018,6 +1027,8 @@ def face_px(ch, u, v, L, r):
         return ch['bandana'][i]
     if k == 'heavy' and L > 0.95:
         return lt(ch['skin'][2], 0.6)
+    if k == 'cueball' and ch.get('worn') and -0.2 < u < 1.5:
+        return ch['shades'][3 if v < -0.6 else 2]                             # the shades, still on him
     if k == 'boss':
         if u > 1.0:
             return ch['hair'][i if int(v * 1.5 + 20) % 2 else max(0, i - 1)]   # grey, combed back
@@ -1309,6 +1320,136 @@ CHARS['boss'] = dict(kind='boss', top=ramp('#e2d6b6', 0.46, 0.22, 0.3), pants=ra
                      shoe=ramp('#4a2a1a', 0.4, 0.2, 0.35), hair=ramp('#a8a8b0', 0.5, 0.26, 0.35),
                      shirt=ramp('#2a2228', 0.4, 0.2, 0.4), chain=ramp('#e8b840', 0.5, 0.25, 0.45),
                      skin=ramp('#d49a74', 0.46, 0.22, 0.3), sh=(5.0, 9.6))
+
+
+# --------------------------------------------------------------------------
+# CUEBALL, level 1's boss: the comic's heavy (tools/comic/STYLE.md, the cast), from straight above. A wall on short
+# legs: the widest shoulders in the game, in black, on a canvas of their own (24 x 24 world px); no neck; a huge bald
+# bone dome; wrap-round fluorescent yellow shades wider than his head, the brightest thing on him: a yellow band
+# across the front of the dome, which shows where he faces. `_head_hurt`: after the first hit (entities/Boss.js) the
+# shades knocked askew, a lens cracked, blood running over the dome. items/shades: what skitters off him when he dies.
+# --------------------------------------------------------------------------
+FLUO = [hx('#6e8208'), hx('#b0cc10'), hx('#e6ff1a'), hx('#fbffb4')]
+CHARS['cueball'] = dict(kind='cueball', top=ramp('#2a2832', 0.5, 0.25, 0.42), pants=ramp('#1e1c26', 0.45, 0.22, 0.3),
+                        shoe=ramp('#16141c', 0.4, 0.2, 0.45), skin=ramp('#eee4cc', 0.42, 0.2, 0.3), shades=FLUO,
+                        sleeve=ramp('#2a2832', 0.5, 0.25, 0.42), sh=(5.5, 11.4), canvas=24, head=4.7)
+
+
+def cueball_top_px(ch, u, v, L, r):
+    """His head at the world's pixel size (a gib, a body lying face down): the bare dome, the rolls of his nape."""
+    sk = ch['skin']
+    if L > 0.93:
+        return lt(sk[3], 0.6)
+    if u < -r * 0.45 and abs(math.hypot(u, v) - r * 0.72) < 0.5:
+        return sk[1]
+    return sk[tidx(L)]
+
+
+def cueball_shoulder_px(ch, u, v, i, hd, hr):
+    """His jacket from above: its collar rolled up round the dome (no neck shows), the padded shoulders' edge."""
+    top = ch['top']
+    if hr + 0.1 < hd < hr + 1.2:
+        return top[min(3, i + 1)]
+    if abs(v) > ch['sh'][1] - 1.6 and abs(u) < 2.2:
+        return top[min(3, i + 1)]                # the pad's edge catches the light
+    return top[i]
+
+
+def cueball_jacket(body, ch, cx, cy, rx, ry):
+    """What his black back shows: the yoke's seam from shoulder to shoulder, the vent at the bottom of the back."""
+    top = ch['top']
+    for j in range(int(cy - ry + 3 * FINE), int(cy + ry - 3 * FINE)):
+        x = int(cx - rx * 0.42 - 1.6 * math.cos((j - cy) / ry * 1.5))
+        if body.on(x, j) and body.get(x, j) != OUTLINE and abs(j - cy) > 1:
+            body.set(x, j, top[0])
+    for i in range(5):
+        x = int(cx - rx + 1.5 + i)
+        if body.on(x, int(cy)):
+            body.set(x, int(cy), top[0])
+
+
+def cueball_shades(u, v, hr, tilt=0.0, slip=0.0):
+    """Where the shades are over a head of radius hr (pixels from its centre, +u the face): None off them, else
+    (part, depth 0..1 from their front edge, across): 'lens' | 'arm' | 'bridge'. A wrap-round band, deepest at the
+    front, wider than the head, its arms back to the ears; tilt (rad) and slip (px across): knocked askew."""
+    v -= slip
+    c, s = math.cos(-tilt), math.sin(-tilt)
+    u, v = u * c - v * s, u * s + v * c
+    R = hr + 1.0
+    rho = math.hypot(u, v * 0.9)
+    deep = 3.0 + 4.2 * max(0.0, u / R)
+    if u < -1.5 or rho > R + 0.9 or rho < R - deep:
+        return None
+    k = (R + 0.9 - rho) / (deep + 0.9)
+    if u < 3.4:
+        return ('arm', k, v) if rho > R - 2.2 else None
+    if abs(v) < 0.9 and rho > R - 1.6:
+        return ('bridge', k, v)
+    return ('lens', k, v)
+
+
+def cueball_dome(head, ch, skull, hcx, hcy, hr):
+    """The bald dome and the shades on it. ch['hurt']: the head after the first hit."""
+    sk, Y, hurt = ch['skin'], ch['shades'], ch.get('hurt')
+    tilt, slip = (0.42, 1.6) if hurt else (0.0, 0.0)
+
+    def dome_px(x, y, L):
+        u, v = x + 0.5 - hcx, y + 0.5 - hcy
+        d = math.hypot(u, v)
+        if L > 0.965:
+            return lt(sk[3], 0.7)                        # the shine on the bone
+        if u < -hr * 0.42 and (abs(d - hr * 0.74) < 0.6 or (abs(d - hr * 0.5) < 0.55 and abs(v) < hr * 0.42)):
+            return sk[1]                                 # the rolls of his nape
+        return sk[tidx(L)]
+    relief_paint(head, skull, dome_px)
+    for y in range(head.h):
+        for x in range(head.w):
+            u, v = x + 0.5 - hcx, y + 0.5 - hcy
+            at = cueball_shades(u, v, hr, tilt, slip)
+            if at is None:
+                # their shadow on the dome, just behind them
+                if head.on(x, y) and head.get(x, y) != OUTLINE and cueball_shades(u + 1.2, v, hr, tilt, slip):
+                    head.set(x, y, dk(head.get(x, y), 0.2))
+                continue
+            part, k, across = at
+            if part == 'arm':
+                c = Y[1] if k > 0.5 else Y[2]
+            elif part == 'bridge':
+                c = Y[0]
+            else:
+                c = Y[3] if (k < 0.3 and across < -1.5) else Y[1] if k > 0.78 else Y[2]   # a glint along the lit lens
+            head.set(x, y, c)
+    nose = (hcx + hr + 1.9 + (0.6 if hurt else 0), hcy + (0.6 if hurt else 0))
+    for dx in (0, 1):
+        head.set(int(nose[0] + dx), int(nose[1]), sk[2] if dx == 0 else sk[1])   # the tip of his nose, under them
+    if not hurt:
+        return
+    # the lens on his right cracked: a star of cracks from where it was struck, a chip gone out of it
+    c0 = (hcx + hr * 0.62, hcy + hr * 0.78)
+    crack = hx('#3a4406')
+    for (dx, dy, n) in ((1.0, -0.2, 4), (-0.5, 1.0, 3), (0.4, -1.0, 4), (-1.0, -0.3, 3)):
+        for t in range(n):
+            x, y = int(c0[0] + dx * t), int(c0[1] + dy * t)
+            if head.on(x, y) and head.get(x, y) in Y:
+                head.set(x, y, crack)
+    for (dx, dy) in ((0, 0), (1, 1)):
+        head.set(int(c0[0] + dx), int(c0[1] + dy), hx('#241a22'))
+    # blood: a gash on the dome, running down over the brow to the shades
+    for (dx, dy, c) in ((-2, -3, 1), (-1, -3, 2), (0, -3, 2), (1, -2, 2), (2, -2, 1), (1, -3, 0), (3, -2, 2), (4, -1, 2),
+                        (5, -1, 1), (6, -1, 2), (4, -2, 1), (-3, -2, 1), (-1, -2, 2), (0, -1, 1), (2, -4, 2), (-4, -1, 2)):
+        x, y = int(hcx + dx), int(hcy + dy)
+        if head.on(x, y) and head.get(x, y) != OUTLINE:
+            head.set(x, y, BLOOD[c])
+
+
+def shades_item():
+    """His shades on the floor, from above (the world's pixel size): the two lenses in a band, the arms folded back."""
+    return ascii_cv(['.............',
+                     '.dYYYYkyyyyd.',
+                     '.dyyyykyyKyd.',
+                     '.d.........d.',
+                     '.d.........d.',
+                     '.............'], {'Y': FLUO[3], 'y': FLUO[2], 'd': FLUO[1], 'k': FLUO[0], 'K': hx('#3a4406')})
 
 
 def civ_head_px(ch, u, v, L, r):
@@ -4324,7 +4465,7 @@ def knocked_down(ch):
     limb(arm, 18, 15, 114)
     limb(arm, 31, 15, 18)
     body.alpha_composite(rag_torso_up(ch).img, (16, 10))
-    body.alpha_composite(rag_head_up(ch).img, (19, 1))
+    body.alpha_composite(rag_head_up(dict(ch, worn=True)).img, (19, 1))   # (what he wears on his face is still on)
     out = Cv(H, W)
     out.img = body.rotate(-90, resample=Image.NEAREST, expand=True)
     out.p = out.img.load()
@@ -6353,8 +6494,8 @@ FONT_STENCIL = {
 }
 LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', pool='4 POOL', bars='5 BARS',
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
-                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='15 VEHICLES',
-                  takedowns='7 TAKEDOWNS', doors='14 DOORS')   # (the last ones added: the others keep their seed)
+                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='16 VEHICLES',
+                  takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL')   # (the last ones added: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -8675,6 +8816,7 @@ def build():
         out[(g, cid + '_gib_arm')] = gib_arm(ch)
         out[(g, cid + '_gib_leg')] = gib_leg(ch)
         out[(g, cid + '_gib_torso')] = gib_torso(ch, i)
+    out[('characters', 'cueball_head_hurt')] = draw_head(dict(CHARS['cueball'], hurt=True))
     for i in range(3):
         out[('characters', 'gib_chunk%d' % i)] = gib_chunk(i)
     out[('characters', 'gib_eye')] = gib_eye()
@@ -8692,6 +8834,7 @@ def build():
         out[('weapons', name)] = cv
     for name, cv in items().items():
         out[('items', name)] = cv
+    out[('items', 'shades')] = shades_item()
     props = dict(table=p_table, table_round=p_table_round, card_table=p_card_table, dope_table=p_dope_table, gas_bottle=p_gas_bottle, dance_stage=p_dance_stage, desk=p_desk, chair=p_chair, armchair=p_armchair,
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
@@ -8803,7 +8946,8 @@ EXPECTED = {
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (17, 19)), ('_rag_head', (10, 10)), ('_rag_arm', (17, 6)), ('_rag_leg', (20, 7)),
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
-        + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
+        + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3)),
+           ('cueball_torso', (48, 48)), ('cueball_head_hurt', (HEAD_W, HEAD_H))]),   # his own: wider, and his head hurt
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
                     sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),
@@ -8829,7 +8973,7 @@ EXPECTED = {
                      for n in ['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low',
                                'cat_dead'] + ['%s%d' % (n, i) for n in ('pigeon_walk', 'pigeon_fly', 'rat_run', 'cat_run')
                                               for i in range(3)] + ['cat_walk%d' % i for i in range(4)]),
-    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5)),
+    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
 }

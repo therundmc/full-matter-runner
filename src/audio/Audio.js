@@ -219,6 +219,14 @@ export const META = {
   fireRoar: { pri: 1, dur: 0.9, gap: 0.6, max: 2, gain: 0.4 },
   heatCrack: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
+  // a boss's beats (entities/Boss.js; placeholders, assets/sound/PLACEHOLDERS.md): his name card slammed in, his howl
+  // at the first hit, his roar, the player thrown off, his death, his shades on the floor
+  bossCard: { pri: 3, dur: 0.6, gap: 1, max: 1, gain: 0.8, reach: 1900 },
+  bossHowl: { pri: 3, dur: 0.9, gap: 0.5, max: 1, gain: 0.9, bus: 'voice' },
+  bossRoar: { pri: 3, dur: 1, gap: 0.6, max: 1, gain: 0.85, bus: 'voice' },
+  bossShake: { pri: 2, dur: 0.4, gap: 0.3, max: 1, gain: 0.7 },
+  bossDeath: { pri: 3, dur: 1.2, gap: 1, max: 1, gain: 0.9, bus: 'voice' },
+  shadesDrop: { pri: 1, dur: 0.2, gap: 0.05, max: 2, gain: 0.4 },
   // the kill's reward: a new one chokes the boom of the last (a chain never muds), the music dips under it
   confirm: { pri: 4, dur: 0.6, gap: 0.03, max: 2, duck: 0.8, gain: 0.8, hall: 0.06, choke: true },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
@@ -479,6 +487,13 @@ const FOLEY = {
   fireRun: [['swish', 0.7, 0.4], ['soft', 0.45, 0.5, 0.04]],
   fireRoar: [['rubble', 0.3, 0.45], ['swish', 0.3, 0.3, 0.1]],
   heatCrack: [['glassHit', 0.6, 0.7], ['click', 0.35, 2.2, 0.07], ['glassHit', 0.3, 1.1, 0.16]],
+  // a boss's beats (entities/Boss.js): placeholders too
+  bossCard: [['doorSlam', 0.8, 0.5], ['thud', 0.7, 0.6, 0.02]],
+  bossHowl: [['yell', 0.9, 0.6], ['yell', 0.6, 0.5, 0.2]],
+  bossRoar: [['yell', 1, 0.5], ['yell', 0.8, 0.42, 0.12], ['yell', 0.6, 0.55, 0.3]],
+  bossShake: [['swish', 0.6, 0.6], ['punch', 0.7, 0.8, 0.05]],
+  bossDeath: [['yell', 0.9, 0.45], ['thud', 0.9, 0.6, 0.5]],
+  shadesDrop: [['plastic', 0.5, 1.9], ['click', 0.3, 2.4, 0.05]],
 };
 
 class AudioSystem {

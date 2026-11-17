@@ -119,6 +119,8 @@ src/
                           FireSpread), level `fires` burning from the start; bounded (DOM-free; drawn by render/FireArt.js)
       Direction.js        the camera's shots (SHOTS in data/staging.js): a zoom on top of the usual view and something to look
                           at, eased; the zoom rests on a whole number of px a world px (pure, unit-tested)
+      BossStage.js        the camera on a boss's beats (the 'boss' event; data/bosses.js `shot`): a SHOTS name and the
+                          real seconds it holds, asked by Game like a staged level's shot (pure state, unit-tested)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
@@ -221,7 +223,8 @@ src/
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
-    entities/             Character, Player, Enemy, Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
+    entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
+                          kind level `looks` draws him as), Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per
                           gun family: data/feel.js `recoil`; pure, unit-tested)
     fx/                   Particles, Gore, Bleeding (a dead body's spurts, pool and drag trails)
@@ -280,6 +283,7 @@ Rules:
 | `scored` | `{ x, y, points, labels, combo, multiplier, streak, kind }` (kind: `kill`, `knock`, `bonus`, `civilian`; labels best first, at most 3) | Scoring (points earned, or a passer-by's penalty) | KillFeed (stamps, feed, chain count, fuse refill) |
 | `multiKill` | `{ n, tag, x, y }` (tag: `double`, `triple`, `massacre`) | Scoring (the streak's tag) | KillFeed (banner), fx/Impact.listenMoments (MOMENTS.multi: slow motion, hit-stop) |
 | `chainEnd` | `{ kills, points }` | Scoring (a chain of 2+ ran out) | KillFeed (the cash-out) |
+| `boss` | `{ boss, beat }` (beat: `intro`, `wounded`, `berserk`, `down`) | entities/Boss.js | KillFeed (the name card on `intro`), systems/BossStage (the camera's shot), Game (the soundtrack's heat: `AI.heat.boss`) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy), Litter (the blast at the muzzle blows the bills on the floor) |
@@ -782,6 +786,24 @@ third per stage. A gun in hand is no matter for words: it is a threat, as before
 - The boss (the guard whose job is 'boss') says his word the first time he sees the player: big, in a bubble over
   his head (`Enemy.bossLine`, WorldRenderer `drawBubble`, data/barks.js `BOSS`), the game slowed a moment, his
   fire held while he says it.
+- A boss of his own kind (`entities/Boss.js`, data/bosses.js `BOSSES`; level 1's is CUEBALL, the comic's heavy):
+  - his beat on first sight: his line, the name card slammed low on the screen (KillFeed `card`), the camera pushed
+    in (systems/BossStage.js), the soundtrack's heat full; his fire held `intro.hold` s;
+  - he walks at the player firing from the hip (`plan` / `tAdvance`), his pump-action every `fire.interval` s; every
+    shot is told: the pump racked `fire.pump` s after the last one (heard, the forend worked), then a glint growing
+    at the muzzle for `fire.tell` s (`tellK`, render/BossArt.js); he reloads on his feet with a word (the opening);
+    furniture in his way goes over or is sent off (`clearWay`);
+  - TWO hits: every death goes through `kill`, and the first one only wounds him (`wound`): thrown back, reeling
+    `wound.stagger` s, blood, his head's `_hurt` sprite (shades askew, a lens cracked), the wound drawn where the
+    blow struck (`struckSide`, BOSSES `spots`) and his free hand on it, a slow-motion beat, WOUNDED on the feed;
+    then he roars and is berserk (BOSSES `berserk`: faster on his feet and on the trigger, wilder), bleeding as he
+    goes. `wound.grace` s nothing else touches him (the other pellets of the blast). The second hit kills him: his
+    gun thrown, his shades skittering off (items/shades), onto his knees then his face (`dying: 'kneel'`), a long
+    slow motion, the camera on him, the kill tagged by his name (`how.boss` -> SCORING.tags);
+  - bare blows (a punch, a slide's kick, a door: `knock`) he shrugs off `wound.fists` times, the next one wounds
+    him; wounded, a knock floors him like anyone and he can be finished on the floor (any finisher);
+  - seized from behind while whole, he throws the player off (`shakeOff`, asked by `Player.startTakedown`: the
+    player shoved back, he comes round with `shake.react` s before he can fire); wounded, he can be taken down.
 - Footprints: Liquids emits 'footprint' for every print; the Director keeps the player's in `director.trail`
   (ai/Trail.js, `AI.trail`: they dry after `fresh` s). A guard who sees one (`Enemy.scanWorld`) follows the run of
   prints hop by hop (state `track`, one tracker at a time), then goes and looks where they were heading. Bloody

@@ -67,6 +67,7 @@ import Curtains from '../systems/Curtains.js';
 import Weather from '../systems/Weather.js';
 import Smoke from '../systems/Smoke.js';
 import Director from '../ai/Director.js';
+import BossStage from '../systems/BossStage.js';
 import Ambient from '../systems/Ambient.js';
 import { OUTRO, routePath, routeSpeed, slideStep, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
 import { Gearbox } from '../../audio/Motor.js';
@@ -128,6 +129,7 @@ export default class World {
     this.scoring = new Scoring(this);
     this.killFeed = new KillFeed(this.events);    // what is shown of kills and chains (advanced by Game on the real clock)
     listenMoments(this);                          // a multi-kill's slow motion and hit-stop
+    this.bossStage = new BossStage(this);         // the camera on a boss's beats (advanced by Game on the real clock)
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // the liquid on the floor: spills, blood, the rain's puddles, footprints
     this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)

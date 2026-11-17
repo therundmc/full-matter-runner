@@ -10,6 +10,9 @@ export const BARKS = {
     'HA! NO WAY.', 'THIS PLACE, MAN...', 'ANOTHER HOUR OF THIS.', 'RAIN AGAIN TOMORROW.'],
   // at their post (data/posts.js): the boss to his men, a joke on the couch and the other one laughing
   boss: ['TURN THAT DOWN.', 'WHERE IS MY MONEY?', 'COUNT IT AGAIN.', 'NOBODY GETS IN.', 'GOOD NIGHT, BOYS.'],
+  // CUEBALL at his desk (data/posts.js `cueball`), to the two on the couch
+  cueball: ['COUNT IT AGAIN. SLOWER.', 'WHO TOUCHED MY SHADES?', 'THE BOSS CALLS AT TWO.', 'I HATE THIS SONG.',
+    'NOBODY GETS IN. NOBODY.', 'SIT UP STRAIGHT.'],
   joke: ['SO THE PRIEST SAYS...', 'GET THIS ONE.', 'AND HER HUSBAND WALKS IN.', 'HE SAYS: WHAT DOG?', 'GUESS WHO PUKED.'],
   laugh: ['HA HA HA!', 'HA! GOOD ONE.', 'STOP IT, MAN.', 'HAH!'],
   // calm, then looking for something
