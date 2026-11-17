@@ -233,14 +233,13 @@ lv.prop('neon_sign_arrow', 9.6, 21.09)
 # the bar's door, an American bar's (the user, 2026-11-17: the red carpet and velvet ropes "do not look like an
 # American bar's entrance"; before that the wall lamps and plain pots were "vile", palms in planters and a GIRLS neon
 # "too much", a canvas awning hid the door, a wooden pergola was "too ugly"): the bar's name in neon on the wall west
-# of the door, a red OPEN in the window, a rubber mat at the step, the night's specials chalked on an A-frame and a
+# of the door (gone since), a red OPEN in the window, a rubber mat at the step, the night's specials chalked on an A-frame and a
 # steel ashtray post where the bouncer stands. All clear of the doorway and of the sidewalk patrol's beat (row 22).
+# (2026-11-17: the MIRAGE neon and the specials board under it went: with BAR and OPEN the front was "too much")
 # (drawing columns: the level's are one less east of the cut at 19. The leaves swing a metre out onto the sidewalk:
 # nothing within it; no sign in front of a window, one dives through them)
-lv.prop('neon_sign_mirage', 18.9, 21.09)                # on the wall between the windows and the door
 lv.prop('neon_sign_open', 23.5, 21.09)                  # on the pier east of the door, before the bouncer's window
 lv.paint('entry_mat', 22.0, 21.4)                       # at the step, as wide as the double door
-lv.prop('sandwich_board', 18.75, 21.55)                 # under the name, clear of the west leaf's swing
 lv.prop('ash_urn', 25.4, 21.3)                          # past the bouncer, against the wall
 lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
