@@ -210,9 +210,10 @@ Rules:
 ## Simulation step (World.step)
 
 1. intentions: player input, AI Director (phase timers, footsteps, budget reset), enemy AI
-   (they set velocities via `Character.steer`, limited by `pushFactor`), Ambient (drivers set their car's
-   velocity, passers-by steer, run-over checks, spawn / despawn)
-2. physics: `PhysicsWorld.step` (2 Matter sub-steps + floor friction), push contacts, door hinges, wall body rebuild
+   (they set velocities via `Character.steer`), Ambient (drivers set their car's velocity, passers-by steer,
+   run-over checks, spawn / despawn)
+2. physics: the characters' pushes on loose props (`PropPhysics.prePush`: force-limited, they are held to what
+   they push), `PhysicsWorld.step` (2 Matter sub-steps + floor friction), door hinges, wall body rebuild
 3. reactions: items, ammo, projectiles (segment-traced), debris, corpses/ragdolls, props, emitters, particles, systems
 4. cleanup of dead entities and expired effects
 5. level flow (cleared / exit)
@@ -257,13 +258,32 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 - Scale: 1 m = 32 px. A person is ~0.5 m wide (17 px), a door 1 m.
 - Every dynamic body has a mass in kg (`setMaterial(body, kg, mu)`) and a `material` (data/materials.js).
-- Floors have a grip (`FLOOR_GRIP`): carpet and grass brake more, tiles and the dance floor slide.
-- Sliding uses constant deceleration mu·g (Coulomb), so things stop instead of drifting; airborne bodies
-  (`flyUntil`) skip it for a moment after being thrown or blasted.
-- Characters can push with `PHYSICS.pushForce` (N). Anything whose breakaway force (mu·grip·kg·g) is higher
-  is "frozen" (static) at rest and only wakes up from big impulses (explosions). Lighter objects slow the
-  character down in proportion to their weight.
-- Impulses are momentum (kg·px/step): `impulse(body, angle, J)` gives light bodies a big kick and heavy ones a nudge.
+- Floors have a grip (`FLOOR_GRIP`): carpet and grass brake more, tiles and the dance floor slide; a wet floor
+  grips less (Liquids `grip`, beer the least). A loose prop's feet (`feet`, or its material) also take to the kind
+  of floor (`SURFACE`, `SLIDE` in data/materials.js): wood slides on tiles, scrapes on concrete, barely moves on
+  carpet; metal skates on tiles; rubber grabs. `World.floorGrip(x, y, body)` is the engine's `muAt`.
+- Sliding uses constant deceleration mu.g (Coulomb, engine/physics/Friction.js), so things stop dead instead of
+  drifting (props have no air drag); airborne bodies (`flyUntil`) skip it for a moment after being thrown or blasted.
+  Spin is scrubbed off at mu.g / gyr (the radius of gyration of the real moment of inertia: `setShapeInertia`, a box
+  m(w2+h2)/12, a disc mr2/2). A lying cylinder (`roll`: the bin knocked over) rolls across its length almost freely
+  and drags along it.
+- Static friction: getting a resting body going takes `stick` (per material) x its kinetic friction:
+  `breakaway = stick.mu.grip.kg.g`. Anything whose breakaway beats `PHYSICS.pushForce` (N) is "frozen" (static)
+  at rest and only wakes up from big impulses (all the knocks of one step add up: a shotgun's pellets, a blast).
+- Pushing is force-limited (engine/physics/Push.js, systems/PropPhysics.js `prePush`, run before the physics step):
+  a character's velocity is set every step, so to Matter he is infinitely heavy and its contact would hand a prop
+  his speed at once. Instead, a walking character in contact with a loose prop gives it at most his push force
+  (`pushForce` running, `PUSH.walk` of it walking, data/physics.js) as momentum at the point of contact (off-centre
+  it turns), nothing until the force beats static friction, and he is held to the speed it really goes, so Matter's
+  contact has nothing left to transfer. The meeting is reported as an 'impact' (`PhysicsWorld.bump`) for sounds and
+  bins knocked over. Slides, vaults and men knocked flying stay with Matter (they are blows).
+- Impulses are momentum (kg.px/step): `impulse(body, angle, J)` gives light bodies a big kick and heavy ones a nudge;
+  `impulseAt(body, x, y, angle, J)` also spins it by its moment of inertia. A blow on a prop (Prop.hit) hands it
+  `BLOW.per[kind]` N.s per unit of power, x the weapon's heft (data/physics.js): a bat sends a chair flying and
+  nudges a keg, a pistol round barely moves anything.
+- Dragged over a hard floor fast enough, a heavy hard prop leaves faint thin scuffs from its feet (PropPhysics,
+  `SCUFF`: at most `cap` marks a floor cell, `budget` a second), wipes a liquid it went through along the dry floor,
+  and is heard (`SCRAPE`: placeholder sounds, assets/sound/PLACEHOLDERS.md).
 
 ## Gameplay systems notes
 

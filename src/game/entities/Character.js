@@ -70,7 +70,6 @@ export default class Character {
     });
     setKg(this.body, kind === 'brute' ? 110 : heavyBuild(kind) ? 100 : 80);
     Body.setInertia(this.body, Infinity);
-    this.pushFactor = 1; // < 1 while leaning into something heavy (set by World from contacts)
     this.body.sleepThreshold = Infinity;
     this.body.entity = this;
     this.body.material = 'clothed';
@@ -246,10 +245,8 @@ export default class Character {
   }
 
   // desired direction (dx, dy), speed in px/step
+  // (leaning into a loose prop, systems/PropPhysics.js holds him to the speed it goes)
   steer(dx, dy, speed, accel = 0.35) {
-    speed *= this.pushFactor;
-    // contacts flicker between physics sub-steps: let the effort fade out instead of snapping back
-    this.pushFactor = Math.min(1, this.pushFactor + 0.06);
     const len = Math.hypot(dx, dy);
     const tx = len > 0.001 ? (dx / len) * speed : 0;
     const ty = len > 0.001 ? (dy / len) * speed : 0;
@@ -550,7 +547,7 @@ export default class Character {
       }
       // a blade cuts across the swing, bare hands only scuff, a bat dents
       const kind = d.bleed ? 'cut' : d.hold === 'none' ? 'punch' : 'blunt';
-      p.hit(d.lethal ? 2 : 1, hx, hy, a, 2.5, kind, { swing: a - (Math.PI / 2) * this.punchSide });
+      p.hit(d.lethal ? 2 : 1, hx, hy, a, 2.5, kind, { swing: a - (Math.PI / 2) * this.punchSide, heft: d.heft });
       hit = true;
     }
     for (const win of w.windows) {

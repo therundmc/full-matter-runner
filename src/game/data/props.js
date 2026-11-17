@@ -1,7 +1,9 @@
 // Furniture / props. w,h = hitbox (px), r = circle radius. hp: bullet hits before breaking. Everything breaks.
-// material = see data/materials.js (impact sounds), kg = mass, mu = sliding friction against the floor (multiplied by the floor's own grip).
+// material = see data/materials.js (impact sounds), kg = mass, mu = sliding friction against a wooden floor (times the
+// floor's grip and how its feet take to it: data/materials.js FLOOR_GRIP, SLIDE), feet = what it stands on when not its
+// material (rubber feet). How it is pushed, struck and dragged: data/physics.js.
 // vault = can be slid / jumped over.
-// static = bolted down / too big to budge (never moves; it erodes and bursts into short-lived shards). Objects too heavy to push (mu·kg·g > PUSH_FORCE) stay put
+// static = bolted down / too big to budge (never moves; it erodes and bursts into short-lived shards). Objects too heavy to push (stick.mu.kg.g > PHYSICS.pushForce) stay put
 // until something big (an explosion) shoves them.
 // light = light(s) cast by the object (see render/Lighting.js); fixture = a lamp: it flickers once damaged and its
 // light dies with it. hung = hangs from the ceiling: nobody bumps into it, but bullets, bats and blasts reach it.
@@ -11,18 +13,18 @@ export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
   table_round: { static: true, vault: true, material: 'wood', r: 14, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true, flips: 'table_round_flipped' },
   desk: { static: true, vault: true, material: 'wood', w: 46, h: 24, hp: 14, chips: '#6a4026', sound: 'wood', blocksPath: true, sparks: true },
-  chair: { material: 'wood', w: 14, h: 14, hp: 6, kg: 7, mu: 0.88, chips: '#7a4a2a', sound: 'wood' },
+  chair: { material: 'wood', w: 14, h: 14, hp: 6, kg: 5, mu: 0.42, chips: '#7a4a2a', sound: 'wood' },
   armchair: { static: true, material: 'fabric', w: 26, h: 26, hp: 10, chips: '#9a1f2a', sound: 'wood' },
   sofa: { static: true, vault: true, material: 'fabric', w: 64, h: 28, hp: 14, chips: '#c04a8a', sound: 'wood', blocksPath: true },
-  plant: { material: 'ceramic', r: 7.5, hp: 4, kg: 18, mu: 0.96, chips: '#3a8a3a', dirt: true, sound: 'wood' },
-  tv: { material: 'plastic', w: 22, h: 15, hp: 4, kg: 30, mu: 0.8, chips: '#222', sparks: true, glass: true, sound: 'glass',
+  plant: { material: 'ceramic', r: 7.5, hp: 4, kg: 18, mu: 0.5, chips: '#3a8a3a', dirt: true, sound: 'wood' },
+  tv: { material: 'plastic', w: 22, h: 15, hp: 4, kg: 30, mu: 0.45, chips: '#222', sparks: true, glass: true, sound: 'glass',
     light: { r: 100, color: '#7fc8ff', intensity: 1, flicker: 'tv', y: 7 } },
   fridge: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true },
   // gas: a round through it lights a jet at the hole, then it goes off after `fuse` s (systems/Gas.js);
   // rocket: odds that a loose bottle takes off on its own jet
   oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true,
     gas: { fuse: [1.6, 2.6] }, blast: 84 },
-  gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.75, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
+  gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.38, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
     gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
   sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
   // a block of flats: a neighbour's door (shut for good, on its wall), a radiator under a wall, a bicycle leant on
@@ -30,8 +32,8 @@ export const PROPS = {
   apt_door: { fixture: true, static: true, lasting: true, material: 'wood', w: 32, h: 6, hp: 99, chips: '#6a4426', sound: 'wood' },
   radiator: { fixture: true, static: true, lasting: true, material: 'metal', w: 28, h: 6, hp: 99, chips: '#8a8e98', sparks: true, sound: 'metal' },
   bike: { static: true, material: 'metal', w: 44, h: 10, hp: 6, chips: '#c8402c', sparks: true, sound: 'metal' },
-  bin_bag: { material: 'fabric', r: 6.5, hp: 3, kg: 6, mu: 0.9, chips: '#2c2e3a', sound: 'wood' },
-  jerrycan: { material: 'metal', w: 9, h: 11, hp: 8, kg: 9, mu: 0.8, chips: '#c8281e', sound: 'metal' },
+  bin_bag: { material: 'fabric', r: 6.5, hp: 3, kg: 6, mu: 0.6, chips: '#2c2e3a', sound: 'wood' },
+  jerrycan: { material: 'metal', w: 9, h: 11, hp: 8, kg: 9, mu: 0.4, chips: '#c8281e', sound: 'metal' },
   // a wall urinal (the wall behind it) and the partition between two toilets (its bracket end on the wall)
   urinal: { material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
   stall: { material: 'wood', w: 4, h: 48, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },
@@ -40,12 +42,12 @@ export const PROPS = {
   pool_table: { static: true, vault: true, material: 'wood', w: 80, h: 44, hp: 28, chips: '#1e7a3a', sound: 'wood', blocksPath: true },
   arcade: { static: true, material: 'plastic', w: 22, h: 27, hp: 10, chips: '#333', sparks: true, glass: true, sound: 'metal', blocksPath: true,
     light: { r: 64, color: '#3ae8ff', intensity: 0.7, flicker: 'tv', y: 6 } },
-  crate: { vault: true, material: 'wood', w: 19, h: 19, hp: 8, kg: 45, mu: 0.96, chips: '#a07040', sound: 'wood' },
-  barrel: { material: 'metal', r: 9, hp: 1, kg: 176, mu: 0.72, chips: '#c02020', explosive: true, blast: 92, sound: 'metal' },
+  crate: { vault: true, material: 'wood', w: 19, h: 19, hp: 8, kg: 45, mu: 0.5, chips: '#a07040', sound: 'wood' },
+  barrel: { material: 'metal', r: 9, hp: 1, kg: 176, mu: 0.4, chips: '#c02020', explosive: true, blast: 92, sound: 'metal' },
   // a full steel keg (systems/Slips.js: the beer it gushes when holed floors whoever runs on it)
-  keg: { material: 'metal', r: 8, hp: 7, kg: 62, mu: 0.8, chips: '#c4c8d0', sound: 'metal' },
+  keg: { material: 'metal', r: 8, hp: 7, kg: 62, mu: 0.4, chips: '#c4c8d0', sound: 'metal' },
   bookshelf: { static: true, material: 'wood', w: 40, h: 11, hp: 12, chips: '#6a4026', sound: 'wood', blocksPath: true },
-  speaker: { material: 'plastic', w: 14, h: 14, hp: 8, kg: 32, mu: 0.96, chips: '#222', sparks: true, sound: 'wood',
+  speaker: { material: 'plastic', feet: 'rubber', w: 14, h: 14, hp: 8, kg: 32, mu: 0.75, chips: '#222', sparks: true, sound: 'wood',
     light: { r: 34, color: '#8a5cff', intensity: 0.35, flicker: 'pulse' } },
   dj_booth: { static: true, vault: true, material: 'plastic', w: 58, h: 22, hp: 20, chips: '#222', sparks: true, sound: 'metal', blocksPath: true,
     light: { r: 130, color: '#ff3df0', intensity: 0.95, flicker: 'pulse', y: 8 } },
@@ -61,7 +63,7 @@ export const PROPS = {
   dance_stage: { static: true, material: 'metal', r: 3, hp: 14, chips: '#aab4c4', sparks: true, sound: 'metal',
     light: { r: 110, color: '#ffc8ee', intensity: 0.75, flicker: 'pulse' } },
   // the boss's case, open on the floor by his desk: banknotes fly at every hit
-  cash_case: { material: 'plastic', w: 20, h: 14, hp: 4, kg: 9, mu: 0.85, chips: '#2a2a32', sound: 'wood' },
+  cash_case: { material: 'plastic', w: 20, h: 14, hp: 4, kg: 9, mu: 0.4, chips: '#2a2a32', sound: 'wood' },
   // a velvet curtain across a doorway: walked through (hung, drawn over whoever passes, seen through by the player under
   // it), never seen through (World.sightLine), rounds go through it
   curtain: { hung: true, overhead: true, height: 0, static: true, curtain: true, material: 'wood', w: 6, h: 32, hp: 99, chips: '#7a0e22', sound: 'wood' },
@@ -70,15 +72,16 @@ export const PROPS = {
   bar_counter: { vault: true, material: 'wood', w: 32, h: 19, hp: 16, static: true, chips: '#4a2a1a', sound: 'wood', blocksPath: true },
   dumpster: { static: true, vault: true, material: 'metal', w: 58, h: 34, hp: 36, chips: '#2a6a3a', sound: 'metal', blocksPath: true },
   // a street bin: knocked over rather than broken (systems/Tipping.js); a level can keep one standing ({ tips: false })
-  trash_can: { material: 'metal', r: 7.5, hp: 6, kg: 15, mu: 0.8, chips: '#555', sound: 'metal',
+  trash_can: { material: 'metal', r: 7.5, hp: 6, kg: 15, mu: 0.4, chips: '#555', sound: 'metal',
     // tips: what goes over instead of breaking. down: its sprite lying along x (base at -x, open mouth at +x); body:
-    // [length, width] px of it lying, off: px from that body's centre to the sprite's; kg, mu once down; roll: px/s it
+    // [length, width] px of it lying, off: px from that body's centre to the sprite's; kg, mu once down (along its
+    // length), rolls: its rolling resistance across it (engine/physics/Friction.js); roll: px/s it
     // slides on along the blow as it falls; lid: the sprite of its lid, come off and lying askew; spill: what falls out of the
     // mouth (n: [min, max]; bit: BITS, prop: a prop left lying, papers: loose sheets, systems/Papers.js); bump: closing
     // speed (px/step) of a body of `heavy` kg or more that knocks it over, `rock` that only rocks it; give: share of a
     // blow's shove it takes once down; wreck: px/step of a car that flattens it lying; noise: px the clatter carries.
     tips: {
-      down: 'props/trash_can_down', body: [21, 14], off: 1, kg: 12, mu: 0.45, roll: [40, 75], lid: 'props/bin_lid',
+      down: 'props/trash_can_down', body: [21, 14], off: 1, kg: 12, mu: 0.4, rolls: 0.05, roll: [40, 75], lid: 'props/bin_lid',
       spill: [{ prop: 'bin_bag', n: [1, 2] }, { bit: 'can', n: [2, 3] }, { bit: 'food', n: [2, 4] }, { papers: true, n: [4, 7] }],
       bump: 2.2, heavy: 10, rock: 0.4, give: 0.35, wreck: 3, noise: 220,
     } },
@@ -133,15 +136,15 @@ export const PROPS = {
   neon_sign_open: { hum: 'neon', material: 'glass', w: 26, h: 6, hp: 3, static: true, chips: '#ff3a30', sparks: true, glass: true, sound: 'glass',
     light: { r: 70, color: '#ff4a3a', intensity: 0.6, flicker: 'buzz' } },
   // by the bar's door on the sidewalk: the chalkboard of the night's specials, the steel ashtray post
-  sandwich_board: { material: 'wood', w: 16, h: 12, hp: 3, kg: 6, mu: 0.8, chips: '#7a4a2a', sound: 'wood' },
-  ash_urn: { material: 'metal', r: 5, hp: 4, kg: 9, mu: 0.75, chips: '#8a90a0', sound: 'metal' },
+  sandwich_board: { material: 'wood', w: 16, h: 12, hp: 3, kg: 6, mu: 0.45, chips: '#7a4a2a', sound: 'wood' },
+  ash_urn: { material: 'metal', r: 5, hp: 4, kg: 9, mu: 0.4, chips: '#8a90a0', sound: 'metal' },
   neon_sign_wash: { hum: 'neon', material: 'glass', w: 48, h: 6, hp: 4, static: true, chips: '#7fe0ff', sparks: true, glass: true, sound: 'glass',
     light: { r: 120, color: '#8fdcff', intensity: 0.9, flicker: 'buzz' } },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
-  floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.8, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',
+  floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.4, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',
     light: { r: 175, color: '#ffc98a', intensity: 0.95 } },
-  table_lamp: { fixture: true, material: 'wood', r: 7.5, hp: 3, kg: 14, mu: 0.9, chips: '#6a4026', sparks: true, glass: true, sound: 'wood',
+  table_lamp: { fixture: true, material: 'wood', r: 7.5, hp: 3, kg: 14, mu: 0.5, chips: '#6a4026', sparks: true, glass: true, sound: 'wood',
     light: { r: 130, color: '#ffb070', intensity: 0.85 } },
   wall_lamp: { fixture: true, static: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffe2a8', sparks: true, glass: true, sound: 'glass',
     light: { r: 160, color: '#ffd9a0', intensity: 0.9, y: 3 } },

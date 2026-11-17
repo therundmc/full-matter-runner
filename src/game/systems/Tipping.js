@@ -7,7 +7,7 @@ import { BITS } from '../data/destruction.js';
 import { PROPS } from '../data/props.js';
 import { sprite, sw } from '../../engine/Assets.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
-import { setMaterial, scaleInertia, impulse, kgOf } from '../../engine/physics/Body.js';
+import { impulse, kgOf } from '../../engine/physics/Body.js';
 import { rand, randi, clamp, TAU } from '../../engine/math.js';
 import Debris from '../entities/Debris.js';
 
@@ -62,8 +62,8 @@ export function tipOver(p, dirA, power = 1, by = null) {
   p.off = { x: t.off ?? 0, y: 0 };
   p.opts.angle = at.a;
   p.body = Bodies.rectangle(at.x, at.y, t.body[0], t.body[1], p.opts);
-  setMaterial(p.body, t.kg, t.mu);
-  scaleInertia(p.body, 2);
+  p.loosen(t.kg, t.mu);
+  p.body.roll = t.rolls; // lying on its side, it rolls across its length (engine/physics/Friction.js)
   p.body.entity = p;
   p.body.material = p.def.material;
   w.addBody(p.body);
