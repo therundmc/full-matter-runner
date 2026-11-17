@@ -47,10 +47,11 @@ export function balloon(g, x, y, w, h, tx, ty) {
 // drawn in the stills' own px, flat and never doubled. still / fine / smoke serve the other comic pages too
 // (ui/cine/Leap.js, ui/cine/Ending.js).
 const SC = 3;
-const FLAME = [536, 160];   // the match's head in comic/match (generate_comic.py FLAME)
-const PANE = [360, 8, 590, 132];         // his bedroom window in comic/sleep (generate_comic.py panel_sleep)
-const COLON = [172, 154, 5, 12];         // the clock's colon there (generate_comic.py CLOCK)
-const GAP = [150, 410, 236];             // the gap under his door in comic/fire (generate_comic.py GAP)
+const FLAME = [548, 200];   // the match's head in comic/match (tools/comic/panels/opening3.py FLAME)
+const PANE = [360, 8, 590, 132];         // his bedroom window in comic/sleep (tools/comic/panels/opening1.py PANE)
+const COLON = [172, 154, 5, 12];         // the clock's colon there (opening1.py CLOCK)
+const DOORWAY = [670, 0, 240, 196];      // the doorway in comic/door, x, y, w, h (opening1.py DOORWAY)
+const GAP = [150, 410, 236];             // the gap under his door in comic/fire (opening3.py GAP)
 
 export function still(g, name, w, h) {
   const img = spriteOpt(`comic/${name}`);
@@ -93,15 +94,15 @@ export function paintSleep(g, w, h, t) {
   });
 }
 
-// 2. From the dark of his flat: his front door forced, the three of them in it against the landing's tube light,
-// their shadows long across his floor. The tube fails now and then.
+// 2. From the dark of his flat: his front door forced, the three of them (LUCKY, CUEBALL, JITTERS) cut out against
+// the landing's tube light, their shadows long across his floor. The tube fails now and then.
 export function paintDoor(g, w, h, t) {
   still(g, 'door', w, h);
-  if ((t * 2.3) % 1 < 0.05) fine(g, () => tone(g, '#06141a', 664, 8, 164, 214, 0.6));
+  if ((t * 2.3) % 1 < 0.05) fine(g, () => tone(g, '#06141a', ...DOORWAY, 0.6));
 }
 
 // ================================================================ page 2: what they came for
-// 1. Down at the floor: the heavy one prising up a board with a crowbar; dust in the torch's light.
+// 1. From above: CUEBALL prising up a board with the crowbar; dust in the torch's light.
 export function paintPry(g, w, h, t) {
   still(g, 'pry', w, h);
   fine(g, () => {
@@ -109,17 +110,17 @@ export function paintPry(g, w, h, t) {
   });
 }
 
-// 2. The tin box open in the hole, his six years in it, in the torch's circle.
+// 2. The tin box open in the hole, his six years in it, the three of them leaning in round it.
 export function paintBox(g, w, h) {
   still(g, 'box', w, h);
 }
 
-// 3. The slick one riffling the notes, smiling at them.
+// 3. Every brick laid out in rows, LUCKY standing over them.
 export function paintCount(g, w, h) {
   still(g, 'count', w, h);
 }
 
-// 4. The heavy one tipping a jerrycan over the sofa in the neon from the window; the petrol running.
+// 4. JITTERS tipping the jerrycan over the sofa against the window's neon, CUEBALL over him; the petrol running.
 export function paintPour(g, w, h, t) {
   still(g, 'pour', w, h);
   fine(g, () => {
@@ -131,7 +132,7 @@ export function paintPour(g, w, h, t) {
 }
 
 // ================================================================ page 3: no loose ends
-// 1. Close: the one with the slicked hair strikes a match (struck 0..1: how far into the strike); before it, the dark.
+// 1. Close: LUCKY, the one with the pompadour, strikes a match (struck 0..1: how far into the strike); before it, the dark.
 export function paintMatch(g, w, h, t, struck = 1) {
   if (struck <= 0) { still(g, 'match_dark', w, h); return; }
   still(g, 'match', w, h);
@@ -168,7 +169,7 @@ export function paintFire(g, w, h, t) {
   });
 }
 
-// 3. Close on him on his pillow, his face up, the fire's light breathing on his profile: his eye opens (open).
+// 3. His eye, as large as the panel, the fire's light breathing on it: it opens (open).
 export function paintWake(g, w, h, t, open = false) {
   still(g, open ? 'wake' : 'wake_shut', w, h);
   if (Math.sin(t * 8) * Math.sin(t * 2.9) > 0.6) fine(g, () => tone(g, '#0a0408', 0, 0, w * SC, h * SC, 0.2));

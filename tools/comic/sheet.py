@@ -1,116 +1,101 @@
 #!/usr/bin/env python3
-"""The cast's model sheet (not shipped, not loaded by the game): each character standing front and three quarters,
-his head front, three quarters and in profile, and the library of inked hands, under one plain light, to check proportions,
-builds and likeness before drawing a panel.
+"""The cast sheet and the overview of the stills (not shipped):
 
-Run from the repo root:  python tools/comic/sheet.py [out.png]
-"""
+    python3 tools/comic/sheet.py <cast.png> [<overview.png>]
+
+The cast sheet: each character as a cut-paper figure, his name, his signature in words, and how he reads from
+straight above at the game's scale (about 26 px across the shoulders, shown 4x), beside the game's current top-down
+sprites. The overview: the 16 stills as painted by tools/generate_comic.py, on one sheet."""
 import os
 import sys
 
+from PIL import Image, ImageFilter
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PIL import Image  # noqa: E402
+from comic.kit import BONE, CYAN, INK, NIGHT, NIGHT_L, NIGHT_LL, OUT_DIR, PINK, ROOT, Cv, hx, slab, text_mask  # noqa: E402
+from comic import poster  # noqa: E402
 
-from comic import hands  # noqa: E402
-from comic.anatomy import stance  # noqa: E402
-from comic.cast import BOSS, HEAVY, HERO, SLICK, YOUNG, Figure, Light  # noqa: E402
-from comic.kit import Cv, hx  # noqa: E402
-from comic.solid import Scene, Xf, ypr  # noqa: E402
-
-BG = hx('#2a2440')
-LIGHT = Light(key=(255, 238, 214), fill=(120, 104, 170), deep=1.0)
-KEY = (-0.7, -0.45, 0.55)
-RIMS = [((0.9, -0.2, -0.45), hx('#ff5a8a'), 0.72)]
-
-
-def tile(w, h, paint, scale):
-    """Render what paint(sc) adds (it may return a function to draw over the render: the inked hands)."""
-    cv = Cv(w, h, BG)
-    sc = Scene(w, h, light=KEY, rims=RIMS, scale=scale, rim_px=2, blacks=-0.05, simplify=5 if scale > 0.8 else 3,
-               ink=2 if scale < 0.8 else 3, inner=2)
-    after = paint(sc)
-    sc.render(cv)
-    if after:
-        after(cv, sc)
-    return cv.im
+# name, the function, his height on the sheet (px for his 100 units), the slab behind him, the words, px across from above
+CAST = [
+    ('CUEBALL', poster.cueball, 'cueball', 250, PINK, ['THE HEAVY. A WALL ON', 'SHORT LEGS. HIS SIGN:', 'A BALD BONE DOME,', 'BLACK SHADES ACROSS.'], 0.56),
+    ('LUCKY', poster.lucky, 'lucky', 225, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'HUGE PINK POMPADOUR.'], 0.74),
+    ('JITTERS', poster.jitters, 'jitters', 250, BONE, ['THE YOUNG ONE. A RUNT,', 'HUNCHED, NEVER STILL.', 'HIS SIGN: A CYAN', 'SAW-TOOTH CREST.'], 0.74),
+    ('THE BOSS', poster.boss, 'boss', 250, hx('#8a1d5c'), ['THE ONLY MAN CUT IN', 'BONE: A WIDE PALE SUIT,', 'BLACK HAIR, A CIGAR.', ''], 0.62),
+    ('THE RUNNER', poster.runner, 'runner', 250, NIGHT_LL, ['THE PLAYER. CAP, LONG', 'COAT. HIS SIGN: THE', 'PETROL-BLUE SCARF', 'OVER HIS MOUTH.'], 0.68),
+]
+SPRITES = ['heavy', 'brute', 'thug', 'boss', 'player']
+FLOOR = (70, 66, 80)
 
 
-def posed(who, k, bare=False):
-    """The character at ease, his weight on one leg (k: which way round), his head turned a little."""
-    pose = stance('l' if k else 'r', turn=8 if k else -6)
-    sg = 1 if k else -1
-    pose.update(wrist_l=(84, -366, 2 + 6 * sg), wrist_r=(-86, -372, 0 - 6 * sg), elbow_l=(0.6, 0, -1),
-                elbow_r=(-0.6, 0, -1))
-    return Figure(who, pose=pose, bare=bare, face=dict(gaze=(1.0 * sg, 0.0)))
+def top_down(name, s):
+    """The character from above at the game's scale, facing right, with the game's dark outline: a 40 x 40 tile."""
+    cv = Cv(40, 40, None)
+    poster.above(cv, name, 19, 20, s, 0, body=hx('#1c1824'))
+    a = cv.im.split()[3]
+    out = Image.new('RGB', (40, 40), FLOOR)
+    out.paste(INK, (0, 0), a.filter(ImageFilter.MaxFilter(3)))
+    out.paste(cv.im, (0, 0), a)
+    return out
 
 
-def figure_tile(who, yaw, bare=False):
-    s = 0.4
-    fig, place = posed(who, yaw > 0, bare), Xf(75, 318, s, ypr(yaw))
-
-    def paint(sc):
-        fig.add(sc, place, LIGHT)
-        return lambda cv, sc_: fig.draw_hands(cv, sc_, place, LIGHT)
-    return tile(150, 330, paint, s)
+def sprite(name):
+    d = os.path.join(ROOT, 'assets', 'sprites', 'characters')
+    tile = Image.new('RGBA', (40, 40), FLOOR + (255,))
+    tile.alpha_composite(Image.open(os.path.join(d, name + '_torso.png')).convert('RGBA'))
+    tile.alpha_composite(Image.open(os.path.join(d, name + '_head.png')).convert('RGBA'), (2, 8))
+    return tile.convert('RGB').resize((20, 20), Image.NEAREST)      # painted at twice the density: the game draws it at half
 
 
-# each one's face at rest, as he is: the hero hard, the heavy scowling, the slick one smug, the young one grinning,
-# the boss heavy-lidded and sour
-MOODS = {'hero': dict(squint=0.3, brow_lift=(-0.4, -0.4), smile=(-0.2, -0.2)),
-         'heavy': dict(squint=0.5, brow_lift=(-1.0, -1.0), smile=(-0.5, -0.4)),
-         'slick': dict(squint=0.4, brow_lift=(0.0, 0.9), smile=(0.1, 0.9)),
-         'young': dict(squint=0.2, brow_lift=(0.3, 0.6), smile=(0.8, 0.9)),
-         'boss': dict(squint=0.1, brow_lift=(-0.5, -0.3), smile=(-0.6, -0.5))}
+def cast_sheet(path):
+    cw, W, H = 330, 330 * len(CAST), 860
+    cv = Cv(W, H, NIGHT)
+    for i, (name, who, key, h, ground, words, s) in enumerate(CAST):
+        x = i * cw
+        cv.poly(slab(x + 30, 70, x + cw - 30, 430, i * 7, 10), ground)
+        cv.poly(slab(x + 20, 404, x + cw - 20, 436, i * 7 + 3, 4), INK)
+        poster.man(cv, who, x + cw / 2 - 8, 414, h, body=INK)
+        t = text_mask(name, 30)
+        cv.im.paste(BONE, (x + (cw - t.size[0]) // 2, 22), t)
+        for k, line in enumerate(words):
+            if line:
+                t = text_mask(line, 12)
+                cv.im.paste(BONE, (x + 30, 452 + k * 18), t)
+        # from above: at the game's scale, then four times that
+        tile = top_down(key, s)
+        cv.im.paste(tile, (x + 30, 550))
+        cv.im.paste(tile.resize((160, 160), Image.NEAREST), (x + 90, 548))
+    t = text_mask('FROM ABOVE, AT THE GAME\'S SCALE (1X AND 4X)', 12)
+    cv.im.paste(NIGHT_LL, (30, 524), t)
+    t = text_mask('THE GAME\'S TOP-DOWN SPRITES TODAY (4X)', 12)
+    cv.im.paste(NIGHT_LL, (30, 718), t)
+    for i, n in enumerate(SPRITES):
+        cv.im.paste(sprite(n).resize((80, 80), Image.NEAREST), (30 + i * 100, 740))
+        t = text_mask(n.upper(), 9)
+        cv.im.paste(NIGHT_LL, (30 + i * 100, 826), t)
+    cv.im.save(path)
 
 
-def head_tile(who, yaw, bare=False):
-    s = 1.05
-    fig = Figure(who, bare=bare, face=MOODS[who['name']])
-
-    def paint(sc):
-        fig.add(sc, Xf(75, 30 + 750 * s, s, ypr(yaw)), LIGHT)
-    return tile(150, 170, paint, s)
-
-
-def library(size=100, cols=8, cell=(130, 150)):
-    """Every hand design of hands.DESIGNS, inked at size px, as one picture."""
-    items = [(p, v) for p, views in hands.DESIGNS.items() for v in views]
-    rows = (len(items) + cols - 1) // cols
-    cv = Cv(cell[0] * cols, cell[1] * rows, BG)
-    t = LIGHT.tones(HERO['colours']['skin'])
-    for i, (p, v) in enumerate(items):
-        x, y = (i % cols) * cell[0] + cell[0] // 2, (i // cols) * cell[1] + int(cell[1] * 0.06 + size * 1.05)
-        hands.draw(cv, hands.design(p, v), (x, y), 0, size, light=(KEY[0], KEY[1]), skin=(t['lit'], t['shade']),
-                   ink=3)
-    return cv.im
-
-
-def main(out, hands_out=None):
-    cast = [HERO, HEAVY, SLICK, YOUNG, BOSS]
-    W = 150 * 2 * len(cast) + 150
-    lib = library()
-    sheet = Image.new('RGB', (W, 330 + 170 + lib.size[1] + 10), BG)
-    x = 0
-    for who in cast:
-        sheet.paste(figure_tile(who, 0), (x, 0))
-        sheet.paste(figure_tile(who, 35), (x + 150, 0))
-        x += 300
-    sheet.paste(figure_tile(HERO, 35, bare=True), (x, 0))
-    x = 0
-    for who in cast:
-        for k, yaw in enumerate((0, 35)):
-            sheet.paste(head_tile(who, yaw), (x + k * 150, 330))
-        x += 300
-    sheet.paste(head_tile(HERO, 90, bare=True), (x, 330))
-    sheet.paste(lib, ((W - lib.size[0]) // 2, 505))
-    sheet.save(out)
-    print('model sheet:', out)
-    if hands_out:
-        lib = library(size=110, cols=6, cell=(150, 170))
-        lib.resize((lib.size[0] * 2, lib.size[1] * 2), Image.NEAREST).save(hands_out)
-        print('hand library:', hands_out)
+def overview(path):
+    rows = [['sleep'], ['door'], ['pry', 'box', 'count'], ['pour'], ['match_dark'], ['match'], ['fire', 'wake_shut'], ['wake', 'matchbook'],
+            ['alley'], ['drive'], ['office', 'office_phone']]
+    ims = [[Image.open(os.path.join(OUT_DIR, n + '.png')).convert('RGBA') for n in r] for r in rows]
+    half = (len(ims) + 1) // 2
+    cols = [ims[:half + 1], ims[half + 1:]]
+    hs = [sum(max(i.size[1] for i in r) + 10 for r in c) for c in cols]
+    sheet = Image.new('RGB', (2 * 1100 + 10, max(hs) + 10), (60, 58, 66))
+    for c, col in enumerate(cols):
+        y = 10
+        for r in col:
+            x = 10 + c * 1100
+            for im in r:
+                sheet.paste(Image.alpha_composite(Image.new('RGBA', im.size, NIGHT_L + (255,)), im).convert('RGB'), (x, y))
+                x += im.size[0] + 10
+            y += max(i.size[1] for i in r) + 10
+    sheet.save(path)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else 'model_sheet.png', sys.argv[2] if len(sys.argv) > 2 else None)
+    cast_sheet(sys.argv[1])
+    if len(sys.argv) > 2:
+        overview(sys.argv[2])

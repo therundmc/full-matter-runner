@@ -5,9 +5,9 @@ page (ui/cine/Ending.js), all framed and animated by ui/cine/Panels.js.
 Run from the repo root:  python tools/generate_comic.py
 Writes RGB / RGBA PNGs to assets/sprites/comic/<name>.png (loaded as optional sprites by engine/Assets.js).
 
-The painting lives in the package tools/comic: kit.py (2D geometry, canvas, ink, palette, the night's shared pieces,
-the panel registry), legacy.py (the first pass's people) and panels/<page>.py (one module per page, each panel a
-function registered with @panel). Read tools/comic/STYLE.md before drawing. Everything is drawn aliased at SC panel px
+The painting lives in the package tools/comic: kit.py (the canvas of flat cut shapes, the inks, the lettering, the
+panel registry), poster.py (the cast as cut-paper signs, the set pieces) and panels/<page>.py (one module per page,
+each panel a function registered with @panel). Read tools/comic/STYLE.md before drawing. Everything is drawn aliased at SC panel px
 per title px (the title's logical screen is 384 x 216), so the game draws a panel at its logical size with nearest
 neighbour and it stays crisp; only the still art is here: what moves (the flame, smoke, the rain, the typed words) is
 drawn live by the game. Deterministic: no randomness at all.
