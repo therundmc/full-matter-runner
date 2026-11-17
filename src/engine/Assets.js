@@ -76,6 +76,8 @@ export const OPTIONAL_LIST = [
     'alley', 'drive', 'office', 'office_phone', 'matchbook',
     // one full-screen card a man, front on (the targets, for a screen between levels; the runner's for a menu)
     'target_cueball', 'target_lucky', 'target_jitters', 'target_boss', 'card_runner'].map((n) => `comic/${n}`),
+  // the title proposals' stills (tools/comic/title_proposals.py; ui/title/PosterTitle.js, HitList.js)
+  ...['poster', 'logo', 'logo_off', 'board_0', 'board_1', 'board_2', 'board_3', 'board_4'].map((n) => `title/${n}`),
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',
     'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
 ];

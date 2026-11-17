@@ -73,10 +73,14 @@ function drawPlane(ctx, p, ox, oy) {
 
 // ---------------------------------------------------------------- per frame
 // t: seconds; mouse: { x, y } in canvas pixels, or null. The title's lines are drawn apart (drawTitleTexts).
-export function drawTitleScene(ctx, W, H, t, mouse) {
+// extra (the night proposal, title/NightSign.js; nothing changes without it): { hold: the time of the day's loop the
+// hour stays at, far(ctx, ox, oy), towers(ctx, ox, oy), deck(ctx, ox, oy): things drawn in the picture's own px
+// behind the towers, on them, and on the bridge in front of the train }
+export function drawTitleScene(ctx, W, H, t, mouse, extra = null) {
   if (!S) S = build();
-  const P = lookAt(t);
-  if (P.step !== S.step) relight(S, P, t);
+  const tc = extra?.hold ?? t;                                                     // the hour's clock
+  const P = lookAt(tc);
+  if (P.step !== S.step) relight(S, P, tc);
   // eased mouse + idle sway -> camera offset in about [-1, 1]
   const nx = mouse ? clamp(mouse.x / W * 2 - 1, -1, 1) : 0, ny = mouse ? clamp(mouse.y / H * 2 - 1, -1, 1) : 0;
   if (cam.t < 0 || t < cam.t || t - cam.t > 1) { cam.x = nx; cam.y = ny; }
@@ -90,7 +94,7 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   const sx = (f) => Math.round(-f * vx * RX), sy = (f) => Math.round(-f * vy * RY) + jolt;
   const put = (c, f) => ctx.drawImage(c, sx(f) - M, sy(f) - MY);
   const tx = sx(F.towers), ty = sy(F.towers), ex = sx(F.el), ey = sy(F.el), cx = sx(F.clouds), cy = sy(F.clouds);
-  const sun = sunAt(t);
+  const sun = sunAt(tc);
 
   ctx.save();
   const sc = Math.max(W / LW, H / LH);
@@ -102,18 +106,20 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   // 1. the sky, the sun or the moon, the cloud, a plane, the buildings far off
   ctx.drawImage(S.sky.c, 0, 0);
   drawSun(ctx, sun, P, cx, cy);
-  drawMoon(ctx, moonAt(t), cx, cy);
+  drawMoon(ctx, moonAt(tc), cx, cy);
   drawCloud(ctx, S.cloud, cloudDrift(t), -F.clouds * vx * RX, cy, 1 / sc);       // gliding: the eye's shift unrounded too
-  drawPlane(ctx, planeAt(t), cx, cy);
+  drawPlane(ctx, extra ? null : planeAt(t), cx, cy);
   put(S.far.c, F.far);
   drawFarBeacon(ctx, S.far, P, t, sx(F.far), sy(F.far));
+  extra?.far?.(ctx, sx(F.far), sy(F.far));
 
   // 2. the towers: what lives on them, the sun in their glass, pigeons going by, the train given back by the glass,
   // the patrol car's light
   put(S.towers.c, F.towers);
   drawTowerLights(ctx, S.towers, P, t, tx, ty);
   drawGlints(ctx, sun, P, t, tx, ty);
-  drawBirds(ctx, birdsAt(t), sx(0.1), sy(0.1));
+  extra?.towers?.(ctx, tx, ty);
+  drawBirds(ctx, extra ? null : birdsAt(t), sx(0.1), sy(0.1));
   const cars = tr ? carsOf(tr) : null;
   if (tr) drawTrainMirror(ctx, tr, cars, t, ex, ey, tx, ty, P.lamps);
   drawPatrolGlow(ctx, police, S.H, ex, ey);
@@ -122,7 +128,7 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   const lamps = lampLit(P.lamps, LAMP_AT, 5, t), lights = [];
   if (tr && lit) trainLights(tr, cars, t, lights);
   if (police && (police.red || police.blue)) lights.push({ x: police.x, y: 178, r: 60, type: police.red ? 4 : 5, k: 1 });
-  rainFrame(S.rain, t, wind, rainAt(t), lamps, lights);
+  rainFrame(S.rain, t, wind, rainAt(tc), lamps, lights);
   drawRain(S.rain, 'back', ctx, tx, ty);
 
   // 4. the bridge: its far truss, the patrol car on the lower deck, the near truss, the floodlights, the car's light on
@@ -133,6 +139,7 @@ export function drawTitleScene(ctx, W, H, t, mouse) {
   if (lamps) drawLamps(ctx, S.H, ex, ey);
   drawPatrolRim(ctx, S.bridge, police, ex, ey);
   if (tr) drawTrain(ctx, tr, cars, S.train, t, ex, ey, S.H);
+  extra?.deck?.(ctx, ex, ey);
 
   // 5. the rain in front of everything
   drawRain(S.rain, 'front', ctx, sx(0.3), sy(0.3));
