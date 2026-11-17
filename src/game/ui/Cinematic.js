@@ -1,11 +1,11 @@
-// The opening, told as a comic in the game's one art direction (neon noir: people as black shapes rimmed with neon,
-// the night's blues and purples, flat shades and a dark ink line; tools/generate_comic.py paints the
+// The opening, told as a comic in the NEON POSTER direction (tools/comic/STYLE.md: cut paper, a violet night, black
+// and a few flat inks, people as cut-out signs; tools/generate_comic.py paints the
 // stills, ui/cine/Page.js lays the pages out, ui/cine/Panels.js frames them and moves what moves in them), slowly
 // enough to be read. He ran packages for the boss of the bar for six years and kept every dollar under his floor, to
 // leave town in the morning. Page one, his last night: he sleeps, his suitcase packed by the door; the boss's three
-// men force his front door. Page two, what they came for: the heavy one's crowbar under his floorboards, his tin box,
-// the slick one riffling the money, the heavy one soaking his sofa in petrol ("NO LOOSE ENDS."). Page three: the one
-// with the slicked hair strikes a match ("TORCH IT. HE'S IN THE BACK ROOM."); the fire comes in under his door; his eye
+// men (CUEBALL, LUCKY, JITTERS) force his front door. Page two, what they came for: CUEBALL's crowbar under his
+// floorboards, his tin box, the bricks laid out under LUCKY, JITTERS soaking his sofa in petrol ("NO LOOSE ENDS.").
+// Page three: LUCKY strikes a match ("TORCH IT. HE'S IN THE BACK ROOM."); the fire comes in under his door; his eye
 // opens. Then a moment of black and the tutorial's card (Game state 'intro'), where the man with the match lights the
 // flat as he walks in. Everything is a function of t (s since NEW GAME): cineView() is the timeline as plain numbers
 // (unit-tested), drawCinematic() the picture, cineBeats() what is heard.
@@ -23,7 +23,7 @@ export const CINE = {
 };
 
 // the pages, in s since NEW GAME (panel sizes in the title's px: generate_comic.py paints each still at 3 x that)
-const KRAK = { text: 'KRAK', at: 0.8, dur: 0.9, x: 198, y: 30, size: 11, col: PALETTE.yellow, rot: -0.15 };
+const KRAK = { text: 'KRAK', at: 0.8, dur: 0.9, x: 168, y: 50, size: 11, col: PALETTE.yellow, rot: -0.15 };
 const SKRITCH = { text: 'SKRITCH', dur: 0.8, size: 9, col: '#ffb040', rot: -0.12 };
 export const PAGES = [
   { start: 0.2, end: 8.2, panels: [
@@ -36,13 +36,13 @@ export const PAGES = [
     { r: { x: 134, y: 10, w: 116, h: 96 }, at: 10.6, paint: paintBox, caption: ['SIX YEARS OF RUNS', 'FOR THE BOSS.'] },
     { r: { x: 256, y: 10, w: 116, h: 96 }, at: 12.6, paint: paintCount, caption: ['EVERY DOLLAR.', 'HIS WAY OUT.'] },
     { r: { x: 12, y: 112, w: 360, h: 94 }, at: 14.6, paint: paintPour,
-      say: { at: 0.7, text: ['THE BOSS SAYS:', 'NO LOOSE ENDS.'], x: 112, y: 4, tail: [240, 30] },
+      say: { at: 0.7, text: ['THE BOSS SAYS:', 'NO LOOSE ENDS.'], x: 262, y: 4, tail: [249, 27] },
       sfx: [{ text: 'GLUG GLUG', at: 0.2, dur: 1.4, x: 150, y: 70, size: 7, col: '#e8c070', rot: 0.06 }] },
   ] },
   { start: 19.4, end: 28.0, panels: [
     { r: { x: 12, y: 10, w: 360, h: 94 }, at: 19.4, paint: (g, w, h, t) => paintMatch(g, w, h, t, clamp((t - (CINE.strike - 19.4)) / 0.25, 0, 1)),
-      say: { at: 1.8, text: ['TORCH IT.', "HE'S IN THE BACK ROOM."], x: 60, y: 6, tail: [158, 40] },
-      sfx: [{ ...SKRITCH, at: CINE.strike - 19.4, x: 150, y: 36 }] },
+      say: { at: 1.8, text: ['TORCH IT.', "HE'S IN THE BACK ROOM."], x: 60, y: 6, tail: [213, 45] },
+      sfx: [{ ...SKRITCH, at: CINE.strike - 19.4, x: 146, y: 78 }] },
     { r: { x: 12, y: 110, w: 176, h: 96 }, at: 22.6, paint: paintFire,
       sfx: [{ text: 'FWOOMP', at: 0.3, dur: 1.0, x: 88, y: 30, size: 10, col: '#ff8a20', rot: -0.08 }] },
     { r: { x: 196, y: 110, w: 176, h: 96 }, at: 24.8, paint: (g, w, h, t) => paintWake(g, w, h, t, t >= CINE.wake - 24.8) },
