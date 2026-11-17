@@ -31,3 +31,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | vaultSwish | the coat swung over the obstacle in the same vault (Character.updateVault) | a quick heavy cloth / coat whoosh |
 | landThud | the feet coming down after a vault or a drop (Character.updateVault) | a two-footed landing thud with a shoe scuff, per floor |
 | slideScrape | the start of the player's slide (Player.startSlide), over the synthesized slide | denim and a shoe sole scraping along concrete / wood / tiles, falling off in a half second |
+| kickWhoosh | the player pops up out of a slide's end into a kick at a guard ahead (Player.startKick) | a leg whipped through the air, a coat's flap with it |
+| kickHit | the foot lands in a guard's head, out of a slide or off a car's hood (Player.footOn) | a boot heel smacking into a jaw, heavy and dry, the man's grunt cut short |
+| hoodLean | a guard sits back against a parked car's hood (Enemy.updatePosture, body 'hood') | a body settling on sheet metal, the car's springs giving a little, jeans on paint |

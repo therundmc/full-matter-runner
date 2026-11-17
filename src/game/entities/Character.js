@@ -6,6 +6,7 @@ import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
 import { setKg, impulse } from '../../engine/physics/Body.js';
 import { findVault, onRoof, rollRoom } from '../systems/Cover.js';
+import { inPath } from '../systems/Kick.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
 import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
@@ -16,7 +17,7 @@ import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
@@ -356,7 +357,7 @@ export default class Character {
   // After the step's intentions (World.step), so the layers follow this step's aim. A foot set down on a pivot, or a
   // quick turn, is heard (placeholder sounds: assets/sound/PLACEHOLDERS.md).
   animate(dt) {
-    const still = this.gait < FACING.plant && !this.vaulting && !this.slideAnim && !(this.knocked > 0) && !(this.sit > 0);
+    const still = this.gait < FACING.plant && !this.vaulting && !this.slideAnim && !this.kick && !(this.knocked > 0) && !(this.sit > 0);
     const heard = updateFacing(this, dt, still);
     if (heard === 'step' || heard === 'hop') this.world.sound('scuff', this.x, this.y, heard === 'hop' ? 0.8 : 0.45, { floor: this.world.floorAt(this.x, this.y) });
     else if (heard === 'cloth') this.world.sound('cloth', this.x, this.y, 0.5);
@@ -727,8 +728,10 @@ export default class Character {
       roll: this.isPlayer && def.land === 'roll' && !onRoof(w, v.to.x, v.to.y), rolling: null,
       hands: flip ? [h1, h0] : [h0, h1], side, hand, plant, planted: false,
       legSide: hoist ? (Math.random() < 0.5 ? -1 : 1) : style === 'speed' ? -hand : -side,
-      m0, m1: ladder ? 0.5 : m1, landed: false,
+      m0, m1: ladder ? 0.5 : m1, landed: false, strike: null,
     };
+    // the player over a car's hood: a standing guard where he comes down takes his legs (Player.vaultStrike)
+    if (this.isPlayer && style === 'hip') this.vaulting.strike = this.planStrike(this.vaulting);
     // glide over glass frames and furniture, walls still block
     this.body.collisionFilter = { ...this.body.collisionFilter, mask: CAT.WALL };
     this.vel = { x: 0, y: 0 };
@@ -737,6 +740,19 @@ export default class Character {
     if (climb) w.noise(this.x, this.y, this.isPlayer ? CLIMB_NOISE : 0, this);
     else if (v.kind === 'window' && !v.over.intact) w.particles.glass(v.over.x, v.over.y, a, 0.8, 6, 60); // a whole pane shatters in updateVault
     return true;
+  }
+
+  // the standing guard in the way of a hip slide's way out, and the share of the move at which the legs reach him
+  // (TRAVERSE.vault.hip.strike): { target, k, done, hit } or null
+  planStrike(v) {
+    const S = TRAVERSE.vault.hip.strike, tg = inPath(v.from, v.to, this.world.enemies, ENEMY.radius + 6);
+    if (!tg) return null;
+    // down short of where he stood: he is thrown on, the feet come down clear of him
+    const c = Math.cos(v.dir), s = Math.sin(v.dir), d = Math.max(0, (tg.x - v.from.x) * c + (tg.y - v.from.y) * s - S.short);
+    if (d < v.dist) { v.to = { x: v.from.x + c * d, y: v.from.y + s * d }; v.dist = d; }
+    let k = S.from;
+    while (k < 1 && Math.hypot(lerp(v.from.x, v.to.x, hermite(k, v.m0, v.m1)) - tg.x, lerp(v.from.y, v.to.y, hermite(k, v.m0, v.m1)) - tg.y) > S.reach) k += 0.02;
+    return { target: tg, k: Math.min(k, 0.9), done: false, hit: false };
   }
 
   // a ladder about to be climbed (see ladderAt): up when the far side is a roof; its axis (unit, toward the top) and
@@ -775,6 +791,7 @@ export default class Character {
     Body.setVelocity(this.body, { x: 0, y: 0 });
     // a whole pane bursts as the body goes through (its own noise and glass; the diver is never cut by it)
     if (k >= 0.3 && v.kind === 'window' && v.over.intact) v.over.shatter(v.dir, this, 1);
+    if (v.strike) this.vaultStrike(v, k);
     // the speed vault's hand on the top, the coat swung past it (placeholder sounds: assets/sound/PLACEHOLDERS.md)
     if (v.style === 'speed' && !v.planted && k >= TRAVERSE.vault.plant) {
       v.planted = true;
@@ -792,7 +809,8 @@ export default class Character {
     }
     if (k < 1) return true;
     if (v.roll) { this.startRoll(v); return this.updateRoll(dt, v); }
-    this.endVault(v, (v.m1 * v.dist) / (v.dur * 60));
+    // (his legs taken by a man there, he comes down checked: TRAVERSE.vault.hip.strike)
+    this.endVault(v, ((v.m1 * v.dist) / (v.dur * 60)) * (v.strike?.hit ? TRAVERSE.vault.hip.strike.check : 1));
     return false;
   }
 
@@ -871,6 +889,7 @@ export default class Character {
     const P = standPose(this, this.pose);
     // a slide can chain into a vault: the vault blends out of whatever the slide pose was
     if (this.slideAnim) slidePose(this, P, this.pose2);
+    if (this.kick) kickPose(this, P, this.pose2);
     if (this.vaulting) vaultPose(this, P, this.pose2);
     if (this.sit > 0) sitPose(this, P, this.pose2);
     if (this.trunkOpen) trunkPose(this, P, this.pose2);

@@ -178,6 +178,9 @@ export const META = {
   vaultSwish: { pri: 0, dur: 0.3, gap: 0.15, max: 2, gain: 0.14 },
   landThud: { pri: 0, dur: 0.3, gap: 0.1, max: 2, gain: 0.22 },
   slideScrape: { pri: 0, dur: 0.5, gap: 0.2, max: 1, gain: 0.12 },
+  kickWhoosh: { pri: 1, dur: 0.25, gap: 0.15, max: 2, gain: 0.3 },
+  kickHit: { pri: 3, dur: 0.4, gap: 0.08, max: 2, duck: 0.85, gain: 0.95 },
+  hoodLean: { pri: 0, dur: 0.4, gap: 0.5, max: 1, gain: 0.2 },
   click: { dur: 0.12, gap: 0.05, max: 3, gain: 0.7 },
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
   // fire, alarm, UI, street
@@ -419,6 +422,9 @@ const FOLEY = {
   vaultSwish: [['swish', 0.45, 0.7]],
   landThud: [['thud', 0.55, 0.9], ['soft', 0.4, 0.8, 0.03]],
   slideScrape: [['rubble', 0.25, 1.3], ['soft', 0.3, 0.7, 0.05]],
+  kickWhoosh: [['swish', 0.55, 0.8]],
+  kickHit: [['punch', 1, 0.75], ['thud', 0.8, 0.7, 0.01], ['soft', 0.4, 0.9, 0.03]],
+  hoodLean: [['sheet', 0.25, 0.7], ['soft', 0.35, 0.8, 0.04]],
   clear: [['doorSlam', 0.6, 0.6]],
 };
 

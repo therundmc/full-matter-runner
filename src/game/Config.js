@@ -57,6 +57,11 @@ export const PLAYER = {
     bulletTime: [0.3, 0.4],   // time scale, s: the breath of slow motion when a round does
     cost: 0.5,        // stamina (0..1) a slide takes: two in a row from rested
     regen: 0.28,      // stamina back per second on our feet
+    // the end of a slide pops up into a kick at a standing guard just ahead (systems/Kick.js, Player.startKick, the
+    // pose: CharacterAnim kickPose, its clock TRAVERSE.kick): from share `from` of the slide (or as it stalls on him),
+    // and for `late` s once it is over; the guard within `range` px (centre to centre) and `cone` rad of the way.
+    // He closes to `gap` px by the contact; the guard is floored and thrown `back` px along the kick; `noise` px heard
+    kick: { from: 0.55, late: 0.12, range: 40, cone: 0.5, gap: 25, back: 26, noise: 150 },
   },
   // after a drop from a height (over a prop whose def has land: 'roll', down to the ground): a forward shoulder roll
   roll: {
@@ -118,6 +123,7 @@ export const ENEMY = {
     shotgun: [40, 105], pistol: [110, 230], uzi: [90, 200], uzi_silenced: [90, 200], rifle: [180, 300], sniper: [220, 330], bazooka: [170, 320],
   },
   knockTime: 2.8,
+  knockBrake: 0.08,       // share of his speed a man knocked down loses each step as he slides on the floor
   dizzy: [1.0, 1.6],      // stagger after getting up from a knock-down
 };
 

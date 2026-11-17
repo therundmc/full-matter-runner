@@ -819,6 +819,14 @@ export function vaultPose(ch, P, V) {
   V.top = 0;
   V.flat = null;
   legsPose(V, win ? LEGS.window : LEGS.prop, k, dir, v.legSide);
+  if (v.strike) {
+    // the player's legs off a hood into the guard there (Player.vaultStrike): both feet shot out at him, up toward the
+    // eye, the shoulders back off them; out a beat past the contact, then down for the landing
+    const S = TRAVERSE.vault.hip.strike, sk = v.strike.k;
+    const out = smooth((k - sk + S.lead) / S.lead) * (1 - smooth((k - sk - 0.05) / 0.12));
+    for (const f of V.feet) { f.x += c * S.kick * out; f.y += s * S.kick * out; f.lift = Math.max(f.lift, 1.2 * out); }
+    V.tx -= c * 1.5 * out; V.ty -= s * 1.5 * out;
+  }
 
   if (win) {
     // both palms on the sill until the body has passed them, the gun hand keeps its weapon flat along the move
@@ -1092,6 +1100,84 @@ export function slidePose(ch, P, V) {
   return P;
 }
 
+// ---------------- the kick out of a slide (Player.kick, TRAVERSE.kick) ----------------
+// The phases of the kick at u (0 .. 1 of its clock), each 0 .. 1: up out of the recline onto the standing leg, the
+// lead knee drawn up (chambered), the leg out at his head, the foot set down a step ahead, the blend in and out
+export function kickPhases(u, out = {}) {
+  const T = TRAVERSE.kick;
+  out.rise = smooth(u / T.hit);
+  out.chamber = smooth(u / T.chamber) * (1 - smooth((u - T.chamber) / (T.hit - T.chamber)));
+  out.ext = easeOut((u - T.chamber) / (T.hit - T.chamber)) * (1 - smooth((u - T.hold) / (T.plant - T.hold)));
+  out.plant = smooth((u - T.hold) / (T.plant - T.hold));
+  out.w = smooth(u / 0.08) * (1 - smooth((u - 0.86) / 0.14));
+  return out;
+}
+const KP = {};
+
+// Seen from above. Out of the slide's recline the body comes up onto the folded leg; the lead leg is drawn back in,
+// the knee up (anticipation), then driven out straight at his head, the foot big as it comes up toward the eye; the
+// torso goes back off it and the shoulders turn away from the kicking hip (counterweight), the free arm flung back.
+// After the contact (held by the hit-stop) the leg stays out a beat, then comes down a step ahead and the body goes
+// on over it into the run. The gun stays on the target.
+export function kickPose(ch, P, V) {
+  const kk = ch.kick, T = TRAVERSE.kick, u = clamp(kk.t / T.dur, 0, 1), ph = kickPhases(u, KP);
+  if (ph.w <= 0) return P;
+  const a = kk.a, c = Math.cos(a), s = Math.sin(a), side = kk.side, lead = -side; // the slide's lead leg kicks
+  const mv = (out, lx, ly) => { out.x = lx * c - ly * s; out.y = lx * s + ly * c; return out; }; // kick space -> pose
+  copyPose(V, P);
+  // the torso: from the slide's recline up to leaning back off the kick, then on over the planted foot
+  const fwd = -TRAVERSE.slide.back * (1 - ph.rise) - T.lean * ph.ext + T.pop * bump(ph.plant, 0, 1);
+  V.ta = a + lead * T.twist * ph.ext + side * TRAVERSE.slide.turn * 0.5 * (1 - ph.rise);
+  V.tx = c * fwd; V.ty = s * fwd;
+  V.s = 1 - 0.1 * (1 - ph.rise) + 0.04 * ph.ext;
+  V.ha = lerpA(P.ha, a, ph.ext); // the eyes on him
+  V.legs = ph.ext;
+  V.top = 0;
+  V.flat = null;
+  // the arms go with the shoulders, a gun kept on the target; empty hands: the guard up, the free one flung back
+  const dx = V.tx - P.tx, dy = V.ty - P.ty;
+  for (const h of [V.hl, V.hr, V.wpn]) { h.x += dx; h.y += dy; }
+  if (!V.wpnOn) {
+    mv(TO, lerp(6, -3, ph.ext), lead * lerp(-5, -10, ph.ext)); mv(AT, lerp(5, 7, ph.ext), lead * lerp(5, 3.5, ph.ext));
+    const back = lead > 0 ? V.hl : V.hr, front = lead > 0 ? V.hr : V.hl;
+    back.x = V.tx + TO.x; back.y = V.ty + TO.y; front.x = V.tx + AT.x; front.y = V.ty + AT.y;
+    V.hand[0] = V.hand[1] = 'fist';
+  } else if (ch.def.hold !== 'two') {
+    mv(TO, lerp(2, -3.5, ph.ext), -lerp(7, 10.5, ph.ext)); // the left hand out behind for balance
+    V.hl.x = V.tx + TO.x; V.hl.y = V.ty + TO.y;
+    V.hand[0] = 'loose';
+  }
+  reach(V.hl, V, -1); reach(V.hr, V, 1);
+  // the legs: the standing one under him (it was folded under the slide), the lead one chambered, driven out at his
+  // head (as far as it reaches), then set down a step ahead
+  const hip = (sd) => mv(SH, 0.6 * fwd, sd * LIMB.hip);
+  for (let i = 0; i < 2; i++) {
+    const f = V.feet[i], sd = i ? 1 : -1;
+    if (sd !== lead) {
+      mv(f, lerp(4, -1.5, ph.rise) + 1.5 * ph.plant, sd * lerp(4.5, 3.4, ph.rise));
+      f.a = a + sd * 0.35 * (1 - ph.plant); f.lift = 0; f.heel = 0;
+      continue;
+    }
+    // out at his head (where it struck, once it has: Player.landKick), no further than the leg reaches from the hip
+    const at = kk.hitAt ?? kk.target;
+    hip(sd);
+    if (at) onWorld(WAY, ch, at.x, at.y); else mv(WAY, 20, 0);
+    const ex0 = WAY.x - SH.x, ey0 = WAY.y - SH.y, el = Math.hypot(ex0, ey0) || 1, rl = Math.min(el, T.reach);
+    const ex = SH.x + (ex0 / el) * rl, ey = SH.y + (ey0 / el) * rl;
+    mv(TO, 3.5, sd * 2.2); // chambered: the knee up, the foot drawn in under the hip
+    mv(AT, 9, sd * 3.2);   // set down a step ahead
+    const from = P.feet[i], drawIn = u < T.chamber ? ph.chamber : 1;
+    let x = lerp(from.x, TO.x, drawIn), y = lerp(from.y, TO.y, drawIn);
+    x = lerp(x, ex, ph.ext); y = lerp(y, ey, ph.ext);
+    x = lerp(x, AT.x, ph.plant); y = lerp(y, AT.y, ph.plant);
+    f.x = x; f.y = y; f.a = a;
+    f.lift = T.lift * ph.ext + 0.8 * ph.chamber; f.heel = 0;
+  }
+  blendPose(P, V, ph.w);
+  P.lift = Math.max(P.lift, 0.15 * ph.ext * ph.w);
+  return P;
+}
+
 // ---------------- sitting on the ground (Player.sit: how a level starts) ----------------
 // back to the wall, legs stretched out in front, palms on the floor by the hips; ch.sit runs 1 -> 0 as he gets up
 export function sitPose(ch, P, V) {
@@ -1146,14 +1232,18 @@ function swigPose(ch, V) {
 // ---------------- at his post (Enemy.postBody, data/posts.js) ----------------
 // The standing pose bent by the gesture of the moment (leant over, twisted, the weight on one leg, a foot out), then
 // blended (B.w 0..1) into the way he is at it: sat slumped on a couch, legs out; leant back in an armchair, both feet
-// up on the desk, ankles crossed; his back flat against a wall, a sole up on it. B.w runs back to 0 as he gets up:
-// the legs come back under him and he stands. B: { base, w, fwd, side, twist, dip, foot, hands, wpn, rest } (see
-// Enemy.postBody); hands and wpn in his torso's frame, rest (where his weapon lies) in the pose's.
+// up on the desk, ankles crossed; his back flat against a wall, a sole up on it; his backside against a car's hood,
+// half sat, the ankles crossed out in front, a hand flat on the hood behind him. B.w runs back to 0 as he gets up:
+// the legs come back under him and he stands. B: { base, w, face, fwd, side, twist, dip, foot, hands, wpn, rest }
+// (see Enemy.postBody); face: the way the base is laid out (the spot's, his own by default: the head and shoulders
+// may look round over it); hands and wpn in his torso's frame, rest (where his weapon lies) in the pose's.
 const BASES = {
   // torso pulled back toward the backrest (px), how much lower (smaller) he is, where the feet go [x, y] each
   seat: { back: 3, s: 0.9, feet: [[12.5, -5], [11.8, 4.6]], legs: 1 },
   desk: { back: 4.5, s: 0.86, feet: [[15.5, 1.6], [17, -1.1]], legs: 1 }, // pose px: x BODY_SCALE they reach the desk, no further
   wall: { back: 1.5, s: 1, feet: [[2, -3.6], [-3.5, 4.4]], legs: 0 },
+  // the hips on the edge of the bodywork behind him, the left foot crossed over the right at the ankles
+  hood: { back: 4, s: 0.93, feet: [[10.2, 0.9], [11.6, -0.7]], legs: 0.7, flat: 'hl' },
 };
 
 // move the torso of P by (dx, dy), turn it by dA and scale it by ds, carrying the hands and what they hold with it
@@ -1168,7 +1258,7 @@ function moveTorso(P, dx, dy, dA, ds) {
 }
 
 export function postPose(ch, P, V, B) {
-  const a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  const a = B.face ?? ch.angle, c = Math.cos(a), s = Math.sin(a);
   moveTorso(P, c * B.fwd - s * B.side, s * B.fwd + c * B.side, B.twist, 1 - B.dip);
   if (B.foot) {
     const [i, lx, ly] = B.foot, f = P.feet[i];
@@ -1185,6 +1275,8 @@ export function postPose(ch, P, V, B) {
     if (B.hands) { place(V.hl, V, V.ta, B.hands.hl.x, B.hands.hl.y); place(V.hr, V, V.ta, B.hands.hr.x, B.hands.hr.y); }
     blendPose(P, V, w);
     P.legs = base.legs * w;
+    // a hand gone back behind him is laid flat on what he leans on
+    if (base.flat && B.hands?.[base.flat].x < -2 && w > 0.5) { P.flat = base.flat; P.flatA = a + Math.PI; }
   }
   if (B.wpn && P.wpnOn) {
     // his weapon in his hands at it (a blade cleaning his nails, a club tossed and caught, a pistol held low)

@@ -1,7 +1,7 @@
 // Score of a run (DOM-free). Fed by world events only:
 //   'kill'       points by style (+ the circumstances: killTags) x combo multiplier, different ways of killing, hits
 //   'dodge', 'pickup'  remembered a moment: a kill right after one is tagged
-//   'knock'      small bonus for flooring a guard (thrown gun, slide), keeps the chain alive
+//   'knock'      small bonus for flooring a guard (thrown gun, slide, a kick), keeps the chain alive
 //   'shot'       trigger pulls of the player (accuracy)
 //   'explosion'  remembers what blew up (a rocket kill is a hit)
 //   'alertPhase' every ALERT eats into the stealth bonus
@@ -219,7 +219,7 @@ export default class Scoring {
       const c = this.rules.combo;
       this.comboEnd = Math.max(this.comboEnd, this.world.time + c.window * c.knockRefill);
     }
-    this.add(pts, victim.x, victim.y, cause === 'debris' ? 'WRECKAGE' : cause.toUpperCase(), 'knock');
+    this.add(pts, victim.x, victim.y, this.rules.knockLabels?.[cause] ?? cause.toUpperCase(), 'knock');
   }
 
   update() {

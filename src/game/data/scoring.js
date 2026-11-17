@@ -40,8 +40,11 @@ export const SCORING = {
   dodgeWindow: 1.5,         // s after the dodge
   drawWindow: 1.2,          // s after the pick-up
   unseen: 300,              // added when the victim never knew we were there
-  // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself
-  knock: { throw: 200, slide: 200, debris: 150 },
+  // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself.
+  // kick: the foot in his head at the end of a slide; hood: the legs off a car's hood. Shown as knockLabels (else
+  // the cause in capitals)
+  knock: { throw: 200, slide: 200, debris: 150, kick: 300, hood: 300 },
+  knockLabels: { debris: 'WRECKAGE', kick: 'SLIDE KICK', hood: 'HOOD SLIDE' },
   // chained kills: each one within `window` s of the last adds `step` to the multiplier, up to `max`
   combo: { window: 4, step: 0.5, max: 4, knockRefill: 0.6 }, // knockRefill: share of the window a knock-down wins back
   chain: 250,               // end bonus per kill of the longest chain beyond the first
