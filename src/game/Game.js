@@ -54,6 +54,7 @@ const DOES = {
   throw: (inp) => inp.mouseDown(2),
   use: (inp) => inp.down('KeyE'),
   action: (inp) => inp.down('Space'),
+  reload: (inp) => inp.down('KeyR'),
 };
 // what the intro banner calls a level
 const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${CAMPAIGN.filter((l) => l !== 'tutorial').indexOf(id) + 1}` : 'TEST LEVEL');
@@ -461,7 +462,12 @@ export default class Game {
       if (this.slow.t <= 0) this.slow = null;
     }
     // a lesson shown for the first time slows the world until he does it (he acts at once: the key lets time go)
-    if (this.state === 'play' && this.world.tutorial) target = Math.min(target, this.world.tutorial.pace(dt, (action) => !!DOES[action]?.(inp)));
+    if (this.state === 'play' && this.world.tutorial) {
+      // (it waits for what it is about to be on screen, clear of the edges)
+      const v = this.world.view(), m = 28;
+      const seen = (x, y) => Math.abs(x - v.x) < v.hw - m && Math.abs(y - v.y) < v.hh - m;
+      target = Math.min(target, this.world.tutorial.pace(dt, (action) => !!DOES[action]?.(inp), seen));
+    }
     this.timeScale = lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;

@@ -60,7 +60,7 @@ lv.fill(0, 12, 2, 17, '=')            # the night outside, two floors over the a
 
 # ---------------------------------------------------------------- actors (7 men)
 lv.actor('@', 4, 2, face=0)                             # on his mattress
-lv.actor('j', 18, 2, face=90, job='arson')              # the petrol poured, the matchbox in his hand
+lv.actor('j', 18, 2, face=90, job='arson', look='lucky')  # LUCKY, his pink scarf: the petrol poured, the matchbox in his hand
 lv.actor('j', 11, 11, face=90, job='rummage')           # at the kitchen worktop, turning the drawers out
 lv.actor('m', 19, 10, face=0, job='hall')               # at the back door, smoking: comes when the first one is dead
 lv.actor('p', 14, 14, face=0, job='lookout')            # down the corridor, a pistol, his eyes on the corner
@@ -210,29 +210,38 @@ lv.wear_path(20.5, 14.5, 4.8, 14.5, 12)
 lv.wear_path(8.0, 16.2, 8.0, 19.4, 14)
 
 # ---------------------------------------------------------------- the lesson
+# the balls of fire of the end, down the long corridor from under the kitchen to the window: [col, row, radius px],
+# each nearer and bigger (src/game/data/staging.js BLAST.chain times them: slower than he runs)
+CHAIN = [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68],
+         [7.0, 14.4, 72], [6.2, 14.5, 74]]
 lv.tutorial = {
     'stages': [
         {'zone': [4, 1, 8, 5], 'spawn': [4.5, 2.5, 0], 'cam': 'bedroom', 'hints': ['move'],
          'waves': [{'at': [[18, 2]], 'on': 'never', 'blind': True}]},     # the man with the match (the opening)
         {'zone': [9, 1, 16, 6], 'spawn': [10.6, 4.6, 0], 'cam': 'flat', 'marks': {'flee': [13.5, 6.9]}, 'hints': ['flee']},
+        # the second man is framed by the camera as he comes in (`frame`)
         {'zone': [10, 8, 16, 12], 'spawn': [12.4, 9.7, 90], 'cam': 'flat', 'hold': 18, 'keep': [[13, 6, 14, 7]], 'take': 'bat',
          'hints': ['finish', 'takedown', 'punch', 'strike', 'take'],
-         'waves': [{'at': [[11, 11]], 'on': 'never', 'blind': True}, {'at': [[19, 10]], 'on': 'kills:1'}]},
+         'waves': [{'at': [[11, 11]], 'on': 'never', 'blind': True}, {'at': [[19, 10]], 'on': 'kills:1', 'frame': True}]},
         # out of the back door, down the corridor: the man at its far end is only pointed at until he turns the corner
+        # (the lesson waits for the corner: LESSONS `within`)
         {'zone': [18, 9, 22, 13], 'spawn': [18.6, 10.5, 0], 'cam': 'corridor', 'hold': 3, 'keep': [[21, 3, 22, 8]],
-         'marks': {'slide': [21.5, 13.0]}, 'hints': ['slide'], 'waves': [{'at': [[14, 14]], 'on': 'never', 'blind': True}]},
-        {'zone': [13, 14, 22, 15], 'spawn': [21.5, 12.6, 90], 'cam': 'corridor', 'hold': 6, 'marks': {'slide': [20.3, 14.5]},
-         'take': 'pistol', 'leaves': 2, 'hints': ['finish', 'take', 'slide'],
-         'waves': [{'at': [[14, 14]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True}]},
-        {'zone': [4, 14, 12, 20], 'spawn': [12.5, 14.5, 180], 'cam': 'landing', 'hold': 8, 'take': 'pistol',
-         'marks': {'dive': [4.6, 15.0]}, 'hints': ['finish', 'take', 'throw', 'shoot', 'dive'],
+         'marks': {'slide': [21.5, 14.2]}, 'hints': ['slide'], 'waves': [{'at': [[14, 14]], 'on': 'never', 'blind': True}]},
+        # the bat breaks on him and his pistol is snatched (`snatch`): two rounds in it, a magazine to spare
+        {'zone': [13, 14, 22, 15], 'spawn': [21.5, 12.6, 90], 'cam': 'corridor', 'hold': 6, 'marks': {'slide': [21.5, 14.2]},
+         'take': 'pistol', 'leaves': 2, 'spare': 1, 'snatch': True, 'hints': ['finish', 'slide', 'strike', 'punch', 'take'],
+         'waves': [{'at': [[14, 14]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True, 'frame': True}]},
+        {'zone': [4, 14, 12, 20], 'spawn': [12.5, 14.5, 180], 'cam': 'landing', 'hold': 8, 'take': 'pistol', 'spare': 1,
+         'marks': {'dive': [4.6, 15.0]}, 'hints': ['finish', 'take', 'reload', 'throw', 'shoot', 'dive'],
          'waves': [{'at': [[7, 19], [9, 19]], 'on': 'pickup:pistol', 'up': STAIRS},
                    {'at': [[8, 20]], 'on': 'kills:2', 'up': STAIRS}]},
     ],
     # the man with the match: where he stands, where it falls, the door he slams behind him, where he runs to
     'opening': {'man': [18, 2], 'match': [17.6, 2.35], 'door': [20, 2], 'out': [21.6, 2.5]},
-    # the end: the last stretch of the corridor, the stove behind the wall, where the fire comes out
-    'blast': {'zone': [4, 14, 8, 15], 'at': [14.6, 12.68], 'breach': [14.6, 14.3]},
+    # the end: the last stretch of the corridor, the stove behind the wall, where the fire comes out, and on down
+    'blast': {'zone': [4, 14, 8, 15], 'at': [14.6, 12.68], 'breach': [14.6, 14.3], 'chain': CHAIN},
+    # the way out, marked on the floor once nobody is left standing: the floor before the window, the window
+    'exit': {'zone': [4, 14, 5, 15], 'window': [3, 14, 3, 15]},
     'fall': [0, 12, 2, 17],
 }
 

@@ -106,7 +106,10 @@ src/
       Tutorial.js         a level that teaches, and its staging (data/staging.js): rooms played in order, dormant guards woken
                           wave by wave, hints, a lesson slowing time the first time its hint shows (`pace`), the opening scene
                           (the man with the match: `open` / `play`), the camera's shot (`shot`), the flat blowing up at the end
-                          (`blow`), a retry from the last room with the fire where it would be (DOM-free, unit-tested)
+                          (`blow`: the stove, then a chain of fire-balls down the corridor), the way out marked (`exit`), a
+                          man called framed by the camera (`framed`), the weapon forced to break on the man whose gun is to
+                          be snatched (FORCE), a retry from the last room with the fire where it would be (DOM-free,
+                          unit-tested)
       FireSpread.js       fire that spreads (FIRE in data/fire.js): a front running over a grid of cells, fast along the petrol
                           (level `petrol` trails), slowly over floors that burn, up the furniture; one touch kills; a stage's
                           `hold` keeps it out of a room for a while (deterministic, DOM-free, unit-tested)

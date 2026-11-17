@@ -8,7 +8,7 @@ const { default: Tutorial, HINTS } = await load('game/systems/Tutorial.js');
 const { default: Direction } = await load('game/systems/Direction.js');
 const { default: level } = await load('game/data/levels/tutorial.js');
 const { ENEMIES } = await load('game/world/Level.js');
-const { LESSONS, OPENING, BLAST, SHOTS } = await load('game/data/staging.js');
+const { LESSONS, OPENING, BLAST, SHOTS, FRAME, FORCE, STAIRS } = await load('game/data/staging.js');
 const { POSTS } = await load('game/data/posts.js');
 const { MATCH_FALLS } = await load('game/ai/Pastimes.js');
 
@@ -27,7 +27,8 @@ function stub(from = 0, game = {}) {
     enemies.push(g);
   }));
   const body = Matter.Bodies.circle(px(4.5), px(2.5), 10);
-  const player = { body, alive: true, isPlayer: true, armed: false, weapon: null, def: { kind: 'none' }, sit: 0, pinned: false,
+  const player = { body, alive: true, isPlayer: true, armed: false, weapon: null, def: { kind: 'none' }, sit: 0, pinned: false, ammo: 0, died: null,
+    reserveCount() { return this.ammo; }, addAmmo(c, n) { this.ammo += n; }, kill(a, cause) { if (!this.invulnerable) { this.alive = false; this.died = cause; } },
     get x() { return body.position.x; }, get y() { return body.position.y; } };
   const sounds = [], log = { slow: [], blasts: [], later: [], shakes: 0, restored: null };
   const door = (c, r) => ({ cells: [r * W + c], body: Matter.Bodies.rectangle(px(c), px(r), 4, 30), a0: 0, hx: px(c), hy: px(r), locked: false, lock() { this.locked = true; } });
@@ -268,7 +269,7 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`).slice(0, 1), ['attack BREAK HIS NECK']);
   s.player.nearTakedown = null;
   s.guardAt(11, 11).aware = 2;
-  assert.deepEqual(names(), ['PUNCH', 'TAKE IT'], 'he turned round: a punch');
+  assert.deepEqual(names(), ['PUNCH HIM', 'TAKE IT'], 'he turned round: a punch');
   s.guardAt(11, 11).knocked = 2;
   assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['action FINISH HIM', 'use TAKE IT'], 'a man on the floor comes first: SPACE');
   Object.assign(s.player, { armed: true, weapon: { type: 'bat' }, def: { kind: 'melee' } });
@@ -277,44 +278,131 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   s.world.events.emit('kill', { victim: s.guardAt(11, 11) });
   s.tick();
   s.guardAt(19, 10).aware = 2; // he heard it
-  assert.deepEqual(names(), ['STRIKE'], 'he comes in: the bat');
+  assert.deepEqual(names(), ['STRIKE HIM'], 'he comes in: the bat');
+  const h = s.t.hints()[0], man = s.guardAt(19, 10);
+  assert.deepEqual([h.ax, h.ay], [man.x, man.y], 'it says where what it is about is (an arrow points there when it is off the picture)');
+  assert.ok(h.y < man.y - 30, 'and floats clear of what he says');
   s.go(21.5, 10.5);
   assert.deepEqual(names(), ['RUN AND SLIDE UNDER HIS FIRE']);
   s.go(21.5, 14.5);
-  assert.deepEqual(names(), ['RUN AND SLIDE UNDER HIS FIRE']);
+  assert.deepEqual(names(), ['RUN AND SLIDE UNDER HIS FIRE', 'STRIKE HIM'], 'and the man to hit, the bat in his hand');
   s.go(11.5, 14.5);
   Object.assign(s.player, { weapon: { type: 'pistol', mag: 2 }, def: { kind: 'gun' } });
   assert.deepEqual(names(), [], 'nobody to point at till they come up the stairs');
   s.wait(2.5);
   assert.deepEqual(names(), ['SHOOT']);
   s.player.weapon.mag = 0;
-  assert.deepEqual(names(), ['THROW IT'], 'the window is not pointed at while they stand');
+  s.player.ammo = 7;
+  assert.deepEqual(s.t.hints().map((q) => `${q.key} ${q.text}`), ['reload RELOAD'], 'dry, a magazine left: R');
+  s.player.reloading = 0.5;
+  assert.deepEqual(names(), [], 'said until he does it');
+  Object.assign(s.player, { reloading: 0, ammo: 0 });
+  assert.deepEqual(names(), ['THROW IT'], 'dry for good: thrown. The window is not pointed at while they stand');
   for (const at of [[7, 19], [9, 19]]) s.guardAt(...at).alive = false;
   assert.deepEqual(names(), [], 'the window is not pointed at while one is still to come');
   s.guardAt(8, 20).alive = false;
-  assert.deepEqual(names(), ['DIVE']);
+  assert.deepEqual(s.t.hints().map((q) => `${q.key} ${q.text}`), ['action DIVE THROUGH THE WINDOW']);
 });
 
-test('tutorial: the last stretch with nobody left standing - the stove goes behind him, and he is shielded from it', () => {
-  const s = stub(5);
+test('tutorial: the last stretch with nobody left standing - the stove goes, then the fire comes down the corridor after him', () => {
+  const s = stub(5), B = level.tutorial.blast, C = BLAST.chain;
   assert.ok(s.stove.staged, 'kept for the end: the fire does not set it off');
   s.go(7.5, 14.5);
   assert.equal(s.t.blast.t, null, 'not while they are still to come');
+  assert.equal(s.t.exit(), null, 'and the way out is not marked yet');
   for (const g of s.world.offstage) g.alive = false;
+  assert.deepEqual(s.t.exit(), { zone: [px(4), px(14), px(6), px(16)], window: [px(3), px(14), px(4), px(16)] }, 'nobody left: the floor before the window and the window are marked');
   s.go(9.5, 14.5);
   assert.equal(s.t.blast.t, null, 'not before the last stretch');
-  s.go(7.5, 14.5);
-  assert.ok(s.t.blast.t !== null && s.player.invulnerable, 'it is set off; nothing of it kills him');
+  s.go(8.9, 14.5);
+  assert.ok(s.t.blast.t !== null && s.player.invulnerable, 'it is set off; its debris does not kill him');
   assert.equal(s.t.shot().name, 'run');
   s.wait(BLAST.after + 0.1);
   assert.equal(s.stove.broke, 1, 'the stove torn open');
   assert.deepEqual(s.log.slow.at(-1), BLAST.slow);
-  s.wait(BLAST.breach[0] + 0.1);
+  s.wait(BLAST.breach[0] + 0.05);
   assert.deepEqual(s.log.blasts, [[px(14.6), px(14.3), BLAST.breach[1]]], 'then the ball of fire out of the breach');
-  s.wait(BLAST.shield);
-  assert.ok(!s.player.invulnerable, 'and he is on his own again');
+  // the chain: each ball nearer the window and bigger, quicker and quicker; he runs ahead of it all the way
+  assert.ok(B.chain.every(([c, , r], k) => k === 0 || (c < B.chain[k - 1][0] && r >= B.chain[k - 1][2])), 'nearer and bigger');
+  assert.ok(C.gap[1] < C.gap[0], 'quicker and quicker');
+  let t = BLAST.after + BLAST.breach[0];
+  const window = px(4.4), speed = PLAYER.speed * 60;
+  B.chain.forEach(([c, , r], k) => {
+    t += k ? C.gap[0] + ((C.gap[1] - C.gap[0]) * k) / (B.chain.length - 1) : C.first;
+    const runner = Math.max(window, px(9) - speed * (t - 0.4)); // he starts from the far end of the stretch, 0.4 s late
+    assert.ok(runner < px(c) - r * C.kill - 24 || runner === window, `ball ${k} at ${t.toFixed(2)} s: he is ${Math.round(px(c) - runner)} px ahead of it`);
+  });
+  const last = B.chain.at(-1);
+  assert.ok(px(9) - speed * (t - 0.4) < window - 60, 'and has had time to be through the window before the last');
+  assert.ok(px(last[0]) - last[2] * C.kill < px(4.6), 'which reaches the foot of the window: no standing there');
+  // standing still, he is caught by it
+  s.wait(t - BLAST.after - BLAST.breach[0] + 0.1);
+  assert.equal(s.log.blasts.length, 1 + B.chain.length);
+  assert.ok(!s.player.alive && s.player.died === 'explosion', 'the fire kills who waits for it');
+  assert.deepEqual(s.t.shot().at, { x: px(last[0]), y: px(last[1]) }, 'the camera on the fire coming');
   s.go(8, 14.5);
   assert.equal(s.stove.broke, 1, 'once');
+  // with a god's shield he is left alone, and it is handed back as it was
+  const g = stub(5);
+  g.player.invulnerable = true;
+  for (const e of g.world.offstage) e.alive = false;
+  g.go(8.5, 14.5);
+  g.wait(t + C.tail + 0.2);
+  assert.ok(g.player.alive && g.player.invulnerable);
+});
+
+test('tutorial: a lesson waits until what it is about is on screen and he is near enough to do it', () => {
+  const s = stub(3), none = () => false;
+  s.world.game.taught?.clear?.();
+  s.tick();
+  assert.deepEqual(s.t.hints().map((h) => h.text), ['RUN AND SLIDE UNDER HIS FIRE'], 'said from the back hall');
+  assert.equal(s.t.pace(0.016, none), 1, 'but no slow motion there');
+  s.go(21.5, 12.4);
+  assert.equal(s.t.pace(0.016, none), 1, 'nor down the corridor');
+  s.go(21.5, 13.4);
+  assert.equal(s.t.pace(0.016, none), LESSONS['RUN AND SLIDE UNDER HIS FIRE'].slow, 'at the corner');
+  // the second man of the kitchen: called from behind his door, framed by the camera, the lesson when he is seen
+  const k = stub(2);
+  k.tick();
+  const cook = k.guardAt(11, 11), second = k.guardAt(19, 10);
+  assert.equal(k.t.shot().name, 'flat');
+  cook.alive = false;
+  k.world.events.emit('kill', { victim: cook });
+  k.tick();
+  second.aware = 2;
+  assert.deepEqual([k.t.shot().name, k.t.shot().at], ['threat', second], 'the camera frames him with the player');
+  assert.equal(k.t.hints()[0].text, 'PUNCH HIM');
+  for (const text of ['GET BEHIND HIM', 'TAKE IT']) k.t.taught.add(text);
+  assert.equal(k.t.pace(0.016, none, () => false), 1, 'off the picture: time is not slowed for him');
+  assert.equal(k.t.pace(0.016, none, () => true), 1, 'on it but across the room: not yet');
+  Object.assign(second, { x: k.player.x + 80, y: k.player.y });
+  assert.equal(k.t.pace(0.016, none, () => true), LESSONS['PUNCH HIM'].slow, 'near enough to hit: now');
+  assert.equal(k.t.shot().name, 'flat', 'and the camera is back on the player');
+  assert.ok(LESSONS['PUNCH HIM'].within < FRAME.near + 40 && SHOTS.threat.pull > 0 && SHOTS.threat.pull < 1);
+});
+
+test('tutorial: the bat holds until the corridor\'s gunman and breaks on him; his gun comes with a magazine to spare', () => {
+  const s = stub(4);
+  s.tick();
+  Object.assign(s.player, { armed: true, weapon: { type: 'bat', wear: 1 }, def: { kind: 'melee', wear: 3 } });
+  s.tick();
+  assert.equal(s.player.weapon.wear, FORCE.keep, 'worn as it was, it will not break on anything before him');
+  s.go(21.5, 14.5);
+  const gunman = s.guardAt(14, 14);
+  assert.ok(!gunman.dormant && s.player.weapon.wear >= FORCE.keep, 'round the corner, still far from him');
+  s.go(15.6, 14.5);
+  assert.equal(s.player.weapon.wear, FORCE.last, 'on him: the next blow on a man uses it up (WEAR.man)');
+  s.go(21.5, 14.5);
+  assert.equal(s.player.weapon.wear, FORCE.keep, 'backed off: it holds again');
+  assert.ok(level.tutorial.stages[4].snatch && !level.tutorial.stages[2].snatch);
+  // the gun in his hand (snatched, or picked up): one magazine in his pocket, once
+  Object.assign(s.player, { weapon: { type: 'pistol', mag: 2 }, def: { kind: 'gun', ammo: '9mm', mag: 7 } });
+  s.world.events.emit('pickup', { ch: s.player, type: 'pistol' });
+  assert.equal(s.player.ammo, 7);
+  s.world.events.emit('pickup', { ch: s.player, type: 'pistol' });
+  assert.equal(s.player.ammo, 7, 'once');
+  assert.equal(level.tutorial.stages[4].leaves, 2, 'two rounds in it: he will have to reload');
+  assert.ok(STAIRS.steps[0] * STAIRS.steps[1] + STAIRS.steps[2] < 0.7, 'and the men on the stairs are up in well under a second');
 });
 
 test('tutorial: a retry starts again at the last place reached, the rooms before it empty, the fire where it would be', () => {

@@ -54,6 +54,9 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     13 LIQUIDS     a little bar on tiles: kegs behind the counter, the fire alarm and its sprinklers, a water pipe, two
                    dummies to bleed; the hydrant on the kerb outside, a car in the road whose tank leaks petrol
     14 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+    15 FIRE        in the soot room: petrol poured from its gas bottles to a rug and an armchair; a round through a
+                   bottle and the fire runs along the trail, takes what burns, kills who stands in it. LUCKY (his pink
+                   scarf) stands in the concourse before it
 The guards are passive dummies (they see and hear nothing but go on at their job), except the two `awake` ones.
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
@@ -165,6 +168,16 @@ lv.prop('gas_bottle', 37.4, 3.7)
 lv.prop('crate', 38.3, 1.5, 6)
 lv.prop('jerrycan', 34.5, 1.4)
 lv.prop('ceiling_lamp', 36.5, 3.5)
+# 15 FIRE, in the same room: petrol poured from the bottles to a rug and an armchair. Blow a bottle (a round through
+# it) and the petrol catches, runs along its trail, takes the rug and the chair, and kills who stands in it
+# (src/game/systems/FireSpread.js). LUCKY, the prologue's man with the match, watches from the concourse.
+lv.paint('label_fire', 36.0, 9.25)
+lv.paint('rug', 36.2, 5.3)
+lv.prop('armchair', 37.9, 5.7, 200)
+lv.pour(14, (35.9, 3.3))
+lv.pour(10, (35.9, 3.3), (35.3, 4.4), (36.0, 5.2), (37.5, 5.5))
+lv.pour(10, (36.0, 5.2), (34.6, 6.3))
+lv.actor('j', 38, 9, face=180, look='lucky')
 
 lv.area('4 pool, 5 bars')
 lv.paint('label_pool', 41.4, 8.35)
@@ -294,11 +307,11 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=25)
+    lv.check(guards=26)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids) and a street with the vehicles. Load with',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, fire) and a street with the vehicles. Load with',
                  '?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but the two kept `awake` for the sight tests.',
              ])
