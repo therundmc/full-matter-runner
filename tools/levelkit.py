@@ -255,7 +255,7 @@ class Level:
     # options of the door on tile (x, y) ('D' or 'L', any tile of its run): kind, one of DOOR_KINDS (its skin, its
     # weight, its fittings: src/game/data/doors.js); closer=True / False over its kind's (a hydraulic arm swings it
     # back shut); relock: s shut after which a locked door locks itself again (never on a door the guards must get
-    # through); inside: the room side, 'n' / 's' / 'e' / 'w' (an emergency exit's EXIT sign)
+    # through); inside: the room side, 'n' / 's' / 'e' / 'w' (an exit's EXIT sign; the side a closer is fitted on)
     def door(self, x, y, **opt):
         x, y = self.tile(x, y, 'door')
         assert self.tiles[y][x] in 'DL', f'no door at {x},{y}'

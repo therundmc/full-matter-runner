@@ -55,7 +55,7 @@ export default class Door {
     const shuts = closer ?? this.spec.closer;
     this.closer = this.spec.spring ? { ...DOORS.spring, zone: Infinity }
       : shuts ? { ...DOORS.closer, ...(shuts === true ? {} : shuts) } : null;
-    // the room side of an emergency exit, for its sign (inside: a step [dx, dy] from the doorway into the room)
+    // the room side (inside: a step [dx, dy] from the doorway into the room): an exit's EXIT sign, the closer's side
     this.inside = inside ? (-Math.sin(angle0) * inside[0] + Math.cos(angle0) * inside[1] >= 0 ? 1 : -1) : this.flip;
     this.glassBroken = false;
     const c = (length - this.back) / 2;
@@ -636,7 +636,7 @@ export default class Door {
   // The closer from above, on the leaf's lit face: its body near the hinge, the arm from its pinion folded to a
   // shoe on the frame head (two bars and their elbow)
   drawCloser(ctx) {
-    const C = CLOSER, f = this.flip, off = f * (LEAF.thick / 2 + 1), a = this.body.angle;
+    const C = CLOSER, f = this.inside, off = f * (LEAF.thick / 2 + 1), a = this.body.angle;
     const at = (ang, u, v) => ({ x: this.hx + Math.cos(ang) * u - Math.sin(ang) * v, y: this.hy + Math.sin(ang) * u + Math.cos(ang) * v });
     const P = at(a, C.pinion, off), S = at(this.a0, C.shoe[0], f * C.shoe[1]);
     // the elbow: where the two bars meet, bent out away from the leaf
