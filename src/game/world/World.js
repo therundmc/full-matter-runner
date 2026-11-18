@@ -70,6 +70,7 @@ import Director from '../ai/Director.js';
 import BossStage from '../systems/BossStage.js';
 import Ambient from '../systems/Ambient.js';
 import { OUTRO, routePath, routeSpeed, slideStep, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
+import Drive, { driveSpot } from '../systems/Drive.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
@@ -181,7 +182,11 @@ export default class World {
     this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
     const van = this.getaway();
     if (van) van.armoured = true; // the way out cannot be shot up or blown up before it is needed
+    // a level driven in the van (level `chase`: he starts in it), the vans one can get into (the lab: E at the door)
+    this.drive = level.chase ? new Drive(this, level.chase) : null;
+    for (const p of this.props) if (p.drivable) this.uses.add(driveSpot(this, p));
     this.lighting = new Lighting(this);
+    this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
   }
 
   get engine() { return this.physics.engine; }
@@ -453,12 +458,13 @@ export default class World {
     if (sliding) {
       for (const r of rear) if (chance(0.7)) this.particles.smoke(r.x, r.y, 1, 3, { speed: 22, size: 5, life: 0.8 });
       if (o.ruts) {
+        const xs = [...rear, ...o.ruts].map((r) => r.x);
         this.decals.paint?.((g) => {
           g.strokeStyle = 'rgba(10, 8, 14, 0.4)';
           g.lineWidth = 3;
           g.lineCap = 'round';
           rear.forEach((r, i) => { g.beginPath(); g.moveTo(o.ruts[i].x, o.ruts[i].y); g.lineTo(r.x, r.y); g.stroke(); });
-        });
+        }, 'floor', Math.min(...xs) - 3, Math.max(...xs) + 3);
       }
     }
     o.ruts = sliding ? rear : null;
@@ -490,6 +496,7 @@ export default class World {
     }
     // 1. intentions (input, AI)
     if (this.outro) this.stepOutro(dt);
+    else if (this.drive) this.drive.step(dt, input, aim); // at the wheel (systems/Drive.js)
     else if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
     this.director.update(dt);
@@ -516,6 +523,11 @@ export default class World {
     for (const d of this.debris) if (!d.dead) d.update(dt);
     for (const c of this.corpses) if (!c.dead) c.update(dt);
     for (const p of this.props) if (p.update) p.update(dt);
+    if (this.drive) {
+      // what the van ran into, the end of the road; its engine heard
+      this.drive.after(dt);
+      Audio.motor('drive', this.drive?.motor(dt) ?? null);
+    }
     for (const e of this.emitters) { e.t -= dt; e.fn(e, dt); }
     this.particles.update(dt);
     this.decals.update(dt);

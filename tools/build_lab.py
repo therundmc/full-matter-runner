@@ -69,6 +69,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     17 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
     18 COAT        the concourse's west half, an open lane to run, turn and slide in and watch the runner's coat
                    (src/game/entities/Skirt.js): a low table to vault or slide past, a barrel to turn round
+    19 DRIVE       the street's south lane, from its west end: a van to get into (E at its driver's door) and drive
+                   east (systems/Drive.js: W / S, A / D, SPACE the shove toward the mouse's side), two bins in its
+                   way, station 17's barrel, parked van and cars to shove, the end wall to die on nose-on; E again, or
+                   stopping, gets him out
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -361,6 +365,12 @@ lv.prop('news_box', 37.5, 18.4)
 lv.pigeons(34.0, 18.8, 3)
 for x in (6.5, 18.5, 34.5, 47.5):
     lv.prop('wall_lamp', x, 18.08, 0)      # over the sidewalk, on the facade
+
+lv.area('19 drive: a van to get into and drive down the street')
+lv.paint('label_drive', 8.2, 18.6)
+lv.prop('van', 4.6, 23.5, 0, drive=True)   # E at its driver's door (its north side)
+lv.prop('trash_can', 18.4, 23.9)
+lv.prop('trash_can', 19.2, 23.0)
 
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [

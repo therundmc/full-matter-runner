@@ -72,3 +72,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | titleRain | the poster's rain, in overlapping pieces (posterBeats) | a thin steady rain on asphalt and on a coat, loopable, quiet |
 | neonBuzz | a letter of the title's sign going dark: as it catches, when the second N fails, when the sign blinks (posterBeats, logoDead) | a neon tube's buzz and tick as it fails and catches again, 0.2 s |
 | markerStroke | each of the two strokes of the X drawn over a dead target's card on the hit list (ui/title/HitList.js, Beats.js crossBeats) | a thick marker dragged fast across card, squeaking, 0.3 s; two takes |
+| vanScrape | the van at the wheel grinding its flank along a wall or a car, every 0.12 s while it lasts (systems/Drive.js scrape) | sheet metal grinding along brick or another car, sparks, short (0.3 s), loopable in pieces |
+| vanShove | the shove (SPACE at the wheel): the van jerked sideways (systems/Drive.js shove) | tyres barking on asphalt as a van is thrown sideways, its body lurching on its springs |
+| vanCrash | the van nose-on into a wall at speed, the crash that kills him (systems/Drive.js crash) | a van hitting a wall head on: the front crumpling, the windscreen bursting, a long settle of metal |

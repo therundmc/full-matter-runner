@@ -177,6 +177,7 @@ export default class PropPhysics {
     }
     if (!lines.length) return;
     this.budget--;
+    const xs = lines.flatMap(([f, t]) => [f.x, t.x]);
     w.decals.paint?.((g) => {
       g.strokeStyle = SCUFF.color;
       g.globalAlpha = alpha;
@@ -185,6 +186,6 @@ export default class PropPhysics {
       g.beginPath();
       for (const [f, t] of lines) { g.moveTo(f.x, f.y); g.lineTo(t.x, t.y); }
       g.stroke();
-    });
+    }, 'floor', Math.min(...xs) - 2, Math.max(...xs) + 2);
   }
 }

@@ -137,7 +137,7 @@ export function destroyFence(world, f, dirA) {
   if (f.dead) return;
   f.dead = true;
   world.removeBody(f.body);
-  world.decals.wallCtx.clearRect(f.x - 17, f.y - 17, 34, 34);
+  world.decals.paint((g) => g.clearRect(f.x - 17, f.y - 17, 34, 34), 'walls', f.x - 17, f.x + 17);
   for (let k = 0; k < 6; k++) {
     const a = dirA + rand(-1, 1), v = rand(80, 260);
     world.addDebris(new Debris(world, chunk('#6a4a2a', Math.floor(rand(3, 9)), 3), f.x + rand(-10, 10), f.y + rand(-10, 10), rand(0, 6),

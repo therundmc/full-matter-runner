@@ -29,6 +29,8 @@ import { leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import HoldSkip, { drawHold } from './ui/cine/Hold.js';
 import { ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
+import { cameraScale } from './systems/Drive.js';
+import { CHASE } from './data/chase.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
@@ -76,6 +78,7 @@ export default class Game {
     this.skip = new HoldSkip();        // a comic page skipped by holding SPACE (ui/cine/Hold.js)
     this.taught = new Set();           // the lessons already given this run (systems/Tutorial.js)
     this.murk = 0;                     // 0..1: how far thick smoke has closed the view in (render/Murk.js)
+    this.driveZoom = 1;                // the camera's scale at the wheel, eased with the van's speed (systems/Drive.js)
     this.state = 'loading';
     this.stateT = 0;
     this.time = 0;
@@ -222,8 +225,12 @@ export default class Game {
     const shot = this.stagedShot();
     this.direction.reset();
     this.direction.set(shot?.name, shot?.at, true, this.camera.zoom);
-    this.camera.scale = this.direction.zoom;
-    this.camera.snap(p.x, p.y);
+    // a level driven in the van opens on the view its speed gives, ahead of it (systems/Drive.js)
+    const dr = this.world.drive;
+    this.driveZoom = dr ? cameraScale(dr.v) : 1;
+    this.camera.scale = this.direction.zoom * this.driveZoom;
+    const at = dr ? dr.frame(this.camera.w / (this.camera.zoom * this.camera.scale)) : p;
+    this.camera.snap(at.x, at.y);
     this.acc = 0;
     this.hitstop = 0;
     this.timeScale = 1;
@@ -669,14 +676,19 @@ export default class Game {
     const max = this.input.down('ShiftLeft') ? 260 : 110;
     const len = Math.hypot(ox, oy);
     if (len > max) { ox *= max / len; oy *= max / len; }
+    // at the wheel (systems/Drive.js): the view pulls out with the speed and runs ahead of the van, the cursor plays no
+    // part; out of it, the view comes back to the usual one
+    const dr = w.drive?.on ? w.drive : null;
+    if (dr) { ox = 0; oy = 0; }
+    this.driveZoom += ((dr ? cameraScale(dr.v) : 1) - this.driveZoom) * (1 - Math.exp(-dt / CHASE.camera.zoom));
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
     const D = this.direction, shot = this.stagedShot();
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
-    this.camera.scale = D.zoom;
-    const z = this.camera.zoom * D.zoom, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
-    const seen = D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
+    this.camera.scale = D.zoom * this.driveZoom;
+    const z = this.camera.zoom * this.camera.scale, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
+    const seen = dr ? dr.frame(this.camera.w / z) : D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
     let tx = seen.x, ty = seen.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {

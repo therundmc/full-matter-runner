@@ -80,15 +80,16 @@ export default class WorldRenderer {
     const vis = (x, y) => Math.abs(x - cam.x) < pad && Math.abs(y - cam.y) < pad;
     const view = viewRect(cam, w.map);
 
-    // the floor is finer than the world (MapRenderer.floorScale): only the part in view is drawn
-    const fs = w.decals.floorScale, fx0 = Math.max(0, Math.floor(cam.x - v.x)), fy0 = Math.max(0, Math.floor(cam.y - v.y));
-    const fw = Math.min(w.map.widthPx, Math.ceil(cam.x + v.x)) - fx0, fh = Math.min(w.map.heightPx, Math.ceil(cam.y + v.y)) - fy0;
-    if (fw > 0 && fh > 0) ctx.drawImage(w.decals.floorCanvas, fx0 * fs, fy0 * fs, fw * fs, fh * fs, fx0, fy0, fw, fh);
+    // the map's layers (MapRenderer): only the part in view is drawn; a long map bakes what is about to come in view
+    // (not for the whole map at once: the F3 overview shows the chunks there are)
+    const D = w.decals, fx0 = Math.floor(cam.x - v.x), fy0 = Math.floor(cam.y - v.y), fx1 = Math.ceil(cam.x + v.x), fy1 = Math.ceil(cam.y + v.y);
+    if (fx1 - fx0 < 1e4) D.near(fx0, fx1);
+    D.drawFloor(ctx, fx0, fy0, fx1, fy1);
     // blood lies over everything baked into the floor, what is wet over it; the dead and their pieces lie in it
-    ctx.drawImage(w.decals.bloodCanvas, 0, 0);
+    D.drawBlood(ctx, fx0, fy0, fx1, fy1);
     this.liquid.draw(ctx, view);
     drawRainGround(ctx, w.weather, view, t);
-    ctx.drawImage(w.decals.fleshCanvas, 0, 0);
+    D.drawFlesh(ctx, fx0, fy0, fx1, fy1);
     this.cues.drawMark(ctx); // the ring at the player's feet (render/Readability.js), under everybody
     // what stands or lies on the floor is drawn on a layer of its own, then laid on the scene: its pixels are what the
     // floor's reflections (Lighting.post) must not cover
@@ -120,7 +121,7 @@ export default class WorldRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.layer, 0, 0);
     ctx.restore();
-    ctx.drawImage(w.decals.wallCanvas, 0, 0);
+    D.drawWalls(ctx, fx0, fy0, fx1, fy1);
     drawFlying(ctx, w.critters, t);
 
     w.particles.draw(ctx);
@@ -151,7 +152,7 @@ export default class WorldRenderer {
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
     const pl = w.player;
     if (pl && pl.alive && !pl.vaulting && pl.vaultHint) this.drawVaultHint(ctx, pl.vaultHint, t);
-    if (pl && pl.alive && !pl.passage) this.drawUseHints(ctx, pl, t);
+    if (pl && pl.alive && !pl.passage && !pl.hidden && !pl.driving) this.drawUseHints(ctx, pl, t);
     if (w.tutorial) {
       const exit = w.tutorial.exit();
       if (exit) this.drawWayOut(ctx, exit, t);
@@ -528,7 +529,7 @@ export default class WorldRenderer {
       pf ? `FPS ${pf.fps}  FRAME ${pf.frame.toFixed(1)} MS (WORST ${pf.worst.toFixed(1)})  UPDATE ${pf.update.toFixed(1)} MS  RENDER ${pf.render.toFixed(1)} MS  LIGHTING ${this.lightMs.toFixed(1)} MS` : 'FPS ...',
       `BODIES ${bodies.length}  DYNAMIC ${dyn}  FROZEN ${frozen}  SLEEPING ${sleeping}`,
       `CONTACTS ${phys.activePairs().length}  PHYSICS ${phys.stepMs.toFixed(2)} MS x${phys.substeps}`,
-      `DEBRIS ${this.world.debris.length}  PARTICLES ${this.world.particles.list.length}`,
+      `DEBRIS ${this.world.debris.length}  PARTICLES ${this.world.particles.list.length}  MAP LAYERS ${this.world.decals.megabytes.toFixed(0)} MB`,
     ];
   }
 }

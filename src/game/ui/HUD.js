@@ -64,13 +64,14 @@ export function drawHUD(ctx, game, t) {
 
   drawScore(ctx, w, W - pad, pad, s, t);
   drawBanner(ctx, w.killFeed, W, H, s, t);
+  if (w.drive?.on) drawDrive(ctx, w.drive, pad, H - pad, s, t);
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
 
   // context hints: the cap of the device in use (ui/Glyphs.js), then what it does
   let hint = null;
-  if (p.alive) {
+  if (p.alive && !p.hidden && !p.driving) { // (not in the getaway, nor at the wheel: systems/Drive.js)
     if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown || p.nearDowned ? 'attack' : 'action', p.contextAction];
     else if (p.nearTrunk) hint = ['use', 'OPEN TRUNK'];
     else if (p.nearUse) hint = ['use', w.uses.label(p.nearUse)];
@@ -90,6 +91,23 @@ export function drawHUD(ctx, game, t) {
     }
     drawExitArrow(ctx, game, t, s);
   }
+}
+
+// At the wheel (systems/Drive.js), bottom left: the shove's bar (SPACE; full and bright when it is ready, filling
+// back after one) over the speed in km/h; (x, y) its bottom left corner
+function drawDrive(ctx, d, x, y, s, t) {
+  const ready = d.ready >= 1, bw = 120 * s, bh = 7 * s, by = y - 62 * s;
+  text(ctx, 'SHOVE', x, by + bh / 2, 13 * s, ready ? PALETTE.white : PALETTE.pink, { align: 'left', alpha: 0.85 });
+  const bx = x + 66 * s;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(bx - s, by - s, bw + 2 * s, bh + 2 * s);
+  ctx.fillStyle = ready ? PALETTE.white : PALETTE.pink;
+  ctx.globalAlpha = ready ? 0.85 + Math.sin(t * 6) * 0.15 : 0.7;
+  ctx.fillRect(bx, by, bw * clamp(d.ready, 0, 1), bh);
+  ctx.globalAlpha = 1;
+  const v = String(d.kmh);
+  text(ctx, v, x, y - 16 * s, 40 * s, PALETTE.white, { align: 'left' });
+  text(ctx, 'KM/H', x + widthOf(ctx, v, 40 * s) + 14 * s, y - 12 * s, 14 * s, PALETTE.white, { align: 'left', alpha: 0.8 });
 }
 
 // What is left of a melee weapon that wears (data/weapons.js wear, in blows: a thing struck takes a share of one): a

@@ -17,6 +17,7 @@ const TAUNTS = [
 // deaths that deserve their own line, by cause (Character.kill)
 const CAUSE_TAUNTS = {
   vehicle: ['LOOK BOTH WAYS.', 'THE STREET DOES NOT STOP FOR YOU.', 'ROADKILL.'],
+  crash: ['BRAKES ARE ON THE S KEY.', 'WALLS DO NOT MOVE.', 'SHOVE THEM, NOT THE CITY.'],
   explosion: ['TOO CLOSE TO THE BLAST.', 'MIND WHAT YOU SHOOT AT.'],
   melee: ['NEVER LET THEM GET CLOSE.', 'TOO SLOW. TOO CLOSE.'],
   slash: ['NEVER LET THEM GET CLOSE.', 'A BLADE IS QUIET. SO WERE YOU.'],
@@ -216,6 +217,7 @@ export function describeDeath(cause, killer) {
     case 'fire': return { verb: 'BURNED ALIVE', by: '' };
     case 'explosion': return { verb: 'BLOWN APART', by: killer?.isPlayer ? 'BY YOUR OWN BLAST' : '' };
     case 'vehicle': return { verb: 'RUN OVER', by: `BY A ${killer?.type === 'van' ? 'VAN' : 'CAR'}` };
+    case 'crash': return { verb: 'CRASHED', by: 'HEAD ON, AT THE WHEEL' }; // nose-on into a wall (systems/Drive.js)
     default: return { verb: 'KILLED', by: by() };
   }
 }

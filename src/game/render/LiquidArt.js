@@ -242,8 +242,8 @@ export default class LiquidArt {
   bake() {
     const liq = this.world.liquids, list = liq.stained;
     if (!list.length) return;
-    const g = this.world.decals?.bloodCtx;
-    if (!g) { list.length = 0; return; }
+    const decals = this.world.decals;
+    if (!decals?.paint) { list.length = 0; return; }
     const S = this.sim, st = liq.stain, look = LIQUIDS.look, px = look.px, cell = S.cell, per = Math.max(1, Math.round(cell / px));
     const film = LIQUIDS.kinds.blood.film, shade = look.kinds.blood.blood, [T0, T1, T2, T3, T4] = look.levels;
     const at = (gx, gy) => (gx < 0 || gy < 0 || gx >= S.w || gy >= S.h ? 0 : st[gy * S.w + gx] / film);
@@ -263,19 +263,24 @@ export default class LiquidArt {
     }
     list.length = 0;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let q = 0; q < 5; q++) {
-      const r = rects[q];
-      if (!r.length) continue;
-      const c = RAMPS[2][shade[q]];
-      g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] / 255})`;
-      g.beginPath();
+    for (const r of rects) {
       for (let k = 0; k < r.length; k += 2) {
-        g.rect(r[k], r[k + 1], px, px);
         x0 = Math.min(x0, r[k]); y0 = Math.min(y0, r[k + 1]); x1 = Math.max(x1, r[k] + px); y1 = Math.max(y1, r[k + 1] + px);
       }
-      g.fill();
     }
-    if (x1 > x0) this.world.decals.trim(g, x0, y0, x1, y1); // off the walls, as every stain
+    if (x1 <= x0) return;
+    decals.paint((g) => {
+      for (let q = 0; q < 5; q++) {
+        const r = rects[q];
+        if (!r.length) continue;
+        const c = RAMPS[2][shade[q]];
+        g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] / 255})`;
+        g.beginPath();
+        for (let k = 0; k < r.length; k += 2) g.rect(r[k], r[k + 1], px, px);
+        g.fill();
+      }
+      decals.trim(g, x0, y0, x1, y1); // off the walls, as every stain
+    }, 'blood', x0, x1);
   }
 
   // with the floor, before the lighting: the liquid in view (rect { x0, y0, x1, y1 } world px), its ripples

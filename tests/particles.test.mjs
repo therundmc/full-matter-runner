@@ -16,7 +16,7 @@ function stub() {
     map: { solidAt: () => false },
     camera: { x: 0, y: 0 },
     decals: {
-      floorCtx: { fillRect: rec('rect'), set fillStyle(v) {}, set globalAlpha(v) {} },
+      paint: (fn) => fn({ fillRect: rec('rect'), set fillStyle(v) {}, set globalAlpha(v) {} }),
       spill: rec('spill'), wreck: rec('bake'), stampBlood: rec('blood'), speck: rec('blood'), stampStreak: rec('blood'),
     },
   };

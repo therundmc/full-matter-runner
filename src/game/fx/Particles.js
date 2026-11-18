@@ -334,11 +334,12 @@ export default class Particles {
     const decals = this.world.decals;
     const crumb = (color, w, h) => {
       if (!chance(LITTER.keep)) return;
-      const g = decals.floorCtx;
-      g.globalAlpha = LITTER.alpha;
-      g.fillStyle = color;
-      g.fillRect(Math.round(x), Math.round(y), w, h);
-      g.globalAlpha = 1;
+      decals.paint((g) => {
+        g.globalAlpha = LITTER.alpha;
+        g.fillStyle = color;
+        g.fillRect(Math.round(x), Math.round(y), w, h);
+        g.globalAlpha = 1;
+      }, 'floor', x - 1, x + w + 1);
     };
     switch (p.type) {
       case P.BLOOD: {

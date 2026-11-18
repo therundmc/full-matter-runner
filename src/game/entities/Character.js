@@ -729,10 +729,11 @@ export default class Character {
     }
     const ia = Math.atan2(-ny, -nx) + rand(-0.3, 0.3), o = { scale: BODY_SCALE * PLANTED.size, part: PLANTED.part };
     x -= nx * 2; y -= ny * 2; // its root against the face
+    const reach = sw(pic) * o.scale + 8; // what it may cover of the floor, either way
     this.world.decals.paint((g) => {
       drawUpright(g, silhouette(pic), x + 1.5, y + 1.5, ia, PLANTED.len, { ...o, alpha: 0.3 });
       drawUpright(g, pic, x, y, ia, PLANTED.len, o);
-    });
+    }, 'floor', x - reach, x + reach);
     return true;
   }
 

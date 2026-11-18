@@ -117,6 +117,8 @@ export const META = {
   doorBreak: { pri: 3, dur: 0.7, gap: 0.1, max: 2, duck: 0.75, gain: 0.9 },
   tirePop: { pri: 3, dur: 0.8, gap: 0.1, max: 2, duck: 0.8 },
   carHit: { pri: 2, dur: 0.4, gap: 0.04, max: 3, gain: 0.8 },
+  vanScrape: { pri: 1, dur: 0.35, gap: 0.1, max: 2, gain: 0.5 }, vanShove: { pri: 2, dur: 0.4, gap: 0.2, max: 1, gain: 0.7 },
+  vanCrash: { pri: 3, dur: 1.2, gap: 0.3, max: 1, gain: 1, duck: 0.8 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
@@ -414,6 +416,11 @@ const FOLEY = {
   explosion: [['rubble', 0.5, 0.8, 0.3], ['glassFall', 0.2, 1, 0.5, 0.5], ['rubble', 0.35, 0.65, 0.75], ['stone', 0.3, 0.7, 1.1]],
   tirePop: [['thud', 0.8, 1.2]],
   carHit: [['sheet', 1], ['thud', 0.45, 0.9]],
+  // PLACEHOLDERS (assets/sound/PLACEHOLDERS.md) for the van at the wheel (systems/Drive.js): its flank grinding along a
+  // wall, the shove's lurch, the crash that kills him
+  vanScrape: [['sheet', 0.5, 0.6], ['metal', 0.3, 0.55, 0.06, 0.6]],
+  vanShove: [['thud', 0.6, 0.7], ['sheet', 0.25, 0.8, 0.03]],
+  vanCrash: [['sheet', 1, 0.7], ['thud', 1, 0.6], ['metalBreak', 0.8, 0.8, 0.02], ['glass', 0.7, 1, 0.05]],
   // flesh
   // dry blows only: no meat or wet recording anywhere (the user hated every one of them as a "squish")
   punch: [['punch', 1], ['soft', 0.4, 1.1, 0.008], ['thud', 0.7, 0.75]],

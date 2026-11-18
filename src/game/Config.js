@@ -518,6 +518,22 @@ export const LITTER = {
   rubble: 14,  // crumbs painted on the floor of a breached wall tile
 };
 
+// A long map (the chase) is drawn in chunks along x (render/Chunks.js): the floor and the walls baked near the view and
+// dropped far from it, the layers that hold marks (blood, flesh) made where something lands. A map no wider than
+// `whole` tiles is one chunk, painted as it always was.
+export const CHUNKS = {
+  whole: 96,    // tiles: up to this wide, a map is a single chunk
+  cols: 32,     // tiles across a chunk (full height)
+  margin: 12,   // tiles past the view each way that are kept baked (what the camera is about to see)
+  cache: 1,     // chunks out of that span kept anyway, the last seen first (clean ones: they can be baked again)
+  // chunks with marks on them kept at most, per layer; past that the farthest from the view goes, its marks with it
+  // (a floor chunk is four times the pixels of the others: it is painted at the tiles' density)
+  keep: { floor: 4, walls: 8, blood: 10, flesh: 10 },
+  pad: 2,       // world px a chunk reaches into its neighbours, drawn over them: no seam under a turned camera
+  budget: 4,    // ms a frame given to baking the chunks ahead of the view (the one in view is finished at once)
+  strip: 4,     // tiles: a floor chunk's tiles and wear are painted a strip of this width at a time
+};
+
 export const PALETTE = {
   pink: '#ff2a6d',
   cyan: '#05d9e8',

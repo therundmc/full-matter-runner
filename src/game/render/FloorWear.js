@@ -108,10 +108,12 @@ export function planWear(map, level = {}, cfg = WEAR) {
   return { names, surf, marks };
 }
 
-// the floor's pixels, drawn on one surface at a time (`id`)
+// the floor's pixels, drawn on one surface at a time (`id`). Coordinates are the whole floor's (w, h: its fine
+// pixels); img holds the strip of it from fine x `ox` on (a chunk of a long map), what falls outside is not painted
 class Pixels {
-  constructor(img, s, map, surf) {
-    this.d = img.data; this.w = img.width; this.h = img.height;
+  constructor(img, s, map, surf, ox = 0) {
+    this.d = img.data; this.dw = img.width; this.x0 = ox; this.x1 = ox + img.width;
+    this.w = map.w * TILE * s; this.h = img.height;
     this.s = s; this.map = map; this.surf = surf; this.tw = TILE * s; this.id = -1;
   }
 
@@ -124,8 +126,8 @@ class Pixels {
   // shade the fine pixel (px, py) by d if it is on the current surface, pulled toward the colour col by k
   tint(px, py, d, col = null, k = 0) {
     px = Math.floor(px); py = Math.floor(py);
-    if (this.at(px, py) !== this.id) return;
-    const D = this.d, i = (py * this.w + px) * 4;
+    if (px < this.x0 || px >= this.x1 || this.at(px, py) !== this.id) return;
+    const D = this.d, i = (py * this.dw + px - this.x0) * 4;
     for (let c = 0; c < 3; c++) {
       let v = D[i + c] + d;
       if (col && k > 0) v += (col[c] - v) * k;
@@ -606,19 +608,26 @@ const KINDS = {
 export const WEAR_KINDS = Object.keys(KINDS);
 
 
+// the tiles across the strip of floor being painted
+function cols(P) {
+  return [Math.max(0, Math.floor(P.x0 / P.tw)), Math.min(P.map.w - 1, Math.floor((P.x1 - 1) / P.tw))];
+}
+
 // dirt gathered along the foot of the walls (and of what `next` lists: the gutter along the kerb), loose grit in it
-function edges(P, R, S, names, noise) {
+// (its specks drawn from each tile's own numbers: a strip of the floor is painted as the whole of it would be)
+function edges(P, seed, S, names, noise) {
   const E = S.edge;
   if (!E) return;
-  const m = P.map, s = P.s, next = new Set((E.next || []).map((n) => names.indexOf(n)));
+  const m = P.map, s = P.s, next = new Set((E.next || []).map((n) => names.indexOf(n))), [c0, c1] = cols(P);
   const wallish = (tx, ty) => {
     if (tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) return false;
     const v = P.surf[ty * m.w + tx];
     return v === -1 || next.has(v);
   };
   for (let ty = 0; ty < m.h; ty++) {
-    for (let tx = 0; tx < m.w; tx++) {
+    for (let tx = c0; tx <= c1; tx++) {
       if (P.surf[ty * m.w + tx] !== P.id) continue;
+      const R = seeded((seed ^ Math.imul(tx + 1, 73856093) ^ Math.imul(ty + 1, 19349663) ^ Math.imul(P.id + 1, 83492791)) >>> 0);
       const near = [];
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && wallish(tx + dx, ty + dy)) near.push([dx, dy]);
       if (!near.length) continue;
@@ -654,9 +663,9 @@ function edges(P, R, S, names, noise) {
 // slabs laid one by one: each tile a shade off the next
 function tones(P, S) {
   if (!S.tone) return;
-  const m = P.map, T = TILE * P.s;
+  const m = P.map, T = TILE * P.s, [c0, c1] = cols(P);
   for (let ty = 0; ty < m.h; ty++) {
-    for (let tx = 0; tx < m.w; tx++) {
+    for (let tx = c0; tx <= c1; tx++) {
       if (P.surf[ty * m.w + tx] !== P.id) continue;
       let h = Math.imul(tx * 374761393 + ty * 668265263, 1274126177);
       h = ((h ^ (h >>> 16)) >>> 0) / 4294967296;
@@ -666,16 +675,17 @@ function tones(P, S) {
   }
 }
 
-// down each traffic lane (level ambient.traffic rows): oil dripped in the middle, the tyres' tracks either side
+// down each traffic lane (level ambient.traffic rows, a chase's lanes): oil dripped in the middle, the tyres'
+// tracks either side
 function lanes(P, S, level, noise) {
-  const L = S.lanes, rows = level.ambient?.traffic;
+  const L = S.lanes, rows = level.ambient?.traffic || level.chase?.lanes?.map((row) => ({ row }));
   if (!L || !rows) return;
   const s = P.s;
   for (const { row } of rows) {
     const y0 = row * TILE;
     for (let py = Math.floor((y0 - L.gauge - 5) * s); py <= Math.ceil((y0 + L.gauge + 5) * s); py++) {
       const dy = (py + 0.5) / s - y0;
-      for (let px = 0; px < P.w; px++) {
+      for (let px = Math.max(0, P.x0); px < Math.min(P.w, P.x1); px++) {
         const wx = (px + 0.5) / s;
         // the drips: a soft broken band, its patches of every length (two octaves), never a dashed line
         if (Math.abs(dy) < 7) {
@@ -690,18 +700,32 @@ function lanes(P, S, level, noise) {
   }
 }
 
-// paint the floor's wear into its pixels (img: { data, width, height } of the whole floor, `s` pixels per world px)
-export function paintWear(img, s, map, level = {}, cfg = WEAR) {
-  const plan = planWear(map, level, cfg);
-  const P = new Pixels(img, s, map, plan.surf), R = seeded(hashString(level.name || 'level') + 17), noise = valueNoise(R);
+// how far from its middle a mark may paint, world px (a crack's branches, a seam, a pothole's cracks all stay within
+// REACH; a halo and a worn path say how far they go)
+const REACH = 128;
+function reach(m) {
+  if (m.kind === 'path') return [Math.min(m.x, m.o.to[0]) - m.o.w - 2, Math.max(m.x, m.o.to[0]) + m.o.w + 2];
+  const r = m.kind === 'halo' ? m.o.r + m.o.w + 2 : REACH;
+  return [m.x - r, m.x + r];
+}
+
+// paint the floor's wear into its pixels: img { data, width, height } is the whole floor at `s` pixels per world px,
+// or the strip of it from fine x `ox` on (painted exactly as the whole floor is there: no seam between two strips);
+// plan: planWear's, when it is already made
+export function paintWear(img, s, map, level = {}, cfg = WEAR, ox = 0, plan = planWear(map, level, cfg)) {
+  const P = new Pixels(img, s, map, plan.surf, ox), base = hashString(level.name || 'level');
+  const noise = valueNoise(seeded(base + 17));
   plan.names.forEach((name, id) => {
     const S = cfg.surfaces[name];
     P.id = id;
     tones(P, S);
-    edges(P, R, S, plan.names, noise);
+    edges(P, base ^ 0x2c1b3c6d, S, plan.names, noise);
     lanes(P, S, level, noise);
   });
+  const x0 = P.x0 / s, x1 = P.x1 / s;
   for (const m of plan.marks) {
+    const [a, b] = reach(m);
+    if (b < x0 || a > x1) continue;
     P.id = m.s;
     KINDS[m.kind](P, seeded(m.seed), m.x, m.y, m.o);
   }

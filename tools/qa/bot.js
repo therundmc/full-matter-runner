@@ -1500,7 +1500,8 @@
     // (a staged level's shot may look away from him: systems/Direction.js, the tutorial)
     const see = p.alive && !p.hidden && !p.passage && game.state === 'play' && !w.tutorial?.shot?.()?.name;
     const s = see ? c.worldToScreen(p.x, p.y) : null;
-    const issues = K.cameraIssues(cam, { start, scale: w.tutorial || game.stagedShot?.() ? undefined : 1, // a staged opening starts on its own shot
+    // a staged opening starts on its own shot, a level driven in the van (systems/Drive.js) on the view its speed gives
+    const issues = K.cameraIssues(cam, { start, scale: w.tutorial || game.stagedShot?.() || w.drive ? undefined : 1,
       zoom: Math.max(1, Math.round(cam.h / D.VIEW)), player: s });
     let off = false;
     for (const f of issues) {

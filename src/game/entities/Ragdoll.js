@@ -754,8 +754,9 @@ export default class Ragdoll {
     const w = this.world;
     if (this.skirt) { const p = this.skirtAt(); w.decals.bake(this.skirt, p.x, p.y, this.torso.body.angle, 1, true); }
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
-    w.decals.paint?.((g) => { for (const part of [this.limbs[2], this.limbs[3], this.torso, this.head]) this.drawMarks(g, part); }, true);
-    if (this.stuck) w.decals.paint?.((g) => this.drawStuck(g), true);
+    const x = this.torso.body.position.x, r = 64; // the whole body lies within it
+    w.decals.paint?.((g) => { for (const part of [this.limbs[2], this.limbs[3], this.torso, this.head]) this.drawMarks(g, part); }, 'flesh', x - r, x + r);
+    if (this.stuck) w.decals.paint?.((g) => this.drawStuck(g), 'flesh', x - r, x + r);
     for (const j of this.joints) Composite.remove(w.engine.world, j.c);
     for (const part of this.parts) w.removeBody(part.body);
     this.dead = true;

@@ -72,7 +72,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
-          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -494,8 +494,11 @@ class Level:
 
     # ---- output: src/game/data/levels/<module>.js
     def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None, objective=None,
-              light=None):
+              light=None, chase=None):
+        """chase: a level driven in the van (src/game/systems/Drive.js), written as is (the builder's coordinates:
+        no cuts allowed with it)."""
         assert not (self.tutorial and (self.cut_x or self.cut_y)), 'a tutorial is not moved by the cuts'
+        assert not (chase and (self.cut_x or self.cut_y)), 'a chase is not moved by the cuts'
         # what the builder hands over in its own coordinates
         if exit:
             exit = {**exit, 'x': self.X(exit['x']), 'y': self.Y(exit['y'])}
@@ -518,6 +521,11 @@ class Level:
             L.append(f'  objective: [{js(objective[0])}, {js(objective[1])}],')
         if passive:
             L.append('  passive: true,')
+        if chase:
+            L.append('  // driven in the van (systems/Drive.js, numbers in data/chase.js): its start [col, row] facing +x, the cruise')
+            L.append('  // speed (px/step), the lanes\' middle rows (ours last), the kerbs\' rows, the col past which it is over, and')
+            L.append('  // what happens on the way by distance (col)')
+            L.append(f'  chase: {js(chase)},')
         if exit:
             # route / radius / fade: the getaway's way out (systems/Outro.js), tiles
             more = ''.join(f', {k}: {json.dumps(exit[k])}' for k in ('route', 'radius', 'fade') if k in exit)

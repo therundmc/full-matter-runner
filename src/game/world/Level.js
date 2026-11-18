@@ -119,7 +119,8 @@ export function buildLevel(world, level) {
   // options: { lights: false } = starts with its lights off (a parked car); { flicker: kind } = its light is unsteady
   // (render/Flicker.js: 'broken', 'stutter', 'dying'...); { valve: true } = a stove whose gas tap can be opened;
   // { tips: false } = a bin that stays up and breaks like any prop (one indoors, systems/Tipping.js);
-  // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js)
+  // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js);
+  // { drive: true } = a vehicle he can get into and drive (the lab)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
@@ -130,6 +131,7 @@ export function buildLevel(world, level) {
     if (opt?.flies) p.flies = true; // flies over it (render/PropLife.js)
     if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
+    if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);
   }
@@ -194,18 +196,19 @@ function buildFence(world, x, y, vertical) {
     isStatic: true, label: 'fence', collisionFilter: { category: CAT.WALL, mask: CAT.CHAR | CAT.DEBRIS | CAT.ITEM | CAT.CORPSE | CAT.PROP },
   });
   world.addBody(body);
-  world.fences.push({ x, y, vertical, body, dead: false });
-  // fences are static decoration: paint them on the wall layer
-  const g = world.decals.wallCtx;
+  const fence = { x, y, vertical, body, dead: false };
+  world.fences.push(fence);
+  // fences are static decoration: painted on the wall layer (again with a chunk of a long map baked anew, while it stands)
   const img = sprite('structure/fence');
-  g.save();
-  g.translate(x, y);
-  if (vertical) g.rotate(Math.PI / 2);
-  g.globalAlpha = 0.35;
-  g.fillStyle = '#000';
-  g.fillRect(-TILE / 2 + 2, -img.height / 2 + 2, TILE, img.height);
-  g.globalAlpha = 1;
-  g.drawImage(img, -TILE / 2, -img.height / 2, TILE, img.height);
-  g.restore();
+  world.decals.paint((g) => {
+    if (fence.dead) return;
+    g.translate(x, y);
+    if (vertical) g.rotate(Math.PI / 2);
+    g.globalAlpha = 0.35;
+    g.fillStyle = '#000';
+    g.fillRect(-TILE / 2 + 2, -img.height / 2 + 2, TILE, img.height);
+    g.globalAlpha = 1;
+    g.drawImage(img, -TILE / 2, -img.height / 2, TILE, img.height);
+  }, 'walls', x - TILE, x + TILE);
 }
 

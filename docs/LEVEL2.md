@@ -138,7 +138,7 @@ brushes.
 
 Milestones in order; each ends merged into main with its tests, a QA or shot check and a line in the log.
 
-- [ ] **M1a - The back road, drivable.** Chunked rendering for long maps; tools/build_level2a.py with segment 1
+- [x] **M1a - The back road, drivable.** Chunked rendering for long maps; tools/build_level2a.py with segment 1
   (the back road: 2 lanes, a parking row, kerbs, shopfronts, alleys, street furniture that breaks); drive mode
   (steer, throttle, brake, the road's pull), the shove, nose-on crash death, the camera's pull-out and lead; the
   level reachable with ?level=level2a; a lab station; placeholder end (reaching the road's end ends the level).
@@ -161,3 +161,10 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
 - 2026-11-18: concept pass done (gameplay proposals A/B/C, route, segment boards, 2B plan, paintings); the user
   chose B, the 2A / 2B split with 2B restarting at the crash, the Flamingo as level 3, and started M1 with the
   back road. This document written.
+- 2026-11-18: M1a. Long maps drawn in chunks (render/Chunks.js: floor and walls baked near the view a strip a frame,
+  blood and flesh made where they land; a usual level is one chunk, painted as before); tools/build_level2a.py with
+  the back road (450 x 25 tiles, `?level=level2a`, the alley at col 138 kept clear for event 1); drive mode
+  (systems/Drive.js, data/chase.js: cruise 60 km/h, W to 75, S to a stop, A / D across, the road's pull, the shove on
+  SPACE, nose-on crash death, parked cars woken and shoved by the physics, bolted things torn off); the camera's
+  pull-out with the speed and its lead; the HUD's speed and shove bar; lab station 19 DRIVE. Still map-sized: the
+  liquid on the floor (systems/Liquids.js, render/LiquidArt.js), to window before the full route (M2).

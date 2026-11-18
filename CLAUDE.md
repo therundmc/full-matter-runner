@@ -83,6 +83,9 @@
   restarted from the crash); the FLAMINGO MOTEL (JITTERS) is level 3.
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
+  2A is built by tools/build_level2a.py (level `chase` block: van start, cruise, lanes, end col, events by col); the
+  drive is systems/Drive.js with its numbers in data/chase.js (CHASE); a map wider than CHUNKS.whole tiles is drawn
+  in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer, x0, x1)`), never a canvas.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
