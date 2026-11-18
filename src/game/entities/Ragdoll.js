@@ -191,10 +191,10 @@ export default class Ragdoll {
   }
 
   // A limp body, after each physics step: every part held within what its joint allows (BODY.joints; a part that
-  // reaches the end of it stops there and goes on with the torso), and what is left of a swing taken out of him
+  // reaches the end of it stops there and goes on with the torso: lock), and what is left of a swing taken out of him
   // (BODY.damp): the parts turn and move more and more as one, so he drops and stays instead of flailing.
   limp(dt) {
-    const t = this.torso.body, ta = t.angle, wt = Body.getAngularVelocity(t), vt = Body.getVelocity(t);
+    const t = this.torso.body, ta = t.angle;
     const ks = 1 - Math.exp(-BODY.damp.spin * dt), kv = 1 - Math.exp(-BODY.damp.slide * dt);
     const on = this.parts.filter((p) => p.attached);
     let m = 0, vx = 0, vy = 0;
@@ -207,13 +207,35 @@ export default class Ragdoll {
       const b = p.body;
       if (p !== this.torso) {
         const left = p.jt.x < 0 && p !== this.head, a = jointAngle(ta, b.angle, left), c = clampJoint(a, RANGE[p.name]);
-        if (c !== a && this.hold(p, partAngle(ta, c, left))) {
-          Body.setVelocity(b, { x: vt.x - wt * (b.position.y - t.position.y), y: vt.y + wt * (b.position.x - t.position.x) });
-          Body.setAngularVelocity(b, wt);
-        } else Body.setAngularVelocity(b, Body.getAngularVelocity(b) + (wt - Body.getAngularVelocity(b)) * ks);
+        if (c !== a && this.hold(p, partAngle(ta, c, left))) this.lock(b);
+        else {
+          const wt = Body.getAngularVelocity(t);
+          Body.setAngularVelocity(b, Body.getAngularVelocity(b) + (wt - Body.getAngularVelocity(b)) * ks);
+        }
       }
       const v = Body.getVelocity(b);
       Body.setVelocity(b, { x: v.x + (vx - v.x) * kv, y: v.y + (vy - v.y) * kv });
+    }
+  }
+
+  // a part at the end of its joint's range and the torso move on as one rigid piece: their momentum and their spin
+  // about their centre shared, never added to (handed the torso's turn for nothing, the legs of a body wedged
+  // between a counter and a back bar pumped him round and round: QA level 1 seed 61563)
+  lock(b) {
+    const t = this.torso.body, both = [t, b], M = t.mass + b.mass;
+    const vs = both.map((q) => Body.getVelocity(q));
+    const cx = (t.position.x * t.mass + b.position.x * b.mass) / M, cy = (t.position.y * t.mass + b.position.y * b.mass) / M;
+    const V = { x: (vs[0].x * t.mass + vs[1].x * b.mass) / M, y: (vs[0].y * t.mass + vs[1].y * b.mass) / M };
+    let L = 0, I = 0;
+    both.forEach((q, i) => {
+      const rx = q.position.x - cx, ry = q.position.y - cy;
+      L += q.inertia * Body.getAngularVelocity(q) + q.mass * (rx * (vs[i].y - V.y) - ry * (vs[i].x - V.x));
+      I += q.inertia + q.mass * (rx * rx + ry * ry);
+    });
+    const w = L / I;
+    for (const q of both) {
+      Body.setVelocity(q, { x: V.x - w * (q.position.y - cy), y: V.y + w * (q.position.x - cx) });
+      Body.setAngularVelocity(q, w);
     }
   }
 
