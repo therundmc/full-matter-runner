@@ -14,7 +14,7 @@ HANDSET = [(84, 150), (188, 146), (190, 160), (86, 164)]     # the phone's hands
 def panel_drive():
     """"THE BAR GOT SMALLER IN THE MIRROR." From inside the van: the windscreen a slab of night, the road a black
     wedge to its vanishing point (the game runs its line and the street lamps past); the mirror; THE RUNNER at the
-    wheel, the cap's brim over the gaiter, in profile against his side window."""
+    wheel, the low cap over the closed collar, in profile against his side window."""
     W, H = 1080, 288
     cv = Cv(W, H, INK)
     glass = cv.poly(DRIVE_GLASS, NIGHT)
@@ -35,18 +35,18 @@ def panel_drive():
     cv.disc(660, 262, 74, 86, INK)
     cv.bar((660, 262), (596, 196), 12, NIGHT_LL)
     cv.bar((660, 262), (742, 216), 12, NIGHT_LL)
-    # his side window behind him, and him against it: the cap's brim, the gaiter, the coat
+    # his side window behind him, and him against it: the low cap, the closed collar, the coat
     cv.poly([(770, 14), (W, 2), (W, 176), (800, 190)], NIGHT_LL)
     cv.poly([(984, 92), (W, 86), (W, 112), (988, 120)], PINK_D)
     cv.poly([(750, H), (800, 196), (880, 168), (980, 176), (W, 220), (W, H)], INK)            # his shoulders
     cv.poly([(940, 66), (966, 96), (972, 156), (944, 160), (930, 100)], BROWN)                 # his hair, to the collar
     cv.poly([(846, 84), (940, 78), (944, 104), (842, 106)], TAN)                              # the slit of his face
-    cv.poly([(840, 104), (946, 100), (958, 150), (940, 184), (860, 186), (834, 156), (822, 132)], CYAN_D)   # the gaiter, over his nose
-    cv.poly([(968, 86), (966, 62), (948, 42), (912, 30), (876, 34), (852, 50), (842, 86)], INK)   # the cap: its crown
-    cv.poly([(858, 72), (780, 73), (780, 81), (846, 87)], INK)                                    # its brim, flat
+    cv.poly([(832, 106), (950, 100), (958, 150), (940, 184), (860, 186), (834, 156), (820, 132)], INK)   # the funnel collar, closed over his nose
+    cv.poly([(830, 104), (951, 98), (954, 113), (826, 120)], CYAN_D)                              # the gaiter, at its rim
+    cv.poly([(968, 86), (966, 66), (948, 51), (912, 42), (876, 45), (852, 58), (842, 86)], INK)   # the cap: a low crown
+    cv.poly([(858, 73), (802, 75), (802, 84), (846, 87)], INK)                                    # its brim: short, flat
     cv.poly([(846, 86), (940, 80), (941, 87), (845, 93)], INK)                                    # its shadow on the slit
-    cv.poly([(780, 81), (846, 87), (846, 93), (782, 86)], CYAN_D)
-    cv.disc(910, 31, 6, col=CYAN_D)
+    cv.poly([(802, 75), (812, 74.6), (812, 84.7), (802, 84)], CYAN_D)                             # the brim's petrol front edge
     cv.poly([(930, 190), (990, 124), (1012, 196)], INK)                                      # the collar, up
     cv.bar((846, 232), (704, 222), 34, INK, w1=22)                                            # his arm to the wheel
     cv.poly(poster.ngon(700, 220, 17, 15, 6, 0), INK)

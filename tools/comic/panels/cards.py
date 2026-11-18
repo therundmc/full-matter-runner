@@ -11,7 +11,7 @@ CARDS = {
     'lucky': ('LUCKY', poster.lucky, 380, CYAN, CYAN, 'THE MAN WITH THE MATCH', ['A LONG PINK SCARF,', 'ITS END FLYING'], 'TARGET'),
     'jitters': ('JITTERS', poster.jitters, 430, BONE, BONE, 'THE YOUNG ONE', ['A CYAN', 'SAW-TOOTH CREST'], 'TARGET'),
     'boss': ('THE BOSS', poster.boss, 430, PINK_D, PINK, 'HE OWNS THE CITY', ['A BONE SUIT, A BLACK TIE,', 'A CIGAR'], 'THE LAST TARGET'),
-    'runner': ('THE RUNNER', poster.runner, 430, FIRE_D, FIRE, 'SIX YEARS OF PACKAGES', ['A DARK CAP, A PETROL', 'GAITER UP TO HIS EYES'], None),
+    'runner': ('THE RUNNER', poster.runner, 430, FIRE_D, FIRE, 'SIX YEARS OF PACKAGES', ['A LOW DARK CAP, A LONG', 'COAT, ITS TAILS FLYING'], None),
 }
 
 

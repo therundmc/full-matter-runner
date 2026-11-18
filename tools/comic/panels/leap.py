@@ -9,7 +9,8 @@ ALLEY_PUDDLES = ((540, 360, 90, 12), (250, 392, 120, 10), (820, 390, 70, 8))   #
 def panel_alley():
     """"THE NEXT DAY." The alley where he came down, looking along it to the street: two walls closing on a slab of
     neon, its light come back off the wet ground in broken bars; THE RUNNER sat against the left wall in a patch of
-    that pink, the cap's brim over the gaiter; a fire escape and a skip on the right."""
+    that pink, the low cap over the closed collar, his coat's tails spread on the ground; a fire escape and a skip on
+    the right."""
     W, H = 1008, 408
     cv = Cv(W, H, NIGHT_L)
     vx = 648
@@ -37,16 +38,16 @@ def panel_alley():
     cv.poly([(196, 150), (420, 164), (420, 330), (170, 356)], PINK_D)
     cv.poly([(238, 348), (232, 268), (250, 230), (300, 222), (318, 250), (322, 300), (352, 262), (384, 268), (396, 344), (420, 352),
              (420, 364), (236, 366)], INK)
-    cv.poly([(248, 214), (262, 214), (262, 244), (246, 248)], BROWN)                          # his hair, to the collar
+    cv.poly([(236, 292), (204, 322), (176, 334), (160, 362), (236, 366)], CYAN_D)             # his coat's tails on the ground: the lining
+    cv.poly([(238, 306), (214, 334), (190, 346), (182, 366), (238, 366)], INK)
+    cv.poly([(246, 214), (262, 214), (262, 240), (244, 244)], BROWN)                          # his hair, to the collar
     cv.poly([(262, 212), (314, 212), (314, 222), (262, 222)], TAN)                           # the slit of his face
-    cv.poly([(258, 221), (316, 220), (318, 238), (306, 250), (266, 252), (258, 240)], CYAN_D)   # the gaiter, up over his nose
-    cv.poly([(250, 214), (249, 200), (257, 188), (280, 180), (302, 184), (314, 196), (316, 214)], INK)   # the cap: its crown
-    cv.poly([(312, 204), (356, 201), (356, 207), (312, 214)], INK)                                       # its brim, flat
+    cv.poly([(254, 222), (322, 219), (318, 240), (306, 254), (266, 256), (256, 242)], INK)    # the funnel collar, closed over his nose
+    cv.poly([(254, 221), (322, 218), (322, 227), (254, 230)], CYAN_D)                         # the gaiter, at its rim
+    cv.poly([(250, 214), (249, 203), (257, 193), (280, 187), (302, 190), (314, 200), (316, 214)], INK)   # the cap: a low crown
+    cv.poly([(312, 205), (340, 203), (340, 210), (312, 214)], INK)                                       # its brim: short, flat
     cv.poly([(262, 212), (314, 212), (314, 216), (262, 216)], INK)                                       # its shadow on the slit
-    cv.poly([(314, 214), (356, 207), (356, 211), (314, 218)], CYAN_D)
-    cv.disc(280, 181, 4, col=CYAN_D)
-    cv.poly([(240, 262), (250, 232), (262, 250)], INK)                                       # the collar, up
-    cv.poly([(300, 252), (322, 236), (322, 262)], INK)
+    cv.poly([(334, 203.4), (340, 203), (340, 210), (334, 210.8)], CYAN_D)                                # the brim's petrol front edge
     cv.poly([(428, 338), (438, 318), (444, 318), (448, 362), (426, 362)], BONE_D)             # a bottle
     # the right wall: a fire escape, a skip
     for y0, y1 in ((60, 96), (150, 180)):

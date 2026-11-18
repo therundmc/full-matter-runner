@@ -24,7 +24,7 @@ CAST = [
     ('LUCKY', poster.lucky, 'lucky', 232, CYAN, ['THE SLICK ONE, THE MAN', 'WITH THE MATCH. A', 'BEANPOLE. HIS SIGN: A', 'LONG PINK SCARF.'], 0.74),
     ('JITTERS', poster.jitters, 'jitters', 250, BONE, ['THE YOUNG ONE. A RUNT,', 'HUNCHED, NEVER STILL.', 'HIS SIGN: A CYAN', 'SAW-TOOTH CREST.'], 0.74),
     ('THE BOSS', poster.boss, 'boss', 250, PINK_D, ['THE ONLY MAN CUT IN', 'BONE: A WIDE PALE SUIT,', 'A BLACK TIE, A CIGAR.', ''], 0.62),
-    ('THE RUNNER', poster.runner, 'runner', 250, FIRE_D, ['THE PLAYER. HIS SIGN:', 'A DARK SPORTS CAP;', 'A PETROL GAITER UP TO', 'HIS EYES. COLLAR UP.'], 0.68),
+    ('THE RUNNER', poster.runner, 'runner', 250, FIRE_D, ['THE PLAYER. HIS SIGN:', 'A LOW DARK CAP, A LONG', 'COAT, ITS SPLIT TAILS', 'FLYING, LINED PETROL.'], 0.68),
 ]
 GEAR = [('scarf', 'A SCARF'), ('pack', 'A PACK'), ('gloves', 'GLOVES'), ('braces', 'BRACES'), ('bag', 'A BAG ACROSS')]
 SPRITES = ['heavy', 'brute', 'thug', 'boss', 'player']

@@ -128,23 +128,29 @@ def boss(pose='stand'):
 
 
 def runner(pose='stand'):
-    """THE RUNNER (the player): a long coat, its collar up; his sign the CAP, a sports cap: a round crown, a flat
-    brim straight out, a petrol-blue button and a petrol edge under the brim; a fitted petrol gaiter up over his nose: between the
-    two, a slit of tan is all his face; brown hair to the collar behind."""
+    """THE RUNNER (the player): his sign the low CAP and the long COAT's split tails. A dark sports cap, its crown
+    low, its brim short and flat with a petrol front edge; a funnel collar closed up to his nose, the petrol gaiter
+    showing at its rim: between the two, a slit of tan is all his face; brown hair to the collar behind. A duster
+    to just below the knee, its back vent open to the waist: two tails flying behind him, the far one showing its
+    petrol lining; the satchel on its strap across him."""
     parts = [
-        ('body', [(-10, -30), (-2, -30), (-3, 0), (-10, 0)]), ('body', [(2, -30), (10, -30), (10, 0), (3, 0)]),
-        ('body', [(-13, -86), (13, -86), (16, -26), (-17, -25)]),
+        (CYAN_D, [(-8, -58), (-27, -49), (-43, -49), (-39, -36), (-26, -33), (-7, -27)]),   # the far tail: its lining
+        ('body', [(-10, -26), (-2, -26), (-3, 0), (-10, 0)]), ('body', [(2, -26), (9, -26), (10, -5), (15, -4), (16, 0), (3, 0)]),
+        ('body', [(-13, -86), (13, -86), (15, -56), (14, -21), (-6, -23), (-16, -50)]),    # the duster, to below the knee
+        ('body', [(-14, -64), (-24, -44), (-36, -26), (-41, -11), (-31, -10), (-25, -20), (-5, -24)]),   # the near tail
         ('body', [(-13, -85), (-20, -80), (-21, -46), (-15, -45)]), ('body', [(13, -85), (20, -80), (21, -46), (15, -45)]),
-        (BROWN, [(-8, -99), (-3, -99), (-4, -86), (-10, -85)]),                           # his hair, to the collar
-        (TAN, [(-4, -99), (9, -99), (9, -93), (-4, -93)]),                                # the slit
-        (CYAN_D, [(-5, -93.6), (9.5, -93.6), (10, -88), (7, -84), (-7, -84), (-6, -89)]),  # the gaiter
-        ('body', [(-14, -85), (-11, -95), (-5, -86)]), ('body', [(5, -86), (12, -93), (14, -85)]),   # the collar, up
-        ('body', [(-9, -97), (-9.5, -103), (-6, -108), (0, -110.5), (6, -109.5), (10, -105.5), (11, -97)]),   # the cap's crown
-        ('body', [(8, -100.2), (26, -101.2), (26, -98.8), (8, -97)]),                     # its brim: a flat slab, straight out
-        ('body', [(-4, -97), (9, -97), (9, -95.6), (-4, -95.6)]),                         # its shadow, across the slit
-        (CYAN_D, [(9.5, -97.2), (26, -98.8), (26, -97.6), (9.5, -96)]), (CYAN_D, ngon(0, -110.5, 1.8, 1.4, 6, 0)),
+        (BROWN, [(-11, -86), (-6, -86.5), (13, -55), (9, -52)]),                          # the satchel's strap, across him
+        (BROWN, [(8, -56), (20, -57), (21, -43), (9, -42)]),                              # the satchel, at his hip
+        (BROWN, [(-10, -100), (-4, -100), (-5, -87), (-12.5, -86)]),                      # his hair, to the collar
+        (TAN, [(-4, -100), (9, -100), (9, -94), (-4, -94)]),                              # the slit
+        ('body', [(-10, -94), (11.5, -95), (9, -84), (-8, -84)]),                         # the funnel collar, closed
+        (CYAN_D, [(-10, -94.4), (11.6, -95.2), (11.3, -92.3), (-9.7, -91.5)]),            # the gaiter, at its rim
+        ('body', [(-9.5, -98), (-9.8, -102.5), (-6, -106), (0, -107.2), (6, -106.5), (10, -103.5), (11, -98)]),   # the cap: a low crown
+        ('body', [(9, -101.2), (18.5, -101.8), (18.5, -99), (9, -98)]),                   # its brim: short, flat
+        ('body', [(-4, -98.2), (9, -98.2), (9, -97), (-4, -97)]),                         # its shadow, across the slit
+        (CYAN_D, [(16.6, -101.7), (18.5, -101.8), (18.5, -99), (16.6, -98.8)]),           # the brim's petrol front edge
     ]
-    return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -110.5))
+    return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -107.2))
 
 
 def man(cv, who, cx, foot, h, pose='stand', face=1, body=INK, clip=None, lean=0.0):
@@ -157,6 +163,23 @@ def man(cv, who, cx, foot, h, pose='stand', face=1, body=INK, clip=None, lean=0.
     return {k: turned([p], cx, foot, lean, h / 100.0, face)[0] for k, p in anchors.items()}
 
 
+# THE RUNNER from straight above, facing +x: the coat (its two tails trailing, the lining in the vent, the satchel
+# on its strap) and the cap alone (the options' table has it lying there)
+RUNNER_COAT = [
+    (CYAN_D, [(-6, -5), (-21, -5), (-24, 0), (-20, 5), (-6, 5)]),                         # the lining, in the open vent
+    ('body', [(-5, -14), (-20, -16), (-32, -11), (-22, -6), (-8, -1)]),                   # one tail
+    ('body', [(-5, 14), (-17, 17), (-28, 14), (-20, 6), (-8, 1)]),                        # the other
+    ('body', [(-6, -17), (4, -18), (8, -11), (8, 11), (4, 18), (-6, 17), (-9, 0)]),
+    (BROWN, [(5, -17.5), (7.5, -15), (-4, 14), (-7, 12)]),                                  # the strap
+    (BROWN, [(-11, 9), (-4, 10), (-4, 18), (-11, 17)]),                                    # the satchel
+    (BROWN, [(-11, -5), (-6, -6), (-6, 6), (-11, 5)]), (CYAN_D, [(-8, -6), (-5, -7), (-5, 7), (-8, 6)]),   # his hair, the collar's rim
+]
+RUNNER_CAP = [
+    (CAP, [(6, -6.2), (12.5, -5.8), (13.6, -4.3), (13.6, 4.3), (12.5, 5.8), (6, 6.2)]),   # the brim: a short flat tab
+    (CYAN_D, [(11.6, -5.9), (12.5, -5.8), (13.6, -4.3), (13.6, 4.3), (12.5, 5.8), (11.6, 5.9)]),   # its petrol front edge
+    (CAP, ngon(1, 0, 8.3, 8.3, 8)), (CYAN_D, ngon(1, 0, 1.3, 1.3, 6, 0)),
+]
+
 # seen from straight above, facing +x: [(ink, points)] in the same units
 ABOVE = {
     'cueball': [('body', [(-10, -26), (4, -28), (11, -19), (12, 19), (4, 28), (-10, 26), (-14, 10), (-14, -10)]),
@@ -168,11 +191,7 @@ ABOVE = {
     'boss': [(BONE, [(-8, -21), (4, -22), (9, -15), (9, 15), (4, 22), (-8, 21), (-11, 0)]),
              (INK, ngon(2, 0, 8, 8)), (PINK_D, [(6, -5), (10, -4), (10, 4), (6, 5)]),
              (BONE_D, [(10, 1), (18, 2), (18, 4), (10, 4)]), (FIRE, [(18, 2), (21, 2), (21, 4), (18, 4)])],
-    'runner': [('body', [(-6, -17), (4, -18), (8, -11), (8, 11), (4, 18), (-6, 17), (-9, 0)]),
-               (BROWN, [(-11, -5), (-6, -6), (-6, 6), (-11, 5)]), (CYAN_D, [(-8, -6), (-5, -7), (-5, 7), (-8, 6)]),
-               (CAP, [(6, -6.5), (15.5, -6), (16.5, -4.5), (16.5, 4.5), (15.5, 6), (6, 6.5)]),             # the brim, a flat tab
-               (CYAN_D, [(14.8, -6), (15.5, -6), (16.5, -4.5), (16.5, 4.5), (15.5, 6), (14.8, 6)]),
-               (CAP, ngon(1, 0, 8.5, 8.5, 8)), (CYAN_D, ngon(1, 0, 1.8, 1.8, 6, 0))],
+    'runner': RUNNER_COAT + RUNNER_CAP,
 }
 
 

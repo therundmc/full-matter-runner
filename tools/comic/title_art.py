@@ -253,13 +253,13 @@ def front_layer():
     man = Wide(None)
     poster.man(man, poster.runner, RUNNER_AT[0], RUNNER_AT[1], RUNNER_AT[2], face=-1)
     cv.im.alpha_composite(man.im)
-    # the fire on his edges: what of him has nothing of him 5 px to its right, above the knees
+    # the fire on his edges: what of him has nothing of him 5 px to its right, down to the street's edge (his coat's tails take it)
     a = man.im.split()[3]
     moved = Image.new('L', a.size, 0)
     moved.paste(a, (-5, 0))
     rim = ImageChops.subtract(a, moved)
     keep = Image.new('L', a.size, 0)
-    keep.paste(255, (0, 226, a.size[0], 486))
+    keep.paste(255, (0, 226, a.size[0], 524))
     cv.im.paste(FIRE + (255,), (0, 0), ImageChops.multiply(rim, keep))
     return cv
 
@@ -532,8 +532,8 @@ def thing(cv, name, cx, cy):
             cv.poly(T(slab(-42, -12 + k * 18, -42 + w, -6 + k * 18, 11 + k, 1)), BONE_D)
         cv.bar((cx - 30, cy + 44), (cx + 62, cy - 8), 8, FIRE)
         cv.poly(T([(57, -12), (78, -18), (67, -1)]), INK)
-    else:                                                    # his cap, from above (poster.ABOVE's): the way out
-        for ink, pts in poster.ABOVE['runner'][3:]:
+    else:                                                    # his cap, from above (poster.RUNNER_CAP): the way out
+        for ink, pts in poster.RUNNER_CAP:
             cv.poly(turned(pts, cx - 6, cy, 0, 4.6), ink)
 
 
