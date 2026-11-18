@@ -94,6 +94,7 @@ export default class World {
     });
     this.decals = new MapRenderer(this.map, level);
     this.renderer = new WorldRenderer(this);
+    this.cues = false; // readability cues drawn (set by Game each frame: render/Readability.js cuesOn)
     this.wallBodies = this.map.buildBodies();
     this.addBody(this.wallBodies);
     this.addBody(this.map.buildEdgeBodies()); // nobody walks off an open map border (traffic / passers-by excepted)

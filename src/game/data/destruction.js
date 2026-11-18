@@ -247,6 +247,8 @@ export const DESTRUCTION = {
     contents: [{ bit: 'coin', n: 8, on: 'break' }, { bit: 'coin', n: 1, on: 'hit', perHit: 0.5 }] },
   coat_hooks: { height: 1.7, floats: ['stuffing', 6], parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   towel_dispenser: { height: 1.3, sheds: 'paper', floats: ['paper', 12], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  conduit: { height: 1.9, saw: true },
+  flyers: { height: 1.5, floats: ['paper', 6], parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   neon_sign_beer: { height: 2.2, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
   neon_sign_bay: { height: 2.3, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
   poster_pinup: { height: 1.6, material: 'glass', floats: ['paper', 4], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
