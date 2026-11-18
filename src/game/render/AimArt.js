@@ -126,17 +126,16 @@ function notch(p, q) {
   chevron(p.x, p.y, q.a, at + N.size, N.size, col, N.alpha, hot ? 2 : 1);
 }
 
-// LOCK: a small chevron and a faint dotted line; brackets round the man nearest the line, white and beating once the
-// line is on him (on a gamepad the aim is pulled onto him: Game.padAim)
+// LOCK: the chevron on the floor, white once the line is on a man; faint corner ticks round the man nearest the line
+// (on a gamepad the aim is pulled onto him: Game.padAim)
 function lock(world, p, q, t) {
   const L = AIM.lock, N = AIM.notch;
   const near = q.target || lockTarget(world, q.team, p.x, p.y, q.a, L.cone, q.kind === 'melee' ? L.melee : L.reach);
   const on = !!near && (q.target === near || (q.kind === 'melee' && Math.hypot(near.x - p.x, near.y - p.y) < p.def.range + near.radius));
   const col = on ? AIM.hot : AIM.rest;
-  if (q.kind === 'gun') ray(q.x, q.y, q.a, 2, q.len - (on ? near.radius : 0), col, on ? 0.9 : L.dot, on ? null : [L.on, L.off, 0]);
-  if (!on) chevron(p.x, p.y, q.a, standOff(p, q, N.at) + N.size - 1, N.size - 1, col, N.alpha);
+  chevron(p.x, p.y, q.a, standOff(p, q, N.at) + N.size - 1, N.size - 1, col, N.alpha);
   if (!near) return;
-  const r = Math.round(L.box + (on ? Math.sin(t * L.rate) * L.pulse : 3)), alpha = on ? 1 : 0.6, cx = Math.floor(near.x), cy = Math.floor(near.y);
+  const r = Math.round(L.box + (on ? Math.sin(t * L.rate) * L.pulse : 2)), alpha = L.alpha[on ? 1 : 0], cx = Math.floor(near.x), cy = Math.floor(near.y);
   for (const sx of [-1, 1]) {
     for (const sy of [-1, 1]) {
       for (let k = 0; k < L.corner; k++) {

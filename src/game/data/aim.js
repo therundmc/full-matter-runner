@@ -1,4 +1,4 @@
-// How the aim is shown (the AIM option, systems/Settings.js `aim`; F7 cycles it in play). CONCEPTS TO TRY: with a
+// How the aim is shown (the AIM option, systems/Settings.js `aim`, LOCK by default; F7 cycles it in play): with a
 // mouse the old cross sits on a point, with a gamepad the right stick only gives a WAY, so every cue but the cross
 // starts at the gun and tells that way (systems/AimCue.js works it out, render/AimArt.js paints it, in the world,
 // over the lighting; the mouse keeps a small dot where it is). Lengths in world px, angles in rad, alphas 0..1.
@@ -23,9 +23,10 @@ export const AIM = {
   wedge: { len: 120, min: 0.045, fill: 0.12, hot: 0.2, edge: 0.6, edgeHot: 0.95, rays: 7, start: 4 },
   // NOTCH: a chevron at a fixed distance on the aim line, on a faint dotted arc of the ring round him
   notch: { at: 46, size: 5, arc: 0.7, dot: 0.09, ring: 0.3, alpha: 0.95, wall: 8 },
-  // LOCK: a small chevron and a faint dotted line; the man nearest the line within `cone` gets brackets, and on a
-  // gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that angle with the stick lets go
-  lock: { cone: 0.3, assist: 0.2, reach: 280, melee: 80, box: 15, corner: 5, pulse: 1.5, rate: 7, dot: 0.5, on: 1, off: 4 },
+  // LOCK: the chevron on the floor (no line of fire: where the rounds go is the player's to judge); the man nearest
+  // the line within `cone` gets faint corner ticks (`alpha`: [near the line, the line on him]), and on a gamepad the
+  // aim is pulled onto him within `assist` (Game.padAim): leaving that angle with the stick lets go
+  lock: { cone: 0.3, assist: 0.2, reach: 280, melee: 80, box: 14, corner: 3, pulse: 0.8, rate: 6, alpha: [0.3, 0.6] },
   // the car gun out of its arc: a short grey stub and a cross at its end
   offArc: { len: 30, on: 2, off: 3, cross: 3, alpha: 0.9 },
   // the mouse's dot (ui px at 720p), and the F7 label's time on screen

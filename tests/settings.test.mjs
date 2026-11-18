@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { loadSettings, saveSettings } = await load('game/systems/Settings.js');
 
-const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false, aim: 'cross' };
+const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false, aim: 'lock' };
 
 const fakeStorage = () => {
   const data = {};
@@ -59,9 +59,9 @@ test('settings: a storage that throws (or is missing) never throws out', () => {
   assert.doesNotThrow(() => saveSettings({ master: 1, music: 1, sfx: 1 }, null));
 });
 
-test('settings: the aim is one of its concepts, anything else is the cross', () => {
+test('settings: the aim is one of its concepts, anything else is LOCK (the default)', () => {
   const st = fakeStorage();
-  for (const [stored, read] of [['lock', 'lock'], ['laser', 'cross'], [3, 'cross'], [true, 'cross']]) {
+  for (const [stored, read] of [['notch', 'notch'], ['laser', 'lock'], [3, 'lock'], [true, 'lock']]) {
     st.setItem('fmr.settings.v1', JSON.stringify({ aim: stored }));
     assert.equal(loadSettings(st).aim, read);
   }

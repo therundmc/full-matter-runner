@@ -8,7 +8,7 @@
 import { AIM_STYLES } from '../data/aim.js';
 
 const KEY = 'fmr.settings.v1';
-const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false, aim: 'cross' };
+const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false, aim: 'lock' };
 const CHOICES = { aim: AIM_STYLES };
 
 function defaultStorage() {
