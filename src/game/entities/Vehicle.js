@@ -1,5 +1,6 @@
 import { CAT, MASK, LIGHTING, BODY_SCALE } from '../Config.js';
 import { SEAT } from '../data/feel.js';
+import { READABILITY } from '../data/readability.js';
 
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
@@ -20,7 +21,8 @@ const { Bodies, Body, Sleeping, Query } = Matter;
 // An open car also has: cabin (the open well: who sits in it is seen, and can be shot), wheel: [x, y, a, b] the
 // steering wheel seen from above (a thin ring: a half its width across the car, b half its depth along it), key: [x, y]
 // the ignition, pipes: its exhausts' ends, hat: [x, y, sprite] what lies on the rear seat until a hard swing throws it
-// out (throwHat).
+// out (throwHat), gun: [x, y, angle, weapon] a gun lying on the passenger seat (x, y: its grip, where a hand takes it;
+// drawn by the car until it is taken: systems/Drive.js grab; never a pickup).
 export const VEHICLES = {
   car: {
     sprite: 'props/car', hp: 28, kg: 1200, color: '#ff2a6d',
@@ -44,6 +46,7 @@ export const VEHICLES = {
     wheels: [[36, 2], [36, 62], [140, 2], [140, 62]],
     seat: [93, 19.5], door: [93, -13], cabin: [55, 113, 7, 57], wheel: [103.6, 19.5, 5.4, 1.6], key: [105.5, 26.5],
     pipes: [[1, 17], [1, 47]], hat: [71.5, 44.5, 'props/boss_hat'],
+    gun: [96, 40, 1.22, 'uzi'], // the boss's Uzi on the passenger cushion, over the cigar burn, its muzzle to that door
   },
   // the boss's men (systems/Pursuit.js): the sedan in black with one pink stripe, its layout the sedan's
   pursuer: {
@@ -53,6 +56,7 @@ export const VEHICLES = {
   },
 };
 
+const GUN_SHADOW = 0.55;  // the gun on the seat: its contact shadow's alpha
 const TYRE_HIT = [11, 5]; // half extents of a tyre's hit box (sprite px)
 const LAMP_END = 10;      // a hit this close to the nose / tail (sprite px) lands on a lamp
 
@@ -124,6 +128,7 @@ export default class Vehicle {
     this.squat = 0;                        // px the body sits back on its rear wheels (the power going down)
     this.rider = null;                     // who sits in the driver's seat (seatIn; `driver` is what drives it: systems/Drive.js)
     this.hat = !!this.m.hat;               // what lies on the rear seat is still there
+    this.gun = !!this.m.gun;               // the gun on the passenger seat is still there
     world.addBody(this.body);
   }
 
@@ -201,7 +206,11 @@ export default class Vehicle {
     const ch = this.rider, q = this.seatSpot();
     if (dt > 0) {
       ch.vel = { x: (q.x - ch.x) / (dt * 60), y: (q.y - ch.y) / (dt * 60) };
-      ch.riding.k = Math.min(1, ch.riding.k + dt / SEAT.settle);
+      const r = ch.riding;
+      r.k = Math.min(1, r.k + dt / SEAT.settle);
+      // the arm out with the gun or back (seatPose), the way it last pointed kept for the way back
+      if (r.aim !== null && r.aim !== undefined) r.was = r.aim;
+      r.up = clamp((r.up ?? 0) + (r.aim !== null && r.aim !== undefined ? dt : -dt) / SEAT.raise, 0, 1);
       if (ch.riding.slump) ch.riding.slump = Math.min(1, ch.riding.slump + dt / SEAT.slump.t); // shot at the wheel (slumpIn)
     }
     Body.setPosition(ch.body, q);
@@ -642,6 +651,33 @@ export default class Vehicle {
     }
   }
 
+  // the gun lying on the passenger seat, its grip at (x, y) (car space): drawn as the hand that takes it will hold it
+  // (CharacterAnim drawWeapon: at the size of a man sat at the wheel, SEAT.s), a contact shadow under it, the dark rim
+  // that makes a weapon read against what it lies on
+  drawGun(ctx, x, y) {
+    const d = WEAPONS[this.m.gun[3]], img = d && spriteOpt(d.sprite);
+    if (!img) return;
+    const k = img.k || 1, sc = BODY_SCALE * SEAT.s, x0 = -d.grip / k, y0 = -img.height / 2 - (d.palm ?? 0) / k;
+    const at = (ox, oy, alpha) => {
+      ctx.save();
+      ctx.translate(x + ox, y + oy);
+      ctx.rotate(this.m.gun[2]);
+      ctx.scale(sc * k, sc * k);
+      ctx.globalAlpha *= alpha;
+    };
+    at(1.2, 1.2, GUN_SHADOW);
+    ctx.drawImage(silhouette(img), x0, y0);
+    ctx.restore();
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      at(ox * READABILITY.held.px, oy * READABILITY.held.px, READABILITY.held.gun);
+      ctx.drawImage(silhouette(img), x0, y0);
+      ctx.restore();
+    }
+    at(0, 0, 1);
+    ctx.drawImage(img, x0, y0);
+    ctx.restore();
+  }
+
   draw(ctx) {
     const b = this.body;
     ctx.save();
@@ -707,6 +743,7 @@ export default class Vehicle {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
+    if (this.gun && !this.exploded) this.drawGun(ctx, ox + this.m.gun[0] + sagX, oy + this.m.gun[1] + sagY);
     if (this.hat && !this.exploded) {
       const hat = spriteOpt(this.m.hat[2]), hx = ox + this.m.hat[0] + sagX, hy = oy + this.m.hat[1] + sagY;
       if (hat) { drawSprite(ctx, silhouette(hat), hx + 1.5, hy + 1.5, 0, 0.4); drawSprite(ctx, hat, hx, hy, 0); }

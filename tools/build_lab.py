@@ -87,6 +87,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    lamps flash, the red lane shows where its tail goes, then it backs across both lanes and shuts
                    the street; a while later it goes back in. Nose-on into it is the crash, a scrape is not, a corner
                    clipped is a jolt. A coupe to drive stands before it (E at its door)
+    22 GRAB        station 17's convertible (the boss's, the north lane), the Uzi on its passenger seat: E at its
+                   driver's door (on the sidewalk) and he sits in, takes the Uzi off the seat, racks it and hangs it
+                   over the door (systems/Drive.js grab, CharacterAnim grabPose; the camera pushed in), every time he
+                   gets in (getting out puts it back on the seat); then he drives it as at 19
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -368,7 +372,10 @@ lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
 lv.prop('car', 8.0, 21.1, 0)
 lv.prop('van', 24.0, 23.5, 180)
 lv.prop('car2', 47.2, 21.1, 0)             # its tank (the rear, west end) by the hydrant: the petrol runs with the water
-lv.prop('convertible', 38.6, 20.9, 0)      # the boss's, roof down: to hole, burn and blow up (its hat stays on the seat)
+# the boss's, roof down: to hole, burn and blow up (its hat stays on the seat); 22 GRAB: E at its driver's door (north)
+# and he takes the Uzi off its passenger seat, every time (systems/Drive.js grab), then drives it
+lv.prop('convertible', 38.6, 20.9, 0, drive=True)
+lv.paint('label_grab', 34.6, 18.6)
 lv.prop('barrel', 14.5, 23.4)
 lv.prop('barrel', 33.0, 23.5)
 for x in (10.5, 20.5, 32.5, 41.0):

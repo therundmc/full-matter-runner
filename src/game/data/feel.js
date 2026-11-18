@@ -205,10 +205,29 @@ export const COAT = { hinge: [-1, 3.25], root: 3, moving: 0.4, full: 2.6, hem: 0
 // the door at speed [rad, flutter rad, rad/s, share it is drawn out longer]; hit: px round the seat a round crossing the open cabin kills within;
 // slump: shot at the wheel of the chase's car (riding.slump 0 .. 1 over `t` s): his shoulders `fwd` px onto the wheel, his
 // head turned `head` rad and his shoulders `twist`, his hands off the rim and down by his knees [ahead, apart]
+// raise: s the arm takes to come out with the gun, or to go back (riding.up); hang: a machine pistol (weapons.js
+// 'side') at rest in the door's hand, out over the door, muzzle down past it: [rad off the car's heading, the length
+// it is drawn at (hanging toward the road: foreshortened)]
+// grab: the beat of taking the gun off the passenger seat as he sets off (Vehicle `gun`, systems/Drive.js grab;
+// riding.grab: s into it; CharacterAnim grabPhases). [from, to] in s: look, his head turned `head` rad to the seat;
+// reach, the right hand off the wheel onto the gun's grip, the shoulders turned `twist` rad and the body leant `over`
+// pose px [ahead, across] toward it; take: the gun leaves the seat in that hand; lift, brought up across his chest (the
+// hand at `chest` pose px [ahead, across], the gun `chestA` rad off the heading, his eyes on it: `eye` rad); rack, the
+// door's hand to the cocking knob (`knob`: the share of it that is the way there), back and let go (weapons.js `rack`
+// points, done by `racked` of it), the rack heard at `pull`; hand: the gun to the door's hand (`give`: the share of it
+// taken by that hand closing on the grip) and over the door, the right hand back on the wheel; dur: the hand his again;
+// out: s the camera takes to come back out after it
 export const SEAT = { s: 0.94, back: 1.4, lean: -0.08, lay: 'fist', turn: 1.1, elbow: 0.1, door: [6.5, -15.5], doorElb: 0.9,
   feet: [7.8, 2.4], settle: 0.28,
   aim: { reach: 12.5, head: 1.1, twist: 0.3 }, wind: [0.95, 0.12, 15, 0.35], hit: 8,
-  slump: { t: 0.3, fwd: 3.2, head: 0.95, twist: 0.28, hands: [3.5, 4.2] } };
+  slump: { t: 0.3, fwd: 3.2, head: 0.95, twist: 0.28, hands: [3.5, 4.2] },
+  raise: 0.09, hang: [-2.7, 0.7],
+  grab: {
+    look: [0, 0.28], head: 1.15, reach: [0.06, 0.5], twist: 0.55, over: [1.2, 6], take: 0.52,
+    lift: [0.55, 0.86], chest: [8.5, 0.5], chestA: -1.1, eye: 0.15,
+    rack: [0.86, 1.28], knob: 0.35, racked: 0.8, pull: 1.06,
+    hand: [1.28, 1.62], give: 0.3, dur: 1.7, out: 0.7,
+  } };
 
 export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 

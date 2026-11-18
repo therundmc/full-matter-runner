@@ -10,6 +10,7 @@ const { default: Pursuit, dueEvents, slotOf, lockOf, inBand, reaches } = await l
 const { default: Drive, seatOf } = await load('game/systems/Drive.js');
 const { arcOf, inArc } = await load('game/systems/CarGun.js');
 const { CHASE } = await load('game/data/chase.js');
+const { SEAT } = await load('game/data/feel.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { VEHICLES, default: Vehicle } = await load('game/entities/Vehicle.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
@@ -40,6 +41,7 @@ function vehicle(w, model, x, y, a = 0) {
     world: w, type: model, m, k: 1, w: W, h: H, body, isVehicle: true, g: ctx, glassPx: { wind: [], rear: [] },
     windows: { wind: 0, rear: 0 }, tires: [true, true, true, true], lamps: [true, true, true, true], hp: m.hp, fuel: 0,
     puddle: 0, alarm: 0, lit: true, flash: 0, moving: false, dead: false, exploded: false, burning: false, rider: null,
+    hat: !!m.hat, gun: !!m.gun,
     def: { static: true, hp: m.hp, vault: true },
   });
   w.physics.add(body);
@@ -61,10 +63,11 @@ function runner(body) {
     body, alive: true, hidden: false, angle: 0, isPlayer: true, team: 'player', reloading: 0, reloadDur: 1,
     weapon: { type: 'pistol', mag: 7 }, ammo: { '9mm': 7 },
     get x() { return body.position.x; }, get y() { return body.position.y; },
-    get def() { return WEAPONS[this.weapon.type]; },
+    get def() { return WEAPONS[this.weapon ? this.weapon.type : 'fists']; },
+    setWeapon(type, mag) { this.weapon = type ? { type, mag } : null; this.reloading = 0; },
     reserveCount() { return this.ammo['9mm']; },
     kill(a, cause, killer) { this.alive = false; this.world.onKill(this, cause, killer); },
-    takeMag() { const n = Math.min(7, this.ammo['9mm']); this.ammo['9mm'] -= n; return n; },
+    takeMag() { const n = Math.min(this.def.mag, this.ammo['9mm']); this.ammo['9mm'] -= n; return n; },
     addAmmo(c, n) { this.ammo[c] += n; return true; },
   };
 }
@@ -103,7 +106,7 @@ function start(o = {}, at = [20, LANES[1]]) {
   const w = world(o.rows);
   const v = vehicle(w, o.model ?? CHASE.vehicle, at[0] * TILE, at[1] * TILE);
   const chase = { ...level2a.chase, events: o.events ?? [], ...o.chase };
-  w.drive = new Drive(w, { ...chase, arms: null, van: at, end: null }, v);
+  w.drive = new Drive(w, { ...chase, arms: o.arms ?? null, van: at, end: null }, v);
   w.pursuit = new Pursuit(w, chase);
   return { w, v, d: w.drive, P: w.pursuit, input: keys() };
 }
@@ -339,3 +342,73 @@ test('events: the alley car goes at its distance, not before; its red lane is to
   assert.ok(Math.abs(inLane - shown - CHASE.alley.red) < 0.1, `the red lane ${(inLane - shown).toFixed(2)} s ahead`);
   assert.ok(vanAt > ev.at && vanAt < ev.car[0], 'before it reaches the alley');
 }));
+
+// ---------------------------------------------------------------- the Uzi on the passenger seat (Drive.grab)
+const ARMS = level2a.chase.arms;
+const stepsTo = (s, t) => run(s, t - s.d.grab.t);
+
+test('grab: level 2A sets off with the boss\'s Uzi on the passenger seat, 30 rounds in it and one spare magazine', () => {
+  assert.deepEqual(ARMS, { weapon: 'uzi', mag: 30, spare: 30, seat: true });
+  assert.equal(CHASE.vehicle, 'convertible');
+  assert.equal(VEHICLES.convertible.gun[3], ARMS.weapon, 'the gun lying on its seat is the one he takes');
+});
+
+test('grab: the first start, he takes it in a short beat as the car rolls on by itself; nothing he does counts until it is done', () => {
+  const s = start({ arms: ARMS }), { w, v, d, input } = s, p = w.player, G = SEAT.grab, y0 = v.y;
+  p.ammo['9mm'] = 0;
+  assert.ok(d.grab && d.grabbing && v.gun && p.weapon === null, 'the gun on the seat, his hands empty');
+  assert.equal(p.riding.grab, 0);
+  assert.equal(d.shot().name, 'grab', 'the camera pushed in on him');
+  // he holds everything down: the throttle, a side, the shove, the trigger
+  for (const k of ['KeyW', 'KeyA', 'Space']) input.held.add(k);
+  input.pressed.add('Space');
+  input.mouseDown = () => true;
+  stepsTo(s, G.take - 0.05);
+  assert.ok(v.gun && p.weapon === null, 'still on the seat');
+  stepsTo(s, G.take + 0.05);
+  assert.ok(!v.gun && p.weapon.type === 'uzi' && p.weapon.mag === 30 && p.ammo['9mm'] === 30, 'in his hand: 30 in it, 30 spare');
+  stepsTo(s, G.dur - 0.05);
+  assert.ok(d.grabbing && w.projectiles.length === 0 && p.weapon.mag === 30, 'not a round fired');
+  assert.ok(Math.abs(d.v - CHASE.cruise) < 1e-6 && Math.abs(v.y - y0) < 1 && d.cool === 0, 'at cruise on its line, no shove');
+  run(s, 0.1);
+  assert.ok(!d.grabbing && p.riding.grab === null, 'done: the hand his');
+  assert.equal(d.shot().name, 'grabOut', 'the camera going back out');
+  run(s, 0.3);
+  assert.ok(d.v > CHASE.cruise, 'the throttle his again');
+  run(s, G.out);
+  assert.ok(d.grab === null && d.shot() === null, 'the usual view');
+});
+
+test('grab: a retry starts with the Uzi already in hand, no beat', () => {
+  const s = start({ arms: ARMS }), { v, d } = s, p = s.w.player;
+  p.ammo['9mm'] = 0;
+  d.skipGrab();
+  assert.ok(!d.grab && !d.grabbing && !v.gun && d.shot() === null);
+  assert.ok(p.weapon.type === 'uzi' && p.weapon.mag === 30 && p.ammo['9mm'] === 30 && p.riding.grab === null);
+  d.skipGrab(); // (twice: nothing more)
+  assert.equal(p.ammo['9mm'], 30);
+});
+
+test('grab: nothing is told while he takes it; the event due meanwhile goes once it is done', () => calm(() => {
+  const ev = level2a.chase.events.find((e) => e.kind === 'alley');
+  const s = start({ arms: ARMS, events: [ev] }, [ev.at + 0.5, LANES[1]]);
+  run(s, SEAT.grab.dur - 0.05);
+  assert.ok(s.d.grabbing && s.P.fired.size === 0 && s.P.lanes.length === 0 && !s.P.tell, 'nothing set off, nothing told');
+  run(s, 0.1);
+  assert.ok(s.P.fired.has(ev), 'then the alley car');
+}, true));
+
+test('grab: the lab\'s convertible gives the gun every time he gets in, and takes it back when he gets out', () => {
+  const w = world(), v = vehicle(w, 'convertible', 30 * TILE, LANES[1] * TILE), p = w.player;
+  p.weapon = { type: 'knife', mag: 0 };
+  for (let i = 0; i < 2; i++) {
+    const d = new Drive(w, { exit: true }, v), input = keys();
+    w.drive = d;
+    assert.ok(d.grabbing && p.weapon === null && v.gun, 'the beat, his knife put aside');
+    for (let t = 0; t < SEAT.grab.dur + 0.1; t += DT) { w.time += DT; d.step(DT, input, null); w.physics.step(DT, w.time); d.after(DT); }
+    assert.ok(!d.grabbing && p.weapon.type === 'uzi' && !v.gun);
+    input.pressed.add('KeyE');
+    d.step(DT, input, null);
+    assert.ok(w.drive === null && v.gun && p.weapon.type === 'knife', 'out: the Uzi back on the seat, his knife in his hand');
+  }
+});

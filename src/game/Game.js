@@ -210,8 +210,12 @@ export default class Game {
     if (!retry) { this.tutorialAt = null; this.taught = new Set(); }
     this.world = new World(this, LEVELS[this.levelId]);
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
-    // he gets up off the ground the first time only: a retry starts on his feet, at once
-    if (this.seen === this.levelId && !this.world.tutorial?.scene) { this.world.player.sit = 0; this.world.player.swig = null; }
+    // he gets up off the ground (takes the gun off the car's seat) the first time only: a retry starts on his feet (with
+    // the gun in hand), at once
+    if (this.seen === this.levelId && !this.world.tutorial?.scene) {
+      this.world.player.sit = 0; this.world.player.swig = null;
+      this.world.drive?.skipGrab();
+    }
     this.seen = this.levelId;
     this.opening = new Opening(this.world.player); // the bottle's shots, where he opens on it
     this.best = loadBest(this.levelId);
@@ -230,7 +234,8 @@ export default class Game {
     const dr = this.world.drive;
     this.driveZoom = dr ? cameraScale(dr.v) : 1;
     this.camera.scale = this.direction.zoom * this.driveZoom;
-    const at = dr ? dr.frame(this.camera.w / (this.camera.zoom * this.camera.scale)) : p;
+    const fr = dr && dr.frame(this.camera.w / (this.camera.zoom * this.camera.scale));
+    const at = dr ? this.direction.aim(fr.x, fr.y) : p;
     this.camera.snap(at.x, at.y);
     this.acc = 0;
     this.hitstop = 0;
@@ -673,11 +678,11 @@ export default class Game {
   // a volume changed: heard at its new level (the music speaks for itself)
   audible(key) { if (key === 'master' || key === 'sfx') Audio.play('ui'); }
 
-  // the camera's shot: the tutorial's staging, level 1's opening (systems/Opening.js) or a boss's beat
-  // (systems/BossStage.js); null: the usual view
+  // the camera's shot: the tutorial's staging, level 1's opening (systems/Opening.js), a boss's beat
+  // (systems/BossStage.js) or the gun taken off the car's seat (systems/Drive.js grab); null: the usual view
   stagedShot() {
     const w = this.world;
-    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot();
+    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot() ?? w.drive?.shot() ?? null;
   }
 
   updateCamera(dt) {
@@ -702,7 +707,8 @@ export default class Game {
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom * this.driveZoom;
     const z = this.camera.zoom * this.camera.scale, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
-    const seen = dr ? dr.frame(this.camera.w / z) : D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
+    const fr = dr && dr.frame(this.camera.w / z);
+    const seen = dr ? D.aim(fr.x, fr.y) : D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
     let tx = seen.x, ty = seen.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {

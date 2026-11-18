@@ -130,12 +130,12 @@ export default {
     ['table', 67.5, 9.6, 0], ['crate', 65.6, 7.7, 0], ['crate', 70.2, 7.7, 0], ['crate', 65.6, 10.8, 0],
     ['armchair', 72.9, 10.8, 180], ['ceiling_lamp', 68.5, 9, 0], ['wall_lamp', 68.5, 7.08, 0],
     // 17 vehicles: the street, to ram, hole and blow up
-    ['car', 8, 21.1, 0], ['van', 24, 23.5, 180], ['car2', 47.2, 21.1, 0], ['convertible', 38.6, 20.9, 0],
-    ['barrel', 14.5, 23.4, 0], ['barrel', 33, 23.5, 0], ['streetlight', 10.5, 19.7, 90],
-    ['streetlight', 20.5, 19.7, 90], ['streetlight', 32.5, 19.7, 90], ['streetlight', 41, 19.7, 90],
-    ['vending', 5.5, 18.35, 0], ['parking_meter', 16.5, 19.75, 0], ['parking_meter', 23.5, 19.75, 0],
-    ['news_box', 37.5, 18.4, 0], ['wall_lamp', 6.5, 18.08, 0], ['wall_lamp', 18.5, 18.08, 0],
-    ['wall_lamp', 34.5, 18.08, 0], ['wall_lamp', 47.5, 18.08, 0],
+    ['car', 8, 21.1, 0], ['van', 24, 23.5, 180], ['car2', 47.2, 21.1, 0],
+    ['convertible', 38.6, 20.9, 0, { drive: true }], ['barrel', 14.5, 23.4, 0], ['barrel', 33, 23.5, 0],
+    ['streetlight', 10.5, 19.7, 90], ['streetlight', 20.5, 19.7, 90], ['streetlight', 32.5, 19.7, 90],
+    ['streetlight', 41, 19.7, 90], ['vending', 5.5, 18.35, 0], ['parking_meter', 16.5, 19.75, 0],
+    ['parking_meter', 23.5, 19.75, 0], ['news_box', 37.5, 18.4, 0], ['wall_lamp', 6.5, 18.08, 0],
+    ['wall_lamp', 18.5, 18.08, 0], ['wall_lamp', 34.5, 18.08, 0], ['wall_lamp', 47.5, 18.08, 0],
     // 19 drive: a van to get into and drive down the street
     ['van', 4.6, 23.5, 0, { drive: true }], ['trash_can', 18.4, 23.9, 0], ['trash_can', 19.2, 23, 0],
     ['pursuer', 22, 21.1, 0, { pursuer: true }],
@@ -146,7 +146,7 @@ export default {
     ['convertible', 56.6, 21, 180, { lights: false }],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],

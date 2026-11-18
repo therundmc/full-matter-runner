@@ -8,7 +8,8 @@ import { load } from './setup.mjs';
 const { default: Vehicle, VEHICLES } = await load('game/entities/Vehicle.js');
 const { default: World } = await load('game/world/World.js');
 const { default: Player } = await load('game/entities/Player.js');
-const { newPose, seatPose } = await load('game/entities/CharacterAnim.js');
+const { newPose, seatPose, grabPhases } = await load('game/entities/CharacterAnim.js');
+const { WEAPONS } = await load('game/data/weapons.js');
 const { newSkirt, stepSkirt } = await load('game/entities/Skirt.js');
 const { OUTRO, outroBeat, spinK, wagAt, keyK, squatAt, routeSpeed, getawayPath, driveStep, outroOver } = await load('game/systems/Outro.js');
 const { TILE, PLAYER, BODY_SCALE, CAT } = await load('game/Config.js');
@@ -54,7 +55,7 @@ test('convertible: 5.4 x 2.0 m, its open cabin behind the windscreen, the seat, 
 function car(world, x, y, a = 0, model = 'convertible') {
   const v = Object.create(Vehicle.prototype), m = VEHICLES[model], size = pngSize(m.sprite);
   const body = Bodies.rectangle(x, y, size.w - 4, size.h - 4, { angle: a, collisionFilter: { category: CAT.PROP, mask: 0 } });
-  Object.assign(v, { world, type: model, m, isVehicle: true, w: size.w, h: size.h, k: 0.5, body, def: {}, hat: !!m.hat, rider: null, lit: false,
+  Object.assign(v, { world, type: model, m, isVehicle: true, w: size.w, h: size.h, k: 0.5, body, def: {}, hat: !!m.hat, gun: !!m.gun, rider: null, lit: false,
     lamps: [true, true, true, true], moving: false, steer: 0, bob: 0, squat: 0, exploded: false, tires: [true, true, true, true] });
   body.entity = v;
   return v;
@@ -128,6 +129,87 @@ test('seat: aiming, the arm on that side comes out with the gun and the other ha
   ch.riding.key = 1;
   const K = seatPose(ch, base(0), newPose()), k = inCar(v, ch, K.hr);
   assert.ok(Math.hypot(k.sx - M.key[0], k.sy - M.key[1]) < 0.01, 'the right hand on the ignition');
+});
+
+test('the uzi: on the passenger cushion inside the cabin, a weapon that exists; level 1 has it drawn on the seat and no pickup of it', () => {
+  const [x, y, a, type] = M.gun, [x0, x1, y0, y1] = M.cabin;
+  assert.ok(x > x0 && x < x1 && y > y0 && y < y1 && y > 32 && x > 90 && x < 101, 'its grip on the front bench\'s passenger cushion');
+  assert.ok(Number.isFinite(a) && WEAPONS[type]?.hold === 'side' && WEAPONS[type].auto, 'a one-handed automatic');
+  assert.equal(type, 'uzi');
+  // level 1's getaway: the same car, the gun drawn by it (Vehicle.gun), never a weapon on the floor to pick up
+  const c = level1.props.find((p) => p[0] === 'convertible');
+  assert.ok(c && car({}, 0, 0, 0).gun, 'the getaway car carries it');
+  assert.ok(!(level1.drops || []).some((d) => d[0] === 'uzi') && !level1.actors.some((r) => r.includes('2')), 'no Uzi to pick up in level 1');
+  assert.ok(!c[4]?.drive, 'nor can he drive it off before the outro');
+});
+
+// the uzi, sat at the wheel: a man settled in, the uzi in his hand (or not yet), the beat at t s (null: none)
+function seated(t, weapon = 'uzi') {
+  const w = { time: 0 }, v = car(w, 500, 300, 0.3), ch = man(w, 0, 0);
+  ch.weapon = weapon ? { type: weapon, mag: 30 } : null;
+  v.seatIn(ch);
+  ch.riding.k = 1;
+  ch.riding.grab = t;
+  return { v, ch, P: seatPose(ch, base(0.3), newPose()) };
+}
+
+test('grab: the beat\'s phases come in order and every pose through it is finite', () => {
+  const G = SEAT.grab;
+  assert.ok(G.look[0] < G.reach[1] && G.reach[1] <= G.take && G.take < G.lift[1] && G.lift[1] <= G.rack[0], 'reach, take, lift, then rack');
+  assert.ok(G.rack[0] < G.pull && G.pull < G.rack[1] && G.rack[1] <= G.hand[0] && G.hand[1] < G.dur, 'the rack heard in it, then the hand-off');
+  assert.ok(G.dur >= 1.4 && G.dur <= 1.9, `a short beat (${G.dur} s)`);
+  let last = grabPhases(0);
+  for (let t = 0; t <= G.dur + 0.05; t += 0.01) {
+    const ph = grabPhases(t);
+    for (const k of ['reach', 'lift', 'rack', 'give', 'hand']) assert.ok(ph[k] >= last[k] - 1e-9 && ph[k] >= 0 && ph[k] <= 1, `${k} at ${t.toFixed(2)}`);
+    last = ph;
+    const { P } = seated(t, t >= G.take ? 'uzi' : null);
+    assert.ok(finite(P), `a finite pose at ${t.toFixed(2)}`);
+    assert.equal(P.wpnOn, t >= G.take, 'the gun in his hand once taken, the car\'s before');
+  }
+  assert.ok(grabPhases(G.dur).done && !grabPhases(G.dur - 0.01).done);
+});
+
+test('grab: the right hand on the uzi\'s grip as it is taken, the left on its cocking knob at the rack, then the wheel and the door', () => {
+  const G = SEAT.grab;
+  // the take: the hand on the gun's grip where it lies on the seat
+  const take = seated(G.take, null), r = inCar(take.v, take.ch, take.P.hr);
+  assert.ok(Math.hypot(r.sx - M.gun[0], r.sy - M.gun[1]) < 0.01, `the right hand on the grip (${r.sx.toFixed(1)}, ${r.sy.toFixed(1)})`);
+  assert.ok(take.P.ha - 0.3 > 0.8, 'his head turned to the seat');
+  // the rack: the left hand on the knob of the gun held across his chest (weapons.js rack[0])
+  const t = G.rack[0] + G.knob * (G.rack[1] - G.rack[0]), { P } = seated(t), d = WEAPONS.uzi;
+  const [kx, ky] = d.rack[0], c = Math.cos(P.wpn.a), s = Math.sin(P.wpn.a), u = (kx - d.grip) * P.s, q = (ky - d.palm) * P.s;
+  const knob = { x: P.wpn.x + u * c - q * s, y: P.wpn.y + u * s + q * c };
+  assert.ok(Math.hypot(P.hl.x - knob.x, P.hl.y - knob.y) < 0.01, 'the left hand on the cocking knob');
+  assert.ok(Math.hypot(P.wpn.x - P.hr.x, P.wpn.y - P.hr.y) < 1e-9 && P.top === 2, 'the gun in the right hand, up before his chest, both hands on it');
+  // the end of the beat: the right hand back on the top of the rim, the gun in the left hand over the door
+  const end = seated(G.dur - 0.01), e = inCar(end.v, end.ch, end.P.hr), g = inCar(end.v, end.ch, end.P.wpn);
+  assert.ok(onRim(e) && Math.abs(e.sx - M.wheel[0] - M.wheel[3]) < 0.01, 'the right hand on the top of the rim');
+  assert.ok(end.P.wpnOn && g.sy < M.cabin[2] && Math.hypot(end.P.wpn.x - end.P.hl.x, end.P.wpn.y - end.P.hl.y) < 1e-9, 'the gun in the left hand, out over the door');
+});
+
+test('seat: the uzi at rest hangs from the door\'s hand out over the door; aimed out of his side that arm lifts it, eased', () => {
+  const rest = seated(null), S = SEAT;
+  const g = inCar(rest.v, rest.ch, rest.P.wpn), l = inCar(rest.v, rest.ch, rest.P.hl);
+  assert.ok(rest.P.wpnOn && g.sy < M.cabin[2] && l.sy < M.cabin[2], 'the gun in the left hand, outside the cabin\'s -y edge');
+  assert.ok(Math.abs(rest.P.wpn.a - 0.3 - S.hang[0]) < 1e-6 && rest.P.wpnLen === S.hang[1] && !rest.P.fist, 'muzzle back and down, past the door');
+  assert.ok(onRim(inCar(rest.v, rest.ch, rest.P.hr)), 'the right hand on the wheel');
+  // the arm comes out over SEAT.raise s (Vehicle.carry eases riding.up), the gun staying in the same hand
+  const { v, ch } = rest, aim = 0.3 - Math.PI / 2;
+  ch.riding.aim = aim;
+  const at = [];
+  for (let i = 0; i < 12; i++) {
+    v.carry(STEP);
+    const P = seatPose(ch, base(0.3), newPose());
+    assert.ok(finite(P) && P.wpnOn && Math.hypot(P.wpn.x - P.hl.x, P.wpn.y - P.hl.y) < 1e-9, 'in the left hand all the way');
+    at.push(Math.hypot(P.hl.x - rest.P.hl.x, P.hl.y - rest.P.hl.y));
+  }
+  assert.ok(at[0] > 0 && at[0] < at[2] && Math.abs(ch.riding.up - 1) < 1e-9, 'out in steps, not at once');
+  assert.ok(Math.abs(seatPose(ch, base(0.3), newPose()).wpn.a - aim) < 1e-9, 'on the aim');
+  ch.riding.aim = null;
+  for (let i = 0; i < 12; i++) v.carry(STEP);
+  const back = seatPose(ch, base(0.3), newPose());
+  assert.ok(Math.hypot(back.hl.x - rest.P.hl.x, back.hl.y - rest.P.hl.y) < 1e-9, 'and back over the door');
 });
 
 test('seat: a round crossing the open cabin by the seat is the driver\'s, one that crosses the rear bench is not', () => {

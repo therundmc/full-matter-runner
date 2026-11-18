@@ -32,8 +32,17 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   HUD). It is a real Matter impulse: what the car hits is pushed into the scenery (piers, lorries, parked cars, the
   rail, gates). The wrecks come from the physics, not from scripts.
 - **Shooting.** Mouse aim, one hand, from the open car (it faces +x; the driver sits on the -y side): mostly to his
-  side and ahead, never through his own windscreen frame; the pistol finishes what the shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
+  side and ahead, never through his own windscreen frame; the Uzi finishes what the shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
   the car's lane as a pickup.
+- **The gun: THE BOSS's Uzi, off his passenger seat** (the user's call, 2026-11-18). It lies on the convertible's
+  passenger cushion (Vehicle `gun`; in level 1 too, seen as he vaults in and drives off, never a pickup there). 2A
+  opens on a short beat, the first time only (a retry starts with it in hand, like level 1's bottle): the car rolls
+  on by itself, the camera pushed in on him; his head turns to the seat, the right hand leaves the wheel and he leans
+  over for it, brings it up across his chest, the left hand comes off the door and racks it, then it goes into the
+  left hand and hangs out over the door, the right hand back on the wheel (about 1.7 s; systems/Drive.js grab,
+  CharacterAnim grabPose, SEAT.grab in data/feel.js, SHOTS `grab` / `grabOut`). Nothing is told before it is done.
+  Driving, the Uzi hangs over the door in his left hand; aimed out of his side that arm lifts it. 30 rounds in it and
+  one spare magazine (`chase.arms`).
 - **Killing a car.** Windscreen (the driver): it veers into the rail. A front tyre: it spins. The gunman: it goes on
   and can still ram. A hard enough shove into something solid: wrecked.
 - **Telegraphs (readability first).** A gunman's shot: a white glint at the muzzle, then a thin red line that
@@ -228,3 +237,16 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   camera's height at 60 km/h, the corner clip, his car never damaged. Played by script in the headless browser:
   swerving half onto the kerb for each tell, shooting the drivers, through the terrace, the run is finished in about
   27 s with every car killed.
+- 2026-11-18: THE UZI. The gun of 2A is now THE BOSS's Uzi lying on the convertible's passenger seat (Vehicle `gun`,
+  drawn by the car with a contact shadow, over the cigar burn: the burn shows once it is taken; level 1's getaway shows
+  it too, not a pickup). 2A opens on the grab, the first time only (Game: a retry calls Drive.skipGrab): 1.7 s, the
+  car at cruise by itself, the controls, the shove and the trigger off, no event set off nor shot told meanwhile
+  (Pursuit waits on Drive.grabbing), the HUD's weapon blank until it is in his hand; the camera pushed in (SHOTS
+  `grab`, zoom 2.5 on the drive's own, drawn onto him) then back out (`grabOut`, 0.7 s); the rack heard (the recorded
+  `rack`), the gun lifted off the seat a placeholder (`seatGun`). At rest the Uzi hangs from his left hand over the door (SEAT.hang);
+  the arm comes out with it in 0.09 s (riding.up). `chase.arms`: the Uzi, 30 + one spare magazine (30). Played by
+  script in the headless browser (god mode, straight down the road, flat out along the south kerb past the lorry,
+  aiming at the nearest pursuer's windscreen): bursts of 3 / 4 / 5 rounds: 9 / 12 / 24 fired, 48-51 rounds left at
+  the end (magazine pickups included), 3 or 4 of the 4 cars stopped; the trigger held whenever one is in reach: 30 fired, 30
+  left; held all the way: dry 6.8 s in, before the first car. On the back road the rounds are not scarce yet. Lab
+  station 22 GRAB (station 17's convertible: E at its door, the grab every time; out, the Uzi back on the seat).

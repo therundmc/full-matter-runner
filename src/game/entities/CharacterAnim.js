@@ -1191,37 +1191,43 @@ export function kickPose(ch, P, V) {
 // side comes out with what he holds and the other hand takes the top of the wheel; the head and the shoulders turn
 // after it. riding.k: 0 .. 1 of him settled in (the pose blended in from whatever brought him there: a vault over the
 // door). The numbers: data/feel.js SEAT; where the seat and the wheel are: the model's `seat` and `wheel` (sprite px).
+// A machine pistol (weapons.js 'side') is not put away: at rest it hangs in the door's hand, out over the door
+// (SEAT.hang); aimed to his side, that arm lifts it. riding.up (0 .. 1, eased by Vehicle.carry; none: 1) is how far the
+// arm is out, riding.was the way it last pointed. riding.grab: s into the beat of taking the gun off the passenger
+// seat (grabPose).
 export function seatPose(ch, P, V) {
   const st = ch.riding, v = st.v, m = v.m, S = SEAT, w = smooth(st.k);
   if (w <= 0 || !m.seat) return P;
   const a = v.body.angle, c = Math.cos(a), s = Math.sin(a), d = ch.def;
   const at = (out, lx, ly) => { out.x = lx * c - ly * s; out.y = lx * s + ly * c; };
-  const aiming = st.slump > 0 || st.aim === null || st.aim === undefined ? -1 : angDiff(a, st.aim) < 0 ? 0 : 1;
+  const slump = st.slump > 0, grab = !slump && st.grab !== null && st.grab !== undefined;
+  const aimA = slump || grab ? null : st.aim ?? (st.up > 0 ? st.was ?? null : null);
+  const u = aimA === null ? 0 : st.up === undefined ? 1 : smooth(st.up);
+  const hang = d.kind === 'gun' && d.hold === 'side' && !!d.sprite;
   copyPose(V, P);
   V.ta = a + S.lean; V.ha = a;
   V.tx = -c * S.back; V.ty = -s * S.back;
   V.s = S.s; V.lift = 0; V.legs = 1; V.top = 0; V.tuck = 0; V.over = 0; V.px = V.py = 0; V.bow = 0;
-  V.carryImg = null; V.wpnOn = false; V.fist = false;
+  V.carryImg = null; V.wpnOn = false; V.fist = false; V.wpnLen = 1; V.wpnS = 1;
   for (let i = 0; i < 2; i++) {
     const f = V.feet[i], side = i ? 1 : -1;
     at(f, S.feet[0], side * S.feet[1]);
     f.a = a; f.lift = 0; f.heel = 0;
   }
-  // the wheel's hand (the right, or the left while the right aims): on the top of the rim, the edge nearest the glass
-  const W = m.wheel || [m.seat[0] + 10, m.seat[1], 5, 1.5], g = (v.steer || 0) * S.turn, on = aiming === 1 ? 0 : 1;
-  at(on ? V.hr : V.hl, (W[0] - m.seat[0] + Math.cos(g) * W[3]) / BODY_SCALE, (W[1] - m.seat[1] + Math.sin(g) * W[2]) / BODY_SCALE);
-  V.hand[on] = S.lay; V.elb[on] = S.elbow;
-  // the other on the door (the left: the door is on his left), the elbow out over its top
-  if (on) {
-    at(V.hl, S.door[0] / BODY_SCALE, S.door[1] / BODY_SCALE);
-    V.hand[0] = 'loose'; V.elb[0] = S.doorElb;
-  }
+  // the right hand on the top of the rim, the edge nearest the glass; the left on the door, the elbow out over its
+  // top (the door is on his left), a machine pistol hanging from it
+  const W = m.wheel || [m.seat[0] + 10, m.seat[1], 5, 1.5], g = (v.steer || 0) * S.turn;
+  at(WHEEL, (W[0] - m.seat[0] + Math.cos(g) * W[3]) / BODY_SCALE, (W[1] - m.seat[1] + Math.sin(g) * W[2]) / BODY_SCALE);
+  at(DOOR, S.door[0] / BODY_SCALE, S.door[1] / BODY_SCALE);
+  setPt(V.hr, WHEEL); V.hand[1] = S.lay; V.elb[1] = S.elbow;
+  setPt(V.hl, DOOR); V.hand[0] = hang ? 'fist' : 'loose'; V.elb[0] = S.doorElb;
+  if (hang) hangGun(V, DOOR, a);
   // the key turned (riding.key 0 .. 1): the right hand leaves the wheel for the ignition
   if (st.key > 0 && m.key) {
     const k = smooth(st.key), kx = (m.key[0] - m.seat[0]) / BODY_SCALE, ky = (m.key[1] - m.seat[1]) / BODY_SCALE;
     V.hr.x = lerp(V.hr.x, kx * c - ky * s, k); V.hr.y = lerp(V.hr.y, kx * s + ky * c, k);
   }
-  if (st.slump > 0) {
+  if (slump) {
     // shot at the wheel: slumped onto it, his head turned aside, his hands slid off the rim
     const k = smooth(st.slump), L = S.slump;
     V.tx += c * L.fwd * k; V.ty += s * L.fwd * k;
@@ -1231,22 +1237,117 @@ export function seatPose(ch, P, V) {
       h.x = lerp(h.x, lx * c - ly * s, k); h.y = lerp(h.y, lx * s + ly * c, k);
       V.hand[i] = 'loose';
     }
-  } else if (st.aim !== null && st.aim !== undefined) {
-    const off = angDiff(a, st.aim), i = off < 0 ? 0 : 1, h = i ? V.hr : V.hl, A = S.aim;
-    V.ta = a + clamp(off, -1, 1) * A.twist;
-    V.ha = a + clamp(off, -A.head, A.head);
+    if (hang) hangGun(V, V.hl, a);
+  } else if (grab) grabPose(ch, V, st.grab, a, at);
+  else if (u > 0) {
+    // the arm on the aim's side out with the gun (u: how far), the head and the shoulders turned after it; aimed to
+    // his right the gun goes to the right hand (seen from above it reads the same in either) and the left takes the
+    // wheel, a gun hanging in it leaving it as the right one comes out
+    const off = angDiff(a, aimA), i = off < 0 ? 0 : 1, h = i ? V.hr : V.hl, A = S.aim, gun = d.kind === 'gun' && !!d.sprite;
+    V.ta = lerpA(V.ta, a + clamp(off, -1, 1) * A.twist, u);
+    V.ha = lerpA(V.ha, a + clamp(off, -A.head, A.head), u);
     shoulder(SH, V, i ? 1 : -1);
-    h.x = SH.x + Math.cos(st.aim) * A.reach * V.s; h.y = SH.y + Math.sin(st.aim) * A.reach * V.s;
-    V.elb[i] = 0.15;
-    if (d.kind === 'gun' && d.sprite) {
-      // (the gun goes to the hand on the aim's side: seen from above it reads the same in either)
-      V.wpnOn = true; V.fist = i === 1; V.wpnLen = 1; V.wpnS = 1;
-      V.wpn.x = h.x; V.wpn.y = h.y; V.wpn.a = st.aim;
+    h.x = lerp(h.x, SH.x + Math.cos(aimA) * A.reach * V.s, u); h.y = lerp(h.y, SH.y + Math.sin(aimA) * A.reach * V.s, u);
+    V.elb[i] = lerp(V.elb[i], 0.15, u);
+    if (i === 1) {
+      const k = hang ? smooth(u * 2 - 1) : u;
+      V.hl.x = lerp(V.hl.x, WHEEL.x, k); V.hl.y = lerp(V.hl.y, WHEEL.y, k);
+      V.elb[0] = lerp(V.elb[0], S.elbow, k);
+      if (k > 0.5) V.hand[0] = S.lay;
+      if (gun && (u > 0.5 || !hang)) {
+        V.wpnOn = true; V.fist = true; V.wpnLen = 1;
+        V.wpn.x = h.x; V.wpn.y = h.y; V.wpn.a = aimA;
+      }
+    } else if (gun) {
+      V.wpnOn = true; V.fist = false;
+      V.wpn.x = h.x; V.wpn.y = h.y;
+      V.wpn.a = hang && u < 1 ? lerpA(a + S.hang[0], aimA, u) : aimA;
+      V.wpnLen = hang ? lerp(S.hang[1], 1, u) : 1;
     }
   }
   blendPose(P, V, w);
   if (w > 0.5) { P.wpnOn = V.wpnOn; P.carryImg = null; P.flat = null; P.magIn = null; }
   return P;
+}
+const WHEEL = { x: 0, y: 0 }, DOOR = { x: 0, y: 0 }, GRIP = { x: 0, y: 0 }, CHEST = { x: 0, y: 0 }, KNOB = { x: 0, y: 0 };
+const setPt = (out, p) => { out.x = p.x; out.y = p.y; };
+
+// the gun hanging from hand h over the door (SEAT.hang), the car heading a
+function hangGun(V, h, a) {
+  V.wpnOn = true; V.fist = false;
+  V.wpn.x = h.x; V.wpn.y = h.y; V.wpn.a = a + SEAT.hang[0]; V.wpnLen = SEAT.hang[1];
+}
+
+// The phases of the grab at t s into it (data/feel.js SEAT.grab), each 0 .. 1: his head to the seat, the right hand
+// onto the gun, the body leant over to it, the gun in his hand (held), up across his chest, the rack's progress, the
+// left hand closing on the grip, the gun to the door and the right hand back to the wheel, done
+export function grabPhases(t, out = {}) {
+  const G = SEAT.grab, span = (a, b) => smooth((t - a) / (b - a));
+  out.look = span(...G.look);
+  out.reach = span(...G.reach);
+  out.held = t >= G.take;
+  out.lift = span(...G.lift);
+  out.over = out.reach * (1 - out.lift);
+  out.rack = clamp((t - G.rack[0]) / (G.rack[1] - G.rack[0]), 0, 1);
+  const mid = G.hand[0] + (G.hand[1] - G.hand[0]) * G.give;
+  out.give = span(G.hand[0], mid);
+  out.hand = span(mid, G.hand[1]);
+  out.done = t >= G.dur;
+  return out;
+}
+const GRP = {};
+
+// The gun taken off the passenger seat (Vehicle `gun`, systems/Drive.js grab), t s in: the head turns to it, the right
+// hand leaves the wheel, the shoulders turn and he leans over, the hand closes on its grip; it comes up across his
+// chest, the left hand comes off the door, takes the cocking knob, pulls it back and lets go; the gun goes into the
+// left hand and out over the door, the right hand back on the wheel (V: the rest pose seatPose made, the car heading a,
+// at: the car's frame to the pose's)
+function grabPose(ch, V, t, a, at) {
+  const G = SEAT.grab, m = ch.riding.v.m, d = ch.def, ph = grabPhases(t, GRP), k = V.s;
+  // the body: turned to the seat and leant over it, then back
+  V.ta += G.twist * ph.over;
+  at(TMP, G.over[0] * ph.over, G.over[1] * ph.over);
+  V.tx += TMP.x; V.ty += TMP.y;
+  V.ha = a + lerp(G.head * ph.look, G.eye, ph.lift) * (1 - ph.hand);
+  // the right hand: the wheel, the grip on the seat, the chest, the wheel
+  const gun = m.gun ?? [m.seat[0] + 4, m.seat[1] + 20, Math.PI / 2];
+  at(GRIP, (gun[0] - m.seat[0]) / BODY_SCALE, (gun[1] - m.seat[1]) / BODY_SCALE);
+  at(CHEST, G.chest[0], G.chest[1]);
+  const r = V.hr;
+  r.x = lerp(lerp(lerp(WHEEL.x, GRIP.x, ph.reach), CHEST.x, ph.lift), WHEEL.x, ph.hand);
+  r.y = lerp(lerp(lerp(WHEEL.y, GRIP.y, ph.reach), CHEST.y, ph.lift), WHEEL.y, ph.hand);
+  V.hand[1] = ph.reach > 0.5 && !ph.held ? 'loose' : 'fist';
+  V.elb[1] = lerp(SEAT.elbow, 0.35, ph.reach * (1 - ph.hand));
+  // the gun: drawn by the car until it is taken; in the right hand, then in the left
+  const ga = lerpA(lerpA(a + gun[2], a + G.chestA, ph.lift), a + SEAT.hang[0], ph.hand);
+  V.wpnOn = ph.held && d.kind === 'gun' && !!d.sprite;
+  V.fist = false;
+  V.wpn.a = ga;
+  V.wpnLen = lerp(1, SEAT.hang[1], ph.hand);
+  // the left hand: the door, the knob (along the gun's rack points), the grip, the door again with the gun
+  const l = V.hl;
+  if (ph.rack > 0) {
+    const R = d.rack ?? [[d.grip + 2, -3]], f = ph.rack;
+    let x = R[0][0], y = R[0][1];
+    if (f > G.knob) {
+      const q = clamp((f - G.knob) / (G.racked - G.knob), 0, 1) * (R.length - 1), i = Math.min(R.length - 2, Math.floor(q)), e = smooth(q - i);
+      if (R.length > 1) { x = lerp(R[i][0], R[i + 1][0], e); y = lerp(R[i][1], R[i + 1][1], e); }
+    }
+    onGun(d, false, x, y, CHEST.x, CHEST.y, a + G.chestA, k, k, KNOB);
+    const e = smooth(f / G.knob);
+    l.x = lerp(DOOR.x, KNOB.x, e); l.y = lerp(DOOR.y, KNOB.y, e);
+    V.hand[0] = 'fist'; V.elb[0] = lerp(SEAT.doorElb, 0.5, e);
+  }
+  if (ph.give > 0) { l.x = lerp(l.x, CHEST.x, ph.give); l.y = lerp(l.y, CHEST.y, ph.give); }
+  if (ph.hand > 0) {
+    l.x = lerp(CHEST.x, DOOR.x, ph.hand); l.y = lerp(CHEST.y, DOOR.y, ph.hand);
+    V.elb[0] = lerp(0.5, SEAT.doorElb, ph.hand);
+    if (ph.hand > 0.5) V.hand[0] = d.hold === 'side' ? 'fist' : 'loose';
+  }
+  const h = ph.hand > 0 ? l : r;
+  V.wpn.x = h.x; V.wpn.y = h.y;
+  // up before his chest it is drawn over his shoulders, the hand(s) on it with it, until it goes out to the door
+  if (V.wpnOn && ph.lift > 0.3 && ph.hand < 0.5) V.top = ph.rack > 0 ? 2 : 1;
 }
 
 // ---------------- sitting on the ground (Player.sit: how a level starts) ----------------

@@ -84,7 +84,8 @@
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
   2A is built by tools/build_level2a.py (level `chase` block: van start, cruise, lanes, end col, events by col); the
-  drive is systems/Drive.js with its numbers in data/chase.js (CHASE); a map wider than CHUNKS.whole tiles is drawn
+  drive is systems/Drive.js with its numbers in data/chase.js (CHASE); his gun is the boss's Uzi taken off the
+  passenger seat in a short beat the first time only (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
   in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer, x0, x1)`), never a canvas.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
@@ -122,7 +123,8 @@
   systems/Outro.js `OUTRO`): he vaults the door into the seat (anyone can be sat at a wheel: `Vehicle.seatIn`,
   CharacterAnim `seatPose`, `ch.riding`, data/feel.js `SEAT`), the key, the wheelspin and its rubber, then
   `exit.route` (the path of the point `OUTRO.pivot` ahead of its middle; `exit.slide`: the share of the slide a
-  bend) and the hat off the rear seat at the first hard swing. It cannot be destroyed (`armoured`). The car is 5.4 m
+  bend) and the hat off the rear seat at the first hard swing; the boss's Uzi lies on the passenger seat (Vehicle
+  `gun`, drawn by the car: not pickable in level 1, it is level 2A's gun). It cannot be destroyed (`armoured`). The car is 5.4 m
   in a 4 m lot: its row and the first bend are the only ones that clear the walls (tests/getaway.test.mjs drives the
   whole body down the route): check it in the browser after touching the route; the lab's station 20 replays it.
 - Shop alarms (level `alarms`, systems/Alarms.js), the bar's fuse box (level `power`, systems/Power.js), street

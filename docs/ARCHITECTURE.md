@@ -175,10 +175,14 @@ src/
                           ('kill' cause `crash`; a corner clipped is a jolt); `fx`: tyre smoke, rubber on the road,
                           spray, what is ahead frightened, `canopy` props torn down; the camera's pull-out and lead
                           (viewHeight, cameraScale, frame: pure); the end col clears the level; its engine heard
-                          (World hands `motor` to Audio.motor)
+                          (World hands `motor` to Audio.motor); `grab`: the gun on the car's passenger seat
+                          (Vehicle `gun`, `chase.arms.seat`, the lab's convertible) taken in a short beat as he sets
+                          off (the car on its own, nothing told meanwhile, `shot`: SHOTS grab / grabOut; posed by
+                          CharacterAnim grabPose), skipped on a retry (skipGrab)
       CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click, R; the arc (arcOf / inArc:
                           the driver's side and ahead, ~200 degrees, never across his own car or an open car's
-                          windscreen), rounds carrying the car's speed, his arm out through `riding.aim`
+                          windscreen), rounds carrying the car's speed, his arm out through `riding.aim` (eased:
+                          `riding.up`; a machine pistol hangs over the door at rest, SEAT.hang)
       Pursuit.js          the pursuers (level 2A; the lab's dummy, prop option `pursuer`): black sedans driven like his
                           car (speed + heading -> velocity, read back from the physics), slots (alongside on his driver's
                           side / behind), a look-ahead strip per lane (swerve or brake), swipes; knocked off its line:

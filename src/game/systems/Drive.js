@@ -12,6 +12,9 @@
 //   fast: the crash that kills him (a corner only clipped: a jolt, onNose)
 //   what its speed does (fx): tyre smoke and rubber on the road, spray, pigeons and people frightened ahead, awnings
 //   and parasols (`canopy`) torn down as it passes under
+//   the gun lying on the passenger seat (Vehicle `gun`; the level's `chase.arms.seat`, the lab's car that has one): taken
+//   in a short beat as he sets off (grab: the car rolls on by itself, the controls and the gun his only once it is
+//   done; CharacterAnim grabPose draws it, `shot` names the camera's); a retry starts him with it in hand (skipGrab)
 // The camera's numbers (viewHeight, cameraScale, frame) are pure; Game uses them. DOM-free but for the van it may
 // make (entities/Vehicle.js).
 import { TILE, CAT, MASK } from '../Config.js';
@@ -20,6 +23,7 @@ import { VIEW } from '../../engine/Camera.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import { Gearbox, MOTOR, squealOf } from '../../audio/Motor.js';
 import { CHASE } from '../data/chase.js';
+import { SEAT } from '../data/feel.js';
 import Vehicle from '../entities/Vehicle.js';
 import CarGun from './CarGun.js';
 
@@ -132,17 +136,73 @@ export default class Drive {
     this.lastV = this.v;
     this.board();
     this.gun = new CarGun(world, van, seatOf(van, CHASE)); // his gun out of the window (mouse, left click, R)
-    if (o.arms) this.arm(o.arms);
+    this.grab = null;                 // the beat of taking the gun off the passenger seat: { t, arms, took, racked }
+    this.stash = undefined;           // the lab: what was in his hand before he took the seat's gun (given back at leave)
+    // the lab's car with a gun on its seat: he takes it every time he gets in
+    const arms = o.arms ?? (o.exit && van.gun ? { weapon: van.m.gun[3], seat: true } : null);
+    if (arms) this.arm(arms);
     // water standing in the gutter (the level's `chase.water`: [col, row, r px])
     for (const [c, r, rad] of o.water || []) world.liquids?.feed(c * TILE, r * TILE, Math.PI * rad * rad * CHASE.fx.water, 'water', rad);
   }
 
-  // what he sets off with (the level's `chase.arms`: { weapon, mag, spare }): the gun in his hand, its magazine, spare
-  // rounds in his pools
-  arm({ weapon, mag, spare = 0 }) {
+  // what he sets off with (the level's `chase.arms`: { weapon, mag, spare, seat }): the gun in his hand, its magazine,
+  // spare rounds in his pools; seat: it lies on the car's passenger seat and he takes it in the beat (grab)
+  arm(arms) {
     const p = this.world.player;
+    if (arms.seat && this.van.gun) {
+      if (this.o.exit) this.stash = p.weapon;
+      p.weapon = null; // (his hands free for it)
+      this.grab = { t: 0, arms, took: false, racked: false };
+      if (p.riding) p.riding.grab = 0;
+      return;
+    }
+    const { weapon, mag, spare = 0 } = arms;
     p.setWeapon(weapon, mag);
     if (spare) p.addAmmo(p.def.ammo, spare);
+  }
+
+  // he is taking the gun off the seat: the controls and the gun are not his yet
+  get grabbing() { return !!this.grab && this.grab.t < SEAT.grab.dur; }
+
+  // a retry: no beat, the seat's gun already in his hand
+  skipGrab() {
+    const g = this.grab;
+    if (!g) return;
+    this.grab = null;
+    if (this.world.player.riding) this.world.player.riding.grab = null;
+    if (!g.took) this.take(g);
+  }
+
+  // the gun off the seat and into his hand
+  take(g) {
+    g.took = true;
+    this.van.gun = false;
+    this.arm({ ...g.arms, seat: false });
+  }
+
+  // the beat, a step: the gun taken, racked, handed over to the door's hand; the camera back out after it
+  grabStep(dt) {
+    const g = this.grab, G = SEAT.grab, w = this.world, p = w.player;
+    g.t += dt;
+    if (p.riding) p.riding.grab = g.t < G.dur ? g.t : null;
+    if (!g.took && g.t >= G.take) {
+      this.take(g);
+      w.sound('seatGun', p.x, p.y, 0.7); // placeholder (assets/sound/PLACEHOLDERS.md)
+    }
+    if (!g.racked && g.t >= G.pull) {
+      g.racked = true;
+      w.sound('rack', p.x, p.y, 0.8, { weapon: p.weapon?.type });
+    }
+    if (g.t >= G.dur + G.out) this.grab = null;
+  }
+
+  // the camera's shot (Game.stagedShot; SHOTS in data/staging.js): pushed in on him while he takes the gun, then
+  // back out
+  shot() {
+    const g = this.grab, p = this.world.player, vel = Body.getVelocity(this.van.body), lag = this.C.camera.lag * 60;
+    if (!g || !this.on) return null;
+    // (where he is, plus what the camera trails its target by: frame's own lead)
+    return { name: g.t < SEAT.grab.hand[0] ? 'grab' : 'grabOut', at: { x: p.x + vel.x * lag, y: p.y + vel.y * lag } };
   }
 
   get kmh() { return kmh(this.v, this.C); }
@@ -190,6 +250,13 @@ export default class Drive {
     v.armoured = this.was.armoured;
     v.unseat?.();
     v.onCollide = null;
+    if (this.stash !== undefined) {
+      // the lab: the seat's gun put back on the seat (taken again next time), what he had back in his hand
+      v.gun = true;
+      p.weapon = this.stash;
+      this.stash = undefined;
+      this.grab = null;
+    }
     v.brake = 0; v.steer = 0; v.bob = 0;
     b.sleepThreshold = SLEEP;
     b.frictionAir = this.was.air;
@@ -222,7 +289,10 @@ export default class Drive {
     if (!this.on) return;
     this.carry();
     if (this.dead) { if (this.coasting) this.coastStep(dt); return; }
-    this.gun.step(dt, input, aim);
+    // taking the gun off the seat: the car rolls on by itself, nothing fires (a click now is lost)
+    const busy = this.grabbing;
+    if (this.grab) this.grabStep(dt);
+    if (!busy) this.gun.step(dt, input, aim);
     const w = this.world, C = this.C, v = this.van, b = v.body;
     // what the physics let it do last step: a hit slows it, a knock sideways is taken (the small bounce off what it
     // leans on is not: it goes on along it)
@@ -232,14 +302,14 @@ export default class Drive {
       this.u = vel.y * this.u < 0 && Math.abs(vel.y) < C.bounce ? 0 : vel.y;
     }
     // the controls
-    const throttle = input.down('KeyW'), brake = input.down('KeyS');
-    const steer = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
+    const throttle = !busy && input.down('KeyW'), brake = !busy && input.down('KeyS');
+    const steer = busy ? 0 : (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
     this.braking = brake;
     this.v = speedStep(this.v, this.cruise, throttle, brake, dt, C);
     // a van at a standstill does not go sideways; crawling (held up by what it pushes), it can still steer out
     const grip = this.v > 0.1 && !brake ? clamp(this.v / this.cruise, C.crawl, 1) : 0;
     this.cool = Math.max(0, this.cool - dt);
-    if (input.hit('Space') && this.cool <= 0 && grip > 0.2) this.shove(aim);
+    if (input.hit('Space') && !busy && this.cool <= 0 && grip > 0.2) this.shove(aim);
     if (this.shoveT > 0) {
       this.shoveT -= dt;
       this.u = this.side * C.shove.v * grip;
@@ -255,7 +325,7 @@ export default class Drive {
     v.brake += ((brake ? 1 : 0) - v.brake) * Math.min(1, dt * 12);
     v.bob = Math.sin(w.time * 9) * 0.35 * Math.min(1, this.v / C.cruise);
     // the lab: E, or stopped once it has gone, and he gets out
-    if (this.o.exit) {
+    if (this.o.exit && !busy) {
       if (this.v > 1) this.moved = true;
       this.stillT = this.moved && this.v < C.exit.stop ? this.stillT + dt : 0;
       if (input.hit('KeyE') || this.stillT > C.exit.still) this.leave();

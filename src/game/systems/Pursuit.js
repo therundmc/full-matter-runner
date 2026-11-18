@@ -165,7 +165,8 @@ export default class Pursuit {
     const w = this.world;
     if (w.exited) return;
     const tg = this.target();
-    if (tg && this.chase) for (const e of dueEvents(this.chase.events, this.fired, tg.x)) this.trigger(e, tg);
+    // (nothing is set off while he takes the gun off the seat: Drive.grab)
+    if (tg && this.chase && !w.drive?.grabbing) for (const e of dueEvents(this.chase.events, this.fired, tg.x)) this.trigger(e, tg);
     this.assign();
     for (const car of this.cars) {
       car.t += dt;
@@ -521,7 +522,7 @@ export default class Pursuit {
   // can this car's gunman start a tell now?
   canTell(car, tg) {
     const G = this.G;
-    if (!tg || !car.gunman || !car.driver || this.tell || this.cool > 0) return false;
+    if (!tg || !car.gunman || !car.driver || this.tell || this.cool > 0 || this.world.drive?.grabbing) return false;
     if (!car.dummy && this.busy(tg)) return false;
     if (car.dummy ? car.state !== 'parked' : car.state !== 'chase' || car.chaseT < G.grace) return false;
     const m = this.muzzle(car), d = Math.hypot(tg.seat.x - m.x, tg.seat.y - m.y);

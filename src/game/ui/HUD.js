@@ -25,7 +25,8 @@ export function drawHUD(ctx, game, t) {
   const def = WEAPONS[p.weapon ? p.weapon.type : 'fists'];
   const bk = p.brokeAt && w.time - p.brokeAt.t < BREAK.hud ? w.time - p.brokeAt.t : -1;
   if (bk >= 0) text(ctx, Math.floor(bk * 7) % 2 ? p.brokeAt.name : 'BROKEN', pad, pad + 14 * s, 30 * s, PALETTE.pink, { align: 'left', rot: -0.04 });
-  else text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
+  // (nothing while the gun on the car's seat is still to be taken: systems/Drive.js grab)
+  else if (!(w.drive?.grab && !w.drive.grab.took)) text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
   const ammo = p.ammoText, worn = def.wear && p.weapon ? drawWear(ctx, def.wear, p.weapon.wear, pad, pad + 38 * s, s) : false;
   if (ammo) {
     const dry = p.weapon.mag <= 0 && p.reloading <= 0;

@@ -1,6 +1,6 @@
 // How the prologue is staged (level `tutorial`: tools/build_tutorial.py, systems/Tutorial.js): the camera's shots,
 // the lessons that slow time, the opening with the man and his match, the flat blowing up at the end. Also level 1's
-// opening shots and how a comic page is skipped.
+// opening shots, level 2A's and how a comic page is skipped.
 // Times in s (real ones where said), lengths in px unless said otherwise.
 
 // ---- the camera (systems/Direction.js): a shot is a zoom on top of the usual view (1; 2: twice as close) eased
@@ -28,6 +28,10 @@ export const SHOTS = {
   swig: { zoom: 2.2, ease: 6, pull: 0, look: 0 },            // close on him while he drinks
   swigThrow: { zoom: 1.8, ease: 5, pull: 0.45, look: 0, keep: 0.75 }, // the bottle thrown: toward where it breaks, he in the picture
   swigUp: { zoom: 1, ease: 8, pull: 0, look: 1 },            // he gets up: the hand given back, fast
+  // level 2A's start, the Uzi taken off the passenger seat (systems/Drive.js grab): close on him at the wheel, the
+  // view drawn from ahead of the car onto him; then back out to the drive's view
+  grab: { zoom: 2.5, ease: 7, pull: 0.85, look: 0 },
+  grabOut: { zoom: 1, ease: 3.5, pull: 0, look: 0 },
 };
 export const DIRECTION = {
   focus: 3.2,              // 1/s the view goes to (and comes back from) what a shot looks at

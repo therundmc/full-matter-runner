@@ -421,7 +421,9 @@ chase = {
     ],
     # water standing in the gutter [col, row, r px]: spray under his wheels
     'water': [[76.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]],
-    'arms': {'weapon': 'pistol', 'mag': 7, 'spare': 7},   # a 1911, its magazine and a spare one (systems/Drive.js)
+    # the boss's Uzi off his passenger seat (taken in a short beat the first time: systems/Drive.js grab), its magazine
+    # and ONE spare one
+    'arms': {'weapon': 'uzi', 'mag': 30, 'spare': 30, 'seat': True},
 }
 
 if __name__ == '__main__':
