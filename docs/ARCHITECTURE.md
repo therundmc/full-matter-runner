@@ -174,6 +174,19 @@ src/
                           into what does not give the crash ('kill' cause `crash`); the camera's pull-out and lead
                           (viewHeight, cameraScale, frame: pure); the end col clears the level; its engine heard
                           (World hands `motor` to Audio.motor)
+      CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click, R; the arc (arcOf / inArc:
+                          the driver's side and ahead, ~200 degrees, never across his own car or an open car's
+                          windscreen), rounds carrying the car's speed, his arm out through `riding.aim`
+      Pursuit.js          the pursuers (level 2A; the lab's dummy, prop option `pursuer`): black sedans driven like his
+                          car (speed + heading -> velocity, read back from the physics), slots (alongside on his driver's
+                          side / behind), a look-ahead strip per lane (swerve or brake), swipes; knocked off its line:
+                          the physics alone a moment; `contact`: a hard hit on what does not give wrecks it. Kill rules
+                          from Vehicle's 'carPart' (windscreen: the driver, it veers; front tyre: a spin) and 'round'
+                          (the gunman); kills emitted as 'kill' (cause bullet / wreck / explosion, `how.car` the tag).
+                          The gunman's told shot (glint, red line into a wedge, a bracket on a lane band locked at its
+                          start; his seat in it and reached -> dead), one at a time with a cooldown; events by distance
+                          (`chase.events`: the alley car and its red lane, one from behind); the gun / magazine pickups.
+                          Numbers: CHASE.pursuit / gunman / pickup / alley; drawn by render/PursuitArt.js
     ai/                   enemy AI, DOM-free (unit tested)
       Tension.js          soundtrack intensity: alert phase + heat of the fight (shots, kills, blasts)
       Director.js         squad brain: alert phases, noise routing (only the nearest go and look while calm), incidents,

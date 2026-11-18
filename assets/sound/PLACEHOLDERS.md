@@ -78,3 +78,5 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | doorVault | the getaway: he plants a hand on the convertible's door and vaults over it into the seat (World.startVaultIn) | a palm slapping a car door's top, a long coat swung over it, 0.3 s |
 | seatDrop | he drops into the driver's seat of the open car (World.boardGetaway) | a body dropping into a leather bench seat, the springs and the leather creaking, the coat settling |
 | hatFly | THE BOSS's hat blown off the rear seat at the convertible's first hard swing (World.driveOutro, Vehicle.throwHat) | a felt hat whipped away by the wind, a soft flutter, then nothing |
+| tellClick | a pursuer's gunman starts his told shot: the glint at his muzzle (systems/Pursuit.js), also the alley car's red lane appearing | a revolver's hammer cocked, sharp and close, a hint of a car window's wind (now: the click cut, twice) |
+| pursuerWreck | a pursuer's car wrecked on a wall, a pole or a parked car (systems/Pursuit.js `wreck`) | a sedan slamming into something solid at speed: crumpling sheet metal, glass, a dead engine's last hiss |

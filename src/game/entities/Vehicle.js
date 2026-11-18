@@ -13,8 +13,8 @@ const { Bodies, Body, Sleeping, Query } = Matter;
 
 // Sprite-space layout of each model (real size, facing +x; must match tools/generate_assets.py).
 // Regions: [x0, x1, y0, y1]; hood: [x0, x1]; wheels: tyre centres (they stick out a little past the sides).
-// Sprites: car (sedan) 140x58, car2 (coupe) 134x56, van 160x64, convertible 172x64; the hitbox is the sprite minus
-// 2 px all round.
+// Sprites: car (sedan) and pursuer 140x58, car2 (coupe) 134x56, van 160x64, convertible 172x64; the hitbox is the
+// sprite minus 2 px all round.
 // A model may give (systems/Drive.js reads the first two, else its own shares of the size): seat: [x, y] the driver's
 // seat (seatIn, CharacterAnim.seatPose), door: [x, y] the ground one stands on outside the driver's door (-y side).
 // An open car also has: cabin (the open well: who sits in it is seen, and can be shot), wheel: [x, y, r] the steering
@@ -43,6 +43,12 @@ export const VEHICLES = {
     wheels: [[36, 2], [36, 62], [140, 2], [140, 62]],
     seat: [93, 19.5], door: [93, -13], cabin: [55, 113, 7, 57], wheel: [101, 19.5, 5.6], key: [105.5, 26.5],
     pipes: [[1, 17], [1, 47]], hat: [71.5, 44.5, 'props/boss_hat'],
+  },
+  // the boss's men (systems/Pursuit.js): the sedan in black with one pink stripe, its layout the sedan's
+  pursuer: {
+    sprite: 'props/pursuer', hp: 28, kg: 1250, color: '#2a2428',
+    wind: [82, 96, 11, 46], rear: [35, 44, 11, 46], tank: [0, 26, 0, 58], hood: [98, 134],
+    wheels: [[30, 2], [30, 56], [112, 2], [112, 56]],
   },
 };
 
@@ -350,6 +356,7 @@ export default class Vehicle {
     const r = this.m[which];
     const state = ++this.windows[which];
     const g = this.g;
+    if (state <= 2) w.events?.emit('carPart', { car: this, part: which, dirA }); // a round through it (systems/Pursuit.js)
     if (state === 1) {
       // spider-web crack around the impact
       g.save();
@@ -410,6 +417,7 @@ export default class Vehicle {
     if (!this.tires[i] || this.armoured) return;
     this.tires[i] = false;
     const w = this.world;
+    w.events?.emit('carPart', { car: this, part: 'tyre', i, dirA });
     const [px, py] = this.wpos(...this.m.wheels[i]);
     w.sound('tirePop', px, py);
     w.particles.chips(px, py, dirA, Math.PI, 16, '#141418', 200);
@@ -419,8 +427,9 @@ export default class Vehicle {
     this.damage(2);
   }
 
+  // (none in a car somebody is driving at him: systems/Pursuit.js `noAlarm`)
   startAlarm() {
-    if (this.alarm <= 0 && !this.exploded) this.alarm = 9;
+    if (this.alarm <= 0 && !this.exploded && !this.noAlarm) this.alarm = 9;
   }
 
   damage(n) {

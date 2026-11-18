@@ -4996,10 +4996,10 @@ class Veh:
         return self.cv, self.gl
 
 
-def p_car():
-    """80s four-door sedan, 4.4 x 1.8 m: boxy, chrome bumpers, quad headlights, thick C pillars."""
+def p_car(body=SEDAN_BODY, stripe=None):
+    """80s four-door sedan, 4.4 x 1.8 m: boxy, chrome bumpers, quad headlights, thick C pillars. stripe: a colour run
+    down its middle from the trunk to the nose over the panels, under the glass (the pursuers' car, p_pursuer)."""
     k = Veh(140, 58, 29, 4401)
-    body = SEDAN_BODY
     wheels = (30, 112)
     k.shell(body, 1, 138, 26.5, 5, 6, crown=2.2)
     k.arches(wheels)
@@ -5018,6 +5018,8 @@ def p_car():
     k.film(81, 97, ((97.5, 26.5), (97.5, 45.5)), 12.5)
     k.dent(19.5, 12.5, 2.8)                                  # somebody backed into the trunk's corner
     k.panel(body, 46, 80, 18.5)                              # roof
+    if stripe:
+        center_stripe(k, 4, 136, stripe)
     k.side(47, 85, lambda x: 18.5 if x <= 80 else 19.0 + (x - 81) / 4, 22.0, pillars=(64, 65))
     k.line(42, 6, 90, 6, lambda c, s: mix(c, CHROME[3 if s < 0 else 1], 0.6))   # beltline trim
     k.line(42, 6, 90, 6, lambda c, s: mix(c, CHROME[1], 0.4), w=1)
@@ -5072,6 +5074,26 @@ def p_car():
     plate(k, 3, 23, 28)
     k.mirror(86, 90, body, 90)
     return k.done()
+
+
+def center_stripe(k, x0, x1, col):
+    """One stripe 2 world px wide down the centre line from x0 to x1, over the panels only (the glass stays clear),
+    the paint's shading kept through it."""
+    for i in k.cols(x0, x1):
+        for j in range(28 * k.s, 30 * k.s):
+            if (i, j) in k.mask and (i, j) not in k.glass:
+                k.cv.p[i, j] = mix(k.cv.p[i, j], col, 0.82)
+
+
+# the pursuers' sedan: black, one pink stripe (docs/LEVEL2.md: the only black cars on the road). Its black leans warm
+# (red over blue) so that Vehicle.js never takes a pixel of it for glass
+PURSUER_BODY = ramp('#1e1a1f', 0.5, 0.25, 0.3)
+PURSUER_STRIPE = hx('#ff2a6d')
+
+
+def p_pursuer():
+    """The boss's men's sedan: the 80s four-door in black with a single pink stripe down its length."""
+    return p_car(PURSUER_BODY, PURSUER_STRIPE)
 
 
 def p_car2():
@@ -5510,8 +5532,9 @@ def p_car_tire():
     return cv
 
 
-def hood_debris(body, w, h, seed, stripe=None):
-    """Hood blown off: buckled panel with a diagonal fold, dents, a scorched edge, torn corners."""
+def hood_debris(body, w, h, seed, stripe=None, stripe_at=(2.5, 3.5)):
+    """Hood blown off: buckled panel with a diagonal fold, dents, a scorched edge, torn corners. stripe: its colour
+    on the rows that far (world px) from the middle (twin stripes by default, one down the middle with (0.5,))."""
     rng = random.Random(seed)
     cv = Cv(w, h)
     burn = VNoise(w, h, 5, rng)
@@ -5521,7 +5544,7 @@ def hood_debris(body, w, h, seed, stripe=None):
             u, v = (x + 0.5) / w, (y + 0.5) / h
             d = (u - fold) + (v - 0.5) * 0.45
             c = soft(body, light(-0.55 if d < 0 else 0.3, (v - 0.5) * 0.6))
-            if stripe and abs((y + 0.5) - h / 2) in (2.5, 3.5):
+            if stripe and abs((y + 0.5) - h / 2) in stripe_at:
                 c = stripe
             if -0.02 < d < 0.025:
                 c = lt(c, 0.3) if d < 0 else dk(c, 0.35)
@@ -5586,6 +5609,14 @@ def p_car2_door():
 
 def p_van_door():
     return door_debris(VAN_BODY, 30, stripe=hx('#ff6b1a'))
+
+
+def p_pursuer_hood():
+    return hood_debris(PURSUER_BODY, 38, 44, 4421, stripe=PURSUER_STRIPE, stripe_at=(0.5,))
+
+
+def p_pursuer_door():
+    return door_debris(PURSUER_BODY, 34)
 
 
 # --------------------------------------------------------------------------
@@ -9702,6 +9733,7 @@ def build():
                  car2_hood=p_car2_hood, car2_door=p_car2_door, van_hood=p_van_hood, van_door=p_van_door,
                  convertible=p_convertible, convertible_hood=p_convertible_hood, convertible_door=p_convertible_door,
                  boss_hat=p_boss_hat,
+                 pursuer=p_pursuer, pursuer_hood=p_pursuer_hood, pursuer_door=p_pursuer_door,
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
                  neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
                  hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
@@ -9746,7 +9778,7 @@ def build():
 
 
 GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
-           'car', 'car2', 'van', 'convertible']
+           'car', 'car2', 'van', 'convertible', 'pursuer']
 # furniture at real scale (1 m = 32 px): sprite = hitbox in data/props.js + 1 px of outline on each side
 PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dope_table=(46, 28), gas_bottle=(14, 14), dance_stage=(50, 50), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
                   sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
@@ -9756,6 +9788,7 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dop
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
                   convertible=(172, 64), convertible_hood=(46, 46), convertible_door=(28, 6), boss_hat=(14, 12),
+                  pursuer=(140, 58), pursuer_hood=(38, 44), pursuer_door=(34, 6),
                   palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
                   neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(14, 14), bench=(52, 17),
                   chain_fence=(34, 16))

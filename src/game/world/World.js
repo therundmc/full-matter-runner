@@ -72,6 +72,7 @@ import Ambient from '../systems/Ambient.js';
 import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
 import { SEAT, TRAVERSE } from '../data/feel.js';
 import Drive, { driveSpot } from '../systems/Drive.js';
+import Pursuit from '../systems/Pursuit.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
@@ -186,6 +187,8 @@ export default class World {
     // a level driven in the van (level `chase`: he starts in it), the vans one can get into (the lab: E at the door)
     this.drive = level.chase ? new Drive(this, level.chase) : null;
     for (const p of this.props) if (p.drivable) this.uses.add(driveSpot(this, p));
+    // the boss's men after him in their cars (the chase), the lab's pursuer dummy
+    this.pursuit = level.chase || this.props.some((p) => p.pursuer) ? new Pursuit(this, level.chase) : null;
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
   }
@@ -591,6 +594,7 @@ export default class World {
     else if (this.drive) this.drive.step(dt, input, aim); // at the wheel (systems/Drive.js)
     else if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
+    this.pursuit?.step(dt);
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
     this.ambient?.update(dt);
@@ -620,6 +624,7 @@ export default class World {
       this.drive.after(dt);
       Audio.motor('drive', this.drive?.motor(dt) ?? null);
     }
+    this.pursuit?.after(dt);
     for (const e of this.emitters) { e.t -= dt; e.fn(e, dt); }
     this.particles.update(dt);
     this.decals.update(dt);

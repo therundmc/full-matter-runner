@@ -120,7 +120,8 @@ export function buildLevel(world, level) {
   // (render/Flicker.js: 'broken', 'stutter', 'dying'...); { valve: true } = a stove whose gas tap can be opened;
   // { tips: false } = a bin that stays up and breaks like any prop (one indoors, systems/Tipping.js);
   // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js);
-  // { drive: true } = a vehicle he can get into and drive (the lab)
+  // { drive: true } = a vehicle he can get into and drive (the lab); { pursuer: true } = a pursuer's car parked with
+  // its gunman, telling his shot now and then (the lab)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
@@ -132,6 +133,7 @@ export function buildLevel(world, level) {
     if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)
+    if (opt?.pursuer && p.isVehicle) p.pursuer = true; // the lab's pursuer dummy (systems/Pursuit.js)
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);
   }

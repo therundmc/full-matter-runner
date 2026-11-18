@@ -1,4 +1,5 @@
 import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
+import { edgeMarker } from '../systems/Threats.js';
 import { WEAPONS } from '../data/weapons.js';
 import { text, neon, thousands, tone, glitchText, clock, widthOf } from './Text.js';
 import { tierColor } from './KillFeed.js';
@@ -43,12 +44,15 @@ export function drawHUD(ctx, game, t) {
       ctx.fillRect(pad, pad + 64 * s, 150 * s * k, 6 * s);
     }
   }
-  // guards left: a small head-and-shoulders mark and the count, right under the weapon (or its ammo line)
+  // guards left: a small head-and-shoulders mark and the count, right under the weapon (or its ammo line); none at
+  // the wheel (the chase counts no guards)
   const gy = pad + (ammo ? (p.reloading > 0 ? 82 : 70) : worn ? 56 : 42) * s, u = 2 * s;
-  ctx.fillStyle = PALETTE.yellow;
-  ctx.fillRect(pad + u, gy - 5 * u, 3 * u, 3 * u);  // head
-  ctx.fillRect(pad, gy - 1.5 * u, 5 * u, 2.5 * u);  // shoulders
-  text(ctx, `${w.enemiesLeft}/${w.totalEnemies}`, pad + 8 * u, gy - 2 * u, 14 * s, PALETTE.yellow, { align: 'left' });
+  if (!w.drive?.on) {
+    ctx.fillStyle = PALETTE.yellow;
+    ctx.fillRect(pad + u, gy - 5 * u, 3 * u, 3 * u);  // head
+    ctx.fillRect(pad, gy - 1.5 * u, 5 * u, 2.5 * u);  // shoulders
+    text(ctx, `${w.enemiesLeft}/${w.totalEnemies}`, pad + 8 * u, gy - 2 * u, 14 * s, PALETTE.yellow, { align: 'left' });
+  }
   // stamina: only while it is coming back; pink = not enough for a slide, blinking when one was just refused
   if (p.stamina < 1) {
     const y = gy + 6 * s, bw = 150 * s, short = p.stamina < PLAYER.slide.cost;
@@ -64,7 +68,11 @@ export function drawHUD(ctx, game, t) {
 
   drawScore(ctx, w, W - pad, pad, s, t);
   drawBanner(ctx, w.killFeed, W, H, s, t);
-  if (w.drive?.on) drawDrive(ctx, w.drive, pad, H - pad, s, t);
+  if (w.drive?.on) {
+    drawDrive(ctx, w.drive, pad, H - pad, s, t);
+    drawRoad(ctx, w, W, pad, s);
+    if (p.alive && game.state === 'play') drawHunters(ctx, game, s, t);
+  }
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
@@ -108,6 +116,54 @@ function drawDrive(ctx, d, x, y, s, t) {
   const v = String(d.kmh);
   text(ctx, v, x, y - 16 * s, 40 * s, PALETTE.white, { align: 'left' });
   text(ctx, 'KM/H', x + widthOf(ctx, v, 40 * s) + 14 * s, y - 12 * s, 14 * s, PALETTE.white, { align: 'left', alpha: 0.8 });
+}
+
+// At the wheel in the chase, top middle: how much road is left (level `chase`: from its start to its `end`), a line
+// with his mark on it and the metres to go under it
+function drawRoad(ctx, w, W, pad, s) {
+  const c = w.level.chase;
+  if (!c?.end) return;
+  const x0 = c.van[0] * TILE, x1 = c.end * TILE, k = clamp((w.drive.van.x - x0) / (x1 - x0), 0, 1);
+  const bw = 400 * s, bx = W / 2 - bw / 2, by = pad + 8 * s;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(bx - s, by - s, bw + 2 * s, 4 * s);
+  ctx.fillStyle = PALETTE.white;
+  ctx.globalAlpha = 0.85;
+  ctx.fillRect(bx, by, bw * k, 2 * s);
+  ctx.globalAlpha = 0.3;
+  ctx.fillRect(bx + bw * k, by, bw * (1 - k), 2 * s);
+  ctx.globalAlpha = 1;
+  const mx = bx + bw * k; // his mark: a small triangle pointing down at the line
+  ctx.beginPath(); ctx.moveTo(mx - 6 * s, by - 10 * s); ctx.lineTo(mx + 6 * s, by - 10 * s); ctx.lineTo(mx, by - 2 * s); ctx.fill();
+  const left = Math.max(0, Math.round((x1 - w.drive.van.x) / TILE));
+  text(ctx, `${left} M`, W / 2, by + 16 * s, 12 * s, PALETTE.white, { alpha: 0.75 });
+}
+
+// Pursuers behind him or beside him off the picture: a small red chevron on the screen's edge toward each
+function drawHunters(ctx, game, s, t) {
+  const P = game.world.pursuit;
+  if (!P) return;
+  const W = game.canvas.width, H = game.canvas.height, cam = game.camera;
+  for (const car of P.hunters()) {
+    const sp = cam.worldToScreen(car.v.x, car.v.y), m = edgeMarker(sp.x, sp.y, W, H, 20 * s);
+    if (!m) continue;
+    const z = s * 1.4;
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.angle);
+    ctx.beginPath();
+    ctx.moveTo(-5 * z, -7 * z); ctx.lineTo(3 * z, 0); ctx.lineTo(-5 * z, 7 * z);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = PALETTE.ink;
+    ctx.lineWidth = 4.5 * z;
+    ctx.stroke();
+    ctx.strokeStyle = '#ff2a4a'; // the telegraphs' red (render/PursuitArt.js)
+    ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 9);
+    ctx.lineWidth = 2.2 * z;
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // What is left of a melee weapon that wears (data/weapons.js wear, in blows: a thing struck takes a share of one): a

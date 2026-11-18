@@ -865,11 +865,13 @@ export default class Game {
     if (this.input.device === 'pad' && !(this.state === 'play' && this.padAimAt)) return;
     const { x, y } = this.input.mouse;
     const s = this.canvas.height / 720;
-    const r = (9 + Math.sin(t * 8) * 1.5) * s;
+    // at the wheel, out of his arc (systems/CarGun.js): a still grey cross, his gun cannot point there
+    const gun = this.state === 'play' && this.world?.drive?.on ? this.world.drive.gun : null, off = gun?.aimed && !gun.aimed.ok;
+    const r = (off ? 8 : 9 + Math.sin(t * 8) * 1.5) * s;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(t * 1.5);
-    for (const [col, lw] of [[PALETTE.ink, 5 * s], [neon(t, 4), 2.5 * s]]) {
+    ctx.rotate(off ? Math.PI / 4 : t * 1.5);
+    for (const [col, lw] of [[PALETTE.ink, 5 * s], [off ? '#8a8494' : neon(t, 4), 2.5 * s]]) {
       ctx.strokeStyle = col;
       ctx.lineWidth = lw;
       ctx.beginPath();

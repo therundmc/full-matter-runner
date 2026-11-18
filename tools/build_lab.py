@@ -71,9 +71,12 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     18 COAT        the concourse's west half, an open lane to run, turn and slide in and watch the runner's coat
                    (src/game/entities/Skirt.js): a low table to vault or slide past, a barrel to turn round
     19 DRIVE       the street's south lane, from its west end: a van to get into (E at its driver's door) and drive
-                   east (systems/Drive.js: W / S, A / D, SPACE the shove toward the mouse's side), two bins in its
-                   way, station 17's barrel, parked van and cars to shove, the end wall to die on nose-on; E again, or
-                   stopping, gets him out
+                   east (systems/Drive.js: W / S, A / D, SPACE the shove toward the mouse's side, the mouse and the
+                   left click his gun out of the window, R a reload), two bins in its way, station 17's barrel,
+                   parked van and cars to shove, the end wall to die on nose-on; E again, or stopping, gets him out.
+                   In the north lane a pursuer's black car (systems/Pursuit.js) with its gunman leaning out: he tells
+                   his shot every few seconds at whoever comes near, harmlessly; shoot its windscreen (the driver),
+                   a front tyre, the gunman, or shove it into the wall
     20 GETAWAY     the street's east end: THE BOSS's convertible and level 1's way out played here (systems/Outro.js:
                    step into the ring by its driver's door; the level's `exit` is `open`, nothing to clear first): the
                    vault over the door, the key, the wheelspin and the rubber it lays, the tail out round the leaking
@@ -378,6 +381,7 @@ lv.paint('label_drive', 8.2, 18.6)
 lv.prop('van', 4.6, 23.5, 0, drive=True)   # E at its driver's door (its north side)
 lv.prop('trash_can', 18.4, 23.9)
 lv.prop('trash_can', 19.2, 23.0)
+lv.prop('pursuer', 22.0, 21.1, 0, pursuer=True)   # parked in the north lane, its gunman telling his shot
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)

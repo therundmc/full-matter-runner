@@ -24,9 +24,12 @@ Plan (north is up, rows):
     rows 22-23   south shops; alleys run south off the map between the blocks
     row  24      the back walls
 
-Alley mouths on the south side every 40 to 50 m. The one at cols 138-141 (about 0:08, 130 m from the start) is for
-M1b's event 1, OUT OF THE ALLEY (one of theirs comes out across his nose): nothing stands in it nor in the parking
-row before it.
+Alley mouths on the south side every 40 to 50 m. The one at cols 138-141 (about 0:08, 130 m from the start) is
+event 1, OUT OF THE ALLEY (one of theirs comes out across his nose: systems/Pursuit.js): nothing stands in it nor in
+the parking row before it. The pursuers come by distance along the road (`chase.events`, the column of the van's
+middle that sets each off): the alley car, its red lane told when he is at ALLEY_AT (as it comes onto the picture),
+so that at 60 km/h his nose would meet it in his lane 0.7 s later; one joining from behind at BEHIND_AT (two cars by
+0:25).
 """
 import random
 
@@ -36,6 +39,8 @@ W, H = 450, 25
 START = (8.5, 14.25)        # the van's centre, facing +x, in our lane
 END = 428                   # past this column the level is over (25 s at 60 km/h from the start)
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1 (M1b)
+ALLEY_AT = 125              # event 1 set off with the car's middle at this column (about 0:07): its red lane comes on the picture
+BEHIND_AT = 270             # the second car set off (it starts 24 m behind him and catches him about 0:20)
 ALLEYS = (52, 96, EVENT_ALLEY, 186, 232, 281, 327, 374, 418)
 ALLEY_W = 4
 NORTH_SIGNS = ['neon_sign_liquor', 'neon_sign_bar', 'neon_sign_video', 'neon_sign_wash']   # as on the board, in order
@@ -237,7 +242,12 @@ chase = {
     'lanes': [10.75, 14.25],    # the lanes' middle rows: theirs (westbound), ours
     'kerbs': [7, 18],           # the carriageway between its kerbs (parking rows included), rows
     'end': END,
-    'events': [],               # M1b on: [{ at: col, kind, ... }]; the alley at col 138 is event 1's (OUT OF THE ALLEY)
+    # by the column of the van's middle (systems/Pursuit.js): 'alley' waits at `car` [col, row] facing north, lamps on
+    'events': [
+        {'at': ALLEY_AT, 'kind': 'alley', 'car': [EVENT_ALLEY + ALLEY_W / 2, 22.5]},
+        {'at': BEHIND_AT, 'kind': 'behind'},
+    ],
+    'arms': {'weapon': 'pistol', 'mag': 7, 'spare': 7},   # a 1911, its magazine and a spare one (systems/Drive.js)
 }
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ export default {
   // driven in the van (systems/Drive.js, numbers in data/chase.js): its start [col, row] facing +x, the cruise
   // speed (px/step), the lanes' middle rows (ours last), the kerbs' rows, the col past which it is over, and
   // what happens on the way by distance (col)
-  chase: {'van': [8.5, 14.25], 'cruise': 8.9, 'lanes': [10.75, 14.25], 'kerbs': [7, 18], 'end': 428, 'events': []},
+  chase: {'van': [8.5, 14.25], 'cruise': 8.9, 'lanes': [10.75, 14.25], 'kerbs': [7, 18], 'end': 428, 'events': [{'at': 125, 'kind': 'alley', 'car': [140.0, 22.5]}, {'at': 270, 'kind': 'behind'}], 'arms': {'weapon': 'pistol', 'mag': 7, 'spare': 7}},
   facing: { '8,14': 0 },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",

@@ -614,5 +614,6 @@ export const LIGHTING = {
     car2: vehicleLights(56, 15, -65, 13.5),
     van: vehicleLights(77, 16.5, -76, 24),
     convertible: vehicleLights(81, 21, -82.5, 23),
+    pursuer: vehicleLights(67, 15.5, -68, 17.5),
   },
 };

@@ -138,6 +138,7 @@ export default {
     ['wall_lamp', 34.5, 18.08, 0], ['wall_lamp', 47.5, 18.08, 0],
     // 19 drive: a van to get into and drive down the street
     ['van', 4.6, 23.5, 0, { drive: true }], ['trash_can', 18.4, 23.9, 0], ['trash_can', 19.2, 23, 0],
+    ['pursuer', 22, 21.1, 0, { pursuer: true }],
     // 20 getaway: the convertible and the way out of level 1, played in the street
     ['convertible', 56.6, 21, 180, { lights: false }],
   ],

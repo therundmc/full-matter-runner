@@ -122,6 +122,7 @@ export const META = {
   // ... the getaway in an open car (World.stepOutro): placeholders (assets/sound/PLACEHOLDERS.md)
   doorVault: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.3 }, seatDrop: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.35 },
   hatFly: { pri: 0, dur: 0.3, gap: 0.3, max: 1, gain: 0.2 },
+  tellClick: { pri: 2, dur: 0.2, gap: 0.15, max: 1, gain: 0.6 }, pursuerWreck: { pri: 3, dur: 1, gap: 0.2, max: 2, gain: 0.9 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
@@ -427,6 +428,10 @@ const FOLEY = {
   doorVault: [['soft', 0.6, 1.1], ['sheet', 0.2, 0.9, 0.05]],
   seatDrop: [['soft', 0.7, 0.7], ['thud', 0.3, 0.8, 0.02]],
   hatFly: [['swish', 0.3, 1.3]],
+  // PLACEHOLDERS for the pursuers (systems/Pursuit.js): a gunman's tell starting (the hammer cocked), a pursuer's car
+  // wrecked on what does not give
+  tellClick: [['click', 0.8, 0.7], ['click', 0.5, 1.3, 0.05]],
+  pursuerWreck: [['sheet', 0.9, 0.8], ['thud', 0.9, 0.7], ['metalBreak', 0.6, 0.9, 0.02], ['glass', 0.5, 1.1, 0.04]],
   // flesh
   // dry blows only: no meat or wet recording anywhere (the user hated every one of them as a "squish")
   punch: [['punch', 1], ['soft', 0.4, 1.1, 0.008], ['thud', 0.7, 0.75]],

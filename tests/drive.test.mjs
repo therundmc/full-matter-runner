@@ -241,7 +241,7 @@ test('level2a: the back road loads, the van in our lane at the start, the end of
   for (let x = Math.floor(c.van[0]); x < c.end; x++) assert.ok(!map.isSolid(x, Math.floor(c.van[1])), `col ${x}`);
   // a short drive on the real map: from 3 tiles before the end, the level is over
   const w = world(level2a.tiles), v = vehicle(w, 'van', (c.end - 3) * TILE, c.van[1] * TILE);
-  const d = new Drive(w, { ...c, van: [c.end - 3, c.van[1]] }, v), input = keys();
+  const d = new Drive(w, { ...c, arms: null, van: [c.end - 3, c.van[1]] }, v), input = keys();
   w.drive = d;
   run(w, d, input, 0.5);
   assert.ok(w.cleared && w.exited && w.exits === 1, 'over');

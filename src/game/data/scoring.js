@@ -15,6 +15,7 @@ export const SCORING = {
     execution: { points: 900, label: 'EXECUTION' },
     quickKill: { points: 500, label: 'QUICK KILL' },
     takedown: { points: 1000, label: 'TAKEDOWN' },      // a guard executed from behind (data/finishers.js TAKEDOWNS)
+    wreck: { points: 700, label: 'WRECKED' },           // a pursuer's crew in a car put into the scenery (systems/Pursuit.js)
   },
   // circumstances that add to a kill (Scoring.killTags), each one also a different way of killing
   tags: {
@@ -40,6 +41,11 @@ export const SCORING = {
     triple: { points: 900, label: 'TRIPLE KILL' },
     massacre: { points: 1500, label: 'MASSACRE' },
     cueball: { points: 5000, label: 'CUEBALL' },        // a boss put down, by his name (data/bosses.js; `how.boss`)
+    // how a pursuer's car was stopped (systems/Pursuit.js, `how.car`)
+    driver: { points: 600, label: 'DRIVER' },           // through the windscreen: it veers off
+    tyre: { points: 500, label: 'BLOWOUT' },            // a front tyre: it spins out
+    gunman: { points: 300, label: 'GUNMAN' },           // the man leaning out of its window
+    shoved: { points: 700, label: 'SHOVED' },           // shoved by his car into what does not give
   },
   longShot: 420,            // px
   multiWindow: 0.7,         // s between two kills of a multiple one

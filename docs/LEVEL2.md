@@ -145,7 +145,7 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   (the back road: 2 lanes, a parking row, kerbs, shopfronts, alleys, street furniture that breaks); drive mode
   (steer, throttle, brake, the road's pull), the shove, nose-on crash death, the camera's pull-out and lead; the
   level reachable with ?level=level2a; a lab station; placeholder end (reaching the road's end ends the level).
-- [ ] **M1b - The first pursuers.** The pursuers' car sprite; pursuer AI (follow, flank, ram); the gunman and his
+- [x] **M1b - The first pursuers.** The pursuers' car sprite; pursuer AI (follow, flank, ram); the gunman and his
   told shot (glint, red line, bracket); shooting out of the driver's window (arc, ammo, pickups); kill rules; event
   1 (out of the alley) and two cars by 0:25; HUD (speed, shove bar, distance).
 - [ ] **M1c - Back road polish.** Event 2 (the lorry backing out, the terrace); what breaks on the kerb; sounds as
@@ -173,3 +173,26 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   SPACE, nose-on crash death, parked cars woken and shoved by the physics, bolted things torn off); the camera's
   pull-out with the speed and its lead; the HUD's speed and shove bar; lab station 19 DRIVE. Still map-sized: the
   liquid on the floor (systems/Liquids.js, render/LiquidArt.js), to window before the full route (M2).
+- 2026-11-18: M1b. The pursuers' car (VEHICLES `pursuer`: the sedan in black, one pink stripe down its middle, its
+  hood and door debris to match); systems/Pursuit.js: the pursuers driven like his car (keeping up to 12 px/step, the
+  side slot alongside on his driver's side in the other lane, the behind slot, a look-ahead strip per lane: swerve or
+  brake, a side swipe now and then; knocked by his shove, the physics alone 0.6 s; a hard contact on a wall, a pole
+  or a car wrecks it: smoke, a chance of fire, an obstacle), its gunman and his told shot (white glint 0.15 s, red line
+  into a wedge 0.6 s, a bracket on the lane band), one tell at a time, 2-3 s between two; kill rules (windscreen: the
+  driver, it veers into what lines the road; front tyre: a spin; rear: it limps; gunman: no more tells; tank:
+  Vehicle's fire), each man a kill for the scoring (tags DRIVER, BLOWOUT, GUNMAN, SHOVED, style WRECKED);
+  systems/CarGun.js: his 1911 out of the car (left click, R, a magazine and a spare one set by the level's
+  `chase.arms`), his arc the driver's side and ahead (~200 degrees, never across the car nor the open car's
+  windscreen), his arm drawn out through `riding.aim` in THE BOSS's convertible; pickups (a killed gunman's gun or a
+  magazine thrown onto the road ahead, half the time); event 1 by distance (`chase.events`: the alley car waiting
+  lamps on, its red lane told 0.7 s before it is in his lane, set off at col 125 so the lane is on the picture) and a
+  second car from behind at col 270 (alongside by about 0:20); HUD: the road left (a line and metres) and red
+  chevrons at the edge for pursuers off the picture, the ammo as on foot; lab station 19: a pursuer parked in the north
+  lane, its gunman telling now and then, harmlessly. Decisions made in play (this document changed): the bracket is a
+  box on the lane band (his seat's y at the tell's start +-22 px, its x led by HIS speed over the tell +-40 px): a lane
+  change or a brake (or a burst when slow) dodges it; a told shot kills only if it reaches his seat (an open car: across
+  its cabin, Vehicle.crossesSeat; a closed one: a side window or the windscreen); a gunman tells only from his car
+  straight on the road and out of his own window (never across it); his rounds carry the car's speed (a car alongside
+  is hit where it is aimed at); the alley car rammed nose-on by him is shoved into the parked cars and wrecked (his
+  doing: SHOVED), so ploughing on is a way through too, at the price of his speed. Played by script in the headless
+  browser: braking for the red lane and each tell, the first 25 s are survived (7 tells dodged).

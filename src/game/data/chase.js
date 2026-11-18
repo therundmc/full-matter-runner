@@ -43,4 +43,67 @@ export const CHASE = {
   kmh: 6.75,            // km/h a px/step (60 steps a second, 32 px a metre)
   // the lab's van (station 19 DRIVE): stopping it (`stop` px/step for `still` s, once it has gone) gets him out
   exit: { stop: 0.15, still: 0.5 },
+  // his gun out of the car (systems/CarGun.js): one hand out of the driver's window (-y), `reach` px out of the side
+  // (an open car: at `arm` px from his seat, data/feel.js SEAT.aim's arm and the gun);
+  // his arc is what that hand can point at without the car's own body in the way (the driver's side and ahead, about
+  // 200 degrees), `margin` rad short of it; a long gun (`hold: 'two'`) stays down. `spread` is added to the gun's own.
+  gun: { reach: 8, arm: 20, margin: 0.04, spread: 0.02 },
+  // the pursuers (systems/Pursuit.js): black sedans driven by the same velocity-and-heading physics as his van.
+  //   max: their top speed (px/step), a bit over his flat out so they catch him; accel / brake a second; turn: rad a
+  //   second the heading turns; heading: the most off the road in the chase (`pullOut` more at a standstill, less
+  //   the faster it goes); close: px/step added per px the slot
+  //   is ahead (the gap closed), lateral: per step of the error across, steer: the most across (px/step)
+  //   slots: px from his car's middle (x along the road, y toward his driver's side, -y): `side` alongside in the
+  //   other lane (its gunman's line), `behind` in his own lane; settle: px from the slot that counts as in it
+  //   look: s of road ahead it looks for what stands in its lane (and `pad` px more), margin px either side
+  //   ram: once in the side slot `settle` s, `chance` a second of a side swipe at `v` px/step for `dur` s
+  //   knock: what the physics did to it differing from what it was driving by more than `dv` px/step: it lost it for
+  //   `stun` s (the shove, a hit), the physics alone moving it
+  //   wreck: a contact closing at `hard` px/step on what does not give (a wall, a lasting thing, one of the `poles`;
+  //   a bolted thing is torn off as by his van), or `car` on
+  //   another car (not his: being rammed only knocks it): wrecked, `thrown` of that within 2 s of a knock from his
+  //   car; it is left with `smoke` of its hp (engine smoke), `fire` the chance it catches
+  //   veer: the driver shot: the wheel turned `steer` rad to a side, the speed fading `fade` px/step a second; wrecked
+  //   after `out` s if nothing stopped it
+  //   spin: a front tyre: spun at `turn` rad/step, `keep` of its speed, out of it after `dur` s; limp: a rear tyre,
+  //   its top speed cut to `limp`; lost: `lost` px behind him, it is out of the chase
+  //   spawn: one joining from behind starts `behind` px back at his speed + `over`; the alley car comes out at `cross`
+  //   px/step and turns into the far lane `radius` px before it
+  pursuit: {
+    vehicle: 'pursuer', max: 12, accel: 7, brake: 14, turn: 2.6, heading: 0.45, pullOut: 0.6, close: 0.025, lateral: 0.07,
+    steer: 4,
+    slots: { side: [0, -104], behind: [-190, 0] }, settle: 18,
+    look: 0.9, pad: 70, margin: 14,
+    ram: { settle: 1.2, chance: 0.28, v: 5, dur: 0.3 },
+    knock: { dv: 2.2, stun: 0.6 },
+    wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight'] },
+    veer: { steer: 0.5, fade: 1.2, out: 3 },
+    spin: { turn: 0.22, keep: 0.6, dur: 1.4 },
+    limp: 6, lost: 1600,
+    spawn: { behind: 760, over: 2.5, cross: 6.5, radius: 150 },
+  },
+  // the gunman leaning out of a pursuer's window on his side and his TOLD shot (docs/LEVEL2.md telegraphs):
+  //   r: his head and arm's hit circle (px), lean: px out of the window, seat: his x in the car (share of its length)
+  //   range: px from his muzzle to the runner's seat he tells from, his car within `straight` rad of the road and the
+  //   runner within `cone` rad of square out of his window (never across his own car); grace: s in the chase first;
+  //   cool: s between two tells (any gunman: one tells at a time early on, `atOnce`)
+  //   glint: s of the white glint at the muzzle, then `line` s of the red line fattening into a wedge, then the shot
+  //   band: the bracket's box where it lands, locked when the tell starts: the y of the runner's seat then (+- half),
+  //   its x then leading by his speed for the tell's length (+- lead); his seat in it at the shot: dead
+  //   tracer: s the bone line of the shot hangs; window: px either side of a seat's x that is its side window (a
+  //   round through it reaches him in a closed car; an open one, `open` in VEHICLES, is reached anywhere)
+  //   lab: the dummy (station 19) tells every `every` s with the runner within `range` px, harmlessly
+  gunman: {
+    r: 7, lean: 6, seat: 0.58,
+    range: 300, grace: 1.2, cool: [2, 3], atOnce: 1, straight: 0.3, cone: 1.2,
+    glint: 0.15, line: 0.6,
+    band: { half: 22, lead: 40 },
+    tracer: 0.14, window: 14,
+    lab: { every: 3.2, range: 380 },
+  },
+  // a killed gunman's gun (or a magazine) thrown onto the road `ahead` px of the runner in his lane, `chance` of it;
+  // the car picks it up driving over it (within `r` px of its middle line): its rounds into his pools
+  pickup: { chance: 0.5, ahead: 340, r: 26, fly: 0.45 },
+  // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane
+  alley: { red: 0.7, pad: 10 },
 };

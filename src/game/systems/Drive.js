@@ -1,5 +1,5 @@
 // Driving the van (level 2A's chase, docs/LEVEL2.md; the lab's station 19). The player sits in it, hidden, carried at
-// the driver's seat, no input of his own. The van is a dynamic Matter body: every step its velocity is set from the
+// the driver's seat; his own input is the gun out of the window (systems/CarGun.js). The van is a dynamic Matter body: every step its velocity is set from the
 // controls (CHASE in data/chase.js) after reading back what the physics really let it do, so what it runs into takes
 // real momentum and a hit slows it for real.
 //   along the road (+x): it keeps its cruise speed by itself, W speeds it up to `max`, S brakes it to a stop
@@ -17,6 +17,7 @@ import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import { Gearbox, MOTOR, squealOf } from '../../audio/Motor.js';
 import { CHASE } from '../data/chase.js';
 import Vehicle from '../entities/Vehicle.js';
+import CarGun from './CarGun.js';
 
 const { Body, Sleeping } = Matter;
 const SLEEP = 60; // Matter's default sleepThreshold, given back when he gets out
@@ -93,6 +94,16 @@ export default class Drive {
     this.box = new Gearbox();         // its engine heard (motor)
     this.lastV = this.v;
     this.board();
+    this.gun = new CarGun(world, van, seatOf(van, CHASE)); // his gun out of the window (mouse, left click, R)
+    if (o.arms) this.arm(o.arms);
+  }
+
+  // what he sets off with (the level's `chase.arms`: { weapon, mag, spare }): the gun in his hand, its magazine, spare
+  // rounds in his pools
+  arm({ weapon, mag, spare = 0 }) {
+    const p = this.world.player;
+    p.setWeapon(weapon, mag);
+    if (spare) p.addAmmo(p.def.ammo, spare);
   }
 
   get kmh() { return kmh(this.v, this.C); }
@@ -167,6 +178,7 @@ export default class Drive {
     if (!this.on) return;
     this.carry();
     if (this.dead) return;
+    this.gun.step(dt, input, aim);
     const w = this.world, C = this.C, v = this.van, b = v.body;
     // what the physics let it do last step: a hit slows it, a knock sideways is taken (the small bounce off what it
     // leans on is not: it goes on along it)

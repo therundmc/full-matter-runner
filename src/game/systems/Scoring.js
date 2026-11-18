@@ -29,6 +29,7 @@ export function killStyle({ cause, killer, victim, how }) {
   if (cause === 'execute' || how?.finisher) return how?.quick ? { style: 'quickKill', method: 'quickKill' } : { style: 'execution', method: 'execution' };
   if (victim?.held === killer) return { style: 'takedown', method: 'takedown' };
   if (cause === 'slash') return { style: 'blade', method: 'knife' };
+  if (cause === 'wreck') return { style: 'wreck', method: 'wreck' }; // a pursuer's car put into the scenery (Pursuit.js)
   if (cause === 'glass') return { style: 'glass', method: 'glass' };
   const type = killer.weapon?.type;
   if (cause === 'melee') {
@@ -43,8 +44,8 @@ export function killStyle({ cause, killer, victim, how }) {
 // The circumstances of a kill worth a bonus (SCORING.tags keys). how: what whoever killed knew of it (a round:
 // pierced, through, bounced, dist, last; a blow: from, heavy, spin, broke, thrown, disarm; smoked; env: what a
 // takedown drove his head into, systems/TakedownSpot.js;
-// boss: the boss he was, entities/Boss.js); ctx: { now, dodgeT, pickT, streak } where
-// streak counts the kills of the last instants, this one included.
+// boss: the boss he was, entities/Boss.js; car: how his car was stopped, systems/Pursuit.js); ctx: { now, dodgeT,
+// pickT, streak } where streak counts the kills of the last instants, this one included.
 export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   const tags = [];
   if (how.pierced > 0) tags.push('collateral');
@@ -63,6 +64,7 @@ export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   if (how.smoked) tags.push('smoked');
   if (how.env) tags.push(how.env === 'bowl' || how.env === 'urinal' ? 'flushed' : 'slammed');
   if (rules.tags[how.boss]) tags.push(how.boss);
+  if (rules.tags[how.car]) tags.push(how.car);
   if (ctx.now - ctx.dodgeT < rules.dodgeWindow) tags.push('dodge');
   if (ctx.now - ctx.pickT < rules.drawWindow) tags.push('quickdraw');
   if (ctx.streak >= 2) tags.push(ctx.streak === 2 ? 'double' : ctx.streak === 3 ? 'triple' : 'massacre');
