@@ -122,6 +122,9 @@ export const META = {
   // ... the getaway in an open car (World.stepOutro): placeholders (assets/sound/PLACEHOLDERS.md)
   doorVault: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.3 }, seatDrop: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.35 },
   hatFly: { pri: 0, dur: 0.3, gap: 0.3, max: 1, gain: 0.2 },
+  lorryBeep: { pri: 3, dur: 0.15, gap: 0.2, max: 1, gain: 0.7 }, lorryBrake: { pri: 2, dur: 0.5, gap: 0.3, max: 1, gain: 0.6 },
+  awningRip: { pri: 1, dur: 0.4, gap: 0.15, max: 2, gain: 0.6 }, tyreSkid: { pri: 1, dur: 0.4, gap: 0.35, max: 1, gain: 0.45 },
+  waterSpray: { pri: 0, dur: 0.3, gap: 0.25, max: 1, gain: 0.4 },
   tellClick: { pri: 2, dur: 0.2, gap: 0.15, max: 1, gain: 0.6 }, pursuerWreck: { pri: 3, dur: 1, gap: 0.2, max: 2, gain: 0.9 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
@@ -432,6 +435,13 @@ const FOLEY = {
   // wrecked on what does not give
   tellClick: [['click', 0.8, 0.7], ['click', 0.5, 1.3, 0.05]],
   pursuerWreck: [['sheet', 0.9, 0.8], ['thud', 0.9, 0.7], ['metalBreak', 0.6, 0.9, 0.02], ['glass', 0.5, 1.1, 0.04]],
+  // PLACEHOLDERS for the back road (systems/Lorries.js, Drive.fx): the lorry's reversing beeper and its air brakes,
+  // an awning or a parasol torn down, tyres letting go (faint: the motor's own squeal covers it), spray out of a puddle
+  lorryBeep: [['click', 0.7, 1.9], ['click', 0.5, 1.9, 0.06]],
+  lorryBrake: [['swish', 0.6, 0.5], ['thud', 0.3, 0.6, 0.05]],
+  awningRip: [['soft', 0.8, 1.2], ['swish', 0.4, 0.8, 0.02], ['woodBreak', 0.3, 1.3, 0.05]],
+  tyreSkid: [['swish', 0.2, 1.7]],
+  waterSpray: [['swish', 0.35, 0.7]],
   // flesh
   // dry blows only: no meat or wet recording anywhere (the user hated every one of them as a "squish")
   punch: [['punch', 1], ['soft', 0.4, 1.1, 0.008], ['thud', 0.7, 0.75]],

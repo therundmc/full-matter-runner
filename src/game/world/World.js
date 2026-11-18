@@ -73,6 +73,7 @@ import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorStat
 import { SEAT, TRAVERSE } from '../data/feel.js';
 import Drive, { driveSpot } from '../systems/Drive.js';
 import Pursuit from '../systems/Pursuit.js';
+import Lorries from '../systems/Lorries.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
@@ -189,6 +190,8 @@ export default class World {
     for (const p of this.props) if (p.drivable) this.uses.add(driveSpot(this, p));
     // the boss's men after him in their cars (the chase), the lab's pursuer dummy
     this.pursuit = level.chase || this.props.some((p) => p.pursuer) ? new Pursuit(this, level.chase) : null;
+    // the lorry that backs out across the street (the chase's event 2, the lab's)
+    this.lorries = level.chase || this.props.some((p) => p.backs) ? new Lorries(this, level.chase) : null;
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
   }
@@ -595,6 +598,7 @@ export default class World {
     else if (this.player.alive) this.player.update(dt, input, aim);
     else this.player.baseUpdate(dt);
     this.pursuit?.step(dt);
+    this.lorries?.step(dt);
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);
     this.ambient?.update(dt);

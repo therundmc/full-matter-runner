@@ -212,6 +212,18 @@ export const PROPS = {
     light: { r: 185, color: '#ffd9a0', intensity: 1 } },
   pool_lamp: { high: true, fixture: true, hung: true, overhead: true, height: 0.05, static: true, material: 'metal', w: 44, h: 10, hp: 3, chips: '#1f6a44', sparks: true, glass: true, sound: 'metal',
     light: [{ r: 150, color: '#fff0c0', intensity: 0.8, x: -12 }, { r: 150, color: '#fff0c0', intensity: 0.8, x: 12 }] },
+  // ---- level 2A, the back road (docs/LEVEL2.md). The box lorry that backs out across the street (systems/Lorries.js
+  // moves it): it never gives (`lasting`: nose-on into it is the crash), the pursuers do not see it coming (`blind`)
+  lorry: { static: true, lasting: true, blind: true, material: 'metal', w: 276, h: 76, hp: 99, chips: '#d2cbb8', sparks: true, sound: 'metal', blocksPath: true },
+  // a cafe's terrace: the canvas awning hung on its front (the wall at -y) and the parasols over its tables are
+  // `canopy`: a car driven under one tears it down (systems/Drive.js); the planters along its edge
+  awning: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#e0842c', sound: 'wood' },
+  parasol: { canopy: true, overhead: true, height: 0.03, pole: ['#8a8e98', 2], static: true, material: 'fabric', r: 2.5, hp: 3, chips: '#eadfc6', sound: 'wood' },
+  planter: { static: true, vault: true, material: 'stone', w: 40, h: 16, hp: 10, chips: '#8e8a84', dirt: true, sound: 'stone' },
+  neon_sign_diner: { hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#ffa62a', sparks: true, glass: true, sound: 'glass',
+    light: { r: 130, color: '#ffb04a', intensity: 0.9, flicker: 'buzz' } },
+  neon_sign_cafe: { hum: 'neon', material: 'glass', w: 32, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
+    light: { r: 110, color: '#ff4a8a', intensity: 0.85, flicker: 'buzz' } },
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },

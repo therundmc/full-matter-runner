@@ -16,7 +16,7 @@ import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, 
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
-import { drawLoading, drawIntro, drawDead, drawOutro, describeDeath, INTRO, introBeats, introTint, SHUTTER_SOUND } from './ui/Screens.js';
+import { drawLoading, drawIntro, drawDead, drawOutro, drawContinued, describeDeath, INTRO, introBeats, introTint, SHUTTER_SOUND } from './ui/Screens.js';
 import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import Menu from './ui/Menu.js';
@@ -29,7 +29,7 @@ import { leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import HoldSkip, { drawHold } from './ui/cine/Hold.js';
 import { ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
-import { cameraScale } from './systems/Drive.js';
+import { cameraScale, finishView } from './systems/Drive.js';
 import { CHASE } from './data/chase.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
@@ -43,7 +43,8 @@ import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
-// results, play <-> pause; the tutorial ends play -> fall -> the next level's intro
+// results, play <-> pause; the tutorial ends play -> fall -> the next level's intro; a chase with more to come ends
+// play -> continued (TO BE CONTINUED, ui/Screens.js drawContinued) -> results
 // (the title and the pause are the menu: ui/Menu.js for its pages, ui/MenuArt.js for its picture)
 const VOLUMES = ['master', 'music', 'sfx', 'ambience'];
 // ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
@@ -299,6 +300,13 @@ export default class Game {
   // the player stepped into the exit zone: he leaves in the getaway car when there is one (systems/Outro), on foot
   // straight to the results otherwise
   onExit() {
+    // the end of a chase's road with more of it to come: the car runs on as the picture goes black (state 'continued')
+    if (this.world.level.chase?.next) {
+      this.world.player.invulnerable = true;
+      this.slow = null;
+      this.setState('continued');
+      return;
+    }
     const car = this.world.getaway();
     if (!car) { this.showResults(); return; }
     this.world.startOutro(car);
@@ -470,7 +478,13 @@ export default class Game {
       }
       return;
     }
-    const outro = this.state === 'outro' || this.state === 'fall'; // the world plays on by itself
+    const outro = this.state === 'outro' || this.state === 'fall' || this.state === 'continued'; // the world plays on by itself
+    if (this.state === 'continued') {
+      // TO BE CONTINUED: a fresh key or a click passes it once it is up, else the results follow by themselves
+      const v = finishView(this.stateT);
+      const skip = v.skip && (inp.pressed.size > 0 || inp.mouseHit(0));
+      if (skip || v.over) { inp.consume(); this.showResults(); return; }
+    }
     if (this.state === 'outro') {
       // the world plays on by itself: no input reaches it; a fresh key press or a click skips to what follows (the
       // level's closing page, or the results)
@@ -736,7 +750,7 @@ export default class Game {
       o.fillStyle = '#3cff7a';
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
     }
-    if (!['loading', 'outro', 'ending', 'cinematic', 'fall'].includes(this.state)) this.drawCursor(o, t);
+    if (!['loading', 'outro', 'ending', 'cinematic', 'fall', 'continued'].includes(this.state)) this.drawCursor(o, t);
   }
 
   // the world (or the replay of the run behind the results), lit, before any lens
@@ -806,6 +820,7 @@ export default class Game {
       if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
+      if (this.state === 'continued') drawContinued(ctx, W, H, finishView(this.stateT), this.world.level.chase.next, t);
       if (this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN)) drawHold(ctx, W, H, this.skip, this.input.device);
     });
   }

@@ -103,9 +103,10 @@ const vel = (v) => Body.getVelocity(v.body);
 
 test('drive: the speed and the steering, step by step (pure)', () => {
   assert.equal(speedStep(8.9, 8.9, false, false, DT), 8.9, 'cruise held');
-  assert.ok(Math.abs(speedStep(8.9, 8.9, true, false, 1) - 11.1) < 1e-9, 'W: up to max in a second (6 px/step a s)');
+  assert.ok(Math.abs(speedStep(8.9, 8.9, true, false, 1) - 11.1) < 1e-9, 'W: up to max well within a second');
   assert.equal(speedStep(11.1, 8.9, true, false, 1), 11.1, 'never past it');
-  assert.ok(Math.abs(speedStep(11.1, 8.9, false, false, 0.5) - 9.6) < 1e-9, 'let go: back down at 3 a s');
+  assert.ok(Math.abs(speedStep(11.1, 8.9, false, false, 0.1) - (11.1 - CHASE.ease * 0.1)) < 1e-9, 'let go: back down toward the cruise speed');
+  assert.equal(speedStep(11.1, 8.9, false, false, 2), 8.9, 'and no lower');
   assert.equal(speedStep(5, 8.9, false, true, 1), 0, 'S: to a stop');
   assert.ok(Math.abs(steerStep(0, 1, 0.125) - 2) < 1e-9 && steerStep(0, 1, 0.25) === 4, 'A / D: full in 0.25 s');
   assert.equal(steerStep(4, 0, 1), 0, 'let go: the road takes it away');
@@ -119,7 +120,7 @@ test('drive: the camera pulls out with the speed (pure)', () => {
   assert.equal(viewHeight(CHASE.max), CHASE.camera.view[1]);
   assert.equal(viewHeight(99), CHASE.camera.view[1], 'never further');
   const h60 = viewHeight(8.9);
-  assert.ok(h60 > 355 && h60 < 375, `about 360 px high at 60 km/h (${h60})`);
+  assert.ok(h60 > 370 && h60 < 392, `about 380 px high at 60 km/h: both facades of the back road on the picture (${h60})`);
   for (const v of [0, 4, 8.9, 11.1]) assert.ok(Math.abs(cameraScale(v) * viewHeight(v) - VIEW) < 1e-9);
   assert.ok(cameraScale(0) > cameraScale(8.9) && cameraScale(8.9) > cameraScale(11.1), 'further out the faster');
 });
@@ -211,11 +212,11 @@ test('drive: a parked car hit nose-on takes the blow: he lives, the van loses mo
   const car = vehicle(w, 'car', 20 * TILE, 7 * TILE, 0);
   assert.ok(car.body.frozen, 'parked: frozen');
   const x0 = car.x;
-  run(w, d, input, 1.0);
+  let low = Infinity;
+  for (let i = 0; i < 60; i++) { run(w, d, input, DT); low = Math.min(low, d.v); }
   assert.equal(w.killed, null);
   assert.ok(car.x > x0 + 20, `shoved on (${car.x - x0} px)`);
-  run(w, d, input, 0.05);
-  assert.ok(d.v < 9 * CHASE.hit.keep + 1.5, `the van slowed (${d.v})`);
+  assert.ok(low < 9 * CHASE.hit.keep + 1.5, `the van slowed (down to ${low})`);
 });
 
 test('drive: the lab: stopping gets him out by the driver\'s door', () => {

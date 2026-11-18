@@ -71,7 +71,7 @@ export function drawHUD(ctx, game, t) {
   if (w.drive?.on) {
     drawDrive(ctx, w.drive, pad, H - pad, s, t);
     drawRoad(ctx, w, W, pad, s);
-    if (p.alive && game.state === 'play') drawHunters(ctx, game, s, t);
+    if (p.alive && game.state === 'play') { drawHunters(ctx, game, s, t); drawWarnings(ctx, game, s, t); }
   }
   if (p.alive && game.state === 'play' && !game.overview) drawIndicators(ctx, game, t);
 
@@ -162,6 +162,56 @@ function drawHunters(ctx, game, s, t) {
     ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 9);
     ctx.lineWidth = 2.2 * z;
     ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// What is about to shut the road ahead, off the picture (a lorry backing out: systems/Lorries.js): three red
+// chevrons on the screen's edge toward where its tail will be, beating with its beeper, and two bone ones toward the
+// way round it
+function drawWarnings(ctx, game, s, t) {
+  const S = game.world.lorries;
+  if (!S) return;
+  const W = game.canvas.width, H = game.canvas.height, cam = game.camera;
+  for (const T of S.told()) {
+    const at = S.tail(T.L, true), sp = cam.worldToScreen((T.x + at.x) / 2, (T.y + at.y) / 2), m = edgeMarker(sp.x, sp.y, W, H, 34 * s);
+    if (!m) continue;
+    const z = s * 2.2, on = S.blink(T.L);
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.angle);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const [col, lw, alpha] of [[PALETTE.ink, 4.5 * z, 1], ['#ff2a4a', 2.2 * z, on ? 1 : 0.45]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = lw;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const x = -i * 9 * z;
+        ctx.moveTo(x - 5 * z, -8 * z); ctx.lineTo(x + 3 * z, 0); ctx.lineTo(x - 5 * z, 8 * z);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    // the way round it, off the picture too: bone arrows on the edge at its height (a safe gap: docs/LEVEL2.md)
+    const g = T.L.gap && cam.worldToScreen(T.L.gap.x, T.L.gap.y), gm = g && edgeMarker(g.x, g.y, W, H, 34 * s);
+    if (!gm) continue;
+    ctx.save();
+    ctx.translate(gm.x, gm.y);
+    ctx.rotate(gm.angle);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const [col, lw] of [[PALETTE.ink, 4.5 * z], ['#efe6d2', 2.2 * z]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      for (let i = 0; i < 2; i++) {
+        const x = -i * 9 * z;
+        ctx.moveTo(x - 5 * z, -8 * z); ctx.lineTo(x + 3 * z, 0); ctx.lineTo(x - 5 * z, 8 * z);
+      }
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }

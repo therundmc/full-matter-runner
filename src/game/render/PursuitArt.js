@@ -69,6 +69,7 @@ function drawPickup(ctx, k) {
 
 export function drawChaseTells(ctx, w, t) {
   const P = w.pursuit;
+  if (w.lorries) drawLorries(ctx, w.lorries, t);
   if (!P) return;
   ctx.save();
   for (const L of P.lanes) drawLane(ctx, L, t);
@@ -84,6 +85,57 @@ export function drawChaseTells(ctx, w, t) {
     ctx.strokeStyle = `rgba(249,200,14,${0.45 + 0.35 * Math.sin(t * 8)})`;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(k.x, k.y, 9, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// A lorry backing out (systems/Lorries.js): its reversing lamps on the beat, the red lane its tail is about to sweep
+// (chevrons running the way it goes), bone arrows on the way round it
+function drawLorries(ctx, S, t) {
+  const C = CHASE.lorry;
+  ctx.save();
+  for (const L of S.list) {
+    const p = L.p, a = Math.atan2(L.dy, L.dx), half = p.def.h / 2, q = S.tail(L);
+    if (S.blink(L)) {
+      for (const s of [-1, 1]) {
+        const x = q.x - L.dy * s * (half - 12), y = q.y + L.dx * s * (half - 12);
+        dot(ctx, x, y, 'rgba(255,246,224,0.35)', 7);
+        dot(ctx, x, y, '#fffaf0', 2.4);
+      }
+    }
+    if (L.state !== 'tell' && L.state !== 'back') continue;
+    const left = L.dist - L.done, k = clamp(L.t / 0.12, 0, 1), beat = 0.5 + 0.5 * Math.sin(t * 14), hw = half + C.pad;
+    ctx.save();
+    ctx.translate(q.x, q.y);
+    ctx.rotate(a);
+    ctx.fillStyle = `rgba(${RED},${(0.16 + 0.1 * beat) * k})`;
+    ctx.fillRect(0, -hw, left, hw * 2);
+    ctx.strokeStyle = `rgba(${RED},${0.9 * k})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -hw); ctx.lineTo(left, -hw); ctx.lineTo(left, hw); ctx.lineTo(0, hw);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(${RED},${0.6 * k})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = (t * 90) % 30; x < left - 6; x += 30) {
+      ctx.moveTo(x - 5, -12); ctx.lineTo(x + 5, 0); ctx.lineTo(x - 5, 12);
+    }
+    ctx.stroke();
+    ctx.restore();
+    // the way round: bone arrows along the road, running
+    if (L.gap) {
+      ctx.strokeStyle = `rgba(${BONE},${(0.65 + 0.3 * beat) * k})`;
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let i = -2; i <= 2; i++) {
+        const x = L.gap.x + i * 26 + ((t * 60) % 26);
+        ctx.moveTo(x - 6, L.gap.y - 9); ctx.lineTo(x + 4, L.gap.y); ctx.lineTo(x - 6, L.gap.y + 9);
+      }
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }

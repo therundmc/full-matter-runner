@@ -6985,7 +6985,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
                   steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
-                  drive='19 DRIVE', getaway='20 GETAWAY')   # (the last ones added, in this order: the others keep their seed)
+                  drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -9688,6 +9688,196 @@ def critters():
 # Build
 # --------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# Level 2A, the back road (docs/LEVEL2.md): the box lorry that backs out across the street (event 2), the cafe's
+# terrace it sends him through (an awning, parasols, planters), two more neon signs.
+LORRY_BOX = ramp('#d2cbb8', 0.5, 0.26, 0.3)
+LORRY_CAB = ramp('#c8902c', 0.55, 0.3, 0.36)
+
+
+def p_lorry():
+    """A box lorry from above, 8.75 x 2.5 m, facing +x: the aluminium box body (roof ribs, its rails, a patch riveted
+    on, the roll door's header at the tail), the chassis showing between it and the cab, the mustard cab (a short
+    hood, the windshield, a sun visor, big mirrors, marker lamps), tail lamps and the white reversing lamps at the
+    back corners (lit in the glow map: it is backing)."""
+    k = Veh(280, 80, 40, 8801)
+    box, cab = LORRY_BOX, LORRY_CAB
+    k.shell(RUBBER, 200, 222, 27.0, 1, 1, crown=8.0)        # the chassis and the tank between cab and box
+    k.shell(cab, 214, 278, 35.5, 5, 9, crown=2.6)           # the cab
+    k.shell(box, 1, 208, 38.5, 3, 3, crown=9.0)             # the box body
+    k.arches((240,), r=13)
+    for x in range(14, 204, 16):                             # roof ribs
+        k.line(x, 3, x, 39, lambda c, s: lt(c, 0.1), w=2)
+        k.line(x + 1, 3, x + 1, 39, darken(0.12))
+    k.line(3, 2, 206, 2, lambda c, s: lt(c, 0.22))           # the roof's side rails
+    k.line(3, 3, 206, 3, darken(0.16))
+    for x in (2, 3, 4):                                      # the roll door's header
+        k.line(x, 3, x, 39, darken(0.3 if x == 4 else 0.18))
+    k.line(205, 3, 205, 39, darken(0.25))                    # the front bulkhead's cap
+    for y in range(8, 34):                                   # a patch riveted on the roof, off the centre (one side)
+        for x in range(118, 150):
+            edge = y in (8, 33) or x in (118, 149)
+            k.put(x, y, (lambda c, s: dk(c, 0.2)) if edge else (lambda c, s: lt(c, 0.07)), both=False)
+    for (x, y) in ((120, 10), (147, 10), (120, 31), (147, 31), (133, 10), (133, 31)):
+        k.dot(x, y, CHROME[2], both=False)
+    for y in range(54, 67):                                  # a translucent roof light, the other side
+        for x in range(60, 96):
+            k.put(x, y, (lambda c, s, x=x, y=y: mix(c, hx('#9aa6a8'), 0.5 if (x + y) % 9 else 0.3)), both=False)
+    k.panel(cab, 222, 250, 30.5, r=3, crown=4.0, lift=0.04)  # the cab's roof
+    k.line(250, 6, 250, 39, darken(0.35))                    # the sun visor over the screen
+    k.line(251, 6, 251, 39, lambda c, s: lt(c, 0.12))
+    k.trap(252, 262, 30.5, 32.5, sheen=3)                    # windshield
+    for y in (15.0, 51.0):                                   # through it: two seats, the wheel, the dash, a thermos
+        k.inside(252.0, y, 255.5, y + 14.0, hx('#5a4a3a'), 0.3)
+    k.wheel(258.0, 24.0, 4.6)
+    k.inside(259.5, 9.0, 263.0, 71.0, hx('#3e3a34'), 0.42)
+    k.inside(260.0, 46.0, 262.0, 49.0, hx('#b8c0c8'), 0.5)
+    k.film(252, 262, ((263.0, 38.0), (263.0, 62.0)), 20.0, 0.13)
+    k.side(228, 251, lambda x: 30.5, 33.0)
+    for x in (226, 252):                                     # cab doors
+        k.line(x, 5, x, 9, darken(0.45))
+    k.line(238, 6, 241, 6, CHROME[2], w=2)
+    k.line(264, 7, 264, 39, darken(0.4))                     # the short hood
+    k.line(266, 22, 275, 22, ridge(0.1))
+    for y in (12, 13, 26):                                   # marker lamps on the roof's front edge
+        k.put(246, y, AMBER)
+    for x in (211, 212):                                     # the exhaust stack behind the cab (one side)
+        for y in (15, 16, 17):
+            k.put(x, y, CHROME[1] if x == 211 else CHROME[3], both=False)
+    k.grime((54, 68, 240), amount=1.5, rust=16, scratches=7)
+    k.seal()
+    k.gloss(264, 277, 0.08)
+    k.rim()
+    k.bumper(276, 278, CHROME)
+    k.bumper(1, 2, RUBBER)
+    for y in range(28, 40):                                  # grille
+        for x in range(273, 276):
+            k.put(x, y, CHROME[1] if y == 28 or x == 273 else RUBBER[0])
+    k.lamp(273, 275, 9, 15, HEAD_C, HEAD_GLOW, CHROME[2])
+    k.lamp(273, 275, 17, 21, HEAD_C, HEAD_GLOW, CHROME[2])
+    k.lamp(2, 4, 4, 10, TAIL_C, TAIL_GLOW, hx('#7a0818'), back=4)     # tail lamps on the corner posts
+    k.lamp(2, 4, 12, 16, HEAD_C, HEAD_GLOW, CHROME[1], back=4)        # the reversing lamps, lit
+    k.line(3, 18, 4, 18, AMBER, w=2)
+    return k.done()
+
+
+AWNING_A, AWNING_B = ramp('#e0842c', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25)
+
+
+def p_awning():
+    """A cafe's canvas awning from above, hung on the facade (the wall at -y), reaching 1.1 m out over the terrace:
+    broad orange and bone stripes running out from the wall, the cloth sagging a little between its three arms (their
+    shadow lines), a scalloped valance along the front, the roller's steel box against the wall."""
+    W, H = 98, 38
+    cv = Cv(W, H)
+    frect(cv, 1, 1, W - 1, 4.5, shade(STEEL_L, 0.55))                      # the roller's box
+    frect(cv, 1, 1, W - 1, 1.5, shade(STEEL_L, 0.9))
+    frect(cv, 1, 4.0, W - 1, 4.5, shade(STEEL_L, 0.2))
+
+    def cloth(x, y, cur):
+        if y > 32.5 and (y - 32.5) > 3.6 * abs(math.sin((x - 1.0) * math.pi / 8.0)) + 0.6:
+            return None                                                    # the valance: scallops
+        r = AWNING_A if int((x - 1.0) // 8) % 2 == 0 else AWNING_B
+        arm = min(abs(x - a) for a in (4.0, 49.0, 94.0))
+        sag = 0.5 + 0.22 * math.cos(arm / 45.0 * math.pi) - (y - 4.5) / 28.0 * 0.22
+        if y > 32.5:
+            sag -= 0.16
+        return shade(r, max(0.05, min(0.95, sag)))
+    px_paint(cv, 1, 4.5, W - 1, 37, cloth)
+    for a in (4.0, 49.0, 94.0):                                            # the arms seen through the cloth
+        px_paint(cv, a - 0.5, 5, a + 0.5, 32, lambda x, y, cur: dk(cur, 0.2))
+    frect(cv, 1, 32.0, W - 1, 32.5, lambda c: dk(c, 0.3))                  # the front bar's seam
+    rng = random.Random(8811)
+    smudge(cv, rng, 9, (2, 6, W - 2, 32), (1.5, 4.0), 0.14, hx('#4a4038'))  # soot and rain marks
+    smudge(cv, rng, 3, (2, 6, W - 2, 32), (0.8, 1.6), 0.4, hx('#e8e6dc'))   # pigeons
+    cv.outline()
+    return cv
+
+
+def p_parasol():
+    """A terrace parasol from above, 1.4 m across: eight gores, orange and bone, sagging between their ribs, a brass
+    cap on the pole's tip, the scalloped edge."""
+    S = 46
+    c = S / 2
+    cv = Cv(S, S)
+
+    def gore(u, v, L):
+        d = math.hypot(u, v)
+        a = math.atan2(v, u) + math.pi / 8
+        n = int(math.floor(a / (math.pi / 4))) % 8
+        f = (a / (math.pi / 4)) % 1.0
+        if d > 20.0 + 1.9 * (1 - math.sin(f * math.pi)):                   # the cloth pulled in between two ribs
+            return None
+        r = AWNING_A if n % 2 == 0 else AWNING_B
+        rib = min(f, 1 - f)
+        return shade(r, max(0.05, min(0.95, 0.42 + 0.3 * (light(u / 22, v / 22) - 0.5) + 0.16 * math.sin(f * math.pi) - (0.16 if rib < 0.06 else 0))))
+    fill_shape(cv, c, c, 22.0, 22.0, gore)
+    fill_shape(cv, c, c, 1.6, 1.6, lambda u, v, L: shade(BRASS, L))
+    smudge(cv, random.Random(8821), 5, (4, 4, S - 4, S - 4), (1.2, 3.0), 0.13, hx('#4a4038'))
+    cv.outline()
+    return cv
+
+
+def p_planter():
+    """A terrace planter from above, 1.25 m long: a cast concrete trough, dark soil, a clipped box hedge filling it
+    with a few small pale flowers."""
+    W, H = 42, 18
+    cv = Cv(W, H)
+    stone = ramp('#8e8a84', 0.45, 0.22, 0.3)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(stone, L), kind='rect', bevel=1.4, corner=1.0)
+    rng = random.Random(8831)
+    mottle(cv, rng, 5, 4)
+    frect(cv, 3, 3, W - 3, H - 3, hx('#20140c'))
+    n = VNoise(W, H, 3, rng)
+    greens = ramp('#2e7434', 0.55, 0.3, 0.34)
+
+    def hedge(ly):
+        fill_shape(ly, W / 2, H / 2, W / 2 - 3.6, H / 2 - 3.4,
+                   lambda u, v, L: shade(greens, max(0.05, min(0.95, 0.2 + 0.75 * n(W / 2 + u, H / 2 + v) + (L - 0.5) * 0.5))),
+                   kind='rect', bevel=2.0, corner=2.2)
+        for _ in range(9):
+            ly.dot(rng.uniform(5, W - 5), rng.uniform(5, H - 5), rng.choice((hx('#f0e6d0'), hx('#f0c0d0'), hx('#f4e08a'))))
+    layer(cv, hedge, hx('#102a14'))
+    smudge(cv, rng, 3, (1, 1, W - 1, H - 1), (0.8, 1.6), 0.22, hx('#3a4a2a'))   # moss on the rim
+    cv.outline()
+    return cv
+
+
+FONT_SHOP.update({
+    'C': [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
+    'F': ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+})
+
+
+def p_neon_sign_diner():
+    """DINER in warm tubes, a cup steaming beside it."""
+    cv, gl = sign_backing(46, 14), Cv(46, 14)
+    ne = Neon(46, 14)
+    ne.line([(3, 7), (3, 10), (4, 11), (7, 11), (8, 10), (8, 7), (3, 7)], NEON_CYAN)    # a cup
+    ne.line([(9, 8), (10, 9), (9, 10)], NEON_CYAN)
+    ne.line([(5, 5), (4, 4), (5, 3), (4, 2)], NEON_PINK)                                # its steam
+    neon_text(ne, 14, 3, 'DINER', NEON_AMBER)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+def p_neon_sign_cafe():
+    """CAFE in pink tubes over a cyan stroke."""
+    cv, gl = sign_backing(34, 14), Cv(34, 14)
+    ne = Neon(34, 14)
+    neon_text(ne, 5, 2, 'CAFE', NEON_PINK)
+    ne.line([(5, 11), (28, 11)], NEON_CYAN)
+    ne.render(cv, gl)
+    return cv, gl
+
+
+CHASE_PROPS = dict(lorry=p_lorry, awning=p_awning, parasol=p_parasol, planter=p_planter,
+                   neon_sign_diner=p_neon_sign_diner, neon_sign_cafe=p_neon_sign_cafe)
+CHASE_SIZES = dict(lorry=(280, 80), awning=(98, 38), parasol=(46, 46), planter=(42, 18),
+                   neon_sign_diner=(46, 14), neon_sign_cafe=(34, 14))
+CHASE_NEON = ['neon_sign_diner', 'neon_sign_cafe']   # light: at the world's density, with their glow maps
+
+
 def build():
     out = {}
     for i, (cid, ch) in enumerate(CHARS.items()):
@@ -9741,6 +9931,7 @@ def build():
     props.update(DETAIL_PROPS)
     props.update(BAR_PROPS)
     props.update(LABEL_PROPS)
+    props.update(CHASE_PROPS)
     for name, fn in props.items():
         r = fine(fn, name) if name in FINE_PROPS else fn()
         if isinstance(r, tuple):   # (sprite, emissive map)
@@ -9798,13 +9989,14 @@ PROP_SIZES.update(SHOP_SIZES)
 PROP_SIZES.update(DETAIL_SIZES)
 PROP_SIZES.update(LABEL_SIZES)
 PROP_SIZES.update(BAR_SIZES)
-GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING + BAR_NEON
+PROP_SIZES.update(CHASE_SIZES)
+GLOWING += list(LIGHT_SIZES) + SHOP_GLOWING + BAR_NEON + CHASE_NEON + ['lorry']
 # the furniture, the street's dressing and the vehicles are painted at FINE density (their emissive maps too), like
 # the people and the weapons: the sizes above are in world px. The neon signs, neon tubes and party bulbs stay at the
 # world's: they are light (the lamps' fittings are painted fine, their glow maps with them); the lab's stencilled
 # labels too.
 # (keep in step with FINE in src/engine/Assets.js)
-FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING) - set(LABEL_SIZES) - set(BAR_NEON)
+FINE_PROPS = (set(PROP_SIZES) - set(SHOP_GLOWING) - set(LABEL_SIZES) - set(BAR_NEON) - set(CHASE_NEON)
               - {'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'neon_tube_pink', 'neon_tube_cyan', 'string_lights'})
 
 

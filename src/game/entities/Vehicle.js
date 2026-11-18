@@ -182,6 +182,12 @@ export default class Vehicle {
     return true;
   }
 
+  // the man at the wheel shot dead where he sits (the chase's told shot): he stays in the seat, slumped over the wheel
+  // (CharacterAnim.seatPose), the car carrying him on
+  slumpIn() {
+    if (this.rider?.riding) { this.rider.riding.slump = 0.01; this.rider.riding.aim = null; }
+  }
+
   unseat() {
     const ch = this.rider;
     if (ch) ch.riding = null;
@@ -195,6 +201,7 @@ export default class Vehicle {
     if (dt > 0) {
       ch.vel = { x: (q.x - ch.x) / (dt * 60), y: (q.y - ch.y) / (dt * 60) };
       ch.riding.k = Math.min(1, ch.riding.k + dt / SEAT.settle);
+      if (ch.riding.slump) ch.riding.slump = Math.min(1, ch.riding.slump + dt / SEAT.slump.t); // shot at the wheel (slumpIn)
     }
     Body.setPosition(ch.body, q);
     ch.angle = this.body.angle;
@@ -255,8 +262,8 @@ export default class Vehicle {
         }
       }
       if (kind === 'cut') continue;
-      if (this.windows.wind < 2 && this.inside(this.m.wind, qx, qy)) { this.hitWindow('wind', qx, qy, dirA); return; }
-      if (this.m.rear && this.windows.rear < 2 && this.inside(this.m.rear, qx, qy)) { this.hitWindow('rear', qx, qy, dirA); return; }
+      if (this.windows.wind < 2 && this.inside(this.m.wind, qx, qy)) { this.hitWindow('wind', qx, qy, dirA, kind); return; }
+      if (this.m.rear && this.windows.rear < 2 && this.inside(this.m.rear, qx, qy)) { this.hitWindow('rear', qx, qy, dirA, kind); return; }
     }
     if (kind !== 'cut') this.breakLamp(this.lampAt(sx, sy), dirA);
     w.particles.chips(px, py, dirA + Math.PI, 0.9, 3, this.m.color, 120);
@@ -351,12 +358,13 @@ export default class Vehicle {
     });
   }
 
-  hitWindow(which, sx, sy, dirA) {
+  // kind: what broke it (a round's kind; none: a blast, a crash)
+  hitWindow(which, sx, sy, dirA, kind = null) {
     const w = this.world;
     const r = this.m[which];
     const state = ++this.windows[which];
     const g = this.g;
-    if (state <= 2) w.events?.emit('carPart', { car: this, part: which, dirA }); // a round through it (systems/Pursuit.js)
+    if (state <= 2) w.events?.emit('carPart', { car: this, part: which, dirA, kind }); // a round through it? (systems/Pursuit.js)
     if (state === 1) {
       // spider-web crack around the impact
       g.save();

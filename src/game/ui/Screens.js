@@ -313,3 +313,22 @@ export function drawOutro(ctx, W, H, out) {
   ctx.fillRect(0, 0, W, bar);
   ctx.fillRect(0, H - bar, W, bar);
 }
+
+// The card that closes a chase not finished yet (Game state 'continued'; view: systems/Drive.js finishView): the
+// picture gone black, TO BE CONTINUED stamped a little crooked like the level's card, what comes next under it
+export function drawContinued(ctx, W, H, view, next, t) {
+  const s = H / 720, ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
+  ctx.fillStyle = `rgba(0,0,0,${view.black})`;
+  ctx.fillRect(0, 0, W, H);
+  if (view.title > 0) {
+    const k = ease(view.title), sc = 1 + (1 - k) * 0.6;
+    text(ctx, 'TO BE CONTINUED', W / 2, H * 0.44, 46 * s * sc, PALETTE.white, { alpha: clamp(view.title * 2, 0, 1), rot: -0.035 });
+    ctx.fillStyle = PALETTE.pink;
+    ctx.globalAlpha = k;
+    ctx.fillRect(W / 2 - 250 * s * k, H * 0.44 + 38 * s, 500 * s * k, 3 * s);
+    ctx.globalAlpha = 1;
+  }
+  if (view.name > 0) {
+    text(ctx, `NEXT: ${next}`, W / 2, H * 0.44 + 74 * s, 24 * s, PALETTE.pink, { alpha: ease(view.name) * (0.85 + 0.15 * Math.sin(t * 5)) });
+  }
+}

@@ -200,9 +200,12 @@ export const COAT = { hinge: [-1, 3.25], root: 3, moving: 0.4, full: 2.6, hem: 0
 // elbow: how far out the elbows are; feet: his feet under the dash [ahead, apart]; settle: s he takes to settle in
 // (the pose blended in, the hands finding the wheel); aim: the arm on the aim's side out with what he holds [reach],
 // the head and the shoulders turned after it (rad at most); wind: the coat's half on the door's side thrown out over
-// the door at speed [rad, flutter rad, rad/s, share it is drawn out longer]; hit: px round the seat a round crossing the open cabin kills within
+// the door at speed [rad, flutter rad, rad/s, share it is drawn out longer]; hit: px round the seat a round crossing the open cabin kills within;
+// slump: shot at the wheel of the chase's car (riding.slump 0 .. 1 over `t` s): his shoulders `fwd` px onto the wheel, his
+// head turned `head` rad and his shoulders `twist`, his hands off the rim and down by his knees [ahead, apart]
 export const SEAT = { s: 0.94, back: 0.8, grip: 1.95, turn: 1.6, elbow: 0.8, feet: [7.8, 2.4], settle: 0.28,
-  aim: { reach: 12.5, head: 1.1, twist: 0.3 }, wind: [0.95, 0.12, 15, 0.35], hit: 8 };
+  aim: { reach: 12.5, head: 1.1, twist: 0.3 }, wind: [0.95, 0.12, 15, 0.35], hit: 8,
+  slump: { t: 0.3, fwd: 3.2, head: 0.95, twist: 0.28, hands: [3.5, 4.2] } };
 
 export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 

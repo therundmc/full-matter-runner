@@ -15,7 +15,9 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   (on foot: the car burning on the forecourt, the boss's men falling back into the store). Dying in 2A restarts the
   chase from 0:00; dying in 2B restarts 2B at the crash (he gets up off the ground, as level 1's opening).
 - One hit kills still holds in the car: a shot told and not dodged into the open cabin, a nose-on hit on something
-  that does not give, or being shoved off the road. Scrapes cost nothing (no health bar).
+  that does not give, or being shoved off the road. Scrapes cost nothing (no health bar: his car is never shot up,
+  burnt or blown); a corner clipped (what he hit covering under a fifth of his nose) is a jolt that takes his speed,
+  not his life.
 
 ## 2A gameplay: proposal B, "shove and shoot" (chosen)
 
@@ -43,8 +45,9 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   Enemy tracers bone, telegraph red, his own muzzle flash orange.
 - **Slow motion** (from proposal C) only at three moments: the two jumps and the level crossing (time x0.25, weak
   points marked: a tyre, a tank, a driver).
-- **Camera.** It pulls out with speed: about 360 world px high at 60 km/h, 400 at 90, 440 at 120, 480 on the jump
-  (the normal view is 290); the car held in the left third so he sees far enough ahead.
+- **Camera.** It pulls out with speed: about 380 world px high at 60 km/h (the back road is 320 px from wall to wall:
+  both facades and their signs stay on the picture), 400 at 90, 440 at 120, 480 on the jump (the normal view is 290);
+  the car held in the left third so he sees far enough ahead.
 - Rejected as the main mechanic: A (lane-snap shooting: readable but on rails, seven rounds his only violence) and
   C (autopilot shooting gallery: throws the physics away). Boards: [A](level2/gameplay_a.webp),
   [B sheet](level2/gameplay_b_sheet.webp), [C](level2/gameplay_c.webp).
@@ -58,7 +61,7 @@ do); the route map's bends are only suggested by the scenery. (Turning the camer
 
 | # | Time | Segment | Speed, camera | What it is |
 |---|------|---------|---------------|------------|
-| 1 | 0:00-0:25 | THE BACK ROAD | 60 km/h, 360 px | 2 lanes and a row of parked cars. Learns: steer, shove, shoot. One car, then two. Breaks: bins, hydrants, news boxes, parked cars, a terrace. |
+| 1 | 0:00-0:25 | THE BACK ROAD | 60 km/h, 380 px | 2 narrow lanes (2.5 m) and a row of parked cars; a block of shops, a dark stretch with a vacant lot, shops again, the lorry's yard and the cafe's terrace, the diner on the lit corner. Learns: steer, shove, shoot. One car, then one more at a time. Breaks: bins, hydrants, news boxes, benches, a phone booth, parked cars, the fence, a terrace. |
 | 2 | 0:25-0:36 | THE ON-RAMP, THE TOLL | 90 km/h, 400 px | The road opens to 4 gates. Decides a gate 1.5 s out. They follow or die. |
 | 3 | 0:36-1:10 | THE MOTORWAY | 120 km/h, 440 px | 4 lanes one way, traffic, lorries. Three of them at once. Piers, lorries and the rail are his weapons. The tanker at 0:58. |
 | 3b | 1:10-1:25 | THE INTERCHANGE: A CHOICE | 110 km/h, 480 px | A: the unfinished flyover (needs 110 km/h at the plate, 1.5 s in the air, slow motion, one free round, one of them falls). B: the underpass (piers, a lorry coming; nothing lost, nothing won). |
@@ -70,7 +73,7 @@ Events:
 | # | Time | Event | What happens |
 |---|------|-------|--------------|
 | 1 | 0:08 | OUT OF THE ALLEY | One of theirs across his nose: its lamps first, a red lane. Brake, or shove it into the parked cars. |
-| 2 | 0:20 | THE LORRY BACKING OUT | It shuts the street. Under its tail, or up the kerb through a terrace: tables, chairs, an awning. |
+| 2 | 0:20 | THE LORRY BACKING OUT | Told 0.9 s (its beeper and reversing lamps, red chevrons on the edge of the screen, a red lane, bone arrows on the way round), then it shuts the street in 1.4 s. Under its tail flat out, or up the kerb through a terrace: tables, chairs, parasols, planters, awnings. Whoever follows him into it dies there. |
 | 3 | 0:30 | THE TOLL | Bone arrow: a wooden arm that flies. Red cross: steel. The one behind him takes the wrong one. |
 | 4 | 0:46 | THEY MULTIPLY | Three cars, a gunman in each. Piers down the median, a lorry in the slow lane. |
 | 5 | 0:58 | THE TANKER | It folds across three lanes, its petrol runs back down the road, the fire runs up it: 4 s. One gap. It goes up behind him. |
@@ -148,7 +151,7 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
 - [x] **M1b - The first pursuers.** The pursuers' car sprite; pursuer AI (follow, flank, ram); the gunman and his
   told shot (glint, red line, bracket); shooting out of the driver's window (arc, ammo, pickups); kill rules; event
   1 (out of the alley) and two cars by 0:25; HUD (speed, shove bar, distance).
-- [ ] **M1c - Back road polish.** Event 2 (the lorry backing out, the terrace); what breaks on the kerb; sounds as
+- [x] **M1c - Back road polish.** Event 2 (the lorry backing out, the terrace); what breaks on the kerb; sounds as
   named placeholders; tuning in play; first playable demo of 2A's first 25 s.
 - [ ] **M2 - The toll and the motorway.** On-ramp, toll gates, 4 lanes, traffic, lorries, piers, three pursuers, the
   tanker.
@@ -196,3 +199,32 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   is hit where it is aimed at); the alley car rammed nose-on by him is shoved into the parked cars and wrecked (his
   doing: SHOVED), so ploughing on is a way through too, at the price of his speed. Played by script in the headless
   browser: braking for the red lane and each tell, the first 25 s are survived (7 tells dodged).
+- 2026-11-18: M1c. THE BACK ROAD REBUILT NARROW (tools/build_level2a.py: 450 x 24 tiles; lanes 2.5 m, one parking
+  row, the north sidewalk 1 m, the south one 2 m: 320 px from facade to facade, the view about 380 px high at 60 km/h,
+  drawn 0.75 of the way to the lanes' middle, so the shopfronts and their neon are always on the picture) and in five
+  parts: the shops (LIQUOR, BAR, VIDEO, WASH 24H), the dark stretch (a vacant lot behind a chain fence he can go
+  through, blind walls, pipes, one lamp in two, flickering), shops again, the lorry's yard and the cafe's terrace, the
+  diner on the lit corner and the cross street; pigeons in his lane, cats, people on the sidewalks and at the tables
+  (they run from the car, or die under it), manholes, water in the gutter. EVENT 2 (systems/Lorries.js, prop `lorry`:
+  a box lorry painted at FINE density, `lasting`: nose-on into it is the crash; `blind`: the pursuers never see it and
+  wreck themselves on it): set off at col 303, told 0.9 s, then backing 5 m at 115 px/s: at 60 km/h without a move he
+  takes its tail on the nose; flat out and hugging the kerb he is under it (75 km/h, 16 px to spare); else the terrace. THE KERB: a bolted thing is
+  torn off at once (a sensor from the contact on: before, a torn bench still stopped the car dead while it fell apart),
+  a loose light one (120 kg or less) is flung by hand ahead and aside (Drive.fling), the car drives over debris
+  (a loose bit landing under it threw two tons sideways: Matter shares an overlap equally), an awning or a parasol it
+  passes under comes down (prop `canopy`); nothing on the kerb holds it up, a hit costs 3 % of the speed once a step.
+  FEEL (data/chase.js): accel 9, back to cruise 7 a second, tear 0.8 px/step, tyre smoke and rubber on the road at a
+  shove, hard steering and the brakes, spray out of water, what is ahead frightened. PURSUERS: one at the alley,
+  one from behind at cols 165 and 250 (19 m back, alongside 3 s later; brought back up behind the picture when a
+  wreck holds one up), a last one out of the cross street at col 382; a tell every 1.6-2.4 s, none while something
+  else is told nor in the 520 px before it (one thing told at a time on this road); their own swipe at him no longer
+  counts as his shove; a windscreen cracked by a knock no longer counts as the driver shot. FIXES: the gunman leans out
+  of the REAR door's window (a round for the driver, from alongside, no longer takes him too); the HUD's 9MM for the
+  1911 is the game's shared pistol / uzi pool, on purpose: left; shot at the wheel he stays in his seat, slumped over
+  it, and the car runs on, drifts and stops (before: the seat empty, his body left on the road under the car, the
+  car stopped dead). THE END: past col 428 the car runs on, the picture
+  goes black, TO BE CONTINUED / NEXT: THE TOLL (Game state `continued`), then the results. Sounds: lorryBeep,
+  lorryBrake, awningRip, tyreSkid, waterSpray (placeholders). Lab station 21 LORRY. Decisions changed (above): the
+  camera's height at 60 km/h, the corner clip, his car never damaged. Played by script in the headless browser:
+  swerving half onto the kerb for each tell, shooting the drivers, through the terrace, the run is finished in about
+  27 s with every car killed.

@@ -82,6 +82,11 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    vault over the door, the key, the wheelspin and the rubber it lays, the tail out round the leaking
                    car and down the south lane through station 17's and 19's things, the hat gone at the first swing;
                    then the results (restart the lab from there)
+    21 LORRY       the street's east end, carried on past the facades: a box lorry in its yard, its tail out over the
+                   north lane (systems/Lorries.js, prop option `backs`). A car driven near sets it off: it beeps, its
+                   lamps flash, the red lane shows where its tail goes, then it backs across both lanes and shuts
+                   the street; a while later it goes back in. Nose-on into it is the crash, a scrape is not, a corner
+                   clipped is a jolt. A coupe to drive stands before it (E at its door)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -382,6 +387,18 @@ lv.prop('van', 4.6, 23.5, 0, drive=True)   # E at its driver's door (its north s
 lv.prop('trash_can', 18.4, 23.9)
 lv.prop('trash_can', 19.2, 23.0)
 lv.prop('pursuer', 22.0, 21.1, 0, pursuer=True)   # parked in the north lane, its gunman telling his shot
+
+lv.area('21 lorry: a box lorry that backs out across the street when a car comes')
+lv.fill(63, 18, 72, 19, 's')               # the street carried on east past the facades, the lorry's yard north of it
+lv.fill(63, 20, 72, 24, '=')
+lv.fill(63, 22, 72, 22, '-')
+lv.fill(66, 13, 69, 17, '_')
+lv.paint('label_lorry', 64.6, 18.6)
+lv.prop('lorry', 68.0, 17.375, -90, backs=3)       # its cab to the north, its tail over the north lane
+lv.prop('car2', 61.0, 23.6, 0, drive=True)         # E at its driver's door
+lv.prop('trash_can', 64.5, 19.4)
+lv.prop('crate', 70.9, 19.3, 12)
+lv.prop('wall_lamp', 64.5, 18.08, 0)
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)

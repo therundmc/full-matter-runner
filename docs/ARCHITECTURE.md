@@ -170,8 +170,10 @@ src/
                           seat (`driving`), the car a dynamic body whose velocity is set each step from the controls
                           after reading back what the physics let it do (CHASE in data/chase.js: cruise, W / S,
                           A / D, the road's pull, the shove on SPACE); `contact` (called before Matter resolves a
-                          contact): a parked car woken and shoved, a bolted thing torn off, a person run down, nose-on
-                          into what does not give the crash ('kill' cause `crash`); the camera's pull-out and lead
+                          contact): a parked car woken and shoved, a bolted thing torn off (a sensor at once), a loose
+                          light one flung by hand, a person run down, nose-on into what does not give the crash
+                          ('kill' cause `crash`; a corner clipped is a jolt); `fx`: tyre smoke, rubber on the road,
+                          spray, what is ahead frightened, `canopy` props torn down; the camera's pull-out and lead
                           (viewHeight, cameraScale, frame: pure); the end col clears the level; its engine heard
                           (World hands `motor` to Audio.motor)
       CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click, R; the arc (arcOf / inArc:
@@ -187,6 +189,11 @@ src/
                           start; his seat in it and reached -> dead), one at a time with a cooldown; events by distance
                           (`chase.events`: the alley car and its red lane, one from behind); the gun / magazine pickups.
                           Numbers: CHASE.pursuit / gunman / pickup / alley; drawn by render/PursuitArt.js
+      Lorries.js          the lorry that backs out across the street (level 2A's event 2 by distance, the lab's with the
+                          prop option `backs`): told (beeper, reversing lamps, the HUD's chevrons, a red lane, bone
+                          arrows on the way round), then its static body moved a step at a time until the street is
+                          shut; `lasting` (nose-on into it is Drive's crash) and `blind` (the pursuers never see it).
+                          Numbers: CHASE.lorry; drawn by render/PursuitArt.js and ui/HUD.js
     ai/                   enemy AI, DOM-free (unit tested)
       Tension.js          soundtrack intensity: alert phase + heat of the fight (shots, kills, blasts)
       Director.js         squad brain: alert phases, noise routing (only the nearest go and look while calm), incidents,

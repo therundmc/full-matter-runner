@@ -135,10 +135,10 @@ function calm(fn, tells = false) {
 test('pursuit: the slots, the lock, the band (pure)', () => {
   const band = [NORTH, SOUTH];
   const side = slotOf('side', 1000, SOUTH, band), behind = slotOf('behind', 1000, SOUTH, band);
-  assert.ok(side.y < SOUTH - 90 && Math.abs(side.x - 1000) < 40, 'alongside, on his driver\'s side (-y), in the other lane');
+  assert.ok(side.y < SOUTH - 60 && Math.abs(side.x - 1000) < 40, 'alongside, on his driver\'s side (-y), in the other lane');
   assert.equal(behind.y, SOUTH);
   assert.ok(behind.x < 1000 - 150);
-  assert.ok(slotOf('side', 1000, NORTH, band).y > NORTH + 90, 'no room on his driver\'s side: the other one');
+  assert.ok(slotOf('side', 1000, NORTH, band).y > NORTH + 60, 'no room on his driver\'s side: the other one');
   const aim = lockOf({ x: 100, y: 200 }, { x: 8.9, y: 2 }, 0.75);
   assert.deepEqual([Math.round(aim.x), aim.y], [100 + Math.round(8.9 * 45), 200], 'his y held, his x led by his speed');
   assert.ok(inBand({ x: aim.x + 30, y: 210 }, aim) && !inBand({ x: aim.x, y: 240 }, aim) && !inBand({ x: aim.x - 60, y: 200 }, aim));
@@ -164,7 +164,7 @@ test('pursuit: a pursuer behind closes the gap and takes its slot alongside on h
   const sl = slotOf('side', s.v.x, s.v.y, s.P.band);
   assert.equal(car.state, 'chase');
   assert.ok(Math.abs(car.v.x - sl.x) < 40, `alongside (${Math.round(car.v.x - s.v.x)} px off him along the road)`);
-  assert.ok(Math.abs(car.v.y - sl.y) < 16 && car.v.y < s.v.y - 80, `in the other lane, his driver's side (${Math.round(car.v.y)})`);
+  assert.ok(Math.abs(car.v.y - sl.y) < 16 && car.v.y < s.v.y - 60, `in the other lane, his driver's side (${Math.round(car.v.y)})`);
   assert.equal(s.w.kills.length, 0);
 }));
 
@@ -304,7 +304,7 @@ test('pursuit: a round through its windscreen kills the driver and it veers off;
 test('pursuit: its gunman shot, no more tells from that car (it can still ram)', () => calm(() => {
   const s = start();
   const car = s.P.spawn(s.v.x - 60, NORTH, 0, 'chase', 9.5);
-  run(s, 1);
+  run(s, CHASE.gunman.grace - 0.2);
   assert.ok(!s.P.tell, 'not yet (his grace)');
   const g = s.P.gunPoint(car);
   s.w.events.emit('round', { x0: g.x - 3, y0: g.y + 80, x1: g.x + 3, y1: g.y - 20, owner: s.w.player, team: 'player' });
@@ -328,7 +328,7 @@ test('events: the alley car goes at its distance, not before; its red lane is to
   const car = s.P.cars[0];
   assert.equal(car.state, 'wait', 'it waits in the alley, lamps on');
   let shown = null, inLane = null;
-  const edge = SOUTH + TILE * 1.75;
+  const edge = SOUTH + (SOUTH - NORTH) / 2;
   run(s, 4, null, () => {
     if (shown === null && s.P.lanes.length) shown = s.w.time;
     if (shown !== null && inLane === null && car.v.y - car.v.w / 2 < edge) inLane = s.w.time;

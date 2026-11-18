@@ -196,8 +196,12 @@
   `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz); use `impulse()` (momentum) for hits/blasts;
   heavy objects use `world.physics.freezeIfHeavy(body)`.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
+- The chase (level 2A, docs/LEVEL2.md): numbers in data/chase.js; events by distance in the level's `chase.events`
+  (systems/Pursuit.js, systems/Lorries.js); what the car hits is torn (a sensor at once), flung by hand (Drive.fling) or
+  the crash (`lasting`): never let a light thing hold it up. Play it by script after touching it (tools/shot.mjs).
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
-- level1.js, lab.js and tutorial.js are generated: edit `tools/build_level1.py` / `build_lab.py` / `build_tutorial.py`
+- level1.js, level2a.js, lab.js and tutorial.js are generated: edit `tools/build_level1.py` / `build_level2a.py` /
+  `build_lab.py` / `build_tutorial.py`
   (tools/levelkit.py checks spawns, furniture overlaps and rooftop pieces) and run them; never hand-edit the output.
 - Keep code clean: no stray exports / unused imports, short useful comments.
 

@@ -6,12 +6,16 @@
 //   across (y): A / D steer it sideways; let go, the road's pull straightens it; the nose follows the way it goes
 //   SPACE: the shove, a jolt sideways toward the mouse's side of the van, once in a while
 //   what it hits (contact, called by the physics before it resolves the contact): a parked car is woken and shoved,
-//   a bolted thing is torn off, a pane goes (entities/Window.js), a person is run down; a wall, a building or a
-//   `lasting` thing hit square on with the nose, fast: the crash that kills him
+//   a bolted thing is torn off (a sensor from then on: it never holds the car up while it falls apart), a loose light
+//   one is flung ahead and aside by hand (fling), a pane goes (entities/Window.js), a person is run down; it drives
+//   over the dead and over debris; a wall, a building or a `lasting` thing (the lorry) hit square on with the nose,
+//   fast: the crash that kills him (a corner only clipped: a jolt, onNose)
+//   what its speed does (fx): tyre smoke and rubber on the road, spray, pigeons and people frightened ahead, awnings
+//   and parasols (`canopy`) torn down as it passes under
 // The camera's numbers (viewHeight, cameraScale, frame) are pure; Game uses them. DOM-free but for the van it may
 // make (entities/Vehicle.js).
 import { TILE, CAT, MASK } from '../Config.js';
-import { clamp, angDiff, rand } from '../../engine/math.js';
+import { clamp, angDiff, rand, chance } from '../../engine/math.js';
 import { VIEW } from '../../engine/Camera.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import { Gearbox, MOTOR, squealOf } from '../../audio/Motor.js';
@@ -50,6 +54,30 @@ export const cameraScale = (speed, C = CHASE) => VIEW / viewHeight(speed, C);
 // the speed on the dial
 export const kmh = (v, C = CHASE) => Math.round(v * C.kmh);
 
+// Are the tyres letting go (smoke, rubber left on the road)? u: px/step across, v: along, braking: S held, shoving:
+// in a shove. 0: no; else how hard, up to 1
+export function skidOf(u, v, braking, shoving, C = CHASE) {
+  const F = C.fx;
+  if (v < F.from) return 0;
+  if (shoving) return 1;
+  if (braking) return F.brake;
+  const k = Math.abs(u) / C.steer;
+  return k >= F.slide ? clamp(k, 0, 1) * F.steer : 0;
+}
+
+// how hard a thing torn off the kerb is thrown (Prop.break's power), by the speed it was hit at (px/step)
+export const tearPower = (speed, C = CHASE) => clamp(C.hit.power * (speed / C.cruise), C.hit.power * 0.6, C.hit.most);
+
+// The card that closes a chase not finished yet (the level's `chase.next`; Game state 'continued'), t s after the
+// end of its road: { black: 0..1 the picture going dark, title / name: 0..1 its two lines coming up, skip: a key may
+// pass it, over: it is done }
+export function finishView(t, F = CHASE.finish) {
+  return {
+    black: clamp(t / F.fade, 0, 1), title: clamp((t - F.title) / F.rise, 0, 1), name: clamp((t - F.name) / F.rise, 0, 1),
+    skip: t >= F.skipAfter, over: t >= F.hold,
+  };
+}
+
 // sprite px of a vehicle's driver's seat and of the ground outside its driver's door (-y): its model's `seat` / `door`
 // (VEHICLES), else CHASE's shares of its size
 export function seatOf(v, C = CHASE) {
@@ -64,6 +92,11 @@ export function nosedIn(a, vx, vy, nx, ny, C = CHASE) {
   const ca = Math.cos(a), sa = Math.sin(a);
   return ca * nx + sa * ny >= Math.cos(C.crash.cone) && vx * ca + vy * sa > C.crash.speed;
 }
+
+// Did it take it on the nose, or only clip it with a corner? The share of the car's width (its middle at y, h wide)
+// that what it hit covers (from lo to hi across the road): under `corner` of it is a clip, a jolt and sparks, not
+// the crash
+export const onNose = (lo, hi, y, h, C = CHASE) => (Math.min(hi, y + h / 2) - Math.max(lo, y - h / 2)) / h >= C.crash.corner;
 
 // ---------------------------------------------------------------- the drive
 export default class Drive {
@@ -92,10 +125,16 @@ export default class Drive {
     this.dead = false;
     this.on = true;
     this.box = new Gearbox();         // its engine heard (motor)
+    this.braking = false;             // S held this step
+    this.ruts = null;                 // where its tyres were a step ago, while they let go (rubber on the road)
+    this.fxT = 0;                     // s before it frightens what is ahead again
+    this.canopies = null;             // the awnings and parasols it can tear down (looked up once)
     this.lastV = this.v;
     this.board();
     this.gun = new CarGun(world, van, seatOf(van, CHASE)); // his gun out of the window (mouse, left click, R)
     if (o.arms) this.arm(o.arms);
+    // water standing in the gutter (the level's `chase.water`: [col, row, r px])
+    for (const [c, r, rad] of o.water || []) world.liquids?.feed(c * TILE, r * TILE, Math.PI * rad * rad * CHASE.fx.water, 'water', rad);
   }
 
   // what he sets off with (the level's `chase.arms`: { weapon, mag, spare }): the gun in his hand, its magazine, spare
@@ -122,10 +161,14 @@ export default class Drive {
     this.was = { air: b.frictionAir, friction: b.friction };
     b.frictionAir = 0; // the engine holds its speed: only what it hits slows it
     b.friction = CHASE.scrape.friction; // its flanks slide along a wall (a static body's own friction is 1)
-    b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP & ~CAT.CORPSE }; // it drives over the dead
+    // it drives over the dead, and over what is already in pieces (a loose bit weighs nothing, yet the physics
+    // shares an overlap equally: one landing under it threw two tons sideways)
+    b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP & ~CAT.CORPSE & ~CAT.DEBRIS & ~CAT.ITEM };
     v.moving = true;
     v.lightsOut = false;
     v.driver = this;
+    this.was.armoured = v.armoured;
+    if (this.o.van) v.armoured = true; // the chase: no health bar, his car is never shot up, burnt or blown (docs/LEVEL2.md)
     v.onCollide = (o, pair) => this.contact(o, pair);
     Body.setVelocity(b, { x: Math.cos(b.angle) * this.v, y: Math.sin(b.angle) * this.v });
     p.driving = this;
@@ -144,6 +187,7 @@ export default class Drive {
     this.on = false;
     v.moving = false;
     v.driver = null;
+    v.armoured = this.was.armoured;
     v.unseat?.();
     v.onCollide = null;
     v.brake = 0; v.steer = 0; v.bob = 0;
@@ -177,7 +221,7 @@ export default class Drive {
   step(dt, input, aim) {
     if (!this.on) return;
     this.carry();
-    if (this.dead) return;
+    if (this.dead) { if (this.coasting) this.coastStep(dt); return; }
     this.gun.step(dt, input, aim);
     const w = this.world, C = this.C, v = this.van, b = v.body;
     // what the physics let it do last step: a hit slows it, a knock sideways is taken (the small bounce off what it
@@ -190,6 +234,7 @@ export default class Drive {
     // the controls
     const throttle = input.down('KeyW'), brake = input.down('KeyS');
     const steer = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
+    this.braking = brake;
     this.v = speedStep(this.v, this.cruise, throttle, brake, dt, C);
     // a van at a standstill does not go sideways; crawling (held up by what it pushes), it can still steer out
     const grip = this.v > 0.1 && !brake ? clamp(this.v / this.cruise, C.crawl, 1) : 0;
@@ -217,6 +262,25 @@ export default class Drive {
     }
   }
 
+  // He is dead at the wheel (the told shot): nobody drives. The car runs on, losing its speed, drifting to a side,
+  // until it stops or meets something
+  coast() {
+    this.dead = true;
+    this.coasting = true;
+    this.side = this.van.y > (this.o.lanes ? this.o.lanes[this.o.lanes.length - 1] * TILE : this.van.y) ? -1 : 1;
+  }
+
+  coastStep(dt) {
+    const C = this.C, K = C.coast, b = this.van.body, vel = Body.getVelocity(b);
+    this.v = Math.max(0, Math.min(this.v, Math.max(0, vel.x) + C.give) - K.slow * dt);
+    if (this.v <= 0.05) { this.coasting = false; Body.setVelocity(b, { x: 0, y: 0 }); Body.setAngularVelocity(b, 0); return; }
+    this.u = steerStep(this.u, this.side * K.drift, dt, C);
+    Body.setVelocity(b, { x: this.v, y: this.u });
+    Body.setAngularVelocity(b, angDiff(b.angle, headingOf(this.v, this.u, C)) * C.turn);
+    b.flyUntil = this.world.time + C.fly;
+    this.van.steer = clamp((this.u / C.steer) * 0.45, -0.5, 0.5);
+  }
+
   // SPACE: the jolt toward the mouse's side of the van (above or below its centre line)
   shove(aim) {
     const C = this.C, v = this.van, w = this.world;
@@ -235,13 +299,13 @@ export default class Drive {
   // its share of the contact's mass put back; a bolted thing torn off and the contact dropped; a pane goes by
   // itself); the rest is dealt with after the step (react).
   contact(o, pair) {
-    if (!this.on || this.dead) return;
+    if (!this.on || (this.dead && !this.coasting)) return;
     const v = this.van, b = v.body, e = o.entity, C = this.C, w = this.world;
     const vel = Body.getVelocity(b), ov = o.isStatic ? { x: 0, y: 0 } : Body.getVelocity(o);
     let { x: nx, y: ny } = pair.collision.normal;
     if ((vel.x - ov.x) * nx + (vel.y - ov.y) * ny < 0) { nx = -nx; ny = -ny; }
     const c = pair.collision.supports?.[0] || o.position;
-    const h = { o, e, nx, ny, x: c.x, y: c.y, vx: vel.x, vy: vel.y, a: b.angle, kind: 'solid' };
+    const h = { o, e, nx, ny, x: c.x, y: c.y, vx: vel.x, vy: vel.y, a: b.angle, kind: 'solid', mid: b.position.y, lo: o.bounds.min.y, hi: o.bounds.max.y };
     const fast = Math.hypot(vel.x - ov.x, vel.y - ov.y);
     if (e?.isVehicle) {
       h.kind = 'car';
@@ -252,12 +316,30 @@ export default class Drive {
     else if (e?.def && !e.def.lasting) {
       h.kind = 'thing';
       if ((e.def.static || o.frozen) && !e.tipped && fast > C.hit.tear) {
-        pair.isActive = false; // it goes: the van is not stopped by it
-        e.break(Math.atan2(vel.y, vel.x), C.hit.power);
+        // it goes: the van is not stopped by it, now (this pair) nor while it falls apart (a sensor from here on; a
+        // pair keeps the `isSensor` it was made with, so it is told too)
+        pair.isActive = false;
+        pair.isSensor = o.isSensor = true;
+        e.break(Math.atan2(vel.y, vel.x) + rand(-0.3, 0.3), tearPower(fast, C));
         h.kind = 'torn';
-      } else this.loosen(o, pair);
+      } else if (!o.isStatic && !o.frozen && kgOf(o) <= C.hit.fling.kg && fast > C.hit.tear) this.fling(o, pair, vel);
+      else this.loosen(o, pair);
     } else if (e && !e.def) h.kind = 'gives'; // a window, a door: their own business
     this.hits.push(h);
+  }
+
+  // A light loose thing in its way (a bin, a chair, a crate, a bag) is thrown, by hand: on ahead of the car and out
+  // to the side it was hit on, turning, off the floor a moment. The contact itself is dropped (the physics would
+  // share the overlap equally between a chair and two tons of car, and hold it up).
+  fling(o, pair, vel) {
+    const F = this.C.hit.fling, v = this.van, side = v.toSprite(o.position.x, o.position.y).sy < v.h / 2 ? -1 : 1;
+    const sp = Math.hypot(vel.x, vel.y) * rand(...F.v), a = Math.atan2(vel.y, vel.x) + side * rand(...F.side);
+    pair.isActive = false;
+    pair.isSensor = true;
+    if (o.isSleeping) Sleeping.set(o, false);
+    Body.setVelocity(o, { x: Math.cos(a) * sp, y: Math.sin(a) * sp });
+    Body.setAngularVelocity(o, rand(-F.spin, F.spin));
+    o.flyUntil = this.world.time + rand(...F.fly);
   }
 
   // a frozen body in a contact being resolved becomes a dynamic one at once, the contact told its mass
@@ -282,9 +364,10 @@ export default class Drive {
   after(dt) {
     if (!this.on) return;
     const w = this.world;
+    this.lost = false;
     for (const h of this.hits) this.react(h);
     this.hits.length = 0;
-    if (!this.dead) this.scrape(dt);
+    if (!this.dead) { this.scrape(dt); this.fx(dt); }
     this.carry();
     // the end of the road: the level is over (the results)
     const end = this.o.end;
@@ -297,10 +380,11 @@ export default class Drive {
 
   react(h) {
     const w = this.world, C = this.C, v = this.van, e = h.e, t = w.time;
-    if (this.dead) return;
+    if (this.dead && !this.coasting) return;
     const square = nosedIn(h.a, h.vx, h.vy, h.nx, h.ny, C);
     if (h.kind === 'solid') {
-      if (square && !w.player.invulnerable) { this.crash(h); return; }
+      if (square && onNose(h.lo, h.hi, h.mid, v.h, C) && !w.player.invulnerable) { this.crash(h); return; }
+      if (square) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); } // a corner clipped: most of the speed gone
       w.sound('carHit', h.x, h.y, 0.5);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 8, 260);
       return;
@@ -329,7 +413,68 @@ export default class Drive {
       }
       return;
     } else if (h.kind === 'torn') w.shake(C.hit.shake * 0.5);
-    this.v *= 1 - C.hit.loss;
+    if (e?.def && (h.kind === 'torn' || h.kind === 'thing')) {
+      // what it was made of thrown on ahead, sheets of paper off it, sparks off steel
+      const F = C.fx.debris;
+      w.particles.chips(h.x, h.y, a, 0.8, F.chips, e.def.chips, speed * F.speed);
+      if (e.def.material === 'metal') w.particles.sparks(h.x, h.y, a, 0.9, F.sparks, 300);
+      if (e.def.glass) w.particles.glass(h.x, h.y, a, 0.9, F.glass, speed * F.speed);
+      w.papers?.drop(h.x, h.y, F.papers[0], a, F.papers[1]);
+    }
+    // what it cost him: once a step at most, and nothing for what was already broken (the bits of it in the air)
+    if (h.kind !== 'gives' && !this.lost) { this.lost = true; this.v *= 1 - C.hit.loss; }
+  }
+
+  // what its speed does around it: tyres letting go (white smoke, rubber left on the road) on a shove, hard steering
+  // or the brakes; spray out of standing water; pigeons, cats and people ahead frightened; an awning or a parasol it
+  // drives under torn down
+  fx(dt) {
+    const w = this.world, C = this.C, F = C.fx, v = this.van, b = v.body, back = b.angle + Math.PI;
+    const wheels = v.m.wheels.map(([sx, sy]) => v.toWorld(sx, sy)), rear = wheels.slice(0, 2);
+    const skid = skidOf(this.u, this.v, this.braking, this.shoveT > 0, C);
+    const on = skid > 0 ? (this.braking ? wheels : rear) : null;
+    if (on) {
+      for (const r of on) if (chance(F.smoke[0] * skid)) w.particles.smoke(r.x, r.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
+      if (this.ruts?.length === on.length) {
+        const from = this.ruts, xs = [...on, ...from].map((r) => r.x), M = F.marks;
+        w.decals?.paint?.((g) => {
+          g.strokeStyle = `rgba(${M.color}, ${M.alpha * skid})`;
+          g.lineWidth = M.w;
+          g.lineCap = 'round';
+          on.forEach((r, i) => { g.beginPath(); g.moveTo(from[i].x, from[i].y); g.lineTo(r.x, r.y); g.stroke(); });
+        }, 'floor', Math.min(...xs) - M.w, Math.max(...xs) + M.w);
+      } else w.sound('tyreSkid', v.x, v.y, 0.6 * skid);
+    }
+    this.ruts = on;
+    // standing water under a wheel: spray thrown out to the side and back, a ring left on it
+    if (w.liquids && this.v > F.from) {
+      for (const r of wheels) {
+        const wet = chance(F.spray[0]) && w.liquids.at(r.x, r.y), splash = wet && w.liquids.cfg.kinds[wet.kind]?.splash;
+        if (!splash) continue;
+        w.particles.drops(r.x, r.y, back + (chance(0.5) ? 1 : -1) * 0.9, 0.7, F.spray[1], splash, F.spray[2] * (this.v / C.cruise), 5, false);
+        w.liquids.ripple(r.x, r.y);
+        if (chance(0.15)) w.sound('waterSpray', r.x, r.y, 0.5);
+      }
+    }
+    if ((this.fxT -= dt) <= 0 && this.v > F.from) {
+      this.fxT = F.scare.every;
+      const x = v.x + this.v * 60 * F.scare.lead;
+      w.critters?.scare(x, v.y, F.scare.r, F.scare.r);
+      w.ambient?.panicAround(x, v.y, F.scare.people, 'scream');
+    }
+    // awnings and parasols: under one, fast, it goes
+    this.canopies ??= w.props.filter((p) => p.def?.canopy);
+    if (this.v > C.hit.tear) {
+      for (const p of this.canopies) {
+        if (p.dead || p.dying || Math.abs(p.x - v.x) > 140 || Math.abs(p.y - v.y) > 140) continue;
+        const s = v.toSprite(p.x, p.y), hw = (p.def.w ?? p.W) / 2, hh = (p.def.h ?? p.H) / 2;
+        const far = Math.abs(Math.sin(p.body.angle)) > 0.7 ? [hh, hw] : [hw, hh];
+        if (s.sx < -far[0] || s.sx > v.w + far[0] || s.sy < -far[1] || s.sy > v.h + far[1]) continue;
+        p.break(b.angle + rand(-0.4, 0.4), tearPower(this.v, C));
+        w.sound('awningRip', p.x, p.y, 0.8);
+        w.shake(C.hit.shake * 0.4);
+      }
+    }
   }
 
   // a flank grinding along a wall or a car: sparks and the grind, every so often while it lasts

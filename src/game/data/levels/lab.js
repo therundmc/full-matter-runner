@@ -34,18 +34,18 @@ export default {
     "X#_____________________________________________________________X;;;;;;;;;;#X",
     "X#_________##...###__##++##____#####D#####D#########D#DD#L#DD##X;;;;;;;;;;#X",
     "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#X###########X",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXXXXXXXXXXXX",
-    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXXXXXXXXXXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXXXXXXXXXXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXXXXXXXXXXXX",
-    "X##########################____##############D########D####L###XXXXXXXXXXXXX",
-    "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssXXXXXXXXXXXXX",
-    "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssXXXXXXXXXXXXX",
-    "X==============================================================XXXXXXXXXXXXX",
-    "X==============================================================XXXXXXXXXXXXX",
-    "X--------------------------------------------------------------XXXXXXXXXXXXX",
-    "X==============================================================XXXXXXXXXXXXX",
-    "X==============================================================XXXXXXXXXXXXX",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXX____XXXXXX",
+    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXX____XXXXXX",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXX",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXX",
+    "X##########################____##############D########D####L###XXX____XXXXXX",
+    "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssXXX",
+    "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssXXX",
+    "X========================================================================XXX",
+    "X========================================================================XXX",
+    "X------------------------------------------------------------------------XXX",
+    "X========================================================================XXX",
+    "X========================================================================XXX",
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   ],
   actors: [
@@ -139,11 +139,14 @@ export default {
     // 19 drive: a van to get into and drive down the street
     ['van', 4.6, 23.5, 0, { drive: true }], ['trash_can', 18.4, 23.9, 0], ['trash_can', 19.2, 23, 0],
     ['pursuer', 22, 21.1, 0, { pursuer: true }],
+    // 21 lorry: a box lorry that backs out across the street when a car comes
+    ['lorry', 68, 17.375, -90, { backs: 3 }], ['car2', 61, 23.6, 0, { drive: true }], ['trash_can', 64.5, 19.4, 0],
+    ['crate', 70.9, 19.3, 12], ['wall_lamp', 64.5, 18.08, 0],
     // 20 getaway: the convertible and the way out of level 1, played in the street
     ['convertible', 56.6, 21, 180, { lights: false }],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_getaway', 57.0, 18.6, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],

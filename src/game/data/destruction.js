@@ -179,6 +179,12 @@ export const DESTRUCTION = {
   sandwich_board: { height: 1, parts: [{ cut: 'grid', cols: 2, rows: 2 }] },
   ash_urn: { height: 0.9, parts: [{ cut: 'wedges', n: 4 }] },
   neon_sign_wash: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
+  // level 2A's back road: the cafe's terrace, two more signs
+  neon_sign_diner: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
+  neon_sign_cafe: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
+  awning: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
+  parasol: { height: 2.3, drop: true, parts: [{ cut: 'wedges', n: 8 }] },
+  planter: { height: 0.5, spill: 'soil', parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   neon_sign_palm: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_bar: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_arrow: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },

@@ -57,7 +57,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -65,6 +65,9 @@ export const OPTIONAL_LIST = [
   ...CLUTTER_SPRITES.map((n) => `clutter/${n}`),
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_mirage', 'neon_sign_open', 'neon_sign_beer', 'neon_sign_bay',
     'neon_sign_lips'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  // level 2A's back road: the lorry, the cafe's terrace, two more signs
+  ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
+  ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare',
     // what the player's melee weapons break into (data/weapons.js parts)
@@ -113,7 +116,8 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'ceiling_lamp', 'pool_lamp', 'emergency_light',
   'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid', 'sandwich_board', 'ash_urn', 'entry_mat',
   'frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'dartboard', 'pay_phone', 'coat_hooks', 'towel_dispenser',
-  'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag']);
+  'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag',
+  'lorry', 'awning', 'parasol', 'planter']);
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
 // the floor tiles too (64 x 64 pixels a tile), the bar's clutter and the street fauna; the wall tops stay at the world's

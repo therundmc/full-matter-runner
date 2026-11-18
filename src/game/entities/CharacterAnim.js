@@ -1214,7 +1214,17 @@ export function seatPose(ch, P, V) {
     const k = smooth(st.key), kx = (m.key[0] - m.seat[0]) / BODY_SCALE, ky = (m.key[1] - m.seat[1]) / BODY_SCALE;
     V.hr.x = lerp(V.hr.x, kx * c - ky * s, k); V.hr.y = lerp(V.hr.y, kx * s + ky * c, k);
   }
-  if (st.aim !== null && st.aim !== undefined) {
+  if (st.slump > 0) {
+    // shot at the wheel: slumped onto it, his head turned aside, his hands slid off the rim
+    const k = smooth(st.slump), L = S.slump;
+    V.tx += c * L.fwd * k; V.ty += s * L.fwd * k;
+    V.ha = a + L.head * k; V.ta = a + L.twist * k;
+    for (let i = 0; i < 2; i++) {
+      const h = i ? V.hr : V.hl, lx = L.hands[0], ly = (i ? 1 : -1) * L.hands[1];
+      h.x = lerp(h.x, lx * c - ly * s, k); h.y = lerp(h.y, lx * s + ly * c, k);
+      V.hand[i] = 'loose';
+    }
+  } else if (st.aim !== null && st.aim !== undefined) {
     const off = angDiff(a, st.aim), i = off < 0 ? 0 : 1, h = i ? V.hr : V.hl, A = S.aim;
     V.ta = a + clamp(off, -1, 1) * A.twist;
     V.ha = a + clamp(off, -A.head, A.head);

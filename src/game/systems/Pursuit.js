@@ -31,6 +31,7 @@ import { seatOf } from './Drive.js';
 const { Body, Sleeping } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
 const DRIVEN = new Set(['cross', 'chase', 'veer', 'limp']);
+const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']); // what goes through a windscreen into a driver
 const AGAIN = 2; // s a knock from his car counts as his doing (a wreck then is 'shoved')
 
 // ---------------------------------------------------------------- pure
@@ -90,6 +91,7 @@ export default class Pursuit {
     this.pickups = [];     // { x, y, x0, y0, t, kind, rounds, got }
     const L = chase?.lanes;
     this.band = L ? [Math.min(...L) * TILE, Math.max(...L) * TILE] : null;
+    this.halfLane = L?.length > 1 ? (this.band[1] - this.band[0]) / 2 : TILE * 1.75; // half a lane's width (px)
     for (const p of world.props) if (p.isVehicle && p.pursuer) this.add(p, 'parked', { dummy: true });
     for (const e of chase?.events || []) if (e.kind === 'alley') this.alleyCar(e);
     world.events.on('carPart', (e) => this.onPart(e));
@@ -126,7 +128,7 @@ export default class Pursuit {
       b.sleepThreshold = Infinity;
       b.frictionAir = 0;
       b.friction = CHASE.scrape.friction;
-      b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP & ~CAT.CORPSE }; // over the dead
+      b.collisionFilter = { ...b.collisionFilter, mask: MASK.PROP & ~CAT.CORPSE & ~CAT.DEBRIS & ~CAT.ITEM }; // over the dead, over what is in pieces
       if (this.chase) w.totalEnemies = (w.totalEnemies || 0) + 2; // its driver and its gunman
     }
     this.cars.push(car);
@@ -167,7 +169,7 @@ export default class Pursuit {
     this.assign();
     for (const car of this.cars) {
       car.t += dt;
-      if (car.state === 'chase') car.chaseT += dt;
+      if (car.state === 'chase') { car.chaseT += dt; if (tg) this.catchUp(car, tg, dt); }
       if (car.state === 'wait' && car.launch >= 0 && (car.launch -= dt) <= 0) this.go(car);
       if (DRIVEN.has(car.state) || car.state === 'spin') this.drive(car, dt, tg);
       this.aimGun(car, tg);
@@ -181,18 +183,48 @@ export default class Pursuit {
     if (e.kind === 'alley' && e.waiting?.state === 'wait') {
       // the red lane now; the car comes out so as to be in his lane CHASE.alley.red s later
       const car = e.waiting, v = car.v, A = CHASE.alley;
-      const edge = (this.band ? this.band[1] : tg.y) + TILE * 1.75; // his lane's near edge (the lanes' band + half a lane)
+      const edge = (this.band ? this.band[1] : tg.y) + this.halfLane; // his lane's near edge (the lanes' band + half a lane)
       const nose = v.y - v.w / 2;
       car.launch = Math.max(0, A.red - Math.max(0, nose - edge) / (C.spawn.cross * 60));
-      const half = v.h / 2 + A.pad, y0 = (this.band ? this.band[0] : tg.y) - TILE * 1.75;
+      const half = v.h / 2 + A.pad, y0 = (this.band ? this.band[0] : tg.y) - this.halfLane;
       this.lanes.push({ car, x: v.x, w: half * 2, y0, y1: v.y - v.w / 2 + 8, t: 0, on: true });
       w.sound('tellClick', v.x, v.y, 0.5);
     } else if (e.kind === 'behind') {
       const sl = slotOf('side', tg.x, tg.y, this.band || [tg.y, tg.y]);
-      let x = tg.x - C.spawn.behind;
-      for (let k = 0; k < 4 && this.blockedAt(null, x, sl.y, 160); k++) x -= 200;
+      // behind him, off the picture; past the last wreck lying on the road back there when there is room (a wreck
+      // across a narrow street holds a car up a long while)
+      const back = tg.x - C.spawn.behind;
+      let x = back;
+      for (const o of this.cars) {
+        if (o.state === 'wrecked' && o.v.x > x - C.spawn.clear && o.v.x < tg.x - C.spawn.near - C.spawn.clear) x = Math.max(x, o.v.x + C.spawn.clear);
+      }
+      // (room for it and a good stretch of clear road ahead of it: it comes in fast)
+      const full = (at) => this.blockedAt(null, at + 200, sl.y, 360);
+      if (full(x)) x = back;
+      for (let k = 0; k < 4 && full(x); k++) x -= 200;
       this.spawn(x, sl.y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over);
     }
+  }
+
+  // A car left far behind (held up by a wreck across the street, by what he threw in its way), or hanging off the
+  // picture a long while without reaching its slot (boxed in behind him by parked cars knocked into its lane), is
+  // brought back up behind the picture on clear road, on its slot's line: the chase does not let go of him
+  catchUp(car, tg, dt) {
+    const R = this.C.rubber, v = car.v, sl = slotOf(car.slot, tg.x, tg.y, this.band || [tg.y, tg.y], this.C);
+    car.farT = v.x < tg.x - R.far ? (car.farT || 0) + dt : 0;
+    car.heldT = Math.hypot(sl.x - v.x, sl.y - v.y) > R.close ? (car.heldT || 0) + dt : 0;
+    if ((car.farT < R.t && car.heldT < R.held) || this.onScreen(v) || this.tell?.car === car) return;
+    const x = tg.x - this.C.spawn.near - v.w / 2, y = sl.y;
+    if (this.blockedAt(car, x + 120, y, 280)) return;
+    car.farT = car.heldT = 0;
+    car.h = 0;
+    car.s = Math.hypot(tg.vel.x, tg.vel.y) + this.C.spawn.over;
+    car.stun = 0;
+    car.set = null;
+    Body.setPosition(v.body, { x, y });
+    Body.setAngle(v.body, 0);
+    Body.setAngularVelocity(v.body, 0);
+    Body.setVelocity(v.body, { x: car.s, y: 0 });
   }
 
   go(car) {
@@ -316,7 +348,7 @@ export default class Pursuit {
     const mine = his ? null : w.drive?.van;
     let best = null;
     for (const p of w.props) {
-      if (p === car?.v || p === mine || !p.body || p.dead || p.def?.hung) continue;
+      if (p === car?.v || p === mine || !p.body || p.dead || p.def?.hung || p.def?.blind) continue; // (blind: the lorry, never seen coming)
       const bb = p.body.bounds;
       if (bb.max.x < x0 || bb.min.x > x1 || bb.max.y < y0 || bb.min.y > y1) continue;
       if (!p.isVehicle && (bb.max.x - bb.min.x < 22 || !p.def?.blocksPath)) continue; // a bin, a box: it goes over
@@ -335,7 +367,8 @@ export default class Pursuit {
     const vel = Body.getVelocity(b), ov = o.isStatic ? { x: 0, y: 0 } : Body.getVelocity(o);
     const n = pair.collision.normal;
     const close = Math.abs((vel.x - ov.x) * n.x + (vel.y - ov.y) * n.y);
-    if (e && e === w.drive?.van) { car.by = w.time; return; }
+    // his car: a knock of his doing (his shove, his steering into it), not when it is the one swiping at him
+    if (e && e === w.drive?.van) { if (w.drive.shoveT > 0 || car.ram <= 0) car.by = w.time; return; }
     const k = w.time - car.by < AGAIN ? this.C.wreck.thrown : 1; // thrown by his car: it takes less
     if (e?.isVehicle) {
       if (o.frozen) { wake(o); pair.inverseMass = pair.bodyA.inverseMass + pair.bodyB.inverseMass; }
@@ -348,7 +381,7 @@ export default class Pursuit {
     // a bolted thing (a bin, a hydrant, a bench) is torn off and it goes on; a wall, a lasting thing, a pole stop it
     const pole = this.C.wreck.poles.includes(e?.type);
     if (e?.def?.static && !e.def.lasting && !pole && !e.tipped) {
-      if (close > CHASE.hit.tear) { pair.isActive = false; e.break(Math.atan2(vel.y, vel.x), CHASE.hit.power); }
+      if (close > CHASE.hit.tear) { pair.isActive = false; pair.isSensor = o.isSensor = true; e.break(Math.atan2(vel.y, vel.x), CHASE.hit.power); }
       return;
     }
     if (close >= this.C.wreck.hard * k || (car.state === 'veer' && close > 1)) car.wreckHit = true;
@@ -383,9 +416,10 @@ export default class Pursuit {
 
   // ---------------------------------------------------------------- his rounds
   // a window or a tyre of a pursuer taken by a round (Vehicle.hitWindow / popTire)
-  onPart({ car: v, part, i }) {
+  onPart({ car: v, part, i, kind }) {
     const car = v.pursuer, w = this.world;
     if (!car || car.state === 'wrecked' || v.exploded) return;
+    if (part === 'wind' && !ROUNDS.has(kind)) return; // a screen cracked by a knock or a blast: nobody shot
     if (part === 'wind' && car.driver) {
       // the driver: it veers off toward a side (the one it is nearer, mostly), out of control
       car.driver = false;
@@ -488,6 +522,7 @@ export default class Pursuit {
   canTell(car, tg) {
     const G = this.G;
     if (!tg || !car.gunman || !car.driver || this.tell || this.cool > 0) return false;
+    if (!car.dummy && this.busy(tg)) return false;
     if (car.dummy ? car.state !== 'parked' : car.state !== 'chase' || car.chaseT < G.grace) return false;
     const m = this.muzzle(car), d = Math.hypot(tg.seat.x - m.x, tg.seat.y - m.y);
     if (d > (car.dummy ? G.lab.range : G.range) || !this.onScreen(car.v)) return false;
@@ -496,6 +531,13 @@ export default class Pursuit {
     if (!car.dummy && Math.abs(angDiff(0, v.body.angle)) > G.straight) return false;
     if (Math.abs(angDiff(out, Math.atan2(tg.seat.y - g.y, tg.seat.x - g.x))) > G.cone) return false;
     return !tg.car || reaches(tg.car, m.x, m.y, tg.sseat);
+  }
+
+  // one thing told at a time on the back road: no gunman starts while a red lane is on, a lorry is told or backing,
+  // nor in the `quiet` px of road before an event that tells something (the level's events go by distance)
+  busy(tg) {
+    if (this.lanes.some((L) => L.on) || this.world.lorries?.told().length) return true;
+    return (this.chase?.events || []).some((e) => !this.fired.has(e) && e.kind !== 'behind' && tg.x > e.at * TILE - this.G.quiet);
   }
 
   onScreen(v) {
@@ -562,15 +604,26 @@ export default class Pursuit {
   }
 
   // the told shot reached him at the wheel: dead as any man shot (Character.kill: the death screen, R restarts the
-  // level from its start), out of the seat (as Vehicle.hit does it); nobody at the wheel, the car runs on and stops
+  // level from its start); in an open car he stays at the wheel, slumped over it; nobody driving, the car runs on,
+  // drifts and stops (Drive.coast)
   killRunner(tg, a) {
     const w = this.world, p = w.player, d = w.drive;
     if (!p.alive || p.invulnerable) return;
     w.shake?.(0.5);
+    const before = w.corpses.length;
     p.kill(a, 'bullet', { isEnemy: true, kind: 'gunman', weapon: { type: 'pistol' } }, WEAPONS.pistol, { tell: true });
     if (p.alive) return;
-    if (tg.car?.rider === p) tg.car.unseat();
-    if (d) d.dead = true;
+    if (tg.car?.rider === p && tg.car.m.cabin) {
+      // an open car: he stays at the wheel, slumped over it (no body left lying on the road under the car)
+      for (const c of w.corpses.slice(before)) {
+        for (const part of c.parts || [c]) if (part.body) w.removeBody(part.body);
+        for (const j of c.joints || []) w.physics.remove(j.c);
+        c.dead = true;
+      }
+      tg.car.slumpIn();
+      w.particles.blood?.(tg.seat.x, tg.seat.y, a, 0.9, 12, 150);
+    } else if (tg.car?.rider === p) tg.car.unseat();
+    if (d) d.coast();
   }
 
   // ---------------------------------------------------------------- after the physics
