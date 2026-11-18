@@ -133,8 +133,9 @@
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once), Beats.js (their clocks and sounds, DOM-free), Paper.js (the cut-paper sheet; the menu's
-  panel, used by ui/MenuArt.js for OPTIONS and the pause). Stills and their data: `python3 tools/comic/title.py`
+  drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  a thing a section, its settings on a sheet of paper beside it), Beats.js (their clocks and sounds, DOM-free),
+  Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
