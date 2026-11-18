@@ -34,6 +34,7 @@ import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import Direction from './systems/Direction.js';
 import { drawMurk } from './render/Murk.js';
+import { cuesOn } from './render/Readability.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
 
@@ -682,6 +683,7 @@ export default class Game {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
+    if (inWorld) this.world.cues = cuesOn(this.state, !!this.world.tutorial?.scene); // render/Readability.js
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) this.safeDraw(ctx, () => { this.titleRects = drawTitle(ctx, W, H, this.stateT, this.titleView()); });
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));

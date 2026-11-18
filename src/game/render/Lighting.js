@@ -7,6 +7,8 @@ import { ROOF_DECOR } from '../data/roofs.js';
 import { RAIN } from '../data/atmosphere.js';
 import { DOORS } from '../data/doors.js';
 import { hash, flicker, signLevel, pickFaults } from './Flicker.js';
+import { READABILITY } from '../data/readability.js';
+import { floorLift } from './Readability.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
 // multiplied over the scene, then additive bloom, anamorphic flares and wet-floor reflections.
@@ -668,6 +670,7 @@ export default class Lighting {
       g.globalAlpha = a;
       g.drawImage(cb, c.x - r, c.y - r, r * 2, r * 2);
     }
+    this.lightFloor(g);
     // the lamps by the doors' locks, the EXIT signs: a small pool of their colour (red locked, green open)
     const LA = DOORS.lamp;
     for (const l of this.doorLamps(t)) {
@@ -694,6 +697,25 @@ export default class Lighting {
       ctx.drawImage(this.lm, x0, y0, vw, vh);
     }
     ctx.restore();
+  }
+
+  // The light floor (data/readability.js `floor`), into the light map: nobody, and no weapon on the floor, in view is
+  // lit less than its level. What the brightness grid (plus a man's own small light) says is missing is added in a
+  // small pool of the night's colour (render/Readability.js floorLift): only ever added, and nothing at all where a
+  // lamp reaches, so a lit or coloured room keeps its light as it is.
+  lightFloor(g) {
+    if (!this.grid) return; // not built yet (the guards' eyes build it): no guess
+    const F = READABILITY.floor, w = this.world, b = this.blob(F.color), k = 1 / lum(rgb(F.color));
+    const cl = L.charLight, own = lum(rgb(cl.color));
+    const pool = (x, y, r, has) => {
+      if (!this.inView(x, y, r)) return;
+      const a = floorLift(this.levelAt(x, y, false) + has, F) * k;
+      if (a <= 0.01) return;
+      g.globalAlpha = Math.min(1, a);
+      g.drawImage(b, x - r, y - r, r * 2, r * 2);
+    };
+    for (const c of w.chars) if (c.alive && !c.hidden) pool(c.x, c.y, F.r, (c.isPlayer ? cl.player : cl.enemy)[1] * own);
+    for (const it of w.items) if (!it.dead) pool(it.x, it.y, F.item, 0);
   }
 
   // what glows on the doors, in view: the lamps by their locks, the EXIT signs [{ x, y, color, k, glow? }]
