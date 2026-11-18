@@ -73,10 +73,14 @@ def panel_door():
     wedge = cv.poly([(dx0, fl + 3), (dx1, fl), (1040, H + 4), (280, H + 4)], CYAN_D)
     for cx, tip, w in ((752, 560, 110), (832, 880, 44), (894, 1040, 52)):
         cv.poly([(cx - 16, fl), (cx + 16, fl), (tip + w, H + 4), (tip - w, H + 4)], INK, clip=wedge)
-    # the torch's beam down into the room, the sofa black across it
+    # his sofa, black in the dark; the torch's beam down into the room falls across its end and on to the floor: the
+    # sofa is lit where the beam crosses it, its cushions' seams showing
+    sofa = [(214, 168), (236, 150), (480, 146), (506, 164), (510, 214), (214, 218)]
+    cv.poly(sofa, INK)
     beam = cv.poly([(640, 78), (646, 92), (470, H + 4), (300, H + 4)], NIGHT_LL)
-    cv.poly([(214, 168), (236, 150), (480, 146), (506, 164), (510, 214), (214, 218)], INK)
-    cv.poly([(236, 150), (480, 146), (486, 170), (232, 174)], NIGHT_LL, clip=beam)
+    lit = cv.poly(sofa, NIGHT_L, clip=beam)
+    cv.poly([(214, 176), (512, 171), (512, 178), (214, 183)], INK, clip=lit)                 # the back's foot
+    cv.bar((452, 140), (455, 176), 4, INK, clip=lit)
     # the three of them
     poster.man(cv, poster.lucky, 832, fl + 3, 146, face=-1)
     a = poster.man(cv, poster.cueball, 752, fl + 3, 164, 'reach', face=-1)

@@ -91,6 +91,11 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    driver's door (on the sidewalk) and he sits in, takes the Uzi off the seat, racks it and hangs it
                    over the door (systems/Drive.js grab, CharacterAnim grabPose; the camera pushed in), every time he
                    gets in (getting out puts it back on the seat); then he drives it as at 19
+    23 AIM         a room north of CUEBALL's (cols 64-73, rows 1-5), through a doorway in the east wall of the
+                   takedowns room (col 63, row 3): the ways of showing the aim to try, above all with a gamepad
+                   (data/aim.js, render/AimArt.js; F7 cycles them, OPTIONS / GAME / AIM keeps one). Four dummies at
+                   2, 4, 7 and 9 m, one of them behind a wall's end, a crate in the line of the last; a 1911, a
+                   SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -163,6 +168,10 @@ lv.door(57, 11, kind='fire', inside='s', relock=4)
 lv.fill(64, 6, 74, 12, '#')                # 15 CUEBALL: his room beyond the concourse's east end, behind a door
 lv.fill(64, 7, 73, 11, ';')
 lv.put(63, 9, 'D')
+lv.fill(63, 1, 74, 5, '#')                 # 23 AIM: a room north of his, off the takedowns room
+lv.fill(64, 1, 73, 5, '_')
+lv.put(63, 3, '_')
+lv.fill(70, 1, 70, 2, '#')                 # a wall's end, a man behind it
 # the street
 lv.fill(1, 18, 62, 19, 's')
 lv.fill(1, 20, 62, 24, '=')
@@ -366,6 +375,23 @@ lv.prop('wall_lamp', 68.5, 7.08, 0)
 for x, kind in ((61.3, 'pistol'), (61.9, 'bat'), (62.5, 'knife')):
     lv.drop(kind, x, 9.9, 0)
 
+lv.area('23 aim')
+# the aim's cue (src/game/data/aim.js): men at four distances, one behind a wall's end, a crate before the last; a
+# thin gun, a wide one, a fast one and a blade to see what each concept tells of them
+lv.paint('label_aim', 61.6, 3.6)
+for (x, y), kind in (((64.6, 1.5), 'pistol'), ((65.4, 1.5), 'shotgun'), ((64.6, 2.2), 'uzi'), ((65.4, 2.2), 'bat')):
+    lv.drop(kind, x, y, 0)
+lv.actor('n', 64, 5)
+lv.actor('g', 65, 5)
+lv.actor('m', 67, 2, face=180)             # 2 m from the door
+lv.actor('k', 69, 5, face=180)             # 4 m
+lv.actor('j', 72, 1, face=180)             # 7 m, behind the wall's end
+lv.actor('b', 73, 4, face=180)             # 9 m, a crate in the line
+lv.prop('crate', 71.3, 4.5, 8)
+lv.prop('ceiling_lamp', 66.5, 3.5)
+lv.prop('ceiling_lamp', 71.5, 3.5)
+lv.prop('wall_lamp', 68.5, 5.92, 180)
+
 lv.area('17 vehicles: the street, to ram, hole and blow up')
 lv.paint('label_vehicles', 28.5, 18.6)
 lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
@@ -425,12 +451,12 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=28)
+    lv.check(guards=32)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              exit=exit_zone,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane) and a',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane, the aim\'s room) and a',
                  'street with the vehicles. Load with ?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
                  'tests, and CUEBALL in his room (level 1\'s boss: he fights).',

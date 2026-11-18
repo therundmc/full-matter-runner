@@ -77,8 +77,10 @@ def lucky(pose='stand', gear=None):
     return parts, {k: thin(v) for k, v in anchors.items()}
 
 
-def lucky_above(gear=None):
-    """LUCKY from straight above, facing +x, with that pink thing."""
+def lucky_above(gear=None, reach=None):
+    """LUCKY from straight above, facing +x, with that pink thing. The scarf: a man first (the coat's shoulders, the
+    head with its slick's point at the nape), the pink a band round his neck and one short end behind a shoulder.
+    reach: where a hand is, in his units (an arm held out from the shoulder on that side)."""
     gear = gear or LUCKY_GEAR
     sh = [(-5, -14), (3, -15), (7, -9), (7, 9), (3, 15), (-5, 14), (-8, 0)]
     head = [('body', ngon(1, 0, 6.5, 6.5, 6, 0))]
@@ -90,7 +92,20 @@ def lucky_above(gear=None):
     if gear == 'braces':
         return [(BONE, sh), (PINK, [(-6, -10), (6, -10), (6, -6), (-6, -6)]), (PINK, [(-6, 6), (6, 6), (6, 10), (-6, 10)])] + head
     if gear == 'scarf':
-        return [('body', sh), (PINK, ngon(1, 0, 10, 10, 8)), (PINK, [(-5, -4), (-30, 5), (-34, 14), (-26, 15), (-5, 6)])] + head
+        parts = [('body', [(-8, -17), (-2, -20), (5, -18), (9, -11), (9, 11), (5, 18), (-2, 20), (-8, 17), (-11, 0)])]   # the coat's shoulders
+        if reach:
+            side = 1 if reach[1] >= 0 else -1
+            (ax, ay), (bx, by) = (3, side * 15), reach
+            d = math.hypot(bx - ax, by - ay) or 1.0
+            nx, ny = -(by - ay) / d, (bx - ax) / d
+            parts.append(('body', [(ax + nx * 4.5, ay + ny * 4.5), (bx + nx * 2.6, by + ny * 2.6), (bx - nx * 2.6, by - ny * 2.6),
+                                   (ax - nx * 4.5, ay - ny * 4.5)]))
+        return parts + [
+            (PINK, [(-7, 2), (-9, 12), (-17, 16), (-20, 10), (-13, 7), (-12, 0)]),        # its end, short, down his back
+            (PINK, [(6, -9), (0, -11), (-7, -8.5), (-11, -2), (-10.5, 5), (-6, 9.5), (0, 11), (6, 9)]),   # the band, round his nape
+            ('body', ngon(2, 0, 7, 7, 6, 0)), ('body', [(-2, -5.5), (-7.5, -1), (-2, 4.5)]),      # his head, the slick's point
+            (BONE_D, [(6, -3.4), (9.6, -2.4), (9.6, 2.4), (6, 3.4)]),                     # his brow: which way he looks
+        ]
     return [('body', sh), (PINK, [(4, -14), (8, -11), (-5, 13), (-9, 10)]), (PINK, [(-14, 8), (-3, 9), (-3, 20), (-14, 19)])] + head
 
 

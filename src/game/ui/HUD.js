@@ -287,7 +287,7 @@ function drawCount(ctx, v, x, cy, s, t) {
   ctx.save();
   ctx.translate(Math.round(x + jx), Math.round(cy + jy));
   ctx.scale(1, v.open);
-  const mult = `x${v.multiplier.toFixed(1)}`, lw = Math.max(widthOf(ctx, 'KILLS', P.label * s), widthOf(ctx, mult, P.label * 1.4 * s));
+  const m = v.multiplier, mult = `x${m.toFixed(Number.isInteger(m * 10) ? 1 : 2)}`, lw = Math.max(widthOf(ctx, 'KILLS', P.label * s), widthOf(ctx, mult, P.label * 1.4 * s));
   text(ctx, 'KILLS', 0, -9 * s, P.label * s, col, { align: 'right' });
   text(ctx, mult, 0, 8 * s, P.label * 1.4 * s, col, { align: 'right' });
   const dx = -lw - P.gap * s, size = P.size * s * (1 + v.punch), str = String(v.chain);

@@ -84,27 +84,32 @@ export function gradeFor(total, grades) {
 // End-of-level breakdown from the run's figures (pure).
 // stats: { points, kills, guards, maxCombo, methods, shots, hits, alerts, civilians, spared, time, styled? }
 //   styled: { key: n } kills done in a named style or circumstance (SCORING.styles with a label, SCORING.tags)
-// -> { lines: [{ key, label, detail, points }], total, grade, next: { grade, at } | null,
+// -> { lines: [{ key, label, detail, points }], total, grade, next: { grade, at, clean? (it also needs nobody else
+//      killed) } | null,
 //      tags: [{ key, label, n }] (the styled kills, most done first), run: { kills, guards, maxCombo, time, par } }
 export function tally(stats, level, rules = SCORING) {
   const lines = [];
   const line = (key, label, detail, points) => lines.push({ key, label, detail, points: Math.round(points) });
   line('kills', 'KILLS', `${stats.kills}/${stats.guards}`, stats.points);
   line('chain', 'BEST CHAIN', `x${stats.maxCombo}`, rules.chain * Math.max(0, stats.maxCombo - 1));
-  line('variety', 'VARIETY', `${stats.methods} WAY${stats.methods === 1 ? '' : 'S'}`, rules.variety * Math.max(0, stats.methods - 1));
+  const V = rules.variety;
+  line('variety', 'VARIETY', `${stats.methods} WAY${stats.methods === 1 ? '' : 'S'}`, V.points * clamp(stats.methods - 1, 0, V.max));
   line('time', 'TIME', `${clock(stats.time)} / ${clock(level.par)}`, rules.time * Math.max(0, level.par - stats.time));
   line('stealth', 'STEALTH', stats.alerts ? `SPOTTED x${stats.alerts}` : 'NEVER SPOTTED',
     Math.max(0, rules.stealth.bonus - rules.stealth.perAlert * stats.alerts));
   if (stats.shots > 0) {
     const acc = clamp(stats.hits / stats.shots, 0, 1);
-    line('accuracy', 'ACCURACY', `${Math.round(acc * 100)}%`, rules.accuracy.bonus * acc);
+    const A = rules.accuracy;
+    line('accuracy', 'ACCURACY', `${Math.round(acc * 100)}%`, A.bonus * clamp((acc - A.from) / (1 - A.from), 0, 1));
   } else line('accuracy', 'ACCURACY', 'NO SHOT FIRED', rules.accuracy.noShot);
   if (stats.spared > 0) line('mercy', 'MERCY', `x${stats.spared}`, rules.mercy * stats.spared);
   if (stats.civilians > 0) line('civilians', 'CIVILIANS', `x${stats.civilians}`, -rules.civilian * stats.civilians);
   const total = Math.max(0, lines.reduce((sum, l) => sum + l.points, 0));
-  const grade = gradeFor(total, level.grades);
+  // the top grade is never given with a passer-by killed (rules.cleanTop): such a run tops out one grade below
+  const barred = !!rules.cleanTop && stats.civilians > 0;
+  const grade = gradeFor(total, barred ? level.grades.slice(1) : level.grades);
   const i = level.grades.findIndex(([g]) => g === grade);
-  const next = i > 0 ? { grade: level.grades[i - 1][0], at: level.grades[i - 1][1] } : null;
+  const next = i > 0 ? { grade: level.grades[i - 1][0], at: level.grades[i - 1][1], ...(barred && i === 1 && { clean: true }) } : null;
   const named = (k) => rules.tags[k] || rules.styles[k];
   const tags = Object.entries(stats.styled || {}).filter(([k, n]) => n > 0 && named(k)?.label)
     .map(([key, n]) => ({ key, label: named(key).label, n }))
@@ -205,10 +210,15 @@ export default class Scoring {
     // smoked: through air too thick to see through (never the blast's own soot: it is the blast that killed)
     const circ = { ...e.how, smoked: !!(k && e.cause !== 'explosion' && w.smoke?.blocks(k.x, k.y, victim.x, victim.y)) };
     this.tags = killTags({ killer: k, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);
-    let bonus = unseen ? R.unseen : 0;
-    for (const t of this.tags) { bonus += R.tags[t].points; this.methods.add(t); }
+    // a `flat` circumstance is paid as it is, outside the multiplier (a multi-kill already is the chain's speed, a
+    // boss is put down in every clear)
+    let bonus = unseen ? R.unseen : 0, flat = 0;
+    for (const t of this.tags) {
+      if (R.tags[t].flat) flat += R.tags[t].points; else bonus += R.tags[t].points;
+      this.methods.add(t);
+    }
     for (const k of [how.style, ...this.tags]) if (R.tags[k] || R.styles[k]?.label) this.styled[k] = (this.styled[k] || 0) + 1;
-    const pts = Math.round((style.points + bonus) * this.multiplier);
+    const pts = Math.round((style.points + bonus) * this.multiplier) + flat;
     // the three that pay most are spelled out
     const best = [...this.tags].sort((a, b) => R.tags[b].points - R.tags[a].points);
     const labels = [unseen ? 'UNSEEN' : circ.label || style.label, ...best.map((t) => R.tags[t].label)].filter(Boolean);

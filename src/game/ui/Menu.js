@@ -7,10 +7,12 @@
 //   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' | 'quit'
 //   | 'reset' | 'replayTutorial'
 // Items: { label, page } opens a sub-page, { label, act } fires an action, { label, slider: key, value },
-// { label, toggle: key, value }, { level, label, n, locked, best } a level to start, { info: [key, what], col } a
+// { label, toggle: key, value }, { label, choice: key, value, options: [value...], names: { value: shown } } (one of a
+// list: left / right and ENTER walk it), { level, label, n, locked, best } a level to start, { info: [key, what], col } a
 // read-only line, { label, back: true } goes back (an `act` may come with it); `disabled` greys an item out.
 import { isUnlocked } from '../systems/Progress.js';
 import { KBM_CONTROLS, PAD_CONTROLS } from '../data/controls.js';
+import { AIM, AIM_STYLES } from '../data/aim.js';
 
 export const STEP = 0.05; // how far a slider moves on a key press
 
@@ -67,6 +69,7 @@ const PAGES = {
     items: [
       ...(c.levels.some((l) => l.id === 'tutorial') ? [{ label: 'REPLAY THE TUTORIAL', act: { type: 'replayTutorial' } }] : []),
       { label: 'RESET PROGRESSION', page: 'confirm' },
+      { label: 'AIM', choice: 'aim', value: c.settings.aim, options: AIM_STYLES, names: AIM.names }, // concepts to try (data/aim.js)
       BACK,
     ],
   }),
@@ -84,6 +87,12 @@ const PAGES = {
 
 // an item the selection can rest on (a locked level can: it is there to be seen, it only does not start)
 export const selectable = (it) => !!it && !it.disabled && !it.info;
+
+// the value after (dir 1) or before (dir -1) a choice's own, round its list
+function turn(it, dir) {
+  const n = it.options.length, i = Math.max(0, it.options.indexOf(it.value));
+  return { type: 'set', key: it.choice, value: it.options[(i + dir + n) % n] };
+}
 
 const round = (v) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
 
@@ -136,6 +145,7 @@ export default class Menu {
       return value === it.value ? null : { type: 'set', key: it.slider, value };
     }
     if (it.toggle) return { type: 'set', key: it.toggle, value: !it.value };
+    if (it.choice) return turn(it, dir);
     return null;
   }
   left() { return this.nudge(-1); }
@@ -152,6 +162,7 @@ export default class Menu {
     if (!selectable(it) || it.locked) return null;
     if (it.page) { this.open(it.page); return null; }
     if (it.toggle) return { type: 'set', key: it.toggle, value: !it.value };
+    if (it.choice) return turn(it, 1);
     const act = it.act ? { ...it.act } : null;
     if (it.back) return this.back() || act;
     return act;
