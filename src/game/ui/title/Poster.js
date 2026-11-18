@@ -18,12 +18,12 @@ const MENU_Y = 612;
 const WIND = 14;                                    // how far a flame leans
 // when a floor catches (s on the title; floor 0, the top one, burns from the start), and how long before it its
 // lights go out; the ground floor never burns: its lights go last
-const CATCH = [-9, 3, 20, 42, Infinity], OUT = 5, LAST_OUT = 58;
+const CATCH = [-9, 8, 30, Infinity], OUT = 5, LAST_OUT = 52;
 
 // ---------------------------------------------------------------- the fire
 // a window at t: 'fire' | 'lit' | 'dark', and how long it has burned
 function windowAt(i, floor, t) {
-  const at = CATCH[floor] + (i % 3) * 5, home = hash(i * 7.7 + 2) > 0.3, out = floor === 4 ? LAST_OUT + (i % 3) * 3 : at - OUT;
+  const at = CATCH[floor] + (i % 2) * 7, home = hash(i * 7.7 + 2) > 0.3, out = at === Infinity ? LAST_OUT + (i % 2) * 4 : at - OUT;
   if (t >= at) return { state: 'fire', age: t - at };
   if (!home || t >= out) return { state: 'dark' };
   return { state: t > out - 0.8 && hash(steps(t, 12) * 1.9 + i) < 0.5 ? 'dark' : 'lit' };       // it stutters before it goes
@@ -65,20 +65,13 @@ function smoke(g, t, ox) {
 function fire(g, t, ox) {
   const { x0, roof } = P.building, n = steps(t, 9), wob = (i) => 0.7 + 0.6 * hash(i * 3.1 + n * 7.7);
   P.windows.forEach(([x, y, w, h, floor], i) => {
-    const s = windowAt(i, floor, t);
-    if (s.state === 'lit') {
-      px(g, FIRE_L, x + ox, y, w, h);
-      px(g, INK, x + ox + Math.floor(w / 2) - 1, y, 3, h);                    // its sash
-    } else if (s.state === 'fire') {
-      const burst = s.age < 0.5 ? 1.8 : 1;                                   // it blows as it catches
-      px(g, FIRE, x + ox, y, w, h);
-      px(g, FIRE_L, x + ox + 3, y + 7, w - 6, h - 7);
-      tongue(g, x + ox + w / 2, y + 5, w * 0.9 * burst, (22 + 16 * hash(i + 5)) * wob(i) * burst, 6, i + n);
-    }
+    const s = windowAt(i, floor, t), burst = s.state === 'fire' && s.age < 0.5 ? 1.7 : 1;    // it blows as it catches
+    poly(g, s.state === 'lit' ? FIRE_L : s.state === 'fire' ? FIRE : NIGHT_L, slab(x + ox, y, x + ox + w, y + h, 60 + i, 2.5));
+    if (s.state === 'fire') tongue(g, x + ox + w / 2, y + 6, w * burst, (30 + 8 * (i % 3)) * wob(i) * burst, 6, i + n, null, 2);
   });
   const grown = Math.min(1, 0.75 + t / 80);                                  // the roof's fire, a little higher as it spreads
-  [[16, 30, 62], [40, 40, 96], [66, 30, 70], [84, 22, 44]].forEach(([dx, w, h], k) => {
-    tongue(g, x0 + ox + dx, roof - 4, w, h * wob(k + 40) * grown, WIND * (0.7 + 0.6 * hash(k + n * 1.3)), k + n);
+  P.roofFlames.forEach(([dx, w, h], k) => {
+    tongue(g, x0 + ox + dx, roof - 6, w, h * wob(k + 40) * grown, WIND * (0.7 + 0.6 * hash(k + n * 1.3)), k + n);
   });
 }
 
@@ -181,7 +174,7 @@ function logo(g, t) {
 
 // The poster on the sheet (Paper.js), at t; cam -1..1: where the eye is (the mouse, eased). Returns false when the
 // logo's sheet is missing (the caller letters the title).
-export function layPoster(t, cam = 0) {
+function layPoster(t, cam = 0) {
   const g = open(), m = P.margin, ox = { sky: Math.round(-cam * SHIFT.sky), city: Math.round(-cam * SHIFT.city), front: Math.round(-cam * SHIFT.front) };
   put(g, 'title/poster_sky', ox.sky - m);
   signs(g, t, ox.sky);

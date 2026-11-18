@@ -69,9 +69,10 @@ export function lump(x, y, r, seed = 0) {
     .map(([c, s], i) => [x + (c + (hash(seed + i) - 0.5) * 0.3) * r, y + (s + (hash(seed + i + 9) - 0.5) * 0.3) * r * 0.8]);
 }
 // A flame from (x, y) its foot's middle, w wide and h high, leaning with the wind: cut tongues one in the other,
-// orange, yellow, a white-hot core (title_art.py tongue). tf: a turn for its points (a flame in a leaning picture).
-export function tongue(g, x, y, w, h, lean = 0, seed = 0, tf = null) {
-  [[1, FIRE], [0.62, FIRE_L], [0.3, BONE]].forEach(([k, ink]) => {
+// orange, yellow, a white-hot core (cores 2: without it; title_art.py tongue). tf: a turn for its points (a flame in
+// a leaning picture).
+export function tongue(g, x, y, w, h, lean = 0, seed = 0, tf = null, cores = 3) {
+  [[1, FIRE], [0.6, FIRE_L], [0.28, BONE]].slice(0, cores).forEach(([k, ink]) => {
     const ww = w * k, hh = h * k, ln = lean * k, j = (hash(seed + k * 10) - 0.5) * w * 0.12;
     const pts = [[x - ww / 2, y], [x - ww * 0.4 + ln * 0.3 + j, y - hh * 0.5], [x - ww * 0.12 + ln * 0.5, y - hh * 0.38], [x + ln, y - hh],
       [x + ww * 0.3 + ln * 0.55 - j, y - hh * 0.44], [x + ww / 2, y]];
