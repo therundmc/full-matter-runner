@@ -9,7 +9,7 @@ const FRESH = { unlocked: ['tutorial'], done: [] };
 // a context made of plain objects; `set` actions are written back into it as Game.js does
 function ctx(more = {}) {
   return {
-    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, fullscreen: false },
+    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, fullscreen: false, aim: 'cross' },
     progress: FRESH,
     best: (id) => (id === 'tutorial' ? { total: 4200, grade: 'B', time: 95 } : null),
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NEON NIGHTS' }],
@@ -144,7 +144,7 @@ test('menu: without the tutorial, the first level there is stays open', () => {
   // and nothing offers to replay a tutorial that is not there
   m.back();
   choose(m, 'OPTIONS'); choose(m, 'GAME');
-  assert.deepEqual(labels(m), ['RESET PROGRESSION', 'BACK']);
+  assert.deepEqual(labels(m), ['RESET PROGRESSION', 'AIM', 'BACK']);
 });
 
 test('menu: the controls page is read-only: only BACK can be selected', () => {
@@ -164,7 +164,7 @@ test('menu: the controls page is read-only: only BACK can be selected', () => {
 test('menu: RESET PROGRESSION asks first: NO goes back, YES resets and goes back', () => {
   const m = new Menu('main', ctx());
   choose(m, 'OPTIONS'); choose(m, 'GAME');
-  assert.deepEqual(labels(m), ['REPLAY THE TUTORIAL', 'RESET PROGRESSION', 'BACK']);
+  assert.deepEqual(labels(m), ['REPLAY THE TUTORIAL', 'RESET PROGRESSION', 'AIM', 'BACK']);
   assert.deepEqual(m.activate(), { type: 'replayTutorial' });
   m.down();
   m.activate();
@@ -205,4 +205,20 @@ test('menu: a page that changes under the selection puts it back on a selectable
   const n = new Menu('main', () => c);
   n.hover(5);
   assert.equal(selected(n), 'NEW GAME', 'hovering nothing changes nothing');
+});
+
+test('menu: AIM is a choice: left / right and ENTER walk the concepts round, a click too', () => {
+  const c = ctx(), m = new Menu('main', c);
+  choose(m, 'OPTIONS'); choose(m, 'GAME');
+  const i = m.page.items.findIndex((it) => it.label === 'AIM'), it = m.page.items[i];
+  assert.deepEqual(it.options, ['cross', 'line', 'wedge', 'notch', 'lock']);
+  for (const v of it.options) assert.ok(it.names[v], `${v} has a name`);
+  m.hover(i);
+  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'aim', value: 'line' });
+  assert.deepEqual(apply(c, m.activate()), { type: 'set', key: 'aim', value: 'wedge' });
+  assert.deepEqual(apply(c, m.click(i)), { type: 'set', key: 'aim', value: 'notch' });
+  assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'aim', value: 'wedge' });
+  c.settings.aim = 'cross';
+  assert.deepEqual(m.left(), { type: 'set', key: 'aim', value: 'lock' }, 'round the list');
+  assert.equal(m.page.id, 'game', 'it stays on its page');
 });

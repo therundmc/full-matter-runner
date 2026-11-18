@@ -261,6 +261,10 @@ src/
       Flicker.js          how bright a light is over time per kind (buzz, broken, pulse, tv...), the letters of a sign,
                           the faulty tubes picked per level (NEON: one dying, a few stuttering); DOM-free
       LaserSight.js       laser sight of the weapons that have one (weapon `laser`: the sniper rifle), over the lighting
+      AimArt.js           the aim's cue at the gun, over the lighting: the concepts of data/aim.js but the cross (LINE,
+                          WEDGE, NOTCH, LOCK; the AIM option, F7 cycles them), told by systems/AimCue.js (the line
+                          of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in Game.padAim); the
+                          mouse keeps a dot (Game.drawCursor). CONCEPTS TO TRY: the cross stays the default
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
     entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
@@ -1067,6 +1071,7 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   so reading it per frame would toggle several times on high-refresh displays.
 - F2 enemy vision (cones, close-awareness ring, state:tactic + meter, target, cover, last known position,
   incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
+- F7 the next way of showing the aim (data/aim.js `AIM_STYLES`; kept as the AIM setting). Lab station 23 AIM.
 - `window.game` in the console.
 - `npm test` runs the Node unit tests.
 

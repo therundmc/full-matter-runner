@@ -3,7 +3,7 @@
 // the left: the walkman is AUDIO, the portable set VIDEO, the knuckles CONTROLS, the notebook GAME, his cap the way
 // BACK. The chosen thing is lifted onto a slab of an ink that is not its own (its reels turn, its screen rolls), and
 // its settings are cut on a sheet of paper beside it, pointing at it: a slider is a strip of tape pulled along a
-// black line, a toggle a switch, the chosen line has a black wedge before it. On the things, the sheet shows what the
+// black line, a toggle a switch, a choice its name on tape between two wedges, the chosen line has a black wedge before it. On the things, the sheet shows what the
 // chosen one holds, pale; ENTER takes it up. The same screen for the title's OPTIONS and the pause's. The menu's
 // logic is ui/Menu.js, untouched: this draws its `options` page and the pages under it, and returns where the items
 // are, in canvas px, for the mouse: [{ i, x, y, w, h, track? }].
@@ -79,7 +79,7 @@ function page(g, ctx, f, t, pg, sel, live, words) {
   items.forEach(([it, i], j) => {
     const on = i === sel, ry = y + j * pitch, ink = !selectable(it) ? (live ? BONE_D : NIGHT_LL) : on ? INK : plain, lw = widthOf(ctx, it.label, 17 * k) / k;
     if (on) poly(g, INK, [[x0 + 16, ry - 11], [x0 + 34, ry], [x0 + 16, ry + 11]]);
-    if (on && !it.slider && !it.toggle) poly(g, PINK, slab(x0 + 40, ry - 17, x0 + 58 + lw, ry + 16, i * 5 + (steps(t, 3) % 3) * 7, 2));
+    if (on && !it.slider && !it.toggle && !it.choice) poly(g, PINK, slab(x0 + 40, ry - 17, x0 + 58 + lw, ry + 16, i * 5 + (steps(t, 3) % 3) * 7, 2));
     words.push([it.label, X(x0 + 48), Y(ry), 17 * k, ink, 'left']);
     let track = null;
     if (it.slider) {
@@ -94,6 +94,13 @@ function page(g, ctx, f, t, pg, sel, live, words) {
       poly(g, INK, slab(a, ry - 15, a + 68, ry + 15, i * 3 + 1, 1.5));
       poly(g, !selectable(it) ? BONE_D : set ? CYAN : BONE_D, slab(set ? a + 36 : a + 5, ry - 10, set ? a + 63 : a + 32, ry + 10, i * 3 + 2, 1));
       words.push([set ? 'ON' : 'OFF', X(a + 88), Y(ry), 15 * k, ink, 'left']);
+    } else if (it.choice) {
+      // one of a list: its name on a strip of tape between two wedges
+      const a = x0 + TRACK[0], b = a + 190, name = it.names?.[it.value] ?? String(it.value);
+      poly(g, INK, [[a, ry], [a + 14, ry - 11], [a + 14, ry + 11]]);
+      poly(g, INK, [[b, ry], [b - 14, ry - 11], [b - 14, ry + 11]]);
+      poly(g, on ? PINK : PINK_D, slab(a + 22, ry - 15, b - 22, ry + 15, i * 3 + 1, 1.5));
+      words.push([name, X((a + b) / 2), Y(ry + 1), 15 * k, INK, 'center']);
     }
     rects.push({ i, x: X(x0 + 10), y: Y(ry - pitch / 2 + 2), w: (x1 - x0 - 20) * k, h: (pitch - 4) * k, track });
   });
