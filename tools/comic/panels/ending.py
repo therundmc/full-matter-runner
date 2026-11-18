@@ -1,9 +1,11 @@
 """Level 1's closing page (drive, office and its phone, matchbook)."""
 from .. import poster
-from ..kit import BLOOD, BONE, BONE_D, BROWN, CYAN, CYAN_D, FIRE_D, FLUO, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, TAN, Cv, panel, slab, turned
+from ..kit import BLOOD, BONE, BONE_D, BROWN, CYAN, CYAN_D, FIRE, FIRE_D, FLUO, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, bead, panel, slab, turned
 
-DRIVE_MIRROR = (438, 44, 626, 84)   # the rear-view mirror's glass: the game draws the bar going away in it
-DRIVE_GLASS = [(0, 24), (636, 30), (606, 228), (0, 222)]   # the windscreen: the game runs the rain and the wiper on it
+DRIVE_VP = (790, 150)               # the road's vanishing point, under the city (the game runs the road's line from it)
+DRIVE_LINE = (220, 288)             # where the road's middle line leaves the panel
+DRIVE_VAN = (536, 128, 640, 222)    # the van's back: x0, y0 (its roof), x1, y1 (the road under its wheels)
+DRIVE_LIGHTS = ((549, 194), (627, 194))   # its tail lights (the game throws the spray up under them)
 OFFICE_SMOKE = (204, 242)   # the dropped shotgun's muzzle: the game draws its smoke
 OFFICE_DRIP = (446, 203)    # where his blood runs off the desk's edge: the game lets it drip
 MATCH_COVER = [(96, 82), (360, 64), (366, 150), (102, 168)]   # the matchbook's printed face: the game letters it
@@ -12,44 +14,75 @@ HANDSET = [(84, 150), (188, 146), (190, 160), (86, 164)]     # the phone's hands
 
 @panel('drive', (1080, 288))
 def panel_drive():
-    """"THE BAR GOT SMALLER IN THE MIRROR." From inside the van: the windscreen a slab of night, the road a black
-    wedge to its vanishing point (the game runs its line and the street lamps past); the mirror; THE RUNNER at the
-    wheel, the low cap over the closed collar, in profile against his side window."""
+    """"HE TOOK THEIR VAN." A wide shot of the night: the wet road a black wedge running to the city far away, its
+    glow a pink hump with the blocks black before it, a few windows lit; the boss's van small on it, seen from
+    behind, bone, its stripe, its roof rack, its tail lights and their light come back off the road, his head a sign
+    in the rear glass; street lamps getting smaller down the right; the bar's pink left behind on the road, near."""
     W, H = 1080, 288
-    cv = Cv(W, H, INK)
-    glass = cv.poly(DRIVE_GLASS, NIGHT)
-    vx, vy = 236, 150
-    cv.poly([(0, 150), (70, 150), (76, 122), (150, 124), (154, 140), (300, 138), (306, 108), (384, 110), (388, 142), (520, 140),
-             (526, 118), (640, 120), (640, 160), (0, 160)], NIGHT_L, clip=glass)              # the town, going away
-    cv.poly([(0, 156), (640, 152), (640, 240), (0, 240)], NIGHT_L, clip=glass)
-    cv.poly([(vx, vy), (-80, 232), (560, 236)], INK, clip=glass)                             # the road
-    # the mirror, on its stalk
-    mx0, my0, mx1, my1 = DRIVE_MIRROR
-    cv.poly([(mx0 - 8, my0 - 8), (mx1 + 8, my0 - 6), (mx1 + 6, my1 + 8), (mx0 - 6, my1 + 6)], INK)
-    cv.bar((530, 24), (532, my0 - 6), 12, INK)
-    cv.poly([(mx0, my0), (mx1, my0), (mx1, my1), (mx0, my1)], (12, 8, 18))
-    # the dash, the wheel
-    cv.poly([(0, 222), (606, 228), (700, 250), (700, H), (0, H)], INK)
-    cv.poly([(0, 222), (606, 228), (612, 236), (0, 230)], NIGHT_L)
-    cv.disc(660, 262, 92, 104, NIGHT_LL)
-    cv.disc(660, 262, 74, 86, INK)
-    cv.bar((660, 262), (596, 196), 12, NIGHT_LL)
-    cv.bar((660, 262), (742, 216), 12, NIGHT_LL)
-    # his side window behind him, and him against it: the low cap, the closed collar, the coat
-    cv.poly([(770, 14), (W, 2), (W, 176), (800, 190)], NIGHT_LL)
-    cv.poly([(984, 92), (W, 86), (W, 112), (988, 120)], PINK_D)
-    cv.poly([(750, H), (800, 196), (880, 168), (980, 176), (W, 220), (W, H)], INK)            # his shoulders
-    cv.poly([(940, 66), (966, 96), (972, 156), (944, 160), (930, 100)], BROWN)                 # his hair, to the collar
-    cv.poly([(846, 84), (940, 78), (944, 104), (842, 106)], TAN)                              # the slit of his face
-    cv.poly([(832, 106), (950, 100), (958, 150), (940, 184), (860, 186), (834, 156), (820, 132)], INK)   # the funnel collar, closed over his nose
-    cv.poly([(830, 104), (951, 98), (954, 113), (826, 120)], CYAN_D)                              # the gaiter, at its rim
-    cv.poly([(968, 86), (966, 66), (948, 51), (912, 42), (876, 45), (852, 58), (842, 86)], INK)   # the cap: a low crown
-    cv.poly([(858, 73), (802, 75), (802, 84), (846, 87)], INK)                                    # its brim: short, flat
-    cv.poly([(846, 86), (940, 80), (941, 87), (845, 93)], INK)                                    # its shadow on the slit
-    cv.poly([(802, 75), (812, 74.6), (812, 84.7), (802, 84)], CYAN_D)                             # the brim's petrol front edge
-    cv.poly([(930, 190), (990, 124), (1012, 196)], INK)                                      # the collar, up
-    cv.bar((846, 232), (704, 222), 34, INK, w1=22)                                            # his arm to the wheel
-    cv.poly(poster.ngon(700, 220, 17, 15, 6, 0), INK)
+    cv = Cv(W, H, NIGHT)
+    (vx, vy), hz = DRIVE_VP, DRIVE_VP[1]
+    road = [(vx - 3, vy), (vx + 3, vy), (560, H + 4), (-120, H + 4)]
+    # the city, far off: its glow, the far districts low along the horizon, the blocks before the glow
+    cv.disc(vx + 20, hz + 14, 190, 92, PINK_D)
+    cv.disc(vx + 30, hz + 10, 96, 44, PINK)
+    x, i = -20, 0
+    while x < W + 20:                                        # the far districts
+        w = 34 + bead(i + 40) * 46
+        cv.poly(slab(x, hz - 8 - bead(i + 60) * 16, x + w, hz + 4, i + 80, 2), NIGHT_L)
+        x, i = x + w - 4, i + 1
+    lit = (BONE_D, PINK, CYAN, BONE_D, FIRE)
+    for i, (x0, w, h) in enumerate(((604, 40, 34), (640, 30, 58), (676, 44, 44), (716, 26, 86), (748, 40, 62), (792, 34, 104), (830, 44, 52),
+                                    (878, 30, 76), (912, 46, 40), (962, 36, 56), (1002, 50, 30))):
+        cv.poly(slab(x0, hz - h, x0 + w, hz + 4, i + 7, 2), INK)
+        for k in range(1 + (h > 50) + (h > 80)):             # a few windows lit
+            wx, wy = x0 + 6 + bead(i * 5 + k) * (w - 18), hz - h + 8 + k * 22 + bead(i * 3 + k + 9) * 8
+            cv.poly(slab(wx, wy, wx + 7, wy + 5, i + k, 0.6), lit[(i + k * 2) % len(lit)])
+    # the ground: wet flats, the road
+    cv.poly([(-10, hz + 2), (W + 10, hz), (W + 10, H + 4), (-10, H + 4)], NIGHT_L)
+    rd = cv.poly(road, INK)
+    for i in range(6):                                       # the city's glow come back off the road, far
+        u = 0.08 + i * 0.07
+        x, y = vx + (220 - vx) * u + 8, vy + (H - vy) * u
+        cv.poly(slab(x - 6 - 60 * u, y, x + 10 + 70 * u, y + 2 + 8 * u, i + 3, 1), PINK_D, clip=rd)
+    for i, (x, y, w) in enumerate(((36, 258, 150), (150, 272, 120), (10, 280, 90))):       # the bar's pink, left behind
+        cv.poly(slab(x, y, x + w, y + 7, i + 50, 2), PINK if i == 0 else PINK_D, clip=rd)
+    # street lamps down the left of the road, smaller and smaller
+    for u in (0.76, 0.5, 0.33, 0.21, 0.13):
+        x, y = vx + (-140 - vx) * u, vy + (H - vy) * u
+        cv.bar((x, y), (x - 3 * u, y - 190 * u), 9 * u, INK, w1=6 * u)
+        cv.bar((x - 3 * u, y - 190 * u), (x + 46 * u, y - 198 * u), 7 * u, INK)
+        cv.disc(x + 46 * u, y - 190 * u, 15 * u, 11 * u, FIRE_D)
+        cv.disc(x + 46 * u, y - 190 * u, 8 * u, 6 * u, FIRE)
+        cv.poly(slab(x + 40 * u, y - 3 * u, x + 150 * u, y + 5 * u, int(u * 100), 1 + u), FIRE_D, clip=rd)   # its light on the road
+    # the van, from behind, in its lane: the side the lamps find, the back, its doors
+    x0, y0, x1, y1 = DRIVE_VAN
+    k = 0.3
+    sx, st, sb = x1 + (vx - x1) * k, y0 + (vy - y0) * k, y1 - 8 + (vy - y1 + 8) * k
+    cv.poly([(x1 - 1, y0), (sx, st), (sx, sb), (x1 - 1, y1 - 8)], BONE)
+    cv.poly([(x1 - 1, y0 + 42), (sx, st + 30), (sx, st + 37), (x1 - 1, y0 + 52)], PINK_D)                   # its stripe
+    cv.poly(slab(x0, y0, x1, y1 - 8, 5, 2), BONE_D)
+    cv.poly(slab(x0 - 2, y0 + 42, x1 + 2, y0 + 52, 6, 1), PINK_D)
+    for wx in (x0 + 4, x0 + 9, x1 - 9, x1 - 4, sx - 20):                                                   # the wheels
+        cv.poly(slab(wx - 9, y1 - 14, wx + 9, y1, int(wx), 1), INK)
+    cv.poly(slab(x0 - 4, y1 - 16, x1 + 4, y1 - 8, 8, 1), INK)                                               # the bumper
+    cv.bar(((x0 + x1) / 2, y0 + 6), ((x0 + x1) / 2 + 1, y1 - 16), 3, INK)                                   # the doors' seam
+    for a, b in ((x0 + 8, (x0 + x1) / 2 - 5), ((x0 + x1) / 2 + 6, x1 - 8)):                                 # the rear glass
+        cv.poly(slab(a, y0 + 10, b, y0 + 36, int(a), 1.5), NIGHT_L)
+    hx0 = x0 + 26                                                                                           # him at the wheel: the cap's dome, his hair under it
+    cv.poly([(hx0 - 9, y0 + 36), (hx0 - 9, y0 + 26), (hx0 - 5, y0 + 21), (hx0 + 4, y0 + 20), (hx0 + 9, y0 + 25), (hx0 + 9, y0 + 36)], INK)
+    cv.poly([(hx0 - 7, y0 + 30), (hx0 + 7, y0 + 30), (hx0 + 7, y0 + 36), (hx0 - 7, y0 + 36)], BROWN)
+    for rx in (x0 + 10, x0 + 46, x1 - 14):                                                                  # the roof rack
+        cv.bar((rx, y0 + 1), (rx + 1, y0 - 9), 3, INK)
+    cv.bar((x0 + 6, y0 - 9), (x1 - 8, y0 - 10), 3, INK)
+    for lx, ly in DRIVE_LIGHTS:                                                                             # the tail lights
+        cv.poly(slab(lx - 7, ly - 9, lx + 7, ly + 9, int(lx), 1), FIRE_D)
+        cv.poly(slab(lx - 4, ly - 5, lx + 4, ly + 5, int(lx) + 1, 1), FIRE)
+    for i in range(4):                                                                                      # their light on the wet road
+        y, u = y1 + 8 + i * 13, i / 3
+        for lx, _ in DRIVE_LIGHTS:
+            d = (lx - (x0 + x1) / 2) * (1 + 0.4 * u) - 6 * i
+            cv.poly(slab((x0 + x1) / 2 + d - 12 - 9 * u, y, (x0 + x1) / 2 + d + 12 + 9 * u, y + 4 + 3 * u, i * 2 + int(lx), 1 + u),
+                    FIRE if i == 0 else FIRE_D, clip=rd)
     return cv
 
 

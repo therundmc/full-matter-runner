@@ -127,12 +127,28 @@ def boss(pose='stand'):
     return parts, dict(hand=(26, -43), head=(1, -96), mouth=(8, -91), top=(2, -107), ember=(21, -90))
 
 
+# THE RUNNER's cap side on, in his units (its base on his brow at y -97.5): a round low dome, highest over the brow,
+# its button a nub on top; the brim a short wedge, thick at its root, dipping a little, its underside petrol
+RUNNER_HAT = [
+    ('body', [(-10.5, -97), (-11, -100.5), (-9, -104), (-5, -106.8), (-1.3, -108), (-1.1, -109.1), (1.7, -109.2), (1.8, -108.2), (5, -108),
+              (9, -106.2), (11.3, -103), (12, -99.5), (11.5, -97.5)]),
+    ('body', [(9.5, -101.5), (13, -101.8), (21, -98.6), (20.6, -96.6), (9.5, -97.2)]),
+    (CYAN_D, [(12, -98.5), (20.9, -97.9), (20.6, -96.6), (12, -97)]),
+]
+
+
+def hat(cv, x, y, s, face=1, deg=0.0, body=INK, clip=None):
+    """His cap alone, the middle of its base at (x, y), s px a unit, turned deg (on a hook, on a head cut by hand)."""
+    for ink, pts in RUNNER_HAT:
+        cv.poly(turned([(px, py + 97.5) for px, py in pts], x, y, deg, s, face), body if ink == 'body' else ink, clip)
+
+
 def runner(pose='stand'):
-    """THE RUNNER (the player): his sign the low CAP and the long COAT's split tails. A dark sports cap, its crown
-    low, its brim short and flat with a petrol front edge; a funnel collar closed up to his nose, the petrol gaiter
-    showing at its rim: between the two, a slit of tan is all his face; brown hair to the collar behind. A duster
-    to just below the knee, its back vent open to the waist: two tails flying behind him, the far one showing its
-    petrol lining; the satchel on its strap across him."""
+    """THE RUNNER (the player): his sign the low CAP and the long COAT's split tails. A dark sports cap
+    (RUNNER_HAT); a funnel collar closed up to his nose, the petrol gaiter showing at its rim: between the two, a
+    slit of tan is all his face; brown hair to the collar behind. A duster to just below the knee, its back vent
+    open to the waist: two tails flying behind him, the far one showing its petrol lining; the satchel on its strap
+    across him."""
     parts = [
         (CYAN_D, [(-8, -58), (-27, -49), (-43, -49), (-39, -36), (-26, -33), (-7, -27)]),   # the far tail: its lining
         ('body', [(-10, -26), (-2, -26), (-3, 0), (-10, 0)]), ('body', [(2, -26), (9, -26), (10, -5), (15, -4), (16, 0), (3, 0)]),
@@ -145,12 +161,9 @@ def runner(pose='stand'):
         (TAN, [(-4, -100), (9, -100), (9, -94), (-4, -94)]),                              # the slit
         ('body', [(-10, -94), (11.5, -95), (9, -84), (-8, -84)]),                         # the funnel collar, closed
         (CYAN_D, [(-10, -94.4), (11.6, -95.2), (11.3, -92.3), (-9.7, -91.5)]),            # the gaiter, at its rim
-        ('body', [(-9.5, -98), (-9.8, -102.5), (-6, -106), (0, -107.2), (6, -106.5), (10, -103.5), (11, -98)]),   # the cap: a low crown
-        ('body', [(9, -101.2), (18.5, -101.8), (18.5, -99), (9, -98)]),                   # its brim: short, flat
-        ('body', [(-4, -98.2), (9, -98.2), (9, -97), (-4, -97)]),                         # its shadow, across the slit
-        (CYAN_D, [(16.6, -101.7), (18.5, -101.8), (18.5, -99), (16.6, -98.8)]),           # the brim's petrol front edge
-    ]
-    return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -107.2))
+        ('body', [(-4, -98), (9.5, -98), (9.5, -96.6), (-4, -96.6)]),                     # the cap's shadow, across the slit
+    ] + RUNNER_HAT
+    return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -109.2))
 
 
 def man(cv, who, cx, foot, h, pose='stand', face=1, body=INK, clip=None, lean=0.0):
@@ -175,9 +188,9 @@ RUNNER_COAT = [
     (BROWN, [(-11, -5), (-6, -6), (-6, 6), (-11, 5)]), (CYAN_D, [(-8, -6), (-5, -7), (-5, 7), (-8, 6)]),   # his hair, the collar's rim
 ]
 RUNNER_CAP = [
-    (CAP, [(6, -6.2), (12.5, -5.8), (13.6, -4.3), (13.6, 4.3), (12.5, 5.8), (6, 6.2)]),   # the brim: a short flat tab
-    (CYAN_D, [(11.6, -5.9), (12.5, -5.8), (13.6, -4.3), (13.6, 4.3), (12.5, 5.8), (11.6, 5.9)]),   # its petrol front edge
-    (CAP, ngon(1, 0, 8.3, 8.3, 8)), (CYAN_D, ngon(1, 0, 1.3, 1.3, 6, 0)),
+    (CYAN_D, [(3, -8), (9.5, -7.4), (13.4, -4.6), (14.8, 0), (13.4, 4.6), (9.5, 7.4), (3, 8)]),   # the brim: a short crescent, its front edge petrol
+    (CAP, [(3, -8), (8.8, -7.4), (12.2, -4.4), (13.4, 0), (12.2, 4.4), (8.8, 7.4), (3, 8)]),
+    (CAP, ngon(0.5, 0, 8.6, 8.6, 12, 15)), (CYAN_D, ngon(0.5, 0, 1.3, 1.3, 6, 0)),
 ]
 
 # seen from straight above, facing +x: [(ink, points)] in the same units

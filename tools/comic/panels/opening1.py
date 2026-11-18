@@ -42,9 +42,7 @@ def panel_sleep():
     # the door, his cap on its hook, the suitcase packed by it
     cv.poly(slab(962, 26, 1056, 236, 21, 5), NIGHT_L)
     cv.disc(978, 136, 5, col=PINK_D)
-    cv.poly([(988, 62), (988, 53), (995, 46), (1010, 43), (1026, 45), (1036, 52), (1038, 62)], INK)     # his cap: a low crown
-    cv.poly([(1034, 56), (1056, 54.6), (1056, 60), (1034, 62)], INK)                                    # its brim: short, flat
-    cv.poly([(1051, 55), (1056, 54.6), (1056, 60), (1051, 60.4)], CYAN_D)                               # its petrol front edge
+    poster.hat(cv, 1012, 62, 2.4, deg=6)                                                     # his cap
     case = slab(826, 150, 944, 236, 31, 3)
     cv.poly(case, BONE_D)
     for x in (848, 908):

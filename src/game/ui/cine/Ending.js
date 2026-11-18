@@ -1,6 +1,6 @@
 // A level's closing page, played once the getaway is over and before the results (Game state 'ending'): a comic page
 // in the opening's manner (ui/cine/Page.js lays it out, tools/generate_comic.py paints its stills). Level 1's: he
-// drives the boss's van away in the rain, the bar's neon getting smaller in the mirror; back in the bar CUEBALL lies
+// drives the boss's van away in the rain, small on the wet road to the city far off; back in the bar CUEBALL lies
 // over the back room's desk and the phone will not stop ringing: the boss, wanting news; a matchbook off that desk, a
 // motel's, JITTERS' saw-tooth mark scrawled on it: one down, and where the next one sleeps. ENDINGS maps a level to
 // its page; endingView() is the timeline as plain numbers (unit-tested), endingBeats() what is heard, drawEnding() the
@@ -9,14 +9,13 @@ import { spriteOpt } from '../../../engine/Assets.js';
 import { text } from '../Text.js';
 import { drawPage } from './Page.js';
 import { still, fine, smoke } from './Panels.js';
-import { clamp, smooth, lerp, hash, px, poly, disc, line } from './Ink.js';
+import { lerp, hash, px, poly, line } from './Ink.js';
 
-// where things are in the stills (their px; generate_comic.py DRIVE_MIRROR, DRIVE_GLASS, OFFICE_SMOKE, OFFICE_DRIP)
-const MIRROR = [438, 44, 626, 84];
-const GLASS = [[0, 24], [636, 30], [606, 228], [0, 222]];
-const WIPER = { x: 330, y: 240, len: 160 };
-// the road in comic/drive: its vanishing point, where its line and its lamps run to, how low a lamp's foot goes
-const ROAD = { vp: [236, 150], line: [150, 236], lamps: [590, 56], foot: 228 };
+// where things are in the stills (their px; tools/comic/panels/ending.py DRIVE_VP, DRIVE_LINE, DRIVE_VAN,
+// DRIVE_LIGHTS, OFFICE_SMOKE, OFFICE_DRIP)
+// the road in comic/drive: its vanishing point, where its middle line leaves the panel; the van's back wheels
+const ROAD = { vp: [790, 150], line: [220, 288] };
+const WHEELS = [[549, 222], [627, 222]];
 const MUZZLE = [204, 242];   // the dropped shotgun's muzzle in comic/office (ending.py OFFICE_SMOKE)
 const DRIP = [446, 203];
 const COVER = [[96, 82], [360, 64], [366, 150], [102, 168]];   // the matchbook's printed face (ending.py MATCH_COVER)
@@ -36,54 +35,24 @@ function within(g, pts, draw) {
 }
 
 // ---------------------------------------------------------------- level 1
-// 1. At the wheel: the rain running up the windscreen, the wiper going, and in the mirror the bar going away
-// (behind: 0 when the panel drops in, 1 when it is a speck).
-function paintDrive(g, w, h, t, behind) {
+// 1. The van going away to the city: the road's line running back from under it, the spray off its back wheels,
+// the rain over everything.
+function paintDrive(g, w, h, t) {
   still(g, 'drive', w, h);
   fine(g, () => {
-    within(g, GLASS, () => {
-      // the road coming at him: its line, the street lamps going by
-      const [vx, vy] = ROAD.vp;
-      for (let i = 0; i < 6; i++) {
-        const u = ((i / 6 + t * 0.8) % 1) ** 2, v = Math.min(1, u + 0.03 + 0.07 * u);
-        line(g, '#b8a890', lerp(vx, ROAD.line[0], u), lerp(vy, ROAD.line[1], u), lerp(vx, ROAD.line[0], v), lerp(vy, ROAD.line[1], v), Math.round(1 + 6 * u));
-      }
-      for (let i = 4; i >= 0; i--) {
-        const s = ((i / 5 + t * 0.16) % 1) ** 2 * 1.3, x = lerp(vx, ROAD.lamps[0], s), y = lerp(vy, ROAD.lamps[1], s);
-        line(g, '#0a070c', x, y, x + 4 * s, lerp(vy, ROAD.foot, s), Math.round(1 + 5 * s));
-        disc(g, '#c8381a', x, y, 3 + 13 * s);
-        disc(g, '#ff8a20', x, y, 1.5 + 7 * s);
-      }
-      for (let i = 0; i < 34; i++) {
-        const u = (t * (0.3 + hash(i + 3) * 0.4) + hash(i)) % 1, x = hash(i + 11) * 620 + u * 40, y = 226 - u * 200;
-        line(g, i % 5 ? '#2a2c5a' : '#5a5e96', x, y, x + 5, y - 9 - hash(i + 5) * 8, 2);
-      }
-      const a = -Math.PI / 2 + 1.0 * Math.sin(t * 2.3), ex = WIPER.x + Math.cos(a) * WIPER.len, ey = WIPER.y + Math.sin(a) * WIPER.len;
-      line(g, '#07050c', WIPER.x, WIPER.y, ex, ey, 6);
-      line(g, '#3a3650', WIPER.x + 2, WIPER.y - 2, ex + 2, ey - 2, 1);
-    });
-    // the mirror over all that (its frame and stalk again: the lamps pass behind them); the bar in it, seen back to
-    // front, smaller and smaller: its front, its sign, its light on the wet road
-    const [x0, y0, x1, y1] = MIRROR;
-    poly(g, '#0a070c', [[x0 - 8, y0 - 8], [x1 + 8, y0 - 6], [x1 + 6, y1 + 8], [x0 - 6, y1 + 6]]);
-    px(g, '#0a070c', 525, 24, 12, 16);
-    px(g, '#0c0812', x0, y0, x1 - x0, y1 - y0);
-    g.save();
-    g.beginPath();
-    g.rect(x0, y0, x1 - x0, y1 - y0);
-    g.clip();
-    const z = lerp(1, 0.2, smooth(behind)), cx = (x0 + x1) / 2 + 8 * (1 - z), cy = y0 + 24;
-    const R = (dx, dy, rw, rh, col) => px(g, col, cx + dx * z, cy + dy * z, Math.max(1, rw * z), Math.max(1, rh * z));
-    disc(g, '#3a1430', cx, cy + 12 * z, 72 * z + 2, 6 * z + 1);
-    R(-64, -20, 128, 30, '#140a18');
-    R(-64, -20, 128, 2, '#2a1830');
-    if (hash(Math.floor(t * 13)) > 0.06) {
-      for (const dx of [-42, -28, -14]) R(dx, -15, 11, 11, '#ff3a7a');
-      R(6, -15, 11, 11, '#3ad8e8');
+    const [vx, vy] = ROAD.vp, [nx, ny] = ROAD.line;
+    for (let i = 0; i < 7; i++) {
+      const u = ((i / 7 + t * 0.45) % 1) ** 2, v = Math.min(1, u + 0.015 + 0.06 * u);
+      line(g, '#b8a890', lerp(vx, nx, u), lerp(vy, ny, u), lerp(vx, nx, v), lerp(vy, ny, v), Math.round(1 + 5 * u));
     }
-    R(-12, -1, 22, 11, '#4a2a18');
-    R(-58, 10, 116, 3, '#5a1838');
-    g.restore();
+    for (let i = 0; i < 12; i++) {
+      const k = (t * 1.7 + hash(i)) % 1, [wx, wy] = WHEELS[i % 2];
+      px(g, i % 3 ? '#3d2a6a' : '#b8a890', wx + (hash(i + 7) - 0.5) * 30 * k - 10 * k, wy + 16 * k - 14 * Math.sin(Math.PI * k), 2, 2);
+    }
+    for (let i = 0; i < 46; i++) {
+      const u = (t * (0.5 + hash(i + 3) * 0.5) + hash(i)) % 1, x = hash(i + 11) * 1140 - u * 60, y = -10 + u * 300;
+      line(g, i % 5 ? '#2a2c5a' : '#5a5e96', x, y, x - 5, y + 9 + hash(i + 5) * 8, 2);
+    }
   });
 }
 
@@ -125,7 +94,7 @@ const rings = (x, y, size, rot) => Array.from({ length: RING.n }, (_, i) => (
 const LEVEL1 = {
   end: 14.6,
   page: { end: 14.6, panels: [
-    { r: { x: 12, y: 10, w: 360, h: 96 }, at: 0.5, paint: (g, w, h, t) => paintDrive(g, w, h, t, clamp(t / 11, 0, 1)),
+    { r: { x: 12, y: 10, w: 360, h: 96 }, at: 0.5, paint: paintDrive,
       caption: ['HE TOOK THEIR VAN.', 'HE LEFT THEM A BODY.'] },
     { r: { x: 12, y: 112, w: 176, h: 94 }, at: 4.2, paint: paintOffice, caption: ['THE PHONE RANG.', 'THE BOSS WANTED NEWS.'],
       sfx: rings(70, 34, 8, 0.12) },
