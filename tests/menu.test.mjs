@@ -9,7 +9,7 @@ const FRESH = { unlocked: ['tutorial'], done: [] };
 // a context made of plain objects; `set` actions are written back into it as Game.js does
 function ctx(more = {}) {
   return {
-    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, fullscreen: false, aim: 'cross' },
+    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'cross' },
     progress: FRESH,
     best: (id) => (id === 'tutorial' ? { total: 4200, grade: 'B', time: 95 } : null),
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NEON NIGHTS' }],
@@ -144,7 +144,7 @@ test('menu: without the tutorial, the first level there is stays open', () => {
   // and nothing offers to replay a tutorial that is not there
   m.back();
   choose(m, 'OPTIONS'); choose(m, 'GAME');
-  assert.deepEqual(labels(m), ['RESET PROGRESSION', 'AIM', 'BACK']);
+  assert.deepEqual(labels(m), ['RESET PROGRESSION', 'AIM', 'VIBRATION', 'BACK']);
 });
 
 test('menu: the controls page is read-only: only BACK can be selected', () => {
@@ -164,7 +164,7 @@ test('menu: the controls page is read-only: only BACK can be selected', () => {
 test('menu: RESET PROGRESSION asks first: NO goes back, YES resets and goes back', () => {
   const m = new Menu('main', ctx());
   choose(m, 'OPTIONS'); choose(m, 'GAME');
-  assert.deepEqual(labels(m), ['REPLAY THE TUTORIAL', 'RESET PROGRESSION', 'AIM', 'BACK']);
+  assert.deepEqual(labels(m), ['REPLAY THE TUTORIAL', 'RESET PROGRESSION', 'AIM', 'VIBRATION', 'BACK']);
   assert.deepEqual(m.activate(), { type: 'replayTutorial' });
   m.down();
   m.activate();
@@ -221,4 +221,17 @@ test('menu: AIM is a choice: left / right and ENTER walk the concepts round, a c
   c.settings.aim = 'cross';
   assert.deepEqual(m.left(), { type: 'set', key: 'aim', value: 'lock' }, 'round the list');
   assert.equal(m.page.id, 'game', 'it stays on its page');
+});
+
+test('menu: VIBRATION is a slider on the GAME page (the controls page stays read-only): steps down to off and back', () => {
+  const c = ctx(), m = new Menu('main', c);
+  choose(m, 'OPTIONS'); choose(m, 'GAME');
+  const i = m.page.items.findIndex((it) => it.label === 'VIBRATION');
+  assert.equal(m.page.items[i].slider, 'rumble');
+  m.hover(i);
+  assert.deepEqual(m.right(), null, 'already full');
+  assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'rumble', value: 1 - STEP });
+  c.settings.rumble = 0.02;
+  assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'rumble', value: 0 }, 'off');
+  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'rumble', value: STEP });
 });

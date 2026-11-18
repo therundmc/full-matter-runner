@@ -379,6 +379,30 @@ test('grab: the first start, he takes it in a short beat as the car rolls on by 
   assert.ok(d.grab === null && d.shot() === null, 'the usual view');
 });
 
+test('car gun: the pad\'s RB fires it: held, the Uzi runs on at its rate; the pistol once a press', async () => {
+  const { default: Input } = await load('engine/Input.js');
+  const { BUTTONS } = await load('engine/Gamepad.js');
+  const { PAD_BINDINGS } = await load('game/data/controls.js');
+  const fire = (o, hold, sec) => {
+    const s = start(o), pad = { connected: true, buttons: BUTTONS.map(() => ({ pressed: false, value: 0 })), axes: [0, 0, 0, 0] };
+    const inp = new Input(null, { pads: () => [pad] }), rb = pad.buttons[BUTTONS.indexOf('RB')];
+    inp.bindPad(PAD_BINDINGS);
+    s.input = inp;
+    if (o.arms) s.d.skipGrab();
+    for (let i = 0; i * DT < sec; i++) {
+      rb.pressed = hold(i); rb.value = rb.pressed ? 1 : 0;
+      inp.poll(DT);
+      run(s, DT, { x: s.v.x + 50, y: s.v.y - 300 });
+      inp.consume();
+    }
+    return s.w.projectiles.length;
+  };
+  const n = fire({ arms: ARMS }, () => true, 0.5);
+  assert.ok(Math.abs(n - Math.ceil(0.5 / WEAPONS.uzi.rate)) <= 1, `${n} rounds of the Uzi in 0.5 s`);
+  assert.equal(fire({ model: 'van' }, () => true, 0.5), 1, 'the pistol held: one round');
+  assert.equal(fire({ model: 'van' }, (i) => i % 40 < 3, 1.4), 3, 'pressed three times: three rounds');
+});
+
 test('grab: a retry starts with the Uzi already in hand, no beat', () => {
   const s = start({ arms: ARMS }), { v, d } = s, p = s.w.player;
   p.ammo['9mm'] = 0;

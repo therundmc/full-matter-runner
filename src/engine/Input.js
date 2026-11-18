@@ -2,8 +2,9 @@
 // The keyboard and the mouse fill `keys` / `pressed` / `mouse` (the QA robot writes into them directly too). A gamepad
 // (engine/Gamepad.js) is read by poll() once a frame: its buttons come as their own codes ('PadA', 'PadStart'...,
 // 'NavUp'... for a menu step from the d-pad or the left stick) and, through bindPad(), as the key or mouse button
-// they stand for (A -> 'Space', RT -> 'Mouse0'...). The sticks are read with move() and aimStick(). `device` says
-// which was used last ('kbm' | 'pad'), for the prompts on screen.
+// they stand for (A -> 'Space', RB -> 'Mouse0'...). The sticks are read with move() and aimStick(). `device` says
+// which was used last ('kbm' | 'pad'), for the prompts on screen. rumble() shakes the pad in hand, and only while the
+// pad is the device in use (a mouse taken up stops it).
 import Gamepad from './Gamepad.js';
 
 const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7']);
@@ -68,7 +69,7 @@ export default class Input {
     this.mouse.y = (e.clientY - r.top) * (this.canvas.height / r.height);
   }
 
-  // what each pad button stands for: { A: 'Space', RT: 'Mouse0', ... } (the game's data/controls.js)
+  // what each pad button stands for: { A: 'Space', RB: 'Mouse0', ... } (the game's data/controls.js)
   bindPad(map) { this.padBinds = { ...map }; }
 
   // reads the gamepads (once a frame, before anything reads the input)
@@ -99,6 +100,10 @@ export default class Input {
     this.stick.right = s.right.mag > 0 ? s.right : null;
     if (s.active) { this.device = 'pad'; this.wake = 0; }
   }
+
+  // fx: { strong, weak, ms } (engine/Gamepad.js rumble); false when the pad is not the device in use or cannot
+  rumble(fx) { return this.device === 'pad' && this.gamepad.rumble(fx); }
+  stopRumble() { return this.gamepad.stopRumble(); }
 
   down(code) { return this.keys.has(code) || this.padKeys.has(code); }
   hit(code) { return this.pressed.has(code); }

@@ -4,7 +4,10 @@ import { load } from './setup.mjs';
 
 const { default: Gamepad, BUTTONS, PAD, deadZone, stickDir } = await load('engine/Gamepad.js');
 const { default: Input } = await load('engine/Input.js');
-const { PAD_BINDINGS, keyLabel, ACTIONS } = await load('game/data/controls.js');
+const { PAD_BINDINGS, PAD_CONTROLS, keyLabel, ACTIONS } = await load('game/data/controls.js');
+const { WEAPONS } = await load('game/data/weapons.js');
+globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
+const { pulls } = await load('game/entities/Player.js');
 
 // a fake standard-mapping pad: press(name, value), stick(axis pair, x, y); `pads` stands for navigator.getGamepads
 function fakePad() {
@@ -88,7 +91,7 @@ test('input: pad buttons play the keys and mouse buttons they are bound to, and 
   const f = fakePad(), inp = new Input(null, { pads: f.pads });
   inp.bindPad(PAD_BINDINGS);
   assert.equal(inp.device, 'kbm');
-  f.press('A'); f.press('RT'); f.press('LT');
+  f.press('A'); f.press('RB'); f.press('LB');
   inp.poll(1 / 60);
   assert.equal(inp.device, 'pad');
   assert.ok(inp.hit('Space') && inp.hit('PadA') && inp.down('Space') && inp.anyPressed);
@@ -96,11 +99,11 @@ test('input: pad buttons play the keys and mouse buttons they are bound to, and 
   inp.consume();
   inp.poll(1 / 60);
   assert.ok(!inp.hit('Space') && inp.down('Space') && !inp.mouseHit(0) && inp.mouseDown(0), 'held, not pressed again');
-  f.release('A'); f.release('RT'); f.release('LT');
+  f.release('A'); f.release('RB'); f.release('LB');
   inp.poll(1 / 60);
   assert.ok(!inp.down('Space') && !inp.mouseDown(0) && !inp.mouseDown(2));
   // the other bindings
-  for (const [btn, code] of [['X', 'KeyE'], ['Y', 'KeyR'], ['Start', 'Escape'], ['RB', 'ShiftLeft']]) {
+  for (const [btn, code] of [['X', 'KeyE'], ['Y', 'KeyR'], ['Start', 'Escape'], ['LT', 'ShiftLeft']]) {
     inp.consume();
     f.press(btn);
     inp.poll(1 / 60);
@@ -152,8 +155,107 @@ test('controls: every action has a cap for each device; the pad binds what the b
   assert.equal(keyLabel('action', 'pad'), 'A');
   assert.equal(keyLabel('use', 'pad'), 'X');
   assert.equal(keyLabel('reload', 'pad'), 'Y');
-  assert.equal(keyLabel('attack', 'pad'), 'RT');
-  assert.equal(keyLabel('throw', 'pad'), 'LT');
+  assert.equal(keyLabel('attack', 'pad'), 'RB');
+  assert.equal(keyLabel('throw', 'pad'), 'LB');
+  assert.equal(keyLabel('look', 'pad'), 'LT');
+  assert.equal(keyLabel('attack', 'kbm'), 'LMB');
   assert.equal(keyLabel('nothing', 'pad'), 'nothing');
-  assert.deepEqual(PAD_BINDINGS, { A: 'Space', X: 'KeyE', Y: 'KeyR', Start: 'Escape', RT: 'Mouse0', LT: 'Mouse2', RB: 'ShiftLeft' });
+  assert.deepEqual(PAD_BINDINGS, { A: 'Space', X: 'KeyE', Y: 'KeyR', Start: 'Escape', RB: 'Mouse0', LB: 'Mouse2', RT: 'Mouse0', LT: 'ShiftLeft' });
+  // the CONTROLS page says the same
+  const said = Object.fromEntries(PAD_CONTROLS.flat().filter(([k]) => k));
+  assert.equal(said['RB / RT'], 'ATTACK / TAKE DOWN');
+  assert.equal(said.LB, 'THROW / PICK UP');
+  assert.equal(said.LT, 'LOOK FURTHER');
+  assert.equal(said.RB, 'FINISH A MAN DOWN');
+});
+
+test('input: RT is an alias of RB (attack), the bumpers are read on the frame they go down, with no threshold', () => {
+  const f = fakePad(), inp = new Input(null, { pads: f.pads });
+  inp.bindPad(PAD_BINDINGS);
+  f.press('RT');
+  inp.poll(1 / 60);
+  assert.ok(inp.mouseHit(0) && inp.mouseDown(0) && !inp.down('ShiftLeft'), 'RT attacks');
+  f.release('RT');
+  inp.consume();
+  inp.poll(1 / 60);
+  assert.ok(!inp.mouseDown(0));
+  // a bumper barely pushed (a digital switch reports pressed) counts at once
+  const b = f.pad.buttons[BUTTONS.indexOf('RB')];
+  b.pressed = true; b.value = 1;
+  inp.poll(1 / 60);
+  assert.ok(inp.mouseHit(0), 'pressed on its first frame');
+});
+
+// frames of play: the pad polled, the step reads the attack button (Player's gate), the presses consumed
+function pullsOver(d, frames, hold) {
+  const f = fakePad(), inp = new Input(null, { pads: f.pads });
+  inp.bindPad(PAD_BINDINGS);
+  let n = 0;
+  for (let i = 0; i < frames; i++) {
+    if (hold(i)) f.press('RB'); else f.release('RB');
+    inp.poll(1 / 60);
+    if (pulls(d, inp)) n++;
+    inp.consume();
+  }
+  return n;
+}
+
+test('input: RB held runs an automatic on, a semi-automatic fires once a press, a melee weapon swings while held', () => {
+  assert.equal(pullsOver(WEAPONS.uzi, 30, () => true), 30, 'the UZI asks for a round every step it is held (its rate does the rest)');
+  assert.equal(pullsOver(WEAPONS.pistol, 30, () => true), 1, 'the 1911: one round for one press');
+  assert.equal(pullsOver(WEAPONS.pistol, 30, (i) => i % 4 < 2), 8, 'a press every 4 frames: a round every press');
+  assert.equal(pullsOver(WEAPONS.shotgun, 30, (i) => i === 0), 1);
+  assert.equal(pullsOver(WEAPONS.bat, 10, () => true), 10);
+  assert.equal(pullsOver(WEAPONS.uzi, 10, () => false), 0);
+});
+
+test('gamepad: rumble shakes the pad last touched, dual-rumble first, a pulse failing that; never throws', () => {
+  const calls = [];
+  const f = fakePad(), other = { ...fakePad().pad, index: 1 };
+  f.pad.index = 0;
+  f.list.push(other);
+  f.pad.vibrationActuator = { playEffect: (type, o) => { calls.push(['pad0', type, o]); return Promise.reject(new Error('preempted')); }, reset: () => { calls.push(['reset0']); } };
+  other.hapticActuators = [{ pulse: (v, ms) => { calls.push(['pad1', v, ms]); return Promise.resolve(true); } }];
+  const g = new Gamepad(f.pads);
+  g.update(1 / 60);
+  assert.equal(g.rumble({ strong: 1, weak: 1, ms: 100 }), false, 'nothing touched yet: no pad in hand');
+  f.press('A');
+  g.update(1 / 60);
+  assert.ok(g.rumble({ strong: 0.5, weak: 2, ms: 80.4 }));
+  assert.deepEqual(calls.pop(), ['pad0', 'dual-rumble', { startDelay: 0, duration: 80, strongMagnitude: 0.5, weakMagnitude: 1 }]);
+  assert.ok(g.stopRumble());
+  assert.deepEqual(calls.pop(), ['reset0']);
+  // the second pad touched: it is the one in hand, through its pulse
+  f.release('A');
+  other.buttons = BUTTONS.map(() => ({ pressed: false, value: 0 }));
+  other.axes = [0, 0, 0, 0];
+  g.update(1 / 60);
+  assert.ok(g.rumble({ strong: 0.1, weak: 0.1, ms: 10 }) && calls.pop()[0] === 'pad0', 'still the first one, untouched since');
+  other.buttons[0] = { pressed: true, value: 1 };
+  g.update(1 / 60);
+  assert.ok(g.rumble({ strong: 0.3, weak: 0.6, ms: 50 }));
+  assert.deepEqual(calls.pop(), ['pad1', 0.6, 50]);
+  // nothing to shake, an actuator that throws, no pads at all: false, never a throw
+  other.hapticActuators = [];
+  assert.equal(g.rumble({ strong: 1, weak: 1, ms: 50 }), false);
+  other.vibrationActuator = { playEffect() { throw new Error('nope'); } };
+  assert.equal(g.rumble({ strong: 1, weak: 1, ms: 50 }), false);
+  f.unplug();
+  g.update(1 / 60);
+  assert.equal(g.rumble({ strong: 1, weak: 1, ms: 50 }), false);
+  assert.equal(g.stopRumble(), false);
+});
+
+test('input: the pad rumbles only while it is the device in use', () => {
+  const f = fakePad(), inp = new Input(null, { pads: f.pads }), calls = [];
+  f.pad.vibrationActuator = { playEffect: (type, o) => { calls.push(o); } };
+  inp.bindPad(PAD_BINDINGS);
+  inp.poll(1 / 60);
+  assert.equal(inp.rumble({ strong: 1, weak: 1, ms: 50 }), false, 'the keyboard is the device');
+  f.press('A');
+  inp.poll(1 / 60);
+  assert.equal(inp.rumble({ strong: 1, weak: 1, ms: 50 }), true);
+  inp.device = 'kbm'; // the mouse taken up
+  assert.equal(inp.rumble({ strong: 1, weak: 1, ms: 50 }), false);
+  assert.equal(calls.length, 1);
 });

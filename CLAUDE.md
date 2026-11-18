@@ -28,6 +28,11 @@
 - Real scale: engine/physics/Units.js, 1 m = 32 px (a car is about 4.4 x 1.8 m); tight rooms, vehicles at real size.
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
+- Gamepad (data/controls.js `PAD_BINDINGS`): the fire is on the bumpers (the user's pick): RB attacks / shoots / takes
+  down (RT too, an alias), LB throws / picks up, LT looks further, A acts, X uses, Y reloads, START pauses. Rumble:
+  systems/Rumble.js from the world's events, effects in data/rumble.js (`RUMBLE`: per gun family, blow, kill,
+  finisher, death, blast, door, the car's `ride` beats; `mix`: the strongest per motor, never a drone), in play only
+  with the pad in hand, scaled by the VIBRATION option (GAME page, Settings `rumble`).
 
 ## Art
 - KEEP THE PIXEL ART: more detail, more real, never another style (no smooth shaded repaint). Strictly top-down.

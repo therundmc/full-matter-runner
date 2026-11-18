@@ -449,7 +449,7 @@ export default class World {
       v.lightsOut = false;
       this.sound('crank', v.x, v.y, 1, { dur: O.catch - O.lights }); // the starter turns it over, then it catches
     }
-    if (crossed(t0, t, O.catch)) { exhaust(3); this.shake(O.jolt[2]); }
+    if (crossed(t0, t, O.catch)) { exhaust(3); this.shake(O.jolt[2]); this.events?.emit('ride', { beat: 'start', x: v.x, y: v.y }); }
     if (t >= O.catch && chance(t < O.go ? 0.08 : 0.3)) exhaust(1);
     v.bob = t >= O.lights && t < O.go ? Math.sin(this.time * (t < O.catch ? 16 : 38)) * 0.25 : 0; // cranking, then idling
     v.squat = squatAt(t);
@@ -563,6 +563,7 @@ export default class World {
       this.outro.v *= R.carKeep;
       this.shake(R.carShake);
       this.camera.punch(R.punch);
+      this.events?.emit('ride', { beat: 'ram', x, y });
       return;
     }
     if (!e.def) return;

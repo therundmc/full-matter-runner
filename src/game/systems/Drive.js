@@ -16,7 +16,7 @@
 //   in a short beat as he sets off (grab: the car rolls on by itself, the controls and the gun his only once it is
 //   done; CharacterAnim grabPose draws it, `shot` names the camera's); a retry starts him with it in hand (skipGrab)
 // The camera's numbers (viewHeight, cameraScale, frame) are pure; Game uses them. DOM-free but for the van it may
-// make (entities/Vehicle.js).
+// make (entities/Vehicle.js). Its jolts are told on the world's 'ride' event ({ beat }: systems/Rumble.js feels them).
 import { TILE, CAT, MASK } from '../Config.js';
 import { clamp, angDiff, rand, chance } from '../../engine/math.js';
 import { VIEW } from '../../engine/Camera.js';
@@ -358,6 +358,7 @@ export default class Drive {
     this.shoveT = C.shove.dur;
     this.cool = C.shove.cooldown;
     w.shake(C.shove.shake);
+    w.events.emit('ride', { beat: 'shove', x: v.x, y: v.y });
     w.sound('vanShove', v.x, v.y, 1);
     for (const [sx, sy] of v.m.wheels) {
       const q = v.toWorld(sx, sy);
@@ -454,7 +455,7 @@ export default class Drive {
     const square = nosedIn(h.a, h.vx, h.vy, h.nx, h.ny, C);
     if (h.kind === 'solid') {
       if (square && onNose(h.lo, h.hi, h.mid, v.h, C) && !w.player.invulnerable) { this.crash(h); return; }
-      if (square) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); } // a corner clipped: most of the speed gone
+      if (square) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
       w.sound('carHit', h.x, h.y, 0.5);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 8, 260);
       return;
@@ -470,6 +471,7 @@ export default class Drive {
       w.sound('carHit', h.x, h.y, 1);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 10, 320);
       w.shake(C.hit.shake);
+      w.events.emit('ride', { beat: 'hit', x: h.x, y: h.y });
       if (square) this.v = Math.min(this.v, (h.vx * Math.cos(h.a) + h.vy * Math.sin(h.a)) * C.hit.keep);
     } else if (h.kind === 'person') {
       if (!e.alive || speed < C.run) return;
@@ -482,7 +484,7 @@ export default class Drive {
         }
       }
       return;
-    } else if (h.kind === 'torn') w.shake(C.hit.shake * 0.5);
+    } else if (h.kind === 'torn') { w.shake(C.hit.shake * 0.5); w.events.emit('ride', { beat: 'torn', x: h.x, y: h.y }); }
     if (e?.def && (h.kind === 'torn' || h.kind === 'thing')) {
       // what it was made of thrown on ahead, sheets of paper off it, sparks off steel
       const F = C.fx.debris;
@@ -559,6 +561,7 @@ export default class Drive {
       if (!c || this.v < 1.5) continue;
       w.particles.sparks(c.x, c.y, Math.PI + b.angle, 0.7, C.sparks, 240);
       w.sound('vanScrape', c.x, c.y, C.vol);
+      w.events.emit('ride', { beat: 'scrape', x: c.x, y: c.y });
       this.scrapeT = C.every;
       return;
     }
@@ -580,6 +583,7 @@ export default class Drive {
     w.particles.glass(nose.x, nose.y, back, 1.2, 24, 220);
     w.sound('vanCrash', nose.x, nose.y, 1);
     w.shake(C.crash.shake);
+    w.events.emit('ride', { beat: 'crash', x: nose.x, y: nose.y });
     this.v = 0; this.u = 0;
     Body.setVelocity(v.body, { x: 0, y: 0 });
     Body.setAngularVelocity(v.body, 0);

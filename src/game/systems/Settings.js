@@ -3,12 +3,13 @@
 //   master, music, sfx, ambience  volumes, 0..1 (sfx = effects, ambience = the beds of the night)
 //   lens                the WebGL last pass of the picture on (render/PostGL.js)
 //   shake               how much the camera shakes, 0..1 (Camera.shakeScale)
+//   rumble              how hard the gamepad rumbles, 0..1 (the VIBRATION option, systems/Rumble.js; 0 = off)
 //   fullscreen          the game wants the whole screen (re-entered at the first key or click of a session)
 //   aim                 how the aim is shown: one of data/aim.js AIM_STYLES (a choice: any other value is the default)
 import { AIM_STYLES } from '../data/aim.js';
 
 const KEY = 'fmr.settings.v1';
-const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false, aim: 'lock' };
+const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock' };
 const CHOICES = { aim: AIM_STYLES };
 
 function defaultStorage() {

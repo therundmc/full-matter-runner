@@ -2,6 +2,8 @@
 // the pads is injected (`navigator.getGamepads` by default), so the reading is unit-tested with fake pads.
 // Every connected pad counts (buttons are OR-ed, the strongest stick wins): plugging a second one in, or swapping
 // one for another, needs nothing. update(dt) once a frame gives what the pads hold and what was just pressed.
+// rumble() shakes the pad last touched (the one in hand), through its vibrationActuator ('dual-rumble') or, failing
+// that, its hapticActuators' pulse; feature-detected, it never throws (no pad, no actuator, a browser that refuses).
 
 // standard mapping: button index -> name
 export const BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right', 'Home'];
@@ -44,6 +46,8 @@ export default class Gamepad {
     this.held = new Set();     // button names held now
     this.connected = false;
     this.navT = {};            // direction -> s it has been held (for the repeat)
+    this.pad = null;           // the pad last touched (a press or a stick out): the one rumble() shakes
+    this.padIndex = -1;        // ... its index, to find it again in a fresh list (some browsers hand out snapshots)
   }
 
   // reads the pads. Returns { connected, held, pressed: Set of names pressed since the last update, nav: Set of
@@ -52,23 +56,29 @@ export default class Gamepad {
   update(dt) {
     const T = this.T, held = new Set();
     let left = { x: 0, y: 0, mag: 0 }, right = left, any = false;
-    let list = [];
+    let list = [], touched = null, inUse = null;
     try { list = Array.from(this.getPads() || []); } catch { list = []; }
-    for (const p of list) {
-      if (!p || p.connected === false) continue;
+    list.forEach((p, k) => {
+      if (!p || p.connected === false) return;
       any = true;
       const b = p.buttons || [];
+      let fresh = false;
       BUTTONS.forEach((name, i) => {
         const v = value(b[i]);
         const analog = name === 'LT' || name === 'RT';
         const on = analog ? v > (this.held.has(name) ? T.release : T.trigger) : v > 0.5 || !!b[i]?.pressed;
-        if (on) held.add(name);
+        if (on) { held.add(name); if (!this.held.has(name)) fresh = true; }
       });
       const a = p.axes || [];
       const l = deadZone(a[0], a[1], T.dead), r = deadZone(a[2], a[3], T.dead);
       if (l.mag > left.mag) left = l;
       if (r.mag > right.mag) right = r;
-    }
+      const index = p.index ?? k;
+      if (!touched && (fresh || l.mag > 0 || r.mag > 0)) touched = { p, index };
+      if (index === this.padIndex) inUse = p;
+    });
+    // the pad in hand: the one touched now, else the same one as before (its fresh snapshot), else none
+    if (touched) { this.pad = touched.p; this.padIndex = touched.index; } else this.pad = inUse;
     const pressed = new Set([...held].filter((n) => !this.held.has(n)));
     this.held = held;
     this.connected = any;
@@ -88,4 +98,42 @@ export default class Gamepad {
     const active = pressed.size > 0 || left.mag > 0 || right.mag > 0;
     return { connected: any, held, pressed, nav, left, right, active };
   }
+
+  // shakes the pad in hand: { strong, weak } 0..1 (the heavy and the light motor), ms. False when nothing could.
+  rumble({ strong = 0, weak = 0, ms = 0 } = {}) {
+    const p = this.pad;
+    if (!p) return false;
+    const s = clamp01(strong), w = clamp01(weak), duration = Math.max(0, Math.round(ms));
+    try {
+      const act = p.vibrationActuator;
+      if (typeof act?.playEffect === 'function') {
+        quiet(act.playEffect('dual-rumble', { startDelay: 0, duration, strongMagnitude: s, weakMagnitude: w }));
+        return true;
+      }
+      const h = p.hapticActuators?.[0];
+      if (typeof h?.pulse === 'function') { quiet(h.pulse(Math.max(s, w), duration)); return true; }
+    } catch { /* refused: nothing felt */ }
+    return false;
+  }
+
+  // stops what the pad in hand plays
+  stopRumble() {
+    const p = this.pad;
+    if (!p) return false;
+    try {
+      const act = p.vibrationActuator;
+      if (typeof act?.reset === 'function') { quiet(act.reset()); return true; }
+      if (typeof act?.playEffect === 'function') {
+        quiet(act.playEffect('dual-rumble', { startDelay: 0, duration: 0, strongMagnitude: 0, weakMagnitude: 0 }));
+        return true;
+      }
+      const h = p.hapticActuators?.[0];
+      if (typeof h?.pulse === 'function') { quiet(h.pulse(0, 0)); return true; }
+    } catch { /* refused */ }
+    return false;
+  }
 }
+
+const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0);
+// a promise the browser may reject (an effect cut short by the next one): never an unhandled rejection
+const quiet = (r) => { if (r && typeof r.catch === 'function') r.catch(() => {}); };
