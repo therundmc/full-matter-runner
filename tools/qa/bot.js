@@ -1500,7 +1500,8 @@
     // (a staged level's shot may look away from him: systems/Direction.js, the tutorial)
     const see = p.alive && !p.hidden && !p.passage && game.state === 'play' && !w.tutorial?.shot?.()?.name;
     const s = see ? c.worldToScreen(p.x, p.y) : null;
-    const issues = K.cameraIssues(cam, { start, scale: w.tutorial ? undefined : 1, zoom: Math.max(1, Math.round(cam.h / D.VIEW)), player: s });
+    const issues = K.cameraIssues(cam, { start, scale: w.tutorial || game.stagedShot?.() ? undefined : 1, // a staged opening starts on its own shot
+      zoom: Math.max(1, Math.round(cam.h / D.VIEW)), player: s });
     let off = false;
     for (const f of issues) {
       if (f.sig === 'player-off-screen') { off = true; if (!S.trk.offScreen.hold('p', true, w.time)) continue; }
