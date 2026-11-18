@@ -88,10 +88,10 @@ src/
                           missed flinches (head ducked, shoulders hunched, turned away), the player's view is nudged by
                           rounds striking the wall by him (FLINCH in data/feel.js; looks only; DOM-free, unit-tested)
       Uses.js             what E does where: the spots the level's devices offer (Player.nearUse, the HUD's hint, a
-                          diamond over each spot near the player: WorldRenderer.drawUseHints; none over a `quiet` one)
+                          diamond over each spot near the player: WorldRenderer.drawUseHints)
       Doors.js            the doors' part of a step (DOORS in data/doors.js): walkers lean on a leaf with a limited force
-                          (`prePush`, like PropPhysics), E opens / closes a door (a quiet Uses spot), the lab's doorbell
-                          (level `buzzers`: the man inside comes and unlocks)
+                          (`prePush`, like PropPhysics), the lab's doorbell (level `buzzers`, E: the man inside comes
+                          and unlocks)
       the level's devices (data/devices.js, DOM-free, tests/devices.test.mjs):
       Slips.js            running on a slick floor (a liquid kind with `slip`: a holed keg's beer): a guard falls on his
                           back dazed a few seconds (Enemy.slip, no stars: CharacterAnim.groggy), a customer trips, the
@@ -973,9 +973,8 @@ opens it. A man walking into it leans on it with a limited force, more at a run 
 (`DOORS.hits`). Coming shut slowly it latches (a click). A closer swings it back shut in about two seconds, overshoots
 a few degrees, settles in a swing or two and latches, stopping against whoever or whatever stands in its arc; its arm
 is drawn from the leaf to the wall. A swinging door (`spring`) hangs a pair of half-leaves (Openings `doorLeaves`
-`pair`) on spring hinges: pushed either way, back to the middle in a few swings, never latched, never locked. E at a
-door opens it away from the player or pulls it to (`Door.use`: his hand on the leaf, he steps back out of its way); a
-weapon within reach or another device comes first. A door that locks has a lamp by its lock (`Door.lights`, their
+`pair`) on spring hinges: pushed either way, back to the middle in a few swings, never latched, never locked. Doors
+are only pushed (no E on them: the user found it useless). A door that locks has a lamp by its lock (`Door.lights`, their
 glow in render/Lighting.js): red locked, amber while a guard turns his key (`unlatch`), then green with a beep; green
 stuttering once the lock was burst. `relock` (the lab only) locks it again after a while shut.
 Guards take a doorway one at a time and down its middle (`Enemy.follow`: `gateTaken` / `standBack`, `AI.gate`,

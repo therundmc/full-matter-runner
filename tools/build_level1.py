@@ -126,7 +126,7 @@ lv.door(21, 20, kind='bar', inside='n')   # the closer on the bar's side, not th
 lv.door(22, 11, kind='swing')
 lv.door(25, 5, kind='fire', inside='s')
 lv.door(16, 11, kind='staff')
-lv.door(14, 8, kind='staff', closer=True)
+lv.door(14, 8, kind='staff', closer=True, inside='e')   # its closer in the storeroom
 lv.door(27, 11, kind='office')
 lv.door(24, 13, kind='gaming')
 for x, y in ((8, 20), (39, 20), (30, 32)):

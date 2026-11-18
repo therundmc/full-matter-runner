@@ -6,8 +6,6 @@ import { leafInertia, spinOf, pushLeaf, blowOn, swing } from '../../engine/physi
 import { PX_PER_M, STEP } from '../../engine/physics/Units.js';
 import { LEAF } from '../world/Openings.js';
 import { DOORS } from '../data/doors.js';
-import { GESTURE } from '../data/feel.js';
-import { doorHandSide } from './Gesture.js';
 import { flicker } from '../render/Flicker.js';
 
 const { Bodies, Body } = Matter;
@@ -78,7 +76,6 @@ export default class Door {
     this.relock = relock;   // s shut on its latch after which it locks itself again (0: never; the lab's door)
     this.shutT = 0;
     this.latched = !this.spec.spring; // shut on its latch (a swinging door has none)
-    this.drive = null;      // a hand on it (E: use): { to, by, t, along }
     this.hissed = false;    // the closer was heard on this way shut
     this.cells = cells;     // tiles it covers (blocked for path-finding while locked)
     this.shakeT = 0;
@@ -129,8 +126,6 @@ export default class Door {
   // how far open (rad, signed: + toward the leaf's +normal side when shut)
   get rel() { return angDiff(this.a0, this.body.angle); }
 
-  isOpen() { return Math.abs(this.rel) >= DOORS.use.shut; }
-
   // the side of the shut leaf (x, y) is on: 1 or -1
   sideOf(x, y) { return -(x - this.hx) * Math.sin(this.a0) + (y - this.hy) * Math.cos(this.a0) >= 0 ? 1 : -1; }
 
@@ -139,16 +134,10 @@ export default class Door {
     return { x: this.hx + Math.cos(a) * this.len, y: this.hy + Math.sin(a) * this.len };
   }
 
-  // the middle of the leaf (where E reaches it)
+  // the middle of the leaf
   mid() {
     const a = this.body.angle, m = this.len / 2;
     return { x: this.hx + Math.cos(a) * m, y: this.hy + Math.sin(a) * m };
-  }
-
-  // a point of the leaf `along` px from the pivot, on its face toward `face` (1 / -1 its normal's side)
-  pointAt(along, face) {
-    const a = this.body.angle, c = Math.cos(a), s = Math.sin(a), n = (face * LEAF.thick) / 2;
-    return { x: this.hx + c * along - s * n, y: this.hy + s * along + c * n };
   }
 
   // the point of the leaf's face nearest to (px, py) when it lies within `reach` of it (a hand laid on the door:
@@ -175,7 +164,6 @@ export default class Door {
   lock() {
     this.locked = true;
     this.keyT = 0;
-    this.drive = null;
     Body.setStatic(this.body, true);
     for (const i of this.cells) this.world.map.blocked[i] = 1;
   }
@@ -252,58 +240,8 @@ export default class Door {
   // how far it opens either side (a warped door less)
   limit() { return DOORS.stop.swing - this.warp * DOORS.stop.warp; }
 
-  // E at it (systems/Doors.js spot): shut, a hand swings it open away from him; open, it pulls it to
-  use(ch) {
-    const U = DOORS.use, G = GESTURE.door, rel = this.rel, side = this.sideOf(ch.x, ch.y);
-    const to = Math.abs(rel) < U.shut ? -side * U.open : 0;
-    const p = this.touch(ch.x, ch.y, U.hand, { x: 0, y: 0, a: 0 }) || this.mid();
-    const along = clamp(this.along(p.x, p.y), this.len * 0.4, this.len * 0.85);
-    this.drive = { to, by: ch, t: U.dur, along };
-    this.latched = false;
-    // the leaf going away from him is a push, coming to him a pull
-    const away = to ? true : Math.sign(rel) === side;
-    const rightBusy = (ch.armed && !(ch.stow >= 0.6)) || !!ch.busyHands?.();
-    const at = this.pointAt(along, this.faceOf(ch));
-    ch.doorHand = {
-      x: at.x, y: at.y, a: this.body.angle, w: Math.max(ch.doorHand?.w || 0, 0.3), push: away ? 1 : 0.35, hold: G.follow,
-      side: doorHandSide(ch.facing?.sh ?? ch.angle, ch.x, ch.y, at, this.tip(), rightBusy), door: this,
-    };
-    this.world.sound('doorPush', at.x, at.y, 0.8);
-  }
-
-  // the face of the leaf as it stands that (x, y) is in front of
-  faceOf(ch) {
-    const a = this.body.angle;
-    return -(ch.x - this.hx) * Math.sin(a) + (ch.y - this.hy) * Math.cos(a) >= 0 ? 1 : -1;
-  }
-
-  // the hand on the leaf (use): it drives it toward where it goes with a limited force, follows it, and lets go
-  // once there, after a while or when the leaf has gone out of his reach (it goes on by itself)
-  steer(av, rel, dt) {
-    const U = DOORS.use, G = GESTURE.door, d = this.drive, ch = d.by, err = d.to - rel;
-    const p = this.pointAt(d.along, this.faceOf(ch));
-    d.t -= dt;
-    // pulled to on a closer (a swinging door's spring), it is let go of near shut: the closer settles it
-    const settles = !d.to && this.closer && Math.abs(rel) < Math.min(this.closer.zone, 0.3);
-    if (d.t <= 0 || settles || (d.to && Math.abs(err) < 0.03) || !ch.alive || Math.hypot(p.x - ch.x, p.y - ch.y) > U.hand) {
-      this.drive = null;
-      return av;
-    }
-    const H = ch.doorHand;
-    if (H?.door === this) {
-      H.x = p.x; H.y = p.y; H.a = this.body.angle;
-      H.w = Math.min(1, H.w + dt / G.on);
-      H.hold = G.follow;
-    }
-    if (!d.to) this.stepBack(ch, rel, d.to);
-    // opening it eases onto where it goes; pulling it to keeps it coming till the latch catches it
-    const want = Math.sign(err) * clamp(Math.abs(err) * U.gain, d.to ? 0 : U.latch, U.speed) * STEP;
-    const most = spinOf((U.force * d.along) / PX_PER_M, this.I, dt);
-    return av + clamp(want - av, -most, most);
-  }
-
-  // keep the door on its hinge: what it picked up this step taken about the hinge, its hinge's friction, its closer
-  // and a hand on it, soft end stops that knock when it swings into them, the latch when it comes shut
+  // keep the door on its hinge: what it picked up this step taken about the hinge, its hinge's friction and its
+  // closer, soft end stops that knock when it swings into them, the latch when it comes shut
   constrain(dt) {
     this.tickLamp(dt);
     const b = this.body;
@@ -316,10 +254,9 @@ export default class Door {
     const v = Body.getVelocity(b), along = v.y * Math.cos(b.angle) - v.x * Math.sin(b.angle);
     let av = (b.inertia * Body.getAngularVelocity(b) + b.mass * h * along) / (b.inertia + b.mass * h * h);
     // on its latch, a knock under what the latch holds leaves it shut
-    if (this.latched && !this.drive && Math.abs(rel) < 0.02 && Math.abs(av) < spinOf(DOORS.latch.hold, this.I, dt)) { rel = 0; av = 0; }
+    if (this.latched && Math.abs(rel) < 0.02 && Math.abs(av) < spinOf(DOORS.latch.hold, this.I, dt)) { rel = 0; av = 0; }
     else this.latched = false;
-    if (this.drive) av = this.steer(av, rel, dt);
-    av = swing(av, rel, this.I, dt, { friction: K.friction, drag: K.drag, closer: this.drive ? null : this.closer });
+    av = swing(av, rel, this.I, dt, { friction: K.friction, drag: K.drag, closer: this.closer });
     if (this.closer && !K.spring) this.hiss(av, rel);
     const lim = this.limit();
     if (Math.abs(rel) > lim) {
@@ -364,7 +301,6 @@ export default class Door {
   // shut on its latch: a click, or a bang when it came shut fast
   latchShut(av) {
     this.latched = true;
-    this.drive = null;
     this.hissed = false;
     const fast = Math.abs(av) > DOORS.latch.catch * STEP * 0.6;
     if (fast) this.world.sound(this.spec.steel ? 'doorBoom' : 'doorSlam', this.hx, this.hy, 0.5);
@@ -395,20 +331,6 @@ export default class Door {
       this.slam(ch);
     }
     return best;
-  }
-
-  // the man with his hand on it, in the way of the leaf between where it is and where he takes it (`to`), steps back
-  // away from the hinge as he pulls (`back` px a step, where there is room: no wall under him); it stops against
-  // him meanwhile (stopAt)
-  stepBack(ch, rel, to) {
-    const dx = ch.x - this.hx, dy = ch.y - this.hy, r = Math.hypot(dx, dy) || 1;
-    if (r >= this.len + ch.radius) return;
-    const at = angDiff(this.a0, Math.atan2(dy, dx)), half = Math.asin(Math.min(1, (ch.radius + LEAF.thick / 2) / r));
-    if (at < Math.min(rel, to) - half || at > Math.max(rel, to) + half) return;
-    const k = Math.min(DOORS.use.back, this.len + ch.radius - r), x = ch.x + (dx / r) * k, y = ch.y + (dy / r) * k;
-    const m = this.world.map, e = ch.radius * 0.9;
-    if ([[0, 0], [e, 0], [-e, 0], [0, e], [0, -e]].some(([ox, oy]) => m.solidAt(x + ox, y + oy))) return;
-    Body.setPosition(ch.body, { x, y });
   }
 
   // a door thrown open by the player lands on a guard: he goes down

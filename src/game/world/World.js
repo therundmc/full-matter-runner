@@ -164,7 +164,7 @@ export default class World {
 
     buildLevel(this, level);
     this.curtains = new Curtains(this); // the curtains' cloth: pushed by whoever goes through, parted, hiding or not
-    this.doorWork = new Doors(this);    // leaves leaned on with a limited force, E opens / closes a door
+    this.doorWork = new Doors(this);    // leaves leaned on with a limited force, the lab's doorbell
     this.jukebox.wire();  // the devices that are props of the level offer their spots now that the props are there
     this.gasValve.wire();
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)

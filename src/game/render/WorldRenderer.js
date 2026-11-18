@@ -427,7 +427,7 @@ export default class WorldRenderer {
     for (const s of u.spots) {
       if (s.prop && (s.prop.dead || s.prop.dying)) continue;
       const { x, y } = u.at(s), d = Math.hypot(x - pl.x, y - pl.y), on = s === pl.nearUse;
-      if (d > R || (!on && (s.quiet || (s.ok && !s.ok(pl))))) continue; // a quiet spot (a door) only when E is on it
+      if (d > R || (!on && s.ok && !s.ok(pl))) continue;
       const k = on ? 1 : 0.35 * (1 - d / R), r = on ? 3 + Math.sin(t * 8) : 2.5;
       for (const [width, color] of [[3, `rgba(8,4,16,${0.8 * k})`], [1.2, on ? '#ffe46a' : `rgba(255,228,106,${k})`]]) {
         ctx.lineWidth = width;

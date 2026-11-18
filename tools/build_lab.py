@@ -309,7 +309,7 @@ lv.actor('u', 44, 15, face=90)
 lv.prop('hydrant', 43.5, 19.62)            # on the kerb: the water runs down the gutter
 
 lv.area('14 doors')
-# the doors (src/game/data/doors.js): their weight when walked into, kicked, shot; E opens and closes one; the closer
+# the doors (src/game/data/doors.js): their weight when walked into, kicked, shot; the closer
 # swings its door back shut and latches it; the locked one's lamp is red. Ring its bell (E): the man inside comes,
 # turns his key (the lamp amber, then green) and goes back; walk in, the closer shuts it behind you and it locks
 # itself again a few seconds later (red)

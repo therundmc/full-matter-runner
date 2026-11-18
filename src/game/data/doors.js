@@ -64,13 +64,6 @@ export const DOORS = {
   // flap heard each time it swings through faster than `flap` rad/s
   spring: { freq: 5, damp: 0.2, flap: 1.2 },
 
-  // E at a door (systems/Uses.js spot at the leaf's middle, within `reach`): shut (under `shut` rad off), it is
-  // swung `open` rad away from him; open, it is pulled to. The hand on it drives it at most `speed`, with `force`
-  // at most, for `dur` at most, and lets go once the leaf is further than `hand` from him (it goes on by itself);
-  // pulled to, it comes at `latch` at least till it latches; in its way, he steps back `back` px a step, away from
-  // the hinge
-  use: { reach: 26, shut: 0.2, open: 1.45, speed: 3.2, gain: 5, latch: 0.9, force: 320, dur: 1.2, hand: 30, back: 1.2 },
-
   // a doorbell (level `buzzers`, the lab): the man rung for stands `stand` px inside the door to turn his key, and
   // waits `wait` s there before he goes back to his post
   buzzer: { stand: 16, wait: 1.5 },

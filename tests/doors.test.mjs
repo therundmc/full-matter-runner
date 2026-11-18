@@ -13,7 +13,7 @@ const { setKg } = await load('engine/physics/Body.js');
 const { leafInertia, pushLeaf, swing } = await load('engine/physics/Hinge.js');
 const { STEP } = await load('engine/physics/Units.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
-const { doorLeaves, LEAF } = await load('game/world/Openings.js');
+const { doorLeaves } = await load('game/world/Openings.js');
 const { default: Door } = await load('game/entities/Door.js');
 const { default: Doors } = await load('game/systems/Doors.js');
 const { default: Uses } = await load('game/systems/Uses.js');
@@ -147,7 +147,7 @@ test('closer: it swings the door back shut within its time and latches, unless s
   assert.ok(shutAt !== null && shutAt > 1.2 && shutAt < 2.5, `shut after ${shutAt} s`);
   assert.equal(d.rel, 0);
   assert.ok(w.heard.includes('doorLatch') && w.heard.includes('doorCloserHiss'));
-  assert.equal(d.isOpen(), false);
+  assert.ok(d.latched);
   // a man in its arc: it comes to rest against him and stays open
   const w2 = world(), d2 = door(w2, { closer: true }), sys2 = new Doors(w2);
   openAt(d2, 1.5);
@@ -168,33 +168,11 @@ test('closer: it swings the door back shut within its time and latches, unless s
   assert.ok(Math.abs(d4.rel - 1.2) < 1e-6);
 });
 
-test('E at a door: shut it swings open away from him, open he pulls it to; the HUD says which', () => {
-  const w = world(), d = door(w), sys = new Doors(w), c = walker(w, d.hx + 14, d.hy + 16); // south of the leaf
-  const spot = w.uses.near(c);
-  assert.equal(spot?.door, d, 'the door is in reach');
-  assert.equal(w.uses.label(spot), 'OPEN DOOR');
-  spot.use(c);
-  assert.equal(c.doorHand?.door, d, 'his hand on it');
-  run(w, sys, 1.5, () => c.stand());
-  assert.ok(d.rel < -1, `swung away from him, to the north (${d.rel})`);
-  assert.equal(w.uses.label(spot), 'CLOSE DOOR');
-  // gone through, he turns and pulls it to: he steps back out of its way, it comes shut and latches
-  Body.setPosition(c.body, { x: d.hx + 14, y: d.hy - 14 });
-  assert.equal(w.uses.near(c), spot, 'in reach of the open leaf');
-  spot.use(c);
-  run(w, sys, 2, () => c.stand());
-  assert.ok(d.latched && d.rel === 0, `shut (${d.rel})`);
-  assert.ok(c.y < d.hy - LEAF.thick / 2 - PLAYER.radius + 1, 'never through the leaf');
-  assert.equal(w.uses.label(spot), 'OPEN DOOR');
-  // a weapon in his reach comes first: E picks it up
-  assert.equal(spot.ok({ ...c, nearItem: {} }), false);
-  // a device in reach too (the jukebox by the door): E works it, not the door
-  const box = w.uses.add({ x: c.x + 20, y: c.y, label: 'TURN UP', use() {} });
-  assert.equal(w.uses.near(c), box);
-  w.uses.spots.pop();
-  // never a locked door
-  d.lock();
-  assert.equal(w.uses.near(c), null);
+test('doors: no E on a door (pushed open, its closer shuts it); E is only for the lab\'s doorbell', () => {
+  const w = world();
+  door(w); door(w, { closer: true });
+  new Doors(w);
+  assert.equal(w.uses.spots.length, 0);
 });
 
 test('lock lamp: red locked, amber while a guard turns his key, green once it turned, green after a burst too', () => {

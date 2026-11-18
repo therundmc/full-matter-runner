@@ -3,8 +3,6 @@
 //    (Door.pushed, engine/physics/Hinge.js pushLeaf) and is held to the speed it really goes, as with furniture
 //    (systems/PropPhysics.js): a heavy leaf takes a moment, a run bursts it open harder. A slide, a vault, a man
 //    knocked flying are left to the physics (they are blows, not pushes);
-//  - E at a door (a systems/Uses.js spot at the leaf's middle): shut, it is swung open away from him; open, it is
-//    pulled to (Door.use: his hand on it). The spot is `quiet`: no diamond over every door, only the HUD's hint;
 //  - a doorbell (level `buzzers`, the lab): E rings it, the man posted inside comes to the locked door, turns his key
 //    in it (the lamp amber, then green: Door.unlatch) and goes back to his post.
 // DOM-free.
@@ -21,7 +19,6 @@ const walking = (c) => c.alive && c.body && !c.slide && !c.vaulting && !(c.knock
 export default class Doors {
   constructor(world) {
     this.world = world;
-    for (const d of world.doors) world.uses?.add(this.spot(d));
     // the doorbells: { at: [col, row], door: [col, row] of a tile of the door, guard: [col, row] of his post }
     this.buzzers = [];
     for (const b of world.level?.buzzers || []) {
@@ -59,20 +56,6 @@ export default class Doors {
       g.bolt = null;
       bz.call = null;
     }
-  }
-
-  // what E does at a door: open it / close it (never a locked one, never one gone off its hinges); a weapon within
-  // his reach comes first (E picks it up: one dropped in a doorway is not lost to the door)
-  spot(d) {
-    const w = this.world;
-    return {
-      get x() { return d.mid().x; },
-      get y() { return d.mid().y; },
-      r: DOORS.use.reach, quiet: true, door: d,
-      label: () => (d.isOpen() ? 'CLOSE DOOR' : 'OPEN DOOR'),
-      ok: (ch) => !d.locked && w.doors.includes(d) && !ch.nearItem,
-      use: (ch) => d.use(ch),
-    };
   }
 
   prePush(dt) {
