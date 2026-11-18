@@ -305,7 +305,7 @@ export default class Ambient {
   bailOut(v, panic, from = v, side = -1) {
     const w = this.world, p = v.toWorld(v.w * 0.55, side < 0 ? -10 : v.h + 10);
     if (w.map.solidAt(p.x, p.y)) return;
-    const route = panic ? [p] : escapeRoute(groundOf(w.map, w.props), p.x, p.y, null);
+    const route = panic ? [p] : escapeRoute(groundOf(w.map, w.props, w.windows), p.x, p.y, null);
     if (!route) return;
     const civ = this.spawnCivilian([p, ...route], p.x, p.y, v.body.angle + side * Math.PI / 2);
     if (!panic) return;
@@ -373,9 +373,9 @@ export default class Ambient {
     this.checkT -= dt;
     const look = this.checkT <= 0;
     if (look) this.checkT = A.panic.check;
-    // the ground as passers-by see it (benches, stalls in the way: ai/Civilians.js groundOf), once a step when needed
+    // the ground as passers-by see it (benches, stalls, window frames: ai/Civilians.js groundOf), once a step when needed
     let ground = null;
-    const on = () => (ground ??= groundOf(w.map, w.props));
+    const on = () => (ground ??= groundOf(w.map, w.props, w.windows));
     const jammed = (i) => this.jams.cost(i, w.time) >= 1;
     const sense = {
       // the people around him he gives way to (ai/Nav.js), heading (ux, uy)

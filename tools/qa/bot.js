@@ -1622,9 +1622,24 @@
     }
   }
 
-  // a body still moving 5 s after death, or turned round on itself, with nothing to explain it
+  // the box round all the parts of a body on the floor
+  const boundsOf = (c) => {
+    const b = { min: { x: Infinity, y: Infinity }, max: { x: -Infinity, y: -Infinity } };
+    for (const p of c.parts || [c]) {
+      const q = p.body.bounds;
+      b.min.x = Math.min(b.min.x, q.min.x); b.min.y = Math.min(b.min.y, q.min.y);
+      b.max.x = Math.max(b.max.x, q.max.x); b.max.y = Math.max(b.max.y, q.max.y);
+    }
+    return b;
+  };
+
+  // a body still moving 5 s after death, or turned round on itself, with nothing to explain it (a blast, a car,
+  // somebody or loose furniture shoving it, rounds flying)
   function corpseDrift(w) {
     const cars = w.props.filter((v) => v.isVehicle && !v.dead);
+    const loose = w.props.filter((v) => !v.isVehicle && !v.dead && v.body && !v.body.isStatic)
+      .map((v) => ({ bounds: v.body.bounds, speed: Matter.Body.getSpeed(v.body) })).filter((v) => v.speed > 0.3)
+      .concat(w.doors.filter((d) => d.body).map((d) => ({ bounds: d.body.bounds, press: true })));
     for (const c of w.corpses) {
       if (c.dead || !c.body) { S.trk.corpses.forget(c); continue; }
       // slammed on a table, a counter, a crate (folded over it, sat against it): he stays there, from the start
@@ -1638,7 +1653,7 @@
         return (v.x * (x - ch.x) + v.y * (y - ch.y)) / (Math.hypot(x - ch.x, y - ch.y) || 1) > 0.3; // moving into it
       });
       const excused = pushed || blastNear(w, x, y) || w.time - S.shotT < 0.8 || w.player.execution?.corpse === c
-        || cars.some((v) => Math.hypot(v.x - x, v.y - y) < 90);
+        || cars.some((v) => Math.hypot(v.x - x, v.y - y) < 90) || (loose.length && K.shovedBy(boundsOf(c), loose));
       const r = S.trk.corpses.update(c, { x, y, a: b.angle, age: c.age ?? 0, excused, from: c.__qaSlam ? 0.3 : undefined }, w.time);
       if (r) report('corpse-drift', 'error', `${r.kind}${c.__qaSlam ? ' after a slam' : ''}`, posOf(x, y), { ...r, age: r1(c.age ?? 0), body: c.kind, against: c.against?.type || null, dying: c.dying?.kind || null });
     }

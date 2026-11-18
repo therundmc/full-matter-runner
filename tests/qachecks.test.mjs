@@ -113,6 +113,17 @@ test('qa checks: a body that spins round after a table slam, one that still slid
   assert.equal(r, null, 'a blast, a car or a man on it excuses it');
 });
 
+test('qa checks: a body shoved by loose furniture on the move (a gas bottle riding its jet) is excused, not one by still furniture', () => {
+  const body = { min: { x: 0, y: 0 }, max: { x: 30, y: 20 } };
+  const box = (x, y, s = 12) => ({ min: { x, y }, max: { x: x + s, y: y + s } });
+  assert.ok(K.shovedBy(body, [{ bounds: box(32, 4), speed: 2 }]), 'a bottle on its jet against his side');
+  assert.ok(!K.shovedBy(body, [{ bounds: box(32, 4), speed: 0 }]), 'a crate standing by him');
+  assert.ok(!K.shovedBy(body, [{ bounds: box(90, 4), speed: 3 }]), 'a chair flying past further off');
+  assert.ok(K.shovedBy(body, [{ bounds: box(10, -4, 30), press: true }]), 'a door leaf swung onto him');
+  assert.ok(!K.shovedBy(body, [{ bounds: box(90, 4), press: true }]), 'a door further off');
+  assert.ok(!K.shovedBy(body, []));
+});
+
 test('qa checks: a weapon out of reach, and one by a wall', () => {
   const wall = (x) => x < 0; // a wall on the left half-plane
   assert.equal(K.reachable(5, 0, (x) => !wall(x)), true, 'against the wall: reached from the room');
