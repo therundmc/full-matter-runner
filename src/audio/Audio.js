@@ -39,7 +39,6 @@ import { RECIPES, formOf } from './Foley.js';
 import { render } from './Synth.js';
 import { BEDS, renderBed, renderLaugh } from './Beds.js';
 import { VOICE, v8Cycle, cycleHz } from './Motor.js';
-import { ElevatedVoice } from './Elevated.js';
 
 // The mix: each bus's level (measured headless: the reference loudness of each in the street, the bar and a fight is
 // in the report of the 2026-11-15 mix pass). Guns and impacts punch, voices read, the music drives the fights, the
@@ -242,8 +241,6 @@ export const META = {
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
   crank: { pri: 3, dur: 0.6, gap: 0.5, max: 1, gain: 0.45, reach: 2000 }, // a starter turning an engine over (the getaway)
-  // the title's elevated train, piece by piece (each overlapping the next, one queued ahead): under the menu's music
-  elTrain: { pri: 1, dur: 0.9, gap: 0, max: 4, gain: 0.2, hall: 0.1 },
   // the night around (systems/Ambience.js; its beds are not voices, see setAmbience): the city's swell of the opening
   // cinematic, the wind, drops, and the life of the bar and its toilets; far under the rest, the first dropped in a fight.
   // The far city (soundscape CITY): a police car crossing it, the elevated train, a car alarm, a dog; long, quiet, wet.
@@ -1566,26 +1563,6 @@ class AudioSystem {
     const dur = 22, mid = dur / 2, mix = this._sweep(o, opts.dir < 0 ? -1 : 1, 0.75, dur), k = rand(0.94, 1.06);
     const s = this._cue(o, 'train', { to: mix, rate: [[0, k * 1.012], [mid - 3, k * 1.01], [mid + 3, k * 0.99], [dur, k * 0.988]] });
     this._let(o, mix, s);
-  }
-  // the title's elevated train (ui/title/Timeline.js trainSound): one piece of its passage, rendered by audio/Elevated.js
-  // and started where the last one hands over (`this.elevated`), so that the pieces run on as one sound; opts.delay:
-  // when it starts from now. Its level is its META gain, the same for every piece.
-  _elTrain(o, { el, delay = 0, vol = 1 }) {
-    if (!el) return;
-    const ctx = this.ctx, now = ctx.currentTime, last = this.elevated;
-    let at = now + Math.max(0.005, delay);
-    const on = !!last && last.k === el.k && Math.abs(last.a - el.a0) < 1e-6 && last.end > now + 0.005 && Math.abs(last.end - at) < 0.1;
-    if (on) at = last.end;
-    const voice = on ? last.voice : new ElevatedVoice(el.k * 7919 + 1), { sr, data } = voice.render(el, !on);
-    const buf = ctx.createBuffer(2, data[0].length, sr), s = ctx.createBufferSource();
-    data.forEach((d, i) => buf.getChannelData(i).set(d));
-    s.buffer = buf;
-    s.connect(o);
-    o.gain.value = vol * META.elTrain.gain;
-    o._n++;
-    s.onended = () => this._release(o, s);
-    s.start(at);
-    this.elevated = { k: el.k, a: el.a0 + el.len, end: at + el.len, voice };
   }
   // a car alarm going off streets away: a few seconds of its cycle, from wherever it is in it, then somebody shuts it
   _farAlarm(o) {
