@@ -2386,7 +2386,7 @@ export default class Enemy extends Character {
     this.downAngle = angle; // on his back, his head away from the blow
     this.dormant = false;   // that wakes a man
     const along = opt.slide ?? angle;
-    this.dropWeapon(along + rand(-0.8, 0.8), rand(2, 4));
+    this.dropWeapon(along + rand(-0.8, 0.8), this.yields ? 0.5 : rand(2, 4)); // (his gun is to be snatched: it stays by him)
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
     const sp = opt.speed ?? (cause === 'punch' ? 3 : 4.5);

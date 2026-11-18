@@ -13,6 +13,8 @@
 //   player               { x, y, angle, move } with move: 'slide' | 'roll' | 'dive' | null
 //   heat                 [{ x, y, kind: 'fire' | 'steam' }] hot spots in the world
 //   lights               [{ x, y, k }] the brightest lamps in view, strongest first
+//   page                 a comic page covers the screen (the opening, the leap out of the tutorial, a level's closing
+//                        page): nothing of the world reaches the picture, and what it left in the lens is dropped
 import { POST } from '../data/post.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -30,6 +32,7 @@ export default class Lens {
     this.rampage = 0;           // 0..1: how hot the chain of kills runs
     this.combo = 0;             // kills in the chain, as of the last frame
     this.state = null;
+    this.paged = false;         // a comic page was up last frame
     this.reset();
   }
 
@@ -120,6 +123,9 @@ export default class Lens {
       else if (v.state === 'intro' || (v.state === 'play' && this.state === 'dead')) this.tear(c.tube.glitch.start);
       this.state = v.state;
     }
+    // (a page shows as it is drawn: no kick, no heat of a chain, no grade still on its way from the world's)
+    if (v.page && !this.paged) { this.reset(); this.rampage = 0; this.grade = copyGrade(this.gradeFor(v)); }
+    this.paged = !!v.page;
     this.fringe *= Math.exp(-c.fringe.decay * dt);
     this.zoom *= Math.exp(-c.punch.zoomDecay * dt);
     this.kick *= Math.exp(-c.punch.kickDecay * dt);
@@ -162,7 +168,7 @@ export default class Lens {
   uniforms(v) {
     const c = this.cfg, W = v.W, H = v.H, out = v.outH || H, px = out / 1080; // out: the height it ends up on screen
     const at = (x, y) => { const s = v.toScreen(x, y); return [s.x / W, 1 - s.y / H]; };
-    const centre = v.player && v.state !== 'title' ? at(v.player.x, v.player.y) : [0.5, 0.5];
+    const world = !v.page, centre = world && v.player && v.state !== 'title' ? at(v.player.x, v.player.y) : [0.5, 0.5];
 
     const waves = new Float32Array(c.wave.max * 4);
     this.waves.slice(-c.wave.max).forEach((w, i) => {
@@ -173,7 +179,7 @@ export default class Lens {
     const heat = new Float32Array(c.heat.max * 4);
     const spots = [
       ...this.embers.map((e) => ({ x: e.x, y: e.y, r: c.heat.blast.r, k: c.heat.blast.k * (1 - e.t / c.heat.blast.life) })),
-      ...(v.heat || []).map((h) => ({ x: h.x, y: h.y, r: c.heat[h.kind].r, k: c.heat[h.kind].k })),
+      ...(world && v.heat || []).map((h) => ({ x: h.x, y: h.y, r: c.heat[h.kind].r, k: c.heat[h.kind].k })),
     ];
     spots.slice(0, c.heat.max).forEach((h, i) => {
       const [x, y] = at(h.x, h.y);
@@ -181,7 +187,7 @@ export default class Lens {
     });
 
     const lights = new Float32Array(c.rays.max * 4);
-    (v.lights || []).slice(0, c.rays.max).forEach((l, i) => {
+    (world && v.lights || []).slice(0, c.rays.max).forEach((l, i) => {
       const [x, y] = at(l.x, l.y);
       lights.set([x, y, Math.min(1, l.k), 0], i * 4);
     });
@@ -189,7 +195,7 @@ export default class Lens {
     const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
     const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k + R.sat * r, con: this.grade.con + c.punch.con * k + R.con * r };
     return {
-      fringe: (c.fringe.rest + this.fringe + R.fringe * r + c.fringe.trauma * Math.max(0, (v.trauma || 0) - 0.15)) * px,
+      fringe: (c.fringe.rest + this.fringe + R.fringe * r + c.fringe.trauma * Math.max(0, (world && v.trauma || 0) - 0.15)) * px,
       zoom: this.zoom,
       focus: this.zoom > 0.0005 && this.zoomAt ? at(this.zoomAt.x, this.zoomAt.y) : centre,
       frame: this.frame > 0 ? 1 : 0,

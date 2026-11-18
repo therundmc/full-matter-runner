@@ -79,6 +79,7 @@ export default class Game {
     this.skip = new HoldSkip();        // a comic page skipped by holding SPACE (ui/cine/Hold.js)
     this.taught = new Set();           // the lessons already given this run (systems/Tutorial.js)
     this.murk = 0;                     // 0..1: how far thick smoke has closed the view in (render/Murk.js)
+    this.paged = false;                // a comic page was over the world last frame (onPage)
     this.driveZoom = 1;                // the camera's scale at the wheel, eased with the van's speed (systems/Drive.js)
     this.state = 'loading';
     this.stateT = 0;
@@ -238,14 +239,9 @@ export default class Game {
     const at = dr ? this.direction.aim(fr.x, fr.y) : p;
     this.camera.snap(at.x, at.y);
     this.acc = 0;
-    this.hitstop = 0;
-    this.timeScale = 1;
-    this.slow = null;
-    this.flashA = 0;
-    this.murk = 0;
+    this.clearScreen();
     this.clearedT = 0;
     this.padAimAt = null;
-    Audio.setMuffle(0);
     // the soundtrack: calm until the squad wakes up or blood is shed (Tension, fed every frame in update), its
     // combat variant while the squad fights
     const ev = this.world.events;
@@ -273,6 +269,24 @@ export default class Game {
     this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
     this.setState('fall');
+  }
+
+  // a comic page fills the screen (the opening, the leap out of the tutorial, a level's closing page): the world is
+  // not seen behind it, nor anything it was doing to the picture
+  onPage() { return this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN); }
+
+  // what the world does to the picture and the sound let go: the slow motion and its muffle, a flash, the smoke
+  // closing in, the shake and the lens' kicks (a new level; a page coming up over the world, which then stands still
+  // and would hold them as they were)
+  clearScreen() {
+    this.hitstop = 0;
+    this.timeScale = 1;
+    this.slow = null;
+    this.flashA = 0;
+    this.murk = 0;
+    this.camera.settle();
+    this.lens.reset();
+    Audio.setMuffle(0);
   }
 
   // play starts at once; the card stays where it was and opens like a shutter over the first moments of play
@@ -385,6 +399,10 @@ export default class Game {
     }
 
     if (this.state === 'loading') return;
+    // a page comes up over the world: what the world was doing to the picture goes
+    const page = !!this.world && this.onPage();
+    if (page && !this.paged) this.clearScreen();
+    this.paged = page;
     // debug: the picture with / without the lens
     if (inp.hit('F6') && this.post) {
       this.lensOn = !this.lensOn;
@@ -836,7 +854,7 @@ export default class Game {
     const w = this.world, p = inWorld ? w.player : null, inp = this.input, v = p?.vaulting;
     return {
       W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
-      state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
+      state: this.state, page: inWorld && this.onPage(), phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
       timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {
         x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,
