@@ -2447,7 +2447,7 @@ export default class Enemy extends Character {
 
   draw(ctx) {
     if (this.ashtray) drawItem(ctx, 'ashtray', this.ashtray.x, this.ashtray.y, 0.4);
-    const k = 1 - this.crouch * 0.12;
+    const k = 1 - Math.min(1, this.crouch) * 0.12; // ducking lower (DUCK) is in his pose, never a smaller man
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
     const B = this.held ? null : this.postBody(); // seized at his post: in the hands of the one behind him
     if (B) drawPose(ctx, this, postPose(this, standPose(this, this.pose), this.pose2, B));
