@@ -6,10 +6,10 @@ string, the photo of his flat, the matchbook). tools/comic/title.py writes them 
 (src/game/data/titleart.js), and as stills.
 
 Everything is at SC = 3 px per title px (the title is 384 x 216), flat, aliased and deterministic."""
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw
 
 from . import poster
-from .kit import (BLOOD, BONE, BONE_D, CYAN, CYAN_D, FIRE, FIRE_D, FIRE_DD, FIRE_L, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, bead,
+from .kit import (BLOOD, BONE, BONE_D, BROWN, CYAN, CYAN_D, FIRE, FIRE_D, FIRE_DD, FIRE_L, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, bead,
                   slab, text_mask, turned)
 
 W, H = 1152, 648
@@ -93,7 +93,7 @@ LOGO_AT = (306, 14)            # the logo on the poster, its sheet's top left
 MX = 24
 GLOW = (590, 452, 236)                         # the fire's glow: a disc
 B = dict(x0=704, x1=800, roof=326, base=526)   # his building
-FLOOR = 36                                     # a floor's height in it
+FLOOR = 48                                     # a floor's height in it
 RUNNER_AT = (560, 584, 330)                    # his middle, his feet, his height
 SHADOW = {'body': NIGHT_L, BONE: NIGHT_LL, BONE_D: BONE_D, PINK_D: NIGHT_L}    # a giant in the sky: his black a violet, his sign kept
 
@@ -144,21 +144,17 @@ def skyline(cv, y0, y1, base, seed=0, skip=None, x0=-60, x1=W + 60):
 
 
 def windows():
-    """His building's windows: [(x, y, w, h, floor)], floor 0 the top one; a wide one and two narrow ones a floor, the
-    wide one changing side."""
-    out = []
-    for f in range(5):
-        y = B['roof'] + 18 + f * FLOOR
-        cols = ((10, 26), (46, 16), (72, 14)) if f % 2 else ((10, 15), (35, 16), (60, 26))
-        for dx, w in cols:
-            out.append((B['x0'] + dx, y, w, 22 if w > 20 else 23, f))
-    return out
+    """His building's windows: [(x, y, w, h, floor)], floor 0 the top one: two big ones a floor."""
+    return [(B['x0'] + dx, B['roof'] + 20 + f * FLOOR, 22, 26, f) for f in range(4) for dx in (16, 58)]
 
 
-def tongue(cv, x, y, w, h, lean=0.0, seed=0, clip=None, tf=None):
-    """A flame from (x, y) its foot's middle: cut tongues one in the other, orange, yellow, a white-hot core, leaning
-    with the wind."""
-    for k, ink in zip((1.0, 0.62, 0.3), (FIRE, FIRE_L, BONE)):
+ROOF_FLAMES = ((22, 44, 100), (52, 30, 62))    # the fire on the roof: (from the wall's left, its width, its height)
+
+
+def tongue(cv, x, y, w, h, lean=0.0, seed=0, clip=None, tf=None, cores=3):
+    """A flame from (x, y) its foot's middle: cut tongues one in the other, orange, yellow, a white-hot core (cores 2:
+    without it), leaning with the wind."""
+    for k, ink in list(zip((1.0, 0.6, 0.28), (FIRE, FIRE_L, BONE)))[:cores]:
         ww, hh, ln = w * k, h * k, lean * k
         j = (bead(seed + k * 10) - 0.5) * w * 0.12
         pts = [(x - ww / 2, y), (x - ww * 0.4 + ln * 0.3 + j, y - hh * 0.5), (x - ww * 0.12 + ln * 0.5, y - hh * 0.38), (x + ln, y - hh),
@@ -167,52 +163,30 @@ def tongue(cv, x, y, w, h, lean=0.0, seed=0, clip=None, tf=None):
 
 
 def tenement(cv, live):
-    """His building, a tenement: five floors under a cornice, a water tank and the stair's head on the roof, an
-    aerial, the fire escape down its side; the top floors on fire. live: every window dark and no flame (the game
-    lights them, burns them and puts them out)."""
+    """His building, a tenement cut in a few big shapes like the rest of the poster: a crooked block under its
+    cornice, the water tank on the roof, the fire escape down its side as a Z, two big windows a floor; the top floor
+    on fire. live: no window and no flame (the game cuts them: dark, lit, burning)."""
     x0, x1, roof, base = B['x0'], B['x1'], B['roof'], B['base']
-    cv.poly(slab(x0, roof, x1, base, 91, 1.5), INK)
-    cv.poly(slab(x0 - 6, roof - 7, x1 + 6, roof + 3, 92, 1.5), INK)                           # the cornice
-    # the roof: the stair's head, an aerial, the water tank on its legs
-    cv.poly(slab(x0 + 8, roof - 26, x0 + 34, roof - 4, 93, 1.5), INK)
-    cv.bar((x0 + 20, roof - 24), (x0 + 19, roof - 62), 3, INK)
-    for dy, half in ((-56, 9), (-48, 6)):
-        cv.bar((x0 + 19 - half, roof + dy), (x0 + 19 + half, roof + dy - 1), 3, INK)
-    for x in (x1 - 40, x1 - 26, x1 - 12):
-        cv.bar((x, roof - 4), (x + (1 if x < x1 - 26 else -1) * 2, roof - 24), 4, INK)
-    cv.poly([(x1 - 46, roof - 22), (x1 - 6, roof - 23), (x1 - 9, roof - 52), (x1 - 43, roof - 51)], INK)
-    cv.poly([(x1 - 49, roof - 50), (x1 - 3, roof - 51), (x1 - 26, roof - 66)], INK)
-    # the fire escape, down its left side: a landing a floor, its rail, the stairs between, the ladder left hanging
-    for f in range(1, 5):
-        y = roof + 18 + f * FLOOR + 27
-        cv.bar((x0 - 28, y), (x0 + 2, y - 1), 5, INK)
-        cv.bar((x0 - 28, y - 16), (x0 + 2, y - 17), 3, INK)
-        for x in (x0 - 27, x0 - 14):
-            cv.bar((x, y - 16), (x, y), 3, INK)
-        if f < 4:
-            a, b = ((x0 - 25, y), (x0 - 5, y + FLOOR)) if f % 2 else ((x0 - 5, y), (x0 - 25, y + FLOOR))
-            cv.bar(a, b, 4, INK)
-    yl = roof + 18 + 4 * FLOOR + 27
-    for x in (x0 - 24, x0 - 15):
-        cv.bar((x, yl), (x, yl + 24), 3, INK)
-    for k in range(3):
-        cv.bar((x0 - 24, yl + 7 + k * 7), (x0 - 15, yl + 7 + k * 7), 2, INK)
-    # the windows
-    for i, (x, y, w, h, f) in enumerate(windows()):
-        state = 'dark' if live else ('fire' if f < 2 or (f == 2 and i % 3 == 0) else 'lit' if (f == 2 and i % 3 == 2) or (f == 3 and i % 3 == 1) else 'dark')
-        q = slab(x, y, x + w, y + h, 60 + i, 1.2)
-        if state == 'dark':
-            cv.poly(q, NIGHT_L)
-        elif state == 'lit':
-            cv.poly(q, FIRE_L)
-            cv.bar((x + w / 2, y), (x + w / 2, y + h), 3, INK)                                 # its sash
-        else:
-            cv.poly(q, FIRE)
-            cv.poly(slab(x + 3, y + 7, x + w - 3, y + h, 80 + i, 1), FIRE_L)
-            tongue(cv, x + w / 2, y + 5, w * 0.9, 22 + 16 * bead(i + 5), 6, i)                 # licking up the wall
+    cv.poly(slab(x0, roof, x1, base, 91, 4), INK)
+    cv.poly(slab(x0 - 8, roof - 9, x1 + 8, roof + 4, 92, 3), INK)                             # the cornice
+    cv.poly([(x1 - 50, roof - 6), (x1 - 8, roof - 7), (x1 - 12, roof - 50), (x1 - 46, roof - 48)], INK)   # the water tank
+    cv.poly([(x1 - 55, roof - 46), (x1 - 4, roof - 48), (x1 - 30, roof - 70)], INK)
+    # the fire escape: two landings and the stair between them
+    ya, yb = roof + 20 + FLOOR + 30, roof + 20 + 2 * FLOOR + 30
+    for y in (ya, yb):
+        cv.poly(slab(x0 - 34, y - 4, x0 + 4, y + 4, 95 + y, 1.5), INK)
+        cv.poly(slab(x0 - 34, y - 26, x0 - 27, y + 2, 96 + y, 1), INK)
+    cv.bar((x0 - 6, ya), (x0 - 28, yb), 7, INK)
     if not live:
-        for k, (dx, w, h) in enumerate(((16, 30, 62), (40, 40, 96), (66, 30, 70), (84, 22, 44))):
-            tongue(cv, x0 + dx, roof - 4, w, h, 14, 20 + k)
+        for i, (x, y, w, h, f) in enumerate(windows()):
+            q = slab(x, y, x + w, y + h, 60 + i, 2.5)
+            if f == 0:
+                cv.poly(q, FIRE)
+                tongue(cv, x + w / 2, y + 6, w, 30 + 8 * i, 6, i, cores=2)                  # licking up the wall
+            else:
+                cv.poly(q, FIRE_L if (f == 1 and i % 2) or (f == 2 and i % 2 == 0) else NIGHT_L)
+        for k, (dx, w, h) in enumerate(ROOF_FLAMES):
+            tongue(cv, x0 + dx, roof - 6, w, h, 16, 20 + k)
 
 
 def smoke(cv, x, y, n, glow, seed=0, reach=150, rise=250):
@@ -505,3 +479,98 @@ def board_art(done=0):
         top.disc(p[0], p[1], 4, col=BLOOD)
     im.alpha_composite(top.im)
     return im.convert('RGB')
+
+
+# ---------------------------------------------------------------- the options: what he carries, laid out
+# OPTIONS is his table seen from above, the satchel emptied on it under a lamp: a thing a section, down the left (the
+# walkman: AUDIO; the portable set: VIDEO; the knuckles: CONTROLS; the notebook: GAME; his cap: BACK). The game lifts
+# the chosen one onto a slab of an ink that is not its own, and cuts its settings on a sheet of paper beside it
+# (src/game/ui/title/Options.js).
+THING = (240, 132)                             # a thing's cell in the sheet of them (its middle the thing's)
+# name, its middle on the table, how it leans, the slab under it when it is the one chosen
+THINGS = [('audio', (196, 84), -4, PINK), ('video', (344, 212), 3, CYAN), ('controls', (190, 326), -6, FIRE_D), ('game', (340, 446), 5, CYAN_D),
+          ('back', (176, 566), -8, PINK_D)]
+REELS = [(-26, 4), (22, 4)]                    # the walkman's reels about its middle (the game turns them)
+SCREEN = (-52, -34, 38, 30)                    # the set's screen about its middle: x0, y0, x1, y1 (the game rolls a bar down it)
+
+
+def thing(cv, name, cx, cy):
+    """One of the five, about (cx, cy): a few flat shapes, no line."""
+    T = lambda pts: [(cx + x, cy + y) for x, y in pts]
+    if name == 'audio':                                      # a walkman, its cassette showing, the headphones' band
+        cv.path(T([(40, -30), (78, -48), (102, -22), (98, 10)]), 9, INK)
+        cv.poly(T(slab(86, 4, 110, 34, 3, 2)), CYAN)
+        cv.poly(T(slab(-64, -40, 58, 44, 1, 4)), INK)
+        cv.poly(T(slab(-50, -20, 46, 28, 2, 2)), BONE)
+        cv.poly(T(slab(-50, -20, 46, -8, 4, 1)), CYAN)
+        for x, y in REELS:
+            cv.disc(cx + x, cy + y, 12, col=INK)
+        for k in range(3):
+            cv.poly(T(slab(-44 + k * 22, -52, -28 + k * 22, -38, 5 + k, 1)), BONE_D)
+    elif name == 'video':                                    # a portable set: its screen, two dials, its aerial
+        cv.bar((cx + 6, cy - 40), (cx - 40, cy - 64), 6, BONE_D)
+        cv.bar((cx + 12, cy - 40), (cx + 62, cy - 62), 6, BONE_D)
+        cv.poly(T(slab(-68, -46, 72, 46, 7, 4)), INK)
+        cv.poly(T(slab(SCREEN[0], SCREEN[1], SCREEN[2], SCREEN[3], 8, 3)), PINK)
+        cv.poly(T([(-46, -30), (-18, -30), (-40, 2), (-48, 2)]), BONE)
+        for y in (-18, 12):
+            cv.disc(cx + 54, cy + y, 9, col=BONE_D)
+    elif name == 'controls':                                 # brass knuckles: four rings on a bar
+        holes = cv.blank()
+        for k in range(4):
+            x, y = cx - 51 + k * 34, cy - 12 + (0 if k in (1, 2) else 5)
+            ImageDraw.Draw(holes).ellipse([x - 9, y - 9, x + 9, y + 9], fill=255)
+        for k in range(4):
+            cv.disc(cx - 51 + k * 34, cy - 12 + (0 if k in (1, 2) else 5), 19, col=BONE, cut=holes)
+        cv.poly(T([(-66, 4), (66, 2), (60, 38), (-58, 40)]), BONE_D, cut=holes)
+    elif name == 'game':                                     # his notebook, a pencil across it
+        cv.poly(T(slab(-56, -44, 56, 46, 9, 4)), BONE)
+        cv.poly(T(slab(-56, -44, 56, -28, 10, 2)), PINK_D)
+        for k in range(6):
+            cv.poly(T(_r(-46 + k * 18, -50, -38 + k * 18, -34)), INK)
+        for k, w in enumerate((70, 84, 52)):
+            cv.poly(T(slab(-42, -12 + k * 18, -42 + w, -6 + k * 18, 11 + k, 1)), BONE_D)
+        cv.bar((cx - 30, cy + 44), (cx + 62, cy - 8), 8, FIRE)
+        cv.poly(T([(57, -12), (78, -18), (67, -1)]), INK)
+    else:                                                    # his cap, from above (poster.ABOVE's): the way out
+        for ink, pts in poster.ABOVE['runner'][3:]:
+            cv.poly(turned(pts, cx - 6, cy, 0, 4.6), ink)
+
+
+def things_sheet():
+    """The five things one under the other, each in its cell, and beside each its black cut-out (its shadow)."""
+    w, h = THING
+    cv = Cv(w * 2, h * len(THINGS), None)
+    for i, (name, _, _, _) in enumerate(THINGS):
+        thing(cv, name, w / 2, i * h + h / 2)
+    a = cv.im.split()[3]
+    cv.im.paste(INK + (255,), (w, 0), a.crop((0, 0, w, cv.h)))
+    return cv
+
+
+def options_bg():
+    """His table from above: boards on a slant, the lamp's pool where his things lie, the satchel they came out of,
+    its strap across the corner."""
+    cv = Cv(W, H, NIGHT)
+    poster.boards(cv, -150, 74, NIGHT_L, seed=4)
+    pool = cv.disc(250, 330, 330, 380, NIGHT_LL)
+    poster.board_gaps(cv, -150, 74, NIGHT_L, pool, w=5)
+    cv.path([(-20, 470), (60, 520), (40, 610), (120, 670)], 20, BROWN)                        # the strap
+    cv.poly([(-30, -30), (150, -30), (118, 60), (60, 104), (-30, 96)], BROWN)                 # the satchel's corner, its flap open
+    cv.poly([(-30, -30), (96, -30), (70, 40), (-30, 52)], INK)
+    cv.poly(slab(86, 44, 104, 62, 3, 1), BONE_D)                                               # its buckle
+    return cv
+
+
+def options_art(chosen=0):
+    """The options as one still: the table, the things, the chosen one on its slab (the sheet of settings is the
+    game's)."""
+    cv = options_bg()
+    w, h = THING
+    sheet = things_sheet().im
+    for i, (name, (x, y), deg, ink) in enumerate(THINGS):
+        if i == chosen:
+            cv.poly(turned(slab(-w / 2 + 8, -h / 2 + 6, w / 2 - 8, h / 2 - 6, i * 3, 5), x, y, deg), ink)
+        cell = sheet.crop((0, i * h, w, (i + 1) * h))
+        cv.im.paste(cell, (round(x - w / 2), round(y - h / 2)), cell)
+    return cv.im

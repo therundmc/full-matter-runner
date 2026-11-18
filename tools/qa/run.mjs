@@ -1,4 +1,5 @@
-// `npm run qa -- [--minutes 10] [--seed 1] [--level level1] [--god] [--realtime] [--plans a,b] [--port 8123] [--keep-open]`
+// `npm run qa -- [--minutes 10] [--seed 1] [--level level1] [--god] [--realtime] [--plans a,b] [--chaos | --chaos-share 0.3]
+//   [--port 8123] [--keep-open] [--root dir] [--out dir] [--shots 8] [--quiet]`
 // Plays the game with a robot (tools/qa/bot.js) in a headless browser for a span of GAME time, watches for problems
 // and writes qa-report/<yyyymmdd-hhmmss>/ (report.md, report.json, screenshots, browser.log). See tools/qa/README.md.
 // Exit code: 0 no error finding, 1 at least one, 2 the tool itself failed (no browser, page did not load...).
@@ -17,7 +18,8 @@ const BATCH_TIMEOUT = 90000; // ms: a batch that long means the game hangs
 
 // ---------------------------------------------------------------- options
 function parseArgs(argv) {
-  const o = { minutes: 10, seed: 1, level: 'level1', god: false, mode: 'fast', plans: null, port: 8123, keepOpen: false };
+  const o = { minutes: 10, seed: 1, level: 'level1', god: false, mode: 'fast', plans: null, port: 8123, keepOpen: false,
+    chaos: 0, root: null, out: null, shots: 8, quiet: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], next = () => argv[++i];
     if (a === '--minutes') o.minutes = +next();
@@ -28,17 +30,28 @@ function parseArgs(argv) {
     else if (a === '--plans') o.plans = next().split(',').filter(Boolean);
     else if (a === '--port') o.port = +next();
     else if (a === '--keep-open') o.keepOpen = true;
+    else if (a === '--chaos') o.chaos = 1;
+    else if (a === '--chaos-share') o.chaos = Math.min(1, Math.max(0, +next()));
+    else if (a === '--root') o.root = path.resolve(next());
+    else if (a === '--out') o.out = path.resolve(next());
+    else if (a === '--shots') o.shots = Math.max(0, Math.trunc(+next()));
+    else if (a === '--quiet') o.quiet = true;
     else if (a === '--help' || a === '-h') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n')[0].slice(3)); process.exit(0); }
     else { console.error(`unknown option ${a} (see tools/qa/README.md)`); process.exit(2); }
   }
-  if (!(o.minutes > 0) || !Number.isFinite(o.seed)) { console.error('bad --minutes or --seed'); process.exit(2); }
+  if (!(o.minutes > 0) || !Number.isFinite(o.seed) || !Number.isFinite(o.chaos)) { console.error('bad --minutes, --seed or --chaos-share'); process.exit(2); }
   return o;
 }
 
 const opts = parseArgs(process.argv.slice(2));
-const replay = `npm run qa -- --minutes ${opts.minutes} --seed ${opts.seed} --level ${opts.level}${opts.god ? ' --god' : ''}${opts.mode === 'realtime' ? ' --realtime' : ''}${opts.plans ? ' --plans ' + opts.plans.join(',') : ''}`;
+// the command that plays the run again (plans: only those, e.g. the plan a finding came under)
+const replayOf = (plans = opts.plans) => `npm run qa -- --minutes ${opts.minutes} --seed ${opts.seed} --level ${opts.level}${opts.god ? ' --god' : ''}`
+  + `${opts.mode === 'realtime' ? ' --realtime' : ''}${opts.chaos === 1 ? ' --chaos' : opts.chaos ? ' --chaos-share ' + opts.chaos : ''}${plans ? ' --plans ' + plans.join(',') : ''}`
+  + `${opts.root ? ' --root ' + JSON.stringify(opts.root) : ''}`;
+const replay = replayOf();
 
 function reportDir() {
+  if (opts.out) { fs.mkdirSync(opts.out, { recursive: true }); return opts.out; }
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
   const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
   let dir = path.join(ROOT, 'qa-report', stamp);
@@ -64,7 +77,7 @@ let shots = 0;
 let server = null, browser = null, interrupted = false, toolError = null, exitCode = 2, final = null;
 
 const stamp = () => ((Date.now() - started) / 1000).toFixed(1).padStart(7);
-const say = (s) => console.log(`[qa] ${s}`);
+const say = (s) => { if (!opts.quiet) console.log(`[qa] ${s}`); };
 
 // a finding seen from Node (console, uncaught exception): placed with the bot's latest status
 function nodeFinding(kind, severity, sig, detail) {
@@ -90,7 +103,8 @@ function mergeStatus(st) {
 async function takeShots(page) {
   while (pendingShots.length) {
     const { kind, key, pos } = pendingShots.shift();
-    if (shotKinds.has(kind)) continue;
+    // one per kind, and only so many a run (each costs a rendered frame or two)
+    if (shotKinds.has(kind) || shotKinds.size >= opts.shots) continue;
     shotKinds.add(kind);
     const name = `${String(++shots).padStart(2, '0')}_${kind}.png`;
     try {
@@ -117,7 +131,8 @@ process.on('SIGINT', async () => {
 });
 
 async function main() {
-  server = await startServer({ port: opts.port, quiet: true });
+  // --root: another checkout's game (an old commit in a worktree) played by this bot
+  server = await startServer({ port: opts.port, quiet: true, ...(opts.root ? { root: opts.root } : {}) });
   const url = server.url + `?level=${encodeURIComponent(opts.level)}`; // always: a new game starts the campaign
   say(`server ${server.url}, report folder ${dir}`);
   browser = await launchBrowser({ width: W, height: H });
@@ -168,8 +183,9 @@ async function main() {
     await sleep(100);
     if ((await page.eval('game.state')) !== 'title') break;
   }
-  await page.eval(fs.readFileSync(path.join(HERE, 'bot.js'), 'utf8') + '\n;true');
-  await page.eval(`__qa.init(${JSON.stringify({ seed: opts.seed, god: opts.god, mode: opts.mode, level: opts.level, plans: opts.plans })})`);
+  // the pure checks first (they set __qaChecks), then the bot that uses them
+  for (const f of ['checks.js', 'bot.js']) await page.eval(fs.readFileSync(path.join(HERE, f), 'utf8') + '\n;true');
+  await page.eval(`__qa.init(${JSON.stringify({ seed: opts.seed, god: opts.god, mode: opts.mode, level: opts.level, plans: opts.plans, chaos: opts.chaos })})`);
   exitCode = 0;
 
   const target = opts.minutes * 60;
@@ -233,6 +249,8 @@ if (final) {
 for (const f of extra) findings.set(f.key, f);
 const order = { error: 0, warn: 1 };
 const all = [...findings.values()].sort((a, b) => order[a.severity] - order[b.severity] || a.kind.localeCompare(b.kind) || b.count - a.count);
+// each finding carries the command that plays its run again, and one narrowed to the plan it came under
+for (const f of all) { f.replay = replay; if (f.plan && f.planDrawn) f.replayPlan = replayOf([f.plan]); }
 const errors = new Set(all.filter((f) => f.severity === 'error').map((f) => f.kind));
 const warns = new Set(all.filter((f) => f.severity === 'warn').map((f) => f.kind));
 if (!toolError) exitCode = errors.size ? 1 : 0;

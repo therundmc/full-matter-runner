@@ -14,7 +14,7 @@ How it is staged (src/game/systems/Tutorial.js, src/game/data/staging.js):
                     that runs from his mattress across the living room, the man who poured it: he turns, laughs,
                     strikes a match, lets it fall and is gone by the front door, which he slams. Nothing stops him.
                     The fire runs along the trail (src/game/systems/FireSpread.js) and he may get up.
-    bedroom         move: out by the half of the doorway the trail leaves free
+    bedroom         move; a table shoved across the half of the doorway the trail leaves free: vault it
     living room     the fire kills: the trail along the north wall, the sofa, the rug; out by the kitchen door
     kitchen         a man turning it over for the money, his back to the door ('rummage'): get behind him, break his
                     neck; the lookout smoking in the back hall ('hall') comes in when he is dead: a punch floors him,
@@ -34,7 +34,7 @@ from levelkit import Level
 
 W, H = 29, 22            # the building, and the roofs next door east of it (room for the camera)
 lv = Level(W, H)
-SHOOTER = 0.35           # the corridor's gunman fires as he comes round the corner: the shot is what he slides under
+SHOOTER = 0.6            # the corridor's gunman fires as he comes round the corner: the shot is what he slides under
 STAIRS = [8.0, 20.65]    # where the men coming up the stairs step onto the landing
 
 # ---------------------------------------------------------------- tiles
@@ -67,7 +67,7 @@ lv.actor('@', 4, 2, face=0)                             # on his mattress
 lv.actor('j', 18, 2, face=90, job='arson', look='lucky')  # LUCKY, his pink scarf: the petrol poured, the matchbox in his hand
 lv.actor('j', 11, 11, face=90, job='rummage')           # at the kitchen worktop, turning the drawers out
 lv.actor('m', 19, 10, face=0, job='hall')               # at the back door, smoking: comes when the first one is dead
-lv.actor('p', 14, 14, face=0, job='lookout')            # down the corridor, a pistol, his eyes on the corner
+lv.actor('p', 19, 14, face=0, job='lookout')            # down the corridor, a pistol, his eyes on the corner: one slide away
 lv.actor('j', 7, 19, face=270)                          # coming up the stairs when he takes the gun
 lv.actor('m', 9, 19, face=270)
 lv.actor('k', 8, 20, face=270)                          # and a third when those two are dead
@@ -79,9 +79,10 @@ lv.guard(0, 0, W - 1, H - 1)                            # nobody is a guest here
 lv.area('his bedroom: a mattress on the floor, his bags packed')
 lv.paint('bed', 4.8, 2.4)                               # the mattress he wakes on (no body: he lies on it)
 lv.prop('table_lamp', 4.45, 4.0)
+lv.prop('table', 9.5, 3.3, 90)                          # shoved across his doorway, to keep him in: SPACE over it
 lv.prop('crate', 8.45, 5.4, 8)                          # what he was taking with him
 lv.prop('crate', 7.75, 5.5, 350)
-lv.prop('crate', 8.2, 4.75, 20)
+lv.prop('crate', 8.1, 4.6, 20)
 lv.prop('bin_bag', 4.45, 5.5, 30)
 lv.prop('chair', 8.4, 1.5, 200)
 lv.prop('poster_band', 7.6, 1.09)
@@ -93,7 +94,7 @@ lv.area('living room: the floor torn up where he kept it')
 lv.prop('sofa', 12.5, 1.5)
 lv.prop('bookshelf', 15.3, 1.22)
 lv.prop('plant', 10.5, 1.5)
-lv.paint('rug', 12.5, 3.2)
+lv.paint('rug', 14.1, 3.7)                              # (clear of where he lands over the table)
 lv.prop('tv', 16.55, 4.2, 90)
 lv.prop('armchair', 15.3, 5.5, 215)
 lv.prop('floor_lamp', 10.45, 6.5)
@@ -149,10 +150,10 @@ for col in (13.5, 17.5):                                # along the long corrido
     lv.paint('doormat', col, 15.52, 180)
 lv.paint('newspaper', 17.4, 15.5, 10)
 lv.paint('shoes', 13.1, 15.5, 180)
-lv.prop('wall_lamp', 19.5, 14.09)
+lv.prop('wall_lamp', 15.6, 14.09)                       # (nothing on the wall along the slide: a wall piece stops it)
 lv.prop('wall_lamp', 11.5, 15.91, 180)
 lv.prop('tube_light', 17.0, 14.07, flicker='dying')     # a tube on its last legs
-lv.prop('radiator', 18.2, 14.09)
+lv.prop('radiator', 16.4, 15.91, 180)
 lv.prop('poster_band', 20.0, 15.91, 180)
 lv.prop('bin_bag', 15.6, 15.62, 20)                     # somebody's rubbish, put out for the morning
 lv.prop('bin_bag', 16.05, 15.55, 140)
@@ -217,24 +218,28 @@ lv.wear_path(8.0, 16.2, 8.0, 19.4, 14)
 # the balls of fire of the end, down the long corridor from under the kitchen to the window: [col, row, radius px],
 # each nearer and bigger (src/game/data/staging.js BLAST.chain times them: slower than he runs)
 CHAIN = [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68],
-         [7.0, 14.4, 72], [6.2, 14.5, 74]]
+         [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]
 lv.tutorial = {
     'stages': [
-        {'zone': [4, 1, 8, 5], 'spawn': [4.5, 2.5, 0], 'cam': 'bedroom', 'hints': ['move'],
-         'waves': [{'at': [[18, 2]], 'on': 'never', 'blind': True}]},     # the man with the match (the opening)
-        {'zone': [9, 1, 16, 6], 'spawn': [10.6, 4.6, 0], 'cam': 'flat', 'marks': {'flee': [13.5, 6.9]}, 'hints': ['flee']},
+        # the table across his doorway (`vault`); LUCKY is the man with the match (the opening)
+        {'zone': [4, 1, 8, 5], 'spawn': [4.5, 2.5, 0], 'cam': 'bedroom', 'marks': {'vault': [9.5, 3.3]}, 'hints': ['move', 'vault'],
+         'waves': [{'at': [[18, 2]], 'on': 'never', 'blind': True}]},
+        # (the table and the floor under it do not catch until he has been over it a while: `keep`, `keepFor`)
+        {'zone': [9, 1, 16, 6], 'spawn': [10.6, 4.6, 0], 'cam': 'flat', 'marks': {'flee': [13.5, 6.9]}, 'hints': ['flee'],
+         'keep': [[9, 2.5, 9, 3]], 'keepFor': 8},
         # the second man is framed by the camera as he comes in (`frame`)
         {'zone': [10, 8, 16, 12], 'spawn': [12.4, 9.7, 90], 'cam': 'flat', 'hold': 18, 'keep': [[13, 6, 14, 7]], 'take': 'bat',
          'hints': ['finish', 'takedown', 'punch', 'strike', 'take'],
          'waves': [{'at': [[11, 11]], 'on': 'never', 'blind': True}, {'at': [[19, 10]], 'on': 'kills:1', 'frame': True}]},
-        # out of the back door, down the corridor: the man at its far end is only pointed at until he turns the corner
+        # out of the back door, down the corridor: the man round its corner is only pointed at until he turns it
         # (the lesson waits for the corner: LESSONS `within`)
         {'zone': [18, 9, 22, 13], 'spawn': [18.6, 10.5, 0], 'cam': 'corridor', 'hold': 3, 'keep': [[21, 3, 22, 8]],
-         'marks': {'slide': [21.5, 14.2]}, 'hints': ['slide'], 'waves': [{'at': [[14, 14]], 'on': 'never', 'blind': True}]},
-        # the bat breaks on him and his pistol is snatched (`snatch`): two rounds in it, a magazine to spare
+         'marks': {'slide': [21.5, 14.2]}, 'hints': ['slide'], 'waves': [{'at': [[19, 14]], 'on': 'never', 'blind': True}]},
+        # one slide from the corner sweeps him off his feet; the bat breaks on him and his pistol is snatched
+        # (`snatch`): two rounds in it, a magazine to spare
         {'zone': [13, 14, 22, 15], 'spawn': [21.5, 12.6, 90], 'cam': 'corridor', 'hold': 6, 'marks': {'slide': [21.5, 14.2]},
          'take': 'pistol', 'leaves': 2, 'spare': 1, 'snatch': True, 'hints': ['finish', 'slide', 'strike', 'punch', 'take'],
-         'waves': [{'at': [[14, 14]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True, 'frame': True}]},
+         'waves': [{'at': [[19, 14]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True, 'frame': True}]},
         {'zone': [4, 14, 12, 20], 'spawn': [12.5, 14.5, 180], 'cam': 'landing', 'hold': 8, 'take': 'pistol', 'spare': 1,
          'marks': {'dive': [4.6, 15.0]}, 'hints': ['finish', 'take', 'reload', 'throw', 'shoot', 'dive'],
          'waves': [{'at': [[7, 19], [9, 19]], 'on': 'pickup:pistol', 'up': STAIRS},
@@ -242,8 +247,8 @@ lv.tutorial = {
     ],
     # the man with the match: where he stands, where it falls, the door he slams behind him, where he runs to
     'opening': {'man': [18, 2], 'match': [17.6, 2.35], 'door': [20, 2], 'out': [21.6, 2.5]},
-    # the end: the last stretch of the corridor, the stove behind the wall, where the fire comes out, and on down
-    'blast': {'zone': [4, 14, 8, 15], 'at': [14.6, 12.68], 'breach': [14.6, 14.3], 'chain': CHAIN},
+    # the end, as the last man goes down: the stove behind the wall, where the fire comes out, and on down the corridor
+    'blast': {'at': [14.6, 12.68], 'breach': [14.6, 14.3], 'chain': CHAIN},
     # the way out, marked on the floor once nobody is left standing: the floor before the window, the window
     'exit': {'zone': [4, 14, 5, 15], 'window': [3, 14, 3, 15]},
     'fall': [0, 12, 2, 17],

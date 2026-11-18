@@ -119,22 +119,25 @@
   at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
-  match, `OPENING`), lessons that slow time (`LESSONS`, `pace`), the camera's shots (`SHOTS`, systems/Direction.js,
+  match, `OPENING`), lessons that are one short directed beat each (`BEAT`, `LESSONS` by hint id, `pace`: slow, a
+  punch-in on what it is about, then the hand given back; never held until he acts), the camera's shots (`SHOTS`, systems/Direction.js,
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). A lesson waits for its object to be on screen and near (`LESSONS.within`); a man
+  Enemy.drawTail, his name card). A table across his doorway teaches the vault. A lesson waits for its object to be on
+  screen and near (`LESSONS.within`); during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
-  fire-balls down the corridor (`BLAST.chain`, level `blast.chain`) and the way out is marked (`EXIT`, level `exit`).
+  fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once), Beats.js (their clocks and sounds, DOM-free), Paper.js (the cut-paper sheet; the menu's
-  panel, used by ui/MenuArt.js for OPTIONS and the pause). Stills and their data: `python3 tools/comic/title.py`
+  drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  a thing a section, its settings on a sheet of paper beside it), Beats.js (their clocks and sounds, DOM-free),
+  Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out

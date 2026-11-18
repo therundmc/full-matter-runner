@@ -50,7 +50,7 @@ export default class FireSpread {
     this.whooshT = 0;
     this.mute = false;                                // a retry's fire played forward makes no sound
     this.reached = [];                                // when each stage of the lesson was reached, on this clock
-    this.holds = (level.tutorial?.stages || []).map((s) => s.hold);
+    this.holds = (level.tutorial?.stages || []).map((s) => s.hold ?? s.keepFor);
     this.staged = !!level.petrol?.length;             // a level set to burn: there a blast lights the floor too
     this.lay(m, level);
     world.events?.on('matchDrop', ({ x, y }) => this.ignite(x, y));
@@ -93,8 +93,9 @@ export default class FireSpread {
     for (let i = 0; i < this.wet.length; i++) if (this.wet[i]) this.fuse[this.tileOf(i)]++;
     // the rooms of the lesson that hold the fire out for a while, and what else each keeps with it (`keep`)
     (level.tutorial?.stages || []).forEach((s, k) => {
-      if (s.hold === undefined) return;
-      for (const [c0, r0, c1, r1] of [s.zone, ...(s.keep || [])]) {
+      if (s.hold === undefined && s.keepFor === undefined) return;
+      // (`keepFor` without `hold`: only its `keep` rectangles, not the room)
+      for (const [c0, r0, c1, r1] of [...(s.hold === undefined ? [] : [s.zone]), ...(s.keep || [])]) {
         this.each(c0 * TILE, r0 * TILE, (c1 + 1) * TILE - 1, (r1 + 1) * TILE - 1, (i) => { if (this.gate[i] < 0) this.gate[i] = k; });
       }
     });
@@ -284,7 +285,8 @@ export default class FireSpread {
       const p = q.p;
       if (q.state === BURNT || p.dead || p.dying) { if (q.fire) { w.fires?.remove(q.fire); q.fire = null; } q.state = BURNT; continue; }
       if (q.state === COLD) {
-        if (q.due === Infinity && this.burning.length && this.touched(q)) q.due = now + (q.gas ? 0 : q.M.catch);
+        // (what stands where the fire is kept out waits with its floor)
+        if (q.due === Infinity && this.burning.length && this.open(this.index(p.x, p.y)) && this.touched(q)) q.due = now + (q.gas ? 0 : q.M.catch);
         if (now < q.due) continue;
         if (q.gas) {
           // the lesson keeps a stove for its last moment; any other goes off after its fuse

@@ -8,7 +8,7 @@ const { default: Tutorial, HINTS } = await load('game/systems/Tutorial.js');
 const { default: Direction } = await load('game/systems/Direction.js');
 const { default: level } = await load('game/data/levels/tutorial.js');
 const { ENEMIES } = await load('game/world/Level.js');
-const { LESSONS, OPENING, BLAST, SHOTS, FRAME, FORCE, STAIRS } = await load('game/data/staging.js');
+const { LESSONS, BEAT, RELOAD, OPENING, BLAST, SHOTS, FRAME, FORCE, STAIRS } = await load('game/data/staging.js');
 const { POSTS } = await load('game/data/posts.js');
 const { MATCH_FALLS } = await load('game/ai/Pastimes.js');
 
@@ -89,7 +89,8 @@ test('tutorial: the level holds together (every guard in a wave, zones and spawn
   assert.ok(level.petrol.some(([, ...pts]) => pts.some(([c, r]) => Math.hypot(c - O.match[0], r - O.match[1]) < 0.3)), 'the match falls on petrol');
   for (const [, ...pts] of level.petrol) for (const [c, r] of pts) assert.ok(floor(c, r), `petrol poured in a wall at ${c},${r}`);
   assert.ok(level.props.some(([type, c, r]) => type === 'oven' && Math.hypot(c - B.at[0], r - B.at[1]) < 0.2), 'a stove where it blows');
-  assert.ok(floor(...B.breach) && floor(B.zone[0], B.zone[1]));
+  assert.ok(floor(...B.breach) && B.chain.every(([c, r]) => floor(c, r)), 'the fire comes down the corridor');
+  assert.ok(level.props.some(([type, c, r]) => type === 'table' && Math.hypot(c - 9.5, r - 3.3) < 0.1), 'a table across his doorway');
   const [c0, r0, c1, r1] = level.tutorial.fall;
   assert.ok(floor(c0, r0) && floor(c1, r1), 'there is something to land on past the window');
   assert.ok(level.tiles.some((row) => row[c1 + 1] === 'G'), 'and a window to get there by');
@@ -118,7 +119,7 @@ test('tutorial: every guard sleeps until his wave is called, place after place',
   assert.ok(!second.dormant && second.heard === 1, 'the man in the back hall comes once the first is dead');
   s.go(21.5, 10.5); // out of the back door: the man at the far end of the corridor is only pointed at
   assert.equal(s.t.stage, 3);
-  const shooter = s.guardAt(14, 14);
+  const shooter = s.guardAt(19, 14);
   assert.ok(shooter.dormant);
   s.go(21.5, 14.5); // the corner
   assert.equal(s.t.stage, 4);
@@ -196,28 +197,36 @@ test('tutorial: no match after all, and he is let up anyway; a retry of the firs
   assert.ok(!again.sounds.includes('arsonLaugh'));
 });
 
-test('tutorial: a lesson slows time the first time its hint shows, and lets go when he does it', () => {
-  const s = stub();
+test('tutorial: a lesson is one short beat - slow, the camera punched in on it, then the hand given back', () => {
+  const s = stub(), none = () => false;
   s.opened();
-  const none = () => false;
-  assert.equal(s.t.pace(0.016, none), LESSONS.MOVE.slow, 'MOVE: time crawls');
-  assert.equal(s.t.pace(1, none), LESSONS.MOVE.slow, 'for as long as he does nothing');
-  assert.equal(s.t.pace(0.016, (a) => a === 'attack'), LESSONS.MOVE.slow, 'another key is not it');
-  assert.equal(s.t.pace(0.016, (a) => a === 'move'), 1, 'he moves: time goes on at once');
+  // MOVE: the beat starts, the camera on him; it is NOT held until he acts
+  assert.equal(s.t.pace(0.016, none), BEAT.slow, 'time crawls');
+  assert.deepEqual([s.t.shot().name, s.t.shot().at], ['beat', { x: s.player.x, y: s.player.y }], 'punched in on what it is about');
+  assert.equal(s.t.pace(0.5, none), BEAT.slow);
+  assert.equal(s.t.pace(LESSONS.move.dur, none), 1, 'its time is up: normal speed, whatever he did');
+  assert.equal(s.t.shot().name, 'bedroom', 'and the camera eases back');
+  assert.deepEqual(s.t.hints().map((h) => h.text), ['MOVE'], 'the hint stays until it is done');
   assert.equal(s.t.pace(0.016, none), 1, 'said once');
-  // a hint without a key lets go once he walks on, after a moment
+  // his key cuts a beat short, once it has had time to register
+  s.go(7.5, 3.3);
+  assert.equal(s.t.pace(0.016, none), BEAT.slow, 'VAULT, near the table');
+  assert.equal(s.t.pace(BEAT.min - 0.1, (k) => k === 'action'), BEAT.slow, 'too soon to cut');
+  assert.equal(s.t.pace(0.2, (k) => k === 'move'), BEAT.slow, 'another key is not it');
+  assert.equal(s.t.pace(0.016, (k) => k === 'action'), 1, 'SPACE: he has the hand at once');
+  // what comes up together shares one beat, the camera between the two
   s.go(13.5, 9.5);
   s.world.items.push({ type: 'bat', x: px(12.5), y: px(10.7), dead: false });
-  assert.deepEqual(s.t.hints().map((h) => h.text), ['GET BEHIND HIM', 'TAKE IT']);
-  const moving = (a) => a === 'move';
-  assert.equal(s.t.pace(0.1, moving), LESSONS['GET BEHIND HIM'].slow);
-  assert.equal(s.t.pace(0.3, moving), LESSONS['GET BEHIND HIM'].slow, 'he was walking already: it holds a moment');
-  assert.equal(s.t.pace(0.5, moving), LESSONS['TAKE IT'].slow, 'then the next thing said');
-  assert.equal(s.t.pace(0.1, (a) => a === 'use'), 1);
-  // behind him: the key cap, time nearly stopped until the click
-  s.player.nearTakedown = s.guardAt(11, 11);
-  assert.equal(s.t.pace(0.016, none), LESSONS['BREAK HIS NECK'].slow);
-  assert.equal(s.t.pace(LESSONS['BREAK HIS NECK'].hold + 0.1, none), 1, 'or after a moment');
+  const cook = s.guardAt(11, 11);
+  assert.equal(s.t.pace(0.016, none, (x) => x === px(12.5)), BEAT.slow, 'the bat is on screen: the beat, and the man with it');
+  assert.deepEqual(s.t.lesson.ids, ['behind', 'take']);
+  assert.deepEqual(s.t.shot().at, { x: (cook.x + px(12.5)) / 2, y: (cook.y + px(10.7)) / 2 });
+  assert.equal(s.t.pace(BEAT.dur + 0.01, none), 1);
+  assert.equal(s.t.pace(0.016, none), 1, 'neither is said again');
+  // behind him: its own short beat
+  s.player.nearTakedown = cook;
+  assert.equal(s.t.pace(0.016, none), BEAT.slow);
+  assert.equal(s.t.pace(LESSONS.neck.dur + 0.01, none), 1);
   // a retry does not say it all again
   const again = stub(2, s.world.game);
   again.world.game.taught = s.t.taught;
@@ -225,7 +234,12 @@ test('tutorial: a lesson slows time the first time its hint shows, and lets go w
   Matter.Body.setPosition(again.player.body, { x: px(13.5), y: px(9.5) });
   t2.update();
   assert.equal(t2.pace(0.016, none), 1);
-  for (const text of Object.keys(LESSONS)) assert.ok(text === text.toUpperCase() && LESSONS[text].slow < 1 && LESSONS[text].hold > 0);
+  // every lesson is a hint's id, short, and slow
+  const ids = new Set(['behind', 'neck', 'run', ...Object.keys(HINTS)]);
+  for (const [id, L] of Object.entries(LESSONS)) {
+    const D = { ...BEAT, ...L };
+    assert.ok(ids.has(id) && D.slow <= 0.3 && D.dur >= 0.7 && D.dur <= 1.6 && SHOTS[D.shot], `lesson ${id}`);
+  }
 });
 
 test('tutorial: walked up to the stairs, those coming up them are there', () => {
@@ -242,7 +256,7 @@ test('tutorial: walked up to the stairs, those coming up them are there', () => 
 test('tutorial: the gun the shooter drops is left with two rounds', () => {
   const s = stub();
   s.go(18.5, 14.5);
-  const shooter = s.guardAt(14, 14), gun = { type: 'pistol', def: { kind: 'gun' }, mag: 5, x: shooter.x + 10, y: shooter.y, dead: false };
+  const shooter = s.guardAt(19, 14), gun = { type: 'pistol', def: { kind: 'gun' }, mag: 5, x: shooter.x + 10, y: shooter.y, dead: false };
   const far = { type: 'pistol', def: { kind: 'gun' }, mag: 7, x: px(5), y: px(4), dead: false };
   shooter.alive = false;
   s.world.events.emit('kill', { victim: shooter });
@@ -256,12 +270,13 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   const s = stub(), names = () => s.t.hints().map((h) => h.text);
   s.opened();
   assert.deepEqual(names(), ['MOVE']);
-  s.go(8.9, 3.5);
-  assert.deepEqual(names(), [], 'he has walked: nothing more to say here');
+  s.go(7.5, 3.5);
+  assert.deepEqual(s.t.hints().map((q) => `${q.key} ${q.text} ${q.id}`), ['action VAULT vault'], 'he has walked: the table across his doorway');
+  assert.deepEqual([s.t.hints()[0].ax, s.t.hints()[0].ay], [px(9.5), px(3.3)]);
   s.go(10.5, 3.5);
   assert.deepEqual(names(), [], 'the living room, nothing burning yet');
   s.world.fireSpread.burning.push(1);
-  assert.deepEqual(s.t.hints().map((h) => `${h.key}|${h.text}`), ['|THE FIRE KILLS  -  GET OUT'], 'pointed at the way out');
+  assert.deepEqual(s.t.hints().map((h) => `${h.key}|${h.text}`), ['|GET OUT'], 'pointed at the way out');
   s.go(13.5, 9.5);
   s.world.items.push({ type: 'bat', x: px(12.5), y: px(10.7), dead: false });
   assert.deepEqual(names(), ['GET BEHIND HIM', 'TAKE IT'], 'one thing about the man, one about the bat');
@@ -301,47 +316,62 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   for (const at of [[7, 19], [9, 19]]) s.guardAt(...at).alive = false;
   assert.deepEqual(names(), [], 'the window is not pointed at while one is still to come');
   s.guardAt(8, 20).alive = false;
-  assert.deepEqual(s.t.hints().map((q) => `${q.key} ${q.text}`), ['action DIVE THROUGH THE WINDOW']);
+  assert.deepEqual(s.t.hints().map((q) => `${q.key} ${q.text} ${q.id}`), [' GET OUT run'], 'nobody left: out, by the window');
+  s.go(4.6, 14.6);
+  assert.equal(s.t.hints()[0].text, 'GET OUT', 'at the window, not yet where SPACE takes him through');
+  s.player.contextAction = 'DIVE THROUGH';
+  assert.deepEqual(s.t.hints().map((q) => `${q.key} ${q.text} ${q.id}`), ['action DIVE dive'], 'the jump, when SPACE is a dive and no sooner');
 });
 
-test('tutorial: the last stretch with nobody left standing - the stove goes, then the fire comes down the corridor after him', () => {
-  const s = stub(5), B = level.tutorial.blast, C = BLAST.chain;
+test('tutorial: the last man down - the stove goes at once, then the fire comes down the corridor after him', () => {
+  const s = stub(5), B = level.tutorial.blast, C = BLAST.chain, none = () => false;
   assert.ok(s.stove.staged, 'kept for the end: the fire does not set it off');
-  s.go(7.5, 14.5);
+  s.go(11.5, 14.6);
   assert.equal(s.t.blast.t, null, 'not while they are still to come');
   assert.equal(s.t.exit(), null, 'and the way out is not marked yet');
   for (const g of s.world.offstage) g.alive = false;
-  assert.deepEqual(s.t.exit(), { zone: [px(4), px(14), px(6), px(16)], window: [px(3), px(14), px(4), px(16)] }, 'nobody left: the floor before the window and the window are marked');
-  s.go(9.5, 14.5);
-  assert.equal(s.t.blast.t, null, 'not before the last stretch');
-  s.go(8.9, 14.5);
-  assert.ok(s.t.blast.t !== null && s.player.invulnerable, 'it is set off; its debris does not kill him');
-  assert.equal(s.t.shot().name, 'run');
-  s.wait(BLAST.after + 0.1);
+  s.tick();
+  assert.ok(s.t.blast.t !== null && s.player.invulnerable, 'the last man is down: it is set off, wherever he stands; its debris does not kill him');
+  assert.deepEqual(s.t.exit(), { zone: [px(4), px(14), px(6), px(16)], window: [px(3), px(14), px(4), px(16)] }, 'the floor before the window and the window are marked');
+  // the beat: slow, the camera on the stove going, GET OUT
+  assert.equal(s.t.pace(0.016, none, () => false), LESSONS.run.slow, 'no need for the window to be on screen');
+  assert.deepEqual([s.t.shot().name, s.t.shot().at, s.t.hints()[0].text], ['beatWide', { x: px(14.6), y: px(14.3) }, 'GET OUT']);
+  assert.ok(LESSONS.run.slow * LESSONS.run.dur > BLAST.after + BLAST.breach[0], 'the stove and the breach go inside the beat');
+  s.wait(BLAST.after + 0.06);
   assert.equal(s.stove.broke, 1, 'the stove torn open');
-  assert.deepEqual(s.log.slow.at(-1), BLAST.slow);
   s.wait(BLAST.breach[0] + 0.05);
   assert.deepEqual(s.log.blasts, [[px(14.6), px(14.3), BLAST.breach[1]]], 'then the ball of fire out of the breach');
-  // the chain: each ball nearer the window and bigger, quicker and quicker; he runs ahead of it all the way
+  assert.equal(s.t.pace(LESSONS.run.dur, none), 1, 'and he has the hand');
+  // the chain: each ball nearer the window and bigger, quicker and quicker; he runs ahead of it all the way, even
+  // from the far end of the landing's stretch, half a second late
   assert.ok(B.chain.every(([c, , r], k) => k === 0 || (c < B.chain[k - 1][0] && r >= B.chain[k - 1][2])), 'nearer and bigger');
   assert.ok(C.gap[1] < C.gap[0], 'quicker and quicker');
   let t = BLAST.after + BLAST.breach[0];
-  const window = px(4.4), speed = PLAYER.speed * 60;
+  const window = px(4.4), speed = PLAYER.speed * 60, late = LESSONS.run.slow * LESSONS.run.dur + 0.5;
   B.chain.forEach(([c, , r], k) => {
     t += k ? C.gap[0] + ((C.gap[1] - C.gap[0]) * k) / (B.chain.length - 1) : C.first;
-    const runner = Math.max(window, px(9) - speed * (t - 0.4)); // he starts from the far end of the stretch, 0.4 s late
-    assert.ok(runner < px(c) - r * C.kill - 24 || runner === window, `ball ${k} at ${t.toFixed(2)} s: he is ${Math.round(px(c) - runner)} px ahead of it`);
+    const runner = Math.max(window, px(12.9) - speed * Math.max(0, t - late));
+    assert.ok(runner < px(c) - r * C.kill - 16 || runner === window, `ball ${k} at ${t.toFixed(2)} s: he is ${Math.round(px(c) - runner)} px ahead of it`);
   });
   const last = B.chain.at(-1);
-  assert.ok(px(9) - speed * (t - 0.4) < window - 60, 'and has had time to be through the window before the last');
+  assert.ok(px(12.9) - speed * (t - late) < window - 60, 'and has had time to be through the window before the last');
   assert.ok(px(last[0]) - last[2] * C.kill < px(4.6), 'which reaches the foot of the window: no standing there');
   // standing still, he is caught by it
   s.wait(t - BLAST.after - BLAST.breach[0] + 0.1);
-  assert.equal(s.log.blasts.length, 1 + B.chain.length);
   assert.ok(!s.player.alive && s.player.died === 'explosion', 'the fire kills who waits for it');
-  assert.deepEqual(s.t.shot().at, { x: px(last[0]), y: px(last[1]) }, 'the camera on the fire coming');
-  s.go(8, 14.5);
-  assert.equal(s.stove.broke, 1, 'once');
+  assert.ok(s.log.blasts.length >= 3 && s.log.blasts.length <= 1 + B.chain.length);
+  // through the window in time: what is left of the chain goes off right behind him
+  const d = stub(5);
+  for (const e of d.world.offstage) e.alive = false;
+  d.go(5.5, 14.6);
+  d.wait(BLAST.after + BLAST.breach[0] + C.first + 0.1);
+  const before = d.log.blasts.length;
+  assert.ok(before < 1 + B.chain.length);
+  d.go(1.5, 14.5);
+  assert.ok(d.t.over);
+  d.wait(C.rush * B.chain.length + 0.1);
+  assert.equal(d.log.blasts.length, 1 + B.chain.length, 'all of it, at once');
+  assert.ok(d.player.alive && d.player.invulnerable, 'and none of it on him');
   // with a god's shield he is left alone, and it is handed back as it was
   const g = stub(5);
   g.player.invulnerable = true;
@@ -360,8 +390,11 @@ test('tutorial: a lesson waits until what it is about is on screen and he is nea
   s.go(21.5, 12.4);
   assert.equal(s.t.pace(0.016, none), 1, 'nor down the corridor');
   s.go(21.5, 13.4);
-  assert.equal(s.t.pace(0.016, none), LESSONS['RUN AND SLIDE UNDER HIS FIRE'].slow, 'at the corner');
-  // the second man of the kitchen: called from behind his door, framed by the camera, the lesson when he is seen
+  assert.equal(s.t.pace(0.016, none), BEAT.slow, 'at the corner');
+  // one slide from the corner sweeps the gunman off his feet (while the slide is still faster than a run)
+  const gunman = s.guardAt(19, 14), corner = { x: px(21.5), y: px(14.5) };
+  assert.ok(Math.abs(gunman.y - corner.y) < 1 && corner.x - gunman.x - 2 * PLAYER.radius < 50, `he stands ${corner.x - gunman.x} px from the corner`);
+  // the second man of the kitchen: called from behind his door, framed by the camera, the beat when he is on him
   const k = stub(2);
   k.tick();
   const cook = k.guardAt(11, 11), second = k.guardAt(19, 10);
@@ -372,13 +405,47 @@ test('tutorial: a lesson waits until what it is about is on screen and he is nea
   second.aware = 2;
   assert.deepEqual([k.t.shot().name, k.t.shot().at], ['threat', second], 'the camera frames him with the player');
   assert.equal(k.t.hints()[0].text, 'PUNCH HIM');
-  for (const text of ['GET BEHIND HIM', 'TAKE IT']) k.t.taught.add(text);
+  for (const id of ['behind', 'take']) k.t.taught.add(id);
   assert.equal(k.t.pace(0.016, none, () => false), 1, 'off the picture: time is not slowed for him');
   assert.equal(k.t.pace(0.016, none, () => true), 1, 'on it but across the room: not yet');
   Object.assign(second, { x: k.player.x + 80, y: k.player.y });
-  assert.equal(k.t.pace(0.016, none, () => true), LESSONS['PUNCH HIM'].slow, 'near enough to hit: now');
-  assert.equal(k.t.shot().name, 'flat', 'and the camera is back on the player');
-  assert.ok(LESSONS['PUNCH HIM'].within < FRAME.near + 40 && SHOTS.threat.pull > 0 && SHOTS.threat.pull < 1);
+  assert.equal(k.t.pace(0.016, none, () => true), BEAT.slow, 'near enough to hit: now');
+  assert.deepEqual([k.t.shot().name, k.t.shot().at], ['beat', { x: second.x, y: second.y }], 'the camera punched in on him');
+  assert.ok(LESSONS.punch.within < FRAME.near + 40 && SHOTS.threat.pull > 0 && SHOTS.threat.pull < 1);
+});
+
+test('tutorial: the reload - the world all but stops while his hands work, and nobody fires until it is done and a beat', () => {
+  const s = stub(5), p = s.player, none = () => false;
+  s.world.game.timeScale = 1;
+  Object.assign(p, { armed: true, weapon: { type: 'pistol', mag: 1 }, def: { kind: 'gun', ammo: '9mm', mag: 7 }, ammo: 7, reloading: 0 });
+  s.go(11.5, 14.6);
+  s.wait(1);
+  const men = s.world.enemies.filter((e) => !e.dormant);
+  assert.ok(men.length >= 2 && men.every((g) => !g.react), 'the men up the stairs, free to fire');
+  for (const id of ['shoot', 'take']) s.t.taught.add(id);
+  assert.equal(s.t.pace(0.016, none), 1);
+  p.weapon.mag = 0;
+  s.tick();
+  assert.ok(men.every((g) => g.react > 0), 'dry, a magazine left: they hold their fire');
+  assert.equal(s.t.pace(0.016, none), BEAT.slow, 'the RELOAD beat');
+  assert.equal(s.t.pace(LESSONS.reload.dur + 0.01, none), 1);
+  p.reloading = 1.1; // R
+  s.world.game.timeScale = RELOAD.slow;
+  s.tick();
+  assert.equal(s.t.pace(0.016, none), RELOAD.slow, 'reloading: the world all but stops');
+  assert.equal(p.haste, 1 / RELOAD.slow, 'and his hands go at their real pace');
+  Object.assign(p, { reloading: 0, ammo: 0 });
+  p.weapon.mag = 7;
+  s.world.game.timeScale = 1;
+  for (const g of men) g.react = 0;
+  s.tick();
+  assert.equal(p.haste, 1);
+  assert.equal(s.t.pace(0.016, none), 1);
+  assert.ok(men.every((g) => g.react > 0), 'loaded: still a beat of grace');
+  s.wait(RELOAD.grace + 0.1);
+  for (const g of men) g.react = 0;
+  s.tick();
+  assert.ok(men.every((g) => !g.react), 'then they are on him again');
 });
 
 test('tutorial: the bat holds until the corridor\'s gunman and breaks on him; his gun comes with a magazine to spare', () => {
@@ -387,12 +454,16 @@ test('tutorial: the bat holds until the corridor\'s gunman and breaks on him; hi
   Object.assign(s.player, { armed: true, weapon: { type: 'bat', wear: 1 }, def: { kind: 'melee', wear: 3 } });
   s.tick();
   assert.equal(s.player.weapon.wear, FORCE.keep, 'worn as it was, it will not break on anything before him');
+  const gunman = s.guardAt(19, 14);
+  assert.ok(gunman.dormant && s.player.weapon.wear >= FORCE.keep, 'short of the corner, still far from him');
   s.go(21.5, 14.5);
-  const gunman = s.guardAt(14, 14);
-  assert.ok(!gunman.dormant && s.player.weapon.wear >= FORCE.keep, 'round the corner, still far from him');
-  s.go(15.6, 14.5);
-  assert.equal(s.player.weapon.wear, FORCE.last, 'on him: the next blow on a man uses it up (WEAR.man)');
-  s.go(21.5, 14.5);
+  assert.ok(!gunman.dormant);
+  assert.equal(s.player.weapon.wear, FORCE.last, 'round it, on him: the next blow on a man uses it up (WEAR.man)');
+  gunman.knocked = 2;
+  s.tick();
+  assert.equal(s.player.weapon.wear, FORCE.last, 'swept off his feet by the slide: it breaks on the blow that finishes him too');
+  gunman.knocked = 0;
+  s.go(21.5, 12.6);
   assert.equal(s.player.weapon.wear, FORCE.keep, 'backed off: it holds again');
   assert.ok(level.tutorial.stages[4].snatch && !level.tutorial.stages[2].snatch);
   // the gun in his hand (snatched, or picked up): one magazine in his pocket, once
@@ -422,17 +493,17 @@ test('tutorial: a retry starts again at the last place reached, the rooms before
 test('tutorial: the shooter, pointed at from one stage and fought in the next, is still there on a retry of the second', () => {
   const s = stub(4);
   assert.equal(s.world.enemies.length + s.world.offstage.length, 4);
-  assert.ok(s.guardAt(14, 14)?.dormant);
+  assert.ok(s.guardAt(19, 14)?.dormant);
   s.tick();
-  assert.ok(s.t.stage === 3 && s.guardAt(14, 14).dormant, 'he starts short of the corner');
+  assert.ok(s.t.stage === 3 && s.guardAt(19, 14).dormant, 'he starts short of the corner');
   s.go(21.5, 14.5);
-  assert.ok(!s.guardAt(14, 14).dormant, 'and is shot at as soon as he turns it');
+  assert.ok(!s.guardAt(19, 14).dormant, 'and is shot at as soon as he turns it');
 });
 
 test('tutorial: a retry at the landing finds the shooter gone and his gun, two rounds in it, at its feet', () => {
   const s = stub(5);
   assert.equal(s.world.offstage.length, 3);
-  assert.equal(s.guardAt(14, 14), undefined);
+  assert.equal(s.guardAt(19, 14), undefined);
   assert.deepEqual([s.t.owed.type, s.t.owed.mag], ['pistol', 2]);
   assert.ok(Math.hypot(s.t.owed.x - s.player.x, s.t.owed.y - s.player.y) < TILE * 1.2);
 });

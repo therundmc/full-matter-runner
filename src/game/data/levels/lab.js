@@ -102,7 +102,8 @@ export default {
     ['table', 58.5, 1.6, 0], ['bar_counter', 60.5, 1.5, 0], ['bar_counter', 61.5, 1.5, 0],
     ['ceiling_lamp', 60, 4.2, 0],
     // 8 jukebox
-    ['jukebox', 14.5, 13.64, 180], ['chair', 12.6, 12.6, 20], ['wall_lamp', 16, 13.92, 180],
+    ['jukebox', 14.5, 13.64, 180], ['arcade', 16.5, 12.4, 90], ['chair', 12.6, 12.6, 20],
+    ['wall_lamp', 16, 13.92, 180],
     // 9 trapdoor
     ['wall_lamp', 18.6, 13.92, 180],
     // 10 powder

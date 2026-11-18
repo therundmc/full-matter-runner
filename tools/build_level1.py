@@ -232,6 +232,8 @@ lv.dress('papers', 20, 32, 23, 36, 3)
 lv.dress('beds', 22.1, 36.5, 0)                          # a tramp asleep on his cardboard, against the wall
 lv.patron('tramp', 22.1, 36.5, 180, 'sleep')
 lv.prop('neon_sign_palm', 17.0, 31.91, 180)
+lv.prop('flyers', 13.4, 31.94, 180)                     # the south side's wall, by the bench
+lv.paint('tag', 21.2, 34.9, -8)                         # the start alley: a tag on the ground by where he sat
 lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
 
@@ -273,6 +275,8 @@ lv.pigeons(33.3, 21.7, 2)
 lv.prop('hydrant', 10.6, 22.65)                       # clear of the alley's mouth (bigger, it snagged whoever came out)
 lv.prop('vending', 17.42, 21.33)                        # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
+lv.prop('flyers', 2.6, 21.06)                           # bills pasted one over the other on the blind walls: west of
+lv.prop('flyers', 33.4, 21.06)                          # the liquor store, between the gap's door and the TV shop
 lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
 lv.dress('manholes', 27.3, 28.5)                        # (the one by the parking bays sat astride their line: removed)
@@ -336,6 +340,8 @@ lv.prop('gas_bottle', 13.72, 6.55)                      # the stove's gas, again
 lv.prop('gas_bottle', 13.7, 7.05)
 lv.prop('pipe_steam', 13.93, 13.6, 90)                  # the bar's heating, along its wall: a round makes it whistle
 lv.dress('manholes', 12.5, 10.6)
+lv.prop('conduit', 13.94, 16.0, 90)                     # wiring along the bar's side wall
+lv.paint('tag', 11.9, 12.6, 80)                         # a tag sprayed on the ground, half gone
 lv.dress('papers', 11, 1, 13, 19, 4)
 
 lv.area('back lot')
@@ -370,6 +376,7 @@ lv.dress('papers', 14, 1, 32, 4, 4)
 lv.prop('tube_light', 26.55, 4.93, 180)                 # beside the back door (a body on the wall: over it, it
                                                         # barred the doorway)
 lv.prop('gas_bottle', 30.4, 4.74)
+lv.prop('conduit', 20.9, 4.94, 180)                     # the house's wiring along its back wall (off the cut line)
 
 lv.area('storeroom')
 lv.prop('bookshelf', 15.7, 6.2)
@@ -380,6 +387,7 @@ lv.prop('tube_light', 18.93, 8.6, 90)
 lv.prop('dope_table', 17.0, 9.2, clutter='dope')                       # in the middle of the room, a way round it on every side
 lv.prop('crate', 18.55, 10.55, 4)                       # the stock, in corners off every way round the table (behind
 lv.prop('crate', 15.4, 6.85, 10)                        # it they made a pocket where two men jammed)
+lv.prop('conduit', 15.06, 9.9, 270)                     # the wiring run down the west wall, south of the alley door
 
 lv.area('toilets')
 # an American restroom (the user): one stall in the north-east corner, its partition on chrome feet and a swinging
@@ -391,7 +399,7 @@ for y in (7.95, 8.85):
     lv.prop('urinal', 21.19, y, 270)                    # on the west wall
 lv.prop('sink', 23.7, 9.0, 90)
 lv.prop('tube_light', 23.93, 8.15, 90)                  # between the stall and the sink
-lv.prop('trash_can', 21.4, 10.5, tips=False)
+lv.prop('trash_can', 21.4, 10.5, tips=False, flies=True)    # two flies over it
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
@@ -554,6 +562,19 @@ lv.grime('butts', 15, 6, 18, 10, 2)
 lv.grime('sticky', 15, 7, 18, 10, 1)
 lv.wear_path(21.5, 19.5, 17.8, 15.1)
 lv.wear_path(21.5, 19.5, 22.4, 12.3, 10)
+# the stools' feet and the heels hooked on the rail, along the counter's front; the toilets: the drain in the middle of
+# its floor, the damp round it, the way from the door to the urinals; the storeroom's drain under the sink's corner and
+# the way the stock goes, from the alley door to behind the counter; the liquor store: the way from its door to the
+# till, heels along the counter
+for x in (15.65, 16.75, 17.85, 18.95):
+    lv.grime_at('scuffs', x, 14.75)
+lv.grime_at('drain', 22.45, 9.3)
+lv.wear_path(22.5, 10.9, 21.8, 8.4, 8)
+lv.grime_at('drain', 18.0, 7.45, r=7)
+lv.wear_path(14.9, 8.5, 16.5, 10.7, 9)
+lv.wear_path(8.5, 19.8, 7.6, 19.1, 9)
+lv.grime('scuffs', 6, 19, 8, 19, 2)
+lv.grime('stain', 3, 17, 8, 19, 2, col='#3a3020')
 # the smoke of the night hanging under the lamps over the pool and the poker tables, and over the counter
 lv.smoke_haze(20.8, 16.9, 2.3, 0.1)
 lv.smoke_haze(26.9, 14.25, 1.9, 0.1)

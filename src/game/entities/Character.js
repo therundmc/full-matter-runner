@@ -189,7 +189,7 @@ export default class Character {
   updateReload(dt) {
     if (this.reloading <= 0 || !this.weapon) return;
     const d = this.def;
-    this.reloading -= dt;
+    this.reloading -= dt * (this.haste || 1); // haste: his hands at their real pace while the world crawls (Tutorial)
     const p = 1 - this.reloading / this.reloadDur;
     if (d.shellReload) {
       if (this.reloading <= 0) {

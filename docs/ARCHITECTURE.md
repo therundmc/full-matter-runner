@@ -109,7 +109,7 @@ src/
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
       Tutorial.js         a level that teaches, and its staging (data/staging.js): rooms played in order, dormant guards woken
-                          wave by wave, hints, a lesson slowing time the first time its hint shows (`pace`), the opening scene
+                          wave by wave, hints, a lesson's short beat the first time its hint shows (`pace`: slow, punch-in, hand back), the opening scene
                           (the man with the match: `open` / `play`), the camera's shot (`shot`), the flat blowing up at the end
                           (`blow`: the stove, then a chain of fire-balls down the corridor), the way out marked (`exit`), a
                           man called framed by the camera (`framed`), the weapon forced to break on the man whose gun is to
@@ -247,7 +247,7 @@ src/
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
                           title/ (Title: which picture the title state shows; Poster: the comic's cover in three layers,
                           its fire, rain and signs cut live; HitList: the LEVELS page and the screen between two levels
-                          (Game state 'hitlist'); Beats: their clocks and sounds, unit tested; Paper: the cut-paper sheet
+                          (Game state 'hitlist'); Options: OPTIONS and the pages under it, his table from above, for the title and the pause; Beats: their clocks and sounds, unit tested; Paper: the cut-paper sheet
                           and the menu's panel; Draw: the frame; Timeline: the elevated train's passage, kept for its sound),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
     data/                 atmosphere (rain, smoke, neon faults: the look of the air), liquids (the liquid on the floor:

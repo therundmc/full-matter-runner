@@ -119,7 +119,7 @@ export function buildLevel(world, level) {
   // options: { lights: false } = starts with its lights off (a parked car); { flicker: kind } = its light is unsteady
   // (render/Flicker.js: 'broken', 'stutter', 'dying'...); { valve: true } = a stove whose gas tap can be opened;
   // { tips: false } = a bin that stays up and breaks like any prop (one indoors, systems/Tipping.js);
-  // { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js)
+  // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
@@ -127,6 +127,7 @@ export function buildLevel(world, level) {
     if (opt?.flicker) p.flicker = opt.flicker;
     if (opt?.valve) p.valve = true; // a stove with its gas tap (systems/GasValve.js)
     if (opt?.tips === false) p.noTip = true;
+    if (opt?.flies) p.flies = true; // flies over it (render/PropLife.js)
     if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     world.props.push(p);

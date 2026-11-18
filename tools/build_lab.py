@@ -44,7 +44,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
      7 TAKEDOWNS   the east wing, a dummy at everything a head can be driven into: a washroom (a toilet, a urinal, a
                    sink), a room (a table, a length of bar, a man with his face to the wall), and one in the open at
                    the concourse's end to take from behind or face to face; a 1911, a knife and a tire iron on the floor
-     8 JUKEBOX     a jukebox (E) in a niche
+     8 JUKEBOX     a jukebox (E) in a niche, and an arcade cabinet in its attract mode (bump it: it rings)
      9 TRAPDOOR    a trapdoor (E) in a niche, the other one on the sidewalk at the west end
     10 POWDER      an extinguisher on the wall of a dead-end corridor round a corner, a man (awake) at its far end; a
                    silenced Uzi at its mouth: hole it without a sound and walk up to him in the white
@@ -251,6 +251,7 @@ for x, kind in ((55.5, 'pistol'), (56.3, 'knife'), (57.1, 'tire_iron')):
 lv.area('8 jukebox')
 lv.paint('label_jukebox', 14.5, 10.65)
 lv.prop('jukebox', 14.5, 13.64, 180)
+lv.prop('arcade', 16.5, 12.4, 90)                            # its screen plays by itself (render/PropLife.js)
 lv.prop('chair', 12.6, 12.6, 20)
 lv.prop('wall_lamp', 16.0, 13.92, 180)
 
