@@ -252,7 +252,8 @@ function gunman(w, x = 14, mag = 5) {
   g.setWeapon('pistol', mag);
   return g;
 }
-const after = (p, s) => { for (let t = 0; t < s; t += 1 / 60) { p.world.time += 1 / 60; if (p.snatch && p.world.time >= p.snatch.at) p.grab(); } };
+// time going by for the hand (as Player.update: not while it is busy with a finisher or a takedown)
+const after = (p, s) => { for (let t = 0; t < s; t += 1 / 60) { p.world.time += 1 / 60; if (p.snatch && !p.execution && !p.takedown && p.world.time >= p.snatch.at) p.grab(); } };
 
 test('snatch: who can take the man\'s weapon as he dies: free hands, or a weapon that broke on him', () => {
   const free = fighter(null), man = { x: 14, y: 0, weapon: { type: 'pistol', mag: 5 } };
@@ -297,6 +298,46 @@ test('snatch: a man killed bare handed drops his gun into the player\'s hand, wi
   assert.equal(r.weapon?.type, 'pistol');
   assert.equal(r.broke?.stub ?? null, null, 'the stub fell');
   assert.equal(u.debris.filter((o) => o.img === spriteOpt('weapons/bat_handle')).length, 1);
+});
+
+test('snatch: a man who yields his gun (the prologue\'s corridor gunman) puts it in the hand whatever kills him', () => {
+  const taken = (p, w, mag = 5) => {
+    after(p, SNATCH.delay + 0.05);
+    assert.equal(p.weapon?.type, 'pistol');
+    assert.equal(p.weapon.mag, mag);
+    assert.ok(w.items.some((it) => it.type === 'pistol' && it.dead), 'out of the world, into the hand');
+  };
+  const speed = (it) => Math.hypot(it.body.velocity.x, it.body.velocity.y);
+  // not up close (a round, a thrown blade, a blast), bare handed: it does not fly, it is his
+  for (const how of [{}, { thrown: true }, { close: true, from: 'back' }]) {
+    const w = world(), p = fighter(null, w), g = gunman(w);
+    g.yields = true;
+    g.kill(2.5, 'bullet', p, { gore: 0 }, how);
+    assert.ok(speed(w.items[0]) <= 1.01, 'it falls at his feet, toward the player');
+    taken(p, w);
+  }
+  // a working weapon still in hand (the bat did not break): it is let go for the gun
+  const v = world(), q = fighter('knife', v), h = gunman(v);
+  h.yields = true;
+  h.kill(0, 'melee', q, { gore: 0 }, { close: true });
+  taken(q, v);
+  assert.ok(v.items.some((it) => it.type === 'knife' && !it.dead), 'the knife on the floor');
+  // floored first, his gun gone far across the floor, then finished: still his, however far it went
+  const u = world(), r = fighter(null, u), k = gunman(u);
+  k.yields = true;
+  k.dropWeapon(0, 4);
+  Body.setPosition(k.lastDrop.body, { x: 14 + SNATCH.far * 2, y: 0 });
+  r.execution = { t: 0 };
+  k.kill(0, 'melee', r, { gore: 0 }, { finisher: true, close: true });
+  after(r, 0.5);
+  assert.equal(r.weapon?.type ?? null, null, 'not while his hands are in the finisher');
+  r.execution = null;
+  taken(r, u);
+  // a man who does not yield it keeps to the rules (SNATCH.reach / far)
+  const s = world(), o = fighter(null, s), m = gunman(s);
+  m.kill(0, 'bullet', o, { gore: 0 }, {});
+  after(o, 0.5);
+  assert.equal(o.weapon, null);
 });
 
 test('snatch: SNATCHED is a tag of the kill that pays', () => {

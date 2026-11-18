@@ -155,7 +155,7 @@
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). A table across his doorway teaches the vault. A lesson waits for its object to be on
+  Enemy.drawTail, his name card). A big table across the living room, on his way, teaches the vault. A lesson waits for its object to be on
   screen and near (`LESSONS.within`); during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
@@ -194,7 +194,7 @@
 - The WebGL last pass, the lens (render/PostGL.js + render/Lens.js): tune in data/post.js, never hard-code. Barely
   there at rest; a KILL is what it underlines; no blur in play. `?post=0` turns it off, F6 toggles it.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off. `window.game` in the console.
+  times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; also OPTIONS / GAME / AIM; lab station 23). `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node
   static server to Python's. Never kill processes you didn't start.
 

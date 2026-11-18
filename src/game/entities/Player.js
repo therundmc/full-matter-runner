@@ -471,7 +471,9 @@ export default class Player extends Character {
   // Is the weapon of the man he just killed (victim) his for the taking (SNATCH)? The man was killed by his hand up
   // close (how.close: a blow, a takedown, a finisher), his own hands are free, or his weapon broke on that kill with
   // nothing left in the hand; what the man had is in his hand, or lies where it fell as he was floored (lastDrop).
+  // A man who yields his gun (a lesson's: Character.yields) gives it up whatever he was killed with and from where.
   snatches(victim, how) {
+    if (victim.yields) return !!victim.weapon || (!!victim.lastDrop && !victim.lastDrop.dead);
     if (!SNATCH.on || !how?.close || this.snatch) return false;
     if (this.weapon && !(how.broke && !keepsOne(this.def))) return false;
     if (victim.weapon) return Math.hypot(victim.x - this.x, victim.y - this.y) <= SNATCH.reach;
@@ -480,17 +482,17 @@ export default class Player extends Character {
   }
 
   // the weapon he will take (Character.kill), as soon as his hands are his own again (not in a takedown or a
-  // finisher) and it has fallen (SNATCH.delay)
-  snatchFrom(item) {
-    if (item) this.snatch = { item, at: this.world.time + SNATCH.delay };
+  // finisher) and it has fallen (SNATCH.delay); sure: however far it lies and whatever is in his hand (it is let go)
+  snatchFrom(item, sure = false) {
+    if (item) this.snatch = { item, at: this.world.time + SNATCH.delay, sure };
   }
 
   // his hand closes on it: the pick-up's reach and twirl into his grip (CharacterAnim, pickAnim), with the rounds left
   // in it, a breath of slow motion (MOMENTS.snatch)
   grab() {
-    const it = this.snatch.item, w = this.world;
+    const { item: it, sure } = this.snatch, w = this.world;
     this.snatch = null;
-    if (it.dead || this.weapon || Math.hypot(it.x - this.x, it.y - this.y) > SNATCH.far) return;
+    if (it.dead || (!sure && (this.weapon || Math.hypot(it.x - this.x, it.y - this.y) > SNATCH.far))) return;
     w.removeItem(it);
     this.take(it.type, it.mag, it.wear, it.bare);
     this.pickFrom = { x: it.x, y: it.y };

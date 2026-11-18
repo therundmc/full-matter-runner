@@ -52,7 +52,7 @@ export const FRAME = { near: 110 };
 export const BEAT = { slow: 0.07, dur: 1.3, min: 0.35, shot: 'beat' };
 export const LESSONS = {
   move: { dur: 1.2 },
-  vault: { within: 76 },                       // the table across his doorway
+  vault: { within: 76 },                       // the big table across the living room
   flee: { dur: 1.0, far: true },               // GET OUT: the camera goes to the living room's way out
   behind: { within: 220 },                     // GET BEHIND HIM
   neck: { dur: 1.0 },                          // behind him: the click

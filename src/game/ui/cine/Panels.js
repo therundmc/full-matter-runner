@@ -53,7 +53,7 @@ const COLON = [172, 154, 5, 12];         // the clock's colon there (opening1.py
 const DOORWAY = [670, 0, 240, 196];      // the doorway in comic/door, x, y, w, h (opening1.py DOORWAY)
 const NEON = [374, 84, 88, 24];           // the bar's pink sign in that window (poster.window): it buzzes
 const BEAM = [[643, 85], [385, 286]];    // the torch's beam there, from the lens to the floor
-const SPLASH = [518, 182];               // where the petrol lands in comic/pour (opening2.py)
+const SPLASH = [514, 238];               // where the petrol lands in comic/pour: its pool on the floor (opening2.py POOL)
 const PUPIL = [268, 174];                // his pupil in comic/wake (opening3.py)
 const GAP = [150, 410, 236];             // the gap under his door in comic/fire (opening3.py GAP)
 
@@ -110,11 +110,11 @@ export function paintSleep(g, w, h, t) {
 export function paintDoor(g, w, h, t) {
   still(g, 'door', w, h);
   fine(g, () => {
-    // dust in the torch's beam (not over the sofa, which stands in front of it)
+    // dust in the torch's beam
     const [[bx, by], [ex, ey]] = BEAM;
     for (let i = 0; i < 14; i++) {
       const u = (hash(i) + t * 0.04 * (0.5 + hash(i + 7))) % 1, x = lerp(bx, ex, u) + (hash(i + 3) - 0.5) * 120 * u, y = lerp(by, ey, u) + Math.sin(t + i) * 3;
-      if (!(x > 210 && x < 514 && y > 142 && y < 222)) px(g, '#8a7ab8', x, y, 2, 2);
+      px(g, '#8a7ab8', x, y, 2, 2);
     }
     if ((t * 2.3) % 1 < 0.05) tone(g, '#06141a', ...DOORWAY, 0.6);
   });
@@ -149,24 +149,25 @@ export function paintCount(g, w, h) {
   still(g, 'count', w, h);
 }
 
-// 4. JITTERS tipping the jerrycan over the sofa against the window's neon, CUEBALL over him; the petrol running.
+// 4. JITTERS tipping the jerrycan by the sofa against the window's neon, CUEBALL over him; the petrol running down
+// to its pool on the floor.
 export function paintPour(g, w, h, t) {
   still(g, 'pour', w, h);
   fine(g, () => {
+    const [sx, sy] = SPLASH;
     for (let i = 0; i < 4; i++) {
       const k = (t * 1.8 + i / 4) % 1;
-      px(g, '#fff8e0', 540 - k * 22, 122 + k * 58, 2, 4);
+      px(g, '#fff8e0', lerp(540, sx, k), lerp(122, sy, k), 2, 4);
     }
-    // where it lands: drops thrown up, and rings going out over the stain
-    const [sx, sy] = SPLASH;
+    // where it lands: drops thrown up, and rings going out over the pool (flat on the floor: wide, hardly high)
     for (let i = 0; i < 5; i++) {
       const k = (t * 2.1 + i / 5) % 1;
       px(g, '#fff8e0', sx + (i - 2) * 9 * k, sy - Math.sin(k * Math.PI) * 16, 2, 2);
     }
     const rings = [0, 1].map((r) => (t * 0.6 + r / 2) % 1).sort((a, b) => b - a);            // the widest first
     for (const k of rings) {
-      disc(g, '#3d2a6a', sx - 2, sy + 6, 8 + 36 * k, 2 + 8 * k);
-      disc(g, '#0a070c', sx - 2, sy + 6, 5 + 36 * k, 1 + 7 * k);
+      disc(g, '#6a58a0', sx - 2, sy + 2, 8 + 36 * k, 2 + 5.5 * k);
+      disc(g, '#3d2a6a', sx - 2, sy + 2, 5 + 36 * k, 1 + 5 * k);
     }
   });
 }

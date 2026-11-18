@@ -19,6 +19,8 @@ import { drawHUD } from './ui/HUD.js';
 import { drawLoading, drawIntro, drawDead, drawOutro, drawContinued, describeDeath, INTRO, introBeats, introTint, SHUTTER_SOUND } from './ui/Screens.js';
 import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
+import { AIM, nextStyle } from './data/aim.js';
+import { assistAim } from './systems/AimCue.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { cineView, cineBeats, drawCinematic } from './ui/Cinematic.js';
@@ -79,6 +81,7 @@ export default class Game {
     this.skip = new HoldSkip();        // a comic page skipped by holding SPACE (ui/cine/Hold.js)
     this.taught = new Set();           // the lessons already given this run (systems/Tutorial.js)
     this.murk = 0;                     // 0..1: how far thick smoke has closed the view in (render/Murk.js)
+    this.paged = false;                // a comic page was over the world last frame (onPage)
     this.driveZoom = 1;                // the camera's scale at the wheel, eased with the van's speed (systems/Drive.js)
     this.state = 'loading';
     this.stateT = 0;
@@ -108,6 +111,7 @@ export default class Game {
     this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
     this.lensOn = true;                // the VIDEO option; F6 flips it for the session, to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
+    this.aimNote = 0;                  // ... and the F7 one (the aim's style)
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
@@ -238,14 +242,9 @@ export default class Game {
     const at = dr ? this.direction.aim(fr.x, fr.y) : p;
     this.camera.snap(at.x, at.y);
     this.acc = 0;
-    this.hitstop = 0;
-    this.timeScale = 1;
-    this.slow = null;
-    this.flashA = 0;
-    this.murk = 0;
+    this.clearScreen();
     this.clearedT = 0;
     this.padAimAt = null;
-    Audio.setMuffle(0);
     // the soundtrack: calm until the squad wakes up or blood is shed (Tension, fed every frame in update), its
     // combat variant while the squad fights
     const ev = this.world.events;
@@ -273,6 +272,24 @@ export default class Game {
     this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
     this.setState('fall');
+  }
+
+  // a comic page fills the screen (the opening, the leap out of the tutorial, a level's closing page): the world is
+  // not seen behind it, nor anything it was doing to the picture
+  onPage() { return this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN); }
+
+  // what the world does to the picture and the sound let go: the slow motion and its muffle, a flash, the smoke
+  // closing in, the shake and the lens' kicks (a new level; a page coming up over the world, which then stands still
+  // and would hold them as they were)
+  clearScreen() {
+    this.hitstop = 0;
+    this.timeScale = 1;
+    this.slow = null;
+    this.flashA = 0;
+    this.murk = 0;
+    this.camera.settle();
+    this.lens.reset();
+    Audio.setMuffle(0);
   }
 
   // play starts at once; the card stays where it was and opens like a shutter over the first moments of play
@@ -385,11 +402,20 @@ export default class Game {
     }
 
     if (this.state === 'loading') return;
+    // a page comes up over the world: what the world was doing to the picture goes
+    const page = !!this.world && this.onPage();
+    if (page && !this.paged) this.clearScreen();
+    this.paged = page;
     // debug: the picture with / without the lens
     if (inp.hit('F6') && this.post) {
       this.lensOn = !this.lensOn;
       this.post.show(this.lensOn);
       this.lensNote = this.time + 1.6;
+    }
+    // debug: the next way of showing the aim (data/aim.js; the AIM option, kept)
+    if (inp.hit('F7')) {
+      this.setSetting('aim', nextStyle(this.settings.aim));
+      this.aimNote = this.time + AIM.note;
     }
     if (this.state === 'hitlist') {
       // the hit list between two levels: the marker crosses the dead man out (heard from the picture, HitList.js),
@@ -595,7 +621,7 @@ export default class Game {
 
   // The right stick's virtual cursor (data/controls.js PAD_AIM): a point round the player, nearer or further with the
   // push, put where the mouse would be, so that the aim, the camera's look-ahead and the cursor all follow it. With
-  // the stick at rest the aim stays put, and turns to where he walks after a moment. No aim assist.
+  // the stick at rest the aim stays put, and turns to where he walks after a moment. No aim assist, but the LOCK concept's.
   padAim(dt) {
     const inp = this.input, p = this.world?.player;
     if (inp.device !== 'pad' || !p?.alive || this.state !== 'play') return;
@@ -609,7 +635,9 @@ export default class Game {
       A.idle += dt;
       if (m && A.idle > PAD_AIM.follow) A.angle += angDiff(A.angle, Math.atan2(m.y, m.x)) * Math.min(1, dt * 10);
     }
-    const at = this.camera.worldToScreen(p.x + Math.cos(A.angle) * A.reach, p.y + Math.sin(A.angle) * A.reach);
+    // the LOCK concept's soft assist (systems/AimCue.js): a man close to the stick's way takes the aim
+    const to = this.settings.aim === 'lock' ? assistAim(this.world, A.angle) : null;
+    const at = this.camera.worldToScreen(to ? to.x : p.x + Math.cos(A.angle) * A.reach, to ? to.y : p.y + Math.sin(A.angle) * A.reach);
     inp.mouse.x = at.x;
     inp.mouse.y = at.y;
   }
@@ -733,6 +761,7 @@ export default class Game {
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (inWorld) this.world.cues = cuesOn(this.state, !!this.world.tutorial?.scene); // render/Readability.js
+    if (inWorld) this.world.aimStyle = this.settings.aim;                              // render/AimArt.js
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) this.safeDraw(ctx, () => { this.titleRects = drawTitle(ctx, W, H, this.stateT, this.titleView()); });
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));
@@ -755,6 +784,12 @@ export default class Game {
       o.textAlign = 'left';
       o.fillStyle = '#3cff7a';
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
+    }
+    if (this.aimNote > t) {
+      o.font = `${Math.round(14 * H / 720)}px monospace`;
+      o.textAlign = 'left';
+      o.fillStyle = '#3cff7a';
+      o.fillText(`F7  AIM ${AIM.names[this.settings.aim]}`, 12, H - 32 * H / 720);
     }
     if (!['loading', 'outro', 'ending', 'cinematic', 'fall', 'continued'].includes(this.state)) this.drawCursor(o, t);
   }
@@ -836,7 +871,7 @@ export default class Game {
     const w = this.world, p = inWorld ? w.player : null, inp = this.input, v = p?.vaulting;
     return {
       W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
-      state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
+      state: this.state, page: inWorld && this.onPage(), phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
       timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {
         x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,
@@ -888,6 +923,17 @@ export default class Game {
     const s = this.canvas.height / 720;
     // at the wheel, out of his arc (systems/CarGun.js): a still grey cross, his gun cannot point there
     const gun = this.state === 'play' && this.world?.drive?.on ? this.world.drive.gun : null, off = gun?.aimed && !gun.aimed.ok;
+    // any aim concept but the cross (data/aim.js): the cue is at the gun, in the world (render/AimArt.js); the mouse
+    // keeps a small dot where it is, the gamepad's stick has no point to show
+    if (this.state === 'play' && this.settings.aim !== 'cross') {
+      if (this.input.device === 'pad') return;
+      const r = Math.max(1, Math.round(AIM.dot.r * s)), e = Math.max(1, Math.round(AIM.dot.edge * s));
+      ctx.fillStyle = AIM.ink;
+      ctx.fillRect(Math.round(x) - r - e, Math.round(y) - r - e, (r + e) * 2, (r + e) * 2);
+      ctx.fillStyle = off ? AIM.off : AIM.bone;
+      ctx.fillRect(Math.round(x) - r, Math.round(y) - r, r * 2, r * 2);
+      return;
+    }
     const r = (off ? 8 : 9 + Math.sin(t * 8) * 1.5) * s;
     ctx.save();
     ctx.translate(x, y);

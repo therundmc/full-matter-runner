@@ -95,10 +95,10 @@
     },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
-    // (`bed`: out of the bedroom over the table across its doorway, started by hand while he is in it)
+    // (`bed`: out of the bedroom by its door and over the living room's big table, started by hand while he is in it)
     tutorial: {
       free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true },
-      bed: { steps: [{ go: [8.5, 3.35] }, { cross: [10.5, 3.35] }], rescue: true },
+      bed: { steps: [{ go: [8.5, 3.5] }, { to: [10.4, 3.5] }, { to: [11.3, 4.0] }, { cross: [11.3, 5.8] }], rescue: true },
     },
     street: {
       free: { steps: [] },
@@ -1732,7 +1732,8 @@
       if (!B.resultsSeen) {
         B.resultsSeen = true;
         const r = g.results || {};
-        S.stats.clears.push({ session: S.session, score: r.total, grade: r.grade, time: r1(w.time), kills: S.sess.kills });
+        S.stats.clears.push({ session: S.session, score: r.total, grade: r.grade, time: r1(w.time), kills: S.sess.kills,
+          lines: (r.lines || []).map((l) => `${l.key} ${l.points} (${l.detail})`).join(', ') });
         cover('exit');
         S.sess.exited = true;
         act(`results ${r.grade} ${r.total}`);

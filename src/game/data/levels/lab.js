@@ -1,5 +1,5 @@
 // Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,
-// curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat's lane) and a
+// curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat's lane, the aim's room) and a
 // street with the vehicles. Load with ?level=lab.
 // Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight
 // tests, and CUEBALL in his room (level 1's boss: he fights).
@@ -13,7 +13,7 @@ export default {
   subtitle: 'SANDBOX  -  A STATION FOR EVERY SYSTEM',
   passive: true,
   exit: { x: 56.6, y: 22.9, r: 1.2, route: [[53.0, 21.0], [49.0, 23.0], [4.0, 23.0]], radius: [3, 3], fade: 9, open: true },
-  facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '38,9': 180, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '57,13': 270, '72,9': 180, '20,28': 0, '22,27': 90, '18,28': 0 },
+  facing: { '27,9': 270, '3,6': 0, '5,9': 0, '3,12': 0, '13,1': 270, '15,1': 270, '17,1': 270, '19,1': 270, '21,1': 270, '23,1': 270, '25,1': 270, '27,1': 270, '29,1': 270, '31,1': 270, '38,9': 180, '43,5': 270, '48,3': 90, '53,2': 270, '52,4': 180, '54,3': 0, '58,2': 270, '61,2': 270, '57,5': 180, '59,9': 0, '12,15': 0, '42,14': 0, '44,15': 90, '57,13': 270, '72,9': 180, '67,2': 180, '69,5': 180, '72,1': 180, '73,4': 180, '20,28': 0, '22,27': 90, '18,28': 0 },
   jobs: { '43,5': 'pool', '48,3': 'hall', '12,15': 'hall', '20,28': 'door' },
   // bare-handed guards: a brawler (fists), or where his weapon is kept until the fight (Enemy.takeArms)
   arms: { '20,28': [30.85, 27.6], '22,27': 'fists' },
@@ -24,11 +24,11 @@ export default {
   awake: ['48,3', '12,15', '72,9', '20,28', '22,27', '18,28'],
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#.....................#_____#::::::#;;;;#++++#......XXXXXXXXXXXXX",
-    "X#_________#.....................#_____#::::::#;;;;#++++#......XXXXXXXXXXXXX",
-    "X#_________#.....................#_____#::::::#;;;;#++++#......XXXXXXXXXXXXX",
-    "X#_________L.....................#_____#::::::#;;;;#++++#......XXXXXXXXXXXXX",
-    "X#_________#.....................#_____#::::::#;;;;#++++#......XXXXXXXXXXXXX",
+    "X#_________#.....................#_____#::::::#;;;;#++++#......#______#___#X",
+    "X#_________#.....................#_____#::::::#;;;;#++++#......#______#___#X",
+    "X#_________#.....................#_____#::::::#;;;;#++++#......___________#X",
+    "X#_________L.....................#_____#::::::#;;;;#++++#......#__________#X",
+    "X#_________#.....................#_____#::::::#;;;;#++++#......#__________#X",
     "X#_________#.....................#_____#::::::#;;;;#++++#......X###########X",
     "X#_________##########___###########D#G###D##G###;#####+####..##X;;;;;;;;;;#X",
     "X#_____________________________________________________________X;;;;;;;;;;#X",
@@ -57,11 +57,11 @@ export default {
   ],
   actors: [
     "",
-    "             m j i b k p u s h r",
-    "                                                     m    b  k",
+    "             m j i b k p u s h r                                        j",
+    "                                                     m    b  k     m",
     "                                                k     i",
-    "                                                    j",
-    "                                           i             p",
+    "                                                    j                    b",
+    "                                           i             p      ng   k",
     "   m     n",
     "         nz",
     "         n",
@@ -141,6 +141,9 @@ export default {
     // 15 cueball
     ['table', 67.5, 9.6, 0], ['crate', 65.6, 7.7, 0], ['crate', 70.2, 7.7, 0], ['crate', 65.6, 10.8, 0],
     ['armchair', 72.9, 10.8, 180], ['ceiling_lamp', 68.5, 9, 0], ['wall_lamp', 68.5, 7.08, 0],
+    // 23 aim
+    ['crate', 71.3, 4.5, 8], ['ceiling_lamp', 66.5, 3.5, 0], ['ceiling_lamp', 71.5, 3.5, 0],
+    ['wall_lamp', 68.5, 5.92, 180],
     // 17 vehicles: the street, to ram, hole and blow up
     ['car', 8, 21.1, 0], ['van', 24, 23.5, 180], ['car2', 47.2, 21.1, 0],
     ['convertible', 38.6, 20.9, 0, { drive: true }], ['barrel', 14.5, 23.4, 0], ['barrel', 33, 23.5, 0],
@@ -156,16 +159,16 @@ export default {
     ['crate', 70.9, 19.3, 12], ['wall_lamp', 64.5, 18.08, 0],
     // 20 getaway: the convertible and the way out of level 1, played in the street
     ['convertible', 56.6, 21, 180, { lights: false }],
-    // 23 arcade: a customer at the cabinet
+    // 24 arcade: a customer at the cabinet
     ['arcade', 6.5, 27.47, 0], ['jukebox', 2.6, 28.4, 90], ['ceiling_lamp', 5, 28.2, 0], ['wall_lamp', 8.92, 28.5, 90],
-    // 24 laundry: a man doing his washing
+    // 25 laundry: a man doing his washing
     ['washer', 10.6, 29.6, 180], ['washer', 11.32, 29.6, 180], ['washer', 12.04, 29.6, 180],
     ['laundry_basket', 12.85, 29.45, 6], ['bench', 13, 27.4, 0], ['tube_light', 12.5, 29.93, 180],
-    // 25 arms: bare-handed guards, a bat against the wall
+    // 26 arms: bare-handed guards, a bat against the wall
     ['table', 26.5, 28.2, 0], ['chair', 25.4, 28.2, 0], ['ceiling_lamp', 20, 28, 0], ['ceiling_lamp', 27, 28, 0],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],
@@ -173,7 +176,7 @@ export default {
     [10, [36.0, 5.2], [34.6, 6.3]],
   ],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
-  drops: [["pistol", 8.55, 6.5, 180, null], ["uzi", 8.55, 7.5, 180, null], ["uzi_silenced", 8.55, 8.5, 180, null], ["rifle", 8.55, 9.5, 180, null], ["shotgun", 8.55, 10.5, 180, null], ["sniper", 8.55, 11.5, 180, null], ["bazooka", 8.55, 12.5, 180, null], ["knife", 13.5, 4.35, 0, null], ["bat", 15.5, 4.35, 0, null], ["tire_iron", 17.5, 4.35, 0, null], ["cue", 19.5, 4.35, 0, null], ["pistol", 23.5, 4.35, 0, null], ["uzi", 25.5, 4.35, 0, null], ["rifle", 27.5, 4.35, 0, null], ["shotgun", 29.5, 4.35, 0, null], ["sniper", 31.5, 4.35, 0, null], ["pistol", 55.5, 9.7, 0, null], ["knife", 56.3, 9.7, 0, null], ["tire_iron", 57.1, 9.7, 0, null], ["uzi_silenced", 23.6, 12.4, 0, null], ["pistol", 61.3, 9.9, 0, null], ["bat", 61.9, 9.9, 0, null], ["knife", 62.5, 9.9, 0, null]],
+  drops: [["pistol", 8.55, 6.5, 180, null], ["uzi", 8.55, 7.5, 180, null], ["uzi_silenced", 8.55, 8.5, 180, null], ["rifle", 8.55, 9.5, 180, null], ["shotgun", 8.55, 10.5, 180, null], ["sniper", 8.55, 11.5, 180, null], ["bazooka", 8.55, 12.5, 180, null], ["knife", 13.5, 4.35, 0, null], ["bat", 15.5, 4.35, 0, null], ["tire_iron", 17.5, 4.35, 0, null], ["cue", 19.5, 4.35, 0, null], ["pistol", 23.5, 4.35, 0, null], ["uzi", 25.5, 4.35, 0, null], ["rifle", 27.5, 4.35, 0, null], ["shotgun", 29.5, 4.35, 0, null], ["sniper", 31.5, 4.35, 0, null], ["pistol", 55.5, 9.7, 0, null], ["knife", 56.3, 9.7, 0, null], ["tire_iron", 57.1, 9.7, 0, null], ["uzi_silenced", 23.6, 12.4, 0, null], ["pistol", 61.3, 9.9, 0, null], ["bat", 61.9, 9.9, 0, null], ["knife", 62.5, 9.9, 0, null], ["pistol", 64.6, 1.5, 0, null], ["shotgun", 65.4, 1.5, 0, null], ["uzi", 64.6, 2.2, 0, null], ["bat", 65.4, 2.2, 0, null]],
   // weapons stood against a wall [type, col, row, deg]
   lean: [["bat", 30.85, 27.6, 0]],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
