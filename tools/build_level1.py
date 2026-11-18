@@ -219,7 +219,7 @@ lv.cat(23.4, 34.5)                                      # on the dumpster, watch
 lv.pigeons(16.5, 30.6, 3)
 lv.prop('string_lights', 22.0, 33.9)
 lv.prop('string_lights', 22.0, 36.1)
-lv.prop('wall_lamp', 20.09, 33.6, 270, flicker='broken')   # over him, on its last legs
+lv.prop('wall_lamp', 20.09, 35.0, 270, flicker='broken')   # down the alley from where he sits (never over him), on its last legs
 
 lv.area('south sidewalk')
 lv.prop('streetlight', 15.5, 30.3, 270)

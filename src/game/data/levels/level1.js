@@ -102,7 +102,7 @@ export default {
     // the alley where it starts
     ['dumpster', 22.42, 35, 90], ['trash_can', 19.45, 36.4, 0], ['trash_can', 19.5, 35.6, 0],
     ['trash_can', 22.3, 32.5, 0], ['string_lights', 21, 33.9, 0], ['string_lights', 21, 36.1, 0],
-    ['wall_lamp', 19.09, 33.6, 270, { flicker: 'broken' }],
+    ['wall_lamp', 19.09, 35, 270, { flicker: 'broken' }],
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 27.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
     ['hydrant', 25.5, 30.35, 0], ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180],
