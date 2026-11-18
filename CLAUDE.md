@@ -97,7 +97,8 @@
   then a glint at the muzzle), TWO hits (the first wounds him and sends him berserk), no takedown while he is whole.
 - 12 guards, two guns in the house (the poker dealer's pistol, the boss's shotgun), a pistol behind the liquor
   store's counter, a cue by the pool table, a tire iron in the trunk of the first parked car (prop option `trunk`,
-  E at its tail); the player starts on the ground and gets up (level `intro`).
+  E at its tail); the player starts on the ground and gets up (level `intro`), the first time with a bottle of rum,
+  the camera pushed in on him (systems/Opening.js, SHOTS `swig*`).
 - Five ways in on foot (front door, gate, the gap, the liquor store roof by a `ladder`, the shop's own ladder; down
   by a `parapet`) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
 - Guards have the house's keys (`World.pathForGuard`, `Door.unlatch`): never lock a door without checking they still
@@ -127,7 +128,8 @@
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor (`BLAST.chain`, level `blast.chain`) and the way out is marked (`EXIT`, level `exit`).
-- Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
+- Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending; a page is skipped by holding
+  SPACE / pad A, never a stray key or click: Hold.js, `SKIP`), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
   ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and

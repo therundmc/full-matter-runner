@@ -11,8 +11,6 @@ import { drawPage } from './Page.js';
 import { still, fine, smoke } from './Panels.js';
 import { clamp, smooth, lerp, hash, px, poly, disc, line } from './Ink.js';
 
-export const ENDING = { skipAfter: 0.4 };   // s after which a key or a click goes on to the results
-
 // where things are in the stills (their px; generate_comic.py DRIVE_MIRROR, DRIVE_GLASS, OFFICE_SMOKE, OFFICE_DRIP)
 const MIRROR = [438, 44, 626, 84];
 const GLASS = [[0, 24], [636, 30], [606, 228], [0, 222]];

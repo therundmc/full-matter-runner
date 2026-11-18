@@ -1,5 +1,6 @@
 // How the prologue is staged (level `tutorial`: tools/build_tutorial.py, systems/Tutorial.js): the camera's shots,
-// the lessons that slow time, the opening with the man and his match, the flat blowing up at the end.
+// the lessons that slow time, the opening with the man and his match, the flat blowing up at the end. Also level 1's
+// opening shots and how a comic page is skipped.
 // Times in s (real ones where said), lengths in px unless said otherwise.
 
 // ---- the camera (systems/Direction.js): a shot is a zoom on top of the usual view (1; 2: twice as close) eased
@@ -20,6 +21,10 @@ export const SHOTS = {
   bossIntro: { zoom: 1.35, ease: 6, pull: 0.6, look: 0.2 },  // he lays eyes on the player: pushed in, mostly on him
   bossHurt: { zoom: 1.3, ease: 8, pull: 0.4, look: 0.5 },    // the first hit
   bossDown: { zoom: 1.6, ease: 3, pull: 0.75, look: 0 },     // he goes down: it lingers on him
+  // level 1's opening, the bottle of rum (systems/Opening.js)
+  swig: { zoom: 2.2, ease: 6, pull: 0, look: 0 },            // close on him while he drinks
+  swigThrow: { zoom: 1.8, ease: 5, pull: 0.45, look: 0 },    // the bottle thrown: toward where it breaks, he in the picture
+  swigUp: { zoom: 1, ease: 8, pull: 0, look: 1 },            // he gets up: the hand given back, fast
 };
 export const DIRECTION = {
   focus: 3.2,              // 1/s the view goes to (and comes back from) what a shot looks at
@@ -94,3 +99,8 @@ export const BLAST = {
 // window's tiles): chevrons marching to the window and a frame round it, pulsing (render/WorldRenderer.js)
 // (`wash`: the zone's own tint on the floor, `bracket`: px of its corner marks)
 export const EXIT = { color: '#ff3a7a', chevrons: 3, gap: 15, size: 11, pulse: 1.6, frame: 3, wash: 0.16, bracket: 9 };
+
+// ---- a comic page (the opening, a level's closing page, the leap: ui/cine/Hold.js) is skipped by holding SPACE (a
+// pad's A) `hold` s; let go before, it drains back `drain` times as fast. The hint shows `hint` s into the page, over
+// `fade` s; a key already down when the page opened must be let go first.
+export const SKIP = { hold: 0.9, drain: 3, hint: 0.6, fade: 0.3 };

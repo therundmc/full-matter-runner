@@ -23,7 +23,6 @@ test('cinematic: three comic pages in order, black between them, then the level 
   const last = PAGES.at(-1).panels;
   assert.ok(CINE.strike > last[0].at && CINE.strike < last[1].at, 'the match is struck in its panel');
   assert.ok(CINE.wake > last[2].at && CINE.wake < PAGES.at(-1).end - 1.5, 'his eye opens, and is seen open');
-  assert.ok(CINE.skipAfter < 1);
 });
 
 test('cinematic: every panel has time to be read before the next drops in, and is down before its page goes', () => {

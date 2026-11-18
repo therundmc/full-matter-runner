@@ -19,7 +19,6 @@ export const CINE = {
   strike: 20.4,           // the match struck, in page three's first panel
   wake: 25.7,             // his eye opens, in its last panel
   out: 0.5,               // s of black after the last page, before the level's card
-  skipAfter: 0.3,         // s after which a key or a click goes straight to the level's card
 };
 
 // the pages, in s since NEW GAME (panel sizes in the title's px: generate_comic.py paints each still at 3 x that)

@@ -124,6 +124,8 @@ src/
                           at, eased; the zoom rests on a whole number of px a world px (pure, unit-tested)
       BossStage.js        the camera on a boss's beats (the 'boss' event; data/bosses.js `shot`): a SHOTS name and the
                           real seconds it holds, asked by Game like a staged level's shot (pure state, unit-tested)
+      Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
+                          `swigUp`, the first start only (pure state, unit-tested)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
@@ -248,7 +250,7 @@ src/
                           TitleScene (the elevated line in front of two glass towers, through a day and a night in a loop) and title/
                           (Draw pixel tools, Layout, Timeline and Cycle: everything as a function of t, unit tested (the cloud
                           deck's slow drift, the train's sound), the day's keyframes in data/daycycle.js; Sky, Towers: the glass towers, Bridge: the truss, Train, Rain: the showers),
-                          Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page)
+                          Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page, Hold: a page skipped by holding SPACE)
     data/                 atmosphere (rain, smoke, neon faults: the look of the air), liquids (the liquid on the floor:
                           solver, floors, kinds and their look), daycycle (the title's day and night), devices (the level's usable things: tuning), controls (gamepad bindings, the cap of each action per device), weapons, wounds (bleeding per weapon), props, materials, destruction (how each prop comes
                           apart), roofs (rooftop scenery), scoring (points, combo, bonuses, par time and grade

@@ -21,18 +21,20 @@ import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
-import { CINE, cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
+import { cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
 import { titleBeats } from './ui/title/Timeline.js';
 import { lookAt as titleLook } from './ui/title/Cycle.js';
 import { titleProposal } from './ui/title/Proposals.js';
-import { LEAP, leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
-import { ENDING, ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
+import { leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
+import HoldSkip, { drawHold } from './ui/cine/Hold.js';
+import { ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import Direction from './systems/Direction.js';
+import Opening from './systems/Opening.js';
 import { drawMurk } from './render/Murk.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
@@ -69,6 +71,8 @@ export default class Game {
     this.padAimAt = null;              // the right stick's virtual cursor: { angle, reach, idle } (padAim)
     this.camera = new Camera();
     this.direction = new Direction();  // the camera's shots where a level is staged (the prologue)
+    this.opening = new Opening(null);  // level 1's opening on the camera (startLevel)
+    this.skip = new HoldSkip();        // a comic page skipped by holding SPACE (ui/cine/Hold.js)
     this.taught = new Set();           // the lessons already given this run (systems/Tutorial.js)
     this.murk = 0;                     // 0..1: how far thick smoke has closed the view in (render/Murk.js)
     this.state = 'loading';
@@ -135,6 +139,7 @@ export default class Game {
 
   setState(s) {
     if (s !== 'play') this.introOut = null; // the level's card opens over play only (leaveIntro)
+    this.skip.reset();
     this.state = s; this.stateT = 0; this.grab = null; this.menuRects = [];
   }
 
@@ -202,6 +207,7 @@ export default class Game {
     // he gets up off the ground the first time only: a retry starts on his feet, at once
     if (this.seen === this.levelId && !this.world.tutorial?.scene) { this.world.player.sit = 0; this.world.player.swig = null; }
     this.seen = this.levelId;
+    this.opening = new Opening(this.world.player); // the bottle's shots, where he opens on it
     this.best = loadBest(this.levelId);
     this.ranked = true; // until the sandbox panel is opened
     this.replay.stop();
@@ -211,7 +217,7 @@ export default class Game {
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
     // a staged level opens on its first shot, no easing
-    const shot = this.world.tutorial?.shot();
+    const shot = this.stagedShot();
     this.direction.reset();
     this.direction.set(shot?.name, shot?.at, true, this.camera.zoom);
     this.camera.scale = this.direction.zoom;
@@ -395,11 +401,11 @@ export default class Game {
       return;
     }
     if (this.state === 'cinematic') {
-      // the opening plays by itself; a key or a click, or its end, goes on to the level's card
+      // the opening plays by itself; SPACE held, or its end, goes on to the level's card
       Music.setIntensity(0);
       for (const b of cineBeats(this.cineT, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
       this.cineT = this.stateT;
-      const skip = this.stateT > CINE.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      const skip = this.holdSkip(dt);
       inp.consume();
       this.updateCamera(dt);
       if (skip || cineView(this.stateT).over) this.setState('intro');
@@ -417,11 +423,11 @@ export default class Game {
     }
 
     if (this.state === 'ending') {
-      // the level's closing page: the world waits behind it; a key or a click goes on to the results
+      // the level's closing page: the world waits behind it; SPACE held goes on to the results
       Music.setIntensity(0);
       for (const b of endingBeats(this.ending, this.endingT, this.stateT)) Audio.play(b.name, { vol: b.vol, ...b.opts });
       this.endingT = this.stateT;
-      const skip = this.stateT > ENDING.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      const skip = this.holdSkip(dt);
       inp.consume();
       if (skip || endingView(this.ending, this.stateT).over) this.showResults();
       return;
@@ -430,11 +436,11 @@ export default class Game {
     // play / dead / outro: run the simulation (R reloads while alive, restarts once dead; Backspace restarts anytime)
     if (inp.hit('Backspace') || (this.state === 'dead' && inp.hit('KeyR'))) { this.newGame(); inp.consume(); return; }
     if (this.state === 'fall' && this.stateT >= FALLEN) {
-      // the leap: the world is no longer seen and waits; a key or a click goes on to the next level
+      // the leap: the world is no longer seen and waits; SPACE held goes on to the next level
       const lt = this.stateT - FALLEN;
       for (const b of leapBeats(this.leapT, lt)) Audio.play(b.name, { vol: b.vol, ...b.opts });
       this.leapT = lt;
-      const skip = lt > LEAP.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
+      const skip = this.holdSkip(dt);
       inp.consume();
       if (skip || leapView(lt).over) {
         const done = this.levelId;
@@ -504,6 +510,9 @@ export default class Game {
     this.flashA = Math.max(0, this.flashA - dt * 3);
     if (this.state === 'outro' && outroOver(this.world.outro)) this.endOutro();
   }
+
+  // a comic page is skipped by holding SPACE (a pad's A: bound to it, data/controls.js), nothing else (ui/cine/Hold.js)
+  holdSkip(dt) { return this.skip.update(dt, this.input.down('Space') || this.input.down('PadA')); }
 
   // the results (ui/Results.js): R / Y retries; ENTER / SPACE / A / a click first fills the screen at once, then goes
   // on to the next level (the menu after the last); ESC / START / B go to the menu. Its ticks and stamp are heard here.
@@ -606,6 +615,13 @@ export default class Game {
   // a volume changed: heard at its new level (the music speaks for itself)
   audible(key) { if (key === 'master' || key === 'sfx') Audio.play('ui'); }
 
+  // the camera's shot: the tutorial's staging, level 1's opening (systems/Opening.js) or a boss's beat
+  // (systems/BossStage.js); null: the usual view
+  stagedShot() {
+    const w = this.world;
+    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot();
+  }
+
   updateCamera(dt) {
     const w = this.world;
     if (!w) return;
@@ -618,7 +634,7 @@ export default class Game {
     if (len > max) { ox *= max / len; oy *= max / len; }
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
-    const D = this.direction, shot = w.tutorial?.shot() ?? w.bossStage.shot(); // ... or a boss's beat (systems/BossStage.js)
+    const D = this.direction, shot = this.stagedShot();
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom;
@@ -744,6 +760,7 @@ export default class Game {
       if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, 'pause', this.input.device);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
+      if (this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN)) drawHold(ctx, W, H, this.skip, this.input.device);
     });
   }
 

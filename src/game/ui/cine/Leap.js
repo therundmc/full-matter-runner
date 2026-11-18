@@ -14,7 +14,6 @@ export const LEAP = {
   later: 1.7,             // the card drops in ...
   type: 2.05,             // ... and "THE NEXT DAY." is typed in its caption
   end: 4.4,
-  skipAfter: 0.4,
   line: 'THE NEXT DAY.',
 };
 

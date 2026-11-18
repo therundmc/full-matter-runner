@@ -64,7 +64,7 @@ export default class Player extends Character {
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.pinned = false;    // sat there, no key gets him up yet
-    this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
+    this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go, hit }
     this.rising = false;
     this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d }
     this.slide = null;      // Slide kinematics while sliding
@@ -354,12 +354,13 @@ export default class Player extends Character {
       const a = this.angle, c = Math.cos(a), s = Math.sin(a), x0 = this.x + c * 14, y0 = this.y + s * 14;
       let d = 0;
       while (d < T.reach && !w.map.solidAt(x0 + c * (d + 6), y0 + s * (d + 6))) d += 4;
+      g.hit = { x: x0 + c * d, y: y0 + s * d }; // where it breaks (the camera looks there: systems/Opening.js)
       const dur = d / T.speed, img = spriteOpt('items/bottle');
       const bottle = img && new Debris(w, img, x0, y0, a, c * T.speed, s * T.speed, 0.5, { material: 'glass', kg: 0.5, fly: dur + 0.1 });
       if (bottle) w.addDebris(bottle);
       w.sound('throw', this.x, this.y, 0.6);
       w.after(dur, () => {
-        const x = x0 + c * d, y = y0 + s * d;
+        const { x, y } = g.hit;
         if (bottle) w.removeDebris(bottle);
         w.particles.glass(x, y, a + Math.PI, 1.2, 16, 220);
         w.decals.smear(x, y, a + Math.PI / 2, 9, '#3a2410', 0.35); // what was left of the rum, down the wall

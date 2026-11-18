@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { ENDING, ENDINGS, RING, ringing, endingView, endingBeats } = await load('game/ui/cine/Ending.js');
+const { ENDINGS, RING, ringing, endingView, endingBeats } = await load('game/ui/cine/Ending.js');
 const { TYPE } = await load('game/ui/cine/Page.js');
 const META = (await load('audio/Audio.js')).META;
 
@@ -21,7 +21,6 @@ test('ending: level 1 has its closing page, three panels in order, then over', (
   assert.equal(endingView(E, E.end - 0.01).panels, 3);
   assert.ok(endingView(E, E.end).over);
   assert.equal(E.page.end, E.end);
-  assert.ok(ENDING.skipAfter > 0 && ENDING.skipAfter < 1);
 });
 
 test('ending: every panel has time to be read, the closing line is typed and stays a while', () => {
