@@ -326,6 +326,9 @@ export default class Door {
       const at = Math.atan2(dy, dx), half = Math.asin(Math.min(1, (ch.radius + LEAF.thick / 2 - 1) / Math.max(r, 1)));
       const was = angDiff(at, this.lastA), now = angDiff(at, a);
       if (Math.abs(was) < half || (Math.abs(now) >= half && Math.sign(now) === Math.sign(was))) continue;
+      // crossing the line straight away from him (was / now round the turn) is not sweeping through him: a man
+      // the far side of the wall by the hinge would pull the leaf through it to him
+      if (Math.abs(was - now) > Math.PI) continue;
       const to = at + Math.sign(was) * half;
       if (!best || Math.abs(angDiff(this.lastA, to)) < Math.abs(angDiff(this.lastA, best.a))) best = { a: to };
       this.slam(ch);

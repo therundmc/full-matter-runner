@@ -1762,7 +1762,7 @@ function variantPose(f, what, u, td, d, V, C) {
 }
 
 export function takedownPose(ch, P, V) {
-  const td = ch.takedown, f = td.f, d = ch.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  const td = ch.takedown, f = td.f, d = td.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
   const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1), D = td.d, side = td.side;
   const thud = Math.exp(-td.hit * 14), first = td.i === 0 && !td.done;
   const kick = td.done && what === 'shot' ? Math.exp(-td.t * 9) : 0;

@@ -28,6 +28,7 @@ const { default: Scoring, killTags } = await load('game/systems/Scoring.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Character } = await load('game/entities/Character.js');
 const { default: Player } = await load('game/entities/Player.js');
+const { newPose, takedownPose } = await load('game/entities/CharacterAnim.js');
 
 const { Body } = Matter;
 const noop = () => {};
@@ -220,6 +221,27 @@ test('break: a finisher uses the weapon up on the kill and breaks it on its last
   r.startTakedown(k, { f: TAKEDOWNS.blade });
   while (r.takedown && r.world.time < 3) { r.world.time += 1 / 60; r.updateTakedown(1 / 60); }
   assert.equal(r.weapon.wear, WEAPONS.knife.wear - WEAR.man);
+});
+
+test('break: a club that breaks on a takedown\'s kill leaves the pose whole through the rest of the move', () => {
+  // (QA lab 61043: CRACK SKULL with a bat on its last blow; the hands went NaN through `after`, fists in hand)
+  for (const f of [TAKEDOWNS.club, TAKEDOWNS.hobble]) {
+    const p = fighter('bat'), w = p.world;
+    p.weapon.wear = 1;
+    const g = { alive: true, x: 14, y: 0, angle: 0, voice: 1, held: null, knocked: 0, yielded: false, body: Matter.Bodies.circle(14, 0, 10),
+      kill(a, cause, killer, by, how) { this.alive = false; Object.assign(this, { how }); } };
+    p.startTakedown(g, { f });
+    let after = 0;
+    while (p.takedown && w.time < 3) {
+      w.time += 1 / 60;
+      p.updateTakedown(1 / 60);
+      if (!p.takedown) break;
+      const P = takedownPose(p, newPose(), newPose());
+      for (const k of ['hl', 'hr', 'wpn']) assert.ok(Number.isFinite(P[k].x) && Number.isFinite(P[k].y), `${f.action} ${k} at ${w.time.toFixed(2)} s`);
+      if (p.takedown.done && !p.weapon) after++;
+    }
+    assert.ok(g.how.broke && after > 0, `${f.action}: broken on the kill, the move played on after it`);
+  }
 });
 
 // a guard of no particular look (his body: a Corpse) with a pistol, killed through Character.kill

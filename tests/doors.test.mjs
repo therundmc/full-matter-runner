@@ -168,6 +168,25 @@ test('closer: it swings the door back shut within its time and latches, unless s
   assert.ok(Math.abs(d4.rel - 1.2) < 1e-6);
 });
 
+test('door: a man against the wall on the far side, by the hinge, never flips the open leaf through the wall to him', () => {
+  // (QA level 1 61053: the bar's front door at 30,20 found 2 rad open, past its stop, the bot sneaking by it outside)
+  for (const ox of [-20, -14, -8, -4, 2]) {
+    const w = world(), d = door(w), sys = new Doors(w), c = walker(w, d.hx + ox, d.hy + 26);
+    openAt(d, -0.9);
+    d.setSpin(-0.04); // swinging on open, away from him, toward its stop on the north side
+    let worst = -Infinity, prev = d.rel, jump = 0;
+    run(w, sys, 1.5, () => {
+      c.stand();
+      worst = Math.max(worst, d.rel);
+      jump = Math.max(jump, Math.abs(d.rel - prev));
+      prev = d.rel;
+    });
+    assert.ok(worst <= 0, `${ox}: the leaf stayed on its own side (${worst.toFixed(2)})`);
+    assert.ok(jump < 0.2, `${ox}: no jump (${jump.toFixed(2)} rad in a step)`);
+    assert.ok(Math.abs(d.rel) <= d.limit() + 1e-6, `${ox}: within its stop (${d.rel.toFixed(2)})`);
+  }
+});
+
 test('doors: no E on a door (pushed open, its closer shuts it); E is only for the lab\'s doorbell', () => {
   const w = world();
   door(w); door(w, { closer: true });

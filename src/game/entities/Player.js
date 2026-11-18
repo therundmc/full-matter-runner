@@ -66,7 +66,7 @@ export default class Player extends Character {
     this.pinned = false;    // sat there, no key gets him up yet
     this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go }
     this.rising = false;
-    this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d }
+    this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d, def }
     this.slide = null;      // Slide kinematics while sliding
     this.shove = null;      // a guard's shove carrying him back { a, v, t } (see shoved)
     this.slideCd = 0;
@@ -918,9 +918,10 @@ export default class Player extends Character {
     this.nextTakedown = null;
     // wounds: what the beats before the kill did to him, shown on his body after ([where, what])
     // wears: done with the weapon in hand (not a hand in his hair), it takes a blow out of it on the kill
+    // def: the weapon it is played with to the end (CharacterAnim takedownPose), even one that breaks on the kill
     this.takedown = Object.assign(newTakedown(f, !!target.yielded), {
       target, spot, front, side: chance(0.5) ? 1 : -1, d: Math.hypot(target.x - this.x, target.y - this.y) / BODY_SCALE, wounds: [],
-      wears: !spot && !!this.weapon && !!this.def.wear,
+      wears: !spot && !!this.weapon && !!this.def.wear, def: this.def,
     });
     this.contextAction = null;
     this.swing = 0;
