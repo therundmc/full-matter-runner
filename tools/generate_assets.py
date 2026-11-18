@@ -7453,6 +7453,91 @@ def p_poster_band():
     return wall_frame(14, '#2a2a30', face, 7123)
 
 
+def p_conduit():
+    """A run of electrical conduit along a back-of-house wall (the wall at -y): a thin galvanised tube, two saddles
+    screwed into the wall, a junction box with its cover plate, a little rust at the joints."""
+    W = 48
+    cv = Cv(W, 5)
+    zinc = ramp('#868a94', 0.5, 0.25, 0.35)
+    px_paint(cv, 1, 1.5, W - 1, 3.0, lambda x, y, c: zinc[3] if y < 2.0 else zinc[2] if y < 2.5 else zinc[0])
+    for x in (7.0, 39.0):                                              # saddles
+        frect(cv, x, 1.0, x + 1.5, 3.5, zinc[1])
+        cv.dot(x + 0.25, 1.25, lt(zinc[3], 0.2))
+    frect(cv, 20.0, 1.0, 26.0, 4.0, zinc[1])                           # the junction box, its cover lit along the top
+    frect(cv, 20.0, 1.0, 26.0, 1.5, zinc[3])
+    frect(cv, 20.5, 1.5, 25.5, 3.5, zinc[2])
+    for x in (21.0, 25.0):
+        stud(cv, x, 2.5, zinc[1])
+    smudge(cv, random.Random(7131), 4, (1, 1, W - 1, 4), (0.5, 1.2), 0.4, hx('#7a4a26'))
+    cv.outline()
+    return cv
+
+
+def p_flyers():
+    """Bills pasted on a street wall, one over the other, seen from above (the wall at -y): slivers of faded paper, their
+    lower edges torn ragged, a bare patch where one came off, a corner peeling away. No frame, no glass."""
+    W = 26
+    cv = Cv(W, 5)
+    rng = random.Random(7132)
+    # (x0, x1, paper, band colour or None, how far down it still hangs)
+    bills = ((1.5, 7.0, '#cfc5a8', '#9a3a34', 3.4), (6.0, 11.5, '#b98a98', '#2a2630', 3.0),
+             (13.0, 19.0, '#93a8b4', '#c8b25a', 3.6), (18.5, 24.5, '#c4b684', None, 3.2))
+    for (x0, x1, paper, band, low) in bills:
+        col, edge = hx(paper), {}
+
+        def f(x, y, c, x0=x0, col=col, band=band, low=low, edge=edge):
+            k = int(x * cv.s)
+            if k not in edge:
+                edge[k] = low - rng.choice((0.0, 0.0, 0.5, 0.5, 1.0))  # torn: never a straight edge
+            if y >= edge[k]:
+                return None
+            if band and 1.5 <= y < 2.0 and x - x0 > 0.5:
+                return hx(band)
+            return dk(col, 0.25) if y < 1.5 else col if y < edge[k] - 0.5 else lt(col, 0.18)
+        px_paint(cv, x0, 1.0, x1, 4.0, f)
+    cv.dot(12.0, 1.5, hx('#b8b0a0'))                                   # what is left of the one that came off
+    cv.dot(12.5, 1.0, hx('#a8a090'))
+    for k in range(3):                                                 # a corner curling off the wall, lit
+        frect(cv, 23.0 + k * 0.5, 3.0 + k * 0.5, 24.5, 3.5 + k * 0.5, hx('#e6dcb8'))
+    smudge(cv, rng, 3, (1, 1, W - 1, 4), (0.8, 1.6), 0.18)
+    cv.outline(hx('#1a1620', 170))
+    return cv
+
+
+def p_tag():
+    """A tag sprayed on the ground of an alley, from above: three quick strokes of a name nobody reads and a line under
+    it, the paint gone thin where feet and rain have been, a little overspray. No outline: it is in the concrete."""
+    W, H = 30, 18
+    cv = Cv(W, H)
+    rng = random.Random(7133)
+    nz = VNoise(W, H, 6, rng)
+    strokes = (((3.0, 12.0), (6.0, 4.0), (9.0, 11.0), (12.0, 5.0), (14.0, 10.5)),
+               ((16.5, 5.5), (20.0, 4.0), (21.5, 7.5), (17.5, 9.5), (16.5, 12.5), (21.0, 13.0), (25.0, 10.5)),
+               ((4.0, 15.2), (14.0, 14.4), (26.0, 15.4), (24.2, 13.6)))
+    paint = hx('#b0487a')
+
+    def dist(x, y):
+        best = 99.0
+        for pts in strokes:
+            for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+                dx, dy = bx - ax, by - ay
+                t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)))
+                best = min(best, math.hypot(x - ax - dx * t, y - ay - dy * t))
+        for (ax, ay) in ((27.2, 5.0), (27.8, 7.6)):                    # two dots after it
+            best = min(best, math.hypot(x - ax, y - ay) + 0.15)
+        return best
+
+    def f(x, y, c):
+        d, worn = dist(x, y), nz(x, y)
+        if d < 0.7:
+            return None if worn < 0.34 else paint[:3] + (70 if worn < 0.5 else 118,)
+        if d < 1.3 and rng.random() < 0.3 and worn > 0.4:
+            return paint[:3] + (40,)                                   # overspray
+        return None
+    px_paint(cv, 0, 0, W, H, f)
+    return cv
+
+
 def p_dartboard():
     """A dartboard on the wall, seen from above: the black ring of its rim, the board's top half leaning out at us,
     the sectors black and cream, the red and green rings, two darts in it, their flights toward us."""
@@ -7635,10 +7720,11 @@ BAR_PROPS = dict(frame_photo=p_frame_photo, frame_gold=p_frame_gold, poster_figh
                  dartboard=p_dartboard, pay_phone=p_pay_phone, coat_hooks=p_coat_hooks, towel_dispenser=p_towel_dispenser,
                  neon_sign_beer=p_neon_sign_beer, neon_sign_bay=p_neon_sign_bay, poster_pinup=p_poster_pinup,
                  poster_revue=p_poster_revue, mirror_strip=p_mirror_strip, neon_sign_lips=p_neon_sign_lips,
-                 cocktail_table=p_cocktail_table)
+                 cocktail_table=p_cocktail_table, conduit=p_conduit, flyers=p_flyers, tag=p_tag)
 BAR_SIZES = dict(frame_photo=(12, 5), frame_gold=(14, 5), poster_fight=(16, 5), poster_band=(14, 5), dartboard=(11, 5),
                  pay_phone=(10, 7), coat_hooks=(18, 7), towel_dispenser=(9, 5), neon_sign_beer=(36, 14), neon_sign_bay=(26, 14),
-                 poster_pinup=(12, 5), poster_revue=(14, 5), mirror_strip=(44, 4), neon_sign_lips=(24, 12), cocktail_table=(26, 26))
+                 poster_pinup=(12, 5), poster_revue=(14, 5), mirror_strip=(44, 4), neon_sign_lips=(24, 12), cocktail_table=(26, 26),
+                 conduit=(48, 5), flyers=(26, 5), tag=(30, 18))
 BAR_NEON = ['neon_sign_beer', 'neon_sign_bay', 'neon_sign_lips']   # light: at the world's density, with their glow maps
 
 

@@ -52,6 +52,7 @@ SIZES = dict(
     frame_photo=None, frame_gold=None, poster_fight=None, poster_band=None, dartboard=None, pay_phone=None,
     coat_hooks=None, towel_dispenser=None, neon_sign_beer=None, neon_sign_bay=None,
     poster_pinup=None, poster_revue=None, mirror_strip=None, neon_sign_lips=None, cocktail_table=(24, 24),
+    conduit=None, flyers=None,
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
@@ -65,11 +66,11 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
                fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26, frame_photo=10, frame_gold=12, poster_fight=14,
                poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24,
-               poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22)
+               poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22, conduit=46, flyers=24)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
-         'trapdoor', 'rug', 'entry_mat', 'bed')
+         'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 

@@ -20,6 +20,8 @@ const PATCHED = rgb('#4a4c56'), CEMENT = rgb('#55525a'), WORN = rgb('#8a8078'), 
 // the boards of the wood floor, world px from the top of a tile (kept in step with FL_WOOD_ROWS in
 // tools/generate_assets.py: 5, 6, 5, 5, 6, 5); the seam is the last pixel row of each board
 const BOARDS = [0, 5, 11, 16, 21, 27, 32];
+const DAMP = rgb('#3a4a3a'), RUST = rgb('#7a4a26'), STEEL = rgb('#6a707a'), STEEL_L = rgb('#9aa0aa');
+const DRAIN = 5; // px across a floor drain's grate
 const GAP = 20; // px: two marks of a kind never closer on a surface
 
 function hashName(str) {
@@ -553,6 +555,26 @@ const KINDS = {
         const off = Math.abs(wx * dy - wy * dx) / L, n = noise((px / s) / 9, (py / s) / 9);
         const k = smooth(1 - off / (w * (0.6 + 0.6 * n))) * smooth(Math.min(t, 1 - t) * L / 16);
         if (k > 0) P.tint(px, py, (o.d ?? 3) * k, WORN, (o.grey ?? 0.06) * k);
+      }
+    }
+  },
+
+  // a floor drain: the damp gone green round it, a square steel grate five px across sunk in the floor (its rim dark
+  // on the top left, lit on the lower right, as a hollow is), three slots, a streak of rust running to it
+  drain(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 9 + R() * 3, a = R() * TAU;
+    blob(P, x, y, r, r * (0.7 + R() * 0.25), a, ragged(R, 0.3), (px, py, e) => {
+      const w = smooth((1 - e) / 0.5);
+      P.tint(px, py, -6 * w + (e > 0.9 ? -3 : 0), DAMP, 0.16 * w);
+    });
+    const m = walk(P, R, x + Math.cos(a) * 3, y + Math.sin(a) * 3, a, r * 0.9, { curve: 0.1, from: true, wide: 0.4 });
+    apply(P, m, (px, py, k) => P.tint(px, py, -4 * k, RUST, 0.3 * k));
+    const x0 = Math.round(x * s) - Math.floor(DRAIN * s / 2), n = DRAIN * s, y0 = Math.round(y * s) - Math.floor(n / 2);
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const rim = i === 0 || j === 0 ? HOLE : i === n - 1 || j === n - 1 ? STEEL_L : null;
+        const slot = j > 1 && j < n - 2 && i > 1 && i < n - 2 && Math.floor((i - 2) / (s / 2 || 1)) % 2 === 0;
+        P.tint(x0 + i, y0 + j, 0, rim || (slot ? SOOT : STEEL), 1);
       }
     }
   },
