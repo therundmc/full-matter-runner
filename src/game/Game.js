@@ -659,7 +659,8 @@ export default class Game {
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom;
-    const seen = D.aim(p.x + ox * D.look, p.y + oy * D.look);
+    const z = this.camera.zoom * D.zoom, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
+    const seen = D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
     let tx = seen.x, ty = seen.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {

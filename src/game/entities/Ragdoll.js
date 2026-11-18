@@ -25,8 +25,9 @@ const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
 // floor his slide crosses to get there, [fixed, x his speed]; fast, near, early: a body sent flying later (a blast)
 // that hits a wall going faster than `fast` px/step with the wall `near` px ahead of his torso, within `early` s of
 // his death; back: px of his torso's centre off the wall; arch: how short his torso shows seen from above, sat up;
-// slump: px his head comes down over his chest; slam: s he takes to be thrown against it
-const SIT = { speed: 35, reach: [14, 0.4], fast: 2.2, near: 20, early: 1.0, back: 11, arch: 0.55, slump: 3, slam: 0.16 };
+// slump: px his head comes down over his chest; slam: s he takes to be thrown against it; turn: rad at most his torso
+// turns on the way (one that reaches the wall feet or side first does not sit: the slam would whip him round)
+const SIT = { speed: 35, reach: [14, 0.4], fast: 2.2, near: 20, early: 1.0, back: 11, arch: 0.55, slump: 3, slam: 0.16, turn: 1.9 };
 const MARKS_MAX = 12; // wounds shown on one body (a corpse can be shot again and again)
 // the stump of a torn limb pumps: s it lasts, beats per s (rad/s of the beat), how hard it throws at first (0 to 1)
 const STUMP = { dur: 2.6, rate: 11, jet: 0.75 };
@@ -401,7 +402,7 @@ export default class Ragdoll {
     const cell = (v, d) => (Math.floor(v / TILE) + (d < 0 ? 1 : 0)) * TILE;
     const x = ax ? cell(probe.x, sx) - sx * SIT.back : t.position.x, y = ax ? t.position.y : cell(probe.y, sy) - sy * SIT.back;
     const out = Math.atan2(-sy, -sx); // from the wall into the room
-    if (!this.clear(x, y, out, 4, 30)) return;
+    if (Math.abs(angDiff(t.angle, out + 1.5 * Math.PI)) > SIT.turn || !this.clear(x, y, out, 4, 30)) return;
     this.sitDown(x, y, out + 1.5 * Math.PI, { x: x - sx * (SIT.back - 2), y: y - sy * (SIT.back - 2) });
   }
 

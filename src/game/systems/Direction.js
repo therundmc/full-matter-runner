@@ -5,6 +5,7 @@
 // one that keeps it whole (`rest(base)`), so only the move between two shots is drawn at an in-between scale.
 // Pure state, DOM-free.
 import { SHOTS, DIRECTION } from '../data/staging.js';
+import { clamp } from '../../engine/math.js';
 
 export default class Direction {
   constructor(shots = SHOTS, cfg = DIRECTION) {
@@ -21,12 +22,14 @@ export default class Direction {
     this.wants = 0;
     this.look = 1;         // share of the cursor's look-ahead kept
     this.at = null;        // what is looked at: { x, y }
+    this.keep = 0;         // share of the half view the player stays inside (0: anywhere; kept while easing back)
   }
 
   // the shot from now on (a SHOTS name, or null) and what it looks at ({ x, y }, or null); cut: no easing (the
   // level opens on it; base: the camera's pixel zoom, as in rest)
   set(name, at = null, cut = false, base = 0) {
     this.shot = this.shots[name] || null;
+    if (this.shot) this.keep = this.shot.keep ?? 0;
     if (at) this.at = { x: at.x, y: at.y };
     this.wants = at && this.shot ? this.shot.pull : 0;
     if (cut) {
@@ -54,9 +57,13 @@ export default class Direction {
     this.look += ((s?.look ?? 1) - this.look) * f;
   }
 
-  // where the view goes for a player's point (x, y): toward what is looked at, by how far it has been pulled
-  aim(x, y) {
+  // where the view goes for a player's point (x, y): toward what is looked at, by how far it has been pulled; frame
+  // { x, y, hw, hh }: the player and the half view in world px, for a shot that keeps him in the picture (`keep`)
+  aim(x, y, frame = null) {
     const a = this.at, k = a ? this.pull : 0;
-    return { x: x + ((a?.x ?? x) - x) * k, y: y + ((a?.y ?? y) - y) * k };
+    const v = { x: x + ((a?.x ?? x) - x) * k, y: y + ((a?.y ?? y) - y) * k };
+    if (!frame || !this.keep || !k) return v; // the pull gone: his own look-ahead is his again
+    const kx = frame.hw * this.keep, ky = frame.hh * this.keep;
+    return { x: clamp(v.x, frame.x - kx, frame.x + kx), y: clamp(v.y, frame.y - ky, frame.y + ky) };
   }
 }

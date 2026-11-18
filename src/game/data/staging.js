@@ -4,7 +4,8 @@
 
 // ---- the camera (systems/Direction.js): a shot is a zoom on top of the usual view (1; 2: twice as close) eased
 // toward at `ease` 1/s, and how far the view goes to what the shot looks at when it looks at something (`pull`:
-// 0 stays on the player, 1 goes all the way; `look`: share of the cursor's look-ahead kept)
+// 0 stays on the player, 1 goes all the way; `look`: share of the cursor's look-ahead kept; `keep`: the player stays
+// inside that share of the half view, however far what is looked at is: a shot in a fight never loses him)
 export const SHOTS = {
   wake: { zoom: 2.3, ease: 6, pull: 0, look: 0 },          // his eye snaps open: very close on him
   laugh: { zoom: 1.7, ease: 2.6, pull: 1, look: 0 },       // the man with the match, pushed in on
@@ -19,9 +20,9 @@ export const SHOTS = {
   run: { zoom: 0.75, ease: 1.5, pull: 0.35, look: 0.5 },   // the run for the window, the fire coming down the corridor
   dive: { zoom: 0.7, ease: 2.5, pull: 0, look: 0 },
   // a boss's beats (systems/BossStage.js, data/bosses.js `shot`)
-  bossIntro: { zoom: 1.35, ease: 6, pull: 0.6, look: 0.2 },  // he lays eyes on the player: pushed in, mostly on him
-  bossHurt: { zoom: 1.3, ease: 8, pull: 0.4, look: 0.5 },    // the first hit
-  bossDown: { zoom: 1.6, ease: 3, pull: 0.75, look: 0 },     // he goes down: it lingers on him
+  bossIntro: { zoom: 1.35, ease: 6, pull: 0.6, look: 0.2, keep: 0.75 }, // he lays eyes on the player: pushed in on him
+  bossHurt: { zoom: 1.3, ease: 8, pull: 0.4, look: 0.5, keep: 0.75 },   // the first hit
+  bossDown: { zoom: 1.6, ease: 3, pull: 0.75, look: 0, keep: 0.75 },    // he goes down: it lingers on him
 };
 export const DIRECTION = {
   focus: 3.2,              // 1/s the view goes to (and comes back from) what a shot looks at

@@ -331,3 +331,27 @@ test('env takedown: smashed into a wall he slumps down it and stays sat against 
   assert.ok(t.x > 32 && t.x < 32 + 14 && Math.abs(t.y - 80) < 1, `his back to the wall: ${t.x.toFixed(1)}, ${t.y.toFixed(1)}`);
   assert.ok(r.dying.P.head.a !== 0, 'his head lolled to a side');
 });
+
+// QA level 1 seed 61101: a man run over and sent flying hit a wall the wrong way round, and the slam into a sit
+// whipped him half a turn round in a sixth of a second
+test('a body sent flying into a wall sits against it only if it gets there back first, never whipped round', async () => {
+  const { w } = await deadWorld();
+  const { default: Ragdoll } = await load('game/entities/Ragdoll.js');
+  const { angDiff } = await load('engine/math.js');
+  // thrown slowly (no sit at death) 14 px off the south wall (its face at y = 160), then going fast at it
+  const fly = (dir) => {
+    const r = new Ragdoll(w, 'thug', 96, 160 - 14, dir, 30, {});
+    r.update(1 / 60);
+    for (const p of r.parts) Matter.Body.setVelocity(p.body, { x: 0, y: 4 });
+    const a0 = r.torso.body.angle;
+    let most = 0;
+    for (let i = 0; i < 30; i++) { r.update(1 / 60); most = Math.max(most, Math.abs(angDiff(a0, r.torso.body.angle))); }
+    return { r, most };
+  };
+  const back = fly(Math.PI / 2); // laid out the way he goes: his head toward the wall
+  assert.ok(back.r.dying?.sat, 'head first: slammed sat against it');
+  assert.ok(back.most < 1, `and barely turned: ${back.most.toFixed(2)}`);
+  const feet = fly(-Math.PI / 2); // his feet toward the wall
+  assert.ok(feet.most < 2, `feet first: not whipped round (${feet.most.toFixed(2)} rad)`);
+  assert.ok(!feet.r.dying?.sat, 'and not sat');
+});

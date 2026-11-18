@@ -19,6 +19,7 @@ const { default: Boss, struckSide } = await load('game/entities/Boss.js');
 const { default: Director } = await load('game/ai/Director.js');
 const { default: Player } = await load('game/entities/Player.js');
 const { default: BossStage } = await load('game/systems/BossStage.js');
+const { default: Direction } = await load('game/systems/Direction.js');
 const { default: KillFeed } = await load('game/ui/KillFeed.js');
 const { killTags } = await load('game/systems/Scoring.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
@@ -276,6 +277,33 @@ test('cueball: the card and the camera on his beats, the soundtrack pushed up', 
   assert.equal(stage.shot().at.x, 120, 'it stays where he fell');
   for (const [name, hold] of Object.values(C.shot)) assert.ok(SHOTS[name] && SHOTS[name].zoom > 1 && hold > 0, name);
   assert.ok(AI.heat.boss >= AI.heat.kill);
+});
+
+// QA lab seed 61091: CUEBALL shot down 300 px off, the camera lingered on him and lost the player for a second
+test('cueball: his beats push the camera toward him but never lose the player', () => {
+  const W = 1547, H = 870, base = 3; // the window the QA saw, its whole pixel zoom
+  for (const [name] of Object.values(C.shot)) {
+    for (const [dx, dy] of [[300, 0], [0, 200], [-260, 180], [40, 20]]) {
+      const d = new Direction(), p = { x: 1000, y: 600 };
+      d.set(name, { x: p.x + dx, y: p.y + dy });
+      for (let i = 0; i < 300; i++) d.update(1 / 60, base);
+      const hw = W / (base * d.zoom) / 2, hh = H / (base * d.zoom) / 2;
+      const v = d.aim(p.x, p.y, { x: p.x, y: p.y, hw, hh });
+      assert.ok(Math.abs(v.x - p.x) < hw * 0.9 && Math.abs(v.y - p.y) < hh * 0.9, `${name} ${dx},${dy}: view at ${(v.x - p.x).toFixed(0)},${(v.y - p.y).toFixed(0)} of +-${hw.toFixed(0)},${hh.toFixed(0)}`);
+      const free = d.aim(p.x, p.y);
+      if (Math.abs(free.x - p.x) < hw * 0.5 && Math.abs(free.y - p.y) < hh * 0.5) assert.deepEqual(v, free, `${name} ${dx},${dy}: close, the shot as written`);
+      else assert.ok(Math.hypot(v.x - p.x, v.y - p.y) > 20, `${name} ${dx},${dy}: still pulled his way`);
+    }
+  }
+});
+
+test('cueball: once his beat is over, the long look (Shift) is the player\'s again', () => {
+  const d = new Direction(), p = { x: 1000, y: 600 }, frame = { x: p.x, y: p.y, hw: 190, hh: 107 };
+  d.set('bossDown', { x: p.x + 300, y: p.y });
+  for (let i = 0; i < 120; i++) d.update(1 / 60, 3);
+  d.set(null);
+  for (let i = 0; i < 600; i++) d.update(1 / 60, 3);
+  assert.deepEqual(d.aim(p.x, p.y + 240, frame), { x: p.x, y: p.y + 240 }, 'not clamped to the boss shot\'s keep');
 });
 
 test('lab: a CUEBALL station, the boss awake in his room, what to hit him with at his door, its stencil', () => {
