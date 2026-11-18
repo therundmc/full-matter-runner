@@ -38,6 +38,8 @@ export const PROPS = {
   bike: { static: true, material: 'metal', w: 44, h: 10, hp: 6, chips: '#c8402c', sparks: true, sound: 'metal' },
   bin_bag: { material: 'fabric', r: 6.5, hp: 3, kg: 6, mu: 0.6, chips: '#2c2e3a', sound: 'wood' },
   jerrycan: { material: 'metal', w: 9, h: 11, hp: 8, kg: 9, mu: 0.4, chips: '#c8281e', sound: 'metal' },
+  // a laundromat's plastic basket, a load of washing in it (level 1: the man doing his laundry)
+  laundry_basket: { material: 'plastic', w: 18, h: 13, hp: 4, kg: 4, mu: 0.55, chips: '#3a86c8', sound: 'wood' },
   // a wall urinal (the wall behind it) and the partition between two toilets (its bracket end on the wall)
   urinal: { material: 'ceramic', w: 12, h: 10, hp: 5, static: true, chips: '#eee', sound: 'glass', water: true },
   stall: { material: 'wood', w: 4, h: 48, hp: 9, static: true, chips: '#8a9aa6', sound: 'wood' },

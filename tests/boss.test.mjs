@@ -74,10 +74,10 @@ function room() {
 }
 
 test('level 1: the boss of the back room is CUEBALL, his own kind at the boss post, with the pump-action', () => {
-  assert.equal(level1.looks['28,9'], 'cueball');
-  assert.equal(level1.jobs['28,9'], 'cueball');
-  assert.ok(BOSSES[level1.looks['28,9']] && POSTS.cueball && BARKS.cueball.length >= 3);
-  assert.equal(level1.actors[9][28].toLowerCase(), 'h', 'the actor that carries the shotgun');
+  assert.equal(level1.looks['28,7'], 'cueball');
+  assert.equal(level1.jobs['28,7'], 'cueball');
+  assert.ok(BOSSES[level1.looks['28,7']] && POSTS.cueball && BARKS.cueball.length >= 3);
+  assert.equal(level1.actors[7][28].toLowerCase(), 'h', 'the actor that carries the shotgun');
   assert.equal(Object.values(level1.looks).filter((k) => BOSSES[k]).length, 1, 'one boss');
   const { b } = room();
   assert.ok(b instanceof Enemy && b.boss && b.kind === 'cueball' && b.weapon.type === 'shotgun');

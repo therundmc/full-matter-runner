@@ -10,8 +10,11 @@
 //   pockets, bag   how a passer-by carries his hands                count   bills peeled off a wad, one by one
 //   door   a doorman: arms folded, his eyes on whoever comes near   wipe    a bartender polishing a glass
 //   sleep  lying on his cardboard until something wakes him   hood    leant on a parked car, a hand on its hood, smoking
+//   arcade a game at the cabinet: the stick, the buttons; between two a slap on its side and a coin (arcadeAt)
+//   laundry  his load out of the machine, shaken out, folded and laid on the pile, now and then a look at his watch
+//          (laundryAt)
 import { TILE } from '../Config.js';
-import { clamp, angDiff, lerp, rand, frac, bump, smooth } from '../../engine/math.js';
+import { clamp, angDiff, lerp, rand, frac, bump, smooth, hash } from '../../engine/math.js';
 
 const CYCLE = 5;     // s between two pool strokes
 const STRIKE = 0.8;  // share of the cycle at which the cue hits the ball
@@ -76,6 +79,54 @@ export function clap(t, seed) {
 
 // relieving himself: t s at it, `left` s to go; a moment to get ready, a moment to shake off
 export const pours = (t, left) => t > 0.9 && left > 1.3;
+
+// ---------------- the arcade ----------------
+// A game every `round` s (one cabinet's player from another: seed); its last `between` s are the beat between two:
+// lost, a slap on the cabinet's side, a look round, a coin in. In a game the stick is worked in bursts (stick -1 ..
+// 1: hard left .. hard right) and the fire button hammered `press` times a second, with lulls.
+export const ARCADE = { round: 32, between: 4.5, press: 6.5, slap: [0.05, 0.25], coin: [0.62, 0.9] };
+export function arcadeAt(t, seed) {
+  const A = ARCADE, u0 = t / A.round + seed, n = Math.floor(u0), u = u0 - n, end = 1 - A.between / A.round;
+  if (u >= end) {
+    const k = (u - end) / (1 - end);
+    return { play: false, n, k, stick: 0, press: 0, slap: k >= A.slap[0] && k < A.slap[1], coin: k >= A.coin[0] && k < A.coin[1] };
+  }
+  const s = t * 2.3 + n * 1.7 + seed * 5;
+  const busy = Math.sin(t * 0.9 + n) > -0.45; // a lull now and then
+  const stick = busy ? clamp(Math.sin(s) * 0.75 + Math.sin(s * 3.3) * 0.45, -1, 1) : 0;
+  const press = busy && frac(t * A.press + seed) < 0.45 ? 1 : 0;
+  return { play: true, n, k: u / end, stick, press, slap: false, coin: false };
+}
+
+// ---------------- the laundry ----------------
+// A man doing his washing at a top loader: piece after piece out of the drum (reach, pull), shaken out, folded in two
+// then in four, laid on the pile on the next machine's lid (lay); every `pile`-th piece he lays on it and carries the
+// whole pile over to his basket (carry). Every `pause`-th turn a look at his watch instead. Each turn lasts `each` s,
+// a little more or less (by seed and turn); its phases end at these shares of it. Returns the turn n, k (0..1 into
+// it), u (0..1 into its phase), the phase, pile (pieces on the pile now: carried off half way through a carry) and
+// piece (which of the pieces of washing, render/PastimeArt.js PIECES, is in his hands).
+export const LAUNDRY = {
+  each: [4.6, 6.2], pause: 5, pile: 5,
+  phases: [['reach', 0.16], ['pull', 0.3], ['shake', 0.44], ['fold', 0.8], ['lay', 0.94], ['back', 1]],
+};
+export function laundryAt(t, seed) {
+  const L = LAUNDRY, len = (n) => L.each[0] + (L.each[1] - L.each[0]) * hash(seed * 3.1 + n * 1.7);
+  // whole turns gone by (each of its own length), then how far into this one
+  let n = 0, at = Math.max(0, t) + frac(seed) * len(0);
+  for (let d = len(0); at >= d; d = len(++n)) at -= d;
+  const k = at / len(n), piece = Math.floor(hash(n * 2.3 + seed) * 5);
+  const laid = n - Math.floor(n / L.pause), held = laid % L.pile; // pieces laid before this turn; on the pile now
+  if (n % L.pause === L.pause - 1) return { n, k, u: k, phase: 'watch', pile: held, piece };
+  let phase = 'back', from = 0, u = 0;
+  for (const [name, upTo] of L.phases) {
+    if (k < upTo) { phase = name; u = (k - from) / (upTo - from); break; }
+    from = upTo;
+  }
+  const full = held === L.pile - 1; // this piece tops the pile: the lot goes to the basket
+  if (phase === 'lay' && full) phase = 'carry';
+  const pile = phase === 'back' ? (full ? 0 : held + 1) : phase === 'carry' ? (u < 0.5 ? L.pile : 0) : held;
+  return { n, k, u, phase, pile, piece };
+}
 
 // where a guard standing at (x, y) goes to relieve himself: { x, y, face, wall } or null. Out in a yard or an alley,
 // against the nearest wall; on bathroom tiles, at the nearest urinal (squarely in front of it), else in front of the

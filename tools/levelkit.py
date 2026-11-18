@@ -44,7 +44,7 @@ SIZES = dict(
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
     ceiling_fan=None, mirror_ball=None, extinguisher=None,
     fuse_box=None, emergency_light=None, urinal=(12, 10), stall=(4, 48),
-    apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11),
+    apt_door=None, radiator=None, bike=(44, 12), bin_bag=(13, 12), jerrycan=(9, 11), laundry_basket=(18, 13),
     ladder=(30, 30), parapet=(32, 10), ac_unit=(46, 32), roof_vent=(13, 13), water_tank=(48, 48),
     velvet_rope=(30, 6), sandwich_board=(16, 12), ash_urn=(10, 10), neon_sign_mirage=None, neon_sign_open=None,
     vending=(26, 20), phone_booth=(24, 24), parking_meter=(5, 5), news_box=(14, 11), pipe_steam=None, pipe_water=None, wall_vent=None,
@@ -74,7 +74,8 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
-          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab',
+          'arcade', 'laundry', 'arms')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -131,6 +132,7 @@ class Level:
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
+        self.arms = {}        # 'x,y' -> 'fists' | [col, row] where the bare-handed guard's weapon is kept
         self.looks = {}       # 'x,y' -> a kind of his own for the guard there (his sprites: the boss)
         self.awake = []       # 'x,y' of the guards who see and hear in a passive level (the lab's sight tests)
         self.stand = {}       # 'x,y' -> [col, row]: where in his tile a guard stands, off its centre (actor `at`)
@@ -185,8 +187,10 @@ class Level:
         self.tiles[y][x] = ch
 
     # ---- actors: player, guards (UPPERCASE = patrols along `route`), weapons, ammo
-    def actor(self, ch, x, y, face=None, route=None, job=None, look=None, awake=False, at=None):
-        """at: (col, row) where he stands, off his tile's centre (a dummy right at a urinal, a sink, a counter)."""
+    def actor(self, ch, x, y, face=None, route=None, job=None, look=None, awake=False, at=None, arms=None):
+        """at: (col, row) where he stands, off his tile's centre (a dummy right at a urinal, a sink, a counter).
+        arms: a guard who starts bare-handed: 'fists' (a brawler, never picks a weapon up), or (col, row) where his own
+        weapon is kept (a weapon `lean`ed or `drop`ped there, or a weapon actor): he runs for it once the fight is on."""
         x, y = self.tile(x, y, f'actor {ch}')
         route = route and [list(self.at(*q)) for q in route]
         t = self.tiles[y][x]
@@ -203,6 +207,9 @@ class Level:
             self.looks[f'{x},{y}'] = look
         if awake:
             self.awake.append(f'{x},{y}')
+        if arms:
+            assert ch.lower() in GUARDS, f'arms for {ch}, not a guard'
+            self.arms[f'{x},{y}'] = arms if arms == 'fists' else list(self.at(*arms))
         if at:
             ax, ay = self.at(*at)
             assert int(ax) == x and int(ay) == y, f'actor {ch} stands off his tile ({ax},{ay} for {x},{y})'
@@ -478,6 +485,12 @@ class Level:
                 self.check_on_wall(kind, col, row, deg)
         n = sum(ch.lower() in GUARDS for row in self.actors for ch in row if ch.isalpha())
         assert guards is None or n == guards, f'{n} guards, expected {guards}'
+        # a bare-handed guard's weapon is where he will run for it (src/game/entities/Enemy.js keptAt: 1.5 tiles)
+        kept = [(c, r) for (_, c, r, _) in self.leans] + [(c, r) for (_, c, r, *_) in self.drops]
+        kept += [(x + 0.5, y + 0.5) for y, row in enumerate(self.actors) for x, ch in enumerate(row) if ch.isdigit()]
+        for key, a in self.arms.items():
+            if a != 'fists':
+                assert any(math.hypot(c - a[0], r - a[1]) < 1.5 for (c, r) in kept), f'no weapon kept at {a} for the guard at {key}'
         self.check_roofs()
 
     # a piece on a wall face: the wall it hangs on (the nearer tile edge across its depth), along its length (4 px of
@@ -540,6 +553,9 @@ class Level:
             L.append('  },')
         if self.jobs:
             L.append('  jobs: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.jobs.items()) + ' },')
+        if self.arms:
+            L.append('  // bare-handed guards: a brawler (fists), or where his weapon is kept until the fight (Enemy.takeArms)')
+            L.append('  arms: { ' + ', '.join(f"'{k}': {js(v)}" for k, v in self.arms.items()) + ' },')
         if self.looks:
             L.append('  looks: { ' + ', '.join(f"'{k}': '{v}'" for k, v in self.looks.items()) + ' },')
         if self.stand:

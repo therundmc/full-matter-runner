@@ -8,11 +8,11 @@ import { CAT, MASK, TILE } from '../Config.js';
 import { rand, approachAngle, angDiff, clamp, bump } from '../../engine/math.js';
 import { GESTURE, DANCE } from '../data/feel.js';
 import { WALKER } from '../ai/Civilians.js';
-import { talks } from '../ai/Pastimes.js';
+import { talks, arcadeAt, laundryAt } from '../ai/Pastimes.js';
 import { Dance, beatAt } from '../ai/Dance.js';
-import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
+import { pastimeHands, drawPastime, pastimeLean } from '../render/PastimeArt.js';
 import Character from './Character.js';
-import { bodyFrame, dancePose } from './CharacterAnim.js';
+import { bodyFrame, dancePose, postPose } from './CharacterAnim.js';
 
 const { Body, Bounds } = Matter;
 
@@ -44,6 +44,25 @@ const COVER = 0.5;     // how far down one running with his arms over his head g
 // man his size, the crouch is in his pose (mood: hunch, duck); 0.14 drew him a fifth smaller, back to the world's 1x
 const SINK = 0.04;
 export const crouchScale = (crouch) => 1 - Math.min(Math.max(0, crouch), BALL) * SINK;
+
+// the machines a posted man works at, from where he stands: the arcade cabinet ahead of him; the washer ahead (the
+// one he empties) and the one beside it at his right (the pile on its lid). Searched once, within MACHINE px.
+const MACHINE = 44;
+function findMachines(ch, kind) {
+  const c = Math.cos(ch.post.face), s = Math.sin(ch.post.face), near = (type, fwd, side) => {
+    const x = ch.post.x + c * fwd - s * side, y = ch.post.y + s * fwd + c * side;
+    let best = null, bd = MACHINE;
+    for (const p of ch.world.props) {
+      const d = p.type === type && !p.dead ? Math.hypot(p.x - x, p.y - y) : Infinity;
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best;
+  };
+  if (kind === 'arcade') return { cab: near('arcade', 16, 0) };
+  const drum = near('washer', 22, 0);
+  const pile = ch.world.props.find((p) => p.type === 'washer' && p !== drum && !p.dead && Math.hypot(p.x - (ch.post.x + c * 22 - s * 23), p.y - (ch.post.y + s * 22 + c * 23)) < 14) || null;
+  return { drum, pile };
+}
 
 export default class Civilian extends Character {
   constructor(world, x, y, angle, kind, brain) {
@@ -156,6 +175,7 @@ export default class Civilian extends Character {
       }
       if (Math.hypot(hx, hy) > 1.5) this.steer(hx, hy, 0.4, 0.2); else this.steer(0, 0, 0, 0.25);
       if (b.activity === 'chat' && this.mate?.alive) face = Math.atan2(this.mate.y - this.y, this.mate.x - this.x);
+      if (this.post && b.state === WALKER.STOP) this.atMachine();
       if (face !== null && face !== undefined) this.angle = approachAngle(this.angle, face, dt * 5);
       this.stuckT = 0;
       return;
@@ -209,9 +229,39 @@ export default class Civilian extends Character {
     this.lead = f;
   }
 
-  // a dancer's moves over her stance (Character.draw)
+  // a dancer's moves over her stance (Character.draw); a man at the arcade or at his washing leant into it
   ownPose(P) {
     if (this.dance && this.danceW > 0) dancePose(this, P, this.dance, this.danceW * this.danceW * (3 - 2 * this.danceW));
+    else if (this.brain.state === WALKER.STOP && this.post) {
+      const B = pastimeLean(this.pastime, this.world.time, this.seed);
+      if (B) postPose(this, P, null, B);
+    }
+  }
+
+  // What a posted man at a machine does to it (once a step, at his spot): the arcade he plays (its screen in play,
+  // render/PropLife.js; a slap on its side between two games, the coin and the game's bleeps); the washer he empties
+  // (its lid open) and the one he piles his folded washing on (`pile`, drawn on its lid); a piece shaken out
+  atMachine() {
+    const w = this.world, t = w.time, kind = this.brain.activity;
+    if (kind !== 'arcade' && kind !== 'laundry') return;
+    if (this.machines === undefined) this.machines = findMachines(this, kind);
+    const m = this.machines;
+    if (kind === 'arcade') {
+      if (!m.cab || m.cab.dead) return;
+      m.cab.player = this;
+      const f = arcadeAt(t, this.seed), was = this.machineWas;
+      this.machineWas = f;
+      if (!was || m.cab.unpowered || m.cab.lightsOut) return;
+      if (f.slap && !was.slap) w.sound('ding', m.cab.x, m.cab.y, 0.45); // the cabinet rings under the slap (systems/Gadgets.js)
+      if (f.coin && !was.coin) w.sound('arcadeCoin', m.cab.x, m.cab.y, 0.6);
+      if (f.play && Math.floor(t / 2.3 + this.seed) !== Math.floor((t - 1 / 60) / 2.3 + this.seed)) w.sound('arcadePlay', m.cab.x, m.cab.y, 0.5);
+      return;
+    }
+    const f = laundryAt(t, this.seed), was = this.machineWas;
+    this.machineWas = f;
+    if (m.drum && !m.drum.dead) m.drum.lidOpen = true;
+    if (m.pile && !m.pile.dead) m.pile.washing = { n: f.pile, seed: this.seed };
+    if (was && f.phase === 'shake' && was.phase !== 'shake') w.sound('cloth', this.x, this.y, 0.5);
   }
 
   // a runner's feet go from under him: flat out for a moment, sliding, then up and off again

@@ -48,9 +48,9 @@
   const FIRE_ESCAPE = [{ go: [1.5, 21.4] }, { cross: [1.5, 19.3] }]; // up the street corner's ladder onto the liquor store roof
   const DROP_LOT = [{ go: [9.45, 3.5] }, { cross: [11.7, 3.5] }];    // over the parapet, down into the back lot (a roll)
   const DROP_ALLEY = [{ go: [9.45, 12.5] }, { cross: [11.7, 12.5] }]; // ... into the service alley
-  // the liquor store: the pistol lies behind the counter, in the aisle between it and the shelves that leads west to
-  // the foot of the shop's ladder (all of it blocked cells for the grid)
-  const PISTOL = { pick: 'pistol', near: [8.5, 17.5], r: 3, direct: true };
+  // the liquor store: the aisle between its counter and the shelves leads west to the foot of the shop's ladder (all of
+  // it blocked cells for the grid); its pistol is hidden up on the roof, by the lookout's chair over the back lot
+  const PISTOL = { pick: 'pistol', near: [8.6, 4.7], r: 2 };
   const SHOP_DOWN = [{ go: [3.5, 15.45] }, { cross: [3.5, 17.6] }];  // down the shop's own ladder, into the aisle
   const SHOP_UP = [{ to: [3.5, 17.75] }, { to: [3.5, 17.45] }, { cross: [3.5, 15.4] }];
   const COUNTER_IN = [{ go: [8.5, 19.5] }, { cross: [8.5, 17.7] }];  // in by the front door (locked: broken open), over the counter
@@ -65,8 +65,9 @@
       free: { steps: [] },
       trunk: { steps: TIRE_IRON, ok: (w, p) => !p.armed && B.trunks.some((c) => !c.dead && !c.trunk.open) },
       roof: { steps: [...FIRE_ESCAPE, ...DROP_LOT] },
-      roofShop: { steps: [...FIRE_ESCAPE, ...SHOP_DOWN, PISTOL, ...SHOP_UP, ...DROP_ALLEY], ok: (w) => !!itemNear(w, 'pistol', PISTOL.near, 3) },
-      liquor: { steps: [...COUNTER_IN, PISTOL, ...COUNTER_OUT], ok: (w, p) => !p.hasGun && !!itemNear(w, 'pistol', PISTOL.near, 3) },
+      roofShop: { steps: [...FIRE_ESCAPE, ...SHOP_DOWN, ...SHOP_UP, ...DROP_ALLEY] },
+      roofGun: { steps: [...FIRE_ESCAPE, PISTOL, ...DROP_LOT], ok: (w, p) => !p.hasGun && !!itemNear(w, 'pistol', PISTOL.near, 2) },
+      liquor: { steps: [...COUNTER_IN, ...COUNTER_OUT] },
       // the back lot is watched (a patrol, a doorman by the back door): a tire iron first, if the trunk still has it
       fuse: { steps: [...TIRE_IRON, { smash: 'fuse_box', near: [23.5, 4.92], stand: [23.5, 4.3] }], ok: (w) => w.power.on },
       // in the westbound lane until a driver stops and leans on his horn: --god only, drivers see a man in the road

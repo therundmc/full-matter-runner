@@ -35,6 +35,16 @@ import { sprite, spriteOpt, sw } from '../../engine/Assets.js';
 
 const { Body, Bounds } = Matter;
 
+// the weapon kept at `at` { x, y } px: the one lying or leaning nearest it, within a tile and a half (null: taken)
+export function keptAt(items, at) {
+  let best = null, bd = TILE * 1.5;
+  for (const it of items) {
+    const d = it.dead ? Infinity : Math.hypot(it.x - at.x, it.y - at.y);
+    if (d < bd) { bd = d; best = it; }
+  }
+  return best;
+}
+
 // at ease (see pickActivity): what takes his mind off his watch, what takes his hands, what is done in one go,
 // what a round is broken by, and the states in which a weapon stays put away
 const ABSORBING = new Set(['smoke', 'phone', 'chat', 'piss']);
@@ -46,6 +56,8 @@ const DUCK = 1.8; // how far down a bartender ducks behind his counter (1 = knee
 const HANDS = new Set(['smoke', 'phone', 'piss', 'stretch', 'wrist', 'cross']);
 const ONE_GO = new Set(['stretch', 'wrist']);
 const PAUSES = ['smoke', 'phone', 'stretch', 'wrist'];
+// what a guard hears that tells him it has come to a fight (see armsDue)
+const FIGHT = new Set(['gunshot', 'explosion', 'allyFire']);
 const JUNK = 10;  // things a man turning a place over leaves lying on its floor (the rest he throws are papers)
 const S = {
   IDLE: 'idle', PATROL: 'patrol', RETURN: 'return', SUSPICIOUS: 'suspicious', INVESTIGATE: 'investigate', CHECK: 'check',
@@ -132,6 +144,7 @@ export default class Enemy extends Character {
     this.kneel = false; this.crouch = 0;
     this.searchPt = null; this.localPts = null; this.checkTarget = null; this.guardPt = null; this.guardT = 0;
     this.fetchTarget = null; this.friend = null;
+    this.arms = null;          // his weapon kept somewhere until the fight (see takeArms), or a brawler's fists
     this.scanT = rand(0, 0.3);
     this.icon = ''; this.iconT = 0; this.barkT = 0;
     this.pace = rand(0.92, 1.08) * (kind === 'brute' ? 1.12 : heavyBuild(kind) ? 0.9 : 1);
@@ -675,6 +688,8 @@ export default class Enemy extends Character {
     // sat down: he gets up first, and does nothing else until he is on his feet
     if (this.updatePosture(dt)) { this.crouch = Math.max(0, this.crouch - dt * 5); return; }
 
+    // the fight is on and his weapon is kept somewhere: he runs for it first
+    if (this.armsDue()) this.armUp();
     // down behind his counter (see hear): nothing else until he dares look, unless the threat is on him
     if (this.duckT > 0 && this.aware < 2) { this.duckT -= dt; this.halt(); this.kneel = true; }
     else switch (this.state) {
@@ -2042,8 +2057,44 @@ export default class Enemy extends Character {
   }
 
   // ---------------- weapons ----------------
+  // level `arms` (by his tile): 'fists', a brawler who never picks a weapon up; or [col, row], where his own weapon is
+  // kept (the weapon lying or leaning nearest that point): he starts bare-handed and runs for it once the fight is on
+  takeArms(a) {
+    if (!a) return;
+    this.setWeapon(null);
+    this.arms = a === 'fists' ? { fists: true } : { at: { x: a[0] * TILE, y: a[1] * TILE }, done: false };
+  }
+
+  // his weapon is kept somewhere, he has none in hand, and it has come to a fight (he is after the player, shots or a
+  // blast have him on his way to see, or the house is up in arms and he is out looking); not while he keeps his head
+  // down behind a counter, nor with the player on top of him: his fists then
+  armsDue() {
+    const a = this.arms;
+    if (!a || a.fists || a.done || this.weapon || this.duckT > 0) return false;
+    if (this.state === S.FETCH || this.state === S.CHALLENGE || this.state === S.BACKUP) return false;
+    const shots = this.aware === 1 && this.urgent && FIGHT.has(this.stim?.kind);
+    if (!(this.aware === 2 || shots || (this.state === S.SEARCH && this.director.phase === 'alert'))) return false;
+    const p = this.world.player;
+    return !(this.sees && Math.hypot(p.x - this.x, p.y - this.y) < AI.arms.close);
+  }
+
+  // off at a run for his own weapon; gone (the player took it), or no way to it: what there is at hand, or his fists
+  armUp() {
+    const a = this.arms;
+    a.done = true;
+    const it = keptAt(this.world.items, a.at);
+    if (!it || !findPath(this.world.map, this.x, this.y, it.x, it.y)) { if (!this.lookForWeapon() && this.state !== S.COMBAT && this.lastKnown) this.setState(S.COMBAT); return; }
+    const went = this.lastKnown ? null : this.stim; // (on his way to see about shots: he goes on there, armed)
+    this.setState(S.FETCH);
+    this.fetchTarget = it;
+    a.then = went && { ...went };
+    this.react = 0.15;
+    this.say('arm');
+  }
+
   // nearest loaded gun / melee weapon on the floor within reach
   lookForWeapon() {
+    if (this.arms?.fists) return false;
     let best = null, bd = 260;
     for (const it of this.world.items) {
       if (it.dead || it.speed > 2 || (it.def.kind === 'gun' && it.mag <= 0)) continue;
@@ -2059,7 +2110,11 @@ export default class Enemy extends Character {
   doFetch(dt) {
     if (!this.turncoat && this.loseNerve(dt)) return;
     const it = this.fetchTarget;
-    if (!it || it.dead) { this.beginLocalSearch(this.x, this.y, 2); return; }
+    // gone from under his nose, or out of reach: on with what he has (in a fight), else a look round
+    if (!it || it.dead || this.t > AI.arms.giveUp) {
+      if (this.lastKnown && this.aware === 2) { this.setState(S.COMBAT); this.thinkT = 0; } else this.beginLocalSearch(this.x, this.y, 2);
+      return;
+    }
     if (Math.hypot(it.x - this.x, it.y - this.y) < 14) {
       this.setWeapon(it.type, it.mag, it.def.shellReload ? 6 : 1);
       this.weapon.bare = !!it.bare;
@@ -2067,7 +2122,10 @@ export default class Enemy extends Character {
       this.world.sound('pickup', this.x, this.y, 0.5);
       this.pickAnim = 0.35;
       if (this.turncoat) { this.turncoat = false; this.barkT = 0; this.say('turn'); }
+      const then = this.arms?.then;
+      if (this.arms) this.arms.then = null;
       if (this.lastKnown) { this.setState(S.COMBAT); this.thinkT = 0; this.react = Math.max(this.react, 0.3); }
+      else if (then) { this.setState(S.SUSPICIOUS); this.investigate(then.x, then.y, then.kind, true); }
       else this.beginLocalSearch(this.x, this.y, 2);
       return;
     }

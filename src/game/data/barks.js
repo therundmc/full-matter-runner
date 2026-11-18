@@ -67,6 +67,8 @@ export const BARKS = {
   lost: ['WHERE IS HE?', 'SPREAD OUT!', 'FIND HIM!'],
   reload: ['RELOADING!', 'COVER ME!'],
   dry: ["I'M OUT!"],
+  // bare-handed, off at a run for his weapon where it is kept (Enemy.armUp)
+  arm: ['STAY RIGHT THERE!', "YOU'RE GONNA GET IT!", "DON'T YOU MOVE!"],
   body: ['MAN DOWN!', 'OH GOD...', "HE'S DEAD!", 'JESUS...'],
   // a mate killed in front of him (Enemy.witnessKill) / found dead (Enemy.doCheck), by name; the boss
   down: ["{N}'S DOWN!", 'THEY GOT {N}!', '{N}! NO!', 'HE KILLED {N}!', '{N}! OH GOD!'],
@@ -93,7 +95,7 @@ export const BARKS = {
 
 // occasions yelled out loud (a recorded shout goes with the line), and those only muttered
 export const SHOUTED = new Set([
-  'shots', 'panic', 'body', 'lost', 'help', 'dry', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
+  'shots', 'panic', 'body', 'lost', 'help', 'dry', 'arm', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
   'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn', 'stairs', 'sprinkler', 'loud',
   'hey', 'press', 'shove', 'cut', 'what', 'watch',
 ]);

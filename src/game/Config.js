@@ -209,6 +209,11 @@ export const AI = {
   // player within `close` px, may give up too: odds by kind, one roll every `every` s (ai/Squad.js yieldOdds).
   // On his knees, once the player has turned more than `turned` rad away from him (or lost sight of him) for `wait`
   // s, a loaded gun within `grab` px tempts him: odds by kind, one roll a second (Enemy.updateYield).
+  // A guard who starts bare-handed with his weapon kept somewhere (level `arms`: the bartender's bat behind the
+  // counter, a bat against the wall, the cue by the pool table; Enemy.armUp) runs for it once the fight is on, unless
+  // the player is within `close` px of him (he uses his fists); he gives up on it after `giveUp` s on the way (out of
+  // reach) and fights on with what there is. A brawler (`arms` 'fists') never goes for a weapon.
+  arms: { close: 56, giveUp: 7 },
   surrender: {
     squad: 4, odds: 0.55, brute: 0.15, range: 230, beg: [2.4, 4.5],
     unarmed: { thug: 0.45, heavy: 0.3, brute: 0.06 }, close: 170, alone: 420, every: 2.5,
@@ -390,6 +395,9 @@ export const AMBIENT = {
   maxWalkers: 9,           // civilians at once (all paths)
   margin: 3,               // m beyond the map edge (past the vehicle's half length) where traffic spawns / despawns
   prewarm: 0.6,            // fraction of the steady-state traffic / crowd placed on the street when the level starts
+  // a passer-by placed there at the start is never set down within [across, along] m of the player (a retry starts him
+  // on his feet, straight into them): he is moved on along his way, past him
+  startClear: [4, 4],
   // driving
   speedVar: 0.12,          // per car cruise speed spread (fraction of the lane speed)
   accel: 3,                // m/s2 pulling away

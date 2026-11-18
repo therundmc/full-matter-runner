@@ -1,9 +1,12 @@
 // Small lives of the furniture, drawn over it: the balls on a pool table (systems/PoolBalls.js), the snow on a
-// television left on (recipe `snow`), the receiver of a phone booth (prop `handset`), the arcade's attract mode, the
+// television left on (recipe `snow`), the receiver of a phone booth (prop `handset`), the arcade's attract mode (its
+// game when a customer plays it), a washer's lid left open and the washing folded on another's lid, the
 // flies over a bin (level prop option `flies`), a tap dripping in its sink (def `tap`), the till's display; the devices of a level
 // (data/devices.js): the fire alarm flashing.
 
 import { hash } from '../../engine/math.js';
+import { arcadeAt } from '../ai/Pastimes.js';
+import { PIECES } from './PastimeArt.js';
 
 const RIM = '#0a2a18', WHITE = '#f4f2ea';
 const DEVICES = new Set(['fire_alarm']);
@@ -50,7 +53,14 @@ export function drawPropLife(ctx, world, t, vis) {
     const snowy = p.rec?.snow && !p.lightsOut, hook = p.def.handset, device = DEVICES.has(p.type);
     if (p.flies) flies(ctx, p, t);
     if (p.def.tap) inFrame(ctx, p, () => drip(ctx, p.def.tap, dripAt(t, p.x * 0.11 + p.y * 0.07).age));
-    if (p.type === 'arcade') { if (!p.lightsOut && !p.unpowered) inFrame(ctx, p, () => attract(ctx, attractFrame(t, p.x + p.y))); continue; }
+    if (p.type === 'arcade') {
+      if (p.lightsOut || p.unpowered) continue;
+      // a customer at it (Civilian.atMachine): his game on the screen, else the attract mode
+      const pl = p.player, on = pl && pl.alive && !(pl.knocked > 0) && pl.brain.state === 'stop';
+      inFrame(ctx, p, () => (on ? game(ctx, arcadeAt(t, pl.seed), t) : attract(ctx, attractFrame(t, p.x + p.y))));
+      continue;
+    }
+    if (p.type === 'washer' && (p.lidOpen || p.washing?.n)) { inFrame(ctx, p, () => washer(ctx, p)); continue; }
     if (p.type !== 'pool_table' && !snowy && !hook && !device) continue;
     const o = p.centre(), k = p.kick;
     ctx.save();
@@ -170,4 +180,54 @@ function handset(ctx, [hx, hy], age) {
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(x, y); ctx.stroke();
   ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 4);
+}
+
+// the cabinet's screen while a customer plays (ai/Pastimes.js arcadeAt f): the ship goes with his stick, every press
+// a shot, the invaders stepping faster and coming down the screen as the game goes on; between two games the screen
+// blinks its GAME OVER bar
+function game(ctx, f, t) {
+  ctx.fillStyle = SCREEN[0];
+  ctx.fillRect(-2, 2, 4, 1);                          // the still ship of the sprite, wiped
+  ctx.fillRect(-0.5, 1, 0.5, 0.5);
+  if (!f.play) {
+    if (Math.floor(t * 3) % 2) { ctx.fillStyle = '#ff2a6d'; ctx.fillRect(-4, -1, 8, 1); ctx.fillStyle = WHITE; ctx.fillRect(-3, -0.75, 6, 0.5); }
+    return;
+  }
+  const down = Math.min(2, Math.floor(f.k * 5) * 0.5), dx = Math.floor(t / 0.3) % 4;
+  for (const [x0, y, col, line] of INVADERS) {
+    ctx.fillStyle = SCREEN[line];
+    ctx.fillRect(x0 - 1, y, 10, 0.5);
+    ctx.fillStyle = col;
+    for (let i = 0; i < 4; i++) if ((i + f.n) % 5 !== 4) ctx.fillRect(x0 + i * 2 + (dx === 3 ? 1 : dx) - 1, y + down, 1, 0.5);
+  }
+  const sx = Math.round(f.stick * 3) - 1.5;
+  ctx.fillStyle = '#3aff8a';
+  ctx.fillRect(sx, 2, 3, 0.5); ctx.fillRect(sx + 1, 1.5, 1, 0.5);   // the ship
+  if (f.press) { ctx.fillStyle = WHITE; ctx.fillRect(sx + 1.25, 1.5 - ((t * 9) % 1) * 4, 0.5, 0.5); }
+}
+
+// a top loader (24 x 24 px, its console at -y): its lid up against the console, the drum open with the washing in
+// it; on its lid the washing folded and piled by the man beside it (`washing` { n, seed })
+const DRUM = '#2a3038';
+function washer(ctx, p) {
+  if (p.lidOpen) {
+    ctx.fillStyle = '#c8ccd2'; ctx.fillRect(-7.5, -5.6, 15, 1.2);   // the lid, stood up on its hinge
+    ctx.fillStyle = '#8a9098'; ctx.fillRect(-7.5, -4.4, 15, 0.5);
+    ctx.fillStyle = '#5a626c'; ctx.beginPath(); ctx.arc(0, 1.6, 6, 0, Math.PI * 2); ctx.fill();   // the tub's rim
+    ctx.fillStyle = DRUM; ctx.beginPath(); ctx.arc(0, 1.6, 5.2, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 4; i++) {                                    // what is left of the washing in the drum
+      const a = i * 1.7 + 0.4, [col] = PIECES[(i * 3) % PIECES.length];
+      ctx.fillStyle = col; ctx.globalAlpha = 0.75;
+      ctx.fillRect(Math.cos(a) * 2.2 - 1.5, 1.6 + Math.sin(a) * 2.2 - 1, 3, 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+  const w = p.washing;
+  for (let i = 0; i < (w?.n || 0); i++) {
+    const [col, dark] = PIECES[Math.floor(hash(i * 2.3 + w.seed) * PIECES.length)];
+    const ox = (hash(i + w.seed) - 0.5) * 1.2, oy = 3 - i * 0.6;      // each one a little higher up the pile
+    ctx.fillStyle = '#0a0a10'; ctx.fillRect(ox - 3.6, oy - 2.6, 7.2, 5.2);
+    ctx.fillStyle = col; ctx.fillRect(ox - 3, oy - 2, 6, 4);
+    ctx.fillStyle = dark; ctx.fillRect(ox - 3, oy - 0.25, 6, 0.5);
+  }
 }
