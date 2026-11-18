@@ -78,7 +78,9 @@
 
 ## Gameplay
 - A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level
-  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`).
+  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is split in two levels
+  instead: level 2 is 2a (the car chase, ending on the crash into the gas station) and 2b (the gas station fight,
+  restarted from the crash); the FLAMINGO MOTEL (JITTERS) is level 3.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
