@@ -1,6 +1,6 @@
 // Small lives of the furniture, drawn over it: the balls on a pool table (systems/PoolBalls.js), the snow on a
 // television left on (recipe `snow`), the receiver of a phone booth (prop `handset`), the arcade's attract mode, the
-// flies over a bin (level prop option `flies`); the devices of a level
+// flies over a bin (level prop option `flies`), a tap dripping in its sink (def `tap`), the till's display; the devices of a level
 // (data/devices.js): the fire alarm flashing.
 
 const RIM = '#0a2a18', WHITE = '#f4f2ea';
@@ -14,6 +14,22 @@ export const ATTRACT = { step: 0.55, shot: 1.7, flight: 0.45, score: 0.8 };
 export function attractFrame(t, seed = 0) {
   const u = t + hash(seed) * 10, s = Math.floor(u / ATTRACT.step) % 4, into = u % ATTRACT.shot;
   return { dx: s === 3 ? 1 : s, shot: into < ATTRACT.flight ? into / ATTRACT.flight : null, score: Math.floor(u / ATTRACT.score) % 2 === 0 };
+}
+
+// A tap that drips (prop def `tap`: [x, y] px from the prop's centre, where the drop lands in the basin): one drop
+// every few seconds, each tap at its own pace. `n` drops have fallen at time t, the last one `age` s ago. (Heard
+// already: the toilets' soundscape drips at its sink, data/soundscape.js.)
+export const DRIP = { every: [2.2, 3.4], ring: 0.45 }; // s between two drops, s its ring lasts in the basin
+export function dripAt(t, seed = 0) {
+  const period = DRIP.every[0] + (DRIP.every[1] - DRIP.every[0]) * hash(seed * 1.31), u = t / period + hash(seed * 2.7);
+  const n = Math.floor(u);
+  return { n, age: (u - n) * period };
+}
+
+// The till's green display (clutter `till`): steady, its last digit a tired segment that drops out now and then
+export function tillDim(t, seed = 0) {
+  const u = t * 0.9 + hash(seed) * 20;
+  return hash(Math.floor(u) + seed * 3.1) > 0.7 && u % 1 < 0.35;
 }
 
 // where a fly is at time t round the thing it circles (px from it): a slow loop with a quick jitter over it, never
@@ -32,6 +48,7 @@ export function drawPropLife(ctx, world, t, vis) {
     if (p.dead || p.parts || !vis(p.x, p.y)) continue;
     const snowy = p.rec?.snow && !p.lightsOut, hook = p.def.handset, device = DEVICES.has(p.type);
     if (p.flies) flies(ctx, p, t);
+    if (p.def.tap) inFrame(ctx, p, () => drip(ctx, p.def.tap, dripAt(t, p.x * 0.11 + p.y * 0.07).age));
     if (p.type === 'arcade') { if (!p.lightsOut && !p.unpowered) inFrame(ctx, p, () => attract(ctx, attractFrame(t, p.x + p.y))); continue; }
     if (p.type !== 'pool_table' && !snowy && !hook && !device) continue;
     const o = p.centre(), k = p.kick;
@@ -44,6 +61,35 @@ export function drawPropLife(ctx, world, t, vis) {
     else for (const b of world.poolBalls.balls(p)) if (!b.in) ball(ctx, b);
     ctx.restore();
   }
+  if (world.power?.dark) return; // no display without the mains
+  for (const [p, set] of world.clutter?.on || []) {
+    if (p.dead || p.parts || !vis(p.x, p.y)) continue;
+    for (const i of set) if (i.kind === 'till' && i.state === 'on') inFrame(ctx, p, () => till(ctx, i, tillDim(t, p.x + i.x)));
+  }
+}
+
+// the drop landing: a bright pixel, then a ring of four, then a wider, fainter one
+const DROP = '#dff2ff';
+function drip(ctx, [x, y], age) {
+  if (age > DRIP.ring) return;
+  const k = age / DRIP.ring, r = k < 0.2 ? 0 : k < 0.55 ? 1 : 2;
+  ctx.fillStyle = DROP;
+  ctx.globalAlpha = r === 0 ? 0.9 : r === 1 ? 0.55 : 0.28;
+  if (!r) ctx.fillRect(x - 0.25, y - 0.25, 0.5, 0.5);
+  else for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) ctx.fillRect(x + dx * 0.75 - 0.25, y + dy * 0.75 - 0.25, 0.5, 0.5);
+  ctx.globalAlpha = 1;
+}
+
+// the till's display (clutter sprite 13 x 10 px, tools/generate_assets.py c_till: its glow 5 px long at the back): the
+// gaps between its four digits, the last one out when it drops
+function till(ctx, i, dim) {
+  ctx.save();
+  ctx.translate(i.x, i.y);
+  ctx.rotate(i.a);
+  ctx.fillStyle = '#0c2a1a';
+  for (const x of [-2.5, -1, 0.5]) ctx.fillRect(x, 2.3, 0.5, 0.7);
+  if (dim) ctx.fillRect(1, 2.3, 0.5, 0.7);
+  ctx.restore();
 }
 
 // draw in the prop's own frame (its centre, its angle, its shake)

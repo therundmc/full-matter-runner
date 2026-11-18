@@ -21,14 +21,16 @@ export const PROPS = {
   plant: { material: 'ceramic', r: 7.5, hp: 4, kg: 18, mu: 0.5, chips: '#3a8a3a', dirt: true, sound: 'wood' },
   tv: { material: 'plastic', w: 22, h: 15, hp: 4, kg: 30, mu: 0.45, chips: '#222', sparks: true, glass: true, sound: 'glass',
     light: { r: 100, color: '#7fc8ff', intensity: 1, flicker: 'tv', y: 7 } },
-  fridge: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true },
+  // (the cold light that leaks from its door onto the floor in front of it; `lights: false` on one thrown out)
+  fridge: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true,
+    light: { r: 46, color: '#cfeeff', intensity: 0.32, y: 12 } },
   // gas: a round through it lights a jet at the hole, then it goes off after `fuse` s (systems/Gas.js);
   // rocket: odds that a loose bottle takes off on its own jet
   oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true,
     gas: { fuse: [1.6, 2.6] }, blast: 84 },
   gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.38, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
     gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
-  sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
+  sink: { tap: [-5.3, 1],  material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
   // a block of flats: a neighbour's door (shut for good, on its wall), a radiator under a wall, a bicycle leant on
   // one, a bin bag, a jerrycan. What lies flat on its floors (doormats, the stairs, a carpet) is paint: level `floor`.
   apt_door: { fixture: true, static: true, lasting: true, material: 'wood', w: 32, h: 6, hp: 99, chips: '#6a4426', sound: 'wood' },

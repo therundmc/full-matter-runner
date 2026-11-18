@@ -21,6 +21,7 @@ const PATCHED = rgb('#4a4c56'), CEMENT = rgb('#55525a'), WORN = rgb('#8a8078'), 
 // tools/generate_assets.py: 5, 6, 5, 5, 6, 5); the seam is the last pixel row of each board
 const BOARDS = [0, 5, 11, 16, 21, 27, 32];
 const DAMP = rgb('#3a4a3a'), RUST = rgb('#7a4a26'), STEEL = rgb('#6a707a'), STEEL_L = rgb('#9aa0aa');
+const LINT = rgb('#b4bccc');
 const DRAIN = 5; // px across a floor drain's grate
 const GAP = 20; // px: two marks of a kind never closer on a surface
 
@@ -429,9 +430,9 @@ const KINDS = {
     for (let px = xa; px <= xb; px++) { P.tint(px, top - 1, -8); P.tint(px, seam, -6); }
   },
 
-  // a path worn pale by feet (and greyer)
+  // a path worn pale by feet (and greyer); o.r: a small patch that size instead (where heels rest)
   wear(P, R, x, y, o) {
-    const rx = 24 + R() * 36, ry = 8 + R() * 10, d = o.d ?? 4, grey = o.grey ?? 0.08;
+    const rx = o.r ?? 24 + R() * 36, ry = o.r ? o.r * 0.65 : 8 + R() * 10, d = o.d ?? 4, grey = o.grey ?? 0.08;
     blob(P, x, y, rx, ry, R() * TAU, ragged(R, 0.3), (px, py, e) => {
       const w = smooth((1 - e) / 0.6);
       P.tint(px, py, d * w, WORN, grey * w);
@@ -580,12 +581,23 @@ const KINDS = {
   },
 
   // black rubber heel marks
-  scuffs(P, R, x, y) {
-    const m = new Map();
+  scuffs(P, R, x, y, o = {}) {
+    const m = new Map(), k0 = o.k ?? 1; // k: how hard they show
     for (let n = 2 + Math.floor(R() * 4); n > 0; n--) {
       walk(P, R, x + (R() - 0.5) * 24, y + (R() - 0.5) * 24, R() * TAU, 3 + R() * 5, { curve: 0.15, kink: 0, taper: 1.5 }, m);
     }
-    apply(P, m, (px, py, k) => P.tint(px, py, -12 * k, RUBBER, 0.25 * k));
+    apply(P, m, (px, py, k) => P.tint(px, py, -12 * k * k0, RUBBER, Math.min(1, 0.25 * k * k0)));
+  },
+
+  // lint blown out of a dryer and trodden about: a loose cluster of pale grey-blue specks, a few of them darker
+  lint(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 5;
+    for (let n = 7 + Math.floor(R() * 6); n > 0; n--) {
+      const a = R() * TAU, d = r * R() * R(), px = Math.floor((x + Math.cos(a) * d) * s), py = Math.floor((y + Math.sin(a) * d) * s);
+      const dark = R() < 0.25;
+      P.tint(px, py, 0, dark ? ASHEN : LINT, dark ? 0.35 : 0.5);
+      if (R() < 0.3) P.tint(px + 1, py, 0, LINT, 0.3);
+    }
   },
 
   // the lino torn: its pale backing showing, the edge of the tear dark

@@ -290,7 +290,7 @@ for x in (5.0, 6.3):
 lv.prop('ladder', 3.5, 16.5)                            # up to the roof
 lv.prop('bottle_shelf', 8.3, 17.2)                      # behind the counter
 lv.prop('bar_counter', 7.5, 18.4)
-lv.prop('bar_counter', 8.5, 18.4)
+lv.prop('bar_counter', 8.5, 18.4, clutter='shop_till')     # its till, the display left on
 lv.prop('bottle_shelf', 5.0, 18.5)
 lv.prop('fridge', 3.4, 18.5, 270)
 lv.prop('fridge', 3.4, 19.25, 270)
@@ -324,6 +324,15 @@ lv.prop('trash_can', 31.6, 33.35, tips=False)            # indoors: stays up (th
 lv.prop('plant', 31.55, 35.6)
 lv.prop('tube_light', 28.5, 35.93, 180)
 lv.prop('tube_light', 30.5, 35.93, 180)
+# its floor: the drain, the way from the door to the machines, lint trodden about by them, the tide a leak left, a sock
+# nobody came back for
+lv.grime_at('drain', 30.35, 34.6, r=7)
+lv.wear_path(30.5, 33.1, 28.3, 34.9, 9)
+for (x, y) in ((27.75, 35.1), (30.5, 35.35), (31.05, 34.45), (30.2, 33.6)):
+    lv.grime_at('lint', x, y)
+lv.grime_at('tide', 28.5, 34.95)
+lv.grime_at('scuffs', 28.1, 35.05)
+lv.litter_at('sock', 30.65, 35.5, 20)                    # (all of it off the cut line at 29)
 
 lv.area('service alley')
 for x in (11.5, 12.5, 13.5):
@@ -351,7 +360,7 @@ lv.prop('crate', 17.2, 1.45, 5)
 lv.prop('crate', 17.9, 1.5, -10)
 lv.prop('crate', 17.5, 2.15, 30)
 # the junk the bar never had taken away, along the far wall: a fridge, a washer, a dead TV, an armchair, a chair
-lv.prop('fridge', 13.5, 1.42, -6)
+lv.prop('fridge', 13.5, 1.42, -6, lights=False)          # dead: no light at its door
 lv.prop('washer', 13.55, 2.25, 8)
 lv.prop('tv', 16.55, 1.42, 12, lights=False)
 lv.prop('armchair', 18.65, 1.5, 14)
@@ -415,6 +424,11 @@ lv.prop('floor_lamp', 25.4, 10.55)
 lv.prop('cash_case', 30.2, 10.45, 84, clutter='cash_floor')                  # the boss's takings, open on the floor in front of the man
                                                         # who counts them
 lv.prop('extinguisher', 25.9, 10.86, 180)              # on the wall by the door
+# the carpet trodden from the back door to the door of the gaming room, between the couch and the men's table, and
+# worn where the man on the couch rests his heels and under the boss's boots at his desk
+lv.wear_path(26.4, 6.3, 26.75, 10.2, 9)
+lv.grime_at('wear', 26.4, 9.9, r=9, d=5, grey=0.2)
+lv.grime_at('wear', 29.5, 6.9, r=8, d=5, grey=0.2)
 
 lv.area('the bar: counter along the north wall')
 # Walkways (the user: "no room to get through"): a man is drawn 26 px wide, so about 1.2 m of clear floor along every
@@ -467,6 +481,12 @@ lv.prop('chair', 28.35, 14.25, 180)
 lv.prop('bottle_shelf', 25.9, 12.16)
 lv.prop('cash_case', 28.8, 12.6, 15, clutter='cash_floor')
 lv.prop('wall_lamp', 30.91, 13.0, 90)
+# years of games: the carpet's pile trodden flat in a ring round the table where the chairs are pulled in and out, a
+# card and two chips gone under it and never picked up
+lv.grime_at('halo', 26.9, 14.25, r=35, w=7, d=-9, grey=0.2)
+lv.litter_at('card', 28.05, 15.4, 35)
+lv.litter_at('chip', 28.3, 15.15)
+lv.litter_at('chip', 25.95, 15.55)
 
 lv.area('the bar: what can be used')
 # the fire alarm east of the counter, by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
@@ -567,7 +587,7 @@ lv.wear_path(21.5, 19.5, 22.4, 12.3, 10)
 # the way the stock goes, from the alley door to behind the counter; the liquor store: the way from its door to the
 # till, heels along the counter
 for x in (15.65, 16.75, 17.85, 18.95):
-    lv.grime_at('scuffs', x, 14.75)
+    lv.grime_at('scuffs', x, 14.75, k=2.2)
 lv.grime_at('drain', 22.45, 9.3)
 lv.wear_path(22.5, 10.9, 21.8, 8.4, 8)
 lv.grime_at('drain', 18.0, 7.45, r=7)

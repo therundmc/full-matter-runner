@@ -71,6 +71,7 @@ export const SETS = {
   counter_regular: [['coaster', -3, 2, 0], ['pint_half', -3, 2, 0], ['ashtray_lit', 6, 1, 20], ['shot', 11, 2.5, 0], ['napkin_crumpled', 13, -1, 40]],
   counter_middle: [['pint', -9, 1.5, 0], ['coaster', 4, 2, 15], ['peanuts', 9, -0.5, 0], ['pint_empty', -2, -6, 0]],
   counter_pour: [['liquor', -9, -5, 0], ['shot', -4, 2, 0], ['shot', -0.5, 2.5, 0], ['pitcher', 8, 0.5, 30], ['napkin', 13, 2, -15]],
+  shop_till: [['till', 3, -3.5, 0]],                                    // a shop's counter: its till and nothing else
   counter_till: [['till', 4, -3.5, 0], ['ashtray', -9, 1.5, 0], ['napkin_crumpled', -4, 2.5, 0]],
   // the booth's table, the pool table's rail, the poker table, the jukebox's corner
   booth: [['pitcher', -16, -7, 0], ['pint_half', 14, 5, 0], ['napkin', 1, 9, 25], ['ember', 14, -4.5, 0]],

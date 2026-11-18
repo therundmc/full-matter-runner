@@ -1,6 +1,7 @@
 // Small things lying loose on a floor (systems/Litter.js, drawn by render/ClutterArt.js): the banknotes thrown at the
-// dancer, a boa's feathers, a champagne flute knocked over, corks, a garter, an ashtray put down by a sofa. Laid by
-// the level (`litter`: [kind, col, row, deg, look], tools/levelkit.py `litter`); the bills knocked off the furniture
+// dancer, a boa's feathers, a champagne flute knocked over, corks, a garter, an ashtray put down by a sofa, a sock
+// lost in the laundromat, a card and a chip under the poker table. Laid by the level (`litter`: [kind, col, row, deg,
+// look], tools/levelkit.py `litter`); the bills knocked off the furniture
 // land among them (systems/Clutter.js). Sprites clutter/<sprite>, painted fine by tools/generate_assets.py.
 //
 // LITTER[kind]:
@@ -18,6 +19,10 @@ export const LITTER = {
   flute: { sprites: ['flute_down'], r: 3, kick: 55, glass: { kind: 'booze', area: 12 }, sound: 'fluteClink', shadow: true },
   cork: { sprites: ['cork'], r: 1.5, kick: 85, shadow: true },
   garter: { sprites: ['garter'], r: 2.5, kick: 45 },
+  // a sock lost by the laundromat's machines; a card and a chip dropped under the poker table
+  sock: { sprites: ['sock'], r: 2.5, kick: 40 },
+  card: { sprites: ['card'], r: 2, flutter: true, lift: [40, 80], fall: 14, kick: 70 },
+  chip: { sprites: ['chip'], r: 1.5, kick: 85, sound: 'clutterChips' },
   ashtray: { sprites: ['ashtray'], r: 3, kick: 35, sound: 'clutterAshtray', shadow: true },
 };
 

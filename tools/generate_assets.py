@@ -2332,6 +2332,17 @@ def p_card_table():
         c = shift(mix(felt[2], lt(felt[2], 0.2), max(0.0, 0.7 - d / 14)), int((fn(x, y) - 0.5) * 8))
         return lt(c, 0.1) if 9.3 < d <= 10.0 else c     # the betting line
     px_paint(cv, 1, 1, W - 1, H - 1, table)
+    # years of games: the baize rubbed pale where the cards are dealt and the chips pushed, the ring a glass left, a
+    # cigarette's burn in the cloth and one on the rail where it was left to burn down, the padding worn at the elbows
+    wr = random.Random(174)
+    smudge(cv, wr, 4, (13, 11, 47, 27), (2.0, 3.6), 0.13, lt(felt[2], 0.45))
+    ring(cv, 44.4, 21.6, 1.5, 1.95, lambda dx, dy, d: dk(cv.get(44.4 + dx, 21.6 + dy), 0.16) if dx + dy > -1.4 else None)
+    for (bx, by) in ((21.0, 12.5), (35.75, 34.25), (36.25, 34.25)):
+        for (ox, oy) in ((-0.5, 0.0), (0.5, 0.0), (0.0, -0.5), (0.0, 0.5)):
+            cv.dot(bx + ox, by + oy, mix(cv.get(bx + ox, by + oy), hx('#3a2a14'), 0.45))
+        cv.dot(bx, by, hx('#16100c'))
+    for box in ((13, 33, 21, 36), (39, 33, 47, 36), (2, 15, 5, 23)):
+        smudge(cv, wr, 2, box, (1.2, 2.0), 0.3, lt(rail[2], 0.3))
 
     def things(ly):
         chips = ('#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040', '#1a1420')
@@ -4761,6 +4772,56 @@ class Veh:
             if rows:
                 self.setp(i + d, rows[-1], lambda c, s: mix(c, SHEEN, 0.35 if s < 0 else 0.1))
 
+    def inside(self, x0, y0, x1, y1, col, k=0.35, round_=False):
+        """What is seen through the glass (seats, the dashboard, a thing left on it): the world rect x0..x1, y0..y1
+        (any fraction of a px; an ellipse in it with round_), blended into the glass's pixels only, dim: it is night
+        in there. Not mirrored."""
+        s = self.s
+        mx, my, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+        for j in range(int(y0 * s), int(math.ceil(y1 * s))):
+            for i in range(int(x0 * s), int(math.ceil(x1 * s))):
+                if (i, j) not in self.glass:
+                    continue
+                if round_ and (((i + 0.5) / s - mx) / rx) ** 2 + (((j + 0.5) / s - my) / ry) ** 2 > 1.0:
+                    continue
+                self.cv.p[i, j] = mix(self.cv.p[i, j], col, k)
+
+    def wheel(self, x, y, r, col=None, k=0.4):
+        """The steering wheel through the windshield: its rim and a spoke."""
+        s, col = self.s, col or hx('#5c5864')
+        for j in range(int((y - r - 1) * s), int((y + r + 1) * s)):
+            for i in range(int((x - r - 1) * s), int((x + r + 1) * s)):
+                d = math.hypot((i + 0.5) / s - x, (j + 0.5) / s - y)
+                spoke = d < r and abs((j + 0.5) / s - y) < 0.3
+                if (i, j) in self.glass and (abs(d - r) < 0.45 or spoke):
+                    self.cv.p[i, j] = mix(self.cv.p[i, j], col, k)
+
+    def film(self, x0, x1, pivots, r, k=0.11):
+        """A windshield nobody washed: a film of road dust on the glass between x0 and x1, wiped clean in the arcs the
+        blades sweep (pivots: their (x, y) feet, r: the blade's reach), a line of dirt pushed up at the end of each."""
+        s = self.s
+        for (i, j) in sorted(self.glass):
+            x, y = (i + 0.5) / s, (j + 0.5) / s
+            if not x0 <= x <= x1 + 1:
+                continue
+            d = min(math.hypot(x - px, y - py) for (px, py) in pivots)
+            if d > r + 0.5:
+                self.cv.p[i, j] = mix(self.cv.p[i, j], ROAD_DIRT, k * (0.6 + 0.8 * self.rng.random()))
+            elif d > r - 0.5:
+                self.cv.p[i, j] = mix(self.cv.p[i, j], ROAD_DIRT, k * 1.6)
+
+    def dent(self, x, y, r):
+        """A shallow dent in a panel: its upper left wall in shade, its lower right catching the light. Top side only."""
+        s = self.s
+        for j in range(int((y - r) * s), int((y + r) * s) + 1):
+            for i in range(int((x - r) * s), int((x + r) * s) + 1):
+                u, v = ((i + 0.5) / s - x) / r, ((j + 0.5) / s - y) / r
+                d = math.hypot(u, v)
+                if d >= 1.0 or (i, j) not in self.mask or (i, j) in self.glass:
+                    continue
+                t = (u + v) * 0.7 * (1.0 - d * d)
+                self.cv.p[i, j] = lt(self.cv.p[i, j], 0.3 * t) if t > 0 else dk(self.cv.p[i, j], -0.4 * t)
+
     def seal(self):
         """Rubber seals: body pixels touching glass get darker."""
         edge = {(x + a, y + b) for (x, y) in self.glass for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))}
@@ -4888,6 +4949,18 @@ def p_car():
     k.arches(wheels)
     k.trap(34, 45, 19.5, 17.5, sheen=2)                      # rear window
     k.trap(81, 97, 17.5, 21.5, sheen=4)                      # windshield
+    # through the glass, dim: the front seats' backs and the wheel (the driver's on the left), the dashboard and a pack
+    # of cigarettes left on it; behind, the rear seat's back, the parcel shelf and a box of tissues on it
+    for y in (15.0, 33.0):
+        k.inside(81.0, y, 84.0, y + 10.0, hx('#8a6a4a'), 0.3)
+    k.wheel(88.5, 19.5, 3.2)
+    k.inside(92.5, 9.0, 98.0, 49.0, hx('#5a4c40'), 0.42)
+    k.inside(94.0, 37.5, 96.0, 39.0, hx('#e8e0d0'), 0.6)
+    k.inside(41.0, 11.0, 46.0, 47.0, hx('#8a6a4a'), 0.28)
+    k.inside(34.0, 10.0, 39.0, 48.0, hx('#4a4038'), 0.4)
+    k.inside(35.0, 24.5, 38.0, 27.0, hx('#9ab8d8'), 0.6)
+    k.film(81, 97, ((97.5, 26.5), (97.5, 45.5)), 12.5)
+    k.dent(19.5, 12.5, 2.8)                                  # somebody backed into the trunk's corner
     k.panel(body, 46, 80, 18.5)                              # roof
     k.side(47, 85, lambda x: 18.5 if x <= 80 else 19.0 + (x - 81) / 4, 22.0, pillars=(64, 65))
     k.line(42, 6, 90, 6, lambda c, s: mix(c, CHROME[3 if s < 0 else 1], 0.6))   # beltline trim
@@ -4964,6 +5037,17 @@ def p_car2():
     for x in range(26, 48, 3):                               # its heater wires
         k.line(x, 13, x, 13, lambda c, s: dk(c, 0.25), both=True)
     k.trap(78, 98, 17.0, 21.0, sheen=5)                      # raked windshield
+    # through the glass: the two buckets' backs, the wheel, a black dash with the radar detector's box on it; under the
+    # hatch, the luggage deck and a sports bag thrown on it
+    for y in (15.0, 31.0):
+        k.inside(78.0, y, 81.5, y + 10.0, hx('#7a2434'), 0.3)
+    k.wheel(86.5, 19.5, 3.0)
+    k.inside(91.0, 8.0, 99.0, 48.0, hx('#3c3a46'), 0.45)
+    k.inside(93.0, 26.5, 95.0, 29.0, hx('#8a8e9c'), 0.5)
+    k.inside(22.0, 12.0, 44.0, 44.0, hx('#3a3640'), 0.3)
+    k.inside(30.0, 28.5, 40.0, 35.5, hx('#8a2a2a'), 0.42, round_=True)
+    k.inside(33.0, 31.5, 37.0, 32.5, hx('#d8d4c8'), 0.4)
+    k.film(78, 98, ((98.5, 26.5),), 13.5, 0.07)
     k.panel(body, 50, 77, 17.5)                              # roof
     for i in range(53 * k.s, 75 * k.s):                      # T-top: smoked panels around the centre bar
         for j in range(13 * k.s, 25 * k.s):
@@ -5046,6 +5130,15 @@ def p_van():
     for i, col in enumerate(sunset):                         # sunset side stripes
         k.line(8, 3 + i, 106 - i * 3, 3 + i, lambda c, s, col=col: col if s < 0 else dk(col, 0.2), w=2)
     k.trap(123, 137, 23.0, 26.5, sheen=3)                    # windshield
+    # through it: the two seats' backs, the big flat wheel, the dash: a paper cup, a road map unfolded, a rag
+    for y in (11.0, 39.0):
+        k.inside(123.0, y, 126.0, y + 14.0, hx('#6a5a4a'), 0.3)
+    k.wheel(130.5, 19.0, 4.2)
+    k.inside(132.5, 7.0, 138.0, 57.0, hx('#4a443c'), 0.42)
+    k.inside(134.0, 30.5, 136.0, 32.5, hx('#e8e0d0'), 0.6, round_=True)
+    k.inside(133.5, 40.0, 136.5, 46.0, hx('#cfc6a4'), 0.5)
+    k.inside(134.0, 12.0, 136.0, 15.0, hx('#8a3a30'), 0.4)
+    k.film(123, 137, ((137.5, 30.5), (137.5, 50.5)), 17.5, 0.13)
     k.side(111, 126, lambda x: 24.5 if x <= 122 else 24.5 + (x - 122) / 4, 27.0)
     for x in range(54, 67):                                  # smoked roof vent
         for y in range(25, 32):
@@ -7370,6 +7463,40 @@ def c_cork():
     return cv
 
 
+def c_sock():
+    """A sock lost by the machines, from above: a white tube sock lying bent at the heel, two red rings at its top,
+    its sole gone grey."""
+    cv = Cv(6, 4)
+    wool = ramp('#e4e0d6', 0.4, 0.2, 0.3)
+    frect(cv, 0.5, 0.5, 4.0, 2.0, wool[2])
+    frect(cv, 3.0, 2.0, 5.5, 3.5, wool[2])
+    frect(cv, 0.5, 1.5, 4.0, 2.0, wool[1])
+    frect(cv, 3.5, 3.0, 5.5, 3.5, hx('#9a968e'))                      # the sole
+    for x in (1.0, 2.0):
+        frect(cv, x, 0.5, x + 0.5, 2.0, hx('#c8323a'))
+    cv.outline()
+    return cv
+
+
+def c_card():
+    """One playing card dropped face down: its red back, a white border."""
+    cv = Cv(3, 4)
+    frect(cv, 0.5, 0.5, 2.5, 3.5, hx('#f0ece0'))
+    frect(cv, 1.0, 1.0, 2.0, 3.0, hx('#a8282e'))
+    cv.outline()
+    return cv
+
+
+def c_chip():
+    """One poker chip on the floor: red clay, its white edge spots."""
+    cv = Cv(3, 3)
+    fill_shape(cv, 1.5, 1.5, 1.05, 1.05, lambda u, v, L: shade(ramp('#d8303a', 0.45, 0.22, 0.3), L))
+    for (x, y) in ((1.25, 0.75), (1.75, 2.25), (0.75, 1.75), (2.25, 1.25)):
+        cv.dot(x, y, hx('#f0ece0'))
+    cv.outline()
+    return cv
+
+
 def c_garter():
     """A garter lost by the stage: a ring of red satin edged in black lace, a small bow."""
     cv = Cv(6, 5)
@@ -7388,14 +7515,15 @@ CLUTTER_PAINT = dict(pint_full=c_pint(1, 7110), pint_half=c_pint(0.5, 7111), pin
                      rubber_bands=c_rubber_bands, baggies=c_baggies, glass_broken=c_glass_broken,
                      flute=c_flute, flute_down=c_flute_down, bucket=c_bucket, single=c_single, singles=c_singles,
                      bill_crumpled=c_bill_crumpled, bill_folded=c_bill_folded, feather=c_feather(7132, 0.0),
-                     feather_curl=c_feather(7133, 0.6), cork=c_cork, garter=c_garter)
+                     feather_curl=c_feather(7133, 0.6), cork=c_cork, garter=c_garter, sock=c_sock, card=c_card,
+                     chip=c_chip)
 # world px (keep in step with CLUTTER_SPRITES in src/engine/Assets.js)
 CLUTTER_SIZES = dict(pint_full=(5, 5), pint_half=(5, 5), pint_empty=(5, 5), pitcher=(8, 7), shot=(3, 3), lowball=(5, 5),
                      beer_bottle=(4, 4), liquor=(5, 5), ashtray=(6, 6), cigar=(7, 3), coaster=(5, 5), napkin=(5, 5),
                      napkin_crumpled=(4, 4), peanuts=(6, 6), till=(13, 10), cards=(7, 6), chips=(4, 4), bands=(7, 4),
                      bill=(5, 3), rubber_bands=(5, 5), baggies=(6, 4), glass_broken=(6, 6), flute=(4, 4), flute_down=(7, 3),
                      bucket=(9, 9), single=(5, 3), singles=(7, 5), bill_crumpled=(4, 4), bill_folded=(5, 3), feather=(5, 4),
-                     feather_curl=(5, 4), cork=(3, 3), garter=(6, 5))
+                     feather_curl=(5, 4), cork=(3, 3), garter=(6, 5), sock=(6, 4), card=(3, 4), chip=(3, 3))
 
 
 def wall_frame(W, frame, face, seed):
