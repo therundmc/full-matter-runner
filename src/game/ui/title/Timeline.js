@@ -1,4 +1,6 @@
-// Timeline of the title scene: everything that changes, as a pure function of t (seconds): the wind and its gusts,
+// Timeline of the elevated line's street (the game's first title, a city scene; the title is a poster now, ui/title/
+// Poster.js): kept for its train, whose passage audio/Elevated.js renders piece by piece (trainSound), for a level or
+// a comic page set by the line. Everything that changes there, as a pure function of t (seconds): the wind and its gusts,
 // the elevated train (passing, or now and then pulling up on the bridge a moment and going on), the patrol car on the
 // bridge's lower deck now and then, the towers' offices going dark and lit again, and what is heard of it all.
 // DOM-free and stateless, so any instant can be asked on its own (and tested).

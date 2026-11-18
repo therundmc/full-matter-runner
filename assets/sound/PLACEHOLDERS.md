@@ -68,3 +68,7 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | bossShake | the boss throws the player off when seized from behind while still whole (Boss.shakeOff) | a grunt, cloth yanked, a body shoved hard |
 | bossDeath | the boss's second hit: he dies (Boss.kill) | a heavy man's last bellow dying into a groan, then his knees hitting the floor |
 | shadesDrop | his shades come off as he dies and skitter over the floor (Boss.kill, the Debris' tick) | plastic sunglasses clattering and skidding on a hard floor |
+| titleFire | the poster's burning building, in overlapping pieces while the title's poster is up (ui/title/Beats.js posterBeats) | a tenement on fire heard from the street: a low roar, timbers cracking, loopable, quiet under the menu's music |
+| titleRain | the poster's rain, in overlapping pieces (posterBeats) | a thin steady rain on asphalt and on a coat, loopable, quiet |
+| neonBuzz | a letter of the title's sign going dark: as it catches, when the second N fails, when the sign blinks (posterBeats, logoDead) | a neon tube's buzz and tick as it fails and catches again, 0.2 s |
+| markerStroke | each of the two strokes of the X drawn over a dead target's card on the hit list (ui/title/HitList.js, Beats.js crossBeats) | a thick marker dragged fast across card, squeaking, 0.3 s; two takes |

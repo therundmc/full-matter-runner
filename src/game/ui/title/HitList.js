@@ -1,26 +1,23 @@
-// Title proposal B, THE HIT LIST (?title=b; and the LEVELS page of ?title=ab): the menu is his board, in the comic's
-// cut paper. The still (title/board_<n>, tools/comic/title_art.py board_art, one per number of targets dead) has the
-// photo of his flat, the four cards in the order he takes them, the red string as far as he has got, the matchbook
-// once CUEBALL is dead: a dead man is crossed out, the next one is in his ink. Over it, cut live: the fire in the
-// photo, the marks round the next card, and the menu as notes pinned to the board (the first page a row of them; on
-// the LEVELS page each level under what it is: the tutorial under his flat, level 1 under CUEBALL). The other pages
-// stand on a black band (Paper.js). A proposal: nothing here is the game's title yet (Proposals.js).
-import { hash, poly, disc } from '../cine/Ink.js';
-import { drawPrompts } from '../Glyphs.js';
-import { drawTitlePage } from '../MenuArt.js';
+// THE HIT LIST: the title's LEVELS page and the screen between two levels, his board in the comic's cut paper
+// (tools/comic/STYLE.md, The title). Stills (tools/comic/title_art.py): the board on its wall, and what is pinned to
+// it for the number of targets dead: the photo of his flat, the four cards in the order he takes them (a dead man
+// gone dark, the next one in his ink), the matchbook once CUEBALL is dead. Cut live over them: the lamp's bar of
+// light, failing now and then, dust in it; the fire in the photo; the red string from pin to pin as far as he has
+// got, trembling when the mouse moves; the X on the dead, drawn by a marker in two strokes the first time the board
+// shows a man dead (Beats.js CROSS); the NEXT tag blinking; a glint on a pin; the matchbook's flamingo buzzing; and
+// the levels as notes pinned under what they are (the tutorial under his flat, level 1 under CUEBALL), the chosen
+// one lifted, its pin shaken as it is taken.
+import { BOARD as B } from '../../data/titleart.js';
+import { hash, poly, disc, px } from '../cine/Ink.js';
 import { thousands } from '../Text.js';
-import { FW, INK, NIGHT_LL, BONE, BONE_D, PINK_D, FIRE, lay, frame, show, steps, turned, tag, letter, band } from './Paper.js';
+import { CROSS, crossK, crossBeats } from './Beats.js';
+import { INK, NIGHT_L, NIGHT_LL, BONE, BONE_D, PINK_D, FIRE, BLOOD, open, put, frame, show, steps, turned, strip, tongue, glint, tag, letter } from './Paper.js';
 
-// in the still's px, as in tools/comic/title_art.py (TARGETS, CARD, PHOTO)
-const CARD = [172, 236];
-const CARDS = [[420, 212, -3], [622, 236, 2.5], [822, 206, -2], [1022, 226, 3]];     // each card's middle and lean
-const PHOTO = [166, 300, -6];
 // the level that kills each target, in the cards' order (null: not made yet)
 const KILLS = ['level1', null, null, null];
-// where a level's note is pinned on the LEVELS page: [x, y, lean] (a level without a place goes in the foot's row)
+// where a level's note is pinned: [x, y, lean] (a level without a place goes in a row along the foot)
 const LEVEL_AT = { tutorial: [166, 470, -3], level1: [398, 384, 2] };
 const BACK_AT = [1014, 548, 3];
-const ROW_Y = 528;
 
 // how many of the targets are dead: the leading ones whose level is done
 export function deadCount(progress) {
@@ -29,69 +26,122 @@ export function deadCount(progress) {
   return n;
 }
 
-function live(g, t, dead) {
+// what the board remembers from one picture to the next: when it came up, the mouse, the note chosen
+const life = { since: 0, last: -1, mx: 0, my: 0, shake: 0, sel: '', selT: -9 };
+
+const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const boil = (t) => (steps(t, 3) % 3) * 17;                    // the chosen note is cut again, three times a second
+
+// the lamp over the board: its bar of light (it fails a moment now and then), dust turning in it
+function lamp(g, t) {
+  const n = steps(t, 14);
+  if (hash(n * 1.1) < 0.03 || (t % 9.5 > 9.1 && n % 2)) return;
+  poly(g, NIGHT_L, B.bar);
+  const [a, , , d] = B.bar, h = d[1] - a[1];
+  for (let i = 0; i < 12; i++) {
+    const y = (hash(i + 1) * h + t * 5 * (0.5 + hash(i + 2))) % h;
+    px(g, NIGHT_LL, a[0] + (d[0] - a[0]) * (y / h) + 24 + hash(i) * 250 + Math.sin(t * 0.6 + i) * 8, a[1] + y, 3, 3);
+  }
+}
+
+// the red string through the pins, shaken (0..1) by the mouse
+function string(g, pins, t, shake) {
+  pins.slice(1).forEach((b, i) => {
+    const a = pins[i], d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, amp = Math.round(Math.sin(t * 38 + i * 2.1) * 7 * shake);
+    const mid = [(a[0] + b[0]) / 2 - ((b[1] - a[1]) / d) * amp, (a[1] + b[1]) / 2 + ((b[0] - a[0]) / d) * amp + 1];
+    poly(g, BLOOD, strip([a[0], a[1] + 1], mid, 5));
+    poly(g, BLOOD, strip(mid, [b[0], b[1] + 1], 5));
+  });
+  for (const p of pins) disc(g, BLOOD, p[0], p[1], 4);
+}
+
+// a note pinned at (x, y): its paper on the sheet, its pin shaken (wob 0..1) when it has just been chosen; returns
+// its place on screen
+function note(g, f, t, x, y, w, h, deg, seed, on, wob, paper = BONE_D) {
+  const lean = deg + (on ? Math.sin(t * 34) * 2.5 * wob : 0);
+  tag(g, x, y, w, h, lean, seed, on ? BONE : paper, on);
+  const d = on ? 5 : 0, [p] = turned([[0, -h / 2 + 9]], x - d, y - d, lean), dx = on ? Math.round(Math.sin(t * 46) * 4 * wob) : 0;
+  disc(g, INK, p[0] + 2 + dx, p[1] + 3, 5);
+  disc(g, on ? FIRE : PINK_D, p[0] + dx, p[1], 5);
+  return { x: f.ox + (x - d) * f.k, y: f.oy + (y - d) * f.k, deg: lean, rect: { x: f.ox + (x - w / 2) * f.k, y: f.oy + (y - h / 2) * f.k, w: w * f.k, h: h * f.k } };
+}
+
+// view: { menu (on its LEVELS page; null between two levels), progress, mouse, crossed: how many of the dead the
+// board has already shown crossed out, sound(name, vol, opts), onCrossed(n): the X is drawn on the n-th }.
+// Returns where the menu's items are, in canvas px, for the mouse.
+export function drawHitList(ctx, W, H, t, view) {
+  const dead = deadCount(view.progress), seen = Math.min(view.crossed ?? dead, dead), f = frame(W, H), k = f.k, g = open(INK);
+  // its clocks: since it came up; the mouse's shake dying off
+  if (life.last < 0 || t < life.last || t - life.last > 0.4) { life.since = t; life.shake = 0; life.mx = view.mouse?.x ?? 0; life.my = view.mouse?.y ?? 0; }
+  const dt = life.last < 0 ? 0 : Math.max(0, t - life.last), c = t - life.since, c0 = c - dt, m = view.mouse;
+  if (m) {
+    life.shake = Math.min(1, life.shake * Math.exp(-dt * 3.5) + Math.hypot(m.x - life.mx, m.y - life.my) / (500 * k));
+    life.mx = m.x; life.my = m.y;
+  }
+  life.last = t;
+
+  put(g, 'title/board_bg');
+  lamp(g, t);
+  put(g, `title/board_${dead}`);
   // the fire in the photo
-  const n = steps(t, 9), h = (i) => 0.6 + 0.7 * hash(i * 2.7 + n * 5.9), [px_, py, deg] = PHOTO;
-  poly(g, FIRE, turned([[-28, -28], [-20, -28 - 28 * h(0)], [-10, -38], [2, -28 - 42 * h(1)], [14, -40], [22, -28 - 26 * h(2)], [32, -28]], px_, py, deg));
-  // the next one: four corner marks about his card, in and out
-  if (dead < CARDS.length) {
-    const [cx, cy, lean] = CARDS[dead], d = 12 + (steps(t, 2.5) % 2) * 5, w = CARD[0] / 2 + d, hh = CARD[1] / 2 + d;
+  const [fx, fy, fdeg] = B.photo, n = steps(t, 9), wob = (i) => 0.7 + 0.6 * hash(i * 2.7 + n * 5.9), tf = (pts) => turned(pts, fx, fy, fdeg);
+  tongue(g, -8, -30, 22, 40 * wob(0), 5, n, tf);
+  tongue(g, 10, -30, 16, 26 * wob(1), 4, n + 1, tf);
+  // the matchbook's flamingo, a neon on its cover: it buzzes
+  if (dead >= 1 && (t + 1.5) % 4.3 < 0.4 && steps(t, 15) % 2 === 0) for (const q of B.flamingo) poly(g, PINK_D, turned(q, ...B.matchbook));
+  string(g, [B.photoPin, B.pins[0], ...(dead >= 1 ? [B.matchPin, ...B.pins.slice(1, dead + 1)] : [])], t, life.shake);
+  // the dead, crossed out: the ones the board shows dead for the first time, by the marker
+  let marking = false;
+  for (let i = 0; i < dead; i++) {
+    B.crosses[i].forEach(([a, b, w0, w1], s) => {
+      const q = i < seen ? 1 : crossK(s, c);
+      if (q > 0) poly(g, BLOOD, strip(a, lerp(a, b, q), w0, w0 + (w1 - w0) * q));
+    });
+    if (i >= seen) marking = true;
+  }
+  if (marking) {
+    for (const b of crossBeats(c0, c)) view.sound?.(b.name, b.vol, b.opts);
+    if (c >= CROSS.done) view.onCrossed?.(dead);
+  }
+  const words = [], rects = [];
+  // the next one: marks about his card, in and out, and his tag, blinking (once the marker is down)
+  if (dead < B.cards.length && !marking) {
+    const [cx, cy, lean] = B.cards[dead], d = 12 + (steps(t, 2.5) % 2) * 5, w = B.card[0] / 2 + d, hh = B.card[1] / 2 + d;
     for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       poly(g, FIRE, turned([[sx * w, sy * hh], [sx * (w - 26), sy * hh], [sx * (w - 26), sy * (hh - 6)], [sx * (w - 6), sy * (hh - 6)],
         [sx * (w - 6), sy * (hh - 26)], [sx * w, sy * (hh - 26)]], cx, cy, lean));
     }
+    const [tx, ty, tdeg] = B.tags[dead], lit = steps(t, 1.6) % 2 === 0;
+    tag(g, tx, ty, 72, 26, tdeg, 9, lit ? FIRE : BONE);
+    words.push(['NEXT', f.ox + tx * k, f.oy + (ty + 1) * k, 15 * k, INK, tdeg]);
   }
-}
+  // a glint on a pin, each in its turn
+  const pins = [B.photoPin, ...B.pins], gk = (t % 2.6) / 0.5;
+  if (gk < 1) { const p = pins[Math.floor(t / 2.6) % pins.length]; glint(g, p[0] - 2, p[1] - 2, gk, 9); }
 
-// a note pinned at (x, y): its paper on the sheet; returns its place on screen
-function note(g, f, x, y, w, h, deg, seed, on, paper = BONE_D) {
-  tag(g, x, y, w, h, deg, seed, on ? BONE : paper, on);
-  const d = on ? 4 : 0, [p] = turned([[0, -h / 2 + 9]], x - d, y - d, deg);
-  disc(g, INK, p[0] + 2, p[1] + 3, 5);
-  disc(g, on ? FIRE : PINK_D, p[0], p[1], 5);
-  return { x: f.ox + (x - d) * f.k, y: f.oy + (y - d) * f.k, rect: { x: f.ox + (x - w / 2) * f.k, y: f.oy + (y - h / 2) * f.k, w: w * f.k, h: h * f.k } };
-}
-const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
-const boil = (t) => (steps(t, 3) % 3) * 17;                    // the chosen note is cut again, three times a second
-
-// view: { menu, progress, device }. Returns where the menu's items are, for the mouse.
-export function drawHitList(ctx, W, H, t, view) {
-  const menu = view.menu, page = menu.page, dead = deadCount(view.progress), g = lay(`title/board_${dead}`), f = frame(W, H), k = f.k;
-  live(g, t, dead);
-  if (!page.row && page.id !== 'levels') {
-    band(g, W, H);
-    show(ctx, W, H);
-    return drawTitlePage(ctx, W, H, t, menu, view.device);
-  }
-  const words = [], rects = [];
-  if (page.row) {
-    const n = page.items.length, w = Math.min(210, (FW - 120 - (n - 1) * 26) / n), x0 = (FW - (n * w + (n - 1) * 26)) / 2 + w / 2;
-    page.items.forEach((it, i) => {
-      const on = i === menu.sel, deg = (hash(i * 3.3 + 1) - 0.5) * 7;
-      const p = note(g, f, x0 + i * (w + 26), ROW_Y + (hash(i * 1.7) - 0.5) * 14, w, 66, deg, i * 7 + (on ? boil(t) : 0), on);
-      words.push([it.label, p.x, p.y + 5 * k, 19 * k, INK, deg]);
+  // the notes: the levels, each under what it is, and BACK; between two levels, one note to go on
+  const items = view.menu ? view.menu.page.items : [{ label: 'GO ON' }], sel = view.menu ? view.menu.sel : 0;
+  const key = `${view.menu ? view.menu.top.id : 'between'}:${sel}`;
+  if (key !== life.sel) { life.sel = key; life.selT = t; }
+  const shaken = Math.max(0, 1 - (t - life.selT) / 0.35), tut = items.some((it) => it.level === 'tutorial');
+  let spare = 0;
+  items.forEach((it, i) => {
+    const on = i === sel, w = on ? shaken : 0;
+    if (!it.level) {
+      const [x, y, deg] = BACK_AT, p = note(g, f, t, x, y, 132, 54, deg, 91 + (on ? boil(t) : 0), on, w);
+      words.push([it.label, p.x, p.y + 5 * k, 17 * k, INK, p.deg]);
       rects.push({ i, ...p.rect });
-    });
-  } else {
-    let spare = 0;
-    page.items.forEach((it, i) => {
-      const on = i === menu.sel;
-      if (!it.level) {                                       // BACK
-        const [x, y, deg] = BACK_AT, p = note(g, f, x, y, 132, 54, deg, 91 + (on ? boil(t) : 0), on);
-        words.push([it.label, p.x, p.y + 5 * k, 17 * k, INK, deg]);
-        rects.push({ i, ...p.rect });
-        return;
-      }
-      const [x, y, deg] = LEVEL_AT[it.level] || [330 + (spare++) * 236, 548, (hash(i) - 0.5) * 5];
-      const p = note(g, f, x, y, 216, 70, deg, i * 11 + 30 + (on ? boil(t) : 0), on, it.locked ? NIGHT_LL : BONE_D), b = it.best;
-      words.push([`${String(it.n).padStart(2, '0')} ${it.label}`, p.x, p.y - 4 * k, 15 * k, INK, deg]);
-      words.push([it.locked ? 'LOCKED' : b ? `${thousands(b.total)}  ${b.grade}  ${clock(b.time || 0)}` : view.progress.done.includes(it.level) ? 'DONE' : 'NOT DONE', p.x, p.y + 17 * k, 10 * k, it.locked ? INK : PINK_D, deg]);
-      rects.push({ i, ...p.rect });
-    });
-  }
+      return;
+    }
+    const [x, y, deg] = LEVEL_AT[it.level] || [330 + (spare++) * 236, 548, (hash(i) - 0.5) * 5];
+    const p = note(g, f, t, x, y, 228, 70, deg, i * 11 + 30 + (on ? boil(t) : 0), on, w, it.locked ? NIGHT_LL : BONE_D), b = it.best;
+    words.push([`${String(it.n - (tut ? 1 : 0)).padStart(2, '0')} ${it.label}`, p.x, p.y - 4 * k, 14 * k, INK, p.deg]);
+    const under = it.locked ? 'LOCKED' : b ? `${thousands(b.total)}  ${b.grade}  ${clock(b.time || 0)}` : view.progress.done.includes(it.level) ? 'DONE' : 'NOT DONE';
+    words.push([under, p.x, p.y + 17 * k, 10 * k, it.locked ? INK : PINK_D, p.deg]);
+    rects.push({ i, ...p.rect });
+  });
   show(ctx, W, H);
   for (const [str, x, y, size, col, deg] of words) letter(ctx, str, x, y, size, col, deg);
-  const list = [['choose', 'CHOOSE'], ['confirm', 'SELECT'], ...(menu.depth > 0 ? [['back', 'BACK']] : [])];
-  drawPrompts(ctx, list, W / 2, f.oy + 627 * k, 13 * k, view.device, { alpha: 0.6, gap: 2.2 });
   return rects;
 }

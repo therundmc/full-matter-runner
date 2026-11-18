@@ -6,7 +6,6 @@
 //   W, H, scale          picture size in px, world px -> picture px (the camera's zoom)
 //   toScreen(x, y)       world point -> { x, y } in picture px
 //   state, phase         the game's state ('title', 'play', 'dead', 'pause', 'results', ...) and the alert phase
-//   daylight             on the title, how bright its sky is at the hour of its day (0..1): its grade follows it
 //   powerOn              false once the house's fuse box is smashed (systems/Power.js)
 //   timeScale, trauma    slow motion (1 = none), camera shake 0..1.2
 //   look                 the player looks far (Shift)
@@ -108,18 +107,9 @@ export default class Lens {
   gradeFor(v) {
     const g = this.cfg.grades;
     if (v.state === 'dead') return g.dead;
-    if (v.state === 'title' && v.daylight > 0) return this.mixGrade(g.menu, g.menuDay, v.daylight);
     if (v.state !== 'play' && v.state !== 'pause' && v.state !== 'intro' && v.state !== 'outro') return g.menu;
     if (v.powerOn === false) return g.dark;
     return v.phase === 'alert' ? g.combat : v.phase === 'caution' || v.phase === 'evasion' ? g.caution : g.calm;
-  }
-
-  // a grade k of the way from a to b (in a scratch object kept for it)
-  mixGrade(a, b, k) {
-    const m = this.mixed || (this.mixed = copyGrade(a)), f = (x, y) => x + (y - x) * Math.min(1, k);
-    m.sat = f(a.sat, b.sat); m.con = f(a.con, b.con); m.tintK = f(a.tintK, b.tintK);
-    for (const key of ['gain', 'lift', 'tint']) for (let i = 0; i < 3; i++) m[key][i] = f(a[key][i], b[key][i]);
-    return m;
   }
 
   // dt: real seconds since the last frame (the lens does not slow down with the game)
