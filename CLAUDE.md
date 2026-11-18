@@ -81,6 +81,8 @@
   (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is split in two levels
   instead: level 2 is 2a (the car chase, ending on the crash into the gas station) and 2b (the gas station fight,
   restarted from the crash); the FLAMINGO MOTEL (JITTERS) is level 3.
+- LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
+  any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
