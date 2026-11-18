@@ -22,8 +22,8 @@ overview of the 16 stills): `python3 tools/comic/sheet.py <out-dir>`.
 
 Panel names and sizes are fixed (the game's layouts and tests depend on them), and so are the points the game draws
 over, each a named constant in its panel module and in the JS that reads it: `PANE`, `CLOCK` (its ground `#1a0608`,
-the colon at 172, 154), `DOORWAY` (opening1.py / ui/cine/Panels.js), `SPOUT` (opening2.py; the petrol's drops run from
-it to 518, 180), `FLAME`, `MOUTH`, `GAP` (opening3.py; `MOUTH` is the balloon's tail in ui/Cinematic.js),
+the colon at 172, 154), `DOORWAY` (opening1.py / ui/cine/Panels.js), `SPOUT` and `POOL` (opening2.py; the petrol's drops run from
+the spout to `SPLASH`, on the pool lying flat on the floor), `FLAME`, `MOUTH`, `GAP` (opening3.py; `MOUTH` is the balloon's tail in ui/Cinematic.js),
 `ALLEY_SIGN`, `ALLEY_PUDDLES` (leap.py / Leap.js), `DRIVE_VP`, `DRIVE_LINE`, `DRIVE_CAR`, `DRIVE_LIGHTS`, `OFFICE_SMOKE`, `OFFICE_DRIP`,
 `MATCH_COVER` (ending.py / Ending.js). Move one, move the other, and look at the page in the game.
 The sound words (KRAK, KRRIK, GLUG GLUG, SKRITCH, FWOOMP, RRRING), the captions, the balloons and FLAMINGO MOTEL are
@@ -65,7 +65,8 @@ what is written in the scene (the clock's 1:05).
 - Three views only: side on (a stage: wall, floor line, things standing on it), straight from above (the game's own
   view: boards on a slant, a pool of light, people as their signs), a close-up made of very few shapes (a profile,
   an eye, a matchbook).
-- Black on black is allowed and wanted: a sofa lost in the floor, a man's coat in his shadow. What must read is
+- Black on black is allowed and wanted: a sofa lost in the floor, a man's coat in his shadow (but a light never
+  stops at a black thing for no reason: where the torch's beam crosses the sofa in `door`, the sofa shows lit). What must read is
   staged against a light.
 
 ## 3. People: cut-out signs
@@ -86,7 +87,7 @@ table (top-down, a man is about 26 px across the shoulders; `ABOVE` in poster.py
 | name | who | build | signature | ink | from above (26 px) |
 |---|---|---|---|---|---|
 | **CUEBALL** | the heavy: the torch and the crowbar, the one who speaks for the boss; level 1's mini-boss, with a shotgun, dead in its ending (his shades off, cracked, on the floor) | a wall on short legs, twice a man's width, no neck, a bald bone dome | huge wrap-round shades, wider than his head | fluo yellow | the widest shoulders in the game (about 30 px), black; in their middle a bone disc of 12 px; across its front a fluo yellow band 4 px deep and as wide as the disc and more (it shows where he faces) |
-| **LUCKY** | the slick one, the man with the match | a beanpole, a head taller than anyone, in a coat to his ankles; hair slicked flat to a point at the nape; pointed shoes | a long scarf: a loud band round his neck, one end down his front, the other flying behind him | pink | narrow black shoulders (about 22 px), a small black head in a pink ring 2 px wide all round it (the band, seen from above), and the scarf's end flying out behind: a pink streamer 5 px wide and 12 to 14 px long, off to one side of his back, swinging as he turns (it shows where he faces by where it trails) |
+| **LUCKY** | the slick one, the man with the match | a beanpole, a head taller than anyone, in a coat to his ankles; hair slicked flat to a point at the nape; pointed shoes | a long scarf: a loud band round his neck, one end down his front, the other flying behind him | pink | a man first: the coat's black shoulders (about 28 px), a black head with the slick's point at the nape and a sliver of brow in front (where he looks), an arm held out when he reaches; the pink a band round his nape, open in front (never a closed ring: a ring and a streamer read as a wrench), and one short end down his back, off to one side, no further than the shoulders (`lucky_above`, its `reach`) |
 | **JITTERS** | the young one: the jerrycan | a runt, three quarters of a man, hunched, knees bent | a saw-tooth crest | cyan | small black shoulders (about 20 px); a cyan saw-tooth lozenge from the nape to past the brow, its teeth on both sides |
 | **THE BOSS** | he owns the city, the bar with it; the campaign's last target, never seen in level 1: in its ending he is the telephone ringing (bone, his ink) | wide, soft, double-breasted | he is the one man cut in bone: the suit, with a black tie; a slick of black hair; a cigar, no bigger than a cigar | bone body | bone shoulders (about 27 px), a black head; the cigar 5 px straight ahead, its tip 2 px of fire |
 | **THE RUNNER** | the player | lean, in a duster to just below the knee, its back vent open to the waist; a satchel on a strap across him (`BROWN`); boots | TWO shapes, the low CAP and the long COAT's split tails. The cap (`RUNNER_HAT`, `hat()` cuts it alone): it reads by its silhouette, a round low dome, highest over the brow, its button a nub on top, and the brim a short wedge, thick at its root and dipping a little, its underside petrol (never a thin stick straight out, never the long brim, never a flat ivy cap, a helmet or a hooked brim), a hard line of shadow under it across the slit. A funnel collar closed up to his nose, black, the petrol gaiter showing only as a band at its rim; between cap and collar a slit of tan that is all his face; brown hair to the collar behind. The coat: two tails swept back behind him as wedges, in every still, even standing (the wind has them): the near one black, the far one showing its petrol lining. Sat or driving, the tails lie where he sits or are out of frame, and the cap and the collar carry him | black, petrol blue (`CYAN_D`) | black shoulders; behind them the two tails, black wedges trailing 12 to 14 px, the petrol lining in the vent between them (they show where he faces by where they trail); the cap a round dark crown (`CAP`, a shade off the coat) of 9 to 10 px with a 1 px petrol button, its brim a short crescent as wide as the crown at its root, 2 to 3 px ahead of it, its front edge petrol; behind, 2 px of brown hair and the collar's petrol rim at the nape; the strap a brown diagonal across the shoulders to the satchel on his hip (`RUNNER_COAT` + `RUNNER_CAP` in poster.py). Never a scarf (that is LUCKY's: his streamer is pink, thin, from the neck; the tails are black and petrol, wide, from the waist), never a mask of an animal, never bright turquoise (CLAUDE.md, Art) |
@@ -158,7 +159,7 @@ Ending.js): never a blur, never a gradient, nothing that hides a sign or crosses
 | `pry` | dust, the panel jolting on KRRIK | |
 | `box` | glints opening and shutting on the bricks | the tin's grid |
 | `count` | nothing (falling notes were too much) | |
-| `pour` | the petrol's drops, drops thrown up where it lands, rings going out over the stain | `SPOUT` (540, 122), `SPLASH` |
+| `pour` | the petrol's drops, drops thrown up where it lands, rings going out over the pool on the floor | `SPOUT` (540, 122), `SPLASH` (on `POOL`) |
 | `match` | sparks and the flame, its light ducking | `FLAME` |
 | `fire` | the tongues under the door, embers going up, the light breathing | `GAP` |
 | `wake` | the fire alive in his pupil, the light breathing | `PUPIL` |
