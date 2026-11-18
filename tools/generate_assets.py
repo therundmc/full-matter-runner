@@ -5370,24 +5370,24 @@ def p_convertible():
     region(106.6, 29, 108, 35, lambda x, y: RUBBER[0])                                   # the radio's face
     k.dot(107.2, 30.2, hx('#ff8a20'), both=False)
     k.dot(107.2, 33.8, CHROME[3], both=False)
-    # the wheel: a bone rim, a chrome horn ring, the column
-    wx, wy, wr = 101.0, 19.5, 5.6
-    region(wx, wy - 1, 107, wy + 1, lambda x, y: RUBBER[1])
+    # the wheel, seen from straight above: raked up toward him on its column, it is a thin ring across the car (the
+    # VEHICLES `wheel`: x, y, half its width, half its depth), up against the dash; only its top edge catches the light
+    wx, wy, wa, wb = 103.6, 19.5, 5.4, 1.6
+    region(wx, wy - 0.6, 106.2, wy + 0.6, lambda x, y: RUBBER[0])                         # the column into the dash
     def rim(x, y):
-        d = math.hypot(x - wx, y - wy)
-        if abs(d - wr) < 0.8:
-            return hx('#f6f0e0') if (y < wy and x < wx + 2) else hx('#c8bea4') if y < wy + 3 else hx('#8a8068')
-        if abs(d - 2.6) < 0.45 and y > wy - 1:
-            return CHROME[3] if x < wx else CHROME[1]
-        if d < 1.3:
-            return CONV_GOLD[2] if d < 0.8 else CONV_GOLD[1]
-        if d < wr and (abs(y - wy) < 0.5 or (abs(x - wx) < 0.5 and y > wy)):
-            return hx('#c8bea4')
+        o = ((x - wx) / (wb + 0.5)) ** 2 + ((y - wy) / (wa + 0.5)) ** 2
+        i = ((x - wx) / max(wb - 0.5, 0.1)) ** 2 + ((y - wy) / (wa - 0.5)) ** 2
+        if o <= 1.0 and i >= 1.0:
+            if x >= wx + 0.4:                                    # the top of the rim, nearest the glass: lit
+                return hx('#d8ceb4') if y < wy + 2 else hx('#a89e86')
+            return hx('#7a705c') if y < wy else hx('#5a5244')       # its bottom edge, under the hands, in shadow
+        if o < 1.0 and abs(y - wy) < 0.5:                         # the spoke across, then the hub on the column
+            return CONV_GOLD[1] if abs(x - wx) < 0.6 else hx('#5a5244')
         return None
-    region(wx - 7, wy - 7, wx + 7, wy + 7, rim)
+    region(wx - 3, wy - 7, wx + 3, wy + 7, rim)
     # the shifter on the column, the mirror on the header, the dice hanging from it
-    k.line(103, 23, 104, 26, CHROME[2], both=False)
-    k.dot(104.6, 26.6, hx('#f6f0e0'), both=False)
+    k.line(105, 21, 105.5, 23.5, CHROME[2], both=False)
+    k.dot(105.6, 24.1, hx('#f6f0e0'), both=False)
     # things left in it (his hat on the rear seat is a sprite of its own, boss_hat: it flies off): a cigar burn in
     # the passenger's cushion, a cigar going in the dash's ashtray
     for (x, y, c) in ((95.0, 43.0, hx('#120808')), (95.5, 43.0, hx('#120808')), (95.0, 43.5, hx('#120808')), (94.5, 43.0, hx('#4a2a1a')),

@@ -1185,18 +1185,20 @@ export function kickPose(ch, P, V) {
 }
 
 // ---------------- sat in a vehicle (Vehicle.seatIn: ch.riding = { v, k, aim }) ----------------
-// Seen from above in an open car: sat low and leant back, the thighs out under the dash, both hands on the wheel's
-// rim (they go round with the steering), the head up. Aiming (riding.aim: a world angle, or null), the arm on that
-// side comes out with what he holds, the other hand stays on the wheel, the head and the shoulders turn after it.
-// riding.k: 0 .. 1 of him settled in (the pose blended in from whatever brought him there: a vault over the door).
-// The numbers: data/feel.js SEAT; where the seat and the wheel are: the model's `seat` and `wheel` (sprite px).
+// Seen from above in an open car: sat low and leant well back, the thighs out under the dash, ONE hand laid over the
+// top of the wheel at the end of a straight arm (it slides round the rim with the steering), the other elbow on the
+// door, its hand hanging over the side; the head up. Aiming (riding.aim: a world angle, or null), the arm on that
+// side comes out with what he holds and the other hand takes the top of the wheel; the head and the shoulders turn
+// after it. riding.k: 0 .. 1 of him settled in (the pose blended in from whatever brought him there: a vault over the
+// door). The numbers: data/feel.js SEAT; where the seat and the wheel are: the model's `seat` and `wheel` (sprite px).
 export function seatPose(ch, P, V) {
   const st = ch.riding, v = st.v, m = v.m, S = SEAT, w = smooth(st.k);
   if (w <= 0 || !m.seat) return P;
   const a = v.body.angle, c = Math.cos(a), s = Math.sin(a), d = ch.def;
   const at = (out, lx, ly) => { out.x = lx * c - ly * s; out.y = lx * s + ly * c; };
+  const aiming = st.slump > 0 || st.aim === null || st.aim === undefined ? -1 : angDiff(a, st.aim) < 0 ? 0 : 1;
   copyPose(V, P);
-  V.ta = V.ha = a;
+  V.ta = a + S.lean; V.ha = a;
   V.tx = -c * S.back; V.ty = -s * S.back;
   V.s = S.s; V.lift = 0; V.legs = 1; V.top = 0; V.tuck = 0; V.over = 0; V.px = V.py = 0; V.bow = 0;
   V.carryImg = null; V.wpnOn = false; V.fist = false;
@@ -1204,10 +1206,15 @@ export function seatPose(ch, P, V) {
     const f = V.feet[i], side = i ? 1 : -1;
     at(f, S.feet[0], side * S.feet[1]);
     f.a = a; f.lift = 0; f.heel = 0;
-    // on the rim, either side of the hub, going round with the front wheels
-    const W = m.wheel || [m.seat[0] + 8, m.seat[1], 5], g = side * S.grip + (v.steer || 0) * S.turn, r = W[2] / BODY_SCALE;
-    at(i ? V.hr : V.hl, (W[0] - m.seat[0]) / BODY_SCALE + Math.cos(g) * r, (W[1] - m.seat[1]) / BODY_SCALE + Math.sin(g) * r);
-    V.hand[i] = 'fist'; V.elb[i] = S.elbow;
+  }
+  // the wheel's hand (the right, or the left while the right aims): on the top of the rim, the edge nearest the glass
+  const W = m.wheel || [m.seat[0] + 10, m.seat[1], 5, 1.5], g = (v.steer || 0) * S.turn, on = aiming === 1 ? 0 : 1;
+  at(on ? V.hr : V.hl, (W[0] - m.seat[0] + Math.cos(g) * W[3]) / BODY_SCALE, (W[1] - m.seat[1] + Math.sin(g) * W[2]) / BODY_SCALE);
+  V.hand[on] = S.lay; V.elb[on] = S.elbow;
+  // the other on the door (the left: the door is on his left), the elbow out over its top
+  if (on) {
+    at(V.hl, S.door[0] / BODY_SCALE, S.door[1] / BODY_SCALE);
+    V.hand[0] = 'loose'; V.elb[0] = S.doorElb;
   }
   // the key turned (riding.key 0 .. 1): the right hand leaves the wheel for the ignition
   if (st.key > 0 && m.key) {

@@ -17,9 +17,10 @@ const { Bodies, Body, Sleeping, Query } = Matter;
 // sprite minus 2 px all round.
 // A model may give (systems/Drive.js reads the first two, else its own shares of the size): seat: [x, y] the driver's
 // seat (seatIn, CharacterAnim.seatPose), door: [x, y] the ground one stands on outside the driver's door (-y side).
-// An open car also has: cabin (the open well: who sits in it is seen, and can be shot), wheel: [x, y, r] the steering
-// wheel's rim, key: [x, y] the ignition, pipes: its exhausts' ends, hat: [x, y, sprite] what lies on the rear seat
-// until a hard swing throws it out (throwHat).
+// An open car also has: cabin (the open well: who sits in it is seen, and can be shot), wheel: [x, y, a, b] the
+// steering wheel seen from above (a thin ring: a half its width across the car, b half its depth along it), key: [x, y]
+// the ignition, pipes: its exhausts' ends, hat: [x, y, sprite] what lies on the rear seat until a hard swing throws it
+// out (throwHat).
 export const VEHICLES = {
   car: {
     sprite: 'props/car', hp: 28, kg: 1200, color: '#ff2a6d',
@@ -41,7 +42,7 @@ export const VEHICLES = {
     sprite: 'props/convertible', hp: 36, kg: 2100, color: '#ece2c8',
     wind: [113, 118, 7, 57], rear: null, tank: [0, 30, 0, 64], hood: [120, 166],
     wheels: [[36, 2], [36, 62], [140, 2], [140, 62]],
-    seat: [93, 19.5], door: [93, -13], cabin: [55, 113, 7, 57], wheel: [101, 19.5, 5.6], key: [105.5, 26.5],
+    seat: [93, 19.5], door: [93, -13], cabin: [55, 113, 7, 57], wheel: [103.6, 19.5, 5.4, 1.6], key: [105.5, 26.5],
     pipes: [[1, 17], [1, 47]], hat: [71.5, 44.5, 'props/boss_hat'],
   },
   // the boss's men (systems/Pursuit.js): the sedan in black with one pink stripe, its layout the sedan's

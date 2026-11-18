@@ -195,15 +195,18 @@ export const COAT = { hinge: [-1, 3.25], root: 3, moving: 0.4, full: 2.6, hem: 0
   draw: 7, open: 0.14, kick: [0.16, 0.1], step: 0.05, sit: [1.45, 0.8] };
 
 // A man sat in a vehicle's seat (Vehicle `seat` / `wheel`, CharacterAnim.seatPose; pose px in his own frame: x ahead,
-// y to his right): s: drawn that much smaller (sat low), back: leant back into the seat; grip: where his hands hold
-// the wheel's rim (rad off straight ahead of its hub, either side), turn: rad they go round with a rad of steering;
-// elbow: how far out the elbows are; feet: his feet under the dash [ahead, apart]; settle: s he takes to settle in
+// y to his right): s: drawn that much smaller (sat low), back: leant back into the seat, lean: his shoulders turned
+// (rad, - toward the door); ONE hand on the top of the wheel's rim (`lay`: how it is drawn), turn: rad it slides round
+// the rim with a rad of steering, elbow: how far that elbow bends out (0: a straight arm); door: the other hand, over
+// the door [sprite px ahead of the seat, across], doorElb: that elbow out on the door's top; feet: his feet under the
+// dash [ahead, apart]; settle: s he takes to settle in
 // (the pose blended in, the hands finding the wheel); aim: the arm on the aim's side out with what he holds [reach],
 // the head and the shoulders turned after it (rad at most); wind: the coat's half on the door's side thrown out over
 // the door at speed [rad, flutter rad, rad/s, share it is drawn out longer]; hit: px round the seat a round crossing the open cabin kills within;
 // slump: shot at the wheel of the chase's car (riding.slump 0 .. 1 over `t` s): his shoulders `fwd` px onto the wheel, his
 // head turned `head` rad and his shoulders `twist`, his hands off the rim and down by his knees [ahead, apart]
-export const SEAT = { s: 0.94, back: 0.8, grip: 1.95, turn: 1.6, elbow: 0.8, feet: [7.8, 2.4], settle: 0.28,
+export const SEAT = { s: 0.94, back: 1.4, lean: -0.08, lay: 'fist', turn: 1.1, elbow: 0.1, door: [6.5, -15.5], doorElb: 0.9,
+  feet: [7.8, 2.4], settle: 0.28,
   aim: { reach: 12.5, head: 1.1, twist: 0.3 }, wind: [0.95, 0.12, 15, 0.35], hit: 8,
   slump: { t: 0.3, fwd: 3.2, head: 0.95, twist: 0.28, hands: [3.5, 4.2] } };
 

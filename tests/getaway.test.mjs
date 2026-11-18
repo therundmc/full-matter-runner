@@ -75,7 +75,10 @@ const finite = (P) => [P.tx, P.ty, P.ta, P.s, P.ha, P.hl.x, P.hl.y, P.hr.x, P.hr
 // a pose point (pose px about his feet) in the car's sprite px
 const inCar = (v, ch, p) => v.toSprite(ch.x + p.x * BODY_SCALE, ch.y + p.y * BODY_SCALE);
 
-test('seat: anyone sat at the wheel is carried by the car, both hands on its rim, and goes round with the steering', () => {
+// on the wheel's rim seen from above (a thin ring: Vehicle `wheel` [x, y, half width, half depth])
+const onRim = (q) => Math.abs(Math.hypot((q.sx - M.wheel[0]) / M.wheel[3], (q.sy - M.wheel[1]) / M.wheel[2]) - 1) < 0.01;
+
+test('seat: anyone sat at the wheel is carried by the car, one hand on the top of its rim, the other over the door, and steers', () => {
   for (const a of [0, Math.PI, 2.1]) {
     const w = { time: 0 }, v = car(w, 500, 300, a), ch = man(w, 100, 100);
     assert.ok(v.seatIn(ch));
@@ -86,17 +89,15 @@ test('seat: anyone sat at the wheel is carried by the car, both hands on its rim
     assert.equal(ch.riding.k, 1, 'settled');
     const P = seatPose(ch, base(a), newPose());
     assert.ok(finite(P), 'a pose of finite numbers');
-    assert.ok(Math.abs(P.ta - a) < 1e-9 && P.s === SEAT.s && P.legs === 1 && !P.wpnOn);
-    for (const [h, side] of [[P.hl, -1], [P.hr, 1]]) {
-      const q = inCar(v, ch, h);
-      assert.ok(Math.abs(Math.hypot(q.sx - M.wheel[0], q.sy - M.wheel[1]) - M.wheel[2]) < 0.01, 'on the rim');
-      assert.equal(Math.sign(q.sy - M.wheel[1]), side, 'his left hand on its left');
-    }
+    assert.ok(Math.abs(P.ta - a - SEAT.lean) < 1e-9 && P.ha === a && P.s === SEAT.s && P.legs === 1 && !P.wpnOn);
+    const r = inCar(v, ch, P.hr), l = inCar(v, ch, P.hl);
+    assert.ok(onRim(r) && Math.abs(r.sx - M.wheel[0] - M.wheel[3]) < 0.01, 'his right hand on the top of the rim');
+    assert.ok(l.sy < M.cabin[2] && l.sx > M.seat[0], 'his left hand over the door, ahead of him');
     for (const f of P.feet) assert.ok(inCar(v, ch, f).sx < M.cabin[1] + 2, 'his feet under the dash, not on the hood');
-    const before = inCar(v, ch, P.hl).sx;
     v.steer = 0.4;
-    const Q = seatPose(ch, base(a), newPose());
-    assert.ok(Math.abs(inCar(v, ch, Q.hl).sx - before) > 1, 'the hands turn the wheel');
+    const Q = seatPose(ch, base(a), newPose()), q = inCar(v, ch, Q.hr);
+    assert.ok(onRim(q) && q.sy - r.sy > 1, 'the hand slides round the rim with the steering');
+    v.steer = 0;
     // moved, the car takes him along and tells him how fast (the wind in his coat)
     Matter.Body.setPosition(v.body, { x: 506, y: 300 });
     v.carry(STEP);
@@ -107,20 +108,20 @@ test('seat: anyone sat at the wheel is carried by the car, both hands on its rim
   assert.equal(car({}, 0, 0, 0, 'car').seatIn(man({}, 0, 0)), false, 'a model without a seat takes nobody');
 });
 
-test('seat: aiming, the arm on that side comes out with the gun and the other hand stays on the wheel; the key takes the right one', () => {
+test('seat: aiming, the arm on that side comes out with the gun and the other hand takes the wheel; the key takes the right one', () => {
   const w = { time: 0 }, v = car(w, 500, 300, 0), ch = man(w, 0, 0);
   ch.weapon = { type: 'pistol', mag: 7 };
   v.seatIn(ch);
   ch.riding.k = 1;
   const rest = seatPose(ch, base(0), newPose());
-  assert.ok(!rest.wpnOn, 'both hands on the wheel: the gun put away');
+  assert.ok(!rest.wpnOn, 'a hand on the wheel, the other on the door: the gun put away');
   for (const [aim, gun, other] of [[-Math.PI / 2, 'hl', 'hr'], [Math.PI / 2, 'hr', 'hl']]) {
     ch.riding.aim = aim;
     const P = seatPose(ch, base(0), newPose());
     assert.ok(finite(P) && P.wpnOn && P.wpn.a === aim);
     const q = inCar(v, ch, P[gun]), o = inCar(v, ch, P[other]);
     assert.ok(aim < 0 ? q.sy < M.cabin[2] : q.sy > M.seat[1] + 10, `the gun hand out on the aim's side (${q.sy.toFixed(1)})`);
-    assert.ok(Math.abs(Math.hypot(o.sx - M.wheel[0], o.sy - M.wheel[1]) - M.wheel[2]) < 0.01, 'the other on the wheel');
+    assert.ok(onRim(o), 'the other on the wheel');
     assert.ok(Math.sign(P.ha) === Math.sign(aim) && Math.abs(P.ha) <= SEAT.aim.head + 1e-9, 'the head turned after it');
   }
   ch.riding.aim = null;
