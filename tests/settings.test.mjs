@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { loadSettings, saveSettings } = await load('game/systems/Settings.js');
 
-const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false };
+const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, fullscreen: false, aim: 'cross' };
 
 const fakeStorage = () => {
   const data = {};
@@ -17,7 +17,7 @@ test('settings: full volume, the lens on, full shake and no fullscreen when noth
 
 test('settings: a saved set comes back as it was', () => {
   const st = fakeStorage();
-  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, lens: false, shake: 0.35, fullscreen: true };
+  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, lens: false, shake: 0.35, fullscreen: true, aim: 'wedge' };
   saveSettings(set, st);
   assert.deepEqual(loadSettings(st), set);
 });
@@ -57,4 +57,12 @@ test('settings: a storage that throws (or is missing) never throws out', () => {
   assert.doesNotThrow(() => saveSettings({ master: 1, music: 1, sfx: 1 }, bad));
   assert.deepEqual(loadSettings(null), D);
   assert.doesNotThrow(() => saveSettings({ master: 1, music: 1, sfx: 1 }, null));
+});
+
+test('settings: the aim is one of its concepts, anything else is the cross', () => {
+  const st = fakeStorage();
+  for (const [stored, read] of [['lock', 'lock'], ['laser', 'cross'], [3, 'cross'], [true, 'cross']]) {
+    st.setItem('fmr.settings.v1', JSON.stringify({ aim: stored }));
+    assert.equal(loadSettings(st).aim, read);
+  }
 });

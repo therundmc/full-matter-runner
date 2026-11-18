@@ -31,8 +31,9 @@ Six ways in, none of them free (the level is made to be played again another way
                  roof: nobody up there, a bat left by whoever comes to smoke, and two drops over the parapet: into
                  the service alley behind the gate and the smoker's back, or into the west end of the back lot
     the shop     the liquor store: break in by the front (the bell rings, the guards come and look: a diversion as
-                 much as a way in), or come down its own ladder from the roof without a sound; the pistol is behind
-                 the counter, and the same ladder is the way on from there
+                 much as a way in), or come down its own ladder from the roof without a sound; the same ladder is the
+                 way on from there. The pistol that was behind its counter is hidden up on the roof now, by the
+                 lookout's chair over the back lot: a reward for the climb
     the lot      from the back lot: the locked back door (to force), or the toilets' window (a public room: one comes
                  out of it a customer); the boss's room has no window
 """
@@ -133,9 +134,14 @@ for x, y in ((8, 20), (39, 20), (30, 32)):
     lv.door(x, y, kind='shop')
 
 # ---------------------------------------------------------------- actors (12 guards)
-# Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
-# in the bar room, the boss's shotgun in the back room. One more for the taking, behind the liquor store's counter
-# (it is closed: breaking in rings its bell). A pistol holds seven rounds, and nobody carries a spare magazine.
+# Twelve men with their hands. Three guns in the whole house: the poker dealer's pistol and the money counter's in
+# their holsters, the boss's shotgun in the back room; one more for the taking, hidden on the liquor store's roof. A
+# pistol holds seven rounds, and nobody carries a spare magazine.
+# The others start bare-handed (the user: realistic): their weapon is kept somewhere and they run for it once the
+# fight is on (`arms`, entities/Enemy.js armUp): the bartender's bat behind the counter, the doorman's leant against
+# the front wall, the cue by the pool table for the VIP room's doorman, the pimp's blade on his table. Two carry a
+# knife in their pocket (out in a moment), two fight with their fists (brawlers), the man on the couch has his tire
+# iron in his hands already (he plays with it).
 lv.actor('@', 20, 33, face=0)
 lv.intro = 'swig'                                       # on the ground, his back to the wall, the last of a bottle of
                                                         # rum in his hand: he drinks it off, smashes it, gets up
@@ -176,37 +182,40 @@ lv.sound('alley', 20, 32, 23, 36)        # the start alley across the road
 lv.rain = 0                                             # no rain heard
 lv.wet = 0.35                                           # the street wet from an earlier rain (seen)
 # street
-lv.actor('b', 24, 21, face=90, job='door')                   # bouncer
+lv.actor('b', 24, 21, face=90, job='door', arms=(25.95, 21.12))   # bouncer: his bat against the wall
+lv.lean('bat', 25.95, 21.12, 270)                       # ... between the ash post and the news box
 # the sidewalk patrol, a blade in his pocket: at either end of his beat a parked car's hood to sit back against for a
 # smoke (data/posts.js 'beat' hood; the level opens on him there one time in two, by the coupe's hood)
 lv.actor('J', 17, 22, route=[[16, 22], [27, 22]], job='beat')
 # the bar
-lv.actor('b', 18, 12, face=90, job='wipe')                   # bartender, a bat under the counter
-lv.actor('p', 25, 14, face=0, job='cards')              # dealing poker in the gaming room: the one pistol of the bar
+lv.actor('b', 18, 12, face=90, job='wipe', arms=(20.65, 13.42))    # bartender: his bat behind the counter
+lv.lean('bat', 20.65, 13.42, 90)                        # ... stood against its back, at the till's end
+lv.actor('p', 25, 14, face=0, job='cards')              # dealing poker in the gaming room: a pistol on his hip
 lv.lean('cue', 18.6, 19.8, 90)                          # a cue stood against the front wall, by the pool table
-lv.actor('b', 24, 17, face=65, job='door')                   # bouncer of the VIP room, an eye on its door
+lv.actor('b', 24, 17, face=65, job='door', arms=(18.6, 19.8))   # bouncer of the VIP room, an eye on its door: the cue
 # customers (civilians): they run for the street when it kicks off
 lv.patron('civ1', 16.75, 14.5, 270, 'drink')            # on the counter stools
 lv.patron('civ2', 15.6, 17.0, 0, 'drink')               # alone in the booth
 lv.patron('civ4', 26.5, 15.25, 270, 'cards')            # the poker game, across the table from the dealer
-lv.patron('civ5', 27.4, 15.25, 270, 'cards')
-lv.patron('civ3', 22.2, 15.6, 180, 'cue')               # waiting for his turn at the pool table
-lv.patron('civ8', 27.6, 17.45, 90, 'drink')              # the VIP room: two customers, a dancer (the doorway kept clear)
-lv.patron('civ7', 26.55, 19.45, -27, 'watch')
+lv.patron('civ3', 23.35, 13.12, 270, 'arcade')          # at the arcade in the corner, his back to the room
+lv.patron('civ7', 26.55, 19.45, -27, 'watch')           # the VIP room: a customer, a dancer (the doorway kept clear)
+# (the user, 2026-11-18: two customers too many blurred the room; the second poker player and the VIP room's man on
+# the sofa went)
 lv.patron('dancer1', 30.0, 18.9, 180, 'dance')
 # back of house
-lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weighing and bagging his dope
-lv.actor('6', 18, 8)
-lv.actor('k', 21, 9, face=0, job='piss')               # in the toilets: the bowl, the sink, a smoke against the wall
-lv.actor('h', 30, 9, face=180, job='cueball', look='cueball')  # CUEBALL, the level's boss (data/bosses.js), in the
+lv.actor('j', 17, 8, face=90, job='dope', arms=(18.5, 8.5))   # the pimp, alone, weighing and bagging his dope ...
+lv.actor('6', 18, 8)                                    # ... his blade on the table by him
+lv.actor('k', 21, 9, face=0, job='piss', arms='fists')  # in the toilets: the bowl, the sink, a smoke against the wall
+lv.actor('h', 30, 7, face=180, job='cueball', look='cueball')  # CUEBALL, the level's boss (data/bosses.js), in the
 #                                                     armchair, feet up on the desk, his pump-action against it
 lv.actor('i', 26, 10, face=0, job='couch')              # his man on the couch plays with his tire iron
-lv.actor('k', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case
+lv.actor('p', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case, a pistol
+#                                                     on his hip: the second gun of the house
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
-lv.actor('1', 8, 17)                                    # what the liquor store keeps behind its counter
-# back lot: one man, his back against the wall by the back door, smoking; now and then a look at the van
-lv.actor('b', 27, 4, face=270, job='lean')
-# the service alley: a man smoking against the bar's wall under the cyan tube, by the storeroom door
+# back lot: one man, his back against the wall by the back door, smoking; now and then a look at the van; his fists
+lv.actor('b', 27, 4, face=270, job='lean', arms='fists')
+# the service alley: a man smoking against the bar's wall under the cyan tube, by the storeroom door, a knife in his
+# pocket
 lv.actor('k', 12, 8, face=180, job='alley')
 
 # ---------------------------------------------------------------- props
@@ -319,6 +328,10 @@ for x in (27.4, 28.12, 28.84):
     lv.prop('washer', x, 35.6, 180)
 lv.prop('washer', 31.6, 34.1, 90)
 lv.prop('washer', 31.6, 34.82, 90)
+# a man doing his laundry at 2 AM (ai/Pastimes.js laundry): his load out of the machine in front of him, each piece
+# shaken out, folded and laid on the pile on the next machine's lid; his basket on the floor at his left
+lv.patron('civ6', 28.84, 34.88, 90, 'laundry')
+lv.prop('laundry_basket', 30.5, 35.45, 6)
 lv.prop('bench', 28.3, 33.4)
 lv.prop('trash_can', 31.6, 33.35, tips=False)            # indoors: stays up (the street's go over)
 lv.prop('plant', 31.55, 35.6)
@@ -332,7 +345,7 @@ for (x, y) in ((27.75, 35.1), (30.5, 35.35), (31.05, 34.45), (30.2, 33.6)):
     lv.grime_at('lint', x, y)
 lv.grime_at('tide', 28.5, 34.95)
 lv.grime_at('scuffs', 28.1, 35.05)
-lv.litter_at('sock', 30.65, 35.5, 20)                    # (all of it off the cut line at 29)
+lv.litter_at('sock', 30.9, 34.0, 20)                     # (all of it off the cut line at 29)
 
 lv.area('service alley')
 for x in (11.5, 12.5, 13.5):
@@ -378,7 +391,7 @@ lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
 # the house's fuse box, between the toilets' window and the back door: smash it and the bar is left in its emergency lighting
 lv.power(14, 5, 31, 20, 24.5, 4.92, 180)
-for (x, y, deg) in ((23.6, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: back, front, VIP side
+for (x, y, deg) in ((23.85, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: back, front, VIP side
                     (17.6, 10.91, 180), (21.09, 8.5, 270), (25.4, 10.91, 180),   # storeroom, toilets, the boss's room
                     (28.5, 17.09, 0)):                                          # the VIP room
     lv.prop('emergency_light', x, y, deg)
@@ -417,7 +430,8 @@ lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
 lv.prop('desk', 27.6, 6.75, 270, clutter='cueball_desk')                       # its seat side toward the boss, up against the north wall
 lv.prop('sofa', 25.5, 8.6, 270)
-lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
+lv.prop('armchair', 28.48, 6.45, 180)                   # the boss's, pulled up to his desk so that his boots rest on
+                                                        # it (the user), its back flush with the north wall: no pocket
                                                         # north of it to get caught in (the QA robot found him there)
 lv.prop('table_round', 27.6, 8.75, clutter='men_table')                    # the boss's men's table, 1.2 m off the couch: the way from the
 lv.prop('chair', 28.45, 8.75, 180)                      # back door to the rest of the room goes round it
@@ -458,15 +472,17 @@ for x in (15.95, 17.15):                                # their taps on the bar,
 
 lv.area('the bar: the main room')
 # 8 x 8 m: the counter along the north wall, the pool table in the middle with a cue's length round it, a booth on the
-# west wall, the arcade against the gaming room's wall and the jukebox by the door; 1.2 m and more of floor along every
-# way across, the lane from the front door to the toilets' door clear, the foot of the street windows clear (one dives
-# in onto open floor); a table to slide over everywhere one runs.
+# west wall, the arcade in the corner between the toilets' and the gaming room's doors and the jukebox by the door;
+# 1.2 m and more of floor along every way across, the lane from the front door to the toilets' door clear, the foot of
+# the street windows clear (one dives in onto open floor); a table to slide over everywhere one runs.
 lv.prop('pool_table', 20.8, 16.9, clutter='pool_rail')  # a beer and a smoking ashtray on its rail
 lv.prop('pool_lamp', 20.8, 16.9)
 lv.prop('sofa', 15.5, 17.0, 270)
 lv.prop('wall_lamp', 15.09, 17.0, 270)
 lv.prop('table', 16.5, 17.0, 90, clutter='booth')
-lv.prop('arcade', 23.55, 15.5, 270)                     # against the gaming room's wall, back to it
+lv.prop('arcade', 23.35, 12.47, 0)                      # in the corner between the toilets' and the gaming room's
+                                                        # doors, its back to the north wall (the user); clear of both
+                                                        # doors' swing, its player off the way to them
 lv.prop('jukebox', 23.6, 19.6, 180)
 lv.prop('ceiling_fan', 22.6, 14.2)
 lv.prop('plant', 17.85, 19.55)                          # in the corner by the windows
@@ -492,9 +508,9 @@ lv.litter_at('chip', 28.3, 15.15)
 lv.litter_at('chip', 25.95, 15.55)
 
 lv.area('the bar: what can be used')
-# the fire alarm east of the counter, by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
+# the fire alarm on the gaming room's wall, past the extinguisher: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
 # customers run (systems/Sprinklers.js)
-lv.sprinklers(21.5, 12.07, 0, [(15, 12, 30, 19)])
+lv.sprinklers(23.91, 15.5, 90, [(15, 12, 30, 19)])       # on the gaming room's wall, where the arcade stood
 # under the street: a trapdoor in the TV shop's back, the other under the rug inside the back room's door
 lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
@@ -536,7 +552,7 @@ lv.prop('coat_hooks', 15.09, 15.3, 270)                 # by the end of the coun
 lv.prop('frame_photo', 15.09, 16.2, 270)                # over the booth, either side of its lamp
 lv.prop('poster_fight', 15.09, 17.85, 270)
 lv.prop('poster_band', 20.3, 19.91, 180)                # on the front wall, between the windows and the door
-lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the arcade
+lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the fire alarm
 lv.prop('pay_phone', 24.91, 19.35, 90)                  # by the jukebox, on the VIP room's wall
 lv.prop('neon_sign_beer', 30.0, 12.09)                  # the poker room
 lv.prop('frame_gold', 25.09, 15.4, 270)
@@ -640,6 +656,7 @@ lv.prop('crate', 9.5, 6.3, 5)
 lv.prop('chair', 9.3, 4.4, 80)
 lv.prop('wall_vent', 8.4, 3.08)
 lv.actor('5', 4, 11)                                    # a bat left against the crate
+lv.drop('pistol', 8.62, 4.72, 205)                      # the liquor store's pistol, hidden up here by the lookout's chair
 lv.pigeons(4.6, 12.6, 3)
 lv.pigeons(8.6, 6.0, 2)
 lv.dress('papers', 1, 8, 9, 14, 3)

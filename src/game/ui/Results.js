@@ -57,6 +57,14 @@ export function resultsBeats(r, t0, t1, R = RESULTS) {
   return out;
 }
 
+// the line under the stamp: what the next grade up takes (the top one also nobody else killed, when that kept it)
+export function gradeHint(r) {
+  const n = r.next;
+  if (!n) return 'TOP GRADE';
+  if (!n.clean) return `${n.grade} FROM ${thousands(n.at)}`;
+  return r.total >= n.at ? `${n.grade}: NO CIVILIAN KILLED` : `${n.grade} FROM ${thousands(n.at)}, NO CIVILIAN`;
+}
+
 // the grade as a rubber stamp: k 0..1 its fall, since: s since it landed (the ink spatters, a ring goes out)
 function drawStamp(ctx, grade, x, y, size, k, since, s) {
   const color = GRADE_COLOR[grade] || PALETTE.white, seed = grade.charCodeAt(0);
@@ -240,8 +248,8 @@ export function drawResults(ctx, W, H, t, r, replay, device) {
   if (since > 0) {
     const right = Rx;
     let ly = bt + 86 * s;
-    const hint = r.next ? `${r.next.grade} FROM ${thousands(r.next.at)}` : 'TOP GRADE';
-    text(ctx, hint, right, ly, 11 * s, PALETTE.white, { align: 'right', alpha: 0.65 * clamp(since * 4, 0, 1) });
+    const hint = gradeHint(r);
+    text(ctx, hint, right, ly, fitSize(ctx, hint, 11 * s, inner - size - 24 * s), PALETTE.white, { align: 'right', alpha: 0.65 * clamp(since * 4, 0, 1) });
     ly += 26 * s;
     const rt = t - T.record;
     if (rt > 0) {

@@ -4,6 +4,7 @@ import { TILE, PALETTE, CAT } from '../Config.js';
 import { clamp } from '../../engine/math.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
+import { drawAim } from './AimArt.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawClutter, drawLitter } from './ClutterArt.js';
@@ -149,6 +150,7 @@ export default class WorldRenderer {
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis, cam);
     drawLasers(ctx, w);
+    if (w.cues) drawAim(ctx, w, w.aimStyle, t); // the aim's cue (data/aim.js; the style is the player's setting)
     this.cues.drawItems(ctx, vis); // the floor weapons' catch-lights, the one within reach outlined
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);

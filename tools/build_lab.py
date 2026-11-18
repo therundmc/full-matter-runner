@@ -30,7 +30,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
         17    X##########################    ##############D#####X###D####L###X
         18    X  sidewalk: the trapdoor (west end), the hydrant  X
         21    X  road: 17 VEHICLES (car, van, leaking car)       X
-        25    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        25    X  the south sidewalk                               X
+        26    X#####.########.#########.######XXXXXXXXXXXXXXXXXXXXX
+        27    X#24 ARCADE#25 LAUNDRY#  26 ARMS  #
+        30    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
                    it; dummies, crates, a barrel, a bolted table and a bookshelf down range against the plaster back
@@ -92,13 +95,26 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    driver's door (on the sidewalk) and he sits in, takes the Uzi off the seat, racks it and hangs it
                    over the door (systems/Drive.js grab, CharacterAnim grabPose; the camera pushed in), every time he
                    gets in (getting out puts it back on the seat); then he drives it as at 19
+    23 AIM         a room north of CUEBALL's (cols 64-73, rows 1-5), through a doorway in the east wall of the
+                   takedowns room (col 63, row 3): the ways of showing the aim to try, above all with a gamepad
+                   (data/aim.js, render/AimArt.js; F7 cycles them, OPTIONS / GAME / AIM keeps one). Four dummies at
+                   2, 4, 7 and 9 m, one of them behind a wall's end, a crate in the line of the last; a 1911, a
+                   SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun
+    24 ARCADE      across the street, south row: a customer playing the arcade cabinet (ai/Pastimes.js arcadeAt: the
+                   stick, the buttons, the screen in play; a slap and a coin between two games); a shot sends him off
+    25 LAUNDRY     next door: a man doing his washing at a top loader (laundryAt: out of the drum, shaken out, folded,
+                   laid on the pile on the next lid, the pile to his basket, a look at his watch); he runs at a shot
+    26 ARMS        two guards awake, bare-handed (level `arms`, Enemy.armUp): a doorman with his bat stood against
+                   the wall at the far end of the room, a brawler (fists only); a knife-man (a blade in his pocket,
+                   drawn in a moment). A shot or a noise and the doorman runs for his bat, snatches it up and comes;
+                   take the bat first and he comes with his fists
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
 
-W, H = 76, 26                              # (the 12 columns east of col 63 are 15 CUEBALL's room, in the brick)
+W, H = 76, 31                              # (the 12 columns east of col 63 are 15 CUEBALL's room, in the brick)
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -164,12 +180,25 @@ lv.door(57, 11, kind='fire', inside='s', relock=4)
 lv.fill(64, 6, 74, 12, '#')                # 15 CUEBALL: his room beyond the concourse's east end, behind a door
 lv.fill(64, 7, 73, 11, ';')
 lv.put(63, 9, 'D')
+lv.fill(63, 1, 74, 5, '#')                 # 23 AIM: a room north of his, off the takedowns room
+lv.fill(64, 1, 73, 5, '_')
+lv.put(63, 3, '_')
+lv.fill(70, 1, 70, 2, '#')                 # a wall's end, a man behind it
 # the street
 lv.fill(1, 18, 62, 19, 's')
 lv.fill(1, 20, 62, 24, '=')
 lv.fill(1, 22, 62, 22, '-')
+# the south side of the street: its sidewalk and three rooms off it (24 ARCADE, 25 LAUNDRY, 26 ARMS)
+lv.fill(1, 25, 32, 25, 's')
+lv.fill(1, 26, 32, 29, '#')
+lv.fill(2, 27, 8, 29, '.')
+lv.put(5, 26, '.')
+lv.fill(10, 27, 15, 29, '+')
+lv.put(14, 26, '+')
+lv.fill(17, 27, 31, 29, '.')
+lv.put(24, 26, '.')
 
-# ---------------------------------------------------------------- actors (26 guards)
+# ---------------------------------------------------------------- actors (30 guards)
 lv.actor('@', 27, 9, face=270)
 
 lv.area('the concourse')
@@ -367,6 +396,23 @@ lv.prop('wall_lamp', 68.5, 7.08, 0)
 for x, kind in ((61.3, 'pistol'), (61.9, 'bat'), (62.5, 'knife')):
     lv.drop(kind, x, 9.9, 0)
 
+lv.area('23 aim')
+# the aim's cue (src/game/data/aim.js): men at four distances, one behind a wall's end, a crate before the last; a
+# thin gun, a wide one, a fast one and a blade to see what each concept tells of them
+lv.paint('label_aim', 61.6, 3.6)
+for (x, y), kind in (((64.6, 1.5), 'pistol'), ((65.4, 1.5), 'shotgun'), ((64.6, 2.2), 'uzi'), ((65.4, 2.2), 'bat')):
+    lv.drop(kind, x, y, 0)
+lv.actor('n', 64, 5)
+lv.actor('g', 65, 5)
+lv.actor('m', 67, 2, face=180)             # 2 m from the door
+lv.actor('k', 69, 5, face=180)             # 4 m
+lv.actor('j', 72, 1, face=180)             # 7 m, behind the wall's end
+lv.actor('b', 73, 4, face=180)             # 9 m, a crate in the line
+lv.prop('crate', 71.3, 4.5, 8)
+lv.prop('ceiling_lamp', 66.5, 3.5)
+lv.prop('ceiling_lamp', 71.5, 3.5)
+lv.prop('wall_lamp', 68.5, 5.92, 180)
+
 lv.area('17 vehicles: the street, to ram, hole and blow up')
 lv.paint('label_vehicles', 28.5, 18.6)
 lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
@@ -416,6 +462,34 @@ lv.prop('convertible', 56.6, 21.0, 180, lights=False)   # its driver's door on t
 exit_zone = {'x': 56.6, 'y': 22.9, 'r': 1.2, 'open': True, 'route': [[52.0, 21.0], [48.0, 23.0], [30.0, 23.0]], 'radius': [3, 3],
              'slide': [1, 0.5], 'fade': 13}
 
+lv.area('24 arcade: a customer at the cabinet')
+lv.paint('label_arcade', 5.0, 25.5)
+lv.prop('arcade', 6.5, 27.47, 0)                         # its back to the north wall, its player off the doorway
+lv.patron('civ3', 6.5, 28.12, 270, 'arcade')
+lv.prop('jukebox', 2.6, 28.4, 90)
+lv.prop('ceiling_lamp', 5.0, 28.2)
+lv.prop('wall_lamp', 8.92, 28.5, 90)
+
+lv.area('25 laundry: a man doing his washing')
+lv.paint('label_laundry', 12.5, 25.5)
+for x in (10.6, 11.32, 12.04):
+    lv.prop('washer', x, 29.6, 180)
+lv.patron('civ6', 12.04, 28.88, 90, 'laundry')
+lv.prop('laundry_basket', 12.85, 29.45, 6)
+lv.prop('bench', 13.0, 27.4)
+lv.prop('tube_light', 12.5, 29.93, 180)
+
+lv.area('26 arms: bare-handed guards, a bat against the wall')
+lv.paint('label_arms', 24.0, 25.5)
+lv.actor('b', 20, 28, face=0, job='door', awake=True, arms=(30.85, 27.6))   # his bat at the room's far end
+lv.lean('bat', 30.85, 27.6, 0)
+lv.actor('k', 22, 27, face=90, awake=True, arms='fists')                   # a brawler
+lv.actor('j', 18, 28, face=0, awake=True)                                  # a blade in his pocket
+lv.prop('table', 26.5, 28.2)
+lv.prop('chair', 25.4, 28.2, 0)
+for x in (20.0, 27.0):
+    lv.prop('ceiling_lamp', x, 28.0)
+
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [
     [12, 22, 9, '#5a6ad8', 0.3],
@@ -427,12 +501,12 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=28)
+    lv.check(guards=35)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
-             exit=exit_zone,
+             exit=exit_zone, ambient={'traffic': [], 'walkers': []},
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane) and a',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane, the aim\'s room) and a',
                  'street with the vehicles. Load with ?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
                  'tests, and CUEBALL in his room (level 1\'s boss: he fights).',

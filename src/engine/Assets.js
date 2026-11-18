@@ -51,13 +51,13 @@ export const OPTIONAL_LIST = [
   ...GLOWING.map((n) => `props/${n}_glow`),
   ...['chain_fence', 'bottle_shelf', 'washer', 'card_table', 'dance_stage', 'dope_table', 'gas_bottle', 'back_bar', 'alarm_box', 'cash_case', 'ceiling_fan', 'mirror_ball', 'extinguisher',
     'vending', 'phone_booth', 'parking_meter', 'news_box', 'pipe_steam', 'pipe_water', 'wall_vent', 'manhole', 'cardboard_bed', 'ladder', 'parapet', 'fuse_box',
-    'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'apt_door', 'doormat', 'stairs', 'floor_hole', 'jerrycan',
+    'table_flipped', 'table_round_flipped', 'card_table_flipped', 'urinal', 'stall', 'apt_door', 'doormat', 'stairs', 'floor_hole', 'jerrycan', 'laundry_basket',
     'runner', 'road_edge', 'parking_bay', 'velvet_rope', 'entry_carpet', 'radiator', 'bike', 'bin_bag', 'newspaper', 'shoes',
     'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid',
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -109,7 +109,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'bike', 'bin_bag', 'bookshelf', 'bottle_shelf', 'car', 'car2', 'van', 'car_tire', 'car_hood', 'car_door', 'car2_hood',
   'car2_door', 'van_hood', 'van_door', 'convertible', 'convertible_hood', 'convertible_door', 'boss_hat', 'pursuer', 'pursuer_hood', 'pursuer_door', 'card_table', 'card_table_flipped', 'cardboard_bed', 'cash_case', 'ceiling_fan',
   'chain_fence', 'chair', 'crate', 'dance_stage', 'desk', 'dj_booth', 'doormat', 'dope_table', 'dumpster', 'extinguisher',
-  'floor_hole', 'fridge', 'fuse_box', 'gas_bottle', 'hydrant', 'jerrycan', 'jukebox', 'ladder', 'manhole', 'mirror_ball',
+  'floor_hole', 'fridge', 'laundry_basket', 'fuse_box', 'gas_bottle', 'hydrant', 'jerrycan', 'jukebox', 'ladder', 'manhole', 'mirror_ball',
   'news_box', 'newspaper', 'oven', 'palm_tree', 'parapet', 'parking_meter', 'phone_booth', 'pipe_steam', 'pipe_water', 'plant',
   'parking_bay', 'velvet_rope', 'entry_carpet', 'pool_table', 'radiator', 'road_edge', 'runner', 'shoes', 'sink', 'sofa', 'speaker', 'stairs', 'stall', 'streetlight', 'table',
   'table_flipped', 'table_round', 'table_round_flipped', 'toilet', 'trash_can', 'tv', 'urinal', 'vending', 'wall_vent', 'washer',

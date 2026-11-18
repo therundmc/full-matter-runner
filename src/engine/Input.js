@@ -6,7 +6,7 @@
 // which was used last ('kbm' | 'pad'), for the prompts on screen.
 import Gamepad from './Gamepad.js';
 
-const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6']);
+const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7']);
 const MOUSE_WAKE = 6; // px the mouse must travel to take over from a gamepad (a mouse on the desk drifts)
 
 export default class Input {

@@ -83,7 +83,7 @@ test('killfeed: the chain count shows from the 2nd kill and climbs its tiers', (
   const calm = w.feed.panelView();
   assert.deepEqual([calm.punch, calm.jolt, calm.flash, calm.open], [0, 0, 0, 1]);
   // white, yellow, orange, pink, then neon at the top multiplier
-  assert.deepEqual([2, 3, 4, 5, 6].map((n) => tierColor(tierOf(n, 1 + (n - 1) * 0.5))), ['white', 'yellow', 'orange', 'pink', 'pink']);
+  assert.deepEqual([2, 3, 4, 5, 6].map((n) => tierColor(tierOf(n, 1 + (n - 1) * SCORING.combo.step))), ['white', 'yellow', 'orange', 'pink', 'pink']);
   assert.equal(tierColor(tierOf(7, SCORING.combo.max)), 'neon');
 });
 

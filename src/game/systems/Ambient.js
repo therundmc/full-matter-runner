@@ -44,6 +44,18 @@ const BARKS = {
 const VOICES = { beg: 'whimper', whine: 'whimper', sob: 'sob', pant: 'pant' };
 const BARK_COLOR = '#ffe6f0';
 
+// Where along walker path `p` (px from its start) one placed at `at` is set down so that he is not in the way of the
+// player where he starts (AMBIENT.startClear): moved on along his way until he is clear of him; null past the end
+export function clearOf(p, at, player) {
+  if (!player) return at;
+  const [cx, cy] = A.startClear.map((m) => m * TILE);
+  for (let d = at; d <= p.len; d += TILE / 4) {
+    const q = pointAlong(p.pts, d);
+    if (Math.abs(q.x - player.x) >= cx || Math.abs(q.y - player.y) >= cy) return d;
+  }
+  return null;
+}
+
 export default class Ambient {
   constructor(world, def) {
     this.world = world;
@@ -101,7 +113,10 @@ export default class Ambient {
     }
     for (const p of this.paths) {
       const n = Math.round(p.max * A.prewarm);
-      for (let k = 0; k < n && this.strollers < A.maxWalkers; k++) this.spawnWalker(p, between(r, [0.08, 0.85]) * p.len);
+      for (let k = 0; k < n && this.strollers < A.maxWalkers; k++) {
+        const at = clearOf(p, between(r, [0.08, 0.85]) * p.len, this.world.player);
+        if (at !== null) this.spawnWalker(p, at);
+      }
       p.timer = between(r, p.gap) * 0.6;
     }
   }

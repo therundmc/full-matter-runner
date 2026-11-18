@@ -12,12 +12,14 @@ export default {
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 22.4, y: 4.55, r: 1.3, route: [[12.6, 3.4], [12.6, 27.0], [-9, 26.2]], radius: [3, 3], slide: [0, 1], fade: 14 },
-  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 0, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
+  facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 0, '23,17': 65, '17,8': 90, '20,9': 0, '28,7': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
   patrols: {
     '17,22': [[16, 22], [26, 22]],
   },
-  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'cueball', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
-  looks: { '28,9': 'cueball' },
+  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,7': 'cueball', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
+  // bare-handed guards: a brawler (fists), or where his weapon is kept until the fight (Enemy.takeArms)
+  arms: { '23,21': [24.95, 21.12], '18,12': [19.65, 13.42], '23,17': [18.6, 19.8], '17,8': [18.5, 8.5], '20,9': 'fists', '26,4': 'fists' },
+  looks: { '28,7': 'cueball' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "XXXXXXXXXXX____________________XXXXXXXXXXX",
@@ -66,17 +68,17 @@ export default {
     "                          b",
     "",
     "",
-    "",
+    "                            h",
     "            k    j6",
-    "                    k       h",
-    "                         i k",
+    "                    k",
+    "                         i p",
     "    5",
     "                  b",
     "",
     "                        p",
     "",
     "",
-    "        1              b      6",
+    "                       b      6",
     "",
     "",
     "",
@@ -130,9 +132,9 @@ export default {
     ['neon_tube_pink', 34.07, 18.5, 270],
     // laundromat
     ['neon_sign_wash', 24.55, 31.91, 0], ['washer', 26.4, 35.6, 180], ['washer', 27.12, 35.6, 180],
-    ['washer', 27.84, 35.6, 180], ['washer', 29.6, 34.1, 90], ['washer', 29.6, 34.82, 90], ['bench', 27.3, 33.4, 0],
-    ['trash_can', 29.6, 33.35, 0, { tips: false }], ['plant', 29.55, 35.6, 0], ['tube_light', 27.5, 35.93, 180],
-    ['tube_light', 28.5, 35.93, 180],
+    ['washer', 27.84, 35.6, 180], ['washer', 29.6, 34.1, 90], ['washer', 29.6, 34.82, 90],
+    ['laundry_basket', 28.5, 35.45, 6], ['bench', 27.3, 33.4, 0], ['trash_can', 29.6, 33.35, 0, { tips: false }],
+    ['plant', 29.55, 35.6, 0], ['tube_light', 27.5, 35.93, 180], ['tube_light', 28.5, 35.93, 180],
     // service alley
     ['chain_fence', 11.5, 20.88, 0], ['chain_fence', 12.5, 20.88, 0], ['chain_fence', 13.5, 20.88, 0],
     ['wall_lamp', 11.09, 19, 270], ['trash_can', 13.5, 17.4, 0], ['trash_can', 13.45, 18.25, 0],
@@ -145,7 +147,7 @@ export default {
     ['washer', 13.55, 2.25, 8], ['tv', 16.55, 1.42, 12, { lights: false }], ['armchair', 18.65, 1.5, 14],
     ['trash_can', 20, 1.45, 0], ['trash_can', 20.6, 1.6, 0], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
     ['trash_can', 29.5, 1.5, 0], ['parapet', 10.5, 3.5, 90], ['crate', 30.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
-    ['fuse_box', 23.5, 4.92, 180], ['emergency_light', 22.6, 12.09, 0], ['emergency_light', 19.5, 19.91, 180],
+    ['fuse_box', 23.5, 4.92, 180], ['emergency_light', 22.85, 12.09, 0], ['emergency_light', 19.5, 19.91, 180],
     ['emergency_light', 23.91, 17.4, 90], ['emergency_light', 17.6, 10.91, 180], ['emergency_light', 20.09, 8.5, 270],
     ['emergency_light', 24.4, 10.91, 180], ['emergency_light', 27.5, 17.09, 0], ['wall_vent', 16.3, 4.92, 180],
     ['pipe_water', 19.2, 1.07, 0], ['tube_light', 25.55, 4.93, 180], ['gas_bottle', 28.4, 4.74, 0],
@@ -159,7 +161,7 @@ export default {
     ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0, { tips: false, flies: true }],
     // back room
     ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'cueball_desk' }], ['sofa', 24.5, 8.6, 270],
-    ['armchair', 28.45, 6.6, 180], ['table_round', 26.6, 8.75, 0, { clutter: 'men_table' }],
+    ['armchair', 27.48, 6.45, 180], ['table_round', 26.6, 8.75, 0, { clutter: 'men_table' }],
     ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270], ['ceiling_lamp', 26.6, 8.75, 0],
     ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84, { clutter: 'cash_floor' }],
     ['extinguisher', 24.9, 10.86, 180],
@@ -175,7 +177,7 @@ export default {
     ['keg', 15.36, 12.45, 0], ['keg', 15.36, 13.02, 0], ['beer_tap', 15.95, 13.62, 0], ['beer_tap', 17.15, 13.62, 0],
     // the bar: the main room
     ['pool_table', 19.8, 16.9, 0, { clutter: 'pool_rail' }], ['pool_lamp', 19.8, 16.9, 0], ['sofa', 15.5, 17, 270],
-    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90, { clutter: 'booth' }], ['arcade', 22.55, 15.5, 270],
+    ['wall_lamp', 15.09, 17, 270], ['table', 16.5, 17, 90, { clutter: 'booth' }], ['arcade', 22.35, 12.47, 0],
     ['jukebox', 22.6, 19.6, 180], ['ceiling_fan', 21.6, 14.2, 0], ['plant', 17.85, 19.55, 0],
     ['extinguisher', 22.88, 14.5, 90],
     // the bar: the gaming room
@@ -183,7 +185,7 @@ export default {
     ['chair', 26.4, 15.25, 270], ['chair', 27.35, 14.25, 180], ['bottle_shelf', 24.9, 12.16, 0],
     ['cash_case', 27.8, 12.6, 15, { clutter: 'cash_floor' }], ['wall_lamp', 28.91, 13, 90],
     // the bar: what can be used
-    ['fire_alarm', 20.5, 12.07, 0],
+    ['fire_alarm', 22.91, 15.5, 90],
     // the bar: VIP room
     ['curtain', 24.5, 18.5, 0], ['dance_stage', 28, 18.9, 0, { clutter: 'stage' }], ['mirror_ball', 27.5, 18.6, 0],
     ['sofa', 27.15, 17.45, 0, { clutter: 'vip_sofa' }], ['cocktail_table', 25.5, 17.47, 0, { clutter: 'vip_table' }],
@@ -213,15 +215,17 @@ export default {
   welcome: [[20, 12, 22, 12], [15, 13, 22, 15], [15, 16, 22, 19], [20, 6, 22, 11]],
   // painted on the floor, no body: [sprite, col, row, deg]
   floor: [['tag', 20.2, 34.9, -8], ['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_mat', 21.0, 21.4, 0], ['tag', 11.9, 12.6, 80], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
+  // weapons lying about [type, col, row, deg, rounds in it (null: full)]
+  drops: [["pistol", 8.62, 4.72, 205, null]],
   // weapons stood against a wall [type, col, row, deg]
-  lean: [["cue", 18.6, 19.8, 90]],
+  lean: [["bat", 24.95, 21.12, 270], ["bat", 19.65, 13.42, 90], ["cue", 18.6, 19.8, 90]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
   alarms: [{"rect": [3, 17, 8, 19], "box": [4.87, 21.1]}, {"rect": [34, 17, 37, 19], "box": [33.8, 21.1]}],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
   power: {"box": [23.5, 4.92], "zone": [14, 5, 29, 20]},
   // the devices of the level (data/devices.js): the fire alarm and the rooms it rains on and
   // the trapdoors of the passage under the street
-  sprinklers: {"pull": [20.5, 12.07], "rooms": [[15, 12, 28, 19]]},
+  sprinklers: {"pull": [22.91, 15.5], "rooms": [[15, 12, 28, 19]]},
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
@@ -242,7 +246,7 @@ export default {
   haze: [[19.8, 16.9, 2.3, 0.1], [25.9, 14.25, 1.9, 0.1], [17.6, 13.6, 2.0, 0.05], [28.0, 18.9, 1.4, 0.12]],
   // small things lying loose on the floor (systems/Litter.js): [kind, col, row, deg, look]
   litter: [
-    ["sock", 28.65, 35.5, 20, 0], ["card", 27.05, 15.4, 35, 0], ["chip", 27.3, 15.15, 0, 0], ["chip", 24.95, 15.55, 0, 0],
+    ["sock", 28.9, 34.0, 20, 0], ["card", 27.05, 15.4, 35, 0], ["chip", 27.3, 15.15, 0, 0], ["chip", 24.95, 15.55, 0, 0],
     ["flute", 26.2, 19.2, 115, 0], ["flute", 27.12, 18.3, 200, 0], ["cork", 26.95, 18.55, 0, 0], ["cork", 27.1, 19.78, 0, 0],
     ["garter", 27.4, 19.55, 30, 0], ["ashtray", 26.05, 18.03, 0, 0], ["bill", 28.748, 19.761, 46, 0], ["bill", 27.846, 17.926, 233, 1],
     ["bill", 27.242, 18.128, 184, 0], ["bill", 28.822, 18.239, 115, 1], ["bill", 28.346, 19.712, 184, 2], ["bill", 27.501, 19.661, 297, 1],
@@ -302,12 +306,11 @@ export default {
       ['civ1', 16.75, 14.5, 270, 'drink'],
       ['civ2', 15.6, 17.0, 0, 'drink'],
       ['civ4', 25.5, 15.25, 270, 'cards'],
-      ['civ5', 26.4, 15.25, 270, 'cards'],
-      ['civ3', 21.2, 15.6, 180, 'cue'],
-      ['civ8', 26.6, 17.45, 90, 'drink'],
+      ['civ3', 22.35, 13.12, 270, 'arcade'],
       ['civ7', 25.55, 19.45, -27, 'watch'],
       ['dancer1', 28.0, 18.9, 180, 'dance'],
       ['tramp', 21.1, 36.5, 180, 'sleep'],
+      ['civ6', 27.84, 34.88, 90, 'laundry'],
     ],
   },
 };

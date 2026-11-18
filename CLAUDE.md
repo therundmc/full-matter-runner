@@ -102,7 +102,11 @@
 - Guards ignore an unarmed player outside the level's `premises` (Director.isThreat). A stranger who acts up is
   challenged before being fought (ai/Conduct.js, data/conduct.js). Guards remember jams and replan (ai/Nav.js).
 - Bar life: guards at their `jobs`, `ambient.patrons` who panic each his own way (`AMBIENT.panic`), weapons carried
-  away / low / raised (ai/Carry.js), pastimes (ai/Pastimes.js, Enemy.pickActivity), hands busy (`busyHands()`).
+  away / low / raised (ai/Carry.js), pastimes (ai/Pastimes.js, Enemy.pickActivity), hands busy (`busyHands()`); a
+  customer at the arcade and a man at his washing work their machine (`arcadeAt`, `laundryAt`, Civilian.atMachine).
+- Guards may start bare-handed (level `arms`, levelkit `actor(arms=...)`): their weapon kept somewhere (a bat behind
+  a counter, against a wall, the cue), fetched once the fight is on (Enemy.armsDue / armUp, AI.arms), or a brawler
+  ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js.
@@ -111,8 +115,12 @@
 - The boss is CUEBALL, the comic's heavy (kind `cueball`: data/bosses.js `BOSSES`, entities/Boss.js, systems/BossStage.js):
   his name card and a camera push-in on first sight, a fast pump-action fired from the hip (each shot told: the pump,
   then a glint at the muzzle), TWO hits (the first wounds him and sends him berserk), no takedown while he is whole.
-- 12 guards, two guns in the house (the poker dealer's pistol, the boss's shotgun), a pistol behind the liquor
-  store's counter, a cue by the pool table, a tire iron in the trunk of the first parked car (prop option `trunk`,
+  He waits in his armchair pulled up to his desk, his boots up on it (post `cueball`, BASES `desk`).
+- 12 guards, three guns in the house (the poker dealer's pistol, the money counter's pistol, the boss's shotgun); the
+  others bare-handed: the bartender's bat behind his counter, the doorman's against the front wall, the cue by the
+  pool table for the VIP doorman, the pimp's blade on his table, two knives in pockets, two brawlers, the couch man's
+  tire iron in hand. A spare pistol hidden up on the liquor store roof (by the lookout's chair), a tire iron in the
+  trunk of the first parked car (prop option `trunk`,
   E at its tail); the player starts on the ground and gets up (level `intro`), the first time with a bottle of rum,
   the camera pushed in on him (systems/Opening.js, SHOTS `swig*`).
 - Five ways in on foot (front door, gate, the gap, the liquor store roof by a `ladder`, the shop's own ladder; down
@@ -147,7 +155,7 @@
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). A table across his doorway teaches the vault. A lesson waits for its object to be on
+  Enemy.drawTail, his name card). A big table across the living room, on his way, teaches the vault. A lesson waits for its object to be on
   screen and near (`LESSONS.within`); during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
@@ -186,7 +194,7 @@
 - The WebGL last pass, the lens (render/PostGL.js + render/Lens.js): tune in data/post.js, never hard-code. Barely
   there at rest; a KILL is what it underlines; no blur in play. `?post=0` turns it off, F6 toggles it.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off. `window.game` in the console.
+  times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; also OPTIONS / GAME / AIM; lab station 23). `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node
   static server to Python's. Never kill processes you didn't start.
 

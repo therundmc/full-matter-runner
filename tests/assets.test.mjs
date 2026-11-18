@@ -44,8 +44,8 @@ test('assets: every look a level gives a guard, and every civilian look, has its
   const { KINDS } = await load('game/entities/Character.js');
   const { CIVILIAN_LOOKS } = await load('game/entities/Civilian.js');
   const { default: level1 } = await load('game/data/levels/level1.js');
-  assert.equal(level1.looks['28,9'], 'cueball', 'the boss is his own man: CUEBALL');
-  assert.equal(level1.jobs['28,9'], 'cueball');
+  assert.equal(level1.looks['28,7'], 'cueball', 'the boss is his own man: CUEBALL');
+  assert.equal(level1.jobs['28,7'], 'cueball');
   assert.deepEqual(png('characters/cueball_torso'), { w: 48, h: 48 }, 'the widest shoulders in the game');
   assert.deepEqual(png('characters/cueball_head_hurt'), png('characters/cueball_head'));
   assert.ok(FINE.test('characters/cueball_head_hurt'));

@@ -27,7 +27,8 @@
 //              waves may also say frame: true (called, its men are framed with the player by the camera until they
 //                     are on him: shot `threat`)
 //              snatch: true   the weapon in his hand breaks on a man of this stage, whose gun he then snatches
-//                     (FORCE in data/staging.js); spare: N magazines that come with the stage's gun (`take`), once
+//                     (FORCE in data/staging.js): killed by his hand in any way, the man's gun always ends up in it
+//                     (Character.yields); spare: N magazines that come with the stage's gun (`take`), once
 //              hints: [names of HINTS, the first that applies wins a place: two at most are shown, one a target]
 //              take: TYPE, marks: { name: [col, row] }   what some hints point at
 //              leaves: N   the gun a dead man of the stage drops has N rounds left in it, no more (a retry further
@@ -136,7 +137,7 @@ export default class Tutorial {
       waves: (s.waves || []).map((w) => ({ on: w.on || 'enter', blind: !!w.blind, sharp: !!w.sharp, frame: !!w.frame, slack: w.slack ?? SLACK, up: w.up ?? null, awake: false, guards: posted(w.at) })),
       cues: (s.cues || []).map((c) => ({ act: c.act, delay: c.delay ?? 0, guards: posted([c.at]) })),
     }));
-    for (const s of this.stages) for (const w of s.waves) for (const g of w.guards) Object.assign(g, { dormant: true, slack: w.slack, rate: SLACK });
+    for (const s of this.stages) for (const w of s.waves) for (const g of w.guards) Object.assign(g, { dormant: true, slack: w.slack, rate: SLACK, yields: g.yields || !!s.snatch });
     // the men still on their way up the stairs are not in the building yet
     for (const s of this.stages) for (const w of s.waves) if (w.up) for (const g of w.guards) world.holdBack(g);
     // out of the windows over the alley he lands in a roll (Character.tryVault: `land`)
@@ -154,7 +155,11 @@ export default class Tutorial {
       const s = this.stages[this.stage];
       if (!s || !this.guards(s).includes(victim)) return;
       s.kills++;
-      if (s.leaves !== undefined) this.left = { x: victim.x, y: victim.y, n: s.leaves, steps: 30 };
+      if (s.leaves === undefined) return;
+      this.left = { x: victim.x, y: victim.y, n: s.leaves, steps: 30 };
+      // (the gun he had, wherever it went: the one snatched from him too)
+      const it = victim.lastDrop;
+      if (it && !it.dead) it.mag = Math.min(it.mag, s.leaves);
     });
     world.events.on('pickup', ({ ch, type }) => {
       if (!ch.isPlayer) return;

@@ -182,3 +182,24 @@ test('lens: the title has the menu grade', () => {
   run(lens, 4, view({ state: 'title', player: null }));
   assert.ok(Math.abs(lens.grade.tintK - POST.grades.menu.tintK) < 0.005 && Math.abs(lens.grade.lift[2] - POST.grades.menu.lift[2]) < 0.005);
 });
+
+test('lens: a comic page over the world (the leap after the blast) shows clean, whatever the world left behind', () => {
+  // the regression: out of the tutorial's window as the fire-balls go off, the leap was drawn under the shake's
+  // fringe, the blasts' heat and rings and the fires' shimmer, held there as the world stood still behind the page
+  const lens = new Lens(), bus = new EventBus(), player = { isPlayer: true };
+  lens.bind(bus);
+  const hot = { trauma: 0.9, heat: [{ x: 20, y: 0, kind: 'fire' }], lights: [{ x: 50, y: 50, k: 1 }] };
+  run(lens, 4, view({ ...hot, phase: 'alert', combo: POST.rampage.full }));
+  bus.emit('explosion', { x: 10, y: 0 });
+  bus.emit('kill', { victim: { x: 0, y: 0 }, killer: player, cause: 'explosion' });
+  lens.update(1 / 60, view(hot));
+  const fall = view({ ...hot, state: 'fall', page: true, player: null });
+  lens.update(1 / 60, fall);
+  const u = lens.uniforms(fall);
+  assert.ok(Math.abs(u.fringe - POST.fringe.rest) < 1e-6, 'no fringe from the shake, the kicks or a chain of kills');
+  assert.ok([...u.heat, ...u.waves, ...u.lights].every((n) => n === 0), 'no shimmer, no ring, no rays');
+  assert.equal(u.zoom, 0);
+  assert.equal(u.frame, 0);
+  assert.deepEqual(u.centre, [0.5, 0.5]);
+  assert.ok(Math.abs(u.grade.sat - POST.grades.menu.sat) < 1e-6 && u.grade.tintK === POST.grades.menu.tintK, 'the grade of a page, at once');
+});

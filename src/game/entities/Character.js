@@ -107,6 +107,7 @@ export default class Character {
     this.flinchSide = 1;
     this.pickAnim = 0;
     this.pickFrom = null;   // where a weapon picked up lay: the hand goes down to it (CharacterAnim)
+    this.yields = false;    // his gun is the player's whatever he dies of at his hand (a lesson's: Tutorial `snatch`)
     this.throwT = 0;        // follow-through of a throw
     this.throwDur = 0.28;
     this.recoilRate = 9;    // recoil recovery per second (the gun family's FEEL recoil.rate: heavy guns recover slower)
@@ -761,7 +762,7 @@ export default class Character {
     if (snatch) how = { ...how, disarm: true };
     const toward = snatch ? Math.atan2(killer.y - this.y, killer.x - this.x) : angle + rand(-1, 1);
     const it = this.dropWeapon(toward, snatch ? 1 : rand(1.5, 3.5));
-    if (snatch) killer.snatchFrom(it ?? this.lastDrop);
+    if (snatch) killer.snatchFrom(it ?? this.lastDrop, this.yields);
     this.world.removeBody(this.body);
     const left = gore(this.world, this, angle, cause, by, how); // how: the blow decides how much he bleeds
     // most of them go down with a cry, when there is still a throat to cry with

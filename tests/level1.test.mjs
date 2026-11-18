@@ -90,29 +90,48 @@ test('the gap right of the bar: a door on the street, one metre wide, off limits
   assert.equal(m.at(29, 17), 'G');
 });
 
-test('level 1 is fought hand to hand: two guns in the house (the gaming room, the boss), one hidden in the liquor store', () => {
+test('level 1 is fought hand to hand: three guns in the house (the gaming room, the money, the boss), one hidden on the roof', () => {
   const guards = [];
   level.actors.forEach((r, row) => [...r].forEach((ch, col) => { if ('pushrbkmji'.includes(ch.toLowerCase())) guards.push({ ch: ch.toLowerCase(), col, row }); }));
   assert.equal(guards.length, 12);
   const guns = guards.filter((g) => 'pushr'.includes(g.ch));
-  assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p']);
-  const [boss, dealer] = guns;
+  assert.deepEqual(guns.map((g) => g.ch).sort(), ['h', 'p', 'p']);
+  const boss = guns.find((g) => g.ch === 'h'), pistols = guns.filter((g) => g.ch === 'p');
   assert.ok(boss.col >= 24 && boss.col <= 28 && boss.row >= 6 && boss.row <= 10, "the shotgun is the boss's, in the back room");
-  assert.equal(level.jobs[`${dealer.col},${dealer.row}`], 'cards', "the pistol is the poker dealer's");
-  assert.ok(dealer.col >= 24 && dealer.col <= 28 && dealer.row >= 12 && dealer.row <= 15, 'in the gaming room');
-  // lying around: knives, a cue by the pool table, one pistol behind the liquor store's locked door; no ammunition
-  // anywhere and no weapon in the start alley (the first one is in the trunk of the first parked car)
-  assert.deepEqual([...new Set(level.actors.join('').replace(/[^0-9]/g, ''))].sort(), ['1', '5', '6']);
-  assert.deepEqual(level.lean.map((l) => l[0]), ['cue'], 'the cue stands against a wall of the bar room');
-  assert.equal(level.actors[11][4], '5', 'the one bat is up on the liquor store roof');
-  assert.equal(level.actors.join('').split('1').length - 1, 1);
-  assert.equal(level.actors[17][8], '1');
+  assert.deepEqual(pistols.map((g) => level.jobs[`${g.col},${g.row}`]).sort(), ['cards', 'count'], "the pistols: the poker dealer's, the money counter's");
+  for (const g of pistols) assert.ok(!level.arms[`${g.col},${g.row}`], 'on them from the start');
+  // lying around: knives, a cue by the pool table, two bats (behind the counter, against the front wall), the pistol up
+  // on the liquor store's roof; no ammunition anywhere and no weapon in the start alley (the first one is in the trunk
+  // of the first parked car)
+  assert.deepEqual([...new Set(level.actors.join('').replace(/[^0-9]/g, ''))].sort(), ['5', '6']);
+  assert.deepEqual(level.lean.map((l) => l[0]).sort(), ['bat', 'bat', 'cue'], 'the bats and the cue stand against the walls');
+  assert.equal(level.actors[11][4], '5', 'a bat up on the liquor store roof');
+  const roofGun = level.drops.filter((d) => d[0] === 'pistol');
+  assert.equal(roofGun.length, 1);
+  assert.equal(level.tiles[Math.floor(roofGun[0][2])][Math.floor(roofGun[0][1])], '^', 'the spare pistol is up on a roof');
   assert.ok(!/[nzvwgq]/.test(level.actors.join('')), 'no ammunition box');
   for (let row = 32; row <= 36; row++) assert.ok(!/[0-9]/.test(level.actors[row].slice(19, 23)), 'nothing to pick up in the alley');
   const trunks = level.props.filter((p) => p[4]?.trunk);
   assert.deepEqual(trunks.map((p) => [p[0], p[4].trunk]), [['car2', 'tire_iron']]);
   assert.ok(trunks[0][1] < 20, 'the first car on the left');
   assert.equal(level.intro, 'swig');
+});
+
+test('level 1: the guards start bare-handed, their weapons kept where they make sense; two knives in pockets, two brawlers', () => {
+  const at = (job) => Object.keys(level.jobs).filter((k) => level.jobs[k] === job);
+  const kept = (key) => level.arms[key];
+  const near = (a, kind) => level.lean.some(([k, c, r]) => k === kind && Math.hypot(c - a[0], r - a[1]) < 0.01);
+  const [bar] = at('wipe'), doors = at('door');
+  assert.ok(near(kept(bar), 'bat') && kept(bar)[1] > 13 && kept(bar)[1] < 13.6, "the bartender's bat behind his counter");
+  const front = doors.find((k) => +k.split(',')[1] === 21), vip = doors.find((k) => k !== front);
+  assert.ok(near(kept(front), 'bat') && kept(front)[1] > 21, "the doorman's bat against the front wall, on the sidewalk");
+  assert.ok(near(kept(vip), 'cue'), 'the VIP room doorman runs for the cue by the pool table');
+  const [pimp] = at('dope');
+  assert.ok(Array.isArray(kept(pimp)), 'the pimp goes for the blade on his table');
+  assert.equal(Object.values(level.arms).filter((a) => a === 'fists').length, 2, 'two brawlers');
+  const ch = (k) => level.actors[+k.split(',')[1]][+k.split(',')[0]].toLowerCase();
+  const knives = Object.keys(level.jobs).filter((k) => !level.arms[k] && 'jk'.includes(ch(k)));
+  assert.equal(knives.length, 2, 'two blades in their pockets');
 });
 
 // the shop fronts of the street: room (inclusive tiles), display panes and door on the facade row, neon sign

@@ -604,3 +604,16 @@ test('walkers: a commotion gets a look (a stroller slows down for it), a fight c
   w.notice(0, 100, 2);
   assert.equal(w.look, null, 'too scared to stare');
 });
+
+test('walkers: one placed at the start in the player\'s way is moved on along his path, past him (a retry starts him on his feet)', async () => {
+  const { clearOf } = await load('game/systems/Ambient.js');
+  // westbound along the sidewalk, the player in the alley's mouth below it (level 1: a couple met him there)
+  const pts = [{ x: 43 * TILE, y: 31.4 * TILE }, { x: -1 * TILE, y: 31.4 * TILE }], p = { pts, len: pathLength(pts) };
+  const player = { x: 19.5 * TILE, y: 33.5 * TILE };
+  const at = clearOf(p, (43 - 20.1) * TILE, player), q = pointAlong(pts, at);
+  assert.ok(q.x <= (19.5 - A.startClear[0]) * TILE + 1 && q.x < 20.1 * TILE, `moved west, ahead of him (${(q.x / TILE).toFixed(2)})`);
+  assert.equal(clearOf(p, 5 * TILE, player), 5 * TILE, 'one far off stays where he is');
+  assert.equal(clearOf(p, 10 * TILE, null), 10 * TILE, 'no player: as drawn');
+  const short = [{ x: 22 * TILE, y: 31 * TILE }, { x: 18 * TILE, y: 31 * TILE }];
+  assert.equal(clearOf({ pts: short, len: pathLength(short) }, TILE, player), null, 'nowhere clear on his way: not placed');
+});

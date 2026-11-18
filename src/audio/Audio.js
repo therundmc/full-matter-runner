@@ -196,6 +196,8 @@ export const META = {
   doorBoom: { pri: 3, dur: 0.6, gap: 0.08, max: 2, duck: 0.85, gain: 0.45 },
   doorCloserHiss: { pri: 0, dur: 0.6, gap: 0.4, max: 1, gain: 0.12 },
   lockBeep: { pri: 0, dur: 0.15, gap: 0.2, max: 1, gain: 0.25 },
+  arcadeCoin: { pri: 0, dur: 0.3, gap: 0.5, max: 1, gain: 0.2 },
+  arcadePlay: { pri: 0, dur: 0.25, gap: 0.6, max: 1, gain: 0.1 },
   cloth: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.1 },
   scuff: { pri: 0, dur: 0.15, gap: 0.06, max: 2, gain: 0.12 },
   // ... what a finisher or a takedown does to a man (data/finishers.js)
@@ -503,6 +505,8 @@ const FOLEY = {
   doorBoom: [['doorSlam', 0.8, 0.7], ['sheet', 0.6, 0.6, 0.01], ['metal', 0.3, 0.5, 0.05]],
   doorCloserHiss: [['swish', 0.25, 0.35]],
   lockBeep: [['click', 0.45, 2.2]],
+  arcadeCoin: [['click', 0.4, 1.6], ['click', 0.3, 2.4, 0.12]],
+  arcadePlay: [['click', 0.25, 2.8], ['click', 0.18, 3.1, 0.07]],
   cloth: [['swish', 0.35, 0.6]],
   scuff: [['soft', 0.35, 1.5]],
   kneeShot: [['punch', 0.8, 1.25], ['woodBreak', 0.5, 1.8, 0.01]],

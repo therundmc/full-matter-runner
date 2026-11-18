@@ -43,6 +43,13 @@ export default class Camera {
 
   shake(amount) { this.trauma = Math.min(1.2, this.trauma + amount * this.shakeScale); }
 
+  // still: no shake, kick or zoom punch left (a new level, a page over the picture)
+  settle() {
+    this.trauma = 0; this.punchZ = 0;
+    this.kick.x = this.kick.y = 0;
+    this.sx = this.sy = this.sr = 0;
+  }
+
   // brief zoom kick on big impacts
   punch(amount) { this.punchZ = Math.max(this.punchZ, amount); }
   get z() { return this.zoom * this.scale * (1 + this.punchZ); }

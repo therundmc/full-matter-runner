@@ -6887,6 +6887,44 @@ def p_jerrycan():
     return cv
 
 
+def p_laundry_basket():
+    """A laundromat's plastic basket on the floor, from above: a rounded oblong of blue plastic, its rim lit on the
+    side toward the light, slots moulded round its sides, a hand hole at each end; a load of washing heaped in it (a
+    white shirt, jeans, a red sweater, a grey towel, a striped sock hanging over the rim)."""
+    W, H = 20, 15
+    cv = Cv(W, H)
+    blue = ramp('#3a86c8', 0.5, 0.25, 0.3)
+    fill_shape(cv, 10.0, 7.5, 9.0, 6.5, lambda u, v, L: shade(blue, L), kind='rect', bevel=1.2, corner=2.2)
+    fill_shape(cv, 10.0, 7.5, 7.4, 4.9, lambda u, v, L: dk(blue[0], 0.25), kind='rect', bevel=0.6, corner=1.6)   # its well
+    for x in (4.0, 6.5, 9.0, 11.5, 14.0):                              # the slots along the long sides
+        frect(cv, x, 1.6, x + 1.0, 2.1, dk(blue[0], 0.35))
+        frect(cv, x, 12.9, x + 1.0, 13.4, dk(blue[0], 0.2))
+    for x in (1.5, 17.5):                                              # the hand holes at the ends
+        frect(cv, x, 6.0, x + 1.0, 9.0, hx('#16202c'))
+    cloth = Cv(W, H)
+    rng = random.Random(6017)
+    heap = (((7.4, 9.6, 4.6, 2.4, 0.25), '#3e5c8c'),                  # jeans
+            ((12.6, 6.4, 4.0, 2.5, -0.45), '#e8e6de'),                # a white shirt
+            ((6.4, 5.4, 3.2, 2.0, 0.5), '#b0303a'),                   # a red sweater
+            ((13.4, 10.0, 2.9, 1.9, 0.15), '#8a8c90'),                # a towel
+            ((10.2, 8.0, 1.8, 1.3, 1.1), '#d8b048'))                  # a yellow T-shirt balled up
+    for (x, y, rx, ry, a), c in heap:
+        r = ramp(c, 0.4, 0.2, 0.25)
+
+        def crumple(u, v, L, r=r, a=a):                                 # flat cloth, a few creases catching the light
+            k = 0.62 + 0.25 * L + 0.18 * math.sin(u * 2.3 + v * 1.7 + a * 5)
+            return shade(r, max(0.0, min(1.0, k)))
+        fill_shape(cloth, x, y, rx, ry, crumple, ang=a, kind='super', p=2.2, pad=0.12 * rng.random())
+    for (x0, y0, x1, y1) in ((5.0, 9.4, 8.6, 10.2), (11.2, 5.4, 13.8, 7.2), (5.6, 4.8, 7.2, 5.9), (12.4, 9.6, 14.6, 10.6)):
+        line(cloth, x0, y0, x1, y1, alpha(hx('#101420'), 90))         # the creases
+    cloth.outline()
+    cv.over(cloth)
+    fill_capsule(cv, [(15.6, 4.2), (17.2, 2.9), (18.2, 2.2)], 0.65,
+                 lambda k, L, s, i, t: hx('#f0ece4') if (i + t) < 1.2 else hx('#c83a4a'))   # a sock over the rim, its red toe
+    cv.outline()
+    return cv
+
+
 def p_runner():
     """A length of corridor carpet, worn, from above (its long way along x; lengths are laid end to end, so it wraps
     seamlessly on its 96 px and has no outline): ochre piping, a dark border, a red field with a soft lozenge every
@@ -6985,7 +7023,8 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
                   steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
-                  drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB')   # (the last ones added, in this order: the others keep their seed)
+                  drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
+                  arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -7431,7 +7470,7 @@ DETAIL_PROPS = dict(ladder=p_ladder, parapet=p_parapet, fuse_box=p_fuse_box,
                     table_round_flipped=flipped_table(30, '#8a5530', '#4a2c18', feet=1),
                     card_table_flipped=flipped_table(60, '#6a3518', '#4a2c18', face='#1f7a4c'),
                     urinal=p_urinal, stall=p_stall, apt_door=p_apt_door, doormat=p_doormat, stairs=p_stairs,
-                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, velvet_rope=p_velvet_rope,
+                    floor_hole=p_floor_hole, jerrycan=p_jerrycan, laundry_basket=p_laundry_basket, runner=p_runner, road_edge=p_road_edge, parking_bay=p_parking_bay, velvet_rope=p_velvet_rope,
                     entry_carpet=p_entry_carpet, radiator=p_radiator, bike=p_bike,
                     sandwich_board=p_sandwich_board, ash_urn=p_ash_urn, entry_mat=p_entry_mat,
                     bin_bag=p_bin_bag, newspaper=p_newspaper, shoes=p_shoes,
@@ -7442,7 +7481,7 @@ DETAIL_SIZES = dict(ladder=(32, 32), parapet=(34, 12), fuse_box=(26, 11), cash_c
                     pipe_steam=(96, 6), pipe_water=(96, 6), wall_vent=(16, 7), manhole=(16, 16), cardboard_bed=(36, 20),
                     table_flipped=(46, 27), table_round_flipped=(30, 27), card_table_flipped=(60, 27),
                     urinal=(14, 12), stall=(6, 50), apt_door=(34, 8), doormat=(26, 14), stairs=(66, 46),
-                    floor_hole=(30, 22), jerrycan=(11, 13), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), radiator=(30, 8), bike=(46, 14),
+                    floor_hole=(30, 22), jerrycan=(11, 13), laundry_basket=(20, 15), runner=(96, 18), road_edge=(96, 4), parking_bay=(60, 4), velvet_rope=(32, 9), entry_carpet=(60, 60), radiator=(30, 8), bike=(46, 14),
                     bin_bag=(15, 14), newspaper=(13, 10), shoes=(10, 9),
                     sandwich_board=(18, 14), ash_urn=(12, 12), entry_mat=(60, 22),
                     keg=(18, 18), fire_alarm=(12, 8), trapdoor=(26, 26), rug=(40, 28), beer_tap=(22, 10), curtain=(8, 34))

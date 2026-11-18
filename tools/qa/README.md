@@ -184,7 +184,7 @@ step time (about 4 to 8 %). A 3 game minute level 1 run takes about 30 s real on
 
 - `report.md`: result line, the replay command, a table of findings (severity, kind, signature, count, first
   occurrence, screenshot), the first occurrence of each with its details, stack and the bot's last actions, then
-  statistics: sessions, deaths by cause and killer, clears (score, grade, time), kills by style, kill tags, weapons,
+  statistics: sessions, deaths by cause and killer, clears (score, grade, time, the results lines), kills by style, kill tags, weapons,
   how far the bot got (most guards killed in a session), feature coverage, how the dead went (crawl, curl, spasm,
   throat, throes), plans (started / done / cut short by a death / skipped as pointless, and where each failed), speed, the
   bot's state at the end;

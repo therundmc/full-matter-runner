@@ -163,6 +163,7 @@ export function buildLevel(world, level) {
         // a passive level (the lab): dummies that neither see nor hear, but those it keeps `awake` ('col,row')
         e.passive = !!level.passive && !level.awake?.includes(`${x},${y}`);
         e.takeJob(level.jobs?.[`${x},${y}`]);
+        e.takeArms(level.arms?.[`${x},${y}`]); // bare-handed, his weapon kept somewhere (or a brawler)
         world.enemies.push(e);
       } else if (WEAPON_CHARS[ch]) {
         const type = WEAPON_CHARS[ch];
