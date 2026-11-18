@@ -35,7 +35,8 @@
   tools/generate_assets.py), plain pixel art, drawn at half size (`density` / `img.k` in engine/Assets.js; `sw` / `sh`
   give a sprite's size in world px; drawSprite and the decal bake honour `img.k`, a raw drawImage must scale by it).
   Furniture and vehicles follow (`FINE_PROPS`, kept in step in both files), floors too; neon signs stay at 1x.
-  Still to do: the detail pass on furniture, cars and floors (to the level of the characters and weapons).
+  Level 1's detail pass is done (2026-11-18: furniture wear, floor wear in FloorWear.js, live props in PropLife.js,
+  car interiors); still to do: car debris sprites to match, and the same care on every new level.
 - The hero (an original take on the user's reference): brown hair to his collar, a Mediterranean tan (not brown or
   dark), a dark cap, a scarf up over his mouth, a long charcoal coat collar up, grey knit, jeans, boots, a leather
   satchel across him; the lining and the cap's button a dark petrol blue. Never bright turquoise, never an animal mask.
