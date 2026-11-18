@@ -679,9 +679,10 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   ways of killing (`Scoring.killTags`, `SCORING.tags`).
 - Score (systems/Scoring.js, rules in data/scoring.js): fed by events only. A kill is worth its style (a gunshot
   the least; blade, melee, wreckage, glass, execution, takedown more; `UNSEEN` on top when the guard never noticed) times
-  the combo multiplier (+0.5 per kill of the chain, capped at x4; the chain breaks 4 s after the last kill, flooring
-  a guard gives it some air back). `tally(level)` adds the end bonuses (best chain, variety of methods, time under
-  the level's par, stealth lost by ALERT phases, accuracy, mercy for a guard left alive on his knees) and penalties (passers-by), then the grade from the
+  the combo multiplier (+0.25 per kill of the chain, capped at x2.5; the chain breaks 4 s after the last kill, flooring
+  a guard gives it some air back); a `flat` tag (multi-kills, a boss) is added outside the multiplier. `tally(level)`
+  adds the end bonuses (best chain, variety of methods up to a cap, time under the level's par, stealth lost by ALERT
+  phases, accuracy above a floor, mercy for a guard left alive on his knees) and penalties (passers-by), then the grade from the
   level's thresholds (`LEVEL_SCORING`, or a per-guard scale for test rooms). Game.onExit keeps the best result per
   level (systems/Records.js); a run where the sandbox was opened is not ranked. Scoring tells what it scores by events
   (`scored`, `multiKill`, `chainEnd`), never by world texts (those are the guards' barks): ui/KillFeed.js keeps what

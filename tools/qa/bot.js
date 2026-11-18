@@ -1731,7 +1731,8 @@
       if (!B.resultsSeen) {
         B.resultsSeen = true;
         const r = g.results || {};
-        S.stats.clears.push({ session: S.session, score: r.total, grade: r.grade, time: r1(w.time), kills: S.sess.kills });
+        S.stats.clears.push({ session: S.session, score: r.total, grade: r.grade, time: r1(w.time), kills: S.sess.kills,
+          lines: (r.lines || []).map((l) => `${l.key} ${l.points} (${l.detail})`).join(', ') });
         cover('exit');
         S.sess.exited = true;
         act(`results ${r.grade} ${r.total}`);

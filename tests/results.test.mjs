@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { RESULTS, resultsTimeline, resultsBeats } = await load('game/ui/Results.js');
+const { RESULTS, resultsTimeline, resultsBeats, gradeHint } = await load('game/ui/Results.js');
 const { describeDeath } = await load('game/ui/Screens.js');
 const { tally } = await load('game/systems/Scoring.js');
 
@@ -15,6 +15,15 @@ test('results: the tally counts the kill styles done, most first, named ones onl
   assert.deepEqual(r.tags.map((g) => `${g.label} x${g.n}`), ['EXECUTION x3', 'SLIDE KILL x2', 'WALLBANG x1']);
   assert.deepEqual(r.run, { kills: 12, guards: 14, maxCombo: 5, time: 150, par: 200 });
   assert.deepEqual(tally({ ...STATS, styled: undefined }, LEVEL).tags, []);
+});
+
+test('results: the hint under the stamp names the next grade up, and when a civilian keeps the top one', () => {
+  assert.equal(gradeHint(tally({ ...STATS, points: 35000 }, LEVEL)), 'S FROM 50 000');
+  assert.equal(gradeHint(tally({ ...STATS, points: 1e6 }, LEVEL)), 'TOP GRADE');
+  const barred = tally({ ...STATS, points: 1e6, civilians: 1 }, LEVEL);
+  assert.equal(barred.grade, 'A');
+  assert.equal(gradeHint(barred), 'S: NO CIVILIAN KILLED');
+  assert.equal(gradeHint(tally({ ...STATS, points: 35000, civilians: 1 }, LEVEL)), 'S FROM 50 000, NO CIVILIAN');
 });
 
 test('results: the beats come in order and the screen can be filled at once', () => {
