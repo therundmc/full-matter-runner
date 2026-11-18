@@ -94,7 +94,11 @@
     },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
-    tutorial: { free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true } },
+    // (`bed`: out of the bedroom over the table across its doorway, started by hand while he is in it)
+    tutorial: {
+      free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true },
+      bed: { steps: [{ go: [8.5, 3.35] }, { cross: [10.5, 3.35] }], rescue: true },
+    },
     street: {
       free: { steps: [] },
       throw: THROW,
@@ -747,6 +751,7 @@
     // plan or goal upkeep
     let planHeading;
     if (!B.plan && !p.vaulting && onRoofTile(w, p.x, p.y) && PLANS[opts.level]?.offRoof) startPlan(w, p, 'offRoof', undefined, false);
+    else if (!B.plan && !p.vaulting && PLANS[opts.level]?.bed && w.tutorial?.stage === 0 && !w.tutorial.scene && p.x < 9 * TILE && p.y < 6 * TILE) startPlan(w, p, 'bed', undefined, false);
     else if (!B.plan && !B.mischief && ((!w.cleared && guardsUp(w)) || opts.chaos) && S.clock > B.nextPlanT && !threat) {
       const name = drawPlan(w, p, false);
       if (name) startPlan(w, p, name); else B.nextPlanT = S.clock + 40;

@@ -109,7 +109,7 @@ src/
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
       Tutorial.js         a level that teaches, and its staging (data/staging.js): rooms played in order, dormant guards woken
-                          wave by wave, hints, a lesson slowing time the first time its hint shows (`pace`), the opening scene
+                          wave by wave, hints, a lesson's short beat the first time its hint shows (`pace`: slow, punch-in, hand back), the opening scene
                           (the man with the match: `open` / `play`), the camera's shot (`shot`), the flat blowing up at the end
                           (`blow`: the stove, then a chain of fire-balls down the corridor), the way out marked (`exit`), a
                           man called framed by the camera (`framed`), the weapon forced to break on the man whose gun is to
