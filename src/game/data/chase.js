@@ -3,15 +3,34 @@
 export const CHASE = {
   cruise: 8.9,          // the speed it keeps by itself (60 km/h); a level's `chase.cruise` overrides it
   max: 11.1,            // flat out (75 km/h), W held
-  accel: 9,             // gained a second, W held
+  accel: 9,             // gained a second, W held, up to the cruise speed (pulling away again after the brakes)
+  over: 4,              // ... and over it: two tons, the last 15 km/h take half a second
   brake: 14,            // lost a second, S held (down to a stop)
   ease: 7,              // a second back toward the cruise speed, nothing held (from above or below)
   steer: 4,             // across the road, A / D held (A: the van's left, -y)
   steerRate: 16,        // gained a second toward it (0.25 s to full)
   crawl: 0.35,          // share of the steering (and of the shove) it keeps at a crawl; it grows to all of it at cruise
   pull: 12,             // the road's pull: lost a second, nothing held (the nose straightens with it)
-  heading: 0.35,        // rad: the most the nose turns off the road (it follows the way it goes)
-  turn: 0.12,           // share of the nose's error turned each step (its spring back after a knock)
+  heading: 0.35,        // rad: the most the way it goes turns the nose off the road
+  // the nose is on a spring toward the way it goes (yawStep): `k` (1/s2) its stiffness, `d` (1/s) its damping. Under
+  // damped on purpose: it turns in a little late, swings a little past, and wags once as it comes back straight.
+  // `most`: rad off the road at the very most; under `snap` rad and `snapV` rad/s of it, it is dead straight
+  yaw: { k: 130, d: 11.5, most: 0.6, snap: 0.004, snapV: 0.02 },
+  // the rear steps out: the steering held hard (the sideways speed over `at` of its full) faster than `from` px/step,
+  // the nose turns up to `out` rad further into the bend than the way it goes (all of it flat out), in `in` s, and
+  // comes back in `back` s once the wheel is let go: the slide (smoke, rubber, the squeal: fx, motor)
+  slide: { at: 0.85, from: 6, out: 0.16, in: 0.28, back: 0.2 },
+  // the body on its springs, seen from above as the shell shifting over its wheels (Vehicle `squat` / `roll` / `lift`,
+  // px, drawn in half px): it sits back `pitch` px for each px/step gained a second and dives as much on the brakes,
+  // rolls out of a bend `roll` px for each px/step a second of sideways push and `lean` px for each px/step it holds
+  // across (`most` px either way); springs `k` (1/s2), `d` (1/s). `lift`: its bounce, px off its shadow: thrown up at
+  // `hit` px/s by a car hit, `torn` by a thing torn off or run over, `kerb` when a front wheel changes ground (the
+  // road, the sidewalk), `shove` by the shove, and by the road itself now and then at speed (`road`: [s between two,
+  // at least and at most, px/s]); `most` px either way
+  body: {
+    pitch: 0.11, roll: 0.06, lean: 0.24, most: 1.5, k: 260, d: 14,
+    lift: { k: 320, d: 9, hit: 34, torn: 22, kerb: 26, shove: 20, road: [0.3, 0.9, 7], most: 2.5 },
+  },
   give: 0.3,            // what it runs at: no more than this over what it really did last step (a hit slows it)
   bounce: 2,            // a sideways bounce off what it leans on slower than this is dropped (it slides along it)
   fly: 0.05,            // s: driven, the floor's friction is not fighting the engine (refreshed each step)
@@ -21,8 +40,11 @@ export const CHASE = {
   seat: [0.74, 0.31],
   door: [0.72, 12],
   // SPACE: a jolt sideways toward the mouse's side of the van (above or below its centre line): the sideways speed
-  // held at `v` for `dur` s, then the steering again; once every `cooldown` s
-  shove: { v: 7, dur: 0.18, cooldown: 1.2, shake: 0.12 },
+  // held at `v` for `dur` s, then given back at `back` px/step a second (faster than the road's pull: it lands in the
+  // next lane, not across the street), then the steering again; once every `cooldown` s. What sells it: `shake`, the
+  // camera thrown `push` world px that way, the body rolled (`roll` px/s) and thrown up (body.lift.shove), `smoke`
+  // puffs off each tyre, the lens (data/post.js speed.drive.kick)
+  shove: { v: 8, dur: 0.18, back: 26, cooldown: 1.2, shake: 0.2, push: 5, roll: 30, smoke: 3 },
   // a nose-on hit on what does not give (a wall, a building, a `lasting` prop): faster than `speed` along the nose,
   // within `cone` rad of square on, he is dead; what it hit covering less than `corner` of its width (a corner
   // clipped), it is a jolt: the speed down to `clip`
@@ -52,6 +74,16 @@ export const CHASE = {
     spray: [0.7, 4, 170], water: 1.4,
     scare: { every: 0.15, lead: 0.55, r: 150, people: 110 },
     debris: { chips: 7, sparks: 6, glass: 8, papers: [2, 200], speed: 26 },
+    // the air it moves, from `from` px/step up (all of it flat out). wind: thin streaks of air whipping back past
+    // it (drawn over the lighting, one world px thick: render/PursuitArt.js drawChaseWind): up to `n` alive, `len` px
+    // long (longer the faster), going back over the ground at `v` x its speed (so they pass faster than the road),
+    // `life` s, `alpha` at most, `band` px off its middle line to either side [from, to] (never over the car
+    // itself), from `back` px behind it to `ahead` px ahead. dust: off each rear wheel, `chance` a step: a puff
+    // [px wide, alpha, s]. wake: every `every` s something light is whipped up behind it: a sheet of paper (`paper`:
+    // the odds; else leaves, `leaves` of them), thrown `v` x its speed along its way
+    wind: { from: 6.5, n: 20, len: [12, 46], v: [0.5, 1.2], life: [0.22, 0.5], alpha: 0.4, band: [38, 210], back: 260, ahead: 620 },
+    dust: { from: 5, chance: 0.3, puff: [4, 0.12, 0.8] },
+    wake: { from: 7, every: [0.35, 1.1], paper: 0.45, leaves: 3, v: 0.55 },
   },
   // the card that closes a chase not finished yet (level `chase.next`, Game state 'continued'; Drive.finishView): the
   // picture goes black over `fade` s, TO BE CONTINUED comes up at `title` and what is next at `name` (each over `rise`
@@ -62,22 +94,32 @@ export const CHASE = {
   coast: { slow: 3.2, drift: 0.22 },
   // a flank against a wall or a car: sparks and the grind, every so often; the van's friction against what it leans on
   scrape: { every: 0.12, sparks: 6, vol: 0.6, friction: 0.08 },
-  // the camera (Game.updateCamera): the view's height in world px goes with the speed, from view[0] stopped to
-  // view[1] at `max` (the usual view is engine/Camera.js VIEW), eased over `zoom` s; the van held `lead` of the view's
-  // width behind its middle (a third from the left: 1/6) at cruise, plus `lag` s of its way (what the camera trails
-  // what it follows: engine/Camera.js update); its y drawn `road` of the way to the lanes' middle
-  camera: { view: [345, 392], zoom: 0.6, lead: 1 / 6, lag: 0.14, road: 0.75 },
+  // the camera (Game.updateCamera, Drive.frame). `view`: world px of height the picture shows at the wheel, whatever
+  // the speed (the usual view is engine/Camera.js VIEW; a level's `chase.view` overrides it). The scene is drawn at
+  // the whole zoom of the usual view on a larger canvas and the lens brings it down (Game.fit): a zoom that followed
+  // the speed resampled every sprite every frame, the car first (360: a whole number of screen px a world px at 720,
+  // 1080, 1440 and 2160 px of height). `zoom`: s the view takes to go from the usual one to this one and back (the
+  // lab). The car is held `lead` of the view's width behind its middle at cruise (in proportion under it) and `more`
+  // further back flat out: the road opens ahead with the speed; plus `lag` s of its way (what the camera trails what
+  // it follows: engine/Camera.js update); its y drawn `road` of the way to the lanes' middle. `rumble`: the road felt
+  // over the cruise speed, world px of a jolt now and then, flat out (Camera.buzz; the shake setting scales it)
+  camera: { view: 360, zoom: 0.6, lead: 0.17, more: 0.07, lag: 0.14, road: 0.75, rumble: 0.5 },
   kmh: 6.75,            // km/h a px/step (60 steps a second, 32 px a metre)
   // the lab's van (station 19 DRIVE): stopping it (`stop` px/step for `still` s, once it has gone) gets him out
   exit: { stop: 0.15, still: 0.5 },
-  // his gun out of the car (systems/CarGun.js): one hand out of the driver's window (-y), `reach` px out of the side
-  // (an open car: at `arm` px from his seat, data/feel.js SEAT.aim's arm and the gun);
-  // his arc is what that hand can point at without the car's own body in the way (the driver's side and ahead, about
-  // 200 degrees), `margin` rad short of it; a long gun (`hold: 'two'`) stays down. `spread` is added to the gun's own.
-  gun: { reach: 8, arm: 20, margin: 0.04, spread: 0.02 },
+  // his gun out of the car (systems/CarGun.js). An OPEN car (THE BOSS's convertible): the gun at `arm` px from his
+  // seat (data/feel.js SEAT.aim's arm and the gun), pointed anywhere within `cone` rad of the nose, to his left [0]
+  // and to his right [1] (125 degrees each: 250 in all): out of his door, ahead OVER the low windscreen, across the
+  // passenger seat, and back along both flanks; only the 110 degrees behind him stay out (he does not fire back over
+  // his own shoulders and the boot). A closed car: one hand out of the driver's window (-y), `reach` px out of the
+  // side; its arc is what that hand can point at without the car's own body in the way (the driver's side and ahead,
+  // about 200 degrees), `margin` rad short of it. A long gun (`hold: 'two'`) stays down. `spread` is added to the
+  // gun's own.
+  gun: { reach: 8, arm: 20, margin: 0.04, spread: 0.02, cone: [2.18, 2.18] },
   // the pursuers (systems/Pursuit.js): black sedans driven by the same velocity-and-heading physics as his van.
   //   max: their top speed (px/step), a bit over his flat out so they catch him; accel / brake a second; turn: rad a
-  //   second the heading turns; heading: the most off the road in the chase (`pullOut` more at a standstill, less
+  //   second the heading turns (nose: the share of the body's error to it turned each step); heading: the most off
+  //   the road in the chase (`pullOut` more at a standstill, less
   //   the faster it goes); close: px/step added per px the slot
   //   is ahead (the gap closed), lateral: per step of the error across, steer: the most across (px/step)
   //   slots: px from his car's middle (x along the road, y toward his driver's side, -y): `side` alongside in the
@@ -100,7 +142,7 @@ export const CHASE = {
   //   back there, if that is still `near` px behind him: off the picture); the alley car comes out at `cross`
   //   px/step and turns into the far lane `radius` px before it
   pursuit: {
-    vehicle: 'pursuer', max: 12, accel: 7, brake: 14, turn: 2.6, heading: 0.45, pullOut: 0.6, close: 0.025, lateral: 0.07,
+    vehicle: 'pursuer', max: 12, accel: 7, brake: 14, turn: 2.6, nose: 0.18, heading: 0.45, pullOut: 0.6, close: 0.025, lateral: 0.07,
     steer: 4,
     slots: { side: [0, -80], behind: [-190, 0] }, settle: 18,
     look: 0.9, pad: 70, margin: 6,

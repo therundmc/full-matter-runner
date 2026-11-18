@@ -1187,8 +1187,10 @@ export function kickPose(ch, P, V) {
 // ---------------- sat in a vehicle (Vehicle.seatIn: ch.riding = { v, k, aim }) ----------------
 // Seen from above in an open car: sat low and leant well back, the thighs out under the dash, ONE hand laid over the
 // top of the wheel at the end of a straight arm (it slides round the rim with the steering), the other elbow on the
-// door, its hand hanging over the side; the head up. Aiming (riding.aim: a world angle, or null), the arm on that
-// side comes out with what he holds and the other hand takes the top of the wheel; the head and the shoulders turn
+// door, its hand hanging over the side; the head up. Aiming (riding.aim: a world angle, or null), the arm that has
+// the gun comes out with it: the door's hand to his left and ahead (held out over the windscreen), the right hand
+// across the passenger seat to his right, the door's hand then on the top of the wheel (riding.hand 0 .. 1: the gun's
+// way from the one to the other, eased by Vehicle.carry; none: the side he aims at); the head and the shoulders turn
 // after it. riding.k: 0 .. 1 of him settled in (the pose blended in from whatever brought him there: a vault over the
 // door). The numbers: data/feel.js SEAT; where the seat and the wheel are: the model's `seat` and `wheel` (sprite px).
 // A machine pistol (weapons.js 'side') is not put away: at rest it hangs in the door's hand, out over the door
@@ -1240,27 +1242,27 @@ export function seatPose(ch, P, V) {
     if (hang) hangGun(V, V.hl, a);
   } else if (grab) grabPose(ch, V, st.grab, a, at);
   else if (u > 0) {
-    // the arm on the aim's side out with the gun (u: how far), the head and the shoulders turned after it; aimed to
-    // his right the gun goes to the right hand (seen from above it reads the same in either) and the left takes the
-    // wheel, a gun hanging in it leaving it as the right one comes out
-    const off = angDiff(a, aimA), i = off < 0 ? 0 : 1, h = i ? V.hr : V.hl, A = S.aim, gun = d.kind === 'gun' && !!d.sprite;
-    V.ta = lerpA(V.ta, a + clamp(off, -1, 1) * A.twist, u);
+    // the arm that has the gun out with it (u: how far), the head and the shoulders turned after it. q: 0 the door's
+    // hand has it (anything to his left, and ahead: held out over the windscreen), 1 the right one (across the other
+    // seat; seen from above it reads the same in either), the door's hand then on the top of the wheel; between
+    // the two the gun goes across in front of him
+    const off = angDiff(a, aimA), A = S.aim, gun = d.kind === 'gun' && !!d.sprite;
+    const q = st.hand === undefined ? (off < 0 ? 0 : 1) : smooth(st.hand);
+    const reach = (A.reach + A.ahead * clamp(1 - Math.abs(off) / A.fore, 0, 1)) * V.s, ca = Math.cos(aimA), sa = Math.sin(aimA);
+    V.ta = lerpA(V.ta, a + clamp(off, -A.turn, A.turn) * A.twist, u);
     V.ha = lerpA(V.ha, a + clamp(off, -A.head, A.head), u);
-    shoulder(SH, V, i ? 1 : -1);
-    h.x = lerp(h.x, SH.x + Math.cos(aimA) * A.reach * V.s, u); h.y = lerp(h.y, SH.y + Math.sin(aimA) * A.reach * V.s, u);
-    V.elb[i] = lerp(V.elb[i], 0.15, u);
-    if (i === 1) {
-      const k = hang ? smooth(u * 2 - 1) : u;
-      V.hl.x = lerp(V.hl.x, WHEEL.x, k); V.hl.y = lerp(V.hl.y, WHEEL.y, k);
-      V.elb[0] = lerp(V.elb[0], S.elbow, k);
-      if (k > 0.5) V.hand[0] = S.lay;
-      if (gun && (u > 0.5 || !hang)) {
-        V.wpnOn = true; V.fist = true; V.wpnLen = 1;
-        V.wpn.x = h.x; V.wpn.y = h.y; V.wpn.a = aimA;
-      }
-    } else if (gun) {
-      V.wpnOn = true; V.fist = false;
-      V.wpn.x = h.x; V.wpn.y = h.y;
+    shoulder(SH, V, -1);
+    const lx = lerp(V.hl.x, SH.x + ca * reach, u), ly = lerp(V.hl.y, SH.y + sa * reach, u);
+    shoulder(SH, V, 1);
+    const rx = SH.x + ca * reach, ry = SH.y + sa * reach, w = q * u;
+    V.hl.x = lerp(lx, WHEEL.x, q); V.hl.y = lerp(ly, WHEEL.y, q);
+    V.hr.x = lerp(V.hr.x, rx, w); V.hr.y = lerp(V.hr.y, ry, w);
+    V.elb[0] = lerp(lerp(V.elb[0], 0.15, u), S.elbow, q);
+    V.elb[1] = lerp(V.elb[1], 0.15, w);
+    if (q > 0.5) V.hand[0] = S.lay;
+    if (gun) {
+      V.wpnOn = true; V.fist = q > 0.5;
+      V.wpn.x = lerp(lx, rx, q); V.wpn.y = lerp(ly, ry, q);
       V.wpn.a = hang && u < 1 ? lerpA(a + S.hang[0], aimA, u) : aimA;
       V.wpnLen = hang ? lerp(S.hang[1], 1, u) : 1;
     }

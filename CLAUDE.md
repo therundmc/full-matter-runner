@@ -58,7 +58,9 @@
 - Wounds show on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js). A man knocked down falls
   on his back, head AWAY from the blow (`downAngle`).
 - Camera: `VIEW` = 290 world px high (engine/Camera.js); the scene is drawn at a whole zoom slightly larger than the
-  window and the lens brings it down (Game resize).
+  window and the lens brings it down (Game resize). At the wheel the view is `CHASE.camera.view` = 360, still at a
+  whole zoom (never a zoom that follows the speed: it blurred the pixel art); speed is sold by the lens's drive-only
+  edge streaks (data/post.js `POST.speed.drive`, nothing near the middle) and the world's wind / wake (CHASE.fx).
 - Rooms are tight: level 1 loses whole tiles (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`); the builder keeps its drawing's coordinates, the kit moves them: keep things off the cut lines.
   Coordinates in tests and QA plans are the level's AFTER the cuts. A doorway needs room on one side; wall pieces

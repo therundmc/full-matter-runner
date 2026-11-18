@@ -6,7 +6,7 @@ import { load } from './setup.mjs';
 const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Drive, speedStep, steerStep, headingOf, viewHeight, cameraScale, kmh, nosedIn, seatOf } = await load('game/systems/Drive.js');
+const { default: Drive, speedStep, steerStep, headingOf, yawStep, slipStep, springStep, bodyLean, leadOf, rumbleOf, kmh, nosedIn, seatOf } = await load('game/systems/Drive.js');
 const { CHASE } = await load('game/data/chase.js');
 const { VEHICLES, default: Vehicle } = await load('game/entities/Vehicle.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
@@ -115,14 +115,79 @@ test('drive: the speed and the steering, step by step (pure)', () => {
   assert.equal(kmh(11.1), 75);
 });
 
-test('drive: the camera pulls out with the speed (pure)', () => {
-  assert.equal(viewHeight(0), CHASE.camera.view[0]);
-  assert.equal(viewHeight(CHASE.max), CHASE.camera.view[1]);
-  assert.equal(viewHeight(99), CHASE.camera.view[1], 'never further');
-  const h60 = viewHeight(8.9);
-  assert.ok(h60 > 370 && h60 < 392, `about 380 px high at 60 km/h: both facades of the back road on the picture (${h60})`);
-  for (const v of [0, 4, 8.9, 11.1]) assert.ok(Math.abs(cameraScale(v) * viewHeight(v) - VIEW) < 1e-9);
-  assert.ok(cameraScale(0) > cameraScale(8.9) && cameraScale(8.9) > cameraScale(11.1), 'further out the faster');
+test('drive: the view is one height whatever the speed (a whole zoom: crisp pixels); the car sits back as it goes faster (pure)', () => {
+  const { w, d } = start();
+  assert.equal(d.view, CHASE.camera.view, 'the drive\'s own view');
+  assert.ok(d.view > VIEW && d.view >= 345 && d.view <= 392, `wider than on foot, the back road's width in it (${d.view})`);
+  for (const h of [720, 1080, 1440, 2160]) assert.equal(h % d.view, 0, `a whole number of screen px a world px at ${h}`);
+  assert.equal(leadOf(0, 8.9), 0, 'stopped: in the middle');
+  assert.ok(Math.abs(leadOf(8.9, 8.9) - CHASE.camera.lead) < 1e-9, 'at cruise: a third from the left');
+  assert.ok(leadOf(11.1, 8.9) > leadOf(10, 8.9) && leadOf(10, 8.9) > leadOf(8.9, 8.9), 'further back the faster: the road opens ahead');
+  assert.ok(leadOf(11.1, 8.9) < 0.3, 'never off the picture');
+  assert.equal(rumbleOf(8.9, 8.9), 0, 'no rumble at cruise');
+  assert.equal(rumbleOf(11.1, 8.9), CHASE.camera.rumble, 'all of it flat out');
+  d.v = 11.1;
+  assert.ok(d.frame(640).x > w.player.x + 640 * 0.2 && d.buzz() > 0);
+});
+
+test('drive: a heavy car: the last km/h come slowly, the nose is on a spring, the rear steps out, the body leans (pure)', () => {
+  assert.ok(Math.abs(speedStep(8.9, 8.9, true, false, 0.1) - (8.9 + CHASE.over * 0.1)) < 1e-9, 'over the cruise speed: heavier');
+  assert.ok(Math.abs(speedStep(4, 8.9, true, false, 0.1) - (4 + CHASE.accel * 0.1)) < 1e-9, 'under it: it pulls hard');
+  assert.ok(CHASE.over < CHASE.accel);
+  // the nose: late, a little past, then there
+  let a = 0, turning = 0, most = 0, at01 = 0;
+  for (let t = 0; t < 1.5; t += DT) {
+    turning = yawStep(a, turning, 0.3, DT);
+    a += turning * DT;
+    most = Math.max(most, a);
+    if (Math.abs(t - 0.1) < DT / 2) at01 = a;
+  }
+  assert.ok(at01 < 0.2, `not there at once (${at01})`);
+  assert.ok(most > 0.305 && most < 0.36, `swings a little past (${most})`);
+  assert.ok(Math.abs(a - 0.3) < 0.01, `and settles (${a})`);
+  // the slide: only on the wheel held hard, fast; given back when let go
+  assert.equal(slipStep(0, 1, 2, 11.1, DT), 0, 'not hard enough yet');
+  assert.equal(slipStep(0, 1, 4, 5, DT), 0, 'too slow');
+  let slip = 0;
+  for (let t = 0; t < 1; t += DT) slip = slipStep(slip, 1, 4, 11.1, DT);
+  assert.ok(Math.abs(slip - CHASE.slide.out) < 1e-9, 'flat out, held: the rear out, all of it');
+  for (let t = 0; t < 1; t += DT) slip = slipStep(slip, -1, -4, 8.9, DT);
+  assert.ok(slip < 0 && slip > -CHASE.slide.out, 'the other way, less of it at cruise');
+  for (let t = 0; t < 0.5; t += DT) slip = slipStep(slip, 0, 0, 8.9, DT);
+  assert.equal(slip, 0, 'let go: back in line');
+  // the body
+  const [squat] = bodyLean(CHASE.accel, 0, 0), [dive] = bodyLean(-CHASE.brake, 0, 0), [, roll] = bodyLean(0, CHASE.steerRate, 2);
+  assert.ok(squat > 0.5 && dive < -1 && dive >= -CHASE.body.most, 'sat back under power, the nose down on the brakes');
+  assert.ok(roll < -0.5, 'rolled out of a bend to the right');
+  let x = 0, sp = 30, top = 0;
+  for (let t = 0; t < 2; t += DT) { [x, sp] = springStep(x, sp, 0, CHASE.body.lift.k, CHASE.body.lift.d, DT); top = Math.max(top, x); }
+  assert.ok(top > 1 && top < 2.5 && Math.abs(x) < 0.01, `a bump: up ${top} px, then still`);
+});
+
+test('drive: on the road the car leans, slides and bounces, and comes back dead straight', () => {
+  const { w, v, d, input } = start();
+  input.held.add('KeyW');
+  run(w, d, input, 0.6);
+  assert.ok(Math.abs(vel(v).x - CHASE.max) < 0.05);
+  input.held.add('KeyD');
+  run(w, d, input, 0.5);
+  assert.ok(d.slip > 0.1, `the rear out (${d.slip})`);
+  assert.ok(v.body.angle > CHASE.heading + 0.05 && v.body.angle <= CHASE.yaw.most, `the nose further into the bend than the way it goes (${v.body.angle})`);
+  assert.ok(v.roll < -0.5, `rolled out of it (${v.roll})`);
+  input.held.delete('KeyD');
+  input.held.delete('KeyW');
+  input.held.add('KeyS');
+  run(w, d, input, 0.15);
+  assert.ok(v.squat < -0.5, `the nose down on the brakes (${v.squat})`);
+  input.held.delete('KeyS');
+  run(w, d, input, 1.2);
+  assert.ok(!d.dead && vel(v).x > 5, 'still going');
+  assert.ok(Math.abs(v.body.angle) < 1e-12, `dead straight again: no pixel of it resampled (${v.body.angle})`);
+  assert.equal(d.slip, 0);
+  assert.ok(Math.abs(v.squat) < 0.05 && Math.abs(v.roll) < 0.05, 'the body at rest on its wheels');
+  d.bump('hit');
+  run(w, d, input, 0.05);
+  assert.ok(v.lift > 0.5, `a hit throws it up (${v.lift} ${d.body.lift})`);
 });
 
 test('drive: he is in the van, hidden and carried; it holds its cruise speed with nothing held', () => {
@@ -173,6 +238,8 @@ test('drive: the shove kicks it sideways toward the mouse for 0.18 s, then waits
   assert.ok(d.ready < 0.2, 'the bar empty');
   run(w, d, input, 0.2, below);
   assert.ok(vel(v).y < CHASE.shove.v - 0.5, 'back to the steering after it');
+  run(w, d, input, 0.3, below);
+  assert.ok(Math.abs(vel(v).y) < 0.05 && v.y - (below.y - 100) < 140, `given back fast: a lane over, not across the street (${v.y - below.y + 100} px)`);
   input.pressed.add('Space');
   run(w, d, input, 0.05, { x: v.x, y: v.y - 100 });
   assert.ok(vel(v).y > -1, 'not again before the cooldown');

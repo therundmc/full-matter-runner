@@ -19,16 +19,20 @@ export default class Camera {
     this.sx = 0; this.sy = 0; this.sr = 0;
     this.w = 1; this.h = 1;
     this.time = 0;
-    this.sway = true;
+    this.sway = true;          // the slow tilt; false: it eases out (at a wheel: a turned picture resamples every pixel)
+    this.swayK = 1;            // 0..1: how much of it is on
+    this.buzz = 0;             // picture px of a road's rumble, up and down (set every frame by whoever drives)
+    this.jolt = { t: 0, y: 0 };
     this.bounds = null;        // { w, h } of the world in px: the view never leaves it
     this.shakeScale = 1;       // the player's screen shake setting, 0..1: scales every shake and recoil kick
   }
 
-  resize(w, h) {
+  // zoom: the whole zoom to draw at, when the caller knows it (Game.resize: a view of another height than VIEW)
+  resize(w, h, zoom = 0) {
     this.w = w; this.h = h;
     // a whole zoom keeps pixel art crisp: the nearest to VIEW world px of vertical view (Game.resize sizes the canvas
     // so that it is exactly that when the lens is there to bring the picture down to the window)
-    this.zoom = Math.max(1, Math.round(h / VIEW));
+    this.zoom = zoom > 0 ? Math.round(zoom) : Math.max(1, Math.round(h / VIEW));
   }
 
   snap(x, y) { this.x = x; this.y = y; this.clamp(); }
@@ -48,6 +52,7 @@ export default class Camera {
     this.trauma = 0; this.punchZ = 0;
     this.kick.x = this.kick.y = 0;
     this.sx = this.sy = this.sr = 0;
+    this.buzz = 0; this.jolt.t = 0;
   }
 
   // brief zoom kick on big impacts
@@ -67,11 +72,17 @@ export default class Camera {
     this.punchZ *= Math.pow(0.01, dt);
     const s = this.trauma * this.trauma;
     this.sx = rand(-1, 1) * 16 * s;
-    this.sy = rand(-1, 1) * 16 * s;
+    // (the rumble: now and then a short jolt up or down, whole px, never a blur; the player's shake setting scales it)
+    const J = this.jolt;
+    if (J.t > 0) J.t -= dt;
+    else if (this.buzz > 0 && Math.random() < dt * 9) { J.t = 0.045; J.y = (Math.random() < 0.5 ? -1 : 1) * Math.round(this.buzz * this.shakeScale); }
+    else J.y = 0;
+    this.sy = rand(-1, 1) * 16 * s + (J.t > 0 ? J.y : 0);
     this.sr = rand(-1, 1) * 0.05 * s;
+    this.swayK = Math.max(0, Math.min(1, this.swayK + (this.sway ? dt : -dt) * 2.5));
     this.kick.x *= Math.pow(0.0001, dt);
     this.kick.y *= Math.pow(0.0001, dt);
-    this.rot = (this.sway ? Math.sin(this.time * 0.5) * 0.028 : 0) + this.sr;
+    this.rot = Math.sin(this.time * 0.5) * 0.028 * this.swayK + this.sr;
   }
 
   apply(ctx) {

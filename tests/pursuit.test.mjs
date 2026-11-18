@@ -8,7 +8,7 @@ globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContex
 
 const { default: Pursuit, dueEvents, slotOf, lockOf, inBand, reaches } = await load('game/systems/Pursuit.js');
 const { default: Drive, seatOf } = await load('game/systems/Drive.js');
-const { arcOf, inArc } = await load('game/systems/CarGun.js');
+const { arcOf, inArc, inCone } = await load('game/systems/CarGun.js');
 const { CHASE } = await load('game/data/chase.js');
 const { SEAT } = await load('game/data/feel.js');
 const { WEAPONS } = await load('game/data/weapons.js');
@@ -273,6 +273,33 @@ test('car gun: his arc is the driver\'s side and ahead, about 200 degrees; a sho
   s.input.pressed.add('KeyR');
   run(s, WEAPONS.pistol.reload + 0.1);
   assert.deepEqual([s.w.player.weapon.mag, s.w.player.ammo['9mm']], [7, 0]);
+});
+
+test('car gun: THE BOSS\'s open car: 125 degrees either side of the nose (250 in all): his door, over the windscreen, across the other seat; not behind him', () => {
+  const [left, right] = CHASE.gun.cone, deg = ((left + right) * 180) / Math.PI;
+  assert.ok(deg > 235 && deg < 260 && left === right, `${deg} degrees, the same either side`);
+  for (const a of [-Math.PI / 2, 0, Math.PI / 2, 2.1, -2.1, 0.4, -0.4]) assert.ok(inCone(a, 0), `${a} in it`);
+  for (const a of [Math.PI, -2.4, 2.4]) assert.ok(!inCone(a, 0), `${a} behind him: out`);
+  assert.ok(inCone(0.5 + Math.PI / 2, 0.5) && !inCone(0.5 + Math.PI, 0.5), 'it turns with the car');
+  const s = start({ arms: { weapon: 'pistol', mag: 7 } });
+  run(s, 0.3);
+  const fire = (dx, dy) => {
+    const n = s.w.player.weapon.mag;
+    s.input.pressed.add('mouse0');
+    run(s, DT, { x: s.w.player.x + dx, y: s.w.player.y + dy });
+    // (the aim kept on that side as the car goes on; the car's own step eases his arm: World does it)
+    for (let i = 0; i < 30; i++) { run(s, DT, { x: s.w.player.x + dx, y: s.w.player.y + dy }); s.v.carry(DT); }
+    return n - s.w.player.weapon.mag;
+  };
+  assert.equal(fire(0, -300), 1, 'out of his door');
+  assert.equal(fire(300, 0), 1, 'ahead, over the windscreen');
+  assert.ok(s.w.player.riding.side < 0 && s.w.player.riding.hand === 0, 'still the door\'s hand, held out over the screen');
+  assert.equal(fire(0, 300), 1, 'to his right, across the passenger seat');
+  assert.ok(s.w.player.riding.side > 0 && s.w.player.riding.hand === 1, `the gun gone over to the right hand (${s.w.player.riding.side} ${s.w.player.riding.hand} ${s.w.player.riding.aim})`);
+  assert.equal(fire(-150, 260), 1, 'back along the right flank (120 degrees off the nose)');
+  assert.equal(fire(-300, 0), 0, 'straight behind him: nothing');
+  assert.equal(s.d.gun.aimed.ok, false, 'and the cursor says so');
+  assert.ok(s.w.player.alive, 'none of it his own');
 });
 
 test('pursuit: a round through its windscreen kills the driver and it veers off; a front tyre spins it out', () => calm(() => {

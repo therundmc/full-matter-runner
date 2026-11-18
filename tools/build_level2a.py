@@ -82,7 +82,9 @@ lv = Level(W, H)
 # ---------------------------------------------------------------- the street
 lv.fill(0, 8, W - 1, 8, 's')
 lv.fill(0, 9, W - 1, 15, '=')
-lv.fill(0, 13, W - 1, 13, '-')
+# the centre line in DASHES (two metres on, two off): a line that never breaks does not show the road going by
+for c in range(0, W, 4):
+    lv.fill(c, 13, min(W - 1, c + 1), 13, '-')
 lv.fill(0, 16, W - 1, 17, 's')
 for a in ALLEYS:
     lv.fill(a, 18, a + ALLEY_W - 1, H - 1, '_')
@@ -257,7 +259,8 @@ lv.patron('civ4', T0 + 20.7, 17.45, 180, 'drink')
 
 # ---------------------------------------------------------------- the road
 lv.area('road: lines, the parking row')
-for i in range(W // 3):
+# (the edge line of the parking row in dashes too, three metres on, three off: the other beat of the road going by)
+for i in range(0, W // 3, 2):
     if not CROSS[0] - 2 <= 1.5 + 3 * i <= CROSS[1] + 2:
         lv.paint('road_edge', 1.5 + 3 * i, 11.0)
 
@@ -408,6 +411,8 @@ chase = {
     'cruise': 8.9,              # px/step: 60 km/h
     'lanes': list(LANES),       # the lanes' middle rows: theirs (westbound), ours
     'kerbs': [9, 16],           # the carriageway between its kerbs (the parking row included), rows
+    'mid': 13.0,                # the row the camera is drawn toward: the street's middle, between its two facades (the
+                                # view is 360 px high: both rows of signs and the south shopfronts stay on the picture)
     'end': END,
     'next': 'THE TOLL',         # what comes after it, on the card that closes the demo (Game: TO BE CONTINUED)
     # by the column of the car's middle. 'alley' (systems/Pursuit.js) waits at `car` [col, row] facing north, lamps on;

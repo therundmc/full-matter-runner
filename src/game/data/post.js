@@ -66,7 +66,32 @@ export const POST = {
   // ---- 7. speed: the picture smears along a slide, a roll, a dive; it streams from the player in slow motion.
   // OFF (all 0): the user tried the blurs in play and does not like how they look. Same for `tube.bleed` and for
   // the soft edges below; only the picture behind a menu is still blurred.
-  speed: { slide: 0, roll: 0, dive: 0, slow: 0, ease: 9 },   // picture heights; ease 1/s
+  speed: {
+    slide: 0, roll: 0, dive: 0, slow: 0, ease: 9,   // picture heights; ease 1/s
+    // AT THE WHEEL ONLY (level 2A, systems/Drive.js; the user asked for it there: the street did not feel fast). The
+    // EDGES of the picture go with the speed, the road stays as drawn: no blur anywhere, and nothing at all within
+    // band[0] of the middle line (his car, both lanes, who is alongside). In the band, from the picture itself:
+    //   streaks: the lights of the street (neons, lamps, lit windows) leave short trails behind them along the road,
+    //   row by row (`rows` world px a row, each its own length, drawn again `flick` times a second): pixel combs,
+    //   never a smooth smear; `len` picture heights the longest, flat out; `mix` of it laid over the picture
+    //   lines: streaks of air drawn in the band, one world px thick, on `share` of the rows, running back along the
+    //   road at `run` picture heights a second (each row its own pace and length), bone taking the colour of the
+    //   lights they cross, `glow` at most
+    //   pull: the band stretched along the road by this share flat out (what is in it runs past faster)
+    //   split: the colours parted along the road (px at 1080), fringe: px added to the lens' own fringe
+    //   dark: the band darkened by this share
+    // How much of it: none under `from` (share of flat out), all of it flat out, along `curve` (over 1: it comes
+    // late: at 60 km/h about half); eased at `ease` 1/s. A jolt of the car adds to it for an instant (`kick`: by
+    // beat of the world's 'ride' event, dying at `decay` 1/s), with a zoom kick toward the car (`zoom`, the shove
+    // and a car hit only) and `fringe` px of colour at a kick of 1.
+    drive: {
+      from: 0.3, curve: 1.5, ease: 4,
+      band: [0.24, 0.46], len: 0.17, rows: 2, flick: 14, mix: 0.9,
+      lines: { share: 0.16, run: 2.6, glow: 0.42 },
+      pull: 0.06, split: 7, fringe: 2.5, dark: 0.3,
+      kick: { shove: 0.9, hit: 0.6, clip: 0.8, crash: 1, torn: 0.25, kerb: 0.2, decay: 5, zoom: 0.02, fringe: 9 },
+    },
+  },
 
   // ---- 8. focus: the edges of the picture go soft; more when looking far (Shift); everything behind a menu
   focus: { edge: 0, title: 0, look: 0, dead: 0, pause: 1, results: 0.8, ease: 6 },

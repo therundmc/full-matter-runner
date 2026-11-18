@@ -220,6 +220,33 @@ test('seat: the uzi at rest hangs from the door\'s hand out over the door; aimed
   assert.ok(Math.hypot(back.hl.x - rest.P.hl.x, back.hl.y - rest.P.hl.y) < 1e-9, 'and back over the door');
 });
 
+test('seat: the gun goes from the door\'s hand to the right one only well past the nose, eased, and back; ahead it is held out further', () => {
+  const { v, ch } = seated(null), a0 = 0.3, A = SEAT.aim;
+  const settle = (aim, n = 20) => { ch.riding.aim = aim; for (let i = 0; i < n; i++) v.carry(STEP); return seatPose(ch, base(a0), newPose()); };
+  const side = (P) => inCar(v, ch, P.wpn).sy - M.seat[1];
+  let P = settle(a0 - 1.2);
+  assert.ok(ch.riding.side === -1 && ch.riding.hand === 0 && side(P) < -8, 'to his left: the door\'s hand');
+  P = settle(a0);
+  const ahead = inCar(v, ch, P.wpn);
+  assert.ok(ch.riding.side === -1 && ahead.sx > M.seat[0] + 12, `dead ahead: the same hand, out toward the screen (${ahead.sx})`);
+  P = settle(a0 + A.swap - 0.05);
+  assert.equal(ch.riding.side, -1, 'a little right of the nose: no swap yet');
+  ch.riding.aim = a0 + 1.4;
+  const way = [];
+  for (let i = 0; i < 12; i++) { v.carry(STEP); const Q = seatPose(ch, base(a0), newPose()); assert.ok(finite(Q) && Q.wpnOn); way.push(side(Q)); }
+  assert.ok(way[0] < way[3] && way[3] < way[11] && way[1] < way[11] - 4, 'across in front of him, in steps');
+  P = seatPose(ch, base(a0), newPose());
+  assert.ok(ch.riding.side === 1 && ch.riding.hand === 1 && side(P) > 8 && P.fist, 'in the right hand, over the passenger seat');
+  assert.ok(onRim(inCar(v, ch, P.hl)), 'the door\'s hand on the wheel');
+  assert.ok(P.ha - a0 > 1 && P.ha - a0 <= A.head + 1e-9 && P.ta - a0 > 0.3, 'head and shoulders turned after it');
+  P = settle(a0 - A.swap + 0.05);
+  assert.equal(ch.riding.side, 1, 'a little left of the nose: it stays in the right hand');
+  P = settle(a0 - 1.2);
+  assert.ok(ch.riding.side === -1 && ch.riding.hand === 0 && side(P) < -8, 'well to his left: back to the door\'s hand');
+  P = settle(null);
+  assert.ok(ch.riding.side === 0 && inCar(v, ch, P.wpn).sy < M.cabin[2], 'the arm down: hanging over the door again');
+});
+
 test('seat: a round crossing the open cabin by the seat is the driver\'s, one that crosses the rear bench is not', () => {
   const kills = [], w = { time: 0 }, v = car(w, 500, 300, 0), ch = man(w, 0, 0);
   ch.kill = (a, cause) => { kills.push(cause); ch.alive = false; };

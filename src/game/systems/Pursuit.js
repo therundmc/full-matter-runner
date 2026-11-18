@@ -293,7 +293,7 @@ export default class Pursuit {
     car.h = approachAngle(car.h, wantH, turn * dt * clamp(car.s / 3, 0.2, 1));
     const set = { x: Math.cos(car.h) * car.s, y: Math.sin(car.h) * car.s };
     Body.setVelocity(b, set);
-    Body.setAngularVelocity(b, angDiff(b.angle, car.h) * CHASE.turn * 1.5);
+    Body.setAngularVelocity(b, angDiff(b.angle, car.h) * C.nose);
     b.flyUntil = w.time + CHASE.fly;
     car.set = set;
     v.steer = clamp(angDiff(b.angle, car.h) * 2, -0.5, 0.5);

@@ -8,6 +8,8 @@
 //   the alley car's RED LANE across the road; a gunman's tell in its three beats (a white glint at the muzzle, a thin
 //   red line fattening into a wedge toward the bracket on the lane band where it will land, the shot's bone tracer);
 //   a catch-light on what lies on the road to pick up
+//   drawChaseWind (after the lighting too): the streaks of air past his car at speed (systems/Drive.js `wind`): one
+//   world px thick, whole px, bone, each fading in and out
 import { BODY_SCALE } from '../Config.js';
 import { sprite, drawSprite } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
@@ -16,6 +18,20 @@ import { CHASE } from '../data/chase.js';
 const RED = '255,42,74';        // the telegraph's red
 const BONE = '239,230,210';     // enemy tracers
 const JACKET = '#262230', SKIN = '#c89a78', COAT = '#3a4460';
+
+export function drawChaseWind(ctx, w) {
+  const L = w.drive?.on ? w.drive.wind : null;
+  if (!L?.length) return;
+  ctx.fillStyle = `rgb(${BONE})`;
+  for (const s of L) {
+    const u = s.t / s.life, x = Math.round(s.x);
+    ctx.globalAlpha = s.a * Math.min(1, u * 5, (1 - u) * 3);
+    ctx.fillRect(x, s.y - 0.5, s.len, 1);
+    // (its head a little brighter, a third of it)
+    ctx.fillRect(x, s.y - 0.5, Math.ceil(s.len / 3), 1);
+  }
+  ctx.globalAlpha = 1;
+}
 
 export function drawChaseFigures(ctx, w, vis) {
   const P = w.pursuit;

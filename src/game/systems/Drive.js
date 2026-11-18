@@ -2,8 +2,13 @@
 // the driver's seat; his own input is the gun out of the window (systems/CarGun.js). The van is a dynamic Matter body: every step its velocity is set from the
 // controls (CHASE in data/chase.js) after reading back what the physics really let it do, so what it runs into takes
 // real momentum and a hit slows it for real.
-//   along the road (+x): it keeps its cruise speed by itself, W speeds it up to `max`, S brakes it to a stop
-//   across (y): A / D steer it sideways; let go, the road's pull straightens it; the nose follows the way it goes
+//   along the road (+x): it keeps its cruise speed by itself, W speeds it up to `max` (the last of it heavier), S
+//   brakes it to a stop
+//   across (y): A / D steer it sideways; let go, the road's pull straightens it. The nose is on a spring toward the
+//   way it goes (yawStep: it turns in a little late, swings a little past, wags once coming back); the steering held
+//   hard at speed, the rear steps out (slipStep: the slide, its smoke, rubber and squeal)
+//   the body on its springs (looks only: Vehicle `squat` / `roll` / `lift`): it sits back as it pulls, dives on the
+//   brakes and on a hit, rolls out of a bend, bounces on what it hits, on a kerb, on the road
 //   SPACE: the shove, a jolt sideways toward the mouse's side of the van, once in a while
 //   what it hits (contact, called by the physics before it resolves the contact): a parked car is woken and shoved,
 //   a bolted thing is torn off (a sensor from then on: it never holds the car up while it falls apart), a loose light
@@ -11,19 +16,20 @@
 //   over the dead and over debris; a wall, a building or a `lasting` thing (the lorry) hit square on with the nose,
 //   fast: the crash that kills him (a corner only clipped: a jolt, onNose)
 //   what its speed does (fx): tyre smoke and rubber on the road, spray, pigeons and people frightened ahead, awnings
-//   and parasols (`canopy`) torn down as it passes under
+//   and parasols (`canopy`) torn down as it passes under, dust off its rear wheels, a sheet or leaves whipped up in
+//   its wake, streaks of air past it (`wind`: render/PursuitArt.js drawChaseWind)
 //   the gun lying on the passenger seat (Vehicle `gun`; the level's `chase.arms.seat`, the lab's car that has one): taken
 //   in a short beat as he sets off (grab: the car rolls on by itself, the controls and the gun his only once it is
 //   done; CharacterAnim grabPose draws it, `shot` names the camera's); a retry starts him with it in hand (skipGrab)
-// The camera's numbers (viewHeight, cameraScale, frame) are pure; Game uses them. DOM-free but for the van it may
+// The camera's numbers (view, frame, buzz) are Game's to use. DOM-free but for the van it may
 // make (entities/Vehicle.js). Its jolts are told on the world's 'ride' event ({ beat }: systems/Rumble.js feels them).
 import { TILE, CAT, MASK } from '../Config.js';
 import { clamp, angDiff, rand, chance } from '../../engine/math.js';
-import { VIEW } from '../../engine/Camera.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import { Gearbox, MOTOR, squealOf } from '../../audio/Motor.js';
 import { CHASE } from '../data/chase.js';
 import { SEAT } from '../data/feel.js';
+import { FLOATS } from '../data/destruction.js';
 import Vehicle from '../entities/Vehicle.js';
 import CarGun from './CarGun.js';
 
@@ -32,28 +38,64 @@ const SLEEP = 60; // Matter's default sleepThreshold, given back when he gets ou
 
 // ---------------------------------------------------------------- pure
 // the speed along the road a step later: v px/step, held toward `cruise`; W (throttle) up to C.max, S (brake) to 0
+// (W: hard up to the cruise speed, C.over a second past it: the weight of it)
 export function speedStep(v, cruise, throttle, brake, dt, C = CHASE) {
   if (brake) return Math.max(0, v - C.brake * dt);
-  const want = throttle ? C.max : cruise, rate = throttle && v < want ? C.accel : C.ease;
-  return v < want ? Math.min(want, v + rate * dt) : Math.max(want, v - C.ease * dt);
+  const want = throttle ? C.max : cruise;
+  if (v >= want) return Math.max(want, v - C.ease * dt);
+  const rate = !throttle ? C.ease : v < cruise ? C.accel : C.over ?? C.accel;
+  return Math.min(want, v + rate * dt);
 }
 
 // the speed across a step later: u px/step; steer -1..1 (A: -1, D: 1) toward steer x C.steer, nothing held: the
-// road's pull takes it away
-export function steerStep(u, steer, dt, C = CHASE) {
-  const want = steer * C.steer, rate = steer ? C.steerRate : C.pull;
+// road's pull takes it away (pull: px/step a second; after a shove, its own)
+export function steerStep(u, steer, dt, C = CHASE, pull = C.pull) {
+  const want = steer * C.steer, rate = steer ? C.steerRate : pull;
   return u < want ? Math.min(want, u + rate * dt) : Math.max(want, u - rate * dt);
 }
 
-// the nose: the way the van goes (vx along the road, vy across), at most C.heading off the road
+// the way the van goes (vx along the road, vy across), at most C.heading off the road: what its nose is sprung to
 export const headingOf = (vx, vy, C = CHASE) => clamp(Math.atan2(vy, Math.max(vx, 0.5)), -C.heading, C.heading);
 
-// world px of view height at a speed (px/step), and the camera's scale for it (the usual view is VIEW high)
-export function viewHeight(speed, C = CHASE) {
-  const [lo, hi] = C.camera.view;
-  return lo + (hi - lo) * clamp(speed / C.max, 0, 1);
+// The nose a step later: its turning speed (rad/s) from its angle, the speed it turns at now (rad/s) and the way it
+// is sprung to (C.yaw: an under-damped spring, so it lags, overshoots a little and wags once)
+export function yawStep(angle, turning, want, dt, C = CHASE) {
+  return turning + (angDiff(angle, want) * C.yaw.k - turning * C.yaw.d) * dt;
 }
-export const cameraScale = (speed, C = CHASE) => VIEW / viewHeight(speed, C);
+
+// The rear stepping out a step later: slip rad the nose is turned further into the bend than the way it goes. steer
+// -1..1 as held, u / v px/step across / along. Held hard and fast it grows to C.slide.out (flat out), else it is
+// given back
+export function slipStep(slip, steer, u, v, dt, C = CHASE) {
+  const S = C.slide, hard = !!steer && u * steer >= S.at * C.steer && v > S.from;
+  const want = hard ? Math.sign(steer) * S.out * clamp((v - S.from) / (C.max - S.from), 0, 1) : 0;
+  const rate = (S.out / (hard ? S.in : S.back)) * dt;
+  return slip < want ? Math.min(want, slip + rate) : Math.max(want, slip - rate);
+}
+
+// a spring a step later: [x, its speed] toward `want` (k: 1/s2, d: 1/s). The body on its wheels (C.body)
+export function springStep(x, vel, want, k, d, dt) {
+  vel += ((want - x) * k - vel * d) * dt;
+  return [x + vel * dt, vel];
+}
+
+// what the body's springs are pushed to: [squat px (+: sat back on the rear wheels; -: the nose down), roll px (+:
+// toward +y)] for ax / ay px/step gained a second along / across and u px/step held across: it sits back as it
+// pulls, dives on the brakes, rolls out of the bend
+export function bodyLean(ax, ay, u, C = CHASE) {
+  const B = C.body;
+  return [clamp(ax * B.pitch, -B.most, B.most), clamp(-(ay * B.roll + u * B.lean), -B.most, B.most)];
+}
+
+// how far behind the middle of the view the car is held, as a share of the view's width, at v px/step (`cruise`: the
+// segment's): in proportion up to the cruise speed, `more` further flat out: the road opens ahead with the speed
+export function leadOf(v, cruise, C = CHASE) {
+  const K = C.camera;
+  return K.lead * clamp(v / cruise, 0, 1) + K.more * clamp((v - cruise) / Math.max(0.01, C.max - cruise), 0, 1);
+}
+
+// the road's rumble (world px of the camera's jolts): none up to the cruise speed, all of it flat out
+export const rumbleOf = (v, cruise, C = CHASE) => C.camera.rumble * clamp((v - cruise) / Math.max(0.01, C.max - cruise), 0, 1);
 
 // the speed on the dial
 export const kmh = (v, C = CHASE) => Math.round(v * C.kmh);
@@ -134,6 +176,14 @@ export default class Drive {
     this.fxT = 0;                     // s before it frightens what is ahead again
     this.canopies = null;             // the awnings and parasols it can tear down (looked up once)
     this.lastV = this.v;
+    this.was2 = { v: this.v, u: 0 };  // its speeds a step ago (what pushes the body on its springs)
+    this.slip = 0;                    // rad the rear has stepped out (slipStep)
+    this.shoved = false;              // coming back from a shove (the sideways speed given back faster)
+    this.body = { pitch: 0, roll: 0, lift: 0 }; // the springs' speeds (px/s)
+    this.roadT = 0;                   // s before the road throws the body up again
+    this.ground = null;               // what its front wheels were on a step ago (a kerb crossed: a bump)
+    this.wind = [];                   // streaks of air past it: { x, y, len, vx px/s, t, life, a }
+    this.wakeT = 1;                   // s before its wake whips something up again
     this.board();
     this.gun = new CarGun(world, van, seatOf(van, CHASE)); // his gun out of the window (mouse, left click, R)
     this.grab = null;                 // the beat of taking the gun off the passenger seat: { t, arms, took, racked }
@@ -206,6 +256,10 @@ export default class Drive {
   }
 
   get kmh() { return kmh(this.v, this.C); }
+  // world px of height the picture shows while he is at the wheel (Game.setView)
+  get view() { return this.o.view ?? this.C.camera.view; }
+  // world px of the camera's rumble now (Game hands it to the camera)
+  buzz() { return this.dead ? 0 : rumbleOf(this.v, this.cruise, this.C); }
   // 0..1: the shove's bar on the HUD (1: ready)
   get ready() { return 1 - this.cool / this.C.shove.cooldown; }
 
@@ -257,7 +311,8 @@ export default class Drive {
       this.stash = undefined;
       this.grab = null;
     }
-    v.brake = 0; v.steer = 0; v.bob = 0;
+    v.brake = 0; v.steer = 0; v.bob = 0; v.squat = 0; v.roll = 0; v.lift = 0;
+    this.wind.length = 0;
     b.sleepThreshold = SLEEP;
     b.frictionAir = this.was.air;
     b.friction = this.was.friction;
@@ -313,17 +368,30 @@ export default class Drive {
     if (this.shoveT > 0) {
       this.shoveT -= dt;
       this.u = this.side * C.shove.v * grip;
-    } else this.u = steerStep(this.u, steer * grip, dt, C);
-    // the velocity set; the nose turned toward the way it really goes (a spring: a knock turns it, the road brings it
-    // back; held up against a wall, it comes round along it instead of digging in)
-    const want = headingOf(this.v, Math.abs(vel.y) < Math.abs(this.u) ? vel.y : this.u, C);
+    } else {
+      // (out of a shove the sideways speed is given back fast, until the wheel is his again)
+      if (this.shoved && (steer || Math.abs(this.u) < 1)) this.shoved = false;
+      this.u = steerStep(this.u, steer * grip, dt, C, this.shoved ? C.shove.back : C.pull);
+    }
+    // the velocity set; the nose sprung toward the way it really goes, and past it while the rear is out (a knock
+    // turns it, the road brings it back; held up against a wall, it comes round along it instead of digging in)
+    const Y = C.yaw, across = Math.abs(vel.y) < Math.abs(this.u) ? vel.y : this.u;
+    this.slip = slipStep(this.slip, steer * grip, this.u, this.v, dt, C);
+    const want = clamp(headingOf(this.v, across, C) + this.slip, -Y.most, Y.most);
+    let turning = yawStep(b.angle, Body.getAngularVelocity(b) * 60, want, dt, C);
     Body.setVelocity(b, { x: this.v, y: this.u });
-    Body.setAngularVelocity(b, angDiff(b.angle, want) * C.turn);
+    if (Math.abs(angDiff(b.angle, want)) < Y.snap && Math.abs(turning) < Y.snapV) {
+      // as good as there: dead on it (a car a hair off straight is resampled crooked, every pixel of it)
+      Body.setAngle(b, want);
+      turning = 0;
+    }
+    Body.setAngularVelocity(b, turning / 60);
     b.flyUntil = w.time + C.fly;
     // how it looks: the front wheels, the brake lights, the body on its springs
     v.steer = clamp((this.u / C.steer) * 0.45, -0.5, 0.5);
     v.brake += ((brake ? 1 : 0) - v.brake) * Math.min(1, dt * 12);
-    v.bob = Math.sin(w.time * 9) * 0.35 * Math.min(1, this.v / C.cruise);
+    this.throttle = throttle ? 1 : brake ? 0 : 0.5;
+    this.springs(dt);
     // the lab: E, or stopped once it has gone, and he gets out
     if (this.o.exit && !busy) {
       if (this.v > 1) this.moved = true;
@@ -331,6 +399,40 @@ export default class Drive {
       if (input.hit('KeyE') || this.stillT > C.exit.still) this.leave();
     }
   }
+
+  // The body on its springs this step (looks only): what the speeds did since the last one pushes it (a hit that
+  // took its speed dives it like the brakes), the road throws it up now and then, a front wheel onto or off the
+  // sidewalk too
+  springs(dt) {
+    const w = this.world, C = this.C, B = C.body, L = B.lift, v = this.van, S = this.body, was = this.was2;
+    const [squat, roll] = bodyLean((this.v - was.v) / dt, (this.u - was.u) / dt, this.u, C);
+    was.v = this.v; was.u = this.u;
+    [v.squat, S.pitch] = springStep(v.squat || 0, S.pitch, squat, B.k, B.d, dt);
+    [v.roll, S.roll] = springStep(v.roll || 0, S.roll, roll, B.k, B.d, dt);
+    if ((this.roadT -= dt) <= 0) {
+      this.roadT = rand(L.road[0], L.road[1]);
+      if (this.v > C.fx.from) S.lift += L.road[2] * (this.v / C.max) * rand(0.4, 1);
+    }
+    // the kerb: a front wheel on another ground than a step ago (the road, or not)
+    const map = w.map;
+    if (map?.floor && this.v > C.hit.tear) {
+      const on = [2, 3].map((i) => {
+        const q = v.toWorld(...v.m.wheels[i]), f = map.floor[Math.floor(q.y / TILE) * map.w + Math.floor(q.x / TILE)];
+        return !!f && f.startsWith('asphalt');
+      });
+      if (this.ground && (on[0] !== this.ground[0] || on[1] !== this.ground[1])) {
+        this.bump('kerb');
+        w.events.emit('ride', { beat: 'kerb', x: v.x, y: v.y });
+      }
+      this.ground = on;
+    }
+    [v.lift, S.lift] = springStep(v.lift || 0, S.lift, 0, L.k, L.d, dt);
+    v.lift = clamp(v.lift, -L.most, L.most);
+    v.bob = 0;
+  }
+
+  // the body thrown up on its springs (C.body.lift: 'hit', 'torn', 'kerb', 'shove'), k of it
+  bump(kind, k = 1) { this.body.lift += this.C.body.lift[kind] * k; }
 
   // He is dead at the wheel (the told shot): nobody drives. The car runs on, losing its speed, drifting to a side,
   // until it stops or meets something
@@ -346,8 +448,9 @@ export default class Drive {
     if (this.v <= 0.05) { this.coasting = false; Body.setVelocity(b, { x: 0, y: 0 }); Body.setAngularVelocity(b, 0); return; }
     this.u = steerStep(this.u, this.side * K.drift, dt, C);
     Body.setVelocity(b, { x: this.v, y: this.u });
-    Body.setAngularVelocity(b, angDiff(b.angle, headingOf(this.v, this.u, C)) * C.turn);
+    Body.setAngularVelocity(b, yawStep(b.angle, Body.getAngularVelocity(b) * 60, headingOf(this.v, this.u, C), dt, C) / 60);
     b.flyUntil = this.world.time + C.fly;
+    this.springs(dt);
     this.van.steer = clamp((this.u / C.steer) * 0.45, -0.5, 0.5);
   }
 
@@ -356,13 +459,18 @@ export default class Drive {
     const C = this.C, v = this.van, w = this.world;
     this.side = aim && v.toSprite(aim.x, aim.y).sy < v.h / 2 ? -1 : 1;
     this.shoveT = C.shove.dur;
+    this.shoved = true;
     this.cool = C.shove.cooldown;
+    // the jolt: the picture thrown that way, the body rolled over its wheels and thrown up, smoke off every tyre
     w.shake(C.shove.shake);
-    w.events.emit('ride', { beat: 'shove', x: v.x, y: v.y });
+    w.camera?.push(0, this.side * C.shove.push);
+    this.body.roll -= this.side * C.shove.roll;
+    this.bump('shove');
+    w.events.emit('ride', { beat: 'shove', x: v.x, y: v.y, side: this.side });
     w.sound('vanShove', v.x, v.y, 1);
     for (const [sx, sy] of v.m.wheels) {
       const q = v.toWorld(sx, sy);
-      w.particles.smoke(q.x, q.y, 1, 3, { speed: 20, size: 4, life: 0.6 });
+      w.particles.smoke(q.x, q.y, C.shove.smoke, 3, { speed: 34, size: 5, life: 0.7 });
     }
   }
 
@@ -455,7 +563,7 @@ export default class Drive {
     const square = nosedIn(h.a, h.vx, h.vy, h.nx, h.ny, C);
     if (h.kind === 'solid') {
       if (square && onNose(h.lo, h.hi, h.mid, v.h, C) && !w.player.invulnerable) { this.crash(h); return; }
-      if (square) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
+      if (square) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); this.bump('hit'); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
       w.sound('carHit', h.x, h.y, 0.5);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 8, 260);
       return;
@@ -471,6 +579,7 @@ export default class Drive {
       w.sound('carHit', h.x, h.y, 1);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 10, 320);
       w.shake(C.hit.shake);
+      this.bump('hit');
       w.events.emit('ride', { beat: 'hit', x: h.x, y: h.y });
       if (square) this.v = Math.min(this.v, (h.vx * Math.cos(h.a) + h.vy * Math.sin(h.a)) * C.hit.keep);
     } else if (h.kind === 'person') {
@@ -484,7 +593,7 @@ export default class Drive {
         }
       }
       return;
-    } else if (h.kind === 'torn') { w.shake(C.hit.shake * 0.5); w.events.emit('ride', { beat: 'torn', x: h.x, y: h.y }); }
+    } else if (h.kind === 'torn') { w.shake(C.hit.shake * 0.5); this.bump('torn'); w.events.emit('ride', { beat: 'torn', x: h.x, y: h.y }); } else if (h.kind === 'thing') this.bump('torn', 0.6);
     if (e?.def && (h.kind === 'torn' || h.kind === 'thing')) {
       // what it was made of thrown on ahead, sheets of paper off it, sparks off steel
       const F = C.fx.debris;
@@ -534,6 +643,7 @@ export default class Drive {
       w.critters?.scare(x, v.y, F.scare.r, F.scare.r);
       w.ambient?.panicAround(x, v.y, F.scare.people, 'scream');
     }
+    this.air(dt, rear);
     // awnings and parasols: under one, fast, it goes
     this.canopies ??= w.props.filter((p) => p.def?.canopy);
     if (this.v > C.hit.tear) {
@@ -546,6 +656,37 @@ export default class Drive {
         w.sound('awningRip', p.x, p.y, 0.8);
         w.shake(C.hit.shake * 0.4);
       }
+    }
+  }
+
+  // the air it moves at speed: dust off the rear wheels, something light whipped up in its wake now and then, and
+  // the streaks of air past it (kept here, drawn by render/PursuitArt.js)
+  air(dt, rear) {
+    const w = this.world, C = this.C, F = C.fx, v = this.van, W = F.wind;
+    if (this.v > F.dust.from) {
+      for (const r of rear) {
+        if (chance(F.dust.chance)) w.particles.dust(r.x, r.y, 1, 3, '#8a8494', { speed: 16, size: F.dust.puff[0], alpha: F.dust.puff[1], life: F.dust.puff[2], vx: -this.v * 14 });
+      }
+    }
+    if (this.v > F.wake.from && (this.wakeT -= dt) <= 0) {
+      this.wakeT = rand(...F.wake.every);
+      const q = v.toWorld(rand(-10, 20), rand(4, v.h - 4)), sp = this.v * 60 * F.wake.v;
+      if (chance(F.wake.paper) && w.papers) w.papers.drop(q.x, q.y, 1, v.body.angle + rand(-0.5, 0.5), sp);
+      else w.particles.floaters(q.x, q.y, FLOATS.leaf, F.wake.leaves, v.body.angle, 0.9, sp * 0.6, 7);
+    }
+    const k = clamp((this.v - W.from) / (C.max - W.from), 0, 1), L = this.wind;
+    for (let i = L.length - 1; i >= 0; i--) {
+      const s = L[i];
+      s.t += dt;
+      s.x += s.vx * dt;
+      if (s.t >= s.life) L.splice(i, 1);
+    }
+    if (k > 0 && L.length < W.n * k && chance(k * 0.9)) {
+      const side = chance(0.5) ? -1 : 1;
+      L.push({
+        x: v.x + rand(-W.back, W.ahead), y: Math.round(v.y + side * rand(...W.band)) + 0.5, len: Math.round(W.len[0] + (W.len[1] - W.len[0]) * k * rand(0.4, 1)),
+        vx: -this.v * 60 * rand(...W.v), t: 0, life: rand(...W.life), a: W.alpha * rand(0.5, 1) * (0.4 + 0.6 * k),
+      });
     }
   }
 
@@ -592,21 +733,23 @@ export default class Drive {
     w.onKill(p, 'crash', v, { crash: true });
   }
 
-  // where the camera looks (viewW: world px across the view): ahead of the van by `lead` of the view's width at
-  // cruise speed (and by what the camera trails its target, `lag` s of the way it goes), its y drawn toward the
-  // middle of the lanes
+  // where the camera looks (viewW: world px across the view): ahead of the van by what its speed asks (leadOf: the
+  // car sits back and the road opens ahead the faster it goes) and by what the camera trails its target (`lag` s of
+  // the way it goes), its y drawn toward the street's middle (the level's `chase.mid` row; else the lanes')
   frame(viewW) {
-    const C = this.C.camera, v = this.van, vel = Body.getVelocity(v.body), k = clamp(this.v / this.cruise, 0, 1.25);
-    const lanes = this.o.lanes, mid = lanes ? (lanes.reduce((s, r) => s + r, 0) / lanes.length) * TILE : v.y;
-    return { x: v.x + vel.x * 60 * C.lag + viewW * C.lead * k, y: v.y + (mid - v.y) * C.road };
+    const C = this.C.camera, v = this.van, vel = Body.getVelocity(v.body);
+    const lanes = this.o.lanes, row = this.o.mid ?? (lanes ? lanes.reduce((s, r) => s + r, 0) / lanes.length : null);
+    const mid = row === null ? v.y : row * TILE;
+    return { x: v.x + vel.x * 60 * C.lag + viewW * leadOf(this.v, this.cruise, this.C), y: v.y + (mid - v.y) * C.road };
   }
 
   // its engine and tyres this step (audio/Motor.js; World hands it to Audio.motor): the gearbox on its real speed,
   // the throttle as held, the tyres squealing with the slip between the nose and the way it goes, and at a shove
   motor(dt) {
     if (!this.on || this.dead) return null;
+    // (the throttle as held: W floors it, the brakes shut it; a hit that takes its speed lifts it too)
     const v = this.van, sp = this.v / this.C.max, dv = this.v - this.lastV;
-    const throttle = dv > 1e-4 ? 1 : dv < -1e-4 ? 0 : 0.5;
+    const throttle = dv < -1e-4 ? 0 : dv > 1e-4 ? 1 : this.throttle ?? 0.5;
     const box = this.box.step(sp, throttle, false, dt);
     this.lastV = this.v;
     const slip = Math.atan2(this.u, Math.max(this.v, 0.5)) - v.body.angle;

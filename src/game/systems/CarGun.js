@@ -3,9 +3,12 @@
 // was left in it, the next one comes out of his pools (entities/Player.js `ammo`), as on foot. In an open car (a
 // `cabin`: THE BOSS's convertible) the gun is at the end of his arm from the seat (`arm` px), the arm drawn by the car
 // (his `riding.aim`, CharacterAnim.seatPose); in a closed one it is out of the driver's window, `reach` px out.
-// His arc (arcOf): what a hand held CHASE.gun.reach px out of the driver's side (-y) can point at without his own car
-// in the way: the driver's side and ahead, about 200 degrees; an open car's windscreen frame (m.wind) is never in the
-// line either. A click outside it does nothing (the cursor says so). DOM-free.
+// His arc in an open car (inCone, CHASE.gun.cone): 125 degrees either side of the nose, 250 in all: out of his door,
+// ahead over the low windscreen, across the passenger seat to his right, back along both flanks; the 110 degrees
+// behind him stay out. In a closed car (arcOf / inArc): what a hand held CHASE.gun.reach px out of the driver's side
+// (-y) can point at without his own car in the way: the driver's side and ahead, about 200 degrees.
+// A click outside it does nothing (the cursor says so). His rounds never touch his own car (Projectile `ignore`) nor
+// himself (their owner). DOM-free.
 import { CHASE } from '../data/chase.js';
 import { angDiff, clamp, spread } from '../../engine/math.js';
 import Projectile from '../entities/Projectile.js';
@@ -24,6 +27,12 @@ export function arcOf(w, sx, reach = CHASE.gun.reach, margin = CHASE.gun.margin)
 export function inArc(a, car, arc) {
   const off = angDiff(car - Math.PI / 2, a); // from square out of the driver's side: + toward the nose
   return off <= arc[0] && off >= -arc[1];
+}
+
+// an open car: is the way a (world) within `cone` ([left, right] rad) of the nose of a car at angle `car`?
+export function inCone(a, car, cone = CHASE.gun.cone) {
+  const off = angDiff(car, a); // from the nose: - toward the driver's side (-y), + across the passenger seat
+  return off >= -cone[0] && off <= cone[1];
 }
 
 export default class CarGun {
@@ -56,17 +65,11 @@ export default class CarGun {
     return { x: o.x + Math.cos(a) * r, y: o.y + Math.sin(a) * r };
   }
 
-  // the way from the hand's root to the aim, and whether it is in his arc (and clear of an open car's windscreen)
+  // the way from the hand's root to the aim, and whether it is in his arc (an open car: all round but behind him, over
+  // its windscreen and across its other seat; a closed one: out of his window)
   aimAt(aim) {
     const v = this.van, o = this.root(), a = Math.atan2(aim.y - o.y, aim.x - o.x);
-    return { a, ok: inArc(a, v.body.angle, this.arc) && !(this.open && this.framed(a)) };
-  }
-
-  // an open car: does the line out of his hand along a cross its own windscreen frame?
-  framed(a) {
-    const v = this.van, m = this.hand(a), s = v.toSprite(m.x, m.y), da = a - v.body.angle;
-    for (let k = 0; k <= v.w; k += 2) if (v.inside(v.m.wind, s.sx + Math.cos(da) * k, s.sy + Math.sin(da) * k)) return true;
-    return false;
+    return { a, ok: this.open ? inCone(a, v.body.angle) : inArc(a, v.body.angle, this.arc) };
   }
 
   step(dt, input, aim) {

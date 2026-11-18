@@ -32,7 +32,7 @@ import { leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import HoldSkip, { drawHold } from './ui/cine/Hold.js';
 import { ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
-import { cameraScale, finishView } from './systems/Drive.js';
+import { finishView } from './systems/Drive.js';
 import { CHASE } from './data/chase.js';
 import { drawSandbox } from './ui/SandboxPanel.js';
 import Sandbox from './debug/Sandbox.js';
@@ -85,7 +85,8 @@ export default class Game {
     this.taught = new Set();           // the lessons already given this run (systems/Tutorial.js)
     this.murk = 0;                     // 0..1: how far thick smoke has closed the view in (render/Murk.js)
     this.paged = false;                // a comic page was over the world last frame (onPage)
-    this.driveZoom = 1;                // the camera's scale at the wheel, eased with the van's speed (systems/Drive.js)
+    this.view = VIEW;                  // world px of height the picture shows (VIEW; at the wheel the drive's: fit)
+    this.driveZoom = 1;                // the camera's scale while the view goes from one height to another (1 at rest)
     this.state = 'loading';
     this.stateT = 0;
     this.time = 0;
@@ -133,17 +134,36 @@ export default class Game {
     window.addEventListener('resize', () => this.resize());
   }
 
+  // The picture for a view `view` world px high in a window h device px high: { ss: scene px a window px, zoom }.
+  // With the lens the scene is drawn at the whole zoom of the usual view (crisp pixels, a sprite always the same
+  // number of px) on a canvas as large as that takes, and the lens brings it down to the window: the view is `view`
+  // world px high whatever the window's size. Without the lens the canvas is the window and the zoom the nearest whole
+  // one (a taller view than the usual one: the largest that shows all of it).
+  fit(view, h) {
+    if (this.post?.ok) { const zoom = Math.max(1, Math.ceil(h / VIEW)); return { ss: (view * zoom) / h, zoom }; }
+    return { ss: 1, zoom: view === VIEW ? Math.max(1, Math.round(h / VIEW)) : Math.max(1, Math.floor(h / view)) };
+  }
+
   resize() {
     const dpr = window.devicePixelRatio || 1, w = Math.floor(window.innerWidth * dpr), h = Math.floor(window.innerHeight * dpr);
-    // With the lens, the scene is drawn at a whole zoom (crisp pixels) on a canvas a little larger than the window and
-    // the lens brings it down to it: the view is VIEW world px high whatever the window's size. Without the lens the
-    // canvas is the window and the zoom the nearest whole one.
-    const ss = this.post?.ok ? (VIEW * Math.max(1, Math.ceil(h / VIEW))) / h : 1;
+    const { ss, zoom } = this.fit(this.view, h), was = this.canvas.width;
     this.canvas.width = Math.round(w * ss);
     this.canvas.height = Math.round(h * ss);
-    this.camera.resize(this.canvas.width, this.canvas.height);
+    this.camera.resize(this.canvas.width, this.canvas.height, zoom);
+    // (the mouse is kept in the scene's px: it stays where it was on the window)
+    if (was && this.input) { const k = this.canvas.width / was; this.input.mouse.x *= k; this.input.mouse.y *= k; }
     this.post?.resize(w, h);
     this.vignette = null;
+  }
+
+  // The view's height from now on (world px): the canvas resized for it, the camera's scale set so that the picture
+  // does not jump (updateCamera eases it back to 1: a whole zoom again)
+  setView(view) {
+    if (view === this.view) return;
+    const k = this.camera.zoom / this.canvas.height;
+    this.view = view;
+    this.resize();
+    this.driveZoom *= k / (this.camera.zoom / this.canvas.height);
   }
 
   async init() {
@@ -237,13 +257,16 @@ export default class Game {
     this.lens.bind(this.world.events);
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
+    // a level driven in the van opens on the drive's view, ahead of it (systems/Drive.js)
+    const dr = this.world.drive;
+    this.setView(dr ? dr.view : VIEW);
+    this.driveZoom = 1;
+    this.camera.sway = !dr;
+    this.camera.swayK = dr ? 0 : 1;
     // a staged level opens on its first shot, no easing
     const shot = this.stagedShot();
     this.direction.reset();
     this.direction.set(shot?.name, shot?.at, true, this.camera.zoom);
-    // a level driven in the van opens on the view its speed gives, ahead of it (systems/Drive.js)
-    const dr = this.world.drive;
-    this.driveZoom = dr ? cameraScale(dr.v) : 1;
     this.camera.scale = this.direction.zoom * this.driveZoom;
     const fr = dr && dr.frame(this.camera.w / (this.camera.zoom * this.camera.scale));
     const at = dr ? this.direction.aim(fr.x, fr.y) : p;
@@ -740,11 +763,27 @@ export default class Game {
     const max = this.input.down('ShiftLeft') ? 260 : 110;
     const len = Math.hypot(ox, oy);
     if (len > max) { ox *= max / len; oy *= max / len; }
-    // at the wheel (systems/Drive.js): the view pulls out with the speed and runs ahead of the van, the cursor plays no
+    // at the wheel (systems/Drive.js): the view is the drive's own and runs ahead of the van, the cursor plays no
     // part; out of it, the view comes back to the usual one
     const dr = w.drive?.on ? w.drive : null;
     if (dr) { ox = 0; oy = 0; }
-    this.driveZoom += ((dr ? cameraScale(dr.v) : 1) - this.driveZoom) * (1 - Math.exp(-dt / CHASE.camera.zoom));
+    // its view is another height (CHASE.camera.view): a taller one, the canvas grows at once and the zoom eases out
+    // to it; a closer one, the zoom eases in and the canvas follows: at rest the scene is at its whole zoom again
+    const want = dr ? dr.view : VIEW;
+    if (want > this.view) this.setView(want);
+    let rest = 1;
+    if (want < this.view) {
+      const dpr = window.devicePixelRatio || 1, f = this.fit(want, Math.floor(window.innerHeight * dpr));
+      rest = (f.zoom / Math.round(Math.floor(window.innerHeight * dpr) * f.ss)) / (this.camera.zoom / this.canvas.height);
+    }
+    this.driveZoom += (rest - this.driveZoom) * (1 - Math.exp(-dt / CHASE.camera.zoom));
+    if (Math.abs(this.driveZoom / rest - 1) < 0.012) {
+      if (want < this.view) this.setView(want);
+      this.driveZoom = 1;
+    }
+    // no slow tilt at the wheel (a turned picture resamples every pixel of the car, every frame); the road's rumble
+    this.camera.sway = !dr;
+    this.camera.buzz = dr ? dr.buzz() * this.camera.zoom : 0;
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
     const D = this.direction, shot = this.stagedShot();
@@ -899,6 +938,9 @@ export default class Game {
         ...w.fires.near(w.player.x, w.player.y, 3).map((f) => ({ x: f.x, y: f.y, kind: 'fire' })),
         ...w.smoke.heat(), ...w.gasValve.heat()] : [],
       lights: inWorld && !this.overview ? w.lighting?.brightest || [] : [],
+      // at the wheel: his speed (share of flat out) and the way he goes, for what the speed does to the picture's edges
+      drive: inWorld && w.drive?.on && !this.overview ? { k: w.drive.v / CHASE.max, angle: Math.atan2(w.drive.u, Math.max(w.drive.v, 1)) * 0.5, x: w.drive.van.x, y: w.drive.van.y } : null,
+      rot: this.camera.rot,
     };
   }
 

@@ -178,15 +178,20 @@ src/
                           contact): a parked car woken and shoved, a bolted thing torn off (a sensor at once), a loose
                           light one flung by hand, a person run down, nose-on into what does not give the crash
                           ('kill' cause `crash`; a corner clipped is a jolt); `fx`: tyre smoke, rubber on the road,
-                          spray, what is ahead frightened, `canopy` props torn down; the camera's pull-out and lead
-                          (viewHeight, cameraScale, frame: pure); the end col clears the level; its engine heard
+                          spray, what is ahead frightened, `canopy` props torn down, dust, the wake, streaks of air
+                          (`wind`); the weight of it: the nose on a spring (yawStep), the rear out (slipStep), the
+                          body on its wheels (springs: Vehicle squat / roll / lift); the camera: ONE view height at
+                          the wheel (`view`: Game.fit / setView draw it at the usual whole zoom on a larger canvas,
+                          the lens brings it down), `frame` (leadOf: further back the faster), `buzz` (the road's
+                          rumble); the lens' speed.drive (data/post.js) does the picture's edges; the end col
+                          clears the level; its engine heard
                           (World hands `motor` to Audio.motor); `grab`: the gun on the car's passenger seat
                           (Vehicle `gun`, `chase.arms.seat`, the lab's convertible) taken in a short beat as he sets
                           off (the car on its own, nothing told meanwhile, `shot`: SHOTS grab / grabOut; posed by
                           CharacterAnim grabPose), skipped on a retry (skipGrab)
-      CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click, R; the arc (arcOf / inArc:
-                          the driver's side and ahead, ~200 degrees, never across his own car or an open car's
-                          windscreen), rounds carrying the car's speed, his arm out through `riding.aim` (eased:
+      CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click, R; the arc (an open car: inCone,
+                          125 degrees either side of the nose, over the windscreen and across the other seat, not
+                          behind him; a closed one: arcOf / inArc, out of the driver's window, ~200 degrees), rounds carrying the car's speed, his arm out through `riding.aim` (eased:
                           `riding.up`; a machine pistol hangs over the door at rest, SEAT.hang)
       Pursuit.js          the pursuers (level 2A; the lab's dummy, prop option `pursuer`): black sedans driven like his
                           car (speed + heading -> velocity, read back from the physics), slots (alongside on his driver's

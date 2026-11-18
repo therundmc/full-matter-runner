@@ -5,7 +5,7 @@ import { READABILITY } from '../data/readability.js';
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
 import { sprite, spriteOpt, silhouette, chunk, glassShards, slices, sw, sh, drawSprite } from '../../engine/Assets.js';
-import { rand, chance, clamp, local } from '../../engine/math.js';
+import { rand, chance, clamp, local, angDiff } from '../../engine/math.js';
 import Debris from './Debris.js';
 import { WEAPONS } from '../data/weapons.js';
 import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/Body.js';
@@ -125,7 +125,9 @@ export default class Vehicle {
     this.steer = 0;
     this.brake = 0;
     this.bob = 0;
-    this.squat = 0;                        // px the body sits back on its rear wheels (the power going down)
+    this.squat = 0;                        // px the body sits back on its rear wheels (the power going down; -: it dives)
+    this.roll = 0;                         // px the body leans across its wheels (+: toward +y; systems/Drive.js springs)
+    this.lift = 0;                         // px the body is thrown up off its shadow (a bump, a hit)
     this.rider = null;                     // who sits in the driver's seat (seatIn; `driver` is what drives it: systems/Drive.js)
     this.hat = !!this.m.hat;               // what lies on the rear seat is still there
     this.gun = !!this.m.gun;               // the gun on the passenger seat is still there
@@ -209,8 +211,18 @@ export default class Vehicle {
       const r = ch.riding;
       r.k = Math.min(1, r.k + dt / SEAT.settle);
       // the arm out with the gun or back (seatPose), the way it last pointed kept for the way back
-      if (r.aim !== null && r.aim !== undefined) r.was = r.aim;
-      r.up = clamp((r.up ?? 0) + (r.aim !== null && r.aim !== undefined ? dt : -dt) / SEAT.raise, 0, 1);
+      const aims = r.aim !== null && r.aim !== undefined;
+      if (aims) r.was = r.aim;
+      r.up = clamp((r.up ?? 0) + (aims ? dt : -dt) / SEAT.raise, 0, 1);
+      // which hand has the gun: the door's (-1) until he aims well past the nose to his right, the right one (1)
+      // until he aims well past it to his left (SEAT.aim.swap either way: no flutter dead ahead); r.hand 0 .. 1 is
+      // the gun's way from the one to the other, eased; the arm down, it is back in the door's hand
+      if (aims) {
+        const off = angDiff(this.body.angle, r.aim), sw = SEAT.aim.swap;
+        if (!r.side) r.side = off > sw ? 1 : -1;
+        else if (r.side * off < -sw) r.side = -r.side;
+      } else if (r.up <= 0) r.side = 0;
+      r.hand = clamp((r.hand ?? 0) + (aims && r.side > 0 ? dt : -dt) / SEAT.aim.pass, 0, 1);
       if (ch.riding.slump) ch.riding.slump = Math.min(1, ch.riding.slump + dt / SEAT.slump.t); // shot at the wheel (slumpIn)
     }
     Body.setPosition(ch.body, q);
@@ -758,10 +770,14 @@ export default class Vehicle {
       ctx.restore();
     });
     const jx = this.flash > 0 ? rand(-1, 1) : 0;
-    sagY += this.bob;
-    sagX -= this.squat;
+    // the body over its wheels, in half px (the sprite's own pixels: it never sits between two of them); thrown up,
+    // it leaves its shadow
+    const lift = Math.round(this.lift * 2) / 2;
+    sagY = Math.round((sagY + this.bob + this.roll - lift * 0.5) * 2) / 2;
+    sagX = Math.round((sagX - this.squat - lift * 0.5) * 2) / 2;
+    this.sag = [sagX, sagY];
     ctx.globalAlpha = 0.4;
-    ctx.drawImage(silhouette(this.base), ox + 3, oy + 3, this.w, this.h);
+    ctx.drawImage(silhouette(this.base), ox + 3 + Math.max(-1.5, lift * 0.5), oy + 3 + Math.max(-1.5, lift * 0.5), this.w, this.h);
     ctx.globalAlpha = 1;
     ctx.drawImage(this.canvas, ox + sagX + jx, oy + sagY, this.w, this.h);
     if (this.trunk?.open && !this.exploded) {
@@ -811,7 +827,12 @@ export default class Vehicle {
     // who sits in the open cabin, over the seats (a closed car hides him)
     if (this.rider && this.m.cabin && !this.exploded) {
       this.carry(0);
+      // (he goes with the body on its springs)
+      const c = Math.cos(b.angle), sn = Math.sin(b.angle), [gx, gy] = this.sag;
+      ctx.save();
+      ctx.translate(gx * c - gy * sn, gx * sn + gy * c);
       this.rider.draw(ctx);
+      ctx.restore();
     }
   }
 }

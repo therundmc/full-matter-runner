@@ -27,12 +27,20 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   flapping out over the door), so one hit kills reads at a glance; about 2.1 t of land yacht with chrome bumpers
   for the shove. Boards painted before this choice still show a van.
 - **Driving.** He steers freely; the road pulls the car along it (a spring toward the road's line and heading, so
-  letting go straightens it). Forward / back: throttle / brake around a cruise speed set by the segment.
+  letting go straightens it). Forward / back: throttle / brake around a cruise speed set by the segment. It is a
+  heavy car and feels it without costing the placing in a lane (one hit kills): the sideways speed answers as fast as
+  ever, but the nose is on an under-damped spring (it turns in a little late, swings a little past, wags once), the
+  rear steps out when the wheel is held hard at speed (smoke, rubber, the squeal), the last 15 km/h come slowly, and
+  the body moves on its wheels (sat back under power, the nose down on the brakes and on a hit, rolled out of a
+  bend, thrown up by a kerb, a hit, the road).
 - **The shove (SPACE).** A hard sideways jolt of the car toward the mouse's side, with a cooldown (a bar on the
   HUD). It is a real Matter impulse: what the car hits is pushed into the scenery (piers, lorries, parked cars, the
   rail, gates). The wrecks come from the physics, not from scripts.
-- **Shooting.** Mouse aim, one hand, from the open car (it faces +x; the driver sits on the -y side): mostly to his
-  side and ahead, never through his own windscreen frame; the Uzi finishes what the shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
+- **Shooting.** Mouse aim, one hand, from the open car (it faces +x; the driver sits on the -y side): ALL ROUND
+  but behind him (the user's call, 2026-11-18): 125 degrees either side of the nose, 250 in all: out of his door,
+  ahead OVER the low windscreen, across the passenger seat to his right (the gun goes over to his right hand, the
+  left takes the wheel), back along both flanks; only the 110 degrees behind him stay out. The Uzi finishes what the
+  shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
   the car's lane as a pickup.
 - **The gun: THE BOSS's Uzi, off his passenger seat** (the user's call, 2026-11-18). It lies on the convertible's
   passenger cushion (Vehicle `gun`; in level 1 too, seen as he vaults in and drives off, never a pickup there). 2A
@@ -54,9 +62,18 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   Enemy tracers bone, telegraph red, his own muzzle flash orange.
 - **Slow motion** (from proposal C) only at three moments: the two jumps and the level crossing (time x0.25, weak
   points marked: a tyre, a tank, a driver).
-- **Camera.** It pulls out with speed: about 380 world px high at 60 km/h (the back road is 320 px from wall to wall:
-  both facades and their signs stay on the picture), 400 at 90, 440 at 120, 480 on the jump (the normal view is 290);
-  the car held in the left third so he sees far enough ahead.
+- **Camera.** ONE view height a segment, whatever the speed (changed 2026-11-18: a zoom that followed the speed
+  resampled the pixel art every frame, the car first: "le flou de la bagnole"): 360 world px on the back road (320 px
+  from wall to wall: both rows of signs stay on the picture, the view drawn toward the street's middle, level
+  `chase.mid`), to be 400 at 90, 440 at 120, 480 on the jump (level `chase.view`; the normal view is 290). The scene
+  is drawn at the usual whole zoom on a larger canvas and the lens brings it down (Game.fit); no slow tilt at the
+  wheel. The speed is told otherwise: the car sits further back the faster it goes (a third from the left at cruise,
+  about a quarter flat out), the road rumbles over the cruise speed, the edges of the picture streak.
+- **Speed.** What sells it (all of it only at the wheel, none of it over the car or the lanes): the lens' `speed.drive`
+  (data/post.js: in the outer band of the picture the street's lights leave pixel trails along the road, streaks of
+  air run back, the colours part, the band darkens and is stretched a little so it runs past faster; a shove or a hit
+  kicks it), streaks of air in the world, dust off the rear wheels, paper and leaves whipped up in its wake, and a
+  road that shows it goes by: the centre line and the parking row's edge line are DASHES (2 m and 3 m).
 - Rejected as the main mechanic: A (lane-snap shooting: readable but on rails, seven rounds his only violence) and
   C (autopilot shooting gallery: throws the physics away). Boards: [A](level2/gameplay_a.webp),
   [B sheet](level2/gameplay_b_sheet.webp), [C](level2/gameplay_c.webp).
@@ -250,3 +267,19 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the end (magazine pickups included), 3 or 4 of the 4 cars stopped; the trigger held whenever one is in reach: 30 fired, 30
   left; held all the way: dry 6.8 s in, before the first car. On the back road the rounds are not scarce yet. Lab
   station 22 GRAB (station 17's convertible: E at its door, the grab every time; out, the Uzi back on the seat).
+- 2026-11-18: THE FEEL PASS (the user: the car blurred, no speed, the driving, the gun only to the left). THE BLUR:
+  the camera's zoom followed the speed (345 to 392 px of view: 3.03 picture px a world px at 60 km/h, never whole)
+  and the picture swayed: every sprite resampled unevenly, differently every frame. Now ONE view height at the wheel
+  (CHASE.camera.view 360, level `chase.view`), the scene at the usual whole zoom on a larger canvas brought down by
+  the lens (Game.fit / setView; eased in and out of the car in the lab), no sway, the car snapped dead straight when
+  it is, its body offsets in half px. SPEED: data/post.js `speed.drive` (render/Lens.js, PostGL.js: the outer band
+  only), Drive `wind` / dust / wake (CHASE.fx), the camera's lead growing past cruise and its rumble
+  (CHASE.camera), dashed lines on the road (tools/build_level2a.py). DRIVING (data/chase.js): `over` 4 (75 km/h in
+  0.55 s from cruise, was 0.25 s), the nose's spring (`yaw`), the slide (`slide`: 0.16 rad flat out), the body
+  (`body`: squat / dive / roll / lift), the shove 8 px/step given back at 26 a second with a camera push, roll, bounce
+  and smoke. THE GUN: CHASE.gun.cone, 125 degrees either side of the nose in the open car (CarGun.inCone; a closed car
+  keeps its window's arc), the seat's aim pose with either hand (SEAT.aim swap / pass, Vehicle.carry `side` / `hand`).
+  Decisions changed (above): the camera, the shooting arc. Lab station 19: THE BOSS's convertible in the north lane
+  and three pursuers to shoot right, left and ahead. Played by script, stepped at 60 Hz in the headless browser: the
+  road finished in 26.9 to 27.6 s at cruise (23.1 s flat out), under the lorry's tail flat out still through, a tell
+  sat through still kills, drivers shot on either side and ahead (8 rounds, 4 kills).
