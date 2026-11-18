@@ -8,32 +8,35 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
 
 ## Story and structure
 
-- The night after level 1: the runner drives off in the boss's men's van (level 1's ending page); they come after
-  him. CUEBALL's matchbook points to the FLAMINGO MOTEL, where JITTERS hides: that is LEVEL 3, not level 2.
+- The night after level 1: the runner drives off in THE BOSS'S OWN CONVERTIBLE (level 1's ending page): bone body,
+  blood-red seats, chrome, roof down, the boss's hat on the rear seat; the boss's men come after him. CUEBALL's matchbook points to the FLAMINGO MOTEL, where JITTERS hides: that is LEVEL 3, not level 2.
 - Level 2 is two levels (the user's call, CLAUDE.md Gameplay): **2A, the chase** (about 2 min 30, from the bar's
-  district to a big roadside gas station, ending on the van crashing through its first pump) and **2B, the station**
-  (on foot: the van burning on the forecourt, the boss's men falling back into the store). Dying in 2A restarts the
+  district to a big roadside gas station, ending on the convertible crashing through its first pump) and **2B, the station**
+  (on foot: the car burning on the forecourt, the boss's men falling back into the store). Dying in 2A restarts the
   chase from 0:00; dying in 2B restarts 2B at the crash (he gets up off the ground, as level 1's opening).
-- One hit kills still holds in the van: a shot told and not dodged through his window, a nose-on hit on something
+- One hit kills still holds in the car: a shot told and not dodged into the open cabin, a nose-on hit on something
   that does not give, or being shoved off the road. Scrapes cost nothing (no health bar).
 
 ## 2A gameplay: proposal B, "shove and shoot" (chosen)
 
 ![gameplay B](level2/gameplay_b.webp)
 
-- **Driving.** He steers freely; the road pulls the van along it (a spring toward the road's line and heading, so
+- **The car.** The boss's convertible, roof down: the runner is SEEN at the wheel (cap, collar, the coat's tails
+  flapping out over the door), so one hit kills reads at a glance; about 2.1 t of land yacht with chrome bumpers
+  for the shove. Boards painted before this choice still show a van.
+- **Driving.** He steers freely; the road pulls the car along it (a spring toward the road's line and heading, so
   letting go straightens it). Forward / back: throttle / brake around a cruise speed set by the segment.
-- **The shove (SPACE).** A hard sideways jolt of the van toward the mouse's side, with a cooldown (a bar on the
-  HUD). It is a real Matter impulse: what the van hits is pushed into the scenery (piers, lorries, parked cars, the
+- **The shove (SPACE).** A hard sideways jolt of the car toward the mouse's side, with a cooldown (a bar on the
+  HUD). It is a real Matter impulse: what the car hits is pushed into the scenery (piers, lorries, parked cars, the
   rail, gates). The wrecks come from the physics, not from scripts.
-- **Shooting.** Mouse aim, one hand, out of the DRIVER's window only (the van faces +x: the driver's side is -y);
-  the pistol finishes what the shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
-  the van's lane as a pickup.
+- **Shooting.** Mouse aim, one hand, from the open car (it faces +x; the driver sits on the -y side): mostly to his
+  side and ahead, never through his own windscreen frame; the pistol finishes what the shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
+  the car's lane as a pickup.
 - **Killing a car.** Windscreen (the driver): it veers into the rail. A front tyre: it spins. The gunman: it goes on
   and can still ram. A hard enough shove into something solid: wrecked.
 - **Telegraphs (readability first).** A gunman's shot: a white glint at the muzzle, then a thin red line that
   fattens into a wedge with a bracket where it lands (0.6 to 0.8 s), then the shot; the line locks onto a lane, not
-  the van, so a lane change or a brake dodges it. One gunman tells at a time early on, two overlapping at the end.
+  the car, so a lane change or a brake dodges it. One gunman tells at a time early on, two overlapping at the end.
   Obstacles about to enter the frame: red chevrons at the screen's edge. A safe gap: bone arrows. Nothing else red
   on the road.
 - **Who is who.** The pursuers are the only black cars, with one pink stripe; civilians are pale or coloured.
@@ -41,7 +44,7 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
 - **Slow motion** (from proposal C) only at three moments: the two jumps and the level crossing (time x0.25, weak
   points marked: a tyre, a tank, a driver).
 - **Camera.** It pulls out with speed: about 360 world px high at 60 km/h, 400 at 90, 440 at 120, 480 on the jump
-  (the normal view is 290); the van held in the left third so he sees far enough ahead.
+  (the normal view is 290); the car held in the left third so he sees far enough ahead.
 - Rejected as the main mechanic: A (lane-snap shooting: readable but on rails, seven rounds his only violence) and
   C (autopilot shooting gallery: throws the physics away). Boards: [A](level2/gameplay_a.webp),
   [B sheet](level2/gameplay_b_sheet.webp), [C](level2/gameplay_c.webp).
@@ -79,7 +82,7 @@ Events:
 | 11 | 2:03 | THE RAMP OUT | The second jump, through a chain fence, back onto a road. Slow again: one round. |
 | 12 | 2:16 | THE LEVEL CROSSING | The barriers down, the train told by its lamp and a red band. Beat it: it cuts them off, or takes one. |
 | 13 | 2:24 | THE TYRE | The last car: its gunman takes his rear tyre (always). On the rim, sparks, he steers the slide. |
-| 14 | 2:30 | THE STATION | Through the first pump. END OF 2A. 2B opens on the van burning and him getting up. |
+| 14 | 2:30 | THE STATION | Through the first pump. END OF 2A. 2B opens on the car burning and him getting up. |
 
 Segment boards: [1 back road](level2/s1_backroad.webp), [2 toll](level2/s2_toll.webp),
 [3 tanker](level2/s5_tanker.webp), [3b jump](level2/s3_jump.webp), [4 drain](level2/s4_canal.webp),
@@ -125,7 +128,7 @@ brushes.
   along x. The whole route is about 2.4 km (2400 tiles): rendering and every map-sized buffer must be CHUNKED (baked
   near the camera, dropped far from it); level 1's map is 42 x 38 tiles, a back road alone is about 420 x 24.
   Segments may become separate builders joined end to end.
-- **Drive mode.** The player sits in the van (hidden, carried with it); the van is a DYNAMIC Matter body driven by
+- **Drive mode.** The player sits in the car (drawn at its `seat`, carried with it); the car is a DYNAMIC Matter body driven by
   forces (not Vehicle.driveTo, which teleports and collides with nothing), so the shove and every impact are real.
   Its logic is DOM-free with its numbers in data/ (a `CHASE` table), unit tested.
 - **Pursuers.** Vehicles with an AI (follow, flank, ram) and a gunman who leans out and tells his shot; their kill
@@ -158,6 +161,8 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
 
 ## Progress log
 
+- 2026-11-18: the user chose THE BOSS'S CONVERTIBLE over the van for level 1's getaway and 2A (he reads at the
+  wheel; the boss's own car; renders in the convertible pass). Wording updated; the boards still show a van.
 - 2026-11-18: concept pass done (gameplay proposals A/B/C, route, segment boards, 2B plan, paintings); the user
   chose B, the 2A / 2B split with 2B restarting at the crash, the Flamingo as level 3, and started M1 with the
   back road. This document written.
