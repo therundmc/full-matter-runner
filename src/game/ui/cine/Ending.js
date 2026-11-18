@@ -1,6 +1,6 @@
 // A level's closing page, played once the getaway is over and before the results (Game state 'ending'): a comic page
 // in the opening's manner (ui/cine/Page.js lays it out, tools/generate_comic.py paints its stills). Level 1's: he
-// drives the boss's van away in the rain, small on the wet road to the city far off; back in the bar CUEBALL lies
+// drives the boss's convertible away in the rain, small on the wet road to the city far off; back in the bar CUEBALL lies
 // over the back room's desk and the phone will not stop ringing: the boss, wanting news; a matchbook off that desk, a
 // motel's, JITTERS' saw-tooth mark scrawled on it: one down, and where the next one sleeps. ENDINGS maps a level to
 // its page; endingView() is the timeline as plain numbers (unit-tested), endingBeats() what is heard, drawEnding() the
@@ -11,11 +11,11 @@ import { drawPage } from './Page.js';
 import { still, fine, smoke } from './Panels.js';
 import { lerp, hash, px, poly, line } from './Ink.js';
 
-// where things are in the stills (their px; tools/comic/panels/ending.py DRIVE_VP, DRIVE_LINE, DRIVE_VAN,
+// where things are in the stills (their px; tools/comic/panels/ending.py DRIVE_VP, DRIVE_LINE, DRIVE_CAR,
 // DRIVE_LIGHTS, OFFICE_SMOKE, OFFICE_DRIP)
-// the road in comic/drive: its vanishing point, where its middle line leaves the panel; the van's back wheels
+// the road in comic/drive: its vanishing point, where its middle line leaves the panel; the car's back wheels
 const ROAD = { vp: [790, 150], line: [220, 288] };
-const WHEELS = [[549, 222], [627, 222]];
+const WHEELS = [[531, 224], [641, 224]];
 const MUZZLE = [204, 242];   // the dropped shotgun's muzzle in comic/office (ending.py OFFICE_SMOKE)
 const DRIP = [446, 203];
 const COVER = [[96, 82], [360, 64], [366, 150], [102, 168]];   // the matchbook's printed face (ending.py MATCH_COVER)
@@ -35,7 +35,7 @@ function within(g, pts, draw) {
 }
 
 // ---------------------------------------------------------------- level 1
-// 1. The van going away to the city: the road's line running back from under it, the spray off its back wheels,
+// 1. The boss's convertible going away to the city: the road's line running back from under it, the spray off its back wheels,
 // the rain over everything.
 function paintDrive(g, w, h, t) {
   still(g, 'drive', w, h);
@@ -95,7 +95,7 @@ const LEVEL1 = {
   end: 14.6,
   page: { end: 14.6, panels: [
     { r: { x: 12, y: 10, w: 360, h: 96 }, at: 0.5, paint: paintDrive,
-      caption: ['HE TOOK THEIR VAN.', 'HE LEFT THEM A BODY.'] },
+      caption: ["HE TOOK THE BOSS'S CAR.", 'HE LEFT THEM A BODY.'] },
     { r: { x: 12, y: 112, w: 176, h: 94 }, at: 4.2, paint: paintOffice, caption: ['THE PHONE RANG.', 'THE BOSS WANTED NEWS.'],
       sfx: rings(70, 34, 8, 0.12) },
     { r: { x: 196, y: 112, w: 176, h: 94 }, at: 7.8, paint: paintMatchbook, caption: ["OFF CUEBALL'S DESK."],
@@ -103,7 +103,7 @@ const LEVEL1 = {
   ] },
   // what is heard: [at, name, vol, opts] for Audio.play
   cues: [
-    [0.05, 'passby', 0.7, { lead: 2.6, dur: 7.5, dir: -1, side: 0.1, f: 36 }],   // the van's engine, flat out
+    [0.05, 'passby', 0.7, { lead: 2.6, dur: 7.5, dir: -1, side: 0.1, f: 36 }],   // the car's engine, flat out
     [0.1, 'air', 1, { inside: 0.6 }], [5.1, 'air', 1, { inside: 0.6 }], [10.1, 'air', 1, { inside: 0.6 }],
     [4.4, 'siren', 1],                                                           // far off, on its way to the bar
     [8.1, 'pickup', 0.6],                                                        // the matchbook turned in his fingers

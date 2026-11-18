@@ -24,7 +24,7 @@ Panel names and sizes are fixed (the game's layouts and tests depend on them), a
 over, each a named constant in its panel module and in the JS that reads it: `PANE`, `CLOCK` (its ground `#1a0608`,
 the colon at 172, 154), `DOORWAY` (opening1.py / ui/cine/Panels.js), `SPOUT` (opening2.py; the petrol's drops run from
 it to 518, 180), `FLAME`, `MOUTH`, `GAP` (opening3.py; `MOUTH` is the balloon's tail in ui/Cinematic.js),
-`ALLEY_SIGN`, `ALLEY_PUDDLES` (leap.py / Leap.js), `DRIVE_VP`, `DRIVE_LINE`, `DRIVE_VAN`, `DRIVE_LIGHTS`, `OFFICE_SMOKE`, `OFFICE_DRIP`,
+`ALLEY_SIGN`, `ALLEY_PUDDLES` (leap.py / Leap.js), `DRIVE_VP`, `DRIVE_LINE`, `DRIVE_CAR`, `DRIVE_LIGHTS`, `OFFICE_SMOKE`, `OFFICE_DRIP`,
 `MATCH_COVER` (ending.py / Ending.js). Move one, move the other, and look at the page in the game.
 The sound words (KRAK, KRRIK, GLUG GLUG, SKRITCH, FWOOMP, RRRING), the captions, the balloons and FLAMINGO MOTEL are
 lettered live by the game: never letter them into a still (they would double). Lettering inside a still is only
@@ -163,7 +163,7 @@ Ending.js): never a blur, never a gradient, nothing that hides a sign or crosses
 | `fire` | the tongues under the door, embers going up, the light breathing | `GAP` |
 | `wake` | the fire alive in his pupil, the light breathing | `PUPIL` |
 | `alley` | rain, rings on the puddles, both signs flickering, a drip off the fire escape | `SIGN`, `PUDDLES` |
-| `drive` | the road's middle line running back from under the van, the spray off its back wheels, rain (a wide shot: the van small from behind, the city far off; never a close-up of him) | `ROAD`, `WHEELS` |
+| `drive` | the road's middle line running back from under the car, the spray off its back wheels, rain (a wide shot: the boss's convertible small from behind, roof down, bone, its two fins with a red blade of light each, its seats `PINK_D`, him at the wheel with his coat's tails thrown up, the boss's bone hat on the back seat, the city far off; never a close-up of him) | `ROAD`, `WHEELS` |
 | `office` | the handset shaken by each ring, the smoke off the dropped shotgun in puffs, the blood's drip | `MUZZLE`, `DRIP` |
 | `matchbook` | a glint sliding across the cover, FLAMINGO MOTEL lettered | `COVER` |
 
