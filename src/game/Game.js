@@ -772,7 +772,7 @@ export default class Game {
         ctx.globalAlpha = 1;
       }
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.death, this.input.device);
-      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, 'pause');
+      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
     });

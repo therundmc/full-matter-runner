@@ -6,7 +6,8 @@ import { load } from './setup.mjs';
 const { logoDead, posterBeats, CROSS, crossK, crossBeats } = await load('game/ui/title/Beats.js');
 const { deadCount } = await load('game/ui/title/HitList.js');
 const { posterUp } = await load('game/ui/title/Title.js');
-const { POSTER, BOARD } = await load('game/data/titleart.js');
+const { optionsUp } = await load('game/ui/title/Options.js');
+const { POSTER, BOARD, OPTIONS } = await load('game/data/titleart.js');
 const { OPTIONAL_LIST } = await load('engine/Assets.js');
 const { META } = await load('audio/Audio.js');
 const { loadCrossed, saveCrossed, resetProgress } = await load('game/systems/Progress.js');
@@ -40,14 +41,22 @@ test('title: what is heard under the poster: its fire, its rain, a buzz when a l
   for (const name of ['titleFire', 'titleRain', 'neonBuzz', 'markerStroke']) assert.ok(names.includes(`| ${name} |`), `${name} is listed as a placeholder`);
 });
 
-test('title: the poster is up for every page but LEVELS, which is the hit list', () => {
+test('title: the poster for the first page, the hit list for LEVELS, his table for OPTIONS and the pages under it', () => {
   const menu = new Menu('main', { settings: {}, progress: { unlocked: ['tutorial'], done: [] }, best: () => null, levels: [{ id: 'tutorial', name: 'BAD NIGHT' }] });
   assert.ok(posterUp(menu));
   menu.open('levels');
   assert.equal(posterUp(menu), false);
   menu.back();
+  assert.equal(optionsUp(menu), false);
   menu.open('options');
-  assert.ok(posterUp(menu));
+  assert.ok(!posterUp(menu) && optionsUp(menu));
+  assert.equal(menu.page.items.length, OPTIONS.things.length, 'a thing on the table for every section, and the cap for BACK');
+  menu.activate();
+  assert.ok(menu.page.id === 'audio' && optionsUp(menu), 'a section under it is the same screen');
+  const pause = new Menu('pause', menu.context);
+  assert.equal(optionsUp(pause), false);
+  pause.open('options');
+  assert.ok(optionsUp(pause), 'the pause opens the same');
 });
 
 test('hit list: a target is dead when his level is done; the X is drawn once, in two strokes, each heard', () => {
@@ -73,7 +82,7 @@ test('hit list: a target is dead when his level is done; the X is drawn once, in
 
 test('title: its stills are optional sprites at 3 px a title px, and their data matches them', () => {
   const stills = OPTIONAL_LIST.filter((n) => n.startsWith('title/'));
-  assert.equal(stills.length, 11);
+  assert.equal(stills.length, 13);
   const size = (name) => {
     const url = new URL(`../assets/sprites/${name}.png`, import.meta.url);
     assert.ok(existsSync(url), `${name} (python3 tools/comic/title.py)`);
@@ -86,7 +95,8 @@ test('title: its stills are optional sprites at 3 px a title px, and their data 
     if (name.includes('poster_')) assert.deepEqual([w, h], [1152 + 2 * POSTER.margin, 648], `${name}: the sheet and its margins`);
     if (name.includes('board_')) assert.deepEqual([w, h], [1152, 648]);
   }
-  assert.equal(POSTER.windows.length, 15, 'five floors of three');
+  assert.equal(POSTER.windows.length, 8, 'four floors of two');
+  assert.ok(POSTER.roofFlames.length >= 2);
   assert.equal(POSTER.letters.length, 6, 'R U N N E R');
   assert.equal(BOARD.cards.length, 4);
   assert.ok(BOARD.pins.length === 4 && BOARD.crosses.length === 4 && BOARD.tags.length === 4);
