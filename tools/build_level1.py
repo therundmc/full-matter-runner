@@ -249,7 +249,7 @@ for i in range(14):
     lv.paint('road_edge', drawn(1.5 + 3 * i), 25.0)
 for col in (2.0, 7.0, 12.1, 17.1, 22.1, 26.8, 31.6, 36.9, 41.9):
     lv.paint('parking_bay', drawn(col), 24.05, 90)
-lv.prop('car2', 14.6, 24.0, 0, lights=False, trunk='tire_iron')   # E at its tail: a tire iron in the trunk
+lv.prop('car2', 15.0, 24.0, 0, lights=False, trunk='tire_iron')   # E at its tail: a tire iron in the trunk
 lv.prop('car', 31.2, 24.0, 180, lights=False)           # parked: its lights off
 lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
 
@@ -357,7 +357,7 @@ lv.area('back lot')
 # the getaway: THE BOSS's convertible, roof down, its driver's door toward the lot (systems/Outro.js). 5.4 m of car
 # in a 4 m lot with a 3 m alley out of it: its row and the route's first bend (exit_zone) are the only ones that
 # get it round without touching a wall (tests/outro.test.mjs drives it); move neither without that test
-lv.prop('convertible', 24.5, 3.1, 180, lights=False)
+lv.prop('convertible', 24.5, 2.7, 180, lights=False)
 lv.prop('dumpster', 15.2, 1.6)
 lv.prop('crate', 17.2, 1.45, 5)
 lv.prop('crate', 17.9, 1.5, -10)
@@ -714,7 +714,7 @@ ambient = {
 # tight to slide: `slide` 0; the two barrels of the lot's corner are in its way), down the alley over what stands in
 # it, through the gate, across the pavement and out wide onto the road, tail out, then away west in the westbound
 # lane. `fade`: tiles before the end where the picture goes black.
-exit_zone = {'x': 23.4, 'y': 4.55, 'r': 1.3, 'route': [[12.7, 3.1], [12.7, 27.0], [-9, 26.2]], 'radius': [3, 3], 'slide': [0, 1],
+exit_zone = {'x': 23.4, 'y': 4.55, 'r': 1.3, 'route': [[12.6, 3.4], [12.6, 27.0], [-9, 26.2]], 'radius': [3, 3], 'slide': [0, 1],
              'fade': 14}
 
 if __name__ == '__main__':

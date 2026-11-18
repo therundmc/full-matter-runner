@@ -11,7 +11,7 @@ export default {
   name: 'NO LOOSE ENDS',
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
-  exit: { x: 22.4, y: 4.55, r: 1.3, route: [[12.7, 3.1], [12.7, 27.0], [-9, 26.2]], radius: [3, 3], slide: [0, 1], fade: 14 },
+  exit: { x: 22.4, y: 4.55, r: 1.3, route: [[12.6, 3.4], [12.6, 27.0], [-9, 26.2]], radius: [3, 3], slide: [0, 1], fade: 14 },
   facing: { '19,33': 0, '23,21': 90, '18,12': 90, '24,14': 0, '23,17': 65, '17,8': 90, '20,9': 0, '28,9': 180, '25,10': 0, '27,10': 0, '26,4': 270, '12,8': 180 },
   patrols: {
     '17,22': [[16, 22], [26, 22]],
@@ -108,7 +108,7 @@ export default {
     ['hydrant', 25.5, 30.35, 0], ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180],
     ['flyers', 13.4, 31.94, 180], ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
     // road: parked along the bar side
-    ['car2', 14.6, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180, { lights: false }],
+    ['car2', 15, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180, { lights: false }],
     ['van', 34.3, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
     ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['neon_sign_open', 22.5, 21.09, 0],
@@ -140,7 +140,7 @@ export default {
     ['neon_tube_cyan', 13.93, 9.9, 90], ['crate', 11.45, 9.8, 4], ['gas_bottle', 13.72, 6.55, 0],
     ['gas_bottle', 13.7, 7.05, 0], ['pipe_steam', 13.93, 13.6, 90], ['conduit', 13.94, 16, 90],
     // back lot
-    ['convertible', 23.5, 3.1, 180, { lights: false }], ['dumpster', 15.2, 1.6, 0], ['crate', 17.2, 1.45, 5],
+    ['convertible', 23.5, 2.7, 180, { lights: false }], ['dumpster', 15.2, 1.6, 0], ['crate', 17.2, 1.45, 5],
     ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['fridge', 13.5, 1.42, -6, { lights: false }],
     ['washer', 13.55, 2.25, 8], ['tv', 16.55, 1.42, 12, { lights: false }], ['armchair', 18.65, 1.5, 14],
     ['trash_can', 20, 1.45, 0], ['trash_can', 20.6, 1.6, 0], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],

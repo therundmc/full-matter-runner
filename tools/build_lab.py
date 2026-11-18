@@ -80,7 +80,8 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     20 GETAWAY     the street's east end: THE BOSS's convertible and level 1's way out played here (systems/Outro.js:
                    step into the ring by its driver's door; the level's `exit` is `open`, nothing to clear first): the
                    vault over the door, the key, the wheelspin and the rubber it lays, the tail out round the leaking
-                   car and down the south lane through station 17's and 19's things, the hat gone at the first swing;
+                   car, clipping its nose (the ram: shoved, spun, dented, its alarm), down the south lane and black
+                   before station 17's van, the hat gone at the first swing;
                    then the results (restart the lab from there)
     21 LORRY       the street's east end, carried on past the facades: a box lorry in its yard, its tail out over the
                    north lane (systems/Lorries.js, prop option `backs`). A car driven near sets it off: it beeps, its
@@ -410,9 +411,10 @@ lv.prop('wall_lamp', 64.5, 18.08, 0)
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)
 lv.prop('convertible', 56.6, 21.0, 180, lights=False)   # its driver's door on the road's side
-# round the leaking car into the south lane and down it to the west end (the picture is black before the wall)
-exit_zone = {'x': 56.6, 'y': 22.9, 'r': 1.2, 'open': True, 'route': [[53.0, 21.0], [49.0, 23.0], [4.0, 23.0]], 'radius': [3, 3],
-             'fade': 9}
+# into the south lane clipping the leaking car's nose on the way (the getaway's ram: shoved, spun, dented; level 1
+# clips the coupe by its alley's mouth), then down the lane: the picture is black before station 17's van
+exit_zone = {'x': 56.6, 'y': 22.9, 'r': 1.2, 'open': True, 'route': [[52.0, 21.0], [48.0, 23.0], [30.0, 23.0]], 'radius': [3, 3],
+             'slide': [1, 0.5], 'fade': 13}
 
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [

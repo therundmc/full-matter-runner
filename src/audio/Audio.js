@@ -122,6 +122,7 @@ export const META = {
   // ... the getaway in an open car (World.stepOutro): placeholders (assets/sound/PLACEHOLDERS.md)
   doorVault: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.3 }, seatDrop: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.35 },
   hatFly: { pri: 0, dur: 0.3, gap: 0.3, max: 1, gain: 0.2 }, seatGun: { pri: 1, dur: 0.3, gap: 0.3, max: 1, gain: 0.35 },
+  carRam: { pri: 3, dur: 0.9, gap: 0.3, max: 1, gain: 0.95, duck: 0.5 },
   lorryBeep: { pri: 3, dur: 0.15, gap: 0.2, max: 1, gain: 0.7 }, lorryBrake: { pri: 2, dur: 0.5, gap: 0.3, max: 1, gain: 0.6 },
   awningRip: { pri: 1, dur: 0.4, gap: 0.15, max: 2, gain: 0.6 }, tyreSkid: { pri: 1, dur: 0.4, gap: 0.35, max: 1, gain: 0.45 },
   waterSpray: { pri: 0, dur: 0.3, gap: 0.25, max: 1, gain: 0.4 },
@@ -431,6 +432,7 @@ const FOLEY = {
   doorVault: [['soft', 0.6, 1.1], ['sheet', 0.2, 0.9, 0.05]],
   seatDrop: [['soft', 0.7, 0.7], ['thud', 0.3, 0.8, 0.02]],
   hatFly: [['swish', 0.3, 1.3]],
+  carRam: [['sheet', 1, 0.75], ['thud', 0.9, 0.7], ['metalBreak', 0.6, 0.9, 0.02], ['glass', 0.4, 1.2, 0.04]],
   seatGun: [['soft', 0.4, 1.2], ['metal', 0.2, 1.5, 0.03]],
   // PLACEHOLDERS for the pursuers (systems/Pursuit.js): a gunman's tell starting (the hammer cocked), a pursuer's car
   // wrecked on what does not give

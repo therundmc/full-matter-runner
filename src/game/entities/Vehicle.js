@@ -552,12 +552,13 @@ export default class Vehicle {
     Body.setAngularVelocity(b, 0);
   }
 
-  // What its hull runs into while it is driven along `heading`: a loose thing takes the blow and, if it holds, is
-  // thrown to the side it was on; a bolted one is torn off; a parked car is shoved round, its alarm set off; anyone
-  // standing there is run down. Things that never give (`lasting`), what hangs or sits on a wall are left alone.
-  // seen: Map of what was hit -> when (a thing still under the wheels is hit again after R.again s); R: OUTRO.ram.
-  // each: called for each thing hit (it, where it was, the way it is sent). Returns how many things were hit this step.
-  ram(heading, seen, R, each = null) {
+  // What its hull runs into while it is driven along `heading` at `speed` px/step: a loose thing takes the blow and,
+  // if it holds, is thrown to the side it was on; a bolted one is torn off; a parked car is rammed (shove) and never
+  // driven through; anyone standing there is run down. Things that never give (`lasting`), what hangs or sits on a
+  // wall are left alone. seen: Map of what was hit -> when (a thing still under the wheels is hit again after R.again
+  // s; a car once); R: OUTRO.ram. each: called for each thing hit (it, where it was, the way it is sent). Returns how
+  // many things were hit this step.
+  ram(heading, seen, R, each = null, speed = 0) {
     const w = this.world, b = this.body, t = w.time, bodies = [];
     for (const p of w.props) {
       const d = p.def || {};
@@ -567,21 +568,23 @@ export default class Vehicle {
     let hits = 0;
     for (const col of Query.collides(b, bodies)) {
       const ob = col.parentA === b ? col.parentB : col.parentA, e = ob.entity;
-      if (!e || e === this || t - (seen.get(e) ?? -Infinity) < R.again) continue;
+      if (!e || e === this) continue;
+      if (e.isVehicle) {
+        const first = !seen.has(e);
+        seen.set(e, t);
+        const at = this.shove(e, col, heading, speed, first, R);
+        if (!first) continue;
+        hits++;
+        each?.(e, at.x, at.y, at.dir);
+        continue;
+      }
+      if (t - (seen.get(e) ?? -Infinity) < R.again) continue;
       seen.set(e, t);
       hits++;
       const side = this.toSprite(e.x, e.y).sy < this.h / 2 ? -1 : 1, dir = heading + side * rand(...R.aside);
       const cx = e.x, cy = e.y;
       each?.(e, cx, cy, dir);
-      if (e.isVehicle) {
-        wake(ob);
-        Body.setVelocity(ob, { x: Math.cos(dir) * R.car, y: Math.sin(dir) * R.car });
-        Body.setAngularVelocity(ob, side * R.carSpin);
-        ob.flyUntil = t + R.fly;
-        e.hit(0, cx, cy, heading, 1, 'blunt');
-        w.sound('carHit', cx, cy, 1);
-        w.particles.sparks(cx, cy, dir, 1, 10, 320);
-      } else if (e.isPlayer || e.isEnemy || e.isCivilian) e.kill(heading, 'vehicle', this);
+      if (e.isPlayer || e.isEnemy || e.isCivilian) e.kill(heading, 'vehicle', this);
       else if (e.def.static || e.tipped) e.break(heading, R.tear); // a bin already down is flattened
       else {
         e.hit(R.crush, cx, cy, heading, 1.5, 'blunt');
@@ -595,6 +598,62 @@ export default class Vehicle {
       }
     }
     return hits;
+  }
+
+  // A car this one is driven into (ram, col: their contact) is never gone through: every step they touch it is pushed
+  // out of the hull (along the contact's normal, by its depth; never back against the hull's way). The first touch is
+  // the blow: thrown along the hull's way, off to the side it was on (R.carAside), at
+  // R.carK of the hull's speed (R.car at least), spun by where it was struck, both scaled down for a graze (R.bite px
+  // of the hull's width in it: the full blow; R.graze at least), crumpled there (crunch). Returns where it was struck
+  // and the way it was sent.
+  shove(e, col, heading, speed, first, R) {
+    const ob = e.body, n = col.normal, k = col.supportCount || 1, h = { x: Math.cos(heading), y: Math.sin(heading) };
+    let out = (e.x - this.x) * n.x + (e.y - this.y) * n.y < 0 ? -1 : 1, nx = n.x * out, ny = n.y * out;
+    if (nx * h.x + ny * h.y < -0.1) { // never pushed back against the hull's way: aside, to the side it is on
+      out = (e.x - this.x) * -h.y + (e.y - this.y) * h.x < 0 ? -1 : 1;
+      nx = -h.y * out; ny = h.x * out;
+    }
+    let x = 0, y = 0;
+    for (let i = 0; i < k; i++) { x += col.supports[i].x / k; y += col.supports[i].y / k; }
+    wake(ob);
+    if (ob.isSleeping) Sleeping.set(ob, false);
+    let dir = heading;
+    if (first) {
+      // how much of the hull's width it is in the way of (a graze: a nudge; a corner taken square: the full blow)
+      const lx = -Math.sin(heading), ly = Math.cos(heading), half = this.h / 2 - 2;
+      const across = ob.vertices.map((p) => (p.x - this.x) * lx + (p.y - this.y) * ly);
+      const bite = Math.min(half, Math.max(...across)) - Math.max(-half, Math.min(...across));
+      const blow = clamp(bite / R.bite, R.graze, 1), side = this.toSprite(e.x, e.y).sy < this.h / 2 ? -1 : 1;
+      const sp = Math.max(R.car, speed * R.carK) * blow;
+      dir = heading + side * rand(...R.carAside);
+      Body.setVelocity(ob, { x: Math.cos(dir) * sp, y: Math.sin(dir) * sp });
+      const lever = (x - e.x) * Math.sin(dir) - (y - e.y) * Math.cos(dir); // the blow's turn about its middle
+      Body.setAngularVelocity(ob, Math.sign(lever) * R.carSpin * blow);
+      ob.flyUntil = this.world.time + R.carFly;
+      e.crunch(x, y, dir, R);
+    }
+    Body.translate(ob, { x: nx * col.depth, y: ny * col.depth });
+    return { x, y, dir };
+  }
+
+  // Rammed by a car (shove) at (x, y) world, the blow going along dirA: the bodywork crumpled there (a dent and
+  // R.dents more round it, the glass cracked if the blow reaches it), the lamp at that end smashed when the point is
+  // within R.lamp px of it, paint and trim thrown off, sparks, its alarm; the blow costs it R.carHp.
+  crunch(x, y, dirA, R) {
+    const w = this.world, { sx, sy } = this.toSprite(x, y), da = dirA - this.body.angle;
+    this.hit(0, x, y, dirA, 1, 'blunt');
+    for (let i = 0; i < R.dents; i++) this.scar(clamp(sx + rand(-10, 10), 3, this.w - 3), clamp(sy + rand(-6, 6), 3, this.h - 3), da, 'blunt');
+    if (Math.min(sx, this.w - sx) < R.lamp) this.breakLamp((sx < this.w / 2 ? 2 : 0) + (sy < this.h / 2 ? 0 : 1), dirA);
+    for (let i = 0; i < R.chunks; i++) {
+      const a = dirA + rand(-1, 1), v = rand(90, 260);
+      w.addDebris(new Debris(w, chunk(chance(0.6) ? this.m.color : '#2a2a33', Math.floor(rand(2, 5)), Math.floor(rand(1, 3))), x, y,
+        rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.9, 0.9), { mask: FREE, material: 'metal', kg: 0.5 }));
+    }
+    w.particles.sparks(x, y, dirA, 1.1, 16, 340);
+    w.particles.chips(x, y, dirA, 1.2, 10, this.m.color, 200);
+    w.sound('carRam', x, y, 1); // placeholder (assets/sound/PLACEHOLDERS.md)
+    w.noise(x, y, 520);
+    this.damage(R.carHp);
   }
 
   update(dt) {

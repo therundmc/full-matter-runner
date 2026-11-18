@@ -73,9 +73,17 @@ export const OUTRO = {
   hat: { slip: 0.3, keep: 0.45, side: 90 },
   // what the car does to what it runs into (Vehicle.ram): crush = the blow a loose thing takes (hp), fling = px/step
   // it is thrown at if it survives, aside = rad off the car's way, to the side it was on, spin = rad/step; tear =
-  // the power a bolted thing is torn off with; car = px/step a parked car is shoved at; again = s before a thing
-  // still under the wheels is hit again; shake = the camera's; papers = sheets that fly off each thing hit [n, px/s]
-  ram: { crush: 40, fling: [6, 10], aside: [0.35, 0.9], spin: 0.45, tear: 1.5, car: 3.4, carSpin: 0.035, again: 0.3, fly: 0.35, shake: 0.3, papers: [3, 220] },
+  // the power a bolted thing is torn off with; again = s before a thing still under the wheels is hit again; shake =
+  // the camera's; papers = sheets that fly off each thing hit [n, px/s]. A parked car (Vehicle.shove / crunch) is
+  // never driven through: shoved at carK of the getaway's speed (car px/step at least), spun at carSpin rad/step,
+  // carFly s without floor friction, both scaled down for a graze (bite: px of the getaway's width in it for the
+  // full blow; graze: the least share); crumpled where it is struck (dents round the point, the lamp at that end
+  // smashed within `lamp` sprite px of it, `chunks` bits of paint and trim, carHp lost); the getaway keeps carKeep of
+  // its speed, the camera shaken carShake and pushed in `punch`
+  ram: {
+    crush: 40, fling: [6, 10], aside: [0.35, 0.9], spin: 0.45, tear: 1.5, again: 0.3, fly: 0.35, shake: 0.3, papers: [3, 220],
+    car: 3, carK: 0.5, carAside: [0.7, 1], carSpin: 0.06, carFly: 0.12, bite: 16, graze: 0.3, dents: 3, lamp: 24, chunks: 7, carHp: 6, carKeep: 0.85, carShake: 0.6, punch: 0.06,
+  },
 };
 
 const ease = (k) => k * k * (3 - 2 * k); // smoothstep

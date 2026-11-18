@@ -47,6 +47,7 @@ export function freeze(body) {
 export function wake(body) {
   if (!body.frozen) return;
   Body.setStatic(body, false);
+  if (body.isSleeping) Sleeping.set(body, false); // a frozen body dozes off: asleep, a speed given would never move it
   body.frozen = false;
   body.restT = 0;
 }

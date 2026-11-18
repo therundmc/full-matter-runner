@@ -64,6 +64,7 @@ export default class Ambient {
     this.barkT = 0;
     this.checkT = 0;
     this.scaredUntil = -1; // no new passers-by until then (after gunfire / explosions)
+    this.held = false;     // no more traffic: the getaway is on (clearRoad)
     this.nooks = new Set(); // cells where someone has curled up: one corner each
     this.obstacles = [];
     this.jams = new CellMemory(); // spots where runners were held up (Civilian: their next way out goes round)
@@ -112,15 +113,32 @@ export default class Ambient {
     if (this.paths.length || this.civilians.length) this.updateWalkers(dt);
   }
 
+  // The getaway (World.startOutro) is about to tear across the street: no car comes any more, and the ones driving
+  // are taken off the road, each as soon as it is out of sight (never vanishing in view). Parked cars and wrecks stay.
+  clearRoad() {
+    this.held = true;
+    this.offRoad();
+  }
+
+  offRoad() {
+    const r = this.world.view?.();
+    for (const c of [...this.cars]) {
+      const v = c.v, m = v.w / 2;
+      if (!r || Math.abs(v.x - r.x) > r.hw + m || Math.abs(v.y - r.y) > r.hh + m) this.removeCar(c);
+    }
+  }
+
   updateTraffic(dt) {
     const r = this.r;
+    if (this.held) this.offRoad();
     this.obstacles = this.collectObstacles();
     const moving = this.cars.length;
     for (const lane of this.lanes) {
       const sx = lane.spawnX(MAX_HALF);
       const spawnClear = !this.occupied(lane.y, sx - MAX_HALF - A.minGap * TILE * 2, sx + MAX_HALF + A.minGap * TILE * 2);
       const laneClear = !this.cars.some((c) => c.lane === lane && c.d.speed < 8);
-      const room = moving < A.maxCars && this.world.time >= this.scaredUntil; // nobody drives into a gunfight
+      // nobody drives into a gunfight, nor onto the getaway's way
+      const room = moving < A.maxCars && this.world.time >= this.scaredUntil && !this.held;
       if (lane.tick(dt, { spawnClear, laneClear, room }, r)) this.spawnCar(lane, sx);
     }
     for (const c of [...this.cars]) this.drive(c, dt);

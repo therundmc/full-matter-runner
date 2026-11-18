@@ -5,14 +5,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
 
+// no DOM under Node: what a car paints on itself goes nowhere
+const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
+globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+
 const { default: Vehicle, VEHICLES } = await load('game/entities/Vehicle.js');
+const { default: PhysicsWorld } = await load('engine/physics/PhysicsWorld.js');
+const { setMaterial, scaleInertia } = await load('engine/physics/Body.js');
+const { default: Ambient } = await load('game/systems/Ambient.js');
+const { Lane } = await load('game/systems/Traffic.js');
 const { default: World } = await load('game/world/World.js');
 const { default: Player } = await load('game/entities/Player.js');
 const { newPose, seatPose, grabPhases } = await load('game/entities/CharacterAnim.js');
 const { WEAPONS } = await load('game/data/weapons.js');
 const { newSkirt, stepSkirt } = await load('game/entities/Skirt.js');
 const { OUTRO, outroBeat, spinK, wagAt, keyK, squatAt, routeSpeed, getawayPath, driveStep, outroOver } = await load('game/systems/Outro.js');
-const { TILE, PLAYER, BODY_SCALE, CAT } = await load('game/Config.js');
+const { TILE, PLAYER, BODY_SCALE, CAT, MASK } = await load('game/Config.js');
 const { SEAT } = await load('game/data/feel.js');
 const { CHASE } = await load('game/data/chase.js');
 const { seatOf, doorOf } = await load('game/systems/Drive.js');
@@ -345,7 +353,13 @@ function stage(level = level1) {
     sound: (name) => sounds.push([name, w.outro?.t ?? 0]), noise: noop, floorAt: () => 'concrete', removeBody: noop, addDebris: noop,
     characters: () => [],
   });
-  const step = () => { w.time += STEP; w.stepOutro(STEP); if (v.rider) v.carry(STEP); };
+  const step = () => {
+    w.time += STEP;
+    w.stepOutro(STEP);
+    if (v.rider) v.carry(STEP);
+    w.ambient?.update(STEP);
+    w.physics?.step(STEP, w.time);
+  };
   return { w, v, p, log, marks, sounds, step, hats: () => hats };
 }
 
@@ -393,4 +407,103 @@ test('outro: a closed van still takes him in by its cab door, unseen', () => {
   while (w.outro.t < OUTRO.lights) step();
   assert.ok(w.outro.inside && p.hidden && !p.riding && !van.rider && !p.vaulting);
   assert.ok(!sounds.some(([n]) => n === 'doorVault'));
+});
+
+// a parked car as Vehicle makes it (its real size, mass and body, frozen where it stands and asleep, as one is by the
+// time the getaway comes), nothing drawn
+function parked(w, model, x, y, deg = 0) {
+  const v = Object.create(Vehicle.prototype), m = VEHICLES[model], { w: W, h: H } = pngSize(m.sprite);
+  const body = Bodies.rectangle(x, y, W - 4, H - 4, {
+    angle: (deg * Math.PI) / 180, frictionAir: 0.02, friction: 0.6, restitution: 0.05, label: 'vehicle',
+    collisionFilter: { category: CAT.PROP, mask: MASK.PROP },
+  });
+  setMaterial(body, m.kg, 0.9);
+  scaleInertia(body, 3);
+  body.material = 'metal';
+  body.entity = v;
+  Object.assign(v, {
+    world: w, type: model, m, k: 0.5, w: W, h: H, body, isVehicle: true, g: ctx, glassPx: { wind: [], rear: [] },
+    windows: { wind: 0, rear: 0 }, tires: [true, true, true, true], lamps: [true, true, true, true], hp: m.hp, fuel: 0,
+    puddle: 0, alarm: 0, lit: false, flash: 0, moving: false, dead: false, exploded: false, burning: false, rider: null,
+    def: { static: true, hp: m.hp, vault: true },
+  });
+  w.physics.add(body);
+  w.physics.freezeIfHeavy(body);
+  Matter.Sleeping.set(body, true);
+  return v;
+}
+
+// level 1's getaway with real physics and the coupe parked by the alley's mouth (level1.js)
+function ramStage() {
+  const S = stage(), { w } = S, c = level1.props.find((p) => p[0] === 'car2'), shakes = [];
+  w.physics = new PhysicsWorld({ muAt: () => 1 });
+  const coupe = parked(w, 'car2', c[1] * TILE, c[2] * TILE, c[3]);
+  w.props.push(coupe);
+  Object.assign(w, { shake: (a) => shakes.push(a), events: null, light: noop, after: noop });
+  return { ...S, coupe, shakes };
+}
+
+test('outro: level 1: the getaway clips the coupe parked by the alley\'s mouth: shoved, spun, dented, a lamp out; it goes on', () => {
+  const { w, v, step, sounds, shakes, coupe } = ramStage(), O = OUTRO;
+  const x0 = coupe.x, y0 = coupe.y, a0 = coupe.body.angle;
+  w.startOutro(v);
+  const o = w.outro;
+  let hitT = null, vHit = 0, deep = 0, after = Infinity;
+  while (o.s < o.path.length && o.t < O.timeout) {
+    const before = o.v;
+    step();
+    const col = Matter.Collision.collides(coupe.body, v.body);
+    if (col) deep = Math.max(deep, col.depth);    if (hitT === null && o.hit.has(coupe)) { hitT = o.t; vHit = before; after = o.v; }
+  }
+  assert.ok(hitT !== null, 'it runs into it');
+  assert.ok(hitT > O.go + O.spin, 'on its way down the alley');
+  // a clip, never through it: the hull pushes it out of its way every step
+  assert.ok(deep < 6, `never more than a bumper's depth into it (${deep.toFixed(1)} px)`);
+  const moved = Math.hypot(coupe.x - x0, coupe.y - y0), turned = Math.abs(coupe.body.angle - a0);
+  assert.ok(moved > 0.6 * TILE && moved < 4 * TILE, `shoved along, not thrown across the street (${(moved / TILE).toFixed(2)} tiles)`);
+  assert.ok(coupe.y > y0, 'the way the convertible was going (south, toward the road)');
+  assert.ok(turned > 0.08, `spun (${turned.toFixed(2)} rad)`);
+  // damage where it was hit (its tail, on the alley's side); the convertible barely slowed
+  assert.ok(coupe.hp < VEHICLES.car2.hp && !coupe.burning && !coupe.exploded, `dented (${coupe.hp} hp)`);
+  assert.ok(!coupe.lamps[2] || !coupe.lamps[3], 'a tail lamp broken');
+  assert.ok(coupe.alarm > 0, 'its alarm going');
+  assert.ok(after >= vHit * O.ram.carKeep - 1e-6 && after < vHit, `barely slowed (${vHit.toFixed(2)} -> ${after.toFixed(2)})`);
+  assert.ok(shakes.some((s) => s >= O.ram.carShake), 'the camera shaken');
+  assert.ok(sounds.some(([n]) => n === 'carRam'), 'the crunch heard');
+});
+
+// the street's traffic, without its drivers' brains: cars at (x, lane) given, `view` the camera's rectangle
+function street(w, view, cars) {
+  const a = Object.create(Ambient.prototype), width = 42 * TILE;
+  const lanes = level1.ambient.traffic.map((l) => new Lane(l, width));
+  const spawned = [];
+  Object.assign(a, {
+    world: w, r: () => 0.5, lanes, rows: lanes.map((l) => l.y), paths: [], civilians: [], obstacles: [], barkT: 0,
+    scaredUntil: -1, bandY0: 0, bandY1: 1e9,
+    cars: cars.map(([x, i]) => ({ v: { x, y: lanes[i].y, w: 140, h: 58, body: {}, dead: false }, d: { speed: 280 }, lane: lanes[i] })),
+  });
+  a.drive = (c) => { c.v.x += (c.lane.dir * c.d.speed) / 60; };
+  a.spawnCar = (lane) => { spawned.push(lane); };
+  for (const l of lanes) l.timer = 0;
+  Object.assign(w, { view: () => view, corpses: [] });
+  return { a, spawned };
+}
+
+test('outro: no traffic on the road the getaway takes: no new car once it starts, those out of sight taken off, one in sight let out of it first', () => {
+  const { w, v, step } = stage(), y = level1.ambient.traffic[0].row * TILE;
+  const view = { x: 22 * TILE, y: 4 * TILE, hw: 260, hh: 145 };
+  // before: the street lives (a car due spawns)
+  const before = street({ ...w, props: [] }, view, []);
+  before.a.updateTraffic(STEP);
+  assert.ok(before.spawned.length > 0, 'cars come before the getaway');
+  // the getaway starts: a car in plain view on the road (the camera there for the test), one out of sight
+  const { a, spawned } = street(w, { ...view, y }, [[22 * TILE, 0], [5 * TILE, 1]]);
+  w.ambient = a;
+  const [seen, unseen] = a.cars;
+  w.startOutro(v);
+  assert.ok(!a.cars.includes(unseen) && unseen.v.dead, 'out of sight: taken off at once');
+  assert.ok(a.cars.includes(seen) && !seen.v.dead, 'in sight: it does not vanish');
+  for (let i = 0; i < 240; i++) step();
+  assert.equal(spawned.length, 0, 'no new car');
+  assert.ok(!a.cars.includes(seen) && seen.v.dead, 'taken off once it has driven out of sight');
 });

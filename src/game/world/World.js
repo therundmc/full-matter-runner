@@ -414,6 +414,7 @@ export default class World {
     p.invulnerable = true;
     p.vaultHint = null;
     p.slide = null;
+    this.ambient?.clearRoad(); // nothing driving on the street the getaway tears across
     this.outro = {
       t: 0, car, door: this.cabDoor(car, p.x, p.y), vault: false, inside: false,
       path: getawayPath(car.x, car.y, a, ex), fadeFrom: (ex.fade ?? OUTRO.fade) * TILE,
@@ -500,7 +501,7 @@ export default class World {
     v.driveTo(at.x, at.y, at.a);
     v.steer = clamp(q.turn * 0.25 - off * 1.1, -0.5, 0.5); // the front wheels: into the bend, against the slide
     v.wake = { x: Math.cos(q.a) * o.v, y: Math.sin(q.a) * o.v }; // (px/step: the papers it drags, systems/Papers.js)
-    const hits = o.s < path.length ? v.ram(q.a, o.hit, O.ram, (e, x, y, dir) => this.rammed(e, x, y, dir)) : 0;
+    const hits = o.s < path.length ? v.ram(q.a, o.hit, O.ram, (e, x, y, dir) => this.rammed(e, x, y, dir), o.v) : 0;
     if (hits) this.shake(O.ram.shake);
     const spin = spinK(t), sliding = spin > 0 || slide > O.smoke, back = at.a + Math.PI;
     const wheels = v.m.wheels.map(([sx, sy]) => v.toWorld(sx, sy)), rear = wheels.slice(0, 2);
@@ -554,10 +555,17 @@ export default class World {
     if (o.fadeAt === null && o.s >= path.length - o.fadeFrom) o.fadeAt = t;
   }
 
-  // a thing the getaway ran into (Vehicle.ram): sheets of paper fly off it, steel throws sparks
+  // a thing the getaway ran into (Vehicle.ram): sheets of paper fly off it, steel throws sparks; a car is a blow the
+  // getaway feels (a little of its speed lost, the camera shaken and pushed in)
   rammed(e, x, y, dir) {
     const R = OUTRO.ram;
-    if (e.isVehicle || !e.def) return;
+    if (e.isVehicle) {
+      this.outro.v *= R.carKeep;
+      this.shake(R.carShake);
+      this.camera.punch(R.punch);
+      return;
+    }
+    if (!e.def) return;
     this.papers?.drop(x, y, R.papers[0], dir, R.papers[1]);
     if (e.def.material === 'metal' || e.def.sound === 'metal') this.particles.sparks(x, y, dir, 1, 6, 260);
   }
