@@ -175,6 +175,11 @@
     forget(key) { this.m.delete(key); }
     clear() { this.m.clear(); }
   };
+  // a body (box: the bounds round all its parts) touched by loose furniture on the move ({ bounds, speed } px/step: a
+  // gas bottle riding its jet, a shoved table, a chair thrown into him) or by a door leaf ({ bounds, press: true }:
+  // its hinge is enforced, a leaf swung onto him squeezes him out from under it). Physics shoving him, not a slide.
+  C.shovedBy = (box, things, pad = 6, speed = 0.3) => things.some((p) => (p.press || p.speed > speed)
+    && p.bounds.min.x < box.max.x + pad && p.bounds.max.x > box.min.x - pad && p.bounds.min.y < box.max.y + pad && p.bounds.max.y > box.min.y - pad);
   const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
   C.angDiff = angDiff;
 

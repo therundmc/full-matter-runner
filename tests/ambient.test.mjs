@@ -472,6 +472,22 @@ test('walkers: a bench flat against the wall is in a runner\'s way: his way out 
   assert.ok(!crosses(g, from.x, from.y, route, 6, 3), 'round the bench');
 });
 
+test('walkers: a broken window\'s frame is no way out for a passer-by (he does not vault it), a torn-out one is', () => {
+  const T = TILE;
+  // a bar room (rows 1-3) over a sidewalk (row 5), its front wall on row 4: a window at (3, 4), the door at (8, 4)
+  const m = new TileMap(['XXXXXXXXXX', 'X........X', 'X........X', 'X........X', 'XXXGXXXX.X', 'ssssssssss', 'XXXXXXXXXX']);
+  m.blocked[4 * m.w + 3] = 0; // the pane shattered (Window.shatter opens the guards' grid: they vault the frame)
+  const win = { cx: 3, cy: 4 };
+  const from = { x: 3.5 * T, y: 3.5 * T }, danger = { x: 3.5 * T, y: 1.5 * T };
+  assert.ok(crosses(m, from.x, from.y, escapeRoute(m, from.x, from.y, danger), 3, 4), 'on the guards\' grid: out through the frame');
+  const g = groundOf(m, [], [win]);
+  assert.equal(g.blocked[4 * m.w + 3], 1, 'the frame still standing is a wall to him');
+  assert.equal(m.blocked[4 * m.w + 3], 0, 'the guards\' grid is left as it is');
+  const route = escapeRoute(g, from.x, from.y, danger);
+  assert.ok(route && !crosses(g, from.x, from.y, route, 3, 4), 'out by the door');
+  assert.equal(groundOf(m, [], []).blocked[4 * m.w + 3], 0, 'a window torn out of the wall (gone from world.windows) is a hole');
+});
+
 test('walkers: a runner held up on a wide sidewalk is not sent straight back through that spot by the string pulling', () => {
   const T = TILE;
   const m = new TileMap(['XXXXXXXXXXXX', '............', '............', 'XXXXXXXXXXXX']);

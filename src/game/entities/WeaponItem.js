@@ -1,4 +1,4 @@
-import { CAT, MASK, PALETTE, AI, BODY_SCALE } from '../Config.js';
+import { CAT, MASK, AI, BODY_SCALE } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
@@ -97,26 +97,18 @@ export default class WeaponItem {
     else if (e.hit && e.def && this.speed > 4 && e.def.hp <= 1) e.hit(1, this.x, this.y, Math.atan2(this.body.velocity.y, this.body.velocity.x));
   }
 
-  draw(ctx, t) {
-    const p = this.body.position, k = this.lean ? LEAN : 1;
+  // how long it looks from above along its length (stood against a wall: shorter)
+  get stretch() { return this.lean ? LEAN : 1; }
+
+  // its catch-light and the in-reach outline are drawn over the lit scene (render/Readability.js)
+  draw(ctx) {
+    const p = this.body.position;
     if (this.lean) {
       drawUpright(ctx, silhouette(this.img), p.x + 2.5, p.y + 2.5, this.body.angle, LEAN, { alpha: 0.35, scale: BODY_SCALE });
       drawUpright(ctx, this.img, p.x, p.y, this.body.angle, LEAN, { scale: BODY_SCALE });
     } else {
       drawSprite(ctx, silhouette(this.img), p.x + 1.5, p.y + 1.5, this.body.angle, 0.35, BODY_SCALE);
       drawSprite(ctx, this.img, p.x, p.y, this.body.angle, 1, BODY_SCALE);
-    }
-    if (this.hilite > 0) {
-      // pulsing outline to show it can be picked up
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.35 + Math.sin(t * 10) * 0.2;
-      ctx.strokeStyle = PALETTE.cyan;
-      ctx.lineWidth = 1;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(this.body.angle);
-      ctx.strokeRect(-this.w * k / 2 - 2, -this.h / 2 - 2, this.w * k + 4, this.h + 4);
-      ctx.restore();
     }
   }
 }
