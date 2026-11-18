@@ -160,13 +160,14 @@ export const AI = {
   gate: { calm: 3, rush: 1.2, far: 96 },
   // Finding his way (ai/Nav.js, Enemy.follow / pathCost). jam: a tile he pushed at in vain is worth `cost` tiles of
   // detour to him for `forget` s (held up by people, only from the `people`-th time on the same tile); after `tries`
-  // jams on the way to one spot he gives that spot up. danger: the tiles around where a mate fell (r tiles) cost
-  // that much to the squad for `forget` s. shared: per tile of a mate's route to the same fight (`routeFor` s: the
-  // hunters spread over the ways in). fire: a tile by a fire; slick: a tile whose grip is under `grip`.
+  // jams on the way to one spot he gives that spot up (his post: he idles where he is `rest` s, then tries again).
+  // danger: the tiles around where a mate fell (r tiles) cost that much to the squad for `forget` s. shared: per tile
+  // of a mate's route to the same fight (`routeFor` s: the hunters spread over the ways in). fire: a tile by a fire;
+  // slick: a tile whose grip is under `grip`.
   // avoid (ai/Nav.js giveWay): personal space px, the push off it, px ahead he looks, his step aside, the pace (px/step)
   // above which one ahead counts as going his way, the share of his pace he keeps behind him, the least.
   nav: {
-    jam: { cost: 14, forget: 15, people: 2, tries: 3 },
+    jam: { cost: 14, forget: 15, people: 2, tries: 3, rest: [4, 8] },
     danger: { cost: 4, forget: 25, r: 1 },
     shared: 0.6, routeFor: 3,
     fire: 12, slick: 3, grip: 0.55,
