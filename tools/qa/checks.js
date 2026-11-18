@@ -184,6 +184,17 @@
   C.angDiff = angDiff;
 
   // ---------------------------------------------------------------- geometry
+  // can he walk from `from` to the exit? way(a, b): a grid path between two points; hatches: the level's passage
+  // ([a, b], systems/Passage.js: not in the grid), down one and up the other
+  C.exitReachable = (way, from, exit, hatches = []) => way(from, exit)
+    || (hatches.length === 2 && hatches.some((h, i) => way(from, h) && way(hatches[1 - i], exit)));
+  // fn() run with these cells of a blocked grid open (a locked door: he kicks it open), the grid left as it was
+  C.withOpen = (blocked, cells, fn) => {
+    const was = cells.map((i) => blocked[i]);
+    for (const i of cells) blocked[i] = 0;
+    try { return fn(); } finally { cells.forEach((i, k) => { blocked[i] = was[k]; }); }
+  };
+
   // can the player get his centre within `reach` px of (x, y)? free(x, y): no wall or solid furniture there. Spokes
   // in 16 directions, a standing spot needs room for his body (r px each way)
   C.reachable = (x, y, free, reach = 26, r = 8) => {

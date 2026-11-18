@@ -124,6 +124,21 @@ test('qa checks: a body shoved by loose furniture on the move (a gas bottle ridi
   assert.ok(!K.shovedBy(body, []));
 });
 
+// QA level 1 seed 61269: up the passage into the locked TV shop, its trapdoor the way back out (not in the grid)
+test('qa checks: the way to the exit may go under the street by the passage, or through a locked door', () => {
+  // two rooms with no door between them: the player's (x < 100) and the exit's; way(a, b): the grid path
+  const way = (a, b) => (a.x < 100) === (b.x < 100);
+  const me = { x: 50, y: 0 }, exit = { x: 300, y: 0 };
+  assert.equal(K.exitReachable(way, me, exit), false, 'shut in, no passage');
+  assert.equal(K.exitReachable(way, me, exit, [{ x: 60, y: 0 }, { x: 250, y: 0 }]), true, 'its trapdoor in his room');
+  assert.equal(K.exitReachable(way, me, exit, [{ x: 160, y: 0 }, { x: 250, y: 0 }]), false, 'both trapdoors on the far side');
+  assert.equal(K.exitReachable(way, { x: 150, y: 0 }, exit), true);
+  // ... or through a locked door he kicks open: open for the test, shut again after it
+  const blocked = Uint8Array.from([0, 1, 1, 0]);
+  assert.equal(K.withOpen(blocked, [1], () => blocked.join('')), '0010');
+  assert.equal(blocked.join(''), '0110');
+});
+
 test('qa checks: a weapon out of reach, and one by a wall', () => {
   const wall = (x) => x < 0; // a wall on the left half-plane
   assert.equal(K.reachable(5, 0, (x) => !wall(x)), true, 'against the wall: reached from the room');

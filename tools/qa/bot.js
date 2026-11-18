@@ -1989,7 +1989,10 @@
     // no way to the exit
     if (now - B.exitPathT > 5 && !p.vaulting && !onRoofTile(w, p.x, p.y)) { // the roof's ways down are not in the grid
       B.exitPathT = now;
-      if (!findPath(w.map, p.x, p.y, ex.x * TILE, ex.y * TILE, 20000)) report('softlock', 'error', 'no-path-to-exit', posOf(p.x, p.y), { why: 'level cleared but no grid path from the player to the exit', exit: ex });
+      // (a locked door is kicked open, the passage taken: neither is in the grid)
+      const way = (a, b) => !!findPath(w.map, a.x, a.y, b.x, b.y, 20000), shut = w.doors.filter((d) => d.locked).flatMap((d) => d.cells);
+      const out = K.withOpen(w.map.blocked, shut, () => K.exitReachable(way, p, { x: ex.x * TILE, y: ex.y * TILE }, w.passage?.hatches));
+      if (!out) report('softlock', 'error', 'no-path-to-exit', posOf(p.x, p.y), { why: 'level cleared but no grid path from the player to the exit', exit: ex });
     }
     // standing in the exit and nothing happens
     const inExit = Math.hypot(p.x - ex.x * TILE, p.y - ex.y * TILE) < ex.r * TILE - 2;
