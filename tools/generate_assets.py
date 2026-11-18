@@ -435,14 +435,16 @@ def bevel_edges(cv, x0, y0, x1, y1, lt_t=0.18, dk_t=0.3):
 
 SKIN = ramp('#eab08a', 0.46, 0.22, 0.3)
 CHARS = {
-    # the runner: a dark cap, brown hair down to his collar, a Mediterranean tan, a scarf pulled up over his mouth, a
-    # long charcoal coat with its collar turned up, the strap of a leather satchel across it and the satchel on his
-    # left hip, behind, jeans and boots. Dark from head to foot (the user found a bright cyan lining ugly and out of
-    # place): the lining inside the collar and the cap's button are a deep petrol blue, a quiet accent.
-    'player': dict(kind='player', top=ramp('#465062', 0.5, 0.25, 0.35), sleeve=None,
+    # the runner (the user's pick, 2026-11-18): a dark cap with a low crown and a short flat brim, brown hair down to
+    # his collar, a Mediterranean tan, a petrol gaiter up over his nose inside a funnel collar closed round his neck,
+    # a long ink-blue duster whose skirt flies behind him (player_tail), a tab on each shoulder, the strap of a leather
+    # satchel across it and the satchel on his left hip, behind, jeans and boots. Dark from head to foot (the user
+    # found a bright cyan lining ugly and out of place): the lining, the brim's front edge, the cap's button and the
+    # coat's buttons are a deep petrol blue, a quiet accent.
+    'player': dict(kind='player', top=ramp('#3a4460', 0.5, 0.25, 0.35), sleeve=None,
                    pants=ramp('#3c4a66'), shoe=ramp('#3a2a22', 0.4, 0.2, 0.3),
-                   hair=ramp('#4a2e1c', 0.5, 0.25, 0.45), cap=ramp('#2e323e', 0.45, 0.22, 0.5),
-                   lining=ramp('#2a5f6e', 0.45, 0.22, 0.3), knit=ramp('#868c98', 0.45, 0.22, 0.3),
+                   hair=ramp('#4a2e1c', 0.5, 0.25, 0.45), cap=ramp('#2c303c', 0.45, 0.22, 0.5),
+                   lining=ramp('#2a6a7c', 0.45, 0.22, 0.3), knit=ramp('#868c98', 0.45, 0.22, 0.3),
                    strap=ramp('#8a5630', 0.45, 0.22, 0.35), skin=ramp('#dba274', 0.46, 0.22, 0.3), sh=(4.0, 8.0)),
     'thug': dict(kind='thug', top=ramp('#e6e0cf', 0.42, 0.2, 0.5), pants=ramp('#2a2632'),
                  shoe=ramp('#1e1820', 0.3, 0.15, 0.25), hair=ramp('#3a2c48', 0.55, 0.3, 0.45),
@@ -513,12 +515,23 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
     if k == 'heavy' and abs(v) > 4.0 and -0.4 <= u < 0.6:
         return WHITE[max(1, i)]
     if k == 'player':
+        if hr + 0.1 < hd < hr + 0.6:
+            return ch['lining'][1]               # the funnel collar's petrol rim, all round his neck
+        if hr + 0.6 <= hd < hr + 1.8:
+            if hu > 0 and abs(hv) < 0.3:
+                return ch['top'][0]              # where it closes, in front
+            if hu > 0 and 0.9 < hv < 1.5:
+                return ch['lining'][2] if hd > hr + 1.2 else ch['top'][1]   # the throat tab and its button
+            if hu < 0 and abs(abs(hv) - hr * 0.7) < 0.3:
+                return ch['top'][max(0, i - 1)]  # its seams, behind
+            return ch['top'][min(2, i + 1)]
         if abs(0.782 * u - 0.624 * v + 0.85) < 0.5:
             return ch['strap'][i]                # the satchel's strap: right shoulder in front, left hip behind
-        if hr + 0.1 < hd < hr + 0.75 and hu > -2.2:
-            return ch['lining'][max(1, i)]       # the coat's lining, inside the collar
-        if hr + 0.75 <= hd < hr + 1.7 and hu > -2.2:
-            return ch['top'][min(3, i + 1)]      # the collar, turned up
+        if abs(u) < 1.3 and 4.0 < abs(v) < 7.2:  # a tab on each shoulder, a petrol button at its end
+            if abs(u) < 0.3 and abs(abs(v) - 6.2) < 0.3:
+                return ch['lining'][2]
+            if abs(u) > 0.8 or abs(v) > 6.8:
+                return ch['top'][max(0, i - 1)]
         return ch['top'][i]
     if k == 'thug' and hr + 0.1 < hd < hr + 1.3 and hu > -0.5:
         return ch['shirt'][1]
@@ -747,30 +760,39 @@ def torso_head(ch, rng):
         return ch['skin'][1] if u < hr - 0.9 * S else ch['skin'][tidx(L)]   # the brow in shadow
 
     if k == 'player':
-        # his hair down to his collar out from under the cap, the cap's six panels to its button, the visor
+        # his hair down to his collar out from under the cap; the cap: a low crown in six panels to its button, a short
+        # flat brim as wide as his brow with a petrol front edge and a line of shadow where it leaves the crown
         hair = ch['hair']
         cl = hair_clumps(rng, hcx - 2.8 * S, hcy, 3.0 * S, 3.7 * S, (hcx, hcy), length=6.4, width=2.8, flow=0.5)
         relief_paint(head, lambda x, y: max(lump(x - hcx + 2.6 * S, y - hcy, 3.0 * S, 3.6 * S, 4.0) + clump_h(cl, x, y)
                                             * (1 if lump(x - hcx + 2.6 * S, y - hcy, 3.0 * S, 3.6 * S, 1) > 0 else 0), 0),
                      lambda x, y, L: clump_tone(hair, cl, x, y, L))
-        capc = ch['cap']
+        capc, lin = ch['cap'], ch['lining']
+        brim = Cv(W, W)
+        for dv in range(-6, 6):
+            v = dv + 0.5
+            if abs(v) > 5.2:
+                continue
+            tip = hcx + hr + 5.6 - (abs(v) / 5.2) ** 4 * 2.0
+            for x in range(int(hcx + 2), int(tip) + 1):
+                brim.set(x, int(hcy + dv), lin[2] if x >= int(tip) else capc[3] if -4 < v < -2.5 else
+                         capc[2] if v < 2.5 else capc[1])
+        brim.outline()
+        head.over(brim)
 
         def cap_px(x, y, L):
             u, v = (x + 0.5 - hcx) / S, (y + 0.5 - hcy) / S
             i = tidx(L)
             if math.hypot(u, v) < 0.75:
-                return ch['lining'][1]               # the button
+                return lin[2]                        # the button
             if abs(v) < 0.18 or abs(v * 0.5 + u * 0.87) < 0.18 or abs(v * 0.5 - u * 0.87) < 0.18:
                 return capc[max(0, min(2, i) - 1)]   # the seams of its panels
+            if u > hr / S - 0.75 and abs(v) < 2.6:
+                return capc[0]                       # the shadow where the brim leaves the crown
+            if u < -hr / S + 0.8 and abs(v) < 1.3:
+                return lin[1]                        # the strap's petrol tab, at the back
             return capc[3] if L > 0.95 else capc[min(2, i)]
-        relief_paint(head, lambda x, y: lump(x - hcx, y - hcy, hr, hr * 0.96, hr * 1.1), cap_px)
-        for dv in range(-5, 6):
-            tip = int(hcx + hr + 3.4 - abs(dv) * 0.42)
-            for x in range(int(hcx + hr - 1.0), tip + 1):
-                head.set(x, int(hcy + dv), capc[1] if x >= tip - 1 else capc[3] if -3 < dv < 0 else capc[2])
-        for dv in range(-4, 5):
-            head.set(int(hcx + hr - 1.0), int(hcy + dv), capc[0])  # where the visor meets the crown
-        head.set(int(hcx + hr + 4), int(hcy), ch['skin'][2])       # the tip of his nose under it
+        relief_paint(head, lambda x, y: lump(x - hcx, y - hcy, hr, hr * 0.96, hr * 1.0), cap_px)
     elif k == 'heavy':
         sk = ch['skin']
         relief_paint(head, skull, lambda x, y, L: lt(sk[2], 0.55) if L > 0.97 else sk[tidx(L)])
@@ -930,16 +952,14 @@ def chest_px(ch, u, v, L, hx_, hy_):
         return civ_chest_px(ch, u, v, L, hx_, hy_)
     i = tidx(L)
     if k == 'player':
+        if u > hx_ - 1.2 and abs(v) < 3.2:
+            return ch['top'][min(3, i + 1)]      # the funnel collar
         if abs(0.6 * u + 0.8 * v - 0.3) < 0.55:
             return ch['strap'][i]                # the satchel's strap across his chest
-        if abs(v) < 1.3 and u < hx_ - 0.6:
-            return ch['knit'][i]                 # his sweater, the coat open on it
-        if 1.3 <= abs(v) < 1.75:
-            return ch['top'][min(3, i + 1)]      # the coat's lapels
-        if abs(v) < 2.1:
-            return ch['top'][max(0, i - 1)]
-        if u > hx_ - 1.0 and abs(v) < 3.2:
-            return ch['top'][min(3, i + 1)]      # collar
+        if u < -0.6 and abs(v) < 0.5 + (-0.6 - u) * 0.35:
+            return ch['knit'][i]                 # his sweater, where the coat opens below the chest
+        if u >= -0.6 and abs(v) < 0.5:
+            return ch['lining'][2] if int(u * 0.8 + 20) % 2 else ch['top'][max(0, i - 1)]   # its placket, buttoned
         return ch['top'][i]
     if k == 'thug':
         if abs(v) < 0.3 + 0.38 * (u + hx_) and u > -hx_ + 1.0:
@@ -984,7 +1004,7 @@ def face_px(ch, u, v, L, r):
         if u > 0.2 and abs(v) > 2.3 - 0.3 * u:
             return ch['hair'][i]                 # his hair either side of his face
         if u < -0.9:
-            return ch['cap'][min(3, i + 1)]      # the scarf pulled up over his mouth
+            return ch['lining'][max(1, i)]       # the gaiter up over his mouth
     if k == 'thug' and u > 1.3:
         return ch['hair'][i if int(v + 20) % 2 else max(0, i - 1)]
     if k == 'brute' and u > 1.1:
@@ -1048,6 +1068,8 @@ def draw_body(ch, w, h, pose, dead=False, headless=False, seed=0):
             if rng.random() < 0.4:
                 blood.set(x + 1, y, BLOOD[1])
     cv.over(blood)
+    if ch['kind'] == 'player':
+        cv.over(coat_spread(ch, w, h, tcx, tcy, tang, thx - 0.8, thy, 9.0, 4.4))
 
     # legs + shoes
     legs = Cv(w, h)
@@ -1108,7 +1130,7 @@ def draw_body(ch, w, h, pose, dead=False, headless=False, seed=0):
         if k == 'player':
             # his scarf, pulled down off his mouth
             for vv in (-1.5, -0.5, 0.5, 1.5):
-                head.set(*rot(hcx, hcy, ha, -3.0, vv), ch['cap'][2])
+                head.set(*rot(hcx, hcy, ha, -3.0, vv), ch['lining'][1])
         mx, my = rot(hcx, hcy, ha, -2.0, 0.2)
         head.set(mx, my, BLOOD[0] if dead else dk(ch['skin'][1], 0.3))
         if dead:
@@ -1116,6 +1138,83 @@ def draw_body(ch, w, h, pose, dead=False, headless=False, seed=0):
             head.set(*rot(hcx, hcy, ha, 0.9, -0.6), BLOOD[2])
         head.outline()
         cv.over(head)
+    return cv
+
+
+def coat_spread(ch, w, h, cx, cy, ang, hip, half, length, flare):
+    """The runner's coat spread on the floor under him, plainly painted: from his hips (hip px behind the torso's
+    middle at (cx, cy), the head along ang) a skirt `length` long, `half` wide at the belt and `flare` wider a side at
+    its hem, a tone a half, the vent open on the lining."""
+    cv = Cv(w, h)
+    top, lin = ch['top'], ch['lining']
+    ca, sa = math.cos(ang), math.sin(ang)
+    for y in range(h):
+        for x in range(w):
+            dx, dy = x + 0.5 - cx, y + 0.5 - cy
+            u, v = dx * ca + dy * sa, -dx * sa + dy * ca
+            t = (-hip - u) / length
+            if t < 0 or t > 1 - 0.12 * (abs(v) / (half + flare)) ** 2:
+                continue
+            if abs(v) > half + flare * t:
+                continue
+            if abs(v) < 0.2 + 1.1 * t and t > 0.25:
+                cv.set(x, y, lin[1])             # the lining, in the open vent
+            else:
+                cv.set(x, y, top[2] if v < 0 else top[1])
+    cv.outline()
+    return cv
+
+
+RAG_SKIRT_W, RAG_SKIRT_H = 25, 15
+
+
+def rag_skirt(ch):
+    """That skirt as a part of a body on the floor (Ragdoll draws it under him, hung from his belt): its top edge at
+    the belt, the hem toward +y."""
+    return coat_spread(ch, RAG_SKIRT_W, RAG_SKIRT_H, RAG_SKIRT_W / 2, -0.5, -math.pi / 2, 0.0, 6.6, RAG_SKIRT_H - 1.5, 4.6)
+
+
+TAIL_W, TAIL_H, TAIL_ROOT = 24, 18, 3   # a half of the standing runner's skirt (FINE px); its hinge: TAIL_ROOT px in
+
+
+def player_tail(ch, side):
+    """A half of the duster's skirt flying behind him, at FINE density (side -1: his left, the sprite's -y half): from
+    its root (the right edge's middle, TAIL_ROOT px in, where the game hinges it on his back) to its hem toward -x,
+    widening a little, long folds along it lit as the cloth they are, the hem a shade darker, the petrol lining
+    showing along the vent (its inner edge). The game swings it, opens the vent and draws it out with his speed
+    (src/game/entities/Skirt.js, CharacterAnim.drawSkirt)."""
+    cv = Cv(TAIL_W, TAIL_H)
+    x0, cy, L = TAIL_W - TAIL_ROOT, TAIL_H / 2, TAIL_W - TAIL_ROOT - 1.5
+    top, lin = ch['top'], ch['lining']
+
+    def geom(x, y):
+        t = (x0 - x) / L
+        if t < -0.2 or t > 1:
+            return None
+        tt = max(0.0, t)
+        v = (cy - y) * side                      # + toward the vent
+        w = 6.4 + 1.6 * tt
+        if abs(v) > w or tt > 1 - 0.1 * (abs(v) / w) ** 2:
+            return None
+        return tt, v, w
+
+    def h(x, y):
+        g = geom(x, y)
+        if not g:
+            return 0.0
+        tt, v, w = g
+        ripple = math.sin(v * 0.62 * side + tt * 2.2 + side) * (0.25 + 1.1 * tt)
+        return max(0.05, (2.4 - 0.9 * tt) * min(1.0, (w - abs(v)) / 2.0) + ripple)
+
+    def colour(x, y, L_):
+        tt, v, w = geom(x + 0.5, y + 0.5)
+        i = tidx(L_)
+        if tt > 0.25 and w - v < 2.0:
+            return lin[max(1, min(2, i))]        # the lining, along the vent
+        if tt > 0.9:
+            return top[max(0, i - 1)]            # the hem
+        return top[3] if L_ > 0.93 else top[min(2, i)]
+    relief_paint(cv, h, colour)
     return cv
 
 
@@ -4482,6 +4581,8 @@ def knocked_down(ch):
         tmp = tmp.rotate(-deg, resample=Image.NEAREST)
         body.alpha_composite(tmp, (int(rx - n // 2), int(ry - n // 2)))
     leg, arm = rag_leg(ch), rag_arm(ch)
+    if ch['kind'] == 'player':
+        body.alpha_composite(rag_skirt(ch).img, (24 - RAG_SKIRT_W // 2, 27))   # his coat spread under him
     limb(leg, 20, 28, 98)
     limb(leg, 28, 28, 80)
     limb(arm, 18, 15, 114)
@@ -6600,7 +6701,7 @@ FONT_STENCIL = {
 LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', pool='4 POOL', bars='5 BARS',
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
                   steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
-                  takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE')   # (the last ones added, in this order: the others keep their seed)
+                  takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -9321,6 +9422,9 @@ def build():
         out[('characters', 'gib_chunk%d' % i)] = gib_chunk(i)
     out[('characters', 'gib_eye')] = gib_eye()
     out[('characters', 'lucky_scarf')] = lucky_scarf(CHARS['lucky']['scarf'])
+    out[('characters', 'player_tail_l')] = player_tail(CHARS['player'], -1)
+    out[('characters', 'player_tail_r')] = player_tail(CHARS['player'], 1)
+    out[('characters', 'player_rag_skirt')] = rag_skirt(CHARS['player'])
     for name, cv in weapons().items():
         out[('weapons', name)] = cv
     for i, (cid, ch) in enumerate(CHARS.items()):
@@ -9451,7 +9555,8 @@ EXPECTED = {
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
         + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3)),
            ('cueball_torso', (48, 48)), ('cueball_head_hurt', (HEAD_W, HEAD_H)),
-           ('lucky_scarf', (SCARF_W, SCARF_H))]),   # his own: wider, and his head hurt
+           ('lucky_scarf', (SCARF_W, SCARF_H)), ('player_tail_l', (TAIL_W, TAIL_H)), ('player_tail_r', (TAIL_W, TAIL_H)),
+           ('player_rag_skirt', (RAG_SKIRT_W, RAG_SKIRT_H))]),   # his own: wider, and his head hurt
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
                     sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),

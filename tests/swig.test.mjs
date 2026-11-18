@@ -72,3 +72,90 @@ test('opening: the shots exist, and getting up gives the view back in under 0.8 
   assert.ok(Math.abs(d.zoom - 1) < 0.03, `zoom ${d.zoom.toFixed(3)} 0.8 s after he got up`);
   assert.ok(Math.abs(d.aim(0, 0).x) < 30, `the view back on him: ${d.aim(0, 0).x.toFixed(1)} px off`);
 });
+
+// ---- the beat itself: the pose he is drawn in (CharacterAnim sitPose / swigPose) and the bottle (Player.updateSwig)
+const { sitPose, newPose } = await load('game/entities/CharacterAnim.js');
+const { newSkirt, stepSkirt } = await load('game/entities/Skirt.js');
+const { COAT } = await load('game/data/feel.js');
+
+const nums = (P) => [P.tx, P.ty, P.ta, P.s, P.ha, P.bow, P.legs, P.elb[0], P.elb[1], P.carry.x, P.carry.y, P.carry.a,
+  ...[P.hl, P.hr, P.feet[0], P.feet[1]].flatMap((p) => [p.x, p.y, p.a])];
+// the pose at t s of the swig (or getting up: sit < 1, rising), for a man facing `angle`
+function poseAt(t, angle = 0.4, sit = 1, rising = false) {
+  const ch = { angle, sit, rising, swig: t === null ? null : { t, thrown: t >= GESTURE.swig.throw, go: false } };
+  const P = newPose(), V = newPose();
+  P.ta = angle; P.ha = angle;
+  return sitPose(ch, P, V);
+}
+
+test('swig: the pose is finite all through the beat and nothing in it jumps', () => {
+  const T = GESTURE.swig;
+  let was = null;
+  for (let t = 0; t <= T.end + 0.4; t += 1 / 120) {
+    const P = poseAt(t);
+    assert.ok(nums(P).every(Number.isFinite), `t ${t.toFixed(3)}`);
+    if (was) {
+      // a hand goes fastest in the throw: about 16 px in 0.15 s
+      for (const h of ['hl', 'hr']) assert.ok(Math.hypot(P[h].x - was[h].x, P[h].y - was[h].y) < 4, `${h} jumps at ${t.toFixed(3)}`);
+      assert.ok(Math.abs(P.ta - was.ta) < 0.08 && Math.abs(P.bow - was.bow) < 0.05, `the body jumps at ${t.toFixed(3)}`);
+    }
+    was = { hl: { ...P.hl }, hr: { ...P.hr }, ta: P.ta, bow: P.bow };
+  }
+});
+
+test('swig: he drinks with his head back, looks at the bottle, winds up behind his shoulder and throws ahead', () => {
+  const T = GESTURE.swig, a = 0, rest = poseAt(0.05, a);
+  // in his own frame (facing +x): x ahead, y to his right
+  const mid = (T.drink[0] + T.drink[1]) / 2, gulp = poseAt(T.drink[0] + (T.drink[1] - T.drink[0]) / (2 * T.gulps), a);
+  assert.ok(gulp.bow < rest.bow - 0.1, 'his head goes back with a gulp');
+  assert.ok(gulp.hr.y < rest.hr.y - 2 && gulp.hl.y > rest.hl.y + 4, 'the bottle at his mouth, the other hand at his collar');
+  assert.ok(Math.abs(poseAt(mid, a).carry.a - gulp.carry.a) > 0.05, 'the bottle tips further as it empties');
+  const look = poseAt((T.look[0] + T.look[1]) / 2, a);
+  assert.ok(look.ha > 0.25, 'his head turned to it');
+  assert.ok(look.hr.x > gulp.hr.x, 'held out before him');
+  const wound = poseAt(T.back[1], a);
+  assert.ok(wound.hr.x < wound.tx && wound.ta > rest.ta + 0.2, 'the hand behind his shoulder, the shoulders turned with it');
+  const out = poseAt(T.throw - 1e-6, a);
+  assert.ok(out.hr.x > wound.hr.x + 9 && out.ta < rest.ta - 0.1, 'the arm out ahead, the shoulders through');
+  assert.equal(poseAt(T.throw + 0.01, a).carryImg, null, 'the bottle has left his hand');
+  const end = poseAt(T.end, a);
+  for (const k of ['tx', 'ty', 'ta']) assert.ok(Math.abs(end[k] - rest[k]) < 1e-6, `as he sat: ${k}`);
+});
+
+test('swig: the beat is no longer than it was by more than 0.3 s, and its moments keep their order', () => {
+  const T = GESTURE.swig;
+  assert.ok(Math.abs(T.end - 2.75) <= 0.3);
+  const order = [0, T.drink[0], T.drink[1], T.look[0], T.look[1], T.back[0], T.back[1], T.throw, T.end];
+  for (let i = 1; i < order.length; i++) assert.ok(order[i] >= order[i - 1], `moment ${i}`);
+});
+
+test('swig: getting up, the pose stays finite and ends on his feet; the hand is given back as before', () => {
+  for (let sit = 1; sit >= 0; sit -= 1 / 64) assert.ok(nums(poseAt(null, 1.1, sit, true)).every(Number.isFinite), `sit ${sit}`);
+  const half = poseAt(null, 0, 0.6, true), sat = poseAt(null, 0, 1, false);
+  assert.ok(half.feet[1].x < sat.feet[1].x - 1, 'a foot drawn in under him');
+  assert.ok(half.bow > sat.bow, 'bent forward over it');
+  assert.equal(PLAYER.rise, 0.55);
+});
+
+test('swig: the rum goes with the glass, where the bottle breaks', () => {
+  const { p, later, swig } = sat(), T = GESTURE.swig, seen = [];
+  p.world.particles.drops = (x, y, a, spread, n) => seen.push({ x, y, n });
+  while (!p.swig.thrown) swig(1 / 60);
+  later.forEach((fn) => fn());
+  assert.deepEqual(seen, [{ x: p.swig.hit.x, y: p.swig.hit.y, n: T.drops[0] }]);
+});
+
+test('swig: sat, the coat is spread either side of him and never torn; it settles behind him as he stands', () => {
+  const S = newSkirt();
+  for (let i = 0; i < 60; i++) stepSkirt(S, Math.PI, 0, 0, 0, 1 / 60, 0, 1);
+  assert.ok(S.half[0].a > 1 && S.half[1].a < -1, 'a half out to each side');
+  assert.ok(Math.abs(S.half[0].len - COAT.sit[1]) < 1e-9);
+  let was = S.half[0].a;
+  for (let sit = 1; sit >= 0; sit -= 0.05) {
+    stepSkirt(S, Math.PI, 0, 0, 0, 1 / 60, 0, sit);
+    assert.ok(S.half[0].a <= was + 1e-9 && S.half[0].a >= -1e-9, 'it comes round behind him, one way');
+    was = S.half[0].a;
+  }
+  stepSkirt(S, Math.PI, 0, 0, 0, 1 / 60, 0, 0);
+  assert.ok(Math.abs(S.half[0].a) < 1e-6 && Math.abs(S.half[0].len - COAT.hem) < 0.02);
+});

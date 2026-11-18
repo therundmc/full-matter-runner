@@ -67,6 +67,8 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    a bottle and the fire runs along the trail, takes what burns, kills who stands in it. LUCKY (his
                    pink scarf, a dummy) stands in the concourse before it
     17 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+    18 COAT        the concourse's west half, an open lane to run, turn and slide in and watch the runner's coat
+                   (src/game/entities/Skirt.js): a low table to vault or slide past, a barrel to turn round
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -208,6 +210,12 @@ lv.pour(14, (35.9, 3.3))
 lv.pour(10, (35.9, 3.3), (35.3, 4.4), (36.0, 5.2), (37.5, 5.5))
 lv.pour(10, (36.0, 5.2), (34.6, 6.3))
 lv.actor('j', 38, 9, face=180, look='lucky')
+
+# 18 COAT: the concourse itself is the lane (run it end to end, weave, slide): the skirt of the runner's duster
+# trails, swings wide in a turn, opens with his speed and hangs as a short hem when he stops (entities/Skirt.js)
+lv.paint('label_coat', 16.0, 9.0)
+lv.prop('table', 25.5, 9.5, 90)
+lv.prop('barrel', 30.5, 8.9)
 
 lv.area('4 pool, 5 bars')
 lv.paint('label_pool', 41.4, 8.35)
@@ -369,8 +377,8 @@ if __name__ == '__main__':
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire) and a street with the',
-                 'vehicles. Load with ?level=lab.',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane) and a',
+                 'street with the vehicles. Load with ?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
                  'tests, and CUEBALL in his room (level 1\'s boss: he fights).',
              ])

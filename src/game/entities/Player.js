@@ -2,7 +2,7 @@ import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
 import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
 import { rand, chance, angDiff, smooth } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
-import Debris from './Debris.js';
+import Debris, { GRAVITY } from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
 import { impulse, kgOf } from '../../engine/physics/Body.js';
 import Character from './Character.js';
@@ -353,15 +353,19 @@ export default class Player extends Character {
       let d = 0;
       while (d < T.reach && !w.map.solidAt(x0 + c * (d + 6), y0 + s * (d + 6))) d += 4;
       g.hit = { x: x0 + c * d, y: y0 + s * d }; // where it breaks (the camera looks there: systems/Opening.js)
-      const dur = d / T.speed, img = spriteOpt('items/bottle');
-      const bottle = img && new Debris(w, img, x0, y0, a, c * T.speed, s * T.speed, 0.5, { material: 'glass', kg: 0.5, fly: dur + 0.1 });
+      const dur = d / T.speed, img = spriteOpt('items/bottle'), air = dur + 0.1;
+      // it spins and turns end over end, off the floor all the way (its shadow under it), and is still up when it hits
+      const bottle = img && new Debris(w, img, x0, y0, a, c * T.speed, s * T.speed, T.spin, { material: 'glass', kg: 0.5, fly: air,
+        z: T.height, vz: (GRAVITY * air) / 2 - T.height / air, tumble: T.tumble });
       if (bottle) w.addDebris(bottle);
       w.sound('throw', this.x, this.y, 0.6);
       w.after(dur, () => {
         const { x, y } = g.hit;
         if (bottle) w.removeDebris(bottle);
-        w.particles.glass(x, y, a + Math.PI, 1.2, 16, 220);
-        w.decals.smear(x, y, a + Math.PI / 2, 9, '#3a2410', 0.35); // what was left of the rum, down the wall
+        w.particles.glass(x, y, a + Math.PI, 1.2, ...T.glass);
+        // what was left of the rum: thrown back off the wall in drops (they stain the floor), and run down it
+        w.particles.drops?.(x, y, a + Math.PI, 1.0, T.drops[0], T.rum[1], T.drops[1], T.height);
+        w.decals.smear(x, y, a + Math.PI / 2, T.smear, T.rum[0], 0.35);
         w.sound('glass', x, y, 0.7);
         w.critters?.scare(x, y, 220, 280); // the cat on the dumpster is off, the pigeons with it
       });

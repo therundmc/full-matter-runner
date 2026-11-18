@@ -82,6 +82,7 @@ export default class Ragdoll {
     const tw = sw(tImg), tht = sh(tImg); // world px: the parts are finer sprites (engine/Assets.js `density`)
     this.torso = this.addPart('torso', tImg, Bodies.rectangle(x, y, tw - 2, tht - 2, { ...opt(), angle: th }), 0, 36);
     this.body = this.torso.body;
+    this.skirt = spriteOpt(`characters/${kind}_rag_skirt`); // a long coat spread under him (the runner's), hung from his belt
 
     const at = (lx, ly) => local(x, y, th, lx, ly);
     if (!this.headless) {
@@ -743,8 +744,15 @@ export default class Ragdoll {
   // centre of the blood pool: where it started, or under the wound while the body still slides
   poolAt() { return this.poolPos || (this.head?.attached ? this.head.body.position : this.neckPos()); }
 
+  // where the coat's skirt lies: its top edge under his belt, along his torso
+  skirtAt() {
+    const b = this.torso.body;
+    return local(b.position.x, b.position.y, b.angle, 0, sh(this.torso.img) / 2 - 2 + sh(this.skirt) / 2);
+  }
+
   bake() {
     const w = this.world;
+    if (this.skirt) { const p = this.skirtAt(); w.decals.bake(this.skirt, p.x, p.y, this.torso.body.angle, 1, true); }
     for (const part of this.order()) w.decals.bake(part.img, part.body.position.x, part.body.position.y, part.body.angle, 1, true);
     w.decals.paint?.((g) => { for (const part of [this.limbs[2], this.limbs[3], this.torso, this.head]) this.drawMarks(g, part); }, true);
     if (this.stuck) w.decals.paint?.((g) => this.drawStuck(g), true);
@@ -776,6 +784,11 @@ export default class Ragdoll {
   }
 
   draw(ctx) {
+    if (this.skirt) {
+      const p = this.skirtAt(), a = this.torso.body.angle;
+      drawSprite(ctx, silhouette(this.skirt), p.x + 1, p.y + 1, a, 0.3);
+      drawSprite(ctx, this.skirt, p.x, p.y, a, 1);
+    }
     for (const part of this.order()) {
       const b = part.body, draw = part.len && part.sx < 1 ? drawBent : drawPart;
       // a part raised off the floor (top) casts its shadow further

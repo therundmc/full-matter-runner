@@ -31,8 +31,9 @@ const { Bodies, Body } = Matter;
 // How each kind's limbs are painted (render/LimbArt.js): sleeve, skin, the cuff showing at the wrist, gloves,
 // trousers, shoes (the same colours as their sprites, tools/generate_assets.py CHARS)
 export const KINDS = {
-  // the sleeves of his charcoal coat over the grey knit, a Mediterranean tan, jeans, brown boots
-  player: { arm: '#465062', skin: '#dba274', cuff: '#868c98', pants: '#3c4a66', shoe: '#3a2a22' },
+  // the sleeves of his ink-blue duster over the grey knit, a Mediterranean tan, jeans, brown boots; `coat`: the two
+  // halves of its skirt (sprites `<coat>_l` / `_r`), flown behind him by entities/Skirt.js
+  player: { arm: '#3a4460', skin: '#dba274', cuff: '#868c98', pants: '#3c4a66', shoe: '#3a2a22', coat: 'characters/player_tail' },
   thug: { arm: '#e6e0cf', skin: '#e0a878', cuff: '#2a2236', pants: '#2a2632', shoe: '#1e1820' },
   heavy: { arm: '#4b2470', skin: '#c88a60', glove: '#24202a', pants: '#4b2470', shoe: '#ecebf2' },
   brute: { arm: '#d89a70', skin: '#d89a70', pants: '#4c4a2c', shoe: '#5a3a22' },

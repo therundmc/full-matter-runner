@@ -9,7 +9,7 @@
 // bends him: { hunch, duck, lift, lean, look, twist, shake }).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, feelOf } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { READABILITY } from '../data/readability.js';
 import { slamAt } from '../systems/Takedown.js';
@@ -20,6 +20,7 @@ import { beginLimbs, flushLimbs, paintLeg, paintArm, drawHand } from '../render/
 import { cantedGun, cantPalm, CANT } from '../render/HandgunArt.js';
 import { recoilAt } from './Recoil.js';
 import { stepLean } from './Facing.js';
+import { newSkirt, stepSkirt } from './Skirt.js';
 import { drawPhases, talkAt, talkHand } from './Gesture.js';
 
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
@@ -1184,26 +1185,30 @@ export function kickPose(ch, P, V) {
 }
 
 // ---------------- sitting on the ground (Player.sit: how a level starts) ----------------
-// back to the wall, legs stretched out in front, palms on the floor by the hips; ch.sit runs 1 -> 0 as he gets up
+// slumped, his back to the wall and his head resting on it, the left knee up, the right leg out, palms on the floor by
+// the hips (GESTURE.sit); ch.sit runs 1 -> 0 as he gets up: the left hand pushes on the ground, the right foot is
+// drawn in under him, he bends forward over it and comes up as the pose blends back into the stance
 export function sitPose(ch, P, V) {
   const w = smooth(ch.sit);
   if (w <= 0) return P;
   copyPose(V, P);
-  const c = Math.cos(ch.angle), s = Math.sin(ch.angle);
-  V.ta = ch.angle;
-  V.tx = -c * 4; V.ty = -s * 4;
-  V.s = 0.86;
+  const S = GESTURE.sit, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  const r = ch.rising ? 1 - clamp(ch.sit, 0, 1) : 0, push = bump(r, 0, 0.9), draw = smooth(r * 2);
+  V.ta = a + S.slump + S.turn * push;
+  V.tx = -c * S.back; V.ty = -s * S.back;
+  V.s = S.s;
   V.legs = 1;
   V.top = 0;
   V.carryImg = null;
+  V.ha = a + S.head * (1 - smooth(r * 3));
+  V.bow = lerp(S.rest, S.bow, smooth(r * 2.2));
   for (let i = 0; i < 2; i++) {
-    const side = i ? 1 : -1, lx = i ? 12 : 13.5, ly = side * 3.5, f = V.feet[i];
-    f.x = V.tx + lx * c - ly * s; f.y = V.ty + lx * s + ly * c; f.a = ch.angle;
+    const F = S.feet[i], lx = i ? lerp(F[0], S.knee, draw) : F[0], ly = F[1], f = V.feet[i];
+    f.x = V.tx + lx * c - ly * s; f.y = V.ty + lx * s + ly * c; f.a = a + F[2] * (1 - draw); f.lift = 0; f.heel = 0;
   }
-  for (const [h, side] of [[V.hl, -1], [V.hr, 1]]) {
-    h.x = V.tx - c - s * side * 9; h.y = V.ty - s + c * side * 9;
-    reach(h, V, side);
-  }
+  place(V.hl, V, a, lerp(S.palm[0], S.push[0], draw) / V.s, lerp(-S.palm[1], S.push[1], draw) / V.s);
+  place(V.hr, V, a, S.palm[0] / V.s, S.palm[1] / V.s);
+  reach(V.hl, V, -1); reach(V.hr, V, 1);
   // a weapon in his right hand lies on the floor under it, pointing ahead; while that hand drinks, it lets go of it
   V.wpn.x = V.hr.x; V.wpn.y = V.hr.y; V.wpn.a = ch.angle + 0.35; V.wpnLen = 1; V.wpnS = 1;
   V.fist = V.fist && !ch.swig;
@@ -1213,25 +1218,45 @@ export function sitPose(ch, P, V) {
   return P;
 }
 
-// The bottle he finishes first (Player.swig, GESTURE.swig), in his right hand: on his thigh, up to his mouth (he
-// tips back with each gulp), down again, drawn back behind him, flung at the wall across; then the empty hand
-// comes back down. [x, y, the bottle's turn] of the hand in his frame at each of those.
-const SWIG = { lap: [5, 4.5, 0.3], mouth: [7, 1.2, Math.PI - 0.35], back: [-2.5, 7.5, 2.2], out: [10.5, 1.5, 0] };
+// The bottle he finishes first (Player.swig, GESTURE.swig), in his right hand. On his thigh; up to his mouth, the left
+// hand pulling his collar down, his head tipping back with each gulp and the bottle further up as it empties; down
+// and held before his eyes, turned over once: empty; drawn back behind his shoulder, the shoulders turning with it
+// and the left hand going out; flung at the wall across, the shoulders coming through first, the elbow, then the
+// wrist; the arm swings on across him and comes down, and he is as he sat.
 function swigPose(ch, V) {
-  const g = ch.swig, T = GESTURE.swig, t = g.t, a = ch.angle;
-  const drink = smooth((t - T.drink[0]) / 0.28) * (1 - smooth((t - T.drink[1]) / 0.24));
-  const back = smooth((t - T.back[0]) / (T.back[1] - T.back[0])), fling = clamp((t - T.back[1]) / (T.throw - T.back[1]), 0, 1) ** 2;
-  const settle = smooth((t - T.throw) / (T.end - T.throw));
-  const held = (i) => lerp(lerp(lerp(SWIG.lap[i], SWIG.mouth[i], drink), SWIG.back[i], back), SWIG.out[i], fling);
-  // each gulp tips him back a little; the throw takes his shoulders forward
-  const gulp = drink * Math.max(0, Math.sin(((t - T.drink[0]) / (T.drink[1] - T.drink[0])) * Math.PI * T.gulps)) * 0.9;
-  const lean = gulp - 1.5 * fling * (1 - settle);
+  const g = ch.swig, T = GESTURE.swig, H = T.hand, S = GESTURE.sit, t = g.t, a = ch.angle;
+  const drink = smooth((t - T.drink[0]) / T.lift) * (1 - smooth((t - T.drink[1]) / T.lower));
+  const look = smooth((t - T.look[0]) / T.glance) * (1 - smooth((t - T.back[0]) / T.glance));
+  const back = smooth((t - T.back[0]) / (T.back[1] - T.back[0]));
+  const fl = clamp((t - T.back[1]) / (T.throw - T.back[1]), 0, 1), fling = fl * fl;
+  const after = clamp((t - T.throw) / (T.end - T.throw), 0, 1);
+  const follow = smooth(after / T.follow), settle = smooth((after - T.follow) / (1 - T.follow));
+  const k = clamp((t - T.drink[0]) / (T.drink[1] - T.drink[0]), 0, 1); // how far down the bottle he is
+  const gulp = drink * Math.max(0, Math.sin(k * Math.PI * T.gulps));
+  const held = (i, rest) => lerp(lerp(lerp(lerp(lerp(lerp(H.lap[i], H.mouth[i], drink), H.look[i], look), H.back[i], back), H.out[i], fling),
+    H.across[i], follow), rest, settle);
+  // his shoulders: back with each gulp, turned back with the wind-up and through with the throw, forward with it
+  const lean = gulp * T.lean - T.lunge * fling * (1 - settle);
   V.tx -= Math.cos(a) * lean; V.ty -= Math.sin(a) * lean;
-  place(V.hr, V, a, lerp(held(0), SWIG.lap[0], settle), lerp(held(1), SWIG.lap[1], settle));
+  V.ta += lerp(T.twist[0] * back, T.twist[1], smooth(fl)) * (1 - settle);
+  // his head: back with each gulp, turned to the bottle when he looks at it, on the wall from the wind-up on
+  V.bow -= gulp * T.tip;
+  V.ha = a + S.head * (1 - back * (1 - settle)) * (1 - look) + T.eye * look;
+  // the left hand at his collar while he drinks (it gives with each gulp), out as he winds up, back on the ground
+  const brace = back * (1 - settle), lx = lerp(lerp(S.palm[0], T.collar[0] - 0.6 * gulp, drink), T.brace[0], brace);
+  place(V.hl, V, a, lx / V.s, lerp(lerp(-S.palm[1], T.collar[1], drink), T.brace[1], brace) / V.s);
+  reach(V.hl, V, -1);
+  place(V.hr, V, a, held(0, S.palm[0]) / V.s, held(1, S.palm[1]) / V.s);
   reach(V.hr, V, 1);
+  V.elb[1] = lerp(lerp(V.elb[1], 1, back), 0.05, fling) * (1 - settle) + V.elb[1] * settle;
+  V.hand[0] = drink > 0.5 ? 'fist' : 'loose';
+  V.hand[1] = g.thrown ? 'loose' : 'fist';
   if (g.thrown) return;
   V.carryImg = spriteOpt('items/bottle');
-  V.carry.x = V.hr.x; V.carry.y = V.hr.y; V.carry.a = a + held(2);
+  // the bottle: tipped further up as it empties, turned over once when he looks at it, snapped forward by the wrist
+  const turn = lerp(lerp(lerp(H.lap[2], H.mouth[2] + T.empty * k, drink), H.look[2] + T.wag * Math.sin(Math.PI * clamp((t - T.look[0]) / (T.look[1] - T.look[0]), 0, 1)), look),
+    H.back[2], back);
+  V.carry.x = V.hr.x; V.carry.y = V.hr.y; V.carry.a = a + lerp(turn, H.out[2], fl * fl * fl);
 }
 
 // ---------------- at his post (Enemy.postBody, data/posts.js) ----------------
@@ -2292,6 +2317,8 @@ function paintPose(ctx, ch, P, alpha) {
   // shadow: further away, larger and softer as the body rises
   const sh = silhouette(ch.torso), shh = silhouette(ch.head), lift = P.lift;
   const ox = 2 + lift * 4, oy = 2 + lift * 5, sa = 0.35 * (1 - 0.35 * lift);
+  const skirt = ch.look?.coat && P.tuck <= 0.02 ? skirtOf(ch, P, ta) : null; // (gathered in when he rolls in a ball)
+  if (skirt) drawSkirt(ctx, ch, skirt, bx + ox, by + oy, ta, s, sa, true);
   if (lift > 0.05) {
     for (const j of [-1, 1]) {
       drawSprite(ctx, sh, bx + ox + 0.7 * j, by + oy + 0.5 * j, ta, sa * 0.55, s * 1.05);
@@ -2336,6 +2363,7 @@ function paintPose(ctx, ch, P, alpha) {
   const cup = cupped(ch, P);
   for (const i of cup ? HANDS_CUP : HANDS_ORDER) if (i ? !P.top : P.top < 2) paintHand(ctx, ch, P, i, x, y, cup);
 
+  if (skirt) drawSkirt(ctx, ch, skirt, bx, by, ta, s, 1, false); // under his shoulders, over his legs
   if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
   else if (P.hunch > 0.005 || bow > 0.005) drawHunched(ctx, ch.torso, bx, by, ta, s, P.hunch, Math.max(0, bow) * BOW.long);
   else drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
@@ -2355,6 +2383,35 @@ function paintPose(ctx, ch, P, alpha) {
     paintHand(ctx, ch, P, 1, x, y, cup);
   }
   ctx.globalAlpha = ga;
+}
+
+// The skirt of his coat (KINDS `coat`, entities/Skirt.js): advanced on the world's clock from where his shoulders
+// point, his velocity and his stride. Returns its state, or null when its sprites are missing.
+const TAU = Math.PI * 2;
+function skirtOf(ch, P, ta) {
+  if (!spriteOpt(ch.look.coat + '_l') || !spriteOpt(ch.look.coat + '_r')) return null;
+  const S = ch.skirt || (ch.skirt = newSkirt()), now = ch.world?.time ?? 0;
+  const dt = S.t === undefined ? 0 : now - S.t;
+  S.t = now;
+  return stepSkirt(S, ta + Math.PI, ch.vel?.x, ch.vel?.y, (ch.walk || 0) / TAU, dt, P.tuck * 2, smooth(ch.sit || 0));
+}
+
+// its two halves, each hung from its hinge on his back (COAT.hinge), turned and drawn out as the skirt says; shadow:
+// their silhouettes instead, at alpha
+function drawSkirt(ctx, ch, S, bx, by, ta, s, alpha, shadow) {
+  const c = Math.cos(ta) * s, sn = Math.sin(ta) * s;
+  for (let i = 0; i < 2; i++) {
+    const src = spriteOpt(ch.look.coat + (i ? '_r' : '_l')), img = shadow ? silhouette(src) : src, H = S.half[i];
+    if (H.len < 0.05) continue;
+    const hy = COAT.hinge[1] * (i ? 1 : -1), k = (src.k || 1) * s;
+    ctx.save();
+    ctx.translate(bx + COAT.hinge[0] * c - hy * sn, by + COAT.hinge[0] * sn + hy * c);
+    ctx.rotate(ta + H.a);
+    ctx.scale(k * H.len, k);
+    if (alpha !== 1) ctx.globalAlpha *= alpha;
+    ctx.drawImage(img, -(src.width - COAT.root), -src.height / 2);
+    ctx.restore();
+  }
 }
 
 // A man dazed on the floor, t s after he went down: how far his shoulders roll (rad) and how far he heaves himself

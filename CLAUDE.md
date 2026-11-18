@@ -37,9 +37,14 @@
   Furniture and vehicles follow (`FINE_PROPS`, kept in step in both files), floors too; neon signs stay at 1x.
   Level 1's detail pass is done (2026-11-18: furniture wear, floor wear in FloorWear.js, live props in PropLife.js,
   car interiors); still to do: car debris sprites to match, and the same care on every new level.
-- The hero (an original take on the user's reference): brown hair to his collar, a Mediterranean tan (not brown or
-  dark), a dark cap, a scarf up over his mouth, a long charcoal coat collar up, grey knit, jeans, boots, a leather
-  satchel across him; the lining and the cap's button a dark petrol blue. Never bright turquoise, never an animal mask.
+- The hero (the user's pick, 2026-11-18, "B v2"): brown hair to his collar, a Mediterranean tan (not brown or dark),
+  a dark cap with a low crown and a short flat brim (its front edge petrol: it shows where he faces), a petrol gaiter
+  up over his nose inside a funnel collar closed round his neck, a long ink-blue duster (`#3a4460`) with a tab on each
+  shoulder, grey knit, jeans, boots, a leather satchel across him; the lining, the buttons and the cap's button a dark
+  petrol blue. Never bright turquoise, never an animal mask. The duster's skirt flies behind him: two halves
+  (`player_tail_l` / `_r`, KINDS `coat`) swung by entities/Skirt.js (numbers `COAT` in data/feel.js: it lags his
+  turns, opens with his speed, hangs as a short hem at rest), drawn by CharacterAnim `drawSkirt`; on the floor it is
+  spread under him (`player_rag_skirt`, Ragdoll `skirt`). Cosmetic only: no body, no hit circle.
 - Walk and hands: entities/Gait.js (cadence and stride grow with speed, planted feet), arms and hands painted in
   render/LimbArt.js; long guns shouldered with `grip`, `fore`, `butt` (data/weapons.js); heads are their own sprite.
 - `BODY_SCALE` = 1.3 (Config): a standing pose is drawn 1.3 x about the feet (CharacterAnim `bodyFrame`; pose numbers

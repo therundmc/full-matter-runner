@@ -181,6 +181,18 @@ export const BREAK = {
 // the middle of his head it hangs from; side: rad off straight behind it lies when he stands; moving: px/step from
 // which it trails where he comes from; follow: 1/s it catches up with him; beat, wave: its flutter (rad/s, rad)
 export const TAIL = { nape: 4.5, side: 0.5, moving: 0.4, follow: 7, beat: 6, wave: 0.12 };
+// The skirt of a long coat flying behind a man (entities/Character.js KINDS `coat`, entities/Skirt.js, drawn by
+// CharacterAnim drawSkirt: the runner's duster). hinge: where a half hangs from, torso-local pose px [behind the
+// middle of his shoulders, out to its side]; root: sprite px from the sprite's edge to that hinge
+// (tools/generate_assets.py TAIL_ROOT); moving, full: px/step from which it starts to fly and at which it is fully
+// out; hem: the share of its length that shows when he stands; trail: rad it is drawn off straight behind him toward
+// where he comes from (a side-step); swing: rad it may swing off straight behind (a turn); freq, damp: its spring
+// (rad/s, damping ratio: under 1, it swings back past the middle once); draw: 1/s its length and its vent follow his
+// speed; open: rad each half opens off the vent at full speed; kick: what his stride adds to the half on the side of
+// the leg going back [rad of opening, share of length]; step: the longest step it is advanced by (s)
+// sit: sat on the ground it is spread either side of him: [rad each half lies off straight behind, share of its length]
+export const COAT = { hinge: [-1, 3.25], root: 3, moving: 0.4, full: 2.6, hem: 0.5, trail: 0.9, swing: 0.8, freq: 13, damp: 0.5,
+  draw: 7, open: 0.14, kick: [0.16, 0.1], step: 0.05, sit: [1.45, 0.8] };
 
 export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 
@@ -281,9 +293,28 @@ export const FLINCH = {
 //   trunk  opening a car trunk: dur (s, he cannot attack), lift [from, to] share of it the lid comes up over,
 //          take: share at which what is inside is in his hand
 //   getup  getting up after a knock-down: dur (s at the end of the time on the floor)
+//   sit    sat on the ground, his back to a wall (CharacterAnim sitPose: how a level starts): back (px his shoulders
+//          are pulled back to the wall), s (how much lower he shows), slump (rad his shoulders are turned off square),
+//          head (rad his head lolls to his right), rest (his head resting back against the wall: a `bow`, < 0), feet
+//          [ahead, to his side, toe turned (rad)] of the left one (the knee up) and of the right one (the leg out),
+//          palm [ahead, out] of a hand flat on the ground by his hip. Getting up (PLAYER.rise): push [ahead, out] where
+//          the left hand goes to push him up, knee: how far ahead the right foot is drawn in under him, bow: how far
+//          he bends forward over it, turn: rad his shoulders turn toward the pushing hand
 //   swig   how level 1 opens (level intro 'swig'): sat against the wall he drinks off a bottle (drink: [from, to] s,
-//          gulps of them), looks at it, draws his arm back (back: [from, to]) and smashes it on the wall across
-//          (throw: s it leaves his hand, speed px/s, reach: px it flies at most), end: s he is free again
+//          gulps of them), looks at it (look: [from, to]), draws his arm back (back: [from, to]) and smashes it on the
+//          wall across (throw: s it leaves his hand, speed px/s, reach: px it flies at most), end: s he is free again.
+//          Its drawing (CharacterAnim swigPose), in his frame (px ahead, px to his right, the bottle's turn in rad):
+//          hand: where the right hand is with the bottle on his thigh (lap), at his mouth, held up to be looked at
+//          (look), drawn back behind his shoulder (back), at the release (out), where the arm ends its swing
+//          (across); collar: where the left hand pulls his collar down while he drinks; brace: where it goes out as
+//          he winds up. lift, lower: s the bottle takes up to his mouth and down; tip: how far his head goes back
+//          with each gulp (a `bow`); lean: px his shoulders go back with it; empty: rad the bottle tips further up as
+//          it empties; glance: s to bring it before his eyes; eye: rad his head turns to it; wag: rad he turns it
+//          over; twist: rad his shoulders turn [back with the wind-up, through with the throw]; lunge: px they go
+//          forward with it; follow: share of the time after the throw the arm keeps swinging, before it comes down.
+//          The bottle in flight (Player.updateSwig): spin (rad/step), tumble (rad/s end over end), height (px off the
+//          floor: its shadow stays under it); the smash: glass [count, speed], drops [count, speed] of rum thrown
+//          back off the wall, smear (px of it down the wall), rum: its colour [on the wall, as drops and stains]
 //   door   a hand reaching for a door leaf ahead and pushing it (Character.updateDoorHand, entities/Gesture.js):
 //          ahead (px past his body at which the hand starts to come up, the leaf ahead within `cone`: the cosine of
 //          the angle off his way), gap (px: in contact, he pushes), speed (px/step he must go at it with), open (rad
@@ -319,7 +350,14 @@ export const GESTURE = {
     yield: { hunch: 0.12, duck: 0.16, px: 0.35 },
   },
   getup: { dur: 0.85 },
-  swig: { drink: [0.45, 1.6], gulps: 3, back: [1.9, 2.15], throw: 2.3, speed: 560, reach: 200, end: 2.75 },
+  sit: { back: 4, s: 0.86, slump: -0.07, head: 0.2, rest: -0.18, feet: [[8.6, -4.8, -0.3], [13.4, 3.2, 0.22]], palm: [-1, 9],
+    push: [2, -10], knee: 6.5, bow: 0.3, turn: -0.22 },
+  swig: { drink: [0.45, 1.6], gulps: 3, look: [1.62, 1.9], back: [1.9, 2.15], throw: 2.3, speed: 560, reach: 200, end: 2.85,
+    hand: { lap: [5, 4.5, 0.3], mouth: [6.6, 1.3, Math.PI - 0.35], look: [9, 3.6, -0.45], back: [-3.2, 8.2, 2.3], out: [10.8, 1.2, 0],
+      across: [8.5, -2.5, 0] },
+    collar: [5.6, -1.6], brace: [6, -6.5], lift: 0.28, lower: 0.22, tip: 0.24, lean: 0.9, empty: 0.4, glance: 0.14, eye: 0.42,
+    wag: 0.45, twist: [0.34, -0.3], lunge: 1.6, follow: 0.35,
+    spin: 0.45, tumble: 16, height: 7, glass: [18, 230], drops: [10, 150], smear: 14, rum: ['#3a2410', 'rgba(120, 72, 28, 0.4)'] },
 };
 
 // The gesture that goes with a line, by the occasion said (data/barks.js; entities/Gesture.js talkGesture): point
