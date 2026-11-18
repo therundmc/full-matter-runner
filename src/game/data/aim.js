@@ -25,12 +25,12 @@ export const AIM = {
   notch: { at: 46, size: 5, arc: 0.7, dot: 0.09, ring: 0.3, alpha: 0.95, wall: 8 },
   // LOCK: a light arc on the floor, a short piece of the circle round him at the notch's distance, across the aim's
   // way (no line of fire: where the rounds go is the player's to judge); the man nearest the line within `cone` gets a
-  // mark of the same worn paint (`mark`, one of `marks`: the others are kept to compare, `?mark=tick` in the address
+  // mark (`mark`, one of `marks`: the user kept the corner ticks; the others are kept to compare, `?mark=ring` in the address
   // picks one for a session), and on a gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that
   // angle with the stick lets go. Pairs are [at rest / a man near the line, the line on a man].
   lock: {
     cone: 0.3, assist: 0.2, reach: 280, melee: 80,
-    mark: 'ring',
+    mark: 'corners',
     marks: ['ring', 'tick', 'point', 'corners'],
     arc: { span: 0.55, width: 1, alpha: [0.6, 0.9], seed: 7 }, // the floor arc: rad, px thick, alpha, which wear
     // ring: a stencilled circle on the floor round his feet: four short arcs, which close in and lengthen on him.
