@@ -1,4 +1,4 @@
-// Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.
+// Level 1 - "NO LOOSE ENDS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.
 // Ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the
 // anonymous door right of the bar (east), the liquor store and its roof (far west), three windows.
 // Lit shop fronts on the street: liquor, TV, laundromat.
@@ -8,7 +8,7 @@
 //                n z = 9mm, v w = 7.62, g = 12 gauge, q = rocket.
 // props: [type, col, row, deg, options?] - lights: false = a parked vehicle with its lights off.
 export default {
-  name: 'NEON NIGHTS',
+  name: 'NO LOOSE ENDS',
   subtitle: 'SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM',
   objective: ['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
   exit: { x: 22.4, y: 4.0, r: 1.3, route: [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], radius: [3, 4.2], fade: 16 },
@@ -16,8 +16,8 @@ export default {
   patrols: {
     '17,22': [[16, 22], [26, 22]],
   },
-  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'boss', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
-  looks: { '28,9': 'boss' },
+  jobs: { '23,21': 'door', '17,22': 'beat', '18,12': 'wipe', '24,14': 'cards', '23,17': 'door', '17,8': 'dope', '20,9': 'piss', '28,9': 'cueball', '25,10': 'couch', '27,10': 'count', '26,4': 'lean', '12,8': 'alley' },
+  looks: { '28,9': 'cueball' },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "XXXXXXXXXXX____________________XXXXXXXXXXX",
@@ -155,7 +155,7 @@ export default {
     ['toilet', 22.5, 6.4, 0], ['stall', 22.06, 6.78, 0], ['urinal', 20.19, 7.95, 270], ['urinal', 20.19, 8.85, 270],
     ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0, { tips: false }],
     // back room
-    ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'boss_desk' }], ['sofa', 24.5, 8.6, 270],
+    ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'cueball_desk' }], ['sofa', 24.5, 8.6, 270],
     ['armchair', 28.45, 6.6, 180], ['table_round', 26.6, 8.75, 0, { clutter: 'men_table' }],
     ['chair', 27.45, 8.75, 180], ['chair', 26.6, 9.57, 270], ['ceiling_lamp', 26.6, 8.75, 0],
     ['floor_lamp', 24.4, 10.55, 0], ['cash_case', 28.2, 10.45, 84, { clutter: 'cash_floor' }],
@@ -222,6 +222,8 @@ export default {
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
+  // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
+  doors: { '20,20': {"kind": "bar", "inside": [0, -1]}, '21,11': {"kind": "swing"}, '24,5': {"kind": "fire", "inside": [0, 1]}, '16,11': {"kind": "staff"}, '14,8': {"kind": "staff", "closer": true, "inside": [1, 0]}, '26,11': {"kind": "office"}, '23,13': {"kind": "gaming"}, '8,20': {"kind": "shop"}, '37,20': {"kind": "shop"}, '28,32': {"kind": "shop"} },
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)

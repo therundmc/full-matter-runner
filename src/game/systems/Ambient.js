@@ -20,9 +20,9 @@ import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Civilian, { CIVILIAN_KINDS } from '../entities/Civilian.js';
 import { Lane, Driver, gapAhead, findBypass, steerAngle, seeded, between, hashString } from './Traffic.js';
-import { Walker, WALKER, escapeRoute, hideRoute, pathLength, pointAlong } from '../ai/Civilians.js';
+import { Walker, WALKER, escapeRoute, hideRoute, groundOf, pathLength, pointAlong } from '../ai/Civilians.js';
 import { giveWay, cellAhead, CellMemory } from '../ai/Nav.js';
-import { markBlocked } from '../world/Level.js';
+import { markBlocked } from '../world/TileMap.js';
 
 const { Body } = Matter;
 const WAKES = new Set(['gunshot', 'explosion', 'scream', 'hit']); // what gets through to a sleeper
@@ -305,7 +305,7 @@ export default class Ambient {
   bailOut(v, panic, from = v, side = -1) {
     const w = this.world, p = v.toWorld(v.w * 0.55, side < 0 ? -10 : v.h + 10);
     if (w.map.solidAt(p.x, p.y)) return;
-    const route = panic ? [p] : escapeRoute(w.map, p.x, p.y, null);
+    const route = panic ? [p] : escapeRoute(groundOf(w.map, w.props), p.x, p.y, null);
     if (!route) return;
     const civ = this.spawnCivilian([p, ...route], p.x, p.y, v.body.angle + side * Math.PI / 2);
     if (!panic) return;
@@ -373,6 +373,10 @@ export default class Ambient {
     this.checkT -= dt;
     const look = this.checkT <= 0;
     if (look) this.checkT = A.panic.check;
+    // the ground as passers-by see it (benches, stalls in the way: ai/Civilians.js groundOf), once a step when needed
+    let ground = null;
+    const on = () => (ground ??= groundOf(w.map, w.props));
+    const jammed = (i) => this.jams.cost(i, w.time) >= 1;
     const sense = {
       // the people around him he gives way to (ai/Nav.js), heading (ux, uy)
       giveWay: (civ, ux, uy) => {
@@ -383,13 +387,13 @@ export default class Ambient {
         }
         return giveWay(civ, ux, uy, near);
       },
-      escape: (x, y, danger, jammed) => escapeRoute(w.map, x, y, danger, jammed ? { cost: (i) => this.jams.cost(i, w.time) } : undefined),
+      escape: (x, y, danger, held) => escapeRoute(on(), x, y, danger, held ? { cost: (i) => this.jams.cost(i, w.time) } : undefined),
       // a runner held up on his way: the spot ahead of him is kept off for a while (ai/Nav.js)
       jam: (civ, dx, dy) => {
         const l = Math.hypot(dx, dy) || 1, cell = cellAhead(w.map, civ.x, civ.y, dx / l, dy / l);
         if (cell !== null) this.jams.mark(cell, A.runJam.cost, w.time + A.runJam.forget);
       },
-      hide: (x, y, danger) => hideRoute(w.map, x, y, danger, (px, py) => w.lineOfSight(px, py, danger.x, danger.y), this.nooks),
+      hide: (x, y, danger, held) => hideRoute(on(), x, y, danger, (px, py) => w.lineOfSight(px, py, danger.x, danger.y), this.nooks, undefined, held ? jammed : null),
     };
     for (const civ of [...this.civilians]) {
       if (!civ.alive) { this.removeCivilian(civ); continue; }

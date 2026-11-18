@@ -52,7 +52,6 @@ const PANE = [360, 8, 590, 132];         // his bedroom window in comic/sleep (t
 const COLON = [172, 154, 5, 12];         // the clock's colon there (opening1.py CLOCK)
 const DOORWAY = [670, 0, 240, 196];      // the doorway in comic/door, x, y, w, h (opening1.py DOORWAY)
 const NEON = [374, 84, 88, 24];           // the bar's pink sign in that window (poster.window): it buzzes
-const LOCK = [634, 134];                 // the burst of his lock in comic/door (opening1.py): splinters fly from it
 const BEAM = [[643, 85], [385, 286]];    // the torch's beam there, from the lens to the floor
 const SPLASH = [518, 182];               // where the petrol lands in comic/pour (opening2.py)
 const PUPIL = [268, 174];                // his pupil in comic/wake (opening3.py)
@@ -117,14 +116,6 @@ export function paintDoor(g, w, h, t) {
       const u = (hash(i) + t * 0.04 * (0.5 + hash(i + 7))) % 1, x = lerp(bx, ex, u) + (hash(i + 3) - 0.5) * 120 * u, y = lerp(by, ey, u) + Math.sin(t + i) * 3;
       if (!(x > 210 && x < 514 && y > 142 && y < 222)) px(g, '#8a7ab8', x, y, 2, 2);
     }
-    // the lock goes: splinters thrown out of it, falling
-    const k = (t - 0.8) / 0.7;
-    if (k > 0 && k < 1) {
-      for (let i = 0; i < 9; i++) {
-        const a = hash(i + 20) * Math.PI * 2, d = (30 + 70 * hash(i + 30)) * k;
-        px(g, '#f2e8d2', LOCK[0] + Math.cos(a) * d, LOCK[1] + Math.sin(a) * d * 0.7 + 60 * k * k, i % 2 ? 5 : 3, 2);
-      }
-    }
     if ((t * 2.3) % 1 < 0.05) tone(g, '#06141a', ...DOORWAY, 0.6);
   });
 }
@@ -153,17 +144,9 @@ export function paintBox(g, w, h, t) {
   });
 }
 
-// 3. Every brick laid out in rows, LUCKY standing over them; a few loose notes still coming down, turning.
-export function paintCount(g, w, h, t) {
+// 3. Every brick laid out in rows, LUCKY standing over them: nothing moves.
+export function paintCount(g, w, h) {
   still(g, 'count', w, h);
-  fine(g, () => {
-    for (let i = 0; i < 4; i++) {
-      const y = ((t * 34 * (0.7 + 0.5 * hash(i + 2)) + hash(i + 5) * 330) % 330) - 24, x = 50 + hash(i) * 250 + Math.sin(t * 1.3 + i * 2) * 16;
-      const ww = Math.round(Math.abs(Math.cos(t * 2.6 + i * 1.7)) * 22) + 2;
-      px(g, '#f2e8d2', x - ww / 2, y, ww, 10);
-      if (ww > 9) px(g, '#8a1d5c', x - 2, y, 4, 10);
-    }
-  });
 }
 
 // 4. JITTERS tipping the jerrycan over the sofa against the window's neon, CUEBALL over him; the petrol running.

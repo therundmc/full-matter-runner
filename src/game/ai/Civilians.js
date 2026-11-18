@@ -4,8 +4,10 @@
 // up in out of sight (hideRoute), or a long freeze on the spot, hands up. Short of a fright, a commotion (a guard
 // telling somebody off, a smash) gets a look (notice), and a fist fight close by sends him off like a weapon would.
 // Units: px, px/s, s.
-import { TILE, AMBIENT as A } from '../Config.js';
+import { TILE, CAT, AMBIENT as A } from '../Config.js';
 import { between } from '../systems/Traffic.js';
+import { markBlocked } from '../world/TileMap.js';
+import { gridRaycast } from '../../engine/physics/Raycast.js';
 
 export const WALKER = { WALK: 'walk', STOP: 'stop', PANIC: 'panic', FLEE: 'flee', HIDE: 'hide', COWER: 'cower', DONE: 'done' };
 const BOLTS = ['armed', 'weapon', 'fight', 'gunshot', 'explosion']; // what sets a frozen one running, from close
@@ -56,10 +58,11 @@ export class Walker {
     this.lookT = Math.max(this.lookT, t);
   }
 
-  // his run blocked on the way (Civilian: pushed in vain): a new way out is found, round it (the caller notes the spot)
+  // his run blocked on the way (Civilian: pushed in vain): a new way out, or another corner, is found round it (the
+  // caller notes the spot)
   blocked() {
     this.stuck++;
-    if (this.state === WALKER.FLEE) this.route = null;
+    if (this.state === WALKER.FLEE || this.state === WALKER.HIDE) this.route = null;
   }
 
   // Something scary at (x, y). kind: gunshot | explosion | kill | corpse | armed (a gun) | weapon (a bat, a knife) |
@@ -141,6 +144,13 @@ export class Walker {
         this.t = this.route ? 5 : between(this.r, A.panic.cry);
         return this.update(0, x, y, sense);
       case WALKER.HIDE: {
+        if (!this.route) {
+          // held up on his way to his corner: another one, round that spot, else he runs for it
+          this.route = sense.hide?.(x, y, this.danger, true) ?? null;
+          this.ri = 0;
+          if (!this.route) { this.state = WALKER.FLEE; return this.update(0, x, y, sense); }
+          this.t = 5;
+        }
         while (this.ri < this.route.length && Math.hypot(this.route[this.ri].x - x, this.route[this.ri].y - y) < REACH * 1.5) this.ri++;
         if (this.ri >= this.route.length || this.t <= 0) {
           this.state = WALKER.COWER;
@@ -292,7 +302,7 @@ export function escapeRoute(map, sx, sy, danger, { fear = 7 * TILE, weight = 10,
   for (let c = best; c !== start && c >= 0; c = came[c]) cells.push(c);
   cells.reverse();
   let pts = cells.map((c) => ({ x: ((c % W) + 0.5) * T, y: (((c / W) | 0) + 0.5) * T }));
-  if (map.walkLine) pts = pull(map, sx, sy, pts);
+  if (map.walkLine) pts = pull(map, sx, sy, pts, extra && ((i) => i !== start && extra(i) >= 1));
   pts.push(out(best % W, (best / W) | 0));
   return pts;
 }
@@ -318,9 +328,11 @@ function slideOff(map, start, visit) {
 
 // A corner to curl up in near (sx, sy): breadth-first over the free cells within `reach` steps, to one that has
 // walls or furniture around it and is hidden from the danger, either out of its sight (seen(x, y) is false) or
-// right behind something; the closest, most tucked-in one wins. `taken` (a Set of cells, filled here) keeps two
-// people out of the same corner. Returns [{x, y}] or null.
-export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = A.panic.nook) {
+// right behind something; the closest, most tucked-in one wins. A doorway or a passage a tile wide (and the tiles at
+// its ends) is everyone's way through, never a corner. `taken` (a Set of cells, filled here) keeps two people out
+// of the same corner; `avoid(cell)`: tiles not to go through (spots found blocked on the way). Returns [{x, y}] or
+// null.
+export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = A.panic.nook, avoid = null) {
   const W = map.w, H = map.h, T = TILE, blocked = map.blocked;
   if (!danger || sx < 0 || sy < 0 || sx >= W * T || sy >= H * T) return null;
   const start = Math.floor(sy / T) * W + Math.floor(sx / T);
@@ -328,6 +340,9 @@ export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = 
   let ring = [start];
   if (blocked[start]) { ring = []; slideOff(map, start, (n) => { came.set(n, start); ring.push(n); }); }
   const wall = (x, y) => x >= 0 && y >= 0 && x < W && y < H && blocked[y * W + x];
+  const pass = (x, y) => !wall(x, y) && ((wall(x - 1, y) && wall(x + 1, y) && !wall(x, y - 1) && !wall(x, y + 1))
+    || (wall(x, y - 1) && wall(x, y + 1) && !wall(x - 1, y) && !wall(x + 1, y)));
+  const way = (x, y) => pass(x, y) || pass(x - 1, y) || pass(x + 1, y) || pass(x, y - 1) || pass(x, y + 1);
   let best = -1, bestScore = Infinity;
   for (let depth = 1; depth <= reach && ring.length; depth++) {
     const next = [];
@@ -336,14 +351,14 @@ export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = 
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           const nx = cx + dx, ny = cy + dy, ni = ny * W + nx;
-          if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1 || blocked[ni] || came.has(ni)) continue;
+          if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1 || blocked[ni] || came.has(ni) || avoid?.(ni)) continue;
           if (dx && dy && (blocked[cy * W + nx] || blocked[ny * W + cx])) continue;
           came.set(ni, c);
           next.push(ni);
           let walls = 0;
           for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (wall(nx + i, ny + j)) walls++;
           const px = (nx + 0.5) * T, py = (ny + 0.5) * T, dl = Math.hypot(danger.x - px, danger.y - py);
-          if (dl < 2 * T || taken.has(ni)) continue;
+          if (dl < 2 * T || taken.has(ni) || way(nx, ny)) continue;
           const score = depth - walls * 1.5 - Math.min(8, dl / T) * 0.5;
           if (score >= bestScore) continue;
           const cover = wall(nx + Math.round((danger.x - px) / dl), ny + Math.round((danger.y - py) / dl));
@@ -359,16 +374,33 @@ export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = 
   for (let c = best; c !== start && c >= 0; c = came.get(c)) cells.push(c);
   cells.reverse();
   const pts = cells.map((c) => ({ x: ((c % W) + 0.5) * T, y: (((c / W) | 0) + 0.5) * T }));
-  return map.walkLine ? pull(map, sx, sy, pts) : pts;
+  return map.walkLine ? pull(map, sx, sy, pts, avoid) : pts;
 }
 
-// string pulling: skip waypoints while a straight walk is clear
-function pull(map, sx, sy, pts) {
+// The ground as a passer-by sees it: the level's path grid plus the fixed furniture he cannot get over (a bench, a
+// stall, a gate panel), which the guards' grid leaves open (they vault it). A view of the TileMap: its walls and
+// size, its own `blocked`. props: the world's.
+export function groundOf(map, props) {
+  const g = Object.create(map), W = map.w, H = map.h;
+  g.blocked = map.blocked.slice();
+  g.isBlocked = (cx, cy) => cx < 0 || cy < 0 || cx >= W || cy >= H || g.blocked[cy * W + cx] === 1;
+  for (const p of props) {
+    const b = p.body;
+    if (!p.dead && b?.isStatic && !p.def?.hung && !p.def?.overhead && (b.collisionFilter.mask & CAT.CHAR)) markBlocked(g, p);
+  }
+  return g;
+}
+
+// string pulling: skip waypoints while a straight walk is clear (and crosses no tile `costly(cell)` says to keep off)
+function pull(map, sx, sy, pts, costly = null) {
+  const W = map.w, H = map.h;
+  const keepOff = costly && ((cx, cy) => cx >= 0 && cy >= 0 && cx < W && cy < H && costly(cy * W + cx));
+  const clear = (ax, ay, bx, by) => map.walkLine(ax, ay, bx, by, 7) && !(keepOff && gridRaycast(ax, ay, bx, by, keepOff));
   const res = [];
   let ax = sx, ay = sy, i = 0;
   while (i < pts.length) {
     let j = pts.length - 1;
-    while (j > i && !map.walkLine(ax, ay, pts[j].x, pts[j].y, 7)) j--;
+    while (j > i && !clear(ax, ay, pts[j].x, pts[j].y)) j--;
     res.push(pts[j]);
     ax = pts[j].x; ay = pts[j].y;
     i = j + 1;

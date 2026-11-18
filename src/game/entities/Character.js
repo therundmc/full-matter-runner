@@ -1,6 +1,6 @@
 import { TILE, CAT, MASK, ENEMY, BARREL, PLAYER, BODY_SCALE } from '../Config.js';
-import { WEAPONS } from '../data/weapons.js';
-import { sprite, spriteOpt, chunk, sw } from '../../engine/Assets.js';
+import { WEAPONS, WEAR, plantedOf } from '../data/weapons.js';
+import { sprite, spriteOpt, chunk, sw, drawUpright, silhouette } from '../../engine/Assets.js';
 import { rand, chance, spread, angDiff, local, lerp, clamp } from '../../engine/math.js';
 import { gore } from '../fx/Gore.js';
 import Projectile from './Projectile.js';
@@ -14,15 +14,16 @@ import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
-import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE } from '../data/feel.js';
+import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
 import { updateFacing } from './Facing.js';
 import { doorAhead, doorHandSide, talkGesture } from './Gesture.js';
+import { PLANTED } from './Ragdoll.js';
 
 const { Bodies, Body } = Matter;
 
@@ -36,9 +37,15 @@ export const KINDS = {
   brute: { arm: '#d89a70', skin: '#d89a70', pants: '#4c4a2c', shoe: '#5a3a22' },
   // the boss (a guard's own look, level `looks`): built like a heavy, in his cream suit, the black shirt's cuffs
   boss: { arm: '#e2d6b6', skin: '#d49a74', cuff: '#2a2228', pants: '#d6c8a6', shoe: '#4a2a1a' },
+  // CUEBALL (data/bosses.js): all in black, bone white hands; `wide`: his shoulder joints further out (pose px), under
+  // the widest shoulders in the game
+  cueball: { arm: '#2a2832', skin: '#eee4cc', pants: '#1e1c26', shoe: '#16141c', wide: 8.6 },
+  // LUCKY, the man with the match (level `looks`; tools/comic/STYLE.md): all in black, and his pink scarf, whose end
+  // flies behind him (`tail`: its sprite, swung from his nape by Enemy.drawTail)
+  lucky: { arm: '#24212c', skin: '#e0a878', cuff: '#1a1820', pants: '#1c1a22', shoe: '#141218', tail: 'characters/lucky_scarf' },
 };
 // the heavy build: a deeper voice, more weight, a slower step
-export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss';
+export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss' || kind === 'cueball';
 
 const VAULT_DUR = 0.5;  // s, windows and furniture alike
 const CLIMB_DUR = 0.72; // s, over a chain-link gate
@@ -58,6 +65,7 @@ const SETTLE = { gain: 3.2, max: 1.8, carry: 0.85, freq: 12, damp: 0.42 };
 const LIE_AT = [0.6, 0.32, -0.44], LIE_TURNS = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.1, -2.1, 2.6, -2.6, Math.PI], LIE_RATE = 9;
 const AHEAD = { x: 0, y: 0, a: 0, d: 0, door: null }; // the door leaf a hand goes to (Gesture.doorAhead)
 const MUZZLE_AT = { x: 0, y: 0, a: 0 }, PORT_AT = { x: 0, y: 0, a: 0 }, MAG_AT = { x: 0, y: 0, a: 0 };
+const WORN = 1e-6; // what is left of a weapon's wear (in blows) once it is used up
 
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
@@ -149,7 +157,8 @@ export default class Character {
   get hasGun() { return this.def.kind === 'gun'; }
 
   // weapon instance: { type, mag (rounds in the gun), reserve (enemies: spare mags, or loose rounds for shotguns),
-  // wear (melee: kills left in it; only the player's ever wears out), bare (its magazine out: a reload cut short) }
+  // wear (melee: blows left in it, data/weapons.js WEAR; only the player's ever wears out), bare (its magazine out: a
+  // reload cut short) }
   setWeapon(type, mag, reserve = 0) {
     this.weapon = type ? { type, mag: mag ?? WEAPONS[type].mag ?? 0, reserve, wear: WEAPONS[type].wear, bare: false } : null;
     this.reloading = 0;
@@ -542,12 +551,16 @@ export default class Character {
     if (this.isPlayer) { const f = feelOf(d).fire; jolt(w, a + Math.PI, 0, f.shake, f.push); }
   }
 
+  // A blow lands (or not) on whatever is in reach. The player's weapon wears out (data/weapons.js WEAR): a man struck
+  // takes a blow out of it, a thing struck (furniture, a door, a pane, a wall) a share of one, the air nothing; the
+  // blow that uses it up breaks it there (breakWeapon), over the man as the heavy stroke.
   meleeStrike(d) {
     if (!this.alive || this.knocked) return;
     const w = this.world, a = this.angle, x = this.x, y = this.y, weapon = this.weapon;
     // a club swung all the way round reaches everyone about him
     const spin = this.strike === 3 && d.swing === 'club', arc = spin ? Math.PI * 2 : d.arc;
-    let hit = false;
+    const wears = this.isPlayer && !!d.wear && !!weapon;
+    let hit = false, man = null, thing = null;
     for (const c of w.characters()) {
       if (c === this || !c.alive || c.team === this.team) continue;
       const dx = c.x - x, dy = c.y - y, dd = Math.hypot(dx, dy);
@@ -558,29 +571,30 @@ export default class Character {
       const heavy = d.hold === 'melee' && (this.strike === 2 || (this.strike === 3 && d.swing === 'blade'));
       // a spin takes him the way it found him, wherever he stood round us
       const ba = spin ? Math.atan2(dy, dx) : a;
+      const at = { x: (x + c.x * 2) / 3, y: (y + c.y * 2) / 3 };
       let hard = heavy;
       if (d.lethal || c.isPlayer) {
-        // how it landed: the heavy stroke, a spin or a sweep, and from which side of him (fx/Blows.js, Scoring)
-        const how = { from: blowFrom(c.angle, ba), heavy };
+        // how it landed: the heavy stroke, a spin or a sweep, and from which side of him (fx/Blows.js, Scoring); by
+        // his own hand, up close (Player.snatches)
+        const how = { from: blowFrom(c.angle, ba), heavy, close: true };
         if (spin) how.spin = true;
-        // the player's weapon wears out: the kill that uses it up breaks it over him (once, even through two men)
-        const wears = this.isPlayer && d.wear && weapon && this.weapon === weapon;
-        const last = wears && weapon.wear <= 1;
+        // the blow that uses the weapon up breaks it over him (once, even through two men)
+        const last = wears && !man && weapon.wear <= WEAR.man + WORN;
         if (last) { how.broke = true; how.heavy = hard = true; }
         if (d.lethal) blowFx(w, d, c, ba, how);
         // a club brought straight down crushes, and drops him where he stood
         let by = heavy && d.swing === 'club' && !d.thrust ? { ...d, wound: 'crush', gore: (d.gore || 0.3) * 2.5 } : d;
         if (last) {
-          // what stays in him: the whole weapon, or the half it snapped into (a bat just snaps)
-          const stuck = d.breaks === 'lodge' ? d.sprite : d.snaps ? WEAPONS[d.snaps].sprite : undefined;
-          const blade = d.swing === 'blade';
+          // what stays in him: its blade, the half a cue snapped into (a bat just snaps, an iron bends)
+          const stuck = plantedOf(d), blade = d.swing === 'blade';
           by = { ...d, wound: blade ? 'slash' : 'crush', gore: blade ? 0 : (d.gore || 0.3) * 2.5, stuck };
+          at.planted = !!stuck;
         }
         c.kill(ba, d.swing === 'blade' ? 'slash' : 'melee', this, by, how);
-        if (wears && --weapon.wear <= 0) this.breakWeapon(a, !!by.stuck);
       } else c.knock(a, 'punch');
+      man ??= at;
       // what the eye and the screen take of it (fx/Impact.js), at the point of contact
-      landBlow(w, c, (x + c.x * 2) / 3, (y + c.y * 2) / 3, ba, d, { lethal: !c.alive, byPlayer: this.isPlayer, heavy: hard });
+      landBlow(w, c, at.x, at.y, ba, d, { lethal: !c.alive, byPlayer: this.isPlayer, heavy: hard });
     }
     for (const p of w.props) {
       if (p.dead || p.def.high) continue; // a light fitting is out of reach (def `high`)
@@ -599,10 +613,14 @@ export default class Character {
       // a blade cuts across the swing, bare hands only scuff, a bat dents
       const kind = d.bleed ? 'cut' : d.hold === 'none' ? 'punch' : 'blunt';
       p.hit(d.lethal ? 2 : 1, hx, hy, a, 2.5, kind, { swing: a - (Math.PI / 2) * this.punchSide, heft: d.heft });
+      thing ??= { x: hx, y: hy, prop: p };
       hit = true;
     }
     for (const win of w.windows) {
-      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && win.blow(x, y, a, this, d.heft === 2 ? 2 : 0)) hit = true;
+      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && win.blow(x, y, a, this, d.heft === 2 ? 2 : 0)) {
+        thing ??= { x: win.x, y: win.y };
+        hit = true;
+      }
     }
     for (const door of [...w.doors]) {
       const t = door.tip();
@@ -611,6 +629,7 @@ export default class Character {
         // bare hands = a kick, otherwise a blow with the weapon
         door.hit(mx, my, a, d.heft === 2 ? 2 : 1, d.hold === 'none' ? 'kick' : 'melee');
         if (this.isPlayer) door.pushedByPlayer = 0.8;
+        thing ??= { x: mx, y: my };
         hit = true;
       }
     }
@@ -622,6 +641,7 @@ export default class Character {
         w.damageWall(f.cx, f.cy, 1, f.x - f.nx * 4, f.y - f.ny * 4, a);
         w.decals.wallHit(f.x, f.y, f.nx, f.ny, 'blow', d.swing === 'blade' ? 0.6 : d.heft === 2 ? 1.2 : 0.9);
         w.shake(0.08);
+        thing ??= { x: f.x, y: f.y, nx: f.nx, ny: f.ny };
         hit = true;
       }
     }
@@ -636,29 +656,89 @@ export default class Character {
       }
     }
     if (hit) w.sound(d.sound, x, y);
+    if (wears && this.weapon === weapon && (man || thing)) {
+      weapon.wear -= man ? WEAR.man : WEAR.thing;
+      if (weapon.wear <= WORN) this.breakWeapon(a, !!man?.planted, man ?? thing);
+    }
   }
 
-  // the weapon gives out over someone (def.breaks): 'snap' = it breaks in two, the far end flies off unless it stayed
-  // planted in him, and what is left in the hand is def.snaps (fresh), or nothing; 'lodge' = it stays in the body
-  breakWeapon(a, planted = false) {
-    const d = this.def, w = this.world, tip = local(this.x, this.y, a, d.range * 0.8, 0);
+  // The weapon gives out (def.breaks, data/weapons.js) on the blow that lands at `on` ({ x, y }: the point of
+  // contact; a wall's face: nx, ny; prop: the furniture struck); planted: what stays in a man already went in with
+  // the kill (by.stuck). Splinters burst there, the far end of a snapped one flies on along the swing, a blade stays
+  // in the wall or the furniture it struck and its handle falls from the hand, an iron bends; what is left in the hand
+  // is def.snaps or def.bends, or a stub he looks at a beat and lets fall (this.broke, Player.updateBroke). Heard and
+  // felt (MOMENTS.break); the HUD flashes BROKEN (brokeAt).
+  breakWeapon(a, planted = false, on = null) {
+    const d = this.def, w = this.world, B = BREAK, at = on ?? local(this.x, this.y, a, d.range * 0.8, 0);
+    const [far, near] = d.parts ?? [];
+    let stub = null;
     if (d.breaks === 'snap') {
-      if (!planted) {
-        const fa = a + rand(0.4, 0.9) * this.punchSide;
-        w.addDebris(new Debris(w, sprite(d.snaps ? WEAPONS[d.snaps].sprite : d.sprite), tip.x, tip.y, a + rand(-1, 1),
-          Math.cos(fa) * 170, Math.sin(fa) * 170, rand(-0.8, 0.8), { material: d.material, kg: 0.3, mu: 0.6, fly: 0.35, bounce: 0.3 }));
-      }
-      w.particles.chips(tip.x, tip.y, a, 1.2, 6, '#d8c090', 160);
-      w.sound('woodBreak', tip.x, tip.y, 0.6, { pitch: 1.5 });
-      this.setWeapon(d.snaps, 0);
+      if (!planted) this.flyOff(far ?? (d.snaps ? WEAPONS[d.snaps].sprite : d.sprite), at, a, d.material);
+      w.particles.chips(at.x, at.y, a - this.punchSide * 0.8, 1.6, B.chips[0], B.wood, B.chips[1]);
+      w.sound('batSnap', at.x, at.y, 1, { material: d.material });
+      if (d.snaps) this.setWeapon(d.snaps, 0);
+      else { stub = near; this.weapon = null; }
+    } else if (d.breaks === 'lodge') {
+      const blade = far ?? d.sprite;
+      if (!planted && !this.plantIn(blade, at)) this.letGo(blade, d.material, 0.2);
+      if (near) this.letGo(near, d.material, 0.15);
+      w.particles.sparks(at.x, at.y, a + Math.PI, 0.9, B.sparks[0], B.sparks[1]);
+      w.sound('knifeSnap', at.x, at.y, 1);
+      this.weapon = null;
+    } else if (d.breaks === 'bend') {
+      w.particles.sparks(at.x, at.y, a + Math.PI, 1.2, B.sparks[0], B.sparks[1]);
+      w.sound('metal', at.x, at.y, 1, { pitch: 0.7 });
+      this.setWeapon(d.bends, 0);
     } else {
-      const metal = d.material === 'metal';
-      w.sound(metal ? 'metal' : 'wood', tip.x, tip.y, 1, metal ? { pitch: 0.7 } : undefined);
+      stub = d.sprite; // bent past use: thrown away once looked at
       this.weapon = null;
     }
-    const B = MOMENTS.break;
-    w.slowmo(...B.slowmo);
-    jolt(w, a, B.stop, B.shake, 0);
+    this.reloading = 0;
+    this.broke = { t: 0, d, stub: stub ? spriteOpt(stub) || sprite(d.sprite) : null, toss: d.breaks === 'toss' };
+    this.brokeAt = { name: d.name, t: w.time };
+    const M = MOMENTS.break;
+    w.slowmo(...M.slowmo);
+    jolt(w, a, M.stop, M.shake, 0);
+  }
+
+  // the far end of a weapon snapped at `at`: sent on along the swing (it runs toward the side opposite the one the
+  // stroke came from), turning over, up and down onto the floor where it clatters (BREAK)
+  flyOff(img, at, a, material) {
+    const w = this.world, B = BREAK, side = this.punchSide || 1;
+    const fa = a - side * rand(...B.turn), v = rand(...B.fly);
+    w.addDebris(new Debris(w, spriteOpt(img) || sprite(this.def.sprite), at.x, at.y, a - side * 0.4, Math.cos(fa) * v, Math.sin(fa) * v,
+      -side * rand(0.25, 0.45), { material, kg: 0.5, bounce: 0.3, z: B.z, vz: B.vz, scale: BODY_SCALE, land: material }));
+  }
+
+  // a piece out of his hand (a knife's handle, a stub: its sprite's name or the picture): it falls by him, or is
+  // thrown away to his side (toss)
+  letGo(img, material, kg, toss = false) {
+    const w = this.world, F = BREAK.fall, h = local(this.x, this.y, this.angle, 8 * BODY_SCALE, 4 * BODY_SCALE);
+    const ta = this.angle + Math.PI / 2 + rand(-0.4, 0.4), sp = toss ? F.toss : rand(10, 30), v = this.vel ?? { x: 0, y: 0 };
+    const pic = typeof img === 'string' ? spriteOpt(img) || sprite(this.def.sprite) : img;
+    w.addDebris(new Debris(w, pic, h.x, h.y, this.angle + rand(-0.5, 0.5), v.x * 60 + Math.cos(ta) * sp,
+      v.y * 60 + Math.sin(ta) * sp, rand(-0.3, 0.3), { material, kg, bounce: 0.3, z: F.z, vz: toss ? 60 : 0, scale: BODY_SCALE, land: material }));
+  }
+
+  // A blade broken off in a wall or a piece of furniture (on: the wall's face, or the prop): it stays there, its
+  // root standing out of the surface, painted into the floor (as Ragdoll draws one planted). Whether there was one.
+  plantIn(img, on) {
+    const pic = spriteOpt(img);
+    if (!pic || !(on.nx !== undefined || on.prop)) return false;
+    let { x, y } = on, nx = on.nx, ny = on.ny;
+    if (on.prop) {
+      // where the line of the blow enters the furniture's outline, square to that side
+      const r = segPoly(this.x, this.y, on.prop.x, on.prop.y, on.prop.body.vertices), n = r && Math.hypot(r.nx, r.ny);
+      if (!n) return false;
+      x = this.x + (on.prop.x - this.x) * r.t; y = this.y + (on.prop.y - this.y) * r.t; nx = r.nx / n; ny = r.ny / n;
+    }
+    const ia = Math.atan2(-ny, -nx) + rand(-0.3, 0.3), o = { scale: BODY_SCALE * PLANTED.size, part: PLANTED.part };
+    x -= nx * 2; y -= ny * 2; // its root against the face
+    this.world.decals.paint((g) => {
+      drawUpright(g, silhouette(pic), x + 1.5, y + 1.5, ia, PLANTED.len, { ...o, alpha: 0.3 });
+      drawUpright(g, pic, x, y, ia, PLANTED.len, o);
+    });
+    return true;
   }
 
   // hit by a projectile; how: what the round did on its way (Projectile: pierced, through, bounced, dist, last)
@@ -679,7 +759,12 @@ export default class Character {
   kill(angle, cause, killer, by, how) {
     if (!this.alive || this.invulnerable) return; // invulnerable: sandbox god mode
     this.alive = false;
-    this.dropWeapon(angle + rand(-1, 1), rand(1.5, 3.5));
+    // his weapon falls; the player's hand closes on it as he goes down when he can take it (Player.snatches)
+    const snatch = !!killer?.snatches?.(this, how);
+    if (snatch) how = { ...how, disarm: true };
+    const toward = snatch ? Math.atan2(killer.y - this.y, killer.x - this.x) : angle + rand(-1, 1);
+    const it = this.dropWeapon(toward, snatch ? 1 : rand(1.5, 3.5));
+    if (snatch) killer.snatchFrom(it ?? this.lastDrop);
     this.world.removeBody(this.body);
     const left = gore(this.world, this, angle, cause, by, how); // how: the blow decides how much he bleeds
     // most of them go down with a cry, when there is still a throat to cry with
@@ -872,8 +957,9 @@ export default class Character {
     Body.setVelocity(this.body, this.vel);
   }
 
+  // what was in his hand falls (the item, or null; kept as lastDrop: a man floored, then killed, had it a moment ago)
   dropWeapon(angle, speed = 2) {
-    if (!this.weapon) return;
+    if (!this.weapon) return null;
     const w = this.world;
     const it = new WeaponItem(w, this.weapon.type, this.weapon.mag,
       this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-0.3, 0.3));
@@ -881,6 +967,8 @@ export default class Character {
     it.setBare(this.weapon.bare);
     w.addItem(it);
     this.weapon = null;
+    this.lastDrop = it;
+    return it;
   }
 
   // ---------------- rendering ----------------
@@ -899,6 +987,7 @@ export default class Character {
     if (this.held?.takedown?.target === this) heldPose(this, P);
     if (this.doorHand) doorHandPose(this, P);
     if (this.lockHand) lockHandPose(this, P);
+    if (this.broke && !this.execution && !this.takedown) brokePose(this, P);
     // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
     if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
     this.noteMuzzle(P);

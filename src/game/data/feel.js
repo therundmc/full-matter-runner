@@ -144,6 +144,7 @@ export const MOMENTS = {
   // every slide of the player's opens a moment of bullet time: [time scale, real seconds]. He aims at full speed in it.
   slideTime: { slowmo: [0.42, 0.55] },
   break: { slowmo: [0.35, 0.3], stop: 0.1, shake: 0.35 },                   // the player's weapon gives out over a man
+  snatch: { slowmo: [0.4, 0.3] },                                           // a dead man's weapon taken into his hand
   throw: { slowmo: [0.45, 0.25], shake: 0.15 },                             // the angry throw of an empty gun
   // the last guard in sight goes down after a real fight (others still about the level): a breath of slow motion.
   // radius: px about the player in which no other guard may stand in sight, chain: kills of the chain at least
@@ -156,6 +157,32 @@ export const MOMENTS = {
     massacre: { slowmo: [0.3, 0.45], stop: 0.1 },
   },
 };
+
+// The player's weapon giving out (Character.breakWeapon, data/weapons.js `breaks`), what flies of it and the beat
+// after (Player.updateBroke, CharacterAnim brokePose):
+//   beat    s of the beat: the hand shaken, the stub (a snapped bat's handle) brought up and looked at
+//   drop    share of the beat at which the stub is let fall (thrown away: `toss`)
+//   hud     s the HUD's weapon name flashes BROKEN
+//   fly     [px/s] the far end sent on along the swing, turn: rad off the swing toward the blow, z / vz: up it goes
+//   chips   splinters at the break: [count, px/s], wood's colour; sparks of a bent iron [count, px/s]
+//   fall    the handle or the stub from the hand: z (px up), toss: px/s it is thrown away at
+export const BREAK = {
+  beat: 0.55, drop: 0.72, hud: 1.1,
+  fly: [150, 220], turn: [0.25, 0.7], z: 9, vz: 110,
+  chips: [12, 170], wood: '#d8c090', sparks: [6, 220],
+  fall: { z: 9, toss: 120 },
+};
+
+// The guard's weapon taken as he dies (Player.snatches): the player's hands are free, or his weapon broke on that
+// kill, and the man was killed by them up close (a blow, a takedown, a finisher; how.close). on: the switch; reach:
+// px from the man (a weapon he dropped as he was floored: px from where it lies); delay: s before the hand closes
+// on it (it has fallen); far: px past which it is let go
+// A scarf's end flying behind a man (entities/Character.js KINDS `tail`, Enemy.drawTail: LUCKY): nape: px behind
+// the middle of his head it hangs from; side: rad off straight behind it lies when he stands; moving: px/step from
+// which it trails where he comes from; follow: 1/s it catches up with him; beat, wave: its flutter (rad/s, rad)
+export const TAIL = { nape: 4.5, side: 0.5, moving: 0.4, follow: 7, beat: 6, wave: 0.12 };
+
+export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 
 // How kills and chains are shown (ui/KillFeed.js keeps the state on the real clock, render/WorldRenderer.js draws the
 // stamps, ui/HUD.js the rest). Sizes in world px for the stamps, in screen px at 720 p for the HUD (x H / 720).
@@ -191,6 +218,9 @@ export const KILLFEED = {
   banner: {
     size: { double: 40, triple: 52, massacre: 64 }, color: { double: 'yellow', triple: 'orange', massacre: 'neon' },
     y: 0.24, slam: 0.08, from: 2, jolt: 7, joltT: 0.15, ghost: 0.2, life: 0.7, fade: 0.2,
+    // a boss's name card, slammed the same way when he first sees the player (the 'boss' event): bigger, held longer,
+    // low on the screen (he is in the middle of it)
+    card: { size: 84, color: '#e6ff1a', life: 1.7, y: 0.8 },
   },
 };
 

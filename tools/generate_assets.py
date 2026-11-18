@@ -504,6 +504,8 @@ def head_top_px(ch, u, v, L, r):
         if L > 0.95:
             return lt(ch['skin'][2], 0.6)
         return ch['skin'][i]
+    if k == 'cueball':
+        return cueball_top_px(ch, u, v, L, r)
     if k == 'player':
         d = math.hypot(u, v)
         if u < -0.7 and d > r * 0.72:
@@ -560,6 +562,8 @@ def shoulder_px(ch, u, v, L, hu, hv, hr):
         return ch['shirt'][1]
     if k == 'boss' and hr + 0.1 < hd < hr + 1.1 and hu > -1.2:
         return ch['top'][min(3, i + 1)]          # the suit's collar, up round his thick neck
+    if k == 'cueball':
+        return cueball_shoulder_px(ch, u, v, i, hd, hr)
     return ch['top'][i]
 
 
@@ -636,10 +640,11 @@ def torso_body(ch, rng):
     """The shoulders from above at FINE density, the arms left off (the game paints them, render/LimbArt.js): a
     chest-and-back, two round shoulder caps, the upper back bulging behind, each lit as the volume it is, then what
     cloth has: creases from the armpits down the back, the sleeve heads, a seam down the back, grime."""
-    S, W = FINE, 20 * FINE
+    S, W = FINE, ch.get('canvas', 20) * FINE
     rx, ry = ch['sh'][0] * S, ch['sh'][1] * S
-    cx, cy = BODY_C[0] * S, BODY_C[1] * S
-    hr = 3.8 * S
+    pad = (W - 20 * FINE) / 2                        # a wider man's canvas grows round the same middle
+    cx, cy = BODY_C[0] * S + pad, BODY_C[1] * S + pad
+    hr = ch.get('head', 3.8) * S
     k, st = ch['kind'], ch.get('style')
     cap = ry * 0.38                                  # a shoulder cap's half width
 
@@ -715,6 +720,8 @@ def torso_body(ch, rng):
                 x, y = int(12.4 * S + i), int(10.0 * S + sgn * (5.4 + i * 0.8))
                 if body.on(x, y):
                     body.set(x, y, dk(body.get(x, y), 0.28))   # the lapel's edge
+    if k == 'cueball':
+        cueball_jacket(body, ch, cx, cy, rx, ry)
     mottle(body, rng, amt=4, cell=4)
     smudge(body, rng, 3, (6, 6, W - 7, W - 7), r=(1.5, 3.0), t=0.14)
     return body
@@ -766,7 +773,7 @@ def torso_head(ch, rng):
     front, the ears."""
     S, W = FINE, 20 * FINE
     k, st = ch['kind'], ch.get('style')
-    hcx, hcy, hr = 11.0 * S, 10.0 * S, (4.1 if k == 'boss' else 3.8) * S
+    hcx, hcy, hr = 11.0 * S, 10.0 * S, ch.get('head', 4.1 if k == 'boss' else 3.8) * S
     head = Cv(W, W)
     skull = lambda x, y: lump(x - hcx, y - hcy, hr, hr * 0.94, hr * 0.95)
     face = lambda x, y, edge: x + 0.5 - hcx > hr - edge * S and abs(y + 0.5 - hcy) < hr * 0.8
@@ -805,6 +812,8 @@ def torso_head(ch, rng):
     elif k == 'heavy':
         sk = ch['skin']
         relief_paint(head, skull, lambda x, y, L: lt(sk[2], 0.55) if L > 0.97 else sk[tidx(L)])
+    elif k == 'cueball':
+        cueball_dome(head, ch, skull, hcx, hcy, hr)
     elif k == 'brute':
         band = ch['bandana']
 
@@ -897,7 +906,7 @@ def torso_head(ch, rng):
                 head.set(x, y + d, c)
     for sgn in (-1, 1):                              # ears
         ey = hcy + sgn * (hr * 0.94 + 0.2)
-        if k == 'player' or st in ('hood', 'long', 'dancer'):
+        if k in ('player', 'cueball') or st in ('hood', 'long', 'dancer'):
             continue
         for (dx, dy) in ((1, 0), (2, 0), (2, -sgn), (3, 0)):
             if head.get(int(hcx + dx), int(ey + dy))[3] < 100 or head.get(int(hcx + dx), int(ey + dy)) == OUTLINE:
@@ -923,13 +932,15 @@ def draw_head(ch):
     x0, y0 = int(11.0 * FINE) - HEAD_W // 2, int(10.0 * FINE) - HEAD_H // 2
     cv.img = full.img.crop((x0, y0, x0 + HEAD_W, y0 + HEAD_H))
     cv.p = cv.img.load()
+    if ch.get('scarf'):
+        scarf_ring(cv, ch['scarf'])
     return cv
 
 
 def draw_torso(ch):
     """The shoulders of a standing character from straight above, facing +x, the head left off (draw_head): 40 x 40
     pixels for 20 x 20 world px (FINE density)."""
-    W = 20 * FINE
+    W = ch.get('canvas', 20) * FINE
     rng = random.Random(sum(ch['top'][2][:3]) * 31 + len(ch['kind']) * 7 + int(ch['sh'][1] * 10))
     cv = Cv(W, W)
     if ch.get('strap'):
@@ -1018,6 +1029,8 @@ def face_px(ch, u, v, L, r):
         return ch['bandana'][i]
     if k == 'heavy' and L > 0.95:
         return lt(ch['skin'][2], 0.6)
+    if k == 'cueball' and ch.get('worn') and -0.2 < u < 1.5:
+        return ch['shades'][3 if v < -0.6 else 2]                             # the shades, still on him
     if k == 'boss':
         if u > 1.0:
             return ch['hair'][i if int(v * 1.5 + 20) % 2 else max(0, i - 1)]   # grey, combed back
@@ -1311,6 +1324,190 @@ CHARS['boss'] = dict(kind='boss', top=ramp('#e2d6b6', 0.46, 0.22, 0.3), pants=ra
                      skin=ramp('#d49a74', 0.46, 0.22, 0.3), sh=(5.0, 9.6))
 
 
+# --------------------------------------------------------------------------
+# CUEBALL, level 1's boss: the comic's heavy (tools/comic/STYLE.md, the cast), from straight above. A wall on short
+# legs: the widest shoulders in the game, in black, on a canvas of their own (24 x 24 world px); no neck; a huge bald
+# bone dome; wrap-round fluorescent yellow shades wider than his head, the brightest thing on him: a yellow band
+# across the front of the dome, which shows where he faces. `_head_hurt`: after the first hit (entities/Boss.js) the
+# shades knocked askew, a lens cracked, blood running over the dome. items/shades: what skitters off him when he dies.
+# --------------------------------------------------------------------------
+FLUO = [hx('#6e8208'), hx('#b0cc10'), hx('#e6ff1a'), hx('#fbffb4')]
+CHARS['cueball'] = dict(kind='cueball', top=ramp('#2a2832', 0.5, 0.25, 0.42), pants=ramp('#1e1c26', 0.45, 0.22, 0.3),
+                        shoe=ramp('#16141c', 0.4, 0.2, 0.45), skin=ramp('#eee4cc', 0.42, 0.2, 0.3), shades=FLUO,
+                        sleeve=ramp('#2a2832', 0.5, 0.25, 0.42), sh=(5.5, 11.4), canvas=24, head=4.7)
+
+
+def cueball_top_px(ch, u, v, L, r):
+    """His head at the world's pixel size (a gib, a body lying face down): the bare dome, the rolls of his nape."""
+    sk = ch['skin']
+    if L > 0.93:
+        return lt(sk[3], 0.6)
+    if u < -r * 0.45 and abs(math.hypot(u, v) - r * 0.72) < 0.5:
+        return sk[1]
+    return sk[tidx(L)]
+
+
+def cueball_shoulder_px(ch, u, v, i, hd, hr):
+    """His jacket from above: its collar rolled up round the dome (no neck shows), the padded shoulders' edge."""
+    top = ch['top']
+    if hr + 0.1 < hd < hr + 1.2:
+        return top[min(3, i + 1)]
+    if abs(v) > ch['sh'][1] - 1.6 and abs(u) < 2.2:
+        return top[min(3, i + 1)]                # the pad's edge catches the light
+    return top[i]
+
+
+def cueball_jacket(body, ch, cx, cy, rx, ry):
+    """What his black back shows: the yoke's seam from shoulder to shoulder, the vent at the bottom of the back."""
+    top = ch['top']
+    for j in range(int(cy - ry + 3 * FINE), int(cy + ry - 3 * FINE)):
+        x = int(cx - rx * 0.42 - 1.6 * math.cos((j - cy) / ry * 1.5))
+        if body.on(x, j) and body.get(x, j) != OUTLINE and abs(j - cy) > 1:
+            body.set(x, j, top[0])
+    for i in range(5):
+        x = int(cx - rx + 1.5 + i)
+        if body.on(x, int(cy)):
+            body.set(x, int(cy), top[0])
+
+
+def cueball_shades(u, v, hr, tilt=0.0, slip=0.0):
+    """Where the shades are over a head of radius hr (pixels from its centre, +u the face): None off them, else
+    (part, depth 0..1 from their front edge, across): 'lens' | 'arm' | 'bridge'. A wrap-round band, deepest at the
+    front, wider than the head, its arms back to the ears; tilt (rad) and slip (px across): knocked askew."""
+    v -= slip
+    c, s = math.cos(-tilt), math.sin(-tilt)
+    u, v = u * c - v * s, u * s + v * c
+    R = hr + 1.0
+    rho = math.hypot(u, v * 0.9)
+    deep = 3.0 + 4.2 * max(0.0, u / R)
+    if u < -1.5 or rho > R + 0.9 or rho < R - deep:
+        return None
+    k = (R + 0.9 - rho) / (deep + 0.9)
+    if u < 3.4:
+        return ('arm', k, v) if rho > R - 2.2 else None
+    if abs(v) < 0.9 and rho > R - 1.6:
+        return ('bridge', k, v)
+    return ('lens', k, v)
+
+
+def cueball_dome(head, ch, skull, hcx, hcy, hr):
+    """The bald dome and the shades on it. ch['hurt']: the head after the first hit."""
+    sk, Y, hurt = ch['skin'], ch['shades'], ch.get('hurt')
+    tilt, slip = (0.42, 1.6) if hurt else (0.0, 0.0)
+
+    def dome_px(x, y, L):
+        u, v = x + 0.5 - hcx, y + 0.5 - hcy
+        d = math.hypot(u, v)
+        if L > 0.965:
+            return lt(sk[3], 0.7)                        # the shine on the bone
+        if u < -hr * 0.42 and (abs(d - hr * 0.74) < 0.6 or (abs(d - hr * 0.5) < 0.55 and abs(v) < hr * 0.42)):
+            return sk[1]                                 # the rolls of his nape
+        return sk[tidx(L)]
+    relief_paint(head, skull, dome_px)
+    for y in range(head.h):
+        for x in range(head.w):
+            u, v = x + 0.5 - hcx, y + 0.5 - hcy
+            at = cueball_shades(u, v, hr, tilt, slip)
+            if at is None:
+                # their shadow on the dome, just behind them
+                if head.on(x, y) and head.get(x, y) != OUTLINE and cueball_shades(u + 1.2, v, hr, tilt, slip):
+                    head.set(x, y, dk(head.get(x, y), 0.2))
+                continue
+            part, k, across = at
+            if part == 'arm':
+                c = Y[1] if k > 0.5 else Y[2]
+            elif part == 'bridge':
+                c = Y[0]
+            else:
+                c = Y[3] if (k < 0.3 and across < -1.5) else Y[1] if k > 0.78 else Y[2]   # a glint along the lit lens
+            head.set(x, y, c)
+    nose = (hcx + hr + 1.9 + (0.6 if hurt else 0), hcy + (0.6 if hurt else 0))
+    for dx in (0, 1):
+        head.set(int(nose[0] + dx), int(nose[1]), sk[2] if dx == 0 else sk[1])   # the tip of his nose, under them
+    if not hurt:
+        return
+    # the lens on his right cracked: a star of cracks from where it was struck, a chip gone out of it
+    c0 = (hcx + hr * 0.62, hcy + hr * 0.78)
+    crack = hx('#3a4406')
+    for (dx, dy, n) in ((1.0, -0.2, 4), (-0.5, 1.0, 3), (0.4, -1.0, 4), (-1.0, -0.3, 3)):
+        for t in range(n):
+            x, y = int(c0[0] + dx * t), int(c0[1] + dy * t)
+            if head.on(x, y) and head.get(x, y) in Y:
+                head.set(x, y, crack)
+    for (dx, dy) in ((0, 0), (1, 1)):
+        head.set(int(c0[0] + dx), int(c0[1] + dy), hx('#241a22'))
+    # blood: a gash on the dome, running down over the brow to the shades
+    for (dx, dy, c) in ((-2, -3, 1), (-1, -3, 2), (0, -3, 2), (1, -2, 2), (2, -2, 1), (1, -3, 0), (3, -2, 2), (4, -1, 2),
+                        (5, -1, 1), (6, -1, 2), (4, -2, 1), (-3, -2, 1), (-1, -2, 2), (0, -1, 1), (2, -4, 2), (-4, -1, 2)):
+        x, y = int(hcx + dx), int(hcy + dy)
+        if head.on(x, y) and head.get(x, y) != OUTLINE:
+            head.set(x, y, BLOOD[c])
+
+
+def shades_item():
+    """His shades on the floor, from above (the world's pixel size): the two lenses in a band, the arms folded back."""
+    return ascii_cv(['.............',
+                     '.dYYYYkyyyyd.',
+                     '.dyyyykyyKyd.',
+                     '.d.........d.',
+                     '.d.........d.',
+                     '.............'], {'Y': FLUO[3], 'y': FLUO[2], 'd': FLUO[1], 'k': FLUO[0], 'K': hx('#3a4406')})
+
+
+# ---- LUCKY, the man with the match (tools/comic/STYLE.md, the cast; level `looks`): a beanpole all in black, his
+# hair slicked flat, and his sign from above: a pink scarf, a ring of it round his neck (painted on his head's sprite,
+# round the head) and its end flying out behind him (a sprite of its own, lucky_scarf, that the game swings from his
+# nape: entities/Enemy.js). Painted like a thug under it; the scarf is the only colour on him.
+CHARS['lucky'] = dict(kind='thug', top=ramp('#24212c', 0.42, 0.2, 0.45), pants=ramp('#1c1a22'),
+                      shoe=ramp('#141218', 0.3, 0.15, 0.25), hair=ramp('#17141c', 0.55, 0.3, 0.6),
+                      shirt=ramp('#1a1820'), skin=SKIN, sh=(3.6, 7.4), scarf=ramp('#ff3a7a', 0.5, 0.25, 0.3))
+SCARF_W, SCARF_H = 28, 12   # the scarf's flying end (FINE density: 14 x 6 world px), its knot end at x = 0
+
+
+def scarf_ring(cv, sc):
+    """The scarf round his neck seen from above, on the head's sprite (draw_head): a ring 2 world px wide all round
+    the head, lit from the top left, a fold across it where it is knotted behind."""
+    cx, cy = HEAD_W / 2, HEAD_H / 2
+    for y in range(HEAD_H):
+        for x in range(HEAD_W):
+            if cv.p[x, y][3] > 100:
+                continue
+            u, v = x + 0.5 - cx, y + 0.5 - cy
+            d = math.hypot(u, v)
+            if 6.0 <= d < 11.0:
+                lit = (-u - v) / (d * 1.414)                        # toward the top left
+                c = sc[3] if lit > 0.55 and d > 8.5 else sc[2] if lit > -0.35 else sc[1]
+                if u < -6 and abs(v - 1.5) < 0.8:
+                    c = sc[0]                                       # the knot's fold, at the nape
+                cv.p[x, y] = c
+            elif 11.0 <= d < 12.0:
+                cv.p[x, y] = OUTLINE
+
+
+def lucky_scarf(sc):
+    """The end of his scarf flying behind him: a band 5 world px wide and 14 long from its knot (x = 0, the middle of
+    the left edge) to a forked tip, a wave along it, its upper edge lit, a fold down its length."""
+    cv = Cv(SCARF_W, SCARF_H)
+    for x in range(SCARF_W - 1):
+        k = x / (SCARF_W - 1)
+        mid = SCARF_H / 2 - 0.5 + math.sin(k * 5.2) * 1.3 * k         # it waves more toward its free end
+        half = 2.4 + 2.2 * min(1, k * 2.2) - 0.8 * max(0, k - 0.7) / 0.3
+        for y in range(SCARF_H):
+            v = y + 0.5 - mid
+            if abs(v) > half:
+                continue
+            if k > 0.86 and abs(v) < (k - 0.86) * 14:                # the fork at its tip
+                continue
+            c = sc[3] if v < -half + 1.4 else sc[1] if v > half - 1.6 else sc[2]
+            if abs(v - 0.6) < 0.6 and 0.12 < k < 0.8:
+                c = sc[1]                                           # the fold
+            if x % 9 == 8 and abs(v) < half - 1:
+                c = sc[0]                                           # creases across it
+            cv.p[x, y] = c
+    cv.outline()
+    return cv
+
+
 def civ_head_px(ch, u, v, L, r):
     """Head from above, face toward +u: hair, a flat cap or a hood."""
     i = tidx(L)
@@ -1440,6 +1637,42 @@ def drawn(w, h, segs):
 def without(segs, runs):
     """segs less the runs that start at the x listed per row ({row: (x, ...)}): a gun with its magazine out"""
     return {y: [r for r in rs if r[0] not in runs.get(y, ())] for y, rs in segs.items()}
+
+
+def weapon_breaks(W, pal, bat, knife, iron):
+    """What the player's melee weapons break into (src/game/data/weapons.js `parts`, `bends`), cut from their own
+    drawings so that every piece keeps its place on the weapon's line: the bat snapped across the taper of its
+    handle (the handle with its splinters, the barrel with its own, raw pale wood at the break), the knife snapped
+    at the guard (the handle with a stub of its tang, the blade), the tire iron bent up past the middle of its bar."""
+    def put(rows, x, y, ch):
+        rows[y] = rows[y][:x] + ch + rows[y][x + 1:]
+    # the bat: where each row of the taper gives, the raw wood of the break, splinters left standing out of it
+    cut = {2: 22, 3: 21, 4: 23, 5: 22, 6: 24}
+    handle = [r[:cut[y]].ljust(25, '.') if y in cut else r[:25] for y, r in enumerate(bat)]
+    head = [('.' * cut[y] + r[cut[y]:])[20:] if y in cut else r[20:] for y, r in enumerate(bat)]
+    for y, c in cut.items():
+        put(handle, c - 1, y, 'm')
+        put(head, c - 20, y, 'm')
+    put(handle, 21, 3, 'm'); put(handle, 22, 3, 'l'); put(handle, 22, 5, 'l')   # long splinters off the handle
+    put(head, 22 - 20, 4, 'm'); put(head, 23 - 20, 6, 'l')                       # ... and off the barrel
+    W['bat_handle'] = ascii_cv(handle, pal)
+    W['bat_head'] = ascii_cv(head, pal)
+    # the knife: the grip and guard with the stub of the tang; the blade, its base chipped
+    hilt = [r[:14] + '..' for r in knife]
+    put(hilt, 14, 4, 'M'); put(hilt, 14, 5, 'D')
+    blade = ['.' + r[14:] for r in knife]
+    put(blade, 1, 3, '.'); put(blade, 1, 7, '.')
+    W['knife_handle'] = ascii_cv(hilt, pal)
+    W['knife_blade'] = ascii_cv(blade, pal)
+    # the tire iron bent up from the middle of its bar (each column past the bend raised a little more), a bright
+    # stress mark on the outside of the bend
+    rows = ['.' * len(iron[0]) for _ in range(len(iron) + 1)]
+    for y, r in enumerate(iron):
+        for x, ch in enumerate(r):
+            if ch != '.':
+                put(rows, x, y + 1 - (round((x - 15) * 0.32) if x > 15 else 0), ch)
+    put(rows, 15, 9, 'S'); put(rows, 16, 9, 'S')
+    W['tire_iron_bent'] = ascii_cv(rows, pal)
 
 
 def weapons():
@@ -1595,17 +1828,18 @@ def weapons():
         12: [(9, 'GGGGGG'), (16, 'gGGG'), (20, 'KKK'), (29, 'GGG')]}), gun)
     # a baseball bat in ash: the knob, the handle wound in black tape (its spiral catching the light, the end of it
     # ragged), the taper, the barrel's long grain and its burnt-in brand, two dents on top and an old stain under it
-    W['bat'] = ascii_cv(drawn(46, 9, {
+    BAT = drawn(46, 9, {
         1: [(28, 'UuuuuuuiuuuuuuU')],
         2: [(1, 'iu'), (18, 'UUUUUUUUUU'), (28, 'uuuuuuuuuuuiuuuu')],
         3: [(1, 'iU'), (3, 'gTnTgTnTgTnTgT'), (17, 'uuuuuuuuuuu'), (28, 'uuiIiuUUuuuuUUuuu')],
         4: [(1, 'iU'), (3, 'TgTnTgTnTgTnTg'), (17, 'UUUUUUUUUUU'), (28, 'UUIiIUUUUhRhUUUUU')],
         5: [(1, 'iU'), (3, 'nTgTnTgTnTgTn'), (16, 'iiiiiiiiiiii'), (28, 'iiUiiiiiihhhRiiii')],
         6: [(1, 'iI'), (18, 'IIIIIIIIII'), (28, 'iiiiiiiiihhRiiii')],
-        7: [(28, 'IIIIIIIIhhIIIII')]}), gun)
+        7: [(28, 'IIIIIIIIhhIIIII')]})
+    W['bat'] = ascii_cv(BAT, gun)
     # a big combat knife: the steel pommel, the ridged black rubber grip, a tall cross-guard, a wide clip-point blade
     # with the saw teeth along its spine, the lit flat, the fuller, the grind and the bright edge sweeping up to the tip
-    W['knife'] = ascii_cv(drawn(30, 10, {
+    KNIFE = drawn(30, 10, {
         1: [(12, 'MD')],
         2: [(12, 'LD'), (16, 'D'), (18, 'D'), (20, 'D'), (22, 'D')],
         3: [(1, 'SM'), (3, 'gngngngng'), (12, 'LD'), (14, 'M' * 10)],
@@ -1613,7 +1847,8 @@ def weapons():
         5: [(1, 'MD'), (3, 'GnGnGnGnG'), (12, 'MD'), (14, 'DSMMMMMMMSSSStt')],
         6: [(1, 'DK'), (3, 'nTnTnTnTn'), (12, 'MD'), (14, 'D' + 's' * 12 + 't')],
         7: [(12, 'DK'), (14, 'D' + 't' * 11)],
-        8: [(12, 'DK')]}), gun)
+        8: [(12, 'DK')]})
+    W['knife'] = ascii_cv(KNIFE, gun)
     # a pool cue: the rubber bumper, the dark butt with its pearl inlays, the linen wrap, the forearm's spliced points,
     # the pearl joint collar, the maple shaft tapering to the white ferrule and the chalked blue tip
     BUTT = {1: [(1, 'n'), (2, 'BBBfBBBBBfBBBBBBBBB'), (21, 'bjbjbjbjbjbjbj'), (35, 'BBBmmmm')],
@@ -1633,7 +1868,7 @@ def weapons():
         4: BUTT[4]}), gun)
     # a tire iron: black paint worn back to the steel, rust in the chips; the pry end flattened and turned up, the
     # other bent down into the hex socket
-    W['tire_iron'] = ascii_cv(drawn(34, 15, {
+    IRON = drawn(34, 15, {
         4: [(1, 'S')],
         5: [(1, 'SM')],
         6: [(2, 'MSMMMMLMMMMMMMSMMMMMMMMMSM')],
@@ -1643,7 +1878,9 @@ def weapons():
         10: [(28, 'MGD')],
         11: [(27, 'LMMMD')],
         12: [(27, 'MGGGD')],
-        13: [(27, 'KnnnK')]}), gun)
+        13: [(27, 'KnnnK')]})
+    W['tire_iron'] = ascii_cv(IRON, gun)
+    weapon_breaks(W, gun, BAT, KNIFE, IRON)
     # the magazines, at the guns' density and as wide as their wells (top row: the round on the lips, its bullet toward
     # the muzzle; bottom row: the base plate). They show sliding out of the well, falling, and lying on the floor.
     mag = dict(gun, B=BRASS[3], b=BRASS[1], c=hx('#e07a3a'))
@@ -4284,7 +4521,7 @@ def knocked_down(ch):
     limb(arm, 18, 15, 114)
     limb(arm, 31, 15, 18)
     body.alpha_composite(rag_torso_up(ch).img, (16, 10))
-    body.alpha_composite(rag_head_up(ch).img, (19, 1))
+    body.alpha_composite(rag_head_up(dict(ch, worn=True)).img, (19, 1))   # (what he wears on his face is still on)
     out = Cv(H, W)
     out.img = body.rotate(-90, resample=Image.NEAREST, expand=True)
     out.p = out.img.load()
@@ -6280,6 +6517,7 @@ FONT_STENCIL = {
     'C': [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
     'D': ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
     'E': ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    'F': ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
     'G': [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
     'I': ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
     'J': ["....#", "....#", "....#", "....#", "....#", "#...#", ".###."],
@@ -6313,8 +6551,8 @@ FONT_STENCIL = {
 }
 LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', pool='4 POOL', bars='5 BARS',
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
-                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='14 VEHICLES',
-                  takedowns='7 TAKEDOWNS')   # (the last one added: the others keep their seed)
+                  steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
+                  takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -7989,6 +8227,285 @@ def s_door_locked():
     return cv
 
 
+# ---- door skins: one kind of door per place (src/game/data/doors.js DOORS.kinds), painted at FINE density. A leaf
+# seen from above is a long thin plank: what tells the kinds apart is its colour, its edges and what stands proud of
+# its faces (rows 0-1 and 7-8: a push bar, plates, a chain), a glass strip where it has glass. Hinge at x = 0, the
+# latch end at the far end; Door.js keeps both ends and tiles the middle to the leaf's length (its kind's `caps`).
+
+def _plank(w, n=32, grain=()):
+    """The leaf's body in the ramp w, rows 2..6 (lit top edge, dark bottom), end stiles; grain: (x, y, len) streaks."""
+    cv = Cv(n, 9)
+    for x in range(1, n - 1):
+        cv.set(x, 2, w[3])
+        for y in (3, 4, 5):
+            cv.set(x, y, w[2])
+        cv.set(x, 6, w[1])
+    for x, y, k in grain:
+        for i in range(k):
+            cv.dot(x + i * 0.5, y + 0.25, mix(w[2], w[1], 0.5))
+    for x in (1, n - 2):
+        for y in range(2, 7):
+            cv.set(x, y, mix(cv.get(x, y), w[0], 0.45))
+    return cv
+
+
+def _knuckles(cv, steel=STEEL_L):
+    """Two hinge knuckles proud of the faces, the pin in the leaf's end."""
+    for x in (2, 3, 4):
+        cv.set(x, 1, steel[3] if x == 3 else steel[2])
+        cv.set(x, 7, steel[1])
+    cv.rect(2, 3, 3, 5, STEEL[0])
+    cv.set(2, 3, steel[3])
+    cv.set(3, 3, steel[2])
+
+
+def _lever(cv, x, col=BRASS):
+    """A lever handle on each face near the latch: the rose, the lever proud of it."""
+    for y, c0, c1 in ((0, col[3], col[2]), (8, col[2], col[1])):
+        cv.rect(x, y, x + 4, y, c1)
+        cv.rect(x + 3, y, x + 4, y, c0)
+        cv.set(x - 1, y, OUTLINE)
+        cv.set(x + 5, y, OUTLINE)
+    cv.set(x + 4, 1, col[2])
+    cv.set(x + 4, 7, col[1])
+
+
+def _latch_plate(cv, n=32):
+    cv.rect(n - 2, 3, n - 2, 5, STEEL_L[2])
+
+
+def _glass(cv, x0, x1, y0=3, y1=5, tint='#a8d0e4', wire=None):
+    """A glass strip through the leaf: pale, a glint; wire: the mesh of wired glass."""
+    g = ramp(tint, 0.35, 0.18, 0.3)
+    for x in range(x0, x1 + 1):
+        for y in range(y0, y1 + 1):
+            cv.set(x, y, g[2] if y > y0 else g[3])
+    cv.dot(x0 + 0.5, y0 + 0.5, hx('#f4fbff'))
+    cv.dot(x0 + 1.0, y0 + 0.5, hx('#f4fbff'))
+    if wire:
+        s = cv.s
+        for j in range(y0 * s, (y1 + 1) * s):
+            for i in range(x0 * s, (x1 + 1) * s):
+                if (i + j) % 4 == 0 or (i - j) % 4 == 0:
+                    cv.p[i, j] = hx(wire)
+
+
+def _shatter(cv, x0, x1, y0=3, y1=5, keep_wire=None):
+    """The glass gone out of its strip: a few shards left at the edges (the wire of wired glass holds)."""
+    s = cv.s
+    rng = random.Random(x0 * 31 + x1)
+    for j in range(y0 * s, (y1 + 1) * s):
+        for i in range(x0 * s, (x1 + 1) * s):
+            if keep_wire and cv.p[i, j] == hx(keep_wire):
+                continue
+            edge = min(i - x0 * s, (x1 + 1) * s - 1 - i)
+            cv.p[i, j] = hx('#d8ecf6') if edge == 0 and rng.random() < 0.45 else CLEAR
+    return cv
+
+
+def s_door_fire():
+    """The emergency exit: a heavy grey steel leaf, a red push bar across its inside face on two housings, a brushed
+    kick plate on the other, scuffs."""
+    w = ramp('#7c828e', 0.5, 0.25, 0.36)
+    cv = _plank(w, 32, ((6, 3, 10), (19, 5, 12)))
+    for x, y in ((7, 4), (8.5, 5), (13, 3), (21, 4), (25.5, 5), (11, 5)):
+        cv.dot(x, y + 0.25, w[0])                                   # scuffs
+    cv.outline()
+    _knuckles(cv)
+    red = ramp('#d0262c', 0.45, 0.22, 0.32)
+    for x in range(8, 27):                                          # the push bar, proud of the face on its housings
+        cv.set(x, 8, red[2])
+        cv.dot(x, 8.0, red[3])
+    for x in (6, 7, 27, 28):
+        cv.set(x, 7, STEEL[1])
+        cv.set(x, 8, STEEL[0] if x in (6, 28) else STEEL[2])
+    cv.set(5, 8, OUTLINE)
+    cv.set(29, 8, OUTLINE)
+    for x in range(4, 28):                                          # the kick plate on the other face
+        cv.dot(x, 1.5, STEEL_L[3] if x % 3 else STEEL_L[2])
+    _latch_plate(cv)
+    return cv
+
+
+def _door_bar():
+    """The bar's front: dark varnished wood, a round porthole of glass in a brass ring, a brass push plate on the
+    street face and a pull bar on the other."""
+    w = ramp('#5c3424', 0.5, 0.24, 0.38)
+    cv = _plank(w, 32, ((3, 3, 6), (17, 5, 10), (20, 3, 6)))
+    cv.rect(9, 2, 14, 6, BRASS[1])                                  # the porthole's ring
+    cv.rect(9, 2, 14, 2, BRASS[3])
+    _glass(cv, 10, 13)
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(20, 1, 25, 1, BRASS[2])                                 # the push plate, flat on the face
+    cv.rect(20, 1, 21, 1, BRASS[3])
+    for x in range(20, 26):                                         # the pull bar on its standoffs
+        cv.set(x, 8, BRASS[2] if x % 2 else BRASS[3])
+    cv.set(20, 7, BRASS[1])
+    cv.set(25, 7, BRASS[1])
+    cv.set(19, 8, OUTLINE)
+    cv.set(26, 8, OUTLINE)
+    cv.rect(3, 7, 7, 7, BRASS[1])                                   # the kick plate's edge
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_bar():
+    return _door_bar()
+
+
+def s_door_bar_broken():
+    return _shatter(_door_bar(), 10, 13)
+
+
+def s_door_swing():
+    """Half of the toilets' swinging doors (a cafe pair): a short teal-painted leaf of louvres on a double-action
+    pivot, a white MEN plate, a chrome push plate on each face; no latch."""
+    w = ramp('#4f8c80', 0.45, 0.22, 0.34)
+    cv = _plank(w, 16)
+    s = cv.s
+    for i in range(4 * s, 13 * s):                                  # the louvres' slats, one in two pixels
+        if i % 2 == 0:
+            for j in range(3 * s, 6 * s):
+                cv.p[i, j] = w[1]
+    cv.outline()
+    cv.rect(1, 3, 2, 5, STEEL[1])                                   # the pivot: a steel boss at its foot
+    cv.set(1, 3, STEEL_L[3])
+    cv.rect(6, 1, 9, 1, hx('#e8e6dc'))                              # the plate: MEN
+    cv.dot(7.5, 1.5, hx('#2a4ca0'))
+    cv.dot(8.0, 1.5, hx('#2a4ca0'))
+    for y in (1, 7):
+        cv.rect(11, y, 13, y, CHROME[2] if y == 1 else CHROME[1])   # push plates
+    return cv
+
+
+def s_door_staff():
+    """A storeroom / staff door: a plain institutional blue-grey paint, chipped and scuffed low, a white STAFF ONLY
+    plate, a steel lever."""
+    w = ramp('#5d6e82', 0.5, 0.24, 0.32)
+    cv = _plank(w, 32)
+    for x, y, c in ((5, 5, w[0]), (6.5, 5, w[0]), (9, 4, hx('#8d8a82')), (24, 5, w[0]), (14, 5, w[0]), (15, 3, hx('#8d8a82'))):
+        cv.dot(x, y + 0.25, c)                                      # scuffs and chipped paint (the grey undercoat)
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(11, 1, 18, 1, hx('#e6e2d6'))                            # STAFF ONLY
+    for x in range(11, 18):
+        cv.dot(x + 0.25, 1.5, hx('#2a2430'))
+    _lever(cv, 22, CHROME)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_office():
+    """The boss's door: oxblood leather buttoned in diamonds over padding, brass studs round its faces, a brass
+    lever."""
+    w = ramp('#6c1e26', 0.5, 0.26, 0.3)
+    cv = _plank(w, 32)
+    for k, x in enumerate(range(5, 28, 3)):                         # the buttons, diamond-tufted
+        y = 3 if k % 2 else 5
+        cv.dot(x, y + 0.25, w[0])
+        cv.dot(x + 0.5, y - 0.25, w[3])
+    cv.outline()
+    _knuckles(cv)
+    for x in range(5, 29, 2):                                       # brass studs along both faces
+        cv.dot(x + 0.25, 1.75, BRASS[3])
+        cv.dot(x + 0.25, 7.25, BRASS[2])
+    _lever(cv, 22)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_gaming():
+    """The gaming room's door: a deep green gloss with a gold pinstripe on its top edge, a brass peephole through
+    it, a brass lever."""
+    w = ramp('#2a5a3c', 0.5, 0.24, 0.36)
+    cv = _plank(w, 32)
+    for x in range(3, 29):
+        cv.dot(x + 0.25, 2.75, BRASS[2])                            # the pinstripe
+    cv.rect(15, 3, 16, 5, BRASS[1])                                 # the peephole through the leaf
+    cv.dot(15.5, 4.0, OUTLINE)
+    cv.outline()
+    _knuckles(cv)
+    cv.set(15, 1, BRASS[3])
+    cv.set(15, 7, BRASS[2])
+    _lever(cv, 22)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_flat():
+    """A cheap flat's door: a thin oak-effect laminate, a brass number on the corridor face, a peephole, the security
+    chain hanging on its track inside."""
+    w = ramp('#a27c54', 0.45, 0.22, 0.3)
+    cv = _plank(w, 32, ((4, 3, 14), (14, 5, 18)))
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(12, 1, 14, 1, BRASS[2])                                 # the number
+    cv.dot(12.5, 1.5, OUTLINE)
+    cv.dot(13.5, 1.5, OUTLINE)
+    cv.set(16, 1, BRASS[3])                                         # the peephole's lens
+    cv.rect(25, 7, 28, 7, CHROME[2])                                # the chain's track ...
+    for k, x in enumerate((24, 23, 22, 21.5)):                      # ... and the chain hanging off it
+        cv.dot(x + 0.5, 8.0 + (0.5 if k % 2 else 0), CHROME[3] if k % 2 else CHROME[1])
+    _lever(cv, 22, CHROME)
+    _latch_plate(cv)
+    return cv
+
+
+def _door_wired():
+    """A corridor fire door: cream-painted steel, a long panel of wired glass, a steel push plate."""
+    w = ramp('#b9ae92', 0.45, 0.22, 0.3)
+    cv = _plank(w, 32)
+    _glass(cv, 8, 20, tint='#b4d2c8', wire='#56645e')
+    cv.outline()
+    _knuckles(cv)
+    for y in (1, 7):
+        cv.rect(22, y, 26, y, STEEL_L[2] if y == 1 else STEEL_L[1])
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_wired():
+    return _door_wired()
+
+
+def s_door_wired_broken():
+    return _shatter(_door_wired(), 8, 20, keep_wire='#56645e')
+
+
+def _door_shop():
+    """A shop's glass door: an aluminium frame round a pane the length of it, a pull bar on each face."""
+    alu = ramp('#b2b8c4', 0.45, 0.22, 0.3)
+    cv = _plank(alu, 32)
+    _glass(cv, 5, 26, tint='#94c0d8')
+    cv.outline()
+    _knuckles(cv)
+    for y, c in ((0, CHROME[3]), (8, CHROME[2])):
+        cv.rect(22, y, 26, y, c)
+        cv.set(21, y, OUTLINE)
+        cv.set(27, y, OUTLINE)
+    for y in (1, 7):
+        cv.set(22, y, CHROME[1])
+        cv.set(26, y, CHROME[1])
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_shop():
+    return _door_shop()
+
+
+def s_door_shop_broken():
+    return _shatter(_door_shop(), 5, 26)
+
+
+DOOR_SKINS = dict(door_fire=s_door_fire, door_bar=s_door_bar, door_bar_broken=s_door_bar_broken, door_swing=s_door_swing,
+                  door_staff=s_door_staff, door_office=s_door_office, door_gaming=s_door_gaming, door_flat=s_door_flat,
+                  door_wired=s_door_wired, door_wired_broken=s_door_wired_broken, door_shop=s_door_shop,
+                  door_shop_broken=s_door_shop_broken)
+DOOR_SKIN_SIZES = dict((n, (16, 9) if n == 'door_swing' else (32, 9)) for n in DOOR_SKINS)
+
+
 def s_jamb(w):
     """Door frame post set into the end of a wall (5 px wide across the 32 px of wall): x = 4 faces the opening."""
     cv = Cv(5, 32)
@@ -8635,9 +9152,11 @@ def build():
         out[(g, cid + '_gib_arm')] = gib_arm(ch)
         out[(g, cid + '_gib_leg')] = gib_leg(ch)
         out[(g, cid + '_gib_torso')] = gib_torso(ch, i)
+    out[('characters', 'cueball_head_hurt')] = draw_head(dict(CHARS['cueball'], hurt=True))
     for i in range(3):
         out[('characters', 'gib_chunk%d' % i)] = gib_chunk(i)
     out[('characters', 'gib_eye')] = gib_eye()
+    out[('characters', 'lucky_scarf')] = lucky_scarf(CHARS['lucky']['scarf'])
     for name, cv in weapons().items():
         out[('weapons', name)] = cv
     for i, (cid, ch) in enumerate(CHARS.items()):
@@ -8652,6 +9171,7 @@ def build():
         out[('weapons', name)] = cv
     for name, cv in items().items():
         out[('items', name)] = cv
+    out[('items', 'shades')] = shades_item()
     props = dict(table=p_table, table_round=p_table_round, card_table=p_card_table, dope_table=p_dope_table, gas_bottle=p_gas_bottle, dance_stage=p_dance_stage, desk=p_desk, chair=p_chair, armchair=p_armchair,
                  sofa=p_sofa, plant=p_plant, tv=p_tv, fridge=p_fridge, oven=p_oven, sink=p_sink,
                  toilet=p_toilet, bed=p_bed, pool_table=p_pool_table, arcade=p_arcade, crate=p_crate,
@@ -8688,6 +9208,8 @@ def build():
     out[('structure', 'door')] = s_door()
     out[('structure', 'door_locked')] = s_door_locked()
     out[('structure', 'stall_door')] = s_stall_door()
+    for name, fn in DOOR_SKINS.items():
+        out[('structure', name)] = fine(fn, name)
     out[('structure', 'door_jamb')] = s_jamb(ramp('#6e4a32', 0.5, 0.26, 0.34))
     out[('structure', 'door_jamb_steel')] = s_jamb(STEEL_L)
     out[('structure', 'threshold')] = s_threshold()
@@ -8763,11 +9285,15 @@ EXPECTED = {
         ('_gib_head', (9, 9)), ('_gib_arm', (11, 4)), ('_gib_leg', (13, 5)), ('_gib_torso', (14, 12)),
         ('_rag_torso', (17, 19)), ('_rag_head', (10, 10)), ('_rag_arm', (17, 6)), ('_rag_leg', (20, 7)),
         ('_rag_torso_up', (17, 19)), ('_rag_torso_down', (17, 19)), ('_rag_head_up', (10, 10))]]
-        + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3))]),
+        + [('gib_chunk0', (6, 5)), ('gib_chunk1', (6, 5)), ('gib_chunk2', (6, 5)), ('gib_eye', (3, 3)),
+           ('cueball_torso', (48, 48)), ('cueball_head_hurt', (HEAD_W, HEAD_H)),
+           ('lucky_scarf', (SCARF_W, SCARF_H))]),   # his own: wider, and his head hurt
     # the weapons in hand are at FINE density: twice these world sizes
     'weapons': dict(pistol=(27, 15), uzi=(33, 18), uzi_silenced=(46, 18), shotgun=(51, 14), rifle=(56, 16),
                     sniper=(72, 17), bazooka=(52, 14), bat=(46, 9), knife=(30, 10), cue=(80, 6), cue_half=(46, 6), tire_iron=(34, 15),
                     rocket=(9, 4),
+                    # what they break into (weapon_breaks)
+                    bat_handle=(25, 9), bat_head=(26, 9), knife_handle=(16, 10), knife_blade=(17, 10), tire_iron_bent=(34, 16),
                     pistol_bare=(27, 15), uzi_bare=(33, 18), uzi_silenced_bare=(46, 18), rifle_bare=(56, 16),
                     sniper_bare=(72, 17),
                     casing=(3, 2), shell=(4, 2), mag_pistol=(5, 14), mag_uzi=(5, 18), mag_rifle=(8, 16),
@@ -8787,9 +9313,11 @@ EXPECTED = {
                      for n in ['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low',
                                'cat_dead'] + ['%s%d' % (n, i) for n in ('pigeon_walk', 'pigeon_fly', 'rat_run', 'cat_run')
                                               for i in range(3)] + ['cat_walk%d' % i for i in range(4)]),
-    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5)),
+    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
-                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
+                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6),
+                      # the door skins at FINE density (keep in step with DOOR_SKINS in src/engine/Assets.js)
+                      **dict((n, (w * FINE, h * FINE)) for n, (w, h) in DOOR_SKIN_SIZES.items())),
 }
 
 

@@ -140,3 +140,22 @@ export default class TileMap {
     return tex;
   }
 }
+
+// Tiles under a path-blocking prop (also used when a traffic vehicle comes to rest as a parked wreck). A tile is
+// closed to the pathfinder only when the prop really fills it (BLOCK_SHARE of its area): a shelf flat against a wall
+// leaves room to walk past, and closing its tiles shut whole shops and the back of the bar to the guards. What stands
+// in a gap of a wall to close it (`lasting`: a ladder, a parapet) closes every tile it touches.
+const BLOCK_SHARE = 0.4;
+export function markBlocked(map, prop) {
+  const b = prop.body.bounds, whole = !!prop.def?.lasting;
+  const x0 = Math.floor((b.min.x + 4) / TILE), x1 = Math.floor((b.max.x - 4) / TILE);
+  const y0 = Math.floor((b.min.y + 4) / TILE), y1 = Math.floor((b.max.y - 4) / TILE);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (x < 0 || y < 0 || x >= map.w || y >= map.h) continue;
+      const ox = Math.min(b.max.x, (x + 1) * TILE) - Math.max(b.min.x, x * TILE);
+      const oy = Math.min(b.max.y, (y + 1) * TILE) - Math.max(b.min.y, y * TILE);
+      if (whole || ox * oy >= BLOCK_SHARE * TILE * TILE) map.blocked[y * map.w + x] = 1;
+    }
+  }
+}

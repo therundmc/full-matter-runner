@@ -1,6 +1,6 @@
 """The opening, page 1: his last night (sleep, door)."""
 from .. import poster
-from ..kit import BONE, BONE_D, BROWN, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, digits, hx, panel, slab, star
+from ..kit import BONE, BONE_D, BROWN, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, digits, hx, panel, slab
 
 # Each panel is painted at SC x its size in the title's px (Cinematic.js PAGES gives the same sizes). What the game
 # draws over a still is at fixed points, named here and in ui/cine/Panels.js: move one, move the other.
@@ -43,8 +43,8 @@ def panel_sleep():
     cv.poly(slab(962, 26, 1056, 236, 21, 5), NIGHT_L)
     cv.disc(978, 136, 5, col=PINK_D)
     cv.poly([(986, 62), (986, 50), (994, 41), (1010, 37), (1026, 40), (1036, 49), (1038, 62)], INK)     # his cap: the crown
-    cv.poly([(1034, 54), (1052, 55), (1064, 60), (1066, 65), (1050, 62), (1034, 62)], INK)              # its brim
-    cv.poly([(1036, 62), (1050, 62), (1066, 65), (1064, 68), (1049, 65), (1036, 65)], CYAN_D)
+    cv.poly([(1034, 55), (1070, 53), (1070, 58), (1034, 62)], INK)                                      # its brim, flat
+    cv.poly([(1036, 62), (1070, 58), (1070, 61), (1036, 65)], CYAN_D)
     cv.disc(1010, 37, 3, col=CYAN_D)
     case = slab(826, 150, 944, 236, 31, 3)
     cv.poly(case, BONE_D)
@@ -56,8 +56,8 @@ def panel_sleep():
 
 @panel('door', (1080, 282))
 def panel_door():
-    """Page 1, panel 2 ("THE BOSS'S MEN LET THEMSELVES IN."). His front door thrown open, its lock a burst of
-    splinters; the three of them cut out against the landing's tube: CUEBALL filling the doorway, his torch into
+    """Page 1, panel 2 ("THE BOSS'S MEN LET THEMSELVES IN."). His front door thrown open, a hole where its
+    lock was; the three of them cut out against the landing's tube: CUEBALL filling the doorway, his torch into
     the room, the crowbar hanging from his other fist; LUCKY a head above him, his pink scarf flying; JITTERS at
     the jamb with the can. The light lies on the floor in one wedge, their shadows three spikes in it."""
     W, H = 1080, 282
@@ -69,9 +69,8 @@ def panel_door():
     cv.poly([(dx0, dy0 - 6), (dx1, dy0 - 6), (dx1, fl), (dx0, fl + 3)], CYAN)
     cv.poly([(852, -6), (dx1, -6), (dx1, fl), (846, fl + 1)], CYAN_D)
     cv.poly(slab(684, 12, 728, 21, 3, 1.5), BONE)
-    # his door, thrown open: a lighter slab, its lock a burst
+    # his door, thrown open: a lighter slab, a black hole where its lock was
     cv.poly([(dx0, -6), (604, -6), (592, 228), (dx0 - 2, fl + 3)], NIGHT_L)
-    cv.poly(star(634, 134, 34, 11, 7, seed=4, turn=8, squash=0.85), BONE)
     cv.disc(634, 134, 6, col=INK)
     # the light on his floor, their shadows in it
     wedge = cv.poly([(dx0, fl + 3), (dx1, fl), (1040, H + 4), (280, H + 4)], CYAN_D)

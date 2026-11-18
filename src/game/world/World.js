@@ -53,6 +53,7 @@ import Gadgets from '../systems/Gadgets.js';
 import Tipping from '../systems/Tipping.js';
 import PropPhysics from '../systems/PropPhysics.js';
 import Uses from '../systems/Uses.js';
+import Doors from '../systems/Doors.js';
 import Slips from '../systems/Slips.js';
 import Sprinklers from '../systems/Sprinklers.js';
 import Passage from '../systems/Passage.js';
@@ -66,6 +67,7 @@ import Curtains from '../systems/Curtains.js';
 import Weather from '../systems/Weather.js';
 import Smoke from '../systems/Smoke.js';
 import Director from '../ai/Director.js';
+import BossStage from '../systems/BossStage.js';
 import Ambient from '../systems/Ambient.js';
 import { OUTRO, routePath, routeSpeed, slideStep, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
 import { Gearbox } from '../../audio/Motor.js';
@@ -127,6 +129,7 @@ export default class World {
     this.scoring = new Scoring(this);
     this.killFeed = new KillFeed(this.events);    // what is shown of kills and chains (advanced by Game on the real clock)
     listenMoments(this);                          // a multi-kill's slow motion and hit-stop
+    this.bossStage = new BossStage(this);         // the camera on a boss's beats (advanced by Game on the real clock)
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // the liquid on the floor: spills, blood, the rain's puddles, footprints
     this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)
@@ -161,6 +164,7 @@ export default class World {
 
     buildLevel(this, level);
     this.curtains = new Curtains(this); // the curtains' cloth: pushed by whoever goes through, parted, hiding or not
+    this.doorWork = new Doors(this);    // leaves leaned on with a limited force, the lab's doorbell
     this.jukebox.wire();  // the devices that are props of the level offer their spots now that the props are there
     this.gasValve.wire();
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
@@ -498,8 +502,9 @@ export default class World {
     this.ambient?.update(dt);
     for (const c of this.chars) if (c.alive) c.animate(dt); // the drawn body after this step's aim (Facing.js)
 
-    // 2. physics (characters walking into loose props push them with their limited force first)
+    // 2. physics (characters walking into loose props and door leaves push them with their limited force first)
     this.propPhysics.prePush(dt);
+    this.doorWork.prePush(dt);
     this.physics.step(dt, this.time);
     for (const d of this.doors) d.constrain(dt);
     if (this.wallsDirty) {

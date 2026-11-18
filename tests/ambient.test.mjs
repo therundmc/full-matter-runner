@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { TILE, AMBIENT: A, CAT, MASK } = await load('game/Config.js');
 const { Lane, Driver, gapAhead, safeSpeed, findBypass, steerAngle, seeded } = await load('game/systems/Traffic.js');
-const { Walker, WALKER, escapeRoute, hideRoute, pathLength, pointAlong } = await load('game/ai/Civilians.js');
+const { Walker, WALKER, escapeRoute, hideRoute, groundOf, pathLength, pointAlong } = await load('game/ai/Civilians.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 
 const box = (x0, x1, y0, y1, extra = {}) => ({ x0, x1, y0, y1, ref: {}, moving: false, speed: 0, ...extra });
@@ -431,6 +431,97 @@ test('patrons: boxed in by the furniture he sits on, a patron still finds his wa
   // furniture on every side for more than two cells: he stays put
   for (let y = 1; y <= 3; y++) for (let x = 3; x <= 5; x++) m.blocked[y * W + x] = 1;
   assert.equal(escapeRoute(m, 1.5 * T, 2.5 * T, null), null);
+});
+
+// does a route from (x, y) run through tile (c, r)? (sampled every 4 px, on the map only)
+const crosses = (map, x, y, route, c, r) => {
+  let ax = x, ay = y;
+  for (const p of route) {
+    const n = Math.ceil(Math.hypot(p.x - ax, p.y - ay) / 4);
+    for (let k = 1; k <= n; k++) {
+      const px = ax + ((p.x - ax) * k) / n, py = ay + ((p.y - ay) * k) / n;
+      if (Math.floor(px / TILE) === c && Math.floor(py / TILE) === r) return true;
+    }
+    ax = p.x; ay = p.y;
+  }
+  return false;
+};
+const fixed = (cx, cy, w, h, extra = {}) => ({
+  body: { isStatic: true, bounds: { min: { x: cx - w / 2, y: cy - h / 2 }, max: { x: cx + w / 2, y: cy + h / 2 } },
+    collisionFilter: { category: CAT.PROP, mask: MASK.PROP } },
+  def: {}, ...extra,
+});
+
+test('walkers: a bench flat against the wall is in a runner\'s way: his way out goes round it (guards still go over it)', () => {
+  const T = TILE;
+  // a sidewalk between two buildings (off the map only at its ends); a bench (50 x 15) against the wall in tile (6, 3)
+  const m = new TileMap(['XXXXXXXXXXXXXXXX', 'ssssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss', 'XXXXXXXXXXXXXXXX']);
+  const bench = fixed(6.5 * T, 4 * T - 10, 50, 15);
+  const chair = { ...fixed(9.5 * T, 3.5 * T, 30, 30), body: { ...fixed(0, 0, 30, 30).body, isStatic: false } };
+  const lamp = fixed(3.5 * T, 3.5 * T, 30, 30, { def: { hung: true } });
+  const gone = fixed(2.5 * T, 3.5 * T, 30, 30, { dead: true });
+  const g = groundOf(m, [bench, chair, lamp, gone]);
+  const at = (map, c, r) => map.blocked[r * map.w + c];
+  assert.equal(at(g, 6, 3), 1, 'the bench is in a passer-by\'s way');
+  assert.equal(at(m, 6, 3), 0, 'the guards\' grid is left as it is (they vault it)');
+  assert.equal(at(g, 9, 3) + at(g, 3, 3) + at(g, 2, 3), 0, 'what he pushes, what hangs above, what is broken: not in his way');
+  const from = { x: 10.5 * T, y: 3.5 * T }, danger = { x: 15 * T, y: 3.5 * T };
+  assert.ok(crosses(m, from.x, from.y, escapeRoute(m, from.x, from.y, danger), 6, 3), 'on the bare grid: straight into the bench');
+  const route = escapeRoute(g, from.x, from.y, danger);
+  assert.ok(route.at(-1).x < 0, 'still off the west side');
+  assert.ok(!crosses(g, from.x, from.y, route, 6, 3), 'round the bench');
+});
+
+test('walkers: a runner held up on a wide sidewalk is not sent straight back through that spot by the string pulling', () => {
+  const T = TILE;
+  const m = new TileMap(['XXXXXXXXXXXX', '............', '............', 'XXXXXXXXXXXX']);
+  const from = { x: 6.5 * T, y: 2.5 * T }, danger = { x: 11.5 * T, y: 2.5 * T };
+  assert.ok(crosses(m, from.x, from.y, escapeRoute(m, from.x, from.y, danger), 4, 2), 'the straight way west');
+  const jam = 2 * m.w + 4;
+  const route = escapeRoute(m, from.x, from.y, danger, { cost: (i) => (i === jam ? A.runJam.cost : 0) });
+  assert.ok(route.at(-1).x < 0, 'still west');
+  assert.ok(!crosses(m, from.x, from.y, route, 4, 2), 'round the spot he was held up at');
+});
+
+test('walkers: a doorway is everyone\'s way through, never a corner to curl up in', () => {
+  const T = TILE;
+  // a room above a corridor, a doorway between them at (4, 3); the danger down the corridor to the west
+  const m = new TileMap(['XXXXXXXXX', 'X.......X', 'X.......X', 'XXXX.XXXX', 'X.......X', 'XXXXXXXXX']);
+  const route = hideRoute(m, 5.5 * T, 4.5 * T, { x: 1.5 * T, y: 4.5 * T }, () => true);
+  assert.ok(route, 'somewhere to hide');
+  const end = route.at(-1), c = Math.floor(end.x / T), r = Math.floor(end.y / T);
+  assert.ok(!(c === 4 && r === 3), 'not in the doorway');
+  assert.ok(!(c === 4 && (r === 2 || r === 4)), 'nor in its mouth');
+});
+
+test('walkers: held up on his way to a corner, a hider finds another one, or runs for it', () => {
+  const corners = [[{ x: 0, y: 160 }], [{ x: 80, y: 100 }]];
+  let asked = 0, jammed = null;
+  const sense = { escape: () => [{ x: -100, y: 100 }], hide: (x, y, d, j) => { asked++; jammed = j; return corners.shift() ?? null; } };
+  const h = new Walker(path, { r: seeded(7), speed: 40, run: 150, temper: 'hide' });
+  h.alarm(50, 100, 'gunshot');
+  let it;
+  for (let t = 0; t < 1; t += 0.05) it = h.update(0.05, 0, 100, sense);
+  assert.equal(h.state, WALKER.HIDE);
+  assert.deepEqual([it.x, it.y], [0, 160]);
+  h.blocked();
+  it = h.update(0.05, 0, 120, sense);
+  assert.equal(h.state, WALKER.HIDE, 'another corner');
+  assert.deepEqual([it.x, it.y], [80, 100]);
+  assert.equal(asked, 2);
+  assert.equal(jammed, true, 'round the spot he was held up at');
+  h.blocked();
+  it = h.update(0.05, 20, 110, sense);
+  assert.equal(h.state, WALKER.FLEE, 'no corner left: he runs for it');
+  assert.equal(it.x, -100);
+});
+
+test('walkers: curled up or ducking, a passer-by is drawn hardly smaller than standing', async () => {
+  const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
+  globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+  const { crouchScale } = await load('game/entities/Civilian.js');
+  assert.equal(crouchScale(0), 1);
+  for (const crouch of [0.5, 1, 1.6, 3]) assert.ok(crouchScale(crouch) >= 0.93 && crouchScale(crouch) <= 1, `${crouch}: ${crouchScale(crouch)}`);
 });
 
 test('traffic: a gun held on a driver: he runs for it, stops dead hands up until it is off him, or floors it', () => {

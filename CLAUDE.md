@@ -71,11 +71,14 @@
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
+- A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
 - Melee weapons are data (`swing`, `heft`, `material`, `thrust`, `snaps`, `finisher`, `wear`, `breaks`): never test
-  `=== WEAPONS.bat`. They break on the kill that uses them up (`breaks: 'snap' | 'lodge'`, `Character.breakWeapon`).
+  `=== WEAPONS.bat`. They wear out in BLOWS (`wear`, data/weapons.js `WEAR`: a man 1, a thing 0.25, a whiff 0) and
+  break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
+  guard up close with free hands snatches his gun (`SNATCH` in data/feel.js).
 - Finishers / takedowns per weapon: data/finishers.js (`CharacterAnim.execPose`); kill tags `SCORING.tags` +
   `Scoring.killTags`, fed by the `how` of `kill`; a body that does not crawl may twitch (`THROES`, data/wounds.js).
 - Ways to die: a rare crawl ON HIS BELLY (about one in ten, `crawl` odds, `CRAWL`, fx/CrawlPose.js), `curl`, `SPASM`
@@ -90,6 +93,9 @@
   systems/Papers.js.
 
 ## Level 1
+- The boss is CUEBALL, the comic's heavy (kind `cueball`: data/bosses.js `BOSSES`, entities/Boss.js, systems/BossStage.js):
+  his name card and a camera push-in on first sight, a fast pump-action fired from the hip (each shot told: the pump,
+  then a glint at the muzzle), TWO hits (the first wounds him and sends him berserk), no takedown while he is whole.
 - 12 guards, two guns in the house (the poker dealer's pistol, the boss's shotgun), a pistol behind the liquor
   store's counter, a cue by the pool table, a tire iron in the trunk of the first parked car (prop option `trunk`,
   E at its tail); the player starts on the ground and gets up (level `intro`).
@@ -117,10 +123,19 @@
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
-  render/Murk.js).
+  render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
+  Enemy.drawTail, his name card). A lesson waits for its object to be on screen and near (`LESSONS.within`); a man
+  called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
+  spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
+  fire-balls down the corridor (`BLAST.chain`, level `blast.chain`) and the way out is marked (`EXIT`, level `exit`).
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
-  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
-  ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+- Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
+  cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
+  HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
+  drawn by a marker once), Beats.js (their clocks and sounds, DOM-free), Paper.js (the cut-paper sheet; the menu's
+  panel, used by ui/MenuArt.js for OPTIONS and the pause). Stills and their data: `python3 tools/comic/title.py`
+  (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
   signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as
@@ -130,6 +145,9 @@
 - The QA robot plays the tutorial with `npm run qa -- --level tutorial` (add `--god` to reach the window).
 
 ## Run / test
+- EVERY NEW FEATURE GETS A STATION IN THE LAB (the user's rule): tools/build_lab.py (`?level=lab`), its floor stencil
+  numbered in reading order (LAB_LABELS in tools/generate_assets.py), passive dummies / props / weapons set up so the
+  user can try it at once. A brief for a new gameplay, AI, physics or animation feature always asks for its station.
 - index.html starts the game through a service worker (sw.js) that fetches every file fresh (mixed cached modules
   gave "does not provide an export named ..."). If it comes back: Ctrl+Shift+R once.
 - `npm run play` (tools/play.mjs, port 8100): serves the LAST COMMIT. This is what the user plays while agents edit

@@ -78,6 +78,8 @@ export const SETS = {
   poker: [['liquor', 8, -11.5, 0], ['shot', 12, -9, 0], ['ember', 16.5, -7.5, 0], ['chips', -18, -3, 0], ['chips', -17, 2, 0]],
   // the boss's desk (his whisky, his cigar, the night's takings), the men's round table, the case on the floor
   boss_desk: [['lowball', -9.5, 1, 0], ['bands', -17.5, 0, 8], ['bands', -15, 3, -20], ['cigar', 11, 8.5, -30], ['ember', 13.5, 7, 0]],
+  // CUEBALL's, now the back room is his: a whisky, the takings in bands, a loose bill
+  cueball_desk: [['lowball', -9.5, 1, 0], ['bands', -17.5, 0, 8], ['bands', -15, 3, -20], ['bill', 10, 7, 25]],
   men_table: [['beer_bottle', 8.5, 5.5, 0], ['beer_bottle', -1, 9.5, 0], ['cards', -8.5, 4, 20], ['ember', -5, -3, 0]],
   cash_floor: [['bands', -15, 2, 70], ['bands', -14.5, -5, 100], ['bill', -18, -1, 30]],
   // the dope table: the rubber bands and the banknotes it is bagged and counted with

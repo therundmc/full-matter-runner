@@ -40,6 +40,10 @@ const MOOD = { hunch: 0, duck: 0, lift: 0, lean: 0, look: 0, twist: 0, shake: 0 
 const BALL = 1.6;      // how far down a curled-up one is (1 = ducking)
 const TREMBLE = 46;    // rad/s of the shakes
 const COVER = 0.5;     // how far down one running with his arms over his head goes
+// what being down that far takes off his drawn size (a share per unit, at most BALL's): curled up he still reads as a
+// man his size, the crouch is in his pose (mood: hunch, duck); 0.14 drew him a fifth smaller, back to the world's 1x
+const SINK = 0.04;
+export const crouchScale = (crouch) => 1 - Math.min(Math.max(0, crouch), BALL) * SINK;
 const bump = (k) => (k <= 0 || k >= 1 ? 0 : Math.sin(Math.PI * k));
 
 export default class Civilian extends Character {
@@ -58,6 +62,7 @@ export default class Civilian extends Character {
     this.stuckT = 0;
     this.blocks = 0;       // sidesteps on the way (see update)
     this.dodge = 0;
+    this.dodgeSide = Math.random() < 0.5 ? -1 : 1; // the side of his next sidestep (they alternate)
     this.post = null;      // a patron's spot { x, y, face } (see sit)
     this.seated = false;   // on his seat: furniture is not in his way
     this.left = false;     // a patron has run off his spot
@@ -160,14 +165,14 @@ export default class Civilian extends Character {
     // giving way to the people around (ai/Nav.js): stepping aside, falling in behind one going his way
     const len = Math.hypot(dx, dy) || 1, gw = sense.giveWay?.(this, dx / len, dy / len);
     if (gw) { dx = dx / len + gw.x; dy = dy / len + gw.y; }
-    // walked into something (a parked car on the sidewalk, a crowd): sidestep for a moment; a runner held up a third
-    // time on his way finds another way out, round that spot (Ambient notes it)
+    // walked into something (a parked car on the sidewalk, a crowd): sidestep for a moment, one side then the other;
+    // a runner still held up finds another way out (a hider another corner), round that spot (Ambient notes it)
     const want = (it.speed / 60) * (gw ? gw.slow : 1);
     if (this.moving < want * 0.3) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt);
     if (this.stuckT > 0.8) {
-      this.dodge = rand(0.5, 0.9) * (Math.random() < 0.5 ? -1 : 1);
+      this.dodge = rand(0.5, 0.9) * (this.dodgeSide = -this.dodgeSide);
       this.stuckT = 0;
-      if (++this.blocks >= 3 && b.state === WALKER.FLEE) { this.blocks = 0; sense.jam?.(this, dx, dy); b.blocked(); }
+      if (++this.blocks >= 2 && (b.state === WALKER.FLEE || b.state === WALKER.HIDE)) { this.blocks = 0; sense.jam?.(this, dx, dy); b.blocked(); }
     }
     if (this.dodge) {
       const s = Math.sign(this.dodge);
@@ -237,7 +242,7 @@ export default class Civilian extends Character {
 
   draw(ctx) {
     const b = this.brain, t = this.world.time;
-    const k = 1 - this.crouch * 0.14;
+    const k = crouchScale(this.crouch);
     // (curled up or frozen stiff, he shakes: his mood, over feet that stay put)
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
     super.draw(ctx);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds src/game/data/levels/level1.js ("NEON NIGHTS": the MIRAGE bar) with tools/levelkit.py.
+"""Builds src/game/data/levels/level1.js ("NO LOOSE ENDS": the MIRAGE bar) with tools/levelkit.py.
 
     python tools/build_level1.py
 
@@ -110,6 +110,27 @@ lv.put(39, 20, 'L')
 lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
+# the doors, one kind per place (src/game/data/doors.js DOORS.kinds: its skin, weight, closer, sounds), nothing to do
+# with each other:
+#   the front     an American bar's double door: dark varnished wood, a porthole, brass plates, on a closer (the
+#                 heat and the noise kept in, the street kept out)
+#   the toilets   a pair of swinging cafe doors: pushed either way, back to the middle on their springs, no latch
+#   the back door the emergency exit: heavy grey steel, a red push bar inside, the green EXIT sign over it, a closer
+#   staff doors   blue-grey paint and a STAFF ONLY plate: behind the counter to the storeroom, and the storeroom's
+#                 own door on the service alley (on a closer: it shuts behind the deliveries)
+#   the boss      his back room's door into the gaming room: oxblood leather buttoned over padding, brass studs
+#   gaming room   a deep green gloss with a brass peephole
+#   the shops     glass doors in aluminium (the liquor store, the TV shop, the laundromat)
+# The gap's anonymous door on the street keeps the plain wooden one. The VIP room has its curtain.
+lv.door(21, 20, kind='bar', inside='n')   # the closer on the bar's side, not the street's
+lv.door(22, 11, kind='swing')
+lv.door(25, 5, kind='fire', inside='s')
+lv.door(16, 11, kind='staff')
+lv.door(14, 8, kind='staff', closer=True, inside='e')   # its closer in the storeroom
+lv.door(27, 11, kind='office')
+lv.door(24, 13, kind='gaming')
+for x, y in ((8, 20), (39, 20), (30, 32)):
+    lv.door(x, y, kind='shop')
 
 # ---------------------------------------------------------------- actors (12 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
@@ -177,7 +198,8 @@ lv.patron('dancer1', 30.0, 18.9, 180, 'dance')
 lv.actor('j', 17, 8, face=90, job='dope')               # the pimp, alone, weighing and bagging his dope
 lv.actor('6', 18, 8)
 lv.actor('k', 21, 9, face=0, job='piss')               # in the toilets: the bowl, the sink, a smoke against the wall
-lv.actor('h', 30, 9, face=180, job='boss', look='boss')  # the boss in his armchair, feet up on the desk, the shotgun on it
+lv.actor('h', 30, 9, face=180, job='cueball', look='cueball')  # CUEBALL, the level's boss (data/bosses.js), in the
+#                                                     armchair, feet up on the desk, his pump-action against it
 lv.actor('i', 26, 10, face=0, job='couch')              # his man on the couch plays with his tire iron
 lv.actor('k', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
@@ -373,7 +395,7 @@ lv.prop('trash_can', 21.4, 10.5, tips=False)
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
-lv.prop('desk', 27.6, 6.75, 270, clutter='boss_desk')                       # its seat side toward the boss, up against the north wall
+lv.prop('desk', 27.6, 6.75, 270, clutter='cueball_desk')                       # its seat side toward the boss, up against the north wall
 lv.prop('sofa', 25.5, 8.6, 270)
 lv.prop('armchair', 30.45, 6.6, 180)                    # the boss's, behind his desk, in the corner: no pocket
                                                         # north of it to get caught in (the QA robot found him there)
@@ -651,10 +673,10 @@ exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9
 
 if __name__ == '__main__':
     lv.check(guards=12)
-    lv.write('level1', name='NEON NIGHTS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
+    lv.write('level1', name='NO LOOSE ENDS', subtitle='SUNSET BAY  -  MARCH 15TH 1986  -  2:14 AM', exit=exit_zone,
              objective=['CLEAN OUT THE BAR', 'GET TO THE VAN IN THE BACK LOT'],
              lights=lights, ambient=ambient, header=[
-                 'Level 1 - "NEON NIGHTS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
+                 'Level 1 - "NO LOOSE ENDS": an alley, a road, the MIRAGE bar, its back room, and the way out through the back lot.',
                  'Ways in: the front door, the chain-link gate of the service alley (west), the dark gap behind the',
                  'anonymous door right of the bar (east), the liquor store and its roof (far west), three windows.',
                  'Lit shop fronts on the street: liquor, TV, laundromat.',

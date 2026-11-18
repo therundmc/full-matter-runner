@@ -10,7 +10,8 @@ import Enemy from '../entities/Enemy.js';
 import Prop from '../entities/Prop.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import WeaponItem from '../entities/WeaponItem.js';
-import { ENEMIES, markBlocked } from '../world/Level.js';
+import { ENEMIES } from '../world/Level.js';
+import { markBlocked } from '../world/TileMap.js';
 
 const { Body } = Matter;
 const SPEEDS = [1, 0.5, 0.2];

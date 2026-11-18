@@ -128,20 +128,21 @@ def boss(pose='stand'):
 
 
 def runner(pose='stand'):
-    """THE RUNNER (the player): a long coat, its collar up; his sign the CAP, a sports cap: a round crown, a curved
-    brim, a petrol-blue button and a petrol edge under the brim; a fitted petrol gaiter up over his nose: between the
+    """THE RUNNER (the player): a long coat, its collar up; his sign the CAP, a sports cap: a round crown, a flat
+    brim straight out, a petrol-blue button and a petrol edge under the brim; a fitted petrol gaiter up over his nose: between the
     two, a slit of tan is all his face; brown hair to the collar behind."""
     parts = [
         ('body', [(-10, -30), (-2, -30), (-3, 0), (-10, 0)]), ('body', [(2, -30), (10, -30), (10, 0), (3, 0)]),
         ('body', [(-13, -86), (13, -86), (16, -26), (-17, -25)]),
         ('body', [(-13, -85), (-20, -80), (-21, -46), (-15, -45)]), ('body', [(13, -85), (20, -80), (21, -46), (15, -45)]),
         (BROWN, [(-8, -99), (-3, -99), (-4, -86), (-10, -85)]),                           # his hair, to the collar
-        (TAN, [(-4, -99), (9, -99), (9, -94), (-4, -94)]),                                # the slit
-        (CYAN_D, [(-5, -95.5), (9.5, -95.5), (10, -89), (7, -84), (-7, -84), (-6, -90)]),  # the gaiter
+        (TAN, [(-4, -99), (9, -99), (9, -93), (-4, -93)]),                                # the slit
+        (CYAN_D, [(-5, -93.6), (9.5, -93.6), (10, -88), (7, -84), (-7, -84), (-6, -89)]),  # the gaiter
         ('body', [(-14, -85), (-11, -95), (-5, -86)]), ('body', [(5, -86), (12, -93), (14, -85)]),   # the collar, up
         ('body', [(-9, -97), (-9.5, -103), (-6, -108), (0, -110.5), (6, -109.5), (10, -105.5), (11, -97)]),   # the cap's crown
-        ('body', [(9, -101), (17, -100.5), (22, -98), (23, -95.5), (16, -97), (9, -97)]),                      # its brim, curved
-        (CYAN_D, [(10, -97), (16, -97), (23, -95.5), (22, -94), (15, -95.5), (10, -95.5)]), (CYAN_D, ngon(0, -110.5, 1.8, 1.4, 6, 0)),
+        ('body', [(8, -100.2), (26, -101.2), (26, -98.8), (8, -97)]),                     # its brim: a flat slab, straight out
+        ('body', [(-4, -97), (9, -97), (9, -95.6), (-4, -95.6)]),                         # its shadow, across the slit
+        (CYAN_D, [(9.5, -97.2), (26, -98.8), (26, -97.6), (9.5, -96)]), (CYAN_D, ngon(0, -110.5, 1.8, 1.4, 6, 0)),
     ]
     return parts, dict(hand=(18, -45), head=(1, -94), mouth=(8, -90), top=(0, -110.5))
 
@@ -169,8 +170,8 @@ ABOVE = {
              (BONE_D, [(10, 1), (18, 2), (18, 4), (10, 4)]), (FIRE, [(18, 2), (21, 2), (21, 4), (18, 4)])],
     'runner': [('body', [(-6, -17), (4, -18), (8, -11), (8, 11), (4, 18), (-6, 17), (-9, 0)]),
                (BROWN, [(-11, -5), (-6, -6), (-6, 6), (-11, 5)]), (CYAN_D, [(-8, -6), (-5, -7), (-5, 7), (-8, 6)]),
-               (CAP, [(6, -7.5), (11, -7), (15, -4), (16.5, 0), (15, 4), (11, 7), (6, 7.5)]),             # the brim
-               (CYAN_D, [(13.5, -5), (15, -4), (16.5, 0), (15, 4), (13.5, 5), (14.8, 0)]),
+               (CAP, [(6, -6.5), (15.5, -6), (16.5, -4.5), (16.5, 4.5), (15.5, 6), (6, 6.5)]),             # the brim, a flat tab
+               (CYAN_D, [(14.8, -6), (15.5, -6), (16.5, -4.5), (16.5, 4.5), (15.5, 6), (14.8, 6)]),
                (CAP, ngon(1, 0, 8.5, 8.5, 8)), (CYAN_D, ngon(1, 0, 1.8, 1.8, 6, 0))],
 }
 

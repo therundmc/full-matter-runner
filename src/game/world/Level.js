@@ -6,14 +6,18 @@ import { rand } from '../../engine/math.js';
 import { gridRaycast } from '../../engine/physics/Raycast.js';
 import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
+import Boss from '../entities/Boss.js';
+import { BOSSES } from '../data/bosses.js';
 import Prop from '../entities/Prop.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
+import { DOORS } from '../data/doors.js';
 import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import Ragdoll from '../entities/Ragdoll.js';
 import { MARKS } from '../data/wounds.js';
 import { doorLeaves } from './Openings.js';
+import { markBlocked } from './TileMap.js';
 
 const { Bodies } = Matter;
 
@@ -62,12 +66,15 @@ export function buildLevel(world, level) {
           used.add(horizontal ? `${x + i},${y}` : `${x},${y + i}`);
           cells.push(horizontal ? y * map.w + x + i : (y + i) * map.w + x);
         }
-        // any 'L' in the run makes it a locked door
-        const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells };
-        for (const l of doorLeaves(x, y, n, horizontal)) {
+        // any 'L' in the run makes it a locked door; level `doors` by any tile of the run: { kind, closer, relock,
+        // inside } (data/doors.js DOORS.kinds: a swinging door's kind hangs a pair of half-leaves)
+        const more = cells.map((i) => level.doors?.[`${i % map.w},${Math.floor(i / map.w)}`]).find(Boolean) || {};
+        const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells, ...more };
+        const spec = DOORS.kinds[more.kind];
+        for (const l of doorLeaves(x, y, n, horizontal, !!spec?.pair)) {
           world.doors.push(new Door(world, l.hx, l.hy, l.angle, l.len, { ...opts, support: l.support, strike: l.strike }));
         }
-        world.decals.doorway(x, y, n, horizontal);
+        world.decals.doorway(x, y, n, horizontal, spec?.jamb);
       } else if (ch === 'G') {
         const horizontal = wallish(x - 1, y) || wallish(x + 1, y);
         world.windows.push(new Window(world, x, y, !horizontal));
@@ -144,8 +151,9 @@ export function buildLevel(world, level) {
       }
       else if (ENEMIES[ch.toLowerCase()]) {
         const [kind, weapon] = ENEMIES[ch.toLowerCase()];
-        // a guard may be his own man (level.looks['col,row'] = a kind of his own: the boss)
-        const e = new Enemy(world, px, py, face, level.looks?.[`${x},${y}`] || kind, weapon, ch !== ch.toLowerCase());
+        // a guard may be his own man (level.looks['col,row'] = a kind of his own), a boss among them (data/bosses.js)
+        const look = level.looks?.[`${x},${y}`] || kind;
+        const e = new (BOSSES[look] ? Boss : Enemy)(world, px, py, face, look, weapon, ch !== ch.toLowerCase());
         // a passive level (the lab): dummies that neither see nor hear, but those it keeps `awake` ('col,row')
         e.passive = !!level.passive && !level.awake?.includes(`${x},${y}`);
         e.takeJob(level.jobs?.[`${x},${y}`]);
@@ -178,25 +186,6 @@ function facing(level, map, x, y) {
     if (d > bestD + 0.02) { bestD = d; best = a; }
   }
   return best;
-}
-
-// Tiles under a path-blocking prop (also used when a traffic vehicle comes to rest as a parked wreck). A tile is
-// closed to the pathfinder only when the prop really fills it (BLOCK_SHARE of its area): a shelf flat against a wall
-// leaves room to walk past, and closing its tiles shut whole shops and the back of the bar to the guards. What stands
-// in a gap of a wall to close it (`lasting`: a ladder, a parapet) closes every tile it touches.
-const BLOCK_SHARE = 0.4;
-export function markBlocked(map, prop) {
-  const b = prop.body.bounds, whole = !!prop.def?.lasting;
-  const x0 = Math.floor((b.min.x + 4) / TILE), x1 = Math.floor((b.max.x - 4) / TILE);
-  const y0 = Math.floor((b.min.y + 4) / TILE), y1 = Math.floor((b.max.y - 4) / TILE);
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      if (x < 0 || y < 0 || x >= map.w || y >= map.h) continue;
-      const ox = Math.min(b.max.x, (x + 1) * TILE) - Math.max(b.min.x, x * TILE);
-      const oy = Math.min(b.max.y, (y + 1) * TILE) - Math.max(b.min.y, y * TILE);
-      if (whole || ox * oy >= BLOCK_SHARE * TILE * TILE) map.blocked[y * map.w + x] = 1;
-    }
-  }
 }
 
 function buildFence(world, x, y, vertical) {

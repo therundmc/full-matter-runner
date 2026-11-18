@@ -71,7 +71,7 @@ const withLanding = (rec, at) => ({ by: (o) => (o.land === false ? 'noland' : 'l
 
 // ---- weapons by how they handle (weapon id -> class) ----
 export const HANDLING = {
-  fists: 'fist', bat: 'bat', tire_iron: 'iron', cue: 'cue', cue_half: 'stake', knife: 'knife',
+  fists: 'fist', bat: 'bat', tire_iron: 'iron', tire_iron_bent: 'iron', cue: 'cue', cue_half: 'stake', knife: 'knife',
   pistol: 'pistol', uzi: 'pistol', uzi_silenced: 'pistol', shotgun: 'long', rifle: 'long', sniper: 'long', bazooka: 'long',
 };
 const handling = (o) => HANDLING[o.weapon] || 'fist';

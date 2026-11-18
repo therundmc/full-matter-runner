@@ -30,6 +30,7 @@ export const SCORING = {
     spin: { points: 300, label: 'SPIN KILL' },          // a club swung all the way round
     thrown: { points: 500, label: 'THROWN BLADE' },    // a knife thrown that planted itself in him
     broke: { points: 400, label: 'WEAPON BREAK' },      // the blow that broke the weapon over him
+    disarm: { points: 300, label: 'SNATCHED' },         // his weapon taken into the hand as he went down (Player.snatches)
     smoked: { points: 400, label: 'SMOKED' },           // through air too thick to see (powder, soot, steam)
     slammed: { points: 600, label: 'ENVIRONMENTAL' },   // his head driven into a wall, an edge, a sink (a takedown's spot)
     flushed: { points: 800, label: 'FLUSHED' },         // ... into a toilet or a urinal
@@ -38,6 +39,7 @@ export const SCORING = {
     double: { points: 400, label: 'DOUBLE KILL' },      // two, three, more within `multiWindow`
     triple: { points: 900, label: 'TRIPLE KILL' },
     massacre: { points: 1500, label: 'MASSACRE' },
+    cueball: { points: 5000, label: 'CUEBALL' },        // a boss put down, by his name (data/bosses.js; `how.boss`)
   },
   longShot: 420,            // px
   multiWindow: 0.7,         // s between two kills of a multiple one

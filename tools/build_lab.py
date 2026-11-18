@@ -21,15 +21,15 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
          8    X# west                                            X
          9    X#                <=====  the concourse  =====>          7 open  X
         10    X#                                                 X
-        11    X#         ##   ###  ##  ##    #####D#####D########X
-        12    X#         #8JUK #9TR #10#      #12lobb #13 LIQUIDSX
-        13    X#         #     #    #  #11 YD #       #          X
-        14    X#         ############  #      ##G#G#D##          X
-        15    X#         # 10 POWDER corridor #lit rm #          X
-        16    X#         #             #      #       #          X
-        17    X##########################    ##############D#####X
+        11    X#         ##   ###  ##  ##    #####D#####D########X#D#DD#L#DD##X
+        12    X#         #8JUK #9TR #10#      #12lobb #13 LIQUIDSX# 14 DOORS  #X
+        13    X#         #     #    #  #11 YD #       #          X# front hall#X
+        14    X#         ############  #      ##G#G#D##          X#D#D#D#D#D##X
+        15    X#         # 10 POWDER corridor #lit rm #          X# back hall #X
+        16    X#         #             #      #       #          X#          #X
+        17    X##########################    ##############D#####X###D####L###X
         18    X  sidewalk: the trapdoor (west end), the hydrant  X
-        21    X  road: 14 VEHICLES (car, van, leaking car)       X
+        21    X  road: 17 VEHICLES (car, van, leaking car)       X
         25    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
@@ -53,13 +53,27 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     12 POWER       a dim lobby, the fuse box on its wall, a lit room behind its windows (emergency lights over its door)
     13 LIQUIDS     a little bar on tiles: kegs behind the counter, the fire alarm and its sprinklers, a water pipe, two
                    dummies to bleed; the hydrant on the kerb outside, a car in the road whose tank leaks petrol
-    14 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
-The guards are passive dummies (they see and hear nothing but go on at their job), except the two `awake` ones.
+    14 DOORS       every kind of door (data/doors.js) side by side, off the concourse's east end: in its wall a shop's
+                   glass door, the bar's double door, the emergency exit (locked, its lamp and EXIT sign: ring its bell,
+                   E, and the man inside comes and turns his key; it shuts behind you, bounces on its closer and locks
+                   itself again), the corridor's wired-glass fire doors; between the halls the toilets' swinging doors,
+                   staff, the boss's leather, the gaming room's green, a flat's; onto the sidewalk a plain wooden door
+                   and a reinforced locked one; a stall's light leaf in the back hall
+    15 CUEBALL     level 1's boss (data/bosses.js, entities/Boss.js) in a room of his own beyond the concourse's
+                   east end (cols 64-73, rows 7-11, its door at col 63, row 9), AWAKE: his name card and the camera on
+                   first sight, his pump-action from the hip, the first hit (wounded, then berserk), the second (his
+                   death); crates and a table for cover; a 1911, a bat and a knife on the floor before his door
+    16 FIRE        in the soot room (3): petrol poured from its gas bottles to a rug and an armchair; a round through
+                   a bottle and the fire runs along the trail, takes what burns, kills who stands in it. LUCKY (his
+                   pink scarf, a dummy) stands in the concourse before it
+    17 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
+sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
 
-W, H = 64, 26
+W, H = 76, 26                              # (the 12 columns east of col 63 are 15 CUEBALL's room, in the brick)
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -106,12 +120,31 @@ lv.put(38, 14, 'D')
 lv.fill(41, 12, 50, 16, '+')               # 13 LIQUIDS: a little bar on tiles, doors on the concourse and the sidewalk
 lv.put(42, 11, 'D')
 lv.put(45, 17, 'D')
+lv.fill(51, 11, 62, 17, '#')               # 14 DOORS: every kind of door side by side, two halls behind two walls
+lv.fill(52, 12, 61, 13, '.')               # the front hall, off the concourse's south wall ...
+lv.fill(52, 15, 61, 16, '.')               # ... the back hall behind it
+lv.put(52, 11, 'D')                        # in the concourse's wall: a shop's glass door, the bar's double door,
+lv.fill(54, 11, 55, 11, 'D')               # the emergency exit (locked, its bell), the corridor's double fire door
+lv.put(57, 11, 'L')
+lv.fill(59, 11, 60, 11, 'D')
+for x in (52, 54, 56, 58, 60):             # between the halls: the swinging doors, staff, the boss's, the gaming
+    lv.put(x, 14, 'D')                     # room's, a flat's
+lv.put(54, 17, 'D')                        # onto the sidewalk: the plain wooden door, a reinforced locked one
+lv.put(59, 17, 'L')
+for (x, y), kind in (((52, 11), 'shop'), ((54, 11), 'bar'), ((59, 11), 'wired'), ((52, 14), 'swing'),
+                     ((54, 14), 'staff'), ((56, 14), 'office'), ((58, 14), 'gaming'), ((60, 14), 'flat'),
+                     ((54, 17), 'wood'), ((59, 17), 'reinforced')):
+    lv.door(x, y, kind=kind)
+lv.door(57, 11, kind='fire', inside='s', relock=4)
+lv.fill(64, 6, 74, 12, '#')                # 15 CUEBALL: his room beyond the concourse's east end, behind a door
+lv.fill(64, 7, 73, 11, ';')
+lv.put(63, 9, 'D')
 # the street
 lv.fill(1, 18, 62, 19, 's')
 lv.fill(1, 20, 62, 24, '=')
 lv.fill(1, 22, 62, 22, '-')
 
-# ---------------------------------------------------------------- actors (25 guards)
+# ---------------------------------------------------------------- actors (26 guards)
 lv.actor('@', 27, 9, face=270)
 
 lv.area('the concourse')
@@ -165,6 +198,16 @@ lv.prop('gas_bottle', 37.4, 3.7)
 lv.prop('crate', 38.3, 1.5, 6)
 lv.prop('jerrycan', 34.5, 1.4)
 lv.prop('ceiling_lamp', 36.5, 3.5)
+# 16 FIRE, in the same room: petrol poured from the bottles to a rug and an armchair. Blow a bottle (a round through
+# it) and the petrol catches, runs along its trail, takes the rug and the chair, and kills who stands in it
+# (src/game/systems/FireSpread.js). LUCKY, the prologue's man with the match, watches from the concourse.
+lv.paint('label_fire', 36.0, 9.25)
+lv.paint('rug', 36.2, 5.3)
+lv.prop('armchair', 37.9, 5.7, 200)
+lv.pour(14, (35.9, 3.3))
+lv.pour(10, (35.9, 3.3), (35.3, 4.4), (36.0, 5.2), (37.5, 5.5))
+lv.pour(10, (36.0, 5.2), (34.6, 6.3))
+lv.actor('j', 38, 9, face=180, look='lucky')
 
 lv.area('4 pool, 5 bars')
 lv.paint('label_pool', 41.4, 8.35)
@@ -265,7 +308,34 @@ lv.actor('b', 42, 14, face=0)              # dummies to bleed
 lv.actor('u', 44, 15, face=90)
 lv.prop('hydrant', 43.5, 19.62)            # on the kerb: the water runs down the gutter
 
-lv.area('14 vehicles: the street, to ram, hole and blow up')
+lv.area('14 doors')
+# the doors (src/game/data/doors.js): their weight when walked into, kicked, shot; the closer
+# swings its door back shut and latches it; the locked one's lamp is red. Ring its bell (E): the man inside comes,
+# turns his key (the lamp amber, then green) and goes back; walk in, the closer shuts it behind you and it locks
+# itself again a few seconds later (red)
+lv.paint('label_doors', 55.0, 10.65)
+lv.leaf(61.9, 15.5, 180, 24)                                 # a toilet stall's light leaf on the back hall's east wall
+lv.actor('m', 57, 13, face=270)                              # the man with the emergency exit's key, at his post
+lv.buzzer(58.4, 10.75, door=(57, 11), guard=(57, 13))        # the bell by it
+for x in (53.0, 56.5, 60.0):
+    lv.prop('ceiling_lamp', x, 12.6)
+    lv.prop('ceiling_lamp', x, 15.6)
+
+lv.area('15 cueball')
+# level 1's boss, awake (he fights: his card, his pump-action, the two hits), in a room behind a door so that he is
+# met when one chooses; what to hit him with on the floor before it
+lv.paint('label_cueball', 60.8, 8.35)
+lv.actor('h', 72, 9, face=180, look='cueball', awake=True)
+lv.prop('table', 67.5, 9.6)                                  # he tips it over or walks through what is in his way
+for x, y in ((65.6, 7.7), (70.2, 7.7), (65.6, 10.8)):
+    lv.prop('crate', x, y)                                   # cover from his buckshot
+lv.prop('armchair', 72.9, 10.8, 180)
+lv.prop('ceiling_lamp', 68.5, 9.0)
+lv.prop('wall_lamp', 68.5, 7.08, 0)
+for x, kind in ((61.3, 'pistol'), (61.9, 'bat'), (62.5, 'knife')):
+    lv.drop(kind, x, 9.9, 0)
+
+lv.area('17 vehicles: the street, to ram, hole and blow up')
 lv.paint('label_vehicles', 28.5, 18.6)
 lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
 lv.prop('car', 8.0, 21.1, 0)
@@ -294,11 +364,12 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=25)
+    lv.check(guards=28)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
-                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids) and a street with the vehicles. Load with',
-                 '?level=lab.',
-                 'Guards here are passive dummies (blind and deaf, at their job), but the two kept `awake` for the sight tests.',
+                 'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire) and a street with the',
+                 'vehicles. Load with ?level=lab.',
+                 'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
+                 'tests, and CUEBALL in his room (level 1\'s boss: he fights).',
              ])

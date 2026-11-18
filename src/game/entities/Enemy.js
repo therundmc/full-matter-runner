@@ -26,7 +26,7 @@ import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character, { heavyBuild } from './Character.js';
 import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
-import { TELL, GESTURE } from '../data/feel.js';
+import { TELL, GESTURE, TAIL } from '../data/feel.js';
 import { POSTS, HELD, HOOD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
 import { HURT } from '../data/wounds.js';
@@ -401,7 +401,7 @@ export default class Enemy extends Character {
     const now = this.world.time;
     this.witnessed = this.witnessed.filter((t) => now - t < 5);
     this.witnessed.push(now);
-    const named = victim.boss ? 'chief' : 'down', who = { N: victim.nick };
+    const named = victim.boss && !victim.traits ? 'chief' : 'down', who = { N: victim.nick }; // (a boss with a name: by it)
     if (this.witnessed.length >= 2 && this.panicT <= 0 && chance(this.kind === 'brute' ? 0.3 : 0.6)) {
       this.panicT = rand(3, 5);
       this.say('panic');
@@ -785,13 +785,13 @@ export default class Enemy extends Character {
     }
     if (S.rest === 'desk' && this.seat) {
       // his weapon stood on the floor against the end of the desk, on his left, the barrel on its edge (seen from
-      // above it shows short: len); his ashtray on the arm of his chair
+      // above it shows short: len); a smoker's ashtray on the arm of his chair (the script's `ash`)
       const desk = this.nearest('desk', this.seat, 3 * TILE), f = this.seat.face;
       if (desk) {
         const lx = Math.cos(f - Math.PI / 2), ly = Math.sin(f - Math.PI / 2), out = desk.def.w / 2 + 8; // his left
         this.rest = { x: desk.x + lx * out - Math.cos(f) * 3, y: desk.y + ly * out - Math.sin(f) * 3, a: f + Math.PI / 2 - 0.15, len: 0.6 };
       }
-      this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
+      if (S.ash) this.ashtray = { x: this.seat.x - Math.sin(f) * 10.5 + Math.cos(f) * 1.5, y: this.seat.y + Math.cos(f) * 10.5 + Math.sin(f) * 1.5 };
     }
     this.routine = new Routine(S, this.seat?.slot ?? 0);
     if (!S.walk) this.routine.begin(this.routine.pick(), true);
@@ -1160,6 +1160,26 @@ export default class Enemy extends Character {
     }
   }
 
+  // The end of a scarf flying behind him (KINDS `tail`: LUCKY's): hung from his nape, it trails where he comes from
+  // when he moves and off one side of his back when he stands, lagging his turns and fluttering (TAIL).
+  drawTail(ctx) {
+    const img = spriteOpt(this.look.tail);
+    if (!img) return;
+    const P = this.pose, w = this.world, sp = Math.hypot(this.vel.x, this.vel.y), ha = P.ha ?? this.angle;
+    const flutter = Math.sin(w.time * (TAIL.beat + sp * 3) + this.seed) * (TAIL.wave + 0.1 * Math.min(1, sp));
+    const want = (sp > TAIL.moving ? Math.atan2(-this.vel.y, -this.vel.x) : ha + Math.PI + TAIL.side) + flutter;
+    const dt = Math.min(0.05, w.time - (this.tailT ?? w.time));
+    this.tailT = w.time;
+    this.tailA = this.tailA === undefined ? want : this.tailA + angDiff(this.tailA, want) * Math.min(1, dt * TAIL.follow);
+    ctx.save();
+    bodyFrame(ctx, this);
+    ctx.translate(Math.round(this.x + P.tx - Math.cos(ha) * TAIL.nape), Math.round(this.y + P.ty - Math.sin(ha) * TAIL.nape));
+    ctx.rotate(this.tailA);
+    ctx.scale(img.k || 1, img.k || 1);
+    ctx.drawImage(img, 0, -img.height / 2);
+    ctx.restore();
+  }
+
   // a lit match let fall at p: the petrol catches there (systems/FireSpread.js)
   dropMatch(p) {
     this.world.particles.fire(p.x, p.y, 3, 18, { size: [1, 2], life: [0.1, 0.25], rise: 20 });
@@ -1424,7 +1444,7 @@ export default class Enemy extends Character {
     else this.sweep(dt, this.lookBase + Math.PI, 1.6);
     if (this.t < (kneel ? 1.4 : 1.8)) return;
     if (f) { f.knocked = Math.min(f.knocked, 0.2); this.say('wake', { N: f.nick }); }
-    else if (c.kind === 'body') { if (!this.say(c.who?.boss ? 'chief' : 'found', { N: c.who?.nick })) this.say('body'); }
+    else if (c.kind === 'body') { if (!this.say(c.who?.boss && !c.who.traits ? 'chief' : 'found', { N: c.who?.nick })) this.say('body'); }
     else this.say(c.kind === 'missing' ? 'missing' : 'damage');
     this.director.callIn(this, x, y);
     this.beginLocalSearch(x, y, 2);
@@ -1576,10 +1596,10 @@ export default class Enemy extends Character {
   // man on his own with no weapon or no rounds left, the armed player close in front of him. True if he did.
   loseNerve(dt) {
     const p = this.world.player, R = AI.surrender;
-    if (!this.sees || !p.armed) return false;
+    if (!this.sees || !p.armed || this.world.tutorial) return false; // nobody gives up in the lesson
     const dist = Math.hypot(p.x - this.x, p.y - this.y);
     if (this.shaken && dist < R.range) { this.surrender(); return true; }
-    if ((this.nerveT -= dt) > 0 || this.world.tutorial) return false;
+    if ((this.nerveT -= dt) > 0) return false;
     this.nerveT = R.every;
     const w = this.weapon, dry = !!w && this.def.kind === 'gun' && w.mag <= 0 && this.reloading <= 0 && this.reserveCount() <= 0;
     const odds = yieldOdds(this.kind, {
@@ -2433,6 +2453,7 @@ export default class Enemy extends Character {
     if (B) drawPose(ctx, this, postPose(this, standPose(this, this.pose), this.pose2, B));
     else if (this.yielded && this.knocked <= 0 && !this.held) drawPose(ctx, this, kneelPose(standPose(this, this.pose)));
     else super.draw(ctx);
+    if (this.look?.tail && this.alive && this.knocked <= 0) this.drawTail(ctx);
     if (k < 1) ctx.restore();
     if (!this.alive || this.knocked > 0) return;
     const t = this.world.time;

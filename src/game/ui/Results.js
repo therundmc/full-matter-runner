@@ -276,12 +276,11 @@ export function drawResults(ctx, W, H, t, r, replay, device) {
   // ---- what next
   const pt = t - T.prompts;
   if (pt > 0) {
-    const list = [['retry', 'RETRY'], ['confirm', r.nextLevel ? 'NEXT LEVEL' : 'MENU'], ...(r.nextLevel ? [['back', 'MENU']] : [])];
     ctx.save();
     ctx.globalAlpha = ease(pt / 0.2);
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(x0 + 3 * s, bottom - 46 * s, pw - 3 * s, 43 * s);
-    drawPrompts(ctx, list, cx, bottom - 24 * s, 20 * s, device, { gap: 1.3, font: 0.6 });
+    drawPrompts(ctx, [['confirm', '']], cx, bottom - 24 * s, 20 * s, device, { font: 0.6, lead: 'PRESS' });    // the one cue: it waits
     ctx.restore();
   }
   ctx.restore();

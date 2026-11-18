@@ -291,6 +291,9 @@ export const GESTURES = {
     item: 'cigar',
   },
   roll: { hands: (k, pt) => H(6.8, -0.8, 6.8, 1.6 + Math.sin(pt * 6) * 0.6), item: 'cigar' },
+  // CUEBALL at his desk: a fist ground into the other palm, twice; his shades pushed back up his nose
+  knuckles: { hands: (k) => { const m = bump(k, 0.1, 0.5) + bump(k, 0.5, 0.9); return H(5.4 + 0.4 * m, -0.8 + 0.3 * m, 5.4, 0.8 - 0.3 * m); } },
+  shades: { hands: (k) => { const m = ease(k / 0.35) * (1 - ease((k - 0.7) / 0.3)); return H(4.6, -1.3, lerp(4.8, 5.6, m), lerp(1.3, 4.4, m)); } },
   // the couch: slumped, an arm along the backrest
   slump: { hands: (k, pt) => H(BACK[0], BACK[1], 8, 4 + Math.sin(pt * 0.8) * 0.3) },
   read: {

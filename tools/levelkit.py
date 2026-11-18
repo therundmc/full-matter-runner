@@ -27,6 +27,8 @@ SOLID = set(' #X')
 WALLS = set('#X')
 OPENINGS = set('DLGF')
 GUARDS = set('pushrbkmji')
+# the kinds of door (keep in step with DOORS.kinds in src/game/data/doors.js)
+DOOR_KINDS = ('wood', 'reinforced', 'stall', 'fire', 'bar', 'swing', 'staff', 'office', 'gaming', 'flat', 'wired', 'shop')
 
 # hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
 # None = hangs from the ceiling / sits on a wall: never in the way
@@ -69,7 +71,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug', 'entry_mat', 'bed')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
-          'trapdoor', 'vehicles', 'takedowns')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -121,6 +123,8 @@ class Level:
         self.wet = None       # how wet the open ground is from an earlier rain, 0..1 (seen: systems/Weather.js)
         self.bars = []        # barred windows [col, row] (entities/Window.js `barred`)
         self.leaves = []      # free door leaves [col, row, deg, length, sprite] (a stall's door)
+        self.buzzers = []     # doorbells: { at: [col, row], door: [x, y], guard: [x, y] } (src/game/systems/Doors.js)
+        self.doors = {}       # 'x,y' of a door tile -> its options: kind (data/doors.js), closer, relock, inside
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -247,6 +251,29 @@ class Level:
     # a door leaf hinged at (col, row) in no wall, closed along deg, `length` px long (a toilet stall's door)
     def leaf(self, col, row, deg, length, sprite='structure/stall_door'):
         self.leaves.append([*self.at(col, row), deg, length, sprite])
+
+    # options of the door on tile (x, y) ('D' or 'L', any tile of its run): kind, one of DOOR_KINDS (its skin, its
+    # weight, its fittings: src/game/data/doors.js); closer=True / False over its kind's (a hydraulic arm swings it
+    # back shut); relock: s shut after which a locked door locks itself again (never on a door the guards must get
+    # through); inside: the room side, 'n' / 's' / 'e' / 'w' (an exit's EXIT sign; the side a closer is fitted on)
+    def door(self, x, y, **opt):
+        x, y = self.tile(x, y, 'door')
+        assert self.tiles[y][x] in 'DL', f'no door at {x},{y}'
+        assert set(opt) <= {'closer', 'kind', 'relock', 'inside'}, f'door options {sorted(opt)}'
+        assert opt.get('kind', 'wood') in DOOR_KINDS, f'door kind {opt.get("kind")}'
+        assert not (opt.get('kind') == 'swing' and self.tiles[y][x] == 'L'), 'a swinging door never locks'
+        if 'inside' in opt:   # the room side ('n', 's', 'e', 'w'): an EXIT sign hangs there
+            opt['inside'] = {'n': [0, -1], 's': [0, 1], 'e': [1, 0], 'w': [-1, 0]}[opt['inside']]
+        self.doors[f'{x},{y}'] = opt
+
+    # a doorbell at (col, row): E rings it, the guard posted at `guard` (col, row) comes and unlocks the locked door
+    # on tile `door` (col, row) from the inside (src/game/systems/Doors.js)
+    def buzzer(self, col, row, door, guard):
+        dx, dy = self.tile(*door, 'buzzer door')
+        assert self.tiles[dy][dx] == 'L', f'no locked door at {dx},{dy}'
+        gx, gy = self.tile(*guard, 'buzzer guard')
+        assert self.actors[gy][gx].lower() in GUARDS, f'no guard at {gx},{gy}'
+        self.buzzers.append({'at': list(self.at(col, row)), 'door': [dx, dy], 'guard': [gx, gy]})
 
     # iron bars on the windows at (col, row) (tiles 'G')
     def bar(self, *cells):
@@ -580,6 +607,12 @@ class Level:
         if self.leaves:
             L.append('  // door leaves in no wall (a toilet stall\'s): [col, row (the hinge), deg, length px, sprite]')
             L.append(f'  leaves: {json.dumps(self.leaves)},')
+        if self.doors:
+            L.append("  // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut")
+            L.append('  doors: { ' + ', '.join(f"'{k}': {json.dumps(v)}" for k, v in self.doors.items()) + ' },')
+        if self.buzzers:
+            L.append('  // doorbells (systems/Doors.js): E rings, the guard posted at `guard` unlocks the locked door on tile `door`')
+            L.append(f'  buzzers: {json.dumps(self.buzzers)},')
         if self.bars:
             L.append('  // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)')
             L.append(f'  bars: {json.dumps(self.bars)},')

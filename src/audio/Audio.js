@@ -181,6 +181,12 @@ export const META = {
   holster: { pri: 0, dur: 0.3, gap: 0.08, max: 2, gain: 0.22 },
   sling: { pri: 0, dur: 0.4, gap: 0.1, max: 2, gain: 0.22 },
   doorPush: { pri: 0, dur: 0.3, gap: 0.15, max: 2, gain: 0.25 },
+  doorLatch: { pri: 0, dur: 0.2, gap: 0.1, max: 2, gain: 0.3 },
+  pushBar: { pri: 0, dur: 0.25, gap: 0.15, max: 2, gain: 0.35 },
+  doorFlap: { pri: 0, dur: 0.25, gap: 0.12, max: 2, gain: 0.3 },
+  doorBoom: { pri: 3, dur: 0.6, gap: 0.08, max: 2, duck: 0.85, gain: 0.45 },
+  doorCloserHiss: { pri: 0, dur: 0.6, gap: 0.4, max: 1, gain: 0.12 },
+  lockBeep: { pri: 0, dur: 0.15, gap: 0.2, max: 1, gain: 0.25 },
   cloth: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.1 },
   scuff: { pri: 0, dur: 0.15, gap: 0.06, max: 2, gain: 0.12 },
   // ... what a finisher or a takedown does to a man (data/finishers.js)
@@ -193,6 +199,10 @@ export const META = {
   slideScrape: { pri: 0, dur: 0.5, gap: 0.2, max: 1, gain: 0.12 },
   kickWhoosh: { pri: 1, dur: 0.25, gap: 0.15, max: 2, gain: 0.3 },
   kickHit: { pri: 3, dur: 0.4, gap: 0.08, max: 2, duck: 0.85, gain: 0.95 },
+  // the player's weapon giving out, a dead man's weapon snatched (Character.breakWeapon, Player.grab)
+  batSnap: { pri: 3, dur: 0.5, gap: 0.05, max: 2, duck: 0.85, gain: 0.95 },
+  knifeSnap: { pri: 2, dur: 0.35, gap: 0.05, max: 2, gain: 0.85 },
+  snatch: { pri: 1, dur: 0.35, gap: 0.1, max: 2, gain: 0.5 },
   hoodLean: { pri: 0, dur: 0.4, gap: 0.5, max: 1, gain: 0.2 },
   click: { dur: 0.12, gap: 0.05, max: 3, gain: 0.7 },
   ammo: { dur: 0.4, gap: 0.05, max: 2, gain: 0.4 },
@@ -211,7 +221,21 @@ export const META = {
   fireRun: { pri: 2, dur: 0.5, gap: 0.3, max: 2, gain: 0.55 },
   fireRoar: { pri: 1, dur: 0.9, gap: 0.6, max: 2, gain: 0.4 },
   heatCrack: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
+  // the title (ui/title/Beats.js; placeholders, assets/sound/PLACEHOLDERS.md), under the menu's music: the poster's
+  // fire and its rain in overlapping pieces, the sign's buzz as a letter fails, the marker crossing a dead man out
+  titleFire: { pri: 0, dur: 1.6, gap: 0.9, max: 3, gain: 0.16, hall: 0.25 },
+  titleRain: { pri: 0, dur: 1.2, gap: 0.6, max: 3, gain: 0.1, hall: 0.2 },
+  neonBuzz: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.12 },
+  markerStroke: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
+  // a boss's beats (entities/Boss.js; placeholders, assets/sound/PLACEHOLDERS.md): his name card slammed in, his howl
+  // at the first hit, his roar, the player thrown off, his death, his shades on the floor
+  bossCard: { pri: 3, dur: 0.6, gap: 1, max: 1, gain: 0.8, reach: 1900 },
+  bossHowl: { pri: 3, dur: 0.9, gap: 0.5, max: 1, gain: 0.9, bus: 'voice' },
+  bossRoar: { pri: 3, dur: 1, gap: 0.6, max: 1, gain: 0.85, bus: 'voice' },
+  bossShake: { pri: 2, dur: 0.4, gap: 0.3, max: 1, gain: 0.7 },
+  bossDeath: { pri: 3, dur: 1.2, gap: 1, max: 1, gain: 0.9, bus: 'voice' },
+  shadesDrop: { pri: 1, dur: 0.2, gap: 0.05, max: 2, gain: 0.4 },
   // the kill's reward: a new one chokes the boom of the last (a chain never muds), the music dips under it
   confirm: { pri: 4, dur: 0.6, gap: 0.03, max: 2, duck: 0.8, gain: 0.8, hall: 0.06, choke: true },
   clear: { pri: 3, dur: 1.6, gap: 0.5, max: 1, duck: 0.6, gain: 0.4 },
@@ -445,6 +469,12 @@ const FOLEY = {
   holster: [['handle', 0.6, 1.2]],
   sling: [['swish', 0.45, 0.75], ['handle', 0.4, 0.9, 0.06]],
   doorPush: [['door', 0.4, 1.15]],
+  doorLatch: [['click', 0.5, 0.8], ['door', 0.2, 1.4, 0.01]],
+  pushBar: [['handle', 0.6, 0.8], ['click', 0.35, 0.7, 0.02]],
+  doorFlap: [['door', 0.35, 1.5], ['wood', 0.2, 1.3, 0.02]],
+  doorBoom: [['doorSlam', 0.8, 0.7], ['sheet', 0.6, 0.6, 0.01], ['metal', 0.3, 0.5, 0.05]],
+  doorCloserHiss: [['swish', 0.25, 0.35]],
+  lockBeep: [['click', 0.45, 2.2]],
   cloth: [['swish', 0.35, 0.6]],
   scuff: [['soft', 0.35, 1.5]],
   kneeShot: [['punch', 0.8, 1.25], ['woodBreak', 0.5, 1.8, 0.01]],
@@ -460,12 +490,27 @@ const FOLEY = {
   kickWhoosh: [['swish', 0.55, 0.8]],
   kickHit: [['punch', 1, 0.75], ['thud', 0.8, 0.7, 0.01], ['soft', 0.4, 0.9, 0.03]],
   hoodLean: [['sheet', 0.25, 0.7], ['soft', 0.35, 0.8, 0.04]],
+  batSnap: [['woodBreak', 1, 1.15], ['wood', 0.8, 0.8, 0.01]],
+  knifeSnap: [['metal', 0.9, 1.7], ['click', 0.7, 0.75, 0.01]],
+  snatch: [['swish', 0.6, 1.2], ['handle', 0.5, 1.3, 0.04]],
   clear: [['doorSlam', 0.6, 0.6]],
   // the flat on fire (systems/Tutorial.js, FireSpread.js, Fires.js): placeholders too
   arsonLaugh: [['yell', 0.55, 0.85], ['yell', 0.5, 0.95, 0.24], ['yell', 0.45, 1.05, 0.48]],
   fireRun: [['swish', 0.7, 0.4], ['soft', 0.45, 0.5, 0.04]],
   fireRoar: [['rubble', 0.3, 0.45], ['swish', 0.3, 0.3, 0.1]],
   heatCrack: [['glassHit', 0.6, 0.7], ['click', 0.35, 2.2, 0.07], ['glassHit', 0.3, 1.1, 0.16]],
+  // the title (ui/title/Beats.js): placeholders too
+  titleFire: [['rubble', 0.5, 0.35], ['swish', 0.4, 0.25, 0.2], ['woodBreak', 0.12, 0.5, 0.6]],
+  titleRain: [['splash', 0.3, 0.4], ['soft', 0.25, 0.45, 0.3], ['splash', 0.2, 0.55, 0.6]],
+  neonBuzz: [['rattle', 0.5, 2.6], ['click', 0.4, 3.2, 0.04]],
+  markerStroke: [['swish', 0.7, 1.5], ['soft', 0.5, 1.7, 0.02], ['plastic', 0.2, 1.4, 0.05]],
+  // a boss's beats (entities/Boss.js): placeholders too
+  bossCard: [['doorSlam', 0.8, 0.5], ['thud', 0.7, 0.6, 0.02]],
+  bossHowl: [['yell', 0.9, 0.6], ['yell', 0.6, 0.5, 0.2]],
+  bossRoar: [['yell', 1, 0.5], ['yell', 0.8, 0.42, 0.12], ['yell', 0.6, 0.55, 0.3]],
+  bossShake: [['swish', 0.6, 0.6], ['punch', 0.7, 0.8, 0.05]],
+  bossDeath: [['yell', 0.9, 0.45], ['thud', 0.9, 0.6, 0.5]],
+  shadesDrop: [['plastic', 0.5, 1.9], ['click', 0.3, 2.4, 0.05]],
 };
 
 class AudioSystem {

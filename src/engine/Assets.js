@@ -1,13 +1,14 @@
 // Sprite loading + derived caches (silhouettes for drop shadows, slices for debris).
 // civN: ambient passers-by and customers; dancerN: the dancers of a VIP room
-const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8',
+const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'cueball', 'lucky', 'civ1', 'civ2', 'civ3', 'civ4', 'civ5', 'civ6', 'civ7', 'civ8',
   'dancer1', 'dancer2', 'tramp'];
 const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
 export const SPRITE_LIST = [
   ...CHARACTERS.flatMap((c) => CHAR_PARTS.map((p) => `characters/${c}_${p}`)),
   'characters/gib_chunk0', 'characters/gib_chunk1', 'characters/gib_chunk2', 'characters/gib_eye',
-  ...['pistol', 'uzi', 'uzi_silenced', 'shotgun', 'rifle', 'sniper', 'bazooka', 'bat', 'knife', 'cue', 'cue_half', 'tire_iron', 'rocket', 'casing', 'shell']
+  'characters/lucky_scarf', // the flying end of LUCKY's scarf (entities/Enemy.js)
+  ...['pistol', 'uzi', 'uzi_silenced', 'shotgun', 'rifle', 'sniper', 'bazooka', 'bat', 'knife', 'cue', 'cue_half', 'tire_iron', 'tire_iron_bent', 'rocket', 'casing', 'shell']
     .map((n) => `weapons/${n}`),
   ...['table', 'table_round', 'desk', 'chair', 'armchair', 'sofa', 'plant', 'tv', 'fridge', 'oven', 'sink', 'toilet',
     'bed', 'pool_table', 'arcade', 'crate', 'barrel', 'bookshelf', 'speaker', 'dj_booth', 'bar_counter', 'car',
@@ -16,6 +17,9 @@ export const SPRITE_LIST = [
     'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
   ...['door', 'door_locked', 'stall_door', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
     .map((n) => `structure/${n}`),
+  // the door skins, one kind of door per place (data/doors.js DOORS.kinds), at FINE density (DOOR_SKINS below)
+  ...['fire', 'bar', 'bar_broken', 'swing', 'staff', 'office', 'gaming', 'flat', 'wired', 'wired_broken', 'shop', 'shop_broken']
+    .map((n) => `structure/door_${n}`),
   // the street fauna, a frame for each step of their gaits (render/CritterArt.js)
   ...['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low', 'cat_dead',
     ...[0, 1, 2].flatMap((i) => [`pigeon_walk${i}`, `pigeon_fly${i}`, `rat_run${i}`, `cat_run${i}`]),
@@ -50,7 +54,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -59,11 +63,15 @@ export const OPTIONAL_LIST = [
   ...['neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'neon_sign_mirage', 'neon_sign_open', 'neon_sign_beer', 'neon_sign_bay',
     'neon_sign_lips'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
-    'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare'].map((n) => `weapons/${n}`),
+    'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare',
+    // what the player's melee weapons break into (data/weapons.js parts)
+    'bat_head', 'bat_handle', 'knife_blade', 'knife_handle'].map((n) => `weapons/${n}`),
   // rag_*_up: torso and head of a body lying on its back; rag_torso_down: its back, when it lies on its belly (Ragdoll)
   ...CHARACTERS.flatMap((c) => ['rag_torso', 'rag_head', 'rag_arm', 'rag_leg', 'rag_torso_up', 'rag_head_up', 'rag_torso_down'].map((p) => `characters/${c}_${p}`)),
   // small things in a guard's hands at his post, dropped or left about
   ...['butt', 'cigar', 'can', 'magazine', 'ashtray', 'bottle'].map((n) => `items/${n}`),
+  // CUEBALL (level 1's boss): his head once he has been hit, his shades on the floor
+  'characters/cueball_head_hurt', 'items/shades',
   // rooftops of the neighbouring buildings (painted on the wall layer)
   'tiles/roof',
   // the comic panels of the opening, of the leap's card and of level 1's ending (tools/generate_comic.py), painted
@@ -72,6 +80,10 @@ export const OPTIONAL_LIST = [
     'alley', 'drive', 'office', 'office_phone', 'matchbook',
     // one full-screen card a man, front on (the targets, for a screen between levels; the runner's for a menu)
     'target_cueball', 'target_lucky', 'target_jitters', 'target_boss', 'card_runner'].map((n) => `comic/${n}`),
+  // the title's stills (tools/comic/title.py): the poster's three layers and the logo (ui/title/Poster.js), the hit
+  // list's board and what is pinned to it, one per number of targets dead (ui/title/HitList.js)
+  ...['poster_sky', 'poster_city', 'poster_front', 'logo', 'logo_off', 'board_bg', 'board_0', 'board_1', 'board_2', 'board_3', 'board_4']
+    .map((n) => `title/${n}`),
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',
     'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
 ];
@@ -81,8 +93,8 @@ export const OPTIONAL_LIST = [
 // plain pixel art. An image carries its
 // own (`img.k`); drawSprite and the derived canvases honour it, raw drawImage callers must scale by it.
 // (a kind's name has no underscore: `thug_torso` and `thug_head` are fine, `thug_rag_torso` and `thug_gib_head` are not)
-// (a magazine gun's `_bare` sprite, its magazine out, and the magazines themselves too)
-const FINE = /^(characters\/[a-z0-9]+_(torso|head)|weapons\/((pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron)(_bare)?|mag_(pistol|uzi|rifle|sniper)))$/;
+// (a magazine gun's `_bare` sprite, its magazine out, and the magazines themselves too; the pieces a weapon breaks into)
+const FINE = /^(characters\/[a-z0-9]+_(torso|head|head_hurt|scarf)|weapons\/((pistol|uzi|uzi_silenced|shotgun|rifle|sniper|bazooka|bat|knife|cue|cue_half|tire_iron|tire_iron_bent|bat_head|bat_handle|knife_blade|knife_handle)(_bare)?|mag_(pistol|uzi|rifle|sniper)))$/;
 // the furniture, the street's dressing and the vehicles (and their emissive maps), painted at the same density
 // (generate_assets.py FINE_PROPS), the lamps' fittings too; the neon signs, neon tubes and party bulbs stay at the world's
 const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back_bar', 'bar_counter', 'barrel', 'bed', 'bench',
@@ -100,7 +112,9 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
 // the floor tiles too (64 x 64 pixels a tile), the bar's clutter and the street fauna; the wall tops stay at the world's
-const fine = (name) => FINE.test(name) || name.startsWith('critters/') || name.startsWith('clutter/')
+// the door skins (generate_assets.py DOOR_SKINS) too; the old plain leaves (door, door_locked, stall_door) stay at the world's
+const DOOR_SKINS = /^structure\/door_(fire|bar|bar_broken|swing|staff|office|gaming|flat|wired|wired_broken|shop|shop_broken)$/;
+const fine = (name) => FINE.test(name) || DOOR_SKINS.test(name) || name.startsWith('critters/') || name.startsWith('clutter/')
   || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
   || (name.startsWith('roof/') && ROOF_FINE.has(name.slice(5)))
   || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v[1-5]|glow)$/, '')));
