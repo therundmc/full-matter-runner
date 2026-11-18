@@ -32,7 +32,7 @@ export const ACTIONS = {
   retry: { kbm: 'R', pad: 'Y' },
 };
 
-export const isPad = (device) => device === 'pad';
+const isPad = (device) => device === 'pad';
 
 // the cap of an action for a device; an unknown action is shown as it is written
 export const keyLabel = (action, device) => ACTIONS[action]?.[isPad(device) ? 'pad' : 'kbm'] ?? action;

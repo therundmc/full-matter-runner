@@ -11,6 +11,7 @@
 // side (entities/Ragdoll.js builds them so). Hands are placed relative to the shoulder at rest, in arm lengths, as
 // for an arm on the +x side (mirrored onto the other side when posed).
 import { CRAWL } from '../data/wounds.js';
+import { lerp, smooth, seeded } from '../../engine/math.js';
 
 const ARM_MIN = 0.28;                // shortest an arm is drawn: the hand by the shoulder, the elbow up and out
 const TUCK = { x: 0.42, y: -0.24 };  // a hand gathered under the shoulder, where both start
@@ -26,22 +27,9 @@ const KNEE = 0.3;                    // a knee drawn up: the leg shortens this m
 const LAST = [0.3, 0.6, 0.8];        // shares of the last reach: reach, claw until, drop until, then a shudder
 const LAST_PLANT = { x: Math.sin(0.35) * 0.9, y: -Math.cos(0.35) * 0.9 };
 
-export const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
-export const mix = (a, b, t) => a + (b - a) * t;
-const lerpPt = (p, q, t) => ({ x: mix(p.x, q.x, t), y: mix(p.y, q.y, t) });
+const lerpPt = (p, q, t) => ({ x: lerp(p.x, q.x, t), y: lerp(p.y, q.y, t) });
 // the body hauled up to the hand: a slow start against his weight, a surge, a slow end
 const heave = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : smooth(v) ** 1.4 / (smooth(v) ** 1.4 + (1 - smooth(v)) ** 1.4));
-
-// a deterministic generator (mulberry32): the same seed, the same moves
-export function rng(seed) {
-  let s = seed | 0;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 // a pose of the +x side mirrored onto the side of joint g
 const sided = (g, p) => (g.x < 0 ? { a: Math.PI - p.a, s: p.s } : p);
@@ -59,7 +47,7 @@ function armTo(g, h, lift = 1, dy = 0) {
 // haul, pause] (s), dur, from / plant / to (the pulling hand), idle / idleTo (the other hand), rock0 / rock1 (rad),
 // knee (the leg on the pulling side pushes), tilt (the head's turn on the effort) }.
 export function crawlPlan(seed, len) {
-  const R = rng(seed), J = ([a, b]) => a + (b - a) * R();
+  const R = seeded(seed), J = ([a, b]) => a + (b - a) * R();
   const [n0, n1] = CRAWL.pulls, n = n0 + Math.floor(R() * (n1 - n0 + 1));
   const strong = R() < 0.5 ? 0 : 1;
   const slip = R() < CRAWL.slip ? 1 + Math.floor(R() * (n - 1)) : -1; // the pull that fails, never the first
@@ -130,7 +118,7 @@ export function crawlPose(plan, i, u, geom, look = 0) {
   else if (v < 0) hand = { x: p.plant.x, y: p.plant.y + 0.05 * Math.abs(Math.sin(Math.PI * 2 * w)) };
   else { const b = p.fail ? smooth(v) : haul; hand = lerpPt(p.plant, p.to, b); dy *= 1 - b; }
   const arms = geom.arms.map((g, k) => (k === p.arm ? armTo(g, hand, lift, dy) : armTo(g, lerpPt(p.idle, p.idleTo, haul))));
-  const rock = v < 1 ? mix(p.rock0, p.rock1, haul) : mix(p.rock1, p.rock1 * 0.55, relax);
+  const rock = v < 1 ? lerp(p.rock0, p.rock1, haul) : lerp(p.rock1, p.rock1 * 0.55, relax);
   // the head: up as he reaches, straining on the haul, dropped once it is over
   const h = u < tr ? 0.5 * reach : v < 0 ? 0.5 + 0.2 * smooth(w) : v < 1 ? 0.7 + 0.3 * Math.sin(Math.PI * v) : 0.7 * (1 - relax);
   const knee = p.knee ? (v < 0 ? smooth(u / (tr + tc)) : 1 - smooth(v)) : 0;
@@ -150,19 +138,19 @@ export function lastPose(plan, i, u, geom, look = 0) {
   const reach = smooth(w / LAST[0]), claw = (w - LAST[0]) / (LAST[1] - LAST[0]);
   const drop = smooth((w - LAST[1]) / (LAST[2] - LAST[1])), shudder = (w - LAST[2]) / (1 - LAST[2]);
   const arms = geom.arms.map((g, k) => {
-    if (k !== arm) { const q = armTo(g, hands[k]); return { a: q.a, s: mix(q.s, 1, drop), dy: 0 }; }
+    if (k !== arm) { const q = armTo(g, hands[k]); return { a: q.a, s: lerp(q.s, 1, drop), dy: 0 }; }
     // lifted off the floor as it goes, the fingers scraping at the end of it, then it falls flat
     const scrape = claw > 0 && claw < 1 ? 0.06 * Math.abs(Math.sin(Math.PI * 3 * claw)) : 0;
     const to = { x: LAST_PLANT.x, y: LAST_PLANT.y - PRO / g.len + scrape };
     const q = armTo(g, lerpPt(hands[k], to, reach), 1 - 0.15 * reach, -PRO * reach);
-    return { a: q.a, s: mix(q.s, 1, drop), dy: mix(q.dy, 0, drop) };
+    return { a: q.a, s: lerp(q.s, 1, drop), dy: lerp(q.dy, 0, drop) };
   });
   const shake = shudder > 0 ? 0.06 * Math.sin(Math.PI * 2 * 5 * shudder) * (1 - shudder) ** 2 : 0;
-  const rock = mix(rock0, 0, drop) + shake;
+  const rock = lerp(rock0, 0, drop) + shake;
   const side = geom.arms[arm].x < 0 ? -0.55 : 0.55; // the cheek down toward the hand that reached
   const h = 0.8 * smooth(w / LAST[0]) * (1 - drop);
   const legs = trail(plan, geom, rock).map((q, k) => ({ a: q.a + (k ? shake : -shake), s: q.s }));
-  const head = { a: mix(-0.6 * rock0 + (i === 0 ? look * (1 - reach) : 0), side, drop), s: 1 - LIFT * h };
+  const head = { a: lerp(-0.6 * rock0 + (i === 0 ? look * (1 - reach) : 0), side, drop), s: 1 - LIFT * h };
   return { rock, arms, legs, head };
 }
 

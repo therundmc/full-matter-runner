@@ -15,11 +15,11 @@
 // customer running off shoves his chair back, drops his glass, leaves a cigarette burning: `butts`).
 // Emits 'heldUp' { car, how } when a driver has a gun pointed at him (Traffic Driver.heldUp).
 import { TILE, CAT, MASK, AMBIENT as A } from '../Config.js';
-import { angDiff } from '../../engine/math.js';
+import { angDiff, seeded, hashString } from '../../engine/math.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Civilian, { CIVILIAN_KINDS } from '../entities/Civilian.js';
-import { Lane, Driver, gapAhead, findBypass, steerAngle, seeded, between, hashString } from './Traffic.js';
+import { Lane, Driver, gapAhead, findBypass, steerAngle, between } from './Traffic.js';
 import { Walker, WALKER, escapeRoute, hideRoute, groundOf, pathLength, pointAlong } from '../ai/Civilians.js';
 import { giveWay, cellAhead, CellMemory } from '../ai/Nav.js';
 import { markBlocked } from '../world/TileMap.js';

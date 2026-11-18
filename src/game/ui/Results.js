@@ -4,8 +4,8 @@
 // total, then the grade is stamped down, a new record flashes, and the prompts come up (retry, next level, menu).
 // The timeline and its sounds are pure (resultsTimeline, resultsBeats: unit-tested); drawResults paints a moment of it.
 import { PALETTE } from '../Config.js';
-import { clamp } from '../../engine/math.js';
-import { text, glitchText, thousands } from './Text.js';
+import { clamp, hash } from '../../engine/math.js';
+import { text, glitchText, thousands, clock, fitSize } from './Text.js';
 import { drawPrompts } from './Glyphs.js';
 
 // s: when each beat comes, and how long a figure takes to count up
@@ -21,7 +21,6 @@ export const RESULTS = {
 const GRADE_COLOR = { S: PALETTE.yellow, A: PALETTE.pink, B: PALETTE.cyan, C: PALETTE.white, D: '#8a7f96' };
 const GREY = '#8a7f96';
 
-const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const ease = (k) => 1 - (1 - clamp(k, 0, 1)) ** 3;
 
 // when each beat of the results comes (s from the start of the screen)
@@ -57,18 +56,6 @@ export function resultsBeats(r, t0, t1, R = RESULTS) {
   if (r.record && r.ranked && crossed(T.record)) out.push({ name: 'confirm', vol: 0.9, opts: { n: 6 } });
   return out;
 }
-
-// a font size for `str` that fits `width`, no bigger than `size`
-function fit(ctx, str, size, width) {
-  ctx.save();
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
-  const w = ctx.measureText(str).width;
-  ctx.restore();
-  return w > width ? size * (width / w) : size;
-}
-
-// a little pseudo-random from a seed (the stamp's wear and its ink spatter stay put from frame to frame)
-const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 // the grade as a rubber stamp: k 0..1 its fall, since: s since it landed (the ink spatters, a ring goes out)
 function drawStamp(ctx, grade, x, y, size, k, since, s) {
@@ -156,7 +143,7 @@ export function drawResults(ctx, W, H, t, r, replay, device) {
     text(ctx, r.level.name || '', Rx, y, 12 * s, PALETTE.white, { align: 'right', alpha: 0.7 });
   }
   y += 40 * s;
-  const hk = clamp(t / 0.2, 0, 1), hs = fit(ctx, 'LEVEL COMPLETE', 36 * s, inner) * (1 + (1 - ease(hk)) * 0.9);
+  const hk = clamp(t / 0.2, 0, 1), hs = fitSize(ctx, 'LEVEL COMPLETE', 36 * s, inner) * (1 + (1 - ease(hk)) * 0.9);
   glitchText(ctx, 'LEVEL COMPLETE', cx, y, hs, t, { color: PALETTE.white, alpha: hk });
 
   // ---- the three figures of the run
@@ -179,7 +166,7 @@ export function drawResults(ctx, W, H, t, r, replay, device) {
     ctx.globalAlpha = 1;
     text(ctx, label, tx + tw / 2, y + 15 * s, 10 * s, PALETTE.cyan, { alpha: a });
     const str = value(ease(k));
-    text(ctx, str, tx + tw / 2, y + 41 * s, fit(ctx, str, 26 * s, tw - 12 * s) * (counting ? 1.04 : 1), counting ? PALETTE.white : col, { alpha: a });
+    text(ctx, str, tx + tw / 2, y + 41 * s, fitSize(ctx, str, 26 * s, tw - 12 * s) * (counting ? 1.04 : 1), counting ? PALETTE.white : col, { alpha: a });
     if (sub && !counting) text(ctx, sub, tx + tw / 2, y + 63 * s, 9 * s, col === PALETTE.white ? PALETTE.pink : col, { alpha: 0.85 });
   });
 
@@ -243,7 +230,7 @@ export function drawResults(ctx, W, H, t, r, replay, device) {
     const right = Rx, ty = bt + 46 * s;
     text(ctx, 'TOTAL', right, bt + 14 * s, 12 * s, PALETTE.white, { align: 'right', alpha: 0.75 });
     const pop = done ? 1 + Math.max(0, 0.12 - (tt - RESULTS.total)) * 2 : 1;
-    text(ctx, thousands(Math.round(r.total * kt)), right, ty, fit(ctx, '000 000', 40 * s, inner - size - 30 * s) * pop, PALETTE.yellow, { align: 'right' });
+    text(ctx, thousands(Math.round(r.total * kt)), right, ty, fitSize(ctx, '000 000', 40 * s, inner - size - 30 * s) * pop, PALETTE.yellow, { align: 'right' });
   }
   const gt = t - T.stamp;
   if (gt > 0) {

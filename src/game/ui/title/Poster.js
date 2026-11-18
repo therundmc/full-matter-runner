@@ -11,7 +11,8 @@ import { POSTER as P } from '../../data/titleart.js';
 import { hash, px, poly } from '../cine/Ink.js';
 import { logoDead } from './Beats.js';
 import { FW, FH, INK, NIGHT_L, NIGHT_LL, BONE, BONE_D, PINK, PINK_D, CYAN_D, FIRE, FIRE_D, FIRE_L, open, put, frame, show, steps, slab,
-  moved, lump, tongue, glint, letter, widthOf } from './Paper.js';
+  moved, lump, tongue, glint, letter } from './Paper.js';
+import { widthOf } from '../Text.js';
 
 const SHIFT = { sky: 6, city: 12, front: 20 };      // how far each layer moves with the mouse, px (the near ones more)
 const MENU_Y = 612;

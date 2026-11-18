@@ -1,12 +1,12 @@
 import { TILE, LIGHTING as L } from '../Config.js';
 import { POST } from '../data/post.js';
 import { spriteOpt } from '../../engine/Assets.js';
-import { clamp } from '../../engine/math.js';
+import { clamp, hash } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { RAIN } from '../data/atmosphere.js';
 import { DOORS } from '../data/doors.js';
-import { hash, flicker, signLevel, pickFaults } from './Flicker.js';
+import { flicker, signLevel, pickFaults } from './Flicker.js';
 import { READABILITY } from '../data/readability.js';
 import { floorLift } from './Readability.js';
 

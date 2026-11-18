@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 const { TILE, AMBIENT: A, CAT, MASK } = await load('game/Config.js');
-const { Lane, Driver, gapAhead, safeSpeed, findBypass, steerAngle, seeded } = await load('game/systems/Traffic.js');
+const { Lane, Driver, gapAhead, safeSpeed, findBypass, steerAngle } = await load('game/systems/Traffic.js');
+const { seeded } = await load('engine/math.js');
 const { Walker, WALKER, escapeRoute, hideRoute, groundOf, pathLength, pointAlong } = await load('game/ai/Civilians.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 

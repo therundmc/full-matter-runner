@@ -9,10 +9,9 @@
 import { FACING } from '../data/feel.js';
 import { GAIT } from './Gait.js';
 import { BODY_SCALE } from '../Config.js';
-import { angDiff, clamp, lerp } from '../../engine/math.js';
+import { angDiff, clamp, lerp, smoother } from '../../engine/math.js';
 
 const H = 1 / 240; // s: the springs' longest sub-step (the same motion at any frame rate)
-const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 
 function newFacing(a) {
   return { head: a, headV: 0, sh: a, shV: 0, hip: a, hipV: 0, feet: null, step: null, plantW: 0, hop: 0, rest: 0, led: null };

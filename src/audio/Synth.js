@@ -7,18 +7,7 @@
 // render(recipe, sr, seed) draws every number given as a range [lo, hi] once per variation (seeded), sums the
 // layers and normalizes the result to the recipe's level.
 
-const TAU = Math.PI * 2;
-
-// seeded generator (mulberry32): a variation is the same sound every time it is baked
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), a | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { TAU, seeded } from '../engine/math.js';
 
 // a number, or one drawn from [lo, hi] (frequencies, times and levels of a variation)
 const pick = (r, v) => (Array.isArray(v) ? v[0] + (v[1] - v[0]) * r() : v);
@@ -187,7 +176,7 @@ function draw(r, layer) {
 
 // one variation of a recipe { level, dur, layers }: mono samples at sr, peak = level, faded in and out, trimmed
 export function render(recipe, sr, seed) {
-  const r = rng(seed), len = Math.round((recipe.dur + 0.4) * sr), out = new Float32Array(len);
+  const r = seeded(seed), len = Math.round((recipe.dur + 0.4) * sr), out = new Float32Array(len);
   for (const layer of recipe.layers) {
     if (layer.odds !== undefined && r() > layer.odds) continue;
     LAYERS[layer.k](out, sr, r, draw(r, layer));

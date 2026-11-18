@@ -69,6 +69,12 @@ export const FORCE = { keep: 2, last: 1, near: 80 };
 // the men coming up the stairs (level wave `up`): steps heard, s between two, s from the last to the first man; s
 // between two of them
 export const STAIRS = { steps: [3, 0.14, 0.12], next: 0.3 };
+// the tutorial's men (systems/Tutorial.js): a dormant one he walks up to, in front of him, wakes within FRONT tiles
+// (unless his wave is blind); SLACK: how much slower than a real guard they react and shoot (Enemy.slack): it is a
+// lesson; STAND: s a sharp wave's man holds his ground once woken (Enemy.standT)
+export const FRONT = 1.7;
+export const SLACK = 1.7;
+export const STAND = 2.5;
 
 // ---- the opening: he lies on his mattress, the man who poured the petrol stands at the end of the trail
 // (`at`: the tile he is posted on), turns, laughs, lights a match, lets it fall and is gone by the front door,

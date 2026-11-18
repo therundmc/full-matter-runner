@@ -5,6 +5,8 @@
 // canvas); hands are small cached sprites drawn turned along the forearm (drawHand).
 // Colours come from the character's look (Character KINDS, Civilian CIVILIAN_LOOKS): arm (sleeve), skin, and
 // optionally cuff, glove, pants, shoe.
+import { hexRgb } from '../../engine/math.js';
+
 const D = 2;             // buffer pixels per pose px
 const HALF = 30;         // the buffer covers +-HALF pose px round the body's centre
 const N = HALF * 2 * D;
@@ -15,7 +17,6 @@ const DARK_T = [28, 10, 48], LIGHT_T = [255, 248, 226]; // shadows cold purple, 
 const LIGHT = (() => { const l = [-0.5, -0.65, 0.75], n = Math.hypot(...l); return l.map((v) => v / n); })();
 
 // ---------------- colours ----------------
-const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const mix = (c, t, k) => c.map((v, i) => Math.round(v + (t[i] - v) * k));
 // 4-step ramp [shadow, dark, base, light], as generate_assets.py ramp()
 const rampOf = (hex, d2 = 0.48, d1 = 0.24, l1 = 0.32) => {

@@ -4,7 +4,7 @@ const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'cueball', 'luck
   'dancer1', 'dancer2', 'tramp'];
 const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
-export const SPRITE_LIST = [
+const SPRITE_LIST = [
   ...CHARACTERS.flatMap((c) => CHAR_PARTS.map((p) => `characters/${c}_${p}`)),
   'characters/gib_chunk0', 'characters/gib_chunk1', 'characters/gib_chunk2', 'characters/gib_eye',
   'characters/lucky_scarf', // the flying end of LUCKY's scarf (entities/Enemy.js)
@@ -321,10 +321,4 @@ export function drawUpright(ctx, img, x, y, angle, len, { alpha = 1, scale = 1, 
   if (alpha !== 1) ctx.globalAlpha *= alpha;
   ctx.drawImage(img, 0, 0, w, img.height, part < 1 ? -w : -w / 2, -img.height / 2, w, img.height);
   ctx.restore();
-}
-
-// sprite + offset drop shadow
-export function drawSpriteShadowed(ctx, img, x, y, angle = 0, shadow = 2, alpha = 1) {
-  drawSprite(ctx, silhouette(img), x + shadow, y + shadow, angle, 0.35 * alpha);
-  drawSprite(ctx, img, x, y, angle, alpha);
 }

@@ -2,9 +2,8 @@
 // pose): which door leaf a hand reaches for and with which hand, the phases of drawing a weapon, the gesture that
 // goes with a line, and the clock of each.
 import { GESTURE, TALK } from '../data/feel.js';
-import { clamp, angDiff } from '../../engine/math.js';
+import { angDiff, smooth } from '../../engine/math.js';
 
-const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 
 // ---------------- doors ----------------
 // The nearest door leaf ahead of a man at (x, y) of radius r going along (ux, uy) (a unit vector), within reach of

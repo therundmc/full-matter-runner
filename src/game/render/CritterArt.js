@@ -4,8 +4,7 @@
 // specks drawn from the clock.
 import { CRITTERS as C } from '../Config.js';
 import { sprite, silhouette } from '../../engine/Assets.js';
-
-const TAU = Math.PI * 2;
+import { TAU } from '../../engine/math.js';
 
 // a gait: px covered in one cycle, and the frames of the cycle in turn
 const GAIT = {

@@ -177,7 +177,7 @@ src/
                           moment (judge), what complying means (complies), the stage a repeat offender starts at
       Tactics.js          grid geometry: cover / ambush / flank spots, search points, random walkable point, the way through a doorway,
                           the table worth tipping over in front of a cover spot (`tableToFlip`)
-      Perception.js       detection meter rate, view test, aim error, hearing error, patience with a loiterer
+      Perception.js       detection meter rate, view test, aim error, hearing error
       Barks.js            what a guard says: blanks filled ({N} a name, {AT} / {P} a place), the line picked, the names
                           handed out, the named place of a point (level soundscape zones, landmarks)
       Squad.js            a guard's nerve: running for backup (odds, which group), giving up, going for a gun on his knees
@@ -707,21 +707,19 @@ and outside the level's `premises` (tile rectangles, `lv.guard()` in tools/level
 hand, a weapon in hand inside the premises, a shot heard, a guard floored or killed, a word that turned into a fight
 make him a target for good. Short of that, what he does that no customer does gets him a word (below). No
 `premises` = hostile ground everywhere (lab, street testbed, tutorial). Level 1's bar room and toilets are public: only the VIP room, the back
-room, the storeroom, behind the counter and the yards are premises. A passer-by must not hang about either, except
-in the level's `welcome` rectangles (`lv.host()`, `Director.isGuest`: a customer in the bar room) (`Enemy.mind`, `AI.loiter`,
-`Perception.loiterRate`): a guard who has him in front of him within a few metres stops, stares him down and tells
-him to clear off, warns him a last time ('!'), then snaps: the whole squad is provoked. His patience (shown on the
-detection gauge) runs out faster the closer the stranger stands and comes back slowly once he has gone.
-An unarmed stranger seen in the premises (`Director.isIntruder`) is told to get out (a word, below) rather than
-fought on sight. The loiterer's last stage is a shove (a word opened at the shove), then the fight.
+room, the storeroom, behind the counter and the yards are premises. A stranger who only stands about on public
+ground is none of the guards' concern, however long he stays (the user's call); hanging about a door into the
+premises is an act (`lurk`, below), except in the level's `welcome` rectangles (`lv.host()`, `Director.isGuest`: a
+customer in the bar room). An unarmed stranger seen in the premises (`Director.isIntruder`) is told to get out (a
+word, below) rather than fought on sight.
 
 **A word with a stranger** (`Director.watchConduct` / `conduct`, ai/Conduct.js, data/conduct.js `ACTS`,
 `Enemy.doChallenge`, `AI.challenge`). While nobody has anything against him, the odd things he is seen doing are
 acts: `trespass` (unarmed in the premises), `weapon` (a blade or a club in hand on public ground), `vault` (over the
 furniture), `slide`, `window` (a pane put in), `smash` (a blow on the furniture), `noise` (his own glass / door /
-thrown noise), `lurk` (hanging about a door into the premises, `AI.challenge.lurk` s), `bump` (running into a guard),
-`loiter` (the doormen's patience run out). The nearest guard who saw it (`Enemy.witness`: in sight within
-`AI.challenge.sight` px; a noise turns his head, so no view cone for those) leaves what he was at (state `challenge`,
+thrown noise), `lurk` (hanging about a door into the premises, `AI.challenge.lurk` s), `bump` (running into a guard).
+The nearest guard who saw it (`Enemy.witness`: in sight within `AI.challenge.sight` px, `near` if he is busy at his
+pastime; a noise turns his head, so no view cone for those) leaves what he was at (state `challenge`,
 '?', weapon still put away over a trifle) and walks over, calling him ('hey'); a word's distance off he tells him (the
 act's `order`: "OUT. NOW.", "PUT THAT DOWN.", "HEY! CUT THAT OUT."...), then gives him the act's `wait` s to comply
 (`comply`: off the premises, empty-handed, off the spot, or simply not again while watched). He warns him ('press',
@@ -799,7 +797,7 @@ third per stage. A gun in hand is no matter for words: it is a threat, as before
     at the muzzle for `fire.tell` s (`tellK`, render/BossArt.js); he reloads on his feet with a word (the opening);
     furniture in his way goes over or is sent off (`clearWay`);
   - TWO hits: every death goes through `kill`, and the first one only wounds him (`wound`): thrown back, reeling
-    `wound.stagger` s, blood, his head's `_hurt` sprite (shades askew, a lens cracked), the wound drawn where the
+    `wound.stagger` s, blood, his head's `<kind>_head_hurt` sprite (shades askew, a lens cracked), the wound drawn where the
     blow struck (`struckSide`, BOSSES `spots`) and his free hand on it, a slow-motion beat, WOUNDED on the feed;
     then he roars and is berserk (BOSSES `berserk`: faster on his feet and on the trigger, wilder), bleeding as he
     goes. `wound.grace` s nothing else touches him (the other pellets of the blast). The second hit kills him: his
@@ -1007,7 +1005,7 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
 - `?level=lab` loads the physics lab (tools/build_lab.py): a lit concourse with the range at its west end and a bay or
   room per system on either side, its number and name stencilled on the floor at its entrance (1 range, 2 executions,
   3 soot, 4 pool, 5 bars, 6 curtain, 7 takedowns, 8 jukebox, 9 trapdoor, 10 powder, 11 steam, 12 power, 13 liquids,
-  14 doors, 15 vehicles in the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
+  14 doors, 15 cueball, 16 fire, 17 vehicles in the street); a brighter night of its own (`level.light`, render/Lighting.js `ambientOf`); passive dummies but two
   `awake` guards for the sight tests.
 - `?level=street` loads the street-life testbed (two-lane road open at both ends, passers-by, two guards).
 - F1 sandbox panel, in any level (open from the start in passive test rooms): 1-6 pick a tool (guard, weapon,

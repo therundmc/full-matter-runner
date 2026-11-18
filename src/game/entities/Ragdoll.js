@@ -1,11 +1,11 @@
 import { CAT, MASK, PALETTE, BODY_SCALE, TILE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
-import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
+import { rand, randi, chance, local, angDiff, smooth } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, KNEELS } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
 import { smear } from '../fx/Spatter.js';
-import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
+import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir } from '../fx/CrawlPose.js';
 import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from '../fx/DyingPose.js';
 import { jointAngle, clampJoint, partAngle } from '../fx/Joints.js';
 import { bodyMarks, markAt } from '../fx/BodyMarks.js';

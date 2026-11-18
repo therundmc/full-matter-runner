@@ -14,8 +14,7 @@
 // Listens to 'propDestroyed' (a `fountain` prop: the hydrant) and 'spill'.
 import { TILE } from '../Config.js';
 import { LIQUIDS } from '../data/liquids.js';
-import { seeded } from './Weather.js';
-import { rand, angDiff, TAU } from '../../engine/math.js';
+import { rand, angDiff, TAU, seeded } from '../../engine/math.js';
 import Shallow from '../../engine/physics/Shallow.js';
 
 const JUMP = 48;   // px in one step: a teleport, not a stride

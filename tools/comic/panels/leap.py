@@ -1,5 +1,4 @@
 """The leap's card: the alley in the rain, the next day (alley)."""
-from .. import poster
 from ..kit import BONE_D, BROWN, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, PINK, PINK_D, TAN, Cv, bead, panel, slab
 
 ALLEY_SIGN = (604, 134, 62, 10)   # the street's neon at the alley's far end, x, y, w, h (the game flickers it)

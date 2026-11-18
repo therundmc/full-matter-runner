@@ -2,9 +2,9 @@
 // on a panel (a black sheet on a pink one, PAUSED on a bone tab, the chosen line pink between two chevrons); its
 // OPTIONS and the pages under them are the title's own screen (ui/title/Options.js). Returns where each item landed
 // on screen, for the mouse: [{ i, x, y, w, h, track? }] in canvas px (track: a slider's bar, for dragging).
-import { text } from './Text.js';
+import { text, widthOf } from './Text.js';
 import { selectable } from './Menu.js';
-import { BONE, PINK, INK, frame, panel, letter, widthOf, steps } from './title/Paper.js';
+import { BONE, PINK, INK, frame, panel, letter, steps } from './title/Paper.js';
 import { optionsUp, drawOptions } from './title/Options.js';
 
 const GREY = '#6c6478';

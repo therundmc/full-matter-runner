@@ -14,7 +14,7 @@ const { newPose, vaultPose, vaultPhases, slidePhases, rollPhases } = await load(
 const { fxFor, slideFx, plantFx, landFx, rollFx, rimOf } = await load('game/fx/TraversalFx.js');
 const { default: level } = await load('game/data/levels/level1.js');
 
-const { Bodies, Body } = Matter;
+const { Bodies } = Matter;
 const px = (t) => t * TILE;
 const noop = () => {};
 

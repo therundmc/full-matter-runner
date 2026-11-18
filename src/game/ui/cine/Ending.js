@@ -40,7 +40,7 @@ function within(g, pts, draw) {
 // ---------------------------------------------------------------- level 1
 // 1. At the wheel: the rain running up the windscreen, the wiper going, and in the mirror the bar going away
 // (behind: 0 when the panel drops in, 1 when it is a speck).
-export function paintDrive(g, w, h, t, behind) {
+function paintDrive(g, w, h, t, behind) {
   still(g, 'drive', w, h);
   fine(g, () => {
     within(g, GLASS, () => {
@@ -91,7 +91,7 @@ export function paintDrive(g, w, h, t, behind) {
 
 // 2. The bar's back room, CUEBALL dead over the desk: the phone rattling on its cradle while it rings (the boss), the
 // smoke off his dropped shotgun, a drop of blood off the desk.
-export function paintOffice(g, w, h, t) {
+function paintOffice(g, w, h, t) {
   still(g, 'office', w, h);
   const rec = spriteOpt('comic/office_phone');
   fine(g, () => {
@@ -107,7 +107,7 @@ export function paintOffice(g, w, h, t) {
 }
 
 // 3. The matchbook in his hand: the motel's name printed on it.
-export function paintMatchbook(g, w, h, t = 0) {
+function paintMatchbook(g, w, h, t = 0) {
   still(g, 'matchbook', w, h);
   const k = (t % 3.6) / 0.6;                                             // a glint slides across its cover now and then
   if (k < 1) {

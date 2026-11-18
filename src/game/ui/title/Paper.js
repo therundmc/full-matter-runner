@@ -106,10 +106,6 @@ export function letter(ctx, str, x, y, size, col, deg = 0, align = 'center') {
   ctx.fillText(str, 0, 0);
   ctx.restore();
 }
-export function widthOf(ctx, str, size) {
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
-  return ctx.measureText(str).width;
-}
 
 // The menu's panel (ui/MenuArt.js: every page but the title's first and the hit list, and the pause): a black sheet
 // cut by hand on a pink one that shows along two of its edges, a violet bar of light across it, and the page's name

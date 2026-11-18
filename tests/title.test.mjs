@@ -168,7 +168,7 @@ test('title sounds: no horn, each train heard piece by piece from far off to far
   assert.deepEqual(titleBeats(5, 5), [], 'nothing twice');
 });
 
-// the drawn axles of a train (Train.carsOf + TRAIN.wheels, the car flipped when it runs left), logical px
+// the drawn axles of a train (its cars + TRAIN.wheels, the car flipped when it runs left), logical px
 function axlesDrawn(tr) {
   const out = [];
   for (let i = 0; i < TRAIN.cars; i++) {

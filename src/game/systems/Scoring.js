@@ -17,6 +17,7 @@ import { clamp } from '../../engine/math.js';
 import { WEAPONS } from '../data/weapons.js';
 import { SCORING, levelScoring } from '../data/scoring.js';
 import Audio from '../../audio/Audio.js';
+import { clock } from '../ui/Text.js';
 
 const GUN_CAUSES = new Set(['bullet', 'blast', 'heavy']);
 
@@ -77,8 +78,6 @@ export function gradeFor(total, grades) {
   for (const [g, min] of grades) if (total >= min) return g;
   return grades[grades.length - 1][0];
 }
-
-const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 // End-of-level breakdown from the run's figures (pure).
 // stats: { points, kills, guards, maxCombo, methods, shots, hits, alerts, civilians, spared, time, styled? }

@@ -5,7 +5,7 @@ import { recipeFor, BITS, FLOATS } from '../data/destruction.js';
 import { PX_PER_M } from '../../engine/physics/Units.js';
 import { sprite, spriteOpt, chunk, drawSprite, silhouette, sw, sh } from '../../engine/Assets.js';
 import { segPoly } from '../../engine/physics/Raycast.js';
-import { rand, chance, clamp, pick } from '../../engine/math.js';
+import { TAU, rand, chance, clamp, pick } from '../../engine/math.js';
 import { incidence, markShape, exitShape, ejecta, track, ZoneGrid, cutPolys, launch, crumble, tearShape } from '../systems/Fracture.js';
 import { RESIST } from '../systems/Penetration.js';
 import { canvas, put, paintMark, paintTrack, bite, cutPiece, cracks, splitLine, smashScreen, bitSprite, stump, remains, rackSlots, popSlot,
@@ -30,7 +30,6 @@ const ENERGY = { pellet: 4, bullet: 10, rifle: 34, graze: 6, blunt: 14, blast: 2
 const BLASTS = new Set(['blast', 'shrapnel']);
 // what holes a gas bottle or a stove (see gasHit)
 const PIERCING = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']);
-const TAU = Math.PI * 2;
 const COAST = 1.6; // s a fan takes to run down once the power is cut
 const d0 = (d) => d.w * d.h; // area of a prop's whole box (none for a round one)
 const INK_DOOR = '#141018'; // outline of a cabinet's open doors

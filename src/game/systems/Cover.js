@@ -25,7 +25,7 @@ function closestOnPolygon(px, py, verts) {
 }
 
 // is a character-sized spot free of walls, furniture, glass and people? (but ignore, and the bodies pass(b) lets by)
-export function spotIsFree(world, x, y, r, ignore, pass = null) {
+function spotIsFree(world, x, y, r, ignore, pass = null) {
   const m = world.map;
   for (const [ox, oy] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
     if (m.solidAt(x + ox, y + oy)) return false;

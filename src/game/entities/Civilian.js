@@ -5,7 +5,7 @@
 // Moved by a Walker brain (ai/Civilians.js) that systems/Ambient.js ticks. Same body, death and gore as anyone;
 // team 'civilian' so both sides' bullets hit him, but he is never a level target and guards ignore him.
 import { CAT, MASK, TILE } from '../Config.js';
-import { rand, approachAngle, angDiff, clamp } from '../../engine/math.js';
+import { rand, approachAngle, angDiff, clamp, bump } from '../../engine/math.js';
 import { GESTURE, DANCE } from '../data/feel.js';
 import { WALKER } from '../ai/Civilians.js';
 import { talks } from '../ai/Pastimes.js';
@@ -44,7 +44,6 @@ const COVER = 0.5;     // how far down one running with his arms over his head g
 // man his size, the crouch is in his pose (mood: hunch, duck); 0.14 drew him a fifth smaller, back to the world's 1x
 const SINK = 0.04;
 export const crouchScale = (crouch) => 1 - Math.min(Math.max(0, crouch), BALL) * SINK;
-const bump = (k) => (k <= 0 || k >= 1 ? 0 : Math.sin(Math.PI * k));
 
 export default class Civilian extends Character {
   constructor(world, x, y, angle, kind, brain) {

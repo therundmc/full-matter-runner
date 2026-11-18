@@ -14,7 +14,7 @@ import math
 import os
 import random
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
@@ -69,12 +69,6 @@ def tone(r, L, shift=0):
     return r[max(0, min(3, tidx(L) + shift))]
 
 
-def jit(c, amt, rng=RNG):
-    d = rng.randint(-amt, amt)
-    return (max(0, min(255, c[0] + d)), max(0, min(255, c[1] + d)),
-            max(0, min(255, c[2] + d)), c[3])
-
-
 OUTLINE = hx('#140c1c')
 GORE_OL = hx('#2a0812')
 CLEAR = (0, 0, 0, 0)
@@ -102,13 +96,6 @@ def light(nx, ny):
     return max(0.0, nx * LX + ny * LY + nz * LZ)
 
 
-BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
-
-
-def bayer(x, y, t):
-    return BAYER4[y % 4][x % 4] / 16.0 < t
-
-
 # --------------------------------------------------------------------------
 # Canvas
 # --------------------------------------------------------------------------
@@ -116,7 +103,7 @@ def bayer(x, y, t):
 class Cv:
     """An RGBA canvas addressed in WORLD px. With s > 1 (a sprite painted finer than the world, see FINE) it holds
     s x s pixels per world px: set / rect / blend fill a whole world px, dot sets the single pixel under a world point,
-    get reads it, and the shape painters, the outline and each() work pixel by pixel."""
+    get reads it, and the shape painters and the outline work pixel by pixel."""
     S = 1   # pixel density of new canvases (raised to FINE while the fine props are painted, see fine())
 
     def __init__(self, w, h, s=None):
@@ -190,17 +177,6 @@ class Cv:
             for x in range(x0, x1 + 1):
                 self.set(x, y, c)
 
-    def each(self, x0, y0, x1, y1, fn):
-        """fn(x, y, current) -> colour or None, for every pixel of the world px x0..x1, y0..y1 (x, y: the world px
-        it lies in)."""
-        s = self.s
-        for j in range(y0 * s, (y1 + 1) * s):
-            for i in range(x0 * s, (x1 + 1) * s):
-                if self.pok(i, j):
-                    c = fn(i // s, j // s, self.p[i, j])
-                    if c is not None:
-                        self.p[i, j] = c
-
     def over(self, other, dx=0, dy=0):
         self.img.alpha_composite(other.img, (dx * self.s, dy * self.s))
         self.p = self.img.load()
@@ -217,20 +193,6 @@ class Cv:
         for i, j in add:
             self.p[i, j] = col
         return self
-
-    def recolor_edges(self, dark, light_c=None):
-        """Shade pixels on the bottom/right silhouette edge (and top/left if light_c)."""
-        ch = []
-        for j in range(self.ph):
-            for i in range(self.pw):
-                if not self.pon(i, j):
-                    continue
-                if not self.pon(i + 1, j) or not self.pon(i, j + 1):
-                    ch.append((i, j, dark(self.p[i, j])))
-                elif light_c and (not self.pon(i - 1, j) or not self.pon(i, j - 1)):
-                    ch.append((i, j, light_c(self.p[i, j])))
-        for i, j, c in ch:
-            self.p[i, j] = c
 
 
 def ascii_cv(rows, pal, ol=OUTLINE):
@@ -1048,9 +1010,6 @@ def sleeve_col(ch, k_, L, side):
     return ch['top'][i]
 
 
-POSE_DOWN = dict(torso=(13.4, 8.0, 0.0, 4.3, 4.6), head_ang=0.0, head_r=3.6,
-                 arms=[[(13.8, 2.0), (10.6, 1.9)], [(13.8, 14.0), (10.6, 14.1)]],
-                 legs=[[(9.6, 6.2), (6.2, 5.5), (3.4, 4.9)], [(9.6, 9.8), (6.2, 10.6), (3.4, 11.2)]])
 POSE_DEAD = dict(torso=(15.0, 11.4, -0.1, 4.6, 4.8), head_ang=-0.38, head_r=3.6,
                  arms=[[(21.0, 3.2), (25.6, 2.0)], [(17.4, 19.2), (12.6, 19.6)]],
                  legs=[[(11.0, 9.0), (7.0, 5.8), (3.0, 3.6)], [(11.0, 13.6), (7.6, 16.2), (4.0, 18.6)]])
@@ -3647,10 +3606,6 @@ VM = 2   # variant margin (pixels)
 
 def wset(cv, x, y, c):
     cv.p[int(x) % cv.w, int(y) % cv.h] = c
-
-
-def wget(cv, x, y):
-    return cv.p[int(x) % cv.w, int(y) % cv.h]
 
 
 def pal(cols, t):
@@ -8185,11 +8140,6 @@ def r_duct():
         line(cv, x, 7.0, x + 0.4, 10.5, alpha(hx('#5a5048'), 60))      # streaks down its side
     cv.outline()
     return cv
-
-
-def speck_box(rng, x0, y0, x1, y1, p):
-    """Random sparse pixels of a box."""
-    return [(x, y) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if rng.random() < p]
 
 
 def r_hatch():

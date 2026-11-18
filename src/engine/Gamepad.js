@@ -6,7 +6,7 @@
 // standard mapping: button index -> name
 export const BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right', 'Home'];
 // the four directions menus are walked with, from the d-pad or the left stick
-export const NAV = ['Up', 'Down', 'Left', 'Right'];
+const NAV = ['Up', 'Down', 'Left', 'Right'];
 
 export const PAD = {
   dead: 0.22,       // stick dead zone (radial), the rest rescaled to 0..1

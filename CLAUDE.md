@@ -72,7 +72,8 @@
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
-- A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level.
+- A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level
+  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`).
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.

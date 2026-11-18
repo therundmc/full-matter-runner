@@ -204,7 +204,7 @@ export const KNEEL = {
   kneel: 0.2, hold: 0.25, pitch: 0.3, dur: [1.1, 1.4], slip: 0.2, upright: 0.42, hang: true,
   beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 1],
 };
-export const SLUMP = {
+const SLUMP = {
   kneel: 0.42, hold: 0.05, pitch: 0.45, dur: [1.2, 1.5], slip: 0.2, upright: 0.42, hang: true,
   beats: [0, 0], gap: 0.3, slow: 1, fade: 1, jet: [0, 0], beat: 0.2, push: [0, 0],
 };

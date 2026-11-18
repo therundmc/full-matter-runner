@@ -9,7 +9,7 @@
 // one lifted, its pin shaken as it is taken.
 import { BOARD as B } from '../../data/titleart.js';
 import { hash, poly, disc, px } from '../cine/Ink.js';
-import { thousands } from '../Text.js';
+import { thousands, clock } from '../Text.js';
 import { CROSS, crossK, crossBeats } from './Beats.js';
 import { INK, NIGHT_L, NIGHT_LL, BONE, BONE_D, PINK_D, FIRE, BLOOD, open, put, frame, show, steps, turned, strip, tongue, glint, tag, letter } from './Paper.js';
 
@@ -30,7 +30,6 @@ export function deadCount(progress) {
 const life = { since: 0, last: -1, mx: 0, my: 0, shake: 0, sel: '', selT: -9 };
 
 const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
-const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const boil = (t) => (steps(t, 3) % 3) * 17;                    // the chosen note is cut again, three times a second
 
 // the lamp over the board: its bar of light (it fails a moment now and then), dust turning in it

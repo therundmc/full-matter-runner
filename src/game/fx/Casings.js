@@ -3,8 +3,8 @@
 // Debris that arcs, tumbles, bounces and skitters, and is heard at each touchdown.
 import { CASING } from '../data/feel.js';
 import { AMMO } from '../data/weapons.js';
+import { lerp } from '../../engine/math.js';
 
-const lerp = (a, b, t) => a + (b - a) * t;
 
 // d: the gun's definition, port: { x, y } its ejection port in the world, a: the way the gun points, carry: { x, y }
 // the shooter's own velocity (px/s, the case keeps it), rnd: () => 0..1 (Math.random in the game)

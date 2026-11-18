@@ -1,6 +1,6 @@
 import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
 import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
-import { rand, chance, angDiff } from '../../engine/math.js';
+import { rand, chance, angDiff, smooth } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import Debris from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
@@ -27,11 +27,9 @@ import { squirt } from '../fx/Bleeding.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
 import { slideFx, landFx } from '../fx/TraversalFx.js';
 import { combatFx } from '../fx/CombatFx.js';
-import { smooth } from './CharacterAnim.js';
 
 const { Body, Query } = Matter;
 const SHOVE_T = 0.28; // s a guard's shove carries him back (Enemy.shove)
-let scuff = null; // floor scuff stamp, made on first use
 const GUN_BUTT = { swing: 'club', material: 'metal' }; // an empty gun brought down on a man: what rings (fx/Blows.js)
 // a takedown's beats that land on his head, and those of them done with our own body whatever is in the hand
 const HEAD_BLOWS = new Set(['nape', 'butt', 'knee', 'headbutt', 'throat', 'sweep', 'temple']), BODY_BLOWS = new Set(['knee', 'headbutt', 'throat', 'sweep']);

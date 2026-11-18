@@ -69,7 +69,7 @@ export default class TileMap {
 
   raycast(x0, y0, x1, y1) { return gridRaycast(x0, y0, x1, y1, this.isSolid); }
 
-  // is a straight walk possible (with body clearance) — used for path smoothing
+  // is a straight walk possible (with body clearance) - used for path smoothing
   walkLine(x0, y0, x1, y1, r = 8) {
     const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
     const nx = -dy / len * r, ny = dx / len * r;

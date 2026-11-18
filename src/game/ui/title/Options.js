@@ -11,7 +11,8 @@ import { OPTIONS as O } from '../../data/titleart.js';
 import { spriteOpt } from '../../../engine/Assets.js';
 import { poly } from '../cine/Ink.js';
 import Menu, { selectable } from '../Menu.js';
-import { INK, NIGHT, NIGHT_LL, BONE, BONE_D, PINK, PINK_D, CYAN, open, put, frame, show, steps, slab, moved, turned, strip, tag, letter, widthOf } from './Paper.js';
+import { INK, NIGHT, NIGHT_LL, BONE, BONE_D, PINK, PINK_D, CYAN, open, put, frame, show, steps, slab, moved, turned, strip, tag, letter } from './Paper.js';
+import { widthOf } from '../Text.js';
 
 const SHEET = [520, 36, 1118, 612];          // the sheet of settings, in the picture's px
 const TRACK = [270, 490];                    // a slider's line on it, from the sheet's left edge

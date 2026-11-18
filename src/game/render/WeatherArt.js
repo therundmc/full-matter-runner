@@ -6,10 +6,9 @@
 // light of a streetlight; the drops in the air are drawn again over the lit scene, faintly (`gain` RAIN.after), so
 // that the dark is not quite dry (not what lies on the ground: it would go over the people standing in it).
 import { RAIN } from '../data/atmosphere.js';
-import { hash } from './Flicker.js';
+import { hash, lerpRange } from '../../engine/math.js';
 
 const h3 = (a, b, c) => hash(a * 12.9898 + b * 78.233 + c * 37.719);
-const mix = (r, k) => r[0] + (r[1] - r[0]) * k;
 const SHADES = 3, LENGTHS = 3; // streak sprites: opacities x lengths
 let streaks = null;
 
@@ -18,14 +17,14 @@ let streaks = null;
 function streakSprites() {
   const c = RAIN, st = c.streak, dx = Math.cos(c.wind), dy = Math.sin(c.wind);
   return Array.from({ length: SHADES }, (_, s) => Array.from({ length: LENGTHS }, (_, l) => {
-    const len = mix(c.len, l / (LENGTHS - 1)), w = Math.ceil(Math.abs(dx) * len) + 3, h = Math.ceil(Math.abs(dy) * len) + 3;
+    const len = lerpRange(c.len, l / (LENGTHS - 1)), w = Math.ceil(Math.abs(dx) * len) + 3, h = Math.ceil(Math.abs(dy) * len) + 3;
     const img = document.createElement('canvas');
     img.width = w; img.height = h;
     // the head at the end it falls toward, the tail running back up the wind
     const g = img.getContext('2d'), hx = dx > 0 ? w - 1.5 : 1.5, hy = dy > 0 ? h - 1.5 : 1.5;
     g.strokeStyle = st.color;
     g.lineWidth = st.width;
-    g.globalAlpha = mix(st.alpha, (s + 0.5) / SHADES);
+    g.globalAlpha = lerpRange(st.alpha, (s + 0.5) / SHADES);
     g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx - dx * len, hy - dy * len); g.stroke();
     return { img, ox: hx, oy: hy };
   }));
@@ -59,7 +58,7 @@ function findDrops(weather, r, t, out) {
   for (let cy = Math.floor(r.y0 / C); cy * C < r.y1; cy++) {
     for (let cx = Math.floor(r.x0 / C); cx * C < r.x1; cx++) {
       for (let s = 0; s < whole; s++) {
-        const sd = h3(cx, cy, s), fall = mix(c.fall, sd), period = fall + c.splash.life;
+        const sd = h3(cx, cy, s), fall = lerpRange(c.fall, sd), period = fall + c.splash.life;
         const u = t / period + sd * 7.1, cyc = Math.floor(u), ph = (u - cyc) * period;
         const lx = (cx + h3(cyc, sd * 100, 1.7)) * C, ly = (cy + h3(cyc, sd * 100, 4.3)) * C;
         if (!weather.open(lx, ly)) continue;
@@ -103,7 +102,7 @@ export function drawRainGround(ctx, weather, r, t, gain = 1) {
     for (let i = 0; i < n; i++) {
       const s = h3(seed, i, 0.5), period = rp.life * (0.7 + s * 0.6), u = t / period + s * 5, cyc = Math.floor(u), q = u - cyc;
       const a = h3(cyc, i, seed) * 6.28, d = Math.sqrt(h3(cyc, seed, i)) * p.r * 0.62;
-      const rad = mix(rp.size, h3(i, cyc, 2.2)) * (0.2 + q);
+      const rad = lerpRange(rp.size, h3(i, cyc, 2.2)) * (0.2 + q);
       ctx.globalAlpha = rp.alpha * (1 - q) * p.alpha * gain;
       ctx.beginPath();
       ctx.ellipse(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d * 0.85, rad, rad * 0.8, 0, 0, 6.2832);

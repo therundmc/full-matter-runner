@@ -10,11 +10,9 @@ import { PLAYER, TILE } from '../Config.js';
 import { DOORS } from '../data/doors.js';
 import { contactOf } from '../../engine/physics/Push.js';
 import { clamp } from '../../engine/math.js';
+import { walking } from './PropPhysics.js';
 
 const { Body } = Matter;
-
-// a character walking (not sliding, vaulting, flying, sitting, gone)
-const walking = (c) => c.alive && c.body && !c.slide && !c.vaulting && !(c.knocked > 0) && !c.hidden && !c.slipped && !c.passage;
 
 export default class Doors {
   constructor(world) {

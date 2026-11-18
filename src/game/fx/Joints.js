@@ -1,9 +1,8 @@
 // The joints of a dead body (entities/Ragdoll.js) as pure maths: no Matter, no DOM. A part's turn off the torso is
 // an angle in the torso's frame (x across, y toward the feet, atan2), given as for a part on the +x side: a part on
 // the -x side is mirrored onto it, so one range (data/wounds.js BODY.joints) holds for both shoulders, both hips.
-import { angDiff } from '../../engine/math.js';
+import { TAU, angDiff } from '../../engine/math.js';
 
-const TAU = Math.PI * 2;
 const wrap = (a) => ((a % TAU) + TAU) % TAU;
 
 // the turn of a part at angle partA off a torso at torsoA, as for the +x side (left: the part is on the -x side)

@@ -43,7 +43,7 @@ export function leapBeats(t0, t1) {
 // down, rings on the puddles, the far sign's flicker
 const SIGN = [604, 134, 62, 10];
 const PUDDLES = [[540, 360, 90, 12], [250, 392, 120, 10], [820, 390, 70, 8]];
-export function paintAlley(g, w, h, t) {
+function paintAlley(g, w, h, t) {
   still(g, 'alley', w, h);
   fine(g, () => {
     if (hash(Math.floor(t * 14)) < 0.07) px(g, '#8a1d5c', ...SIGN);

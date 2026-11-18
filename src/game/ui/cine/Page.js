@@ -16,7 +16,7 @@ export const TYPE = 24; // letters a second when something is said (or a closing
 const INK = '#140c10';
 
 // how far a panel has dropped in at rt (0..1), the page going out with it
-export const panelIn = (page, p, rt) => clamp((rt - p.at) / 0.3, 0, 1) * clamp((page.end - rt) / 0.35, 0, 1);
+const panelIn = (page, p, rt) => clamp((rt - p.at) / 0.3, 0, 1) * clamp((page.end - rt) / 0.35, 0, 1);
 
 export function drawPage(ctx, W, H, rt, page) {
   const sc = Math.max(W / LW, H / LH), ox = (W - LW * sc) / 2, oy = (H - LH * sc) / 2, out = clamp((page.end - rt) / 0.35, 0, 1);

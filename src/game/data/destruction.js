@@ -283,7 +283,7 @@ export const MATERIAL_FX = {
   stone: { hit: 'stone', crush: 'crumble', dust: '#a89c90', backSplash: 0.6, exit: 0.8, cracks: 4, tear: 'chunk', saw: false },
 };
 
-export const DEFAULT_PARTS = {
+const DEFAULT_PARTS = {
   wood: [{ cut: 'planks', n: 3, axis: 'long', snap: true }],
   metal: [{ cut: 'grid', cols: 2, rows: 1 }],
   glass: [{ cut: 'wedges', n: 6 }],

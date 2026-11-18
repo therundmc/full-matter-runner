@@ -42,15 +42,12 @@
 //   fall    [c0, r0, c1, r1]: beyond the window. Once he is there the lesson is over ('tutorialEnd'); he lands
 //           from its windows in a roll.
 import { TILE, PALETTE } from '../Config.js';
-import { LESSONS, BEAT, RELOAD, OPENING, BLAST, FRAME, FORCE, STAIRS } from '../data/staging.js';
+import { LESSONS, BEAT, RELOAD, OPENING, BLAST, FRAME, FORCE, STAIRS, FRONT, SLACK, STAND } from '../data/staging.js';
 
 const SHOWN = 2;       // hints on screen at once
 const MOVED = 70;      // px walked before MOVE goes away
-const FRONT = 1.7;     // tiles: a dormant guard he walks up to, in front of him, wakes (unless his wave is blind)
 const UP = -24;        // px a hint floats over what it points at ...
 const MAN = -37;       // ... over a man: clear of what he says (the barks float 16 px over him)
-const SLACK = 1.7;     // how much slower than a real guard its men react and shoot (Enemy.slack): it is a lesson
-const STAND = 2.5;     // s a sharp wave's man holds his ground once woken (Enemy.standT)
 const SIDE = 11;              // px either side of the stairs' middle they come up at
 
 const inside = ([c0, r0, c1, r1], x, y) => x >= c0 * TILE && x < (c1 + 1) * TILE && y >= r0 * TILE && y < (r1 + 1) * TILE;
@@ -179,9 +176,6 @@ export default class Tutorial {
   // ... and those of them that are there to be pointed at: a man who is only there to be dealt with, or one whose
   // wave was called (never one still waiting his turn behind a door, or down the stairs)
   present(s) { return s.waves.filter((w) => w.on === 'never' || w.awake).flatMap((w) => w.guards).filter((e) => e.alive && e.knocked <= 0 && !e.gone && !e.offstage); }
-
-  // the stage whose room (x, y) px is in, or -1
-  stageAt(x, y) { return this.stages.findIndex((s) => inside(s.zone, x, y)); }
 
   // a retry: he is put back where stage i starts, the rooms before it are empty and burning
   restore(i) {

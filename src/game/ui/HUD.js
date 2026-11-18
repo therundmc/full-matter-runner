@@ -1,13 +1,11 @@
 import { PALETTE, TILE, AI, PLAYER } from '../Config.js';
 import { WEAPONS } from '../data/weapons.js';
-import { text, neon, thousands, tone, glitchText } from './Text.js';
+import { text, neon, thousands, tone, glitchText, clock, widthOf } from './Text.js';
 import { tierColor } from './KillFeed.js';
 import { KILLFEED, BREAK } from '../data/feel.js';
 import { drawIndicators } from './Indicators.js';
 import { drawPrompts } from './Glyphs.js';
 import { clamp } from '../../engine/math.js';
-
-const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
 export function drawHUD(ctx, game, t) {
   const w = game.world, p = w.player;
@@ -164,7 +162,7 @@ function drawCount(ctx, v, x, cy, s, t) {
   ctx.save();
   ctx.translate(Math.round(x + jx), Math.round(cy + jy));
   ctx.scale(1, v.open);
-  const mult = `x${v.multiplier.toFixed(1)}`, lw = Math.max(widthAt(ctx, 'KILLS', P.label * s), widthAt(ctx, mult, P.label * 1.4 * s));
+  const mult = `x${v.multiplier.toFixed(1)}`, lw = Math.max(widthOf(ctx, 'KILLS', P.label * s), widthOf(ctx, mult, P.label * 1.4 * s));
   text(ctx, 'KILLS', 0, -9 * s, P.label * s, col, { align: 'right' });
   text(ctx, mult, 0, 8 * s, P.label * 1.4 * s, col, { align: 'right' });
   const dx = -lw - P.gap * s, size = P.size * s * (1 + v.punch), str = String(v.chain);
@@ -173,11 +171,6 @@ function drawCount(ctx, v, x, cy, s, t) {
   const g = v.punch / P.punch;
   if (g > 0) text(ctx, str, dx, 0, size * (1 + (1 - g) * 0.5), PALETTE.white, { align: 'right', shadow: null, outline: false, alpha: 0.5 * g });
   ctx.restore();
-}
-
-function widthAt(ctx, str, size) {
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
-  return ctx.measureText(str).width;
 }
 
 // a chain of 2+ that just ran out: CHAIN x6 over the points it made, slammed in where the count was

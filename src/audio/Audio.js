@@ -518,7 +518,6 @@ class AudioSystem {
     this.ctx = null;
     this.chokes = new WeakMap(); // emitter -> its last voice (a new shot fades the previous tail)
     this.listener = { x: 0, y: 0 };
-    this.muted = false;
     this.vol = { master: 1, music: 1, sfx: 1, ambience: 1 }; // player volumes (settings), scale the bus gains
     this.active = [];   // live plays, for the caps and voice stealing
     this.lastPlay = {}; // name -> { t, vol } of the last admitted play
@@ -663,7 +662,7 @@ class AudioSystem {
     }, '4x');
     // the limiter only catches what the clip let through, and lets go slowly: it never pumps
     this.limiter = param(ctx.createDynamicsCompressor(), { threshold: -2, knee: 0, ratio: 20, attack: 0.002, release: 0.3 });
-    this.master = gain(this.muted ? 0 : L.master * this.vol.master);
+    this.master = gain(L.master * this.vol.master);
     chain(this.bus, this.filter, gain(0.85), clip, this.limiter, this.master, ctx.destination);
 
     // shared noise: white (texture) and brown (rumble), 2 s each, looped by the sources
@@ -705,11 +704,6 @@ class AudioSystem {
     return ir;
   }
 
-  toggleMute() {
-    this.muted = !this.muted;
-    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : LEVELS.master * this.vol.master, this.ctx.currentTime, 0.05);
-  }
-
   // kind: 'master' | 'music' | 'sfx' | 'ambience' (the beds and the `amb` one-shots), v: 0..1. Safe before the context exists (_build applies this.vol).
   setVolume(kind, v) {
     if (!(kind in this.vol)) return;
@@ -718,7 +712,7 @@ class AudioSystem {
     if (!this.ctx) return;
     const set = (node, g) => node && node.gain.setTargetAtTime(g, this.ctx.currentTime, 0.03);
     const L = LEVELS;
-    if (kind === 'master') set(this.master, this.muted ? 0 : L.master * v);
+    if (kind === 'master') set(this.master, L.master * v);
     else if (kind === 'music') set(this.music, L.music * v);
     else if (kind === 'ambience') set(this.ambBus, v);
     else { set(this.sfx, L.sfx * v); set(this.shots, L.shots * L.guns * v); }

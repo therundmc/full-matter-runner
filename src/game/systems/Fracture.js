@@ -2,7 +2,7 @@
 // side of an object is worn away (damage zones), and the shapes an object breaks into (part recipes).
 // Coordinates are sprite pixels (x right, y down); angles are radians in the same frame.
 
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+import { clamp } from '../../engine/math.js';
 
 // cos of the angle between a shot and the surface it hits: 1 = head-on, 0 = grazing. No normal = head-on.
 export function incidence(dirA, nx, ny) {

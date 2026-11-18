@@ -1,5 +1,4 @@
 """The opening, page 3: no loose ends (match, fire, wake)."""
-from .. import poster
 from ..kit import BONE, BONE_D, BROWN, FIRE, FIRE_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, panel, slab
 
 FLAME = (548, 200)    # match: where the match's head is (the game draws its flame there)

@@ -3,8 +3,9 @@
 // flies over a bin (level prop option `flies`), a tap dripping in its sink (def `tap`), the till's display; the devices of a level
 // (data/devices.js): the fire alarm flashing.
 
+import { hash } from '../../engine/math.js';
+
 const RIM = '#0a2a18', WHITE = '#f4f2ea';
-const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 const DEVICES = new Set(['fire_alarm']);
 
 // The arcade's attract mode (data in the sprite's own px, tools/generate_assets.py p_arcade: the screen, its two rows
