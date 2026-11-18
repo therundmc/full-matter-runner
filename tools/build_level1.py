@@ -122,7 +122,7 @@ lv.put(30, 32, 'D')
 #   gaming room   a deep green gloss with a brass peephole
 #   the shops     glass doors in aluminium (the liquor store, the TV shop, the laundromat)
 # The gap's anonymous door on the street keeps the plain wooden one. The VIP room has its curtain.
-lv.door(21, 20, kind='bar')
+lv.door(21, 20, kind='bar', inside='n')   # the closer on the bar's side, not the street's
 lv.door(22, 11, kind='swing')
 lv.door(25, 5, kind='fire', inside='s')
 lv.door(16, 11, kind='staff')
