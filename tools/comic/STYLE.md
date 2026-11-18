@@ -40,7 +40,8 @@ what is written in the scene (the clock's 1:05).
 | pink | `PINK` `#ff3a7a`, `PINK_D` `#8a1d5c` | the bar's neon and its light, LUCKY's scarf |
 | cyan | `CYAN` `#3ad8e8`, `CYAN_D` `#17566e` | the tube on the landing, the torch's pool, JITTERS' crest; `CYAN_D` is also the runner's petrol blue |
 | fire | `FIRE` `#ff8a20`, `FIRE_D` `#c8381a` | from the match on (page 3), the jerrycan, a lit cigar, sodium street lamps |
-| blood | `BLOOD` `#a0141e` | blood, nothing else |
+| a big fire | `FIRE_L` `#ffc83a`, `FIRE_DD` `#6e1616` | the title only: the yellow heart of a flame (its core is bone), a lit window; the fire's red on a wall far off |
+| blood | `BLOOD` `#a0141e` | blood, nothing else (and the marker's X on the hit list) |
 | fluo yellow | `FLUO` `#e6ff1a` | CUEBALL's shades, nothing else |
 | the runner's | `TAN` `#c8905c`, `BROWN` `#5a3a26`, `CAP` `#2c2838` | THE RUNNER only: the slit of his face, his hair, his cap seen from above |
 
@@ -112,6 +113,31 @@ Rules for the three:
 words, and how he reads from above), for a screen between levels that shows the targets (not built yet), and
 `card_runner` in the same manner for a title or a menu. They are the only stills with lettering in them: nothing
 is drawn live over them.
+
+## The title
+
+The title is the comic's cover and the LEVELS page his board (`title_art.py`, written out by `python3
+tools/comic/title.py`: the layers in assets/sprites/title/, and src/game/data/titleart.js, where things are in them;
+the game: src/game/ui/title/).
+
+- **The poster**: three layers the mouse shifts against each other in whole px: the sky with the four as shadows
+  (their black the night's violets, their signs in full ink), the city black before the fire's glow (a disc) with
+  his building, the wet street with THE RUNNER, black, the fire on his right edges. His building is a tenement: a
+  cornice, a water tank and the stair's head on the roof, an aerial, the fire escape down its side, a wide window
+  and two narrow ones a floor. A flame is three tongues one in the other: `FIRE`, `FIRE_L`, a bone core.
+- **Live on it** (Poster.js), in steps like stop motion, flat: the fire comes down a floor at a time (a lit window
+  stutters, goes dark, then burns), two columns of smoke bent by the wind (black before the glow, violet over the
+  night), embers, ash; the rain is thin and BEHIND him and the logo: a few long cuts, orange where they pass the
+  fire, pink by the sign; each sign has its own life (a glint along the shades, the scarf and the crest failing
+  like tubes, the cigar drawn on). Nothing crosses his head.
+- **The logo**: letters cut by hand (`GLYPHS`), FULL MATTER in bone, RUNNER pink on black tiles: a neon sign in
+  cut paper; a letter that fails goes to the pink's dark.
+- **The hit list**: the board on a black wall, a bar of light across it; the photo of his flat, the four cards in
+  the order he takes them (the next in his card's ink, the others in the board's violet, the dead gone dark under
+  a red X), a red string from pin to pin as far as he has got, the matchbook once CUEBALL is dead. The menu is
+  bone notes pinned to it.
+- **The menu's panel** (OPTIONS and its pages, the pause): a black sheet on a pink one that shows along two
+  edges, a violet bar across it, the page's name on a bone tab.
 
 ## What moves
 

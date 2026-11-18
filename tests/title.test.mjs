@@ -8,7 +8,6 @@ const {
   cloudDrift, CLOUD, RAIL, trainKnocks, trainHeard, trainSound,
 } = await load('game/ui/title/Timeline.js');
 const { LW } = await load('game/ui/title/Draw.js');
-const { DAY } = await load('game/data/daycycle.js');
 const { ElevatedVoice } = await load('audio/Elevated.js');
 
 const DT = 1 / 60;
@@ -135,7 +134,7 @@ test('title clouds: the deck drifts left slowly and steadily, never back, withou
   }
   assert.ok(lo > 0.3 && hi <= top + 1e-6, `speed ${lo} .. ${hi} px/s`);
   // across every step of the palette (the deck is repainted in its new colours then) it carries on where it was
-  for (let t = DAY.STEP; t < 600; t += DAY.STEP) {
+  for (let t = 0.5; t < 600; t += 0.5) {
     const jump = cloudDrift(t + 1e-4) - cloudDrift(t - 1e-4);
     assert.ok(jump > 0 && jump < 1e-3, `jump ${jump} at ${t}`);
   }

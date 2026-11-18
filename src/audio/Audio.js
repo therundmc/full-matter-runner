@@ -221,6 +221,12 @@ export const META = {
   fireRun: { pri: 2, dur: 0.5, gap: 0.3, max: 2, gain: 0.55 },
   fireRoar: { pri: 1, dur: 0.9, gap: 0.6, max: 2, gain: 0.4 },
   heatCrack: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
+  // the title (ui/title/Beats.js; placeholders, assets/sound/PLACEHOLDERS.md), under the menu's music: the poster's
+  // fire and its rain in overlapping pieces, the sign's buzz as a letter fails, the marker crossing a dead man out
+  titleFire: { pri: 0, dur: 1.6, gap: 0.9, max: 3, gain: 0.16, hall: 0.25 },
+  titleRain: { pri: 0, dur: 1.2, gap: 0.6, max: 3, gain: 0.1, hall: 0.2 },
+  neonBuzz: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.12 },
+  markerStroke: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
   // a boss's beats (entities/Boss.js; placeholders, assets/sound/PLACEHOLDERS.md): his name card slammed in, his howl
   // at the first hit, his roar, the player thrown off, his death, his shades on the floor
@@ -493,6 +499,11 @@ const FOLEY = {
   fireRun: [['swish', 0.7, 0.4], ['soft', 0.45, 0.5, 0.04]],
   fireRoar: [['rubble', 0.3, 0.45], ['swish', 0.3, 0.3, 0.1]],
   heatCrack: [['glassHit', 0.6, 0.7], ['click', 0.35, 2.2, 0.07], ['glassHit', 0.3, 1.1, 0.16]],
+  // the title (ui/title/Beats.js): placeholders too
+  titleFire: [['rubble', 0.5, 0.35], ['swish', 0.4, 0.25, 0.2], ['woodBreak', 0.12, 0.5, 0.6]],
+  titleRain: [['splash', 0.3, 0.4], ['soft', 0.25, 0.45, 0.3], ['splash', 0.2, 0.55, 0.6]],
+  neonBuzz: [['rattle', 0.5, 2.6], ['click', 0.4, 3.2, 0.04]],
+  markerStroke: [['swish', 0.7, 1.5], ['soft', 0.5, 1.7, 0.02], ['plastic', 0.2, 1.4, 0.05]],
   // a boss's beats (entities/Boss.js): placeholders too
   bossCard: [['doorSlam', 0.8, 0.5], ['thud', 0.7, 0.6, 0.02]],
   bossHowl: [['yell', 0.9, 0.6], ['yell', 0.6, 0.5, 0.2]],

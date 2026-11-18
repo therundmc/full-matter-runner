@@ -27,9 +27,7 @@ export const ACTIONS = {
   action: { kbm: 'SPACE', pad: 'A' },
   reload: { kbm: 'R', pad: 'Y' },
   pause: { kbm: 'ESC', pad: 'START' },
-  choose: { kbm: 'ARROWS', pad: 'DPAD' },
   confirm: { kbm: 'ENTER', pad: 'A' },
-  back: { kbm: 'ESC', pad: 'B' },
   restart: { kbm: 'R', pad: 'A' },
   retry: { kbm: 'R', pad: 'Y' },
 };

@@ -71,6 +71,7 @@
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
+- A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level.
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
@@ -128,8 +129,13 @@
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor (`BLAST.chain`, level `blast.chain`) and the way out is marked (`EXIT`, level `exit`).
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending), stills painted by
-  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
-  ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+- Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
+  cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
+  HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
+  drawn by a marker once), Beats.js (their clocks and sounds, DOM-free), Paper.js (the cut-paper sheet; the menu's
+  panel, used by ui/MenuArt.js for OPTIONS and the pause). Stills and their data: `python3 tools/comic/title.py`
+  (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
   signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as

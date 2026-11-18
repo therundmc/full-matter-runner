@@ -51,9 +51,19 @@ export function latest(p, has) {
   return null;
 }
 
+// How many dead targets the hit list (ui/title/HitList.js) has already shown crossed out: the X is drawn by the
+// marker once, the first time the board shows a man dead.
+const CROSSED = 'fmr.crossed.v1';
+export function loadCrossed(storage = defaultStorage()) {
+  try { const n = Number(storage.getItem(CROSSED)); return Number.isInteger(n) && n > 0 ? n : 0; } catch { return 0; }
+}
+export function saveCrossed(n, storage = defaultStorage()) {
+  try { storage.setItem(CROSSED, String(n)); } catch { /* shown again next time */ }
+}
+
 // back to a fresh save: progression and best results erased; returns the fresh progress
 export function resetProgress(storage = defaultStorage()) {
-  try { storage.removeItem(KEY); } catch { /* nothing stored, or storage refused */ }
+  try { storage.removeItem(KEY); storage.removeItem(CROSSED); } catch { /* nothing stored, or storage refused */ }
   clearBest(storage);
   return fresh();
 }
