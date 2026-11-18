@@ -130,17 +130,18 @@
   // ---------------------------------------------------------------- a parked car that moves
   // update(key, pos, now, { touched, excused }): px it was carried along while people on foot touched it and nothing
   // else could explain it (a blast, another vehicle, its driver), once over `px` within `within` s; else null. Only a
-  // car that stood still `rest` s first (parked, or stopped for good: not one coasting on after its driver ran)
+  // car that stood still `rest` s first (parked, or stopped for good: not one coasting on after its driver ran). The
+  // way it went between two samples is excused when either end is (its driver pulled away and stopped in between)
   C.ShoveWatch = class {
     constructor(px = 6, within = 3, rest = 2) { this.px = px; this.within = within; this.rest = rest; this.m = new Map(); }
     update(key, pos, now, { touched = false, excused = false } = {}) {
       let s = this.m.get(key);
-      if (!s) { this.m.set(key, { x: pos.x, y: pos.y, sum: 0, t0: now, still: now, told: false }); return null; }
-      const d = hypot(pos.x - s.x, pos.y - s.y);
-      s.x = pos.x; s.y = pos.y;
+      if (!s) { this.m.set(key, { x: pos.x, y: pos.y, sum: 0, t0: now, still: now, told: false, ex: excused }); return null; }
+      const d = hypot(pos.x - s.x, pos.y - s.y), was = s.ex;
+      s.x = pos.x; s.y = pos.y; s.ex = excused;
       const rested = s.sum > 0 || now - s.still >= this.rest;
       if (d < 0.5 && !s.sum) { if (!rested) return null; } else if (!rested) { s.still = now; return null; }
-      if (excused || !touched) { s.sum = 0; s.t0 = now; if (d >= 0.5) s.still = now; return null; }
+      if (excused || was || !touched) { s.sum = 0; s.t0 = now; if (d >= 0.5) s.still = now; return null; }
       if (d < 0.5) { if (now - s.t0 > this.within) { s.sum = 0; s.t0 = now; } return null; }
       if (now - s.t0 > this.within) { s.sum = 0; s.t0 = now; }
       s.sum += d;

@@ -1928,6 +1928,8 @@
       if (!q.anchor.stalled && w.time - q.anchor.t > 3) { q.anchor.stalled = true; S.stats.ai.stall3++; }
       if (!q.anchor.reported && w.time - q.anchor.t > 6) {
         q.anchor.reported = true;
+        // no way there on foot (the player up a ladder, behind a counter): he waits as near as he gets, by design
+        if (!e.path && !w.pathForGuard(e.x, e.y, tr.x, tr.y)) continue;
         report('guard-stuck', 'warn', `${e.state}@${cellOf(e.x, e.y)}`, posOf(e.x, e.y), {
           kind: e.kind, state: e.state, sub: e.sub, tactic: e.tactic, activity: e.activity, to: posOf(tr.x, tr.y),
           dist: Math.round(Math.hypot(tr.x - e.x, tr.y - e.y)), path: e.path ? e.path.length - e.pathIdx : 0,

@@ -92,6 +92,16 @@ test('qa checks: a parked car carried along by people on foot, not one hit by a 
   assert.equal(run({ touched: true, excused: true }), null, 'a blast, a round, another car');
   assert.equal(run({ touched: false }), null, 'nobody at it');
   assert.equal(run({ touched: true }, false), null, 'still rolling from the lane when they got to it');
+  // held still in the lane (driven: excused), then a shot: the driver pulls away for his moment of shock, stops and
+  // gets out, all between two samples; the next one sees it parked with people at it: its own drive, not a shove
+  const w = new K.ShoveWatch(6, 3, 2);
+  let px = null;
+  for (let t = 0; t <= 3; t += 0.5) px ||= w.update('van', { x: 0, y: 0 }, t, { touched: true, excused: true });
+  px ||= w.update('van', { x: 7.3, y: 0 }, 3.5, { touched: true });
+  px ||= w.update('van', { x: 7.3, y: 0 }, 4, { touched: true });
+  assert.equal(px, null, 'driven at the last sample');
+  for (let t = 4.5; t < 9; t += 0.5) px ||= w.update('van', { x: 7.3 + Math.max(0, t - 6.5) * 8, y: 0 }, t, { touched: true });
+  assert.ok(px > 6, 'shoved once parked and still');
 });
 
 test('qa checks: a body that spins round after a table slam, one that still slides, one that lies still', () => {
