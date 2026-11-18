@@ -128,7 +128,7 @@ export function writeReport(dir, rep) {
   L.push(`- Kill tags seen: ${list(st.tags)}`);
   L.push(`- Kill weapons: ${list(st.killWeapons)}; picked up: ${list(st.picked)}; shots fired: ${list(st.fired)}; ammunition seen on the floor: ${st.ammoOnFloor ?? 0}`);
   L.push(`- Civilians killed: ${list(st.civilians)}`);
-  if (st.clears?.length) L.push(`- Clears: ${st.clears.map((c) => `session ${c.session}: ${c.grade} ${c.score} in ${c.time} s`).join('; ')}`);
+  if (st.clears?.length) L.push(`- Clears: ${st.clears.map((c) => `session ${c.session}: ${c.grade} ${c.score} in ${c.time} s${c.lines ? `: ${c.lines}` : ''}`).join('; ')}`);
   L.push(`- Coverage: ${Object.entries(st.coverage || {}).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   L.push(`- Takedowns into something (by what): ${list(st.envTakedowns || {})}`);
   L.push(`- Devices used: ${list(st.devices || {})}; falls on a slick floor: ${st.slips ?? 0}`);

@@ -269,10 +269,10 @@ test('tally: every line of the breakdown comes from the rules and adds up to the
   assert.deepEqual(pts, {
     kills: 5000,
     chain: 2 * SCORING.chain,
-    variety: SCORING.variety,
+    variety: SCORING.variety.points,
     time: 40 * SCORING.time,
     stealth: SCORING.stealth.bonus,
-    accuracy: SCORING.accuracy.bonus / 2,
+    accuracy: Math.round(SCORING.accuracy.bonus * Math.max(0, (0.5 - SCORING.accuracy.from) / (1 - SCORING.accuracy.from))),
   });
   assert.equal(t.total, t.lines.reduce((sum, l) => sum + l.points, 0));
   assert.equal(t.lines.find((l) => l.key === 'time').detail, '1:00 / 1:40');
@@ -323,16 +323,130 @@ test('grades: every level table goes down from S to a floor at zero', () => {
   assert.equal(levelScoring('x', 8).grades[0][1], 2 * levelScoring('x', 4).grades[0][1]);
 });
 
-test('grades: level 1 cannot be aced by shooting alone, and a clean varied run can', () => {
-  const lvl = LEVEL_SCORING.level1, n = 15;
-  // every guard shot one by one, no chain, in par time, alerts all the way, half the rounds wasted
-  const sloppy = tally({ points: n * S.shot.points, kills: n, guards: n, maxCombo: 1, methods: 1, shots: 2 * n, hits: n, alerts: 3, civilians: 0, time: lvl.par }, lvl);
-  assert.ok(['C', 'D'].includes(sloppy.grade), `sloppy run got ${sloppy.grade}`);
-  // close-quarters kills in chains of 5, each with a couple of kill tags (about 1500 a kill), four ways of
-  // killing and tags, one alert, a minute under par
-  const chain = [1, 1.5, 2, 2.5, 3].reduce((sum, m) => sum + (S.melee.points + 1500) * m, 0);
-  const sharp = tally({ points: 3 * chain, kills: n, guards: n, maxCombo: 5, methods: 6, shots: 4, hits: 3, alerts: 1, civilians: 0, time: lvl.par - 60 }, lvl);
-  assert.ok(['S', 'A'].includes(sharp.grade), `sharp run got ${sharp.grade} with ${sharp.total}`);
+test('tally: variety counts up to a cap, accuracy pays from its floor up, a civilian costs dear', () => {
+  const V = SCORING.variety, A = SCORING.accuracy, line = (stats, key) => tally({ ...STATS, ...stats }, LEVEL).lines.find((l) => l.key === key);
+  assert.equal(line({ methods: 4 }, 'variety').points, 3 * V.points);
+  assert.equal(line({ methods: V.max + 1 }, 'variety').points, V.max * V.points);
+  assert.equal(line({ methods: V.max + 9 }, 'variety').points, V.max * V.points, 'every snatched gun brings two ways: capped');
+  assert.equal(line({ methods: V.max + 9 }, 'variety').detail, `${V.max + 9} WAYS`);
+  assert.equal(line({ shots: 10, hits: Math.floor(10 * A.from) }, 'accuracy').points, 0, 'half the rounds wasted earns nothing');
+  assert.equal(line({ shots: 10, hits: 10 }, 'accuracy').points, A.bonus);
+  assert.ok(line({ shots: 10, hits: 8 }, 'accuracy').points < A.bonus);
+  assert.ok(A.noShot > A.bonus);
+  assert.equal(line({ civilians: 1 }, 'civilians').points, -SCORING.civilian);
+});
+
+test('grades: the top grade is never given with a passer-by killed, the lines still add up', () => {
+  assert.ok(SCORING.cleanTop);
+  const top = { ...STATS, points: 1e5 };
+  assert.equal(tally(top, LEVEL).grade, 'S');
+  const t = tally({ ...top, civilians: 1 }, LEVEL);
+  assert.equal(t.grade, 'A');
+  assert.deepEqual(t.next, { grade: 'S', at: LEVEL.grades[0][1], clean: true });
+  assert.equal(t.total, t.lines.reduce((sum, l) => sum + l.points, 0));
+  assert.equal(tally({ ...top, points: 0, civilians: 1 }, LEVEL).next.clean, undefined, 'only said of the top grade');
+  assert.equal(tally({ ...top, civilians: 1 }, LEVEL, { ...SCORING, cleanTop: false }).grade, 'S');
+});
+
+test('scoring: a multi-kill and a boss are paid flat, outside the chain multiplier', () => {
+  const T = SCORING.tags;
+  for (const t of ['double', 'triple', 'massacre', 'cueball']) assert.ok(T[t].flat, t);
+  const w = world(), sc = new Scoring(w);
+  kill(w, 'melee', player('bat', 0.3));
+  w.time = 0.3;
+  w.events.emit('kill', { victim: guard(), cause: 'blast', killer: player('shotgun'), how: { boss: 'cueball' } });
+  assert.deepEqual(sc.tags, ['cueball', 'double']);
+  const m = comboMultiplier(2);
+  assert.equal(sc.points, S.melee.points + Math.round(S.pointBlank.points * m) + T.cueball.points + T.double.points);
+  assert.ok(sc.methods.has('cueball') && sc.methods.has('double'), 'still ways of killing');
+  assert.equal(sc.styled.cueball, 1);
+});
+
+// Level 1 played through the real Scoring: [t, kind, how, extra] a kill at world time t
+const KILLS = {
+  shot: () => ({ cause: 'bullet', killer: player('pistol') }),
+  buck: () => ({ cause: 'blast', killer: player('shotgun') }),
+  bat: () => ({ cause: 'melee', killer: player('bat', 0.3) }),
+  knife: () => ({ cause: 'slash', killer: player('knife', 0.3) }),
+  exec: () => ({ cause: 'execute', killer: player(), finisher: true, watched: true }),
+  quick: () => ({ cause: 'execute', killer: player(), finisher: true, quick: true }),
+  take: () => ({ cause: 'snap', killer: player(), takedown: true }),
+  slide: () => ({ cause: 'bullet', killer: { ...player('pistol'), slide: {} } }),
+};
+const { BOSSES } = await load('game/data/bosses.js');
+function playLevel1(run) {
+  const w = world(12), sc = new Scoring(w);
+  for (const [t, kind, how = {}, x = {}] of run.kills) {
+    w.time = t;
+    sc.update();
+    if (x.dodge) w.events.emit('dodge', {});
+    if (x.pick) w.events.emit('pickup', { ch: { isPlayer: true } });
+    if (how.boss) sc.add(BOSSES.cueball.wound.points, 0, 0, 'WOUNDED'); // his first hit (entities/Boss.js)
+    const k = KILLS[kind]();
+    const victim = guard({ aware: k.takedown || x.unseen ? 0 : 2, held: k.takedown ? k.killer : null });
+    w.events.emit('kill', { victim, cause: k.cause, killer: k.killer, how: { ...how, finisher: k.finisher, quick: k.quick } });
+    if (k.watched) { w.time = t + 0.1; w.events.emit('finisher', { x: 0, y: 0 }); }
+  }
+  w.time = run.time;
+  sc.update();
+  Object.assign(sc, { shots: run.shots, alerts: run.alerts, civilians: run.civilians || 0 });
+  if (run.hits !== undefined) sc.hits = run.hits;
+  return sc.tally(LEVEL_SCORING.level1);
+}
+const chainOf = (t0, gap, kills) => kills.map((k, i) => [t0 + i * gap, ...k]);
+const BOSS = { boss: 'cueball' };
+const RUNS = {
+  // every guard shot one at a time, the gun snatched off the first one floored by hand, the boss shot; 3 alerts
+  sloppy: { time: 330, alerts: 3, shots: 30, kills: [
+    [20, 'quick', { disarm: true }], [45, 'shot', {}, { pick: true }], [70, 'shot'], [95, 'shot'], [120, 'shot'],
+    [145, 'buck', {}, { pick: true }], [170, 'shot'], [195, 'shot'], [220, 'shot'], [245, 'shot'], [270, 'shot'], [300, 'buck', BOSS]] },
+  // a first clear: one brawl of 4 in the bar room, the rest one by one, 2 alerts, half the rounds wasted
+  plain: { time: 270, alerts: 2, shots: 14, kills: [
+    [15, 'bat', { from: 'behind' }, { unseen: true }],
+    ...chainOf(40, 2.5, [['bat', { heavy: true }], ['bat'], ['quick', { disarm: true }], ['shot', {}, { pick: true }]]),
+    [100, 'shot'], [130, 'shot'], [160, 'exec'], [190, 'shot', { last: true }], [215, 'bat', { broke: true }],
+    [240, 'buck', {}, { pick: true }], [262, 'buck', BOSS]] },
+  // decent: mostly close, chains of 5 and 3, an execution seen through, 1 alert, a third of the rounds hit
+  decent: { time: 200, alerts: 1, shots: 9, kills: [
+    [12, 'take', { env: 'wall' }],
+    ...chainOf(35, 2.5, [['bat', { heavy: true }], ['bat', { from: 'behind' }], ['bat', { spin: true }], ['exec'], ['quick', { disarm: true }]]),
+    ...chainOf(80, 2.5, [['shot', {}, { pick: true }], ['shot', { last: true }], ['bat', { heavy: true }]]),
+    [125, 'bat', { broke: true }], [160, 'knife', { thrown: true }], [185, 'buck', BOSS]] },
+  // fast and stylish: chains of 5 and 4, the boss in a chain of 2, a takedown into the bowl, executions seen
+  // through, a slide kill, 1 alert, 3 rounds in 5 hit, 10 s under par
+  sharp: { time: 140, alerts: 1, shots: 5, kills: [
+    [10, 'take', { env: 'bowl' }],
+    ...chainOf(30, 2, [['bat', { heavy: true }], ['bat', { from: 'behind', spin: true }], ['exec'], ['bat', { broke: true }], ['quick', { disarm: true }]]),
+    ...chainOf(70, 2, [['slide', {}, { pick: true }], ['shot'], ['knife', { from: 'behind' }], ['exec']]),
+    ...chainOf(120, 2.5, [['shot', { last: true }], ['buck', BOSS]])] },
+  // exceptional: the bar in one chain of 7, the boss at the end of another of 5, never spotted, 3 rounds in 4 hit,
+  // nearly a minute under par
+  ace: { time: 95, alerts: 0, shots: 4, kills: [
+    ...chainOf(25, 1.5, [['take', { env: 'bowl' }], ['bat', { heavy: true }], ['bat', { from: 'behind', spin: true }, { dodge: true }], ['exec'],
+      ['bat', { broke: true }], ['quick', { disarm: true }], ['slide', {}, { pick: true }]]),
+    ...chainOf(65, 1.5, [['knife', { thrown: true }], ['exec'], ['shot', { pierced: 1 }], ['buck', BOSS]])] },
+};
+
+test('grades: level 1, a clear at all is D or C, a decent one B, fast and stylish A, S the exceptional run', () => {
+  const grade = (run) => playLevel1(run).grade;
+  assert.equal(grade(RUNS.sloppy), 'D', 'every guard shot one at a time');
+  assert.equal(grade(RUNS.plain), 'C');
+  assert.equal(grade(RUNS.decent), 'B');
+  assert.equal(grade(RUNS.sharp), 'A');
+  assert.equal(grade(RUNS.ace), 'S');
+  // S needs all of it: one thing missing and it is an A
+  assert.equal(grade({ ...RUNS.ace, civilians: 1 }), 'A', 'a passer-by killed');
+  assert.equal(grade({ ...RUNS.ace, time: LEVEL_SCORING.level1.par }), 'A', 'no time under par');
+  assert.equal(grade({ ...RUNS.ace, alerts: 2 }), 'A', 'spotted twice');
+  assert.equal(grade({ ...RUNS.ace, shots: 10 }), 'A', 'rounds sprayed');
+  // a sharp run done loud and wasteful falls to B, a sloppy one never climbs above B even fast
+  assert.equal(grade({ ...RUNS.sharp, alerts: 3, shots: 12 }), 'B');
+  assert.ok(['D', 'C', 'B'].includes(grade({ ...RUNS.sloppy, time: 150 })));
+  // the totals add up to the lines shown
+  for (const run of Object.values(RUNS)) {
+    const t = playLevel1(run);
+    assert.equal(t.total, t.lines.reduce((sum, l) => sum + l.points, 0));
+  }
 });
 
 const fakeStorage = () => {

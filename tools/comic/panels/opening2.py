@@ -4,14 +4,15 @@ from .. import poster
 from ..kit import BONE, BONE_D, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, NIGHT_LL, PINK, PINK_D, Cv, panel, slab, star, turned
 
 SLANT, PITCH = -70, 38         # his floorboards seen from above, on all three small panels
-SPOUT = (540, 122)             # pour: the can's spout (the game runs the petrol down from it to the sofa)
+SPOUT = (540, 122)             # pour: the can's spout (the game runs the petrol down from it, ui/cine/Panels.js)
+POOL = (512, 240)              # pour: the middle of the petrol's pool on the floor (where it lands: Panels.js SPLASH)
 
 
 def floor(cv, pool, light, gap):
     """His boards from above and the pool of light on them: (cx, cy, r), its ink, the ink of the gaps in it."""
     poster.boards(cv, SLANT, PITCH)
     m = cv.disc(pool[0], pool[1], pool[2], col=light)
-    poster.board_gaps(cv, SLANT, PITCH, gap, m)
+    poster.board_gaps(cv, SLANT, PITCH, gap, m, w=2)
     return m
 
 
@@ -35,7 +36,7 @@ def panel_pry():
     cv.poly(star(228, 146, 16, 5, 5, seed=2), BONE)
     cv.poly([(50, 228), (128, 196), (150, 216), (128, 290), (60, 290)], INK)                 # his arms down on the bar
     poster.above(cv, 'cueball', 92, 262, 2.3, -42)
-    poster.above(cv, 'lucky', 292, 206, 2.0, 160)
+    poster.above(cv, 'lucky', 316, 196, 2.2, 172, parts=poster.lucky_above(reach=(21, 10)))
     return cv
 
 
@@ -61,7 +62,7 @@ def panel_box():
     cv.disc(240, 198, 9, col=BONE, clip=cm)
     cv.poly(turned([(-24, 6), (24, 6), (24, 17), (-24, 17)], 234, 202, -9), CYAN, clip=cm)
     poster.above(cv, 'cueball', 30, 262, 2.3, -40)
-    poster.above(cv, 'lucky', 296, 158, 1.9, 192)
+    poster.above(cv, 'lucky', 312, 158, 2.1, 186, parts=poster.lucky_above(reach=(25, -10)))
     poster.above(cv, 'jitters', 150, 284, 2.2, -78)
     return cv
 
@@ -91,15 +92,15 @@ def panel_count():
     cv.paste(INK, sm)
     for x, y, d in rows:
         poster.brick(cv, x, y, d, clip=sm, shade=True)
-    poster.above(cv, 'lucky', 156, 206, 3.0, -100)
+    poster.above(cv, 'lucky', 156, 210, 3.0, -100, parts=poster.lucky_above(reach=(19, 15)))
     return cv
 
 
 @panel('pour', (1080, 282))
 def panel_pour():
     """Page 2, panel 4 ("THE BOSS SAYS: NO LOOSE ENDS."). Side on, against the big window and the bar's neon: JITTERS
-    tips the can over the sofa, the petrol a bone thread; CUEBALL stands over him, the one who speaks. The neon lies
-    on the floor in a wedge, their shadows in it."""
+    tips the can at the sofa's foot, the petrol a bone thread down to its pool, flat on the floor; CUEBALL stands over
+    him, the one who speaks. The neon lies on the floor in a wedge, their shadows in it."""
     W, H = 1080, 282
     cv = Cv(W, H, NIGHT)
     fl = 214
@@ -115,14 +116,17 @@ def panel_pour():
     wedge = cv.poly([(566, fl), (880, fl - 2), (1010, H + 4), (470, H + 4)], PINK_D)
     for cx, tip, w in ((604, 500, 70), (742, 760, 110)):
         cv.poly([(cx - 16, fl), (cx + 16, fl), (tip + w, H + 4), (tip - w, H + 4)], INK, clip=wedge)
-    # his sofa, long and low, the stain spreading where the petrol falls
+    # his sofa, long and low
     cv.poly([(232, 132), (548, 124), (556, 178), (226, 184)], NIGHT_LL)
     for x in (336, 444):
         cv.bar((x, 126), (x + 3, 182), 5, NIGHT)
     cv.poly([(206, 176), (574, 168), (578, fl), (204, fl + 4)], NIGHT_L)
     for arm in (slab(196, 150, 232, fl + 4, 3, 3), slab(552, 144, 588, fl + 2, 7, 3)):
         cv.poly(arm, NIGHT_LL)
-    cv.disc(516, 188, 50, 13, INK)                                                          # the stain
+    # the petrol on his floor, at the sofa's foot: a pool lying flat, the neon caught in it
+    px, py = POOL
+    cv.poly(turned([(-92, -2), (-58, -9), (6, -11), (64, -8), (96, 0), (70, 9), (10, 12), (-52, 10)], px, py), NIGHT_LL)
+    cv.poly(turned([(22, 3), (70, 1), (56, 6), (30, 7)], px, py), PINK_D)
     # the two of them
     poster.man(cv, poster.cueball, 742, fl + 4, 150, face=-1)
     a = poster.man(cv, poster.jitters, 604, fl + 3, 150, 'tip', face=-1)
@@ -131,5 +135,5 @@ def panel_pour():
     can = (SPOUT[0] - sp[0], SPOUT[1] - sp[1])
     cv.bar(a['hand'], can, 9, INK)
     poster.jerrycan(cv, can[0], can[1], s, deg, f=-1)
-    cv.bar(SPOUT, (518, 180), 4, BONE, w1=2)
+    cv.bar(SPOUT, (px + 2, py - 2), 4, BONE, w1=2)
     return cv
