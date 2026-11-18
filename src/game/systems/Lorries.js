@@ -88,6 +88,7 @@ export default class Lorries {
           const q = this.tail(L);
           w.sound('lorryBrake', q.x, q.y, 1);
           w.shake?.(C.shake);
+          w.events?.emit('ride', { beat: 'lorry', x: q.x, y: q.y });
           w.particles?.dust?.(q.x, q.y, 6, 20, '#5a5260', { speed: 30, size: 4, life: 0.6, alpha: 0.3 });
         }
       } else if (L.state === 'out' && L.lab) {

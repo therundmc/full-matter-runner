@@ -21,6 +21,7 @@ import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import { AIM, nextStyle } from './data/aim.js';
 import { assistAim } from './systems/AimCue.js';
+import Rumble from './systems/Rumble.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { cineView, cineBeats, drawCinematic } from './ui/Cinematic.js';
@@ -75,6 +76,8 @@ export default class Game {
     this.input = new Input(canvas);
     this.input.bindPad(PAD_BINDINGS); // the gamepad plays the keys and buttons (data/controls.js)
     this.padAimAt = null;              // the right stick's virtual cursor: { angle, reach, idle } (padAim)
+    // the pad's rumble, felt from the world's events (systems/Rumble.js, data/rumble.js)
+    this.rumble = new Rumble({ play: (fx) => this.input.rumble(fx), stop: () => this.input.stopRumble() });
     this.camera = new Camera();
     this.direction = new Direction();  // the camera's shots where a level is staged (the prologue)
     this.opening = new Opening(null);  // level 1's opening on the camera (startLevel)
@@ -122,7 +125,7 @@ export default class Game {
       this.settings.fullscreen = !!document.fullscreenElement;
       saveSettings(this.settings);
     });
-    for (const k of [...VOLUMES, 'lens', 'shake']) this.applySetting(k);
+    for (const k of [...VOLUMES, 'lens', 'shake', 'rumble']) this.applySetting(k);
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -160,6 +163,7 @@ export default class Game {
     if (VOLUMES.includes(key)) Audio.setVolume(key, v);
     else if (key === 'lens') { this.lensOn = v; this.post?.show(v); }
     else if (key === 'shake') this.camera.shakeScale = v;
+    else if (key === 'rumble') this.rumble.setScale(v);
   }
 
   // save: false while a slider is dragged (saved on release)
@@ -259,6 +263,7 @@ export default class Game {
     Music.setIntensity(this.tension.level('normal'));
     ev.on('tutorialEnd', () => this.onTutorialEnd());
     this.sandbox.attach(this.world);
+    this.rumble.bind(this.world);
     this.cineT = 0;
     this.introT = 0;
     this.introOut = null;
@@ -394,6 +399,14 @@ export default class Game {
   }
 
   update(dt) {
+    this.advance(dt);
+    // the pad rumbles in play only (not paused, no menu, no page over the world), the pad in hand
+    const s = this.state, live = !!this.world && (['play', 'dead', 'outro', 'continued'].includes(s) || (s === 'fall' && this.stateT < FALLEN));
+    this.rumble.update(dt, live, this.input.device === 'pad');
+  }
+
+  // the frame's input, menus, screens and simulation
+  advance(dt) {
     const inp = this.input;
     inp.poll(dt);
     if (inp.anyPressed) {
@@ -662,7 +675,7 @@ export default class Game {
     this.lastMouse = { x, y };
     const rects = this.menuRects, at = rects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
     const key = (...codes) => codes.some((c) => inp.hit(c));
-    // a gamepad's RT plays the left button: it does not click in a menu (A does)
+    // a gamepad's RB / RT play the left button: they do not click in a menu (A does)
     const click = inp.device !== 'pad' && inp.mouseHit(0);
     if (this.grab === null && click && at?.track && nav.page.items[at.i]?.slider) { nav.hover(at.i); this.grab = at.i; }
     if (this.grab !== null) {
@@ -678,11 +691,12 @@ export default class Game {
       if (key('ArrowDown', 'KeyS', 'NavDown')) acts.push(nav.down());
       if (key('ArrowLeft', 'KeyA', 'NavLeft')) acts.push(nav.left());
       if (key('ArrowRight', 'KeyD', 'NavRight')) acts.push(nav.right());
-      if (key('Enter', 'Space', 'NumpadEnter')) acts.push(nav.activate());
+      if (key('Enter', 'Space', 'NumpadEnter')) { acts.push(nav.activate()); if (inp.hit('PadA')) this.rumble.tick(); }
       if (key('Escape', 'Backspace', 'PadB')) acts.push(nav.back());
     }
     const done = acts.filter(Boolean), turned = `${nav.top.id}:${nav.sel}` !== before;
     for (const a of done) { if (this.applyMenu(a)) break; }
+    if (done.some((a) => a.type === 'set' && a.key === 'rumble')) this.rumble.tick('sample'); // felt at its new strength
     // a tick for every move and action, after it: a volume set is heard at its new level (the music speaks for itself)
     if (turned || done.some((a) => a.type !== 'set' || a.key !== 'music')) Audio.play('ui');
   }

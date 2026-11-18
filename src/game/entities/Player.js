@@ -38,6 +38,9 @@ const WORN = 1e-6; // what is left of a weapon's wear (in blows) once it is used
 // what a beat of a finisher leaves on a body already dead (data/wounds.js MARKS): a round's hole, a blade's, a blow's
 const beatMark = (what, d) => (what === 'shot' ? MARKS[d.wound] : what === 'stab' || what === 'rip' ? MARKS.stab : what === 'cut' ? MARKS.throat
   : what === 'twist' || what === 'press' ? null : MARKS.blunt);
+// whether the attack button (the left click, a pad's RB / RT) asks weapon d for a blow or a round this step: an
+// automatic and a melee weapon while it is held, a semi-automatic on the step it goes down only
+export const pulls = (d, input) => (d.kind === 'gun' && !d.auto ? input.mouseHit(0) : input.mouseDown(0));
 
 export default class Player extends Character {
   constructor(world, x, y, angle) {
@@ -218,7 +221,7 @@ export default class Player extends Character {
     const d = this.def;
     const nb = this.nearTakedown;
     if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
-    else if (d.kind === 'gun' ? (d.auto ? input.mouseDown(0) : input.mouseHit(0)) : input.mouseDown(0)) {
+    else if (pulls(d, input)) {
       // on a man who is down, at our feet and under the cursor: his execution, whatever is in the hand
       const nd = this.nearDowned;
       if (nd && (down < 14 || Math.abs(angDiff(this.angle, Math.atan2(nd.y - this.y, nd.x - this.x))) < EXEC.aim)
