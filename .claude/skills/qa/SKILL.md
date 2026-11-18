@@ -25,6 +25,8 @@ npm run qa -- --minutes <m> --level <id> [--seed n] [--god] [--plans a,b] [--rea
 | props / physics / reload | `--level lab` |
 | traffic, passers-by | `--level street` |
 | audio voices, frame timing, the real loop | `--realtime` (slow: real time) |
+| input handling, menus, pause, restarts, edge cases | `--chaos` (chaos plans only) or `--chaos-share 0.3`; one plan: `--chaos --plans monkey` |
+| does a detector catch an old bug | `--root <a git worktree of the old commit>`: today's bot on that game |
 
 Reuse the seed of the run you compare with (the latest reports used `--seed 5`). Levels: tutorial, level1, lab,
 street (src/game/data/levels/index.js). Exit code: 0 no error, 1 errors, 2 the tool itself failed.
@@ -42,6 +44,10 @@ street (src/game/data/levels/index.js). Exit code: 0 no error, 1 errors, 2 the t
 ## 3. Triage
 
 - error: a game bug to fix, unless its stack goes through `bot.js` (a tool bug).
+- each finding names the `plan` it came under (chaos plans marked); `replayPlan` replays the run on that plan alone.
+- the drawn picture is checked too: `pose` (NaN or wild pose numbers: a man drawn as his feet), `draw-scale` (drawn
+  too small / big), `camera`; then `stuck-anim`, `ghost`, `prop-in-wall`, `vehicle-shoved`, `unreachable-item`,
+  `door-state`, `civ-stuck`, `corpse-drift`, `loiter-provoked`, `sound-missing` (README table).
 - warning: a lead; check it, say whether it is real.
 - not covered: expected (README list) or a sign the route is broken.
 
@@ -68,3 +74,19 @@ QA level1, 5 min, seed 5: PASS | FAIL (qa-report/<stamp>/report.md)
 
 A replay is not bit-exact (audio admission and the music clock follow real time): a finding that does not come
 back is still worth reading in its first-occurrence details.
+
+## 6. In the background
+
+```
+npm run qa:watch                                  (endless: tutorial, level1, lab in turn, 2.5 min runs, Ctrl+C stops)
+npm run qa:watch -- --runs 6 --levels level1      (a bounded batch)
+npm run qa:watch -- --bisect [--good <sha>]       (and search the commit behind each new error)
+```
+
+Short runs one at a time, niced, seeds counting up, every second run `--chaos`. Read `qa-report/watch.md`: only
+findings never seen before (deduped by kind + signature without positions / numbers), each with its replay command,
+screenshot and commit; counts of known ones are in `qa-report/watch-db.json`; run folders that brought something new
+stay in `qa-report/watch/`. Triage a new entry as in section 3, replay it with its command. `--bisect` replays a new
+error twice, then binary-searches `good..HEAD` in a temporary git worktree (never touches the main checkout, always
+removed); the result follows the entry ("first bad commit <sha>", "uncommitted", "not reproduced", or the range
+left when `--bisect-max` runs out). Options and details: tools/qa/README.md, "Background runner".

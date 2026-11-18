@@ -87,7 +87,7 @@ export function writeReport(dir, rep) {
   const st = rep.stats || {};
   const f = rep.findings;
   const L = [];
-  L.push(`# QA report: ${rep.options.level}, seed ${rep.options.seed}, ${rep.options.mode}${rep.options.god ? ', god' : ''}`);
+  L.push(`# QA report: ${rep.options.level}, seed ${rep.options.seed}, ${rep.options.mode}${rep.options.god ? ', god' : ''}${rep.options.chaos ? `, chaos ${rep.options.chaos === 1 ? 'only' : rep.options.chaos}` : ''}${rep.options.root ? `, game from ${rep.options.root}` : ''}`);
   L.push('');
   L.push(`- Result: **${rep.result}** (exit code ${rep.exitCode}): ${rep.summary.errors} error kind(s), ${rep.summary.warns} warning kind(s)${rep.interrupted ? ', INTERRUPTED' : ''}${rep.toolError ? `, TOOL ERROR: ${rep.toolError}` : ''}`);
   L.push(`- Covered ${fmtTime(rep.gameSeconds)} of game time in ${fmtTime(rep.realSeconds)} real (${rep.steps} steps), started ${rep.startedAt}`);
@@ -97,17 +97,18 @@ export function writeReport(dir, rep) {
   L.push('');
   if (!f.length) L.push('None.');
   else {
-    L.push('| severity | kind | signature | count | first at | sessions | screenshot |');
-    L.push('|---|---|---|---|---|---|---|');
+    L.push('| severity | kind | signature | count | first at | sessions | plan | screenshot |');
+    L.push('|---|---|---|---|---|---|---|---|');
     for (const x of f) {
-      L.push(`| ${x.severity} | ${x.kind} | ${esc(oneLine(x.sig, 80))} | ${x.count} | ${x.t ?? '-'} s | ${x.session ?? '-'}${x.lastSession && x.lastSession !== x.session ? '..' + x.lastSession : ''} | ${x.screenshot ? `[png](${x.screenshot})` : '-'} |`);
+      L.push(`| ${x.severity} | ${x.kind} | ${esc(oneLine(x.sig, 80))} | ${x.count} | ${x.t ?? '-'} s | ${x.session ?? '-'}${x.lastSession && x.lastSession !== x.session ? '..' + x.lastSession : ''} | ${x.plan ? x.plan + (x.chaos ? ' (chaos)' : '') : '-'} | ${x.screenshot ? `[png](${x.screenshot})` : '-'} |`);
     }
     L.push('');
     L.push('### First occurrences');
     for (const x of f) {
       L.push('');
       L.push(`#### ${x.severity.toUpperCase()} ${x.kind}: ${esc(oneLine(x.sig, 120))} (x${x.count})`);
-      L.push(`- at ${x.t ?? '-'} s of run time (world time ${x.worldT ?? '-'} s), session ${x.session ?? '-'}, position ${fmtPos(x.pos)}`);
+      L.push(`- at ${x.t ?? '-'} s of run time (world time ${x.worldT ?? '-'} s), session ${x.session ?? '-'}, position ${fmtPos(x.pos)}${x.plan ? `, plan ${x.plan}${x.chaos ? ' (chaos)' : ''}` : ''}`);
+      if (x.replayPlan) L.push(`- replay its plan alone: \`${x.replayPlan}\``);
       if (x.detail) {
         const { stack, ...rest } = x.detail;
         L.push('- detail: `' + oneLine(rest, 900).replace(/`/g, "'") + '`');
@@ -136,8 +137,10 @@ export function writeReport(dir, rep) {
   const ai = st.ai || {};
   L.push(`- Guards: entered a fight ${ai.engaged ?? 0}, got within reach of him ${ai.reached ?? 0}, held 3 s on one spot on their way ${ai.stall3 ?? 0}; challenges: ${list(ai.challenges || {})} (stages reached: ${list(ai.stages || {})}); drivers held up: ${list(ai.heldUp || {})}`);
   L.push(`- Plans (started / done / cut short by a death or restart / skipped as pointless, failures): ${planLines(st.plans)}`);
+  if (st.chaos) L.push(`- Chaos: ${Object.entries(st.chaos).map(([k, v]) => `${k} (${list(v)})`).join('; ')}`);
   L.push(`- Bot goals: ${list(st.goals)}; abandoned: ${st.goalsAbandoned ?? 0}; one-step wall contacts (not reported): ${st.transientInWall ?? 0}`);
   if (rep.perf) L.push(`- Speed: ${rep.perf}`);
+  if (st.overhead) L.push(`- Bot overhead: ${overheadLine(st.overhead)}`);
   if (rep.bot) L.push(`- Bot at the end: \`${oneLine(rep.bot, 600).replace(/`/g, "'")}\``);
   L.push('');
   L.push('## Files');
@@ -156,6 +159,8 @@ const planLines = (plans) => Object.entries(plans || {}).map(([name, p]) => {
 }).join(', ') || '-';
 export function fmtTime(s) { s = Math.round(s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 
+export const overheadLine = (o) => `${o.share} % of the step time (game.update ${o.updateMs} ms a step; the bot ${o.botMs} ms, of which deeper checks ${o.checksMs}, pose probes ${o.probesMs}; draw wraps ${o.wrapsMs})`;
+
 // ten lines for the terminal
 export function summaryLines(rep) {
   const st = rep.stats || {};
@@ -171,6 +176,7 @@ export function summaryLines(rep) {
     `styles: ${list(st.styles)}`,
     `coverage: ${Object.entries(st.coverage || {}).map(([k, v]) => `${k} ${v}`).join(', ')}`,
     rep.perf ? `speed: ${rep.perf}` : 'speed: -',
+    st.overhead ? `bot overhead: ${overheadLine(st.overhead)}` : 'bot overhead: -',
     `report: ${rep.dir}${path.sep}report.md`,
     `replay: ${rep.replay}`,
   ];
