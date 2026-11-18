@@ -4,7 +4,7 @@ import { TILE, PALETTE, CAT } from '../Config.js';
 import { clamp } from '../../engine/math.js';
 import { drawShock } from './BlastArt.js';
 import { drawLasers } from './LaserSight.js';
-import { drawAim } from './AimArt.js';
+import { drawAim, drawVaultMark } from './AimArt.js';
 import { drawCritters, drawFlying, drawMoths } from './CritterArt.js';
 import { drawPropLife } from './PropLife.js';
 import { drawClutter, drawLitter } from './ClutterArt.js';
@@ -155,7 +155,7 @@ export default class WorldRenderer {
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
     const pl = w.player;
-    if (pl && pl.alive && !pl.vaulting && pl.vaultHint) this.drawVaultHint(ctx, pl.vaultHint, t);
+    if (pl && pl.alive && !pl.vaulting && pl.vaultHint) drawVaultMark(ctx, pl.vaultHint, t); // Space would vault here
     if (pl && pl.alive && !pl.passage && !pl.hidden && !pl.driving) this.drawUseHints(ctx, pl, t);
     if (w.tutorial) {
       const exit = w.tutorial.exit();
@@ -407,24 +407,6 @@ export default class WorldRenderer {
       ctx.beginPath(); ctx.arc(lk.x, lk.y, 10, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.lineWidth = 1;
-  }
-
-  // Space would vault here: a small mark on the obstacle's edge, chevrons hopping over it
-  drawVaultHint(ctx, v, t) {
-    const { x, y } = v.ledge, o = 2.5 + 2 * (0.5 + 0.5 * Math.sin(t * 8));
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(v.to.y - y, v.to.x - x));
-    ctx.lineCap = ctx.lineJoin = 'round';
-    for (const [width, color] of [[3.2, 'rgba(8,4,16,0.8)'], [1.3, '#7ff6ff']]) {
-      ctx.lineWidth = width;
-      ctx.strokeStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(0, -6); ctx.lineTo(0, 6); // the edge
-      for (const c of [o, o + 4]) { ctx.moveTo(c, -3.5); ctx.lineTo(c + 3.5, 0); ctx.lineTo(c, 3.5); }
-      ctx.stroke();
-    }
-    ctx.restore();
   }
 
   // What the devices of the level offer (systems/Uses.js), seen from close by: a small diamond over each spot that can

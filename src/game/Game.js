@@ -112,6 +112,9 @@ export default class Game {
     this.lensOn = true;                // the VIDEO option; F6 flips it for the session, to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
     this.aimNote = 0;                  // ... and the F7 one (the aim's style)
+    // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
+    const mark = new URLSearchParams(location.search).get('mark');
+    if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results

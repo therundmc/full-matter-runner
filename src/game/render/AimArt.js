@@ -2,9 +2,11 @@
 // data/aim.js but the cross, which stays the cursor's (Game.drawCursor). Plain pixel art: every mark is whole world
 // pixels in a flat ink (cyan at rest, white with a man in the line) over a dark edge, so that it reads on a lit floor
 // as in the dark; no gradient (a line pales by bands), nothing drawn over the man it points at but a pip or brackets
-// round him. What it tells comes from systems/AimCue.js.
+// round him. What it tells comes from systems/AimCue.js. LOCK's marks and the vault's are worn stencil paint
+// (systems/AimMark.js).
 import { AIM } from '../data/aim.js';
 import { aimCue, lineOfFire, lockTarget } from '../systems/AimCue.js';
+import { ringBits, chevronBits, barBits, flecks, ringRadius } from '../systems/AimMark.js';
 import { angDiff } from '../../engine/math.js';
 
 // ---- the marks of a frame: whole pixels, the brightest ink kept where two fall on the same one
@@ -126,21 +128,57 @@ function notch(p, q) {
   chevron(p.x, p.y, q.a, at + N.size, N.size, col, N.alpha, hot ? 2 : 1);
 }
 
-// LOCK: the chevron on the floor, white once the line is on a man; faint corner ticks round the man nearest the line
-// (on a gamepad the aim is pulled onto him: Game.padAim)
+// ---- LOCK's worn marks (systems/AimMark.js gives their pixels and their wear)
+// a worn chevron pointing along a, its tip `at` px from (x, y)
+function wornChevron(x, y, a, at, size, col, alpha, seed) {
+  const c = Math.cos(a), s = Math.sin(a), tx = x + c * at, ty = y + s * at;
+  for (const b of chevronBits(seed, size)) dot(tx + c * b.u - s * b.v, ty + s * b.u + c * b.v, col, alpha * b.k);
+}
+// a worn stencil circle round (cx, cy), with its specks of spray
+function wornRing(cx, cy, seed, r, arcs, span, turn, width, col, alpha) {
+  for (const b of ringBits(seed, r, arcs, span, turn, width)) dot(cx + b.x, cy + b.y, col, alpha * b.k);
+  for (const f of flecks(seed, r + width - 1)) dot(cx + f.x, cy + f.y, col, alpha * AIM.worn.speck);
+}
+
+// each man his own wear, kept as long as he lives; who the mark is on and since when (the circle closing in)
+const seeds = new WeakMap();
+let count = 0;
+function seedOf(c) {
+  if (!seeds.has(c)) seeds.set(c, ++count);
+  return seeds.get(c);
+}
+const held = { who: null, on: false, since: 0 };
+
+// LOCK: a light worn arc on the floor across the aim's way, white once the line is on a man; a mark of the same paint
+// on the man nearest the line (AIM.lock.mark), tighter and white once the line is on him (on a gamepad the aim is pulled onto him:
+// Game.padAim)
 function lock(world, p, q, t) {
-  const L = AIM.lock, N = AIM.notch;
+  const L = AIM.lock, N = AIM.notch, A = L.arc;
   const near = q.target || lockTarget(world, q.team, p.x, p.y, q.a, L.cone, q.kind === 'melee' ? L.melee : L.reach);
   const on = !!near && (q.target === near || (q.kind === 'melee' && Math.hypot(near.x - p.x, near.y - p.y) < p.def.range + near.radius));
-  const col = on ? AIM.hot : AIM.rest;
-  chevron(p.x, p.y, q.a, standOff(p, q, N.at) + N.size - 1, N.size - 1, col, N.alpha);
+  const col = on ? AIM.hot : AIM.rest, i = on ? 1 : 0;
+  for (const b of ringBits(A.seed, standOff(p, q, N.at), 1, A.span, q.a, A.width)) dot(Math.floor(p.x) + b.x, Math.floor(p.y) + b.y, col, A.alpha[i] * b.k);
+  if (held.who !== near || held.on !== on || t < held.since) Object.assign(held, { who: near, on, since: t });
   if (!near) return;
-  const r = Math.round(L.box + (on ? Math.sin(t * L.rate) * L.pulse : 2)), alpha = L.alpha[on ? 1 : 0], cx = Math.floor(near.x), cy = Math.floor(near.y);
-  for (const sx of [-1, 1]) {
-    for (const sy of [-1, 1]) {
-      for (let k = 0; k < L.corner; k++) {
-        dot(cx + sx * (r - k), cy + sy * r, col, alpha);
-        dot(cx + sx * r, cy + sy * (r - k), col, alpha);
+  const cx = Math.floor(near.x), cy = Math.floor(near.y), seed = seedOf(near), age = t - held.since;
+  const back = Math.atan2(p.y - near.y, p.x - near.x); // from him to the player
+  if (L.mark === 'ring') {
+    const R = L.ring;
+    wornRing(cx, cy, seed, ringRadius(on, age, R), R.arcs, R.span[i], R.turn, R.width[i], col, R.alpha[i]);
+  } else if (L.mark === 'tick') {
+    const T = L.tick;
+    wornRing(cx, cy, seed, ringRadius(on, age, T), 1, T.span[i], back, T.width[i], col, T.alpha[i]);
+  } else if (L.mark === 'point') {
+    const P = L.point;
+    wornChevron(near.x, near.y, back + Math.PI, -(near.radius + P.gap[i]), P.size[i], col, P.alpha[i], seed);
+  } else {
+    const B = L.corners, r = Math.round(B.box + (on ? Math.sin(t * B.rate) * B.pulse : 2));
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (let k = 0; k < B.corner; k++) {
+          dot(cx + sx * (r - k), cy + sy * r, col, B.alpha[i]);
+          dot(cx + sx * r, cy + sy * (r - k), col, B.alpha[i]);
+        }
       }
     }
   }
@@ -154,6 +192,19 @@ function offArc(q) {
     dot(ex + k, ey + k, AIM.off, O.alpha);
     dot(ex + k, ey - k, AIM.off, O.alpha);
   }
+}
+
+// The vault's mark (Player.vaultHint: Space would vault here), LOCK's paint: a worn bar on the obstacle's edge and two
+// arcs bowed the way he would go, hopping over it
+export function drawVaultMark(ctx, v, t) {
+  const H = AIM.hop, x = Math.floor(v.ledge.x), y = Math.floor(v.ledge.y), a = Math.atan2(v.to.y - v.ledge.y, v.to.x - v.ledge.x);
+  const c = Math.cos(a), s = Math.sin(a), o = Math.round(H.rise * (0.5 + 0.5 * Math.sin(t * H.rate)));
+  for (const b of barBits(H.seed, H.edge)) for (let k = 0; k < H.thick; k++) dot(x - s * b.u - c * k, y + c * b.u - s * k, AIM.rest, H.alpha[0] * b.k);
+  const cx = Math.round(x - c * H.back), cy = Math.round(y - s * H.back);
+  H.r.forEach((r, n) => {
+    for (const b of ringBits(H.seed + 1 + n, r + o, 1, H.span[n], a, H.width[n])) dot(cx + b.x, cy + b.y, n ? AIM.rest : AIM.hot, H.alpha[n] * b.k);
+  });
+  flush(ctx);
 }
 
 // style: one of data/aim.js AIM_STYLES ('cross' draws nothing here)

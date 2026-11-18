@@ -23,10 +23,35 @@ export const AIM = {
   wedge: { len: 120, min: 0.045, fill: 0.12, hot: 0.2, edge: 0.6, edgeHot: 0.95, rays: 7, start: 4 },
   // NOTCH: a chevron at a fixed distance on the aim line, on a faint dotted arc of the ring round him
   notch: { at: 46, size: 5, arc: 0.7, dot: 0.09, ring: 0.3, alpha: 0.95, wall: 8 },
-  // LOCK: the chevron on the floor (no line of fire: where the rounds go is the player's to judge); the man nearest
-  // the line within `cone` gets faint corner ticks (`alpha`: [near the line, the line on him]), and on a gamepad the
-  // aim is pulled onto him within `assist` (Game.padAim): leaving that angle with the stick lets go
-  lock: { cone: 0.3, assist: 0.2, reach: 280, melee: 80, box: 14, corner: 3, pulse: 0.8, rate: 6, alpha: [0.3, 0.6] },
+  // LOCK: a light arc on the floor, a short piece of the circle round him at the notch's distance, across the aim's
+  // way (no line of fire: where the rounds go is the player's to judge); the man nearest the line within `cone` gets a
+  // mark of the same worn paint (`mark`, one of `marks`: the others are kept to compare, `?mark=tick` in the address
+  // picks one for a session), and on a gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that
+  // angle with the stick lets go. Pairs are [at rest / a man near the line, the line on a man].
+  lock: {
+    cone: 0.3, assist: 0.2, reach: 280, melee: 80,
+    mark: 'ring',
+    marks: ['ring', 'tick', 'point', 'corners'],
+    arc: { span: 0.55, width: 1, alpha: [0.6, 0.9], seed: 7 }, // the floor arc: rad, px thick, alpha, which wear
+    // ring: a stencilled circle on the floor round his feet: four short arcs, which close in and lengthen on him.
+    // r: px; span: rad an arc; turn: where the first arc is (the bridges stay on the axes); snap: s to close in
+    ring: { r: [17, 14], arcs: 4, span: [0.5, 1.22], turn: Math.PI / 4, width: [1, 1], snap: 0.12, alpha: [0.6, 0.9] },
+    // tick: one strip of tape at his feet on the player's side, longer and thicker on him
+    tick: { r: [16, 14], span: [0.55, 1.5], width: [1, 2], snap: 0.12, alpha: [0.6, 0.9] },
+    // point: a chevron at the edge of his body, pointing at him from the player's side. gap: px between its tip and
+    // his body; size: arm px
+    point: { gap: [7, 3], size: [3, 5], alpha: [0.5, 0.9] },
+    // corners: the old corner ticks (a box of `box` px half-side, `corner` px a tick, breathing `pulse` px at `rate`)
+    corners: { box: 14, corner: 3, pulse: 0.8, rate: 6, alpha: [0.3, 0.6] },
+  },
+  // the worn look of LOCK's marks and of the vault's (systems/AimMark.js): the paint goes in flakes of `run` px; of
+  // them `chip` are gone and `thin` are left at `fade` of their alpha; `flecks` stray specks of spray round a ring at
+  // `speck` of its alpha, `stray` px [from, to] outside it
+  worn: { chip: 0.13, thin: 0.22, fade: 0.5, run: 2, flecks: 3, speck: 0.3, stray: [2, 4] },
+  // the vault's mark (Player.vaultHint; AimArt drawVaultMark), the same paint: a bar of `edge` px, `thick` px thick,
+  // on the obstacle's edge and two arcs bowed the way he would go, the near one white (radii `r` about a point `back`
+  // px before the edge, `span` rad and `width` px each), which hop `rise` px out and back in whole px, `rate` rad/s
+  hop: { edge: 13, thick: 2, r: [7, 12], span: [1.5, 1.05], width: [2, 2], back: 2, rise: 2, rate: 8, alpha: [0.95, 0.85], seed: 3 },
   // the car gun out of its arc: a short grey stub and a cross at its end
   offArc: { len: 30, on: 2, off: 3, cross: 3, alpha: 0.9 },
   // the mouse's dot (ui px at 720p), and the F7 label's time on screen
