@@ -189,11 +189,14 @@ function ragged(R, amp) {
 // radius e (1 on the rim) is under `reach`, (ux, uy) the way from the centre
 function blob(P, x, y, rx, ry, rot, rag, fn, reach = 1) {
   const s = P.s, c = Math.cos(rot), sn = Math.sin(rot), m = Math.max(rx, ry) * reach * (1 + rag.amp) + 1;
+  // the rag never takes the rim further out than 1 + amp: past that, no need for its angle (a hair of slack)
+  const far = (reach * (1 + Math.abs(rag.amp)) * (1 + 1e-9)) ** 2;
   for (let py = Math.floor((y - m) * s); py <= Math.ceil((y + m) * s); py++) {
     for (let px = Math.floor((x - m) * s); px <= Math.ceil((x + m) * s); px++) {
       if (P.at(px, py) !== P.id) continue;
       const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y;
       const u = (wx * c + wy * sn) / rx, v = (-wx * sn + wy * c) / ry;
+      if (u * u + v * v > far) continue;
       const e = Math.hypot(u, v) / rag(Math.atan2(v, u));
       if (e >= reach) continue;
       const dl = Math.hypot(wx, wy) || 1;
@@ -628,8 +631,19 @@ function edges(P, R, S, names, noise) {
       const near = [];
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && wallish(tx + dx, ty + dy)) near.push([dx, dy]);
       if (!near.length) continue;
+      const px0 = tx * TILE * s, px1 = (tx + 1) * TILE * s - 1;
       for (let py = ty * TILE * s; py < (ty + 1) * TILE * s; py++) {
-        for (let px = tx * TILE * s; px < (tx + 1) * TILE * s; px++) {
+        // only the strips within E.w of the edges and corners found can be dirtied: the span of this row they
+        // cover (a pixel of slack), walked in the same order (the grit's draws keep their sequence)
+        const ly = (py + 0.5) / s - ty * TILE;
+        let lo = Infinity, hi = -Infinity;
+        for (const [dx, dy] of near) {
+          if (dy < 0 ? !(ly < E.w) : dy > 0 ? !(TILE - ly < E.w) : false) continue;
+          lo = Math.min(lo, dx > 0 ? TILE - E.w : 0); hi = Math.max(hi, dx < 0 ? E.w : TILE);
+        }
+        if (lo > hi) continue;
+        const pa = Math.max(px0, Math.floor((lo + tx * TILE) * s) - 1), pb = Math.min(px1, Math.ceil((hi + tx * TILE) * s) + 1);
+        for (let px = pa; px <= pb; px++) {
           const lx = (px + 0.5) / s - tx * TILE, ly = (py + 0.5) / s - ty * TILE;
           let dist = Infinity;
           for (const [dx, dy] of near) {

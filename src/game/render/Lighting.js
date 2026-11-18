@@ -99,6 +99,8 @@ export default class Lighting {
     this.version = this.map.version ?? 0;
     this.solidCopy = this.map.solid.slice();
     this.blobs = new Map();
+    this.glows = new Map(); // prop type -> its emissive map or null (glowOf)
+    this.paths = new WeakMap(); // a polygon's point list -> its Path2D (clipPoly)
     this.propEntries = new WeakMap();
     this.faults = pickFaults(world.props); // the few tubes that stutter, the one that is dying
     this.wet = RAIN.wet * (world.weather?.k || 0); // the rain: floors in the open mirror the lights harder
@@ -360,7 +362,7 @@ export default class Lighting {
       const glassy = l.shadows && L.glass < 1 && this.nearGlass(l), withGlass = glassy ? this.segs.concat(this.glass) : null;
       const fill = (pts, a) => {
         g.save();
-        if (pts) { this.tracePoly(g, pts); g.clip(); }
+        if (pts) this.clipPoly(g, pts);
         if (l.cone) this.clipCone(g, l);
         g.globalAlpha = a;
         g.fillStyle = grad;
@@ -407,10 +409,18 @@ export default class Lighting {
     l.cx = l.x - R; l.cy = l.y - R; l.cs = size / s;
   }
 
-  tracePoly(g, pts) {
-    g.beginPath();
-    for (let i = 0; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
-    g.closePath();
+  // clip g to a polygon [x, y, ...] (a light's shadow polygon): its path is built once and kept with the point list
+  // (a polygon is made anew, never changed in place), then laid with the current transform like a traced one. The
+  // reflections clip to every lit lamp's polygon every frame: hundreds of points each.
+  clipPoly(g, pts) {
+    let p = this.paths.get(pts);
+    if (!p) {
+      p = new Path2D();
+      for (let i = 0; i < pts.length; i += 2) p.lineTo(pts[i], pts[i + 1]);
+      p.closePath();
+      this.paths.set(pts, p);
+    }
+    g.clip(p);
   }
 
   clipCone(g, l) {
@@ -426,8 +436,7 @@ export default class Lighting {
   drawSpots(g, l, k, t) {
     if (!l.poly || l.dirty) { l.poly = visibility(l.x, l.y, l.r, this.segs); l.dirty = false; }
     g.save();
-    this.tracePoly(g, l.poly.pts);
-    g.clip();
+    this.clipPoly(g, l.poly.pts);
     for (let i = 0; i < l.spots; i++) {
       const ring = 0.25 + 0.75 * hash(i * 7.3 + l.seed), a = t * L.ball.turn + (i / l.spots) * Math.PI * 2 + hash(i * 3.1) * 0.8;
       const r = l.r * ring, size = L.ball.size * (0.6 + 0.6 * ring);
@@ -637,8 +646,7 @@ export default class Lighting {
         }
         if (!l.poly.length) continue;
         g.save();
-        this.tracePoly(g, l.poly);
-        g.clip();
+        this.clipPoly(g, l.poly);
       }
       if (!l.rgb) l.rgb = rgb(l.color);
       g.globalAlpha = 1;
@@ -655,6 +663,7 @@ export default class Lighting {
     for (const p of w.particles.list) {
       if (p.type !== P.FIRE || nf++ > 90) continue;
       const r = p.size * 4 + 10;
+      if (!this.inView(p.x, p.y, r)) continue; // off the light map: nothing to draw (still counted)
       g.globalAlpha = Math.max(0, p.life / p.maxLife) * L.fireLight;
       g.drawImage(fire, p.x - r, p.y - r, r * 2, r * 2);
     }
@@ -728,9 +737,16 @@ export default class Lighting {
     return out;
   }
 
+  // a prop type's emissive map or null, looked up once per type (asked for every prop, twice a frame)
+  glowOf(type) {
+    let gl = this.glows.get(type);
+    if (gl === undefined) this.glows.set(type, (gl = spriteOpt(`props/${type}_glow`)));
+    return gl;
+  }
+
   // a prop's emissive map, where the prop is drawn (overhead ones shift with parallax)
   drawGlow(g, p, t) {
-    const gl = spriteOpt(`props/${p.type}_glow`);
+    const gl = this.glowOf(p.type);
     if (!gl || p.dead || p.lightsOut || !this.inView(p.x, p.y, 60)) return;
     const k = clamp(p.glowK ?? 1, 0, 1), sign = p.def.sign, x0 = -gl.width / 2, y0 = -gl.height / 2;
     g.save();
@@ -828,6 +844,7 @@ export default class Lighting {
     }
     const fire = this.blob('#ff8a2a'), spark = this.blob('#fff0b0');
     for (const p of w.particles.list) {
+      if (!this.inView(p.x, p.y, 8 + (p.size || 0) * 1.6 + Math.abs(p.z || 0))) continue; // off the buffer (a burning floor: thousands)
       if (p.type === P.FIRE) {
         const a = Math.max(0, p.life / p.maxLife), r = p.size * 1.6;
         e.globalAlpha = a;
@@ -877,7 +894,7 @@ export default class Lighting {
       if (l.shadows !== false && !pts?.length) return;
       const bl = this.blob(l.color), x = l.x, y = l.y, sw = Math.max(5, l.r * 0.11) * far;
       const len = Math.min(l.r * (l.r <= L.shortStreak.r ? L.shortStreak.k : 0.85), 150) * far; // a sign's stays on its pavement
-      if (pts) { g.save(); this.tracePoly(g, pts); g.clip(); }
+      if (pts) { g.save(); this.clipPoly(g, pts); }
       g.globalAlpha = clamp(a, 0, 1);
       g.drawImage(bl, x - sw, y - len * 0.25, sw * 2, len * 1.6);
       g.globalAlpha = clamp(a * 0.45, 0, 1);

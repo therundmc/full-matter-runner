@@ -36,6 +36,7 @@ function lookRamps(look) {
       pants: rampOf(look.pants || '#3a3148'),
       shoe: rampOf(look.shoe || '#1a1214', 0.42, 0.2, 0.32),
     };
+    r.px = { pants: r.pants.map(rgba), shoe: r.shoe.map(rgba), sleeve: r.sleeve.map(rgba), cuff: r.cuff?.map(rgba) }; // as packed pixels
     ramps.set(look, r);
   }
   return r;
@@ -77,6 +78,9 @@ function put(i, j, c) {
   if (j < y0) y0 = j; if (j > y1) y1 = j;
 }
 
+// chain(): per segment ax, ay, dx, dy, length squared, r at a, r's change, reach (the most r plus the outline)
+const SEG = new Float64Array(8 * 2);
+
 // A limb: a chain of points {x, y, r} (pose px from the body's centre) swept round, one outline round the whole of
 // it. colour(seg, t, L) -> rgba picks the cloth / skin of each pixel from its segment, place along it and light.
 function chain(pts, colour) {
@@ -87,15 +91,38 @@ function chain(pts, colour) {
   }
   const i0 = Math.max(0, Math.floor((bx0 - OL + HALF) * D)), i1 = Math.min(N - 1, Math.ceil((bx1 + OL + HALF) * D));
   const j0 = Math.max(0, Math.floor((by0 - OL + HALF) * D)), j1 = Math.min(N - 1, Math.ceil((by1 + OL + HALF) * D));
+  // each segment's numbers once, not at every pixel
+  const ns = pts.length - 1;
+  for (let k = 0, o = 0; k < ns; k++, o += 8) {
+    const a = pts[k], b = pts[k + 1], dx = b.x - a.x, dy = b.y - a.y;
+    SEG[o] = a.x; SEG[o + 1] = a.y; SEG[o + 2] = dx; SEG[o + 3] = dy; SEG[o + 4] = dx * dx + dy * dy || 1e-9;
+    SEG[o + 5] = a.r; SEG[o + 6] = b.r - a.r; SEG[o + 7] = Math.max(a.r, b.r) + OL;
+  }
   for (let j = j0; j <= j1; j++) {
     const y = (j + 0.5) / D - HALF;
-    for (let i = i0; i <= i1; i++) {
+    // the span of this row a segment can reach: the part of it whose centre line is within its reach of the row,
+    // widened by that reach (a pixel further from every segment than that is never painted), a pixel of slack
+    let xl = Infinity, xr = -Infinity;
+    for (let k = 0, o = 0; k < ns; k++, o += 8) {
+      const ax = SEG[o], ay = SEG[o + 1], dx = SEG[o + 2], dy = SEG[o + 3], R = SEG[o + 7];
+      let t0 = 0, t1 = 1;
+      if (dy !== 0) {
+        const u0 = (y - R - ay) / dy, u1 = (y + R - ay) / dy;
+        t0 = Math.max(0, Math.min(u0, u1)); t1 = Math.min(1, Math.max(u0, u1));
+      } else if (Math.abs(y - ay) > R) continue;
+      if (t0 > t1) continue;
+      const xa = ax + dx * t0, xb = ax + dx * t1;
+      xl = Math.min(xl, Math.min(xa, xb) - R); xr = Math.max(xr, Math.max(xa, xb) + R);
+    }
+    if (xl > xr) continue;
+    const ia = Math.max(i0, Math.floor((xl + HALF) * D) - 1), ib = Math.min(i1, Math.ceil((xr + HALF) * D) + 1);
+    for (let i = ia; i <= ib; i++) {
       const x = (i + 0.5) / D - HALF;
       let best = Infinity, bs = 0, bt = 0, nx = 0, ny = 0, br = 1;
-      for (let k = 0; k < pts.length - 1; k++) {
-        const a = pts[k], b = pts[k + 1], dx = b.x - a.x, dy = b.y - a.y, ll = dx * dx + dy * dy || 1e-9;
-        const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / ll));
-        const qx = x - a.x - dx * t, qy = y - a.y - dy * t, r = a.r + (b.r - a.r) * t;
+      for (let k = 0, o = 0; k < ns; k++, o += 8) {
+        const ax = SEG[o], ay = SEG[o + 1], dx = SEG[o + 2], dy = SEG[o + 3], ll = SEG[o + 4];
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / ll));
+        const qx = x - ax - dx * t, qy = y - ay - dy * t, r = SEG[o + 5] + SEG[o + 6] * t;
         const d = Math.sqrt(qx * qx + qy * qy) - r;
         if (d < best) { best = d; bs = k; bt = t; nx = qx; ny = qy; br = r; }
       }
@@ -116,6 +143,7 @@ function oval(cx, cy, a, hl, hw, p, colour) {
     const y = (j + 0.5) / D - HALF - cy;
     for (let i = i0; i <= i1; i++) {
       const x = (i + 0.5) / D - HALF - cx, u = x * c + y * s, v = -x * s + y * c;
+      if (Math.abs(u) > hl + OL || Math.abs(v) > hw + OL) continue; // past its outline's box: no need for the powers
       const e = (Math.abs(u) / hl) ** p + (Math.abs(v) / hw) ** p;
       if (e <= 1) {
         const nu = u / hl, nv = v / hw, nz = Math.sqrt(Math.max(0, 1 - Math.min(1, nu * nu + nv * nv)));
@@ -136,9 +164,9 @@ export function paintLeg(look, hx, hy, f, lift = 0, heel = 0) {
   const k = 1 + 0.08 * lift, fl = 2.55 * k * (1 - 0.22 * heel), fw = 1.45 * k;
   // the ankle, a little behind the middle of the shoe
   const ax = f.x - c * 0.9, ay = f.y - s * 0.9;
-  const pants = R.pants.map(rgba);
+  const pants = R.px.pants;
   chain([set(P0, hx, hy, 1.95), set(P1, ax, ay, 1.4 * k)], (seg, t, L) => pants[tidx(L * (0.85 + 0.15 * t))]);
-  const shoe = R.shoe.map(rgba);
+  const shoe = R.px.shoe;
   oval(f.x + c * 0.35, f.y + s * 0.35, f.a, fl, fw, 2.3, (u, v, L) => {
     if (u > 0.55 && L > 0.5) return shoe[3];          // the toe cap catches the light
     if (u < -0.62) return shoe[Math.max(0, tidx(L) - 1)]; // the heel
@@ -148,7 +176,7 @@ export function paintLeg(look, hx, hy, f, lift = 0, heel = 0) {
 
 // An arm: shoulder S, elbow E, wrist W (pose px from the body's centre), the sleeve down to a cuff, bare skin past it
 export function paintArm(look, S, E, W) {
-  const R = lookRamps(look), sleeve = R.sleeve.map(rgba), cuff = R.cuff?.map(rgba);
+  const R = lookRamps(look), sleeve = R.px.sleeve, cuff = R.px.cuff;
   chain([set(P0, S.x, S.y, 1.6), set(P1, E.x, E.y, 1.35), set(P2, W.x, W.y, 1.1)], (seg, t, L) => {
     const i = tidx(L);
     if (seg === 1 && t > 0.84) return (cuff || sleeve)[Math.max(0, i - (cuff ? 0 : 1))]; // the cuff (or the sleeve's hem)
