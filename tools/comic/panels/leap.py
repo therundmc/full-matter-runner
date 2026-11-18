@@ -1,4 +1,5 @@
 """The leap's card: the alley in the rain, the next day (alley)."""
+from .. import poster
 from ..kit import BONE_D, BROWN, CYAN, CYAN_D, INK, NIGHT, NIGHT_L, PINK, PINK_D, TAN, Cv, bead, panel, slab
 
 ALLEY_SIGN = (604, 134, 62, 10)   # the street's neon at the alley's far end, x, y, w, h (the game flickers it)
@@ -44,10 +45,8 @@ def panel_alley():
     cv.poly([(262, 212), (314, 212), (314, 222), (262, 222)], TAN)                           # the slit of his face
     cv.poly([(254, 222), (322, 219), (318, 240), (306, 254), (266, 256), (256, 242)], INK)    # the funnel collar, closed over his nose
     cv.poly([(254, 221), (322, 218), (322, 227), (254, 230)], CYAN_D)                         # the gaiter, at its rim
-    cv.poly([(250, 214), (249, 203), (257, 193), (280, 187), (302, 190), (314, 200), (316, 214)], INK)   # the cap: a low crown
-    cv.poly([(312, 205), (340, 203), (340, 210), (312, 214)], INK)                                       # its brim: short, flat
     cv.poly([(262, 212), (314, 212), (314, 216), (262, 216)], INK)                                       # its shadow on the slit
-    cv.poly([(334, 203.4), (340, 203), (340, 210), (334, 210.8)], CYAN_D)                                # the brim's petrol front edge
+    poster.hat(cv, 283, 215, 3.05, deg=3)                                                    # the cap, his head down
     cv.poly([(428, 338), (438, 318), (444, 318), (448, 362), (426, 362)], BONE_D)             # a bottle
     # the right wall: a fire escape, a skip
     for y0, y1 in ((60, 96), (150, 180)):
