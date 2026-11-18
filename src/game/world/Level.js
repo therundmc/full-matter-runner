@@ -11,6 +11,7 @@ import { BOSSES } from '../data/bosses.js';
 import Prop from '../entities/Prop.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Door from '../entities/Door.js';
+import { DOORS } from '../data/doors.js';
 import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import Ragdoll from '../entities/Ragdoll.js';
@@ -65,13 +66,15 @@ export function buildLevel(world, level) {
           used.add(horizontal ? `${x + i},${y}` : `${x},${y + i}`);
           cells.push(horizontal ? y * map.w + x + i : (y + i) * map.w + x);
         }
-        // any 'L' in the run makes it a locked door; level `doors` by any tile of the run: { closer, kind }
+        // any 'L' in the run makes it a locked door; level `doors` by any tile of the run: { kind, closer, relock,
+        // inside } (data/doors.js DOORS.kinds: a swinging door's kind hangs a pair of half-leaves)
         const more = cells.map((i) => level.doors?.[`${i % map.w},${Math.floor(i / map.w)}`]).find(Boolean) || {};
         const opts = { locked: cells.some((i) => map.chars[Math.floor(i / map.w)][i % map.w] === 'L'), cells, ...more };
-        for (const l of doorLeaves(x, y, n, horizontal)) {
+        const spec = DOORS.kinds[more.kind];
+        for (const l of doorLeaves(x, y, n, horizontal, !!spec?.pair)) {
           world.doors.push(new Door(world, l.hx, l.hy, l.angle, l.len, { ...opts, support: l.support, strike: l.strike }));
         }
-        world.decals.doorway(x, y, n, horizontal);
+        world.decals.doorway(x, y, n, horizontal, spec?.jamb);
       } else if (ch === 'G') {
         const horizontal = wallish(x - 1, y) || wallish(x + 1, y);
         world.windows.push(new Window(world, x, y, !horizontal));
@@ -116,7 +119,7 @@ export function buildLevel(world, level) {
   // options: { lights: false } = starts with its lights off (a parked car); { flicker: kind } = its light is unsteady
   // (render/Flicker.js: 'broken', 'stutter', 'dying'...); { valve: true } = a stove whose gas tap can be opened;
   // { tips: false } = a bin that stays up and breaks like any prop (one indoors, systems/Tipping.js);
-  // { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js)
+  // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
@@ -124,6 +127,7 @@ export function buildLevel(world, level) {
     if (opt?.flicker) p.flicker = opt.flicker;
     if (opt?.valve) p.valve = true; // a stove with its gas tap (systems/GasValve.js)
     if (opt?.tips === false) p.noTip = true;
+    if (opt?.flies) p.flies = true; // flies over it (render/PropLife.js)
     if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     world.props.push(p);

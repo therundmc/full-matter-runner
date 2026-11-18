@@ -1,5 +1,5 @@
 import { PALETTE } from '../Config.js';
-import { text, glitchText, thousands } from './Text.js';
+import { text, glitchText, thousands, fitSize } from './Text.js';
 import { clamp } from '../../engine/math.js';
 import { OUTRO, fadeAlpha, barsK } from '../systems/Outro.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -78,15 +78,6 @@ export function introBeats(level, t0, t1, R = INTRO) {
   }
   if (level.objective && crossed(T.objective)) out.push({ name: 'ui', vol: 0.6 });
   return out;
-}
-
-// a font size for `str` that fits `width`, no bigger than `size`
-function fitSize(ctx, str, size, width) {
-  ctx.save();
-  ctx.font = `${Math.round(size)}px joystix, monospace`;
-  const w = ctx.measureText(str).width;
-  ctx.restore();
-  return w > width ? size * (width / w) : size;
 }
 
 // t: s on the card (held where it was once play has started); out: s since play started (the shutter opening).

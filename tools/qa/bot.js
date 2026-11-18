@@ -8,10 +8,13 @@
 //             lets one real animation frame render between batches (the page's own loop only draws then);
 //   realtime  the game's own requestAnimationFrame loop runs; the bot wraps game.update to set the inputs before
 //             each frame and to run the detectors after it.
-// Findings: { kind, severity: 'error' | 'warn', t (game s), session, pos, detail, lastActions, count }, repeats of
-// the same kind and signature are counted, not stored again.
+// Findings: { kind, severity: 'error' | 'warn', t (game s), session, plan, pos, detail, lastActions, count }, repeats
+// of the same kind and signature are counted, not stored again. The pure checks and trackers are in checks.js
+// (injected first, as __qaChecks); the chaos plans (CHAOS below) are the tester trying to break the game.
 (() => {
   if (window.__qa) return;
+  const K = window.__qaChecks;
+  if (!K) throw new Error('tools/qa/checks.js must be injected before bot.js');
 
   const TILE = 32;
   const DT = 1 / 60;
@@ -91,7 +94,11 @@
     },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
-    tutorial: { free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true } },
+    // (`bed`: out of the bedroom over the table across its doorway, started by hand while he is in it)
+    tutorial: {
+      free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true },
+      bed: { steps: [{ go: [8.5, 3.35] }, { cross: [10.5, 3.35] }], rescue: true },
+    },
     street: {
       free: { steps: [] },
       throw: THROW,
@@ -100,14 +107,7 @@
     },
   };
 
-  // seeded PRNG (mulberry32)
-  const prng = (seed) => () => {
-    seed = (seed + 0x6d2b79f5) >>> 0;
-    let t = seed;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  const prng = K.prng;
 
   const finite = (v) => typeof v === 'number' && Number.isFinite(v);
   const r1 = (v) => Math.round(v * 10) / 10;
@@ -118,6 +118,9 @@
 
   const qa = (window.__qa = {});
   let game, findPath, Audio, killStyle, rnd, opts;
+  // the game's data the checks read (moves' lengths, sizes), filled by init; fallbacks for an old checkout
+  const D = { lockTime: () => 6, lockedFor: () => 5, TRAVERSE: { kick: { dur: 1 } }, GESTURE: { trunk: { dur: 2 } }, rollDur: 0.6,
+    BODY_SCALE: 1.3, VIEW: 290, sounds: null };
   const S = {
     clock: 0, steps: 0, session: 0, world: null, sess: null, deck: [],
     findings: new Map(), dirty: new Set(), freshKinds: [],
@@ -139,6 +142,9 @@
     perfSamples: [],   // realtime: game.perf
     renderWanted: false, frameDone: null,
     inWall: new Map(), // entity -> first time seen inside a wall
+    // the deeper checks (deepCheck): their trackers, round-robin cursors, and what they cost
+    trk: null, rr: { pose: 0, props: 0, items: 0 }, cost: { checks: 0, probes: 0, wraps: 0, bot: 0, update: 0, n: 0 },
+    probing: false, drawDepth: 0, sched: null, mash: null,
   };
 
   // ---------------------------------------------------------------- bookkeeping
@@ -155,13 +161,19 @@
     let f = S.findings.get(key);
     if (f) { f.count++; f.lastT = r1(S.clock); f.lastSession = S.session; }
     else {
+      const pl = planNow();
       f = { key, kind, severity, sig, t: r1(S.clock), worldT: r1(game.world?.time || 0), session: S.session, pos, detail,
-        lastActions: lastActions(), count: 1, lastT: r1(S.clock), lastSession: S.session };
+        plan: pl.name, chaos: pl.chaos, planDrawn: pl.drawn, lastActions: lastActions(), count: 1, lastT: r1(S.clock), lastSession: S.session };
       S.findings.set(key, f);
       if (![...S.findings.values()].some((o) => o !== f && o.kind === kind)) S.freshKinds.push({ kind, key, pos });
     }
     S.dirty.add(key);
     return f;
+  }
+  // the plan the bot is on (or was on last this session): findings carry it, a replay can be narrowed to it
+  function planNow() {
+    const m = B.mischief || B.plan || S.sess?.lastPlan;
+    return m ? { name: m.name, chaos: !!m.chaos, drawn: !!m.drawn } : { name: null, chaos: false, drawn: false };
   }
   const cover = (f) => { S.stats.coverage[f] = (S.stats.coverage[f] || 0) + 1; };
   const bump = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
@@ -169,6 +181,8 @@
   // ---------------------------------------------------------------- per session
   function onNewWorld(w) {
     if (B.plan) planStat(B.plan.name).cut++; // the session ended under it (death, restart)
+    if (B.mischief) { planStat(B.mischief.name).cut++; B.mischief = null; }
+    S.pauseHold = 0;
     S.world = w;
     S.session++;
     S.stats.sessions++;
@@ -212,10 +226,15 @@
     }
     if (!S.stats.notApplicable) S.stats.notApplicable = notApplicable(w);
     const ev = w.events;
-    ev.on('kill', (e) => onKill(w, e));
+    ev.on('kill', (e) => { S.killClock = S.clock; onKill(w, e); });
+    // what may move a body, a car or a prop that is not to blame on the game (deepCheck excuses)
+    ev.on('explosion', ({ x, y, radius }) => S.blasts.push({ t: w.time, x, y, r: (radius || 100) + 120 }));
+    ev.on('shot', () => { S.shotT = w.time; });
     ev.on('powerCut', () => { cover('powerCut'); act('POWER CUT'); B.powerCheckT = w.time + 1.5; });
     ev.on('slide', ({ ch }) => { if (ch?.isPlayer) cover('slide'); });
     ev.on('challenge', ({ act: what, stage }) => {
+      const m = B.mischief;
+      if (m?.name === 'bouncerStare' && m.M.at && !m.M.challenged) m.M.challenged = { act: what, stage };
       if (stage === 1) bump(S.stats.ai.challenges, what);
       bump(S.stats.ai.stages, stage);
       act(`challenged (${what}, ${stage})`);
@@ -236,6 +255,10 @@
     B.exitSince = null; B.leftZero = null; B.exitPathT = -99;
     B.powerCheckT = null; B.lastingSeen = new Set();
     B.plan = null; B.style = null;
+    newTrackers(w);
+    wrapDraws(w.chars);
+    wrapGhosts(w);
+    wrapAudio();
     act(`session ${S.session}`);
     startPlan(w, p, drawPlan(w, p));
   }
@@ -448,40 +471,53 @@
   const guardsUp = (w) => w.enemies.some((e) => e.alive && !e.yielded);
   const planStat = (name) => S.stats.plans[name] || (S.stats.plans[name] = { started: 0, done: 0, cut: 0, skipped: 0, failed: {} });
   const stepName = (st) => (st.go ? `go ${st.go}` : st.to ? `to ${st.to}` : st.cross ? `cross ${st.cross}` : st.pick ? `pick ${st.pick}`
-    : st.trunk ? 'trunk' : st.wait ? `wait ${st.wait}` : st.use ? `use ${st.use}` : `smash ${st.smash}`);
+    : st.trunk ? 'trunk' : st.wait ? `wait ${st.wait}` : st.use ? `use ${st.use}` : st.provoke ? 'provoke' : `smash ${st.smash}`);
+  // a pick step's weapon: a type, '*' any weapon, '*gun' a gun with rounds in it
+  const fits = (it, pick) => (pick === '*' ? !!it.def : pick === '*gun' ? it.def?.kind === 'gun' && it.mag > 0 : it.type === pick);
+  const holds = (p, pick) => (pick === '*' ? p.armed : pick === '*gun' ? p.hasGun && p.weapon.mag > 0 : p.weapon?.type === pick);
 
-  // the next plan of the deck that makes sense now ('free' only at a session start; rescues are never drawn)
-  function drawPlan(w, p, start = true) {
-    const plans = PLANS[opts.level] || { free: { steps: [] } };
-    const names = Object.keys(plans).filter((n) => !plans[n].rescue && (!opts.plans || opts.plans.includes(n)));
-    if (!names.length) return start ? 'free' : null;
-    for (let i = 0; i < names.length * 2; i++) {
-      if (!S.deck.length) {
-        S.deck = names.slice();
-        for (let k = S.deck.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [S.deck[k], S.deck[j]] = [S.deck[j], S.deck[k]]; }
-      }
-      const name = S.deck.shift(), plan = plans[name];
-      if (name === 'free' && !start) continue;
-      if (!plan.ok || plan.ok(w, p)) return name;
-      planStat(name).skipped++;
-    }
-    return start ? 'free' : null;
+  // a plan by name: the level's (PLANS) or a chaos one (CHAOS)
+  const isChaos = (name) => Object.prototype.hasOwnProperty.call(CHAOS, name);
+  const planDef = (name) => (isChaos(name) ? CHAOS[name] : PLANS[opts.level]?.[name]);
+  // the plans a session may be drawn on (rescues never are; --plans narrows both families)
+  function planNames() {
+    const plans = PLANS[opts.level] || { free: { steps: [] } }, pick = (n) => !opts.plans || opts.plans.includes(n);
+    return {
+      normal: Object.keys(plans).filter((n) => !plans[n].rescue && pick(n)),
+      chaos: Object.keys(CHAOS).filter((n) => (!CHAOS[n].levels || CHAOS[n].levels.includes(opts.level)) && pick(n)),
+    };
   }
 
-  function startPlan(w, p, name, steps = PLANS[opts.level]?.[name]?.steps || []) {
+  // the next plan of the deck that makes sense now ('free' only at a session start; rescues are never drawn), from
+  // the chaos deck for a share opts.chaos of the draws (checks.js Scheduler): its name, or null
+  function drawPlan(w, p, start = true) {
+    const r = S.sched.next((name) => {
+      const d = planDef(name);
+      if (!d.ok || d.ok(w, p)) return true;
+      planStat(name).skipped++;
+      return false;
+    }, start);
+    return r ? r.name : start ? 'free' : null;
+  }
+
+  function startPlan(w, p, name, steps = planDef(name)?.steps || [], drawn = true) {
     planStat(name).started++;
     S.sess.plans.push(name);
-    const style = PLANS[opts.level]?.[name]?.style;
+    const style = planDef(name)?.style;
     if (style) B.style = style;
     B.nextPlanT = S.clock + 40;
     act(`plan ${name}`);
-    B.plan = { name, steps, i: -1 };
+    B.plan = { name, steps, i: -1, chaos: isChaos(name), drawn: drawn && !!planDef(name) };
+    S.sess.lastPlan = { name, chaos: B.plan.chaos, drawn: B.plan.drawn };
+    // god: false, it must be able to die; god: true, it must live through it (standing in a traffic lane)
+    if (B.plan.chaos && typeof planDef(name).god === 'boolean' && planDef(name).god !== !!opts.god) p.invulnerable = planDef(name).god;
     nextStep(w, p);
   }
 
   function endPlan(ok, why) {
     const pl = B.plan;
     if (!pl) return null;
+    if (ok && planDef(pl.name)?.fn) { B.plan = B.step = null; B.goal = B.path = null; startMischief(pl); return null; }
     if (ok) { planStat(pl.name).done++; act(`plan ${pl.name} done`); }
     else {
       const at = `${pl.i}: ${stepName(pl.steps[pl.i])}: ${why}`;
@@ -521,8 +557,9 @@
     if (st.go) { st.x = st.go[0] * TILE; st.y = st.go[1] * TILE; return go({ type: 'route', x: st.x, y: st.y }); }
     const spot = st.to || st.cross;
     if (spot) { st.x = spot[0] * TILE; st.y = spot[1] * TILE; st.best = Infinity; return null; }
-    if (st.pick) return p.weapon?.type === st.pick ? nextStep(w, p) : findItem(w, p, st);
+    if (st.pick) return holds(p, st.pick) ? nextStep(w, p) : findItem(w, p, st);
     if (st.wait) return null;
+    if (st.provoke) return null;
     if (st.use) {
       const near = st.near && { x: st.near[0] * TILE, y: st.near[1] * TILE };
       st.spot = w.uses.spots.filter((u) => u.kind === st.use && (!u.ok || u.ok(p)))
@@ -551,7 +588,7 @@
   // the weapon a pick step is after (one just thrown out of a trunk may take a step to show up)
   function findItem(w, p, st) {
     st.item = (st.near && itemNear(w, st.pick, st.near, st.r || 2))
-      || (st.any && w.items.filter((it) => !it.dead && it.type === st.pick).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]);
+      || (st.any && w.items.filter((it) => !it.dead && fits(it, st.pick)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]);
     if (!st.item) return S.clock - st.t0 < 1.5 ? null : st.optional ? nextStep(w, p) : endPlan(false, `no ${st.pick} left`);
     if (st.direct) { st.best = Infinity; return null; }
     return setGoal(w, p, { type: 'item', x: st.item.x, y: st.item.y, item: st.item }) ? undefined : endPlan(false, 'no path');
@@ -569,6 +606,14 @@
     }
     if (st.to) return Math.hypot(p.x - st.x, p.y - st.y) < 6 ? nextStep(w, p) : straight(p, inp, st, st.x, st.y);
     if (st.wait) return S.clock - st.t0 > st.wait ? nextStep(w, p) : null;
+    // walk at the nearest guard until one of them is on to him (a fight to drag somewhere)
+    if (st.provoke) {
+      if (w.enemies.some((e) => e.alive && e.aware === 2) || S.clock - st.t0 > 25) return nextStep(w, p);
+      const g = w.enemies.filter((e) => e.alive && !e.yielded).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+      if (!g) return nextStep(w, p);
+      if (S.clock > (st.retry || 0)) { st.retry = S.clock + 1; setGoal(w, p, { type: 'route', x: g.x, y: g.y }); }
+      return B.goal ? undefined : null;
+    }
     if (st.cross) {
       if (p.vaulting) { st.vaulted = true; return null; }
       if (st.vaulted) return nextStep(w, p);
@@ -577,7 +622,7 @@
       return h;
     }
     if (st.pick) {
-      if (p.weapon?.type === st.pick) return nextStep(w, p);
+      if (holds(p, st.pick)) return nextStep(w, p);
       if (!st.item) return findItem(w, p, st);
       if (st.item.dead) return endPlan(false, `${st.pick} taken`);
       if (p.nearItem === st.item) { press(inp, 'KeyE'); act(`pick up ${st.pick}`); }
@@ -642,7 +687,7 @@
       B.blacklist.push({ x: q.x, y: q.y, until: S.clock + 30 });
       const at = standBy(w, p, q);
       if (!at || !findPath(w.map, p.x, p.y, at.x, at.y, 8000)) continue;
-      startPlan(w, p, 'smash', [{ smash: q.type, prop: q, stand: [at.x / TILE, at.y / TILE], enough: 2 + rnd() * 3 }]);
+      startPlan(w, p, 'smash', [{ smash: q.type, prop: q, stand: [at.x / TILE, at.y / TILE], enough: 2 + rnd() * 3 }], false);
       return !!B.plan;
     }
     return false;
@@ -662,12 +707,21 @@
     return false;
   }
 
-  // one decision + input frame of the bot while playing
+  // one decision + input frame of the bot while playing: a chaos plan's mischief (CHAOS) either takes the inputs
+  // over (own) or is laid over what the bot does
   function play(w, p, inp) {
     inp.keys.clear();
     inp.mouse.down[0] = inp.mouse.down[2] = false;
     if (p.sit > 0 && !p.rising) { inp.anyPressed = true; act('get up'); return; }
     if (!p.alive) return;
+    const m = B.mischief;
+    if (m && (S.clock > m.until || m.over || m.M.over)) { endMischief(m.over ? 'broke' : m.M.over ? 'done' : 'time'); return play(w, p, inp); }
+    if (m?.own) { runMischief(w, p, inp, m); return; }
+    playFree(w, p, inp);
+    if (m) runMischief(w, p, inp, m);
+  }
+
+  function playFree(w, p, inp) {
 
     // re-target every 0.1 s: the nearest guard in sight (knocked ones first)
     if (S.clock >= B.seeT) {
@@ -696,12 +750,13 @@
 
     // plan or goal upkeep
     let planHeading;
-    if (!B.plan && !p.vaulting && onRoofTile(w, p.x, p.y) && PLANS[opts.level]?.offRoof) startPlan(w, p, 'offRoof');
-    else if (!B.plan && !w.cleared && guardsUp(w) && S.clock > B.nextPlanT && !threat) {
+    if (!B.plan && !p.vaulting && onRoofTile(w, p.x, p.y) && PLANS[opts.level]?.offRoof) startPlan(w, p, 'offRoof', undefined, false);
+    else if (!B.plan && !p.vaulting && PLANS[opts.level]?.bed && w.tutorial?.stage === 0 && !w.tutorial.scene && p.x < 9 * TILE && p.y < 6 * TILE) startPlan(w, p, 'bed', undefined, false);
+    else if (!B.plan && !B.mischief && ((!w.cleared && guardsUp(w)) || opts.chaos) && S.clock > B.nextPlanT && !threat) {
       const name = drawPlan(w, p, false);
       if (name) startPlan(w, p, name); else B.nextPlanT = S.clock + 40;
     }
-    if (!B.plan && w.cleared && !w.level.exit && PLANS[opts.level]?.out && S.clock > (B.outT || 0)) { B.outT = S.clock + 12; startPlan(w, p, 'out'); }
+    if (!B.plan && !B.mischief && w.cleared && !w.level.exit && PLANS[opts.level]?.out && S.clock > (B.outT || 0)) { B.outT = S.clock + 12; startPlan(w, p, 'out', undefined, false); }
     if (B.plan) planHeading = runPlan(w, p, inp);
     else if (!B.goal || S.clock - B.goalT > 25 || (w.cleared && w.level.exit && B.goal.type !== 'exit')) chooseGoal(w, p);
     else if (B.goal.type === 'guard' && (!B.goal.guard.alive || B.goal.guard.yielded)) chooseGoal(w, p);
@@ -804,7 +859,8 @@
     if (p.execution?.dead && !p.execution.f.quick && w.danger?.threatened(p)) { press(inp, 'Space'); act('walk out of the execution'); }
     // context actions
     const ca = p.contextAction;
-    if (ca && p.nearTakedown && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
+    // (nearBack: the same before 4148aa1, for a bisect over older commits)
+    if (ca && (p.nearTakedown ?? p.nearBack) && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     else if (ca && MELEE_CLICK.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     // (no slide on a plan: one chains into a vault, a ladder too, and off the route); a gunman about to fire: under it
     else if (!B.plan && heading !== null && !ca && (rnd() < 0.004 || (S.clock > (B.dodgeT || 0) && underFire(w, p)))) {
@@ -851,10 +907,803 @@
     return heading;
   }
 
+  // ---------------------------------------------------------------- chaos: the tester trying to break the game
+  // A chaos plan is a plan (its `steps`, as in PLANS) and then its mischief: fn(c) every frame for `dur` s, with
+  // c = { w, p, inp, M (its own state), rnd (its own dice, from the seed, the session and its name), t (s into it) }.
+  // `own`: it takes the inputs over, else it is laid over the bot's free play; fn sets M.over to end it early.
+  // god: false lets him die even in --god; levels: only on those. They come from a deck of their own for a share of
+  // the draws (--chaos: all of them, --chaos-share x), and every finding carries the plan it came under.
+  const MASH_KEYS = ['Mouse0', 'Mouse2', 'Space', 'KeyE', 'KeyR'];
+  const MENU_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Space', 'Escape', 'KeyW', 'KeyS', 'KeyE', 'KeyR', 'Backspace', 'Mouse0', 'Mouse2'];
+  const VAULTABLE = /table|counter|desk|crate|sofa|bench|armchair|keg|washer/;
+
+  // a key, or a click (Mouse0 / Mouse2), pressed this frame
+  function hit(inp, code) {
+    if (code === 'Mouse0' || code === 'Mouse2') { const b = code === 'Mouse0' ? 0 : 2; inp.mouse.clicked[b] = inp.mouse.down[b] = true; }
+    else press(inp, code);
+  }
+  const pickOf = (r, list) => list[Math.floor(r() * list.length)];
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const nearest = (list, at) => list.reduce((best, o) => (!best || dist(o, at) < dist(best, at) ? o : best), null);
+  const chaosStat = (name) => ((S.stats.chaos ||= {})[name] ||= {});
+  const restingWeapons = (w) => w.items.filter((it) => !it.dead && it.def && it.speed <= 3);
+  // no wall tile on the straight line from a to b
+  const clearLine = (w, a, b) => {
+    const n = Math.ceil(dist(a, b) / 8);
+    for (let i = 1; i < n; i++) if (w.map.solidAt(a.x + ((b.x - a.x) * i) / n, a.y + ((b.y - a.y) * i) / n)) return false;
+    return true;
+  };
+  const freeCell = (w, x, y) => w.map.inside(x, y) && !w.map.isBlocked(...cellOf(x, y)) && !w.map.solidAt(x, y);
+  // a point r px from `at` in one of 16 directions, on a free cell and in a straight line to it, nearest to the player
+  function approach(w, p, at, r, pred = () => true) {
+    let best = null;
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, s = { x: at.x + Math.cos(a) * r, y: at.y + Math.sin(a) * r };
+      if (!freeCell(w, s.x, s.y) || !clearLine(w, s, at) || !pred(s)) continue;
+      if (!best || dist(s, p) < dist(best, p)) best = s;
+    }
+    return best;
+  }
+
+  // walk to (x, y) along the grid, straight for the last steps: px left to go
+  function follow(c, x, y, near = 8) {
+    const { w, p, inp, M } = c, d = Math.hypot(x - p.x, y - p.y);
+    if (d < near) return d;
+    const F = M.follow;
+    if (!F || Math.hypot(F.x - x, F.y - y) > 4 || S.clock > F.t) M.follow = { x, y, t: S.clock + 2, path: findPath(w.map, p.x, p.y, x, y, 8000) || [], i: 0 };
+    const f = M.follow;
+    let wp = f.path[f.i];
+    while (wp && Math.hypot(wp.x - p.x, wp.y - p.y) < 12) wp = f.path[++f.i];
+    if (!wp || d < 40) wp = { x, y };
+    steer(inp, wp.x - p.x, wp.y - p.y);
+    aimAt(inp, p.x + (wp.x - p.x) * 3, p.y + (wp.y - p.y) * 3);
+    return d;
+  }
+
+  // a free cell next to a wall within 8 tiles: where he stands, and the wall's centre he faces
+  function wallSpot(w, p) {
+    let best = null;
+    for (const [cx, cy] of B.walkable) {
+      const x = (cx + 0.5) * TILE, y = (cy + 0.5) * TILE, d = Math.hypot(x - p.x, y - p.y);
+      if (d > 8 * TILE || (best && d >= best.d)) continue;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (!w.map.isSolid(cx + ox, cy + oy)) continue;
+        best = { x, y, d, wx: x + ox * TILE * 0.6, wy: y + oy * TILE * 0.6 };
+        break;
+      }
+    }
+    return best;
+  }
+
+  const staticAt = (w, x, y) => Matter.Query.point(w.props.filter((q) => !q.dead && q.body?.isStatic).map((q) => q.body), { x, y }).length > 0;
+  // a corner of a piece of furniture to vault at 45 degrees: the stand point out along its diagonal
+  function cornerSpot(w, p, M) {
+    M.used ||= new Set();
+    const list = w.props.filter((q) => !q.dead && !q.isVehicle && q.body && VAULTABLE.test(q.type) && Math.hypot(q.x - p.x, q.y - p.y) < 12 * TILE)
+      .sort((a, b) => dist(a, p) - dist(b, p));
+    for (const q of list) {
+      for (const v of q.body.vertices) {
+        const key = `${q.type}@${Math.round(v.x)},${Math.round(v.y)}`;
+        if (M.used.has(key)) continue;
+        M.used.add(key);
+        const ux = v.x - q.body.position.x, uy = v.y - q.body.position.y, l = Math.hypot(ux, uy) || 1;
+        const s = { x: v.x + (ux / l) * 28, y: v.y + (uy / l) * 28 };
+        if (!freeCell(w, s.x, s.y) || staticAt(w, s.x, s.y)) continue;
+        return { type: q.type, sx: s.x, sy: s.y, cx: v.x, cy: v.y, q };
+      }
+    }
+    return null;
+  }
+
+  // what to slide into: door leaves, the curtain, cars (one of each kind in turn, nearest first)
+  function slideTargets(w, p) {
+    const doors = w.doors.filter((d) => !d.locked).map((d) => ({ kind: 'door', ...doorMid(d) }));
+    const curtains = w.props.filter((q) => !q.dead && q.type === 'curtain').map((q) => ({ kind: 'curtain', x: q.x, y: q.y }));
+    const cars = w.props.filter((q) => !q.dead && q.isVehicle && !q.exploded).map((q) => ({ kind: 'car', x: q.x, y: q.y }));
+    const by = [doors, curtains, cars].map((l) => l.sort((a, b) => dist(a, p) - dist(b, p)).slice(0, 2));
+    const out = [];
+    for (let i = 0; i < 2; i++) for (const l of by) if (l[i]) out.push(l[i]);
+    return out;
+  }
+
+  const inRects = (rects, x, y) => (rects || []).some(([x0, y0, x1, y1]) => x >= x0 && x <= x1 + 1 && y >= y0 && y <= y1 + 1);
+  const doorGuard = (w) => w.enemies.find((e) => e.alive && !e.yielded && e.job === 'door');
+
+  // menus, the opening and the results: keys and clicks at random (states that are not play)
+  function mashKeys(inp, r, keys = MENU_KEYS) {
+    if (r() < 0.35) hit(inp, pickOf(r, keys));
+    if (r() < 0.1) { inp.mouse.x = r() * game.canvas.width; inp.mouse.y = r() * game.canvas.height; }
+  }
+
+  const CHAOS = {
+    // attack, throw, Space, E and R hammered while locked in a takedown, a finisher, a kick, a slide, a vault, a reload
+    mashMoves: { dur: 60, fn: ({ p, inp, rnd: r }) => {
+      const mv = p.takedown ? 'takedown' : p.execution ? 'execution' : p.kick ? 'kick' : p.slide ? 'slide' : p.vaulting ? 'vault'
+        : p.reloading > 0 ? 'reload' : p.trunkOpen ? 'trunk' : null;
+      if (!mv || r() > 0.6) return;
+      hit(inp, pickOf(r, MASH_KEYS));
+      bump(chaosStat('mashed'), mv);
+    } },
+    // Escape in slow motion, under a kill banner, in a takedown or a finisher; held paused a few frames, then back
+    pauseMash: { dur: 60, fn: ({ p, inp, M, rnd: r }) => {
+      const why = game.slow ? 'slowmo' : S.clock - (S.killClock ?? -9) < 0.6 ? 'kill banner' : p.takedown ? 'takedown' : p.execution ? 'execution' : null;
+      if (!why || S.clock < (M.next || 0)) return;
+      M.next = S.clock + 0.8 + r() * 2;
+      S.pauseHold = Math.floor(r() * 30);
+      hit(inp, 'Escape');
+      bump(chaosStat('paused'), why);
+      act(`pause (${why})`);
+    } },
+    // Backspace (restart) in slow motion or in a finisher
+    restartMash: { dur: 90, fn: ({ p, inp, M, rnd: r }) => {
+      const why = game.slow ? 'slowmo' : p.execution ? 'execution' : null;
+      if (!why || M.done || r() > 0.08) return;
+      M.done = true;
+      hit(inp, 'Backspace');
+      bump(chaosStat('restarted'), why);
+      act(`restart (${why})`);
+    } },
+    // shot dead by the nearest guard while in a finisher (he does not walk out of it)
+    dieInExecution: { dur: 120, god: false, fn: ({ w, p, inp, M }) => {
+      if (!p.execution) { M.in = null; return; }
+      inp.pressed.delete('Space');
+      M.in ??= S.clock;
+      if (S.clock - M.in < 0.35 || M.shot) return;
+      const g = nearest(w.enemies.filter((e) => e.alive && !(e.knocked > 0) && e !== p.execution.target && dist(e, p) < 500), p);
+      if (!g) return;
+      M.shot = true;
+      const a = Math.atan2(p.y - g.y, p.x - g.x);
+      act('killed in a finisher');
+      bump(chaosStat('killedIn'), p.execution.f.quick ? 'quick finisher' : 'long finisher');
+      if (g.def?.kind === 'gun') p.shot(a, g.def, dist(g, p), g, {});
+      else p.kill(a, 'melee', g, g.def || {}, {});
+    } },
+    // the weapon in hand thrown at a wall point blank, picked up again, six times
+    throwAtWall: { own: true, dur: 45, fn: (c) => {
+      const { w, p, inp, M } = c;
+      if ((M.n || 0) >= 6) { M.over = true; return; }
+      if (!p.armed) {
+        const it = nearest(restingWeapons(w), p);
+        if (!it) { M.over = true; return; }
+        if (p.nearItem) hit(inp, 'KeyE'); else follow(c, it.x, it.y, 4);
+        return;
+      }
+      M.wall ??= wallSpot(w, p);
+      if (!M.wall) { M.over = true; return; }
+      if (follow(c, M.wall.x, M.wall.y, 6) >= 6) return;
+      aimAt(inp, M.wall.wx, M.wall.wy);
+      if (Math.abs(angDiff(p.angle, Math.atan2(M.wall.wy - p.y, M.wall.wx - p.x))) < 0.2 && S.clock > (M.next || 0)) {
+        hit(inp, 'Mouse2');
+        M.n = (M.n || 0) + 1; M.next = S.clock + 0.6; M.wall = null;
+        bump(chaosStat('thrownAtWall'), p.weapon?.type || '?');
+        act('throw at the wall');
+      }
+    } },
+    // Space at a 45 degree angle into the corners of tables, counters, crates...
+    vaultCorner: { own: true, dur: 50, ok: (w) => w.props.some((q) => !q.dead && VAULTABLE.test(q.type)), fn: (c) => {
+      const { w, p, inp, M } = c;
+      if ((M.n || 0) >= 8) { M.over = true; return; }
+      if (p.vaulting) { M.went = true; return; }
+      if (!M.k) { M.k = cornerSpot(w, p, M); if (!M.k) { M.over = true; return; } M.t0 = S.clock; M.at = null; M.went = false; }
+      const k = M.k;
+      const done = (how) => { M.n = (M.n || 0) + 1; bump(chaosStat('cornerVault'), how); M.k = null; };
+      if (M.went) return done('vaulted');
+      if (!M.at) {
+        if (follow(c, k.sx, k.sy, 6) >= 6) { if (S.clock - M.t0 > 10) done('unreached'); return; }
+        M.at = S.clock;
+      }
+      steer(inp, k.cx - p.x, k.cy - p.y);
+      aimAt(inp, k.cx + (k.cx - p.x) * 3, k.cy + (k.cy - p.y) * 3);
+      if (S.clock > (M.space || 0)) { hit(inp, 'Space'); M.space = S.clock + 0.25; }
+      if (S.clock - M.at > 2) done('refused');
+    } },
+    // a run and a slide into a door leaf, the curtain, a car (and then on pushing at the car)
+    slideInto: { own: true, dur: 70, fn: (c) => {
+      const { w, p, inp, M } = c;
+      M.list ??= slideTargets(w, p);
+      if (!M.k) {
+        M.k = M.list.shift();
+        if (!M.k) { M.over = true; return; }
+        M.stand = approach(w, p, M.k, 100);
+        M.phase = 'go'; M.t0 = S.clock;
+        if (!M.stand) { M.k = null; return; }
+      }
+      const k = M.k;
+      if (M.phase === 'go') {
+        if (follow(c, M.stand.x, M.stand.y, 8) < 8) { M.phase = 'run'; M.t0 = S.clock; } else if (S.clock - M.t0 > 12) M.k = null;
+        return;
+      }
+      steer(inp, k.x - p.x, k.y - p.y);
+      aimAt(inp, k.x + (k.x - p.x), k.y + (k.y - p.y));
+      if (M.phase === 'run' && S.clock - M.t0 > 0.4) { hit(inp, 'Space'); M.phase = 'slide'; M.t0 = S.clock; bump(chaosStat('slidInto'), k.kind); act(`slide into ${k.kind}`); }
+      if (M.phase === 'slide' && S.clock - M.t0 > (k.kind === 'car' ? 4 : 1.5)) M.k = null;
+    } },
+    // a car walked into, side on, for four seconds: one of the traffic stopped for him in its lane (he stands in the
+    // road until a driver brakes: --god, or this plan's own invulnerability), else a parked one shot loose first
+    shoveCar: { own: true, dur: 60, god: true, ok: (w) => w.props.some((q) => q.isVehicle && !q.dead), fn: (c) => {
+      const { w, p, inp, M } = c;
+      const lane = PLANS[opts.level]?.road?.steps[0]?.go;
+      const stopped = () => (w.ambient?.cars || []).find((k) => k.d?.state === 'stopped' && !k.v.dead && dist(k.v, p) < 200)?.v;
+      if (!M.car) {
+        M.car = stopped();
+        if (!M.car && lane && c.t < 30) { follow(c, lane[0] * TILE, lane[1] * TILE, 6); return; } // wait in the lane
+        M.car ||= nearest(w.props.filter((q) => q.isVehicle && !q.dead && !q.exploded), p);
+        if (!M.car) { M.over = true; return; }
+        const b = M.car.body.bounds, cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
+        const sides = b.max.x - b.min.x > b.max.y - b.min.y // the middle of a long side, a step off it
+          ? [{ x: cx, y: b.min.y - 16, ux: 0, uy: 1 }, { x: cx, y: b.max.y + 16, ux: 0, uy: -1 }]
+          : [{ x: b.min.x - 16, y: cy, ux: 1, uy: 0 }, { x: b.max.x + 16, y: cy, ux: -1, uy: 0 }];
+        M.side = sides.filter((o) => freeCell(w, o.x, o.y)).sort((a, b2) => dist(a, p) - dist(b2, p))[0];
+        if (!M.side) { M.over = true; return; }
+        M.phase = 'go'; M.t0 = S.clock; M.shots = M.car.body.isStatic ? 0 : 2; // a frozen one is shot loose first
+      }
+      const o = M.side, car = M.car;
+      if (M.phase === 'go') {
+        if (follow(c, o.x, o.y, 6) < 6) { M.phase = 'shoot'; M.t0 = S.clock; } else if (S.clock - M.t0 > 15) M.over = true;
+        return;
+      }
+      aimAt(inp, car.x, car.y);
+      if (M.phase === 'shoot') {
+        if (p.hasGun && p.weapon.mag > 0 && M.shots < 2) { if (S.clock > (M.fire || 0)) { hit(inp, 'Mouse0'); M.shots++; M.fire = S.clock + 0.2; } return; }
+        M.phase = 'push'; M.t0 = S.clock; M.from = { x: car.body.position.x, y: car.body.position.y }; act(`walk into the ${car.type}`); bump(chaosStat('shoveCar'), `${car.type}${car.body.isStatic ? ' (frozen)' : ''}`);
+      }
+      steer(inp, o.ux, o.uy);
+      if (S.clock - M.t0 > 4) { M.over = true; bump(chaosStat('shoveCarPx'), Math.round(dist(car.body.position, M.from))); }
+    } },
+    // in a doorway, in and out across it, now and then E
+    doorCamp: { own: true, dur: 25, ok: (w) => w.doors.some((d) => !d.locked && d.cells?.length), fn: (c) => {
+      const { w, p, inp, M, rnd: r } = c;
+      if (!M.door) {
+        M.door = nearest(w.doors.filter((d) => !d.locked && d.cells?.length).map((d) => Object.assign(doorMid(d), { d })), p)?.d;
+        if (!M.door) { M.over = true; return; }
+        const i = M.door.cells[0], W = w.map.w;
+        M.at = { x: (i % W + 0.5) * TILE, y: (Math.floor(i / W) + 0.5) * TILE };
+        M.n = { x: -Math.sin(M.door.a0), y: Math.cos(M.door.a0) };
+      }
+      if (!M.in) { if (follow(c, M.at.x, M.at.y, 6) < 6) { M.in = S.clock; act('in the doorway'); } else if (c.t > 15) M.over = true; return; }
+      const k = Math.floor((S.clock - M.in) / 0.6) % 2 ? 1 : -1;
+      steer(inp, M.at.x + M.n.x * k * 22 - p.x, M.at.y + M.n.y * k * 22 - p.y);
+      if (r() < 0.04) hit(inp, 'KeyE');
+    } },
+    // through the VIP curtain and back, again and again
+    curtainRun: { own: true, dur: 45, ok: (w) => w.props.some((q) => !q.dead && q.type === 'curtain'), fn: (c) => {
+      const { w, M } = c;
+      if (!M.ends) {
+        const q = w.props.find((o) => !o.dead && o.type === 'curtain');
+        const a = q.body?.angle ?? q.angle ?? 0;
+        for (const [nx, ny] of [[-Math.sin(a), Math.cos(a)], [Math.cos(a), Math.sin(a)]]) {
+          const A = { x: q.x + nx * 44, y: q.y + ny * 44 }, Bp = { x: q.x - nx * 44, y: q.y - ny * 44 };
+          if (freeCell(w, A.x, A.y) && freeCell(w, Bp.x, Bp.y)) { M.ends = [A, Bp]; break; }
+        }
+        if (!M.ends) { M.over = true; return; }
+        M.i = 0; M.t0 = S.clock;
+      }
+      if ((M.passes || 0) >= 10) { M.over = true; return; }
+      const e = M.ends[M.i % 2];
+      if (follow(c, e.x, e.y, 10) < 10 || S.clock - M.t0 > 8) { M.i++; M.passes = (M.passes || 0) + 1; M.t0 = S.clock; bump(chaosStat('curtain'), 'pass'); }
+    } },
+    // loose furniture pushed into doorways
+    shoveFurniture: { own: true, dur: 50, fn: (c) => {
+      const { w, p, inp, M } = c;
+      if (!M.list) {
+        const doors = w.doors.filter((d) => !d.locked).map(doorMid);
+        M.list = w.props.filter((q) => !q.dead && !q.isVehicle && q.body && !q.body.isStatic && dist(q, p) < 10 * TILE && doors.length)
+          .map((q) => ({ q, door: nearest(doors, q) })).filter((o) => dist(o.q, o.door) < 6 * TILE)
+          .sort((a, b) => dist(a.q, a.door) - dist(b.q, b.door)).slice(0, 3);
+      }
+      if (!M.k) { M.k = M.list.shift(); if (!M.k) { M.over = true; return; } M.phase = 'go'; M.t0 = S.clock; }
+      const { q, door } = M.k;
+      if (q.dead) { M.k = null; return; }
+      const l = dist(door, q) || 1, ux = (door.x - q.x) / l, uy = (door.y - q.y) / l;
+      const b = q.body.bounds, rad = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) / 2;
+      if (M.phase === 'go') {
+        const s = { x: q.x - ux * (rad + 14), y: q.y - uy * (rad + 14) };
+        if (follow(c, s.x, s.y, 8) < 8) { M.phase = 'push'; M.t0 = S.clock; act(`shove ${q.type} at a door`); } else if (S.clock - M.t0 > 10) M.k = null;
+        return;
+      }
+      steer(inp, ux, uy);
+      if (S.clock - M.t0 > 6) { bump(chaosStat('shoved'), q.type); M.k = null; }
+    } },
+    // a gun emptied into one prop, reloaded, emptied again
+    emptyIntoProp: { own: true, dur: 35, steps: [{ pick: '*gun', any: true }],
+      ok: (w, p) => (p.hasGun && p.weapon.mag > 0) || w.items.some((it) => !it.dead && it.def?.kind === 'gun' && it.mag > 0), fn: (c) => {
+        const { w, p, inp, M } = c;
+        if (!p.hasGun) { M.over = true; return; }
+        if (!M.q || M.q.dead || !w.props.includes(M.q)) {
+          if ((M.targets = (M.targets || 0) + 1) > 3) { M.over = true; return; }
+          M.q = nearest(w.props.filter((q) => !q.dead && !q.def.lasting && !q.def.high && dist(q, p) > 50 && dist(q, p) < 230 && w.lineOfSight(p.x, p.y, q.x, q.y)), p);
+          if (!M.q) { M.over = true; return; }
+        }
+        aimAt(inp, M.q.x, M.q.y);
+        if (p.weapon.mag > 0) { if (S.clock > (M.fire || 0)) { hit(inp, 'Mouse0'); M.fire = S.clock + 0.14; bump(chaosStat('roundsInto'), M.q.type); } }
+        else if (p.reserveCount() > 0) { if (!p.reloading) hit(inp, 'KeyR'); }
+        else if (!p.reloading) M.over = true;
+      } },
+    // three minutes unarmed in front of the doorman, on public ground: nobody should get worked up at him
+    bouncerStare: { own: true, dur: 200, levels: ['level1'], ok: (w, p) => !p.armed && !!doorGuard(w), fn: (c) => {
+      const { w, p, inp, M } = c;
+      const g = (M.g ??= doorGuard(w));
+      if (!g?.alive || p.armed) { M.over = true; return; }
+      if (!M.spot) {
+        // in front of him (where a man standing about is seen), off the premises
+        const pub = (s) => !inRects(w.level.premises, s.x / TILE, s.y / TILE);
+        M.spot = approach(w, p, g, 48, (s) => pub(s) && Math.abs(angDiff(g.angle, Math.atan2(s.y - g.y, s.x - g.x))) < 0.7) || approach(w, p, g, 48, pub);
+        if (!M.spot) { M.over = true; return; }
+      }
+      if (!M.at) {
+        if (follow(c, M.spot.x, M.spot.y, 6) >= 6) { if (c.t > 40) M.over = true; return; }
+        M.at = S.clock;
+        M.hot = new Set(w.enemies.filter((e) => e.aware === 2));
+        act('stares at the doorman');
+      }
+      aimAt(inp, g.x, g.y);
+      if (M.told || S.clock - M.at < 2) return;
+      const hot = w.enemies.find((e) => e.alive && e.aware === 2 && !M.hot.has(e));
+      if (hot || M.challenged) {
+        M.told = true;
+        report('loiter-provoked', 'error', `${(hot || g).job || (hot || g).kind}`, posOf(p.x, p.y), {
+          why: 'a guard got worked up at an unarmed man standing still on public ground', after: r1(S.clock - M.at), said: M.said || [],
+          challenge: M.challenged || null, guard: hot && { kind: hot.kind, job: hot.job, state: hot.state, aware: hot.aware, at: cellOf(hot.x, hot.y) },
+        });
+      }
+    } },
+    // a weapon picked up and dropped (thrown at his feet) fifty times
+    pickDrop: { own: true, dur: 90, ok: (w) => restingWeapons(w).length > 0, fn: (c) => {
+      const { w, p, inp, M } = c;
+      if ((M.picks || 0) >= 50) { M.over = true; return; }
+      if (S.clock < (M.wait || 0)) return;
+      if (p.armed) {
+        aimAt(inp, p.x + Math.cos(p.angle) * 24, p.y + Math.sin(p.angle) * 24);
+        hit(inp, 'Mouse2');
+        M.wait = S.clock + 0.35;
+        return;
+      }
+      if (p.nearItem) { hit(inp, 'KeyE'); M.picks = (M.picks || 0) + 1; bump(chaosStat('pickDrop'), 'pick'); M.wait = S.clock + 0.25; return; }
+      const it = nearest(restingWeapons(w), p);
+      if (!it) { M.over = true; return; }
+      follow(c, it.x, it.y, 4);
+    } },
+    // E hammered at every device of the level (jukebox, alarm, trapdoor...)
+    deviceMash: { own: true, dur: 60, ok: (w) => !!w.uses?.spots.length, fn: (c) => {
+      const { w, p, inp, M, rnd: r } = c;
+      M.list ??= w.uses.spots.slice();
+      if (!M.cur) { M.cur = M.list.shift(); if (!M.cur) { M.over = true; return; } M.t0 = S.clock; M.at = null; M.stand = standBy(w, p, w.uses.at(M.cur)); }
+      const at = w.uses.at(M.cur);
+      if (!M.at) {
+        if (!M.stand || S.clock - M.t0 > 15) { M.cur = null; return; }
+        if (follow(c, M.stand.x, M.stand.y, 8) < 8) M.at = S.clock;
+        return;
+      }
+      if (dist(at, p) > 14) steer(inp, at.x - p.x, at.y - p.y);
+      aimAt(inp, at.x, at.y);
+      if (r() < 0.5) { hit(inp, 'KeyE'); bump(chaosStat('deviceMash'), M.cur.kind); }
+      if (S.clock - M.at > 3) M.cur = null;
+    } },
+    // the fuse box broken, then a fight in the dark
+    darkFight: { dur: 45, levels: ['level1', 'lab'], get steps() { return PLANS[opts.level]?.fuse?.steps || []; },
+      ok: (w, p) => !!PLANS[opts.level]?.fuse && PLANS[opts.level].fuse.ok(w, p), fn: () => {} },
+    // a fight dragged up the fire escape onto the liquor store roof
+    roofFight: { dur: 25, levels: ['level1'], steps: [{ provoke: true }, ...FIRE_ESCAPE, { wait: 12 }], fn: () => {} },
+    // into the tutorial's fire
+    tutorialFire: { own: true, dur: 20, levels: ['tutorial'], fn: (c) => {
+      const { w, p, M } = c, f = w.fireSpread?.nearest(p.x, p.y);
+      if (!f) return; // not lit yet
+      if (!M.in) { M.in = S.clock; act('into the fire'); bump(chaosStat('fire'), 'walked in'); }
+      follow(c, f.x, f.y, 2);
+    } },
+    // keys at the pause menu, the title menu, the opening (and, in chaos runs, the results screen: see tick)
+    menuMash: { own: true, dur: 30, fn: ({ inp, rnd: r }) => {
+      if (!S.mash) { S.mash = { phase: 'pause', until: S.clock + 3, hard: S.clock + 15, rnd: r }; hit(inp, 'Escape'); act('menus: pause'); return; }
+      if (S.mash.phase === 'pause' && S.clock > S.mash.until) {
+        S.mash.phase = 'title'; S.mash.until = S.clock + 3;
+        act('menus: title');
+        game.toTitle();
+      }
+    } },
+    // a monkey on the controls: seeded random keys, aim, clicks for a minute
+    monkey: { own: true, dur: 60, fn: ({ inp, M, rnd: r }) => {
+      if (!M.keys || r() < 0.05) M.keys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft'].filter(() => r() < 0.35);
+      for (const k of M.keys) inp.keys.add(k);
+      if (!M.mouse || r() < 0.08) M.mouse = { x: r() * game.canvas.width, y: r() * game.canvas.height };
+      inp.mouse.x = M.mouse.x; inp.mouse.y = M.mouse.y;
+      if (M.hold > 0) { M.hold--; inp.mouse.down[0] = true; }
+      const x = r();
+      if (x < 0.06) { hit(inp, 'Mouse0'); M.hold = Math.floor(r() * 20); }
+      else if (x < 0.09) hit(inp, 'Space');
+      else if (x < 0.12) hit(inp, 'KeyE');
+      else if (x < 0.14) hit(inp, 'KeyR');
+      else if (x < 0.15) hit(inp, 'Mouse2');
+      else if (x < 0.152) hit(inp, 'Escape');
+      else if (x < 0.1523) hit(inp, 'Backspace');
+    } },
+  };
+
+  function startMischief(pl) {
+    const d = planDef(pl.name);
+    B.mischief = { name: pl.name, chaos: true, drawn: pl.drawn, own: !!d.own, fn: d.fn, t0: S.clock, until: S.clock + (d.dur || 30), M: {},
+      rnd: prng(K.hash(opts.seed, S.session, pl.name)) };
+    S.sess.lastPlan = { name: pl.name, chaos: true, drawn: pl.drawn };
+    act(`mischief ${pl.name}`);
+  }
+
+  function endMischief(why) {
+    const m = B.mischief;
+    B.mischief = null;
+    planStat(m.name).done++;
+    act(`mischief ${m.name} over (${why})`);
+    B.goal = B.path = null;
+    B.nextPlanT = S.clock + 8;
+    const p = game.world?.player;
+    if (typeof planDef(m.name)?.god === 'boolean' && p?.alive) p.invulnerable = !!opts.god;
+  }
+
+  function runMischief(w, p, inp, m) {
+    try { m.fn({ w, p, inp, M: m.M, rnd: m.rnd, t: S.clock - m.t0 }); } catch (e) {
+      report('exception', 'error', `bot: chaos ${m.name}: ${firstLine(e?.message || e)}`, posOf(p.x, p.y),
+        { where: 'bot.js (a tool bug)', message: String(e?.message || e), stack: String(e?.stack || '').split('\n').slice(0, 8).join('\n') });
+      m.over = true;
+    }
+  }
+
+  // ---------------------------------------------------------------- deeper invariants
+  // checks.js judges, this gathers: what each character is drawn in (pose, draw-scale), the camera, the moves the
+  // player is locked in (stuck-anim), the dead acting alive (ghost), loose props in walls, cars carried along by
+  // people on foot, weapons out of reach, sounds that play nothing, door leaves, civilians who stop fleeing, bodies
+  // that will not lie still. Sampled every 30 steps, capped per sample; the cost is kept in S.cost.
+  const whoOf = (ch) => (ch.isPlayer ? 'player' : ch.isEnemy ? 'guard' : String(ch.kind || '').startsWith('dancer') ? 'dancer' : 'civilian');
+  const LOOSE_POSE = { sMin: 0, sMax: 99, torso: 999 }; // a man on the floor is drawn by drawDown: numbers only
+  const PROBE_CAP = 10;  // characters drawn into the probe per sample (round robin)
+  const PROP_CAP = 90;   // loose props looked at per sample
+  const ITEM_CAP = 24;   // weapons on the floor per sample
+  const DOOR_SWING = 1.75; // entities/Door.js MAX_SWING
+  let probeCtx = null;
+
+  function newTrackers(w) {
+    S.blasts = []; S.shotT = -9; S.camStart = true;
+    S.trk = {
+      moves: new Map(),           // move kind -> { o, t0, limit, told }
+      props: new K.Spell(1),      // a loose prop's centre in a wall or a solid piece of furniture
+      items: new K.Spell(1.5),    // a weapon on the floor nobody can get within reach of
+      doors: new K.Spell(0.4),    // a locked leaf on somebody
+      offScreen: new K.Spell(1),  // the player out of the picture
+      civ: new K.Anchor(6, 4), civDone: new K.Spell(4),
+      cars: new K.ShoveWatch(6, 3),
+      corpses: new K.CorpseWatch(),
+      pFilter: { ...w.player.body.collisionFilter },
+    };
+  }
+
+  // what a character is locked in or holding, for a finding's detail (a door hand's fields: the NaN pose of c7f2738)
+  const movesOf = (ch) => ({
+    state: ch.state, doorHand: ch.doorHand ? Object.keys(ch.doorHand) : null, lockHand: !!ch.lockHand, takedown: !!ch.takedown,
+    execution: !!ch.execution, held: !!ch.held, vaulting: ch.vaulting?.kind || null, slide: !!ch.slideAnim, kick: !!ch.kick,
+    sit: ch.sit || 0, knocked: ch.knocked > 0, posted: !!ch.postBody?.(), crouch: ch.crouch || 0, dance: !!ch.dance,
+  });
+
+  // after a character's draw (init wraps the prototypes' draw): his pose as drawn; in the real frame, his size
+  function afterDraw(ch, entry) {
+    const w = game.world;
+    if (!w || ch.world !== w || !ch.pose) return;
+    const issues = K.poseIssues(ch.pose, ch.facing, ch.knocked > 0 ? LOOSE_POSE : K.POSE);
+    if (issues.length) {
+      report('pose', 'error', `${whoOf(ch)}:${issues[0].field}`, posOf(ch.x, ch.y),
+        { who: whoOf(ch), kind: ch.kind, issues: issues.slice(0, 6), moves: movesOf(ch), probe: S.probing });
+    }
+    if (entry === null || ch.knocked > 0) return;
+    // (the pose's own scale, a vault's dip or a landing, is the pose check's: here the frame he is drawn in)
+    const cam = game.camera, bad = K.drawScale(entry, 1, cam.zoom * (cam.scale ?? 1));
+    if (bad) {
+      report('draw-scale', 'error', whoOf(ch), posOf(ch.x, ch.y),
+        { who: whoOf(ch), kind: ch.kind, ...bad, entry: r1(entry * 100) / 100, poseS: ch.pose.s, crouch: ch.crouch || 0, zoom: cam.zoom, scale: cam.scale, moves: movesOf(ch) });
+    }
+  }
+
+  // wrap the draw of every character class (Player / Enemy / Civilian and Character under them) once
+  function wrapDraws(chars) {
+    S.drawProtos ||= new Set();
+    for (const ch of chars) {
+      for (let pr = Object.getPrototypeOf(ch); pr && pr !== Object.prototype; pr = Object.getPrototypeOf(pr)) {
+        if (S.drawProtos.has(pr) || !Object.prototype.hasOwnProperty.call(pr, 'draw')) continue;
+        S.drawProtos.add(pr);
+        const draw = pr.draw;
+        // the scale the body is drawn at: the transform when the innermost draw (Character's) is entered, a crouch's
+        // shrink included; the outer one's when a class draws the pose itself (a guard at his post)
+        const base = !Object.getPrototypeOf(pr) || Object.getPrototypeOf(pr) === Object.prototype;
+        pr.draw = function (ctx) {
+          const outer = S.drawDepth === 0, real = !S.probing && game.state === 'play' && !!ctx?.getTransform;
+          if (outer) S.entry = null;
+          if (real && (outer || base)) { const m = ctx.getTransform(); S.entry = Math.hypot(m.a, m.b); }
+          S.drawDepth++;
+          try { return draw.call(this, ctx); } finally {
+            S.drawDepth--;
+            if (outer) { const t0 = performance.now(); afterDraw(this, real ? S.entry : null); S.cost.wraps += performance.now() - t0; }
+          }
+        };
+      }
+    }
+  }
+
+  // the dead acting alive: a word, a step under his own steering (wrapped on the prototypes once)
+  function wrapGhosts(w) {
+    if (S.ghostWrapped) return;
+    S.ghostWrapped = true;
+    const wrap = (pr, name, test) => {
+      const f = pr?.[name];
+      if (typeof f !== 'function') return;
+      pr[name] = function (...a) {
+        // what the guards say to a man staring at the doorman (chaos bouncerStare), for its finding
+        const m = B.mischief;
+        if (name === 'say' && m?.name === 'bouncerStare' && m.M.at && this.alive) (m.M.said ||= []).push(`${this.job || this.kind}: ${a[0]}`);
+        if (this.alive === false && this.world === game.world && test(a)) {
+          report('ghost', 'error', `${whoOf(this)} ${name}`, posOf(this.x, this.y), { who: whoOf(this), kind: this.kind, what: name, args: a.filter((x) => typeof x !== 'object').slice(0, 3) });
+        }
+        return f.apply(this, a);
+      };
+    };
+    const charP = Object.getPrototypeOf(Object.getPrototypeOf(w.player));
+    wrap(charP, 'speak', () => true);
+    wrap(charP, 'steer', (a) => a[2] > 0);
+    if (w.enemies[0]) wrap(Object.getPrototypeOf(w.enemies[0]), 'say', () => true);
+    // a door locked on somebody in its arc (Tutorial locks one behind him)
+    const doorP = w.doors[0] && Object.getPrototypeOf(w.doors[0]);
+    const lock = doorP?.lock;
+    if (lock) {
+      doorP.lock = function (...a) {
+        const r = lock.apply(this, a);
+        if (this.world === game.world) for (const ch of onLeaf(this)) report('door-state', 'error', `locked-on-${whoOf(ch)}`, posOf(ch.x, ch.y), { why: 'a door was locked with somebody in its leaf', who: whoOf(ch), kind: ch.kind });
+        return r;
+      };
+    }
+  }
+
+  // the living on a door's closed leaf (hinge to latch, along a0)
+  const onLeaf = (d) => d.world.chars.filter((ch) => ch.alive && !ch.vaulting && !ch.hidden
+    && K.segDist(ch.x, ch.y, d.hx, d.hy, d.hx + Math.cos(d.a0) * d.len, d.hy + Math.sin(d.a0) * d.len) < (ch.radius || 10) - 2);
+
+  // a sound name the mixer has nothing for (src/audio/Audio.js play() then plays nothing, silently)
+  function wrapAudio() {
+    if (!Audio?.play || !D.sounds || Audio.play.__qa) return;
+    const play = Audio.play;
+    Audio.play = function (name, ...a) {
+      if (typeof name === 'string' && !D.sounds.has(name) && !S.soundsMissing?.has(name)) {
+        (S.soundsMissing ||= new Set()).add(name);
+        const w = game.world;
+        report('sound-missing', 'warn', name, w ? posOf(w.player.x, w.player.y) : null, { name, why: 'no GUNS / FOLEY / recipe / alias entry: it plays nothing' });
+      }
+      return play.call(this, name, ...a);
+    };
+    Audio.play.__qa = true;
+  }
+
+  // the player locked in a move longer than its data allows
+  const MOVES = [['execution', (p) => p.execution], ['takedown', (p) => p.takedown], ['kick', (p) => p.kick],
+    ['vault', (p) => p.vaulting], ['trunk', (p) => p.trunkOpen], ['passage', (p) => p.passage]];
+  const snap = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => typeof v === 'number' || typeof v === 'boolean').slice(0, 14).map(([k, v]) => [k, typeof v === 'number' ? r1(v) : v]));
+  function stuckAnim(w, p) {
+    if (!p.alive) return;
+    for (const [kind, get] of MOVES) {
+      const o = get(p), t = S.trk.moves.get(kind);
+      if (!o) { S.trk.moves.delete(kind); continue; }
+      if (!t || t.o !== o) { S.trk.moves.set(kind, { o, t0: w.time, limit: K.moveLimit(kind, o, D), told: false }); continue; }
+      const held = w.time - t.t0;
+      if (t.told || held <= t.limit) continue;
+      t.told = true;
+      report('stuck-anim', 'error', `${kind}${o.f?.label ? ' ' + o.f.label : ''}`, posOf(p.x, p.y),
+        { move: kind, held: r1(held), limit: r1(t.limit), label: o.f?.label || null, state: snap(o), target: o.target ? { kind: o.target.kind, alive: o.target.alive } : null });
+    }
+  }
+
+  // the camera: back to the level's default at its start, nothing NaN, the player in the picture
+  function cameraCheck(w, p) {
+    const c = game.camera, start = S.camStart, cam = { x: c.x, y: c.y, zoom: c.zoom, scale: c.scale ?? 1, w: c.w, h: c.h }; // (no scale before 211ceb5)
+    S.camStart = false;
+    // (a staged level's shot may look away from him: systems/Direction.js, the tutorial)
+    const see = p.alive && !p.hidden && !p.passage && game.state === 'play' && !w.tutorial?.shot?.()?.name;
+    const s = see ? c.worldToScreen(p.x, p.y) : null;
+    const issues = K.cameraIssues(cam, { start, scale: w.tutorial ? undefined : 1, zoom: Math.max(1, Math.round(cam.h / D.VIEW)), player: s });
+    let off = false;
+    for (const f of issues) {
+      if (f.sig === 'player-off-screen') { off = true; if (!S.trk.offScreen.hold('p', true, w.time)) continue; }
+      report('camera', 'error', f.sig, posOf(p.x, p.y), { ...f, x: r1(cam.x), y: r1(cam.y), zoom: cam.zoom, scale: cam.scale, w: cam.w, h: cam.h, start });
+    }
+    if (!off) S.trk.offScreen.hold('p', false, w.time);
+  }
+
+  const blastNear = (w, x, y) => S.blasts.some((b) => w.time - b.t < 2.5 && Math.hypot(b.x - x, b.y - y) < b.r);
+  const solidProps = (w, test) => w.props.filter((q) => !q.dead && q.body && (q.body.isStatic || q.isVehicle) && test(q));
+  const canHit = (f, q) => Matter.Detector.canCollide(f, q.body.collisionFilter);
+  // the solid prop (from list) whose body holds (x, y), or null
+  function propAt(list, x, y, except = null) {
+    for (const q of list) {
+      if (q === except) continue;
+      const b = q.body.bounds;
+      if (x < b.min.x || x > b.max.x || y < b.min.y || y > b.max.y) continue;
+      if (Matter.Query.point([q.body], { x, y }).length) return q;
+    }
+    return null;
+  }
+
+  // a loose prop whose centre stays inside a wall tile or a solid prop it collides with
+  function propInWall(w) {
+    const loose = w.props.filter((q) => !q.dead && q.body && !q.body.isStatic && !q.isVehicle && !q.def?.hung && !q.def?.high);
+    const solid = solidProps(w, () => true), n = Math.min(PROP_CAP, loose.length);
+    for (let i = 0; i < n; i++) {
+      const q = loose[(S.rr.props + i) % loose.length], { x, y } = q.body.position;
+      const wall = w.map.inside(x, y) && w.map.solidAt(x, y);
+      const in_ = wall ? null : propAt(solid.filter((o) => canHit(q.body.collisionFilter, o)), x, y, q);
+      const held = S.trk.props.hold(q, wall || !!in_, w.time);
+      if (held) {
+        report('prop-in-wall', 'error', `${q.type} in ${wall ? 'wall' : in_.type}`, posOf(x, y),
+          { type: q.type, inside: wall ? 'wall' : in_.type, held: r1(held), speed: r1(Matter.Body.getSpeed(q.body)), sleeping: !!q.body.isSleeping });
+      }
+    }
+    S.rr.props += n;
+  }
+
+  // a parked or stopped car that moves while only people on foot touch it
+  function vehicleShove(w) {
+    const cars = w.props.filter((v) => v.isVehicle && !v.dead && !v.exploded && v.body);
+    // the traffic's cars (systems/Traffic.js Driver): moved by their drivers unless stopped
+    const drivers = new Map((w.ambient?.cars || []).map((c) => [c.v, c.d]));
+    for (const v of cars) {
+      // a round, a blow, debris on it: not a shove (Vehicle.hit)
+      if (!v.__qaHit) { const hit = v.hit; v.__qaHit = true; v.hit = function (...a) { this.__qaHitT = this.world.time; return hit.apply(this, a); }; }
+      const b = v.body.bounds, pos = v.body.position, pad = 14;
+      const on = (c) => c.alive && c.body && !c.hidden && c.x > b.min.x - pad && c.x < b.max.x + pad && c.y > b.min.y - pad && c.y < b.max.y + pad;
+      const by = w.chars.filter(on);
+      const bumped = cars.some((o) => o !== v && o.body.bounds.max.x > b.min.x - 8 && o.body.bounds.min.x < b.max.x + 8 && o.body.bounds.max.y > b.min.y - 8 && o.body.bounds.min.y < b.max.y + 8);
+      const d = drivers.get(v), driven = !!d && !(d.state === 'stopped' && !(d.speed > 0));
+      const excused = driven || !!v.moving || bumped || w.time - (v.__qaHitT ?? -9) < 2 || blastNear(w, pos.x, pos.y) || v === w.outro?.van || !!v.driver;
+      const px = S.trk.cars.update(v, { x: pos.x, y: pos.y }, w.time, { touched: by.length > 0, excused });
+      if (px) {
+        report('vehicle-shoved', 'error', v.type, posOf(pos.x, pos.y),
+          { type: v.type, px, by: by.map((c) => ({ who: whoOf(c), slide: !!c.slide, speed: r1(Math.hypot(c.vel?.x || 0, c.vel?.y || 0)) })), static: !!v.body.isStatic,
+            traffic: d ? { state: d.state, reason: d.reason || null, speed: r1(d.speed || 0) } : null, vel: r1(Matter.Body.getSpeed(v.body)),
+            lastShot: r1(w.time - S.shotT), lastHit: r1(w.time - (v.__qaHitT ?? -99)), at: cellOf(pos.x, pos.y), hp: v.hp });
+      }
+    }
+  }
+
+  // a weapon on the floor that nobody can get within reach of (inside a wall, a counter, under a car)
+  function unreachableItems(w) {
+    const f = S.trk.pFilter, solid = solidProps(w, (q) => canHit(f, q));
+    const items = w.items.filter((it) => !it.dead && it.def && it.speed <= 0.5), n = Math.min(ITEM_CAP, items.length);
+    for (let i = 0; i < n; i++) {
+      const it = items[(S.rr.items + i) % items.length];
+      const near = solid.filter((q) => { const b = q.body.bounds; return it.x > b.min.x - 48 && it.x < b.max.x + 48 && it.y > b.min.y - 48 && it.y < b.max.y + 48; });
+      const free = (x, y) => w.map.inside(x, y) && !w.map.solidAt(x, y) && !propAt(near, x, y);
+      const out = !K.reachable(it.x, it.y, free);
+      const held = S.trk.items.hold(it, out, w.time);
+      if (held) {
+        const inside = w.map.solidAt(it.x, it.y) ? 'wall' : propAt(near, it.x, it.y)?.type || 'furniture around';
+        report('unreachable-item', 'error', `${it.type} in ${inside}`, posOf(it.x, it.y), { type: it.type, inside, held: r1(held) });
+      }
+    }
+    S.rr.items += n;
+  }
+
+  // door leaves: finite, within their stops, on their hinges; none locked on somebody
+  function doorCheck(w) {
+    for (const d of w.doors) {
+      const b = d.body;
+      if (!b) continue;
+      const h = (d.len - d.back) / 2, ex = d.hx + Math.cos(b.angle) * h, ey = d.hy + Math.sin(b.angle) * h;
+      const why = K.doorIssues({ rel: K.angDiff(d.a0, b.angle), max: DOOR_SWING, off: Math.hypot(b.position.x - ex, b.position.y - ey), x: b.position.x, y: b.position.y });
+      for (const sig of why) {
+        report('door-state', 'error', sig, posOf(d.hx, d.hy), { sig, locked: !!d.locked, rel: r1(K.angDiff(d.a0, b.angle)), hp: d.hp, at: cellOf(d.hx, d.hy) });
+      }
+      const on = d.locked ? onLeaf(d) : [];
+      if (S.trk.doors.hold(d, on.length > 0, w.time)) {
+        report('door-state', 'error', `locked-on-${whoOf(on[0])}`, posOf(on[0].x, on[0].y), { why: 'a locked leaf stands on somebody', who: whoOf(on[0]), at: cellOf(d.hx, d.hy) });
+      }
+    }
+  }
+
+  // a civilian running away or for cover who stays put with his way not done; one who got there and lingers
+  function civStuck(w) {
+    for (const c of w.civilians) {
+      const b = c.brain;
+      if (!c.alive || !b) { S.trk.civ.drop(c); continue; }
+      const busy = c.knocked > 0 || c.held || c.vaulting || b.fall || c.slipped || c.asleep;
+      const going = !busy && (b.state === 'flee' || b.state === 'hide') && b.route && b.ri < b.route.length;
+      if (!going) S.trk.civ.drop(c);
+      else {
+        const held = S.trk.civ.still(c, c.x, c.y, w.time);
+        if (held) {
+          const end = b.route[b.route.length - 1], next = b.route[b.ri];
+          report('civ-stuck', 'error', `${b.state}@${cellOf(c.x, c.y)}`, posOf(c.x, c.y), {
+            kind: c.kind, state: b.state, held: r1(held), left: b.route.length - b.ri, toEnd: Math.round(Math.hypot(end.x - c.x, end.y - c.y)),
+            toNext: next && Math.round(Math.hypot(next.x - c.x, next.y - c.y)), stuck: b.stuck, temper: b.temper, front: next ? inFront(w, c, Math.atan2(next.y - c.y, next.x - c.x)) : null,
+          });
+        }
+      }
+      const done = S.trk.civDone.hold(c, b.state === 'done', w.time);
+      if (done) report('civ-stuck', 'error', `done-lingering@${cellOf(c.x, c.y)}`, posOf(c.x, c.y), { kind: c.kind, why: 'at the end of his way and still in the world', held: r1(done) });
+    }
+  }
+
+  // the box round all the parts of a body on the floor
+  const boundsOf = (c) => {
+    const b = { min: { x: Infinity, y: Infinity }, max: { x: -Infinity, y: -Infinity } };
+    for (const p of c.parts || [c]) {
+      const q = p.body.bounds;
+      b.min.x = Math.min(b.min.x, q.min.x); b.min.y = Math.min(b.min.y, q.min.y);
+      b.max.x = Math.max(b.max.x, q.max.x); b.max.y = Math.max(b.max.y, q.max.y);
+    }
+    return b;
+  };
+
+  // a body still moving 5 s after death, or turned round on itself, with nothing to explain it (a blast, a car,
+  // somebody or loose furniture shoving it, rounds flying)
+  function corpseDrift(w) {
+    const cars = w.props.filter((v) => v.isVehicle && !v.dead);
+    const loose = w.props.filter((v) => !v.isVehicle && !v.dead && v.body && !v.body.isStatic)
+      .map((v) => ({ bounds: v.body.bounds, speed: Matter.Body.getSpeed(v.body) })).filter((v) => v.speed > 0.3)
+      .concat(w.doors.filter((d) => d.body).map((d) => ({ bounds: d.body.bounds, press: true })));
+    for (const c of w.corpses) {
+      if (c.dead || !c.body) { S.trk.corpses.forget(c); continue; }
+      // slammed on a table, a counter, a crate (folded over it, sat against it): he stays there, from the start
+      if (c.against || c.dying?.kind === 'ledge' || c.dying?.kind === 'sit') c.__qaSlam = true;
+      if (c.dying && !c.__qaSlam) continue; // a scripted end (crawl, spasm, curl...) moves by design
+      const b = c.body, x = b.position.x, y = b.position.y;
+      const pushed = w.chars.some((ch) => {
+        // (one locked in a takedown or a finisher is not walking into it: the slam is what is checked)
+        if (!ch.alive || ch.takedown || ch.execution || Math.hypot(ch.x - x, ch.y - y) > (ch.radius || 10) + 8) return false;
+        const v = ch.vel || { x: 0, y: 0 };
+        return (v.x * (x - ch.x) + v.y * (y - ch.y)) / (Math.hypot(x - ch.x, y - ch.y) || 1) > 0.3; // moving into it
+      });
+      const excused = pushed || blastNear(w, x, y) || w.time - S.shotT < 0.8 || w.player.execution?.corpse === c
+        || cars.some((v) => Math.hypot(v.x - x, v.y - y) < 90) || (loose.length && K.shovedBy(boundsOf(c), loose));
+      const r = S.trk.corpses.update(c, { x, y, a: b.angle, age: c.age ?? 0, excused, from: c.__qaSlam ? 0.3 : undefined }, w.time);
+      if (r) report('corpse-drift', 'error', `${r.kind}${c.__qaSlam ? ' after a slam' : ''}`, posOf(x, y), { ...r, age: r1(c.age ?? 0), body: c.kind, against: c.against?.type || null, dying: c.dying?.kind || null });
+    }
+  }
+
+  // the dead in the guards' sights
+  function ghostTargets(w) {
+    if (!w.player.alive) return;
+    for (const e of w.enemies) {
+      const t = e.target;
+      if (!e.alive || !t || typeof t.alive !== 'boolean' || t.alive || !t.body || (e.state !== 'combat' && e.state !== 'hunt')) continue;
+      report('ghost', 'error', `targeted ${whoOf(t)}`, posOf(e.x, e.y), { why: 'a guard fights a dead man', state: e.state, target: { who: whoOf(t), kind: t.kind } });
+    }
+  }
+
+  // the characters drawn into a tiny canvas off to the side: their poses checked between two real frames
+  function probePoses(w) {
+    probeCtx ||= Object.assign(document.createElement('canvas'), { width: 2, height: 2 }).getContext('2d');
+    const list = w.chars.filter((c) => c.alive && !c.hidden), n = Math.min(PROBE_CAP, list.length);
+    wrapDraws(list);
+    S.probing = true;
+    try {
+      for (let i = 0; i < n; i++) {
+        const ch = list[(S.rr.pose + i) % list.length];
+        probeCtx.setTransform(1, 0, 0, 1, -1e5, -1e5);
+        try { ch.draw(probeCtx); } catch (e) { renderError(e, 'pose probe'); }
+      }
+    } finally { S.probing = false; }
+    S.rr.pose += n;
+  }
+
+  function deepCheck(w, p) {
+    const t0 = performance.now();
+    cameraCheck(w, p);
+    ghostTargets(w);
+    propInWall(w);
+    vehicleShove(w);
+    doorCheck(w);
+    civStuck(w);
+    if (S.steps % 60 === 0) unreachableItems(w);
+    S.cost.checks += performance.now() - t0;
+  }
+
   // ---------------------------------------------------------------- frame / step
   // before a step (fast) or a frame (realtime): the state machine and the inputs
   function tick(dt) {
     const g = game, inp = g.input, st = g.state;
+    // the menus mashed (chaos menuMash): the pause menu, then the title, then the opening
+    if (S.mash && st !== 'play' && mashMenus(g, inp, st)) return;
+    if (S.mash && st === 'play' && S.mash.phase !== 'pause') S.mash = null;
     // the title is a menu: the level under test is started straight away (a click when the game has no startLevel)
     if (st === 'title') {
       if (g.startLevel) { g.tutorialAt = null; g.startLevel(opts.level); act('title: start'); }
@@ -867,9 +1716,11 @@
     if (g.world !== S.world) onNewWorld(g.world);
     const w = g.world, p = w.player;
     if (st === 'intro') { inp.keys.clear(); if (g.stateT > 0.35) { inp.anyPressed = true; act('intro: key'); } return; }
-    if (st === 'pause') { press(inp, 'Escape'); return; }
+    // paused: back at once, or after the frames a chaos plan holds it (pauseMash)
+    if (st === 'pause') { if (S.pauseHold > 0) S.pauseHold--; else press(inp, 'Escape'); return; }
     if (st === 'dead') {
       inp.keys.clear(); inp.mouse.down[0] = false;
+      if (opts.chaos && g.stateT < 0.45) mashKeys(inp, rnd, ['Space', 'KeyE', 'Mouse2', 'Escape', 'KeyW']);
       if (g.stateT > 0.9) { press(inp, 'KeyR'); act('dead: restart'); }
       return;
     }
@@ -883,6 +1734,7 @@
         S.sess.exited = true;
         act(`results ${r.grade} ${r.total}`);
       }
+      if (opts.chaos && g.stateT < 1.1) mashKeys(inp, rnd); // a chaos run: keys at the results screen first
       if (g.stateT > 1.2) { press(inp, 'KeyR'); act('results: restart'); }
       return;
     }
@@ -903,6 +1755,26 @@
       return;
     }
     play(w, p, inp);
+  }
+
+  // a state that is not play while the menus are mashed: true when handled
+  function mashMenus(g, inp, st) {
+    const m = S.mash;
+    if (S.clock > m.hard) { S.mash = null; return false; } // never stuck in it
+    if (st === 'pause') { if (S.clock < m.until) mashKeys(inp, m.rnd); else press(inp, 'Escape'); return true; }
+    if (st === 'title') {
+      if (m.phase === 'title' && S.clock < m.until) { mashKeys(inp, m.rnd); return true; }
+      m.phase = 'opening'; m.until = S.clock + 2.5;
+      g.tutorialAt = null;
+      g.startLevel(opts.level, { state: 'cinematic' });
+      act('menus: the opening');
+      return true;
+    }
+    if (st === 'cinematic' || st === 'intro') {
+      if (S.clock < m.until) { mashKeys(inp, m.rnd); return true; }
+      S.mash = null;
+    }
+    return false;
   }
 
   // after a step / frame: coverage, detectors, samples
@@ -978,7 +1850,13 @@
       for (const c of w.corpses) if (c.dying?.kind === 'crawl') checkWall(c, 'crawler', !c.dead);
     }
 
+    if (S.camStart && g.state === 'play') cameraCheck(w, p);
+    if (S.steps % 6 === 0) stuckAnim(w, p);
+    // a slam turns a body round in a fraction of a second
+    if (S.steps % 10 === 5) { const t0 = performance.now(); corpseDrift(w); S.cost.checks += performance.now() - t0; }
+    if (S.steps % 30 === 15) { const t0 = performance.now(); probePoses(w); S.cost.probes += performance.now() - t0; }
     if (S.steps % 30 === 0) {
+      deepCheck(w, p);
       nanCheck(w);
       outOfMap(w);
       guardStuck(w);
@@ -1050,6 +1928,8 @@
       if (!q.anchor.stalled && w.time - q.anchor.t > 3) { q.anchor.stalled = true; S.stats.ai.stall3++; }
       if (!q.anchor.reported && w.time - q.anchor.t > 6) {
         q.anchor.reported = true;
+        // no way there on foot (the player up a ladder, behind a counter): he waits as near as he gets, by design
+        if (!e.path && !w.pathForGuard(e.x, e.y, tr.x, tr.y)) continue;
         report('guard-stuck', 'warn', `${e.state}@${cellOf(e.x, e.y)}`, posOf(e.x, e.y), {
           kind: e.kind, state: e.state, sub: e.sub, tactic: e.tactic, activity: e.activity, to: posOf(tr.x, tr.y),
           dist: Math.round(Math.hypot(tr.x - e.x, tr.y - e.y)), path: e.path ? e.path.length - e.pathIdx : 0,
@@ -1111,7 +1991,10 @@
     // no way to the exit
     if (now - B.exitPathT > 5 && !p.vaulting && !onRoofTile(w, p.x, p.y)) { // the roof's ways down are not in the grid
       B.exitPathT = now;
-      if (!findPath(w.map, p.x, p.y, ex.x * TILE, ex.y * TILE, 20000)) report('softlock', 'error', 'no-path-to-exit', posOf(p.x, p.y), { why: 'level cleared but no grid path from the player to the exit', exit: ex });
+      // (a locked door is kicked open, the passage taken: neither is in the grid)
+      const way = (a, b) => !!findPath(w.map, a.x, a.y, b.x, b.y, 20000), shut = w.doors.filter((d) => d.locked).flatMap((d) => d.cells);
+      const out = K.withOpen(w.map.blocked, shut, () => K.exitReachable(way, p, { x: ex.x * TILE, y: ex.y * TILE }, w.passage?.hatches));
+      if (!out) report('softlock', 'error', 'no-path-to-exit', posOf(p.x, p.y), { why: 'level cleared but no grid path from the player to the exit', exit: ex });
     }
     // standing in the exit and nothing happens
     const inExit = Math.hypot(p.x - ex.x * TILE, p.y - ex.y * TILE) < ex.r * TILE - 2;
@@ -1140,13 +2023,32 @@
 
   // ---------------------------------------------------------------- API used by run.mjs
   qa.init = async (o) => {
-    opts = { seed: 1, god: false, mode: 'fast', level: 'level1', sessionCap: 300, ...o };
+    opts = { seed: 1, god: false, mode: 'fast', level: 'level1', sessionCap: 300, chaos: 0, ...o };
     rnd = prng(opts.seed * 7919 + 13);
     game = window.game;
     if (!game) throw new Error('window.game missing');
     ({ findPath } = await import('/src/engine/nav/Pathfinding.js'));
     ({ killStyle } = await import('/src/game/systems/Scoring.js'));
     try { Audio = (await import('/src/audio/Audio.js')).default; } catch { Audio = null; }
+    // the data the checks read; an old checkout (--root) may lack some: the fallbacks in D stay
+    const load = async (path) => { try { return await import(path); } catch { return {}; } };
+    const [fin, td, feel, cfg, cam, foley] = await Promise.all(['/src/game/data/finishers.js', '/src/game/systems/Takedown.js',
+      '/src/game/data/feel.js', '/src/game/Config.js', '/src/engine/Camera.js', '/src/audio/Foley.js'].map(load));
+    if (fin.lockTime) D.lockTime = fin.lockTime;
+    if (td.lockedFor) D.lockedFor = td.lockedFor;
+    if (feel.TRAVERSE?.kick) D.TRAVERSE = feel.TRAVERSE;
+    if (feel.GESTURE?.trunk) D.GESTURE = feel.GESTURE;
+    if (cfg.PLAYER?.roll?.dur) D.rollDur = cfg.PLAYER.roll.dur;
+    if (cam.VIEW) D.VIEW = cam.VIEW;
+    try {
+      // what the mixer can play: Audio.js's tables read from its source, Foley.js's recipes, the mixer's own methods
+      D.sounds = K.soundNames(await (await fetch('/src/audio/Audio.js')).text());
+      for (const k of Object.keys(foley.RECIPES || {})) D.sounds.add(k);
+      for (const o of [Audio, Audio && Object.getPrototypeOf(Audio)]) for (const k of o ? Object.getOwnPropertyNames(o) : []) if (k[0] === '_') D.sounds.add(k.slice(1));
+      if (D.sounds.size < 20) D.sounds = null; // the source did not parse: no check rather than a flood
+    } catch { D.sounds = null; }
+    const names = planNames();
+    S.sched = new K.Scheduler({ normal: names.normal, chaos: names.chaos, share: opts.chaos || 0, rnd });
     // every error a draw swallows, not only the first one the game logs
     const safeDraw = game.safeDraw;
     game.safeDraw = function (ctx, fn) { return safeDraw.call(this, ctx, () => { try { fn(); } catch (e) { renderError(e, 'render'); throw e; } }); };
@@ -1162,10 +2064,15 @@
     } else {
       const update = game.update;
       game.update = function (dt) {
+        const b0 = performance.now();
         tick(dt);
+        const t0 = performance.now();
         update.call(this, dt);
+        const t1 = performance.now();
         S.clock += dt;
         after();
+        const t2 = performance.now();
+        S.cost.bot += t0 - b0 + t2 - t1; S.cost.update += t1 - t0; S.cost.n++;
       };
     }
     return { features: FEATURES };
@@ -1184,8 +2091,10 @@
     for (let i = 0; i < n; i++) {
       g.time += DT;
       g.stateT += DT;
+      const b0 = performance.now();
       tick(DT);
       const before = g.world, t0 = performance.now();
+      S.cost.bot += t0 - b0;
       try { g.update(DT); } catch (e) {
         errs++;
         report('exception', 'error', `update: ${firstLine(e?.message || e)}`, g.world ? posOf(g.world.player.x, g.world.player.y) : null,
@@ -1201,7 +2110,11 @@
         if (ms > 50) report('slow', 'warn', 'worst-step', g.world ? posOf(g.world.player.x, g.world.player.y) : null, { ms: r1(ms), physicsMs: r1(g.world?.physics.stepMs || 0), why: 'one game.update step over 50 ms' });
       }
       S.clock += DT;
+      const a0 = performance.now();
       after();
+      S.cost.bot += performance.now() - a0;
+      S.cost.update += ms;
+      S.cost.n++;
       if (S.freshKinds.length) break;
     }
     await frame();
@@ -1247,11 +2160,25 @@
     else await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   };
 
+  // the deeper checks once, now, on whatever state the game is in (a scenario stepping the game itself:
+  // tools/shot.mjs, a console): the findings so far, kind and signature
+  qa.check = () => {
+    const w = game.world;
+    if (!w) return [];
+    if (w !== S.world) onNewWorld(w);
+    stuckAnim(w, w.player);
+    corpseDrift(w);
+    probePoses(w);
+    deepCheck(w, w.player);
+    return [...S.findings.values()].map((f) => `${f.kind} ${f.sig}`);
+  };
+
   // what the bot is up to (in the final report, and handy from the console)
   qa.debug = () => {
     const w = game.world, p = w?.player;
     return {
       state: game.state, plan: B.plan && `${B.plan.name} ${stepName(B.step)}`, style: B.style,
+      mischief: B.mischief && { name: B.mischief.name, own: B.mischief.own, phase: B.mischief.M.phase ?? null, over: !!B.mischief.M.over, left: r1(B.mischief.until - S.clock) },
       goal: B.goal && { type: B.goal.type, at: cellOf(B.goal.x, B.goal.y) }, path: B.path ? `${B.idx}/${B.path.length}` : null,
       target: B.target && { kind: B.target.kind, at: cellOf(B.target.x, B.target.y), aware: B.target.aware, knocked: B.target.knocked > 0 },
       player: p && { at: posOf(p.x, p.y), alive: p.alive, weapon: p.weapon?.type || 'fists', sit: p.sit, ctx: p.contextAction, execution: !!p.execution, takedown: !!p.takedown, vaulting: !!p.vaulting },
@@ -1260,7 +2187,11 @@
   };
 
   qa.final = () => {
-    const st = S.stats;
+    const st = S.stats, c = S.cost, per = (v) => +(v / Math.max(1, c.n)).toFixed(3);
+    // what the bot costs next to the game: ms per step (its brain and all its checks; the deeper checks, the pose
+    // probes and the draw wraps within it) and its share of the time
+    st.overhead = { steps: c.n, updateMs: per(c.update), botMs: per(c.bot), checksMs: per(c.checks), probesMs: per(c.probes), wrapsMs: per(c.wraps),
+      share: +((100 * (c.bot + c.wraps)) / Math.max(1e-6, c.update + c.bot + c.wraps)).toFixed(1) };
     return {
       bot: qa.debug(),
       stats: st, features: FEATURES, perfSamples: S.perfSamples.slice(-400), timing: S.timing,

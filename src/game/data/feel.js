@@ -419,6 +419,14 @@ export const TRAVERSE = {
   kick: { dur: 0.44, chamber: 0.24, hit: 0.36, hold: 0.58, plant: 0.84, reach: 16, lift: 1.6, lean: 2.6, twist: 0.45, pop: 1.8 },
   roll: { squash: [0.68, 0.9], turns: 1, over: [0.12, 0.66], unfold: [0.6, 0.84], pop: 0.05 },
 };
+// how long a vault, a climb and a ladder take (Character.tryVault), and how far the guards hear the player's climb,
+// his steps on a ladder's rungs and a flat landing
+export const VAULT_DUR = 0.5;  // s, windows and furniture alike
+export const CLIMB_DUR = 0.72; // s, over a chain-link gate
+export const LADDER_DUR = 1.1; // s, up or down a ladder
+export const CLIMB_NOISE = 230; // px the rattling mesh is heard at when the player climbs
+export const RUNG_NOISE = 150;  // px each of his steps on a steel ladder is heard at
+export const LAND_NOISE = 120;  // px a flat landing is heard at
 
 // What only the player's moves throw (fx/TraversalFx.js; the guards move the same, without the flourish). Kept
 // faint, crisp, no blur.

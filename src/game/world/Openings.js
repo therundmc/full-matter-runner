@@ -12,10 +12,11 @@ export const LEAF = {
 };
 
 // Leaves closing a run of `n` door tiles starting at tile (x, y); `horizontal` = the run goes along x.
-// A run of two is a double door (one leaf hinged on each wall end), anything else a single leaf.
+// A run of two is a double door (one leaf hinged on each wall end), anything else a single leaf; `pair`: two
+// leaves meeting in the middle whatever the run (a swinging door's half-leaves).
 // Returns [{ hx, hy, angle, len, support, strike }]: pivot (px), closed angle, pivot-to-latch length, the wall tile
 // [cx, cy] carrying the hinges and the one the latch closes on (null where two leaves meet).
-export function doorLeaves(x, y, n, horizontal) {
+export function doorLeaves(x, y, n, horizontal, pair = false) {
   const p = LEAF.inset + LEAF.back;
   const mid = (horizontal ? y : x) * TILE + TILE / 2;
   const a0 = (horizontal ? x : y) * TILE, a1 = a0 + n * TILE;
@@ -28,8 +29,8 @@ export function doorLeaves(x, y, n, horizontal) {
       support: tile(fromStart ? -1 : n), strike,
     };
   };
-  if (n === 2) {
-    const len = TILE - p - LEAF.gap / 2;
+  if (n === 2 || pair) {
+    const len = (n * TILE) / 2 - p - LEAF.gap / 2;
     return [leaf(true, len, null), leaf(false, len, null)];
   }
   return [leaf(true, n * TILE - p - LEAF.gap, tile(n))];

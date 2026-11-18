@@ -5,8 +5,7 @@
 //   - a gearbox driven by the vehicle's real speed and throttle: the revs climb in a gear, drop at the shift (the
 //     clutch out, off the throttle a moment), climb again; a downshift under braking blips them up
 //   - the tyres: how hard they squeal from the slide's angle and the speed, and a chirp as the rear wheels spin
-const TAU = Math.PI * 2;
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+import { TAU, clamp, seeded } from '../engine/math.js';
 
 export const MOTOR = {
   red: 5600,            // rpm at the redline (revs below are a share of it)
@@ -54,17 +53,6 @@ export const VOICE = {
   hall: 0.05,           // its share in the city's space
 };
 
-// seeded generator (mulberry32)
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), a | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 // the bank each firing of a cross-plane V8 comes out of (firing order 1-8-4-3-6-5-7-2), as how loud its pipe is: the
 // lumpy pattern of the two banks is the burble
 const BANKS = [1, 0.7, 0.7, 1, 0.7, 1, 1, 0.7];
@@ -75,7 +63,7 @@ const BANKS = [1, 0.7, 0.7, 1, 0.7, 1, 1, 0.7];
 // cycle's own frequency and its first harmonics (under the firing's, the 8th) are there: the burble. Seeded: the
 // same engine every time. A couple of ms (a rotating phasor per harmonic, no sine per sample).
 export function v8Cycle(n = 256, seed = 8, size = 2048) {
-  const r = rng(seed), x = new Float32Array(size), fires = [];
+  const r = seeded(seed), x = new Float32Array(size), fires = [];
   for (let k = 0; k < 8; k++) fires.push([(k + (r() - 0.5) * 0.2) / 8, BANKS[k] * (0.85 + 0.3 * r())]);
   for (const [at, amp] of fires) {
     for (let i = 0; i < size; i++) {

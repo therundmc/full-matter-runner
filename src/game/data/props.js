@@ -21,14 +21,16 @@ export const PROPS = {
   plant: { material: 'ceramic', r: 7.5, hp: 4, kg: 18, mu: 0.5, chips: '#3a8a3a', dirt: true, sound: 'wood' },
   tv: { material: 'plastic', w: 22, h: 15, hp: 4, kg: 30, mu: 0.45, chips: '#222', sparks: true, glass: true, sound: 'glass',
     light: { r: 100, color: '#7fc8ff', intensity: 1, flicker: 'tv', y: 7 } },
-  fridge: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true },
+  // (the cold light that leaks from its door onto the floor in front of it; `lights: false` on one thrown out)
+  fridge: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#ddd', sound: 'metal', blocksPath: true,
+    light: { r: 46, color: '#cfeeff', intensity: 0.32, y: 12 } },
   // gas: a round through it lights a jet at the hole, then it goes off after `fuse` s (systems/Gas.js);
   // rocket: odds that a loose bottle takes off on its own jet
   oven: { static: true, material: 'metal', w: 20, h: 20, hp: 18, chips: '#bbb', sound: 'metal', blocksPath: true, sparks: true,
     gas: { fuse: [1.6, 2.6] }, blast: 84 },
   gas_bottle: { material: 'metal', r: 6, hp: 2, kg: 30, mu: 0.38, chips: '#4f82c0', explosive: true, blast: 80, sound: 'metal',
     gas: { fuse: [1.1, 2.2], rocket: 0.6 } },
-  sink: { material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
+  sink: { tap: [-5.3, 1],  material: 'metal', w: 26, h: 18, hp: 14, static: true, chips: '#aab', sound: 'metal', blocksPath: true },
   // a block of flats: a neighbour's door (shut for good, on its wall), a radiator under a wall, a bicycle leant on
   // one, a bin bag, a jerrycan. What lies flat on its floors (doormats, the stairs, a carpet) is paint: level `floor`.
   apt_door: { fixture: true, static: true, lasting: true, material: 'wood', w: 32, h: 6, hp: 99, chips: '#6a4426', sound: 'wood' },
@@ -154,6 +156,10 @@ export const PROPS = {
   pay_phone: { static: true, material: 'metal', w: 8, h: 5, hp: 4, chips: '#8a909c', sparks: true, sound: 'metal', handset: [-2.5, 0] },
   coat_hooks: { static: true, material: 'fabric', w: 16, h: 4, hp: 4, chips: '#3a3440', sound: 'wood' },
   towel_dispenser: { static: true, material: 'plastic', w: 7, h: 3, hp: 2, chips: '#e8e8ec', sound: 'wood' },
+  // back of house and the street: a run of electrical conduit with its junction box (a round in it sparks), bills
+  // pasted one over the other on a street wall (paper: torn off by a blow, no glass)
+  conduit: { static: true, material: 'metal', w: 46, h: 3, hp: 8, chips: '#868a94', sparks: true, sound: 'metal' },
+  flyers: { static: true, material: 'fabric', w: 24, h: 3, hp: 2, chips: '#cfc5a8', sound: 'wood' },
   neon_sign_beer: { hum: 'neon', material: 'glass', w: 34, h: 6, hp: 3, static: true, chips: '#ffb02a', sparks: true, glass: true, sound: 'glass',
     light: { r: 80, color: '#ffb84a', intensity: 0.55, flicker: 'buzz' } },
   neon_sign_bay: { hum: 'neon', material: 'glass', w: 24, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
@@ -175,7 +181,7 @@ export const PROPS = {
   wall_lamp: { fixture: true, static: true, material: 'glass', w: 12, h: 6, hp: 2, chips: '#ffe2a8', sparks: true, glass: true, sound: 'glass',
     light: { r: 160, color: '#ffd9a0', intensity: 0.9, y: 3 } },
   tube_light: { fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#cfe6ff', sparks: true, glass: true, sound: 'glass',
-    light: { r: 200, color: '#d4e8ff', intensity: 0.9, flicker: 'buzz', y: 3 } },
+    light: { r: 200, color: '#c9f0dc', intensity: 0.9, flicker: 'buzz', y: 3 } },   // cold and a little green, as fluorescent is
   neon_tube_pink: { hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 150, color: '#ff2a6d', intensity: 0.95, flicker: 'buzz', y: 3 } },
   neon_tube_cyan: { hum: 'neon', fixture: true, static: true, material: 'glass', w: 28, h: 4, hp: 2, chips: '#05d9e8', sparks: true, glass: true, sound: 'glass',

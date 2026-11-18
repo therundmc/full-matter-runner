@@ -12,6 +12,7 @@ import { drawRainGround, drawRainAir, viewRect } from './WeatherArt.js';
 import SmokeArt from './SmokeArt.js';
 import { drawFlames } from './FireArt.js';
 import LiquidArt from './LiquidArt.js';
+import Cues from './Readability.js';
 import { RAIN } from '../data/atmosphere.js';
 import { OUTRO } from '../systems/Outro.js';
 import { EXIT } from '../data/staging.js';
@@ -51,6 +52,7 @@ export default class WorldRenderer {
     this.lightMs = 0; // smoothed cost of the lighting passes
     this.smoke = new SmokeArt(world); // the smoke in the air and the mist, lit
     this.liquid = new LiquidArt(world); // what is wet on the floor
+    this.cues = new Cues(world); // readability cues (data/readability.js)
   }
 
   // the layer of what stands on the floor: the size of the picture, cleared, drawn with the scene's transform
@@ -87,13 +89,14 @@ export default class WorldRenderer {
     this.liquid.draw(ctx, view);
     drawRainGround(ctx, w.weather, view, t);
     ctx.drawImage(w.decals.fleshCanvas, 0, 0);
+    this.cues.drawMark(ctx); // the ring at the player's feet (render/Readability.js), under everybody
     // what stands or lies on the floor is drawn on a layer of its own, then laid on the scene: its pixels are what the
     // floor's reflections (Lighting.post) must not cover
     const floor = ctx;
     ctx = this.standing(floor);
     for (const d of w.debris) if (!d.dead && vis(d.body.position.x, d.body.position.y)) d.draw(ctx);
     for (const c of w.corpses) if (vis(c.x, c.y)) c.draw(ctx);
-    for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx, t);
+    for (const it of w.items) if (!it.dead && vis(it.x, it.y)) it.draw(ctx);
     for (const a of w.ammoItems) if (vis(a.x, a.y)) a.draw(ctx);
     drawPapers(ctx, w.papers, vis);
     drawLitter(ctx, w.litter, vis, false);
@@ -143,6 +146,7 @@ export default class WorldRenderer {
     this.lightMs += (lightMs - this.lightMs) * 0.1; // smoothed, for the F4 overlay
     drawMoths(ctx, w.critters, t, vis, cam);
     drawLasers(ctx, w);
+    this.cues.drawItems(ctx, vis); // the floor weapons' catch-lights, the one within reach outlined
     // guards' '?' / '!' and detection meters stay readable over the night
     for (const e of w.enemies) if (vis(e.x, e.y)) e.drawMarks(ctx);
     const pl = w.player;
@@ -427,7 +431,7 @@ export default class WorldRenderer {
     for (const s of u.spots) {
       if (s.prop && (s.prop.dead || s.prop.dying)) continue;
       const { x, y } = u.at(s), d = Math.hypot(x - pl.x, y - pl.y), on = s === pl.nearUse;
-      if (d > R || (!on && (s.quiet || (s.ok && !s.ok(pl))))) continue; // a quiet spot (a door) only when E is on it
+      if (d > R || (!on && s.ok && !s.ok(pl))) continue;
       const k = on ? 1 : 0.35 * (1 - d / R), r = on ? 3 + Math.sin(t * 8) : 2.5;
       for (const [width, color] of [[3, `rgba(8,4,16,${0.8 * k})`], [1.2, on ? '#ffe46a' : `rgba(255,228,106,${k})`]]) {
         ctx.lineWidth = width;

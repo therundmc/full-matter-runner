@@ -12,7 +12,7 @@ import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
 import { loadSettings, saveSettings } from './systems/Settings.js';
-import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel } from './systems/Progress.js';
+import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, loadCrossed, saveCrossed } from './systems/Progress.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
@@ -21,10 +21,10 @@ import { drawResults, resultsTimeline, resultsBeats } from './ui/Results.js';
 import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import Menu from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
-import { cineView, cineBeats, drawCinematic, drawTitleView } from './ui/Cinematic.js';
-import { titleBeats } from './ui/title/Timeline.js';
-import { lookAt as titleLook } from './ui/title/Cycle.js';
-import { titleProposal } from './ui/title/Proposals.js';
+import { cineView, cineBeats, drawCinematic } from './ui/Cinematic.js';
+import { drawTitle, posterUp } from './ui/title/Title.js';
+import { posterBeats } from './ui/title/Beats.js';
+import { deadCount } from './ui/title/HitList.js';
 import { leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
 import HoldSkip, { drawHold } from './ui/cine/Hold.js';
 import { ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
@@ -36,6 +36,7 @@ import Lens from './render/Lens.js';
 import Direction from './systems/Direction.js';
 import Opening from './systems/Opening.js';
 import { drawMurk } from './render/Murk.js';
+import { cuesOn } from './render/Readability.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
 
@@ -93,8 +94,9 @@ export default class Game {
     this.progress = loadProgress();
     this.menu = new Menu('main', () => this.menuContext());
     this.menuRects = [];               // where the menu's items were drawn last frame (MenuArt), for the mouse
-    this.titleAlt = titleProposal();   // a title proposal asked by the address (?title=a|b|c|ab), or null: the title
-    this.altRects = null;              // where that proposal drew the menu's items, when it draws them itself
+    this.titleRects = [];              // where the title drew the menu's items (ui/title/Title.js)
+    this.crossed = loadCrossed();      // how many dead targets the hit list has shown crossed out (the X is drawn once)
+    this.after = null;                 // the level that follows the hit list between two levels (null: the menu)
     this.grab = null;                  // index of the slider held by the mouse
     this.lastMouse = { x: 0, y: 0 };
     this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
@@ -369,13 +371,25 @@ export default class Game {
       this.post.show(this.lensOn);
       this.lensNote = this.time + 1.6;
     }
+    if (this.state === 'hitlist') {
+      // the hit list between two levels: the marker crosses the dead man out (heard from the picture, HitList.js),
+      // then a key or a click goes on to the next level, or to the menu after the last
+      const go = ['Enter', 'NumpadEnter', 'Space', 'Escape', 'PadB'].some((c) => inp.hit(c)) || inp.mouseHit(0);
+      if (go && this.stateT > 1) {
+        const next = this.after;
+        this.after = null;
+        this.markCrossed(deadCount(this.progress));
+        if (next) this.startLevel(next); else this.toTitle();
+      }
+      inp.consume();
+      return;
+    }
     if (this.state === 'title') {
       Music.setTrack(MENU_TRACK);
       Music.setIntensity(0);
-      // the city the title shows, heard out in the open: the trains going by, the far wash (ui/title/Timeline.js; the
-      // scene's clock is the time on the title)
+      // the poster's fire, its rain, its sign's buzz (ui/title/Beats.js; the picture's clock is the time on the title)
       const t1 = this.stateT, t0 = this.titleT <= t1 && t1 - this.titleT < 0.5 ? this.titleT : t1;
-      if (!this.titleAlt || this.titleAlt.city) for (const b of titleBeats(t0, t1)) Audio.play(b.name, { vol: b.vol, ...b.opts, inside: 0 });
+      if (posterUp(this.menu)) for (const b of posterBeats(t0, t1)) Audio.play(b.name, { vol: b.vol });
       this.titleT = t1;
       this.updateMenu(inp);
       inp.consume();
@@ -525,9 +539,32 @@ export default class Game {
     else if (this.stateT > 0.3 && key('Escape', 'PadB')) this.toTitle();
     else if (go && this.stateT < end) { this.stateT = end; this.resultsT = end; }
     else if (go && this.stateT > 0.3) {
-      if (r.nextLevel) this.startLevel(r.nextLevel);
-      else this.toTitle();
+      this.afterResults(r.nextLevel);
     }
+  }
+  // After the results: the next level, or the menu after the last; through the hit list when the level killed a
+  // target the board has not crossed out yet.
+  afterResults(next) {
+    if (deadCount(this.progress) > this.crossed) {
+      this.after = next || null;
+      this.world = null;
+      this.replay.stop();
+      this.recorder.release();
+      this.setState('hitlist');
+    } else if (next) this.startLevel(next);
+    else this.toTitle();
+  }
+  markCrossed(n) {
+    if (n === this.crossed) return;
+    this.crossed = n;
+    saveCrossed(n);
+  }
+  // what the title's picture is told (ui/title/Title.js)
+  titleView() {
+    return {
+      menu: this.menu, progress: this.progress, device: this.input.device, mouse: this.input.mouse, between: this.state === 'hitlist',
+      crossed: this.crossed, sound: (name, vol, opts) => Audio.play(name, { vol, ...opts }), onCrossed: (n) => this.markCrossed(n),
+    };
   }
 
   // The right stick's virtual cursor (data/controls.js PAD_AIM): a point round the player, nearer or further with the
@@ -600,7 +637,7 @@ export default class Game {
   applyMenu(a) {
     switch (a.type) {
       case 'set': this.setSetting(a.key, a.value); return false;
-      case 'reset': this.progress = resetProgress(); this.best = null; return false;
+      case 'reset': this.progress = resetProgress(); this.best = null; this.crossed = 0; return false;
       case 'newGame': this.startNewGame(); return true;
       case 'continue': this.continueGame(); return true;
       case 'start': this.startLevel(a.level); return true;
@@ -638,7 +675,8 @@ export default class Game {
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom;
-    const seen = D.aim(p.x + ox * D.look, p.y + oy * D.look);
+    const z = this.camera.zoom * D.zoom, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
+    const seen = D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
     let tx = seen.x, ty = seen.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {
@@ -662,12 +700,9 @@ export default class Game {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
+    if (inWorld) this.world.cues = cuesOn(this.state, !!this.world.tutorial?.scene); // render/Readability.js
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
-    else if (!inWorld && this.titleAlt) {
-      this.safeDraw(ctx, () => {
-        this.altRects = this.titleAlt.scene(ctx, W, H, this.stateT, this.input.mouse, { menu: this.menu, progress: this.progress, device: this.input.device });
-      });
-    } else if (!inWorld) drawTitleView(ctx, W, H, this.stateT, this.input.mouse);
+    else if (!inWorld) this.safeDraw(ctx, () => { this.titleRects = drawTitle(ctx, W, H, this.stateT, this.titleView()); });
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));
     else if (this.state === 'fall' && this.stateT >= FALLEN) this.safeDraw(ctx, () => drawLeap(ctx, W, H, this.stateT - FALLEN));
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
@@ -682,8 +717,7 @@ export default class Game {
       o.imageSmoothingEnabled = false;
     }
     if (inWorld) this.drawOver(o, W, H, t);
-    else if (this.state === 'title' && this.titleAlt) this.safeDraw(o, () => { this.menuRects = this.altRects || drawMenu(o, W, H, t, this.menu, 'title', this.input.device, 0); });
-    else if (this.state === 'title') this.safeDraw(o, () => { this.menuRects = drawMenu(o, W, H, t, this.menu, 'title', this.input.device, titleLook(this.stateT).bright); });
+    else if (this.state === 'title') this.menuRects = this.titleRects || [];
     if (this.lensNote > t) {
       o.font = `${Math.round(14 * H / 720)}px monospace`;
       o.textAlign = 'left';
@@ -757,7 +791,7 @@ export default class Game {
         ctx.globalAlpha = 1;
       }
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.death, this.input.device);
-      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, 'pause', this.input.device);
+      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu);
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
       if (this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN)) drawHold(ctx, W, H, this.skip, this.input.device);
@@ -770,7 +804,6 @@ export default class Game {
     return {
       W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
       state: this.state, phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
-      daylight: this.state === 'title' && !this.titleAlt ? titleLook(this.stateT).bright : 0,
       timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
       player: p && {
         x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,

@@ -9,15 +9,13 @@
 // (squeeze along: the back arched), top (the arms lie over the torso), arms, legs, head } and end where they began
 // or slack, every limb straight (the body is baked as it is drawn).
 import { SPASM, CURL, THROAT } from '../data/wounds.js';
-import { angDiff, clamp } from '../../engine/math.js';
-import { rng, smooth, mix } from './CrawlPose.js';
+import { clamp, lerp, lerpA, smooth, seeded } from '../../engine/math.js';
 
 const KICK_SLOW = 1.35; // each kick lasts this much longer than the one before
 const KICK_FADE = 0.6;  // and is this much as strong
 const IN = 0.35, OUT = 0.7; // shares of a curl: drawn in until, held until, then slack
 
-const mixA = (a, b, t) => a + angDiff(a, b) * t;
-const mixPose = (p, q, t) => ({ a: mixA(p.a, q.a, t), s: mix(p.s, q.s, t) });
+const mixPose = (p, q, t) => ({ a: lerpA(p.a, q.a, t), s: lerp(p.s, q.s, t) });
 // a jerk: fast out, slower back
 const jerk = (v) => (v <= 0 || v >= 1 ? 0 : v < 0.3 ? smooth(v / 0.3) : 1 - smooth((v - 0.3) / 0.7));
 // the turn that takes a limb on the side of joint g, lying toward the feet, out away from the body
@@ -25,12 +23,12 @@ const outward = (g) => (g.x < 0 ? 1 : -1);
 
 // { dur (s), kicks: [{ t0, d (s), amp }], leg, hand (which ones), grips (times the hand closes), side (of the arch) }
 export function spasmPlan(seed) {
-  const R = rng(seed), [k0, k1] = SPASM.kicks, n = k0 + Math.floor(R() * (k1 - k0 + 1));
-  const dur = mix(SPASM.dur[0], SPASM.dur[1], R());
+  const R = seeded(seed), [k0, k1] = SPASM.kicks, n = k0 + Math.floor(R() * (k1 - k0 + 1));
+  const dur = lerp(SPASM.dur[0], SPASM.dur[1], R());
   const w = Array.from({ length: n }, (_, j) => KICK_SLOW ** j), sum = w.reduce((a, b) => a + b, 0);
   let t = 0.05 * dur;
   const kicks = w.map((x, j) => {
-    const k = { t0: t, d: (x / sum) * dur * 0.8, amp: KICK_FADE ** j * mix(0.85, 1.1, R()) };
+    const k = { t0: t, d: (x / sum) * dur * 0.8, amp: KICK_FADE ** j * lerp(0.85, 1.1, R()) };
     t += k.d;
     return k;
   });
@@ -57,8 +55,8 @@ export function spasmPose(plan, u, from, geom) {
 
 // { dur (s), side (he rolls toward), wound: { x, y } (torso-local, where his hands go) }
 export function curlPlan(seed) {
-  const R = rng(seed);
-  return { dur: mix(CURL.dur[0], CURL.dur[1], R()), side: R() < 0.5 ? -1 : 1, wound: { x: mix(-2, 2, R()), y: mix(-2, 3, R()) } };
+  const R = seeded(seed);
+  return { dur: lerp(CURL.dur[0], CURL.dur[1], R()), side: R() < 0.5 ? -1 : 1, wound: { x: lerp(-2, 2, R()), y: lerp(-2, 3, R()) } };
 }
 
 // up: he lies on his back (the hands come over the torso, else they go under it)
@@ -74,7 +72,7 @@ export function curlPose(plan, u, from, geom, up) {
   });
   const legs = from.legs.map((p, k) => {
     const drawn = { a: Math.PI / 2 + side * 0.55 + outward(geom.legs[k]) * 0.1, s: 0.55 };
-    return mixPose(mixPose(p, drawn, inK), { a: mixA(p.a, drawn.a, 0.5), s: 1 }, outK);
+    return mixPose(mixPose(p, drawn, inK), { a: lerpA(p.a, drawn.a, 0.5), s: 1 }, outK);
   });
   return {
     rock: side * (0.18 * inK - 0.1 * outK) + 0.015 * shake, roll: 1 - CURL.roll * hold, arch: 1, top: up && hold > 0.2,
@@ -85,7 +83,7 @@ export function curlPose(plan, u, from, geom, up) {
 // { dur (s), beats: [{ t0, d (s), k (strength, 0 to 1), sweep (which way its aim runs) }], pushes: [{ t0, d, leg }],
 // side (the cheek he lands on) }
 export function throatPlan(seed, T = THROAT) {
-  const R = rng(seed), J = ([a, b]) => mix(a, b, R());
+  const R = seeded(seed), J = ([a, b]) => lerp(a, b, R());
   const dur = J(T.dur), n = T.beats[0] + Math.floor(R() * (T.beats[1] - T.beats[0] + 1));
   const beats = [];
   // the heart slows: the spurts come further and further apart, each weaker than the last
@@ -113,7 +111,7 @@ export function throatPose(plan, u, geom, T = THROAT) {
   const half = geom.half, stay = T.hold || 0;
   const kneel = smooth(u / T.kneel), fall = smooth((u - T.kneel - stay) / T.pitch) * (T.over ?? 1), up = 1 - fall;
   const slipAt = plan.dur * (1 - T.slip), slack = smooth((u - slipAt) / (plan.dur - slipAt));
-  const arch = mix(mix(T.from ?? 0.28, T.upright, kneel), 1, fall);
+  const arch = lerp(lerp(T.from ?? 0.28, T.upright, kneel), 1, fall);
   let jet = 0, jetA = 0;
   for (const b of plan.beats) {
     const v = (u - b.t0) / b.d;
@@ -147,6 +145,6 @@ export function throatPose(plan, u, geom, T = THROAT) {
     // the head sits back over his shoulders while he kneels (nod: how much of it; bent over something it comes up
     // as his knees go)
     head: { a: plan.side * 0.45 * fall + tremble, s: 1 - 0.1 * jet * fall, dy: up * (half * arch * 0.7 + 4) * (T.nod ?? 1) * (T.from ? kneel : 1) },
-    jet, jetA: jetA + plan.side * 0.45 * fall, z: mix(3, 15, up), down: u >= T.kneel + stay + T.pitch, fall,
+    jet, jetA: jetA + plan.side * 0.45 * fall, z: lerp(3, 15, up), down: u >= T.kneel + stay + T.pitch, fall,
   };
 }

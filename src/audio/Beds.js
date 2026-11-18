@@ -13,22 +13,12 @@
 // phrases, low-passed as heard across a room (plan / talker below; renderLaugh uses the same voice).
 
 import { v8Cycle } from './Motor.js';
+import { TAU, seeded } from '../engine/math.js';
 
-const TAU = Math.PI * 2;
 const RMS = 0.1;  // every bed's loudness once rendered
 const PEAK = 0.9; // a one-shot's peak
 const XF = 0.4;   // s of crossfade that closes a loop
 
-// seeded generator (mulberry32)
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), a | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 const white = (r) => r() * 2 - 1;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -470,7 +460,7 @@ const rmsOf = (chs) => {
 // one-shot at PEAK whose marks say where it may be started. A generator: run it to its end (see top)
 export function* renderBed(name, seed = 1) {
   const spec = { ...BEDS[name] }, { sr, len, ch = 1 } = spec;
-  const n = Math.round(len * sr), x = spec.once ? 0 : Math.round(XF * sr), r = rng(seed);
+  const n = Math.round(len * sr), x = spec.once ? 0 : Math.round(XF * sr), r = seeded(seed);
   const data = Array.from({ length: ch }, () => new Float32Array(n + x));
   yield* BED_MAKERS[spec.make](data, sr, r, spec);
   const out = spec.once ? data : data.map((d) => close(d, n, x, spec.tonal));
@@ -488,7 +478,7 @@ export function finish(gen) {
 
 // a laugh across the room: three to six breathy "ha"s falling in pitch and dying away; mono at sr, peak 0.8
 export function renderLaugh(seed, woman, sr = 22050) {
-  const r = rng(seed), n = 2 + Math.floor(r() * 4), syl = [];
+  const r = seeded(seed), n = 2 + Math.floor(r() * 4), syl = [];
   let t = 0.02;
   for (let i = 0; i < n; i++) {
     const d = 0.15 + 0.06 * r();

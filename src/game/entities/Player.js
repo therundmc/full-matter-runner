@@ -1,6 +1,6 @@
 import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
 import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
-import { rand, chance, angDiff } from '../../engine/math.js';
+import { rand, chance, angDiff, smooth } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import Debris from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
@@ -27,11 +27,9 @@ import { squirt } from '../fx/Bleeding.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
 import { slideFx, landFx } from '../fx/TraversalFx.js';
 import { combatFx } from '../fx/CombatFx.js';
-import { smooth } from './CharacterAnim.js';
 
 const { Body, Query } = Matter;
 const SHOVE_T = 0.28; // s a guard's shove carries him back (Enemy.shove)
-let scuff = null; // floor scuff stamp, made on first use
 const GUN_BUTT = { swing: 'club', material: 'metal' }; // an empty gun brought down on a man: what rings (fx/Blows.js)
 // a takedown's beats that land on his head, and those of them done with our own body whatever is in the hand
 const HEAD_BLOWS = new Set(['nape', 'butt', 'knee', 'headbutt', 'throat', 'sweep', 'temple']), BODY_BLOWS = new Set(['knee', 'headbutt', 'throat', 'sweep']);
@@ -66,7 +64,7 @@ export default class Player extends Character {
     this.pinned = false;    // sat there, no key gets him up yet
     this.swig = null;       // the bottle he finishes first, sat there (level intro 'swig'): { t, thrown, go, hit }
     this.rising = false;
-    this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d }
+    this.takedown = null;   // a guard taken from behind (startTakedown): systems/Takedown.js newTakedown + { target, side, d, def }
     this.slide = null;      // Slide kinematics while sliding
     this.shove = null;      // a guard's shove carrying him back { a, v, t } (see shoved)
     this.slideCd = 0;
@@ -919,9 +917,10 @@ export default class Player extends Character {
     this.nextTakedown = null;
     // wounds: what the beats before the kill did to him, shown on his body after ([where, what])
     // wears: done with the weapon in hand (not a hand in his hair), it takes a blow out of it on the kill
+    // def: the weapon it is played with to the end (CharacterAnim takedownPose), even one that breaks on the kill
     this.takedown = Object.assign(newTakedown(f, !!target.yielded), {
       target, spot, front, side: chance(0.5) ? 1 : -1, d: Math.hypot(target.x - this.x, target.y - this.y) / BODY_SCALE, wounds: [],
-      wears: !spot && !!this.weapon && !!this.def.wear,
+      wears: !spot && !!this.weapon && !!this.def.wear, def: this.def,
     });
     this.contextAction = null;
     this.swing = 0;

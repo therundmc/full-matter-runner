@@ -375,8 +375,9 @@ export default class Particles {
 
   // normal-blended particles (drawn before the additive pass)
   draw(ctx) {
-    const cam = this.world.camera;
+    const cam = this.world.camera, R = shown(ctx);
     for (const p of this.list) {
+      if (p.type !== P.SHARD && p.type !== P.JET && offView(p, R)) continue; // (those two lean toward the eye)
       switch (p.type) {
         case P.SHARD: {
           // the shadow stays on the floor while the piece is up in the air
@@ -504,10 +505,10 @@ export default class Particles {
   // Flames, after the lighting (they shine by themselves): opaque, on whole pixels, the hottest on top, so a fire
   // is a few flat bands of colour with a broken edge instead of a soft glow.
   drawFire(ctx) {
-    const bands = this.bands;
+    const bands = this.bands, R = shown(ctx);
     for (const b of bands) b.length = 0;
     for (const p of this.list) {
-      if (p.type !== P.FIRE) continue;
+      if (p.type !== P.FIRE || offView(p, R)) continue;
       const heat = p.life / p.maxLife + p.heat;
       let b = HEAT.length - 1;
       while (b > 0 && heat < HEAT[b]) b--;
@@ -527,7 +528,9 @@ export default class Particles {
 
   // additive pass (sparks, embers)
   drawGlow(ctx) {
+    const R = shown(ctx);
     for (const p of this.list) {
+      if ((p.type === P.SPARK || p.type === P.EMBER) && offView(p, R)) continue;
       if (p.type === P.SPARK) {
         const a = Math.max(0, p.life / p.maxLife);
         ctx.strokeStyle = p.color;
@@ -551,6 +554,26 @@ export default class Particles {
     }
     ctx.globalAlpha = 1;
   }
+}
+
+// The world box the canvas shows through ctx's transform (the camera's, turned when it shakes): [x0, y0, x1, y1].
+// Drawing what lies outside it changes no pixel, so it is skipped (thousands of particles over a burning floor).
+const VIEW = [0, 0, 0, 0];
+export function shown(ctx) {
+  const m = ctx.getTransform().inverse(), w = ctx.canvas.width, h = ctx.canvas.height;
+  VIEW[0] = VIEW[1] = Infinity; VIEW[2] = VIEW[3] = -Infinity;
+  for (let i = 0; i < 4; i++) {
+    const sx = i & 1 ? w : 0, sy = i & 2 ? h : 0, x = m.a * sx + m.c * sy + m.e, y = m.b * sx + m.d * sy + m.f;
+    if (x < VIEW[0]) VIEW[0] = x; if (x > VIEW[2]) VIEW[2] = x;
+    if (y < VIEW[1]) VIEW[1] = y; if (y > VIEW[3]) VIEW[3] = y;
+  }
+  return VIEW;
+}
+// a particle wholly outside the box R, with a margin for all it draws round its place (its size, a streak, its
+// height lifting it up the picture); a particle without a size is never left out
+function offView(p, R) {
+  const m = 16 + (p.size || 0) * 4 + Math.abs(p.z || 0) + Math.abs(p.h || 0);
+  return p.x < R[0] - m || p.x > R[2] + m || p.y < R[1] - m || p.y > R[3] + m;
 }
 
 // Soft puffs (dust, the extinguisher's powder, the smoke of a short): a small sprite per colour and variant, made once

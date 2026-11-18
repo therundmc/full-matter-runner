@@ -3,10 +3,9 @@
 // of a few neon tubes (data/atmosphere.js NEON): one that stutters now and then, one that is dying.
 import { LIGHTING as L } from '../Config.js';
 import { NEON } from '../data/atmosphere.js';
+import { hash, lerpRange } from '../../engine/math.js';
 
-export function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
-export function noise(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i) * (1 - u) + hash(i + 1) * u; }
-const mix = (r, k) => r[0] + (r[1] - r[0]) * k;
+function noise(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i) * (1 - u) + hash(i + 1) * u; }
 
 function buzz(seed, t) {
   const dip = hash(Math.floor(t * 9 + seed * 13)) > 0.965 ? 0.45 : 1;
@@ -15,19 +14,19 @@ function buzz(seed, t) {
 
 // a tube whose starter plays up: it buzzes like the others, and every few seconds it cuts out and back in a burst
 function stutter(seed, t) {
-  const S = NEON.stutter, period = mix(S.every, hash(seed * 3.7)), u = t / period + hash(seed * 1.9);
+  const S = NEON.stutter, period = lerpRange(S.every, hash(seed * 3.7)), u = t / period + hash(seed * 1.9);
   const n = Math.floor(u), into = (u - n) * period;
-  if (into < mix(S.burst, hash(n * 1.37 + seed))) return hash(Math.floor(t * S.rate) + seed * 13) > 0.45 ? 1 : S.low;
+  if (into < lerpRange(S.burst, hash(n * 1.37 + seed))) return hash(Math.floor(t * S.rate) + seed * 13) > 0.45 ? 1 : S.low;
   return buzz(seed, t);
 }
 
 // a tube at the end of its life: dark for a while, a few strikes that do not catch, then it holds, shaky, and dies again
 function dying(seed, t) {
-  const D = NEON.dying, cycle = mix(D.cycle, hash(seed * 5.1)), u = t / cycle + hash(seed * 2.3);
+  const D = NEON.dying, cycle = lerpRange(D.cycle, hash(seed * 5.1)), u = t / cycle + hash(seed * 2.3);
   const n = Math.floor(u), k = u - n, strike = 1 - D.dark - D.hold;
   if (k < D.dark) return D.low;
   if (k < D.dark + strike) {
-    const tries = Math.round(mix(D.tries, hash(n * 0.77 + seed))), s = ((k - D.dark) / strike) * tries;
+    const tries = Math.round(lerpRange(D.tries, hash(n * 0.77 + seed))), s = ((k - D.dark) / strike) * tries;
     return s - Math.floor(s) < 0.22 ? 0.75 + 0.25 * hash(Math.floor(s) + n) : D.low;
   }
   const shaky = hash(Math.floor(t * 12 + seed * 7)) > 0.9 ? 0.55 : 1;

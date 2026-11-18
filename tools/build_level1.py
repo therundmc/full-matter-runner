@@ -110,13 +110,27 @@ lv.put(39, 20, 'L')
 lv.fill(27, 33, 31, 35, '+')
 lv.fill(27, 32, 29, 32, 'G')
 lv.put(30, 32, 'D')
-# door closers (a hydraulic arm swings the leaf back shut, src/game/data/doors.js), where a real bar has them: the
-# front double door (the heat and the noise kept in, the street kept out), the toilets' (the smell), the back door
-# and the storeroom's door on the service alley (steel service doors on the outside: they shut and lock behind the
-# deliveries). Inside, the house's own doors swing free (behind the counter to the storeroom, the gaming room, the
-# boss's back room): the staff go in and out with their hands full. The VIP room has its curtain.
-for x, y in ((21, 20), (22, 11), (25, 5), (14, 8)):
-    lv.door(x, y, closer=True)
+# the doors, one kind per place (src/game/data/doors.js DOORS.kinds: its skin, weight, closer, sounds), nothing to do
+# with each other:
+#   the front     an American bar's double door: dark varnished wood, a porthole, brass plates, on a closer (the
+#                 heat and the noise kept in, the street kept out)
+#   the toilets   a pair of swinging cafe doors: pushed either way, back to the middle on their springs, no latch
+#   the back door the emergency exit: heavy grey steel, a red push bar inside, the green EXIT sign over it, a closer
+#   staff doors   blue-grey paint and a STAFF ONLY plate: behind the counter to the storeroom, and the storeroom's
+#                 own door on the service alley (on a closer: it shuts behind the deliveries)
+#   the boss      his back room's door into the gaming room: oxblood leather buttoned over padding, brass studs
+#   gaming room   a deep green gloss with a brass peephole
+#   the shops     glass doors in aluminium (the liquor store, the TV shop, the laundromat)
+# The gap's anonymous door on the street keeps the plain wooden one. The VIP room has its curtain.
+lv.door(21, 20, kind='bar', inside='n')   # the closer on the bar's side, not the street's
+lv.door(22, 11, kind='swing')
+lv.door(25, 5, kind='fire', inside='s')
+lv.door(16, 11, kind='staff')
+lv.door(14, 8, kind='staff', closer=True, inside='e')   # its closer in the storeroom
+lv.door(27, 11, kind='office')
+lv.door(24, 13, kind='gaming')
+for x, y in ((8, 20), (39, 20), (30, 32)):
+    lv.door(x, y, kind='shop')
 
 # ---------------------------------------------------------------- actors (12 guards)
 # Blades, bats and a tire iron: twelve men with their hands. Two guns in the whole house: the pool player's pistol
@@ -218,6 +232,8 @@ lv.dress('papers', 20, 32, 23, 36, 3)
 lv.dress('beds', 22.1, 36.5, 0)                          # a tramp asleep on his cardboard, against the wall
 lv.patron('tramp', 22.1, 36.5, 180, 'sleep')
 lv.prop('neon_sign_palm', 17.0, 31.91, 180)
+lv.prop('flyers', 13.4, 31.94, 180)                     # the south side's wall, by the bench
+lv.paint('tag', 21.2, 34.9, -8)                         # the start alley: a tag on the ground by where he sat
 lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
 
@@ -259,6 +275,8 @@ lv.pigeons(33.3, 21.7, 2)
 lv.prop('hydrant', 10.6, 22.65)                       # clear of the alley's mouth (bigger, it snagged whoever came out)
 lv.prop('vending', 17.42, 21.33)                        # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
+lv.prop('flyers', 2.6, 21.06)                           # bills pasted one over the other on the blind walls: west of
+lv.prop('flyers', 33.4, 21.06)                          # the liquor store, between the gap's door and the TV shop
 lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
 lv.dress('manholes', 27.3, 28.5)                        # (the one by the parking bays sat astride their line: removed)
@@ -272,7 +290,7 @@ for x in (5.0, 6.3):
 lv.prop('ladder', 3.5, 16.5)                            # up to the roof
 lv.prop('bottle_shelf', 8.3, 17.2)                      # behind the counter
 lv.prop('bar_counter', 7.5, 18.4)
-lv.prop('bar_counter', 8.5, 18.4)
+lv.prop('bar_counter', 8.5, 18.4, clutter='shop_till')     # its till, the display left on
 lv.prop('bottle_shelf', 5.0, 18.5)
 lv.prop('fridge', 3.4, 18.5, 270)
 lv.prop('fridge', 3.4, 19.25, 270)
@@ -306,6 +324,15 @@ lv.prop('trash_can', 31.6, 33.35, tips=False)            # indoors: stays up (th
 lv.prop('plant', 31.55, 35.6)
 lv.prop('tube_light', 28.5, 35.93, 180)
 lv.prop('tube_light', 30.5, 35.93, 180)
+# its floor: the drain, the way from the door to the machines, lint trodden about by them, the tide a leak left, a sock
+# nobody came back for
+lv.grime_at('drain', 30.35, 34.6, r=7)
+lv.wear_path(30.5, 33.1, 28.3, 34.9, 9)
+for (x, y) in ((27.75, 35.1), (30.5, 35.35), (31.05, 34.45), (30.2, 33.6)):
+    lv.grime_at('lint', x, y)
+lv.grime_at('tide', 28.5, 34.95)
+lv.grime_at('scuffs', 28.1, 35.05)
+lv.litter_at('sock', 30.65, 35.5, 20)                    # (all of it off the cut line at 29)
 
 lv.area('service alley')
 for x in (11.5, 12.5, 13.5):
@@ -322,6 +349,8 @@ lv.prop('gas_bottle', 13.72, 6.55)                      # the stove's gas, again
 lv.prop('gas_bottle', 13.7, 7.05)
 lv.prop('pipe_steam', 13.93, 13.6, 90)                  # the bar's heating, along its wall: a round makes it whistle
 lv.dress('manholes', 12.5, 10.6)
+lv.prop('conduit', 13.94, 16.0, 90)                     # wiring along the bar's side wall
+lv.paint('tag', 11.9, 12.6, 80)                         # a tag sprayed on the ground, half gone
 lv.dress('papers', 11, 1, 13, 19, 4)
 
 lv.area('back lot')
@@ -331,7 +360,7 @@ lv.prop('crate', 17.2, 1.45, 5)
 lv.prop('crate', 17.9, 1.5, -10)
 lv.prop('crate', 17.5, 2.15, 30)
 # the junk the bar never had taken away, along the far wall: a fridge, a washer, a dead TV, an armchair, a chair
-lv.prop('fridge', 13.5, 1.42, -6)
+lv.prop('fridge', 13.5, 1.42, -6, lights=False)          # dead: no light at its door
 lv.prop('washer', 13.55, 2.25, 8)
 lv.prop('tv', 16.55, 1.42, 12, lights=False)
 lv.prop('armchair', 18.65, 1.5, 14)
@@ -356,6 +385,7 @@ lv.dress('papers', 14, 1, 32, 4, 4)
 lv.prop('tube_light', 26.55, 4.93, 180)                 # beside the back door (a body on the wall: over it, it
                                                         # barred the doorway)
 lv.prop('gas_bottle', 30.4, 4.74)
+lv.prop('conduit', 20.9, 4.94, 180)                     # the house's wiring along its back wall (off the cut line)
 
 lv.area('storeroom')
 lv.prop('bookshelf', 15.7, 6.2)
@@ -366,6 +396,7 @@ lv.prop('tube_light', 18.93, 8.6, 90)
 lv.prop('dope_table', 17.0, 9.2, clutter='dope')                       # in the middle of the room, a way round it on every side
 lv.prop('crate', 18.55, 10.55, 4)                       # the stock, in corners off every way round the table (behind
 lv.prop('crate', 15.4, 6.85, 10)                        # it they made a pocket where two men jammed)
+lv.prop('conduit', 15.06, 9.9, 270)                     # the wiring run down the west wall, south of the alley door
 
 lv.area('toilets')
 # an American restroom (the user): one stall in the north-east corner, its partition on chrome feet and a swinging
@@ -377,7 +408,7 @@ for y in (7.95, 8.85):
     lv.prop('urinal', 21.19, y, 270)                    # on the west wall
 lv.prop('sink', 23.7, 9.0, 90)
 lv.prop('tube_light', 23.93, 8.15, 90)                  # between the stall and the sink
-lv.prop('trash_can', 21.4, 10.5, tips=False)
+lv.prop('trash_can', 21.4, 10.5, tips=False, flies=True)    # two flies over it
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
@@ -393,6 +424,11 @@ lv.prop('floor_lamp', 25.4, 10.55)
 lv.prop('cash_case', 30.2, 10.45, 84, clutter='cash_floor')                  # the boss's takings, open on the floor in front of the man
                                                         # who counts them
 lv.prop('extinguisher', 25.9, 10.86, 180)              # on the wall by the door
+# the carpet trodden from the back door to the door of the gaming room, between the couch and the men's table, and
+# worn where the man on the couch rests his heels and under the boss's boots at his desk
+lv.wear_path(26.4, 6.3, 26.75, 10.2, 9)
+lv.grime_at('wear', 26.4, 9.9, r=9, d=5, grey=0.2)
+lv.grime_at('wear', 29.5, 6.9, r=8, d=5, grey=0.2)
 
 lv.area('the bar: counter along the north wall')
 # Walkways (the user: "no room to get through"): a man is drawn 26 px wide, so about 1.2 m of clear floor along every
@@ -445,6 +481,12 @@ lv.prop('chair', 28.35, 14.25, 180)
 lv.prop('bottle_shelf', 25.9, 12.16)
 lv.prop('cash_case', 28.8, 12.6, 15, clutter='cash_floor')
 lv.prop('wall_lamp', 30.91, 13.0, 90)
+# years of games: the carpet's pile trodden flat in a ring round the table where the chairs are pulled in and out, a
+# card and two chips gone under it and never picked up
+lv.grime_at('halo', 26.9, 14.25, r=35, w=7, d=-9, grey=0.2)
+lv.litter_at('card', 28.05, 15.4, 35)
+lv.litter_at('chip', 28.3, 15.15)
+lv.litter_at('chip', 25.95, 15.55)
 
 lv.area('the bar: what can be used')
 # the fire alarm east of the counter, by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
@@ -540,6 +582,19 @@ lv.grime('butts', 15, 6, 18, 10, 2)
 lv.grime('sticky', 15, 7, 18, 10, 1)
 lv.wear_path(21.5, 19.5, 17.8, 15.1)
 lv.wear_path(21.5, 19.5, 22.4, 12.3, 10)
+# the stools' feet and the heels hooked on the rail, along the counter's front; the toilets: the drain in the middle of
+# its floor, the damp round it, the way from the door to the urinals; the storeroom's drain under the sink's corner and
+# the way the stock goes, from the alley door to behind the counter; the liquor store: the way from its door to the
+# till, heels along the counter
+for x in (15.65, 16.75, 17.85, 18.95):
+    lv.grime_at('scuffs', x, 14.75, k=2.2)
+lv.grime_at('drain', 22.45, 9.3)
+lv.wear_path(22.5, 10.9, 21.8, 8.4, 8)
+lv.grime_at('drain', 18.0, 7.45, r=7)
+lv.wear_path(14.9, 8.5, 16.5, 10.7, 9)
+lv.wear_path(8.5, 19.8, 7.6, 19.1, 9)
+lv.grime('scuffs', 6, 19, 8, 19, 2)
+lv.grime('stain', 3, 17, 8, 19, 2, col='#3a3020')
 # the smoke of the night hanging under the lamps over the pool and the poker tables, and over the counter
 lv.smoke_haze(20.8, 16.9, 2.3, 0.1)
 lv.smoke_haze(26.9, 14.25, 1.9, 0.1)

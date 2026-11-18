@@ -21,13 +21,13 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
          8    X# west                                            X
          9    X#                <=====  the concourse  =====>          7 open  X
         10    X#                                                 X
-        11    X#         ##   ###  ##  ##    #####D#####D########X##D##D###L##X
-        12    X#         #8JUK #9TR #10#      #12lobb #13 LIQUIDSX#   #  #   #X
-        13    X#         #     #    #  #11 YD #       #          X#14 DOORS  #X
-        14    X#         ############  #      ##G#G#D##          X#   #  #   #X
-        15    X#         # 10 POWDER corridor #lit rm #          X#   #  #   #X
-        16    X#         #             #      #       #          X#   #  #   #X
-        17    X##########################    ##############D#####X############X
+        11    X#         ##   ###  ##  ##    #####D#####D########X#D#DD#L#DD##X
+        12    X#         #8JUK #9TR #10#      #12lobb #13 LIQUIDSX# 14 DOORS  #X
+        13    X#         #     #    #  #11 YD #       #          X# front hall#X
+        14    X#         ############  #      ##G#G#D##          X#D#D#D#D#D##X
+        15    X#         # 10 POWDER corridor #lit rm #          X# back hall #X
+        16    X#         #             #      #       #          X#          #X
+        17    X##########################    ##############D#####X###D####L###X
         18    X  sidewalk: the trapdoor (west end), the hydrant  X
         21    X  road: 17 VEHICLES (car, van, leaking car)       X
         25    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -44,7 +44,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
      7 TAKEDOWNS   the east wing, a dummy at everything a head can be driven into: a washroom (a toilet, a urinal, a
                    sink), a room (a table, a length of bar, a man with his face to the wall), and one in the open at
                    the concourse's end to take from behind or face to face; a 1911, a knife and a tire iron on the floor
-     8 JUKEBOX     a jukebox (E) in a niche
+     8 JUKEBOX     a jukebox (E) in a niche, and an arcade cabinet in its attract mode (bump it: it rings)
      9 TRAPDOOR    a trapdoor (E) in a niche, the other one on the sidewalk at the west end
     10 POWDER      an extinguisher on the wall of a dead-end corridor round a corner, a man (awake) at its far end; a
                    silenced Uzi at its mouth: hole it without a sound and walk up to him in the white
@@ -53,9 +53,12 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     12 POWER       a dim lobby, the fuse box on its wall, a lit room behind its windows (emergency lights over its door)
     13 LIQUIDS     a little bar on tiles: kegs behind the counter, the fire alarm and its sprinklers, a water pipe, two
                    dummies to bleed; the hydrant on the kerb outside, a car in the road whose tank leaks petrol
-    14 DOORS       three rooms behind three doors off the concourse's east end: a heavy one (a stall's light leaf
-                   inside), one on a closer, a locked one with its lamp (red / amber / green): ring its bell (E) and the
-                   man inside comes and turns his key; it shuts behind you on its closer and locks itself again
+    14 DOORS       every kind of door (data/doors.js) side by side, off the concourse's east end: in its wall a shop's
+                   glass door, the bar's double door, the emergency exit (locked, its lamp and EXIT sign: ring its bell,
+                   E, and the man inside comes and turns his key; it shuts behind you, bounces on its closer and locks
+                   itself again), the corridor's wired-glass fire doors; between the halls the toilets' swinging doors,
+                   staff, the boss's leather, the gaming room's green, a flat's; onto the sidewalk a plain wooden door
+                   and a reinforced locked one; a stall's light leaf in the back hall
     15 CUEBALL     level 1's boss (data/bosses.js, entities/Boss.js) in a room of his own beyond the concourse's
                    east end (cols 64-73, rows 7-11, its door at col 63, row 9), AWAKE: his name card and the camera on
                    first sight, his pump-action from the hip, the first hit (wounded, then berserk), the second (his
@@ -117,16 +120,22 @@ lv.put(38, 14, 'D')
 lv.fill(41, 12, 50, 16, '+')               # 13 LIQUIDS: a little bar on tiles, doors on the concourse and the sidewalk
 lv.put(42, 11, 'D')
 lv.put(45, 17, 'D')
-lv.fill(51, 11, 62, 17, '#')               # 14 DOORS: three rooms off the concourse's south wall, behind three doors
-lv.fill(52, 12, 54, 16, '.')               # a heavy one (and a stall's light leaf inside) ...
-lv.put(53, 11, 'D')
-lv.fill(56, 12, 57, 16, '.')               # ... one on a closer ...
-lv.put(56, 11, 'D')
-lv.fill(59, 12, 61, 16, '.')               # ... and a locked one with its lamp, a man inside with the key
-lv.put(60, 11, 'L')
-lv.door(53, 11, kind='reinforced')
-lv.door(56, 11, closer=True)
-lv.door(60, 11, closer=True, relock=4)
+lv.fill(51, 11, 62, 17, '#')               # 14 DOORS: every kind of door side by side, two halls behind two walls
+lv.fill(52, 12, 61, 13, '.')               # the front hall, off the concourse's south wall ...
+lv.fill(52, 15, 61, 16, '.')               # ... the back hall behind it
+lv.put(52, 11, 'D')                        # in the concourse's wall: a shop's glass door, the bar's double door,
+lv.fill(54, 11, 55, 11, 'D')               # the emergency exit (locked, its bell), the corridor's double fire door
+lv.put(57, 11, 'L')
+lv.fill(59, 11, 60, 11, 'D')
+for x in (52, 54, 56, 58, 60):             # between the halls: the swinging doors, staff, the boss's, the gaming
+    lv.put(x, 14, 'D')                     # room's, a flat's
+lv.put(54, 17, 'D')                        # onto the sidewalk: the plain wooden door, a reinforced locked one
+lv.put(59, 17, 'L')
+for (x, y), kind in (((52, 11), 'shop'), ((54, 11), 'bar'), ((59, 11), 'wired'), ((52, 14), 'swing'),
+                     ((54, 14), 'staff'), ((56, 14), 'office'), ((58, 14), 'gaming'), ((60, 14), 'flat'),
+                     ((54, 17), 'wood'), ((59, 17), 'reinforced')):
+    lv.door(x, y, kind=kind)
+lv.door(57, 11, kind='fire', inside='s', relock=4)
 lv.fill(64, 6, 74, 12, '#')                # 15 CUEBALL: his room beyond the concourse's east end, behind a door
 lv.fill(64, 7, 73, 11, ';')
 lv.put(63, 9, 'D')
@@ -242,6 +251,7 @@ for x, kind in ((55.5, 'pistol'), (56.3, 'knife'), (57.1, 'tire_iron')):
 lv.area('8 jukebox')
 lv.paint('label_jukebox', 14.5, 10.65)
 lv.prop('jukebox', 14.5, 13.64, 180)
+lv.prop('arcade', 16.5, 12.4, 90)                            # its screen plays by itself (render/PropLife.js)
 lv.prop('chair', 12.6, 12.6, 20)
 lv.prop('wall_lamp', 16.0, 13.92, 180)
 
@@ -300,16 +310,17 @@ lv.actor('u', 44, 15, face=90)
 lv.prop('hydrant', 43.5, 19.62)            # on the kerb: the water runs down the gutter
 
 lv.area('14 doors')
-# the doors (src/game/data/doors.js): their weight when walked into, kicked, shot; E opens and closes one; the closer
+# the doors (src/game/data/doors.js): their weight when walked into, kicked, shot; the closer
 # swings its door back shut and latches it; the locked one's lamp is red. Ring its bell (E): the man inside comes,
 # turns his key (the lamp amber, then green) and goes back; walk in, the closer shuts it behind you and it locks
 # itself again a few seconds later (red)
-lv.paint('label_doors', 56.5, 10.65)
-lv.leaf(52.1, 14.5, 0, 24)                                   # a toilet stall's light leaf on the west wall
-lv.actor('m', 60, 15, face=270)                              # the man with the key, at his post
-lv.buzzer(61.6, 10.75, door=(60, 11), guard=(60, 15))        # the bell by the locked door
-for x in (53.5, 56.5, 60.0):
-    lv.prop('ceiling_lamp', x, 14.0)
+lv.paint('label_doors', 55.0, 10.65)
+lv.leaf(61.9, 15.5, 180, 24)                                 # a toilet stall's light leaf on the back hall's east wall
+lv.actor('m', 57, 13, face=270)                              # the man with the emergency exit's key, at his post
+lv.buzzer(58.4, 10.75, door=(57, 11), guard=(57, 13))        # the bell by it
+for x in (53.0, 56.5, 60.0):
+    lv.prop('ceiling_lamp', x, 12.6)
+    lv.prop('ceiling_lamp', x, 15.6)
 
 lv.area('15 cueball')
 # level 1's boss, awake (he fights: his card, his pump-action, the two hits), in a room behind a door so that he is

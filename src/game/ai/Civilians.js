@@ -378,9 +378,10 @@ export function hideRoute(map, sx, sy, danger, seen, taken = new Set(), reach = 
 }
 
 // The ground as a passer-by sees it: the level's path grid plus the fixed furniture he cannot get over (a bench, a
-// stall, a gate panel), which the guards' grid leaves open (they vault it). A view of the TileMap: its walls and
-// size, its own `blocked`. props: the world's.
-export function groundOf(map, props) {
+// stall, a gate panel) and the frames of broken windows, which the guards' grid leaves open (they vault them). A view
+// of the TileMap: its walls and size, its own `blocked`. props, windows: the world's (a window torn out of the wall
+// is gone from the list: a hole anyone walks through).
+export function groundOf(map, props, windows = []) {
   const g = Object.create(map), W = map.w, H = map.h;
   g.blocked = map.blocked.slice();
   g.isBlocked = (cx, cy) => cx < 0 || cy < 0 || cx >= W || cy >= H || g.blocked[cy * W + cx] === 1;
@@ -388,6 +389,7 @@ export function groundOf(map, props) {
     const b = p.body;
     if (!p.dead && b?.isStatic && !p.def?.hung && !p.def?.overhead && (b.collisionFilter.mask & CAT.CHAR)) markBlocked(g, p);
   }
+  for (const w of windows) g.blocked[w.cy * W + w.cx] = 1;
   return g;
 }
 

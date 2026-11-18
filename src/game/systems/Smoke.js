@@ -18,17 +18,15 @@ import { TILE, BODY_SCALE, AMBIENCE } from '../Config.js';
 import { SMOKE } from '../data/atmosphere.js';
 import { GESTURES, exhale } from '../ai/Pastimes.js';
 import { WALKER } from '../ai/Civilians.js';
-import { seeded } from './Weather.js';
-import { angDiff } from '../../engine/math.js';
+import { angDiff, seeded, lerpRange } from '../../engine/math.js';
 import Fluid from '../../engine/physics/Fluid.js';
 
 const { Body } = Matter;
-const mix = (r, k) => r[0] + (r[1] - r[0]) * k;
 const tmp = { x: 0, y: 0 };
 const ROOM = 0, OPEN = 1; // the fluid's places
 
 // what a character is smoking right now: 'cig', 'cigar' or null
-export function smoking(ch) {
+function smoking(ch) {
   if (!ch.alive) return null;
   if (ch.mouth) return 'cigar'; // left clamped in his teeth
   if (ch.isCivilian && ch.brain?.state !== WALKER.STOP) return null; // up and running: it is gone
@@ -507,7 +505,7 @@ export default class Smoke {
     const T = this.rib, S = this.cfg.cig;
     if (T.n >= S.max) return;
     const i = T.n++;
-    T.x[i] = x; T.y[i] = y; T.age[i] = 0; T.life[i] = mix(S.life, this.rand()); T.a[i] = alpha; T.seed[i] = seed;
+    T.x[i] = x; T.y[i] = y; T.age[i] = 0; T.life[i] = lerpRange(S.life, this.rand()); T.a[i] = alpha; T.seed[i] = seed;
   }
 
   // the points of the threads ride the air and sway; what they lose as they fade goes into the layer

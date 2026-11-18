@@ -1,11 +1,10 @@
 // Canvas side of destruction: paints marks into a prop's own damage canvas (so they stay attached when it moves),
 // cuts pieces out of it along polygons, and draws the small loose bits (balls, books, records...).
 // Shapes and sizes are decided by systems/Fracture.js.
-import { rand, chance } from '../../engine/math.js';
+import { TAU, rand, chance } from '../../engine/math.js';
 import { spotStamp, stampImage } from './BloodArt.js';
 
 const INK = '#0d0710';
-const TAU = Math.PI * 2;
 // rim colour of a fresh hole / torn edge, per material
 const RIM = { wood: '#d8a870', metal: '#eef2fa', glass: '#f0fcff', ceramic: '#ffffff', plastic: '#8a8490', fabric: '#f2ece0', stone: '#d8d0c4' };
 // what shows through a hole: the dark inside of a box, the shade under a top (fabric: the stuffing)

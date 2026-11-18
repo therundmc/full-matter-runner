@@ -13,7 +13,7 @@ const { setKg } = await load('engine/physics/Body.js');
 const { leafInertia, pushLeaf, swing } = await load('engine/physics/Hinge.js');
 const { STEP } = await load('engine/physics/Units.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
-const { doorLeaves, LEAF } = await load('game/world/Openings.js');
+const { doorLeaves } = await load('game/world/Openings.js');
 const { default: Door } = await load('game/entities/Door.js');
 const { default: Doors } = await load('game/systems/Doors.js');
 const { default: Uses } = await load('game/systems/Uses.js');
@@ -91,7 +91,8 @@ test('hinge: the same push gets a heavier leaf going slower, and it slows to a s
     let w = 2.5 * STEP, rel = 0.3, prev = w, n = 0;
     while (w > 0 && n++ < 600) { rel += w; w = swing(w, rel, I, DT, kinds[k]); assert.ok(w <= prev && w >= 0, 'only ever slower'); prev = w; }
     assert.equal(w, 0, `${k} comes to rest`);
-    assert.ok(n < 120 && rel - 0.3 < 1.2, `${k}: stopped in ${n} steps, ${(rel - 0.3).toFixed(2)} rad on`);
+    // a touch of inertia: it goes on a while, but stops well short of a flap
+    assert.ok(n < 100 && rel - 0.3 > 0.6 && rel - 0.3 < 1.5, `${k}: stopped in ${n} steps, ${(rel - 0.3).toFixed(2)} rad on`);
   }
   // a stall's leaf is easy, a reinforced one hard
   const stall = leafInertia(kinds.stall.kg, -3, len, 6);
@@ -146,7 +147,7 @@ test('closer: it swings the door back shut within its time and latches, unless s
   assert.ok(shutAt !== null && shutAt > 1.2 && shutAt < 2.5, `shut after ${shutAt} s`);
   assert.equal(d.rel, 0);
   assert.ok(w.heard.includes('doorLatch') && w.heard.includes('doorCloserHiss'));
-  assert.equal(d.isOpen(), false);
+  assert.ok(d.latched);
   // a man in its arc: it comes to rest against him and stays open
   const w2 = world(), d2 = door(w2, { closer: true }), sys2 = new Doors(w2);
   openAt(d2, 1.5);
@@ -167,33 +168,30 @@ test('closer: it swings the door back shut within its time and latches, unless s
   assert.ok(Math.abs(d4.rel - 1.2) < 1e-6);
 });
 
-test('E at a door: shut it swings open away from him, open he pulls it to; the HUD says which', () => {
-  const w = world(), d = door(w), sys = new Doors(w), c = walker(w, d.hx + 14, d.hy + 16); // south of the leaf
-  const spot = w.uses.near(c);
-  assert.equal(spot?.door, d, 'the door is in reach');
-  assert.equal(w.uses.label(spot), 'OPEN DOOR');
-  spot.use(c);
-  assert.equal(c.doorHand?.door, d, 'his hand on it');
-  run(w, sys, 1.5, () => c.stand());
-  assert.ok(d.rel < -1, `swung away from him, to the north (${d.rel})`);
-  assert.equal(w.uses.label(spot), 'CLOSE DOOR');
-  // gone through, he turns and pulls it to: he steps back out of its way, it comes shut and latches
-  Body.setPosition(c.body, { x: d.hx + 14, y: d.hy - 14 });
-  assert.equal(w.uses.near(c), spot, 'in reach of the open leaf');
-  spot.use(c);
-  run(w, sys, 2, () => c.stand());
-  assert.ok(d.latched && d.rel === 0, `shut (${d.rel})`);
-  assert.ok(c.y < d.hy - LEAF.thick / 2 - PLAYER.radius + 1, 'never through the leaf');
-  assert.equal(w.uses.label(spot), 'OPEN DOOR');
-  // a weapon in his reach comes first: E picks it up
-  assert.equal(spot.ok({ ...c, nearItem: {} }), false);
-  // a device in reach too (the jukebox by the door): E works it, not the door
-  const box = w.uses.add({ x: c.x + 20, y: c.y, label: 'TURN UP', use() {} });
-  assert.equal(w.uses.near(c), box);
-  w.uses.spots.pop();
-  // never a locked door
-  d.lock();
-  assert.equal(w.uses.near(c), null);
+test('door: a man against the wall on the far side, by the hinge, never flips the open leaf through the wall to him', () => {
+  // (QA level 1 61053: the bar's front door at 30,20 found 2 rad open, past its stop, the bot sneaking by it outside)
+  for (const ox of [-20, -14, -8, -4, 2]) {
+    const w = world(), d = door(w), sys = new Doors(w), c = walker(w, d.hx + ox, d.hy + 26);
+    openAt(d, -0.9);
+    d.setSpin(-0.04); // swinging on open, away from him, toward its stop on the north side
+    let worst = -Infinity, prev = d.rel, jump = 0;
+    run(w, sys, 1.5, () => {
+      c.stand();
+      worst = Math.max(worst, d.rel);
+      jump = Math.max(jump, Math.abs(d.rel - prev));
+      prev = d.rel;
+    });
+    assert.ok(worst <= 0, `${ox}: the leaf stayed on its own side (${worst.toFixed(2)})`);
+    assert.ok(jump < 0.2, `${ox}: no jump (${jump.toFixed(2)} rad in a step)`);
+    assert.ok(Math.abs(d.rel) <= d.limit() + 1e-6, `${ox}: within its stop (${d.rel.toFixed(2)})`);
+  }
+});
+
+test('doors: no E on a door (pushed open, its closer shuts it); E is only for the lab\'s doorbell', () => {
+  const w = world();
+  door(w); door(w, { closer: true });
+  new Doors(w);
+  assert.equal(w.uses.spots.length, 0);
 });
 
 test('lock lamp: red locked, amber while a guard turns his key, green once it turned, green after a burst too', () => {
@@ -226,4 +224,58 @@ test('lock lamp: red locked, amber while a guard turns his key, green once it tu
   // a plain door has no lamp
   const w2 = world();
   assert.equal(door(w2).lamp(), null);
+});
+
+test('closer: as it comes shut it overshoots a few degrees, settles in a swing or two, then latches', () => {
+  const w = world(), d = door(w, { closer: true }), sys = new Doors(w);
+  openAt(d, 1.2);
+  let crossings = 0, prev = d.rel, over = 0, latchedAt = null;
+  run(w, sys, 4, () => {
+    const r = d.rel;
+    if (r && prev && Math.sign(r) !== Math.sign(prev)) crossings++;
+    if (crossings && !d.latched) over = Math.max(over, Math.abs(r));
+    if (r) prev = r;
+    if (latchedAt === null && d.latched) latchedAt = w.time;
+  });
+  assert.ok(crossings >= 1 && crossings <= 4, `swung through shut ${crossings} times`);
+  assert.ok(over > 0.02 && over < 0.15, `overshot ${(over * 57.3).toFixed(1)} degrees`);
+  assert.ok(latchedAt !== null && latchedAt < 3.2 && d.rel === 0, `latched at ${latchedAt}`);
+});
+
+test('swinging doors: a pair of half-leaves pushed either way, back to the middle in a few swings, never latched', () => {
+  const pair = (w) => doorLeaves(5, 3, 1, true, true).map((l) => {
+    const d = new Door(w, l.hx, l.hy, l.angle, l.len, { kind: 'swing', cells: [3 * w.map.w + 5] });
+    w.doors.push(d);
+    return d;
+  });
+  for (const from of [1, -1]) {                       // from the south, then from the north
+    const w = world(), [a, b] = pair(w), sys = new Doors(w);
+    assert.ok(a.len < 16 && b.len < 16 && a.closer && !a.latched, 'two short leaves on springs');
+    const c = walker(w, 5.5 * 32, 3.5 * 32 + from * 30);
+    let most = 0, way = 0;
+    run(w, sys, 0.6, () => { c.steer(0, -from, PLAYER.speed * 0.5); if (Math.abs(a.rel) > most) { most = Math.abs(a.rel); way = Math.sign(a.rel); } });
+    assert.ok(most > 0.8, `pushed open ${most}`);
+    // a leaf along +x (a0 0) opens toward -y (rel < 0) pushed from the south, toward +y from the north
+    assert.equal(way, -from, 'away from whoever pushed it');
+    Body.setPosition(c.body, { x: 9 * 32, y: 1.5 * 32 }); c.stand();
+    let crossings = 0, prev = a.rel;
+    run(w, sys, 5, () => { if (a.rel && prev && Math.sign(a.rel) !== Math.sign(prev)) crossings++; if (a.rel) prev = a.rel; });
+    assert.ok(crossings >= 2, `swung back through the middle ${crossings} times`);
+    assert.ok(Math.abs(a.rel) < 0.08 && Math.abs(b.rel) < 0.08 && !a.latched, `back to the middle (${a.rel}, ${b.rel})`);
+  }
+});
+
+test('kinds: each its sprite and weight; the emergency exit on a closer with its EXIT sign; glass that breaks', () => {
+  const w = world();
+  const fire = door(w, { kind: 'fire', inside: [0, 1] }), plain = door(w), bar = door(w, { kind: 'bar' });
+  assert.ok(fire.kg > plain.kg && fire.closer && !plain.closer && bar.closer);
+  const sign = fire.lights().find((l) => l.color === DOORS.exit.color);
+  assert.ok(sign && sign.y > fire.hy, 'the EXIT sign glows on the room side');
+  assert.equal(fire.lights().length, 1, 'no lock, no lamp');
+  // a round through the porthole breaks its glass; one through the wood does not
+  const sAt = (x) => ({ x: bar.hx + x, y: bar.hy });
+  bar.hit(sAt(24).x, sAt(24).y, -Math.PI / 2, 1, 'bullet');
+  assert.equal(bar.glassBroken, false);
+  bar.hit(sAt(9).x, sAt(9).y, -Math.PI / 2, 1, 'bullet');
+  assert.ok(bar.glassBroken && w.heard.includes('glass'));
 });

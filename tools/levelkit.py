@@ -27,6 +27,8 @@ SOLID = set(' #X')
 WALLS = set('#X')
 OPENINGS = set('DLGF')
 GUARDS = set('pushrbkmji')
+# the kinds of door (keep in step with DOORS.kinds in src/game/data/doors.js)
+DOOR_KINDS = ('wood', 'reinforced', 'stall', 'fire', 'bar', 'swing', 'staff', 'office', 'gaming', 'flat', 'wired', 'shop')
 
 # hitboxes in px (keep in sync with src/game/data/props.js and Vehicle.js)
 # None = hangs from the ceiling / sits on a wall: never in the way
@@ -50,6 +52,7 @@ SIZES = dict(
     frame_photo=None, frame_gold=None, poster_fight=None, poster_band=None, dartboard=None, pay_phone=None,
     coat_hooks=None, towel_dispenser=None, neon_sign_beer=None, neon_sign_bay=None,
     poster_pinup=None, poster_revue=None, mirror_strip=None, neon_sign_lips=None, cocktail_table=(24, 24),
+    conduit=None, flyers=None,
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
@@ -63,11 +66,11 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
                fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26, frame_photo=10, frame_gold=12, poster_fight=14,
                poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24,
-               poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22)
+               poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22, conduit=46, flyers=24)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
-         'trapdoor', 'rug', 'entry_mat', 'bed')
+         'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
@@ -122,7 +125,7 @@ class Level:
         self.bars = []        # barred windows [col, row] (entities/Window.js `barred`)
         self.leaves = []      # free door leaves [col, row, deg, length, sprite] (a stall's door)
         self.buzzers = []     # doorbells: { at: [col, row], door: [x, y], guard: [x, y] } (src/game/systems/Doors.js)
-        self.doors = {}       # 'x,y' of a door tile -> its options: closer (a hydraulic arm shuts it), kind (data/doors.js)
+        self.doors = {}       # 'x,y' of a door tile -> its options: kind (data/doors.js), closer, relock, inside
         self.facing = {}
         self.patrols = {}
         self.jobs = {}        # 'x,y' -> pastime of the guard posted there (src/game/ai/Pastimes.js)
@@ -250,13 +253,18 @@ class Level:
     def leaf(self, col, row, deg, length, sprite='structure/stall_door'):
         self.leaves.append([*self.at(col, row), deg, length, sprite])
 
-    # options of the door on tile (x, y) ('D' or 'L', any tile of its run): closer=True, a hydraulic arm swings it
-    # back shut (src/game/entities/Door.js); kind: its weight, a kind of src/game/data/doors.js (default: by sprite);
-    # relock: s shut after which a locked door locks itself again (never on a door the guards must get through)
+    # options of the door on tile (x, y) ('D' or 'L', any tile of its run): kind, one of DOOR_KINDS (its skin, its
+    # weight, its fittings: src/game/data/doors.js); closer=True / False over its kind's (a hydraulic arm swings it
+    # back shut); relock: s shut after which a locked door locks itself again (never on a door the guards must get
+    # through); inside: the room side, 'n' / 's' / 'e' / 'w' (an exit's EXIT sign; the side a closer is fitted on)
     def door(self, x, y, **opt):
         x, y = self.tile(x, y, 'door')
         assert self.tiles[y][x] in 'DL', f'no door at {x},{y}'
-        assert set(opt) <= {'closer', 'kind', 'relock'}, f'door options {sorted(opt)}'
+        assert set(opt) <= {'closer', 'kind', 'relock', 'inside'}, f'door options {sorted(opt)}'
+        assert opt.get('kind', 'wood') in DOOR_KINDS, f'door kind {opt.get("kind")}'
+        assert not (opt.get('kind') == 'swing' and self.tiles[y][x] == 'L'), 'a swinging door never locks'
+        if 'inside' in opt:   # the room side ('n', 's', 'e', 'w'): an EXIT sign hangs there
+            opt['inside'] = {'n': [0, -1], 's': [0, 1], 'e': [1, 0], 'w': [-1, 0]}[opt['inside']]
         self.doors[f'{x},{y}'] = opt
 
     # a doorbell at (col, row): E rings it, the guard posted at `guard` (col, row) comes and unlocks the locked door

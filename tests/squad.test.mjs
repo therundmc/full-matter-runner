@@ -69,14 +69,16 @@ test('surrender: on his knees, he waits for the player to turn his back, then a 
 });
 
 // ---------------- a real guard in a bare world ----------------
-// one long room; no physics engine: velocities are applied by hand
-async function room() {
+// one long room (or the rows given); no physics engine: velocities are applied by hand
+async function room(plan = null) {
   globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
   const { default: Enemy } = await load('game/entities/Enemy.js');
   const { default: Director } = await load('game/ai/Director.js');
-  const rows = ['##################################'];
-  for (let i = 0; i < 6; i++) rows.push('#' + '.'.repeat(32) + '#');
-  rows.push(rows[0]);
+  const rows = plan ? [...plan] : ['##################################'];
+  if (!plan) {
+    for (let i = 0; i < 6; i++) rows.push('#' + '.'.repeat(32) + '#');
+    rows.push(rows[0]);
+  }
   const map = new TileMap(rows);
   const events = new EventBus();
   const world = {
@@ -189,6 +191,53 @@ test('backup: alone and outgunned at contact, he runs to the others, sends them 
   // one roll per guard
   e.setState('combat');
   assert.equal(withRandom(0, () => e.callOut()), false);
+});
+
+test('a guard on his way back to his post, a mate standing in the only way: he gives it up a while, then gets there once it is clear', async () => {
+  // a corridor one tile wide (behind a bar counter): no way round the man at his post in it
+  const { world, add, make } = await room(['############', '#..........#', '############']);
+  world.player.x = 1e4; // out of the way
+  world.windows = [];
+  const walker = add(2, 'brute', 'bat', 1), blocker = add(5, 'brute', 'bat', 1);
+  make();
+  const row = walker.y;
+  walker.home = { x: (9 + 0.5) * TILE, y: row, angle: 0 };
+  for (const e of [walker, blocker]) e.perceive = () => {};
+  const calls = [];
+  const travel = walker.travel;
+  walker.travel = function (...a) { calls.push(world.time); return travel.apply(this, a); };
+  // the walls and the man hold him: kept in the corridor, never through his mate
+  const step = (s) => {
+    for (let t = 0; t < s; t += 1 / 60) {
+      world.time += 1 / 60;
+      world.director.budgetLeft = AI.planBudget; // (Director.update, per step)
+      for (const e of world.enemies) {
+        if (!e.alive) continue;
+        e.update(1 / 60);
+        const v = Matter.Body.getVelocity(e.body);
+        let x = e.x + v.x, y = Math.min(row + 6, Math.max(row - 6, e.y + v.y));
+        const o = world.enemies.find((m) => m !== e && m.alive);
+        const d = o ? Math.hypot(x - o.x, y - o.y) : 99;
+        if (d < 20 && e === walker) { x = o.x + ((x - o.x) / (d || 1)) * 20; y = o.y + ((y - o.y) / (d || 1)) * 20; }
+        Matter.Body.setPosition(e.body, { x, y });
+      }
+    }
+  };
+  // the robot's guard-stuck measure: asked to walk (travel called in the last 0.25 s) and not 6 px off a spot
+  let anchor = null, worst = 0;
+  for (let t = 0; t < 30; t += 0.05) {
+    step(0.05);
+    const asked = calls.length && world.time - calls[calls.length - 1] < 0.25;
+    if (!asked || !anchor || Math.hypot(walker.x - anchor.x, walker.y - anchor.y) > 6) { anchor = asked ? { x: walker.x, y: walker.y, t: world.time } : null; continue; }
+    worst = Math.max(worst, world.time - anchor.t);
+  }
+  assert.ok(walker.x < blocker.x, 'he never got through his mate');
+  assert.ok(worst < 6, `never walking on the spot into his mate for long (${worst.toFixed(1)} s)`);
+  // his mate moves off: he gets to his post
+  blocker.alive = false;
+  world.chars = world.chars.filter((c) => c !== blocker);
+  step(20);
+  assert.ok(Math.hypot(walker.x - walker.home.x, walker.y - walker.home.y) < 14, `at his post (${Math.round(walker.x)})`);
 });
 
 test('backup: with his mates in earshot, and armed like the player, he stands and fights', async () => {

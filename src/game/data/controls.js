@@ -27,14 +27,12 @@ export const ACTIONS = {
   action: { kbm: 'SPACE', pad: 'A' },
   reload: { kbm: 'R', pad: 'Y' },
   pause: { kbm: 'ESC', pad: 'START' },
-  choose: { kbm: 'ARROWS', pad: 'DPAD' },
   confirm: { kbm: 'ENTER', pad: 'A' },
-  back: { kbm: 'ESC', pad: 'B' },
   restart: { kbm: 'R', pad: 'A' },
   retry: { kbm: 'R', pad: 'Y' },
 };
 
-export const isPad = (device) => device === 'pad';
+const isPad = (device) => device === 'pad';
 
 // the cap of an action for a device; an unknown action is shown as it is written
 export const keyLabel = (action, device) => ACTIONS[action]?.[isPad(device) ? 'pad' : 'kbm'] ?? action;

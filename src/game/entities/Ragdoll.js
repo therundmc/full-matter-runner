@@ -1,11 +1,11 @@
 import { CAT, MASK, PALETTE, BODY_SCALE, TILE } from '../Config.js';
 import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
-import { rand, randi, chance, local, angDiff } from '../../engine/math.js';
+import { rand, randi, chance, local, angDiff, smooth } from '../../engine/math.js';
 import { setMaterial, impulse, kgOf } from '../../engine/physics/Body.js';
 import { woundFor, markOf, BODY, CRAWL, SPASM, CURL, THROES, KNEELS } from '../data/wounds.js';
 import { startBleeding, bleedOut, wipe, squirt } from '../fx/Bleeding.js';
 import { smear } from '../fx/Spatter.js';
-import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir, smooth } from '../fx/CrawlPose.js';
+import { crawlPlan, crawlPose, lastPose, pullAt, travelAt, escapeDir } from '../fx/CrawlPose.js';
 import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from '../fx/DyingPose.js';
 import { jointAngle, clampJoint, partAngle } from '../fx/Joints.js';
 import { bodyMarks, markAt } from '../fx/BodyMarks.js';
@@ -25,8 +25,9 @@ const TURNS = [0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3, Math.PI];
 // floor his slide crosses to get there, [fixed, x his speed]; fast, near, early: a body sent flying later (a blast)
 // that hits a wall going faster than `fast` px/step with the wall `near` px ahead of his torso, within `early` s of
 // his death; back: px of his torso's centre off the wall; arch: how short his torso shows seen from above, sat up;
-// slump: px his head comes down over his chest; slam: s he takes to be thrown against it
-const SIT = { speed: 35, reach: [14, 0.4], fast: 2.2, near: 20, early: 1.0, back: 11, arch: 0.55, slump: 3, slam: 0.16 };
+// slump: px his head comes down over his chest; slam: s he takes to be thrown against it; turn: rad at most his torso
+// turns on the way (one that reaches the wall feet or side first does not sit: the slam would whip him round)
+const SIT = { speed: 35, reach: [14, 0.4], fast: 2.2, near: 20, early: 1.0, back: 11, arch: 0.55, slump: 3, slam: 0.16, turn: 1.9 };
 const MARKS_MAX = 12; // wounds shown on one body (a corpse can be shot again and again)
 // the stump of a torn limb pumps: s it lasts, beats per s (rad/s of the beat), how hard it throws at first (0 to 1)
 const STUMP = { dur: 2.6, rate: 11, jet: 0.75 };
@@ -190,10 +191,10 @@ export default class Ragdoll {
   }
 
   // A limp body, after each physics step: every part held within what its joint allows (BODY.joints; a part that
-  // reaches the end of it stops there and goes on with the torso), and what is left of a swing taken out of him
+  // reaches the end of it stops there and goes on with the torso: lock), and what is left of a swing taken out of him
   // (BODY.damp): the parts turn and move more and more as one, so he drops and stays instead of flailing.
   limp(dt) {
-    const t = this.torso.body, ta = t.angle, wt = Body.getAngularVelocity(t), vt = Body.getVelocity(t);
+    const t = this.torso.body, ta = t.angle;
     const ks = 1 - Math.exp(-BODY.damp.spin * dt), kv = 1 - Math.exp(-BODY.damp.slide * dt);
     const on = this.parts.filter((p) => p.attached);
     let m = 0, vx = 0, vy = 0;
@@ -206,13 +207,35 @@ export default class Ragdoll {
       const b = p.body;
       if (p !== this.torso) {
         const left = p.jt.x < 0 && p !== this.head, a = jointAngle(ta, b.angle, left), c = clampJoint(a, RANGE[p.name]);
-        if (c !== a && this.hold(p, partAngle(ta, c, left))) {
-          Body.setVelocity(b, { x: vt.x - wt * (b.position.y - t.position.y), y: vt.y + wt * (b.position.x - t.position.x) });
-          Body.setAngularVelocity(b, wt);
-        } else Body.setAngularVelocity(b, Body.getAngularVelocity(b) + (wt - Body.getAngularVelocity(b)) * ks);
+        if (c !== a && this.hold(p, partAngle(ta, c, left))) this.lock(b);
+        else {
+          const wt = Body.getAngularVelocity(t);
+          Body.setAngularVelocity(b, Body.getAngularVelocity(b) + (wt - Body.getAngularVelocity(b)) * ks);
+        }
       }
       const v = Body.getVelocity(b);
       Body.setVelocity(b, { x: v.x + (vx - v.x) * kv, y: v.y + (vy - v.y) * kv });
+    }
+  }
+
+  // a part at the end of its joint's range and the torso move on as one rigid piece: their momentum and their spin
+  // about their centre shared, never added to (handed the torso's turn for nothing, the legs of a body wedged
+  // between a counter and a back bar pumped him round and round: QA level 1 seed 61563)
+  lock(b) {
+    const t = this.torso.body, both = [t, b], M = t.mass + b.mass;
+    const vs = both.map((q) => Body.getVelocity(q));
+    const cx = (t.position.x * t.mass + b.position.x * b.mass) / M, cy = (t.position.y * t.mass + b.position.y * b.mass) / M;
+    const V = { x: (vs[0].x * t.mass + vs[1].x * b.mass) / M, y: (vs[0].y * t.mass + vs[1].y * b.mass) / M };
+    let L = 0, I = 0;
+    both.forEach((q, i) => {
+      const rx = q.position.x - cx, ry = q.position.y - cy;
+      L += q.inertia * Body.getAngularVelocity(q) + q.mass * (rx * (vs[i].y - V.y) - ry * (vs[i].x - V.x));
+      I += q.inertia + q.mass * (rx * rx + ry * ry);
+    });
+    const w = L / I;
+    for (const q of both) {
+      Body.setVelocity(q, { x: V.x - w * (q.position.y - cy), y: V.y + w * (q.position.x - cx) });
+      Body.setAngularVelocity(q, w);
     }
   }
 
@@ -401,7 +424,7 @@ export default class Ragdoll {
     const cell = (v, d) => (Math.floor(v / TILE) + (d < 0 ? 1 : 0)) * TILE;
     const x = ax ? cell(probe.x, sx) - sx * SIT.back : t.position.x, y = ax ? t.position.y : cell(probe.y, sy) - sy * SIT.back;
     const out = Math.atan2(-sy, -sx); // from the wall into the room
-    if (!this.clear(x, y, out, 4, 30)) return;
+    if (Math.abs(angDiff(t.angle, out + 1.5 * Math.PI)) > SIT.turn || !this.clear(x, y, out, 4, 30)) return;
     this.sitDown(x, y, out + 1.5 * Math.PI, { x: x - sx * (SIT.back - 2), y: y - sy * (SIT.back - 2) });
   }
 

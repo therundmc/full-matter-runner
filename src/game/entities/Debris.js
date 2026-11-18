@@ -8,7 +8,7 @@ import { touchdown } from '../fx/Casings.js';
 const { Bodies, Body } = Matter;
 
 const MAX_AGE = 7;
-const GRAVITY = 520; // px/s² of fake height (pieces thrown up arc and land)
+const GRAVITY = 520; // px/s2 of fake height (pieces thrown up arc and land)
 
 // how pieces drag on the floor by material: meat sticks, glass and brass skitter, rubber rolls
 const MATERIAL_MU = { flesh: 1.1, glass: 0.55, brass: 0.35, rubber: 0.3, metal: 0.75, concrete: 1, wood: 0.9 };

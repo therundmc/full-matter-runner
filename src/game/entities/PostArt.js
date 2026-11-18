@@ -5,10 +5,9 @@
 // come from tools/generate_assets.py (`items/`), drawn in code when the sprite is missing.
 import { PALETTE } from '../Config.js';
 import { spriteOpt } from '../../engine/Assets.js';
-import { clamp, lerp } from '../../engine/math.js';
+import { lerp, smooth } from '../../engine/math.js';
 import { DEAL, dealAngle, drawn, pageTurn, drag, MATCH_FALLS, TOSSED } from '../ai/Pastimes.js';
 
-const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 const CHIPS = ['#d8202a', '#2a62d8', '#f0ece0', '#1f8a3a'];
 
 function rect(ctx, x, y, w, h, color, ink = true) {
@@ -130,7 +129,7 @@ export function drawPost(ctx, A, g, k, pt, t, h, opts = {}) {
     case 'fetch': if (k > 0.5) bottle(ctx, hr.x + 1, hr.y, 0); break;
     case 'pour': {
       // the bottle tipped over the glass held in the other hand, a thread of drink between them
-      const tip = Math.min(1, k * 4) * (1 - ease((k - 0.85) / 0.15));
+      const tip = Math.min(1, k * 4) * (1 - smooth((k - 0.85) / 0.15));
       glass(ctx, hl.x + 1, hl.y);
       bottle(ctx, hr.x + 1, hr.y, -1.2 * tip);
       if (tip > 0.6) {
@@ -141,8 +140,8 @@ export function drawPost(ctx, A, g, k, pt, t, h, opts = {}) {
     }
     case 'serve': {
       // pushed along the counter, let go, it slides on alone and stops in front of the customer
-      const go = ease((k - 0.42) / 0.45);
-      glass(ctx, k < 0.42 ? hr.x + 1.5 : 14 + 8 * go, k < 0.42 ? hr.y : 1.5 - 1.5 * go, 1 - ease((k - 0.88) / 0.12));
+      const go = smooth((k - 0.42) / 0.45);
+      glass(ctx, k < 0.42 ? hr.x + 1.5 : 14 + 8 * go, k < 0.42 ? hr.y : 1.5 - 1.5 * go, 1 - smooth((k - 0.88) / 0.12));
       break;
     }
     case 'rag': rect(ctx, hr.x + 0.5, hr.y, 3.4, 2.8, '#e6e0d0'); break;
@@ -164,7 +163,7 @@ export function drawPost(ctx, A, g, k, pt, t, h, opts = {}) {
       // every card dealt lies where it went; the one of this beat flies there
       const beat = k * DEAL;
       for (let b = 0; b <= Math.min(DEAL - 1, Math.floor(beat)); b++) {
-        const a = dealAngle(b), u = b < Math.floor(beat) ? 1 : ease((beat - b - 0.2) / 0.6), r = 8 + 14 * u;
+        const a = dealAngle(b), u = b < Math.floor(beat) ? 1 : smooth((beat - b - 0.2) / 0.6), r = 8 + 14 * u;
         if (beat - b > 0.2) card(ctx, 6.5 + Math.cos(a) * r, 2 + Math.sin(a) * r, a + u * 3);
       }
       break;
@@ -233,7 +232,7 @@ export function drawPost(ctx, A, g, k, pt, t, h, opts = {}) {
     case 'strike': {
       // rasped along the strip, it takes with a flare that settles to a small flame
       matchbox(ctx, hl.x + 0.8, hl.y);
-      match(ctx, hr.x + 0.4, hr.y - 0.5, -0.4, k < 0.42 ? 0 : 1 + 1.2 * (1 - ease((k - 0.42) / 0.4)), t);
+      match(ctx, hr.x + 0.4, hr.y - 0.5, -0.4, k < 0.42 ? 0 : 1 + 1.2 * (1 - smooth((k - 0.42) / 0.4)), t);
       break;
     }
     case 'shield': {

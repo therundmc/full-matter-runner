@@ -11,9 +11,10 @@
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
+import { READABILITY } from '../data/readability.js';
 import { slamAt } from '../systems/Takedown.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW, sh as spriteH } from '../../engine/Assets.js';
-import { lerp, clamp, angDiff } from '../../engine/math.js';
+import { lerp, clamp, angDiff, smooth, bump, lerpA } from '../../engine/math.js';
 import { GAIT, stanceAt, reachAt, footAt, phaseOf, bodyAt } from './Gait.js';
 import { beginLimbs, flushLimbs, paintLeg, paintArm, drawHand } from '../render/LimbArt.js';
 import { cantedGun, cantPalm, CANT } from '../render/HandgunArt.js';
@@ -21,11 +22,7 @@ import { recoilAt } from './Recoil.js';
 import { stepLean } from './Facing.js';
 import { drawPhases, talkAt, talkHand } from './Gesture.js';
 
-export const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
-// 0 -> 1 -> 0 over [a, b]
-const bump = (k, a, b) => (k <= a || k >= b ? 0 : Math.sin((Math.PI * (k - a)) / (b - a)));
-const lerpA = (a, b, t) => a + angDiff(a, b) * t;
 
 const ARM = 11;           // how far the special poses (vault, ladder, sit...) let a hand go from its shoulder (px)
 const SHOULDER = 6;       // shoulders at torso-local (0, +-6)
@@ -86,7 +83,7 @@ export const muzzleX = (d, w) => w - MUZZLE_IN - d.grip; // from the hand along 
 // the hand's centre is under the slide, on the grip) or 0. In the fist (P.fist) a machine pistol is drawn canted
 // (render/HandgunArt.js), its side squashed toward the bore: the fist comes up with it.
 const canted = (d, fist) => fist && d.hide !== undefined;
-export const palmOf = (d, fist = false) => (canted(d, fist) ? cantPalm(d) : d.palm ?? 0);
+const palmOf = (d, fist = false) => (canted(d, fist) ? cantPalm(d) : d.palm ?? 0);
 
 // Where the muzzle is in pose P as it is drawn (pose px about the feet, world orientation; the caller scales by
 // BODY_SCALE) and the way the barrel points: drawWeapon's own transform applied to the muzzle point
@@ -1761,7 +1758,7 @@ function variantPose(f, what, u, td, d, V, C) {
 }
 
 export function takedownPose(ch, P, V) {
-  const td = ch.takedown, f = td.f, d = ch.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  const td = ch.takedown, f = td.f, d = td.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
   const [wait, what] = f.beats[td.i], u = td.done ? 1 : clamp(td.t / wait, 0, 1), D = td.d, side = td.side;
   const thud = Math.exp(-td.hit * 14), first = td.i === 0 && !td.done;
   const kick = td.done && what === 'shot' ? Math.exp(-td.t * 9) : 0;
@@ -2062,7 +2059,7 @@ export function riseDurAt(riseDur, knocked, dur) {
   return riseDur || (knocked <= dur ? knocked : 0);
 }
 // 0 .. 1 how far up he is
-export const riseOf = (ch) => (ch.riseDur > 0 && !ch.executing ? clamp(1 - ch.knocked / ch.riseDur, 0, 1) : 0);
+const riseOf = (ch) => (ch.riseDur > 0 && !ch.executing ? clamp(1 - ch.knocked / ch.riseDur, 0, 1) : 0);
 
 // Taken off his feet (fall 0 .. 1): the torso thrown along the blow, the head snapped round with it, the arms left
 // behind, the feet swept out toward whoever hit him.
@@ -2125,18 +2122,33 @@ const TMP = { x: 0, y: 0 };
 // canted, all that is in the fist taken out (render/HandgunArt.js); over the shoulders it casts a little shadow on them
 function drawWeapon(ctx, P, d, ta, at, shadow) {
   const src = (P.bare && spriteOpt(d.sprite + '_bare')) || sprite(d.sprite), k = src.k || 1, img = canted(d, P.fist) ? cantedGun(src, d) : src;
-  const len = drawnLen(P);
-  for (let i = shadow ? 0 : 1; i < 2; i++) {
+  const len = drawnLen(P), H = READABILITY.held, rim = d.swing ? H.melee : H.gun;
+  const place = (ox, oy) => {
     ctx.save();
-    ctx.translate(at.x + (i ? 0 : 1.5), at.y + (i ? 0 : 1.5));
+    ctx.translate(at.x + ox, at.y + oy);
     ctx.rotate(P.wpn.a - ta);
     ctx.scale(len * k, P.wpnS * k); // k: the weapon is a finer sprite (Assets.js `density`); d.grip is in world px
-    if (!i) ctx.globalAlpha *= 0.3;
-    if (i && P.magIn !== null) drawMagIn(ctx, P, d, k);
-    ctx.drawImage(i ? img : silhouette(img), -d.grip / k, -img.height / 2 - palmOf(d, P.fist) / k);
+  };
+  const x0 = -d.grip / k, y0 = -img.height / 2 - palmOf(d, P.fist) / k;
+  if (shadow) {
+    place(1.5, 1.5);
+    ctx.globalAlpha *= 0.3;
+    ctx.drawImage(silhouette(img), x0, y0);
     ctx.restore();
   }
+  // a dark rim round what is in his hands, so that it reads from above against a coat or a floor (data/readability.js)
+  for (const [ox, oy] of RIM) {
+    place(ox * H.px, oy * H.px);
+    ctx.globalAlpha *= rim;
+    ctx.drawImage(silhouette(img), x0, y0);
+    ctx.restore();
+  }
+  place(0, 0);
+  if (P.magIn !== null) drawMagIn(ctx, P, d, k);
+  ctx.drawImage(img, x0, y0);
+  ctx.restore();
 }
+const RIM = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
 // a magazine half in its well (P.magIn: world px of it still in), under the gun, in drawWeapon's frame (the gun's
 // sprite px): only what is out of the mouth is drawn, whole rows of it, so it stays crisp

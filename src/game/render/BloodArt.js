@@ -2,7 +2,7 @@
 // has a thickness (a film the floor shows through -> where it stands thick), generated once from seeded noise and
 // reused rotated by MapRenderer. Each stamp exists in three ages (wet crimson, tacky, dried brown-red).
 // The pools under the bodies are liquid on the floor (render/LiquidArt.js takes its blood colours from RAMPS).
-import { TAU } from '../../engine/math.js';
+import { TAU, pick, seeded } from '../../engine/math.js';
 
 const FILM = 1, THIN = 2, BODY = 3, DEEP = 4, CORE = 5;
 
@@ -16,16 +16,6 @@ export const RAMPS = [
 export const SPECK = ['#7e1214', '#680e10', '#8c1618'];
 
 const level = (t) => (t <= 0 ? 0 : t < 0.2 ? FILM : t < 0.45 ? THIN : t < 0.75 ? BODY : t < 0.92 ? DEEP : CORE);
-
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 // per-pixel noise in [0, 1)
 function hash(x, y, s) {
@@ -71,7 +61,7 @@ const depth = (r) => Math.min(1, 0.5 + r * 0.1);
 
 // a drop that fell straight: ragged, roundish
 function spot(r, seed) {
-  const rnd = rng(seed), edge = lobes(rnd, 0.4), n = Math.ceil(r * 1.6) + 1, top = depth(r);
+  const rnd = seeded(seed), edge = lobes(rnd, 0.4), n = Math.ceil(r * 1.6) + 1, top = depth(r);
   return build(n * 2, n * 2, n, n, (dx, dy, x, y) => {
     const d = Math.hypot(dx, dy) / (r * edge(Math.atan2(dy, dx)));
     return d >= 1 ? 0 : 0.14 + (1 - d) ** 0.7 * (top - 0.14) + (hash(x, y, seed) - 0.5) * 0.3;
@@ -81,7 +71,7 @@ function spot(r, seed) {
 // a drop that came in at an angle, travelling toward +x: an elongated stain, a thin wavering tail ahead of it and
 // one to three satellite droplets thrown off its tip
 function streak(w, len, seed) {
-  const rnd = rng(seed), edge = lobes(rnd, 0.3, 3);
+  const rnd = seeded(seed), edge = lobes(rnd, 0.3, 3);
   const a = len / 2, b = w / 2, top = depth(b + 0.6);
   const tail = a * (0.7 + rnd() * 0.9), ph = rnd() * TAU, wob = 0.25 + rnd() * 0.35;
   const sats = [];
@@ -107,7 +97,7 @@ function streak(w, len, seed) {
 // what a wound throws down around itself: a ragged stain, spines running out of it (longer toward +x, the way the
 // blow went) each ending in a drop, and satellite droplets thinning out with distance
 function splat(r, seed) {
-  const rnd = rng(seed), edge = lobes(rnd, 0.55, 5), top = depth(r * 0.8);
+  const rnd = seeded(seed), edge = lobes(rnd, 0.55, 5), top = depth(r * 0.8);
   const fwd = (a) => 0.55 + 0.9 * Math.max(0, Math.cos(a)) ** 2;
   const rays = [];
   for (let i = 0, n = 5 + Math.floor(rnd() * 5); i < n; i++) {
@@ -158,10 +148,9 @@ function nearest(list, v) {
   for (const e of list) if (Math.abs(e[0] - v) < Math.abs(best[0] - v)) best = e;
   return best[1];
 }
-const any = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-export const spotStamp = (r) => any(nearest(stamps().spots, r));
-export const streakStamp = (w, len) => any(nearest(nearest(stamps().streaks, w), len));
-export const splatStamp = (r) => any(nearest(stamps().splats, r));
+export const spotStamp = (r) => pick(nearest(stamps().spots, r));
+export const streakStamp = (w, len) => pick(nearest(nearest(stamps().streaks, w), len));
+export const splatStamp = (r) => pick(nearest(stamps().splats, r));
 // builds every stamp now (at level load) instead of in the middle of the first kill
 export const warmStamps = stamps;

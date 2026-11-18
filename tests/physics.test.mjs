@@ -16,7 +16,7 @@ function run(phys, seconds, t0 = 0) {
   return t;
 }
 
-test('sliding object stops after v²/(2·mu·g), not drifting forever', () => {
+test('sliding object stops after v2/(2*mu*g), not drifting forever', () => {
   const phys = new PhysicsWorld({ muAt: () => 1, substeps: 2 });
   const b = Bodies.rectangle(0, 0, 12, 12, { frictionAir: 0 }); // floor friction only
   phys.add(b);

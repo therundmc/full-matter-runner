@@ -15,11 +15,11 @@
 // customer running off shoves his chair back, drops his glass, leaves a cigarette burning: `butts`).
 // Emits 'heldUp' { car, how } when a driver has a gun pointed at him (Traffic Driver.heldUp).
 import { TILE, CAT, MASK, AMBIENT as A } from '../Config.js';
-import { angDiff } from '../../engine/math.js';
+import { angDiff, seeded, hashString } from '../../engine/math.js';
 import { wake, impulse, kgOf } from '../../engine/physics/Body.js';
 import Vehicle, { VEHICLES } from '../entities/Vehicle.js';
 import Civilian, { CIVILIAN_KINDS } from '../entities/Civilian.js';
-import { Lane, Driver, gapAhead, findBypass, steerAngle, seeded, between, hashString } from './Traffic.js';
+import { Lane, Driver, gapAhead, findBypass, steerAngle, between } from './Traffic.js';
 import { Walker, WALKER, escapeRoute, hideRoute, groundOf, pathLength, pointAlong } from '../ai/Civilians.js';
 import { giveWay, cellAhead, CellMemory } from '../ai/Nav.js';
 import { markBlocked } from '../world/TileMap.js';
@@ -305,7 +305,7 @@ export default class Ambient {
   bailOut(v, panic, from = v, side = -1) {
     const w = this.world, p = v.toWorld(v.w * 0.55, side < 0 ? -10 : v.h + 10);
     if (w.map.solidAt(p.x, p.y)) return;
-    const route = panic ? [p] : escapeRoute(groundOf(w.map, w.props), p.x, p.y, null);
+    const route = panic ? [p] : escapeRoute(groundOf(w.map, w.props, w.windows), p.x, p.y, null);
     if (!route) return;
     const civ = this.spawnCivilian([p, ...route], p.x, p.y, v.body.angle + side * Math.PI / 2);
     if (!panic) return;
@@ -373,9 +373,9 @@ export default class Ambient {
     this.checkT -= dt;
     const look = this.checkT <= 0;
     if (look) this.checkT = A.panic.check;
-    // the ground as passers-by see it (benches, stalls in the way: ai/Civilians.js groundOf), once a step when needed
+    // the ground as passers-by see it (benches, stalls, window frames: ai/Civilians.js groundOf), once a step when needed
     let ground = null;
-    const on = () => (ground ??= groundOf(w.map, w.props));
+    const on = () => (ground ??= groundOf(w.map, w.props, w.windows));
     const jammed = (i) => this.jams.cost(i, w.time) >= 1;
     const sense = {
       // the people around him he gives way to (ai/Nav.js), heading (ux, uy)

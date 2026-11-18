@@ -4,7 +4,7 @@ const CHARACTERS = ['player', 'thug', 'heavy', 'brute', 'boss', 'cueball', 'luck
   'dancer1', 'dancer2', 'tramp'];
 const CHAR_PARTS = ['torso', 'head', 'down', 'dead0', 'dead1', 'gib_head', 'gib_arm', 'gib_leg', 'gib_torso'];
 
-export const SPRITE_LIST = [
+const SPRITE_LIST = [
   ...CHARACTERS.flatMap((c) => CHAR_PARTS.map((p) => `characters/${c}_${p}`)),
   'characters/gib_chunk0', 'characters/gib_chunk1', 'characters/gib_chunk2', 'characters/gib_eye',
   'characters/lucky_scarf', // the flying end of LUCKY's scarf (entities/Enemy.js)
@@ -17,6 +17,9 @@ export const SPRITE_LIST = [
     'dirt', 'sidewalk', 'neon_floor', 'wall', 'brick'].map((n) => `tiles/${n}`),
   ...['door', 'door_locked', 'stall_door', 'door_jamb', 'door_jamb_steel', 'threshold', 'window', 'window_broken', 'window_sill', 'fence']
     .map((n) => `structure/${n}`),
+  // the door skins, one kind of door per place (data/doors.js DOORS.kinds), at FINE density (DOOR_SKINS below)
+  ...['fire', 'bar', 'bar_broken', 'swing', 'staff', 'office', 'gaming', 'flat', 'wired', 'wired_broken', 'shop', 'shop_broken']
+    .map((n) => `structure/door_${n}`),
   // the street fauna, a frame for each step of their gaits (render/CritterArt.js)
   ...['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low', 'cat_dead',
     ...[0, 1, 2].flatMap((i) => [`pigeon_walk${i}`, `pigeon_fly${i}`, `rat_run${i}`, `cat_run${i}`]),
@@ -32,10 +35,10 @@ const GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_
 const FIXTURES = ['floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'neon_tube_pink', 'neon_tube_cyan', 'ceiling_lamp', 'pool_lamp',
   'string_lights', 'emergency_light'];
 const BAR_WALL = ['frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'dartboard', 'pay_phone', 'coat_hooks', 'towel_dispenser',
-  'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table'];
+  'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag'];
 const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'shot', 'lowball', 'beer_bottle', 'liquor', 'ashtray', 'cigar',
   'coaster', 'napkin', 'napkin_crumpled', 'peanuts', 'till', 'cards', 'chips', 'bands', 'bill', 'rubber_bands', 'baggies', 'glass_broken',
-  'flute', 'flute_down', 'bucket', 'single', 'singles', 'bill_crumpled', 'bill_folded', 'feather', 'feather_curl', 'cork', 'garter'];
+  'flute', 'flute_down', 'bucket', 'single', 'singles', 'bill_crumpled', 'bill_folded', 'feather', 'feather_curl', 'cork', 'garter', 'sock', 'card', 'chip'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...FLOOR_TILES.flatMap((t) => [1, 2, 3, 4, 5].map((k) => `tiles/${t}_v${k}`)),
@@ -77,8 +80,12 @@ export const OPTIONAL_LIST = [
     'alley', 'drive', 'office', 'office_phone', 'matchbook',
     // one full-screen card a man, front on (the targets, for a screen between levels; the runner's for a menu)
     'target_cueball', 'target_lucky', 'target_jitters', 'target_boss', 'card_runner'].map((n) => `comic/${n}`),
-  // the title proposals' stills (tools/comic/title_proposals.py; ui/title/PosterTitle.js, HitList.js)
-  ...['poster', 'logo', 'logo_off', 'board_0', 'board_1', 'board_2', 'board_3', 'board_4'].map((n) => `title/${n}`),
+  // the title's stills (tools/comic/title.py): the poster's three layers and the logo (ui/title/Poster.js), the hit
+  // list's board and what is pinned to it, one per number of targets dead (ui/title/HitList.js)
+  // and the options' table and what lies on it (ui/title/Options.js)
+  ...['poster_sky', 'poster_city', 'poster_front', 'logo', 'logo_off', 'board_bg', 'board_0', 'board_1', 'board_2', 'board_3', 'board_4',
+    'options_bg', 'options_things']
+    .map((n) => `title/${n}`),
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',
     'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
 ];
@@ -103,11 +110,13 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'floor_lamp', 'table_lamp', 'wall_lamp', 'tube_light', 'ceiling_lamp', 'pool_lamp', 'emergency_light',
   'keg', 'fire_alarm', 'trapdoor', 'rug', 'beer_tap', 'curtain', 'trash_can_down', 'bin_lid', 'sandwich_board', 'ash_urn', 'entry_mat',
   'frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'dartboard', 'pay_phone', 'coat_hooks', 'towel_dispenser',
-  'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table']);
+  'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag']);
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
 // the floor tiles too (64 x 64 pixels a tile), the bar's clutter and the street fauna; the wall tops stay at the world's
-const fine = (name) => FINE.test(name) || name.startsWith('critters/') || name.startsWith('clutter/')
+// the door skins (generate_assets.py DOOR_SKINS) too; the old plain leaves (door, door_locked, stall_door) stay at the world's
+const DOOR_SKINS = /^structure\/door_(fire|bar|bar_broken|swing|staff|office|gaming|flat|wired|wired_broken|shop|shop_broken)$/;
+const fine = (name) => FINE.test(name) || DOOR_SKINS.test(name) || name.startsWith('critters/') || name.startsWith('clutter/')
   || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
   || (name.startsWith('roof/') && ROOF_FINE.has(name.slice(5)))
   || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v[1-5]|glow)$/, '')));
@@ -312,10 +321,4 @@ export function drawUpright(ctx, img, x, y, angle, len, { alpha = 1, scale = 1, 
   if (alpha !== 1) ctx.globalAlpha *= alpha;
   ctx.drawImage(img, 0, 0, w, img.height, part < 1 ? -w : -w / 2, -img.height / 2, w, img.height);
   ctx.restore();
-}
-
-// sprite + offset drop shadow
-export function drawSpriteShadowed(ctx, img, x, y, angle = 0, shadow = 2, alpha = 1) {
-  drawSprite(ctx, silhouette(img), x + shadow, y + shadow, angle, 0.35 * alpha);
-  drawSprite(ctx, img, x, y, angle, alpha);
 }

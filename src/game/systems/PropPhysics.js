@@ -27,7 +27,7 @@ const car = (p) => p.isVehicle && !p.dead && p.body;
 const onFoot = (c) => c.alive && c.body && !c.vaulting && !(c.knocked > 0) && !c.hidden && !c.passage;
 
 // a character walking (not sliding, vaulting, flying, sitting, gone)
-const walking = (c) => c.alive && c.body && !c.slide && !c.vaulting && !(c.knocked > 0) && !c.hidden && !c.slipped && !c.passage;
+export const walking = (c) => c.alive && c.body && !c.slide && !c.vaulting && !(c.knocked > 0) && !c.hidden && !c.slipped && !c.passage;
 
 // Into a vehicle a man on foot (walking, running, sliding) goes no faster than it gives way by itself: his velocity
 // into it is taken off before the step, so Matter has nothing to hand it

@@ -15,7 +15,7 @@
 //   'surrender'     the last guard gave up     { who }   (entities/Enemy)
 //   'footprint'     a wet sole marked the floor { who, x, y, angle, kind }   (systems/Liquids)
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
-import { rand, chance } from '../../engine/math.js';
+import { chance } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
 import { gripOn } from '../data/materials.js';
@@ -94,6 +94,7 @@ export default class World {
     });
     this.decals = new MapRenderer(this.map, level);
     this.renderer = new WorldRenderer(this);
+    this.cues = false; // readability cues drawn (set by Game each frame: render/Readability.js cuesOn)
     this.wallBodies = this.map.buildBodies();
     this.addBody(this.wallBodies);
     this.addBody(this.map.buildEdgeBodies()); // nobody walks off an open map border (traffic / passers-by excepted)
@@ -164,7 +165,7 @@ export default class World {
 
     buildLevel(this, level);
     this.curtains = new Curtains(this); // the curtains' cloth: pushed by whoever goes through, parted, hiding or not
-    this.doorWork = new Doors(this);    // leaves leaned on with a limited force, E opens / closes a door
+    this.doorWork = new Doors(this);    // leaves leaned on with a limited force, the lab's doorbell
     this.jukebox.wire();  // the devices that are props of the level offer their spots now that the props are there
     this.gasValve.wire();
     // a level that teaches: its guards asleep room by room, a retry from the last room reached (Game.tutorialAt)
@@ -323,12 +324,6 @@ export default class World {
     this.rings.push({ x, y, r: 2, max: 18, t: 0, dur: 0.25 });
     this.particles.sparks(x, y, 0, Math.PI, 8, 160, color);
     this.light(x, y, 40, color, 0.12);
-  }
-  // raw velocity kick (px/step), ignoring mass: only for scripted motion (magnets...)
-  pushBody(b, a, dv, spin = 0) {
-    const v = Body.getVelocity(b);
-    Body.setVelocity(b, { x: v.x + Math.cos(a) * dv, y: v.y + Math.sin(a) * dv });
-    if (spin) Body.setAngularVelocity(b, Body.getAngularVelocity(b) + spin);
   }
   // something guards may hear (routed by the Director). type: gunshot, glass, door, wall, explosion, thrown...
   noise(x, y, radius, source = null, type = null) {

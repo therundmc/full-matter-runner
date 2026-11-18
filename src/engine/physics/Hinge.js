@@ -43,16 +43,21 @@ export function blowOn(px, py, I, x, y, a, J) {
 
 // The leaf's own swing over dt: its speed w after the hinge's dry friction (N.m: a steady brake that never turns it
 // back) and drag (share of the speed lost a second), and a closer pulling it back shut from `rel` rad open
-// (closer: { preload, k, sweep, latchZone, latchSpeed, back, backcheck }, speeds in rad/s).
+// (closer: { preload, k, sweep, back, backcheck, zone, freq, damp }, speeds in rad/s). Within `zone` of shut (all
+// the way for a swinging door's spring hinge: zone Infinity) it is a damped spring about shut of `freq` rad/s and
+// damping ratio `damp`: it overshoots and settles; further out its spring (`preload` + `k` N.m a rad) brings it back
+// no faster than its valve lets it (`sweep`), and it brakes when thrown open past `back` (`backcheck`).
 export function swing(w, rel, I, dt, { friction = 0, drag = 0, closer = null } = {}) {
   if (closer && rel) {
     const shut = -Math.sign(rel), far = Math.abs(rel);
-    w += shut * spinOf(closer.preload + closer.k * far, I, dt);
-    // its valve: never faster shut than the sweep, the latch speed over the last stretch
-    const most = (far < closer.latchZone ? closer.latchSpeed : closer.sweep) * STEP;
-    if (w * shut > most) w = shut * most;
-    // its backcheck: thrown wide open fast, it brakes before the stop
-    if (far > closer.back && w * shut < 0) w *= Math.max(0, 1 - closer.backcheck * dt);
+    if (far < (closer.zone ?? 0)) {
+      const f = closer.freq;
+      w -= (f * f * rel + 2 * closer.damp * f * (w / STEP)) * dt * STEP;
+    } else {
+      w += shut * spinOf(closer.preload + closer.k * far, I, dt);
+      if (w * shut > closer.sweep * STEP) w = shut * closer.sweep * STEP;
+      if (far > closer.back && w * shut < 0) w *= Math.max(0, 1 - closer.backcheck * dt);
+    }
   }
   const f = spinOf(friction, I, dt);
   w = Math.abs(w) <= f ? 0 : w - Math.sign(w) * f;

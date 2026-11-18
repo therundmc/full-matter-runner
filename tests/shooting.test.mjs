@@ -15,7 +15,6 @@ const { default: Character } = await load('game/entities/Character.js');
 
 const GUNS = Object.entries(WEAPONS).filter(([, d]) => d.kind === 'gun');
 const inRange = (v, a, b, what) => assert.ok(typeof v === 'number' && v >= a && v <= b, `${what} = ${v}`);
-const seq = (...v) => { let i = 0; return () => v[i++ % v.length]; };
 
 // ---------------- recoil ----------------
 test('recoil: every gun family has a complete profile, nothing at rest, all of it at the shot', () => {

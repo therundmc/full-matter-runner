@@ -11,7 +11,7 @@
 import { LITTER, LITTER_AIR } from '../data/litter.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { TILE } from '../Config.js';
-import { rand, chance, clamp } from '../../engine/math.js';
+import { rand, clamp } from '../../engine/math.js';
 
 const { Body } = Matter;
 const FLUTTER = 'cashFlutter'; // a placeholder (assets/sound/PLACEHOLDERS.md)

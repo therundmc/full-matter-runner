@@ -14,7 +14,8 @@ import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
-import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK } from '../data/feel.js';
+import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, VAULT_DUR, CLIMB_DUR, LADDER_DUR,
+  CLIMB_NOISE, RUNG_NOISE, LAND_NOISE } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
 import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
@@ -46,13 +47,6 @@ export const KINDS = {
 };
 // the heavy build: a deeper voice, more weight, a slower step
 export const heavyBuild = (kind) => kind === 'heavy' || kind === 'boss' || kind === 'cueball';
-
-const VAULT_DUR = 0.5;  // s, windows and furniture alike
-const CLIMB_DUR = 0.72; // s, over a chain-link gate
-const LADDER_DUR = 1.1; // s, up or down a ladder
-const CLIMB_NOISE = 230; // px the rattling mesh is heard at when the player climbs
-const RUNG_NOISE = 150;  // px each of his steps on a steel ladder is heard at
-const LAND_NOISE = 120;  // px a flat landing is heard at
 
 // cubic Hermite from 0 to 1, leaving with slope m0 and arriving with slope m1
 const hermite = (k, m0, m1) => { const k2 = k * k, k3 = k2 * k; return (k3 - 2 * k2 + k) * m0 + (3 * k2 - 2 * k3) + (k3 - k2) * m1; };
@@ -189,7 +183,7 @@ export default class Character {
   updateReload(dt) {
     if (this.reloading <= 0 || !this.weapon) return;
     const d = this.def;
-    this.reloading -= dt;
+    this.reloading -= dt * (this.haste || 1); // haste: his hands at their real pace while the world crawls (Tutorial)
     const p = 1 - this.reloading / this.reloadDur;
     if (d.shellReload) {
       if (this.reloading <= 0) {

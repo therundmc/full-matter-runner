@@ -86,7 +86,7 @@ export function occlusion(world, x0, y0, x1, y1, target = null, origin = null) {
 
 // A round going under a fitting up on the ceiling (def `high`) does not touch it, but the air of it gives the fitting a
 // small shake (Prop.recoil, the same swing a blast gives it, far smaller). Each 'round' step: (x0, y0) -> (x1, y1).
-export const BRUSH = 0.3; // recoil power of a round passing under
+const BRUSH = 0.3; // recoil power of a round passing under
 export function brushFittings(world, x0, y0, x1, y1) {
   const minX = Math.min(x0, x1), maxX = Math.max(x0, x1), minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
   const a = Math.atan2(y1 - y0, x1 - x0);

@@ -35,7 +35,8 @@
   tools/generate_assets.py), plain pixel art, drawn at half size (`density` / `img.k` in engine/Assets.js; `sw` / `sh`
   give a sprite's size in world px; drawSprite and the decal bake honour `img.k`, a raw drawImage must scale by it).
   Furniture and vehicles follow (`FINE_PROPS`, kept in step in both files), floors too; neon signs stay at 1x.
-  Still to do: the detail pass on furniture, cars and floors (to the level of the characters and weapons).
+  Level 1's detail pass is done (2026-11-18: furniture wear, floor wear in FloorWear.js, live props in PropLife.js,
+  car interiors); still to do: car debris sprites to match, and the same care on every new level.
 - The hero (an original take on the user's reference): brown hair to his collar, a Mediterranean tan (not brown or
   dark), a dark cap, a scarf up over his mouth, a long charcoal coat collar up, grey knit, jeans, boots, a leather
   satchel across him; the lining and the cap's button a dark petrol blue. Never bright turquoise, never an animal mask.
@@ -71,6 +72,8 @@
 - A sound you cannot hear: check voice admission (`_admit` in Audio.js: gap / max per name) before its level.
 
 ## Gameplay
+- A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level
+  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`).
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
@@ -119,19 +122,27 @@
   at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
-  match, `OPENING`), lessons that slow time (`LESSONS`, `pace`), the camera's shots (`SHOTS`, systems/Direction.js,
+  match, `OPENING`), lessons that are one short directed beat each (`BEAT`, `LESSONS` by hint id, `pace`: slow, a
+  punch-in on what it is about, then the hand given back; never held until he acts), the camera's shots (`SHOTS`, systems/Direction.js,
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). A lesson waits for its object to be on screen and near (`LESSONS.within`); a man
+  Enemy.drawTail, his name card). A table across his doorway teaches the vault. A lesson waits for its object to be on
+  screen and near (`LESSONS.within`); during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
-  fire-balls down the corridor (`BLAST.chain`, level `blast.chain`) and the way out is marked (`EXIT`, level `exit`).
+  fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending; a page is skipped by holding
   SPACE / pad A, never a stray key or click: Hold.js, `SKIP`), stills painted by
-  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); title screen ui/TitleScene.js +
-  ui/title/*. Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+  tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
+- Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
+  cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
+  HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
+  drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  a thing a section, its settings on a sheet of paper beside it), Beats.js (their clocks and sounds, DOM-free),
+  Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
+  (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
   signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as

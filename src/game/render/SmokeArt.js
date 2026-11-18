@@ -13,6 +13,7 @@
 // a time.
 import { TILE } from '../Config.js';
 import { SMOKE, RAIN } from '../data/atmosphere.js';
+import { shown } from '../fx/Particles.js';
 
 function canvas(w, h) {
   const c = document.createElement('canvas');
@@ -82,11 +83,11 @@ export default class SmokeArt {
   drawThreads(ctx, smoke, vis) {
     const T = smoke?.rib;
     if (!T?.n) return;
-    const S = SMOKE.cig;
+    const S = SMOKE.cig, R = shown(ctx), m = 2 + S.grow; // (a thread is a few px at most)
     ctx.fillStyle = S.color;
     for (let i = 0; i < T.n; i++) {
       const x = T.x[i], y = T.y[i];
-      if (!vis(x, y)) continue;
+      if (!vis(x, y) || x < R[0] - m || x > R[2] + m || y < R[1] - m || y > R[3] + m) continue;
       const k = T.age[i] / T.life[i], a = T.a[i] * Math.min(1, k * 10) * (1 - k) * (1 - k);
       if (a < 0.01) continue;
       const s = Math.round(1 + k * S.grow);

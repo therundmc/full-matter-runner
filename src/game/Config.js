@@ -3,7 +3,6 @@ import { TILE } from '../engine/physics/Units.js';
 
 export { TILE }; // 1 tile = 1 m = 32 px (see engine/physics/Units.js)
 export const FIXED_DT = 1 / 60;          // simulation step (seconds of game time at timeScale 1)
-export const BASE_DELTA = 1000 / 60;     // Matter base delta (ms)
 
 // Matter collision categories
 export const CAT = {
@@ -94,7 +93,7 @@ export const ENEMY = {
   viewDist: 340,
   fov: Math.PI * 0.62,
   focusCone: 0.3,         // half-angle of the sharp centre of the view cone
-  closeSense: [20, 46, 90], // 360° awareness radius by awareness (unaware / suspicious / alert)
+  closeSense: [20, 46, 90], // 360 deg awareness radius by awareness (unaware / suspicious / alert)
   // detection meter (0..1): '?' from `suspicious`, '!' (combat) at 1
   spotTime: [0.45, 2.0],  // seconds to fill it at point blank / at viewDist (player still, centre of view, lit)
   suspicious: 0.3,
@@ -161,13 +160,14 @@ export const AI = {
   gate: { calm: 3, rush: 1.2, far: 96 },
   // Finding his way (ai/Nav.js, Enemy.follow / pathCost). jam: a tile he pushed at in vain is worth `cost` tiles of
   // detour to him for `forget` s (held up by people, only from the `people`-th time on the same tile); after `tries`
-  // jams on the way to one spot he gives that spot up. danger: the tiles around where a mate fell (r tiles) cost
-  // that much to the squad for `forget` s. shared: per tile of a mate's route to the same fight (`routeFor` s: the
-  // hunters spread over the ways in). fire: a tile by a fire; slick: a tile whose grip is under `grip`.
+  // jams on the way to one spot he gives that spot up (his post: he idles where he is `rest` s, then tries again).
+  // danger: the tiles around where a mate fell (r tiles) cost that much to the squad for `forget` s. shared: per tile
+  // of a mate's route to the same fight (`routeFor` s: the hunters spread over the ways in). fire: a tile by a fire;
+  // slick: a tile whose grip is under `grip`.
   // avoid (ai/Nav.js giveWay): personal space px, the push off it, px ahead he looks, his step aside, the pace (px/step)
   // above which one ahead counts as going his way, the share of his pace he keeps behind him, the least.
   nav: {
-    jam: { cost: 14, forget: 15, people: 2, tries: 3 },
+    jam: { cost: 14, forget: 15, people: 2, tries: 3, rest: [4, 8] },
     danger: { cost: 4, forget: 25, r: 1 },
     shared: 0.6, routeFor: 3,
     fire: 12, slick: 3, grip: 0.55,
@@ -221,7 +221,7 @@ export const AI = {
   // `reach` px and throws him back at `shove` px/step. A man let off is remembered `memory` s (the next case opens
   // at the warning). The others who saw it look at him `glance` s. lurk: s hanging about within `lurkR` px of a door
   // into the premises; bump: px/step at which running into a guard is noticed; gone: px off a guard who stays out of
-  // the premises: he walked away, that will do.
+  // the premises: he walked away, that will do; near: px within which a guard busy at his pastime sees it.
   challenge: {
     sight: 300, pace: 1.45, talk: 44, wait: [5, 4, 3], settle: 1.2, lost: 5, reach: 24, shove: 5.5, memory: 60,
     glance: 1.8, lurk: 4, lurkR: 44, bump: 1.6, gone: 260, near: 120,
@@ -392,9 +392,9 @@ export const AMBIENT = {
   prewarm: 0.6,            // fraction of the steady-state traffic / crowd placed on the street when the level starts
   // driving
   speedVar: 0.12,          // per car cruise speed spread (fraction of the lane speed)
-  accel: 3,                // m/s² pulling away
-  brake: 6,                // m/s² comfortable braking (behind traffic)
-  emergency: 9,            // m/s² hard braking (sudden obstacle)
+  accel: 3,                // m/s2 pulling away
+  brake: 6,                // m/s2 comfortable braking (behind traffic)
+  emergency: 9,            // m/s2 hard braking (sudden obstacle)
   headway: 1.2,            // s of time gap kept behind the vehicle ahead
   minGap: 1.6,             // m bumper to bumper when stopped
   lanePad: 0.15,           // m added to each side of a vehicle's width when looking for obstacles in its lane
@@ -408,7 +408,7 @@ export const AMBIENT = {
   jam: 10,                 // s a lane's spawn stays blocked before the lane stops spawning (no deadlock)
   reopen: 6,               // s of clear lane before a closed lane spawns again
   panicBoost: 1.35,        // a driver under fire floors it
-  coast: [2, 4],           // m/s² a disabled car slows down with (dead driver / burst tyre / on fire)
+  coast: [2, 4],           // m/s2 a disabled car slows down with (dead driver / burst tyre / on fire)
   swerve: [0.5, 1.1],      // m a disabled car drifts sideways before it stops
   bailOut: 0.8,            // chance the driver of a burning / shot-up car gets out alive and runs
   // gunfire heard from the wheel: most drivers stop dead and run, the others floor it
@@ -538,8 +538,8 @@ export const WALL_WEAR = 0.5;
 // (holes, blood, spills) stays behind it, only the dark of a hole may bite into it (render/WallScars.js)
 export const WALL_RIM = 3;
 
-// Vehicle lights in the sprite's local frame (px from the centre, +x forward): two headlight cones at (hx, ±hy)
-// and two red tail light glows at (tx, ±ty). Positions match the lamps of the generated sprites.
+// Vehicle lights in the sprite's local frame (px from the centre, +x forward): two headlight cones at (hx, +-hy)
+// and two red tail light glows at (tx, +-ty). Positions match the lamps of the generated sprites.
 const vehicleLights = (hx, hy, tx, ty) => [
   ...[-1, 1].map((s) => ({ r: 220, color: '#fff1c8', intensity: 0.85, x: hx, y: hy * s, cone: 0.42 })),
   ...[-1, 1].map((s) => ({ r: 48, color: '#ff1a3a', intensity: 0.7, x: tx, y: ty * s })),

@@ -1,6 +1,6 @@
 import { TILE, PALETTE, LITTER, WALL_RIM } from '../Config.js';
 import { sprite, spriteOpt, silhouette, sw, sh } from '../../engine/Assets.js';
-import { rand, randi, pick, chance, TAU } from '../../engine/math.js';
+import { rand, pick, chance, TAU } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
@@ -193,7 +193,8 @@ export default class MapRenderer {
   // ---------- openings ----------
   // a doorway (run of `n` door tiles from tile x, y): the threshold on the floor, and a jamb let into the end of
   // the wall on each side (wood casing in plaster, steel in brick). The jambs go when their wall tile does.
-  doorway(x, y, n, horizontal) {
+  // jamb: 'steel' / 'wood' (the door's kind, data/doors.js), else steel in brick, wood in plaster
+  doorway(x, y, n, horizontal, jamb = null) {
     const m = this.map;
     const put = (g, img, px, py, flip = 1) => {
       g.save();
@@ -208,7 +209,7 @@ export default class MapRenderer {
     for (const [k, flip] of [[-1, 1], [n, -1]]) {
       const tx = horizontal ? x + k : x, ty = horizontal ? y : y + k;
       if (!m.isWallChar(tx, ty)) continue;
-      const img = sprite(m.at(tx, ty) === 'X' ? 'structure/door_jamb_steel' : 'structure/door_jamb');
+      const img = sprite((jamb ?? (m.at(tx, ty) === 'X' ? 'steel' : 'wood')) === 'steel' ? 'structure/door_jamb_steel' : 'structure/door_jamb');
       put(this.wallCtx, img, ...at(k < 0 ? -img.width / 2 / TILE : n + img.width / 2 / TILE), flip);
     }
   }

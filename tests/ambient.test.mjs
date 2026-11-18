@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 const { TILE, AMBIENT: A, CAT, MASK } = await load('game/Config.js');
-const { Lane, Driver, gapAhead, safeSpeed, findBypass, steerAngle, seeded } = await load('game/systems/Traffic.js');
+const { Lane, Driver, gapAhead, safeSpeed, findBypass, steerAngle } = await load('game/systems/Traffic.js');
+const { seeded } = await load('engine/math.js');
 const { Walker, WALKER, escapeRoute, hideRoute, groundOf, pathLength, pointAlong } = await load('game/ai/Civilians.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 
@@ -470,6 +471,22 @@ test('walkers: a bench flat against the wall is in a runner\'s way: his way out 
   const route = escapeRoute(g, from.x, from.y, danger);
   assert.ok(route.at(-1).x < 0, 'still off the west side');
   assert.ok(!crosses(g, from.x, from.y, route, 6, 3), 'round the bench');
+});
+
+test('walkers: a broken window\'s frame is no way out for a passer-by (he does not vault it), a torn-out one is', () => {
+  const T = TILE;
+  // a bar room (rows 1-3) over a sidewalk (row 5), its front wall on row 4: a window at (3, 4), the door at (8, 4)
+  const m = new TileMap(['XXXXXXXXXX', 'X........X', 'X........X', 'X........X', 'XXXGXXXX.X', 'ssssssssss', 'XXXXXXXXXX']);
+  m.blocked[4 * m.w + 3] = 0; // the pane shattered (Window.shatter opens the guards' grid: they vault the frame)
+  const win = { cx: 3, cy: 4 };
+  const from = { x: 3.5 * T, y: 3.5 * T }, danger = { x: 3.5 * T, y: 1.5 * T };
+  assert.ok(crosses(m, from.x, from.y, escapeRoute(m, from.x, from.y, danger), 3, 4), 'on the guards\' grid: out through the frame');
+  const g = groundOf(m, [], [win]);
+  assert.equal(g.blocked[4 * m.w + 3], 1, 'the frame still standing is a wall to him');
+  assert.equal(m.blocked[4 * m.w + 3], 0, 'the guards\' grid is left as it is');
+  const route = escapeRoute(g, from.x, from.y, danger);
+  assert.ok(route && !crosses(g, from.x, from.y, route, 3, 4), 'out by the door');
+  assert.equal(groundOf(m, [], []).blocked[4 * m.w + 3], 0, 'a window torn out of the wall (gone from world.windows) is a hole');
 });
 
 test('walkers: a runner held up on a wide sidewalk is not sent straight back through that spot by the string pulling', () => {

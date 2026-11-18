@@ -11,7 +11,7 @@
 //   door   a doorman: arms folded, his eyes on whoever comes near   wipe    a bartender polishing a glass
 //   sleep  lying on his cardboard until something wakes him   hood    leant on a parked car, a hand on its hood, smoking
 import { TILE } from '../Config.js';
-import { clamp, angDiff, lerp, rand } from '../../engine/math.js';
+import { clamp, angDiff, lerp, rand, frac, bump, smooth } from '../../engine/math.js';
 
 const CYCLE = 5;     // s between two pool strokes
 const STRIKE = 0.8;  // share of the cycle at which the cue hits the ball
@@ -22,8 +22,6 @@ const CLAP = 11;     // s between two rounds of applause
 export const STRETCH = 2.6; // s a stretch (or a look at his watch) takes
 const OPEN_AIR = '_"~';     // floors a man relieves himself on, against a wall: concrete, grass, dirt
 const REACH = 3 * TILE;     // how far he walks for it
-
-const frac = (v) => v - Math.floor(v);
 
 // where a doorman standing toward `base` looks: at someone (dx, dy) px away if he is within `range` px and
 // `arc` rad of that way, else straight ahead
@@ -196,8 +194,6 @@ export class Routine {
 // drives it ('stroke': one pool stroke over the phase, 'once': a one-go move over the phase, else the world's time).
 // hands(k, pt, t, seed, tool): k 0..1 through the phase, pt s into it, t the world's time, tool his weapon's swing.
 const H = (lx, ly, rx, ry) => ({ hl: { x: lx, y: ly }, hr: { x: rx, y: ry } });
-const bump = (k, a, b) => (k <= a || k >= b ? 0 : Math.sin((Math.PI * (k - a)) / (b - a)));
-const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 const BACK = [-4, -13.5]; // an arm stretched along the back of the couch
 const CROSSED = H(5.5, 2.2, 5.5, -2.2);
 const OVER = { fwd: 2.5, dip: 0.02 }; // bent over a table, his hands on it
@@ -221,7 +217,7 @@ export const GESTURES = {
   },
   neck: {
     // a hand on the back of the neck, the head rolled to one side then the other: the crack
-    hands: (k) => { const on = ease(k / 0.15) * (1 - ease((k - 0.85) / 0.15)); return H(0.5, -7, lerp(6, -3, on), lerp(6, 1.5, on)); },
+    hands: (k) => { const on = smooth(k / 0.15) * (1 - smooth((k - 0.85) / 0.15)); return H(0.5, -7, lerp(6, -3, on), lerp(6, 1.5, on)); },
     body: (k) => ({ twist: 0.3 * bump(k, 0.2, 0.45) - 0.3 * bump(k, 0.45, 0.75), dip: 0.02 * bump(k, 0.2, 0.8) }),
   },
   nod: { hands: () => CROSSED, body: (k) => ({ fwd: 2.2 * bump(k, 0.1, 0.55), dip: 0.05 * bump(k, 0.1, 0.55) }) },
@@ -231,7 +227,7 @@ export const GESTURES = {
   flick: { hands: (k) => { const o = bump(k, 0.3, 0.75); return H(5.5, -6, lerp(6.5, 12, o) - 1.5 * bump(k, 0, 0.3), lerp(5.5, 3, o)); }, item: 'cig' },
   ash: { hands: (k) => H(5.5, -6, 7.5 + 1.6 * bump(k, 0.3, 0.55), 5.5 - 1.2 * bump(k, 0.3, 0.55)), item: 'cig' },
   // bent to a car window, hands cupped against the glass
-  peer: { hands: (k, pt) => H(11.5, -3.5, 11.5, 3.5 + Math.sin(pt) * 0.3), body: (k) => ({ fwd: 4 * ease(k / 0.15), dip: 0.05 }) },
+  peer: { hands: (k, pt) => H(11.5, -3.5, 11.5, 3.5 + Math.sin(pt) * 0.3), body: (k) => ({ fwd: 4 * smooth(k / 0.15), dip: 0.05 }) },
   // a can sent down the pavement by the right foot
   kick: {
     hands: () => H(0.5, -6.6, 0.5, 6.6),
@@ -240,12 +236,12 @@ export const GESTURES = {
   // down on a knee, both hands at the shoe
   tie: {
     hands: (k, pt) => H(9.5, 1.5 + Math.sin(pt * 9) * 0.8, 10, 4.5 - Math.sin(pt * 9) * 0.8),
-    body: (k) => { const d = ease(k / 0.2) * (1 - ease((k - 0.85) / 0.15)); return { fwd: 3 * d, dip: 0.16 * d }; },
+    body: (k) => { const d = smooth(k / 0.2) * (1 - smooth((k - 0.85) / 0.15)); return { fwd: 3 * d, dip: 0.16 * d }; },
   },
   // the bar: a bottle off the shelf behind him, the pour, the glass slid along the counter, the rag, leaning on it
   fetch: { hands: (k) => H(5, -5.5, 6 + 5 * bump(k, 0.1, 0.9), 4 - 1.5 * bump(k, 0.1, 0.9)), item: 'bottle' },
   pour: { hands: (k) => H(8, -2.5, 6.5 + 0.5 * bump(k, 0.1, 0.9), 2.2), item: 'bottle' },
-  serve: { hands: (k) => H(9, -6, lerp(7.5, 12.5, ease(k / 0.45)) - 5 * ease((k - 0.55) / 0.45), lerp(1.5, 4.5, ease((k - 0.55) / 0.45))) },
+  serve: { hands: (k) => H(9, -6, lerp(7.5, 12.5, smooth(k / 0.45)) - 5 * smooth((k - 0.55) / 0.45), lerp(1.5, 4.5, smooth((k - 0.55) / 0.45))) },
   rag: { hands: (k, pt) => H(9.5, -6, 11 + Math.cos(pt * 7) * 2.2, 2 + Math.sin(pt * 7) * 2.5), body: () => ({ fwd: 2.5, dip: 0.02 }) },
   lean: { hands: () => H(10, -7, 10, 7), body: (k, pt) => ({ fwd: 3, dip: 0.03, side: Math.sin(pt * 0.6) * 0.8 }) },
   // the pool player chalking his cue
@@ -262,9 +258,9 @@ export const GESTURES = {
     item: 'cards',
   },
   chip: { hands: (k) => H(6.5, -2.2, 6.5 + 6 * bump(k, 0.1, 0.9), 2.2 - 2 * bump(k, 0.1, 0.9)), item: 'cards' },
-  rake: { hands: (k) => { const e = ease(k); return H(lerp(13, 7, e), lerp(-7, -3, e), lerp(13, 7, e), lerp(7, 3, e)); }, body: (k) => ({ fwd: 2 * (1 - k) }) },
+  rake: { hands: (k) => { const e = smooth(k); return H(lerp(13, 7, e), lerp(-7, -3, e), lerp(13, 7, e), lerp(7, 3, e)); }, body: (k) => ({ fwd: 2 * (1 - k) }) },
   // the pimp: a pinch from the pile onto the scale, a bag twisted shut, a finger licked
-  weigh: { hands: (k, pt) => H(10.5, lerp(-5, 2.5, ease((frac(pt / 1.4) - 0.2) / 0.5)), 9, 4.5), body: () => OVER },
+  weigh: { hands: (k, pt) => H(10.5, lerp(-5, 2.5, smooth((frac(pt / 1.4) - 0.2) / 0.5)), 9, 4.5), body: () => OVER },
   bag: { hands: (k, pt) => { const s = Math.sin(pt * 8) * 0.7; return H(8, -1.5 + s, 8, 1.5 + s); }, body: () => OVER, item: 'bag' },
   lick: { hands: (k) => { const m = bump(k, 0.1, 0.8); return H(8.5, -3.5, lerp(9, 4.7, m), lerp(3, 1, m)); } },
   // the takings: a thumb wetted, a wad banded, laid in the case
@@ -275,7 +271,7 @@ export const GESTURES = {
   pee: { hands: (k, pt) => { const j = Math.sin(pt * 2) * 0.3; return H(5.5, -1.4 + j, 5.5, 1.4 + j); } },
   shake: { hands: (k, pt) => { const j = Math.sin(pt * 34) * 0.9; return H(5.5, -1.4 + j, 5.5, 1.4 + j); } },
   zip: {
-    hands: (k) => { const u = ease(k / 0.5), d = ease((k - 0.6) / 0.4); return H(lerp(5.5, 6, d), lerp(-1.4, -6, d), lerp(5.5, 4, u) + 2 * d, lerp(1.4, 0.5, u) + 5.5 * d); },
+    hands: (k) => { const u = smooth(k / 0.5), d = smooth((k - 0.6) / 0.4); return H(lerp(5.5, 6, d), lerp(-1.4, -6, d), lerp(5.5, 4, u) + 2 * d, lerp(1.4, 0.5, u) + 5.5 * d); },
   },
   wash: { hands: (k, pt) => { const s = Math.sin(pt * 12) * 1.2; return H(10, -2 + s, 10, 2 - s); }, body: () => ({ fwd: 1.5, dip: 0.02 }) },
   mirror: {
@@ -287,13 +283,13 @@ export const GESTURES = {
   draw: { hands: (k) => { const m = drawn(k); return H(5.5, -2, lerp(5, 4.6, m), lerp(7.5, 1.4, m)); }, item: 'cigar' },
   blow: { hands: () => H(5.5, -2, 5, 7.5), body: (k) => ({ fwd: -0.8 * bump(k, 0, 1) }), item: 'cigar' },
   tap: {
-    hands: (k) => { const m = ease(k / 0.3) * (1 - ease((k - 0.75) / 0.25)); return H(5.5, -2, lerp(5, 11, m), lerp(7.5, 6, m) - 0.8 * bump(k, 0.4, 0.5)); },
+    hands: (k) => { const m = smooth(k / 0.3) * (1 - smooth((k - 0.75) / 0.25)); return H(5.5, -2, lerp(5, 11, m), lerp(7.5, 6, m) - 0.8 * bump(k, 0.4, 0.5)); },
     item: 'cigar',
   },
   roll: { hands: (k, pt) => H(6.8, -0.8, 6.8, 1.6 + Math.sin(pt * 6) * 0.6), item: 'cigar' },
   // CUEBALL at his desk: a fist ground into the other palm, twice; his shades pushed back up his nose
   knuckles: { hands: (k) => { const m = bump(k, 0.1, 0.5) + bump(k, 0.5, 0.9); return H(5.4 + 0.4 * m, -0.8 + 0.3 * m, 5.4, 0.8 - 0.3 * m); } },
-  shades: { hands: (k) => { const m = ease(k / 0.35) * (1 - ease((k - 0.7) / 0.3)); return H(4.6, -1.3, lerp(4.8, 5.6, m), lerp(1.3, 4.4, m)); } },
+  shades: { hands: (k) => { const m = smooth(k / 0.35) * (1 - smooth((k - 0.7) / 0.3)); return H(4.6, -1.3, lerp(4.8, 5.6, m), lerp(1.3, 4.4, m)); } },
   // the couch: slumped, an arm along the backrest
   slump: { hands: (k, pt) => H(BACK[0], BACK[1], 8, 4 + Math.sin(pt * 0.8) * 0.3) },
   read: {
@@ -331,7 +327,7 @@ export const GESTURES = {
   },
   // the match drawn along the side of the box: it flares (fx 'strike') ...
   strike: {
-    hands: (k) => { const r = ease((k - 0.2) / 0.22); return H(6.2, -1.6, lerp(6.2, 10, r), lerp(-0.6, 2.2, r)); },
+    hands: (k) => { const r = smooth((k - 0.2) / 0.22); return H(6.2, -1.6, lerp(6.2, 10, r), lerp(-0.6, 2.2, r)); },
     body: (k) => ({ fwd: 0.8 * bump(k, 0.1, 0.9) }),
     item: 'match',
   },
@@ -340,15 +336,15 @@ export const GESTURES = {
   // ... and let fall on the petrol at his feet (fx 'drop', at MATCH_FALLS), the hands back at his sides
   drop: {
     hands: (k) => {
-      const out = ease(k / 0.3), back = ease((k - 0.5) / 0.5);
+      const out = smooth(k / 0.3), back = smooth((k - 0.5) / 0.5);
       return H(lerp(7.8, 2, back), lerp(-0.6, -6.5, back), lerp(lerp(7, 11, out), 2, back), lerp(lerp(1.4, 3.6, out), 6.5, back));
     },
     body: (k) => ({ fwd: 1.8 * bump(k, 0, 0.55), dip: 0.03 * bump(k, 0, 0.55) }),
   },
   // the whoosh: an arm thrown up before his face, leaning away from it
   shy: {
-    hands: (k) => { const u = ease(k / 0.15) * (1 - ease((k - 0.65) / 0.35)); return H(lerp(1, 6.5, u), lerp(-7, -0.5, u), 1, 7); },
-    body: (k) => { const u = ease(k / 0.15) * (1 - ease((k - 0.65) / 0.35)); return { fwd: -2.5 * u, twist: -0.18 * u }; },
+    hands: (k) => { const u = smooth(k / 0.15) * (1 - smooth((k - 0.65) / 0.35)); return H(lerp(1, 6.5, u), lerp(-7, -0.5, u), 1, 7); },
+    body: (k) => { const u = smooth(k / 0.15) * (1 - smooth((k - 0.65) / 0.35)); return { fwd: -2.5 * u, twist: -0.18 * u }; },
   },
   // bent over a drawer pulled out under the worktop, both hands digging through it
   dig: {
@@ -358,7 +354,7 @@ export const GESTURES = {
   // something pulled out and flung over his right shoulder (fx 'junk', at TOSSED)
   toss: {
     hands: (k) => {
-      const pull = ease(k / 0.3), fling = ease((k - 0.3) / 0.25), back = ease((k - 0.6) / 0.4);
+      const pull = smooth(k / 0.3), fling = smooth((k - 0.3) / 0.25), back = smooth((k - 0.6) / 0.4);
       return H(9, -2.5, lerp(lerp(lerp(10.5, 6, pull), -4, fling), 2, back), lerp(lerp(lerp(2.6, 5, pull), 9, fling), 6.5, back));
     },
     body: (k) => ({ fwd: 1.5 * (1 - bump(k, 0.2, 0.8)), twist: 0.35 * bump(k, 0.2, 0.75) }),
@@ -388,7 +384,7 @@ export const TOSSED = 0.55;
 export const DEAL = 4;
 export const dealAngle = (b) => 0.9 - (1.8 * b) / (DEAL - 1);
 // 0..1 how far the cigar is brought to the lips at time k of a draw
-export const drawn = (k) => ease(k / 0.25) * (1 - ease((k - 0.75) / 0.25));
+export const drawn = (k) => smooth(k / 0.25) * (1 - smooth((k - 0.75) / 0.25));
 // 0..1 a page of the magazine being turned over, pt s into the read
 export const pageTurn = (pt, seed) => bump(frac(pt / 2.8 + seed), 0.78, 1);
 // s between two throws of a club tossed up and caught

@@ -9,10 +9,9 @@
 import { FACING } from '../data/feel.js';
 import { GAIT } from './Gait.js';
 import { BODY_SCALE } from '../Config.js';
-import { angDiff, clamp, lerp } from '../../engine/math.js';
+import { angDiff, clamp, lerp, smoother } from '../../engine/math.js';
 
 const H = 1 / 240; // s: the springs' longest sub-step (the same motion at any frame rate)
-const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 
 function newFacing(a) {
   return { head: a, headV: 0, sh: a, shV: 0, hip: a, hipV: 0, feet: null, step: null, plantW: 0, hop: 0, rest: 0, led: null };
@@ -21,10 +20,12 @@ function newFacing(a) {
 // an angle x (rad) with its speed v (rad/s) pulled toward `to` by a spring [w, z] for dt s: F[k], F[kv] in place
 function spring(F, k, kv, to, w, z, dt) {
   const n = Math.max(1, Math.ceil(dt / H)), h = dt / n;
+  let x = F[k], v = F[kv]; // stepped in locals, stored once (a keyed store boxes every number it writes)
   for (let i = 0; i < n; i++) {
-    F[kv] += (w * w * angDiff(F[k], to) - 2 * z * w * F[kv]) * h;
-    F[k] += F[kv] * h;
+    v += (w * w * angDiff(x, to) - 2 * z * w * v) * h;
+    x += v * h;
   }
+  F[k] = x; F[kv] = v;
 }
 
 // where foot `side` (-1 left, 1 right) stands about (x, y) with the hips turned a, in world px; out { x, y, a }

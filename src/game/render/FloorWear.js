@@ -6,27 +6,21 @@
 // DOM-free: MapRenderer hands it the floor's pixels. The light comes from the top left, as on every sprite.
 import { TILE } from '../Config.js';
 import { WEAR } from '../data/floorwear.js';
-import { seeded } from '../systems/Weather.js';
-import { TAU } from '../../engine/math.js';
+import { TAU, seeded, hashString, hexRgb, smooth } from '../../engine/math.js';
 
-const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
-const OIL = rgb('#16141c'), GRIME = rgb('#2a2420'), TAR = rgb('#34343f'), GRAVEL = rgb('#8a857c'), GLASS = rgb('#b4dcd2');
-const HOLE = rgb('#2e2c2c'), SOOT = rgb('#140c08'), SCORCH = rgb('#5a3a20'), RUBBER = rgb('#141018');
-const FILTER = rgb('#c88a4a'), PAPER = rgb('#e2dccc'), ASHEN = rgb('#6a6670'), SHELL = rgb('#a8804a'), SHELL_L = rgb('#d0ac70');
-const DRINK = rgb('#4a3010'), GLITTER = ['#f4e4b0', '#e8eef8', '#ffc8e8', '#c8f4ff'].map(rgb);
-const GUM = rgb('#2a262c'), LEAF = rgb('#3c5430'), TIP = rgb('#6c8a46'), BACKING = rgb('#c8bca0');
-const PATCHED = rgb('#4a4c56'), CEMENT = rgb('#55525a'), WORN = rgb('#8a8078'), WOOD_DARK = rgb('#3a2418');
+const OIL = hexRgb('#16141c'), GRIME = hexRgb('#2a2420'), TAR = hexRgb('#34343f'), GRAVEL = hexRgb('#8a857c'), GLASS = hexRgb('#b4dcd2');
+const HOLE = hexRgb('#2e2c2c'), SOOT = hexRgb('#140c08'), SCORCH = hexRgb('#5a3a20'), RUBBER = hexRgb('#141018');
+const FILTER = hexRgb('#c88a4a'), PAPER = hexRgb('#e2dccc'), ASHEN = hexRgb('#6a6670'), SHELL = hexRgb('#a8804a'), SHELL_L = hexRgb('#d0ac70');
+const DRINK = hexRgb('#4a3010'), GLITTER = ['#f4e4b0', '#e8eef8', '#ffc8e8', '#c8f4ff'].map(hexRgb);
+const GUM = hexRgb('#2a262c'), LEAF = hexRgb('#3c5430'), TIP = hexRgb('#6c8a46'), BACKING = hexRgb('#c8bca0');
+const PATCHED = hexRgb('#4a4c56'), CEMENT = hexRgb('#55525a'), WORN = hexRgb('#8a8078'), WOOD_DARK = hexRgb('#3a2418');
 // the boards of the wood floor, world px from the top of a tile (kept in step with FL_WOOD_ROWS in
 // tools/generate_assets.py: 5, 6, 5, 5, 6, 5); the seam is the last pixel row of each board
 const BOARDS = [0, 5, 11, 16, 21, 27, 32];
+const DAMP = hexRgb('#3a4a3a'), RUST = hexRgb('#7a4a26'), STEEL = hexRgb('#6a707a'), STEEL_L = hexRgb('#9aa0aa');
+const LINT = hexRgb('#b4bccc');
+const DRAIN = 5; // px across a floor drain's grate
 const GAP = 20; // px: two marks of a kind never closer on a surface
-
-function hashName(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
 
 // smooth value noise 0..1 on a seeded lattice
 function valueNoise(R) {
@@ -54,7 +48,7 @@ export function surfaces(map, cfg = WEAR) {
 // where every mark goes: { names, surf, marks: [{ kind, s (surface), x, y (world px), seed, o (options) }] }
 export function planWear(map, level = {}, cfg = WEAR) {
   const { names, surf } = surfaces(map, cfg);
-  const R = seeded(hashName(level.name || 'level') ^ 0x5bd1e995);
+  const R = seeded(hashString(level.name || 'level') ^ 0x5bd1e995);
   const marks = [], W = map.w;
   const wall = (x, y) => x >= 0 && y >= 0 && x < W && y < map.h && surf[y * W + x] === -1;
   const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -97,7 +91,7 @@ export function planWear(map, level = {}, cfg = WEAR) {
     if (o.at === 'point') {
       // the one mark at (c0, r0) exactly (a ring round a stage), seeded by where it is: it moves no other mark
       const x = c0 * TILE, y = r0 * TILE, s = surfAt(x, y);
-      if (s >= 0) marks.push({ kind, s, x, y, seed: hashName(`${kind}${x},${y}`), o });
+      if (s >= 0) marks.push({ kind, s, x, y, seed: hashString(`${kind}${x},${y}`), o });
       continue;
     }
     for (let k = 0, tries = 0; k < n && tries < n * 12; tries++) {
@@ -186,11 +180,14 @@ function ragged(R, amp) {
 // radius e (1 on the rim) is under `reach`, (ux, uy) the way from the centre
 function blob(P, x, y, rx, ry, rot, rag, fn, reach = 1) {
   const s = P.s, c = Math.cos(rot), sn = Math.sin(rot), m = Math.max(rx, ry) * reach * (1 + rag.amp) + 1;
+  // the rag never takes the rim further out than 1 + amp: past that, no need for its angle (a hair of slack)
+  const far = (reach * (1 + Math.abs(rag.amp)) * (1 + 1e-9)) ** 2;
   for (let py = Math.floor((y - m) * s); py <= Math.ceil((y + m) * s); py++) {
     for (let px = Math.floor((x - m) * s); px <= Math.ceil((x + m) * s); px++) {
       if (P.at(px, py) !== P.id) continue;
       const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y;
       const u = (wx * c + wy * sn) / rx, v = (-wx * sn + wy * c) / ry;
+      if (u * u + v * v > far) continue;
       const e = Math.hypot(u, v) / rag(Math.atan2(v, u));
       if (e >= reach) continue;
       const dl = Math.hypot(wx, wy) || 1;
@@ -335,7 +332,7 @@ const KINDS = {
 
   // an old spill dried in: a soft patch pulled toward its colour, its rim a touch darker
   stain(P, R, x, y, o) {
-    const r = 5 + R() * 9, col = o.col ? rgb(o.col) : GRIME, d = o.d ?? -5;
+    const r = 5 + R() * 9, col = o.col ? hexRgb(o.col) : GRIME, d = o.d ?? -5;
     blob(P, x, y, r, r * (0.6 + R() * 0.4), R() * TAU, ragged(R, 0.35), (px, py, e) => {
       const w = smooth((1 - e) / 0.4);
       P.tint(px, py, d * w + (e > 0.88 ? d * 0.5 : 0), col, 0.18 * w);
@@ -427,9 +424,9 @@ const KINDS = {
     for (let px = xa; px <= xb; px++) { P.tint(px, top - 1, -8); P.tint(px, seam, -6); }
   },
 
-  // a path worn pale by feet (and greyer)
+  // a path worn pale by feet (and greyer); o.r: a small patch that size instead (where heels rest)
   wear(P, R, x, y, o) {
-    const rx = 24 + R() * 36, ry = 8 + R() * 10, d = o.d ?? 4, grey = o.grey ?? 0.08;
+    const rx = o.r ?? 24 + R() * 36, ry = o.r ? o.r * 0.65 : 8 + R() * 10, d = o.d ?? 4, grey = o.grey ?? 0.08;
     blob(P, x, y, rx, ry, R() * TAU, ragged(R, 0.3), (px, py, e) => {
       const w = smooth((1 - e) / 0.6);
       P.tint(px, py, d * w, WORN, grey * w);
@@ -511,7 +508,7 @@ const KINDS = {
   // a drink spilt and dried sticky: a faint darker patch, its rim a touch darker, glossy here and there (o.col: the
   // drink's colour, champagne paler than beer)
   sticky(P, R, x, y, o) {
-    const r = 3 + R() * 4, col = o.col ? rgb(o.col) : DRINK;
+    const r = 3 + R() * 4, col = o.col ? hexRgb(o.col) : DRINK;
     blob(P, x, y, r, r * (0.55 + R() * 0.35), R() * TAU, ragged(R, 0.4), (px, py, e) => {
       const w = smooth((1 - e) / 0.5);
       P.tint(px, py, -4 * w + (e > 0.85 ? -3 : 0), col, 0.12 * w);
@@ -557,13 +554,44 @@ const KINDS = {
     }
   },
 
+  // a floor drain: the damp gone green round it, a square steel grate five px across sunk in the floor (its rim dark
+  // on the top left, lit on the lower right, as a hollow is), three slots, a streak of rust running to it
+  drain(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 9 + R() * 3, a = R() * TAU;
+    blob(P, x, y, r, r * (0.7 + R() * 0.25), a, ragged(R, 0.3), (px, py, e) => {
+      const w = smooth((1 - e) / 0.5);
+      P.tint(px, py, -6 * w + (e > 0.9 ? -3 : 0), DAMP, 0.16 * w);
+    });
+    const m = walk(P, R, x + Math.cos(a) * 3, y + Math.sin(a) * 3, a, r * 0.9, { curve: 0.1, from: true, wide: 0.4 });
+    apply(P, m, (px, py, k) => P.tint(px, py, -4 * k, RUST, 0.3 * k));
+    const x0 = Math.round(x * s) - Math.floor(DRAIN * s / 2), n = DRAIN * s, y0 = Math.round(y * s) - Math.floor(n / 2);
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const rim = i === 0 || j === 0 ? HOLE : i === n - 1 || j === n - 1 ? STEEL_L : null;
+        const slot = j > 1 && j < n - 2 && i > 1 && i < n - 2 && Math.floor((i - 2) / (s / 2 || 1)) % 2 === 0;
+        P.tint(x0 + i, y0 + j, 0, rim || (slot ? SOOT : STEEL), 1);
+      }
+    }
+  },
+
   // black rubber heel marks
-  scuffs(P, R, x, y) {
-    const m = new Map();
+  scuffs(P, R, x, y, o = {}) {
+    const m = new Map(), k0 = o.k ?? 1; // k: how hard they show
     for (let n = 2 + Math.floor(R() * 4); n > 0; n--) {
       walk(P, R, x + (R() - 0.5) * 24, y + (R() - 0.5) * 24, R() * TAU, 3 + R() * 5, { curve: 0.15, kink: 0, taper: 1.5 }, m);
     }
-    apply(P, m, (px, py, k) => P.tint(px, py, -12 * k, RUBBER, 0.25 * k));
+    apply(P, m, (px, py, k) => P.tint(px, py, -12 * k * k0, RUBBER, Math.min(1, 0.25 * k * k0)));
+  },
+
+  // lint blown out of a dryer and trodden about: a loose cluster of pale grey-blue specks, a few of them darker
+  lint(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 5;
+    for (let n = 7 + Math.floor(R() * 6); n > 0; n--) {
+      const a = R() * TAU, d = r * R() * R(), px = Math.floor((x + Math.cos(a) * d) * s), py = Math.floor((y + Math.sin(a) * d) * s);
+      const dark = R() < 0.25;
+      P.tint(px, py, 0, dark ? ASHEN : LINT, dark ? 0.35 : 0.5);
+      if (R() < 0.3) P.tint(px + 1, py, 0, LINT, 0.3);
+    }
   },
 
   // the lino torn: its pale backing showing, the edge of the tear dark
@@ -594,8 +622,19 @@ function edges(P, R, S, names, noise) {
       const near = [];
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && wallish(tx + dx, ty + dy)) near.push([dx, dy]);
       if (!near.length) continue;
+      const px0 = tx * TILE * s, px1 = (tx + 1) * TILE * s - 1;
       for (let py = ty * TILE * s; py < (ty + 1) * TILE * s; py++) {
-        for (let px = tx * TILE * s; px < (tx + 1) * TILE * s; px++) {
+        // only the strips within E.w of the edges and corners found can be dirtied: the span of this row they
+        // cover (a pixel of slack), walked in the same order (the grit's draws keep their sequence)
+        const ly = (py + 0.5) / s - ty * TILE;
+        let lo = Infinity, hi = -Infinity;
+        for (const [dx, dy] of near) {
+          if (dy < 0 ? !(ly < E.w) : dy > 0 ? !(TILE - ly < E.w) : false) continue;
+          lo = Math.min(lo, dx > 0 ? TILE - E.w : 0); hi = Math.max(hi, dx < 0 ? E.w : TILE);
+        }
+        if (lo > hi) continue;
+        const pa = Math.max(px0, Math.floor((lo + tx * TILE) * s) - 1), pb = Math.min(px1, Math.ceil((hi + tx * TILE) * s) + 1);
+        for (let px = pa; px <= pb; px++) {
           const lx = (px + 0.5) / s - tx * TILE, ly = (py + 0.5) / s - ty * TILE;
           let dist = Infinity;
           for (const [dx, dy] of near) {
@@ -654,7 +693,7 @@ function lanes(P, S, level, noise) {
 // paint the floor's wear into its pixels (img: { data, width, height } of the whole floor, `s` pixels per world px)
 export function paintWear(img, s, map, level = {}, cfg = WEAR) {
   const plan = planWear(map, level, cfg);
-  const P = new Pixels(img, s, map, plan.surf), R = seeded(hashName(level.name || 'level') + 17), noise = valueNoise(R);
+  const P = new Pixels(img, s, map, plan.surf), R = seeded(hashString(level.name || 'level') + 17), noise = valueNoise(R);
   plan.names.forEach((name, id) => {
     const S = cfg.surfaces[name];
     P.id = id;

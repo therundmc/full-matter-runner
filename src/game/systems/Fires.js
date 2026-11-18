@@ -48,10 +48,20 @@ export default class Fires {
   // the fires burning now
   lit() { return this.fires; }
 
-  // the n of them nearest (x, y)
+  // the n of them nearest (x, y), nearest first (equals in the order they burn in): picked in one pass, every frame
+  // (Game.lensView), without sorting them all
   near(x, y, n) {
     if (this.fires.length <= n) return this.fires;
-    return [...this.fires].sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)).slice(0, n);
+    if (n <= 0) return [];
+    const best = [], dist = [];
+    for (const f of this.fires) {
+      const d = Math.hypot(f.x - x, f.y - y);
+      if (best.length === n && d >= dist[n - 1]) continue;
+      let i = Math.min(best.length, n - 1);
+      for (; i > 0 && dist[i - 1] > d; i--) { best[i] = best[i - 1]; dist[i] = dist[i - 1]; }
+      best[i] = f; dist[i] = d;
+    }
+    return best;
   }
 
   update(dt) {

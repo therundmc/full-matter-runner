@@ -5,7 +5,7 @@
 export const PX_PER_M = 32;
 export const TILE = PX_PER_M; // grid cell = 1 m
 export const KG = 0.0056;   // Matter mass units per kilogram (an 80 kg person = 0.45)
-export const G = 9.81;      // m/s²
+export const G = 9.81;      // m/s2
 export const STEP = 1 / 60; // Matter's base step (s)
 
 export const m = (meters) => meters * PX_PER_M;

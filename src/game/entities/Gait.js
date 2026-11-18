@@ -5,7 +5,7 @@
 // steps a second, a run three. Feet are measured in pose px (the body as drawn before BODY_SCALE).
 import { BODY_SCALE } from '../Config.js';
 import { toMps } from '../../engine/physics/Units.js';
-import { clamp, lerp, angDiff } from '../../engine/math.js';
+import { TAU, clamp, lerp, angDiff, frac, smoother } from '../../engine/math.js';
 
 export const GAIT = {
   cadence: [1.15, 0.45],  // steps per second = a + b * speed (m/s of the body as drawn)
@@ -25,11 +25,7 @@ export const cadenceAt = (v) => GAIT.cadence[0] + GAIT.cadence[1] * v;
 export const stanceAt = (v) => clamp(GAIT.stance[0] - GAIT.stance[1] * v, GAIT.stance[2], GAIT.stance[3]);
 // how far a planted foot goes ahead of / behind the hips at pace v (pose px)
 export const reachAt = (v) => Math.min(GAIT.reach, GAIT.slip * (v * 32 * stanceAt(v)) / cadenceAt(v));
-export const runAt = (v) => clamp((v - GAIT.run[0]) / (GAIT.run[1] - GAIT.run[0]), 0, 1);
-
-const TAU = Math.PI * 2;
-const frac = (x) => x - Math.floor(x);
-const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+const runAt = (v) => clamp((v - GAIT.run[0]) / (GAIT.run[1] - GAIT.run[0]), 0, 1);
 
 // Advance the cycle of ch (walk, pace, run, gait) by dt at sp px/step going along moveA (facing ch.angle). Returns how
 // many feet came down meanwhile (0, 1, rarely 2). Standing, the cycle runs on to the next moment the feet pass each

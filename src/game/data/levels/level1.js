@@ -106,7 +106,7 @@ export default {
     // south sidewalk
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 27.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
     ['hydrant', 25.5, 30.35, 0], ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180],
-    ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
+    ['flyers', 13.4, 31.94, 180], ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
     // road: parked along the bar side
     ['car2', 14.6, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180, { lights: false }],
     ['van', 34.3, 24.05, 180, { lights: false }],
@@ -114,13 +114,15 @@ export default {
     ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['neon_sign_open', 22.5, 21.09, 0],
     ['ash_urn', 24.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 33.5, 22.7, 90],
     ['bench', 35.5, 22.62, 180], ['trash_can', 38.5, 21.35, 0], ['hydrant', 10.6, 22.65, 0],
-    ['vending', 17.42, 21.33, 0], ['news_box', 25.6, 21.19, 0], ['palm_tree', 39.6, 21.8, 0],
+    ['vending', 17.42, 21.33, 0], ['news_box', 25.6, 21.19, 0], ['flyers', 2.6, 21.06, 0], ['flyers', 31.4, 21.06, 0],
+    ['palm_tree', 39.6, 21.8, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],
-    ['bar_counter', 7.5, 18.4, 0], ['bar_counter', 8.5, 18.4, 0], ['bottle_shelf', 5, 18.5, 0],
-    ['fridge', 3.4, 18.5, 270], ['fridge', 3.4, 19.25, 270], ['bottle_shelf', 5.7, 19.78, 180],
-    ['crate', 6.9, 19.6, 10], ['crate', 7.52, 19.62, -5], ['ceiling_lamp', 4.6, 19, 0], ['ceiling_lamp', 6.9, 18.9, 0],
+    ['bar_counter', 7.5, 18.4, 0], ['bar_counter', 8.5, 18.4, 0, { clutter: 'shop_till' }],
+    ['bottle_shelf', 5, 18.5, 0], ['fridge', 3.4, 18.5, 270], ['fridge', 3.4, 19.25, 270],
+    ['bottle_shelf', 5.7, 19.78, 180], ['crate', 6.9, 19.6, 10], ['crate', 7.52, 19.62, -5],
+    ['ceiling_lamp', 4.6, 19, 0], ['ceiling_lamp', 6.9, 18.9, 0],
     // TV shop
     ['neon_sign_video', 32.9, 21.09, 0], ['alarm_box', 33.8, 21.1, 0], ['tv', 34.5, 19.7, 0], ['tv', 35.5, 19.7, 0],
     ['tv', 36.5, 19.7, 0], ['tv', 36.55, 18.8, 0], ['bookshelf', 34.7, 17.2, 0], ['bookshelf', 36, 17.2, 0],
@@ -136,24 +138,25 @@ export default {
     ['wall_lamp', 11.09, 19, 270], ['trash_can', 13.5, 17.4, 0], ['trash_can', 13.45, 18.25, 0],
     ['crate', 11.45, 16.9, -6], ['parapet', 10.5, 12.5, 90], ['dumpster', 11.62, 14.5, 90],
     ['neon_tube_cyan', 13.93, 9.9, 90], ['crate', 11.45, 9.8, 4], ['gas_bottle', 13.72, 6.55, 0],
-    ['gas_bottle', 13.7, 7.05, 0], ['pipe_steam', 13.93, 13.6, 90],
+    ['gas_bottle', 13.7, 7.05, 0], ['pipe_steam', 13.93, 13.6, 90], ['conduit', 13.94, 16, 90],
     // back lot
     ['van', 23.5, 2.3, 180, { lights: false }], ['dumpster', 15.2, 1.6, 0], ['crate', 17.2, 1.45, 5],
-    ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['fridge', 13.5, 1.42, -6], ['washer', 13.55, 2.25, 8],
-    ['tv', 16.55, 1.42, 12, { lights: false }], ['armchair', 18.65, 1.5, 14], ['trash_can', 20, 1.45, 0],
-    ['trash_can', 20.6, 1.6, 0], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0], ['trash_can', 29.5, 1.5, 0],
-    ['parapet', 10.5, 3.5, 90], ['crate', 30.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
+    ['crate', 17.9, 1.5, -10], ['crate', 17.5, 2.15, 30], ['fridge', 13.5, 1.42, -6, { lights: false }],
+    ['washer', 13.55, 2.25, 8], ['tv', 16.55, 1.42, 12, { lights: false }], ['armchair', 18.65, 1.5, 14],
+    ['trash_can', 20, 1.45, 0], ['trash_can', 20.6, 1.6, 0], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
+    ['trash_can', 29.5, 1.5, 0], ['parapet', 10.5, 3.5, 90], ['crate', 30.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
     ['fuse_box', 23.5, 4.92, 180], ['emergency_light', 22.6, 12.09, 0], ['emergency_light', 19.5, 19.91, 180],
     ['emergency_light', 23.91, 17.4, 90], ['emergency_light', 17.6, 10.91, 180], ['emergency_light', 20.09, 8.5, 270],
     ['emergency_light', 24.4, 10.91, 180], ['emergency_light', 27.5, 17.09, 0], ['wall_vent', 16.3, 4.92, 180],
     ['pipe_water', 19.2, 1.07, 0], ['tube_light', 25.55, 4.93, 180], ['gas_bottle', 28.4, 4.74, 0],
+    ['conduit', 19.9, 4.94, 180],
     // storeroom
     ['bookshelf', 15.7, 6.2, 0], ['oven', 17.1, 6.38, 0], ['sink', 18.35, 6.3, 0], ['fridge', 18.62, 7.5, 90],
     ['tube_light', 18.93, 8.6, 90], ['dope_table', 17, 9.2, 0, { clutter: 'dope' }], ['crate', 18.55, 10.55, 4],
-    ['crate', 15.4, 6.85, 10],
+    ['crate', 15.4, 6.85, 10], ['conduit', 15.06, 9.9, 270],
     // toilets
     ['toilet', 22.5, 6.4, 0], ['stall', 22.06, 6.78, 0], ['urinal', 20.19, 7.95, 270], ['urinal', 20.19, 8.85, 270],
-    ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0, { tips: false }],
+    ['sink', 22.7, 9, 90], ['tube_light', 22.93, 8.15, 90], ['trash_can', 20.4, 10.5, 0, { tips: false, flies: true }],
     // back room
     ['table_lamp', 24.45, 7.35, 0], ['desk', 26.6, 6.75, 270, { clutter: 'cueball_desk' }], ['sofa', 24.5, 8.6, 270],
     ['armchair', 28.45, 6.6, 180], ['table_round', 26.6, 8.75, 0, { clutter: 'men_table' }],
@@ -209,7 +212,7 @@ export default {
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
   welcome: [[20, 12, 22, 12], [15, 13, 22, 15], [15, 16, 22, 19], [20, 6, 22, 11]],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_mat', 21.0, 21.4, 0], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
+  floor: [['tag', 20.2, 34.9, -8], ['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_mat', 21.0, 21.4, 0], ['tag', 11.9, 12.6, 80], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
   // weapons stood against a wall [type, col, row, deg]
   lean: [["cue", 18.6, 19.8, 90]],
   // closed shops: breaking in (a window, the door, a wall, or just standing on its floor) rings the box
@@ -223,7 +226,7 @@ export default {
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],
   // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
-  doors: { '20,20': {"closer": true}, '21,11': {"closer": true}, '24,5': {"closer": true}, '14,8': {"closer": true} },
+  doors: { '20,20': {"kind": "bar", "inside": [0, -1]}, '21,11': {"kind": "swing"}, '24,5': {"kind": "fire", "inside": [0, 1]}, '16,11': {"kind": "staff"}, '14,8': {"kind": "staff", "closer": true, "inside": [1, 0]}, '26,11': {"kind": "office"}, '23,13': {"kind": "gaming"}, '8,20': {"kind": "shop"}, '37,20': {"kind": "shop"}, '28,32': {"kind": "shop"} },
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[5, 20], [6, 20], [7, 20]],
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
@@ -233,12 +236,13 @@ export default {
   soundscape: { rain: 0, zones: [['vip', 24, 17, 28, 19], ['office', 24, 12, 28, 15], ['bar', 15, 12, 28, 19], ['toilets', 20, 6, 22, 10], ['office', 24, 6, 28, 10], ['kitchen', 15, 6, 18, 10], ['lot', 11, 0, 30, 4], ['lot', 11, 5, 13, 20, 'service'], ['lot', 30, 5, 30, 19, 'gap'], ['shop', 3, 17, 8, 19, 'liquor'], ['shop', 34, 17, 37, 19, 'tvshop'], ['shop', 26, 33, 29, 35, 'laundry'], ['alley', 19, 32, 22, 36]] },
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
   // paths worn by feet [col0, row0, col1, row1, width px]
-  grime: [['rings', 15, 14, 19, 15, 4], ['sticky', 15, 14, 19, 15, 3], ['butts', 15, 14, 19, 15, 5], ['shells', 15, 14, 19, 15, 6], ['napkin', 15, 14, 19, 15, 2], ['sticky', 15, 12, 19, 13, 2], ['rings', 15, 12, 19, 13, 2], ['butts', 15, 16, 17, 18, 2], ['sticky', 15, 16, 17, 18, 1], ['napkin', 15, 16, 17, 19, 1], ['butts', 18, 15, 22, 19, 4], ['sticky', 19, 15, 22, 18, 2], ['butts', 24, 12, 28, 15, 4], ['burns', 24, 12, 28, 15, 2], ['sticky', 24, 13, 28, 15, 1], ['sticky', 25, 17, 28, 19, 2], ['butts', 25, 17, 28, 19, 2], ['halo', 28.0, 18.9, 28.0, 18.9, 1, {'r': 31, 'w': 9, 'd': -14, 'grey': 0.25, 'at': 'point'}], ['glitter', 27.85, 18.25, 27.85, 18.25, 1, {'r': 10, 'at': 'point'}], ['glitter', 27.7, 19.2, 27.7, 19.2, 1, {'r': 10, 'at': 'point'}], ['glitter', 27.95, 19.8, 27.95, 19.8, 1, {'r': 10, 'at': 'point'}], ['glitter', 27.2, 18.6, 27.2, 18.6, 1, {'r': 10, 'at': 'point'}], ['glitter', 26.6, 18.15, 26.6, 18.15, 1, {'r': 10, 'at': 'point'}], ['glitter', 28.6, 19.85, 28.6, 19.85, 1, {'r': 10, 'at': 'point'}], ['butts', 25.3, 18.2, 25.3, 18.2, 1, {'at': 'point'}], ['butts', 26.4, 18.15, 26.4, 18.15, 1, {'at': 'point'}], ['butts', 26.9, 18.8, 26.9, 18.8, 1, {'at': 'point'}], ['rings', 26.0, 18.3, 26.0, 18.3, 1, {'at': 'point'}], ['rings', 27.4, 18.05, 27.4, 18.05, 1, {'at': 'point'}], ['sticky', 26.4, 19.3, 26.4, 19.3, 1, {'col': '#a89048', 'at': 'point'}], ['butts', 24, 6, 28, 10, 4], ['burns', 24, 6, 28, 10, 2], ['napkin', 21, 8, 22, 10, 4], ['stain', 22, 8, 22, 10, 1, {'col': '#3a4a50'}], ['butts', 20, 6, 22, 10, 2], ['butts', 15, 6, 18, 10, 2], ['sticky', 15, 7, 18, 10, 1]],
-  worn: [[20.5, 19.5, 17.8, 15.1, 12], [20.5, 19.5, 21.4, 12.3, 10]],
+  grime: [['drain', 28.35, 34.6, 28.35, 34.6, 1, {'r': 7, 'at': 'point'}], ['lint', 26.75, 35.1, 26.75, 35.1, 1, {'at': 'point'}], ['lint', 28.5, 35.35, 28.5, 35.35, 1, {'at': 'point'}], ['lint', 29.05, 34.45, 29.05, 34.45, 1, {'at': 'point'}], ['lint', 28.2, 33.6, 28.2, 33.6, 1, {'at': 'point'}], ['tide', 27.5, 34.95, 27.5, 34.95, 1, {'at': 'point'}], ['scuffs', 27.1, 35.05, 27.1, 35.05, 1, {'at': 'point'}], ['wear', 25.4, 9.9, 25.4, 9.9, 1, {'r': 9, 'd': 5, 'grey': 0.2, 'at': 'point'}], ['wear', 28.0, 6.9, 28.0, 6.9, 1, {'r': 8, 'd': 5, 'grey': 0.2, 'at': 'point'}], ['halo', 25.9, 14.25, 25.9, 14.25, 1, {'r': 35, 'w': 7, 'd': -9, 'grey': 0.2, 'at': 'point'}], ['rings', 15, 14, 19, 15, 4], ['sticky', 15, 14, 19, 15, 3], ['butts', 15, 14, 19, 15, 5], ['shells', 15, 14, 19, 15, 6], ['napkin', 15, 14, 19, 15, 2], ['sticky', 15, 12, 19, 13, 2], ['rings', 15, 12, 19, 13, 2], ['butts', 15, 16, 17, 18, 2], ['sticky', 15, 16, 17, 18, 1], ['napkin', 15, 16, 17, 19, 1], ['butts', 18, 15, 22, 19, 4], ['sticky', 19, 15, 22, 18, 2], ['butts', 24, 12, 28, 15, 4], ['burns', 24, 12, 28, 15, 2], ['sticky', 24, 13, 28, 15, 1], ['sticky', 25, 17, 28, 19, 2], ['butts', 25, 17, 28, 19, 2], ['halo', 28.0, 18.9, 28.0, 18.9, 1, {'r': 31, 'w': 9, 'd': -14, 'grey': 0.25, 'at': 'point'}], ['glitter', 27.85, 18.25, 27.85, 18.25, 1, {'r': 10, 'at': 'point'}], ['glitter', 27.7, 19.2, 27.7, 19.2, 1, {'r': 10, 'at': 'point'}], ['glitter', 27.95, 19.8, 27.95, 19.8, 1, {'r': 10, 'at': 'point'}], ['glitter', 27.2, 18.6, 27.2, 18.6, 1, {'r': 10, 'at': 'point'}], ['glitter', 26.6, 18.15, 26.6, 18.15, 1, {'r': 10, 'at': 'point'}], ['glitter', 28.6, 19.85, 28.6, 19.85, 1, {'r': 10, 'at': 'point'}], ['butts', 25.3, 18.2, 25.3, 18.2, 1, {'at': 'point'}], ['butts', 26.4, 18.15, 26.4, 18.15, 1, {'at': 'point'}], ['butts', 26.9, 18.8, 26.9, 18.8, 1, {'at': 'point'}], ['rings', 26.0, 18.3, 26.0, 18.3, 1, {'at': 'point'}], ['rings', 27.4, 18.05, 27.4, 18.05, 1, {'at': 'point'}], ['sticky', 26.4, 19.3, 26.4, 19.3, 1, {'col': '#a89048', 'at': 'point'}], ['butts', 24, 6, 28, 10, 4], ['burns', 24, 6, 28, 10, 2], ['napkin', 21, 8, 22, 10, 4], ['stain', 22, 8, 22, 10, 1, {'col': '#3a4a50'}], ['butts', 20, 6, 22, 10, 2], ['butts', 15, 6, 18, 10, 2], ['sticky', 15, 7, 18, 10, 1], ['scuffs', 15.65, 14.75, 15.65, 14.75, 1, {'k': 2.2, 'at': 'point'}], ['scuffs', 16.75, 14.75, 16.75, 14.75, 1, {'k': 2.2, 'at': 'point'}], ['scuffs', 17.85, 14.75, 17.85, 14.75, 1, {'k': 2.2, 'at': 'point'}], ['scuffs', 18.95, 14.75, 18.95, 14.75, 1, {'k': 2.2, 'at': 'point'}], ['drain', 21.45, 9.3, 21.45, 9.3, 1, {'at': 'point'}], ['drain', 18.0, 7.45, 18.0, 7.45, 1, {'r': 7, 'at': 'point'}], ['scuffs', 6, 19, 8, 19, 2], ['stain', 3, 17, 8, 19, 2, {'col': '#3a3020'}]],
+  worn: [[28.5, 33.1, 27.3, 34.9, 9], [25.4, 6.3, 25.75, 10.2, 9], [20.5, 19.5, 17.8, 15.1, 12], [20.5, 19.5, 21.4, 12.3, 10], [21.5, 10.9, 20.8, 8.4, 8], [14.9, 8.5, 16.5, 10.7, 9], [8.5, 19.8, 7.6, 19.1, 9]],
   // cigarette haze hanging under the lamps (systems/Smoke.js): [col, row, radius tiles, density]
   haze: [[19.8, 16.9, 2.3, 0.1], [25.9, 14.25, 1.9, 0.1], [17.6, 13.6, 2.0, 0.05], [28.0, 18.9, 1.4, 0.12]],
   // small things lying loose on the floor (systems/Litter.js): [kind, col, row, deg, look]
   litter: [
+    ["sock", 28.65, 35.5, 20, 0], ["card", 27.05, 15.4, 35, 0], ["chip", 27.3, 15.15, 0, 0], ["chip", 24.95, 15.55, 0, 0],
     ["flute", 26.2, 19.2, 115, 0], ["flute", 27.12, 18.3, 200, 0], ["cork", 26.95, 18.55, 0, 0], ["cork", 27.1, 19.78, 0, 0],
     ["garter", 27.4, 19.55, 30, 0], ["ashtray", 26.05, 18.03, 0, 0], ["bill", 28.748, 19.761, 46, 0], ["bill", 27.846, 17.926, 233, 1],
     ["bill", 27.242, 18.128, 184, 0], ["bill", 28.822, 18.239, 115, 1], ["bill", 28.346, 19.712, 184, 2], ["bill", 27.501, 19.661, 297, 1],

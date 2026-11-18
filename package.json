@@ -9,6 +9,7 @@
     "play": "node tools/play.mjs",
     "serve": "python -m http.server 8000",
     "qa": "node tools/qa/run.mjs",
+    "qa:watch": "node tools/qa/watch.mjs",
     "shot": "node tools/shot.mjs"
   }
 }

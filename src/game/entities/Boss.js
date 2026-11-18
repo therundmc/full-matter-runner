@@ -13,15 +13,14 @@ import Enemy from './Enemy.js';
 import Debris from './Debris.js';
 import { BOSSES } from '../data/bosses.js';
 import { ENEMY, PALETTE } from '../Config.js';
-import { rand, angDiff, pick, clamp, lerp } from '../../engine/math.js';
+import { rand, angDiff, pick, clamp, lerp, smooth, bump } from '../../engine/math.js';
 import { impulse } from '../../engine/physics/Body.js';
 import { sprite, spriteOpt } from '../../engine/Assets.js';
 import { inHand } from '../ai/Carry.js';
-import { bodyFrame, smooth } from './CharacterAnim.js';
+import { bodyFrame } from './CharacterAnim.js';
 import { drawWound, drawClutch, drawGlint } from '../render/BossArt.js';
 
 const { Body } = Matter;
-const bump = (k) => (k <= 0 || k >= 1 ? 0 : Math.sin(Math.PI * k));
 
 // The side of him a blow going along `a` struck, for a man facing `facing`: 'front' | 'behind' | 'left' | 'right'
 // (BOSSES spots).

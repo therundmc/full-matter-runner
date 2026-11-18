@@ -107,6 +107,7 @@ export default class Enemy extends Character {
     this.atPost = true;    // standing where he means to be (his post, or `errand`)
     this.errand = null;    // where he went for a moment ({ x, y, face, wall }: to relieve himself)
     this.errandT = 0;
+    this.restUntil = 0;    // his post given up on until then (no way through to it): he idles where he stands
     this.reliefCd = rand(...AI.relief.first);
     this.mate = null;      // the colleague he is chatting with; turn: which of the two he is (0 | 1)
     this.turn = 0; this.spoke = false; this.chatCd = rand(4, 25); this.chatScan = 0;
@@ -725,11 +726,15 @@ export default class Enemy extends Character {
   doIdle(dt) {
     if (this.routine && this.activity === this.job) { this.work(dt); return; }
     const h = this.errand ?? this.home;
-    this.atPost = Math.hypot(h.x - this.x, h.y - this.y) <= 14;
+    this.atPost = Math.hypot(h.x - this.x, h.y - this.y) <= 14 || (!this.errand && this.world.time < this.restUntil);
     if (!this.atPost) {
       // a spot he cannot get to (something in the way) is forgotten
       if (this.errand && (this.errandT += dt) > AI.relief.giveUp) { this.errand = null; this.activityT = 0; }
-      this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true });
+      // no way there, or held up on the way too often (a mate standing in the only way, ai/Nav.js jams): an errand
+      // is dropped, his post waits a while and he idles where he stands
+      if (this.travel(dt, h.x, h.y, ENEMY.walkSpeed, { doors: true })) {
+        if (this.errand) { this.errand = null; this.activityT = 0; } else this.restUntil = this.world.time + rand(...AI.nav.jam.rest);
+      }
       return;
     }
     this.halt();
@@ -2447,7 +2452,7 @@ export default class Enemy extends Character {
 
   draw(ctx) {
     if (this.ashtray) drawItem(ctx, 'ashtray', this.ashtray.x, this.ashtray.y, 0.4);
-    const k = 1 - this.crouch * 0.12;
+    const k = 1 - Math.min(1, this.crouch) * 0.12; // ducking lower (DUCK) is in his pose, never a smaller man
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }
     const B = this.held ? null : this.postBody(); // seized at his post: in the hands of the one behind him
     if (B) drawPose(ctx, this, postPose(this, standPose(this, this.pose), this.pose2, B));

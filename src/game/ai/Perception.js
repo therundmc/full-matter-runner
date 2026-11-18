@@ -1,6 +1,6 @@
 // Pure perception maths for the guards (no world access, unit tested): how fast the detection meter fills,
-// how wrong their aim is, how badly they localise a noise, how long they put up with a loiterer.
-import { ENEMY, AI } from '../Config.js';
+// how wrong their aim is, how badly they localise a noise.
+import { ENEMY } from '../Config.js';
 import { clamp, lerp } from '../../engine/math.js';
 
 // Detection meter fill per second.
@@ -19,7 +19,7 @@ export function detectionRate({ dist, off, moving = 0, light = 0.6, vigilance = 
   return (cone * motion * lit * vigilance * focus) / T;
 }
 
-// Is a point inside the view (cone, or the 360° close-awareness bubble)?
+// Is a point inside the view (cone, or the 360 deg close-awareness bubble)?
 export function inView(dist, off, aware) {
   if (dist > ENEMY.viewDist) return false;
   return dist <= ENEMY.closeSense[aware] || off <= ENEMY.fov / 2;

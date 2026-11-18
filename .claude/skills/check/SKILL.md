@@ -39,7 +39,7 @@ skipping `.claude/worktrees/`, and reports:
 | src/game/data/levels/tutorial.js | tools/build_tutorial.py (+ levelkit) |
 | src/audio/bank.js, assets/sound/foley.wav | tools/build_sounds.mjs, tools/sounds.json |
 | assets/sprites/comic/** | tools/generate_comic.py or tools/comic/** |
-| assets/sprites/title/** | tools/comic/** (title_proposals.py) |
+| assets/sprites/title/**, src/game/data/titleart.js | tools/comic/** (title.py, title_art.py) |
 | assets/sprites/** | tools/generate_assets.py |
 
 A `generated` line is a KO unless regenerating gives the same file: run the generator (skill `regen`), then

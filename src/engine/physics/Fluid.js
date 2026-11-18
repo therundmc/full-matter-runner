@@ -11,7 +11,7 @@
 // Solid cells (walls, a shut door, a pane) carry nothing and let nothing through. Only the cells of the `region`
 // are stepped (the rooms about the player); the rest of the grid waits as it is. Typed arrays, no allocation per
 // step. DOM-free.
-const clampI = (v, a, b) => (v < a ? a : v > b ? b : v);
+import { clamp } from '../math.js';
 const EMPTY = 1e-3; // a kind whose densest cell in the region is under this is left as it is
 
 export default class Fluid {
@@ -80,8 +80,8 @@ export default class Fluid {
   // the flow cells to step: those under the world rectangle (px), never the outer ring of the grid
   setRegion(x0, y0, x1, y1) {
     const c = this.cell, r = this.region;
-    r.x0 = clampI(Math.floor(x0 / c), 1, this.w - 1); r.x1 = clampI(Math.ceil(x1 / c), r.x0, this.w - 1);
-    r.y0 = clampI(Math.floor(y0 / c), 1, this.h - 1); r.y1 = clampI(Math.ceil(y1 / c), r.y0, this.h - 1);
+    r.x0 = clamp(Math.floor(x0 / c), 1, this.w - 1); r.x1 = clamp(Math.ceil(x1 / c), r.x0, this.w - 1);
+    r.y0 = clamp(Math.floor(y0 / c), 1, this.h - 1); r.y1 = clamp(Math.ceil(y1 / c), r.y0, this.h - 1);
   }
 
   // ---- sources (world px)
@@ -90,8 +90,8 @@ export default class Fluid {
   // made denser than `cap` by it
   addDensity(x, y, r, amount, k = 0, cap = 2) {
     const f = this.fcell, W = this.W, rr = Math.max(r, f * 0.5), K = this.kinds[k], d = K.d;
-    const x0 = clampI(Math.floor((x - rr) / f), 0, W - 1), x1 = clampI(Math.floor((x + rr) / f), 0, W - 1);
-    const y0 = clampI(Math.floor((y - rr) / f), 0, this.H - 1), y1 = clampI(Math.floor((y + rr) / f), 0, this.H - 1);
+    const x0 = clamp(Math.floor((x - rr) / f), 0, W - 1), x1 = clamp(Math.floor((x + rr) / f), 0, W - 1);
+    const y0 = clamp(Math.floor((y - rr) / f), 0, this.H - 1), y1 = clamp(Math.floor((y + rr) / f), 0, this.H - 1);
     for (let gy = y0; gy <= y1; gy++) {
       for (let gx = x0; gx <= x1; gx++) {
         const j = gy * W + gx;
@@ -119,8 +119,8 @@ export default class Fluid {
   // the air in a disc pulled toward the velocity (vx, vy): k = share of the way per call at the heart (0..1)
   push(x, y, r, vx, vy, k) {
     const c = this.cell, w = this.w;
-    const x0 = clampI(Math.floor((x - r) / c), 1, w - 2), x1 = clampI(Math.floor((x + r) / c), 1, w - 2);
-    const y0 = clampI(Math.floor((y - r) / c), 1, this.h - 2), y1 = clampI(Math.floor((y + r) / c), 1, this.h - 2);
+    const x0 = clamp(Math.floor((x - r) / c), 1, w - 2), x1 = clamp(Math.floor((x + r) / c), 1, w - 2);
+    const y0 = clamp(Math.floor((y - r) / c), 1, this.h - 2), y1 = clamp(Math.floor((y + r) / c), 1, this.h - 2);
     for (let cy = y0; cy <= y1; cy++) {
       for (let cx = x0; cx <= x1; cx++) {
         const i = cy * w + cx;
@@ -136,8 +136,8 @@ export default class Fluid {
   // the air in a disc set turning about its centre at `omega` rad/s (capped at `vmax` px/s), k as in push()
   swirl(x, y, r, omega, vmax, k) {
     const c = this.cell, w = this.w;
-    const x0 = clampI(Math.floor((x - r) / c), 1, w - 2), x1 = clampI(Math.floor((x + r) / c), 1, w - 2);
-    const y0 = clampI(Math.floor((y - r) / c), 1, this.h - 2), y1 = clampI(Math.floor((y + r) / c), 1, this.h - 2);
+    const x0 = clamp(Math.floor((x - r) / c), 1, w - 2), x1 = clamp(Math.floor((x + r) / c), 1, w - 2);
+    const y0 = clamp(Math.floor((y - r) / c), 1, this.h - 2), y1 = clamp(Math.floor((y + r) / c), 1, this.h - 2);
     for (let cy = y0; cy <= y1; cy++) {
       for (let cx = x0; cx <= x1; cx++) {
         const i = cy * w + cx;
@@ -153,8 +153,8 @@ export default class Fluid {
   // volume pushed into the air in a disc (rate in 1/s, negative: drawn out of it)
   addExpand(x, y, r, rate) {
     const c = this.cell, w = this.w;
-    const x0 = clampI(Math.floor((x - r) / c), 1, w - 2), x1 = clampI(Math.floor((x + r) / c), 1, w - 2);
-    const y0 = clampI(Math.floor((y - r) / c), 1, this.h - 2), y1 = clampI(Math.floor((y + r) / c), 1, this.h - 2);
+    const x0 = clamp(Math.floor((x - r) / c), 1, w - 2), x1 = clamp(Math.floor((x + r) / c), 1, w - 2);
+    const y0 = clamp(Math.floor((y - r) / c), 1, this.h - 2), y1 = clamp(Math.floor((y + r) / c), 1, this.h - 2);
     for (let cy = y0; cy <= y1; cy++) {
       for (let cx = x0; cx <= x1; cx++) {
         const i = cy * w + cx, dx = (cx + 0.5) * c - x, dy = (cy + 0.5) * c - y;
@@ -168,7 +168,7 @@ export default class Fluid {
   // the flow at (x, y), bilinear, written into out { x, y }
   velocityAt(x, y, out) {
     const c = this.cell, w = this.w;
-    const gx = clampI(x / c - 0.5, 0, w - 1.001), gy = clampI(y / c - 0.5, 0, this.h - 1.001);
+    const gx = clamp(x / c - 0.5, 0, w - 1.001), gy = clamp(y / c - 0.5, 0, this.h - 1.001);
     const i = gx | 0, j = gy | 0, sx = gx - i, sy = gy - j, a = j * w + i;
     const u = this.u, v = this.v;
     out.x = (u[a] * (1 - sx) + u[a + 1] * sx) * (1 - sy) + (u[a + w] * (1 - sx) + u[a + w + 1] * sx) * sy;
@@ -179,7 +179,7 @@ export default class Fluid {
   // kind k's density at (x, y), bilinear
   densityAt(x, y, k = 0) {
     const f = this.fcell, W = this.W;
-    const gx = clampI(x / f - 0.5, 0, W - 1.001), gy = clampI(y / f - 0.5, 0, this.H - 1.001);
+    const gx = clamp(x / f - 0.5, 0, W - 1.001), gy = clamp(y / f - 0.5, 0, this.H - 1.001);
     const i = gx | 0, j = gy | 0, sx = gx - i, sy = gy - j, a = j * W + i, d = this.kinds[k].d;
     return (d[a] * (1 - sx) + d[a + 1] * sx) * (1 - sy) + (d[a + W] * (1 - sx) + d[a + W + 1] * sx) * sy;
   }
@@ -192,7 +192,7 @@ export default class Fluid {
     let out = 0;
     for (let i = 0; i <= n; i++) {
       const t = i / n;
-      const gx = clampI(Math.floor((x0 + (x1 - x0) * t) / f), 0, W - 1), gy = clampI(Math.floor((y0 + (y1 - y0) * t) / f), 0, this.H - 1);
+      const gx = clamp(Math.floor((x0 + (x1 - x0) * t) / f), 0, W - 1), gy = clamp(Math.floor((y0 + (y1 - y0) * t) / f), 0, this.H - 1);
       const j = gy * W + gx;
       let s = 0;
       for (let k = 0; k < weights.length; k++) if (weights[k]) s += this.kinds[k].d[j] * weights[k];
@@ -237,7 +237,7 @@ export default class Fluid {
       for (let x = x0; x < x1; x++) {
         const i = y * w + x;
         if (solid[i]) continue;
-        const bx = clampI(x - u0[i] * back, 0, w - 1.001), by = clampI(y - v0[i] * back, 0, this.h - 1.001);
+        const bx = clamp(x - u0[i] * back, 0, w - 1.001), by = clamp(y - v0[i] * back, 0, this.h - 1.001);
         const ix = bx | 0, iy = by | 0, sx = bx - ix, sy = by - iy, a = iy * w + ix;
         u[i] = ((u0[a] * (1 - sx) + u0[a + 1] * sx) * (1 - sy) + (u0[a + w] * (1 - sx) + u0[a + w + 1] * sx) * sy) * damp;
         v[i] = ((v0[a] * (1 - sx) + v0[a + 1] * sx) * (1 - sy) + (v0[a + w] * (1 - sx) + v0[a + w + 1] * sx) * sy) * damp;
@@ -294,11 +294,11 @@ export default class Fluid {
     // the way back along the flow from each density cell's centre (in density cells), the same for every kind
     const back = dt / this.fcell;
     for (let gy = fy0; gy < fy1; gy++) {
-      const cy = clampI((gy + 0.5) * toFlow - 0.5, 0, this.h - 1.001), iy = cy | 0, sy = cy - iy;
+      const cy = clamp((gy + 0.5) * toFlow - 0.5, 0, this.h - 1.001), iy = cy | 0, sy = cy - iy;
       for (let gx = fx0; gx < fx1; gx++) {
         const j = gy * W + gx;
         if (fsolid[j]) continue;
-        const cx = clampI((gx + 0.5) * toFlow - 0.5, 0, w - 1.001), ix = cx | 0, sx = cx - ix, a = iy * w + ix;
+        const cx = clamp((gx + 0.5) * toFlow - 0.5, 0, w - 1.001), ix = cx | 0, sx = cx - ix, a = iy * w + ix;
         mvx[j] = ((u[a] * (1 - sx) + u[a + 1] * sx) * (1 - sy) + (u[a + w] * (1 - sx) + u[a + w + 1] * sx) * sy) * back;
         mvy[j] = ((v[a] * (1 - sx) + v[a + 1] * sx) * (1 - sy) + (v[a + w] * (1 - sx) + v[a + w + 1] * sx) * sy) * back;
       }
@@ -340,7 +340,7 @@ export default class Fluid {
       for (let gx = fx0; gx < fx1; gx++) {
         const j = gy * W + gx;
         if (fsolid[j]) continue;
-        const bx = clampI(gx - mvx[j], 0, W - 1.001), by = clampI(gy - mvy[j], 0, this.H - 1.001), own = d0[j];
+        const bx = clamp(gx - mvx[j], 0, W - 1.001), by = clamp(gy - mvy[j], 0, this.H - 1.001), own = d0[j];
         const jx = bx | 0, jy = by | 0, tx = bx - jx, ty = by - jy, b = jy * W + jx;
         const q00 = fsolid[b] ? own : d0[b], q10 = fsolid[b + 1] ? own : d0[b + 1];
         const q01 = fsolid[b + W] ? own : d0[b + W], q11 = fsolid[b + W + 1] ? own : d0[b + W + 1];
@@ -353,12 +353,12 @@ export default class Fluid {
       for (let gx = fx0; gx < fx1; gx++) {
         const j = gy * W + gx;
         if (fsolid[j]) continue;
-        const bx = clampI(gx + mvx[j], 0, W - 1.001), by = clampI(gy + mvy[j], 0, this.H - 1.001), own = hat[j];
+        const bx = clamp(gx + mvx[j], 0, W - 1.001), by = clamp(gy + mvy[j], 0, this.H - 1.001), own = hat[j];
         const jx = bx | 0, jy = by | 0, tx = bx - jx, ty = by - jy, b = jy * W + jx;
         const q00 = fsolid[b] ? own : hat[b], q10 = fsolid[b + 1] ? own : hat[b + 1];
         const q01 = fsolid[b + W] ? own : hat[b + W], q11 = fsolid[b + W + 1] ? own : hat[b + W + 1];
         const there = (q00 * (1 - tx) + q10 * tx) * (1 - ty) + (q01 * (1 - tx) + q11 * tx) * ty;
-        const val = clampI(own + 0.5 * (d0[j] - there), lo[j], hi[j]);
+        const val = clamp(own + 0.5 * (d0[j] - there), lo[j], hi[j]);
         d[j] = val;
         before += d0[j];
         after += val;
@@ -366,7 +366,7 @@ export default class Fluid {
     }
     // that carrying is not conservative: what it made or lost is given back evenly; then the diffusion
     // (on what was there before the step: cheap, stable for diff < 0.25) and the loss down to the rest level
-    const fix = after > 1e-6 ? clampI(before / after, 0.9, 1.1) : 1;
+    const fix = after > 1e-6 ? clamp(before / after, 0.9, 1.1) : 1;
     const up = 1 - Math.exp(-K.recover * dt), restK = this.restK;
     let peak = 0;
     for (let gy = fy0; gy < fy1; gy++) {

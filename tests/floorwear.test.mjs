@@ -36,10 +36,18 @@ test('floor wear: level 1 gets potholes on its road and cracks on its floors, th
 test('floor wear: never paints a wall, and stays discreet', () => {
   const map = new TileMap(level.tiles), img = flat(map);
   const { surf } = surfaces(map);
+  // its cost against a plain pass over the same pixels timed alongside it (the best of two), not against the clock:
+  // a loaded machine slows both alike (it paints in about 4 such passes; 20 means it went wrong)
+  const pass = () => {
+    const d = flat(map).data, t = performance.now();
+    for (let k = 0; k < 2; k++) for (let i = 0; i < d.length; i++) d[i] = (d[i] + k) & 255;
+    return performance.now() - t;
+  };
+  const ref = Math.min(pass(), pass());
   const t0 = performance.now();
   paintWear(img, S, map, level);
   const ms = performance.now() - t0;
-  assert.ok(ms < 1500, `${ms.toFixed(0)} ms to paint`);
+  assert.ok(ms < 20 * ref, `${ms.toFixed(0)} ms to paint, ${(ms / ref).toFixed(1)} passes over its pixels (${ref.toFixed(0)} ms each)`);
   let changed = 0, far = 0, total = 0;
   for (let py = 0; py < img.height; py++) {
     for (let px = 0; px < img.width; px++) {

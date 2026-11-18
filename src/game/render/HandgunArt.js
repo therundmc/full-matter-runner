@@ -5,6 +5,7 @@
 // guard, magazine well) is taken out, the cut edged with the outline. The image is as wide as the sprite and CANT.pad
 // rows taller at top and bottom, so its middle line stays the sprite's.
 import { PALETTE } from '../Config.js';
+import { hexRgb } from '../../engine/math.js';
 
 export const CANT = { f: 0.7, pad: 4 };
 // how far the top of the slide goes from its side's steel toward its edge's highlight: its far row, the others
@@ -35,7 +36,6 @@ export function cantRows(h, k, d, rim) {
 }
 
 const mixRGB = (a, b, t, out, o) => { for (let i = 0; i < 3; i++) out[o + i] = Math.round(a[i] + (b[i] - a[i]) * t); out[o + 3] = 255; };
-const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 
 // the canted image of handgun d's sprite img (cached; a sprite with no slide to find, a placeholder, is left as it is)
 const CANTED = new WeakMap();

@@ -4,25 +4,7 @@
 // Obstacles are axis-aligned boxes { x0, x1, y0, y1, ref, speed (px/s along x, signed), moving }.
 import { TILE, AMBIENT as A } from '../Config.js';
 
-// small seeded generator (mulberry32): the street plays the same way for a given seed
-export function seeded(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 export const between = (r, [a, b]) => a + r() * (b - a);
-
-export function hashString(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
 
 export class Lane {
   // def: { row, dir, speed (tiles/s), gap: [min, max] s, models }; width: map width in px
@@ -70,7 +52,7 @@ export class Lane {
   }
 }
 
-// nearest obstacle ahead of a car { x, y, hl, hw, dir, ref } in the band of width 2·(hw + pad) centred on bandY.
+// nearest obstacle ahead of a car { x, y, hl, hw, dir, ref } in the band of width 2*(hw + pad) centred on bandY.
 // Something already beside the car counts as gap 0 as long as its far end is ahead of the car's centre.
 export function gapAhead(car, obstacles, bandY = car.y, from = car.x) {
   const pad = A.lanePad * TILE, y0 = bandY - car.hw - pad, y1 = bandY + car.hw + pad;

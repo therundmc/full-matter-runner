@@ -14,7 +14,7 @@ import math
 import os
 import random
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, 'assets', 'sprites')
@@ -69,12 +69,6 @@ def tone(r, L, shift=0):
     return r[max(0, min(3, tidx(L) + shift))]
 
 
-def jit(c, amt, rng=RNG):
-    d = rng.randint(-amt, amt)
-    return (max(0, min(255, c[0] + d)), max(0, min(255, c[1] + d)),
-            max(0, min(255, c[2] + d)), c[3])
-
-
 OUTLINE = hx('#140c1c')
 GORE_OL = hx('#2a0812')
 CLEAR = (0, 0, 0, 0)
@@ -102,13 +96,6 @@ def light(nx, ny):
     return max(0.0, nx * LX + ny * LY + nz * LZ)
 
 
-BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
-
-
-def bayer(x, y, t):
-    return BAYER4[y % 4][x % 4] / 16.0 < t
-
-
 # --------------------------------------------------------------------------
 # Canvas
 # --------------------------------------------------------------------------
@@ -116,7 +103,7 @@ def bayer(x, y, t):
 class Cv:
     """An RGBA canvas addressed in WORLD px. With s > 1 (a sprite painted finer than the world, see FINE) it holds
     s x s pixels per world px: set / rect / blend fill a whole world px, dot sets the single pixel under a world point,
-    get reads it, and the shape painters, the outline and each() work pixel by pixel."""
+    get reads it, and the shape painters and the outline work pixel by pixel."""
     S = 1   # pixel density of new canvases (raised to FINE while the fine props are painted, see fine())
 
     def __init__(self, w, h, s=None):
@@ -190,17 +177,6 @@ class Cv:
             for x in range(x0, x1 + 1):
                 self.set(x, y, c)
 
-    def each(self, x0, y0, x1, y1, fn):
-        """fn(x, y, current) -> colour or None, for every pixel of the world px x0..x1, y0..y1 (x, y: the world px
-        it lies in)."""
-        s = self.s
-        for j in range(y0 * s, (y1 + 1) * s):
-            for i in range(x0 * s, (x1 + 1) * s):
-                if self.pok(i, j):
-                    c = fn(i // s, j // s, self.p[i, j])
-                    if c is not None:
-                        self.p[i, j] = c
-
     def over(self, other, dx=0, dy=0):
         self.img.alpha_composite(other.img, (dx * self.s, dy * self.s))
         self.p = self.img.load()
@@ -217,20 +193,6 @@ class Cv:
         for i, j in add:
             self.p[i, j] = col
         return self
-
-    def recolor_edges(self, dark, light_c=None):
-        """Shade pixels on the bottom/right silhouette edge (and top/left if light_c)."""
-        ch = []
-        for j in range(self.ph):
-            for i in range(self.pw):
-                if not self.pon(i, j):
-                    continue
-                if not self.pon(i + 1, j) or not self.pon(i, j + 1):
-                    ch.append((i, j, dark(self.p[i, j])))
-                elif light_c and (not self.pon(i - 1, j) or not self.pon(i, j - 1)):
-                    ch.append((i, j, light_c(self.p[i, j])))
-        for i, j, c in ch:
-            self.p[i, j] = c
 
 
 def ascii_cv(rows, pal, ol=OUTLINE):
@@ -1048,9 +1010,6 @@ def sleeve_col(ch, k_, L, side):
     return ch['top'][i]
 
 
-POSE_DOWN = dict(torso=(13.4, 8.0, 0.0, 4.3, 4.6), head_ang=0.0, head_r=3.6,
-                 arms=[[(13.8, 2.0), (10.6, 1.9)], [(13.8, 14.0), (10.6, 14.1)]],
-                 legs=[[(9.6, 6.2), (6.2, 5.5), (3.4, 4.9)], [(9.6, 9.8), (6.2, 10.6), (3.4, 11.2)]])
 POSE_DEAD = dict(torso=(15.0, 11.4, -0.1, 4.6, 4.8), head_ang=-0.38, head_r=3.6,
                  arms=[[(21.0, 3.2), (25.6, 2.0)], [(17.4, 19.2), (12.6, 19.6)]],
                  legs=[[(11.0, 9.0), (7.0, 5.8), (3.0, 3.6)], [(11.0, 13.6), (7.6, 16.2), (4.0, 18.6)]])
@@ -2332,6 +2291,17 @@ def p_card_table():
         c = shift(mix(felt[2], lt(felt[2], 0.2), max(0.0, 0.7 - d / 14)), int((fn(x, y) - 0.5) * 8))
         return lt(c, 0.1) if 9.3 < d <= 10.0 else c     # the betting line
     px_paint(cv, 1, 1, W - 1, H - 1, table)
+    # years of games: the baize rubbed pale where the cards are dealt and the chips pushed, the ring a glass left, a
+    # cigarette's burn in the cloth and one on the rail where it was left to burn down, the padding worn at the elbows
+    wr = random.Random(174)
+    smudge(cv, wr, 4, (13, 11, 47, 27), (2.0, 3.6), 0.13, lt(felt[2], 0.45))
+    ring(cv, 44.4, 21.6, 1.5, 1.95, lambda dx, dy, d: dk(cv.get(44.4 + dx, 21.6 + dy), 0.16) if dx + dy > -1.4 else None)
+    for (bx, by) in ((21.0, 12.5), (35.75, 34.25), (36.25, 34.25)):
+        for (ox, oy) in ((-0.5, 0.0), (0.5, 0.0), (0.0, -0.5), (0.0, 0.5)):
+            cv.dot(bx + ox, by + oy, mix(cv.get(bx + ox, by + oy), hx('#3a2a14'), 0.45))
+        cv.dot(bx, by, hx('#16100c'))
+    for box in ((13, 33, 21, 36), (39, 33, 47, 36), (2, 15, 5, 23)):
+        smudge(cv, wr, 2, box, (1.2, 2.0), 0.3, lt(rail[2], 0.3))
 
     def things(ly):
         chips = ('#d8303a', '#e8e0cc', '#3a6ad8', '#e8c040', '#1a1420')
@@ -3638,10 +3608,6 @@ def wset(cv, x, y, c):
     cv.p[int(x) % cv.w, int(y) % cv.h] = c
 
 
-def wget(cv, x, y):
-    return cv.p[int(x) % cv.w, int(y) % cv.h]
-
-
 def pal(cols, t):
     """Piecewise blend through a list of colours, t in 0..1."""
     t = max(0.0, min(1.0, t)) * (len(cols) - 1)
@@ -4761,6 +4727,56 @@ class Veh:
             if rows:
                 self.setp(i + d, rows[-1], lambda c, s: mix(c, SHEEN, 0.35 if s < 0 else 0.1))
 
+    def inside(self, x0, y0, x1, y1, col, k=0.35, round_=False):
+        """What is seen through the glass (seats, the dashboard, a thing left on it): the world rect x0..x1, y0..y1
+        (any fraction of a px; an ellipse in it with round_), blended into the glass's pixels only, dim: it is night
+        in there. Not mirrored."""
+        s = self.s
+        mx, my, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+        for j in range(int(y0 * s), int(math.ceil(y1 * s))):
+            for i in range(int(x0 * s), int(math.ceil(x1 * s))):
+                if (i, j) not in self.glass:
+                    continue
+                if round_ and (((i + 0.5) / s - mx) / rx) ** 2 + (((j + 0.5) / s - my) / ry) ** 2 > 1.0:
+                    continue
+                self.cv.p[i, j] = mix(self.cv.p[i, j], col, k)
+
+    def wheel(self, x, y, r, col=None, k=0.4):
+        """The steering wheel through the windshield: its rim and a spoke."""
+        s, col = self.s, col or hx('#5c5864')
+        for j in range(int((y - r - 1) * s), int((y + r + 1) * s)):
+            for i in range(int((x - r - 1) * s), int((x + r + 1) * s)):
+                d = math.hypot((i + 0.5) / s - x, (j + 0.5) / s - y)
+                spoke = d < r and abs((j + 0.5) / s - y) < 0.3
+                if (i, j) in self.glass and (abs(d - r) < 0.45 or spoke):
+                    self.cv.p[i, j] = mix(self.cv.p[i, j], col, k)
+
+    def film(self, x0, x1, pivots, r, k=0.11):
+        """A windshield nobody washed: a film of road dust on the glass between x0 and x1, wiped clean in the arcs the
+        blades sweep (pivots: their (x, y) feet, r: the blade's reach), a line of dirt pushed up at the end of each."""
+        s = self.s
+        for (i, j) in sorted(self.glass):
+            x, y = (i + 0.5) / s, (j + 0.5) / s
+            if not x0 <= x <= x1 + 1:
+                continue
+            d = min(math.hypot(x - px, y - py) for (px, py) in pivots)
+            if d > r + 0.5:
+                self.cv.p[i, j] = mix(self.cv.p[i, j], ROAD_DIRT, k * (0.6 + 0.8 * self.rng.random()))
+            elif d > r - 0.5:
+                self.cv.p[i, j] = mix(self.cv.p[i, j], ROAD_DIRT, k * 1.6)
+
+    def dent(self, x, y, r):
+        """A shallow dent in a panel: its upper left wall in shade, its lower right catching the light. Top side only."""
+        s = self.s
+        for j in range(int((y - r) * s), int((y + r) * s) + 1):
+            for i in range(int((x - r) * s), int((x + r) * s) + 1):
+                u, v = ((i + 0.5) / s - x) / r, ((j + 0.5) / s - y) / r
+                d = math.hypot(u, v)
+                if d >= 1.0 or (i, j) not in self.mask or (i, j) in self.glass:
+                    continue
+                t = (u + v) * 0.7 * (1.0 - d * d)
+                self.cv.p[i, j] = lt(self.cv.p[i, j], 0.3 * t) if t > 0 else dk(self.cv.p[i, j], -0.4 * t)
+
     def seal(self):
         """Rubber seals: body pixels touching glass get darker."""
         edge = {(x + a, y + b) for (x, y) in self.glass for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))}
@@ -4888,6 +4904,18 @@ def p_car():
     k.arches(wheels)
     k.trap(34, 45, 19.5, 17.5, sheen=2)                      # rear window
     k.trap(81, 97, 17.5, 21.5, sheen=4)                      # windshield
+    # through the glass, dim: the front seats' backs and the wheel (the driver's on the left), the dashboard and a pack
+    # of cigarettes left on it; behind, the rear seat's back, the parcel shelf and a box of tissues on it
+    for y in (15.0, 33.0):
+        k.inside(81.0, y, 84.0, y + 10.0, hx('#8a6a4a'), 0.3)
+    k.wheel(88.5, 19.5, 3.2)
+    k.inside(92.5, 9.0, 98.0, 49.0, hx('#5a4c40'), 0.42)
+    k.inside(94.0, 37.5, 96.0, 39.0, hx('#e8e0d0'), 0.6)
+    k.inside(41.0, 11.0, 46.0, 47.0, hx('#8a6a4a'), 0.28)
+    k.inside(34.0, 10.0, 39.0, 48.0, hx('#4a4038'), 0.4)
+    k.inside(35.0, 24.5, 38.0, 27.0, hx('#9ab8d8'), 0.6)
+    k.film(81, 97, ((97.5, 26.5), (97.5, 45.5)), 12.5)
+    k.dent(19.5, 12.5, 2.8)                                  # somebody backed into the trunk's corner
     k.panel(body, 46, 80, 18.5)                              # roof
     k.side(47, 85, lambda x: 18.5 if x <= 80 else 19.0 + (x - 81) / 4, 22.0, pillars=(64, 65))
     k.line(42, 6, 90, 6, lambda c, s: mix(c, CHROME[3 if s < 0 else 1], 0.6))   # beltline trim
@@ -4964,6 +4992,17 @@ def p_car2():
     for x in range(26, 48, 3):                               # its heater wires
         k.line(x, 13, x, 13, lambda c, s: dk(c, 0.25), both=True)
     k.trap(78, 98, 17.0, 21.0, sheen=5)                      # raked windshield
+    # through the glass: the two buckets' backs, the wheel, a black dash with the radar detector's box on it; under the
+    # hatch, the luggage deck and a sports bag thrown on it
+    for y in (15.0, 31.0):
+        k.inside(78.0, y, 81.5, y + 10.0, hx('#7a2434'), 0.3)
+    k.wheel(86.5, 19.5, 3.0)
+    k.inside(91.0, 8.0, 99.0, 48.0, hx('#3c3a46'), 0.45)
+    k.inside(93.0, 26.5, 95.0, 29.0, hx('#8a8e9c'), 0.5)
+    k.inside(22.0, 12.0, 44.0, 44.0, hx('#3a3640'), 0.3)
+    k.inside(30.0, 28.5, 40.0, 35.5, hx('#8a2a2a'), 0.42, round_=True)
+    k.inside(33.0, 31.5, 37.0, 32.5, hx('#d8d4c8'), 0.4)
+    k.film(78, 98, ((98.5, 26.5),), 13.5, 0.07)
     k.panel(body, 50, 77, 17.5)                              # roof
     for i in range(53 * k.s, 75 * k.s):                      # T-top: smoked panels around the centre bar
         for j in range(13 * k.s, 25 * k.s):
@@ -5046,6 +5085,15 @@ def p_van():
     for i, col in enumerate(sunset):                         # sunset side stripes
         k.line(8, 3 + i, 106 - i * 3, 3 + i, lambda c, s, col=col: col if s < 0 else dk(col, 0.2), w=2)
     k.trap(123, 137, 23.0, 26.5, sheen=3)                    # windshield
+    # through it: the two seats' backs, the big flat wheel, the dash: a paper cup, a road map unfolded, a rag
+    for y in (11.0, 39.0):
+        k.inside(123.0, y, 126.0, y + 14.0, hx('#6a5a4a'), 0.3)
+    k.wheel(130.5, 19.0, 4.2)
+    k.inside(132.5, 7.0, 138.0, 57.0, hx('#4a443c'), 0.42)
+    k.inside(134.0, 30.5, 136.0, 32.5, hx('#e8e0d0'), 0.6, round_=True)
+    k.inside(133.5, 40.0, 136.5, 46.0, hx('#cfc6a4'), 0.5)
+    k.inside(134.0, 12.0, 136.0, 15.0, hx('#8a3a30'), 0.4)
+    k.film(123, 137, ((137.5, 30.5), (137.5, 50.5)), 17.5, 0.13)
     k.side(111, 126, lambda x: 24.5 if x <= 122 else 24.5 + (x - 122) / 4, 27.0)
     for x in range(54, 67):                                  # smoked roof vent
         for y in range(25, 32):
@@ -7370,6 +7418,40 @@ def c_cork():
     return cv
 
 
+def c_sock():
+    """A sock lost by the machines, from above: a white tube sock lying bent at the heel, two red rings at its top,
+    its sole gone grey."""
+    cv = Cv(6, 4)
+    wool = ramp('#e4e0d6', 0.4, 0.2, 0.3)
+    frect(cv, 0.5, 0.5, 4.0, 2.0, wool[2])
+    frect(cv, 3.0, 2.0, 5.5, 3.5, wool[2])
+    frect(cv, 0.5, 1.5, 4.0, 2.0, wool[1])
+    frect(cv, 3.5, 3.0, 5.5, 3.5, hx('#9a968e'))                      # the sole
+    for x in (1.0, 2.0):
+        frect(cv, x, 0.5, x + 0.5, 2.0, hx('#c8323a'))
+    cv.outline()
+    return cv
+
+
+def c_card():
+    """One playing card dropped face down: its red back, a white border."""
+    cv = Cv(3, 4)
+    frect(cv, 0.5, 0.5, 2.5, 3.5, hx('#f0ece0'))
+    frect(cv, 1.0, 1.0, 2.0, 3.0, hx('#a8282e'))
+    cv.outline()
+    return cv
+
+
+def c_chip():
+    """One poker chip on the floor: red clay, its white edge spots."""
+    cv = Cv(3, 3)
+    fill_shape(cv, 1.5, 1.5, 1.05, 1.05, lambda u, v, L: shade(ramp('#d8303a', 0.45, 0.22, 0.3), L))
+    for (x, y) in ((1.25, 0.75), (1.75, 2.25), (0.75, 1.75), (2.25, 1.25)):
+        cv.dot(x, y, hx('#f0ece0'))
+    cv.outline()
+    return cv
+
+
 def c_garter():
     """A garter lost by the stage: a ring of red satin edged in black lace, a small bow."""
     cv = Cv(6, 5)
@@ -7388,14 +7470,15 @@ CLUTTER_PAINT = dict(pint_full=c_pint(1, 7110), pint_half=c_pint(0.5, 7111), pin
                      rubber_bands=c_rubber_bands, baggies=c_baggies, glass_broken=c_glass_broken,
                      flute=c_flute, flute_down=c_flute_down, bucket=c_bucket, single=c_single, singles=c_singles,
                      bill_crumpled=c_bill_crumpled, bill_folded=c_bill_folded, feather=c_feather(7132, 0.0),
-                     feather_curl=c_feather(7133, 0.6), cork=c_cork, garter=c_garter)
+                     feather_curl=c_feather(7133, 0.6), cork=c_cork, garter=c_garter, sock=c_sock, card=c_card,
+                     chip=c_chip)
 # world px (keep in step with CLUTTER_SPRITES in src/engine/Assets.js)
 CLUTTER_SIZES = dict(pint_full=(5, 5), pint_half=(5, 5), pint_empty=(5, 5), pitcher=(8, 7), shot=(3, 3), lowball=(5, 5),
                      beer_bottle=(4, 4), liquor=(5, 5), ashtray=(6, 6), cigar=(7, 3), coaster=(5, 5), napkin=(5, 5),
                      napkin_crumpled=(4, 4), peanuts=(6, 6), till=(13, 10), cards=(7, 6), chips=(4, 4), bands=(7, 4),
                      bill=(5, 3), rubber_bands=(5, 5), baggies=(6, 4), glass_broken=(6, 6), flute=(4, 4), flute_down=(7, 3),
                      bucket=(9, 9), single=(5, 3), singles=(7, 5), bill_crumpled=(4, 4), bill_folded=(5, 3), feather=(5, 4),
-                     feather_curl=(5, 4), cork=(3, 3), garter=(6, 5))
+                     feather_curl=(5, 4), cork=(3, 3), garter=(6, 5), sock=(6, 4), card=(3, 4), chip=(3, 3))
 
 
 def wall_frame(W, frame, face, seed):
@@ -7451,6 +7534,91 @@ def p_poster_band():
         frect(cv, x0 + 1.0, y0 + 0.3, x1 - 2.0, y0 + 0.8, hx('#e83a8a'))
         frect(cv, x0 + 2.0, y0 + 1.2, x1 - 1.0, y0 + 1.6, hx('#3ad8e8'))
     return wall_frame(14, '#2a2a30', face, 7123)
+
+
+def p_conduit():
+    """A run of electrical conduit along a back-of-house wall (the wall at -y): a thin galvanised tube, two saddles
+    screwed into the wall, a junction box with its cover plate, a little rust at the joints."""
+    W = 48
+    cv = Cv(W, 5)
+    zinc = ramp('#868a94', 0.5, 0.25, 0.35)
+    px_paint(cv, 1, 1.5, W - 1, 3.0, lambda x, y, c: zinc[3] if y < 2.0 else zinc[2] if y < 2.5 else zinc[0])
+    for x in (7.0, 39.0):                                              # saddles
+        frect(cv, x, 1.0, x + 1.5, 3.5, zinc[1])
+        cv.dot(x + 0.25, 1.25, lt(zinc[3], 0.2))
+    frect(cv, 20.0, 1.0, 26.0, 4.0, zinc[1])                           # the junction box, its cover lit along the top
+    frect(cv, 20.0, 1.0, 26.0, 1.5, zinc[3])
+    frect(cv, 20.5, 1.5, 25.5, 3.5, zinc[2])
+    for x in (21.0, 25.0):
+        stud(cv, x, 2.5, zinc[1])
+    smudge(cv, random.Random(7131), 4, (1, 1, W - 1, 4), (0.5, 1.2), 0.4, hx('#7a4a26'))
+    cv.outline()
+    return cv
+
+
+def p_flyers():
+    """Bills pasted on a street wall, one over the other, seen from above (the wall at -y): slivers of faded paper, their
+    lower edges torn ragged, a bare patch where one came off, a corner peeling away. No frame, no glass."""
+    W = 26
+    cv = Cv(W, 5)
+    rng = random.Random(7132)
+    # (x0, x1, paper, band colour or None, how far down it still hangs)
+    bills = ((1.5, 7.0, '#cfc5a8', '#9a3a34', 3.4), (6.0, 11.5, '#b98a98', '#2a2630', 3.0),
+             (13.0, 19.0, '#93a8b4', '#c8b25a', 3.6), (18.5, 24.5, '#c4b684', None, 3.2))
+    for (x0, x1, paper, band, low) in bills:
+        col, edge = hx(paper), {}
+
+        def f(x, y, c, x0=x0, col=col, band=band, low=low, edge=edge):
+            k = int(x * cv.s)
+            if k not in edge:
+                edge[k] = low - rng.choice((0.0, 0.0, 0.5, 0.5, 1.0))  # torn: never a straight edge
+            if y >= edge[k]:
+                return None
+            if band and 1.5 <= y < 2.0 and x - x0 > 0.5:
+                return hx(band)
+            return dk(col, 0.25) if y < 1.5 else col if y < edge[k] - 0.5 else lt(col, 0.18)
+        px_paint(cv, x0, 1.0, x1, 4.0, f)
+    cv.dot(12.0, 1.5, hx('#b8b0a0'))                                   # what is left of the one that came off
+    cv.dot(12.5, 1.0, hx('#a8a090'))
+    for k in range(3):                                                 # a corner curling off the wall, lit
+        frect(cv, 23.0 + k * 0.5, 3.0 + k * 0.5, 24.5, 3.5 + k * 0.5, hx('#e6dcb8'))
+    smudge(cv, rng, 3, (1, 1, W - 1, 4), (0.8, 1.6), 0.18)
+    cv.outline(hx('#1a1620', 170))
+    return cv
+
+
+def p_tag():
+    """A tag sprayed on the ground of an alley, from above: three quick strokes of a name nobody reads and a line under
+    it, the paint gone thin where feet and rain have been, a little overspray. No outline: it is in the concrete."""
+    W, H = 30, 18
+    cv = Cv(W, H)
+    rng = random.Random(7133)
+    nz = VNoise(W, H, 6, rng)
+    strokes = (((3.0, 12.0), (6.0, 4.0), (9.0, 11.0), (12.0, 5.0), (14.0, 10.5)),
+               ((16.5, 5.5), (20.0, 4.0), (21.5, 7.5), (17.5, 9.5), (16.5, 12.5), (21.0, 13.0), (25.0, 10.5)),
+               ((4.0, 15.2), (14.0, 14.4), (26.0, 15.4), (24.2, 13.6)))
+    paint = hx('#b0487a')
+
+    def dist(x, y):
+        best = 99.0
+        for pts in strokes:
+            for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+                dx, dy = bx - ax, by - ay
+                t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)))
+                best = min(best, math.hypot(x - ax - dx * t, y - ay - dy * t))
+        for (ax, ay) in ((27.2, 5.0), (27.8, 7.6)):                    # two dots after it
+            best = min(best, math.hypot(x - ax, y - ay) + 0.15)
+        return best
+
+    def f(x, y, c):
+        d, worn = dist(x, y), nz(x, y)
+        if d < 0.7:
+            return None if worn < 0.34 else paint[:3] + (70 if worn < 0.5 else 118,)
+        if d < 1.3 and rng.random() < 0.3 and worn > 0.4:
+            return paint[:3] + (40,)                                   # overspray
+        return None
+    px_paint(cv, 0, 0, W, H, f)
+    return cv
 
 
 def p_dartboard():
@@ -7635,10 +7803,11 @@ BAR_PROPS = dict(frame_photo=p_frame_photo, frame_gold=p_frame_gold, poster_figh
                  dartboard=p_dartboard, pay_phone=p_pay_phone, coat_hooks=p_coat_hooks, towel_dispenser=p_towel_dispenser,
                  neon_sign_beer=p_neon_sign_beer, neon_sign_bay=p_neon_sign_bay, poster_pinup=p_poster_pinup,
                  poster_revue=p_poster_revue, mirror_strip=p_mirror_strip, neon_sign_lips=p_neon_sign_lips,
-                 cocktail_table=p_cocktail_table)
+                 cocktail_table=p_cocktail_table, conduit=p_conduit, flyers=p_flyers, tag=p_tag)
 BAR_SIZES = dict(frame_photo=(12, 5), frame_gold=(14, 5), poster_fight=(16, 5), poster_band=(14, 5), dartboard=(11, 5),
                  pay_phone=(10, 7), coat_hooks=(18, 7), towel_dispenser=(9, 5), neon_sign_beer=(36, 14), neon_sign_bay=(26, 14),
-                 poster_pinup=(12, 5), poster_revue=(14, 5), mirror_strip=(44, 4), neon_sign_lips=(24, 12), cocktail_table=(26, 26))
+                 poster_pinup=(12, 5), poster_revue=(14, 5), mirror_strip=(44, 4), neon_sign_lips=(24, 12), cocktail_table=(26, 26),
+                 conduit=(48, 5), flyers=(26, 5), tag=(30, 18))
 BAR_NEON = ['neon_sign_beer', 'neon_sign_bay', 'neon_sign_lips']   # light: at the world's density, with their glow maps
 
 
@@ -7973,11 +8142,6 @@ def r_duct():
     return cv
 
 
-def speck_box(rng, x0, y0, x1, y1, p):
-    """Random sparse pixels of a box."""
-    return [(x, y) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if rng.random() < p]
-
-
 def r_hatch():
     """Roof access hatch, 70 cm: a steel lid on its curb, tread plate worn shiny, two hinges at the back, a pull handle,
     the hasp, rust."""
@@ -8225,6 +8389,285 @@ def s_door_locked():
     cv.rect(29, 3, 31, 5, STEEL_L[3])  # dead bolt
     cv.rect(29, 5, 31, 5, STEEL_L[1])
     return cv
+
+
+# ---- door skins: one kind of door per place (src/game/data/doors.js DOORS.kinds), painted at FINE density. A leaf
+# seen from above is a long thin plank: what tells the kinds apart is its colour, its edges and what stands proud of
+# its faces (rows 0-1 and 7-8: a push bar, plates, a chain), a glass strip where it has glass. Hinge at x = 0, the
+# latch end at the far end; Door.js keeps both ends and tiles the middle to the leaf's length (its kind's `caps`).
+
+def _plank(w, n=32, grain=()):
+    """The leaf's body in the ramp w, rows 2..6 (lit top edge, dark bottom), end stiles; grain: (x, y, len) streaks."""
+    cv = Cv(n, 9)
+    for x in range(1, n - 1):
+        cv.set(x, 2, w[3])
+        for y in (3, 4, 5):
+            cv.set(x, y, w[2])
+        cv.set(x, 6, w[1])
+    for x, y, k in grain:
+        for i in range(k):
+            cv.dot(x + i * 0.5, y + 0.25, mix(w[2], w[1], 0.5))
+    for x in (1, n - 2):
+        for y in range(2, 7):
+            cv.set(x, y, mix(cv.get(x, y), w[0], 0.45))
+    return cv
+
+
+def _knuckles(cv, steel=STEEL_L):
+    """Two hinge knuckles proud of the faces, the pin in the leaf's end."""
+    for x in (2, 3, 4):
+        cv.set(x, 1, steel[3] if x == 3 else steel[2])
+        cv.set(x, 7, steel[1])
+    cv.rect(2, 3, 3, 5, STEEL[0])
+    cv.set(2, 3, steel[3])
+    cv.set(3, 3, steel[2])
+
+
+def _lever(cv, x, col=BRASS):
+    """A lever handle on each face near the latch: the rose, the lever proud of it."""
+    for y, c0, c1 in ((0, col[3], col[2]), (8, col[2], col[1])):
+        cv.rect(x, y, x + 4, y, c1)
+        cv.rect(x + 3, y, x + 4, y, c0)
+        cv.set(x - 1, y, OUTLINE)
+        cv.set(x + 5, y, OUTLINE)
+    cv.set(x + 4, 1, col[2])
+    cv.set(x + 4, 7, col[1])
+
+
+def _latch_plate(cv, n=32):
+    cv.rect(n - 2, 3, n - 2, 5, STEEL_L[2])
+
+
+def _glass(cv, x0, x1, y0=3, y1=5, tint='#a8d0e4', wire=None):
+    """A glass strip through the leaf: pale, a glint; wire: the mesh of wired glass."""
+    g = ramp(tint, 0.35, 0.18, 0.3)
+    for x in range(x0, x1 + 1):
+        for y in range(y0, y1 + 1):
+            cv.set(x, y, g[2] if y > y0 else g[3])
+    cv.dot(x0 + 0.5, y0 + 0.5, hx('#f4fbff'))
+    cv.dot(x0 + 1.0, y0 + 0.5, hx('#f4fbff'))
+    if wire:
+        s = cv.s
+        for j in range(y0 * s, (y1 + 1) * s):
+            for i in range(x0 * s, (x1 + 1) * s):
+                if (i + j) % 4 == 0 or (i - j) % 4 == 0:
+                    cv.p[i, j] = hx(wire)
+
+
+def _shatter(cv, x0, x1, y0=3, y1=5, keep_wire=None):
+    """The glass gone out of its strip: a few shards left at the edges (the wire of wired glass holds)."""
+    s = cv.s
+    rng = random.Random(x0 * 31 + x1)
+    for j in range(y0 * s, (y1 + 1) * s):
+        for i in range(x0 * s, (x1 + 1) * s):
+            if keep_wire and cv.p[i, j] == hx(keep_wire):
+                continue
+            edge = min(i - x0 * s, (x1 + 1) * s - 1 - i)
+            cv.p[i, j] = hx('#d8ecf6') if edge == 0 and rng.random() < 0.45 else CLEAR
+    return cv
+
+
+def s_door_fire():
+    """The emergency exit: a heavy grey steel leaf, a red push bar across its inside face on two housings, a brushed
+    kick plate on the other, scuffs."""
+    w = ramp('#7c828e', 0.5, 0.25, 0.36)
+    cv = _plank(w, 32, ((6, 3, 10), (19, 5, 12)))
+    for x, y in ((7, 4), (8.5, 5), (13, 3), (21, 4), (25.5, 5), (11, 5)):
+        cv.dot(x, y + 0.25, w[0])                                   # scuffs
+    cv.outline()
+    _knuckles(cv)
+    red = ramp('#d0262c', 0.45, 0.22, 0.32)
+    for x in range(8, 27):                                          # the push bar, proud of the face on its housings
+        cv.set(x, 8, red[2])
+        cv.dot(x, 8.0, red[3])
+    for x in (6, 7, 27, 28):
+        cv.set(x, 7, STEEL[1])
+        cv.set(x, 8, STEEL[0] if x in (6, 28) else STEEL[2])
+    cv.set(5, 8, OUTLINE)
+    cv.set(29, 8, OUTLINE)
+    for x in range(4, 28):                                          # the kick plate on the other face
+        cv.dot(x, 1.5, STEEL_L[3] if x % 3 else STEEL_L[2])
+    _latch_plate(cv)
+    return cv
+
+
+def _door_bar():
+    """The bar's front: dark varnished wood, a round porthole of glass in a brass ring, a brass push plate on the
+    street face and a pull bar on the other."""
+    w = ramp('#5c3424', 0.5, 0.24, 0.38)
+    cv = _plank(w, 32, ((3, 3, 6), (17, 5, 10), (20, 3, 6)))
+    cv.rect(9, 2, 14, 6, BRASS[1])                                  # the porthole's ring
+    cv.rect(9, 2, 14, 2, BRASS[3])
+    _glass(cv, 10, 13)
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(20, 1, 25, 1, BRASS[2])                                 # the push plate, flat on the face
+    cv.rect(20, 1, 21, 1, BRASS[3])
+    for x in range(20, 26):                                         # the pull bar on its standoffs
+        cv.set(x, 8, BRASS[2] if x % 2 else BRASS[3])
+    cv.set(20, 7, BRASS[1])
+    cv.set(25, 7, BRASS[1])
+    cv.set(19, 8, OUTLINE)
+    cv.set(26, 8, OUTLINE)
+    cv.rect(3, 7, 7, 7, BRASS[1])                                   # the kick plate's edge
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_bar():
+    return _door_bar()
+
+
+def s_door_bar_broken():
+    return _shatter(_door_bar(), 10, 13)
+
+
+def s_door_swing():
+    """Half of the toilets' swinging doors (a cafe pair): a short teal-painted leaf of louvres on a double-action
+    pivot, a white MEN plate, a chrome push plate on each face; no latch."""
+    w = ramp('#4f8c80', 0.45, 0.22, 0.34)
+    cv = _plank(w, 16)
+    s = cv.s
+    for i in range(4 * s, 13 * s):                                  # the louvres' slats, one in two pixels
+        if i % 2 == 0:
+            for j in range(3 * s, 6 * s):
+                cv.p[i, j] = w[1]
+    cv.outline()
+    cv.rect(1, 3, 2, 5, STEEL[1])                                   # the pivot: a steel boss at its foot
+    cv.set(1, 3, STEEL_L[3])
+    cv.rect(6, 1, 9, 1, hx('#e8e6dc'))                              # the plate: MEN
+    cv.dot(7.5, 1.5, hx('#2a4ca0'))
+    cv.dot(8.0, 1.5, hx('#2a4ca0'))
+    for y in (1, 7):
+        cv.rect(11, y, 13, y, CHROME[2] if y == 1 else CHROME[1])   # push plates
+    return cv
+
+
+def s_door_staff():
+    """A storeroom / staff door: a plain institutional blue-grey paint, chipped and scuffed low, a white STAFF ONLY
+    plate, a steel lever."""
+    w = ramp('#5d6e82', 0.5, 0.24, 0.32)
+    cv = _plank(w, 32)
+    for x, y, c in ((5, 5, w[0]), (6.5, 5, w[0]), (9, 4, hx('#8d8a82')), (24, 5, w[0]), (14, 5, w[0]), (15, 3, hx('#8d8a82'))):
+        cv.dot(x, y + 0.25, c)                                      # scuffs and chipped paint (the grey undercoat)
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(11, 1, 18, 1, hx('#e6e2d6'))                            # STAFF ONLY
+    for x in range(11, 18):
+        cv.dot(x + 0.25, 1.5, hx('#2a2430'))
+    _lever(cv, 22, CHROME)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_office():
+    """The boss's door: oxblood leather buttoned in diamonds over padding, brass studs round its faces, a brass
+    lever."""
+    w = ramp('#6c1e26', 0.5, 0.26, 0.3)
+    cv = _plank(w, 32)
+    for k, x in enumerate(range(5, 28, 3)):                         # the buttons, diamond-tufted
+        y = 3 if k % 2 else 5
+        cv.dot(x, y + 0.25, w[0])
+        cv.dot(x + 0.5, y - 0.25, w[3])
+    cv.outline()
+    _knuckles(cv)
+    for x in range(5, 29, 2):                                       # brass studs along both faces
+        cv.dot(x + 0.25, 1.75, BRASS[3])
+        cv.dot(x + 0.25, 7.25, BRASS[2])
+    _lever(cv, 22)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_gaming():
+    """The gaming room's door: a deep green gloss with a gold pinstripe on its top edge, a brass peephole through
+    it, a brass lever."""
+    w = ramp('#2a5a3c', 0.5, 0.24, 0.36)
+    cv = _plank(w, 32)
+    for x in range(3, 29):
+        cv.dot(x + 0.25, 2.75, BRASS[2])                            # the pinstripe
+    cv.rect(15, 3, 16, 5, BRASS[1])                                 # the peephole through the leaf
+    cv.dot(15.5, 4.0, OUTLINE)
+    cv.outline()
+    _knuckles(cv)
+    cv.set(15, 1, BRASS[3])
+    cv.set(15, 7, BRASS[2])
+    _lever(cv, 22)
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_flat():
+    """A cheap flat's door: a thin oak-effect laminate, a brass number on the corridor face, a peephole, the security
+    chain hanging on its track inside."""
+    w = ramp('#a27c54', 0.45, 0.22, 0.3)
+    cv = _plank(w, 32, ((4, 3, 14), (14, 5, 18)))
+    cv.outline()
+    _knuckles(cv)
+    cv.rect(12, 1, 14, 1, BRASS[2])                                 # the number
+    cv.dot(12.5, 1.5, OUTLINE)
+    cv.dot(13.5, 1.5, OUTLINE)
+    cv.set(16, 1, BRASS[3])                                         # the peephole's lens
+    cv.rect(25, 7, 28, 7, CHROME[2])                                # the chain's track ...
+    for k, x in enumerate((24, 23, 22, 21.5)):                      # ... and the chain hanging off it
+        cv.dot(x + 0.5, 8.0 + (0.5 if k % 2 else 0), CHROME[3] if k % 2 else CHROME[1])
+    _lever(cv, 22, CHROME)
+    _latch_plate(cv)
+    return cv
+
+
+def _door_wired():
+    """A corridor fire door: cream-painted steel, a long panel of wired glass, a steel push plate."""
+    w = ramp('#b9ae92', 0.45, 0.22, 0.3)
+    cv = _plank(w, 32)
+    _glass(cv, 8, 20, tint='#b4d2c8', wire='#56645e')
+    cv.outline()
+    _knuckles(cv)
+    for y in (1, 7):
+        cv.rect(22, y, 26, y, STEEL_L[2] if y == 1 else STEEL_L[1])
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_wired():
+    return _door_wired()
+
+
+def s_door_wired_broken():
+    return _shatter(_door_wired(), 8, 20, keep_wire='#56645e')
+
+
+def _door_shop():
+    """A shop's glass door: an aluminium frame round a pane the length of it, a pull bar on each face."""
+    alu = ramp('#b2b8c4', 0.45, 0.22, 0.3)
+    cv = _plank(alu, 32)
+    _glass(cv, 5, 26, tint='#94c0d8')
+    cv.outline()
+    _knuckles(cv)
+    for y, c in ((0, CHROME[3]), (8, CHROME[2])):
+        cv.rect(22, y, 26, y, c)
+        cv.set(21, y, OUTLINE)
+        cv.set(27, y, OUTLINE)
+    for y in (1, 7):
+        cv.set(22, y, CHROME[1])
+        cv.set(26, y, CHROME[1])
+    _latch_plate(cv)
+    return cv
+
+
+def s_door_shop():
+    return _door_shop()
+
+
+def s_door_shop_broken():
+    return _shatter(_door_shop(), 5, 26)
+
+
+DOOR_SKINS = dict(door_fire=s_door_fire, door_bar=s_door_bar, door_bar_broken=s_door_bar_broken, door_swing=s_door_swing,
+                  door_staff=s_door_staff, door_office=s_door_office, door_gaming=s_door_gaming, door_flat=s_door_flat,
+                  door_wired=s_door_wired, door_wired_broken=s_door_wired_broken, door_shop=s_door_shop,
+                  door_shop_broken=s_door_shop_broken)
+DOOR_SKIN_SIZES = dict((n, (16, 9) if n == 'door_swing' else (32, 9)) for n in DOOR_SKINS)
 
 
 def s_jamb(w):
@@ -8929,6 +9372,8 @@ def build():
     out[('structure', 'door')] = s_door()
     out[('structure', 'door_locked')] = s_door_locked()
     out[('structure', 'stall_door')] = s_stall_door()
+    for name, fn in DOOR_SKINS.items():
+        out[('structure', name)] = fine(fn, name)
     out[('structure', 'door_jamb')] = s_jamb(ramp('#6e4a32', 0.5, 0.26, 0.34))
     out[('structure', 'door_jamb_steel')] = s_jamb(STEEL_L)
     out[('structure', 'threshold')] = s_threshold()
@@ -9034,7 +9479,9 @@ EXPECTED = {
                                               for i in range(3)] + ['cat_walk%d' % i for i in range(4)]),
     'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
-                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6)),
+                      window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6),
+                      # the door skins at FINE density (keep in step with DOOR_SKINS in src/engine/Assets.js)
+                      **dict((n, (w * FINE, h * FINE)) for n, (w, h) in DOOR_SKIN_SIZES.items())),
 }
 
 

@@ -234,7 +234,7 @@ export default class Director {
     this.conductT = 0.2;
     if (this.isIntruder(p)) { this.conduct('trespass', p.x, p.y); return; }
     if (p.armed && !this.isThreat(p)) this.conduct('weapon', p.x, p.y);
-    // a door into the premises he hangs about (unless a guard is already staring him away from there: Enemy.mind)
+    // a door into the premises he hangs about
     const door = !this.isGuest(p) && (w.doors || []).find((d) => w.isHouseDoor?.(d) && Math.hypot(d.hx - p.x, d.hy - p.y) < C.lurkR + 16);
     this.lurkT = door && p.moving < 1 ? this.lurkT + 0.2 : Math.max(0, this.lurkT - 0.4);
     if (this.lurkT >= C.lurk) { this.lurkT = 0; this.conduct('lurk', p.x, p.y); }
@@ -301,7 +301,7 @@ export default class Director {
   // is he in the guarded premises
   inPremises(p) { return inZones(this.world.level?.premises, p); }
 
-  // where a stranger is a customer (level `welcome` rectangles: a bar room), nobody tells him to clear off
+  // where a stranger is a customer (level `welcome` rectangles: a bar room): standing about a door there is no lurking
   isGuest(p) { return inZones(this.world.level?.welcome, p); }
 
   // a harmless stranger who walked in where he has no business: a guard who sees him close goes after him at once

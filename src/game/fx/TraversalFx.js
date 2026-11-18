@@ -15,7 +15,7 @@ const F = TRAVERSE_FX;
 export const fxFor = (ch) => !!ch?.isPlayer;
 
 // what flies off the floor at (x, y): { wet, color, alpha, speck } (a wet floor: its liquid's drops)
-export function groundAt(world, x, y) {
+function groundAt(world, x, y) {
   const wet = world.liquids?.at?.(x, y), G = F.ground;
   if (wet && wet.depth >= 0.5) {
     const k = world.liquids.cfg?.kinds?.[wet.kind];

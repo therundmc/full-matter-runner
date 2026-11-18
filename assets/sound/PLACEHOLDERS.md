@@ -25,6 +25,9 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | doorLatch | a door comes shut slowly and its latch catches: a closer bringing it back, a hand pulling it to (Door.latchShut) | a door latch clicking home in its strike plate, the leaf settling in the frame (now: the click cut low, a touch of the door) |
 | doorCloserHiss | a door's hydraulic closer swinging it back shut (Door.hiss, data/doors.js `closer`) | the soft hydraulic sigh of a door closer, a faint creak of its arm (now: the swish cut slowed right down, very low) |
 | lockBeep | the lamp by a lock turns green once a guard's key has turned in it (Door.tickLamp) | a short electronic beep of an access control, or a lock's bolt drawn back with a clack (now: the click cut pitched up) |
+| pushBar | the emergency exit's push bar pushed in and the latch drawn as someone walks into it shut (Door.pushed, kind `bar`) | the clack of a fire door's panic bar, a steel latch retracting (now: the handle cut slowed, a low click) |
+| doorFlap | a swinging (cafe) door swinging through its middle (Door.constrain, kind `spring`) | a light louvred leaf flapping past its stop, a soft wooden clap and the hinge's spring (now: the door cut pitched up, a light wood knock) |
+| doorBoom | a steel fire door slammed shut, kicked or thrown open (kinds with `steel`) | a heavy steel door booming in its frame, a hollow metallic slam (now: the door slam slowed under a sheet-metal hit) |
 | cloth | the shoulders whip round on a quick turn (Character.animate, FACING.cloth) | a short cloth / coat rustle |
 | scuff | a foot set down on a pivot step or a hop round (Character.animate) | a shoe scuffing on the floor (per floor if the library has them) |
 | curtainBrush | someone walks or runs into a curtain (systems/Curtains.js) | heavy velvet brushing over shoulders, a soft drag of cloth |
@@ -65,3 +68,7 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | bossShake | the boss throws the player off when seized from behind while still whole (Boss.shakeOff) | a grunt, cloth yanked, a body shoved hard |
 | bossDeath | the boss's second hit: he dies (Boss.kill) | a heavy man's last bellow dying into a groan, then his knees hitting the floor |
 | shadesDrop | his shades come off as he dies and skitter over the floor (Boss.kill, the Debris' tick) | plastic sunglasses clattering and skidding on a hard floor |
+| titleFire | the poster's burning building, in overlapping pieces while the title's poster is up (ui/title/Beats.js posterBeats) | a tenement on fire heard from the street: a low roar, timbers cracking, loopable, quiet under the menu's music |
+| titleRain | the poster's rain, in overlapping pieces (posterBeats) | a thin steady rain on asphalt and on a coat, loopable, quiet |
+| neonBuzz | a letter of the title's sign going dark: as it catches, when the second N fails, when the sign blinks (posterBeats, logoDead) | a neon tube's buzz and tick as it fails and catches again, 0.2 s |
+| markerStroke | each of the two strokes of the X drawn over a dead target's card on the hit list (ui/title/HitList.js, Beats.js crossBeats) | a thick marker dragged fast across card, squeaking, 0.3 s; two takes |

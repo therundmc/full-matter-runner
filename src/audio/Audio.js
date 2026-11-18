@@ -39,7 +39,6 @@ import { RECIPES, formOf } from './Foley.js';
 import { render } from './Synth.js';
 import { BEDS, renderBed, renderLaugh } from './Beds.js';
 import { VOICE, v8Cycle, cycleHz } from './Motor.js';
-import { ElevatedVoice } from './Elevated.js';
 
 // The mix: each bus's level (measured headless: the reference loudness of each in the street, the bar and a fight is
 // in the report of the 2026-11-15 mix pass). Guns and impacts punch, voices read, the music drives the fights, the
@@ -182,6 +181,9 @@ export const META = {
   sling: { pri: 0, dur: 0.4, gap: 0.1, max: 2, gain: 0.22 },
   doorPush: { pri: 0, dur: 0.3, gap: 0.15, max: 2, gain: 0.25 },
   doorLatch: { pri: 0, dur: 0.2, gap: 0.1, max: 2, gain: 0.3 },
+  pushBar: { pri: 0, dur: 0.25, gap: 0.15, max: 2, gain: 0.35 },
+  doorFlap: { pri: 0, dur: 0.25, gap: 0.12, max: 2, gain: 0.3 },
+  doorBoom: { pri: 3, dur: 0.6, gap: 0.08, max: 2, duck: 0.85, gain: 0.45 },
   doorCloserHiss: { pri: 0, dur: 0.6, gap: 0.4, max: 1, gain: 0.12 },
   lockBeep: { pri: 0, dur: 0.15, gap: 0.2, max: 1, gain: 0.25 },
   cloth: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.1 },
@@ -218,6 +220,12 @@ export const META = {
   fireRun: { pri: 2, dur: 0.5, gap: 0.3, max: 2, gain: 0.55 },
   fireRoar: { pri: 1, dur: 0.9, gap: 0.6, max: 2, gain: 0.4 },
   heatCrack: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
+  // the title (ui/title/Beats.js; placeholders, assets/sound/PLACEHOLDERS.md), under the menu's music: the poster's
+  // fire and its rain in overlapping pieces, the sign's buzz as a letter fails, the marker crossing a dead man out
+  titleFire: { pri: 0, dur: 1.6, gap: 0.9, max: 3, gain: 0.16, hall: 0.25 },
+  titleRain: { pri: 0, dur: 1.2, gap: 0.6, max: 3, gain: 0.1, hall: 0.2 },
+  neonBuzz: { pri: 0, dur: 0.2, gap: 0.12, max: 2, gain: 0.12 },
+  markerStroke: { pri: 2, dur: 0.4, gap: 0.2, max: 2, gain: 0.6 },
   hiss: { pri: 2, dur: 0.3, gap: 0.12, max: 2, gain: 0.5 },
   // a boss's beats (entities/Boss.js; placeholders, assets/sound/PLACEHOLDERS.md): his name card slammed in, his howl
   // at the first hit, his roar, the player thrown off, his death, his shades on the floor
@@ -233,8 +241,6 @@ export const META = {
   ui: { pri: 3, dur: 0.15, gap: 0.05, max: 2, gain: 0.7 },
   passby: { pri: 0, dur: 3, gap: 0.15, max: 3 },
   crank: { pri: 3, dur: 0.6, gap: 0.5, max: 1, gain: 0.45, reach: 2000 }, // a starter turning an engine over (the getaway)
-  // the title's elevated train, piece by piece (each overlapping the next, one queued ahead): under the menu's music
-  elTrain: { pri: 1, dur: 0.9, gap: 0, max: 4, gain: 0.2, hall: 0.1 },
   // the night around (systems/Ambience.js; its beds are not voices, see setAmbience): the city's swell of the opening
   // cinematic, the wind, drops, and the life of the bar and its toilets; far under the rest, the first dropped in a fight.
   // The far city (soundscape CITY): a police car crossing it, the elevated train, a car alarm, a dog; long, quiet, wet.
@@ -461,6 +467,9 @@ const FOLEY = {
   sling: [['swish', 0.45, 0.75], ['handle', 0.4, 0.9, 0.06]],
   doorPush: [['door', 0.4, 1.15]],
   doorLatch: [['click', 0.5, 0.8], ['door', 0.2, 1.4, 0.01]],
+  pushBar: [['handle', 0.6, 0.8], ['click', 0.35, 0.7, 0.02]],
+  doorFlap: [['door', 0.35, 1.5], ['wood', 0.2, 1.3, 0.02]],
+  doorBoom: [['doorSlam', 0.8, 0.7], ['sheet', 0.6, 0.6, 0.01], ['metal', 0.3, 0.5, 0.05]],
   doorCloserHiss: [['swish', 0.25, 0.35]],
   lockBeep: [['click', 0.45, 2.2]],
   cloth: [['swish', 0.35, 0.6]],
@@ -487,6 +496,11 @@ const FOLEY = {
   fireRun: [['swish', 0.7, 0.4], ['soft', 0.45, 0.5, 0.04]],
   fireRoar: [['rubble', 0.3, 0.45], ['swish', 0.3, 0.3, 0.1]],
   heatCrack: [['glassHit', 0.6, 0.7], ['click', 0.35, 2.2, 0.07], ['glassHit', 0.3, 1.1, 0.16]],
+  // the title (ui/title/Beats.js): placeholders too
+  titleFire: [['rubble', 0.5, 0.35], ['swish', 0.4, 0.25, 0.2], ['woodBreak', 0.12, 0.5, 0.6]],
+  titleRain: [['splash', 0.3, 0.4], ['soft', 0.25, 0.45, 0.3], ['splash', 0.2, 0.55, 0.6]],
+  neonBuzz: [['rattle', 0.5, 2.6], ['click', 0.4, 3.2, 0.04]],
+  markerStroke: [['swish', 0.7, 1.5], ['soft', 0.5, 1.7, 0.02], ['plastic', 0.2, 1.4, 0.05]],
   // a boss's beats (entities/Boss.js): placeholders too
   bossCard: [['doorSlam', 0.8, 0.5], ['thud', 0.7, 0.6, 0.02]],
   bossHowl: [['yell', 0.9, 0.6], ['yell', 0.6, 0.5, 0.2]],
@@ -501,7 +515,6 @@ class AudioSystem {
     this.ctx = null;
     this.chokes = new WeakMap(); // emitter -> its last voice (a new shot fades the previous tail)
     this.listener = { x: 0, y: 0 };
-    this.muted = false;
     this.vol = { master: 1, music: 1, sfx: 1, ambience: 1 }; // player volumes (settings), scale the bus gains
     this.active = [];   // live plays, for the caps and voice stealing
     this.lastPlay = {}; // name -> { t, vol } of the last admitted play
@@ -646,7 +659,7 @@ class AudioSystem {
     }, '4x');
     // the limiter only catches what the clip let through, and lets go slowly: it never pumps
     this.limiter = param(ctx.createDynamicsCompressor(), { threshold: -2, knee: 0, ratio: 20, attack: 0.002, release: 0.3 });
-    this.master = gain(this.muted ? 0 : L.master * this.vol.master);
+    this.master = gain(L.master * this.vol.master);
     chain(this.bus, this.filter, gain(0.85), clip, this.limiter, this.master, ctx.destination);
 
     // shared noise: white (texture) and brown (rumble), 2 s each, looped by the sources
@@ -688,11 +701,6 @@ class AudioSystem {
     return ir;
   }
 
-  toggleMute() {
-    this.muted = !this.muted;
-    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : LEVELS.master * this.vol.master, this.ctx.currentTime, 0.05);
-  }
-
   // kind: 'master' | 'music' | 'sfx' | 'ambience' (the beds and the `amb` one-shots), v: 0..1. Safe before the context exists (_build applies this.vol).
   setVolume(kind, v) {
     if (!(kind in this.vol)) return;
@@ -701,7 +709,7 @@ class AudioSystem {
     if (!this.ctx) return;
     const set = (node, g) => node && node.gain.setTargetAtTime(g, this.ctx.currentTime, 0.03);
     const L = LEVELS;
-    if (kind === 'master') set(this.master, this.muted ? 0 : L.master * v);
+    if (kind === 'master') set(this.master, L.master * v);
     else if (kind === 'music') set(this.music, L.music * v);
     else if (kind === 'ambience') set(this.ambBus, v);
     else { set(this.sfx, L.sfx * v); set(this.shots, L.shots * L.guns * v); }
@@ -1555,26 +1563,6 @@ class AudioSystem {
     const dur = 22, mid = dur / 2, mix = this._sweep(o, opts.dir < 0 ? -1 : 1, 0.75, dur), k = rand(0.94, 1.06);
     const s = this._cue(o, 'train', { to: mix, rate: [[0, k * 1.012], [mid - 3, k * 1.01], [mid + 3, k * 0.99], [dur, k * 0.988]] });
     this._let(o, mix, s);
-  }
-  // the title's elevated train (ui/title/Timeline.js trainSound): one piece of its passage, rendered by audio/Elevated.js
-  // and started where the last one hands over (`this.elevated`), so that the pieces run on as one sound; opts.delay:
-  // when it starts from now. Its level is its META gain, the same for every piece.
-  _elTrain(o, { el, delay = 0, vol = 1 }) {
-    if (!el) return;
-    const ctx = this.ctx, now = ctx.currentTime, last = this.elevated;
-    let at = now + Math.max(0.005, delay);
-    const on = !!last && last.k === el.k && Math.abs(last.a - el.a0) < 1e-6 && last.end > now + 0.005 && Math.abs(last.end - at) < 0.1;
-    if (on) at = last.end;
-    const voice = on ? last.voice : new ElevatedVoice(el.k * 7919 + 1), { sr, data } = voice.render(el, !on);
-    const buf = ctx.createBuffer(2, data[0].length, sr), s = ctx.createBufferSource();
-    data.forEach((d, i) => buf.getChannelData(i).set(d));
-    s.buffer = buf;
-    s.connect(o);
-    o.gain.value = vol * META.elTrain.gain;
-    o._n++;
-    s.onended = () => this._release(o, s);
-    s.start(at);
-    this.elevated = { k: el.k, a: el.a0 + el.len, end: at + el.len, voice };
   }
   // a car alarm going off streets away: a few seconds of its cycle, from wherever it is in it, then somebody shuts it
   _farAlarm(o) {
