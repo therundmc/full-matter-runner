@@ -1,8 +1,9 @@
 import { CAT, MASK, LIGHTING, BODY_SCALE } from '../Config.js';
+import { SEAT } from '../data/feel.js';
 
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
-import { sprite, spriteOpt, silhouette, chunk, glassShards, slices, sw, sh } from '../../engine/Assets.js';
+import { sprite, spriteOpt, silhouette, chunk, glassShards, slices, sw, sh, drawSprite } from '../../engine/Assets.js';
 import { rand, chance, clamp, local } from '../../engine/math.js';
 import Debris from './Debris.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -12,7 +13,13 @@ const { Bodies, Body, Sleeping, Query } = Matter;
 
 // Sprite-space layout of each model (real size, facing +x; must match tools/generate_assets.py).
 // Regions: [x0, x1, y0, y1]; hood: [x0, x1]; wheels: tyre centres (they stick out a little past the sides).
-// Sprites: car (sedan) 140x58, car2 (coupe) 134x56, van 160x64; the hitbox is the sprite minus 2 px all round.
+// Sprites: car (sedan) 140x58, car2 (coupe) 134x56, van 160x64, convertible 172x64; the hitbox is the sprite minus
+// 2 px all round.
+// A model may give (systems/Drive.js reads the first two, else its own shares of the size): seat: [x, y] the driver's
+// seat (seatIn, CharacterAnim.seatPose), door: [x, y] the ground one stands on outside the driver's door (-y side).
+// An open car also has: cabin (the open well: who sits in it is seen, and can be shot), wheel: [x, y, r] the steering
+// wheel's rim, key: [x, y] the ignition, pipes: its exhausts' ends, hat: [x, y, sprite] what lies on the rear seat
+// until a hard swing throws it out (throwHat).
 export const VEHICLES = {
   car: {
     sprite: 'props/car', hp: 28, kg: 1200, color: '#ff2a6d',
@@ -28,6 +35,14 @@ export const VEHICLES = {
     sprite: 'props/van', hp: 36, kg: 1900, color: '#e6e0cf',
     wind: [124, 136, 9, 54], rear: null, tank: [0, 30, 0, 64], hood: [138, 154],
     wheels: [[38, 2], [38, 62], [140, 2], [140, 62]],
+  },
+  // THE BOSS's convertible, roof down (5.4 x 2.0 m): the getaway of level 1, the car driven in level 2
+  convertible: {
+    sprite: 'props/convertible', hp: 36, kg: 2100, color: '#ece2c8',
+    wind: [113, 118, 7, 57], rear: null, tank: [0, 30, 0, 64], hood: [120, 166],
+    wheels: [[36, 2], [36, 62], [140, 2], [140, 62]],
+    seat: [93, 19.5], door: [93, -13], cabin: [55, 113, 7, 57], wheel: [101, 19.5, 5.6], key: [105.5, 26.5],
+    pipes: [[1, 17], [1, 47]], hat: [71.5, 44.5, 'props/boss_hat'],
   },
 };
 
@@ -99,6 +114,9 @@ export default class Vehicle {
     this.steer = 0;
     this.brake = 0;
     this.bob = 0;
+    this.squat = 0;                        // px the body sits back on its rear wheels (the power going down)
+    this.rider = null;                     // who sits in the driver's seat (seatIn; `driver` is what drives it: systems/Drive.js)
+    this.hat = !!this.m.hat;               // what lies on the rear seat is still there
     world.addBody(this.body);
   }
 
@@ -137,6 +155,67 @@ export default class Vehicle {
 
   inside(r, sx, sy) { return r && sx >= r[0] && sx <= r[1] && sy >= r[2] && sy <= r[3]; }
 
+  // ---- the driver's seat (models with a `seat`). Anyone can be sat in it: from then on the car carries him (his
+  // place, the way he faces, his speed: the wind in his coat) and, in an open car, draws him (he is no longer drawn
+  // with the others while `riding`); what becomes of his body in the world is the caller's business.
+  seatSpot() { return this.toWorld(...this.m.seat); }
+
+  // the top of the driver's door (far: of the other side's, across the car), where a hand goes to vault it (an open
+  // car)
+  sillSpot(far = false) {
+    const y = this.m.cabin[2] * 0.5;
+    return this.toWorld(this.m.door[0], far ? this.h - y : y);
+  }
+
+  seatIn(ch) {
+    if (!this.m.seat) return false;
+    this.rider = ch;
+    ch.riding = { v: this, k: ch.riding?.v === this ? ch.riding.k : 0, aim: null, key: 0 };
+    ch.gait = 0;
+    this.carry(0);
+    return true;
+  }
+
+  unseat() {
+    const ch = this.rider;
+    if (ch) ch.riding = null;
+    this.rider = null;
+    return ch;
+  }
+
+  // the driver goes with the car (every step, and again as it is drawn)
+  carry(dt) {
+    const ch = this.rider, q = this.seatSpot();
+    if (dt > 0) {
+      ch.vel = { x: (q.x - ch.x) / (dt * 60), y: (q.y - ch.y) / (dt * 60) };
+      ch.riding.k = Math.min(1, ch.riding.k + dt / SEAT.settle);
+    }
+    Body.setPosition(ch.body, q);
+    ch.angle = this.body.angle;
+  }
+
+  // a round crossing the open cabin (sprite point and direction) passes within reach of the man at the wheel
+  crossesSeat(sx, sy, ddx, ddy) {
+    const m = this.m;
+    if (!this.rider?.alive || !m.cabin) return false;
+    const [x, y] = m.seat, t = (x - sx) * ddx + (y - sy) * ddy;
+    return t > 0 && t < this.w && Math.hypot(sx + ddx * t - x, sy + ddy * t - y) < SEAT.hit;
+  }
+
+  // what lay on the rear seat thrown out along a at v px/s: it flies, lands and stays where it falls. Returns the
+  // piece, or null when there was nothing (left) to throw.
+  throwHat(a, v) {
+    const m = this.m, img = this.hat && spriteOpt(m.hat[2]);
+    if (!this.hat) return null;
+    this.hat = false;
+    if (!img) return null;
+    const [x, y] = this.wpos(m.hat[0], m.hat[1]), w = this.world;
+    const d = new Debris(w, img, x, y, rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v, rand(-0.25, 0.25),
+      { mask: FREE, material: 'wood', kg: 0.2, mu: 0.8, air: 0.2, z: 9, vz: 150, bounce: 0.1, lift: 0.6 });
+    w.addDebris(d);
+    return d;
+  }
+
   // bullets, blasts, debris, and melee (kind punch | blunt | cut: a bat smashes glass and lamps and dents the panels,
   // a blade slashes tyres and scores the paint, fists only set the alarm off; none of them hurts the car itself)
   hit(dmg, px, py, dirA, force = 1, kind = 'bullet') {
@@ -153,6 +232,12 @@ export default class Vehicle {
     if (kind === 'punch') { w.sound('carHit', px, py, 0.35); return; }
     // seen from above the bullet lands on the edge: follow it a few px inside to find what it really hits
     const da = dirA - this.body.angle, ddx = Math.cos(da), ddy = Math.sin(da);
+    // an open car: a round that crosses the cabin by the driver's seat is his
+    if (!melee && this.crossesSeat(sx, sy, ddx, ddy)) {
+      const r = this.rider;
+      r.kill(dirA, 'bullet');
+      if (!r.alive) this.unseat(); // (his body is the world's from here)
+    }
     let tank = false;
     for (let k = 0; k <= 30; k += 1.5) {
       const qx = sx + ddx * k, qy = sy + ddy * k;
@@ -339,7 +424,7 @@ export default class Vehicle {
   }
 
   damage(n) {
-    if (this.exploded || this.armoured) return; // armoured: the getaway van (World)
+    if (this.exploded || this.armoured) return; // armoured: the getaway car (World)
     this.hp -= n;
     if (this.hp <= this.m.hp * 0.45 || this.fuel >= 3) this.ignite();
     if (this.hp <= 0) this.explode();
@@ -444,8 +529,8 @@ export default class Vehicle {
   // thrown to the side it was on; a bolted one is torn off; a parked car is shoved round, its alarm set off; anyone
   // standing there is run down. Things that never give (`lasting`), what hangs or sits on a wall are left alone.
   // seen: Map of what was hit -> when (a thing still under the wheels is hit again after R.again s); R: OUTRO.ram.
-  // Returns how many things were hit this step.
-  ram(heading, seen, R) {
+  // each: called for each thing hit (it, where it was, the way it is sent). Returns how many things were hit this step.
+  ram(heading, seen, R, each = null) {
     const w = this.world, b = this.body, t = w.time, bodies = [];
     for (const p of w.props) {
       const d = p.def || {};
@@ -460,6 +545,7 @@ export default class Vehicle {
       hits++;
       const side = this.toSprite(e.x, e.y).sy < this.h / 2 ? -1 : 1, dir = heading + side * rand(...R.aside);
       const cx = e.x, cy = e.y;
+      each?.(e, cx, cy, dir);
       if (e.isVehicle) {
         wake(ob);
         Body.setVelocity(ob, { x: Math.cos(dir) * R.car, y: Math.sin(dir) * R.car });
@@ -486,6 +572,7 @@ export default class Vehicle {
 
   update(dt) {
     const w = this.world;
+    if (this.rider) this.carry(dt);
     this.flash = Math.max(0, this.flash - dt);
     const hood = this.toWorld((this.m.hood[0] + this.m.hood[1]) / 2, this.h / 2);
     const tank = this.toWorld((this.m.tank[0] + this.m.tank[1]) / 2, this.h / 2);
@@ -559,6 +646,7 @@ export default class Vehicle {
     });
     const jx = this.flash > 0 ? rand(-1, 1) : 0;
     sagY += this.bob;
+    sagX -= this.squat;
     ctx.globalAlpha = 0.4;
     ctx.drawImage(silhouette(this.base), ox + 3, oy + 3, this.w, this.h);
     ctx.globalAlpha = 1;
@@ -601,6 +689,15 @@ export default class Vehicle {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
+    if (this.hat && !this.exploded) {
+      const hat = spriteOpt(this.m.hat[2]), hx = ox + this.m.hat[0] + sagX, hy = oy + this.m.hat[1] + sagY;
+      if (hat) { drawSprite(ctx, silhouette(hat), hx + 1.5, hy + 1.5, 0, 0.4); drawSprite(ctx, hat, hx, hy, 0); }
+    }
     ctx.restore();
+    // who sits in the open cabin, over the seats (a closed car hides him)
+    if (this.rider && this.m.cabin && !this.exploded) {
+      this.carry(0);
+      this.rider.draw(ctx);
+    }
   }
 }

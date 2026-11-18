@@ -382,7 +382,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   voice with its gain / lowpass / pan / playback rate gliding; a voice not refreshed fades out by itself (pause,
   menu) and its loop is let go. The far city's long one-shots (the elevated train, a dog, a car alarm) are rendered
   the same way (`once`) and played by `_cue`; a far police car (`_farSiren`) is synthesized live.
-  A vehicle driven live (the getaway van: `Audio.motor(key, state)` every frame from World.stepOutro, the state from
+  A vehicle driven live (the getaway car: `Audio.motor(key, state)` every frame from World.stepOutro, the state from
   `motorState` in systems/Outro.js) is one synthesized voice on the effects bus: a V8's cycle (audio/Motor.js
   `v8Cycle`, a PeriodicWave: eight firings, the two banks' lumpy pattern) driven into a soft clip through the
   exhaust's tone, noise pulsed by the firing (the growl), the gearbox's whine, the tyres' roar and hiss, and the squeal
@@ -965,7 +965,7 @@ first: it is the lamps that make it show. (The rain's puddles are liquid on the 
   Lighting.apply (so muzzle flames, texts and marks stay crisp above it); the open air's mist in the rain goes in
   the glow. The threads are drawn a world pixel at a time with the scene, before the light.
   Still particles, not the air: dust that is not a cloud (plaster off a bullet hole, a slide's or a vault's scuff,
-  a body hitting the floor, a tyre bursting), the getaway van's exhaust and tyre smoke (puffs that read in the dark
+  a body hitting the floor, a tyre bursting), the getaway car's exhaust and tyre smoke (puffs that read in the dark
   street, the outro's look kept as it was) and the trails of burning scraps in flight (they have a height).
 - Neon faults: `NEON.faults` picks, by a hash of where they stand, a dying tube and a few stuttering signs/tubes
   (Flicker.pickFaults); their light, its reach and their glow map flicker together.

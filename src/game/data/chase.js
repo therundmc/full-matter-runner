@@ -15,7 +15,7 @@ export const CHASE = {
   give: 0.3,            // what it runs at: no more than this over what it really did last step (a hit slows it)
   bounce: 2,            // a sideways bounce off what it leans on slower than this is dropped (it slides along it)
   fly: 0.05,            // s: driven, the floor's friction is not fighting the engine (refreshed each step)
-  vehicle: 'van',       // the model he drives in the chase (entities/Vehicle.js VEHICLES)
+  vehicle: 'convertible', // the model he drives in the chase (entities/Vehicle.js VEHICLES): THE BOSS's, roof down
   // where he sits and where its driver's door is, when the model gives none (VEHICLES[model].seat / .door, sprite px):
   // shares of its length (from the tail) and width (from the driver's side, -y; the door: px out from that side)
   seat: [0.74, 0.31],

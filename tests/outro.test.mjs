@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
 const { OUTRO, outroPhase, routePath, routeSpeed, slideStep, fadeAlpha, outroOver, barsK, camBlend, crossed } = await load('game/systems/Outro.js');
-const { TILE } = await load('game/Config.js');
-const { default: level } = await load('game/data/levels/level1.js');
 
 const STEP = 1 / 60;
 
@@ -40,9 +38,14 @@ test('outro: a route is straight lines joined by bends, without a jump in place 
   // a bend too wide for its lines is tightened, a straight route has none
   assert.ok(routePath([[0, 0], [20, 0], [20, 20]], [500]).length < 40);
   assert.equal(routePath([[0, 0], [100, 0]]).at(50).turn, 0);
+  // a bend may be taken with a share of the slide, or none (too tight for it): it still turns
+  const tight = routePath([[0, 0], [300, 0], [300, 400], [-200, 400]], [96, 60], 96, [0, 0.5]);
+  assert.deepEqual([tight.at(350).turn, tight.at(350).slide], [1, 0]);
+  assert.deepEqual([tight.at(tight.length - 480).turn, tight.at(tight.length - 480).slide], [1, 0.5]);
+  assert.equal(path.at(350).slide, 1);
 });
 
-test('outro: the van floors it on a straight, brakes for a bend and never stalls', () => {
+test('outro: the car floors it on a straight, brakes for a bend and never stalls', () => {
   let v = 0;
   for (let i = 0; i < 300; i++) { const n = routeSpeed(v, false, STEP); assert.ok(n >= v); v = n; }
   assert.equal(v, OUTRO.speed);
@@ -88,27 +91,4 @@ test('outro: a beat fires once, on the step that reaches it', () => {
   let n = 0;
   for (let t = 0; t < 2; t += STEP) if (crossed(t, t + STEP, OUTRO.lights)) n++;
   assert.equal(n, 1);
-});
-
-test('outro: the way out of level 1 keeps the van on open ground, through the gate and off the west end of the road', () => {
-  const van = level.props.find((p) => p[0] === 'van' && Math.hypot(p[1] - level.exit.x, p[2] - level.exit.y) < OUTRO.reach / TILE);
-  assert.ok(van && level.exit.route, 'a van by the exit and a route for it');
-  const pts = [[van[1] * TILE, van[2] * TILE], ...level.exit.route.map(([c, r]) => [c * TILE, r * TILE])];
-  const path = routePath(pts, level.exit.radius.map((r) => r * TILE));
-  const open = (x, y) => {
-    const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
-    return c < 0 || !'X#'.includes(level.tiles[r][c]); // past the map's edge: gone
-  };
-  const gate = level.props.filter((p) => p[0] === 'chain_fence');
-  let through = false;
-  for (let s = 0; s <= path.length; s += 4) {
-    const q = path.at(s), nx = -Math.sin(q.a), ny = Math.cos(q.a);
-    // its middle and both flanks (the van is 64 px wide): never over a wall
-    for (const k of [-26, 0, 26]) assert.ok(open(q.x + nx * k, q.y + ny * k), `in a wall at ${s} px (${(q.x / TILE).toFixed(1)}, ${(q.y / TILE).toFixed(1)})`);
-    if (gate.some((g) => Math.hypot(g[1] * TILE - q.x, g[2] * TILE - q.y) < 20)) through = true;
-  }
-  assert.ok(through, 'it goes through the gate of the service alley');
-  const end = path.at(path.length);
-  assert.ok(end.x < 0 && Math.abs(Math.cos(end.a) + 1) < 0.01, 'it leaves by the west end of the road');
-  assert.ok(level.exit.fade * TILE < path.length);
 });

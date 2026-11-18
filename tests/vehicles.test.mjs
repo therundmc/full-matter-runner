@@ -13,7 +13,7 @@ function pngSize(sprite) {
 }
 
 test('vehicles: sprites at real size (1 m = 32 px)', () => {
-  for (const [model, len, wid] of [['car', 4.4, 1.8], ['car2', 4.2, 1.75], ['van', 5.0, 2.0]]) {
+  for (const [model, len, wid] of [['car', 4.4, 1.8], ['car2', 4.2, 1.75], ['van', 5.0, 2.0], ['convertible', 5.4, 2.0]]) {
     const { w, h } = pngSize(VEHICLES[model].sprite);
     assert.ok(Math.abs(w / 32 - len) < 0.15 && Math.abs(h / 32 - wid) < 0.1, `${model} is ${w}x${h}`);
   }

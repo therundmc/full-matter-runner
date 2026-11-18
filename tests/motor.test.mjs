@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 import { mockContext } from './webaudio.mjs';
 
 const { MOTOR, VOICE, Gearbox, squealOf, launchChirp, v8Cycle, cycleHz } = await load('audio/Motor.js');
-const { OUTRO, routePath, routeSpeed, slideStep, motorState } = await load('game/systems/Outro.js');
+const { OUTRO, getawayPath, driveStep, motorState } = await load('game/systems/Outro.js');
 const { TILE } = await load('game/Config.js');
 const { default: level } = await load('game/data/levels/level1.js');
 const { default: Audio, META } = await load('audio/Audio.js');
@@ -80,23 +80,17 @@ test('motor: the tyres squeal with the slide and the speed, either way, and chir
 
 // the getaway on level 1's route, as World.stepOutro drives it, with the sound it makes
 function getaway() {
-  const van = level.props.find((p) => p[0] === 'van' && Math.hypot(p[1] - level.exit.x, p[2] - level.exit.y) < OUTRO.reach / TILE);
-  const pts = [[van[1] * TILE, van[2] * TILE], ...level.exit.route.map(([c, r]) => [c * TILE, r * TILE])];
-  const path = routePath(pts, level.exit.radius.map((r) => r * TILE));
-  const o = { s: 0, v: 0, slip: 0, slipV: 0, box: new Gearbox(), lastV: 0, chirpT: 0 }, out = [];
-  for (let t = STEP; t < 5; t += STEP) {
-    if (t >= OUTRO.go) {
-      const bend = path.at(o.s).turn || path.at(o.s + OUTRO.look).turn;
-      o.v = routeSpeed(o.v, bend, STEP);
-      o.s = Math.min(path.length, o.s + o.v * STEP * 60);
-      [o.slip, o.slipV] = slideStep(o.slip, o.slipV, path.at(o.s).turn, o.v, STEP);
-    }
+  const car = level.props.find((p) => p[0] === 'convertible' && Math.hypot(p[1] - level.exit.x, p[2] - level.exit.y) < OUTRO.reach / TILE);
+  const path = getawayPath(car[1] * TILE, car[2] * TILE, (car[3] * Math.PI) / 180, level.exit);
+  const o = { s: 0, v: 0, slip: 0, slipV: 0, wag: 0, box: new Gearbox(), lastV: 0, chirpT: 0 }, out = [];
+  for (let t = STEP; t < OUTRO.go + 6; t += STEP) {
+    if (t >= OUTRO.go) driveStep(o, path, t, STEP);
     out.push({ t, v: o.v, slip: o.slip, gear: o.box.gear, m: motorState(o, t, STEP) });
   }
   return out;
 }
 
-test('outro: the van is silent until it catches, pops as it does, revs up through the gears and squeals in the bends', () => {
+test('outro: the car is silent until it catches, pops as it does, revs up through the gears and squeals in the bends', () => {
   const run = getaway();
   assert.ok(run.filter((r) => r.t < OUTRO.catch - 1e-9).every((r) => r.m === null), 'the starter (a one-shot) before the catch');
   const caught = run.find((r) => r.m);
@@ -110,11 +104,11 @@ test('outro: the van is silent until it catches, pops as it does, revs up throug
   // the squeal follows the slide: loud while it slides fast, silent on the straights once the launch is over
   const driving = run.filter((r) => r.m && r.t > OUTRO.go + OUTRO.spin);
   const sliding = driving.filter((r) => Math.abs(r.slip) > 0.3);
-  const straight = driving.filter((r) => Math.abs(r.slip) < MOTOR.squeal.from && r.t > OUTRO.go + OUTRO.spin + 0.4); // past the shift's chirp
+  const straight = driving.filter((r) => Math.abs(r.slip) < MOTOR.squeal.from && r.t > OUTRO.go + OUTRO.spin + OUTRO.grip + 0.4); // the spin died, past the shift's chirp
   assert.ok(sliding.length > 20 && sliding.every((r) => r.m.squeal > 0.6), 'squealing through the bends');
   assert.ok(straight.length > 20 && straight.every((r) => r.m.squeal === 0), 'quiet on the straights');
-  const launch = run.filter((r) => r.t >= OUTRO.go && r.t < OUTRO.go + 0.15);
-  assert.ok(launch.every((r) => r.m.squeal > 0.8), 'a chirp as it tears off');
+  const launch = run.filter((r) => r.t >= OUTRO.go && r.t < OUTRO.go + OUTRO.spin - STEP);
+  assert.ok(launch.every((r) => r.m.squeal > 0.8), 'the tyres screaming all through the wheelspin');
   // flat out on a straight: on the throttle, the tyres roaring with the speed
   const flat = driving.find((r) => r.v >= OUTRO.speed - 1e-9);
   assert.ok(flat.m.load === 1 && flat.m.road === 1 && flat.m.revs > 0.6);

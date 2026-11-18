@@ -100,7 +100,8 @@ export default class Drive {
   get ready() { return 1 - this.cool / this.C.shove.cooldown; }
 
   // he is in: out of the world's bodies and of `chars` (nothing sees or hits him), carried at the seat (`driving`:
-  // the drive he is at; `hidden`: not drawn, as long as no seated runner is drawn in the car); the van driven from
+  // the drive he is at; `hidden`: not drawn with the others: the car draws him sat at the wheel when it is an open
+  // one, Vehicle.seatIn / draw, CharacterAnim.seatPose); the van driven from
   // now on (awake, lit, its lights following it, what it touches told to `contact`)
   board() {
     const w = this.world, p = w.player, v = this.van, b = v.body;
@@ -119,6 +120,7 @@ export default class Drive {
     p.driving = this;
     p.hidden = true;
     p.vel = { x: 0, y: 0 };
+    v.seatIn?.(p); // sat at the wheel: an open car carries him and draws him (entities/Vehicle.js), a closed one hides him
     w.removeBody(p.body);
     const i = w.chars.indexOf(p);
     if (i >= 0) w.chars.splice(i, 1);
@@ -131,6 +133,7 @@ export default class Drive {
     this.on = false;
     v.moving = false;
     v.driver = null;
+    v.unseat?.();
     v.onCollide = null;
     v.brake = 0; v.steer = 0; v.bob = 0;
     b.sleepThreshold = SLEEP;

@@ -14,7 +14,6 @@ import { drawFlames } from './FireArt.js';
 import LiquidArt from './LiquidArt.js';
 import Cues from './Readability.js';
 import { RAIN } from '../data/atmosphere.js';
-import { OUTRO } from '../systems/Outro.js';
 import { EXIT } from '../data/staging.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
@@ -112,7 +111,7 @@ export default class WorldRenderer {
     if (w.showVision) for (const e of w.enemies) e.drawVision(ctx);
     for (const e of w.enemies) if (e.alive && vis(e.x, e.y)) e.draw(ctx);
     for (const c of w.civilians) if (c.alive && vis(c.x, c.y)) c.draw(ctx);
-    if (w.player.alive && !w.player.hidden) w.player.draw(ctx); // hidden: in the getaway van
+    if (w.player.alive && !w.player.hidden) w.player.draw(ctx); // hidden: in a car (an open one draws him: Vehicle.draw)
     for (const p of w.props) if (p.def.overhead && !p.def.curtain && vis(p.x, p.y)) p.drawOverhead(ctx, w.player, cam);
     drawCurtains(ctx, w.curtains, w.player, vis); // their cloth (systems/Curtains.js)
     for (const d of w.doors) d.draw(ctx);
@@ -135,7 +134,7 @@ export default class WorldRenderer {
       this.smoke.draw(ctx, w.lighting); // the smoke and the mist where the lamps light them
     }
     let lightMs = performance.now() - l0;
-    if (w.cleared && w.level.exit && !w.outro) this.drawExit(ctx, t);
+    if ((w.cleared || w.level.exit?.open) && w.level.exit && !w.outro) this.drawExit(ctx, t);
     for (const p of w.projectiles) p.draw(ctx);
     if (lit) drawRainAir(ctx, w.weather, view, t, RAIN.after); // in the air only: crowns and rings would lie over people
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
@@ -445,7 +444,7 @@ export default class WorldRenderer {
     ctx.restore();
   }
 
-  // the way out once the level is cleared: a pulsing ring on the exit zone, and with a getaway van (World.getaway)
+  // the way out once the level is cleared: a pulsing ring on the exit zone, and with a getaway car (World.getaway)
   // GET IN over it and a mark on the cab door he will get in by
   drawExit(ctx, t) {
     const w = this.world, ex = w.level.exit, van = w.getaway();
@@ -465,14 +464,14 @@ export default class WorldRenderer {
     if (van) this.drawCabDoor(ctx, van, color, t);
   }
 
-  // the door's edge on the van's side, chevrons stepping in toward it
+  // the door's edge on the car's side, chevrons stepping in toward it
   drawCabDoor(ctx, van, color, t) {
     const p = this.world.player, q = this.world.cabDoor(van, p.x, p.y);
-    const edge = van.toWorld(OUTRO.door, van.toSprite(q.x, q.y).sy < van.h / 2 ? 0 : van.h);
+    const edge = van.toWorld(this.world.doorX(van), van.toSprite(q.x, q.y).sy < van.h / 2 ? 0 : van.h);
     const o = 3 + 2 * (0.5 + 0.5 * Math.sin(t * 8));
     ctx.save();
     ctx.translate(edge.x, edge.y);
-    ctx.rotate(Math.atan2(edge.y - q.y, edge.x - q.x)); // +x: into the van
+    ctx.rotate(Math.atan2(edge.y - q.y, edge.x - q.x)); // +x: into the car
     ctx.lineCap = ctx.lineJoin = 'round';
     for (const [width, col] of [[3.2, 'rgba(8,4,16,0.8)'], [1.3, color]]) {
       ctx.lineWidth = width;

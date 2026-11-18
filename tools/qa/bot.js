@@ -1555,7 +1555,7 @@
       const by = w.chars.filter(on);
       const bumped = cars.some((o) => o !== v && o.body.bounds.max.x > b.min.x - 8 && o.body.bounds.min.x < b.max.x + 8 && o.body.bounds.max.y > b.min.y - 8 && o.body.bounds.min.y < b.max.y + 8);
       const d = drivers.get(v), driven = !!d && !(d.state === 'stopped' && !(d.speed > 0));
-      const excused = driven || !!v.moving || bumped || w.time - (v.__qaHitT ?? -9) < 2 || blastNear(w, pos.x, pos.y) || v === w.outro?.van || !!v.driver;
+      const excused = driven || !!v.moving || bumped || w.time - (v.__qaHitT ?? -9) < 2 || blastNear(w, pos.x, pos.y) || v === w.outro?.car || !!v.driver;
       const px = S.trk.cars.update(v, { x: pos.x, y: pos.y }, w.time, { touched: by.length > 0, excused });
       if (px) {
         report('vehicle-shoved', 'error', v.type, posOf(pos.x, pos.y),

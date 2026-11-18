@@ -66,13 +66,19 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     16 FIRE        in the soot room (3): petrol poured from its gas bottles to a rug and an armchair; a round through
                    a bottle and the fire runs along the trail, takes what burns, kills who stands in it. LUCKY (his
                    pink scarf, a dummy) stands in the concourse before it
-    17 VEHICLES    the street: a car, the van, the leaking car, barrels, streetlights
+    17 VEHICLES    the street: a car, the van, the leaking car, the boss's convertible (open: nothing to shoot in it
+                   until someone sits there), barrels, streetlights
     18 COAT        the concourse's west half, an open lane to run, turn and slide in and watch the runner's coat
                    (src/game/entities/Skirt.js): a low table to vault or slide past, a barrel to turn round
     19 DRIVE       the street's south lane, from its west end: a van to get into (E at its driver's door) and drive
                    east (systems/Drive.js: W / S, A / D, SPACE the shove toward the mouse's side), two bins in its
                    way, station 17's barrel, parked van and cars to shove, the end wall to die on nose-on; E again, or
                    stopping, gets him out
+    20 GETAWAY     the street's east end: THE BOSS's convertible and level 1's way out played here (systems/Outro.js:
+                   step into the ring by its driver's door; the level's `exit` is `open`, nothing to clear first): the
+                   vault over the door, the key, the wheelspin and the rubber it lays, the tail out round the leaking
+                   car and down the south lane through station 17's and 19's things, the hat gone at the first swing;
+                   then the results (restart the lab from there)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -354,6 +360,7 @@ lv.passage(('trapdoor', 20.0, 12.9, 0), ('trapdoor', 2.5, 18.6, 0))
 lv.prop('car', 8.0, 21.1, 0)
 lv.prop('van', 24.0, 23.5, 180)
 lv.prop('car2', 47.2, 21.1, 0)             # its tank (the rear, west end) by the hydrant: the petrol runs with the water
+lv.prop('convertible', 38.6, 20.9, 0)      # the boss's, roof down: to hole, burn and blow up (its hat stays on the seat)
 lv.prop('barrel', 14.5, 23.4)
 lv.prop('barrel', 33.0, 23.5)
 for x in (10.5, 20.5, 32.5, 41.0):
@@ -372,6 +379,13 @@ lv.prop('van', 4.6, 23.5, 0, drive=True)   # E at its driver's door (its north s
 lv.prop('trash_can', 18.4, 23.9)
 lv.prop('trash_can', 19.2, 23.0)
 
+lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
+lv.paint('label_getaway', 57.0, 18.6)
+lv.prop('convertible', 56.6, 21.0, 180, lights=False)   # its driver's door on the road's side
+# round the leaking car into the south lane and down it to the west end (the picture is black before the wall)
+exit_zone = {'x': 56.6, 'y': 22.9, 'r': 1.2, 'open': True, 'route': [[53.0, 21.0], [49.0, 23.0], [4.0, 23.0]], 'radius': [3, 3],
+             'fade': 9}
+
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [
     [12, 22, 9, '#5a6ad8', 0.3],
@@ -385,6 +399,7 @@ light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.
 if __name__ == '__main__':
     lv.check(guards=28)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
+             exit=exit_zone,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
                  'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane) and a',

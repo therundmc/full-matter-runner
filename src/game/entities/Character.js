@@ -18,7 +18,7 @@ import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK
   CLIMB_NOISE, RUNG_NOISE, LAND_NOISE } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, seatPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
@@ -112,6 +112,7 @@ export default class Character {
     this.recoilRate = 9;    // recoil recovery per second (the gun family's FEEL recoil.rate: heavy guns recover slower)
     this.glassSafe = 0;     // seconds of immunity to flying shards left after a window vault
     this.vaulting = null;   // { from, to, t, dur, kind, dir, ... } while jumping over something
+    this.riding = null;     // { v, k, aim, key } while sat in a vehicle's seat (Vehicle.seatIn, CharacterAnim.seatPose)
     this.slideAnim = null;  // { dir, side, k, w } while sliding (driven by Player)
     // animation state (see CharacterAnim.js)
     this.gait = 0;          // 0 standing .. 1 full stride, smoothed
@@ -977,6 +978,7 @@ export default class Character {
     if (this.kick) kickPose(this, P, this.pose2);
     if (this.vaulting) vaultPose(this, P, this.pose2);
     if (this.sit > 0) sitPose(this, P, this.pose2);
+    if (this.riding) seatPose(this, P, this.pose2);
     if (this.trunkOpen) trunkPose(this, P, this.pose2);
     if (this.execution || this.execOut) execPose(this, P, this.pose2);
     if (this.takedown) takedownPose(this, P, this.pose2);

@@ -354,7 +354,10 @@ lv.paint('tag', 11.9, 12.6, 80)                         # a tag sprayed on the g
 lv.dress('papers', 11, 1, 13, 19, 4)
 
 lv.area('back lot')
-lv.prop('van', 24.5, 2.3, 180, lights=False)
+# the getaway: THE BOSS's convertible, roof down, its driver's door toward the lot (systems/Outro.js). 5.4 m of car
+# in a 4 m lot with a 3 m alley out of it: its row and the route's first bend (exit_zone) are the only ones that
+# get it round without touching a wall (tests/outro.test.mjs drives it); move neither without that test
+lv.prop('convertible', 24.5, 3.1, 180, lights=False)
 lv.prop('dumpster', 15.2, 1.6)
 lv.prop('crate', 17.2, 1.45, 5)
 lv.prop('crate', 17.9, 1.5, -10)
@@ -706,11 +709,13 @@ ambient = {
     ],
 }
 
-# by the getaway van's cab door: he gets in and tears off (systems/Outro.js). Its way out: west along the back lot,
-# a slide into the service alley (the junk and the two barrels of the lot's corner are in its way), down the alley
-# over what stands in it, through the gate, across the pavement (the hydrant, the meter) and round onto the road,
-# west, clipping the tail of the car parked there. `fade`: black from the second bend on.
-exit_zone = {'x': 23.4, 'y': 4.0, 'r': 1.3, 'route': [[12.45, 2.6], [12.45, 23.9], [-9, 24.3]], 'radius': [3, 4.2], 'fade': 16}
+# by the driver's door of the boss's convertible: he vaults in and tears off (systems/Outro.js). Its way out (the
+# path of the point OUTRO.pivot ahead of its middle): west along the back lot, round into the service alley (too
+# tight to slide: `slide` 0; the two barrels of the lot's corner are in its way), down the alley over what stands in
+# it, through the gate, across the pavement and out wide onto the road, tail out, then away west in the westbound
+# lane. `fade`: tiles before the end where the picture goes black.
+exit_zone = {'x': 23.4, 'y': 4.55, 'r': 1.3, 'route': [[12.7, 3.1], [12.7, 27.0], [-9, 26.2]], 'radius': [3, 3], 'slide': [0, 1],
+             'fade': 14}
 
 if __name__ == '__main__':
     lv.check(guards=12)

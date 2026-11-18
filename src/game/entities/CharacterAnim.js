@@ -9,7 +9,7 @@
 // bends him: { hunch, duck, lift, lean, look, twist, shake }).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, feelOf } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, SEAT, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { READABILITY } from '../data/readability.js';
 import { slamAt } from '../systems/Takedown.js';
@@ -1181,6 +1181,54 @@ export function kickPose(ch, P, V) {
   }
   blendPose(P, V, ph.w);
   P.lift = Math.max(P.lift, 0.15 * ph.ext * ph.w);
+  return P;
+}
+
+// ---------------- sat in a vehicle (Vehicle.seatIn: ch.riding = { v, k, aim }) ----------------
+// Seen from above in an open car: sat low and leant back, the thighs out under the dash, both hands on the wheel's
+// rim (they go round with the steering), the head up. Aiming (riding.aim: a world angle, or null), the arm on that
+// side comes out with what he holds, the other hand stays on the wheel, the head and the shoulders turn after it.
+// riding.k: 0 .. 1 of him settled in (the pose blended in from whatever brought him there: a vault over the door).
+// The numbers: data/feel.js SEAT; where the seat and the wheel are: the model's `seat` and `wheel` (sprite px).
+export function seatPose(ch, P, V) {
+  const st = ch.riding, v = st.v, m = v.m, S = SEAT, w = smooth(st.k);
+  if (w <= 0 || !m.seat) return P;
+  const a = v.body.angle, c = Math.cos(a), s = Math.sin(a), d = ch.def;
+  const at = (out, lx, ly) => { out.x = lx * c - ly * s; out.y = lx * s + ly * c; };
+  copyPose(V, P);
+  V.ta = V.ha = a;
+  V.tx = -c * S.back; V.ty = -s * S.back;
+  V.s = S.s; V.lift = 0; V.legs = 1; V.top = 0; V.tuck = 0; V.over = 0; V.px = V.py = 0; V.bow = 0;
+  V.carryImg = null; V.wpnOn = false; V.fist = false;
+  for (let i = 0; i < 2; i++) {
+    const f = V.feet[i], side = i ? 1 : -1;
+    at(f, S.feet[0], side * S.feet[1]);
+    f.a = a; f.lift = 0; f.heel = 0;
+    // on the rim, either side of the hub, going round with the front wheels
+    const W = m.wheel || [m.seat[0] + 8, m.seat[1], 5], g = side * S.grip + (v.steer || 0) * S.turn, r = W[2] / BODY_SCALE;
+    at(i ? V.hr : V.hl, (W[0] - m.seat[0]) / BODY_SCALE + Math.cos(g) * r, (W[1] - m.seat[1]) / BODY_SCALE + Math.sin(g) * r);
+    V.hand[i] = 'fist'; V.elb[i] = S.elbow;
+  }
+  // the key turned (riding.key 0 .. 1): the right hand leaves the wheel for the ignition
+  if (st.key > 0 && m.key) {
+    const k = smooth(st.key), kx = (m.key[0] - m.seat[0]) / BODY_SCALE, ky = (m.key[1] - m.seat[1]) / BODY_SCALE;
+    V.hr.x = lerp(V.hr.x, kx * c - ky * s, k); V.hr.y = lerp(V.hr.y, kx * s + ky * c, k);
+  }
+  if (st.aim !== null && st.aim !== undefined) {
+    const off = angDiff(a, st.aim), i = off < 0 ? 0 : 1, h = i ? V.hr : V.hl, A = S.aim;
+    V.ta = a + clamp(off, -1, 1) * A.twist;
+    V.ha = a + clamp(off, -A.head, A.head);
+    shoulder(SH, V, i ? 1 : -1);
+    h.x = SH.x + Math.cos(st.aim) * A.reach * V.s; h.y = SH.y + Math.sin(st.aim) * A.reach * V.s;
+    V.elb[i] = 0.15;
+    if (d.kind === 'gun' && d.sprite) {
+      // (the gun goes to the hand on the aim's side: seen from above it reads the same in either)
+      V.wpnOn = true; V.fist = i === 1; V.wpnLen = 1; V.wpnS = 1;
+      V.wpn.x = h.x; V.wpn.y = h.y; V.wpn.a = st.aim;
+    }
+  }
+  blendPose(P, V, w);
+  if (w > 0.5) { P.wpnOn = V.wpnOn; P.carryImg = null; P.flat = null; P.magIn = null; }
   return P;
 }
 
@@ -2393,7 +2441,19 @@ function skirtOf(ch, P, ta) {
   const S = ch.skirt || (ch.skirt = newSkirt()), now = ch.world?.time ?? 0;
   const dt = S.t === undefined ? 0 : now - S.t;
   S.t = now;
-  return stepSkirt(S, ta + Math.PI, ch.vel?.x, ch.vel?.y, (ch.walk || 0) / TAU, dt, P.tuck * 2, smooth(ch.sit || 0));
+  stepSkirt(S, ta + Math.PI, ch.vel?.x, ch.vel?.y, (ch.walk || 0) / TAU, dt, P.tuck * 2, smooth(ch.sit || 0));
+  if (ch.riding) seatSkirt(S, ch.riding, now);
+  return S;
+}
+
+// sat in an open car (seatPose): at speed the wind throws the half on the door's side out over the door, the other
+// one streams back over the seat; both flutter (data/feel.js SEAT.wind)
+function seatSkirt(S, st, now) {
+  const m = st.v.m, [out, flut, hz, long] = SEAT.wind, k = clamp((S.len - COAT.hem) / (1 - COAT.hem), 0, 1) * smooth(st.k);
+  const door = m.seat[1] < st.v.h / 2 ? 0 : 1, side = door ? -1 : 1;
+  S.half[door].a += side * out * k + Math.sin(now * hz) * flut * k;
+  S.half[1 - door].a += Math.sin(now * hz * 1.3 + 1) * flut * k;
+  S.half[door].len *= 1 + long * k;
 }
 
 // its two halves, each hung from its hinge on his back (COAT.hinge), turned and drawn out as the skirt says; shadow:

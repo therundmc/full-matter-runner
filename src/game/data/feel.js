@@ -194,6 +194,16 @@ export const TAIL = { nape: 4.5, side: 0.5, moving: 0.4, follow: 7, beat: 6, wav
 export const COAT = { hinge: [-1, 3.25], root: 3, moving: 0.4, full: 2.6, hem: 0.5, trail: 0.9, swing: 0.8, freq: 13, damp: 0.5,
   draw: 7, open: 0.14, kick: [0.16, 0.1], step: 0.05, sit: [1.45, 0.8] };
 
+// A man sat in a vehicle's seat (Vehicle `seat` / `wheel`, CharacterAnim.seatPose; pose px in his own frame: x ahead,
+// y to his right): s: drawn that much smaller (sat low), back: leant back into the seat; grip: where his hands hold
+// the wheel's rim (rad off straight ahead of its hub, either side), turn: rad they go round with a rad of steering;
+// elbow: how far out the elbows are; feet: his feet under the dash [ahead, apart]; settle: s he takes to settle in
+// (the pose blended in, the hands finding the wheel); aim: the arm on the aim's side out with what he holds [reach],
+// the head and the shoulders turned after it (rad at most); wind: the coat's half on the door's side thrown out over
+// the door at speed [rad, flutter rad, rad/s, share it is drawn out longer]; hit: px round the seat a round crossing the open cabin kills within
+export const SEAT = { s: 0.94, back: 0.8, grip: 1.95, turn: 1.6, elbow: 0.8, feet: [7.8, 2.4], settle: 0.28,
+  aim: { reach: 12.5, head: 1.1, twist: 0.3 }, wind: [0.95, 0.12, 15, 0.35], hit: 8 };
+
 export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 
 // How kills and chains are shown (ui/KillFeed.js keeps the state on the real clock, render/WorldRenderer.js draws the

@@ -15,7 +15,7 @@
 //   'surrender'     the last guard gave up     { who }   (entities/Enemy)
 //   'footprint'     a wet sole marked the floor { who, x, y, angle, kind }   (systems/Liquids)
 import { TILE, MAX_DEBRIS, PALETTE, PHYSICS, PLAYER } from '../Config.js';
-import { chance } from '../../engine/math.js';
+import { chance, clamp, angDiff } from '../../engine/math.js';
 import EventBus from '../../engine/EventBus.js';
 import PhysicsWorld from '../../engine/physics/PhysicsWorld.js';
 import { gripOn } from '../data/materials.js';
@@ -69,7 +69,8 @@ import Smoke from '../systems/Smoke.js';
 import Director from '../ai/Director.js';
 import BossStage from '../systems/BossStage.js';
 import Ambient from '../systems/Ambient.js';
-import { OUTRO, routePath, routeSpeed, slideStep, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
+import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
+import { SEAT, TRAVERSE } from '../data/feel.js';
 import Drive, { driveSpot } from '../systems/Drive.js';
 import { Gearbox } from '../../audio/Motor.js';
 
@@ -180,8 +181,8 @@ export default class World {
     this.director = new Director(this); // squad AI: alert phase, noises, incidents, search sweeps
     this.events.on('surrender', () => this.checkCleared());
     this.ambient = level.ambient ? new Ambient(this, level.ambient) : null; // traffic + passers-by
-    const van = this.getaway();
-    if (van) van.armoured = true; // the way out cannot be shot up or blown up before it is needed
+    const car = this.getaway();
+    if (car) car.armoured = true; // the way out cannot be shot up or blown up before it is needed
     // a level driven in the van (level `chase`: he starts in it), the vans one can get into (the lab: E at the door)
     this.drive = level.chase ? new Drive(this, level.chase) : null;
     for (const p of this.props) if (p.drivable) this.uses.add(driveSpot(this, p));
@@ -373,117 +374,208 @@ export default class World {
   }
 
   // ---------------- the getaway (systems/Outro) ----------------
-  // the vehicle the level is left in: a van parked by the exit zone, in one piece and not on fire; null if none
+  // the vehicle the level is left in: the one parked nearest the exit zone (within OUTRO.reach), in one piece and not
+  // on fire; null if none
   getaway() {
     const ex = this.level.exit;
     if (!ex) return null;
     const x = ex.x * TILE, y = ex.y * TILE;
-    return this.props.find((p) => p.isVehicle && p.type === 'van' && !p.exploded && !p.burning && !p.moving
-      && Math.hypot(p.x - x, p.y - y) < OUTRO.reach) || null;
+    let best = null, near = OUTRO.reach;
+    for (const p of this.props) {
+      if (!p.isVehicle || p.exploded || p.burning || p.moving) continue;
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < near) { best = p; near = d; }
+    }
+    return best;
   }
 
-  // where one stands to get in: by the cab door on the side of (x, y), on the other side if that one is against a wall
-  cabDoor(van, x, y) {
-    const r = PLAYER.radius + 3, near = van.toSprite(x, y).sy < van.h / 2 ? -r : van.h + r;
-    for (const sy of [near, van.h - near]) {
-      const q = van.toWorld(OUTRO.door, sy), out = van.toWorld(OUTRO.door, sy + Math.sign(sy) * r);
+  // sprite x of the door one gets in by (the model's `door`, else the van's cab door)
+  doorX(car) { return car.m.door?.[0] ?? OUTRO.door; }
+
+  // where one stands to get in: by the door on the side of (x, y), on the other side if that one is against a wall
+  cabDoor(car, x, y) {
+    const r = PLAYER.radius + 3, near = car.toSprite(x, y).sy < car.h / 2 ? -r : car.h + r, dx = this.doorX(car);
+    for (const sy of [near, car.h - near]) {
+      const q = car.toWorld(dx, sy), out = car.toWorld(dx, sy + Math.sign(sy) * r);
       if (!this.map.solidAt(q.x, q.y) && !this.map.solidAt(out.x, out.y)) return q;
     }
-    return van.toWorld(OUTRO.door, near);
+    return car.toWorld(dx, near);
   }
 
   // the player stepped into the exit zone: from now on stepOutro runs him instead of the input; nothing can hurt him
-  startOutro(van) {
-    const p = this.player, ex = this.level.exit, a = van.body.angle;
+  startOutro(car) {
+    const p = this.player, ex = this.level.exit, a = car.body.angle;
     p.invulnerable = true;
     p.vaultHint = null;
     p.slide = null;
-    // its way out: the level's route, or straight ahead
-    const pts = [[van.x, van.y], ...(ex.route ? ex.route.map(([c, r]) => [c * TILE, r * TILE])
-      : [[van.x + Math.cos(a) * OUTRO.maxDist, van.y + Math.sin(a) * OUTRO.maxDist]])];
     this.outro = {
-      t: 0, van, door: this.cabDoor(van, p.x, p.y), inside: false,
-      path: routePath(pts, (ex.radius || []).map((r) => r * TILE)), fadeFrom: (ex.fade ?? OUTRO.fade) * TILE,
-      s: 0, v: 0, slip: 0, slipV: 0, heading: a, fadeAt: null, hit: new Map(), ruts: null,
+      t: 0, car, door: this.cabDoor(car, p.x, p.y), vault: false, inside: false,
+      path: getawayPath(car.x, car.y, a, ex), fadeFrom: (ex.fade ?? OUTRO.fade) * TILE,
+      s: 0, v: 0, slip: 0, slipV: 0, wag: 0, heading: a, fadeAt: null, hit: new Map(), ruts: null,
       box: new Gearbox(), lastV: 0, chirpT: 0, // its engine and tyres heard (motorState)
     };
   }
 
   stepOutro(dt) {
-    const o = this.outro, p = this.player, v = o.van, O = OUTRO, t0 = o.t, t = (o.t += dt);
+    const o = this.outro, p = this.player, v = o.car, O = OUTRO, t0 = o.t, t = (o.t += dt);
     if (!o.inside) {
-      // he walks to the door (a vault under way ends first)
       p.baseUpdate(dt);
       p.updateSlideAnim(dt);
-      if (!(p.vaulting && p.updateVault(dt))) {
+      if (o.vault) this.vaultIn(o, dt);
+      else if (!(p.vaulting && p.updateVault(dt))) {
+        // he walks to the door (a vault of his own under way ends first)
         const dx = o.door.x - p.x, dy = o.door.y - p.y, d = Math.hypot(dx, dy);
         p.angle = d > 4 ? Math.atan2(dy, dx) : Math.atan2(v.y - p.y, v.x - p.x);
         p.steer(dx, dy, Math.min(PLAYER.speed, d * 0.3), PLAYER.accel);
+        // an open car: over the door into the seat; a closed one: in by the door, and gone
+        if (t >= O.walk) { if (v.m.cabin) this.startVaultIn(o); else this.boardGetaway(); }
       }
-      if (t >= O.walk) this.boardGetaway();
-    } else Body.setPosition(p.body, v.toWorld(O.door + 8, v.h / 2)); // riding in the cab
+    } else if (!v.rider) Body.setPosition(p.body, v.toWorld(this.doorX(v) + 8, v.h / 2)); // riding in the cab
+    if (p.riding) p.riding.key = keyK(t); // his hand to the ignition and back
     const exhaust = (n) => {
-      const e = v.toWorld(1, v.h * 0.7);
-      this.particles.smoke(e.x, e.y, n, 2, { speed: 14, size: 3.5, life: 1 });
+      for (const [sx, sy] of v.m.pipes || [[1, v.h * 0.7]]) {
+        const e = v.toWorld(sx, sy);
+        this.particles.smoke(e.x, e.y, n, 2, { speed: 14, size: 3.5, life: 1 });
+      }
     };
     if (crossed(t0, t, O.lights)) {
       v.lightsOut = false;
       this.sound('crank', v.x, v.y, 1, { dur: O.catch - O.lights }); // the starter turns it over, then it catches
     }
-    if (crossed(t0, t, O.catch)) exhaust(3);
+    if (crossed(t0, t, O.catch)) { exhaust(3); this.shake(O.jolt[2]); }
     if (t >= O.catch && chance(t < O.go ? 0.08 : 0.3)) exhaust(1);
     v.bob = t >= O.lights && t < O.go ? Math.sin(this.time * (t < O.catch ? 16 : 38)) * 0.25 : 0; // cranking, then idling
+    v.squat = squatAt(t);
     if (t >= O.go) this.driveOutro(o, t, dt);
     // its engine, gearbox and tyres, every step, fading with the picture
     const m = motorState(o, t, dt);
     if (m) Audio.motor('getaway', { ...m, x: v.x, y: v.y, fade: 1 - fadeAlpha(o) ** 1.5 });
   }
 
-  // the van along its route (stepOutro, from OUTRO.go on)
+  // At the door of an open car: the game's own one-hand vault (Character.updateVault, CharacterAnim's speed vault),
+  // scripted from where he stands to the seat: a hand on the door's top, the legs swung over it, and he drops in.
+  startVaultIn(o) {
+    const p = this.player, v = o.car, T = TRAVERSE.vault;
+    if (Math.hypot(o.door.x - p.x, o.door.y - p.y) > PLAYER.radius) Body.setPosition(p.body, o.door);
+    const from = { x: p.x, y: p.y }, to = v.seatSpot(), dist = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const dir = Math.atan2(to.y - from.y, to.x - from.x), c = Math.cos(dir), s = Math.sin(dir);
+    // the planted hand: the free one (the left when the right holds something, else the one toward the car's nose)
+    const side = angDiff(dir, v.body.angle) >= 0 ? 1 : -1, hand = p.def.hold !== 'none' ? -1 : side;
+    const sill = v.sillSpot(v.toSprite(from.x, from.y).sy > v.h / 2);
+    const plant = { x: sill.x - s * hand * T.out, y: sill.y + c * hand * T.out };
+    p.vaulting = {
+      from, to, t: 0, dur: OUTRO.vault, kind: 'prop', over: v, dir, dist, hoist: false, ladder: null, style: 'speed',
+      roll: false, rolling: null, hands: [plant, plant], side, hand, plant, planted: false, legSide: -hand,
+      m0: 0.5, m1: 0.15, landed: false, strike: null,
+    };
+    p.body.collisionFilter = { ...p.body.collisionFilter, mask: 0 };
+    p.vel = { x: 0, y: 0 };
+    o.vault = true;
+    this.sound('doorVault', p.x, p.y, 0.8); // placeholder (assets/sound/PLACEHOLDERS.md)
+  }
+
+  // over the door: he turns to face the way the car points, and from OUTRO.sit of the way he settles into the seat
+  // (the seated pose comes in under the vault's); down, he is in
+  vaultIn(o, dt) {
+    const p = this.player, v = o.car, vt = p.vaulting;
+    p.angle += angDiff(p.angle, v.body.angle) * Math.min(1, dt * 9);
+    if (vt && vt.t / vt.dur >= OUTRO.sit) {
+      p.riding ??= { v, k: 0, aim: null, key: 0 };
+      p.riding.k = Math.min(1, p.riding.k + dt / SEAT.settle);
+    }
+    if (!p.updateVault(dt)) this.boardGetaway();
+  }
+
+  // the car along its route (stepOutro, from OUTRO.go on): where it is (Outro.driveStep), what it runs into, and
+  // what its wheels do to the floor and throw up (OUTRO.fx; their squeal: motorState)
   driveOutro(o, t, dt) {
-    const v = o.van, O = OUTRO;
-    // along the route: flat out, braking into a bend, the tail stepping out in it
-    const path = o.path, bend = path.at(o.s).turn || path.at(o.s + O.look).turn;
-    o.v = routeSpeed(o.v, bend, dt);
-    o.s = Math.min(path.length, o.s + o.v * dt * 60);
-    const q = path.at(o.s);
-    [o.slip, o.slipV] = slideStep(o.slip, o.slipV, q.turn, o.v, dt);
-    o.heading = q.a;
-    v.driveTo(q.x, q.y, q.a + o.slip);
-    if (o.s < path.length && v.ram(q.a, o.hit, O.ram)) this.shake(O.ram.shake);
-    // the rear tyres: spinning as it pulls away, sliding in a bend. Smoke and black marks on the floor (their squeal:
-    // motorState)
-    const sliding = t < O.go + O.spin || Math.abs(o.slip) > O.smoke;
-    const rear = v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy));
+    const v = o.car, O = OUTRO, F = O.fx, path = o.path;
+    const at = driveStep(o, path, t, dt), q = at.q, off = o.slip + o.wag, slide = Math.abs(off);
+    v.driveTo(at.x, at.y, at.a);
+    v.steer = clamp(q.turn * 0.25 - off * 1.1, -0.5, 0.5); // the front wheels: into the bend, against the slide
+    v.wake = { x: Math.cos(q.a) * o.v, y: Math.sin(q.a) * o.v }; // (px/step: the papers it drags, systems/Papers.js)
+    const hits = o.s < path.length ? v.ram(q.a, o.hit, O.ram, (e, x, y, dir) => this.rammed(e, x, y, dir)) : 0;
+    if (hits) this.shake(O.ram.shake);
+    const spin = spinK(t), sliding = spin > 0 || slide > O.smoke, back = at.a + Math.PI;
+    const wheels = v.m.wheels.map(([sx, sy]) => v.toWorld(sx, sy)), rear = wheels.slice(0, 2);
     if (sliding) {
-      for (const r of rear) if (chance(0.7)) this.particles.smoke(r.x, r.y, 1, 3, { speed: 22, size: 5, life: 0.8 });
+      // white tyre smoke billowing behind, rubber laid on the floor: it stays
+      const [n, size, life] = spin > 0 ? F.spinSmoke : F.slideSmoke;
+      for (const r of rear) {
+        const puffs = spin > 0 ? Math.round(n * spin) : chance(n) ? 1 : 0;
+        if (puffs) this.particles.smoke(r.x + Math.cos(back) * 6, r.y + Math.sin(back) * 6, puffs, 4, { speed: 24 + 30 * spin, size, life });
+      }
       if (o.ruts) {
-        const xs = [...rear, ...o.ruts].map((r) => r.x);
+        const xs = [...rear, ...o.ruts].map((r) => r.x), M = O.marks, from = o.ruts;
         this.decals.paint?.((g) => {
-          g.strokeStyle = 'rgba(10, 8, 14, 0.4)';
-          g.lineWidth = 3;
+          g.strokeStyle = `rgba(${M.color}, ${spin > 0 ? M.spin : M.slide})`;
+          g.lineWidth = M.w;
           g.lineCap = 'round';
-          rear.forEach((r, i) => { g.beginPath(); g.moveTo(o.ruts[i].x, o.ruts[i].y); g.lineTo(r.x, r.y); g.stroke(); });
-        }, 'floor', Math.min(...xs) - 3, Math.max(...xs) + 3);
+          rear.forEach((r, i) => { g.beginPath(); g.moveTo(from[i].x, from[i].y); g.lineTo(r.x, r.y); g.stroke(); });
+        }, 'floor', Math.min(...xs) - M.w, Math.max(...xs) + M.w);
+        o.marks = (o.marks || 0) + 1;
       }
     }
     o.ruts = sliding ? rear : null;
+    // grit thrown back by the rear wheels from the launch on, a while
+    if (t < O.go + O.spin + F.grit.dur) {
+      for (const r of rear) {
+        if (chance(F.grit.chance)) this.particles.chips(r.x, r.y, back, 0.45, 1, F.grit.colors[Math.floor(Math.random() * F.grit.colors.length)], F.grit.speed * (0.4 + 0.6 * Math.max(spin, o.v / O.speed)));
+      }
+    }
+    // a wheel through standing water: spray, a ring left behind
+    if (this.liquids && o.v > 1) {
+      for (const r of wheels) {
+        const wet = chance(F.spray[0]) && this.liquids.at(r.x, r.y), splash = wet && this.liquids.cfg.kinds[wet.kind]?.splash;
+        if (!splash) continue;
+        this.particles.drops(r.x, r.y, back + (Math.random() < 0.5 ? 1 : -1) * 0.9, 0.7, F.spray[1], splash, F.spray[2], 5, false);
+        this.liquids.ripple(r.x, r.y);
+      }
+    }
+    // far out, the tail's low corner drags on the ground
+    if (slide > F.sparks.from && chance(F.sparks.chance)) {
+      const c = v.toWorld(3, off > 0 ? 5 : v.h - 5);
+      this.particles.sparks(c.x, c.y, back, 0.7, F.sparks.n, 220);
+    }
+    // the first hard swing: what lay on the rear seat flies out, to the side the tail goes, and stays where it lands
+    if (v.hat && Math.abs(o.slip) >= O.hat.slip) {
+      const sg = Math.sign(o.slip), sp = o.v * 60 * O.hat.keep;
+      const vx = Math.cos(q.a) * sp + Math.sin(at.a) * sg * O.hat.side, vy = Math.sin(q.a) * sp - Math.cos(at.a) * sg * O.hat.side;
+      v.throwHat(Math.atan2(vy, vx), Math.hypot(vx, vy));
+      this.sound('hatFly', v.x, v.y, 0.6); // placeholder (assets/sound/PLACEHOLDERS.md)
+      o.hatAt = t;
+    }
     if (o.fadeAt === null && o.s >= path.length - o.fadeFrom) o.fadeAt = t;
   }
 
-  // at the door: he gets in (no longer drawn, no body, out of `chars`: no light of his own, no laser out of the cab)
+  // a thing the getaway ran into (Vehicle.ram): sheets of paper fly off it, steel throws sparks
+  rammed(e, x, y, dir) {
+    const R = OUTRO.ram;
+    if (e.isVehicle || !e.def) return;
+    this.papers?.drop(x, y, R.papers[0], dir, R.papers[1]);
+    if (e.def.material === 'metal' || e.def.sound === 'metal') this.particles.sparks(x, y, dir, 1, 6, 260);
+  }
+
+  // He is in. A closed car: by the door, no longer seen. An open one: sat at the wheel, the car carries him and draws
+  // him (Vehicle.seatIn). Either way no body, out of `chars` and `hidden` (not drawn with the others, no light of
+  // his own, no laser).
   boardGetaway() {
-    const o = this.outro, p = this.player, { x, y } = o.door;
+    const o = this.outro, p = this.player, v = o.car, open = !!v.m.cabin, at = open ? v.seatSpot() : o.door;
     o.inside = true;
     p.vel = { x: 0, y: 0 };
     Body.setVelocity(p.body, p.vel);
-    Body.setPosition(p.body, o.door);
+    Body.setPosition(p.body, at);
     p.hidden = true;
     this.removeBody(p.body);
     const i = this.chars.indexOf(p);
     if (i >= 0) this.chars.splice(i, 1);
-    this.sound('carHit', x, y, 0.5);
-    this.particles.dust(x, y, 6, 6, '#6a6272', { speed: 30, size: 3, life: 0.5, alpha: 0.2 });
+    if (open) {
+      v.seatIn(p);
+      this.sound('seatDrop', at.x, at.y, 0.7); // placeholder (assets/sound/PLACEHOLDERS.md)
+      return;
+    }
+    this.sound('carHit', at.x, at.y, 0.5);
+    this.particles.dust(at.x, at.y, 6, 6, '#6a6272', { speed: 30, size: 3, life: 0.5, alpha: 0.2 });
   }
 
   // ---------------- simulation ----------------
@@ -573,7 +665,8 @@ export default class World {
     this.texts = this.texts.filter((t) => t.t > 0);
 
     // 5. level flow
-    if (this.cleared && !this.exited && this.player.alive && this.level.exit) {
+    // (exit.open: a way out that needs no clearing: the lab's getaway)
+    if ((this.cleared || this.level.exit?.open) && !this.exited && this.player.alive && this.level.exit && !this.drive) {
       const ex = this.level.exit;
       if (Math.hypot(this.player.x - ex.x * TILE, this.player.y - ex.y * TILE) < ex.r * TILE) {
         this.exited = true;

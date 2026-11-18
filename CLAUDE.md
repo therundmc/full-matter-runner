@@ -118,8 +118,13 @@
   by a `parapet`) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
 - Guards have the house's keys (`World.pathForGuard`, `Door.unlatch`): never lock a door without checking they still
   get out (the QA robot reports `guard-stuck`).
-- The getaway van (systems/Outro.js) follows `exit.route` and cannot be destroyed (`armoured`): check it in the
-  browser after touching the route.
+- The getaway is THE BOSS's convertible (model `convertible`, entities/Vehicle.js: `seat`, `door`, `cabin`, `hat`;
+  systems/Outro.js `OUTRO`): he vaults the door into the seat (anyone can be sat at a wheel: `Vehicle.seatIn`,
+  CharacterAnim `seatPose`, `ch.riding`, data/feel.js `SEAT`), the key, the wheelspin and its rubber, then
+  `exit.route` (the path of the point `OUTRO.pivot` ahead of its middle; `exit.slide`: the share of the slide a
+  bend) and the hat off the rear seat at the first hard swing. It cannot be destroyed (`armoured`). The car is 5.4 m
+  in a 4 m lot: its row and the first bend are the only ones that clear the walls (tests/getaway.test.mjs drives the
+  whole body down the route): check it in the browser after touching the route; the lab's station 20 replays it.
 - Shop alarms (level `alarms`, systems/Alarms.js), the bar's fuse box (level `power`, systems/Power.js), street
   fauna (level `critters`, systems/Critters.js). The bar room is public (level `welcome`); the VIP room, the boss's
   back room and the back of house are not.

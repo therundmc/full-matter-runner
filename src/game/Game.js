@@ -296,18 +296,18 @@ export default class Game {
     Audio.play('death');
   }
   onCleared() { this.clearedT = 0; }
-  // the player stepped into the exit zone: he leaves in the getaway van when there is one (systems/Outro), on foot
+  // the player stepped into the exit zone: he leaves in the getaway car when there is one (systems/Outro), on foot
   // straight to the results otherwise
   onExit() {
-    const van = this.world.getaway();
-    if (!van) { this.showResults(); return; }
-    this.world.startOutro(van);
+    const car = this.world.getaway();
+    if (!car) { this.showResults(); return; }
+    this.world.startOutro(car);
     this.slow = null;
     this.timeScale = 1;
     this.hitstop = 0;
     this.setState('outro');
   }
-  // the van is gone: the level's closing page when it has one (ui/cine/Ending.js), then the results
+  // the car is gone: the level's closing page when it has one (ui/cine/Ending.js), then the results
   endOutro() {
     this.ending = ENDINGS[this.levelId] || null;
     if (!this.ending) { this.showResults(); return; }
@@ -476,7 +476,7 @@ export default class Game {
       // level's closing page, or the results)
       const skip = this.stateT > OUTRO.skipAfter && (inp.pressed.size > 0 || inp.mouseHit(0));
       inp.consume();
-      if (this.world.outro.van.exploded) { this.showResults(); return; }
+      if (this.world.outro.car.exploded) { this.showResults(); return; }
       if (skip) { this.endOutro(); return; }
     }
     // Escape / START pauses; so does the gamepad in use going away
@@ -692,8 +692,8 @@ export default class Game {
     let tx = seen.x, ty = seen.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {
-      // from the player over to the van's cab, a little ahead of it
-      const cab = o.van.toWorld(OUTRO.door, o.van.h / 2), k = camBlend(o.t);
+      // from the player over to the car's cab, a little ahead of it
+      const cab = o.car.toWorld(w.doorX(o.car), o.car.h / 2), k = camBlend(o.t);
       tx += (cab.x + Math.cos(o.heading) * OUTRO.lead - tx) * k;
       ty += (cab.y + Math.sin(o.heading) * OUTRO.lead - ty) * k;
     }

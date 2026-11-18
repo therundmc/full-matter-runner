@@ -9,7 +9,7 @@ Units: 1 tile = 1 m = 32 px. Props are placed by their centre, in tiles (floats,
     lv.fill(11, 1, 30, 4, '_')
     lv.actor('@', 21, 35, face=270)
     lv.area('back lot')
-    lv.prop('van', 24.5, 2.3, 180, lights=False)
+    lv.prop('convertible', 24.5, 3.1, 180, lights=False)
     lv.roof('skylight', 16.0, 35.5)
     lv.check(guards=13)
     lv.write('level1', header=[...], name='...', subtitle='...')
@@ -38,7 +38,7 @@ SIZES = dict(
     pool_table=(80, 44), arcade=(22, 27), crate=(19, 19), barrel=(18, 18), bookshelf=(40, 11), speaker=(14, 14),
     dj_booth=(58, 22), bar_counter=(32, 19), dumpster=(58, 34), trash_can=(15, 15), jukebox=(28, 20),
     hydrant=(11, 11), bench=(50, 15), palm_tree=(9, 9), streetlight=(6, 6), floor_lamp=(10, 10), table_lamp=(15, 15),
-    car=(136, 54), car2=(130, 52), van=(156, 60), chain_fence=(32, 4), bottle_shelf=(40, 11), back_bar=(40, 8), washer=(22, 22),
+    car=(136, 54), car2=(130, 52), van=(156, 60), convertible=(168, 60), chain_fence=(32, 4), bottle_shelf=(40, 11), back_bar=(40, 8), washer=(22, 22),
     neon_sign_liquor=None, neon_sign_video=None, neon_sign_wash=None, alarm_box=None,
     neon_sign_bar=None, neon_sign_palm=None, neon_sign_arrow=None, wall_lamp=None, tube_light=None,
     neon_tube_pink=None, neon_tube_cyan=None, ceiling_lamp=None, pool_lamp=None, string_lights=None,
@@ -72,7 +72,7 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
-          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -528,7 +528,7 @@ class Level:
             L.append(f'  chase: {js(chase)},')
         if exit:
             # route / radius / fade: the getaway's way out (systems/Outro.js), tiles
-            more = ''.join(f', {k}: {json.dumps(exit[k])}' for k in ('route', 'radius', 'fade') if k in exit)
+            more = ''.join(f', {k}: {json.dumps(exit[k])}' for k in ('route', 'radius', 'slide', 'fade', 'open') if k in exit)
             L.append(f"  exit: {{ x: {exit['x']}, y: {exit['y']}, r: {exit['r']}{more} }},")
         if self.facing:
             L.append('  facing: { ' + ', '.join(f"'{k}': {v}" for k, v in self.facing.items()) + ' },')

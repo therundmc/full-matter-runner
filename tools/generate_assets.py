@@ -5247,6 +5247,249 @@ def p_van():
     return k.done()
 
 
+CONV_BODY = ramp('#ece2c8', 0.5, 0.24, 0.3)          # bone, a touch whiter than the van's
+CONV_LEATHER = [hx('#3a0a12'), hx('#6a101c'), hx('#981826'), hx('#c8323a')]   # blood-red tuck-and-roll
+CONV_CARPET = [hx('#12080c'), hx('#200c12'), hx('#2c1018')]
+CONV_GOLD = [hx('#6a4a14'), hx('#b8862a'), hx('#e8c050'), hx('#fff0a0')]
+CONV_VINYL = [hx('#16141a'), hx('#24212a'), hx('#34303c'), hx('#4a4556')]
+
+
+def p_convertible():
+    """The boss's convertible, roof down, 5.4 x 2.0 m: bone body, blood-red tuck-and-roll, twin gold pinstripes, a
+    chrome spear down the belt, fins with tall blades of tail light, a dummy spare pressed in the deck. The open
+    cabin is the VEHICLES `cabin` (the driver sits at `seat`, behind the wheel, on the -y side)."""
+    body, seat = CONV_BODY, CONV_LEATHER
+    W, H, CY, WHEELS = 172, 64, 32, (36, 140)
+    k = Veh(W, H, CY, 5407)
+    s = k.s
+    k.shell(body, 1, 170, 29.5, 5, 7, nose=34, pinch=1.5, crown=2.6)
+    k.arches(WHEELS, r=12)
+
+    def region(x0, y0, x1, y1, fn):
+        """Paint the pixels of the world rect (not mirrored): fn(x, y) -> colour or None, x, y pixel centres."""
+        for j in range(int(y0 * s), int(math.ceil(y1 * s))):
+            for i in range(int(x0 * s), int(math.ceil(x1 * s))):
+                if (i, j) in k.mask:
+                    c = fn((i + 0.5) / s, (j + 0.5) / s)
+                    if c is not None:
+                        k.cv.p[i, j] = c
+
+    X0, X1, Y0, Y1 = 55.0, 113.0, 7.0, 57.0            # the cockpit's well
+
+    def well(x, y):
+        return X0 <= x < X1 and Y0 <= y < Y1
+
+    def pleat(tones, x, y, x0, x1, lit=0.0, pitch=3.0, y0=Y0 + 1):
+        """Tuck-and-roll: rolls running fore and aft, each a little dome; a button row would be too fine."""
+        u = ((y - y0) % pitch) / pitch
+        t = 0.72 - abs(u - 0.4) * 0.9 + lit - (y - CY) / 64 * 0.18
+        if x - x0 < 0.6 or x1 - x < 0.6:
+            t -= 0.3
+        return pal(tones, t)
+
+    # the floor first, then what stands on it
+    region(X0, Y0, X1, Y1, lambda x, y: pal(CONV_CARPET, 0.5 + 0.4 * math.sin(x * 1.7 + y * 0.9) * 0.3))
+
+    def bench(xb0, xb1, xc1, split):
+        """A bench: its back (xb0..xb1, higher: lighter) and its cushion (xb1..xc1)."""
+        def f(x, y):
+            if not (Y0 + 1 <= y < Y1 - 1):
+                return None
+            if split and abs(y - CY) < 1.0:
+                return dk(seat[0], 0.2)
+            if x < xb1:
+                c = pleat(seat, x, y, xb0, xb1, 0.16)
+                if x - xb0 < 1.0:                    # the back's top roll, piped
+                    c = lt(c, 0.18)
+                return c
+            c = pleat(seat, x, y, xb1, xc1, -0.06)
+            if x - xb1 < 1.2:                        # the back's shadow on the cushion
+                c = dk(c, 0.38)
+            return c
+        region(xb0, Y0, xc1, Y1, f)
+
+    bench(59, 65, 77, False)                        # the rear bench
+    bench(84, 90, 101, True)                        # the front one, split
+    # the folded top under its boot, behind the rear seat: black vinyl, chrome snaps
+    def boot(x, y):
+        if not (5.5 <= y < 58.5):
+            return None
+        t = 0.75 - abs((x - 52.0) / 6.5) ** 2 * 0.5 - (y - 6) / 52 * 0.35
+        return pal(CONV_VINYL, t)
+    region(47, 5, 59, 59, boot)
+    for y in range(8, 32, 6):
+        k.dot(47.8, y + 0.2, CHROME[3])
+        k.dot(47.8, 63.3 - y, CHROME[2])
+    # door cards: the near one in shadow, the far one lit; chrome sill plates, armrests
+    region(X0 + 4, Y0, X1 - 6, Y0 + 1.5, lambda x, y: dk(seat[0], 0.35))
+    region(X0 + 4, Y1 - 1.5, X1 - 6, Y1, lambda x, y: seat[2] if y > Y1 - 1 else seat[1])
+    for (a, b) in ((66, 76), (91, 100)):
+        region(a, Y0 + 1.5, b, Y0 + 3, lambda x, y: seat[1])
+        region(a, Y1 - 3, b, Y1 - 1.5, lambda x, y: seat[3] if y < Y1 - 2.4 else seat[2])
+    # the well's own shadow: its rear and near walls throw it in
+    for (i, j) in sorted(k.mask):
+        x, y = (i + 0.5) / s, (j + 0.5) / s
+        if well(x, y) and 59 <= x and (y - Y0 < 2.2 and not (84 <= x < 90 or 59 <= x < 65)):
+            k.cv.p[i, j] = dk(k.cv.p[i, j], 0.3)
+    # the dashboard: a padded top, the binnacle's hood before the driver, a chrome strip, the radio, the ashtray
+    def dash(x, y):
+        if not (Y0 <= y < Y1):
+            return None
+        t = 0.55 + (x - 106) / 7 * 0.35 - (y - Y0) / 50 * 0.2
+        c = pal(seat[:3], t)
+        if x < 106.6:
+            c = CHROME[2] if int(y * 2) % 7 else CHROME[3]
+        return c
+    region(106, Y0, X1, Y1, dash)
+    region(107, 13, 112, 26, lambda x, y: pal(CONV_VINYL, 0.3 + (x - 107) / 5 * 0.5))          # the binnacle
+    for gy in (16.5, 22.5):                                                              # two dials, lit green
+        k.dot(107.4, gy, hx('#7ae8b0'), both=False)
+        k.dot(107.4, gy + 0.5, hx('#3a9a78'), both=False)
+    region(106.6, 29, 108, 35, lambda x, y: RUBBER[0])                                   # the radio's face
+    k.dot(107.2, 30.2, hx('#ff8a20'), both=False)
+    k.dot(107.2, 33.8, CHROME[3], both=False)
+    # the wheel: a bone rim, a chrome horn ring, the column
+    wx, wy, wr = 101.0, 19.5, 5.6
+    region(wx, wy - 1, 107, wy + 1, lambda x, y: RUBBER[1])
+    def rim(x, y):
+        d = math.hypot(x - wx, y - wy)
+        if abs(d - wr) < 0.8:
+            return hx('#f6f0e0') if (y < wy and x < wx + 2) else hx('#c8bea4') if y < wy + 3 else hx('#8a8068')
+        if abs(d - 2.6) < 0.45 and y > wy - 1:
+            return CHROME[3] if x < wx else CHROME[1]
+        if d < 1.3:
+            return CONV_GOLD[2] if d < 0.8 else CONV_GOLD[1]
+        if d < wr and (abs(y - wy) < 0.5 or (abs(x - wx) < 0.5 and y > wy)):
+            return hx('#c8bea4')
+        return None
+    region(wx - 7, wy - 7, wx + 7, wy + 7, rim)
+    # the shifter on the column, the mirror on the header, the dice hanging from it
+    k.line(103, 23, 104, 26, CHROME[2], both=False)
+    k.dot(104.6, 26.6, hx('#f6f0e0'), both=False)
+    # things left in it (his hat on the rear seat is a sprite of its own, boss_hat: it flies off): a cigar burn in
+    # the passenger's cushion, a cigar going in the dash's ashtray
+    for (x, y, c) in ((95.0, 43.0, hx('#120808')), (95.5, 43.0, hx('#120808')), (95.0, 43.5, hx('#120808')), (94.5, 43.0, hx('#4a2a1a')),
+                      (96.0, 43.0, hx('#5a3020')), (95.0, 42.5, hx('#4a2a1a')), (95.5, 43.5, hx('#5a3020')), (95.0, 44.0, hx('#d0806a')),
+                      (95.5, 42.5, hx('#4a1210')), (94.5, 43.5, hx('#4a1210'))):
+        k.dot(x, y, c, both=False)                  # the burn
+    region(108.5, 37, 111, 41, lambda x, y: CHROME[1] if (x < 109 or y < 37.5) else RUBBER[0])   # the ashtray, pulled out
+    k.line(109, 38, 110, 40, hx('#7a5230'), both=False)                                          # the cigar in it
+    k.dot(110.6, 40.8, hx('#ff8a20'), both=False)
+    k.dot(108.9, 37.6, hx('#d8d0c0'), both=False)
+    # the windshield from above: a raked band of glass in its chrome frame, the vent wings
+    k.trap(113, 118, 25.5, 27.0, sheen=2)
+    k.film(113, 118, ((118.5, 30.5), (118.5, 52.5)), 30, 0.06)
+    for i in k.cols(113, 113):
+        for j in range(int(5 * s), int(59 * s)):
+            if (i, j) in k.mask and i == 113 * s:
+                k.cv.p[i, j] = CHROME[3] if j < CY * s else CHROME[2]
+    k.line(112, 31, 112, 32, CHROME[1], both=False, w=2)                                         # the mirror
+    for (cx, cy) in ((109.5, 30.0), (110.0, 33.0)):                                              # the dice
+        for dx in (0, 0.5, 1.0):
+            for dy in (0, 0.5, 1.0):
+                c = hx('#fff8e6') if dx + dy < 1.0 else hx('#d8cab0') if dx + dy < 2.0 else hx('#9a8c74')
+                if (dx, dy) == (0.5, 0.5):
+                    c = hx('#1a161e')
+                k.dot(cx + dx, cy + dy, c, both=False)
+    k.line(111, 31, 112, 32, RUBBER[2], both=False)
+    k.line(108, 4, 112, 6, CHROME[2])                                                           # vent wings
+    k.line(108, 5, 111, 6, GLASS[3])
+    # ---- the body's dressing (both roofs)
+    for x0, x1 in ((6, 46), (120, 164)):                 # twin gold pinstripes down the deck and the hood
+        k.line(x0, 26, x1, 26, lambda c, sd: mix(c, CONV_GOLD[1], 0.8))
+    k.line(6, 5, 164, 5, lambda c, sd: mix(c, CHROME[3 if sd < 0 else 1], 0.7))   # the belt's chrome spear
+    k.line(6, 6, 164, 6, lambda c, sd: mix(c, CONV_GOLD[2] if sd < 0 else CONV_GOLD[0], 0.75), w=1)
+    for x in (58, 84, 112):                               # door seams and pulls
+        k.line(x, 2, x, 6, darken(0.4))
+    k.line(88, 4, 91, 4, lambda c, sd: CHROME[3 if sd < 0 else 2], w=2)
+    k.line(119, 8, 119, 31, darken(0.45))                 # cowl gap
+    for x in range(121, 127, 2):
+        k.line(x, 22, x, 27, darken(0.14))
+    k.line(119, 9, 165, 9, darken(0.32))                  # hood shut lines
+    k.line(124, 31, 162, 31, ridge(0.2))                  # its centre spine
+    k.line(124, 18, 160, 18, ridge(0.1))
+    for (y0, y1) in ((30, 14), (52, 36)):                 # parked wipers
+        k.line(118, y0, 117, y1, CHROME[1], both=False)
+    # the hood's mascot: a gold stand-up thing on a chrome foot
+    k.put(163, 31, CHROME[2])
+    k.put(163, 32, CHROME[1], both=False)
+    k.put(164, 31, CONV_GOLD[2])
+    k.dot(164.1, 31.1, CONV_GOLD[3])
+    k.dot(165.2, 31.6, CONV_GOLD[1])
+    # the deck: lid lines, and the bad taste: a dummy spare's hump pressed in the lid, a gold cap in its middle
+    k.line(8, 9, 8, 31, darken(0.36))
+    k.line(8, 9, 44, 9, darken(0.32))
+    def hump(c, i, j):
+        x, y = (i + 0.5) / s, (j + 0.5) / s
+        d = math.hypot(x - 22.0, y - 32.0)
+        if 9.6 <= d < 11.2:
+            n = (-(x - 22) - (y - 32) * 1.4) / (d * 1.72)
+            return lt(dk(c, 0.06), 0.3 * n) if n > 0 else dk(c, 0.06 - 0.3 * n)
+        if d < 9.6:
+            return lt(c, 0.05) if (d > 8.4 and y < 32) else c
+        return None
+    for (i, j) in sorted(k.mask):
+        c = hump(k.cv.p[i, j], i, j)
+        if c is not None:
+            k.cv.p[i, j] = c
+    for (dx, dy, c) in ((0, 0, CONV_GOLD[3]), (0.5, 0, CONV_GOLD[2]), (0, 0.5, CONV_GOLD[2]), (0.5, 0.5, CONV_GOLD[1]), (-0.5, 0, CONV_GOLD[2]), (0, -0.5, CONV_GOLD[2]),
+                        (1.0, 0, CONV_GOLD[1]), (0, 1.0, CONV_GOLD[0]), (-0.5, 0.5, CONV_GOLD[1]), (0.5, -0.5, CONV_GOLD[2]), (-0.5, -0.5, CONV_GOLD[2]), (1.0, 0.5, CONV_GOLD[0]), (0.5, 1.0, CONV_GOLD[0])):
+        k.dot(21.8 + dx, 31.8 + dy, c, both=False)
+    k.line(4, 3, 30, 3, lambda c, sd: lt(c, 0.2) if sd < 0 else dk(c, 0.1))     # the fins' crest: a hard lit edge
+    k.line(4, 4, 34, 4, darken(0.12))
+    k.line(28, 2, 31, 2, darken(0.3), both=False)         # filler flap
+    k.put(48, 60, RUBBER[0], both=False)                  # aerial
+    k.line(48, 60, 38, 61, CHROME[2], both=False)
+    k.grime(WHEELS, amount=0.55, rust=1, scratches=2)     # kept clean: somebody is paid to
+    k.seal()
+    k.gloss(120, 166, 0.14)
+    k.gloss(6, 46, 0.1)
+    k.rim()
+    k.bumper(169, 170, CHROME, strip=None)
+    k.bumper(1, 2, CHROME, strip=None)
+    for x in (169, 170):                                  # gold over-riders
+        k.line(x, 21, x, 22, CONV_GOLD[2] if x == 169 else CONV_GOLD[1])
+    for y in range(18, 32):                               # a tall waterfall grille
+        for x in range(165, 169):
+            k.put(x, y, CHROME[1] if y == 18 or x == 165 else RUBBER[0])
+    for j in range(19 * s, 32 * s):
+        for i in range(166 * s, 169 * s):
+            k.setp(i, j, CHROME[3] if j % 2 == 0 else CHROME[1])
+    k.lamp(166, 168, 6, 11, HEAD_C, HEAD_GLOW, CHROME[2])
+    k.lamp(166, 168, 11, 16, HEAD_C, HEAD_GLOW, CHROME[2])
+    k.line(166, 4, 167, 4, AMBER, w=2)
+    k.lamp(3, 4, 3, 15, TAIL_C, TAIL_GLOW, hx('#7a0818'), back=4)       # tall blades of tail light in the fins
+    k.line(3, 17, 4, 17, hx('#e8e4dc'), w=2)
+    plate(k, 3, 27, 31)
+    k.mirror(104, 108, [CHROME[0], CHROME[1], CHROME[2], CHROME[3]], 108)
+    return k.done()
+
+
+def p_boss_hat():
+    """THE BOSS's bone hat seen from above (it lies on the convertible's rear seat, VEHICLES `hat`, and flies off):
+    a wide brim, its edge rolled, a black band on the side away from the light, the crown's crease."""
+    cv = Cv(14, 12)
+    cx, cy = 7.0, 6.0
+
+    def f(x, y, c):
+        d = math.hypot((x - cx) / 6.2, (y - cy) / 5.6)
+        if d > 1.0:
+            return None
+        if d > 0.9:
+            return OUTLINE if x + y > cx + cy + 1 else hx('#b8a890')
+        u = (x - cx) + (y - cy)                         # along the light
+        if d > 0.56:                                    # the brim
+            return hx('#f2e8d2') if u < 1.0 else hx('#d8cab0')
+        if d > 0.44 and u > -3.0:
+            return hx('#2a1c22')                        # the band
+        col = hx('#fff8e6') if u < -1.0 else hx('#e6dabe')
+        if abs((y - cy) - (x - cx) * 0.25) < 0.55 and -1.5 < x - cx < 1.8:
+            col = hx('#c2b494')                         # the crown's crease
+        return col
+    px_paint(cv, 0, 0, 14, 12, f)
+    return cv
+
+
 def p_car_tire():
     """Tyre seen from above (tread up), 0.62 m x 0.22 m: the tread blocks and the grooves between them, the shoulders
     rolling off into shadow."""
@@ -5298,13 +5541,14 @@ def hood_debris(body, w, h, seed, stripe=None):
     return cv
 
 
-def door_debris(body, w, stripe=None):
-    """Door ripped off, seen from above edge-on: skin, window frame with glass left in it, handle."""
+def door_debris(body, w, stripe=None, inner=None):
+    """Door ripped off, seen from above edge-on: skin, window frame with glass left in it (inner: an open car's
+    door has none, its trim shows instead), handle."""
     cv = Cv(w, 6)
     for x in range(1, w - 1):
         cv.set(x, 1, lt(body[2], 0.2))
         cv.set(x, 2, stripe or body[2])
-        cv.set(x, 3, GLASS[2] if 4 < x < w - 8 else body[1])
+        cv.set(x, 3, (inner or GLASS[2]) if 4 < x < w - 8 else body[1])
         cv.set(x, 4, body[0])
     cv.set(w - 7, 1, CHROME[3])
     cv.set(w - 6, 1, CHROME[2])
@@ -5322,6 +5566,14 @@ def p_car2_hood():
 
 def p_van_hood():
     return hood_debris(VAN_BODY, 18, 48, 5013)
+
+
+def p_convertible_hood():
+    return hood_debris(CONV_BODY, 46, 46, 5417, stripe=CONV_GOLD[1])
+
+
+def p_convertible_door():
+    return door_debris(CONV_BODY, 28, stripe=CHROME[3], inner=CONV_LEATHER[2])
 
 
 def p_car_door():
@@ -6702,7 +6954,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   curtain='6 CURTAIN', jukebox='8 JUKEBOX', trapdoor='9 TRAPDOOR', powder='10 POWDER',
                   steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
-                  drive='19 DRIVE')   # (the last ones added, in this order: the others keep their seed)
+                  drive='19 DRIVE', getaway='20 GETAWAY')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -9448,6 +9700,8 @@ def build():
                  bar_counter=p_bar_counter, car=p_car, dumpster=p_dumpster, trash_can=p_trash_can, trash_can_down=p_trash_can_down, bin_lid=p_bin_lid,
                  car2=p_car2, van=p_van, car_tire=p_car_tire, car_hood=p_car_hood, car_door=p_car_door,
                  car2_hood=p_car2_hood, car2_door=p_car2_door, van_hood=p_van_hood, van_door=p_van_door,
+                 convertible=p_convertible, convertible_hood=p_convertible_hood, convertible_door=p_convertible_door,
+                 boss_hat=p_boss_hat,
                  palm_tree=p_palm_tree, streetlight=p_streetlight, neon_sign_palm=p_neon_sign_palm,
                  neon_sign_bar=p_neon_sign_bar, neon_sign_arrow=p_neon_sign_arrow, jukebox=p_jukebox,
                  hydrant=p_hydrant, bench=p_bench, chain_fence=p_chain_fence)
@@ -9492,7 +9746,7 @@ def build():
 
 
 GLOWING = ['arcade', 'tv', 'dj_booth', 'jukebox', 'neon_sign_palm', 'neon_sign_bar', 'neon_sign_arrow', 'streetlight',
-           'car', 'car2', 'van']
+           'car', 'car2', 'van', 'convertible']
 # furniture at real scale (1 m = 32 px): sprite = hitbox in data/props.js + 1 px of outline on each side
 PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dope_table=(46, 28), gas_bottle=(14, 14), dance_stage=(50, 50), desk=(48, 26), chair=(16, 16), armchair=(28, 28),
                   sofa=(66, 30), plant=(24, 24), tv=(24, 17), fridge=(24, 24), oven=(22, 22), sink=(28, 20),
@@ -9501,6 +9755,7 @@ PROP_SIZES = dict(table=(46, 28), table_round=(30, 30), card_table=(60, 38), dop
                   bar_counter=(32, 21), car=(140, 58), dumpster=(60, 36), trash_can=(17, 17), trash_can_down=(26, 17), bin_lid=(16, 12),
                   car2=(134, 56), van=(160, 64), car_tire=(20, 7), car_hood=(38, 44), car_door=(34, 6),
                   car2_hood=(30, 40), car2_door=(40, 6), van_hood=(18, 48), van_door=(30, 6),
+                  convertible=(172, 64), convertible_hood=(46, 46), convertible_door=(28, 6), boss_hat=(14, 12),
                   palm_tree=(104, 104), streetlight=(136, 16), neon_sign_palm=(40, 14), neon_sign_bar=(44, 14),
                   neon_sign_arrow=(30, 12), jukebox=(30, 22), hydrant=(14, 14), bench=(52, 17),
                   chain_fence=(34, 16))

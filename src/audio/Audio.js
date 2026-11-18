@@ -119,6 +119,9 @@ export const META = {
   carHit: { pri: 2, dur: 0.4, gap: 0.04, max: 3, gain: 0.8 },
   vanScrape: { pri: 1, dur: 0.35, gap: 0.1, max: 2, gain: 0.5 }, vanShove: { pri: 2, dur: 0.4, gap: 0.2, max: 1, gain: 0.7 },
   vanCrash: { pri: 3, dur: 1.2, gap: 0.3, max: 1, gain: 1, duck: 0.8 },
+  // ... the getaway in an open car (World.stepOutro): placeholders (assets/sound/PLACEHOLDERS.md)
+  doorVault: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.3 }, seatDrop: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.35 },
+  hatFly: { pri: 0, dur: 0.3, gap: 0.3, max: 1, gain: 0.2 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
@@ -421,6 +424,9 @@ const FOLEY = {
   vanScrape: [['sheet', 0.5, 0.6], ['metal', 0.3, 0.55, 0.06, 0.6]],
   vanShove: [['thud', 0.6, 0.7], ['sheet', 0.25, 0.8, 0.03]],
   vanCrash: [['sheet', 1, 0.7], ['thud', 1, 0.6], ['metalBreak', 0.8, 0.8, 0.02], ['glass', 0.7, 1, 0.05]],
+  doorVault: [['soft', 0.6, 1.1], ['sheet', 0.2, 0.9, 0.05]],
+  seatDrop: [['soft', 0.7, 0.7], ['thud', 0.3, 0.8, 0.02]],
+  hatFly: [['swish', 0.3, 1.3]],
   // flesh
   // dry blows only: no meat or wet recording anywhere (the user hated every one of them as a "squish")
   punch: [['punch', 1], ['soft', 0.4, 1.1, 0.008], ['thud', 0.7, 0.75]],

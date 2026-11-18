@@ -75,3 +75,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | vanScrape | the van at the wheel grinding its flank along a wall or a car, every 0.12 s while it lasts (systems/Drive.js scrape) | sheet metal grinding along brick or another car, sparks, short (0.3 s), loopable in pieces |
 | vanShove | the shove (SPACE at the wheel): the van jerked sideways (systems/Drive.js shove) | tyres barking on asphalt as a van is thrown sideways, its body lurching on its springs |
 | vanCrash | the van nose-on into a wall at speed, the crash that kills him (systems/Drive.js crash) | a van hitting a wall head on: the front crumpling, the windscreen bursting, a long settle of metal |
+| doorVault | the getaway: he plants a hand on the convertible's door and vaults over it into the seat (World.startVaultIn) | a palm slapping a car door's top, a long coat swung over it, 0.3 s |
+| seatDrop | he drops into the driver's seat of the open car (World.boardGetaway) | a body dropping into a leather bench seat, the springs and the leather creaking, the coat settling |
+| hatFly | THE BOSS's hat blown off the rear seat at the convertible's first hard swing (World.driveOutro, Vehicle.throwHat) | a felt hat whipped away by the wind, a soft flutter, then nothing |

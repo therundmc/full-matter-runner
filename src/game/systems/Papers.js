@@ -51,7 +51,7 @@ export default class Papers {
     const cars = [];
     for (const p of w.props) {
       if (!p.moving || p.dead) continue;
-      const v = Body.getVelocity(p.body);
+      const v = p.wake || Body.getVelocity(p.body); // (wake: the speed of one driven by a script, px/step)
       if (Math.hypot(v.x, v.y) > c.carFast) cars.push({ x: p.x, y: p.y, vx: v.x * 60, vy: v.y * 60 });
     }
     const runners = [w.player, ...w.enemies, ...w.civilians].filter((m) => m.alive && Body.getSpeed(m.body) > c.runFast);
