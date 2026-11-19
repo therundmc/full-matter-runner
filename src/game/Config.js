@@ -72,8 +72,9 @@ export const PLAYER = {
   // a melee swing (fists, blade, club) started near a standing guard (systems/Lunge.js): the nearest one within the
   // weapon's reach + `extra` px and `cone` rad of the aim draws it: the aim turns up to `turn` rad onto him and he
   // closes in up to `push` px over `dur` s, to `gap` px short of contact, never into a wall.
-  // `lock`: the man the LOCK aim cue holds (data/aim.js), within the weapon's reach + `margin` px: the aim turns all
-  // the way onto him and the step goes up to `push` px, taken whole before the blow lands (push >= margin: it lands)
+  // `lock`: the man the LOCK aim cue holds close (systems/AimCue.js meleeLock: within the weapon's reach + `margin` px,
+  // AIM.lock.wide rad of the aim): the swing turns all the way onto him, the drawn body snapped onto him at once, and
+  // the step goes up to `push` px, taken whole before the blow lands (push >= margin: it lands)
   lunge: { extra: 12, cone: 0.5, turn: 0.25, push: 10, dur: 0.08, gap: 1, lock: { margin: 16, push: 20 } },
 };
 
