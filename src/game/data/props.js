@@ -220,6 +220,19 @@ export const PROPS = {
   // a cafe's terrace: the canvas awning hung on its front (the wall at -y) and the parasols over its tables are
   // `canopy`: a car driven under one tears it down (systems/Drive.js); the planters along its edge
   awning: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#e0842c', sound: 'wood' },
+  // shop awnings along the chase's fronts, the cafe's in other cloth (torn down by a car under them: Drive `canopy`)
+  awning_red: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#b82030', sound: 'wood' },
+  awning_green: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a7a4a', sound: 'wood' },
+  awning_blue: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#2a4a9a', sound: 'wood' },
+  awning_wine: { canopy: true, hung: true, overhead: true, height: 0.03, static: true, material: 'fabric', w: 96, h: 36, hp: 4, chips: '#6a1a3a', sound: 'wood' },
+  // what else stands on the chase's sidewalks and in its road works, light enough to be flung by a car
+  traffic_cone: { material: 'plastic', r: 5, hp: 2, kg: 3, mu: 0.5, chips: '#ff6a1a', sound: 'wood' },
+  sawhorse: { material: 'wood', w: 38, h: 8, hp: 3, kg: 14, mu: 0.5, chips: '#d0242c', sound: 'wood' },
+  cardboard_box: { material: 'fabric', w: 15, h: 13, hp: 2, kg: 4, mu: 0.6, chips: '#b88a52', sound: 'wood' },
+  paper_bundle: { material: 'fabric', w: 13, h: 9, hp: 2, kg: 8, mu: 0.6, chips: '#e8e4d6', sound: 'wood' },
+  fruit_stand: { material: 'wood', w: 34, h: 16, hp: 4, kg: 30, mu: 0.5, chips: '#8a5a32', sound: 'wood' },
+  shopping_cart: { material: 'metal', w: 20, h: 12, hp: 8, kg: 16, mu: 0.12, chips: '#b8bcc8', sound: 'metal' },
+  mailbox: { static: true, material: 'metal', w: 13, h: 13, hp: 6, chips: '#2a6a4a', sound: 'metal' },
   parasol: { canopy: true, overhead: true, height: 0.03, pole: ['#8a8e98', 2], static: true, material: 'fabric', r: 2.5, hp: 3, chips: '#eadfc6', sound: 'wood' },
   planter: { static: true, vault: true, material: 'stone', w: 40, h: 16, hp: 10, chips: '#8e8a84', dirt: true, sound: 'stone' },
   neon_sign_diner: { hum: 'neon', material: 'glass', w: 44, h: 6, hp: 4, static: true, chips: '#ffa62a', sparks: true, glass: true, sound: 'glass',

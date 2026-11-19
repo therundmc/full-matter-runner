@@ -183,6 +183,17 @@ export const DESTRUCTION = {
   neon_sign_diner: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_cafe: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 5 }] },
   awning: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
+  awning_red: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
+  awning_green: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
+  awning_blue: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
+  awning_wine: { height: 2.6, drop: true, parts: [{ cut: 'grid', cols: 4, rows: 1 }] },
+  traffic_cone: { height: 0.7, parts: [{ cut: 'wedges', n: 3 }] },
+  sawhorse: { height: 1, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }] },
+  cardboard_box: { height: 0.5, parts: [{ cut: 'grid', cols: 2, rows: 2 }], floats: ['paper', 6], contents: [{ bit: 'can', n: 2, on: 'break' }] },
+  paper_bundle: { height: 0.3, floats: ['paper', 14], parts: [{ cut: 'grid', cols: 2, rows: 1 }], contents: [{ bit: 'sheet', n: 8, on: 'break' }] },
+  fruit_stand: { height: 0.9, parts: [{ cut: 'planks', n: 4, axis: 'long', snap: true }], contents: [{ bit: 'fruit', n: 14, on: 'break' }, { bit: 'fruit', n: 2, on: 'hit', perHit: 1 }] },
+  shopping_cart: { height: 1, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  mailbox: { height: 1.1, floats: ['paper', 8], parts: [{ cut: 'grid', cols: 2, rows: 2 }], contents: [{ bit: 'sheet', n: 5, on: 'break' }] },
   parasol: { height: 2.3, drop: true, parts: [{ cut: 'wedges', n: 8 }] },
   planter: { height: 0.5, spill: 'soil', parts: [{ cut: 'grid', cols: 3, rows: 1 }] },
   neon_sign_palm: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
@@ -323,6 +334,7 @@ export const BITS = {
   wad: { size: [0.16, 0.08], material: 'fabric', colors: ['#5a8a4a', '#6a9a5a'] },
   coin: { size: [0.03, 0.03], material: 'metal', round: true, bounce: 0.5, mu: 0.2, colors: ['#d8d8e0', '#c4c8d0', '#e0c060'] },
   sheet: { size: [0.3, 0.22], material: 'fabric', colors: ['#ece8dc', '#f6f2e8', '#d8d2c0'] },
+  fruit: { size: [0.08, 0.08], material: 'fabric', round: true, bounce: 0.3, mu: 0.3, colors: ['#ff8a1a', '#c8202c', '#6aa82a', '#f0c020'] },
 };
 
 // slow floating particles: colour, size px, fall speed (lower = floats longer)
@@ -351,3 +363,12 @@ export function recipeFor(type, def) {
     fx: MATERIAL_FX[material],
   };
 }
+
+// what a car loses (entities/Vehicle.js shed): its real pieces (props/car_bumper..., painted in tools/generate_assets.py)
+// thrown with the paint flakes: `blast` of them when it blows up, `crunch` odds a rammed blow tears one off, `most`
+// torn off by blows before it has nothing left to lose; `black`: the models with plastic bumpers
+export const CAR_PARTS = {
+  pieces: ['car_bumper', 'car_mirror', 'car_hubcap', 'car_headlight', 'car_plate', 'car_grille'],
+  black: ['car2', 'pursuer'],
+  blast: 7, crunch: 0.5, most: 5, kg: 3,
+};

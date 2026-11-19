@@ -8,6 +8,7 @@ const FREE = MASK.DEBRIS & ~CAT.PROP;
 import { sprite, spriteOpt, silhouette, chunk, glassShards, slices, sw, sh, drawSprite } from '../../engine/Assets.js';
 import { rand, chance, clamp, local, angDiff, stepAngle, TAU } from '../../engine/math.js';
 import Debris from './Debris.js';
+import { CAR_PARTS } from '../data/destruction.js';
 import { WEAPONS } from '../data/weapons.js';
 import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/Body.js';
 
@@ -533,6 +534,7 @@ export default class Vehicle {
       const a = Math.atan2(dy - y, dx - x) + rand(-0.3, 0.3), v = rand(220, 380);
       w.addDebris(new Debris(w, door, dx, dy, this.body.angle, Math.cos(a) * v, Math.sin(a) * v, rand(-0.5, 0.5), { mask: FREE, material: 'metal', kg: 25, mu: 0.55, fly: 0.35, harm: { ...harm } }));
     }
+    for (let k = 0; k < CAR_PARTS.blast; k++) this.shed(x + rand(-0.3, 0.3) * this.w, y + rand(-0.3, 0.3) * this.h, rand(0, Math.PI * 2), rand(180, 420), true);
     for (let k = 0; k < 16; k++) {
       const a = rand(0, Math.PI * 2), v = rand(150, 450);
       w.addDebris(new Debris(w, chunk(chance(0.5) ? this.m.color : '#2a2a33', Math.floor(rand(2, 6)), Math.floor(rand(2, 4))), x + rand(-0.3, 0.3) * this.w, y + rand(-0.3, 0.3) * this.h,
@@ -649,6 +651,20 @@ export default class Vehicle {
     return { x, y, dir };
   }
 
+  // One of its real pieces torn off at (x, y) and thrown along a at v px/s (CAR_PARTS): a bumper (chrome, or black
+  // plastic on the newer models), a mirror, a hubcap, a headlight, its plate, a bit of grille. Blows tear off
+  // CAR_PARTS.most at most; a blast (all) takes what it likes.
+  shed(x, y, a, v, all = false) {
+    const P = CAR_PARTS;
+    if (!all && (this.shedN = (this.shedN || 0) + 1) > P.most) return;
+    let name = P.pieces[Math.floor(rand(0, P.pieces.length))];
+    if (name === 'car_bumper' && P.black.includes(this.m.sprite)) name = 'car_bumper_black';
+    const img = spriteOpt('props/' + name);
+    if (!img) return;
+    this.world.addDebris(new Debris(this.world, img, x, y, rand(0, 6.28), Math.cos(a) * v, Math.sin(a) * v, rand(-0.7, 0.7),
+      { mask: FREE, material: name === 'car_headlight' ? 'glass' : 'metal', kg: P.kg, mu: 0.45, fly: 0.3, air: 0.03 }));
+  }
+
   // Rammed by a car (shove) at (x, y) world, the blow going along dirA: the bodywork crumpled there (a dent and
   // R.dents more round it, the glass cracked if the blow reaches it), the lamp at that end smashed when the point is
   // within R.lamp px of it, paint and trim thrown off, sparks, its alarm; the blow costs it R.carHp.
@@ -657,6 +673,7 @@ export default class Vehicle {
     this.hit(0, x, y, dirA, 1, 'blunt');
     for (let i = 0; i < R.dents; i++) this.scar(clamp(sx + rand(-10, 10), 3, this.w - 3), clamp(sy + rand(-6, 6), 3, this.h - 3), da, 'blunt');
     if (Math.min(sx, this.w - sx) < R.lamp) this.breakLamp((sx < this.w / 2 ? 2 : 0) + (sy < this.h / 2 ? 0 : 1), dirA);
+    if (chance(CAR_PARTS.crunch)) this.shed(x, y, dirA + rand(-0.8, 0.8), rand(120, 260));
     for (let i = 0; i < R.chunks; i++) {
       const a = dirA + rand(-1, 1), v = rand(90, 260);
       w.addDebris(new Debris(w, chunk(chance(0.6) ? this.m.color : '#2a2a33', Math.floor(rand(2, 5)), Math.floor(rand(1, 3))), x, y,

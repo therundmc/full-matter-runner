@@ -9910,10 +9910,279 @@ def p_neon_sign_cafe():
     return cv, gl
 
 
+
+# ---- the chase's street: more to hit (traffic cones, a road barrier, boxes, bundles of papers, a fruit stand, a
+# shopping cart, a post box), shop awnings in other colours, and the pieces a car loses (bumpers, a mirror, a hubcap,
+# a headlight, its plate, its grille)
+def awning_of(a, b, seed):
+    """A shop's awning: the cafe's (p_awning) in other cloth, `a` / `b` the two stripes' ramps."""
+    def make():
+        global AWNING_A, AWNING_B
+        was = AWNING_A, AWNING_B
+        AWNING_A, AWNING_B = a, b
+        try:
+            cv = p_awning()
+        finally:
+            AWNING_A, AWNING_B = was
+        smudge(cv, random.Random(seed), 4, (2, 6, 96, 32), (1.5, 3.5), 0.1, hx('#3a3430'))
+        return cv
+    return make
+
+
+def p_traffic_cone():
+    """A traffic cone from above, 70 cm: its square black rubber foot with rounded corners, the orange cone rising
+    to a dark open tip, two white reflective bands round it, scuffs."""
+    S = 12
+    c = S / 2
+    cv = Cv(S, S)
+    fill_shape(cv, c, c, 5.4, 5.4, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.5), kind='rect', bevel=1.0, corner=1.6)
+    orange = ramp('#ff6a1a', 0.5, 0.26, 0.28)
+
+    def cone(dx, dy, d):
+        L = light(dx / 4.2, dy / 4.2)
+        col = shade(orange, 0.25 + L * 0.7)
+        if 1.7 <= d < 2.3 or 3.1 <= d < 3.6:
+            col = mix(hx('#f4f2ea'), col, 0.25 if L > 0.4 else 0.45)       # the reflective bands
+        return col
+    ring(cv, c, c, 0.0, 4.2, cone)
+    fill_shape(cv, c, c, 0.8, 0.8, lambda u, v, L: hx('#2a120a'))           # the open tip
+    smudge(cv, random.Random(9101), 3, (1, 1, 11, 11), (0.6, 1.4), 0.25)
+    cv.outline()
+    return cv
+
+
+def p_sawhorse():
+    """A road works barrier from above, 1.25 m: a plank painted in red and white diagonal stripes on two splayed
+    steel trestles (their feet stick out each side), a flashing lamp clamped to one end, chipped."""
+    W, H = 40, 12
+    cv = Cv(W, H)
+    for x in (5.0, W - 5.0):                                                # the trestles' feet
+        frect(cv, x - 1.0, 1, x + 1.0, H - 1, shade(STEEL_L, 0.3))
+        frect(cv, x - 1.0, 1, x + 1.0, 1.5, shade(STEEL_L, 0.7))
+    red, white = ramp('#d0242c', 0.5, 0.26, 0.3), ramp('#ece8de', 0.4, 0.2, 0.2)
+
+    def plank(x, y, cur):
+        r = red if int((x + y) // 4) % 2 == 0 else white
+        return shade(r, 0.82 if y < 4.5 else 0.3 if y >= 7.5 else 0.6)
+    px_paint(cv, 1, 3.5, W - 1, 8.5, plank)
+    fill_shape(cv, 7.5, 6.0, 1.8, 1.8, lambda u, v, L: shade(ramp('#ffb21a', 0.5, 0.25, 0.4), 0.3 + L * 0.7))   # the lamp
+    cv.dot(7.0, 5.5, hx('#fff3c0'))
+    smudge(cv, random.Random(9111), 5, (2, 4, W - 2, 8), (0.6, 1.5), 0.45, hx('#8a8a92'))   # chipped to the wood
+    cv.outline()
+    return cv
+
+
+def p_cardboard_box():
+    """A cardboard box from above, 50 cm: its four flaps folded shut, a strip of brown tape down the middle, a
+    printed arrow, crushed at a corner, a damp stain."""
+    W, H = 16, 14
+    cv = Cv(W, H)
+    card = ramp('#b88a52', 0.45, 0.22, 0.25)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1, H / 2 - 1, lambda u, v, L: shade(card, 0.35 + L * 0.45), kind='rect', bevel=1.2, corner=0.5)
+    frect(cv, 1.5, H / 2 - 0.25, W - 1.5, H / 2 + 0.25, dk(card[2], 0.3))      # where the flaps meet
+    frect(cv, W / 2 - 0.25, 1.5, W / 2 + 0.25, H - 1.5, dk(card[2], 0.2))
+    frect(cv, W / 2 - 1.5, 1, W / 2 + 1.5, H - 1, lambda c: mix(c, hx('#8a5a2a'), 0.6))   # the tape
+    frect(cv, W / 2 - 1.5, 1, W / 2 - 1.0, H - 1, lambda c: lt(c, 0.15))
+    for (dx, dy) in ((0, 0), (-1, 1), (1, 1), (0, 1), (0, 2)):                # a printed arrow
+        cv.blend(3.5 + dx * 0.5, 3.0 + dy * 0.5, alpha(hx('#3a2414'), 150))
+    px_paint(cv, W - 4, H - 4, W - 1, H - 1, lambda x, y, cur: dk(cur, 0.25) if x + y > W + H - 6 else None)   # crushed
+    smudge(cv, random.Random(9121), 2, (3, 3, W - 3, H - 3), (1.5, 2.5), 0.18)
+    cv.outline()
+    return cv
+
+
+def p_paper_bundle():
+    """A bundle of tomorrow's papers from above, dropped for the news stand: folded sheets stacked a little askew,
+    the front page's headline and photo, tied with a cross of white plastic strap."""
+    W, H = 14, 10
+    cv = Cv(W, H)
+    fill_shape(cv, W / 2 + 0.4, H / 2 + 0.4, W / 2 - 1.2, H / 2 - 1.2, lambda u, v, L: hx('#b8b2a2'), kind='rect', corner=0.3, ang=0.06)
+    paper = ramp('#e8e4d6', 0.35, 0.16, 0.1)
+    fill_shape(cv, W / 2, H / 2, W / 2 - 1.4, H / 2 - 1.4, lambda u, v, L: shade(paper, 0.5 + L * 0.4), kind='rect', bevel=0.8, corner=0.3)
+    frect(cv, 3, 2.5, W - 3, 3.2, hx('#2a2a30'))                              # the headline
+    frect(cv, 3, 4.0, 6.5, 7.0, lambda c: hx('#9a9aa0'))                     # the photo
+    for y in (4.2, 5.2, 6.2):
+        frect(cv, 7.2, y, W - 3, y + 0.5, hx('#a8a8b0'))                      # the columns
+    frect(cv, 1, H / 2 - 0.3, W - 1, H / 2 + 0.3, hx('#f6f6fa'))              # the strap
+    frect(cv, W / 2 - 0.3, 1, W / 2 + 0.3, H - 1, hx('#f6f6fa'))
+    cv.outline()
+    return cv
+
+
+def p_fruit_stand():
+    """A grocer's fruit stand put out on the sidewalk from above, 1.1 m: a slatted wooden rack holding three crates
+    (oranges, red apples, green limes), heaped, a price card stuck in each, a strip of fake grass along the front."""
+    W, H = 36, 18
+    cv = Cv(W, H)
+    w = ramp('#8a5a32', 0.45, 0.22, 0.3)
+    wood_fill(cv, 1, 1, W - 2, H - 2, w[2], plank=3, rng=random.Random(9131))
+    fruit = ((ramp('#ff8a1a', 0.5, 0.25, 0.3), 2.0), (ramp('#c8202c', 0.5, 0.26, 0.3), 1.9), (ramp('#6aa82a', 0.5, 0.25, 0.3), 1.6))
+    rng = random.Random(9132)
+    for k, (r, rad) in enumerate(fruit):
+        x0 = 2.0 + k * 11.0
+        frect(cv, x0, 2, x0 + 10, H - 4, shade(w, 0.25))                     # the crate's inside
+        for _ in range(14):
+            fx, fy = rng.uniform(x0 + rad, x0 + 10 - rad), rng.uniform(2 + rad, H - 4 - rad)
+            fill_shape(cv, fx, fy, rad, rad, lambda u, v, L, r=r: shade(r, 0.2 + L * 0.75))
+        frect(cv, x0 + 6.5, 2.5, x0 + 9.5, 4.5, hx('#f4f0e2'))               # the price card
+        frect(cv, x0 + 7.0, 3.2, x0 + 9.0, 3.7, hx('#2a2a30'))
+    frect(cv, 1, H - 3.5, W - 1, H - 1, lambda c: hx('#3a8a3a'))              # the fake grass
+    for x in range(2, W - 1, 2):
+        cv.dot(x, H - 3.0, hx('#5aaa4a'))
+    cv.outline()
+    return cv
+
+
+def p_shopping_cart():
+    """A shopping cart from above, left out on the sidewalk: its wire basket (a grid of thin bars, the floor seen
+    through), the child seat folded at the back, the red handle, the four castors poking out."""
+    W, H = 22, 14
+    cv = Cv(W, H)
+    for (x, y) in ((2.5, 1.5), (2.5, H - 1.5), (W - 3.5, 1.5), (W - 3.5, H - 1.5)):
+        fill_shape(cv, x, y, 1.1, 0.8, lambda u, v, L: shade(RUBBER, 0.4 + L * 0.4))
+    wire = ramp('#b8bcc8', 0.5, 0.25, 0.25)
+
+    def basket(x, y, cur):
+        if x < 4 or x >= W - 2 or y < 2 or y >= H - 2:
+            return None
+        edge = x < 4.6 or x >= W - 2.6 or y < 2.6 or y >= H - 2.6
+        bar = (x * 2) % 3 < 0.6 or (y * 2) % 3 < 0.6
+        return shade(wire, 0.75) if edge else shade(wire, 0.45) if bar else None
+    px_paint(cv, 0, 0, W, H, basket)
+    frect(cv, 1, 2, 2, H - 2, hx('#c8202c'))                                  # the handle
+    frect(cv, 1, 2, 2, 2.5, lt(hx('#c8202c'), 0.3))
+    frect(cv, 4, 2, 7, H - 2, lambda c: dk(c, 0.15) if c[3] else c)          # the child seat folded
+    cv.outline()
+    return cv
+
+
+def p_mailbox():
+    """A street post box from above, 45 cm square: green enamel, its domed top lit on one side, the letter slot's
+    lip along the front (+y), a plate with the collection times, scratches."""
+    S = 14
+    cv = Cv(S, S)
+    green = ramp('#2a6a4a', 0.5, 0.25, 0.3)
+    fill_shape(cv, S / 2, S / 2, S / 2 - 1, S / 2 - 1, lambda u, v, L: shade(green, 0.15 + L * 0.8), kind='super', p=4.0)
+    frect(cv, 3.5, S - 3.6, S - 3.5, S - 2.6, hx('#10201a'))                 # the slot
+    frect(cv, 3.5, S - 3.6, S - 3.5, S - 3.3, lt(green[2], 0.3))
+    frect(cv, 4.5, 4.5, S - 4.5, 6.5, hx('#e8e4d6'))                          # the times
+    frect(cv, 5.0, 5.2, S - 5.0, 5.6, hx('#5a5a60'))
+    smudge(cv, random.Random(9141), 4, (2, 2, S - 2, S - 2), (0.5, 1.2), 0.5, hx('#9aa0a8'))
+    cv.outline()
+    return cv
+
+
+def p_car_bumper(chrome=True):
+    """A bumper torn off, from above: a long bar (chrome, or black plastic on the newer cars) bent where it hit,
+    its end ripped, the rubber strip along it."""
+    def make():
+        W, H = 40, 6
+        cv = Cv(W, H)
+        r = CHROME if chrome else RUBBER
+
+        def bar(x, y, cur):
+            bend = 0.7 * math.sin(x / W * math.pi * 1.3)
+            yy = y - bend
+            if yy < 1.0 or yy >= 5.0 or (x > W - 4 and yy > 3.5 - (x - W + 4)):
+                return None
+            col = shade(r, 0.92 if yy < 1.8 else 0.55 if yy < 3.4 else 0.3)
+            if 3.0 <= yy < 3.6:
+                col = RUBBER[1]                                               # the rubber strip
+            return col
+        px_paint(cv, 1, 0, W - 1, H, bar)
+        smudge(cv, random.Random(9151 + chrome), 3, (2, 1, W - 4, 5), (0.8, 2.0), 0.3)
+        cv.outline()
+        return cv
+    return make
+
+
+def p_car_mirror():
+    """A wing mirror snapped off: its housing (black), the cracked glass in it, the stalk's torn end."""
+    W, H = 8, 6
+    cv = Cv(W, H)
+    fill_shape(cv, 4.6, 3.0, 3.0, 2.0, lambda u, v, L: shade(RUBBER, 0.3 + L * 0.6), kind='super', p=3.0)
+    fill_shape(cv, 4.6, 3.0, 2.0, 1.2, lambda u, v, L: shade(GLASS, 0.5 + L * 0.5), kind='super', p=3.0)
+    cv.dot(4.0, 2.5, hx('#dfe8ff'))
+    frect(cv, 1, 2.5, 2, 3.5, shade(CHROME, 0.5))
+    cv.outline()
+    return cv
+
+
+def p_car_hubcap():
+    """A hubcap rolled away: a chrome dish, its spokes pressed in, the rim dented."""
+    S = 10
+    c = S / 2
+    cv = Cv(S, S)
+
+    def dish(dx, dy, d):
+        a = math.atan2(dy, dx)
+        L = light(dx / 4.0, dy / 4.0)
+        spoke = abs(math.sin(a * 3)) < 0.25 and 1.2 < d < 3.4
+        return shade(CHROME, (0.25 if spoke else 0.45) + L * 0.55) if d < 3.6 else shade(CHROME, 0.3 + L * 0.6)
+    ring(cv, c, c, 0.0, 4.2, dish)
+    fill_shape(cv, c, c, 0.9, 0.9, lambda u, v, L: shade(CHROME, 0.4 + L * 0.6))
+    cv.outline()
+    return cv
+
+
+def p_car_headlight():
+    """A headlight knocked out: its chrome bezel, the reflector inside, the lens cracked open, a wire trailing."""
+    W, H = 8, 6
+    cv = Cv(W, H)
+    fill_shape(cv, 4.0, 3.0, 3.0, 2.2, lambda u, v, L: shade(CHROME, 0.3 + L * 0.6))
+    fill_shape(cv, 4.0, 3.0, 2.0, 1.4, lambda u, v, L: mix(hx('#f4f0d8'), shade(CHROME, L), 0.4))
+    for (x, y) in ((3.0, 2.5), (4.0, 3.0), (5.0, 3.5)):
+        cv.dot(x, y, hx('#5a5a66'))                                           # the crack
+    frect(cv, 7, 3, 8, 3.5, hx('#c8202c'))                                    # the wire
+    cv.outline()
+    return cv
+
+
+def p_car_plate():
+    """A number plate off a bumper: pale yellow, a dark rim, its characters pressed in (no real plate), bent at a
+    corner."""
+    W, H = 12, 5
+    cv = Cv(W, H)
+    frect(cv, 1, 1, W - 1, H - 1, hx('#e8d878'))
+    frect(cv, 1, 1, W - 1, 1.5, hx('#f6ecb0'))
+    for x in (2.5, 4.0, 5.5, 7.5, 9.0):
+        frect(cv, x, 2.0, x + 1.0, 3.5, hx('#2a2a40'))
+    px_paint(cv, W - 3, 1, W - 1, H - 1, lambda x, y, cur: dk(cur, 0.3) if x + y > W + 1 else None)
+    cv.outline()
+    return cv
+
+
+def p_car_grille():
+    """A piece of a radiator grille: a chrome frame round black slats, two of them bent out."""
+    W, H = 16, 6
+    cv = Cv(W, H)
+    frect(cv, 1, 1, W - 1, H - 1, shade(CHROME, 0.7))
+    for x in range(2, W - 2, 2):
+        frect(cv, x + 0.5, 2, x + 1.5, H - 2, RUBBER[1])
+    frect(cv, 1, 1, W - 1, 1.5, shade(CHROME, 0.95))
+    px_paint(cv, 9, 2, 12, H - 2, lambda x, y, cur: shade(CHROME, 0.4))     # bent out
+    cv.outline()
+    return cv
+
+
 CHASE_PROPS = dict(lorry=p_lorry, awning=p_awning, parasol=p_parasol, planter=p_planter,
-                   neon_sign_diner=p_neon_sign_diner, neon_sign_cafe=p_neon_sign_cafe)
+                   neon_sign_diner=p_neon_sign_diner, neon_sign_cafe=p_neon_sign_cafe,
+                   awning_red=awning_of(ramp('#b82030', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25), 8851),
+                   awning_green=awning_of(ramp('#2a7a4a', 0.5, 0.26, 0.3), ramp('#eadfc6', 0.45, 0.24, 0.25), 8852),
+                   awning_blue=awning_of(ramp('#2a4a9a', 0.5, 0.26, 0.3), ramp('#d8dce6', 0.45, 0.24, 0.25), 8853),
+                   awning_wine=awning_of(ramp('#6a1a3a', 0.5, 0.26, 0.3), ramp('#6a1a3a', 0.62, 0.36, 0.2), 8854),
+                   traffic_cone=p_traffic_cone, sawhorse=p_sawhorse, cardboard_box=p_cardboard_box,
+                   paper_bundle=p_paper_bundle, fruit_stand=p_fruit_stand, shopping_cart=p_shopping_cart,
+                   mailbox=p_mailbox, car_bumper=p_car_bumper(True), car_bumper_black=p_car_bumper(False),
+                   car_mirror=p_car_mirror, car_hubcap=p_car_hubcap, car_headlight=p_car_headlight,
+                   car_plate=p_car_plate, car_grille=p_car_grille)
 CHASE_SIZES = dict(lorry=(280, 80), awning=(98, 38), parasol=(46, 46), planter=(42, 18),
-                   neon_sign_diner=(46, 14), neon_sign_cafe=(34, 14))
+                   neon_sign_diner=(46, 14), neon_sign_cafe=(34, 14),
+                   awning_red=(98, 38), awning_green=(98, 38), awning_blue=(98, 38), awning_wine=(98, 38),
+                   traffic_cone=(12, 12), sawhorse=(40, 12), cardboard_box=(16, 14), paper_bundle=(14, 10),
+                   fruit_stand=(36, 18), shopping_cart=(22, 14), mailbox=(14, 14), car_bumper=(40, 6),
+                   car_bumper_black=(40, 6), car_mirror=(8, 6), car_hubcap=(10, 10), car_headlight=(8, 6),
+                   car_plate=(12, 5), car_grille=(16, 6))
 CHASE_NEON = ['neon_sign_diner', 'neon_sign_cafe']   # light: at the world's density, with their glow maps
 
 

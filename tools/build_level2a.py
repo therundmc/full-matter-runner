@@ -301,9 +301,14 @@ def free(col, doors, north):
     return all(not (a - 1.0 < col < a + ALLEY_W + 1.0) for a in ALLEYS) and not T0 - 1.5 < col < T1 + 2.5
 
 
-N_KERB = ['trash_can', 'hydrant', 'parking_meter', 'parking_meter', 'parking_meter', 'bin_bag', 'news_box']
-S_KERB = ['trash_can', 'trash_can', 'hydrant', 'news_box', 'news_box', 'bench', 'sandwich_board', 'crate', 'bin_bag']
-S_WALL = ['bin_bag', 'bin_bag', 'sandwich_board', 'vending', 'phone_booth', 'trash_can', 'ash_urn', 'crate', 'plant']
+# (the user's call: more to hit at the wheel than a few bins and boxes: cones, bundles, boxes, a cart, post boxes on
+# the kerb; fruit stands, boxes and carts against the shops)
+N_KERB = ['trash_can', 'hydrant', 'parking_meter', 'parking_meter', 'parking_meter', 'bin_bag', 'news_box', 'mailbox',
+          'traffic_cone', 'cardboard_box', 'paper_bundle']
+S_KERB = ['trash_can', 'trash_can', 'hydrant', 'news_box', 'news_box', 'bench', 'sandwich_board', 'crate', 'bin_bag',
+          'traffic_cone', 'paper_bundle', 'cardboard_box', 'shopping_cart', 'mailbox']
+S_WALL = ['bin_bag', 'bin_bag', 'sandwich_board', 'vending', 'phone_booth', 'trash_can', 'ash_urn', 'crate', 'plant',
+          'fruit_stand', 'fruit_stand', 'cardboard_box', 'cardboard_box', 'paper_bundle', 'shopping_cart']
 S_DARK = ['bin_bag', 'bin_bag', 'crate', 'crate', 'trash_can', 'keg', 'sandwich_board']   # (no barrel on his way: a death nobody told)
 for (north, shops) in ((True, north_shops), (False, south_shops)):
     lv.area('north sidewalk' if north else 'south sidewalk')
@@ -316,7 +321,7 @@ for (north, shops) in ((True, north_shops), (False, south_shops)):
         put('streetlight', col + 0.5, light_row, light_deg, **({'flicker': 'broken'} if dark else {}))
     col = 6.0
     while col < W - 6:
-        col += rng.uniform(2.2, 5.0)
+        col += rng.uniform(1.5, 3.4)
         if not free(col, [], north):
             continue
         dark = DARK[0] < col < DARK[1]
@@ -327,7 +332,7 @@ for (north, shops) in ((True, north_shops), (False, south_shops)):
         continue
     col = 4.0
     while col < W - 6:
-        col += rng.uniform(3.0, 7.0)
+        col += rng.uniform(2.0, 4.8)
         if not free(col, doors, north) or D0 - 1 < col < D1 + 1:
             continue
         dark = DARK[0] < col < DARK[1]
@@ -338,6 +343,25 @@ for (kind, c, r, deg) in (('phone_booth', D0 - 1.6, 17.5, 180), ('news_box', D0 
                           ('news_box', D0 + 3.2, 16.4, 0), ('bench', D0 + 10.5, 17.6, 0), ('trash_can', D0 + 12.6, 17.6, 0),
                           ('bench', D0 + 19.0, 17.6, 0), ('hydrant', D0 + 26.0, 16.4, 0), ('vending', D0 + 29.4, 17.5, 180)):
     put(kind, c, r, deg)
+# shop awnings over the windows (never over the pier and its sign): torn down by a car along the fronts (Drive `canopy`)
+lv.area('shop awnings')
+AWNINGS = ('awning_red', 'awning_green', 'awning_blue', 'awning_wine')
+for (north, shops) in ((True, north_shops), (False, south_shops)):
+    for (x, w, kind, door) in shops:
+        pier = (w - 2) // 2 if door else max(1, (w - 1) // 2)
+        runs = [(1 if door == 0 else 0, pier), (pier + 2, w - 1 if door == w - 1 else w)]
+        a, b = max(runs, key=lambda r: r[1] - r[0])
+        if b - a < 3 or rng.random() < 0.3:
+            continue
+        lv.prop(rng.choice(AWNINGS), x + (a + b) / 2, 8.56 if north else 17.44, 0 if north else 180)
+# road works in a lane now and then: a barrier across it and cones tapering into it (all light: flung by a car)
+lv.area('road works')
+for (col, row, way) in ((44, 12.25, 1), (88, 14.75, -1), (124, 12.25, 1), (262, 14.75, 1), (292, 12.25, -1), (412, 14.75, -1)):
+    put('sawhorse', col, row, 90)
+    for i in range(1, 5):
+        put('traffic_cone', col - way * i * 1.3, row + (0.95 - i * 0.22) * (1 if row > 13.5 else -1), 0)
+    put('traffic_cone', col + way * 0.8, row - 0.9, 0)
+    put('traffic_cone', col + way * 0.8, row + 0.9, 0)
 lv.dress('papers', 0, 8, W - 1, 8, 20)
 lv.dress('papers', 0, 16, W - 1, 17, 40)
 lv.dress('papers', 0, 9, W - 1, 15, 30)
