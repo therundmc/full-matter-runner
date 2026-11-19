@@ -14,4 +14,5 @@ export const ROOF_DECOR = {
   skylight: { h: 2, light: { r: 62, color: '#ffc27a', intensity: 0.8 } },
   skylight_tv: { h: 2, light: { r: 54, color: '#7fb4ff', intensity: 0.75, flicker: 'tv' } },
   skylight_dark: { h: 2 },
+  rail_bed: { h: 1 }, // a metre of the railway on its embankment, toward the bridge over level 2A's street
 };

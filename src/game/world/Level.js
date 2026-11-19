@@ -135,6 +135,7 @@ export function buildLevel(world, level) {
     if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)
     if (opt?.pursuer && p.isVehicle) p.pursuer = true; // the lab's pursuer dummy (systems/Pursuit.js)
     if (opt?.backs) p.backs = opt.backs; // a lorry that backs out that many tiles when a car comes (systems/Lorries.js)
+    if (opt?.phase) p.phase = opt.phase; // s into its lamps' cycle (a traffic light: systems/Signals.js)
     world.props.push(p);
     if (p.def.blocksPath) markBlocked(map, p);
   }

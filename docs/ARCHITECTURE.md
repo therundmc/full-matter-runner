@@ -237,6 +237,8 @@ src/
                           start; his seat in it and reached -> dead), one at a time with a cooldown; events by distance
                           (`chase.events`: the alley car and its red lane, one from behind).
                           Numbers: CHASE.pursuit / gunman / alley; drawn by render/PursuitArt.js
+      Signals.js          lamps that take turns (data/signals.js): traffic lights, the works' arrow board and flashers;
+                          a prop's `lamps` flags, read by render/Lighting.js (its lights, its emissive map's slices)
       Lorries.js          the lorry that backs out across the street (level 2A's event 2 by distance, the lab's with the
                           prop option `backs`): told (beeper, reversing lamps, the HUD's chevrons, a red lane, bone
                           arrows on the way round), then its static body moved a step at a time until the street is

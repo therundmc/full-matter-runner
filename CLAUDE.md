@@ -97,6 +97,12 @@
   drive is systems/Drive.js with its numbers in data/chase.js (CHASE); his gun is the boss's Uzi taken off the
   passenger seat in a short beat the first time only (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
   in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer, x0, x1)`), never a canvas.
+  2A's street is built section by section (the table in docs/LEVEL2.md: parking north / on our side / none, two
+  junctions under traffic lights, the bridge, the works, the bus stop): NOTHING stands in its two lanes (builder
+  `check_lanes`); its kerbs, markings and covers are floor paint (level `floor`, ROAD_PAINT in generate_assets.py),
+  laid from the tiles (`lay_kerbs`); lamps that take turns are systems/Signals.js + data/signals.js (prop `signal`,
+  `lamps`, option `phase`). A NEW PROP'S SPRITE MUST BE LISTED in engine/Assets.js (and FINE_PROPS): unlisted, it
+  is drawn as a bin (tests/road.test.mjs checks 2A's and the lab's).
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.

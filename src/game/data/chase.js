@@ -37,6 +37,9 @@ export const CHASE = {
   // px its flank is held short of the building fronts as he steers into them (Drive.offFronts): a shop's windows and
   // doors are set back in its front, and a corner sliding along caught in one and held the car there
   front: 2,
+  // tiles ahead of its nose whose fronts count too: where they step in toward the road (a block set forward, the end
+  // of a terrace or of a yard) the car is already inside their line when it gets there, never nose-on into the corner
+  frontAhead: 8,
   // px: a driven car's body has its corners rounded this much (physics only, the sprite is drawn as it is): a square
   // corner sliding along the building fronts caught on the seam between two wall bodies and stopped the car for good
   corner: 7,

@@ -151,6 +151,9 @@ export default {
     ['streetlight', 41, 19.7, 90], ['vending', 5.5, 18.35, 0], ['parking_meter', 16.5, 19.75, 0],
     ['parking_meter', 23.5, 19.75, 0], ['news_box', 37.5, 18.4, 0], ['wall_lamp', 6.5, 18.08, 0],
     ['wall_lamp', 18.5, 18.08, 0], ['wall_lamp', 34.5, 18.08, 0], ['wall_lamp', 47.5, 18.08, 0],
+    // 30 signals: a traffic light over the lanes, a barricade that flashes, a sign, bollards
+    ['traffic_light', 44.8, 19.72, 90], ['barricade', 50.6, 19.4, 0], ['sign_noparking', 52.8, 19.75, 0],
+    ['bollard', 54, 19.7, 0], ['bollard', 55, 19.7, 0],
     // 19 drive: the convertible and a van to get into and drive down the street, three pursuers where the chase holds them
     ['convertible', 4.7, 21, 0, { drive: true }], ['van', 4.6, 23.5, 0, { drive: true }], ['trash_can', 8.3, 23.9, 0],
     ['trash_can', 9, 23, 0], ['pursuer', 12.6, 23.5, 0, { pursuer: true }],
@@ -175,7 +178,7 @@ export default {
     ['ceiling_lamp', 69.5, 28, 0], ['ceiling_lamp', 72.8, 28, 0],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0], ['label_throw', 37.5, 25.5, 0], ['label_killcam', 57.5, 25.5, 0], ['label_shield', 70.5, 25.5, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_signals', 45.6, 18.45, 0], ['label_drive', 8.2, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0], ['label_throw', 37.5, 25.5, 0], ['label_killcam', 57.5, 25.5, 0], ['label_shield', 70.5, 25.5, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],

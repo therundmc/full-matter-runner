@@ -108,9 +108,10 @@ function intoKerb(x, key, net = true) {
   return { back, d, v, low, gap };
 }
 
-// the main session's two stalls (x 1900 and 2030: the car's nose stopped at x 2336 and 2464, the seams of two wall
-// bodies) and more along the road, down into the south fronts and up into the north ones
-for (const [x, key] of [[1900, 'KeyD'], [2030, 'KeyD'], [1500, 'KeyD'], [3000, 'KeyD'], [4200, 'KeyD'], [6000, 'KeyD'], [2030, 'KeyA'], [3000, 'KeyA'], [9000, 'KeyA']]) {
+// along the road, down into the south fronts and up into the north ones (the stalls this was written for were at
+// the seams of two wall bodies of the street as it was then; the south fronts are on row 18 at these x, the south
+// sidewalk between them and the lanes: past an alley, under the railway bridge, along the blind walls)
+for (const [x, key] of [[3600, 'KeyD'], [5300, 'KeyD'], [7400, 'KeyD'], [4200, 'KeyD'], [6000, 'KeyD'], [2030, 'KeyA'], [3000, 'KeyA'], [9000, 'KeyA']]) {
   test(`kerb: steered ${key === 'KeyD' ? 'down' : 'up'} into the building fronts for 2.5 s from x ${x}, released, it is back at cruise within 3 s`, () => {
     const { back, d, v } = intoKerb(x, key);
     assert.ok(!d.dead, 'no crash');
@@ -119,12 +120,59 @@ for (const [x, key] of [[1900, 'KeyD'], [2030, 'KeyD'], [1500, 'KeyD'], [3000, '
 }
 
 test('kerb: held a hair off the building fronts (their windows and doors set back in them), it runs on along them', () => {
-  for (const [x, key] of [[1900, 'KeyD'], [2030, 'KeyD'], [3000, 'KeyD'], [6000, 'KeyD'], [3000, 'KeyA'], [9000, 'KeyA']]) {
+  for (const [x, key] of [[3600, 'KeyD'], [5300, 'KeyD'], [4200, 'KeyD'], [6000, 'KeyD'], [3000, 'KeyA'], [9000, 'KeyA']]) {
     const { back, d, low, gap } = intoKerb(x, key, false); // (no stall to be freed from)
     assert.ok(low > 0.9 * d.cruise, `x ${x} ${key}: down to ${low.toFixed(2)} px/step along them`);
     assert.ok(gap > 1 && gap < 4, `x ${x} ${key}: its flank ${gap.toFixed(1)} px off them`);
     assert.ok(back !== null && back < 0.5);
   }
+});
+
+test('kerb: steered into a street across (the level\'s `chase.across`), he is held on the line of the fronts: never down it', () => {
+  assert.ok(C.across.length === 2, 'the two junctions');
+  for (const [c0, c1, up, down] of C.across) {
+    for (const key of ['KeyD', 'KeyA']) {
+      const w = world((c0 - 12) * TILE, (c1 + 12) * TILE), v = convertible(w, (c0 - 6) * TILE, C.van[1] * TILE);
+      const d = new Drive(w, { ...C, arms: null, events: [], end: null, van: [c0 - 6, C.van[1]] }, v), input = keys();
+      w.drive = d;
+      input.held.add(key);
+      let lo = Infinity, hi = 0;
+      run(w, d, input, 1.1, () => {
+        if (v.x < c0 * TILE || v.x > (c1 + 1) * TILE) return;
+        lo = Math.min(lo, v.body.bounds.min.y);
+        hi = Math.max(hi, v.body.bounds.max.y);
+      });
+      assert.ok(!d.dead && v.x > (c1 + 2) * TILE, `${key} at col ${c0}: alive and past it`);
+      assert.ok(hi > 0 && hi <= down * TILE && lo >= up * TILE, `its flanks between ${lo.toFixed(1)} and ${hi.toFixed(1)}`);
+    }
+    assert.ok(up < C.lanes[0] && down > C.lanes[1]);
+  }
+});
+
+test('kerb: where the fronts step in toward the road ahead of him, he is brought back inside their line: never nose-on into the corner', () => {
+  // along the sidewalk behind the parking row of our side, whose block is a row back (the next one's corner at col
+  // 109), hands off and steered into the fronts; off the road onto the terrace and held down against the cafe (its end at col 355;
+  // a parasol torn down over him, its pole still standing, does not stop him there)
+  for (const [col, row, corner, line, how, hold] of [[94, 18.02, 109, 18, [null, 'KeyD'], 9], [324, C.van[1], 355, 18, ['KeyD'], 9]]) {
+    for (const key of how) {
+      const w = world((col - 8) * TILE, (corner + 14) * TILE), v = convertible(w, col * TILE, row * TILE);
+      const d = new Drive(w, { ...C, arms: null, events: [], end: null, van: [col, row] }, v), input = keys();
+      w.drive = d;
+      if (key) input.held.add(key);
+      let flank = 0;
+      let deep = 0;
+      run(w, d, input, 2.4, () => {
+        if (w.time > hold) input.held.clear();
+        deep = Math.max(deep, v.body.bounds.max.y);
+        if (!flank && v.body.bounds.max.x > corner * TILE) flank = v.body.bounds.max.y;
+      });
+      assert.ok(deep > line * TILE + 8, `past the line of the corner before it (${deep.toFixed(1)})`);
+      assert.ok(!d.dead, `col ${corner}, ${key || 'hands off'}: alive (at ${(v.x / TILE).toFixed(1)}, ${(v.y / TILE).toFixed(2)})`);
+      assert.ok(flank > 0 && flank <= line * TILE, `col ${corner}, ${key}: its flank at ${flank.toFixed(1)} as its nose passes the corner (${line * TILE}); now at ${(v.x / TILE).toFixed(1)}, ${(v.y / TILE).toFixed(2)}, ${d.v.toFixed(1)} px/step`);
+      assert.ok(v.x > (corner + 6) * TILE, 'and running on');
+    }
+  }
+  assert.ok(CHASE.frontAhead * TILE > 3 * TILE / CHASE.steer * C.cruise, 'seen early enough to cross three metres at full lock');
 });
 
 test('kerb: the building fronts either side of the car: a window or a door is the front, an opening is not (pure)', () => {

@@ -56,6 +56,10 @@ SIZES = dict(
     lorry=(276, 76), awning=None, parasol=(5, 5), planter=(40, 16), neon_sign_diner=None, neon_sign_cafe=None,
     awning_red=None, awning_green=None, awning_blue=None, awning_wine=None, traffic_cone=(10, 10), sawhorse=(38, 8),
     cardboard_box=(15, 13), paper_bundle=(13, 9), fruit_stand=(34, 16), shopping_cart=(20, 12), mailbox=(13, 13),
+    # level 2A's street (a post's hitbox: the post, not its plate or its arm)
+    traffic_light=(8, 8), bus_shelter=(126, 46), sign_noparking=(5, 5), sign_oneway=(5, 5), sign_speed=(5, 5), sign_bus=(5, 5),
+    bollard=(7, 7), street_tree=(8, 8), arrow_board=(60, 34), compressor=(54, 28), barricade=(64, 7), sign_works=(14, 14),
+    viaduct=None, gantry_sign=None,
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
@@ -75,13 +79,21 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
          'trapdoor', 'rug', 'entry_mat', 'bed', 'tag')
+# level 2A's street painted on its ground (ROAD_PAINT in tools/generate_assets.py): kerbs, markings, covers, patches
+FLOOR += tuple('kerb_' + s + v for s in 'nsew' for v in ('', '_low')) + tuple('kerb_' + s + v for s in 'ns' for v in ('_4', '_red', '_yellow'))
+FLOOR += tuple('kerb_' + k + q for k in ('corner_', 'bend_') for q in ('ne', 'nw', 'se', 'sw')) + ('kerb_in', 'kerb_ramp_n', 'kerb_ramp_s')
+FLOOR += ('zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_arrow', 'road_arrow_turn', 'road_bus', 'road_stop',
+          'road_slow', 'road_keep', 'road_clear', 'road_only', 'hatch_yard', 'hatch_bay', 'drain', 'manhole_sq', 'valve_cap',
+          'road_patch_a', 'road_patch_b', 'road_patch_c', 'road_crack_a', 'road_crack_b', 'tree_grate', 'trench', 'spoil',
+          'steel_plate', 'viaduct_shadow')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
-                  antenna=(34, 34), bulkhead=(62, 54), skylight=(46, 30), skylight_tv=(46, 30), skylight_dark=(46, 30))
+                  antenna=(34, 34), bulkhead=(62, 54), skylight=(46, 30), skylight_tv=(46, 30), skylight_dark=(46, 30),
+                  rail_bed=(148, 32))
 # the lit ones: (radius, offset along the piece's +y) of their glow in px (keep in sync with src/game/data/roofs.js)
 ROOF_GLOW = dict(bulkhead=(56, 30), skylight=(62, 0), skylight_tv=(54, 0))
 

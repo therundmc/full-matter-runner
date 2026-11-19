@@ -136,6 +136,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    the door, their backs to it (one with a pistol): E behind one takes him, the right click throws
                    him (at the partition, at the others); past the partition three gunmen, awake, who see only the gap
                    at its south end: step into it with a man held and they hold their fire a moment, then shoot him
+    30 SIGNALS     the street's north sidewalk (cols 43-55): level 2A's street furniture to drive at or shoot. A
+                   traffic light on its mast arm over the lanes (systems/Signals.js: green, amber, red in turn,
+                   data/signals.js), a works barricade whose two lamps flash, a no-parking sign and two bollards
+                   (bolted: a car tears them off, as it does the light's pole)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -476,6 +480,14 @@ lv.prop('news_box', 37.5, 18.4)
 lv.pigeons(34.0, 18.8, 3)
 for x in (6.5, 18.5, 34.5, 47.5):
     lv.prop('wall_lamp', x, 18.08, 0)      # over the sidewalk, on the facade
+
+lv.area('30 signals: a traffic light over the lanes, a barricade that flashes, a sign, bollards')
+lv.paint('label_signals', 45.6, 18.45)
+lv.prop('traffic_light', 44.8, 19.72, 90)
+lv.prop('barricade', 50.6, 19.4, 0)
+lv.prop('sign_noparking', 52.8, 19.75)
+lv.prop('bollard', 54.0, 19.7)
+lv.prop('bollard', 55.0, 19.7)
 
 lv.area('19 drive: the convertible and a van to get into and drive down the street, three pursuers where the chase holds them')
 lv.paint('label_drive', 8.2, 18.6)

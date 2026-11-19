@@ -239,6 +239,41 @@ export const PROPS = {
     light: { r: 130, color: '#ffb04a', intensity: 0.9, flicker: 'buzz' } },
   neon_sign_cafe: { hum: 'neon', material: 'glass', w: 32, h: 6, hp: 3, static: true, chips: '#ff2a6d', sparks: true, glass: true, sound: 'glass',
     light: { r: 110, color: '#ff4a8a', intensity: 0.85, flicker: 'buzz' } },
+  // ---- level 2A's street (tools/build_level2a.py; sprites: "the road of level 2A" in tools/generate_assets.py).
+  // signal = its lamps take turns (data/signals.js, systems/Signals.js): one flag a light of `light`, in order;
+  // lamps = each light's slices [x, width] of the emissive map (its pixels), drawn only while it is lit.
+  // Traffic lights on a mast arm: the pole (bolted: torn off by a car as a streetlight is) at the sprite's centre, the
+  // arm 3 m along +x, the heads facing -y: turn it so the arm reaches over the lane it is for. Lights: red, amber, green
+  traffic_light: { signal: 'traffic', overhead: true, static: true, material: 'metal', r: 4, hp: 6, chips: '#4e5362', sparks: true, glass: true, sound: 'metal',
+    lamps: [[[331, 22], [403, 22]], [[309, 22], [381, 22]], [[287, 22], [359, 22]]],
+    light: [{ r: 84, color: '#ff3a28', intensity: 0.6, x: 81, y: -8 }, { r: 84, color: '#ffb02a', intensity: 0.6, x: 70, y: -8 },
+      { r: 84, color: '#2af08a', intensity: 0.6, x: 59, y: -8 }] },
+  // a bus shelter, open along +y (the kerb): glass and thin steel, its advertising case lit
+  bus_shelter: { hum: 'neon', static: true, material: 'glass', w: 126, h: 46, hp: 8, chips: '#8fd0e6', sparks: true, glass: true, sound: 'glass', blocksPath: true,
+    light: { r: 84, color: '#dfeeff', intensity: 0.5, x: -52 } },
+  // signs on their posts, the plate laid back to be read from above (as a parking meter's head is: the post drawn)
+  sign_noparking: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#c8242c', sound: 'metal', bends: 6 },
+  sign_oneway: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#ece8de', sound: 'metal', bends: 6 },
+  sign_speed: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#ece8de', sound: 'metal', bends: 6 },
+  sign_bus: { overhead: true, height: 0.012, pole: ['#4a4e58', 2], static: true, material: 'metal', r: 2.5, hp: 3, chips: '#2a56b0', sound: 'metal', bends: 6 },
+  bollard: { static: true, material: 'metal', r: 3.5, hp: 5, chips: '#484c5a', sparks: true, sound: 'metal' },
+  // a young tree in its grate (the grate is floor paint): the trunk is the body, the crown overhead
+  street_tree: { material: 'wood', r: 4, hp: 10, static: true, chips: '#34803c', sound: 'wood', overhead: true, dirt: true, height: 0.04, pole: ['#4a3424', 5] },
+  // the works in the parking lane: the arrow board on its trailer (three chevrons along -x, lit one after the other),
+  // the compressor, barricades with a flasher on each end and the warning sign on its stand (both light: flung by a car)
+  arrow_board: { signal: 'arrow', static: true, material: 'metal', w: 60, h: 34, hp: 10, chips: '#1c1c24', sparks: true, glass: true, sound: 'metal', blocksPath: true,
+    lamps: [[[18, 38]], [[56, 38]], [[94, 38]]],
+    light: [{ r: 44, color: '#ffb02a', intensity: 0.5, x: -21 }, { r: 44, color: '#ffb02a', intensity: 0.5, x: -2 }, { r: 44, color: '#ffb02a', intensity: 0.5, x: 17 }] },
+  compressor: { static: true, material: 'metal', w: 54, h: 28, hp: 20, chips: '#d8a21c', sparks: true, sound: 'metal', blocksPath: true },
+  barricade: { signal: 'flash', material: 'wood', w: 64, h: 7, hp: 3, kg: 22, mu: 0.5, chips: '#f07a1c', sound: 'wood',
+    lamps: [[[0, 66]], [[66, 66]]],
+    light: [{ r: 34, color: '#ffb02a', intensity: 0.45, x: -26 }, { r: 34, color: '#ffb02a', intensity: 0.45, x: 26 }] },
+  sign_works: { material: 'metal', w: 14, h: 14, hp: 3, kg: 7, mu: 0.45, chips: '#f08a1c', sound: 'metal' },
+  // over the street, out of everybody's reach (`hung`: no body; `lasting`: nothing brings them down): the railway's
+  // bridge (along y; it fades over him as he drives under) and the freeway's sign on its truss (along x)
+  viaduct: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'metal', w: 144, h: 320, hp: 99, chips: '#3c4350', sound: 'metal' },
+  gantry_sign: { hung: true, lasting: true, overhead: true, height: 0.02, static: true, material: 'metal', w: 306, h: 36, hp: 99, chips: '#1c6a4c', sound: 'metal',
+    light: [{ r: 70, color: '#fff0c8', intensity: 0.4, x: -65, y: 22 }, { r: 70, color: '#fff0c8', intensity: 0.4, x: 65, y: 22 }] },
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },

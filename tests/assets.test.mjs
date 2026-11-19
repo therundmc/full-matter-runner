@@ -9,6 +9,9 @@ const FINE = new RegExp(src.match(/const FINE = \/(.*)\/;/)[1]);
 const list = (name, re) => JSON.parse(src.match(re)[1].replace(/'/g, '"').replace(/,\s*\]/, ']'));
 const FINE_PROPS = new Set(list('FINE_PROPS', /const FINE_PROPS = new Set\((\[[^\]]*\])\)/));
 const FLOOR_TILES = list('FLOOR_TILES', /const FLOOR_TILES = (\[[^\]]*\]);/);
+// level 2A's street: its props and its floor paint are fine too (added to FINE_PROPS after it)
+const ROAD = [...list('ROAD_PROPS', /const ROAD_PROPS = (\[[^\]]*\]);/), ...list('ROAD_PAINT', /const ROAD_PAINT = (\[[^\]]*\]);/)];
+for (const n of ROAD) FINE_PROPS.add(n);
 
 // width / height of a sprite's PNG (IHDR)
 function png(name) {

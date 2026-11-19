@@ -640,7 +640,7 @@ export default class Lighting {
       for (let i = 0; i < lights.length; i++) {
         if (!lampOn(p, i)) continue;
         const l = lights[i];
-        if (!p.moving) lamps++;
+        if (!p.moving && !p.def.signal) lamps++; // (a signal's lamps change all the time: not news for the grid)
         this.placePropLight(p, l);
         l.moving = !!p.moving;
         const k = l.cone ? 1 : 1 + brake * 1.6;
@@ -851,6 +851,12 @@ export default class Lighting {
     if (p.drawLamps) {
       g.globalAlpha = k;
       p.drawLamps(g, gl, x0, y0);
+    } else if (p.def.lamps) {
+      // lamps that take turns (systems/Signals.js): each light's slices of the map, while it is lit
+      g.globalAlpha = k;
+      p.def.lamps.forEach((cuts, i) => {
+        if (lampOn(p, i)) for (const [sx, w] of cuts) g.drawImage(gl, sx, 0, w, gl.height, x0 + sx, y0, w, gl.height);
+      });
     } else if (!sign) {
       g.globalAlpha = k;
       g.drawImage(gl, x0, y0);

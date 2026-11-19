@@ -151,8 +151,9 @@ const grazes = (lo, hi, y, h, C = CHASE) => coverOf(lo, hi, y, h) < C.crash.graz
 // down)], none within `most` tiles: -+Infinity; null when r itself is one. A window or a door is set back in its wall
 // (its pane, its leaves in the middle of the tile): it counts as the front. A fence does not (it is gone through),
 // nor an opening (an alley, a yard: the face is its back wall)
+const isFront = (map, c, k) => map.isSolid(c, k) || 'GDL'.includes(map.at(c, k));
 export function frontsAt(map, c, r, most = 8) {
-  const front = (k) => map.isSolid(c, k) || 'GDL'.includes(map.at(c, k));
+  const front = (k) => isFront(map, c, k);
   if (front(r)) return null;
   let up = r, down = r;
   while (up > r - most && !front(up - 1)) up--;
@@ -515,21 +516,36 @@ export default class Drive {
   // (a street only: the chase; the lab has none)
   offFronts(u) {
     this.grind = null;
-    if (!this.o.lanes || !this.world.map || !u) return u;
+    if (!this.o.lanes || !this.world.map) return u;
     const b = this.van.body.bounds, m = this.C.front, [lo, hi] = this.fronts();
+    // already past them: the fronts step in ahead of him (a block set forward, the end of a terrace, of a yard): the
+    // car is brought back inside their line before it gets there, however he steers
+    const over = Math.max(b.max.y - (hi - m), lo + m - b.min.y);
+    if (over > 1) { this.grind = null; return (b.max.y > hi - m ? -1 : 1) * Math.min(this.C.steer, over); }
     const held = u > 0 ? Math.min(u, Math.max(0, hi - m - b.max.y)) : Math.max(u, Math.min(0, lo + m - b.min.y));
     if (Math.abs(held) < Math.abs(u) - 0.05) this.grind = { x: this.van.x, y: u > 0 ? hi : lo };
     return held;
   }
 
   // the building fronts either side of the car, over the columns it covers (frontsAt): [world px y above, below]
-  // (no map: -+Infinity)
+  // and over the C.frontAhead tiles ahead of its nose (no map: -+Infinity). Where a street runs across his (the level's `chase.across`: [[col0, col1, row above, row
+  // below], ...]) there is no front: the line of the fronts is held across it (those rows), so the wheel never takes
+  // him down a side street, nose-on into the corner of the next block
   fronts() {
     const map = this.world.map, b = this.van.body.bounds, r = Math.floor(this.van.y / TILE);
+    const nose = Math.floor(b.max.x / TILE), mid = this.street;
     let lo = -Infinity, hi = Infinity;
-    for (let c = Math.floor(b.min.x / TILE); map && c <= Math.floor(b.max.x / TILE); c++) {
-      const f = frontsAt(map, c, r);
+    for (let c = Math.floor(b.min.x / TILE); map && c <= nose + this.C.frontAhead; c++) {
+      const f = frontsAt(map, c, r), x = this.o.across?.find((a) => c >= a[0] && c <= a[1]);
       if (f) { lo = Math.max(lo, f[0]); hi = Math.min(hi, f[1]); }
+      else if (c > nose && c < map.w && mid !== null) {
+        // a front in his own row, ahead: its face toward the street's middle is the line
+        const south = (r + 0.5) * TILE > mid, step = south ? -1 : 1;
+        let k = r;
+        while ((k + step + 0.5) * TILE > mid === south && isFront(map, c, k + step)) k += step;
+        if (south) hi = Math.min(hi, k * TILE); else lo = Math.max(lo, (k + 1) * TILE);
+      }
+      if (x) { lo = Math.max(lo, x[2] * TILE); hi = Math.min(hi, x[3] * TILE); }
     }
     return [lo, hi];
   }
@@ -635,7 +651,12 @@ export default class Drive {
         this.knocked.set(e, e.onCollide);
       }
     } else if (e && (e.isPlayer || e.isEnemy || e.isCivilian)) h.kind = 'person';
-    else if (e?.def && (e.dead || e.dying)) h.kind = 'gives';
+    else if (e?.def && (e.dead || e.dying)) {
+      // already falling apart (a parasol torn down as he came under it, its pole still standing a moment): it never
+      // holds the car up
+      h.kind = 'gives';
+      if (!e.def.lasting && !e.isVehicle) { pair.isActive = false; pair.isSensor = true; }
+    }
     else if (e?.def && !e.def.lasting) {
       h.kind = 'thing';
       if ((e.def.static || o.frozen) && !e.tipped && fast > C.hit.tear) {

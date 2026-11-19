@@ -94,7 +94,7 @@ do); the route map's bends are only suggested by the scenery. (Turning the camer
 
 | # | Time | Segment | Speed, camera | What it is |
 |---|------|---------|---------------|------------|
-| 1 | 0:00-0:25 | THE BACK ROAD | 60 km/h, 380 px | 2 narrow lanes (2.5 m) and a row of parked cars; a block of shops, a dark stretch with a vacant lot, shops again, the lorry's yard and the cafe's terrace, the diner on the lit corner. Learns: steer, shove, shoot. One car, then one more at a time. Breaks: bins, hydrants, news boxes, benches, a phone booth, parked cars, the fence, a terrace. |
+| 1 | 0:00-0:25 | THE BACK ROAD | 60 km/h, 380 px | A street of twelve sections (the table below): 2 lanes (2.5 m) nothing stands in, parking on the north side, on ours or on neither; shops, a junction under traffic lights, a railway bridge, a dark stretch with a vacant lot and works in its parking row, a bus stop, the lorry's yard and the cafe's terrace, the diner on the lit corner, a second junction, the freeway's sign. Learns: steer, shove, shoot. One car, then one more at a time. Breaks: hydrants, signs, meters, news boxes, benches, trees, a bus shelter, traffic lights, parked cars, the fence, a terrace. |
 | 2 | 0:25-0:36 | THE ON-RAMP, THE TOLL | 90 km/h, 400 px | The road opens to 4 gates. Decides a gate 1.5 s out. They follow or die. |
 | 3 | 0:36-1:10 | THE MOTORWAY | 120 km/h, 440 px | 4 lanes one way, traffic, lorries. Three of them at once. Piers, lorries and the rail are his weapons. The tanker at 0:58. |
 | 3b | 1:10-1:25 | THE INTERCHANGE: A CHOICE | 110 km/h, 480 px | A: the unfinished flyover (needs 110 km/h at the plate, 1.5 s in the air, slow motion, one free round, one of them falls). B: the underpass (piers, a lorry coming; nothing lost, nothing won). |
@@ -119,6 +119,38 @@ Events:
 | 12 | 2:16 | THE LEVEL CROSSING | The barriers down, the train told by its lamp and a red band. Beat it: it cuts them off, or takes one. |
 | 13 | 2:24 | THE TYRE | The last car: its gunman takes his rear tyre (always). On the rim, sparks, he steers the slide. |
 | 14 | 2:30 | THE STATION | Through the first pump. END OF 2A. 2B opens on the car burning and him getting up. |
+
+
+### Segment 1, section by section (the street rebuilt, 2026-11-19)
+
+The user threw the first road out ("a real road, realistic and varied, every stretch built precisely"). The back road
+is now a street of Sunset Bay built as one is (tools/build_level2a.py). The two lanes never move and NOTHING stands in
+them (theirs, westbound, on row 12.25; ours on 14.75): what changes is what lies either side. Three cross-sections:
+**A** parking on the NORTH side (sidewalk 1 m, parking row, lanes, sidewalk 2 m), **B** parking on OUR side (north
+sidewalk 3 m with trees, lanes, parking row, sidewalk 1 m, the south fronts a row back), **C** no parking (north
+sidewalk 3 m, lanes, south sidewalk 2 m). The events keep their columns.
+
+| Cols | Section | North side | South side (ours) | Parked cars | What happens |
+|------|---------|------------|-------------------|-------------|--------------|
+| 0-45 | A THE SHOPS | LIQUOR, BAR, VIDEO, WASH 24H, meters on a narrow sidewalk | shops, benches, a speed sign | north, from col 14 | The start (col 8.5), the Uzi taken; the lights ahead go amber. Lane arrow, the centre line double from col 30. |
+| 46-61 | J CORAL STREET | corners rounded out to the lane, hydrant (red kerb), mailbox | news boxes, a bin | none | Traffic lights on mast arms (ours over our lane, red as he reaches it: he runs it), crossings on all four arms, stop lines, one-way street south with two cars waiting at their red. |
+| 62-104 | B | 3 m sidewalk: trees in grates, benches, a passage (cols 99-100) people use | parking row, meters behind it; two bays hatched LOADING (yellow kerb) | south, cols 64-88 | First pursuer alongside. The fronts of our side are a row back: shoving one into the parked cars is on OUR side here. |
+| 105-147 | A | shops, hydrant at 107 (red kerb) | shops; alleys at 105 and 138 | north, cols 110-146 | Event 1: the car out of the alley at col 138 (told at 111), into the far lane. SLOW painted at 143. |
+| 148-156 | THE RAILWAY BRIDGE | abutment, the track on it | abutment | none (red kerb, no-parking sign) | A single-track bridge over the street: it fades over him as he passes under, its shadow on the road. Pigeons. |
+| 157-246 | A THE DARK STRETCH | the vacant lot behind its chain fence (cols 160-226), a gap cut in it | blind walls, pipes, bin bags; alleys at 190 and 232 | north, few (cols 158-200, 234-240) | One lamp in two, flickering. The gas works in the parking row (cols 203-231): trench, spoil, steel plate, compressor, barricades with flashers, cones along the lane's edge, an arrow board and a sign for who comes down their lane. The lane itself stays whole. Second and third pursuers from behind (cols 165, 250). |
+| 247-271 | C THE BUS STOP | 3 m sidewalk: the shelter (lit advertising case), its sign, a bench, red kerb, BUS STOP on their lane | shops | none | Double centre line. |
+| 272-312 | B | 3 m sidewalk, trees, benches | alley at 272; parking row cols 278-309 | south | The lorry is told at col 303. |
+| 313-356 | A (nobody parked) | blind wall; THE YARD's gate (cols 337-342): dropped kerb, a hatched box, yellow kerbs, no-parking signs | 3 m sidewalk, then THE TERRACE (cols 325-354): planters and bollards along its kerb, tables, parasols, the cafe set back | none | Event 2: KEEP CLEAR on both lanes, the lorry backs out across them; the terrace is the way round. |
+| 357-388 | A THE LIT CORNER | shops | the diner: glass, booths, phone booth, news boxes, benches | north, cols 358-382 | The last car is set off (col 368). |
+| 389-403 | J THE CROSS STREET | corners rounded, hydrant, mailbox | news boxes | none | Lights on all four corners (ours red, the cross street's green: the last pursuer comes out of it on HIS green). |
+| 404-449 | C TO THE FREEWAY | 3 m sidewalk, palms in grates | shops | none | Lane arrows, the freeway's sign over the road (FREEWAY, TOLL 1 MILE); the level ends at col 428. |
+
+Street furniture follows a street's rules (the builder asserts them): lamps every 24 m on alternate sides; meters
+only at a bay; hydrants and red kerbs at corners; loose things (bins, boards, boxes) against the walls, never by the
+kerb; kerbs along every sidewalk edge, dropped at alleys, gates and crossings; drains in the gutters. A car steered
+at a side street is held on the line of the fronts (`chase.across`), and where the fronts step in toward the road
+(a block set forward, the end of the terrace) the car is brought back inside their line before the corner
+(CHASE.frontAhead): neither is a death nobody told.
 
 Segment boards: [1 back road](level2/s1_backroad.webp), [2 toll](level2/s2_toll.webp),
 [3 tanker](level2/s5_tanker.webp), [3b jump](level2/s3_jump.webp), [4 drain](level2/s4_canal.webp),
@@ -354,3 +386,26 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   now 3.0 s (1.8 s sliding along the lorry toward the terrace, then pinned by the van: the crash); seed 11 clean;
   seed 23 one stall of 2.2 s on a parked car at col 66 (out by itself). Known: freed onto the terrace and not steered
   back up, the car runs into the south fronts where the terrace ends (col 356).
+- 2026-11-19: THE STREET REBUILT (the user: "rework the whole road, the assets, add traffic lights, a real road;
+  there are bins in the middle of the road; realistic and varied, every stretch built precisely, assets made to
+  measure; cars parked sometimes right, sometimes left, sometimes not"). THE BINS IN THE ROAD were the road works:
+  the cones, barriers, boxes, carts, post boxes and coloured awnings added for the chase had never been listed in
+  engine/Assets.js, so every one of them was drawn with the fallback sprite, a bin (tests/road.test.mjs now checks
+  every prop and floor sprite of the level is listed). The works across the lanes are gone: nothing stands in a lane
+  (builder `check_lanes`, the test, and a check in the headless browser after 3 s of play: nothing). The street is
+  twelve sections (the table under the route), three cross-sections (parking north / on our side / none), two
+  junctions under traffic lights (systems/Signals.js, data/signals.js: green 7 s, amber 2, red 9, the cross
+  street's half a cycle later; ours goes amber as he sets off and he runs it red), a railway bridge that fades over
+  him, signed works in a parking row, a bus stop, the freeway's sign. NEW ASSETS (tools/generate_assets.py "the road
+  of level 2A", FINE density): kerbs (four sides, long, dropped, red, yellow, rounded corners 1.5 m and 0.4 m,
+  ramps), paint (zebra bars, stop line, double centre line, parking tees, arrows, BUS / STOP / SLOW / KEEP / CLEAR /
+  ONLY, hatched boxes), covers (drain, square cover, valve cap), patches and sealed cracks, tree grate, trench,
+  spoil, steel plate, the bridge's shadow; props: traffic_light (+ emissive map cut per colour), bus_shelter, four
+  signs on posts, bollard, street_tree, arrow_board, compressor, barricade, sign_works, viaduct, gantry_sign, the
+  roof piece rail_bed. DRIVE (the road's needs only): the fronts' limit looks 8 tiles ahead of the nose and brings
+  the car back inside a line that steps in (it was a nose-on death at a block's corner; the end of the terrace was a
+  known one), a street across is closed to the wheel (`chase.across`), and a prop already falling apart (a parasol
+  torn down over him, its pole still up) no longer stops the car dead on the terrace. Tests that named columns of the
+  old street moved to the new one's (tests/kerb.test.mjs). Lab station 30 SIGNALS. QA chase 3 min: seed 7 clean;
+  seeds 11 and 23 one stall of 2.3 s each, the same one (steered into the tail of a car parked on our side at col
+  76, then out by itself: the known kind, now on our side too); deaths and slow steps as on main.

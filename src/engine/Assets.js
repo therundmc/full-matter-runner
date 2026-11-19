@@ -41,6 +41,21 @@ const BAR_WALL = ['frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'd
 const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'shot', 'lowball', 'beer_bottle', 'liquor', 'ashtray', 'cigar',
   'coaster', 'napkin', 'napkin_crumpled', 'peanuts', 'till', 'cards', 'chips', 'bands', 'bill', 'rubber_bands', 'baggies', 'glass_broken',
   'flute', 'flute_down', 'bucket', 'single', 'singles', 'bill_crumpled', 'bill_folded', 'feather', 'feather_curl', 'cork', 'garter', 'sock', 'card', 'chip'];
+// level 2A's street (tools/generate_assets.py, "the road of level 2A"): what stands on its sidewalks, in its works and
+// over it; what is painted on its ground (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps
+const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
+  'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
+  'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
+  'gantry_sign'];
+const ROAD_PAINT = [
+  'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
+  'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
+  'kerb_n_4', 'kerb_n_low', 'kerb_n_red', 'kerb_n_yellow', 'kerb_ramp_n', 'kerb_ramp_s', 'kerb_s', 'kerb_s_4',
+  'kerb_s_low', 'kerb_s_red', 'kerb_s_yellow', 'kerb_w', 'kerb_w_low', 'manhole_sq', 'park_tee', 'road_arrow',
+  'road_arrow_turn', 'road_bus', 'road_clear', 'road_crack_a', 'road_crack_b', 'road_keep', 'road_only', 'road_patch_a',
+  'road_patch_b', 'road_patch_c', 'road_slow', 'road_stop', 'spoil', 'steel_plate', 'stop_line', 'tree_grate', 'trench',
+  'valve_cap', 'viaduct_shadow', 'zebra_a', 'zebra_b'];
+const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...FLOOR_TILES.flatMap((t) => [1, 2, 3, 4, 5].map((k) => `tiles/${t}_v${k}`)),
@@ -57,7 +72,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -68,6 +83,7 @@ export const OPTIONAL_LIST = [
   // level 2A's back road: the lorry, the cafe's terrace, two more signs
   ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
+  ...[...ROAD_PROPS, ...ROAD_PAINT, ...ROAD_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare',
     // what the player's melee weapons break into (data/weapons.js parts)
@@ -93,7 +109,7 @@ export const OPTIONAL_LIST = [
     'options_bg', 'options_things']
     .map((n) => `title/${n}`),
   ...['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'bulkhead', 'skylight', 'skylight_tv', 'skylight_dark',
-    'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow'].map((n) => `roof/${n}`),
+    'bulkhead_glow', 'skylight_glow', 'skylight_tv_glow', 'rail_bed'].map((n) => `roof/${n}`),
 ];
 
 // Sprites painted finer than the world (1 sprite px = 1 world px everywhere else): world px per sprite px, by name.
@@ -118,8 +134,9 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'dartboard', 'pay_phone', 'coat_hooks', 'towel_dispenser',
   'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag',
   'lorry', 'awning', 'parasol', 'planter']);
+for (const n of [...ROAD_PROPS, ...ROAD_PAINT]) FINE_PROPS.add(n); // level 2A's street, all of it
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
-const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna']);
+const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'rail_bed']);
 // the floor tiles too (64 x 64 pixels a tile), the bar's clutter and the street fauna; the wall tops stay at the world's
 // the door skins (generate_assets.py DOOR_SKINS) too; the old plain leaves (door, door_locked, stall_door) stay at the world's
 const DOOR_SKINS = /^structure\/door_(fire|bar|bar_broken|swing|staff|office|gaming|flat|wired|wired_broken|shop|shop_broken)$/;
