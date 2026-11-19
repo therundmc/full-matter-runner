@@ -148,14 +148,14 @@ export const BLAST = {
 };
 // ---- the jump (systems/Tutorial.js leap): from the moment he goes through the window, real s. In the air time all
 // but stops (`air.slow`; `cap`: no longer than that if he never lands outside) and the camera cuts in on him
-// (SHOTS leapAir; the view may leave the world by `loose` px: he lands at its edge and stays in the middle of the
-// picture, the night beyond); once he is out, `blast.at` game s later the window goes up behind him: a ball of fire
+// (SHOTS leapAir; the view stays inside the map, never the void beyond it: he lands at its edge, off the middle of
+// the picture, the window and its fire filling the rest; no HUD, no hint, no exit mark from then on); once he is out, `blast.at` game s later the window goes up behind him: a ball of fire
 // of `radius` px, `blast.inside` px inside the frame (it fills the window and he is seen against it, never under
 // it), its panes blown out, `rain` [shards, embers, flames] thrown after him, the picture shaken; held
 // `blast.hold` s at `blast.slow` with the view drawn back toward it, then his roll (`roll.hold` s at `roll.slow`),
 // then `out` s at full speed with the camera snapped back, before the black (Game's FALL)
 export const LEAP = {
-  air: { slow: 0.3, cap: 1.6 }, loose: 100,
+  air: { slow: 0.3, cap: 1.6 },
   blast: { at: 0.05, radius: 92, inside: 26, shake: 1.4, slow: 0.16, hold: 1.1, rain: [34, 30, 14] },
   roll: { slow: 0.55, hold: 0.8 },
   out: 0.45,

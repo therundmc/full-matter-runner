@@ -36,7 +36,7 @@
 //                     (FORCE in data/staging.js): killed by his hand in any way, the man's gun always ends up in it
 //                     (Character.yields); spare: N magazines that come with the stage's gun (`take`), once
 //                     (spareOn: 'shield': handed as he takes the stage's man as a shield, not as he takes the gun)
-//              hints: [names of HINTS, the first that applies wins a place: two at most are shown, one a target]
+//              hints: [names of HINTS, one is shown at a time: the one whose action is due, else the first that applies]
 //              take: TYPE, marks: { vault: [col, row], dive: [col, row] }   what some hints are about
 //              leaves: N   the gun a dead man of the stage drops has N rounds left in it, no more (a retry further
 //                     on finds that gun, `take`, by where it starts: `owed`) }]
@@ -53,7 +53,6 @@ import { TILE, PALETTE, PLAYER } from '../Config.js';
 import { LESSONS, BEAT, RELOAD, OPENING, BLAST, LEAP, FRAME, FORCE, STAIRS, FRONT, SLACK, STAND } from '../data/staging.js';
 import { ignite } from './Gas.js';
 
-const SHOWN = 2;       // hints on screen at once
 const MOVED = 70;      // px walked before MOVE goes away
 const UP = -24;        // px a hint floats over what it points at ...
 const MAN = -37;       // ... over a man: clear of what he says (the barks float 16 px over him)
@@ -409,7 +408,7 @@ export default class Tutorial {
   // standing in the last stage: { zone, window } in px [x0, y0, x1, y1], or null
   exit() {
     const E = this.def.exit, s = this.stages[this.stage];
-    if (!E || this.over || this.stage !== this.stages.length - 1 || this.standing(s).length) return null;
+    if (!E || this.over || this.leap || this.stage !== this.stages.length - 1 || this.standing(s).length) return null;
     const px = ([c0, r0, c1, r1]) => [c0 * TILE, r0 * TILE, (c1 + 1) * TILE, (r1 + 1) * TILE];
     return { zone: px(E.zone), window: px(E.window) };
   }
@@ -419,8 +418,8 @@ export default class Tutorial {
   // scale wanted, never 0: 1, or eased down to the lesson's `slow` and back (its own ramp: Game puts it on as it is).
   pace(dt, did) {
     if (this.leap) return this.leaping(dt);
-    const shown = this.hints(), p = this.world.player, s = this.stages[this.stage];
-    const due = (h) => !!DUE[h.id]?.(this, s, p, h, { ...BEAT, ...LESSONS[h.id] });
+    const shown = this.hints(), p = this.world.player;
+    const due = (h) => this.due(h);
     let L = this.lesson, scale = 1;
     if (!L) {
       const h = shown.find((q) => LESSONS[q.id] && !this.taught.has(q.id) && due(q));
@@ -678,12 +677,25 @@ export default class Tutorial {
     if (!s || !p?.alive || this.over || this.leap || this.scene || p.execution || p.takedown) return out;
     for (const name of s.hints || []) {
       const h = HINTS[name]?.(this, s, p);
-      // one thing said about a man (or a thing) at a time
-      if (h && !out.some((o) => o.ax === h.x && o.ay === h.y)) out.push({ ...h, y: h.y + (h.up ?? UP), ax: h.x, ay: h.y, id: h.id ?? name });
-      if (out.length >= SHOWN) break;
+      if (h) out.push({ ...h, y: h.y + (h.up ?? UP), ax: h.x, ay: h.y, id: h.id ?? name });
     }
-    const L = this.lesson;
-    if (L) for (const h of out) if (h.id === L.id) h.focus = L.out ? smooth(L.k) : pop(L.k);
-    return out;
+    // one at a time (the user's call), never two: the lesson's own while it lasts, else the one whose action is due
+    // now (the gunman's shot coming: SLIDE, whatever else could be said; a lesson still to be given before one
+    // already learnt), else the stage's first; the others wait
+    const L = this.lesson, due = out.filter((h) => this.due(h));
+    const one = (L && out.find((h) => h.id === L.id)) || due.find((h) => LESSONS[h.id] && !this.taught.has(h.id)) || due[0] || out[0];
+    if (!one) return [];
+    if (L && one.id === L.id) one.focus = L.out ? smooth(L.k) : pop(L.k);
+    return [one];
+  }
+
+  // is the action of hint h due now (DUE)?
+  due(h) { return !!DUE[h.id]?.(this, this.stages[this.stage], this.world.player, h, { ...BEAT, ...LESSONS[h.id] }); }
+
+  // what the HUD keeps to itself while the lesson says something else (ui/HUD.js): 'throw', its EMPTY - THROW IT
+  // line, while a man is kept to be taken as a shield (the empty gun is not for throwing at him)
+  mutes(what) {
+    const s = this.stages[this.stage];
+    return what === 'throw' && !!s && this.present(s).some((e) => e.shieldOnly);
   }
 }

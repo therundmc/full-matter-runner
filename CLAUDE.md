@@ -237,7 +237,7 @@
   (`EXIT`, level `exit`). The jump out of the window is staged (`LEAP` in data/staging.js, Tutorial `leaping` /
   `windowBlast`, SHOTS `leap*`): time all but stopped and a whole-zoom punch-in while he is in the air, the window
   going up behind him (glass and fire thrown after him), his roll held, then snapped back before the black; the view
-  may leave the map there (`Camera.loose`); no street lamp in the alley he lands in.
+  stays inside the map (he lands off-centre, never the void), no HUD, hint or exit mark during it; no street lamp in the alley he lands in.
   The flat's dressing (2026-11-19: FLAT_PROPS / FLAT_PAINT / FLAT_CLUTTER in generate_assets.py, the wear kinds `damp`,
   `flakes`, `grease`, `leak`, `threadbare`, lab station 34): what lies on a floor is PAINT (no body), a piece with a
   body goes in a corner, never in the lane, a doorway, a spawn or the robot's way (tests/flat.test.mjs holds them);

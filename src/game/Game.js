@@ -957,8 +957,6 @@ export default class Game {
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
     const D = this.direction, shot = this.stagedShot();
     D.set(shot?.name, shot?.at);
-    // (the jump out of the tutorial's window lands him at the world's edge: the view goes out into the night with him)
-    this.camera.loose = w.tutorial?.leap ? LEAP.loose : 0;
     D.update(dt, this.camera.zoom, this.camera.pixel); // (at the wheel a shot's zoom is a cut: Direction.update)
     // (a tutorial lesson's slow motion pushes in on him a little: systems/Tutorial.js push)
     this.camera.scale = D.zoom * (1 + (w.tutorial?.push() ?? 0));
@@ -1101,7 +1099,7 @@ export default class Game {
       ctx.globalAlpha = 1;
     }
     // (not under the pause: its card says the run so far)
-    if (this.state === 'play' || this.state === 'dead') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
+    if ((this.state === 'play' || this.state === 'dead') && !this.world?.tutorial?.leap) this.safeDraw(ctx, () => drawHUD(ctx, this, t));
     if (this.sandbox.on && this.state === 'play') this.safeDraw(ctx, () => drawSandbox(ctx, H, this.sandbox, t));
     if (this.world.debugPhysics) {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;

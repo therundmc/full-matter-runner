@@ -13,6 +13,9 @@ import { clamp } from '../../engine/math.js';
 // away, Drive `hud`); every alpha set below is a share of it
 let FADE = 1;
 
+// the context prompts ([action, text]) a tutorial hint on screen does not already give the key of
+export const unsaid = (prompts, hints) => prompts.filter(([key]) => !hints.some((h) => h.key === key));
+
 export function drawHUD(ctx, game, t) {
   const d = game.world.drive;
   FADE = d?.on ? d.hud : 1;
@@ -47,7 +50,8 @@ function paintHUD(ctx, game, t) {
     const noReserve = p.reserveCount() <= 0;
     let label = ammo, col = PALETTE.white;
     if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
-    else if (dry && noReserve) { label = 'EMPTY - THROW IT!'; col = PALETTE.pink; }
+    // (not while a lesson keeps a man to be taken as a shield: the count and no more, systems/Tutorial.js mutes)
+    else if (dry && noReserve) { if (!w.tutorial?.mutes('throw')) { label = 'EMPTY - THROW IT!'; col = PALETTE.pink; } }
     else if (dry) { label = `RELOAD [${keyLabel('reload', game.input.device)}]`; col = PALETTE.yellow; }
     const blink = dry && Math.floor(t * 6) % 2 === 0 ? 0.45 : 1;
     text(ctx, label, pad, pad + 50 * s, 20 * s, col, { align: 'left', alpha: blink });
@@ -103,7 +107,9 @@ function paintHUD(ctx, game, t) {
     else if (p.nearUse) hint = ['use', w.uses.label(p.nearUse)];
     else if (p.nearItem) hint = ['use', `${p.armed ? 'SWAP FOR' : 'PICK UP'} ${p.nearItem.def.name}`];
   }
-  if (hint) drawPrompts(ctx, more ? [hint, more] : [hint], W / 2, H - 50 * s, 24 * s, game.input.device, { alpha: 0.8 + Math.sin(t * 8) * 0.2, font: 0.66 });
+  // (never what a lesson's hint already says on the thing itself: the same key twice on screen, systems/Tutorial.js)
+  const prompts = unsaid(more ? [hint, more] : hint ? [hint] : [], w.tutorial?.hints() ?? []);
+  if (prompts.length) drawPrompts(ctx, prompts, W / 2, H - 50 * s, 24 * s, game.input.device, { alpha: 0.8 + Math.sin(t * 8) * 0.2, font: 0.66 });
 
   // level cleared
   // levels without an exit (the lab) have nothing to point at

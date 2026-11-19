@@ -8,6 +8,7 @@ const { default: Tutorial, HINTS } = await load('game/systems/Tutorial.js');
 const { default: Direction } = await load('game/systems/Direction.js');
 const { default: level } = await load('game/data/levels/tutorial.js');
 const { ENEMIES } = await load('game/world/Level.js');
+const { unsaid } = await load('game/ui/HUD.js');
 const { LESSONS, BEAT, RELOAD, OPENING, BLAST, LEAP, SHOTS, FRAME, FORCE, STAIRS } = await load('game/data/staging.js');
 const { POSTS } = await load('game/data/posts.js');
 const { MATCH_FALLS } = await load('game/ai/Pastimes.js');
@@ -591,12 +592,12 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   s.world.items.push({ type: 'bat', x: px(12.5), y: px(10.7), dead: false });
   assert.deepEqual(names(), ['TAKE IT'], 'the bat; nothing about the man until he is behind him');
   s.player.nearTakedown = s.guardAt(11, 11);
-  assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['attack BREAK HIS NECK', 'use TAKE IT'], 'one thing about the man, one about the bat');
+  assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['attack BREAK HIS NECK'], 'behind the man: his neck, and the bat waits (never two at once)');
   s.player.nearTakedown = null;
   s.guardAt(11, 11).aware = 2;
-  assert.deepEqual(names(), ['PUNCH HIM', 'TAKE IT'], 'he turned round: a punch');
+  assert.deepEqual(names(), ['PUNCH HIM'], 'he turned round: a punch');
   s.guardAt(11, 11).knocked = 2;
-  assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['attack FINISH HIM', 'use TAKE IT'], 'a man on the floor comes first: the left click');
+  assert.deepEqual(s.t.hints().map((h) => `${h.key} ${h.text}`), ['attack FINISH HIM'], 'a man on the floor comes first: the left click');
   Object.assign(s.player, { armed: true, weapon: { type: 'bat' }, def: { kind: 'melee' } });
   s.guardAt(11, 11).alive = false;
   assert.deepEqual(names(), [], 'the man behind the door is not pointed at before he is called');
@@ -611,7 +612,7 @@ test('tutorial: the hints say one thing at a time, next to what it is about', ()
   assert.deepEqual(names(), [], 'the corridor: nothing until its man is on him');
   s.go(21.5, 14.5);
   s.guardAt(17, 14).aware = 2;
-  assert.deepEqual(names(), ['SLIDE', 'STRIKE HIM'], 'the gunman: under his fire, and the bat for him');
+  assert.deepEqual(names(), ['SLIDE'], 'the gunman: under his fire; the bat for him waits (never two at once, the one due wins)');
   s.go(11.5, 14.5);
   Object.assign(s.player, { weapon: { type: 'pistol', mag: 2 }, def: { kind: 'gun' } });
   const hostage = s.guardAt(9, 14);
@@ -801,9 +802,15 @@ test('tutorial: the bat holds until the corridor\'s gunman and breaks on him; hi
   const hostage = s.guardAt(9, 14);
   assert.ok(hostage.shieldOnly && hostage.invulnerable);
   assert.ok(!s.t.hints().some((h) => h.text === 'THROW IT'), 'nor is the empty gun to be thrown at him');
+  assert.ok(s.t.mutes('throw'), 'and the HUD keeps its EMPTY - THROW IT to itself (ui/HUD.js)');
+  // the prompt at the foot of the screen never repeats the key the hint gives on the man
+  assert.deepEqual(unsaid([['use', 'SHIELD']], s.t.hints()), []);
+  assert.deepEqual(unsaid([['attack', 'PUNCH'], ['use', 'SHIELD']], s.t.hints()), [['attack', 'PUNCH']]);
+  assert.deepEqual(unsaid([['use', 'PICK UP 1911']], []), [['use', 'PICK UP 1911']], 'no hint: the prompt is said');
   s.world.events.emit('shield', { holder: s.player, target: hostage });
   assert.equal(s.player.ammo, 7, 'the magazine off his belt');
   assert.ok(!hostage.shieldOnly && !hostage.invulnerable, 'held, he is a man like any other: he takes the rounds, he can be killed');
+  assert.ok(!s.t.mutes('throw'));
   s.world.events.emit('shield', { holder: s.player, target: hostage });
   assert.equal(s.player.ammo, 7, 'once');
   assert.deepEqual(s.t.hints().map((h) => h.text), ['RELOAD']);
@@ -860,7 +867,8 @@ test('tutorial: past the window it is over, once; its panes are landed from in a
   assert.deepEqual([s.t.shot().name, s.t.shot().at], ['leapBlast', { x: px(3.5), y: px(15) }]);
   s.wait(LEAP.blast.at + 0.06);
   assert.deepEqual(s.log.blasts.at(-1).map(Math.round), [px(3.5) + LEAP.blast.inside, px(15), LEAP.blast.radius], 'a ball of fire in the window\'s frame, just inside it: he is seen against it');
-  assert.ok(LEAP.loose >= 2 * 32 && SHOTS.leapRoll.zoom === SHOTS.leapAir.zoom, 'the view goes out into the night with him, held as close on his roll');
+  assert.ok(SHOTS.leapRoll.zoom === SHOTS.leapAir.zoom, 'held as close on his roll');
+  assert.equal(s.t.exit(), null, 'no mark on the floor any more: it is a shot');
   assert.equal(s.t.pace(LEAP.blast.hold, () => false), LEAP.roll.slow);
   assert.equal(s.t.shot().name, 'leapRoll');
   assert.equal(s.t.pace(LEAP.roll.hold, () => false), 1);
