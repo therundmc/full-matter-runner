@@ -2068,7 +2068,8 @@
   // then is in the finding (the sig: what holds it, the first solid contact)
   const CHASE_STALL = { under: 0.25, after: 2 };
   function stalled(w, d) {
-    const live = !d.dead && !w.exited && game.state === 'play' && w.player.alive;
+    // (2A's opening: the car stands on purpose while he finishes his cigarette, Drive `standing`)
+    const live = !d.dead && !d.standing && !w.exited && game.state === 'play' && w.player.alive;
     if (!live || d.v >= CHASE_STALL.under * d.cruise) { B.stall = null; return; }
     const b = d.van.body;
     if (!B.stall) { B.stall = { t: w.time, told: false, then: touchingOf(w, b) }; return; }

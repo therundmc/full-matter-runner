@@ -140,6 +140,14 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    traffic light on its mast arm over the lanes (systems/Signals.js: green, amber, red in turn,
                    data/signals.js), a works barricade whose two lamps flash, a no-parking sign and two bollards
                    (bolted: a car tears them off, as it does the light's pole)
+    31 CHASE CAM   the chase's own slow motions and cuts (systems/ChaseCam.js, CHASE.cinema), on the street by station
+                   19's pursuers: at the wheel of the convertible (or the van), stop one of the three black cars for
+                   good (two shoves, a burst at its windscreen, a front tyre): the FIRST is the strong beat (slow
+                   motion that drops and snaps back, a cut in toward the wreck, the engine going in a ball of fire as
+                   it skids off burning, smoke off its tyres, sparks and pieces lost); the next one within seven
+                   seconds a light one; two in a breath, one longer beat. Then drive on east to station 21's lorry:
+                   on a collision course and close, the world slows until the car is clear of it (the wheel answers
+                   in real time and takes the car further). On foot nothing of it plays
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -499,6 +507,8 @@ lv.prop('trash_can', 9.0, 23.0)
 lv.prop('pursuer', 12.6, 23.5, 0, pursuer=True)                 # ABREAST in the other lane: the shove
 lv.prop('pursuer', 12.6 + 165 / 32, 23.5, 0, pursuer=True)      # a length AHEAD in that lane
 lv.prop('pursuer', 12.6 + 220 / 32, 21.0, 0, pursuer=True)      # AHEAD in its own lane: over the windscreen
+lv.area('31 chase cam: the beats at the wheel, on station 19\'s pursuers and station 21\'s lorry')
+lv.paint('label_chasecam', 16.4, 18.6)
 
 lv.area('21 lorry: a box lorry that backs out across the street when a car comes')
 lv.fill(63, 18, 72, 19, 's')               # the street carried on east past the facades, the lorry's yard north of it

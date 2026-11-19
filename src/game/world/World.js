@@ -42,6 +42,7 @@ import Danger from '../systems/Danger.js';
 import { combatFx } from '../fx/CombatFx.js';
 import { listenMoments } from '../fx/Impact.js';
 import KillCam from '../systems/KillCam.js';
+import ChaseCam from '../systems/ChaseCam.js';
 import KillFeed from '../ui/KillFeed.js';
 import Ambience from '../systems/Ambience.js';
 import Tutorial from '../systems/Tutorial.js';
@@ -199,6 +200,8 @@ export default class World {
     this.pursuit = level.chase || this.props.some((p) => p.pursuer) ? new Pursuit(this, level.chase) : null;
     // the lorry that backs out across the street (the chase's event 2, the lab's)
     this.lorries = level.chase || this.props.some((p) => p.backs) ? new Lorries(this, level.chase) : null;
+    // the chase's own slow motions and cuts (a pursuer stopped, the lorry across the road): where one can be driven
+    this.chaseCam = this.pursuit || this.lorries ? new ChaseCam(this) : null;
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
@@ -635,6 +638,7 @@ export default class World {
     else this.player.baseUpdate(dt);
     this.pursuit?.step(dt);
     this.lorries?.step(dt);
+    this.chaseCam?.step();
     this.signals.step();
     this.director.update(dt);
     for (const e of this.enemies) e.update(dt);

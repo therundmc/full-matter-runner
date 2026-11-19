@@ -332,7 +332,7 @@ export default class Game {
     this.direction.set(shot?.name, shot?.at, true, this.camera.zoom);
     this.camera.scale = this.direction.zoom;
     const z0 = this.camera.zoom * this.camera.scale, fr = dr && dr.frame(this.camera.w / z0, z0);
-    const at = dr ? this.direction.aim(fr.x, fr.y) : p;
+    const at = dr ? dr.lock(this.direction.aim(fr.x, fr.y), z0) : p;
     this.camera.snap(at.x, at.y);
     this.clock.reset();
     this.interp.still();
@@ -695,6 +695,14 @@ export default class Game {
     target = Math.min(target, taught.scale);
     this.timeScale = taught.beat ? target : lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
     this.timeScale = this.world.killCam.clock(this.timeScale, target); // a beat's ramp: down at once, snapped back
+    // at the wheel: the chase's beats (systems/ChaseCam.js), their own ramp as it is; and the opening on his
+    // cigarette skipped by holding SPACE / pad A, as a comic page is (systems/LastDrag.js)
+    const cc = this.world.chaseCam;
+    cc?.update(dt);
+    if (cc?.active && this.state === 'play') this.timeScale = Math.min(target, cc.scale);
+    const drag = this.state === 'play' ? this.world.drive?.drag : null;
+    if (drag?.on) { if (this.holdSkip(dt)) drag.skip(); } else if (this.skipping) this.skip.reset();
+    this.skipping = !!drag?.on;
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;
     this.tension.update(dt);
@@ -892,7 +900,7 @@ export default class Game {
   // (systems/ThrowBeat.js); null: the usual view
   stagedShot() {
     const w = this.world;
-    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot() ?? w.drive?.shot() ?? w.throwBeat.shot();
+    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot() ?? w.drive?.shot() ?? w.chaseCam?.shot() ?? w.throwBeat.shot();
   }
 
   // the kill cam's clock (systems/KillCam.js): never in a staged shot; the usual view, without its own zoom
@@ -936,7 +944,10 @@ export default class Game {
     const z = this.camera.zoom * this.camera.scale, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
     const fr = dr && dr.frame(this.camera.w / z, z);
     const seen = dr ? D.aim(fr.x, fr.y) : D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
-    const drawn = dr ? seen : kc.aim(seen.x, seen.y, frame);
+    // (a shot of the chase that only looks `ahead`: never back along the road, he must see where he goes)
+    if (dr && D.shot?.ahead) seen.x = Math.max(seen.x, fr.x);
+    // (at the wheel the view is locked a whole number of picture px from the car as it is drawn: Drive.lock)
+    const drawn = dr ? dr.lock(seen, z) : kc.aim(seen.x, seen.y, frame);
     let tx = drawn.x, ty = drawn.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {
@@ -1089,6 +1100,7 @@ export default class Game {
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
       if (this.state === 'continued') drawContinued(ctx, W, H, finishView(this.stateT), this.world.level.chase.next, t);
       if (this.state === 'cinematic' || this.state === 'ending' || (this.state === 'fall' && this.stateT >= FALLEN)) drawHold(ctx, W, H, this.skip, this.input.device);
+      if (this.state === 'play' && this.world?.drive?.drag?.on) drawHold(ctx, W, H, this.skip, this.input.device); // 2A's opening
     });
   }
 
@@ -1111,6 +1123,8 @@ export default class Game {
     const dr = inWorld && w.drive?.on && !this.overview ? w.drive : null, R = V.ride;
     V.drive = dr ? R : null;
     if (dr) { R.k = dr.v / CHASE.max; R.angle = Math.atan2(dr.u, Math.max(dr.v, 1)) * 0.5; R.x = dr.van.x; R.y = dr.van.y; }
+    // (a close-up at the wheel, the grab, the cigarette: the car fills the picture, its ends would be in the speed's band)
+    if (dr) R.close = this.camera.z > this.camera.zoom + 1;
     V.rot = this.camera.rot;
     // what heats the air: burning wrecks, pierced steam pipes (blasts are the lens' own business)
     const heat = V.heat, hot = V.hot;

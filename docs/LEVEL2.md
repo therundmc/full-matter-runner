@@ -71,8 +71,11 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   on the road.
 - **Who is who.** The pursuers are the only black cars, with one pink stripe; civilians are pale or coloured.
   Enemy tracers bone, telegraph red, his own muzzle flash orange.
-- **Slow motion** (from proposal C) only at three moments: the two jumps and the level crossing (time x0.25, weak
-  points marked: a tyre, a tank, a driver).
+- **Slow motion** (from proposal C) at three moments of the route: the two jumps and the level crossing (time
+  x0.25, weak points marked: a tyre, a tank, a driver). And, the user's call (2026-11-19, "un cote film d'action"),
+  the chase's own beats (systems/ChaseCam.js, CHASE.cinema): a pursuer stopped for good (strong the first time and
+  once its 7 s cooldown is over, a tick otherwise, never strong twice in a row) and the lorry across his road (on a
+  collision course, 0.8 s from it: x0.3 until he is clear of it, the wheel handed more). Nothing else slows the chase.
 - **Camera** (reworked 2026-11-19: the car was STILL blurred). At the wheel the picture is drawn 1:1: the scene's
   canvas is the window and the zoom the whole one nearest to 360 world px of view (3 at 1080 and at 900, 4 at 1440,
   6 at 2160: 300 to 430 px of view; level `chase.view`; engine/Camera.js fitView), the lens scales nothing (no
@@ -436,3 +439,36 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   into the body. Cars ending by a tyre before the body's wreck, body-aim script, 100 runs, the car 0 / 60 / 120 /
   165 px ahead of the muzzle: 0 / 0 / 100 / 100 % before, 0 / 0 / 0 / 0 % now. Limping, a car hangs on alongside
   him (slot `abreast`, at no more than 0.6 px/step over his speed) for him to finish it. QA 3 min seed 11: PASS.
+- 2026-11-19: CINEMA (branch feature/chase-cinema). THE START'S BLUR, its real cause: the grab's shot looked at
+  the runner's own body, which is out of the world's bodies while he rides and so is not drawn between two steps
+  (engine/Interp.js) as his car is: the view, pulled 85 % onto it, ran up to a step (8.9 px) ahead of the drawn car
+  by another share every frame: at 1080 the car jumped between 808 and 864 px of the picture from one frame to the
+  next on a 144 Hz screen (a slow beat on a 60 Hz one), and read as a double, blurred car. Drive.shot now looks at
+  the seat of the car AS DRAWN and Game locks the view a whole number of picture px from it (Drive.lock): 865 to 866.
+  Also: the close-up rests on an EVEN whole zoom (SHOTS `even`: 6 at 720 where it was 5 and the sprites painted
+  twice as fine got 2.5 px a texel; 8 at 1080, 10 at 1440, 16 at 2160) and the lens' speed band is off in a
+  close-up (it is measured for the drive's view: the car's ends and the kerbs were in it). THE OPENING, first time
+  only (level `chase.intro: 'drag'`, systems/LastDrag.js, CHASE.intro; a retry starts rolling as before, SPACE / pad
+  A held skips it): the car stands in its lane, engine and lamps off; the view comes from the hood onto him; a last
+  long drag (0.95 to 2.0 s: the ember's light swells in the cab), the smoke let out (2.3 to 3.3), the butt flicked
+  out over the door (3.55): it turns, lands 60 px off, bounces twice in sparks and lies there, its end glowing 9 s
+  with a thread of smoke, painted on the road; the camera goes after it, then one cut back to him at 4.9 s: the
+  lamps, the engine, the rear tyres spinning (Drive.launch), and the grab as it pulls away. Sprites items/cigarette
+  and items/cig_butt (FINE); placeholders cigDrag, cigFlick, buttHit, engineRoar. THE LORRY'S SLOW MOTION and THE CAR
+  KILL'S BEAT (systems/ChaseCam.js, CHASE.cinema; the rule above): kill strong = x0.25 for 0.55 s real, down in
+  0.05 and back in 0.12, a 0.05 s hit-stop, a cut in to the next whole zoom (SHOTS chaseKill: 4 at 1080) toward the
+  wreck, never back along the road; light = x0.55 for 0.16 s, no cut; a second car within 1.6 s makes the beat
+  under way 0.3 s longer and deeper. The wreck's exit now looks it (CHASE.pursuit.out.fx, Pursuit.exitFx): the
+  engine goes in a ball of fire and a flash as it is stopped, it burns as it slides (no fuse: it still blows up
+  later only if it had caught for real), smoke off its four tyres, their rubber on the road, sparks from under it,
+  pieces lost every 0.16 to 0.34 s, one burst of sparks, glass and pieces on what stops it. The lorry: x0.3 from 0.8 s
+  (game) before its flank while his car is in its way, the view shifted 30 % toward the gap (SHOTS lorryGap), the
+  wheel at its real-time rate and 1.45 x the sideways speed; over once clear of it across (script: steering at the
+  start clears it in 0.8 s real), past it, dead, or after 3.2 s; once a lorry. Two more small beats: a pursuer's
+  side swipe landing on him ('pursuerRam': x0.5 for 0.12 s, a kick, sparks) and the lorry's tail cleared by under
+  14 px (sparks, a jolt). What the user calls the bus is this lorry (there is no bus in the game: a pale box 8.6 m
+  long seen from above). PIGEONS: 34 in six flocks -> 10 in three (4 in his lane at col 34, 3 under the bridge, 3
+  back in his lane past the lorry). Lab station 31 CHASE CAM (station 19's pursuers, station 21's lorry). Tests:
+  tests/chasecinema.test.mjs. A bug the QA robot caught on the way: a car standing five seconds is frozen by the
+  physics and took no speed afterwards (Drive.launch wakes it; the robot's stall check knows `standing`). QA 3 min
+  seed 1: PASS, 9 sessions, no stall, 15 slow steps (main, same seed: 11 sessions, 22 slow steps).

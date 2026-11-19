@@ -22,6 +22,10 @@
 //   the gun lying on the passenger seat (Vehicle `gun`; the level's `chase.arms.seat`, the lab's car that has one): taken
 //   in a short beat as he sets off (grab: the car rolls on by itself, the controls and the gun his only once it is
 //   done; CharacterAnim grabPose draws it, `shot` names the camera's); a retry starts him with it in hand (skipGrab)
+//   how the chase opens, the first time (the level's `chase.intro: 'drag'`, systems/LastDrag.js): the car stands,
+//   lamps off, while he finishes his cigarette and flicks it out (stand); then the engine (launch: it pulls away by
+//   itself, its rear tyres spinning) and the grab. A retry starts rolling, the gun in hand
+//   the chase's slow motions (systems/ChaseCam.js) may hand the wheel more (`wheel`): the dodge made easier
 // The camera's numbers (view, frame) are Game's to use. DOM-free but for the van it may
 // make (entities/Vehicle.js). Its jolts are told on the world's 'ride' event ({ beat }: systems/Rumble.js feels them).
 import { TILE, CAT, MASK } from '../Config.js';
@@ -33,6 +37,7 @@ import { SEAT } from '../data/feel.js';
 import { FLOATS } from '../data/destruction.js';
 import Vehicle from '../entities/Vehicle.js';
 import CarGun from './CarGun.js';
+import LastDrag from './LastDrag.js';
 
 const { Body, Sleeping } = Matter;
 const SLEEP = 60; // Matter's default sleepThreshold, given back when he gets out
@@ -210,6 +215,15 @@ export default class Drive {
     // the lab's car with a gun on its seat: he takes it every time he gets in
     const arms = o.arms ?? (o.exit && van.gun ? { weapon: van.m.gun[3], seat: true } : null);
     if (arms) this.arm(arms);
+    // the opening on his cigarette (the level's `chase.intro`): the car stands until it is flicked out
+    this.drag = o.intro === 'drag' && this.grab ? new LastDrag(world, van, seatOf(van, CHASE)) : null;
+    this.launchT = 0;                 // s its rear tyres still spin as it pulls away (launch)
+    this.standing = !!this.drag;      // the car stands until the opening is over (or skipped)
+    if (this.drag) {
+      this.v = this.lastV = this.was2.v = 0;
+      van.lightsOut = true;
+      Body.setVelocity(van.body, { x: 0, y: 0 });
+    }
     // water standing in the gutter (the level's `chase.water`: [col, row, r px])
     for (const [c, r, rad] of o.water || []) world.liquids?.feed(c * TILE, r * TILE, Math.PI * rad * rad * CHASE.fx.water, 'water', rad);
   }
@@ -229,11 +243,43 @@ export default class Drive {
     p.setWeapon(arms.weapon, arms.mag);
   }
 
-  // he is taking the gun off the seat: the controls and the gun are not his yet
-  get grabbing() { return !!this.grab && this.grab.t < SEAT.grab.dur; }
+  // he is finishing his cigarette or taking the gun off the seat: the controls and the gun are not his yet
+  get grabbing() { return !!this.drag?.on || (!!this.grab && this.grab.t < SEAT.grab.dur); }
 
-  // a retry: no beat, the seat's gun already in his hand
+  // The opening, a step: the car stands (nothing moves it), he smokes; over, it pulls away
+  stand(dt) {
+    const b = this.van.body;
+    this.drag.step(dt);
+    Body.setVelocity(b, { x: 0, y: 0 });
+    Body.setAngularVelocity(b, 0);
+    this.carry();
+  }
+
+  // the engine: its lamps on, the car pulls away by itself (speedStep) on spinning rear tyres, sat back on them
+  launch() {
+    const w = this.world, v = this.van, b = v.body, L = this.C.intro.launch;
+    // (a heavy body at rest is frozen by the physics: it stood for seconds; a frozen one takes no velocity)
+    wake(b);
+    if (b.isSleeping) Sleeping.set(b, false);
+    v.lightsOut = false;
+    this.launchT = L.spin;
+    this.bump('shove', L.kick);
+    w.shake(this.C.shove.shake);
+    w.sound('engineRoar', v.x, v.y, 1); // placeholder (assets/sound/PLACEHOLDERS.md)
+    w.events.emit('ride', { beat: 'start', x: v.x, y: v.y });
+  }
+
+  // a retry: no beat (no cigarette: the car already rolling), the seat's gun already in his hand
   skipGrab() {
+    if (this.drag) {
+      const p = this.world.player;
+      if (p.riding) p.riding.drag = null;
+      this.drag = null;
+      this.standing = false;
+      this.v = this.lastV = this.was2.v = this.cruise;
+      this.van.lightsOut = false;
+      Body.setVelocity(this.van.body, { x: this.cruise, y: 0 });
+    }
     const g = this.grab;
     if (!g) return;
     this.grab = null;
@@ -266,10 +312,24 @@ export default class Drive {
 
   // the camera's shot (Game.stagedShot; SHOTS in data/staging.js): pushed in on him while he takes the gun, then
   // back out
+  // (it looks at his seat in the car AS DRAWN, between its last two steps: his own body is out of the world while
+  // he rides and is not drawn in between, so the view pulled onto it ran up to a step ahead of the car, by another
+  // share of it every frame: the car shook in the close-up, 56 px of the picture at 1080, and read as blurred)
   shot() {
-    const g = this.grab, p = this.world.player;
-    if (!g || !this.on) return null;
-    return { name: g.t < SEAT.grab.hand[0] ? 'grab' : 'grabOut', at: { x: p.x, y: p.y } };
+    if (!this.on) return null;
+    if (this.drag?.on) return this.drag.shot();
+    const g = this.grab, v = this.van;
+    if (!g) return null;
+    return { name: g.t < SEAT.grab.hand[0] ? 'grab' : 'grabOut', at: v.toWorld(...seatOf(v, this.C)) };
+  }
+
+  // Where the view is drawn from for a point `at` it would look at (z: picture px a world px): along the road, a
+  // whole number of picture px from the car as it is drawn (Vehicle.pose), whatever the shot pulls it to; across, on
+  // the picture's grid. So the car never moves by a px in the picture from one frame to the next but by the shot's
+  // own pan
+  lock(at, z = 1) {
+    const snap = (n) => Math.round(n * z) / z, x = this.van.x;
+    return { x: snap(x) + snap(at.x - x), y: snap(at.y) };
   }
 
   get kmh() { return kmh(this.v, this.C); }
@@ -366,6 +426,14 @@ export default class Drive {
     this.carry();
     if (this.dead) { if (this.coasting) this.coastStep(dt); return; }
     const w = this.world, C = this.C, v = this.van, b = v.body;
+    if (this.standing) {
+      if (this.drag.on) this.stand(dt);
+      if (this.drag.on) return;
+      this.standing = false; // (over, or skipped: SPACE held)
+      this.launch();
+      return;
+    }
+    if (this.drag) { this.drag.step(dt); if (this.drag.gone) this.drag = null; } // (its butt, still glowing behind)
     // taking the gun off the seat: the car rolls on by itself, nothing fires (a click now is lost); past the end of
     // the road (the card coming up over it) nothing he does counts any more
     const busy = this.grabbing || !!w.exited;
@@ -393,7 +461,9 @@ export default class Drive {
     else {
       // (out of a shove the sideways speed is given back fast, until the wheel is his again)
       if (this.shoved && (steer || Math.abs(this.u) < 1)) this.shoved = false;
-      this.u = steerStep(this.u, steer * grip, dt, C, this.shoved ? C.shove.back : C.pull);
+      // (a slow motion of the chase hands the wheel more, in real time: systems/ChaseCam.js `wheel`)
+      const K = w.chaseCam?.wheel ?? null, rdt = K ? dt * K.rate : dt, most = K ? K.most : 1;
+      this.u = steerStep(this.u, steer * grip * most, rdt, C, this.shoved ? C.shove.back : C.pull);
     }
     this.u = this.offFronts(this.u);
     // the velocity set; the nose sprung toward the way it really goes (a knock turns it, the road brings it back;
@@ -778,7 +848,9 @@ export default class Drive {
   fx(dt) {
     const w = this.world, C = this.C, F = C.fx, v = this.van, b = v.body, back = b.angle + Math.PI;
     const wheels = v.m.wheels.map(([sx, sy]) => v.toWorld(sx, sy)), rear = wheels.slice(0, 2);
-    const skid = skidOf(this.u, this.v, this.shoveT > 0, C);
+    // (pulling away from the opening: the rear tyres spin)
+    if (this.launchT > 0) { this.launchT -= dt; for (const r of rear) w.particles.smoke(r.x, r.y, C.intro.launch.smoke, 3, { speed: 30, size: F.smoke[1], life: F.smoke[2] }); }
+    const skid = this.launchT > 0 ? 1 : skidOf(this.u, this.v, this.shoveT > 0, C);
     const on = skid > 0 ? rear : null;
     if (on) {
       for (const r of on) if (chance(F.smoke[0] * skid)) w.particles.smoke(r.x, r.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
@@ -923,7 +995,7 @@ export default class Drive {
   // the throttle by what the speed does, the tyres squealing with the slip between the nose and the way it goes,
   // and at a shove
   motor(dt) {
-    if (!this.on || this.dead) return null;
+    if (!this.on || this.dead || this.drag?.on) return null; // (the opening: the engine is off)
     // (held at cruise: half open; a hit that takes its speed lifts it, pulling back up to cruise floors it)
     const v = this.van, sp = this.v / this.C.max, dv = this.v - this.lastV;
     const throttle = dv < -1e-4 ? 0 : dv > 1e-4 ? 1 : 0.5;

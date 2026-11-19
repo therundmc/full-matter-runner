@@ -14,7 +14,7 @@ export default {
   // driven in the van (systems/Drive.js, numbers in data/chase.js): its start [col, row] facing +x, the cruise
   // speed (px/step), the lanes' middle rows (ours last), the kerbs' rows, the col past which it is over, and
   // what happens on the way by distance (col)
-  chase: {'van': [8.5, 14.75], 'cruise': 8.9, 'lanes': [12.25, 14.75], 'kerbs': [9, 16], 'mid': 13.0, 'end': 428, 'across': [[50, 57, 8, 18], [392, 399, 8, 18]], 'next': 'THE TOLL', 'events': [{'at': 111, 'kind': 'alley', 'car': [140.0, 21.0]}, {'at': 165, 'kind': 'behind'}, {'at': 250, 'kind': 'behind'}, {'at': 303, 'kind': 'lorry', 'lorry': [340.0, 6.69], 'back': 5, 'gap': [340.0, 18.3]}, {'at': 368, 'kind': 'alley', 'car': [397.5, 21.0]}], 'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]], 'arms': {'weapon': 'uzi', 'mag': 30, 'seat': true}},
+  chase: {'van': [8.5, 14.75], 'cruise': 8.9, 'lanes': [12.25, 14.75], 'kerbs': [9, 16], 'mid': 13.0, 'end': 428, 'across': [[50, 57, 8, 18], [392, 399, 8, 18]], 'next': 'THE TOLL', 'events': [{'at': 111, 'kind': 'alley', 'car': [140.0, 21.0]}, {'at': 165, 'kind': 'behind'}, {'at': 250, 'kind': 'behind'}, {'at': 303, 'kind': 'lorry', 'lorry': [340.0, 6.69], 'back': 5, 'gap': [340.0, 18.3]}, {'at': 368, 'kind': 'alley', 'car': [397.5, 21.0]}], 'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]], 'arms': {'weapon': 'uzi', 'mag': 30, 'seat': true}, 'intro': 'drag'},
   facing: { '8,14': 0 },
   tiles: [
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXs======sXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX__XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXs======sXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -373,7 +373,7 @@ export default {
   // how wet the open ground is from an earlier rain (systems/Weather.js: puddles, sheen)
   wet: 0.35,
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
-  critters: {"pigeons": [[151.5, 16.6, 5], [34.0, 14.6, 6], [118.0, 12.6, 5], [214.0, 14.9, 7], [262.0, 16.6, 5], [371.0, 14.3, 6]], "cats": [[30.0, 16.7], [177.0, 8.5], [320.0, 17.6]]},
+  critters: {"pigeons": [[151.5, 16.6, 3], [34.0, 14.6, 4], [371.0, 14.3, 3]], "cats": [[30.0, 16.7], [177.0, 8.5], [320.0, 17.6]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
   street: {"manholes": [[40.3, 14.9], [88.5, 12.4], [171.5, 14.6], [199.4, 12.0], [236.4, 15.0], [290.2, 12.6], [368.2, 14.4], [411.0, 12.3]], "papers": [[0, 8, 449, 8, 20], [0, 16, 449, 17, 40], [0, 11, 449, 15, 24]]},
   // rooftops of the neighbouring buildings (data/roofs.js): [kind, col, row, deg], scenery on the wall layer

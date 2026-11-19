@@ -439,7 +439,7 @@ lv.paint('road_slow', B1 + 6.0, LANES[0], 270)
 must('sign_noparking', B0 - 0.6, 8.7)
 for c in range(B0 - 1, B1 + 2):
     painted[('h', c, 9)] = 'red'
-lv.pigeons(BX - 1.0, 16.6, 5)
+lv.pigeons(BX - 1.0, 16.6, 3)        # under the bridge, on our kerb: they roost on it
 
 # ---------------------------------------------------------------- the works (the dark stretch's parking row)
 # the gas board has the parking row up: told to who comes down their lane (from the east) by a sign, an arrow board
@@ -717,11 +717,10 @@ for row in (2.0, 5.5, 20.0, 22.4):
             lv.roof(kind, col, row, 0)
 
 # ---------------------------------------------------------------- life
-lv.pigeons(34.0, 14.6, 6)           # in his lane: up as he comes
-lv.pigeons(118.0, 12.6, 5)
-lv.pigeons(214.0, 14.9, 7)
-lv.pigeons(262.0, 16.6, 5)
-lv.pigeons(371.0, 14.3, 6)
+# three flocks in all (the user: fewer pigeons), each where it tells something: this one, the bridge's, and one
+# back in his lane past the lorry
+lv.pigeons(34.0, 14.6, 4)           # in his lane: up as he comes
+lv.pigeons(371.0, 14.3, 3)
 lv.cat(30.0, 16.7)
 lv.cat(177.0, 8.5)
 lv.cat(320.0, 17.6)
@@ -770,6 +769,9 @@ chase = {
     # the boss's Uzi off his passenger seat (taken in a short beat the first time: systems/Drive.js grab). At the wheel
     # it never runs dry (systems/CarGun.js): `mag` is what is in it when he gets out of the car (2B)
     'arms': {'weapon': 'uzi', 'mag': 30, 'seat': True},
+    # how it opens, the first time: the car standing, he finishes his cigarette and flicks it out, then the engine
+    # and the grab (systems/LastDrag.js, CHASE.intro)
+    'intro': 'drag',
 }
 
 

@@ -1976,6 +1976,15 @@ def items():
     I = {}
     I['butt'] = ascii_cv(["wwwo",
                           "dddo"], {'w': hx('#ece6d6'), 'd': hx('#c8c0ae'), 'o': hx('#d89a50')}, ol=None)
+    # level 2A's opening (systems/LastDrag.js), both painted at FINE density (a pixel is half a world px; Assets.js
+    # FINE_ITEMS): the end of a cigarette in his fingers, its filter toward -x, the paper, the ash, the ember at +x
+    # (4 x 1 world px); and the butt once flicked, on the road, its end still alight (3 x 1)
+    I['cigarette'] = ascii_cv(["FFfWWwae",
+                               "ffdwwwae"], {'F': hx('#d8a868'), 'f': hx('#b88848'), 'd': hx('#96683a'), 'W': hx('#f4efe2'),
+                                             'w': hx('#d2ccbc'), 'a': hx('#8a8680'), 'e': hx('#ff8a2a')}, ol=None)
+    I['cig_butt'] = ascii_cv(["FFfWae",
+                              "ffdwae"], {'F': hx('#d8a868'), 'f': hx('#b88848'), 'd': hx('#96683a'), 'W': hx('#f4efe2'),
+                                          'w': hx('#d2ccbc'), 'a': hx('#8a8680'), 'e': hx('#ff7a20')}, ol=None)
     I['cigar'] = ascii_cv(["BbbgBa",
                            "BBbgBa"], {'B': hx('#5a341e'), 'b': hx('#7a4a2a'), 'g': hx('#c8a040'), 'a': hx('#8a8a8a')}, ol=None)
     I['can'] = ascii_cv(["......",
@@ -7025,7 +7034,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
                   drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
                   arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS', throw='27 THROW', killcam='28 KILL CAM', shield='29 SHIELD',
-                  signals='30 SIGNALS')   # (the last ones added, in this order: the others keep their seed)
+                  signals='30 SIGNALS', chasecam='31 CHASE CAM')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -11247,7 +11256,7 @@ EXPECTED = {
                      for n in ['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low',
                                'cat_dead'] + ['%s%d' % (n, i) for n in ('pigeon_walk', 'pigeon_fly', 'rat_run', 'cat_run')
                                               for i in range(3)] + ['cat_walk%d' % i for i in range(4)]),
-    'items': dict(butt=(4, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
+    'items': dict(butt=(4, 2), cigarette=(8, 2), cig_butt=(6, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6),
                       # the door skins at FINE density (keep in step with DOOR_SKINS in src/engine/Assets.js)

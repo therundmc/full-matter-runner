@@ -7,8 +7,10 @@
 import { SHOTS, DIRECTION } from '../data/staging.js';
 import { clamp } from '../../engine/math.js';
 
-// the zoom nearest to `to` that keeps base x zoom whole (and at least 1); base 0: as written
-const whole = (to, base) => (base > 0 ? Math.max(1, Math.round(base * to)) / base : to);
+// the zoom nearest to `to` that keeps base x zoom whole (and at least 1); base 0: as written. step 2: an EVEN number
+// of px a world px (a shot's `even`: a close-up, where the sprites painted at twice the world's density, FINE in
+// tools/generate_assets.py, must get whole px a texel: at 5 px a world px theirs are 2.5, drawn 2 and 3 in turn)
+export const whole = (to, base, step = 1) => (base > 0 ? Math.max(step, Math.round((base * to) / step) * step) / base : to);
 
 export default class Direction {
   constructor(shots = SHOTS, cfg = DIRECTION) {
@@ -43,8 +45,8 @@ export default class Direction {
   }
 
   // the zoom a shot ends on for a pixel zoom of `base` px a world px: the nearest that keeps base x zoom whole (and
-  // at least 1); base 0: as written
-  rest(base = 0) { return whole(this.shot?.zoom ?? 1, base); }
+  // at least 1; a shot marked `even`: the nearest even one); base 0: as written
+  rest(base = 0) { return whole(this.shot?.zoom ?? 1, base, this.shot?.even ? 2 : 1); }
 
   // dt: real s (the camera does not slow down with the game); base: the camera's pixel zoom; cut: the zoom goes to
   // its shot's at once, only the framing is eased (a picture held on whole px, at the wheel: any zoom between two

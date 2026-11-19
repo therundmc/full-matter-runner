@@ -361,6 +361,7 @@ export default class Pursuit {
     if (car.ram > 0) car.ram -= dt;
     else if (car.settled > C.ram.settle && !car.telling && chance(C.ram.chance * (car.gunman ? 1 : 2) * dt)) {
       car.ram = C.ram.dur;
+      car.ramHit = false;
       car.ramSide = Math.sign(tg.y - v.y) || 1;
       car.settled = 0;
     }
@@ -445,6 +446,12 @@ export default class Pursuit {
     // its way lands on it, once a shove
     if (e && e === w.drive?.van) {
       this.lunged(car);
+      // (its side swipe landing on him: told once a swipe, systems/ChaseCam.js)
+      if (car.ram > 0 && !car.ramHit) {
+        car.ramHit = true;
+        const c = pair.collision.supports?.[0] || v;
+        w.events.emit('pursuerRam', { car: v, x: c.x, y: c.y, side: -car.ramSide });
+      }
       if (w.drive.lunge || car.ram <= 0) car.by = w.time;
       return;
     }
@@ -540,6 +547,7 @@ export default class Pursuit {
     // the men in it: the driver, unless he was shot (his kill told then), and the gunman if still in it
     this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck', undefined, crew);
     this.leave(car);
+    w.events.emit('pursuerWreck', { car: v, x: v.x, y: v.y }); // (the chase's kill beat: systems/ChaseCam.js)
   }
 
   // the men still in a car stopped for good, all at once: one kill each, but ONE for the streak (how.crew: no
@@ -565,8 +573,56 @@ export default class Pursuit {
     if (car.dummy) this.lift(car);
     const off = v.y - tg.y;
     // (never faster than he goes: its engine is dead, it cannot pull ahead of him)
-    car.out = { t: 0, s: clamp(vel.x, 0, Math.max(0, tg.vel.x)), y0: v.y, side: Math.abs(off) > O.level ? Math.sign(off) : this.roomier(v.y), hit: false };
+    car.out = { t: 0, s: clamp(vel.x, 0, Math.max(0, tg.vel.x)), y0: v.y, side: Math.abs(off) > O.level ? Math.sign(off) : this.roomier(v.y), hit: false,
+      ruts: null, shedT: 0, crashed: false };
     b.sleepThreshold = Infinity;
+    // the engine goes: a ball of fire off the hood, a flash, and it burns from here on (looks: O.fx)
+    const F = O.fx, w = this.world;
+    if (v.exploded || !F) return;
+    const hood = v.toWorld(v.w * 0.82, v.h / 2);
+    w.particles.fire?.(hood.x, hood.y, F.ball[0], F.ball[1], { size: [4, 10], heat: 0 });
+    w.particles.smoke?.(hood.x, hood.y, 6, 8, { speed: 50, size: 10, life: 1.4, dark: true });
+    w.light?.(hood.x, hood.y, F.ball[2], F.ball[3], 0.25);
+    // (alight for the look of it, no fuse: it blows up later only if it had caught for real: wreck.fire)
+    if (F.burn && !v.burning && !v.armoured) { v.burning = true; v.fuse = Infinity; }
+  }
+
+  // How the exit looks, a step (O.fx; nothing of it weighs on anything): smoke off its tyres and their rubber on the
+  // road, sparks from under it, pieces lost on the way; what stops it at the roadside: one burst
+  exitFx(car, dt) {
+    const F = this.C.out.fx, o = car.out, v = car.v, w = this.world, M = CHASE.fx.marks;
+    if (!F) return;
+    const wheels = v.m.wheels.map(([sx, sy]) => v.toWorld(sx, sy)), sp = Math.hypot(o.s, this.C.out.side), back = Math.atan2(-o.side * this.C.out.side, -o.s);
+    if (o.hit && !o.crashed) {
+      o.crashed = true;
+      const side = v.toWorld(v.w / 2, o.side > 0 ? v.h : 0);
+      w.particles.sparks(side.x, side.y, back, 1.3, F.crash[0], 340);
+      w.particles.glass(side.x, side.y, back, 1.2, F.crash[1], 200);
+      for (let i = 0; i < F.crash[2]; i++) v.shed(side.x, side.y, back + rand(-1, 1), rand(...F.fling), true);
+      w.shake?.(F.crash[3]);
+      w.sound('carHit', side.x, side.y, 1);
+    }
+    if (o.hit || sp < 1.5) { o.ruts = null; return; }
+    for (const q of wheels) if (chance(F.smoke[0])) w.particles.smoke(q.x, q.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
+    if (o.ruts) {
+      const from = o.ruts, xs = [...wheels, ...from].map((q) => q.x);
+      w.decals?.paint?.((g) => {
+        g.strokeStyle = `rgba(${M.color}, ${M.alpha})`;
+        g.lineWidth = M.w;
+        g.lineCap = 'round';
+        wheels.forEach((q, i) => { g.beginPath(); g.moveTo(from[i].x, from[i].y); g.lineTo(q.x, q.y); g.stroke(); });
+      }, 'floor', Math.min(...xs) - M.w, Math.max(...xs) + M.w);
+    }
+    o.ruts = wheels;
+    if (chance(F.sparks[0])) {
+      const q = v.toWorld(rand(0.2, 0.9) * v.w, o.side > 0 ? v.h - 2 : 2);
+      w.particles.sparks(q.x, q.y, back, 0.6, F.sparks[1], F.sparks[2]);
+    }
+    if ((o.shedT -= dt) <= 0) {
+      o.shedT = rand(...F.shed);
+      const q = v.toWorld(rand(0.1, 0.9) * v.w, rand(0.1, 0.9) * v.h);
+      v.shed(q.x, q.y, back + rand(-0.9, 0.9), rand(...F.fling));
+    }
   }
 
   // the side of the street (-1: -y) with more room from y: the further kerb (the level's `chase.kerbs` rows), else
@@ -593,6 +649,7 @@ export default class Pursuit {
     Body.setAngularVelocity(b, clear ? o.side * (car.cause === 'tyre' ? O.spin : O.turn) * (1 - o.t / O.dur) : 0);
     b.flyUntil = this.world.time + CHASE.fly;
     v.steer = o.side * 0.5;
+    this.exitFx(car, dt);
   }
 
   // ---------------------------------------------------------------- his rounds

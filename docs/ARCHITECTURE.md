@@ -241,6 +241,16 @@ src/
                           Numbers: CHASE.pursuit / gunman / alley; drawn by render/PursuitArt.js
       Signals.js          lamps that take turns (data/signals.js): traffic lights, the works' arrow board and flashers;
                           a prop's `lamps` flags, read by render/Lighting.js (its lights, its emissive map's slices)
+      ChaseCam.js         the chase's own director (CHASE.cinema in data/chase.js), where the kill cam never works: a
+                          pursuer stopped for good ('pursuerWreck': strong the first time and after its cooldown,
+                          light otherwise, two in a breath one longer beat), the lorry across his road (on a collision
+                          course and close: slow motion, the view toward the way round, the wheel handed more), a
+                          side swipe landing on him ('pursuerRam'). A beat is a time scale (Game runs the world at it)
+                          and maybe a shot (a cut between whole zooms); `step` with the world, `update` on the real clock
+      LastDrag.js         how level 2A opens the first time (the level's `chase.intro: 'drag'`, CHASE.intro): the car
+                          stands, he finishes his cigarette and flicks the butt out (its flight, its ember on the
+                          road), then Drive.launch and the grab; SPACE / pad A held skips it; drawn by CharacterAnim
+                          dragPose and render/DragArt.js
       Lorries.js          the lorry that backs out across the street (level 2A's event 2 by distance, the lab's with the
                           prop option `backs`): told (beeper, reversing lamps, the HUD's chevrons, a red lane, bone
                           arrows on the way round), then its static body moved a step at a time until the street is
@@ -428,6 +438,9 @@ chase's wind. `?interp=off` (a developer's switch) draws the state as stepped, t
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles, a bin knocked over: `clatter`) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident), Rumble (near him) |
+| `pursuerWreck` | `{ car, x, y }` (a pursuer stopped for good: wrecked, its driver shot, a front tyre, blown up) | systems/Pursuit.js | ChaseCam (the kill beat) |
+| `pursuerRam` | `{ car, x, y, side }` (a pursuer's side swipe landing on his car, once a swipe) | systems/Pursuit.js | ChaseCam |
+| `chaseBeat` | `{ kind: 'kill' / 'lorry' / 'rammed' / 'shave', tier, x, y }` | systems/ChaseCam.js | (nobody yet: sounds, the HUD) |
 | `ride` | `{ beat, x, y }` (beat: `shove`, `hit`, `clip`, `torn`, `scrape`, `crash`, `lorry`, `start`, `ram`) | systems/Drive.js (the van's jolts), Lorries (a lorry stops across the street), World's outro (the getaway's engine catches, it rams a car) | Rumble |
 | `alertPhase` | `{ phase, prev }` | Director | Game (soundtrack combat variant; intensity through Tension), Scoring (every ALERT eats into the stealth bonus); the HUD reads the phase directly |
 | `powerCut` | `{ x, y }` (the fuse box) | Power (the lights of the house just went out) | Director (an incident at the box: whoever sees it raises the alert) |

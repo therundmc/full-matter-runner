@@ -94,8 +94,10 @@
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
   2A is built by tools/build_level2a.py (level `chase` block: van start, cruise, lanes, end col, events by col); the
-  drive is systems/Drive.js with its numbers in data/chase.js (CHASE); his gun is the boss's Uzi taken off the
-  passenger seat in a short beat the first time only (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
+  drive is systems/Drive.js with its numbers in data/chase.js (CHASE); the first time only it opens on him finishing his
+  cigarette in the standing car and flicking it out (level `chase.intro`, systems/LastDrag.js, CHASE.intro; SPACE / pad A
+  held skips it), then his gun, the boss's Uzi taken off the
+  passenger seat in a short beat (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
   in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer, x0, x1)`), never a canvas.
   2A's street is built section by section (the table in docs/LEVEL2.md: parking north / on our side / none, two
   junctions under traffic lights, the bridge, the works, the bus stop): NOTHING stands in its two lanes (builder
@@ -139,6 +141,7 @@
   a counter, against a wall, the cue), fetched once the fight is on (Enemy.armsDue / armUp, AI.arms), or a brawler
   ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
 - Kill cam (systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, its lens `POST.killcam`): a zoom punch-in, slow motion that drops and snaps back, hit-stops on his violent kills, finishers, long chains and their end; a plain kill gets nothing; never at the wheel or in a staged shot; `?killcam=off` to compare; lab station 28.
+- At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js.

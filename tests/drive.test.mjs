@@ -202,7 +202,8 @@ test('view: the grab\'s push-in at the wheel is a cut between whole zooms, never
       seen.add(cam.z);
       assert.ok(Number.isInteger(cam.z), `a whole zoom (${cam.z})`);
     }
-    assert.deepEqual([...seen], [Math.round(base * SHOTS.grab.zoom), base], 'in and back out, two cuts');
+    // (the close-up on an EVEN zoom: the sprites painted twice as fine get whole px a texel; 6 at 720, 8 at 1080)
+    assert.deepEqual([...seen], [Math.round((base * SHOTS.grab.zoom) / 2) * 2, base], 'in and back out, two cuts');
     // a scale left between two whole zooms is still drawn on a whole one
     cam.scale = 1.37;
     assert.ok(Number.isInteger(cam.z));

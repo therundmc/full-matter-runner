@@ -28,9 +28,19 @@ export const SHOTS = {
   swigThrow: { zoom: 1.8, ease: 5, pull: 0.45, look: 0, keep: 0.75 }, // the bottle thrown: toward where it breaks, he in the picture
   swigUp: { zoom: 1, ease: 8, pull: 0, look: 1 },            // he gets up: the hand given back, fast
   // level 2A's start, the Uzi taken off the passenger seat (systems/Drive.js grab): close on him at the wheel, the
-  // view drawn from ahead of the car onto him; then back out to the drive's view
-  grab: { zoom: 2.5, ease: 7, pull: 0.85, look: 0 },
+  // view drawn from ahead of the car onto him; then back out to the drive's view. `even`: the close-up rests on an
+  // even number of px a world px (6 at 720, 8 at 1080, 10 at 1440: systems/Direction.js whole), so the car's and
+  // his own sprites, painted at twice the world's density, get whole px a texel
+  grab: { zoom: 2.5, ease: 7, pull: 0.85, look: 0, even: true },
   grabOut: { zoom: 1, ease: 3.5, pull: 0, look: 0 },
+  // level 2A's opening, the cigarette (systems/LastDrag.js, CHASE.intro): the same close-up, all the way onto the
+  // point LastDrag moves: from the hood onto him, after the butt out onto the road, back on him in one cut
+  drag: { zoom: 2.5, ease: 7, pull: 1, look: 0, even: true },
+  // the chase's beats (systems/ChaseCam.js, CHASE.cinema). A pursuer stopped for good: a cut in toward the wreck
+  // (`ahead`: the view goes toward it across the road and forward only, never back: it shows no less of the road
+  // ahead of his car than the cut itself does). The lorry: no zoom, the view shifted toward the way round it
+  chaseKill: { zoom: 1.34, ease: 7, pull: 0.5, look: 0, ahead: true },
+  lorryGap: { zoom: 1, ease: 7, pull: 0.3, look: 0, ahead: true },
   // a throw of his (systems/ThrowBeat.js): the thing in flight followed over its last stretch to the man on its line,
   // then a punch-in on where it struck him, he in the picture
   throwFollow: { zoom: 1.15, ease: 8, pull: 0.45, look: 0.3, keep: 0.8 },

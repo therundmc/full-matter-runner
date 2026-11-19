@@ -11,6 +11,7 @@
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
 import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, SEAT, THROW, SHIELD, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
+import { CHASE } from '../data/chase.js';
 import { READABILITY } from '../data/readability.js';
 import { slamAt } from '../systems/Takedown.js';
 import { sprite, spriteOpt, drawSprite, silhouette, sw as spriteW, sh as spriteH } from '../../engine/Assets.js';
@@ -1260,7 +1261,8 @@ export function seatPose(ch, P, V) {
       V.hand[i] = 'loose';
     }
     if (hang) hangGun(V, V.hl, a);
-  } else if (grab) grabPose(ch, V, st.grab, a, at);
+  } else if (st.drag) dragPose(V, st.drag, a, at);
+  else if (grab) grabPose(ch, V, st.grab, a, at);
   else if (u > 0) {
     // the arm that has the gun out with it (u: how far), the head and the shoulders turned after it. q: 0 the door's
     // hand has it (anything to his left, and ahead: held out over the windscreen), 1 the right one (across the other
@@ -1288,9 +1290,32 @@ export function seatPose(ch, P, V) {
     }
   }
   blendPose(P, V, w);
-  if (w > 0.5) { P.wpnOn = V.wpnOn; P.carryImg = null; P.flat = null; P.magIn = null; }
+  if (w > 0.5) { P.wpnOn = V.wpnOn; P.carryImg = V.carryImg; P.flat = null; P.magIn = null; }
+  if (P.carryImg) { P.carry.x = V.carry.x; P.carry.y = V.carry.y; P.carry.a = V.carry.a; }
   return P;
 }
+
+// The end of a cigarette in the door's hand (level 2A's opening: systems/LastDrag.js, riding.drag = its phases;
+// CHASE.intro.hand): out over the door at rest, brought up to his mouth for the drag (his head a little down to
+// it), then the arm snapped out as he flicks it away; the cigarette drawn in that hand until it has left it
+function dragPose(V, ph, a, at) {
+  const H = CHASE.intro.hand, l = V.hl;
+  at(LIPS, H.mouth[0], H.mouth[1]);
+  at(FLICK, H.out[0], H.out[1]);
+  const mx = V.tx + LIPS.x, my = V.ty + LIPS.y;
+  l.x = lerp(lerp(DOOR.x, mx, ph.mouth), FLICK.x, ph.flick);
+  l.y = lerp(lerp(DOOR.y, my, ph.mouth), FLICK.y, ph.flick);
+  V.elb[0] = lerp(lerp(SEAT.doorElb, 0.6, ph.mouth), 0.05, ph.flick);
+  V.hand[0] = ph.held ? 'fist' : 'loose';
+  V.ha = a - 0.22 * ph.mouth - 0.5 * ph.flick * (ph.held ? 1 : 0.6);
+  V.wpnOn = false;
+  if (!ph.held) return;
+  V.carryImg = spriteOpt('items/cigarette');
+  // (its filter in his fingers: it points out over the door at rest, ahead of his face at his mouth)
+  V.carry.a = a + lerp(-Math.PI / 2, -0.35, ph.mouth);
+  V.carry.x = l.x + Math.cos(V.carry.a) * 1.6; V.carry.y = l.y + Math.sin(V.carry.a) * 1.6;
+}
+const LIPS = { x: 0, y: 0 }, FLICK = { x: 0, y: 0 };
 const WHEEL = { x: 0, y: 0 }, DOOR = { x: 0, y: 0 }, GRIP = { x: 0, y: 0 }, CHEST = { x: 0, y: 0 }, KNOB = { x: 0, y: 0 };
 const setPt = (out, p) => { out.x = p.x; out.y = p.y; };
 

@@ -195,7 +195,15 @@ export const CHASE = {
     shoved: { cost: 0.5, throw: 6, drag: 4, spin: 0.02, stun: 0.7 },
     wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight', 'traffic_light'] },
     rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2, tyre: { hp: 5, skip: 0.6 } },
-    out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1 },
+    out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1,
+      // what its exit looks like (Pursuit.exitFx; looks only, nothing of it touches his car). `ball`: the engine
+      // goes as it is stopped: [flames, px/s, the flash's radius px, its colour], and it burns from then on (`burn`);
+      // while it slides: smoke off each tyre (`smoke`: [chance a wheel a step, px, s]) and rubber on the road (as
+      // his own: fx.marks), sparks from under it (`sparks`: [chance a step, how many, px/s]), a piece of it lost
+      // every `shed` s ([from, to], thrown at `fling` px/s); what stops it at the roadside: `crash` [sparks, glass,
+      // pieces lost, shake]
+      fx: { ball: [26, 190, 120, '#ffb060'], burn: true, smoke: [0.6, 7, 1.1], sparks: [0.5, 5, 260], shed: [0.16, 0.34], fling: [120, 260],
+        crash: [22, 14, 3, 0.3] } },
     limp: 0.6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
     spawn: { behind: 330, over: 5, clear: 260, near: 300, cross: 6.5, radius: 150 },
   },
@@ -230,4 +238,63 @@ export const CHASE = {
   lorry: { tell: 0.9, beep: 0.3, speed: 115, shake: 0.2, pad: 6, lamp: { r: 70, color: '#fff4e0' }, lab: { range: 420, stay: 2.5 } },
   // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane
   alley: { red: 0.7, pad: 10 },
+  // HOW THE CHASE OPENS, the first time only (the level's `chase.intro: 'drag'`; systems/LastDrag.js; a retry skips
+  // it: Drive.skipGrab; SPACE / pad A held skips it: data/staging.js SKIP). The car stands in its lane, engine and
+  // lamps off; he finishes his cigarette and flicks it out over the door, then the engine, and the gun off the seat
+  // (Drive.grab) as it pulls away. Times in s from the level's first step:
+  //   pan: the view opens on the hood (`hood` px ahead of his seat) and from this time on comes onto him, at
+  //   `follow` 1/s (as it goes after the butt later); SHOTS `drag`
+  //   lift / drag / lower: the door's hand brings it to his mouth [from, to], the long drag [from, to] (the ember
+  //   flares), the hand back out over the door [from, to]
+  //   breath: he lets the smoke out [from, to]: `puffs` of it a second, drifting `drift` px/s ahead and out of the car
+  //   flick: the butt leaves his fingers (the arm snapped out over `snap` s before it); the camera stays on the butt
+  //   from `flick` to `go`; go: the engine, the lamps, the cut back to him, the car pulls away (the grab at once)
+  //   ember: the light of the cigarette's end in the cab: [radius px, colour] at rest, `flare` at the height of the
+  //   drag, flickering by `flicker` of it; laid every `every` s for `life` s
+  //   hand: where the door's hand holds it at his mouth and at the end of the flick, pose px [ahead, across] from
+  //   his seat (CharacterAnim dragPose); tip: world px from his seat to the ember while it is at his mouth / out
+  //   over the door [ahead, across] (the light's place, the butt's start)
+  //   butt: thrown `out` px/s to his left and `fwd` px/s ahead from `z` px up at `up` px/s, falling at `g` px/s2,
+  //   turning `spin` rad/s; it bounces `bounces` times keeping `keep` of its speed and `lift` of its fall each time
+  //   (`sparks` [how many, fewer each time] thrown at each), then lies there, its end glowing `glow` s (a thread of
+  //   smoke every `wisp` s) and stays on the road
+  //   launch: as it pulls away, `smoke` puffs off each rear tyre every step for `spin` s, the body thrown up by
+  //   `kick` of a shove's
+  intro: {
+    pan: 0.25, hood: 46, follow: 3.4, lift: [0.55, 0.95], drag: [0.95, 2.0], lower: [2.0, 2.4], breath: [2.3, 3.3], puffs: 26, drift: 26,
+    snap: 0.16, flick: 3.55, go: 4.9,
+    ember: { rest: [20, '#ff7a2a'], flare: [58, '#ffb060'], flicker: 0.18, every: 0.05, life: 0.12 },
+    hand: { mouth: [4.6, -2.2], out: [3.5, -19] }, tip: { mouth: [8, -4], out: [6, -27] },
+    butt: { out: 92, fwd: 26, z: 13, up: 58, g: 420, spin: 19, bounces: 2, keep: 0.42, lift: 0.4, sparks: [7, 3], glow: 9, wisp: 0.22 },
+    launch: { smoke: 2, spin: 0.9, kick: 1.2 },
+  },
+  // THE CHASE'S OWN KILL CAM AND SLOW MOTIONS (systems/ChaseCam.js; the user, 2026-11-19: "un cote film d'action").
+  // Times in REAL s (the camera does not slow down with the game) unless said; a beat's clock eases down to `slow`
+  // over `in` s, is held, and comes back over `out` s (a whip, not a fade). Any zoom is a cut between two whole
+  // zooms (Direction.update `cut`), the lens stays flat: no blur.
+  cinema: {
+    // a pursuer stopped for good by him (wrecked, its driver shot, a tyre, blown up: Pursuit's 'pursuerWreck').
+    //   strong: the first of a run, and any one `again` s after the last strong one: the cut in (SHOTS chaseKill)
+    //   toward the wreck, slow motion, a hit-stop of `stop` s, the picture kicked `push` px its way and shaken
+    //   light: any other one (inside the cooldown): a tick of slow motion and the kick, no cut; none within `gap` s
+    //   of the last beat
+    //   double: a second car stopped within `double` s of the last: the beat under way is held `more` s longer and
+    //   `deep` deeper (one beat for the two; after a light one, the strong one)
+    kill: {
+      again: 7, gap: 0.45, double: 1.6, more: 0.3, deep: 0.05,
+      strong: { slow: 0.25, in: 0.05, hold: 0.55, out: 0.12, stop: 0.05, push: 7, shake: 0.35, shot: 'chaseKill' },
+      light: { slow: 0.55, in: 0.04, hold: 0.16, out: 0.1, stop: 0, push: 4, shake: 0.15, shot: null },
+    },
+    // the lorry across his road (systems/Lorries.js): once a lorry, as it is told, backing or out, his car on a
+    // collision course with where it will stand and `lead` s (game time, at his speed) or less from its flank: the
+    // world slows to `slow` and the view shifts toward the way round (SHOTS lorryGap; the level's `gap`), until his
+    // car is clear of it across, past it, crashed, or `cap` s have gone; `pad` px counted round the lorry.
+    // `wheel`: how much quicker and further the car goes sideways while it lasts (the wheel answers in real time:
+    // its rate is not slowed with the world, and the sideways speed is this much the usual): the dodge is easier,
+    // that is the point. `shave`: clear of its tail by less than this many px: sparks and a jolt (a near miss)
+    lorry: { lead: 0.8, slow: 0.3, in: 0.08, out: 0.25, cap: 3.2, pad: 6, wheel: 1.45, shave: 14, shot: 'lorryGap' },
+    // a pursuer's side swipe landing on his car (Pursuit ram): a short kick of slow motion, the picture thrown
+    // away from it, sparks off the two flanks; once a swipe, none within `gap` s of the last
+    rammed: { slow: 0.5, in: 0.03, hold: 0.12, out: 0.1, push: 6, shake: 0.3, sparks: 14, gap: 1.5 },
+  },
 };

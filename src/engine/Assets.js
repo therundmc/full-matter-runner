@@ -73,7 +73,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -93,6 +93,7 @@ export const OPTIONAL_LIST = [
   ...CHARACTERS.flatMap((c) => ['rag_torso', 'rag_head', 'rag_arm', 'rag_leg', 'rag_torso_up', 'rag_head_up', 'rag_torso_down'].map((p) => `characters/${c}_${p}`)),
   // small things in a guard's hands at his post, dropped or left about
   ...['butt', 'cigar', 'can', 'magazine', 'ashtray', 'bottle'].map((n) => `items/${n}`),
+  'items/cigarette', 'items/cig_butt', // level 2A's opening (systems/LastDrag.js), at FINE density (FINE_ITEMS)
   // CUEBALL (level 1's boss): his head once he has been hit, his shades on the floor
   'characters/cueball_head_hurt', 'items/shades',
   // rooftops of the neighbouring buildings (painted on the wall layer)
@@ -141,7 +142,8 @@ const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank'
 // the floor tiles too (64 x 64 pixels a tile), the bar's clutter and the street fauna; the wall tops stay at the world's
 // the door skins (generate_assets.py DOOR_SKINS) too; the old plain leaves (door, door_locked, stall_door) stay at the world's
 const DOOR_SKINS = /^structure\/door_(fire|bar|bar_broken|swing|staff|office|gaming|flat|wired|wired_broken|shop|shop_broken)$/;
-const fine = (name) => FINE.test(name) || DOOR_SKINS.test(name) || name.startsWith('critters/') || name.startsWith('clutter/')
+const FINE_ITEMS = new Set(['items/cigarette', 'items/cig_butt']);
+const fine = (name) => FINE.test(name) || FINE_ITEMS.has(name) || DOOR_SKINS.test(name) || name.startsWith('critters/') || name.startsWith('clutter/')
   || (name.startsWith('props/') && FINE_PROPS.has(name.slice(6).replace(/_glow$/, '')))
   || (name.startsWith('roof/') && ROOF_FINE.has(name.slice(5)))
   || (name.startsWith('tiles/') && FLOOR_TILES.includes(name.slice(6).replace(/_(v[1-5]|glow)$/, '')));

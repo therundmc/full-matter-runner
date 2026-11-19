@@ -107,7 +107,8 @@ function start(o = {}, at = [20, LANES[1]]) {
   const w = world(o.rows);
   const v = vehicle(w, o.model ?? CHASE.vehicle, at[0] * TILE, at[1] * TILE);
   // (a map of the test's own has none of the level's streets across)
-  const chase = { ...level2a.chase, across: o.rows ? [] : level2a.chase.across, events: o.events ?? [], ...o.chase };
+  // (no opening on his cigarette, unless asked: tests/chasecinema.test.mjs has it)
+  const chase = { ...level2a.chase, across: o.rows ? [] : level2a.chase.across, events: o.events ?? [], intro: o.intro ?? null, ...o.chase };
   w.drive = new Drive(w, { ...chase, arms: o.arms ?? null, van: at, end: null }, v);
   w.pursuit = new Pursuit(w, chase);
   return { w, v, d: w.drive, P: w.pursuit, input: keys() };

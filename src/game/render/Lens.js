@@ -204,6 +204,9 @@ export default class Lens {
     // at the wheel: how much of the speed the edges show
     const D = s.drive, dr = (v.state === 'play' || v.state === 'continued') && !v.page ? v.drive : null;
     this.rush = ease(this.rush, dr ? Math.pow(clamp01((dr.k - D.from) / (1 - D.from)), D.curve) : 0, D.ease, dt);
+    // (a close-up at the wheel: none of it, at once; the band is measured for the drive's own view, in a close-up
+    // the car's ends and the kerbs are in it. It comes back in by itself after the cut out)
+    if (dr?.close) this.rush = this.jolt = 0;
     if (dr) this.rushA = ease(this.rushA, dr.angle, D.ease, dt);
     this.jolt *= Math.exp(-D.kick.decay * dt);
     if (!dr) this.jolt = 0;
@@ -241,7 +244,7 @@ export default class Lens {
     // flat: at the wheel the scene is drawn 1:1 and must come out px for px where the road is: no barrel, no zoom
     // kick, the lens' own fringe kept to the band the speed works on (PostGL), and no scan lines (they stand still
     // on the screen: a car changing lanes under them flickers, row by row)
-    const D = c.speed.drive, flat = world && !!v.drive, rush = flat ? Math.min(D.cap, this.rush + this.jolt) : 0;
+    const D = c.speed.drive, flat = world && !!v.drive, rush = flat && !v.drive.close ? Math.min(D.cap, this.rush + this.jolt) : 0;
     const way = this.rushA - (v.rot || 0), rows = H / Math.max(1, v.scale) / D.rows;
     const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
     const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k + R.sat * r, con: this.grade.con + c.punch.con * k + R.con * r };
