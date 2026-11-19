@@ -479,7 +479,8 @@
 
   // a plan by name: the level's (PLANS) or a chaos one (CHAOS)
   const isChaos = (name) => Object.prototype.hasOwnProperty.call(CHAOS, name);
-  const planDef = (name) => (isChaos(name) ? CHAOS[name] : PLANS[opts.level]?.[name]);
+  // a level with no plans of its own plays 'free' only
+  const planDef = (name) => (isChaos(name) ? CHAOS[name] : (PLANS[opts.level] || { free: { steps: [] } })[name]);
   // the plans a session may be drawn on (rescues never are; --plans narrows both families)
   function planNames() {
     const plans = PLANS[opts.level] || { free: { steps: [] } }, pick = (n) => !opts.plans || opts.plans.includes(n);

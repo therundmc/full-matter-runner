@@ -1,11 +1,12 @@
 import { CAT, MASK, LIGHTING, BODY_SCALE } from '../Config.js';
 import { SEAT } from '../data/feel.js';
+import { CHASE } from '../data/chase.js';
 import { READABILITY } from '../data/readability.js';
 
 // parts thrown out of the car must not collide with the car body they spawn inside
 const FREE = MASK.DEBRIS & ~CAT.PROP;
 import { sprite, spriteOpt, silhouette, chunk, glassShards, slices, sw, sh, drawSprite } from '../../engine/Assets.js';
-import { rand, chance, clamp, local, angDiff } from '../../engine/math.js';
+import { rand, chance, clamp, local, angDiff, stepAngle, TAU } from '../../engine/math.js';
 import Debris from './Debris.js';
 import { WEAPONS } from '../data/weapons.js';
 import { setMaterial, impulse, scaleInertia, wake } from '../../engine/physics/Body.js';
@@ -749,11 +750,38 @@ export default class Vehicle {
     ctx.restore();
   }
 
-  draw(ctx) {
-    const b = this.body;
+  // Where and how it is drawn: { x, y, a }. As its body is; but a DRIVEN car, while the picture is held on whole px
+  // (the camera's `pixel`: at the wheel, level 2A), on the picture's px grid and on one of CHASE.pixel.steps angles
+  // (stepAngle: kept with a little slack, so it never flickers between two). A sprite turned by a new float angle
+  // or put between two px every frame crawls: that was the blur of the car in motion. The body keeps its real place
+  // and angle; `drawn` is the pose when it is not the body's (null otherwise)
+  pose() {
+    const b = this.body, cam = this.world.camera, z = this.moving && cam?.pixel ? cam.z : 0;
+    if (!z || z % 1) { this.drawn = null; return { x: b.position.x, y: b.position.y, a: b.angle }; }
+    const P = CHASE.pixel, snap = (n) => Math.round(n * z) / z;
+    return (this.drawn = { x: snap(b.position.x), y: snap(b.position.y), a: stepAngle(b.angle, this.drawn?.a, TAU / P.steps, P.slack) });
+  }
+
+  // What goes with the car but is placed from its body (the man sat in it, one leaning out of its window:
+  // render/PursuitArt.js) is drawn in the car's frame as IT is drawn (pose), gx / gy sprite px further (the body on
+  // its springs): fn draws it in world px, as ever
+  carried(ctx, fn, gx = 0, gy = 0) {
+    const b = this.body, at = this.drawn ?? { x: b.position.x, y: b.position.y, a: b.angle };
     ctx.save();
-    ctx.translate(b.position.x, b.position.y);
-    ctx.rotate(b.angle);
+    ctx.translate(at.x, at.y);
+    ctx.rotate(at.a);
+    ctx.translate(gx, gy);
+    ctx.rotate(-b.angle);
+    ctx.translate(-b.position.x, -b.position.y);
+    fn();
+    ctx.restore();
+  }
+
+  draw(ctx) {
+    const at = this.pose();
+    ctx.save();
+    ctx.translate(at.x, at.y);
+    ctx.rotate(at.a);
     const ox = -this.w / 2, oy = -this.h / 2;
     // tyres under the body: flat ones squash and the body sags toward them
     let sagX = 0, sagY = 0;
@@ -771,10 +799,12 @@ export default class Vehicle {
     });
     const jx = this.flash > 0 ? rand(-1, 1) : 0;
     // the body over its wheels, in half px (the sprite's own pixels: it never sits between two of them); thrown up,
-    // it leaves its shadow
-    const lift = Math.round(this.lift * 2) / 2;
-    sagY = Math.round((sagY + this.bob + this.roll - lift * 0.5) * 2) / 2;
-    sagX = Math.round((sagX - this.squat - lift * 0.5) * 2) / 2;
+    // it leaves its shadow. Held on whole px at an odd zoom (pose), in whole px: half a px is then a px and a half of
+    // the picture, and a sprite painted twice as fine would change the width of its pixels each time it rolls
+    const per = this.drawn && this.world.camera.z % 2 ? 1 : 2;
+    const lift = Math.round(this.lift * per) / per;
+    sagY = Math.round((sagY + this.bob + this.roll - lift * 0.5) * per) / per;
+    sagX = Math.round((sagX - this.squat - lift * 0.5) * per) / per;
     this.sag = [sagX, sagY];
     ctx.globalAlpha = 0.4;
     ctx.drawImage(silhouette(this.base), ox + 3 + Math.max(-1.5, lift * 0.5), oy + 3 + Math.max(-1.5, lift * 0.5), this.w, this.h);
@@ -827,12 +857,8 @@ export default class Vehicle {
     // who sits in the open cabin, over the seats (a closed car hides him)
     if (this.rider && this.m.cabin && !this.exploded) {
       this.carry(0);
-      // (he goes with the body on its springs)
-      const c = Math.cos(b.angle), sn = Math.sin(b.angle), [gx, gy] = this.sag;
-      ctx.save();
-      ctx.translate(gx * c - gy * sn, gx * sn + gy * c);
-      this.rider.draw(ctx);
-      ctx.restore();
+      // (he goes with the body on its springs, in the car's frame as it is drawn)
+      this.carried(ctx, () => this.rider.draw(ctx), ...this.sag);
     }
   }
 }

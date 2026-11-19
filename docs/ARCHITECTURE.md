@@ -177,36 +177,45 @@ src/
                           at gunpoint, a body in the road gone round or crept over)
       Drive.js            at the wheel (level `chase`: 2A; the lab's van, E at its door): the player carried at the
                           seat (`driving`), the car a dynamic body whose velocity is set each step from the controls
-                          after reading back what the physics let it do (CHASE in data/chase.js: cruise, W / S,
-                          A / D, the road's pull, the shove on SPACE); `contact` (called before Matter resolves a
+                          after reading back what the physics let it do (CHASE in data/chase.js: it runs at its
+                          cruise speed, no throttle nor brake; W / S, A / D or the left stick steer it up / down
+                          the picture (steerOf), the road's pull, the shove on SPACE: a lunge of a lane, `lunge`
+                          tells Pursuit one is on); `contact` (called before Matter resolves a
                           contact): a parked car woken and shoved, a bolted thing torn off (a sensor at once), a loose
                           light one flung by hand, a person run down, nose-on into what does not give the crash
                           ('kill' cause `crash`; a corner clipped is a jolt); `fx`: tyre smoke, rubber on the road,
                           spray, what is ahead frightened, `canopy` props torn down, dust, the wake, streaks of air
-                          (`wind`); the weight of it: the nose on a spring (yawStep), the rear out (slipStep), the
-                          body on its wheels (springs: Vehicle squat / roll / lift); the camera: ONE view height at
-                          the wheel (`view`: Game.fit / setView draw it at the usual whole zoom on a larger canvas,
-                          the lens brings it down), `frame` (leadOf: further back the faster), `buzz` (the road's
-                          rumble); the lens' speed.drive (data/post.js) does the picture's edges; the end col
+                          (`wind`); the weight of it: the nose on a spring that does not wag (yawStep), the
+                          body on its wheels (springs: Vehicle squat / roll / lift); the camera: the wheel's
+                          picture is drawn 1:1 (`view`: Game.fit / setView, engine/Camera.js fitView `pixel`: the
+                          canvas is the window, a whole zoom, the lens scales nothing) and held on whole px
+                          (Camera `pixel`), `frame` locks it on the car (a fixed share of the view from the left,
+                          the street's middle across), Vehicle.pose draws a driven car at a whole px on one of 64
+                          angles; the lens' speed.drive (data/post.js) does the picture's edges; the end col
                           clears the level; its engine heard
                           (World hands `motor` to Audio.motor); `grab`: the gun on the car's passenger seat
                           (Vehicle `gun`, `chase.arms.seat`, the lab's convertible) taken in a short beat as he sets
                           off (the car on its own, nothing told meanwhile, `shot`: SHOTS grab / grabOut; posed by
                           CharacterAnim grabPose), skipped on a retry (skipGrab)
-      CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click, R; the arc (an open car: inCone,
+      CarGun.js           his gun out of the car (Drive steps it): mouse aim, left click; it never runs dry at the
+                          wheel (no round counted, no reload); the arc (an open car: inCone,
                           125 degrees either side of the nose, over the windscreen and across the other seat, not
                           behind him; a closed one: arcOf / inArc, out of the driver's window, ~200 degrees), rounds carrying the car's speed, his arm out through `riding.aim` (eased:
                           `riding.up`; a machine pistol hangs over the door at rest, SEAT.hang)
       Pursuit.js          the pursuers (level 2A; the lab's dummy, prop option `pursuer`): black sedans driven like his
-                          car (speed + heading -> velocity, read back from the physics), slots (alongside on his driver's
-                          side / behind), a look-ahead strip per lane (swerve or brake), swipes; knocked off its line:
-                          the physics alone a moment; `contact`: a hard hit on what does not give wrecks it. Kill rules
+                          car (speed + heading -> velocity, read back from the physics), slots ALONGSIDE him and
+                          ahead, inside his arc, none behind (lanesOf / slotOf / pickSlots, `assign`: dealt by their
+                          order along the road, changed now and then; round his nose when he changes lanes), a
+                          look-ahead strip per lane (swerve or brake), rare swipes; his shove landing on it
+                          (`shoved`: half its hp, thrown aside; two wreck it, one into something solid); knocked off
+                          its line: the physics alone a moment; `contact`: a hard hit on what does not give wrecks
+                          it. Kill rules
                           from Vehicle's 'carPart' (windscreen: the driver, it veers; front tyre: a spin) and 'round'
                           (the gunman); kills emitted as 'kill' (cause bullet / wreck / explosion, `how.car` the tag).
                           The gunman's told shot (glint, red line into a wedge, a bracket on a lane band locked at its
                           start; his seat in it and reached -> dead), one at a time with a cooldown; events by distance
-                          (`chase.events`: the alley car and its red lane, one from behind); the gun / magazine pickups.
-                          Numbers: CHASE.pursuit / gunman / pickup / alley; drawn by render/PursuitArt.js
+                          (`chase.events`: the alley car and its red lane, one from behind).
+                          Numbers: CHASE.pursuit / gunman / alley; drawn by render/PursuitArt.js
       Lorries.js          the lorry that backs out across the street (level 2A's event 2 by distance, the lab's with the
                           prop option `backs`): told (beeper, reversing lamps, the HUD's chevrons, a red lane, bone
                           arrows on the way round), then its static body moved a step at a time until the street is

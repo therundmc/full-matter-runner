@@ -26,22 +26,28 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
 - **The car.** The boss's convertible, roof down: the runner is SEEN at the wheel (cap, collar, the coat's tails
   flapping out over the door), so one hit kills reads at a glance; about 2.1 t of land yacht with chrome bumpers
   for the shove. Boards painted before this choice still show a van.
-- **Driving.** He steers freely; the road pulls the car along it (a spring toward the road's line and heading, so
-  letting go straightens it). Forward / back: throttle / brake around a cruise speed set by the segment. It is a
-  heavy car and feels it without costing the placing in a lane (one hit kills): the sideways speed answers as fast as
-  ever, but the nose is on an under-damped spring (it turns in a little late, swings a little past, wags once), the
-  rear steps out when the wheel is held hard at speed (smoke, rubber, the squeal), the last 15 km/h come slowly, and
-  the body moves on its wheels (sat back under power, the nose down on the brakes and on a hit, rolled out of a
+- **Driving** (reworked 2026-11-19, the user: "accelerating / braking is useless"). NO throttle, NO brake: the car
+  runs at the segment's cruise speed by itself; only what it hits slows it, and it comes back up alone. He steers
+  across the road, which is up / down on the picture: W (Z) / S, or A / D, or the pad's left stick; letting go
+  straightens it (the road's pull). The nose turns a few degrees at most (`heading` 0.2 rad, a spring that does not
+  wag); the body still moves on its wheels (sat back as it pulls away, the nose down on a hit, rolled out of a
   bend, thrown up by a kerb, a hit, the road).
-- **The shove (SPACE).** A hard sideways jolt of the car toward the mouse's side, with a cooldown (a bar on the
-  HUD). It is a real Matter impulse: what the car hits is pushed into the scenery (piers, lorries, parked cars, the
-  rail, gates). The wrecks come from the physics, not from scripts.
+- **The shove (SPACE / pad A): THE move.** A lunge of one lane (about 95 px in 0.3 s) toward the side he aims at,
+  every 0.7 s (a bar on the HUD). On a pursuer it is a real blow: half its hp, thrown half a lane and more out of
+  its driver's hands, its gunman's shot off; TWO wreck it in the open, ONE that throws it into something solid (the
+  parked cars, a pole, a wall) does. Into nothing it lands him in the next lane: it is his dodge too. What the car
+  hits is still pushed by the physics (parked cars, kerb furniture).
+- **The pursuers come ALONGSIDE** (reworked 2026-11-19: they sat behind him, out of his arc). No slot is behind him:
+  abreast in the lane he is not in, a length ahead in that lane, ahead in his own lane (shot over the windscreen);
+  a fourth further ahead. One joining from behind starts just off the picture and is in his arc in about a second.
+  Which slots are held changes every 4 to 7 s; the rearmost car takes the rearmost slot (nobody passes anybody);
+  when he changes lanes the one abreast comes round his nose to his other side, never through him. Each gunman
+  leans out on his side (from the car ahead: back along its flank). A swipe at him is rare.
 - **Shooting.** Mouse aim, one hand, from the open car (it faces +x; the driver sits on the -y side): ALL ROUND
   but behind him (the user's call, 2026-11-18): 125 degrees either side of the nose, 250 in all: out of his door,
   ahead OVER the low windscreen, across the passenger seat to his right (the gun goes over to his right hand, the
   left takes the wheel), back along both flanks; only the 110 degrees behind him stay out. The Uzi finishes what the
-  shove started. Rounds are scarce: a killed gunman's gun or a magazine can fly into
-  the car's lane as a pickup.
+  shove started. At the wheel it NEVER RUNS DRY (the user's call, 2026-11-19): no count, no reload, no pickups.
 - **The gun: THE BOSS's Uzi, off his passenger seat** (the user's call, 2026-11-18). It lies on the convertible's
   passenger cushion (Vehicle `gun`; in level 1 too, seen as he vaults in and drives off, never a pickup there). 2A
   opens on a short beat, the first time only (a retry starts with it in hand, like level 1's bottle): the car rolls
@@ -49,26 +55,27 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   over for it, brings it up across his chest, the left hand comes off the door and racks it, then it goes into the
   left hand and hangs out over the door, the right hand back on the wheel (about 1.7 s; systems/Drive.js grab,
   CharacterAnim grabPose, SEAT.grab in data/feel.js, SHOTS `grab` / `grabOut`). Nothing is told before it is done.
-  Driving, the Uzi hangs over the door in his left hand; aimed out of his side that arm lifts it. 30 rounds in it and
-  one spare magazine (`chase.arms`).
+  Driving, the Uzi hangs over the door in his left hand; aimed out of his side that arm lifts it (`chase.arms`: 30
+  in it for when he gets out; nothing is counted at the wheel).
 - **Killing a car.** Windscreen (the driver): it veers into the rail. A front tyre: it spins. The gunman: it goes on
   and can still ram. A hard enough shove into something solid: wrecked.
 - **Telegraphs (readability first).** A gunman's shot: a white glint at the muzzle, then a thin red line that
   fattens into a wedge with a bracket where it lands (0.6 to 0.8 s), then the shot; the line locks onto a lane, not
-  the car, so a lane change or a brake dodges it. One gunman tells at a time early on, two overlapping at the end.
+  the car, so a lane change or a shove dodges it (a shove INTO the car that tells cancels its shot). One gunman tells at a time early on, two overlapping at the end.
   Obstacles about to enter the frame: red chevrons at the screen's edge. A safe gap: bone arrows. Nothing else red
   on the road.
 - **Who is who.** The pursuers are the only black cars, with one pink stripe; civilians are pale or coloured.
   Enemy tracers bone, telegraph red, his own muzzle flash orange.
 - **Slow motion** (from proposal C) only at three moments: the two jumps and the level crossing (time x0.25, weak
   points marked: a tyre, a tank, a driver).
-- **Camera.** ONE view height a segment, whatever the speed (changed 2026-11-18: a zoom that followed the speed
-  resampled the pixel art every frame, the car first: "le flou de la bagnole"): 360 world px on the back road (320 px
-  from wall to wall: both rows of signs stay on the picture, the view drawn toward the street's middle, level
-  `chase.mid`), to be 400 at 90, 440 at 120, 480 on the jump (level `chase.view`; the normal view is 290). The scene
-  is drawn at the usual whole zoom on a larger canvas and the lens brings it down (Game.fit); no slow tilt at the
-  wheel. The speed is told otherwise: the car sits further back the faster it goes (a third from the left at cruise,
-  about a quarter flat out), the road rumbles over the cruise speed, the edges of the picture streak.
+- **Camera** (reworked 2026-11-19: the car was STILL blurred). At the wheel the picture is drawn 1:1: the scene's
+  canvas is the window and the zoom the whole one nearest to 360 world px of view (3 at 1080 and at 900, 4 at 1440,
+  6 at 2160: 300 to 430 px of view; level `chase.view`; engine/Camera.js fitView), the lens scales nothing (no
+  barrel, no scan lines, no zoom kick, its fringe kept to the edges). The camera is held on whole px (`pixel`: no
+  tilt, no turn even shaken, no lag) and LOCKED on the car: a third of the view from the left, the street's middle
+  across (`chase.mid`), so the car never slides on the picture. A driven car is drawn at a whole px, on one of 64
+  angles kept with 1.5 degrees of slack (Vehicle.pose, CHASE.pixel): a lane change shows two of them. In and out of
+  a car the view changes in one cut. To be 400 at 90, 440 at 120, 480 on the jump (as whole zooms allow).
 - **Speed.** What sells it (all of it only at the wheel, none of it over the car or the lanes): the lens' `speed.drive`
   (data/post.js: in the outer band of the picture the street's lights leave pixel trails along the road, streaks of
   air run back, the colours part, the band darkens and is stretched a little so it runs past faster; a shove or a hit
@@ -98,8 +105,8 @@ Events:
 
 | # | Time | Event | What happens |
 |---|------|-------|--------------|
-| 1 | 0:08 | OUT OF THE ALLEY | One of theirs across his nose: its lamps first, a red lane. Brake, or shove it into the parked cars. |
-| 2 | 0:20 | THE LORRY BACKING OUT | Told 0.9 s (its beeper and reversing lamps, red chevrons on the edge of the screen, a red lane, bone arrows on the way round), then it shuts the street in 1.4 s. Under its tail flat out, or up the kerb through a terrace: tables, chairs, parasols, planters, awnings. Whoever follows him into it dies there. |
+| 1 | 0:06 | OUT OF THE ALLEY | One of theirs out ahead of him: its lamps first, a red lane where it crosses, into the far lane (told early: there is no brake). Keep out of that lane; then it is alongside: shove it into the parked cars. |
+| 2 | 0:20 | THE LORRY BACKING OUT | Told 0.9 s (its beeper and reversing lamps, red chevrons on the edge of the screen, a red lane, bone arrows on the way round), then it shuts the street in 1.4 s. No brake, no way under its tail: up the kerb through the terrace (the wheel, or a shove): tables, chairs, parasols, planters, awnings. Whoever follows him into it dies there. |
 | 3 | 0:30 | THE TOLL | Bone arrow: a wooden arm that flies. Red cross: steel. The one behind him takes the wrong one. |
 | 4 | 0:46 | THEY MULTIPLY | Three cars, a gunman in each. Piers down the median, a lorry in the slow lane. |
 | 5 | 0:58 | THE TANKER | It folds across three lanes, its petrol runs back down the road, the fire runs up it: 4 s. One gap. It goes up behind him. |
@@ -287,3 +294,29 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   through the hit list to 2A (its intro card LEVEL 2A, then the first-time grab); an old save with level 1 done opens
   2A on load; after 2A (TO BE CONTINUED, the results) the title, CONTINUE plays 2A. The hit list pins 2A and 2B under
   JITTERS (2B a greyed note taped SOON, not a level); JITTERS is crossed out only by his last level.
+- 2026-11-19: THE REWORK (the user: "the car is still blurred; the enemies must come up alongside; accelerating /
+  braking is useless, the shove on SPACE is the move; the Uzi unlimited; right now it is unusable"). THE BLUR, four
+  causes measured: the lens brought a 2560 x 1440 scene down to the window (x0.75, linear), the car's body turned
+  through 26 degrees a new float angle every frame, the camera turned with the shake, the car slid on the picture
+  between two px. Now the wheel's picture is 1:1 (fitView `pixel`: zoom 3 at 1080, the canvas the window), the
+  camera held on whole px and locked on the car (Camera `pixel`, Drive.frame, CHASE.camera.at), a driven car drawn
+  at a whole px on one of 64 angles with hysteresis (Vehicle.pose / carried, engine/math.js stepAngle), the heading
+  cut to 0.2 rad on a spring that does not wag, the slide gone, the lens flat there (Lens `flat`: no barrel, scan
+  lines, zoom kick; the fringe and the streaks on the edges only, never round his car). Measured in the headless
+  browser at 1920 x 1080 (lights and grain off): the hood's pixels in the scene are identical frame after frame
+  driving straight; in a lane change 12 to 14 % of them change in 7 to 9 frames of 16 (it was 60 % in 15 to 16),
+  2 angle steps either way; the lens' output is a pure function of the scene's px round the car. Known limit: the
+  car's sprite is painted twice as fine as the world, so at an odd zoom (1080, 900) one of its pixels is 1.5 px of
+  the picture, some 1 wide and some 2 (crisp and still, but uneven; even at 1440 / 2160 / 720). GAMEPLAY: no throttle
+  nor brake (Drive.speedStep, steerOf: W / S or A / D or the left stick, up / down); the shove a lane long every
+  0.7 s, a real blow on a pursuer (Pursuit.shoved, CHASE.pursuit.shoved: two wreck it, one into something solid);
+  the pursuers' slots alongside and ahead (lanesOf / slotOf / pickSlots, dealt by their order along the road, come
+  up at 14.5 px/step from 330 px back: in his arc 0.7 to 1 s after joining), round his nose when he changes lanes,
+  following one another without hanging back (`gap`); the gunman's window kept and his cone 100 degrees (he tells
+  from ahead); the Uzi never dry at the wheel (CarGun: no count, no reload, the HUD's count hidden; pickups and the
+  spare magazine removed). EVENTS: the alley cars set off 14 columns earlier (cols 111 and 368: with no brake the
+  car crosses ahead of him into the far lane); the lorry: the terrace is the way (no "flat out under its tail").
+  Decisions changed (above): driving, the shove, the pursuers, the gun, the camera, events 1 and 2. Lab station 19:
+  the three dummies stand in the slots (abreast, a length ahead, ahead in his lane); E gets him out (no brake to
+  stop with). Played by script, stepped at 60 Hz, no god mode (dodging each tell by a shove, shoving whoever is
+  abreast, through the terrace): the road finished alive with the four cars wrecked.

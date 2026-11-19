@@ -203,3 +203,31 @@ test('lens: a comic page over the world (the leap after the blast) shows clean, 
   assert.deepEqual(u.centre, [0.5, 0.5]);
   assert.ok(Math.abs(u.grade.sat - POST.grades.menu.sat) < 1e-6 && u.grade.tintK === POST.grades.menu.tintK, 'the grade of a page, at once');
 });
+
+test('lens: at the wheel the picture is drawn 1:1 and the lens leaves the road as drawn: no barrel, no scan lines, no zoom kick; the speed stays on the edges', () => {
+  const lens = new Lens(), bus = new EventBus(), player = { isPlayer: true };
+  lens.bind(bus);
+  const drive = { k: 0.8, angle: 0, x: 40, y: 20 }, wheel = view({ drive });
+  run(lens, 2, wheel);
+  let u = lens.uniforms(wheel);
+  assert.equal(u.curve, 0, 'no barrel: every px of the scene sampled at its own centre');
+  assert.equal(u.scan, 0, 'no scan lines: a car changing lanes under them flickers');
+  assert.equal(u.rush.flat, 1, 'the lens told to keep its own fringe to the band');
+  assert.ok(u.rush.k > 0.3 && u.rush.band[0] >= 0.2, 'the speed is shown, on the edges only');
+  assert.ok(u.rush.car[0] > 0.2 && u.rush.car[1] > u.rush.car[0], 'and never round his car');
+  assert.deepEqual(u.rush.at.map((n) => +n.toFixed(4)), [(960 + 80) / 1920, 1 - (540 + 40) / 1080].map((n) => +n.toFixed(4)), 'his car, in the picture');
+  // a shove, a kill: the edges kick, nothing zooms (a zoom resamples the whole picture)
+  bus.emit('ride', { beat: 'shove', x: 40, y: 20 });
+  bus.emit('kill', { victim: { x: 0, y: 0 }, killer: player, cause: 'bullet' });
+  u = lens.uniforms(wheel);
+  assert.equal(u.zoom, 0);
+  assert.ok(u.rush.k > 1 && u.fringe > POST.fringe.rest + POST.speed.drive.kick.fringe * 0.5, 'the kick is there, in the band');
+  assert.equal(POST.speed.drive.kick.zoom, undefined);
+  // on foot: as it was
+  const foot = new Lens();
+  foot.bind(bus);
+  run(foot, 2);
+  bus.emit('kill', { victim: { x: 0, y: 0 }, killer: player, cause: 'bullet' });
+  u = foot.uniforms(view());
+  assert.ok(u.curve === POST.tube.curve && u.scan === POST.tube.scan && u.rush.flat === 0 && u.rush.k === 0 && u.zoom > 0);
+});

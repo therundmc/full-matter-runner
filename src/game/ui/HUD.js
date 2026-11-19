@@ -27,7 +27,8 @@ export function drawHUD(ctx, game, t) {
   if (bk >= 0) text(ctx, Math.floor(bk * 7) % 2 ? p.brokeAt.name : 'BROKEN', pad, pad + 14 * s, 30 * s, PALETTE.pink, { align: 'left', rot: -0.04 });
   // (nothing while the gun on the car's seat is still to be taken: systems/Drive.js grab)
   else if (!(w.drive?.grab && !w.drive.grab.took)) text(ctx, def.name, pad, pad + 14 * s, 30 * s, neon(t, 1.5), { align: 'left', rot: Math.sin(t * 2) * 0.03 });
-  const ammo = p.ammoText, worn = def.wear && p.weapon ? drawWear(ctx, def.wear, p.weapon.wear, pad, pad + 38 * s, s) : false;
+  // (no count at the wheel: his gun never runs dry there, systems/CarGun.js)
+  const ammo = w.drive?.on ? '' : p.ammoText, worn = def.wear && p.weapon ? drawWear(ctx, def.wear, p.weapon.wear, pad, pad + 38 * s, s) : false;
   if (ammo) {
     const dry = p.weapon.mag <= 0 && p.reloading <= 0;
     const noReserve = p.reserveCount() <= 0;

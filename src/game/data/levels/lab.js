@@ -146,15 +146,15 @@ export default {
     ['wall_lamp', 68.5, 5.92, 180],
     // 17 vehicles: the street, to ram, hole and blow up
     ['car', 30, 21.1, 0], ['van', 24, 23.5, 180], ['car2', 47.2, 21.1, 0],
-    ['convertible', 38.6, 20.9, 0, { drive: true }], ['barrel', 16.6, 23.4, 0], ['barrel', 33, 23.5, 0],
+    ['convertible', 38.6, 20.9, 0, { drive: true }], ['barrel', 9.2, 24.4, 0], ['barrel', 33, 23.5, 0],
     ['streetlight', 10.5, 19.7, 90], ['streetlight', 20.5, 19.7, 90], ['streetlight', 32.5, 19.7, 90],
     ['streetlight', 41, 19.7, 90], ['vending', 5.5, 18.35, 0], ['parking_meter', 16.5, 19.75, 0],
     ['parking_meter', 23.5, 19.75, 0], ['news_box', 37.5, 18.4, 0], ['wall_lamp', 6.5, 18.08, 0],
     ['wall_lamp', 18.5, 18.08, 0], ['wall_lamp', 34.5, 18.08, 0], ['wall_lamp', 47.5, 18.08, 0],
-    // 19 drive: the convertible and a van to get into and drive down the street, three pursuers to shoot all round
-    ['convertible', 4.7, 21, 0, { drive: true }], ['van', 4.6, 23.5, 0, { drive: true }], ['trash_can', 18.4, 23.9, 0],
-    ['trash_can', 19.2, 23, 0], ['pursuer', 12.6, 23.55, 0, { pursuer: true }],
-    ['pursuer', 14.2, 19.02, 0, { pursuer: true }], ['pursuer', 22, 21.1, 0, { pursuer: true }],
+    // 19 drive: the convertible and a van to get into and drive down the street, three pursuers where the chase holds them
+    ['convertible', 4.7, 21, 0, { drive: true }], ['van', 4.6, 23.5, 0, { drive: true }], ['trash_can', 8.3, 23.9, 0],
+    ['trash_can', 9, 23, 0], ['pursuer', 12.6, 23.5, 0, { pursuer: true }],
+    ['pursuer', 17.7563, 23.5, 0, { pursuer: true }], ['pursuer', 19.475, 21, 0, { pursuer: true }],
     // 21 lorry: a box lorry that backs out across the street when a car comes
     ['lorry', 68, 17.375, -90, { backs: 3 }], ['car2', 61, 23.6, 0, { drive: true }], ['trash_can', 64.5, 19.4, 0],
     ['crate', 70.9, 19.3, 12], ['wall_lamp', 64.5, 18.08, 0],

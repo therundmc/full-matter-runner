@@ -65,14 +65,13 @@ export default class Lens {
     events.on('ride', (e) => this.ride(e));
   }
 
-  // a jolt of the car he drives ({ beat, x, y }: systems/Drive.js): the edges streak harder for an instant, the
-  // colours part; the shove and a car hit punch in toward it
-  ride({ beat, x, y }) {
+  // a jolt of the car he drives ({ beat }: systems/Drive.js): the edges streak harder for an instant, the colours
+  // part there
+  ride({ beat }) {
     const K = this.cfg.speed.drive.kick, k = K[beat];
     if (!k) return;
     this.jolt = Math.max(this.jolt, k);
     this.bump(K.fringe * k);
-    if ((beat === 'shove' || beat === 'hit') && K.zoom > this.zoom) { this.zoom = K.zoom; this.zoomAt = { x, y }; }
   }
 
   // a blow or a round landed on somebody: { power 0..1, byPlayer }: the lens shivers, no more (a kill is `kill`)
@@ -215,14 +214,17 @@ export default class Lens {
       lights.set([x, y, Math.min(1, l.k), 0], i * 4);
     });
 
-    // the speed at the wheel: how much, the way he goes in the picture (y up), his car, and the band's numbers
-    const D = c.speed.drive, rush = world && v.drive ? Math.min(1.6, this.rush + this.jolt) : 0;
+    // the speed at the wheel: how much, the way he goes in the picture (y up), his car, and the band's numbers.
+    // flat: at the wheel the scene is drawn 1:1 and must come out px for px where the road is: no barrel, no zoom
+    // kick, the lens' own fringe kept to the band the speed works on (PostGL), and no scan lines (they stand still
+    // on the screen: a car changing lanes under them flickers, row by row)
+    const D = c.speed.drive, flat = world && !!v.drive, rush = flat ? Math.min(1.6, this.rush + this.jolt) : 0;
     const way = this.rushA - (v.rot || 0), rows = H / Math.max(1, v.scale) / D.rows;
     const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
     const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k + R.sat * r, con: this.grade.con + c.punch.con * k + R.con * r };
     return {
       fringe: (c.fringe.rest + this.fringe + R.fringe * r + D.fringe * rush + c.fringe.trauma * Math.max(0, (world && v.trauma || 0) - 0.15)) * px,
-      zoom: this.zoom,
+      zoom: flat ? 0 : this.zoom,
       focus: this.zoom > 0.0005 && this.zoomAt ? at(this.zoomAt.x, this.zoomAt.y) : centre,
       frame: this.frame > 0 ? 1 : 0,
       glitch: this.glitch,
@@ -231,13 +233,14 @@ export default class Lens {
       smear: [this.smear.x * (H / W), this.smear.y],
       radial: this.radial, centre,
       rush: {
-        k: rush, dir: [Math.cos(way), -Math.sin(way)], at: rush > 0 ? at(v.drive.x, v.drive.y) : [0.5, 0.5], band: D.band,
+        k: rush, flat: flat ? 1 : 0, dir: [Math.cos(way), -Math.sin(way)], at: flat ? at(v.drive.x, v.drive.y) : [0.5, 0.5],
+        band: D.band, car: D.car,
         len: D.len, rows, flick: D.flick, mix: D.mix, pull: D.pull, split: D.split * px, dark: D.dark, lines: D.lines,
       },
       edge: this.edge, blur: this.blur,
       glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights, tone: c.tone,
       grade: g,
-      curve: t.curve, scan: t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
+      curve: flat ? 0 : t.curve, scan: flat ? 0 : t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
       vignette: t.vignette + R.vignette * r,
     };
   }

@@ -143,7 +143,6 @@ test('lorry: the level\'s event 2 is set off at its distance, told before it mov
   assert.ok(run(s, 2, () => s.L.state === 'tell'), 'set off as his car passes its column');
   assert.ok(s.v.x >= EV.at * TILE && s.v.x < EV.at * TILE + 20);
   assert.equal(s.S.told().length, 1, 'told: the HUD\'s chevrons, the red lane');
-  s.input.held.add('KeyS'); // he stops and watches
   run(s, CHASE.lorry.tell - 0.1);
   assert.equal(s.p.y, y0, 'the tell first: it has not moved');
   assert.ok(s.w.sounds.filter((n) => n === 'lorryBeep').length >= 3, 'its beeper');
@@ -211,13 +210,12 @@ test('kerb: what stands on the terrace is thrown or torn down, never a wall; the
   assert.ok(s.w.sounds.includes('awningRip'));
 });
 
-test('feel: the tyres let go on a shove, the brakes and hard steering; a thing is torn harder the faster (pure)', () => {
-  assert.equal(skidOf(0, 8.9, false, false), 0, 'straight: nothing');
-  assert.equal(skidOf(0, 8.9, false, true), 1, 'a shove');
-  assert.ok(skidOf(0, 8.9, true, false) > 0, 'the brakes');
-  assert.equal(skidOf(0, 1, true, true), 0, 'not at a crawl');
-  assert.ok(skidOf(CHASE.steer, 8.9, false, false) > 0 && skidOf(-CHASE.steer, 8.9, false, false) > 0, 'full lock');
-  assert.equal(skidOf(CHASE.steer * 0.5, 8.9, false, false), 0, 'a lane change taken gently');
+test('feel: the tyres let go on a shove and hard steering; a thing is torn harder the faster (pure)', () => {
+  assert.equal(skidOf(0, 8.9, false), 0, 'straight: nothing');
+  assert.equal(skidOf(0, 8.9, true), 1, 'a shove');
+  assert.equal(skidOf(0, 1, true), 0, 'not at a crawl');
+  assert.ok(skidOf(CHASE.steer, 8.9, false) > 0 && skidOf(-CHASE.steer, 8.9, false) > 0, 'full lock');
+  assert.equal(skidOf(CHASE.steer * 0.5, 8.9, false), 0, 'a lane change taken gently');
   assert.ok(tearPower(CHASE.cruise) >= 2, 'at cruise speed a thing goes at once');
   assert.ok(tearPower(CHASE.max) > tearPower(CHASE.cruise) && tearPower(99) === CHASE.hit.most);
   assert.ok(tearPower(2.5) < tearPower(CHASE.cruise));

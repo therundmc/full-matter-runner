@@ -54,6 +54,14 @@ export function approachAngle(a, target, maxStep) {
   return a + clamp(angDiff(a, target), -maxStep, maxStep);
 }
 
+// An angle held on a grid of `step` rad (a pixel-art sprite turned by a new float angle every frame crawls: drawn
+// on a few fixed ones it stays still). `was`: the step it was on (null: none yet), kept until a has gone `slack` rad
+// past the half way to the next one, so an angle wobbling about a boundary never flickers between two
+export function stepAngle(a, was, step, slack = 0) {
+  if (was !== null && was !== undefined && Math.abs(angDiff(was, a)) <= step / 2 + slack) return was;
+  return Math.round(a / step) * step;
+}
+
 // gaussian-ish spread in [-1, 1]
 export const spread = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
 
