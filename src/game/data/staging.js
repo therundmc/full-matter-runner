@@ -45,32 +45,39 @@ export const DIRECTION = {
 // from him: nobody is asked to deal with a man he cannot see
 export const FRAME = { near: 110 };
 
-// ---- the lessons, ONE pattern for all of them (systems/Tutorial.js pace): the first time a hint shows (HINTS, by
-// its id), a short directed beat: the game slows hard (`slow`), the camera punches in on what the hint is about
-// (`shot`, a SHOTS name), the one line shows; `dur` real s later the camera eases back and he has the hand at normal
-// speed, the hint staying up until he has done it. It is never held until he acts (his key, pressed `min` s in or
-// later, only cuts it short). Hints that come up together share one beat (the bat and the man: the camera between
-// the two). A beat only starts once what it is about is on screen, and he is `within` px of it when that is given
-// (near enough to do it); `far`: it need not be on screen (the camera goes and shows it). BEAT: what a lesson does
-// not say for itself.
-export const BEAT = { slow: 0.07, dur: 1.3, min: 0.35, shot: 'beat' };
+// ---- the lessons (systems/Tutorial.js pace): the first time a hint shows (HINTS, by its id), a STOPPED beat, then
+// the hand (the user's call: a real lesson, taking its time, so that he cannot just do anything). All on the real
+// clock: time stops at once (nothing moves, the world is not stepped; only the hint's own drawing lives), the camera
+// travels from him to what the hint is about and pushes in (`shot`, a SHOTS name) over `go` s, eased; it stays there
+// `hold` s with the hint shown big over it; then travels back to him and his usual framing over `back` s, time still
+// stopped; then time comes back from 0 to 1 over `give` s, and his input is his again from the start of that. Nothing
+// he presses reaches him before `give`, and what he still holds down then reads as up until he lets it go (the move
+// keys and the stick apart: walking on is harmless). From `min` s into the hold his key (the hint's own, or SPACE /
+// ENTER / A / a left click: "got it") ends it early; before, nothing does. Hints that come up together are played
+// one after the other, the camera going from one thing straight on to the next, and back to him once at the end.
+// The hint stays up until he has done it. A beat only starts once what it is about is on screen, and he is `within`
+// px of it when that is given (near enough to do it); `far`: it need not be on screen (the camera goes and shows it).
+// A lesson with a `slow` of its own is spectacle, not a lesson: the old pattern, time slowed to `slow` (not stopped)
+// for `dur` real s, the camera eased onto it, his hands free (his key, `min` s in or later, cuts it short).
+// BEAT: what a lesson does not say for itself; `big`: the hint is drawn that much larger at the height of the beat.
+export const BEAT = { go: 0.45, hold: 1.4, min: 0.6, back: 0.4, give: 0.2, big: 0.5, shot: 'beat' };
 export const LESSONS = {
-  move: { dur: 1.2 },
+  move: {},
   vault: { within: 76 },                       // the big table across the living room
-  flee: { dur: 1.0, far: true },               // GET OUT: the camera goes to the living room's way out
+  flee: { far: true },                         // GET OUT: the camera goes to the living room's way out
   behind: { within: 220 },                     // GET BEHIND HIM
-  neck: { dur: 1.0 },                          // behind him: the click
+  neck: {},                                    // behind him: the click
   take: { within: 120 },
   punch: { within: 110 },
   strike: { within: 110 },
-  finish: { within: 90, dur: 1.0 },
+  finish: { within: 90 },
   slide: { within: 44 },                       // at the corner, not before
-  shoot: { dur: 1.0 },
-  reload: { dur: 1.0 },
-  throw: { dur: 1.0 },
-  // the end: the stove going, seen in slow motion (it blows inside the beat), then the jump
-  run: { slow: 0.3, dur: 1.2, shot: 'beatWide', at: 'blast', far: true },
-  dive: { slow: 0.14, dur: 0.75 },             // at the window, the moment SPACE takes him through
+  shoot: {},
+  reload: {},
+  throw: {},
+  // the end, spectacle: the stove going, seen in slow motion (it blows inside the beat), then the jump
+  run: { slow: 0.3, dur: 1.2, min: 0.35, shot: 'beatWide', at: 'blast', far: true },
+  dive: { slow: 0.14, dur: 0.75, min: 0.35 }, // at the window, the moment SPACE takes him through
 };
 // the reload of the lesson: while his hands work the world all but stops (`slow`) and the reload itself goes at its
 // real pace; nobody fires or strikes from the moment his gun is dry (a magazine left) until `grace` s after it is

@@ -62,15 +62,20 @@ const FALL = { hold: 0.7, fade: 0.55, slow: 0.4 };
 const FALLEN = FALL.hold + FALL.fade;
 // s the mouse rests on one of OPTIONS' things, crossed on its way right to the sheet, before that thing's sheet shows
 const HOVER_DWELL = 0.15;
-// which keys do an action (data/controls.js ACTIONS), for a lesson waiting on it (systems/Tutorial.js pace)
+// which keys do an action (data/controls.js ACTIONS), for a lesson waiting on it (systems/Tutorial.js pace);
+// confirm: what says "got it" to a lesson whatever it is about (the pad's A is SPACE)
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 const DOES = {
-  move: (inp) => !!inp.move() || ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some((c) => inp.down(c)),
+  move: (inp) => !!inp.move() || MOVE_KEYS.some((c) => inp.down(c)),
   attack: (inp) => inp.mouseDown(0),
   throw: (inp) => inp.mouseDown(2),
   use: (inp) => inp.down('KeyE'),
   action: (inp) => inp.down('Space'),
   reload: (inp) => inp.down('KeyR'),
+  confirm: (inp) => inp.down('Space') || inp.down('Enter') || inp.down('NumpadEnter') || inp.mouseDown(0),
 };
+// the keys he may keep holding through a lesson's beat into the hand given back (walking on, looking further: harmless)
+const WALK_ON = new Set([...MOVE_KEYS, 'ShiftLeft', 'ShiftRight']);
 // what the intro banner calls a level
 const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelTag(id)}` : 'TEST LEVEL');
 
@@ -100,6 +105,7 @@ export default class Game {
     this.hitstop = 0;
     this.timeScale = 1;
     this.slow = null;
+    this.stopped = false;              // a tutorial lesson holds the world still this frame (teach)
     this.flashA = 0;
     this.flashColor = '#fff';
     this.clearedT = 0;
@@ -655,14 +661,9 @@ export default class Game {
       this.slow.t -= dt;
       if (this.slow.t <= 0) this.slow = null;
     }
-    // a lesson shown for the first time slows the world until he does it (he acts at once: the key lets time go)
-    if (this.state === 'play' && this.world.tutorial) {
-      // (it waits for what it is about to be on screen, clear of the edges)
-      const v = this.world.view(), m = 28;
-      const seen = (x, y) => Math.abs(x - v.x) < v.hw - m && Math.abs(y - v.y) < v.hh - m;
-      target = Math.min(target, this.world.tutorial.pace(dt, (action) => !!DOES[action]?.(inp), seen));
-    }
-    this.timeScale = lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
+    const taught = this.teach(dt, inp);
+    target = Math.min(target, taught.scale);
+    this.timeScale = taught.beat ? target : lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
     this.timeScale = this.world.killCam.clock(this.timeScale, target); // a beat's ramp: down at once, snapped back
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;
@@ -674,7 +675,10 @@ export default class Game {
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 
-    if (this.hitstop > 0) {
+    if (this.stopped) {
+      // a lesson's beat: the world is not stepped at all (a time scale of 0 is no step: Matter divides by it)
+      this.acc = 0;
+    } else if (this.hitstop > 0) {
       this.hitstop -= dt;
     } else {
       this.acc += dt;
@@ -696,6 +700,30 @@ export default class Game {
     this.murk += (this.world.smoke.murk(p.x, p.y) - this.murk) * (1 - Math.exp(-SMOKE.murk.ease * dt));
     this.flashA = Math.max(0, this.flashA - dt * 3);
     if (this.state === 'outro' && outroOver(this.world.outro)) this.endOutro();
+  }
+
+  // the tutorial's lessons (systems/Tutorial.js pace): the time scale they want, and whether a lesson's stopped beat
+  // sets it as it is (`beat`: its own ramp, no easing of ours on it). Through such a beat (this.stopped) the world
+  // stands still, the camera goes to what it is about and back, and nothing he does reaches him: what he presses is
+  // dropped; then, as time is given back, what he still holds down reads as up until let go (a held click is no
+  // shot), but for walking on. A key down as the beat starts says nothing to it either: "got it" is a fresh press
+  teach(dt, inp) {
+    const T = this.state === 'play' ? this.world?.tutorial : null, was = !!T?.stopped;
+    this.stopped = false;
+    if (!T) return { scale: 1, beat: false };
+    // (it waits for what it is about to be on screen, clear of the edges)
+    const v = this.world.view(), m = 28;
+    const seen = (x, y) => Math.abs(x - v.x) < v.hw - m && Math.abs(y - v.y) < v.hh - m;
+    const scale = T.pace(dt, (action) => !!DOES[action]?.(inp), seen);
+    if (T.stopped !== was) {
+      inp.holdMouse();
+      inp.holdKeys(T.stopped ? null : WALK_ON);
+      // (a move key held into the hand counts as pressed: on the ground, it gets him up as a fresh one would)
+      if (!T.stopped && MOVE_KEYS.some((c) => inp.down(c))) inp.anyPressed = true;
+    }
+    this.stopped = T.stopped;
+    if (this.stopped) inp.consume();
+    return { scale, beat: !!T.lesson?.stop };
   }
 
   // a comic page is skipped by holding SPACE (a pad's A: bound to it, data/controls.js), nothing else (ui/cine/Hold.js)
@@ -882,9 +910,13 @@ export default class Game {
     this.camera.sway = !dr;
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
+    // (a tutorial lesson's beat steers it on its own clock: systems/Tutorial.js beatShot)
     const D = this.direction, shot = this.stagedShot();
-    D.set(shot?.name, shot?.at);
-    D.update(dt, this.camera.zoom);
+    if (shot?.steer) D.steered(shot.name, shot.at, shot.steer, this.camera.zoom);
+    else {
+      D.set(shot?.name, shot?.at);
+      D.update(dt, this.camera.zoom);
+    }
     this.camera.scale = D.zoom;
     const kc = w.killCam; // its punch-in on top (1 at rest, and at the wheel), the view drawn toward the kill
     this.camera.scale *= kc.scale;

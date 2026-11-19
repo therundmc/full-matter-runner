@@ -1,9 +1,11 @@
 // A level that teaches (level `tutorial`: tools/build_tutorial.py), and how it is staged (data/staging.js). Its
 // rooms, the stages, are played one after the other; each asks for one move and says so next to what it is done
-// to, never in a wall of text: the first time a hint shows, time slows to a crawl until he does it (pace). It opens
-// on a scene he can only watch (the man with the match: open / play), names the camera's shot as it goes (shot)
-// and ends on the flat blowing up behind him (blow). DOM-free: the state and the rules; render/WorldRenderer.js
-// draws what hints() returns, Game eases the time and the camera.
+// to, never in a wall of text: the first time a hint shows, a lesson's beat (pace): time stops, the camera goes to
+// what it is about and holds there, comes back to him, and only then is the hand his (a man of the room does not
+// wake before the lesson about it was given). It opens on a scene he can only watch (the man with the match: open /
+// play), names the camera's shot as it goes (shot) and ends on the flat blowing up behind him (blow). DOM-free: the
+// state and the rules; render/WorldRenderer.js draws what hints() returns, Game stops / eases the time, keeps his
+// input from him while a beat says so (stopped) and moves the camera.
 //
 // Level data (tiles):
 //   stages  [{ zone: [c0, r0, c1, r1]   the room: walking into it makes it the current stage
@@ -51,6 +53,9 @@ const UP = -24;        // px a hint floats over what it points at ...
 const MAN = -37;       // ... over a man: clear of what he says (the barks float 16 px over him)
 const SIDE = 11;              // px either side of the stairs' middle they come up at
 
+const smooth = (k) => { const u = Math.min(1, Math.max(0, k)); return u * u * (3 - 2 * u); };
+// 0..1 with a little overshoot on the way: a pop
+const pop = (k) => { const u = Math.min(1, Math.max(0, k)) - 1; return 1 + u * u * (2.7 * u + 1.7); };
 const inside = ([c0, r0, c1, r1], x, y) => x >= c0 * TILE && x < (c1 + 1) * TILE && y >= r0 * TILE && y < (r1 + 1) * TILE;
 const at = ([c, r]) => ({ x: c * TILE, y: r * TILE });
 // is guard e the one the level put on tile [c, r] (his job may have taken him a step off it since: Enemy.spawn)
@@ -125,7 +130,10 @@ export default class Tutorial {
     this.from = from;
     this.coming = [];  // what is still to happen of men coming up the stairs: { t (world time), step | g }
     this.scene = null; // the opening while it plays: { man, t0, from, step, matchAt, done }
-    this.lesson = null;                                 // the beat playing: { ids, slow, t, age, at, shot }
+    // the lesson playing: stopped, { stop, n, beats: [{ id, at, key, hold }], i, phase, t, shot } (pace); or, a
+    // spectacle, slowed: { ids, slow, t, age, min, at, shot }
+    this.lesson = null;
+    this.serial = 0;                                    // lessons played: each its own travel of the camera
     this.shutting = null;                               // a door to shut and lock once nobody stands in its leaf: { tile, slam }
     this.calm = -1;                                     // world time until which nobody fires at him (the reload)
     this.taught = world.game?.taught || new Set();      // what was said already, this run and its retries
@@ -297,8 +305,11 @@ export default class Tutorial {
       if (sc.matchAt !== null) return { name: 'catch', at: w.fireSpread?.nearest(p.x, p.y) || at(this.def.opening.match) };
       return sc.step >= 1 ? { name: 'laugh', at: sc.man } : { name: 'wake', at: null };
     }
-    // a lesson's beat: punched in on what it is about
-    if (this.lesson) return { name: this.lesson.shot, at: this.lesson.at };
+    // a lesson's beat: the camera steered to what it is about and back (its time on the real clock: beatShot); a
+    // spectacle's, eased onto it
+    const L = this.lesson;
+    if (L?.stop && L.phase !== 'give') return this.beatShot(L);
+    if (L && !L.stop) return { name: L.shot, at: L.at };
     // the end: back at the stove as it goes, then on the fire coming down the corridor
     if (B?.t != null) return { name: 'run', at: B.front || (w.time - B.t < BLAST.look ? at(B.breach) : null) };
     const thrown = w.throwBeat?.shot();
@@ -325,18 +336,21 @@ export default class Tutorial {
     return { zone: px(E.zone), window: px(E.window) };
   }
 
-  // ---- the lessons: a short directed beat the first time a hint shows (LESSONS, BEAT in data/staging.js).
-  // dt: real s; did(action): is that action's key down (data/controls.js ACTIONS)?; seen(x, y): is that point of the
-  // world on screen? Returns the time scale wanted.
+  // ---- the lessons (LESSONS, BEAT in data/staging.js): the first time a hint shows, a stopped beat, then the hand.
+  // dt: real s; did(action): is that action's key down (data/controls.js ACTIONS; 'confirm': SPACE, ENTER, A or a left
+  // click)?; seen(x, y): is that point of the world on screen? Returns the time scale wanted: 0 while a beat holds
+  // the world stopped (then `stopped`: Game does not step the world, and his input does not reach him).
   pace(dt, did, seen = () => true) {
     const shown = this.hints(), p = this.world.player;
-    let L = this.lesson;
+    const L = this.lesson;
+    if (L?.stop) return this.beat(L, dt, did);
     if (L) {
+      // a spectacle: slowed, his hands free
       L.t -= dt;
       L.age += dt;
       const live = shown.filter((h) => L.ids.includes(h.id));
-      const done = L.age >= BEAT.min && live.some((h) => h.key && did(h.key));
-      if (L.t <= 0 || !live.length || done) this.lesson = L = null; else return L.slow;
+      const done = L.age >= L.min && live.some((h) => h.key && did(h.key));
+      if (L.t <= 0 || !live.length || done) this.lesson = null; else return L.slow;
     }
     // his hands on the magazine: the world all but stops (the reload goes at its own pace: update)
     if (p.reloading > 0 && p.def?.kind === 'gun') return RELOAD.slow;
@@ -344,16 +358,78 @@ export default class Tutorial {
       const D = LESSONS[h.id];
       return D && !this.taught.has(h.id) && (anywhere || D.far || seen(h.ax, h.ay)) && !(D.within && Math.hypot(p.x - h.ax, p.y - h.ay) > D.within);
     };
-    // (once one is due, what else is near enough comes with it, on screen or not: the camera goes between them)
+    // (once one is due, what else is near enough comes with it, on screen or not: the camera goes on to it)
     const fresh = shown.some((h) => due(h)) ? shown.filter((h) => due(h, true)) : [];
     if (!fresh.length) return 1;
-    // one beat for what came up together: the camera between them
-    const Ds = fresh.map((h) => ({ ...BEAT, ...LESSONS[h.id] })), n = fresh.length;
     for (const h of fresh) this.taught.add(h.id);
-    const look = Ds.some((d) => d.at === 'blast') && this.blast ? at(this.blast.breach)
-      : { x: fresh.reduce((sum, h) => sum + h.ax, 0) / n, y: fresh.reduce((sum, h) => sum + h.ay, 0) / n };
-    this.lesson = { ids: fresh.map((h) => h.id), slow: Math.min(...Ds.map((d) => d.slow)), t: Math.max(...Ds.map((d) => d.dur)), age: 0, at: look, shot: Ds[0].shot };
-    return this.lesson.slow;
+    const Ds = fresh.map((h) => ({ ...BEAT, ...LESSONS[h.id] }));
+    const spot = (h, D) => (D.at === 'blast' && this.blast ? at(this.blast.breach) : { x: h.ax, y: h.ay });
+    if (Ds.some((d) => d.slow)) {
+      // spectacle: one slowed beat for what came up with it, the camera between them
+      const n = fresh.length, spots = fresh.map((h, k) => spot(h, Ds[k]));
+      const look = Ds.some((d) => d.at === 'blast') ? spots[Ds.findIndex((d) => d.at === 'blast')]
+        : { x: spots.reduce((sum, q) => sum + q.x, 0) / n, y: spots.reduce((sum, q) => sum + q.y, 0) / n };
+      const S = Ds.filter((d) => d.slow);
+      this.lesson = { ids: fresh.map((h) => h.id), slow: Math.min(...S.map((d) => d.slow)), t: Math.max(...S.map((d) => d.dur)), age: 0, min: S[0].min, at: look, shot: S[0].shot };
+      return this.lesson.slow;
+    }
+    // a lesson: one stopped beat each, played in a row
+    this.lesson = { stop: true, n: ++this.serial, i: 0, phase: 'go', t: 0, shot: Ds[0].shot,
+      beats: fresh.map((h, k) => ({ id: h.id, key: h.key, at: spot(h, Ds[k]), hold: Ds[k].hold })) };
+    return 0;
+  }
+
+  // a stopped beat's clock (real s): go -> hold -> [go -> hold, the next one] -> back -> give -> over. The time scale
+  // wanted: 0, then from 0 up to 1 over `give`
+  beat(L, dt, did) {
+    L.t += dt;
+    for (;;) {
+      const b = L.beats[L.i], hold = L.phase === 'hold';
+      if (hold) {
+        // got it: his key, or SPACE / ENTER / A / a click, pressed once the hold has been on long enough to be read
+        // (a key already down as the hold came on must be let go first)
+        const press = (b.key && did(b.key)) || did('confirm');
+        if (!press) L.held = false;
+        else if (!L.held && L.t >= BEAT.min && L.t < b.hold) L.t = b.hold;
+      }
+      const end = hold ? b.hold : BEAT[L.phase];
+      if (L.t < end) break;
+      L.t -= end;
+      if (L.phase === 'go') Object.assign(L, { phase: 'hold', held: true });
+      else if (hold && L.i + 1 < L.beats.length) Object.assign(L, { phase: 'go', i: L.i + 1 });
+      else if (hold) L.phase = 'back';
+      else if (L.phase === 'back') L.phase = 'give';
+      else { this.lesson = null; return 1; }
+    }
+    return L.phase === 'give' ? L.t / BEAT.give : 0;
+  }
+
+  // a stopped beat holds the world still and his input from him (all of it but `give`)
+  get stopped() { return !!this.lesson?.stop && this.lesson.phase !== 'give'; }
+
+  // the camera through a stopped beat: { name, at, steer: { n, k, pull } } (systems/Direction.js steered): going, from
+  // him (or from what the beat before showed) to what it is about, pushing in; held there; coming back to him
+  beatShot(L) {
+    const b = L.beats[L.i], e = smooth(L.t / (L.phase === 'hold' ? 1 : BEAT[L.phase]));
+    let at = b.at, k = 1;
+    if (L.phase === 'go' && L.i > 0) {
+      const a = L.beats[L.i - 1].at;
+      at = { x: a.x + (b.at.x - a.x) * e, y: a.y + (b.at.y - a.y) * e };
+    } else if (L.phase === 'go') k = e;
+    else if (L.phase === 'back') k = 1 - e;
+    return { name: L.shot, at, steer: { n: L.n, k, pull: k } };
+  }
+
+  // how big the hint of the beat on now is drawn: 0 (as usual) .. 1 (BEAT.big larger), popping in as the camera
+  // gets there, going back to its size as it leaves
+  focus(L) {
+    const e = L.t / (L.phase === 'hold' ? 1 : BEAT[L.phase]);
+    return L.phase === 'go' ? pop(e) : L.phase === 'hold' ? 1 : L.phase === 'back' ? 1 - smooth(e) : 0;
+  }
+
+  // a lesson of the stage still to be given about something in its room (or one being given): its men sleep on
+  pending(s) {
+    return !!this.lesson || this.hints().some((h) => LESSONS[h.id] && !this.taught.has(h.id) && inside(s.zone, h.ax, h.ay));
   }
 
   // ---- the end: the flat goes up behind him, and the fire comes down the corridor after him (BLAST in
@@ -495,9 +571,11 @@ export default class Tutorial {
     if (w.time < this.calm) for (const g of w.enemies) g.react = Math.max(g.react || 0, 0.15);
     if (s) {
       this.call(s, p);
-      // walked up to, in front: he looks up (walked up to the stairs: those coming up them are there)
+      // walked up to, in front: he looks up (walked up to the stairs: those coming up them are there); never before
+      // the lessons of the room were given: a man waking first would skip them
+      const waiting = this.pending(s);
       for (const wave of s.waves) {
-        if (wave.blind || wave.awake) continue;
+        if (wave.blind || wave.awake || waiting) continue;
         const seen = wave.up ? Math.hypot(p.x - wave.up[0] * TILE, p.y - wave.up[1] * TILE) < FRONT * TILE
           : wave.guards.some((g) => g.alive && Math.hypot(p.x - g.x, p.y - g.y) < FRONT * TILE
             && Math.cos(g.angle) * (p.x - g.x) + Math.sin(g.angle) * (p.y - g.y) > 0);
@@ -518,7 +596,8 @@ export default class Tutorial {
     }
   }
 
-  // what to show this frame: [{ x, y (world px, already lifted over its object), ax, ay (what it points at), key, text }]
+  // what to show this frame: [{ x, y (world px, already lifted over its object), ax, ay (what it points at), key, text,
+  // id, focus (the hint a stopped beat is about: 0..1 how big it is drawn, focus) }]
   hints() {
     const s = this.stages[this.stage], p = this.world.player, out = [];
     if (!s || !p?.alive || this.over || this.scene || p.execution || p.takedown) return out;
@@ -528,6 +607,8 @@ export default class Tutorial {
       if (h && !out.some((o) => o.ax === h.x && o.ay === h.y)) out.push({ ...h, y: h.y + (h.up ?? UP), ax: h.x, ay: h.y, id: h.id ?? name });
       if (out.length >= SHOWN) break;
     }
+    const L = this.lesson;
+    if (L?.stop) for (const h of out) if (h.id === L.beats[L.i].id) h.focus = this.focus(L);
     return out;
   }
 }
