@@ -159,6 +159,12 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    (E at its door) that pulls away east: S grinds its flank along the blind wall (sparks for as long
                    as it rubs, by its speed), W into the parked cars; rounds on bodywork spark, a tyre shot out smokes
                    and its rim then throws sparks
+    34 FLAT        the prologue's flat in one room (tools/build_tutorial.py), north of the street's east end past 32:
+                   what drips (systems/Drips.js, LIQUIDS.drips: the water heater's joint on the east wall, the pail
+                   that runs over: watch the puddles grow to their size and stop, kick the pail, break either), what
+                   fumes (data/clutter.js `fume`, SMOKE.fumes: the pan on the stove, the kettle on the worktop: knock
+                   them off, it stops), its furniture to break and push, what lies on its floor and the five marks
+                   of an old flat painted in it (render/FloorWear.js: damp, flakes, grease, leak, threadbare)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -537,6 +543,43 @@ lv.prop('car2', 61.0, 23.6, 0, drive=True)         # E at its driver's door
 lv.prop('trash_can', 64.5, 19.4)
 lv.prop('crate', 70.9, 19.3, 12)
 lv.prop('wall_lamp', 64.5, 18.08, 0)
+
+lv.area('34 flat: the prologue\'s furniture, what drips and what fumes')
+lv.fill(79, 12, 88, 17, '#')               # a room in the brick north of the street's east end, its door on the sidewalk
+lv.fill(80, 13, 87, 16, '+')
+lv.put(83, 17, '+')
+lv.paint('label_flat', 84.6, 18.6)
+lv.prop('ceiling_lamp', 84.0, 15.0)
+lv.prop('worktop', 81.6, 13.28, clutter='flat_worktop')    # the kettle steams on it
+lv.prop('oven', 82.9, 13.32, clutter='flat_stove')          # the pan smokes on it
+lv.prop('calendar', 84.2, 13.07)
+lv.prop('mirror_cracked', 85.3, 13.09)
+lv.prop('mailboxes', 86.7, 13.09)
+lv.prop('boiler', 87.91, 14.6, 90)                          # its joint drips on the tiles
+lv.prop('bucket', 87.3, 16.4)                               # full: it runs over
+lv.paint('mattress', 80.8, 15.1)
+lv.prop('nightstand', 81.9, 14.45)
+lv.prop('duffel_bag', 85.3, 14.2, 15)
+lv.prop('chair_jacket', 86.6, 14.2, 200)
+lv.prop('coffee_table', 84.5, 15.4, clutter='flat_coffee')
+lv.prop('record_player', 86.2, 16.72, 180)
+lv.prop('plant_dead', 80.4, 16.6)
+lv.paint('clothes_pile', 82.3, 16.3, 20)
+lv.paint('pizza_box', 83.2, 14.6, 20)
+lv.paint('bottles_empty', 82.6, 15.3, 40)
+lv.paint('mail_pile', 83.5, 16.6, 30)
+lv.paint('boards_loose', 85.0, 16.4, 15)
+lv.paint('phone_floor', 86.9, 15.3, 200)
+lv.paint('trash_spill', 81.6, 16.5, 100)
+lv.paint('cutlery_spill', 82.0, 14.1, 200)
+lv.grime_at('grease', 82.9, 14.0, r=12)
+lv.grime_at('leak', 87.6, 14.7, r=9)
+lv.grime_at('leak', 87.4, 16.6, r=9)
+lv.grime_at('damp', 80.3, 13.3, r=13)
+lv.grime_at('flakes', 85.6, 13.2)
+lv.grime_at('flakes', 80.2, 15.8)
+lv.grime_at('crack', 84.8, 14.6, len=[14, 40], d=-14, lit=4)
+lv.grime_at('threadbare', 83.6, 15.9, r=10)
 
 lv.area('32 chase fx: cars smoking at each stage of damage, one to set alight and blow up, a car to grind along the wall')
 lv.fill(73, 18, 94, 19, 's')               # the street carried on east once more, a blind wall along its south kerb

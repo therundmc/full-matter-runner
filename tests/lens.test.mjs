@@ -127,8 +127,16 @@ test('lens: the tape tears at death and at a start, a menu softens the whole pic
   assert.equal(lens.glitch, 0);
   lens.update(1 / 60, view({ state: 'play' }));
   assert.ok(lens.glitch > 0.5, 'back on his feet');
+  run(lens, 2, view({ state: 'results' }));
+  assert.ok(lens.blur > POST.focus.results - 0.05);
+  // the pause is no blur: the picture sharp and drained at once, the world's look back at once on the way out
+  lens.update(1 / 60, view({ state: 'play' }));
+  lens.update(1 / 60, view({ state: 'pause' }));
+  assert.equal(lens.grade.sat, POST.grades.paused.sat, 'a cut, not a fade');
   run(lens, 2, view({ state: 'pause' }));
-  assert.ok(lens.blur > 0.95);
+  assert.ok(lens.blur < 0.02);
+  lens.update(1 / 60, view({ state: 'play' }));
+  assert.equal(lens.grade.sat, POST.grades.calm.sat);
   run(lens, 2, view({ look: true }));
   assert.ok(lens.blur < 0.02 && Math.abs(lens.edge - POST.focus.look) < 0.01);
 });

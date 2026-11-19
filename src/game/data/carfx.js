@@ -31,20 +31,26 @@ export const CARFX = {
     // (`omega` rad/s over r px, capped at `vmax` px/s, k of the way), from `from` px/step
     curl: { from: 2, every: 0.12, r: 30, omega: 5, vmax: 110, k: 0.5 },
   },
-  // ---- THE BILLOWS THAT ARE SEEN (render/CarFxArt.js, drawn over the night like the chase's wind): flat squares in
-  // a few tones with their lit corner a tone lighter, thinning in `steps`, that ride the modelled air (`ride` of its
-  // velocity there, so they trail, are dragged by a wake and curl with it), keep `carry` of the speed of what threw
-  // them (lost at `drag` 1/s), wander `drift` px/s, lean `lift` px/s as they rise (what a standing car's plume does:
-  // it goes up the picture and aside instead of sitting on its hood) and swell (`grow`: their size at the end,
-  // times). `most` alive at once (times the QUALITY's `fx`), the oldest let go. Tones: colours from the lit one
-  // down, their opacity
+  // ---- THE BILLOWS THAT ARE SEEN (render/CarFxArt.js, drawn over the night like the chase's wind): small round
+  // pixel clouds in three flat shades that ride the modelled air (`ride` of its velocity there, so they trail, are
+  // dragged by a wake and curl with it), keep `carry` of the speed of what threw them (lost at `drag` 1/s), wander
+  // `drift` px/s, lean `lift` px/s as they rise (what a standing car's plume does: it goes up the picture and aside
+  // instead of sitting on its hood) and swell (`grow`: their size at the end, times). They age in `steps` stages,
+  // eaten away, never faded. `most` alive at once (times the QUALITY's `fx`), the oldest let go.
+  // Tones: colours [lit rim, body, shaded side], the opacity of the whole (steam is thin, soot all but solid).
+  // art: `size` x the billow's px = the cloud's width; `rag`: how torn its outline is (share of its radius);
+  // `eaten` / `holes` per age stage: how far in its edge has gone (share of its radius) and the noise level over
+  // which a hole opens (1: none); `rim` of its radius at the edge is one thinner step (`thin` of its opacity);
+  // `light`: the way the light comes from (unit, picture axes: from the top left), a face turned more than `lit`
+  // toward it is the lit shade, more than `shade` away the shaded one
   puffs: {
     most: 340, steps: 4, ride: 1, carry: 0.3, drag: 3, drift: 12, lift: [10, -20], grow: 1.9,
     tones: {
-      white: { colors: ['#eef1f8', '#cfd4e0', '#aeb4c4'], alpha: 0.55 },
-      grey: { colors: ['#b2b5c0', '#8c8f9c', '#6a6d7a'], alpha: 0.7 },
-      black: { colors: ['#3a353c', '#221e24', '#131116'], alpha: 0.88 },
+      white: { colors: ['#f4f6fb', '#cdd2de', '#a3a9ba'], alpha: 0.72 },
+      grey: { colors: ['#bcbfca', '#8a8d9a', '#5f626e'], alpha: 0.84 },
+      black: { colors: ['#4a444c', '#231f25', '#100e13'], alpha: 0.93 },
     },
+    art: { size: 1.45, rag: 0.42, eaten: [0, 0.1, 0.26, 0.46], holes: [1, 0.86, 0.7, 0.56], rim: 0.16, thin: 0.55, light: [-0.6, -0.8], lit: 0.38, shade: 0.3 },
   },
   // ---- TYRES. Rubber smoke through the air where they let go (the world's 'tyres': a burn-out as it pulls away, a
   // shove, a hard turn, a wreck sliding; the billows only off the wheels behind its middle: the others' would lie

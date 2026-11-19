@@ -290,18 +290,20 @@ def poster_art():
 
 # ---------------------------------------------------------------- B. the hit list
 # the order he takes them in (the matchbook off CUEBALL's desk leads to JITTERS), each: his figure, the ink of his
-# card when he is the one to get, where it is pinned (its middle), how it leans, his figure's height
+# card when he is the one to get, where it is pinned (its middle), how it leans, his figure's height. The board is
+# read as the story goes, from his flat at the top left down to THE BOSS: each card a step lower than the one before
+# and askew its own way, the string along their tops; a card's levels are pinned in a bunch under it (HitList.js).
 TARGETS = [
-    ('cueball', 'CUEBALL', poster.cueball, PINK, (420, 212), -3.0, 150),
-    ('jitters', 'JITTERS', poster.jitters, BONE, (622, 236), 2.5, 150),
-    ('lucky', 'LUCKY', poster.lucky, CYAN, (822, 206), -2.0, 128),
-    ('boss', 'THE BOSS', poster.boss, PINK_D, (1022, 226), 3.0, 150),
+    ('cueball', 'CUEBALL', poster.cueball, PINK, (366, 198), -4.0, 150),
+    ('jitters', 'JITTERS', poster.jitters, BONE, (582, 226), 3.0, 150),
+    ('lucky', 'LUCKY', poster.lucky, CYAN, (790, 204), -2.0, 128),
+    ('boss', 'THE BOSS', poster.boss, PINK_D, (1014, 250), 4.0, 150),
 ]
 CARD = (172, 236)
-PHOTO = (166, 300, -6.0)        # the photo of his flat: its middle, its lean
-MATCHBOOK = (548, 432, 13.0)
-BOARD_LOGO = (40, 30)           # the small logo's sheet on the board
-LOGO_K = 0.5
+PHOTO = (142, 204, -6.0)        # the photo of his flat: its middle, its lean
+MATCHBOOK = (318, 500, -11.0)  # in the open foot of the board, under CUEBALL's bunch: off his desk
+BOARD_LOGO = (890, 28)          # the small logo's sheet on the board: over the last card, across from his flat
+LOGO_K = 0.42
 BAR = [(560, -10), (860, -10), (520, H + 10), (220, H + 10)]      # the lamp's light across the board
 BAR_Y = (27, 597)               # ...cut to the board
 
@@ -441,13 +443,9 @@ def bar_cut():
 
 
 def board_pins(done):
-    """The pins the red string runs through, as far as he has got: his flat, the dead, the matchbook, the next."""
+    """The pins the red string runs through, as far as he has got: his flat, the dead, the next."""
     cx, cy, deg = PHOTO
-    pins = [turned([(0, -214 / 2 + 10)], cx, cy, deg)[0], card_pin(TARGETS[0])]
-    if done >= 1:
-        pins.append(matchbook_pin())
-        pins += [card_pin(t) for t in TARGETS[1:done + 1]]
-    return pins
+    return [turned([(0, -214 / 2 + 10)], cx, cy, deg)[0]] + [card_pin(t) for t in TARGETS[:done + 1]]
 
 
 def board_overlay(done, live=False):

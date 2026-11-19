@@ -161,7 +161,7 @@ export default class Liquids {
     }
   }
 
-  // what is already on the floor when the level starts: the rain's puddles in their hollows, the petrol
+  // what is already on the floor when the level starts: the rain's puddles in their hollows, the petrol, the spills
   seed() {
     const S = this.sim, C = this.cfg.cell, rain = this.cfg.rain, wet = this.names.indexOf('rain');
     for (const p of this.world.weather?.puddles || []) {
@@ -203,6 +203,8 @@ export default class Liquids {
         }
       }
     }
+    // what was spilled before he came (level `spills`: [kind, col, row, area px2]): a bottle knocked over, a puddle
+    for (const [kind, c, r, area] of this.world.level?.spills || []) this.feed(c * TILE, r * TILE, area, kind);
   }
 
   // ---- what is poured

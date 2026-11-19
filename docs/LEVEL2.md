@@ -560,3 +560,6 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   dust and wake doubled, the shell's shiver, the car coming forward on a hit. Lab station 19: its text says what to
   try (station 17's parked cars are the ones to shove, the slide). Decisions changed (above): parked cars, the
   pursuers' attacks, the speed's look, no speedometer.
+- 2026-11-19: the player sees ONE level 02 (the hit list, the intro banner, the results: "LEVEL 2"), its stages 2A
+  then 2B played in a row (src/game/data/campaign.js); 2A and 2B stay separate levels inside the engine, a death in
+  2B still restarts 2B; until 2B is made, 2A done is 02 done (04115fd).

@@ -1,7 +1,7 @@
 // The menu as data, and the navigator that walks it (DOM-free: no canvas, no Audio, no Game). Pages are built from a
 // context each time they are read, so they always show the current settings and progression:
-//   { settings, progress, best: (id) => { total, grade, time } | null, levels: [{ id, name }] (campaign levels that
-//     exist, in order), device: 'kbm' | 'pad' (the
+//   { settings, progress, best: (id) => { total, grade, time } | null, levels: [{ id, name }] (the campaign's stages
+//     that exist, in order: the engine's levels, data/campaign.js), device: 'kbm' | 'pad' (the
 //     controls page lists that one's; optional), rumbleOk: false when a pad is connected that this browser cannot
 //     rumble (optional), dead: the pause opened from the death screen (optional) }
 // The navigator answers with plain actions that Game.js applies:
@@ -9,14 +9,16 @@
 //   | 'reset' | 'replayTutorial'
 // Items: { label, page } opens a sub-page, { label, act } fires an action, { label, slider: key, value },
 // { label, toggle: key, value }, { label, choice: key, value, options, show } one of a few values (`show`: what is
-// written for it), { level, label, n, locked, best } a level to start, { info: [caps, what], col, group }
+// written for it), { tag, level, label, n, col, row, locked, soon, done, best } a level's note (levelNotes),
+// { info: [caps, what], col, group }
 // a read-only line, { label, back: true } goes back (an `act` may come with it); `disabled` greys an item out, `note`
 // is a short line said under it.
 // A page with `sheets` (OPTIONS) shows the page of its chosen item beside it at once, its sheet: choosing an item is
 // enough to see its settings (ui/title/Options.js). RIGHT / ENTER take the focus onto the sheet's first line (enter),
 // LEFT on a line that is not a slider or a toggle, ESC and BACK bring it back to the items; the mouse moves the focus
 // to whatever it points at (point).
-import { isUnlocked } from '../systems/Progress.js';
+import { isUnlocked, levelTag, levelStart, levelDone, levelBest } from '../systems/Progress.js';
+import { CAMPAIGN_LEVELS, TARGETS } from '../data/campaign.js';
 import { KBM_CONTROLS, PAD_CONTROLS } from '../data/controls.js';
 import { QUALITY_CHOICES } from '../data/quality.js';
 import { qualityLabel } from '../systems/Quality.js';
@@ -30,6 +32,26 @@ const BACK = { label: 'BACK', back: true };
 // something to continue: a level finished, or more than the first one open
 const canContinue = (p) => p.done.length > 0 || p.unlocked.length > 1;
 
+// The LEVELS page's notes: one per level as the player sees it (data/campaign.js: 00, 01, 02... never a stage of its
+// own), in columns on the board (ui/title/HitList.js): col 0 under the photo of his flat (the tutorial, and BACK under
+// it), col 1..4 under the four men's cards, row 0 the highest. `level`: the stage it starts at, its first made one;
+// `soon`: none made yet, the note is there to be seen and never starts. The first level there is stays open whatever
+// the save says: NEW GAME plays it anyway. A level with nothing made and no working title has no note.
+export function levelNotes(c) {
+  const has = (id) => c.levels.some((l) => l.id === id), rows = {};
+  let first = true;
+  return CAMPAIGN_LEVELS.flatMap((lv) => {
+    const start = levelStart(lv, has), label = lv.title || c.levels.find((l) => l.id === start)?.name;
+    if (!label) return [];
+    const col = TARGETS.indexOf(lv.target) + 1, row = rows[col] = (rows[col] ?? -1) + 1;
+    const it = { tag: levelTag(lv), level: start, label, n: lv.n, col, row };
+    if (!start) return [{ ...it, soon: true }];
+    const locked = !first && !isUnlocked(c.progress, start);
+    first = false;
+    return [{ ...it, locked, done: levelDone(c.progress, lv, has), best: levelBest(lv, c.best, has), act: { type: 'start', level: start } }];
+  });
+}
+
 const PAGES = {
   main: (c) => ({
     row: true, // laid out in one line on the title: left / right walk it too
@@ -40,16 +62,13 @@ const PAGES = {
       { label: 'OPTIONS', page: 'options' },
     ],
   }),
-  // the first campaign level there is stays open whatever the save says: NEW GAME plays it anyway; its notes are
-  // pinned left to right on the board (ui/title/HitList.js): left / right walk them too
-  levels: (c) => ({
-    title: 'LEVELS',
-    row: true,
-    items: [...c.levels.map(({ id, name }, i) => ({
-      level: id, label: name, n: i + 1, best: c.best(id) || null,
-      locked: i > 0 && !isUnlocked(c.progress, id), act: { type: 'start', level: id },
-    })), BACK],
-  }),
+  // the hit list: its notes in columns (grid: LEFT / RIGHT go from a column to the next, UP / DOWN walk a column),
+  // BACK under the tutorial's in the first; it opens on the furthest level that can be played (start)
+  levels: (c) => {
+    const notes = levelNotes(c);
+    return { title: 'LEVELS', grid: true, start: Math.max(0, notes.findLastIndex((it) => it.level && !it.locked)),
+      items: [...notes, { ...BACK, col: 0, row: notes.filter((it) => it.col === 0).length }] };
+  },
   // his cap (BACK) is the mouse's way out; the sub-pages have none: ESC / B / the right button, or another thing
   options: () => ({
     title: 'OPTIONS',
@@ -99,7 +118,8 @@ const PAGES = {
   }),
 };
 
-// an item the selection can rest on (a locked level can: it is there to be seen, it only does not start)
+// an item the selection can rest on (a locked level and one not made yet can: they are there to be seen, they only
+// do not start)
 export const selectable = (it) => !!it && !it.disabled && !it.info;
 
 // a line that left / right change (anything else: LEFT goes back to the items beside its sheet)
@@ -150,8 +170,24 @@ export default class Menu {
     if (!selectable(items[this.top.sel])) this.top.sel = items.findIndex(selectable);
   }
 
-  // dir +1 / -1 over the selectable items, wrapping around
+  // On a grid page (its items have a col and a row, rows 0.. down each column): dx to the next column that has
+  // something, round the board, on the same row or that column's last; dy along the column, round it.
+  step(dx, dy) {
+    this.fix();
+    const items = this.page.items, cur = items[this.top.sel];
+    if (!cur) return null;
+    const cols = [...new Set(items.filter(selectable).map((it) => it.col))].sort((a, b) => a - b);
+    const col = dx ? cols[(cols.indexOf(cur.col) + dx + cols.length) % cols.length] : cur.col;
+    const rows = items.filter((it) => selectable(it) && it.col === col).length;
+    const row = dx ? Math.min(cur.row, rows - 1) : (cur.row + dy + rows) % rows;
+    const i = items.findIndex((it) => selectable(it) && it.col === col && it.row === row);
+    if (i >= 0) this.top.sel = i;
+    return null;
+  }
+
+  // dir +1 / -1 over the selectable items, wrapping around (a grid page: down / up its column)
   move(dir) {
+    if (this.page.grid) return this.step(0, dir);
     this.fix();
     const items = this.page.items, n = items.length;
     for (let k = 1; k <= n && this.top.sel >= 0; k++) {
@@ -167,6 +203,7 @@ export default class Menu {
   // page with sheets RIGHT takes the focus onto the sheet; on a sheet, LEFT on a line it does not change brings the
   // focus back to the items.
   nudge(dir) {
+    if (this.page.grid) return this.step(dir, 0);
     if (this.page.row) return this.move(dir);
     if (this.page.sheets) { if (dir > 0) this.enter(); return null; }
     this.fix();
@@ -182,8 +219,9 @@ export default class Menu {
   left() { return this.nudge(-1); }
   right() { return this.nudge(1); }
 
+  // a page opens on its first item, or on the one it says (start)
   open(id) {
-    this.stack.push({ id, sel: 0 });
+    this.stack.push({ id, sel: this.pageOf(id).start ?? 0 });
     this.fix();
   }
 
@@ -201,7 +239,7 @@ export default class Menu {
   activate() {
     this.fix();
     const it = this.item;
-    if (!selectable(it) || it.locked) return null;
+    if (!selectable(it) || it.locked || it.soon) return null;
     if (it.page) { if (this.page.sheets) this.enter(); else this.open(it.page); return null; }
     if (it.toggle) return { type: 'set', key: it.toggle, value: !it.value };
     if (it.choice) return stepChoice(it, 1);

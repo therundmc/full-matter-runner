@@ -154,6 +154,7 @@ export default class Lens {
   gradeFor(v) {
     const g = this.cfg.grades;
     if (v.state === 'dead') return g.dead;
+    if (v.state === 'pause') return g.paused;
     if (v.state !== 'play' && v.state !== 'pause' && v.state !== 'intro' && v.state !== 'outro') return g.menu;
     if (v.powerOn === false) return g.dark;
     return v.phase === 'alert' ? g.combat : v.phase === 'caution' || v.phase === 'evasion' ? g.caution : g.calm;
@@ -165,6 +166,8 @@ export default class Lens {
     if (v.state !== this.state) {
       if (v.state === 'dead') this.tear(c.tube.glitch.dead);
       else if (v.state === 'intro' || (v.state === 'play' && this.state === 'dead')) this.tear(c.tube.glitch.start);
+      // the pause is a cut, in and out: the picture drained at once, and back as it was
+      if (v.state === 'pause' || this.state === 'pause') this.grade = copyGrade(this.gradeFor(v));
       this.state = v.state;
     }
     // (a page shows as it is drawn: no kick, no heat of a chain, no grade still on its way from the world's)

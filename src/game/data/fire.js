@@ -21,6 +21,8 @@ export const FIRE = {
   paint: {
     runner: ['cloth', 96, 20], rug: ['cloth', 64, 44], doormat: ['cloth', 24, 14], entry_mat: ['cloth', 28, 16],
     entry_carpet: ['cloth', 64, 30], newspaper: ['cloth', 14, 10], bed: ['cloth', 44, 64], cardboard_bed: ['cloth', 56, 26],
+    // the flat of the prologue: his mattress (as a bed), what lies about that burns
+    mattress: ['cloth', 44, 64], clothes_pile: ['cloth', 18, 13], pizza_box: ['cloth', 12, 12], mail_pile: ['cloth', 12, 9],
   },
   // furniture by its material: `catch` s it takes to catch once the fire is at its foot, `burn` [min, max] s it
   // burns before it falls apart; the others do not burn. A gas bottle or a stove reached blows (systems/Gas.js)
