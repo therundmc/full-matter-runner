@@ -39,7 +39,7 @@ export function aimCue(world) {
     return { x: o.x, y: o.y, a, kind: 'gun', half: d.spread || 0, ...lineOfFire(world, p.team, o.x, o.y, a, skip), off, skip, team: p.team };
   }
   if (p.riding || p.hidden) return null; // sat in a car that is not his drive, or out of the picture
-  const a = p.angle, skip = [p];
+  const a = p.angle, skip = p.shield ? [p, p.shield.target] : [p]; // (never the man he holds as a shield)
   if (d.kind !== 'gun') {
     const x = p.x + Math.cos(a) * p.radius, y = p.y + Math.sin(a) * p.radius;
     return { x, y, a, kind: 'melee', half: (d.arc || 1) / 2, len: Math.max(4, d.range - p.radius + AIM.melee), hit: false, target: null, off: false, skip, team: p.team };
@@ -55,9 +55,9 @@ export function aimCue(world) {
 // longer with the charge) or to what it meets, target: the man it meets, lock: the man LOCK draws it onto
 export function throwCue(world) {
   const p = world.player;
-  if (!aiming(p) || !p.throwHold || !p.armed || p.riding || p.hidden) return null;
+  if (!aiming(p) || !p.throwHold || !(p.armed || p.shield) || p.riding || p.hidden) return null;
   const { a, lock } = p.throwAim(), k = p.throwCharge(), R = AIM.throw.reach, x = p.x + Math.cos(a) * p.radius, y = p.y + Math.sin(a) * p.radius;
-  const f = lineOfFire(world, p.team, x, y, a, [p], R[0] + (R[1] - R[0]) * k);
+  const f = lineOfFire(world, p.team, x, y, a, p.shield ? [p, p.shield.target] : [p], R[0] + (R[1] - R[0]) * k); // (a man held is what is thrown)
   return { x, y, a, k, ...f, lock };
 }
 

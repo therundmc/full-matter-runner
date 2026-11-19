@@ -8,6 +8,7 @@
 //   killcam       the kill cam's heaviest beats, by tier (systems/KillCam.js)
 //   ride          the van and the getaway: { beat }, one of RUMBLE.ride (systems/Drive.js, Lorries.js, World's outro)
 //   thrownHit     a thing he threw put a man down (entities/WeaponItem.js)
+//   shield, shieldKill   a guard seized as a shield, killed in his arms (entities/Player.js)
 // Mixing: every effect under way is kept until its end, and the pad plays the strongest of them on each motor (never
 // a sum: two shots at once are one shot), until the first of them ends; a new call only when that mix changes, and
 // MIX.gap s at least between two. When the pad has been rumbling more than MIX.duty of the last MIX.window s, a light
@@ -66,6 +67,8 @@ export default class Rumble {
     }));
     ev.on('finisher', mine(({ killer }) => { if (isHim(killer)) this.feel(R.finisher); }));
     ev.on('thrownHit', mine(({ thrower }) => { if (isHim(thrower)) this.feel(R.thrown); }));
+    ev.on('shield', mine(({ holder }) => { if (isHim(holder)) this.feel(R.shield?.grab); }));
+    ev.on('shieldKill', mine(({ holder }) => { if (isHim(holder)) this.feel(R.shield?.neck); }));
     ev.on('killcam', mine(({ tier }) => this.feel(R.killcam?.[tier])));
     ev.on('killcamOut', mine(({ tier }) => { if (tier === 'exec' || tier === 'end') this.feel(R.killcam?.out); }));
     ev.on('explosion', mine(({ x, y, radius }) => {

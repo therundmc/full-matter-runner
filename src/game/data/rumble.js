@@ -19,6 +19,8 @@ export const RUMBLE = {
   kill: { strong: 0.75, weak: 0.6, ms: 140 },      // ... and a man of his goes down (any weapon): the heavier punch
   finisher: { strong: 0.85, weak: 0.6, ms: 170 },  // a takedown's or a finisher's blow (by its power), its last beat
   thrown: { strong: 0.5, weak: 0.8, ms: 120 },     // a thing he threw puts a man down: the sharp knock of it
+  // a guard seized as a shield (Player.startShield): his weight caught; his neck broken in that arm (shieldKill)
+  shield: { grab: { strong: 0.45, weak: 0.3, ms: 90 }, neck: { strong: 0.3, weak: 0.9, ms: 110 } },
   // the kill cam's heaviest beats (systems/KillCam.js 'killcam', by its tier): a low swell under the slow motion
   killcam: { violent: { strong: 0.3, weak: 0.1, ms: 140 }, exec: { strong: 0.55, weak: 0.2, ms: 240 }, end: { strong: 0.85, weak: 0.4, ms: 380 },
     out: { strong: 0.25, weak: 0.5, ms: 60 } },   // out: the clock snapping back (the heavy beats)

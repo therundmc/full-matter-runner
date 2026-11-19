@@ -42,8 +42,11 @@ export const CHASE = {
   corner: 7,
   // never stalled for good (Drive.unstick): crawling under `under` of its cruise speed for `after` s, not crashed, it
   // eases itself sideways out of what holds it (his way when he steers) at `steer` of the full sideways speed (the
-  // other way when it has not moved `moved` px across in `after` s more), until it runs at `until` of its cruise again
-  stall: { under: 0.25, after: 0.6, steer: 0.4, moved: 4, until: 0.6 },
+  // other way when it has not moved `moved` px across in `after` s more), until it runs at `until` of its cruise again.
+  // Its nose on a `lasting` thing (the lorry), it heads round the end of it that leaves room before the building fronts;
+  // not `moved` px nearer to clearing it in each `after` s for `boxed` s (a car shoved into the way round and pinned
+  // there), it is the crash (Drive.boxed: the QA robot calls a stall past 2 s a softlock)
+  stall: { under: 0.25, after: 0.6, steer: 0.4, moved: 4, until: 0.6, boxed: 1.2 },
   vehicle: 'convertible', // the model he drives in the chase (entities/Vehicle.js VEHICLES): THE BOSS's, roof down
   // where he sits and where its driver's door is, when the model gives none (VEHICLES[model].seat / .door, sprite px):
   // shares of its length (from the tail) and width (from the driver's side, -y; the door: px out from that side)

@@ -25,6 +25,7 @@ const GUN_CAUSES = new Set(['bullet', 'blast', 'heavy']);
 // player had no hand in it (run over by traffic, shot by a mate).
 export function killStyle({ cause, killer, victim, how }) {
   if (cause === 'explosion') return { style: 'explosion', method: 'explosion' };
+  if (how?.hostage) return { style: 'humanShield', method: 'hostage' }; // shot by his own in the player's arms
   if (!killer?.isPlayer) return null;
   if (cause === 'execute' || how?.finisher) return how?.quick ? { style: 'quickKill', method: 'quickKill' } : { style: 'execution', method: 'execution' };
   if (victim?.held === killer) return { style: 'takedown', method: 'takedown' };
@@ -46,10 +47,13 @@ export function killStyle({ cause, killer, victim, how }) {
 // pierced, through, bounced, dist, last; a blow: from, heavy, spin, broke, thrown, disarm; smoked; env: what a
 // takedown drove his head into, systems/TakedownSpot.js;
 // boss: the boss he was, entities/Boss.js; car: how his car was stopped, crew: the second man of a car stopped with
-// both in it (no multi-kill of its own), systems/Pursuit.js); ctx: { now, dodgeT, pickT, streak } where streak counts
+// both in it (no multi-kill of its own), systems/Pursuit.js; hostage: he was the player's shield, shot by his own);
+// victim: the man killed (a kill with another man held as a shield is tagged); ctx: { now, dodgeT, pickT, streak } where streak counts
 // the kills of the last instants, this one included.
-export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
+export function killTags({ killer, victim, how = {} }, ctx, rules = SCORING) {
   const tags = [];
+  if (how.hostage) tags.push('hostage');
+  else if (killer?.shield && killer.shield.target !== victim) tags.push('shield');
   if (how.pierced > 0) tags.push('collateral');
   if (how.through) tags.push('wallbang');
   if (how.bounced) tags.push('ricochet');
@@ -214,7 +218,7 @@ export default class Scoring {
     }
     // smoked: through air too thick to see through (never the blast's own soot: it is the blast that killed)
     const circ = { ...e.how, smoked: !!(k && e.cause !== 'explosion' && w.smoke?.blocks(k.x, k.y, victim.x, victim.y)) };
-    this.tags = killTags({ killer: k, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);
+    this.tags = killTags({ killer: k, victim, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);
     // a `flat` circumstance is paid as it is, outside the multiplier (a multi-kill already is the chain's speed, a
     // boss is put down in every clear)
     let bonus = unseen ? R.unseen : 0, flat = 0;

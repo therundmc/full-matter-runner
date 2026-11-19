@@ -214,6 +214,8 @@ export default class Projectile {
           c.dodge();
           return { x: h.x, y: h.y, a };
         }
+        // the man he holds in front of him takes it (Player.shieldStops)
+        if (c.shieldStops?.(a, this.weapon, this.owner)) return true;
         const d = Math.hypot(c.x - this.owner?.x, c.y - this.owner?.y) || 999;
         c.shot(a, this.weapon, d, this.owner, {
           dist: d, pierced: this.kills, through: this.through, bounced: this.bounced, last: this.owner?.weapon?.mag === 0,

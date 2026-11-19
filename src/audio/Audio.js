@@ -212,6 +212,9 @@ export const META = {
   slideScrape: { pri: 0, dur: 0.5, gap: 0.2, max: 1, gain: 0.12 },
   kickWhoosh: { pri: 1, dur: 0.25, gap: 0.15, max: 2, gain: 0.3 },
   kickHit: { pri: 3, dur: 0.4, gap: 0.08, max: 2, duck: 0.85, gain: 0.95 },
+  // a guard held as a shield (entities/Player.js): placeholders (assets/sound/PLACEHOLDERS.md)
+  shieldGrab: { pri: 2, dur: 0.4, gap: 0.1, max: 1, gain: 0.7 }, shieldNeck: { pri: 3, dur: 0.6, gap: 0.1, max: 1, gain: 0.95 },
+  shieldThrow: { pri: 2, dur: 0.35, gap: 0.1, max: 1, gain: 0.6 },
   // the player's weapon giving out, a dead man's weapon snatched (Character.breakWeapon, Player.grab)
   batSnap: { pri: 3, dur: 0.5, gap: 0.05, max: 2, duck: 0.85, gain: 0.95 },
   knifeSnap: { pri: 2, dur: 0.35, gap: 0.05, max: 2, gain: 0.85 },
@@ -529,6 +532,9 @@ const FOLEY = {
   slideScrape: [['rubble', 0.25, 1.3], ['soft', 0.3, 0.7, 0.05]],
   kickWhoosh: [['swish', 0.55, 0.8]],
   kickHit: [['punch', 1, 0.75], ['thud', 0.8, 0.7, 0.01], ['soft', 0.4, 0.9, 0.03]],
+  shieldGrab: [['swish', 0.35, 1.2], ['soft', 0.7, 1.1, 0.04], ['pain', 0.3, 0.9, 0.1]],
+  shieldNeck: [['woodBreak', 0.8, 1.9], ['wood', 0.6, 1.5, 0.01], ['soft', 0.5, 0.8, 0.14]],
+  shieldThrow: [['swish', 0.6, 0.7], ['soft', 0.5, 0.9, 0.03]],
   hoodLean: [['sheet', 0.25, 0.7], ['soft', 0.35, 0.8, 0.04]],
   batSnap: [['woodBreak', 1, 1.15], ['wood', 0.8, 0.8, 0.01]],
   knifeSnap: [['metal', 0.9, 1.7], ['click', 0.7, 0.75, 0.01]],

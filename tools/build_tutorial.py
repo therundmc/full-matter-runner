@@ -65,14 +65,16 @@ lv.door(20, 10, kind='flat')               # his back door onto the building's c
 lv.door(11, 14, kind='wired', inside='e')  # the fire doors: wired glass, they swing back shut behind whoever goes through
 lv.fill(0, 12, 2, 17, '=')            # the night outside, two floors over the alley
 
-# ---------------------------------------------------------------- actors (7 men)
+# ---------------------------------------------------------------- actors (8 men)
 lv.actor('@', 4, 2, face=0)                             # on his mattress
 lv.actor('j', 18, 2, face=90, job='arson', look='lucky')  # LUCKY, his pink scarf: the petrol poured, the matchbox in his hand
 lv.actor('j', 11, 11, face=90, job='rummage')           # at the kitchen worktop, turning the drawers out
 lv.actor('m', 19, 10, face=0, job='hall')               # at the back door, smoking: comes when the first one is dead
 lv.actor('p', 17, 14, face=0, job='lookout')            # down the corridor, a pistol, his eyes on the corner: time to fire
-lv.actor('j', 7, 19, face=270)                          # coming up the stairs when he takes the gun
-lv.actor('m', 9, 19, face=270)
+lv.actor('p', 9, 14, face=180, at=(9.4, 14.6))          # past the fire door, his back to it, a pistol: taken as a shield
+lv.actor('p', 7, 19, face=270)                          # coming up the stairs when he takes that man: two pistols, what
+                                                        # the shield is for
+lv.actor('p', 9, 19, face=270)
 lv.actor('k', 8, 20, face=270)                          # and a third when those two are dead
 lv.drop('bat', 12.5, 10.7, 25)
 
@@ -248,8 +250,11 @@ lv.tutorial = {
          'take': 'pistol', 'leaves': 2, 'spare': 1, 'snatch': True, 'hints': ['finish', 'slide', 'strike', 'punch', 'take'],
          'waves': [{'at': [[17, 14]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True, 'frame': True}]},
         {'zone': [4, 14, 12, 20], 'spawn': [12.5, 14.5, 180], 'cam': 'landing', 'hold': 8, 'take': 'pistol', 'spare': 1,
-         'marks': {'dive': [4.6, 15.0]}, 'hints': ['finish', 'take', 'reload', 'throw', 'shoot', 'dive'],
-         'waves': [{'at': [[7, 19], [9, 19]], 'on': 'pickup:pistol', 'up': STAIRS},
+         'marks': {'dive': [4.6, 15.0]}, 'hints': ['shield', 'finish', 'take', 'reload', 'throw', 'shoot', 'dive'],
+         # the man past the fire door looks down the corridor, his back to it: E takes him as a shield (`shield`),
+         # which calls the first two up the stairs (his death by any other hand does too)
+         'waves': [{'at': [[9, 14]], 'on': 'never', 'blind': True},
+                   {'at': [[7, 19], [9, 19]], 'on': 'shield', 'up': STAIRS},
                    {'at': [[8, 20]], 'on': 'kills:2', 'up': STAIRS}]},
     ],
     # the man with the match: where he stands, where it falls, the door he slams behind him, where he runs to
@@ -269,7 +274,7 @@ lights = [
 ]
 
 if __name__ == '__main__':
-    lv.check(guards=7)
+    lv.check(guards=8)
     lv.write('tutorial', name='BAD NIGHT', subtitle='SUNSET BAY  -  MARCH 14TH 1986  -  1:05 AM', lights=lights,
              objective=['GET OUT OF THE BUILDING', 'THE WINDOW AT THE END OF THE CORRIDOR'],
              header=[

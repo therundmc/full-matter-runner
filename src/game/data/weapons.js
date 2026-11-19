@@ -126,6 +126,9 @@ export const WEAR = { man: 1, thing: 0.25 };
 export const plantedOf = (d) => (d.breaks === 'lodge' ? d.parts?.[0] ?? d.sprite : d.breaks === 'snap' && d.snaps ? WEAPONS[d.snaps].sprite : undefined);
 // whether the hand keeps a weapon when d breaks (a cue's butt half, a bent iron)
 export const keepsOne = (d) => !!(d.snaps || d.bends);
+// whether d leaves a hand free (a man held as a shield: systems/Shield.js): bare hands, a handgun, a blade; never a
+// long gun (hold 'two') nor a club, swung with both hands
+export const oneHanded = (d) => d.hold !== 'two' && d.swing !== 'club';
 
 // map chars in level "actors" layers to weapon ids
 export const WEAPON_CHARS = {

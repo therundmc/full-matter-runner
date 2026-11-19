@@ -13,7 +13,8 @@
 //              waves: [{ at: [[col, row]...], on, blind, slack }]   its guards, by the tile they stand on. They are dormant
 //                     (Enemy.dormant: they see and hear nothing, stand where they are) until their wave is called:
 //                     on = 'enter' (he walks in) | 'kills:N' (N guards of the stage are dead) | 'pickup:TYPE' (he
-//                     takes that weapon) | 'never' (a man who is only there to be dealt with). blind: they do not
+//                     takes that weapon) | 'shield' (he takes a guard of the stage as a shield, or one of them dies
+//                     some other way) | 'never' (a man who is only there to be dealt with). blind: they do not
 //                     wake either when he walks up in front of them. slack: how much slower than a real guard
 //                     they react (SLACK if not given; they always fire SLACK times slower). sharp: they were waiting for him, they know him at
 //                     once when woken (no suspicion to build up first). up: [col, row] they are not there yet but
@@ -79,6 +80,17 @@ export const HINTS = {
     return p.nearTakedown === g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text, id: 'neck' }
       : { x: g.x, y: g.y, up: MAN, key: '', text: 'GET BEHIND HIM', id: 'behind' };
   },
+  // the man who is there to be taken as a shield (a `never` wave's, still unaware): behind him, within reach and a
+  // hand free for it (Player.nearShield), E; from further off, where to go (nothing else is said about him: no
+  // SHOOT); held, how he is let go
+  shield: (T, s, p) => {
+    const h = p.shield?.target;
+    if (h && T.guards(s).includes(h)) return { x: h.x, y: h.y, up: MAN, key: 'throw', text: 'THROW HIM' };
+    const g = s.waves.filter((w) => w.on === 'never').flatMap((w) => w.guards).find((e) => e.alive && e.knocked <= 0 && e.aware === 0 && !e.held);
+    if (!g || p.shield) return null;
+    return p.nearShield === g ? { x: g.x, y: g.y, up: MAN, key: 'use', text: 'SHIELD' }
+      : { x: g.x, y: g.y, up: MAN, key: '', text: 'GET BEHIND HIM', id: 'behind' };
+  },
   punch: (T, s, p) => {
     const g = !p.armed && nearest(T.present(s), p);
     return g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text: 'PUNCH HIM' } : null;
@@ -139,6 +151,7 @@ export default class Tutorial {
     this.taught = world.game?.taught || new Set();      // what was said already, this run and its retries
     this.blast = def.blast ? { ...def.blast, t: null, front: null, queue: [] } : null;   // t: when it was set off; front: its last ball of fire
     this.spared = false;                                // the spare magazine was handed over
+    this.shielded = false;                              // he took a guard as a shield (a wave's `shield`)
     const posted = (list) => world.enemies.filter((e) => list.some((t) => tileOf(e, t)));
     this.stages = def.stages.map((s) => ({
       ...s, kills: 0,
@@ -178,6 +191,7 @@ export default class Tutorial {
       this.spared = true;
       ch.addAmmo?.(ch.def.ammo, ch.def.mag * s.spare);
     });
+    world.events.on('shield', ({ holder }) => { if (holder.isPlayer) this.shielded = true; });
     world.events.on('matchDrop', () => this.caught());
     if (from > 0 && from < this.stages.length) this.restore(from);
     else if (def.opening) this.open(!!world.game?.tutorialAt);
@@ -487,7 +501,8 @@ export default class Tutorial {
     for (const w of s.waves) {
       if (w.awake || w.on === 'never') continue;
       const [what, arg] = w.on.split(':');
-      const due = what === 'enter' || (what === 'kills' && s.kills >= Number(arg)) || (what === 'pickup' && (this.picked === arg || p.weapon?.type === arg));
+      const due = what === 'enter' || (what === 'kills' && s.kills >= Number(arg)) || (what === 'pickup' && (this.picked === arg || p.weapon?.type === arg))
+        || (what === 'shield' && (this.shielded || s.kills >= 1));
       if (due) this.wake(w, p);
     }
   }

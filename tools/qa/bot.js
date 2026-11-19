@@ -27,7 +27,7 @@
   // level has nothing for it (notApplicable)
   const FEATURES = ['vault', 'windowDive', 'windowVault', 'climb', 'ladderUp', 'ladderDown', 'roofDrop', 'roll', 'slide', 'takedown', 'envTakedown',
     'finisher', 'trunk', 'doorOpened', 'doorBreached', 'weaponBroken', 'pickup', 'throw', 'thrownKill', 'reload', 'gunKill', 'meleeKill',
-    'powerCut', 'horn', 'dyingCrawl', 'dyingCurl', 'dyingSpasm', 'dyingThroat', 'clear', 'exit', 'deviceUse'];
+    'powerCut', 'horn', 'dyingCrawl', 'dyingCurl', 'dyingSpasm', 'dyingThroat', 'clear', 'exit', 'deviceUse', 'shield', 'shieldThrow'];
   const DYING = { crawl: 'dyingCrawl', curl: 'dyingCurl', spasm: 'dyingSpasm', throat: 'dyingThroat' };
 
   // Plans: what the bot sets out to do, drawn at each session start (and again after a while of free play) from a
@@ -140,8 +140,9 @@
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
       plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0, envTakedowns: {},
-      // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls
-      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0 },
+      // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls (and
+      // how long the longest one lasted, s: from the crawl to the car running again, a crash or a restart)
+      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0, stallMost: 0 },
       // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
       // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
       // the stage they reached, drivers held up at gunpoint
@@ -223,6 +224,10 @@
     p.breakWeapon = function (...a) { cover('weaponBroken'); act('weapon broke'); return breakWeapon.apply(this, a); };
     const throwWeapon = p.throwWeapon;
     p.throwWeapon = function (...a) { cover('throw'); return throwWeapon.apply(this, a); };
+    // a guard taken as a shield, and thrown (not on a commit older than the mechanic)
+    const startShield = p.startShield, throwShield = p.throwShield;
+    if (startShield) p.startShield = function (...a) { cover('shield'); return startShield.apply(this, a); };
+    if (throwShield) p.throwShield = function (...a) { cover('shieldThrow'); return throwShield.apply(this, a); };
     const reload = p.reload;
     p.reload = function (...a) { const r = reload.apply(this, a); if (r) cover('reload'); return r; };
     for (const e of w.enemies) wrapGuard(e);
@@ -288,7 +293,7 @@
     if (!w.windows.length) na.push('windowDive', 'windowVault');
     if (!w.doors.some((d) => d.locked)) na.push('doorBreached');
     if (!w.level.exit) na.push('exit');
-    if (!w.enemies.length) na.push('takedown', 'envTakedown', 'finisher', 'gunKill', 'meleeKill', 'thrownKill', ...Object.values(DYING), 'clear');
+    if (!w.enemies.length) na.push('takedown', 'envTakedown', 'finisher', 'gunKill', 'meleeKill', 'thrownKill', 'shield', 'shieldThrow', ...Object.values(DYING), 'clear');
     if (!w.uses?.spots.length) na.push('deviceUse');
     return na;
   }
@@ -917,8 +922,19 @@
     if (p.execution?.dead && !p.execution.f.quick && w.danger?.threatened(p)) { press(inp, 'Space'); act('walk out of the execution'); }
     // context actions
     const ca = p.contextAction;
+    // a guard who offers himself as a shield (Player.nearShield) is taken one time in four (E) rather than taken
+    // down; held, he is thrown after a moment (the right click), or killed by the click when no loaded gun is in hand
+    if (p.shield) {
+      B.shieldT ??= S.clock + 0.6 + rnd() * 2.5;
+      if (S.clock > B.shieldT) {
+        B.shieldT = null;
+        if ((gun && p.weapon.mag > 0) || rnd() < 0.5) { inp.mouse.clicked[2] = true; act('throw the shield'); }
+        else { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
+      }
+    } else B.shieldT = null;
+    if (p.nearShield && rnd() < 0.25) { press(inp, 'KeyE'); act('take a shield'); }
     // (nearBack: the same before 4148aa1, for a bisect over older commits)
-    if (ca && (p.nearTakedown ?? p.nearBack) && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
+    else if (ca && (p.nearTakedown ?? p.nearBack) && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     else if (ca && MELEE_CLICK.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     // (no slide on a plan: one chains into a vault, a ladder too, and off the route); a gunman about to fire: under it
     else if (!B.plan && heading !== null && !ca && (rnd() < 0.004 || (S.clock > (B.dodgeT || 0) && underFire(w, p)))) {
@@ -2055,6 +2071,7 @@
     if (!live || d.v >= CHASE_STALL.under * d.cruise) { B.stall = null; return; }
     const b = d.van.body;
     if (!B.stall) { B.stall = { t: w.time, told: false, then: touchingOf(w, b) }; return; }
+    if (B.stall.told) S.stats.drive.stallMost = Math.max(S.stats.drive.stallMost, r1(w.time - B.stall.t));
     if (B.stall.told || w.time - B.stall.t < CHASE_STALL.after) return;
     B.stall.told = true;
     S.stats.drive.stalls++;

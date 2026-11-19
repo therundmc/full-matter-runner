@@ -10,9 +10,11 @@ export default {
   name: 'BAD NIGHT',
   subtitle: 'SUNSET BAY  -  MARCH 14TH 1986  -  1:05 AM',
   objective: ['GET OUT OF THE BUILDING', 'THE WINDOW AT THE END OF THE CORRIDOR'],
-  facing: { '4,2': 0, '18,2': 90, '11,11': 90, '19,10': 0, '17,14': 0, '7,19': 270, '9,19': 270, '8,20': 270 },
+  facing: { '4,2': 0, '18,2': 90, '11,11': 90, '19,10': 0, '17,14': 0, '9,14': 180, '7,19': 270, '9,19': 270, '8,20': 270 },
   jobs: { '18,2': 'arson', '11,11': 'rummage', '19,10': 'hall', '17,14': 'lookout' },
   looks: { '18,2': 'lucky' },
+  // where in his tile a guard stands, off its centre ('col,row': [col, row] in tiles)
+  stand: { '9,14': [9.4, 14.6] },
   tiles: [
     "XXXXXXGXXXXXXXXXXXXXXXXXXXXXX",
     "XXXX;;;;;#.......#::###XXXXXX",
@@ -52,12 +54,12 @@ export default {
     "           j",
     "",
     "",
-    "                 p",
+    "         p       p",
     "",
     "",
     "",
     "",
-    "       j m",
+    "       p p",
     "        k",
     "",
   ],
@@ -113,7 +115,7 @@ export default {
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["bat", 12.5, 10.7, 25, null]],
   // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)
-  tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.4, 3.5, 0], "cam": "flat", "marks": {"flee": [13.5, 6.9], "vault": [11.6, 4.85]}, "keep": [[9, 1, 10, 3]], "keepFor": 2.0, "hints": ["vault", "flee"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[13, 6, 14, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hold": 3, "keep": [[21, 3, 22, 8]], "marks": {"slide": [21.5, 14.2]}, "hints": ["slide"], "waves": [{"at": [[17, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "hold": 6, "marks": {"slide": [21.5, 14.2]}, "take": "pistol", "leaves": 2, "spare": 1, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[17, 14]], "on": "enter", "slack": 0.6, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "hold": 8, "take": "pistol", "spare": 1, "marks": {"dive": [4.6, 15.0]}, "hints": ["finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[7, 19], [9, 19]], "on": "pickup:pistol", "up": [8.0, 20.65]}, {"at": [[8, 20]], "on": "kills:2", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "blast": {"at": [14.6, 12.68], "breach": [14.6, 14.3], "chain": [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68], [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
+  tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.4, 3.5, 0], "cam": "flat", "marks": {"flee": [13.5, 6.9], "vault": [11.6, 4.85]}, "keep": [[9, 1, 10, 3]], "keepFor": 2.0, "hints": ["vault", "flee"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[13, 6, 14, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hold": 3, "keep": [[21, 3, 22, 8]], "marks": {"slide": [21.5, 14.2]}, "hints": ["slide"], "waves": [{"at": [[17, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "hold": 6, "marks": {"slide": [21.5, 14.2]}, "take": "pistol", "leaves": 2, "spare": 1, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[17, 14]], "on": "enter", "slack": 0.6, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "hold": 8, "take": "pistol", "spare": 1, "marks": {"dive": [4.6, 15.0]}, "hints": ["shield", "finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[9, 14]], "on": "never", "blind": true}, {"at": [[7, 19], [9, 19]], "on": "shield", "up": [8.0, 20.65]}, {"at": [[8, 20]], "on": "kills:2", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "blast": {"at": [14.6, 12.68], "breach": [14.6, 14.3], "chain": [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68], [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
   // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
   doors: { '9,2': {"kind": "flat"}, '20,2': {"kind": "flat", "closer": true, "inside": [-1, 0]}, '20,10': {"kind": "flat"}, '11,14': {"kind": "wired", "inside": [1, 0]} },
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],

@@ -19,7 +19,7 @@ import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK
   CLIMB_NOISE, RUNG_NOISE, LAND_NOISE, DROP } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, seatPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, seatPose, trunkPose, execPose, takedownPose, heldPose, shieldPose, hostagePose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
@@ -552,6 +552,7 @@ export default class Character {
         team: this.team, owner: this, weapon: d, life: d.range ?? 1.1, pen: d.pen ?? 10, rocket: d.rocket, floor: this.shootDown,
         from: { x: this.x + Math.cos(a) * 4, y: this.y + Math.sin(a) * 4 },
       });
+      if (this.shield) pr.ignore.add(this.shield.target); // past the man he holds (Player.startShield)
       w.addProjectile(pr);
     }
     muzzleFlash(w, m.x, m.y, m.a, d, this);
@@ -1009,6 +1010,8 @@ export default class Character {
     if (this.execution || this.execOut) execPose(this, P, this.pose2);
     if (this.takedown) takedownPose(this, P, this.pose2);
     if (this.held?.takedown?.target === this) heldPose(this, P);
+    if (this.shield) shieldPose(this, P);
+    if (this.held?.shield?.target === this) hostagePose(this, P);
     if (this.doorHand) doorHandPose(this, P);
     if (this.lockHand) lockHandPose(this, P);
     if (this.broke && !this.execution && !this.takedown) brokePose(this, P);
