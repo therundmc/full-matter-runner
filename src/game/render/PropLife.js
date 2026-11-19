@@ -2,7 +2,8 @@
 // television left on (recipe `snow`), the receiver of a phone booth (prop `handset`), the arcade's attract mode (its
 // game when a customer plays it), a washer's lid left open and the washing folded on another's lid, the
 // flies over a bin (level prop option `flies`), a tap dripping in its sink (def `tap`), the till's display; the devices of a level
-// (data/devices.js): the fire alarm flashing.
+// (data/devices.js): the fire alarm flashing; a dryer's load tumbling behind its door, a shop's wall of televisions
+// each on its channel, the video recorders blinking 12:00, a wall clock's second hand (LIVE).
 
 import { hash } from '../../engine/math.js';
 import { arcadeAt } from '../ai/Pastimes.js';
@@ -61,6 +62,8 @@ export function drawPropLife(ctx, world, t, vis) {
       continue;
     }
     if (p.type === 'washer' && (p.lidOpen || p.washing?.n)) { inFrame(ctx, p, () => washer(ctx, p)); continue; }
+    const live = LIVE[p.type];
+    if (live) { if (live.clockwork || !(p.lightsOut || p.unpowered)) inFrame(ctx, p, () => live(ctx, t, p.x * 0.13 + p.y * 0.07)); continue; }
     if (p.type !== 'pool_table' && !snowy && !hook && !device) continue;
     const o = p.centre(), k = p.kick;
     ctx.save();
@@ -78,6 +81,64 @@ export function drawPropLife(ctx, world, t, vis) {
     for (const i of set) if (i.kind === 'till' && i.state === 'on') inFrame(ctx, p, () => till(ctx, i, tillDim(t, p.x + i.x)));
   }
 }
+
+// ---- level 1's interiors: machines left running, in their sprite's own px from its middle (tools/generate_assets.py
+// p_dryer, p_tv_stack, p_vcr_shelf, p_wall_clock). Where each thing is at time t, as numbers (tested), then drawn.
+
+// a dryer's load: three pieces going round behind the glass of its door, seen from above as they come up its front
+export const TUMBLE = { turn: 2.6, r: 3, y: 9.4, lift: 1.6, colors: ['#e8e6de', '#c8323a', '#3a5a9a'] }; // rad/s, px
+export function tumbleAt(t, seed = 0, i = 0) {
+  const a = t * TUMBLE.turn + seed + i * 2.1;
+  return { x: Math.cos(a) * TUMBLE.r, y: TUMBLE.y + Math.abs(Math.sin(a)) * TUMBLE.lift };
+}
+
+// the sets of a shop's wall of televisions: [x0, x1, y] of each strip of glass; at time t the place of the bar that
+// rolls down each picture (0..1 across the strip) and which of the channel's colours it shows
+export const SCREENS = [[-13, -7, 6], [-3.5, 2.5, 6], [6, 11.5, 6], [-9, -2.5, 2.6], [5.3, 9.7, 2]];
+export const CHANNELS = ['#9ef6ff', '#ffd0a0', '#ff9ac8', '#b8ffc8', '#7ab0ff'];
+export function screenAt(t, seed = 0, i = 0) {
+  const u = t * (0.55 + hash(seed + i * 3.7) * 0.5) + hash(seed * 1.9 + i) * 9;
+  return { roll: u % 1, channel: Math.floor(hash(Math.floor(u / 2.5) + i * 5.1 + seed) * CHANNELS.length) };
+}
+
+// the second hand of a wall clock at time t: a tick a second, a step of a sixtieth of a turn
+export function secondHand(t, seed = 0) {
+  const a = (((Math.floor(t) + Math.floor(hash(seed) * 60)) % 60) / 60) * Math.PI * 2 - Math.PI / 2;
+  return { x: Math.cos(a) * 1.7, y: 0.1 + Math.sin(a) * 0.9 };
+}
+
+const LIVE = {
+  dryer(ctx, t, seed) {
+    for (let i = 0; i < 3; i++) {
+      const q = tumbleAt(t, seed, i);
+      ctx.fillStyle = TUMBLE.colors[i];
+      ctx.fillRect(Math.round(q.x * 2) / 2 - 0.5, Math.round(q.y * 2) / 2 - 0.5, 1, 1);
+    }
+  },
+  tv_stack(ctx, t, seed) {
+    SCREENS.forEach(([x0, x1, y], i) => {
+      const f = screenAt(t, seed, i);
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = CHANNELS[f.channel];
+      ctx.fillRect(x0, y, x1 - x0, 1);
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = WHITE;
+      ctx.fillRect(Math.round((x0 + f.roll * (x1 - x0 - 1)) * 2) / 2, y, 1, 0.5);
+    });
+    ctx.globalAlpha = 1;
+  },
+  // 12:00, 12:00: each recorder's clock out half the time, never two in step
+  vcr_shelf(ctx, t, seed) {
+    ctx.fillStyle = '#2a0a10';
+    for (let k = 0; k < 4; k++) if (Math.floor(t * 1.1 + hash(seed + k) * 2) % 2) ctx.fillRect(2.5 + k * 7.5 + 4.8 - 21, 2.5, 1, 0.5);
+  },
+  wall_clock(ctx, t, seed) {
+    const q = secondHand(t, seed);
+    ctx.fillStyle = '#c8242c';
+    ctx.fillRect(Math.round(q.x * 2) / 2 - 0.25, Math.round(q.y * 2) / 2 - 0.25, 0.5, 0.5);
+  },
+};
+LIVE.wall_clock.clockwork = true; // no mains: it ticks on in the dark
 
 // the drop landing: a bright pixel, then a ring of four, then a wider, fainter one
 const DROP = '#dff2ff';

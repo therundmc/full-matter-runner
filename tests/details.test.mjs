@@ -122,7 +122,7 @@ test('level 1 details, round 2: the poker room, the laundromat, the till in the 
     assert.ok(LITTER[k], k);
     assert.ok(level.litter.some((l) => l[0] === k), k);
   }
-  assert.ok(level.props.some((p) => p[0] === 'bar_counter' && p[4]?.clutter === 'shop_till'));
+  assert.ok(level.props.some((p) => p[0] === 'bar_counter' && SETS[p[4]?.clutter]?.some(([kind]) => kind === 'till') && p[1] < 10), 'a till on the shop counter');
   assert.ok(PROPS.fridge.light);
   const lot = level.props.filter((p) => p[0] === 'fridge' && p[2] < 5);
   assert.ok(lot.length === 1 && lot[0][4]?.lights === false, 'the fridge thrown out in the lot gives no light');

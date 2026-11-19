@@ -65,6 +65,7 @@ import GasValve from '../systems/GasValve.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import Steam from '../systems/Steam.js';
 import Papers from '../systems/Papers.js';
+import Seeps from '../systems/Seeps.js';
 import Litter from '../systems/Litter.js';
 import Curtains from '../systems/Curtains.js';
 import Weather from '../systems/Weather.js';
@@ -164,6 +165,7 @@ export default class World {
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
     this.smoke = new Smoke(this, level);                   // the air and what it carries: smoke, soot, powder, steam
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
+    this.seeps = new Seeps(this);                          // a washer weeping, a pot simmering, a mop bucket slopping over
     this.litter = new Litter(this, level.litter);          // bills, feathers, a flute on a floor: kicked, blown, lifted by rounds
     this.fires = new Fires(this, level.fires);             // the flames of what burns
     this.fireSpread = new FireSpread(this, level);         // where it burns: along the petrol, over the floors, up the furniture
@@ -697,6 +699,7 @@ export default class World {
     this.poolBalls.update(dt);
     this.clutter.update(dt);
     this.steam.update(dt);
+    this.seeps.update(dt);
     this.papers.update(dt);
     this.litter.update(dt);
     this.curtains.update(dt);

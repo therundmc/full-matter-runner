@@ -40,7 +40,8 @@ const BAR_WALL = ['frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'd
   'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag'];
 const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'shot', 'lowball', 'beer_bottle', 'liquor', 'ashtray', 'cigar',
   'coaster', 'napkin', 'napkin_crumpled', 'peanuts', 'till', 'cards', 'chips', 'bands', 'bill', 'rubber_bands', 'baggies', 'glass_broken',
-  'flute', 'flute_down', 'bucket', 'single', 'singles', 'bill_crumpled', 'bill_folded', 'feather', 'feather_curl', 'cork', 'garter', 'sock', 'card', 'chip'];
+  'flute', 'flute_down', 'bucket', 'single', 'singles', 'bill_crumpled', 'bill_folded', 'feather', 'feather_curl', 'cork', 'garter', 'sock', 'card', 'chip',
+  'glass_rack', 'phone', 'papers', 'mug', 'vhs', 'soap', 'folded', 'ledger', 'adding', 'ashtray_full'];
 // level 2A's street (tools/generate_assets.py, "the road of level 2A"): what stands on its sidewalks, in its works and
 // over it, and the pieces a car loses (Vehicle.shed, data/destruction.js CAR_PARTS); what is painted on its ground
 // (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps
@@ -58,6 +59,14 @@ const ROAD_PAINT = [
   'valve_cap', 'viaduct_shadow', 'zebra_a', 'zebra_b',
   'hatch_kerb', 'oil_stain_a', 'oil_stain_b', 'road_loading', 'skid_marks']; // (the last row: level 1's street)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade'];
+// level 1's interiors (tools/generate_assets.py, "the rooms of level 1": INTERIOR_PROPS): what its shops, its
+// laundromat, the bar's back and its offices are full of, what hangs on their walls, two things painted on a floor
+const INTERIOR_PROPS = ['shop_shelf', 'wine_rack', 'beer_cases', 'lottery_stand', 'tv_stack', 'vcr_shelf', 'tv_box', 'repair_bench',
+  'dryer', 'folding_table', 'soap_vend', 'laundry_cart', 'plastic_chair', 'cig_machine', 'ice_bin', 'coat_rack', 'bottle_crate',
+  'wet_sign', 'mop_bucket', 'water_cooler', 'filing_cabinet', 'safe', 'pallet', 'steel_shelf', 'hand_truck', 'security_mirror',
+  'cig_rack', 'price_board', 'tape_rack', 'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'calendar', 'wall_clock',
+  'cleaning_rack', 'bar_mat', 'cardboard_flat'];
+const INTERIOR_GLOWING = ['tv_stack', 'soap_vend', 'cig_machine'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...FLOOR_TILES.flatMap((t) => [1, 2, 3, 4, 5].map((k) => `tiles/${t}_v${k}`)),
@@ -74,7 +83,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -86,6 +95,7 @@ export const OPTIONAL_LIST = [
   ...['lorry', 'neon_sign_diner', 'neon_sign_cafe'].flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...['awning', 'parasol', 'planter'].map((n) => `props/${n}`),
   ...[...ROAD_PROPS, ...ROAD_PAINT, ...ROAD_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
+  ...[...INTERIOR_PROPS, ...INTERIOR_GLOWING.map((n) => `${n}_glow`)].map((n) => `props/${n}`),
   ...['mag_pistol', 'mag_uzi', 'mag_rifle', 'mag_sniper', 'shells_box', 'ammo_9mm', 'ammo_12g', 'ammo_762', 'ammo_rocket',
     'pistol_bare', 'uzi_bare', 'uzi_silenced_bare', 'rifle_bare', 'sniper_bare',
     // what the player's melee weapons break into (data/weapons.js parts)
@@ -138,6 +148,7 @@ const FINE_PROPS = new Set(['alarm_box', 'apt_door', 'arcade', 'armchair', 'back
   'poster_pinup', 'poster_revue', 'mirror_strip', 'cocktail_table', 'conduit', 'flyers', 'tag',
   'lorry', 'awning', 'parasol', 'planter']);
 for (const n of [...ROAD_PROPS, ...ROAD_PAINT]) FINE_PROPS.add(n); // level 2A's street, all of it
+for (const n of INTERIOR_PROPS) FINE_PROPS.add(n); // level 1's interiors too
 // the plant on the neighbouring roofs too (generate_assets.py ROOF_FINE; the lit pieces stay at the world's)
 const ROOF_FINE = new Set(['ac_unit', 'vent', 'duct', 'hatch', 'chimney', 'tank', 'antenna', 'rail_bed']);
 // the floor tiles too (64 x 64 pixels a tile), the bar's clutter and the street fauna; the wall tops stay at the world's

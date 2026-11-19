@@ -51,6 +51,20 @@ export const CLUTTER = {
   single: { sprite: 'single', r: 2, flutter: 'cash' },
   bill_crumpled: { sprite: 'bill_crumpled', r: 1.8, flutter: 'cash' },
   bill_folded: { sprite: 'bill_folded', r: 2, flutter: 'cash' },
+  // level 1's interiors: a rack of clean glasses on the back of the bar, a telephone, loose paperwork, a mug of
+  // coffee (hot: it steams), a video tape, a box of soap powder (a white puff when it is knocked off), folded
+  // washing, the house's ledger, an adding machine, an ashtray nobody emptied (still smouldering)
+  glass_rack: { sprite: 'glass_rack', r: 4.5, glass: { kind: 'water', area: 0, share: 1 }, broken: 'glass_broken', kg: 2.5, material: 'glass', land: 'clutterBottle' },
+  phone: { sprite: 'phone', r: 3.5, kg: 1.6, material: 'plastic', land: 'clutterTill', mu: 0.7 },
+  papers: { sprite: 'papers', r: 3.5, flutter: 'paper' },
+  mug: { sprite: 'mug', r: 2, glass: { kind: 'booze', area: 16, share: 0.7 }, kg: 0.35, material: 'ceramic', land: 'clutterClink' },
+  mug_hot: { sprite: 'mug', r: 2, smoke: true, glass: { kind: 'booze', area: 16, share: 0.7 }, kg: 0.35, material: 'ceramic', land: 'clutterClink' },
+  vhs: { sprite: 'vhs', r: 3, kg: 0.25, material: 'plastic', land: 'clutterChips' },
+  soap: { sprite: 'soap', r: 2.6, ash: true, kg: 0.5, material: 'fabric' },
+  folded: { sprite: 'folded', r: 4, kg: 0.6, material: 'fabric' },
+  ledger: { sprite: 'ledger', r: 4, kg: 0.8, material: 'fabric' },
+  adding: { sprite: 'adding', r: 3.5, kg: 2, material: 'plastic', land: 'clutterTill', mu: 0.7 },
+  ashtray_full: { sprite: 'ashtray_full', r: 3.2, ash: true, smoke: true, kg: 0.7, material: 'glass', land: 'clutterAshtray' },
 };
 
 // what a shot or a blow does to the clutter of a prop: a round hits what stands within `r` (+ `pad`) of its line,
@@ -72,6 +86,16 @@ export const SETS = {
   counter_middle: [['pint', -9, 1.5, 0], ['coaster', 4, 2, 15], ['peanuts', 9, -0.5, 0], ['pint_empty', -2, -6, 0]],
   counter_pour: [['liquor', -9, -5, 0], ['shot', -4, 2, 0], ['shot', -0.5, 2.5, 0], ['pitcher', 8, 0.5, 30], ['napkin', 13, 2, -15]],
   shop_till: [['till', 3, -3.5, 0]],                                    // a shop's counter: its till and nothing else
+  // level 1's bar, lived in: the kegs' end with the rack of clean glasses on the bartender's side, the till's end
+  // with the house's phone and the ashtray of a long night
+  counter_rack: [['napkin', -8, 1.5, 10], ['peanuts', 5, 1, 0], ['pint_empty', 11.5, -5, 0], ['glass_rack', -9, -5, 0]],
+  counter_phone: [['till', 4, -3.5, 0], ['ashtray_full', -9, 1.5, 0], ['napkin_crumpled', -4, 2.5, 0], ['phone', -10, -5.5, 0]],
+  // the liquor store's counter: the till, the day's slips, the adding machine, his coffee gone cold, a full ashtray;
+  // on the next module a bottle being priced and the ledger
+  liquor_till: [['till', 3, -3.5, 0], ['papers', -10, -4, 15], ['adding', -4, -4, -8], ['ashtray_full', -8, 4, 0], ['mug', 12, 4, 0]],
+  liquor_counter: [['liquor', -9, -3, 0], ['ledger', 5, -2, -10], ['coaster', 11, 4, 0]],
+  // a bench in a laundromat: somebody's washing folded on it, the box of powder
+  bench_wash: [['folded', -14, 0, 4], ['soap', 16, -1, 20]],
   counter_till: [['till', 4, -3.5, 0], ['ashtray', -9, 1.5, 0], ['napkin_crumpled', -4, 2.5, 0]],
   // the booth's table, the pool table's rail, the poker table, the jukebox's corner
   booth: [['pitcher', -16, -7, 0], ['pint_half', 14, 5, 0], ['napkin', 1, 9, 25], ['ember', 14, -4.5, 0]],

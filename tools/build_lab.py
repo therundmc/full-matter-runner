@@ -155,6 +155,14 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    (E at its door) that pulls away east: S grinds its flank along the blind wall (sparks for as long
                    as it rubs, by its speed), W into the parked cars; rounds on bodywork spark, a tyre shot out smokes
                    and its rim then throws sparks
+    33 SEEPS       what drips, steams and slops in a lived-in room (systems/Seeps.js, data/seeps.js), in a tiled room
+                   off the street's east end (its door past station 32's label): along the north wall a washer weeping
+                   at its foot (its puddle grows to a step wide and holds), a dryer breathing steam (its load tumbling
+                   behind the door), a keg on tap dripping beer until it is flat, the ice bin, a water cooler, a stove
+                   with a pot simmering; a repair bench with the iron left hot (its thread of smoke), a wall of
+                   televisions and the recorders blinking 12:00, a clock; two mop buckets to shove or kick (they slop
+                   over the way they go, until empty), a pistol to hole the keg, the cooler and the buckets; on the
+                   floor a sample of each of the rooms' own marks (mould, grease, dust, drips, rust, prints, damp)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -545,6 +553,36 @@ lv.prop('car', 88.2, 21.0, 0, worn=0.6)
 lv.prop('car2', 75.4, 23.6, 0, drive=True)
 for x in (80.5, 90.5):
     lv.prop('wall_lamp', x, 18.08, 0)
+
+lv.area('33 seeps: what drips, steams and slops over (systems/Seeps.js), the rooms\' own floor marks')
+lv.fill(81, 11, 91, 17, '#')               # a tiled room cut in the brick north of the street's east end
+lv.fill(82, 12, 90, 16, '+')
+lv.put(86, 17, 'D')
+lv.paint('label_seeps', 86.4, 18.6)
+lv.prop('washer', 82.6, 12.45, 0, seep='washer')   # the drips, west to east along the north wall
+lv.prop('dryer', 83.6, 12.45)
+lv.prop('keg', 84.7, 12.4, seep='keg')
+lv.prop('ice_bin', 85.7, 12.3)
+lv.prop('water_cooler', 86.8, 12.35)
+lv.prop('oven', 88.0, 12.42, seep='pot')
+lv.prop('wall_clock', 89.2, 12.08)
+lv.prop('repair_bench', 90.2, 14.5, 90)            # the iron's thread, on the east wall
+lv.prop('tv_stack', 82.35, 14.6, 270)              # machines left on, on the west one
+lv.prop('vcr_shelf', 83.4, 16.75, 180)
+lv.prop('mop_bucket', 85.4, 14.4)                  # to shove, to kick, to shoot
+lv.prop('mop_bucket', 87.6, 14.7)
+lv.prop('wet_sign', 86.5, 15.3, 15)
+lv.prop('tube_light', 89.0, 16.93, 180)
+lv.prop('tube_light', 84.9, 16.93, 180)
+lv.drop('pistol', 87.2, 16.2, 200)
+# the marks a room grows, one of each along the south half (render/FloorWear.js)
+lv.grime_at('mould', 82.2, 16.75, r=8)
+lv.grime_at('rust', 82.6, 12.45, w=23, h=23)
+lv.grime_at('damp', 82.6, 12.85, r=15, deg=90)
+lv.grime_at('grease', 88.0, 13.05, r=7)
+lv.grime_at('dust', 83.4, 16.5, w=36, r=5)
+lv.grime_to('drips', 84.2, 15.6, 86.0, 16.4)
+lv.grime_to('prints', 86.5, 16.85, 88.6, 15.4)
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)

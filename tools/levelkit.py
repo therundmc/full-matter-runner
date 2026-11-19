@@ -60,6 +60,13 @@ SIZES = dict(
     traffic_light=(8, 8), bus_shelter=(126, 46), sign_noparking=(5, 5), sign_oneway=(5, 5), sign_speed=(5, 5), sign_bus=(5, 5),
     bollard=(7, 7), street_tree=(8, 8), arrow_board=(60, 34), compressor=(54, 28), barricade=(64, 7), sign_works=(14, 14),
     viaduct=None, gantry_sign=None,
+    # level 1's interiors (hitboxes of data/props.js; a coat stand and a mop bucket by their foot)
+    shop_shelf=(40, 11), wine_rack=(40, 11), beer_cases=(20, 16), lottery_stand=(12, 10), tv_stack=(30, 18), vcr_shelf=(40, 11),
+    tv_box=(20, 16), repair_bench=(46, 22), dryer=(22, 22), folding_table=(44, 20), soap_vend=(18, 10), laundry_cart=(24, 15),
+    plastic_chair=(13, 13), cig_machine=(22, 15), ice_bin=(18, 13), coat_rack=(8, 8), bottle_crate=(14, 10), wet_sign=(9, 7),
+    mop_bucket=(12, 12), water_cooler=(13, 13), filing_cabinet=(16, 20), safe=(22, 22), pallet=(38, 30), steel_shelf=(40, 12),
+    hand_truck=(12, 22), security_mirror=None, cig_rack=None, price_board=None, tape_rack=None, notice_board=None,
+    coin_changer=None, hand_dryer=None, graffiti=None, calendar=None, wall_clock=None, cleaning_rack=None,
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
@@ -74,7 +81,9 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                fire_alarm=10, neon_sign_mirage=42, neon_sign_open=26, frame_photo=10, frame_gold=12, poster_fight=14,
                poster_band=12, dartboard=9, pay_phone=8, coat_hooks=16, towel_dispenser=7, neon_sign_beer=34, neon_sign_bay=24,
                poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22, conduit=46, flyers=24,
-               neon_sign_diner=44, neon_sign_cafe=32)
+               neon_sign_diner=44, neon_sign_cafe=32,
+               security_mirror=10, cig_rack=26, price_board=22, tape_rack=28, notice_board=20, coin_changer=10, hand_dryer=8,
+               graffiti=26, calendar=8, wall_clock=7, cleaning_rack=20)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -88,9 +97,11 @@ FLOOR += ('zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_
           'steel_plate', 'viaduct_shadow')
 # ... and level 1's own
 FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_marks')
+# ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
+FLOOR += ('bar_mat', 'cardboard_flat')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -410,6 +421,12 @@ class Level:
             if b[0] - 0.03 < x < b[2] + 0.03 and b[1] - 0.03 < y < b[3] + 0.03:
                 return False
         return all(math.hypot(x - q[1], y - q[2]) >= 3 / 32 for q in self.litters)
+
+    # a mark that runs from one point to another (grime kinds `drips`, `prints`: a trail of drops, of dirty soles)
+    def grime_to(self, kind, col0, row0, col1, row1, **o):
+        x, y = self.at(col0, row0)
+        x1, y1 = self.at(col1, row1)
+        self.grimes.append([kind, x, y, x, y, 1, {**o, 'to': [round(x1 * 32, 2), round(y1 * 32, 2)], 'at': 'point'}])
 
     def wear_path(self, col0, row0, col1, row1, w=12):
         self.worn.append([*self.at(col0, row0), *self.at(col1, row1), w])

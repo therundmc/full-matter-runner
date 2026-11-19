@@ -142,6 +142,14 @@
   ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
 - Kill cam (systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, its lens `POST.killcam`): a zoom punch-in, slow motion that drops and snaps back, hit-stops on his violent kills, finishers, long chains and their end; a plain kill gets nothing; never at the wheel or in a staged shot; `?killcam=off` to compare; lab station 28.
 - At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
+- Lived-in rooms (level 1's interiors, 2026-11-19; the same care on every new level): each room is full of ITS things
+  (tools/generate_assets.py "the rooms of level 1": INTERIOR_PROPS, listed in engine/Assets.js INTERIOR_PROPS and
+  levelkit SIZES / ON_WALL), all against a wall or in a corner, never on a way the guards use, a doorway, a
+  window's foot or the getaway's lane. Their floors' grime is laid mark by mark by the builder, each where it has a
+  reason to be (`lv.grime_at`, `lv.grime_to` for a trail; FloorWear kinds `mould`, `grease`, `dust`, `drips`, `rust`,
+  `prints`, `damp` beside the older ones), appended after the older marks (the rect ones share one random stream).
+  What drips, steams or slops over is systems/Seeps.js + data/seeps.js (`SEEPS`; a prop's def or the level's prop
+  option `seep`): small on purpose (a puddle a step wide), it stops with its prop; lab station 33.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js.

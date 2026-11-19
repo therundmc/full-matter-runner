@@ -419,13 +419,20 @@ lv.prop('awning_blue', drawn(35.5), 21.56)
 lv.area('liquor store')
 lv.prop('neon_sign_liquor', 4.0, 21.09)
 lv.alarm(3, 17, 8, 19, 4.87, 21.1)
-for x in (5.0, 6.3):
-    lv.prop('bottle_shelf', x, 17.2)
+# (the user, 2026-11-19: "the shops lack detail": a shop is its stock, kind by kind, and what a day of customers leaves)
+lv.prop('bottle_shelf', 5.0, 17.2)                      # spirits along the back wall ...
+lv.prop('wine_rack', 6.3, 17.2)                         # ... and the wine, lying in its rack
 lv.prop('ladder', 3.5, 16.5)                            # up to the roof
 lv.prop('bottle_shelf', 8.3, 17.2)                      # behind the counter
-lv.prop('bar_counter', 7.5, 18.4)
-lv.prop('bar_counter', 8.5, 18.4, clutter='shop_till')     # its till, the display left on
-lv.prop('bottle_shelf', 5.0, 18.5)
+lv.prop('bar_counter', 7.5, 18.4, clutter='liquor_counter')   # a bottle being priced, the ledger
+lv.prop('bar_counter', 8.5, 18.4, clutter='liquor_till')   # its till, the display left on, the day's slips, a full ashtray
+lv.prop('shop_shelf', 5.0, 18.5)                        # the gondola in the middle: crackers, cans, what goes with a bottle
+lv.prop('lottery_stand', 6.78, 18.42)                   # at the counter's end
+lv.prop('bottle_crate', 7.3, 17.7)                      # the returns, behind the counter
+lv.prop('beer_cases', 4.25, 19.55)                      # beer by the case, by the fridges
+lv.prop('cig_rack', 8.91, 17.7, 90)                     # the cigarettes, on the wall behind the till
+lv.prop('price_board', 3.09, 17.6, 270)
+lv.prop('security_mirror', 3.6, 19.91, 180)             # up in the corner by the window, facing the door
 lv.prop('fridge', 3.4, 18.5, 270)
 lv.prop('fridge', 3.4, 19.25, 270)
 lv.prop('bottle_shelf', 5.7, 19.78, 180)                # the window display
@@ -440,26 +447,38 @@ lv.alarm(36, 17, 39, 19, 35.8, 21.1)
 for x in (36.5, 37.5, 38.5):
     lv.prop('tv', x, 19.7)                              # left on all night, facing the street
 lv.prop('tv', 38.55, 18.8)                              # out of the way of the trapdoor in the back
-lv.prop('bookshelf', 36.7, 17.2)
-lv.prop('bookshelf', 38.0, 17.2)
-lv.prop('desk', 39.5, 18.1, 90)
-lv.prop('speaker', 36.3, 18.2)
-lv.prop('speaker', 36.3, 18.75)
+lv.prop('vcr_shelf', 36.7, 17.2)                        # the video recorders, all blinking 12:00
+lv.prop('bookshelf', 38.0, 17.2)                        # manuals, catalogues, boxed tapes
+# the repair man's bench where the shop's desk was, against the east wall: a set open on its back, the iron left hot
+lv.prop('repair_bench', 39.5, 18.1, 90)
+lv.prop('tv_stack', 36.35, 18.5, 270)                   # the wall of sets, left on, facing the room
+lv.prop('speaker', 36.3, 17.7)
+lv.prop('tv_box', 37.0, 19.1)                           # two sets still in their boxes, behind the window's
+lv.prop('tv_box', 37.76, 19.14, 90)
 lv.prop('neon_tube_pink', 36.07, 18.5, 270)
+lv.prop('tape_rack', 39.91, 19.3, 90)                   # tapes for rent, by the door
+lv.prop('calendar', 36.09, 19.4, 270)
 
 lv.area('laundromat')
 lv.prop('neon_sign_wash', 25.55, 31.91)
-for x in (27.4, 28.12, 28.84):
+lv.prop('washer', 27.4, 35.6, 180, seep='washer')       # the first one weeps at its foot (systems/Seeps.js)
+for x in (28.12, 28.84):
     lv.prop('washer', x, 35.6, 180)
-lv.prop('washer', 31.6, 34.1, 90)
-lv.prop('washer', 31.6, 34.82, 90)
+lv.prop('dryer', 31.6, 34.1, 90)                        # the two dryers on the east wall, one load still going round
+lv.prop('dryer', 31.6, 34.82, 90)
 # a man doing his laundry at 2 AM (ai/Pastimes.js laundry): his load out of the machine in front of him, each piece
 # shaken out, folded and laid on the pile on the next machine's lid; his basket on the floor at his left
 lv.patron('civ6', 28.84, 34.88, 90, 'laundry')
 lv.prop('laundry_basket', 30.5, 35.45, 6)
-lv.prop('bench', 28.3, 33.4)
+lv.prop('bench', 28.3, 33.4, clutter='bench_wash')         # washing folded and left, the box of powder
 lv.prop('trash_can', 31.6, 33.35, tips=False)            # indoors: stays up (the street's go over)
-lv.prop('plant', 31.55, 35.6)
+lv.prop('soap_vend', 31.5, 35.8, 180)                   # the soap machine in the corner
+lv.prop('folding_table', 27.35, 34.4, 90)               # against the west wall, somebody's towels left on it
+lv.prop('laundry_cart', 30.6, 34.88)
+lv.prop('wet_sign', 27.95, 35.0, 20)                    # by the leak, for what good it does
+lv.prop('notice_board', 27.09, 34.4, 270)
+lv.prop('coin_changer', 31.5, 33.09)
+lv.prop('wall_clock', 31.91, 33.42, 90)
 lv.prop('tube_light', 28.5, 35.93, 180)
 lv.prop('tube_light', 30.5, 35.93, 180)
 # its floor: the drain, the way from the door to the machines, lint trodden about by them, the tide a leak left, a sock
@@ -471,6 +490,22 @@ for (x, y) in ((27.75, 35.1), (30.5, 35.35), (31.05, 34.45), (30.2, 33.6)):
 lv.grime_at('tide', 28.5, 34.95)
 lv.grime_at('scuffs', 28.1, 35.05)
 lv.litter_at('sock', 30.9, 34.0, 20)                     # (all of it off the cut line at 29)
+# what the years did to it: rust under the machine that leaks and the lime of its water gone across the tiles, mould in
+# the corners nobody mops, cracked and chipped tiles, the wet soles in from the street, dust under the bench, lint
+lv.grime_at('rust', 27.4, 35.6, w=23, h=23)
+lv.grime_at('damp', 27.4, 35.25, r=17, deg=270)
+lv.grime_at('mould', 27.12, 35.2, r=7)
+lv.grime_at('mould', 31.85, 33.15, r=6)
+lv.grime_at('mould', 31.2, 35.9, r=5)
+for (x, y) in ((30.4, 34.25), (28.3, 34.2)):
+    lv.grime_at('crack', x, y, len=[16, 34], d=-30, lit=9, wide=0.3)
+for (x, y) in ((27.9, 33.9), (30.95, 33.6), (28.6, 35.1)):
+    lv.grime_at('chip', x, y)
+lv.grime_to('prints', 30.5, 33.05, 30.3, 34.5, col='#2a3038')
+lv.grime_at('dust', 28.3, 33.6, w=46, r=6)
+for (x, y) in ((31.15, 34.1), (31.1, 34.85)):
+    lv.grime_at('lint', x, y, r=7)
+lv.grime_at('stain', 30.95, 35.5, col='#5a78a8')        # softener, under the soap machine
 
 lv.area('service alley')
 for x in (11.5, 12.5, 13.5):
@@ -497,9 +532,7 @@ lv.area('back lot')
 # get it round without touching a wall (tests/outro.test.mjs drives it); move neither without that test
 lv.prop('convertible', 24.5, 2.7, 180, lights=False)
 lv.prop('dumpster', 15.2, 1.6)
-lv.prop('crate', 17.2, 1.45, 5)
-lv.prop('crate', 17.9, 1.5, -10)
-lv.prop('crate', 17.5, 2.15, 30)
+lv.prop('pallet', 17.55, 1.5)                           # the week's delivery, never brought in (off the getaway's way)
 # the junk the bar never had taken away, along the far wall: a fridge, a washer, a dead TV, an armchair, a chair
 lv.prop('fridge', 13.5, 1.42, -6, lights=False)          # dead: no light at its door
 lv.prop('washer', 13.55, 2.25, 8)
@@ -530,8 +563,9 @@ lv.prop('gas_bottle', 30.4, 4.74)
 lv.prop('conduit', 20.9, 4.94, 180)                     # the house's wiring along its back wall (off the cut line)
 
 lv.area('storeroom')
-lv.prop('bookshelf', 15.7, 6.2)
-lv.prop('oven', 17.1, 6.38)
+lv.prop('steel_shelf', 15.7, 6.22)                      # catering tins, napkins, a coil of beer line
+lv.prop('hand_truck', 16.56, 6.42)                      # stood between the shelving and the stove
+lv.prop('oven', 17.1, 6.38, seep='pot')                 # something left to simmer on it: it breathes steam
 lv.prop('sink', 18.35, 6.3)
 lv.prop('fridge', 18.62, 7.5, 90)
 lv.prop('tube_light', 18.93, 8.6, 90)
@@ -539,6 +573,13 @@ lv.prop('dope_table', 17.0, 9.2, clutter='dope')                       # in the 
 lv.prop('crate', 18.55, 10.55, 4)                       # the stock, in corners off every way round the table (behind
 lv.prop('crate', 15.4, 6.85, 10)                        # it they made a pocket where two men jammed)
 lv.prop('conduit', 15.06, 9.9, 270)                     # the wiring run down the west wall, south of the alley door
+# the corner by the counter's door: the ice bin (it sweats on the concrete), the brooms on their hooks over it, a crate
+# of empties by the stock; all against the walls (the ways round the table stay as they were)
+lv.prop('ice_bin', 15.22, 10.5, 270)
+lv.prop('cleaning_rack', 15.5, 10.91, 180)
+lv.prop('bottle_crate', 18.0, 10.7)
+lv.prop('calendar', 18.91, 9.5, 90)
+lv.paint('cardboard_flat', 15.62, 8.5, 90)              # a flattened carton for a mat, inside the alley door
 
 lv.area('toilets')
 # an American restroom (the user): one stall in the north-east corner, its partition on chrome feet and a swinging
@@ -551,6 +592,13 @@ for y in (7.95, 8.85):
 lv.prop('sink', 23.7, 9.0, 90)
 lv.prop('tube_light', 23.93, 8.15, 90)                  # between the stall and the sink
 lv.prop('trash_can', 21.4, 10.5, tips=False, flies=True)    # two flies over it
+# the mop bucket left in the corner by the door, grey water to its rim (shoved, it slops over: systems/Seeps.js), the
+# sign somebody put out, the hand dryer that never worked, what gets written on the walls
+lv.prop('mop_bucket', 23.6, 10.55)
+lv.prop('wet_sign', 23.3, 9.98, -15)
+lv.prop('hand_dryer', 23.93, 10.25, 90)
+lv.prop('graffiti', 21.07, 9.9, 270)
+lv.prop('graffiti', 21.5, 6.07)
 
 lv.area('back room')
 lv.prop('table_lamp', 25.45, 7.35)
@@ -567,6 +615,12 @@ lv.prop('floor_lamp', 25.4, 10.55)
 lv.prop('cash_case', 30.2, 10.45, 84, clutter='cash_floor')                  # the boss's takings, open on the floor in front of the man
                                                         # who counts them
 lv.prop('extinguisher', 25.9, 10.86, 180)              # on the wall by the door
+# an office after all: the safe in the corner behind him (nothing here opens it), the files by the couch, a clock, the
+# garage's calendar; all flush with a wall, off the two ways across the room
+lv.prop('safe', 30.62, 6.38)
+lv.prop('filing_cabinet', 25.32, 10.05, 270)
+lv.prop('wall_clock', 26.92, 6.08)
+lv.prop('calendar', 30.92, 9.5, 90)
 # the carpet trodden from the back door to the door of the gaming room, between the couch and the men's table, and
 # worn where the man on the couch rests his heels and under the boss's boots at his desk
 lv.wear_path(26.4, 6.3, 26.75, 10.2, 9)
@@ -581,8 +635,8 @@ lv.area('the bar: counter along the north wall')
 # counter, the cards, the dope and the money stand square at what they work at (data/posts.js `front`).
 # what stands on it, module by module (data/clutter.js SETS): napkins and peanuts, the regulars' glasses and ashtrays,
 # the bottle the bartender pours from, the till at his end
-for x, things in ((15.5, 'counter_kegs'), (16.5, 'counter_regular'), (17.5, 'counter_middle'), (18.5, 'counter_pour'),
-                  (20.5, 'counter_till')):               # (no module on the cut line)
+for x, things in ((15.5, 'counter_rack'), (16.5, 'counter_regular'), (17.5, 'counter_middle'), (18.5, 'counter_pour'),
+                  (20.5, 'counter_phone')):              # (no module on the cut line)
     lv.prop('bar_counter', x, 13.85, clutter=things)
 for x in (15.65, 16.75, 17.85, 18.95):
     lv.prop('chair', x, 14.5, 270)
@@ -591,8 +645,10 @@ for x in (17.59, 20.41):                                # the bottles: racked on
 lv.prop('neon_sign_bay', 18.5, 12.09)                  # the town's lager in neon over the bartender's head
 for x in (16.3, 18.0, 20.7):
     lv.prop('ceiling_lamp', x, 13.85)
-for y in (12.45, 13.02):                                # two kegs of draught in the corner behind the counter: holed,
-    lv.prop('keg', 15.36, y)                            # they flood it with beer, and whoever runs on it goes down
+lv.prop('keg', 15.36, 12.45)                            # two kegs of draught in the corner behind the counter: holed,
+lv.prop('keg', 15.36, 13.02, seep='keg')                # they flood it with beer, and whoever runs on it goes down; the
+#                                                       one on tap weeps at its coupling (systems/Seeps.js)
+lv.paint('bar_mat', 17.3, 12.95)                        # the duckboard the bartender walks, between the door and the cut
 for x in (15.95, 17.15):                                # their taps on the bar, the bartender's side of it
     lv.prop('beer_tap', x, 13.62)
 
@@ -613,6 +669,7 @@ lv.prop('jukebox', 23.6, 19.6, 180)
 lv.prop('ceiling_fan', 22.6, 14.2)
 lv.prop('plant', 17.85, 19.55)                          # in the corner by the windows
 lv.prop('extinguisher', 23.88, 14.5, 90)                # on the gaming room's wall
+lv.prop('cig_machine', 23.62, 16.0, 90)                 # the cigarette machine, between the red lamp and the dartboard
 
 lv.area('the bar: the gaming room')
 # 5 x 4 m behind its door: poker under a green-shaded lamp, the dealer at the west end with the
@@ -626,6 +683,8 @@ lv.prop('chair', 28.35, 14.25, 180)
 lv.prop('bottle_shelf', 25.9, 12.16)
 lv.prop('cash_case', 28.8, 12.6, 15, clutter='cash_floor')
 lv.prop('wall_lamp', 30.91, 13.0, 90)
+lv.prop('water_cooler', 30.7, 12.32)                    # in the corner past the money: its tap never quite shuts
+lv.prop('coat_rack', 25.3, 15.65)                       # the players' coats, behind the dealer
 # years of games: the carpet's pile trodden flat in a ring round the table where the chairs are pulled in and out, a
 # card and two chips gone under it and never picked up
 lv.grime_at('halo', 26.9, 14.25, r=35, w=7, d=-9, grey=0.2)
@@ -740,6 +799,117 @@ lv.wear_path(14.9, 8.5, 16.5, 10.7, 9)
 lv.wear_path(8.5, 19.8, 7.6, 19.1, 9)
 lv.grime('scuffs', 6, 19, 8, 19, 2)
 lv.grime('stain', 3, 17, 8, 19, 2, col='#3a3020')
+
+# ---- what years of nights left on the floors of the house and of its neighbours (the user, 2026-11-19: "cracks,
+# grime, as detailed as the street"). Each mark where it has a reason to be, at its point (render/FloorWear.js: the
+# kinds mould, grease, dust, drips, rust, prints, damp are the rooms' own), none on a cut line.
+lv.area('floors')
+# the liquor store: dust under the shelves' fronts, the fridges' condensation and their rust, lino cracked and torn on
+# the way to the till, a bottle that leaked all the way to the door, the street's dirt walked in
+for (x, y) in ((5.0, 17.42), (6.3, 17.42), (5.0, 18.72)):
+    lv.grime_at('dust', x, y, w=36, r=5)
+lv.grime_at('rust', 3.4, 18.5, w=23, h=23)
+lv.grime_at('damp', 3.78, 18.9, r=14, deg=0)
+for (x, y) in ((6.4, 18.9), (4.6, 17.9), (7.9, 19.3)):
+    lv.grime_at('crack', x, y, len=[14, 34], d=-26, lit=7, wide=0.3)
+lv.grime_at('tear', 6.9, 18.95)
+lv.grime_at('tear', 4.1, 17.75)
+lv.grime_to('drips', 5.9, 18.95, 8.25, 19.7, col='#3a2208')
+lv.grime_to('prints', 8.5, 19.85, 7.2, 19.0)
+lv.grime_at('sticky', 5.9, 18.95)
+lv.grime_at('butts', 8.2, 19.55)
+# the TV shop: the carpet trodden from the door to the bench and before the wall of sets, coffee by the bench, dust
+# along the shelves, a burn where the iron fell
+lv.wear_path(39.5, 19.6, 38.85, 18.4, 9)
+lv.grime_at('wear', 37.1, 18.5, r=10, d=5, grey=0.2)
+lv.grime_at('stain', 38.8, 18.0, col='#2a1808')
+lv.grime_at('burns', 38.9, 18.6)
+for (x, y) in ((36.7, 17.42), (38.0, 17.42)):
+    lv.grime_at('dust', x, y, w=36, r=5)
+lv.grime_to('prints', 39.5, 19.8, 38.6, 19.2)
+# the bar room: where the stools drag, a board stove in by the pool table, burns round it and by the booth, the keg's
+# beer dried black behind the counter and dripped along its back, wet soles out of the toilets and the street's in
+# from the door, the corners nobody sweeps, the floor worn bare before the jukebox, the arcade and the darts
+for x in (15.65, 16.75, 17.85, 18.95):
+    lv.grime_at('scratches', x, 14.95)
+lv.grime_at('broken', 18.3, 18.75)
+lv.grime_at('broken', 22.6, 15.2)
+for (x, y) in ((16.4, 15.7), (20.6, 15.4), (22.9, 18.3), (17.6, 19.2), (21.2, 14.2), (16.2, 12.7)):
+    lv.grime_at('split', x, y, len=[26, 70], d=-30)        # boards split along their grain
+for (x, y) in ((18.2, 15.9), (22.4, 17.6), (20.4, 18.9)):
+    lv.grime_at('gap', x, y)
+for (x, y, col) in ((17.9, 17.5, '#2a1808'), (21.9, 15.0, '#2a1808'), (16.0, 18.9, '#1a1410'), (20.3, 13.1, '#2a1a08')):
+    lv.grime_at('stain', x, y, col=col, d=-11)             # what was spilt and mopped a hundred times
+for (x, y) in ((20.2, 18.0), (22.3, 16.3), (17.2, 16.4), (16.9, 18.0)):
+    lv.grime_at('burns', x, y)
+lv.grime_at('stain', 15.75, 13.2, col='#2a1a08', d=-9)
+lv.grime_to('drips', 15.7, 13.15, 17.3, 13.3, col='#3a2208')
+lv.grime_to('prints', 22.5, 12.2, 22.2, 13.9, col='#2a3038')
+lv.grime_to('prints', 21.9, 19.85, 21.5, 18.1)
+lv.grime_at('dust', 15.45, 19.86, w=24, r=5)
+lv.grime_at('dust', 23.6, 19.2, w=22, r=4)
+for (x, y) in ((23.6, 18.95), (23.35, 13.25), (22.95, 16.55)):
+    lv.grime_at('wear', x, y, r=9, d=6, grey=0.22)
+lv.grime_at('stain', 23.1, 16.0, col='#1a1410')         # under the cigarette machine's front
+# the toilets: mould in the corners and along the urinals' foot, what runs down under the sink and the urinals, piss on
+# the tiles, cracked tiles, the wet walked to the door
+for (x, y, r) in ((21.15, 6.15, 7), (23.85, 10.85, 6), (21.3, 8.4, 5), (23.8, 6.15, 5), (21.15, 10.85, 5)):
+    lv.grime_at('mould', x, y, r=r)
+lv.grime_at('damp', 23.4, 9.0, r=14, deg=180)
+for y in (7.95, 8.85):
+    lv.grime_at('damp', 21.32, y, r=9, deg=0)
+    lv.grime_at('stain', 21.65, y + 0.05, col='#8a8030', d=-4)
+for (x, y) in ((22.3, 7.2), (22.9, 10.2), (21.7, 9.6)):
+    lv.grime_at('crack', x, y, len=[18, 40], d=-32, lit=9, wide=0.3)
+for (x, y) in ((22.6, 8.3), (21.9, 10.5)):
+    lv.grime_at('chip', x, y)
+lv.grime_to('prints', 23.2, 9.35, 22.55, 10.85, col='#3a4a50')
+lv.grime_at('tide', 22.45, 9.3)
+# the storeroom: fat by the stove, the sink's leak, the fridge's rust, the bin bags dripped from the fridge to the
+# alley door, the alley's dirt walked in, mould in the corner over the sink, dust under the shelving, powder by the table
+lv.grime_at('grease', 17.1, 6.98, r=7)
+lv.grime_at('damp', 18.35, 6.75, r=11, deg=90)
+lv.grime_at('rust', 18.62, 7.5, w=23, h=23)
+lv.grime_to('drips', 18.1, 7.95, 15.2, 8.5)
+lv.grime_to('prints', 15.1, 8.6, 16.3, 10.3)
+lv.grime_at('mould', 18.85, 6.15, r=6)
+lv.grime_at('dust', 15.7, 6.5, w=36, r=5)
+lv.grime_at('stain', 17.95, 9.75, col='#e8e4dc', d=7)
+lv.grime_at('stain', 18.2, 10.3, col='#2a1a08')
+for (x, y) in ((16.2, 7.6), (17.6, 10.3)):
+    lv.grime_at('crack', x, y, len=[24, 56], d=-26, lit=6, wide=0.3)
+# the boss's room: what was scrubbed out of the carpet by the rug and never quite went, whisky by the couch, the pile
+# trodden round the men's table, the lot's dirt in from the back door, dust behind the files
+lv.grime_at('stain', 26.3, 9.95, col='#3a1418', d=-9)
+lv.grime_at('stain', 26.15, 8.3, col='#2a1808')
+lv.grime_at('halo', 27.6, 8.75, r=21, w=6, d=-8, grey=0.2)
+lv.grime_to('prints', 25.5, 6.1, 26.3, 7.7)
+lv.grime_at('dust', 25.2, 10.36, w=18, r=4)
+for (x, y) in ((27.0, 9.6), (28.3, 9.3)):
+    lv.grime_at('burns', x, y)
+# the gaming room and the VIP room: the cooler's drips, whisky under the shelf, burns by the chairs; champagne and burns
+lv.grime_at('damp', 30.7, 12.6, r=9, deg=90)
+lv.grime_at('stain', 26.0, 12.6, col='#2a1808')
+lv.grime_at('dust', 25.9, 12.38, w=36, r=4)
+for (x, y) in ((27.9, 15.5), (26.1, 15.7), (28.6, 13.6)):
+    lv.grime_at('burns', x, y)
+for (x, y) in ((27.6, 19.6), (28.7, 18.4)):
+    lv.grime_at('burns', x, y)
+lv.grime_at('stain', 26.9, 18.7, col='#a89048', d=-4)
+# the gap and the two back doors (no body there: the gap has no room, the alley and the lot are the getaway's): the
+# damp under the bar's windows, a drain, a carton somebody slept on, the butts of who smokes by each door, the bin
+# bags dripped from the storeroom's door to the dumpster
+lv.paint('drain', 32.5, 12.2)
+lv.paint('cardboard_flat', 32.5, 7.6, 90)
+for y in (14.5, 17.5):
+    lv.grime_at('damp', 32.05, y, r=12, deg=0)
+lv.grime_at('tide', 32.5, 10.0)
+lv.grime_at('butts', 32.4, 18.9)
+for (x, y) in ((27.3, 4.35), (29.6, 3.45), (26.6, 4.65), (12.4, 8.9), (12.75, 8.35)):
+    lv.grime_at('butts', x, y)
+lv.grime_to('drips', 13.8, 8.6, 12.2, 13.7)
+lv.grime_at('stain', 12.3, 13.9, col='#1a1410')
+
 # the smoke of the night hanging under the lamps over the pool and the poker tables, and over the counter
 lv.smoke_haze(20.8, 16.9, 2.3, 0.1)
 lv.smoke_haze(26.9, 14.25, 1.9, 0.1)

@@ -43,7 +43,8 @@ export const LIQUIDS = {
   // what stands on the floor and holds the liquid (static props of these types, their footprint); tables, beds, a
   // dumpster stand on legs or wheels: it runs under them
   dams: ['bar_counter', 'fridge', 'oven', 'sink', 'bookshelf', 'arcade', 'dj_booth', 'jukebox', 'bottle_shelf',
-    'back_bar', 'washer', 'vending', 'phone_booth', 'ac_unit', 'water_tank', 'toilet', 'urinal'],
+    'back_bar', 'washer', 'vending', 'phone_booth', 'ac_unit', 'water_tank', 'toilet', 'urinal',
+    'shop_shelf', 'wine_rack', 'vcr_shelf', 'dryer', 'soap_vend', 'cig_machine', 'ice_bin', 'filing_cabinet', 'safe', 'steel_shelf'],
   // the rain's puddles (systems/Weather.js lays them): hollows `hollow` mm deep at their heart, the water standing
   // level `margin` mm under the lowest point of the rim (none where it would be under `min` mm); they never dry
   rain: { hollow: 3.2, margin: 0.4, min: 0.2 },

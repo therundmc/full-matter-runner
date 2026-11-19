@@ -123,6 +123,7 @@ export function buildLevel(world, level) {
   // { drive: true } = a vehicle he can get into and drive (the lab); { pursuer: true } = a pursuer's car parked with
   // its gunman, telling his shot now and then (the lab); { backs: tiles } = a lorry that backs out across the way (the lab);
   // { worn: share } = a vehicle that has already lost that share of its hp (its engine smokes: systems/CarFx.js; the lab)
+  // { seep: name } = it drips, fumes or slops over (data/seeps.js SEEPS, systems/Seeps.js: one washer of a row, one keg)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
@@ -131,6 +132,7 @@ export function buildLevel(world, level) {
     if (opt?.valve) p.valve = true; // a stove with its gas tap (systems/GasValve.js)
     if (opt?.tips === false) p.noTip = true;
     if (opt?.flies) p.flies = true; // flies over it (render/PropLife.js)
+    if (opt?.seep) p.seep = opt.seep; // it drips or fumes (systems/Seeps.js)
     if (opt?.clutter) world.clutter?.attach(p, opt.clutter);
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)

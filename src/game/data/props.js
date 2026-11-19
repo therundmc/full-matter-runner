@@ -174,6 +174,61 @@ export const PROPS = {
     light: { r: 90, color: '#ff3a5a', intensity: 0.6, flicker: 'buzz', y: 3 } },
   // the VIP room's low table: smoked glass in a chrome rim on one foot
   cocktail_table: { static: true, vault: true, material: 'metal', r: 12, hp: 8, chips: '#2a2030', sparks: true, sound: 'metal' },
+  // ---- level 1's interiors (tools/generate_assets.py "the rooms of level 1"): what a shop, a laundromat, a bar's back
+  // and an office are full of. seep = it drips, fumes or slops over (data/seeps.js, systems/Seeps.js).
+  // The liquor store: a gondola of groceries, wine lying in its rack, beer by the case, the lottery's stand
+  shop_shelf: { static: true, material: 'metal', w: 40, h: 11, hp: 10, chips: '#c8ccd4', sound: 'metal', blocksPath: true },
+  wine_rack: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#5a3420', glass: true, sound: 'glass', blocksPath: true },
+  beer_cases: { vault: true, material: 'fabric', w: 20, h: 16, hp: 5, kg: 36, mu: 0.6, chips: '#b88a52', glass: true, sound: 'wood' },
+  lottery_stand: { material: 'metal', w: 12, h: 10, hp: 3, kg: 8, mu: 0.45, chips: '#e8c040', sound: 'metal' },
+  // the TV shop: sets stacked on their stand and left on, the video recorders' shelf, a set still in its box, the
+  // bench where one lies open under the lamp (its iron left hot)
+  tv_stack: { static: true, material: 'plastic', w: 30, h: 18, hp: 8, chips: '#2a2a30', sparks: true, glass: true, sound: 'glass', blocksPath: true,
+    light: { r: 90, color: '#8fd0ff', intensity: 0.8, flicker: 'tv', y: 9 } },
+  vcr_shelf: { static: true, material: 'metal', w: 40, h: 11, hp: 10, chips: '#3a3a44', sparks: true, sound: 'metal', blocksPath: true },
+  tv_box: { vault: true, material: 'fabric', w: 20, h: 16, hp: 4, kg: 22, mu: 0.6, chips: '#b88a52', sound: 'wood' },
+  repair_bench: { static: true, vault: true, material: 'wood', w: 46, h: 22, hp: 14, chips: '#6a4a2c', sparks: true, sound: 'wood', blocksPath: true, seep: 'solder',
+    light: { r: 64, color: '#ffe0a0', intensity: 0.55, x: -15, y: -3 } },
+  // the laundromat: a dryer running (its drum turns: render/PropLife.js), the folding table, the soap machine, a wire
+  // cart, moulded chairs
+  dryer: { static: true, material: 'metal', w: 22, h: 22, hp: 18, chips: '#dfe3e8', sparks: true, sound: 'metal', blocksPath: true, seep: 'dryer' },
+  folding_table: { static: true, vault: true, material: 'plastic', w: 44, h: 20, hp: 10, chips: '#d8d4c8', sound: 'wood', blocksPath: true },
+  soap_vend: { static: true, material: 'metal', w: 18, h: 10, hp: 6, chips: '#3a6ab8', sparks: true, sound: 'metal', blocksPath: true,
+    light: { r: 30, color: '#eaf2ff', intensity: 0.35, y: 6 } },
+  laundry_cart: { material: 'metal', w: 24, h: 15, hp: 6, kg: 14, mu: 0.14, chips: '#b8bcc8', sound: 'metal' },
+  plastic_chair: { material: 'plastic', w: 13, h: 13, hp: 4, kg: 3, mu: 0.45, chips: '#e87a2a', sound: 'wood' },
+  // the bar: the cigarette machine, the ice bin behind the counter (it sweats), a coat stand, a crate of empties, the
+  // toilets' wet-floor sign and the mop bucket (shoved, it slops over), a cooler in the office (its tap drips)
+  cig_machine: { hum: 'fridge', static: true, material: 'metal', w: 22, h: 15, hp: 9, chips: '#6a4a2c', sparks: true, sound: 'metal', blocksPath: true,
+    light: { r: 40, color: '#ffe6b0', intensity: 0.4, y: 8 } },
+  ice_bin: { static: true, material: 'metal', w: 18, h: 13, hp: 10, chips: '#b8bcc8', sound: 'metal', blocksPath: true, seep: 'ice_bin' },
+  coat_rack: { material: 'wood', r: 4, hp: 3, kg: 6, mu: 0.5, chips: '#5a3a24', sound: 'wood' },
+  bottle_crate: { material: 'plastic', w: 14, h: 10, hp: 4, kg: 12, mu: 0.5, chips: '#b82030', glass: true, sound: 'wood' },
+  wet_sign: { material: 'plastic', w: 9, h: 7, hp: 2, kg: 1.5, mu: 0.5, chips: '#f0c820', sound: 'wood' },
+  mop_bucket: { material: 'plastic', feet: 'rubber', r: 6, hp: 4, kg: 12, mu: 0.3, chips: '#e8c020', sound: 'wood', seep: 'mop_bucket' },
+  water_cooler: { static: true, material: 'plastic', r: 6.5, hp: 4, chips: '#bcd8e8', sound: 'wood', seep: 'water_cooler' },
+  // offices and stores: a filing cabinet (paper flies), a safe nothing here opens, pallets of stock, steel shelving,
+  // the hand truck
+  filing_cabinet: { static: true, material: 'metal', w: 16, h: 20, hp: 12, chips: '#7a8088', sound: 'metal', blocksPath: true },
+  safe: { static: true, lasting: true, material: 'metal', w: 22, h: 22, hp: 99, chips: '#3a4048', sound: 'metal', blocksPath: true },
+  pallet: { static: true, vault: true, material: 'wood', w: 38, h: 30, hp: 14, chips: '#a07040', sound: 'wood', blocksPath: true },
+  steel_shelf: { static: true, material: 'metal', w: 40, h: 12, hp: 12, chips: '#8a909c', sound: 'metal', blocksPath: true },
+  hand_truck: { material: 'metal', w: 12, h: 22, hp: 6, kg: 11, mu: 0.2, chips: '#c8242c', sound: 'metal' },
+  // on their walls (the wall at -y, the room along +y, as the bar's pictures are): the shop's convex mirror, the
+  // cigarettes behind its counter, the price list, tapes on their rack, a cork board, the change machine (coins
+  // spill), the hand dryer that never worked, what was scrawled in the toilets (paint: it is marked, never gone), a
+  // calendar, a clock (its second hand: render/PropLife.js), the brooms on their hooks
+  security_mirror: { static: true, material: 'glass', w: 10, h: 4, hp: 2, chips: '#d8e0ea', glass: true, sound: 'glass' },
+  cig_rack: { static: true, material: 'plastic', w: 26, h: 4, hp: 4, chips: '#c8242c', sound: 'wood' },
+  price_board: { static: true, material: 'fabric', w: 22, h: 3, hp: 2, chips: '#1c1c22', sound: 'wood' },
+  tape_rack: { static: true, material: 'plastic', w: 28, h: 4, hp: 4, chips: '#2a2a34', sound: 'wood' },
+  notice_board: { static: true, material: 'fabric', w: 20, h: 3, hp: 3, chips: '#b08a5a', sound: 'wood' },
+  coin_changer: { static: true, material: 'metal', w: 10, h: 5, hp: 4, chips: '#8a909c', sparks: true, sound: 'metal' },
+  hand_dryer: { static: true, material: 'metal', w: 8, h: 5, hp: 3, chips: '#d8dce4', sparks: true, sound: 'metal' },
+  graffiti: { static: true, lasting: true, material: 'stone', w: 26, h: 2, hp: 99, chips: '#8a8e96', sound: 'stone' },
+  calendar: { static: true, material: 'fabric', w: 8, h: 3, hp: 2, chips: '#e8e4d8', sound: 'wood' },
+  wall_clock: { static: true, material: 'glass', w: 7, h: 3, hp: 2, chips: '#e8e4d8', glass: true, sound: 'glass' },
+  cleaning_rack: { static: true, material: 'wood', w: 20, h: 5, hp: 4, chips: '#8a6a3a', sound: 'wood' },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
   // and rotate them toward the room (0 = lights south, 90 = west, 180 = north, 270 = east).
   floor_lamp: { fixture: true, material: 'metal', r: 5, hp: 2, kg: 7, mu: 0.4, chips: '#e6c48a', sparks: true, glass: true, sound: 'glass',

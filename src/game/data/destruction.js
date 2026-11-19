@@ -171,6 +171,90 @@ export const DESTRUCTION = {
     height: 0.95, parts: [{ cut: 'panel', rect: [0.2, 0.3, 0.8, 0.9], name: 'lid', fly: 1.6 }, { cut: 'grid', cols: 2, rows: 2 }],
     leak: { color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 4 },
   },
+  // ---- level 1's interiors (data/props.js). Shelves shed what they hold, cabinets their paper, anything with water
+  // in it lets it go; the mop bucket, the ice bin and the cooler flood their corner when they give way
+  shop_shelf: {
+    height: 1.5, floats: ['paper', 8], parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
+    contents: [{ bit: 'can', n: 8, on: 'break' }, { bit: 'food', n: 6, on: 'break' }, { bit: 'can', n: 1, on: 'hit', perHit: 0.8 }],
+  },
+  wine_rack: {
+    height: 1.5, parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
+    contents: [{ bit: 'bottle', n: 10, on: 'break' }, { bit: 'bottle', n: 1, on: 'hit', perHit: 0.8 }],
+  },
+  beer_cases: {
+    height: 0.6, parts: [{ cut: 'grid', cols: 2, rows: 2 }], floats: ['paper', 6],
+    contents: [{ bit: 'bottle', n: 8, on: 'break' }, { bit: 'bottle', n: 1, on: 'hit', perHit: 0.6 }],
+  },
+  lottery_stand: { height: 1.2, floats: ['paper', 26], sheds: 'paper', parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  tv_stack: { height: 1.2, electric: true, puff: 2, screen: [0.04, 0.5, 0.96, 1], parts: [{ cut: 'grid', cols: 3, rows: 2 }] },
+  vcr_shelf: {
+    height: 1.5, electric: true, parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
+    contents: [{ bit: 'book', n: 8, on: 'break', colors: ['#1c1c22', '#2a2a34', '#c8242c', '#e8e4d8'] }],
+  },
+  tv_box: { height: 0.6, parts: [{ cut: 'grid', cols: 2, rows: 2 }], floats: ['stuffing', 12] },
+  repair_bench: {
+    height: 0.9, electric: true, floats: ['paper', 6],
+    parts: [{ cut: 'panel', rect: [0.36, 0.1, 0.8, 0.8], name: 'chassis', fly: 1.3 }, { cut: 'planks', n: 3, axis: 'long', snap: true }],
+    legs: { n: 4, size: 0.08, color: '#3a3a44' }, contents: [{ bit: 'can', n: 3, on: 'break' }],
+  },
+  dryer: {
+    height: 1.1, electric: true, puff: 2, floats: ['stuffing', 10],
+    parts: [{ cut: 'panel', rect: [0.15, 0.75, 0.85, 1], name: 'door', fly: 1.6 }, { cut: 'grid', cols: 2, rows: 2 }],
+  },
+  folding_table: {
+    height: 0.8, floats: ['paper', 4], parts: [{ cut: 'grid', cols: 3, rows: 1 }], legs: { n: 4, size: 0.06, color: '#8a909c' },
+    contents: [{ bit: 'sheet', n: 6, on: 'break' }],
+  },
+  soap_vend: {
+    height: 1.4, electric: true, powder: '#f2f4fa', parts: [{ cut: 'grid', cols: 2, rows: 1 }],
+    contents: [{ bit: 'food', n: 6, on: 'break', colors: ['#f26a1a', '#2a6ad8', '#e8e4d8'] }, { bit: 'coin', n: 8, on: 'break' }],
+  },
+  laundry_cart: { height: 0.7, material: 'metal', parts: [{ cut: 'grid', cols: 2, rows: 1 }], contents: [{ bit: 'sheet', n: 5, on: 'break' }] },
+  cig_machine: {
+    height: 1.5, electric: true, parts: [{ cut: 'panel', rect: [0, 0.7, 1, 1], name: 'front', fly: 1.4 }, { cut: 'grid', cols: 2, rows: 1 }],
+    contents: [{ bit: 'food', n: 12, on: 'break', colors: ['#c8242c', '#e8e4d8', '#2a4a9a', '#d8b048'] }, { bit: 'coin', n: 10, on: 'break' },
+      { bit: 'coin', n: 2, on: 'hit', perHit: 0.5 }],
+  },
+  ice_bin: {
+    height: 0.9, parts: [{ cut: 'panel', rect: [0.05, 0.1, 0.95, 0.9], name: 'lid', fly: 1.4 }, { cut: 'grid', cols: 2, rows: 1 }],
+    leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 3 }, gush: 1400,
+  },
+  coat_rack: { height: 1.7, parts: [{ cut: 'wedges', n: 4 }], floats: ['stuffing', 6] },
+  bottle_crate: {
+    height: 0.3, parts: [{ cut: 'grid', cols: 2, rows: 1 }],
+    contents: [{ bit: 'bottle', n: 6, on: 'break' }, { bit: 'bottle', n: 1, on: 'hit', perHit: 0.7 }],
+  },
+  mop_bucket: { height: 0.45, parts: [{ cut: 'wedges', n: 4 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 3 }, gush: 700 },
+  water_cooler: {
+    height: 1.2, parts: [{ cut: 'wedges', n: 5 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 6, rate: 420 },
+    gush: 2600,
+  },
+  filing_cabinet: {
+    height: 1.3, floats: ['paper', 26], sheds: 'paper',
+    parts: [{ cut: 'panel', rect: [0, 0.7, 1, 1], name: 'drawer', fly: 1.5 }, { cut: 'grid', cols: 1, rows: 2 }],
+    contents: [{ bit: 'sheet', n: 8, on: 'break' }],
+  },
+  safe: { height: 0.9, material: 'metal' },
+  pallet: {
+    height: 1.0, floats: ['paper', 10], parts: [{ cut: 'grid', cols: 3, rows: 2 }, { cut: 'planks', n: 4, axis: 'long', snap: true }],
+    contents: [{ bit: 'can', n: 8, on: 'break' }, { bit: 'slat', n: 4, on: 'break' }],
+  },
+  steel_shelf: {
+    height: 1.8, parts: [{ cut: 'frame', t: 0.25, sides: 'tb' }, { cut: 'grid', cols: 4, rows: 1 }],
+    contents: [{ bit: 'can', n: 8, on: 'break' }, { bit: 'food', n: 4, on: 'break' }, { bit: 'can', n: 1, on: 'hit', perHit: 0.7 }],
+  },
+  coin_changer: { height: 1.3, electric: true, contents: [{ bit: 'coin', n: 16, on: 'break' }, { bit: 'coin', n: 3, on: 'hit', perHit: 1 }] },
+  hand_dryer: { height: 1.2, electric: true, live: 2 },
+  notice_board: { height: 1.5, floats: ['paper', 10] },
+  calendar: { height: 1.6, floats: ['paper', 6] },
+  price_board: { height: 1.8 },
+  cig_rack: {
+    height: 1.7,
+    contents: [{ bit: 'food', n: 10, on: 'break', colors: ['#c8242c', '#e8e4d8', '#2a4a9a', '#d8b048'] },
+      { bit: 'food', n: 1, on: 'hit', perHit: 1, colors: ['#c8242c', '#e8e4d8'] }],
+  },
+  tape_rack: { height: 1.6, contents: [{ bit: 'book', n: 8, on: 'break', colors: ['#1c1c22', '#2a2a34', '#c8242c', '#e8e4d8'] }] },
+  cleaning_rack: { height: 1.4, contents: [{ bit: 'slat', n: 2, on: 'break' }] },
   neon_sign_liquor: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   neon_sign_video: { height: 2.5, electric: true, material: 'glass', parts: [{ cut: 'wedges', n: 7 }] },
   velvet_rope: { height: 1, parts: [{ cut: 'grid', cols: 2, rows: 1 }] },

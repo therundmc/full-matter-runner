@@ -174,6 +174,10 @@ src/
       Tipping.js          street bins (prop def `tips`) go over instead of breaking: struck, shot, run into, a body or a
                           car ('impact'), a blast; lid off, rubbish out of the mouth (bits, a bag, Papers sheets), a
                           clatter heard; lying, only a blast or a car at speed wrecks it (DOM-free, unit-tested)
+      Seeps.js            the small leaks and vapours of a lived-in room (data/seeps.js SEEPS; a prop's def or level
+                          option `seep`): a washer, a keg on tap, an ice bin, a cooler dripping into Liquids (held
+                          back once the puddle is deep enough, done once empty), a pot and a dryer breathing steam, a
+                          soldering iron's thread, a mop bucket slopping over when shoved; all stop with their prop
       Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes
                           whistling out of a bullet hole (SMOKE.steam / jets.leak, level `street`): steam put in the air
                           of Smoke.js, which carries it (a passing car tears it along)

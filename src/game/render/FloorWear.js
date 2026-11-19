@@ -19,6 +19,7 @@ const PATCHED = hexRgb('#4a4c56'), CEMENT = hexRgb('#55525a'), WORN = hexRgb('#8
 const BOARDS = [0, 5, 11, 16, 21, 27, 32];
 const DAMP = hexRgb('#3a4a3a'), RUST = hexRgb('#7a4a26'), STEEL = hexRgb('#6a707a'), STEEL_L = hexRgb('#9aa0aa');
 const LINT = hexRgb('#b4bccc');
+const MOULD = hexRgb('#1c2a1e'), GREASE = hexRgb('#2a2010'), DUST = hexRgb('#b8b2a4'), LIME = hexRgb('#d8d8cc'), MUD = hexRgb('#2e261e');
 const DRAIN = 5; // px across a floor drain's grate
 const GAP = 20; // px: two marks of a kind never closer on a surface
 
@@ -593,6 +594,113 @@ const KINDS = {
       const dark = R() < 0.25;
       P.tint(px, py, 0, dark ? ASHEN : LINT, dark ? 0.35 : 0.5);
       if (R() < 0.3) P.tint(px + 1, py, 0, LINT, 0.3);
+    }
+  },
+
+  // ---- what a room that is never quite cleaned grows (level 1's interiors, laid by the level's `grime`)
+
+  // black mould creeping over damp grout from a corner or a wall's foot: specks thick at its heart, thinning out to
+  // single dots (o.r: its reach in px)
+  mould(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 7 + R() * 5, noise = valueNoise(R), sq = 0.7 + R() * 0.3, a = R() * TAU, ca = Math.cos(a), sa = Math.sin(a);
+    for (let py = Math.floor((y - r) * s); py <= Math.ceil((y + r) * s); py++) {
+      for (let px = Math.floor((x - r) * s); px <= Math.ceil((x + r) * s); px++) {
+        const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y, d = Math.hypot(wx * ca + wy * sa, (wy * ca - wx * sa) / sq) / r;
+        if (d >= 1) continue;
+        const k = (1 - d) * (1 - d), n = noise(px / s / 1.3, py / s / 1.3);
+        if (n < 0.78 - 0.62 * k) continue;
+        P.tint(px, py, -12 - 20 * k, MOULD, 0.4 + 0.45 * k);
+      }
+    }
+  },
+
+  // cooking fat on the floor by a stove: a dark warm film, spatters flung out from it, a few of them still glossy
+  grease(P, R, x, y, o) {
+    const r = o.r ?? 6 + R() * 5;
+    blob(P, x, y, r, r * (0.55 + R() * 0.35), R() * TAU, ragged(R, 0.45), (px, py, e) => {
+      const w = smooth((1 - e) / 0.6);
+      P.tint(px, py, -14 * w + (e > 0.86 ? -5 : 0), GREASE, 0.34 * w);
+      if (e < 0.6 && R() < 0.03) P.tint(px, py, 14);
+    });
+    for (let n = 5 + Math.floor(R() * 7); n > 0; n--) {
+      const a = R() * TAU, d = r * (0.9 + R() * 1.4), dr = 0.5 + R() * 0.9;
+      blob(P, x + Math.cos(a) * d, y + Math.sin(a) * d, dr, dr, 0, ragged(R, 0.2), (px, py) => P.tint(px, py, -14, GREASE, 0.36));
+    }
+  },
+
+  // dust that nobody sweeps out from under a shelf or behind a machine: a pale soft band o.w px long along o.deg, o.r
+  // deep, with the grey rolls of fluff that gather in it
+  dust(P, R, x, y, o) {
+    const w = (o.w ?? 26) / 2, r = (o.r ?? 5) / 2, a = ((o.deg ?? 0) * Math.PI) / 180;
+    blob(P, x, y, w, r, a, ragged(R, 0.18), (px, py, e) => {
+      const k = smooth((1 - e) / 0.7);
+      P.tint(px, py, 7 * k, DUST, 0.3 * k);
+      if (R() < 0.03 * k) P.tint(px, py, 14, DUST, 0.5);
+    });
+    for (let n = 2 + Math.floor(R() * 3); n > 0; n--) {
+      const t = (R() - 0.5) * 2 * w * 0.8, dr = 0.7 + R() * 0.8;
+      blob(P, x + Math.cos(a) * t, y + Math.sin(a) * t, dr * 1.3, dr, R() * TAU, ragged(R, 0.5), (px, py, e) => P.tint(px, py, -8 + 4 * e, ASHEN, 0.55));
+    }
+  },
+
+  // drops fallen one after the other from something carried or dragged (a leaking bag, a mop wrung badly): from (x, y)
+  // to o.to, small round stains off the line, a bigger one where it was put down (o.col: what dripped)
+  drips(P, R, x, y, o) {
+    const [x1, y1] = o.to || [x + 24, y], L = Math.hypot(x1 - x, y1 - y) || 1, col = o.col ? hexRgb(o.col) : GRIME;
+    for (let t = 0; t < L; t += 3 + R() * 6) {
+      const dr = 0.5 + R() * R() * 1.4, ox = (R() - 0.5) * 4, oy = (R() - 0.5) * 4;
+      blob(P, x + ((x1 - x) * t) / L + ox, y + ((y1 - y) * t) / L + oy, dr, dr * (0.8 + R() * 0.2), 0, ragged(R, 0.2),
+        (px, py, e) => P.tint(px, py, (o.d ?? -13) * (e > 0.7 ? 1.2 : 0.8), col, 0.36));
+    }
+    const dr = 2 + R() * 1.5;
+    blob(P, x1, y1, dr, dr * 0.8, R() * TAU, ragged(R, 0.35), (px, py, e) => P.tint(px, py, (o.d ?? -13) * (e > 0.8 ? 1.3 : 0.7), col, 0.36));
+  },
+
+  // where a machine or a cabinet stands (or stood) on wet feet: the rust of its footprint, a rectangle o.w x o.h px
+  // turned o.deg, only its edge and corners left, a run of it bleeding off toward the low side
+  rust(P, R, x, y, o) {
+    const s = P.s, hw = (o.w ?? 22) / 2, hh = (o.h ?? 22) / 2, a = ((o.deg ?? 0) * Math.PI) / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const noise = valueNoise(R), out = Math.hypot(hw, hh) + 2;
+    for (let py = Math.floor((y - out) * s); py <= Math.ceil((y + out) * s); py++) {
+      for (let px = Math.floor((x - out) * s); px <= Math.ceil((x + out) * s); px++) {
+        const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y, u = Math.abs(wx * ca + wy * sa), v = Math.abs(wy * ca - wx * sa);
+        const off = Math.max(u - hw, v - hh);
+        if (off < -1.6 || off > 1.4) continue;
+        const k = smooth(1 - Math.abs(off + 0.2) / 1.6) * smooth((noise(px / s / 4, py / s / 4) - 0.25) / 0.4);
+        if (k > 0) P.tint(px, py, -12 * k, RUST, 0.6 * k);
+      }
+    }
+    const m = walk(P, R, x + hw * ca - hh * sa * 0.6, y + hw * sa + hh * ca * 0.6, a + 0.9 + R() * 0.6, 6 + R() * 8, { curve: 0.1, from: true, wide: 0.3 });
+    apply(P, m, (px, py, k) => P.tint(px, py, -8 * k, RUST, 0.5 * k));
+  },
+
+  // the prints of dirty soles walked in from outside: from (x, y) toward o.to, a left and a right, each a heel and a
+  // sole, fainter at every step until they are gone
+  prints(P, R, x, y, o) {
+    const [x1, y1] = o.to || [x + 40, y], L = Math.hypot(x1 - x, y1 - y) || 1, ux = (x1 - x) / L, uy = (y1 - y) / L, col = o.col ? hexRgb(o.col) : MUD;
+    const stride = o.stride ?? 11, n = Math.floor(L / stride), a = Math.atan2(uy, ux);
+    for (let i = 0; i <= n; i++) {
+      const side = i % 2 ? 1 : -1, k = (1 - i / (n + 1)) * (0.7 + R() * 0.3), t = i * stride + (R() - 0.5) * 2;
+      const fx = x + ux * t - uy * side * 2.6, fy = y + uy * t + ux * side * 2.6, toe = a + side * 0.12;
+      blob(P, fx + Math.cos(toe) * 1.3, fy + Math.sin(toe) * 1.3, 1.9, 1.15, toe, ragged(R, 0.18), (px, py) => { if (R() < 0.85) P.tint(px, py, -15 * k, col, 0.5 * k); });
+      blob(P, fx - Math.cos(toe) * 1.9, fy - Math.sin(toe) * 1.9, 1.0, 0.95, toe, ragged(R, 0.18), (px, py) => { if (R() < 0.8) P.tint(px, py, -15 * k, col, 0.5 * k); });
+    }
+  },
+
+  // water that came down a wall or out from under a fitting, again and again: a pale fan of lime where it dried, its
+  // edge a darker line, opening out o.r px from (x, y) toward o.deg
+  damp(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 12 + R() * 6, a = ((o.deg ?? 90) * Math.PI) / 180, half = 0.9 + R() * 0.4, noise = valueNoise(R);
+    for (let py = Math.floor((y - r) * s); py <= Math.ceil((y + r) * s); py++) {
+      for (let px = Math.floor((x - r) * s); px <= Math.ceil((x + r) * s); px++) {
+        const wx = (px + 0.5) / s - x, wy = (py + 0.5) / s - y, d = Math.hypot(wx, wy);
+        let da = Math.atan2(wy, wx) - a;
+        da = Math.abs(((da + Math.PI) % TAU + TAU) % TAU - Math.PI);
+        const edge = r * (0.75 + 0.35 * noise(px / s / 5, py / s / 5)) * smooth((half - da) / 0.5);
+        if (d >= edge || edge <= 0) continue;
+        const e = d / edge;
+        P.tint(px, py, e > 0.86 ? -13 : 3 + 5 * (1 - e), e > 0.86 ? DAMP : LIME, e > 0.86 ? 0.4 : 0.2);
+      }
     }
   },
 
