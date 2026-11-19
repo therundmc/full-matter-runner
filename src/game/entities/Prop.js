@@ -686,8 +686,9 @@ export default class Prop {
   }
 
   // Gives way: it cracks, sags, then falls apart into its own parts (staged over a few frames; blasts are faster).
-  break(dirA = rand(0, TAU), power = 1) {
-    if (this.dead || this.dying || this.def.lasting) return;
+  // force: even what never gives (`lasting`): the wall it hung on is gone (systems/Destruction.js watchOpenings)
+  break(dirA = rand(0, TAU), power = 1, force = false) {
+    if (this.dead || this.dying || (this.def.lasting && !force)) return;
     const d = this.def, w = this.world, fx = this.rec.fx;
     this.hp = Math.min(this.hp, 0);
     // explosives, leaking gas, and gas torn open by a blast

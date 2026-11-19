@@ -74,6 +74,15 @@ function crossProp(world, ch, p, c, ux, uy) {
   return to && { kind: p.def.climb ? 'climb' : 'prop', over: p, to, ledge: { x: c.x, y: c.y, tx: -uy, ty: ux } };
 }
 
+// A drop off a roof (def.down: a parapet) is one way: is `ch` on its ground side, the roof beyond it? The roof is the
+// side of it (across its depth) whose next tile is a walkable roof; no telling (both, neither): it is crossed both ways.
+function noWayUp(world, p, ch) {
+  const a = p.body.angle, nx = -Math.sin(a), ny = Math.cos(a);
+  const roof = (s) => onRoof(world, p.x + nx * s * TILE, p.y + ny * s * TILE);
+  if (roof(1) === roof(-1)) return false;
+  return ((ch.x - p.x) * nx + (ch.y - p.y) * ny) * (roof(1) ? 1 : -1) < 0;
+}
+
 // what can be vaulted in direction a (the move, or the aim when standing still):
 // { kind: 'window' | 'prop' | 'climb' (def.climb: hoisted over, not slid across), over, to: {x, y},
 //   ledge: {x, y, tx, ty} (where the hands go, its tangent) } or null.
@@ -97,7 +106,7 @@ export function findVault(world, ch, a) {
   // the nearest first: in front of a gate made of several panels, the one he stands at
   const near = [];
   for (const p of world.props) {
-    if (p.dead || !p.def.vault) continue;
+    if (p.dead || !p.def.vault || (p.def.down && noWayUp(world, p, ch))) continue; // no way up over a parapet
     if (Math.abs(p.x - ch.x) > 110 || Math.abs(p.y - ch.y) > 110) continue;
     const c = closestOnPolygon(ch.x, ch.y, p.body.vertices);
     if (c.d <= r + VAULT_REACH) near.push([p, c]);

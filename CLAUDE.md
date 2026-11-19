@@ -154,6 +154,9 @@
   `prints`, `runoff` beside the older ones and the flat's `grease`, `damp`, `leak`...), appended after the older marks (the rect ones share one random stream).
   What drips, steams or slops over is systems/Seeps.js + data/seeps.js (`SEEPS`; a prop's def or the level's prop
   option `seep`): small on purpose (a puddle a step wide), it stops with its prop; lab station 33.
+- What hangs on a wall goes with its wall (data/props.js `ON_WALL`, the same names as levelkit ON_WALL; world/Openings.js
+  `hang` / `wallMount`, Destruction `watchOpenings`): when a tile at its back comes down (a blast), it breaks, its
+  light out, on either face, `lasting` or not. A new wall-hung prop is named in BOTH lists (tests/wallhung.test.mjs).
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js, what drips on the floor (systems/Seeps.js: prop `seep`, SEEPS `joint` / `pail`), what fumes on a stove
@@ -172,7 +175,8 @@
   E at its tail); the player starts on the ground and gets up (level `intro`), the first time with a bottle of rum,
   the camera pushed in on him (systems/Opening.js, SHOTS `swig*`).
 - Four ways in on foot (front door, gate, the gap, the liquor store: in by its door and up its own `ladder` to the
-  roof, the only way up (no ladder on the street: the user's call); down by a `parapet`) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
+  roof, the only way up (no ladder on the street: the user's call); down by a `parapet`: ONE WAY, prop `down`, nobody
+  gets up over it from the ground, him or a guard, Cover.findVault) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
 - Guards have the house's keys (`World.pathForGuard`, `Door.unlatch`): never lock a door without checking they still
   get out (the QA robot reports `guard-stuck`).
 - The getaway is THE BOSS's convertible (model `convertible`, entities/Vehicle.js: `seat`, `door`, `cabin`, `hat`;
@@ -187,7 +191,8 @@
   keep-clear, the zebra crossing from the bar's door): nothing with a body in the two lanes, on the patrol's beat (row
   22, cols 16-26) or where the getaway comes out (tests/street1.test.mjs); two flocks of pigeons, no more.
 - Shop alarms (level `alarms`, systems/Alarms.js), the bar's fuse box (level `power`, systems/Power.js), street
-  fauna (level `critters`, systems/Critters.js). The bar room is public (level `welcome`); the VIP room, the boss's
+  fauna (level `critters`, systems/Critters.js; moths turn round lamps in the OPEN AIR only, never under a roof, in
+  every level: systems/Weather.js `openAir`, floors `AMBIENCE.outdoors`, bare concrete by where it leads). The bar room is public (level `welcome`); the VIP room, the boss's
   back room and the back of house are not.
 
 ## Front end, story, tutorial

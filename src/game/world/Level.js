@@ -16,7 +16,7 @@ import Window from '../entities/Window.js';
 import WeaponItem from '../entities/WeaponItem.js';
 import Ragdoll from '../entities/Ragdoll.js';
 import { MARKS } from '../data/wounds.js';
-import { doorLeaves } from './Openings.js';
+import { doorLeaves, hang } from './Openings.js';
 import { markBlocked } from './TileMap.js';
 
 const { Bodies } = Matter;
@@ -141,6 +141,7 @@ export function buildLevel(world, level) {
     if (opt?.backs) p.backs = opt.backs; // a lorry that backs out that many tiles when a car comes (systems/Lorries.js)
     if (opt?.phase) p.phase = opt.phase; // s into its lamps' cycle (a traffic light: systems/Signals.js)
     world.props.push(p);
+    hang(map, p); // on a wall face: it goes with its wall
     if (p.def.blocksPath) markBlocked(map, p);
   }
 

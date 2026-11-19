@@ -6,12 +6,13 @@
 //            (slips in by the middle of its side, two eye glints left at the edge); it leaves when the car moves, is
 //            hit hard, burns or blows, or a shot rings close, for the next car. No car in reach: over a bin on its
 //            way (a noise guards may come and look at) and away
-//   flies    hang over dumpsters and bodies gone cold; moths round the lamps and signs, in the street and indoors
-//            (anchors only: the insects themselves are drawn from the clock, render/CritterArt.js)
+//   flies    hang over dumpsters and bodies gone cold; moths round the lamps and signs in the open air, never under
+//            a roof (anchors only: the insects themselves are drawn from the clock, render/CritterArt.js)
 // Bullets, swings and blasts kill the ones on the ground. No bodies: a few numbers each. DOM-free.
 import { TILE, CRITTERS as C } from '../Config.js';
 import { findPath } from '../../engine/nav/Pathfinding.js';
 import { rand, randi, chance, angDiff, TAU } from '../../engine/math.js';
+import { openAir } from './Weather.js';
 
 const { Body } = Matter;
 const SHUT = 'GDLF'; // windows, doors and fences stop them like walls
@@ -342,14 +343,19 @@ export default class Critters {
   }
 
   // where the moths turn: [{ x, y, n, r, lift, seed }] at the lamps and signs still lit, a bulb at a time (lift: the
-  // height of a hung lamp, its parallax, Prop.drawOverhead)
+  // height of a hung lamp, its parallax, Prop.drawOverhead). Only the bulbs in the open air: none under a roof
   lamps() {
-    const M = C.moths, out = [];
+    const M = C.moths, out = [], map = this.world.map;
     this.lit ??= this.world.props.filter((p) => p.type in M.at);
+    this.open ??= openAir(map);
     for (const p of this.lit) {
       if (p.dead || p.lightsOut) continue; // a lamp gone dark (power cut) lets them go
       const a = p.body.angle, cos = Math.cos(a), sin = Math.sin(a), lift = p.def.height || 0;
-      M.at[p.type].forEach(([x, y, n, r], i) => out.push({ x: p.x + cos * x - sin * y, y: p.y + sin * x + cos * y, n, r, lift, seed: p.x * 7 + p.y * 13 + i * 5 }));
+      M.at[p.type].forEach(([x, y, n, r], i) => {
+        const bx = p.x + cos * x - sin * y, by = p.y + sin * x + cos * y, cx = Math.floor(bx / TILE), cy = Math.floor(by / TILE);
+        if (cx < 0 || cy < 0 || cx >= map.w || cy >= map.h || !this.open[cy * map.w + cx]) return;
+        out.push({ x: bx, y: by, n, r, lift, seed: p.x * 7 + p.y * 13 + i * 5 });
+      });
     }
     return out;
   }

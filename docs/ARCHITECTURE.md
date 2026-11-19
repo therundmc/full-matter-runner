@@ -79,8 +79,8 @@ src/
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
-                          hinges, fences; `watchOpenings` makes doors and windows go with the wall tile that holds
-                          them (listens to `wallDestroyed`)
+                          hinges, fences; `watchOpenings` makes doors, windows and what hangs on a wall face go
+                          with the wall tile that holds them (listens to `wallDestroyed`)
       Glass.js            how a pane breaks (DOM-free, unit-tested): shards of three sizes, which ones cut / kill
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
@@ -199,7 +199,8 @@ src/
                           ('explosion'); asleep when still with nobody near; hides from the guards (World.sightLine)
                           unless parted wide; placeholder sounds (DOM-free, unit-tested; drawn by render/ClothArt.js)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
-                          that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
+                          that bolts over a bin, flies and moths (round the lamps in the open air only, never
+                          under a roof: Weather.js `openAir`); no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain (held up
@@ -443,8 +444,8 @@ chase's wind. `?interp=off` (a developer's switch) draws the state as stepped, t
 | `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit), Curtains (the cloth thrown), Litter (thrown), Rumble (by distance) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |
-| `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
-| `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
+| `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile, what hangs on it) |
+| `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run, what hangs on it) |
 | `propHit` | `{ prop, x, y, dirA, kind, power }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster), PoolBalls, Clutter |
 | `propFlipped` | `{ prop, to, x, y, dirA }` | Prop.flip (a table tipped on its side; `to`: the upended table) | Clutter (what stood on it flies) |
 | `propTipped` | `{ prop, x, y, dirA, by }` | systems/Tipping.tipOver (a street bin knocked over; `by`: who, when known) | - |
@@ -644,7 +645,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   splashes, drops, brain, a spilt drink; runs start in it). Nothing flies through a door leaf or an intact pane
   (Spatter.shutBetween): the exit spray (`fling`, `wallBehind` given the world) stops there, and so do airborne drops,
   the fine mist and the bits of bone (fx/Particles.js); a streak is laid only if its whole length is in the clear.
-- Traversal (Character): `tryVault(angle, moving)`. Broken window, gate, parapet = hands planted on the edge, hoisted
+- Traversal (Character): `tryVault(angle, moving)`. A parapet (prop `down`) is one way, off its roof: from the ground
+  side `Cover.findVault` finds nothing, for him and for the guards. Broken window, gate, parapet = hands planted on the edge, hoisted
   over (`style` 'hoist'); furniture = a one-hand speed vault (`speed`: the free hand flat on the top, world-fixed while
   the body swings past it on the other side, a gun kept on the target); a car's hood = the action-movie slide on the
   hip (`hip`), sparks on metal. Phases in data/feel.js `TRAVERSE` (CharacterAnim vaultPhases / slidePhases /
@@ -1178,6 +1180,9 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   tile into a breach with `TileMap.destroyTile`, exactly like a destroyed wall tile (sight, paths, lights).
 - Openings go with what holds them (`Destruction.watchOpenings`): when a wall tile collapses, the windows built into
   it are torn out, the door hinged on it falls, a bolt shot into it is free; a glazed run follows window by window.
+  What hangs on a wall face (data/props.js `ON_WALL`, the level kit's list: lamps, tubes, neons, clocks, frames, pipes,
+  the fuse box, paint) is hung at load on the tiles at its back (`Openings.hang` / `wallMount`: `prop.mount`) and
+  breaks with any of them, on either face, its light out at once, `lasting` or not (`Prop.break(.., force)`).
 
 ## Debug
 

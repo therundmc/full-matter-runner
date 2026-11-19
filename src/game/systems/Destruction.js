@@ -119,6 +119,7 @@ const DOMINO = 0.12; // s between a window going and the next one of a glazed fr
 
 // Openings go with what holds them. When a wall tile collapses, the windows built into it are torn out, the door
 // hinged on it falls and a bolt shot into it is free; a window going takes the next one of a glazed run with it.
+// What hung on the tile, either face (a lamp, a clock, a sign, a pipe: Openings.hang), breaks with it, its light out.
 export function watchOpenings(world) {
   const collapse = ({ cx, cy, dirA = 0, power = 1 }, delay = 0) => {
     const held = heldBy(world, cx, cy);
@@ -128,6 +129,7 @@ export function watchOpenings(world) {
     }
     for (const d of held.doors) detachDoor(world, d, dirA, power);
     for (const d of held.unbolted) { const t = d.tip(); d.unlock(t.x, t.y, dirA, 0.6); }
+    for (const p of held.hung) p.break(dirA, power, true);
   };
   world.events.on('wallDestroyed', (e) => collapse(e));
   world.events.on('windowDestroyed', (e) => collapse(e, DOMINO));
