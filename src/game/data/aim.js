@@ -29,8 +29,11 @@ export const AIM = {
   // mark (`mark`, one of `marks`: the user kept the corner ticks; the others are kept to compare, `?mark=ring` in the address
   // picks one for a session), and on a gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that
   // angle with the stick lets go. Pairs are [at rest / a man near the line, the line on a man].
+  // With a melee weapon (systems/AimCue.js meleeLock): out to `melee` px, and within a swing's reach (+ PLAYER.lunge.lock
+  // .margin) the man is taken within `wide` rad of the aim, at his side too; that close one turns the player onto him
+  // over `face` s before the click (Player.faceLock), the aim itself left where it is, and a click strikes him.
   lock: {
-    cone: 0.3, assist: 0.2, reach: 280, melee: 80,
+    cone: 0.3, assist: 0.2, reach: 280, melee: 80, wide: 1.9, face: 0.06,
     mark: 'corners',
     marks: ['ring', 'tick', 'point', 'corners'],
     chevron: { size: 4, alpha: [0.6, 0.9], seed: 7 }, // the floor chevron: arm px, alpha, which wear

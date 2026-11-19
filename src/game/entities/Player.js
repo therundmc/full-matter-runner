@@ -12,7 +12,8 @@ import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { kickReady, kickTarget, standing, throwSpeed } from '../systems/Kick.js';
 import { behind, within, unspotted, newTakedown, advance, slamAt } from '../systems/Takedown.js';
 import { lungeTarget } from '../systems/Lunge.js';
-import { lockTarget } from '../systems/AimCue.js';
+import { meleeLock } from '../systems/AimCue.js';
+import { snapFacing } from './Facing.js';
 import { AIM } from '../data/aim.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherChoice, killBeat, takedownFor, takedownChoice, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
@@ -64,6 +65,8 @@ export default class Player extends Character {
     this.slipped = null;    // { t, a, v } while down on a slick floor (slip)
     this.passage = null;    // the trip through a passage under the street while it lasts (systems/Passage.js)
     this.lunge = null;      // { a, dir, v, stop, until } a swing drawn to a guard (startLunge)
+    this.aimA = 0;          // the way the mouse / the stick aims, this step (his angle may be turned off it: faceLock)
+    this.facingLock = null; // { who, from, t, a, at } turning onto LOCK's close man with a melee weapon (faceLock)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.pinned = false;    // sat there, no key gets him up yet
@@ -141,7 +144,8 @@ export default class Player extends Character {
     if (this.trunkOpen) { this.updateTrunk(dt); return; }
     if (this.slipped) { this.updateSlip(dt); return; }
     if (this.passage) { this.updatePassage(dt); return; }
-    this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    this.aimA = this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    const lockOn = this.faceLock(dt);
     // a swing drawn to a guard keeps its aim on him until the blow is struck (Character.meleeStrike reads the angle)
     const lg = this.lunge;
     if (lg && w.time >= lg.until) this.lunge = null;
@@ -233,7 +237,7 @@ export default class Player extends Character {
         // dry: reload if we can, otherwise hurl the useless gun at them
         const did = this.attack();
         if (did === 'empty' && input.mouseHit(0) && !this.reload()) this.throwWeapon(true);
-        else if (did === true && d.kind !== 'gun' && !sliding) this.startLunge(d);
+        else if (did === true && d.kind !== 'gun' && !sliding) this.startLunge(d, lockOn);
       }
     }
     if (input.hit('KeyR')) this.reload();
@@ -248,7 +252,10 @@ export default class Player extends Character {
 
     // right click: throw when armed, pick up otherwise. E: pick up / swap
     if (input.mouseHit(2)) {
-      if (this.armed) this.throwWeapon();
+      if (this.armed) {
+        if (this.facingLock) this.angle = this.aimA; // a throw goes along the aim, not where LOCK turned him
+        this.throwWeapon();
+      }
       else this.pickUp();
     }
     if (input.hit('KeyE')) {
@@ -258,16 +265,35 @@ export default class Player extends Character {
     }
   }
 
+  // LOCK with a melee weapon in hand (systems/AimCue.js meleeLock, from the aim): its man this step, returned. The close
+  // one turns the player onto him over AIM.lock.face s, eased out from where he faced, before any click; the aim is left
+  // alone. Not while he slides, vaults, kicks or rides; the man let go (out of the window, down, dead), he faces the
+  // aim again at once.
+  faceLock(dt) {
+    const w = this.world, free = !this.slide && !this.vaulting && !this.kick && !this.riding;
+    const m = free ? meleeLock(w, this, this.def, this.aimA) : null, who = m?.close ? m.man : null;
+    let f = this.facingLock;
+    if (!who) { this.facingLock = null; return m; }
+    const on = f && w.time - f.at < 0.05; // turning last step (not cut off by a vault, a takedown...)
+    if (!on || f.who !== who) f = this.facingLock = { who, from: on ? f.a : this.aimA, t: 0, a: 0, at: 0 };
+    f.t += dt;
+    const k = Math.min(1, f.t / AIM.lock.face), dir = Math.atan2(who.y - this.y, who.x - this.x);
+    f.a = this.angle = f.from + angDiff(f.from, dir) * (1 - (1 - k) * (1 - k));
+    f.at = w.time;
+    return m;
+  }
+
   // a melee swing just started: drawn to the guard in front of him, if one stands close (systems/Lunge.js): the aim
   // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur. With the LOCK aim cue, the man
-  // it holds (systems/AimCue.js) takes the whole turn, and the step is taken from this very step and over before the
-  // blow lands (World.after(windup)): one base step short of the windup, so that it lands on him
-  startLunge(d) {
+  // it holds close (`lockOn`: faceLock) takes the whole turn, the drawn body snapped onto him on this frame, and the step
+  // is taken from this very step and over before the blow lands (World.after(windup)): one base step short of the
+  // windup, so that it lands on him
+  startLunge(d, lockOn) {
     const w = this.world, L = PLAYER.lunge;
-    const lock = w.aimStyle === 'lock' ? lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, AIM.lock.melee) : null;
-    const r = lungeTarget(this, d, w.enemies, this.angle, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y), lock);
+    const r = lungeTarget(this, d, w.enemies, this.aimA, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y), lockOn?.man ?? null);
     if (!r) return;
     this.angle = r.a;
+    if (r.lock) snapFacing(this, r.a);
     const dur = r.lock ? Math.max(1, Math.ceil(d.windup * 60 - 1e-6) - 1) / 60 : L.dur;
     // px per base step that covers `push` over `dur` s
     this.lunge = { a: r.a, dir: r.dir, v: r.push / (dur * 60), stop: w.time + dur, until: w.time + Math.max(dur, d.windup) };

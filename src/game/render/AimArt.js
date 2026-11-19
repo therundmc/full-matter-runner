@@ -5,8 +5,7 @@
 // round him. What it tells comes from systems/AimCue.js. LOCK's marks and the vault's are worn stencil paint
 // (systems/AimMark.js).
 import { AIM } from '../data/aim.js';
-import { PLAYER } from '../Config.js';
-import { aimCue, lineOfFire, lockTarget } from '../systems/AimCue.js';
+import { aimCue, lineOfFire, lockTarget, meleeLock } from '../systems/AimCue.js';
 import { ringBits, chevronBits, barBits, flecks, ringRadius } from '../systems/AimMark.js';
 import { angDiff } from '../../engine/math.js';
 
@@ -155,9 +154,10 @@ const held = { who: null, on: false, since: 0 };
 // a worn chevron on the floor too, pointing out along the aim, white once the line is on a man
 function lock(world, p, q, t) {
   const L = AIM.lock, N = AIM.notch, C = L.chevron;
-  const near = q.target || lockTarget(world, q.team, p.x, p.y, q.a, L.cone, q.kind === 'melee' ? L.melee : L.reach);
-  // with a melee weapon: white once a swing would land on him (its step in included: PLAYER.lunge.lock, Player.startLunge)
-  const on = !!near && (q.target === near || (q.kind === 'melee' && Math.hypot(near.x - p.x, near.y - p.y) < p.def.range + near.radius + PLAYER.lunge.lock.margin));
+  // with a melee weapon, the man meleeLock gives from the aim (what a click strikes), white when close: a swing lands
+  const ml = q.kind === 'melee' ? meleeLock(world, p, p.def, p.aimA ?? q.a) : null;
+  const near = q.kind === 'melee' ? ml?.man ?? null : q.target || lockTarget(world, q.team, p.x, p.y, q.a, L.cone, L.reach);
+  const on = !!near && (q.target === near || !!ml?.close);
   const col = on ? AIM.hot : AIM.rest, i = on ? 1 : 0;
   if (world.aimMark) wornChevron(p.x, p.y, q.a, standOff(p, q, N.at) + C.size, C.size, col, C.alpha[i], C.seed);
   if (held.who !== near || held.on !== on || t < held.since) Object.assign(held, { who: near, on, since: t });

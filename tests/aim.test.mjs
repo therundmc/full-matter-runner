@@ -20,7 +20,7 @@ function player(type, more = {}) {
 // hits: what the line meets, nearest first: { kind, target, at } (at: px along +x from the muzzle)
 function world(p, hits = [], more = {}) {
   return {
-    player: p, chars: [p, ...hits.filter((h) => h.kind === 'char').map((h) => h.target)],
+    player: p, chars: [p, ...hits.filter((h) => h.kind === 'char').map((h) => h.target)], enemies: [],
     lineOfSight: () => true, sightLine: () => true,
     traceBullet: (x0, y0, x1, y1, team, skip) => {
       const h = hits.find((q) => !skip.has(q.target));
