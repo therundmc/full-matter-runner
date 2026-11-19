@@ -193,7 +193,7 @@ export const CHASE = {
     ram: { settle: 2, chance: 0.1, v: 5, dur: 0.3 },
     knock: { dv: 2.2, stun: 0.6 },
     shoved: { cost: 0.5, throw: 6, drag: 4, spin: 0.02, stun: 0.7 },
-    wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight'] },
+    wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight', 'traffic_light'] },
     rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2, tyre: { hp: 5, skip: 0.6 } },
     out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1 },
     limp: 0.6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },

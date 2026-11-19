@@ -42,11 +42,12 @@ const CLUTTER_SPRITES = ['pint_full', 'pint_half', 'pint_empty', 'pitcher', 'sho
   'coaster', 'napkin', 'napkin_crumpled', 'peanuts', 'till', 'cards', 'chips', 'bands', 'bill', 'rubber_bands', 'baggies', 'glass_broken',
   'flute', 'flute_down', 'bucket', 'single', 'singles', 'bill_crumpled', 'bill_folded', 'feather', 'feather_curl', 'cork', 'garter', 'sock', 'card', 'chip'];
 // level 2A's street (tools/generate_assets.py, "the road of level 2A"): what stands on its sidewalks, in its works and
-// over it; what is painted on its ground (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps
+// over it, and the pieces a car loses (Vehicle.shed, data/destruction.js CAR_PARTS); what is painted on its ground
+// (ROAD_PAINT: kerbs, markings, covers, patches); the lit ones' emissive maps
 const ROAD_PROPS = ['traffic_cone', 'sawhorse', 'cardboard_box', 'paper_bundle', 'fruit_stand', 'shopping_cart', 'mailbox',
   'awning_red', 'awning_green', 'awning_blue', 'awning_wine', 'traffic_light', 'bus_shelter', 'sign_noparking', 'sign_oneway',
   'sign_speed', 'sign_bus', 'sign_works', 'bollard', 'street_tree', 'arrow_board', 'compressor', 'barricade', 'viaduct',
-  'gantry_sign'];
+  'gantry_sign', 'car_bumper', 'car_bumper_black', 'car_mirror', 'car_hubcap', 'car_headlight', 'car_plate', 'car_grille'];
 const ROAD_PAINT = [
   'centre_double', 'drain', 'hatch_bay', 'hatch_yard', 'kerb_bend_ne', 'kerb_bend_nw', 'kerb_bend_se', 'kerb_bend_sw',
   'kerb_corner_ne', 'kerb_corner_nw', 'kerb_corner_se', 'kerb_corner_sw', 'kerb_e', 'kerb_e_low', 'kerb_in', 'kerb_n',
