@@ -1,6 +1,5 @@
 // Readability cues (data/readability.js): a catch-light running along each weapon lying on the floor, the outline of
-// the one within reach (both over the lit scene, so they read in the dark), and a ring at the player's feet when the
-// level gets under way and each time he is back up (on the floor, under everybody). Off unless the game is in play
+// the one within reach (both over the lit scene, so they read in the dark). Off unless the game is in play
 // (World.cues, set by Game: cuesOn); faded with the distance from the player, never drawn where he cannot see.
 // The numbers (alphas, phases, the light floor) are pure functions, unit-tested.
 import { BODY_SCALE } from '../Config.js';
@@ -28,14 +27,6 @@ export function glintAt(t, seed, G = R.glint) {
 
 // the in-reach outline's strength at time t
 export const reachAlpha = (t, C = R.reach) => C.alpha * (1 + C.pulse * Math.sin(t * C.rate));
-
-// the ring at the player's feet `since` s after he was up: { r, a } or null once it is over
-export function markAt(since, M = R.mark) {
-  if (!(since >= 0) || since >= M.close + M.hold + M.fade) return null;
-  const c = clamp(since / M.close, 0, 1), e = 1 - (1 - c) * (1 - c);
-  const out = clamp((since - M.close - M.hold) / M.fade, 0, 1);
-  return { r: M.r * (M.from + (1 - M.from) * e), a: M.alpha * c * (1 - out) };
-}
 
 // the light to add (0..max, on the brightness grid's scale: Lighting.levelAt) under something lit `level` so that it
 // is lit at least the floor's level: only ever added (never darker), nothing where it is lit enough already
@@ -106,36 +97,6 @@ export default class Cues {
     this.world = world;
     this.seeds = new WeakMap(); // each weapon's glint phase
     this.n = 0;
-    this.down = false;          // the player off his feet last frame
-    this.upAt = null;           // world time he was last up (the ring's clock)
-  }
-
-  // his feet: on the ground (the level's start, a slip, a knock) or up again
-  watch(on) {
-    const w = this.world, p = w.player;
-    if (!p) return;
-    const down = !p.alive || p.sit > 0.3 || !!p.slipped || p.knocked > 0;
-    if (this.down && !down) this.upAt = w.time;
-    this.down = down;
-    if (on && this.upAt === null && !down) this.upAt = w.time; // the level under way, him already up
-  }
-
-  // the ring at his feet, on the floor under everybody (lit with the scene)
-  drawMark(ctx) {
-    const w = this.world, p = w.player;
-    this.watch(!!w.cues);
-    if (!w.cues || !p?.alive || p.hidden || p.passage || this.upAt === null) return;
-    const m = markAt(w.time - this.upAt);
-    if (!m || m.a <= 0.01) return;
-    const c = R.mark.color;
-    ctx.save();
-    ctx.lineWidth = 2.2;
-    ctx.strokeStyle = `rgba(8,4,16,${0.5 * m.a})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, m.r, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${m.a})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, m.r, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
   }
 
   // the floor weapons' glints and the in-reach outline, over the lit scene

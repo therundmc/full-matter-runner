@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { default: Cues, cuesOn, fadeAt, glintAt, reachAlpha, markAt, floorLift } = await load('game/render/Readability.js');
+const { default: Cues, cuesOn, fadeAt, glintAt, reachAlpha, floorLift } = await load('game/render/Readability.js');
 const { READABILITY: R } = await load('game/data/readability.js');
 
 // a 2D context that only counts what is asked of it
@@ -50,18 +50,6 @@ test('readability: the in-reach pulse and the distance fade are bounded', () => 
   for (let d = 0; d < R.fade.far + 50; d += 5) { const f = fadeAt(d); assert.ok(f <= last + 1e-12); last = f; }
 });
 
-test('readability: the ring at his feet closes in, holds, then is gone', () => {
-  const M = R.mark;
-  assert.equal(markAt(-1), null);
-  assert.equal(markAt(undefined), null);
-  const a = markAt(0.01), b = markAt(M.close), c = markAt(M.close + M.hold * 0.5);
-  assert.ok(a.r > b.r && Math.abs(b.r - M.r) < 1e-9, 'closes in onto its radius');
-  assert.ok(a.a < b.a && Math.abs(c.a - M.alpha) < 1e-9, 'fades in, holds');
-  assert.ok(markAt(M.close + M.hold + M.fade * 0.5).a < M.alpha);
-  assert.equal(markAt(M.close + M.hold + M.fade), null);
-  assert.ok(M.close + M.hold + M.fade <= 3, 'about two seconds');
-});
-
 test('readability: the light floor only ever adds light, and none where it is lit already', () => {
   const F = R.floor;
   for (let level = 0; level <= 1.5; level += 0.01) {
@@ -74,25 +62,11 @@ test('readability: the light floor only ever adds light, and none where it is li
   assert.ok(/^#[0-9a-f]{6}$/i.test(F.color));
 });
 
-test('readability: nothing is drawn when cues are off; the ring starts when he gets up', () => {
-  const player = { alive: true, x: 10, y: 10, sit: 1, knocked: 0 };
+test('readability: nothing is drawn when cues are off', () => {
+  const player = { alive: true, x: 10, y: 10, sit: 0, knocked: 0 };
   const world = { time: 0, cues: false, player, items: [] };
   const cues = new Cues(world);
   const r = recorder();
-  cues.drawMark(r.ctx);
   cues.drawItems(r.ctx, () => true);
   assert.equal(r.calls.length, 0, 'off');
-  world.cues = true;
-  world.time = 1;
-  cues.drawMark(r.ctx);
-  assert.equal(r.calls.length, 0, 'still sat on the floor: no ring');
-  player.sit = 0; world.time = 2;
-  cues.drawMark(r.ctx);
-  assert.equal(cues.upAt, 2);
-  world.time = 2.5;
-  cues.drawMark(r.ctx);
-  assert.ok(r.calls.includes('arc'), 'the ring once he is up');
-  world.cues = false; r.calls.length = 0;
-  cues.drawMark(r.ctx);
-  assert.equal(r.calls.length, 0, 'paused: gone');
 });
