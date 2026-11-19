@@ -229,9 +229,10 @@ export default class Player extends Character {
       if (it && Math.hypot(it.x - this.x, it.y - this.y) < Math.hypot(u.x - this.x, u.y - this.y)) this.nearUse = null;
     }
     // a guard within reach who has not spotted us (systems/Takedown.js within, unspotted), from whatever side: the
+    // (never the man a lesson keeps to be taken as a shield: `shieldOnly`, systems/Tutorial.js)
     // left click takes him down; spotted, a click at him is an ordinary attack
     const phase = w.director?.phase;
-    this.nearTakedown = (!this.nearDowned && !this.shield && w.enemies.find((e) => within(this, e) && unspotted(e, phase) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
+    this.nearTakedown = (!this.nearDowned && !this.shield && w.enemies.find((e) => !e.shieldOnly && within(this, e) && unspotted(e, phase) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
     this.takeMove = this.nearTakedown ? this.takedownMove(this.nearTakedown) : null;
     // ... and one who can be taken as a shield (systems/Shield.js offers): E, with a hand free for it
     this.nearShield = (!this.shield && !this.throwHold && !sliding && oneHanded(this.def)

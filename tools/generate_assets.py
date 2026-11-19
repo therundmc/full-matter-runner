@@ -7035,7 +7035,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
                   drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
                   arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS', throw='27 THROW', killcam='28 KILL CAM', shield='29 SHIELD',
-                  signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS')   # (in the order they were added, not by number: each keeps its seed)
+                  signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS', propane='35 PROPANE')   # (in the order they were added, not by number: each keeps its seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -11213,32 +11213,44 @@ def p_mattress():
 
 
 def p_clothes_pile():
-    """Clothes dropped by the bed: a pair of jeans in a heap with its orange seam, a white vest, one sock."""
-    W, H = 20, 15
+    """Yesterday's clothes on the floor by the bed, each laid flat so it reads at a glance: a pair of jeans (the
+    waistband and its belt, two legs apart, the orange seams, a back pocket), a white T-shirt (its two sleeves, the
+    neck's hole) and one boot on its side."""
+    W, H = 30, 24
     cv = Cv(W, H)
     denim = ramp('#3e5a86', 0.5, 0.25, 0.3)
-    nz = VNoise(W, H, 5, random.Random(8621))
 
     def jeans(ly):
-        fill_capsule(ly, [(4.0, 4.5), (9.0, 6.0), (13.0, 10.5)], 2.6, lambda k, L, s, i, t: denim[2])
-        fill_capsule(ly, [(4.5, 10.0), (9.5, 8.0)], 2.3, lambda k, L, s, i, t: denim[2])
-        relief(ly, 0, 0, W - 1, H - 1, lambda x, y: nz(x, y) * 2.4 + 0.6 * math.sin(x * 0.9 + y * 0.5), denim, 0.9)
-        dash(ly, 4.0, 3.2, 12.6, 9.0, lambda c: mix(c, hx('#d8a040'), 0.6), 1, 1)   # the seam's orange thread
-        frect(ly, 2.5, 3.5, 3.5, 5.5, hx('#6a4a2a'))                    # the belt's end, its buckle
-        ly.dot(2.75, 4.5, hx('#d8c890'))
+        for (a, b) in (((7.0, 5.2), (25.0, 3.6)), ((7.0, 9.2), (24.0, 12.6))):       # the two legs
+            fill_capsule(ly, [a, b], 2.4, lambda k, L, s, i, t: denim[1] if s > 0.55 else (denim[3] if s < -0.6 else denim[2]))
+            dash(ly, a[0], a[1] - 1.5, b[0], b[1] - 1.5, hx('#d8a040'), 1, 1)        # the seam's orange thread
+            frect(ly, b[0] - 0.5, b[1] - 2.5, b[0] + 0.5, b[1] + 2.5, denim[0])     # the hem turned up
+        fill_shape(ly, 5.6, 7.2, 2.6, 4.6, lambda u, v, L: denim[2] if u > -1.2 else hx('#6a4a2a'), kind='rect', corner=0.6)   # the seat, the belt
+        ly.dot(3.5, 7.0, hx('#e8d8a0'))                                              # its buckle
+        ly.dot(3.5, 7.5, hx('#e8d8a0'))
+        frect(ly, 9.0, 3.5, 12.0, 6.0, denim[1])                                     # a back pocket
+        dash(ly, 9.0, 3.5, 12.0, 3.5, hx('#d8a040'), 1, 1)
     layer(cv, jeans)
 
-    def vest(ly):
-        v = ramp('#d6d0c2', 0.4, 0.2, 0.2)
-        fill_shape(ly, 14.5, 4.8, 3.8, 2.9, lambda u, w, L: v[2], ang=0.5, kind='super', p=2.6)
-        relief(ly, 9, 0, W - 1, 9, lambda x, y: nz(x + 7, y + 3) * 2.2, v, 0.9)
-        smudge(ly, random.Random(8622), 1, (13, 4, 16, 6), (1.2, 1.8), 0.25, hx('#9a8a5a'))
-    layer(cv, vest)
+    def shirt(ly):
+        w = ramp('#e2ddd0', 0.4, 0.2, 0.2)
+        for (a, b) in (((9.0, 16.0), (5.0, 14.2)), ((17.0, 16.0), (21.0, 14.2))):    # the sleeves
+            fill_capsule(ly, [a, b], 1.9, lambda k, L, s, i, t: w[2] if s < 0.5 else w[1])
+        fill_shape(ly, 13.0, 18.6, 4.4, 4.6, lambda u, v, L: w[1] if u > 2.8 or v > 3.4 else w[2], kind='rect', corner=0.6)   # the body
+        fill_shape(ly, 13.0, 14.4, 1.8, 1.1, lambda u, v, L: hx('#8a8474'))          # the neck's hole
+        crease(ly, [(10.5, 17.0), (13.0, 19.5), (12.0, 22.0)], 0.14)
+        ly.dot(15.0, 19.0, hx('#b8a070'))                                            # a stain
+        ly.dot(15.5, 19.5, hx('#b8a070'))
+    layer(cv, shirt)
 
-    def sock(ly):
-        fill_capsule(ly, [(14.5, 12.4), (17.0, 12.6), (17.8, 11.4)], 0.8, lambda k, L, s, i, t: shade(ramp('#b8b4aa', 0.4, 0.2, 0.2), L))
-        ly.dot(17.9, 11.2, hx('#b8303a'))
-    layer(cv, sock)
+    def boot(ly):
+        lea = ramp('#5a3a22', 0.45, 0.22, 0.35)
+        fill_shape(ly, 24.6, 19.6, 4.0, 1.9, lambda u, v, L: shade(RUBBER, L), kind='super', p=2.4, ang=0.2)   # the sole
+        fill_shape(ly, 24.4, 19.2, 3.6, 1.5, lambda u, v, L: lea[2] if v < 0.4 else lea[1], kind='super', p=2.4, ang=0.2)
+        fill_shape(ly, 21.6, 18.4, 1.5, 1.2, lambda u, v, L: hx('#1c1418'))          # its mouth
+        for k in range(3):
+            ly.dot(23.5 + k * 1.0, 18.5 + k * 0.2, hx('#e8dcc0'))                    # the laces
+    layer(cv, boot)
     return cv
 
 
@@ -11770,17 +11782,73 @@ def c_takeaway():
     return cv
 
 
+def p_propane():
+    """A 47 kg propane cylinder standing in a corridor, from above: bigger than the stove's bottle and safety red, the
+    white shoulder band, the black guard collar open on one side, the brass valve and its hand wheel, the yellow
+    flame diamond stuck on its shoulder, rust where it was rolled."""
+    S = 18
+    c = S / 2
+    cv = Cv(S, S)
+    red = ramp('#d0402a', 0.55, 0.28, 0.35)
+    fill_shape(cv, c, c, 8.0, 8.0, lambda u, v, L: shade(red, L * 0.9 + 0.1))
+    ring(cv, c, c, 7.3, 8.05, lambda dx, dy, d: red[0] if dx + dy > 1 else red[1])
+    ring(cv, c, c, 5.6, 6.4, lambda dx, dy, d: hx('#ece8dc') if dx + dy < 4 else hx('#b8b4a8'))   # the shoulder band
+    smudge(cv, random.Random(8901), 4, (2, 2, 16, 16), (0.6, 1.2), 0.5, hx('#7a3a22'))
+    dark = ramp('#2a2830', 0.45, 0.22, 0.5)
+    ring(cv, c, c, 3.4, 4.9, lambda dx, dy, d: None if abs(math.atan2(dy, dx) - 0.9) < 0.5 else shade(dark, light(dx / d * 0.9, dy / d * 0.9)))   # the collar
+    fill_shape(cv, c, c, 3.4, 3.4, lambda u, v, L: hx('#161218'))
+    fill_shape(cv, c, c, 1.9, 1.9, lambda u, v, L: shade(ramp('#d8a840', 0.45, 0.22, 0.4), L))   # the valve
+    ring(cv, c, c, 1.1, 1.9, lambda dx, dy, d: shade(ramp('#1c1a20', 0.45, 0.22, 0.6), light(dx / d, dy / d)))   # its wheel
+    cv.dot(c - 0.25, c - 0.25, hx('#ffe8a0'))
+    for k in range(4):                                                 # the flame diamond
+        frect(cv, 3.5 + abs(1.5 - k) * 0.5 - 0.25, 10.5 + k * 0.5, 5.5 - abs(1.5 - k) * 0.5 + 0.25, 11.0 + k * 0.5, hx('#f2c81e'))
+    cv.dot(4.5, 11.5, hx('#1c1a20'))
+    fgrain(cv, random.Random(8902), 3)
+    cv.outline()
+    return cv
+
+
+def p_runner_corner():
+    """Where the corridor's carpet (p_runner) turns: a square of it joined to a length coming down from the north
+    (its top edge) and one going off west (its left edge), the piping and the border running round its outer two
+    sides and round the inside of the turn, one lozenge in its field."""
+    S = 18
+    cv = Cv(S, S)
+    red = ramp('#5e2a34', 0.5, 0.25, 0.3)
+    nz = VNoise(S, S, 2, random.Random(8911))
+
+    def pile(x, y, c):
+        e = min(S - x, S - y)                                          # from the outer edges
+        if x < 3.5 and y < 3.5:
+            e = min(e, max(x, y))                                      # ... and from the inside of the turn
+        if e < 1.5:
+            col = hx('#8a6a3a') if e >= 0.5 else red[0]
+        elif e < 3.5:
+            col = red[1]
+        else:
+            col = red[2]
+            d = abs(x - 9.5) / 4.5 + abs(y - 9.5) / 4.5
+            if 0.86 < d < 1.0:
+                col = mix(red[2], hx('#8a6a3a'), 0.35)
+            elif d < 0.3:
+                col = mix(red[2], hx('#2a3a5a'), 0.3)
+        return shift(col, int((nz(x, y) - 0.5) * 10))
+    px_paint(cv, 0, 0, S, S, pile)
+    return cv
+
+
 # floor paint (no body: levelkit FLOOR), in world px
-FLAT_PAINT = dict(mattress=(p_mattress, (46, 66)), clothes_pile=(p_clothes_pile, (20, 15)), pizza_box=(p_pizza_box, (14, 14)),
+FLAT_PAINT = dict(mattress=(p_mattress, (46, 66)), clothes_pile=(p_clothes_pile, (30, 24)), pizza_box=(p_pizza_box, (14, 14)),
                   bottles_empty=(p_bottles_empty, (16, 12)), mail_pile=(p_mail_pile, (14, 11)),
                   boards_loose=(p_boards_loose, (26, 14)), phone_floor=(p_phone_floor, (18, 12)),
-                  trash_spill=(p_trash_spill, (18, 14)), cutlery_spill=(p_cutlery_spill, (18, 10)))
+                  trash_spill=(p_trash_spill, (18, 14)), cutlery_spill=(p_cutlery_spill, (18, 10)),
+                  runner_corner=(p_runner_corner, (18, 18)))
 FLAT_PROPS = dict(nightstand=p_nightstand, chair_jacket=p_chair_jacket, duffel_bag=p_duffel_bag, coffee_table=p_coffee_table,
                   record_player=p_record_player, worktop=p_worktop, boiler=p_boiler, bucket=p_bucket, plant_dead=p_plant_dead,
-                  mirror_cracked=p_mirror_cracked, mailboxes=p_mailboxes, calendar=p_calendar)
+                  mirror_cracked=p_mirror_cracked, mailboxes=p_mailboxes, calendar=p_calendar, propane=p_propane)
 FLAT_SIZES = dict(nightstand=(16, 14), chair_jacket=(16, 16), duffel_bag=(22, 12), coffee_table=(34, 20),
                   record_player=(22, 16), worktop=(40, 18), boiler=(16, 10), bucket=(11, 11), plant_dead=(20, 20),
-                  mirror_cracked=(14, 5), mailboxes=(26, 7), calendar=(9, 5))
+                  mirror_cracked=(14, 5), mailboxes=(26, 7), calendar=(9, 5), propane=(18, 18))
 FLAT_PROPS.update((n, fn) for n, (fn, _) in FLAT_PAINT.items())
 FLAT_SIZES.update((n, sz) for n, (_, sz) in FLAT_PAINT.items())
 # what stands on the worktop and the stove (clutter/<name>, src/game/data/clutter.js)

@@ -163,3 +163,62 @@ test('fires: the flames are shared out, the lights go to the nearest few', () =>
   assert.ok(calls.sounds.includes('crackle') && calls.sounds.includes('fireRoar'));
   assert.equal(f.near(0, 0, 3).length, 3);
 });
+
+// ---- the fire that follows him (a lesson's `chase`)
+
+// a corridor of lino 30 tiles long, two wide, the chase down its middle from its west end; the lesson's one stage
+function corridor(start = 2) {
+  const rows = ['X'.repeat(32), `X${','.repeat(30)}X`, `X${','.repeat(30)}X`, 'X'.repeat(32)];
+  const level = { tutorial: { stages: [{ zone: [1, 1, 30, 2], spawn: [3, 2, 0] }], chase: { from: 0, path: [[1, 2], [31, 2]], zones: [[1, 1, 30, 2]], start } } };
+  const s = stub(rows, level);
+  const C = s.fire.chase, at = (c) => { s.world.player = { x: px(c), y: px(2), alive: true }; };
+  s.fire.ignite(px(1.5), px(2));
+  s.fire.reached[0] = 0;
+  return { ...s, C, at, front: () => 1 + C.front / TILE }; // (the tile the front is at: the path starts at tile 1)
+}
+
+test('chase: the corridor burns only behind its front, which follows him - running when far, pressing when near, creeping on him', () => {
+  const F = FIRE.chase, s = corridor();
+  assert.ok(F.run > 177 && F.pace < 177 && F.creep < F.pace / 4, 'quicker than he runs to catch up, slower to follow, a crawl to press');
+  s.at(9.5);
+  s.run(1);
+  assert.ok(Math.abs(s.C.front - (2 * TILE + F.pace)) < 2, 'within `far` of him: it comes on at its pace');
+  // the lino would take a minute to burn that far by itself: here it is alight up to the front, and no further
+  assert.ok(s.fire.burns(px(4.2), px(1.5)), 'behind the front: burning');
+  assert.ok(!s.fire.burns(px(s.front() + 0.6), px(1.5)), 'ahead of it: not yet, whatever natural fire is about');
+  const lit = () => { let far = 0; for (const i of s.fire.burning) far = Math.max(far, s.fire.at(i).x); return far / TILE; };
+  assert.ok(Math.abs(lit() - s.front()) < 0.6, `the flames are at the front (${lit().toFixed(1)} / ${s.front().toFixed(1)})`);
+  // he runs to the far end: it is let go after him
+  s.at(27);
+  const f0 = s.front();
+  s.run(1);
+  assert.ok(Math.abs((s.front() - f0) * TILE - F.run) < 2, 'far behind: it runs');
+  s.run(60);
+  const gap = (27 - 1) * TILE - s.C.front;
+  assert.ok(gap < 2 && !s.fire.burns(px(29), px(2)), `left there a minute it is on him (${gap.toFixed(0)} px), and never past the corridor's own pace`);
+  // never unfair: from `far` behind it takes this long to reach a man who stops
+  const closing = (F.far - F.near) / F.pace + F.near / F.creep;
+  assert.ok(closing > 10 && closing < 20, `${closing.toFixed(1)} s to deal with a man in his way`);
+  // while he keeps going (from more than `near` ahead of it) it never closes to less than `near`
+  const k = corridor();
+  let least = Infinity;
+  for (let c = 7; c < 28; c += (177 / 60) / TILE) { k.at(c); k.fire.update(1 / 60); least = Math.min(least, px(c - 1) - k.C.front); }
+  assert.ok(least >= F.near - 2, `${least.toFixed(0)} px behind him at the nearest`);
+});
+
+test('chase: held until its stage is reached, taken up behind him on a retry', () => {
+  const s = corridor(3);
+  s.fire.reached.length = 0;
+  s.at(20);
+  s.run(3);
+  assert.equal(s.front(), 4, 'not let go yet: natural fire has its first tiles, no more');
+  assert.ok(!s.fire.burns(px(6), px(2)));
+  s.fire.reached[0] = s.fire.clock;
+  s.run(0.5);
+  assert.ok(s.front() > 4);
+  // a retry: `far` behind where he starts again
+  const r = corridor(3);
+  r.at(20);
+  r.fire.restore(0, px(1.5), px(2));
+  assert.ok(Math.abs(r.C.front - (px(19) - FIRE.chase.far)) < 8 && r.C.on, `${r.C.front}`);
+});

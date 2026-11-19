@@ -235,17 +235,48 @@ function box([type, c, r, deg]) {
 }
 const overlaps = (b, [x0, y0, x1, y1]) => b[0] < x1 && b[2] > x0 && b[1] < y1 && b[3] > y0;
 
+test('flat: petrol only where it was poured - the living room\'s lane, the hall, a splash each end; the rest is the fire\'s own', () => {
+  const pts = level.petrol.flatMap(([, ...q]) => q), room = ([c0, r0, c1, r1]) => pts.filter(([c, r]) => c >= c0 && c < c1 + 1 && r >= r0 && r < r1 + 1);
+  assert.equal(level.petrol.length, 7);
+  assert.deepEqual(room([4, 1, 9, 5]), [], 'none in his bedroom, none under its door');
+  assert.ok(room([10, 8, 16, 12]).every(([, r]) => r < 8.7), 'the kitchen: what ran in under its door, no further');
+  assert.ok(room([21, 2, 22, 15]).every(([, r]) => r < 3), 'the corridor: one splash at his front door');
+  assert.deepEqual(room([4, 14, 20, 20]), [], 'none down the long corridor: there the fire follows him (chase)');
+  // a trail's far end is a splash (a pour of one point, wider), a can dropped by it
+  const splashes = level.petrol.filter((q) => q.length === 2);
+  assert.equal(splashes.length, 3, 'where the match falls, where the pouring began, where it ended');
+  for (const [c, r] of [[13.4, 8.55], [19.8, 2.15]]) {
+    assert.ok(level.props.some((q) => q[0] === 'jerrycan' && Math.hypot(q[1] - c, q[2] - r) < 2), `a can left near ${c},${r}`);
+  }
+  // the chase: its path down the corridor's middle, on floor, from the burning north end to the bottle
+  const C = level.tutorial.chase, bottle = level.props.find((q) => q[0] === 'propane');
+  assert.equal(C.from, 3);
+  for (const [c, r] of C.path) assert.ok(',.'.includes(level.tiles[Math.floor(r)][Math.floor(c)]), `${c},${r}`);
+  assert.ok(Math.hypot(C.path.at(-1)[0] - bottle[1], C.path.at(-1)[1] - bottle[2]) < 1, 'it ends at the gas bottle');
+  for (const st of level.tutorial.stages.slice(3)) assert.equal(st.hold, undefined, 'no room holds it back from there on');
+  // no lamp in the alley, one runner turned at the corner
+  assert.ok(!level.props.some((q) => q[0] === 'streetlight'));
+  const corner = level.floor.filter((f) => f[0] === 'runner_corner'), runs = level.floor.filter((f) => f[0] === 'runner');
+  assert.equal(corner.length, 1);
+  const half = 9 / 32, [, cc, cr] = corner[0];
+  for (const [, c, r, deg] of runs) {
+    // a length (3 tiles) ends on the corner's edge or on another length's end, never across one
+    const ends = deg === 90 ? [r - 1.5, r + 1.5] : [c - 1.5, c + 1.5], edge = deg === 90 ? cr - half : cc - half;
+    assert.ok(Math.abs(((edge - ends[1]) / 3) - Math.round((edge - ends[1]) / 3)) < 1e-3 && ends[1] <= edge + 1e-3, `runner at ${c},${r}`);
+    assert.equal(deg === 90 ? c : r, deg === 90 ? cc : cr, 'on the corner\'s line');
+  }
+});
+
 test('flat: the lane, the table at its end and the petrol are where they were', () => {
   const st = level.tutorial.stages;
   assert.deepEqual(st[2].keep, [[11, 2.5, 13.25, 2.75], [13, 3.75, 13.25, 4], [13, 5, 13.25, 5], [13, 6, 13.25, 7]], 'the lane');
   assert.deepEqual(st[1].marks.vault, [13.5, 5.7]);
   assert.deepEqual(level.props.find((p) => p[0] === 'table').slice(1, 4), [13.5, 5.7, 0]);
   assert.deepEqual(st[1].keep, [[9, 1, 10, 3]]);
-  assert.equal(level.petrol.length, 9);
-  assert.deepEqual(level.petrol[3], [10, [14.5, 2.2], [14.5, 6.6], [13.5, 6.6], [13.5, 8.35]], 'the lane\'s outer side');
+  assert.deepEqual(level.petrol[2], [10, [14.5, 2.2], [14.5, 6.6], [13.5, 6.6], [13.5, 8.3]], 'the lane\'s outer side');
   assert.deepEqual(level.petrol[4], [10, [10.2, 2.2], [10.2, 4], [12.75, 4], [12.75, 6.9]], 'its inner side');
   assert.equal(level.props.filter((p) => p[0] === 'oven' || p[0] === 'gas_bottle').length, 2, 'the stove and its bottle');
-  assert.deepEqual(level.tutorial.blast.at, level.props.find((p) => p[0] === 'oven').slice(1, 3));
+  assert.deepEqual(level.tutorial.blast.at, level.props.find((p) => p[0] === 'propane').slice(1, 3), 'the end is the gas bottle by the fire door');
 });
 
 test('flat: nothing new stands in the lane, in a doorway, on a way he is taught to take, or on a spawn', () => {

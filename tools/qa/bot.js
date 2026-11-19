@@ -933,7 +933,8 @@
         else { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
       }
     } else B.shieldT = null;
-    if (p.nearShield && rnd() < 0.25) { press(inp, 'KeyE'); act('take a shield'); }
+    // (always the man a lesson keeps for it, systems/Tutorial.js `only`: nothing else gets him out of the way)
+    if (p.nearShield && (p.nearShield.shieldOnly || rnd() < 0.25)) { press(inp, 'KeyE'); act('take a shield'); }
     // (nearBack: the same before 4148aa1, for a bisect over older commits)
     else if (ca && (p.nearTakedown ?? p.nearBack) && !VAULTS.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }
     else if (ca && MELEE_CLICK.has(ca)) { inp.mouse.down[0] = true; inp.mouse.clicked[0] = true; act(`click (${ca})`); }

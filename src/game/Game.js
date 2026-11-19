@@ -31,6 +31,7 @@ import { drawTitle, posterUp } from './ui/title/Title.js';
 import { posterBeats } from './ui/title/Beats.js';
 import { deadCount } from './ui/title/HitList.js';
 import { leapView, leapBeats, drawLeap } from './ui/cine/Leap.js';
+import { LEAP } from './data/staging.js';
 import HoldSkip, { drawHold } from './ui/cine/Hold.js';
 import { ENDINGS, endingView, endingBeats, drawEnding } from './ui/cine/Ending.js';
 import { OUTRO, camBlend, outroOver } from './systems/Outro.js';
@@ -60,9 +61,10 @@ const VOLUMES = ['master', 'music', 'sfx', 'ambience'];
 // data/build.js: not in a release build)
 const urlLevel = () => { const id = devParam('level'); return LEVELS[id] ? id : null; };
 const has = (id) => !!LEVELS[id];
-// out of the tutorial's window (state 'fall'): the world in slow motion (he lands and rolls) for `hold` s, going black
+// out of the tutorial's window (state 'fall'): the jump's own staging (LEAP in data/staging.js, systems/Tutorial.js
+// leaping: the slow motion, the window going up behind him, his roll) for `hold` s, going black
 // over `fade` s more, then the leap seen from the alley (ui/cine/Leap.js) until the next level starts
-const FALL = { hold: 0.7, fade: 0.55, slow: 0.4 };
+const FALL = { hold: LEAP.blast.hold + LEAP.roll.hold + LEAP.out, fade: 0.55 };
 const FALLEN = FALL.hold + FALL.fade;
 // s the mouse rests on one of OPTIONS' things, crossed on its way right to the sheet, before that thing's sheet shows
 const HOVER_DWELL = 0.15;
@@ -367,7 +369,6 @@ export default class Game {
   // out of the tutorial by the window: a moment of slow motion (he lands in a roll) going black, then the leap seen
   // from the alley (he falls, rolls, gets up and goes), and the next level opens on him three weeks later
   onTutorialEnd() {
-    this.slowmo(FALL.slow, FALLEN);
     this.leapT = -1;
     Audio.play('gust', { vol: 0.8 });
     this.setState('fall');
@@ -748,8 +749,10 @@ export default class Game {
   // sets it as it is (`beat`: its own ramp down and back, no easing of ours on it). Never a stop: the world goes on,
   // his hands are his all along
   teach(dt, inp) {
-    const T = this.state === 'play' ? this.world?.tutorial : null;
+    // (the jump out of its window goes on being staged while he falls: state 'fall')
+    const T = this.state === 'play' || (this.state === 'fall' && this.stateT < FALLEN) ? this.world?.tutorial : null;
     if (!T) return { scale: 1, beat: false };
+    if (T.leap) return { scale: T.pace(dt, () => false), beat: true };
     const beat = !!T.lesson, scale = T.pace(dt, (action) => !!DOES[action]?.(inp));
     return { scale, beat: beat || !!T.lesson };
   }
@@ -954,6 +957,8 @@ export default class Game {
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
     const D = this.direction, shot = this.stagedShot();
     D.set(shot?.name, shot?.at);
+    // (the jump out of the tutorial's window lands him at the world's edge: the view goes out into the night with him)
+    this.camera.loose = w.tutorial?.leap ? LEAP.loose : 0;
     D.update(dt, this.camera.zoom, this.camera.pixel); // (at the wheel a shot's zoom is a cut: Direction.update)
     // (a tutorial lesson's slow motion pushes in on him a little: systems/Tutorial.js push)
     this.camera.scale = D.zoom * (1 + (w.tutorial?.push() ?? 0));

@@ -209,16 +209,30 @@
   takedown / SHIELD, a man in reach for PUNCH / STRIKE, the gunman's shot coming for SLIDE...), eases in fast, a few
   % of camera push on him, the hint popping big, until he does it, leaves the trigger or its cap; never a stop, the
   hand always his, once a lesson (`Game.taught`), the camera's shots (`SHOTS`, systems/Direction.js,
-  `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
+  `Camera.scale`), the gas bottle going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
-  while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
+  while). Petrol lies ONLY where they poured it (the user's call): the living room's lane, the hall, a last splash
+  under the front door, the can dropped where the pouring began; none in the bedroom, the kitchen or down the
+  corridor: beyond its trails the fire spreads on what burns. From the back hall on THE FIRE FOLLOWS HIM (level
+  `tutorial.chase`: path, zones, start; `FIRE.chase`: it runs when far behind, paces, then creeps: always in the
+  picture behind him, on him only if he stops for good; no `hold` there any more) as far as the fire door and the
+  GAS BOTTLE standing by it (prop `propane`, lab station 35: kept for the end, `prop.staged`: no round or fire sets
+  it off before), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
   Enemy.drawTail, his name card). The living room is a forced way: a lane one metre wide between two burning trails (builder
   `LANE`, kept clear by the stages' `keep`), the big table across its end before the kitchen door: the vault (round it
   is through the fire). Two men come up the stairs, no more; during a reload the world all but stops and nobody fires (`RELOAD`); a man
-  called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
-  spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
-  fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
+  called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched EMPTY (`FORCE`, stage `snatch`, `leaves` 0):
+  the man past the fire door, his back turned and framed by the camera, is there to be taken as a shield and nothing
+  else (wave `only: 'shield'`, Enemy `shieldOnly`: no takedown on him, nothing hurts or floors him until he is
+  held; E SHIELD shown on him from afar, its slow motion when in reach behind him); the magazine off his belt comes
+  with him (stage `spareOn: 'shield'`), then RELOAD, and the two come up the stairs into the shield; nobody
+  surrenders there; the end, as the last man falls: the bottle's valve lit (a jet of flame, `BLAST.fuse`), it goes,
+  then a chain of fire-balls down the corridor (`BLAST.chain`, level `blast.chain`), and the way out is marked
+  (`EXIT`, level `exit`). The jump out of the window is staged (`LEAP` in data/staging.js, Tutorial `leaping` /
+  `windowBlast`, SHOTS `leap*`): time all but stopped and a whole-zoom punch-in while he is in the air, the window
+  going up behind him (glass and fire thrown after him), his roll held, then snapped back before the black; the view
+  may leave the map there (`Camera.loose`); no street lamp in the alley he lands in.
   The flat's dressing (2026-11-19: FLAT_PROPS / FLAT_PAINT / FLAT_CLUTTER in generate_assets.py, the wear kinds `damp`,
   `flakes`, `grease`, `leak`, `threadbare`, lab station 34): what lies on a floor is PAINT (no body), a piece with a
   body goes in a corner, never in the lane, a doorway, a spawn or the robot's way (tests/flat.test.mjs holds them);

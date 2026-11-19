@@ -2473,6 +2473,8 @@ export default class Enemy extends Character {
   // speed px/step, dazed: groggy on the floor rather than knocked silly, no blood, nobody provoked
   knock(angle, cause, opt = {}) {
     if (!this.alive || this.knocked > 0) return;
+    // the man a lesson keeps to be taken as a shield (systems/Tutorial.js `only`) is not floored: he reels and stands
+    if (this.shieldOnly) { this.flinchFrom(1, angle, 1); return; }
     if (this.holding) this.dropHeld();
     this.knocked = opt.time ?? ENEMY.knockTime * (cause === 'door' ? 1.2 : 1);
     this.dazed = !!opt.dazed;

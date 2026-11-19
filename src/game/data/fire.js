@@ -22,7 +22,8 @@ export const FIRE = {
     runner: ['cloth', 96, 20], rug: ['cloth', 64, 44], doormat: ['cloth', 24, 14], entry_mat: ['cloth', 28, 16],
     entry_carpet: ['cloth', 64, 30], newspaper: ['cloth', 14, 10], bed: ['cloth', 44, 64], cardboard_bed: ['cloth', 56, 26],
     // the flat of the prologue: his mattress (as a bed), what lies about that burns
-    mattress: ['cloth', 44, 64], clothes_pile: ['cloth', 18, 13], pizza_box: ['cloth', 12, 12], mail_pile: ['cloth', 12, 9],
+    mattress: ['cloth', 44, 64], clothes_pile: ['cloth', 26, 20], pizza_box: ['cloth', 12, 12], mail_pile: ['cloth', 12, 9],
+    runner_corner: ['cloth', 20, 20],
   },
   // furniture by its material: `catch` s it takes to catch once the fire is at its foot, `burn` [min, max] s it
   // burns before it falls apart; the others do not burn. A gas bottle or a stove reached blows (systems/Gas.js)
@@ -49,6 +50,12 @@ export const FIRE = {
   whoosh: 0.5,             // s at least between two whooshes of a front running along petrol
   soot: 0.28,              // share of a full fire's soot (SMOKE.burn) each of them gives off: a whole flat burns
   char: 13,                // px: radius of the burn left on the floor by a block burned out
+  // The fire that follows him (a lesson's `chase`: level tutorial.chase { from, path, zones, start }, systems/
+  // FireSpread.js): along the path of a corridor a front that nothing but this moves. It runs (`run` px/s) while it
+  // is more than `far` px behind the furthest he has been, comes on (`pace`) down to `near` px behind, and from there
+  // creeps (`creep`): always in the picture behind him, never on him while he keeps going, and on him if he stops
+  // for good (near / creep s: a fight's length). Game time: a lesson's slow motion slows it with the rest.
+  chase: { far: 230, near: 104, run: 200, pace: 80, creep: 9 },
   // a retry of the lesson (systems/Tutorial.js): s the fire has been burning by the time each of its stages is
   // reached, played at once
   elapsed: [0, 7, 14, 34, 42, 52],

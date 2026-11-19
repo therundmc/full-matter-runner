@@ -71,9 +71,9 @@ const INTERIOR_GLOWING = ['tv_stack', 'soap_vend', 'cig_machine'];
 // the flat of the prologue (tools/generate_assets.py FLAT_PROPS, FLAT_PAINT): its furniture and what hangs on its
 // walls, what lies on its floors
 const FLAT_PROPS = ['nightstand', 'chair_jacket', 'duffel_bag', 'coffee_table', 'record_player', 'worktop', 'boiler', 'bucket',
-  'plant_dead', 'mirror_cracked', 'mailboxes', 'calendar'];
+  'plant_dead', 'mirror_cracked', 'mailboxes', 'calendar', 'propane'];
 const FLAT_PAINT = ['mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor',
-  'trash_spill', 'cutlery_spill'];
+  'trash_spill', 'cutlery_spill', 'runner_corner'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),
   ...FLOOR_TILES.flatMap((t) => [1, 2, 3, 4, 5].map((k) => `tiles/${t}_v${k}`)),
@@ -90,7 +90,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),

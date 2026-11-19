@@ -70,6 +70,7 @@ SIZES = dict(
     # the flat of the prologue
     nightstand=(14, 10), chair_jacket=(14, 14), duffel_bag=(20, 10), coffee_table=(32, 18), record_player=(20, 14),
     worktop=(38, 16), bucket=(9, 9), plant_dead=(12, 12), boiler=None, mirror_cracked=None, mailboxes=None, calendar=None,
+    propane=(16, 16),
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
@@ -105,10 +106,10 @@ FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_mark
 FLOOR += ('bar_mat', 'cardboard_flat')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
 FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
-          'cutlery_spill')
+          'cutlery_spill', 'runner_corner')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),

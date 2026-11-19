@@ -19,6 +19,12 @@ export const SHOTS = {
   beatWide: { zoom: 1.15, ease: 9, pull: 0.9, look: 0 },   // the stove going (lesson `run`): the camera on it
   run: { zoom: 0.75, ease: 1.5, pull: 0.35, look: 0.5 },   // the run for the window, the fire coming down the corridor
   dive: { zoom: 0.7, ease: 2.5, pull: 0, look: 0 },
+  // the jump out of the window (LEAP): a punch in on him in the air (a cut, whole px), the view drawn a little back
+  // toward the window as it goes up behind him, held on his roll, then snapped back out
+  leapAir: { zoom: 2, ease: 14, pull: 0, look: 0 },
+  leapBlast: { zoom: 2, ease: 9, pull: 0.3, look: 0, keep: 0.5 },
+  leapRoll: { zoom: 2, ease: 6, pull: 0, look: 0 },
+  leapOut: { zoom: 1, ease: 11, pull: 0, look: 0 },
   // a boss's beats (systems/BossStage.js, data/bosses.js `shot`)
   bossIntro: { zoom: 1.35, ease: 6, pull: 0.6, look: 0.2, keep: 0.75 }, // he lays eyes on the player: pushed in on him
   bossHurt: { zoom: 1.3, ease: 8, pull: 0.4, look: 0.5, keep: 0.75 },   // the first hit
@@ -71,7 +77,7 @@ export const LESSONS = {
   // moving toward the table (`closing` px a step at least) with his body within `reach` px of its edge
   vault: { slow: 0.3, reach: 32, closing: 0.8 },
   neck: { slow: 0.25 },                        // behind a man who has not seen him, within reach: the click takes him
-  shield: { slow: 0.25 },                      // behind the landing's man, a hand free: E takes him as a shield
+  shield: { slow: 0.2 },                       // behind the landing's man, in reach, a hand free: E takes him as a shield
   take: { slow: 0.35, reach: 26, cap: 1.6 },   // standing over the weapon (Player.nearItem's reach)
   punch: { slow: 0.3, reach: 52 },             // a man who knows him within `reach` px: a step and the blow lands
   strike: { slow: 0.3, reach: 62 },
@@ -84,7 +90,7 @@ export const LESSONS = {
   throw: { slow: 0.3, range: 200 },            // dry for good, a man in his line: the gun is thrown
   dive: { slow: 0.14, cap: 0.75 },             // at the window, the moment SPACE takes him through
   // the end, spectacle and no hint: the stove going, seen in slow motion (it blows inside the beat), the camera on it
-  run: { slow: 0.3, cap: 1.2, push: 0, shot: 'beatWide', at: 'blast' },
+  run: { slow: 0.3, cap: 2.2, push: 0, shot: 'beatWide', at: 'blast' },
 };
 // the reload of the lesson: while his hands work the world all but stops (`slow`) and the reload itself goes at its
 // real pace; nobody fires or strikes from the moment his gun is dry (a magazine left) until `grace` s after it is
@@ -124,8 +130,10 @@ export const OPENING = {
   retry: 1.7,              // a retry of the first room opens this far in: the laugh is not played again
 };
 
-// ---- the end, straight after the last man of the last stage goes down, wherever the player is: `after` s later the
-// stove and its bottle (`blast.at`, taken apart by a blast: systems/Gas.js) go, then a ball of fire out of the breach
+// ---- the end, straight after the last man of the last stage goes down, wherever the player is: the valve of the
+// gas bottle the fire has reached (`blast.at`, a propane cylinder: systems/Gas.js) is lit, a jet of flame out of it
+// toward `jet` (rad) hissing higher for `fuse` s, seen in the `run` lesson's slow motion, the camera on it; then it
+// goes, the stove and its bottle behind the wall with it (`breach[0]` s apart), then a ball of fire out of the breach
 // (`breach`: [s after the stove, radius]), both inside the `run` lesson's slow motion; then a chain of them down the
 // corridor toward him (the level's `blast.chain`: [col, row, radius], each nearer the window and bigger): the first
 // `chain.first` s after the breach, the next ones `chain.gap` s apart ([first gap, last gap]: quicker and quicker),
@@ -135,8 +143,22 @@ export const OPENING = {
 // again. As he goes through the window what is left of the chain goes off `chain.rush` s apart: right behind him.
 // `look`: s the camera looks back at the stove before it follows the fire.
 export const BLAST = {
-  after: 0.1, breach: [0.16, 78], shake: 1.2, look: 1.2,
-  chain: { first: 1.2, gap: [0.42, 0.26], shake: 0.7, kill: 0.95, tail: 1.2, rush: 0.07 },
+  fuse: 0.45, jet: Math.PI, breach: [0.16, 78], shake: 1.2, look: 1.2,
+  chain: { first: 1.5, gap: [0.42, 0.26], shake: 0.7, kill: 0.95, tail: 1.2, rush: 0.07 },
+};
+// ---- the jump (systems/Tutorial.js leap): from the moment he goes through the window, real s. In the air time all
+// but stops (`air.slow`; `cap`: no longer than that if he never lands outside) and the camera cuts in on him
+// (SHOTS leapAir; the view may leave the world by `loose` px: he lands at its edge and stays in the middle of the
+// picture, the night beyond); once he is out, `blast.at` game s later the window goes up behind him: a ball of fire
+// of `radius` px, `blast.inside` px inside the frame (it fills the window and he is seen against it, never under
+// it), its panes blown out, `rain` [shards, embers, flames] thrown after him, the picture shaken; held
+// `blast.hold` s at `blast.slow` with the view drawn back toward it, then his roll (`roll.hold` s at `roll.slow`),
+// then `out` s at full speed with the camera snapped back, before the black (Game's FALL)
+export const LEAP = {
+  air: { slow: 0.3, cap: 1.6 }, loose: 100,
+  blast: { at: 0.05, radius: 92, inside: 26, shake: 1.4, slow: 0.16, hold: 1.1, rain: [34, 30, 14] },
+  roll: { slow: 0.55, hold: 0.8 },
+  out: 0.45,
 };
 // the way out marked on the floor once nobody is left standing (the level's `exit`: the zone before the window, the
 // window's tiles): chevrons marching to the window and a frame round it, pulsing (render/WorldRenderer.js)

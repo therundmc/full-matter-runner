@@ -48,7 +48,8 @@ export default class Camera {
     // put on the grid of the picture's px (apply)
     this.pixel = false;
     this.swayK = 1;            // 0..1: how much of it is on
-    this.bounds = null;        // { w, h } of the world in px: the view never leaves it
+    this.bounds = null;        // { w, h } of the world in px: the view never leaves it ...
+    this.loose = 0;            // ... by more than this many px (a staged shot on something at the world's edge)
     this.shakeScale = 1;       // the player's screen shake setting, 0..1: scales every shake and recoil kick
   }
 
@@ -66,8 +67,9 @@ export default class Camera {
   clamp() {
     if (!this.bounds) return;
     const z = this.zoom * this.scale, hw = this.w / z / 2 + 10, hh = this.h / z / 2 + 10, { w, h } = this.bounds;
-    this.x = w < hw * 2 ? w / 2 : Math.min(Math.max(this.x, hw), w - hw);
-    this.y = h < hh * 2 ? h / 2 : Math.min(Math.max(this.y, hh), h - hh);
+    const l = this.loose;
+    this.x = w < hw * 2 ? w / 2 : Math.min(Math.max(this.x, hw - l), w - hw + l);
+    this.y = h < hh * 2 ? h / 2 : Math.min(Math.max(this.y, hh - l), h - hh + l);
   }
 
   shake(amount) { this.trauma = Math.min(1.2, this.trauma + amount * this.shakeScale); }

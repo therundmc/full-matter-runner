@@ -10,10 +10,10 @@ const TOP = 8.5;      // px/step: its top speed
 const SPIN = 0.13;    // rad/step: how hard it may corkscrew
 
 // prop: a Prop whose def has `gas: { fuse: [s, s], rocket: odds }`; (sx, sy): the hole, in sprite space;
-// dirA: direction of the round. Sets prop.gasLeak (Prop.break then explodes whatever breaks it).
-export function ignite(prop, sx, sy, dirA) {
+// dirA: direction of the round; after: s to the blast, when it is not its own fuse's. Sets prop.gasLeak (Prop.break then explodes whatever breaks it).
+export function ignite(prop, sx, sy, dirA, after = null) {
   const w = prop.world, P = w.particles, g = prop.def.gas, B = Matter.Body;
-  const fuse = rand(g.fuse[0], g.fuse[1]);
+  const fuse = after ?? rand(g.fuse[0], g.fuse[1]); // (after: a fuse somebody staged, systems/Tutorial.js)
   const jet = dirA + Math.PI - prop.body.angle; // the flame comes back out of the hole, in the prop's frame
   const rocket = !prop.def.static && chance(g.rocket ?? 0);
   const drift = rand(0.5, 1) * pick([-1, 1]);

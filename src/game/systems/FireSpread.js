@@ -53,6 +53,7 @@ export default class FireSpread {
     this.holds = (level.tutorial?.stages || []).map((s) => s.hold ?? s.keepFor);
     this.staged = !!level.petrol?.length;             // a level set to burn: there a blast lights the floor too
     this.lay(m, level);
+    this.chase = level.tutorial?.chase ? this.course(level.tutorial.chase) : null; // the fire that follows him
     world.events?.on('matchDrop', ({ x, y }) => this.ignite(x, y));
     world.events?.on('explosion', ({ x, y, radius }) => this.blast(x, y, radius));
   }
@@ -137,8 +138,64 @@ export default class FireSpread {
     return this.fuel[i] ? this.cfg.fuels[this.names[this.fuel[i] - 1]] : null;
   }
 
-  // may the fire be in cell i yet (the lesson holds it out of a room for a while)?
+  // ---- the fire that follows him down a corridor (FIRE.chase; level tutorial.chase: { from: the stage whose
+  // reaching lets it go, path: [[col, row]...] the corridor's middle line, zones: [[c0, r0, c1, r1]...] the floor it
+  // rules, start: tiles along the path the fire may be at before that }). A cell of those zones has a place along
+  // the path (`along`, px); it may burn only once the front has passed it, and catches as it does, whatever
+  // natural fire is about.
+
+  course(def) {
+    const pts = def.path.map(([c, r]) => ({ x: c * TILE, y: r * TILE })), at = [0];
+    for (let k = 1; k < pts.length; k++) at.push(at[k - 1] + Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y));
+    const C = { from: def.from ?? 0, pts, at, total: at[at.length - 1], along: new Float32Array(this.w * this.h).fill(-1), cells: [], next: 0,
+      front: (def.start ?? 0) * TILE, far: 0, on: false };
+    this.chase = C;
+    for (const [c0, r0, c1, r1] of def.zones) {
+      this.each(c0 * TILE, r0 * TILE, (c1 + 1) * TILE - 1, (r1 + 1) * TILE - 1, (i, x, y) => {
+        if (C.along[i] >= 0 || !this.passable(i)) return;
+        C.along[i] = this.alongPath(x, y);
+        C.cells.push(i);
+      });
+    }
+    C.cells.sort((a, b) => C.along[a] - C.along[b]);
+    while (C.next < C.cells.length && C.along[C.cells[C.next]] <= C.front) C.next++; // (what natural fire may have)
+    return C;
+  }
+
+  // how far along the chase's path the point (x, y) is, px (its nearest point of the path)
+  alongPath(x, y) {
+    const { pts, at } = this.chase;
+    let best = Infinity, s = 0;
+    for (let k = 0; k + 1 < pts.length; k++) {
+      const a = pts[k], b = pts[k + 1], dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l2)), d = Math.hypot(x - a.x - dx * t, y - a.y - dy * t);
+      if (d < best) { best = d; s = at[k] + Math.sqrt(l2) * t; }
+    }
+    return s;
+  }
+
+  // the front comes on after him (see FIRE.chase), and what it passes catches
+  follow(dt) {
+    const C = this.chase, F = this.cfg.chase, p = this.world.player;
+    if (!C.on) {
+      if (this.reached[C.from] === undefined) return;
+      C.on = true;
+    }
+    if (p?.alive) {
+      const i = this.index(p.x, p.y);
+      if (i >= 0 && C.along[i] >= 0) C.far = Math.max(C.far, C.along[i]);
+    }
+    const gap = C.far - C.front;
+    C.front = Math.min(C.total, C.front + (gap > F.far ? F.run : gap > F.near ? F.pace : F.creep) * dt);
+    while (C.next < C.cells.length && C.along[C.cells[C.next]] <= C.front) {
+      const i = C.cells[C.next++];
+      if (this.state[i] === COLD && this.fuelOf(i)) this.offer(i, this.clock);
+    }
+  }
+
+  // may the fire be in cell i yet (the lesson holds it out of a room for a while; the chase's floor waits for its front)?
   open(i) {
+    if (this.chase && this.chase.along[i] >= 0) return this.chase.along[i] <= this.chase.front;
     const g = this.gate[i];
     return g < 0 || (this.reached[g] !== undefined && this.clock >= this.reached[g] + this.holds[g]);
   }
@@ -316,6 +373,7 @@ export default class FireSpread {
     const w = this.world, c = this.cfg, T = w.tutorial;
     this.clock += dt;
     if (T) for (let i = 0; i <= T.stage; i++) if (this.reached[i] === undefined) this.reached[i] = this.clock;
+    if (this.chase) this.follow(dt);
     this.acc += dt;
     if (this.acc >= c.tick) { this.acc %= c.tick; this.front(); }
     // one touch kills
@@ -380,12 +438,24 @@ export default class FireSpread {
   restore(from, x, y) {
     const E = this.cfg.elapsed, total = E[Math.min(from, E.length - 1)] ?? 0;
     this.mute = true; // nothing of it is heard
-    if (!(total > 0) || !this.ignite(x, y)) { this.mute = false; return; }
+    if (!(total > 0) || !this.ignite(x, y)) { this.mute = false; this.resume(from); return; }
     for (let t = 0; t < total; t += this.cfg.tick) {
       this.clock += this.cfg.tick;
       for (let k = 0; k < from; k++) if (this.reached[k] === undefined && this.clock >= (E[k] ?? 0)) this.reached[k] = this.clock;
       this.front();
     }
     this.mute = false;
+    this.resume(from);
+  }
+
+  // a retry at stage `from`: the chase takes up `far` behind where he starts again (or where it was let go from, if
+  // he is not that far yet)
+  resume(from) {
+    const C = this.chase, p = this.world.player, at = C && p ? this.index(p.x, p.y) : -1;
+    if (!C || from < C.from) return;
+    C.on = true;
+    C.far = at >= 0 && C.along[at] >= 0 ? C.along[at] : from > C.from ? C.total : 0;
+    C.front = Math.max(C.front, Math.min(C.total, C.far - this.cfg.chase.far));
+    this.follow(0);
   }
 }

@@ -173,6 +173,12 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    fumes (data/clutter.js `fume`, SMOKE.fumes: the pan on the stove, the kettle on the worktop: knock
                    them off, it stops), its furniture to break and push, what lies on its floor and the five marks
                    of an old flat painted in it (render/FloorWear.js: damp, flakes, grease, leak, threadbare)
+    35 PROPANE     the prologue's gas bottle (prop `propane`, data/props.js: a 47 kg cylinder, bolted by its weight, a
+                   far bigger blast than a stove's bottle), in a bare room north of the street between 20's and 32's:
+                   a pistol at the door; a round holes it (the jet of flame from the hole, the fuse a
+                   second or two: get out), a second one sets it off at once; crates and a table for the blast to
+                   take, the blast lights the floor (systems/FireSpread.js). In the prologue the same bottle is kept
+                   for the end (prop.staged): its valve lit as the last man falls (systems/Tutorial.js fuse)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -588,6 +594,18 @@ lv.grime_at('flakes', 85.6, 13.2)
 lv.grime_at('flakes', 80.2, 15.8)
 lv.grime_at('crack', 84.8, 14.6, len=[14, 40], d=-14, lit=4)
 lv.grime_at('threadbare', 83.6, 15.9, r=10)
+
+lv.area('35 propane: the big gas bottle of the prologue\'s end, a pistol to hole it from the door')
+lv.fill(70, 13, 76, 17, '#')               # a bare room in the brick north of the street, its doorway on the sidewalk
+lv.fill(71, 14, 75, 16, ',')
+lv.put(72, 17, ',')
+lv.paint('label_propane', 72.0, 18.6)
+lv.prop('propane', 74.9, 14.6, 20)         # at the back, away from the door: a round, then run
+lv.prop('crate', 73.6, 14.5, 10)
+lv.prop('cardboard_box', 75.3, 16.3, 30)
+lv.prop('table', 71.9, 14.6)
+lv.prop('ceiling_lamp', 73.5, 15.5)
+lv.drop('pistol', 72.5, 18.2, 90)
 
 lv.area('32 chase fx: cars smoking at each stage of damage, one to set alight and blow up, a car to grind along the wall')
 lv.fill(73, 18, 94, 19, 's')               # the street carried on east once more, a blind wall along its south kerb

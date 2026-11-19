@@ -394,6 +394,7 @@ export const DESTRUCTION = {
   },
   mirror_cracked: { height: 1.5, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },
   mailboxes: { height: 1.4, material: 'metal', floats: ['paper', 6], parts: [{ cut: 'grid', cols: 5, rows: 1 }], contents: [{ bit: 'sheet', n: 4, on: 'break' }] },
+  propane: { height: 1.2, material: 'metal', parts: [{ cut: 'wedges', n: 6, centre: true }] },
   calendar: { height: 1.5, floats: ['paper', 3], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
 };
 

@@ -346,5 +346,10 @@ export const PROPS = {
   plant_dead: { material: 'ceramic', r: 6, hp: 3, kg: 12, mu: 0.5, chips: '#8a6a3a', dirt: true, sound: 'wood' },
   mirror_cracked: { static: true, material: 'glass', w: 12, h: 3, hp: 1, chips: '#c8d4dc', glass: true, sound: 'glass' },
   mailboxes: { static: true, material: 'metal', w: 24, h: 4, hp: 8, chips: '#5a6e5c', sound: 'metal' },
+  // a 47 kg propane cylinder left in a corridor: too heavy to budge, a far bigger blast than a stove's bottle. A round
+  // holes it as it does any gas (systems/Gas.js: the jet, the fuse); in the prologue it is kept for the end
+  // (prop.staged: nothing sets it off before, systems/Tutorial.js fuse)
+  propane: { static: true, material: 'metal', r: 8, hp: 6, chips: '#d0402a', explosive: true, blast: 118, sound: 'metal', blocksPath: true,
+    gas: { fuse: [1.4, 2.2] } },
   calendar: { static: true, material: 'fabric', w: 7, h: 3, hp: 1, chips: '#ece8dc', sound: 'wood' },
 };

@@ -73,7 +73,7 @@ export default {
     ['sofa', 12.5, 1.5, 0], ['bookshelf', 15.3, 1.22, 0], ['plant', 10.5, 1.5, 0],
     ['coffee_table', 11.3, 5.4, 0, { clutter: 'flat_coffee' }], ['record_player', 10.25, 5, 270],
     ['tv', 16.55, 4.2, 90], ['armchair', 15.5, 5.6, 215], ['floor_lamp', 10.45, 6.5, 0],
-    ['table', 13.5, 5.7, 0, { clutter: 'flat_table' }], ['jerrycan', 16.4, 3.1, 40], ['poster_fight', 11.4, 6.91, 180],
+    ['table', 13.5, 5.7, 0, { clutter: 'flat_table' }], ['poster_fight', 11.4, 6.91, 180],
     ['frame_photo', 14, 1.09, 0],
     // kitchen
     ['fridge', 10.45, 12.65, 180], ['sink', 11.75, 12.7, 180, { clutter: 'flat_sink' }],
@@ -81,9 +81,9 @@ export default {
     ['boiler', 16.91, 11.75, 90], ['calendar', 15.3, 8.07, 0], ['gas_bottle', 15.5, 12.7, 0],
     ['table', 14.4, 10.3, 0, { clutter: 'flat_kitchen' }], ['chair', 14.4, 9.5, 90], ['chair', 13.4, 10.35, 0],
     ['tube_light', 11.5, 8.07, 0, { flicker: 'stutter' }], ['trash_can', 16.45, 12.45, 0, { tips: false }],
-    ['bin_bag', 15.85, 12.15, 60], ['jerrycan', 12.7, 8.5, 200],
+    ['bin_bag', 15.85, 12.15, 60], ['jerrycan', 12.75, 8.75, 200],
     // entrance hall
-    ['coat_hooks', 18.6, 3.91, 180], ['ceiling_lamp', 19, 2.5, 0],
+    ['coat_hooks', 18.6, 3.91, 180], ['ceiling_lamp', 19, 2.5, 0], ['jerrycan', 18.4, 3.45, 40],
     // back hall
     ['bookshelf', 18.9, 11.78, 180], ['ceiling_lamp', 19, 10, 0], ['plant_dead', 18.3, 9.3, 0],
     // the corridor of the building
@@ -93,9 +93,7 @@ export default {
     ['apt_door', 13.5, 15.91, 180], ['apt_door', 17.5, 15.91, 180], ['wall_lamp', 15.6, 14.09, 0],
     ['wall_lamp', 11.5, 15.91, 180], ['tube_light', 17, 14.07, 0, { flicker: 'dying' }],
     ['radiator', 16.4, 15.91, 180], ['poster_band', 20, 15.91, 180], ['bin_bag', 15.6, 15.62, 20],
-    ['bin_bag', 16.05, 15.55, 140], ['wall_lamp', 5, 14.09, 0],
-    // the alley under the window
-    ['streetlight', 0.6, 13, 0],
+    ['bin_bag', 16.05, 15.55, 140], ['wall_lamp', 5, 14.09, 0], ['propane', 12.45, 15.42, 20],
     // the landing
     ['ceiling_lamp', 8, 17.6, 0], ['plant_dead', 6.5, 16.6, 0], ['mailboxes', 10.91, 18.3, 90],
     ['trash_can', 10.5, 16.6, 0, { tips: false }], ['bin_bag', 10.05, 16.5, 60], ['pay_phone', 6.09, 18.4, 270],
@@ -103,23 +101,21 @@ export default {
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[0, 0, 28, 21]],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['mattress', 4.8, 2.4, 0], ['clothes_pile', 5.5, 4.35, 20], ['bottles_empty', 6.1, 3.75, 10], ['pizza_box', 7.3, 4.5, 20], ['shoes', 6.2, 4.9, 250], ['newspaper', 6.9, 3.9, 30], ['rug', 11.3, 5.4, 0], ['bottles_empty', 11.85, 6.45, 40], ['pizza_box', 10.8, 6.3, 345], ['phone_floor', 16.3, 6.45, 200], ['boards_loose', 15.1, 4.75, 15], ['floor_hole', 15.7, 3.9, 10], ['newspaper', 15.6, 6.3, 70], ['cutlery_spill', 12.55, 11.85, 200], ['trash_spill', 15.9, 11.55, 20], ['doormat', 19.5, 2.5, 90], ['mail_pile', 19.3, 3.3, 30], ['shoes', 19.45, 9.3, 100], ['runner', 22.0, 4.5, 90], ['runner', 22.0, 7.5, 90], ['runner', 22.0, 10.5, 90], ['runner', 22.0, 13.5, 90], ['runner', 20.5, 15.0, 0], ['runner', 17.5, 15.0, 0], ['runner', 14.5, 15.0, 0], ['runner', 11.5, 15.0, 0], ['doormat', 21.5, 10.5, 90], ['doormat', 21.5, 2.5, 90], ['newspaper', 22.5, 5.6, 80], ['mail_pile', 22.55, 12.6, 95], ['doormat', 13.5, 15.52, 180], ['doormat', 17.5, 15.52, 180], ['newspaper', 17.4, 15.5, 10], ['shoes', 13.1, 15.5, 180], ['stairs', 8.0, 20.25, 180], ['mail_pile', 10.5, 19.0, 40], ['trash_spill', 9.85, 17.15, 100]],
+  floor: [['mattress', 4.8, 2.4, 0], ['clothes_pile', 5.75, 4.6, 12], ['bottles_empty', 6.1, 3.75, 10], ['pizza_box', 7.3, 4.5, 20], ['shoes', 7.45, 3.55, 250], ['newspaper', 6.9, 3.9, 30], ['rug', 11.3, 5.4, 0], ['bottles_empty', 11.85, 6.45, 40], ['pizza_box', 10.8, 6.3, 345], ['phone_floor', 16.3, 6.45, 200], ['boards_loose', 15.1, 4.75, 15], ['floor_hole', 15.7, 3.9, 10], ['newspaper', 15.6, 6.3, 70], ['cutlery_spill', 12.55, 11.85, 200], ['trash_spill', 15.9, 11.55, 20], ['doormat', 19.5, 2.5, 90], ['mail_pile', 19.3, 3.3, 30], ['shoes', 19.45, 9.3, 100], ['runner', 22.0, 13.2188, 90], ['runner', 22.0, 10.2188, 90], ['runner', 22.0, 7.2188, 90], ['runner', 22.0, 4.2188, 90], ['runner_corner', 22.0, 15.0, 0], ['runner', 20.2188, 15.0, 0], ['runner', 17.2188, 15.0, 0], ['runner', 14.2188, 15.0, 0], ['doormat', 21.5, 10.5, 90], ['doormat', 21.5, 2.5, 90], ['newspaper', 22.5, 5.6, 80], ['mail_pile', 22.55, 12.6, 95], ['doormat', 13.5, 15.52, 180], ['doormat', 17.5, 15.52, 180], ['newspaper', 17.4, 15.5, 10], ['shoes', 13.1, 15.5, 180], ['stairs', 8.0, 20.25, 180], ['mail_pile', 10.5, 19.0, 40], ['trash_spill', 9.85, 17.15, 100]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [17.6, 2.35]],
-    [10, [17.6, 2.3], [16.0, 2.2], [9.5, 2.2], [6.9, 2.2]],
-    [12, [6.7, 2.0]],
-    [10, [14.5, 2.2], [14.5, 6.6], [13.5, 6.6], [13.5, 8.35]],
+    [10, [17.6, 2.3], [16.0, 2.2], [10.2, 2.2]],
+    [10, [14.5, 2.2], [14.5, 6.6], [13.5, 6.6], [13.5, 8.3]],
+    [18, [13.4, 8.55]],
     [10, [10.2, 2.2], [10.2, 4.0], [12.75, 4.0], [12.75, 6.9]],
-    [10, [13.5, 8.35], [10.45, 8.35], [10.4, 11.3]],
-    [10, [13.5, 8.35], [16.4, 8.35]],
-    [10, [13.6, 8.35], [14.3, 9.5]],
-    [10, [17.6, 2.3], [18.0, 1.3], [19.8, 1.3], [19.8, 2.15], [21.4, 2.2], [22.0, 3.0], [22.0, 5.0]],
+    [10, [17.6, 2.3], [18.0, 1.3], [19.8, 1.3], [19.8, 2.15], [21.3, 2.3]],
+    [18, [21.7, 2.6]],
   ],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["bat", 12.5, 10.7, 25, null]],
   // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)
-  tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.8, 3.1, 0], "cam": "flat", "marks": {"vault": [13.5, 5.7]}, "keep": [[9, 1, 10, 3]], "keepFor": 2.0, "hints": ["vault"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[11, 2.5, 13.25, 2.75], [13, 3.75, 13.25, 4], [13, 5, 13.25, 5], [13, 6, 13.25, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hold": 3, "keep": [[21, 3, 22, 8]], "hints": [], "waves": [{"at": [[17, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "hold": 6, "take": "pistol", "leaves": 2, "spare": 1, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[17, 14]], "on": "enter", "slack": 0.6, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "hold": 8, "take": "pistol", "spare": 1, "marks": {"dive": [4.6, 15.0]}, "hints": ["shield", "finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[9, 14]], "on": "never", "blind": true}, {"at": [[7, 19], [9, 19]], "on": "shield", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "blast": {"at": [14.6, 12.68], "breach": [14.6, 14.3], "chain": [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68], [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
+  tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.8, 3.1, 0], "cam": "flat", "marks": {"vault": [13.5, 5.7]}, "keep": [[9, 1, 10, 3]], "keepFor": 2.0, "hints": ["vault"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[11, 2.5, 13.25, 2.75], [13, 3.75, 13.25, 4], [13, 5, 13.25, 5], [13, 6, 13.25, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hints": [], "waves": [{"at": [[17, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "take": "pistol", "leaves": 0, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[17, 14]], "on": "enter", "slack": 0.6, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "take": "pistol", "spare": 1, "spareOn": "shield", "marks": {"dive": [4.6, 15.0]}, "hints": ["shield", "finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[9, 14]], "on": "never", "blind": true, "only": "shield", "frame": true}, {"at": [[7, 19], [9, 19]], "on": "shield", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "chase": {"from": 3, "path": [[22, 2.5], [22, 14.75], [12.2, 14.75]], "zones": [[21, 2, 22, 15], [12, 14, 20, 15]], "start": 5.0}, "blast": {"at": [12.45, 15.42], "breach": [11.5, 14.75], "chain": [[10.6, 14.6, 56], [9.7, 14.4, 60], [8.8, 14.6, 62], [7.9, 14.4, 66], [7.0, 14.6, 70], [6.2, 14.5, 74], [5.2, 14.5, 76]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
   // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
   doors: { '9,2': {"kind": "flat"}, '20,2': {"kind": "flat", "closer": true, "inside": [-1, 0]}, '20,10': {"kind": "flat"}, '11,14': {"kind": "wired", "inside": [1, 0]} },
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
@@ -135,7 +131,7 @@ export default {
   ],
   // indirect fill only: every visible light is a prop (lamps, signs, tubes, headlights)
   lights: [
-    [1.5, 14.5, 5, '#ffb46a', 0.5],
+    [1.5, 14.5, 5, '#5a6ad8', 0.38],
     [6, 3, 5, '#6a5ad8', 0.3],
     [13, 4, 6, '#7a5ad8', 0.25],
     [12, 14.5, 8, '#5a6ad8', 0.22],

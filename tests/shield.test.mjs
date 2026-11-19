@@ -401,7 +401,8 @@ test('shield: the tutorial - a man on the landing with his back to the fire door
   assert.equal(level.actors[14][9], 'p', 'a pistol');
   assert.equal(level.facing['9,14'], 180, 'looking west down the corridor');
   assert.deepEqual(level.stand['9,14'], [9.4, 14.6]);
-  assert.deepEqual(last.waves[0], { at: [[9, 14]], on: 'never', blind: true });
+  assert.deepEqual(last.waves[0], { at: [[9, 14]], on: 'never', blind: true, only: 'shield', frame: true }, 'there to be taken as a shield and nothing else, framed as he comes through the fire door');
+  assert.deepEqual([T.stages.at(-2).leaves, last.spare, last.spareOn], [0, 1, 'shield'], 'the gun in his hand is empty: the magazine comes with the man');
   assert.deepEqual(last.waves.slice(1).map((w) => [w.on, w.at.length]), [['shield', 2]], 'the two men of the stairs, nobody after them');
   assert.equal(last.hints[0], 'shield');
   assert.ok(LESSONS.shield && HINTS.shield);
@@ -606,4 +607,10 @@ test('shield: a dead man held trails his feet - left behind as he is dragged, hu
   for (let i = 0; i < 40; i++) r.one();
   const d = r.p.shield.drag;
   assert.ok(d && r.g.pose.feet.every((f, i) => Math.abs(f.x - d[i].x / BODY_SCALE) < 0.05 && Math.abs(f.y - d[i].y / BODY_SCALE) < 0.05));
+});
+
+test('shield: the man a lesson keeps for it is never floored - a blow, a thing thrown, he reels and stands', () => {
+  const reeled = [], g = { alive: true, knocked: 0, dormant: true, shieldOnly: true, flinchFrom: (k, a) => reeled.push([k, a]) };
+  Enemy.prototype.knock.call(g, 1.2, 'throw');
+  assert.ok(g.knocked === 0 && g.dormant && reeled.length === 1 && reeled[0][1] === 1.2, 'on his feet, still his back turned');
 });

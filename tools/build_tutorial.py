@@ -89,7 +89,7 @@ lv.prop('nightstand', 5.95, 1.3)                        # the alarm clock, a wee
 lv.prop('duffel_bag', 7.0, 5.55, 10)                    # packed
 lv.prop('cardboard_box', 5.9, 5.55, 5)
 lv.prop('mirror_cracked', 8.91, 4.3, 90)
-lv.paint('clothes_pile', 5.5, 4.35, 20)
+lv.paint('clothes_pile', 5.75, 4.6, 12)                  # yesterday's jeans, a T-shirt, one boot
 lv.paint('bottles_empty', 6.1, 3.75, 10)
 lv.paint('pizza_box', 7.3, 4.5, 20)
 lv.prop('crate', 8.45, 5.4, 8)                          # what he was taking with him
@@ -99,7 +99,7 @@ lv.prop('bin_bag', 4.45, 5.5, 30)
 lv.prop('chair_jacket', 8.4, 1.5, 200)                  # his jacket on its back
 lv.prop('poster_band', 7.6, 1.09)
 lv.prop('frame_photo', 4.09, 4.6, 270)
-lv.paint('shoes', 6.2, 4.9, 250)
+lv.paint('shoes', 7.45, 3.55, 250)
 lv.paint('newspaper', 6.9, 3.9, 30)
 
 lv.area('living room: the floor torn up where he kept it')
@@ -120,7 +120,6 @@ lv.prop('floor_lamp', 10.45, 6.5)
 # the table, right across the way to the kitchen door: SPACE over it (the lane's two trails burn at its ends)
 lv.prop('table', TABLE[0], TABLE[1], clutter='flat_table')
 lv.paint('floor_hole', 15.7, 3.9, 10)                   # where he kept it
-lv.prop('jerrycan', 16.4, 3.1, 40)                      # put down when it was empty
 lv.prop('poster_fight', 11.4, 6.91, 180)
 lv.prop('frame_photo', 14.0, 1.09)
 lv.paint('newspaper', 15.6, 6.3, 70)
@@ -144,13 +143,14 @@ lv.prop('chair', 13.4, 10.35, 0)
 lv.prop('tube_light', 11.5, 8.07, flicker='stutter')
 lv.prop('trash_can', 16.45, 12.45, tips=False)          # indoors: stays up
 lv.prop('bin_bag', 15.85, 12.15, 60)                    # split
-lv.prop('jerrycan', 12.7, 8.5, 200)
+lv.prop('jerrycan', 12.75, 8.75, 200)                   # dropped where the pouring began
 
 lv.area('entrance hall')
 lv.prop('coat_hooks', 18.6, 3.91, 180)
 lv.prop('ceiling_lamp', 19.0, 2.5)
 lv.paint('doormat', 19.5, 2.5, 90)
 lv.paint('mail_pile', 19.3, 3.3, 30)                    # the post he never opened
+lv.prop('jerrycan', 18.4, 3.45, 40)                     # LUCKY's, put down empty at his feet
 
 lv.area('back hall')
 lv.prop('bookshelf', 18.9, 11.78, 180)
@@ -159,10 +159,14 @@ lv.paint('shoes', 19.45, 9.3, 100)
 lv.prop('plant_dead', 18.3, 9.3)
 
 lv.area('the corridor of the building')
-for row in (4.5, 7.5, 10.5, 13.5):                      # a worn carpet runner down its middle ...
-    lv.paint('runner', 22.0, row, 90)
-for col in (20.5, 17.5, 14.5, 11.5):                    # ... and on along the long corridor
-    lv.paint('runner', col, 15.0)
+# one carpet runner down its middle, turned at the corner (a square of it, `runner_corner`) and on along the long
+# corridor as far as the fire door: its lengths end on the corner's edges, never across each other
+RUN = 9 / 32                                            # half its width, tiles
+for row in (13.5, 10.5, 7.5, 4.5):
+    lv.paint('runner', 22.0, row - RUN, 90)
+lv.paint('runner_corner', 22.0, 15.0)
+for col in (20.5, 17.5, 14.5):
+    lv.paint('runner', col - RUN, 15.0)
 lv.paint('doormat', 21.5, 10.5, 90)                     # his
 lv.paint('doormat', 21.5, 2.5, 90)
 for (row, lamp) in ((5.5, 7.5), (12.0, 9.5)):           # the neighbours on the east side
@@ -190,9 +194,10 @@ lv.prop('poster_band', 20.0, 15.91, 180)
 lv.prop('bin_bag', 15.6, 15.62, 20)                     # somebody's rubbish, put out for the morning
 lv.prop('bin_bag', 16.05, 15.55, 140)
 lv.prop('wall_lamp', 5.0, 14.09)
-
-lv.area('the alley under the window')
-lv.prop('streetlight', 0.6, 13.0)
+# the gas bottle of the end: a propane cylinder somebody left by the fire door, on the side the fire comes from. It
+# is there to be seen as he runs past; the fire reaches it, and it goes when the last man does (tutorial `blast`)
+BOTTLE = [12.45, 15.42]
+lv.prop('propane', BOTTLE[0], BOTTLE[1], 20)
 
 lv.area('the landing')
 lv.paint('stairs', 8.0, 20.25, 180)
@@ -206,25 +211,26 @@ lv.prop('bin_bag', 10.05, 16.5, 60)
 lv.prop('pay_phone', 6.09, 18.4, 270)
 
 # ---------------------------------------------------------------- the petrol (src/game/systems/FireSpread.js)
-# From his mattress to the man with the match: along the north side of the living room, under the bedroom's door.
-# The doorway and the boards before it are kept from catching until he is through (the living room's stage `keep`).
-# The living room is a forced way: a lane 1.25 tiles wide (LANE, kept from catching by the kitchen's stage `keep`)
-# from his door east under the north wall's trail, then south to the table and, past it, the kitchen door. Its outer
-# side burns from the match on (the north trail, then down the table's east end); its inner side (down the room's
-# west wall, east, then down the table's west end) is lit through his doorway: as soon as that lets go, behind him.
+# Only where they poured it (the user's call): the living room, which is the lesson's lane, from where the pouring
+# began (a splash inside the kitchen door, the can dropped by it) to the man with the match in the hall, and out
+# under the front door to a last splash on the corridor's carpet. None in the bedroom, none round the kitchen: beyond
+# its trails the fire spreads on what burns (boards, carpet, the runner, furniture), and down the corridor it follows
+# him (tutorial `chase`).
+# The lane is 1.25 tiles wide (LANE, kept from catching by the kitchen's stage `keep`): from his door east under the
+# north wall's trail, then south to the table and, past it, the kitchen door. Its outer side burns from the match on
+# (the north trail, then down the table's east end); its inner side (down the room's west wall, east, then down the
+# table's west end) starts at the north trail's west end, by his door, which the living room's `keep` holds until
+# he is out of it: it is lit behind him.
 lv.pour(14, (17.6, 2.35))                               # where the match falls
-lv.pour(10, (17.6, 2.3), (16.0, 2.2), (9.5, 2.2), (6.9, 2.2))
-lv.pour(12, (6.7, 2.0))                                 # short of the mattress: the carpet does the rest
+lv.pour(10, (17.6, 2.3), (16.0, 2.2), (10.2, 2.2))      # along the north wall, as far as his door and no further
 # the lane's outer side, and on under the kitchen door (kept from catching there until he is through it)
-lv.pour(10, (14.5, 2.2), (14.5, 6.6), (13.5, 6.6), (13.5, 8.35))
+lv.pour(10, (14.5, 2.2), (14.5, 6.6), (13.5, 6.6), (13.5, 8.3))
+lv.pour(18, (13.4, 8.55))                               # where the pouring began: a splash inside the kitchen door
 # its inner side
 lv.pour(10, (10.2, 2.2), (10.2, 4.0), (12.75, 4.0), (12.75, 6.9))
-# the kitchen: along its north wall, down its west one to the fridge, a splash to the table
-lv.pour(10, (13.5, 8.35), (10.45, 8.35), (10.4, 11.3))
-lv.pour(10, (13.5, 8.35), (16.4, 8.35))
-lv.pour(10, (13.6, 8.35), (14.3, 9.5))
-# the entrance hall: along its north wall, under the front door, onto the corridor's carpet
-lv.pour(10, (17.6, 2.3), (18.0, 1.3), (19.8, 1.3), (19.8, 2.15), (21.4, 2.2), (22.0, 3.0), (22.0, 5.0))
+# the entrance hall: along its north wall, under the front door, a last splash on the corridor's carpet
+lv.pour(10, (17.6, 2.3), (18.0, 1.3), (19.8, 1.3), (19.8, 2.15), (21.3, 2.3))
+lv.pour(18, (21.7, 2.6))
 
 # ---------------------------------------------------------------- the wear of the place (render/FloorWear.js)
 lv.grime('stain', 4, 1, 8, 5, 2)                        # the bedroom carpet
@@ -302,10 +308,10 @@ lv.wear_path(8.0, 16.2, 8.0, 19.4, 14)
 # the living room's lane (stage rectangles [c0, r0, c1, r1], to the quarter tile: a cell of fire; a rectangle ends at
 # c1 + 1, r1 + 1): east from his door, south to the table, the table's tile, the boards between it and the door
 LANE = [[11, 2.5, 13.25, 2.75], [13, 3.75, 13.25, 4], [13, 5, 13.25, 5], [13, 6, 13.25, 7]]
-# the balls of fire of the end, down the long corridor from under the kitchen to the window: [col, row, radius px],
+# the balls of fire of the end, down the long corridor from the fire door to the window: [col, row, radius px],
 # each nearer and bigger (src/game/data/staging.js BLAST.chain times them: slower than he runs)
-CHAIN = [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68],
-         [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]
+CHAIN = [[10.6, 14.6, 56], [9.7, 14.4, 60], [8.8, 14.6, 62], [7.9, 14.4, 66], [7.0, 14.6, 70], [6.2, 14.5, 74],
+         [5.2, 14.5, 76]]
 lv.tutorial = {
     'stages': [
         # LUCKY is the man with the match (the opening)
@@ -323,31 +329,40 @@ lv.tutorial = {
          'hints': ['finish', 'takedown', 'punch', 'strike', 'take'],
          'waves': [{'at': [[11, 11]], 'on': 'never', 'blind': True}, {'at': [[19, 10]], 'on': 'kills:1', 'frame': True}]},
         # out of the back door, down the corridor: the man round its corner sleeps until he turns it
-        {'zone': [18, 9, 22, 13], 'spawn': [18.6, 10.5, 0], 'cam': 'corridor', 'hold': 3, 'keep': [[21, 3, 22, 8]],
+        # (from here on the fire follows him: `chase` below, no room holds it back any more)
+        {'zone': [18, 9, 22, 13], 'spawn': [18.6, 10.5, 0], 'cam': 'corridor',
          'hints': [], 'waves': [{'at': [[17, 14]], 'on': 'never', 'blind': True}]},
         # far enough down for his first round to come as he turns the corner: the slide goes under it; the bat breaks
-        # on him and his pistol is always snatched, whatever kills him (`snatch`): two rounds in it, a magazine to spare
-        {'zone': [13, 14, 22, 15], 'spawn': [21.5, 12.6, 90], 'cam': 'corridor', 'hold': 6,
-         'take': 'pistol', 'leaves': 2, 'spare': 1, 'snatch': True, 'hints': ['finish', 'slide', 'strike', 'punch', 'take'],
+        # on him and his pistol is always snatched, whatever kills him (`snatch`): he has emptied it at him (`leaves`
+        # 0), and there is nothing to load it with: the next man cannot be shot
+        {'zone': [13, 14, 22, 15], 'spawn': [21.5, 12.6, 90], 'cam': 'corridor',
+         'take': 'pistol', 'leaves': 0, 'snatch': True, 'hints': ['finish', 'slide', 'strike', 'punch', 'take'],
          'waves': [{'at': [[17, 14]], 'on': 'enter', 'slack': SHOOTER, 'sharp': True, 'frame': True}]},
-        {'zone': [4, 14, 12, 20], 'spawn': [12.5, 14.5, 180], 'cam': 'landing', 'hold': 8, 'take': 'pistol', 'spare': 1,
+        {'zone': [4, 14, 12, 20], 'spawn': [12.5, 14.5, 180], 'cam': 'landing', 'take': 'pistol', 'spare': 1, 'spareOn': 'shield',
          'marks': {'dive': [4.6, 15.0]}, 'hints': ['shield', 'finish', 'take', 'reload', 'throw', 'shoot', 'dive'],
-         # the man past the fire door looks down the corridor, his back to it: E takes him as a shield (`shield`),
-         # which calls the two others up the stairs (his death by any other hand does too)
-         'waves': [{'at': [[9, 14]], 'on': 'never', 'blind': True},
+         # the man past the fire door looks down the corridor, his back to it, framed by the camera as he comes
+         # through: he is there to be taken as a shield and nothing else (`only`: no takedown on him, nothing hurts
+         # him before; the pistol in the player's hand is empty). E takes him (the lesson's slow motion, in reach):
+         # the magazine off his belt comes with him (`spareOn`), RELOAD, and the two others come up the stairs
+         'waves': [{'at': [[9, 14]], 'on': 'never', 'blind': True, 'only': 'shield', 'frame': True},
                    {'at': [[7, 19], [9, 19]], 'on': 'shield', 'up': STAIRS}]},
     ],
     # the man with the match: where he stands, where it falls, the door he slams behind him, where he runs to
     'opening': {'man': [18, 2], 'match': [17.6, 2.35], 'door': [20, 2], 'out': [21.6, 2.5]},
-    # the end, as the last man goes down: the stove behind the wall, where the fire comes out, and on down the corridor
-    'blast': {'at': [14.6, 12.68], 'breach': [14.6, 14.3], 'chain': CHAIN},
+    # the fire that follows him (FIRE.chase in src/game/data/fire.js, systems/FireSpread.js): let go as he reaches
+    # the back hall, down the building's corridor from its burning north end (`start` tiles along) and round the
+    # corner, as far as the fire door and the gas bottle standing by it
+    'chase': {'from': 3, 'path': [[22, 2.5], [22, 14.75], [12.2, 14.75]], 'zones': [[21, 2, 22, 15], [12, 14, 20, 15]], 'start': 5.0},
+    # the end, as the last man goes down: the gas bottle by the fire door, its valve lit, then the fire doors blown
+    # in (`breach`) and the fire on down the corridor to the window
+    'blast': {'at': BOTTLE, 'breach': [11.5, 14.75], 'chain': CHAIN},
     # the way out, marked on the floor once nobody is left standing: the floor before the window, the window
     'exit': {'zone': [4, 14, 5, 15], 'window': [3, 14, 3, 15]},
     'fall': [0, 12, 2, 17],
 }
 
 lights = [
-    [1.5, 14.5, 5, '#ffb46a', 0.5],                     # the alley under the window: a streetlight's glow
+    [1.5, 14.5, 5, '#5a6ad8', 0.38],                    # the alley under the window: the night, no lamp
     [6, 3, 5, '#6a5ad8', 0.3],
     [13, 4, 6, '#7a5ad8', 0.25],
     [12, 14.5, 8, '#5a6ad8', 0.22],

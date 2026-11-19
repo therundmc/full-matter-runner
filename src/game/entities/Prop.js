@@ -159,7 +159,8 @@ export default class Prop {
     if (rec.rack) this.bottles(); // read off the sprite before anything marks it
     const { sx, sy } = this.spritePoint(px, py, dirA, kind === 'cut' ? Math.min(4, Math.min(this.W, this.H) * 0.3) : 1.2);
     this.lastHit = [sx, sy];
-    if (d.gas) damage = this.gasHit(damage, kind, sx, sy, dirA);
+    // (kept for a staged moment, systems/Tutorial.js: a round marks it and no more, nothing sets it off before)
+    if (d.gas) damage = this.staged ? 0 : this.gasHit(damage, kind, sx, sy, dirA);
     const la = dirA - this.body.angle; // shot direction in sprite space
     const size = Math.min(this.W, this.H);
     const m = markShape(kind, { energy, inc, size, hard: fx.hard, cracks: fx.cracks, glass: fx.glass, ricochet: info.ricochet });
