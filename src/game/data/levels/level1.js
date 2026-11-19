@@ -147,7 +147,7 @@ export default {
     ['washer', 13.55, 2.25, 8], ['tv', 16.55, 1.42, 12, { lights: false }], ['armchair', 18.65, 1.5, 14],
     ['trash_can', 20, 1.45, 0], ['trash_can', 20.6, 1.6, 0], ['barrel', 12, 1.45, 0], ['barrel', 12.65, 1.5, 0],
     ['trash_can', 29.5, 1.5, 0], ['parapet', 10.5, 3.5, 90], ['crate', 30.4, 1.45, -8], ['wall_lamp', 17.5, 4.91, 180],
-    ['fuse_box', 23.5, 4.92, 180], ['emergency_light', 22.85, 12.09, 0], ['emergency_light', 19.5, 19.91, 180],
+    ['fuse_box', 23.5, 4.92, 180], ['emergency_light', 22.91, 15.5, 90], ['emergency_light', 19.5, 19.91, 180],
     ['emergency_light', 23.91, 17.4, 90], ['emergency_light', 17.6, 10.91, 180], ['emergency_light', 20.09, 8.5, 270],
     ['emergency_light', 24.4, 10.91, 180], ['emergency_light', 27.5, 17.09, 0], ['wall_vent', 16.3, 4.92, 180],
     ['pipe_water', 19.2, 1.07, 0], ['tube_light', 25.55, 4.93, 180], ['gas_bottle', 28.4, 4.74, 0],
@@ -185,7 +185,7 @@ export default {
     ['chair', 26.4, 15.25, 270], ['chair', 27.35, 14.25, 180], ['bottle_shelf', 24.9, 12.16, 0],
     ['cash_case', 27.8, 12.6, 15, { clutter: 'cash_floor' }], ['wall_lamp', 28.91, 13, 90],
     // the bar: what can be used
-    ['fire_alarm', 22.91, 15.5, 90],
+    ['fire_alarm', 20.5, 12.07, 0],
     // the bar: VIP room
     ['curtain', 24.5, 18.5, 0], ['dance_stage', 28, 18.9, 0, { clutter: 'stage' }], ['mirror_ball', 27.5, 18.6, 0],
     ['sofa', 27.15, 17.45, 0, { clutter: 'vip_sofa' }], ['cocktail_table', 25.5, 17.47, 0, { clutter: 'vip_table' }],
@@ -224,7 +224,7 @@ export default {
   power: {"box": [23.5, 4.92], "zone": [14, 5, 29, 20]},
   // the devices of the level (data/devices.js): the fire alarm and the rooms it rains on and
   // the trapdoors of the passage under the street
-  sprinklers: {"pull": [22.91, 15.5], "rooms": [[15, 12, 28, 19]]},
+  sprinklers: {"pull": [20.5, 12.07], "rooms": [[15, 12, 28, 19]]},
   passage: [[35.55, 17.95], [25.75, 10.35]],
   // door leaves in no wall (a toilet stall's): [col, row (the hinge), deg, length px, sprite]
   leaves: [[22.1, 7.57, 0, 24, "structure/stall_door"]],

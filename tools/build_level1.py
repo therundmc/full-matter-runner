@@ -390,7 +390,8 @@ lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
 # the house's fuse box, between the toilets' window and the back door: smash it and the bar is left in its emergency lighting
 lv.power(14, 5, 31, 20, 24.5, 4.92, 180)
-for (x, y, deg) in ((23.85, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: back, front, VIP side
+for (x, y, deg) in ((23.91, 15.5, 90), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: the gaming room's wall
+                                                                                # (where the arcade stood: the user's spot), front, VIP side
                     (17.6, 10.91, 180), (21.09, 8.5, 270), (25.4, 10.91, 180),   # storeroom, toilets, the boss's room
                     (28.5, 17.09, 0)):                                          # the VIP room
     lv.prop('emergency_light', x, y, deg)
@@ -507,9 +508,9 @@ lv.litter_at('chip', 28.3, 15.15)
 lv.litter_at('chip', 25.95, 15.55)
 
 lv.area('the bar: what can be used')
-# the fire alarm on the gaming room's wall, past the extinguisher: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
+# the fire alarm east of the counter, by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
 # customers run (systems/Sprinklers.js)
-lv.sprinklers(23.91, 15.5, 90, [(15, 12, 30, 19)])       # on the gaming room's wall, where the arcade stood
+lv.sprinklers(21.5, 12.07, 0, [(15, 12, 30, 19)])
 # under the street: a trapdoor in the TV shop's back, the other under the rug inside the back room's door
 lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
@@ -551,7 +552,7 @@ lv.prop('coat_hooks', 15.09, 15.3, 270)                 # by the end of the coun
 lv.prop('frame_photo', 15.09, 16.2, 270)                # over the booth, either side of its lamp
 lv.prop('poster_fight', 15.09, 17.85, 270)
 lv.prop('poster_band', 20.3, 19.91, 180)                # on the front wall, between the windows and the door
-lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the fire alarm
+lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the red emergency light
 lv.prop('pay_phone', 24.91, 19.35, 90)                  # by the jukebox, on the VIP room's wall
 lv.prop('neon_sign_beer', 30.0, 12.09)                  # the poker room
 lv.prop('frame_gold', 25.09, 15.4, 270)
