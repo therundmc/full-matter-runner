@@ -21,7 +21,7 @@ globalThis.Image = class {
 const { loadAssets, spriteOpt } = await load('engine/Assets.js');
 await loadAssets();
 const { WEAPONS, WEAR, plantedOf } = await load('game/data/weapons.js');
-const { BREAK, SNATCH } = await load('game/data/feel.js');
+const { BREAK, SNATCH, DROP } = await load('game/data/feel.js');
 const { FINISHERS, TAKEDOWNS } = await load('game/data/finishers.js');
 const { SCORING } = await load('game/data/scoring.js');
 const { default: Scoring, killTags } = await load('game/systems/Scoring.js');
@@ -275,6 +275,10 @@ test('snatch: a man killed bare handed drops his gun into the player\'s hand, wi
   g.kill(0, 'melee', p, { gore: 0, wound: 'punch' }, { close: true, from: 'front' });
   assert.equal(w.items.length, 1, 'it falls first');
   assert.ok(p.snatch && !p.weapon);
+  // it waits for the hand where his hand was: still, out of the physics' way (a falling body does not knock it off)
+  const it = w.items[0];
+  assert.ok(it.reserved && it.body.isStatic && it.body.isSensor);
+  assert.ok(Math.hypot(it.x - g.x, it.y - g.y) < 1, 'not thrown anywhere');
   after(p, SNATCH.delay + 0.05);
   assert.equal(p.weapon?.type, 'pistol');
   assert.equal(p.weapon.mag, 5, 'the rounds left in it');
@@ -288,6 +292,9 @@ test('snatch: a man killed bare handed drops his gun into the player\'s hand, wi
   after(q, 0.5);
   assert.equal(q.snatch, null);
   assert.ok(v.items.length === 1 && !v.items[0].dead);
+  // ... by his body (DROP), and free for anyone to knock about
+  const fell = v.items[0], sp = Matter.Body.getSpeed(fell.body);
+  assert.ok(!fell.reserved && !fell.body.isStatic && sp >= DROP.speed[0] - 1e-6 && sp <= DROP.speed[1] + 1e-6, `let go at ${sp}`);
   // a bat that breaks on the kill: the stub let fall, the gun taken
   const u = world(), r = fighter('bat', u), k = gunman(u);
   r.weapon.wear = 1;

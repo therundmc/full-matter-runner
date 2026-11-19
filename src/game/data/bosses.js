@@ -44,7 +44,7 @@ export const BOSSES = {
     berserk: { speed: 1.4, interval: [0.45, 0.48], wild: 0.09, react: 0.7, roar: 0.55, taunt: [1.8, 3.2] },
     trail: { every: 7, spread: 3 },
     shake: { throw: 5.5, react: 0.6, cd: 1.5 },
-    death: { slowmo: [0.14, 2.4], gun: [6, 9], shades: [150, 230], blood: [60, 380] },
+    death: { slowmo: [0.14, 2.4], gun: [1, 1.8], shades: [150, 230], blood: [60, 380] },
     shot: { intro: ['bossIntro', 1.5], wounded: ['bossHurt', 1.1], down: ['bossDown', 2.6] },
     lines: {
       intro: ['KNOCK KNOCK, DEAD MAN.', 'YOU BURNED ONCE. I LIKE SEQUELS.', 'TAKE A NUMBER, KID. IT IS ZERO.',

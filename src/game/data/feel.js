@@ -267,6 +267,11 @@ export const SEAT = { s: 0.94, back: 1.4, lean: -0.08, lay: 'fist', turn: 1.1, e
 
 export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 
+// A dead man's weapon falls by his body, never across the room (the user: it flew far too far and the snatch's hand
+// went after it): let go at `speed` px/step [min, max] (about 10 to 25 px of slide on a floor), turning up to `spin`
+// rad/step. One the player's hand is closing on (SNATCH) does not move at all: it waits, untouchable, for the hand.
+export const DROP = { speed: [0.5, 1.1], spin: 0.25 };
+
 // How kills and chains are shown (ui/KillFeed.js keeps the state on the real clock, render/WorldRenderer.js draws the
 // stamps, ui/HUD.js the rest). Sizes in world px for the stamps, in screen px at 720 p for the HUD (x H / 720).
 // Colours: a PALETTE key, a CSS colour, or 'neon' (pink / cyan cycle).

@@ -186,6 +186,18 @@ export const POSTS = {
       van: { w: 1, phases: [{ g: 'peer', at: 'car', body: 'stand', dur: [3, 5] }, { g: 'smoke', body: 'stand', dur: [2, 4] }] },
     },
   },
+  // two of them out in the back lot (level 1), face to face for a smoke and a word: one talks, the other nods or
+  // laughs (each says his line in turn), a drag now and then; they stay at it while all is calm
+  yard: {
+    stay: true,
+    acts: {
+      talk: { w: 3, phases: [{ g: 'talk', dur: [2.2, 3.4], say: ['chat', 0.5], answer: 'nod' }, { g: 'cross', dur: [1.5, 3] }] },
+      joke: { w: 1, phases: [{ g: 'talk', dur: [1.8, 2.6], say: ['joke', 0.8], answer: 'laugh' }, { g: 'cross', dur: [1, 2] }] },
+      smoke: { w: 2, phases: [{ g: 'smoke', dur: [4, 7] }] },
+      nod: { cue: true, phases: [{ g: 'nod', dur: [1.2, 1.8] }] },
+      laugh: { cue: true, phases: [{ g: 'laugh', dur: [1.4, 2], say: ['laugh', 0.6] }] },
+    },
+  },
   // the man smoking in the service alley, under the neon tube, against the bar's wall: draws, breathes out, flicks the
   // ash, looks up and down the alley; now and then crouches to tie a lace or reads his pager
   alley: {

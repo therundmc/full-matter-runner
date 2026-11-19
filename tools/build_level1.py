@@ -207,12 +207,13 @@ lv.actor('6', 18, 8)                                    # ... his blade on the t
 lv.actor('k', 21, 9, face=0, job='piss', arms='fists')  # in the toilets: the bowl, the sink, a smoke against the wall
 lv.actor('h', 30, 7, face=180, job='cueball', look='cueball')  # CUEBALL, the level's boss (data/bosses.js), in the
 #                                                     armchair, feet up on the desk, his pump-action against it
-lv.actor('i', 26, 10, face=0, job='couch')              # his man on the couch plays with his tire iron
-lv.actor('p', 28, 10, face=0, job='count')              # counting the night's banknotes by the boss's case, a pistol
-#                                                     on his hip: the second gun of the house
+lv.actor('p', 28, 10, face=0, job='count')              # alone with the boss, counting the night's banknotes by his
+#                                                     case, a pistol on his hip: the second gun of the house
 lv.actor('6', 32, 17)                                   # a blade someone dropped in the gap
-# back lot: one man, his back against the wall by the back door, smoking; now and then a look at the van; his fists
-lv.actor('b', 27, 4, face=270, job='lean', arms='fists')
+# back lot: two men out for a smoke, talking face to face past the back door (the user, 2026-11-19: the couch man
+# came out of the boss's room for it, his tire iron in hand); the other has only his fists
+lv.actor('b', 27, 4, face=-27, job='yard', arms='fists')
+lv.actor('i', 30, 3, face=153, job='yard')
 # the service alley: a man smoking against the bar's wall under the cyan tube, by the storeroom door, a knife in his
 # pocket
 lv.actor('k', 12, 8, face=180, job='alley')
