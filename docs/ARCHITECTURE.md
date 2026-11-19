@@ -645,7 +645,8 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   splashes, drops, brain, a spilt drink; runs start in it). Nothing flies through a door leaf or an intact pane
   (Spatter.shutBetween): the exit spray (`fling`, `wallBehind` given the world) stops there, and so do airborne drops,
   the fine mist and the bits of bone (fx/Particles.js); a streak is laid only if its whole length is in the clear.
-- Traversal (Character): `tryVault(angle, moving)`. Broken window, gate, parapet = hands planted on the edge, hoisted
+- Traversal (Character): `tryVault(angle, moving)`. A parapet (prop `down`) is one way, off its roof: from the ground
+  side `Cover.findVault` finds nothing, for him and for the guards. Broken window, gate, parapet = hands planted on the edge, hoisted
   over (`style` 'hoist'); furniture = a one-hand speed vault (`speed`: the free hand flat on the top, world-fixed while
   the body swings past it on the other side, a gun kept on the target); a car's hood = the action-movie slide on the
   hip (`hip`), sparks on metal. Phases in data/feel.js `TRAVERSE` (CharacterAnim vaultPhases / slidePhases /

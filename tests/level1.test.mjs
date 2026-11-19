@@ -185,10 +185,11 @@ test('the liquor store roof: up the shop\'s own ladder only, down over a parapet
     [[3.5, 17.35], -Math.PI / 2, 'climb', [3, 15]],   // up from the shop
     [[3.5, 15.65], Math.PI / 2, 'climb', [3, 17]],
     [[9.6, 12.5], 0, 'prop', [11, 12]],               // down into the service alley, inside the gate
-    [[11.4, 12.5], Math.PI, 'prop', [9, 12]],
     [[9.6, 3.5], 0, 'prop', [11, 3]],                 // down into the back lot
-    [[11.4, 3.5], Math.PI, 'prop', [9, 3]],
   ];
+  // a parapet is one way, down: from the alley or the lot there is no getting back up over it
+  assert.ok(PROPS.parapet.down);
+  for (const row of [12.5, 3.5]) assert.equal(findVault(w, stranger(px(11.4), px(row)), Math.PI), null, `no way up at row ${row}`);
   for (const [[col, row], a, kind, [tc, tr]] of moves) {
     const v = findVault(w, stranger(px(col), px(row)), a);
     assert.equal(v?.kind, kind, `no way from ${col},${row}`);

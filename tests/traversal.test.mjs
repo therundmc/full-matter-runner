@@ -7,7 +7,7 @@ const { PROPS } = await load('game/data/props.js');
 const { TILE, CAT, PLAYER } = await load('game/Config.js');
 const { default: Character } = await load('game/entities/Character.js');
 const { default: Player } = await load('game/entities/Player.js');
-const { rollRoom } = await load('game/systems/Cover.js');
+const { rollRoom, findVault } = await load('game/systems/Cover.js');
 const { default: level } = await load('game/data/levels/level1.js');
 
 const { Bodies, Body } = Matter;
@@ -56,8 +56,9 @@ function play(ch) {
 }
 const tileAt = (w, ch) => w.map.at(Math.floor(ch.x / TILE), Math.floor(ch.y / TILE));
 
-test('traversal: over the parapet from the roof he drops and rolls on; climbing back up over it he does not', () => {
+test('traversal: over the parapet from the roof he drops and rolls on; from the ground there is no way back up over it', () => {
   const w = world(), p = man(w, 9.6, 12.5);
+  assert.ok(findVault(w, p, 0), 'marked from the roof');
   assert.ok(p.tryVault(0));
   assert.ok(p.vaulting.hoist && p.vaulting.roll, 'hands on the parapet, a roll to come');
   const x0 = p.vaulting.to.x, seen = play(p);
@@ -68,11 +69,18 @@ test('traversal: over the parapet from the roof he drops and rolls on; climbing 
   const dur = seen.frames / 60;
   assert.ok(dur > 0.8 && dur < 1.2, `${dur} s from the roof to his feet`);
 
-  const q = man(w, 11.4, 12.5);
-  assert.ok(q.tryVault(Math.PI));
-  assert.ok(q.vaulting.hoist && !q.vaulting.roll);
-  assert.ok(!play(q).rolled);
-  assert.equal(tileAt(w, q), '^', 'up on the roof');
+  // both drops of the roof (the service alley, the back lot), the player and a guard, square on and at an angle
+  assert.ok(PROPS.parapet.down);
+  for (const row of [12.5, 3.5]) {
+    for (const isPlayer of [true, false]) {
+      for (const [col, dr, a] of [[11.4, 0, Math.PI], [11.3, 0.3, Math.PI - 0.5], [11.3, -0.3, Math.PI + 0.5], [11.05, 0, Math.PI], [10.98, 0, Math.PI]]) {
+        const q = man(w, col, row + dr, isPlayer);
+        assert.equal(findVault(w, q, a), null, `no mark at ${col},${row + dr}`);
+        assert.ok(!q.tryVault(a) && !q.vaulting, `no way up at ${col},${row + dr}`);
+      }
+    }
+    assert.ok(man(w, 9.6, row).tryVault(0), `the drop at row ${row} still works`);
+  }
 });
 
 test('traversal: the roll is cut short by a wall ahead and never ends in anything solid', () => {
