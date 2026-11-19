@@ -4,20 +4,20 @@ import { load } from './setup.mjs';
 
 const { loadSettings, saveSettings } = await load('game/systems/Settings.js');
 
-const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
+const D = { master: 1, music: 1, sfx: 1, ambience: 1, quality: 'auto', autoQuality: 'high', shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
 
 const fakeStorage = () => {
   const data = {};
   return { getItem: (k) => data[k] ?? null, setItem: (k, v) => { data[k] = String(v); } };
 };
 
-test('settings: full volume, the lens on, full shake and no fullscreen when nothing is stored', () => {
+test('settings: full volume, the quality on AUTO, full shake and no fullscreen when nothing is stored', () => {
   assert.deepEqual(loadSettings(fakeStorage()), D);
 });
 
 test('settings: a saved set comes back as it was', () => {
   const st = fakeStorage();
-  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, lens: false, shake: 0.35, rumble: 0.6, fullscreen: true, aim: 'wedge', aimMark: true };
+  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, quality: 'medium', autoQuality: 'low', shake: 0.35, rumble: 0.6, fullscreen: true, aim: 'wedge', aimMark: true };
   saveSettings(set, st);
   assert.deepEqual(loadSettings(st), set);
 });
@@ -42,10 +42,31 @@ test('settings: LOCK\'s floor chevron (aimMark) is off by default, kept once tur
 
 test('settings: booleans must be booleans, the shake is clamped like a volume', () => {
   const st = fakeStorage();
-  st.setItem('fmr.settings.v1', JSON.stringify({ lens: 'no', fullscreen: 1, shake: 4 }));
+  st.setItem('fmr.settings.v1', JSON.stringify({ aimMark: 'no', fullscreen: 1, shake: 4 }));
   assert.deepEqual(loadSettings(st), D);
-  st.setItem('fmr.settings.v1', JSON.stringify({ lens: false, fullscreen: true, shake: -1 }));
-  assert.deepEqual(loadSettings(st), { ...D, lens: false, fullscreen: true, shake: 0 });
+  st.setItem('fmr.settings.v1', JSON.stringify({ aimMark: true, fullscreen: true, shake: -1 }));
+  assert.deepEqual(loadSettings(st), { ...D, aimMark: true, fullscreen: true, shake: 0 });
+});
+
+test('settings: an old save that turned the lens off no longer does: the key is not read, nor written back', () => {
+  const st = fakeStorage();
+  st.setItem('fmr.settings.v1', JSON.stringify({ lens: false, master: 0.5 }));
+  const s = loadSettings(st);
+  assert.deepEqual(s, { ...D, master: 0.5 });
+  assert.ok(!('lens' in s));
+  saveSettings({ ...s, lens: false }, st);
+  assert.ok(!('lens' in JSON.parse(st.getItem('fmr.settings.v1'))));
+});
+
+test('settings: the quality is AUTO by default and one of its four values; what AUTO settled on is a level', () => {
+  const st = fakeStorage();
+  assert.deepEqual([loadSettings(st).quality, loadSettings(st).autoQuality], ['auto', 'high']);
+  for (const q of ['auto', 'low', 'medium', 'high']) {
+    saveSettings({ ...D, quality: q, autoQuality: 'medium' }, st);
+    assert.deepEqual([loadSettings(st).quality, loadSettings(st).autoQuality], [q, 'medium']);
+  }
+  st.setItem('fmr.settings.v1', JSON.stringify({ quality: 'ultra', autoQuality: 'auto' }));
+  assert.deepEqual([loadSettings(st).quality, loadSettings(st).autoQuality], ['auto', 'high']);
 });
 
 test('settings: out-of-range values are clamped, garbage falls back to the default', () => {

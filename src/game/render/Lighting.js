@@ -9,6 +9,7 @@ import { DOORS } from '../data/doors.js';
 import { flicker, signLevel, pickFaults } from './Flicker.js';
 import { READABILITY } from '../data/readability.js';
 import { floorLift } from './Readability.js';
+import { quality } from '../systems/Quality.js';
 
 // 2D lighting: a low-res light map (night ambient + coloured lights with wall shadows from visibility polygons)
 // multiplied over the scene, then additive bloom, anamorphic flares and wet-floor reflections.
@@ -108,6 +109,14 @@ function visibility(px, py, R, segs) {
     seg.push(bi < nWall ? bi : -1);
   }
   return { pts, seg };
+}
+
+// the `max` of a list of lights nearest to (x, y) (the QUALITY option: fewer flashes lit at once); all of them when
+// there are no more than that
+export function nearest(list, x, y, max) {
+  if (list.length <= max) return list;
+  const d = (l) => (l.x - x) * (l.x - x) + (l.y - y) * (l.y - y);
+  return list.slice().sort((a, b) => d(a) - d(b)).slice(0, max);
 }
 
 export default class Lighting {
@@ -381,7 +390,7 @@ export default class Lighting {
 
   buildCache(l) {
     l.dirty = false;
-    const s = L.scale, R = l.r;
+    const s = L.scale * quality().light, R = l.r;
     const size = Math.ceil(2 * R * s) + 2;
     if (!l.cache || l.cache.width !== size) l.cache = canvas(size, size);
     if (this.tmp.width < size) this.tmp = canvas(size, size);
@@ -565,7 +574,9 @@ export default class Lighting {
     // the part of each buffer this view takes (light map: tw x th, bloom and reflections: bw x bh, flares: fw x bh).
     // A zoom of the camera changes the view every frame (the kill cam, a staged shot): the buffers only ever grow and
     // what is drawn of them is that part
-    const s = L.scale, b = L.bloomScale;
+    // (the QUALITY option: a coarser light map, coarser bloom and reflections; a light's cast pool keeps the grain it
+    // was made at until it is cast again, drawn at its world size either way)
+    const Q = quality(), s = L.scale * Q.light, b = L.bloomScale * Q.bloom;
     this.tw = w * s; this.th = h * s; this.bw = w * b; this.bh = h * b; this.fw = Math.ceil((w * b) / 6);
     const grow = (c, cw, ch) => {
       if (c && c.width >= cw && c.height >= ch) return c;
@@ -671,7 +682,7 @@ export default class Lighting {
     this.sync();
     this.updateGlass();
     this.setView(cam);
-    const { x0, y0, w: vw, h: vh } = this.view, s = L.scale;
+    const { x0, y0, w: vw, h: vh } = this.view, Q = quality(), s = L.scale * Q.light;
     const g = this.lm.getContext('2d');
     const lit = this.collect(t);
     this.frameLights = lit;
@@ -718,7 +729,7 @@ export default class Lighting {
 
     // dynamic lights (muzzle flashes, explosions) with shadows
     const w = this.world;
-    for (const l of w.lights) {
+    for (const l of nearest(w.lights, x0 + vw / 2, y0 + vh / 2, Q.lights)) {
       if (!this.inView(l.x, l.y, l.r)) continue;
       const a = clamp(l.t / l.dur, 0, 1) * L.dynamicGain * (l.r > 150 ? 1.7 : 1);
       if (L.dynamicShadows) {
@@ -870,7 +881,9 @@ export default class Lighting {
   // additive layers after the scene: emissive maps, bloom, flares, reflections
   post(ctx, cam, t, liquid, standing = null) {
     if (!this.lm) return;
-    const w = this.world, { x0, y0, w: vw, h: vh } = this.view, b = L.bloomScale;
+    // b: texels a world px of this frame's buffers (the QUALITY option's share of the full grain); B: of the layers
+    // baked with the level (buildLevelLayers)
+    const Q = quality(), w = this.world, { x0, y0, w: vw, h: vh } = this.view, B = L.bloomScale, b = B * Q.bloom;
     const lit = this.frameLights || [];
 
     // crisp emissive overlays (glow maps drawn by the art pass) and light bulbs
@@ -904,7 +917,7 @@ export default class Lighting {
     e.imageSmoothingEnabled = true;
     const beat = flicker('pulse', 0, t);
     e.globalAlpha = L.neonGlow * (0.75 + 0.25 * beat);
-    e.drawImage(this.emissive, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
+    e.drawImage(this.emissive, x0 * B, y0 * B, vw * B, vh * B, x0, y0, vw, vh);
     e.globalAlpha = 1;
     for (const p of w.props) this.drawGlow(e, p, t);
     for (const [l, k] of lit) {
@@ -955,10 +968,11 @@ export default class Lighting {
     const bg = this.bl.getContext('2d');
     bg.setTransform(1, 0, 0, 1, 0, 0);
     bg.globalCompositeOperation = 'copy';
-    bg.filter = this.blurA ||= `blur(${L.bloomBlur[0]}px)`;
+    if (this.blurQ !== Q.bloom) { this.blurQ = Q.bloom; this.blurA = this.blurB = null; } // (as wide in the world at any grain)
+    bg.filter = this.blurA ||= `blur(${L.bloomBlur[0] * Q.bloom}px)`;
     bg.drawImage(this.em, 0, 0, bw, bh, 0, 0, bw, bh);
     bg.globalCompositeOperation = 'lighter';
-    bg.filter = this.blurB ||= `blur(${L.bloomBlur[1]}px)`;
+    bg.filter = this.blurB ||= `blur(${L.bloomBlur[1] * Q.bloom}px)`;
     bg.drawImage(this.em, 0, 0, bw, bh, 0, 0, bw, bh);
     bg.filter = 'none';
     hem(this.bl, bw, bh);
@@ -967,7 +981,7 @@ export default class Lighting {
     // ---- reflections: vertical streaks under the lights, on wet floors only (none at all where no floor in view
     // mirrors: the mask would leave nothing of them)
     const T = TILE, c0 = Math.floor(x0 / T) - 1, r0 = Math.floor(y0 / T) - 1;
-    const shiny = areaCount(this.shiny, c0, r0, Math.floor((x0 + vw) / T) + 1, Math.floor((y0 + vh) / T) + 1) > 0;
+    const shiny = Q.mirrors && areaCount(this.shiny, c0, r0, Math.floor((x0 + vw) / T) + 1, Math.floor((y0 + vh) / T) + 1) > 0;
     const r = this.rf.getContext('2d');
     if (shiny) {
       r.setTransform(1, 0, 0, 1, 0, 0);
@@ -1014,7 +1028,7 @@ export default class Lighting {
       streaks(r, L.reflect * (1 + this.wet), 1);
       r.globalAlpha = 1;
       r.globalCompositeOperation = 'destination-in';
-      r.drawImage(this.reflMask, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
+      r.drawImage(this.reflMask, x0 * B, y0 * B, vw * B, vh * B, x0, y0, vw, vh);
       hem(this.rf, bw, bh);
     }
 
@@ -1022,7 +1036,7 @@ export default class Lighting {
     // its mask (render/LiquidArt.js: how much each texel mirrors, the rain's puddles a dim night sky too), then the
     // streaks only where there is some
     let puddles = false;
-    if (liquid) {
+    if (liquid && Q.mirrors) {
       const g = this.pd.getContext('2d');
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = 'source-over';

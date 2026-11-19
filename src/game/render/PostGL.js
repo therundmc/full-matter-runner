@@ -73,9 +73,9 @@ void main() {
 
 const FINAL = `${HEAD}
 uniform sampler2D uScene, uSoft, uGlow, uRays;
-uniform vec2 uRes, uFocus, uCentre, uSmear;
+uniform vec2 uRes, uSrc, uFocus, uCentre, uSmear;
 uniform float uTime, uFringe, uZoom, uFrame, uGlitch, uCurve, uScan, uScanStep, uMask, uBleed, uGrain, uVignette;
-uniform float uEdge, uBlur, uGlowK, uRaysK, uRadial, uWaveWidth, uToneKnee, uToneSoften;
+uniform float uEdge, uBlur, uGlowK, uRaysK, uRadial, uWaveWidth, uToneKnee, uToneSoften, uSharp;
 uniform vec4 uWaves[4];
 uniform vec4 uHeat[6];
 uniform vec3 uGain, uLift, uTint;
@@ -84,6 +84,17 @@ uniform vec2 uRushDir, uRushAt, uRushBand, uRushCar;
 uniform float uFlat, uRush, uRushLen, uRushRows, uRushFlick, uRushMix, uRushPull, uRushSplit, uRushDark, uRushShare, uRushRun, uRushGlow;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+// The scene at uv. Brought UP to the window (uSharp: window px a scene px, over 1: the QUALITY option draws a
+// smaller scene) each of its px stays a flat square with a hard edge one window px wide: read at its middle, but
+// for that last px toward its neighbour. Brought down or 1:1 (uSharp 0): as it is.
+vec3 scene(vec2 uv) {
+  if (uSharp > 1.0) {
+    vec2 p = uv * uSrc, f = fract(p);
+    uv = (floor(p) + clamp(f * uSharp, 0.0, 0.5) + clamp((f - 1.0) * uSharp + 0.5, 0.0, 0.5)) / uSrc;
+  }
+  return texture2D(uScene, uv).rgb;
+}
 
 void main() {
   float asp = uRes.x / uRes.y;
@@ -134,7 +145,7 @@ void main() {
   // the lens: colours part toward the corners (and along the road in that band)
   vec2 dir = uv - 0.5;
   vec2 fr = dir * dot(dir, dir) * uFringe * lens * 2.83 / uRes.y + along * uRushSplit * rush / uRes.y;
-  vec3 col = vec3(texture2D(uScene, uv + fr).r, texture2D(uScene, uv).g, texture2D(uScene, uv - fr).b);
+  vec3 col = vec3(scene(uv + fr).r, scene(uv).g, scene(uv - fr).b);
   if (rush > 0.002) {
     // what is bright leaves a trail behind it along the road, row by row, each row its own length: pixel combs
     float rowAt = dot(uv * vec2(asp, 1.0), vec2(-uRushDir.y, uRushDir.x)) * uRushRows, row = floor(rowAt), k = min(1.0, rush);
@@ -300,20 +311,28 @@ class Post {
       this.sceneW = S.width; this.sceneH = S.height;
     } else gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, S);
     const blur = (src, dst, x, y) => this.pass(this.blurP, src, dst, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform2f(l.uStep, x, y); });
+    // what nothing shows this frame is not made (a strength of 0: the QUALITY option, Lens.uniforms; the soft
+    // picture is the glow's source too)
+    const glow = u.glow.strength > 0, rays = glow && u.rays.strength > 0, soft = glow || u.edge > 0.001 || u.blur > 0.001 || u.bleed > 0;
     // the soft picture
-    blur(this.sceneTex, h0, 1 / h0.w, 0);
-    blur(h0.tex, h1, 0, 1 / h1.h);
+    if (soft) {
+      blur(this.sceneTex, h0, 1 / h0.w, 0);
+      blur(h0.tex, h1, 0, 1 / h1.h);
+    }
     // the glow of what is bright
-    this.pass(this.brightP, h1.tex, q0, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform1f(l.uThreshold, u.glow.threshold); g.uniform1f(l.uKnee, u.glow.knee); });
-    blur(q0.tex, q1, 1.6 / q1.w, 0);
-    blur(q1.tex, q0, 0, 1.6 / q0.h);
+    if (glow) {
+      this.pass(this.brightP, h1.tex, q0, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform1f(l.uThreshold, u.glow.threshold); g.uniform1f(l.uKnee, u.glow.knee); });
+      blur(q0.tex, q1, 1.6 / q1.w, 0);
+      blur(q1.tex, q0, 0, 1.6 / q0.h);
+    }
     // shafts out of the lamps
-    this.pass(this.raysP, q0.tex, q2, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform4fv(l.uLights, u.lights); g.uniform1f(l.uReach, u.rays.reach); });
+    if (rays) this.pass(this.raysP, q0.tex, q2, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform4fv(l.uLights, u.lights); g.uniform1f(l.uReach, u.rays.reach); });
     // the picture
     this.pass(this.finalP, this.sceneTex, null, (g, l) => {
       [h1, q0, q2].forEach((tg, i) => { g.activeTexture(g.TEXTURE1 + i); g.bindTexture(g.TEXTURE_2D, tg.tex); });
       g.uniform1i(l.uScene, 0); g.uniform1i(l.uSoft, 1); g.uniform1i(l.uGlow, 2); g.uniform1i(l.uRays, 3);
       g.uniform2f(l.uRes, W, H);
+      g.uniform2f(l.uSrc, S.width, S.height);
       g.uniform2f(l.uFocus, u.focus[0], u.focus[1]);
       g.uniform2f(l.uCentre, u.centre[0], u.centre[1]);
       g.uniform2f(l.uSmear, u.smear[0], u.smear[1]);
@@ -325,8 +344,9 @@ class Post {
       g.uniform2f(l.uRushCar, R.car[0], R.car[1]);
       const one = Object.assign(this.one, {
         uTime: t % 1000, uFringe: u.fringe, uZoom: u.zoom, uFrame: u.frame, uGlitch: u.glitch, uCurve: u.curve, uScan: u.scan,
-        uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette, uEdge: u.edge, uBlur: u.blur,
-        uGlowK: u.glow.strength, uRaysK: u.rays.strength, uRadial: u.radial, uWaveWidth: u.waveWidth,
+        uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette,
+        uGlowK: glow ? u.glow.strength : 0, uRaysK: rays ? u.rays.strength : 0, uEdge: soft ? u.edge : 0, uBlur: soft ? u.blur : 0,
+        uSharp: H > S.height * 1.01 ? H / S.height : 0, // the scene smaller than the window: brought up sharp (scene()) uRadial: u.radial, uWaveWidth: u.waveWidth,
         uToneKnee: u.tone.knee, uToneSoften: u.tone.soften,
         uSat: u.grade.sat, uCon: u.grade.con, uTintK: u.grade.tintK,
         uRushShare: R.lines.share, uRushRun: R.lines.run, uRushGlow: R.lines.glow,

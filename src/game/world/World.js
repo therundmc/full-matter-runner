@@ -396,6 +396,13 @@ export default class World {
     return true;
   }
 
+  // what moves without a body, for the picture drawn between two steps (engine/Interp.js): lists of things with x, y
+  movers() {
+    const M = this.moving || (this.moving = [null, null, null]);
+    M[0] = this.particles.list; M[1] = this.projectiles; M[2] = this.critters.list;
+    return M;
+  }
+
   // ---------------- the getaway (systems/Outro) ----------------
   // the vehicle the level is left in: the one parked nearest the exit zone (within OUTRO.reach), in one piece and not
   // on fire; null if none

@@ -1,14 +1,15 @@
 // The menu as data, and the navigator that walks it (DOM-free: no canvas, no Audio, no Game). Pages are built from a
 // context each time they are read, so they always show the current settings and progression:
 //   { settings, progress, best: (id) => { total, grade, time } | null, levels: [{ id, name }] (campaign levels that
-//     exist, in order), lensOk: false when the picture has no lens to turn on (optional), device: 'kbm' | 'pad' (the
+//     exist, in order), device: 'kbm' | 'pad' (the
 //     controls page lists that one's; optional), rumbleOk: false when a pad is connected that this browser cannot
 //     rumble (optional), dead: the pause opened from the death screen (optional) }
 // The navigator answers with plain actions that Game.js applies:
 //   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' | 'quit'
 //   | 'reset' | 'replayTutorial'
 // Items: { label, page } opens a sub-page, { label, act } fires an action, { label, slider: key, value },
-// { label, toggle: key, value }, { level, label, n, locked, best } a level to start, { info: [caps, what], col, group }
+// { label, toggle: key, value }, { label, choice: key, value, options, show } one of a few values (`show`: what is
+// written for it), { level, label, n, locked, best } a level to start, { info: [caps, what], col, group }
 // a read-only line, { label, back: true } goes back (an `act` may come with it); `disabled` greys an item out, `note`
 // is a short line said under it.
 // A page with `sheets` (OPTIONS) shows the page of its chosen item beside it at once, its sheet: choosing an item is
@@ -17,6 +18,8 @@
 // to whatever it points at (point).
 import { isUnlocked } from '../systems/Progress.js';
 import { KBM_CONTROLS, PAD_CONTROLS } from '../data/controls.js';
+import { QUALITY_CHOICES } from '../data/quality.js';
+import { qualityLabel } from '../systems/Quality.js';
 
 export const STEP = 0.05; // how far a slider moves on a key press
 
@@ -62,7 +65,8 @@ const PAGES = {
   video: (c) => ({
     title: 'VIDEO',
     items: [
-      { label: 'LENS', toggle: 'lens', value: c.lensOk !== false && !!c.settings.lens, ...(c.lensOk === false ? { disabled: true, note: 'NOT AVAILABLE HERE (NO WEBGL)' } : {}) },
+      // what the picture draws (data/quality.js); AUTO shows the level it chose beside it
+      { label: 'QUALITY', choice: 'quality', value: c.settings.quality, options: QUALITY_CHOICES, show: qualityLabel(c.settings) },
       { label: 'SCREEN SHAKE', slider: 'shake', value: c.settings.shake },
       { label: 'FULLSCREEN', toggle: 'fullscreen', value: !!c.settings.fullscreen },
       { label: 'AIM MARK', toggle: 'aimMark', value: !!c.settings.aimMark }, // LOCK's chevron on the floor (render/AimArt.js)
@@ -99,7 +103,13 @@ const PAGES = {
 export const selectable = (it) => !!it && !it.disabled && !it.info;
 
 // a line that left / right change (anything else: LEFT goes back to the items beside its sheet)
-const adjustable = (it) => selectable(it) && (!!it.slider || !!it.toggle);
+const adjustable = (it) => selectable(it) && (!!it.slider || !!it.toggle || !!it.choice);
+
+// the value dir steps on from a choice's (wrapping round)
+function stepChoice(it, dir) {
+  const n = it.options.length, i = Math.max(0, it.options.indexOf(it.value));
+  return { type: 'set', key: it.choice, value: it.options[(i + dir + n) % n] };
+}
 
 const round = (v) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
 
@@ -153,7 +163,7 @@ export default class Menu {
   up() { return this.move(-1); }
   down() { return this.move(1); }
 
-  // dir +1 / -1 on the selected item: a slider by a step, a toggle flips; on a row page the selection moves. On a
+  // dir +1 / -1 on the selected item: a slider by a step, a toggle flips, a choice goes to its next value; on a row page the selection moves. On a
   // page with sheets RIGHT takes the focus onto the sheet; on a sheet, LEFT on a line it does not change brings the
   // focus back to the items.
   nudge(dir) {
@@ -166,6 +176,7 @@ export default class Menu {
       const value = round(it.value + dir * STEP);
       return value === it.value ? null : { type: 'set', key: it.slider, value };
     }
+    if (it.choice) return stepChoice(it, dir);
     return { type: 'set', key: it.toggle, value: !it.value };
   }
   left() { return this.nudge(-1); }
@@ -193,6 +204,7 @@ export default class Menu {
     if (!selectable(it) || it.locked) return null;
     if (it.page) { if (this.page.sheets) this.enter(); else this.open(it.page); return null; }
     if (it.toggle) return { type: 'set', key: it.toggle, value: !it.value };
+    if (it.choice) return stepChoice(it, 1);
     const act = it.act ? { ...it.act } : null;
     if (it.back) return this.back() || act;
     return act;

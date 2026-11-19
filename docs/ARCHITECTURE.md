@@ -13,6 +13,8 @@ src/
     Gamepad.js            gamepads, standard mapping (DOM-free, pads source injected): dead zones, trigger hysteresis,
                           menu steps with repeat from the d-pad / left stick, hot-plug; rumble() on the pad last touched
                           (vibrationActuator 'dual-rumble', hapticActuators pulse as a fallback; never throws)
+    Interp.js             the fixed step's clock (StepClock) and the world drawn between its last two steps (Interp:
+                          capture before a step, apply / restore round a draw); DOM-free, unit-tested
     physics/
       Units.js            scale contract: 1 m = 32 px = 1 tile, kg, px/step velocities
       Hinge.js            a leaf on a hinge as numbers: its inertia about the pivot, a force-limited push on it, a blow,
@@ -38,7 +40,8 @@ src/
                           synthwave track, playing score.js), groove/ (the groove tracks' player, instruments and
                           harmony) and tracks/ (one data file per groove track)
   game/
-    Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
+    Game.js               loop (fixed 60 Hz steps, time scale, hitstop; the world drawn between its last two steps:
+                          engine/Interp.js) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
     world/
       World.js            one playthrough: entity lists, services, fixed step order, system facades; `dispose`: its
@@ -74,6 +77,8 @@ src/
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
       Scoring.js          score of a run from events: kill styles x combo, end tally (bonuses, grade); pure, unit-tested
+      Quality.js          the QUALITY option in force (`quality()`, read by the renderers; table in data/quality.js)
+                          and AUTO's watch of the frame time (QualityWatch); DOM-free, unit-tested
       Records.js          best result per level in localStorage (guarded: the game runs without storage)
       Threats.js          which off-screen guards the player can plausibly know about (pure rule + per-guard memory)
       Impacts.js          listens to 'impact': material sounds by speed and mass
@@ -346,6 +351,29 @@ Rules:
 - Logic modules must not touch the DOM so they stay testable in Node (`TileMap`, physics, systems' math).
   Canvas work lives in `game/render/` (and, for now, each entity's own `draw()`).
 - Cross-cutting reactions go through `world.events` rather than direct calls.
+
+## The loop: fixed steps, drawn in between (Game.loop, engine/Interp.js)
+
+The simulation runs at a fixed 60 steps a second whatever the screen's rate (`StepClock`: an accumulator of real
+time; each step is `FIXED_DT * timeScale` s of game time, at most 5 a frame). A 120 / 144 Hz screen draws two or
+three frames a step: drawn as stepped, what moves would advance on some frames only. So every frame is drawn a
+share `alpha = accumulator / FIXED_DT` of the way from the state before the last step to the state after it:
+
+- before each step `Interp.capture` notes where every non-static Matter body is (position, angle) and every
+  body-less mover (`World.movers()`: particles, bullets, critters; x, y, z);
+- `Game.render` and `Game.updateCamera` call `Interp.apply(alpha)`, which writes the in-between places INTO the
+  bodies (`body.position`, `body.angle`: what every entity's `x` / `y` getters and `draw()` read), and
+  `Interp.restore()` puts the real ones back in a `finally`. Nothing steps in between: Matter never sees a drawn
+  place, and `game.update()` always returns with the real state (the QA robot reads it);
+- the camera follows the drawn player, so he and the floor move together; at the wheel the in-between places go
+  through the same whole-px snap as before (`Vehicle.pose`, `Drive.frame`, Camera `pixel`);
+- a body moved by more than `JUMP` (64 px) in a step, or made during it, is drawn where it is (a respawn, a seat
+  taken: no smear); a hit-stop or a pause leaves the clock alone (the picture stands still); a tutorial beat that
+  holds the world (`Tutorial.stopped`) and a new level drop what was captured (`Interp.still`): the state as it is.
+
+The picture is one step late at most (the price of drawing in between), at every screen rate. What is NOT drawn in
+between: animation poses (gait, facing, swings: they advance per step), smoke, liquids, cloth, pool balls, the
+chase's wind. `?interp=off` (a developer's switch) draws the state as stepped, to compare.
 
 ## Simulation step (World.step)
 
@@ -775,6 +803,16 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
 
 ## Performance & robustness
 
+- The QUALITY option (OPTIONS / VIDEO; `data/quality.js`, `systems/Quality.js`): AUTO / LOW / MEDIUM / HIGH. Each
+  level is a row of `QUALITY`, put in force by `setQuality` and read by the renderers through `quality()`: the
+  scene's size (`Game.fit` -> engine/Camera.js `fitView` `cap`: a whole zoom always; a scene smaller than the window
+  is brought up by the lens with every px kept a sharp square, PostGL `scene()`), the reflections, the bloom's and
+  the light map's grain, the smoke's grain, the particle cap, the heat shimmer, the lens' glow and shafts, the
+  flashes lit at once, the fires' puffs. Looks only: nothing of the simulation reads it. At the wheel the picture
+  stays 1:1 at every level. AUTO (`QualityWatch`, fed by `Game.watchPace`) starts at HIGH, takes the mean frame
+  time of 3 s of play (not the 2 s after a level starts or a change, nor a hit-stop, a held beat, a hitch) and goes
+  one level down over 18 ms, never back up; where it settled is kept (Settings `autoQuality`) and shown on the row.
+
 - Physical debris live at most `MAX_AGE` (7 s) or until they settle, then get baked into the floor canvas;
   at most `MAX_DEBRIS` (180) at once; pieces under 6 px don't collide with each other.
 - Purely visual pieces use `particles.shard(img, ...)`: they arc with a fake height above their shadow, bounce,
@@ -1129,5 +1167,6 @@ pass: zoom kick, tube curvature, torn tape, shock waves, heat shimmer, radial co
 grading per situation, impact frame, scan lines, vignette, grain. What must stay sharp (flash, HUD, screens, cursor)
 is drawn on a third canvas above (`#hud`). `render/Lens.js` is the director: DOM-free, unit-tested, it listens to
 `blow`, `shot` and `explosion`, is told the situation once a frame (`Game.lensView`) and returns plain numbers.
-Every look setting is in `data/post.js`. Without WebGL, or with `?post=0`, nothing of this exists and the old 2D
+Every look setting is in `data/post.js`. The lens is always on where WebGL is (no option: F6, a developer's key,
+flips it to compare; the QUALITY option leaves its glow and shafts out on LOW). Without WebGL, or with `?post=0`, nothing of this exists and the old 2D
 grading (`render/PostFX.js`) and vignette are used, as before. The replay recorder captures the bare 2D scene.

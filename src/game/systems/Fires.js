@@ -9,6 +9,7 @@
 import { TILE } from '../Config.js';
 import { FIRE } from '../data/fire.js';
 import { rand, chance } from '../../engine/math.js';
+import { quality } from './Quality.js';
 
 export default class Fires {
   constructor(world, list = [], cfg = FIRE) {
@@ -70,8 +71,8 @@ export default class Fires {
     // only what is in view (and a little past it) is drawn burning
     const v = w.camera ? w.view() : null, m = 48;
     const seen = v ? list.filter((f) => Math.abs(f.x - v.x) < v.hw + m && Math.abs(f.y - v.y) < v.hh + m) : list;
-    // the budget of flames, shared out
-    const every = Math.max(c.flames, seen.length / c.budget);
+    // the budget of flames, shared out (the QUALITY option's share of it)
+    const every = Math.max(c.flames, seen.length / (c.budget * quality().fire));
     for (const f of list) f.age += dt;
     for (const f of seen) {
       if (f.whoosh) {

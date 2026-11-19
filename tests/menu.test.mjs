@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
 
-const { default: Menu, STEP } = await load('game/ui/Menu.js');
+const { default: Menu, STEP, selectable } = await load('game/ui/Menu.js');
 const { KBM_CONTROLS, PAD_CONTROLS, PAD_BINDINGS } = await load('game/data/controls.js');
 const { complete } = await load('game/systems/Progress.js');
 
@@ -11,7 +11,7 @@ const FRESH = { unlocked: ['tutorial'], done: [] };
 // a context made of plain objects; `set` actions are written back into it as Game.js does
 function ctx(more = {}) {
   return {
-    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false },
+    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, quality: 'auto', autoQuality: 'high', shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false },
     progress: FRESH,
     best: (id) => (id === 'tutorial' ? { total: 4200, grade: 'B', time: 95 } : null),
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NEON NIGHTS' }],
@@ -185,27 +185,35 @@ test('menu: sliders move by a step and clamp, a set is only sent when the value 
   assert.equal(selected(m), 'MASTER', 'down wraps round the sheet');
 });
 
-test('menu: toggles flip with Enter, a click and left / right; a lens that cannot be had is skipped and says why', () => {
+test('menu: toggles flip with Enter, a click and left / right; a greyed line cannot be chosen', () => {
   const c = ctx(), m = new Menu('main', c);
   choose(m, 'OPTIONS'); choose(m, 'VIDEO');
-  assert.deepEqual(labels(m), ['LENS', 'SCREEN SHAKE', 'FULLSCREEN', 'AIM MARK']);
-  assert.deepEqual(apply(c, m.activate()), { type: 'set', key: 'lens', value: false });
-  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'lens', value: true });
+  assert.deepEqual(labels(m), ['QUALITY', 'SCREEN SHAKE', 'FULLSCREEN', 'AIM MARK'], 'no LENS row: it is the developer\'s F6');
   m.down();
   assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'shake', value: 0.95 });
   assert.deepEqual(m.click(2), { type: 'set', key: 'fullscreen', value: true });
+  assert.deepEqual(apply(c, m.activate()), { type: 'set', key: 'fullscreen', value: true });
+  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'fullscreen', value: false });
+  // (selectable: what the selection may rest on)
+  assert.ok(!selectable({ label: 'X', disabled: true }) && !selectable({ info: ['A', 'b'] }) && selectable({ label: 'X' }));
+});
 
-  const n = new Menu('main', ctx({ lensOk: false }));
-  choose(n, 'OPTIONS'); choose(n, 'VIDEO');
-  const lens = n.page.items[0];
-  assert.equal(selected(n), 'SCREEN SHAKE', 'the disabled lens is not the default');
-  assert.ok(lens.disabled && lens.note, 'greyed, with a word why');
-  assert.equal(lens.value, false, 'and shown off, as it is');
-  n.up();
-  assert.equal(selected(n), 'AIM MARK', 'up skips it and wraps');
-  n.hover(0);
-  assert.equal(selected(n), 'AIM MARK', 'nor can the mouse select it');
-  assert.equal(n.click(0), null);
+test('menu: VIDEO has a QUALITY row of four values, walked by left / right / Enter / a click, AUTO showing its level', () => {
+  const c = ctx(), m = new Menu('main', c);
+  choose(m, 'OPTIONS'); choose(m, 'VIDEO');
+  const row = () => m.page.items[0];
+  assert.equal(selected(m), 'QUALITY');
+  assert.deepEqual(row().options, ['auto', 'low', 'medium', 'high']);
+  assert.deepEqual([row().choice, row().value, row().show], ['quality', 'auto', 'AUTO (HIGH)']);
+  c.settings.autoQuality = 'medium';
+  assert.equal(row().show, 'AUTO (MEDIUM)', 'the level AUTO chose is said beside it');
+  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'quality', value: 'low' });
+  assert.equal(row().show, 'LOW');
+  assert.deepEqual(apply(c, m.activate()), { type: 'set', key: 'quality', value: 'medium' });
+  assert.deepEqual(apply(c, m.click(0)), { type: 'set', key: 'quality', value: 'high' });
+  assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'quality', value: 'auto' }, 'round again');
+  assert.deepEqual(apply(c, m.left()), { type: 'set', key: 'quality', value: 'high' }, 'and the other way');
+  assert.equal(m.page.id, 'video', 'LEFT changes the row: the focus stays on the sheet');
 });
 
 test('menu: the levels page lists the campaign with best results; a locked level is seen, never started', () => {
@@ -348,7 +356,7 @@ test('menu: no AIM style line anywhere (F7 alone cycles it); AIM MARK is a toggl
   for (const root of ['main', 'pause']) {
     const c = ctx(), m = new Menu(root, c);
     choose(m, 'OPTIONS');
-    for (const id of ['audio', 'video', 'controls', 'game']) assert.ok(!m.pageOf(id).items.some((it) => it.label === 'AIM' || it.choice), `${id}: no AIM`);
+    for (const id of ['audio', 'video', 'controls', 'game']) assert.ok(!m.pageOf(id).items.some((it) => it.label === 'AIM' || it.choice === 'aim'), `${id}: no AIM`);
     choose(m, 'VIDEO');
     const i = m.page.items.findIndex((it) => it.label === 'AIM MARK');
     assert.equal(m.page.items[i].toggle, 'aimMark');

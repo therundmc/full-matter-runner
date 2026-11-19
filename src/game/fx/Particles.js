@@ -3,6 +3,7 @@ import { rand, randi, pick, chance, spread } from '../../engine/math.js';
 import { silhouette, sw, sh } from '../../engine/Assets.js';
 import { RUNS } from '../data/wounds.js';
 import { run, faceNormal, shutBetween } from './Spatter.js';
+import { quality } from '../systems/Quality.js';
 
 // Lightweight non-physics particles. Particles with a height (z) fall and stamp decals when they land.
 // FLOAT: stuffing / feathers / paper drifting down slowly; DUST: clouds that hang and settle; DROP: liquid;
@@ -40,9 +41,10 @@ export default class Particles {
     return p;
   }
 
-  // the list back to MAX_PARTICLES, the oldest let go (blood among them landing where it is rather than lost)
+  // the list back to MAX_PARTICLES (the QUALITY option's share of it), the oldest let go (blood among them landing
+  // where it is rather than lost)
   trim() {
-    const list = this.list, over = list.length - MAX_PARTICLES;
+    const list = this.list, over = list.length - Math.round(MAX_PARTICLES * quality().particles);
     if (over <= 0) return;
     for (let i = 0; i < over; i++) if (list[i].type === P.BLOOD) this.world.decals.stampBlood(list[i].x, list[i].y, list[i].size * 0.8);
     list.splice(0, over);

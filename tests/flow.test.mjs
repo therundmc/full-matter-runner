@@ -45,7 +45,7 @@ test('input: holdMouse keeps a button still down from reading as down until it i
 test('game: the canvas is oversized for the lens only while the lens is on', () => {
   const fit = (ok, lensOn) => Game.prototype.fit.call({ post: ok ? { ok: true } : null, lensOn, wheel: false }, 290, 1080);
   assert.deepEqual(fit(true, true), fitView(290, 1080, true, false));
-  assert.deepEqual(fit(true, false), fitView(290, 1080, false, false), 'LENS OFF (or F6): the window\'s size');
+  assert.deepEqual(fit(true, false), fitView(290, 1080, false, false), 'F6 (the developer\'s): the window\'s size');
   assert.deepEqual(fit(false, true), fitView(290, 1080, false, false), 'no lens to be had');
   assert.equal(fit(true, false).ss, 1);
 });

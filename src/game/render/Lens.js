@@ -18,6 +18,7 @@
 //   page                 a comic page covers the screen (the opening, the leap out of the tutorial, a level's closing
 //                        page): nothing of the world reaches the picture, and what it left in the lens is dropped
 import { POST } from '../data/post.js';
+import { quality } from '../systems/Quality.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const ease = (from, to, rate, dt) => from + (to - from) * (1 - Math.exp(-rate * dt));
@@ -27,6 +28,7 @@ export default class Lens {
   constructor(cfg = POST) {
     this.cfg = cfg;
     this.grade = copyGrade(cfg.grades.menu);
+    this.noRays = { ...cfg.rays, strength: 0 }; // the shafts when the QUALITY option leaves them out
     this.edge = cfg.focus.edge; // soft edges, 0..1
     this.blur = 0;              // the whole picture soft (menus), 0..1
     this.smear = { x: 0, y: 0 };
@@ -226,8 +228,9 @@ export default class Lens {
       put(waves, i - w0, w.x, w.y, w.t * k.speed, k.bend * life * Math.sqrt(life));
     }
 
-    const heat = this.slots.heat.fill(0), HB = c.heat.blast;
-    let n = 0;
+    // (the QUALITY option: no shimmer, and the lens' glow and shafts not run at all: PostGL)
+    const Q = quality(), heat = this.slots.heat.fill(0), HB = c.heat.blast;
+    let n = Q.shimmer ? 0 : c.heat.max;
     for (const e of this.embers) if (n < c.heat.max) put(heat, n++, e.x, e.y, (HB.r * v.scale) / H, HB.k * (1 - e.t / HB.life));
     for (const h of world && v.heat || []) if (n < c.heat.max) put(heat, n++, h.x, h.y, (c.heat[h.kind].r * v.scale) / H, c.heat[h.kind].k);
 
@@ -258,7 +261,7 @@ export default class Lens {
         len: D.len, rows, flick: D.flick, mix: D.mix, pull: D.pull, split: D.split * px, dark: D.dark, lines: D.lines,
       },
       edge: this.edge, blur: this.blur,
-      glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights, tone: c.tone,
+      glow: { ...c.glow, strength: Q.glow ? c.glow.strength + R.glow * r : 0 }, rays: Q.glow && Q.rays ? c.rays : this.noRays, lights, tone: c.tone,
       grade: g,
       curve: flat ? 0 : t.curve, scan: flat ? 0 : t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
       vignette: t.vignette + R.vignette * r + this.close,

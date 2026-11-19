@@ -11,9 +11,10 @@
 // - soot: what it takes off whatever the light (black smoke is black in the dark too).
 // The threads of the cigarettes, butts and hot barrels are drawn with the scene, before the light, a world pixel at
 // a time.
-import { TILE } from '../Config.js';
+import { TILE, LIGHTING } from '../Config.js';
 import { SMOKE, RAIN } from '../data/atmosphere.js';
 import { shown } from '../fx/Particles.js';
+import { quality } from '../systems/Quality.js';
 
 function canvas(w, h) {
   const c = document.createElement('canvas');
@@ -113,8 +114,11 @@ export default class SmokeArt {
     const first = !this.warmed;
     if ((!act.length && !mist && !first) || !lighting.lm) return;
     this.warmed = true;
-    // the buffers are the light map's size (it only grows: Lighting.setView), the part in use its part in use, TW x TH
-    const lm = lighting.lm, { x0, y0, w: vw, h: vh } = lighting.view, TW = lighting.tw, TH = lighting.th;
+    // the buffers are the light map's size (it only grows: Lighting.setView), the part in use TW x TH
+    // (its own grain: the QUALITY option's share of the full light map's texels, whatever the light map's own is;
+    // LW x LH: the light map's part in use, laid over ours)
+    const lm = lighting.lm, { x0, y0, w: vw, h: vh } = lighting.view, LW = lighting.tw, LH = lighting.th;
+    const grain = LIGHTING.scale * quality().smoke, TW = Math.min(lm.width, Math.round(vw * grain)), TH = Math.min(lm.height, Math.round(vh * grain));
     if (!this.glow || this.glow.c.width !== lm.width || this.glow.c.height !== lm.height) {
       this.dispose();
       const CW = lm.width, CH = lm.height;
@@ -146,7 +150,7 @@ export default class SmokeArt {
       const v = this.veil.c.getContext('2d');
       v.putImageData(this.veil.img, 0, 0, 0, 0, TW, TH);
       v.globalCompositeOperation = 'multiply';
-      v.drawImage(lm, 0, 0, TW, TH, 0, 0, TW, TH);
+      v.drawImage(lm, 0, 0, LW, LH, 0, 0, TW, TH);
       v.globalCompositeOperation = 'difference';
       v.fillStyle = '#fff';
       v.fillRect(0, 0, TW, TH);
@@ -164,14 +168,14 @@ export default class SmokeArt {
     const g = this.glow.c.getContext('2d');
     g.putImageData(this.glow.img, 0, 0, 0, 0, TW, TH);
     g.globalCompositeOperation = 'multiply';
-    g.drawImage(lm, 0, 0, TW, TH, 0, 0, TW, TH);
+    g.drawImage(lm, 0, 0, LW, LH, 0, 0, TW, TH);
     if (got.pale || first) {
       this.pale.c.getContext('2d').putImageData(this.pale.img, 0, 0, 0, 0, TW, TH);
       g.globalCompositeOperation = 'lighter';
       g.drawImage(this.pale.c, 0, 0, TW, TH, 0, 0, TW, TH);
       g.globalCompositeOperation = 'multiply';
     }
-    g.drawImage(lm, 0, 0, TW, TH, 0, 0, TW, TH);
+    g.drawImage(lm, 0, 0, LW, LH, 0, 0, TW, TH);
     g.globalCompositeOperation = 'source-over';
     ctx.globalCompositeOperation = 'screen';
     ctx.drawImage(this.glow.c, 0, 0, TW, TH, x0, y0, vw, vh);

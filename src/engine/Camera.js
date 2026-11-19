@@ -14,12 +14,19 @@ export const VIEW = 290;
 //   lands on px of the screen
 //   lens (a last pass that can bring the picture down to the window): the scene at the whole zoom of the usual view
 //   (a sprite always the same number of px) on a canvas as large as that takes: the view is `view` world px high
-//   whatever the window's size
+//   whatever the window's size. `cap` draws fewer px (the QUALITY option): { ss: the most the scene may be larger
+//   than the window (over it: one whole zoom less, the scene then smaller than the window and brought UP to it),
+//   zoom: the largest whole zoom }
 //   neither: the canvas is the window and the zoom the nearest whole one (a taller view than the usual one: the
 //   largest that shows all of it)
-export function fitView(view, h, lens = false, pixel = false) {
+export function fitView(view, h, lens = false, pixel = false, cap = null) {
   if (pixel) return { ss: 1, zoom: Math.max(1, Math.round(h / view)) };
-  if (lens) { const zoom = Math.max(1, Math.ceil(h / VIEW)); return { ss: (view * zoom) / h, zoom }; }
+  if (lens) {
+    let zoom = Math.max(1, Math.ceil(h / VIEW));
+    if (cap && (VIEW * zoom) / h > cap.ss + 1e-9) zoom--;
+    zoom = Math.max(1, Math.min(zoom, cap ? cap.zoom : Infinity));
+    return { ss: (view * zoom) / h, zoom };
+  }
   return { ss: 1, zoom: view === VIEW ? Math.max(1, Math.round(h / VIEW)) : Math.max(1, Math.floor(h / view)) };
 }
 

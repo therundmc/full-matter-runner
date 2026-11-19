@@ -1,17 +1,20 @@
 // Player settings, kept in localStorage. DOM-free like Records.js: the storage is injectable and every access is
 // guarded since storage can be missing, full or forbidden.
 //   master, music, sfx, ambience  volumes, 0..1 (sfx = effects, ambience = the beds of the night)
-//   lens                the WebGL last pass of the picture on (render/PostGL.js)
+//   quality             the QUALITY option: 'auto' | 'low' | 'medium' | 'high' (data/quality.js)
+//   autoQuality         the level AUTO settled on, kept from one session to the next (systems/Quality.js)
 //   shake               how much the camera shakes, 0..1 (Camera.shakeScale)
 //   rumble              how hard the gamepad rumbles, 0..1 (the VIBRATION option, systems/Rumble.js; 0 = off)
 //   fullscreen          the game wants the whole screen (re-entered at the first key or click of a session)
 //   aim                 how the aim is shown: one of data/aim.js AIM_STYLES (a choice: any other value is the default)
 //   aimMark             LOCK's chevron on the floor along the aim (the AIM MARK option, render/AimArt.js), off by default
+// (an old save's `lens` is not read any more: the lens is always on where it can be, F6 is the developer's)
 import { AIM_STYLES } from '../data/aim.js';
+import { QUALITY_CHOICES, QUALITY_LEVELS } from '../data/quality.js';
 
 const KEY = 'fmr.settings.v1';
-const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
-const CHOICES = { aim: AIM_STYLES };
+const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, quality: 'auto', autoQuality: 'high', shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
+const CHOICES = { aim: AIM_STYLES, quality: QUALITY_CHOICES, autoQuality: QUALITY_LEVELS };
 
 function defaultStorage() {
   try { return globalThis.localStorage || null; } catch { return null; }

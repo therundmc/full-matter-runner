@@ -3,6 +3,7 @@ import { loadAssets } from '../engine/Assets.js';
 import { clamp, lerp, angDiff } from '../engine/math.js';
 import Input from '../engine/Input.js';
 import Camera, { VIEW, fitView } from '../engine/Camera.js';
+import Interp, { StepClock } from '../engine/Interp.js';
 import Audio from '../audio/Audio.js';
 import Music from '../audio/Music.js';
 import { MENU_TRACK, trackOf } from '../audio/tracks/index.js';
@@ -46,6 +47,7 @@ import { cuesOn } from './render/Readability.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
 import { POST } from './data/post.js';
+import { quality, setQuality, levelOf, QualityWatch } from './systems/Quality.js';
 import { devMode, devParam, DEV_KEYS } from './data/build.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
@@ -105,7 +107,8 @@ export default class Game {
     this.stateT = 0;
     this.time = 0;
     this.world = null;
-    this.acc = 0;
+    this.clock = new StepClock(FIXED_DT); // the fixed step's accumulator (engine/Interp.js)
+    this.interp = new Interp();        // the world drawn between its last two steps: smooth on a 120 / 144 Hz screen
     this.hitstop = 0;
     this.timeScale = 1;
     this.slow = null;
@@ -131,7 +134,7 @@ export default class Game {
     this.lens = new Lens();            // what the last pass of the picture does this frame
     this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
     if (this.post) this.post.onLost = () => this.resize(); // the card dropped it: the canvas back to the window's size
-    this.lensOn = true;                // the VIDEO option; F6 flips it for the session, to compare
+    this.lensOn = true;                // always, where it can be had; F6 (the developer's) flips it to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
     this.aimNote = 0;                  // ... and the F7 one (the aim's style)
     // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
@@ -139,6 +142,8 @@ export default class Game {
     if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
     // the kill cam (systems/KillCam.js), but for ?killcam=off (a developer's switch, to compare)
     this.killCamOn = killcamOn(devParam('killcam'));
+    // the picture between two steps, but for ?interp=off (a developer's switch, to compare: drawn as stepped)
+    this.smooth = devParam('interp') !== 'off';
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
@@ -149,15 +154,16 @@ export default class Game {
     this.fullAsk = null;                      // what setFullscreen asked, until the browser answers
     this.settings.fullscreen = !!document.fullscreenElement;
     document.addEventListener('fullscreenchange', () => this.onFullscreen(!!document.fullscreenElement));
-    for (const k of [...VOLUMES, 'lens', 'shake', 'rumble']) this.applySetting(k);
+    this.watch = new QualityWatch(this.settings.autoQuality); // AUTO's eye on the frame time (systems/Quality.js)
+    for (const k of [...VOLUMES, 'quality', 'shake', 'rumble']) this.applySetting(k);
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
 
   // The picture for a view `view` world px high in a window h device px high: { ss: scene px a window px, zoom }
   // (engine/Camera.js fitView: on foot the lens brings a larger scene down to the window; at the wheel the scene is
-  // the window, at a whole zoom, and the lens scales nothing)
-  fit(view, h) { return fitView(view, h, !!this.post?.ok && this.lensOn, this.wheel); }
+  // the window, at a whole zoom, and the lens scales nothing; the QUALITY option draws fewer px on foot)
+  fit(view, h) { return fitView(view, h, !!this.post?.ok && this.lensOn, this.wheel, quality()); }
 
   resize() {
     const dpr = window.devicePixelRatio || 1, w = Math.floor(window.innerWidth * dpr), h = Math.floor(window.innerHeight * dpr);
@@ -203,9 +209,28 @@ export default class Game {
   applySetting(key) {
     const v = this.settings[key];
     if (VOLUMES.includes(key)) Audio.setVolume(key, v);
-    else if (key === 'lens') { this.lensOn = v; this.post?.show(v); this.resize(); } // (the canvas' size goes with it: fit)
+    else if (key === 'quality') this.applyQuality();
     else if (key === 'shake') this.camera.shakeScale = v;
     else if (key === 'rumble') this.rumble.setScale(v);
+  }
+
+  // The QUALITY option put in force (data/quality.js): what the renderers read from now on, and the scene's size
+  // with it (fit). AUTO goes on from the level it had settled on.
+  applyQuality() {
+    this.watch.level = setQuality(levelOf(this.settings)).level;
+    this.watch.rest();
+    this.resize();
+  }
+
+  // AUTO: the frame's real time (ms) told to its watch, in play only (no hit-stop, no held beat); a level down is
+  // put in force at once and kept for the next session
+  watchPace(ms) {
+    if (this.settings.quality !== 'auto') return;
+    const to = this.watch.frame(ms, this.state === 'play' && !!this.world && !this.stopped && !(this.hitstop > 0));
+    if (!to) return;
+    this.settings.autoQuality = to;
+    this.applyQuality();
+    this.save();
   }
 
   // the aim's settings as the world reads them: its style (render/AimArt.js, Player.startLunge's LOCK) and LOCK's floor chevron
@@ -218,6 +243,7 @@ export default class Game {
   setSetting(key, value, save = true) {
     if (key === 'fullscreen') { this.setFullscreen(value); return; } // the setting follows fullscreenchange
     if (this.settings[key] === value) return;
+    if (key === 'quality' && value === 'auto') this.settings.autoQuality = 'high'; // chosen again: it finds its level anew
     this.settings[key] = value;
     this.applySetting(key);
     if (save) this.save();
@@ -253,7 +279,7 @@ export default class Game {
   firstLevel() { return this.campaign()[0]?.id || Object.keys(LEVELS)[0]; }
 
   menuContext() {
-    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok, device: this.input.device,
+    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), device: this.input.device,
       rumbleOk: !this.input.padConnected || this.input.canRumble, dead: this.pausedFrom?.state === 'dead' };
   }
 
@@ -314,7 +340,9 @@ export default class Game {
     const z0 = this.camera.zoom * this.camera.scale, fr = dr && dr.frame(this.camera.w / z0, z0);
     const at = dr ? this.direction.aim(fr.x, fr.y) : p;
     this.camera.snap(at.x, at.y);
-    this.acc = 0;
+    this.clock.reset();
+    this.interp.still();
+    this.watch.rest();
     this.clearScreen();
     this.clearedT = 0;
     this.padAimAt = null;
@@ -486,8 +514,8 @@ export default class Game {
   // ---------------- loop ----------------
   loop(ts) {
     requestAnimationFrame(this.loop);
-    const now = ts / 1000;
-    const dt = Math.min(0.1, this.last ? now - this.last : 0);
+    const now = ts / 1000, real = this.last ? now - this.last : 0;
+    const dt = Math.min(0.1, real);
     this.last = now;
     this.time += dt;
     this.stateT += dt;
@@ -496,6 +524,7 @@ export default class Game {
     const t1 = performance.now();
     this.render();
     this.sample(dt, t1 - t0, performance.now() - t1);
+    this.watchPace(real * 1000);
   }
 
   // rolling frame stats, refreshed twice a second into this.perf (shown by the F4 overlay)
@@ -535,7 +564,9 @@ export default class Game {
     this.paged = page;
     // debug: the picture with / without the lens
     if (inp.hit('F6') && this.post) {
-      this.setSetting('lens', !this.lensOn); // (the VIDEO page's LENS row follows)
+      this.lensOn = !this.lensOn;
+      this.post.show(this.lensOn);
+      this.resize(); // (the canvas' size goes with it: fit)
       this.lensNote = this.time + 1.6;
     }
     // debug: the next way of showing the aim (data/aim.js; the setting `aim` keeps it, no menu row)
@@ -681,23 +712,22 @@ export default class Game {
     Music.setCombo(this.world.scoring.combo);
 
     if (this.stopped) {
-      // a lesson's beat: the world is not stepped at all (a time scale of 0 is no step: Matter divides by it)
-      this.acc = 0;
+      // a lesson's beat: the world is not stepped at all (a time scale of 0 is no step: Matter divides by it), and
+      // drawn as it stands
+      this.clock.reset();
+      this.interp.still();
     } else if (this.hitstop > 0) {
       this.hitstop -= dt;
     } else {
-      this.acc += dt;
-      let steps = 0;
-      while (this.acc >= FIXED_DT && steps < 5) {
-        const aim = this.camera.screenToWorld(inp.mouse.x, inp.mouse.y);
+      // the fixed step; what moves is noted before each one, and drawn between the last two (render, updateCamera)
+      this.clock.run(dt, () => {
+        const aim = this.camera.screenToWorld(inp.mouse.x, inp.mouse.y), w = this.world;
         if (!outro) this.debugKeys(inp, aim);
-        this.world.step(FIXED_DT * this.timeScale, inp, aim);
-        this.acc -= FIXED_DT;
-        steps++;
+        if (this.smooth) this.interp.capture(w.physics.bodies(), w.movers());
+        w.step(FIXED_DT * this.timeScale, inp, aim);
         inp.consume();
-        if (this.hitstop > 0) break;
-      }
-      if (steps >= 5) this.acc = 0;
+        return !(this.hitstop > 0);
+      });
     }
     this.updateCamera(dt);
     // thick smoke about him closes the view in, slowly
@@ -896,10 +926,16 @@ export default class Game {
     kc.update(dt, { staged: this.state !== 'play' || !!this.stagedShot(), view: { x: c.x, y: c.y, hw: c.w / z / 2, hh: c.h / z / 2 } });
   }
 
+  // The camera follows the world as it is drawn: between its last two steps (engine/Interp.js), the real places put
+  // back at once
   updateCamera(dt) {
-    const w = this.world;
-    if (!w) return;
-    const p = w.player;
+    if (!this.world) return;
+    this.interp.apply(this.clock.alpha);
+    try { this.aimCamera(dt); } finally { this.interp.restore(); }
+  }
+
+  aimCamera(dt) {
+    const w = this.world, p = w.player;
     const aim = this.camera.screenToWorld(this.input.mouse.x, this.input.mouse.y);
     const k = this.input.down('ShiftLeft') || this.input.down('ShiftRight') ? PLAYER.lookAheadFar : PLAYER.lookAhead;
     let ox = (aim.x - p.x) * k, oy = (aim.y - p.y) * k;
@@ -946,7 +982,14 @@ export default class Game {
   // The scene goes on the game's canvas. With the lens (render/PostGL.js) that canvas is only its source: the lens
   // puts it on screen, and what must stay sharp (flash, HUD, screens, cursor) is drawn on a canvas of its own above.
   // Without it everything lands on the game's canvas, graded in 2D, as before.
+  // The world is drawn between its last two steps (engine/Interp.js): the in-between places are in its bodies for
+  // the time of the draw only.
   render() {
+    if (this.world) this.interp.apply(this.clock.alpha);
+    try { this.paint(); } finally { this.interp.restore(); }
+  }
+
+  paint() {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height, t = this.time;
     const post = this.post?.ok && this.lensOn ? this.post : null, o = post ? post.octx : ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
