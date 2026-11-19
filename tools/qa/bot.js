@@ -1715,7 +1715,9 @@
   // somebody or loose furniture shoving it, rounds flying)
   function corpseDrift(w) {
     const cars = w.props.filter((v) => v.isVehicle && !v.dead);
-    const loose = w.props.filter((v) => !v.isVehicle && !v.dead && v.body && !v.body.isStatic)
+    // (and what a blast sends flying well beyond its own reach: its debris, a weapon on the floor: the tutorial's
+    // gas bottle clears a whole corridor onto the men lying in it)
+    const loose = [...w.props.filter((v) => !v.isVehicle && !v.dead && !v.body?.isStatic), ...(w.debris || []), ...(w.items || [])].filter((v) => v.body && !v.dead)
       .map((v) => ({ bounds: v.body.bounds, speed: Matter.Body.getSpeed(v.body) })).filter((v) => v.speed > 0.3)
       .concat(w.doors.filter((d) => d.body).map((d) => ({ bounds: d.body.bounds, press: true })));
     for (const c of w.corpses) {
