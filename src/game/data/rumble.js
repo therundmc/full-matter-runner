@@ -18,6 +18,7 @@ export const RUMBLE = {
   hit: { strong: 0.35, weak: 0.5, ms: 90 },        // his blow lands on a man (a punch, a club, a blade), by its power
   kill: { strong: 0.75, weak: 0.6, ms: 140 },      // ... and a man of his goes down (any weapon): the heavier punch
   finisher: { strong: 0.85, weak: 0.6, ms: 170 },  // a takedown's or a finisher's blow (by its power), its last beat
+  thrown: { strong: 0.5, weak: 0.8, ms: 120 },     // a thing he threw puts a man down: the sharp knock of it
   // the kill cam's heaviest beats (systems/KillCam.js 'killcam', by its tier): a low swell under the slow motion
   killcam: { exec: { strong: 0.4, weak: 0.15, ms: 200 }, end: { strong: 0.7, weak: 0.3, ms: 320 } },
   death: { strong: 1, weak: 0.8, ms: 600 },        // he is hit: one hit kills, the long strong one

@@ -69,6 +69,7 @@ import Weather from '../systems/Weather.js';
 import Smoke from '../systems/Smoke.js';
 import Director from '../ai/Director.js';
 import BossStage from '../systems/BossStage.js';
+import ThrowBeat from '../systems/ThrowBeat.js';
 import Ambient from '../systems/Ambient.js';
 import { OUTRO, getawayPath, driveStep, spinK, keyK, squatAt, crossed, motorState, fadeAlpha } from '../systems/Outro.js';
 import { SEAT, TRAVERSE } from '../data/feel.js';
@@ -139,6 +140,7 @@ export default class World {
     listenMoments(this);                          // a multi-kill's slow motion and hit-stop
     this.killCam = new KillCam(this);             // the camera / a comic panel on his kills (after Scoring: it reads the chain)
     this.bossStage = new BossStage(this);         // the camera on a boss's beats (advanced by Game on the real clock)
+    this.throwBeat = new ThrowBeat(this);         // a throw's follow and its impact beat (likewise)
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // the liquid on the floor: spills, blood, the rain's puddles, footprints
     this.threats = new Threats(this); // which unseen guards the player can know about (HUD markers)

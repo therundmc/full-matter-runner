@@ -4,6 +4,9 @@
 // one for another, needs nothing. update(dt) once a frame gives what the pads hold and what was just pressed.
 // rumble() shakes the pad last touched (the one in hand), through its vibrationActuator ('dual-rumble') or, failing
 // that, its hapticActuators' pulse; feature-detected, it never throws (no pad, no actuator, a browser that refuses).
+// The pad is looked up afresh at the call by its index (some browsers hand out snapshots that go stale); with none
+// touched yet, the first connected one that can rumble. `canRumble`: a connected pad has an actuator this browser
+// drives (Chrome / Edge: vibrationActuator; Firefox has none).
 
 // standard mapping: button index -> name
 export const BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right', 'Home'];
@@ -37,6 +40,15 @@ export function stickDir(x, y, at = PAD.navAt) {
   return Math.abs(x) > Math.abs(y) ? (x > 0 ? 'Right' : 'Left') : (y > 0 ? 'Down' : 'Up');
 }
 
+// the pad's way to rumble: 'dual' (vibrationActuator.playEffect), 'pulse' (hapticActuators[0].pulse) or null
+function actuator(p) {
+  try {
+    if (typeof p?.vibrationActuator?.playEffect === 'function') return 'dual';
+    if (typeof p?.hapticActuators?.[0]?.pulse === 'function') return 'pulse';
+  } catch { /* a getter that throws: none */ }
+  return null;
+}
+
 const value = (b) => (typeof b === 'number' ? b : b ? (b.value || (b.pressed ? 1 : 0)) : 0);
 
 export default class Gamepad {
@@ -48,6 +60,7 @@ export default class Gamepad {
     this.navT = {};            // direction -> s it has been held (for the repeat)
     this.pad = null;           // the pad last touched (a press or a stick out): the one rumble() shakes
     this.padIndex = -1;        // ... its index, to find it again in a fresh list (some browsers hand out snapshots)
+    this.canRumble = false;    // a connected pad (the one in hand when there is one) can be rumbled
   }
 
   // reads the pads. Returns { connected, held, pressed: Set of names pressed since the last update, nav: Set of
@@ -79,6 +92,7 @@ export default class Gamepad {
     });
     // the pad in hand: the one touched now, else the same one as before (its fresh snapshot), else none
     if (touched) { this.pad = touched.p; this.padIndex = touched.index; } else this.pad = inUse;
+    this.canRumble = this.pad ? !!actuator(this.pad) : list.some((p) => p && p.connected !== false && actuator(p));
     const pressed = new Set([...held].filter((n) => !this.held.has(n)));
     this.held = held;
     this.connected = any;
@@ -99,26 +113,38 @@ export default class Gamepad {
     return { connected: any, held, pressed, nav, left, right, active };
   }
 
+  // the pad to shake now: the one in hand, read afresh from the browser's list by its index (its stored snapshot
+  // failing that); none touched yet, the first connected one that can rumble
+  target() {
+    let list = [];
+    try { list = Array.from(this.getPads() || []); } catch { list = []; }
+    const live = (p) => p && p.connected !== false;
+    if (this.padIndex >= 0) {
+      const fresh = list.find((p, k) => live(p) && (p.index ?? k) === this.padIndex);
+      return fresh || this.pad;
+    }
+    return list.find((p) => live(p) && actuator(p)) || null;
+  }
+
   // shakes the pad in hand: { strong, weak } 0..1 (the heavy and the light motor), ms. False when nothing could.
   rumble({ strong = 0, weak = 0, ms = 0 } = {}) {
-    const p = this.pad;
+    const p = this.target();
     if (!p) return false;
     const s = clamp01(strong), w = clamp01(weak), duration = Math.max(0, Math.round(ms));
     try {
-      const act = p.vibrationActuator;
-      if (typeof act?.playEffect === 'function') {
-        quiet(act.playEffect('dual-rumble', { startDelay: 0, duration, strongMagnitude: s, weakMagnitude: w }));
+      const how = actuator(p);
+      if (how === 'dual') {
+        quiet(p.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration, strongMagnitude: s, weakMagnitude: w }));
         return true;
       }
-      const h = p.hapticActuators?.[0];
-      if (typeof h?.pulse === 'function') { quiet(h.pulse(Math.max(s, w), duration)); return true; }
+      if (how === 'pulse') { quiet(p.hapticActuators[0].pulse(Math.max(s, w), duration)); return true; }
     } catch { /* refused: nothing felt */ }
     return false;
   }
 
   // stops what the pad in hand plays
   stopRumble() {
-    const p = this.pad;
+    const p = this.target();
     if (!p) return false;
     try {
       const act = p.vibrationActuator;

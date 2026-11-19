@@ -32,6 +32,10 @@ export const SHOTS = {
   // view drawn from ahead of the car onto him; then back out to the drive's view
   grab: { zoom: 2.5, ease: 7, pull: 0.85, look: 0 },
   grabOut: { zoom: 1, ease: 3.5, pull: 0, look: 0 },
+  // a throw of his (systems/ThrowBeat.js): the thing in flight followed over its last stretch to the man on its line,
+  // then a punch-in on where it struck him, he in the picture
+  throwFollow: { zoom: 1.15, ease: 8, pull: 0.45, look: 0.3, keep: 0.8 },
+  throwHit: { zoom: 1.3, ease: 12, pull: 0.55, look: 0, keep: 0.8 },
 };
 export const DIRECTION = {
   focus: 3.2,              // 1/s the view goes to (and comes back from) what a shot looks at

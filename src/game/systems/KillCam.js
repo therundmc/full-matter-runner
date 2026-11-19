@@ -8,7 +8,8 @@
 //   mode 'panel'  nothing on the camera or the clock: a beat opens a comic panel (`panelView`, drawn by
 //                 render/KillPanel.js off its own footage), a strip of three for `exec` and `end`.
 //   mode 'off'    nothing.
-// Never at a wheel, in a staged shot (the tutorial's, a boss's, the opening's), nor once he is dead. It tells
+// Never at a wheel, in a staged shot (the tutorial's, a boss's, the opening's, a throw's), nor once he is dead. A
+// thrown kill is ThrowBeat's in the zoom version (no beat here), a panel like any violent kill in the other. It tells
 // 'killcam' { tier, mode, x, y } when a beat opens (the pad's rumble). Advanced by Game on the REAL clock. DOM-free.
 import { KILLCAM } from '../data/killcam.js';
 import { lastInSight, slowAtLeast } from '../fx/Impact.js';
@@ -49,6 +50,9 @@ export default class KillCam {
     // (Scoring tells it from inside its own 'kill' listener, before ours: built after it, we get the kill next)
     ev.on('multiKill', (e) => { this.multi = cfg.multi.includes(e.tag); });
     ev.on('chainEnd', (e) => this.onChainEnd(e));
+    // a thing he threw put a man down: that beat is systems/ThrowBeat.js's (its own hit-stop, slow motion and shot),
+    // the zoom lets go of the camera at once
+    ev.on('thrownHit', ({ thrower }) => { if (thrower?.isPlayer && this.mode === 'zoom') this.beat = null; });
   }
 
   // in this version the kills' own slow motions (MOMENTS.lastInRoom, MOMENTS.multi) stay off: play never slows
@@ -73,6 +77,9 @@ export default class KillCam {
     if (multi || (last && !!e.killer?.isPlayer)) tier = 'end';
     else if (!tier && n >= this.cfg.chain.from) tier = 'combo';
     this.lastKill = { x: victim.x, y: victim.y, n, end: false, cause: e.cause, label: e.how?.finisher || victim.held ? e.how?.label : null };
+    // a thrown kill (how.thrown) in the zoom version: ThrowBeat has it, here it only counts for the chain (its end
+    // may still come back to this body); the panels show it like any violent kill
+    if (e.how?.thrown && this.mode === 'zoom') return;
     if (tier && this.fire(tier, victim, n) && tier === 'end') this.lastKill.end = true;
   }
 

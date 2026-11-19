@@ -196,11 +196,21 @@ test('rumble: nothing out of play or without the pad in hand; leaving play stops
   menu.run(DT);
   assert.equal(menu.calls.length, 1);
   assert.equal(menu.calls[0].strong, 0);
-  // the VIBRATION slider's sample, at the strength just set
-  const sample = rig({ live: false, scale: 0.5 });
-  assert.ok(sample.r.tick('sample'));
-  sample.run(DT);
-  close(sample.calls[0].strong, RUMBLE.ui.sample.strong * 0.5, 'the sample at the new strength');
+  // the VIBRATION slider's sample, at the strength just set, told at once to any pad (the mouse may have moved it),
+  // and nothing at 0
+  for (const pad of [true, false]) {
+    const sample = rig({ live: false, pad, scale: 0.5 }), any = [];
+    sample.r.pad.play = (fx, a) => { any.push(a); sample.calls.push(fx); return true; };
+    assert.ok(sample.r.sample());
+    close(sample.calls[0].strong, RUMBLE.ui.sample.strong * 0.5, 'the sample at the new strength');
+    assert.equal(sample.calls[0].ms, RUMBLE.ui.sample.ms);
+    assert.deepEqual(any, [true]);
+    sample.run(0.3);
+    assert.equal(sample.calls.length, 1, 'once, and nothing to stop after');
+  }
+  const off = rig({ live: false, scale: 0 });
+  assert.equal(off.r.sample(), false);
+  assert.equal(off.calls.length, 0);
   // a new level: the old world's events are not felt any more
   const old = rig(), w2 = { events: new EventBus(), player: { x: 0, y: 0 } };
   old.r.bind(w2);

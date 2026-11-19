@@ -29,7 +29,7 @@
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
 - Gamepad (data/controls.js `PAD_BINDINGS`): the fire is on the bumpers (the user's pick): RB attacks / shoots / takes
-  down (RT too, an alias), LB throws / picks up, LT looks further, A acts, X uses, Y reloads, START pauses. Rumble:
+  down (RT too, an alias), LB throws (hold to aim) / picks up, LT looks further, A acts, X uses, Y reloads, START pauses. Rumble:
   systems/Rumble.js from the world's events, effects in data/rumble.js (`RUMBLE`: per gun family, blow, kill,
   finisher, death, blast, door, the car's `ride` beats; `mix`: the strongest per motor, never a drone), in play only
   with the pad in hand, scaled by the VIBRATION option (GAME page, Settings `rumble`).
@@ -97,6 +97,11 @@
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
+- Throwing (data/feel.js `THROW`): right click / LB held winds the throw up (the arm drawn back, a dotted mark on the
+  floor, AimArt `drawThrow`; LOCK pulls it onto its man), let go it flies, a tap is the quick throw; a full one plants
+  a blade, and kills with anything else, a club breaking on him (WeaponItem.shatter, fx/Breakage.js), a gun staying
+  whole (the user's call); a hit that floors
+  or kills has its beat (systems/ThrowBeat.js: hit-stop, slow motion, camera punch-in).
 - Melee weapons are data (`swing`, `heft`, `material`, `thrust`, `snaps`, `finisher`, `wear`, `breaks`): never test
   `=== WEAPONS.bat`. They wear out in BLOWS (`wear`, data/weapons.js `WEAR`: a man 1, a thing 0.25, a whiff 0) and
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
@@ -114,7 +119,7 @@
 - Guards may start bare-handed (level `arms`, levelkit `actor(arms=...)`): their weapon kept somewhere (a bat behind
   a counter, against a wall, the cue), fetched once the fight is on (Enemy.armsDue / armUp, AI.arms), or a brawler
   ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
-- Kill cam (an EXPERIMENT, by the address only: `?killcam=zoom` the default, `panel`, `off`): systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, the comic panels render/KillPanel.js; lab station 27.
+- Kill cam (an EXPERIMENT, by the address only: `?killcam=zoom` the default, `panel`, `off`): systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, the comic panels render/KillPanel.js; lab station 28.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js.
@@ -175,7 +180,9 @@
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
   drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
-  a thing a section, its settings on a sheet of paper beside it), Beats.js (their clocks and sounds, DOM-free),
+  a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
+  step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
+  Beats.js (their clocks and sounds, DOM-free),
   Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
@@ -202,7 +209,7 @@
 - The WebGL last pass, the lens (render/PostGL.js + render/Lens.js): tune in data/post.js, never hard-code. Barely
   there at rest; a KILL is what it underlines; no blur in play. `?post=0` turns it off, F6 toggles it.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; also OPTIONS / GAME / AIM; lab station 23; LOCK's mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / GAME / AIM MARK, Settings `aimMark`; a melee swing turns whole onto the man LOCK holds and steps in, `PLAYER.lunge.lock`). `window.game` in the console.
+  times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; no menu row; lab station 23; LOCK's mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`). `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node
   static server to Python's. Never kill processes you didn't start.
 

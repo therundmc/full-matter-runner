@@ -8,7 +8,9 @@
 import Gamepad from './Gamepad.js';
 
 const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7']);
-const MOUSE_WAKE = 6; // px the mouse must travel to take over from a gamepad (a mouse on the desk drifts)
+// px the mouse must travel to take over from a gamepad, and px a second its travel is forgotten: a mouse on the desk
+// drifts or is brushed (a few px now and then never adds up), a mouse taken up crosses this in a moment
+const MOUSE_WAKE = 24, WAKE_FADE = 60;
 
 export default class Input {
   // pads: the source of the gamepads (navigator.getGamepads by default; a fake one in the tests)
@@ -27,7 +29,7 @@ export default class Input {
     this.stick = { left: null, right: null };
     this.padConnected = false;
     this.padLost = false;                  // the pad in use went away (cleared by whoever reacts to it)
-    this.wake = 0;                         // px the mouse moved since the pad was last touched
+    this.wake = 0;                         // px the mouse moved lately (fading) since the pad was last touched
     this.lastClient = null;
     if (typeof window === 'undefined') return;
 
@@ -42,9 +44,8 @@ export default class Input {
     window.addEventListener('blur', () => { this.keys.clear(); this.mouse.down = [false, false, false]; });
     canvas.addEventListener('mousemove', (e) => {
       const c = this.lastClient;
-      if (c) this.wake += Math.abs(e.clientX - c.x) + Math.abs(e.clientY - c.y);
+      if (c) this.travel(Math.abs(e.clientX - c.x) + Math.abs(e.clientY - c.y));
       this.lastClient = { x: e.clientX, y: e.clientY };
-      if (this.wake > MOUSE_WAKE) this.device = 'kbm';
       if (this.device === 'kbm') this._move(e);
     });
     canvas.addEventListener('mousedown', (e) => {
@@ -63,6 +64,12 @@ export default class Input {
     window.addEventListener('gamepaddisconnected', () => this.poll(0));
   }
 
+  // the mouse moved px: once it adds up to MOUSE_WAKE (fading), the mouse is the device again
+  travel(px) {
+    this.wake += px;
+    if (this.wake > MOUSE_WAKE) this.device = 'kbm';
+  }
+
   _move(e) {
     const r = this.canvas.getBoundingClientRect();
     this.mouse.x = (e.clientX - r.left) * (this.canvas.width / r.width);
@@ -75,6 +82,7 @@ export default class Input {
   // reads the gamepads (once a frame, before anything reads the input)
   poll(dt) {
     const s = this.gamepad.update(dt);
+    this.wake = Math.max(0, this.wake - WAKE_FADE * dt);
     const was = this.padConnected;
     this.padConnected = s.connected;
     if (was && !s.connected && this.device === 'pad') { this.padLost = true; this.device = 'kbm'; }
@@ -101,9 +109,12 @@ export default class Input {
     if (s.active) { this.device = 'pad'; this.wake = 0; }
   }
 
-  // fx: { strong, weak, ms } (engine/Gamepad.js rumble); false when the pad is not the device in use or cannot
-  rumble(fx) { return this.device === 'pad' && this.gamepad.rumble(fx); }
+  // fx: { strong, weak, ms } (engine/Gamepad.js rumble); false when the pad is not the device in use (any: it need
+  // not be, a sample asked from the menu) or cannot
+  rumble(fx, any = false) { return (any || this.device === 'pad') && this.gamepad.rumble(fx); }
   stopRumble() { return this.gamepad.stopRumble(); }
+  // a connected pad can be rumbled by this browser (engine/Gamepad.js canRumble)
+  get canRumble() { return this.gamepad.canRumble; }
 
   down(code) { return this.keys.has(code) || this.padKeys.has(code); }
   hit(code) { return this.pressed.has(code); }

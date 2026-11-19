@@ -57,6 +57,7 @@
   const itemNear = (w, type, at, r) => w.items.find((it) => !it.dead && it.type === type && Math.hypot(it.x - at[0] * TILE, it.y - at[1] * TILE) < r * TILE);
   const TIRE_IRON = [{ trunk: true }, { pick: 'tire_iron', near: [13.5, 24], r: 4, optional: true }];
   const THROW = { steps: [{ pick: 'knife', any: true }], style: 'throw', ok: (w) => w.items.some((it) => !it.dead && it.type === 'knife') };
+  const THROW_HOLD = 0.4; // s a full throw is held (THROW.charge in src/game/data/feel.js, a little over)
   // a device of the level that can be used now (data/devices.js)
   const usable = (kind) => (w, p) => w.uses.spots.some((s) => s.kind === kind && (!s.ok || s.ok(p)));
   const PLANS = {
@@ -848,8 +849,10 @@
           if (d.auto) { inp.mouse.down[0] = true; if (S.clock > B.fireT) { B.fireT = S.clock + 0.4; act('fire (auto)'); } }
           else if (S.clock > B.fireT && aimed) { inp.mouse.clicked[0] = true; inp.mouse.down[0] = true; B.fireT = S.clock + 0.15 + rnd() * 0.25; act('fire'); }
         }
-      } else if (B.style === 'throw' && d.swing === 'blade' && aimed && tdist > 45 && tdist < 170 && !(foe.knocked > 0)) {
-        inp.mouse.clicked[2] = true; act('throw blade');
+      } else if (B.style === 'throw' && d.swing === 'blade' && aimed && tdist > 45 && tdist < 220 && !(foe.knocked > 0)) {
+        // every other blade wound up to a full throw (the right click held THROW_HOLD s, then let go), the others tapped
+        if (p.throwHold) { if (p.throwHold.t < THROW_HOLD) inp.mouse.down[2] = true; else act('throw blade (full)'); }
+        else { inp.mouse.clicked[2] = true; B.throws = (B.throws || 0) + 1; if (B.throws % 2 === 0) inp.mouse.down[2] = true; act('throw blade'); }
       } else if (tdist < reach && !sneaking) { inp.mouse.down[0] = true; act('strike'); }
       if (p.armed && tdist < 220 && tdist > 60 && rnd() < 0.002) { inp.mouse.clicked[2] = true; act('throw weapon'); }
     }

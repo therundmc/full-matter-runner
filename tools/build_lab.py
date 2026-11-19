@@ -32,7 +32,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
         21    X  road: 17 VEHICLES (car, van, leaking car)       X
         25    X  the south sidewalk                               X
         26    X#####.########.#########.######XXXXXXXXXXXXXXXXXXXXX
-        27    X#24 ARCADE#25 LAUNDRY#  26 ARMS  #
+        27    X#24 ARCADE#25 LAUNDRY#  26 ARMS  ##   27 THROW   #
         30    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
@@ -103,11 +103,14 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    gets in (getting out puts it back on the seat); then he drives it as at 19
     23 AIM         a room north of CUEBALL's (cols 64-73, rows 1-5), through a doorway in the east wall of the
                    takedowns room (col 63, row 3): the ways of showing the aim to try, above all with a gamepad
-                   (data/aim.js, render/AimArt.js; F7 cycles them, OPTIONS / GAME / AIM keeps one). Four dummies at
+                   (data/aim.js, render/AimArt.js; F7 cycles them, Settings `aim` keeps one). Four dummies at
                    2, 4, 7 and 9 m, one of them behind a wall's end, a crate in the line of the last; a 1911, a
-                   SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun. The melee lock (LOCK, the
-                   swing turned whole onto the man it holds: systems/Lunge.js): the 2 m man and one more by the bat
-                   (a tire iron on him), a step apart; swing from beyond a takedown's reach (blind dummies)
+                   SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun. The melee lock (LOCK with a
+                   melee weapon: a man in reach is held at the player's side too, he turns onto him before the click
+                   and the swing snaps onto him: systems/AimCue.js meleeLock, systems/Lunge.js): the 2 m man and one
+                   more (a tire iron on him) two steps south of him, across the aisle from the door: stand between
+                   them and aim along it (both at his sides), at one (the other behind); swing from beyond a
+                   takedown's reach (blind dummies)
     24 ARCADE      across the street, south row: a customer playing the arcade cabinet (ai/Pastimes.js arcadeAt: the
                    stick, the buttons, the screen in play; a slap and a coin between two games); a shot sends him off
     25 LAUNDRY     next door: a man doing his washing at a top loader (laundryAt: out of the drum, shaken out, folded,
@@ -116,7 +119,12 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    the wall at the far end of the room, a brawler (fists only); a knife-man (a blade in his pocket,
                    drawn in a moment). A shot or a noise and the doorman runs for his bat, snatches it up and comes;
                    take the bat first and he comes with his fists
-    27 KILL CAM    east of it, same row (cols 34-49): the kill cam (systems/KillCam.js, data/killcam.js; the address
+    27 THROW       next door east: the throw (THROW in data/feel.js; hold the right click / LB to wind it up and aim it,
+                   let go to throw, a tap throws at once): three dummies down the room at 80, 150 and 220 px from the
+                   throwing spot by the door, three knives, a bat, a cue, a tire iron and a 1911 on the floor there; a
+                   full throw plants a knife in the farthest, and kills with anything else, which breaks on him (a bat or
+                   a cue snaps, the iron bends, the gun is wrecked: WeaponItem.shatter); the hit's beat: systems/ThrowBeat.js
+    28 KILL CAM    east again (cols 50-65): the kill cam (systems/KillCam.js, data/killcam.js; the address
                    picks its version: ?level=lab&killcam=zoom | panel | off). By the door a bat, a SUPER 90 and its
                    box, a knife, a tire iron; in the west half three dummies apart to kill each his own way (the
                    heavy stroke, buckshot at arm's length, floored by a slide or a thrown weapon then finished, or
@@ -210,10 +218,14 @@ lv.fill(10, 27, 15, 29, '+')
 lv.put(14, 26, '+')
 lv.fill(17, 27, 31, 29, '.')
 lv.put(24, 26, '.')
-lv.fill(33, 25, 50, 25, 's')               # 27 KILL CAM: the sidewalk goes on east, one more room off it
-lv.fill(33, 26, 50, 29, '#')
-lv.fill(34, 27, 49, 29, '.')
-lv.put(41, 26, '.')
+lv.fill(33, 25, 48, 25, 's')               # 27 THROW: the sidewalk carried on east, a long room off it
+lv.fill(33, 26, 48, 29, '#')
+lv.fill(34, 27, 47, 29, '_')
+lv.put(35, 26, '_')
+lv.fill(49, 25, 66, 25, 's')               # 28 KILL CAM: the sidewalk goes on east, one more room off it
+lv.fill(49, 26, 66, 29, '#')
+lv.fill(50, 27, 65, 29, '.')
+lv.put(57, 26, '.')
 
 # ---------------------------------------------------------------- actors (30 guards)
 lv.actor('@', 27, 9, face=270)
@@ -422,7 +434,7 @@ for (x, y), kind in (((64.6, 1.5), 'pistol'), ((65.4, 1.5), 'shotgun'), ((64.6, 
 lv.actor('n', 64, 5)
 lv.actor('g', 65, 5)
 lv.actor('m', 67, 2, face=180)             # 2 m from the door
-lv.actor('i', 66, 1, face=180)             # by the bat: the melee lock, with the 2 m man
+lv.actor('i', 67, 4, face=180)             # the melee lock: the 2 m man's pair, across the aisle from him
 lv.actor('k', 69, 5, face=180)             # 4 m
 lv.actor('j', 72, 1, face=180)             # 7 m, behind the wall's end
 lv.actor('b', 73, 4, face=180)             # 9 m, a crate in the line
@@ -511,17 +523,32 @@ lv.prop('chair', 25.4, 28.2, 0)
 for x in (20.0, 27.0):
     lv.prop('ceiling_lamp', x, 28.0)
 
-lv.area('27 kill cam: men to kill each his own way, five in a row for a chain')
-lv.paint('label_killcam', 41.5, 25.5)
-for x, kind in ((40.0, 'bat'), (40.7, 'knife'), (42.6, 'shotgun'), (43.3, 'tire_iron')):
+lv.area('27 throw: three dummies down a long room, things to throw at them')
+lv.paint('label_throw', 37.5, 25.5)
+# the throwing spot (35.5, 28.5), under the doorway: the dummies 80, 150 and 220 px east of it, on its row
+for n, d in enumerate((80, 150, 220)):
+    x = 35.5 + d / 32
+    lv.actor('mji'[n], int(x), 28, face=180, at=(x, 28.5))
+for x, kind in ((34.4, 'knife'), (34.9, 'knife'), (35.4, 'knife')):
+    lv.drop(kind, x, 27.5, 0)
+lv.drop('bat', 34.6, 29.4, 0)
+lv.drop('pistol', 35.6, 29.4, 0)
+lv.drop('tire_iron', 36.7, 29.4, 0)
+lv.drop('cue', 37.2, 27.4, 0)
+for x in (37.0, 43.0):
+    lv.prop('ceiling_lamp', x, 28.0)
+
+lv.area('28 kill cam: men to kill each his own way, five in a row for a chain')
+lv.paint('label_killcam', 57.5, 25.5)
+for x, kind in ((56.0, 'bat'), (56.7, 'knife'), (58.6, 'shotgun'), (59.3, 'tire_iron')):
     lv.drop(kind, x, 27.5, 90)
-lv.actor('g', 43, 28)                      # the shotgun's box
-lv.actor('k', 35, 27, face=0)              # the west half: three apart
-lv.actor('b', 37, 29, face=180)            # (his back to the door: a takedown)
-lv.actor('j', 38, 27, face=90)
-for x in range(45, 50):
+lv.actor('g', 59, 28)                      # the shotgun's box
+lv.actor('k', 51, 27, face=0)              # the west half: three apart
+lv.actor('b', 53, 29, face=180)            # (his back to the door: a takedown)
+lv.actor('j', 54, 27, face=90)
+for x in range(61, 66):
     lv.actor('k', x, 28, face=180)         # the east half: five in a row, a step apart
-for x in (37.0, 46.5):
+for x in (53.0, 62.5):
     lv.prop('ceiling_lamp', x, 28.5)
 
 # indirect fill only (no visible source): the glow of the city over the street
@@ -535,7 +562,7 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=44)
+    lv.check(guards=47)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              exit=exit_zone, ambient={'traffic': [], 'walkers': []},
              header=[

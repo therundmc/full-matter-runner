@@ -1,11 +1,13 @@
 // The gamepad's rumble: what the player feels in his hands (data/rumble.js RUMBLE). DOM-free: the pad is injected,
-// { play({ strong, weak, ms }), stop() } (Game: engine/Input.js rumble / stopRumble), and the effects come from the
+// { play({ strong, weak, ms }, any), stop() } (Game: engine/Input.js rumble / stopRumble; any: whatever the device
+// in use, for the VIBRATION option's sample), and the effects come from the
 // world's events (bind):
 //   shot          his own, by the gun's family            blow   his blow on a man (a takedown's, a finisher's)
 //   kill          a man of his down; his own death        finisher   a finisher's last beat
 //   explosion     by its distance to him                  doorBroken   a door burst or torn off near him
 //   killcam       the kill cam's heaviest beats, by tier (systems/KillCam.js)
 //   ride          the van and the getaway: { beat }, one of RUMBLE.ride (systems/Drive.js, Lorries.js, World's outro)
+//   thrownHit     a thing he threw put a man down (entities/WeaponItem.js)
 // Mixing: every effect under way is kept until its end, and the pad plays the strongest of them on each motor (never
 // a sum: two shots at once are one shot), until the first of them ends; a new call only when that mix changes, and
 // MIX.gap s at least between two. When the pad has been rumbling more than MIX.duty of the last MIX.window s, a light
@@ -57,6 +59,7 @@ export default class Rumble {
       else if (isHim(killer)) this.feel(R.kill);
     }));
     ev.on('finisher', mine(({ killer }) => { if (isHim(killer)) this.feel(R.finisher); }));
+    ev.on('thrownHit', mine(({ thrower }) => { if (isHim(thrower)) this.feel(R.thrown); }));
     ev.on('killcam', mine(({ tier }) => this.feel(R.killcam?.[tier])));
     ev.on('explosion', mine(({ x, y, radius }) => {
       const r = radius || 90;
@@ -89,6 +92,17 @@ export default class Rumble {
 
   // a menu's tick (RUMBLE.ui)
   tick(name = 'tick') { return this.feel(this.T.ui[name], 1, true); }
+
+  // The VIBRATION option just set: RUMBLE.ui.sample at the new strength, told to a connected pad at once whatever
+  // device moved the slider (the mouse too: he may hold the pad to feel it), outside the mix (nothing else plays in
+  // a menu). True when a pad took it.
+  sample() {
+    const fx = this.T.ui.sample, g = this.scale;
+    if (!fx || !(g > 0)) return false;
+    const out = { strong: clamp01(fx.strong * g), weak: clamp01(fx.weak * g), ms: fx.ms };
+    this.log?.push({ t: Math.round(this.now * 1000) / 1000, ...out, sample: true });
+    return !!this.pad.play(out, true);
+  }
 
   // once a frame, real dt. live: in play (not paused, no menu, no page); pad: the gamepad is the device in use
   update(dt, live, pad) {

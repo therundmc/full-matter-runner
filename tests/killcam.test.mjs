@@ -270,6 +270,29 @@ test('killcam: a gunman after him is never zoomed out of the picture', () => {
   }
 });
 
+test('killcam: a thrown kill is the throw\'s own beat in zoom (it only counts for the chain), a panel in panel', () => {
+  const w = world();
+  kill(w, { cause: 'slash', how: { thrown: true } }, 1);
+  assert.equal(w.cam.beat, null);
+  assert.deepEqual([w.slows, w.stops, w.beats], [[], [], []]);
+  kill(w, { cause: 'melee', how: { thrown: true, heavy: true, broke: true } }, 2);
+  kill(w, { cause: 'slash', how: { thrown: true } }, 3);
+  assert.equal(w.cam.beat, null);
+  assert.equal(w.cam.lastKill.n, 3, 'counted');
+  pass(w, 4);
+  w.events.emit('chainEnd', { kills: 3, points: 1 });
+  assert.equal(w.cam.beat.tier, 'end', 'the chain\'s end still comes back to it');
+  // a beat under way lets go when a throw lands
+  const z = world();
+  kill(z, { left: 'headless' });
+  assert.ok(z.cam.beat);
+  z.events.emit('thrownHit', { thrower: z.player, kill: false });
+  assert.equal(z.cam.beat, null);
+  const p = world('panel');
+  kill(p, { cause: 'slash', how: { thrown: true } }, 1);
+  assert.deepEqual([p.cam.panelView().kind, p.cam.panelView().word], ['single', KILLCAM.panel.words.slash]);
+});
+
 test('killcam: the view is drawn toward the kill but keeps him in the picture', () => {
   const w = world('zoom', []);
   kill(w, {}, 3, guard({ x: 240, y: 0 })); // the last of all: the end beat, onto the body

@@ -1,6 +1,6 @@
 import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
 import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
-import { rand, chance, angDiff, smooth } from '../../engine/math.js';
+import { rand, chance, angDiff, smooth, clamp, lerp } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import Debris, { GRAVITY } from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
@@ -12,12 +12,13 @@ import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { kickReady, kickTarget, standing, throwSpeed } from '../systems/Kick.js';
 import { behind, within, unspotted, newTakedown, advance, slamAt } from '../systems/Takedown.js';
 import { lungeTarget } from '../systems/Lunge.js';
-import { lockTarget } from '../systems/AimCue.js';
+import { lockTarget, meleeLock } from '../systems/AimCue.js';
+import { snapFacing } from './Facing.js';
 import { AIM } from '../data/aim.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherChoice, killBeat, takedownFor, takedownChoice, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
 import { MARKS } from '../data/wounds.js';
-import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH } from '../data/feel.js';
+import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH, THROW } from '../data/feel.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { splashWall } from '../fx/Spatter.js';
@@ -64,6 +65,8 @@ export default class Player extends Character {
     this.slipped = null;    // { t, a, v } while down on a slick floor (slip)
     this.passage = null;    // the trip through a passage under the street while it lasts (systems/Passage.js)
     this.lunge = null;      // { a, dir, v, stop, until } a swing drawn to a guard (startLunge)
+    this.aimA = 0;          // the way the mouse / the stick aims, this step (his angle may be turned off it: faceLock)
+    this.facingLock = null; // { who, from, t, a, at } turning onto LOCK's close man with a melee weapon (faceLock)
     this.safe = { x, y };   // the last spot we stood on that was not inside something solid (see unstick)
     this.sit = 0;           // 1 sitting on the ground (how a level starts) .. 0 up; see updateSit
     this.pinned = false;    // sat there, no key gets him up yet
@@ -82,6 +85,7 @@ export default class Player extends Character {
     this.broke = null;      // { t, d, stub, toss } the beat after his weapon gave out (Character.breakWeapon)
     this.brokeAt = null;    // { name, t } when it did, for the HUD
     this.snatch = null;     // { item, at } a dead man's weapon his hand is going to (snatches)
+    this.throwHold = null;  // { t, paused } a throw wound up while the right click is held (updateThrowHold, THROW)
     // spare rounds per caliber
     this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
   }
@@ -134,6 +138,8 @@ export default class Player extends Character {
     this.updateSlideAnim(dt);
 
     this.unstick();
+    // what takes his hands or his body over lets a throw wound up go, unthrown
+    if (this.throwHold && (this.sit > 0 || this.execution || this.takedown || this.trunkOpen || this.slipped || this.passage || this.kick)) this.throwHold = null;
     if (this.sit > 0 && !this.updateSit(dt, input)) return;
     if (this.execOut && (this.execOut.t -= dt) <= 0) this.execOut = null;
     if (this.execution) { this.updateExecution(dt, input); return; }
@@ -141,7 +147,8 @@ export default class Player extends Character {
     if (this.trunkOpen) { this.updateTrunk(dt); return; }
     if (this.slipped) { this.updateSlip(dt); return; }
     if (this.passage) { this.updatePassage(dt); return; }
-    this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    this.aimA = this.angle = Math.atan2(aim.y - this.y, aim.x - this.x);
+    const lockOn = this.faceLock(dt);
     // a swing drawn to a guard keeps its aim on him until the blow is struck (Character.meleeStrike reads the angle)
     const lg = this.lunge;
     if (lg && w.time >= lg.until) this.lunge = null;
@@ -173,7 +180,7 @@ export default class Player extends Character {
       sh.t -= dt;
       this.steer(Math.cos(sh.a), Math.sin(sh.a), sh.v * Math.max(0, sh.t / SHOVE_T), 0.6);
       if (sh.t <= 0) this.shove = null;
-    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1), PLAYER.accel);
+    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1) * (this.throwHold ? THROW.move : 1), PLAYER.accel);
     if (this.lunge && !sliding && !sh && w.time < this.lunge.stop) {
       const L = this.lunge;
       this.vel = { x: Math.cos(L.dir) * L.v, y: Math.sin(L.dir) * L.v };
@@ -222,7 +229,8 @@ export default class Player extends Character {
     if (this.broke?.stub && (input.mouseDown(0) || input.mouseHit(2))) this.dropStub();
     const d = this.def;
     const nb = this.nearTakedown;
-    if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
+    if (this.throwHold) { /* the left click does nothing while a throw is wound up */ }
+    else if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
     else if (pulls(d, input)) {
       // on a man who is down, at our feet and under the cursor: his execution, whatever is in the hand
       const nd = this.nearDowned;
@@ -233,10 +241,10 @@ export default class Player extends Character {
         // dry: reload if we can, otherwise hurl the useless gun at them
         const did = this.attack();
         if (did === 'empty' && input.mouseHit(0) && !this.reload()) this.throwWeapon(true);
-        else if (did === true && d.kind !== 'gun' && !sliding) this.startLunge(d);
+        else if (did === true && d.kind !== 'gun' && !sliding) this.startLunge(d, lockOn);
       }
     }
-    if (input.hit('KeyR')) this.reload();
+    if (input.hit('KeyR') && !this.throwHold) this.reload();
     // Space = vault > slide (the slide needs a running start, no HUD label); the left click takes a man down from
     // behind and finishes a man on the floor
     const busy = sliding || this.nearDowned || this.nearTakedown;
@@ -246,10 +254,16 @@ export default class Player extends Character {
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
     if (input.hit('Space') && !sliding && !this.tryVault(moveA) && moving) this.startSlide(moveA);
 
-    // right click: throw when armed, pick up otherwise. E: pick up / swap
-    if (input.mouseHit(2)) {
-      if (this.armed) this.throwWeapon();
-      else this.pickUp();
+    // right click: armed, held it winds a throw up (updateThrowHold), a tap throws at once; unarmed, it picks up.
+    // E: pick up / swap. A throw goes along the aim, not where LOCK's melee turn put him
+    if (this.throwHold) this.updateThrowHold(dt, input);
+    else if (input.mouseHit(2)) {
+      if (!this.armed) this.pickUp();
+      else {
+        if (this.facingLock) this.angle = this.aimA;
+        if (input.mouseDown(2)) this.throwHold = { t: 0, paused: false };
+        else this.throwWeapon(); // down and up within a step
+      }
     }
     if (input.hit('KeyE')) {
       if (this.nearTrunk) this.startTrunk(this.nearTrunk);
@@ -258,16 +272,35 @@ export default class Player extends Character {
     }
   }
 
+  // LOCK with a melee weapon in hand (systems/AimCue.js meleeLock, from the aim): its man this step, returned. The close
+  // one turns the player onto him over AIM.lock.face s, eased out from where he faced, before any click; the aim is left
+  // alone. Not while he slides, vaults, kicks or rides; the man let go (out of the window, down, dead), he faces the
+  // aim again at once.
+  faceLock(dt) {
+    const w = this.world, free = !this.slide && !this.vaulting && !this.kick && !this.riding && !this.throwHold;
+    const m = free ? meleeLock(w, this, this.def, this.aimA) : null, who = m?.close ? m.man : null;
+    let f = this.facingLock;
+    if (!who) { this.facingLock = null; return m; }
+    const on = f && w.time - f.at < 0.05; // turning last step (not cut off by a vault, a takedown...)
+    if (!on || f.who !== who) f = this.facingLock = { who, from: on ? f.a : this.aimA, t: 0, a: 0, at: 0 };
+    f.t += dt;
+    const k = Math.min(1, f.t / AIM.lock.face), dir = Math.atan2(who.y - this.y, who.x - this.x);
+    f.a = this.angle = f.from + angDiff(f.from, dir) * (1 - (1 - k) * (1 - k));
+    f.at = w.time;
+    return m;
+  }
+
   // a melee swing just started: drawn to the guard in front of him, if one stands close (systems/Lunge.js): the aim
   // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur. With the LOCK aim cue, the man
-  // it holds (systems/AimCue.js) takes the whole turn, and the step is taken from this very step and over before the
-  // blow lands (World.after(windup)): one base step short of the windup, so that it lands on him
-  startLunge(d) {
+  // it holds close (`lockOn`: faceLock) takes the whole turn, the drawn body snapped onto him on this frame, and the step
+  // is taken from this very step and over before the blow lands (World.after(windup)): one base step short of the
+  // windup, so that it lands on him
+  startLunge(d, lockOn) {
     const w = this.world, L = PLAYER.lunge;
-    const lock = w.aimStyle === 'lock' ? lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, AIM.lock.melee) : null;
-    const r = lungeTarget(this, d, w.enemies, this.angle, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y), lock);
+    const r = lungeTarget(this, d, w.enemies, this.aimA, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y), lockOn?.man ?? null);
     if (!r) return;
     this.angle = r.a;
+    if (r.lock) snapFacing(this, r.a);
     const dur = r.lock ? Math.max(1, Math.ceil(d.windup * 60 - 1e-6) - 1) / 60 : L.dur;
     // px per base step that covers `push` over `dur` s
     this.lunge = { a: r.a, dir: r.dir, v: r.push / (dur * 60), stop: w.time + dur, until: w.time + Math.max(dur, d.windup) };
@@ -447,20 +480,61 @@ export default class Player extends Character {
     this.world.pickupFlash(this.x + Math.cos(this.angle) * 10, this.y + Math.sin(this.angle) * 10);
   }
 
-  // power = true: the angry "out of bullets" John Wick throw (faster, spinning, a beat of slow motion)
-  throwWeapon(power = false) {
-    const w = this.world, a = this.angle;
-    const sp = power ? 15 : 11;
-    const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * 12, this.y + Math.sin(a) * 12,
-      a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, (power ? 0.9 : rand(0.4, 0.7)) * (Math.random() < 0.5 ? -1 : 1), this);
+  // ---------------- the throw (THROW) ----------------
+  // The right click held: the arm drawn back, the throw aimed (the mark: systems/AimCue.js throwCue), charged over
+  // THROW.charge s; let go, it flies (release). Let go within THROW.tap s it is the quick throw. A wind-up the game
+  // was paused under goes only if the button is still down when play comes back (interrupt).
+  updateThrowHold(dt, input) {
+    const W = this.throwHold;
+    if (!this.armed) { this.throwHold = null; return; }
+    if (input.mouseDown(2)) { W.t += dt; W.paused = false; return; }
+    if (W.paused) { this.throwHold = null; return; }
+    this.release();
+  }
+
+  // the game paused (Game): a throw wound up waits to see whether the button is still held
+  interrupt() { if (this.throwHold) this.throwHold.paused = true; }
+
+  // 0..1: how far the throw wound up is charged (0 within the tap)
+  throwCharge(W = this.throwHold) {
+    return W ? clamp((W.t - THROW.tap) / (THROW.charge - THROW.tap), 0, 1) : 0;
+  }
+
+  // the way the throw goes { a, lock }: along his aim, or with the LOCK aim straight at the man it holds (within its
+  // cone and THROW.lock px)
+  throwAim() {
+    const w = this.world;
+    const lock = w.aimStyle === 'lock' ? lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, THROW.lock) : null;
+    return { a: lock ? Math.atan2(lock.y - this.y, lock.x - this.x) : this.angle, lock };
+  }
+
+  release() {
+    const k = this.throwCharge(), { a } = this.throwAim();
+    this.throwHold = null;
+    this.angle = a;
+    this.throwWeapon(false, k);
+  }
+
+  // power = true: the angry "out of bullets" John Wick throw (faster, spinning, a beat of slow motion); k: the charge
+  // of a throw wound up (0: the quick throw)
+  throwWeapon(power = false, k = 0) {
+    const w = this.world, a = this.angle, blade = this.def.swing === 'blade';
+    const sp = power ? 15 : lerp(THROW.speed[0], THROW.speed[1], k);
+    const spin = blade && !power ? lerp(THROW.spin[0], THROW.spin[1], k) : power ? 0.9 : rand(0.4, 0.7);
+    const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * THROW.hand, this.y + Math.sin(a) * THROW.hand,
+      a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, spin * (Math.random() < 0.5 ? -1 : 1), this);
     it.wear = this.weapon.wear;
+    it.charge = k;
     it.setBare(this.weapon.bare);
     w.addItem(it);
     this.weapon = null;
     this.reloading = 0;
     this.cooldown = 0.15;
     this.throwT = this.throwDur;
-    w.sound('throw', this.x, this.y, power ? 1 : 0.8, { weapon: it.type });
+    w.sound('throw', this.x, this.y, power ? 1 : 0.8 + 0.2 * k, { weapon: it.type });
+    // the man on its line, if any (systems/ThrowBeat.js follows it to him)
+    const target = lockTarget(w, this.team, this.x, this.y, a, THROW.line, THROW.lock);
+    w.events.emit('throw', { thrower: this, item: it, target, charge: k });
     if (power) { w.slowmo(...MOMENTS.throw.slowmo); w.shake(MOMENTS.throw.shake); }
   }
 

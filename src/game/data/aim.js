@@ -1,4 +1,4 @@
-// How the aim is shown (the AIM option, systems/Settings.js `aim`, LOCK by default; F7 cycles it in play): with a
+// How the aim is shown (systems/Settings.js `aim`, LOCK by default, no menu row; F7 cycles it in play): with a
 // mouse the old cross sits on a point, with a gamepad the right stick only gives a WAY, so every cue but the cross
 // starts at the gun and tells that way (systems/AimCue.js works it out, render/AimArt.js paints it, in the world,
 // over the lighting; the mouse keeps a small dot where it is). Lengths in world px, angles in rad, alphas 0..1.
@@ -29,8 +29,11 @@ export const AIM = {
   // mark (`mark`, one of `marks`: the user kept the corner ticks; the others are kept to compare, `?mark=ring` in the address
   // picks one for a session), and on a gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that
   // angle with the stick lets go. Pairs are [at rest / a man near the line, the line on a man].
+  // With a melee weapon (systems/AimCue.js meleeLock): out to `melee` px, and within a swing's reach (+ PLAYER.lunge.lock
+  // .margin) the man is taken within `wide` rad of the aim, at his side too; that close one turns the player onto him
+  // over `face` s before the click (Player.faceLock), the aim itself left where it is, and a click strikes him.
   lock: {
-    cone: 0.3, assist: 0.2, reach: 280, melee: 80,
+    cone: 0.3, assist: 0.2, reach: 280, melee: 80, wide: 1.9, face: 0.06,
     mark: 'corners',
     marks: ['ring', 'tick', 'point', 'corners'],
     chevron: { size: 4, alpha: [0.6, 0.9], seed: 7 }, // the floor chevron: arm px, alpha, which wear
@@ -53,6 +56,11 @@ export const AIM = {
   // on the obstacle's edge and two arcs bowed the way he would go, the near one white (radii `r` about a point `back`
   // px before the edge, `span` rad and `width` px each), which hop `rise` px out and back in whole px, `rate` rad/s
   hop: { edge: 13, thick: 2, r: [7, 12], span: [1.5, 1.05], width: [2, 2], back: 2, rise: 2, rate: 8, alpha: [0.95, 0.85], seed: 3 },
+  // the throw being wound up (Player.throwHold; systems/AimCue.js throwCue, AimArt drawThrow), whatever the style: a
+  // dotted line on the floor from his hand to where the throw would stop (reach [quick, full] px, growing with the
+  // charge) or to what it meets, a dot every `every` px, paler by bands; white with the man on it (LOCK's corner
+  // ticks on him); solid once fully charged; a worn chevron at its end where nothing stops it
+  throw: { reach: [170, 260], every: 3, bands: [0.9, 0.7, 0.5, 0.3], start: 3, chevron: 3, seed: 11 },
   // the car gun out of its arc: a short grey stub and a cross at its end
   offArc: { len: 30, on: 2, off: 3, cross: 3, alpha: 0.9 },
   // the mouse's dot (ui px at 720p), and the F7 label's time on screen

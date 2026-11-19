@@ -11,7 +11,7 @@ export const PAD_BINDINGS = {
   Y: 'KeyR',       // reload; restart once dead; retry on the results
   Start: 'Escape', // pause (and back out of it)
   RB: 'Mouse0',    // attack / shoot / take down / finish (held: an automatic keeps firing, as the mouse button)
-  LB: 'Mouse2',    // throw (pick up when the hands are empty)
+  LB: 'Mouse2',    // throw: held, aimed and let go (pick up when the hands are empty)
   RT: 'Mouse0',    // attack too (an alias of RB)
   LT: 'ShiftLeft', // look further
 };
@@ -40,16 +40,33 @@ const isPad = (device) => device === 'pad';
 // the cap of an action for a device; an unknown action is shown as it is written
 export const keyLabel = (action, device) => ACTIONS[action]?.[isPad(device) ? 'pad' : 'kbm'] ?? action;
 
-// what the CONTROLS page lists, two columns; a blank key continues the line above
+// What the CONTROLS page lists (ui/title/Options.js draws it): two columns of groups, [name, lines], a line
+// [caps, action]. caps: the caps drawn, split on spaces ('/' between two of them: either one). A cap is a key's name
+// (physical position, AZERTY first), a mouse ('MOUSE', 'LMB', 'RMB') or a pad's button (A B X Y LB RB LT RT LS RS
+// DPAD START). Only what the game reads (entities/Player.js, systems/Drive.js and CarGun.js at the wheel, Game.js);
+// no debug key.
 export const KBM_CONTROLS = [
-  [['ZQSD/WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['LEFT CLICK', 'ATTACK / TAKE DOWN'],
-    ['RIGHT CLICK', 'THROW / PICK UP'], ['E', 'PICK UP / SWAP / TRUNK'], ['ESC', 'PAUSE']],
-  [['R', 'RELOAD'], ['SPACE', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['LEFT CLICK', 'FINISH A MAN DOWN'],
-    ['BACKSPACE', 'RESTART'], ['M', 'MUSIC ON / OFF'], ['F1 / F2', 'SANDBOX / VISION']],
+  [
+    ['MOVE', [['ZQSD / WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['SPACE', 'VAULT / CLIMB'],
+      ['SPACE', 'SLIDE ON THE RUN']]],
+    ['FIGHT', [['LMB', 'ATTACK / SHOOT'], ['LMB', 'TAKE DOWN / FINISH'], ['RMB', 'THROW (HOLD: AIM) / PICK UP'], ['R', 'RELOAD']]],
+    ['WORLD', [['E', 'PICK UP / SWAP'], ['E', 'USE / OPEN TRUNK']]],
+  ],
+  [
+    ['AT THE WHEEL', [['Z/W', 'SPEED UP'], ['S', 'BRAKE'], ['Q/A D', 'STEER'], ['SPACE', 'SHOVE'], ['LMB', 'FIRE THE UZI'],
+      ['R', 'RELOAD']]],
+    ['GAME', [['ESC', 'PAUSE'], ['BKSP', 'RESTART'], ['R', 'RETRY WHEN DEAD'], ['M', 'MUSIC ON / OFF']]],
+  ],
 ];
+// (the pad does not drive yet: Drive.js reads the keys only, so the wheel lists what the pad does there)
 export const PAD_CONTROLS = [
-  [['L STICK', 'MOVE'], ['R STICK', 'AIM'], ['RB / RT', 'ATTACK / TAKE DOWN'], ['LB', 'THROW / PICK UP'],
-    ['LT', 'LOOK FURTHER'], ['X', 'PICK UP / SWAP / TRUNK'], ['START', 'PAUSE']],
-  [['Y', 'RELOAD'], ['A', 'VAULT / CLIMB / DIVE'], ['', 'SLIDE WHEN RUNNING'], ['RB', 'FINISH A MAN DOWN'],
-    ['A / Y', 'RESTART WHEN DEAD'], ['D-PAD', 'MENUS'], ['B', 'BACK']],
+  [
+    ['MOVE', [['LS', 'MOVE'], ['RS', 'AIM'], ['LT', 'LOOK FURTHER'], ['A', 'VAULT / CLIMB'], ['A', 'SLIDE ON THE RUN']]],
+    ['FIGHT', [['RB / RT', 'ATTACK / SHOOT'], ['RB', 'TAKE DOWN / FINISH'], ['LB', 'THROW (HOLD: AIM) / PICK UP'], ['Y', 'RELOAD']]],
+    ['WORLD', [['X', 'PICK UP / SWAP'], ['X', 'USE / OPEN TRUNK']]],
+  ],
+  [
+    ['AT THE WHEEL', [['A', 'SHOVE'], ['RS', 'AIM THE UZI'], ['RB', 'FIRE THE UZI'], ['Y', 'RELOAD']]],
+    ['GAME', [['START', 'PAUSE'], ['A / Y', 'RETRY WHEN DEAD'], ['DPAD', 'MENUS'], ['B', 'BACK']]],
+  ],
 ];
