@@ -835,7 +835,7 @@ test('attacks: a ram is told (lamps flashing, drawn away from him), then swipes 
     assert.ok(flashed, 'its lamps flashed');
     assert.ok(away > 4, `it drew away first (${away.toFixed(1)} px)`);
     assert.ok(rams === 1 && toward > 0, `then swiped at him and landed (${toward.toFixed(1)} px)`);
-    run(s, 1.2);
+    run(s, 0.6); // (inside the shortest pause between two attacks: CHASE.pursuit.attack)
     assert.ok(!car.v.lightsOut && s.P.cool > 0 || s.P.attack, 'its lamps back on, a pause before the next');
     assert.equal(s.w.killed, null, 'a swipe is not his death');
   } finally { CHASE.gunman.range = g; }
