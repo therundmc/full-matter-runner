@@ -804,6 +804,15 @@ export default class Vehicle {
     return (this.drawn = { x: snap(b.position.x), y: snap(b.position.y), a: stepAngle(b.angle, this.drawn?.a, TAU / P.steps, P.slack) });
   }
 
+  // Where its shell is, as drawn: the pose and the body on its springs (`sag`, sprite px). What is laid on the car
+  // but drawn elsewhere reads this, never the body: its lamps' light and their glow (render/Lighting.js). Placed from
+  // the body, the beams swung on the body's float angle while the sprite stood on one of its 64 (and the lamps' pools
+  // sat up to 6 px off the drawn nose in a turn): the lights read as trailing the car
+  shell() {
+    const at = this.pose(), [gx, gy] = this.sag || [0, 0], c = Math.cos(at.a), s = Math.sin(at.a);
+    return { x: at.x + gx * c - gy * s, y: at.y + gx * s + gy * c, a: at.a };
+  }
+
   // What goes with the car but is placed from its body (the man sat in it, one leaning out of its window:
   // render/PursuitArt.js) is drawn in the car's frame as IT is drawn (pose), gx / gy sprite px further (the body on
   // its springs): fn draws it in world px, as ever
