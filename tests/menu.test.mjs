@@ -9,7 +9,7 @@ const FRESH = { unlocked: ['tutorial'], done: [] };
 // a context made of plain objects; `set` actions are written back into it as Game.js does
 function ctx(more = {}) {
   return {
-    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'cross' },
+    settings: { master: 1, music: 0.5, sfx: 0.02, ambience: 0.5, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'cross', aimMark: false },
     progress: FRESH,
     best: (id) => (id === 'tutorial' ? { total: 4200, grade: 'B', time: 95 } : null),
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NEON NIGHTS' }],
@@ -144,7 +144,7 @@ test('menu: without the tutorial, the first level there is stays open', () => {
   // and nothing offers to replay a tutorial that is not there
   m.back();
   choose(m, 'OPTIONS'); choose(m, 'GAME');
-  assert.deepEqual(labels(m), ['RESET PROGRESSION', 'AIM', 'VIBRATION', 'BACK']);
+  assert.deepEqual(labels(m), ['RESET PROGRESSION', 'AIM', 'AIM MARK', 'VIBRATION', 'BACK']);
 });
 
 test('menu: the controls page is read-only: only BACK can be selected', () => {
@@ -164,7 +164,7 @@ test('menu: the controls page is read-only: only BACK can be selected', () => {
 test('menu: RESET PROGRESSION asks first: NO goes back, YES resets and goes back', () => {
   const m = new Menu('main', ctx());
   choose(m, 'OPTIONS'); choose(m, 'GAME');
-  assert.deepEqual(labels(m), ['REPLAY THE TUTORIAL', 'RESET PROGRESSION', 'AIM', 'VIBRATION', 'BACK']);
+  assert.deepEqual(labels(m), ['REPLAY THE TUTORIAL', 'RESET PROGRESSION', 'AIM', 'AIM MARK', 'VIBRATION', 'BACK']);
   assert.deepEqual(m.activate(), { type: 'replayTutorial' });
   m.down();
   m.activate();
@@ -221,6 +221,20 @@ test('menu: AIM is a choice: left / right and ENTER walk the concepts round, a c
   c.settings.aim = 'cross';
   assert.deepEqual(m.left(), { type: 'set', key: 'aim', value: 'lock' }, 'round the list');
   assert.equal(m.page.id, 'game', 'it stays on its page');
+});
+
+test('menu: AIM MARK (LOCK\'s floor chevron) is a toggle on the GAME page, off until turned on; the pause reaches it too', () => {
+  for (const root of ['main', 'pause']) {
+    const c = ctx(), m = new Menu(root, c);
+    choose(m, 'OPTIONS'); choose(m, 'GAME');
+    const i = m.page.items.findIndex((it) => it.label === 'AIM MARK');
+    assert.equal(m.page.items[i].toggle, 'aimMark');
+    assert.equal(m.page.items[i].value, false);
+    m.hover(i);
+    assert.deepEqual(apply(c, m.activate()), { type: 'set', key: 'aimMark', value: true });
+    assert.equal(m.page.items[i].value, true);
+    assert.deepEqual(apply(c, m.right()), { type: 'set', key: 'aimMark', value: false });
+  }
 });
 
 test('menu: VIBRATION is a slider on the GAME page (the controls page stays read-only): steps down to off and back', () => {

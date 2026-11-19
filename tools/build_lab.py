@@ -105,7 +105,9 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    takedowns room (col 63, row 3): the ways of showing the aim to try, above all with a gamepad
                    (data/aim.js, render/AimArt.js; F7 cycles them, OPTIONS / GAME / AIM keeps one). Four dummies at
                    2, 4, 7 and 9 m, one of them behind a wall's end, a crate in the line of the last; a 1911, a
-                   SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun
+                   SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun. The melee lock (LOCK, the
+                   swing turned whole onto the man it holds: systems/Lunge.js): the 2 m man and one more by the bat
+                   (a tire iron on him), a step apart; swing from beyond a takedown's reach (blind dummies)
     24 ARCADE      across the street, south row: a customer playing the arcade cabinet (ai/Pastimes.js arcadeAt: the
                    stick, the buttons, the screen in play; a slap and a coin between two games); a shot sends him off
     25 LAUNDRY     next door: a man doing his washing at a top loader (laundryAt: out of the drum, shaken out, folded,
@@ -411,6 +413,7 @@ for (x, y), kind in (((64.6, 1.5), 'pistol'), ((65.4, 1.5), 'shotgun'), ((64.6, 
 lv.actor('n', 64, 5)
 lv.actor('g', 65, 5)
 lv.actor('m', 67, 2, face=180)             # 2 m from the door
+lv.actor('i', 66, 1, face=180)             # by the bat: the melee lock, with the 2 m man
 lv.actor('k', 69, 5, face=180)             # 4 m
 lv.actor('j', 72, 1, face=180)             # 7 m, behind the wall's end
 lv.actor('b', 73, 4, face=180)             # 9 m, a crate in the line
@@ -510,7 +513,7 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=35)
+    lv.check(guards=36)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              exit=exit_zone, ambient={'traffic': [], 'walkers': []},
              header=[

@@ -5,6 +5,7 @@
 // round him. What it tells comes from systems/AimCue.js. LOCK's marks and the vault's are worn stencil paint
 // (systems/AimMark.js).
 import { AIM } from '../data/aim.js';
+import { PLAYER } from '../Config.js';
 import { aimCue, lineOfFire, lockTarget } from '../systems/AimCue.js';
 import { ringBits, chevronBits, barBits, flecks, ringRadius } from '../systems/AimMark.js';
 import { angDiff } from '../../engine/math.js';
@@ -149,15 +150,16 @@ function seedOf(c) {
 }
 const held = { who: null, on: false, since: 0 };
 
-// LOCK: a light worn arc on the floor across the aim's way, white once the line is on a man; a mark of the same paint
-// on the man nearest the line (AIM.lock.mark), tighter and white once the line is on him (on a gamepad the aim is pulled onto him:
-// Game.padAim)
+// LOCK: a mark of worn paint on the man nearest the line (AIM.lock.mark), tighter and white once the line is on him
+// (on a gamepad the aim is pulled onto him: Game.padAim); with the AIM MARK option (World.aimMark, Settings `aimMark`)
+// a worn chevron on the floor too, pointing out along the aim, white once the line is on a man
 function lock(world, p, q, t) {
-  const L = AIM.lock, N = AIM.notch, A = L.arc;
+  const L = AIM.lock, N = AIM.notch, C = L.chevron;
   const near = q.target || lockTarget(world, q.team, p.x, p.y, q.a, L.cone, q.kind === 'melee' ? L.melee : L.reach);
-  const on = !!near && (q.target === near || (q.kind === 'melee' && Math.hypot(near.x - p.x, near.y - p.y) < p.def.range + near.radius));
+  // with a melee weapon: white once a swing would land on him (its step in included: PLAYER.lunge.lock, Player.startLunge)
+  const on = !!near && (q.target === near || (q.kind === 'melee' && Math.hypot(near.x - p.x, near.y - p.y) < p.def.range + near.radius + PLAYER.lunge.lock.margin));
   const col = on ? AIM.hot : AIM.rest, i = on ? 1 : 0;
-  for (const b of ringBits(A.seed, standOff(p, q, N.at), 1, A.span, q.a, A.width)) dot(Math.floor(p.x) + b.x, Math.floor(p.y) + b.y, col, A.alpha[i] * b.k);
+  if (world.aimMark) wornChevron(p.x, p.y, q.a, standOff(p, q, N.at) + C.size, C.size, col, C.alpha[i], C.seed);
   if (held.who !== near || held.on !== on || t < held.since) Object.assign(held, { who: near, on, since: t });
   if (!near) return;
   const cx = Math.floor(near.x), cy = Math.floor(near.y), seed = seedOf(near), age = t - held.since;

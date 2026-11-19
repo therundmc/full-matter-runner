@@ -70,6 +70,7 @@ const PAGES = {
       ...(c.levels.some((l) => l.id === 'tutorial') ? [{ label: 'REPLAY THE TUTORIAL', act: { type: 'replayTutorial' } }] : []),
       { label: 'RESET PROGRESSION', page: 'confirm' },
       { label: 'AIM', choice: 'aim', value: c.settings.aim, options: AIM_STYLES, names: AIM.names }, // concepts to try (data/aim.js)
+      { label: 'AIM MARK', toggle: 'aimMark', value: !!c.settings.aimMark }, // LOCK's chevron on the floor (render/AimArt.js)
       { label: 'VIBRATION', slider: 'rumble', value: c.settings.rumble ?? 1 }, // the gamepad's rumble (systems/Rumble.js)
       BACK,
     ],

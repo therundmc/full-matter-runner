@@ -189,6 +189,12 @@ export default class Game {
     else if (key === 'rumble') this.rumble.setScale(v);
   }
 
+  // the aim's settings as the world reads them: its style (render/AimArt.js, Player.startLunge's LOCK) and LOCK's floor chevron
+  aimTo(world) {
+    world.aimStyle = this.settings.aim;
+    world.aimMark = !!this.settings.aimMark;
+  }
+
   // save: false while a slider is dragged (saved on release)
   setSetting(key, value, save = true) {
     if (key === 'fullscreen') { this.setFullscreen(value); return; } // the setting follows fullscreenchange
@@ -240,6 +246,7 @@ export default class Game {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
     if (!retry) { this.tutorialAt = null; this.taught = new Set(); }
     this.world = new World(this, LEVELS[this.levelId]);
+    this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
     // he gets up off the ground (takes the gun off the car's seat) the first time only: a retry starts on his feet (with
     // the gun in hand), at once
@@ -817,7 +824,7 @@ export default class Game {
     ctx.imageSmoothingEnabled = false;
     const inWorld = this.state !== 'loading' && this.state !== 'title' && !!this.world;
     if (inWorld) this.world.cues = cuesOn(this.state, !!this.world.tutorial?.scene); // render/Readability.js
-    if (inWorld) this.world.aimStyle = this.settings.aim;                              // render/AimArt.js
+    if (inWorld) this.aimTo(this.world);
     if (this.state === 'loading') drawLoading(ctx, W, H, this.loadP);
     else if (!inWorld) this.safeDraw(ctx, () => { this.titleRects = drawTitle(ctx, W, H, this.stateT, this.titleView()); });
     else if (this.state === 'cinematic') this.safeDraw(ctx, () => drawCinematic(ctx, W, H, this.stateT));

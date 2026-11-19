@@ -12,6 +12,8 @@ import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { kickReady, kickTarget, standing, throwSpeed } from '../systems/Kick.js';
 import { behind, within, unspotted, newTakedown, advance, slamAt } from '../systems/Takedown.js';
 import { lungeTarget } from '../systems/Lunge.js';
+import { lockTarget } from '../systems/AimCue.js';
+import { AIM } from '../data/aim.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherChoice, killBeat, takedownFor, takedownChoice, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
 import { MARKS } from '../data/wounds.js';
@@ -257,14 +259,23 @@ export default class Player extends Character {
   }
 
   // a melee swing just started: drawn to the guard in front of him, if one stands close (systems/Lunge.js): the aim
-  // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur
+  // turned onto him until the blow is struck, a step toward him over PLAYER.lunge.dur. With the LOCK aim cue, the man
+  // it holds (systems/AimCue.js) takes the whole turn, and the step is taken from this very step and over before the
+  // blow lands (World.after(windup)): one base step short of the windup, so that it lands on him
   startLunge(d) {
     const w = this.world, L = PLAYER.lunge;
-    const r = lungeTarget(this, d, w.enemies, this.angle, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y));
+    const lock = w.aimStyle === 'lock' ? lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, AIM.lock.melee) : null;
+    const r = lungeTarget(this, d, w.enemies, this.angle, L, (e) => w.lineOfSight(this.x, this.y, e.x, e.y), (x, y) => w.map.solidAt(x, y), lock);
     if (!r) return;
     this.angle = r.a;
+    const dur = r.lock ? Math.max(1, Math.ceil(d.windup * 60 - 1e-6) - 1) / 60 : L.dur;
     // px per base step that covers `push` over `dur` s
-    this.lunge = { a: r.a, dir: r.dir, v: r.push / (L.dur * 60), stop: w.time + L.dur, until: w.time + Math.max(L.dur, d.windup) };
+    this.lunge = { a: r.a, dir: r.dir, v: r.push / (dur * 60), stop: w.time + dur, until: w.time + Math.max(dur, d.windup) };
+    if (r.lock) {
+      this.lunge.stop -= 0.5 / 60; // the steps after this one that still move him: dur * 60 - 1 of them
+      this.vel = { x: Math.cos(r.dir) * this.lunge.v, y: Math.sin(r.dir) * this.lunge.v };
+      Body.setVelocity(this.body, this.vel);
+    }
   }
 
   // shoved along a at `speed` px/step (a guard telling him to get out: Enemy.shove)

@@ -4,7 +4,7 @@ import { load } from './setup.mjs';
 
 const { loadSettings, saveSettings } = await load('game/systems/Settings.js');
 
-const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock' };
+const D = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
 
 const fakeStorage = () => {
   const data = {};
@@ -17,7 +17,7 @@ test('settings: full volume, the lens on, full shake and no fullscreen when noth
 
 test('settings: a saved set comes back as it was', () => {
   const st = fakeStorage();
-  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, lens: false, shake: 0.35, rumble: 0.6, fullscreen: true, aim: 'wedge' };
+  const set = { master: 0.5, music: 0.25, sfx: 0, ambience: 0.3, lens: false, shake: 0.35, rumble: 0.6, fullscreen: true, aim: 'wedge', aimMark: true };
   saveSettings(set, st);
   assert.deepEqual(loadSettings(st), set);
 });
@@ -29,6 +29,15 @@ test('settings: what an older version stored (volumes only) is still read, the n
   // a set saved from it keeps every key
   saveSettings(loadSettings(st), st);
   assert.deepEqual(JSON.parse(st.getItem('fmr.settings.v1')), { ...D, master: 0.4, music: 0.6, sfx: 0.8 });
+});
+
+test('settings: LOCK\'s floor chevron (aimMark) is off by default, kept once turned on, a boolean only', () => {
+  const st = fakeStorage();
+  assert.equal(loadSettings(st).aimMark, false);
+  saveSettings({ ...D, aimMark: true }, st);
+  assert.equal(loadSettings(st).aimMark, true);
+  st.setItem('fmr.settings.v1', JSON.stringify({ aimMark: 'yes' }));
+  assert.equal(loadSettings(st).aimMark, false);
 });
 
 test('settings: booleans must be booleans, the shake is clamped like a volume', () => {

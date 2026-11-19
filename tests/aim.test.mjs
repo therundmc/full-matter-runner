@@ -175,9 +175,9 @@ test('worn: a stencil circle is whole px on its radius, in arcs with bare bridge
   }
   assert.notDeepEqual(ringBits(4, 14, 4, 1.2, R.turn), ringBits(5, 14, 4, 1.2, R.turn), 'each man his own wear');
   assert.ok(ringBits(1, R.r[1], R.arcs, R.span[1], R.turn, 1, clean).length > ringBits(1, R.r[0], R.arcs, R.span[0], R.turn, 1, clean).length, 'more of a circle once locked');
-  // one arc turned to an angle stays round that angle (the aim's arc, the tick)
-  const at = 2.1;
-  for (const b of ringBits(7, 46, 1, AIM.lock.arc.span, at, 1, clean)) assert.ok(Math.abs(Math.atan2(b.y, b.x) - at) <= AIM.lock.arc.span / 2 + 0.03);
+  // one arc turned to an angle stays round that angle (the tick)
+  const at = 2.1, span = AIM.lock.tick.span[0];
+  for (const b of ringBits(7, 46, 1, span, at, 1, clean)) assert.ok(Math.abs(Math.atan2(b.y, b.x) - at) <= span / 2 + 0.03);
 });
 
 test('worn: the circle closes in on the man it locks, in whole px', () => {
@@ -210,5 +210,28 @@ test('lock: its mark is one of the marks kept to compare, each with its numbers'
   const L = AIM.lock;
   assert.ok(L.marks.includes(L.mark));
   for (const m of L.marks) assert.ok(L[m] && L[m].alpha.length === 2 && L[m].alpha[0] < L[m].alpha[1], m);
-  assert.ok(L.arc.alpha[0] < L.arc.alpha[1] && L.arc.width <= 2, 'the floor arc is light, brighter on a man');
+  assert.ok(L.chevron.alpha[0] < L.chevron.alpha[1] && L.chevron.size <= AIM.notch.size, 'the floor chevron is light, brighter on a man');
+});
+
+const { drawAim } = await load('game/render/AimArt.js');
+// the pixels LOCK paints in a frame (its inks only: the dark edge under them left out), on a canvas that counts them
+function painted(w) {
+  const px = [];
+  const ctx = { save() {}, restore() {}, globalAlpha: 1, fillStyle: '', fillRect(x, y, sw) { if (sw === 1) px.push([x, y, this.fillStyle]); } };
+  drawAim(ctx, w, w.aimStyle, 0);
+  return px;
+}
+
+test('lock: the floor chevron is drawn only with the AIM MARK option; the ticks on the man always', () => {
+  const p = player('bat');
+  const w = { ...world(p), aimStyle: 'lock', aimMark: false };
+  assert.equal(painted(w).length, 0, 'nobody near the line, the option off: nothing');
+  const mark = painted({ ...w, aimMark: true });
+  assert.ok(mark.length > 6 && mark.every(([x, , col]) => x > AIM.notch.at - 8 && x <= AIM.notch.at + AIM.lock.chevron.size + 1 && col === AIM.rest),
+    'a cyan chevron out along the aim, at the notch\'s distance');
+  // a man held: his corner ticks, with or without the option
+  const g = man(60, 0), held = { ...w, chars: [p, g] };
+  const ticks = painted(held);
+  assert.ok(ticks.length > 0 && ticks.every(([x]) => Math.abs(x - 60) >= AIM.lock.corners.box - AIM.lock.corners.corner));
+  assert.ok(painted({ ...held, aimMark: true }).length > ticks.length);
 });

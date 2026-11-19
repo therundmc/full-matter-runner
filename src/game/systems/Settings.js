@@ -6,10 +6,11 @@
 //   rumble              how hard the gamepad rumbles, 0..1 (the VIBRATION option, systems/Rumble.js; 0 = off)
 //   fullscreen          the game wants the whole screen (re-entered at the first key or click of a session)
 //   aim                 how the aim is shown: one of data/aim.js AIM_STYLES (a choice: any other value is the default)
+//   aimMark             LOCK's chevron on the floor along the aim (the AIM MARK option, render/AimArt.js), off by default
 import { AIM_STYLES } from '../data/aim.js';
 
 const KEY = 'fmr.settings.v1';
-const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock' };
+const DEFAULTS = { master: 1, music: 1, sfx: 1, ambience: 1, lens: true, shake: 1, rumble: 1, fullscreen: false, aim: 'lock', aimMark: false };
 const CHOICES = { aim: AIM_STYLES };
 
 function defaultStorage() {

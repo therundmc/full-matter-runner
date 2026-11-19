@@ -62,7 +62,8 @@ src/
                           head can be driven into (a toilet, a urinal, a sink, a ledge: data/finishers.js SLAMS; a wall,
                           never one beyond a doorway), the most specific first (DOM-free, unit-tested)
       Lunge.js            `lungeTarget`: the guard a melee swing of the player's is drawn to (PLAYER.lunge): the aim
-                          turned a little onto him, a short step in, never into a wall (rules only, unit-tested)
+                          turned a little onto him, a short step in, never into a wall; with the LOCK aim cue, the
+                          man it holds takes the whole turn and a longer step (PLAYER.lunge.lock) (rules only, unit-tested)
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
@@ -274,8 +275,9 @@ src/
       AimArt.js           the aim's cue at the gun, over the lighting: the concepts of data/aim.js but the cross (LINE,
                           WEDGE, NOTCH, LOCK; the AIM option, F7 cycles them), told by systems/AimCue.js (the line
                           of fire, the car gun's arc, LOCK's man and the gamepad's soft assist in Game.padAim); the
-                          mouse keeps a dot (Game.drawCursor). LOCK (the default) is worn stencil paint: a light arc
-                          on the floor across the aim's way, a broken circle round the man it takes (AIM.lock.mark;
+                          mouse keeps a dot (Game.drawCursor). LOCK (the default) is worn stencil paint: a chevron
+                          on the floor along the aim only with the AIM MARK option (World.aimMark, Settings
+                          `aimMark`, off by default), a mark round the man it takes (AIM.lock.mark;
                           `?mark=ring|tick|point|corners` to compare), and the vault's mark in the same paint
                           (`drawVaultMark`, AIM.hop); the pixels and their wear come from systems/AimMark.js
                           (pure, deterministic per mark: no flicker)
@@ -709,7 +711,7 @@ are emitted by the Director itself. Silent weapons (`noise: 0`) are never heard.
   sized and coloured by the chain), and under the HUD's score and clock the chain count from its 2nd kill, the fuse
   draining over the chain's window, the labels of the last kills, the cash-out of a chain that ran out; a multi-kill
   puts up a banner and a moment of slow motion (MOMENTS.multi, never cutting short a stronger one). A melee swing of
-  the player's is drawn a little to the guard in front of him (systems/Lunge.js). Screens.drawResults counts the
+  the player's is drawn a little to the guard in front of him (systems/Lunge.js), all the way to the man the LOCK aim cue holds. Screens.drawResults counts the
   lines up one after the other.
 - Replay (render/Replay.js, `REPLAY` in Config.js): while playing, Game.render hands the finished frame (before the
   vignette and the HUD) to `ReplayRecorder.capture`, which copies it downscaled into a rolling atlas 15 times a

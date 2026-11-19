@@ -23,8 +23,9 @@ export const AIM = {
   wedge: { len: 120, min: 0.045, fill: 0.12, hot: 0.2, edge: 0.6, edgeHot: 0.95, rays: 7, start: 4 },
   // NOTCH: a chevron at a fixed distance on the aim line, on a faint dotted arc of the ring round him
   notch: { at: 46, size: 5, arc: 0.7, dot: 0.09, ring: 0.3, alpha: 0.95, wall: 8 },
-  // LOCK: a light arc on the floor, a short piece of the circle round him at the notch's distance, across the aim's
-  // way (no line of fire: where the rounds go is the player's to judge); the man nearest the line within `cone` gets a
+  // LOCK: no line of fire (where the rounds go is the player's to judge); a worn chevron on the floor at the notch's
+  // distance, pointing out along the aim, only with the AIM MARK option (Settings `aimMark`, off by default; the mark on
+  // the man stays); the man nearest the line within `cone` gets a
   // mark (`mark`, one of `marks`: the user kept the corner ticks; the others are kept to compare, `?mark=ring` in the address
   // picks one for a session), and on a gamepad the aim is pulled onto him within `assist` (Game.padAim): leaving that
   // angle with the stick lets go. Pairs are [at rest / a man near the line, the line on a man].
@@ -32,7 +33,7 @@ export const AIM = {
     cone: 0.3, assist: 0.2, reach: 280, melee: 80,
     mark: 'corners',
     marks: ['ring', 'tick', 'point', 'corners'],
-    arc: { span: 0.55, width: 1, alpha: [0.6, 0.9], seed: 7 }, // the floor arc: rad, px thick, alpha, which wear
+    chevron: { size: 4, alpha: [0.6, 0.9], seed: 7 }, // the floor chevron: arm px, alpha, which wear
     // ring: a stencilled circle on the floor round his feet: four short arcs, which close in and lengthen on him.
     // r: px; span: rad an arc; turn: where the first arc is (the bridges stay on the axes); snap: s to close in
     ring: { r: [17, 14], arcs: 4, span: [0.5, 1.22], turn: Math.PI / 4, width: [1, 1], snap: 0.12, alpha: [0.6, 0.9] },
