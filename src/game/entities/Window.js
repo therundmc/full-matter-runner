@@ -95,7 +95,7 @@ export default class Window {
   onCollide(other) {
     const e = other.entity;
     if (!this.intact || !e) return;
-    const sp = Body.getSpeed(other), a = Math.atan2(other.velocity.y, other.velocity.x);
+    const sp = Body.getSpeed(other), v = Body.getVelocity(other), a = Math.atan2(v.y, v.x);
     // a car goes through frame and all; thrown things and heavy pieces only break the glass
     if (e.isVehicle && sp > 3) this.world.destroyWindow(this, a, 1.3);
     else if ((e.isItem && sp > 3) || (e.isDebris && sp > 4.5) || (e.def && sp > 3)) this.shatter(a, null, 0.7);

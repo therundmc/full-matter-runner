@@ -288,7 +288,8 @@ export default class Tutorial {
     w.shake?.(0.3);
   }
 
-  // ---- the camera's shot now: { name (data/staging.js SHOTS), at: what it looks at or null }
+  // ---- the camera's shot now: { name (data/staging.js SHOTS), at: what it looks at or null }, or null: the usual
+  // view. A throw's beat (systems/ThrowBeat.js) goes over the room's framing, as it does anywhere else
   shot() {
     const w = this.world, p = w.player, sc = this.scene, B = this.blast;
     if (this.over) return { name: 'dive', at: null };
@@ -300,9 +301,11 @@ export default class Tutorial {
     if (this.lesson) return { name: this.lesson.shot, at: this.lesson.at };
     // the end: back at the stove as it goes, then on the fire coming down the corridor
     if (B?.t != null) return { name: 'run', at: B.front || (w.time - B.t < BLAST.look ? at(B.breach) : null) };
+    const thrown = w.throwBeat?.shot();
+    if (thrown) return thrown;
     const s = this.stages[Math.max(0, this.stage)], g = s && this.framed(s, p);
     if (g) return { name: 'threat', at: g };
-    return { name: s?.cam || null, at: null };
+    return s?.cam ? { name: s.cam, at: null } : null;
   }
 
   // the man called into the fight whom the camera frames with the player (wave `frame`): the nearest still standing

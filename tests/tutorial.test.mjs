@@ -210,6 +210,20 @@ test('tutorial: no match after all, and he is let up anyway; a retry of the firs
   assert.ok(!again.sounds.includes('arsonLaugh'));
 });
 
+test('tutorial: a room without a shot of its own leaves the camera free, and a throw\'s beat goes over the room\'s', () => {
+  const s = stub(), none = () => false;
+  s.opened();
+  s.t.pace(0.016, none);
+  s.t.pace(LESSONS.move.dur + 0.5, none);
+  assert.equal(s.t.shot().name, 'bedroom');
+  const hit = { name: 'throwHit', at: { x: 1, y: 2 } };
+  s.world.throwBeat = { shot: () => hit };
+  assert.equal(s.t.shot(), hit, 'the throw\'s beat');
+  s.world.throwBeat = { shot: () => null };
+  delete s.t.stages[Math.max(0, s.t.stage)].cam;
+  assert.equal(s.t.shot(), null, 'no shot: null, so that Game asks the others');
+});
+
 test('tutorial: a lesson is one short beat - slow, the camera punched in on it, then the hand given back', () => {
   const s = stub(), none = () => false;
   s.opened();

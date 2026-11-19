@@ -84,9 +84,8 @@ export default class Boss extends Enemy {
     if (!this.wounded) { this.wound(angle, cause); return; }
     if (w.time - this.woundT < T.wound.grace) return; // the rest of the blast that wounded him
     const { x, y } = this, face = this.angle, standing = !(this.knocked > 0) && !this.held;
-    // his gun flies (unless the player's hand is about to close on it: Character.kill), the shades come off and
-    // skitter away
-    if (!killer?.snatches?.(this, how)) this.dropWeapon(angle + rand(-0.6, 0.6), rand(...D.gun));
+    // his gun flies (deathDrop, Character.kill: unless the player's hand is about to close on it), the shades come
+    // off and skitter away
     const sa = angle + rand(-0.7, 0.7), sv = rand(...D.shades);
     w.addDebris(new Debris(w, sprite('items/shades'), x + Math.cos(face) * 6, y + Math.sin(face) * 6, face + Math.PI / 2,
       Math.cos(sa) * sv, Math.sin(sa) * sv, rand(-0.5, 0.5), { material: 'plastic', kg: 0.05, mu: 0.3, bounce: 0.5, z: 12, vz: 40, fly: 0.5,
@@ -101,6 +100,9 @@ export default class Boss extends Enemy {
     w.sound('bossDeath', x, y, 1, { pitch: this.voice });
     w.events.emit('boss', { boss: this, beat: 'down' });
   }
+
+  // the second hit throws his gun further than a guard's falls (BOSSES death.gun)
+  deathDrop(angle) { return [angle + rand(-0.6, 0.6), rand(...this.traits.death.gun)]; }
 
   // The first hit: he does not die of it. Thrown back, bleeding where it struck, his shades askew; berserk after.
   wound(angle, cause) {
