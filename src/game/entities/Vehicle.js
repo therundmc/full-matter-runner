@@ -296,9 +296,10 @@ export default class Vehicle {
     w.particles.chips(px, py, dirA + Math.PI, 0.9, 3, this.m.color, 120);
     w.sound('carHit', px, py, 0.6);
     if (melee) { this.scar(sx, sy, da, kind); return; }
-    // body panel: bullet hole, sparks
+    // body panel: bullet hole, sparks (and the hot ones that bounce: systems/CarFx.js)
     this.hole(sx, sy);
     w.particles.sparks(px, py, dirA + Math.PI, 0.9, 6, 260);
+    w.events?.emit('carStruck', { car: this, x: px, y: py, dirA, tank });
     if (tank) {
       this.fuel++;
       w.particles.chips(px, py, dirA + Math.PI, 0.6, 5, '#6a5a2a', 90);
@@ -541,14 +542,16 @@ export default class Vehicle {
     for (const key of ['wind', 'rear']) if (this.m[key]) this.clearGlass(key, '#0a0608');
     // the whole car jumps
     impulse(this.body, rand(0, Math.PI * 2), 1800, rand(-0.03, 0.03), 2);
-    // parts fly
+    // parts fly (its tyres burning: systems/CarFx.js, on 'carBlast')
     const tire = spriteOpt('props/car_tire') || chunk('#141418', 20, 7);
     const harm = { kind: 'blunt', knock: 3, lethal: 8 };
+    const pieces = [], thrown = (d) => { pieces.push(d); return d; };
     this.m.wheels.forEach(([wx, wy], i) => {
       const [px, py] = this.wpos(wx, wy);
       const a = Math.atan2(py - y, px - x) + rand(-0.4, 0.4), v = rand(200, 420);
-      if (this.tires[i] || chance(0.6)) w.addDebris(new Debris(w, tire, px, py, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), { mask: FREE, material: 'rubber', kg: 15, mu: 0.15, fly: 0.35, air: 0.03, bounce: 0.5, harm: { ...harm } }));
+      if (this.tires[i] || chance(0.6)) w.addDebris(thrown(new Debris(w, tire, px, py, rand(0, 6), Math.cos(a) * v, Math.sin(a) * v, rand(-0.6, 0.6), { mask: FREE, material: 'rubber', kg: 15, mu: 0.15, fly: 0.35, air: 0.03, bounce: 0.5, harm: { ...harm } })));
     });
+    w.events?.emit('carBlast', { car: this, x, y, pieces });
     const hood = spriteOpt(this.m.sprite + '_hood') || slices(this.base, 4, 1)[3];
     const [hx, hy] = this.wpos((this.m.hood[0] + this.m.hood[1]) / 2, this.h / 2);
     const ha = Math.atan2(hy - y, hx - x) + rand(-0.5, 0.5);
@@ -733,10 +736,7 @@ export default class Vehicle {
         }
       }
     }
-    // engine smoke once badly damaged, black soot once it burns (systems/Smoke.js)
-    const dmg = 1 - clamp(this.hp / this.m.hp, 0, 1);
-    if (this.burning) w.smoke?.burn(hood.x, hood.y, 'car', dt);
-    else if (!this.exploded && dmg > 0.4) w.smoke?.fume('engine', hood.x, hood.y, dt, dmg);
+    // (its engine's smoke, by how damaged it is, and its soot once it burns: systems/CarFx.js)
     // the fuel leaking under it runs on the floor (systems/Liquids.js), its puddle growing to about that radius
     if (this.fuel > 0 && this.puddle < 8 + this.fuel * 5) {
       const r0 = this.puddle;

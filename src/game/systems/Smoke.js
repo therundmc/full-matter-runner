@@ -187,6 +187,24 @@ export default class Smoke {
     this.quietT = 0;
   }
 
+  // a kind laid along the way from (x0, y0) to (x1, y1) by something that moves (a car's engine smoking at speed, a
+  // burning piece thrown): `amount` in all at its heart, in lumps of r px no further than r apart (`most` at most),
+  // each thrown up to `jitter` x r off the line and uneven (a plume, never a tube), never over `cap`
+  lay(kind, x0, y0, x1, y1, r, amount, cap = 2, jitter = 0, most = 5) {
+    if (!this.within(x1, y1, r)) return;
+    const R = this.rand, k = this.kind[kind], n = Math.max(1, Math.min(most, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / r)));
+    for (let i = 1; i <= n; i++) {
+      const u = i / n, jx = jitter ? (R() - 0.5) * 2 * jitter * r : 0, jy = jitter ? (R() - 0.5) * 2 * jitter * r : 0;
+      this.fluid.addDensity(x0 + (x1 - x0) * u + jx, y0 + (y1 - y0) * u + jy, r * (jitter ? 0.75 + R() * 0.5 : 1), (amount / n) * (jitter ? 0.6 + R() * 0.8 : 1), k, cap);
+    }
+    this.quietT = 0;
+  }
+
+  // the air in a disc set turning (omega rad/s, capped at vmax px/s, k of the way): the eddy something leaves behind
+  curl(x, y, r, omega, vmax, k) {
+    if (this.within(x, y, r)) this.fluid.swirl(x, y, r, omega, vmax, k);
+  }
+
   // something burning at (x, y), `what` its size (SMOKE.burn.size; `share` of it: one fire of a whole room burning):
   // soot rising off it, the hot air welling out
   burn(x, y, what, dt, share = 1) {
@@ -377,8 +395,14 @@ export default class Smoke {
     for (const p of w.props) {
       if (!p.moving || p.dead || !this.within(p.x, p.y, Cr.r)) continue;
       const v = Body.getVelocity(p.body), vx = v.x * 60, vy = v.y * 60;
-      if (vx * vx + vy * vy < Cr.speed * Cr.speed) continue;
-      F.push(p.x, p.y, Cr.r, vx, vy, Cr.k);
+      const v2 = vx * vx + vy * vy;
+      if (v2 < Cr.speed * Cr.speed) continue;
+      // going fast (a chase), it is its wake that drags the air: behind its tail, and only part of the way (the air
+      // over the car itself is left alone: what it lays there trails behind it instead of riding on its roof)
+      if (v2 > Cr.fast * Cr.fast) {
+        const sp = Math.sqrt(v2), back = (p.w ?? 2 * Cr.r) * Cr.wake.back;
+        F.push(p.x - (vx / sp) * back, p.y - (vy / sp) * back, Cr.wake.r, vx * Cr.wake.share, vy * Cr.wake.share, Cr.wake.k);
+      } else F.push(p.x, p.y, Cr.r, vx, vy, Cr.k);
       this.quietT = 0;
     }
     for (const p of w.projectiles) {

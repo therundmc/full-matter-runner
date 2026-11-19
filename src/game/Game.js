@@ -729,7 +729,9 @@ export default class Game {
     this.updateCamera(dt);
     // thick smoke about him closes the view in, slowly
     const p = this.world.player;
-    this.murk += (this.world.smoke.murk(p.x, p.y) - this.murk) * (1 - Math.exp(-SMOKE.murk.ease * dt));
+    // (never at the wheel: he drives through the smoke of the cars ahead, the road stays seen)
+    const thick = this.world.drive?.on ? 0 : this.world.smoke.murk(p.x, p.y);
+    this.murk += (thick - this.murk) * (1 - Math.exp(-SMOKE.murk.ease * dt));
     this.flashA = Math.max(0, this.flashA - dt * 3);
     if (this.state === 'outro' && outroOver(this.world.outro)) this.endOutro();
   }

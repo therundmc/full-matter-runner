@@ -43,6 +43,7 @@ import { combatFx } from '../fx/CombatFx.js';
 import { listenMoments } from '../fx/Impact.js';
 import KillCam from '../systems/KillCam.js';
 import ChaseCam from '../systems/ChaseCam.js';
+import CarFx from '../systems/CarFx.js';
 import KillFeed from '../ui/KillFeed.js';
 import Ambience from '../systems/Ambience.js';
 import Tutorial from '../systems/Tutorial.js';
@@ -202,6 +203,7 @@ export default class World {
     this.lorries = level.chase || this.props.some((p) => p.backs) ? new Lorries(this, level.chase) : null;
     // the chase's own slow motions and cuts (a pursuer stopped, the lorry across the road): where one can be driven
     this.chaseCam = this.pursuit || this.lorries ? new ChaseCam(this) : null;
+    this.carFx = new CarFx(this);     // a car in trouble: its smoke, the sparks where it scrapes, its fire-ball (looks)
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
@@ -672,6 +674,7 @@ export default class World {
       Audio.motor('drive', this.drive?.motor(dt) ?? null);
     }
     this.pursuit?.after(dt);
+    this.carFx.update(dt);
     for (const e of this.emitters) { e.t -= dt; e.fn(e, dt); }
     this.particles.update(dt);
     this.decals.update(dt);

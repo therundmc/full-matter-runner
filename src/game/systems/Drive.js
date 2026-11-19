@@ -861,6 +861,8 @@ export default class Drive {
     const skid = this.launchT > 0 ? 1 : skidOf(this.u, this.v, this.shoveT > 0, C);
     const on = skid > 0 ? rear : null;
     if (on) {
+      // (their rubber smoke in the air: systems/CarFx.js; all four in a shove)
+      w.events.emit('tyres', { car: v, at: this.shoveT > 0 ? wheels : on, k: skid });
       for (const r of on) if (chance(F.smoke[0] * skid)) w.particles.smoke(r.x, r.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
       if (this.ruts?.length === on.length) {
         const from = this.ruts, xs = [...on, ...from].map((r) => r.x), M = F.marks;
@@ -942,8 +944,8 @@ export default class Drive {
     const w = this.world, C = this.C.scrape, b = this.van.body;
     if ((this.scrapeT -= dt) > 0) return;
     const g = this.grind;
+    // (the sparks are a shower for as long as it rubs: systems/CarFx.js)
     if (g && this.v >= 1.5) {
-      w.particles.sparks(g.x, g.y, Math.PI + b.angle, 0.7, C.sparks, 240);
       w.sound('vanScrape', g.x, g.y, C.vol);
       w.events.emit('ride', { beat: 'scrape', x: g.x, y: g.y });
       this.scrapeT = C.every;
@@ -955,7 +957,6 @@ export default class Drive {
       if (!(o.isStatic || o.entity?.isVehicle) || o.entity?.def?.hung) continue;
       const c = pair.collision.supports?.[0];
       if (!c || this.v < 1.5) continue;
-      w.particles.sparks(c.x, c.y, Math.PI + b.angle, 0.7, C.sparks, 240);
       w.sound('vanScrape', c.x, c.y, C.vol);
       w.events.emit('ride', { beat: 'scrape', x: c.x, y: c.y });
       this.scrapeT = C.every;

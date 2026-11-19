@@ -588,7 +588,7 @@ export default class Pursuit {
   }
 
   // How the exit looks, a step (O.fx; nothing of it weighs on anything): smoke off its tyres and their rubber on the
-  // road, sparks from under it, pieces lost on the way; what stops it at the roadside: one burst
+  // road, pieces lost on the way; what stops it at the roadside: one burst
   exitFx(car, dt) {
     const F = this.C.out.fx, o = car.out, v = car.v, w = this.world, M = CHASE.fx.marks;
     if (!F) return;
@@ -601,9 +601,11 @@ export default class Pursuit {
       for (let i = 0; i < F.crash[2]; i++) v.shed(side.x, side.y, back + rand(-1, 1), rand(...F.fling), true);
       w.shake?.(F.crash[3]);
       w.sound('carHit', side.x, side.y, 1);
+      w.events.emit('pursuerCrash', { car: v, x: side.x, y: side.y }); // (burning, it goes up there: systems/CarFx.js)
     }
     if (o.hit || sp < 1.5) { o.ruts = null; return; }
     for (const q of wheels) if (chance(F.smoke[0])) w.particles.smoke(q.x, q.y, 1, 3, { speed: 26, size: F.smoke[1], life: F.smoke[2] });
+    w.events.emit('tyres', { car: v, at: wheels, k: 1 }); // (their rubber smoke in the air, the sparks from under it: systems/CarFx.js)
     if (o.ruts) {
       const from = o.ruts, xs = [...wheels, ...from].map((q) => q.x);
       w.decals?.paint?.((g) => {
@@ -614,10 +616,6 @@ export default class Pursuit {
       }, 'floor', Math.min(...xs) - M.w, Math.max(...xs) + M.w);
     }
     o.ruts = wheels;
-    if (chance(F.sparks[0])) {
-      const q = v.toWorld(rand(0.2, 0.9) * v.w, o.side > 0 ? v.h - 2 : 2);
-      w.particles.sparks(q.x, q.y, back, 0.6, F.sparks[1], F.sparks[2]);
-    }
     if ((o.shedT -= dt) <= 0) {
       o.shedT = rand(...F.shed);
       const q = v.toWorld(rand(0.1, 0.9) * v.w, rand(0.1, 0.9) * v.h);

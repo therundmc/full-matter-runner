@@ -111,8 +111,9 @@ export const CHASE = {
   // dead at the wheel (a told shot): the car runs on, losing `slow` px/step a second, drifting `drift` of its full
   // sideways speed toward the kerb (Drive.coast)
   coast: { slow: 3.2, drift: 0.22 },
-  // a flank against a wall or a car: sparks and the grind, every so often; the van's friction against what it leans on
-  scrape: { every: 0.12, sparks: 6, vol: 0.6, friction: 0.08 },
+  // a flank against a wall or a car: the grind heard (and the pad's beat) every so often; the van's friction against
+  // what it leans on. Its sparks are a shower for as long as it rubs (systems/CarFx.js, data/carfx.js `scrape`)
+  scrape: { every: 0.12, vol: 0.6, friction: 0.08 },
   // the camera (Game.fit / updateCamera, Drive.frame). At the wheel the picture is drawn 1:1: the scene's canvas is
   // the window, at the whole zoom nearest to `view` world px of height (a level's `chase.view` overrides it; 3 at
   // 1080: 360 px; 4 at 1440: 360; 3 at 900: 300), and the lens scales nothing: a picture brought down by the lens,
@@ -199,10 +200,10 @@ export const CHASE = {
       // what its exit looks like (Pursuit.exitFx; looks only, nothing of it touches his car). `ball`: the engine
       // goes as it is stopped: [flames, px/s, the flash's radius px, its colour], and it burns from then on (`burn`);
       // while it slides: smoke off each tyre (`smoke`: [chance a wheel a step, px, s]) and rubber on the road (as
-      // his own: fx.marks), sparks from under it (`sparks`: [chance a step, how many, px/s]), a piece of it lost
-      // every `shed` s ([from, to], thrown at `fling` px/s); what stops it at the roadside: `crash` [sparks, glass,
-      // pieces lost, shake]
-      fx: { ball: [26, 190, 120, '#ffb060'], burn: true, smoke: [0.6, 7, 1.1], sparks: [0.5, 5, 260], shed: [0.16, 0.34], fling: [120, 260],
+      // his own: fx.marks), a piece of it lost every `shed` s ([from, to], thrown at `fling` px/s); what stops it at
+      // the roadside: `crash` [sparks, glass, pieces lost, shake]. The sparks from under it, its tyres' smoke in the
+      // air, its engine's fire-ball and the one of a burning wreck that hits the roadside: systems/CarFx.js
+      fx: { ball: [26, 190, 120, '#ffb060'], burn: true, smoke: [0.6, 7, 1.1], shed: [0.16, 0.34], fling: [120, 260],
         crash: [22, 14, 3, 0.3] } },
     limp: 0.6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
     spawn: { behind: 330, over: 5, clear: 260, near: 300, cross: 6.5, radius: 150 },

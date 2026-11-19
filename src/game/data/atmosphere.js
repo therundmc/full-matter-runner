@@ -155,7 +155,7 @@ export const SMOKE = {
   },
   // a puff of `kind`: r px, amount at its heart, in `lumps` thrown about it (a wall coming down, a window torn out,
   // a screen caving in, a short, a dying motor (`amount` per unit of its `puff`), a fire doused, the spray of a
-  // burst water main, a car's exhaust, a rocket's trail (per step))
+  // burst water main, a car's exhaust, a tyre shot out, a rocket's trail (per step))
   puffs: {
     wall: { kind: 'smoke', r: 18, amount: 0.9, lumps: 4 },
     window: { kind: 'smoke', r: 12, amount: 0.6, lumps: 3 },
@@ -165,6 +165,7 @@ export const SMOKE = {
     douse: { kind: 'steam', r: 16, amount: 1.1, lumps: 3 },
     spray: { kind: 'steam', r: 10, amount: 0.25, lumps: 1 },
     exhaust: { kind: 'smoke', r: 4, amount: 0.3, lumps: 1 },
+    tyre: { kind: 'smoke', r: 11, amount: 0.8, lumps: 3 },   // a tyre shot out (systems/CarFx.js)
     trail: { kind: 'smoke', r: 5, amount: 0.3, lumps: 1 },
   },
   // what stirs the air: someone walking (from `speed` px/s, over r px, k of the way per frame), a round (along its
@@ -172,7 +173,9 @@ export const SMOKE = {
   // times its blades' speed, capped at `vmax`, over r px, and thinned at `mix` 1/s)
   stir: { speed: 25, r: 22, k: 0.3 },
   round: { r: 10, speed: 70, k: 0.3 },
-  car: { speed: 40, r: 38, k: 0.25 },
+  // (a car faster than `fast` px/s, a chase: the air is dragged by its wake, a disc of `wake.r` px centred `back` of
+  // its length behind its middle, toward `share` of its speed, k of the way per frame)
+  car: { speed: 40, r: 38, k: 0.25, fast: 400, wake: { back: 0.62, r: 34, share: 0.45, k: 0.12 } },
   fan: { r: 70, turn: 0.12, vmax: 28, k: 0.08, mix: 0.12 },
   // a sprinkler head spraying brings down what is in the air within r px of it, at `rate` 1/s (systems/Sprinklers.js)
   wash: { r: 48, rate: 0.5 },

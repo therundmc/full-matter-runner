@@ -247,6 +247,15 @@ src/
                           course and close: slow motion, the view toward the way round, the wheel handed more), a
                           side swipe landing on him ('pursuerRam'). A beat is a time scale (Game runs the world at it)
                           and maybe a shot (a cut between whole zooms); `step` with the world, `update` on the real clock
+      CarFx.js            a car in trouble, LOOKS ONLY (data/carfx.js CARFX): its engine's smoke by damage stage (steam,
+                          grey, black, fire) laid behind it in the modelled air (Smoke.lay) and the billows that ARE
+                          SEEN of it at night (`puffs`: flat squares that ride the fluid's flow, drawn after the
+                          lighting by render/CarFxArt.js); rubber smoke on 'tyres'; a shower of hot sparks
+                          (Particles.hot) for as long as a contact rubs, sized by showerRate(rubOf), with its light,
+                          the paint scored (Vehicle.scar) and its grind; a bare rim, a wreck sliding; rounds on
+                          bodywork ('carStruck'), glass ('carPart'); the fire-ball in stages (`boom`: engine / crash /
+                          car) and its burning pieces (Debris that meet walls only). Budgets CARFX.budget x the
+                          QUALITY's `fx` / `fxLights`. Stepped after the physics (World.step, after Pursuit.after)
       LastDrag.js         how level 2A opens the first time (the level's `chase.intro: 'drag'`, CHASE.intro): the car
                           stands, he finishes his cigarette and flicks the butt out (its flight, its ember on the
                           road), then Drive.launch and the grab; SPACE / pad A held skips it; drawn by CharacterAnim
@@ -438,7 +447,11 @@ chase's wind. `?interp=off` (a developer's switch) draws the state as stepped, t
 | `noise` | `{ x, y, radius, source, type }` | `World.noise` (guns, doors, glass, walls, blasts, thrown guns, vehicles, a bin knocked over: `clatter`) | Director (hearing), Threats (a guard who makes noise can be placed) |
 | `windowBroken` | `{ x, y, by }` | Window.shatter | Director (incident; the player seen doing it: a word) |
 | `doorBroken` | `{ x, y }` | Door.unlock (lock burst), Destruction.detachDoor | Director (incident), Rumble (near him) |
-| `pursuerWreck` | `{ car, x, y }` (a pursuer stopped for good: wrecked, its driver shot, a front tyre, blown up) | systems/Pursuit.js | ChaseCam (the kill beat) |
+| `pursuerWreck` | `{ car, x, y }` (a pursuer stopped for good: wrecked, its driver shot, a front tyre, blown up) | systems/Pursuit.js | ChaseCam (the kill beat), CarFx (its engine's fire-ball) |
+| `pursuerCrash` | `{ car, x, y }` (a pursuer on its way out stopped by what lines the road) | systems/Pursuit.js exitFx | CarFx (burning, it goes up there) |
+| `tyres` | `{ car, at: [points], k }` (tyres letting go this step: a burn-out, a shove, hard steering, a wreck sliding) | Drive.fx, Pursuit.exitFx | CarFx (rubber smoke in the air, the billows) |
+| `carStruck` | `{ car, x, y, dirA, tank }` (a round in a body panel) | Vehicle.hit | CarFx (hot sparks, a glint) |
+| `carBlast` | `{ car, x, y, pieces }` (a car blown up: the tyres it threw) | Vehicle.explode | CarFx (they burn as they roll) |
 | `pursuerRam` | `{ car, x, y, side }` (a pursuer's side swipe landing on his car, once a swipe) | systems/Pursuit.js | ChaseCam |
 | `chaseBeat` | `{ kind: 'kill' / 'lorry' / 'rammed' / 'shave', tier, x, y }` | systems/ChaseCam.js | (nobody yet: sounds, the HUD) |
 | `ride` | `{ beat, x, y }` (beat: `shove`, `hit`, `clip`, `torn`, `scrape`, `crash`, `lorry`, `start`, `ram`) | systems/Drive.js (the van's jolts), Lorries (a lorry stops across the street), World's outro (the getaway's engine catches, it rams a car) | Rumble |

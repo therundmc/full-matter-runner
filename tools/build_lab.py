@@ -148,13 +148,20 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    seconds a light one; two in a breath, one longer beat. Then drive on east to station 21's lorry:
                    on a collision course and close, the world slows until the car is clear of it (the wheel answers
                    in real time and takes the car further). On foot nothing of it plays
+    32 CHASE FX    a car in trouble (systems/CarFx.js, data/carfx.js), at the street's east end past the lorry: three
+                   parked cars already damaged (prop option `worn`) smoking at each stage, white steam, grey, black
+                   with a spit of fire; a round more in the black one sets it alight and it blows up a few seconds
+                   later (the fire-ball in stages, its burning tyres down the road, the pops); a coupe to get into
+                   (E at its door) that pulls away east: S grinds its flank along the blind wall (sparks for as long
+                   as it rubs, by its speed), W into the parked cars; rounds on bodywork spark, a tyre shot out smokes
+                   and its rim then throws sparks
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
 
-W, H = 76, 31                              # (the 12 columns east of col 63 are 15 CUEBALL's room, in the brick)
+W, H = 96, 31                              # (cols 63-74 are 15 CUEBALL's room, in the brick; east of them only the street, 32 CHASE FX)
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -521,6 +528,23 @@ lv.prop('car2', 61.0, 23.6, 0, drive=True)         # E at its driver's door
 lv.prop('trash_can', 64.5, 19.4)
 lv.prop('crate', 70.9, 19.3, 12)
 lv.prop('wall_lamp', 64.5, 18.08, 0)
+
+lv.area('32 chase fx: cars smoking at each stage of damage, one to set alight and blow up, a car to grind along the wall')
+lv.fill(73, 18, 94, 19, 's')               # the street carried on east once more, a blind wall along its south kerb
+lv.fill(73, 20, 94, 24, '=')
+lv.fill(73, 22, 94, 22, '-')
+lv.paint('label_chasefx', 76.4, 18.6)
+# the engine's smoke by the hp already gone (prop option `worn`, CARFX.smoke.stages): steam, grey, black. The black
+# one is a round from catching fire (Vehicle BURN): shoot it, it burns, then goes up (the fire-ball, its burning
+# pieces, the pops); rounds on any of them spark, their windows burst, a tyre shot out smokes
+lv.prop('car', 78.0, 21.0, 0, worn=0.25)
+lv.prop('car2', 83.0, 21.0, 0, worn=0.45)
+lv.prop('car', 88.2, 21.0, 0, worn=0.6)
+# E at its driver's door: it pulls away east; S steers its flank into the blind wall (the shower of sparks, the paint
+# scored, the grind), W into the smoking cars (car on car). Its tyres smoke as it pulls away and at a shove (SPACE)
+lv.prop('car2', 75.4, 23.6, 0, drive=True)
+for x in (80.5, 90.5):
+    lv.prop('wall_lamp', x, 18.08, 0)
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)

@@ -261,6 +261,9 @@
   `Body.getVelocity/getSpeed/getAngularVelocity` (normalized to 60 Hz); use `impulse()` (momentum) for hits/blasts;
   heavy objects use `world.physics.freezeIfHeavy(body)`.
 - Vehicles (`Vehicle`) follow a sprite-space layout contract (VEHICLES in Vehicle.js); dead bodies are `Ragdoll`s.
+- A car in trouble (systems/CarFx.js, numbers `CARFX` in data/carfx.js; LOOKS ONLY, never a body a car can touch):
+  engine smoke by damage stage through Smoke.lay plus the billows seen at night (render/CarFxArt.js), sparks for as
+  long as metal rubs (Particles.hot), the fire-balls (`boom`); scaled by QUALITY `fx` / `fxLights`; lab station 32.
 - The chase (level 2A, docs/LEVEL2.md): numbers in data/chase.js; events by distance in the level's `chase.events`
   (systems/Pursuit.js, systems/Lorries.js); what the car hits is torn (a sensor at once), flung by hand (Drive.fling) or
   the crash (`lasting`): never let a light thing hold it up. Play it by script after touching it (tools/shot.mjs).

@@ -10,10 +10,16 @@
 // (-y) can point at without his own car in the way: the driver's side and ahead, about 200 degrees.
 // A click outside it does nothing (the cursor says so). His rounds never touch his own car (Projectile `ignore`) nor
 // himself (their owner). DOM-free.
+import { CAT } from '../Config.js';
 import { CHASE } from '../data/chase.js';
-import { angDiff, clamp, spread } from '../../engine/math.js';
+import { CARFX } from '../data/carfx.js';
+import { angDiff, clamp, spread, chance } from '../../engine/math.js';
+import { spriteOpt } from '../../engine/Assets.js';
 import Projectile from '../entities/Projectile.js';
+import Debris from '../entities/Debris.js';
 import { muzzleFlash } from '../fx/CombatFx.js';
+import { ejection, spentSound } from '../fx/Casings.js';
+import { quality } from './Quality.js';
 
 const { Body } = Matter;
 
@@ -99,10 +105,25 @@ export default class CarGun {
       w.addProjectile(pr);
     }
     muzzleFlash(w, m.x, m.y, a, d, null);
+    this.eject(d, m, a, cv);
     w.sound(d.sound, m.x, m.y, 1);
     if (d.noise) w.noise(m.x, m.y, d.noise, p, 'gunshot');
     this.cool = d.rate;
     w.shake(clamp(d.shake ?? 0.15, 0, 0.3));
     return true;
+  }
+
+  // the spent case out of the gun's port, to its right, carried with the car (fx/Casings.js): it arcs out over the
+  // door or the bonnet, rings on the road and is left behind. A look: it meets walls only (never his own car, which
+  // it leaves from inside), and the QUALITY option thins them (CARFX.casings of them at HIGH)
+  eject(d, m, a, cv) {
+    const img = d.casing && spriteOpt('weapons/' + d.casing);
+    if (!img || !chance(CARFX.casings * (quality().fx ?? 1))) return;
+    const back = (d.grip ?? 0) + 4, port = { x: m.x - Math.cos(a) * back, y: m.y - Math.sin(a) * back };
+    const e = ejection(d, port, a, { x: cv.x * 60, y: cv.y * 60 });
+    this.world.addDebris(new Debris(this.world, img, e.x, e.y, e.angle, e.vx, e.vy, e.spin, {
+      mask: CAT.WALL | CAT.EDGE, material: 'brass', air: 0.08, shadow: 0, kg: e.spec.kg, mu: e.spec.mu, bounce: 0.5, z: e.z, vz: e.vz, tumble: e.tumble,
+      lift: e.spec.lift, hop: e.spec, tick: { name: 'shell', opts: { kind: spentSound(d), bounces: 1 } },
+    }));
   }
 }

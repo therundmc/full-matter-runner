@@ -52,7 +52,8 @@ export function explode(world, x, y, { radius = 90, source = null, origin = null
   world.sound('explosion', x, y);
   world.shake(1.0);
   if (!world.drive?.on) world.hitstop(0.07); // (never at the wheel: the chase does not stop)
-  world.game.flash('#fff2d0', 0.55);
+  // (never the whole picture at the wheel: the road ahead stays seen; its light and its fire-ball say it)
+  if (!world.drive?.on) world.game.flash('#fff2d0', 0.55);
   world.light(x, y, R * 2.8, '#ffa040', 0.45);
   fireball(world, x, y, R);
   world.noise(x, y, 1100, null, 'explosion');

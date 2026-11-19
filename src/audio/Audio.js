@@ -129,6 +129,9 @@ export const META = {
   awningRip: { pri: 1, dur: 0.4, gap: 0.15, max: 2, gain: 0.6 }, tyreSkid: { pri: 1, dur: 0.4, gap: 0.35, max: 1, gain: 0.45 },
   waterSpray: { pri: 0, dur: 0.3, gap: 0.25, max: 1, gain: 0.4 },
   tellClick: { pri: 2, dur: 0.2, gap: 0.15, max: 1, gain: 0.6 }, pursuerWreck: { pri: 3, dur: 1, gap: 0.2, max: 2, gain: 0.9 },
+  // ... a car in trouble (systems/CarFx.js): placeholders
+  carGrind: { pri: 1, dur: 0.35, gap: 0.12, max: 2, gain: 0.45 }, rimGrind: { pri: 1, dur: 0.3, gap: 0.2, max: 1, gain: 0.4 },
+  carPop: { pri: 2, dur: 0.5, gap: 0.1, max: 2, gain: 0.7 },
   // flesh and voices
   gore: { pri: 3, dur: 0.8, gap: 0.05, max: 3, duck: 0.85 },
   death: { pri: 4, dur: 1.0, gap: 0.3, max: 1, duck: 0.5, gain: 0.8 },
@@ -451,6 +454,11 @@ const FOLEY = {
   // wrecked on what does not give
   tellClick: [['click', 0.8, 0.7], ['click', 0.5, 1.3, 0.05]],
   pursuerWreck: [['sheet', 0.9, 0.8], ['thud', 0.9, 0.7], ['metalBreak', 0.6, 0.9, 0.02], ['glass', 0.5, 1.1, 0.04]],
+  // PLACEHOLDERS for a car in trouble (systems/CarFx.js): two cars or a car and a wall grinding along each other, a
+  // bare rim on the asphalt, a secondary pop in a burning wreck
+  carGrind: [['sheet', 0.45, 0.7], ['metal', 0.3, 0.6, 0.05, 0.6]],
+  rimGrind: [['metal', 0.35, 1.3], ['sheet', 0.2, 1.1, 0.04]],
+  carPop: [['thud', 0.8, 0.9], ['metalBreak', 0.4, 1.1, 0.02]],
   // PLACEHOLDERS for the back road (systems/Lorries.js, Drive.fx): the lorry's reversing beeper and its air brakes,
   // an awning or a parasol torn down, tyres letting go (faint: the motor's own squeal covers it), spray out of a puddle
   lorryBeep: [['click', 0.7, 1.9], ['click', 0.5, 1.9, 0.06]],

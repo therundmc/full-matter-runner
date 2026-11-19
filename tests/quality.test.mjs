@@ -19,7 +19,7 @@ test('quality: the table has the three levels, each with every key, HIGH droppin
   assert.deepEqual(QUALITY_CHOICES, ['auto', 'low', 'medium', 'high']);
   const keys = Object.keys(QUALITY.high).sort();
   for (const l of QUALITY_LEVELS) assert.deepEqual(Object.keys(QUALITY[l]).sort(), keys, l);
-  assert.deepEqual(QUALITY.high, { ss: Infinity, zoom: Infinity, mirrors: true, bloom: 1, light: 1, smoke: 1, particles: 1, shimmer: true, glow: true, rays: true, lights: Infinity, fire: 1 });
+  assert.deepEqual(QUALITY.high, { ss: Infinity, zoom: Infinity, mirrors: true, bloom: 1, light: 1, smoke: 1, particles: 1, shimmer: true, glow: true, rays: true, lights: Infinity, fire: 1, fx: 1, fxLights: Infinity });
   for (const k of keys) {
     const [lo, mid, hi] = QUALITY_LEVELS.map((l) => +QUALITY[l][k]);
     assert.ok(lo <= mid && mid <= hi, `${k}: ${lo} ${mid} ${hi}`);

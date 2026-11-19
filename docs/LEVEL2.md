@@ -481,3 +481,35 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   a cut in closer (SHOTS `butt`, zoom 4 even: 8 / 12 / 16 px a world px at 720 / 1080 / 1440), 18 sparks in a flash
   at its first bounce, its end lighting 26 px of road. QA 3 min seed 1: the camera's scale check takes 4 now; the
   known stall at col 301.
+- 2026-11-19: THE CHASE'S EFFECTS (the user: "faut que ca envoie niveau Michael Bay"). One system, looks only:
+  systems/CarFx.js, its numbers in data/carfx.js (CARFX), on the world's events ('tyres', 'carStruck', 'carPart',
+  'carBlast', 'pursuerWreck', 'pursuerCrash', 'explosion', 'ride') and the cars' contacts after the physics. WHAT THE
+  MODELLED AIR DOES AT 60 KM/H (measured): the fluid keeps up (only the air about the view is stepped, 54 x 37 cells)
+  but a steady source laid 0.02 a step every 9 px (nothing to see), and the open air's smoke only shows where a lamp
+  lights it: on the dark road a plume was a faint haze. So: (1) what a moving car lays is strung along the way its
+  hood went (Smoke.lay: an amount per px, uneven lumps), (2) a car over 400 px/s drags the air by its WAKE behind
+  its tail, part of the way (SMOKE.car.wake: the air over the car is left alone, the plume trails instead of riding
+  its roof), with an eddy turned behind it either way (Smoke.curl), and (3) what is SEEN of it is billows drawn
+  after the lighting (render/CarFxArt.js: flat squares, a lit corner, thinning in steps) that ride that same flow.
+  ENGINE SMOKE by the share of hp gone: steam 0.15, grey 0.35, black 0.55 (a spit of fire now and then), fire
+  (flames licking out of the hood, carried with the car); his own car is armoured (no hp lost: none; a hard knock
+  breathes steam out of its grille, the crash that kills him smoke and sparks). TYRES: rubber smoke off the rear
+  wheels at the burn-out, a shove, hard steering, a wreck's slide; a tyre shot out bursts, its rim then throws
+  sparks. SPARKS: Particles.hot (whole px with a streak along their way ON THE PICTURE, cooling white to red, two
+  bounces, a hot mark left); a shower for as long as two things rub, showerRate = 30 a s per px/step over 1 (300
+  at most; two cars side by side count 0.7 of their shared speed), with a light every 0.06 s, the paint scored
+  (48 a car at most) and the placeholder carGrind; Drive.scrape keeps the sound and the pad's beat only. BOOM: a
+  pursuer stopped has its engine go in a fire-ball in stages (flash light, white-hot core, orange lobes at 0.05 s,
+  soot into the air at 0.1 s and black billows, shock front, 3 burning pieces that bounce down the road, 2 spots
+  left burning, a pop 0.35 to 0.8 s later); burning, the wreck that hits the roadside goes up bigger (`crash`); a
+  car's real explosion throws 7 burning pieces and its own tyres burn (`car`). KEPT: the real explosion stays at
+  25 % and late (it would kill him alongside and is off the picture by the time its fuse is out); the fire-balls
+  above are looks. No whole-picture flash at the wheel any more (Explosions.js), and no murk closing the view in
+  while he drives through smoke (Game). Casings out of his Uzi (CarGun.eject). QUALITY: `fx` 1 / 0.6 / 0.35 of
+  sparks, pieces, billows and casings, `fxLights` 30 / 12 / 0 a second (CARFX.budget). Lab station 32 CHASE FX
+  (the street carried on east: three cars smoking by stage (prop option `worn`), the black one a round from
+  burning and blowing, a coupe to grind along a blind wall). Tests: tests/carfx.test.mjs (stages, the plume behind
+  it, the shower by rubbing speed and its end, the budgets, the pieces, and the chase bit for bit the same with
+  the effects and without). QA 3 min seed 1: PASS, 10 sessions,
+  16 slow steps (main's same seed: 16), mean step 2.86 ms (2.75 on a second run; main 2.63), worst 121 ms (main
+  143); level 1 seed 1 PASS, no warning, mean 1.61 ms (main 1.54); lab PASS.

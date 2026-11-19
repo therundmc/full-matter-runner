@@ -121,7 +121,8 @@ export function buildLevel(world, level) {
   // { tips: false } = a bin that stays up and breaks like any prop (one indoors, systems/Tipping.js);
   // { flies: true } = flies turn over it; { clutter: set } = what stands on it (data/clutter.js SETS, systems/Clutter.js);
   // { drive: true } = a vehicle he can get into and drive (the lab); { pursuer: true } = a pursuer's car parked with
-  // its gunman, telling his shot now and then (the lab); { backs: tiles } = a lorry that backs out across the way (the lab)
+  // its gunman, telling his shot now and then (the lab); { backs: tiles } = a lorry that backs out across the way (the lab);
+  // { worn: share } = a vehicle that has already lost that share of its hp (its engine smokes: systems/CarFx.js; the lab)
   for (const [type, col, row, deg = 0, opt] of level.props || []) {
     const a = (deg * Math.PI) / 180;
     const p = VEHICLES[type] ? new Vehicle(world, type, col * TILE, row * TILE, a) : new Prop(world, type, col * TILE, row * TILE, a);
@@ -134,6 +135,7 @@ export function buildLevel(world, level) {
     if (opt?.trunk && p.isVehicle) p.trunk = { item: opt.trunk, open: false };
     if (opt?.drive && p.isVehicle) p.drivable = true; // E at its driver's door: he drives it (systems/Drive.js)
     if (opt?.pursuer && p.isVehicle) p.pursuer = true; // the lab's pursuer dummy (systems/Pursuit.js)
+    if (opt?.worn && p.isVehicle) p.hp = p.m.hp * (1 - opt.worn);
     if (opt?.backs) p.backs = opt.backs; // a lorry that backs out that many tiles when a car comes (systems/Lorries.js)
     if (opt?.phase) p.phase = opt.phase; // s into its lamps' cycle (a traffic light: systems/Signals.js)
     world.props.push(p);

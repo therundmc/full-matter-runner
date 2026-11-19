@@ -19,6 +19,8 @@ const WATER = ['#f4faff', '#d6e8fa', '#b4cfec', '#8fb2da'];
 // a flame is one flat colour, the one of its heat (HEAT: where each band starts), from soot to white-hot
 const FLAME = ['#2c1c1a', '#7e1a0c', '#d8401a', '#ff8a1e', '#ffd040', '#fff6cf'];
 const HEAT = [0, 0.16, 0.32, 0.5, 0.7, 0.9];
+const HOT = ['#fff6cf', '#ffd040', '#ff8a1e', '#d8401a', '#7e1a0c']; // a hot spark cooling (hot()), FLAME's colours
+const STREAK = { t: 0.022, most: 7, cut: 1500 }; // its tail: s of its way drawn behind it, px at most; a view faster than `cut` px/s jumped
 // smoke is a few flat greys; the billows of a fire are chunks of one of them with their lit corner one step lighter
 // (the last tone is only ever a highlight) that thin in steps, then break up into wisps; other smoke is soft puffs
 const SMOKE = { light: ['#62626e', '#7c7c88', '#989aa6', '#b6b8c2'], dark: ['#1b191d', '#29262b', '#39353b', '#4b464d'] };
@@ -99,12 +101,26 @@ export default class Particles {
     }
   }
 
+  // Hot sparks off grinding metal (systems/CarFx.js): `count` of them leaving (x, y) with the velocity (o.vx, o.vy)
+  // px/s of what throws them plus up to o.kick px/s any way (within o.spread rad of o.a when given), thrown up at
+  // o.up [from, to] px/s: whole pixels with a short tail, white-hot then cooling, that fall, bounce o.hops times on
+  // the road and leave a hot mark there o.mark of the time. o.life: [from, to] s
+  hot(x, y, count, o = {}) {
+    const [u0, u1] = o.up || [30, 140], [l0, l1] = o.life || [0.25, 0.6], kick = o.kick ?? 90;
+    for (let i = 0; i < count; i++) {
+      const a = o.a === undefined ? rand(0, 6.28) : o.a + rand(-1, 1) * (o.spread ?? 0.8), v = kick * rand(0.25, 1);
+      const life = rand(l0, l1);
+      this.add({ type: P.SPARK, hot: true, x, y, z: rand(1, 4), vz: rand(u0, u1), vx: (o.vx || 0) + Math.cos(a) * v, vy: (o.vy || 0) + Math.sin(a) * v,
+        life, maxLife: life, drag: 1.1, hops: o.hops ?? 2, mark: o.mark ?? 0, big: chance(0.2) });
+    }
+  }
+
   // opts.puff: the smoke of a fire, in square billows that roll up toward the camera (opts.h: height it starts at)
   smoke(x, y, count, r = 6, opts = {}) {
     for (let i = 0; i < count; i++) {
       const a = rand(0, Math.PI * 2), v = rand(5, opts.speed ?? 40);
       const life = rand(0.6, opts.life ?? 1.6);
-      this.add({ type: P.SMOKE, x: x + rand(-r, r), y: y + rand(-r, r), vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+      this.add({ type: P.SMOKE, x: x + rand(-r, r), y: y + rand(-r, r), vx: Math.cos(a) * v + (opts.vx || 0), vy: Math.sin(a) * v + (opts.vy || 0),
         size: rand(3, opts.size ?? 9), grow: opts.puff ? rand(3, 8) : rand(6, 16), life, maxLife: life, drag: 2.5,
         tones: opts.dark ? SMOKE.dark : SMOKE.light, tone: randi(0, 2),
         puff: !!opts.puff, h: opts.h || 0, rise: opts.puff ? rand(8, 24) : 0, lobe: rand(0, 6.28) });
@@ -114,13 +130,14 @@ export default class Particles {
   // Flames: square chunks leaving (x, y) at up to `speed`. The slow ones stay in the middle and stay hot, the fast
   // ones cool at the rim, so a burst reads white, yellow, orange, red from its heart outward.
   // opts: size [min, max], life [min, max], rise (px/s toward the camera), h (height they start at), heat (added
-  // to every flame: by default a fire that just burns, yellow at birth; 0 for a blast, born white-hot).
+  // to every flame: by default a fire that just burns, yellow at birth; 0 for a blast, born white-hot), vx / vy
+  // (px/s: the velocity of what burns, which they leave with: a car on fire at speed).
   fire(x, y, count, speed = 160, opts = {}) {
     const [s0, s1] = opts.size || [3, 8], [l0, l1] = opts.life || [0.15, 0.55], base = opts.heat ?? -0.12;
     for (let i = 0; i < count; i++) {
       const a = rand(0, Math.PI * 2), u = Math.sqrt(Math.random()), v = speed * u;
       const life = rand(l0, l1) * (1.15 - 0.4 * u);
-      this.add({ type: P.FIRE, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: rand(s0, s1), life, maxLife: life, drag: 3.5,
+      this.add({ type: P.FIRE, x, y, vx: Math.cos(a) * v + (opts.vx || 0), vy: Math.sin(a) * v + (opts.vy || 0), size: rand(s0, s1), life, maxLife: life, drag: 3.5,
         heat: base + (1 - u) * 0.42 + rand(-0.06, 0.06), h: opts.h || 0, rise: (opts.rise ?? 36) * rand(0.5, 1.4), lobe: rand(0, 6.28) });
     }
   }
@@ -290,6 +307,17 @@ export default class Particles {
         if (p.z > 0 && alive) list[w++] = p;
         else if (chance(0.4) && !map.solidAt(nx, ny)) this.drops(nx, ny, rand(0, 6.28), 3.14, 1, 'rgba(200,225,250,0.5)', 30, 2, false);
         continue;
+      } else if (p.hot) {
+        // a hot spark: it falls, bounces on the road (a hot mark left there now and then), dies on its last touch
+        p.vz -= GRAVITY * dt;
+        p.z += p.vz * dt;
+        if (map.solidAt(nx, ny)) { p.vx *= -0.4; p.vy *= -0.4; }
+        if (p.z <= 0) {
+          if (p.hops > 0) {
+            p.hops--; p.z = 0; p.vz *= -0.45; p.vx *= 0.7; p.vy *= 0.7;
+            if (p.mark && chance(p.mark)) { const life = rand(0.25, 0.7); this.add({ type: P.SPARK, ember: true, x: nx, y: ny, vx: 0, vy: 0, life, maxLife: life, drag: 0 }); }
+          } else alive = false;
+        }
       } else if (p.z !== undefined) {
         p.vz -= 520 * dt;
         p.z += p.vz * dt;
@@ -312,7 +340,7 @@ export default class Particles {
           if (chance(0.75)) this.fire(nx, ny, 1, 6, { size: [2, 4], life: [0.12, 0.3], h: p.z, rise: 0 });
           if (chance(0.25)) this.smoke(nx, ny, 1, 1, { dark: true, puff: true, speed: 8, size: 4, life: 0.9, h: p.z });
         }
-      } else if ((p.type === P.SPARK) && map.solidAt(nx, ny)) {
+      } else if (p.type === P.SPARK && !p.ember && map.solidAt(nx, ny)) {
         p.vx *= -0.4; p.vy *= -0.4;
       } else if (p.type === P.MIST && shutBetween(this.world, p.x, p.y, nx, ny)) {
         continue; // a shut door or a pane takes the fine spray too
@@ -537,9 +565,32 @@ export default class Particles {
   // additive pass (sparks, embers)
   drawGlow(ctx) {
     const R = shown(ctx);
+    // how the view itself moves (px/s of game time): a hot spark's streak is its way ON THE PICTURE (at the wheel
+    // the view goes with the car: what it sheds streams back past it)
+    const cam = this.world.camera, t = this.world.time ?? 0, V = this.view || (this.view = { x: cam?.x ?? 0, y: cam?.y ?? 0, t, vx: 0, vy: 0 });
+    if (cam && t > V.t) {
+      const vx = (cam.x - V.x) / (t - V.t), vy = (cam.y - V.y) / (t - V.t);
+      if (Math.abs(vx) < STREAK.cut && Math.abs(vy) < STREAK.cut) { V.vx = vx; V.vy = vy; } // (a cut is not a speed)
+      V.x = cam.x; V.y = cam.y; V.t = t;
+    }
     for (const p of this.list) {
       if ((p.type === P.SPARK || p.type === P.EMBER) && offView(p, R)) continue;
-      if (p.type === P.SPARK) {
+      if (p.type === P.SPARK && (p.hot || p.ember)) {
+        // whole pixels in the flames' flat colours, by how hot it still is: a mark on the road cooling to red, or a
+        // spark with its tail back along its way
+        const a = p.life / p.maxLife, x = Math.round(p.x), y = Math.round(p.y - (p.z || 0) * 0.5);
+        ctx.globalAlpha = 1;
+        if (p.ember) { ctx.fillStyle = a > 0.6 ? HOT[2] : a > 0.3 ? HOT[3] : HOT[4]; ctx.fillRect(x, y, 1, 1); continue; }
+        // its streak: whole pixels back along its way on the picture, up to STREAK.most of them, cooling toward the tail
+        const sx = p.vx - V.vx, sy = p.vy - p.vz * 0.5 - V.vy, sp = Math.hypot(sx, sy), n = Math.min(STREAK.most, Math.round(sp * STREAK.t)), c0 = a > 0.55 ? 0 : a > 0.25 ? 1 : 2;
+        const ux = n ? sx / sp : 0, uy = n ? sy / sp : 0, fy = p.y - p.z * 0.5;
+        for (let i = n; i >= 1; i--) {
+          ctx.fillStyle = HOT[Math.min(4, c0 + 1 + ((i * 3 / (n + 1)) | 0))];
+          ctx.fillRect(Math.round(p.x - ux * i), Math.round(fy - uy * i), 1, 1);
+        }
+        ctx.fillStyle = HOT[c0];
+        ctx.fillRect(x, y, p.big && a > 0.4 ? 2 : 1, p.big && a > 0.4 ? 2 : 1); // (a few of them a fat one while it is hot)
+      } else if (p.type === P.SPARK) {
         const a = Math.max(0, p.life / p.maxLife);
         ctx.strokeStyle = p.color;
         ctx.globalAlpha = a;

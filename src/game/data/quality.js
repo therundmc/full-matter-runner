@@ -15,10 +15,13 @@
 //             passes are not run); its grade, vignette, fringe, tube and kicks are the look's core and stay
 //   lights    the most muzzle flashes / blasts lit with their shadows at once, the nearest to the view's middle
 //   fire      the share of FIRE.budget (puffs of flame a second) kept (systems/Fires.js)
+//   fx        the share of a car's sparks, burning pieces and casings thrown (systems/CarFx.js, CARFX.budget)
+//   fxLights  the most short lights a second those sparks and fire-balls may lay (never over CARFX.budget.lights; 0:
+//             no extra light)
 export const QUALITY = {
-  high: { ss: Infinity, zoom: Infinity, mirrors: true, bloom: 1, light: 1, smoke: 1, particles: 1, shimmer: true, glow: true, rays: true, lights: Infinity, fire: 1 },
-  medium: { ss: 1.1, zoom: 4, mirrors: false, bloom: 0.5, light: 1, smoke: 0.5, particles: 0.5, shimmer: false, glow: true, rays: true, lights: Infinity, fire: 1 },
-  low: { ss: 1, zoom: 3, mirrors: false, bloom: 0.5, light: 0.5, smoke: 0.5, particles: 0.5, shimmer: false, glow: false, rays: false, lights: 4, fire: 0.5 },
+  high: { ss: Infinity, zoom: Infinity, mirrors: true, bloom: 1, light: 1, smoke: 1, particles: 1, shimmer: true, glow: true, rays: true, lights: Infinity, fire: 1, fx: 1, fxLights: Infinity },
+  medium: { ss: 1.1, zoom: 4, mirrors: false, bloom: 0.5, light: 1, smoke: 0.5, particles: 0.5, shimmer: false, glow: true, rays: true, lights: Infinity, fire: 1, fx: 0.6, fxLights: 12 },
+  low: { ss: 1, zoom: 3, mirrors: false, bloom: 0.5, light: 0.5, smoke: 0.5, particles: 0.5, shimmer: false, glow: false, rays: false, lights: 4, fire: 0.5, fx: 0.35, fxLights: 0 },
 };
 
 export const QUALITY_LEVELS = ['low', 'medium', 'high'];              // from the lightest up

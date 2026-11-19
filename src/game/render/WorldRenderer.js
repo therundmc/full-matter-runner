@@ -23,6 +23,7 @@ import { thousands, tone } from '../ui/Text.js';
 import { drawCurtains } from './ClothArt.js';
 import { drawChaseFigures, drawChaseWind, drawChaseTells } from './PursuitArt.js';
 import { drawDrag } from './DragArt.js';
+import { drawCarSmoke } from './CarFxArt.js';
 
 const { Body } = Matter;
 const OUTLINE = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // a stamp's 1 px dark outline
@@ -149,6 +150,7 @@ export default class WorldRenderer {
     for (const p of w.projectiles) p.draw(ctx);
     if (lit) drawRainAir(ctx, w.weather, view, t, RAIN.after); // in the air only: crowns and rings would lie over people
     drawCombat(ctx, w); // muzzle flames, hit flashes, impact stars, weapon trails: after the lighting, so they read in the dark
+    drawCarSmoke(ctx, w); // the billows of a car in trouble (its engine, its tyres), seen in the dark
     drawChaseWind(ctx, w); // the air past his car at speed
     drawDrag(ctx, w); // 2A's opening: the butt he flicks out, its ember on the road
     drawChaseTells(ctx, w, t); // the chase's telegraphs: red lanes, the gunmen's told shots, their tracers
