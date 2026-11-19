@@ -1,5 +1,5 @@
-import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
-import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
+import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY, CAT, MASK } from '../Config.js';
+import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne, oneHanded } from '../data/weapons.js';
 import { rand, chance, angDiff, smooth, clamp, lerp } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import Debris, { GRAVITY } from './Debris.js';
@@ -12,13 +12,14 @@ import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { kickReady, kickTarget, standing, throwSpeed } from '../systems/Kick.js';
 import { behind, within, unspotted, newTakedown, advance, slamAt } from '../systems/Takedown.js';
 import { lungeTarget } from '../systems/Lunge.js';
+import { offers, covers } from '../systems/Shield.js';
 import { lockTarget, meleeLock } from '../systems/AimCue.js';
 import { snapFacing } from './Facing.js';
 import { AIM } from '../data/aim.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherChoice, killBeat, takedownFor, takedownChoice, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
 import { MARKS } from '../data/wounds.js';
-import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH, THROW } from '../data/feel.js';
+import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH, THROW, SHIELD } from '../data/feel.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { splashWall } from '../fx/Spatter.js';
@@ -86,6 +87,11 @@ export default class Player extends Character {
     this.brokeAt = null;    // { name, t } when it did, for the HUD
     this.snatch = null;     // { item, at } a dead man's weapon his hand is going to (snatches)
     this.throwHold = null;  // { t, paused } a throw wound up while the right click is held (updateThrowHold, THROW)
+    this.nearShield = null; // a guard within reach who can be taken as a shield (E: startShield)
+    // a guard held in front of him as a shield (startShield, SHIELD): { target, t (s held), hp (rounds he still
+    // takes), dead (he died in the arms: { a, by, killer }), cover (hits his body still stops), volley ({ owner, t }
+    // the blast whose pellets are one hit) }
+    this.shield = null;
     // spare rounds per caliber
     this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
   }
@@ -180,7 +186,8 @@ export default class Player extends Character {
       sh.t -= dt;
       this.steer(Math.cos(sh.a), Math.sin(sh.a), sh.v * Math.max(0, sh.t / SHOVE_T), 0.6);
       if (sh.t <= 0) this.shove = null;
-    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1) * (this.throwHold ? THROW.move : 1), PLAYER.accel);
+    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1) * Math.min(this.throwHold ? THROW.move : 1, this.shield ? SHIELD.move : 1), PLAYER.accel);
+    if (this.shield) this.updateShield(dt);
     if (this.lunge && !sliding && !sh && w.time < this.lunge.stop) {
       const L = this.lunge;
       this.vel = { x: Math.cos(L.dir) * L.v, y: Math.sin(L.dir) * L.v };
@@ -209,7 +216,7 @@ export default class Player extends Character {
     // the nearest man down within reach: any attack on him (the left click) finishes him (data/finishers.js)
     this.nearDowned = null;
     let down = EXEC.near;
-    for (const e of w.enemies) {
+    for (const e of this.shield ? [] : w.enemies) {
       const de = Math.hypot(e.x - this.x, e.y - this.y);
       if (e.alive && e.knocked > 0 && de < down) { down = de; this.nearDowned = e; }
     }
@@ -222,14 +229,18 @@ export default class Player extends Character {
     // a guard within reach who has not spotted us (systems/Takedown.js within, unspotted), from whatever side: the
     // left click takes him down; spotted, a click at him is an ordinary attack
     const phase = w.director?.phase;
-    this.nearTakedown = (!this.nearDowned && w.enemies.find((e) => within(this, e) && unspotted(e, phase) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
+    this.nearTakedown = (!this.nearDowned && !this.shield && w.enemies.find((e) => within(this, e) && unspotted(e, phase) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
     this.takeMove = this.nearTakedown ? this.takedownMove(this.nearTakedown) : null;
+    // ... and one who can be taken as a shield (systems/Shield.js offers): E, with a hand free for it
+    this.nearShield = (!this.shield && !this.throwHold && !sliding && oneHanded(this.def)
+      && w.enemies.find((e) => offers(this, e) && w.lineOfSight(this.x, this.y, e.x, e.y))) || null;
 
     // attack (a stub of a broken weapon still in the hand is let fall first)
     if (this.broke?.stub && (input.mouseDown(0) || input.mouseHit(2))) this.dropStub();
     const d = this.def;
     const nb = this.nearTakedown;
     if (this.throwHold) { /* the left click does nothing while a throw is wound up */ }
+    else if (this.shield) this.shieldAttack(input, d);
     else if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
     else if (pulls(d, input)) {
       // on a man who is down, at our feet and under the cursor: his execution, whatever is in the hand
@@ -247,26 +258,30 @@ export default class Player extends Character {
     if (input.hit('KeyR') && !this.throwHold) this.reload();
     // Space = vault > slide (the slide needs a running start, no HUD label); the left click takes a man down from
     // behind and finishes a man on the floor
-    const busy = sliding || this.nearDowned || this.nearTakedown;
+    const busy = sliding || this.nearDowned || this.nearTakedown || this.shield;
     this.vaultHint = busy ? null : findVault(w, this, moveA); // marked on the obstacle (WorldRenderer)
-    this.contextAction = sliding ? null : this.nearDowned ? 'EXECUTE'
+    this.contextAction = sliding ? null : this.shield ? this.shieldHint() : this.nearDowned ? 'EXECUTE'
       : this.nearTakedown ? hintOf(this.takeMove.f, this.takeMove.spot)
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
-    if (input.hit('Space') && !sliding && !this.tryVault(moveA) && moving) this.startSlide(moveA);
+    // (a man held as a shield: SPACE does nothing, the user's call)
+    if (input.hit('Space') && !sliding && !this.shield && !this.tryVault(moveA) && moving) this.startSlide(moveA);
 
-    // right click: armed, held it winds a throw up (updateThrowHold), a tap throws at once; unarmed, it picks up.
-    // E: pick up / swap. A throw goes along the aim, not where LOCK's melee turn put him
+    // right click: armed, held it winds a throw up (updateThrowHold), a tap throws at once; unarmed, it picks up;
+    // a man held as a shield is what is thrown, the weapon stays in the hand.
+    // E: a shield if one is offered, else pick up / swap. A throw goes along the aim, not where LOCK's melee turn put him
     if (this.throwHold) this.updateThrowHold(dt, input);
     else if (input.mouseHit(2)) {
-      if (!this.armed) this.pickUp();
+      if (!this.armed && !this.shield) this.pickUp();
       else {
         if (this.facingLock) this.angle = this.aimA;
         if (input.mouseDown(2)) this.throwHold = { t: 0, paused: false };
+        else if (this.shield) this.throwShield(0);
         else this.throwWeapon(); // down and up within a step
       }
     }
-    if (input.hit('KeyE')) {
-      if (this.nearTrunk) this.startTrunk(this.nearTrunk);
+    if (input.hit('KeyE') && !this.shield) {
+      if (this.nearShield) this.startShield(this.nearShield);
+      else if (this.nearTrunk) this.startTrunk(this.nearTrunk);
       else if (this.nearUse) this.nearUse.use(this);
       else this.pickUp();
     }
@@ -277,7 +292,7 @@ export default class Player extends Character {
   // alone. Not while he slides, vaults, kicks or rides; the man let go (out of the window, down, dead), he faces the
   // aim again at once.
   faceLock(dt) {
-    const w = this.world, free = !this.slide && !this.vaulting && !this.kick && !this.riding && !this.throwHold;
+    const w = this.world, free = !this.slide && !this.vaulting && !this.kick && !this.riding && !this.throwHold && !this.shield;
     const m = free ? meleeLock(w, this, this.def, this.aimA) : null, who = m?.close ? m.man : null;
     let f = this.facingLock;
     if (!who) { this.facingLock = null; return m; }
@@ -486,7 +501,7 @@ export default class Player extends Character {
   // was paused under goes only if the button is still down when play comes back (interrupt).
   updateThrowHold(dt, input) {
     const W = this.throwHold;
-    if (!this.armed) { this.throwHold = null; return; }
+    if (!this.armed && !this.shield) { this.throwHold = null; return; }
     if (input.mouseDown(2)) { W.t += dt; W.paused = false; return; }
     if (W.paused) { this.throwHold = null; return; }
     this.release();
@@ -512,7 +527,8 @@ export default class Player extends Character {
     const k = this.throwCharge(), { a } = this.throwAim();
     this.throwHold = null;
     this.angle = a;
-    this.throwWeapon(false, k);
+    if (this.shield) this.throwShield(k);
+    else this.throwWeapon(false, k);
   }
 
   // power = true: the angry "out of bullets" John Wick throw (faster, spinning, a beat of slow motion); k: the charge
@@ -581,6 +597,7 @@ export default class Player extends Character {
   // whatever his hands were about is dropped where it stands (the getaway takes him over: World.startOutro): the
   // throw wound up, the swing's step, LOCK's turn, a dead man's weapon his hand was going to (let go on the floor)
   releaseHands() {
+    if (this.shield) this.endShield(true);
     this.throwHold = null;
     this.lunge = null;
     this.facingLock = null;
@@ -599,6 +616,153 @@ export default class Player extends Character {
     this.pickFrom = { x: it.x, y: it.y };
     slowAtLeast(w, ...MOMENTS.snatch.slowmo);
     w.sound('snatch', this.x, this.y, 1, { weapon: it.type });
+  }
+
+  // ---------------- the human shield (SHIELD in data/feel.js, the rules: systems/Shield.js) ----------------
+  // E on a guard who offers it (from behind, or down on the floor: hauled up), a hand free for it: he is held in
+  // front of us, his back to our chest, and goes where we turn (updateShield); he can do nothing (Enemy.held). What
+  // comes at us from the front hits him (shieldStops). The guards who see it are on us at once. The poses:
+  // CharacterAnim shieldPose (ours), hostagePose (his).
+  startShield(target) {
+    const w = this.world, group = Body.nextGroup(true);
+    this.shield = { target, t: 0, hp: SHIELD.hp, dead: null, cover: SHIELD.corpse, volley: null, hit: -9 };
+    this.nearShield = this.nearTakedown = this.nearDowned = this.lunge = this.facingLock = null;
+    this.swing = 0;
+    if (target.knocked > 0) { target.knocked = 0; target.dazed = false; target.flung = null; } // off the floor
+    target.held = this;
+    target.dormant = false;
+    target.swing = target.tell = target.reloading = 0;
+    if (w.director) { w.director.release(target); w.director.provoked = true; } // nobody seizes a guard by accident
+    this.body.collisionFilter = { ...this.body.collisionFilter, group };
+    target.body.collisionFilter = { category: CAT.CHAR, mask: MASK.CHAR, group };
+    w.sound('shieldGrab', target.x, target.y, 0.9, { pitch: target.voice }); // placeholder (PLACEHOLDERS.md)
+    w.events.emit('shield', { holder: this, target });
+    for (const e of w.enemies) if (e !== target) e.seeHostage?.(this);
+  }
+
+  // he is kept in front of us, this side of a wall, turned as we are
+  updateShield(dt) {
+    const sh = this.shield, tg = sh.target, w = this.world;
+    if (!tg.alive) { this.endShield(); return; } // a blast, a fire: something else got him
+    sh.t += dt;
+    const a = this.angle, c = Math.cos(a), s = Math.sin(a), k = Math.min(1, sh.t / SHIELD.set);
+    let gap = SHIELD.gap;
+    while (gap > 2 && w.map.solidAt(this.x + c * gap, this.y + s * gap)) gap -= 3;
+    const x = this.x + c * gap, y = this.y + s * gap;
+    Body.setPosition(tg.body, { x: tg.x + (x - tg.x) * k, y: tg.y + (y - tg.y) * k });
+    tg.vel = { x: 0, y: 0 };
+    Body.setVelocity(tg.body, tg.vel);
+    tg.angle += angDiff(tg.angle, a) * k;
+  }
+
+  // the man he holds is in front of him: drawn over him (Enemy.draw leaves him to us)
+  draw(ctx) {
+    super.draw(ctx);
+    const tg = this.shield?.target;
+    if (!tg?.alive) return;
+    this.drawing = true;
+    tg.draw(ctx);
+    this.drawing = false;
+  }
+
+  // what the left click would do to him, for the HUD (null: it fires the gun)
+  shieldHint() {
+    const d = this.def;
+    if (d.kind === 'gun' && this.weapon.mag > 0) return null;
+    return this.shield.dead ? 'DROP HIM' : d.swing === 'blade' ? 'CUT HIS THROAT' : 'BREAK HIS NECK';
+  }
+
+  // the left click with a man held: a loaded gun fires past him; else it kills him (shieldKill), a dry gun
+  // reloaded first if there is a magazine left; a man already dead is let fall
+  shieldAttack(input, d) {
+    if (d.kind === 'gun' && this.weapon.mag > 0) {
+      this.shootDown = null;
+      if (pulls(d, input)) this.attack();
+      return;
+    }
+    if (!input.mouseHit(0) || this.cooldown > 0 || this.reloading > 0) return;
+    if (d.kind === 'gun' && this.reload()) return;
+    if (this.shield.dead) this.endShield();
+    else this.shieldKill();
+  }
+
+  // his neck broken with the arm that holds him, or his throat opened by the blade in the other hand
+  shieldKill() {
+    const tg = this.shield.target, w = this.world, d = this.def, a = this.angle;
+    const K = SHIELD.kill[d.swing === 'blade' ? 'throat' : 'neck'];
+    w.sound(K.sound, tg.x, tg.y, 1, { pitch: tg.voice }); // shieldNeck: placeholder (PLACEHOLDERS.md)
+    if (K.wound) w.particles.blood(tg.x + Math.cos(a) * 3, tg.y + Math.sin(a) * 3, a + Math.PI / 2 * this.punchSide, 0.8, 12, 180);
+    w.noise(tg.x, tg.y, K.noise, this);
+    tg.kill(a, K.cause, this, K.wound ? { gore: 0, wound: K.wound } : undefined, { label: K.label, from: 'behind', dying: 'slump', close: true });
+    landMoment(w, tg, a, d, MOMENTS.takedown, !tg.alive);
+    w.events.emit('shieldKill', { holder: this, victim: tg });
+    this.endShield();
+    this.cooldown = K.cool;
+  }
+
+  // Something comes at us along a from `shooter` (a round of weapon `by`; a thing thrown: no `by`). From the front
+  // arc the man we hold takes it: SHIELD.hp rounds (a shotgun's blast is one hit worth SHIELD.blast) and he dies in
+  // our arms; his body stops SHIELD.corpse more, then slips to the floor. A heavy round goes through the two.
+  // Whether it was stopped.
+  shieldStops(a, by, shooter) {
+    const sh = this.shield, S = SHIELD, w = this.world;
+    if (!sh || !covers(this.angle, a)) return false;
+    const tg = sh.target, pellets = by?.pellets > 1;
+    w.particles.blood(tg.x, tg.y, a, 0.6, pellets ? 4 : 10, 160);
+    w.particles.blood(tg.x, tg.y, a + Math.PI, 0.7, 3, 90);
+    if (pellets) {
+      const v = sh.volley;
+      if (v && v.owner === shooter && w.time - v.t < S.volley) return true;
+      sh.volley = { owner: shooter, t: w.time };
+    }
+    w.sound('splat', tg.x, tg.y, 0.5);
+    w.decals.stampBlood(tg.x, tg.y, 2.5, 3);
+    sh.hit = w.time;
+    if (sh.dead) {
+      if (--sh.cover <= 0) this.endShield();
+      return !by?.heavy;
+    }
+    sh.hp -= by?.heavy ? S.hp : !by ? S.thrown : pellets ? S.blast : 1;
+    if (sh.hp <= 0) {
+      sh.dead = { a, by: by || {}, killer: shooter };
+      tg.dropWeapon(a + rand(-1, 1), 1.5);
+      w.sound('cry', tg.x, tg.y, 1, { pitch: tg.voice });
+      w.shake(0.12);
+    }
+    return !by?.heavy;
+  }
+
+  // the right click let go: he is thrown along the aim (k: the charge), floored where he lands, and floors whoever
+  // he runs into on the way (Enemy.updateFlung); a man dead in our arms is thrown as the body he is
+  throwShield(k) {
+    const sh = this.shield, tg = sh.target, w = this.world, T = SHIELD.throw, a = this.angle;
+    if (sh.dead) sh.flingA = a;
+    else {
+      tg.knock(a, 'thrown', { speed: throwSpeed(lerp(T.dist[0], T.dist[1], k), ENEMY.knockBrake) });
+      tg.flung = { by: this, a };
+    }
+    this.endShield();
+    this.cooldown = T.cool;
+    this.throwT = this.throwDur;
+    w.sound('shieldThrow', this.x, this.y, 0.8 + 0.2 * k); // placeholder (PLACEHOLDERS.md)
+  }
+
+  // The hold is over: a man who died in our arms falls now (his death is told now: killed by his own, `hostage`),
+  // one thrown or killed is gone already, one still on his feet is free and turns on us (Enemy.freed)
+  endShield() {
+    const sh = this.shield, tg = sh.target, D = sh.dead;
+    this.shield = this.throwHold = null;
+    this.body.collisionFilter = { ...this.body.collisionFilter, group: 0 };
+    if (tg.held !== this) return;
+    if (D && tg.alive) {
+      const flung = sh.flingA !== undefined;
+      if (flung) tg.held = null; // thrown: he falls the way he was sent
+      tg.kill(flung ? sh.flingA : D.a, 'bullet', D.killer, D.by, { hostage: true, still: !flung });
+    }
+    tg.held = null;
+    if (!tg.alive || tg.knocked > 0) return;
+    tg.body.collisionFilter = { ...tg.body.collisionFilter, group: 0 };
+    tg.freed?.(this);
   }
 
   // ---------------- slide ----------------
@@ -1210,6 +1374,12 @@ export default class Player extends Character {
   }
 
   knock(angle) { this.kill(angle, 'melee'); }
+
+  // killed with a man in his arms: the man is let go (alive, he turns on him)
+  kill(angle, cause, killer, by, how) {
+    if (this.alive && !this.invulnerable && this.shield) this.endShield(true);
+    super.kill(angle, cause, killer, by, how);
+  }
 
   get ammoText() {
     if (!this.weapon) return '';

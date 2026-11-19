@@ -81,14 +81,17 @@ export function drawHUD(ctx, game, t) {
   if (!w.cleared) drawAlertPhase(ctx, w.director, W, s, t);
 
   // context hints: the cap of the device in use (ui/Glyphs.js), then what it does
-  let hint = null;
+  // (a guard who can be taken as a shield adds E SHIELD to the click's; one held: the click's, and the throw)
+  let hint = null, more = null;
   if (p.alive && !p.hidden && !p.driving) { // (not in the getaway, nor at the wheel: systems/Drive.js)
-    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown || p.nearDowned ? 'attack' : 'action', p.contextAction];
+    more = p.shield ? ['throw', 'THROW HIM'] : p.nearShield ? ['use', 'SHIELD'] : null;
+    if (p.contextAction && (p.contextAction !== 'VAULT' || !p.nearItem)) hint = [p.nearTakedown || p.nearDowned || p.shield ? 'attack' : 'action', p.contextAction];
+    else if (more) { hint = more; more = null; }
     else if (p.nearTrunk) hint = ['use', 'OPEN TRUNK'];
     else if (p.nearUse) hint = ['use', w.uses.label(p.nearUse)];
     else if (p.nearItem) hint = ['use', `${p.armed ? 'SWAP FOR' : 'PICK UP'} ${p.nearItem.def.name}`];
   }
-  if (hint) drawPrompts(ctx, [hint], W / 2, H - 50 * s, 24 * s, game.input.device, { alpha: 0.8 + Math.sin(t * 8) * 0.2, font: 0.66 });
+  if (hint) drawPrompts(ctx, more ? [hint, more] : [hint], W / 2, H - 50 * s, 24 * s, game.input.device, { alpha: 0.8 + Math.sin(t * 8) * 0.2, font: 0.66 });
 
   // level cleared
   // levels without an exit (the lab) have nothing to point at

@@ -26,7 +26,8 @@ import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character, { heavyBuild } from './Character.js';
 import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
-import { TELL, GESTURE, TAIL, DROP } from '../data/feel.js';
+import { TELL, GESTURE, TAIL, DROP, SHIELD } from '../data/feel.js';
+import { hesitation, flankSide, bodyHits } from '../systems/Shield.js';
 import { POSTS, HELD, HOOD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
 import { HURT } from '../data/wounds.js';
@@ -151,7 +152,9 @@ export default class Enemy extends Character {
     this.seed = rand(0, 100);
     this.sep = { x: 0, y: 0 };
     this.executing = false;
-    this.held = null; // the player while he has us from behind (Player.startTakedown)
+    this.held = null; // the player while he has us from behind (Player.startTakedown), or as a shield (startShield)
+    this.flung = null; // { by, a } thrown by the man who held him as a shield, while he still flies (updateFlung)
+    this.hostage = null; // { who, t } the comrade he saw held as a shield, and when: his fire held a moment (holdsFire)
     this.tauntT = rand(1.5, 5);      // until the next curse thrown at the player
     this.trackAt = null;             // the footprint we are walking to (see doTrack)
     this.nearT = 0;                  // time spent a few steps from a spot without reaching it (see blockedAt)
@@ -665,6 +668,7 @@ export default class Enemy extends Character {
       // (pulled to what his head is driven into: he goes where he is put)
       const td = this.held.alive && this.held.takedown?.target === this ? this.held.takedown : null;
       if (td) { if (!td.spot) this.halt(); return; }
+      if (this.held.alive && this.held.shield?.target === this) return; // held as a shield: he is where he is put
       this.held = null;
       this.body.collisionFilter = { ...this.body.collisionFilter, group: 0 }; // let go: solid to him again
     }
@@ -1839,7 +1843,9 @@ export default class Enemy extends Character {
     this.aimAt(p.x, p.y, dt, 1.4);
     const aimed = p.def.kind === 'gun' && dist > 40 && Math.abs(angDiff(p.angle, Math.atan2(-dy, -dx))) < 0.25;
     if (aimed && this.dodgeCD <= 0) { this.dodge = chance(0.5) ? 0.28 : -0.28; this.dodgeCD = rand(0.9, 1.6); }
-    const side = this.dodge !== 0 ? Math.sign(this.dodge) * 1.6 : Math.sin(this.world.time * 4 + this.seed) * 0.35;
+    // a comrade held in front of him as a shield: round to his open side, not straight at the hostage
+    const round = p.shield ? flankSide(p, this, this.seed > 50 ? 1 : -1) : 0;
+    const side = round ? -round / SHIELD.flank.in : this.dodge !== 0 ? Math.sign(this.dodge) * 1.6 : Math.sin(this.world.time * 4 + this.seed) * 0.35;
     if (this.dodge !== 0) this.dodge = Math.sign(this.dodge) * Math.max(0, Math.abs(this.dodge) - dt) || 0;
     const ux = dx / (dist || 1), uy = dy / (dist || 1);
     // straight at him while the way is open; held up there (a mate in a doorway) he takes the path, which goes round
@@ -1847,7 +1853,7 @@ export default class Enemy extends Character {
     this.rushHeld = this.moving < sp * 0.25 && dist > 40 ? this.rushHeld + dt : Math.max(0, this.rushHeld - dt);
     if (this.rushHeld < 0.6 && this.world.map.walkLine(this.x, this.y, p.x, p.y, 6)) {
       const gw = this.giveWay(ux, uy);
-      const k = dist < 50 ? 0 : 1, planted = this.tell > 0 ? TELL.pace : 1; // winding up, he plants his feet
+      const k = dist < 50 && !round ? 0 : 1, planted = this.tell > 0 ? TELL.pace : 1; // winding up, he plants his feet
       this.steer(ux - uy * side * k + gw.x, uy + ux * side * k + gw.y, sp * gw.slow * planted * (this.dodge ? 1.25 : 1), 0.3);
     } else if (this.travel(dt, p.x, p.y, ENEMY.runSpeed * this.pace, { look: false, near: 4 }) && dist > 30 && this.jamTries < AI.nav.jam.tries) {
       // no way round on foot (he stands behind a counter, on a roof edge): straight at him, over what is in the way
@@ -2004,6 +2010,7 @@ export default class Enemy extends Character {
   tryFire(tg, wild = 0) {
     const d = this.def;
     if (d.kind !== 'gun' || !inHand(this) || this.react > 0 || this.cooldown > 0 || this.reloading > 0 || this.weapon.mag <= 0) return false;
+    if (this.holdsFire(tg)) return false;
     const dist = Math.hypot(tg.x - this.x, tg.y - this.y);
     if (dist > ENEMY.fireRange || Math.abs(angDiff(this.angle, Math.atan2(tg.y - this.y, tg.x - this.x))) > ENEMY.aimTolerance + wild) return false;
     // fairness: never fire from outside the player's screen
@@ -2022,6 +2029,37 @@ export default class Enemy extends Character {
     return true;
   }
 
+  // The man in his sights holds one of his own as a shield (Player.shield): he holds his fire SHIELD.hesitate s from
+  // the moment he sees it (a brute far less), shouting at him to let the man go while the man begs; then he fires
+  // anyway. A man dead in those arms holds nobody's fire.
+  holdsFire(tg) {
+    const sh = tg.shield;
+    if (!sh || sh.dead) { this.hostage = null; return false; }
+    if (this.hostage?.who !== sh.target) {
+      this.hostage = { who: sh.target, t: this.world.time };
+      this.barkT = 0;
+      this.say('release');
+      sh.target.barkT = 0;
+      sh.target.say('hostage');
+    }
+    return this.world.time - this.hostage.t < hesitation(this.kind);
+  }
+
+  // the player has just seized a comrade before his eyes (Player.startShield): he is on him at once
+  seeHostage(p) {
+    if (!this.alive || this.passive || this.dormant || this.yielded || this.knocked > 0 || this.held || this.aware === 2) return;
+    if (!this.canSee(p)) return;
+    this.meter = 1;
+    this.spot(false);
+  }
+
+  // let go by the man who held him as a shield (killed, or taken over by the getaway): on him at once
+  freed(p) {
+    this.lastKnown = { x: p.x, y: p.y };
+    this.meter = 1;
+    if (!this.passive) this.spot(false);
+  }
+
   onScreen() {
     const cam = this.world.camera, v = cam.viewRadius();
     return Math.abs(this.x - cam.x) < v.x - 52 && Math.abs(this.y - cam.y) < v.y - 52;
@@ -2030,7 +2068,7 @@ export default class Enemy extends Character {
   friendInLine(tx, ty, dist) {
     const ux = (tx - this.x) / dist, uy = (ty - this.y) / dist;
     for (const e of this.world.enemies) {
-      if (e === this || !e.alive || e.knocked > 0) continue;
+      if (e === this || !e.alive || e.knocked > 0 || e.held?.shield) continue; // (a hostage is not spared: holdsFire)
       const rx = e.x - this.x, ry = e.y - this.y, along = rx * ux + ry * uy;
       if (along > 0 && along < dist && Math.abs(rx * uy - ry * ux) < 10) return true;
     }
@@ -2479,6 +2517,7 @@ export default class Enemy extends Character {
     if (this.executing) { this.steer(0, 0, 0, 0.5); return; }
     this.knocked -= dt;
     this.steer(0, 0, 0, ENEMY.knockBrake);
+    if (this.flung) this.updateFlung();
     this.layClear(dt);
     if (this.knocked <= 0) {
       this.knocked = 0;
@@ -2489,6 +2528,23 @@ export default class Enemy extends Character {
       this.setState(S.DIZZY);
       this.dizzyT = rand(...ENEMY.dizzy);
       this.meter = Math.max(this.meter, 0.5);
+    }
+  }
+
+  // Thrown by the man who held him as a shield (Player.throwShield): while he still flies, a standing man he runs
+  // into is floored too (cause 'body': the score's BODY THROW), which takes most of his speed
+  updateFlung() {
+    const f = this.flung, w = this.world, H = SHIELD.throw.hit, v = Body.getVelocity(this.body);
+    if (Math.hypot(v.x, v.y) < H.speed) { this.flung = null; return; }
+    for (const e of bodyHits(this, w.enemies)) {
+      e.knock(f.a, 'body');
+      w.sound('punch', e.x, e.y, 0.9, { pitch: 0.8 });
+      w.shake(0.12);
+      w.events.emit('thrownHit', { thrower: f.by, victim: e, x: e.x, y: e.y, angle: f.a, kill: false, body: this });
+      this.vel = { x: v.x * H.keep, y: v.y * H.keep };
+      Body.setVelocity(this.body, this.vel);
+      this.flung = null;
+      return;
     }
   }
 
@@ -2509,6 +2565,8 @@ export default class Enemy extends Character {
   }
 
   draw(ctx) {
+    // held as a shield: drawn by the man who holds him, over himself (Player.draw)
+    if (this.held?.shield?.target === this && !this.held.drawing) return;
     if (this.ashtray) drawItem(ctx, 'ashtray', this.ashtray.x, this.ashtray.y, 0.4);
     const k = 1 - Math.min(1, this.crouch) * 0.12; // ducking lower (DUCK) is in his pose, never a smaller man
     if (k < 1) { ctx.save(); ctx.translate(this.x, this.y); ctx.scale(k, k); ctx.translate(-this.x, -this.y); }

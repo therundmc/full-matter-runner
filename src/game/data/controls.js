@@ -7,7 +7,7 @@
 // has a travel and a threshold to cross); RT still attacks so that nobody used to it is lost, LT looks further.
 export const PAD_BINDINGS = {
   A: 'Space',      // slide, vault, climb, dive; a menu's ENTER
-  X: 'KeyE',       // pick up / swap / open a trunk
+  X: 'KeyE',       // pick up / swap / open a trunk / take a guard as a shield (from behind)
   Y: 'KeyR',       // reload; restart once dead; retry on the results
   Start: 'Escape', // pause (and back out of it)
   RB: 'Mouse0',    // attack / shoot / take down / finish (held: an automatic keeps firing, as the mouse button)
@@ -50,7 +50,8 @@ export const KBM_CONTROLS = [
   [
     ['MOVE', [['ZQSD / WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['SPACE', 'VAULT / CLIMB'],
       ['SPACE', 'SLIDE ON THE RUN']]],
-    ['FIGHT', [['LMB', 'ATTACK / SHOOT'], ['LMB', 'TAKE DOWN / FINISH'], ['RMB', 'THROW (HOLD: AIM) / PICK UP'], ['R', 'RELOAD']]],
+    ['FIGHT', [['LMB', 'ATTACK / SHOOT'], ['LMB', 'TAKE DOWN / FINISH'], ['RMB', 'THROW (HOLD: AIM) / PICK UP'], ['R', 'RELOAD'],
+      ['E', 'SHIELD (FROM BEHIND)']]],
     ['WORLD', [['E', 'PICK UP / SWAP'], ['E', 'USE / OPEN TRUNK']]],
   ],
   [
@@ -62,7 +63,8 @@ export const KBM_CONTROLS = [
 export const PAD_CONTROLS = [
   [
     ['MOVE', [['LS', 'MOVE'], ['RS', 'AIM'], ['LT', 'LOOK FURTHER'], ['A', 'VAULT / CLIMB'], ['A', 'SLIDE ON THE RUN']]],
-    ['FIGHT', [['RB / RT', 'ATTACK / SHOOT'], ['RB', 'TAKE DOWN / FINISH'], ['LB', 'THROW (HOLD: AIM) / PICK UP'], ['Y', 'RELOAD']]],
+    ['FIGHT', [['RB / RT', 'ATTACK / SHOOT'], ['RB', 'TAKE DOWN / FINISH'], ['LB', 'THROW (HOLD: AIM) / PICK UP'], ['Y', 'RELOAD'],
+      ['X', 'SHIELD (FROM BEHIND)']]],
     ['WORLD', [['X', 'PICK UP / SWAP'], ['X', 'USE / OPEN TRUNK']]],
   ],
   [

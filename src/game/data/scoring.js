@@ -15,6 +15,7 @@ export const SCORING = {
     execution: { points: 900, label: 'EXECUTION' },
     quickKill: { points: 500, label: 'QUICK KILL' },
     takedown: { points: 1000, label: 'TAKEDOWN' },      // a guard executed from behind (data/finishers.js TAKEDOWNS)
+    humanShield: { points: 300 },                       // the man held as a shield, shot dead by his own (tag `hostage`)
     wreck: { points: 700, label: 'WRECKED' },           // a pursuer's crew in a car put into the scenery (systems/Pursuit.js)
   },
   // circumstances that add to a kill (Scoring.killTags), each one also a different way of killing
@@ -38,6 +39,8 @@ export const SCORING = {
     flushed: { points: 800, label: 'FLUSHED' },         // ... into a toilet or a urinal
     dodge: { points: 600, label: 'DODGE KILL' },        // right after a round passed over a slide
     quickdraw: { points: 300, label: 'QUICK DRAW' },    // with a weapon picked up a moment ago
+    shield: { points: 400, label: 'SHIELD' },           // with a guard held in front of him as a shield (data/feel.js SHIELD)
+    hostage: { points: 400, label: 'HOSTAGE' },         // the man he held, killed by his own men's fire
     // `flat`: paid as it is, never times the chain's multiplier. A multi-kill is already the speed the multiplier pays
     // for, and a boss falls in every clear: multiplied (x4 then) the boss alone was 9000 to 25000 of a clear (QA)
     double: { points: 300, label: 'DOUBLE KILL', flat: true },  // two, three, more within `multiWindow`
@@ -60,10 +63,10 @@ export const SCORING = {
   watched: { points: 600, label: 'FULL EXECUTION', refill: 1 },
   // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself
   // (Door.slam: `doorSlam`).
-  // kick: the foot in his head at the end of a slide; hood: the legs off a car's hood. Shown as knockLabels (else
-  // the cause in capitals)
-  knock: { throw: 200, slide: 200, debris: 150, kick: 300, hood: 300 },
-  knockLabels: { debris: 'WRECKAGE', kick: 'SLIDE KICK', hood: 'HOOD SLIDE' },
+  // kick: the foot in his head at the end of a slide; hood: the legs off a car's hood; body: floored by the man
+  // thrown at him (a shield let go: Player.throwShield). Shown as knockLabels (else the cause in capitals)
+  knock: { throw: 200, slide: 200, debris: 150, kick: 300, hood: 300, body: 400 },
+  knockLabels: { debris: 'WRECKAGE', kick: 'SLIDE KICK', hood: 'HOOD SLIDE', body: 'BODY THROW' },
   doorSlam: { points: 300, label: 'DOOR SLAM' },
   // chained kills: each one within `window` s of the last adds `step` to the multiplier, up to `max` (x2.5 at the
   // 7th). Guards rush the player, so chains come on their own in a brawl: at x4 every kill of one paid four times

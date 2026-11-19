@@ -9,7 +9,7 @@
 // bends him: { hunch, duck, lift, lean, look, twist, shake }).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, SEAT, THROW, feelOf } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, SEAT, THROW, SHIELD, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { READABILITY } from '../data/readability.js';
 import { slamAt } from '../systems/Takedown.js';
@@ -2148,6 +2148,58 @@ export function heldPose(ch, P) {
     });
     P.legs = Math.max(P.legs, down);
   }
+  P.top = 0;
+  return P;
+}
+
+// The man who holds another in front of him as a shield (Player.shield, SHIELD.pose), over his standing pose: the
+// left arm round the man's neck from behind; a gun's hand out to the right, clear of his shoulder (the muzzle goes
+// with it: Character.noteMuzzle); a blade laid across his throat; an empty right hand in his collar.
+export function shieldPose(ch, P) {
+  const sh = ch.shield, tg = sh.target, S = SHIELD.pose, d = ch.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
+  const m = smooth(sh.t / SHIELD.set), D = Math.hypot(tg.x - ch.x, tg.y - ch.y) / BODY_SCALE;
+  // a hand from where the standing pose has it to (x, y) in the aim's frame
+  const put = (h, x, y, side) => {
+    const X = lerp(h.x * c + h.y * s, x, m), Y = lerp(-h.x * s + h.y * c, y, m);
+    h.x = X * c - Y * s; h.y = X * s + Y * c;
+    reachOut(h, P, side);
+  };
+  put(P.hl, D + S.arm[0], S.arm[1], -1);
+  P.hand[0] = 'fist'; P.elb[0] = 0.25;
+  P.flat = null;
+  if (P.wpnOn && d.kind === 'gun') {
+    const out = Math.max(0, S.gun - (-P.hr.x * s + P.hr.y * c)) * m;
+    for (const h of [P.hr, P.wpn]) { h.x -= out * s; h.y += out * c; }
+  } else if (P.wpnOn) {
+    put(P.hr, D + ON.throat + 0.6, 3.2, 1);
+    P.wpn.x = P.hr.x; P.wpn.y = P.hr.y; P.wpn.a = lerpA(P.wpn.a, a - 1.3, m);
+    P.wpnLen = lerp(P.wpnLen, 0.8, m);
+    P.top = 1;
+  } else {
+    put(P.hr, D - 1, 4.6, 1);
+    P.hand[1] = 'fist'; P.elb[1] = 0.3;
+  }
+  return P;
+}
+
+// The man held as a shield (Enemy.held, Player.shield), in his own frame: pulled back onto the chest behind him, his
+// hands at the arm round his neck, struggling in fits (it never frees him), thrown back by every round he takes;
+// dead, he hangs there, his arms fallen and his head down.
+export function hostagePose(ch, P) {
+  const sh = ch.held.shield, S = SHIELD.pose, a = P.ta, c = Math.cos(a), s = Math.sin(a), t = ch.world.time;
+  const m = smooth(sh.t / SHIELD.set), limp = sh.dead ? 1 : 0, hit = Math.exp(-Math.max(0, t - sh.hit) * 9);
+  const fit = limp ? 0 : 0.3 + 0.7 * smooth(Math.sin(t * 1.7 + ch.breath) * 2);
+  const j = Math.sin(t * S.shake[0] + ch.breath) * S.shake[1] * fit;
+  const put = (h, lx, ly) => { h.x = lerp(h.x, P.tx + (lx * c - ly * s) * P.s, m); h.y = lerp(h.y, P.ty + (lx * s + ly * c) * P.s, m); };
+  const back = (-S.pull - 1.6 * hit) * m + 0.4 * j;
+  P.tx += c * back; P.ty += s * back;
+  P.s *= 1 - 0.06 * limp;
+  P.ta = a + 0.12 * j;
+  P.ha = a + (limp ? 0.7 : 0.25 * j);
+  P.bow = Math.max(P.bow, 0.5 * limp);
+  put(P.hl, lerp(4.6 + j, 2.5, limp), lerp(-2.4, -6, limp));
+  if (!P.wpnOn) put(P.hr, lerp(4.6 - j, 2.5, limp), lerp(2.4, 6, limp));
+  P.hand[0] = P.hand[1] = 'loose';
   P.top = 0;
   return P;
 }

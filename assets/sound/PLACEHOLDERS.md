@@ -94,3 +94,6 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | killcamIn | the kill cam drops into slow motion on a violent kill, a finisher's killing blow, the end of a chain (systems/KillCam.js; silent for now) | a short low whoosh sucked into the slow, 0.3 s |
 | killcamOut | the clock snaps back to full speed after a finisher's blow or the end of a chain (systems/KillCam.js; silent for now) | a low dull thump, the air let go, 0.2 s |
 | killcamHeart | every 0.75 s while the camera is held in on a finisher or a takedown (systems/KillCam.js; silent for now) | one muffled heartbeat, low and close |
+| shieldGrab | a guard seized from behind, or hauled up off the floor, as a human shield (Player.startShield; the `grab` cuts for now) | an arm clamped round a neck: cloth grabbed hard, a choked grunt, two pairs of feet scuffing |
+| shieldNeck | the click that breaks the neck of the man held as a shield, bare hands (Player.shieldKill; the `neck` cuts for now) | a neck wrenched in the crook of an arm: one dry crack, a breath let out, no body fall (he is still held) |
+| shieldThrow | the man held as a shield thrown forward along the aim (Player.throwShield) | a heavy shove: cloth snapping, a grunt of effort, a man's stumbling steps thrown off balance |

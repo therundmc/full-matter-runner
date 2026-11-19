@@ -88,6 +88,9 @@ export const BARKS = {
   stairs: ["HE'S UP HERE!", 'UP! UP!', 'ON THE LANDING!', 'GO, GO, GO!'],
   // he gives up (Enemy.surrender), then begs for as long as the killer stands over him ...
   yield: ["DON'T SHOOT!", 'I GIVE UP!', "I'M DONE! I'M DONE!"],
+  // a guard held as a shield by the player, to his own men; and one of them, his gun on the two (Enemy.holdsFire)
+  hostage: ["DON'T SHOOT!", "IT'S ME! DON'T SHOOT!", 'HOLD YOUR FIRE!'],
+  release: ['LET HIM GO!', 'LET GO OF HIM!', 'DROP HIM!'],
   beg: ['PLEASE!', "DON'T KILL ME!", 'I GOT KIDS, MAN!', 'I NEVER SAW YOU!', 'TAKE WHATEVER YOU WANT!', 'NOT LIKE THIS...', "I'M BEGGING YOU!"],
   // ... unless the killer turns his back on him with a gun lying at hand: he has it (Enemy.updateYield)
   turn: ['SUCKER!', 'BIG MISTAKE, PAL!', 'NOW YOU DIE!'],
@@ -97,7 +100,7 @@ export const BARKS = {
 export const SHOUTED = new Set([
   'shots', 'panic', 'body', 'lost', 'help', 'dry', 'arm', 'reload', 'wake', 'threat', 'brawl', 'revenge', 'flush', 'hunt',
   'call', 'where', 'down', 'chief', 'alone', 'run', 'backup', 'rally', 'taunt', 'turn', 'stairs', 'sprinkler', 'loud',
-  'hey', 'press', 'shove', 'cut', 'what', 'watch',
+  'hey', 'press', 'shove', 'cut', 'what', 'watch', 'hostage', 'release',
 ]);
 export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 'sweep', 'tracks', 'blood', 'slip', 'out', 'drop',
   'staff', 'settle', 'letgo']);
@@ -105,7 +108,7 @@ export const MUTTERED = new Set(['found', 'window', 'door', 'fuse', 'damage', 's
 // before his eyes, a man giving up, one getting up off his knees with a gun
 // and the lines of a word with a stranger (one guard at a time has one)
 export const URGENT = new Set(['contact', 'call', 'down', 'chief', 'yield', 'turn', 'hey', 'out', 'drop', 'cut', 'what', 'staff',
-  'watch', 'press', 'shove']);
+  'watch', 'press', 'shove', 'hostage', 'release']);
 
 // occasions not written in white (PALETTE keys)
 export const BARK_TONE = {

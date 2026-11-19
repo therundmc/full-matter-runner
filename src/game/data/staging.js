@@ -67,6 +67,7 @@ export const LESSONS = {
   flee: { far: true },                         // GET OUT: the camera goes to the living room's way out
   behind: { within: 220 },                     // GET BEHIND HIM
   neck: {},                                    // behind him: the click
+  shield: {},                                  // behind the landing's man: E takes him as a shield
   take: { within: 120 },
   punch: { within: 110 },
   strike: { within: 110 },

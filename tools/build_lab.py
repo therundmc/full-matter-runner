@@ -132,8 +132,12 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    box, a knife, a tire iron; in the west half three dummies apart to kill each his own way (the
                    heavy stroke, buckshot at arm's length, floored by a slide or a thrown weapon then finished, or
                    taken from behind); in the east half five in a row, a step apart, for a chain and its end
+    29 SHIELD      east again (cols 68-73): the human shield (SHIELD in data/feel.js, systems/Shield.js). Two dummies by
+                   the door, their backs to it (one with a pistol): E behind one takes him, the right click throws
+                   him (at the partition, at the others); past the partition three gunmen, awake, who see only the gap
+                   at its south end: step into it with a man held and they hold their fire a moment, then shoot him
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
-sight tests, and CUEBALL).
+sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
@@ -229,6 +233,11 @@ lv.fill(49, 25, 66, 25, 's')               # 28 KILL CAM: the sidewalk goes on e
 lv.fill(49, 26, 66, 29, '#')
 lv.fill(50, 27, 65, 29, '.')
 lv.put(57, 26, '.')
+lv.fill(67, 25, 74, 25, 's')               # 29 SHIELD: the sidewalk once more, a room cut in two by a partition
+lv.fill(67, 26, 74, 29, '#')
+lv.fill(68, 27, 73, 29, '.')
+lv.put(69, 26, '.')
+lv.fill(71, 27, 71, 28, '#')               # the partition: the gunmen east of it see the gap at its south end only
 
 # ---------------------------------------------------------------- actors (30 guards)
 lv.actor('@', 27, 9, face=270)
@@ -555,6 +564,17 @@ for x in range(61, 66):
 for x in (53.0, 62.5):
     lv.prop('ceiling_lamp', x, 28.5)
 
+lv.area('29 shield: two men to take from behind, three gunmen past a partition')
+lv.paint('label_shield', 70.5, 25.5)
+lv.actor('p', 69, 28, face=90)             # their backs to the door: E behind one takes him as a shield
+lv.actor('m', 68, 28, face=90)
+for row in (27, 28, 29):
+    lv.actor('p', 73, row, face=180, awake=True)   # they see the gap only: his shield first, then him
+lv.drop('knife', 70.4, 27.4, 0)            # a one-handed blade: the throat instead of the neck
+lv.drop('bat', 68.4, 27.4, 90)             # two hands: no shield with it
+for x in (69.5, 72.8):
+    lv.prop('ceiling_lamp', x, 28.0)
+
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [
     [12, 22, 9, '#5a6ad8', 0.3],
@@ -566,7 +586,7 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=47)
+    lv.check(guards=52)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              exit=exit_zone, ambient={'traffic': [], 'walkers': []},
              header=[
@@ -574,5 +594,5 @@ if __name__ == '__main__':
                  'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane, the aim\'s room) and a',
                  'street with the vehicles. Load with ?level=lab.',
                  'Guards here are passive dummies (blind and deaf, at their job), but those kept `awake`: the two of the sight',
-                 'tests, and CUEBALL in his room (level 1\'s boss: he fights).',
+                 'tests, CUEBALL in his room (level 1\'s boss: he fights), the three gunmen of the shield\'s room.',
              ])

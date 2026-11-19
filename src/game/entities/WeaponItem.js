@@ -95,6 +95,13 @@ export default class WeaponItem {
       if (Math.hypot(c.x - this.x, c.y - this.y) < c.radius + 6) {
         const v = Body.getVelocity(this.body);
         const a = Math.atan2(v.y, v.x);
+        if (c.shieldStops?.(a, null, this.thrower)) {
+          // it lands on the man he holds in front of him (Player.shieldStops) and falls off him
+          w.sound('punch', c.x, c.y);
+          Body.setVelocity(this.body, { x: -v.x * 0.3, y: -v.y * 0.3 });
+          this.thrower = null;
+          return;
+        }
         const blade = this.def.swing === 'blade', full = this.charge >= 1;
         const stick = blade && (sp >= THROW.stick || full), smash = !blade && full;
         const breaks = smash && this.def.kind !== 'gun'; // a gun kills as hard, and comes off him whole (the user)

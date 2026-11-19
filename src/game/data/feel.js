@@ -202,6 +202,39 @@ export const THROW = {
   butt: { swing: 'club', material: 'metal', heft: 2 },
 };
 
+// The human shield (entities/Player.js startShield .. endShield, the rules: systems/Shield.js). E behind a standing
+// guard, or on one who is down: he is held in front of the player, his back to his chest, turned with the aim.
+//   reach     px between the two for the grab (the takedown's arc behind him: Config TAKEDOWN rear / facing)
+//   gap       px between the two bodies while he is held; set: s to haul him in
+//   move      share of the player's speed while he holds him (no slide, no vault: SPACE does nothing)
+//   arc       rad either side of where the hostage is: what comes at the player from there hits the hostage
+//   hp        rounds he takes before he dies in the player's arms; blast: what one shotgun blast is worth (its
+//             pellets within `volley` s of the first are that one hit); thrown: a thing thrown at them
+//   corpse    hits his body still stops once he is dead, then it slips to the floor
+//   hesitate  s a man with a gun holds his fire at a comrade held; brute: a brute's
+//   kill      the click that kills him: bare hands (or a gun run dry) break his neck, a one-handed blade opens his
+//             throat (label: the score's; sound; noise: px the guards hear it at; cool: s before the next attack)
+//   throw     the right click throws him along the aim: dist [px: a tap, a full charge]; hit: a standing man within
+//             r px of him while he still flies faster than `speed` px/step is floored too (he keeps `keep` of his
+//             speed); dead: px/step his body is thrown at when he died in the arms; cool: s before the next attack
+//   flank     guards with a blade or a club come round: within [near, far] px and inside the arc they run mostly
+//             sideways (`in`: the share of their way that still goes at him)
+//   pose      the look of it (CharacterAnim shieldPose / hostagePose, pose px): arm: where the left hand closes
+//             on his throat, off his centre; gun: how far out to the right the gun hand goes to clear his shoulder;
+//             pull: he is pulled back onto the chest; shake: his struggle [rad/s, px]
+export const SHIELD = {
+  reach: 34, gap: 14, set: 0.16, move: 0.6, arc: 1.22,
+  hp: 3, blast: 3, thrown: 1, volley: 0.12, corpse: 2,
+  hesitate: 1.0, brute: 0.4,
+  kill: {
+    neck: { label: 'NECK SNAP', cause: 'snap', sound: 'shieldNeck', noise: 40, cool: 0.3 },
+    throat: { label: 'THROAT CUT', cause: 'slash', wound: 'throat', sound: 'throatCut', noise: 30, cool: 0.3 },
+  },
+  throw: { dist: [70, 150], hit: { r: 22, speed: 2.2, keep: 0.45 }, dead: 5, cool: 0.25 },
+  flank: { near: 30, far: 190, in: 0.4 },
+  pose: { arm: [1.2, 0.5], gun: 8.5, pull: 1.3, shake: [26, 0.6] },
+};
+
 // The player's weapon giving out (Character.breakWeapon, data/weapons.js `breaks`), what flies of it and the beat
 // after (Player.updateBroke, CharacterAnim brokePose):
 //   beat    s of the beat: the hand shaken, the stub (a snapped bat's handle) brought up and looked at
