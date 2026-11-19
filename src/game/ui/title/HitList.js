@@ -5,19 +5,25 @@
 // light, failing now and then, dust in it; the fire in the photo; the red string from pin to pin as far as he has
 // got, trembling when the mouse moves; the X on the dead, drawn by a marker in two strokes the first time the board
 // shows a man dead (Beats.js CROSS); the NEXT tag blinking; a glint on a pin; the matchbook's flamingo buzzing; and
-// the levels as notes pinned under what they are (the tutorial under his flat, level 1 under CUEBALL), the chosen
-// one lifted, its pin shaken as it is taken.
+// the levels as notes pinned under what they are (the tutorial under his flat, level 1 under CUEBALL, 2A and 2B under
+// JITTERS), the chosen one lifted, its pin shaken as it is taken; a level not made yet is a greyed note taped SOON.
 import { BOARD as B } from '../../data/titleart.js';
 import { hash, poly, disc, px } from '../cine/Ink.js';
 import { thousands, clock } from '../Text.js';
+import { levelTag } from '../../systems/Progress.js';
 import { CROSS, crossK, crossBeats } from './Beats.js';
 import { INK, NIGHT_L, NIGHT_LL, BONE, BONE_D, PINK_D, FIRE, BLOOD, open, put, frame, show, steps, turned, strip, tongue, glint, tag, letter } from './Paper.js';
 
-// the level that kills each target, in the cards' order (null: not made yet)
+// the level that kills each target, in the cards' order (null: not made yet; JITTERS dies at the end of his last
+// level, so 2A done leaves him standing, still NEXT)
 const KILLS = ['level1', null, null, null];
 // where a level's note is pinned: [x, y, lean] (a level without a place goes in a row along the foot)
-const LEVEL_AT = { tutorial: [166, 470, -3], level1: [398, 384, 2] };
-const BACK_AT = [1014, 548, 3];
+export const LEVEL_AT = { tutorial: [166, 470, -3], level1: [398, 384, 2], level2a: [724, 418, -2], level2b: [762, 506, 3] };
+// the levels not made yet, pinned after the one they follow on the LEVELS page: never an item (no level behind them)
+export const SOON = [{ level: 'level2b', label: 'THE STATION', after: 'level2a' }];
+// a note's size on the board
+export const NOTE = [228, 70];
+export const BACK_AT = [1014, 548, 3];
 
 // how many of the targets are dead: the leading ones whose level is done
 export function deadCount(progress) {
@@ -29,6 +35,8 @@ export function deadCount(progress) {
 // what the board remembers from one picture to the next: when it came up, the mouse, the note chosen
 const life = { since: 0, last: -1, mx: 0, my: 0, shake: 0, sel: '', selT: -9 };
 
+// the number on a level's note: 00 the tutorial, then 01, 02A...
+const number = (it) => (it.level === 'tutorial' ? '00' : (levelTag(it.level) || String(it.n)).replace(/^\d+/, (d) => d.padStart(2, '0')));
 const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
 const boil = (t) => (steps(t, 3) % 3) * 17;                    // the chosen note is cut again, three times a second
 
@@ -123,7 +131,7 @@ export function drawHitList(ctx, W, H, t, view) {
   const items = view.menu ? view.menu.page.items : [{ label: 'GO ON' }], sel = view.menu ? view.menu.sel : 0;
   const key = `${view.menu ? view.menu.top.id : 'between'}:${sel}`;
   if (key !== life.sel) { life.sel = key; life.selT = t; }
-  const shaken = Math.max(0, 1 - (t - life.selT) / 0.35), tut = items.some((it) => it.level === 'tutorial');
+  const shaken = Math.max(0, 1 - (t - life.selT) / 0.35);
   let spare = 0;
   items.forEach((it, i) => {
     const on = i === sel, w = on ? shaken : 0;
@@ -134,12 +142,20 @@ export function drawHitList(ctx, W, H, t, view) {
       return;
     }
     const [x, y, deg] = LEVEL_AT[it.level] || [330 + (spare++) * 236, 548, (hash(i) - 0.5) * 5];
-    const p = note(g, f, t, x, y, 228, 70, deg, i * 11 + 30 + (on ? boil(t) : 0), on, w, it.locked ? NIGHT_LL : BONE_D), b = it.best;
-    words.push([`${String(it.n - (tut ? 1 : 0)).padStart(2, '0')} ${it.label}`, p.x, p.y - 4 * k, 14 * k, INK, p.deg]);
+    const p = note(g, f, t, x, y, NOTE[0], NOTE[1], deg, i * 11 + 30 + (on ? boil(t) : 0), on, w, it.locked ? NIGHT_LL : BONE_D), b = it.best;
+    words.push([`${number(it)} ${it.label}`, p.x, p.y - 4 * k, 14 * k, INK, p.deg]);
     const under = it.locked ? 'LOCKED' : b ? `${thousands(b.total)}  ${b.grade}  ${clock(b.time || 0)}` : view.progress.done.includes(it.level) ? 'DONE' : 'NOT DONE';
     words.push([under, p.x, p.y + 17 * k, 10 * k, it.locked ? INK : PINK_D, p.deg]);
     rects.push({ i, ...p.rect });
   });
+  // the levels not made yet: greyed, a strip of tape across them, nothing for the mouse
+  for (const s of SOON) {
+    if (!items.some((it) => it.level === s.after)) continue;
+    const [x, y, deg] = LEVEL_AT[s.level], p = note(g, f, t, x, y, NOTE[0], NOTE[1], deg, 77, false, 0, NIGHT_LL);
+    poly(g, BONE_D, turned(strip([-NOTE[0] / 2 - 12, 0], [NOTE[0] / 2 + 12, 0], 24, 20), x + 2, y + 15, deg - 5));
+    words.push([`${number(s)} ${s.label}`, p.x, p.y - 8 * k, 14 * k, INK, p.deg]);
+    words.push(['SOON', f.ox + (x + 2) * k, f.oy + (y + 20) * k, 12 * k, INK, deg - 5]);
+  }
   show(ctx, W, H);
   for (const [str, x, y, size, col, deg] of words) letter(ctx, str, x, y, size, col, deg);
   return rects;

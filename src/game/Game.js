@@ -12,7 +12,7 @@ import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
 import { loadSettings, saveSettings } from './systems/Settings.js';
-import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, loadCrossed, saveCrossed } from './systems/Progress.js';
+import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, levelTag, loadCrossed, saveCrossed } from './systems/Progress.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
@@ -67,7 +67,7 @@ const DOES = {
   reload: (inp) => inp.down('KeyR'),
 };
 // what the intro banner calls a level
-const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${CAMPAIGN.filter((l) => l !== 'tutorial').indexOf(id) + 1}` : 'TEST LEVEL');
+const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelTag(id)}` : 'TEST LEVEL');
 
 export default class Game {
   constructor(canvas) {

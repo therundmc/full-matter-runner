@@ -151,7 +151,8 @@
   back room and the back of house are not.
 
 ## Front end, story, tutorial
-- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN` = tutorial then level1)
+- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN` = tutorial, level1, level2a: the level after a done one is open, an
+  old save too)
   and systems/Settings.js in localStorage; `Game.startLevel(id)`, `newGame()`, `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
@@ -177,7 +178,8 @@
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  drawn by a marker once; the levels pinned under their target in `LEVEL_AT`, 2A and 2B under JITTERS, a level not made
+  yet a greyed note taped SOON, `SOON`), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
   a thing a section, its settings on a sheet of paper beside it), Beats.js (their clocks and sounds, DOM-free),
   Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.

@@ -283,3 +283,7 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   and three pursuers to shoot right, left and ahead. Played by script, stepped at 60 Hz in the headless browser: the
   road finished in 26.9 to 27.6 s at cruise (23.1 s flat out), under the lorry's tail flat out still through, a tell
   sat through still kills, drivers shot on either side and ahead (8 rounds, 4 kills).
+- 2026-11-19: 2A in the campaign (systems/Progress.js `CAMPAIGN` = tutorial, level1, level2a): level 1's results lead
+  through the hit list to 2A (its intro card LEVEL 2A, then the first-time grab); an old save with level 1 done opens
+  2A on load; after 2A (TO BE CONTINUED, the results) the title, CONTINUE plays 2A. The hit list pins 2A and 2B under
+  JITTERS (2B a greyed note taped SOON, not a level); JITTERS is crossed out only by his last level.

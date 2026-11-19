@@ -136,6 +136,17 @@ test('menu: the levels page lists the campaign with best results; a locked level
   assert.deepEqual(n.click(1), { type: 'start', level: 'level1' });
 });
 
+test('menu: 2A (the chase) is on the levels page, shut until level 1 is done', () => {
+  const levels = [...ctx().levels, { id: 'level2a', name: 'THE CHASE' }];
+  const m = new Menu('main', ctx({ levels, progress: complete(FRESH, 'tutorial') }));
+  choose(m, 'LEVELS');
+  assert.deepEqual(m.page.items.map((it) => [it.level, it.locked]), [['tutorial', false], ['level1', false], ['level2a', true], [undefined, undefined]]);
+  assert.equal(m.click(2), null);
+  const n = new Menu('main', ctx({ levels, progress: complete(complete(FRESH, 'tutorial'), 'level1') }));
+  choose(n, 'LEVELS');
+  assert.deepEqual(n.click(2), { type: 'start', level: 'level2a' });
+});
+
 test('menu: without the tutorial, the first level there is stays open', () => {
   const m = new Menu('main', ctx({ levels: [{ id: 'level1', name: 'NEON NIGHTS' }] }));
   choose(m, 'LEVELS');
