@@ -285,7 +285,7 @@ export default class Vehicle {
       if (k <= 8 && kind !== 'blunt') {
         for (let i = 0; i < 4; i++) {
           const [wx, wy] = this.m.wheels[i];
-          if (this.tires[i] && Math.abs(qx - wx) < TYRE_HIT[0] && Math.abs(qy - wy) < TYRE_HIT[1]) { this.popTire(i, dirA); return; }
+          if (this.tires[i] && Math.abs(qx - wx) < TYRE_HIT[0] && Math.abs(qy - wy) < TYRE_HIT[1] && this.tyreHit(i, px, py, dirA, melee)) return;
         }
       }
       if (kind === 'cut') continue;
@@ -446,6 +446,25 @@ export default class Vehicle {
   canSlide(ax, ay, bx, by) {
     const [h0, h1] = this.m.hood;
     return [this.toSprite(ax, ay), this.toSprite(bx, by)].every(({ sx }) => sx >= h0 - 2 && sx <= h1 + 2);
+  }
+
+  // A hit on tyre i at (px, py); false: the round goes on into the car. It goes at once, or, with `tread` (a
+  // pursuer's, systems/Pursuit.js: { hp, skip }), once `hp` rounds have gone into it, each within `skip` rad of
+  // square on its flank: one at more of a slant skips off the rubber (a burst at the body from well behind or ahead
+  // lands on the wheel arch, and is the body's), one that counts chews it up (chips, a puff)
+  tyreHit(i, px, py, dirA, melee) {
+    const T = this.tread;
+    if (T && !melee) {
+      if (Math.abs(Math.sin(dirA - this.body.angle)) < Math.cos(T.skip)) return false;
+      if (((this.tyreWear ||= [0, 0, 0, 0])[i] += 1) < T.hp) {
+        this.world.particles.chips(px, py, dirA + Math.PI, 0.9, 4, '#141418', 120);
+        this.world.particles.smoke(px, py, 2, 2, { speed: 40, size: 3, life: 0.5 });
+        this.world.sound('carHit', px, py, 0.4);
+        return true;
+      }
+    }
+    this.popTire(i, dirA);
+    return true;
   }
 
   popTire(i, dirA) {

@@ -529,6 +529,31 @@ test('pursuit: a rear tyre shot, the car ahead of him in his lane limps out of i
     return false;
   });
   assert.ok(!touched && slow > CHASE.cruise - 0.5, `never in his way (${slow.toFixed(1)} px/step)`);
+  // and it hangs on alongside him, in his arc, out of his lane, for him to finish it
+  let held = 0;
+  run(s, 6, null, () => {
+    const near = Math.hypot(car.v.x - s.v.x, car.v.y - s.v.y) < 250, out = Math.abs(car.v.y - s.v.y) >= (car.v.h + s.v.h) / 2;
+    if (near && out && inArcOf(s, car.v.x, car.v.y)) held += DT;
+    return false;
+  });
+  assert.equal(car.state, 'limp');
+  assert.ok(held > 5.5, `alongside him, in his arc (${held.toFixed(1)} s of 6)`);
+}));
+
+test('pursuit: a tyre goes to a burst at it (5 rounds square on its flank), not to a stray round at a slant off the body\'s burst', () => calm(() => {
+  const s = start(), T = CHASE.pursuit.rounds.tyre;
+  const car = s.P.spawn(s.v.x, NORTH, 0, 'chase', 8.9), v = car.v;
+  run(s, 0.4);
+  const wheel = () => v.toWorld(v.m.wheels[1][0], v.h - 1); // its rear wheel on his side (+y)
+  // at a slant (from well behind it): they skip off into the body
+  for (let i = 0; i < 20; i++) { const at = wheel(); v.hit(1, at.x, at.y, -Math.PI / 2 + T.skip + 0.2, 1, 'bullet'); }
+  assert.ok(v.tires[1] && car.state === 'chase', 'still on it');
+  for (let i = 1; i < T.hp; i++) { const at = wheel(); v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet'); }
+  assert.ok(v.tires[1], `${T.hp - 1} square on: chewed up, not gone`);
+  const at = wheel();
+  v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet');
+  assert.ok(!v.tires[1] && car.state === 'limp', 'the last one: it limps');
+  assert.ok(T.hp >= 4 && T.hp <= 6);
 }));
 
 test('pursuit: a burst through its windscreen kills the driver (a stray round only stars it) and it is out at once, his gunman with it; a front tyre spins it out; both by the exit', () => calm(() => {

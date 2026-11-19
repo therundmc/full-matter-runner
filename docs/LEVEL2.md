@@ -375,3 +375,9 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   The `veer` and `spin` states are gone (the exit is both). A car limping on a rear tyre no longer holds the slot in
   his lane (it took him from behind at 6 px/step). QA 3 min: seed 11 PASS (6 crashes into the fronts, main's same
   seed 7: the bot's kerb runs), seed 7 the known lorry jam (stalled 3 s at col 336).
+- 2026-11-19: tyres. A rear tyre went in the first rounds of almost every burst at a car ahead (the rounds land on
+  its wheel arch) and the car limped out of his arc unwrecked. A pursuer's tyre (CHASE.pursuit.rounds.tyre,
+  Vehicle.tyreHit) now goes on the 5th round square on its flank; a round more than 0.6 rad off square skips off
+  into the body. Cars ending by a tyre before the body's wreck, body-aim script, 100 runs, the car 0 / 60 / 120 /
+  165 px ahead of the muzzle: 0 / 0 / 100 / 100 % before, 0 / 0 / 0 / 0 % now. Limping, a car hangs on alongside
+  him (slot `abreast`, at no more than 0.6 px/step over his speed) for him to finish it. QA 3 min seed 11: PASS.

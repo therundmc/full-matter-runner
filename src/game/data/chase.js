@@ -161,7 +161,9 @@ export const CHASE = {
   //   off the hood: Vehicle `burnAt`), `wreck` the engine dies: wrecked, its crew killed. On fire it runs `burn` s at
   //   most, then it is wrecked too (it blows up later, off to the side); `leak` rounds in its tank set it alight.
   //   THE QUICK WAY, a burst at the windscreen: the driver is killed once it is at window state `screen`
-  //   (Vehicle.windows: 1 starred, 2 blown in), a stray round only stars it
+  //   (Vehicle.windows: 1 starred, 2 blown in), a stray round only stars it. A tyre (`tyre`, Vehicle.tyreHit) goes
+  //   on the `hp`-th round into it within `skip` rad of square on its flank; one at more of a slant skips off into
+  //   the body (a burst at the body from well behind or ahead lands on the wheel arch)
   //   out: THE EXIT. A car stopped for good while it was going (wrecked, its driver shot, a front tyre, blown up) is
   //   driven off his line by a script for `dur` s: it swerves to the side AWAY from him (dead level with him, within
   //   `level` px across: the side of the street with more room), at `side` px/step across reached in `bite` s, brakes
@@ -170,8 +172,9 @@ export const CHASE = {
   //   a front tyre), dying away over `dur`. What lines the road stops it there (it is then held against it at `press`
   //   px/step); `far` px across from where it started it pushes no further. It never comes back into his lane; a car
   //   crawling under `least` px/step is left where it is
-  //   limp: a rear tyre, its top speed cut to `limp` (but not while it is in his lane ahead of him: its slot there
-  //   is moved to the other lane); lost: `lost` px behind him, it is out of the chase
+  //   limp: a rear tyre, it hangs on alongside him (the `abreast` slot, in his arc, never in his lane), at no more
+  //   than `limp` px/step over his speed (it only just keeps up; all of its speed while still in his lane ahead of
+  //   him); lost: `lost` px behind him, it is out of the chase
   //   rubber: in the chase but more than `far` px behind him for `t` s, or more than `close` px from its slot for
   //   `held` s, off the picture: brought back up behind it, on its slot's line
   //   spawn: one joining from behind starts `behind` px back (just off the picture) at his speed + `over` (`clear`
@@ -188,9 +191,9 @@ export const CHASE = {
     knock: { dv: 2.2, stun: 0.6 },
     shoved: { cost: 0.5, throw: 6, drag: 4, spin: 0.02, stun: 0.7 },
     wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight'] },
-    rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2 },
+    rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2, tyre: { hp: 5, skip: 0.6 } },
     out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1 },
-    limp: 6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
+    limp: 0.6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
     spawn: { behind: 330, over: 5, clear: 260, near: 300, cross: 6.5, radius: 150 },
   },
   // the gunman leaning out of a pursuer's window on the runner's side and his TOLD shot (docs/LEVEL2.md telegraphs):

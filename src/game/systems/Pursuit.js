@@ -155,6 +155,7 @@ export default class Pursuit {
     v.noAlarm = true;
     v.burnAt = 1 - this.C.rounds.fire; // (its fire is a stage of the damage: shotUp)
     v.leakAt = this.C.rounds.leak;
+    v.tread = this.C.rounds.tyre;       // a tyre goes to a burst at it, not to a stray round (Vehicle.tyreHit)
     v.late = true;                      // it blows up when its fire's fuse is out, off to the side by then (exit)
     v.onCollide = (o2, pair) => this.contact(car, o2, pair);
     if (!car.dummy) {
@@ -246,11 +247,8 @@ export default class Pursuit {
   // the lane he is in and the other one, now
   sides(tg) { return this.road ?? lanesOf(tg.y, this.band, null, this.C); }
 
-  // a car's slot's point, now (limping, it cannot keep ahead of him: never in his lane, where he would run into it)
-  slot(car, tg) {
-    const slot = car.state === 'limp' && this.C.slots[car.slot][1] === 'his' ? 'lead' : car.slot;
-    return slotOf(slot, tg.x, this.sides(tg), car.rank, this.C);
-  }
+  // a car's slot's point, now
+  slot(car, tg) { return slotOf(car.slot, tg.x, this.sides(tg), car.rank, this.C); }
 
   // A car left far behind (held up by a wreck across the street, by what he threw in its way), or hanging off the
   // picture a long while without reaching its slot (boxed in behind him by parked cars knocked into its lane), is
@@ -325,9 +323,10 @@ export default class Pursuit {
     }
     // what it wants: a heading and a speed
     let wantH = 0, wantS = 0;
-    // (limping, it keeps going as he does while it is still in his lane ahead of him: out of it first)
+    // (limping, no more than `limp` over his speed: it only just keeps up; but at full speed while it is still in his
+    // lane ahead of him, out of it first)
     const inWay = tg?.car && v.x > tg.x && Math.abs(v.y - tg.y) < (v.h + tg.car.h) / 2 + C.margin;
-    const max = car.state === 'limp' && !inWay ? C.limp : C.max;
+    const max = car.state === 'limp' && tg && !inWay ? Math.min(C.max, Math.max(0, tg.vel.x) + C.limp) : C.max;
     if (car.state === 'cross') {
       wantH = -Math.PI / 2;
       wantS = C.spawn.cross;
@@ -614,7 +613,14 @@ export default class Pursuit {
       // a front tyre: it spins out (the exit, turning harder)
       if (car.driver) car.cause = 'tyre';
       this.wreck(car);
-    } else if (part === 'tyre' && car.state === 'chase') car.state = 'limp';
+    } else if (part === 'tyre' && car.state === 'chase') {
+      // a rear tyre: it limps, hanging on alongside him (never in his lane, where he would run into it; the slots
+      // are dealt to the others without it), in his arc for him to finish it
+      car.state = 'limp';
+      car.slot = 'abreast';
+      car.rank = 0;
+      car.settled = 0;
+    }
   }
 
   // the lab's dummy set moving by what it took (its body loose, driven no more)
