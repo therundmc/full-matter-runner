@@ -387,3 +387,70 @@ test('menu: VIBRATION says so when a pad is there that this browser cannot rumbl
   assert.equal(at(ctx({ rumbleOk: true })).note, undefined);
   assert.match(at(ctx({ rumbleOk: false })).note, /CANNOT RUMBLE/);
 });
+
+// ---------------- the pause's own page: its chosen line's clocks, its card (ui/Pause.js) ----------------
+const { Pick, PICK, TARGETS, levelNumber, pauseCard } = await load('game/ui/Pause.js');
+
+test('pause: its items and their actions, up / down wrapping, the mouse choosing a line', () => {
+  const m = new Menu('pause', ctx());
+  assert.deepEqual(m.page.items.map((it) => [it.label, it.act?.type ?? it.page]),
+    [['RESUME', 'resume'], ['OPTIONS', 'options'], ['RESTART', 'restart'], ['QUIT TO MENU', 'quit']]);
+  m.up();
+  assert.equal(selected(m), 'QUIT TO MENU');
+  m.down();
+  assert.equal(selected(m), 'RESUME');
+  m.hover(2);
+  assert.equal(selected(m), 'RESTART');
+  assert.deepEqual(m.activate(), { type: 'restart' });
+});
+
+test('pause: the tab slides in when the choice moves, by keys or by the mouse, in a few held steps', () => {
+  const p = new Pick(), dt = 1 / 60;
+  assert.equal(p.update(dt, 0), false);
+  assert.equal(p.slide, 1, 'the line it opens on is simply there');
+  assert.ok(p.entered < 1, 'the screen is still coming in');
+  p.update(dt, 2);
+  assert.equal(p.from, 0);
+  assert.equal(p.key, 2);
+  assert.ok(p.slide > 0 && p.slide < 1, 'out of the edge at once, not there yet');
+  const seen = new Set([p.slide]);
+  for (let i = 0; i < 30; i++) { p.update(dt, 2); seen.add(p.slide); }
+  assert.equal(p.slide, 1);
+  assert.equal(p.entered, 1);
+  assert.ok(seen.size >= 3 && seen.size <= Math.round(PICK.slide * PICK.fps) + 1, `stop motion: ${[...seen]}`);
+  assert.ok([...seen].every((k, i, a) => i === 0 || k > a[i - 1]), 'never back');
+});
+
+test('pause: a confirm is pressed for a beat, its action due once, and the choice cannot move under it', () => {
+  const p = new Pick(), dt = 1 / 60;
+  p.update(dt, 1);
+  assert.equal(p.busy, false);
+  assert.equal(p.pressed, 0);
+  p.press();
+  assert.ok(p.busy);
+  let due = 0, frames = 0, top = 0;
+  for (let i = 0; i < 30; i++) {
+    if (p.update(dt, 3)) { due++; frames = frames || i + 1; }
+    top = Math.max(top, p.pressed);
+    if (!due) assert.equal(p.key, 1, 'the line pressed is the one that acts');
+  }
+  assert.equal(due, 1);
+  assert.ok(Math.abs(frames * dt - PICK.press) < 2 * dt, `after ${PICK.press} s`);
+  assert.ok(top > 0.5);
+  assert.equal(p.busy, false);
+  p.reset();
+  assert.equal(p.key, null);
+  assert.equal(p.age, 0);
+});
+
+test('pause: the card says the level, whose night it is and the run so far', () => {
+  assert.deepEqual(['tutorial', 'level1', 'level2a', 'lab'].map(levelNumber), ['00', '01', '02A', '--']);
+  const world = { runTime: 83.4, scoring: { kills: 4 }, totalEnemies: 12 };
+  const c = pauseCard('level1', { name: 'NO LOOSE ENDS' }, world);
+  assert.deepEqual({ ...c, target: c.target.name }, { number: '01', name: 'NO LOOSE ENDS', target: 'CUEBALL', time: 83.4, kills: 4, guards: 12 });
+  assert.equal(pauseCard('level2a', { name: 'THE CHASE' }, { ...world, drive: { on: true } }).guards, 0, 'the chase counts no guards');
+  assert.equal(pauseCard('level2a', {}, world).target.name, 'JITTERS');
+  assert.equal(pauseCard('lab', { name: 'PHYSICS LAB' }, null).target, null);
+  assert.equal(TARGETS.tutorial.label, 'PLACE', 'the tutorial has no target: his flat');
+  for (const t of Object.values(TARGETS)) assert.match(t.ink, /^#[0-9a-f]{6}$/);
+});

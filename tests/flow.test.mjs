@@ -120,7 +120,7 @@ test('game: pause and resume go back to the state the pause was opened from, the
   const calls = [];
   const g = {
     state: 'dead', stateT: 1.7, input: { padLost: true, focusLost: true, holdMouse: () => calls.push('hold') },
-    menu: { reset: (id) => calls.push(`menu ${id}`) }, skip: { reset() {} }, world: { player: {} },
+    menu: { reset: (id) => calls.push(`menu ${id}`) }, pick: { reset() {} }, skip: { reset() {} }, world: { player: {} },
   };
   g.setState = Game.prototype.setState;
   Game.prototype.pause.call(g);

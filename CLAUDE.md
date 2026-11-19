@@ -216,8 +216,14 @@
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),
-  Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
+  Paper.js (the cut-paper sheet). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
+- Pause (ui/MenuArt.js draws, ui/Pause.js its clocks and card, DOM-free): the game frozen SHARP behind, drained and
+  dimmed flat (lens grade `POST.grades.paused`, a cut; no blur, no HUD), a black sheet cut on a diagonal down the left
+  with PAUSED on bone tape and the items big, the level's card pinned on the right (number, name, its target in his
+  ink with his sign: `TARGETS`, the run's time and kills). The chosen item is on a pink tab out of the screen's edge
+  (the title's slab): it slides in when the choice moves (`Pick`, `PICK`), a confirm presses it bone for a beat
+  before its action (ESC / R stay instant). Its OPTIONS are the title's screen, untouched.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
   signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as
