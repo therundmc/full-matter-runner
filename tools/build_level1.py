@@ -17,7 +17,7 @@ Plan (north is up):
 
 The street is alive at 2:14 AM: three shop fronts throw their light on the sidewalks through their display windows
 (a liquor store and a TV shop, closed, on either side of the bar; a laundromat open all night next to the start alley).
-They are public ground. The liquor store has a ladder to its roof in its back wall.
+They are public ground. The liquor store has a ladder to its roof in its back wall: the only way up.
 
 Six ways in, none of them free (the level is made to be played again another way):
     the front    double door under the neon: the bouncer, the sidewalk patrol, the whole room at once
@@ -27,12 +27,12 @@ Six ways in, none of them free (the level is made to be played again another way
                  but it is the long way round, with no room to dodge, past a window of the bar, and it comes out
                  in the back lot under the tube light by the back door, where a guard leans smoking; on its way, a window of the
                  VIP room to dive through
-    the roof     a fire-escape ladder at the corner of the liquor store (far left of the street) climbs to its flat
-                 roof: nobody up there, a bat left by whoever comes to smoke, and two drops over the parapet: into
-                 the service alley behind the gate and the smoker's back, or into the west end of the back lot
+    the roof     up the liquor store's own ladder, in its back wall, to its flat roof (no ladder outside: the user
+                 found one on the street made no sense): nobody up there, a bat left by whoever comes to smoke, and
+                 two drops over the parapet: into the service alley behind the gate and the smoker's back, or into
+                 the west end of the back lot
     the shop     the liquor store: break in by the front (the bell rings, the guards come and look: a diversion as
-                 much as a way in), or come down its own ladder from the roof without a sound; the same ladder is the
-                 way on from there. The pistol that was behind its counter is hidden up on the roof now, by the
+                 much as a way in), over the counter and up its ladder. The pistol that was behind its counter is hidden up on the roof now, by the
                  lookout's chair over the back lot: a reward for the climb
     the lot      from the back lot: the locked back door (to force), or the toilets' window (a public room: one comes
                  out of it a customer); the boss's room has no window
@@ -95,10 +95,9 @@ lv.fill(20, 32, 23, 36, '_')
 # shop fronts, 3 m deep behind their display windows: liquor store (west of the bar) and TV shop (east), both locked
 # for the night, and the laundromat by the start alley, open
 lv.fill(3, 17, 8, 19, ',')
-# the liquor store's flat roof: up a ladder from the street corner or from the shop, down over a parapet
+# the liquor store's flat roof: up the shop's own ladder (the only way up), down over a parapet
 lv.fill(1, 8, 9, 14, '^')
 lv.fill(7, 3, 9, 7, '^')       # its north arm, above the back lot
-lv.fill(1, 15, 1, 20, '^')     # the fire escape's landing and its ladder on the street
 lv.fill(3, 15, 3, 16, '^')     # the shop's own ladder, in its back wall
 lv.put(10, 12, '^')            # the parapet over the service alley
 lv.put(10, 3, '^')             # ... and over the back lot
@@ -391,7 +390,8 @@ lv.prop('crate', 32.4, 1.45, -8)
 lv.prop('wall_lamp', 17.5, 4.91, 180)
 # the house's fuse box, between the toilets' window and the back door: smash it and the bar is left in its emergency lighting
 lv.power(14, 5, 31, 20, 24.5, 4.92, 180)
-for (x, y, deg) in ((23.85, 12.09, 0), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: back, front, VIP side
+for (x, y, deg) in ((23.91, 15.5, 90), (20.5, 19.91, 180), (24.91, 17.4, 90),     # the bar room: the gaming room's wall
+                                                                                # (where the arcade stood: the user's spot), front, VIP side
                     (17.6, 10.91, 180), (21.09, 8.5, 270), (25.4, 10.91, 180),   # storeroom, toilets, the boss's room
                     (28.5, 17.09, 0)):                                          # the VIP room
     lv.prop('emergency_light', x, y, deg)
@@ -508,9 +508,9 @@ lv.litter_at('chip', 28.3, 15.15)
 lv.litter_at('chip', 25.95, 15.55)
 
 lv.area('the bar: what can be used')
-# the fire alarm on the gaming room's wall, past the extinguisher: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
+# the fire alarm east of the counter, by the toilets' door: pulled, it rings, the sprinklers rain on the bar room, the floor is slick, the
 # customers run (systems/Sprinklers.js)
-lv.sprinklers(23.91, 15.5, 90, [(15, 12, 30, 19)])       # on the gaming room's wall, where the arcade stood
+lv.sprinklers(21.5, 12.07, 0, [(15, 12, 30, 19)])
 # under the street: a trapdoor in the TV shop's back, the other under the rug inside the back room's door
 lv.passage(('trapdoor', 37.55, 17.95, 0), ('rug', 26.75, 10.35, 0))
 
@@ -552,7 +552,7 @@ lv.prop('coat_hooks', 15.09, 15.3, 270)                 # by the end of the coun
 lv.prop('frame_photo', 15.09, 16.2, 270)                # over the booth, either side of its lamp
 lv.prop('poster_fight', 15.09, 17.85, 270)
 lv.prop('poster_band', 20.3, 19.91, 180)                # on the front wall, between the windows and the door
-lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the fire alarm
+lv.prop('dartboard', 23.91, 16.55, 90)                  # on the poker room's wall, past the red emergency light
 lv.prop('pay_phone', 24.91, 19.35, 90)                  # by the jukebox, on the VIP room's wall
 lv.prop('neon_sign_beer', 30.0, 12.09)                  # the poker room
 lv.prop('frame_gold', 25.09, 15.4, 270)
@@ -622,7 +622,6 @@ lv.smoke_haze(30.0, 18.9, 1.4, 0.12)                     # thicker in the stage'
 
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
 lv.area('the liquor store roof')
-lv.prop('ladder', 1.5, 20.5)                            # the fire escape, at the corner of the street
 lv.prop('wall_lamp', 9.91, 11.4, 90)                    # a lamp by each way down
 lv.prop('wall_lamp', 9.91, 4.6, 90)
 # somebody's summer evenings, against the north wall: a couch from the street, a crate for a table, a radio

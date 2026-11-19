@@ -49,8 +49,8 @@ player, and reads `window.game` to decide:
   |---|---|
   | `free` | nothing set: free play from the start |
   | `trunk` | E at the first parked car's tail, takes the tire iron |
-  | `roof` | up the fire escape at the street corner, across the liquor store roof, over the parapet into the back lot (a roll) |
-  | `roofShop` | fire escape, down the shop's own ladder, the pistol behind the counter, back up, over the parapet into the service alley |
+  | `roof` | into the liquor store (its door broken open, over the counter), up its own ladder, across the roof, over the parapet into the back lot (a roll) |
+  | `roofShop` | into the liquor store, up its ladder, over the parapet into the service alley |
   | `liquor` | breaks the shop's locked front door open, vaults the counter, takes the pistol, vaults back out |
   | `fuse` | the tire iron if the trunk still has it, then the bar's fuse box in the back lot, struck or shot until the power is cut |
   | `throw` | the knife dropped in the gap, then every blade it holds is thrown at a guard 45 to 170 px away |

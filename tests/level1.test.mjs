@@ -23,8 +23,7 @@ const WAYS = {
   front: [[20, 20], [21, 20]],
   gate: [[11, 20], [12, 20], [13, 20]],
   gap: [[30, 20]],
-  roof: [[1, 20]],          // the fire-escape ladder at the corner of the liquor store
-  shop: [[8, 20]],          // the liquor store's front door, and on by its own ladder to the roof
+  shop: [[8, 20]],          // the liquor store's front door, and on by its own ladder to the roof (the only way up)
 };
 
 // a world with the level's walls and its furniture, enough for the vault geometry
@@ -41,7 +40,7 @@ function world() {
 const director = () => new Director({ level, time: 0, enemies: [], events: { on() {}, emit() {} } });
 const stranger = (x, y) => ({ x, y, radius: PLAYER.radius, armed: false });
 
-test('level 1 has five ways in on foot, and each of them alone leads from the start alley to the way out', () => {
+test('level 1 has four ways in on foot, and each of them alone leads from the start alley to the way out', () => {
   const closed = (names) => {
     const m = new TileMap(level.tiles);
     for (const n of names) for (const [x, y] of WAYS[n]) m.blocked[y * m.w + x] = 1;
@@ -173,15 +172,16 @@ test('three shop fronts light the street: panes on the sidewalk, a neon sign, la
   assert.ok(!level.props.some(([type]) => /marquee/.test(type)) && !(level.roof || []).some(([type]) => /sign|marquee/.test(type)), 'no rooftop sign');
 });
 
-test('the liquor store roof: up a ladder from the street or from the shop, down over a parapet into the alley or the lot', () => {
+test('the liquor store roof: up the shop\'s own ladder only, down over a parapet into the alley or the lot', () => {
   const w = world(), m = w.map, d = director(), R = PLAYER.radius;
   for (let col = 1; col <= 9; col++) for (let row = 8; row <= 14; row++) assert.equal(m.at(col, row), '^', `roof at ${col},${row}`);
   assert.ok(PROPS.ladder.climb && PROPS.ladder.vault && PROPS.ladder.blocksPath && PROPS.parapet.vault && PROPS.parapet.blocksPath);
   assert.ok(PROPS.ladder.lasting && PROPS.parapet.lasting, 'neither can be destroyed: each closes a gap in a wall');
   // [from, heading, kind, the tile one lands on]
+  // no ladder on the street (the user: one outside made no sense): the sidewalk below the roof's corner is a wall
+  assert.ok(!w.props.some((p) => p.type === 'ladder' && p.y > 19 * TILE), 'no ladder outside');
+  assert.notEqual(findVault(w, stranger(px(1.5), px(21.35)), -Math.PI / 2)?.kind, 'climb');
   const moves = [
-    [[1.5, 21.35], -Math.PI / 2, 'climb', [1, 19]],   // up from the sidewalk
-    [[1.5, 19.65], Math.PI / 2, 'climb', [1, 21]],    // and back down
     [[3.5, 17.35], -Math.PI / 2, 'climb', [3, 15]],   // up from the shop
     [[3.5, 15.65], Math.PI / 2, 'climb', [3, 17]],
     [[9.6, 12.5], 0, 'prop', [11, 12]],               // down into the service alley, inside the gate

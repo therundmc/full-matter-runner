@@ -1,7 +1,7 @@
 // The wet of a level after the rain, and the rain itself when `RAIN.falls` is on (it is off: the user wants none;
 // level `soundscape.rain`, 0..1; RAIN in data/atmosphere.js). What is kept here is what does not move: which tiles are under the open sky, the puddles of rain lying in the
 // open (where they lie: the water itself is liquid on the floor, systems/Liquids.js fills their hollows) and the
-// spots where water drips off the eaves and the fire escape. The drops themselves are not stored:
+// spots where water drips off the eaves and any ladder in the open. The drops themselves are not stored:
 // render/WeatherArt.js hashes each one's place and timing from the time (cheap, nothing to update). DOM-free; laid out with its own seeded random numbers, so the
 // game's random sequence is not touched and the puddles lie in the same places every time.
 import { TILE, AMBIENCE } from '../Config.js';
@@ -35,7 +35,7 @@ export default class Weather {
     this.rand = seeded(hashString(level.name || 'level'));
     this.sky = skyGrid(map);
     this.layPuddles(map);
-    this.dripsLaid = !cfg.falls; // (no drips when it is not raining) the fire escape is a prop: laid at the first step
+    this.dripsLaid = !cfg.falls; // (no drips when it is not raining) a ladder is a prop: laid at the first step
   }
 
   // under the open sky at (x, y) px
@@ -72,7 +72,7 @@ export default class Weather {
     }
   }
 
-  // drip spots: along the foot of walls in the open (the eaves above) and under the fire escape's ladders
+  // drip spots: along the foot of walls in the open (the eaves above) and under ladders in the open
   layDrips() {
     this.dripsLaid = true;
     const map = this.world.map, d = this.cfg.drips, R = this.rand, spots = [];
