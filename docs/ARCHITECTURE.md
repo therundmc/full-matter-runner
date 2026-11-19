@@ -129,6 +129,9 @@ src/
                           at, eased; the zoom rests on a whole number of px a world px (pure, unit-tested)
       BossStage.js        the camera on a boss's beats (the 'boss' event; data/bosses.js `shot`): a SHOTS name and the
                           real seconds it holds, asked by Game like a staged level's shot (pure state, unit-tested)
+      ThrowBeat.js        a throw of the player's: the camera follows it over its last stretch to its man ('throw'), and
+                          its hit's beat ('thrownHit': hit-stop, slow motion, the camera's punch, shot `throwHit`;
+                          THROW in data/feel.js), asked by Game like a staged level's shot
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
@@ -346,6 +349,8 @@ Rules:
 | `chainEnd` | `{ kills, points }` | Scoring (a chain of 2+ ran out) | KillFeed (the cash-out) |
 | `boss` | `{ boss, beat }` (beat: `intro`, `wounded`, `berserk`, `down`) | entities/Boss.js | KillFeed (the name card on `intro`), systems/BossStage (the camera's shot), Game (the soundtrack's heat: `AI.heat.boss`) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
+| `throw` | `{ thrower, item, target, charge }` (target: the man on its line, or null; charge 0..1 of the wind-up) | Player.throwWeapon | ThrowBeat (the camera follows it) |
+| `thrownHit` | `{ thrower, victim, x, y, angle, kill, planted, smashed, charge }` (smashed: a full throw that broke on him) | WeaponItem (a thrown thing floored or killed a man) | ThrowBeat (the hit's beat), Rumble |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy), Litter (the blast at the muzzle blows the bills on the floor), Rumble (his own, by gun family) |
 | `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses), Curtains (the cloth it crosses), Litter (bills lifted along its way, a flute burst) |

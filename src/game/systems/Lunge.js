@@ -1,6 +1,7 @@
 // A melee swing of the player's drawn to the guard in front of him (PLAYER.lunge in Config.js): the aim turns a
-// little onto him and the player closes in a step; onto the man the LOCK aim cue holds, it turns all the way and the
-// step is longer. Rules only, DOM-free, unit-tested; Player.startLunge applies it.
+// little onto him and the player closes in a step; onto the man the LOCK aim cue holds close (systems/AimCue.js
+// meleeLock: at his side too), it turns all the way and the step is longer. Rules only, DOM-free, unit-tested;
+// Player.startLunge applies it (and snaps the drawn body onto a held man: Facing.snapFacing).
 import { angDiff, clamp } from '../../engine/math.js';
 
 // a man a swing can be drawn to: alive, on his feet, not in someone's hands
@@ -8,7 +9,7 @@ const standing = (e) => e.alive && !(e.knocked > 0) && !e.held;
 
 // p: the player { x, y, radius }; d: the weapon definition in hand (fists included); aim: rad; cfg: PLAYER.lunge;
 // sees(e): a line from the player to e; solid(x, y): a wall there; lock: the man LOCK holds (systems/AimCue.js
-// lockTarget) or null.
+// meleeLock) or null.
 // The man LOCK holds, standing, in sight, within the weapon's reach + cfg.lock.margin px -> { target, a (the way to
 // him, whole), dir, push (at most cfg.lock.push), lock: true }. Otherwise the nearest guard standing within the
 // weapon's reach + cfg.extra px and cfg.cone rad of the aim, in sight -> { target, a (the aim turned at most cfg.turn

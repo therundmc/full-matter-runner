@@ -120,6 +120,15 @@ function lead(F, ch, L) {
   return L.landed ? 'step' : 0;
 }
 
+// The layers of ch set straight onto a, at rest (a LOCK strike, Player.startLunge: the swing drawn facing its man from
+// its first frame); planted feet too far off hop round after them.
+export function snapFacing(ch, a) {
+  const F = (ch.facing ??= newFacing(a));
+  F.head = F.sh = F.hip = a;
+  F.headV = F.shV = F.hipV = 0;
+  if (F.feet && !F.step && Math.abs(angDiff(feetAngle(F.feet), a)) > FACING.stepAt) startStep(F, ch.x, ch.y, a, -1, true);
+}
+
 // the feet: a step under way goes on; a new one starts when the hips are too far round, or a foot strayed
 function stepFeet(F, ch, fa, dt) {
   const A = FACING, st = F.step, x = ch.x, y = ch.y;

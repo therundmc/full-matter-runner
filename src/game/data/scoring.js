@@ -30,6 +30,7 @@ export const SCORING = {
     smash: { points: 200, label: 'SMASH' },             // the heavy stroke: overhead smash, lunge, straight stab
     spin: { points: 300, label: 'SPIN KILL' },          // a club swung all the way round
     thrown: { points: 500, label: 'THROWN BLADE' },    // a knife thrown that planted itself in him
+    smashThrow: { points: 400, label: 'THROWN' },      // anything else thrown full, broken on him (THROW.smash)
     broke: { points: 400, label: 'WEAPON BREAK' },      // the blow that broke the weapon over him
     disarm: { points: 300, label: 'SNATCHED' },         // his weapon taken into the hand as he went down (Player.snatches)
     smoked: { points: 400, label: 'SMOKED' },           // through air too thick to see (powder, soot, steam)

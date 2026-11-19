@@ -11,7 +11,7 @@ export const PAD_BINDINGS = {
   Y: 'KeyR',       // reload; restart once dead; retry on the results
   Start: 'Escape', // pause (and back out of it)
   RB: 'Mouse0',    // attack / shoot / take down / finish (held: an automatic keeps firing, as the mouse button)
-  LB: 'Mouse2',    // throw (pick up when the hands are empty)
+  LB: 'Mouse2',    // throw: held, aimed and let go (pick up when the hands are empty)
   RT: 'Mouse0',    // attack too (an alias of RB)
   LT: 'ShiftLeft', // look further
 };
@@ -49,7 +49,7 @@ export const KBM_CONTROLS = [
   [
     ['MOVE', [['ZQSD / WASD', 'MOVE'], ['MOUSE', 'AIM'], ['SHIFT', 'LOOK FURTHER'], ['SPACE', 'VAULT / CLIMB'],
       ['SPACE', 'SLIDE ON THE RUN']]],
-    ['FIGHT', [['LMB', 'ATTACK / SHOOT'], ['LMB', 'TAKE DOWN / FINISH'], ['RMB', 'THROW / PICK UP'], ['R', 'RELOAD']]],
+    ['FIGHT', [['LMB', 'ATTACK / SHOOT'], ['LMB', 'TAKE DOWN / FINISH'], ['RMB', 'THROW (HOLD: AIM) / PICK UP'], ['R', 'RELOAD']]],
     ['WORLD', [['E', 'PICK UP / SWAP'], ['E', 'USE / OPEN TRUNK']]],
   ],
   [
@@ -62,7 +62,7 @@ export const KBM_CONTROLS = [
 export const PAD_CONTROLS = [
   [
     ['MOVE', [['LS', 'MOVE'], ['RS', 'AIM'], ['LT', 'LOOK FURTHER'], ['A', 'VAULT / CLIMB'], ['A', 'SLIDE ON THE RUN']]],
-    ['FIGHT', [['RB / RT', 'ATTACK / SHOOT'], ['RB', 'TAKE DOWN / FINISH'], ['LB', 'THROW / PICK UP'], ['Y', 'RELOAD']]],
+    ['FIGHT', [['RB / RT', 'ATTACK / SHOOT'], ['RB', 'TAKE DOWN / FINISH'], ['LB', 'THROW (HOLD: AIM) / PICK UP'], ['Y', 'RELOAD']]],
     ['WORLD', [['X', 'PICK UP / SWAP'], ['X', 'USE / OPEN TRUNK']]],
   ],
   [

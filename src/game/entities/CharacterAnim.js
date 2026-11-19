@@ -9,7 +9,7 @@
 // bends him: { hunch, duck, lift, lean, look, twist, shake }).
 // A weapon's trail through a blow is not drawn here but over the lighting (fx/CombatFx.js sampleSmear).
 import { PALETTE, TAKEDOWN, BODY_SCALE } from '../Config.js';
-import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, SEAT, feelOf } from '../data/feel.js';
+import { TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, COAT, SEAT, THROW, feelOf } from '../data/feel.js';
 import { EXEC } from '../data/finishers.js';
 import { READABILITY } from '../data/readability.js';
 import { slamAt } from '../systems/Takedown.js';
@@ -501,6 +501,20 @@ export function standPose(ch, P, a) {
       back -= 1.8 * down;
     }
     hrx = wx; hry = wy + (d.hold === 'two' ? 0.3 : 0);
+  }
+  // a throw wound up (Player.throwHold, THROW.pose): the weapon drawn back behind the right shoulder, the other hand out
+  // ahead at the aim, the shoulders turned back and the weight on the back foot; it trembles as the charge fills
+  const wu = wpnOn && ch.throwHold ? smooth(Math.min(1, ch.throwHold.t / THROW.pose.in)) : 0;
+  if (wu > 0) {
+    const W = THROW.pose, k = ch.throwCharge();
+    hrx = lerp(hrx, W.hand[0], wu); hry = lerp(hry, W.hand[1], wu);
+    wx = hrx; wy = hry;
+    wa = lerpA(wa, W.hand[2] + Math.sin(ch.world.time * W.hz) * W.shake * k, wu);
+    len = lerp(len, 1, wu);
+    hlx = lerp(hlx, W.brace[0], wu); hly = lerp(hly, W.brace[1], wu);
+    twist += W.twist * wu; back += W.lean * wu; stance *= 1 - wu;
+    fist = false; magIn = null;
+    if (wu > 0.5) { top = 1; P.hand[0] = 'loose'; }
   }
 
   // flinching from a round that went by or struck close (systems/Flinch.js): the head ducked in, the shoulders hunched

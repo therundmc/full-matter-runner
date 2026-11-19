@@ -57,7 +57,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),
@@ -185,6 +185,26 @@ export function silhouette(img) {
   g.fillRect(0, 0, s.width, s.height);
   s.k = img.k;
   silhouettes.set(img, s);
+  return s;
+}
+
+// a sprite gone dull: its own pixels darkened by `k` (0..1) toward `ink` (a wrecked thing on the floor); cached per
+// sprite and k
+const dulls = new WeakMap();
+export function dulled(img, k = 0.5, ink = '#1a1620') {
+  let m = dulls.get(img);
+  if (!m) { m = new Map(); dulls.set(img, m); }
+  if (m.has(k)) return m.get(k);
+  const s = document.createElement('canvas');
+  s.width = img.width; s.height = img.height;
+  const g = s.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'source-atop';
+  g.globalAlpha = k;
+  g.fillStyle = ink;
+  g.fillRect(0, 0, s.width, s.height);
+  s.k = img.k;
+  m.set(k, s);
   return s;
 }
 

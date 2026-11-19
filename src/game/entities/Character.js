@@ -12,6 +12,7 @@ import Debris from './Debris.js';
 import WeaponItem from './WeaponItem.js';
 import AmmoItem from './AmmoItem.js';
 import { blowFrom, blowFx } from '../fx/Blows.js';
+import { flyPiece, dropPiece } from '../fx/Breakage.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, VAULT_DUR, CLIMB_DUR, LADDER_DUR,
@@ -701,20 +702,16 @@ export default class Character {
   // the far end of a weapon snapped at `at`: sent on along the swing (it runs toward the side opposite the one the
   // stroke came from), turning over, up and down onto the floor where it clatters (BREAK)
   flyOff(img, at, a, material) {
-    const w = this.world, B = BREAK, side = this.punchSide || 1;
-    const fa = a - side * rand(...B.turn), v = rand(...B.fly);
-    w.addDebris(new Debris(w, spriteOpt(img) || sprite(this.def.sprite), at.x, at.y, a - side * 0.4, Math.cos(fa) * v, Math.sin(fa) * v,
-      -side * rand(0.25, 0.45), { material, kg: 0.5, bounce: 0.3, z: B.z, vz: B.vz, scale: BODY_SCALE, land: material }));
+    flyPiece(this.world, spriteOpt(img) || sprite(this.def.sprite), at, a, this.punchSide || 1, material);
   }
 
   // a piece out of his hand (a knife's handle, a stub: its sprite's name or the picture): it falls by him, or is
   // thrown away to his side (toss)
   letGo(img, material, kg, toss = false) {
-    const w = this.world, F = BREAK.fall, h = local(this.x, this.y, this.angle, 8 * BODY_SCALE, 4 * BODY_SCALE);
+    const F = BREAK.fall, h = local(this.x, this.y, this.angle, 8 * BODY_SCALE, 4 * BODY_SCALE);
     const ta = this.angle + Math.PI / 2 + rand(-0.4, 0.4), sp = toss ? F.toss : rand(10, 30), v = this.vel ?? { x: 0, y: 0 };
     const pic = typeof img === 'string' ? spriteOpt(img) || sprite(this.def.sprite) : img;
-    w.addDebris(new Debris(w, pic, h.x, h.y, this.angle + rand(-0.5, 0.5), v.x * 60 + Math.cos(ta) * sp,
-      v.y * 60 + Math.sin(ta) * sp, rand(-0.3, 0.3), { material, kg, bounce: 0.3, z: F.z, vz: toss ? 60 : 0, scale: BODY_SCALE, land: material }));
+    dropPiece(this.world, pic, h.x, h.y, this.angle, v.x * 60 + Math.cos(ta) * sp, v.y * 60 + Math.sin(ta) * sp, material, kg, toss);
   }
 
   // A blade broken off in a wall or a piece of furniture (on: the wall's face, or the prop): it stays there, its

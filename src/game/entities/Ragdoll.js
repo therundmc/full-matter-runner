@@ -10,6 +10,7 @@ import { spasmPlan, spasmPose, curlPlan, curlPose, throatPlan, throatPose } from
 import { jointAngle, clampJoint, partAngle } from '../fx/Joints.js';
 import { bodyMarks, markAt } from '../fx/BodyMarks.js';
 import { drawMark } from '../render/BodyMarkArt.js';
+import { THROW } from '../data/feel.js';
 
 const { Bodies, Body, Constraint, Composite, Query } = Matter;
 const JOINT = 0.75; // stiffness of the pin joints
@@ -68,8 +69,10 @@ export default class Ragdoll {
     this.throes = how === 'throes' ? { t: rand(...THROES.dur), next: rand(...THROES.every) } : null;
     this.up = false; // lying on his back (opts.back: he went over backwards)
     // the weapon left planted in him (opts.stuck: its sprite): where on his torso (px off its centre), the way its
-    // handle leans; item = { type, mag, wear } when it can be pulled out again (a weapon thrown at him)
-    this.stuck = opts.stuck ? { img: sprite(opts.stuck), a: rand(0, 6.28), x: rand(-2.5, 2.5), y: rand(-4, 2), item: opts.stuckItem || null, hot: -1 } : null;
+    // handle leans; item = { type, mag, wear } when it can be pulled out again (a weapon thrown at him); jolt: when
+    // it went in, its handle shuddering a moment (opts.stuckJolt: thrown, THROW.planted)
+    this.stuck = opts.stuck ? { img: sprite(opts.stuck), a: rand(0, 6.28), x: rand(-2.5, 2.5), y: rand(-4, 2), item: opts.stuckItem || null, hot: -1,
+      jolt: opts.stuckJolt ? world.time : -9 } : null;
     const group = Body.nextGroup(true);
     const img = (p) => spriteOpt(`characters/${kind}_rag_${p}`) || sprite(`characters/${kind}_gib_${p}`);
     const th = dir + Math.PI / 2; // head (torso -y) ends up along the travel direction
@@ -82,6 +85,8 @@ export default class Ragdoll {
     const tw = sw(tImg), tht = sh(tImg); // world px: the parts are finer sprites (engine/Assets.js `density`)
     this.torso = this.addPart('torso', tImg, Bodies.rectangle(x, y, tw - 2, tht - 2, { ...opt(), angle: th }), 0, 36);
     this.body = this.torso.body;
+    // a thrown blade stands in him along the way it flew (opts.stuckA, world rad), give or take
+    if (this.stuck && opts.stuckA !== undefined) this.stuck.a = opts.stuckA - th + rand(-0.25, 0.25);
     this.skirt = spriteOpt(`characters/${kind}_rag_skirt`); // a long coat spread under him (the runner's), hung from his belt
 
     const at = (lx, ly) => local(x, y, th, lx, ly);
@@ -708,8 +713,11 @@ export default class Ragdoll {
 
   // where the planted weapon goes into him, and the way its handle leans (the sprite's grip end is its -x end)
   stuckAt() {
-    const t = this.torso.body, p = local(t.position.x, t.position.y, t.angle, this.stuck.x, this.stuck.y);
-    return { x: p.x, y: p.y, a: t.angle + this.stuck.a };
+    const t = this.torso.body, k = this.stuck, p = local(t.position.x, t.position.y, t.angle, k.x, k.y);
+    // just thrown in: its handle shudders, dying out (THROW.planted.shudder: s, rad, hz)
+    const [dur, amp, hz] = THROW.planted.shudder, j = this.world.time - k.jolt;
+    const shudder = j >= 0 && j < dur ? Math.sin(j * hz * Math.PI * 2) * amp * (1 - j / dur) : 0;
+    return { x: p.x, y: p.y, a: t.angle + k.a + shudder };
   }
 
   // standing in him: short, mostly its handle, its shadow on his clothes; outlined while it can be pulled out

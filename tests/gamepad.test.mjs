@@ -164,7 +164,7 @@ test('controls: every action has a cap for each device; the pad binds what the b
   // the CONTROLS page says the same
   const said = Object.fromEntries(PAD_CONTROLS.flat().flatMap(([, list]) => list).map(([k, what]) => [what, k]));
   assert.equal(said['ATTACK / SHOOT'], 'RB / RT');
-  assert.equal(said['THROW / PICK UP'], 'LB');
+  assert.equal(said['THROW (HOLD: AIM) / PICK UP'], 'LB');
   assert.equal(said['LOOK FURTHER'], 'LT');
   assert.equal(said['TAKE DOWN / FINISH'], 'RB');
 });

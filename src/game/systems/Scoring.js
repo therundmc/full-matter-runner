@@ -32,6 +32,7 @@ export function killStyle({ cause, killer, victim, how }) {
   if (cause === 'wreck') return { style: 'wreck', method: 'wreck' }; // a pursuer's car put into the scenery (Pursuit.js)
   if (cause === 'glass') return { style: 'glass', method: 'glass' };
   const type = killer.weapon?.type;
+  if (how?.thrown) return { style: 'melee', method: 'thrown' }; // a full throw that gave out on him (WeaponItem.smash)
   if (cause === 'melee') {
     // a blow of the weapon in hand, or wreckage sent flying (same cause, but nobody is swinging)
     const swung = WEAPONS[type]?.kind === 'melee' && killer.swing > 0;
@@ -60,7 +61,7 @@ export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   if (how.spin) tags.push('spin');
   if (how.broke) tags.push('broke');
   if (how.disarm) tags.push('disarm');
-  if (how.thrown) tags.push('thrown');
+  if (how.thrown) tags.push(how.broke ? 'smashThrow' : 'thrown');
   if (how.smoked) tags.push('smoked');
   if (how.env) tags.push(how.env === 'bowl' || how.env === 'urinal' ? 'flushed' : 'slammed');
   if (rules.tags[how.boss]) tags.push(how.boss);

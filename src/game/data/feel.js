@@ -158,6 +158,46 @@ export const MOMENTS = {
   },
 };
 
+// The player's throw (Player.updateThrowHold / release; its mark data/aim.js AIM.throw). The right click (a pad's LB)
+// held with a weapon in hand winds it up and aims it, let go it flies; let go within `tap` s it is the quick throw.
+//   tap     s: a release sooner is the quick throw (speed[0], as a plain click always was)
+//   charge  s of hold to the full throw, counted from `tap` (more is no stronger)
+//   speed   px/step it leaves his hand at [quick, full]; a blade thrown at full plants whatever (WeaponItem)
+//   move    share of his pace kept while he holds it
+//   hand    px ahead of him it leaves his hand from; lock: px within which LOCK's man draws the throw onto him
+//   spin    rad/step a blade turns in flight [quick, full] (anything else: as it always did)
+//   pose    the arm drawn back (CharacterAnim standPose): in (s to get there), hand [px ahead, px right, the weapon's
+//           turn rad] where the hand holds it behind the shoulder, brace [px ahead, px right] the other hand out in
+//           front, twist (rad the shoulders turn back), lean (px the body goes back), shake (rad the weapon trembles
+//           at full charge, at `hz`)
+//   trail   the thing in flight (WeaponItem.draw): ghosts of its own sprite every `gap` steps behind it, their alphas;
+//           streak: the full throw's faint white line behind it (px, alpha)
+//   hit     the beat when it floors (knock) or kills (kill) a man (systems/ThrowBeat.js): stop (s of hit-stop), slowmo
+//           [time scale, real s], punch (camera zoom kick), push (px the camera is kicked along the throw), shot (the
+//           camera's, data/staging.js SHOTS) held `hold` real s on where it struck
+//   smash   a full throw of anything that is no blade kills the man it reaches and gives out on him
+//           (WeaponItem.shatter): a club crushes (gore: x its own, as the heavy stroke), a gun is a blunt blow
+//           (gunGore); then a bat or a cue snaps, an iron bends, a gun is wrecked: chips [count, speed] of it, sparks
+//           [count, speed], dull (how dark the wrecked gun lies, 0..1), fly [from, to] px/s the far end of a snapped
+//           one goes on at past him, back px/s what falls comes back off him at, clear px off his body they start;
+//           its beat is hit.smash
+//   follow  px from the man on its line (within `line` rad of the throw) within which the camera follows the thing in
+//           flight (shot `throwFollow`)
+//   planted a blade left in him: shudder (s, rad, hz) of its handle, spurt [count, speed] of blood out of him
+export const THROW = {
+  tap: 0.12, charge: 0.35, speed: [11, 15], move: 0.6, hand: 12, lock: 260, spin: [0.55, 0.8],
+  pose: { in: 0.12, hand: [-3.5, 8, 2.6], brace: [7.5, -5.5], twist: 0.38, lean: 1.2, shake: 0.05, hz: 31 },
+  trail: { gap: 2, alpha: [0.4, 0.24, 0.12], streak: { len: 26, alpha: 0.35 } },
+  hit: {
+    kill: { stop: 0.07, slowmo: [0.3, 0.35], punch: 0.08, push: 4, shot: 'throwHit', hold: 0.4 },
+    knock: { stop: 0.04, slowmo: [0.55, 0.2], punch: 0.04, push: 2, shot: 'throwHit', hold: 0.25 },
+    smash: { stop: 0.11, slowmo: [0.25, 0.42], punch: 0.1, push: 5, shot: 'throwHit', hold: 0.45 },
+  },
+  smash: { gore: 2.5, gunGore: 0.6, chips: [18, 200], sparks: [10, 240], dull: 0.55, fly: [260, 360], back: 40, clear: 3 },
+  follow: 120, line: 0.08,
+  planted: { shudder: [0.32, 0.22, 14], spurt: [12, 160] },
+};
+
 // The player's weapon giving out (Character.breakWeapon, data/weapons.js `breaks`), what flies of it and the beat
 // after (Player.updateBroke, CharacterAnim brokePose):
 //   beat    s of the beat: the hand shaken, the stub (a snapped bat's handle) brought up and looked at
