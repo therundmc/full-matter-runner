@@ -4,7 +4,8 @@
 // 'NavUp'... for a menu step from the d-pad or the left stick) and, through bindPad(), as the key or mouse button
 // they stand for (A -> 'Space', RB -> 'Mouse0'...). The sticks are read with move() and aimStick(). `device` says
 // which was used last ('kbm' | 'pad'), for the prompts on screen. rumble() shakes the pad in hand, and only while the
-// pad is the device in use (a mouse taken up stops it).
+// pad is the device in use (a mouse taken up stops it). holdMouse() makes the buttons held now read as up until they
+// are let go (play entered from a menu or a screen with a click: that click is no shot); holdKeys() the same for keys.
 import Gamepad from './Gamepad.js';
 
 const BLOCKED = new Set(['Space', 'Tab', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7']);
@@ -29,6 +30,9 @@ export default class Input {
     this.stick = { left: null, right: null };
     this.padConnected = false;
     this.padLost = false;                  // the pad in use went away (cleared by whoever reacts to it)
+    this.focusLost = false;                // the window lost the focus or was hidden (likewise)
+    this.held = [false, false, false];     // buttons read as up until let go (holdMouse)
+    this.heldKeys = new Set();             // codes read as up until let go (holdKeys)
     this.wake = 0;                         // px the mouse moved lately (fading) since the pad was last touched
     this.lastClient = null;
     if (typeof window === 'undefined') return;
@@ -40,8 +44,9 @@ export default class Input {
       this.anyPressed = true;
       this.device = 'kbm';
     });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('blur', () => { this.keys.clear(); this.mouse.down = [false, false, false]; });
+    window.addEventListener('keyup', (e) => { this.keys.delete(e.code); this.heldKeys.delete(e.code); });
+    window.addEventListener('blur', () => this.unfocus());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.unfocus(); });
     canvas.addEventListener('mousemove', (e) => {
       const c = this.lastClient;
       if (c) this.travel(Math.abs(e.clientX - c.x) + Math.abs(e.clientY - c.y));
@@ -50,18 +55,45 @@ export default class Input {
     });
     canvas.addEventListener('mousedown', (e) => {
       this._move(e);
-      this.mouse.down[e.button] = true;
-      this.mouse.clicked[e.button] = true;
-      this.anyPressed = true;
-      this.device = 'kbm';
+      this.press(e.button);
       e.preventDefault();
     });
-    window.addEventListener('mouseup', (e) => { this.mouse.down[e.button] = false; });
+    window.addEventListener('mouseup', (e) => this.release(e.button));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('wheel', (e) => { this.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     // some browsers only list a pad once this was heard; poll() does the rest
     window.addEventListener('gamepadconnected', () => { this.padConnected = true; });
     window.addEventListener('gamepaddisconnected', () => this.poll(0));
+  }
+
+  // a mouse button goes down / up (the DOM's events, the tests)
+  press(b) {
+    this.mouse.down[b] = true;
+    this.mouse.clicked[b] = true;
+    this.held[b] = false;
+    this.anyPressed = true;
+    this.device = 'kbm';
+  }
+  release(b) {
+    this.mouse.down[b] = false;
+    this.held[b] = false;
+  }
+
+  // the window went to the background: nothing stays held, and whoever plays is told (focusLost)
+  unfocus() {
+    this.keys.clear();
+    this.mouse.down = [false, false, false];
+    this.focusLost = true;
+  }
+
+  // the buttons down now (the mouse's or the pad's) read as up until they are let go
+  holdMouse() {
+    for (let b = 0; b < 3; b++) this.held[b] = this.mouse.down[b] || this.padMouse[b];
+  }
+
+  // the keys down now (the keyboard's or the pad's) read as up until they are let go, but those of `except` (a Set)
+  holdKeys(except = null) {
+    this.heldKeys = new Set([...this.keys, ...this.padKeys].filter((c) => !except?.has(c)));
   }
 
   // the mouse moved px: once it adds up to MOUSE_WAKE (fading), the mouse is the device again
@@ -107,6 +139,9 @@ export default class Input {
     this.stick.left = s.left.mag > 0 ? s.left : null;
     this.stick.right = s.right.mag > 0 ? s.right : null;
     if (s.active) { this.device = 'pad'; this.wake = 0; }
+    // a button held through holdMouse() and let go since (the pad's, or one written straight in: the QA robot)
+    for (let b = 0; b < 3; b++) if (this.held[b] && !this.mouse.down[b] && !this.padMouse[b]) this.held[b] = false;
+    for (const c of this.heldKeys) if (!this.keys.has(c) && !this.padKeys.has(c)) this.heldKeys.delete(c);
   }
 
   // fx: { strong, weak, ms } (engine/Gamepad.js rumble); false when the pad is not the device in use (any: it need
@@ -116,9 +151,9 @@ export default class Input {
   // a connected pad can be rumbled by this browser (engine/Gamepad.js canRumble)
   get canRumble() { return this.gamepad.canRumble; }
 
-  down(code) { return this.keys.has(code) || this.padKeys.has(code); }
+  down(code) { return !this.heldKeys.has(code) && (this.keys.has(code) || this.padKeys.has(code)); }
   hit(code) { return this.pressed.has(code); }
-  mouseDown(b = 0) { return this.mouse.down[b] || this.padMouse[b]; }
+  mouseDown(b = 0) { return !this.held[b] && (this.mouse.down[b] || this.padMouse[b]); }
   mouseHit(b = 0) { return this.mouse.clicked[b]; }
   // the left stick, { x, y, mag } (mag 0..1), or null when it rests
   move() { return this.stick.left; }

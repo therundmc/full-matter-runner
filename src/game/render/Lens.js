@@ -68,6 +68,7 @@ export default class Lens {
     events.on('ride', (e) => this.ride(e));
     events.on('killcam', (e) => this.beat(e));
     events.on('killcamOut', () => { this.bump(this.cfg.killcam.out); this.closeT = 0; });
+    events.on('killcamCut', () => { this.closeT = 0; });
   }
 
   // a beat of the kill cam (systems/KillCam.js): { tier, k (the chain's crescendo, 1 and up), hold (s of its slow

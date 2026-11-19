@@ -9,10 +9,12 @@
 //   the clock    slow motion (Impact.slowAtLeast: never on top of a stronger one) that drops at once and snaps back
 //                when it is over (`clock`), a hit-stop; in a finisher every blow is held an instant, the last the most
 //   the rest     more blood thrown on in the slow; the lens (render/Lens.js) and the pad (systems/Rumble.js) hear
-//                'killcam' { tier, x, y, k (1 and up: the chain's crescendo), hold } and 'killcamOut' { tier }
+//                'killcam' { tier, x, y, k (1 and up: the chain's crescendo), hold } and 'killcamOut' { tier } (its
+//                slow motion over), or 'killcamCut' { tier } (the beat dropped before that: let go of it at once)
 // Each kill of a chain from its 3rd hits harder (KILLCAM.chain); its end is the big release.
-// Never at a wheel, in a staged shot (the tutorial's, a boss's, the opening's, a throw's), nor once he is dead. A
-// thrown kill is systems/ThrowBeat.js's: no beat here, it only counts for the chain.
+// Never at a wheel, in the tutorial, in a staged shot (a boss's, the opening's, a throw's: asked live of the boss's,
+// and the kill that opens a boss's own shot is his), nor once he is dead. A thrown kill is systems/ThrowBeat.js's: no
+// beat here, it only counts for the chain.
 // Advanced by Game on the REAL clock. DOM-free.
 import { KILLCAM } from '../data/killcam.js';
 import { lastInSight, slowAtLeast } from '../fx/Impact.js';
@@ -62,10 +64,10 @@ export default class KillCam {
     ev.on('thrownHit', ({ thrower }) => { if (thrower?.isPlayer) this.letGo(); });
   }
 
-  // may a beat open now?
+  // may a beat open now? (Game's staging is a frame old: a boss's shot is asked as it is)
   get live() {
     const w = this.world, p = w.player;
-    return this.on && !this.staged && !!p?.alive && !w.drive?.on && !p.driving;
+    return this.on && !this.staged && !w.tutorial && !w.bossStage?.shot() && !!p?.alive && !w.drive?.on && !p.driving;
   }
 
   onKill(e) {
@@ -80,8 +82,10 @@ export default class KillCam {
     const last = !others || (n >= L.chain && lastInSight(p, victim, w.enemies, L.radius, (g) => w.lineOfSight(p.x, p.y, g.x, g.y)));
     if (multi || (last && !!e.killer?.isPlayer)) tier = 'end';
     else if (!tier && n >= this.cfg.chain.from) tier = 'combo';
-    this.lastKill = { x: victim.x, y: victim.y, n, end: false };
-    if (e.how?.thrown) return; // ThrowBeat has it: here it only counts for the chain (its end may come back to it)
+    // a boss put down: his fall is his own shot (systems/BossStage.js, told after this kill), the chain's end too
+    const stage = !!e.how?.boss && !!victim.traits?.shot?.down;
+    this.lastKill = { x: victim.x, y: victim.y, n, end: stage };
+    if (e.how?.thrown || stage) return; // ThrowBeat has it: here it only counts for the chain (its end may come back to it)
     if (tier && this.fire(tier, victim, n) && tier === 'end') this.lastKill.end = true;
   }
 
@@ -147,9 +151,11 @@ export default class KillCam {
     return p?.takedown?.target ?? null;
   }
 
-  // the beat is over: the zoom whips back from where it is
+  // the beat is over: the zoom whips back from where it is (cut short in its slow motion: the lens is told)
   letGo() {
-    if (this.beat) this.out = { from: this.scale - 1, t: 0 };
+    const b = this.beat;
+    if (b) this.out = { from: this.scale - 1, t: 0 };
+    if (b?.slow > 0) this.world.events.emit('killcamCut', { tier: b.tier });
     this.beat = null;
   }
 

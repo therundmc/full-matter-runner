@@ -419,3 +419,48 @@ test('killcam: the lens takes a beat: fringe, the colours pushed, the vignette i
   for (let i = 0; i < 60; i++) lens.update(DT, view);
   assert.ok(Math.abs(lens.uniforms(view).vignette - rest) < 1e-3);
 });
+
+test('killcam: the kill that opens a boss\'s own shot is his: no beat, now or at the chain\'s end', () => {
+  // the last man: a plain guard would have the end beat
+  const w = world(true, []), boss = guard({ boss: true, traits: { shot: { down: ['bossDown', 2.6] } } });
+  kill(w, { cause: 'melee', how: { boss: 'cueball', heavy: true } }, 4, boss);
+  assert.equal(w.cam.beat, null);
+  w.events.emit('chainEnd', { kills: 6 });
+  assert.deepEqual(w.beats, []);
+  // a boss's shot under way (asked as it is, not a frame late): nothing either
+  const s = world();
+  s.bossStage = { shot: () => ({ name: 'bossHurt', at: { x: 0, y: 0 } }) };
+  kill(s, { left: 'gibs' });
+  assert.deepEqual(s.beats, []);
+});
+
+test('killcam: never in the tutorial', () => {
+  const w = world();
+  w.tutorial = {};
+  kill(w, { left: 'gibs' });
+  assert.equal(w.cam.beat, null);
+  assert.deepEqual(w.beats, []);
+});
+
+test('killcam: a beat cut short in its slow motion tells the lens, which lets its vignette go', () => {
+  const w = world(), cuts = [];
+  w.events.on('killcamCut', (e) => cuts.push(e.tier));
+  kill(w, { left: 'gibs' });
+  pass(w, DT);
+  assert.ok(w.cam.beat?.slow > 0);
+  w.cam.cancel();
+  assert.deepEqual(cuts, ['violent']);
+  // its slow motion over and let go: the out, no cut
+  const o = world(), oc = [];
+  o.events.on('killcamCut', (e) => oc.push(e.tier));
+  kill(o, { left: 'gibs' });
+  pass(o, 2);
+  assert.deepEqual([o.outs, oc], [['violent'], []]);
+  // the lens
+  const ev = new EventBus(), lens = new Lens();
+  lens.bind(ev);
+  ev.emit('killcam', { tier: 'end', k: 1, hold: 0.7 });
+  assert.ok(lens.closeT > 0);
+  ev.emit('killcamCut', { tier: 'end' });
+  assert.equal(lens.closeT, 0);
+});

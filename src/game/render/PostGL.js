@@ -11,6 +11,7 @@
 // there or the lens is switched off: the game then draws as it always did. The HUD is not ours: it goes on its own
 // 2D canvas above (`overlay`), so it stays sharp.
 import { POST } from '../data/post.js';
+import { devParam } from '../data/build.js';
 
 const VERT = `
 attribute vec2 aPos;
@@ -215,6 +216,7 @@ class Post {
     this.overlay = overlay;   // the HUD's 2D canvas, on top of ours
     this.octx = overlay.getContext('2d');
     this.ok = true;
+    this.onLost = null;       // called once the card dropped us (Game: the canvas back to the window's size)
     this.blurP = program(gl, BLUR);
     this.brightP = program(gl, BRIGHT);
     this.raysP = program(gl, RAYS);
@@ -231,6 +233,7 @@ class Post {
     canvas.addEventListener('webglcontextlost', () => {
       this.ok = false;
       canvas.style.display = overlay.style.display = 'none';
+      this.onLost?.();
     });
     this.resize();
   }
@@ -326,7 +329,7 @@ class Post {
 // Sets the lens up over the game's canvas: our canvas and the HUD's are stacked on it (style.css: #post, #hud) and
 // let the mouse through. Returns null when it cannot be (no WebGL, switched off, a shader that does not build).
 export function createPost(scene, cfg = POST) {
-  if (!cfg.enabled || new URLSearchParams(location.search).get('post') === '0') return null;
+  if (!cfg.enabled || devParam('post') === '0') return null;
   const canvas = document.createElement('canvas'), overlay = document.createElement('canvas');
   canvas.id = 'post';
   overlay.id = 'hud';

@@ -79,6 +79,18 @@ export default class Sandbox {
 
   get timeScale() { return SPEEDS[this.speed]; }
 
+  // a run helped: the panel open, or a cheat on (a run that saw one is never ranked: Game.ranked)
+  get cheats() { return this.on || this.god || this.frozen || this.speed !== 0; }
+
+  // the world left (the title, the hit list): let go
+  detach() { this.world = null; }
+
+  // back to the title: the panel shut, every cheat off
+  reset() {
+    this.on = this.god = this.frozen = false;
+    this.speed = 0;
+  }
+
   label(i = this.tool) {
     const t = TOOLS[i], v = t.list[this.picks[i]];
     return (t.label ? t.label(v) : String(v)).replace(/_/g, ' ').toUpperCase();

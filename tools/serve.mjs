@@ -19,11 +19,12 @@ const TYPES = {
 };
 
 const handler = (root, onPage) => (req, res) => {
-  const url = decodeURIComponent(req.url.split('?')[0]);
+  let url;
+  try { url = decodeURIComponent(req.url.split('?')[0]); } catch { res.writeHead(400); res.end('bad request'); return; }
   if (onPage && url.endsWith('/')) { try { onPage(); } catch (e) { console.error(e.message); } }
   const file = path.join(root, url.endsWith('/') ? url + 'index.html' : url);
-  // nothing outside the served folder
-  if (!file.startsWith(root)) { res.writeHead(403); res.end(); return; }
+  // nothing outside the served folder (a sibling folder whose name starts like it neither)
+  if (file !== root && !file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-store' });

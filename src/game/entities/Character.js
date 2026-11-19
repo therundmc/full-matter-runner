@@ -63,6 +63,25 @@ const AHEAD = { x: 0, y: 0, a: 0, d: 0, door: null }; // the door leaf a hand go
 const MUZZLE_AT = { x: 0, y: 0, a: 0 }, PORT_AT = { x: 0, y: 0, a: 0 }, MAG_AT = { x: 0, y: 0, a: 0 };
 const WORN = 1e-6; // what is left of a weapon's wear (in blows) once it is used up
 
+// What a blow from (x, y) can reach of a window or a door (meleeStrike): points of it, one of which must be in the
+// swing's arc and in sight. A window: the point of its tile's face on his side where the blow's line (a) meets it, or
+// the one across from him (kept off its ends: the line to it does not clip the wall by it); a door: three points
+// along its leaf.
+function paneFace(win, x, y, a) {
+  const H = TILE / 2, E = H - 4, v = win.vertical;
+  // along the wall (u) and across it (n), in the pane's own axes
+  const u = v ? y - win.y : x - win.x, n = v ? x - win.x : y - win.y, cu = v ? Math.sin(a) : Math.cos(a), cn = v ? Math.cos(a) : Math.sin(a);
+  const f = n < 0 ? 1 - H : H - 1, k = cn * (f - n) > 0 ? (f - n) / cn : 0;
+  const along = clamp(u + cu * k, -E, E);
+  return [v ? { x: win.x + f, y: win.y + along } : { x: win.x + along, y: win.y + f }];
+}
+const leafPoints = (door, t) => [0.3, 0.55, 0.8].map((k) => ({ x: door.hx + (t.x - door.hx) * k, y: door.hy + (t.y - door.hy) * k }));
+// the line from (x, y) to (tx, ty) stopped 2 px short (a door's own leaf at its end does not hide it)
+function short(x, y, tx, ty) {
+  const d = Math.hypot(tx - x, ty - y), k = d > 2 ? (d - 2) / d : 0;
+  return [x + (tx - x) * k, y + (ty - y) * k];
+}
+
 // Shared body / weapon / animation logic for the player and enemies.
 export default class Character {
   constructor(world, x, y, angle, kind, team) {
@@ -412,7 +431,8 @@ export default class Character {
     this.swingDur = d.rate * 0.85;
     this.swing = this.swingDur * (fromTell ? 1 - TELL.hold : 1);
     this.world.sound('swing', this.x, this.y, 0.6, { weapon: this.weapon?.type });
-    this.world.after(d.windup, () => this.meleeStrike(d));
+    const held = this.weapon; // (thrown or swapped before the windup is over: that blow never lands)
+    this.world.after(d.windup, () => this.meleeStrike(d, held));
     return true;
   }
 
@@ -551,9 +571,10 @@ export default class Character {
 
   // A blow lands (or not) on whatever is in reach. The player's weapon wears out (data/weapons.js WEAR): a man struck
   // takes a blow out of it, a thing struck (furniture, a door, a pane, a wall) a share of one, the air nothing; the
-  // blow that uses it up breaks it there (breakWeapon), over the man as the heavy stroke.
-  meleeStrike(d) {
-    if (!this.alive || this.knocked) return;
+  // blow that uses it up breaks it there (breakWeapon), over the man as the heavy stroke. held: the weapon the swing
+  // began with (attack): gone from the hand since, or the man seized meanwhile, the blow never comes.
+  meleeStrike(d, held = this.weapon) {
+    if (!this.alive || this.knocked || this.held || this.weapon !== held) return;
     const w = this.world, a = this.angle, x = this.x, y = this.y, weapon = this.weapon;
     // a club swung all the way round reaches everyone about him
     const spin = this.strike === 3 && d.swing === 'club', arc = spin ? Math.PI * 2 : d.arc;
@@ -614,8 +635,11 @@ export default class Character {
       thing ??= { x: hx, y: hy, prop: p };
       hit = true;
     }
+    // a pane or a door: in the swing's arc and not through a wall, as a man is
+    const reach = (pts) => pts.some((q) => (spin || Math.abs(angDiff(a, Math.atan2(q.y - y, q.x - x))) <= arc / 2)
+      && w.lineOfSight(x, y, ...short(x, y, q.x, q.y)));
     for (const win of w.windows) {
-      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && win.blow(x, y, a, this, d.heft === 2 ? 2 : 0)) {
+      if (Math.hypot(win.x - x, win.y - y) < d.range + 12 && reach(paneFace(win, x, y, a)) && win.blow(x, y, a, this, d.heft === 2 ? 2 : 0)) {
         thing ??= { x: win.x, y: win.y };
         hit = true;
       }
@@ -623,7 +647,7 @@ export default class Character {
     for (const door of [...w.doors]) {
       const t = door.tip();
       const mx = (door.hx + t.x) / 2, my = (door.hy + t.y) / 2;
-      if (Math.hypot(mx - x, my - y) < d.range + 14) {
+      if (Math.hypot(mx - x, my - y) < d.range + 14 && reach(leafPoints(door, t))) {
         // bare hands = a kick, otherwise a blow with the weapon
         door.hit(mx, my, a, d.heft === 2 ? 2 : 1, d.hold === 'none' ? 'kick' : 'melee');
         if (this.isPlayer) door.pushedByPlayer = 0.8;
@@ -643,13 +667,13 @@ export default class Character {
         hit = true;
       }
     }
-    // shove whatever loose stuff is in the arc
+    // shove whatever loose stuff is in the arc (a spin: all round, each the way it found it)
     for (const list of [w.corpses, w.debris, w.items]) {
       for (const o of list) {
         if (o.dead || o.age === 0) continue; // not the body this very blow just made: it was thrown as it should
-        const p = o.body.position, dd = Math.hypot(p.x - x, p.y - y);
-        if (dd > d.range + 8 || Math.abs(angDiff(a, Math.atan2(p.y - y, p.x - x))) > d.arc / 2) continue;
-        impulse(o.body, a, d.lethal ? 90 : 50, rand(-0.2, 0.2), 6);
+        const p = o.body.position, dd = Math.hypot(p.x - x, p.y - y), pa = Math.atan2(p.y - y, p.x - x);
+        if (dd > d.range + 8 || Math.abs(angDiff(a, pa)) > arc / 2) continue;
+        impulse(o.body, spin ? pa : a, d.lethal ? 90 : 50, rand(-0.2, 0.2), 6);
         if (o.pool !== undefined) { w.particles.blood(p.x, p.y, a, 0.5, 6, 140); hit = true; }
       }
     }
@@ -758,7 +782,8 @@ export default class Character {
     const snatch = !!killer?.snatches?.(this, how);
     if (snatch) how = { ...how, disarm: true };
     // (by his body: DROP; the one the hand closes on stays where his hand was, held out of the physics' way)
-    const it = this.dropWeapon(angle + rand(-1, 1), snatch ? 0 : rand(...DROP.speed));
+    const [da, dv] = this.deathDrop(angle);
+    const it = this.dropWeapon(da, snatch ? 0 : dv);
     if (snatch) killer.snatchFrom(it?.reserve() ?? this.lastDrop, this.yields);
     this.world.removeBody(this.body);
     const left = gore(this.world, this, angle, cause, by, how); // how: the blow decides how much he bleeds
@@ -767,6 +792,9 @@ export default class Character {
     this.world.onKill(this, cause, killer, how, left);
     killBeat(this.world, this, killer);
   }
+
+  // the way and the speed (px/step) his weapon falls at as he dies, the blow's way `angle` (DROP: by his body)
+  deathDrop(angle) { return [angle + rand(-1, 1), rand(...DROP.speed)]; }
 
   knock() { /* overridden by Enemy */ }
 

@@ -482,7 +482,7 @@ export default class Vehicle {
     if (this.exploded) return;
     const k = 1 - d / R;
     if (k <= 0) return;
-    for (const key of ['wind', 'rear']) if (this.m[key] && chance(0.4 + k)) { this.windows[key] = 1; this.hitWindow(key, (this.m[key][0] + this.m[key][1]) / 2, this.h / 2, a); }
+    for (const key of ['wind', 'rear']) if (this.m[key] && this.windows[key] < 2 && chance(0.4 + k)) { this.windows[key] = 1; this.hitWindow(key, (this.m[key][0] + this.m[key][1]) / 2, this.h / 2, a); }
     for (let i = 0; i < 4; i++) if (chance(k * 0.7)) this.popTire(i, a);
     this.damage(Math.ceil(40 * k));
   }

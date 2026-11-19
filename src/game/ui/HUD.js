@@ -6,6 +6,7 @@ import { tierColor } from './KillFeed.js';
 import { KILLFEED, BREAK } from '../data/feel.js';
 import { drawIndicators } from './Indicators.js';
 import { drawPrompts } from './Glyphs.js';
+import { keyLabel } from '../data/controls.js';
 import { clamp } from '../../engine/math.js';
 
 export function drawHUD(ctx, game, t) {
@@ -35,7 +36,7 @@ export function drawHUD(ctx, game, t) {
     let label = ammo, col = PALETTE.white;
     if (p.reloading > 0) { label = 'RELOADING'; col = PALETTE.cyan; }
     else if (dry && noReserve) { label = 'EMPTY - THROW IT!'; col = PALETTE.pink; }
-    else if (dry) { label = 'RELOAD [R]'; col = PALETTE.yellow; }
+    else if (dry) { label = `RELOAD [${keyLabel('reload', game.input.device)}]`; col = PALETTE.yellow; }
     const blink = dry && Math.floor(t * 6) % 2 === 0 ? 0.45 : 1;
     text(ctx, label, pad, pad + 50 * s, 20 * s, col, { align: 'left', alpha: blink });
     if (p.reloading > 0) {

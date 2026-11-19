@@ -184,6 +184,8 @@ export const MOMENTS = {
 //   follow  px from the man on its line (within `line` rad of the throw) within which the camera follows the thing in
 //           flight (shot `throwFollow`)
 //   planted a blade left in him: shudder (s, rad, hz) of its handle, spurt [count, speed] of blood out of him
+//   stick   px/step at least a thrown blade must fly at to plant itself (a full throw always does), else it floors him
+//   butt    a gun thrown full into a man: what the blow is (fx/Blows.js)
 export const THROW = {
   tap: 0.12, charge: 0.35, speed: [11, 15], move: 0.6, hand: 12, lock: 260, spin: [0.55, 0.8],
   pose: { in: 0.12, hand: [-3.5, 8, 2.6], brace: [7.5, -5.5], twist: 0.38, lean: 1.2, shake: 0.05, hz: 31 },
@@ -196,6 +198,8 @@ export const THROW = {
   smash: { gore: 2.5, gunGore: 0.6, chips: [18, 200], sparks: [10, 240], dull: 0.55, fly: [260, 360], back: 40, clear: 3 },
   follow: 120, line: 0.08,
   planted: { shudder: [0.32, 0.22, 14], spurt: [12, 160] },
+  stick: 6,
+  butt: { swing: 'club', material: 'metal', heft: 2 },
 };
 
 // The player's weapon giving out (Character.breakWeapon, data/weapons.js `breaks`), what flies of it and the beat
@@ -278,7 +282,8 @@ export const SNATCH = { on: true, reach: 48, delay: 0.12, far: 90 };
 // A dead man's weapon falls by his body, never across the room (the user: it flew far too far and the snatch's hand
 // went after it): let go at `speed` px/step [min, max] (about 10 to 25 px of slide on a floor), turning up to `spin`
 // rad/step. One the player's hand is closing on (SNATCH) does not move at all: it waits, untouchable, for the hand.
-export const DROP = { speed: [0.5, 1.1], spin: 0.25 };
+// knock: [min, max] px/step it is knocked out of the hand of a man floored (Enemy.knock), a little further
+export const DROP = { speed: [0.5, 1.1], spin: 0.25, knock: [1, 1.6] };
 
 // How kills and chains are shown (ui/KillFeed.js keeps the state on the real clock, render/WorldRenderer.js draws the
 // stamps, ui/HUD.js the rest). Sizes in world px for the stamps, in screen px at 720 p for the HUD (x H / 720).
