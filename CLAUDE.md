@@ -88,9 +88,11 @@
 
 ## Gameplay
 - A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level
-  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is split in two levels
-  instead: level 2 is 2a (the car chase, ending on the crash into the gas station) and 2b (the gas station fight,
-  restarted from the crash); the FLAMINGO MOTEL (JITTERS) is level 3.
+  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is cut in STAGES played
+  in a row instead (data/campaign.js: the player's levels 00 tutorial, 01 CUEBALL, 02 and 03 JITTERS, 04 05 LUCKY,
+  06 07 THE BOSS, each a list of the engine's levels): LEVEL 2 is level2a (the car chase, ending on the crash into
+  the gas station) then level2b (the gas station fight, restarted from the crash); for the player it is one level,
+  02, never "2A / 2B"; the FLAMINGO MOTEL (JITTERS) is level 3.
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
   2A is built by tools/build_level2a.py (level `chase` block: van start, cruise, lanes, end col, events by col); the
@@ -178,8 +180,9 @@
   back room and the back of house are not.
 
 ## Front end, story, tutorial
-- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN` = tutorial, level1, level2a: the level after a done one is open, an
-  old save too)
+- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN`: the stages of data/campaign.js in a row, made or not; the made stage
+  after a done one is open, an old save too; `levelDone`: a level is done when its last made stage is; best results
+  are kept by stage, `levelBest`)
   and systems/Settings.js in localStorage; `Game.startLevel(id)`, `newGame()`, `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
@@ -211,8 +214,10 @@
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once; the levels pinned under their target in `LEVEL_AT`, 2A and 2B under JITTERS, a level not made
-  yet a greyed note taped SOON, `SOON`), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  drawn by a marker once; a note a level (Menu.js `levelNotes`, never one for a stage), pinned in a column under its
+  target, three rows at most (`noteAt`: the tutorial and BACK under the photo of his flat, 01 under CUEBALL, 02 03
+  under JITTERS, then LUCKY, then THE BOSS), LEFT / RIGHT from a column to the next, UP / DOWN down it (page `grid`);
+  a level not made yet a greyed note taped SOON with its working title, seen and never started), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),

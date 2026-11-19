@@ -6,6 +6,7 @@ import { load } from './setup.mjs';
 const { default: Menu, STEP, selectable } = await load('game/ui/Menu.js');
 const { KBM_CONTROLS, PAD_CONTROLS, PAD_BINDINGS } = await load('game/data/controls.js');
 const { complete } = await load('game/systems/Progress.js');
+const { CAMPAIGN_LEVELS } = await load('game/data/campaign.js');
 
 const FRESH = { unlocked: ['tutorial'], done: [] };
 // a context made of plain objects; `set` actions are written back into it as Game.js does
@@ -220,10 +221,10 @@ test('menu: the levels page lists the campaign with best results; a locked level
   const m = new Menu('main', ctx());
   choose(m, 'LEVELS');
   const [tut, l1] = m.page.items;
-  assert.deepEqual([tut.label, tut.locked, tut.best.grade, tut.n], ['FIRST NIGHT', false, 'B', 1]);
-  assert.deepEqual([l1.label, l1.locked, l1.best, l1.n], ['NEON NIGHTS', true, null, 2]);
+  assert.deepEqual([tut.label, tut.locked, tut.best.grade, tut.n, tut.tag], ['FIRST NIGHT', false, 'B', 0, '00']);
+  assert.deepEqual([l1.label, l1.locked, l1.best, l1.n, l1.tag], ['NEON NIGHTS', true, null, 1, '01']);
   assert.deepEqual(m.activate(), { type: 'start', level: 'tutorial' });
-  m.down();
+  m.right();
   assert.equal(selected(m), 'NEON NIGHTS', 'the locked level can be selected');
   assert.equal(m.activate(), null);
   assert.equal(m.click(1), null);
@@ -233,21 +234,60 @@ test('menu: the levels page lists the campaign with best results; a locked level
   assert.deepEqual(n.click(1), { type: 'start', level: 'level1' });
 });
 
-test('menu: 2A (the chase) is on the levels page, shut until level 1 is done', () => {
+test('menu: one note a level: 02 starts at the chase, never a 2A / 2B choice; the levels not made yet are SOON', () => {
   const levels = [...ctx().levels, { id: 'level2a', name: 'THE CHASE' }];
   const m = new Menu('main', ctx({ levels, progress: complete(FRESH, 'tutorial') }));
   choose(m, 'LEVELS');
-  assert.deepEqual(m.page.items.map((it) => [it.level, it.locked]), [['tutorial', false], ['level1', false], ['level2a', true], [undefined, undefined]]);
-  assert.equal(m.click(2), null);
-  const n = new Menu('main', ctx({ levels, progress: complete(complete(FRESH, 'tutorial'), 'level1') }));
+  const items = m.page.items, notes = items.filter((it) => it.tag);
+  assert.deepEqual(notes.map((it) => it.tag), CAMPAIGN_LEVELS.map((l) => String(l.n).padStart(2, '0')), 'a note a level, in order');
+  assert.deepEqual(notes.slice(0, 4).map((it) => [it.tag, it.level, !!it.locked, !!it.soon]),
+    [['00', 'tutorial', false, false], ['01', 'level1', false, false], ['02', 'level2a', true, false], ['03', null, false, true]]);
+  assert.ok(notes.every((it) => !/2A|2B/i.test(it.tag + it.label) && it.level !== 'level2b'), 'no note for a stage');
+  assert.deepEqual(notes.slice(3).map((it) => it.label), CAMPAIGN_LEVELS.slice(3).map((l) => l.title), 'working titles');
+  assert.ok(notes.slice(3).every((it) => it.soon && !it.act));
+  assert.deepEqual(items[items.length - 1].label, 'BACK');
+  assert.equal(m.click(2), null, '02 is shut until level 1 is done');
+  assert.equal(m.click(3), null, 'a level not made yet never starts');
+  assert.equal(selected(m), 'THE FLAMINGO MOTEL', 'but it can be looked at');
+  assert.equal(m.activate(), null);
+  const done1 = complete(complete(FRESH, 'tutorial'), 'level1'), n = new Menu('main', ctx({ levels, progress: done1 }));
   choose(n, 'LEVELS');
   assert.deepEqual(n.click(2), { type: 'start', level: 'level2a' });
+  // 2A done, 2B not made: 02 is done, and shows 2A's record; once 2B is made the same note waits for it
+  const best = (id) => (id === 'level2a' ? { total: 18400, grade: 'B', time: 152 } : null);
+  const done2 = { unlocked: ['tutorial', 'level1', 'level2a'], done: ['tutorial', 'level1', 'level2a'] };
+  const o = new Menu('main', ctx({ levels, progress: done2, best }));
+  choose(o, 'LEVELS');
+  assert.deepEqual([o.page.items[2].done, o.page.items[2].best.total], [true, 18400]);
+  const p = new Menu('main', ctx({ levels: [...levels, { id: 'level2b', name: 'THE STATION' }], progress: done2, best }));
+  choose(p, 'LEVELS');
+  assert.deepEqual([p.page.items[2].level, p.page.items[2].done, p.page.items[2].best, p.page.items[2].label], ['level2a', false, null, 'THE CHASE']);
+  assert.equal(p.page.items.filter((it) => it.tag).length, CAMPAIGN_LEVELS.length, 'still one note');
+});
+
+test('menu: the board is walked by columns: LEFT / RIGHT from a man to the next, UP / DOWN down his notes', () => {
+  const levels = [...ctx().levels, { id: 'level2a', name: 'THE CHASE' }];
+  const m = new Menu('main', ctx({ levels }));
+  choose(m, 'LEVELS');
+  const at = () => (m.item.tag ? m.item.tag : m.item.label), walk = (...keys) => keys.map((k) => { m[k](); return at(); });
+  // col 0 the tutorial and BACK, then CUEBALL 01, JITTERS 02 03, LUCKY 04 05, THE BOSS 06 07
+  assert.deepEqual(m.page.items.map((it) => `${it.tag || it.label}:${it.col}.${it.row}`),
+    ['00:0.0', '01:1.0', '02:2.0', '03:2.1', '04:3.0', '05:3.1', '06:4.0', '07:4.1', 'BACK:0.1']);
+  assert.equal(at(), '00');
+  assert.deepEqual(walk('right', 'right', 'right', 'right', 'right'), ['01', '02', '04', '06', '00'], 'along the top row, and round');
+  assert.deepEqual(walk('down', 'down', 'up'), ['BACK', '00', 'BACK'], 'down a column, and round it');
+  assert.deepEqual(walk('right', 'right', 'right', 'right'), ['01', '02', '04', '06'], 'CUEBALL has one note: back on the top row from there');
+  assert.deepEqual(walk('down', 'left', 'left', 'left'), ['07', '05', '03', '01'], 'the second row kept where there is one');
+  assert.deepEqual(walk('down', 'up', 'left'), ['01', '01', '00'], 'a column of one stays put');
+  // the mouse still points at any of them
+  m.hover(5);
+  assert.equal(at(), '05');
 });
 
 test('menu: without the tutorial, the first level there is stays open', () => {
   const m = new Menu('main', ctx({ levels: [{ id: 'level1', name: 'NEON NIGHTS' }] }));
   choose(m, 'LEVELS');
-  assert.equal(m.page.items[0].locked, false);
+  assert.deepEqual([m.page.items[0].tag, m.page.items[0].locked], ['01', false], 'no note for a tutorial that is not there');
   assert.deepEqual(m.activate(), { type: 'start', level: 'level1' });
   // and nothing offers to replay a tutorial that is not there
   m.back();
