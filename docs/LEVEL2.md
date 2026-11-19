@@ -31,18 +31,38 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   across the road, which is up / down on the picture: W (Z) / S, or A / D, or the pad's left stick; letting go
   straightens it (the road's pull). The nose turns a few degrees at most (`heading` 0.2 rad, a spring that does not
   wag); the body still moves on its wheels (sat back as it pulls away, the nose down on a hit, rolled out of a
-  bend, thrown up by a kerb, a hit, the road).
+  bend, thrown up by a kerb, a hit, the road). THE SLIDE (2026-11-19, the user: "plus realiste dans les virages"):
+  the rear steps out, up to 0.34 rad, on a flick (the wheel thrown over while the car still goes the other way), on
+  full lock held 0.4 s, on a shove, on a pursuer's swipe or a parked car grazed; countersteer catches it at once,
+  nothing held it fishtails once; past 7 degrees it scrubs up to 30 % of the speed, its rear tyres smoke and leave
+  rubber (CHASE.slide, Drive slideStep / gripOf; the pursuers slide by the same rule).
 - **The shove (SPACE / pad A): THE move.** A lunge of one lane (about 95 px in 0.3 s) toward the side he aims at,
   every 0.7 s (a bar on the HUD). On a pursuer it is a real blow: half its hp, thrown half a lane and more out of
   its driver's hands, its gunman's shot off; TWO wreck it in the open, ONE that throws it into something solid (the
-  parked cars, a pole, a wall) does. Into nothing it lands him in the next lane: it is his dodge too. What the car
-  hits is still pushed by the physics (parked cars, kerb furniture).
+  parked cars, a pole, a tree, the bus shelter, a wall) does. Into nothing it lands him in the next lane: it is his
+  dodge too.
+- **A parked car is never a wall** (2026-11-19, the user: "elle doit se mettre sur le cote, la elle nous bloque").
+  What he hits of the parked rows (or a wreck left on the road) is SHOVED ASIDE by hand (Drive.aside, CHASE.aside):
+  thrown on ahead of him and out to its side, turning, its alarm going, sparks, its glass on a square hit; he loses
+  10 % of his speed on a graze, up to 50 % full on the nose (never under 35 % of cruise: never stopped, never
+  stalled), and NEVER dies of it. A shoved car stays where it lands: it may lie in a lane, a new obstacle the
+  pursuers go round too, but never across both (Drive.clearLanes pushes it on to its kerb). A pursuer that runs
+  into one at speed is still wrecked on it.
 - **The pursuers come ALONGSIDE** (reworked 2026-11-19: they sat behind him, out of his arc). No slot is behind him:
   abreast in the lane he is not in, a length ahead in that lane, ahead in his own lane (shot over the windscreen);
   a fourth further ahead. One joining from behind starts just off the picture and is in his arc in about a second.
   Which slots are held changes every 4 to 7 s; the rearmost car takes the rearmost slot (nobody passes anybody);
   when he changes lanes the one abreast comes round his nose to his other side, never through him. Each gunman
-  leans out on his side (from the car ahead: back along its flank). A swipe at him is rare.
+  leans out on his side (from the car ahead: back along its flank).
+- **They take turns attacking** (2026-11-19, the user: "fluide et vraiment plaisant"): ONE attack at a time, 1.1 to
+  1.8 s apart, in a round (a told shot, a ram, a told shot, a brake; the kind due skipped only when nobody can make
+  it), each TOLD. THE RAM, from abreast: 0.5 s of wind-up (its lamps flash, it draws away from him leaning out),
+  then the swipe at his flank (a jolt, his tail kicked out, never his death); a lane change dodges it, a shove INTO
+  it during the wind-up lands first. THE BRAKE, from ahead in his lane: its brake lights 0.45 s, then it runs 3.2
+  px/step slower than he does for 0.9 s: onto his nose unless he changes lanes. Hurt by a shove (not wrecked), a car
+  keeps its distance 2.5 s (the far slot), smoking. Each car has a STYLE set by its event: `gunner` (tells shots,
+  rams when nobody else does), `rammer` (never tells, alone it sits abreast), `blocker` (alone it sits ahead of
+  him). The wheel of each follows a line that slides (300 px/s), no jump from one line to the next.
 - **Shooting.** Mouse aim, one hand, from the open car (it faces +x; the driver sits on the -y side): ALL ROUND
   but behind him (the user's call, 2026-11-18): 125 degrees either side of the nose, 250 in all: out of his door,
   ahead OVER the low windscreen, across the passenger seat to his right (the gun goes over to his right hand, the
@@ -68,7 +88,7 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   fattens into a wedge with a bracket where it lands (0.6 to 0.8 s), then the shot; the line locks onto a lane, not
   the car, so a lane change or a shove dodges it (a shove INTO the car that tells cancels its shot). One gunman tells at a time early on, two overlapping at the end.
   Obstacles about to enter the frame: red chevrons at the screen's edge. A safe gap: bone arrows. Nothing else red
-  on the road.
+  on the road. A ram is told by the car itself (lamps flashing, drawn away), a brake by its brake lights.
 - **Who is who.** The pursuers are the only black cars, with one pink stripe; civilians are pale or coloured.
   Enemy tracers bone, telegraph red, his own muzzle flash orange.
 - **Slow motion** (from proposal C) at three moments of the route: the two jumps and the level crossing (time
@@ -84,11 +104,14 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   across (`chase.mid`), so the car never slides on the picture. A driven car is drawn at a whole px, on one of 64
   angles kept with 1.5 degrees of slack (Vehicle.pose, CHASE.pixel): a lane change shows two of them. In and out of
   a car the view changes in one cut. To be 400 at 90, 440 at 120, 480 on the jump (as whole zooms allow).
-- **Speed.** What sells it (all of it only at the wheel, none of it over the car or the lanes): the lens' `speed.drive`
-  (data/post.js: in the outer band of the picture the street's lights leave pixel trails along the road, streaks of
-  air run back, the colours part, the band darkens and is stretched a little so it runs past faster; a shove or a hit
-  kicks it), streaks of air in the world, dust off the rear wheels, paper and leaves whipped up in its wake, and a
-  road that shows it goes by: the centre line and the parking row's edge line are DASHES (2 m and 3 m).
+- **Speed.** NO SPEEDOMETER (the user's call, 2026-11-19): the speed is felt. What sells it, none of it moving a px
+  of the picture (2026-11-19, the user: "les voitures se deforment dans les extremites de l'ecran": the lens' trails,
+  stretch and parted colours are gone at the wheel, render/Lens.js driveLens): in the outer band the lens only ADDS
+  streaks of air and dims the band (a shove or a hit deepens it); in the world twice the streaks of air (38, up to
+  64 px long, from 34 km/h), more dust off the rear wheels, paper and leaves whipped up in its wake every 0.16 to
+  0.5 s, the shell shivering on its wheels at cruise, the car coming forward on the picture when a hit takes a fifth
+  of its speed and falling back as it picks up (whole px), and a road that shows it goes by: the centre line and
+  the parking row's edge line are DASHES (2 m and 3 m), the parked rows thinner so each car flicks by alone.
 - Rejected as the main mechanic: A (lane-snap shooting: readable but on rails, seven rounds his only violence) and
   C (autopilot shooting gallery: throws the physics away). Boards: [A](level2/gameplay_a.webp),
   [B sheet](level2/gameplay_b_sheet.webp), [C](level2/gameplay_c.webp).
@@ -140,18 +163,23 @@ sidewalk 3 m, lanes, south sidewalk 2 m). The events keep their columns.
 
 | Cols | Section | North side | South side (ours) | Parked cars | What happens |
 |------|---------|------------|-------------------|-------------|--------------|
-| 0-45 | A THE SHOPS | LIQUOR, BAR, VIDEO, WASH 24H, meters on a narrow sidewalk | shops, benches, a speed sign | north, from col 14 | The start (col 8.5), the Uzi taken; the lights ahead go amber. Lane arrow, the centre line double from col 30. |
+| 0-45 | A THE SHOPS | LIQUOR, BAR, VIDEO, WASH 24H, meters on a narrow sidewalk | shops, benches, a speed sign | north, from col 14: 3 | The start (col 8.5), the Uzi taken; the lights ahead go amber. Lane arrow, the centre line double from col 30. |
 | 46-61 | J CORAL STREET | corners rounded out to the lane, hydrant (red kerb), mailbox | news boxes, a bin | none | Traffic lights on mast arms (ours over our lane, red as he reaches it: he runs it), crossings on all four arms, stop lines, one-way street south with two cars waiting at their red. |
-| 62-104 | B | 3 m sidewalk: trees in grates, benches, a passage (cols 99-100) people use | parking row, meters behind it; two bays hatched LOADING (yellow kerb) | south, cols 64-88 | First pursuer alongside. The fronts of our side are a row back: shoving one into the parked cars is on OUR side here. |
-| 105-147 | A | shops, hydrant at 107 (red kerb) | shops; alleys at 105 and 138 | north, cols 110-146 | Event 1: the car out of the alley at col 138 (told at 111), into the far lane. SLOW painted at 143. |
+| 62-104 | B | 3 m sidewalk: trees in grates, benches, a passage (cols 99-100) people use | parking row, meters behind it; two bays hatched LOADING (yellow kerb) | south, cols 64-88: 2 | First pursuer alongside. The fronts of our side are a row back: shoving one into the parked cars is on OUR side here. |
+| 105-147 | A | shops, hydrant at 107 (red kerb) | shops; alleys at 105 and 138 | north, cols 110-146: 2 | Event 1: the car out of the alley at col 138 (told at 111), into the far lane. SLOW painted at 143. |
 | 148-156 | THE RAILWAY BRIDGE | abutment, the track on it | abutment | none (red kerb, no-parking sign) | A single-track bridge over the street: it fades over him as he passes under, its shadow on the road. Pigeons. |
-| 157-246 | A THE DARK STRETCH | the vacant lot behind its chain fence (cols 160-226), a gap cut in it | blind walls, pipes, bin bags; alleys at 190 and 232 | north, few (cols 158-200, 234-240) | One lamp in two, flickering. The gas works in the parking row (cols 203-231): trench, spoil, steel plate, compressor, barricades with flashers, cones along the lane's edge, an arrow board and a sign for who comes down their lane. The lane itself stays whole. Second and third pursuers from behind (cols 165, 250). |
+| 157-246 | A THE DARK STRETCH | the vacant lot behind its chain fence (cols 160-226), a gap cut in it | blind walls, pipes, bin bags; alleys at 190 and 232 | north, few (cols 158-200, 234-240): 2 | One lamp in two, flickering. The gas works in the parking row (cols 203-231): trench, spoil, steel plate, compressor, barricades with flashers, cones along the lane's edge, an arrow board and a sign for who comes down their lane. The lane itself stays whole. Second and third pursuers from behind (cols 165, 250). |
 | 247-271 | C THE BUS STOP | 3 m sidewalk: the shelter (lit advertising case), its sign, a bench, red kerb, BUS STOP on their lane | shops | none | Double centre line. |
-| 272-312 | B | 3 m sidewalk, trees, benches | alley at 272; parking row cols 278-309 | south | The lorry is told at col 303. |
+| 272-312 | B | 3 m sidewalk, trees, benches | alley at 272; parking row cols 278-309 | south: 2 | The lorry is told at col 303. |
 | 313-356 | A (nobody parked) | blind wall; THE YARD's gate (cols 337-342): dropped kerb, a hatched box, yellow kerbs, no-parking signs | 3 m sidewalk, then THE TERRACE (cols 325-354): planters and bollards along its kerb, tables, parasols, the cafe set back | none | Event 2: KEEP CLEAR on both lanes, the lorry backs out across them; the terrace is the way round. |
-| 357-388 | A THE LIT CORNER | shops | the diner: glass, booths, phone booth, news boxes, benches | north, cols 358-382 | The last car is set off (col 368). |
+| 357-388 | A THE LIT CORNER | shops | the diner: glass, booths, phone booth, news boxes, benches | north, cols 358-382: 1 | The last car is set off (col 368). |
 | 389-403 | J THE CROSS STREET | corners rounded, hydrant, mailbox | news boxes | none | Lights on all four corners (ours red, the cross street's green: the last pursuer comes out of it on HIS green). |
 | 404-449 | C TO THE FREEWAY | 3 m sidewalk, palms in grates | shops | none | Lane arrows, the freeway's sign over the road (FREEWAY, TOLL 1 MILE); the level ends at col 428. |
+
+Parked cars: 12 in all (thinned from 21 on 2026-11-19, the user: "trop de voitures sur les cotes"; the count by
+section is in the table, asserted by the builder and tests/road.test.mjs). The bays left empty show an old patch or
+a sealed crack, two of them a cone; three cars are parked badly (astride two bays, two wheels up on the kerb), never
+askew (a corner would be in the lane).
 
 Street furniture follows a street's rules (the builder asserts them): lamps every 24 m on alternate sides; meters
 only at a bay; hydrants and red kerbs at corners; loose things (bins, boards, boxes) against the walls, never by the
@@ -513,3 +541,22 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the effects and without). QA 3 min seed 1: PASS, 10 sessions,
   16 slow steps (main's same seed: 16), mean step 2.86 ms (2.75 on a second run; main 2.63), worst 121 ms (main
   143); level 1 seed 1 PASS, no warning, mean 1.61 ms (main 1.54); lab PASS.
+- 2026-11-19: THE PLAY PASS (branch feature/chase-play; the user: "trop de voitures sur les cotes; quand on en touche
+  une elle doit se mettre sur le cote; les ennemis fluides et plaisants; les phares ont un delay, c'est horrible;
+  plus realiste dans les virages; on ne sent pas la vitesse; enleve le compteur; les voitures se deforment aux
+  extremites de l'ecran"). THE HEADLIGHTS, measured in the headless browser at 144 and 60 Hz: no lag in time (0.2 px
+  in a straight line) but in every turn the beams, the tail lights and the lamps' glow were laid on the PHYSICS
+  body (its float angle on its spring, its place between two px) while the car is drawn on a whole px, on one of 64
+  angles, its shell shifted on its springs: the lamp's pool sat up to 5.8 px (17 px of the picture at 1080) off the
+  drawn nose and the beam 4 degrees off it, swinging smoothly while the sprite stepped: it read as the lights
+  trailing the car. Now every car's lamps are laid on the shell as drawn (Vehicle.shell, Lighting lampPlace, the
+  glow map too; a driven car's follow it every frame): 0 px off, frame after frame. PARKED CARS: 21 -> 12 (the
+  table), and SHOVED ASIDE, never a wall nor a death (above; the QA robot's `stalled` on a parked car is gone).
+  THE SLIDE and the grip (above). PURSUERS: turns of told attacks (the ram, the brake, the shot), styles by event
+  (alley 111 gunner; behind 165 rammer, 236 blocker, 262 gunner; cross street 368 rammer: five cars, one more than
+  before), hurt cars keep their distance, lines that slide, trees / the bus shelter / bollards wreck a car thrown
+  at them too, the kill beat told how ('shoved'). SPEED: no km/h on the HUD; the lens at the wheel moves no px
+  (POST.speed.drive mix / pull / split / fringe 0: the edge streaks are added, the band dimmed); the world's wind,
+  dust and wake doubled, the shell's shiver, the car coming forward on a hit. Lab station 19: its text says what to
+  try (station 17's parked cars are the ones to shove, the slide). Decisions changed (above): parked cars, the
+  pursuers' attacks, the speed's look, no speedometer.

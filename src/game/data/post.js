@@ -96,12 +96,19 @@ export const POST = {
     // late: at 60 km/h about half); eased at `ease` 1/s. A jolt of the car adds to it for an instant (`kick`: by
     // beat of the world's 'ride' event, dying at `decay` 1/s), with `fringe` px of colour at a kick of 1 (no zoom
     // kick: it resampled the whole picture, and the shove is thrown every second).
+    // NOTHING THAT RESAMPLES THE PICTURE (the user, 2026-11-19: "the cars are deformed at the edges of the screen"):
+    // the trails (`mix`), the stretch (`pull`), the colours parted (`split`, `fringe`, kick.fringe) each moved or
+    // smeared the px of whatever was in the band, the cars parked along the kerb and the ones abreast of him first.
+    // They are 0, and render/Lens.js lets none of them through at the wheel whatever is written here (driveLens).
+    // What is left only ADDS to the picture or dims it: the streaks of air (`lines`) and the band's darkening
+    // (`dark`), which a jolt deepens for an instant; every px of the scene stays where it was drawn, a car at the
+    // edge is the same pixels as in the middle. The speed itself is sold in the world (data/chase.js fx, camera)
     drive: {
-      from: 0.3, curve: 1.5, ease: 4, cap: 1.6, // cap: the speed's look and a jolt's added together, at most
-      band: [0.24, 0.46], car: [0.28, 0.4], len: 0.17, rows: 2, flick: 14, mix: 0.9,
-      lines: { share: 0.16, run: 2.6, glow: 0.42 },
-      pull: 0.06, split: 7, fringe: 2.5, dark: 0.3,
-      kick: { shove: 0.9, hit: 0.6, clip: 0.8, crash: 1, torn: 0.25, kerb: 0.2, decay: 5, fringe: 9 },
+      from: 0.3, curve: 1.1, ease: 4, cap: 1.6, // cap: the speed's look and a jolt's added together, at most
+      band: [0.24, 0.46], car: [0.28, 0.4], len: 0.17, rows: 2, flick: 14, mix: 0,
+      lines: { share: 0.24, run: 3.4, glow: 0.5 },
+      pull: 0, split: 0, fringe: 0, dark: 0.3,
+      kick: { shove: 0.9, hit: 0.6, clip: 0.8, crash: 1, torn: 0.25, kerb: 0.2, decay: 5, fringe: 0 },
     },
   },
 

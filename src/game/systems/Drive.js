@@ -267,6 +267,8 @@ export default class Drive {
     this.slipV = 0;
     this.lockT = 0;                   // s the wheel has been held over the same way
     this.lockS = 0;
+    this.surge = 0;                   // share of the view's width the car sits forward on the picture, slowed (frame)
+    this.buzzT = 0;                   // s before the shell shivers again at speed (springs)
     this.asides = new Map();          // the parked cars it shoved aside -> { t, at: when, side, o } (aside, clearLanes)
     this.onRam = ({ side }) => { if (this.on && !this.dead) this.slipV += (side || 1) * CHASE.slide.rammed; };
     world.events?.on?.('pursuerRam', this.onRam); // (a swipe landing on his flank kicks his tail out)
@@ -521,7 +523,9 @@ export default class Drive {
     // the controls: the wheel only (up / down the picture); the speed is the road's. Stalled, the car eases itself
     // out sideways, his way if he steers (unstick: its sideways speed held, whatever the crawl or what it rubs on)
     const own = busy ? 0 : steerOf(input), free = this.unstick(dt, own), steer = free ?? own;
-    this.v = speedStep(this.v, this.cruise, dt, C);
+    // (a slide scrubs it: the speed it runs at falls with the slip, and comes back as it straightens)
+    const SL = C.slide, scrub = SL.scrub * clamp((Math.abs(this.slip) - SL.free) / (SL.most - SL.free), 0, 1);
+    this.v = speedStep(this.v, this.cruise * (1 - scrub), dt, C);
     // a car at a standstill does not go sideways; crawling (held up by what it pushes), it can still steer out
     const grip = this.v > 0.1 ? clamp(this.v / this.cruise, C.crawl, 1) : 0;
     this.cool = Math.max(0, this.cool - dt);
@@ -539,14 +543,16 @@ export default class Drive {
       this.u = steerStep(this.u, steer * grip * most, rdt, C, this.shoved ? C.shove.back : C.pull);
     }
     // the slide: the rear steps out on a flick, on full lock held, on a shove or a blow; caught with countersteer;
-    // it scrubs the speed off while it lasts
     // (held off the building fronts as he steers into them: no lock counted, the tail would swing into them)
-    this.lockT = steer && Math.sign(steer) === this.lockS && !this.grind ? this.lockT + dt : 0;
+    this.lockT = steer && Math.sign(steer) === this.lockS && !this.fenced ? this.lockT + dt : 0;
     this.lockS = Math.sign(steer);
-    [this.slip, this.slipV] = slideStep(this.slip, this.slipV, grip > 0.5 ? Math.sign(steer) * Math.min(1, Math.abs(steer) * 1.5) : 0, this.u, this.lockT, dt, C);
+    // (held off the fronts the wheel does nothing to it: it straightens along them)
+    const wheel = grip > 0.5 && !this.fenced ? Math.sign(steer) * Math.min(1, Math.abs(steer) * 1.5) : 0;
+    [this.slip, this.slipV] = slideStep(this.slip, this.slipV, wheel, this.u, this.lockT, dt, C);
     if (this.v < C.fx.from) { this.slip *= 1 - Math.min(1, 6 * dt); this.slipV *= 1 - Math.min(1, 6 * dt); } // (no slide at a crawl)
-    this.v = Math.max(0, this.v - C.slide.scrub * Math.abs(this.slip) * dt);
+    const asked = this.u;
     this.u = this.offFronts(this.u);
+    this.fenced = !!this.grind || Math.abs(this.u - asked) > 0.05; // (the fronts hold it: no slide into them next step)
     // the velocity set; the nose sprung toward the way it really goes (a knock turns it, the road brings it back;
     // held up against a wall, it comes round along it instead of digging in)
     const Y = C.yaw, across = Math.abs(vel.y) < Math.abs(this.u) ? vel.y : this.u;
@@ -735,7 +741,15 @@ export default class Drive {
     }
     [v.lift, S.lift] = springStep(v.lift || 0, S.lift, 0, L.k, L.d, dt);
     v.lift = clamp(v.lift, -L.most, L.most);
+    // at speed the shell shivers on its wheels: a blip across, one step long
     v.bob = 0;
+    if (this.v >= B.buzz.from && (this.buzzT -= dt) <= 0) {
+      this.buzzT = rand(...B.buzz.every);
+      v.bob = (chance(0.5) ? 1 : -1) * B.buzz.px;
+    }
+    // slowed, it comes forward on the picture; it falls back as its speed comes up (frame)
+    const K = C.camera;
+    this.surge += (K.surge * clamp((1 - this.v / this.cruise - K.from) / (1 - K.from), 0, 1) - this.surge) * Math.min(1, K.ease * dt);
   }
 
   // the body thrown up on its springs (C.body.lift: 'hit', 'torn', 'kerb', 'shove'), k of it
@@ -1166,7 +1180,8 @@ export default class Drive {
   // number of px, frame after frame
   frame(viewW, z = 1) {
     const C = this.C.camera, v = this.van, snap = (n) => Math.round(n * z) / z, mid = this.street;
-    return { x: snap(v.x) + snap(viewW * (0.5 - C.at)), y: snap(mid === null ? v.y : mid) };
+    // (slowed by a hit it sits `surge` further forward: whole px, like the rest)
+    return { x: snap(v.x) + snap(viewW * (0.5 - C.at - this.surge)), y: snap(mid === null ? v.y : mid) };
   }
 
   // its engine and tyres this step (audio/Motor.js; World hands it to Audio.motor): the gearbox on its real speed,

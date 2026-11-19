@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-const { default: Lens } = await load('game/render/Lens.js');
+const { default: Lens, driveLens } = await load('game/render/Lens.js');
 const { POST } = await load('game/data/post.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 
@@ -221,7 +221,16 @@ test('lens: at the wheel the picture is drawn 1:1 and the lens leaves the road a
   bus.emit('kill', { victim: { x: 0, y: 0 }, killer: player, cause: 'bullet' });
   u = lens.uniforms(wheel);
   assert.equal(u.zoom, 0);
-  assert.ok(u.rush.k > 1 && u.fringe > POST.fringe.rest + POST.speed.drive.kick.fringe * 0.5, 'the kick is there, in the band');
+  assert.ok(u.rush.k > 1, 'the kick is there, in the band: its streaks and its darkening, harder');
+  // NOTHING at the wheel moves a px of the picture (the user: "the cars are deformed at the edges of the screen"):
+  // no trails laid over it, no stretch, no colours parted, even kicked; what is left is added over it or dims it
+  for (const k of ['mix', 'pull', 'split']) assert.equal(u.rush[k], 0, `rush.${k}`);
+  assert.equal(u.fringe, 0, 'no fringe at the wheel');
+  assert.ok(u.zoom === 0 && u.curve === 0 && u.scan === 0);
+  assert.deepEqual(driveLens({ mix: 0.9, pull: 0.06, split: 7 }, 1), { mix: 0, pull: 0, split: 0 }, 'whatever the table says');
+  for (const k of ['mix', 'pull', 'split', 'fringe']) assert.equal(POST.speed.drive[k], 0, `POST.speed.drive.${k}`);
+  assert.equal(POST.speed.drive.kick.fringe, 0);
+  assert.ok(u.rush.dark > 0 && u.rush.lines.glow > 0 && u.rush.lines.share > 0, 'the streaks of air and the band dimmed: added, not resampled');
   assert.equal(POST.speed.drive.kick.zoom, undefined);
   // on foot: as it was
   const foot = new Lens();

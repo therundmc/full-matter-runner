@@ -120,9 +120,10 @@ function paintHUD(ctx, game, t) {
 }
 
 // At the wheel (systems/Drive.js), bottom left: the shove's bar (SPACE; full and bright when it is ready, filling
-// back after one) over the speed in km/h; (x, y) its bottom left corner
+// back after one); (x, y) its bottom left corner. No speed readout (the user's call, 2026-11-19: the speed is not
+// his to set, the road and the picture tell it)
 function drawDrive(ctx, d, x, y, s, t) {
-  const ready = d.ready >= 1, bw = 120 * s, bh = 7 * s, by = y - 62 * s;
+  const ready = d.ready >= 1, bw = 120 * s, bh = 7 * s, by = y - 16 * s;
   text(ctx, 'SHOVE', x, by + bh / 2, 13 * s, ready ? PALETTE.white : PALETTE.pink, { align: 'left', alpha: 0.85 });
   const bx = x + 66 * s;
   ctx.fillStyle = PALETTE.ink;
@@ -131,9 +132,6 @@ function drawDrive(ctx, d, x, y, s, t) {
   ctx.globalAlpha = FADE * (ready ? 0.85 + Math.sin(t * 6) * 0.15 : 0.7);
   ctx.fillRect(bx, by, bw * clamp(d.ready, 0, 1), bh);
   ctx.globalAlpha = FADE;
-  const v = String(d.kmh);
-  text(ctx, v, x, y - 16 * s, 40 * s, PALETTE.white, { align: 'left' });
-  text(ctx, 'KM/H', x + widthOf(ctx, v, 40 * s) + 14 * s, y - 12 * s, 14 * s, PALETTE.white, { align: 'left', alpha: 0.8 });
 }
 
 // At the wheel in the chase, top middle: how much road is left (level `chase`: from its start to its `end`), a line

@@ -152,7 +152,7 @@ void main() {
     float n = hash(vec2(row, floor(uTime * uRushFlick)));
     vec2 st = along * uRushLen * min(rush, 1.3) * (0.25 + 0.75 * n * n) / 10.0;
     vec3 trail = col;
-    for (int i = 1; i <= 10; i++) trail = max(trail, texture2D(uScene, uv - st * float(i)).rgb * (1.0 - float(i) / 11.0));
+    if (uRushMix > 0.0) for (int i = 1; i <= 10; i++) trail = max(trail, texture2D(uScene, uv - st * float(i)).rgb * (1.0 - float(i) / 11.0));
     col = mix(col, trail, k * uRushMix) * (1.0 - uRushDark * k);
     // streaks of air: on a few rows, dashes running back along the road, their head bright, the colour of what
     // light they cross

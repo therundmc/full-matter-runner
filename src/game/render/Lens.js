@@ -24,6 +24,14 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const ease = (from, to, rate, dt) => from + (to - from) * (1 - Math.exp(-rate * dt));
 const copyGrade = (g) => ({ sat: g.sat, con: g.con, gain: [...g.gain], lift: [...g.lift], tint: [...g.tint], tintK: g.tintK });
 
+// What of the speed's look at the wheel may move the picture's px (POST.speed.drive): nothing. { mix: the lights'
+// trails laid over it, pull: the band stretched along the road, split: the colours parted along it (px) }, all 0
+// whatever the table says: the cars at the picture's edges came out deformed (the user, 2026-11-19). The streaks of
+// air and the darkening of the band are added over the picture, they move none of it
+export function driveLens() {
+  return { mix: 0, pull: 0, split: 0 };
+}
+
 export default class Lens {
   constructor(cfg = POST) {
     this.cfg = cfg;
@@ -93,7 +101,6 @@ export default class Lens {
     const K = this.cfg.speed.drive.kick, k = K[beat];
     if (!k) return;
     this.jolt = Math.max(this.jolt, k);
-    this.bump(K.fringe * k);
   }
 
   // a blow or a round landed on somebody: { power 0..1, byPlayer }: the lens shivers, no more (a kill is `kill`)
@@ -249,7 +256,8 @@ export default class Lens {
     const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
     const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k + R.sat * r, con: this.grade.con + c.punch.con * k + R.con * r };
     return {
-      fringe: (c.fringe.rest + this.fringe + R.fringe * r + D.fringe * rush + c.fringe.trauma * Math.max(0, (world && v.trauma || 0) - c.fringe.traumaFrom)) * px,
+      // (at the wheel nothing parts the colours: a fringe samples each channel somewhere else, it bends what is there)
+      fringe: flat ? 0 : (c.fringe.rest + this.fringe + R.fringe * r + c.fringe.trauma * Math.max(0, (world && v.trauma || 0) - c.fringe.traumaFrom)) * px,
       zoom: flat ? 0 : this.zoom,
       focus: this.zoom > 0.0005 && this.zoomAt ? at(this.zoomAt.x, this.zoomAt.y) : centre,
       frame: this.frame > 0 ? 1 : 0,
@@ -261,7 +269,7 @@ export default class Lens {
       rush: {
         k: rush, flat: flat ? 1 : 0, dir: [Math.cos(way), -Math.sin(way)], at: flat ? at(v.drive.x, v.drive.y) : [0.5, 0.5],
         band: D.band, car: D.car,
-        len: D.len, rows, flick: D.flick, mix: D.mix, pull: D.pull, split: D.split * px, dark: D.dark, lines: D.lines,
+        len: D.len, rows, flick: D.flick, dark: D.dark, lines: D.lines, ...driveLens(D, px),
       },
       edge: this.edge, blur: this.blur,
       glow: { ...c.glow, strength: Q.glow ? c.glow.strength + R.glow * r : 0 }, rays: Q.glow && Q.rays ? c.rays : this.noRays, lights, tone: c.tone,

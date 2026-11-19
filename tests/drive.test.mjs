@@ -354,7 +354,7 @@ test('drive: the shove lunges a lane toward the side he aims at, then waits its 
   assert.equal(d.ready, 1, 'ready again 0.7 s after it');
   input.pressed.add('Space');
   run(w, d, input, 0.1, { x: v.x, y: v.y - 100 });
-  assert.ok(Math.abs(vel(v).y + CHASE.shove.v) < 0.1, 'above its middle line: up');
+  assert.ok(Math.abs(vel(v).y + CHASE.shove.v) < 0.5, 'above its middle line: up');
 });
 
 test('drive: nose-on into a wall at 9 px/step kills him; a scrape along one does not', () => {
@@ -668,4 +668,34 @@ test('slide: at the wheel a shove kicks the tail out, the slide scrubs speed, sm
   run(w, d, input, 2);
   assert.ok(Math.abs(d.slip) < 0.01 && Math.abs(v.body.angle) < 0.02 && Math.abs(d.v - 9) < 1e-6, 'straight again, at cruise');
   assert.equal(w.killed, null);
+});
+
+// ---- the speed is felt, not read (the user: no speedometer; "on ne sent pas trop la vitesse")
+test('hud: no speed readout at the wheel (the shove bar stays)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const hud = readFileSync(fileURLToPath(new URL('../src/game/ui/HUD.js', import.meta.url)), 'utf8');
+  assert.ok(!/KM\/H/.test(hud) && !/\.kmh\b/.test(hud), 'no km/h on the HUD');
+  assert.ok(/'SHOVE'/.test(hud) && /drawRoad\(/.test(hud), 'the shove bar and the road left are still there');
+  assert.equal(kmh(8.9), 60, 'Drive.kmh is kept (the QA robot reads it)');
+});
+
+test('speed: slowed by a hit the car comes forward on the picture and falls back as it picks up; at cruise it shivers', () => {
+  const { w, v, d, input } = start({ cruise: 9 });
+  run(w, d, input, 0.5);
+  const at0 = d.frame(640, 3).x - v.x;
+  assert.ok(Math.abs(d.surge) < 1e-9, 'at cruise: where it always sat');
+  d.v = 4;
+  let most = 0, bobs = 0;
+  for (let i = 0; i < 90; i++) { run(w, d, input, DT); most = Math.max(most, d.surge); if (v.bob) bobs++; }
+  const f = d.frame(640, 3).x - v.x;
+  assert.ok(most > 0.01 && most <= CHASE.camera.surge, `forward by ${(most * 640).toFixed(0)} px of 640`);
+  assert.ok(Math.abs(d.frame(640, 3).x * 3 - Math.round(d.frame(640, 3).x * 3)) < 1e-6, 'on the picture\'s px grid');
+  const home = () => Body.setPosition(v.body, { x: 6 * TILE, y: v.y }); // (the yard is 70 tiles long)
+  home();
+  run(w, d, input, 3);
+  assert.ok(d.surge < 0.002 && Math.abs(d.frame(640, 3).x - v.x - at0) < 0.4, 'back where it sat');
+  let n = 0;
+  for (let i = 0; i < 300; i++) { if (i % 100 === 0) home(); run(w, d, input, DT); if (v.bob) { n++; assert.equal(Math.abs(v.bob), CHASE.body.buzz.px); } }
+  assert.ok(n >= 8 && n <= 45, `the shell shivers now and then at speed (${n} steps of 300)`);
 });

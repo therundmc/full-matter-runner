@@ -3,8 +3,12 @@
 // heading are turned into its velocity after reading back what the physics let it do, so it pushes and is pushed for
 // real. Its AI comes up ALONGSIDE him, well faster than he cruises, and holds a slot inside his gun's arc, never
 // behind him (CHASE.pursuit.slots: abreast in the lane he is not in, a length ahead in it, ahead in his own lane;
-// which ones changes now and then: assign), looks ahead in its lane and swerves round what stands there, and swipes
-// into him once in a while. HIS SHOVE landing on it is a real blow (shoved): half its hp, thrown sideways out of its
+// which ones changes now and then: assign), looks ahead in its lane and swerves round what stands there (a parked
+// car he shoved into a lane too), on a line that slides (easeLine). THEY TAKE TURNS ATTACKING, one at a time, each
+// TOLD (nextAttack, C.attack): the gunman's shot, a RAM from abreast (its lamps flash and it draws away, then swipes
+// at his flank), a BRAKE from ahead in his lane (its brake lights, then it drops back onto his nose). Hurt by a
+// shove, a car keeps its distance a moment (`hurt`). Each has a style (the level's events): gunner, rammer, blocker.
+// HIS SHOVE landing on it is a real blow (shoved): half its hp, thrown sideways out of its
 // driver's hands; two wreck it, one that throws it into a parked car, a pole or a wall does. Any other hit that
 // throws it off what it was driving leaves it to the physics a moment (`stun`); a hard contact on what does not
 // give wrecks it (it stops, smokes, may burn: Vehicle); a wreck is an obstacle like any car.
@@ -32,7 +36,7 @@ import { wake } from '../../engine/physics/Body.js';
 import { CHASE } from '../data/chase.js';
 import { WEAPONS } from '../data/weapons.js';
 import Vehicle from '../entities/Vehicle.js';
-import { seatOf } from './Drive.js';
+import { seatOf, slideStep } from './Drive.js';
 
 const { Body, Sleeping } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
@@ -74,6 +78,27 @@ export function pickSlots(n, roll = Math.random(), C = CHASE.pursuit) {
   if (n >= near.length) return [...near.map((k) => [k, 0]), ...Array.from({ length: n - near.length }, (_, i) => ['far', i])];
   const ways = near.flatMap((a, i) => (n === 1 ? [[a]] : near.slice(i + 1).map((b) => [a, b])));
   return ways[Math.min(ways.length - 1, Math.floor(roll * ways.length))].map((k) => [k, 0]);
+}
+
+// WHOSE TURN (C.attack): the attacks come one at a time, in a rhythm: a told shot, a ram, a told shot, a brake in his
+// lane... `turn`: how many have been made; can: { shot, ram, brake } which of them somebody could make now. The kind
+// due if it can be made, else the next one in the round that can; null: nobody can
+export function nextAttack(turn, can, C = CHASE.pursuit) {
+  const R = C.attack.round;
+  for (let i = 0; i < R.length; i++) { const k = R[(turn + i) % R.length]; if (can[k]) return k; }
+  return null;
+}
+
+// A ram or a brake under way, t s in: 'wind' (told: C.ram.wind / C.block.wind s of it), 'go', or null (over)
+export function attackPhase(kind, t, C = CHASE.pursuit) {
+  const A = kind === 'ram' ? C.ram : C.block;
+  return t < A.wind ? 'wind' : t < A.wind + A.dur ? 'go' : null;
+}
+
+// the line across the road a car steers for, a step later: eased toward the one it wants at C.ease px/s (no jump
+// from one line to another: the wheel follows a point that slides)
+export function easeLine(y, want, dt, C = CHASE.pursuit) {
+  return y + clamp(want - y, -C.ease * dt, C.ease * dt);
 }
 
 // the bracket's lock: his seat's y now, its x where his speed takes it in t s (vel: px/step)
@@ -118,6 +143,8 @@ export default class Pursuit {
     this.road = null;      // the lane he is in and the other one (lanesOf), as of the last step
     this.crew = '';        // who is in the chase (the slots are dealt again when it changes: assign)
     this.shuffleT = 0;     // s before the slots are dealt again anyway
+    this.attack = null;    // a ram or a brake under way: { car, kind, t, side } (one attack at a time, with the tells)
+    this.turn = 0;         // how many attacks have been made (nextAttack: whose turn)
     this.blockers = null;  // what may stand in a car's way (blockedAt: looked up again only when props come or go)
     this.propsN = -1;      // how many props the world had when it was looked up
     const L = chase?.lanes;
@@ -146,10 +173,15 @@ export default class Pursuit {
     const b = v.body, w = this.world;
     const car = {
       v, state, h: b.angle, s: o.speed ?? 0, driver: true, gunman: true, dummy: !!o.dummy, slot: 'abreast', rank: 0,
-      stun: 0, set: null, t: 0, chaseT: 0, settled: 0, ram: 0, ramSide: 0, by: -Infinity, cause: null,
+      stun: 0, set: null, t: 0, chaseT: 0, settled: 0, ram: 0, by: -Infinity, cause: null,
       dents: 0, shove: 0, hitBy: 0, thrown: false, out: null, gone: false, burnT: 0,
       gunSide: 1, gunA: b.angle + Math.PI / 2, telling: false, wreckHit: false, launch: -1, every: this.G.lab.every,
       n: this.cars.length,
+      style: o.style ?? 'gunner', // how it fights (the level's events): 'gunner', 'rammer' (no told shot), 'blocker'
+      lineY: null,           // the line across the road it steers for, eased (easeLine); the one it chose last
+      line: null,
+      hurt: 0,               // s it keeps its distance after a shove that did not wreck it
+      slip: 0, slipV: 0,     // its rear out (Drive slideStep: the same slide as his car's)
     };
     v.pursuer = car;
     v.noAlarm = true;
@@ -172,10 +204,10 @@ export default class Pursuit {
   }
 
   // a new pursuer's car at (x, y) facing a (world px, rad)
-  spawn(x, y, a, state, speed = 0) {
+  spawn(x, y, a, state, speed = 0, style = undefined) {
     const w = this.world, v = new Vehicle(w, this.C.vehicle, x, y, a);
     w.props.push(v);
-    const car = this.add(v, state, { speed });
+    const car = this.add(v, state, { speed, style });
     if (state !== 'wait') this.loose(car);
     return car;
   }
@@ -191,7 +223,7 @@ export default class Pursuit {
   // event 1: the car waiting in the alley mouth (facing north, its lamps on: they are told first)
   alleyCar(e) {
     const [c, r] = e.car;
-    const car = this.spawn(c * TILE, r * TILE, -Math.PI / 2, 'wait');
+    const car = this.spawn(c * TILE, r * TILE, -Math.PI / 2, 'wait', 0, e.style);
     car.event = e;
     e.waiting = car;
   }
@@ -204,8 +236,10 @@ export default class Pursuit {
     // (nothing is set off while he takes the gun off the seat: Drive.grab)
     if (tg && this.chase && !w.drive?.grabbing) for (const e of dueEvents(this.chase.events, this.fired, tg.x)) this.trigger(e, tg);
     this.assign(dt, tg);
+    this.stepAttack(dt, tg);
     for (const car of this.cars) {
       car.t += dt;
+      car.hurt = Math.max(0, car.hurt - dt);
       if (car.state === 'chase') { car.chaseT += dt; if (tg) this.catchUp(car, tg, dt); }
       if (car.state === 'wait' && car.launch >= 0 && (car.launch -= dt) <= 0) this.go(car);
       if (car.out) this.exit(car, dt, tg);
@@ -240,7 +274,7 @@ export default class Pursuit {
       const full = (at) => this.blockedAt(null, at + 60, y, 150);
       if (full(x)) x = back;
       for (let k = 0; k < 4 && full(x); k++) x -= 200;
-      this.spawn(x, y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over);
+      this.spawn(x, y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over, e.style);
     }
   }
 
@@ -248,7 +282,8 @@ export default class Pursuit {
   sides(tg) { return this.road ?? lanesOf(tg.y, this.band, null, this.C); }
 
   // a car's slot's point, now
-  slot(car, tg) { return slotOf(car.slot, tg.x, this.sides(tg), car.rank, this.C); }
+  // (hurt by a shove, it keeps its distance a moment: the far slot, ahead in the other lane, smoking)
+  slot(car, tg) { return slotOf(car.hurt > 0 && car.state === 'chase' ? 'far' : car.slot, tg.x, this.sides(tg), car.rank, this.C); }
 
   // A car left far behind (held up by a wreck across the street, by what he threw in its way), or hanging off the
   // picture a long while without reaching its slot (boxed in behind him by parked cars knocked into its lane), is
@@ -267,6 +302,8 @@ export default class Pursuit {
     car.s = Math.hypot(tg.vel.x, tg.vel.y) + this.C.spawn.over;
     car.stun = 0;
     car.set = null;
+    car.lineY = car.line = null;
+    car.slip = car.slipV = 0;
     Body.setPosition(v.body, { x, y });
     Body.setAngle(v.body, 0);
     Body.setAngularVelocity(v.body, 0);
@@ -296,7 +333,9 @@ export default class Pursuit {
     if ((this.shuffleT -= dt) > 0 && crew === this.crew) return;
     this.crew = crew;
     this.shuffleT = rand(...C.shuffle);
-    const slots = pickSlots(chasing.length, Math.random(), C);
+    // (alone, a car takes the slot its style fights from: the rammer abreast, the blocker ahead in his lane)
+    const lone = chasing.length === 1 ? C.attack.lone[chasing[0].style] : null;
+    const slots = lone ? [[lone, 0]] : pickSlots(chasing.length, Math.random(), C);
     chasing.sort((a, b) => a.v.x - b.v.x).forEach((car, i) => {
       const [slot, rank] = slots[i];
       if (car.slot !== slot) car.settled = 0;
@@ -343,10 +382,17 @@ export default class Pursuit {
     car.h = approachAngle(car.h, wantH, C.turn * dt * clamp(car.s / 3, 0.2, 1));
     const set = { x: Math.cos(car.h) * car.s, y: Math.sin(car.h) * car.s };
     Body.setVelocity(b, set);
-    Body.setAngularVelocity(b, angDiff(b.angle, car.h) * C.nose);
+    // its rear steps out and comes back as his does (Drive slideStep: the wheel thrown over, a blow), nobody
+    // countersteering better than a spring
+    const turn = angDiff(car.h, wantH), wheel = Math.abs(turn) > 0.04 ? Math.sign(turn) : 0;
+    car.lockT = wheel && wheel === car.lockS ? (car.lockT || 0) + dt : 0;
+    car.lockS = wheel;
+    [car.slip, car.slipV] = slideStep(car.slip, car.slipV, car.s > CHASE.fx.from ? wheel : 0, set.y, car.lockT, dt, CHASE);
+    Body.setAngularVelocity(b, angDiff(b.angle, car.h + car.slip) * C.nose);
     b.flyUntil = w.time + CHASE.fly;
     car.set = set;
     v.steer = clamp(angDiff(b.angle, car.h) * 2, -0.5, 0.5);
+    if (Math.abs(car.slip) > CHASE.slide.smoke && car.s > CHASE.fx.from) w.events.emit('tyres', { car: v, at: v.m.wheels.slice(0, 2).map(([sx, sy]) => v.toWorld(sx, sy)), k: clamp(Math.abs(car.slip) / CHASE.slide.most, 0, 1) });
     v.bob = Math.sin(w.time * 9 + car.n) * 0.3 * Math.min(1, car.s / CHASE.cruise);
   }
 
@@ -355,16 +401,10 @@ export default class Pursuit {
   want(car, tg, dt, max) {
     const C = this.C, v = car.v, band = this.band || [tg.y, tg.y];
     const pv = tg.vel.x, sl = this.slot(car, tg);
-    // abreast of him a while: a swipe at him (its gunman gone: more often)
+    // how long it has held its slot (what an attack is made from: stepAttack)
     const dx = sl.x - v.x, dy = sl.y - v.y;
-    car.settled = car.slot === 'abreast' && Math.abs(dx) < C.settle * 2 && Math.abs(dy) < C.settle ? car.settled + dt : 0;
-    if (car.ram > 0) car.ram -= dt;
-    else if (car.settled > C.ram.settle && !car.telling && chance(C.ram.chance * (car.gunman ? 1 : 2) * dt)) {
-      car.ram = C.ram.dur;
-      car.ramHit = false;
-      car.ramSide = Math.sign(tg.y - v.y) || 1;
-      car.settled = 0;
-    }
+    car.settled = Math.abs(dx) < C.settle * 2 && Math.abs(dy) < C.settle ? car.settled + dt : 0;
+    const A = this.attack?.car === car ? this.attack : null, phase = A && attackPhase(A.kind, A.t, C);
     // His car between it and its slot (he has just changed lanes past it, or thrown it across): never through him.
     // It keeps to its side of him and pulls ahead until it is clear of his nose, then crosses ahead of him, and only
     // drops back to its slot once it is out of his line
@@ -383,6 +423,9 @@ export default class Pursuit {
     const ahead = v.w / 2 + Math.max(car.s, 2) * 60 * C.look + C.pad;
     const lines = hold ? [ty] : [ty, ...band, (band[0] + band[1]) / 2, ty - 60, ty + 60].map((y) => clamp(y, band[0] - 20, band[1] + 20));
     lines.sort((a, b) => Math.abs(a - ty) - Math.abs(b - ty));
+    // (the line it went round something by is tried first while its own is still shut: no weaving between two)
+    if (!hold && car.line !== null && car.line !== ty && lines.includes(car.line)) { lines.splice(lines.indexOf(car.line), 1); lines.splice(1, 0, car.line); }
+    const slotY = ty;
     let block = null;
     // (his car is in the way too, but on the line of a slot in the lane he is not in: it holds that line whatever
     // he does, he may come at it)
@@ -392,6 +435,7 @@ export default class Pursuit {
       if (!hit) { ty = y; block = null; break; }
       block ??= hit;
     }
+    car.line = ty === slotY ? null : ty;
     // all of them blocked: brake for the nearest; going across to a free one past something in its own way: slow
     // enough to be across before it is there. What is in the way may be going too (one of theirs ahead in its lane,
     // his car): its own speed is kept, C.gap px off it
@@ -399,8 +443,23 @@ export default class Pursuit {
     const nose = v.x + v.w / 2, here = !block && Math.abs(ty - v.y) > 6 && this.blockedAt(car, v.x, v.y, ahead, true);
     if (block) { const bv = going(block); vx = Math.min(vx, Math.max(0, bv + (block.x - nose - (bv > 1 ? C.gap : 80)) * 0.04)); }
     else if (here) vx = Math.min(vx, Math.max(1, going(here) + (here.x - nose - 50) * 0.05));
-    let vy = clamp((ty - v.y) * C.lateral, -C.steer, C.steer);
-    if (car.ram > 0) vy = car.ramSide * C.ram.v;
+    // the wheel follows a point that slides to the line it wants (easeLine): no jump from one line to the next
+    car.lineY = easeLine(car.lineY ?? v.y, ty, dt, C);
+    if (Math.abs(car.lineY - v.y) > C.ease) car.lineY = v.y + Math.sign(car.lineY - v.y) * C.ease; // (thrown far off it)
+    let vy = clamp((car.lineY - v.y) * C.lateral, -C.steer, C.steer);
+    // ITS ATTACK. A ram: wound up first, drawn AWAY from him (told: its lamps flash, its body leans out), then the
+    // swipe across at him. A brake: its brake lights first, then it drops back onto his nose in his lane, held there
+    car.ram = 0;
+    v.brake = 0;
+    if (A?.kind === 'ram') {
+      vy = phase === 'wind' ? -A.side * C.ram.back : A.side * C.ram.v;
+      if (phase === 'go') car.ram = C.ram.dur;
+      vx = clamp(pv + (tg.x + C.ram.lead - v.x) * C.close, 0, max); // (level with his doors for it)
+    } else if (A?.kind === 'brake') {
+      v.brake = 1;
+      vy = clamp((sl.y - v.y) * C.lateral, -C.steer, C.steer);
+      if (phase === 'go') vx = Math.max(0, pv - C.block.drop);
+    }
     // slow, the wheel turns further (pulling out from behind something)
     const most = C.heading + clamp(1 - car.s / CHASE.cruise, 0, 1) * C.pullOut;
     const h = clamp(Math.atan2(vy, Math.max(vx, 1)), -most, most);
@@ -447,10 +506,10 @@ export default class Pursuit {
     if (e && e === w.drive?.van) {
       this.lunged(car);
       // (its side swipe landing on him: told once a swipe, systems/ChaseCam.js)
-      if (car.ram > 0 && !car.ramHit) {
-        car.ramHit = true;
+      if (car.ram > 0 && this.attack?.car === car && !this.attack.hit) {
+        this.attack.hit = true;
         const c = pair.collision.supports?.[0] || v;
-        w.events.emit('pursuerRam', { car: v, x: c.x, y: c.y, side: -car.ramSide });
+        w.events.emit('pursuerRam', { car: v, x: c.x, y: c.y, side: this.attack.side });
       }
       if (w.drive.lunge || car.ram <= 0) car.by = w.time;
       return;
@@ -517,6 +576,10 @@ export default class Pursuit {
     car.thrown = true;
     car.set = null;
     car.ram = 0;
+    car.hurt = this.C.hurt;
+    car.slipV += side * CHASE.slide.rammed;
+    car.lineY = null;
+    if (this.attack?.car === car) this.endAttack();
     if (this.tell?.car === car) this.endTell();
   }
 
@@ -530,6 +593,8 @@ export default class Pursuit {
     car.stun = 0;
     car.thrown = false;
     car.set = null;
+    v.brake = 0;
+    if (this.attack?.car === car) this.endAttack();
     if (this.tell?.car === car) this.endTell();
     b.frictionAir = 0.02;
     b.friction = 0.6;
@@ -547,7 +612,8 @@ export default class Pursuit {
     // the men in it: the driver, unless he was shot (his kill told then), and the gunman if still in it
     this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck', undefined, crew);
     this.leave(car);
-    w.events.emit('pursuerWreck', { car: v, x: v.x, y: v.y }); // (the chase's kill beat: systems/ChaseCam.js)
+    // (the chase's kill beat: systems/ChaseCam.js; how: 'shoved' when his car threw it there: the strong beat)
+    w.events.emit('pursuerWreck', { car: v, x: v.x, y: v.y, how: w.time - car.by < AGAIN ? 'shoved' : 'wrecked' });
   }
 
   // the men still in a car stopped for good, all at once: one kill each, but ONE for the streak (how.crew: no
@@ -745,7 +811,8 @@ export default class Pursuit {
   // can this car's gunman start a tell now?
   canTell(car, tg) {
     const G = this.G;
-    if (!tg || !car.gunman || !car.driver || this.tell || this.cool > 0 || this.world.drive?.grabbing) return false;
+    if (!tg || !car.gunman || !car.driver || this.tell || this.attack || this.cool > 0 || this.world.drive?.grabbing) return false;
+    if (car.style === 'rammer' || car.hurt > 0) return false;
     if (!car.dummy && this.busy(tg)) return false;
     if (car.dummy ? car.state !== 'parked' : car.state !== 'chase' || car.chaseT < G.grace) return false;
     const m = this.muzzle(car), d = Math.hypot(tg.seat.x - m.x, tg.seat.y - m.y);
@@ -913,14 +980,74 @@ export default class Pursuit {
       if (T.t >= T.dur) this.shoot();
       return;
     }
-    if (this.cool > 0 || !tg) return;
-    for (const car of this.cars) {
-      if (car.dummy && (car.every -= dt) > 0) continue;
-      if (!this.canTell(car, tg)) continue;
-      if (car.dummy) car.every = this.G.lab.every;
-      this.startTell(car, tg);
-      return;
-    }
+    if (this.cool > 0 || !tg || this.attack) return;
+    // whose turn: a told shot, a ram, a told shot, a brake (nextAttack); the lab's dummies only tell
+    const teller = this.cars.find((car) => {
+      if (car.dummy && (car.every -= dt) > 0) return false;
+      return this.canTell(car, tg);
+    });
+    const rammer = this.cars.find((car) => this.canRam(car, tg)), blocker = this.cars.find((car) => this.canBlock(car, tg));
+    const kind = nextAttack(this.turn, { shot: !!teller, ram: !!rammer, brake: !!blocker }, this.C);
+    if (!kind) return;
+    const R = this.C.attack.round;
+    let i = this.turn % R.length;
+    while (R[i % R.length] !== kind) i++; // (the kind due, or the next in the round that could be made)
+    this.turn = i + 1;
+    if (kind === 'shot') {
+      if (teller.dummy) teller.every = this.G.lab.every;
+      this.startTell(teller, tg);
+    } else this.startAttack(kind === 'ram' ? rammer : blocker, kind, tg);
+  }
+
+  // ---------------------------------------------------------------- the ram and the brake (C.ram, C.block)
+  // in the chase, driven, on the picture, in its slot `settle` s, not keeping its distance, nothing else told
+  ready(car, tg, slot, settle) {
+    return !!tg?.car && car.state === 'chase' && !car.dummy && car.driver && car.slot === slot && car.hurt <= 0 && car.stun <= 0
+      && car.settled >= settle && car.chaseT >= this.G.grace && this.onScreen(car.v) && !this.busy(tg);
+  }
+
+  // abreast of him: a swipe at his flank (a blocker keeps to his lane; a gunner rams less readily: `shy` s more)
+  canRam(car, tg) { return car.style !== 'blocker' && this.ready(car, tg, 'abreast', this.C.ram.settle + (car.style === 'gunner' ? this.C.ram.shy : 0)); }
+
+  // ahead of him in his own lane: it brakes onto his nose
+  canBlock(car, tg) { return this.ready(car, tg, 'ahead', this.C.block.settle) && Math.abs(car.v.y - tg.y) < this.C.settle * 2; }
+
+  // It starts, told first: the ram by its lamps flashing and the car drawn away from him (stepAttack, want), the
+  // brake by its brake lights; `side`: the way the swipe goes (-1: -y)
+  startAttack(car, kind, tg) {
+    const w = this.world, v = car.v;
+    this.attack = { car, kind, t: 0, side: Math.sign(tg.y - v.y) || 1, hit: false, flash: 0 };
+    w.sound('tellClick', v.x, v.y, 0.8);
+    w.sound(kind === 'ram' ? 'tyreSkid' : 'lorryBrake', v.x, v.y, 0.5);
+    w.events.emit('pursuerTell', { car: v, kind });
+  }
+
+  endAttack() {
+    const A = this.attack;
+    if (!A) return;
+    const v = A.car.v;
+    v.brake = 0;
+    v.roll = 0;
+    if (A.car.state !== 'wrecked' && !v.exploded) v.lightsOut = false;
+    A.car.ram = 0;
+    A.car.settled = 0;
+    this.attack = null;
+    this.cool = rand(...this.C.attack.cool);
+  }
+
+  // its clock, and how it is told: winding up a ram, its lamps flash (off `flash` s in every two) and its body leans
+  // away from him, then into the swipe; over (attackPhase), thrown off it or out of the chase: the next one's turn
+  stepAttack(dt, tg) {
+    const A = this.attack;
+    if (!A) return;
+    const car = A.car, v = car.v, C = this.C;
+    A.t += dt;
+    const phase = attackPhase(A.kind, A.t, C);
+    if (!phase || !tg || car.state !== 'chase' || car.stun > 0 || v.exploded) { this.endAttack(); return; }
+    if (A.kind !== 'ram') return;
+    v.lightsOut = phase === 'wind' && Math.floor(A.t / C.ram.flash) % 2 === 1;
+    v.roll = (phase === 'wind' ? -1 : 1) * A.side * C.ram.lean;
+    if (phase === 'go' && !A.went) { A.went = true; this.world.sound('vanShove', v.x, v.y, 0.7); }
   }
 
   // the alley car's red lane: on until the car is through his lane (or out of its run), then fading

@@ -46,7 +46,8 @@ LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
 ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
                             # so it is told early enough to cross AHEAD of him into the far lane (he keeps out of it)
-BEHIND_AT = (165, 250)      # a car set off from behind at each (it starts 19 m back and is alongside 3 s later)
+BEHIND_AT = (165, 236, 262) # a car set off from behind at each (it starts 19 m back and is alongside 3 s later)
+BEHIND_STYLE = ('rammer', 'blocker', 'gunner')
 CROSS_AT = 368              # the last one, out of the cross street ahead of him, as early (about 0:22)
 ALLEY_W = 4
 ALLEYS = (22, 105, EVENT_ALLEY, 190, 232, 272, 418)   # south (none just before the terrace: he comes at it along the sidewalk)
@@ -781,10 +782,12 @@ chase = {
     # 'lorry' (systems/Lorries.js): the lorry waits at `lorry` [col, row] its cab to the north, and backs `back` tiles
     # south across the lanes; `gap` [col, row]: the way round its tail, shown by bone arrows
     'events': [
-        {'at': ALLEY_AT, 'kind': 'alley', 'car': [EVENT_ALLEY + ALLEY_W / 2, 21.0]},
-        *[{'at': c, 'kind': 'behind'} for c in BEHIND_AT],
+        # (`style`: how each car fights, systems/Pursuit.js: the first tells its shots, the second rams, then a
+        # blocker ahead of him with a gunner behind it, and the last one out of the cross street rams)
+        {'at': ALLEY_AT, 'kind': 'alley', 'car': [EVENT_ALLEY + ALLEY_W / 2, 21.0], 'style': 'gunner'},
+        *[{'at': c, 'kind': 'behind', 'style': st} for (c, st) in zip(BEHIND_AT, BEHIND_STYLE)],
         {'at': LORRY_AT, 'kind': 'lorry', 'lorry': [(YARD[0] + YARD[1] + 1) / 2, 6.69], 'back': 5, 'gap': [(YARD[0] + YARD[1] + 1) / 2, 18.3]},
-        {'at': CROSS_AT, 'kind': 'alley', 'car': [(CROSS[0] + CROSS[1] + 1) / 2 + 1.5, 21.0]},
+        {'at': CROSS_AT, 'kind': 'alley', 'car': [(CROSS[0] + CROSS[1] + 1) / 2 + 1.5, 21.0], 'style': 'rammer'},
     ],
     # water standing in the gutter [col, row, r px]: spray under his wheels
     'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]],

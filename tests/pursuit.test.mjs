@@ -54,8 +54,8 @@ function vehicle(w, model, x, y, a = 0) {
 }
 
 // the pursuers' cars made as above (Vehicle needs its sprite to know its size)
-Pursuit.prototype.spawn = function (x, y, a, state, speed = 0) {
-  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed });
+Pursuit.prototype.spawn = function (x, y, a, state, speed = 0, style = undefined) {
+  const car = this.add(vehicle(this.world, 'pursuer', x, y, a), state, { speed, style });
   if (state !== 'wait') this.loose(car);
   return car;
 };
@@ -130,12 +130,12 @@ function run(s, sec, aim = null, until = null) {
   return false;
 }
 
-// with the swipes (and the tells, but with `tells`) out of the way (put back after)
+// with the rams and the brakes (and the tells, but with `tells`) out of the way (put back after)
 function calm(fn, tells = false) {
-  const r = CHASE.pursuit.ram.chance, g = CHASE.gunman.range;
-  CHASE.pursuit.ram.chance = 0;
+  const r = CHASE.pursuit.attack.round, g = CHASE.gunman.range;
+  CHASE.pursuit.attack.round = ['shot'];
   if (!tells) CHASE.gunman.range = 0;
-  try { return fn(); } finally { CHASE.pursuit.ram.chance = r; CHASE.gunman.range = g; }
+  try { return fn(); } finally { CHASE.pursuit.attack.round = r; CHASE.gunman.range = g; }
 }
 
 // the way from his seat to a point, as his gun sees it: inside its arc?
@@ -789,3 +789,137 @@ test('pursuit: what stands in a car\'s way is looked up once (the cars and what 
   P.blockedAt(null, s.v.x, SOUTH, 100);
   assert.equal(P.blockers, now, 'not looked up again while nothing came');
 }));
+
+// ---- they take turns attacking, each attack told; smooth at the wheel
+const { nextAttack, attackPhase, easeLine } = await load('game/systems/Pursuit.js');
+
+test('attacks: a rhythm, one kind after the other, the kind due skipped only when nobody can make it (pure)', () => {
+  const all = { shot: true, ram: true, brake: true }, R = CHASE.pursuit.attack.round;
+  assert.deepEqual([0, 1, 2, 3, 4].map((t) => nextAttack(t, all)), [...R, R[0]]);
+  assert.ok(R.includes('ram') && R.includes('brake') && R.includes('shot'), 'the three of them in the round');
+  for (let i = 0; i < R.length; i++) assert.notEqual(R[i], R[(i + 1) % R.length], 'never the same twice running');
+  assert.equal(nextAttack(1, { shot: true, ram: false, brake: true }), 'shot', 'no one abreast: the next in the round');
+  assert.equal(nextAttack(0, { shot: false, ram: false, brake: false }), null);
+  // told first, then made, then over
+  assert.equal(attackPhase('ram', 0.1), 'wind');
+  assert.equal(attackPhase('ram', CHASE.pursuit.ram.wind + 0.05), 'go');
+  assert.equal(attackPhase('ram', CHASE.pursuit.ram.wind + CHASE.pursuit.ram.dur + 0.01), null);
+  assert.ok(CHASE.pursuit.ram.wind >= 0.4 && CHASE.pursuit.block.wind >= 0.4, 'time to react');
+  assert.equal(easeLine(100, 400, DT), 100 + CHASE.pursuit.ease * DT, 'the line slides');
+  assert.equal(easeLine(100, 101, DT), 101);
+});
+
+test('attacks: a ram is told (lamps flashing, drawn away from him), then swipes at his flank; one attack at a time', () => {
+  const g = CHASE.gunman.range;
+  CHASE.gunman.range = 0; // (no told shot: the ram's turn comes)
+  try {
+    const s = start();
+    const car = s.P.spawn(s.v.x - 160, NORTH, 0, 'chase', 10, 'rammer');
+    s.w.player.invulnerable = true;
+    let told = null, flashed = false, away = 0, toward = 0, rams = 0, y0 = null, kinds = new Set();
+    s.w.events.on('pursuerTell', (e) => { told = e; kinds.add(e.kind); });
+    s.w.events.on('pursuerRam', () => rams++);
+    run(s, 9, null, () => {
+      const A = s.P.attack;
+      if (A) {
+        assert.equal(A.car, car);
+        assert.equal(s.P.tell, null, 'no shot told meanwhile');
+        const ph = attackPhase(A.kind, A.t);
+        if (y0 === null) y0 = car.v.y;
+        if (ph === 'wind') { flashed ||= car.v.lightsOut; away = Math.max(away, (y0 - car.v.y) * A.side); }
+        if (ph === 'go') toward = Math.max(toward, (car.v.y - y0) * A.side);
+      }
+      return rams > 0;
+    });
+    assert.ok(told && told.kind === 'ram' && told.car === car.v, 'told: pursuerTell');
+    assert.ok(flashed, 'its lamps flashed');
+    assert.ok(away > 4, `it drew away first (${away.toFixed(1)} px)`);
+    assert.ok(rams === 1 && toward > 0, `then swiped at him and landed (${toward.toFixed(1)} px)`);
+    run(s, 1.2);
+    assert.ok(!car.v.lightsOut && s.P.cool > 0 || s.P.attack, 'its lamps back on, a pause before the next');
+    assert.equal(s.w.killed, null, 'a swipe is not his death');
+  } finally { CHASE.gunman.range = g; }
+});
+
+test('attacks: a shove into the rammer as it winds up lands first: its attack is off, it keeps its distance, hurt', () => {
+  const g = CHASE.gunman.range;
+  CHASE.gunman.range = 0;
+  try {
+    const s = start();
+    const car = s.P.spawn(s.v.x - 120, NORTH, 0, 'chase', 10, 'rammer');
+    s.w.player.invulnerable = true;
+    assert.ok(run(s, 9, null, () => !!s.P.attack), 'it winds up');
+    s.input.pressed.add('Space');
+    run(s, 0.5, { x: s.v.x, y: s.v.y - 100 });
+    assert.equal(s.P.attack, null, 'its ram is off');
+    assert.equal(car.dents, 1);
+    assert.ok(car.hurt > 0, 'hurt');
+    run(s, 1.6);
+    if (car.state === 'chase') assert.ok(car.v.x > s.v.x + 150, `it keeps ahead, out of reach (${(car.v.x - s.v.x).toFixed(0)} px)`);
+  } finally { CHASE.gunman.range = g; }
+});
+
+test('attacks: the blocker ahead in his lane shows its brake lights, then drops back onto his nose; a lane change dodges it', () => {
+  const g = CHASE.gunman.range;
+  CHASE.gunman.range = 0;
+  try {
+    for (const dodge of [false, true]) {
+      const s = start();
+      const car = s.P.spawn(s.v.x + 200, SOUTH, 0, 'chase', 9, 'blocker');
+      s.w.player.invulnerable = true;
+      const gap = () => car.v.x - s.v.x;
+      assert.ok(run(s, 8, null, () => s.P.attack?.kind === 'brake'), 'it brakes');
+      assert.equal(car.slot, 'ahead', 'alone, a blocker holds the slot ahead of him');
+      const g0 = gap();
+      run(s, CHASE.pursuit.block.wind - 0.1);
+      assert.ok(car.v.brake > 0, 'brake lights first');
+      assert.ok(Math.abs(gap() - g0) < 14, `told before it slows (${(gap() - g0).toFixed(0)} px)`);
+      if (dodge) s.input.held.add('KeyW');
+      let hit = false, low = 9;
+      s.w.events.on('ride', (e) => { if (e.beat === 'hit') hit = true; });
+      run(s, 1.3, null, () => { low = Math.min(low, s.d.v); return false; });
+      if (dodge) assert.ok(!hit && low > 6.5, `a lane change: clear of it (${low.toFixed(1)})`);
+      else assert.ok(gap() < g0 - 30 || hit, `it came back at him (${gap().toFixed(0)} from ${g0.toFixed(0)})`);
+      assert.equal(s.w.killed, null);
+    }
+  } finally { CHASE.gunman.range = g; }
+});
+
+test('pursuit: steering is smooth: the heading and the body turn by a bounded angle a step, no jump across the road', () => calm(() => {
+  const s = start();
+  const cars = [s.P.spawn(s.v.x - 330, NORTH, 0, 'chase', 12), s.P.spawn(s.v.x - 600, NORTH, 0, 'chase', 12)];
+  // a parked car shoved into their lane to go round, and he weaves
+  vehicle(s.w, 'car', s.v.x + 900, NORTH, 0);
+  const most = CHASE.pursuit.turn * DT + 1e-9;
+  let worstH = 0, worstA = 0, worstY = 0;
+  const was = cars.map((c) => ({ h: c.h, a: c.v.body.angle, y: c.v.y }));
+  run(s, 10, null, () => {
+    const t = s.w.time;
+    s.input.held.clear();
+    if (Math.floor(t / 1.3) % 3 === 1) s.input.held.add('KeyW'); else if (Math.floor(t / 1.3) % 3 === 2) s.input.held.add('KeyS');
+    cars.forEach((c, i) => {
+      if (c.state === 'chase' && c.stun <= 0 && c.set) {
+        worstH = Math.max(worstH, Math.abs(c.h - was[i].h));
+        worstA = Math.max(worstA, Math.abs(c.v.body.angle - was[i].a));
+        worstY = Math.max(worstY, Math.abs(c.v.y - was[i].y));
+      }
+      was[i] = { h: c.h, a: c.v.body.angle, y: c.v.y };
+    });
+    return false;
+  });
+  assert.ok(worstH <= most, `the heading: ${worstH.toFixed(4)} rad a step at most (${most.toFixed(4)})`);
+  assert.ok(worstA < 0.06, `the body: ${worstA.toFixed(4)} rad a step`);
+  assert.ok(worstY <= 7, `across: ${worstY.toFixed(2)} px a step`);
+}));
+
+test('pursuit: a car thrown by his shove into a tree or a bus shelter is wrecked too (the kerb is his weapon everywhere)', () => {
+  for (const k of ['streetlight', 'traffic_light', 'street_tree', 'bus_shelter']) assert.ok(CHASE.pursuit.wreck.poles.includes(k), k);
+});
+
+test('events: the waves of level 2A differ: a gunner, a rammer, a blocker, and the last ones', () => {
+  const ev = level2a.chase.events.filter((e) => e.kind === 'alley' || e.kind === 'behind');
+  const styles = ev.map((e) => e.style ?? 'gunner');
+  for (const k of ['gunner', 'rammer', 'blocker']) assert.ok(styles.includes(k), `a ${k}`);
+  assert.ok(ev.length >= 5 && ev.length <= 6, `${ev.length} cars`);
+  for (let i = 1; i < ev.length; i++) assert.ok(ev[i].at > ev[i - 1].at, 'one after the other along the road');
+});

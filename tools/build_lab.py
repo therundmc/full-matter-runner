@@ -88,7 +88,11 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    windscreen): shoot a windscreen (the driver), a front tyre, the gunman, or shove one into the
                    wall. In the south lane a van (a closed car: his hand out of its window, its arc the driver's
                    side and ahead only), two bins in its way, station 17's barrel, parked van and cars to shove, the
-                   end wall to die on nose-on
+                   end wall to die on nose-on. Past the pursuers, station 17's parked cars are SHOVED ASIDE: the
+                   one in the convertible's lane full on the nose (thrown on ahead and out of his way, half his
+                   speed gone: a parked car is never a wall nor the crash), the van in the other lane grazed with a
+                   turn of the wheel (it slides aside, a tenth of his speed gone). THE SLIDE: W then S at once (a flick), W or S held (full lock), SPACE: the tail
+                   steps out, the rear tyres smoke and leave rubber; steer against it and it is caught
     20 GETAWAY     the street's east end: THE BOSS's convertible and level 1's way out played here (systems/Outro.js:
                    step into the ring by its driver's door; the level's `exit` is `open`, nothing to clear first): the
                    vault over the door, the key, the wheelspin and the rubber it lays, the tail out round the leaking
@@ -514,6 +518,11 @@ lv.prop('trash_can', 9.0, 23.0)
 lv.prop('pursuer', 12.6, 23.5, 0, pursuer=True)                 # ABREAST in the other lane: the shove
 lv.prop('pursuer', 12.6 + 165 / 32, 23.5, 0, pursuer=True)      # a length AHEAD in that lane
 lv.prop('pursuer', 12.6 + 220 / 32, 21.0, 0, pursuer=True)      # AHEAD in its own lane: over the windscreen
+# past the pursuers, station 17's parked cars are what he SHOVES ASIDE (systems/Drive.js aside; a parked car is never
+# a wall): the car in the convertible's own lane (col 30) full on the nose (half his speed, thrown on ahead and out
+# of his way, never the crash), the van in the south lane grazed with a turn of the wheel (a tenth of his speed, it
+# slides to its kerb). Before them, room to throw the car about: W then S at once (a flick), W or S held (full
+# lock), SPACE: the tail steps out, smoke and rubber off the rear tyres; steer against it and it is caught
 lv.area('31 chase cam: the beats at the wheel, on station 19\'s pursuers and station 21\'s lorry')
 lv.paint('label_chasecam', 16.4, 18.6)
 
