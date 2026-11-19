@@ -114,6 +114,7 @@
 - Guards may start bare-handed (level `arms`, levelkit `actor(arms=...)`): their weapon kept somewhere (a bat behind
   a counter, against a wall, the cue), fetched once the fight is on (Enemy.armsDue / armUp, AI.arms), or a brawler
   ('fists': never picks one up). A knife guard's blade stays in his pocket until then (ai/Carry.js).
+- Kill cam (an EXPERIMENT, by the address only: `?killcam=zoom` the default, `panel`, `off`): systems/KillCam.js, numbers `KILLCAM` in data/killcam.js, the comic panels render/KillPanel.js; lab station 27.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js.

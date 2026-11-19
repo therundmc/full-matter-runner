@@ -767,7 +767,7 @@ export default class Character {
     const left = gore(this.world, this, angle, cause, by, how); // how: the blow decides how much he bleeds
     // most of them go down with a cry, when there is still a throat to cry with
     if (left === 'corpse' && !this.held && chance(0.75)) this.world.sound('cry', this.x, this.y, 1, { pitch: this.voice });
-    this.world.onKill(this, cause, killer, how);
+    this.world.onKill(this, cause, killer, how, left);
     killBeat(this.world, this, killer);
   }
 

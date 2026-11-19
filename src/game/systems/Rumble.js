@@ -4,6 +4,7 @@
 //   shot          his own, by the gun's family            blow   his blow on a man (a takedown's, a finisher's)
 //   kill          a man of his down; his own death        finisher   a finisher's last beat
 //   explosion     by its distance to him                  doorBroken   a door burst or torn off near him
+//   killcam       the kill cam's heaviest beats, by tier (systems/KillCam.js)
 //   ride          the van and the getaway: { beat }, one of RUMBLE.ride (systems/Drive.js, Lorries.js, World's outro)
 // Mixing: every effect under way is kept until its end, and the pad plays the strongest of them on each motor (never
 // a sum: two shots at once are one shot), until the first of them ends; a new call only when that mix changes, and
@@ -56,6 +57,7 @@ export default class Rumble {
       else if (isHim(killer)) this.feel(R.kill);
     }));
     ev.on('finisher', mine(({ killer }) => { if (isHim(killer)) this.feel(R.finisher); }));
+    ev.on('killcam', mine(({ tier }) => this.feel(R.killcam?.[tier])));
     ev.on('explosion', mine(({ x, y, radius }) => {
       const r = radius || 90;
       this.feel(R.blast, fade(this.dist(x, y), r * R.blast.near, r * R.blast.far));

@@ -89,3 +89,5 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | awningRip | the car driven under a cafe's awning or a terrace parasol tears it down (systems/Drive.js fx, prop `canopy`) | canvas ripping off its frame, light aluminium arms clattering, 0.4 s; three takes |
 | tyreSkid | the car's tyres letting go as rubber is first laid on the road: a shove, hard steering, the brakes (systems/Drive.js fx) | a short tyre chirp on wet asphalt (now: a faint swish; the engine's own squeal layer covers it) |
 | waterSpray | a wheel through standing water in the gutter (systems/Drive.js fx) | a car's wheel through a puddle at speed: a short hissing sheet of water, 0.3 s |
+| killcamIn | the kill cam's heaviest beats in its ZOOM version: the killing blow of a finisher or a takedown, the last man of a chain (systems/KillCam.js; silent for now) | a short low whoosh into slow motion, a breath or one muffled heartbeat, 0.4 s |
+| panelPop | a comic panel pops in at the top right, the kill cam's PANEL version (systems/KillCam.js; silent for now) | a dry paper slap / a card snapped down on a table, very short |

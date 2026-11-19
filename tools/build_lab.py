@@ -116,6 +116,11 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    the wall at the far end of the room, a brawler (fists only); a knife-man (a blade in his pocket,
                    drawn in a moment). A shot or a noise and the doorman runs for his bat, snatches it up and comes;
                    take the bat first and he comes with his fists
+    27 KILL CAM    east of it, same row (cols 34-49): the kill cam (systems/KillCam.js, data/killcam.js; the address
+                   picks its version: ?level=lab&killcam=zoom | panel | off). By the door a bat, a SUPER 90 and its
+                   box, a knife, a tire iron; in the west half three dummies apart to kill each his own way (the
+                   heavy stroke, buckshot at arm's length, floored by a slide or a thrown weapon then finished, or
+                   taken from behind); in the east half five in a row, a step apart, for a chain and its end
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -205,6 +210,10 @@ lv.fill(10, 27, 15, 29, '+')
 lv.put(14, 26, '+')
 lv.fill(17, 27, 31, 29, '.')
 lv.put(24, 26, '.')
+lv.fill(33, 25, 50, 25, 's')               # 27 KILL CAM: the sidewalk goes on east, one more room off it
+lv.fill(33, 26, 50, 29, '#')
+lv.fill(34, 27, 49, 29, '.')
+lv.put(41, 26, '.')
 
 # ---------------------------------------------------------------- actors (30 guards)
 lv.actor('@', 27, 9, face=270)
@@ -502,6 +511,19 @@ lv.prop('chair', 25.4, 28.2, 0)
 for x in (20.0, 27.0):
     lv.prop('ceiling_lamp', x, 28.0)
 
+lv.area('27 kill cam: men to kill each his own way, five in a row for a chain')
+lv.paint('label_killcam', 41.5, 25.5)
+for x, kind in ((40.0, 'bat'), (40.7, 'knife'), (42.6, 'shotgun'), (43.3, 'tire_iron')):
+    lv.drop(kind, x, 27.5, 90)
+lv.actor('g', 43, 28)                      # the shotgun's box
+lv.actor('k', 35, 27, face=0)              # the west half: three apart
+lv.actor('b', 37, 29, face=180)            # (his back to the door: a takedown)
+lv.actor('j', 38, 27, face=90)
+for x in range(45, 50):
+    lv.actor('k', x, 28, face=180)         # the east half: five in a row, a step apart
+for x in (37.0, 46.5):
+    lv.prop('ceiling_lamp', x, 28.5)
+
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [
     [12, 22, 9, '#5a6ad8', 0.3],
@@ -513,7 +535,7 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=36)
+    lv.check(guards=44)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              exit=exit_zone, ambient={'traffic': [], 'walkers': []},
              header=[

@@ -513,6 +513,8 @@ const FOLEY = {
   boneCrack: [['woodBreak', 0.7, 1.7], ['punch', 0.6, 0.9, 0.01]],
   stomp: [['thud', 1, 0.7], ['punch', 0.8, 0.6], ['woodBreak', 0.3, 1.6, 0.01]],
   skullSlam: [['thud', 0.9, 0.8], ['punch', 0.9, 0.7, 0.01]],
+  // the kill cam (systems/KillCam.js): placeholders, silent until the library is bought (assets/sound/PLACEHOLDERS.md)
+  killcamIn: [], panelPop: [],
   throatCut: [['swish', 0.4, 1.2], ['soft', 0.6, 0.7, 0.05]],
   bladeTwist: [['soft', 0.6, 0.8], ['punch', 0.4, 1.4, 0.04]],
   handPlant: [['soft', 0.6, 1.2], ['wood', 0.15, 1.4]],

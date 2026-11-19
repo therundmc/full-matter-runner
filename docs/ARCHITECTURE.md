@@ -129,6 +129,13 @@ src/
                           at, eased; the zoom rests on a whole number of px a world px (pure, unit-tested)
       BossStage.js        the camera on a boss's beats (the 'boss' event; data/bosses.js `shot`): a SHOTS name and the
                           real seconds it holds, asked by Game like a staged level's shot (pure state, unit-tested)
+      KillCam.js          the kill cam, an experiment (KILLCAM in data/killcam.js; `?killcam=zoom|panel|off`, zoom by
+                          default): the player's violent kills, finishers and takedowns, the kills of a long chain and its
+                          end sorted into beats (one at a time, the stronger wins, a gap per tier; never at a wheel, in a
+                          staged shot, on his death). zoom: `scale` on Camera.scale next to the director's and `aim` on
+                          the view (Game.updateCamera), slow motion through Impact.slowAtLeast, a hit-stop; panel: no
+                          zoom, no slow motion, `panelView()` for render/KillPanel.js. Tells 'killcam' { tier, mode, x, y }
+                          (DOM-free, unit-tested; advanced by Game on the real clock)
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
       Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
@@ -283,6 +290,9 @@ src/
                           (pure, deterministic per mark: no flicker)
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
+      KillPanel.js        the kill cam's comic panels (`?killcam=panel`): sharp footage cut out of the scene about the
+                          player, kept at each kill of his, replayed slowed in a cut-paper insert at the top right (a
+                          strip of three for a finisher and a chain's end); canvases injectable
     entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
                           kind level `looks` draws him as), Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per

@@ -39,6 +39,8 @@ import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import Direction from './systems/Direction.js';
+import KillPanel from './render/KillPanel.js';
+import { killcamMode } from './data/killcam.js';
 import Opening from './systems/Opening.js';
 import { drawMurk } from './render/Murk.js';
 import { cuesOn } from './render/Readability.js';
@@ -119,6 +121,9 @@ export default class Game {
     // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
     const mark = new URLSearchParams(location.search).get('mark');
     if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
+    // the kill cam's version, by the address only (data/killcam.js: ?killcam=zoom|panel|off), and its comic panels
+    this.killMode = killcamMode(new URLSearchParams(location.search).get('killcam'));
+    this.killPanel = new KillPanel();
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
@@ -262,6 +267,9 @@ export default class Game {
     this.recorder.reset();
     this.recorder.attach(this.world.events);
     this.lens.bind(this.world.events);
+    this.world.killCam.mode = this.killMode;
+    this.killPanel.reset();
+    this.killPanel.attach(this.world.events);
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
     // a level driven in the van opens on the drive's view, ahead of it (systems/Drive.js)
@@ -596,6 +604,7 @@ export default class Game {
     this.tension.update(dt);
     this.world.killFeed.update(dt); // on the real clock: a hit-stop never holds a stamp up
     this.world.bossStage.update(dt);
+    this.updateKillCam(dt);
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 
@@ -760,6 +769,12 @@ export default class Game {
     return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot() ?? w.drive?.shot() ?? null;
   }
 
+  // the kill cam's clock (systems/KillCam.js): never in a staged shot; the usual view, without its own zoom
+  updateKillCam(dt) {
+    const c = this.camera, kc = this.world.killCam, z = c.zoom * c.scale / kc.scale;
+    kc.update(dt, { staged: this.state !== 'play' || !!this.stagedShot(), view: { x: c.x, y: c.y, hw: c.w / z / 2, hh: c.h / z / 2 } });
+  }
+
   updateCamera(dt) {
     const w = this.world;
     if (!w) return;
@@ -797,10 +812,13 @@ export default class Game {
     D.set(shot?.name, shot?.at);
     D.update(dt, this.camera.zoom);
     this.camera.scale = D.zoom * this.driveZoom;
+    const kc = w.killCam; // its punch-in on top (1 at rest, and at the wheel), the view drawn toward the kill
+    this.camera.scale *= kc.scale;
     const z = this.camera.zoom * this.camera.scale, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
     const fr = dr && dr.frame(this.camera.w / z);
     const seen = dr ? D.aim(fr.x, fr.y) : D.aim(p.x + ox * D.look, p.y + oy * D.look, frame);
-    let tx = seen.x, ty = seen.y;
+    const drawn = dr ? seen : kc.aim(seen.x, seen.y, frame);
+    let tx = drawn.x, ty = drawn.y;
     const o = this.state === 'outro' && w.outro;
     if (o) {
       // from the player over to the car's cab, a little ahead of it
@@ -892,6 +910,7 @@ export default class Game {
     }
     // the replay keeps the bare picture: no lens, scanlines, flash or HUD (they go over it again when it plays)
     if (this.state === 'play' && !this.overview) this.recorder.capture(this.canvas, this.world.time);
+    if (this.state === 'play' && !this.overview && this.killMode === 'panel') this.killPanel.capture(this.canvas, this.camera, this.world, this.time);
     if (!post) ctx.drawImage(this.getVignette(W, H), 0, 0);
   }
 
@@ -904,6 +923,7 @@ export default class Game {
       ctx.globalAlpha = 1;
     }
     if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
+    if (this.state === 'play') this.safeDraw(ctx, () => this.killPanel.draw(ctx, W, H, this.world.killCam.panelView()));
     if (this.sandbox.on && this.state === 'play') this.safeDraw(ctx, () => drawSandbox(ctx, H, this.sandbox, t));
     if (this.world.debugPhysics) {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;

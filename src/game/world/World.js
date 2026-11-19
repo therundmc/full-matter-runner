@@ -2,7 +2,7 @@
 // the actual rules live in systems (Ballistics, Explosions, Destruction, Scoring, Impacts) and the
 // drawing in WorldRenderer. Systems talk through `world.events` (EventBus):
 //   'impact'        physics contact            { a, b, speed, x, y }
-//   'kill'          a character died           { victim, cause, killer }
+//   'kill'          a character died           { victim, cause, killer, how, left }
 //   'knock'         a guard was floored        { victim, cause, angle }   (entities/Enemy)
 //   'shot'          a trigger was pulled       { shooter, weapon }
 //   'explosion'     a blast went off           { x, y, radius, source }
@@ -41,6 +41,7 @@ import Flinch from '../systems/Flinch.js';
 import Danger from '../systems/Danger.js';
 import { combatFx } from '../fx/CombatFx.js';
 import { listenMoments } from '../fx/Impact.js';
+import KillCam from '../systems/KillCam.js';
 import KillFeed from '../ui/KillFeed.js';
 import Ambience from '../systems/Ambience.js';
 import Tutorial from '../systems/Tutorial.js';
@@ -136,6 +137,7 @@ export default class World {
     this.scoring = new Scoring(this);
     this.killFeed = new KillFeed(this.events);    // what is shown of kills and chains (advanced by Game on the real clock)
     listenMoments(this);                          // a multi-kill's slow motion and hit-stop
+    this.killCam = new KillCam(this);             // the camera / a comic panel on his kills (after Scoring: it reads the chain)
     this.bossStage = new BossStage(this);         // the camera on a boss's beats (advanced by Game on the real clock)
     this.impacts = new Impacts(this);
     this.liquids = new Liquids(this); // the liquid on the floor: spills, blood, the rain's puddles, footprints
@@ -362,8 +364,9 @@ export default class World {
 
   // ---------------- deaths & level flow ----------------
   // how: the circumstances of the kill, when whoever did it knows them (a round's way there, a blow's side)
-  onKill(ch, cause, killer, how) {
-    this.events.emit('kill', { victim: ch, cause, killer, how });
+  // left: what is left of him (fx/Gore.js: 'corpse', 'headless', 'gibs')
+  onKill(ch, cause, killer, how, left) {
+    this.events.emit('kill', { victim: ch, cause, killer, how, left });
     if (ch.isPlayer) { this.endT = this.time; this.game.onPlayerDeath(cause, killer); return; }
     if (ch.isCivilian) return;
     // no spare magazine on a guard: a gun picked up holds what was left in it, and that is all (user: count your rounds).
