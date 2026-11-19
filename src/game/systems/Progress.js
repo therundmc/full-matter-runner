@@ -4,8 +4,15 @@ import { clearBest } from './Records.js';
 
 const KEY = 'fmr.progress.v1';
 
-// the order the levels unlock in (an id that is not in the level registry yet is simply skipped by the menu)
-export const CAMPAIGN = ['tutorial', 'level1'];
+// the order the levels unlock in (an id that is not in the level registry yet is simply skipped by the menu); level 2
+// is two levels (docs/LEVEL2.md): 2A the chase, 2B the station (not made yet)
+export const CAMPAIGN = ['tutorial', 'level1', 'level2a'];
+
+// a campaign level's number as the screens show it, from its id: level1 -> '1', level2a -> '2A' (null: not numbered)
+export function levelTag(id) {
+  const m = /^level(\d+)([a-z]?)$/.exec(id || '');
+  return m ? m[1] + m[2].toUpperCase() : null;
+}
 
 function defaultStorage() {
   try { return globalThis.localStorage || null; } catch { return null; }
@@ -14,13 +21,14 @@ function defaultStorage() {
 const fresh = () => ({ unlocked: [CAMPAIGN[0]], done: [] });
 const ids = (a) => (Array.isArray(a) ? [...new Set(a.filter((x) => typeof x === 'string'))] : []);
 
-// { unlocked: [ids], done: [ids] }: the first campaign level is always open, a finished level is open too
+// { unlocked: [ids], done: [ids] }: the first campaign level is always open, a finished level is open too, and so is
+// the one after it (a save from before that level was in the campaign opens it on load)
 export function loadProgress(storage = defaultStorage()) {
   let raw = null;
   try { raw = JSON.parse(storage.getItem(KEY)); } catch { /* nothing usable stored */ }
   if (!raw || typeof raw !== 'object') return fresh();
   const done = ids(raw.done);
-  return { unlocked: ids([CAMPAIGN[0], ...ids(raw.unlocked), ...done]), done };
+  return { unlocked: ids([CAMPAIGN[0], ...ids(raw.unlocked), ...done, ...done.map(nextLevel).filter(Boolean)]), done };
 }
 
 export function saveProgress(p, storage = defaultStorage()) {

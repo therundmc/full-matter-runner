@@ -58,9 +58,12 @@
 - Wounds show on the body (data/wounds.js `MARKS`, fx/BodyMarks.js, render/BodyMarkArt.js). A man knocked down falls
   on his back, head AWAY from the blow (`downAngle`).
 - Camera: `VIEW` = 290 world px high (engine/Camera.js); the scene is drawn at a whole zoom slightly larger than the
-  window and the lens brings it down (Game resize). At the wheel the view is `CHASE.camera.view` = 360, still at a
-  whole zoom (never a zoom that follows the speed: it blurred the pixel art); speed is sold by the lens's drive-only
-  edge streaks (data/post.js `POST.speed.drive`, nothing near the middle) and the world's wind / wake (CHASE.fx).
+  window and the lens brings it down (Game resize). At the wheel the picture is drawn 1:1 (`fitView` pixel: the
+  canvas is the window, the whole zoom nearest to `CHASE.camera.view` = 360: 3 at 1080), the camera held on whole px
+  and locked on the car (Camera `pixel`, Drive.frame: no tilt, turn, lag or zoom that follows the speed), a driven
+  car drawn at a whole px on one of 64 angles (Vehicle.pose, `CHASE.pixel`), the lens flat (Lens `flat`); speed is
+  sold by the lens's drive-only edge streaks (data/post.js `POST.speed.drive`, nothing near the middle nor round
+  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car: that was its blur.
 - Rooms are tight: level 1 loses whole tiles (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`); the builder keeps its drawing's coordinates, the kit moves them: keep things off the cut lines.
   Coordinates in tests and QA plans are the level's AFTER the cuts. A doorway needs room on one side; wall pieces
@@ -153,7 +156,8 @@
   back room and the back of house are not.
 
 ## Front end, story, tutorial
-- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN` = tutorial then level1)
+- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN` = tutorial, level1, level2a: the level after a done one is open, an
+  old save too)
   and systems/Settings.js in localStorage; `Game.startLevel(id)`, `newGame()`, `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
@@ -179,7 +183,8 @@
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  drawn by a marker once; the levels pinned under their target in `LEVEL_AT`, 2A and 2B under JITTERS, a level not made
+  yet a greyed note taped SOON, `SOON`), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),

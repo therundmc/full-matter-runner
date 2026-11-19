@@ -2,12 +2,10 @@
 //   drawChaseFigures (the standing layer, lit with the scene): each pursuer's gunman leaning out of its window on the
 //   runner's side, his arm out and the pistol in his hand (shot: one arm hanging down the door); in a closed car the
 //   runner's own hand out of his driver's window with his gun, pointed where he aims (in his arc only; an open car
-//   draws him sat at the wheel, his arm out: Vehicle.draw, CharacterAnim.seatPose); a gun or a magazine thrown onto
-//   the road, flying, then lying there
+//   draws him sat at the wheel, his arm out: Vehicle.draw, CharacterAnim.seatPose)
 //   drawChaseTells (after the lighting: telegraphs read in the dark; docs/LEVEL2.md, "nothing else red on the road"):
 //   the alley car's RED LANE across the road; a gunman's tell in its three beats (a white glint at the muzzle, a thin
-//   red line fattening into a wedge toward the bracket on the lane band where it will land, the shot's bone tracer);
-//   a catch-light on what lies on the road to pick up
+//   red line fattening into a wedge toward the bracket on the lane band where it will land, the shot's bone tracer)
 //   drawChaseWind (after the lighting too): the streaks of air past his car at speed (systems/Drive.js `wind`): one
 //   world px thick, whole px, bone, each fading in and out
 import { BODY_SCALE } from '../Config.js';
@@ -36,8 +34,8 @@ export function drawChaseWind(ctx, w) {
 export function drawChaseFigures(ctx, w, vis) {
   const P = w.pursuit;
   if (P) {
-    for (const car of P.cars) if (vis(car.v.x, car.v.y) && !car.v.exploded) drawGunman(ctx, P, car);
-    for (const k of P.pickups) drawPickup(ctx, k);
+    // (in his car's frame as it is drawn: Vehicle.pose)
+    for (const car of P.cars) if (vis(car.v.x, car.v.y) && !car.v.exploded) car.v.carried(ctx, () => drawGunman(ctx, P, car));
   }
   const gun = w.drive?.on && !w.drive.dead ? w.drive.gun : null;
   if (gun?.aimed?.ok && !gun.van.rider) drawHand(ctx, gun, w.player); // (an open car draws him, his arm out)
@@ -77,12 +75,6 @@ function drawHand(ctx, gun, p) {
   if (img) drawSprite(ctx, img, h.x + Math.cos(a) * 4, h.y + Math.sin(a) * 4, a, 1, BODY_SCALE);
 }
 
-function drawPickup(ctx, k) {
-  const P = CHASE.pickup, f = clamp(k.t / P.fly, 0, 1), x = k.x0 + (k.x - k.x0) * f, y = k.y0 + (k.y - k.y0) * f;
-  const lift = Math.sin(f * Math.PI) * 0.5, img = sprite(k.kind === 'gun' ? 'weapons/pistol' : 'weapons/mag_pistol');
-  drawSprite(ctx, img, x, y, f < 1 ? k.spin * k.t : k.spin * P.fly, 1, BODY_SCALE * (1 + lift));
-}
-
 export function drawChaseTells(ctx, w, t) {
   const P = w.pursuit;
   if (w.lorries) drawLorries(ctx, w.lorries, t);
@@ -94,13 +86,6 @@ export function drawChaseTells(ctx, w, t) {
     const k = 1 - tr.t / P.G.tracer;
     line(ctx, tr.x0, tr.y0, tr.x1, tr.y1, `rgba(${BONE},${0.9 * k})`, 1.4);
     dot(ctx, tr.x1, tr.y1, `rgba(255,250,235,${k})`, 2);
-  }
-  // what lies on the road to pick up: a ring of light that beats
-  for (const k of P.pickups) {
-    if (k.t < CHASE.pickup.fly) continue;
-    ctx.strokeStyle = `rgba(249,200,14,${0.45 + 0.35 * Math.sin(t * 8)})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(k.x, k.y, 9, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }

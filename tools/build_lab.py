@@ -74,18 +74,21 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
     18 COAT        the concourse's west half, an open lane to run, turn and slide in and watch the runner's coat
                    (src/game/entities/Skirt.js): a low table to vault or slide past, a barrel to turn round
     19 DRIVE       the street's west end: two cars to get into (E at the driver's door) and drive east
-                   (systems/Drive.js: W / S, A / D, SPACE the shove toward the mouse's side, the mouse and the left
-                   click his gun, R a reload; E again, or stopping, gets him out). In the NORTH lane THE BOSS's
-                   convertible, the Uzi on its seat (the grab, as at 22): the heavy car's feel (the nose on its
-                   spring, the rear out on the wheel held hard flat out, the body on its springs, the shove), what
-                   the speed does to the picture, and its gun ALL ROUND (125 degrees either side of the nose) on three
-                   pursuers' black cars (systems/Pursuit.js; each gunman tells his shot every few seconds at whoever
-                   comes near, harmlessly): one to his RIGHT in the south lane (across the passenger seat), one to
-                   his LEFT up on the sidewalk (out of his door), one dead AHEAD in his lane (over the windscreen):
-                   shoot a windscreen (the driver), a front tyre, the gunman, or shove one into the wall. In the
-                   south lane a van (a closed car: his hand out of its window, its arc the driver's side and ahead
-                   only), the south pursuer and two bins in its way, station 17's barrel, parked van and cars to
-                   shove, the end wall to die on nose-on
+                   (systems/Drive.js: the car runs at its cruise speed by itself, no throttle and no brake; W / S,
+                   or A / D, steer it up / down the picture; SPACE the shove, a lunge of a lane toward the side he
+                   aims at; the mouse and the left click his gun, which never runs dry at the wheel; E again gets him
+                   out). The picture at the wheel is drawn 1:1 on whole px, the car on one of 64 angles: it stays as
+                   sharp as a man on foot. In the NORTH lane THE BOSS's convertible, the Uzi on its seat (the grab,
+                   as at 22): the car's feel (the nose on its spring, the body on its springs, the shove), what the
+                   speed does to the picture's edges, and its gun ALL ROUND (125 degrees either side of the nose) on
+                   three pursuers' black cars standing where the chase's pursuers hold (systems/Pursuit.js `slots`;
+                   each gunman tells his shot every few seconds at whoever comes near, harmlessly): as he draws level
+                   with the first, it is ABREAST of him in the other lane (the shove: half its hp and thrown aside,
+                   two wreck it), the second a length AHEAD in that lane, the third AHEAD in his own lane (over the
+                   windscreen): shoot a windscreen (the driver), a front tyre, the gunman, or shove one into the
+                   wall. In the south lane a van (a closed car: his hand out of its window, its arc the driver's
+                   side and ahead only), two bins in its way, station 17's barrel, parked van and cars to shove, the
+                   end wall to die on nose-on
     20 GETAWAY     the street's east end: THE BOSS's convertible and level 1's way out played here (systems/Outro.js:
                    step into the ring by its driver's door; the level's `exit` is `open`, nothing to clear first): the
                    vault over the door, the key, the wheelspin and the rubber it lays, the tail out round the leaking
@@ -453,7 +456,7 @@ lv.prop('car2', 47.2, 21.1, 0)             # its tank (the rear, west end) by th
 # and he takes the Uzi off its passenger seat, every time (systems/Drive.js grab), then drives it
 lv.prop('convertible', 38.6, 20.9, 0, drive=True)
 lv.paint('label_grab', 34.6, 18.6)
-lv.prop('barrel', 16.6, 23.4)
+lv.prop('barrel', 9.2, 24.4)               # (west of station 19's pursuers: the south lane is theirs from col 10 on)
 lv.prop('barrel', 33.0, 23.5)
 for x in (10.5, 20.5, 32.5, 41.0):
     lv.prop('streetlight', x, 19.7, 90)
@@ -465,15 +468,16 @@ lv.pigeons(34.0, 18.8, 3)
 for x in (6.5, 18.5, 34.5, 47.5):
     lv.prop('wall_lamp', x, 18.08, 0)      # over the sidewalk, on the facade
 
-lv.area('19 drive: the convertible and a van to get into and drive down the street, three pursuers to shoot all round')
+lv.area('19 drive: the convertible and a van to get into and drive down the street, three pursuers where the chase holds them')
 lv.paint('label_drive', 8.2, 18.6)
 lv.prop('convertible', 4.7, 21.0, 0, drive=True)  # the north lane: E at its driver's door (on the sidewalk)
 lv.prop('van', 4.6, 23.5, 0, drive=True)   # the south lane: E at its driver's door (its north side)
-lv.prop('trash_can', 18.4, 23.9)
-lv.prop('trash_can', 19.2, 23.0)
-lv.prop('pursuer', 12.6, 23.55, 0, pursuer=True)  # to the convertible's RIGHT (the van's first thing to shove)
-lv.prop('pursuer', 14.2, 19.02, 0, pursuer=True)  # to its LEFT, up on the sidewalk
-lv.prop('pursuer', 22.0, 21.1, 0, pursuer=True)   # dead AHEAD in its lane, its gunman telling his shot
+lv.prop('trash_can', 8.3, 23.9)
+lv.prop('trash_can', 9.0, 23.0)
+# the chase's slots (data/chase.js CHASE.pursuit.slots), as the convertible draws level with the first one
+lv.prop('pursuer', 12.6, 23.5, 0, pursuer=True)                 # ABREAST in the other lane: the shove
+lv.prop('pursuer', 12.6 + 165 / 32, 23.5, 0, pursuer=True)      # a length AHEAD in that lane
+lv.prop('pursuer', 12.6 + 220 / 32, 21.0, 0, pursuer=True)      # AHEAD in its own lane: over the windscreen
 
 lv.area('21 lorry: a box lorry that backs out across the street when a car comes')
 lv.fill(63, 18, 72, 19, 's')               # the street carried on east past the facades, the lorry's yard north of it

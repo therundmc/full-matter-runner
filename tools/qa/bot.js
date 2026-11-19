@@ -479,7 +479,8 @@
 
   // a plan by name: the level's (PLANS) or a chaos one (CHAOS)
   const isChaos = (name) => Object.prototype.hasOwnProperty.call(CHAOS, name);
-  const planDef = (name) => (isChaos(name) ? CHAOS[name] : PLANS[opts.level]?.[name]);
+  // a level with no plans of its own plays 'free' only
+  const planDef = (name) => (isChaos(name) ? CHAOS[name] : (PLANS[opts.level] || { free: { steps: [] } })[name]);
   // the plans a session may be drawn on (rescues never are; --plans narrows both families)
   function planNames() {
     const plans = PLANS[opts.level] || { free: { steps: [] } }, pick = (n) => !opts.plans || opts.plans.includes(n);
@@ -1715,9 +1716,12 @@
       else { inp.mouse.clicked[0] = true; inp.anyPressed = true; act('title: click'); }
       return;
     }
+    // the hit list between two levels (a chaos run's keys at the results can lead there): on at once
+    if (st === 'hitlist') { if (g.stateT > 1.2) { press(inp, 'Enter'); act('hit list: on'); } return; }
     if (!g.world) return;
-    // out of the tutorial the game goes on to the next level: back to the one under test, from its beginning
-    if (opts.level === 'tutorial' && !g.world.tutorial && g.startLevel) { g.tutorialAt = null; g.startLevel(opts.level); act('tutorial: again'); return; }
+    // out of a campaign level the game goes on to the next one: back to the one under test, from its beginning
+    S.under ??= g.levelId;
+    if (g.levelId !== S.under && g.startLevel) { g.tutorialAt = null; g.startLevel(S.under); act(`${S.under}: again`); return; }
     if (g.world !== S.world) onNewWorld(g.world);
     const w = g.world, p = w.player;
     if (st === 'intro') { inp.keys.clear(); if (g.stateT > 0.35) { inp.anyPressed = true; act('intro: key'); } return; }

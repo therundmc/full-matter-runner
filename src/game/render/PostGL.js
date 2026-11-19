@@ -75,8 +75,8 @@ uniform vec4 uWaves[4];
 uniform vec4 uHeat[6];
 uniform vec3 uGain, uLift, uTint;
 uniform float uSat, uCon, uTintK;
-uniform vec2 uRushDir, uRushAt, uRushBand;
-uniform float uRush, uRushLen, uRushRows, uRushFlick, uRushMix, uRushPull, uRushSplit, uRushDark, uRushShare, uRushRun, uRushGlow;
+uniform vec2 uRushDir, uRushAt, uRushBand, uRushCar;
+uniform float uFlat, uRush, uRushLen, uRushRows, uRushFlick, uRushMix, uRushPull, uRushSplit, uRushDark, uRushShare, uRushRun, uRushGlow;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -113,18 +113,22 @@ void main() {
       uv += vec2(sin(uv.y * 210.0 + uTime * 8.0) / asp, cos(uv.x * asp * 170.0 - uTime * 6.1)) * 0.0017 * h.w * f * f;
     }
   }
-  // at the wheel: how far this point is into the band the speed works on (0 on the road, 1 on the picture's
-  // edges, measured across the way he goes), and that band stretched along the road about his car
-  float rush = 0.0;
+  // at the wheel: how far this point is into the band the speed works on (0 on the road and round his car, 1 on
+  // the picture's edges, measured across the way he goes), and that band stretched along the road about his car.
+  // The scene is drawn 1:1 there (uFlat): out of the band every px comes out as it was drawn, so the lens' own
+  // fringe is kept to the band too
+  float rush = 0.0, lens = 1.0;
   vec2 along = uRushDir * vec2(1.0 / asp, 1.0);
-  if (uRush > 0.001) {
+  if (uFlat > 0.5) {
     vec2 mid = (uv - 0.5) * vec2(asp, 1.0);
-    rush = smoothstep(uRushBand.x, uRushBand.y, abs(dot(mid, vec2(-uRushDir.y, uRushDir.x)))) * uRush;
+    lens = smoothstep(uRushBand.x, uRushBand.y, abs(dot(mid, vec2(-uRushDir.y, uRushDir.x))))
+      * smoothstep(uRushCar.x, uRushCar.y, length((uv - uRushAt) * vec2(asp, 1.0)));
+    rush = lens * uRush;
     uv -= along * dot((uv - uRushAt) * vec2(asp, 1.0), uRushDir) * uRushPull * rush;
   }
   // the lens: colours part toward the corners (and along the road in that band)
   vec2 dir = uv - 0.5;
-  vec2 fr = dir * dot(dir, dir) * uFringe * 2.83 / uRes.y + along * uRushSplit * rush / uRes.y;
+  vec2 fr = dir * dot(dir, dir) * uFringe * lens * 2.83 / uRes.y + along * uRushSplit * rush / uRes.y;
   vec3 col = vec3(texture2D(uScene, uv + fr).r, texture2D(uScene, uv).g, texture2D(uScene, uv - fr).b);
   if (rush > 0.002) {
     // what is bright leaves a trail behind it along the road, row by row, each row its own length: pixel combs
@@ -304,6 +308,7 @@ class Post {
       g.uniform3fv(l.uGain, u.grade.gain); g.uniform3fv(l.uLift, u.grade.lift); g.uniform3fv(l.uTint, u.grade.tint);
       const R = u.rush;
       g.uniform2f(l.uRushDir, R.dir[0], R.dir[1]); g.uniform2f(l.uRushAt, R.at[0], R.at[1]); g.uniform2f(l.uRushBand, R.band[0], R.band[1]);
+      g.uniform2f(l.uRushCar, R.car[0], R.car[1]);
       const one = {
         uTime: t % 1000, uFringe: u.fringe, uZoom: u.zoom, uFrame: u.frame, uGlitch: u.glitch, uCurve: u.curve, uScan: u.scan,
         uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette, uEdge: u.edge, uBlur: u.blur,
@@ -311,7 +316,7 @@ class Post {
         uToneKnee: u.tone.knee, uToneSoften: u.tone.soften,
         uSat: u.grade.sat, uCon: u.grade.con, uTintK: u.grade.tintK,
         uRushShare: R.lines.share, uRushRun: R.lines.run, uRushGlow: R.lines.glow,
-        uRush: R.k, uRushLen: R.len, uRushRows: R.rows, uRushFlick: R.flick, uRushMix: R.mix, uRushPull: R.pull, uRushSplit: R.split, uRushDark: R.dark,
+        uFlat: R.flat, uRush: R.k, uRushLen: R.len, uRushRows: R.rows, uRushFlick: R.flick, uRushMix: R.mix, uRushPull: R.pull, uRushSplit: R.split, uRushDark: R.dark,
       };
       for (const k in one) g.uniform1f(l[k], one[k]);
     });

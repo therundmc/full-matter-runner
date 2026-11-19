@@ -53,12 +53,11 @@ export const KBM_CONTROLS = [
     ['WORLD', [['E', 'PICK UP / SWAP'], ['E', 'USE / OPEN TRUNK']]],
   ],
   [
-    ['AT THE WHEEL', [['Z/W', 'SPEED UP'], ['S', 'BRAKE'], ['Q/A D', 'STEER'], ['SPACE', 'SHOVE'], ['LMB', 'FIRE THE UZI'],
-      ['R', 'RELOAD']]],
+    ['AT THE WHEEL', [['Z/W S', 'ACROSS THE ROAD'], ['Q/A D', 'ACROSS TOO'], ['SPACE', 'SHOVE (AIM\'S SIDE)'],
+      ['MOUSE', 'AIM THE UZI'], ['LMB', 'FIRE THE UZI']]],
     ['GAME', [['ESC', 'PAUSE'], ['BKSP', 'RESTART'], ['R', 'RETRY WHEN DEAD'], ['M', 'MUSIC ON / OFF']]],
   ],
 ];
-// (the pad does not drive yet: Drive.js reads the keys only, so the wheel lists what the pad does there)
 export const PAD_CONTROLS = [
   [
     ['MOVE', [['LS', 'MOVE'], ['RS', 'AIM'], ['LT', 'LOOK FURTHER'], ['A', 'VAULT / CLIMB'], ['A', 'SLIDE ON THE RUN']]],
@@ -66,7 +65,7 @@ export const PAD_CONTROLS = [
     ['WORLD', [['X', 'PICK UP / SWAP'], ['X', 'USE / OPEN TRUNK']]],
   ],
   [
-    ['AT THE WHEEL', [['A', 'SHOVE'], ['RS', 'AIM THE UZI'], ['RB', 'FIRE THE UZI'], ['Y', 'RELOAD']]],
+    ['AT THE WHEEL', [['LS', 'ACROSS THE ROAD'], ['A', 'SHOVE (AIM\'S SIDE)'], ['RS', 'AIM THE UZI'], ['RB', 'FIRE THE UZI']]],
     ['GAME', [['START', 'PAUSE'], ['A / Y', 'RETRY WHEN DEAD'], ['DPAD', 'MENUS'], ['B', 'BACK']]],
   ],
 ];

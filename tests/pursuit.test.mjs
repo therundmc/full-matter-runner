@@ -6,7 +6,7 @@ import { load } from './setup.mjs';
 const ctx = new Proxy({}, { get: (t, k) => t[k] ?? (() => ctx), set: (t, k, v) => { t[k] = v; return true; } });
 globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
 
-const { default: Pursuit, dueEvents, slotOf, lockOf, inBand, reaches } = await load('game/systems/Pursuit.js');
+const { default: Pursuit, dueEvents, lanesOf, slotOf, pickSlots, lockOf, inBand, reaches } = await load('game/systems/Pursuit.js');
 const { default: Drive, seatOf } = await load('game/systems/Drive.js');
 const { arcOf, inArc, inCone } = await load('game/systems/CarGun.js');
 const { CHASE } = await load('game/data/chase.js');
@@ -41,7 +41,7 @@ function vehicle(w, model, x, y, a = 0) {
     world: w, type: model, m, k: 1, w: W, h: H, body, isVehicle: true, g: ctx, glassPx: { wind: [], rear: [] },
     windows: { wind: 0, rear: 0 }, tires: [true, true, true, true], lamps: [true, true, true, true], hp: m.hp, fuel: 0,
     puddle: 0, alarm: 0, lit: true, flash: 0, moving: false, dead: false, exploded: false, burning: false, rider: null,
-    hat: !!m.hat, gun: !!m.gun,
+    hat: !!m.hat, gun: !!m.gun, drawn: null,
     def: { static: true, hp: m.hp, vault: true },
   });
   w.physics.add(body);
@@ -57,7 +57,7 @@ Pursuit.prototype.spawn = function (x, y, a, state, speed = 0) {
   return car;
 };
 
-// his pistol, his pools: what CarGun asks of him
+// his pistol: what CarGun asks of him (his pools are never touched at the wheel)
 function runner(body) {
   return {
     body, alive: true, hidden: false, angle: 0, isPlayer: true, team: 'player', reloading: 0, reloadDur: 1,
@@ -65,10 +65,7 @@ function runner(body) {
     get x() { return body.position.x; }, get y() { return body.position.y; },
     get def() { return WEAPONS[this.weapon ? this.weapon.type : 'fists']; },
     setWeapon(type, mag) { this.weapon = type ? { type, mag } : null; this.reloading = 0; },
-    reserveCount() { return this.ammo['9mm']; },
     kill(a, cause, killer) { this.alive = false; this.world.onKill(this, cause, killer); },
-    takeMag() { const n = Math.min(this.def.mag, this.ammo['9mm']); this.ammo['9mm'] -= n; return n; },
-    addAmmo(c, n) { this.ammo[c] += n; return true; },
   };
 }
 
@@ -135,13 +132,44 @@ function calm(fn, tells = false) {
   try { return fn(); } finally { CHASE.pursuit.ram.chance = r; CHASE.gunman.range = g; }
 }
 
-test('pursuit: the slots, the lock, the band (pure)', () => {
-  const band = [NORTH, SOUTH];
-  const side = slotOf('side', 1000, SOUTH, band), behind = slotOf('behind', 1000, SOUTH, band);
-  assert.ok(side.y < SOUTH - 60 && Math.abs(side.x - 1000) < 40, 'alongside, on his driver\'s side (-y), in the other lane');
-  assert.equal(behind.y, SOUTH);
-  assert.ok(behind.x < 1000 - 150);
-  assert.ok(slotOf('side', 1000, NORTH, band).y > NORTH + 60, 'no room on his driver\'s side: the other one');
+// the way from his seat to a point, as his gun sees it: inside its arc?
+const inArcOf = (s, x, y) => {
+  const seat = s.v.toWorld(...seatOf(s.v));
+  return inCone(Math.atan2(y - seat.y, x - seat.x), s.v.body.angle);
+};
+
+test('pursuit: the slots are alongside him and ahead, inside his gun\'s arc, none behind; the other lane follows him (pure)', () => {
+  const band = [NORTH, SOUTH], S = CHASE.pursuit.slots;
+  assert.deepEqual(lanesOf(SOUTH, band), { his: SOUTH, other: NORTH });
+  assert.deepEqual(lanesOf(NORTH, band), { his: NORTH, other: SOUTH }, 'in the top lane: they come up below him');
+  // he straddles the line: the lane he was in is kept until he is well past the middle
+  const mid = (NORTH + SOUTH) / 2, was = lanesOf(SOUTH, band);
+  assert.equal(lanesOf(mid - 5, band, was).his, SOUTH);
+  assert.equal(lanesOf(mid - CHASE.pursuit.flip - 1, band, was).his, NORTH);
+  assert.deepEqual(lanesOf(300, null), { his: 300, other: 300 - CHASE.pursuit.side }, 'no lanes (the lab): his driver\'s side');
+  for (const [name, [dx, lane]] of Object.entries(S)) {
+    assert.ok(dx >= 0, `${name}: never behind him`);
+    for (const his of [SOUTH, NORTH]) {
+      const L = lanesOf(his, band), at = slotOf(name, 1000, L);
+      assert.deepEqual(at, { x: 1000 + dx, y: lane === 'his' ? his : L.other });
+      // from his seat (THE BOSS's convertible: 7 px ahead of its middle, 12.5 px to its driver's side) the middle of
+      // a car there is inside his arc
+      const a = Math.atan2(at.y - (his - 12.5), at.x - 1007);
+      assert.ok(inCone(a, 0), `${name} from the ${his === SOUTH ? 'south' : 'north'} lane: in his arc`);
+    }
+  }
+  assert.deepEqual(S.abreast, [0, 'other'], 'abreast of him, in the lane he is not in');
+  assert.ok(S.lead[1] === 'other' && S.ahead[1] === 'his' && S.lead[0] >= 150 && S.ahead[0] > S.lead[0] && S.ahead[0] <= 250);
+  assert.ok(slotOf('far', 1000, lanesOf(SOUTH, band), 2).x > slotOf('far', 1000, lanesOf(SOUTH, band), 1).x, 'more than four: one behind the other');
+  // which slots n cars hold, rearmost first
+  for (const roll of [0, 0.34, 0.67, 0.999]) {
+    const one = pickSlots(1, roll), two = pickSlots(2, roll);
+    assert.ok(one.length === 1 && ['abreast', 'lead', 'ahead'].includes(one[0][0]));
+    assert.ok(two.length === 2 && two[0][0] !== two[1][0] && S[two[0][0]][0] < S[two[1][0]][0], `two: ${two}`);
+  }
+  assert.notDeepEqual(pickSlots(1, 0), pickSlots(1, 0.999), 'the picture changes');
+  assert.deepEqual(pickSlots(3, 0.5).map(([k]) => k), ['abreast', 'lead', 'ahead']);
+  assert.deepEqual(pickSlots(5, 0.5), [['abreast', 0], ['lead', 0], ['ahead', 0], ['far', 0], ['far', 1]]);
   const aim = lockOf({ x: 100, y: 200 }, { x: 8.9, y: 2 }, 0.75);
   assert.deepEqual([Math.round(aim.x), aim.y], [100 + Math.round(8.9 * 45), 200], 'his y held, his x led by his speed');
   assert.ok(inBand({ x: aim.x + 30, y: 210 }, aim) && !inBand({ x: aim.x, y: 240 }, aim) && !inBand({ x: aim.x - 60, y: 200 }, aim));
@@ -160,15 +188,130 @@ test('pursuit: a closed car is reached through a side window or the windscreen, 
   assert.ok(!reaches(c, at.x - 200, at.y + 4, cs), 'nobody sat there: nobody to reach');
 });
 
-test('pursuit: a pursuer behind closes the gap and takes its slot alongside on his driver\'s side', () => calm(() => {
+test('pursuit: one joining from behind is alongside, inside his arc and within 250 px, in under 3 s (in about 2)', () => calm(() => {
+  for (const lane of [1, 0]) {
+    const s = start({ events: [{ at: 21, kind: 'behind' }] }, [20, LANES[lane]]);
+    let at = null, car = null, from = null;
+    run(s, 3, null, () => {
+      car ??= s.P.cars[0];
+      if (!car) return false;
+      from ??= car.v.y;
+      const d = Math.hypot(car.v.x - s.v.x, car.v.y - s.v.y);
+      if (at === null && inArcOf(s, car.v.x, car.v.y) && d < 250) at = car.t;
+      return false;
+    });
+    assert.ok(car && car.state === 'chase', 'it joined');
+    assert.ok(Math.abs(from - LANES[1 - lane] * TILE) < 1, `it comes up in the lane he is not in (${Math.round(from)})`);
+    assert.ok(at !== null && at < 2.2, `in his arc ${at?.toFixed(2)} s after it joined`);
+    assert.ok(inArcOf(s, car.v.x, car.v.y) && Math.hypot(car.v.x - s.v.x, car.v.y - s.v.y) < 250, 'and still there at 3 s');
+    assert.ok(car.v.x > s.v.x - 60, `not behind him (${Math.round(car.v.x - s.v.x)} px along the road)`);
+    assert.equal(s.w.kills.length, 0);
+  }
+}));
+
+test('pursuit: three in the chase take three different slots, none behind him; the rearmost car the rearmost slot', () => calm(() => {
   const s = start();
-  const car = s.P.spawn(s.v.x - 600, SOUTH, 0, 'chase', 9);
-  run(s, 8);
-  const sl = slotOf('side', s.v.x, s.v.y, s.P.band);
-  assert.equal(car.state, 'chase');
-  assert.ok(Math.abs(car.v.x - sl.x) < 40, `alongside (${Math.round(car.v.x - s.v.x)} px off him along the road)`);
-  assert.ok(Math.abs(car.v.y - sl.y) < 16 && car.v.y < s.v.y - 60, `in the other lane, his driver's side (${Math.round(car.v.y)})`);
+  const cars = [s.P.spawn(s.v.x - 330, NORTH, 0, 'chase', 12), s.P.spawn(s.v.x + 260, NORTH, 0, 'chase', 8.9), s.P.spawn(s.v.x + 420, SOUTH, 0, 'chase', 8.9)];
+  run(s, DT);
+  assert.deepEqual(cars.map((c) => c.slot), ['abreast', 'lead', 'ahead'], 'dealt by where they are along the road');
+  for (const c of cars) {
+    const at = s.P.slot(c, s.P.target());
+    assert.ok(at.x >= s.v.x, `${c.slot}: not behind him`);
+    assert.equal(at.y, CHASE.pursuit.slots[c.slot][1] === 'his' ? SOUTH : NORTH, `${c.slot}: its lane`);
+  }
+  run(s, 4);
+  for (const c of cars) {
+    const at = s.P.slot(c, s.P.target());
+    assert.equal(c.state, 'chase');
+    assert.ok(Math.hypot(c.v.x - at.x, c.v.y - at.y) < 40, `${c.slot}: held (${Math.round(c.v.x - at.x)}, ${Math.round(c.v.y - at.y)} px off it)`);
+    assert.ok(inArcOf(s, c.v.x, c.v.y) && Math.hypot(c.v.x - s.v.x, c.v.y - s.v.y) < 250, `${c.slot}: in his arc, close`);
+  }
+  assert.equal(new Set(cars.map((c) => c.slot)).size, 3);
   assert.equal(s.w.kills.length, 0);
+  // two ahead of him, he goes over to the top lane: they keep their lanes and swap their slots (the one in what is
+  // now his lane is the one `ahead`), rather than cross each other's way
+  const random = Math.random;
+  Math.random = () => 0.999; // (pickSlots: lead and ahead)
+  try {
+    const r = start();
+    const [a, b] = [r.P.spawn(r.v.x + 165, NORTH, 0, 'chase', 8.9), r.P.spawn(r.v.x + 220, SOUTH, 0, 'chase', 8.9)];
+    run(r, 1);
+    assert.deepEqual([a.slot, b.slot], ['lead', 'ahead']);
+    r.input.held.add('KeyW');
+    let off = 0;
+    const watch = () => { off = Math.max(off, Math.abs(a.v.y - NORTH), Math.abs(b.v.y - SOUTH)); return false; };
+    run(r, 1, null, () => watch() || r.v.y <= NORTH + 42); // (let go a little early: it runs on as it straightens)
+    r.input.held.clear();
+    run(r, 2.5, null, watch);
+    assert.ok(Math.abs(r.v.y - NORTH) < 20, `he is in the top lane (${Math.round(r.v.y - NORTH)})`);
+    assert.deepEqual([a.slot, b.slot], ['ahead', 'lead'], 'swapped');
+    assert.ok(off < 12, `neither left its lane (${Math.round(off)} px)`);
+    assert.ok(Math.abs(a.v.x - r.v.x - 220) < 30 && Math.abs(b.v.x - r.v.x - 165) < 30, 'each at its new slot');
+    assert.equal(r.w.kills.length, 0, 'nobody wrecked by it');
+  } finally { Math.random = random; }
+}));
+
+test('pursuit: the gunman leans out on the runner\'s side: from the car below him, from the car dead ahead of him', () => calm(() => {
+  // below him (he is in the top lane): its gunman out of its top window, telling
+  const below = start({}, [20, LANES[0]]);
+  const a = below.P.spawn(below.v.x - 40, SOUTH, 0, 'chase', 8.9);
+  assert.ok(run(below, 6, null, () => below.P.tell), 'he tells from below');
+  assert.equal(a.gunSide, -1, 'out of the window on his side (-y)');
+  // dead ahead of him in his lane: one window, kept (no flutter), and he tells from there, firing back along the flank
+  const s = start();
+  const car = s.P.spawn(s.v.x + CHASE.pursuit.slots.ahead[0], SOUTH, 0, 'chase', 8.9);
+  s.P.assign = function () { this.road = lanesOf(SOUTH, this.band); car.slot = 'ahead'; };
+  const sides = new Set();
+  let told = false;
+  run(s, 6, null, () => { sides.add(car.gunSide); told ||= !!s.P.tell; return told; });
+  assert.equal(sides.size, 1, `one window (${[...sides]})`);
+  assert.ok(told, 'he tells from ahead');
+  const g = s.P.gunPoint(car), seat = s.v.toWorld(...seatOf(s.v));
+  assert.ok(g.x > seat.x + 100 && Math.abs(car.v.y - s.v.y) < 12, 'from ahead of him, in his lane');
+}, true));
+
+test('pursuit: his shove into a pursuer alongside is a real blow: half its hp and thrown half a lane; two wreck it (SHOVED)', () => calm(() => {
+  // an open yard, nothing to be thrown into
+  const rows = [];
+  for (let y = 0; y < 40; y++) {
+    let r = '';
+    for (let x = 0; x < 200; x++) r += y === 0 || y === 39 || x === 0 || x === 199 ? 'X' : '=';
+    rows.push(r);
+  }
+  const s = start({ rows, chase: { lanes: [18.0, 20.5] } }, [8, 20.5]);
+  const car = s.P.spawn(s.v.x, 18.0 * TILE, 0, 'chase', 8.9);
+  s.P.assign = function () { this.road = lanesOf(this.target().y, this.band, this.road); car.slot = 'abreast'; };
+  run(s, 0.3);
+  const hp = car.v.hp, y0 = car.v.y;
+  assert.equal(hp, VEHICLES.pursuer.hp);
+  // no shove: steering into it is a knock, not a blow
+  s.input.held.add('KeyW');
+  run(s, 0.4);
+  s.input.held.clear();
+  assert.ok(car.dents === 0 && car.v.hp === hp, 'steered into: nothing lost');
+  const toward = () => ({ x: s.v.x, y: car.v.y });
+  const lined = () => Math.abs(car.v.x - s.v.x) < 60 && Math.abs(car.v.y - s.v.y) > 60 && Math.abs(car.v.y - s.v.y) < 100 && s.d.cool <= 0 && car.stun <= 0;
+  assert.ok(run(s, 8, null, lined), `abreast of him again, round his nose, never through him (${Math.round(car.v.x - s.v.x)}, ${Math.round(car.v.y - s.v.y)})`);
+  const side = Math.sign(car.v.y - s.v.y), y1 = car.v.y;
+  s.input.pressed.add('Space');
+  let far = 0;
+  run(s, 0.7, toward(), () => { far = Math.max(far, (car.v.y - y1) * side); return false; });
+  assert.equal(car.dents, 1, 'landed, once');
+  assert.ok(Math.abs(car.v.hp - hp * (1 - CHASE.pursuit.shoved.cost)) < 1e-9 && CHASE.pursuit.shoved.cost === 0.5, `half its hp (${car.v.hp})`);
+  assert.ok(far >= 40, `knocked ${Math.round(far)} px aside: half a lane at least`);
+  assert.equal(car.state, 'chase', 'not wrecked: nothing to be thrown into');
+  assert.equal(s.w.kills.length, 0);
+  // the second one, once he is back in his lane and it has come back alongside
+  s.input.held.add('KeyS');
+  run(s, 3, null, () => s.v.y >= 20.5 * TILE - 42); // (let go a little early: it runs on as it straightens)
+  s.input.held.clear();
+  assert.ok(run(s, 8, null, lined), `it comes back alongside (${Math.round(car.v.x - s.v.x)}, ${Math.round(car.v.y - s.v.y)})`);
+  s.input.pressed.add('Space');
+  run(s, 0.5, toward());
+  assert.equal(car.state, 'wrecked', 'two shoves');
+  const kills = s.w.kills.filter((k) => k.how.car === 'shoved');
+  assert.ok(kills.length === 2 && kills.every((k) => k.cause === 'wreck' && k.killer === s.w.player), 'its driver and its gunman, his, tagged SHOVED');
+  assert.ok(y0 > 0);
 }));
 
 test('pursuit: it swerves round a car standing in its lane, never into it', () => calm(() => {
@@ -187,25 +330,34 @@ test('pursuit: it swerves round a car standing in its lane, never into it', () =
   assert.ok(Math.abs(parked.x - x0) < 4, 'never touched');
 }));
 
-test('pursuit: shoved by his car into a wall at speed, it is wrecked (his doing: SHOVED)', () => calm(() => {
-  // a yard: his van along the bottom of a wall, the pursuer between him and it
+test('pursuit: ONE shove that throws it into something solid wrecks it: a wall, the parked cars (his doing: SHOVED)', () => calm(() => {
+  // a yard: his car along the bottom of a wall, the pursuer between him and it
   const rows = [];
   for (let y = 0; y < 14; y++) {
     let r = '';
     for (let x = 0; x < 80; x++) r += y === 0 || y === 13 || x === 0 || x === 79 ? 'X' : '=';
     rows.push(r);
   }
-  const s = start({ rows, chase: { lanes: [4.0, 6.5] } }, [8, 6.5]);
-  const car = s.P.spawn(s.v.x, 4.0 * TILE, 0, 'chase', 8.9);
+  const s = start({ rows, chase: { lanes: [2.6, 5.1] } }, [8, 5.1]);
+  const car = s.P.spawn(s.v.x, 2.6 * TILE, 0, 'chase', 8.9);
   run(s, 0.3);
   s.input.pressed.add('Space');
   run(s, 1.2, { x: s.v.x, y: s.v.y - 200 });
   assert.equal(car.state, 'wrecked');
+  assert.equal(car.dents, 1, 'one shove');
   const k = s.w.kills.find((e) => e.how.car === 'shoved');
   assert.ok(k && k.cause === 'wreck' && k.killer === s.w.player, 'the crew\'s kill is his, tagged SHOVED');
+  // the back road: abreast of him in the top lane, a car parked along it
+  const r = start();
+  const p = r.P.spawn(r.v.x, NORTH, 0, 'chase', 8.9);
+  vehicle(r.w, 'car', r.v.x + 150, 10 * TILE);
+  run(r, 0.3);
+  r.input.pressed.add('Space');
+  run(r, 1, { x: r.v.x, y: r.v.y - 200 });
+  assert.ok(p.state === 'wrecked' && p.dents === 1, `into the parked car: wrecked by one (${p.state}, ${p.dents})`);
 }));
 
-test('pursuit: the tell locks a lane band at its start; staying in it is death, a lane change or a brake dodges it', () => calm(() => {
+test('pursuit: the tell locks a lane band at its start; staying in it is death, a lane change or a shove dodges it', () => calm(() => {
   const told = (react) => {
     const s = start();
     s.P.spawn(s.v.x - 300, NORTH, 0, 'chase', 10);
@@ -227,8 +379,11 @@ test('pursuit: the tell locks a lane band at its start; staying in it is death, 
   assert.equal(stayed.w.killed.killer.kind, 'gunman');
   const swerved = told((s) => s.input.held.add('KeyD'));
   assert.ok(swerved.w.player.alive && !swerved.w.killed, 'out of the band across: alive');
-  const braked = told((s) => s.input.held.add('KeyS'));
-  assert.ok(braked.w.player.alive && !braked.w.killed, 'short of the bracket: alive');
+  const shoved = told((s) => s.input.pressed.add('Space'));
+  assert.ok(shoved.w.player.alive && !shoved.w.killed, 'thrown out of the band by his own shove: alive');
+  // S held is the wheel, not a brake: it takes him out of the band the same way
+  const steered = told((s) => s.input.held.add('KeyS'));
+  assert.ok(steered.w.player.alive && steered.v.y > SOUTH + 20, 'S: down the picture, out of the band');
 }, true));
 
 test('pursuit: one tell at a time, a cooldown of 2-3 s between two', () => calm(() => {
@@ -262,17 +417,33 @@ test('car gun: his arc is the driver\'s side and ahead, about 200 degrees; a sho
   s.input.pressed.add('mouse0');
   run(s, DT, { x: s.v.x + 50, y: s.v.y - 300 });
   assert.equal(s.w.projectiles.length, 1, 'out of his window');
-  assert.equal(s.w.player.weapon.mag, 6);
   assert.ok(s.w.projectiles[0].ignore.has(s.v), 'never into his own car');
   run(s, 0.5);
   s.input.pressed.add('mouse0');
   run(s, DT, { x: s.v.x, y: s.v.y + 300 });
   assert.equal(s.w.projectiles.length, 1, 'across his own car: nothing');
-  assert.equal(s.w.player.weapon.mag, 6);
-  // R: the magazine out with its rounds, the spare one in
-  s.input.pressed.add('KeyR');
-  run(s, WEAPONS.pistol.reload + 0.1);
-  assert.deepEqual([s.w.player.weapon.mag, s.w.player.ammo['9mm']], [7, 0]);
+});
+
+test('car gun: at the wheel it never runs dry: 200 rounds of the Uzi without a reload, no round counted, R does nothing', () => {
+  const s = start({ arms: { weapon: 'uzi', mag: 30 } }), p = s.w.player;
+  s.input.mouseDown = () => true;
+  let most = 0, last = 0, t = 0;
+  // (the trigger held, the aim kept out of his door as the car goes on)
+  while (s.w.projectiles.length < 200 && t < 20) {
+    run(s, DT, { x: s.v.x + 30, y: s.v.y - 300 });
+    t += DT;
+    if (s.w.projectiles.length > last) { last = s.w.projectiles.length; most = 0; } else most += DT;
+    assert.ok(most <= WEAPONS.uzi.rate + 2 * DT, `never a gap in the fire (${most.toFixed(3)} s at round ${last})`);
+    if (last === 100) s.input.pressed.add('KeyR');
+  }
+  assert.equal(s.w.projectiles.length, 200);
+  assert.ok(Math.abs(t - 200 * WEAPONS.uzi.rate) < 2, `at its own rate (${t.toFixed(1)} s)`);
+  assert.deepEqual([p.weapon.mag, p.ammo['9mm'], p.reloading], [30, 7, 0], 'its magazine, his pools and his hands untouched');
+  // an empty gun fires all the same (the count is not the wheel's business)
+  p.weapon.mag = 0;
+  const n = s.w.projectiles.length;
+  run(s, 0.2, { x: s.v.x + 30, y: s.v.y - 300 });
+  assert.ok(s.w.projectiles.length > n);
 });
 
 test('car gun: THE BOSS\'s open car: 125 degrees either side of the nose (250 in all): his door, over the windscreen, across the other seat; not behind him', () => {
@@ -284,12 +455,12 @@ test('car gun: THE BOSS\'s open car: 125 degrees either side of the nose (250 in
   const s = start({ arms: { weapon: 'pistol', mag: 7 } });
   run(s, 0.3);
   const fire = (dx, dy) => {
-    const n = s.w.player.weapon.mag;
+    const n = s.w.projectiles.length;
     s.input.pressed.add('mouse0');
     run(s, DT, { x: s.w.player.x + dx, y: s.w.player.y + dy });
     // (the aim kept on that side as the car goes on; the car's own step eases his arm: World does it)
     for (let i = 0; i < 30; i++) { run(s, DT, { x: s.w.player.x + dx, y: s.w.player.y + dy }); s.v.carry(DT); }
-    return n - s.w.player.weapon.mag;
+    return s.w.projectiles.length - n;
   };
   assert.equal(fire(0, -300), 1, 'out of his door');
   assert.equal(fire(300, 0), 1, 'ahead, over the windscreen');
@@ -342,7 +513,7 @@ test('pursuit: its gunman shot, no more tells from that car (it can still ram)',
   assert.ok(s.w.kills.some((e) => e.how.car === 'gunman'));
   run(s, 6);
   assert.ok(!s.P.tell && s.w.player.alive, 'no tell');
-  assert.equal(car.slot, 'side', 'still at him');
+  assert.ok(car.state === 'chase' && car.v.x > s.v.x - 60 && Math.hypot(car.v.x - s.v.x, car.v.y - s.v.y) < 250, 'still at him, alongside');
 }, true));
 
 test('events: the alley car goes at its distance, not before; its red lane is told 0.7 s before it is in his lane', () => calm(() => {
@@ -374,8 +545,8 @@ test('events: the alley car goes at its distance, not before; its red lane is to
 const ARMS = level2a.chase.arms;
 const stepsTo = (s, t) => run(s, t - s.d.grab.t);
 
-test('grab: level 2A sets off with the boss\'s Uzi on the passenger seat, 30 rounds in it and one spare magazine', () => {
-  assert.deepEqual(ARMS, { weapon: 'uzi', mag: 30, spare: 30, seat: true });
+test('grab: level 2A sets off with the boss\'s Uzi on the passenger seat (no spare magazine: it never runs dry at the wheel)', () => {
+  assert.deepEqual(ARMS, { weapon: 'uzi', mag: 30, seat: true });
   assert.equal(CHASE.vehicle, 'convertible');
   assert.equal(VEHICLES.convertible.gun[3], ARMS.weapon, 'the gun lying on its seat is the one he takes');
 });
@@ -386,14 +557,14 @@ test('grab: the first start, he takes it in a short beat as the car rolls on by 
   assert.ok(d.grab && d.grabbing && v.gun && p.weapon === null, 'the gun on the seat, his hands empty');
   assert.equal(p.riding.grab, 0);
   assert.equal(d.shot().name, 'grab', 'the camera pushed in on him');
-  // he holds everything down: the throttle, a side, the shove, the trigger
+  // he holds everything down: the wheel, the shove, the trigger
   for (const k of ['KeyW', 'KeyA', 'Space']) input.held.add(k);
   input.pressed.add('Space');
   input.mouseDown = () => true;
   stepsTo(s, G.take - 0.05);
   assert.ok(v.gun && p.weapon === null, 'still on the seat');
   stepsTo(s, G.take + 0.05);
-  assert.ok(!v.gun && p.weapon.type === 'uzi' && p.weapon.mag === 30 && p.ammo['9mm'] === 30, 'in his hand: 30 in it, 30 spare');
+  assert.ok(!v.gun && p.weapon.type === 'uzi' && p.weapon.mag === 30 && p.ammo['9mm'] === 0, 'in his hand, 30 in it; nothing spare');
   stepsTo(s, G.dur - 0.05);
   assert.ok(d.grabbing && w.projectiles.length === 0 && p.weapon.mag === 30, 'not a round fired');
   assert.ok(Math.abs(d.v - CHASE.cruise) < 1e-6 && Math.abs(v.y - y0) < 1 && d.cool === 0, 'at cruise on its line, no shove');
@@ -401,7 +572,7 @@ test('grab: the first start, he takes it in a short beat as the car rolls on by 
   assert.ok(!d.grabbing && p.riding.grab === null, 'done: the hand his');
   assert.equal(d.shot().name, 'grabOut', 'the camera going back out');
   run(s, 0.3);
-  assert.ok(d.v > CHASE.cruise, 'the throttle his again');
+  assert.ok(v.y < y0 - 5 && Math.abs(d.v - CHASE.cruise) < 1e-6, 'the wheel his again (W held: up the picture), the speed the road\'s');
   run(s, G.out);
   assert.ok(d.grab === null && d.shot() === null, 'the usual view');
 });
@@ -435,9 +606,9 @@ test('grab: a retry starts with the Uzi already in hand, no beat', () => {
   p.ammo['9mm'] = 0;
   d.skipGrab();
   assert.ok(!d.grab && !d.grabbing && !v.gun && d.shot() === null);
-  assert.ok(p.weapon.type === 'uzi' && p.weapon.mag === 30 && p.ammo['9mm'] === 30 && p.riding.grab === null);
+  assert.ok(p.weapon.type === 'uzi' && p.weapon.mag === 30 && p.ammo['9mm'] === 0 && p.riding.grab === null);
   d.skipGrab(); // (twice: nothing more)
-  assert.equal(p.ammo['9mm'], 30);
+  assert.ok(p.weapon.type === 'uzi' && !d.grab);
 });
 
 test('grab: nothing is told while he takes it; the event due meanwhile goes once it is done', () => calm(() => {

@@ -50,9 +50,10 @@ START = (8.5, 14.75)        # the car's centre, facing +x, in our lane
 END = 428                   # past this column the level is over (25 s at 60 km/h from the start)
 LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
-ALLEY_AT = 125              # event 1 set off with the car's middle at this column (about 0:07)
+ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
+                            # so it is told early enough to cross AHEAD of him into the far lane (he keeps out of it)
 BEHIND_AT = (165, 250)      # a car set off from behind at each (it starts 19 m back and is alongside 3 s later)
-CROSS_AT = 382              # the last one, out of the cross street across his nose (about 0:23)
+CROSS_AT = 368              # the last one, out of the cross street ahead of him, as early (about 0:22)
 ALLEYS = (52, 96, EVENT_ALLEY, 186, 232, 281, 418)   # (none just before the terrace: he comes at it along the sidewalk)
 ALLEY_W = 4
 DARK = (150, 246)           # the dark stretch
@@ -426,9 +427,9 @@ chase = {
     ],
     # water standing in the gutter [col, row, r px]: spray under his wheels
     'water': [[76.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]],
-    # the boss's Uzi off his passenger seat (taken in a short beat the first time: systems/Drive.js grab), its magazine
-    # and ONE spare one
-    'arms': {'weapon': 'uzi', 'mag': 30, 'spare': 30, 'seat': True},
+    # the boss's Uzi off his passenger seat (taken in a short beat the first time: systems/Drive.js grab). At the wheel
+    # it never runs dry (systems/CarGun.js): `mag` is what is in it when he gets out of the car (2B)
+    'arms': {'weapon': 'uzi', 'mag': 30, 'seat': True},
 }
 
 if __name__ == '__main__':

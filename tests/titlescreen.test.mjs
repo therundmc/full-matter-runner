@@ -4,7 +4,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
 
 const { logoDead, posterBeats, CROSS, crossK, crossBeats } = await load('game/ui/title/Beats.js');
-const { deadCount } = await load('game/ui/title/HitList.js');
+const { deadCount, LEVEL_AT, BACK_AT, SOON, NOTE } = await load('game/ui/title/HitList.js');
+const { CAMPAIGN } = await load('game/systems/Progress.js');
+const { default: LEVELS } = await load('game/data/levels/index.js');
 const { posterUp } = await load('game/ui/title/Title.js');
 const { optionsUp } = await load('game/ui/title/Options.js');
 const { POSTER, BOARD, OPTIONS } = await load('game/data/titleart.js');
@@ -101,4 +103,34 @@ test('title: its stills are optional sprites at 3 px a title px, and their data 
   assert.equal(BOARD.cards.length, 4);
   assert.ok(BOARD.pins.length === 4 && BOARD.crosses.length === 4 && BOARD.tags.length === 4);
   for (const [x, y] of [...BOARD.pins, BOARD.photoPin, BOARD.matchPin]) assert.ok(x > 22 && x < 1130 && y > 18 && y < 604, 'a pin is on the board');
+});
+
+// the box a w x h rectangle leaning deg about (x, y) covers
+const box = (x, y, w, h, deg) => {
+  const a = (Math.abs(deg) * Math.PI) / 180, bw = w * Math.cos(a) + h * Math.sin(a), bh = w * Math.sin(a) + h * Math.cos(a);
+  return { x0: x - bw / 2, x1: x + bw / 2, y0: y - bh / 2, y1: y + bh / 2 };
+};
+const overlap = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+test('hit list: level 2 is two notes under JITTERS, 2A a level, 2B a note not made yet; no note on another', () => {
+  assert.ok(CAMPAIGN.includes('level2a') && LEVELS.level2a, '2A is a campaign level');
+  assert.deepEqual(SOON.map((s) => [s.level, s.after]), [['level2b', 'level2a']]);
+  assert.ok(!LEVELS.level2b && !CAMPAIGN.includes('level2b'), '2B is only a picture on the board');
+  // under JITTERS' card (the second), side by side with nothing else pinned
+  const [jx, jy] = BOARD.cards[1], jitters = box(...BOARD.cards[1].slice(0, 2), ...BOARD.card, BOARD.cards[1][2]);
+  for (const id of ['level2a', 'level2b']) {
+    const [x, y] = LEVEL_AT[id];
+    assert.ok(y > jitters.y1 && Math.abs(x - jx) < 160, `${id} pinned under JITTERS (${x}, ${y} for ${jx}, ${jy})`);
+  }
+  const notes = Object.entries(LEVEL_AT).map(([id, [x, y, deg]]) => [id, box(x, y, ...NOTE, deg)]);
+  const cards = BOARD.cards.map(([x, y, deg], i) => [`card ${i}`, box(x, y, ...BOARD.card, deg)]);
+  const back = ['BACK', box(BACK_AT[0], BACK_AT[1], 132, 54, BACK_AT[2])];
+  notes.forEach(([id, b], i) => {
+    for (const [other, o] of [...notes.slice(i + 1), ...cards, back]) assert.ok(!overlap(b, o), `${id} clear of ${other}`);
+  });
+  // and clear of CUEBALL's matchbook (about 84 x 124 on the still), pinned beside them once he is dead
+  const [mx, my, mdeg] = BOARD.matchbook, match = box(mx, my, 84, 124, mdeg);
+  for (const [id, b] of notes.filter(([id]) => id.startsWith('level2'))) assert.ok(!overlap(b, match), `${id} clear of the matchbook`);
+  // JITTERS is not dead before his last level: 2A done leaves him standing
+  assert.equal(deadCount({ unlocked: CAMPAIGN, done: ['tutorial', 'level1', 'level2a'] }), 1);
 });

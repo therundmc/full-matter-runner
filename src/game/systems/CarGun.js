@@ -1,6 +1,7 @@
 // His gun out of the car at the wheel (level 2A, docs/LEVEL2.md; systems/Drive.js steps it). The mouse aims, the left
-// click fires the gun in his hand (a one-handed gun: a long one stays down), R reloads: the magazine goes with what
-// was left in it, the next one comes out of his pools (entities/Player.js `ammo`), as on foot. In an open car (a
+// click fires the gun in his hand (a one-handed gun: a long one stays down). AT THE WHEEL IT NEVER RUNS DRY (the
+// user's call, 2026-11-19): no round is counted, nothing is reloaded, R does nothing; its magazine is as he got in
+// with it when he gets out (ui/HUD.js shows no count). In an open car (a
 // `cabin`: THE BOSS's convertible) the gun is at the end of his arm from the seat (`arm` px), the arm drawn by the car
 // (his `riding.aim`, CharacterAnim.seatPose); in a closed one it is out of the driver's window, `reach` px out.
 // His arc in an open car (inCone, CHASE.gun.cone): 125 degrees either side of the nose, 250 in all: out of his door,
@@ -79,43 +80,14 @@ export default class CarGun {
     if (p.riding) p.riding.aim = this.aimed?.ok ? this.aimed.a : null; // his arm out with it (the car draws him)
     if (!this.armed) return;
     const d = p.def;
-    this.reloadStep(dt, d);
-    if (input.hit?.('KeyR')) this.reload(d);
     const pull = d.auto ? input.mouseDown?.(0) : input.mouseHit?.(0);
     if (pull && this.aimed?.ok) this.fire(d);
   }
 
-  // R, or a dry click with spare rounds: the magazine out (its rounds with it), a full one in after the gun's reload
-  reload(d) {
-    const p = this.player;
-    if (p.reloading > 0 || p.weapon.mag >= d.mag || p.reserveCount() <= 0) return false;
-    p.reloadDur = p.reloading = d.reload;
-    p.weapon.mag = 0;
-    this.world.sound('magOut', p.x, p.y, 0.7, { weapon: p.weapon.type });
-    return true;
-  }
-
-  reloadStep(dt, d) {
-    const p = this.player;
-    if (p.reloading <= 0) return;
-    p.reloading -= dt;
-    if (p.reloading > 0) return;
-    p.reloading = 0;
-    p.weapon.mag = p.takeMag();
-    p.weapon.bare = false;
-    this.world.sound('magIn', p.x, p.y, 0.8, { weapon: p.weapon.type });
-    this.world.sound('rack', p.x, p.y, 0.8, { weapon: p.weapon.type });
-  }
-
+  // a round out of it, at the gun's own rate; none counted
   fire(d) {
     const w = this.world, p = this.player, a = this.aimed.a;
-    if (this.cool > 0 || p.reloading > 0) return false;
-    if (p.weapon.mag <= 0) {
-      this.cool = 0.25;
-      w.sound('click', p.x, p.y, 1, { weapon: p.weapon.type });
-      this.reload(d);
-      return false;
-    }
+    if (this.cool > 0) return false;
     const m = this.hand(a), from = this.van.toWorld(this.seat[0], this.seat[1]), cv = Body.getVelocity(this.van.body);
     for (let i = 0; i < d.pellets; i++) {
       const pr = new Projectile(w, m.x, m.y, a + (d.spread + CHASE.gun.spread) * spread(), d.speed, {
@@ -129,7 +101,6 @@ export default class CarGun {
     muzzleFlash(w, m.x, m.y, a, d, null);
     w.sound(d.sound, m.x, m.y, 1);
     if (d.noise) w.noise(m.x, m.y, d.noise, p, 'gunshot');
-    p.weapon.mag--;
     this.cool = d.rate;
     w.shake(clamp(d.shake ?? 0.15, 0, 0.3));
     return true;
