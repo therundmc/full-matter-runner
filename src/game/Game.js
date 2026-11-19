@@ -39,8 +39,7 @@ import Sandbox from './debug/Sandbox.js';
 import { neon } from './ui/Text.js';
 import Lens from './render/Lens.js';
 import Direction from './systems/Direction.js';
-import KillPanel from './render/KillPanel.js';
-import { killcamMode } from './data/killcam.js';
+import { killcamOn } from './data/killcam.js';
 import Opening from './systems/Opening.js';
 import { drawMurk } from './render/Murk.js';
 import { cuesOn } from './render/Readability.js';
@@ -124,9 +123,8 @@ export default class Game {
     // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
     const mark = new URLSearchParams(location.search).get('mark');
     if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
-    // the kill cam's version, by the address only (data/killcam.js: ?killcam=zoom|panel|off), and its comic panels
-    this.killMode = killcamMode(new URLSearchParams(location.search).get('killcam'));
-    this.killPanel = new KillPanel();
+    // the kill cam (systems/KillCam.js), but for ?killcam=off (a developer's switch, to compare)
+    this.killCamOn = killcamOn(new URLSearchParams(location.search).get('killcam'));
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
@@ -269,9 +267,7 @@ export default class Game {
     this.recorder.reset();
     this.recorder.attach(this.world.events);
     this.lens.bind(this.world.events);
-    this.world.killCam.mode = this.killMode;
-    this.killPanel.reset();
-    this.killPanel.attach(this.world.events);
+    this.world.killCam.on = this.killCamOn;
     const p = this.world.player;
     this.camera.bounds = { w: this.world.map.w * TILE, h: this.world.map.h * TILE };
     // a level driven in the van opens on the drive's view, ahead of it (systems/Drive.js)
@@ -601,6 +597,7 @@ export default class Game {
       target = Math.min(target, this.world.tutorial.pace(dt, (action) => !!DOES[action]?.(inp), seen));
     }
     this.timeScale = lerp(this.timeScale, target, 1 - Math.pow(0.001, dt));
+    this.timeScale = this.world.killCam.clock(this.timeScale, target); // a beat's ramp: down at once, snapped back
     Audio.setMuffle(this.state === 'dead' ? 0.75 : (1 - this.timeScale) * 0.7);
     if (this.world.cleared) this.clearedT += dt;
     this.tension.update(dt);
@@ -923,7 +920,6 @@ export default class Game {
     }
     // the replay keeps the bare picture: no lens, scanlines, flash or HUD (they go over it again when it plays)
     if (this.state === 'play' && !this.overview) this.recorder.capture(this.canvas, this.world.time);
-    if (this.state === 'play' && !this.overview && this.killMode === 'panel') this.killPanel.capture(this.canvas, this.camera, this.world, this.time);
     if (!post) ctx.drawImage(this.getVignette(W, H), 0, 0);
   }
 
@@ -936,7 +932,6 @@ export default class Game {
       ctx.globalAlpha = 1;
     }
     if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
-    if (this.state === 'play') this.safeDraw(ctx, () => this.killPanel.draw(ctx, W, H, this.world.killCam.panelView()));
     if (this.sandbox.on && this.state === 'play') this.safeDraw(ctx, () => drawSandbox(ctx, H, this.sandbox, t));
     if (this.world.debugPhysics) {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;

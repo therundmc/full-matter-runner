@@ -132,12 +132,14 @@ src/
       ThrowBeat.js        a throw of the player's: the camera follows it over its last stretch to its man ('throw'), and
                           its hit's beat ('thrownHit': hit-stop, slow motion, the camera's punch, shot `throwHit`;
                           THROW in data/feel.js), asked by Game like a staged level's shot
-      KillCam.js          the kill cam, an experiment (KILLCAM in data/killcam.js; `?killcam=zoom|panel|off`, zoom by
-                          default): the player's violent kills, finishers and takedowns, the kills of a long chain and its
-                          end sorted into beats (one at a time, the stronger wins, a gap per tier; never at a wheel, in a
-                          staged shot, on his death). zoom: `scale` on Camera.scale next to the director's and `aim` on
-                          the view (Game.updateCamera), slow motion through Impact.slowAtLeast, a hit-stop; panel: no
-                          zoom, no slow motion, `panelView()` for render/KillPanel.js. Tells 'killcam' { tier, mode, x, y }
+      KillCam.js          the kill cam (KILLCAM in data/killcam.js; `?killcam=off` turns it off, to compare): the player's
+                          violent kills, finishers and takedowns, the kills of a long chain and its end sorted into
+                          beats (one at a time, the stronger wins, a gap per tier; never at a wheel, in a staged shot, on
+                          his death; a thrown kill is ThrowBeat's). A beat: `scale` on Camera.scale next to the
+                          director's and `aim` on the view (Game.updateCamera), whipped back to exactly 1; slow motion
+                          through Impact.slowAtLeast with `clock` (down at once, snapped back); hit-stops, each blow of
+                          a finisher; a kick, a shake, more blood; the chain's crescendo. Tells 'killcam' { tier, x, y,
+                          k, hold } and 'killcamOut' { tier } (render/Lens.js: POST.killcam; systems/Rumble.js)
                           (DOM-free, unit-tested; advanced by Game on the real clock)
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
@@ -302,9 +304,6 @@ src/
                           (pure, deterministic per mark: no flicker)
       Replay.js           end-of-level replay: ReplayRecorder (rolling buffer of small frames, a clip per kill) and
                           ReplayPlayer (plays the clips behind the results, slow motion on the kills)
-      KillPanel.js        the kill cam's comic panels (`?killcam=panel`): sharp footage cut out of the scene about the
-                          player, kept at each kill of his, replayed slowed in a cut-paper insert at the top right (a
-                          strip of three for a finisher and a chain's end); canvases injectable
     entities/             Character, Player, Enemy, Boss (a guard who is his own man: data/bosses.js BOSSES, by the
                           kind level `looks` draws him as), Civilian, Prop, Vehicle, Door, Window, Debris, Ragdoll, Corpse,
                           WeaponItem, AmmoItem, Projectile; Recoil (what a shot does to the man holding the gun, per

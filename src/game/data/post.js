@@ -122,4 +122,16 @@ export const POST = {
     frameFrom: 0.8,        // power of a kill of the player's that earns one
     frameGap: 0.5,         // s at least between two of them
   },
+
+  // ---- the kill cam's beats (systems/KillCam.js 'killcam', by tier; x the chain's crescendo): on top of the punch
+  // above, a pulse of colour fringe (px), the colours pushed (`kick`, as a kill of that power), the vignette pulled
+  // in while its slow motion lasts (`close`, eased at `ease` 1/s) and, for the heaviest, an impact frame of its own
+  // (`frame` s, whatever the punch's gap). `out`: the fringe's flick as the clock snaps back.
+  killcam: {
+    combo: { fringe: 3, kick: 0.25, close: 0 },
+    violent: { fringe: 9, kick: 0.7, close: 0.1 },
+    exec: { fringe: 12, kick: 1, close: 0.16, frame: 0.05 },
+    end: { fringe: 20, kick: 1.5, close: 0.24, frame: 0.085 },
+    out: 5, ease: 14, max: 0.3,
+  },
 };

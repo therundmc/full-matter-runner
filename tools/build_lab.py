@@ -127,8 +127,8 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    throwing spot by the door, three knives, a bat, a cue, a tire iron and a 1911 on the floor there; a
                    full throw plants a knife in the farthest, and kills with anything else, which breaks on him (a bat or
                    a cue snaps, the iron bends, the gun is wrecked: WeaponItem.shatter); the hit's beat: systems/ThrowBeat.js
-    28 KILL CAM    east again (cols 50-65): the kill cam (systems/KillCam.js, data/killcam.js; the address
-                   picks its version: ?level=lab&killcam=zoom | panel | off). By the door a bat, a SUPER 90 and its
+    28 KILL CAM    east again (cols 50-65): the kill cam (systems/KillCam.js, data/killcam.js;
+                   ?level=lab&killcam=off turns it off, to compare). By the door a bat, a SUPER 90 and its
                    box, a knife, a tire iron; in the west half three dummies apart to kill each his own way (the
                    heavy stroke, buckshot at arm's length, floored by a slide or a thrown weapon then finished, or
                    taken from behind); in the east half five in a row, a step apart, for a chain and its end

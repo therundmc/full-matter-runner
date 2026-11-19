@@ -53,6 +53,9 @@ export default class Lens {
     this.embers = [];  // { x, y, t }: where something just blew up, still hot
     this.muzzleT = 0;
     this.jolt = 0;     // a jolt of the car at the wheel, added to the speed's look for an instant
+    this.close = 0;    // the vignette pulled in by a kill cam beat, and what it eases toward for `closeT` s more
+    this.closeTo = 0;
+    this.closeT = 0;
   }
 
   // listen to a world (a new one at every run)
@@ -63,6 +66,20 @@ export default class Lens {
     events.on('explosion', (e) => this.blast(e));
     events.on('shot', (e) => this.shot(e));
     events.on('ride', (e) => this.ride(e));
+    events.on('killcam', (e) => this.beat(e));
+    events.on('killcamOut', () => { this.bump(this.cfg.killcam.out); this.closeT = 0; });
+  }
+
+  // a beat of the kill cam (systems/KillCam.js): { tier, k (the chain's crescendo, 1 and up), hold (s of its slow
+  // motion) }: its pulse of fringe, the colours pushed, the vignette pulled in while it lasts, an impact frame
+  beat({ tier, k = 1, hold = 0 }) {
+    const K = this.cfg.killcam, B = K[tier];
+    if (!B) return;
+    this.bump(B.fringe * k);
+    this.kick = Math.max(this.kick, Math.min(1.6, B.kick * k));
+    this.closeTo = Math.min(K.max, B.close * k);
+    this.closeT = hold;
+    if (B.frame) { this.frame = Math.max(this.frame, B.frame); this.frameGap = this.cfg.punch.frameGap; }
   }
 
   // a jolt of the car he drives ({ beat }: systems/Drive.js): the edges streak harder for an instant, the colours
@@ -147,6 +164,8 @@ export default class Lens {
     this.frame = Math.max(0, this.frame - dt);
     this.frameGap = Math.max(0, this.frameGap - dt);
     this.muzzleT = Math.max(0, this.muzzleT - dt);
+    this.closeT = Math.max(0, this.closeT - dt);
+    this.close = ease(this.close, this.closeT > 0 && v.state === 'play' ? this.closeTo : 0, c.killcam.ease, dt);
     this.glitch = Math.max(0, this.glitch - dt / c.tube.glitch.life);
     for (const w of this.waves) w.t += dt;
     this.waves = this.waves.filter((w) => w.t < c.wave[w.kind].life);
@@ -241,7 +260,7 @@ export default class Lens {
       glow: { ...c.glow, strength: c.glow.strength + R.glow * r }, rays: c.rays, lights, tone: c.tone,
       grade: g,
       curve: flat ? 0 : t.curve, scan: flat ? 0 : t.scan, scanStep: Math.max(2, Math.round(out / 360)), mask: t.mask, bleed: t.bleed, grain: t.grain,
-      vignette: t.vignette + R.vignette * r,
+      vignette: t.vignette + R.vignette * r + this.close,
     };
   }
 }

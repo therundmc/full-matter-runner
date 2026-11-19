@@ -61,6 +61,7 @@ export default class Rumble {
     ev.on('finisher', mine(({ killer }) => { if (isHim(killer)) this.feel(R.finisher); }));
     ev.on('thrownHit', mine(({ thrower }) => { if (isHim(thrower)) this.feel(R.thrown); }));
     ev.on('killcam', mine(({ tier }) => this.feel(R.killcam?.[tier])));
+    ev.on('killcamOut', mine(({ tier }) => { if (tier === 'exec' || tier === 'end') this.feel(R.killcam?.out); }));
     ev.on('explosion', mine(({ x, y, radius }) => {
       const r = radius || 90;
       this.feel(R.blast, fade(this.dist(x, y), r * R.blast.near, r * R.blast.far));

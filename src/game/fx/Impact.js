@@ -61,7 +61,6 @@ export function lastInSight(player, victim, enemies, radius, sees) {
 // of slow motion (the last one of all has its own, World.checkCleared)
 export function killBeat(world, victim, killer) {
   const R = MOMENTS.lastInRoom, p = world.player;
-  if (world.killCam?.mutes) return false; // the kill cam's panels: play never slows (data/killcam.js)
   if (!killer?.isPlayer || !victim.isEnemy || world.cleared || world.scoring.combo < R.chain) return false;
   if (!lastInSight(p, victim, world.enemies, R.radius, (e) => world.lineOfSight(p.x, p.y, e.x, e.y))) return false;
   slowAtLeast(world, ...R.slowmo);
@@ -84,7 +83,7 @@ export function slowAtLeast(world, scale, dur) {
 export function listenMoments(world) {
   world.events.on('multiKill', ({ tag }) => {
     const m = MOMENTS.multi[tag];
-    if (!m || world.killCam?.mutes) return;
+    if (!m) return;
     slowAtLeast(world, ...m.slowmo);
     if (m.stop) world.hitstop(m.stop);
   });
