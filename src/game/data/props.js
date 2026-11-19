@@ -277,4 +277,21 @@ export const PROPS = {
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
+  // ---- the flat of the prologue (tools/build_tutorial.py; sprites: "The flat of the prologue" in
+  // tools/generate_assets.py): his few things, light enough to be kicked about, and what is fixed to its walls
+  nightstand: { material: 'wood', w: 14, h: 10, hp: 5, kg: 12, mu: 0.5, chips: '#6a4a30', sound: 'wood' },
+  chair_jacket: { material: 'wood', w: 14, h: 14, hp: 6, kg: 6, mu: 0.42, chips: '#7a4a2a', sound: 'wood' },
+  duffel_bag: { material: 'fabric', w: 20, h: 10, hp: 4, kg: 11, mu: 0.6, chips: '#5a6238', sound: 'wood' },
+  coffee_table: { static: true, vault: true, material: 'wood', w: 32, h: 18, hp: 8, chips: '#5a3a22', sound: 'wood', blocksPath: true },
+  record_player: { static: true, material: 'wood', w: 20, h: 14, hp: 8, chips: '#7a5230', sparks: true, sound: 'wood', blocksPath: true },
+  worktop: { static: true, material: 'wood', w: 38, h: 12, hp: 14, chips: '#cfc6ae', sound: 'wood', blocksPath: true },
+  // drips = water falls from it on the floor, drop by drop, while it stands (systems/Drips.js): { at: [x, y] px in
+  // its own frame, as: a LIQUIDS.drips entry }. The water heater's joint weeps; the pail under a leak in the ceiling
+  // (a drop rings in it: `tap`, render/PropLife.js) has been full a while and runs over its rim
+  boiler: { static: true, material: 'metal', w: 14, h: 8, hp: 10, chips: '#d8d2bc', sparks: true, sound: 'metal', drips: { at: [-4.5, 8], as: 'joint' } },
+  bucket: { material: 'metal', r: 4.5, hp: 3, kg: 9, mu: 0.45, chips: '#9aa2ac', sound: 'metal', tap: [-0.5, -0.5], drips: { at: [3, 5.5], as: 'pail' } },
+  plant_dead: { material: 'ceramic', r: 6, hp: 3, kg: 12, mu: 0.5, chips: '#8a6a3a', dirt: true, sound: 'wood' },
+  mirror_cracked: { static: true, material: 'glass', w: 12, h: 3, hp: 1, chips: '#c8d4dc', glass: true, sound: 'glass' },
+  mailboxes: { static: true, material: 'metal', w: 24, h: 4, hp: 8, chips: '#5a6e5c', sound: 'metal' },
+  calendar: { static: true, material: 'fabric', w: 7, h: 3, hp: 1, chips: '#ece8dc', sound: 'wood' },
 };

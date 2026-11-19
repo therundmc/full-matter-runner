@@ -18,6 +18,7 @@
 //            banknotes (`flutter: 'cash'`) land as real bills that lie on the floor and are kicked about
 //            (systems/Litter.js), `bills` of them (a stack of singles), while there is room for them
 //   shatter  the sound it bursts with (default clutterShatter)
+//   fume     one of SMOKE.fumes (data/atmosphere.js) rising off it while it stands (a pan's smoke, a kettle's steam)
 //   spill    { kind, area }: what it pours out on the floor where it lands (the ice water of a champagne bucket),
 //            `ice` and its cubes skitter
 export const CLUTTER = {
@@ -51,6 +52,12 @@ export const CLUTTER = {
   single: { sprite: 'single', r: 2, flutter: 'cash' },
   bill_crumpled: { sprite: 'bill_crumpled', r: 1.8, flutter: 'cash' },
   bill_folded: { sprite: 'bill_folded', r: 2, flutter: 'cash' },
+  // the flat of the prologue: `fume` = it gives off one of SMOKE.fumes (data/atmosphere.js) for as long as it stands
+  // (a pan left on the gas, a kettle on the boil)
+  pan: { sprite: 'pan', r: 3, fume: 'pan', kg: 1.6, material: 'metal', mu: 0.5, land: 'panClang', spill: { kind: 'booze', area: 30 } },
+  kettle: { sprite: 'kettle', r: 2.8, fume: 'kettle', kg: 1.1, material: 'metal', mu: 0.5, land: 'panClang', spill: { kind: 'water', area: 90 } },
+  plates: { sprite: 'plates', r: 2.8, kg: 0.9, material: 'ceramic', land: 'clutterAshtray' },
+  takeaway: { sprite: 'takeaway', r: 2.4, kg: 0.15, material: 'fabric' },
 };
 
 // what a shot or a blow does to the clutter of a prop: a round hits what stands within `r` (+ `pad`) of its line,
@@ -100,4 +107,9 @@ export const SETS = {
     ['bill_crumpled', -9, -9, 0], ['single', -15, -3, 110], ['bill_crumpled', 6, 15, 0], ['single', 11, 2, 160],
     ['bill_folded', -20, 2, 95], ['bill_folded', -15, 13.5, 130], ['bill_folded', -14.5, -14, 45], ['bill_folded', -3, 20, 170],
     ['bill_folded', -19.5, -6, 70]],
+  // ... its worktop (the kettle, the plates nobody washed, last night's carton), its stove (the pan left on the gas),
+  // the low table by the sofa
+  flat_worktop: [['kettle', 13, -1, 200], ['plates', -15, 0.5, 0], ['takeaway', 2, -2, 15], ['pint_empty', -8.5, -3.5, 0]],
+  flat_stove: [['pan', 2.5, 3.5, 25]],
+  flat_coffee: [['beer_bottle', -11, -4, 0], ['beer_bottle', -8, 5, 0], ['takeaway', 1, 4, -20], ['ashtray_lit', 12, 5, 0], ['lowball', 11, -5, 0]],
 };

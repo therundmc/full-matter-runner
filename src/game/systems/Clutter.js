@@ -9,7 +9,8 @@
 // Knocked off, a piece is a real loose thing (entities/Debris.js: it slides, it is kicked about, it is baked into the
 // floor once still), a glass smashing where it lands as often as not; paper flutters down, banknotes land as bills
 // that lie on the floor (systems/Litter.js); a champagne bucket pours out its ice water. An ashtray
-// with a cigarette left in it smokes (Smoke.wisp) as long as it stands. DOM-free.
+// with a cigarette left in it smokes (Smoke.wisp) as long as it stands; a pan left on the gas, a kettle on the boil
+// give off their fume (`fume`, Smoke.fume) likewise. DOM-free.
 import { CLUTTER, CLUTTER_HIT, SETS } from '../data/clutter.js';
 import { FLOATS } from '../data/destruction.js';
 import { LIQUIDS } from '../data/liquids.js';
@@ -170,9 +171,10 @@ export default class Clutter {
       if (p.dead) { this.on.delete(p); continue; }
       if (!sm) continue;
       for (const i of set) {
-        if (i.state !== 'on' || !i.def.smoke) continue;
+        if (i.state !== 'on' || !(i.def.smoke || i.def.fume)) continue;
         const q = this.place(p, i);
-        sm.wisp(i, q.x, q.y, dt);
+        if (i.def.smoke) sm.wisp(i, q.x, q.y, dt);
+        if (i.def.fume) sm.fume(i.def.fume, q.x, q.y, dt, 1, i); // a pan smoking on the gas, a kettle on the boil
       }
     }
   }

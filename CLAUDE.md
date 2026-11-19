@@ -146,7 +146,8 @@
 - At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
-  systems/Papers.js.
+  systems/Papers.js, what drips on the floor (systems/Drips.js: prop `drips`, `LIQUIDS.drips`), what fumes on a stove
+  (clutter `fume`, `SMOKE.fumes`: r 6 at least), liquid on a floor from the start (level `spills`, levelkit `spill`).
 
 ## Level 1
 - The boss is CUEBALL, the comic's heavy (kind `cueball`: data/bosses.js `BOSSES`, entities/Boss.js, systems/BossStage.js):
@@ -208,6 +209,10 @@
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
+  The flat's dressing (2026-11-19: FLAT_PROPS / FLAT_PAINT / FLAT_CLUTTER in generate_assets.py, the wear kinds `damp`,
+  `flakes`, `grease`, `leak`, `threadbare`, lab station 34): what lies on a floor is PAINT (no body), a piece with a
+  body goes in a corner, never in the lane, a doorway, a spawn or the robot's way (tests/flat.test.mjs holds them);
+  a paint that burns is listed in FIRE.paint (the mattress as the bed was); a spill never across a petrol trail.
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending; a page is skipped by holding
   SPACE / pad A, never a stray key or click: Hold.js, `SKIP`), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
@@ -224,8 +229,14 @@
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),
-  Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
+  Paper.js (the cut-paper sheet). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
+- Pause (ui/MenuArt.js draws, ui/Pause.js its clocks and card, DOM-free): the game frozen SHARP behind, drained and
+  dimmed flat (lens grade `POST.grades.paused`, a cut; no blur, no HUD), a black sheet cut on a diagonal down the left
+  with PAUSED on bone tape and the items big, the level's card pinned on the right (number, name, its target in his
+  ink with his sign: `TARGETS`, the run's time and kills). The chosen item is on a pink tab out of the screen's edge
+  (the title's slab): it slides in when the choice moves (`Pick`, `PICK`), a confirm presses it bone for a beat
+  before its action (ESC / R stay instant). Its OPTIONS are the title's screen, untouched.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
   a few flat inks (pink, cyan, bone); no ink line, every shape a slightly crooked flat polygon; people are cut-out
   signs (head, coat, legs), never anatomy, hands or faces in detail; strong diagonals, wedges of light, shadows as

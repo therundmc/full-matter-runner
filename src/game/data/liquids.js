@@ -43,7 +43,7 @@ export const LIQUIDS = {
   // what stands on the floor and holds the liquid (static props of these types, their footprint); tables, beds, a
   // dumpster stand on legs or wheels: it runs under them
   dams: ['bar_counter', 'fridge', 'oven', 'sink', 'bookshelf', 'arcade', 'dj_booth', 'jukebox', 'bottle_shelf',
-    'back_bar', 'washer', 'vending', 'phone_booth', 'ac_unit', 'water_tank', 'toilet', 'urinal'],
+    'back_bar', 'washer', 'vending', 'phone_booth', 'ac_unit', 'water_tank', 'toilet', 'urinal', 'worktop'],
   // the rain's puddles (systems/Weather.js lays them): hollows `hollow` mm deep at their heart, the water standing
   // level `margin` mm under the lowest point of the rim (none where it would be under `min` mm); they never dry
   rain: { hollow: 3.2, margin: 0.4, min: 0.2 },
@@ -93,6 +93,13 @@ export const LIQUIDS = {
   },
   hydrant: { kind: 'water', rate: 2600, dur: 12, r: 14 }, // a burst hydrant gushes px2/s for dur s (a flooded street corner)
   leak: 260,               // px2 per second out of a pierced tank, keg or pipe (Prop.leak)
+  // what drips on the floor drop by drop (systems/Drips.js, prop `drips`): a drop of `area` px2 over r px every
+  // `every` [min, max] s, none once the floor at its foot is `cap` films deep (the puddle is then as big as what dries
+  // of it lets it be: about a hand across for a weeping joint, a step for a pail running over)
+  drips: {
+    joint: { kind: 'water', every: [1.4, 2.6], area: 9, r: 3, cap: 1.4 },
+    pail: { kind: 'water', every: [2.2, 4], area: 14, r: 3, cap: 1.2 },
+  },
   // something that rains on the floor (Liquids.sprinkle: the sprinklers): drops poured a call, a ring now and then
   sprinkle: { drops: 3, ring: 0.5 },
   // rings spreading where a drop falls in standing liquid: at most `max` at once, `life` s, radius px

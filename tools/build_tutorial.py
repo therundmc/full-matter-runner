@@ -83,13 +83,20 @@ lv.guard(0, 0, W - 1, H - 1)                            # nobody is a guest here
 
 # ---------------------------------------------------------------- props
 lv.area('his bedroom: a mattress on the floor, his bags packed')
-lv.paint('bed', 4.8, 2.4)                               # the mattress he wakes on (no body: he lies on it)
+lv.paint('mattress', 4.8, 2.4)                          # the bare mattress he wakes on (no body: he lies on it)
 lv.prop('table_lamp', 4.45, 4.0)
+lv.prop('nightstand', 5.95, 1.3)                        # the alarm clock, a week of butts
+lv.prop('duffel_bag', 7.0, 5.55, 10)                    # packed
+lv.prop('cardboard_box', 5.9, 5.55, 5)
+lv.prop('mirror_cracked', 8.91, 4.3, 90)
+lv.paint('clothes_pile', 5.5, 4.35, 20)
+lv.paint('bottles_empty', 6.1, 3.75, 10)
+lv.paint('pizza_box', 7.3, 4.5, 20)
 lv.prop('crate', 8.45, 5.4, 8)                          # what he was taking with him
 lv.prop('crate', 7.75, 5.5, 350)
 lv.prop('crate', 8.1, 4.6, 20)
 lv.prop('bin_bag', 4.45, 5.5, 30)
-lv.prop('chair', 8.4, 1.5, 200)
+lv.prop('chair_jacket', 8.4, 1.5, 200)                  # his jacket on its back
 lv.prop('poster_band', 7.6, 1.09)
 lv.prop('frame_photo', 4.09, 4.6, 270)
 lv.paint('shoes', 6.2, 4.9, 250)
@@ -100,6 +107,13 @@ lv.prop('sofa', 12.5, 1.5)
 lv.prop('bookshelf', 15.3, 1.22)
 lv.prop('plant', 10.5, 1.5)
 lv.paint('rug', 11.3, 5.4)                              # (the room's west half: behind the fire once it is lit)
+lv.prop('coffee_table', 11.3, 5.4, clutter='flat_coffee')   # where he ate, in front of nothing: the sofa is across the room
+lv.prop('record_player', 10.25, 5.0, 270)               # his one luxury
+lv.paint('bottles_empty', 11.85, 6.45, 40)
+lv.paint('pizza_box', 10.8, 6.3, 345)
+lv.paint('phone_floor', 16.3, 6.45, 200)                # pulled off its shelf, the line out of the wall
+lv.paint('boards_loose', 15.1, 4.75, 15)                # the boards they pried up, the bar that did it
+lv.spill('booze', 11.75, 6.5, 120)                      # the last bottle, knocked over
 lv.prop('tv', 16.55, 4.2, 90)
 lv.prop('armchair', 15.5, 5.6, 215)
 lv.prop('floor_lamp', 10.45, 6.5)
@@ -115,25 +129,34 @@ lv.litter('bill', 15.7, 3.9, 12, 30, 7, looks=(5, 3, 2), seed=1986)   # the few 
 lv.area('kitchen')
 lv.prop('fridge', 10.45, 12.65, 180)
 lv.prop('sink', 11.75, 12.7, 180, clutter='flat_sink')
-lv.prop('oven', 14.6, 12.68, 180)
+lv.prop('oven', 14.6, 12.68, 180, clutter='flat_stove')  # a pan left on the gas, smoking
+lv.prop('worktop', 13.3, 12.72, 180, clutter='flat_worktop')   # its drawers turned out, the kettle on the boil
+lv.prop('boiler', 16.91, 11.75, 90)                     # the water heater: its joint weeps on the tiles
+lv.prop('calendar', 15.3, 8.07)
+lv.paint('cutlery_spill', 12.55, 11.85, 200)            # a drawer emptied on the floor
+lv.paint('trash_spill', 15.9, 11.55, 20)
+lv.spill('water', 16.66, 11.6, 160)                     # under the heater's joint
+lv.spill('water', 11.95, 12.25, 40)                     # under the sink's trap
 lv.prop('gas_bottle', 15.5, 12.7)                       # the stove's: the two of them go at the end
 lv.prop('table', 14.4, 10.3, clutter='flat_kitchen')
 lv.prop('chair', 14.4, 9.5, 90)
 lv.prop('chair', 13.4, 10.35, 0)
 lv.prop('tube_light', 11.5, 8.07, flicker='stutter')
 lv.prop('trash_can', 16.45, 12.45, tips=False)          # indoors: stays up
-lv.prop('bin_bag', 16.5, 11.75, 60)
+lv.prop('bin_bag', 15.85, 12.15, 60)                    # split
 lv.prop('jerrycan', 12.7, 8.5, 200)
 
 lv.area('entrance hall')
 lv.prop('coat_hooks', 18.6, 3.91, 180)
 lv.prop('ceiling_lamp', 19.0, 2.5)
 lv.paint('doormat', 19.5, 2.5, 90)
+lv.paint('mail_pile', 19.3, 3.3, 30)                    # the post he never opened
 
 lv.area('back hall')
 lv.prop('bookshelf', 18.9, 11.78, 180)
 lv.prop('ceiling_lamp', 19.0, 10.0)
-lv.paint('shoes', 18.4, 9.4, 100)
+lv.paint('shoes', 19.45, 9.3, 100)
+lv.prop('plant_dead', 18.3, 9.3)
 
 lv.area('the corridor of the building')
 for row in (4.5, 7.5, 10.5, 13.5):                      # a worn carpet runner down its middle ...
@@ -151,6 +174,9 @@ lv.prop('radiator', 21.09, 8.4, 270)
 lv.prop('extinguisher', 21.09, 12.4, 270)
 lv.prop('bike', 21.26, 4.3, 90)
 lv.prop('plant', 22.5, 2.5)
+lv.prop('bucket', 22.62, 8.6)                           # under a leak in the ceiling, full: it runs over
+lv.spill('water', 22.7, 8.8, 90)
+lv.paint('mail_pile', 22.55, 12.6, 95)
 for col in (13.5, 17.5):                                # along the long corridor: doors on its south wall
     lv.prop('apt_door', col, 15.91, 180)
     lv.paint('doormat', col, 15.52, 180)
@@ -171,7 +197,10 @@ lv.prop('streetlight', 0.6, 13.0)
 lv.area('the landing')
 lv.paint('stairs', 8.0, 20.25, 180)
 lv.prop('ceiling_lamp', 8.0, 17.6)
-lv.prop('plant', 6.5, 16.6)
+lv.prop('plant_dead', 6.5, 16.6)
+lv.prop('mailboxes', 10.91, 18.3, 90)                   # the tenants' letter boxes
+lv.paint('mail_pile', 10.5, 19.0, 40)
+lv.paint('trash_spill', 9.85, 17.15, 100)
 lv.prop('trash_can', 10.5, 16.6, tips=False)
 lv.prop('bin_bag', 10.05, 16.5, 60)
 lv.prop('pay_phone', 6.09, 18.4, 270)
@@ -218,6 +247,49 @@ lv.grime('butts', 11, 14, 20, 15, 6)                    # the man who waits ther
 lv.grime('napkin', 4, 14, 20, 15, 3)
 lv.grime('butts', 6, 16, 10, 20, 4)
 lv.grime('stain', 6, 16, 10, 20, 3)
+# an old flat's own (FloorWear.js: damp, flakes, grease, leak, threadbare), each put where it comes from
+lv.grime_at('threadbare', 6.6, 2.9, r=13)               # the carpet by his mattress, where he gets up
+lv.grime_at('threadbare', 8.5, 2.6, r=10)               # ... and at his door
+lv.grime_at('damp', 5.1, 1.25, r=14)                    # under the window
+lv.grime_at('damp', 4.3, 5.6, r=11)
+lv.grime_at('flakes', 7.0, 1.2)                         # the plaster of the north wall
+lv.grime_at('flakes', 4.2, 4.4)
+lv.grime('burns', 5, 3, 6, 4, 2)                        # he smokes in bed
+lv.grime('stain', 5, 3, 7, 5, 2, col='#2a1c14')
+lv.grime('scratches', 15, 3, 16, 5, 4)                  # the boards round the hole, levered up
+lv.grime('broken', 15, 4, 16, 5, 2)
+lv.grime('gap', 14, 3, 16, 5, 3)
+lv.grime('burns', 15, 5, 16, 6, 2)                      # by the armchair
+lv.grime('rings', 10, 4, 12, 6, 3)
+lv.grime_at('damp', 16.6, 1.3, r=12)
+lv.grime_at('flakes', 16.7, 5.4)
+lv.grime_at('flakes', 10.25, 6.6)
+lv.grime_at('flakes', 12.2, 1.15)
+lv.grime_at('grease', 14.6, 12.0, r=13)                 # before the stove
+lv.grime_at('grease', 13.4, 12.2, r=8)
+lv.grime_at('leak', 16.6, 11.6, r=9)                    # under the water heater
+lv.grime_at('leak', 11.9, 12.2, r=6)                    # under the sink
+lv.grime_at('damp', 10.3, 11.9, r=10)                   # behind the fridge
+lv.grime_at('flakes', 16.7, 9.0)
+lv.grime('crack', 10, 8, 16, 12, 4, len=[14, 40], d=-14, lit=4)   # the tiles, cracked
+lv.grime('chip', 10, 9, 16, 12, 5)
+lv.grime('scuffs', 11, 10, 15, 12, 4)                   # chairs dragged, years of it
+lv.grime_at('threadbare', 18.9, 2.5, r=11)              # the hall carpet at his front door
+lv.grime_at('flakes', 18.3, 1.2)
+lv.grime_at('flakes', 19.6, 11.3)
+lv.grime_at('leak', 22.7, 8.8, r=9)                     # under the leak in the corridor's ceiling
+lv.grime_at('damp', 22.75, 8.0, r=12)
+lv.grime_at('damp', 21.2, 13.4, r=10)
+lv.grime_at('damp', 4.5, 14.3, r=13)                    # by the window at the corridor's end
+lv.grime_at('damp', 12.6, 15.75, r=9)
+for (col, row) in ((22.8, 3.6), (21.2, 5.4), (22.8, 10.8), (21.2, 11.3), (19.0, 14.2), (14.6, 15.8), (9.0, 14.2), (6.4, 15.8),
+                   (7.2, 14.2), (6.2, 17.6), (10.8, 19.6), (9.2, 16.2)):
+    lv.grime_at('flakes', col, row)                     # plaster off the corridor's walls, the landing's
+lv.grime('tear', 21, 6, 22, 13, 3)                      # the lino, torn
+lv.grime('tear', 12, 14, 20, 15, 4)
+lv.grime('scuffs', 4, 14, 20, 15, 8)
+lv.grime('tide', 6, 16, 10, 19, 2)                      # the landing's concrete, mopped with dirty water
+lv.grime('crack', 6, 16, 10, 20, 3)
 lv.wear_path(6.2, 3.3, 9.5, 2.8, 10)                    # from his mattress to the kitchen
 lv.wear_path(9.5, 2.8, 13.6, 3.1, 10)
 lv.wear_path(13.6, 3.1, 13.5, 6.6, 10)
@@ -279,6 +351,8 @@ lights = [
     [6, 3, 5, '#6a5ad8', 0.3],
     [13, 4, 6, '#7a5ad8', 0.25],
     [12, 14.5, 8, '#5a6ad8', 0.22],
+    [13.3, 10.6, 5, '#8a9ad8', 0.2],                    # the kitchen: what its tube throws back off the tiles
+    [14.3, 12.1, 2.6, '#6a9aff', 0.45],                 # the gas ring burning blue under the pan
 ]
 
 if __name__ == '__main__':

@@ -65,26 +65,31 @@ export default {
   ],
   props: [
     // his bedroom: a mattress on the floor, his bags packed
-    ['table_lamp', 4.45, 4, 0], ['crate', 8.45, 5.4, 8], ['crate', 7.75, 5.5, 350], ['crate', 8.1, 4.6, 20],
-    ['bin_bag', 4.45, 5.5, 30], ['chair', 8.4, 1.5, 200], ['poster_band', 7.6, 1.09, 0],
-    ['frame_photo', 4.09, 4.6, 270],
+    ['table_lamp', 4.45, 4, 0], ['nightstand', 5.95, 1.3, 0], ['duffel_bag', 7, 5.55, 10],
+    ['cardboard_box', 5.9, 5.55, 5], ['mirror_cracked', 8.91, 4.3, 90], ['crate', 8.45, 5.4, 8],
+    ['crate', 7.75, 5.5, 350], ['crate', 8.1, 4.6, 20], ['bin_bag', 4.45, 5.5, 30], ['chair_jacket', 8.4, 1.5, 200],
+    ['poster_band', 7.6, 1.09, 0], ['frame_photo', 4.09, 4.6, 270],
     // living room: the floor torn up where he kept it
-    ['sofa', 12.5, 1.5, 0], ['bookshelf', 15.3, 1.22, 0], ['plant', 10.5, 1.5, 0], ['tv', 16.55, 4.2, 90],
-    ['armchair', 15.5, 5.6, 215], ['floor_lamp', 10.45, 6.5, 0], ['table', 13.5, 5.7, 0, { clutter: 'flat_table' }],
-    ['jerrycan', 16.4, 3.1, 40], ['poster_fight', 11.4, 6.91, 180], ['frame_photo', 14, 1.09, 0],
+    ['sofa', 12.5, 1.5, 0], ['bookshelf', 15.3, 1.22, 0], ['plant', 10.5, 1.5, 0],
+    ['coffee_table', 11.3, 5.4, 0, { clutter: 'flat_coffee' }], ['record_player', 10.25, 5, 270],
+    ['tv', 16.55, 4.2, 90], ['armchair', 15.5, 5.6, 215], ['floor_lamp', 10.45, 6.5, 0],
+    ['table', 13.5, 5.7, 0, { clutter: 'flat_table' }], ['jerrycan', 16.4, 3.1, 40], ['poster_fight', 11.4, 6.91, 180],
+    ['frame_photo', 14, 1.09, 0],
     // kitchen
-    ['fridge', 10.45, 12.65, 180], ['sink', 11.75, 12.7, 180, { clutter: 'flat_sink' }], ['oven', 14.6, 12.68, 180],
-    ['gas_bottle', 15.5, 12.7, 0], ['table', 14.4, 10.3, 0, { clutter: 'flat_kitchen' }], ['chair', 14.4, 9.5, 90],
-    ['chair', 13.4, 10.35, 0], ['tube_light', 11.5, 8.07, 0, { flicker: 'stutter' }],
-    ['trash_can', 16.45, 12.45, 0, { tips: false }], ['bin_bag', 16.5, 11.75, 60], ['jerrycan', 12.7, 8.5, 200],
+    ['fridge', 10.45, 12.65, 180], ['sink', 11.75, 12.7, 180, { clutter: 'flat_sink' }],
+    ['oven', 14.6, 12.68, 180, { clutter: 'flat_stove' }], ['worktop', 13.3, 12.72, 180, { clutter: 'flat_worktop' }],
+    ['boiler', 16.91, 11.75, 90], ['calendar', 15.3, 8.07, 0], ['gas_bottle', 15.5, 12.7, 0],
+    ['table', 14.4, 10.3, 0, { clutter: 'flat_kitchen' }], ['chair', 14.4, 9.5, 90], ['chair', 13.4, 10.35, 0],
+    ['tube_light', 11.5, 8.07, 0, { flicker: 'stutter' }], ['trash_can', 16.45, 12.45, 0, { tips: false }],
+    ['bin_bag', 15.85, 12.15, 60], ['jerrycan', 12.7, 8.5, 200],
     // entrance hall
     ['coat_hooks', 18.6, 3.91, 180], ['ceiling_lamp', 19, 2.5, 0],
     // back hall
-    ['bookshelf', 18.9, 11.78, 180], ['ceiling_lamp', 19, 10, 0],
+    ['bookshelf', 18.9, 11.78, 180], ['ceiling_lamp', 19, 10, 0], ['plant_dead', 18.3, 9.3, 0],
     // the corridor of the building
     ['apt_door', 22.91, 5.5, 90], ['wall_lamp', 22.91, 7.5, 90], ['apt_door', 22.91, 12, 90],
     ['wall_lamp', 22.91, 9.5, 90], ['apt_door', 21.09, 6.5, 270], ['radiator', 21.09, 8.4, 270],
-    ['extinguisher', 21.09, 12.4, 270], ['bike', 21.26, 4.3, 90], ['plant', 22.5, 2.5, 0],
+    ['extinguisher', 21.09, 12.4, 270], ['bike', 21.26, 4.3, 90], ['plant', 22.5, 2.5, 0], ['bucket', 22.62, 8.6, 0],
     ['apt_door', 13.5, 15.91, 180], ['apt_door', 17.5, 15.91, 180], ['wall_lamp', 15.6, 14.09, 0],
     ['wall_lamp', 11.5, 15.91, 180], ['tube_light', 17, 14.07, 0, { flicker: 'dying' }],
     ['radiator', 16.4, 15.91, 180], ['poster_band', 20, 15.91, 180], ['bin_bag', 15.6, 15.62, 20],
@@ -92,13 +97,13 @@ export default {
     // the alley under the window
     ['streetlight', 0.6, 13, 0],
     // the landing
-    ['ceiling_lamp', 8, 17.6, 0], ['plant', 6.5, 16.6, 0], ['trash_can', 10.5, 16.6, 0, { tips: false }],
-    ['bin_bag', 10.05, 16.5, 60], ['pay_phone', 6.09, 18.4, 270],
+    ['ceiling_lamp', 8, 17.6, 0], ['plant_dead', 6.5, 16.6, 0], ['mailboxes', 10.91, 18.3, 90],
+    ['trash_can', 10.5, 16.6, 0, { tips: false }], ['bin_bag', 10.05, 16.5, 60], ['pay_phone', 6.09, 18.4, 270],
   ],
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[0, 0, 28, 21]],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['bed', 4.8, 2.4, 0], ['shoes', 6.2, 4.9, 250], ['newspaper', 6.9, 3.9, 30], ['rug', 11.3, 5.4, 0], ['floor_hole', 15.7, 3.9, 10], ['newspaper', 15.6, 6.3, 70], ['doormat', 19.5, 2.5, 90], ['shoes', 18.4, 9.4, 100], ['runner', 22.0, 4.5, 90], ['runner', 22.0, 7.5, 90], ['runner', 22.0, 10.5, 90], ['runner', 22.0, 13.5, 90], ['runner', 20.5, 15.0, 0], ['runner', 17.5, 15.0, 0], ['runner', 14.5, 15.0, 0], ['runner', 11.5, 15.0, 0], ['doormat', 21.5, 10.5, 90], ['doormat', 21.5, 2.5, 90], ['newspaper', 22.5, 5.6, 80], ['doormat', 13.5, 15.52, 180], ['doormat', 17.5, 15.52, 180], ['newspaper', 17.4, 15.5, 10], ['shoes', 13.1, 15.5, 180], ['stairs', 8.0, 20.25, 180]],
+  floor: [['mattress', 4.8, 2.4, 0], ['clothes_pile', 5.5, 4.35, 20], ['bottles_empty', 6.1, 3.75, 10], ['pizza_box', 7.3, 4.5, 20], ['shoes', 6.2, 4.9, 250], ['newspaper', 6.9, 3.9, 30], ['rug', 11.3, 5.4, 0], ['bottles_empty', 11.85, 6.45, 40], ['pizza_box', 10.8, 6.3, 345], ['phone_floor', 16.3, 6.45, 200], ['boards_loose', 15.1, 4.75, 15], ['floor_hole', 15.7, 3.9, 10], ['newspaper', 15.6, 6.3, 70], ['cutlery_spill', 12.55, 11.85, 200], ['trash_spill', 15.9, 11.55, 20], ['doormat', 19.5, 2.5, 90], ['mail_pile', 19.3, 3.3, 30], ['shoes', 19.45, 9.3, 100], ['runner', 22.0, 4.5, 90], ['runner', 22.0, 7.5, 90], ['runner', 22.0, 10.5, 90], ['runner', 22.0, 13.5, 90], ['runner', 20.5, 15.0, 0], ['runner', 17.5, 15.0, 0], ['runner', 14.5, 15.0, 0], ['runner', 11.5, 15.0, 0], ['doormat', 21.5, 10.5, 90], ['doormat', 21.5, 2.5, 90], ['newspaper', 22.5, 5.6, 80], ['mail_pile', 22.55, 12.6, 95], ['doormat', 13.5, 15.52, 180], ['doormat', 17.5, 15.52, 180], ['newspaper', 17.4, 15.5, 10], ['shoes', 13.1, 15.5, 180], ['stairs', 8.0, 20.25, 180], ['mail_pile', 10.5, 19.0, 40], ['trash_spill', 9.85, 17.15, 100]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [17.6, 2.35]],
@@ -119,8 +124,10 @@ export default {
   doors: { '9,2': {"kind": "flat"}, '20,2': {"kind": "flat", "closer": true, "inside": [-1, 0]}, '20,10': {"kind": "flat"}, '11,14': {"kind": "wired", "inside": [1, 0]} },
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
   // paths worn by feet [col0, row0, col1, row1, width px]
-  grime: [['stain', 4, 1, 8, 5, 2], ['burns', 4, 3, 8, 5, 2], ['butts', 6, 3, 8, 5, 3], ['rings', 12, 4, 14, 6, 4], ['sticky', 10, 3, 13, 6, 2], ['napkin', 10, 3, 14, 6, 4], ['butts', 10, 1, 16, 6, 5], ['stain', 13, 1, 16, 6, 2, {'col': '#3a2418'}], ['sticky', 10, 8, 16, 12, 3], ['stain', 10, 10, 13, 12, 3, {'col': '#5a5a3a'}], ['napkin', 13, 9, 16, 12, 3], ['butts', 18, 9, 19, 11, 3], ['stain', 21, 2, 22, 13, 4, {'col': '#3a3020'}], ['butts', 21, 2, 22, 13, 4], ['sticky', 21, 8, 22, 13, 2], ['stain', 4, 14, 20, 15, 6, {'col': '#3a3020'}], ['butts', 11, 14, 20, 15, 6], ['napkin', 4, 14, 20, 15, 3], ['butts', 6, 16, 10, 20, 4], ['stain', 6, 16, 10, 20, 3]],
+  grime: [['stain', 4, 1, 8, 5, 2], ['burns', 4, 3, 8, 5, 2], ['butts', 6, 3, 8, 5, 3], ['rings', 12, 4, 14, 6, 4], ['sticky', 10, 3, 13, 6, 2], ['napkin', 10, 3, 14, 6, 4], ['butts', 10, 1, 16, 6, 5], ['stain', 13, 1, 16, 6, 2, {'col': '#3a2418'}], ['sticky', 10, 8, 16, 12, 3], ['stain', 10, 10, 13, 12, 3, {'col': '#5a5a3a'}], ['napkin', 13, 9, 16, 12, 3], ['butts', 18, 9, 19, 11, 3], ['stain', 21, 2, 22, 13, 4, {'col': '#3a3020'}], ['butts', 21, 2, 22, 13, 4], ['sticky', 21, 8, 22, 13, 2], ['stain', 4, 14, 20, 15, 6, {'col': '#3a3020'}], ['butts', 11, 14, 20, 15, 6], ['napkin', 4, 14, 20, 15, 3], ['butts', 6, 16, 10, 20, 4], ['stain', 6, 16, 10, 20, 3], ['threadbare', 6.6, 2.9, 6.6, 2.9, 1, {'r': 13, 'at': 'point'}], ['threadbare', 8.5, 2.6, 8.5, 2.6, 1, {'r': 10, 'at': 'point'}], ['damp', 5.1, 1.25, 5.1, 1.25, 1, {'r': 14, 'at': 'point'}], ['damp', 4.3, 5.6, 4.3, 5.6, 1, {'r': 11, 'at': 'point'}], ['flakes', 7.0, 1.2, 7.0, 1.2, 1, {'at': 'point'}], ['flakes', 4.2, 4.4, 4.2, 4.4, 1, {'at': 'point'}], ['burns', 5, 3, 6, 4, 2], ['stain', 5, 3, 7, 5, 2, {'col': '#2a1c14'}], ['scratches', 15, 3, 16, 5, 4], ['broken', 15, 4, 16, 5, 2], ['gap', 14, 3, 16, 5, 3], ['burns', 15, 5, 16, 6, 2], ['rings', 10, 4, 12, 6, 3], ['damp', 16.6, 1.3, 16.6, 1.3, 1, {'r': 12, 'at': 'point'}], ['flakes', 16.7, 5.4, 16.7, 5.4, 1, {'at': 'point'}], ['flakes', 10.25, 6.6, 10.25, 6.6, 1, {'at': 'point'}], ['flakes', 12.2, 1.15, 12.2, 1.15, 1, {'at': 'point'}], ['grease', 14.6, 12.0, 14.6, 12.0, 1, {'r': 13, 'at': 'point'}], ['grease', 13.4, 12.2, 13.4, 12.2, 1, {'r': 8, 'at': 'point'}], ['leak', 16.6, 11.6, 16.6, 11.6, 1, {'r': 9, 'at': 'point'}], ['leak', 11.9, 12.2, 11.9, 12.2, 1, {'r': 6, 'at': 'point'}], ['damp', 10.3, 11.9, 10.3, 11.9, 1, {'r': 10, 'at': 'point'}], ['flakes', 16.7, 9.0, 16.7, 9.0, 1, {'at': 'point'}], ['crack', 10, 8, 16, 12, 4, {'len': [14, 40], 'd': -14, 'lit': 4}], ['chip', 10, 9, 16, 12, 5], ['scuffs', 11, 10, 15, 12, 4], ['threadbare', 18.9, 2.5, 18.9, 2.5, 1, {'r': 11, 'at': 'point'}], ['flakes', 18.3, 1.2, 18.3, 1.2, 1, {'at': 'point'}], ['flakes', 19.6, 11.3, 19.6, 11.3, 1, {'at': 'point'}], ['leak', 22.7, 8.8, 22.7, 8.8, 1, {'r': 9, 'at': 'point'}], ['damp', 22.75, 8.0, 22.75, 8.0, 1, {'r': 12, 'at': 'point'}], ['damp', 21.2, 13.4, 21.2, 13.4, 1, {'r': 10, 'at': 'point'}], ['damp', 4.5, 14.3, 4.5, 14.3, 1, {'r': 13, 'at': 'point'}], ['damp', 12.6, 15.75, 12.6, 15.75, 1, {'r': 9, 'at': 'point'}], ['flakes', 22.8, 3.6, 22.8, 3.6, 1, {'at': 'point'}], ['flakes', 21.2, 5.4, 21.2, 5.4, 1, {'at': 'point'}], ['flakes', 22.8, 10.8, 22.8, 10.8, 1, {'at': 'point'}], ['flakes', 21.2, 11.3, 21.2, 11.3, 1, {'at': 'point'}], ['flakes', 19.0, 14.2, 19.0, 14.2, 1, {'at': 'point'}], ['flakes', 14.6, 15.8, 14.6, 15.8, 1, {'at': 'point'}], ['flakes', 9.0, 14.2, 9.0, 14.2, 1, {'at': 'point'}], ['flakes', 6.4, 15.8, 6.4, 15.8, 1, {'at': 'point'}], ['flakes', 7.2, 14.2, 7.2, 14.2, 1, {'at': 'point'}], ['flakes', 6.2, 17.6, 6.2, 17.6, 1, {'at': 'point'}], ['flakes', 10.8, 19.6, 10.8, 19.6, 1, {'at': 'point'}], ['flakes', 9.2, 16.2, 9.2, 16.2, 1, {'at': 'point'}], ['tear', 21, 6, 22, 13, 3], ['tear', 12, 14, 20, 15, 4], ['scuffs', 4, 14, 20, 15, 8], ['tide', 6, 16, 10, 19, 2], ['crack', 6, 16, 10, 20, 3]],
   worn: [[6.2, 3.3, 9.5, 2.8, 10], [9.5, 2.8, 13.6, 3.1, 10], [13.6, 3.1, 13.5, 6.6, 10], [13.5, 8.6, 16.6, 10.5, 10], [21.5, 3.0, 21.5, 13.5, 12], [20.5, 14.5, 4.8, 14.5, 12], [8.0, 16.2, 8.0, 19.4, 14]],
+  // liquid on the floor from the start (systems/Liquids.js): [kind, col, row, area px2]
+  spills: [["booze", 11.75, 6.5, 120], ["water", 16.66, 11.6, 160], ["water", 11.95, 12.25, 40], ["water", 22.7, 8.8, 90]],
   // small things lying loose on the floor (systems/Litter.js): [kind, col, row, deg, look]
   litter: [
     ["bill", 16.019, 3.392, 243, 0], ["bill", 16.053, 4.069, 338, 2], ["bill", 15.367, 3.185, 79, 0], ["bill", 15.446, 4.176, 276, 2],
@@ -132,5 +139,7 @@ export default {
     [6, 3, 5, '#6a5ad8', 0.3],
     [13, 4, 6, '#7a5ad8', 0.25],
     [12, 14.5, 8, '#5a6ad8', 0.22],
+    [13.3, 10.6, 5, '#8a9ad8', 0.2],
+    [14.3, 12.1, 2.6, '#6a9aff', 0.45],
   ],
 };

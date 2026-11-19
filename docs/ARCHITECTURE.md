@@ -179,6 +179,9 @@ src/
       Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes
                           whistling out of a bullet hole (SMOKE.steam / jets.leak, level `street`): steam put in the air
                           of Smoke.js, which carries it (a passing car tears it along)
+      Drips.js            water that drips on the floor drop by drop (prop `drips`, LIQUIDS.drips: a water heater's
+                          weeping joint, a pail running over): a little liquid poured at the prop's foot every few
+                          seconds while it stands, none once the floor there is deep enough (DOM-free, unit-tested)
       Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
                           soaked by the rain, heavier and darker; `drop` adds sheets that fell out of something
       Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is

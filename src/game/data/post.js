@@ -52,6 +52,8 @@ export const POST = {
     combat: { sat: 1.3, con: 1.12, gain: [1.04, 0.98, 0.98], lift: [0.025, 0.02, 0.055], tint: [1, 0.12, 0.3], tintK: 0.1 },
     dark: { sat: 1.08, con: 1.16, gain: [1, 0.97, 0.98], lift: [0.02, 0.005, 0.035], tint: [1, 0.1, 0.1], tintK: 0.1 },
     dead: { sat: 0.32, con: 1.24, gain: [0.92, 0.96, 1.06], lift: [0, 0.02, 0.06], tint: [0.3, 0.5, 1], tintK: 0.14 },
+    // behind the pause (ui/MenuArt.js): frozen, drained, pushed down toward the night; a cut, never eased (Lens.update)
+    paused: { sat: 0.22, con: 1.1, gain: [0.8, 0.76, 0.92], lift: [0.01, 0, 0.04], tint: [0.5, 0.3, 1], tintK: 0.12 },
     menu: { sat: 1.1, con: 1.04, gain: [1, 1, 1], lift: [0, 0.03, 0.06], tint: [1, 0.16, 0.75], tintK: 0.06 },
   },
   gradeEase: 2.2,          // 1/s
@@ -73,7 +75,7 @@ export const POST = {
 
   // ---- 7. speed: the picture smears along a slide, a roll, a dive; it streams from the player in slow motion.
   // OFF (all 0): the user tried the blurs in play and does not like how they look. Same for `tube.bleed` and for
-  // the soft edges below; only the picture behind a menu is still blurred.
+  // the soft edges below; only the picture behind the results is still blurred.
   speed: {
     slide: 0, roll: 0, dive: 0, slow: 0, ease: 9,   // picture heights; ease 1/s
     // AT THE WHEEL ONLY (level 2A, systems/Drive.js; the user asked for it there: the street did not feel fast). The
@@ -105,9 +107,9 @@ export const POST = {
     },
   },
 
-  // ---- 8. focus: the edges of the picture go soft; more when looking far (Shift); everything behind a menu
+  // ---- 8. focus: the edges of the picture go soft; more when looking far (Shift); everything behind the results
   focus: {
-    edge: 0, title: 0, look: 0, dead: 0, pause: 1, results: 0.8, ease: 6,
+    edge: 0, title: 0, look: 0, dead: 0, pause: 0, results: 0.8, ease: 6,   // (the pause: sharp, cut paper over it)
     // where it goes soft: from `from` of the way out (the picture `tall` times taller than wide for it, k: its scale)
     shape: { from: 0.42, tall: 1.08, k: 0.78 },
   },

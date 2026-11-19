@@ -35,12 +35,12 @@ export default {
     "X#_____________________________________________________________D;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
     "X#_____________________________________________________________X;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
     "X#_________##...###__##++##____#####D#####D#########D#DD#L#DD##X;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#X###########XXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXX____XXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXX____XXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "X##########################____##############D########D####L###XXX____XXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#X###########XXXX##########XXXXXXX",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXX____XXXXXXXXX#++++++++#XXXXXXX",
+    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXX____XXXXXXXXX#++++++++#XXXXXXX",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXX#++++++++#XXXXXXX",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXX#++++++++#XXXXXXX",
+    "X##########################____##############D########D####L###XXX____XXXXXXXXX####+#####XXXXXXX",
     "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssX",
     "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssX",
     "X==============================================================================================X",
@@ -161,6 +161,13 @@ export default {
     // 21 lorry: a box lorry that backs out across the street when a car comes
     ['lorry', 68, 17.375, -90, { backs: 3 }], ['car2', 61, 23.6, 0, { drive: true }], ['trash_can', 64.5, 19.4, 0],
     ['crate', 70.9, 19.3, 12], ['wall_lamp', 64.5, 18.08, 0],
+    // 34 flat: the prologue's furniture, what drips and what fumes
+    ['ceiling_lamp', 84, 15, 0], ['worktop', 81.6, 13.28, 0, { clutter: 'flat_worktop' }],
+    ['oven', 82.9, 13.32, 0, { clutter: 'flat_stove' }], ['calendar', 84.2, 13.07, 0],
+    ['mirror_cracked', 85.3, 13.09, 0], ['mailboxes', 86.7, 13.09, 0], ['boiler', 87.91, 14.6, 90],
+    ['bucket', 87.3, 16.4, 0], ['nightstand', 81.9, 14.45, 0], ['duffel_bag', 85.3, 14.2, 15],
+    ['chair_jacket', 86.6, 14.2, 200], ['coffee_table', 84.5, 15.4, 0, { clutter: 'flat_coffee' }],
+    ['record_player', 86.2, 16.72, 180], ['plant_dead', 80.4, 16.6, 0],
     // 32 chase fx: cars smoking at each stage of damage, one to set alight and blow up, a car to grind along the wall
     ['car', 78, 21, 0, { worn: 0.25 }], ['car2', 83, 21, 0, { worn: 0.45 }], ['car', 88.2, 21, 0, { worn: 0.6 }],
     ['car2', 75.4, 23.6, 0, { drive: true }], ['wall_lamp', 80.5, 18.08, 0], ['wall_lamp', 90.5, 18.08, 0],
@@ -181,7 +188,7 @@ export default {
     ['ceiling_lamp', 69.5, 28, 0], ['ceiling_lamp', 72.8, 28, 0],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_signals', 45.6, 18.45, 0], ['label_drive', 8.2, 18.6, 0], ['label_chasecam', 16.4, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_chasefx', 76.4, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0], ['label_throw', 37.5, 25.5, 0], ['label_killcam', 57.5, 25.5, 0], ['label_shield', 70.5, 25.5, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_signals', 45.6, 18.45, 0], ['label_drive', 8.2, 18.6, 0], ['label_chasecam', 16.4, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_flat', 84.6, 18.6, 0], ['mattress', 80.8, 15.1, 0], ['clothes_pile', 82.3, 16.3, 20], ['pizza_box', 83.2, 14.6, 20], ['bottles_empty', 82.6, 15.3, 40], ['mail_pile', 83.5, 16.6, 30], ['boards_loose', 85.0, 16.4, 15], ['phone_floor', 86.9, 15.3, 200], ['trash_spill', 81.6, 16.5, 100], ['cutlery_spill', 82.0, 14.1, 200], ['label_chasefx', 76.4, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0], ['label_throw', 37.5, 25.5, 0], ['label_killcam', 57.5, 25.5, 0], ['label_shield', 70.5, 25.5, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],
@@ -206,6 +213,9 @@ export default {
   buzzers: [{"at": [58.4, 10.75], "door": [57, 11], "guard": [57, 13]}],
   // windows with iron bars outside the glass: nobody goes through them (entities/Window.js)
   bars: [[44, 7]],
+  // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
+  // paths worn by feet [col0, row0, col1, row1, width px]
+  grime: [['grease', 82.9, 14.0, 82.9, 14.0, 1, {'r': 12, 'at': 'point'}], ['leak', 87.6, 14.7, 87.6, 14.7, 1, {'r': 9, 'at': 'point'}], ['leak', 87.4, 16.6, 87.4, 16.6, 1, {'r': 9, 'at': 'point'}], ['damp', 80.3, 13.3, 80.3, 13.3, 1, {'r': 13, 'at': 'point'}], ['flakes', 85.6, 13.2, 85.6, 13.2, 1, {'at': 'point'}], ['flakes', 80.2, 15.8, 80.2, 15.8, 1, {'at': 'point'}], ['crack', 84.8, 14.6, 84.8, 14.6, 1, {'len': [14, 40], 'd': -14, 'lit': 4, 'at': 'point'}], ['threadbare', 83.6, 15.9, 83.6, 15.9, 1, {'r': 10, 'at': 'point'}]],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"pigeons": [[34.0, 18.8, 3]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]
