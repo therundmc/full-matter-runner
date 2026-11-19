@@ -180,7 +180,7 @@ export const PROPS = {
   shop_shelf: { static: true, material: 'metal', w: 40, h: 11, hp: 10, chips: '#c8ccd4', sound: 'metal', blocksPath: true },
   wine_rack: { static: true, material: 'wood', w: 40, h: 11, hp: 10, chips: '#5a3420', glass: true, sound: 'glass', blocksPath: true },
   beer_cases: { vault: true, material: 'fabric', w: 20, h: 16, hp: 5, kg: 36, mu: 0.6, chips: '#b88a52', glass: true, sound: 'wood' },
-  lottery_stand: { material: 'metal', w: 12, h: 10, hp: 3, kg: 8, mu: 0.45, chips: '#e8c040', sound: 'metal' },
+  lottery_stand: { static: true, material: 'metal', w: 12, h: 10, hp: 3, chips: '#e8c040', sound: 'metal' },   // (bolted to the floor)
   // the TV shop: sets stacked on their stand and left on, the video recorders' shelf, a set still in its box, the
   // bench where one lies open under the lamp (its iron left hot)
   tv_stack: { static: true, material: 'plastic', w: 30, h: 18, hp: 8, chips: '#2a2a30', sparks: true, glass: true, sound: 'glass', blocksPath: true,

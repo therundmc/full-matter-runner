@@ -428,7 +428,8 @@ lv.prop('bar_counter', 7.5, 18.4, clutter='liquor_counter')   # a bottle being p
 lv.prop('bar_counter', 8.5, 18.4, clutter='liquor_till')   # its till, the display left on, the day's slips, a full ashtray
 lv.prop('shop_shelf', 5.0, 18.5)                        # the gondola in the middle: crackers, cans, what goes with a bottle
 lv.prop('lottery_stand', 6.78, 18.42)                   # at the counter's end
-lv.prop('bottle_crate', 7.3, 17.7)                      # the returns, behind the counter
+# (nothing loose behind the counter nor in the aisle to the ladder: one vaults in there, and what he kicks along
+# ends up at the ladder's foot: the QA robot's roof plans stopped on a crate of empties)
 lv.prop('beer_cases', 4.25, 19.55)                      # beer by the case, by the fridges
 lv.prop('cig_rack', 8.91, 17.7, 90)                     # the cigarettes, on the wall behind the till
 lv.prop('price_board', 3.09, 17.6, 270)

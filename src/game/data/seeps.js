@@ -29,7 +29,7 @@ export const SEEPS = {
   // a top loader whose pump seal is gone: water creeping out from under its front
   washer: { drip: { kind: 'water', at: [-5, 13.5], drop: 22, every: [1.3, 2.2], cap: 1.5, most: null, r: 3 } },
   // a keg on tap, its coupling weeping: beer in a slow amber pool beside it, until it is flat
-  keg: { drip: { kind: 'beer', at: [10, 2], drop: 16, every: [1.8, 3.2], cap: 1.3, most: 2400, r: 3 } },
+  keg: { drip: { kind: 'beer', at: [10, 2], drop: 16, every: [1.8, 3.2], cap: 1.3, most: 900, r: 3 } },
   // the bar's ice bin sweating through its drain plug
   ice_bin: { drip: { kind: 'water', at: [5, 9.5], drop: 12, every: [2.4, 3.8], cap: 1.2, most: 1800, r: 2.5 } },
   // a water cooler's tap that never quite shuts
