@@ -131,12 +131,21 @@ export default class Director {
   tick(dt) {
     const w = this.world;
     this.trail.prune(w.time);
+    this.forget(w.time);
     if ((this.hotT -= dt) <= 0) { this.hotT = 1; this.findHot(); }
     if (this.phase === 'alert' && w.time - this.lastSightT > AI.alertLinger) this.startEvasion();
     else if (this.phase === 'evasion' && (this.phaseT -= dt) <= 0) {
       this.setPhase('caution', AI.caution);
       for (const e of this.alive) e.standDown();
     } else if (this.phase === 'caution' && (this.phaseT -= dt) <= 0) this.setPhase('normal');
+  }
+
+  // what the squad no longer needs to keep: the tiles where a mate fell once they are safe again, and the incidents
+  // already reported once no guard is wary of them any more (AI.wary.time: nothing reads a reported one after that)
+  forget(now) {
+    this.danger.prune(now);
+    const old = now - AI.wary.time;
+    if (this.incidents.some((i) => i.reported && i.t < old)) this.incidents = this.incidents.filter((i) => !i.reported || i.t >= old);
   }
 
   // ---------------- noise ----------------

@@ -78,6 +78,12 @@ export default class SmokeArt {
                          // drawing the first time it meets it (a hitch), better then than at the first shot fired
   }
 
+  // its buffers let go (World.dispose)
+  dispose() {
+    for (const b of [this.glow, this.pale, this.veil, this.soot]) if (b) b.c.width = b.c.height = 0;
+    this.glow = this.pale = this.veil = this.soot = null;
+  }
+
   // the threads (cigarettes, butts, hot barrels), with the scene (the light falls on them like on the rest): a world
   // pixel each, swelling to two as they spread, fading
   drawThreads(ctx, smoke, vis) {
@@ -107,13 +113,17 @@ export default class SmokeArt {
     const first = !this.warmed;
     if ((!act.length && !mist && !first) || !lighting.lm) return;
     this.warmed = true;
-    const lm = lighting.lm, { x0, y0, w: vw, h: vh } = lighting.view, TW = lm.width, TH = lm.height;
-    if (!this.glow || this.glow.c.width !== TW || this.glow.c.height !== TH) {
-      this.glow = buffer(TW, TH);
-      this.pale = buffer(TW, TH);
-      this.veil = buffer(TW, TH);
-      this.soot = buffer(TW, TH);
-      this.cols = { j: new Int32Array(TW), s: new Float32Array(TW), own: new Int32Array(TW), tile: new Int32Array(TW) };
+    // the buffers are the light map's size (it only grows: Lighting.setView), the part in use its part in use, TW x TH
+    const lm = lighting.lm, { x0, y0, w: vw, h: vh } = lighting.view, TW = lighting.tw, TH = lighting.th;
+    if (!this.glow || this.glow.c.width !== lm.width || this.glow.c.height !== lm.height) {
+      this.dispose();
+      const CW = lm.width, CH = lm.height;
+      this.glow = buffer(CW, CH);
+      this.pale = buffer(CW, CH);
+      this.veil = buffer(CW, CH);
+      this.soot = buffer(CW, CH);
+      this.cols = { j: new Int32Array(CW), s: new Float32Array(CW), own: new Int32Array(CW), tile: new Int32Array(CW) };
+      this.key.w = -1; // new buffers: filled again
     }
     if (F && (!this.sum || this.sum.length < F.W + 2)) {
       this.sum = new Float32Array(F.W + 2);
@@ -124,7 +134,7 @@ export default class SmokeArt {
     // view moves
     const key = this.key, kinds = act.join();
     if (first || key.steps !== (F?.steps ?? -1) || key.x0 !== x0 || key.y0 !== y0 || key.w !== TW || key.h !== TH || key.mist !== mist || key.kinds !== kinds) {
-      key.got = this.fill(F, act, mist, x0, y0, vw / TW, vh / TH);
+      key.got = this.fill(F, act, mist, x0, y0, vw / TW, vh / TH, TW, TH);
       Object.assign(key, { steps: F?.steps ?? -1, x0, y0, w: TW, h: TH, mist, kinds });
     }
     const got = key.got;
@@ -134,37 +144,37 @@ export default class SmokeArt {
       // the veil: how much it takes off, times the light there, turned into what is left (1 - that); what soot
       // takes off whatever the light multiplied in; the whole multiplied over the scene
       const v = this.veil.c.getContext('2d');
-      v.putImageData(this.veil.img, 0, 0);
+      v.putImageData(this.veil.img, 0, 0, 0, 0, TW, TH);
       v.globalCompositeOperation = 'multiply';
-      v.drawImage(lm, 0, 0);
+      v.drawImage(lm, 0, 0, TW, TH, 0, 0, TW, TH);
       v.globalCompositeOperation = 'difference';
       v.fillStyle = '#fff';
       v.fillRect(0, 0, TW, TH);
       if (got.soot || first) {
-        this.soot.c.getContext('2d').putImageData(this.soot.img, 0, 0);
+        this.soot.c.getContext('2d').putImageData(this.soot.img, 0, 0, 0, 0, TW, TH);
         v.globalCompositeOperation = 'multiply';
-        v.drawImage(this.soot.c, 0, 0);
+        v.drawImage(this.soot.c, 0, 0, TW, TH, 0, 0, TW, TH);
       }
       v.globalCompositeOperation = 'source-over';
       ctx.globalCompositeOperation = 'multiply';
-      ctx.drawImage(this.veil.c, x0, y0, vw, vh);
+      ctx.drawImage(this.veil.c, 0, 0, TW, TH, x0, y0, vw, vh);
     }
     // the light: the glow lit by the light map twice (a lamp lights its smoke fully, the night ambient hardly at
     // all), the white of powder and steam once: (glow x lm + pale) x lm
     const g = this.glow.c.getContext('2d');
-    g.putImageData(this.glow.img, 0, 0);
+    g.putImageData(this.glow.img, 0, 0, 0, 0, TW, TH);
     g.globalCompositeOperation = 'multiply';
-    g.drawImage(lm, 0, 0);
+    g.drawImage(lm, 0, 0, TW, TH, 0, 0, TW, TH);
     if (got.pale || first) {
-      this.pale.c.getContext('2d').putImageData(this.pale.img, 0, 0);
+      this.pale.c.getContext('2d').putImageData(this.pale.img, 0, 0, 0, 0, TW, TH);
       g.globalCompositeOperation = 'lighter';
-      g.drawImage(this.pale.c, 0, 0);
+      g.drawImage(this.pale.c, 0, 0, TW, TH, 0, 0, TW, TH);
       g.globalCompositeOperation = 'multiply';
     }
-    g.drawImage(lm, 0, 0);
+    g.drawImage(lm, 0, 0, TW, TH, 0, 0, TW, TH);
     g.globalCompositeOperation = 'source-over';
     ctx.globalCompositeOperation = 'screen';
-    ctx.drawImage(this.glow.c, x0, y0, vw, vh);
+    ctx.drawImage(this.glow.c, 0, 0, TW, TH, x0, y0, vw, vh);
     ctx.restore();
   }
 
@@ -191,10 +201,11 @@ export default class SmokeArt {
   // carrying leaves cell to cell never shows as a grain, then bilinear, in bands), added up and cut into flat bands
   // whose edges are ruffled by a smooth noise laid on the world's grid (so they stay put as the view moves),
   // coloured by the mix of the kinds, nothing over a wall; plus the mist where the sky is.
+  // TW x TH: the part of the buffers in use (a row of them is the buffer's width apart)
   // -> { veil, soot, pale }: which of those buffers has anything in it
-  fill(F, act, mist, x0, y0, kx, ky) {
-    const glow = this.glow.px, pale = this.pale.px, veil = this.veil.px, soot = this.soot.px;
-    const TW = this.glow.c.width, TH = this.glow.c.height, cols = this.cols, n = act.length, smoke = n > 0;
+  fill(F, act, mist, x0, y0, kx, ky, TW, TH) {
+    const glow = this.glow.px, pale = this.pale.px, veil = this.veil.px, soot = this.soot.px, stride = this.glow.c.width;
+    const cols = this.cols, n = act.length, smoke = n > 0;
     const look = SMOKE.look, step = look.step, map = this.world.map, sky = this.world.weather?.sky, m = Math.min(1, mist);
     const bias = 1 - look.from, rag = look.rag, quiet = 1 - bias - rag / 2;
     const f = smoke ? F.fcell : 1, W = smoke ? F.W : 0, H = smoke ? F.H : 0, fs = smoke ? F.fsolid : null;
@@ -235,7 +246,7 @@ export default class SmokeArt {
       }
     }
     for (let ty = 0; ty < TH; ty++) {
-      const wy = y0 + (ty + 0.5) * ky, trow = Math.floor(wy / TILE), row = ty * TW;
+      const wy = y0 + (ty + 0.5) * ky, trow = Math.floor(wy / TILE), row = ty * stride;
       const skyRow = sky && mist && trow >= 0 && trow < map.h ? trow * map.w : -1;
       let ownRow = 0, hot = false;
       if (smoke) {

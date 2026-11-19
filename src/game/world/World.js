@@ -138,7 +138,7 @@ export default class World {
     this.scoring = new Scoring(this);
     this.killFeed = new KillFeed(this.events);    // what is shown of kills and chains (advanced by Game on the real clock)
     listenMoments(this);                          // a multi-kill's slow motion and hit-stop
-    this.killCam = new KillCam(this);             // the camera / a comic panel on his kills (after Scoring: it reads the chain)
+    this.killCam = new KillCam(this);             // the camera's punch-in and slow motion on his kills (after Scoring: it reads the chain)
     this.bossStage = new BossStage(this);         // the camera on a boss's beats (advanced by Game on the real clock)
     this.throwBeat = new ThrowBeat(this);         // a throw's follow and its impact beat (likewise)
     this.impacts = new Impacts(this);
@@ -200,6 +200,16 @@ export default class World {
     this.lorries = level.chase || this.props.some((p) => p.backs) ? new Lorries(this, level.chase) : null;
     this.lighting = new Lighting(this);
     this.decals.seal(this.player.x); // the level is painted: what is drawn on its layers from now on is a mark
+  }
+
+  // this playthrough is over (a retry, another level, the title): its canvases let go now rather than when collected
+  // (the map's layers, the lighting's buffers, the standing layer...). Safe to call again; the world is not drawn after
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.decals.dispose();
+    this.renderer.dispose();
+    this.lighting?.dispose();
   }
 
   get engine() { return this.physics.engine; }

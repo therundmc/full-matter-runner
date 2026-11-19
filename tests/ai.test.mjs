@@ -94,6 +94,24 @@ test('barks: short readable lines, no doubles, known tones, and the squad does n
   assert.equal(new Set(said).size, 3);
 });
 
+test('director: the tiles where a mate fell are let go once safe, a reported incident once nobody is wary of it', () => {
+  const map = new TileMap(ROWS), w = { time: 0, map, enemies: [], texts: [], events: new EventBus() };
+  const d = new Director(w), N = AI.nav.danger;
+  d.hotT = 1e9; // (no fires to look for here)
+  d.danger.markAround(map, c(3), c(3), N.r, N.cost, N.forget);
+  const body = d.incident('body', c(3), c(3)), wall = d.incident('wall', c(9), c(2));
+  body.reported = true;
+  w.time = 5;
+  d.tick(1 / 60);
+  assert.ok(d.danger.size > 0 && d.incidents.length === 2);
+  assert.ok(d.wary(c(3), c(3)));
+  w.time = Math.max(N.forget, AI.wary.time) + 1;
+  d.tick(1 / 60);
+  assert.equal(d.danger.size, 0, 'no more cost on the paths');
+  assert.deepEqual(d.incidents, [wall], 'the unreported one stays till a guard finds it');
+  assert.ok(!d.wary(c(3), c(3)));
+});
+
 // ---------------- tactics ----------------
 test('a doorway is taken down its middle, whatever corner the path cuts', () => {
   const map = new TileMap(ROWS);

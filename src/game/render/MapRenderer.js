@@ -1,6 +1,6 @@
 import { TILE, PALETTE, LITTER, WALL_RIM, CHUNKS } from '../Config.js';
 import { sprite, spriteOpt, silhouette, sw, sh } from '../../engine/Assets.js';
-import { rand, pick, chance, TAU } from '../../engine/math.js';
+import { rand, pick, chance, TAU, hashString, areaTable, areaCount } from '../../engine/math.js';
 import { WALLS } from '../world/TileMap.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { scorchArt } from './BlastArt.js';
@@ -39,10 +39,36 @@ function floorTile(name, x, y) {
   return sprite('tiles/' + name);
 }
 
-function canvas(w, h) {
+function canvas(w, h, opts) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
+  if (opts) c.getContext('2d', opts);
   return c;
+}
+
+// What the floor's and the walls' chunks hold before the level lays anything on them (tiles, the wear of years, grime,
+// the walls' shadow; wall tops, roofs, edges) depends on the level alone: it is kept for a retry, which copies it
+// instead of painting it again (the base painting is then laid on as ever). The last BAKED_KEEP levels are kept, by
+// level: { sig (its tiles and the floor's density: a level whose map changed is painted again), floor, walls: chunk
+// x0 -> canvas, gone (let go: never copied from again) }. Only the chunks baked as the level is sealed are kept (a
+// long map's others come and go with the view).
+const BAKED = new Map(), BAKED_KEEP = 2;
+export function bakedFor(level, fs) {
+  const sig = `${fs}:${hashString((level.tiles || []).join('\n'))}`;
+  let e = BAKED.get(level);
+  BAKED.delete(level);
+  if (e && e.sig !== sig) { forget(e); e = null; }
+  BAKED.set(level, (e ||= { sig, floor: new Map(), walls: new Map(), gone: false }));
+  for (const [k, old] of BAKED) {
+    if (BAKED.size <= BAKED_KEEP) break;
+    BAKED.delete(k);
+    forget(old);
+  }
+  return e;
+}
+function forget(e) {
+  e.gone = true;
+  for (const m of [e.floor, e.walls]) { for (const c of m.values()) c.width = c.height = 0; m.clear(); }
 }
 
 // Pre-rendered layers of a TileMap and everything painted on them for good, bottom to top:
@@ -67,7 +93,8 @@ export default class MapRenderer {
     // the floor keeps the pixels of its tiles, painted finer than the world (Assets.js `density`): it is that many
     // times larger, its context scaled so that everything is still drawn on it in world px
     const fs = this.floorScale = Math.round(1 / (sprite('tiles/concrete').k || 1));
-    this.wear = planWear(map, level); // the wear of years (FloorWear), painted chunk by chunk
+    this.baked = bakedFor(level, fs); // this level's chunks as an earlier build left them (BAKED)
+    this.sealing = false;
     this.roof = new Uint8Array(map.w * map.h); // wall tiles drawn as the flat roof of a neighbouring building
     const roofed = !!spriteOpt('tiles/roof');
     for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) this.roof[y * map.w + x] = roofed && map.isRoof(x, y) ? 1 : 0;
@@ -87,12 +114,41 @@ export default class MapRenderer {
   // ---------- the chunks ----------
   // the level is built: what is painted from now on is a mark. The chunks round x (the player's start) are baked now
   seal(x = 0) {
-    this.sealed = true;
+    this.sealed = this.sealing = true;
     const r = (CHUNKS.margin + CHUNKS.cols) * TILE;
     for (const L of [this.floor, this.walls]) {
       const [i0, i1] = chunkSpan(x - r, x + r, L.cw, L.n);
       for (let i = i0; i <= i1; i++) L.chunk(i);
     }
+    this.sealing = false;
+  }
+
+  // the wear of years (FloorWear), planned the first time a chunk is painted (a retry copies them: no need)
+  get wear() { return (this.wearPlan ||= planWear(this.map, this.level)); }
+
+  // the level's own painting of the chunk at x0 on layer `name` (BAKED) copied onto its context g: false if there is
+  // none to copy (another level kept since, or the walls changed: what is baked then is no longer the level's alone)
+  kept(name, g, x0) {
+    const c = !this.baked.gone && this.map.version === 0 && this.baked[name].get(x0);
+    if (!c || c.width !== g.canvas.width || c.height !== g.canvas.height) return false;
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(c, 0, 0);
+    g.restore();
+    return true;
+  }
+
+  // that painting kept for the next build of the level, as it is now on g (a chunk baked as the level is sealed)
+  keep(name, g, x0) {
+    if (!this.sealing || this.baked.gone || this.map.version !== 0) return;
+    const c = canvas(g.canvas.width, g.canvas.height);
+    c.getContext('2d').drawImage(g.canvas, 0, 0);
+    this.baked[name].set(x0, c);
+  }
+
+  // every canvas of this world's layers let go now (World.dispose); what BAKED keeps is not this world's
+  dispose() {
+    for (const L of [this.floor, this.walls, this.blood, this.flesh, this.off]) L.reset();
   }
 
   // the view spans world x [x0, x1]: bake what it is about to show, let go of what it left far behind
@@ -101,6 +157,16 @@ export default class MapRenderer {
     this.floor.near(x0, x1, m, CHUNKS.budget);
     this.walls.near(x0, x1, m, CHUNKS.budget / 2);
     for (const L of [this.blood, this.flesh, this.off]) L.near(x0, x1, m, 0);
+  }
+
+  // whether the world rect [x0, x1] x [y0, y1] is all map with a floor or a wall on every tile of it (nothing of what is
+  // drawn under the map shows there: Game's backdrop). The tiles with neither never change (a wall that falls leaves
+  // a floor)
+  covers(x0, y0, x1, y1) {
+    const m = this.map;
+    if (x0 < 0 || y0 < 0 || x1 > m.widthPx || y1 > m.heightPx) return false;
+    this.holes ||= areaTable(m.w, m.h, (x, y) => !m.floor[y * m.w + x] && !m.isWallChar(x, y));
+    return areaCount(this.holes, Math.floor(x0 / TILE), Math.floor(y0 / TILE), Math.floor(x1 / TILE), Math.floor(y1 / TILE)) === 0;
   }
 
   // fn(g) on a layer (floor, walls, blood, flesh) over the world x range [x0, x1], g in world px: before the level is
@@ -132,23 +198,42 @@ export default class MapRenderer {
   // a chunk of the floor: its tiles, the wear of years over them (FloorWear: cracks over several tiles, potholes,
   // split boards..., free of the tiles' grid), grime, the walls' soft shadow, what the level laid on it
   *bakeFloor(g, x0, x1) {
+    if (!this.kept('floor', g, x0)) {
+      yield* this.paintFloor(g, x0, x1);
+      this.keep('floor', g, x0);
+    }
+    yield* this.replay(g, this.base.floor, x0, x1);
+  }
+
+  // the level's own part of a floor chunk: the tiles and their wear on a scratch canvas kept on the CPU side (the wear
+  // is read back and written pixel by pixel: on the chunk's own canvas that would drag it off the graphics card), laid
+  // on the chunk; then grime and the walls' shadow
+  *paintFloor(g, x0, x1) {
     const m = this.map, fs = this.floorScale, step = CHUNKS.strip, [t0, t1] = this.tiles(x0, x1);
+    const c = g.canvas, scratch = canvas(c.width, c.height, { willReadFrequently: true }), s = scratch.getContext('2d');
+    s.imageSmoothingEnabled = g.imageSmoothingEnabled;
+    s.setTransform(g.getTransform());
     for (let a = t0; a <= t1; a += step) {
       for (let y = 0; y < m.h; y++) {
         for (let x = a; x <= Math.min(t1, a + step - 1); x++) {
           const f = m.floor[y * m.w + x];
-          if (f) g.drawImage(floorTile(f, x, y), x * TILE, y * TILE, TILE, TILE);
+          if (f) s.drawImage(floorTile(f, x, y), x * TILE, y * TILE, TILE, TILE);
         }
       }
       yield;
     }
-    const c = g.canvas, sx = Math.round(x0 * fs), w = step * TILE * fs;
+    const sx = Math.round(x0 * fs), w = step * TILE * fs;
     for (let a = 0; a < c.width; a += w) {
-      const px = g.getImageData(a, 0, Math.min(w, c.width - a), c.height);
+      const px = s.getImageData(a, 0, Math.min(w, c.width - a), c.height);
       paintWear(px, fs, m, this.level, undefined, sx + a, this.wear);
-      g.putImageData(px, a, 0);
+      s.putImageData(px, a, 0);
       yield;
     }
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(scratch, 0, 0);
+    g.restore();
+    scratch.width = scratch.height = 0;
     this.grime(g, x0, x1);
     yield;
     // soft drop shadow of walls on the floor (cast down and right: from the tile before the chunk on)
@@ -160,13 +245,22 @@ export default class MapRenderer {
     g.globalAlpha = 0.18; g.drawImage(sh, ta * TILE + 9, 9);
     g.globalAlpha = 0.3; g.drawImage(sh, ta * TILE + 5, 5);
     g.globalAlpha = 1;
+    sh.width = sh.height = 0;
     yield;
-    yield* this.replay(g, this.base.floor, x0, x1);
   }
 
   // a chunk of the walls: wall tops and roofs, the roofs' weathering and shadows, the dark outline and the bevel,
   // what the level put up on them
   *bakeWalls(g, x0, x1) {
+    if (!this.kept('walls', g, x0)) {
+      yield* this.paintWalls(g, x0, x1);
+      this.keep('walls', g, x0);
+    }
+    yield* this.replay(g, this.base.walls, x0, x1);
+  }
+
+  // the level's own part of a chunk of the walls
+  *paintWalls(g, x0, x1) {
     const m = this.map, [t0, t1] = this.tiles(x0, x1);
     for (let y = 0; y < m.h; y++) {
       for (let x = t0; x <= t1; x++) {
@@ -199,7 +293,6 @@ export default class MapRenderer {
       }
     }
     yield;
-    yield* this.replay(g, this.base.walls, x0, x1);
   }
 
   // flat roofs: weathering in large soft patches, and the parapet's shadow along the inside of the brick ring
@@ -208,6 +301,7 @@ export default class MapRenderer {
     const mask = canvas(x1 - x0, m.heightPx), mg = mask.getContext('2d');
     for (let y = 0; y < m.h; y++) for (let x = t0; x <= t1; x++) if (this.roof[y * m.w + x]) mg.fillRect(x * TILE - x0, y * TILE, TILE, TILE);
     this.grime(g, x0, x1, mask, 0.75);
+    mask.width = mask.height = 0;
     const rim = (x, y) => m.isWallChar(x, y) && !this.roof[y * m.w + x];
     for (let y = 0; y < m.h; y++) {
       for (let x = t0; x <= t1; x++) {
@@ -403,6 +497,7 @@ export default class MapRenderer {
     g.globalAlpha = strength;
     g.drawImage(layer, x0, 0);
     g.restore();
+    layer.width = layer.height = 0;
   }
 
   // ---------- blood ----------

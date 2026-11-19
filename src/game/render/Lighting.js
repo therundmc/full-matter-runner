@@ -1,7 +1,7 @@
 import { TILE, LIGHTING as L } from '../Config.js';
 import { POST } from '../data/post.js';
 import { spriteOpt } from '../../engine/Assets.js';
-import { clamp, hash } from '../../engine/math.js';
+import { clamp, hash, areaTable, areaCount } from '../../engine/math.js';
 import { P } from '../fx/Particles.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { RAIN } from '../data/atmosphere.js';
@@ -34,6 +34,24 @@ function canvas(w, h) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, w); c.height = Math.max(1, h);
   return c;
+}
+
+// A buffer may be larger than the part of it drawn into this frame (Lighting.setView: they only grow). The texels just
+// right of and under that part are made the same as its edge: a smoothed draw of the part then reads there what the
+// edge of a canvas of its exact size gives (a canvas samples past a source rectangle, not past its own edge).
+function hem(c, w, h) {
+  const right = c.width > w, under = c.height > h;
+  if (!right && !under) return;
+  const g = c.getContext('2d');
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+  g.filter = 'none';
+  g.imageSmoothingEnabled = false;
+  if (right) { g.clearRect(w, 0, 1, h); g.drawImage(c, w - 1, 0, 1, h, w, 0, 1, h); }
+  if (under) { const n = Math.min(c.width, w + 1); g.clearRect(0, h, n, 1); g.drawImage(c, 0, h - 1, n, 1, 0, h, n, 1); }
+  g.restore();
 }
 
 function rgb(hex) {
@@ -116,6 +134,22 @@ export default class Lighting {
     this.gridDirty = true;
     this.tmp = canvas(64, 64);
     this.view = { x0: 0, y0: 0, w: 0, h: 0 };
+    this.frame = 0;
+    // what a frame works with, kept from frame to frame: the lights in view ([light, strength] pairs: lit), the
+    // strongest of them for the lens (brightest), the doors' lamps
+    this.lit = []; this.pairs = [];
+    this.brightest = []; this.bright = []; this.brightKeys = new Float64Array(POST.rays.max);
+    this.frameLamps = [];
+  }
+
+  // every canvas let go (World.dispose)
+  dispose() {
+    const drop = (c) => { if (c) c.width = c.height = 0; };
+    for (const k of ['lm', 'em', 'bl', 'rf', 'pd', 'fl', 'mr', 'tmp', 'ambient', 'reflMask', 'emissive']) { drop(this[k]); this[k] = null; }
+    for (const l of this.lights) { drop(l.cache); l.cache = null; }
+    for (const p of this.world.props) for (const l of this.propEntries.get(p) || []) { drop(l.cache); l.cache = null; }
+    for (const c of this.blobs.values()) drop(c);
+    this.blobs.clear();
   }
 
   // ---------------- setup ----------------
@@ -226,6 +260,8 @@ export default class Lighting {
     eg.imageSmoothingEnabled = true;
     rg.fillStyle = '#fff';
     const sky = this.world.weather?.sky, under = 1 / (1 + this.wet);
+    // the tiles that mirror, counted by rectangle (nothing to reflect in a view without one: post)
+    this.shiny = areaTable(m.w, m.h, (x, y) => { const f = m.floor[y * m.w + x]; return !!f && !m.isSolid(x, y) && refl.has(f); });
     for (let y = 0; y < m.h; y++) {
       for (let x = 0; x < m.w; x++) {
         const f = m.floor[y * m.w + x];
@@ -307,6 +343,7 @@ export default class Lighting {
       const l = this.makeLight(0, 0, d.r, d.color, d.intensity ?? 1, fl, hash(p.x * 0.37 + p.y * 0.11) * 10 + list.length);
       l.lx = d.x || 0; l.ly = d.y || 0; l.ldir = d.dir || 0; l.cone = d.cone || 0;
       l.spots = d.spots || 0;
+      l.hung = !!p.def.hung; // swings: its shadows are cast again only now and then (apply)
       l.drawn = glow; // the sprite's emissive map already shows the source
       list.push(l);
     }
@@ -407,6 +444,7 @@ export default class Lighting {
     cg.drawImage(tmp, 0, 0, size, size, 0, 0, size, size);
     cg.filter = 'none';
     l.cx = l.x - R; l.cy = l.y - R; l.cs = size / s;
+    l.bx = l.x; l.by = l.y; l.builtAt = this.frame; // where it was cast from, and when
   }
 
   // clip g to a polygon [x, y, ...] (a light's shadow polygon): its path is built once and kept with the point list
@@ -522,15 +560,25 @@ export default class Lighting {
     const cx = cam.x + cam.kick.x, cy = cam.y + cam.kick.y;
     const x0 = Math.floor((cx - v.x) / q) * q, y0 = Math.floor((cy - v.y) / q) * q;
     const w = Math.ceil((v.x * 2) / q) * q + q, h = Math.ceil((v.y * 2) / q) * q + q;
-    this.view = { x0, y0, w, h };
+    const V = this.view;
+    V.x0 = x0; V.y0 = y0; V.w = w; V.h = h;
+    // the part of each buffer this view takes (light map: tw x th, bloom and reflections: bw x bh, flares: fw x bh).
+    // A zoom of the camera changes the view every frame (the kill cam, a staged shot): the buffers only ever grow and
+    // what is drawn of them is that part
     const s = L.scale, b = L.bloomScale;
-    const need = (c, cw, ch) => (c && c.width === cw && c.height === ch ? c : canvas(cw, ch));
-    this.lm = need(this.lm, w * s, h * s);
-    this.em = need(this.em, w * b, h * b);
-    this.bl = need(this.bl, w * b, h * b);
-    this.rf = need(this.rf, w * b, h * b);
-    this.pd = need(this.pd, w * b, h * b);
-    this.fl = need(this.fl, Math.ceil((w * b) / 6), h * b);
+    this.tw = w * s; this.th = h * s; this.bw = w * b; this.bh = h * b; this.fw = Math.ceil((w * b) / 6);
+    const grow = (c, cw, ch) => {
+      if (c && c.width >= cw && c.height >= ch) return c;
+      const n = canvas(Math.max(cw, c?.width || 0), Math.max(ch, c?.height || 0));
+      if (c) c.width = c.height = 0;
+      return n;
+    };
+    this.lm = grow(this.lm, this.tw, this.th);
+    this.em = grow(this.em, this.bw, this.bh);
+    this.bl = grow(this.bl, this.bw, this.bh);
+    this.rf = grow(this.rf, this.bw, this.bh);
+    this.pd = grow(this.pd, this.bw, this.bh);
+    this.fl = grow(this.fl, this.fw, this.bh);
   }
 
   inView(x, y, r) {
@@ -538,17 +586,27 @@ export default class Lighting {
     return x + r > v.x0 && x - r < v.x0 + v.w && y + r > v.y0 && y - r < v.y0 + v.h;
   }
 
+  // a light in view this frame, with its strength, onto `lit` (the pairs are kept from frame to frame)
+  see(l, k) {
+    const n = this.lit.length;
+    let p = this.pairs[n];
+    if (!p) p = this.pairs[n] = [null, 0];
+    p[0] = l; p[1] = k;
+    this.lit.push(p);
+  }
+
   // every light this frame with its current strength: [light, strength]
   collect(t) {
-    const out = [];
+    const out = this.lit;
+    out.length = 0;
     for (const l of this.lights) {
       if (l.flicker === 'disco') {
         l.mx = l.x + Math.cos(t * 0.9 + l.seed * 2) * l.r * 1.1;
         l.my = l.y + Math.sin(t * 1.3 + l.seed) * l.r * 0.8;
-        if (this.inView(l.mx, l.my, l.r)) out.push([l, l.intensity * flicker('disco', l.seed, t)]);
+        if (this.inView(l.mx, l.my, l.r)) this.see(l, l.intensity * flicker('disco', l.seed, t));
         continue;
       }
-      if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * flicker(l.flicker, l.seed, t)]);
+      if (this.inView(l.x, l.y, l.r)) this.see(l, l.intensity * flicker(l.flicker, l.seed, t));
     }
     let still = 0, lamps = 0;
     for (const p of this.world.props) {
@@ -575,20 +633,41 @@ export default class Lighting {
         this.placePropLight(p, l);
         l.moving = !!p.moving;
         const k = l.cone ? 1 : 1 + brake * 1.6;
-        if (this.inView(l.x, l.y, l.r)) out.push([l, l.intensity * lit * k * flicker(hurt ? 'broken' : l.flicker, l.seed, t)]);
+        if (this.inView(l.x, l.y, l.r)) this.see(l, l.intensity * lit * k * flicker(hurt ? 'broken' : l.flicker, l.seed, t));
       }
     }
-    // the strongest lamps in view, for the lens' shafts of light (render/Lens.js)
-    this.brightest = out.filter(([l, k]) => !l.cone && l.flicker !== 'disco' && l.r >= POST.rays.minRadius && k * l.lum > 0.25)
-      .sort((a, b) => b[1] * b[0].lum * b[0].r - a[1] * a[0].lum * a[0].r).slice(0, POST.rays.max)
-      .map(([l, k]) => ({ x: l.x, y: l.y, k: k * l.lum }));
+    this.strongest(out);
     // a prop appeared, died, lost a lamp or a car pulled up: the brightness grid is stale (passing traffic does not count)
     if (this.propCount !== still || this.lampCount !== lamps) { this.propCount = still; this.lampCount = lamps; this.gridDirty = true; }
     return out;
   }
 
+  // the strongest lamps in view, for the lens' shafts of light (render/Lens.js): [{ x, y, k }], strongest first (the
+  // first in view of those as strong), at most POST.rays.max; kept from frame to frame
+  strongest(lit) {
+    const max = POST.rays.max, top = this.bright, keys = this.brightKeys, out = this.brightest;
+    let n = 0;
+    for (const p of lit) {
+      const [l, k] = p;
+      if (l.cone || l.flicker === 'disco' || l.r < POST.rays.minRadius || k * l.lum <= 0.25) continue;
+      const key = k * l.lum * l.r;
+      let i = n;
+      while (i > 0 && keys[i - 1] < key) i--;
+      if (i >= max) continue;
+      for (let j = Math.min(n, max - 1); j > i; j--) { keys[j] = keys[j - 1]; top[j] = top[j - 1]; }
+      keys[i] = key; top[i] = p;
+      if (n < max) n++;
+    }
+    out.length = n;
+    for (let i = 0; i < n; i++) {
+      const [l, k] = top[i], o = out[i] || (out[i] = { x: 0, y: 0, k: 0 });
+      o.x = l.x; o.y = l.y; o.k = k * l.lum;
+    }
+  }
+
   // multiply the light map over the scene (camera transform active on ctx)
   apply(ctx, cam, t) {
+    this.frame++;
     this.sync();
     this.updateGlass();
     this.setView(cam);
@@ -601,7 +680,7 @@ export default class Lighting {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = 1;
-    g.fillStyle = css(toByte(this.amb.void));
+    g.fillStyle = this.voidCss ||= css(toByte(this.amb.void));
     g.fillRect(0, 0, this.lm.width, this.lm.height);
     g.imageSmoothingEnabled = true;
     const as = this.ambScale;
@@ -627,10 +706,13 @@ export default class Lighting {
         g.restore();
         continue;
       }
-      if ((l.dirty || !l.cache) && (rebuilt++ < 6 || !l.cache)) this.buildCache(l);
+      // a swinging hung lamp is cast again every L.hungEvery frames at most, its pool moved with it in between
+      const swung = l.hung && l.cache && this.frame - l.builtAt < L.hungEvery;
+      if ((l.dirty || !l.cache) && !swung && (rebuilt++ < 6 || !l.cache)) this.buildCache(l);
+      const dx = l.hung ? l.x - l.bx : 0, dy = l.hung ? l.y - l.by : 0;
       for (let a = k; a > 0.01; a -= 1) {
         g.globalAlpha = Math.min(1, a);
-        g.drawImage(l.cache, l.cx, l.cy, l.cs, l.cs);
+        g.drawImage(l.cache, l.cx + dx, l.cy + dy, l.cs, l.cs);
       }
     }
 
@@ -681,29 +763,31 @@ export default class Lighting {
     }
     this.lightFloor(g);
     // the lamps by the doors' locks, the EXIT signs: a small pool of their colour (red locked, green open)
-    const LA = DOORS.lamp;
-    for (const l of this.doorLamps(t)) {
+    const LA = DOORS.lamp, lamps = this.frameLamps = this.doorLamps(t);
+    for (const l of lamps) {
       const r = l.glow || LA.glow;
       g.globalAlpha = clamp(l.k * LA.k, 0, 1);
       g.drawImage(this.blob(l.color), l.x - r, l.y - r, r * 2, r * 2);
     }
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
+    const tw = this.tw, th = this.th;
+    hem(this.lm, tw, th);
 
     // composite
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.globalCompositeOperation = 'multiply';
-    ctx.drawImage(this.lm, x0, y0, vw, vh);
+    ctx.drawImage(this.lm, 0, 0, tw, th, x0, y0, vw, vh);
     if (L.overbright > 0) {
       ctx.globalCompositeOperation = 'soft-light';
       ctx.globalAlpha = L.overbright;
-      ctx.drawImage(this.lm, x0, y0, vw, vh);
+      ctx.drawImage(this.lm, 0, 0, tw, th, x0, y0, vw, vh);
     }
     if (L.haze > 0) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = L.haze;
-      ctx.drawImage(this.lm, x0, y0, vw, vh);
+      ctx.drawImage(this.lm, 0, 0, tw, th, x0, y0, vw, vh);
     }
     ctx.restore();
   }
@@ -802,7 +886,7 @@ export default class Lighting {
     }
     // the doors' lock lamps, crisp over the dark
     const LA = DOORS.lamp;
-    for (const l of this.doorLamps(t)) {
+    for (const l of this.frameLamps) {
       ctx.globalAlpha = clamp(l.k, 0, 1);
       ctx.drawImage(this.blob(l.color), l.x - LA.core, l.y - LA.core, LA.core * 2, LA.core * 2);
     }
@@ -811,10 +895,10 @@ export default class Lighting {
     ctx.restore();
 
     // ---- emissive buffer (bloom source) + flare buffer
-    const e = this.em.getContext('2d'), f = this.fl.getContext('2d');
+    const e = this.em.getContext('2d'), f = this.fl.getContext('2d'), bw = this.bw, bh = this.bh;
     for (const g of [e, f]) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, g.canvas.width, g.canvas.height); }
     e.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
-    const fb = this.fl.width / vw;
+    const fb = this.fw / vw;
     f.setTransform(fb, 0, 0, b, -x0 * fb, -y0 * b);
     e.globalCompositeOperation = f.globalCompositeOperation = 'lighter';
     e.imageSmoothingEnabled = true;
@@ -867,25 +951,32 @@ export default class Lighting {
       e.beginPath(); e.moveTo(tx, ty); e.lineTo(pr.x, pr.y); e.stroke();
     }
 
-    // ---- blur the emissive buffer twice into the bloom buffer
+    // ---- blur the emissive buffer's part in use twice into the bloom buffer
     const bg = this.bl.getContext('2d');
     bg.setTransform(1, 0, 0, 1, 0, 0);
     bg.globalCompositeOperation = 'copy';
-    bg.filter = `blur(${L.bloomBlur[0]}px)`;
-    bg.drawImage(this.em, 0, 0);
+    bg.filter = this.blurA ||= `blur(${L.bloomBlur[0]}px)`;
+    bg.drawImage(this.em, 0, 0, bw, bh, 0, 0, bw, bh);
     bg.globalCompositeOperation = 'lighter';
-    bg.filter = `blur(${L.bloomBlur[1]}px)`;
-    bg.drawImage(this.em, 0, 0);
+    bg.filter = this.blurB ||= `blur(${L.bloomBlur[1]}px)`;
+    bg.drawImage(this.em, 0, 0, bw, bh, 0, 0, bw, bh);
     bg.filter = 'none';
+    hem(this.bl, bw, bh);
+    hem(this.fl, this.fw, bh);
 
-    // ---- reflections: vertical streaks under the lights, on wet floors only
+    // ---- reflections: vertical streaks under the lights, on wet floors only (none at all where no floor in view
+    // mirrors: the mask would leave nothing of them)
+    const T = TILE, c0 = Math.floor(x0 / T) - 1, r0 = Math.floor(y0 / T) - 1;
+    const shiny = areaCount(this.shiny, c0, r0, Math.floor((x0 + vw) / T) + 1, Math.floor((y0 + vh) / T) + 1) > 0;
     const r = this.rf.getContext('2d');
-    r.setTransform(1, 0, 0, 1, 0, 0);
-    r.globalAlpha = 1;
-    r.globalCompositeOperation = 'source-over';
-    r.clearRect(0, 0, this.rf.width, this.rf.height);
-    r.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
-    r.globalCompositeOperation = 'lighter';
+    if (shiny) {
+      r.setTransform(1, 0, 0, 1, 0, 0);
+      r.globalAlpha = 1;
+      r.globalCompositeOperation = 'source-over';
+      r.clearRect(0, 0, this.rf.width, this.rf.height);
+      r.setTransform(b, 0, 0, b, -x0 * b, -y0 * b);
+      r.globalCompositeOperation = 'lighter';
+    }
     // a light's streak lies only where the light reaches: clipped to its shadow polygon, so a lamp inside does not
     // mirror on the pavement through the wall (a light with no polygon yet, or one stuck in a wall, shows none)
     const streak = (g, l, a, far = 1) => {
@@ -919,10 +1010,13 @@ export default class Lighting {
       }
       for (const l of w.lights) streak(g, l, clamp(l.t / l.dur, 0, 1) * gain * 1.3, far);
     };
-    streaks(r, L.reflect * (1 + this.wet), 1);
-    r.globalAlpha = 1;
-    r.globalCompositeOperation = 'destination-in';
-    r.drawImage(this.reflMask, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
+    if (shiny) {
+      streaks(r, L.reflect * (1 + this.wet), 1);
+      r.globalAlpha = 1;
+      r.globalCompositeOperation = 'destination-in';
+      r.drawImage(this.reflMask, x0 * b, y0 * b, vw * b, vh * b, x0, y0, vw, vh);
+      hem(this.rf, bw, bh);
+    }
 
     // ---- standing liquid (systems/Liquids.js) mirrors the lights harder than a damp floor, and from further away:
     // its mask (render/LiquidArt.js: how much each texel mirrors, the rain's puddles a dim night sky too), then the
@@ -940,6 +1034,7 @@ export default class Lighting {
       if (puddles) {
         g.globalCompositeOperation = 'source-atop';
         streaks(g, L.puddle, 1.6);
+        hem(this.pd, bw, bh);
       }
     }
 
@@ -948,21 +1043,22 @@ export default class Lighting {
     ctx.imageSmoothingEnabled = true;
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = L.bloom;
-    ctx.drawImage(this.bl, x0, y0, vw, vh);
+    ctx.drawImage(this.bl, 0, 0, bw, bh, x0, y0, vw, vh);
     ctx.globalAlpha = 1;
-    this.mirrors(ctx, puddles, standing);
-    ctx.drawImage(this.fl, x0, y0, vw, vh);
+    if (shiny || puddles) this.mirrors(ctx, shiny, puddles, standing);
+    ctx.drawImage(this.fl, 0, 0, this.fw, bh, x0, y0, vw, vh);
     ctx.restore();
     void cam;
   }
 
   // the floor's reflections (and the puddles' if any) added to the picture, but only on the floor: the pixels of
   // what stands or lies on it (`standing`, the picture-sized layer WorldRenderer drew them on) are cut out first
-  mirrors(ctx, puddles, standing) {
-    const { x0, y0, w: vw, h: vh } = this.view;
+  // (shiny: a floor that mirrors is in view, puddles: some standing liquid)
+  mirrors(ctx, shiny, puddles, standing) {
+    const { x0, y0, w: vw, h: vh } = this.view, bw = this.bw, bh = this.bh;
     if (!standing) {
-      ctx.drawImage(this.rf, x0, y0, vw, vh);
-      if (puddles) ctx.drawImage(this.pd, x0, y0, vw, vh);
+      if (shiny) ctx.drawImage(this.rf, 0, 0, bw, bh, x0, y0, vw, vh);
+      if (puddles) ctx.drawImage(this.pd, 0, 0, bw, bh, x0, y0, vw, vh);
       return;
     }
     const c = ctx.canvas;
@@ -974,8 +1070,8 @@ export default class Lighting {
     g.globalAlpha = 1;
     g.imageSmoothingEnabled = true;
     g.setTransform(ctx.getTransform());
-    g.drawImage(this.rf, x0, y0, vw, vh);
-    if (puddles) g.drawImage(this.pd, x0, y0, vw, vh);
+    if (shiny) g.drawImage(this.rf, 0, 0, bw, bh, x0, y0, vw, vh);
+    if (puddles) g.drawImage(this.pd, 0, 0, bw, bh, x0, y0, vw, vh);
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'destination-out';
     g.drawImage(standing, 0, 0);

@@ -8,7 +8,8 @@ export const POST = {
   // ---- 1. colour fringe of the lens: radial, nothing at the centre, strongest in the corners (px there)
   fringe: {
     rest: 0.8,             // always there, a hair of colour on the edges of things near the corners
-    trauma: 8,             // added at full camera shake
+    trauma: 8,             // added at full camera shake (from a shake of `traumaFrom` on)
+    traumaFrom: 0.15,
     blow: 8,               // added by a blow of power 1 (scaled by its power; half of it when it is not the player's)
     blast: 24,             // by an explosion in view
     shot: 3,               // by a shot of the player's (scaled by the weapon's own `shake`)
@@ -31,6 +32,9 @@ export const POST = {
     fire: { r: 130, k: 1.3 },        // world px, strength
     steam: { r: 80, k: 0.7 },
     blast: { r: 160, k: 1.8, life: 2.6 },
+    // the shimmer itself (PostGL): ripples of `waves` per picture height across / down, running at `rates` rad/s,
+    // pushing the picture by up to `amp` picture heights
+    shimmer: { waves: [210, 170], rates: [8, 6.1], amp: 0.0017 },
   },
 
   // ---- 4. glow: only what is really bright bleeds, wide and soft (over the lighting's own bloom of the emitters)
@@ -59,8 +63,12 @@ export const POST = {
     mask: 0.02,            // phosphor triads
     bleed: 0,              // colour running sideways, like tape
     grain: 0.045,
-    vignette: 0.6, 
+    vignette: 0.6,
+    vignetteFrom: 0.45,    // share of the way to the corners where the vignette starts
     glitch: { dead: 1, start: 0.7, life: 0.45 },   // tape tracking torn at death and at a (re)start
+    // the torn tape: the picture cut in `bands` rows drawn again `rate` times a second, those over `from` (0..1 of a
+    // hash) shifted sideways by up to `shift` of its width, the whole rolling `roll` of its height at `rollRate` rad/s
+    tape: { bands: 26, rate: 24, shift: 0.11, from: 0.6, roll: 0.006, rollRate: 47 },
   },
 
   // ---- 7. speed: the picture smears along a slide, a roll, a dive; it streams from the player in slow motion.
@@ -89,7 +97,7 @@ export const POST = {
     // beat of the world's 'ride' event, dying at `decay` 1/s), with `fringe` px of colour at a kick of 1 (no zoom
     // kick: it resampled the whole picture, and the shove is thrown every second).
     drive: {
-      from: 0.3, curve: 1.5, ease: 4,
+      from: 0.3, curve: 1.5, ease: 4, cap: 1.6, // cap: the speed's look and a jolt's added together, at most
       band: [0.24, 0.46], car: [0.28, 0.4], len: 0.17, rows: 2, flick: 14, mix: 0.9,
       lines: { share: 0.16, run: 2.6, glow: 0.42 },
       pull: 0.06, split: 7, fringe: 2.5, dark: 0.3,
@@ -98,10 +106,15 @@ export const POST = {
   },
 
   // ---- 8. focus: the edges of the picture go soft; more when looking far (Shift); everything behind a menu
-  focus: { edge: 0, title: 0, look: 0, dead: 0, pause: 1, results: 0.8, ease: 6 },
+  focus: {
+    edge: 0, title: 0, look: 0, dead: 0, pause: 1, results: 0.8, ease: 6,
+    // where it goes soft: from `from` of the way out (the picture `tall` times taller than wide for it, k: its scale)
+    shape: { from: 0.42, tall: 1.08, k: 0.78 },
+  },
 
   // ---- 9. shafts: light streaming out of the brightest lamps in view
-  rays: { max: 3, strength: 0.06, reach: 0.55, minRadius: 110 },
+  // (each of the 10 steps of a shaft `decay` of the one before, the sum divided by `norm`)
+  rays: { max: 3, strength: 0.06, reach: 0.55, minRadius: 110, decay: 0.86, norm: 6.5 },
 
   // ---- the rampage: while a chain of kills runs the whole picture heats up, from `from` kills to full at `full`:
   // colours, contrast, fringe (px), glow and vignette added at full; it eases back when the chain breaks
@@ -121,6 +134,7 @@ export const POST = {
     frame: 0.055,          // s of impact frame
     frameFrom: 0.8,        // power of a kill of the player's that earns one
     frameGap: 0.5,         // s at least between two of them
+    cap: 1.6,              // the most a kill (or a kill cam beat) pushes the colours and the zoom, x its power
   },
 
   // ---- the kill cam's beats (systems/KillCam.js 'killcam', by tier; x the chain's crescendo): on top of the punch
@@ -134,4 +148,8 @@ export const POST = {
     end: { fringe: 20, kick: 1.5, close: 0.24, frame: 0.085 },
     out: 5, ease: 14, max: 0.3,
   },
+
+  // ---- slow motion: the picture tinted toward `color` (rgb) by `k` x how slow, under a time scale of `below`
+  // (Game.drawScene, with or without the lens)
+  slowTint: { color: [80, 0, 120], k: 0.22, below: 0.95 },
 };
