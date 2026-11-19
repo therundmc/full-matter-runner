@@ -166,8 +166,9 @@
   at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
-  match, `OPENING`), lessons that are one short directed beat each (`BEAT`, `LESSONS` by hint id, `pace`: slow, a
-  punch-in on what it is about, then the hand given back; never held until he acts), the camera's shots (`SHOTS`, systems/Direction.js,
+  match, `OPENING`), lessons that are one stopped beat each (the user's call: `BEAT`, `LESSONS` by hint id, `pace`:
+  time stopped and his hands off, the camera goes to what to do and holds on it, comes back to him, then the hand is
+  his; one lesson a beat, chained; a room's dormant men wait for its lessons), the camera's shots (`SHOTS`, systems/Direction.js,
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
