@@ -3,7 +3,7 @@
 //   { settings, progress, best: (id) => { total, grade, time } | null, levels: [{ id, name }] (campaign levels that
 //     exist, in order), lensOk: false when the picture has no lens to turn on (optional), device: 'kbm' | 'pad' (the
 //     controls page lists that one's; optional), rumbleOk: false when a pad is connected that this browser cannot
-//     rumble (optional) }
+//     rumble (optional), dead: the pause opened from the death screen (optional) }
 // The navigator answers with plain actions that Game.js applies:
 //   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' | 'quit'
 //   | 'reset' | 'replayTutorial'
@@ -37,9 +37,11 @@ const PAGES = {
       { label: 'OPTIONS', page: 'options' },
     ],
   }),
-  // the first campaign level there is stays open whatever the save says: NEW GAME plays it anyway
+  // the first campaign level there is stays open whatever the save says: NEW GAME plays it anyway; its notes are
+  // pinned left to right on the board (ui/title/HitList.js): left / right walk them too
   levels: (c) => ({
     title: 'LEVELS',
+    row: true,
     items: [...c.levels.map(({ id, name }, i) => ({
       level: id, label: name, n: i + 1, best: c.best(id) || null,
       locked: i > 0 && !isUnlocked(c.progress, id), act: { type: 'start', level: id },
@@ -84,10 +86,12 @@ const PAGES = {
     note: 'ERASE EVERY LEVEL OPENED AND EVERY BEST SCORE?',
     items: [{ label: 'NO', back: true }, { label: 'YES', act: { type: 'reset' }, back: true }],
   }),
-  pause: () => ({
+  // opened from the death screen there is nothing to resume: RETRY first (going back returns to the death screen)
+  pause: (c) => ({
     title: 'PAUSED',
-    items: [{ label: 'RESUME', act: { type: 'resume' } }, { label: 'OPTIONS', page: 'options' },
-      { label: 'RESTART', act: { type: 'restart' } }, { label: 'QUIT TO MENU', act: { type: 'quit' } }],
+    items: c.dead ? [{ label: 'RETRY', act: { type: 'restart' } }, { label: 'OPTIONS', page: 'options' }, { label: 'QUIT TO MENU', act: { type: 'quit' } }]
+      : [{ label: 'RESUME', act: { type: 'resume' } }, { label: 'OPTIONS', page: 'options' },
+        { label: 'RESTART', act: { type: 'restart' } }, { label: 'QUIT TO MENU', act: { type: 'quit' } }],
   }),
 };
 
@@ -194,7 +198,8 @@ export default class Menu {
     return act;
   }
 
-  // pops a page (the one under it finds its selection again); at the root of the pause it resumes
+  // pops a page (the one under it finds its selection again); at the root of the pause it resumes (Game: back to what
+  // it was opened from)
   back() {
     if (this.stack.length > 1) { this.stack.pop(); this.fix(); return null; }
     return this.top.id === 'pause' ? { type: 'resume' } : null;

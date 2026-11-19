@@ -33,6 +33,7 @@ export const ACTIONS = {
   confirm: { kbm: 'ENTER', pad: 'A' },
   restart: { kbm: 'R', pad: 'A' },
   retry: { kbm: 'R', pad: 'Y' },
+  menu: { kbm: 'ESC', pad: 'B' },   // the results' way back to the title
 };
 
 const isPad = (device) => device === 'pad';
@@ -55,7 +56,7 @@ export const KBM_CONTROLS = [
   [
     ['AT THE WHEEL', [['Z/W S', 'ACROSS THE ROAD'], ['Q/A D', 'ACROSS TOO'], ['SPACE', 'SHOVE (AIM\'S SIDE)'],
       ['MOUSE', 'AIM THE UZI'], ['LMB', 'FIRE THE UZI']]],
-    ['GAME', [['ESC', 'PAUSE'], ['BKSP', 'RESTART'], ['R', 'RETRY WHEN DEAD'], ['M', 'MUSIC ON / OFF']]],
+    ['GAME', [['ESC', 'PAUSE'], ['BKSP', 'RESTART'], ['R', 'RETRY WHEN DEAD']]],
   ],
 ];
 export const PAD_CONTROLS = [

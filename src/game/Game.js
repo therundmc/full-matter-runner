@@ -45,14 +45,16 @@ import { drawMurk } from './render/Murk.js';
 import { cuesOn } from './render/Readability.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
+import { devMode, devParam, DEV_KEYS } from './data/build.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
 // results, play <-> pause; the tutorial ends play -> fall -> the next level's intro; a chase with more to come ends
 // play -> continued (TO BE CONTINUED, ui/Screens.js drawContinued) -> results
 // (the title and the pause are the menu: ui/Menu.js for its pages, ui/MenuArt.js for its picture)
 const VOLUMES = ['master', 'music', 'sfx', 'ambience'];
-// ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room)
-const urlLevel = () => { const id = new URLSearchParams(location.search).get('level'); return LEVELS[id] ? id : null; };
+// ?level=<id>: the level NEW GAME / CONTINUE start, for the developers (e.g. ?level=lab, the physics test room;
+// data/build.js: not in a release build)
+const urlLevel = () => { const id = devParam('level'); return LEVELS[id] ? id : null; };
 const has = (id) => !!LEVELS[id];
 // out of the tutorial's window (state 'fall'): the world in slow motion (he lands and rolls) for `hold` s, going black
 // over `fade` s more, then the leap seen from the alley (ui/cine/Leap.js) until the next level starts
@@ -103,7 +105,8 @@ export default class Game {
     this.clearedT = 0;
     this.deaths = 0;
     this.loadP = 0;
-    this.musicOn = true;
+    this.dev = devMode();              // the developer's keys and switches (data/build.js: off in a release build)
+    this.pausedFrom = null;            // { state, t } the pause was opened from (pause / resume)
     this.settings = loadSettings();
     this.progress = loadProgress();
     this.menu = new Menu('main', () => this.menuContext());
@@ -117,24 +120,25 @@ export default class Game {
     this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
     this.lens = new Lens();            // what the last pass of the picture does this frame
     this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
+    if (this.post) this.post.onLost = () => this.resize(); // the card dropped it: the canvas back to the window's size
     this.lensOn = true;                // the VIDEO option; F6 flips it for the session, to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
     this.aimNote = 0;                  // ... and the F7 one (the aim's style)
     // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
-    const mark = new URLSearchParams(location.search).get('mark');
+    const mark = devParam('mark');
     if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
     // the kill cam (systems/KillCam.js), but for ?killcam=off (a developer's switch, to compare)
-    this.killCamOn = killcamOn(new URLSearchParams(location.search).get('killcam'));
+    this.killCamOn = killcamOn(devParam('killcam'));
     this.sandbox = new Sandbox(); // F1: spawn tools and cheats
     this.recorder = new ReplayRecorder();           // kill clips of the run, taken off the rendered frames
     this.replay = new ReplayPlayer(this.recorder);  // plays them behind the results
-    // the fullscreen toggle tells the truth: whoever left it (Esc, the browser), the setting follows
+    // the fullscreen toggle tells the truth: whoever left it (Esc, the browser), the toggle follows; what is kept for
+    // the next session is only what was chosen (the menu's toggle: fullChoice), never the browser throwing us out
     this.wantFull = this.settings.fullscreen; // asked last session: taken again at the first key or click
+    this.fullChoice = !!this.settings.fullscreen;
+    this.fullAsk = null;                      // what setFullscreen asked, until the browser answers
     this.settings.fullscreen = !!document.fullscreenElement;
-    document.addEventListener('fullscreenchange', () => {
-      this.settings.fullscreen = !!document.fullscreenElement;
-      saveSettings(this.settings);
-    });
+    document.addEventListener('fullscreenchange', () => this.onFullscreen(!!document.fullscreenElement));
     for (const k of [...VOLUMES, 'lens', 'shake', 'rumble']) this.applySetting(k);
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -143,16 +147,16 @@ export default class Game {
   // The picture for a view `view` world px high in a window h device px high: { ss: scene px a window px, zoom }
   // (engine/Camera.js fitView: on foot the lens brings a larger scene down to the window; at the wheel the scene is
   // the window, at a whole zoom, and the lens scales nothing)
-  fit(view, h) { return fitView(view, h, !!this.post?.ok, this.wheel); }
+  fit(view, h) { return fitView(view, h, !!this.post?.ok && this.lensOn, this.wheel); }
 
   resize() {
     const dpr = window.devicePixelRatio || 1, w = Math.floor(window.innerWidth * dpr), h = Math.floor(window.innerHeight * dpr);
-    const { ss, zoom } = this.fit(this.view, h), was = this.canvas.width;
+    const { ss, zoom } = this.fit(this.view, h), was = this.canvas.width, wasH = this.canvas.height;
     this.canvas.width = Math.round(w * ss);
     this.canvas.height = Math.round(h * ss);
     this.camera.resize(this.canvas.width, this.canvas.height, zoom);
     // (the mouse is kept in the scene's px: it stays where it was on the window)
-    if (was && this.input) { const k = this.canvas.width / was; this.input.mouse.x *= k; this.input.mouse.y *= k; }
+    if (was && wasH && this.input) { this.input.mouse.x *= this.canvas.width / was; this.input.mouse.y *= this.canvas.height / wasH; }
     this.post?.resize(w, h);
     this.vignette = null;
   }
@@ -177,6 +181,9 @@ export default class Game {
 
   setState(s) {
     if (s !== 'play') this.introOut = null; // the level's card opens over play only (leaveIntro)
+    if (s !== 'pause') this.pausedFrom = null;
+    // into play from a menu, a card or a screen: the button that took him there is no shot or swing
+    if (s === 'play' && this.state !== 'play') this.input.holdMouse();
     this.skip.reset();
     this.state = s; this.stateT = 0; this.grab = null; this.menuRects = [];
   }
@@ -186,7 +193,7 @@ export default class Game {
   applySetting(key) {
     const v = this.settings[key];
     if (VOLUMES.includes(key)) Audio.setVolume(key, v);
-    else if (key === 'lens') { this.lensOn = v; this.post?.show(v); }
+    else if (key === 'lens') { this.lensOn = v; this.post?.show(v); this.resize(); } // (the canvas' size goes with it: fit)
     else if (key === 'shake') this.camera.shakeScale = v;
     else if (key === 'rumble') this.rumble.setScale(v);
   }
@@ -203,17 +210,31 @@ export default class Game {
     if (this.settings[key] === value) return;
     this.settings[key] = value;
     this.applySetting(key);
-    if (save) saveSettings(this.settings);
+    if (save) this.save();
   }
+
+  // the settings kept for the next session: fullscreen as chosen, not as the browser left it (onFullscreen)
+  save() { saveSettings({ ...this.settings, fullscreen: this.fullChoice }); }
 
   // must run within a key press or a click (the browser's rule): update() is called on the frame after one
   setFullscreen(on) {
     // a pad's button is no gesture to the browser: asked from the pad, it is taken at the next key or click
     if (on && globalThis.navigator?.userActivation?.isActive === false) { this.wantFull = true; return; }
+    this.fullAsk = on;
     try {
       const d = document, p = on ? d.documentElement.requestFullscreen?.() : d.fullscreenElement && d.exitFullscreen?.();
       p?.catch?.(() => {});
     } catch { /* refused: the toggle keeps showing the truth */ }
+  }
+
+  // fullscreen came or went: the toggle shows it; kept when it is what was asked; in it, ESC is the game's (the
+  // browser's keyboard lock: held, it still leaves), so that it pauses instead of throwing us out
+  onFullscreen(on) {
+    this.settings.fullscreen = on;
+    if (this.fullAsk === on) { this.fullChoice = on; this.save(); }
+    this.fullAsk = null;
+    if (!on) return;
+    try { globalThis.navigator?.keyboard?.lock?.(['Escape'])?.catch?.(() => {}); } catch { /* no lock: ESC leaves */ }
   }
 
   // ---------------- progression ----------------
@@ -223,7 +244,7 @@ export default class Game {
 
   menuContext() {
     return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok, device: this.input.device,
-      rumbleOk: !this.input.padConnected || this.input.canRumble };
+      rumbleOk: !this.input.padConnected || this.input.canRumble, dead: this.pausedFrom?.state === 'dead' };
   }
 
   // a level finished: marked done, the next one opened (the tutorial calls it too)
@@ -262,7 +283,6 @@ export default class Game {
     this.seen = this.levelId;
     this.opening = new Opening(this.world.player); // the bottle's shots, where he opens on it
     this.best = loadBest(this.levelId);
-    this.ranked = true; // until the sandbox panel is opened
     this.replay.stop();
     this.recorder.reset();
     this.recorder.attach(this.world.events);
@@ -301,6 +321,7 @@ export default class Game {
     Music.setIntensity(this.tension.level('normal'));
     ev.on('tutorialEnd', () => this.onTutorialEnd());
     this.sandbox.attach(this.world);
+    this.ranked = !this.sandbox.cheats; // until a cheat is used (debugKeys): a cheat carried over a restart counts too
     this.rumble.bind(this.world);
     this.cineT = 0;
     this.introT = 0;
@@ -333,6 +354,29 @@ export default class Game {
     this.camera.settle();
     this.lens.reset();
     Audio.setMuffle(0);
+  }
+
+  // a level left (its results, the title, the hit list): what it did to the picture and the sound goes, and the
+  // music's fight with it
+  quiet() {
+    this.clearScreen();
+    Music.setCombat(false);
+    Music.setCombo(0);
+  }
+
+  // the level left for good (the title, the hit list): nothing keeps its world alive (World.dispose where there is
+  // one), the clips of its run are given back
+  leaveWorld() {
+    this.quiet();
+    this.world?.dispose?.();
+    this.world = null;
+    this.opening = new Opening(null);
+    this.rumble.unbind();
+    this.sandbox.detach();
+    this.recorder.detach?.();
+    this.recorder.detach = null;
+    this.replay.stop();
+    this.recorder.release();
   }
 
   // play starts at once; the card stays where it was and opens like a shutter over the first moments of play
@@ -390,6 +434,7 @@ export default class Game {
   showResults() {
     const w = this.world;
     const tally = w.scoring.tally(levelScoring(this.levelId, w.totalEnemies));
+    this.quiet(); // (on foot out of the exit: the slow motion's tint and muffle would stay over the results)
     // a run helped by the sandbox is shown but never kept as a record
     this.completeLevel(this.levelId);
     const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.time }) : { prev: this.best, record: false };
@@ -404,11 +449,27 @@ export default class Game {
     this.setState('results');
   }
   toTitle() {
-    this.world = null;
-    this.replay.stop();
-    this.recorder.release();
+    this.leaveWorld();
+    this.sandbox.reset(); // the cheats stay with the session's runs, not past the title
     this.menu.reset('main');
     this.setState('title');
+  }
+
+  // ESC / START (or the pad gone, the window left): the pause menu over the state it was opened from (play, or the
+  // death screen: then RETRY in place of RESUME, ui/Menu.js)
+  pause() {
+    this.input.padLost = this.input.focusLost = false;
+    if (this.state === 'play') this.world.player.interrupt?.();
+    const from = { state: this.state, t: this.stateT };
+    this.menu.reset('pause');
+    this.setState('pause');
+    this.pausedFrom = from;
+  }
+  // back to what the pause was opened from (the death screen where it was)
+  resume() {
+    const from = this.pausedFrom;
+    this.setState(from?.state || 'play');
+    if (from?.state === 'dead') this.stateT = from.t;
   }
 
   // ---------------- loop ----------------
@@ -447,8 +508,12 @@ export default class Game {
   advance(dt) {
     const inp = this.input;
     inp.poll(dt);
+    // the developer's keys do nothing in a release build (data/build.js)
+    if (!this.dev) for (const k of DEV_KEYS) inp.pressed.delete(k);
+    // the pad gone or the window left pause play only: told anywhere else, it is forgotten
+    if (this.state !== 'play') inp.padLost = inp.focusLost = false;
     if (inp.anyPressed) {
-      Audio.unlock().then(() => { if (this.musicOn) Music.start(); });
+      Audio.unlock().then(() => Music.start());
       if (this.wantFull) { this.wantFull = false; this.setFullscreen(true); }
     }
 
@@ -459,8 +524,7 @@ export default class Game {
     this.paged = page;
     // debug: the picture with / without the lens
     if (inp.hit('F6') && this.post) {
-      this.lensOn = !this.lensOn;
-      this.post.show(this.lensOn);
+      this.setSetting('lens', !this.lensOn); // (the VIDEO page's LENS row follows)
       this.lensNote = this.time + 1.6;
     }
     // debug: the next way of showing the aim (data/aim.js; the setting `aim` keeps it, no menu row)
@@ -492,12 +556,9 @@ export default class Game {
       inp.consume();
       return;
     }
-    if (inp.hit('KeyM')) { this.musicOn = !this.musicOn; this.musicOn ? Music.start() : Music.stop(); }
-
     if (this.state === 'pause') {
-      // (R / A restart and quit from the pause's own page only: not from its options)
+      // (R / Y restart from the pause's own page only: not from its options)
       if (this.menu.depth === 0 && inp.hit('KeyR')) this.newGame();
-      else if (this.menu.depth === 0 && inp.hit('KeyQ')) this.toTitle();
       else {
         if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
         this.updateMenu(inp);
@@ -576,8 +637,13 @@ export default class Game {
       if (this.world.outro.car.exploded) { this.showResults(); return; }
       if (skip) { this.endOutro(); return; }
     }
-    // Escape / START pauses; so does the gamepad in use going away
-    if (this.state === 'play' && (inp.hit('Escape') || inp.padLost)) { inp.padLost = false; this.world.player.interrupt?.(); this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
+    // Escape / START pauses; so does the gamepad in use going away, or the window losing the focus (hidden, left);
+    // once dead, Escape / START opens it too (RETRY, OPTIONS, QUIT TO MENU)
+    if ((this.state === 'play' && (inp.hit('Escape') || inp.padLost || inp.focusLost)) || (this.state === 'dead' && inp.hit('Escape'))) {
+      this.pause();
+      inp.consume();
+      return;
+    }
     // once dead: R and the pad's A / Y restart at once, a click after a moment (he may have died clicking)
     if (this.state === 'dead' && (inp.hit('PadA') || (this.stateT > 0.5 && inp.mouseHit(0)))) { this.newGame(); inp.consume(); return; }
     this.padAim(dt);
@@ -654,9 +720,7 @@ export default class Game {
   afterResults(next) {
     if (deadCount(this.progress) > this.crossed) {
       this.after = next || null;
-      this.world = null;
-      this.replay.stop();
-      this.recorder.release();
+      this.leaveWorld();
       this.setState('hitlist');
     } else if (next) this.startLevel(next);
     else this.toTitle();
@@ -703,7 +767,7 @@ export default class Game {
     if (inp.hit('F3')) this.overview = !this.overview;
     if (inp.hit('F4')) this.world.debugPhysics = !this.world.debugPhysics;
     this.sandbox.update(inp, aim, this.time);
-    if (this.sandbox.on) this.ranked = false;
+    if (this.sandbox.cheats) this.ranked = false;
   }
 
   // ---------------- menu (title and pause) ----------------
@@ -775,7 +839,7 @@ export default class Game {
       case 'continue': this.continueGame(); return true;
       case 'start': this.startLevel(a.level); return true;
       case 'replayTutorial': this.startLevel('tutorial'); return true;
-      case 'resume': this.setState('play'); return true;
+      case 'resume': this.resume(); return true;
       case 'restart': this.newGame(); return true;
       case 'quit': this.toTitle(); return true;
       default: return false;
@@ -806,7 +870,7 @@ export default class Game {
     const aim = this.camera.screenToWorld(this.input.mouse.x, this.input.mouse.y);
     const k = this.input.down('ShiftLeft') || this.input.down('ShiftRight') ? PLAYER.lookAheadFar : PLAYER.lookAhead;
     let ox = (aim.x - p.x) * k, oy = (aim.y - p.y) * k;
-    const max = this.input.down('ShiftLeft') ? 260 : 110;
+    const max = this.input.down('ShiftLeft') || this.input.down('ShiftRight') ? 260 : 110;
     const len = Math.hypot(ox, oy);
     if (len > max) { ox *= max / len; oy *= max / len; }
     // at the wheel (systems/Drive.js): the view is the drive's own, drawn 1:1 at a whole zoom and held on whole px
