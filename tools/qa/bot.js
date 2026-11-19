@@ -95,10 +95,11 @@
     },
     // the tutorial: played freely room after room, then out by the front room window once nobody is left (`out` is
     // started by hand when the level is cleared: it has no exit zone)
-    // (`bed`: out of the bedroom by its single door and over the living room's table, started by hand while he is in it)
+    // (`bed`: out of the bedroom by its single door, down the living room's lane between its two fires and over the
+    // table at its end, started by hand while he is in it)
     tutorial: {
       free: { steps: [] }, out: { steps: [{ go: [4.7, 14.5] }, { cross: [1.6, 14.5] }], rescue: true },
-      bed: { steps: [{ go: [8.5, 2.5] }, { to: [10.4, 2.6] }, { to: [11.6, 3.9] }, { cross: [11.6, 5.8] }], rescue: true },
+      bed: { steps: [{ go: [8.5, 2.55] }, { to: [10.4, 2.6] }, { to: [11.2, 3.0] }, { to: [13.6, 3.1] }, { to: [13.6, 4.6] }, { cross: [13.6, 6.5] }], rescue: true },
     },
     street: {
       free: { steps: [] },

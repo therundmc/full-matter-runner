@@ -1,6 +1,7 @@
-// The human shield (SHIELD in data/feel.js, systems/Shield.js, Player.startShield .. endShield): E behind a guard with a
-// hand free takes him; held, he slows the player, takes what comes from the front and dies of it; the click kills
-// him, the right click throws him; the guards hold their fire a moment, the melee ones come round.
+// The human shield (SHIELD in data/feel.js, systems/Shield.js, Player.startShield .. endShield): E behind a standing guard
+// with a hand free takes him; held, he slows the player, takes what comes from the front and dies of it; the click
+// kills him, the right click throws him; the guards hold their fire a moment, the melee ones come round. The choke
+// hold as it is drawn (CharacterAnim shieldPose / hostagePose): the arm round his neck, his legs walking with the pair.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
@@ -18,7 +19,10 @@ const { PLAYER, ENEMY, TAKEDOWN } = await load('game/Config.js');
 const { WEAPONS, oneHanded } = await load('game/data/weapons.js');
 const { SCORING } = await load('game/data/scoring.js');
 const { KBM_CONTROLS, PAD_CONTROLS } = await load('game/data/controls.js');
-const { offers, covers, hesitation, flankSide, bodyHits } = await load('game/systems/Shield.js');
+const { offers, covers, hesitation, flankSide, bodyHits, dragFeet } = await load('game/systems/Shield.js');
+const { default: Character } = await load('game/entities/Character.js');
+const { newPose, standPose, shieldPose, hostagePose, NECK } = await load('game/entities/CharacterAnim.js');
+const { BODY_SCALE } = await load('game/Config.js');
 const { killStyle, killTags } = await load('game/systems/Scoring.js');
 const { killTier } = await load('game/systems/KillCam.js');
 const { throwSpeed } = await load('game/systems/Kick.js');
@@ -124,7 +128,7 @@ test('shield: the rules - who offers it, what a hand is free for, what the arc c
   assert.equal(offers(p, { ...e, isEnemy: false, isCivilian: true }), false, 'nor a passer-by');
   assert.equal(offers(p, { ...e, yielded: true }), false);
   assert.equal(offers(p, { ...e, held: {} }), false);
-  assert.ok(offers(p, { ...e, angle: Math.PI, knocked: 2 }), 'a man down, whichever way he lies');
+  assert.equal(offers(p, { ...e, knocked: 2 }), false, 'nor a man who is down: only one standing, taken from behind');
   assert.equal(SHIELD.reach, TAKEDOWN.reach, "the takedown's reach");
   assert.ok(covers(0, Math.PI) && covers(0, Math.PI + 1.2) && covers(0, Math.PI - 1.2), 'what comes from the front, 70 degrees either side');
   assert.ok(!covers(0, Math.PI + 1.3) && !covers(0, Math.PI / 2) && !covers(0, 0), 'not from the side, not from behind');
@@ -152,11 +156,10 @@ test('shield: E behind a standing guard takes him with empty hands or a handgun;
   }
 });
 
-test('shield: a man down is hauled up off the floor; E keeps its other uses when nobody offers it', () => {
-  const w = world(), p = player(w), g = guard(w, 18, 0, { angle: Math.PI, knocked: 2, dazed: true });
-  steps(w, p, 1, idle, pressE);
-  assert.equal(p.shield?.target, g);
-  assert.ok(g.knocked === 0 && !g.dazed);
+test('shield: a man down is not taken; E keeps its other uses when nobody offers it', () => {
+  const w = world(), p = player(w), g = guard(w, 18, 0, { knocked: 2, dazed: true });
+  steps(w, p, 2, idle, pressE);
+  assert.ok(p.nearShield === null && p.shield === null && g.held === null && g.knocked === 2);
   const w2 = world(), p2 = player(w2);
   let used = 0;
   w2.uses.near = () => ({ use: () => { used++; } });
@@ -239,15 +242,22 @@ test('shield: a thing thrown at them lands on the hostage', () => {
 test('shield: the click breaks his neck with empty hands, cuts his throat with a blade, fires past him with a gun', () => {
   const a = held();
   assert.equal(a.p.contextAction, 'BREAK HIS NECK');
-  steps(a.w, a.p, 1, idle, click);
-  assert.ok(!a.g.alive && a.p.shield === null && a.g.held === null);
+  // the click starts the wrench: he dies at its end, still held (and still a shield) until then
+  const beat = (K) => Math.ceil(K.at / DT);
+  steps(a.w, a.p, beat(SHIELD.kill.neck) - 1, idle, click);
+  assert.ok(a.g.alive && a.p.shield?.kill?.kind === 'neck' && !a.w.sounds.includes('shieldNeck'), 'the wrench is under way');
+  steps(a.w, a.p, 1, click);
+  assert.equal(a.p.shield.kill.t < SHIELD.kill.neck.at, true, 'a second click does not start it again');
+  steps(a.w, a.p, 2, idle, { ...idle, mouseHit: (b) => b === 2 });
+  assert.ok(!a.g.alive && a.p.shield === null && a.g.held === null && !(a.g.knocked > 0), 'nor does a throw take him out of it');
+  assert.equal(a.p.shieldOut?.kind, 'neck', 'his arms let go');
   assert.deepEqual([a.g.cause, a.g.how.label, a.g.how.close], ['snap', 'NECK SNAP', true]);
   assert.deepEqual(a.g.style, { style: 'takedown', method: 'takedown' }, 'scored as a takedown');
   assert.equal(a.g.tier, 'exec', "the kill cam's exec tier");
   assert.ok(a.w.sounds.includes('shieldNeck') && a.w.told.some(([n]) => n === 'shieldKill'));
   const b = held('knife');
   assert.equal(b.p.contextAction, 'CUT HIS THROAT');
-  steps(b.w, b.p, 1, idle, click);
+  steps(b.w, b.p, beat(SHIELD.kill.throat) + 1, idle, click);
   assert.deepEqual([b.g.alive, b.g.cause, b.g.by.wound, b.g.how.label], [false, 'slash', 'throat', 'THROAT CUT']);
   assert.equal(b.p.weapon.type, 'knife');
   const c = held('pistol');
@@ -282,6 +292,9 @@ test('shield: the right click throws him - a tap at once, a hold further; he is 
   const v0 = Math.hypot(tap.g.body.velocity.x, tap.g.body.velocity.y);
   assert.ok(Math.abs(v0 - throwSpeed(SHIELD.throw.dist[0], ENEMY.knockBrake)) < 1e-6 && tap.g.body.velocity.x > 0, 'along the aim, the short throw');
   assert.ok(tap.w.sounds.includes('shieldThrow'));
+  assert.equal(tap.p.shieldOut?.kind, 'throw', 'the shove has its follow through');
+  steps(tap.w, tap.p, Math.ceil(SHIELD.throw.out / DT) + 1);
+  assert.equal(tap.p.shieldOut, null);
   const full = held('pistol');
   const hold = { ...idle, mouseDown: (b) => b === 2 };
   steps(full.w, full.p, 40, hold, { ...hold, mouseHit: (b) => b === 2 });
@@ -389,13 +402,13 @@ test('shield: the tutorial - a man on the landing with his back to the fire door
   assert.equal(level.facing['9,14'], 180, 'looking west down the corridor');
   assert.deepEqual(level.stand['9,14'], [9.4, 14.6]);
   assert.deepEqual(last.waves[0], { at: [[9, 14]], on: 'never', blind: true });
-  assert.deepEqual([last.waves[1].on, last.waves[2].on], ['shield', 'kills:2']);
+  assert.deepEqual(last.waves.slice(1).map((w) => [w.on, w.at.length]), [['shield', 2]], 'the two men of the stairs, nobody after them');
   assert.equal(last.hints[0], 'shield');
   assert.ok(LESSONS.shield && HINTS.shield);
   // the trigger: taken as a shield, or dead some other way
   for (const how of ['shield', 'kill']) {
     const mk = (c, r, more) => ({ x: (c + 0.5) * 32, y: (r + 0.5) * 32, alive: true, knocked: 0, aware: 0, body: {}, hear() { this.heard = true; }, spot() {}, say() {}, speak() {}, ...more });
-    const hostage = mk(9, 14), up = [mk(7, 19), mk(9, 19), mk(8, 20)];
+    const hostage = mk(9, 14), up = [mk(7, 19), mk(9, 19)];
     const body = Matter.Bodies.circle(11.5 * 32, 14.5 * 32, 10);
     const pl = { body, alive: true, isPlayer: true, weapon: { type: 'pistol', mag: 2 }, def: { kind: 'gun' }, nearShield: null,
       get x() { return body.position.x; }, get y() { return body.position.y; } };
@@ -413,7 +426,7 @@ test('shield: the tutorial - a man on the landing with his back to the fire door
     if (how === 'shield') w.events.emit('shield', { holder: pl, target: hostage });
     else { hostage.alive = false; w.events.emit('kill', { victim: hostage }); }
     run(2.5);
-    assert.ok(!up[0].offstage && !up[1].offstage && up[2].offstage, `the first two come up the stairs (${how})`);
+    assert.ok(!up[0].offstage && !up[1].offstage, `the two come up the stairs (${how})`);
   }
 });
 
@@ -430,4 +443,167 @@ test('shield: bare hands on a man with a pistol take his pistol, its rounds and 
   steps(w2, p2, 1, idle, pressE);
   assert.equal(p2.weapon.type, 'uzi');
   assert.equal(g2.weapon.type, 'pistol');
+});
+
+// ---------------- the choke hold as drawn ----------------
+// what the poses read of a man (CharacterAnim standPose's inputs), standing at (x, y) and facing east
+const drawn = (type, x, more = {}) => ({
+  def: WEAPONS[type], angle: 0, x, y: 0, gait: 0, runK: 0, strideV: 0, walk: 0, strideA: 0, footA: 0, backward: false, lean: { x: 0, y: 0 },
+  recoil: 0, lower: 0, stow: 0, reloading: 0, reloadDur: 1, swing: 0, tell: 0, pickAnim: 0, grab: null, held: null, breath: 0,
+  world: { time: 5 }, ...more,
+});
+// the pair as drawn once he is hauled in: { H, T } the two poses, at(pt) a point of the holder's pose and his(pt) one of
+// the man's, both in px from the man's centre along the aim (x) and to its right (y)
+function pair(type = 'fists', sh = {}) {
+  const holder = drawn(type, 0), man = drawn('fists', SHIELD.gap, { held: holder });
+  holder.shield = { target: man, t: 1, hit: -9, dead: null, kill: null, drag: null, ...sh };
+  const T = hostagePose(man, standPose(man, newPose())), H = shieldPose(holder, standPose(holder, newPose()));
+  const at = (q) => ({ x: q.x * BODY_SCALE - SHIELD.gap, y: q.y * BODY_SCALE }), his = (q) => ({ x: q.x * BODY_SCALE, y: q.y * BODY_SCALE });
+  return { H, T, at, his, holder, man };
+}
+
+test('shield pose: the arm goes round his neck - the elbow in front of his throat, the hand back on the far shoulder', () => {
+  for (const type of ['fists', 'pistol', 'uzi', 'knife']) {
+    const { H, T, at, his } = pair(type);
+    assert.ok(H.elbOn[0], `${type}: the choking arm's elbow is placed`);
+    const E = at(H.elbow[0]), W = at(H.hl), body = his({ x: T.tx, y: T.ty });
+    // his head: on his neck, thrown back (never ahead of where it sits at rest)
+    const head = { x: body.x + NECK * BODY_SCALE, y: body.y };
+    assert.ok(E.x > head.x + 3, `${type}: the elbow ${E.x.toFixed(1)} is in front of his neck ${head.x.toFixed(1)}`);
+    assert.ok(E.y < body.y - 2 && W.y > body.y + 2, `${type}: the arm comes round from one side of his neck to the other`);
+    assert.ok(W.x > head.x && W.x < E.x + 1, `${type}: the forearm across the front of his throat, back to his far shoulder`);
+    // each bone of that arm about its real length (pose px), never a rubber arm
+    const S = at({ x: H.tx - Math.sin(H.ta) * -6 * H.s, y: H.ty + Math.cos(H.ta) * -6 * H.s });
+    const upper = Math.hypot(E.x - S.x, E.y - S.y) / BODY_SCALE, fore = Math.hypot(W.x - E.x, W.y - E.y) / BODY_SCALE;
+    assert.ok(upper > 4 && upper < 10 && fore > 4 && fore < 9.5, `${type}: upper arm ${upper.toFixed(1)}, forearm ${fore.toFixed(1)}`);
+    // pulled back onto the chest, his head back off the arm, his hands at it
+    assert.ok(T.tx < -1 && T.bow < 0 && T.hox < 0, `${type}: he is pulled back, his head thrown back`);
+    for (const h of [T.hl, T.hr]) assert.ok(Math.hypot(his(h).x - (E.x + W.x) / 2, his(h).y - (E.y + W.y) / 2) < 9, `${type}: his hands claw at the forearm`);
+  }
+});
+
+test('shield pose: a gun is held out past his shoulder along the aim; an empty hand goes behind his head', () => {
+  for (const type of ['pistol', 'uzi']) {
+    const { H, at } = pair(type), hand = at(H.hr);
+    assert.ok(H.wpnOn && Math.abs(H.wpn.a) < 1e-9, `${type}: it points where he aims`);
+    assert.ok(hand.y > 6 * BODY_SCALE + 2, `${type}: the gun hand ${hand.y.toFixed(1)} px out clears his shoulder`);
+    assert.ok(hand.x > -4, `${type}: and is level with him, the barrel on ahead`);
+  }
+  const { H, at } = pair('fists');
+  assert.ok(H.elbOn[1] && at(H.hr).x < -3 && at(H.elbow[1]).y > 8, 'the hand behind his head, its elbow out');
+});
+
+test('shield pose: the grab snatches him back, the wrench throws his head across, dead he hangs', () => {
+  const rest = pair(), grab = pair('fists', { t: 0.07 });
+  assert.ok(grab.T.tx < rest.T.tx - 1, 'snatched further back than he is held');
+  const early = pair('fists', { kill: { kind: 'neck', K: SHIELD.kill.neck, t: 0.3 * SHIELD.kill.neck.at } });
+  const late = pair('fists', { kill: { kind: 'neck', K: SHIELD.kill.neck, t: 0.98 * SHIELD.kill.neck.at } });
+  assert.ok(Math.abs(early.T.ha - rest.T.ha) < 0.2, 'the hold is taken up first');
+  assert.ok(late.T.ha - rest.T.ha > 1 && Math.hypot(late.T.hox - rest.T.hox, late.T.hoy - rest.T.hoy) > 2, 'then his head is wrenched round');
+  assert.ok(Math.hypot(late.H.elbow[0].x - rest.H.elbow[0].x, late.H.elbow[0].y - rest.H.elbow[0].y) > 2, 'by the arm torn aside');
+  const cut = pair('knife', { kill: { kind: 'throat', K: SHIELD.kill.throat, t: 0.98 * SHIELD.kill.throat.at } }), blade = pair('knife');
+  assert.ok(Math.hypot(cut.H.hr.x - blade.H.hr.x, cut.H.hr.y - blade.H.hr.y) > 3, 'the blade is drawn across');
+  const dead = pair('pistol', { dead: { t: 0 } });
+  assert.ok(dead.T.s < rest.T.s && Math.abs(dead.T.ha) > 0.5 && dead.T.hunch === 0, 'sunk, his head lolling');
+  assert.ok(Math.abs(dead.his(dead.T.hl).y) > 6 && Math.abs(dead.his(dead.T.hr).y) > 6, 'his arms hang by his sides');
+  assert.ok(dead.H.elbOn[0], 'still in the arm');
+});
+
+// a guard as the game animates him: the real gait, facing and pose (Character.baseUpdate / animate), no AI
+function walker(w, x, y) {
+  const g = Object.create(Character.prototype);
+  Object.assign(g, {
+    world: w, alive: true, team: 'enemy', isEnemy: true, kind: 'thug', knocked: 0, angle: 0, voice: 1, weapon: null, held: null, radius: 10,
+    body: Matter.Bodies.circle(x, y, 10), vel: { x: 0, y: 0 }, moveAngle: 0, moving: 0,
+    cooldown: 0, swing: 0, tell: 0, glassSafe: 0, pickAnim: 0, reloading: 0, reloadDur: 1, throwT: 0, recoil: 0, recoilRate: 9, racking: 0, flinch: 0,
+    barrel: 0, downT: 0, riseDur: 0, vaulting: null, slideAnim: null, doorHand: null, lockHand: null, talk: null, facing: null,
+    gait: 0, strideV: 0, runK: 0, walk: 0, footA: 0, strideA: 0, hipsGoal: 0, backward: false, lean: { x: 0, y: 0 }, leanV: { x: 0, y: 0 },
+    prevVel: { x: 0, y: 0 }, breath: 0, stow: 0, lower: 0, pose: newPose(),
+    say: noop, dropWeapon: noop, freed: noop, kill() { this.alive = false; },
+  });
+  w.enemies.push(g);
+  w.chars.push(g);
+  return g;
+}
+
+// the pair walked for n steps at (vx, vy) px/step, the aim turned by `turn` rad a step: the most a foot of the man held
+// moved under him between two steps (pose px), and his gait at the end
+function walked(n, vx, vy, turn = 0, type = 'pistol') {
+  const w = world(), p = player(w, type), g = walker(w, 20, 0);
+  w.doors = [];
+  w.floorAt = () => 'wood';
+  let a = 0, worst = 0, last = null;
+  const one = () => {
+    a += turn;
+    p.update(DT, idle, { x: p.x + Math.cos(a) * 100, y: p.y + Math.sin(a) * 100 });
+    g.baseUpdate(DT);
+    g.animate(DT);
+    w.time += DT;
+    // (the physics step: each goes at the speed he was given)
+    Matter.Body.setPosition(p.body, { x: p.x + vx, y: p.y + vy });
+    Matter.Body.setPosition(g.body, { x: g.x + g.vel.x, y: g.y + g.vel.y });
+    const P = hostagePose(g, standPose(g, g.pose)), feet = P.feet.map((f) => [f.x, f.y]);
+    if (last) feet.forEach((f, i) => { worst = Math.max(worst, Math.hypot(f[0] - last[i][0], f[1] - last[i][1])); });
+    last = feet;
+  };
+  p.startShield(g);
+  const v = [vx, vy];
+  vx = vy = 0;
+  for (let i = 0; i < 30; i++) one(); // hauled in, standing
+  const grab = worst;
+  worst = 0; last = null;
+  [vx, vy] = v;
+  for (let i = 0; i < n; i++) one();
+  return { w, p, g, worst, grab, one, stop() { vx = vy = 0; turn = 0; } };
+}
+
+test('shield: the man held walks with the pair - his legs step at the speed he is taken at, and never jump', () => {
+  const sp = PLAYER.speed * SHIELD.move;
+  for (const [name, vx, vy] of [['pushed on', sp, 0], ['dragged back', -sp, 0], ['to the left', 0, -sp], ['to the right', 0, sp], ['across', sp * 0.7, sp * 0.7]]) {
+    const r = walked(90, vx, vy);
+    assert.ok(Math.abs(Math.hypot(r.g.vel.x, r.g.vel.y) - sp) < 0.05, `${name}: he is carried at the pair's speed`);
+    assert.ok(Math.abs(Math.hypot(r.g.x - r.p.x, r.g.y - r.p.y) - SHIELD.gap) < 0.5, `${name}: and stays in the arm, not a step behind`);
+    assert.ok(r.g.gait > 0.8 && !r.g.facing.feet, `${name}: his legs walk it (gait ${r.g.gait.toFixed(2)}): never planted where he stood`);
+    assert.ok(r.worst < 4, `${name}: a foot jumped ${r.worst.toFixed(2)} px in a step`);
+    assert.ok(r.grab < 4, `${name}: the grab pulled a foot ${r.grab.toFixed(2)} px in a step`);
+    assert.equal(r.g.backward, vx < 0, `${name}: backwards only when he is dragged back`);
+    // the pair stops: he comes to rest on both feet, planted
+    r.stop();
+    let worst = 0, last = null;
+    for (let i = 0; i < 60; i++) {
+      r.one();
+      const feet = r.g.pose.feet.map((f) => [f.x, f.y]);
+      if (last) feet.forEach((f, j) => { worst = Math.max(worst, Math.hypot(f[0] - last[j][0], f[1] - last[j][1])); });
+      last = feet;
+    }
+    assert.ok(r.g.gait < 0.05 && r.g.facing.feet && worst < 4, `${name}: stopped, planted (gait ${r.g.gait.toFixed(2)}, ${worst.toFixed(2)} px)`);
+  }
+  // turned on the spot, half a turn in a third of a second: he is swung round, stepping
+  const turn = walked(20, 0, 0, Math.PI / 20);
+  assert.ok(turn.worst < 5, `turned: a foot jumped ${turn.worst.toFixed(2)} px in a step`);
+  assert.ok(Math.abs(Math.hypot(turn.g.x - turn.p.x, turn.g.y - turn.p.y) - SHIELD.gap) < 2.5, 'turned: still in front of him');
+});
+
+test('shield: a dead man held trails his feet - left behind as he is dragged, hung in front of him at rest, never popping', () => {
+  const sh = {}, rest = SHIELD.pose.limp.feet;
+  dragFeet(sh, 0, 0, 0, DT);
+  assert.ok(sh.drag.every((f, i) => Math.abs(f.x - rest[i][0] * BODY_SCALE) < 1e-9 && Math.abs(f.y - rest[i][1] * BODY_SCALE) < 1e-9), 'at rest in front of him');
+  let worst = 0;
+  for (let i = 0; i < 90; i++) {
+    const was = sh.drag.map((f) => ({ ...f }));
+    dragFeet(sh, -1.8, 0, 0, DT); // dragged back
+    sh.drag.forEach((f, j) => { worst = Math.max(worst, Math.hypot(f.x - was[j].x, f.y - was[j].y)); });
+  }
+  assert.ok(sh.drag.every((f, i) => f.x > rest[i][0] * BODY_SCALE + 3), 'they trail on the far side of the way he goes');
+  assert.ok(sh.drag.every((f) => Math.hypot(f.x, f.y) <= SHIELD.drag[1] * BODY_SCALE + 1e-9), 'no further than his legs are long');
+  assert.ok(worst < 2.5, `a foot moved ${worst.toFixed(2)} px under him in a step`);
+  for (let i = 0; i < 120; i++) dragFeet(sh, 0, 0, 0, DT);
+  assert.ok(sh.drag.every((f, i) => Math.abs(f.x - rest[i][0] * BODY_SCALE) < 0.1), 'and come back when he stands');
+  // drawn from them once he has gone slack
+  const r = walked(10, 0, 0);
+  for (let i = 0; i < SHIELD.hp; i++) round(r.w, r.p, Math.PI);
+  assert.ok(r.p.shield.dead && r.g.alive);
+  for (let i = 0; i < 40; i++) r.one();
+  const d = r.p.shield.drag;
+  assert.ok(d && r.g.pose.feet.every((f, i) => Math.abs(f.x - d[i].x / BODY_SCALE) < 0.05 && Math.abs(f.y - d[i].y / BODY_SCALE) < 0.05));
 });

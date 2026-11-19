@@ -12,7 +12,7 @@ import { Slide, canSlide, recover, ducked } from '../systems/Slide.js';
 import { kickReady, kickTarget, standing, throwSpeed } from '../systems/Kick.js';
 import { behind, within, unspotted, newTakedown, advance, slamAt } from '../systems/Takedown.js';
 import { lungeTarget } from '../systems/Lunge.js';
-import { offers, covers } from '../systems/Shield.js';
+import { offers, covers, dragFeet } from '../systems/Shield.js';
 import { lockTarget, meleeLock } from '../systems/AimCue.js';
 import { snapFacing } from './Facing.js';
 import { AIM } from '../data/aim.js';
@@ -92,6 +92,7 @@ export default class Player extends Character {
     // takes), dead (he died in the arms: { a, by, killer }), cover (hits his body still stops), volley ({ owner, t }
     // the blast whose pellets are one hit) }
     this.shield = null;
+    this.shieldOut = null; // { kind: 'throw' | 'neck' | 'throat', t, dur }: the arms after he is let go (shieldOutPose)
     // spare rounds per caliber
     this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
   }
@@ -148,6 +149,7 @@ export default class Player extends Character {
     if (this.throwHold && (this.sit > 0 || this.execution || this.takedown || this.trunkOpen || this.slipped || this.passage || this.kick)) this.throwHold = null;
     if (this.sit > 0 && !this.updateSit(dt, input)) return;
     if (this.execOut && (this.execOut.t -= dt) <= 0) this.execOut = null;
+    if (this.shieldOut && (this.shieldOut.t += dt) >= this.shieldOut.dur) this.shieldOut = null;
     if (this.execution) { this.updateExecution(dt, input); return; }
     if (this.takedown) { this.updateTakedown(dt); return; }
     if (this.trunkOpen) { this.updateTrunk(dt); return; }
@@ -619,16 +621,18 @@ export default class Player extends Character {
   }
 
   // ---------------- the human shield (SHIELD in data/feel.js, the rules: systems/Shield.js) ----------------
-  // E on a guard who offers it (from behind, or down on the floor: hauled up), a hand free for it: he is held in
-  // front of us, his back to our chest, and goes where we turn (updateShield); he can do nothing (Enemy.held). What
-  // comes at us from the front hits him (shieldStops). The guards who see it are on us at once. The poses:
-  // CharacterAnim shieldPose (ours), hostagePose (his).
+  // E on a standing guard who offers it (from behind only), a hand free for it: he is held in front of us in a choke
+  // hold, his back to our chest, and goes where we turn (updateShield); he can do nothing (Enemy.held). What comes at
+  // us from the front hits him (shieldStops). The guards who see it are on us at once. The poses: CharacterAnim
+  // shieldPose (ours), hostagePose (his), painted as one pair (drawPair, Character.draw); shieldOutPose once he is
+  // let go (this.shieldOut: the shove of a throw, the arms opening after a kill).
   startShield(target) {
     const w = this.world, group = Body.nextGroup(true);
-    this.shield = { target, t: 0, hp: SHIELD.hp, dead: null, cover: SHIELD.corpse, volley: null, hit: -9 };
+    // (at: where he was put last step; kill: the click's beat { kind, K, t }; drag: a dead man's trailing feet)
+    this.shield = { target, t: 0, hp: SHIELD.hp, dead: null, cover: SHIELD.corpse, volley: null, hit: -9, at: null, kill: null, drag: null };
+    this.shieldOut = null;
     this.nearShield = this.nearTakedown = this.nearDowned = this.lunge = this.facingLock = null;
     this.swing = 0;
-    if (target.knocked > 0) { target.knocked = 0; target.dazed = false; target.flung = null; } // off the floor
     target.held = this;
     target.dormant = false;
     target.swing = target.tell = target.reloading = 0;
@@ -648,22 +652,33 @@ export default class Player extends Character {
     for (const e of w.enemies) if (e !== target) e.seeHostage?.(this);
   }
 
-  // he is kept in front of us, this side of a wall, turned as we are
+  // He is kept in front of us, this side of a wall, turned as we are, and goes at the speed we take him at (our
+  // steps and our turns): his legs walk it (Gait.js), and he is where we are after the physics step, not a step
+  // late. (Put there dead still, he "stood" while his body was carried off his planted feet: the legs stretched,
+  // then snapped back under him.)
   updateShield(dt) {
     const sh = this.shield, tg = sh.target, w = this.world;
     if (!tg.alive) { this.endShield(); return; } // a blast, a fire: something else got him
     sh.t += dt;
+    if (sh.kill && (sh.kill.t += dt) >= sh.kill.K.at) { this.shieldKilled(); return; }
     const a = this.angle, c = Math.cos(a), s = Math.sin(a), k = Math.min(1, sh.t / SHIELD.set);
     let gap = SHIELD.gap;
     while (gap > 2 && w.map.solidAt(this.x + c * gap, this.y + s * gap)) gap -= 3;
-    const x = this.x + c * gap, y = this.y + s * gap;
-    Body.setPosition(tg.body, { x: tg.x + (x - tg.x) * k, y: tg.y + (y - tg.y) * k });
-    tg.vel = { x: 0, y: 0 };
+    // (hauled in from where he was put last step, not from where the speed he was given has since taken him)
+    const at = sh.at, from = at || tg, n = Math.max(dt * 60, 1e-3);
+    const x = lerp(from.x, this.x + c * gap, k), y = lerp(from.y, this.y + s * gap, k);
+    let vx = at ? (x - at.x) / n : 0, vy = at ? (y - at.y) / n : 0;
+    const sp = Math.hypot(vx, vy);
+    if (sp > SHIELD.carry) { vx *= SHIELD.carry / sp; vy *= SHIELD.carry / sp; }
+    if (sh.dead) dragFeet(sh, at ? x - at.x : 0, at ? y - at.y : 0, a, dt);
+    sh.at = { x, y };
+    Body.setPosition(tg.body, sh.at);
+    tg.vel = { x: vx, y: vy };
     Body.setVelocity(tg.body, tg.vel);
     tg.angle += angDiff(tg.angle, a) * k;
   }
 
-  // the man he holds is in front of him: drawn over him (Enemy.draw leaves him to us)
+  // the man he holds is painted with him, as one pair (Character.draw); what is drawn over a guard (Enemy.draw) after
   draw(ctx) {
     super.draw(ctx);
     const tg = this.shield?.target;
@@ -688,16 +703,23 @@ export default class Player extends Character {
       if (pulls(d, input)) this.attack();
       return;
     }
-    if (!input.mouseHit(0) || this.cooldown > 0 || this.reloading > 0) return;
+    if (!input.mouseHit(0) || this.cooldown > 0 || this.reloading > 0 || this.shield.kill) return;
     if (d.kind === 'gun' && this.reload()) return;
     if (this.shield.dead) this.endShield();
     else this.shieldKill();
   }
 
-  // his neck broken with the arm that holds him, or his throat opened by the blade in the other hand
+  // His neck broken with the arm that holds him, or his throat opened by the blade in the other hand: the click
+  // starts the motion (SHIELD.kill `at` s of it: the wrench, the blade drawn across), he dies at its end (shieldKilled)
   shieldKill() {
-    const tg = this.shield.target, w = this.world, d = this.def, a = this.angle;
-    const K = SHIELD.kill[d.swing === 'blade' ? 'throat' : 'neck'];
+    const kind = this.def.swing === 'blade' ? 'throat' : 'neck', K = SHIELD.kill[kind];
+    this.shield.kill = { kind, K, t: 0 };
+    this.throwHold = null;
+    this.cooldown = K.at + K.cool;
+  }
+
+  shieldKilled() {
+    const sh = this.shield, tg = sh.target, w = this.world, d = this.def, a = this.angle, K = sh.kill.K;
     w.sound(K.sound, tg.x, tg.y, 1, { pitch: tg.voice }); // shieldNeck: placeholder (PLACEHOLDERS.md)
     if (K.wound) w.particles.blood(tg.x + Math.cos(a) * 3, tg.y + Math.sin(a) * 3, a + Math.PI / 2 * this.punchSide, 0.8, 12, 180);
     w.noise(tg.x, tg.y, K.noise, this);
@@ -705,6 +727,7 @@ export default class Player extends Character {
     landMoment(w, tg, a, d, MOMENTS.takedown, !tg.alive);
     w.events.emit('shieldKill', { holder: this, victim: tg });
     this.endShield();
+    this.shieldOut = { kind: sh.kill.kind, t: 0, dur: K.out };
     this.cooldown = K.cool;
   }
 
@@ -732,7 +755,8 @@ export default class Player extends Character {
     }
     sh.hp -= by?.heavy ? S.hp : !by ? S.thrown : pellets ? S.blast : 1;
     if (sh.hp <= 0) {
-      sh.dead = { a, by: by || {}, killer: shooter };
+      sh.dead = { a, by: by || {}, killer: shooter, t: w.time };
+      sh.kill = null; // (a wrench under way: there is nobody left to kill)
       tg.dropWeapon(a + rand(-1, 1), 1.5);
       w.sound('cry', tg.x, tg.y, 1, { pitch: tg.voice });
       w.shake(0.12);
@@ -744,6 +768,7 @@ export default class Player extends Character {
   // he runs into on the way (Enemy.updateFlung); a man dead in our arms is thrown as the body he is
   throwShield(k) {
     const sh = this.shield, tg = sh.target, w = this.world, T = SHIELD.throw, a = this.angle;
+    if (sh.kill) return; // his neck is in the arm: that goes to its end
     if (sh.dead) sh.flingA = a;
     else {
       tg.knock(a, 'thrown', { speed: throwSpeed(lerp(T.dist[0], T.dist[1], k), ENEMY.knockBrake) });
@@ -751,7 +776,7 @@ export default class Player extends Character {
     }
     this.endShield();
     this.cooldown = T.cool;
-    this.throwT = this.throwDur;
+    this.shieldOut = { kind: 'throw', t: 0, dur: T.out };
     w.sound('shieldThrow', this.x, this.y, 0.8 + 0.2 * k); // placeholder (PLACEHOLDERS.md)
   }
 

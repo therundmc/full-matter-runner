@@ -21,6 +21,7 @@ const { TILE, CAT, MASK } = await load('game/Config.js');
 const { default: level2a } = await load('game/data/levels/level2a.js');
 const { default: Scoring } = await load('game/systems/Scoring.js');
 const { listenMoments } = await load('game/fx/Impact.js');
+const { angDiff } = await load('engine/math.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
@@ -84,6 +85,7 @@ function world(rows = level2a.tiles) {
     particles: quiet, killed: null, kills: [], exited: false, cleared: false, drive: null, totalEnemies: 0,
     game: { onExit() {} },
     addBody: (b) => physics.add(b), removeBody: (b) => physics.remove(b), sound() {}, shake() {}, noise() {}, light() {},
+    addDebris() {}, flashGlass() {},
     addProjectile(p) { w.projectiles.push(p); },
     onKill(ch, cause, killer) { w.killed = { ch, cause, killer }; },
   };
@@ -476,33 +478,146 @@ test('car gun: THE BOSS\'s open car: 125 degrees either side of the nose (250 in
   assert.ok(s.w.player.alive, 'none of it his own');
 });
 
-test('pursuit: a round through its windscreen kills the driver and it veers off; a front tyre spins it out', () => calm(() => {
+// After a car is stopped for good (fn): 1.5 s of its exit, watched. { touched: his car and it ever in contact, out:
+// clear of his lane at the end (their widths apart across), behind: its nose behind his tail at the end, ahead: it
+// was ever level with him or ahead of him inside his lane after the first 0.4 s }
+function exits(s, car, fn) {
+  fn();
+  let touched = false, ahead = false, t = 0;
+  const apart = () => Math.abs(car.v.y - s.v.y) >= (car.v.h + s.v.h) / 2;
+  run(s, 1.5, null, () => {
+    t += DT;
+    touched ||= Matter.Collision.collides(car.v.body, s.v.body)?.collided ?? false;
+    if (t > 0.4 && !apart() && car.v.x + car.v.w / 2 > s.v.x - s.v.w / 2) ahead = true;    return false;
+  });
+  return { touched, ahead, out: apart(), behind: car.v.x + car.v.w / 2 < s.v.x - s.v.w / 2 };
+}
+
+test('pursuit: a car wrecked alongside him (above, below) or ahead in his lane leaves the picture: away from him, out of his lane and behind him in 1.5 s, never touching him', () => calm(() => {
+  const cases = [
+    ['above', LANES[1], NORTH, 0],
+    ['below', LANES[0], SOUTH, 0],
+    ['ahead', LANES[1], SOUTH, CHASE.pursuit.slots.ahead[0]],
+    ['ahead, top lane', LANES[0], NORTH, CHASE.pursuit.slots.ahead[0]],
+  ];
+  for (const [name, row, y, dx] of cases) {
+    const s = start({}, [20, row]);
+    const car = s.P.spawn(s.v.x + dx, y, 0, 'chase', 8.9);
+    run(s, 0.4);
+    const y0 = car.v.y, r = exits(s, car, () => s.P.wreck(car));
+    assert.equal(car.state, 'wrecked', name);
+    assert.ok(!r.touched, `${name}: never touching him`);
+    assert.ok(r.out && !r.ahead, `${name}: out of his lane, never in it ahead of him (${Math.round(car.v.y - s.v.y)})`);
+    assert.ok(r.behind, `${name}: left behind him (${Math.round(car.v.x - s.v.x)})`);
+    if (dx === 0) assert.equal(Math.sign(car.v.y - y0), Math.sign(y0 - s.v.y), `${name}: away from him`);
+    assert.ok(Math.abs(angDiff(0, car.v.body.angle)) > 0.2, `${name}: skidded round (${car.v.body.angle.toFixed(2)})`);
+    assert.equal(car.out, null, 'the script is over: the physics has it');
+  }
+}));
+
+test('pursuit: a rear tyre shot, the car ahead of him in his lane limps out of it, never slowing him', () => calm(() => {
+  const s = start();
+  const car = s.P.spawn(s.v.x + CHASE.pursuit.slots.ahead[0], SOUTH, 0, 'chase', 8.9);
+  s.P.assign = function () { this.road = lanesOf(this.target().y, this.band, this.road); };
+  car.slot = 'ahead';
+  run(s, 0.6);
+  car.v.popTire(0, 0);
+  assert.equal(car.state, 'limp');
+  let touched = false, slow = Infinity;
+  run(s, 4, null, () => {
+    touched ||= Matter.Collision.collides(car.v.body, s.v.body)?.collided ?? false;
+    slow = Math.min(slow, Body.getVelocity(s.v.body).x);
+    return false;
+  });
+  assert.ok(!touched && slow > CHASE.cruise - 0.5, `never in his way (${slow.toFixed(1)} px/step)`);
+  // and it hangs on alongside him, in his arc, out of his lane, for him to finish it
+  let held = 0;
+  run(s, 6, null, () => {
+    const near = Math.hypot(car.v.x - s.v.x, car.v.y - s.v.y) < 250, out = Math.abs(car.v.y - s.v.y) >= (car.v.h + s.v.h) / 2;
+    if (near && out && inArcOf(s, car.v.x, car.v.y)) held += DT;
+    return false;
+  });
+  assert.equal(car.state, 'limp');
+  assert.ok(held > 5.5, `alongside him, in his arc (${held.toFixed(1)} s of 6)`);
+}));
+
+test('pursuit: a tyre goes to a burst at it (5 rounds square on its flank), not to a stray round at a slant off the body\'s burst', () => calm(() => {
+  const s = start(), T = CHASE.pursuit.rounds.tyre;
+  const car = s.P.spawn(s.v.x, NORTH, 0, 'chase', 8.9), v = car.v;
+  run(s, 0.4);
+  const wheel = () => v.toWorld(v.m.wheels[1][0], v.h - 1); // its rear wheel on his side (+y)
+  // at a slant (from well behind it): they skip off into the body
+  for (let i = 0; i < 20; i++) { const at = wheel(); v.hit(1, at.x, at.y, -Math.PI / 2 + T.skip + 0.2, 1, 'bullet'); }
+  assert.ok(v.tires[1] && car.state === 'chase', 'still on it');
+  for (let i = 1; i < T.hp; i++) { const at = wheel(); v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet'); }
+  assert.ok(v.tires[1], `${T.hp - 1} square on: chewed up, not gone`);
+  const at = wheel();
+  v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet');
+  assert.ok(!v.tires[1] && car.state === 'limp', 'the last one: it limps');
+  assert.ok(T.hp >= 4 && T.hp <= 6);
+}));
+
+test('pursuit: a burst through its windscreen kills the driver (a stray round only stars it) and it is out at once, his gunman with it; a front tyre spins it out; both by the exit', () => calm(() => {
   {
     const s = start();
     const car = s.P.spawn(s.v.x + 20, NORTH, 0, 'chase', 8.9);
     run(s, 0.5);
-    const v = car.v, at = v.toWorld(89, v.h - 1);
-    v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet'); // from his side, by the A pillar
-    assert.ok(!car.driver && car.state === 'veer', `the driver (${car.state})`);
+    const v = car.v, shot = () => { const at = v.toWorld(89, v.h - 1); v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet'); }; // from his side, by the A pillar
+    shot();
+    assert.ok(car.driver && car.state === 'chase' && v.windows.wind === 1, 'one round: the windscreen starred, nobody hit');
+    const r = exits(s, car, shot);
+    assert.ok(!car.driver && !car.gunman && car.state === 'wrecked', `the driver (${car.state})`);
     const k = s.w.kills.find((e) => e.how.car === 'driver');
     assert.ok(k && k.cause === 'bullet' && k.killer === s.w.player);
-    const y0 = v.y;
-    run(s, 4, null, () => car.state === 'wrecked');
-    assert.equal(car.state, 'wrecked', 'into the parked cars, a wall');
-    assert.ok(Math.abs(v.y - y0) > 30, 'off its line');
+    assert.ok(s.w.kills.length === 2 && s.w.kills[1].how.crew, 'his gunman dies with him: not one more for the streak');
+    assert.ok(!r.touched && r.out && r.behind, 'the exit');
   }
   {
     const s = start();
     const car = s.P.spawn(s.v.x + 20, NORTH, 0, 'chase', 8.9);
     run(s, 0.5);
-    car.v.popTire(2, Math.PI / 2);
-    assert.equal(car.state, 'spin');
-    run(s, 0.2);
-    assert.ok(Math.abs(Body.getAngularVelocity(car.v.body)) > 0.05, 'spinning');
-    run(s, CHASE.pursuit.spin.dur + 0.1);
+    let spun = 0;
+    const r = exits(s, car, () => car.v.popTire(2, Math.PI / 2));
+    spun = Math.abs(angDiff(0, car.v.body.angle));
     assert.equal(car.state, 'wrecked');
     assert.ok(s.w.kills.some((e) => e.how.car === 'tyre'), 'BLOWOUT');
+    assert.ok(!r.touched && r.out && r.behind && spun > 0.3, `the exit, spun round (${spun.toFixed(2)})`);
   }
+}));
+
+test('pursuit: a long burst on its body wrecks it in stages (its rear glass cracked, blown out, smoke, fire, wrecked): 2-3 times the rounds it took', () => calm(() => {
+  const s = start(), R = CHASE.pursuit.rounds;
+  const car = s.P.spawn(s.v.x, NORTH, 0, 'chase', 8.9), v = car.v;
+  run(s, 0.4);
+  assert.ok(v.m.hp >= 2 * VEHICLES.car.hp && v.m.hp <= 3 * VEHICLES.car.hp, 'its hp: 2 to 3 times a parked car\'s');
+  const seen = [];
+  let rounds = 0;
+  const flank = () => v.toWorld(v.w / 2, v.h - 1); // its middle, from his side: never a window, a tyre, the tank
+  const r = exits(s, car, () => {
+    while (car.state !== 'wrecked' && rounds < 200) {
+      const at = flank();
+      v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet');
+      rounds++;
+      run(s, WEAPONS.uzi.rate);
+      const stage = `${v.windows.rear}${v.windows.wind}${v.burning ? 'f' : ''}`;
+      if (seen.at(-1) !== stage) seen.push(stage);
+    }
+    // (the rounds still on their way: it blows up when its fire's fuse is out, off to the side, never by his car)
+    for (let i = 0; i < 12; i++) { const at = flank(); v.hit(1, at.x, at.y, -Math.PI / 2, 1, 'bullet'); }
+    assert.ok(v.hp <= 0 && !v.exploded && v.burning, 'not blown up by him');
+  });
+  assert.deepEqual(seen, ['00', '10', '20', '20f'], 'its rear window cracked, blown out, on fire (the windscreen left to his rounds)');
+  assert.ok(rounds >= 2 * 28 && rounds <= 3 * 28, `rounds to wreck it: ${rounds} (28 before)`);
+  assert.ok(Math.abs(rounds - Math.ceil(v.m.hp * R.wreck)) <= 2, 'at its `wreck` share');
+  assert.ok(s.w.kills.filter((e) => e.how.car === 'wrecked').length === 2 && !car.driver && !car.gunman, 'its crew killed');
+  assert.ok(!r.touched && r.out && r.behind, 'the exit');
+  // on fire, it does not run long
+  const t = start(), c2 = t.P.spawn(t.v.x, NORTH, 0, 'chase', 8.9);
+  run(t, 0.4);
+  c2.v.damage(Math.ceil(c2.v.m.hp * R.fire));
+  assert.ok(c2.v.burning && c2.state === 'chase');
+  run(t, R.burn + 0.1);
+  assert.equal(c2.state, 'wrecked', 'its engine on fire stops it');
 }));
 
 test('pursuit: its gunman shot, no more tells from that car (it can still ram)', () => calm(() => {

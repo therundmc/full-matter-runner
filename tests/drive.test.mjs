@@ -16,6 +16,8 @@ const { setMaterial, scaleInertia } = await load('engine/physics/Body.js');
 const { TILE, CAT, MASK } = await load('game/Config.js');
 const { default: Camera, VIEW, fitView } = await load('engine/Camera.js');
 const { stepAngle, TAU } = await load('engine/math.js');
+const { default: Direction } = await load('game/systems/Direction.js');
+const { SHOTS } = await load('game/data/staging.js');
 const { default: level2a } = await load('game/data/levels/level2a.js');
 
 const { Bodies, Body } = Matter;
@@ -186,6 +188,25 @@ test('view: the camera held on whole px: no turn at all, no lag, whole numbers i
   cam.shake(1);
   for (let i = 0; i < 30; i++) cam.update(DT, 0, 0);
   assert.notEqual(cam.rot, 0);
+});
+
+test('view: the grab\'s push-in at the wheel is a cut between whole zooms, never a zoom eased through in-between ones', () => {
+  for (const base of [2, 3]) {
+    const D = new Direction(), cam = new Camera(), seen = new Set();
+    cam.resize(base * 640, base * 360, base);
+    cam.pixel = true;
+    for (let i = 0; i < 240; i++) {
+      D.set(i < 60 ? 'grab' : i < 150 ? 'grabOut' : null, { x: 0, y: 0 });
+      D.update(DT, base, true);
+      cam.scale = D.zoom;
+      seen.add(cam.z);
+      assert.ok(Number.isInteger(cam.z), `a whole zoom (${cam.z})`);
+    }
+    assert.deepEqual([...seen], [Math.round(base * SHOTS.grab.zoom), base], 'in and back out, two cuts');
+    // a scale left between two whole zooms is still drawn on a whole one
+    cam.scale = 1.37;
+    assert.ok(Number.isInteger(cam.z));
+  }
 });
 
 test('view: the camera is locked on the car: a fixed share of the view from the left, the street\'s middle across', () => {

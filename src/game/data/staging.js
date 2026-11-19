@@ -16,8 +16,7 @@ export const SHOTS = {
   corridor: { zoom: 1, ease: 1.2, pull: 0, look: 1 },
   landing: { zoom: 0.9, ease: 1.2, pull: 0, look: 1 },
   threat: { zoom: 1, ease: 2.2, pull: 0.45, look: 0.5 },   // a man called into the fight: he and the player both in frame
-  beat: { zoom: 1.6, ease: 9, pull: 0.85, look: 0 },       // a lesson's beat: a short punch-in on what it is about
-  beatWide: { zoom: 1.15, ease: 9, pull: 0.9, look: 0 },   // ... on something big (the stove going)
+  beatWide: { zoom: 1.15, ease: 9, pull: 0.9, look: 0 },   // the stove going (lesson `run`): the camera on it
   run: { zoom: 0.75, ease: 1.5, pull: 0.35, look: 0.5 },   // the run for the window, the fire coming down the corridor
   dive: { zoom: 0.7, ease: 2.5, pull: 0, look: 0 },
   // a boss's beats (systems/BossStage.js, data/bosses.js `shot`)
@@ -45,40 +44,35 @@ export const DIRECTION = {
 // from him: nobody is asked to deal with a man he cannot see
 export const FRAME = { near: 110 };
 
-// ---- the lessons (systems/Tutorial.js pace): the first time a hint shows (HINTS, by its id), a STOPPED beat, then
-// the hand (the user's call: a real lesson, taking its time, so that he cannot just do anything). All on the real
-// clock: time stops at once (nothing moves, the world is not stepped; only the hint's own drawing lives), the camera
-// travels from him to what the hint is about and pushes in (`shot`, a SHOTS name) over `go` s, eased; it stays there
-// `hold` s with the hint shown big over it; then travels back to him and his usual framing over `back` s, time still
-// stopped; then time comes back from 0 to 1 over `give` s, and his input is his again from the start of that. Nothing
-// he presses reaches him before `give`, and what he still holds down then reads as up until he lets it go (the move
-// keys and the stick apart: walking on is harmless). From `min` s into the hold his key (the hint's own, or SPACE /
-// ENTER / A / a left click: "got it") ends it early; before, nothing does. Hints that come up together are played
-// one after the other, the camera going from one thing straight on to the next, and back to him once at the end.
-// The hint stays up until he has done it. A beat only starts once what it is about is on screen, and he is `within`
-// px of it when that is given (near enough to do it); `far`: it need not be on screen (the camera goes and shows it).
-// A lesson with a `slow` of its own is spectacle, not a lesson: the old pattern, time slowed to `slow` (not stopped)
-// for `dur` real s, the camera eased onto it, his hands free (his key, `min` s in or later, cuts it short).
-// BEAT: what a lesson does not say for itself; `big`: the hint is drawn that much larger at the height of the beat.
-export const BEAT = { go: 0.45, hold: 1.4, min: 0.6, back: 0.4, give: 0.2, big: 0.5, shot: 'beat' };
+// ---- the lessons (systems/Tutorial.js pace): a hint is a key and what it does, on its object (HINTS), never advice.
+// A lesson is a SLOW MOTION that starts exactly when its action is due, never a stop (the user's call: stopping
+// everything breaks the flow). Each has its trigger (Tutorial.js DUE: read from the situation, not from the hint
+// having come up); when it holds for the first time, time eases down to `slow` over `in` real s, the camera pushes in
+// on him by `push` (a share of the zoom: no travel, it stays on him and on the room's framing) and the hint pops
+// `big` larger over its object. He keeps the hand all along. It lasts until he does it (the hint's key, pressed
+// afresh), or the trigger has been gone `grace` s, or `cap` real s have passed; then time eases back to 1 over `out`
+// s. Once a lesson (a retry never slows for it again: Game.taught); the hint itself may show before, small.
+// BEAT: what a lesson does not say for itself.
+export const BEAT = { in: 0.1, out: 0.2, slow: 0.3, cap: 2.5, grace: 0.12, push: 0.05, big: 0.5 };
+// by hint id; px and s (`lead`, `closing` as said)
 export const LESSONS = {
-  move: {},
-  vault: { within: 76 },                       // the big table across the living room
-  flee: { far: true },                         // GET OUT: the camera goes to the living room's way out
-  behind: { within: 220 },                     // GET BEHIND HIM
-  neck: {},                                    // behind him: the click
-  shield: {},                                  // behind the landing's man: E takes him as a shield
-  take: { within: 120 },
-  punch: { within: 110 },
-  strike: { within: 110 },
-  finish: { within: 90 },
-  slide: { within: 44 },                       // at the corner, not before
-  shoot: {},
-  reload: {},
-  throw: {},
-  // the end, spectacle: the stove going, seen in slow motion (it blows inside the beat), then the jump
-  run: { slow: 0.3, dur: 1.2, min: 0.35, shot: 'beatWide', at: 'blast', far: true },
-  dive: { slow: 0.14, dur: 0.75, min: 0.35 }, // at the window, the moment SPACE takes him through
+  // moving toward the table (`closing` px a step at least) with his body within `reach` px of its edge
+  vault: { slow: 0.3, reach: 32, closing: 0.8 },
+  neck: { slow: 0.25 },                        // behind a man who has not seen him, within reach: the click takes him
+  shield: { slow: 0.25 },                      // behind the landing's man, a hand free: E takes him as a shield
+  take: { slow: 0.35, reach: 26, cap: 1.6 },   // standing over the weapon (Player.nearItem's reach)
+  punch: { slow: 0.3, reach: 52 },             // a man who knows him within `reach` px: a step and the blow lands
+  strike: { slow: 0.3, reach: 62 },
+  finish: { slow: 0.35, reach: 30, cap: 2 },   // a man down at his feet (data/feel.js EXEC.near)
+  // the corridor's gunman has him in his sights and his shot is `lead` s away (game time) or less
+  // (the hint goes away within `near` px of him: too close to slide)
+  slide: { slow: 0.25, lead: 0.45, near: 70, cap: 2 },
+  shoot: { slow: 0.3, range: 230 },            // a gun with rounds in it, a man who knows him in his line of fire
+  reload: { slow: 0.3, cap: 2 },               // the gun runs dry, a magazine left (then RELOAD's own slow motion)
+  throw: { slow: 0.3, range: 200 },            // dry for good, a man in his line: the gun is thrown
+  dive: { slow: 0.14, cap: 0.75 },             // at the window, the moment SPACE takes him through
+  // the end, spectacle and no hint: the stove going, seen in slow motion (it blows inside the beat), the camera on it
+  run: { slow: 0.3, cap: 1.2, push: 0, shot: 'beatWide', at: 'blast' },
 };
 // the reload of the lesson: while his hands work the world all but stops (`slow`) and the reload itself goes at its
 // real pace; nobody fires or strikes from the moment his gun is dry (a magazine left) until `grace` s after it is
@@ -120,7 +114,7 @@ export const OPENING = {
 
 // ---- the end, straight after the last man of the last stage goes down, wherever the player is: `after` s later the
 // stove and its bottle (`blast.at`, taken apart by a blast: systems/Gas.js) go, then a ball of fire out of the breach
-// (`breach`: [s after the stove, radius]), both inside the `run` lesson's slow beat; then a chain of them down the
+// (`breach`: [s after the stove, radius]), both inside the `run` lesson's slow motion; then a chain of them down the
 // corridor toward him (the level's `blast.chain`: [col, row, radius], each nearer the window and bigger): the first
 // `chain.first` s after the breach, the next ones `chain.gap` s apart ([first gap, last gap]: quicker and quicker),
 // each shaking the picture by `chain.shake`. The wall of fire moves slower than he runs: he can always make the

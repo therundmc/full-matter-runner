@@ -50,9 +50,10 @@ export const VEHICLES = {
     pipes: [[1, 17], [1, 47]], hat: [71.5, 44.5, 'props/boss_hat'],
     gun: [96, 40, 1.22, 'uzi'], // the boss's Uzi on the passenger cushion, over the cigar burn, its muzzle to that door
   },
-  // the boss's men (systems/Pursuit.js): the sedan in black with one pink stripe, its layout the sedan's
+  // the boss's men (systems/Pursuit.js): the sedan in black with one pink stripe, its layout the sedan's; it takes
+  // a long burst to stop (CHASE.pursuit.rounds: its damage in stages)
   pursuer: {
-    sprite: 'props/pursuer', hp: 28, kg: 1250, color: '#2a2428',
+    sprite: 'props/pursuer', hp: 75, kg: 1250, color: '#2a2428',
     wind: [82, 96, 11, 46], rear: [35, 44, 11, 46], tank: [0, 26, 0, 58], hood: [98, 134],
     wheels: [[30, 2], [30, 56], [112, 2], [112, 56]],
   },
@@ -61,6 +62,8 @@ export const VEHICLES = {
 const GUN_SHADOW = 0.55;  // the gun on the seat: its contact shadow's alpha
 const TYRE_HIT = [11, 5]; // half extents of a tyre's hit box (sprite px)
 const LAMP_END = 10;      // a hit this close to the nose / tail (sprite px) lands on a lamp
+const BURN = 0.45;        // share of its hp left at which it catches fire (damage)
+const LEAK = 3;           // rounds in its tank that set the leak alight (damage)
 
 // glass pixels (tinted blue-black) of a window region of the sprite's ImageData, so a shattered window keeps its shape:
 // sprite px, k = sprite px per pixel (a sprite painted finer than the world, Assets.js `density`)
@@ -282,7 +285,7 @@ export default class Vehicle {
       if (k <= 8 && kind !== 'blunt') {
         for (let i = 0; i < 4; i++) {
           const [wx, wy] = this.m.wheels[i];
-          if (this.tires[i] && Math.abs(qx - wx) < TYRE_HIT[0] && Math.abs(qy - wy) < TYRE_HIT[1]) { this.popTire(i, dirA); return; }
+          if (this.tires[i] && Math.abs(qx - wx) < TYRE_HIT[0] && Math.abs(qy - wy) < TYRE_HIT[1] && this.tyreHit(i, px, py, dirA, melee)) return;
         }
       }
       if (kind === 'cut') continue;
@@ -445,6 +448,25 @@ export default class Vehicle {
     return [this.toSprite(ax, ay), this.toSprite(bx, by)].every(({ sx }) => sx >= h0 - 2 && sx <= h1 + 2);
   }
 
+  // A hit on tyre i at (px, py); false: the round goes on into the car. It goes at once, or, with `tread` (a
+  // pursuer's, systems/Pursuit.js: { hp, skip }), once `hp` rounds have gone into it, each within `skip` rad of
+  // square on its flank: one at more of a slant skips off the rubber (a burst at the body from well behind or ahead
+  // lands on the wheel arch, and is the body's), one that counts chews it up (chips, a puff)
+  tyreHit(i, px, py, dirA, melee) {
+    const T = this.tread;
+    if (T && !melee) {
+      if (Math.abs(Math.sin(dirA - this.body.angle)) < Math.cos(T.skip)) return false;
+      if (((this.tyreWear ||= [0, 0, 0, 0])[i] += 1) < T.hp) {
+        this.world.particles.chips(px, py, dirA + Math.PI, 0.9, 4, '#141418', 120);
+        this.world.particles.smoke(px, py, 2, 2, { speed: 40, size: 3, life: 0.5 });
+        this.world.sound('carHit', px, py, 0.4);
+        return true;
+      }
+    }
+    this.popTire(i, dirA);
+    return true;
+  }
+
   popTire(i, dirA) {
     if (!this.tires[i] || this.armoured) return;
     this.tires[i] = false;
@@ -464,11 +486,14 @@ export default class Vehicle {
     if (this.alarm <= 0 && !this.exploded && !this.noAlarm) this.alarm = 9;
   }
 
+  // It catches fire with `burnAt` of its hp left, or `leakAt` rounds in its tank (a pursuer sets its own:
+  // systems/Pursuit.js); all its hp gone, it blows up, or, `late`, only when its fire's fuse is out (a pursuer: off
+  // to the side of the road by then, never by his car)
   damage(n) {
     if (this.exploded || this.armoured) return; // armoured: the getaway car (World)
     this.hp -= n;
-    if (this.hp <= this.m.hp * 0.45 || this.fuel >= 3) this.ignite();
-    if (this.hp <= 0) this.explode();
+    if (this.hp <= this.m.hp * (this.burnAt ?? BURN) || this.fuel >= (this.leakAt ?? LEAK)) this.ignite();
+    if (this.hp <= 0 && !this.late) this.explode();
   }
 
   ignite() {

@@ -8,10 +8,14 @@
 // driver's hands; two wreck it, one that throws it into a parked car, a pole or a wall does. Any other hit that
 // throws it off what it was driving leaves it to the physics a moment (`stun`); a hard contact on what does not
 // give wrecks it (it stops, smokes, may burn: Vehicle); a wreck is an obstacle like any car.
-// Kill rules (his rounds: Vehicle's 'carPart' and the world's 'round' events): the windscreen kills the driver (it
-// veers off into what lines the road), a front tyre spins it out, a rear one slows it, the gunman shot stops its
-// tells (it still rams), the tank is Vehicle's fire. Each man out is a 'kill' for the scoring (cause 'bullet', 'wreck'
-// or 'explosion'; how.car: the tag).
+// Kill rules (his rounds: Vehicle's 'carPart' and the world's 'round' events): a burst through the windscreen kills
+// the driver (a stray round only stars it), a front tyre spins it out, a rear one slows it, the gunman shot stops its
+// tells (it still rams), a long burst on its body wrecks it in stages (shotUp: glass, smoke, fire, wrecked), the tank
+// is Vehicle's fire. Each man out is a 'kill' for the scoring (cause 'bullet', 'wreck' or 'explosion'; how.car: the
+// tag).
+// THE EXIT (leave / exit, CHASE.pursuit.out): a car stopped for good while it was going, whatever stopped it, is
+// driven off his line by a script: it swerves away from him, brakes, skids into what lines the road on that side and
+// is left behind, off the picture; it never crosses his path nor stays in his lane ahead of him.
 // The gunman's TOLD shot (CHASE.gunman): a white glint at the muzzle, a red line fattening into a wedge toward a
 // bracket on a lane band locked when the tell starts (his seat's y then, its x led by his speed), then the shot: his
 // seat inside the band and reached (a closed car: through a window or the windscreen; the open one, THE BOSS's
@@ -32,7 +36,7 @@ import { seatOf } from './Drive.js';
 
 const { Body, Sleeping } = Matter;
 const FRONT = new Set([2, 3]); // VEHICLES wheels: the front pair (0, 1 the rear)
-const DRIVEN = new Set(['cross', 'chase', 'veer', 'limp']);
+const DRIVEN = new Set(['cross', 'chase', 'limp']);
 const ROUNDS = new Set(['bullet', 'rifle', 'pellet', 'graze', 'shrapnel']); // what goes through a windscreen into a driver
 const AGAIN = 2; // s a knock from his car counts as his doing (a wreck then is 'shoved')
 const SWAP = { lead: 'ahead', ahead: 'lead' }; // he changed lanes: the two ahead of him keep theirs (assign)
@@ -142,13 +146,17 @@ export default class Pursuit {
     const b = v.body, w = this.world;
     const car = {
       v, state, h: b.angle, s: o.speed ?? 0, driver: true, gunman: true, dummy: !!o.dummy, slot: 'abreast', rank: 0,
-      stun: 0, set: null, t: 0, chaseT: 0, settled: 0, ram: 0, ramSide: 0, veer: 0, by: -Infinity, cause: null,
-      dents: 0, shove: 0, hitBy: 0, thrown: false,
+      stun: 0, set: null, t: 0, chaseT: 0, settled: 0, ram: 0, ramSide: 0, by: -Infinity, cause: null,
+      dents: 0, shove: 0, hitBy: 0, thrown: false, out: null, gone: false, burnT: 0,
       gunSide: 1, gunA: b.angle + Math.PI / 2, telling: false, wreckHit: false, launch: -1, every: this.G.lab.every,
       n: this.cars.length,
     };
     v.pursuer = car;
     v.noAlarm = true;
+    v.burnAt = 1 - this.C.rounds.fire; // (its fire is a stage of the damage: shotUp)
+    v.leakAt = this.C.rounds.leak;
+    v.tread = this.C.rounds.tyre;       // a tyre goes to a burst at it, not to a stray round (Vehicle.tyreHit)
+    v.late = true;                      // it blows up when its fire's fuse is out, off to the side by then (exit)
     v.onCollide = (o2, pair) => this.contact(car, o2, pair);
     if (!car.dummy) {
       v.moving = true; // its lamps follow it (render/Lighting.js)
@@ -200,7 +208,8 @@ export default class Pursuit {
       car.t += dt;
       if (car.state === 'chase') { car.chaseT += dt; if (tg) this.catchUp(car, tg, dt); }
       if (car.state === 'wait' && car.launch >= 0 && (car.launch -= dt) <= 0) this.go(car);
-      if (DRIVEN.has(car.state) || car.state === 'spin') this.drive(car, dt, tg);
+      if (car.out) this.exit(car, dt, tg);
+      else if (DRIVEN.has(car.state)) this.drive(car, dt, tg);
       this.aimGun(car, tg);
     }
     this.cool = Math.max(0, this.cool - dt);
@@ -301,17 +310,7 @@ export default class Pursuit {
     if (car.v.body.frozen || car.v.body.isSleeping) this.loose(car);
     const C = this.C, w = this.world, v = car.v, b = v.body, vel = Body.getVelocity(b);
     // thrown off what it was driving (a shove, a hit): the physics alone a moment
-    if (car.set && Math.hypot(vel.x - car.set.x, vel.y - car.set.y) > C.knock.dv && car.state !== 'veer') car.stun = C.knock.stun;
-    if (car.state === 'spin') {
-      // a front tyre gone: it slides on, turning round, both dying away over spin.dur
-      const k = clamp(1 - car.t / C.spin.dur, 0, 1);
-      Body.setAngularVelocity(b, car.veer * C.spin.turn * k);
-      Body.setVelocity(b, { x: vel.x * (1 - dt * 1.2), y: vel.y * (1 - dt * 1.2) });
-      b.flyUntil = w.time + CHASE.fly;
-      car.set = null;
-      if (k <= 0) this.wreck(car);
-      return;
-    }
+    if (car.set && Math.hypot(vel.x - car.set.x, vel.y - car.set.y) > C.knock.dv) car.stun = C.knock.stun;
     if (car.stun > 0) {
       car.stun -= dt;
       car.set = null;
@@ -323,17 +322,15 @@ export default class Pursuit {
       return;
     }
     // what it wants: a heading and a speed
-    let wantH = 0, wantS = 0, turn = C.turn;
-    const max = car.state === 'limp' ? C.limp : C.max;
+    let wantH = 0, wantS = 0;
+    // (limping, no more than `limp` over his speed: it only just keeps up; but at full speed while it is still in his
+    // lane ahead of him, out of it first)
+    const inWay = tg?.car && v.x > tg.x && Math.abs(v.y - tg.y) < (v.h + tg.car.h) / 2 + C.margin;
+    const max = car.state === 'limp' && tg && !inWay ? Math.min(C.max, Math.max(0, tg.vel.x) + C.limp) : C.max;
     if (car.state === 'cross') {
       wantH = -Math.PI / 2;
       wantS = C.spawn.cross;
       if (this.band && v.y <= this.band[0] + C.spawn.radius) { car.state = 'chase'; car.t = 0; }
-    } else if (car.state === 'veer') {
-      wantH = car.veer * CHASE.pursuit.veer.steer;
-      wantS = Math.max(0, car.s - C.veer.fade * dt);
-      turn = C.turn * 0.6;
-      if (car.t > C.veer.out) { this.wreck(car); return; }
     } else if (tg) {
       const want = this.want(car, tg, dt, max);
       wantH = want.h; wantS = want.s;
@@ -343,7 +340,7 @@ export default class Pursuit {
     const along = vel.x * Math.cos(car.h) + vel.y * Math.sin(car.h);
     car.s = Math.min(car.s, Math.max(0, along) + CHASE.give);
     car.s = wantS > car.s ? Math.min(wantS, car.s + C.accel * dt) : Math.max(wantS, car.s - C.brake * dt);
-    car.h = approachAngle(car.h, wantH, turn * dt * clamp(car.s / 3, 0.2, 1));
+    car.h = approachAngle(car.h, wantH, C.turn * dt * clamp(car.s / 3, 0.2, 1));
     const set = { x: Math.cos(car.h) * car.s, y: Math.sin(car.h) * car.s };
     Body.setVelocity(b, set);
     Body.setAngularVelocity(b, angDiff(b.angle, car.h) * C.nose);
@@ -436,8 +433,10 @@ export default class Pursuit {
   // The physics found it touching o (before resolving it): his car only knocks it, or his shove lands on it (dealt
   // with after the physics: shoved); a frozen car is woken (shoved on); a bolted thing torn off; on what does not
   // give (a wall, a lasting thing, a pole), or on a car, closing hard enough: wrecked (after the physics: after()).
+  // On its way out (exit) what it meets on the side of the road stops it there
   contact(car, o, pair) {
     const w = this.world, v = car.v, b = v.body, e = o.entity;
+    if (car.out) { this.stopped(car, o, pair); return; }
     if (car.state === 'wrecked' || v.exploded) return;
     const vel = Body.getVelocity(b), ov = o.isStatic ? { x: 0, y: 0 } : Body.getVelocity(o);
     const n = pair.collision.normal;
@@ -451,20 +450,38 @@ export default class Pursuit {
     }
     const k = w.time - car.by < AGAIN ? this.C.wreck.thrown : 1; // thrown by his car: it takes less
     if (e?.isVehicle) {
-      if (o.frozen) { wake(o); pair.inverseMass = pair.bodyA.inverseMass + pair.bodyB.inverseMass; }
-      if (o.isSleeping) Sleeping.set(o, false);
-      o.flyUntil = w.time + CHASE.hit.fly;
-      if (close >= this.C.wreck.car * k || (car.state === 'veer' && close > 1)) car.wreckHit = true;
+      this.shake(o, pair);
+      if (close >= this.C.wreck.car * k) car.wreckHit = true;
       return;
     }
-    if (!o.isStatic || e?.def?.hung || e?.dead || e?.dying) return;
-    // a bolted thing (a bin, a hydrant, a bench) is torn off and it goes on; a wall, a lasting thing, a pole stop it
-    const pole = this.C.wreck.poles.includes(e?.type);
-    if (e?.def?.static && !e.def.lasting && !pole && !e.tipped) {
-      if (close > CHASE.hit.tear) { pair.isActive = false; pair.isSensor = o.isSensor = true; e.break(Math.atan2(vel.y, vel.x), CHASE.hit.power); }
-      return;
-    }
-    if (close >= this.C.wreck.hard * k || (car.state === 'veer' && close > 1)) car.wreckHit = true;
+    if (!o.isStatic || e?.def?.hung || e?.dead || e?.dying || this.tear(o, pair, vel, close)) return;
+    if (close >= this.C.wreck.hard * k) car.wreckHit = true;
+  }
+
+  // a car it runs into is woken and given to the physics a moment (frozen: its mass back in the contact)
+  shake(o, pair) {
+    if (o.frozen) { wake(o); pair.inverseMass = pair.bodyA.inverseMass + pair.bodyB.inverseMass; }
+    if (o.isSleeping) Sleeping.set(o, false);
+    o.flyUntil = this.world.time + CHASE.hit.fly;
+  }
+
+  // a bolted thing (a bin, a hydrant, a bench) is torn off and it goes on (true: it was one; a wall, a lasting thing,
+  // a pole stop it)
+  tear(o, pair, vel, close) {
+    const e = o.entity, pole = this.C.wreck.poles.includes(e?.type);
+    if (!e?.def?.static || e.def.lasting || pole || e.tipped) return false;
+    if (close > CHASE.hit.tear) { pair.isActive = false; pair.isSensor = o.isSensor = true; e.break(Math.atan2(vel.y, vel.x), CHASE.hit.power); }
+    return true;
+  }
+
+  // on its way out: what lines the road (a parked car, a wall, a pole, a lasting thing) stops it there; a bolted
+  // thing is torn off; his car and one of theirs do not (it goes on away from his line, pushing that one aside)
+  stopped(car, o, pair) {
+    const e = o.entity;
+    if (e && (e === this.world.drive?.van || e.pursuer)) return;
+    if (e?.isVehicle) { this.shake(o, pair); car.out.hit = true; return; }
+    if (!o.isStatic || e?.def?.hung || e?.dead || e?.dying || this.tear(o, pair, Body.getVelocity(car.v.body), CHASE.hit.tear + 1)) return;
+    car.out.hit = true;
   }
 
   // his car touches it: his shove under way, going its way, lands on it (once a shove; dealt with in after())
@@ -497,7 +514,9 @@ export default class Pursuit {
   }
 
   // wrecked: it stops (the floor's friction back on it), its engine smokes, it may catch fire; who was in it is out
-  wreck(car) {
+  // (crew: the driver's kill told a moment ago, the gunman dies with him: not one more for the streak); the exit
+  // takes it off his line
+  wreck(car, crew = false) {
     if (car.state === 'wrecked') return;
     const w = this.world, v = car.v, b = v.body, C = this.C.wreck;
     car.state = 'wrecked';
@@ -519,17 +538,61 @@ export default class Pursuit {
       w.shake?.(0.25);
     }
     // the men in it: the driver, unless he was shot (his kill told then), and the gunman if still in it
-    this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck');
+    this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck', undefined, crew);
+    this.leave(car);
   }
 
   // the men still in a car stopped for good, all at once: one kill each, but ONE for the streak (how.crew: no
-  // double for one wreck, nor its slow motion); tag: how.car of the gunman's, own: the driver's
-  creditCrew(car, tag, cause, own = car.cause ?? tag) {
+  // double for one wreck, nor its slow motion); tag: how.car of the gunman's, own: the driver's; crew: the first of
+  // them is not one more either
+  creditCrew(car, tag, cause, own = car.cause ?? tag, crew = false) {
     const v = car.v, men = [];
     if (car.driver) men.push([v, own]);
     if (car.gunman) men.push([this.gunPoint(car), tag]);
     car.driver = car.gunman = false;
-    men.forEach(([at, t], i) => this.credit(at, t, cause, i > 0));
+    men.forEach(([at, t], i) => this.credit(at, t, cause, crew || i > 0));
+  }
+
+  // ---------------------------------------------------------------- the exit
+  // It starts: the side away from him (dead level with him: the side of the street with more room), its speed along
+  // the road (his at most); none for a car that was standing (the alley car shot as it waits); the lab's dummy loosened for it
+  leave(car) {
+    const v = car.v, b = v.body, tg = this.target(), O = this.C.out;
+    if (car.gone || !tg) return;
+    const vel = Body.getVelocity(b);
+    if (!car.dummy && Math.hypot(vel.x, vel.y) < O.least) return;
+    car.gone = true;
+    if (car.dummy) this.lift(car);
+    const off = v.y - tg.y;
+    // (never faster than he goes: its engine is dead, it cannot pull ahead of him)
+    car.out = { t: 0, s: clamp(vel.x, 0, Math.max(0, tg.vel.x)), y0: v.y, side: Math.abs(off) > O.level ? Math.sign(off) : this.roomier(v.y), hit: false };
+    b.sleepThreshold = Infinity;
+  }
+
+  // the side of the street (-1: -y) with more room from y: the further kerb (the level's `chase.kerbs` rows), else
+  // away from the middle of its lanes; the lab: +y
+  roomier(y) {
+    const K = this.chase?.kerbs;
+    if (K) return K[1] * TILE - y > y - K[0] * TILE ? 1 : -1;
+    return !this.band || y < (this.band[0] + this.band[1]) / 2 ? 1 : -1;
+  }
+
+  // A step of it (driven by hand: its velocity and its turn set): across, away from his line (held against what
+  // stopped it; pushed no further than `far`), braking along the road; it skids round once it is clear of his car
+  // (never its tail swung into him). Over at `dur`: the physics has it, the floor's friction on
+  exit(car, dt, tg) {
+    const O = this.C.out, o = car.out, v = car.v, b = v.body;
+    o.t += dt;
+    if (o.t >= O.dur) { car.out = null; b.flyUntil = 0; b.sleepThreshold = 60; v.steer = 0; return; }
+    o.s = Math.max(0, o.s - O.brake * dt);
+    const across = o.hit || Math.abs(v.y - o.y0) >= O.far ? O.press : O.side * clamp(o.t / O.bite, 0, 1);
+    Body.setVelocity(b, { x: o.s, y: o.side * across });
+    // (its half width across the road as it is turned now: what its tail swinging round reaches toward him)
+    const hc = tg?.car, reach = (v.w / 2) * Math.abs(Math.sin(b.angle)) + (v.h / 2) * Math.abs(Math.cos(b.angle));
+    const clear = !hc || Math.abs(v.y - tg.y) - reach - hc.h / 2 > O.margin || v.x + v.w / 2 < tg.x - hc.w / 2;
+    Body.setAngularVelocity(b, clear ? o.side * (car.cause === 'tyre' ? O.spin : O.turn) * (1 - o.t / O.dur) : 0);
+    b.flyUntil = this.world.time + CHASE.fly;
+    v.steer = o.side * 0.5;
   }
 
   // ---------------------------------------------------------------- his rounds
@@ -538,43 +601,32 @@ export default class Pursuit {
     const car = v.pursuer, w = this.world;
     if (!car || car.state === 'wrecked' || v.exploded) return;
     if (part === 'wind' && !ROUNDS.has(kind)) return; // a screen cracked by a knock or a blast: nobody shot
-    if (part === 'wind' && car.driver) {
-      // the driver: it veers off toward a side (the one it is nearer, mostly), out of control
+    if (part === 'wind' && car.driver && v.windows.wind >= this.C.rounds.screen) {
+      // the driver, the windscreen blown in (a burst at it: the first round only stars it): nobody at the wheel, it
+      // is out (wrecked: the exit), his gunman with it
       car.driver = false;
       this.credit(v, 'driver', 'bullet');
       w.particles.blood?.(v.x, v.y, v.body.angle + Math.PI, 0.8, 8, 140);
-      if (this.tell?.car === car) this.endTell();
-      const mid = this.band ? (this.band[0] + this.band[1]) / 2 : v.y;
-      car.veer = (v.y < mid ? -1 : 1) * (chance(0.8) ? 1 : -1);
       car.cause = 'driver';
-      car.state = 'veer';
-      car.t = 0;
-      if (car.dummy) { car.s = 2.5; this.lift(car); }
-    } else if (part === 'tyre' && FRONT.has(i) && DRIVEN.has(car.state)) {
-      // a front tyre: it spins out
-      const b = v.body, C = this.C.spin, side = v.m.wheels[i][1] < v.h / 2 ? -1 : 1;
-      car.cause = car.driver ? 'tyre' : car.cause;
-      car.state = 'spin';
-      car.t = 0;
-      if (this.tell?.car === car) this.endTell();
-      const vel = Body.getVelocity(b);
-      Body.setVelocity(b, { x: vel.x * C.keep, y: vel.y * C.keep });
-      car.veer = side;
-    } else if (part === 'tyre' && car.dummy) {
-      this.lift(car);
-      Body.setAngularVelocity(car.v.body, (v.m.wheels[i][1] < v.h / 2 ? -1 : 1) * this.C.spin.turn * 0.5);
-    } else if (part === 'tyre' && car.state === 'chase') car.state = 'limp';
+      this.wreck(car, true);
+    } else if (part === 'tyre' && FRONT.has(i) && (DRIVEN.has(car.state) || car.dummy)) {
+      // a front tyre: it spins out (the exit, turning harder)
+      if (car.driver) car.cause = 'tyre';
+      this.wreck(car);
+    } else if (part === 'tyre' && car.state === 'chase') {
+      // a rear tyre: it limps, hanging on alongside him (never in his lane, where he would run into it; the slots
+      // are dealt to the others without it), in his arc for him to finish it
+      car.state = 'limp';
+      car.slot = 'abreast';
+      car.rank = 0;
+      car.settled = 0;
+    }
   }
 
   // the lab's dummy set moving by what it took (its body loose, driven no more)
   lift(car) {
-    const b = car.v.body;
     this.loose(car);
-    b.frictionAir = 0.02;
-    if (car.state === 'veer') {
-      b.sleepThreshold = Infinity;
-      b.frictionAir = 0;
-    }
+    car.v.body.frictionAir = 0.02;
   }
 
   // a round's way this step (Projectile 'round'): a gunman on it is shot
@@ -758,10 +810,12 @@ export default class Pursuit {
       car.hitBy = 0;
       if (car.wreckHit && car.state !== 'wrecked') this.wreck(car);
       car.wreckHit = false;
+      if (DRIVEN.has(car.state) || car.state === 'parked') this.shotUp(car, dt, tg); // (the lab's dummy shows it too)
       if (car.v.exploded && (car.driver || car.gunman)) {
         this.creditCrew(car, null, 'explosion', null);
         if (this.tell?.car === car) this.endTell();
         car.state = 'wrecked';
+        this.leave(car);
       }
       if (tg && DRIVEN.has(car.state) && car.v.x < tg.x - this.C.lost) {
         if (this.tell?.car === car) this.endTell();
@@ -774,6 +828,26 @@ export default class Pursuit {
     this.stepLanes(dt);
     for (const tr of this.tracers) tr.t += dt;
     this.tracers = this.tracers.filter((tr) => tr.t < this.G.tracer);
+  }
+
+  // His rounds' damage shown in stages (CHASE.pursuit.rounds, by the share of its hp gone): the rear window cracked,
+  // then blown out (the windscreen is left to his rounds: it is the driver's), the engine smoking (Vehicle), on fire
+  // (Vehicle burnAt), then wrecked; on fire it runs `burn` s at most
+  shotUp(car, dt, tg) {
+    const R = this.C.rounds, v = car.v, gone = 1 - v.hp / v.m.hp, from = tg ?? v;
+    const a = Math.atan2(v.y - from.y, v.x - from.x);
+    if (v.m.rear && gone >= R.crack && v.windows.rear < 1) this.glass(v, 'rear', a);
+    if (v.m.rear && gone >= R.glass && v.windows.rear < 2) this.glass(v, 'rear', a);
+    car.burnT = v.burning ? car.burnT + dt : 0;
+    if (gone >= R.wreck || car.burnT > R.burn) this.wreck(car);
+  }
+
+  // a window of v one state further gone (cracked, then blown out) by the damage, not by a round (nobody shot, and
+  // nothing more lost: it shows what it took)
+  glass(v, which, a) {
+    const r = v.m[which], hp = v.hp;
+    v.hitWindow(which, (r[0] + r[1]) / 2 + rand(-2, 2), (r[2] + r[3]) / 2 + rand(-8, 8), a, null);
+    v.hp = hp;
   }
 
   stepTell(dt, tg) {
