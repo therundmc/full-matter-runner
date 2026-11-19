@@ -102,6 +102,7 @@ export default class WeaponItem {
         const a = Math.atan2(v.y, v.x);
         const blade = this.def.swing === 'blade', full = this.charge >= 1;
         const stick = blade && (sp >= STICK_SPEED || full), smash = !blade && full;
+        const breaks = smash && this.def.kind !== 'gun'; // a gun kills as hard, and comes off him whole (the user)
         if (smash) this.smash(c, a);
         else if (stick) {
           // like a blade blow: it stays in the body (along the way it flew, its handle shuddering) and is gone from
@@ -121,8 +122,8 @@ export default class WeaponItem {
         if (!c.alive || c.knocked > 0) {
           w.events.emit('thrownHit', { thrower: this.thrower, victim: c, x: c.x, y: c.y, angle: a, kill: !c.alive, planted: stick, smashed: smash, charge: this.charge });
         }
-        if (smash) this.shatter(c, a);
-        if (stick || smash) { w.removeItem(this); return; }
+        if (breaks) this.shatter(c, a);
+        if (stick || breaks) { w.removeItem(this); return; }
         Body.setVelocity(this.body, { x: -v.x * 0.3, y: -v.y * 0.3 });
         this.thrower = null;
         return;
@@ -131,11 +132,11 @@ export default class WeaponItem {
   }
 
   // A full throw of anything that is no blade (THROW.smash) kills the man it reaches: a club crushes, as its heavy
-  // stroke does; a gun is a blunt blow. The flash, the star and the screen's share of a heavy blow (fx/Impact.js).
+  // stroke does (and breaks on him); a gun is a blunt blow, and it stays whole. The flash, the star and the screen's share of a heavy blow (fx/Impact.js).
   smash(c, a) {
     const d = this.def, w = this.world, S = THROW.smash, gun = d.kind === 'gun', hit = gun ? BUTT : d;
     const by = gun ? { ...d, wound: 'blunt', gore: S.gunGore } : { ...d, wound: 'crush', gore: (d.gore || 0.3) * S.gore };
-    const how = { thrown: true, heavy: true, broke: true, from: blowFrom(c.angle, a) };
+    const how = { thrown: true, heavy: true, broke: !gun, from: blowFrom(c.angle, a) };
     blowFx(w, hit, c, a, how);
     c.kill(a, 'melee', this.thrower, by, how);
     landBlow(w, c, c.x - Math.cos(a) * c.radius * 0.5, c.y - Math.sin(a) * c.radius * 0.5, a, hit, { lethal: !c.alive, byPlayer: !!this.thrower.isPlayer, heavy: true });
@@ -143,8 +144,8 @@ export default class WeaponItem {
 
   // ... and gives out on man c, flying along a, as it would in a hand (data/weapons.js `breaks`): a bat or a cue
   // snaps (the far end flies on past him, the near one falls back off him: a cue's butt half as a weapon to pick up),
-  // an iron bends (the bent one falls, to pick up); a gun, or an iron bent past use, is wrecked (chips, sparks, a
-  // crunch; it lies there dull, as debris nobody picks up)
+  // an iron bends (the bent one falls, to pick up); an iron bent past use is wrecked (chips, sparks, a crunch; it
+  // lies there dull, as debris nobody picks up). A gun never comes here: it stays whole
   shatter(c, a) {
     const d = this.def, w = this.world, S = THROW.smash, side = Math.random() < 0.5 ? -1 : 1, [far, near] = d.parts ?? [];
     const ca = Math.cos(a), sa = Math.sin(a), r = c.radius + S.clear;

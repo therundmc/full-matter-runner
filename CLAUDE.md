@@ -99,7 +99,8 @@
   has no ammunition box.
 - Throwing (data/feel.js `THROW`): right click / LB held winds the throw up (the arm drawn back, a dotted mark on the
   floor, AimArt `drawThrow`; LOCK pulls it onto its man), let go it flies, a tap is the quick throw; a full one plants
-  a blade, and kills with anything else, which breaks on him (WeaponItem.shatter, fx/Breakage.js); a hit that floors
+  a blade, and kills with anything else, a club breaking on him (WeaponItem.shatter, fx/Breakage.js), a gun staying
+  whole (the user's call); a hit that floors
   or kills has its beat (systems/ThrowBeat.js: hit-stop, slow motion, camera punch-in).
 - Melee weapons are data (`swing`, `heft`, `material`, `thrust`, `snaps`, `finisher`, `wear`, `breaks`): never test
   `=== WEAPONS.bat`. They wear out in BLOWS (`wear`, data/weapons.js `WEAR`: a man 1, a thing 0.25, a whiff 0) and

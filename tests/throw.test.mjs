@@ -265,12 +265,13 @@ test('throw: a cue thrown full snaps, its butt half left to pick up; a tire iron
   assert.deepEqual(iron.live.map((i) => i.type), ['tire_iron_bent']);
 });
 
-test('throw: a pistol thrown full kills him with a blunt blow and is wrecked: no pistol to pick up, a dull wreck', () => {
-  const { w, g, live } = smash('pistol');
+test('throw: a pistol thrown full kills him with a blunt blow but stays whole: it comes off him to pick up again', () => {
+  const { w, g, it, live } = smash('pistol');
   assert.ok(!g.alive && g.cause === 'melee' && g.by.wound === 'blunt');
-  assert.equal(live.length, 0);
-  assert.equal(w.debris.length, 1);
-  assert.ok(w.asked.sounds.includes('gunWreck'));
+  assert.ok(!g.how.broke, 'no WEAPON BREAK: nothing broke');
+  assert.ok(!it.dead && live.length === 1 && live[0].type === 'pistol', 'the pistol lies there, whole');
+  assert.equal(w.debris.length, 0);
+  assert.ok(!w.asked.sounds.includes('gunWreck'));
 });
 
 test('throw: below a full charge a bat only floors him, and comes off him whole', () => {
