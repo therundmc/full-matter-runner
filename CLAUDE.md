@@ -167,6 +167,9 @@
   `gun`, drawn by the car: not pickable in level 1, it is level 2A's gun). It cannot be destroyed (`armoured`). The car is 5.4 m
   in a 4 m lot: its row and the first bend are the only ones that clear the walls (tests/getaway.test.mjs drives the
   whole body down the route): check it in the browser after touching the route; the lab's station 20 replays it.
+- The street is laid with 2A's kit (floor paint in level columns through the builder's `drawn()`: bays, LOADING, hatched
+  keep-clear, the zebra crossing from the bar's door): nothing with a body in the two lanes, on the patrol's beat (row
+  22, cols 16-26) or where the getaway comes out (tests/street1.test.mjs); two flocks of pigeons, no more.
 - Shop alarms (level `alarms`, systems/Alarms.js), the bar's fuse box (level `power`, systems/Power.js), street
   fauna (level `critters`, systems/Critters.js). The bar room is public (level `welcome`); the VIP room, the boss's
   back room and the back of house are not.
