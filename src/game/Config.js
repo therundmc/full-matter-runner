@@ -273,6 +273,9 @@ export const SIRENS = {
 // traffic car by car, one-shots on top (what each place sounds like: data/soundscape.js; the beds: audio/Beds.js).
 export const AMBIENCE = {
   indoors: ['wood', 'checker', 'tile_blue', 'neon_floor', 'carpet_red', 'carpet_purple'], // floors under a roof
+  // floors under the sky; any other (concrete: a yard, a store room) is in the open air when its stretch runs out
+  // onto one of these, not through a door (systems/Weather.js openAir)
+  outdoors: ['grass', 'asphalt', 'asphalt_line', 'dirt', 'sidewalk', 'roof'],
   ease: 1.6,               // 1/s the mix follows him from place to place (and a crowd falling silent)
   send: 0.1,               // s between two mixes handed to the mixer (it glides in between)
   through: 0.35,           // level of a place heard through its walls ...
@@ -382,7 +385,8 @@ export const CRITTERS = {
   // flies per swarm, px it spreads over; s before a body draws them, bodies at most
   flies: { dumpster: 6, wide: 26, body: 4, close: 9, cold: 20, bodies: 4 },
   // moths round the lamps still lit, by kind of lamp: [x, y, n, r] = px from the prop's middle to its bulb (in the
-  // prop's own frame), how many, px they wander off; fewer indoors than under a streetlight
+  // prop's own frame), how many, px they wander off; fewer than under a streetlight. Out of doors only (the user's
+  // rule): a bulb under a roof has none, whatever the lamp (Critters.lamps, systems/Weather.js openAir)
   moths: {
     at: {
       streetlight: [[56, 0, 3, 17]], neon_sign_bar: [[0, 0, 2, 16]], neon_sign_palm: [[0, 0, 2, 15]], neon_sign_liquor: [[0, 0, 2, 16]],

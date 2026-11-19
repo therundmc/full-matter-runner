@@ -23,6 +23,30 @@ export function skyGrid(map, indoors = AMBIENCE.indoors) {
   return sky;
 }
 
+// which tiles are in the open air (1): the street, the alleys, the yards, the walkable roofs; never a room, a wall, a
+// door or a window. A floor of AMBIENCE.outdoors is; one of `indoors` is not; any other (bare concrete: a back lot or
+// a store room) is when its stretch of tiles runs out onto an open one without passing a door.
+export function openAir(map, indoors = AMBIENCE.indoors, outdoors = AMBIENCE.outdoors) {
+  const roofed = new Set(indoors), sure = new Set(outdoors), open = new Uint8Array(map.w * map.h), todo = [];
+  const kind = (x, y) => {
+    const f = x >= 0 && y >= 0 && x < map.w && y < map.h && map.floor[y * map.w + x];
+    if (!f || map.isWallChar(x, y) || 'DLG'.includes(map.at(x, y)) || roofed.has(f)) return 0;
+    return sure.has(f) ? 2 : 1; // 1: to be found out
+  };
+  for (let y = 0; y < map.h; y++) {
+    for (let x = 0; x < map.w; x++) if (kind(x, y) === 2) { open[y * map.w + x] = 1; todo.push(x, y); }
+  }
+  while (todo.length) {
+    const y = todo.pop(), x = todo.pop();
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+      if (kind(nx, ny) !== 1 || open[ny * map.w + nx]) continue;
+      open[ny * map.w + nx] = 1;
+      todo.push(nx, ny);
+    }
+  }
+  return open;
+}
+
 export default class Weather {
   constructor(world, level = {}, cfg = RAIN) {
     this.world = world;

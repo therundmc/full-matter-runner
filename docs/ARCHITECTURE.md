@@ -199,7 +199,8 @@ src/
                           ('explosion'); asleep when still with nobody near; hides from the guards (World.sightLine)
                           unless parted wide; placeholder sounds (DOM-free, unit-tested; drawn by render/ClothArt.js)
       Critters.js         street fauna (level.critters): rats under the dumpsters ('propHit'), flocks of pigeons, a cat
-                          that bolts over a bin, flies and moths; no bodies, drawn by render/CritterArt.js
+                          that bolts over a bin, flies and moths (round the lamps in the open air only, never
+                          under a roof: Weather.js `openAir`); no bodies, drawn by render/CritterArt.js
                           (DOM-free, unit-tested)
       Ambient.js          street life (level.ambient): through-traffic + passers-by, pre-warmed, owns their spawn/despawn
       Traffic.js          pure traffic rules: lanes, spawn schedule / jams, car following, detours, Driver brain (held up

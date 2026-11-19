@@ -5,21 +5,24 @@ import { load } from './setup.mjs';
 const { TILE, CRITTERS } = await load('game/Config.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: Critters } = await load('game/systems/Critters.js');
+const { default: TileMap } = await load('game/world/TileMap.js');
+const { openAir } = await load('game/systems/Weather.js');
+const { default: level1 } = await load('game/data/levels/level1.js');
 const { critterFrame } = await load('game/render/CritterArt.js');
 
 const { Bodies, Body } = Matter;
 
-// an open lot of 40 x 40 tiles walled in; sounds, noises and blood are recorded
+// an open lot of 40 x 40 tiles of asphalt walled in; sounds, noises and blood are recorded
 function stub(def) {
   const log = { sound: [], noise: [], blood: 0 };
   const walls = new Set();
   const solid = (cx, cy) => cx < 0 || cy < 0 || cx >= 40 || cy >= 40 || walls.has(cx + ',' + cy);
-  const blocked = new Uint8Array(1600);
+  const blocked = new Uint8Array(1600), floor = new Array(1600).fill('asphalt');
   const body = Bodies.circle(0, 0, 8);
   const world = {
     events: new EventBus(), props: [], enemies: [], civilians: [], corpses: [], projectiles: [],
     map: {
-      isSolid: solid, at: () => '.', widthPx: 40 * TILE, heightPx: 40 * TILE, w: 40, h: 40, blocked,
+      isSolid: solid, isWallChar: solid, floor, at: () => '=', widthPx: 40 * TILE, heightPx: 40 * TILE, w: 40, h: 40, blocked,
       walkLine(x0, y0, x1, y1) {
         for (let i = 0; i <= 40; i++) if (solid(Math.floor((x0 + (x1 - x0) * i / 40) / TILE), Math.floor((y0 + (y1 - y0) * i / 40) / TILE))) return false;
         return true;
@@ -31,6 +34,8 @@ function stub(def) {
   };
   // a wall of tiles: world.map.wall(col, row0, row1)
   world.map.wall = (col, r0, r1) => { for (let r = r0; r <= r1; r++) { walls.add(col + ',' + r); blocked[r * 40 + col] = 1; } };
+  // a room's floor laid over the tiles (c0..c1, r0..r1)
+  world.map.lay = (name, c0, r0, c1, r1) => { for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) floor[r * 40 + c] = name; };
   return { world, critters: new Critters(world, def), log };
 }
 const run = (critters, sec) => { for (let i = 0; i < sec * 60; i++) critters.update(1 / 60); };
@@ -244,21 +249,46 @@ test('critters: a blast kills the ones on the ground within its radius; flies ov
   assert.equal(critters.lamps().length, 0);
 });
 
-test('critters: moths round the bar\'s lamps too, at each bulb of a turned lamp, fewer than under a streetlight; gone when it goes dark', () => {
+test('critters: moths turn round the lamps out of doors, at each bulb of a turned lamp, fewer than under a streetlight; gone when it goes dark', () => {
   const { world, critters } = stub({});
-  const street = prop('streetlight', 4, 4), pool = prop('pool_lamp', 10, 10), ceiling = prop('ceiling_lamp', 14, 10), sofa = prop('sofa', 16, 10);
-  Body.setAngle(pool.body, Math.PI / 2);
-  ceiling.def = { height: 0.05 };
-  world.props.push(street, pool, ceiling, sofa);
+  const street = prop('streetlight', 4, 4), strings = prop('string_lights', 10, 10), lamp = prop('wall_lamp', 14, 10), sofa = prop('sofa', 16, 10);
+  Body.setAngle(strings.body, Math.PI / 2);
+  strings.def = { height: 0.05 };
+  world.props.push(street, strings, lamp, sofa);
   const lamps = critters.lamps();
-  assert.equal(lamps.length, 4, 'the streetlight, the pool table lamp\'s two bulbs, the ceiling lamp; no sofa');
-  const bulbs = lamps.filter((l) => Math.abs(l.x - pool.x) < 1);
-  assert.deepEqual(bulbs.map((l) => Math.round(l.y - pool.y)).sort((a, b) => a - b), [-12, 12], 'turned with the lamp');
+  assert.equal(lamps.length, 4, 'the streetlight, the string lights\' two bulbs, the wall lamp; no sofa');
+  const bulbs = lamps.filter((l) => Math.abs(l.x - strings.x) < 1);
+  assert.deepEqual(bulbs.map((l) => Math.round(l.y - strings.y)).sort((a, b) => a - b), [-40, 40], 'turned with the lamp');
   for (const l of lamps) assert.ok(l.n >= 1 && l.n <= 3 && l.r > 0);
-  assert.equal(lamps.find((l) => Math.abs(l.x - ceiling.x) < 1).lift, 0.05, 'up round a hung lamp, where it is drawn');
+  assert.equal(bulbs[0].lift, 0.05, 'up round a hung lamp, where it is drawn');
   assert.ok(lamps.filter((l) => l !== lamps[0]).every((l) => l.n <= lamps[0].n && l.r < lamps[0].r));
-  pool.lightsOut = true;
-  assert.equal(critters.lamps().length, 2, 'a power cut lets them go');
+  lamp.lightsOut = true;
+  assert.equal(critters.lamps().length, 3, 'a power cut lets them go');
+});
+
+test('critters: no moth under a roof, whatever the lamp', () => {
+  const { world, critters } = stub({});
+  world.map.lay('wood', 8, 8, 20, 20);
+  const kinds = Object.keys(CRITTERS.moths.at);
+  kinds.forEach((type, i) => world.props.push(prop(type, 10 + (i % 5) * 2, 10 + Math.floor(i / 5) * 3)));
+  assert.equal(critters.lamps().length, 0, 'every kind of lamp, all in the room');
+  const out = prop('wall_lamp', 30, 30);
+  world.props.push(out);
+  critters.lit = null;
+  assert.deepEqual(critters.lamps().map((l) => Math.round(l.x)), [out.x], 'the one in the yard has its moths');
+});
+
+test('critters: the open air is the street, the yards and the roofs, never a room, be its floor bare concrete', () => {
+  const map = new TileMap(level1.tiles), open = openAir(map), at = (c, r) => open[r * map.w + c];
+  assert.deepEqual([at(5, 22), at(20, 25), at(12, 10), at(20, 2), at(5, 10), at(21, 34)], [1, 1, 1, 1, 1, 1],
+    'sidewalk, road, service alley, back lot, the shop\'s roof, the alley across the street');
+  assert.deepEqual([at(18, 14), at(21, 8), at(26, 8), at(5, 18), at(27, 34)], [0, 0, 0, 0, 0], 'bar, toilets, back room, shop, laundromat');
+  assert.equal(at(16, 8), 0, 'the store room: concrete, but shut in by walls and doors');
+  assert.deepEqual([at(14, 8), at(20, 20), at(5, 20), at(0, 0)], [0, 0, 0, 0], 'doors, windows and walls are no place for a lamp');
+  // level 1's moths: none of them round a lamp of the bar
+  const lamps = level1.props.filter(([type]) => type in CRITTERS.moths.at);
+  const inside = lamps.filter(([, c, r]) => !at(Math.floor(c), Math.floor(r)));
+  assert.ok(inside.length > 5 && inside.length < lamps.length, `${inside.length} of ${lamps.length} lamps are indoors`);
 });
 
 test('critters: the frame drawn follows the state, and a run cycles faster the faster it goes', () => {

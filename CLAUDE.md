@@ -187,7 +187,8 @@
   keep-clear, the zebra crossing from the bar's door): nothing with a body in the two lanes, on the patrol's beat (row
   22, cols 16-26) or where the getaway comes out (tests/street1.test.mjs); two flocks of pigeons, no more.
 - Shop alarms (level `alarms`, systems/Alarms.js), the bar's fuse box (level `power`, systems/Power.js), street
-  fauna (level `critters`, systems/Critters.js). The bar room is public (level `welcome`); the VIP room, the boss's
+  fauna (level `critters`, systems/Critters.js; moths turn round lamps in the OPEN AIR only, never under a roof, in
+  every level: systems/Weather.js `openAir`, floors `AMBIENCE.outdoors`, bare concrete by where it leads). The bar room is public (level `welcome`); the VIP room, the boss's
   back room and the back of house are not.
 
 ## Front end, story, tutorial
