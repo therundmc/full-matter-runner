@@ -175,10 +175,11 @@ export function paintLeg(look, hx, hy, f, lift = 0, heel = 0) {
   });
 }
 
-// An arm: shoulder S, elbow E, wrist W (pose px from the body's centre), the sleeve down to a cuff, bare skin past it
-export function paintArm(look, S, E, W) {
+// An arm: shoulder S, elbow E, wrist W (pose px from the body's centre), the sleeve down to a cuff, bare skin past it;
+// k: its girth (1: as it hangs; broader seen flat, round a man's neck)
+export function paintArm(look, S, E, W, k = 1) {
   const R = lookRamps(look), sleeve = R.px.sleeve, cuff = R.px.cuff;
-  chain([set(P0, S.x, S.y, 1.6), set(P1, E.x, E.y, 1.35), set(P2, W.x, W.y, 1.1)], (seg, t, L) => {
+  chain([set(P0, S.x, S.y, 1.6 * k), set(P1, E.x, E.y, 1.35 * k), set(P2, W.x, W.y, 1.1 * k)], (seg, t, L) => {
     const i = tidx(L);
     if (seg === 1 && t > 0.84) return (cuff || sleeve)[Math.max(0, i - (cuff ? 0 : 1))]; // the cuff (or the sleeve's hem)
     if (seg === 0 && t > 0.88) return sleeve[Math.max(0, i - 1)];                        // the crease of the elbow

@@ -26,7 +26,6 @@ export default class Direction {
     this.look = 1;         // share of the cursor's look-ahead kept
     this.at = null;        // what is looked at: { x, y }
     this.keep = 0;         // share of the half view the player stays inside (0: anywhere; kept while easing back)
-    this.beat = null;      // a beat steered from outside, over the shot that was on (steered)
   }
 
   // the shot from now on (a SHOTS name, or null) and what it looks at ({ x, y }, or null); cut: no easing (the
@@ -51,7 +50,6 @@ export default class Direction {
   // its shot's at once, only the framing is eased (a picture held on whole px, at the wheel: any zoom between two
   // whole ones resamples every sprite)
   update(dt, base = 0, cut = false) {
-    this.beat = null;
     const s = this.shot, c = this.cfg, to = this.rest(base), k = cut ? 1 : 1 - Math.exp(-(s?.ease ?? 2) * dt);
     this.zoom += (to - this.zoom) * k;
     if (Math.abs(to - this.zoom) < c.snap * to) this.zoom = to;
@@ -61,32 +59,9 @@ export default class Direction {
     this.look += ((s?.look ?? 1) - this.look) * f;
   }
 
-  // a beat whose clock is somebody else's (systems/Tutorial.js beatShot: a lesson's, on the real clock), over the
-  // shot that was on, which is left as it was for when the beat is over: name (a SHOTS name), at: what it looks at;
-  // n: the beat (a new one starts from the zoom and look-ahead as they are); k: 0..1 how far the zoom and the
-  // look-ahead have gone from those to the beat's; pull: 0..1 how far the view has gone from the shot that was on to
-  // the beat's own framing of `at`. base as in rest. Called instead of update while it lasts
-  steered(name, at, { n, k, pull }, base = 0) {
-    const s = this.shots[name] || {};
-    if (this.beat?.n !== n) this.beat = { n, zoom: this.zoom, look: this.look };
-    const B = this.beat, to = whole(s.zoom ?? 1, base);
-    Object.assign(B, { at: { x: at.x, y: at.y }, wants: s.pull ?? 0, pull });
-    this.zoom = B.zoom + (to - B.zoom) * k;
-    this.look = B.look + ((s.look ?? 1) - B.look) * k;
-  }
-
   // where the view goes for a player's point (x, y): toward what is looked at, by how far it has been pulled; frame
-  // { x, y, hw, hh }: the player and the half view in world px, for a shot that keeps him in the picture (`keep`).
-  // A beat steered: from there toward its own framing
+  // { x, y, hw, hh }: the player and the half view in world px, for a shot that keeps him in the picture (`keep`)
   aim(x, y, frame = null) {
-    const v = this.framed(x, y, frame), B = this.beat;
-    if (!B) return v;
-    const bx = x + (B.at.x - x) * B.wants, by = y + (B.at.y - y) * B.wants;
-    return { x: v.x + (bx - v.x) * B.pull, y: v.y + (by - v.y) * B.pull };
-  }
-
-  // (the shot's own framing, as aim without a beat)
-  framed(x, y, frame) {
     const a = this.at, k = a ? this.pull : 0;
     const v = { x: x + ((a?.x ?? x) - x) * k, y: y + ((a?.y ?? y) - y) * k };
     if (!frame || !this.keep || !k) return v; // the pull gone: his own look-ahead is his again

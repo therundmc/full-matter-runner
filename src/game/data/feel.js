@@ -203,9 +203,10 @@ export const THROW = {
 };
 
 // The human shield (entities/Player.js startShield .. endShield, the rules: systems/Shield.js). E behind a standing
-// guard, or on one who is down: he is held in front of the player, his back to his chest, turned with the aim.
+// guard: he is held in front of the player in a choke hold, his back to his chest, turned with the aim.
 //   reach     px between the two for the grab (the takedown's arc behind him: Config TAKEDOWN rear / facing)
-//   gap       px between the two bodies while he is held; set: s to haul him in
+//   gap       px between the two bodies while he is held; set: s to haul him in; carry: px/step at most he is given
+//             to follow the player's steps and turns (his legs walk it: entities/Gait.js)
 //   move      share of the player's speed while he holds him (no slide, no vault: SPACE does nothing)
 //   arc       rad either side of where the hostage is: what comes at the player from there hits the hostage
 //   hp        rounds he takes before he dies in the player's arms; blast: what one shotgun blast is worth (its
@@ -213,26 +214,51 @@ export const THROW = {
 //   corpse    hits his body still stops once he is dead, then it slips to the floor
 //   hesitate  s a man with a gun holds his fire at a comrade held; brute: a brute's
 //   kill      the click that kills him: bare hands (or a gun run dry) break his neck, a one-handed blade opens his
-//             throat (label: the score's; sound; noise: px the guards hear it at; cool: s before the next attack)
+//             throat (label: the score's; sound; noise: px the guards hear it at; at: s of the wrench / of the blade
+//             drawn across before he dies of it; out: s the arms take to let him go; cool: s before the next attack)
 //   throw     the right click throws him along the aim: dist [px: a tap, a full charge]; hit: a standing man within
 //             r px of him while he still flies faster than `speed` px/step is floored too (he keeps `keep` of his
-//             speed); dead: px/step his body is thrown at when he died in the arms; cool: s before the next attack
+//             speed); dead: px/step his body is thrown at when he died in the arms; out: s of the shove's follow
+//             through; cool: s before the next attack
 //   flank     guards with a blade or a club come round: within [near, far] px and inside the arc they run mostly
 //             sideways (`in`: the share of their way that still goes at him)
-//   pose      the look of it (CharacterAnim shieldPose / hostagePose, pose px): arm: where the left hand closes
-//             on his throat, off his centre; gun: how far out to the right the gun hand goes to clear his shoulder;
-//             pull: he is pulled back onto the chest; shake: his struggle [rad/s, px]
+//   drag      a dead man's feet trail after him: [1/s they catch up at, pose px they may be left behind at most]
+//   pose      the look of it (CharacterAnim shieldPose / hostagePose / shieldOutPose, drawn as one pair by
+//             drawPair). Pose px, [along the aim, to the player's right]; `off his neck` = from the man's drawn
+//             centre. The player: twist: rad his shoulders are bladed, the choking shoulder into the man's back;
+//             lean: his torso forward and out to the gun side, so that he looks past the man's head; elbow / hand:
+//             the choking arm's elbow at the front of his neck and its hand back on the far shoulder, off his neck (girth: how
+//             much broader that arm shows); gun: the
+//             gun hand, past the man's shoulder; blade: the knife's hand at the side of his neck, [.., rad of the
+//             blade off the aim]; nape: the empty hand behind his head, its elbow out (`at`, `elbow`).
+//             The man: pull: back onto the chest; aside: to the choking side; chin: his head thrown back (a share
+//             of BOW), head: its own shift back and aside, rad it is turned; hunch: his shoulders drawn in; claw:
+//             his two hands on the forearm; low: a weapon still in his hand, hung by his thigh [.., rad, its length]; shake: his struggle [rad/s, px]; jerk: the grab [s, px he is snatched
+//             back, then eased]; wrench: the neck broken [rad his head is turned, px the elbow is torn aside, px his head is thrown across];
+//             slice: the blade's hand from one side of his throat to the other; limp: dead in the arms (in: s to
+//             go slack, sink: share smaller, head: [bow, rad lolled], hands: where they hang, feet: where they
+//             trail at rest); shove: the throw's two hands at full push, back: rad the shoulders swing through
 export const SHIELD = {
-  reach: 34, gap: 14, set: 0.16, move: 0.6, arc: 1.22,
+  reach: 34, gap: 10, set: 0.16, carry: 5, move: 0.6, arc: 1.22,
   hp: 3, blast: 3, thrown: 1, volley: 0.12, corpse: 2,
   hesitate: 1.0, brute: 0.4,
   kill: {
-    neck: { label: 'NECK SNAP', cause: 'snap', sound: 'shieldNeck', noise: 40, cool: 0.3 },
-    throat: { label: 'THROAT CUT', cause: 'slash', wound: 'throat', sound: 'throatCut', noise: 30, cool: 0.3 },
+    neck: { label: 'NECK SNAP', cause: 'snap', sound: 'shieldNeck', noise: 40, at: 0.26, out: 0.28, cool: 0.3 },
+    throat: { label: 'THROAT CUT', cause: 'slash', wound: 'throat', sound: 'throatCut', noise: 30, at: 0.26, out: 0.28, cool: 0.3 },
   },
-  throw: { dist: [70, 150], hit: { r: 22, speed: 2.2, keep: 0.45 }, dead: 5, cool: 0.25 },
+  throw: { dist: [70, 150], hit: { r: 22, speed: 2.2, keep: 0.45 }, dead: 5, out: 0.34, cool: 0.25 },
   flank: { near: 30, far: 190, in: 0.4 },
-  pose: { arm: [1.2, 0.5], gun: 8.5, pull: 1.3, shake: [26, 0.6] },
+  drag: [7, 11],
+  pose: {
+    twist: 0.65, lean: [0.6, 3.5],
+    elbow: [5.2, -3.8], hand: [4.4, 3.4], girth: 1.25,
+    gun: [1.5, 9.2], blade: [5.6, 6.2, -1.7], nape: { at: [-5.6, 2.8], elbow: [-4.6, 10.4] },
+    pull: 1.3, aside: -1.0, chin: 0.15, head: [-2.6, -0.9, -0.3], hunch: 0.1,
+    claw: [[6.3, -1.7], [5.9, 1.9]], low: [0.4, 7.2, 0.4, 0.55], shake: [26, 0.6], jerk: [0.3, 2.4],
+    wrench: [1.4, 3.4, 3.6], slice: [[5.6, 3.4], [2.6, 10.5]],
+    limp: { in: 0.3, sink: 0.07, head: [-0.1, 0.9], hands: [[2.2, -6.4], [1.6, 6.6]], feet: [[4.4, -2.6], [5.2, 2.2]] },
+    shove: [[13, -3.4], [12.4, 3.6]], back: -0.3,
+  },
 };
 
 // The player's weapon giving out (Character.breakWeapon, data/weapons.js `breaks`), what flies of it and the beat

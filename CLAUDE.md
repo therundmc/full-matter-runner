@@ -110,9 +110,12 @@
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
   guard up close with free hands snatches his gun (`SNATCH` in data/feel.js).
 - Human shield (the user's design: systems/Shield.js rules, `SHIELD` in data/feel.js, Player.startShield /
-  updateShield): E / pad X behind a guard (or on one down) with empty hands or a one-handed weapon (`oneHanded`) takes
-  him; held in front, he stops rounds, pellets and thrown things from the front arc (3 hits, his corpse 2 more), never a
-  blow; the player walks slower, no SPACE; a click fires over his shoulder (empty hands: the neck, a blade: the throat),
+  updateShield): E / pad X behind a STANDING guard only (never one down) with empty hands or a one-handed weapon
+  (`oneHanded`) takes him in a choke hold (CharacterAnim `drawPair`: the two painted as one pair in layers, the arm
+  round his neck, numbers `SHIELD.pose`; he is carried at the pair's speed so his legs walk it: never put there with
+  no velocity); held in front, he stops rounds, pellets and thrown things from the front arc (3 hits, his corpse 2
+  more), never a blow; the player walks slower, no SPACE; a click fires over his shoulder (empty hands: the neck, a
+  blade: the throat, after a short wrench / slice, `SHIELD.kill.at`),
   right click / LB throws him (held: aimed), knocking down whom he hits; gunmen hold their fire a moment, brutes less,
   blades flank; bare hands take his pistol as they take him. Taught in the tutorial on the gunman by the corridor's
   fire door (wave trigger `shield`: two gunmen come up the stairs); lab station 29.
@@ -173,15 +176,20 @@
   at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
-  match, `OPENING`), lessons that are one stopped beat each (the user's call: `BEAT`, `LESSONS` by hint id, `pace`:
-  time stopped and his hands off, the camera goes to what to do and holds on it, comes back to him, then the hand is
-  his; one lesson a beat, chained; a room's dormant men wait for its lessons), the camera's shots (`SHOTS`, systems/Direction.js,
+  match, `OPENING`), hints that are a key and its action on its object, never advice (the user's call: no GET BEHIND HIM /
+  GET OUT; where to go is said by the rooms, the fire, the camera, the way out marked on the floor), and lessons
+  (`BEAT`, `LESSONS` by hint id, `pace`): a lesson is a SLOW MOTION that starts exactly when its action is due (its
+  trigger, Tutorial.js `DUE`: closing on the table within a metre for VAULT, behind the man in reach for the
+  takedown / SHIELD, a man in reach for PUNCH / STRIKE, the gunman's shot coming for SLIDE...), eases in fast, a few
+  % of camera push on him, the hint popping big, until he does it, leaves the trigger or its cap; never a stop, the
+  hand always his, once a lesson (`Game.taught`), the camera's shots (`SHOTS`, systems/Direction.js,
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). A big table across the living room, on his way, teaches the vault. A lesson waits for its object to be on
-  screen and near (`LESSONS.within`); during a reload the world all but stops and nobody fires (`RELOAD`); a man
+  Enemy.drawTail, his name card). The living room is a forced way: a lane one metre wide between two burning trails (builder
+  `LANE`, kept clear by the stages' `keep`), the big table across its end before the kitchen door: the vault (round it
+  is through the fire). Two men come up the stairs, no more; during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).

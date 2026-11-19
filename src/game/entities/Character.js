@@ -19,7 +19,7 @@ import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK
   CLIMB_NOISE, RUNG_NOISE, LAND_NOISE, DROP } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
-import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, seatPose, trunkPose, execPose, takedownPose, heldPose, shieldPose, hostagePose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
+import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, seatPose, trunkPose, execPose, takedownPose, heldPose, shieldPose, hostagePose, shieldOutPose, drawPair, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
   muzzleX, boreIn, looseMagIn }
   from './CharacterAnim.js';
 import { advanceGait } from './Gait.js';
@@ -996,8 +996,17 @@ export default class Character {
   }
 
   // ---------------- rendering ----------------
+  // A man held as a shield is painted with the one who holds him, as one pair (drawPair), in that one's turn.
   draw(ctx) {
     if (this.knocked > 0) { drawDown(ctx, this, this.pose); return; }
+    if (this.held?.shield?.target === this) return;
+    const tg = this.shield?.target, T = tg?.alive && !(tg.knocked > 0) ? tg.livePose() : null, P = this.livePose();
+    if (T) drawPair(ctx, this, P, tg, T);
+    else drawPose(ctx, this, P);
+  }
+
+  // his pose as he stands now: the stance and whatever he is at over it
+  livePose() {
     const P = standPose(this, this.pose);
     this.ownPose?.(P); // a pose of his own over the stance (Civilian: a dancer's moves)
     // a slide can chain into a vault: the vault blends out of whatever the slide pose was
@@ -1011,6 +1020,7 @@ export default class Character {
     if (this.takedown) takedownPose(this, P, this.pose2);
     if (this.held?.takedown?.target === this) heldPose(this, P);
     if (this.shield) shieldPose(this, P);
+    else if (this.shieldOut) shieldOutPose(this, P);
     if (this.held?.shield?.target === this) hostagePose(this, P);
     if (this.doorHand) doorHandPose(this, P);
     if (this.lockHand) lockHandPose(this, P);
@@ -1018,6 +1028,6 @@ export default class Character {
     // the weapon's trail through a blow, drawn over the lighting (fx/CombatFx.js)
     if (this.swing > 0) sampleSmear(this, P, this.def, feelOf(this.def).smear, this.strike >= 2 && this.def.hold === 'melee');
     this.noteMuzzle(P);
-    drawPose(ctx, this, P);
+    return P;
   }
 }

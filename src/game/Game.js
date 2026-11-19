@@ -65,20 +65,15 @@ const FALL = { hold: 0.7, fade: 0.55, slow: 0.4 };
 const FALLEN = FALL.hold + FALL.fade;
 // s the mouse rests on one of OPTIONS' things, crossed on its way right to the sheet, before that thing's sheet shows
 const HOVER_DWELL = 0.15;
-// which keys do an action (data/controls.js ACTIONS), for a lesson waiting on it (systems/Tutorial.js pace);
-// confirm: what says "got it" to a lesson whatever it is about (the pad's A is SPACE)
-const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+// which keys do an action (data/controls.js ACTIONS), for a lesson that ends when he does it (systems/Tutorial.js
+// pace; the pad's buttons come as these: Input.bindPad)
 const DOES = {
-  move: (inp) => !!inp.move() || MOVE_KEYS.some((c) => inp.down(c)),
   attack: (inp) => inp.mouseDown(0),
   throw: (inp) => inp.mouseDown(2),
   use: (inp) => inp.down('KeyE'),
   action: (inp) => inp.down('Space'),
   reload: (inp) => inp.down('KeyR'),
-  confirm: (inp) => inp.down('Space') || inp.down('Enter') || inp.down('NumpadEnter') || inp.mouseDown(0),
 };
-// the keys he may keep holding through a lesson's beat into the hand given back (walking on, looking further: harmless)
-const WALK_ON = new Set([...MOVE_KEYS, 'ShiftLeft', 'ShiftRight']);
 // what the intro banner calls a level
 const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelTag(id)}` : 'TEST LEVEL');
 // the steps the middle of the backdrop's gradient drifts on (share of its diagonal: Game.backdrop); its flat tone
@@ -112,7 +107,6 @@ export default class Game {
     this.hitstop = 0;
     this.timeScale = 1;
     this.slow = null;
-    this.stopped = false;              // a tutorial lesson holds the world still this frame (teach)
     this.flashA = 0;
     this.flashColor = '#fff';
     this.clearedT = 0;
@@ -222,11 +216,11 @@ export default class Game {
     this.resize();
   }
 
-  // AUTO: the frame's real time (ms) told to its watch, in play only (no hit-stop, no held beat); a level down is
+  // AUTO: the frame's real time (ms) told to its watch, in play only (no hit-stop); a level down is
   // put in force at once and kept for the next session
   watchPace(ms) {
     if (this.settings.quality !== 'auto') return;
-    const to = this.watch.frame(ms, this.state === 'play' && !!this.world && !this.stopped && !(this.hitstop > 0));
+    const to = this.watch.frame(ms, this.state === 'play' && !!this.world && !(this.hitstop > 0));
     if (!to) return;
     this.settings.autoQuality = to;
     this.applyQuality();
@@ -711,12 +705,7 @@ export default class Game {
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 
-    if (this.stopped) {
-      // a lesson's beat: the world is not stepped at all (a time scale of 0 is no step: Matter divides by it), and
-      // drawn as it stands
-      this.clock.reset();
-      this.interp.still();
-    } else if (this.hitstop > 0) {
+    if (this.hitstop > 0) {
       this.hitstop -= dt;
     } else {
       // the fixed step; what moves is noted before each one, and drawn between the last two (render, updateCamera)
@@ -737,28 +726,14 @@ export default class Game {
     if (this.state === 'outro' && outroOver(this.world.outro)) this.endOutro();
   }
 
-  // the tutorial's lessons (systems/Tutorial.js pace): the time scale they want, and whether a lesson's stopped beat
-  // sets it as it is (`beat`: its own ramp, no easing of ours on it). Through such a beat (this.stopped) the world
-  // stands still, the camera goes to what it is about and back, and nothing he does reaches him: what he presses is
-  // dropped; then, as time is given back, what he still holds down reads as up until let go (a held click is no
-  // shot), but for walking on. A key down as the beat starts says nothing to it either: "got it" is a fresh press
+  // the tutorial's lessons (systems/Tutorial.js pace): the time scale they want, and whether a lesson's slow motion
+  // sets it as it is (`beat`: its own ramp down and back, no easing of ours on it). Never a stop: the world goes on,
+  // his hands are his all along
   teach(dt, inp) {
-    const T = this.state === 'play' ? this.world?.tutorial : null, was = !!T?.stopped;
-    this.stopped = false;
+    const T = this.state === 'play' ? this.world?.tutorial : null;
     if (!T) return { scale: 1, beat: false };
-    // (it waits for what it is about to be on screen, clear of the edges)
-    const v = this.world.view(), m = 28;
-    const seen = (x, y) => Math.abs(x - v.x) < v.hw - m && Math.abs(y - v.y) < v.hh - m;
-    const scale = T.pace(dt, (action) => !!DOES[action]?.(inp), seen);
-    if (T.stopped !== was) {
-      inp.holdMouse();
-      inp.holdKeys(T.stopped ? null : WALK_ON);
-      // (a move key held into the hand counts as pressed: on the ground, it gets him up as a fresh one would)
-      if (!T.stopped && MOVE_KEYS.some((c) => inp.down(c))) inp.anyPressed = true;
-    }
-    this.stopped = T.stopped;
-    if (this.stopped) inp.consume();
-    return { scale, beat: !!T.lesson?.stop };
+    const beat = !!T.lesson, scale = T.pace(dt, (action) => !!DOES[action]?.(inp));
+    return { scale, beat: beat || !!T.lesson };
   }
 
   // a comic page is skipped by holding SPACE (a pad's A: bound to it, data/controls.js), nothing else (ui/cine/Hold.js)
@@ -951,14 +926,11 @@ export default class Game {
     this.camera.sway = !dr;
     if (!p.alive || this.state !== 'play') { ox = 0; oy = 0; }
     // a staged level names the shot: its zoom on the camera, the view drawn toward what it looks at
-    // (a tutorial lesson's beat steers it on its own clock: systems/Tutorial.js beatShot)
     const D = this.direction, shot = this.stagedShot();
-    if (shot?.steer) D.steered(shot.name, shot.at, shot.steer, this.camera.zoom);
-    else {
-      D.set(shot?.name, shot?.at);
-      D.update(dt, this.camera.zoom, this.camera.pixel); // (at the wheel a shot's zoom is a cut: Direction.update)
-    }
-    this.camera.scale = D.zoom;
+    D.set(shot?.name, shot?.at);
+    D.update(dt, this.camera.zoom, this.camera.pixel); // (at the wheel a shot's zoom is a cut: Direction.update)
+    // (a tutorial lesson's slow motion pushes in on him a little: systems/Tutorial.js push)
+    this.camera.scale = D.zoom * (1 + (w.tutorial?.push() ?? 0));
     const kc = w.killCam; // its punch-in on top (1 at rest, and at the wheel), the view drawn toward the kill
     this.camera.scale *= kc.scale;
     const z = this.camera.zoom * this.camera.scale, frame = { x: p.x, y: p.y, hw: this.camera.w / z / 2, hh: this.camera.h / z / 2 };
