@@ -99,7 +99,7 @@ test('menu: the pause of the death screen offers RETRY instead of RESUME; going 
   assert.deepEqual(dead.back(), { type: 'resume' });
 });
 
-test('menu: the LEVELS board walks its notes with left / right', () => {
+test('menu: the LEVELS board walks its notes by columns', () => {
   const m = new Menu('main', {
     settings: {}, progress: { done: ['tutorial'], unlocked: ['tutorial', 'level1'] }, best: () => null,
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NO LOOSE ENDS' }],
@@ -108,19 +108,20 @@ test('menu: the LEVELS board walks its notes with left / right', () => {
   assert.equal(m.item.level, 'tutorial');
   m.right();
   assert.equal(m.item.level, 'level1');
-  m.right();
-  assert.equal(m.item.label, 'BACK');
-  m.left(); m.left();
+  m.left();
   assert.equal(m.item.level, 'tutorial');
   m.down();
-  assert.equal(m.item.level, 'level1', 'up / down still walk them');
+  assert.equal(m.item.label, 'BACK', 'BACK is under the tutorial\'s note');
+  m.left();
+  assert.ok(m.item.soon, 'round the board: the last column, a level not made yet');
+  assert.equal(m.activate(), null);
 });
 
 test('game: pause and resume go back to the state the pause was opened from, the death screen where it was', () => {
   const calls = [];
   const g = {
     state: 'dead', stateT: 1.7, input: { padLost: true, focusLost: true, holdMouse: () => calls.push('hold') },
-    menu: { reset: (id) => calls.push(`menu ${id}`) }, skip: { reset() {} }, world: { player: {} },
+    menu: { reset: (id) => calls.push(`menu ${id}`) }, pick: { reset() {} }, skip: { reset() {} }, world: { player: {} },
   };
   g.setState = Game.prototype.setState;
   Game.prototype.pause.call(g);

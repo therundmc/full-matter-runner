@@ -1,5 +1,5 @@
 // The small leaks and vapours of a lived-in room (SEEPS in data/seeps.js): a prop that drips to the floor (a washer,
-// a keg on tap, an ice bin: drops poured into systems/Liquids.js, held back once the puddle at its foot is deep
+// a water heater's joint, a pail running over, a keg on tap, an ice bin: drops poured into systems/Liquids.js, held back once the puddle at its foot is deep
 // enough, done once it is empty), one that fumes (a simmering pot, a dryer's vent: steam into the air of
 // systems/Smoke.js; a soldering iron: a cigarette's thread), a loose vessel that slops over when it is shoved (a mop
 // bucket). A prop has one by its def (`seep`) or by the level (prop option `seep`, world/Level.js); it stops for good
@@ -47,24 +47,26 @@ export default class Seeps {
   update(dt) {
     if (!this.list) this.find();
     for (const s of this.list) {
-      if (s.prop.dead) continue;
+      if (s.prop.dead || s.prop.parts) continue; // broken, or falling apart
       if (s.def.drip) this.drip(s, dt);
       if (s.def.fume) this.fume(s, dt);
       if (s.def.slosh) this.slosh(s, dt);
     }
   }
 
-  // one drop when it is due, unless the puddle at its foot is already as deep as it gets or the thing is empty
+  // one drop when it is due (none once the thing is empty); its water is not poured while the puddle at its foot is
+  // as deep as it gets
   drip(s, dt) {
     const d = s.def.drip, L = this.world.liquids;
     if ((s.t -= dt) > 0) return;
     s.t = this.between(d.every);
     if (!L || s.left <= 0) return;
     const q = this.at(s.prop, d.at), wet = L.at(q.x, q.y);
+    L.ripple(q.x, q.y); // the drop falls and rings whatever the puddle: only its water is held back
+    if (d.sound) this.world.sound?.(d.sound, q.x, q.y, 0.5);
     if (wet && wet.depth >= d.cap) return;
     const out = Math.min(d.drop, s.left);
     L.feed(q.x, q.y, out, d.kind, d.r);
-    L.ripple(q.x, q.y);
     s.left -= out;
   }
 

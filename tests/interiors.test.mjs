@@ -27,7 +27,7 @@ const size = (path) => { const b = readFileSync(file(path)); return [b.readUInt3
 const NEW = ['shop_shelf', 'wine_rack', 'beer_cases', 'lottery_stand', 'tv_stack', 'vcr_shelf', 'tv_box', 'repair_bench', 'dryer',
   'folding_table', 'soap_vend', 'laundry_cart', 'plastic_chair', 'cig_machine', 'ice_bin', 'coat_rack', 'bottle_crate', 'wet_sign',
   'mop_bucket', 'water_cooler', 'filing_cabinet', 'safe', 'pallet', 'steel_shelf', 'hand_truck', 'security_mirror', 'cig_rack',
-  'price_board', 'tape_rack', 'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'calendar', 'wall_clock', 'cleaning_rack'];
+  'price_board', 'tape_rack', 'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'wall_clock', 'cleaning_rack'];
 const ROUND = { coat_rack: [20, 20], mop_bucket: [18, 18], water_cooler: [15, 15] }; // drawn wider than their foot
 // level 1's rooms, tile rectangles of the level (after the cuts)
 const ROOMS = {
@@ -75,6 +75,8 @@ test('interiors: each room of level 1 has its own things, and what seeps is wher
   has('gaming', 'water_cooler', 'coat_rack');
   const seeping = level.props.filter((p) => p[4]?.seep).map((p) => `${p[0]}:${p[4].seep}`).sort();
   assert.deepEqual(seeping, ['keg:keg', 'oven:pot', 'washer:washer'], 'one washer, one keg, the stove');
+  assert.equal(PROPS.calendar.w, 7, 'one calendar: the flat\'s, on level 1\'s walls too');
+  assert.ok(level.props.filter((p) => p[0] === 'calendar').length >= 3);
   for (const p of level.props) if (p[4]?.seep) assert.ok(SEEPS[p[4].seep], p[4].seep);
   for (const [, , , , o] of level.props) if (o?.clutter) assert.ok(SETS[o.clutter], o.clutter);
   // the rules that stay: no television in the boss's room, nothing of this in a doorway or a window, nothing loose
@@ -95,7 +97,7 @@ test('interiors: each room of level 1 has its own things, and what seeps is wher
 });
 
 test('interiors: the rooms\' own floor marks are laid by the level, the same every time, each on a floor', () => {
-  const OWN = ['mould', 'grease', 'dust', 'drips', 'rust', 'prints', 'damp'];
+  const OWN = ['mould', 'dust', 'drips', 'rust', 'prints', 'runoff']; // (its `grease` and the walls' `damp` are the flat's kinds)
   for (const k of OWN) assert.ok(WEAR_KINDS.includes(k), k);
   for (const [k] of level.grime) assert.ok(WEAR_KINDS.includes(k), `${k} is a kind of wear`);
   const map = new TileMap(level.tiles);
@@ -104,7 +106,7 @@ test('interiors: the rooms\' own floor marks are laid by the level, the same eve
   for (const k of OWN) assert.ok(a.marks.some((m) => m.kind === k), `${k} somewhere in level 1`);
   for (const m of a.marks) if (OWN.includes(m.kind)) assert.ok(m.s >= 0 && m.o.at === 'point', `${m.kind} at its point, on a floor`);
   const marksIn = (room, kind) => a.marks.filter((m) => m.kind === kind && inRoom(ROOMS[room], m.x / TILE, m.y / TILE)).length;
-  assert.ok(marksIn('toilets', 'mould') >= 3 && marksIn('toilets', 'damp') >= 2 && marksIn('toilets', 'crack') >= 3, 'the toilets');
+  assert.ok(marksIn('toilets', 'mould') >= 3 && marksIn('toilets', 'runoff') >= 2 && marksIn('toilets', 'crack') >= 3, 'the toilets');
   assert.ok(marksIn('laundry', 'rust') === 1 && marksIn('laundry', 'mould') >= 2 && marksIn('laundry', 'crack') >= 2, 'the laundromat');
   assert.ok(marksIn('storeroom', 'grease') === 1 && marksIn('storeroom', 'drips') === 1, 'the storeroom');
   assert.ok(marksIn('liquor', 'dust') >= 3 && marksIn('liquor', 'prints') === 1, 'the liquor store');

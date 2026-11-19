@@ -217,7 +217,7 @@ export const PROPS = {
   // on their walls (the wall at -y, the room along +y, as the bar's pictures are): the shop's convex mirror, the
   // cigarettes behind its counter, the price list, tapes on their rack, a cork board, the change machine (coins
   // spill), the hand dryer that never worked, what was scrawled in the toilets (paint: it is marked, never gone), a
-  // calendar, a clock (its second hand: render/PropLife.js), the brooms on their hooks
+  // clock (its second hand: render/PropLife.js), the brooms on their hooks (their calendars are the flat's `calendar`)
   security_mirror: { static: true, material: 'glass', w: 10, h: 4, hp: 2, chips: '#d8e0ea', glass: true, sound: 'glass' },
   cig_rack: { static: true, material: 'plastic', w: 26, h: 4, hp: 4, chips: '#c8242c', sound: 'wood' },
   price_board: { static: true, material: 'fabric', w: 22, h: 3, hp: 2, chips: '#1c1c22', sound: 'wood' },
@@ -226,7 +226,6 @@ export const PROPS = {
   coin_changer: { static: true, material: 'metal', w: 10, h: 5, hp: 4, chips: '#8a909c', sparks: true, sound: 'metal' },
   hand_dryer: { static: true, material: 'metal', w: 8, h: 5, hp: 3, chips: '#d8dce4', sparks: true, sound: 'metal' },
   graffiti: { static: true, lasting: true, material: 'stone', w: 26, h: 2, hp: 99, chips: '#8a8e96', sound: 'stone' },
-  calendar: { static: true, material: 'fabric', w: 8, h: 3, hp: 2, chips: '#e8e4d8', sound: 'wood' },
   wall_clock: { static: true, material: 'glass', w: 7, h: 3, hp: 2, chips: '#e8e4d8', glass: true, sound: 'glass' },
   cleaning_rack: { static: true, material: 'wood', w: 20, h: 5, hp: 4, chips: '#8a6a3a', sound: 'wood' },
   // light fixtures. Wall-mounted ones (wall_lamp, tubes) glow on their local +y side: put them on the wall face
@@ -332,4 +331,20 @@ export const PROPS = {
   // strung across the street
   string_lights: { high: true, fixture: true, hung: true, overhead: true, height: 0.09, static: true, material: 'glass', w: 124, h: 4, hp: 2, chips: '#ffd27a', sparks: true, glass: true, sound: 'glass',
     light: [{ r: 80, color: '#ffc98a', intensity: 0.55, x: -40 }, { r: 80, color: '#ffc98a', intensity: 0.55 }, { r: 80, color: '#ffc98a', intensity: 0.55, x: 40 }] },
+  // ---- the flat of the prologue (tools/build_tutorial.py; sprites: "The flat of the prologue" in
+  // tools/generate_assets.py): his few things, light enough to be kicked about, and what is fixed to its walls
+  nightstand: { material: 'wood', w: 14, h: 10, hp: 5, kg: 12, mu: 0.5, chips: '#6a4a30', sound: 'wood' },
+  chair_jacket: { material: 'wood', w: 14, h: 14, hp: 6, kg: 6, mu: 0.42, chips: '#7a4a2a', sound: 'wood' },
+  duffel_bag: { material: 'fabric', w: 20, h: 10, hp: 4, kg: 11, mu: 0.6, chips: '#5a6238', sound: 'wood' },
+  coffee_table: { static: true, vault: true, material: 'wood', w: 32, h: 18, hp: 8, chips: '#5a3a22', sound: 'wood', blocksPath: true },
+  record_player: { static: true, material: 'wood', w: 20, h: 14, hp: 8, chips: '#7a5230', sparks: true, sound: 'wood', blocksPath: true },
+  worktop: { static: true, material: 'wood', w: 38, h: 12, hp: 14, chips: '#cfc6ae', sound: 'wood', blocksPath: true },
+  // seep (data/seeps.js, systems/Seeps.js): the water heater's joint weeps on the floor; the pail under a leak in the
+  // ceiling (a drop rings in it: `tap`, render/PropLife.js) has been full a while and runs over its rim
+  boiler: { static: true, material: 'metal', w: 14, h: 8, hp: 10, chips: '#d8d2bc', sparks: true, sound: 'metal', seep: 'joint' },
+  bucket: { material: 'metal', r: 4.5, hp: 3, kg: 9, mu: 0.45, chips: '#9aa2ac', sound: 'metal', tap: [-0.5, -0.5], seep: 'pail' },
+  plant_dead: { material: 'ceramic', r: 6, hp: 3, kg: 12, mu: 0.5, chips: '#8a6a3a', dirt: true, sound: 'wood' },
+  mirror_cracked: { static: true, material: 'glass', w: 12, h: 3, hp: 1, chips: '#c8d4dc', glass: true, sound: 'glass' },
+  mailboxes: { static: true, material: 'metal', w: 24, h: 4, hp: 8, chips: '#5a6e5c', sound: 'metal' },
+  calendar: { static: true, material: 'fabric', w: 7, h: 3, hp: 1, chips: '#ece8dc', sound: 'wood' },
 };

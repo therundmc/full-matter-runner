@@ -155,14 +155,20 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    (E at its door) that pulls away east: S grinds its flank along the blind wall (sparks for as long
                    as it rubs, by its speed), W into the parked cars; rounds on bodywork spark, a tyre shot out smokes
                    and its rim then throws sparks
-    33 SEEPS       what drips, steams and slops in a lived-in room (systems/Seeps.js, data/seeps.js), in a tiled room
-                   off the street's east end (its door past station 32's label): along the north wall a washer weeping
-                   at its foot (its puddle grows to a step wide and holds), a dryer breathing steam (its load tumbling
-                   behind the door), a keg on tap dripping beer until it is flat, the ice bin, a water cooler, a stove
-                   with a pot simmering; a repair bench with the iron left hot (its thread of smoke), a wall of
-                   televisions and the recorders blinking 12:00, a clock; two mop buckets to shove or kick (they slop
-                   over the way they go, until empty), a pistol to hole the keg, the cooler and the buckets; on the
-                   floor a sample of each of the rooms' own marks (mould, grease, dust, drips, rust, prints, damp)
+    33 SEEPS       what drips, steams and slops in a lived-in room (systems/Seeps.js, data/seeps.js), in a narrow tiled
+                   room at the street's very east end (its door past 34's): down the west wall a washer weeping at its
+                   foot (its puddle grows to a step wide and holds), a dryer breathing steam (its load tumbling behind
+                   the door), a keg on tap dripping beer until it is flat, the ice bin, a water cooler, a stove with a
+                   pot simmering; on the east wall a repair bench with the iron left hot (its thread of smoke), a wall
+                   of televisions and the recorders blinking 12:00; a clock; two mop buckets to shove or kick (they
+                   slop over the way they go, until empty), a pistol to hole the keg, the cooler and the buckets; on
+                   the floor a sample of the rooms' own marks (mould, dust, drips, rust, prints, runoff)
+    34 FLAT        the prologue's flat in one room (tools/build_tutorial.py), north of the street's east end past 32:
+                   what drips (systems/Seeps.js, SEEPS joint / pail: the water heater's joint on the east wall, the pail
+                   that runs over: watch the puddles grow to their size and stop, kick the pail, break either), what
+                   fumes (data/clutter.js `fume`, SMOKE.fumes: the pan on the stove, the kettle on the worktop: knock
+                   them off, it stops), its furniture to break and push, what lies on its floor and the five marks
+                   of an old flat painted in it (render/FloorWear.js: damp, flakes, grease, leak, threadbare)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -537,6 +543,43 @@ lv.prop('trash_can', 64.5, 19.4)
 lv.prop('crate', 70.9, 19.3, 12)
 lv.prop('wall_lamp', 64.5, 18.08, 0)
 
+lv.area('34 flat: the prologue\'s furniture, what drips and what fumes')
+lv.fill(79, 12, 88, 17, '#')               # a room in the brick north of the street's east end, its door on the sidewalk
+lv.fill(80, 13, 87, 16, '+')
+lv.put(83, 17, '+')
+lv.paint('label_flat', 84.6, 18.6)
+lv.prop('ceiling_lamp', 84.0, 15.0)
+lv.prop('worktop', 81.6, 13.28, clutter='flat_worktop')    # the kettle steams on it
+lv.prop('oven', 82.9, 13.32, clutter='flat_stove')          # the pan smokes on it
+lv.prop('calendar', 84.2, 13.07)
+lv.prop('mirror_cracked', 85.3, 13.09)
+lv.prop('mailboxes', 86.7, 13.09)
+lv.prop('boiler', 87.91, 14.6, 90)                          # its joint drips on the tiles
+lv.prop('bucket', 87.3, 16.4)                               # full: it runs over
+lv.paint('mattress', 80.8, 15.1)
+lv.prop('nightstand', 81.9, 14.45)
+lv.prop('duffel_bag', 85.3, 14.2, 15)
+lv.prop('chair_jacket', 86.6, 14.2, 200)
+lv.prop('coffee_table', 84.5, 15.4, clutter='flat_coffee')
+lv.prop('record_player', 86.2, 16.72, 180)
+lv.prop('plant_dead', 80.4, 16.6)
+lv.paint('clothes_pile', 82.3, 16.3, 20)
+lv.paint('pizza_box', 83.2, 14.6, 20)
+lv.paint('bottles_empty', 82.6, 15.3, 40)
+lv.paint('mail_pile', 83.5, 16.6, 30)
+lv.paint('boards_loose', 85.0, 16.4, 15)
+lv.paint('phone_floor', 86.9, 15.3, 200)
+lv.paint('trash_spill', 81.6, 16.5, 100)
+lv.paint('cutlery_spill', 82.0, 14.1, 200)
+lv.grime_at('grease', 82.9, 14.0, r=12)
+lv.grime_at('leak', 87.6, 14.7, r=9)
+lv.grime_at('leak', 87.4, 16.6, r=9)
+lv.grime_at('damp', 80.3, 13.3, r=13)
+lv.grime_at('flakes', 85.6, 13.2)
+lv.grime_at('flakes', 80.2, 15.8)
+lv.grime_at('crack', 84.8, 14.6, len=[14, 40], d=-14, lit=4)
+lv.grime_at('threadbare', 83.6, 15.9, r=10)
+
 lv.area('32 chase fx: cars smoking at each stage of damage, one to set alight and blow up, a car to grind along the wall')
 lv.fill(73, 18, 94, 19, 's')               # the street carried on east once more, a blind wall along its south kerb
 lv.fill(73, 20, 94, 24, '=')
@@ -555,34 +598,34 @@ for x in (80.5, 90.5):
     lv.prop('wall_lamp', x, 18.08, 0)
 
 lv.area('33 seeps: what drips, steams and slops over (systems/Seeps.js), the rooms\' own floor marks')
-lv.fill(81, 11, 91, 17, '#')               # a tiled room cut in the brick north of the street's east end
-lv.fill(82, 12, 90, 16, '+')
-lv.put(86, 17, 'D')
-lv.paint('label_seeps', 86.4, 18.6)
-lv.prop('washer', 82.6, 12.45, 0, seep='washer')   # the drips, west to east along the north wall
-lv.prop('dryer', 83.6, 12.45)
-lv.prop('keg', 84.7, 12.4, seep='keg')
-lv.prop('ice_bin', 85.7, 12.3)
-lv.prop('water_cooler', 86.8, 12.35)
-lv.prop('oven', 88.0, 12.42, seep='pot')
-lv.prop('wall_clock', 89.2, 12.08)
-lv.prop('repair_bench', 90.2, 14.5, 90)            # the iron's thread, on the east wall
-lv.prop('tv_stack', 82.35, 14.6, 270)              # machines left on, on the west one
-lv.prop('vcr_shelf', 83.4, 16.75, 180)
-lv.prop('mop_bucket', 85.4, 14.4)                  # to shove, to kick, to shoot
-lv.prop('mop_bucket', 87.6, 14.7)
-lv.prop('wet_sign', 86.5, 15.3, 15)
-lv.prop('tube_light', 89.0, 16.93, 180)
-lv.prop('tube_light', 84.9, 16.93, 180)
-lv.drop('pistol', 87.2, 16.2, 200)
-# the marks a room grows, one of each along the south half (render/FloorWear.js)
-lv.grime_at('mould', 82.2, 16.75, r=8)
-lv.grime_at('rust', 82.6, 12.45, w=23, h=23)
-lv.grime_at('damp', 82.6, 12.85, r=15, deg=90)
-lv.grime_at('grease', 88.0, 13.05, r=7)
-lv.grime_at('dust', 83.4, 16.5, w=36, r=5)
-lv.grime_to('drips', 84.2, 15.6, 86.0, 16.4)
-lv.grime_to('prints', 86.5, 16.85, 88.6, 15.4)
+lv.fill(89, 5, 95, 17, '#')                # a narrow tiled room in the brick, east of 34's
+lv.fill(90, 6, 94, 16, '+')
+lv.put(92, 17, 'D')
+lv.paint('label_seeps', 92.4, 18.6)
+lv.prop('washer', 90.4, 6.6, 270, seep='washer')   # the drips, north to south down the west wall
+lv.prop('dryer', 90.4, 7.6, 270)
+lv.prop('keg', 90.4, 8.6, seep='keg')
+lv.prop('ice_bin', 90.25, 9.5, 270)
+lv.prop('water_cooler', 90.35, 10.4)
+lv.prop('oven', 90.35, 11.4, 270, seep='pot')
+lv.prop('wall_clock', 92.5, 6.08)
+lv.prop('repair_bench', 94.6, 7.5, 90)             # the iron's thread, on the east wall
+lv.prop('tv_stack', 94.65, 10.0, 90)               # machines left on
+lv.prop('vcr_shelf', 94.78, 12.2, 90)
+lv.prop('mop_bucket', 92.3, 9.0)                   # to shove, to kick, to shoot
+lv.prop('mop_bucket', 92.6, 12.0)
+lv.prop('wet_sign', 92.0, 13.5, 15)
+lv.prop('tube_light', 91.0, 16.93, 180)
+lv.prop('tube_light', 94.0, 16.93, 180)
+lv.prop('tube_light', 91.3, 6.07)
+lv.drop('pistol', 93.4, 15.5, 200)
+# the marks a room grows, one of each (render/FloorWear.js)
+lv.grime_at('mould', 90.2, 16.75, r=8)
+lv.grime_at('rust', 90.4, 6.6, w=23, h=23)
+lv.grime_at('runoff', 90.85, 6.6, r=15, deg=0)
+lv.grime_at('dust', 94.55, 12.2, w=36, r=5, deg=90)
+lv.grime_to('drips', 91.2, 14.2, 93.2, 15.4)
+lv.grime_to('prints', 92.5, 16.85, 91.4, 14.6)
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)

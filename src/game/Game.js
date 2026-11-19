@@ -13,7 +13,7 @@ import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
 import { loadSettings, saveSettings } from './systems/Settings.js';
-import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, levelTag, loadCrossed, saveCrossed } from './systems/Progress.js';
+import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, levelNumber, loadCrossed, saveCrossed } from './systems/Progress.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
@@ -23,8 +23,9 @@ import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import { AIM, nextStyle } from './data/aim.js';
 import { assistAim } from './systems/AimCue.js';
 import Rumble from './systems/Rumble.js';
-import Menu from './ui/Menu.js';
+import Menu, { selectable, levelNotes } from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
+import { Pick, pauseCard } from './ui/Pause.js';
 import { cineView, cineBeats, drawCinematic } from './ui/Cinematic.js';
 import { drawTitle, posterUp } from './ui/title/Title.js';
 import { posterBeats } from './ui/title/Beats.js';
@@ -75,7 +76,7 @@ const DOES = {
   reload: (inp) => inp.down('KeyR'),
 };
 // what the intro banner calls a level
-const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelTag(id)}` : 'TEST LEVEL');
+const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelNumber(id)}` : 'TEST LEVEL');
 // the steps the middle of the backdrop's gradient drifts on (share of its diagonal: Game.backdrop); its flat tone
 // under a map that fills the picture
 const BACKDROP_STEP = 0.005, BACKDROP_FLAT = '#12061f';
@@ -115,9 +116,10 @@ export default class Game {
     this.dev = devMode();              // the developer's keys and switches (data/build.js: off in a release build)
     this.pausedFrom = null;            // { state, t } the pause was opened from (pause / resume)
     this.settings = loadSettings();
-    this.progress = loadProgress();
+    this.progress = loadProgress(undefined, has);
     this.menu = new Menu('main', () => this.menuContext());
     this.menuRects = [];               // where the menu's items were drawn last frame (MenuArt), for the mouse
+    this.pick = new Pick();            // the pause's chosen line: its tab's slide, a confirm's press (ui/Pause.js)
     this.titleRects = [];              // where the title drew the menu's items (ui/title/Title.js)
     this.crossed = loadCrossed();      // how many dead targets the hit list has shown crossed out (the X is drawn once)
     this.after = null;                 // the level that follows the hit list between two levels (null: the menu)
@@ -279,7 +281,7 @@ export default class Game {
 
   // a level finished: marked done, the next one opened (the tutorial calls it too)
   completeLevel(id) {
-    this.progress = complete(this.progress, id);
+    this.progress = complete(this.progress, id, has);
     saveProgress(this.progress);
   }
 
@@ -471,10 +473,10 @@ export default class Game {
     // a run helped by the sandbox is shown but never kept as a record
     this.completeLevel(this.levelId);
     const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.runTime }) : { prev: this.best, record: false };
-    const next = nextLevel(this.levelId);
+    const next = nextLevel(this.levelId, has);
     this.results = {
       ...tally, best: kept.prev, record: kept.record, ranked: this.ranked,
-      level: { label: levelLabel(this.levelId), name: w.level.name || '' }, nextLevel: next && has(next) ? next : null,
+      level: { label: levelLabel(this.levelId), name: w.level.name || '' }, nextLevel: next,
     };
     this.resultsT = 0;
     this.replay.start();
@@ -495,6 +497,7 @@ export default class Game {
     if (this.state === 'play') this.world.player.interrupt?.();
     const from = { state: this.state, t: this.stateT };
     this.menu.reset('pause');
+    this.pick.reset();
     this.setState('pause');
     this.pausedFrom = from;
   }
@@ -594,10 +597,15 @@ export default class Game {
     }
     if (this.state === 'pause') {
       // (R / Y restart from the pause's own page only: not from its options)
-      if (this.menu.depth === 0 && inp.hit('KeyR')) this.newGame();
+      // (a line confirmed is pressed down for a beat, then does what it says: nothing else is heard meanwhile)
+      const root = () => this.menu.stack[0].sel;
+      if (this.pick.busy) {
+        if (this.pick.update(dt, root())) { const a = this.menu.activate(); if (a) this.applyMenu(a); }
+      } else if (this.menu.depth === 0 && inp.hit('KeyR')) this.newGame();
       else {
         if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
         this.updateMenu(inp);
+        if (this.state === 'pause') this.pick.update(dt, root());
       }
       inp.consume();
       return;
@@ -654,7 +662,7 @@ export default class Game {
       if (skip || leapView(lt).over) {
         const done = this.levelId;
         this.completeLevel(done);
-        this.startLevel(nextLevel(done) || this.firstLevel());
+        this.startLevel(nextLevel(done, has) || this.firstLevel());
       }
       return;
     }
@@ -782,6 +790,7 @@ export default class Game {
   titleView() {
     return {
       menu: this.menu, progress: this.progress, device: this.input.device, mouse: this.input.mouse, between: this.state === 'hitlist',
+      notes: this.state === 'hitlist' ? levelNotes(this.menuContext()) : null,
       crossed: this.crossed, sound: (name, vol, opts) => Audio.play(name, { vol, ...opts }), onCrossed: (n) => this.markCrossed(n),
     };
   }
@@ -833,6 +842,13 @@ export default class Game {
     const key = (...codes) => codes.some((c) => inp.hit(c));
     // a gamepad's RB / RT play the left button: they do not click in a menu (A does)
     const click = inp.device !== 'pad' && inp.mouseHit(0);
+    // on the pause's own page a confirm is a beat first (ui/Pause.js Pick): the line pressed, its action after
+    const confirm = () => {
+      if (this.state !== 'pause' || nav.depth > 0 || !selectable(nav.item)) return nav.activate();
+      this.pick.press();
+      Audio.play('ui', { pitch: 0.7 });
+      return null;
+    };
     if (this.grab === null && click && at?.track) {
       nav.point(on(at), at.i);
       if (nav.top.id === on(at) && nav.page.items[at.i]?.slider) this.grab = at.i;
@@ -846,13 +862,13 @@ export default class Game {
       if (this.pointed(at, moved, dx)) nav.point(on(at), at.i);
       if (click) {
         if (at) nav.point(on(at), at.i);
-        acts.push(at ? (nav.top.id === on(at) ? nav.click(at.i) : null) : this.state === 'title' ? nav.primary() : null);
+        acts.push(at ? (nav.top.id === on(at) ? (this.state === 'pause' && nav.depth === 0 ? (nav.hover(at.i), confirm()) : nav.click(at.i)) : null) : this.state === 'title' ? nav.primary() : null);
       } else if (inp.device !== 'pad' && inp.mouseHit(2)) acts.push(nav.back());
       if (key('ArrowUp', 'KeyW', 'NavUp')) acts.push(nav.up());
       if (key('ArrowDown', 'KeyS', 'NavDown')) acts.push(nav.down());
       if (key('ArrowLeft', 'KeyA', 'NavLeft')) acts.push(nav.left());
       if (key('ArrowRight', 'KeyD', 'NavRight')) acts.push(nav.right());
-      if (key('Enter', 'Space', 'NumpadEnter')) { acts.push(nav.activate()); if (inp.hit('PadA')) this.rumble.tick(); }
+      if (key('Enter', 'Space', 'NumpadEnter')) { acts.push(confirm()); if (inp.hit('PadA')) this.rumble.tick(); }
       if (key('Escape', 'Backspace', 'PadB')) acts.push(nav.back());
     }
     const done = acts.filter(Boolean), turned = `${nav.top.id}:${nav.sel}` !== before;
@@ -1079,7 +1095,8 @@ export default class Game {
       ctx.fillRect(0, 0, W, H);
       ctx.globalAlpha = 1;
     }
-    if (this.state === 'play' || this.state === 'dead' || this.state === 'pause') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
+    // (not under the pause: its card says the run so far)
+    if (this.state === 'play' || this.state === 'dead') this.safeDraw(ctx, () => drawHUD(ctx, this, t));
     if (this.sandbox.on && this.state === 'play') this.safeDraw(ctx, () => drawSandbox(ctx, H, this.sandbox, t));
     if (this.world.debugPhysics) {
       ctx.font = `${Math.round(12 * H / 720)}px monospace`;
@@ -1097,7 +1114,7 @@ export default class Game {
         ctx.globalAlpha = 1;
       }
       if (this.state === 'dead') drawDead(ctx, W, H, this.stateT, this.deaths * 7, this.death, this.input.device);
-      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu);
+      if (this.state === 'pause') this.menuRects = drawMenu(ctx, W, H, t, this.menu, { pick: this.pick, card: pauseCard(this.levelId, this.world.level, this.world), bare: ctx === this.ctx });
       if (this.state === 'results') drawResults(ctx, W, H, this.stateT, this.results, this.replaying, this.input.device);
       if (this.state === 'outro') drawOutro(ctx, W, H, this.world.outro);
       if (this.state === 'continued') drawContinued(ctx, W, H, finishView(this.stateT), this.world.level.chase.next, t);

@@ -165,7 +165,7 @@ export default class World {
     this.steam = new Steam(this, level.street?.manholes, undefined, this.weather.k); // manholes, vents, pierced steam pipes
     this.smoke = new Smoke(this, level);                   // the air and what it carries: smoke, soot, powder, steam
     this.papers = new Papers(this, level.street?.papers, undefined, this.weather.k); // loose sheets the wind and the cars blow about
-    this.seeps = new Seeps(this);                          // a washer weeping, a pot simmering, a mop bucket slopping over
+    this.seeps = new Seeps(this);                          // a washer or a joint weeping, a pail running over, a pot simmering
     this.litter = new Litter(this, level.litter);          // bills, feathers, a flute on a floor: kicked, blown, lifted by rounds
     this.fires = new Fires(this, level.fires);             // the flames of what burns
     this.fireSpread = new FireSpread(this, level);         // where it burns: along the petrol, over the floors, up the furniture

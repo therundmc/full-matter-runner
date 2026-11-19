@@ -299,7 +299,7 @@ TARGETS = [
 ]
 CARD = (172, 236)
 PHOTO = (166, 300, -6.0)        # the photo of his flat: its middle, its lean
-MATCHBOOK = (548, 432, 13.0)
+MATCHBOOK = (436, 514, 13.0)   # under CUEBALL's one note (HitList.js noteAt): clear of every column's notes
 BOARD_LOGO = (40, 30)           # the small logo's sheet on the board
 LOGO_K = 0.5
 BAR = [(560, -10), (860, -10), (520, H + 10), (220, H + 10)]      # the lamp's light across the board

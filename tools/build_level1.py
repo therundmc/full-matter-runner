@@ -494,7 +494,7 @@ lv.litter_at('sock', 30.9, 34.0, 20)                     # (all of it off the cu
 # what the years did to it: rust under the machine that leaks and the lime of its water gone across the tiles, mould in
 # the corners nobody mops, cracked and chipped tiles, the wet soles in from the street, dust under the bench, lint
 lv.grime_at('rust', 27.4, 35.6, w=23, h=23)
-lv.grime_at('damp', 27.4, 35.25, r=17, deg=270)
+lv.grime_at('runoff', 27.4, 35.25, r=17, deg=270)
 lv.grime_at('mould', 27.12, 35.2, r=7)
 lv.grime_at('mould', 31.85, 33.15, r=6)
 lv.grime_at('mould', 31.2, 35.9, r=5)
@@ -803,14 +803,14 @@ lv.grime('stain', 3, 17, 8, 19, 2, col='#3a3020')
 
 # ---- what years of nights left on the floors of the house and of its neighbours (the user, 2026-11-19: "cracks,
 # grime, as detailed as the street"). Each mark where it has a reason to be, at its point (render/FloorWear.js: the
-# kinds mould, grease, dust, drips, rust, prints, damp are the rooms' own), none on a cut line.
+# kinds mould, dust, drips, rust, prints, runoff are the rooms' own), none on a cut line.
 lv.area('floors')
 # the liquor store: dust under the shelves' fronts, the fridges' condensation and their rust, lino cracked and torn on
 # the way to the till, a bottle that leaked all the way to the door, the street's dirt walked in
 for (x, y) in ((5.0, 17.42), (6.3, 17.42), (5.0, 18.72)):
     lv.grime_at('dust', x, y, w=36, r=5)
 lv.grime_at('rust', 3.4, 18.5, w=23, h=23)
-lv.grime_at('damp', 3.78, 18.9, r=14, deg=0)
+lv.grime_at('runoff', 3.78, 18.9, r=14, deg=0)
 for (x, y) in ((6.4, 18.9), (4.6, 17.9), (7.9, 19.3)):
     lv.grime_at('crack', x, y, len=[14, 34], d=-26, lit=7, wide=0.3)
 lv.grime_at('tear', 6.9, 18.95)
@@ -856,9 +856,9 @@ lv.grime_at('stain', 23.1, 16.0, col='#1a1410')         # under the cigarette ma
 # the tiles, cracked tiles, the wet walked to the door
 for (x, y, r) in ((21.15, 6.15, 7), (23.85, 10.85, 6), (21.3, 8.4, 5), (23.8, 6.15, 5), (21.15, 10.85, 5)):
     lv.grime_at('mould', x, y, r=r)
-lv.grime_at('damp', 23.4, 9.0, r=14, deg=180)
+lv.grime_at('runoff', 23.4, 9.0, r=14, deg=180)
 for y in (7.95, 8.85):
-    lv.grime_at('damp', 21.32, y, r=9, deg=0)
+    lv.grime_at('runoff', 21.32, y, r=9, deg=0)
     lv.grime_at('stain', 21.65, y + 0.05, col='#8a8030', d=-4)
 for (x, y) in ((22.3, 7.2), (22.9, 10.2), (21.7, 9.6)):
     lv.grime_at('crack', x, y, len=[18, 40], d=-32, lit=9, wide=0.3)
@@ -868,8 +868,8 @@ lv.grime_to('prints', 23.2, 9.35, 22.55, 10.85, col='#3a4a50')
 lv.grime_at('tide', 22.45, 9.3)
 # the storeroom: fat by the stove, the sink's leak, the fridge's rust, the bin bags dripped from the fridge to the
 # alley door, the alley's dirt walked in, mould in the corner over the sink, dust under the shelving, powder by the table
-lv.grime_at('grease', 17.1, 6.98, r=7)
-lv.grime_at('damp', 18.35, 6.75, r=11, deg=90)
+lv.grime_at('grease', 17.1, 7.0, r=11)
+lv.grime_at('runoff', 18.35, 6.75, r=11, deg=90)
 lv.grime_at('rust', 18.62, 7.5, w=23, h=23)
 lv.grime_to('drips', 18.1, 7.95, 15.2, 8.5)
 lv.grime_to('prints', 15.1, 8.6, 16.3, 10.3)
@@ -889,7 +889,7 @@ lv.grime_at('dust', 25.2, 10.36, w=18, r=4)
 for (x, y) in ((27.0, 9.6), (28.3, 9.3)):
     lv.grime_at('burns', x, y)
 # the gaming room and the VIP room: the cooler's drips, whisky under the shelf, burns by the chairs; champagne and burns
-lv.grime_at('damp', 30.7, 12.6, r=9, deg=90)
+lv.grime_at('runoff', 30.7, 12.6, r=9, deg=90)
 lv.grime_at('stain', 26.0, 12.6, col='#2a1808')
 lv.grime_at('dust', 25.9, 12.38, w=36, r=4)
 for (x, y) in ((27.9, 15.5), (26.1, 15.7), (28.6, 13.6)):
@@ -903,7 +903,7 @@ lv.grime_at('stain', 26.9, 18.7, col='#a89048', d=-4)
 lv.paint('drain', 32.5, 12.2)
 lv.paint('cardboard_flat', 32.5, 7.6, 90)
 for y in (14.5, 17.5):
-    lv.grime_at('damp', 32.05, y, r=12, deg=0)
+    lv.grime_at('runoff', 32.05, y, r=12, deg=0)
 lv.grime_at('tide', 32.5, 10.0)
 lv.grime_at('butts', 32.4, 18.9)
 for (x, y) in ((27.3, 4.35), (29.6, 3.45), (26.6, 4.65), (12.4, 8.9), (12.75, 8.35)):

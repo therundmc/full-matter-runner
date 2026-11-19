@@ -157,7 +157,9 @@ src/
                           (DOM-free, unit-tested; advanced by Game on the real clock)
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
-      Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
+      Progress.js         the campaign (data/campaign.js: the player's numbered levels, each one or several stages, the
+                          engine's levels, played in a row), what is unlocked and done, saved in localStorage (DOM-free,
+                          storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
@@ -175,7 +177,7 @@ src/
                           car ('impact'), a blast; lid off, rubbish out of the mouth (bits, a bag, Papers sheets), a
                           clatter heard; lying, only a blast or a car at speed wrecks it (DOM-free, unit-tested)
       Seeps.js            the small leaks and vapours of a lived-in room (data/seeps.js SEEPS; a prop's def or level
-                          option `seep`): a washer, a keg on tap, an ice bin, a cooler dripping into Liquids (held
+                          option `seep`): a washer, a water heater's joint, a pail, a keg on tap dripping into Liquids (held
                           back once the puddle is deep enough, done once empty), a pot and a dryer breathing steam, a
                           soldering iron's thread, a mop bucket slopping over when shoved; all stop with their prop
       Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes

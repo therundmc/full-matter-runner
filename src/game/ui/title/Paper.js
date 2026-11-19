@@ -1,4 +1,4 @@
-// The front end's cut paper (the title's poster, the hit list, the menu's panel): one sheet at the comic stills' px
+// The front end's cut paper (the title's poster, the hit list, the options, the pause): one sheet at the comic stills' px
 // (3 a title px, tools/comic/title_art.py), on which stills are laid and what moves is cut over them, flat and
 // aliased, before the whole is put on the screen with nearest neighbour. Lettering is written after, on the screen
 // itself, so it stays sharp at any window size. The inks are the comic's (tools/comic/kit.py, STYLE.md).
@@ -105,24 +105,4 @@ export function letter(ctx, str, x, y, size, col, deg = 0, align = 'center') {
   ctx.fillStyle = col;
   ctx.fillText(str, 0, 0);
   ctx.restore();
-}
-
-// The menu's panel (ui/MenuArt.js: every page but the title's first and the hit list, and the pause): a black sheet
-// cut by hand on a pink one that shows along two of its edges, a violet bar of light across it, and the page's name
-// on a bone tab pinned over its top edge. x0..x1, y0..y1: the panel, in the sheet's px; tab: [its middle x, its
-// width], or null. Laid on a clear sheet and shown over what is on screen.
-export function panel(ctx, W, H, x0, y0, x1, y1, tab, seed = 0) {
-  const g = open(null), q = slab(x0, y0, x1, y1, seed + 3, 5);
-  poly(g, INK, moved(q, 10, 12));
-  poly(g, PINK_D, moved(slab(x0, y0, x1, y1, seed + 11, 6), -9, -8));
-  poly(g, INK, q);
-  poly(g, NIGHT, [[x0 + (x1 - x0) * 0.56, y0 + 8], [x0 + (x1 - x0) * 0.8, y0 + 8], [x0 + (x1 - x0) * 0.58, y1 - 8], [x0 + (x1 - x0) * 0.34, y1 - 8]]);
-  if (tab) {
-    const [cx, w] = tab, t = slab(-w / 2, -24, w / 2, 24, seed + 5, 3);
-    poly(g, INK, turned(moved(t, 6, 7), cx, y0 + 4, -1.5));
-    poly(g, BONE, turned(t, cx, y0 + 4, -1.5));
-    g.fillStyle = INK; g.fillRect(Math.round(cx) - 2, Math.round(y0) - 15, 7, 7);
-    g.fillStyle = PINK; g.fillRect(Math.round(cx) - 4, Math.round(y0) - 17, 7, 7);        // its pin
-  }
-  show(ctx, W, H);
 }

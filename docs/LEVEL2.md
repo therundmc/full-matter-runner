@@ -513,3 +513,6 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the effects and without). QA 3 min seed 1: PASS, 10 sessions,
   16 slow steps (main's same seed: 16), mean step 2.86 ms (2.75 on a second run; main 2.63), worst 121 ms (main
   143); level 1 seed 1 PASS, no warning, mean 1.61 ms (main 1.54); lab PASS.
+- 2026-11-19: the player sees ONE level 02 (the hit list, the intro banner, the results: "LEVEL 2"), its stages 2A
+  then 2B played in a row (src/game/data/campaign.js); 2A and 2B stay separate levels inside the engine, a death in
+  2B still restarts 2B; until 2B is made, 2A done is 02 done (04115fd).

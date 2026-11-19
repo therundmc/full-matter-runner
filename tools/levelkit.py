@@ -66,7 +66,10 @@ SIZES = dict(
     plastic_chair=(13, 13), cig_machine=(22, 15), ice_bin=(18, 13), coat_rack=(8, 8), bottle_crate=(14, 10), wet_sign=(9, 7),
     mop_bucket=(12, 12), water_cooler=(13, 13), filing_cabinet=(16, 20), safe=(22, 22), pallet=(38, 30), steel_shelf=(40, 12),
     hand_truck=(12, 22), security_mirror=None, cig_rack=None, price_board=None, tape_rack=None, notice_board=None,
-    coin_changer=None, hand_dryer=None, graffiti=None, calendar=None, wall_clock=None, cleaning_rack=None,
+    coin_changer=None, hand_dryer=None, graffiti=None, wall_clock=None, cleaning_rack=None,
+    # the flat of the prologue
+    nightstand=(14, 10), chair_jacket=(14, 14), duffel_bag=(20, 10), coffee_table=(32, 18), record_player=(20, 14),
+    worktop=(38, 16), bucket=(9, 9), plant_dead=(12, 12), boiler=None, mirror_cracked=None, mailboxes=None, calendar=None,
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box
@@ -83,7 +86,8 @@ ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28
                poster_pinup=12, poster_revue=14, mirror_strip=42, neon_sign_lips=22, conduit=46, flyers=24,
                neon_sign_diner=44, neon_sign_cafe=32,
                security_mirror=10, cig_rack=26, price_board=22, tape_rack=28, notice_board=20, coin_changer=10, hand_dryer=8,
-               graffiti=26, calendar=8, wall_clock=7, cleaning_rack=20)
+               graffiti=26, wall_clock=7, cleaning_rack=20,
+               boiler=14, mirror_cracked=12, mailboxes=24, calendar=7)
 
 # sprites that are floor paint (Level.paint)
 FLOOR = ('doormat', 'stairs', 'floor_hole', 'runner', 'newspaper', 'shoes', 'road_edge', 'parking_bay', 'entry_carpet',
@@ -99,9 +103,12 @@ FLOOR += ('zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_
 FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_marks')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
+# the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
+FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile', 'boards_loose', 'phone_floor', 'trash_spill',
+          'cutlery_spill')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -137,6 +144,7 @@ class Level:
         self.bodies = []      # somebody already dead when the level starts: [kind, col, row, deg, pool px]
         self.fires = []       # something burning from the start: [col, row]
         self.petrol = []      # petrol poured in trails, for a match: [width px, [col, row], ...] (systems/FireSpread.js)
+        self.spills = []      # what was spilled before he came: [kind, col, row, area px2] (systems/Liquids.js seed)
         self.floor = []       # what is painted on the floor, without a body: [sprite, col, row, deg]
         self.tutorial = None  # a level that teaches: { stages, fall } (src/game/systems/Tutorial.js)
         self.alarms = []      # closed shops: { rect: floor rectangle, box: [col, row] of the alarm box }
@@ -428,6 +436,13 @@ class Level:
         x1, y1 = self.at(col1, row1)
         self.grimes.append([kind, x, y, x, y, 1, {**o, 'to': [round(x1 * 32, 2), round(y1 * 32, 2)], 'at': 'point'}])
 
+    # ---- liquid already on the floor when the level starts (src/game/data/liquids.js kinds): `area` px2 of it poured at
+    # (col, row), where it spreads, wets soles and dries (a bottle knocked over, the puddle under a leak). Never
+    # across a petrol trail: the fire runs along what lies thickest
+    def spill(self, kind, col, row, area):
+        assert kind in ('water', 'beer', 'booze', 'blood', 'petrol'), kind
+        self.spills.append([kind, *self.at(col, row), area])
+
     def wear_path(self, col0, row0, col1, row1, w=12):
         self.worn.append([*self.at(col0, row0), *self.at(col1, row1), w])
 
@@ -690,6 +705,9 @@ class Level:
                 L.append(f'  grime: {js(self.grimes)},')
             if self.worn:
                 L.append(f'  worn: {json.dumps(self.worn)},')
+        if self.spills:
+            L.append('  // liquid on the floor from the start (systems/Liquids.js): [kind, col, row, area px2]')
+            L.append(f'  spills: {json.dumps(self.spills)},')
         if self.haze:
             L.append('  // cigarette haze hanging under the lamps (systems/Smoke.js): [col, row, radius tiles, density]')
             L.append(f'  haze: {json.dumps(self.haze)},')

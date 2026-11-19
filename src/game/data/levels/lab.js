@@ -28,19 +28,19 @@ export default {
     "X#_________#.....................#_____#::::::#;;;;#++++#......#______#___#XXXXXXXXXXXXXXXXXXXXX",
     "X#_________#.....................#_____#::::::#;;;;#++++#......___________#XXXXXXXXXXXXXXXXXXXXX",
     "X#_________L.....................#_____#::::::#;;;;#++++#......#__________#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#.....................#_____#::::::#;;;;#++++#......#__________#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_________#.....................#_____#::::::#;;;;#++++#......X###########XXXXXXXXXXXXXXXXXXXXX",
-    "X#_________##########___###########D#G###D##G###;#####+####..##X;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_____________________________________________________________X;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_____________________________________________________________D;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_____________________________________________________________X;;;;;;;;;;#XXXXXXXXXXXXXXXXXXXXX",
-    "X#_________##...###__##++##____#####D#####D#########D#DD#L#DD##X;;;;;;;;;;#XXXXXX###########XXXX",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#X###########XXXXXX#+++++++++#XXXX",
-    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXX____XXXXXXXXXXX#+++++++++#XXXX",
-    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXX____XXXXXXXXXXX#+++++++++#XXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXXXX#+++++++++#XXXX",
-    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXXXX#+++++++++#XXXX",
-    "X##########################____##############D########D####L###XXX____XXXXXXXXXXX#####D#####XXXX",
+    "X#_________#.....................#_____#::::::#;;;;#++++#......#__________#XXXXXXXXXXXXXX#######",
+    "X#_________#.....................#_____#::::::#;;;;#++++#......X###########XXXXXXXXXXXXXX#+++++#",
+    "X#_________##########___###########D#G###D##G###;#####+####..##X;;;;;;;;;;#XXXXXXXXXXXXXX#+++++#",
+    "X#_____________________________________________________________X;;;;;;;;;;#XXXXXXXXXXXXXX#+++++#",
+    "X#_____________________________________________________________D;;;;;;;;;;#XXXXXXXXXXXXXX#+++++#",
+    "X#_____________________________________________________________X;;;;;;;;;;#XXXXXXXXXXXXXX#+++++#",
+    "X#_________##...###__##++##____#####D#####D#########D#DD#L#DD##X;;;;;;;;;;#XXXXXXXXXXXXXX#+++++#",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#X###########XXXX###########+++++#",
+    "X#_________#.....#____#++#______#;;;;;;;#++++++++++#..........#XXX____XXXXXXXXX#++++++++##+++++#",
+    "X#_________############++#______##G#G#D##++++++++++#D#D#D#D#D##XXX____XXXXXXXXX#++++++++##+++++#",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXX#++++++++##+++++#",
+    "X#_________#+++++++++++++#______#.......#++++++++++#..........#XXX____XXXXXXXXX#++++++++##+++++#",
+    "X##########################____##############D########D####L###XXX____XXXXXXXXX####+########D###",
     "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssX",
     "XssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssX",
     "X==============================================================================================X",
@@ -161,15 +161,23 @@ export default {
     // 21 lorry: a box lorry that backs out across the street when a car comes
     ['lorry', 68, 17.375, -90, { backs: 3 }], ['car2', 61, 23.6, 0, { drive: true }], ['trash_can', 64.5, 19.4, 0],
     ['crate', 70.9, 19.3, 12], ['wall_lamp', 64.5, 18.08, 0],
+    // 34 flat: the prologue's furniture, what drips and what fumes
+    ['ceiling_lamp', 84, 15, 0], ['worktop', 81.6, 13.28, 0, { clutter: 'flat_worktop' }],
+    ['oven', 82.9, 13.32, 0, { clutter: 'flat_stove' }], ['calendar', 84.2, 13.07, 0],
+    ['mirror_cracked', 85.3, 13.09, 0], ['mailboxes', 86.7, 13.09, 0], ['boiler', 87.91, 14.6, 90],
+    ['bucket', 87.3, 16.4, 0], ['nightstand', 81.9, 14.45, 0], ['duffel_bag', 85.3, 14.2, 15],
+    ['chair_jacket', 86.6, 14.2, 200], ['coffee_table', 84.5, 15.4, 0, { clutter: 'flat_coffee' }],
+    ['record_player', 86.2, 16.72, 180], ['plant_dead', 80.4, 16.6, 0],
     // 32 chase fx: cars smoking at each stage of damage, one to set alight and blow up, a car to grind along the wall
     ['car', 78, 21, 0, { worn: 0.25 }], ['car2', 83, 21, 0, { worn: 0.45 }], ['car', 88.2, 21, 0, { worn: 0.6 }],
     ['car2', 75.4, 23.6, 0, { drive: true }], ['wall_lamp', 80.5, 18.08, 0], ['wall_lamp', 90.5, 18.08, 0],
     // 33 seeps: what drips, steams and slops over (systems/Seeps.js), the rooms' own floor marks
-    ['washer', 82.6, 12.45, 0, { seep: 'washer' }], ['dryer', 83.6, 12.45, 0], ['keg', 84.7, 12.4, 0, { seep: 'keg' }],
-    ['ice_bin', 85.7, 12.3, 0], ['water_cooler', 86.8, 12.35, 0], ['oven', 88, 12.42, 0, { seep: 'pot' }],
-    ['wall_clock', 89.2, 12.08, 0], ['repair_bench', 90.2, 14.5, 90], ['tv_stack', 82.35, 14.6, 270],
-    ['vcr_shelf', 83.4, 16.75, 180], ['mop_bucket', 85.4, 14.4, 0], ['mop_bucket', 87.6, 14.7, 0],
-    ['wet_sign', 86.5, 15.3, 15], ['tube_light', 89, 16.93, 180], ['tube_light', 84.9, 16.93, 180],
+    ['washer', 90.4, 6.6, 270, { seep: 'washer' }], ['dryer', 90.4, 7.6, 270], ['keg', 90.4, 8.6, 0, { seep: 'keg' }],
+    ['ice_bin', 90.25, 9.5, 270], ['water_cooler', 90.35, 10.4, 0], ['oven', 90.35, 11.4, 270, { seep: 'pot' }],
+    ['wall_clock', 92.5, 6.08, 0], ['repair_bench', 94.6, 7.5, 90], ['tv_stack', 94.65, 10, 90],
+    ['vcr_shelf', 94.78, 12.2, 90], ['mop_bucket', 92.3, 9, 0], ['mop_bucket', 92.6, 12, 0],
+    ['wet_sign', 92, 13.5, 15], ['tube_light', 91, 16.93, 180], ['tube_light', 94, 16.93, 180],
+    ['tube_light', 91.3, 6.07, 0],
     // 20 getaway: the convertible and the way out of level 1, played in the street
     ['convertible', 56.6, 21, 180, { lights: false }],
     // 24 arcade: a customer at the cabinet
@@ -187,7 +195,7 @@ export default {
     ['ceiling_lamp', 69.5, 28, 0], ['ceiling_lamp', 72.8, 28, 0],
   ],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_signals', 45.6, 18.45, 0], ['label_drive', 8.2, 18.6, 0], ['label_chasecam', 16.4, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_chasefx', 76.4, 18.6, 0], ['label_seeps', 86.4, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0], ['label_throw', 37.5, 25.5, 0], ['label_killcam', 57.5, 25.5, 0], ['label_shield', 70.5, 25.5, 0]],
+  floor: [['label_range', 11.5, 9.0, 0], ['label_executions', 22.0, 8.35, 0], ['label_soot', 36.0, 8.35, 0], ['label_fire', 36.0, 9.25, 0], ['rug', 36.2, 5.3, 0], ['label_coat', 16.0, 9.0, 0], ['label_pool', 41.4, 8.35, 0], ['label_bars', 44.6, 8.35, 0], ['label_curtain', 48.4, 8.35, 0], ['label_takedowns', 56.5, 8.35, 0], ['label_jukebox', 14.5, 10.65, 0], ['label_trapdoor', 20.0, 10.65, 0], ['label_powder', 24.3, 10.65, 0], ['label_steam', 28.5, 10.65, 0], ['label_power', 36.0, 10.65, 0], ['label_liquids', 42.6, 10.65, 0], ['label_doors', 55.0, 10.65, 0], ['label_cueball', 60.8, 8.35, 0], ['label_aim', 61.6, 3.6, 0], ['label_vehicles', 28.5, 18.6, 0], ['trapdoor', 20.0, 12.9, 0], ['trapdoor', 2.5, 18.6, 0], ['label_grab', 34.6, 18.6, 0], ['label_signals', 45.6, 18.45, 0], ['label_drive', 8.2, 18.6, 0], ['label_chasecam', 16.4, 18.6, 0], ['label_lorry', 64.6, 18.6, 0], ['label_flat', 84.6, 18.6, 0], ['mattress', 80.8, 15.1, 0], ['clothes_pile', 82.3, 16.3, 20], ['pizza_box', 83.2, 14.6, 20], ['bottles_empty', 82.6, 15.3, 40], ['mail_pile', 83.5, 16.6, 30], ['boards_loose', 85.0, 16.4, 15], ['phone_floor', 86.9, 15.3, 200], ['trash_spill', 81.6, 16.5, 100], ['cutlery_spill', 82.0, 14.1, 200], ['label_chasefx', 76.4, 18.6, 0], ['label_seeps', 92.4, 18.6, 0], ['label_getaway', 57.0, 18.6, 0], ['label_arcade', 5.0, 25.5, 0], ['label_laundry', 12.5, 25.5, 0], ['label_arms', 24.0, 25.5, 0], ['label_throw', 37.5, 25.5, 0], ['label_killcam', 57.5, 25.5, 0], ['label_shield', 70.5, 25.5, 0]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [35.9, 3.3]],
@@ -195,7 +203,7 @@ export default {
     [10, [36.0, 5.2], [34.6, 6.3]],
   ],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
-  drops: [["pistol", 8.55, 6.5, 180, null], ["uzi", 8.55, 7.5, 180, null], ["uzi_silenced", 8.55, 8.5, 180, null], ["rifle", 8.55, 9.5, 180, null], ["shotgun", 8.55, 10.5, 180, null], ["sniper", 8.55, 11.5, 180, null], ["bazooka", 8.55, 12.5, 180, null], ["knife", 13.5, 4.35, 0, null], ["bat", 15.5, 4.35, 0, null], ["tire_iron", 17.5, 4.35, 0, null], ["cue", 19.5, 4.35, 0, null], ["pistol", 23.5, 4.35, 0, null], ["uzi", 25.5, 4.35, 0, null], ["rifle", 27.5, 4.35, 0, null], ["shotgun", 29.5, 4.35, 0, null], ["sniper", 31.5, 4.35, 0, null], ["pistol", 55.5, 9.7, 0, null], ["knife", 56.3, 9.7, 0, null], ["tire_iron", 57.1, 9.7, 0, null], ["uzi_silenced", 23.6, 12.4, 0, null], ["pistol", 61.3, 9.9, 0, null], ["bat", 61.9, 9.9, 0, null], ["knife", 62.5, 9.9, 0, null], ["pistol", 64.6, 1.5, 0, null], ["shotgun", 65.4, 1.5, 0, null], ["uzi", 64.6, 2.2, 0, null], ["bat", 65.4, 2.2, 0, null], ["pistol", 87.2, 16.2, 200, null], ["knife", 34.4, 27.5, 0, null], ["knife", 34.9, 27.5, 0, null], ["knife", 35.4, 27.5, 0, null], ["bat", 34.6, 29.4, 0, null], ["pistol", 35.6, 29.4, 0, null], ["tire_iron", 36.7, 29.4, 0, null], ["cue", 37.2, 27.4, 0, null], ["bat", 56.0, 27.5, 90, null], ["knife", 56.7, 27.5, 90, null], ["shotgun", 58.6, 27.5, 90, null], ["tire_iron", 59.3, 27.5, 90, null], ["knife", 70.4, 27.4, 0, null], ["bat", 68.4, 27.4, 90, null]],
+  drops: [["pistol", 8.55, 6.5, 180, null], ["uzi", 8.55, 7.5, 180, null], ["uzi_silenced", 8.55, 8.5, 180, null], ["rifle", 8.55, 9.5, 180, null], ["shotgun", 8.55, 10.5, 180, null], ["sniper", 8.55, 11.5, 180, null], ["bazooka", 8.55, 12.5, 180, null], ["knife", 13.5, 4.35, 0, null], ["bat", 15.5, 4.35, 0, null], ["tire_iron", 17.5, 4.35, 0, null], ["cue", 19.5, 4.35, 0, null], ["pistol", 23.5, 4.35, 0, null], ["uzi", 25.5, 4.35, 0, null], ["rifle", 27.5, 4.35, 0, null], ["shotgun", 29.5, 4.35, 0, null], ["sniper", 31.5, 4.35, 0, null], ["pistol", 55.5, 9.7, 0, null], ["knife", 56.3, 9.7, 0, null], ["tire_iron", 57.1, 9.7, 0, null], ["uzi_silenced", 23.6, 12.4, 0, null], ["pistol", 61.3, 9.9, 0, null], ["bat", 61.9, 9.9, 0, null], ["knife", 62.5, 9.9, 0, null], ["pistol", 64.6, 1.5, 0, null], ["shotgun", 65.4, 1.5, 0, null], ["uzi", 64.6, 2.2, 0, null], ["bat", 65.4, 2.2, 0, null], ["pistol", 93.4, 15.5, 200, null], ["knife", 34.4, 27.5, 0, null], ["knife", 34.9, 27.5, 0, null], ["knife", 35.4, 27.5, 0, null], ["bat", 34.6, 29.4, 0, null], ["pistol", 35.6, 29.4, 0, null], ["tire_iron", 36.7, 29.4, 0, null], ["cue", 37.2, 27.4, 0, null], ["bat", 56.0, 27.5, 90, null], ["knife", 56.7, 27.5, 90, null], ["shotgun", 58.6, 27.5, 90, null], ["tire_iron", 59.3, 27.5, 90, null], ["knife", 70.4, 27.4, 0, null], ["bat", 68.4, 27.4, 90, null]],
   // weapons stood against a wall [type, col, row, deg]
   lean: [["bat", 30.85, 27.6, 0]],
   // the fuse box and the tile rectangle it feeds: smashed, only the emergency lamps are left inside
@@ -214,7 +222,7 @@ export default {
   bars: [[44, 7]],
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
   // paths worn by feet [col0, row0, col1, row1, width px]
-  grime: [['mould', 82.2, 16.75, 82.2, 16.75, 1, {'r': 8, 'at': 'point'}], ['rust', 82.6, 12.45, 82.6, 12.45, 1, {'w': 23, 'h': 23, 'at': 'point'}], ['damp', 82.6, 12.85, 82.6, 12.85, 1, {'r': 15, 'deg': 90, 'at': 'point'}], ['grease', 88.0, 13.05, 88.0, 13.05, 1, {'r': 7, 'at': 'point'}], ['dust', 83.4, 16.5, 83.4, 16.5, 1, {'w': 36, 'r': 5, 'at': 'point'}], ['drips', 84.2, 15.6, 84.2, 15.6, 1, {'to': [2752.0, 524.8], 'at': 'point'}], ['prints', 86.5, 16.85, 86.5, 16.85, 1, {'to': [2835.2, 492.8], 'at': 'point'}]],
+  grime: [['grease', 82.9, 14.0, 82.9, 14.0, 1, {'r': 12, 'at': 'point'}], ['leak', 87.6, 14.7, 87.6, 14.7, 1, {'r': 9, 'at': 'point'}], ['leak', 87.4, 16.6, 87.4, 16.6, 1, {'r': 9, 'at': 'point'}], ['damp', 80.3, 13.3, 80.3, 13.3, 1, {'r': 13, 'at': 'point'}], ['flakes', 85.6, 13.2, 85.6, 13.2, 1, {'at': 'point'}], ['flakes', 80.2, 15.8, 80.2, 15.8, 1, {'at': 'point'}], ['crack', 84.8, 14.6, 84.8, 14.6, 1, {'len': [14, 40], 'd': -14, 'lit': 4, 'at': 'point'}], ['threadbare', 83.6, 15.9, 83.6, 15.9, 1, {'r': 10, 'at': 'point'}], ['mould', 90.2, 16.75, 90.2, 16.75, 1, {'r': 8, 'at': 'point'}], ['rust', 90.4, 6.6, 90.4, 6.6, 1, {'w': 23, 'h': 23, 'at': 'point'}], ['runoff', 90.85, 6.6, 90.85, 6.6, 1, {'r': 15, 'deg': 0, 'at': 'point'}], ['dust', 94.55, 12.2, 94.55, 12.2, 1, {'w': 36, 'r': 5, 'deg': 90, 'at': 'point'}], ['drips', 91.2, 14.2, 91.2, 14.2, 1, {'to': [2982.4, 492.8], 'at': 'point'}], ['prints', 92.5, 16.85, 92.5, 16.85, 1, {'to': [2924.8, 467.2], 'at': 'point'}]],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
   critters: {"pigeons": [[34.0, 18.8, 3]]},
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]

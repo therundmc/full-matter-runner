@@ -104,6 +104,8 @@ export const META = {
   // the VIP room's (placeholders too): the bills on the floor lifted, a flute, the champagne bucket
   cashFlutter: { gap: 0.2, max: 1, gain: 0.25 }, fluteClink: { gap: 0.04, max: 2, gain: 0.35 },
   fluteShatter: { pri: 2, dur: 0.4, gap: 0.04, max: 2, gain: 0.5 }, bucketKnock: { pri: 2, dur: 0.6, gap: 0.1, max: 1, gain: 0.6 },
+  // the flat's (placeholders too): a pan or a kettle knocked off, a drop falling in a pail or a puddle
+  panClang: { pri: 2, dur: 0.5, gap: 0.1, max: 1, gain: 0.6 }, dripPlink: { gap: 0.4, max: 1, gain: 0.18 },
   woodBreak: { pri: 2, dur: 0.6, gap: 0.05, max: 3, gain: 0.85 },
   flip: { pri: 2, dur: 0.6, gap: 0.2, max: 2, gain: 0.8 },
   binTip: { pri: 2, dur: 0.7, gap: 0.15, max: 2, gain: 0.75 },
@@ -517,6 +519,8 @@ const FOLEY = {
   fluteClink: [['glassHit', 0.4, 1.8]],
   fluteShatter: [['glassHit', 0.7, 1.55], ['glassFall', 0.25, 1.6, 0.03, 0.6]],
   bucketKnock: [['metal', 0.6, 1.25], ['glassHit', 0.3, 0.9, 0.04], ['plastic', 0.2, 1.8, 0.08, 0.7]],
+  panClang: [['metal', 0.7, 0.9], ['metal', 0.3, 1.1, 0.09, 0.6]],
+  dripPlink: [], // silent until the library comes
   ui: [['click', 1, 0.8], ['thud', 0.4, 1.5]],
   // placeholders (assets/sound/PLACEHOLDERS.md): the nearest cuts of the bank until the bought library
   holster: [['handle', 0.6, 1.2]],
