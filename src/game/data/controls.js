@@ -11,7 +11,7 @@ export const PAD_BINDINGS = {
   Y: 'KeyR',       // reload; restart once dead; retry on the results
   Start: 'Escape', // pause (and back out of it)
   RB: 'Mouse0',    // attack / shoot / take down / finish (held: an automatic keeps firing, as the mouse button)
-  LB: 'Mouse2',    // throw (pick up when the hands are empty)
+  LB: 'Mouse2',    // throw: held, aimed and let go (pick up when the hands are empty)
   RT: 'Mouse0',    // attack too (an alias of RB)
   LT: 'ShiftLeft', // look further
 };

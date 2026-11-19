@@ -1,6 +1,6 @@
 import { PLAYER, TAKEDOWN, BODY_SCALE, TILE, ENEMY } from '../Config.js';
 import { WEAPONS, AMMO, WEAR, plantedOf, keepsOne } from '../data/weapons.js';
-import { rand, chance, angDiff, smooth } from '../../engine/math.js';
+import { rand, chance, angDiff, smooth, clamp, lerp } from '../../engine/math.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import Debris, { GRAVITY } from './Debris.js';
 import { PLANTED } from './Ragdoll.js';
@@ -17,7 +17,7 @@ import { AIM } from '../data/aim.js';
 import { spotFor } from '../systems/TakedownSpot.js';
 import { finisherChoice, killBeat, takedownFor, takedownChoice, freeHand, hintOf, shotCause, SLAM_SOUND, EXEC } from '../data/finishers.js';
 import { MARKS } from '../data/wounds.js';
-import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH } from '../data/feel.js';
+import { MOMENTS, GESTURE, TRAVERSE, TRAVERSE_FX, BREAK, SNATCH, THROW } from '../data/feel.js';
 import { WALL_IMPACT } from '../data/materials.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { splashWall } from '../fx/Spatter.js';
@@ -82,6 +82,7 @@ export default class Player extends Character {
     this.broke = null;      // { t, d, stub, toss } the beat after his weapon gave out (Character.breakWeapon)
     this.brokeAt = null;    // { name, t } when it did, for the HUD
     this.snatch = null;     // { item, at } a dead man's weapon his hand is going to (snatches)
+    this.throwHold = null;  // { t, paused } a throw wound up while the right click is held (updateThrowHold, THROW)
     // spare rounds per caliber
     this.ammo = { '9mm': 0, '12g': 0, '762': 0, rocket: 0 };
   }
@@ -134,6 +135,8 @@ export default class Player extends Character {
     this.updateSlideAnim(dt);
 
     this.unstick();
+    // what takes his hands or his body over lets a throw wound up go, unthrown
+    if (this.throwHold && (this.sit > 0 || this.execution || this.takedown || this.trunkOpen || this.slipped || this.passage || this.kick)) this.throwHold = null;
     if (this.sit > 0 && !this.updateSit(dt, input)) return;
     if (this.execOut && (this.execOut.t -= dt) <= 0) this.execOut = null;
     if (this.execution) { this.updateExecution(dt, input); return; }
@@ -173,7 +176,7 @@ export default class Player extends Character {
       sh.t -= dt;
       this.steer(Math.cos(sh.a), Math.sin(sh.a), sh.v * Math.max(0, sh.t / SHOVE_T), 0.6);
       if (sh.t <= 0) this.shove = null;
-    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1), PLAYER.accel);
+    } else if (!sliding) this.steer(dx, dy, PLAYER.speed * (stick ? Math.min(1, 0.25 + stick.mag) : 1) * (this.throwHold ? THROW.move : 1), PLAYER.accel);
     if (this.lunge && !sliding && !sh && w.time < this.lunge.stop) {
       const L = this.lunge;
       this.vel = { x: Math.cos(L.dir) * L.v, y: Math.sin(L.dir) * L.v };
@@ -222,7 +225,8 @@ export default class Player extends Character {
     if (this.broke?.stub && (input.mouseDown(0) || input.mouseHit(2))) this.dropStub();
     const d = this.def;
     const nb = this.nearTakedown;
-    if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
+    if (this.throwHold) { /* the left click does nothing while a throw is wound up */ }
+    else if (nb) { if (input.mouseHit(0)) this.startTakedown(nb, this.takeMove); } // never swing or fire at him then
     else if (pulls(d, input)) {
       // on a man who is down, at our feet and under the cursor: his execution, whatever is in the hand
       const nd = this.nearDowned;
@@ -236,7 +240,7 @@ export default class Player extends Character {
         else if (did === true && d.kind !== 'gun' && !sliding) this.startLunge(d);
       }
     }
-    if (input.hit('KeyR')) this.reload();
+    if (input.hit('KeyR') && !this.throwHold) this.reload();
     // Space = vault > slide (the slide needs a running start, no HUD label); the left click takes a man down from
     // behind and finishes a man on the floor
     const busy = sliding || this.nearDowned || this.nearTakedown;
@@ -246,10 +250,13 @@ export default class Player extends Character {
         : this.vaultHint ? (this.vaultHint.kind === 'climb' ? 'CLIMB' : this.vaultHint.over.intact ? 'DIVE THROUGH' : 'VAULT') : null;
     if (input.hit('Space') && !sliding && !this.tryVault(moveA) && moving) this.startSlide(moveA);
 
-    // right click: throw when armed, pick up otherwise. E: pick up / swap
-    if (input.mouseHit(2)) {
-      if (this.armed) this.throwWeapon();
-      else this.pickUp();
+    // right click: armed, held it winds a throw up (updateThrowHold), a tap throws at once; unarmed, it picks up.
+    // E: pick up / swap
+    if (this.throwHold) this.updateThrowHold(dt, input);
+    else if (input.mouseHit(2)) {
+      if (!this.armed) this.pickUp();
+      else if (input.mouseDown(2)) this.throwHold = { t: 0, paused: false };
+      else this.throwWeapon(); // down and up within a step
     }
     if (input.hit('KeyE')) {
       if (this.nearTrunk) this.startTrunk(this.nearTrunk);
@@ -447,20 +454,61 @@ export default class Player extends Character {
     this.world.pickupFlash(this.x + Math.cos(this.angle) * 10, this.y + Math.sin(this.angle) * 10);
   }
 
-  // power = true: the angry "out of bullets" John Wick throw (faster, spinning, a beat of slow motion)
-  throwWeapon(power = false) {
-    const w = this.world, a = this.angle;
-    const sp = power ? 15 : 11;
-    const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * 12, this.y + Math.sin(a) * 12,
-      a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, (power ? 0.9 : rand(0.4, 0.7)) * (Math.random() < 0.5 ? -1 : 1), this);
+  // ---------------- the throw (THROW) ----------------
+  // The right click held: the arm drawn back, the throw aimed (the mark: systems/AimCue.js throwCue), charged over
+  // THROW.charge s; let go, it flies (release). Let go within THROW.tap s it is the quick throw. A wind-up the game
+  // was paused under goes only if the button is still down when play comes back (interrupt).
+  updateThrowHold(dt, input) {
+    const W = this.throwHold;
+    if (!this.armed) { this.throwHold = null; return; }
+    if (input.mouseDown(2)) { W.t += dt; W.paused = false; return; }
+    if (W.paused) { this.throwHold = null; return; }
+    this.release();
+  }
+
+  // the game paused (Game): a throw wound up waits to see whether the button is still held
+  interrupt() { if (this.throwHold) this.throwHold.paused = true; }
+
+  // 0..1: how far the throw wound up is charged (0 within the tap)
+  throwCharge(W = this.throwHold) {
+    return W ? clamp((W.t - THROW.tap) / (THROW.charge - THROW.tap), 0, 1) : 0;
+  }
+
+  // the way the throw goes { a, lock }: along his aim, or with the LOCK aim straight at the man it holds (within its
+  // cone and THROW.lock px)
+  throwAim() {
+    const w = this.world;
+    const lock = w.aimStyle === 'lock' ? lockTarget(w, this.team, this.x, this.y, this.angle, AIM.lock.cone, THROW.lock) : null;
+    return { a: lock ? Math.atan2(lock.y - this.y, lock.x - this.x) : this.angle, lock };
+  }
+
+  release() {
+    const k = this.throwCharge(), { a } = this.throwAim();
+    this.throwHold = null;
+    this.angle = a;
+    this.throwWeapon(false, k);
+  }
+
+  // power = true: the angry "out of bullets" John Wick throw (faster, spinning, a beat of slow motion); k: the charge
+  // of a throw wound up (0: the quick throw)
+  throwWeapon(power = false, k = 0) {
+    const w = this.world, a = this.angle, blade = this.def.swing === 'blade';
+    const sp = power ? 15 : lerp(THROW.speed[0], THROW.speed[1], k);
+    const spin = blade && !power ? lerp(THROW.spin[0], THROW.spin[1], k) : power ? 0.9 : rand(0.4, 0.7);
+    const it = new WeaponItem(w, this.weapon.type, this.weapon.mag, this.x + Math.cos(a) * THROW.hand, this.y + Math.sin(a) * THROW.hand,
+      a, Math.cos(a) * sp + this.vel.x, Math.sin(a) * sp + this.vel.y, spin * (Math.random() < 0.5 ? -1 : 1), this);
     it.wear = this.weapon.wear;
+    it.charge = k;
     it.setBare(this.weapon.bare);
     w.addItem(it);
     this.weapon = null;
     this.reloading = 0;
     this.cooldown = 0.15;
     this.throwT = this.throwDur;
-    w.sound('throw', this.x, this.y, power ? 1 : 0.8, { weapon: it.type });
+    w.sound('throw', this.x, this.y, power ? 1 : 0.8 + 0.2 * k, { weapon: it.type });
+    // the man on its line, if any (systems/ThrowBeat.js follows it to him)
+    const target = lockTarget(w, this.team, this.x, this.y, a, THROW.line, THROW.lock);
+    w.events.emit('throw', { thrower: this, item: it, target, charge: k });
     if (power) { w.slowmo(...MOMENTS.throw.slowmo); w.shake(MOMENTS.throw.shake); }
   }
 

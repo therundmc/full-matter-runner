@@ -7024,7 +7024,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   steam='11 STEAM', power='12 POWER', liquids='13 LIQUIDS', vehicles='17 VEHICLES',
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
                   drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
-                  arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS')   # (the last ones added, in this order: the others keep their seed)
+                  arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS', throw='27 THROW')   # (the last ones added, in this order: the others keep their seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 

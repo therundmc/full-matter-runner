@@ -111,7 +111,7 @@ export function gore(world, ch, angle, cause, by, how) {
     const lay = ch.knocked > 0 ? ch.downAngle : null;
     const bx = lay === null ? x : x + Math.cos(lay) * TORSO_AT, by0 = lay === null ? y : y + Math.sin(lay) * TORSO_AT;
     world.addCorpse(new Ragdoll(world, k, bx, by0, kneels ? ch.angle + (how?.env ? 0 : rand(-0.3, 0.3)) : lay ?? angle, kneels || sit || lay !== null ? 0 : slide, {
-      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, dying, mark: markOf(wd),
+      headless: mode === 'headless', detach, ...bleeding, stuck: by?.stuck, stuckItem: by?.stuckItem, stuckA: by?.stuckA, stuckJolt: by?.stuckJolt, dying, mark: markOf(wd),
       sit: scripted === 'wall' ? SIT_REACH : 0, against: how?.against ? { ...how.against, sit: scripted === 'sit' } : null,
       kneeling: kneels && !!how?.kneeling,
       // he faced his killer: he goes over backwards (one who kneels pitches forward)

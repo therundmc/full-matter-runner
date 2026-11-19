@@ -3,6 +3,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { sprite, spriteOpt, drawSprite, drawUpright, silhouette, sw, sh } from '../../engine/Assets.js';
 import { setMaterial } from '../../engine/physics/Body.js';
 import { blowFrom } from '../fx/Blows.js';
+import { THROW } from '../data/feel.js';
 
 const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3, cue: 0.6, cue_half: 0.3, tire_iron: 1.3, tire_iron_bent: 1.3 };
 
@@ -35,6 +36,8 @@ export default class WeaponItem {
     this.body.entity = this;
     this.isItem = true;
     this.thrower = thrower;
+    this.charge = 0;       // how far the player's throw was wound up, 0..1 (Player.throwWeapon): a full one plants a blade
+    this.trail = [];       // where it was the last steps of its flight, newest first (draw: its ghosts)
     this.dead = false;
     this.hilite = 0;
     world.addBody(this.body);
@@ -60,7 +63,10 @@ export default class WeaponItem {
 
   update(dt) {
     const sp = this.speed;
-    if (!this.thrower) return;
+    if (!this.thrower) { this.trail.length = 0; return; }
+    const T = THROW.trail;
+    this.trail.unshift({ x: this.x, y: this.y, a: this.body.angle });
+    if (this.trail.length > T.gap * T.alpha.length + 1) this.trail.pop();
     if (sp < 3) {
       // a thrown gun clattering on the floor is a lure
       if (this.thrower.isPlayer) this.world.noise(this.x, this.y, AI.thrownRadius, null, 'thrown');
@@ -73,15 +79,25 @@ export default class WeaponItem {
       if (Math.hypot(c.x - this.x, c.y - this.y) < c.radius + 6) {
         const v = Body.getVelocity(this.body);
         const a = Math.atan2(v.y, v.x);
-        const stick = this.def.swing === 'blade' && sp >= STICK_SPEED;
+        const stick = this.def.swing === 'blade' && (sp >= STICK_SPEED || this.charge >= 1);
         if (stick) {
-          // like a blade blow: it stays in the body and is gone from the floor
-          const by = { ...this.def, wound: 'slash', gore: 0, stuck: this.def.sprite, stuckItem: { type: this.type, mag: this.mag, wear: this.wear } };
+          // like a blade blow: it stays in the body (along the way it flew, its handle shuddering) and is gone from
+          // the floor
+          const by = { ...this.def, wound: 'slash', gore: 0, stuck: this.def.sprite, stuckItem: { type: this.type, mag: this.mag, wear: this.wear },
+            stuckA: a, stuckJolt: true };
           c.kill(a, 'slash', this.thrower, by, { thrown: true, from: blowFrom(c.angle, a) });
         } else c.knock(a, 'throw');
         w.sound(stick ? this.def.sound : 'punch', c.x, c.y);
         w.particles.blood(c.x, c.y, a, 0.5, 8, 120);
+        if (stick) {
+          w.particles.blood(c.x, c.y, a, 0.8, ...THROW.planted.spurt);
+          w.sound('bladeThunk', c.x, c.y); // placeholder (assets/sound/PLACEHOLDERS.md)
+        }
         w.shake(0.15);
+        // the beat of it (systems/ThrowBeat.js, systems/Rumble.js), if it put him down
+        if (!c.alive || c.knocked > 0) {
+          w.events.emit('thrownHit', { thrower: this.thrower, victim: c, x: c.x, y: c.y, angle: a, kill: !c.alive, planted: stick, charge: this.charge });
+        }
         if (stick) { w.removeItem(this); return; }
         Body.setVelocity(this.body, { x: -v.x * 0.3, y: -v.y * 0.3 });
         this.thrower = null;
@@ -97,12 +113,31 @@ export default class WeaponItem {
     else if (e.hit && e.def && this.speed > 4 && e.def.hp <= 1) e.hit(1, this.x, this.y, Math.atan2(this.body.velocity.y, this.body.velocity.x));
   }
 
+  // in flight: ghosts of its own sprite where it was a few steps ago (THROW.trail), and behind a full throw a faint
+  // white streak of whole pixels
+  drawFlight(ctx) {
+    const T = THROW.trail;
+    T.alpha.forEach((al, i) => {
+      const g = this.trail[(i + 1) * T.gap];
+      if (g) drawSprite(ctx, this.img, g.x, g.y, g.a, al, BODY_SCALE);
+    });
+    if (this.charge < 1) return;
+    const v = Body.getVelocity(this.body), s = Math.hypot(v.x, v.y) || 1, S = T.streak;
+    ctx.fillStyle = '#ffffff';
+    for (let d = 4; d < S.len; d++) {
+      ctx.globalAlpha = S.alpha * (1 - d / S.len);
+      ctx.fillRect(Math.round(this.x - (v.x / s) * d), Math.round(this.y - (v.y / s) * d), 1, 1);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // how long it looks from above along its length (stood against a wall: shorter)
   get stretch() { return this.lean ? LEAN : 1; }
 
   // its catch-light and the in-reach outline are drawn over the lit scene (render/Readability.js)
   draw(ctx) {
     const p = this.body.position;
+    if (this.thrower && this.speed >= 3) this.drawFlight(ctx);
     if (this.lean) {
       drawUpright(ctx, silhouette(this.img), p.x + 2.5, p.y + 2.5, this.body.angle, LEAN, { alpha: 0.35, scale: BODY_SCALE });
       drawUpright(ctx, this.img, p.x, p.y, this.body.angle, LEAN, { scale: BODY_SCALE });

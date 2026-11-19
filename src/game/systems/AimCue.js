@@ -49,6 +49,17 @@ export function aimCue(world) {
   return { x: m.x, y: m.y, a, kind: 'gun', half: d.spread || 0, ...lineOfFire(world, p.team, m.x, m.y, a, skip), off: false, skip, team: p.team };
 }
 
+// The throw he is winding up (Player.throwHold), or null: { x, y, a, k, len, hit, target, lock } from his hand along
+// the way it will go (onto LOCK's man: Player.throwAim), k: its charge 0..1, len: px to where it stops (AIM.throw.reach,
+// longer with the charge) or to what it meets, target: the man it meets, lock: the man LOCK draws it onto
+export function throwCue(world) {
+  const p = world.player;
+  if (!aiming(p) || !p.throwHold || !p.armed || p.riding || p.hidden) return null;
+  const { a, lock } = p.throwAim(), k = p.throwCharge(), R = AIM.throw.reach, x = p.x + Math.cos(a) * p.radius, y = p.y + Math.sin(a) * p.radius;
+  const f = lineOfFire(world, p.team, x, y, a, [p], R[0] + (R[1] - R[0]) * k);
+  return { x, y, a, k, ...f, lock };
+}
+
 // The man the LOCK concept brackets: the living enemy nearest the way `a` out of (x, y), within `cone` rad of it and
 // `reach` px, in plain sight (walls, smoke, curtains hide him). null when there is none. A man further off the line
 // loses to one nearer it; of two on the same line, the closer one.
