@@ -157,7 +157,9 @@ src/
                           (DOM-free, unit-tested; advanced by Game on the real clock)
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
-      Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
+      Progress.js         the campaign (data/campaign.js: the player's numbered levels, each one or several stages, the
+                          engine's levels, played in a row), what is unlocked and done, saved in localStorage (DOM-free,
+                          storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)

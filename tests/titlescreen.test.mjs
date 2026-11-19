@@ -4,7 +4,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { load } from './setup.mjs';
 
 const { logoDead, posterBeats, CROSS, crossK, crossBeats } = await load('game/ui/title/Beats.js');
-const { deadCount, LEVEL_AT, BACK_AT, SOON, NOTE } = await load('game/ui/title/HitList.js');
+const { deadCount, noteAt, lines, BACK, BACK_AT, NOTE, ROWS } = await load('game/ui/title/HitList.js');
+const { frame } = await load('game/ui/title/Paper.js');
+const { CAMPAIGN_LEVELS, TARGETS } = await load('game/data/campaign.js');
 const { CAMPAIGN } = await load('game/systems/Progress.js');
 const { default: LEVELS } = await load('game/data/levels/index.js');
 const { posterUp } = await load('game/ui/title/Title.js');
@@ -13,7 +15,7 @@ const { POSTER, BOARD, OPTIONS } = await load('game/data/titleart.js');
 const { OPTIONAL_LIST } = await load('engine/Assets.js');
 const { META } = await load('audio/Audio.js');
 const { loadCrossed, saveCrossed, resetProgress } = await load('game/systems/Progress.js');
-const { default: Menu } = await load('game/ui/Menu.js');
+const { default: Menu, levelNotes } = await load('game/ui/Menu.js');
 
 test('title: the sign lights letter by letter, then stays lit but for a buzz', () => {
   for (let i = 0; i < 6; i++) assert.ok(logoDead(i, 0.1), 'dark as the title comes up');
@@ -112,25 +114,77 @@ const box = (x, y, w, h, deg) => {
 };
 const overlap = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
-test('hit list: level 2 is two notes under JITTERS, 2A a level, 2B a note not made yet; no note on another', () => {
-  assert.ok(CAMPAIGN.includes('level2a') && LEVELS.level2a, '2A is a campaign level');
-  assert.deepEqual(SOON.map((s) => [s.level, s.after]), [['level2b', 'level2a']]);
-  assert.ok(!LEVELS.level2b && !CAMPAIGN.includes('level2b'), '2B is only a picture on the board');
-  // under JITTERS' card (the second), side by side with nothing else pinned
-  const [jx, jy] = BOARD.cards[1], jitters = box(...BOARD.cards[1].slice(0, 2), ...BOARD.card, BOARD.cards[1][2]);
-  for (const id of ['level2a', 'level2b']) {
-    const [x, y] = LEVEL_AT[id];
-    assert.ok(y > jitters.y1 && Math.abs(x - jx) < 160, `${id} pinned under JITTERS (${x}, ${y} for ${jx}, ${jy})`);
-  }
-  const notes = Object.entries(LEVEL_AT).map(([id, [x, y, deg]]) => [id, box(x, y, ...NOTE, deg)]);
-  const cards = BOARD.cards.map(([x, y, deg], i) => [`card ${i}`, box(x, y, ...BOARD.card, deg)]);
-  const back = ['BACK', box(BACK_AT[0], BACK_AT[1], 132, 54, BACK_AT[2])];
-  notes.forEach(([id, b], i) => {
-    for (const [other, o] of [...notes.slice(i + 1), ...cards, back]) assert.ok(!overlap(b, o), `${id} clear of ${other}`);
+// the campaign's stages made today, as the menu is told
+const MADE = CAMPAIGN.filter((id) => LEVELS[id]).map((id) => ({ id, name: LEVELS[id].name }));
+const notesOf = (progress) => levelNotes({ progress, best: () => null, levels: MADE });
+
+test('hit list: a note a level in a column under its man: 02 and 03 under JITTERS, then LUCKY, then THE BOSS', () => {
+  const notes = notesOf({ unlocked: ['tutorial'], done: [] });
+  assert.equal(notes.length, CAMPAIGN_LEVELS.length);
+  assert.ok(!LEVELS.level2b, '2B is not made yet: 02 is the chase alone for now');
+  assert.deepEqual(notes.map((it) => it.tag).slice(0, 4), ['00', '01', '02', '03']);
+  assert.ok(notes.every((it) => !/\d[AB]$/.test(it.tag)), 'no 2A / 2B on the board');
+  assert.deepEqual(notes.filter((it) => it.soon).map((it) => it.tag), notes.slice(3).map((it) => it.tag), '03 and after are SOON');
+  // the cards stand left to right in the order of the columns
+  assert.deepEqual(BOARD.cards.map((c) => c[0]), [...BOARD.cards.map((c) => c[0])].sort((a, b) => a - b));
+  assert.equal(BOARD.cards.length, TARGETS.length);
+  notes.forEach((it, i) => {
+    const lv = CAMPAIGN_LEVELS[i], [x, y] = noteAt(it.col, it.row);
+    assert.equal(it.col, TARGETS.indexOf(lv.target) + 1);
+    if (!it.col) { assert.ok(Math.abs(x - BOARD.photo[0]) < 20 && y > BOARD.photo[1] + 107, 'the tutorial under the photo of his flat'); return; }
+    const [cx, cy, deg] = BOARD.cards[it.col - 1], card = box(cx, cy, ...BOARD.card, deg);
+    assert.ok(Math.abs(x - cx) < 12 && y - NOTE[1] / 2 > card.y1, `${it.tag} pinned under ${lv.target}'s card`);
   });
-  // and clear of CUEBALL's matchbook (about 84 x 124 on the still), pinned beside them once he is dead
+  const rows = (who) => notes.filter((it) => it.col === TARGETS.indexOf(who) + 1).map((it) => `${it.tag}.${it.row}`);
+  assert.deepEqual(rows('cueball'), ['01.0']);
+  assert.deepEqual(rows('jitters'), ['02.0', '03.1']);
+  assert.deepEqual(rows('lucky'), ['04.0', '05.1']);
+  assert.equal(rows('boss')[0], '06.0');
+});
+
+test('hit list: every note a column can hold is on the board, clear of the others, at 1280 x 720 and 1920 x 1080', () => {
+  // every place: three rows under each card (an eighth level fits), the tutorial's and BACK under the photo
+  const places = [['00', box(...noteAt(0, 0).slice(0, 2), ...NOTE, noteAt(0, 0)[2])], ['BACK', box(BACK_AT[0], BACK_AT[1], ...BACK, BACK_AT[2])]];
+  for (let col = 1; col <= TARGETS.length; col++) {
+    for (let row = 0; row < ROWS; row++) { const [x, y, deg] = noteAt(col, row); places.push([`${col}.${row}`, box(x, y, ...NOTE, deg)]); }
+  }
+  assert.ok(Math.abs(noteAt(2, 1)[2]) <= 2.5, 'askew, hardly');
+  const cards = BOARD.cards.map(([x, y, deg], i) => [`card ${i}`, box(x, y, ...BOARD.card, deg)]);
+  const photo = ['photo', box(BOARD.photo[0], BOARD.photo[1], 196, 214, BOARD.photo[2])];
+  places.forEach(([id, b], i) => {
+    for (const [other, o] of [...places.slice(i + 1), ...cards, photo]) assert.ok(!overlap(b, o), `${id} clear of ${other}`);
+    // on the board (tools/comic/title_art.py board_bg: 22..1130 x 18..604, its right edge cut further out), its shadow too
+    assert.ok(b.x0 > 30 && b.x1 + 6 < 1130 && b.y0 > 26 && b.y1 + 8 < 596, `${id} on the board (${b.x0}, ${b.y0}, ${b.x1}, ${b.y1})`);
+  });
+  // CUEBALL's matchbook (about 84 x 124 on the still) hangs under his one note: clear of every note there is today
   const [mx, my, mdeg] = BOARD.matchbook, match = box(mx, my, 84, 124, mdeg);
-  for (const [id, b] of notes.filter(([id]) => id.startsWith('level2'))) assert.ok(!overlap(b, match), `${id} clear of the matchbook`);
-  // JITTERS is not dead before his last level: 2A done leaves him standing
+  const today = notesOf({ unlocked: ['tutorial'], done: [] }).map((it) => [it.tag, box(...noteAt(it.col, it.row).slice(0, 2), ...NOTE, noteAt(it.col, it.row)[2])]);
+  for (const [id, b] of [...today, places[1]]) assert.ok(!overlap(b, match), `${id} clear of the matchbook`);
+  assert.ok(match.y1 + 8 < 596 && match.x0 > 30, 'the matchbook on the board');
+  // on a 16:9 screen the whole sheet shows, and a note's lettering is a readable size at 1280 x 720
+  for (const [W, H] of [[1280, 720], [1920, 1080], [3840, 2160]]) {
+    const f = frame(W, H);
+    assert.ok(Math.abs(f.ox) < 1e-6 && Math.abs(f.oy) < 1e-6 && Math.abs(1152 * f.k - W) < 1e-6 && Math.abs(648 * f.k - H) < 1e-6, `${W} x ${H}: the sheet is the screen`);
+    for (const [id, b] of places) assert.ok(b.x0 * f.k > 0 && b.x1 * f.k < W && b.y0 * f.k > 0 && b.y1 * f.k < H, `${id} on screen at ${W} x ${H}`);
+  }
+  assert.ok(12 * frame(1280, 720).k >= 13 && 10 * frame(1280, 720).k >= 11, 'titles 13 px and results 11 px high at 720');
+});
+
+test('hit list: a title is cut in two lines when it is long; each fits beside the number', () => {
+  assert.deepEqual(lines('NO LOOSE ENDS'), ['NO LOOSE ENDS']);
+  assert.deepEqual(lines('THE FLAMINGO MOTEL'), ['THE FLAMINGO', 'MOTEL']);
+  assert.deepEqual(lines('THE CHASE'), ['THE CHASE']);
+  // joystix is 0.83 em a letter: 13 letters at 12 px in what the number leaves of the note
+  const room = NOTE[0] - 52;
+  for (const title of [...CAMPAIGN_LEVELS.map((l) => l.title).filter(Boolean), ...MADE.map((l) => l.name)]) {
+    const rows = lines(title);
+    assert.ok(rows.length <= 2 && rows.every((r) => r.length * 12 * 0.83 <= room), `${title}: ${rows.join(' / ')}`);
+  }
+});
+
+test('hit list: a man dies at the end of his last level: 02 done leaves JITTERS standing', () => {
   assert.equal(deadCount({ unlocked: CAMPAIGN, done: ['tutorial', 'level1', 'level2a'] }), 1);
+  assert.equal(deadCount({ unlocked: CAMPAIGN, done: ['tutorial', 'level1', 'level2a', 'level2b'] }), 1);
+  assert.equal(deadCount({ unlocked: CAMPAIGN, done: ['tutorial', 'level1', 'level2a', 'level2b', 'level3'] }), 2, 'JITTERS at the motel');
+  assert.equal(deadCount({ unlocked: CAMPAIGN, done: ['level3'] }), 0, 'in their order: not before CUEBALL');
 });
