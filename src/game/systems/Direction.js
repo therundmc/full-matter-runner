@@ -47,10 +47,12 @@ export default class Direction {
   // at least 1); base 0: as written
   rest(base = 0) { return whole(this.shot?.zoom ?? 1, base); }
 
-  // dt: real s (the camera does not slow down with the game); base: the camera's pixel zoom
-  update(dt, base = 0) {
+  // dt: real s (the camera does not slow down with the game); base: the camera's pixel zoom; cut: the zoom goes to
+  // its shot's at once, only the framing is eased (a picture held on whole px, at the wheel: any zoom between two
+  // whole ones resamples every sprite)
+  update(dt, base = 0, cut = false) {
     this.beat = null;
-    const s = this.shot, c = this.cfg, to = this.rest(base), k = 1 - Math.exp(-(s?.ease ?? 2) * dt);
+    const s = this.shot, c = this.cfg, to = this.rest(base), k = cut ? 1 : 1 - Math.exp(-(s?.ease ?? 2) * dt);
     this.zoom += (to - this.zoom) * k;
     if (Math.abs(to - this.zoom) < c.snap * to) this.zoom = to;
     const f = 1 - Math.exp(-c.focus * dt);

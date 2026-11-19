@@ -956,7 +956,7 @@ export default class Game {
     if (shot?.steer) D.steered(shot.name, shot.at, shot.steer, this.camera.zoom);
     else {
       D.set(shot?.name, shot?.at);
-      D.update(dt, this.camera.zoom);
+      D.update(dt, this.camera.zoom, this.camera.pixel); // (at the wheel a shot's zoom is a cut: Direction.update)
     }
     this.camera.scale = D.zoom;
     const kc = w.killCam; // its punch-in on top (1 at rest, and at the wheel), the view drawn toward the kill

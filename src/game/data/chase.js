@@ -155,10 +155,23 @@ export const CHASE = {
   //   a bolted thing is torn off as by his van), or `car` on
   //   another car (not his: being rammed only knocks it): wrecked, `thrown` of that within 2 s of a knock from his
   //   car; it is left with `smoke` of its hp (engine smoke), `fire` the chance it catches
-  //   veer: the driver shot: the wheel turned `steer` rad to a side, the speed fading `fade` px/step a second; wrecked
-  //   after `out` s if nothing stopped it
-  //   spin: a front tyre: spun at `turn` rad/step, `keep` of its speed, out of it after `dur` s; limp: a rear tyre,
-  //   its top speed cut to `limp`; lost: `lost` px behind him, it is out of the chase
+  //   rounds: his rounds on it (Vehicle: 1 hp a round on its body, 2 on its tank, 2 a window or a tyre; its hp is
+  //   VEHICLES.pursuer's, about 2.5 times a parked car's), shown in stages by the share of its hp gone: `crack` its
+  //   rear window cracks, `glass` it is blown out, from 0.4 the engine smokes (Vehicle), `fire` it catches (flames
+  //   off the hood: Vehicle `burnAt`), `wreck` the engine dies: wrecked, its crew killed. On fire it runs `burn` s at
+  //   most, then it is wrecked too (it blows up later, off to the side); `leak` rounds in its tank set it alight.
+  //   THE QUICK WAY, a burst at the windscreen: the driver is killed once it is at window state `screen`
+  //   (Vehicle.windows: 1 starred, 2 blown in), a stray round only stars it
+  //   out: THE EXIT. A car stopped for good while it was going (wrecked, its driver shot, a front tyre, blown up) is
+  //   driven off his line by a script for `dur` s: it swerves to the side AWAY from him (dead level with him, within
+  //   `level` px across: the side of the street with more room), at `side` px/step across reached in `bite` s, brakes
+  //   `brake` px/step a second (it starts no faster than he goes), and while it is clear of his car (`margin` px
+  //   between them across, its tail swung round as it is, or behind him) skids round at `turn` rad/step (`spin` for
+  //   a front tyre), dying away over `dur`. What lines the road stops it there (it is then held against it at `press`
+  //   px/step); `far` px across from where it started it pushes no further. It never comes back into his lane; a car
+  //   crawling under `least` px/step is left where it is
+  //   limp: a rear tyre, its top speed cut to `limp` (but not while it is in his lane ahead of him: its slot there
+  //   is moved to the other lane); lost: `lost` px behind him, it is out of the chase
   //   rubber: in the chase but more than `far` px behind him for `t` s, or more than `close` px from its slot for
   //   `held` s, off the picture: brought back up behind it, on its slot's line
   //   spawn: one joining from behind starts `behind` px back (just off the picture) at his speed + `over` (`clear`
@@ -175,8 +188,8 @@ export const CHASE = {
     knock: { dv: 2.2, stun: 0.6 },
     shoved: { cost: 0.5, throw: 6, drag: 4, spin: 0.02, stun: 0.7 },
     wreck: { hard: 3.5, car: 4.5, thrown: 0.6, smoke: 0.5, fire: 0.25, poles: ['streetlight'] },
-    veer: { steer: 0.5, fade: 1.2, out: 3 },
-    spin: { turn: 0.22, keep: 0.6, dur: 1.4 },
+    rounds: { crack: 0.15, glass: 0.3, fire: 0.72, wreck: 0.88, burn: 1.2, leak: 16, screen: 2 },
+    out: { dur: 1.5, level: 20, side: 4.5, bite: 0.15, brake: 8, margin: 8, turn: 0.05, spin: 0.09, press: 0.6, far: 150, least: 1 },
     limp: 6, lost: 1600, rubber: { far: 520, t: 1.2, close: 200, held: 3 },
     spawn: { behind: 330, over: 5, clear: 260, near: 300, cross: 6.5, radius: 150 },
   },

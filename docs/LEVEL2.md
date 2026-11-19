@@ -57,8 +57,13 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
   CharacterAnim grabPose, SEAT.grab in data/feel.js, SHOTS `grab` / `grabOut`). Nothing is told before it is done.
   Driving, the Uzi hangs over the door in his left hand; aimed out of his side that arm lifts it (`chase.arms`: 30
   in it for when he gets out; nothing is counted at the wheel).
-- **Killing a car.** Windscreen (the driver): it veers into the rail. A front tyre: it spins. The gunman: it goes on
-  and can still ram. A hard enough shove into something solid: wrecked.
+- **Killing a car.** A burst at the windscreen (the driver; one stray round only stars it): the quick way. A front
+  tyre: it spins. The gunman: it goes on and can still ram. A long burst on its body (about 65 Uzi rounds, 2.4 times
+  what it took before: the user, 2026-11-19, "tirer plus pour la peter") wrecks it in stages: the rear glass cracks
+  then goes, the engine smokes, catches fire, dies. A hard enough shove into something solid: wrecked. Whatever
+  stops it, THE EXIT takes over (2026-11-19, the user: a destroyed car must not be run into nor slow him): it swerves
+  away from him, brakes, skids into what lines the road on that side and is left behind, off the picture; it blows
+  up there, never by his car.
 - **Telegraphs (readability first).** A gunman's shot: a white glint at the muzzle, then a thin red line that
   fattens into a wedge with a bracket where it lands (0.6 to 0.8 s), then the shot; the line locks onto a lane, not
   the car, so a lane change or a shove dodges it (a shove INTO the car that tells cancels its shot). One gunman tells at a time early on, two overlapping at the end.
@@ -354,3 +359,19 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   now 3.0 s (1.8 s sliding along the lorry toward the terrace, then pinned by the van: the crash); seed 11 clean;
   seed 23 one stall of 2.2 s on a parked car at col 66 (out by itself). Known: freed onto the terrace and not steered
   back up, the car runs into the south fronts where the terrace ends (col 356).
+- 2026-11-19: the user's play of the cars ("tirer plus pour la peter; detruite, un script: elle part s'ecraser a droite
+  ou a gauche et sort de l'ecran"). THE START'S BLUR: the grab's push-in (SHOTS grab / grabOut) was eased between
+  whole zooms (z 5 -> 4.1, 3.5, 3.05, 2.7 ... 2 at 720), every sprite resampled; at the wheel a shot's zoom is now a
+  cut (Direction.update `cut`) and the camera's zoom held whole (Camera.z rounded in `pixel`): 5 / 2 at 720, 8 / 3 at
+  1080, the framing alone eased. MORE ROUNDS: VEHICLES.pursuer hp 28 -> 75; Uzi rounds at its body's middle from 3 m
+  to wreck it (100 runs, a script): 28 -> 67 square on, 28 -> 67 from 60 px behind, 18 -> 42 from the `lead` slot;
+  its damage in stages (Pursuit.shotUp, CHASE.pursuit.rounds): rear glass cracked (0.15), blown out (0.3), smoke
+  (0.4), fire (0.72; on fire it runs 1.2 s at most), wrecked (0.88); a leak in its tank after 16 rounds there (3);
+  the windscreen kills the driver on its second round (the first stars it: a burst, not a stray round). THE EXIT
+  (Pursuit.leave / exit, CHASE.pursuit.out), whatever stopped it (rounds, the driver, a front tyre, a shove, a wall,
+  a blast): it swerves away from him (dead level: the side of the street with more room) at 4.5 px/step across,
+  brakes 8 px/step a second from his speed at most, skids round once its tail cannot reach him, stops on what lines
+  the road, 1.5 s, then the physics; it blows up only when its fire's fuse is out (Vehicle `late`), off to the side.
+  The `veer` and `spin` states are gone (the exit is both). A car limping on a rear tyre no longer holds the slot in
+  his lane (it took him from behind at 6 px/step). QA 3 min: seed 11 PASS (6 crashes into the fronts, main's same
+  seed 7: the bot's kerb runs), seed 7 the known lorry jam (stalled 3 s at col 336).

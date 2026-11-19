@@ -81,7 +81,8 @@ export default class Camera {
 
   // brief zoom kick on big impacts
   punch(amount) { this.punchZ = Math.max(this.punchZ, amount); }
-  get z() { return this.zoom * this.scale * (this.pixel ? 1 : 1 + this.punchZ); }
+  // (held on whole px: a whole number of picture px a world px, whatever the scale on top)
+  get z() { return this.pixel ? Math.max(1, Math.round(this.zoom * this.scale)) : this.zoom * this.scale * (1 + this.punchZ); }
 
   // directional kick (recoil feel)
   push(dx, dy) { this.kick.x += dx * this.shakeScale; this.kick.y += dy * this.shakeScale; }
