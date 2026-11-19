@@ -37,13 +37,13 @@ W, H = 29, 22            # the building, and the roofs next door east of it (roo
 lv = Level(W, H)
 SHOOTER = 0.6            # the corridor's gunman fires as he comes round the corner: the shot is what he slides under
 STAIRS = [8.0, 20.65]    # where the men coming up the stairs step onto the landing
-TABLE = [12.05, 4.85]    # the living room's big table, the middle of it (two tables end to end)
+TABLE = [11.6, 4.85]     # the living room's table, its middle
 
 # ---------------------------------------------------------------- tiles
 lv.fill(4, 1, 22, 20, '#')            # the building: plaster inside, brick round it
 lv.fill(4, 1, 8, 5, ';')              # his bedroom
 lv.put(6, 0, 'G')                     # its window on the street
-lv.fill(9, 2, 9, 3, 'D')              # its door: two cheap leaves, the trail runs under the north one
+lv.put(9, 2, 'D')                     # its door, one cheap leaf: the trail runs under it, kept off it until he is out
 lv.fill(10, 1, 16, 6, '.')            # living room: bare boards
 lv.put(17, 2, '.')                    # an open doorway
 lv.fill(18, 1, 19, 3, ':')            # the entrance hall
@@ -100,11 +100,9 @@ lv.paint('rug', 14.3, 3.5)
 lv.prop('tv', 16.55, 4.2, 90)
 lv.prop('armchair', 15.3, 5.5, 215)
 lv.prop('floor_lamp', 10.45, 6.5)
-# the big table, two pushed end to end across the way from his door to the kitchen: SPACE over it, or go round
-# its east end (a chair at its head closes the west one)
-lv.prop('table', TABLE[0] - 0.6875, TABLE[1], clutter='flat_table')
-lv.prop('table', TABLE[0] + 0.6875, TABLE[1], 180)
-lv.prop('chair', 10.33, TABLE[1] + 0.05, 0)
+# the table, across the way from his door to the kitchen: SPACE over it, or go round it (a chair at its west head)
+lv.prop('table', TABLE[0], TABLE[1], clutter='flat_table')
+lv.prop('chair', TABLE[0] - 1.05, TABLE[1] + 0.05, 0)
 lv.paint('floor_hole', 14.6, 5.1, 10)                   # where he kept it
 lv.prop('jerrycan', 16.4, 3.1, 40)                      # put down when it was empty
 lv.prop('poster_fight', 11.4, 6.91, 180)
@@ -177,8 +175,8 @@ lv.prop('bin_bag', 10.05, 16.5, 60)
 lv.prop('pay_phone', 6.09, 18.4, 270)
 
 # ---------------------------------------------------------------- the petrol (src/game/systems/FireSpread.js)
-# From his mattress to the man with the match: along the north side of the living room, through the north half of the
-# bedroom's doorway. The south half is the way out.
+# From his mattress to the man with the match: along the north side of the living room, under the bedroom's door.
+# The doorway and the boards before it are kept from catching until he is through (the living room's stage `keep`).
 lv.pour(14, (17.6, 2.35))                               # where the match falls
 lv.pour(10, (17.6, 2.3), (16.0, 2.2), (9.5, 2.2), (6.9, 2.2))
 lv.pour(12, (6.7, 2.0))                                 # short of the mattress: the carpet does the rest
@@ -232,7 +230,9 @@ lv.tutorial = {
         {'zone': [4, 1, 8, 5], 'spawn': [4.5, 2.5, 0], 'cam': 'bedroom', 'hints': ['move'],
          'waves': [{'at': [[18, 2]], 'on': 'never', 'blind': True}]},
         # the big table across his way to the kitchen door (`vault`)
+        # the fire waits at the bedroom's door (`keep`) until he has been out of it `keepFor` s
         {'zone': [9, 1, 16, 6], 'spawn': [10.4, 3.5, 0], 'cam': 'flat', 'marks': {'flee': [13.5, 6.9], 'vault': TABLE},
+         'keep': [[9, 1, 10, 3]], 'keepFor': 2.0,
          'hints': ['vault', 'flee']},
         # the second man is framed by the camera as he comes in (`frame`)
         {'zone': [10, 8, 16, 12], 'spawn': [12.4, 9.7, 90], 'cam': 'flat', 'hold': 18, 'keep': [[13, 6, 14, 7]], 'take': 'bat',

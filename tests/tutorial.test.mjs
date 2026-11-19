@@ -96,18 +96,18 @@ test('tutorial: the level holds together (every guard in a wave, zones and spawn
   for (const [, ...pts] of level.petrol) for (const [c, r] of pts) assert.ok(floor(c, r), `petrol poured in a wall at ${c},${r}`);
   assert.ok(level.props.some(([type, c, r]) => type === 'oven' && Math.hypot(c - B.at[0], r - B.at[1]) < 0.2), 'a stove where it blows');
   assert.ok(floor(...B.breach) && B.chain.every(([c, r]) => floor(c, r)), 'the fire comes down the corridor');
-  // his bedroom's door is a door (nothing shoved across it); one door on the way out of the back hall, to the corridor
-  assert.deepEqual([level.tiles[2][9], level.tiles[3][9]], ['D', 'D'], 'the bedroom door');
+  // his bedroom's door is one door (nothing shoved across it); one door on the way out of the back hall, to the corridor
+  assert.deepEqual([level.tiles[2][9], level.tiles[3][9]], ['D', '#'], 'the bedroom door: a single one');
   assert.ok(level.doors['9,2'] && !level.props.some(([type, c, r]) => c >= 8.5 && c <= 10.5 && r >= 1.5 && r <= 4.5 && type === 'table'));
   assert.ok(level.tiles[10][17] !== 'D' && level.tiles[10][20] === 'D', 'the back hall: an open doorway from the kitchen, the back door');
   // the living room's big table, right across his way from the bedroom door to the kitchen door: the vault
   const room = level.tutorial.stages[1], mark = room.marks.vault;
   const tables = level.props.filter(([type, c, r]) => type === 'table' && inside(room.zone, c, r));
-  assert.equal(tables.length, 2, 'two tables pushed end to end');
-  assert.ok(tables.every(([, c, r]) => Math.abs(r - mark[1]) < 0.01 && Math.abs(Math.abs(c - mark[0]) - 0.6875) < 0.01), 'the mark in its middle');
-  const way = (t) => [9.5 + (13.5 - 9.5) * t, 3.5 + (7 - 3.5) * t];
-  const [wx] = way((mark[1] - 3.5) / 3.5);
-  assert.ok(wx > mark[0] - 1.375 + 0.2 && wx < mark[0] + 1.375, 'the straight way to the kitchen runs into it');
+  assert.equal(tables.length, 1, 'one table');
+  assert.ok(Math.hypot(tables[0][1] - mark[0], tables[0][2] - mark[1]) < 0.01, 'the mark in its middle');
+  const way = (t) => [9.5 + (13.5 - 9.5) * t, 2.5 + (7 - 2.5) * t];
+  const [wx] = way((mark[1] - 2.5) / 4.5);
+  assert.ok(wx > mark[0] - 0.6875 && wx < mark[0] + 0.6875, 'the straight way to the kitchen runs into it');
   assert.ok(room.hints.includes('vault') && !level.tutorial.stages[0].hints.includes('vault'));
   assert.ok(!level.props.some(([type, c, r]) => type === 'table_round' && inside(room.zone, c, r)), 'no small table off to the side');
   const [c0, r0, c1, r1] = level.tutorial.fall;
