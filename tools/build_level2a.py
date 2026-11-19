@@ -46,7 +46,8 @@ LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
 ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
                             # so it is told early enough to cross AHEAD of him into the far lane (he keeps out of it)
-BEHIND_AT = (165, 250)      # a car set off from behind at each (it starts 19 m back and is alongside 3 s later)
+BEHIND_AT = (165, 236, 262) # a car set off from behind at each (it starts 19 m back and is alongside 3 s later)
+BEHIND_STYLE = ('rammer', 'blocker', 'gunner')
 CROSS_AT = 368              # the last one, out of the cross street ahead of him, as early (about 0:22)
 ALLEY_W = 4
 ALLEYS = (22, 105, EVENT_ALLEY, 190, 232, 272, 418)   # south (none just before the terrace: he comes at it along the sidewalk)
@@ -404,20 +405,42 @@ LOADING = (88, 100)         # two bays on our side kept for deliveries: hatched,
 MODELS = ('car', 'car', 'car2', 'car2', 'van')
 
 
+# THINNED (the user, after playing: "too many cars on the sides"): 12 cars where the draw gave 21. The draw is kept as
+# it was (the street's other dice roll on), then these bays (their first tee's column) are left empty: an old patch
+# or a sealed crack where a car stood for years, a cone somebody left in two of them. EMPTY is by section: the shops
+# 1 of 4, B 1 of 3, A 2 of 4, the dark stretch 2 of 4, B 2 of 4, the lit corner 1 of 2
+EMPTY = {26: 'road_patch_b', 70: 'road_crack_a', 116: 'road_patch_a', 140: 'cone', 158: 'road_crack_b', 182: 'cone',
+         284: 'road_patch_c', 302: 'road_patch_a', 370: 'road_crack_a'}
+# parked badly: [tiles along the row (astride the tee between two bays), rows toward the sidewalk (two wheels up on
+# the kerb)]. Never turned: a car askew in a row 2.5 m from the lane's edge would have a corner in the lane
+CROOKED = {20: (1.5, 0.0), 82: (-0.4, 0.13), 176: (0.5, 0.12), 296: (-1.2, 0.0)}
+PARKED = []                 # the cars left in the rows: (col, north)
+
+
 def bays(c0, c1, full, north):
     row, deg, meter = (10.0, 180, 8.7) if north else (17.0, 0, 18.3)
     for c in range(c0, c1 + 1, 6):
         lv.paint('park_tee', c, row, 0 if north else 180)
         put('parking_meter', c + 0.2, meter)
         if c < c1 and rng.random() < full:
-            must(rng.choice(MODELS), c + 3.0 + rng.uniform(-0.2, 0.2), row + rng.uniform(-0.04, 0.04) + (0.02 if north else -0.02), deg,
-                 on='=', lights=False)
+            model, x = rng.choice(MODELS), c + 3.0 + rng.uniform(-0.2, 0.2)
+            y = row + rng.uniform(-0.04, 0.04) + (0.02 if north else -0.02)
+            if c in EMPTY:
+                if EMPTY[c] == 'cone':
+                    put('traffic_cone', x + 1.3, row + (-0.5 if north else 0.5), on='=')
+                else:
+                    lv.paint(EMPTY[c], x, row + (-0.1 if north else 0.1))
+                continue
+            turn, onto = CROOKED.get(c, (0, 0))
+            must(model, x + turn, y + (-onto if north else onto), deg, on='=', lights=False)
+            PARKED.append((x + turn, north))
 
 
 for (c0, c1, full) in N_BAYS:
     bays(c0, c1, full, True)
 for (c0, c1, full) in S_BAYS:
     bays(c0, c1, full, False)
+assert len(PARKED) == 12 and not set(EMPTY) - {c for (c0, c1, _) in N_BAYS + S_BAYS for c in range(c0, c1, 6)}, len(PARKED)
 for c in range(LOADING[0], LOADING[1] + 1, 6):
     lv.paint('park_tee', c, 17.0, 180)
 lv.paint('hatch_bay', LOADING[0] + 3.0, 17.0)
@@ -759,10 +782,12 @@ chase = {
     # 'lorry' (systems/Lorries.js): the lorry waits at `lorry` [col, row] its cab to the north, and backs `back` tiles
     # south across the lanes; `gap` [col, row]: the way round its tail, shown by bone arrows
     'events': [
-        {'at': ALLEY_AT, 'kind': 'alley', 'car': [EVENT_ALLEY + ALLEY_W / 2, 21.0]},
-        *[{'at': c, 'kind': 'behind'} for c in BEHIND_AT],
+        # (`style`: how each car fights, systems/Pursuit.js: the first tells its shots, the second rams, then a
+        # blocker ahead of him with a gunner behind it, and the last one out of the cross street rams)
+        {'at': ALLEY_AT, 'kind': 'alley', 'car': [EVENT_ALLEY + ALLEY_W / 2, 21.0], 'style': 'gunner'},
+        *[{'at': c, 'kind': 'behind', 'style': st} for (c, st) in zip(BEHIND_AT, BEHIND_STYLE)],
         {'at': LORRY_AT, 'kind': 'lorry', 'lorry': [(YARD[0] + YARD[1] + 1) / 2, 6.69], 'back': 5, 'gap': [(YARD[0] + YARD[1] + 1) / 2, 18.3]},
-        {'at': CROSS_AT, 'kind': 'alley', 'car': [(CROSS[0] + CROSS[1] + 1) / 2 + 1.5, 21.0]},
+        {'at': CROSS_AT, 'kind': 'alley', 'car': [(CROSS[0] + CROSS[1] + 1) / 2 + 1.5, 21.0], 'style': 'rammer'},
     ],
     # water standing in the gutter [col, row, r px]: spray under his wheels
     'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]],

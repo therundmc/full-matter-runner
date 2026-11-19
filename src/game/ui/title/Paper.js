@@ -87,11 +87,12 @@ export function glint(g, x, y, k, r = 12, ink = BONE) {
   g.fillRect(Math.round(x - l), Math.round(y - 1), l * 2 + 1, 3);
   g.fillRect(Math.round(x - 1), Math.round(y - l), 3, l * 2 + 1);
 }
-// a paper tag pinned at (cx, cy), w x h, leaning deg, on its hard shadow; up: lifted off the board (the chosen one)
-export function tag(g, cx, cy, w, h, deg, seed, paper, up = false) {
+// a paper tag pinned at (cx, cy), w x h, leaning deg, on its hard shadow; up: lifted off the board (the chosen one);
+// part: 'shadow' or 'paper' alone (a lifted tag among others: its shadow under them, its paper over them)
+export function tag(g, cx, cy, w, h, deg, seed, paper, up = false, part = null) {
   const q = slab(-w / 2, -h / 2, w / 2, h / 2, seed, 3), d = up ? 5 : 0;
-  poly(g, INK, turned(q.map(([x, y]) => [x + 6 + d * 1.6, y + 8 + d * 1.6]), cx, cy, deg));
-  poly(g, paper, turned(q, cx - d, cy - d, deg));
+  if (part !== 'paper') poly(g, INK, turned(q.map(([x, y]) => [x + 6 + d * 1.6, y + 8 + d * 1.6]), cx, cy, deg));
+  if (part !== 'shadow') poly(g, paper, turned(q, cx - d, cy - d, deg));
 }
 
 // plain lettering on the screen (no outline, no shadow: paper), centred on (x, y), leaning deg

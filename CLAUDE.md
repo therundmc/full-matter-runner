@@ -63,7 +63,9 @@
   and locked on the car (Camera `pixel`, Drive.frame: no tilt, turn, lag or zoom that follows the speed), a driven
   car drawn at a whole px on one of 64 angles (Vehicle.pose, `CHASE.pixel`), the lens flat (Lens `flat`); speed is
   sold by the lens's drive-only edge streaks (data/post.js `POST.speed.drive`, nothing near the middle nor round
-  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car: that was its blur.
+  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car: that was its blur. At the wheel
+  the lens moves NO px of the picture (no trails, stretch, fringe: Lens `driveLens`; cars at the edges came out
+  deformed): its streaks are added over it, its band only dimmed.
 - Rooms are tight: level 1 loses whole tiles (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`); the builder keeps its drawing's coordinates, the kit moves them: keep things off the cut lines.
   Coordinates in tests and QA plans are the level's AFTER the cuts. A doorway needs room on one side; wall pieces
@@ -227,10 +229,13 @@
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once; a note a level (Menu.js `levelNotes`, never one for a stage), pinned in a column under its
-  target, three rows at most (`noteAt`: the tutorial and BACK under the photo of his flat, 01 under CUEBALL, 02 03
-  under JITTERS, then LUCKY, then THE BOSS), LEFT / RIGHT from a column to the next, UP / DOWN down it (page `grid`);
-  a level not made yet a greyed note taped SOON with its working title, seen and never started), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  drawn by a marker once; the board pinned by hand and read as the story goes: his flat at the left, the four cards
+  at their own heights and leans (title_art.py `TARGETS`), the string along their tops, never across a face; a note
+  a level (Menu.js `levelNotes`, never one for a stage) in a bunch under its target, askew, three at most (`noteAt`,
+  `FAN`: 00 under the photo of his flat, 01 under CUEBALL, 02 03 under JITTERS, then LUCKY, then THE BOSS), LEFT /
+  RIGHT from a bunch to the next, UP / DOWN down it (page `grid`), opened on the furthest level he can play; a level
+  not made yet a smaller violet scrap taped SOON with its working title, seen and never started; BACK a scrap in the
+  bottom left corner), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),
@@ -291,6 +296,12 @@
 - The chase (level 2A, docs/LEVEL2.md): numbers in data/chase.js; events by distance in the level's `chase.events`
   (systems/Pursuit.js, systems/Lorries.js); what the car hits is torn (a sensor at once), flung by hand (Drive.fling) or
   the crash (`lasting`): never let a light thing hold it up. Play it by script after touching it (tools/shot.mjs).
+  A PARKED CAR IS NEVER A WALL NOR A DEATH: he shoves it aside (Drive.aside, `CHASE.aside`: 10 % of his speed on a
+  graze, 50 % square on, never stopped) and it never shuts both lanes (clearLanes). His car slides (`CHASE.slide`,
+  Drive slideStep / gripOf). Pursuers attack in turns, each TOLD (Pursuit nextAttack: shot / ram / brake;
+  `CHASE.pursuit.attack`, `ram`, `block`; an event's `style`: gunner / rammer / blocker). No speedometer on the HUD.
+  What is laid on a car but drawn elsewhere (its lamps' light, their glow) is placed from `Vehicle.shell()` (the
+  pose it is DRAWN at), never from its body: else the beams trail the sprite.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
 - level1.js, level2a.js, lab.js and tutorial.js are generated: edit `tools/build_level1.py` / `build_level2a.py` /
   `build_lab.py` / `build_tutorial.py`

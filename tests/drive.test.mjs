@@ -354,7 +354,7 @@ test('drive: the shove lunges a lane toward the side he aims at, then waits its 
   assert.equal(d.ready, 1, 'ready again 0.7 s after it');
   input.pressed.add('Space');
   run(w, d, input, 0.1, { x: v.x, y: v.y - 100 });
-  assert.ok(Math.abs(vel(v).y + CHASE.shove.v) < 0.1, 'above its middle line: up');
+  assert.ok(Math.abs(vel(v).y + CHASE.shove.v) < 0.5, 'above its middle line: up');
 });
 
 test('drive: nose-on into a wall at 9 px/step kills him; a scrape along one does not', () => {
@@ -506,4 +506,196 @@ test('drive: stalled, the wheel he holds is his: the car never fights it, and ge
   input.held.delete('KeyS');
   run(w, d, input, 1.5);
   assert.ok(v.y < y0 - 20, 'let go: out it eases');
+});
+
+// ---- a parked car he hits is shoved aside, never a wall (the user: "elle doit se mettre sur le cote")
+const { squareOf, asideKeep, asideThrow, blocksBoth, gripOf, slideStep, skidOf } = await load('game/systems/Drive.js');
+
+test('aside: how square a hit is, what it costs him and how the car is thrown (pure)', () => {
+  assert.equal(squareOf(0.1, 1), 0, 'a corner: a graze');
+  assert.ok(squareOf(0.4, 1) > 0.3 && squareOf(0.4, 1) < squareOf(0.5, 1));
+  assert.equal(squareOf(1, 1), 1, 'full on the nose');
+  assert.equal(squareOf(0.8, -0.3), 0, 'a flank: not square at all');
+  assert.ok(asideKeep(0) >= 0.88 && asideKeep(0) <= 0.92, 'a graze: about 10 % gone');
+  assert.ok(asideKeep(1) >= 0.45 && asideKeep(1) <= 0.55, 'square on: about half');
+  assert.ok(asideKeep(0.5) < asideKeep(0.2));
+  const graze = asideThrow(0, 1300), square = asideThrow(1, 1300), van = asideThrow(1, 1900);
+  assert.ok(square.along > 1 && graze.along < 1, 'hit square it is thrown on faster than he goes: never held on his nose');
+  assert.ok(square.across > graze.across && graze.across > 2, 'and out to its side');
+  assert.ok(van.along < square.along && van.along >= square.along * CHASE.aside.heavy - 1e-9, 'a van goes less');
+  // both lanes: the road 352..512, his car 66 wide and 8 px of room
+  assert.ok(blocksBoth(400, 460, 352, 512, 74), 'astride the centre line: neither lane is left');
+  assert.ok(!blocksBoth(440, 500, 352, 512, 74), 'in one lane: the other is his');
+  assert.ok(!blocksBoth(300, 350, 352, 512, 74), 'on the kerb');
+});
+
+// his car at cruise in a street of two lanes (rows 4.5 and 7 of the yard), a car parked ahead `off` px across from his line
+function parkedAhead(off, model = 'car') {
+  const s = start({ cruise: 9, lanes: [4.5, 7], mid: 5.75 });
+  s.car = vehicle(s.w, model, 20 * TILE, 7 * TILE + off, 0);
+  s.told = [];
+  s.w.events.on('carShoved', (e) => s.told.push(e));
+  return s;
+}
+
+test('aside: a glancing hit on a parked car keeps 85 % of his speed and more, and shoves it out to its side', () => {
+  for (const off of [52, -52, 46]) {
+    const { w, v, d, input, car, told } = parkedAhead(off), y0 = car.y;
+    assert.ok(car.body.frozen, 'parked: frozen');
+    let low = Infinity;
+    for (let i = 0; i < 90; i++) { run(w, d, input, DT); low = Math.min(low, d.v); }
+    assert.equal(w.killed, null);
+    assert.equal(told.length >= 1 && told[0].car, car, 'told: carShoved');
+    assert.ok(told[0].sq < 0.4, `a graze (${told[0].sq.toFixed(2)})`);
+    assert.ok(low >= 0.85 * 9, `${off}: he keeps ${(low / 9 * 100).toFixed(0)} % of his speed`);
+    assert.ok((car.y - y0) * Math.sign(off) > 12, `${off}: shoved ${(car.y - y0).toFixed(0)} px out to its side`);
+    assert.ok(v.x > car.x - 40 && d.v > 8, 'and he is past it, at speed');
+    assert.equal(d.freeing, null, 'never stalled');
+  }
+});
+
+test('aside: a square hit at speed keeps 45 % and more, never stops him, and the car is out of his way', () => {
+  for (const [off, model] of [[0, 'car'], [6, 'car'], [-10, 'car2'], [0, 'van']]) {
+    const { w, v, d, input, car, told } = parkedAhead(off, model), x0 = car.x;
+    let low = Infinity, stalled = 0;
+    for (let i = 0; i < 150; i++) { run(w, d, input, DT); low = Math.min(low, d.v); if (d.v < 0.25 * 9) stalled += DT; }
+    assert.equal(w.killed, null, 'no crash death from a parked car');
+    assert.ok(told[0].sq > 0.6, `square (${told[0].sq.toFixed(2)})`);
+    assert.ok(low >= 0.45 * 9, `${model} ${off}: he keeps ${(low / 9 * 100).toFixed(0)} % of his speed (${low.toFixed(2)})`);
+    assert.ok(low <= 0.62 * 9, `${model} ${off}: and it cost him (${low.toFixed(2)})`);
+    assert.equal(stalled, 0, 'never at a crawl');
+    assert.equal(d.freeing, null, 'never stalled');
+    assert.ok(car.x > x0 + 60, `thrown on (${(car.x - x0).toFixed(0)} px)`);
+    assert.ok(v.x > 36 * TILE && d.v > 8.5, `${model} ${off}: he runs on at speed (x ${v.x.toFixed(0)}, ${d.v.toFixed(1)})`);
+  }
+});
+
+test('aside: a row of parked cars ploughed through nose-on never stops him', () => {
+  const s = parkedAhead(0);
+  for (let i = 1; i < 5; i++) vehicle(s.w, i % 2 ? 'car2' : 'van', (20 + i * 6) * TILE, 7 * TILE + (i % 2 ? 4 : -4), 0);
+  let low = Infinity, slow = 0;
+  for (let i = 0; i < 420 && s.v.x < 60 * TILE; i++) { run(s.w, s.d, s.input, DT); low = Math.min(low, s.d.v); if (s.d.v < 0.25 * 9) slow += DT; }
+  assert.equal(s.w.killed, null);
+  assert.ok(s.v.x > 50 * TILE, `through them (x ${s.v.x.toFixed(0)})`);
+  assert.ok(slow === 0 && low > 0.25 * 9, `never held up (lowest ${low.toFixed(2)}, ${slow.toFixed(2)} s at a crawl)`);
+});
+
+test('aside: a shoved car never shuts both lanes: left astride the centre line, it is pushed on to its kerb', () => {
+  const { w, v, d, input, car } = parkedAhead(0);
+  const lanes = [4.5 * TILE, 7 * TILE], half = (lanes[1] - lanes[0]) / 2, need = v.h + CHASE.aside.room;
+  const shut = () => blocksBoth(car.body.bounds.min.y, car.body.bounds.max.y, lanes[0] - half, lanes[1] + half, need);
+  for (let i = 0; i < 80; i++) run(w, d, input, DT);
+  assert.ok(d.asides.has(car), 'followed');
+  // (wherever the physics left it: put astride the centre line, across the road, at rest)
+  Body.setPosition(car.body, { x: v.x + 600, y: 5.75 * TILE + 6 });
+  Body.setAngle(car.body, 1.2);
+  Body.setVelocity(car.body, { x: 0, y: 0 });
+  Body.setAngularVelocity(car.body, 0);
+  assert.ok(shut(), 'both lanes shut');
+  d.asides.get(car).t = 0;
+  Body.setPosition(v.body, { x: 6 * TILE, y: 7 * TILE }); // (he is well back)
+  for (let i = 0; i < 150 && shut(); i++) { w.time += DT; w.physics.step(DT, w.time); d.clearLanes(DT); }
+  assert.ok(!shut(), `a lane is clear (the car from ${car.body.bounds.min.y.toFixed(0)} to ${car.body.bounds.max.y.toFixed(0)})`);
+  assert.ok(car.y > 5.75 * TILE + 6, 'pushed toward the kerb of its side');
+});
+
+test('aside: at a crawl, or on a car that cannot move, the physics as before (no car driven through)', () => {
+  const { w, v, d, input, car, told } = parkedAhead(0);
+  Body.setStatic(car.body, true);
+  car.body.frozen = false;
+  for (let i = 0; i < 60; i++) run(w, d, input, DT);
+  assert.equal(told.length, 0);
+  assert.ok(v.x + v.w / 2 <= car.body.bounds.min.x + 6, 'held by it');
+});
+
+// ---- the slide
+test('slide: the tyres give less of the wheel the faster it goes and while the rear is out (pure)', () => {
+  assert.equal(gripOf(CHASE.cruise, 0), 1, 'the cruise speed: the wheel as it is');
+  assert.ok(gripOf(CHASE.max, 0) < gripOf(CHASE.cruise, 0) && gripOf(CHASE.cruise, 0) < gripOf(4, 0), 'grip falls with the speed');
+  assert.ok(Math.abs(gripOf(CHASE.max, 0) - (1 - CHASE.slide.fall)) < 1e-9);
+  assert.ok(gripOf(CHASE.cruise, 0.15) < 1 && gripOf(CHASE.cruise, CHASE.slide.most) < gripOf(CHASE.cruise, 0.15), 'and in a slide');
+  assert.equal(gripOf(CHASE.cruise, -0.2), gripOf(CHASE.cruise, 0.2));
+  assert.ok(skidOf(0, CHASE.cruise, false, CHASE, 0.2) > 0 && skidOf(0, CHASE.cruise, false, CHASE, 0.02) === 0, 'sliding, its tyres smoke');
+});
+
+// a slide run on: steer(t) -> -1..1, from a state; returns the slip's trace
+function slide(steer, sec, from = { slip: 0, slipV: 0, u: 0 }, lock = 0) {
+  let { slip, slipV, u } = from, held = lock;
+  const out = [];
+  for (let t = 0; t < sec; t += DT) {
+    const st = steer(t, slip);
+    held = st ? held + DT : 0;
+    u = steerStep(u, st, DT);
+    [slip, slipV] = slideStep(slip, slipV, st, u, held, DT);
+    out.push(slip);
+  }
+  return out;
+}
+
+test('slide: a lane change does not let the rear go; a flick, full lock held and a shove do', () => {
+  const lane = slide((t) => (t < 0.3 ? 1 : 0), 1.2);
+  assert.ok(Math.max(...lane.map(Math.abs)) < CHASE.slide.smoke, `a plain lane change: no slide (${Math.max(...lane.map(Math.abs)).toFixed(3)})`);
+  const flick = slide((t) => (t < 0.35 ? -1 : t < 0.75 ? 1 : 0), 1.6);
+  assert.ok(Math.max(...flick) > CHASE.slide.smoke, `a flick: the rear steps out (${Math.max(...flick).toFixed(3)} rad)`);
+  const lock = slide(() => 1, 1.2);
+  assert.ok(lock[lock.length - 1] > 0.1 && lock[20] < 0.02, `full lock held: it lets go after a moment (${lock[lock.length - 1].toFixed(3)})`);
+  for (const tr of [lane, flick, lock]) assert.ok(Math.max(...tr.map(Math.abs)) <= CHASE.slide.most + 1e-9, 'never past the most');
+});
+
+test('slide: countersteer catches it; nothing held it fishtails once and comes back', () => {
+  const out = { slip: 0.22, slipV: 0.6, u: 0 };
+  const free = slide(() => 0, 2.5, out), caught = slide((t, slip) => (Math.abs(slip) > 0.01 ? -Math.sign(slip) * 0.6 : 0), 2.5, out);
+  const settle = (tr) => tr.findIndex((_, i) => tr.slice(i).every((x) => Math.abs(x) < 0.03)) * DT;
+  assert.ok(Math.min(...free) < -0.02, `nothing held: it swings back past straight (${Math.min(...free).toFixed(3)})`);
+  assert.ok(Math.abs(free[free.length - 1]) < 0.01, 'and comes back');
+  assert.ok(Math.min(...caught) > -0.03, `caught: no wag (${Math.min(...caught).toFixed(3)})`);
+  assert.ok(settle(caught) < settle(free), `sooner than left alone (${settle(caught).toFixed(2)} s against ${settle(free).toFixed(2)} s)`);
+  const into = slide(() => 1, 1.5, out, 1);
+  assert.ok(into[into.length - 1] > 0.15, 'steered into, it is held out: a drift');
+});
+
+test('slide: at the wheel a shove kicks the tail out, the slide scrubs speed, smokes, and the car straightens by itself', () => {
+  const { w, v, d, input } = start({ cruise: 9, lanes: [4.5, 7], mid: 5.75 });
+  const tyres = [];
+  w.events.on('tyres', (e) => tyres.push(e));
+  run(w, d, input, 0.3);
+  input.pressed.add('Space');
+  let most = 0, low = 9;
+  for (let i = 0; i < 50; i++) { run(w, d, input, DT); most = Math.max(most, Math.abs(d.slip)); low = Math.min(low, d.v); }
+  assert.ok(most > 0.08, `the tail out (${most.toFixed(3)} rad)`);
+  assert.ok(low < 9 && low > 8, `a little speed scrubbed (${low.toFixed(2)})`);
+  assert.ok(tyres.length > 0, 'rubber smoke told');
+  run(w, d, input, 2);
+  assert.ok(Math.abs(d.slip) < 0.01 && Math.abs(v.body.angle) < 0.02 && Math.abs(d.v - 9) < 1e-6, 'straight again, at cruise');
+  assert.equal(w.killed, null);
+});
+
+// ---- the speed is felt, not read (the user: no speedometer; "on ne sent pas trop la vitesse")
+test('hud: no speed readout at the wheel (the shove bar stays)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const hud = readFileSync(fileURLToPath(new URL('../src/game/ui/HUD.js', import.meta.url)), 'utf8');
+  assert.ok(!/KM\/H/.test(hud) && !/\.kmh\b/.test(hud), 'no km/h on the HUD');
+  assert.ok(/'SHOVE'/.test(hud) && /drawRoad\(/.test(hud), 'the shove bar and the road left are still there');
+  assert.equal(kmh(8.9), 60, 'Drive.kmh is kept (the QA robot reads it)');
+});
+
+test('speed: slowed by a hit the car comes forward on the picture and falls back as it picks up; at cruise it shivers', () => {
+  const { w, v, d, input } = start({ cruise: 9 });
+  run(w, d, input, 0.5);
+  const at0 = d.frame(640, 3).x - v.x;
+  assert.ok(Math.abs(d.surge) < 1e-9, 'at cruise: where it always sat');
+  d.v = 4;
+  let most = 0, bobs = 0;
+  for (let i = 0; i < 90; i++) { run(w, d, input, DT); most = Math.max(most, d.surge); if (v.bob) bobs++; }
+  const f = d.frame(640, 3).x - v.x;
+  assert.ok(most > 0.01 && most <= CHASE.camera.surge, `forward by ${(most * 640).toFixed(0)} px of 640`);
+  assert.ok(Math.abs(d.frame(640, 3).x * 3 - Math.round(d.frame(640, 3).x * 3)) < 1e-6, 'on the picture\'s px grid');
+  const home = () => Body.setPosition(v.body, { x: 6 * TILE, y: v.y }); // (the yard is 70 tiles long)
+  home();
+  run(w, d, input, 3);
+  assert.ok(d.surge < 0.002 && Math.abs(d.frame(640, 3).x - v.x - at0) < 0.4, 'back where it sat');
+  let n = 0;
+  for (let i = 0; i < 300; i++) { if (i % 100 === 0) home(); run(w, d, input, DT); if (v.bob) { n++; assert.equal(Math.abs(v.bob), CHASE.body.buzz.px); } }
+  assert.ok(n >= 8 && n <= 45, `the shell shivers now and then at speed (${n} steps of 300)`);
 });

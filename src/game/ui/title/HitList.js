@@ -18,22 +18,32 @@ import { INK, NIGHT_L, NIGHT_LL, BONE, BONE_D, PINK_D, FIRE, BLOOD, open, put, f
 // the stage that kills each target, in the cards' order: the last of his last level (JITTERS dies at the end of 03,
 // so 02 done leaves him standing, still NEXT; a stage not made yet is never done)
 const KILLS = TARGETS.map((who) => CAMPAIGN_LEVELS.filter((l) => l.target === who).pop().stages.slice(-1)[0]);
-// a level's note on the board, and how many go down a column: three under a card, two under the photo of his flat
-// (the second is BACK's place)
-export const NOTE = [186, 58];
+// The notes. The board is read as the story goes: his flat at the top left, then the four cards, each a step lower
+// than the one before, the string along their tops. A man's levels hang in a bunch under his card, the first tucked
+// against its foot, each askew its own way and a little off the one above, as pinned in a hurry (FAN: [dx, lean] by
+// column and row). A level that is made is a NOTE; one not made yet a smaller SCRAP, taped. Three go under a card
+// (ROWS: an eighth level fits under THE BOSS), the tutorial's under the photo of his flat.
+export const NOTE = [200, 66], SCRAP = [176, 54];
 export const ROWS = 3;
-const ROW_Y = [408, 476, 544], HOME_Y = [466, 548];
-// where the note of column col (0 under the photo, 1..4 under the cards), row (0 the highest) is pinned: [x, y, lean],
-// a little off its column and askew, as pinned by hand
+const PITCH = 66, PHOTO_H = 214;
+const FAN = [
+  [[-4, 3]],
+  [[-3, 2.5], [-9, -2], [0, 1.5]],
+  [[5, -3], [6, 2], [2, -1.5]],
+  [[3, 3], [-7, -1.5], [2, 2]],
+  [[0, -2.5], [6, 2.5], [-3, -1.5]],
+];
+// where the note of column col (0 under the photo, 1..4 under the cards), row (0 the highest) is pinned: [x, y, lean]
 export function noteAt(col, row) {
-  const j = (n) => hash(col * 7.3 + row * 3.1 + n) - 0.5;
-  return [Math.round((col ? B.cards[col - 1][0] : B.photo[0]) + j(1) * 8), (col ? ROW_Y : HOME_Y)[row] + Math.round(j(2) * 4), Math.round(j(3) * 50) / 10];
+  const [cx, cy, lean] = col ? B.cards[col - 1] : B.photo, half = (col ? B.card[1] : PHOTO_H) / 2, [dx, deg] = FAN[col][row];
+  // under the foot of what it hangs from, which leans
+  return [Math.round(cx - Math.sin((lean * Math.PI) / 180) * half + dx), Math.round(cy + half + 6 + NOTE[1] / 2 + row * PITCH), deg];
 }
-// BACK, a smaller note under the tutorial's (between two levels: GO ON)
-export const BACK = [132, 54];
-export const BACK_AT = [B.photo[0] - 8, HOME_Y[1], 3];
-// a level's note is pinned by its corner, over its number: its pin, from the note's middle
-const PIN_X = -NOTE[0] / 2 + 26;
+// a level's note: its paper's size
+export const noteSize = (it) => (it.soon ? SCRAP : NOTE);
+// BACK, a scrap pinned in the board's bottom left corner, out of the way (between two levels: GO ON)
+export const BACK = [112, 44];
+export const BACK_AT = [96, 562, -5];
 
 // how many of the targets are dead: the leading ones whose level is done
 export function deadCount(progress) {
@@ -45,8 +55,8 @@ export function deadCount(progress) {
 // what the board remembers from one picture to the next: when it came up, the mouse, the note chosen
 const life = { since: 0, last: -1, mx: 0, my: 0, shake: 0, sel: '', selT: -9 };
 
-// a note's title on one line or two, cut between words (a line holds 13 letters beside the number)
-export function lines(label, max = 13) {
+// a note's title on one line or two, cut between words (a line holds 12 letters beside the number)
+export function lines(label, max = 12) {
   const out = [''];
   for (const w of label.split(' ')) {
     if (out.length < 2 && out[out.length - 1] && `${out[out.length - 1]} ${w}`.length > max) out.push(w);
@@ -82,9 +92,10 @@ function string(g, pins, t, shake) {
 
 // a note pinned at (x, y): its paper on the sheet (lit: the chosen one's bright paper), its pin, pinX from its middle,
 // shaken (wob 0..1) when it has just been chosen; returns its place on screen
-function note(g, f, t, x, y, w, h, deg, seed, on, wob, paper = BONE_D, lit = on, pinX = 0) {
+function note(g, f, t, x, y, w, h, deg, seed, on, wob, paper = BONE_D, lit = on, pinX = 0, part = null) {
   const lean = deg + (on ? Math.sin(t * 34) * 2.5 * wob : 0);
-  tag(g, x, y, w, h, lean, seed, lit ? BONE : paper, on);
+  tag(g, x, y, w, h, lean, seed, lit ? BONE : paper, on, part);
+  if (part === 'shadow') return null;
   const d = on ? 5 : 0, [p] = turned([[pinX, -h / 2 + (pinX ? 5 : 9)]], x - d, y - d, lean), dx = on ? Math.round(Math.sin(t * 46) * 4 * wob) : 0;
   disc(g, INK, p[0] + 2 + dx, p[1] + 3, 5);
   disc(g, on ? FIRE : PINK_D, p[0] + dx, p[1], 5);
@@ -115,7 +126,7 @@ export function drawHitList(ctx, W, H, t, view) {
   tongue(g, 10, -30, 16, 26 * wob(1), 4, n + 1, tf);
   // the matchbook's flamingo, a neon on its cover: it buzzes
   if (dead >= 1 && (t + 1.5) % 4.3 < 0.4 && steps(t, 15) % 2 === 0) for (const q of B.flamingo) poly(g, PINK_D, turned(q, ...B.matchbook));
-  string(g, [B.photoPin, B.pins[0], ...(dead >= 1 ? [B.matchPin, ...B.pins.slice(1, dead + 1)] : [])], t, life.shake);
+  string(g, [B.photoPin, ...B.pins.slice(0, dead + 1)], t, life.shake);
   // the dead, crossed out: the ones the board shows dead for the first time, by the marker
   let marking = false;
   for (let i = 0; i < dead; i++) {
@@ -152,30 +163,37 @@ export function drawHitList(ctx, W, H, t, view) {
   const shaken = Math.max(0, 1 - (t - life.selT) / 0.35);
   // words on a note, (dx, dy) from its middle in the sheet's px, leaning with it
   const write = (p, str, dx, dy, size, col) => { const [q] = turned([[dx * k, dy * k]], p.x, p.y, p.deg); words.push([str, q[0], q[1], size * k, col, p.deg]); };
-  items.forEach((it, i) => {
-    const on = i === sel, w = on ? shaken : 0;
+  const pin = (i, part = null) => {
+    const it = items[i], on = i === sel, w = on ? shaken : 0;
     if (!it.tag) {
-      const [x, y, deg] = BACK_AT, p = note(g, f, t, x, y, ...BACK, deg, 91 + (on ? boil(t) : 0), on, w);
-      write(p, it.label, 0, 5, 17, INK);
+      const [x, y, deg] = BACK_AT, p = note(g, f, t, x, y, ...BACK, deg, 91 + (on ? boil(t) : 0), on, w, BONE_D, on, 0, part);
+      if (!p) return;
+      write(p, it.label, 0, 4, 14, INK);
       rects.push({ i, ...p.rect });
       return;
     }
-    // a level: its number, its title beside it on a line or two, and under it its best result or where it stands;
-    // shut or not made yet it is greyed, and one not made yet has a strip of tape across it, SOON, even chosen
-    const [x, y, deg] = noteAt(it.col, it.row), dim = it.locked || it.soon, lit = on && !it.soon;
-    const p = note(g, f, t, x, y, NOTE[0], NOTE[1], deg, i * 11 + 30 + (on ? boil(t) : 0), on, w, dim ? NIGHT_LL : BONE_D, lit, PIN_X);
-    const ink = dim && !lit ? BONE_D : INK, rows = lines(it.label), b = it.best, d = on ? -5 : 0;
-    write(p, it.tag, PIN_X, 4, 22, ink);
-    rows.forEach((str, r) => write(p, str, 24, (rows.length > 1 ? -17 : -9) + r * 14, 12, ink));
+    // a level: its number big at its corner under the pin, its title beside it on a line or two, and under it its
+    // best result or where it stands; shut or not made yet it is in the board's violet, and one not made yet is a
+    // smaller scrap, a strip of tape across its foot, SOON, even chosen
+    const [x, y, deg] = noteAt(it.col, it.row), [nw, nh] = noteSize(it), dim = it.locked || it.soon, lit = on && !it.soon, big = !it.soon;
+    const p = note(g, f, t, x, y, nw, nh, deg, i * 11 + 30 + (on ? boil(t) : 0), on, w, dim ? NIGHT_LL : BONE_D, lit, -nw / 2 + (big ? 30 : 25), part);
+    if (!p) return;
+    const ink = dim && !lit ? BONE_D : INK, rows = lines(it.label), two = rows.length > 1, b = it.best, d = on ? -5 : 0;
+    write(p, it.tag, -nw / 2 + (big ? 30 : 25), big ? 6 : 4, big ? 26 : 20, ink);
+    rows.forEach((str, r) => write(p, str, big ? 28 : 24, (big ? (two ? -18 : -9) : two ? -14 : -6) + r * (big ? 16 : 14), big ? 14 : 12, ink));
     if (it.soon) {
-      poly(g, BONE_D, turned(strip([-34, 0], [NOTE[0] / 2 + 5, 0], 18, 15), x + d, y + d + 18, p.deg - 3));
-      words.push(['SOON', f.ox + (x + d + 28) * k, f.oy + (y + d + 17.5) * k, 11 * k, INK, p.deg - 3]);
+      poly(g, BONE_D, turned(strip([-16, 0], [70, 0], 17, 15), x + d, y + d, p.deg).map(([qx, qy]) => [qx, qy + nh / 2 - 2]));
+      write(p, 'SOON', 27, nh / 2 - 2, 10, INK);
     } else {
       const under = it.locked ? 'LOCKED' : b ? `${thousands(b.total)} ${b.grade} ${clock(b.time || 0)}` : it.done ? 'DONE' : 'NOT DONE';
-      write(p, under, 24, rows.length > 1 ? 17 : 12, 10, dim && !lit ? BONE_D : PINK_D);
+      write(p, under, 28, two ? 20 : 14, 10, dim && !lit ? BONE_D : PINK_D);
     }
     rects.push({ i, ...p.rect });
-  });
+  };
+  // the chosen one is lifted over its bunch: its shadow under the others, its paper over them
+  if (items[sel]) pin(sel, 'shadow');
+  items.forEach((_, i) => { if (i !== sel) pin(i); });
+  if (items[sel]) pin(sel, 'paper');
   show(ctx, W, H);
   for (const [str, x, y, size, col, deg] of words) letter(ctx, str, x, y, size, col, deg);
   return rects;

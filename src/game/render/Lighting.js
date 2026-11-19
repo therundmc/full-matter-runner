@@ -65,6 +65,16 @@ const lum = (c) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255;
 const css = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const toByte = (c) => c.map((v) => Math.round(clamp(v, 0, 1) * 255));
 
+// Where a prop's light l (its place lx, ly and direction ldir in the prop's own frame) is in the world: { x, y, dir }.
+// A vehicle's is laid on its shell as it is DRAWN (Vehicle.shell: a driven car is drawn on whole px, on one of 64
+// angles, its body shifted on its springs), not on its body: else the beams swing apart from the sprite. A hanging
+// lamp takes its light along as it swings
+export function lampPlace(p, l) {
+  const at = p.shell ? p.shell() : { x: p.x, y: p.y, a: p.body.angle }, c = Math.cos(at.a), s = Math.sin(at.a);
+  const k = p.def?.hung ? p.kick : null;
+  return { x: at.x + l.lx * c - l.ly * s + (k ? k.x : 0), y: at.y + l.lx * s + l.ly * c + (k ? k.y : 0), dir: at.a + l.ldir };
+}
+
 // light i of a prop is on unless that lamp was smashed (vehicles keep one flag per lamp)
 const lampOn = (p, i) => !p.lamps || p.lamps[i];
 
@@ -361,13 +371,12 @@ export default class Lighting {
     return list;
   }
 
-  // follow the prop; shadows rebuilt when it moved
+  // follow the prop; shadows rebuilt when it moved. A car's lamps follow it AS IT IS DRAWN (lampPlace), every frame
   placePropLight(p, l) {
-    const a = p.body.angle, c = Math.cos(a), s = Math.sin(a);
-    const k = p.def.hung ? p.kick : null; // a hanging lamp takes its light along as it swings
-    const x = p.x + l.lx * c - l.ly * s + (k ? k.x : 0), y = p.y + l.lx * s + l.ly * c + (k ? k.y : 0);
-    if (Math.abs(x - l.x) > 1.5 || Math.abs(y - l.y) > 1.5 || Math.abs(a + l.ldir - l.dir) > 0.03) {
-      l.x = x; l.y = y; l.dir = a + l.ldir; l.dirty = true;
+    const at = lampPlace(p, l);
+    if (p.moving) { l.x = at.x; l.y = at.y; l.dir = at.dir; return; } // (unshadowed: nothing to cast again)
+    if (Math.abs(at.x - l.x) > 1.5 || Math.abs(at.y - l.y) > 1.5 || Math.abs(at.dir - l.dir) > 0.03) {
+      l.x = at.x; l.y = at.y; l.dir = at.dir; l.dirty = true;
     }
   }
 
@@ -845,8 +854,9 @@ export default class Lighting {
     if (!gl || p.dead || p.lightsOut || !this.inView(p.x, p.y, 60)) return;
     const k = clamp(p.glowK ?? 1, 0, 1), sign = p.def.sign, x0 = -gl.width / 2, y0 = -gl.height / 2;
     g.save();
-    g.translate(p.x + (p.ox || 0) + (p.def.hung ? p.kick.x : 0), p.y + (p.oy || 0) + (p.def.hung ? p.kick.y : 0));
-    g.rotate(p.body.angle);
+    const at = p.shell ? p.shell() : { x: p.x, y: p.y, a: p.body.angle }; // (a car's: where its shell is drawn)
+    g.translate(at.x + (p.ox || 0) + (p.def.hung ? p.kick.x : 0), at.y + (p.oy || 0) + (p.def.hung ? p.kick.y : 0));
+    g.rotate(at.a);
     if (gl.k) g.scale(gl.k, gl.k); // the map of a finer sprite (Assets.js `density`): coordinates below are its pixels
     if (p.drawLamps) {
       g.globalAlpha = k;

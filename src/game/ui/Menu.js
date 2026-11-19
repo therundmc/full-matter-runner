@@ -63,10 +63,11 @@ const PAGES = {
     ],
   }),
   // the hit list: its notes in columns (grid: LEFT / RIGHT go from a column to the next, UP / DOWN walk a column),
-  // BACK under the tutorial's in the first
+  // BACK under the tutorial's in the first; it opens on the furthest level that can be played (start)
   levels: (c) => {
     const notes = levelNotes(c);
-    return { title: 'LEVELS', grid: true, items: [...notes, { ...BACK, col: 0, row: notes.filter((it) => it.col === 0).length }] };
+    return { title: 'LEVELS', grid: true, start: Math.max(0, notes.findLastIndex((it) => it.level && !it.locked)),
+      items: [...notes, { ...BACK, col: 0, row: notes.filter((it) => it.col === 0).length }] };
   },
   // his cap (BACK) is the mouse's way out; the sub-pages have none: ESC / B / the right button, or another thing
   options: () => ({
@@ -218,8 +219,9 @@ export default class Menu {
   left() { return this.nudge(-1); }
   right() { return this.nudge(1); }
 
+  // a page opens on its first item, or on the one it says (start)
   open(id) {
-    this.stack.push({ id, sel: 0 });
+    this.stack.push({ id, sel: this.pageOf(id).start ?? 0 });
     this.fix();
   }
 

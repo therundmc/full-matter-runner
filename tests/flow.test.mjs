@@ -105,9 +105,7 @@ test('menu: the LEVELS board walks its notes by columns', () => {
     levels: [{ id: 'tutorial', name: 'FIRST NIGHT' }, { id: 'level1', name: 'NO LOOSE ENDS' }],
   });
   m.open('levels');
-  assert.equal(m.item.level, 'tutorial');
-  m.right();
-  assert.equal(m.item.level, 'level1');
+  assert.equal(m.item.level, 'level1', 'it opens on the furthest level he can play');
   m.left();
   assert.equal(m.item.level, 'tutorial');
   m.down();
