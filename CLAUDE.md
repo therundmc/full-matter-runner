@@ -63,7 +63,9 @@
   and locked on the car (Camera `pixel`, Drive.frame: no tilt, turn, lag or zoom that follows the speed), a driven
   car drawn at a whole px on one of 64 angles (Vehicle.pose, `CHASE.pixel`), the lens flat (Lens `flat`); speed is
   sold by the lens's drive-only edge streaks (data/post.js `POST.speed.drive`, nothing near the middle nor round
-  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car: that was its blur.
+  his car) and the world's wind / wake (CHASE.fx). Anything else resamples the car: that was its blur. At the wheel
+  the lens moves NO px of the picture (no trails, stretch, fringe: Lens `driveLens`; cars at the edges came out
+  deformed): its streaks are added over it, its band only dimmed.
 - Rooms are tight: level 1 loses whole tiles (tools/build_level1.py `CUT_COLS` / `CUT_ROWS`, levelkit `cut_cols` /
   `cut_rows`); the builder keeps its drawing's coordinates, the kit moves them: keep things off the cut lines.
   Coordinates in tests and QA plans are the level's AFTER the cuts. A doorway needs room on one side; wall pieces
@@ -286,6 +288,12 @@
 - The chase (level 2A, docs/LEVEL2.md): numbers in data/chase.js; events by distance in the level's `chase.events`
   (systems/Pursuit.js, systems/Lorries.js); what the car hits is torn (a sensor at once), flung by hand (Drive.fling) or
   the crash (`lasting`): never let a light thing hold it up. Play it by script after touching it (tools/shot.mjs).
+  A PARKED CAR IS NEVER A WALL NOR A DEATH: he shoves it aside (Drive.aside, `CHASE.aside`: 10 % of his speed on a
+  graze, 50 % square on, never stopped) and it never shuts both lanes (clearLanes). His car slides (`CHASE.slide`,
+  Drive slideStep / gripOf). Pursuers attack in turns, each TOLD (Pursuit nextAttack: shot / ram / brake;
+  `CHASE.pursuit.attack`, `ram`, `block`; an event's `style`: gunner / rammer / blocker). No speedometer on the HUD.
+  What is laid on a car but drawn elsewhere (its lamps' light, their glow) is placed from `Vehicle.shell()` (the
+  pose it is DRAWN at), never from its body: else the beams trail the sprite.
 - Sprites come from `python tools/generate_assets.py` (deterministic, size asserts). Optional sprites via `spriteOpt()`.
 - level1.js, level2a.js, lab.js and tutorial.js are generated: edit `tools/build_level1.py` / `build_level2a.py` /
   `build_lab.py` / `build_tutorial.py`
