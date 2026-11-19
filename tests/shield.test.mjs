@@ -389,13 +389,13 @@ test('shield: the tutorial - a man on the landing with his back to the fire door
   assert.equal(level.facing['9,14'], 180, 'looking west down the corridor');
   assert.deepEqual(level.stand['9,14'], [9.4, 14.6]);
   assert.deepEqual(last.waves[0], { at: [[9, 14]], on: 'never', blind: true });
-  assert.deepEqual([last.waves[1].on, last.waves[2].on], ['shield', 'kills:2']);
+  assert.deepEqual(last.waves.slice(1).map((w) => [w.on, w.at.length]), [['shield', 2]], 'the two men of the stairs, nobody after them');
   assert.equal(last.hints[0], 'shield');
   assert.ok(LESSONS.shield && HINTS.shield);
   // the trigger: taken as a shield, or dead some other way
   for (const how of ['shield', 'kill']) {
     const mk = (c, r, more) => ({ x: (c + 0.5) * 32, y: (r + 0.5) * 32, alive: true, knocked: 0, aware: 0, body: {}, hear() { this.heard = true; }, spot() {}, say() {}, speak() {}, ...more });
-    const hostage = mk(9, 14), up = [mk(7, 19), mk(9, 19), mk(8, 20)];
+    const hostage = mk(9, 14), up = [mk(7, 19), mk(9, 19)];
     const body = Matter.Bodies.circle(11.5 * 32, 14.5 * 32, 10);
     const pl = { body, alive: true, isPlayer: true, weapon: { type: 'pistol', mag: 2 }, def: { kind: 'gun' }, nearShield: null,
       get x() { return body.position.x; }, get y() { return body.position.y; } };
@@ -413,7 +413,7 @@ test('shield: the tutorial - a man on the landing with his back to the fire door
     if (how === 'shield') w.events.emit('shield', { holder: pl, target: hostage });
     else { hostage.alive = false; w.events.emit('kill', { victim: hostage }); }
     run(2.5);
-    assert.ok(!up[0].offstage && !up[1].offstage && up[2].offstage, `the first two come up the stairs (${how})`);
+    assert.ok(!up[0].offstage && !up[1].offstage, `the two come up the stairs (${how})`);
   }
 });
 

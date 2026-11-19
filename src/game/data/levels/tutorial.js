@@ -10,7 +10,7 @@ export default {
   name: 'BAD NIGHT',
   subtitle: 'SUNSET BAY  -  MARCH 14TH 1986  -  1:05 AM',
   objective: ['GET OUT OF THE BUILDING', 'THE WINDOW AT THE END OF THE CORRIDOR'],
-  facing: { '4,2': 0, '18,2': 90, '11,11': 90, '19,10': 0, '17,14': 0, '9,14': 180, '7,19': 270, '9,19': 270, '8,20': 270 },
+  facing: { '4,2': 0, '18,2': 90, '11,11': 90, '19,10': 0, '17,14': 0, '9,14': 180, '7,19': 270, '9,19': 270 },
   jobs: { '18,2': 'arson', '11,11': 'rummage', '19,10': 'hall', '17,14': 'lookout' },
   looks: { '18,2': 'lucky' },
   // where in his tile a guard stands, off its centre ('col,row': [col, row] in tiles)
@@ -60,7 +60,7 @@ export default {
     "",
     "",
     "       p p",
-    "        k",
+    "",
     "",
   ],
   props: [
@@ -70,9 +70,8 @@ export default {
     ['frame_photo', 4.09, 4.6, 270],
     // living room: the floor torn up where he kept it
     ['sofa', 12.5, 1.5, 0], ['bookshelf', 15.3, 1.22, 0], ['plant', 10.5, 1.5, 0], ['tv', 16.55, 4.2, 90],
-    ['armchair', 15.3, 5.5, 215], ['floor_lamp', 10.45, 6.5, 0], ['table', 11.6, 4.85, 0, { clutter: 'flat_table' }],
-    ['chair', 10.55, 4.9, 0], ['jerrycan', 16.4, 3.1, 40], ['poster_fight', 11.4, 6.91, 180],
-    ['frame_photo', 14, 1.09, 0],
+    ['armchair', 15.5, 5.6, 215], ['floor_lamp', 10.45, 6.5, 0], ['table', 13.5, 5.7, 0, { clutter: 'flat_table' }],
+    ['jerrycan', 16.4, 3.1, 40], ['poster_fight', 11.4, 6.91, 180], ['frame_photo', 14, 1.09, 0],
     // kitchen
     ['fridge', 10.45, 12.65, 180], ['sink', 11.75, 12.7, 180, { clutter: 'flat_sink' }], ['oven', 14.6, 12.68, 180],
     ['gas_bottle', 15.5, 12.7, 0], ['table', 14.4, 10.3, 0, { clutter: 'flat_kitchen' }], ['chair', 14.4, 9.5, 90],
@@ -99,14 +98,14 @@ export default {
   // guarded premises [col0, row0, col1, row1]: outside, guards ignore the player until he gives himself away
   premises: [[0, 0, 28, 21]],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['bed', 4.8, 2.4, 0], ['shoes', 6.2, 4.9, 250], ['newspaper', 6.9, 3.9, 30], ['rug', 14.3, 3.5, 0], ['floor_hole', 14.6, 5.1, 10], ['newspaper', 14.3, 5.9, 70], ['doormat', 19.5, 2.5, 90], ['shoes', 18.4, 9.4, 100], ['runner', 22.0, 4.5, 90], ['runner', 22.0, 7.5, 90], ['runner', 22.0, 10.5, 90], ['runner', 22.0, 13.5, 90], ['runner', 20.5, 15.0, 0], ['runner', 17.5, 15.0, 0], ['runner', 14.5, 15.0, 0], ['runner', 11.5, 15.0, 0], ['doormat', 21.5, 10.5, 90], ['doormat', 21.5, 2.5, 90], ['newspaper', 22.5, 5.6, 80], ['doormat', 13.5, 15.52, 180], ['doormat', 17.5, 15.52, 180], ['newspaper', 17.4, 15.5, 10], ['shoes', 13.1, 15.5, 180], ['stairs', 8.0, 20.25, 180]],
+  floor: [['bed', 4.8, 2.4, 0], ['shoes', 6.2, 4.9, 250], ['newspaper', 6.9, 3.9, 30], ['rug', 11.3, 5.4, 0], ['floor_hole', 15.7, 3.9, 10], ['newspaper', 15.6, 6.3, 70], ['doormat', 19.5, 2.5, 90], ['shoes', 18.4, 9.4, 100], ['runner', 22.0, 4.5, 90], ['runner', 22.0, 7.5, 90], ['runner', 22.0, 10.5, 90], ['runner', 22.0, 13.5, 90], ['runner', 20.5, 15.0, 0], ['runner', 17.5, 15.0, 0], ['runner', 14.5, 15.0, 0], ['runner', 11.5, 15.0, 0], ['doormat', 21.5, 10.5, 90], ['doormat', 21.5, 2.5, 90], ['newspaper', 22.5, 5.6, 80], ['doormat', 13.5, 15.52, 180], ['doormat', 17.5, 15.52, 180], ['newspaper', 17.4, 15.5, 10], ['shoes', 13.1, 15.5, 180], ['stairs', 8.0, 20.25, 180]],
   // petrol poured in trails [width px, [col, row], ...]: the fire runs along them (src/game/systems/FireSpread.js)
   petrol: [
     [14, [17.6, 2.35]],
     [10, [17.6, 2.3], [16.0, 2.2], [9.5, 2.2], [6.9, 2.2]],
     [12, [6.7, 2.0]],
-    [10, [16.0, 2.2], [16.05, 5.6], [14.9, 6.45]],
-    [10, [14.9, 6.45], [13.5, 6.55], [13.5, 8.35]],
+    [10, [14.5, 2.2], [14.5, 6.6], [13.5, 6.6], [13.5, 8.35]],
+    [10, [10.2, 2.2], [10.2, 4.0], [12.75, 4.0], [12.75, 6.9]],
     [10, [13.5, 8.35], [10.45, 8.35], [10.4, 11.3]],
     [10, [13.5, 8.35], [16.4, 8.35]],
     [10, [13.6, 8.35], [14.3, 9.5]],
@@ -115,17 +114,17 @@ export default {
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["bat", 12.5, 10.7, 25, null]],
   // a level that teaches: its stages and the way out (src/game/systems/Tutorial.js)
-  tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.4, 3.5, 0], "cam": "flat", "marks": {"flee": [13.5, 6.9], "vault": [11.6, 4.85]}, "keep": [[9, 1, 10, 3]], "keepFor": 2.0, "hints": ["vault", "flee"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[13, 6, 14, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hold": 3, "keep": [[21, 3, 22, 8]], "marks": {"slide": [21.5, 14.2]}, "hints": ["slide"], "waves": [{"at": [[17, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "hold": 6, "marks": {"slide": [21.5, 14.2]}, "take": "pistol", "leaves": 2, "spare": 1, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[17, 14]], "on": "enter", "slack": 0.6, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "hold": 8, "take": "pistol", "spare": 1, "marks": {"dive": [4.6, 15.0]}, "hints": ["shield", "finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[9, 14]], "on": "never", "blind": true}, {"at": [[7, 19], [9, 19]], "on": "shield", "up": [8.0, 20.65]}, {"at": [[8, 20]], "on": "kills:2", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "blast": {"at": [14.6, 12.68], "breach": [14.6, 14.3], "chain": [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68], [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
+  tutorial: {"stages": [{"zone": [4, 1, 8, 5], "spawn": [4.5, 2.5, 0], "cam": "bedroom", "hints": ["move"], "waves": [{"at": [[18, 2]], "on": "never", "blind": true}]}, {"zone": [9, 1, 16, 6], "spawn": [10.8, 3.1, 0], "cam": "flat", "marks": {"vault": [13.5, 5.7]}, "keep": [[9, 1, 10, 3]], "keepFor": 2.0, "hints": ["vault"]}, {"zone": [10, 8, 16, 12], "spawn": [12.4, 9.7, 90], "cam": "flat", "hold": 18, "keep": [[11, 2.5, 13.25, 2.75], [13, 3.75, 13.25, 4], [13, 5, 13.25, 5], [13, 6, 13.25, 7]], "take": "bat", "hints": ["finish", "takedown", "punch", "strike", "take"], "waves": [{"at": [[11, 11]], "on": "never", "blind": true}, {"at": [[19, 10]], "on": "kills:1", "frame": true}]}, {"zone": [18, 9, 22, 13], "spawn": [18.6, 10.5, 0], "cam": "corridor", "hold": 3, "keep": [[21, 3, 22, 8]], "hints": [], "waves": [{"at": [[17, 14]], "on": "never", "blind": true}]}, {"zone": [13, 14, 22, 15], "spawn": [21.5, 12.6, 90], "cam": "corridor", "hold": 6, "take": "pistol", "leaves": 2, "spare": 1, "snatch": true, "hints": ["finish", "slide", "strike", "punch", "take"], "waves": [{"at": [[17, 14]], "on": "enter", "slack": 0.6, "sharp": true, "frame": true}]}, {"zone": [4, 14, 12, 20], "spawn": [12.5, 14.5, 180], "cam": "landing", "hold": 8, "take": "pistol", "spare": 1, "marks": {"dive": [4.6, 15.0]}, "hints": ["shield", "finish", "take", "reload", "throw", "shoot", "dive"], "waves": [{"at": [[9, 14]], "on": "never", "blind": true}, {"at": [[7, 19], [9, 19]], "on": "shield", "up": [8.0, 20.65]}]}], "opening": {"man": [18, 2], "match": [17.6, 2.35], "door": [20, 2], "out": [21.6, 2.5]}, "blast": {"at": [14.6, 12.68], "breach": [14.6, 14.3], "chain": [[13.2, 14.4, 54], [12.0, 14.6, 56], [10.9, 14.4, 60], [9.8, 14.6, 62], [8.8, 14.4, 66], [7.9, 14.6, 68], [7.0, 14.4, 72], [6.2, 14.5, 74], [5.2, 14.5, 76]]}, "exit": {"zone": [4, 14, 5, 15], "window": [3, 14, 3, 15]}, "fall": [0, 12, 2, 17]},
   // door options by a tile 'col,row' of its run (entities/Door.js): closer = a hydraulic arm swings it back shut
   doors: { '9,2': {"kind": "flat"}, '20,2': {"kind": "flat", "closer": true, "inside": [-1, 0]}, '20,10': {"kind": "flat"}, '11,14': {"kind": "wired", "inside": [1, 0]} },
   // the life of the rooms on their floors (render/FloorWear.js): grime [kind, col0, row0, col1, row1, n, options?],
   // paths worn by feet [col0, row0, col1, row1, width px]
-  grime: [['stain', 4, 1, 8, 5, 2], ['burns', 4, 3, 8, 5, 2], ['butts', 6, 3, 8, 5, 3], ['rings', 10, 4, 13, 5, 4], ['sticky', 10, 3, 13, 6, 2], ['napkin', 10, 3, 14, 6, 4], ['butts', 10, 1, 16, 6, 5], ['stain', 13, 1, 16, 6, 2, {'col': '#3a2418'}], ['sticky', 10, 8, 16, 12, 3], ['stain', 10, 10, 13, 12, 3, {'col': '#5a5a3a'}], ['napkin', 13, 9, 16, 12, 3], ['butts', 18, 9, 19, 11, 3], ['stain', 21, 2, 22, 13, 4, {'col': '#3a3020'}], ['butts', 21, 2, 22, 13, 4], ['sticky', 21, 8, 22, 13, 2], ['stain', 4, 14, 20, 15, 6, {'col': '#3a3020'}], ['butts', 11, 14, 20, 15, 6], ['napkin', 4, 14, 20, 15, 3], ['butts', 6, 16, 10, 20, 4], ['stain', 6, 16, 10, 20, 3]],
-  worn: [[6.2, 3.3, 9.5, 3.5, 10], [9.5, 3.5, 13.6, 4.1, 10], [13.6, 4.1, 13.5, 6.6, 10], [13.5, 8.6, 16.6, 10.5, 10], [21.5, 3.0, 21.5, 13.5, 12], [20.5, 14.5, 4.8, 14.5, 12], [8.0, 16.2, 8.0, 19.4, 14]],
+  grime: [['stain', 4, 1, 8, 5, 2], ['burns', 4, 3, 8, 5, 2], ['butts', 6, 3, 8, 5, 3], ['rings', 12, 4, 14, 6, 4], ['sticky', 10, 3, 13, 6, 2], ['napkin', 10, 3, 14, 6, 4], ['butts', 10, 1, 16, 6, 5], ['stain', 13, 1, 16, 6, 2, {'col': '#3a2418'}], ['sticky', 10, 8, 16, 12, 3], ['stain', 10, 10, 13, 12, 3, {'col': '#5a5a3a'}], ['napkin', 13, 9, 16, 12, 3], ['butts', 18, 9, 19, 11, 3], ['stain', 21, 2, 22, 13, 4, {'col': '#3a3020'}], ['butts', 21, 2, 22, 13, 4], ['sticky', 21, 8, 22, 13, 2], ['stain', 4, 14, 20, 15, 6, {'col': '#3a3020'}], ['butts', 11, 14, 20, 15, 6], ['napkin', 4, 14, 20, 15, 3], ['butts', 6, 16, 10, 20, 4], ['stain', 6, 16, 10, 20, 3]],
+  worn: [[6.2, 3.3, 9.5, 2.8, 10], [9.5, 2.8, 13.6, 3.1, 10], [13.6, 3.1, 13.5, 6.6, 10], [13.5, 8.6, 16.6, 10.5, 10], [21.5, 3.0, 21.5, 13.5, 12], [20.5, 14.5, 4.8, 14.5, 12], [8.0, 16.2, 8.0, 19.4, 14]],
   // small things lying loose on the floor (systems/Litter.js): [kind, col, row, deg, look]
   litter: [
-    ["bill", 14.945, 4.549, 243, 0], ["bill", 14.447, 5.451, 188, 1], ["bill", 13.942, 5.075, 268, 1], ["bill", 14.776, 4.198, 120, 1],
-    ["bill", 14.036, 5.072, 212, 0], ["bill", 14.199, 4.91, 102, 2], ["bill", 14.019, 4.791, 179, 0],
+    ["bill", 16.019, 3.392, 243, 0], ["bill", 16.053, 4.069, 338, 2], ["bill", 15.367, 3.185, 79, 0], ["bill", 15.446, 4.176, 276, 2],
+    ["bill", 15.214, 3.825, 184, 1], ["bill", 15.744, 4.395, 302, 0], ["bill", 15.911, 4.663, 44, 1],
   ],
   // indirect fill only: every visible light is a prop (lamps, signs, tubes, headlights)
   lights: [

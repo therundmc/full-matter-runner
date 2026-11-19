@@ -126,7 +126,7 @@ src/
                           where the player is and bled through walls, prop beds, the traffic car by car, one-shots
                           (bar life, drips, far sirens), the room's reverb (DOM-free, unit-tested)
       Tutorial.js         a level that teaches, and its staging (data/staging.js): rooms played in order, dormant guards woken
-                          wave by wave, hints, a lesson's short beat the first time its hint shows (`pace`: slow, punch-in, hand back), the opening scene
+                          wave by wave, hints (a key and its action), a lesson's slow motion the moment its action is due (`pace`, `DUE`: never a stop), the opening scene
                           (the man with the match: `open` / `play`), the camera's shot (`shot`), the flat blowing up at the end
                           (`blow`: the stove, then a chain of fire-balls down the corridor), the way out marked (`exit`), a
                           man called framed by the camera (`framed`), the weapon forced to break on the man whose gun is to
@@ -374,8 +374,8 @@ share `alpha = accumulator / FIXED_DT` of the way from the state before the last
 - the camera follows the drawn player, so he and the floor move together; at the wheel the in-between places go
   through the same whole-px snap as before (`Vehicle.pose`, `Drive.frame`, Camera `pixel`);
 - a body moved by more than `JUMP` (64 px) in a step, or made during it, is drawn where it is (a respawn, a seat
-  taken: no smear); a hit-stop or a pause leaves the clock alone (the picture stands still); a tutorial beat that
-  holds the world (`Tutorial.stopped`) and a new level drop what was captured (`Interp.still`): the state as it is.
+  taken: no smear); a hit-stop or a pause leaves the clock alone (the picture stands still); a new level drops
+  what was captured (`Interp.still`): the state as it is.
 
 The picture is one step late at most (the price of drawing in between), at every screen rate. What is NOT drawn in
 between: animation poses (gait, facing, swings: they advance per step), smoke, liquids, cloth, pool balls, the

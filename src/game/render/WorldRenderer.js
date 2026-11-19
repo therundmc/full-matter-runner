@@ -346,8 +346,8 @@ export default class WorldRenderer {
   }
 
   // the tutorial's hints (systems/Tutorial.js): the cap of the device in use (ui/Glyphs.js) and a few words over what
-  // they are about. The one a lesson's beat is about (`focus`) is THE thing on screen: drawn bigger (BEAT.big at
-  // the height of it), over the others, which fade back meanwhile
+  // they are about. The one whose action is due (a lesson's slow motion: `focus`) is THE thing on screen: it pops
+  // bigger (BEAT.big at the height of it), over the others, which fade back meanwhile
   drawHints(ctx, hints, t) {
     const device = this.world.game?.input?.device, H = 11;
     ctx.save();

@@ -1,11 +1,11 @@
 // A level that teaches (level `tutorial`: tools/build_tutorial.py), and how it is staged (data/staging.js). Its
 // rooms, the stages, are played one after the other; each asks for one move and says so next to what it is done
-// to, never in a wall of text: the first time a hint shows, a lesson's beat (pace): time stops, the camera goes to
-// what it is about and holds there, comes back to him, and only then is the hand his (a man of the room does not
-// wake before the lesson about it was given). It opens on a scene he can only watch (the man with the match: open /
-// play), names the camera's shot as it goes (shot) and ends on the flat blowing up behind him (blow). DOM-free: the
-// state and the rules; render/WorldRenderer.js draws what hints() returns, Game stops / eases the time, keeps his
-// input from him while a beat says so (stopped) and moves the camera.
+// to: a hint is a key and what it does (HINTS), never advice (where to go is said by the rooms, the fire, the
+// camera and the way out marked on the floor). The first time a hint's action is DUE (its trigger: DUE, read from
+// the situation) a lesson: a slow motion that starts at that moment and lasts until he does it, never a stop, the
+// hand always his (pace). It opens on a scene he can only watch (the man with the match: open / play), names the
+// camera's shot as it goes (shot) and ends on the flat blowing up behind him (blow). DOM-free: the state and the
+// rules; render/WorldRenderer.js draws what hints() returns, Game puts the time scale and the camera's push on.
 //
 // Level data (tiles):
 //   stages  [{ zone: [c0, r0, c1, r1]   the room: walking into it makes it the current stage
@@ -33,7 +33,7 @@
 //                     (FORCE in data/staging.js): killed by his hand in any way, the man's gun always ends up in it
 //                     (Character.yields); spare: N magazines that come with the stage's gun (`take`), once
 //              hints: [names of HINTS, the first that applies wins a place: two at most are shown, one a target]
-//              take: TYPE, marks: { name: [col, row] }   what some hints point at
+//              take: TYPE, marks: { vault: [col, row], dive: [col, row] }   what some hints are about
 //              leaves: N   the gun a dead man of the stage drops has N rounds left in it, no more (a retry further
 //                     on finds that gun, `take`, by where it starts: `owed`) }]
 //           A guard may stand in the waves of two stages running (pointed at from one, fought in the next).
@@ -45,7 +45,7 @@
 //           once nobody is left standing (exit(), drawn by render/WorldRenderer.js)
 //   fall    [c0, r0, c1, r1]: beyond the window. Once he is there the lesson is over ('tutorialEnd'); he lands
 //           from its windows in a roll.
-import { TILE, PALETTE } from '../Config.js';
+import { TILE, PALETTE, PLAYER } from '../Config.js';
 import { LESSONS, BEAT, RELOAD, OPENING, BLAST, FRAME, FORCE, STAIRS, FRONT, SLACK, STAND } from '../data/staging.js';
 
 const SHOWN = 2;       // hints on screen at once
@@ -63,36 +63,38 @@ const at = ([c, r]) => ({ x: c * TILE, y: r * TILE });
 const tileOf = (e, [c, r]) => { const p = e.spawn ?? e; return Math.floor(p.x / TILE) === c && Math.floor(p.y / TILE) === r; };
 const nearest = (list, p) => list.reduce((best, e) => (!best || Math.hypot(e.x - p.x, e.y - p.y) < Math.hypot(best.x - p.x, best.y - p.y) ? e : best), null);
 
-// What a hint says and over what: (tutorial, stage, player) -> { x, y, key, text, id } or null. key: the action whose
-// cap is shown before the words ('' : none), named for the device in use when drawn (data/controls.js ACTIONS: ZQSD
-// or the left stick, SPACE or A...). id: its lesson (LESSONS in data/staging.js; the hint's own name if not given).
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+// a man who knows he is there (one who does not is taken from behind, not hit or shot)
+const knows = (e) => e.aware > 0;
+
+// What a hint says and over what: (tutorial, stage, player) -> { x, y, key, text, id, who } or null. Always a key
+// and the action it does: key is the action whose cap is shown before the words, named for the device in use when
+// drawn (data/controls.js ACTIONS: ZQSD or the left stick, SPACE or A...). id: its lesson (LESSONS in
+// data/staging.js; the hint's own name if not given). who: the man it is about when it is not drawn over him.
 export const HINTS = {
   move: (T, s, p) => (T.moved < MOVED ? { x: p.x, y: p.y, key: 'move', text: 'MOVE' } : null),
-  // something across his way (stage mark `vault`), once he is on his feet and walking
-  vault: (T, s) => (s.marks?.vault && T.moved >= MOVED ? { ...at(s.marks.vault), key: 'action', text: 'VAULT' } : null),
-  flee: (T, s) => (s.marks?.flee && T.world.fireSpread?.burning.length ? { ...at(s.marks.flee), key: '', text: 'GET OUT' } : null),
+  // something across his way (stage mark `vault`), once he is on his feet and walking: on it, not over it (he comes
+  // at it from there: the hint must not hide him)
+  vault: (T, s, p) => (s.marks?.vault && T.moved >= MOVED && !p.vaulting ? { ...at(s.marks.vault), up: 0, key: 'action', text: 'VAULT' } : null),
+  // behind a man who has not seen him, within reach (Player.nearTakedown): what the takedown will be, his neck, or
+  // his head driven into what stands in front of him (WALL SMASH...)
   takedown: (T, s, p) => {
-    const g = T.present(s).find((e) => e.aware === 0);
-    if (!g) return null;
-    // what the takedown will be: his neck, or his head driven into what stands in front of him (WALL SMASH...)
-    // (or, come at face to face, what is done to a man from the front)
+    const g = p.nearTakedown;
+    if (!g || !T.guards(s).includes(g)) return null;
     const text = p.takeMove?.spot || p.takeMove?.front ? p.contextAction : 'BREAK HIS NECK';
-    return p.nearTakedown === g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text, id: 'neck' }
-      : { x: g.x, y: g.y, up: MAN, key: '', text: 'GET BEHIND HIM', id: 'behind' };
+    return { x: g.x, y: g.y, up: MAN, key: 'attack', text, id: 'neck' };
   },
-  // the man who is there to be taken as a shield (a `never` wave's, still unaware): behind him, within reach and a
-  // hand free for it (Player.nearShield), E; from further off, where to go (nothing else is said about him: no
-  // SHOOT); held, how he is let go
+  // the man who is there to be taken as a shield (a `never` wave's): behind him, within reach and a hand free for
+  // it (Player.nearShield), E; held, how he is let go
   shield: (T, s, p) => {
     const h = p.shield?.target;
-    if (h && T.guards(s).includes(h)) return { x: h.x, y: h.y, up: MAN, key: 'throw', text: 'THROW HIM' };
-    const g = s.waves.filter((w) => w.on === 'never').flatMap((w) => w.guards).find((e) => e.alive && e.knocked <= 0 && e.aware === 0 && !e.held);
-    if (!g || p.shield) return null;
-    return p.nearShield === g ? { x: g.x, y: g.y, up: MAN, key: 'use', text: 'SHIELD' }
-      : { x: g.x, y: g.y, up: MAN, key: '', text: 'GET BEHIND HIM', id: 'behind' };
+    if (h && T.guards(s).includes(h)) return { x: h.x, y: h.y, up: MAN, key: 'throw', text: 'THROW HIM', id: 'release' };
+    const g = p.nearShield;
+    const his = g && !p.shield && s.waves.some((w) => w.on === 'never' && w.guards.includes(g));
+    return his ? { x: g.x, y: g.y, up: MAN, key: 'use', text: 'SHIELD' } : null;
   },
   punch: (T, s, p) => {
-    const g = !p.armed && nearest(T.present(s), p);
+    const g = !p.armed && nearest(T.present(s).filter(knows), p);
     return g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text: 'PUNCH HIM' } : null;
   },
   finish: (T, s, p) => {
@@ -104,27 +106,59 @@ export const HINTS = {
     return it ? { x: it.x, y: it.y, key: 'use', text: 'TAKE IT' } : null;
   },
   strike: (T, s, p) => {
-    const g = p.armed && p.def.kind !== 'gun' && nearest(T.present(s), p);
+    const g = p.armed && p.def.kind !== 'gun' && nearest(T.present(s).filter(knows), p);
     return g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text: 'STRIKE HIM' } : null;
   },
   shoot: (T, s, p) => {
-    const g = p.armed && p.def.kind === 'gun' && p.weapon.mag > 0 && nearest(T.present(s), p);
+    const g = p.armed && p.def.kind === 'gun' && p.weapon.mag > 0 && nearest(T.present(s).filter(knows), p);
     return g ? { x: g.x, y: g.y, up: MAN, key: 'attack', text: 'SHOOT' } : null;
   },
   // the gun is dry: a magazine left, R; none, it is thrown
   reload: (T, s, p) => (p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && p.reserveCount?.() > 0 && !(p.reloading > 0)
     ? { x: p.x, y: p.y, key: 'reload', text: 'RELOAD' } : null),
-  throw: (T, s, p) => (p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && !(p.reserveCount?.() > 0) && !(p.reloading > 0) && T.present(s).length
-    ? { x: p.x, y: p.y, key: 'throw', text: 'THROW IT' } : null),
-  slide: (T, s) => (T.standing(s).length && s.marks?.slide ? { ...at(s.marks.slide), key: 'action', text: 'RUN AND SLIDE UNDER HIS FIRE' } : null),
-  // nobody left: the window. From afar, GET OUT (the stove is going: lesson `run`); at it, once SPACE would take
-  // him through (the player's own prompt says so: never earlier, a SPACE on the run is a slide), the jump
+  throw: (T, s, p) => {
+    const g = p.armed && p.def.kind === 'gun' && p.weapon.mag <= 0 && !(p.reserveCount?.() > 0) && !(p.reloading > 0) && nearest(T.present(s), p);
+    return g ? { x: p.x, y: p.y, key: 'throw', text: 'THROW IT', who: g } : null;
+  },
+  // the man who was waiting for him, his gun out (a `sharp` wave's, called): SPACE on the run goes under his fire;
+  // not once he is on him
+  slide: (T, s, p) => {
+    const g = nearest(s.waves.filter((w) => w.sharp && w.awake).flatMap((w) => w.guards).filter((e) => e.alive && e.knocked <= 0 && !e.gone), p);
+    return g && !p.slide && dist(g, p) > LESSONS.slide.near ? { x: p.x, y: p.y, key: 'action', text: 'SLIDE', who: g } : null;
+  },
+  // nobody left, at the window, once SPACE would take him through (the player's own prompt says so: never earlier, a
+  // SPACE on the run is a slide): the jump. The way there is marked on the floor (exit)
   dive: (T, s, p) => {
     if (!s.marks?.dive || T.standing(s).length) return null;
     const m = at(s.marks.dive);
-    return /DIVE|VAULT/.test(p.contextAction || '') && Math.hypot(p.x - m.x, p.y - m.y) < TILE * 2
-      ? { ...m, key: 'action', text: 'DIVE' } : { ...m, key: '', text: 'GET OUT', id: 'run' };
+    return /DIVE|VAULT/.test(p.contextAction || '') && dist(p, m) < TILE * 2 ? { ...m, key: 'action', text: 'DIVE' } : null;
   },
+};
+
+// When a lesson's action is DUE, by its id: (tutorial, stage, player, its hint, its LESSONS entry) -> is it now? The
+// slow motion starts the first time this holds, and ends when it no longer does.
+const within = (T, s, p, h, D) => dist(p, { x: h.ax, y: h.ay }) <= D.reach;
+const inLine = (T, p, g, range) => dist(p, g) <= range && (T.world.lineOfSight?.(p.x, p.y, g.x, g.y) ?? true);
+const now = () => true; // its hint only shows when it is
+const DUE = {
+  // closing on the table, his body within reach of its edge
+  vault: (T, s, p, h, D) => {
+    const b = T.box(s), qx = Math.min(b.max.x, Math.max(b.min.x, p.x)), qy = Math.min(b.max.y, Math.max(b.min.y, p.y));
+    const d = Math.hypot(qx - p.x, qy - p.y) || 1, v = Matter.Body.getVelocity(p.body);
+    return d - (p.radius ?? PLAYER.radius) <= D.reach && (v.x * (qx - p.x) + v.y * (qy - p.y)) / d >= D.closing;
+  },
+  neck: now,
+  shield: now,
+  take: within,
+  punch: within,
+  strike: within,
+  finish: within,
+  shoot: (T, s, p, h, D) => inLine(T, p, { x: h.ax, y: h.ay }, D.range),
+  throw: (T, s, p, h, D) => inLine(T, p, h.who, D.range),
+  reload: now,
+  // he is in the gunman's sights and the shot is told: about to come, or coming
+  slide: (T, s, p, h, D) => !h.who.dormant && (h.who.react ?? 0) <= D.lead && inLine(T, p, h.who, Infinity),
+  dive: now,
 };
 
 export default class Tutorial {
@@ -142,10 +176,9 @@ export default class Tutorial {
     this.from = from;
     this.coming = [];  // what is still to happen of men coming up the stairs: { t (world time), step | g }
     this.scene = null; // the opening while it plays: { man, t0, from, step, matchAt, done }
-    // the lesson playing: stopped, { stop, n, beats: [{ id, at, key, hold }], i, phase, t, shot } (pace); or, a
-    // spectacle, slowed: { ids, slow, t, age, min, at, shot }
+    // the lesson playing (pace): { id, key, slow, cap, push, shot, at, free, k (0..1: how far in), age (real s),
+    // off (s its trigger has been gone), out (easing back), held (its key down since before) }
     this.lesson = null;
-    this.serial = 0;                                    // lessons played: each its own travel of the camera
     this.shutting = null;                               // a door to shut and lock once nobody stands in its leaf: { tile, slam }
     this.calm = -1;                                     // world time until which nobody fires at him (the reload)
     this.taught = world.game?.taught || new Set();      // what was said already, this run and its retries
@@ -319,11 +352,9 @@ export default class Tutorial {
       if (sc.matchAt !== null) return { name: 'catch', at: w.fireSpread?.nearest(p.x, p.y) || at(this.def.opening.match) };
       return sc.step >= 1 ? { name: 'laugh', at: sc.man } : { name: 'wake', at: null };
     }
-    // a lesson's beat: the camera steered to what it is about and back (its time on the real clock: beatShot); a
-    // spectacle's, eased onto it
+    // the end's slow motion: the camera on the stove going (a lesson otherwise leaves it on him: push)
     const L = this.lesson;
-    if (L?.stop && L.phase !== 'give') return this.beatShot(L);
-    if (L && !L.stop) return { name: L.shot, at: L.at };
+    if (L?.shot) return { name: L.shot, at: L.at };
     // the end: back at the stove as it goes, then on the fire coming down the corridor
     if (B?.t != null) return { name: 'run', at: B.front || (w.time - B.t < BLAST.look ? at(B.breach) : null) };
     const thrown = w.throwBeat?.shot();
@@ -350,100 +381,51 @@ export default class Tutorial {
     return { zone: px(E.zone), window: px(E.window) };
   }
 
-  // ---- the lessons (LESSONS, BEAT in data/staging.js): the first time a hint shows, a stopped beat, then the hand.
-  // dt: real s; did(action): is that action's key down (data/controls.js ACTIONS; 'confirm': SPACE, ENTER, A or a left
-  // click)?; seen(x, y): is that point of the world on screen? Returns the time scale wanted: 0 while a beat holds
-  // the world stopped (then `stopped`: Game does not step the world, and his input does not reach him).
-  pace(dt, did, seen = () => true) {
-    const shown = this.hints(), p = this.world.player;
-    const L = this.lesson;
-    if (L?.stop) return this.beat(L, dt, did);
+  // ---- the lessons (LESSONS, BEAT in data/staging.js): the first time a hint's action is due, a slow motion until
+  // he does it. dt: real s; did(action): is that action's key down (data/controls.js ACTIONS)? Returns the time
+  // scale wanted, never 0: 1, or eased down to the lesson's `slow` and back (its own ramp: Game puts it on as it is).
+  pace(dt, did) {
+    const shown = this.hints(), p = this.world.player, s = this.stages[this.stage];
+    const due = (h) => !!DUE[h.id]?.(this, s, p, h, { ...BEAT, ...LESSONS[h.id] });
+    let L = this.lesson, scale = 1;
+    if (!L) {
+      const h = shown.find((q) => LESSONS[q.id] && !this.taught.has(q.id) && due(q));
+      if (h) L = this.begin(h.id, h.key);
+    }
     if (L) {
-      // a spectacle: slowed, his hands free
-      L.t -= dt;
       L.age += dt;
-      const live = shown.filter((h) => L.ids.includes(h.id));
-      const done = L.age >= L.min && live.some((h) => h.key && did(h.key));
-      if (L.t <= 0 || !live.length || done) this.lesson = null; else return L.slow;
+      if (!L.out) {
+        L.k = Math.min(1, L.k + dt / BEAT.in);
+        // he does it (a fresh press: a key held since before must be let go first), it is no longer due (he backed
+        // off, the man fell), or it has lasted long enough
+        const h = shown.find((q) => q.id === L.id), press = !!L.key && did(L.key);
+        L.off = L.free || (h && due(h)) ? 0 : L.off + dt;
+        if ((press && !L.held) || L.off > BEAT.grace || L.age >= L.cap) L.out = true;
+        if (!press) L.held = false;
+      } else if ((L.k -= dt / BEAT.out) <= 0) L = this.lesson = null;
+      if (L) { const e = smooth(L.k); scale = L.slow * e + (1 - e); }
     }
     // his hands on the magazine: the world all but stops (the reload goes at its own pace: update)
-    if (p.reloading > 0 && p.def?.kind === 'gun') return RELOAD.slow;
-    const due = (h, anywhere) => {
-      const D = LESSONS[h.id];
-      return D && !this.taught.has(h.id) && (anywhere || D.far || seen(h.ax, h.ay)) && !(D.within && Math.hypot(p.x - h.ax, p.y - h.ay) > D.within);
-    };
-    // (once one is due, what else is near enough comes with it, on screen or not: the camera goes on to it)
-    const fresh = shown.some((h) => due(h)) ? shown.filter((h) => due(h, true)) : [];
-    if (!fresh.length) return 1;
-    for (const h of fresh) this.taught.add(h.id);
-    const Ds = fresh.map((h) => ({ ...BEAT, ...LESSONS[h.id] }));
-    const spot = (h, D) => (D.at === 'blast' && this.blast ? at(this.blast.breach) : { x: h.ax, y: h.ay });
-    if (Ds.some((d) => d.slow)) {
-      // spectacle: one slowed beat for what came up with it, the camera between them
-      const n = fresh.length, spots = fresh.map((h, k) => spot(h, Ds[k]));
-      const look = Ds.some((d) => d.at === 'blast') ? spots[Ds.findIndex((d) => d.at === 'blast')]
-        : { x: spots.reduce((sum, q) => sum + q.x, 0) / n, y: spots.reduce((sum, q) => sum + q.y, 0) / n };
-      const S = Ds.filter((d) => d.slow);
-      this.lesson = { ids: fresh.map((h) => h.id), slow: Math.min(...S.map((d) => d.slow)), t: Math.max(...S.map((d) => d.dur)), age: 0, min: S[0].min, at: look, shot: S[0].shot };
-      return this.lesson.slow;
-    }
-    // a lesson: one stopped beat each, played in a row
-    this.lesson = { stop: true, n: ++this.serial, i: 0, phase: 'go', t: 0, shot: Ds[0].shot,
-      beats: fresh.map((h, k) => ({ id: h.id, key: h.key, at: spot(h, Ds[k]), hold: Ds[k].hold })) };
-    return 0;
+    if (p.reloading > 0 && p.def?.kind === 'gun') scale = Math.min(scale, RELOAD.slow);
+    return scale;
   }
 
-  // a stopped beat's clock (real s): go -> hold -> [go -> hold, the next one] -> back -> give -> over. The time scale
-  // wanted: 0, then from 0 up to 1 over `give`
-  beat(L, dt, did) {
-    L.t += dt;
-    for (;;) {
-      const b = L.beats[L.i], hold = L.phase === 'hold';
-      if (hold) {
-        // got it: his key, or SPACE / ENTER / A / a click, pressed once the hold has been on long enough to be read
-        // (a key already down as the hold came on must be let go first)
-        const press = (b.key && did(b.key)) || did('confirm');
-        if (!press) L.held = false;
-        else if (!L.held && L.t >= BEAT.min && L.t < b.hold) L.t = b.hold;
-      }
-      const end = hold ? b.hold : BEAT[L.phase];
-      if (L.t < end) break;
-      L.t -= end;
-      if (L.phase === 'go') Object.assign(L, { phase: 'hold', held: true });
-      else if (hold && L.i + 1 < L.beats.length) Object.assign(L, { phase: 'go', i: L.i + 1 });
-      else if (hold) L.phase = 'back';
-      else if (L.phase === 'back') L.phase = 'give';
-      else { this.lesson = null; return 1; }
-    }
-    return L.phase === 'give' ? L.t / BEAT.give : 0;
+  // lesson `id` starts (key: the action that ends it; at: what its camera looks at, for one that has a shot and no
+  // hint: it lasts its `cap`)
+  begin(id, key, at = null) {
+    const D = { ...BEAT, ...LESSONS[id] };
+    this.taught.add(id);
+    return (this.lesson = { id, key, slow: D.slow, cap: D.cap, push: D.push, shot: D.shot ?? null, at, free: !!at, k: 0, age: 0, off: 0, out: false, held: true });
   }
 
-  // a stopped beat holds the world still and his input from him (all of it but `give`)
-  get stopped() { return !!this.lesson?.stop && this.lesson.phase !== 'give'; }
+  // how far the camera is pushed in on him by the lesson on now: a share of its zoom, 0 at rest
+  push() { const L = this.lesson; return L ? L.push * smooth(L.k) : 0; }
 
-  // the camera through a stopped beat: { name, at, steer: { n, k, pull } } (systems/Direction.js steered): going, from
-  // him (or from what the beat before showed) to what it is about, pushing in; held there; coming back to him
-  beatShot(L) {
-    const b = L.beats[L.i], e = smooth(L.t / (L.phase === 'hold' ? 1 : BEAT[L.phase]));
-    let at = b.at, k = 1;
-    if (L.phase === 'go' && L.i > 0) {
-      const a = L.beats[L.i - 1].at;
-      at = { x: a.x + (b.at.x - a.x) * e, y: a.y + (b.at.y - a.y) * e };
-    } else if (L.phase === 'go') k = e;
-    else if (L.phase === 'back') k = 1 - e;
-    return { name: L.shot, at, steer: { n: L.n, k, pull: k } };
-  }
-
-  // how big the hint of the beat on now is drawn: 0 (as usual) .. 1 (BEAT.big larger), popping in as the camera
-  // gets there, going back to its size as it leaves
-  focus(L) {
-    const e = L.t / (L.phase === 'hold' ? 1 : BEAT[L.phase]);
-    return L.phase === 'go' ? pop(e) : L.phase === 'hold' ? 1 : L.phase === 'back' ? 1 - smooth(e) : 0;
-  }
-
-  // a lesson of the stage still to be given about something in its room (or one being given): its men sleep on
-  pending(s) {
-    return !!this.lesson || this.hints().some((h) => LESSONS[h.id] && !this.taught.has(h.id) && inside(s.zone, h.ax, h.ay));
+  // the edge of what a stage's vault is over (px, { min, max }): the piece of furniture standing on its mark
+  box(s) {
+    if (s.box) return s.box;
+    const m = at(s.marks.vault), q = (this.world.props || []).find((o) => !o.dead && o.body?.bounds && dist(o, m) < TILE / 2);
+    return (s.box = q ? q.body.bounds : { min: m, max: m });
   }
 
   // ---- the end: the flat goes up behind him, and the fire comes down the corridor after him (BLAST in
@@ -468,6 +450,8 @@ export default class Tutorial {
       B.queue.push({ t, x: c * TILE, y: r * TILE, radius, lethal: true });
     });
     B.end = t + C.tail;
+    // seen in slow motion, the camera on it (lesson `run`), the first time
+    if (!this.taught.has('run')) this.begin('run', '', b);
   }
 
   // the balls of fire due go off; as he goes through the window, what is left of them at once, right behind him
@@ -586,11 +570,9 @@ export default class Tutorial {
     if (w.time < this.calm) for (const g of w.enemies) g.react = Math.max(g.react || 0, 0.15);
     if (s) {
       this.call(s, p);
-      // walked up to, in front: he looks up (walked up to the stairs: those coming up them are there); never before
-      // the lessons of the room were given: a man waking first would skip them
-      const waiting = this.pending(s);
+      // walked up to, in front: he looks up (walked up to the stairs: those coming up them are there)
       for (const wave of s.waves) {
-        if (wave.blind || wave.awake || waiting) continue;
+        if (wave.blind || wave.awake) continue;
         const seen = wave.up ? Math.hypot(p.x - wave.up[0] * TILE, p.y - wave.up[1] * TILE) < FRONT * TILE
           : wave.guards.some((g) => g.alive && Math.hypot(p.x - g.x, p.y - g.y) < FRONT * TILE
             && Math.cos(g.angle) * (p.x - g.x) + Math.sin(g.angle) * (p.y - g.y) > 0);
@@ -612,7 +594,7 @@ export default class Tutorial {
   }
 
   // what to show this frame: [{ x, y (world px, already lifted over its object), ax, ay (what it points at), key, text,
-  // id, focus (the hint a stopped beat is about: 0..1 how big it is drawn, focus) }]
+  // id, who, focus (the hint the lesson on now is about: 0..1 and a little over, how big it is drawn) }]
   hints() {
     const s = this.stages[this.stage], p = this.world.player, out = [];
     if (!s || !p?.alive || this.over || this.scene || p.execution || p.takedown) return out;
@@ -623,7 +605,7 @@ export default class Tutorial {
       if (out.length >= SHOWN) break;
     }
     const L = this.lesson;
-    if (L?.stop) for (const h of out) if (h.id === L.beats[L.i].id) h.focus = this.focus(L);
+    if (L) for (const h of out) if (h.id === L.id) h.focus = L.out ? smooth(L.k) : pop(L.k);
     return out;
   }
 }

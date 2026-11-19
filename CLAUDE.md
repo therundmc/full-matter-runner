@@ -173,15 +173,20 @@
   at the end of the campaign.
 - Tutorial: tools/build_tutorial.py, systems/Tutorial.js (`HINTS`, waves of `dormant` guards, `slack`, `sharp`,
   `leaves` / `owed` rounds, restart at `Game.tutorialAt`), staged by data/staging.js: the opening (the man with the
-  match, `OPENING`), lessons that are one stopped beat each (the user's call: `BEAT`, `LESSONS` by hint id, `pace`:
-  time stopped and his hands off, the camera goes to what to do and holds on it, comes back to him, then the hand is
-  his; one lesson a beat, chained; a room's dormant men wait for its lessons), the camera's shots (`SHOTS`, systems/Direction.js,
+  match, `OPENING`), hints that are a key and its action on its object, never advice (the user's call: no GET BEHIND HIM /
+  GET OUT; where to go is said by the rooms, the fire, the camera, the way out marked on the floor), and lessons
+  (`BEAT`, `LESSONS` by hint id, `pace`): a lesson is a SLOW MOTION that starts exactly when its action is due (its
+  trigger, Tutorial.js `DUE`: closing on the table within a metre for VAULT, behind the man in reach for the
+  takedown / SHIELD, a man in reach for PUNCH / STRIKE, the gunman's shot coming for SLIDE...), eases in fast, a few
+  % of camera push on him, the hint popping big, until he does it, leaves the trigger or its cap; never a stop, the
+  hand always his, once a lesson (`Game.taught`), the camera's shots (`SHOTS`, systems/Direction.js,
   `Camera.scale`), the stove going at the end (`BLAST`). The fire: systems/FireSpread.js + data/fire.js (it runs
   along the level's `petrol` trails, levelkit `pour`; one touch kills; a stage's `hold` / `keep` keeps it out a
   while), its flames systems/Fires.js + render/FireArt.js; thick smoke closes the view in (`SMOKE.murk`,
   render/Murk.js). The man with the match is LUCKY (kind `lucky`, level `looks`: his pink scarf, `KINDS.tail`,
-  Enemy.drawTail, his name card). A big table across the living room, on his way, teaches the vault. A lesson waits for its object to be on
-  screen and near (`LESSONS.within`); during a reload the world all but stops and nobody fires (`RELOAD`); a man
+  Enemy.drawTail, his name card). The living room is a forced way: a lane one metre wide between two burning trails (builder
+  `LANE`, kept clear by the stages' `keep`), the big table across its end before the kitchen door: the vault (round it
+  is through the fire). Two men come up the stairs, no more; during a reload the world all but stops and nobody fires (`RELOAD`); a man
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
