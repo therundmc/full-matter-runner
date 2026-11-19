@@ -67,6 +67,7 @@ test('scoring: the circumstances of a kill are read from the round, the blow and
   assert.deepEqual(killTags({ killer: p, how: { heavy: true, broke: true } }, quiet), ['smash', 'broke']);
   assert.deepEqual(killTags({ killer: p, how: { from: 'front', thrown: true } }, quiet), ['thrown']);
   assert.deepEqual([2, 3, 4, 7].map((streak) => killTags({ killer: null }, { ...quiet, streak })[0]), ['double', 'triple', 'massacre', 'massacre']);
+  assert.deepEqual(killTags({ killer: null, how: { car: 'wrecked', crew: true } }, { ...quiet, streak: 2 }), [], 'the second man of a wrecked car: no multi-kill of its own');
   for (const tag of ['collateral', 'wallbang', 'ricochet', 'longshot', 'lastRound', 'slide', 'airborne', 'behind', 'smash', 'spin', 'broke', 'thrown', 'smoked', 'dodge', 'quickdraw', 'double', 'triple', 'massacre']) {
     assert.ok(T.tags[tag].points > 0 && T.tags[tag].label, tag);
   }

@@ -54,6 +54,8 @@ SIZES = dict(
     poster_pinup=None, poster_revue=None, mirror_strip=None, neon_sign_lips=None, cocktail_table=(24, 24),
     conduit=None, flyers=None,
     lorry=(276, 76), awning=None, parasol=(5, 5), planter=(40, 16), neon_sign_diner=None, neon_sign_cafe=None,
+    awning_red=None, awning_green=None, awning_blue=None, awning_wine=None, traffic_cone=(10, 10), sawhorse=(38, 8),
+    cardboard_box=(15, 13), paper_bundle=(13, 9), fruit_stand=(34, 16), shopping_cart=(20, 12), mailbox=(13, 13),
 )
 
 # furniture that is round: what lies on the floor beside it is kept off its circle, not its box

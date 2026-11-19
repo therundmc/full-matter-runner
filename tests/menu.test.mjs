@@ -270,7 +270,7 @@ test('controls: no debug key, and every cap the page names is one the game reads
   // the keyboard's caps, as the codes the game reads (entities/Player.js, systems/Drive.js, CarGun.js, Game.js)
   const read = {
     ZQSD: ['KeyW', 'KeyA', 'KeyS', 'KeyD'], WASD: ['KeyW', 'KeyA', 'KeyS', 'KeyD'], 'Z/W': ['KeyW'], S: ['KeyS'], 'Q/A': ['KeyA'], D: ['KeyD'],
-    SHIFT: ['ShiftLeft'], SPACE: ['Space'], E: ['KeyE'], R: ['KeyR'], M: ['KeyM'], ESC: ['Escape'], BKSP: ['Backspace'],
+    SHIFT: ['ShiftLeft'], SPACE: ['Space'], E: ['KeyE'], R: ['KeyR'], ESC: ['Escape'], BKSP: ['Backspace'],
     MOUSE: [], LMB: ['Mouse0'], RMB: ['Mouse2'],
   };
   const src = ['game/entities/Player.js', 'game/systems/Drive.js', 'game/systems/CarGun.js', 'game/Game.js']

@@ -61,13 +61,13 @@ export function throwCue(world) {
   return { x, y, a, k, ...f, lock };
 }
 
-// The man the LOCK concept brackets: the living enemy nearest the way `a` out of (x, y), within `cone` rad of it and
-// `reach` px, in plain sight (walls, smoke, curtains hide him). null when there is none. A man further off the line
-// loses to one nearer it; of two on the same line, the closer one.
+// The man the LOCK concept brackets: the living enemy (a guard: never a bystander) nearest the way `a` out of (x, y),
+// within `cone` rad of it and `reach` px, in plain sight (walls, smoke, curtains hide him). null when there is none. A
+// man further off the line loses to one nearer it; of two on the same line, the closer one.
 export function lockTarget(world, team, x, y, a, cone = AIM.lock.cone, reach = AIM.lock.reach) {
   let best = null, score = Infinity;
   for (const c of world.chars) {
-    if (!c.alive || c.team === team || c.hidden) continue;
+    if (!c.alive || c.isCivilian || c.team === team || c.hidden) continue;
     const dx = c.x - x, dy = c.y - y, dist = Math.hypot(dx, dy);
     if (dist > reach || dist < 1) continue;
     const off = Math.abs(angDiff(a, Math.atan2(dy, dx)));
@@ -81,16 +81,16 @@ export function lockTarget(world, team, x, y, a, cone = AIM.lock.cone, reach = A
 
 // LOCK's man with a melee weapon (fists included) in p's hand d, aiming `aim` (the mouse's or the stick's way, not his
 // drawn facing): { man, close } or null (another aim style, a gun, nobody). Close: a guard (never a bystander: he
-// would wheel round onto every patron) standing within the weapon's reach + his radius + PLAYER.lunge.lock.margin px
-// and AIM.lock.wide rad of the aim, in sight; of several, the one nearest the aim line, then the nearest. Else
-// lockTarget's man within AIM.lock.cone and AIM.lock.melee px (close: false). The one place it is decided: AimArt
-// marks him, Player turns onto the close one and Player.startLunge swings at him.
+// would wheel round onto every patron, nor one on his knees) standing within the weapon's reach + his radius +
+// PLAYER.lunge.lock.margin px and AIM.lock.wide rad of the aim, in sight; of several, the one nearest the aim line,
+// then the nearest. Else lockTarget's man within AIM.lock.cone and AIM.lock.melee px (close: false). The one place it
+// is decided: AimArt marks him, Player turns onto the close one and Player.startLunge swings at him.
 export function meleeLock(world, p, d, aim) {
   if (world.aimStyle !== 'lock' || !d || d.kind === 'gun') return null;
   const L = AIM.lock, margin = PLAYER.lunge.lock.margin;
   let best = null, score = Infinity;
   for (const c of world.enemies) {
-    if (!c.alive || c.hidden || c.knocked > 0 || c.held) continue;
+    if (!c.alive || c.hidden || c.knocked > 0 || c.held || c.yielded) continue;
     const dx = c.x - p.x, dy = c.y - p.y, dist = Math.hypot(dx, dy);
     if (dist > d.range + c.radius + margin || dist < 1) continue;
     const off = Math.abs(angDiff(aim, Math.atan2(dy, dx)));

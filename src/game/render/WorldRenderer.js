@@ -15,7 +15,7 @@ import { drawFlames } from './FireArt.js';
 import LiquidArt from './LiquidArt.js';
 import Cues from './Readability.js';
 import { RAIN } from '../data/atmosphere.js';
-import { EXIT } from '../data/staging.js';
+import { EXIT, BEAT } from '../data/staging.js';
 import { drawCombat } from '../fx/CombatFx.js';
 import { keyLabel } from '../data/controls.js';
 import { capWidth, drawCap } from '../ui/Glyphs.js';
@@ -346,25 +346,37 @@ export default class WorldRenderer {
   }
 
   // the tutorial's hints (systems/Tutorial.js): the cap of the device in use (ui/Glyphs.js) and a few words over what
-  // they are about
+  // they are about. The one a lesson's beat is about (`focus`) is THE thing on screen: drawn bigger (BEAT.big at
+  // the height of it), over the others, which fade back meanwhile
   drawHints(ctx, hints, t) {
     const device = this.world.game?.input?.device, H = 11;
     ctx.save();
     ctx.font = '8px joystix';
     ctx.textBaseline = 'middle';
     const bob = Math.sin(t * 5) * 1.2, v = this.world.view(), placed = [];
-    for (const h of hints) {
+    const lead = hints.some((h) => h.focus > 0);
+    // (the one in focus placed first, where it belongs, and drawn last, over the others)
+    for (const h of [...hints].sort((a, b) => (b.focus ?? 0) - (a.focus ?? 0))) {
       const label = h.key ? keyLabel(h.key, device) : '';
       const kw = label ? Math.ceil(capWidth(ctx, label, H)) : 0, tw = Math.ceil(ctx.measureText(h.text).width);
-      const gap = label ? 4 : 0, half = (kw + gap + tw) / 2 + 3;
+      const big = 1 + BEAT.big * Math.max(0, h.focus ?? 0), gap = label ? 4 : 0, half = ((kw + gap + tw) / 2 + 3) * big;
       // kept inside the picture: what it is about may be off it, or at its edge (an arrow then points there)
       const hx = clamp(h.x, v.x - v.hw + half + HINT.inset, v.x + v.hw - half - HINT.inset);
-      let hy = clamp(h.y, v.y - v.hh + 8 + HINT.inset, v.y + v.hh - 8 - HINT.inset);
+      let hy = clamp(h.y, v.y - v.hh + 8 * big + HINT.inset, v.y + v.hh - 8 * big - HINT.inset);
       // never one box over another: the second goes under the first
-      for (const q of placed) if (Math.abs(q.x - hx) < q.half + half && Math.abs(q.y - hy) < 18) hy = q.y + 18;
-      placed.push({ x: hx, y: hy, half });
+      for (const q of placed) if (Math.abs(q.x - hx) < q.half + half && Math.abs(q.y - hy) < 9 * (q.big + big)) hy = q.y + 9 * (q.big + big);
+      placed.unshift({ h, x: hx, y: hy, half, big, label, kw, tw, gap });
+    }
+    for (const { h, x: hx, y: hy, half, big, label, kw, tw, gap } of placed) {
       const x0 = Math.round(hx - (kw + gap + tw) / 2), y = Math.round(hy + bob);
       if (hx !== h.x || hy !== h.y) this.drawPointer(ctx, hx, y, half, h.ax ?? h.x, h.ay ?? h.y, t);
+      ctx.save();
+      if (lead && !(h.focus > 0)) ctx.globalAlpha = 0.35;
+      if (big !== 1) {
+        ctx.translate(hx, y);
+        ctx.scale(big, big);
+        ctx.translate(-hx, -y);
+      }
       ctx.fillStyle = 'rgba(8, 4, 16, 0.72)';
       ctx.fillRect(x0 - 3, y - 8, kw + gap + tw + 6, 16);
       if (label) drawCap(ctx, label, x0, y, H);
@@ -375,6 +387,7 @@ export default class WorldRenderer {
       ctx.fillText(h.text, x0 + kw + gap + 1, y + 1.5);
       ctx.fillStyle = '#fff';
       ctx.fillText(h.text, x0 + kw + gap, y + 0.5);
+      ctx.restore();
     }
     ctx.restore();
   }

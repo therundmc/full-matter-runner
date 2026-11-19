@@ -45,8 +45,9 @@ export function killStyle({ cause, killer, victim, how }) {
 // The circumstances of a kill worth a bonus (SCORING.tags keys). how: what whoever killed knew of it (a round:
 // pierced, through, bounced, dist, last; a blow: from, heavy, spin, broke, thrown, disarm; smoked; env: what a
 // takedown drove his head into, systems/TakedownSpot.js;
-// boss: the boss he was, entities/Boss.js; car: how his car was stopped, systems/Pursuit.js); ctx: { now, dodgeT,
-// pickT, streak } where streak counts the kills of the last instants, this one included.
+// boss: the boss he was, entities/Boss.js; car: how his car was stopped, crew: the second man of a car stopped with
+// both in it (no multi-kill of its own), systems/Pursuit.js); ctx: { now, dodgeT, pickT, streak } where streak counts
+// the kills of the last instants, this one included.
 export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   const tags = [];
   if (how.pierced > 0) tags.push('collateral');
@@ -68,7 +69,7 @@ export function killTags({ killer, how = {} }, ctx, rules = SCORING) {
   if (rules.tags[how.car]) tags.push(how.car);
   if (ctx.now - ctx.dodgeT < rules.dodgeWindow) tags.push('dodge');
   if (ctx.now - ctx.pickT < rules.drawWindow) tags.push('quickdraw');
-  if (ctx.streak >= 2) tags.push(ctx.streak === 2 ? 'double' : ctx.streak === 3 ? 'triple' : 'massacre');
+  if (ctx.streak >= 2 && !how.crew) tags.push(ctx.streak === 2 ? 'double' : ctx.streak === 3 ? 'triple' : 'massacre');
   return tags;
 }
 
@@ -206,8 +207,11 @@ export default class Scoring {
     const unseen = victim.aware === 0 && !(victim.knocked > 0);
     // the circumstances: each adds its points and counts as a way of killing
     const k = e.killer, R = this.rules;
-    this.streak = w.time - this.killT <= R.multiWindow ? this.streak + 1 : 1;
-    this.killT = w.time;
+    // (a car's crew is one kill for the streak: its second man adds none)
+    if (!e.how?.crew) {
+      this.streak = w.time - this.killT <= R.multiWindow ? this.streak + 1 : 1;
+      this.killT = w.time;
+    }
     // smoked: through air too thick to see through (never the blast's own soot: it is the blast that killed)
     const circ = { ...e.how, smoked: !!(k && e.cause !== 'explosion' && w.smoke?.blocks(k.x, k.y, victim.x, victim.y)) };
     this.tags = killTags({ killer: k, how: circ }, { now: w.time, dodgeT: this.dodgeT, pickT: this.pickT, streak: this.streak }, R);

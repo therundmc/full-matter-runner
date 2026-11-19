@@ -6,6 +6,7 @@ import { leafInertia, spinOf, pushLeaf, blowOn, swing } from '../../engine/physi
 import { PX_PER_M, STEP } from '../../engine/physics/Units.js';
 import { LEAF } from '../world/Openings.js';
 import { DOORS } from '../data/doors.js';
+import { SCORING } from '../data/scoring.js';
 import { flicker } from '../render/Flicker.js';
 
 const { Bodies, Body } = Matter;
@@ -343,7 +344,8 @@ export default class Door {
     ent.knock(a, 'door');
     this.world.sound('doorSlam', ent.x, ent.y);
     this.world.shake(0.25);
-    this.world.addScore(300, ent.x, ent.y, 'DOOR SLAM');
+    const S = SCORING.doorSlam;
+    this.world.addScore(S.points, ent.x, ent.y, S.label);
   }
 
   // speed of the door surface at a given point (px/step)

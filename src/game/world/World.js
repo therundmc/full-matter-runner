@@ -431,6 +431,7 @@ export default class World {
     p.invulnerable = true;
     p.vaultHint = null;
     p.slide = null;
+    p.releaseHands();
     this.ambient?.clearRoad(); // nothing driving on the street the getaway tears across
     this.outro = {
       t: 0, car, door: this.cabDoor(car, p.x, p.y), vault: false, inside: false,

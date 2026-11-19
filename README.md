@@ -12,26 +12,32 @@ npm start
 ```
 
 Then open the address it prints (http://127.0.0.1:8000, or the next free port when a server is already running on
-that one). `python -m http.server 8000` works too, with a browser cache to clear by hand (Ctrl+F5) after an update.
+that one). `npm run play` serves the last commit on port 8100 instead.
 
 ## Controls
 
-| Key | Action |
-|---|---|
-| WASD / ZQSD | Move |
-| Mouse | Aim |
-| Left click | Shoot / swing / punch; take a guard down from behind; finish a man on the floor |
-| Right click | Throw the weapon (knocks enemies down), or pick one up |
-| E | Pick up / swap weapons, open a car's trunk, use a device (fire alarm, trapdoor, gas tap...) |
-| Space | Vault (dive through a window, broken or not, slide over low furniture or a car hood) / floor slide when running |
-| Shift | Look further ahead |
-| R | Reload (restart once dead) |
-| Backspace | Instant restart |
-| Esc | Pause |
-| M | Music on/off |
-| F1 | Sandbox panel: drop guards, weapons, props, vehicles, blasts, water; god mode, freeze guards, slow time |
-| F2 / F3 / F4 | Debug: enemy vision cones / whole-level overview / physics overlay (FPS, frame times) |
-| F6 | The lens (WebGL last pass) on / off |
+Keyboard keys are physical positions: ZQSD on AZERTY is WASD on QWERTY. The CONTROLS page of OPTIONS lists them for
+the device in use (`src/game/data/controls.js`).
+
+| Keyboard / mouse | Gamepad | Action |
+|---|---|---|
+| WASD / ZQSD | Left stick | Move |
+| Mouse | Right stick | Aim |
+| Shift | LT | Look further ahead |
+| Left click | RB (or RT) | Attack / shoot (held: an automatic keeps firing); take a guard down from behind; finish a man on the floor |
+| Right click | LB | Throw: hold to aim, let go to throw (a tap throws at once); a full throw plants a blade and kills with anything else. With empty hands: pick up |
+| E | X | Pick up / swap weapons, open a car's trunk, use a device (fire alarm, trapdoor, gas tap...) |
+| Space | A | Vault (dive through a window, over low furniture or a car hood), climb; slide on the run |
+| R | Y | Reload; retry once dead or on the results |
+| Backspace | | Restart the level |
+| Esc | START | Pause (also on the death screen: retry, options, quit) |
+
+At the wheel (level 2A): W / S (Z / S) or A / D (Q / D), the left stick on a pad, steer across the road; Space / A
+shoves the car on the aim's side; the mouse / right stick aims the Uzi, left click / RB fires it.
+
+Debug (dev builds only, `src/game/data/build.js` `BUILD.release` false, or `?dev=1`): F1 sandbox panel (drop guards,
+weapons, props, vehicles, blasts, water; god mode, freeze guards, slow time: a run that used it is not ranked), F2
+enemy vision cones, F3 whole-level overview, F4 physics overlay (FPS, frame times), F6 lens on / off, F7 next aim cue.
 
 ## Rules
 
@@ -57,9 +63,9 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): `src/engine` (generic engine, 
 ## Tests & debug
 
 - `npm test` runs the Node unit tests (engine, physics, map / pathfinding), no browser needed.
-- `?level=lab` loads the physics lab: every prop, weapon and ammo type on three floors, a street with vehicles.
-- F1 opens the sandbox panel in any level (it lists its own keys): spawn tools at the cursor and cheats.
-- F2 enemy vision cones, F3 whole-level overview, F4 physics overlay with FPS and frame times.
+- `npm run qa -- --level <id>` makes a robot play a level in a headless browser (tools/qa/README.md).
+- Dev builds only: `?level=lab` loads the lab (a station per feature); `?level=<id>` any level; `?killcam=off`,
+  `?mark=`, `?post=0` compare switches. F1 opens the sandbox panel in any level (it lists its own keys).
 
 ## Making levels
 

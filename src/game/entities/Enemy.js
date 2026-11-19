@@ -26,7 +26,7 @@ import { pastimeHands, drawPastime } from '../render/PastimeArt.js';
 import Character, { heavyBuild } from './Character.js';
 import { standPose, postPose, drawPose, bodyFrame, kneelPose } from './CharacterAnim.js';
 import { drawPost, drawMouth, drawItem } from './PostArt.js';
-import { TELL, GESTURE, TAIL } from '../data/feel.js';
+import { TELL, GESTURE, TAIL, DROP } from '../data/feel.js';
 import { POSTS, HELD, HOOD } from '../data/posts.js';
 import { FLOATS } from '../data/destruction.js';
 import { HURT } from '../data/wounds.js';
@@ -1750,7 +1750,7 @@ export default class Enemy extends Character {
     if (this.def.kind === 'melee') return this.planMelee(p, dist);
     if (this.reloading > 0 || this.needsReload()) return this.setTactic('reload');
     if (this.sees && this.meleeThreat(p, dist)) return this.setTactic('backoff');
-    const shotgun = this.weapon.type === 'shotgun';
+    const shotgun = this.def.pellets > 1;
     if (!this.sees) {
       if ((prev === 'flank' && this.goal) || ((prev === 'cover' || prev === 'ambush') && this.lostT < 2.5) || (prev === 'suppress' && this.burstLeft > 0)) return;
       if (prev === 'ambush' && this.ambushT > 0) return;
@@ -1880,7 +1880,7 @@ export default class Enemy extends Character {
   }
 
   tAdvance(dt, p) {
-    const shotgun = this.weapon.type === 'shotgun';
+    const shotgun = this.def.pellets > 1;
     this.travel(dt, p.x, p.y, ENEMY.runSpeed * (shotgun ? 0.75 : 0.6), { look: !this.sees, near: 30 });
     if (this.sees) { this.aimAt(p.x, p.y, dt); this.tryFire(p); }
   }
@@ -2444,7 +2444,7 @@ export default class Enemy extends Character {
     this.downAngle = angle; // on his back, his head away from the blow
     this.dormant = false;   // that wakes a man
     const along = opt.slide ?? angle;
-    this.dropWeapon(along + rand(-0.8, 0.8), this.yields ? 0.5 : rand(2, 4)); // (his gun is to be snatched: it stays by him)
+    this.dropWeapon(along + rand(-0.8, 0.8), this.yields ? 0.5 : rand(...DROP.knock)); // (his gun is to be snatched: it stays by him)
     this.vaulting = null;
     this.body.collisionFilter = { category: CAT.CORPSE, mask: MASK.CORPSE, group: 0 };
     const sp = opt.speed ?? (cause === 'punch' ? 3 : 4.5);

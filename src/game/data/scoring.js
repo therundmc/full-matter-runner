@@ -58,11 +58,13 @@ export const SCORING = {
   // a long execution watched to its end ('finisher'): points added then (x the multiplier), and the chain gets this
   // share of its window back
   watched: { points: 600, label: 'FULL EXECUTION', refill: 1 },
-  // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself.
+  // flooring a guard without killing him (cause given to Enemy.knock); the door slam is scored by the door itself
+  // (Door.slam: `doorSlam`).
   // kick: the foot in his head at the end of a slide; hood: the legs off a car's hood. Shown as knockLabels (else
   // the cause in capitals)
   knock: { throw: 200, slide: 200, debris: 150, kick: 300, hood: 300 },
   knockLabels: { debris: 'WRECKAGE', kick: 'SLIDE KICK', hood: 'HOOD SLIDE' },
+  doorSlam: { points: 300, label: 'DOOR SLAM' },
   // chained kills: each one within `window` s of the last adds `step` to the multiplier, up to `max` (x2.5 at the
   // 7th). Guards rush the player, so chains come on their own in a brawl: at x4 every kill of one paid four times
   combo: { window: 4, step: 0.25, max: 2.5, knockRefill: 0.6 }, // knockRefill: share of the window a knock-down wins back

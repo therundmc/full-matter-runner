@@ -12,7 +12,7 @@ npm run qa -- [--minutes 10] [--seed 1] [--level level1] [--god] [--realtime] [-
 |---|---|
 | `--minutes` | game time to cover (default 10). Fast mode does ten game minutes in well under a minute. |
 | `--seed` | seeds the bot's decisions and the game's `Math.random` (see "Replaying a seed"). |
-| `--level` | level id (`level1`, `lab`, `street`), as `?level=` in the URL. |
+| `--level` | level id (`level1`, `tutorial`, `lab`, `street`, `level2a`), as `?level=` in the URL. |
 | `--god` | the player is invulnerable (`player.invulnerable`) after each restart: long sessions deep into the level. |
 | `--realtime` | the game's own `requestAnimationFrame` loop runs and the bot only sets the inputs before each frame: slower (real time), but exercises the real loop, frame timing and audio. Default is **fast**: the bot calls `game.update(1/60)` itself, 300 steps per page evaluation, and lets one real frame render between batches (render errors still show up). |
 | `--plans` | only these plans are drawn (names from `PLANS` or `CHAOS` in `bot.js`, e.g. `--plans roofShop,fuse`): to work on one route, or to replay the plan a finding came under (its `replayPlan`). |
@@ -63,7 +63,8 @@ player, and reads `window.game` to decide:
   A `use: kind` step walks to the device spot of that kind (systems/Uses.js) and presses E there.
 
   `lab` and `street` have `free` and `throw` (and `road` in `--god` on the street); the lab also `jukebox`, `alarm`,
-  `kegs`, `passage` and `fuse`. A plan that breaks (no path,
+  `kegs`, `passage` and `fuse`. `level2a` (the car chase) has one plan, `chase`: see "At the wheel" below. A plan
+  that breaks (no path,
   timeout, the weapon gone) is a `plan-failed` warning; a plan left on the roof is followed by a way down (`offRoof`);
 - keeps off what burns: its paths cost a long detour through a tile with fire in it, or with petrol the fire is
   coming to (`world.fireSpread.hot`); it still dies in a fire that closes on it (the tutorial, without `--god`);
@@ -82,6 +83,20 @@ player, and reads `window.game` to decide:
   results screen (R), starts over when a session goes nowhere (5 game minutes, no kill for a minute), and a minute
   after clearing a level that has no exit (lab, street).
 
+## At the wheel (level 2A)
+
+`npm run qa -- --level level2a`: he drives the whole level (systems/Drive.js), so while `world.drive.on` the bot
+does not walk (`playChase` in `bot.js`, its numbers in `CHASE_BOT`): it turns the wheel (W / S) toward a lane picked on
+a slow random cycle (1.5 to 4 s each), one time in five toward a sidewalk instead, held 2.5 s into the building fronts
+(where the car got caught); SPACE aimed at a pursuer alongside (within 70 px along the road, 45 to 120 px across);
+else the Uzi held on the windscreen of the nearest pursuer still driven within 420 px and inside the gun's arc
+(`drive.gun.aimAt`). It dies (a told shot, nose-on into a wall, the lorry), restarts with R, and plays the road again
+to the TO BE CONTINUED card and the results. The detectors made for walking stay off at the wheel: `in-wall` for him
+(he is carried in his seat), `prop-in-wall` (what the car throws aside lands against the fronts), `softlock` (no
+guards: `enemiesLeft` is 0 from the start), `unreachable-item`; every `not-covered` feature but `exit` is "not in this
+level". `stalled` is its own. The statistics add a line: shoves, bursts, stalls, the pursuers' men killed by how
+their car was stopped (`how.car`). The deaths name the cell he died in at the wheel (the bot's last actions).
+
 ## Findings
 
 Each finding is `{ kind, severity, sig, t, session, plan, chaos, pos, detail, lastActions, count, replay, replayPlan }`:
@@ -99,6 +114,7 @@ occurrence (fast mode puts the camera on the spot and rings it in red).
 | `power-lit` | error | 1.5 s after the bar's power cut (`powerCut`), a prop on the cut mains (`world.power.wired`, or any lamp inside the power zone but the battery `standby` ones) still has `lightsOut` false. |
 | `unstick` | error | `player.unstick()` (the last-resort teleport out of a wall or a vehicle) actually moved the player: `detail.from` / `to`. |
 | `out-of-map` | error | a living player or guard, or an item, outside the map rectangle (items: by more than 8 px; civilians: 16 tiles, they walk in from off the map). |
+| `stalled` | error | at the wheel (level 2A): the drive on, he alive, the road not over, and the car under 25 % of its cruise speed for 2 s (a crash stops it dead: that is a death, not this). `sig`: what held it (the first solid contact when it started); `detail.then` / `now`: what touched the car then and 2 s later (sensor or not, depth, normal, where), its speed, angle and bounds. |
 | `softlock` | error | `enemiesLeft === 0` but `world.cleared` false for 2 s; or cleared and no grid path from the player to the exit (not checked on a roof: its ways down are not in the grid); or the player stands in the exit of a cleared level and no results screen comes; or a fast batch never returned (`hang`). |
 | `player-stuck` | warn | the bot pushed toward a waypoint for 3 s of game time (vault and sidestep tried) and moved under 8 px. `detail.front` lists what is right in front (props, doors, guards, windows, corpses), `detail.plan` the plan step. Often furniture the grid does not know: check the screenshot before blaming the game. |
 | `plan-failed` | warn | a plan's step could not be done (`sig`: plan, step, why: no path, timeout, gave up the way, weapon taken...). A route of the level that no longer works (a ladder that does not take him, a counter he cannot vault) shows here first. |

@@ -570,9 +570,22 @@ export default class Player extends Character {
   }
 
   // the weapon he will take (Character.kill), as soon as his hands are his own again (not in a takedown or a
-  // finisher) and it has fallen (SNATCH.delay); sure: however far it lies and whatever is in his hand (it is let go)
+  // finisher) and it has fallen (SNATCH.delay); sure: however far it lies and whatever is in his hand (it is let go).
+  // One still waiting for his hand (a lesson's man who yields it, killed meanwhile) is let go for this one.
   snatchFrom(item, sure = false) {
-    if (item) this.snatch = { item, at: this.world.time + SNATCH.delay, sure };
+    if (!item) return;
+    if (this.snatch && this.snatch.item !== item) this.snatch.item.free?.();
+    this.snatch = { item, at: this.world.time + SNATCH.delay, sure };
+  }
+
+  // whatever his hands were about is dropped where it stands (the getaway takes him over: World.startOutro): the
+  // throw wound up, the swing's step, LOCK's turn, a dead man's weapon his hand was going to (let go on the floor)
+  releaseHands() {
+    this.throwHold = null;
+    this.lunge = null;
+    this.facingLock = null;
+    this.snatch?.item.free?.();
+    this.snatch = null;
   }
 
   // his hand closes on it: the pick-up's reach and twirl into his grip (CharacterAnim, pickAnim), with the rounds left

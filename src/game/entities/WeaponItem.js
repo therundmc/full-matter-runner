@@ -8,14 +8,9 @@ import { landBlow } from '../fx/Impact.js';
 import { flyPiece, dropPiece } from '../fx/Breakage.js';
 import Debris from './Debris.js';
 
-const WEAPON_KG = { pistol: 1, uzi: 3, uzi_silenced: 3.4, shotgun: 3.6, rifle: 4.2, sniper: 6, bazooka: 7, bat: 1, knife: 0.3, cue: 0.6, cue_half: 0.3, tire_iron: 1.3, tire_iron_bent: 1.3 };
-
 const { Bodies, Body } = Matter;
 
-// a thrown blade at least this fast (px/step) plants itself in the man instead of knocking him down
-const STICK_SPEED = 6;
 const LEAN = 0.5; // how short a weapon stood against a wall looks from above
-const BUTT = { swing: 'club', material: 'metal', heft: 2 }; // a gun thrown full into a man: what the blow is (fx/Blows.js)
 
 // A weapon lying on the floor or flying through the air after a throw.
 export default class WeaponItem {
@@ -33,7 +28,7 @@ export default class WeaponItem {
       collisionFilter: { category: CAT.ITEM, mask: MASK.ITEM },
     });
     // thrown weapons fly before they hit the floor and slide
-    setMaterial(this.body, WEAPON_KG[type] ?? 2, 0.7, thrower ? world.time + 0.25 : 0);
+    setMaterial(this.body, this.def.kg ?? 2, 0.7, thrower ? world.time + 0.25 : 0);
     this.body.material = this.def.material || 'metal';
     Body.setVelocity(this.body, { x: vx, y: vy });
     Body.setAngularVelocity(this.body, spin);
@@ -68,7 +63,7 @@ export default class WeaponItem {
     this.reserved = false;
     this.body.isSensor = false;
     Body.setStatic(this.body, false);
-    setMaterial(this.body, WEAPON_KG[this.type] ?? 2, 0.7, 0);
+    setMaterial(this.body, this.def.kg ?? 2, 0.7, 0);
   }
 
   // stood against a wall (a level's `lean`), its tip up on it: it stays there until somebody takes it
@@ -101,7 +96,7 @@ export default class WeaponItem {
         const v = Body.getVelocity(this.body);
         const a = Math.atan2(v.y, v.x);
         const blade = this.def.swing === 'blade', full = this.charge >= 1;
-        const stick = blade && (sp >= STICK_SPEED || full), smash = !blade && full;
+        const stick = blade && (sp >= THROW.stick || full), smash = !blade && full;
         const breaks = smash && this.def.kind !== 'gun'; // a gun kills as hard, and comes off him whole (the user)
         if (smash) this.smash(c, a);
         else if (stick) {
@@ -123,7 +118,8 @@ export default class WeaponItem {
           w.events.emit('thrownHit', { thrower: this.thrower, victim: c, x: c.x, y: c.y, angle: a, kill: !c.alive, planted: stick, smashed: smash, charge: this.charge });
         }
         if (breaks) this.shatter(c, a);
-        if (stick || breaks) { w.removeItem(this); return; }
+        // (a blade that did not kill him, a boss whole or a man nothing harms, falls off him like anything else)
+        if ((stick && !c.alive) || breaks) { w.removeItem(this); return; }
         Body.setVelocity(this.body, { x: -v.x * 0.3, y: -v.y * 0.3 });
         this.thrower = null;
         return;
@@ -134,7 +130,7 @@ export default class WeaponItem {
   // A full throw of anything that is no blade (THROW.smash) kills the man it reaches: a club crushes, as its heavy
   // stroke does (and breaks on him); a gun is a blunt blow, and it stays whole. The flash, the star and the screen's share of a heavy blow (fx/Impact.js).
   smash(c, a) {
-    const d = this.def, w = this.world, S = THROW.smash, gun = d.kind === 'gun', hit = gun ? BUTT : d;
+    const d = this.def, w = this.world, S = THROW.smash, gun = d.kind === 'gun', hit = gun ? THROW.butt : d;
     const by = gun ? { ...d, wound: 'blunt', gore: S.gunGore } : { ...d, wound: 'crush', gore: (d.gore || 0.3) * S.gore };
     const how = { thrown: true, heavy: true, broke: !gun, from: blowFrom(c.angle, a) };
     blowFx(w, hit, c, a, how);
@@ -166,7 +162,7 @@ export default class WeaponItem {
       w.particles.chips(at.x, at.y, a, 1.4, S.chips[0] / 2, '#5a5662', S.chips[1]);
       w.sound('gunWreck', at.x, at.y); // placeholder (assets/sound/PLACEHOLDERS.md)
       w.addDebris(new Debris(w, dulled(this.img, S.dull), at.x, at.y, this.body.angle, back.x * 2, back.y * 2, 0.3 * side,
-        { material: 'metal', kg: WEAPON_KG[this.type] ?? 2, bounce: 0.25, z: BREAK.fall.z, vz: 60, scale: BODY_SCALE, land: 'metal' }));
+        { material: 'metal', kg: d.kg ?? 2, bounce: 0.25, z: BREAK.fall.z, vz: 60, scale: BODY_SCALE, land: 'metal' }));
     }
   }
 
@@ -179,7 +175,10 @@ export default class WeaponItem {
     const e = other.entity;
     if (!e || !this.thrower) return;
     if (e.def?.explosive && this.speed > 2) e.break(0, 1);
-    else if (e.hit && e.def && this.speed > 4 && e.def.hp <= 1) e.hit(1, this.x, this.y, Math.atan2(this.body.velocity.y, this.body.velocity.x));
+    else if (e.hit && e.def && this.speed > 4 && e.def.hp <= 1) {
+      const v = Body.getVelocity(this.body);
+      e.hit(1, this.x, this.y, Math.atan2(v.y, v.x));
+    }
   }
 
   // in flight: ghosts of its own sprite where it was a few steps ago (THROW.trail), and behind a full throw a faint

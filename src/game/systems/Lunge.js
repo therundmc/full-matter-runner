@@ -4,8 +4,8 @@
 // Player.startLunge applies it (and snaps the drawn body onto a held man: Facing.snapFacing).
 import { angDiff, clamp } from '../../engine/math.js';
 
-// a man a swing can be drawn to: alive, on his feet, not in someone's hands
-const standing = (e) => e.alive && !(e.knocked > 0) && !e.held;
+// a man a swing can be drawn to: alive, on his feet, not in someone's hands nor on his knees (he gave up)
+const standing = (e) => e.alive && !(e.knocked > 0) && !e.held && !e.yielded;
 
 // p: the player { x, y, radius }; d: the weapon definition in hand (fists included); aim: rad; cfg: PLAYER.lunge;
 // sees(e): a line from the player to e; solid(x, y): a wall there; lock: the man LOCK holds (systems/AimCue.js

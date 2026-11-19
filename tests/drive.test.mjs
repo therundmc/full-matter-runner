@@ -116,6 +116,8 @@ test('drive: the speed and the steering, step by step (pure)', () => {
   const held = (...codes) => ({ down: (c) => codes.includes(c) });
   assert.deepEqual([steerOf(held('KeyW')), steerOf(held('KeyA')), steerOf(held('KeyS')), steerOf(held('KeyD')), steerOf(held())], [-1, -1, 1, 1, 0]);
   assert.equal(steerOf(held('KeyW', 'KeyS')), 0, 'both: neither');
+  // the arrows too (they move him on foot): up / left up, down / right down
+  assert.deepEqual(['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].map((c) => steerOf(held(c))), [-1, -1, 1, 1]);
   assert.equal(steerOf({ down: () => false, move: () => ({ x: 0.9, y: -0.5, mag: 1 }) }), -0.5, 'the stick pushed up: up, by how far');
   assert.equal(steerOf({ down: () => false, move: () => null }), 0, 'the stick at rest');
 });
@@ -397,4 +399,89 @@ test('level2a: the back road loads, the van in our lane at the start, the end of
   w.drive = d;
   run(w, d, input, 0.5);
   assert.ok(w.cleared && w.exited && w.exits === 1, 'over');
+});
+
+// a contact as the physics hands it to Drive.contact: the van's body and another, touching along n
+const touch = (v, o, n = { x: 1, y: 0 }) => ({ bodyA: v.body, bodyB: o, isActive: true, isSensor: false, collision: { normal: n, supports: [o.position] } });
+
+test('drive: a light loose thing met at a crawl is thrown out of its way too, never a full contact (it pinned the car)', () => {
+  const { w, v, d } = start();
+  const bag = Bodies.circle(v.x + 92, v.y, 6.5);
+  setMaterial(bag, 6, 0.6);
+  bag.entity = { def: { material: 'fabric' }, type: 'bin_bag' };
+  w.physics.add(bag);
+  Body.setVelocity(v.body, { x: 0.3, y: 0 }); // (crawling: under the speed that tears things off)
+  const pair = touch(v, bag);
+  d.contact(bag, pair);
+  assert.ok(pair.isSensor && !pair.isActive, 'the contact dropped');
+  assert.ok(Math.hypot(vel({ body: bag }).x, vel({ body: bag }).y) >= CHASE.hit.fling.least - 1e-9, 'thrown out of its way');
+});
+
+test('drive: the lab: the parked car it shoved is told by the drive it is in now, not the first one (got out, in again)', () => {
+  const w = world(), van = vehicle(w, 'van', 6 * TILE, 7 * TILE), car = vehicle(w, 'car', 12 * TILE, 7 * TILE);
+  const own = () => {};
+  const other = vehicle(w, 'car', 12 * TILE, 3 * TILE);
+  other.onCollide = own; // (a pursuer's own handler)
+  const d1 = new Drive(w, { exit: true }, van);
+  w.drive = d1;
+  d1.contact(car.body, touch(van, car.body));
+  d1.contact(other.body, touch(van, other.body));
+  assert.equal(typeof car.onCollide, 'function', 'what it is shoved into goes too');
+  d1.leave();
+  assert.equal(car.onCollide, null, 'taken back as he gets out');
+  assert.equal(other.onCollide, own, 'never one it did not give');
+  const d2 = new Drive(w, { exit: true }, van);
+  w.drive = d2;
+  d2.contact(car.body, touch(van, car.body));
+  let knocked = null;
+  d2.knock = (b) => { knocked = b; };
+  car.onCollide({}, {});
+  assert.equal(knocked, car.body, 'the new drive is told');
+});
+
+test('drive: past the end of the road (the card coming up) the wheel, the shove and the gun are his no more', () => {
+  const c = level2a.chase, w = world(level2a.tiles), v = vehicle(w, 'van', (c.end - 1) * TILE, c.van[1] * TILE);
+  const d = new Drive(w, { ...c, arms: null, van: [c.end - 1, c.van[1]] }, v), input = keys();
+  w.drive = d;
+  run(w, d, input, 0.3);
+  assert.ok(w.exited, 'over');
+  let fired = 0;
+  d.gun.step = () => { fired++; };
+  input.held.add('KeyD');
+  input.pressed.add('Space');
+  run(w, d, input, 0.5, { x: v.x, y: v.y + 100 });
+  assert.equal(fired, 0, 'no gun');
+  assert.equal(d.shoves, 0, 'no shove');
+  assert.ok(Math.abs(vel(v).y) < 0.05, 'no steering: it runs on straight');
+});
+
+test('drive: held up for good behind a parked car shoved into its lane, nothing held, it eases itself out and runs on', () => {
+  const { w, v, d, input } = start({ cruise: 9, lanes: [4.5, 7], mid: 5.75 });
+  const car = vehicle(w, 'van', 16 * TILE, 7 * TILE, 0);
+  Body.setStatic(car.body, true); // (a wreck that never gives: only going round it frees him)
+  car.body.frozen = false;
+  let low = Infinity, t = 0;
+  for (; t < 6 && !(low < 2 && d.v > 0.8 * 9 && v.x > car.x); t += DT) { run(w, d, input, DT); low = Math.min(low, d.v); }
+  assert.equal(w.killed, null, 'no crash');
+  assert.ok(low < 2, `held up (${low})`);
+  assert.ok(v.x > car.x && d.v > 0.8 * 9 && t < 3, `round it and running again in ${t.toFixed(1)} s (at ${v.x.toFixed(0)}, ${d.kmh} km/h)`);
+  assert.ok(v.y < car.y - 62, `out from behind it (${v.y.toFixed(0)})`);
+  run(w, d, input, 1);
+  assert.ok(v.x > car.x + 300 && d.v > 8.9 && d.freeing === null, 'and on past it at cruise, the wheel his again');
+});
+
+test('drive: stalled, the wheel he holds is his: the car never fights it, and gets him out his way at a crawl', () => {
+  const { w, v, d, input } = start({ cruise: 9, lanes: [4.5, 7], mid: 5.75 });
+  const car = vehicle(w, 'van', 16 * TILE, 7 * TILE, 0);
+  Body.setStatic(car.body, true);
+  car.body.frozen = false;
+  for (let t = 0; t < 3 && !d.freeing; t += DT) run(w, d, input, DT);
+  assert.ok(d.v < 2 && d.freeing, 'held up, easing itself out');
+  input.held.add('KeyS'); // (down: toward the yard's wall, the way the car would not go)
+  const y0 = v.y;
+  run(w, d, input, 0.3);
+  assert.ok(v.y > y0 + 8, `his way, out of it even at a crawl (${(v.y - y0).toFixed(1)} px)`);
+  input.held.delete('KeyS');
+  run(w, d, input, 1.5);
+  assert.ok(v.y < y0 - 20, 'let go: out it eases');
 });
