@@ -199,6 +199,7 @@ export default class Drive {
     this.wakeT = 1;                   // s before its wake whips something up again
     this.stallT = 0;                  // s it has crawled (unstick)
     this.freeing = null;              // stalled: { side: the way it eases itself out, y: where it was, t: s since }
+    this.nosing = null;               // crawling nose-on into the lorry: { t, held: s, best: px left } (boxed)
     this.knocked = new Map();         // the cars it shoved -> the handler it gave them (knock; taken back at leave)
     this.grind = null;                // held off the building fronts as he steers into them: where its flank is
     this.board();
@@ -423,6 +424,8 @@ export default class Drive {
   unstick(dt, own) {
     const S = this.C.stall, mid = this.street, y = this.van.y;
     this.stallT = this.v < S.under * this.cruise ? this.stallT + dt : 0;
+    if (!this.stallT) this.nosing = null;
+    else if (mid !== null && this.boxed(dt)) return null;
     if (this.v >= S.until * this.cruise) this.freeing = null;
     else if (this.stallT > S.after && !this.freeing) this.freeing = { side: this.wayOut(mid), y, t: 0 };
     const F = this.freeing;
@@ -437,14 +440,55 @@ export default class Drive {
     return F.side;
   }
 
-  // which way out of what holds it (-1: -y): the way the solid contacts push it, else the street's middle, else the
-  // lane it is farthest from
+  // Crawling with its nose on what never gives (a `lasting` thing: the lorry), it has to get round one of its ends: not
+  // `moved` px nearer to one than it ever was in each `after` s for `boxed` s (the way round shut: a car shoved in
+  // there and pinned, the street's front; a car pushed against it creeps a few px; going back and forth gains
+  // nothing) and it is the crash he was told about: the street is his to get round, not to wait in. True: it crashed
+  boxed(dt) {
+    const S = this.C.stall, wall = this.nosedOn();
+    if (!wall) return false;
+    const left = this.roundOf(wall)?.left ?? Infinity, B = (this.nosing ??= { t: 0, held: 0, best: left });
+    if ((B.t += dt) >= S.after - 1e-9) {
+      B.held = left < B.best - S.moved ? 0 : B.held + B.t;
+      B.t = 0;
+      B.best = Math.min(B.best, left);
+    }
+    if (B.held < S.boxed - 1e-9 || this.world.player.invulnerable) return false;
+    this.crash({ a: this.van.body.angle });
+    return true;
+  }
+
+  // the `lasting` body its nose leans on (within crash.cone of square on), or null
+  nosedOn() {
+    const b = this.van.body, ca = Math.cos(b.angle), sa = Math.sin(b.angle), cone = Math.cos(this.C.crash.cone);
+    for (const pair of this.world.physics.activePairs()) {
+      const o = pair.bodyA === b ? pair.bodyB : pair.bodyB === b ? pair.bodyA : null;
+      if (!o?.entity?.def?.lasting || pair.isSensor) continue;
+      const n = pair.collision.normal, into = pair.bodyA === b ? -1 : 1; // (Matter's normal points from B to A)
+      if ((ca * n.x + sa * n.y) * into >= cone) return o;
+    }
+    return null;
+  }
+
+  // the way round body o across the street: its end with room for the car short of the building fronts, the nearest
+  // { side: -1 (-y) | 1, left: px across still to go to clear it }, or null (it shuts the street)
+  roundOf(o) {
+    const [lo, hi] = this.fronts(), y = this.van.y, h = this.van.h, ob = o.bounds, ends = [];
+    if (ob.min.y - lo >= h) ends.push({ side: -1, left: y + h / 2 - ob.min.y });
+    if (hi - ob.max.y >= h) ends.push({ side: 1, left: ob.max.y - (y - h / 2) });
+    return ends.sort((a, c) => a.left - c.left)[0] ?? null;
+  }
+
+  // which way out of what holds it (-1: -y): round the end of what its nose leans on, else the way the solid contacts
+  // push it, else the street's middle, else the lane it is farthest from
   wayOut(mid) {
+    const wall = this.nosedOn(), round = wall && this.roundOf(wall);
+    if (round) return round.side;
     const b = this.van.body, y = this.van.y;
     let push = 0;
     for (const pair of this.world.physics.activePairs()) {
       if (pair.isSensor || (pair.bodyA !== b && pair.bodyB !== b)) continue;
-      push += pair.collision.normal.y * (pair.bodyB === b ? 1 : -1); // (Matter's normal points from A to B)
+      push += pair.collision.normal.y * (pair.bodyA === b ? 1 : -1); // (Matter's normal points from B to A: away from it)
     }
     if (Math.abs(push) > 0.3) return Math.sign(push);
     if (mid !== null && Math.abs(mid - y) >= TILE) return Math.sign(mid - y);
@@ -470,18 +514,24 @@ export default class Drive {
   // Held off them as it goes into them: `grind`, its flank there (the scrape's sparks and grind: scrape)
   // (a street only: the chase; the lab has none)
   offFronts(u) {
-    const map = this.world.map;
     this.grind = null;
-    if (!this.o.lanes || !map || !u) return u;
-    const b = this.van.body.bounds, m = this.C.front, r = Math.floor(this.van.y / TILE);
-    let lo = -Infinity, hi = Infinity;
-    for (let c = Math.floor(b.min.x / TILE); c <= Math.floor(b.max.x / TILE); c++) {
-      const f = frontsAt(map, c, r);
-      if (f) { lo = Math.max(lo, f[0]); hi = Math.min(hi, f[1]); }
-    }
+    if (!this.o.lanes || !this.world.map || !u) return u;
+    const b = this.van.body.bounds, m = this.C.front, [lo, hi] = this.fronts();
     const held = u > 0 ? Math.min(u, Math.max(0, hi - m - b.max.y)) : Math.max(u, Math.min(0, lo + m - b.min.y));
     if (Math.abs(held) < Math.abs(u) - 0.05) this.grind = { x: this.van.x, y: u > 0 ? hi : lo };
     return held;
+  }
+
+  // the building fronts either side of the car, over the columns it covers (frontsAt): [world px y above, below]
+  // (no map: -+Infinity)
+  fronts() {
+    const map = this.world.map, b = this.van.body.bounds, r = Math.floor(this.van.y / TILE);
+    let lo = -Infinity, hi = Infinity;
+    for (let c = Math.floor(b.min.x / TILE); map && c <= Math.floor(b.max.x / TILE); c++) {
+      const f = frontsAt(map, c, r);
+      if (f) { lo = Math.max(lo, f[0]); hi = Math.min(hi, f[1]); }
+    }
+    return [lo, hi];
   }
 
   // the street's middle line (world px y: the level's `chase.mid` row, else the lanes'), or null (the lab)

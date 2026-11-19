@@ -41,7 +41,8 @@ src/
     Game.js               loop (fixed 60 Hz steps, time scale, hitstop) and screens state machine
     Config.js             tuning: collision categories/masks, player/enemy tuning, PHYSICS, palette
     world/
-      World.js            one playthrough: entity lists, services, fixed step order, system facades
+      World.js            one playthrough: entity lists, services, fixed step order, system facades; `dispose`: its
+                          canvases let go when it is over (Game.startLevel)
       TileMap.js          pure grid logic (solid / blocked / wall HP / version), wall bodies (no DOM)
       Level.js            builds entities from level data
       Openings.js         geometry of doors / windows in walls (DOM-free, unit-tested): door leaves of a run of door
@@ -261,7 +262,10 @@ src/
     render/
       MapRenderer.js      floor / blood / flesh / wall layers and permanent decals (blood, holes, scorch, spills,
                           baked bodies), flat roofs of the neighbouring buildings and their dressing; every layer a
-                          ChunkedLayer (see "Long maps" below), drawn on through `on` / `paint(fn, layer, x0, x1)`
+                          ChunkedLayer (see "Long maps" below), drawn on through `on` / `paint(fn, layer, x0, x1)`;
+                          the level's own painting of the chunks baked as it is sealed (tiles, wear, grime, wall
+                          tops) is kept for the last two levels (`bakedFor`): a retry copies it instead of painting
+                          it again. `dispose` (World.dispose, on every level start) lets this world's canvases go
       Chunks.js           a map-sized picture cut into chunks along x (CHUNKS in Config.js): baked near the view a
                           step a frame and let go far from it, or made where a mark lands; `spread`: one context
                           standing for the chunks a mark's x range touches (index arithmetic pure, unit-tested)

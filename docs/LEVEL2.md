@@ -340,3 +340,17 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   --level level2a` plays the chase (tools/qa/README.md "At the wheel"), its `stalled` finding caught the stall on the
   old code (seed 7: "against wall", a seam of the south fronts; "against van", a parked van shoved into his lane);
   with the fixes, seed 7 still reports 2 s at 8 km/h nose-on into a parked car of the north parking row, then out.
+- 2026-11-19: THE LORRY SOFTLOCK (QA seed 7: the car stopped at col 336 for the rest of the run). The parked van of
+  col 326 shoved into the south lane against the lorry's flank and the kerb's planters (static: the van could not be
+  pushed through them); the car came to a crawl with its nose on the lorry just north of it: the van shut the way
+  round (the terrace), the lorry's cab reaches the north fronts, and the car never backs, so it went back and forth
+  between the van and the north sidewalk for good. Also found: Drive.wayOut read Matter's contact normal the wrong
+  way round (it points from B to A) and eased the car INTO what held it first. Now: stalled with its nose on a
+  `lasting` thing, the car heads round its end that leaves room before the building fronts (Drive.roundOf, nosedOn);
+  if, from the moment it crawls, it gets no `moved` px nearer to clearing it than it ever was, `boxed` s on end (1.2:
+  two windows of `after`), it is the crash, an instant restart (Drive.boxed, CHASE.stall.boxed): the lorry was told,
+  the street is his to get round, not to wait in; with the way round open it eases round the tail by itself as before.
+  The QA report now gives the longest stall (`stalls n (the longest x s)`). QA chase, 3 min: seed 7 the same jam,
+  now 3.0 s (1.8 s sliding along the lorry toward the terrace, then pinned by the van: the crash); seed 11 clean;
+  seed 23 one stall of 2.2 s on a parked car at col 66 (out by itself). Known: freed onto the terrace and not steered
+  back up, the car runs into the south fronts where the terrace ends (col 356).

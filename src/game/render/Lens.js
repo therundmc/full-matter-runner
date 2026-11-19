@@ -37,6 +37,8 @@ export default class Lens {
     this.combo = 0;             // kills in the chain, as of the last frame
     this.state = null;
     this.paged = false;         // a comic page was up last frame
+    // what uniforms() hands over for the waves, the hot spots and the lamps (filled again every frame)
+    this.slots = { waves: new Float32Array(cfg.wave.max * 4), heat: new Float32Array(cfg.heat.max * 4), lights: new Float32Array(cfg.rays.max * 4) };
     this.reset();
   }
 
@@ -77,7 +79,7 @@ export default class Lens {
     const K = this.cfg.killcam, B = K[tier];
     if (!B) return;
     this.bump(B.fringe * k);
-    this.kick = Math.max(this.kick, Math.min(1.6, B.kick * k));
+    this.kick = Math.max(this.kick, Math.min(this.cfg.punch.cap, B.kick * k));
     this.closeTo = Math.min(K.max, B.close * k);
     this.closeT = hold;
     if (B.frame) { this.frame = Math.max(this.frame, B.frame); this.frameGap = this.cfg.punch.frameGap; }
@@ -107,8 +109,8 @@ export default class Lens {
     const p = base * Math.min(c.punch.combo.max, 1 + c.punch.combo.each * this.combo);
     this.combo++;
     this.bump(c.fringe.kill * p);
-    this.kick = Math.max(this.kick, Math.min(1.6, p));
-    if (c.punch.zoom * p > this.zoom) { this.zoom = c.punch.zoom * Math.min(1.6, p); this.zoomAt = { x: victim.x, y: victim.y }; }
+    this.kick = Math.max(this.kick, Math.min(c.punch.cap, p));
+    if (c.punch.zoom * p > this.zoom) { this.zoom = c.punch.zoom * Math.min(c.punch.cap, p); this.zoomAt = { x: victim.x, y: victim.y }; }
     if (p >= c.punch.frameFrom && this.frameGap <= 0) { this.frame = c.punch.frame; this.frameGap = c.punch.frameGap; }
   }
 
@@ -212,38 +214,36 @@ export default class Lens {
     const at = (x, y) => { const s = v.toScreen(x, y); return [s.x / W, 1 - s.y / H]; };
     const world = !v.page, centre = world && v.player && v.state !== 'title' ? at(v.player.x, v.player.y) : [0.5, 0.5];
 
-    const waves = new Float32Array(c.wave.max * 4);
-    this.waves.slice(-c.wave.max).forEach((w, i) => {
-      const k = c.wave[w.kind], life = 1 - w.t / k.life, [x, y] = at(w.x, w.y);
-      waves.set([x, y, w.t * k.speed, k.bend * life * Math.sqrt(life)], i * 4);
-    });
+    // the shock waves, hot spots and lamps: four numbers each (its place in the picture, then two of its own), in
+    // arrays kept from frame to frame (zero: none)
+    const put = (arr, i, x, y, a, b) => {
+      const s = v.toScreen(x, y);
+      arr[i * 4] = s.x / W; arr[i * 4 + 1] = 1 - s.y / H; arr[i * 4 + 2] = a; arr[i * 4 + 3] = b;
+    };
+    const waves = this.slots.waves.fill(0), w0 = Math.max(0, this.waves.length - c.wave.max);
+    for (let i = w0; i < this.waves.length; i++) {
+      const w = this.waves[i], k = c.wave[w.kind], life = 1 - w.t / k.life;
+      put(waves, i - w0, w.x, w.y, w.t * k.speed, k.bend * life * Math.sqrt(life));
+    }
 
-    const heat = new Float32Array(c.heat.max * 4);
-    const spots = [
-      ...this.embers.map((e) => ({ x: e.x, y: e.y, r: c.heat.blast.r, k: c.heat.blast.k * (1 - e.t / c.heat.blast.life) })),
-      ...(world && v.heat || []).map((h) => ({ x: h.x, y: h.y, r: c.heat[h.kind].r, k: c.heat[h.kind].k })),
-    ];
-    spots.slice(0, c.heat.max).forEach((h, i) => {
-      const [x, y] = at(h.x, h.y);
-      heat.set([x, y, (h.r * v.scale) / H, h.k], i * 4);
-    });
+    const heat = this.slots.heat.fill(0), HB = c.heat.blast;
+    let n = 0;
+    for (const e of this.embers) if (n < c.heat.max) put(heat, n++, e.x, e.y, (HB.r * v.scale) / H, HB.k * (1 - e.t / HB.life));
+    for (const h of world && v.heat || []) if (n < c.heat.max) put(heat, n++, h.x, h.y, (c.heat[h.kind].r * v.scale) / H, c.heat[h.kind].k);
 
-    const lights = new Float32Array(c.rays.max * 4);
-    (world && v.lights || []).slice(0, c.rays.max).forEach((l, i) => {
-      const [x, y] = at(l.x, l.y);
-      lights.set([x, y, Math.min(1, l.k), 0], i * 4);
-    });
+    const lights = this.slots.lights.fill(0), lamps = world && v.lights || [];
+    for (let i = 0; i < Math.min(lamps.length, c.rays.max); i++) put(lights, i, lamps[i].x, lamps[i].y, Math.min(1, lamps[i].k), 0);
 
     // the speed at the wheel: how much, the way he goes in the picture (y up), his car, and the band's numbers.
     // flat: at the wheel the scene is drawn 1:1 and must come out px for px where the road is: no barrel, no zoom
     // kick, the lens' own fringe kept to the band the speed works on (PostGL), and no scan lines (they stand still
     // on the screen: a car changing lanes under them flickers, row by row)
-    const D = c.speed.drive, flat = world && !!v.drive, rush = flat ? Math.min(1.6, this.rush + this.jolt) : 0;
+    const D = c.speed.drive, flat = world && !!v.drive, rush = flat ? Math.min(D.cap, this.rush + this.jolt) : 0;
     const way = this.rushA - (v.rot || 0), rows = H / Math.max(1, v.scale) / D.rows;
     const t = c.tube, k = this.kick, R = c.rampage, r = this.rampage;
     const g = { ...this.grade, sat: this.grade.sat + c.punch.sat * k + R.sat * r, con: this.grade.con + c.punch.con * k + R.con * r };
     return {
-      fringe: (c.fringe.rest + this.fringe + R.fringe * r + D.fringe * rush + c.fringe.trauma * Math.max(0, (world && v.trauma || 0) - 0.15)) * px,
+      fringe: (c.fringe.rest + this.fringe + R.fringe * r + D.fringe * rush + c.fringe.trauma * Math.max(0, (world && v.trauma || 0) - c.fringe.traumaFrom)) * px,
       zoom: flat ? 0 : this.zoom,
       focus: this.zoom > 0.0005 && this.zoomAt ? at(this.zoomAt.x, this.zoomAt.y) : centre,
       frame: this.frame > 0 ? 1 : 0,

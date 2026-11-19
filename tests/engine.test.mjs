@@ -17,6 +17,20 @@ test('EventBus: on / emit / off / once', () => {
   assert.deepEqual(got, [1, -1, 2]);
 });
 
+test('EventBus: an emit calls the handlers there were when it began, whatever they add or remove meanwhile', () => {
+  const bus = new EventBus(), got = [];
+  const late = () => got.push('late');
+  let offB = null;
+  bus.on('e', () => { got.push('a'); bus.on('e', late); offB(); });
+  offB = bus.on('e', () => got.push('b'));
+  bus.on('e', (n) => { got.push('c'); if (n < 1) bus.emit('e', n + 1); }); // nested: the list as it is then
+  bus.emit('e', 0);
+  assert.deepEqual(got, ['a', 'b', 'c', 'a', 'c', 'late']);
+  got.length = 0;
+  bus.emit('e', 1);
+  assert.deepEqual(got, ['a', 'c', 'late', 'late']);
+});
+
 test('gridRaycast stops at the first solid cell with the right normal', () => {
   const solid = (cx, cy) => cx === 3 && cy === 0;
   const hit = gridRaycast(16, 16, 200, 16, solid);

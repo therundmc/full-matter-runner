@@ -214,6 +214,9 @@
 - `npm test` (= `node --test tests/*.test.mjs`): Node unit tests, Matter loaded as a global by tests/setup.mjs.
 - The WebGL last pass, the lens (render/PostGL.js + render/Lens.js): tune in data/post.js, never hard-code. Barely
   there at rest; a KILL is what it underlines; no blur in play. `?post=0` turns it off, F6 toggles it.
+- Release switch: src/game/data/build.js `BUILD.release` (false while developing): true for a shipped build turns the
+  debug keys, `window.game` and the URL switches (`?level=`, `?killcam=`, `?mark=`, `?post=`) off unless `?dev=1`
+  (`devMode`, `devParam`); the QA robot and tools/shot.mjs need it false. A run where a sandbox cheat was used is never a record.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
   times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; no menu row; lab station 23; LOCK's mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`). `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node

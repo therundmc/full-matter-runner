@@ -48,13 +48,25 @@ export default class Papers {
       w.events.emit('gust', this.gust); // heard (systems/Ambience.js)
       this.next = rand(...c.gust);
     }
-    const cars = [];
-    for (const p of w.props) {
+    // the cars going fast (only what can be driven has a `moving` flag: those props are looked for again when the props
+    // change)
+    if (this.propsSeen !== w.props || this.propsN !== w.props.length) {
+      this.propsSeen = w.props; this.propsN = w.props.length;
+      this.vehicles = w.props.filter((p) => 'moving' in p);
+    }
+    const cars = this.cars ||= [];
+    cars.length = 0;
+    for (const p of this.vehicles) {
       if (!p.moving || p.dead) continue;
       const v = p.wake || Body.getVelocity(p.body); // (wake: the speed of one driven by a script, px/step)
       if (Math.hypot(v.x, v.y) > c.carFast) cars.push({ x: p.x, y: p.y, vx: v.x * 60, vy: v.y * 60 });
     }
-    const runners = [w.player, ...w.enemies, ...w.civilians].filter((m) => m.alive && Body.getSpeed(m.body) > c.runFast);
+    const runners = this.runners ||= [];
+    runners.length = 0;
+    const run = (m) => { if (m?.alive && Body.getSpeed(m.body) > c.runFast) runners.push(m); };
+    run(w.player);
+    for (const m of w.enemies) run(m);
+    for (const m of w.civilians) run(m);
     const g = this.gust, pull = Math.min(1, dt * 6);
     const stops = (x, y) => { const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE); return map.isSolid(cx, cy) || map.isBlocked(cx, cy); };
 

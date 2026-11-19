@@ -26,7 +26,7 @@ const { default: lab } = await load('game/data/levels/lab.js');
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
 const quiet = new Proxy({}, { get: () => () => {} });
-const SIZE = { pursuer: [140, 58], convertible: [172, 64] };
+const SIZE = { pursuer: [140, 58], convertible: [172, 64], van: [160, 64] };
 const C = level2a.chase, [NORTH, SOUTH] = C.lanes.map((r) => r * TILE), KERB = C.kerbs[1] * TILE;
 const EV = C.events.find((e) => e.kind === 'lorry');
 
@@ -181,6 +181,44 @@ test('lorry: a scrape along its tail, or a corner clipped, does not kill', () =>
   // (pure) what covers under a fifth of the nose's width is a clip, more of it the crash
   assert.ok(!onNose(0, 106, 130, 60) && !onNose(155, 400, 130, 60) && onNose(0, 400, 130, 60) && onNose(100, 115, 130, 60));
   assert.ok(nosedIn(0, 8.9, 0, 1, 0) && !nosedIn(0, 8.9, 0, 0, 1), 'square on, not along');
+});
+
+// his car come to a crawl with its nose on the lorry's flank, in the middle of the street (the QA robot's seed 7:
+// col 336), the street's fronts and the terrace's bolted things there; van: the parked van of col 326 shoved into the
+// south lane against the lorry and the kerb's planters, the way round shut
+function nosed(van) {
+  const s = start(330, SOUTH, { out: true });
+  s.w.map = new TileMap(level2a.tiles);
+  for (const [t, c, r, deg] of level2a.props) {
+    if (c > 320 && c < 360 && r > C.kerbs[1] - 1 && r < C.kerbs[1] + 6 && PROPS[t]?.static && !PROPS[t].hung) prop(s.w, t, c * TILE, r * TILE, (deg * Math.PI) / 180);
+  }
+  Body.setPosition(s.v.body, { x: s.p.body.bounds.min.x - 102, y: 418 });
+  s.d.v = 2;
+  if (van) s.van = vehicle(s.w, 'van', s.v.x + 7, 483);
+  return s;
+}
+
+test('lorry: boxed in at its flank (a car shoved into the way round), it is the crash, never a wait for good', () => {
+  // (hands off, steering into the van, up into the dead end, back and forth between the two as the QA robot did)
+  for (const steer of [null, 'KeyS', 'KeyW', 'both']) {
+    const s = nosed(true), keys = s.input.held;
+    if (steer && steer !== 'both') keys.add(steer);
+    const how = steer || 'hands off', shuttle = () => {
+      if (steer === 'both' && Math.round(s.w.time * 60) % 20 === 0) { keys.clear(); keys.add(Math.round(s.w.time * 3) % 2 ? 'KeyW' : 'KeyS'); }
+      return !s.w.player.alive;
+    };
+    assert.ok(run(s, 4, shuttle), `dead, not stuck there (${how}; at ${s.v.x.toFixed(0)}, ${s.v.y.toFixed(0)})`);
+    assert.equal(s.w.killed.cause, 'crash');
+    assert.ok(s.w.time < 1.7, `soon (${how}): ${s.w.time.toFixed(2)} s (the QA robot calls 2 s at a crawl a softlock)`);
+    assert.ok(s.v.x < s.p.x, 'still at its flank');
+  }
+});
+
+test('lorry: nose on its flank at a crawl with the way round open, it eases round the end of its tail and runs on', () => {
+  const s = nosed(false);
+  assert.ok(run(s, 4, () => s.v.x > s.p.x + 40 && s.d.v > 0.6 * C.cruise), `round it and running (at ${s.v.x.toFixed(0)}, ${s.v.y.toFixed(0)})`);
+  assert.ok(s.w.player.alive && s.w.time < 3, `alive, in ${s.w.time.toFixed(2)} s`);
+  assert.ok(s.v.y > s.p.body.bounds.max.y, 'by the terrace, south of its tail');
 });
 
 test('kerb: what stands on the terrace is thrown or torn down, never a wall; the car is not held up by it', () => {

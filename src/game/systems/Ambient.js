@@ -160,22 +160,33 @@ export default class Ambient {
   }
 
   // boxes of everything a driver must not hit: other vehicles, props, wrecks, and the bodies lying in the road
-  // (soft: crept over when there is no way round)
+  // (soft: crept over when there is no way round). The list and a box per thing are kept from step to step (boxes),
+  // filled again each step
   collectObstacles() {
-    const out = [], B = A.body.box / 2;
+    const out = this.obstacles, B = A.body.box / 2;
+    out.length = 0;
     for (const c of this.world.corpses) {
       if (c.dead || c.y < this.bandY0 || c.y > this.bandY1) continue;
-      out.push({ x0: c.x - B, x1: c.x + B, y0: c.y - B, y1: c.y + B, ref: c, moving: false, speed: 0, soft: true });
+      this.box(out, c, c.x - B, c.x + B, c.y - B, c.y + B, null).soft = true;
     }
-    const traffic = new Map(this.cars.map((c) => [c.v, c]));
     for (const p of this.world.props) {
       if (p.dead || p.def.hung || p.def.overhead) continue;
       const b = p.body.bounds;
       if (b.max.y < this.bandY0 || b.min.y > this.bandY1 || b.max.x - b.min.x < 6) continue;
-      const c = traffic.get(p);
-      out.push({ x0: b.min.x, x1: b.max.x, y0: b.min.y, y1: b.max.y, ref: p, moving: !!c, speed: c ? c.d.speed * c.lane.dir : 0 });
+      this.box(out, p, b.min.x, b.max.x, b.min.y, b.max.y, p.isVehicle ? this.cars.find((c) => c.v === p) : null);
     }
     return out;
+  }
+
+  // the box of `ref` this step onto out; car: its traffic car if it is one (moving, at its speed)
+  box(out, ref, x0, x1, y0, y1, car) {
+    const boxes = (this.boxes ||= new WeakMap());
+    let o = boxes.get(ref);
+    if (!o) boxes.set(ref, (o = { ref, soft: false }));
+    o.x0 = x0; o.x1 = x1; o.y0 = y0; o.y1 = y1;
+    o.moving = !!car; o.speed = car ? car.d.speed * car.lane.dir : 0;
+    out.push(o);
+    return o;
   }
 
   // anything in the lane band between x0 and x1

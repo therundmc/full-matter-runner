@@ -34,14 +34,18 @@ export default class Particles {
     this.bands = FLAME.map(() => []); // flames sorted by heat, refilled at every draw
   }
 
+  // (past MAX_PARTICLES the oldest go at the end of the next update: trim)
   add(p) {
-    if (this.list.length >= MAX_PARTICLES) {
-      // land the oldest blood immediately rather than dropping it
-      const old = this.list.shift();
-      if (old.type === P.BLOOD) this.world.decals.stampBlood(old.x, old.y, old.size * 0.8);
-    }
     this.list.push(p);
     return p;
+  }
+
+  // the list back to MAX_PARTICLES, the oldest let go (blood among them landing where it is rather than lost)
+  trim() {
+    const list = this.list, over = list.length - MAX_PARTICLES;
+    if (over <= 0) return;
+    for (let i = 0; i < over; i++) if (list[i].type === P.BLOOD) this.world.decals.stampBlood(list[i].x, list[i].y, list[i].size * 0.8);
+    list.splice(0, over);
   }
 
   // ---- emitters ----
@@ -320,6 +324,7 @@ export default class Particles {
     }
     list.length = w;
     this.floats = floats;
+    this.trim();
   }
 
   // a shard that has come to rest becomes part of the floor; of the tiny ones only some stay (LITTER)

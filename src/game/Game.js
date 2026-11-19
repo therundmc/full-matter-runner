@@ -45,6 +45,7 @@ import { drawMurk } from './render/Murk.js';
 import { cuesOn } from './render/Readability.js';
 import { SMOKE } from './data/atmosphere.js';
 import { createPost } from './render/PostGL.js';
+import { POST } from './data/post.js';
 import { devMode, devParam, DEV_KEYS } from './data/build.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
@@ -78,6 +79,9 @@ const DOES = {
 const WALK_ON = new Set([...MOVE_KEYS, 'ShiftLeft', 'ShiftRight']);
 // what the intro banner calls a level
 const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelTag(id)}` : 'TEST LEVEL');
+// the steps the middle of the backdrop's gradient drifts on (share of its diagonal: Game.backdrop); its flat tone
+// under a map that fills the picture
+const BACKDROP_STEP = 0.005, BACKDROP_FLAT = '#12061f';
 
 export default class Game {
   constructor(canvas) {
@@ -277,6 +281,7 @@ export default class Game {
   startLevel(id, { retry = false, state = 'intro' } = {}) {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
     if (!retry) { this.tutorialAt = null; this.taught = new Set(); }
+    this.world?.dispose?.(); // the last run's canvases let go before the new one makes its own
     this.world = new World(this, LEVELS[this.levelId]);
     this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
@@ -983,15 +988,12 @@ export default class Game {
 
   // the world (or the replay of the run behind the results), lit, before any lens
   drawScene(ctx, W, H, t, post) {
-    // backdrop outside the map
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#12061f');
-    bg.addColorStop(0.5 + Math.sin(t * 0.3) * 0.3, '#2a0a3a');
-    bg.addColorStop(1, '#07030c');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-
     this.replaying = this.state === 'results' && this.replay.ready;
+    // backdrop outside the map; when the map fills the whole picture only its darkest tone, flat (cheaper than the
+    // gradient: it only shows through the odd texel where the turned floor and walls both miss one)
+    const covered = !this.replaying && !this.overview && this.mapCovers(W, H);
+    ctx.fillStyle = covered ? BACKDROP_FLAT : this.backdrop(ctx, W, H, t);
+    ctx.fillRect(0, 0, W, H);
     if (this.replaying) {
       this.safeDraw(ctx, () => this.replay.draw(ctx, W, H, t));
     } else if (this.overview) {
@@ -1010,13 +1012,35 @@ export default class Game {
       if (!post) this.safeDraw(ctx, () => this.postfx.apply(ctx, W, H, this.camera.trauma));
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (this.timeScale < 0.95) {
-      ctx.fillStyle = `rgba(80,0,120,${(1 - this.timeScale) * 0.22})`;
+    const slow = POST.slowTint;
+    if (this.timeScale < slow.below) {
+      ctx.fillStyle = `rgba(${slow.color.join(',')},${(1 - this.timeScale) * slow.k})`;
       ctx.fillRect(0, 0, W, H);
     }
     // the replay keeps the bare picture: no lens, scanlines, flash or HUD (they go over it again when it plays)
     if (this.state === 'play' && !this.overview) this.recorder.capture(this.canvas, this.world.time);
     if (!post) ctx.drawImage(this.getVignette(W, H), 0, 0);
+  }
+
+  // does the map (its floor and walls) fill the whole picture the camera shows: then nothing of the backdrop shows
+  mapCovers(W, H) {
+    const c = this.camera, a = c.screenToWorld(0, 0), b = c.screenToWorld(W, 0), d = c.screenToWorld(0, H), e = c.screenToWorld(W, H);
+    const m = 2; // world px: the camera's rounding to whole picture px
+    return this.world.decals.covers(Math.min(a.x, b.x, d.x, e.x) - m, Math.min(a.y, b.y, d.y, e.y) - m,
+      Math.max(a.x, b.x, d.x, e.x) + m, Math.max(a.y, b.y, d.y, e.y) + m);
+  }
+
+  // the backdrop's gradient; its middle drifts with t, held on steps of BACKDROP_STEP (made again only when it moves
+  // a step, not every frame)
+  backdrop(ctx, W, H, t) {
+    const mid = Math.round((0.5 + Math.sin(t * 0.3) * 0.3) / BACKDROP_STEP) * BACKDROP_STEP, B = this.bg;
+    if (B && B.W === W && B.H === H && B.mid === mid) return B.g;
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#12061f');
+    g.addColorStop(mid, '#2a0a3a');
+    g.addColorStop(1, '#07030c');
+    this.bg = { W, H, mid, g };
+    return g;
   }
 
   // what goes over the picture and stays sharp
@@ -1054,25 +1078,36 @@ export default class Game {
   }
 
   // the situation, as the lens wants it told (render/Lens.js)
+  // (one object, and its parts, kept from frame to frame: the lens reads it at once and keeps nothing of it)
   lensView(W, H, inWorld) {
     const w = this.world, p = inWorld ? w.player : null, inp = this.input, v = p?.vaulting;
-    return {
-      W, H, outH: this.post ? this.post.canvas.height : H, scale: this.camera.z, toScreen: (x, y) => this.camera.worldToScreen(x, y),
-      state: this.state, page: inWorld && this.onPage(), phase: inWorld ? w.director.phase : 'normal', powerOn: inWorld ? w.power.on : true,
-      timeScale: this.timeScale, trauma: inWorld ? this.camera.trauma : 0, combo: inWorld ? w.scoring.combo : 0, look: inp.down('ShiftLeft') || inp.down('ShiftRight'),
-      player: p && {
-        x: p.x, y: p.y, angle: v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle,
-        move: v?.rolling ? 'roll' : v?.kind === 'window' ? 'dive' : p.slideAnim ? 'slide' : null,
-      },
-      // what heats the air: burning wrecks, pierced steam pipes (blasts are the lens' own business)
-      heat: inWorld ? [...w.props.filter((q) => q.burning).map((q) => ({ x: q.x, y: q.y, kind: 'fire' })),
-        ...w.fires.near(w.player.x, w.player.y, 3).map((f) => ({ x: f.x, y: f.y, kind: 'fire' })),
-        ...w.smoke.heat(), ...w.gasValve.heat()] : [],
-      lights: inWorld && !this.overview ? w.lighting?.brightest || [] : [],
-      // at the wheel: his speed (share of flat out) and the way he goes, for what the speed does to the picture's edges
-      drive: inWorld && w.drive?.on && !this.overview ? { k: w.drive.v / CHASE.max, angle: Math.atan2(w.drive.u, Math.max(w.drive.v, 1)) * 0.5, x: w.drive.van.x, y: w.drive.van.y } : null,
-      rot: this.camera.rot,
-    };
+    const V = this.lensV ||= { toScreen: (x, y) => this.camera.worldToScreen(x, y), you: {}, ride: {}, heat: [], hot: [], none: [] };
+    V.W = W; V.H = H; V.outH = this.post ? this.post.canvas.height : H; V.scale = this.camera.z;
+    V.state = this.state; V.page = inWorld && this.onPage(); V.phase = inWorld ? w.director.phase : 'normal'; V.powerOn = inWorld ? w.power.on : true;
+    V.timeScale = this.timeScale; V.trauma = inWorld ? this.camera.trauma : 0; V.combo = inWorld ? w.scoring.combo : 0;
+    V.look = inp.down('ShiftLeft') || inp.down('ShiftRight');
+    V.player = p ? V.you : null;
+    if (p) {
+      V.you.x = p.x; V.you.y = p.y; V.you.angle = v ? v.dir : p.slideAnim ? p.slideAnim.dir : p.angle;
+      V.you.move = v?.rolling ? 'roll' : v?.kind === 'window' ? 'dive' : p.slideAnim ? 'slide' : null;
+    }
+    V.lights = inWorld && !this.overview ? w.lighting?.brightest || V.none : V.none;
+    // at the wheel: his speed (share of flat out) and the way he goes, for what the speed does to the picture's edges
+    const dr = inWorld && w.drive?.on && !this.overview ? w.drive : null, R = V.ride;
+    V.drive = dr ? R : null;
+    if (dr) { R.k = dr.v / CHASE.max; R.angle = Math.atan2(dr.u, Math.max(dr.v, 1)) * 0.5; R.x = dr.van.x; R.y = dr.van.y; }
+    V.rot = this.camera.rot;
+    // what heats the air: burning wrecks, pierced steam pipes (blasts are the lens' own business)
+    const heat = V.heat, hot = V.hot;
+    let n = 0;
+    const fire = (x, y) => { const o = hot[n] || (hot[n] = { x: 0, y: 0, kind: 'fire' }); n++; o.x = x; o.y = y; heat.push(o); };
+    heat.length = 0;
+    if (inWorld) {
+      for (const q of w.props) if (q.burning) fire(q.x, q.y);
+      for (const f of w.fires.near(w.player.x, w.player.y, 3)) fire(f.x, f.y);
+      heat.push(...w.smoke.heat(), ...w.gasValve.heat());
+    }
+    return V;
   }
 
   // a failing draw must never take the HUD / cursor / effects down with it: restore the context and report once

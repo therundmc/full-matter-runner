@@ -140,8 +140,9 @@
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
       plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0, envTakedowns: {},
-      // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls
-      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0 },
+      // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls (and
+      // how long the longest one lasted, s: from the crawl to the car running again, a crash or a restart)
+      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0, stallMost: 0 },
       // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
       // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
       // the stage they reached, drivers held up at gunpoint
@@ -2070,6 +2071,7 @@
     if (!live || d.v >= CHASE_STALL.under * d.cruise) { B.stall = null; return; }
     const b = d.van.body;
     if (!B.stall) { B.stall = { t: w.time, told: false, then: touchingOf(w, b) }; return; }
+    if (B.stall.told) S.stats.drive.stallMost = Math.max(S.stats.drive.stallMost, r1(w.time - B.stall.t));
     if (B.stall.told || w.time - B.stall.t < CHASE_STALL.after) return;
     B.stall.told = true;
     S.stats.drive.stalls++;
