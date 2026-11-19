@@ -109,6 +109,12 @@
   `=== WEAPONS.bat`. They wear out in BLOWS (`wear`, data/weapons.js `WEAR`: a man 1, a thing 0.25, a whiff 0) and
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
   guard up close with free hands snatches his gun (`SNATCH` in data/feel.js).
+- Human shield (the user's design: systems/Shield.js rules, `SHIELD` in data/feel.js, Player.startShield /
+  updateShield): E / pad X behind a guard (or on one down) with empty hands or a one-handed weapon (`oneHanded`) takes
+  him; held in front, he stops rounds, pellets and thrown things from the front arc (3 hits, his corpse 2 more), never a
+  blow; the player walks slower, no SPACE; a click fires over his shoulder (empty hands: the neck, a blade: the throat),
+  right click / LB throws him (held: aimed), knocking down whom he hits; gunmen hold their fire a moment, brutes less,
+  blades flank. Taught in the tutorial on the gunman by the corridor's fire door (wave trigger `shield`); lab station 29.
 - Finishers / takedowns per weapon: data/finishers.js (`CharacterAnim.execPose`); kill tags `SCORING.tags` +
   `Scoring.killTags`, fed by the `how` of `kill`; a body that does not crawl may twitch (`THROES`, data/wounds.js).
 - Ways to die: a rare crawl ON HIS BELLY (about one in ten, `crawl` odds, `CRAWL`, fx/CrawlPose.js), `curl`, `SPASM`
