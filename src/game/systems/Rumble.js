@@ -43,6 +43,12 @@ export default class Rumble {
     if (!(this.scale > 0)) this.silence();
   }
 
+  // no world any more (back to the title): its listeners go deaf, what it played is dropped
+  unbind() {
+    this.world = null;
+    this.list = this.list.filter((e) => e.ui);
+  }
+
   // the world whose events it feels (a new level: what the old one played is dropped)
   bind(world) {
     this.world = world;

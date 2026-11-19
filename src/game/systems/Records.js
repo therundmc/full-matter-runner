@@ -9,7 +9,7 @@ function defaultStorage() {
 function readAll(storage) {
   try {
     const all = JSON.parse(storage.getItem(KEY));
-    return all && typeof all === 'object' ? all : {};
+    return all && typeof all === 'object' && !Array.isArray(all) ? all : {}; // (an array would lose the named keys)
   } catch { return {}; }
 }
 

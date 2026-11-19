@@ -4,6 +4,7 @@ import { clamp } from '../../engine/math.js';
 import { OUTRO, fadeAlpha, barsK } from '../systems/Outro.js';
 import { WEAPONS } from '../data/weapons.js';
 import { drawPrompts } from './Glyphs.js';
+import { keyLabel } from '../data/controls.js';
 
 const TAUNTS = [
   'ONE BULLET. THAT IS ALL IT TAKES.',
@@ -12,12 +13,12 @@ const TAUNTS = [
   'TRY THE DOOR NEXT TIME.',
   'THROW SOMETHING AT THEM.',
   'DID YOU THINK THEY WOULD MISS?',
-  'PRESS R. AGAIN. AND AGAIN.',
+  'PRESS {restart}. AGAIN. AND AGAIN.', // ({action}: that action's cap for the device in use, data/controls.js)
 ];
 // deaths that deserve their own line, by cause (Character.kill)
 const CAUSE_TAUNTS = {
   vehicle: ['LOOK BOTH WAYS.', 'THE STREET DOES NOT STOP FOR YOU.', 'ROADKILL.'],
-  crash: ['BRAKES ARE ON THE S KEY.', 'WALLS DO NOT MOVE.', 'SHOVE THEM, NOT THE CITY.'],
+  crash: ['STEER. OR SHOVE THEM OFF THE ROAD.', 'WALLS DO NOT MOVE.', 'SHOVE THEM, NOT THE CITY.'],
   explosion: ['TOO CLOSE TO THE BLAST.', 'MIND WHAT YOU SHOOT AT.'],
   melee: ['NEVER LET THEM GET CLOSE.', 'TOO SLOW. TOO CLOSE.'],
   slash: ['NEVER LET THEM GET CLOSE.', 'A BLADE IS QUIET. SO WERE YOU.'],
@@ -286,7 +287,8 @@ export function drawDead(ctx, W, H, t, seed, death, device) {
   const tt = t - DEAD.taunt;
   if (tt > 0) {
     const lines = CAUSE_TAUNTS[death?.cause] || TAUNTS;
-    text(ctx, lines[seed % lines.length], W / 2, H * 0.655, 15 * s, PALETTE.white, { alpha: ease(tt / 0.2) * 0.85 });
+    const line = lines[seed % lines.length].replace(/\{(\w+)\}/g, (_, a) => keyLabel(a, device));
+    text(ctx, line, W / 2, H * 0.655, 15 * s, PALETTE.white, { alpha: ease(tt / 0.2) * 0.85 });
   }
   // the way back in, big, in the bottom bar
   const pt = t - DEAD.prompt;
