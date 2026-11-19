@@ -103,7 +103,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    gets in (getting out puts it back on the seat); then he drives it as at 19
     23 AIM         a room north of CUEBALL's (cols 64-73, rows 1-5), through a doorway in the east wall of the
                    takedowns room (col 63, row 3): the ways of showing the aim to try, above all with a gamepad
-                   (data/aim.js, render/AimArt.js; F7 cycles them, OPTIONS / GAME / AIM keeps one). Four dummies at
+                   (data/aim.js, render/AimArt.js; F7 cycles them, Settings `aim` keeps one). Four dummies at
                    2, 4, 7 and 9 m, one of them behind a wall's end, a crate in the line of the last; a 1911, a
                    SUPER 90, an Uzi and a bat by the door, a box of rounds for each gun. The melee lock (LOCK, the
                    swing turned whole onto the man it holds: systems/Lunge.js): the 2 m man and one more by the bat

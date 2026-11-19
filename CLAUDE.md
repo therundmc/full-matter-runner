@@ -174,7 +174,9 @@
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
   drawn by a marker once), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
-  a thing a section, its settings on a sheet of paper beside it), Beats.js (their clocks and sounds, DOM-free),
+  a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
+  step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
+  Beats.js (their clocks and sounds, DOM-free),
   Paper.js (the cut-paper sheet; the pause's panel, ui/MenuArt.js). Stills and their data: `python3 tools/comic/title.py`
   (assets/sprites/title/, src/game/data/titleart.js: generated, never hand-edit). No key-hint footer in the menus.
 - Comic art direction (the user's pick, 2026-11-17): NEON POSTER, Saul Bass-like cut paper. Violet night, black and
@@ -201,7 +203,7 @@
 - The WebGL last pass, the lens (render/PostGL.js + render/Lens.js): tune in data/post.js, never hard-code. Barely
   there at rest; a KILL is what it underlines; no blur in play. `?post=0` turns it off, F6 toggles it.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; also OPTIONS / GAME / AIM; lab station 23; LOCK's mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / GAME / AIM MARK, Settings `aimMark`; a melee swing turns whole onto the man LOCK holds and steps in, `PLAYER.lunge.lock`). `window.game` in the console.
+  times), F6 lens on / off, F7 cycles the aim cue (data/aim.js `AIM_STYLES`: CROSS, LINE, WEDGE, NOTCH, LOCK; no menu row; lab station 23; LOCK's mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; a melee swing turns whole onto the man LOCK holds and steps in, `PLAYER.lunge.lock`). `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node
   static server to Python's. Never kill processes you didn't start.
 

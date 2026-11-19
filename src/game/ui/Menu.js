@@ -2,22 +2,26 @@
 // context each time they are read, so they always show the current settings and progression:
 //   { settings, progress, best: (id) => { total, grade, time } | null, levels: [{ id, name }] (campaign levels that
 //     exist, in order), lensOk: false when the picture has no lens to turn on (optional), device: 'kbm' | 'pad' (the
-//     controls page lists that one's; optional) }
+//     controls page lists that one's; optional), rumbleOk: false when a pad is connected that this browser cannot
+//     rumble (optional) }
 // The navigator answers with plain actions that Game.js applies:
 //   { type: 'start', level } | 'newGame' | 'continue' | { type: 'set', key, value } | 'resume' | 'restart' | 'quit'
 //   | 'reset' | 'replayTutorial'
 // Items: { label, page } opens a sub-page, { label, act } fires an action, { label, slider: key, value },
-// { label, toggle: key, value }, { label, choice: key, value, options: [value...], names: { value: shown } } (one of a
-// list: left / right and ENTER walk it), { level, label, n, locked, best } a level to start, { info: [key, what], col } a
-// read-only line, { label, back: true } goes back (an `act` may come with it); `disabled` greys an item out.
+// { label, toggle: key, value }, { level, label, n, locked, best } a level to start, { info: [caps, what], col, group }
+// a read-only line, { label, back: true } goes back (an `act` may come with it); `disabled` greys an item out, `note`
+// is a short line said under it.
+// A page with `sheets` (OPTIONS) shows the page of its chosen item beside it at once, its sheet: choosing an item is
+// enough to see its settings (ui/title/Options.js). RIGHT / ENTER take the focus onto the sheet's first line (enter),
+// LEFT on a line that is not a slider or a toggle, ESC and BACK bring it back to the items; the mouse moves the focus
+// to whatever it points at (point).
 import { isUnlocked } from '../systems/Progress.js';
 import { KBM_CONTROLS, PAD_CONTROLS } from '../data/controls.js';
-import { AIM, AIM_STYLES } from '../data/aim.js';
 
 export const STEP = 0.05; // how far a slider moves on a key press
 
-// what the controls page lists (data/controls.js): the keyboard's, or the gamepad's when one is in use
-export const CONTROLS = KBM_CONTROLS;
+// the controls page's lines (data/controls.js), for the device in use
+const lines = (cols) => cols.flatMap((col, k) => col.flatMap(([group, list]) => list.map((info) => ({ info, col: k, group }))));
 
 const BACK = { label: 'BACK', back: true };
 // something to continue: a level finished, or more than the first one open
@@ -41,38 +45,38 @@ const PAGES = {
       locked: i > 0 && !isUnlocked(c.progress, id), act: { type: 'start', level: id },
     })), BACK],
   }),
+  // his cap (BACK) is the mouse's way out; the sub-pages have none: ESC / B / the right button, or another thing
   options: () => ({
     title: 'OPTIONS',
+    sheets: true,
     items: [{ label: 'AUDIO', page: 'audio' }, { label: 'VIDEO', page: 'video' }, { label: 'CONTROLS', page: 'controls' },
       { label: 'GAME', page: 'game' }, BACK],
   }),
   audio: (c) => ({
     title: 'AUDIO',
     items: [['master', 'MASTER'], ['music', 'MUSIC'], ['sfx', 'EFFECTS'], ['ambience', 'AMBIENCE']]
-      .map(([key, label]) => ({ label, slider: key, value: c.settings[key] })).concat(BACK),
+      .map(([key, label]) => ({ label, slider: key, value: c.settings[key] })),
   }),
   video: (c) => ({
     title: 'VIDEO',
     items: [
-      { label: 'LENS', toggle: 'lens', value: !!c.settings.lens, disabled: c.lensOk === false },
+      { label: 'LENS', toggle: 'lens', value: c.lensOk !== false && !!c.settings.lens, ...(c.lensOk === false ? { disabled: true, note: 'NOT AVAILABLE HERE (NO WEBGL)' } : {}) },
       { label: 'SCREEN SHAKE', slider: 'shake', value: c.settings.shake },
       { label: 'FULLSCREEN', toggle: 'fullscreen', value: !!c.settings.fullscreen },
-      BACK,
+      { label: 'AIM MARK', toggle: 'aimMark', value: !!c.settings.aimMark }, // LOCK's chevron on the floor (render/AimArt.js)
     ],
   }),
   controls: (c) => ({
     title: c.device === 'pad' ? 'CONTROLS - GAMEPAD' : 'CONTROLS',
-    items: [...(c.device === 'pad' ? PAD_CONTROLS : CONTROLS).flatMap((col, k) => col.map((info) => ({ info, col: k }))), BACK],
+    items: lines(c.device === 'pad' ? PAD_CONTROLS : KBM_CONTROLS),
   }),
   game: (c) => ({
     title: 'GAME',
     items: [
       ...(c.levels.some((l) => l.id === 'tutorial') ? [{ label: 'REPLAY THE TUTORIAL', act: { type: 'replayTutorial' } }] : []),
       { label: 'RESET PROGRESSION', page: 'confirm' },
-      { label: 'AIM', choice: 'aim', value: c.settings.aim, options: AIM_STYLES, names: AIM.names }, // concepts to try (data/aim.js)
-      { label: 'AIM MARK', toggle: 'aimMark', value: !!c.settings.aimMark }, // LOCK's chevron on the floor (render/AimArt.js)
-      { label: 'VIBRATION', slider: 'rumble', value: c.settings.rumble ?? 1 }, // the gamepad's rumble (systems/Rumble.js)
-      BACK,
+      { label: 'VIBRATION', slider: 'rumble', value: c.settings.rumble ?? 1, // the gamepad's rumble (systems/Rumble.js)
+        ...(c.rumbleOk === false ? { note: 'THIS BROWSER CANNOT RUMBLE THIS PAD' } : {}) },
     ],
   }),
   confirm: () => ({
@@ -90,11 +94,8 @@ const PAGES = {
 // an item the selection can rest on (a locked level can: it is there to be seen, it only does not start)
 export const selectable = (it) => !!it && !it.disabled && !it.info;
 
-// the value after (dir 1) or before (dir -1) a choice's own, round its list
-function turn(it, dir) {
-  const n = it.options.length, i = Math.max(0, it.options.indexOf(it.value));
-  return { type: 'set', key: it.choice, value: it.options[(i + dir + n) % n] };
-}
+// a line that left / right change (anything else: LEFT goes back to the items beside its sheet)
+const adjustable = (it) => selectable(it) && (!!it.slider || !!it.toggle);
 
 const round = (v) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
 
@@ -114,8 +115,20 @@ export default class Menu {
   get top() { return this.stack[this.stack.length - 1]; }
   get depth() { return this.stack.length - 1; }
   get sel() { return this.top.sel; }
-  get page() { return { id: this.top.id, ...PAGES[this.top.id](this.context()) }; }
+  get page() { return this.pageOf(this.top.id); }
   get item() { return this.page.items[this.top.sel] || null; }
+  // any page, read now
+  pageOf(id) { return { id, ...PAGES[id](this.context()) }; }
+
+  // the page under the top one when the top one is its sheet (the focus is on the sheet), else null
+  get holder() {
+    const e = this.stack[this.stack.length - 2];
+    return e && PAGES[e.id](this.context()).sheets ? e : null;
+  }
+  // on a page with sheets: the id of the page its chosen item shows beside it (null: the chosen one has none)
+  get sheet() {
+    return this.page.sheets ? this.item?.page ?? null : null;
+  }
 
   // keeps the selection on something selectable: the first such item when it is not (the page changed under it)
   fix() {
@@ -136,19 +149,20 @@ export default class Menu {
   up() { return this.move(-1); }
   down() { return this.move(1); }
 
-  // dir +1 / -1 on the selected item: a slider by a step, a toggle flips; on a row page the selection moves
+  // dir +1 / -1 on the selected item: a slider by a step, a toggle flips; on a row page the selection moves. On a
+  // page with sheets RIGHT takes the focus onto the sheet; on a sheet, LEFT on a line it does not change brings the
+  // focus back to the items.
   nudge(dir) {
     if (this.page.row) return this.move(dir);
+    if (this.page.sheets) { if (dir > 0) this.enter(); return null; }
     this.fix();
     const it = this.item;
-    if (!selectable(it)) return null;
+    if (!adjustable(it)) { if (dir < 0 && this.holder) this.back(); return null; }
     if (it.slider) {
       const value = round(it.value + dir * STEP);
       return value === it.value ? null : { type: 'set', key: it.slider, value };
     }
-    if (it.toggle) return { type: 'set', key: it.toggle, value: !it.value };
-    if (it.choice) return turn(it, dir);
-    return null;
+    return { type: 'set', key: it.toggle, value: !it.value };
   }
   left() { return this.nudge(-1); }
   right() { return this.nudge(1); }
@@ -158,13 +172,23 @@ export default class Menu {
     this.fix();
   }
 
+  // on a page with sheets: the focus onto the chosen item's sheet, on its line i (default: its first line that can
+  // be chosen). False when it has no line to rest on (CONTROLS: it is only read), and the focus stays.
+  enter(i) {
+    const id = this.sheet;
+    if (!id) return false;
+    const items = this.pageOf(id).items, at = i ?? items.findIndex(selectable);
+    if (!selectable(items[at])) return false;
+    this.stack.push({ id, sel: at });
+    return true;
+  }
+
   activate() {
     this.fix();
     const it = this.item;
     if (!selectable(it) || it.locked) return null;
-    if (it.page) { this.open(it.page); return null; }
+    if (it.page) { if (this.page.sheets) this.enter(); else this.open(it.page); return null; }
     if (it.toggle) return { type: 'set', key: it.toggle, value: !it.value };
-    if (it.choice) return turn(it, 1);
     const act = it.act ? { ...it.act } : null;
     if (it.back) return this.back() || act;
     return act;
@@ -178,6 +202,20 @@ export default class Menu {
 
   hover(i) {
     if (selectable(this.page.items[i])) this.top.sel = i;
+  }
+
+  // The mouse on item i of page `id` (ui/title/Options.js says which page each rect is on): the selection goes to
+  // it, and the focus with it between a page with sheets and the sheet beside it (pointing at a thing brings the
+  // focus back to the things; pointing at a line of the sheet shown takes it onto that line). A page further in (the
+  // reset's confirm) keeps the focus until it is answered.
+  point(id, i) {
+    if (id === this.top.id) { this.hover(i); return; }
+    const h = this.holder;
+    if (h && h.id === id) {
+      if (!selectable(this.pageOf(id).items[i])) return;
+      this.back();
+      this.hover(i);
+    } else if (this.sheet === id) this.enter(i);
   }
 
   // a click on item i selects and activates it (a slider is dragged by the caller instead)

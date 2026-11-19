@@ -1,4 +1,4 @@
-// How the aim is shown (the AIM option, systems/Settings.js `aim`, LOCK by default; F7 cycles it in play): with a
+// How the aim is shown (systems/Settings.js `aim`, LOCK by default, no menu row; F7 cycles it in play): with a
 // mouse the old cross sits on a point, with a gamepad the right stick only gives a WAY, so every cue but the cross
 // starts at the gun and tells that way (systems/AimCue.js works it out, render/AimArt.js paints it, in the world,
 // over the lighting; the mouse keeps a small dot where it is). Lengths in world px, angles in rad, alphas 0..1.
