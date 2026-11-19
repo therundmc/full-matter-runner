@@ -125,8 +125,8 @@
   He waits in his armchair pulled up to his desk, his boots up on it (post `cueball`, BASES `desk`).
 - 12 guards, three guns in the house (the poker dealer's pistol, the money counter's pistol, the boss's shotgun); the
   others bare-handed: the bartender's bat behind his counter, the doorman's against the front wall, the cue by the
-  pool table for the VIP doorman, the pimp's blade on his table, two knives in pockets, two brawlers, the couch man's
-  tire iron in hand. A spare pistol hidden up on the liquor store roof (by the lookout's chair), a tire iron in the
+  pool table for the VIP doorman, the pimp's blade on his table, two knives in pockets, two brawlers, a tire iron in
+  hand for one of the two men talking in the back lot (the money counter is alone with the boss, the couch empty). A spare pistol hidden up on the liquor store roof (by the lookout's chair), a tire iron in the
   trunk of the first parked car (prop option `trunk`,
   E at its tail); the player starts on the ground and gets up (level `intro`), the first time with a bottle of rum,
   the camera pushed in on him (systems/Opening.js, SHOTS `swig*`).
