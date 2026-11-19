@@ -16,10 +16,6 @@ export const READABILITY = {
   // the weapon in somebody's hands: a dark rim round it (torso px off it, alpha), a gun's darker than a melee weapon's
   held: { px: 0.7, gun: 0.75, melee: 0.45 },
 
-  // the player found in a crowd: a thin ring at his feet once the level is under way and each time he is back on his
-  // feet: it closes in from `from` x its radius over `close` s, holds `hold` s, fades over `fade` s
-  mark: { r: 15, from: 1.8, close: 0.35, hold: 1.6, fade: 0.8, alpha: 0.5, color: [232, 220, 192] },
-
   // the light floor (Lighting.lightFloor): nobody and no weapon on the floor in view is lit less than `level` (0..1,
   // the brightness grid's scale, Lighting.levelAt, a man's own small light LIGHTING.charLight counted in); at most
   // `max` is added, in a pool of the night's `color`, radius `r` px about a man, `item` px about a weapon. Where a
