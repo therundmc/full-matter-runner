@@ -188,6 +188,26 @@ export function silhouette(img) {
   return s;
 }
 
+// a sprite gone dull: its own pixels darkened by `k` (0..1) toward `ink` (a wrecked thing on the floor); cached per
+// sprite and k
+const dulls = new WeakMap();
+export function dulled(img, k = 0.5, ink = '#1a1620') {
+  let m = dulls.get(img);
+  if (!m) { m = new Map(); dulls.set(img, m); }
+  if (m.has(k)) return m.get(k);
+  const s = document.createElement('canvas');
+  s.width = img.width; s.height = img.height;
+  const g = s.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'source-atop';
+  g.globalAlpha = k;
+  g.fillStyle = ink;
+  g.fillRect(0, 0, s.width, s.height);
+  s.k = img.k;
+  m.set(k, s);
+  return s;
+}
+
 // split a sprite into a grid of pieces (debris); returns array of canvases
 export function slices(img, cols = 2, rows = 2) {
   let perImg = sliceCache.get(img);

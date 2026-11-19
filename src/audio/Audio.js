@@ -133,6 +133,7 @@ export const META = {
   splat: { pri: 2, dur: 0.3, gap: 0.03, gain: 0.85 },
   slash: { pri: 2, dur: 0.3, gap: 0.04, max: 3, duck: 0.9, gain: 0.95 },
   bladeThunk: { pri: 2, dur: 0.3, gap: 0.05, max: 2, gain: 0.8 }, // placeholder (assets/sound/PLACEHOLDERS.md)
+  gunWreck: { pri: 2, dur: 0.4, gap: 0.05, max: 2, gain: 0.85 }, // placeholder (assets/sound/PLACEHOLDERS.md)
   punch: { pri: 3, dur: 0.35, gap: 0.04, max: 3, duck: 0.85, gain: 1 },
   bodyFall: { pri: 1, dur: 0.4, gap: 0.05, max: 3, gain: 0.55 },
   shout: { pri: 2, dur: 0.5, gap: 0.5, max: 2, gain: 0.75, reach: 1900, bus: 'voice' },
@@ -457,6 +458,8 @@ const FOLEY = {
   slash: [['swish', 0.5, 1.5], ['punch', 0.7, 1.3, 0.03]],
   // PLACEHOLDER: a thrown blade planted in a man (entities/WeaponItem.js)
   bladeThunk: [['thud', 0.7, 1.3], ['metal', 0.25, 1.6, 0.01]],
+  // PLACEHOLDER: a gun thrown full into a man, wrecked on him (WeaponItem.shatter)
+  gunWreck: [['metalBreak', 0.8, 1.2], ['metal', 0.5, 0.8, 0.01], ['click', 0.4, 0.9, 0.03]],
   death: [['punch', 1, 0.7], ['thud', 0.9, 0.7, 0.04]],
   // the guards' voices: their recording further back, a synthesized voice under it (_shout, _cry, _whimper)
   shout: [['yell', 0.55]],

@@ -350,7 +350,7 @@ Rules:
 | `boss` | `{ boss, beat }` (beat: `intro`, `wounded`, `berserk`, `down`) | entities/Boss.js | KillFeed (the name card on `intro`), systems/BossStage (the camera's shot), Game (the soundtrack's heat: `AI.heat.boss`) |
 | `pickup` | `{ ch, type }` | Player.pickUp | Scoring (a kill right after is a QUICK DRAW) |
 | `throw` | `{ thrower, item, target, charge }` (target: the man on its line, or null; charge 0..1 of the wind-up) | Player.throwWeapon | ThrowBeat (the camera follows it) |
-| `thrownHit` | `{ thrower, victim, x, y, angle, kill, planted, charge }` | WeaponItem (a thrown thing floored or killed a man) | ThrowBeat (the hit's beat), Rumble |
+| `thrownHit` | `{ thrower, victim, x, y, angle, kill, planted, smashed, charge }` (smashed: a full throw that broke on him) | WeaponItem (a thrown thing floored or killed a man) | ThrowBeat (the hit's beat), Rumble |
 | `knock` | `{ victim, cause, angle }` | Enemy.knock (a guard is floored; cause: throw, slide, debris, door, punch, blast) | Scoring, Ambient (those who see it close back off) |
 | `shot` | `{ shooter, weapon }` | World.addProjectile (once per trigger pull, whatever the pellet count) | Scoring (accuracy), Litter (the blast at the muzzle blows the bills on the floor), Rumble (his own, by gun family) |
 | `round` | `{ x0, y0, x1, y1, owner, team }` | Projectile (a round's way over one step; not a rocket) | Flinch (near misses), Curtains (the cloth it crosses), Litter (bills lifted along its way, a flute burst) |

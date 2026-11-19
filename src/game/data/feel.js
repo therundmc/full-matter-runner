@@ -175,6 +175,12 @@ export const MOMENTS = {
 //   hit     the beat when it floors (knock) or kills (kill) a man (systems/ThrowBeat.js): stop (s of hit-stop), slowmo
 //           [time scale, real s], punch (camera zoom kick), push (px the camera is kicked along the throw), shot (the
 //           camera's, data/staging.js SHOTS) held `hold` real s on where it struck
+//   smash   a full throw of anything that is no blade kills the man it reaches and gives out on him
+//           (WeaponItem.shatter): a club crushes (gore: x its own, as the heavy stroke), a gun is a blunt blow
+//           (gunGore); then a bat or a cue snaps, an iron bends, a gun is wrecked: chips [count, speed] of it, sparks
+//           [count, speed], dull (how dark the wrecked gun lies, 0..1), fly [from, to] px/s the far end of a snapped
+//           one goes on at past him, back px/s what falls comes back off him at, clear px off his body they start;
+//           its beat is hit.smash
 //   follow  px from the man on its line (within `line` rad of the throw) within which the camera follows the thing in
 //           flight (shot `throwFollow`)
 //   planted a blade left in him: shudder (s, rad, hz) of its handle, spurt [count, speed] of blood out of him
@@ -185,7 +191,9 @@ export const THROW = {
   hit: {
     kill: { stop: 0.07, slowmo: [0.3, 0.35], punch: 0.08, push: 4, shot: 'throwHit', hold: 0.4 },
     knock: { stop: 0.04, slowmo: [0.55, 0.2], punch: 0.04, push: 2, shot: 'throwHit', hold: 0.25 },
+    smash: { stop: 0.11, slowmo: [0.25, 0.42], punch: 0.1, push: 5, shot: 'throwHit', hold: 0.45 },
   },
+  smash: { gore: 2.5, gunGore: 0.6, chips: [18, 200], sparks: [10, 240], dull: 0.55, fly: [260, 360], back: 40, clear: 3 },
   follow: 120, line: 0.08,
   planted: { shudder: [0.32, 0.22, 14], spurt: [12, 160] },
 };

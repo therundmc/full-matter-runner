@@ -15,10 +15,10 @@ export default class ThrowBeat {
     world.events.on('thrownHit', (e) => this.hit(e));
   }
 
-  // it put a man down: kill or knock-down, each its own beat
-  hit({ thrower, x, y, angle, kill }) {
+  // it put a man down: a kill (harder when the thing gave out on him: a smash) or a knock-down, each its own beat
+  hit({ thrower, x, y, angle, kill, smashed }) {
     if (!thrower?.isPlayer) return;
-    const w = this.world, H = THROW.hit[kill ? 'kill' : 'knock'];
+    const w = this.world, H = THROW.hit[kill ? (smashed ? 'smash' : 'kill') : 'knock'];
     w.hitstop(H.stop);
     slowAtLeast(w, ...H.slowmo);
     w.camera.punch(H.punch);

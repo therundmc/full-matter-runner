@@ -118,8 +118,9 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    take the bat first and he comes with his fists
     27 THROW       next door east: the throw (THROW in data/feel.js; hold the right click / LB to wind it up and aim it,
                    let go to throw, a tap throws at once): three dummies down the room at 80, 150 and 220 px from the
-                   throwing spot by the door, three knives, a bat and a 1911 on the floor there; a full throw plants a
-                   knife in the farthest (the hit's beat: systems/ThrowBeat.js)
+                   throwing spot by the door, three knives, a bat, a cue, a tire iron and a 1911 on the floor there; a
+                   full throw plants a knife in the farthest, and kills with anything else, which breaks on him (a bat or
+                   a cue snaps, the iron bends, the gun is wrecked: WeaponItem.shatter); the hit's beat: systems/ThrowBeat.js
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -520,6 +521,8 @@ for x, kind in ((34.4, 'knife'), (34.9, 'knife'), (35.4, 'knife')):
     lv.drop(kind, x, 27.5, 0)
 lv.drop('bat', 34.6, 29.4, 0)
 lv.drop('pistol', 35.6, 29.4, 0)
+lv.drop('tire_iron', 36.7, 29.4, 0)
+lv.drop('cue', 37.2, 27.4, 0)
 for x in (37.0, 43.0):
     lv.prop('ceiling_lamp', x, 28.0)
 

@@ -5,13 +5,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './setup.mjs';
 
-globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {} }) }) };
+globalThis.document ??= { createElement: () => ({ getContext: () => ({ fillRect() {}, drawImage() {} }) }) };
 const { default: Player } = await load('game/entities/Player.js');
 const { default: ThrowBeat } = await load('game/systems/ThrowBeat.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { THROW } = await load('game/data/feel.js');
 const { AIM } = await load('game/data/aim.js');
 const { PLAYER } = await load('game/Config.js');
+const { WEAPONS } = await load('game/data/weapons.js');
+const { killStyle, killTags } = await load('game/systems/Scoring.js');
 
 const noop = () => {};
 const sink = new Proxy({}, { get: () => noop });
@@ -31,6 +33,7 @@ function world(style = 'cross') {
     props: [], items: [], corpses: [], debris: [], uses: { near: () => null }, windows: [], fences: [], ladders: [], doors: [], director: { phase: 'combat' },
     aimStyle: style, aimMark: false, enemies: [], chars: [],
     addBody: noop, removeBody: noop, addItem(it) { this.items.push(it); }, removeItem(it) { it.dead = true; }, pickupFlash: noop,
+    addDebris(d) { this.debris.push(d); },
   };
   w.characters = () => w.chars;
   return w;
@@ -223,4 +226,56 @@ test('throw: unarmed, the right click picks up at once; a hold paused and let go
   r.update(DT, held, { x: 100, y: 0 });
   r.update(DT, up, { x: 100, y: 0 });
   assert.equal(w3.items.length, 1);
+});
+
+// ---- a full throw of anything that is no blade: it kills, and gives out on him (WeaponItem.smash / shatter) ----
+// thrown by the player `hold` steps wound up, reaching a guard 8 px ahead of it
+function smash(type, hold = 30) {
+  const w = world(), p = player(w, type);
+  new ThrowBeat(w);
+  const [it] = play(w, p, hold);
+  const g = guard(w, it.x + 8, it.y);
+  it.update(DT);
+  return { w, g, it, live: w.items.filter((i) => !i.dead) };
+}
+
+test('throw: a bat thrown full kills the man and snaps on him: its head flies on, its handle falls', () => {
+  const { w, g, it, live } = smash('bat');
+  assert.ok(!g.alive && g.cause === 'melee');
+  assert.equal(g.by.wound, 'crush');
+  assert.ok(Math.abs(g.by.gore - WEAPONS.bat.gore * THROW.smash.gore) < 1e-9);
+  assert.ok(g.how.thrown && g.how.heavy && g.how.broke && g.how.from);
+  assert.ok(it.dead && live.length === 0, 'the bat is gone');
+  assert.equal(w.debris.length, 2, 'its two pieces');
+  assert.ok(w.asked.sounds.includes('batSnap'));
+  assert.deepEqual(w.asked.slowmo.at(-1), THROW.hit.smash.slowmo, 'the smash\'s beat');
+  // scored as a blow, tagged THROWN (not THROWN BLADE), a smash and a break
+  assert.equal(killStyle({ cause: g.cause, killer: g.killer, victim: g, how: g.how }).style, 'melee');
+  const tags = killTags({ killer: g.killer, how: g.how }, {});
+  assert.ok(tags.includes('smashThrow') && !tags.includes('thrown') && tags.includes('broke'), `${tags}`);
+});
+
+test('throw: a cue thrown full snaps, its butt half left to pick up; a tire iron bends and lies there', () => {
+  const cue = smash('cue');
+  assert.ok(!cue.g.alive);
+  assert.deepEqual(cue.live.map((i) => i.type), ['cue_half']);
+  assert.equal(cue.w.debris.length, 1, 'the far end flying on');
+  const iron = smash('tire_iron');
+  assert.ok(!iron.g.alive && iron.g.by.wound === 'crush');
+  assert.deepEqual(iron.live.map((i) => i.type), ['tire_iron_bent']);
+});
+
+test('throw: a pistol thrown full kills him with a blunt blow and is wrecked: no pistol to pick up, a dull wreck', () => {
+  const { w, g, live } = smash('pistol');
+  assert.ok(!g.alive && g.cause === 'melee' && g.by.wound === 'blunt');
+  assert.equal(live.length, 0);
+  assert.equal(w.debris.length, 1);
+  assert.ok(w.asked.sounds.includes('gunWreck'));
+});
+
+test('throw: below a full charge a bat only floors him, and comes off him whole', () => {
+  const { g, it, live } = smash('bat', 15);
+  assert.ok(it.charge > 0 && it.charge < 1);
+  assert.ok(g.alive && g.knocked && g.knockedBy === 'throw');
+  assert.ok(!it.dead && live.length === 1 && live[0].type === 'bat');
 });
