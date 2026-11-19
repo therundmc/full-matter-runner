@@ -506,7 +506,7 @@ export default class Player extends Character {
   grab() {
     const { item: it, sure } = this.snatch, w = this.world;
     this.snatch = null;
-    if (it.dead || (!sure && (this.weapon || Math.hypot(it.x - this.x, it.y - this.y) > SNATCH.far))) return;
+    if (it.dead || (!sure && (this.weapon || Math.hypot(it.x - this.x, it.y - this.y) > SNATCH.far))) { it.free?.(); return; }
     w.removeItem(it);
     this.take(it.type, it.mag, it.wear, it.bare);
     this.pickFrom = { x: it.x, y: it.y };

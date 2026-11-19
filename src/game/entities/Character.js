@@ -15,7 +15,7 @@ import { blowFrom, blowFx } from '../fx/Blows.js';
 import { landBlow, jolt, killBeat } from '../fx/Impact.js';
 import { muzzleFlash, sampleSmear } from '../fx/CombatFx.js';
 import { feelOf, MOMENTS, TELL, GESTURE, RELOAD, FLINCH, FACING, TRAVERSE, BREAK, VAULT_DUR, CLIMB_DUR, LADDER_DUR,
-  CLIMB_NOISE, RUNG_NOISE, LAND_NOISE } from '../data/feel.js';
+  CLIMB_NOISE, RUNG_NOISE, LAND_NOISE, DROP } from '../data/feel.js';
 import { plantFx, landFx, rollFx } from '../fx/TraversalFx.js';
 import { ejection, casingShown, spentSound } from '../fx/Casings.js';
 import { newPose, standPose, vaultPose, slidePose, kickPose, sitPose, seatPose, trunkPose, execPose, takedownPose, heldPose, doorHandPose, lockHandPose, brokePose, drawPose, drawDown, ladderAt, ladderGrip, riseDurAt, muzzleAt, muzzleIn,
@@ -760,9 +760,9 @@ export default class Character {
     // his weapon falls; the player's hand closes on it as he goes down when he can take it (Player.snatches)
     const snatch = !!killer?.snatches?.(this, how);
     if (snatch) how = { ...how, disarm: true };
-    const toward = snatch ? Math.atan2(killer.y - this.y, killer.x - this.x) : angle + rand(-1, 1);
-    const it = this.dropWeapon(toward, snatch ? 1 : rand(1.5, 3.5));
-    if (snatch) killer.snatchFrom(it ?? this.lastDrop, this.yields);
+    // (by his body: DROP; the one the hand closes on stays where his hand was, held out of the physics' way)
+    const it = this.dropWeapon(angle + rand(-1, 1), snatch ? 0 : rand(...DROP.speed));
+    if (snatch) killer.snatchFrom(it?.reserve() ?? this.lastDrop, this.yields);
     this.world.removeBody(this.body);
     const left = gore(this.world, this, angle, cause, by, how); // how: the blow decides how much he bleeds
     // most of them go down with a cry, when there is still a throat to cry with
@@ -960,7 +960,7 @@ export default class Character {
     if (!this.weapon) return null;
     const w = this.world;
     const it = new WeaponItem(w, this.weapon.type, this.weapon.mag,
-      this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-0.3, 0.3));
+      this.x, this.y, rand(0, 6.28), Math.cos(angle) * speed, Math.sin(angle) * speed, rand(-1, 1) * DROP.spin);
     it.wear = this.weapon.wear;
     it.setBare(this.weapon.bare);
     w.addItem(it);

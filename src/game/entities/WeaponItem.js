@@ -47,6 +47,23 @@ export default class WeaponItem {
     return this;
   }
 
+  // a dead man's, the player's hand about to close on it (Player.snatchFrom): still and out of the physics' way (a
+  // falling body or a blow does not knock it off), until it is taken or let go (free)
+  reserve() {
+    Body.setStatic(this.body, true);
+    this.body.isSensor = true;
+    this.reserved = true;
+    return this;
+  }
+
+  free() {
+    if (!this.reserved) return;
+    this.reserved = false;
+    this.body.isSensor = false;
+    Body.setStatic(this.body, false);
+    setMaterial(this.body, WEAPON_KG[this.type] ?? 2, 0.7, 0);
+  }
+
   // stood against a wall (a level's `lean`), its tip up on it: it stays there until somebody takes it
   leanOn() {
     this.lean = true;
