@@ -205,9 +205,11 @@ test('lorry: boxed in at its flank (a car shoved into the way round), it is the 
     if (steer && steer !== 'both') keys.add(steer);
     const how = steer || 'hands off', shuttle = () => {
       if (steer === 'both' && Math.round(s.w.time * 60) % 20 === 0) { keys.clear(); keys.add(Math.round(s.w.time * 3) % 2 ? 'KeyW' : 'KeyS'); }
-      return !s.w.player.alive;
+      return !s.w.player.alive || (s.v.x > s.p.x + 40 && s.d.v > 0.6 * C.cruise);
     };
-    assert.ok(run(s, 4, shuttle), `dead, not stuck there (${how}; at ${s.v.x.toFixed(0)}, ${s.v.y.toFixed(0)})`);
+    assert.ok(run(s, 4, shuttle), `dead or through, not stuck there (${how}; at ${s.v.x.toFixed(0)}, ${s.v.y.toFixed(0)})`);
+    // (steering into the van he shoves it aside now, a parked car never holds him up: he may get round the tail)
+    if (s.w.player.alive) { assert.equal(how, 'KeyS', `${how}: the van shoved out of the way round`); continue; }
     assert.equal(s.w.killed.cause, 'crash');
     assert.ok(s.w.time < 1.7, `soon (${how}): ${s.w.time.toFixed(2)} s (the QA robot calls 2 s at a crawl a softlock)`);
     assert.ok(s.v.x < s.p.x, 'still at its flank');

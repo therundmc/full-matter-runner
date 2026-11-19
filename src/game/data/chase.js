@@ -6,7 +6,7 @@ export const CHASE = {
   max: 11.1,            // the speed its looks are measured against (75 km/h: the wind, the lens' edges, all of them there)
   ease: 7,              // gained a second back up to the cruise speed (after a hit; pulling away in the lab)
   steer: 4,             // across the road, W / S held (up / down on the picture: W -y, S +y; A / D do the same)
-  steerRate: 16,        // gained a second toward it (0.25 s to full)
+  steerRate: 16,        // gained a second toward it (0.25 s to full) at the cruise speed; less flat out and in a slide (slide)
   crawl: 0.35,          // share of the steering (and of the shove) it keeps at a crawl; it grows to all of it at cruise
   pull: 12,             // the road's pull: lost a second, nothing held (the nose straightens with it)
   // rad: the most the way it goes turns the nose off the road. Small on purpose: the car is drawn on a few fixed
@@ -67,8 +67,8 @@ export const CHASE = {
   // clipped), it is a jolt: the speed down to `clip`; less than `graze` px of it (the next wall body along the
   // building fronts, met at their seam as it slides on them), a scrape: nothing lost
   crash: { speed: 6, cone: (35 * Math.PI) / 180, corner: 0.2, clip: 3, graze: 6, shake: 0.9, dents: 4 },
-  // what gives: a parked car is woken and shoved by the physics (thrown `fly` s, its alarm, a dent); hit square on
-  // faster than crash.speed, the van keeps only `keep` of its speed. A bolted thing (a hydrant, a streetlight, a bench)
+  // what gives: a parked car is shoved aside (`aside`, below; one of theirs still driven is hit by the physics:
+  // square on faster than crash.speed, his car keeps only `keep` of its speed). A bolted thing (a hydrant, a streetlight, a bench)
   // hit faster than `tear` is torn off (thrown with `power` at cruise speed, more the faster, `most` at most: over 2
   // it goes at once and its pieces fly); slower, it holds. Every hit takes `loss` of the speed. A car shoved
   // into another faster than `chain` shoves it on. A loose thing of `fling.kg` or less (a bin, a chair, a crate) is
@@ -78,6 +78,35 @@ export const CHASE = {
   hit: {
     fly: 0.3, keep: 0.35, tear: 0.8, power: 2.2, most: 3, loss: 0.03, again: 0.4, shake: 0.25, chain: 1,
     fling: { kg: 120, v: [0.9, 1.35], least: 2, side: [0.15, 0.7], spin: 0.35, fly: [0.25, 0.55] },
+  },
+  // A PARKED CAR (OR A WRECK) HE HITS IS SHOVED ASIDE, never a wall (Drive.aside; the user, 2026-11-19: "elle doit se
+  // mettre sur le cote, la elle nous bloque"). By how square the hit is (squareOf: 0 a graze / a flank, 1 full on
+  // the nose: what he hit covering `full` of his car's width, nothing of it under `graze`, the contact facing his nose): he loses `loss` of his
+  // speed [graze, square] (never under `floor` of the cruise speed: never stopped, never the crash); the car is
+  // thrown on ahead at `ahead` x his speed and `side` px/step out to its side (a car of `kg`; a heavier one less,
+  // `heavy` of it at least), turning `spin` rad/step, off the floor's friction `fly` s; his own car is turned
+  // `deflect` px/step off it on a graze. Still on it within `hold` s (not clear of his flank yet, sent back by what
+  // it was thrown into) it is thrown again every `again` s, for nothing more, the contact never resolved: it never
+  // holds him up. Closing on it slower than `least` px/step, or he going under `slow`: the physics alone (it leans on it and pushes). Dead ahead of him (within `dead` px of his middle line) it goes to
+  // the side with more room. A shoved car never shuts both lanes (Drive.clearLanes): neither side of it leaving his
+  // car's width + `room` px of the two lanes, it is pushed on toward its kerb at `push` px/step; followed `watch` s
+  aside: {
+    graze: 0.15, full: 0.65, loss: [0.1, 0.5], floor: 0.35, ahead: [0.6, 1.25], side: [2.6, 4.2], spin: [0.035, 0.07], kg: 1300, heavy: 0.75,
+    fly: 0.45, deflect: 1.2, least: 0.8, slow: 2.5, hold: 1, again: 0.1, dead: 8, room: 8, push: 1.6, watch: 5,
+  },
+  // THE SLIDE (Drive slideStep / gripOf; pursuers too). The tyres give less of the wheel the faster it goes (`fall`
+  // of the steering rate gone at `max`, as much more well under the cruise speed: understeer flat out) and while the rear is out (`under` at the most slip). The rear
+  // steps out (slip: rad the body turns past the way it goes, `most` at most) on a FLICK (the wheel thrown over while
+  // the car still goes the other way across at over flick[0] of its full sideways speed: flick[1] rad/s2), on FULL
+  // LOCK HELD over hold[0] s (hold[1] rad/s2), on a shove (`shove` rad/s into the lunge), a pursuer's swipe landing
+  // (`rammed`), a parked car grazed (`hit`). It comes back on a spring `k` (1/s2) damped `d` (1/s: under-damped, one
+  // fishtail), `catch` when he steers against it (countersteer: caught at once); steering into it the spring is
+  // `into` of itself (a drift held). It scrubs `scrub` px/step a second off the speed per rad; from `smoke` rad its
+  // rear tyres smoke and leave rubber (skidOf, the 'tyres' event); the body leans `lean` px per rad out of it; under
+  // `snap` rad and still, it is dead straight
+  slide: {
+    fall: 0.25, under: 0.4, most: 0.3, flick: [0.5, 5.5], hold: [0.4, 2.6], shove: 1.5, rammed: 2.2, hit: 1.6,
+    k: 38, d: 5, catch: 16, into: 0.25, scrub: 7, smoke: 0.07, lean: 4, snap: 0.003,
   },
   run: 2,               // a person hit faster than this is run down (one hit kills), thrown on along `throw` x speed
   throw: 1.4,

@@ -79,6 +79,36 @@ export function steerStep(u, steer, dt, C = CHASE, pull = C.pull) {
 // the way the van goes (vx along the road, vy across), at most C.heading off the road: what its nose is sprung to
 export const headingOf = (vx, vy, C = CHASE) => clamp(Math.atan2(vy, Math.max(vx, 0.5)), -C.heading, C.heading);
 
+// THE SLIDE (C.slide). How much of the wheel the tyres give, 1 at the cruise speed: less the faster it goes (`fall`
+// of it gone flat out, C.max: it turns in later, understeer; as much more well under the cruise speed, slowed by a
+// hit: it bites) and less again while the rear is out (`under` of it at
+// the most slip: a sliding car goes where it was going)
+export function gripOf(v, slip = 0, C = CHASE) {
+  const S = C.slide, fast = clamp((v - C.cruise) / (C.max - C.cruise), -1, 1);
+  return (1 - S.fall * fast) * (1 - S.under * clamp(Math.abs(slip) / S.most, 0, 1));
+}
+
+// The rear stepping out, a step later: [slip, its speed]. slip: rad the body is turned past the way it goes (+: the
+// nose toward +y, the tail swung out toward -y). What lets it go: the wheel thrown over against the way the car is
+// still going across (a flick: over `flick[0]` of the full sideways speed, `flick[1]` rad/s2 at all of it), full
+// lock held longer than `hold[0]` s (`hold[1]` rad/s2), and kicks given to its speed from outside (a shove, a blow).
+// What brings it back: a spring `k` (1/s2), damped `d` (1/s) with nothing held (under-damped: it fishtails once),
+// `catch` when he steers against it (countersteer: caught, no wag); steering INTO it the spring is only `into` of
+// itself (it is held out: a drift). Never past `most`
+export function slideStep(slip, slipV, steer, u, held, dt, C = CHASE) {
+  const S = C.slide, full = Math.abs(u) / C.steer;
+  let push = 0;
+  if (steer && u * steer < 0 && full > S.flick[0]) push += steer * S.flick[1] * Math.min(1, full);
+  if (steer && held > S.hold[0]) push += steer * S.hold[1];
+  const into = steer * slip > 0, counter = steer * slip < 0;
+  slipV += (push - slip * S.k * (into ? S.into : 1) - slipV * (counter ? S.catch : S.d)) * dt;
+  slip += slipV * dt;
+  if (Math.abs(slip) > S.most) { slip = Math.sign(slip) * S.most; if (slip * slipV > 0) slipV = 0; }
+  // (as good as straight: dead straight; a car a hair off its line is drawn crooked)
+  if (!push && Math.abs(slip) < S.snap && Math.abs(slipV) < S.snap * 8) return [0, 0];
+  return [slip, slipV];
+}
+
 // The nose a step later: its turning speed (rad/s) from its angle, the speed it turns at now (rad/s) and the way it
 // is sprung to (C.yaw: a spring all but critically damped, so it lags a little and does not wag)
 export function yawStep(angle, turning, want, dt, C = CHASE) {
@@ -104,13 +134,38 @@ export const kmh = (v, C = CHASE) => Math.round(v * C.kmh);
 
 // Are the tyres letting go (smoke, rubber left on the road)? u: px/step across, v: along, shoving: in a shove. 0:
 // no; else how hard, up to 1
-export function skidOf(u, v, shoving, C = CHASE) {
-  const F = C.fx;
+// (slip: rad its rear is out, the slide: from C.slide.smoke on, all of it at C.slide.most)
+export function skidOf(u, v, shoving, C = CHASE, slip = 0) {
+  const F = C.fx, S = C.slide;
   if (v < F.from) return 0;
   if (shoving) return 1;
-  const k = Math.abs(u) / C.steer;
-  return k >= F.slide ? clamp(k, 0, 1) * F.steer : 0;
+  const k = Math.abs(u) / C.steer, out = Math.abs(slip) >= S.smoke ? clamp(Math.abs(slip) / S.most, 0, 1) : 0;
+  return Math.max(out, k >= F.slide ? clamp(k, 0, 1) * F.steer : 0);
 }
+
+// A PARKED CAR HIT IS SHOVED ASIDE (C.aside; the user: "it must move aside, it blocks us"). How square the hit is,
+// 0 (a graze, a flank) .. 1 (full on the nose): the share of his car's width what he hit covers (none of it under
+// `graze` of the width, all of it from `full` on), times how much the contact faces his nose (dot: the contact's
+// normal along the nose)
+export function squareOf(cover, dot, C = CHASE) {
+  const A = C.aside;
+  return clamp((cover - A.graze) / (A.full - A.graze), 0, 1) * clamp(dot, 0, 1);
+}
+
+// the share of his speed he keeps: `loss[0]` gone on a graze, `loss[1]` on a square hit. Never stopped
+export const asideKeep = (sq, C = CHASE) => 1 - (C.aside.loss[0] + (C.aside.loss[1] - C.aside.loss[0]) * clamp(sq, 0, 1));
+
+// How the car he hit is thrown: { along: x his speed, on ahead of him (a square hit throws it on faster than he
+// goes: it is out of his way, never held on his nose), across: px/step toward its side, spin: rad/step }; a heavier
+// one (kg) goes less
+export function asideThrow(sq, kg, C = CHASE) {
+  const A = C.aside, mix = (r) => r[0] + (r[1] - r[0]) * clamp(sq, 0, 1), k = clamp(A.kg / kg, A.heavy, 1);
+  return { along: mix(A.ahead) * k, across: mix(A.side) * k, spin: mix(A.spin) };
+}
+
+// Does a car lying from y = min to max shut BOTH lanes (the road from `top` to `bottom`: the lanes' outer edges)?
+// Neither side of it leaves `need` px (a car's width and a little): then it is pushed on toward its kerb
+export const blocksBoth = (min, max, top, bottom, need) => min - top < need && bottom - max < need;
 
 // how hard a thing torn off the kerb is thrown (Prop.break's power), by the speed it was hit at (px/step)
 export const tearPower = (speed, C = CHASE) => clamp(C.hit.power * (speed / C.cruise), C.hit.power * 0.6, C.hit.most);
@@ -208,6 +263,13 @@ export default class Drive {
     this.nosing = null;               // crawling nose-on into the lorry: { t, held: s, best: px left } (boxed)
     this.knocked = new Map();         // the cars it shoved -> the handler it gave them (knock; taken back at leave)
     this.grind = null;                // held off the building fronts as he steers into them: where its flank is
+    this.slip = 0;                    // rad its rear is out (the slide: slideStep), and how fast it goes
+    this.slipV = 0;
+    this.lockT = 0;                   // s the wheel has been held over the same way
+    this.lockS = 0;
+    this.asides = new Map();          // the parked cars it shoved aside -> { t, at: when, side, o } (aside, clearLanes)
+    this.onRam = ({ side }) => { if (this.on && !this.dead) this.slipV += (side || 1) * CHASE.slide.rammed; };
+    world.events?.on?.('pursuerRam', this.onRam); // (a swipe landing on his flank kicks his tail out)
     this.board();
     this.gun = new CarGun(world, van, seatOf(van, CHASE)); // his gun out of the car (the aim, the left click)
     this.grab = null;                 // the beat of taking the gun off the passenger seat: { t, arms, took, racked }
@@ -392,6 +454,8 @@ export default class Drive {
     v.onCollide = null;
     for (const [car, fn] of this.knocked) if (car.onCollide === fn) car.onCollide = null; // (a pursuer keeps its own)
     this.knocked.clear();
+    this.asides.clear();
+    w.events?.off?.('pursuerRam', this.onRam);
     if (this.stash !== undefined) {
       // the lab: the seat's gun put back on the seat (taken again next time), what he had back in his hand
       v.gun = true;
@@ -470,14 +534,23 @@ export default class Drive {
       // (out of a shove the sideways speed is given back fast, until the wheel is his again)
       if (this.shoved && (steer || Math.abs(this.u) < 1)) this.shoved = false;
       // (a slow motion of the chase hands the wheel more, in real time: systems/ChaseCam.js `wheel`)
-      const K = w.chaseCam?.wheel ?? null, rdt = K ? dt * K.rate : dt, most = K ? K.most : 1;
+      // (and the tyres give less of it the faster it goes and while the rear is out: gripOf)
+      const K = w.chaseCam?.wheel ?? null, rdt = (K ? dt * K.rate : dt) * (steer ? gripOf(this.v, this.slip, C) : 1), most = K ? K.most : 1;
       this.u = steerStep(this.u, steer * grip * most, rdt, C, this.shoved ? C.shove.back : C.pull);
     }
+    // the slide: the rear steps out on a flick, on full lock held, on a shove or a blow; caught with countersteer;
+    // it scrubs the speed off while it lasts
+    // (held off the building fronts as he steers into them: no lock counted, the tail would swing into them)
+    this.lockT = steer && Math.sign(steer) === this.lockS && !this.grind ? this.lockT + dt : 0;
+    this.lockS = Math.sign(steer);
+    [this.slip, this.slipV] = slideStep(this.slip, this.slipV, grip > 0.5 ? Math.sign(steer) * Math.min(1, Math.abs(steer) * 1.5) : 0, this.u, this.lockT, dt, C);
+    if (this.v < C.fx.from) { this.slip *= 1 - Math.min(1, 6 * dt); this.slipV *= 1 - Math.min(1, 6 * dt); } // (no slide at a crawl)
+    this.v = Math.max(0, this.v - C.slide.scrub * Math.abs(this.slip) * dt);
     this.u = this.offFronts(this.u);
     // the velocity set; the nose sprung toward the way it really goes (a knock turns it, the road brings it back;
     // held up against a wall, it comes round along it instead of digging in)
     const Y = C.yaw, across = Math.abs(vel.y) < Math.abs(this.u) ? vel.y : this.u;
-    const want = headingOf(this.v, across, C);
+    const want = headingOf(this.v, across, C) + this.slip;
     let turning = yawStep(b.angle, Body.getAngularVelocity(b) * 60, want, dt, C);
     Body.setVelocity(b, { x: this.v, y: this.u });
     if (Math.abs(angDiff(b.angle, want)) < Y.snap && Math.abs(turning) < Y.snapV) {
@@ -638,7 +711,8 @@ export default class Drive {
   // took its speed dives it), the road throws it up now and then, a front wheel onto or off the sidewalk too
   springs(dt) {
     const w = this.world, C = this.C, B = C.body, L = B.lift, v = this.van, S = this.body, was = this.was2;
-    const [squat, roll] = bodyLean((this.v - was.v) / dt, (this.u - was.u) / dt, this.u, C);
+    const [squat, lean] = bodyLean((this.v - was.v) / dt, (this.u - was.u) / dt, this.u, C);
+    const roll = clamp(lean - this.slip * C.slide.lean, -B.most, B.most); // (sliding, it leans out over its outer wheels)
     was.v = this.v; was.u = this.u;
     [v.squat, S.pitch] = springStep(v.squat || 0, S.pitch, squat, B.k, B.d, dt);
     [v.roll, S.roll] = springStep(v.roll || 0, S.roll, roll, B.k, B.d, dt);
@@ -699,6 +773,7 @@ export default class Drive {
     w.shake(C.shove.shake);
     w.camera?.push(0, this.side * C.shove.push);
     this.body.roll -= this.side * C.shove.roll;
+    this.slipV += this.side * C.slide.shove; // (the tail is left behind a moment: the nose turns into the lunge)
     this.bump('shove');
     w.events.emit('ride', { beat: 'shove', x: v.x, y: v.y, side: this.side });
     w.sound('vanShove', v.x, v.y, 1);
@@ -723,6 +798,8 @@ export default class Drive {
     if (e?.isVehicle) {
       h.kind = 'car';
       this.loosen(o, pair);
+      // a parked car, a wreck: shoved aside by hand (one of theirs still driven, or on its way out, is Pursuit's)
+      if (!e.pursuer || (e.pursuer.state === 'wrecked' && !e.pursuer.out)) h.aside = this.aside(o, pair, vel, ov, nx, ny);
       if (!e.onCollide) {
         // what it is shoved into goes too (this drive's: leave takes it back, a new drive gives its own)
         e.onCollide = (o2, pair2) => this.knock(o, o2, pair2);
@@ -765,6 +842,76 @@ export default class Drive {
     o.flyUntil = this.world.time + rand(...F.fly);
   }
 
+  // A parked car (or a wreck) he runs into is SHOVED ASIDE, never a wall (C.aside): thrown on ahead of him and out to
+  // the side it is on (dead ahead: the side with more room before the building fronts), turning, its tyres off the
+  // floor's friction a moment, by how square the hit is (squareOf); the contact itself is not resolved this step (the
+  // physics would share the blow between 2 t and 1.3 t and stop him): he only loses the share of his speed asideKeep
+  // says (shovedAside), is turned a little off it, his tail kicked out. Closing on it slower than `least` px/step,
+  // or he crawling under `slow`: the physics as it is (it leans on it and pushes). { sq, side, along, again } or null
+  aside(o, pair, vel, ov, nx, ny) {
+    const C = this.C, A = C.aside, w = this.world, v = this.van, b = v.body, e = o.entity;
+    const ca = Math.cos(b.angle), sa = Math.sin(b.angle), along = vel.x * ca + vel.y * sa;
+    const closing = (vel.x - ov.x) * nx + (vel.y - ov.y) * ny, was = this.asides.get(e);
+    // still on the car he has just shoved (it has not cleared his flank yet, or what it was thrown into sent it
+    // back): thrown again for nothing more, the contact never resolved: a car he shoved never holds him up
+    const again = !!was && w.time - was.at < A.hold;
+    if (o.isStatic || along < A.slow || (!again && closing < A.least)) return null;
+    // (a sensor for as long as the two overlap, as a thing flung: the physics tells only the start of a contact)
+    pair.isActive = false;
+    pair.isSensor = true;
+    if (again && w.time - was.last < A.again) return null;
+    const cover = coverOf(o.bounds.min.y, o.bounds.max.y, b.position.y, v.h) / v.h, sq = squareOf(cover, ca * nx + sa * ny, C);
+    const dy = o.position.y - b.position.y;
+    let side = again ? was.side : Math.sign(dy) || 1;
+    if (!again && Math.abs(dy) < A.dead && this.o.lanes && w.map) {
+      const [lo, hi] = this.fronts();
+      side = hi - o.bounds.max.y >= o.bounds.min.y - lo ? 1 : -1;
+    }
+    const T = asideThrow(sq, kgOf(o), C), a = Math.atan2(vel.y, vel.x), sp = Math.hypot(vel.x, vel.y);
+    Body.setVelocity(o, { x: Math.cos(a) * sp * T.along, y: Math.sin(a) * sp * T.along + side * T.across * clamp(sp / C.cruise, 0.4, 1.2) });
+    // (hit behind its middle its nose swings in toward him, its tail out; ahead of it, the other way)
+    Body.setAngularVelocity(o, side * (o.position.x >= b.position.x ? 1 : -1) * T.spin * rand(0.7, 1.2));
+    o.flyUntil = w.time + A.fly;
+    this.asides.set(e, { t: 0, at: again ? was.at : w.time, last: w.time, side, o });
+    if (again) return { sq, side, along, again };
+    // his own car: turned a little off it, the tail kicked out (a square hit: straight through it)
+    this.u -= side * A.deflect * (1 - sq) * clamp(sp / C.cruise, 0, 1);
+    this.slipV -= side * C.slide.hit * (1 - sq);
+    return { sq, side, along, again };
+  }
+
+  // A car he shoved aside never shuts both lanes (blocksBoth: neither side of it leaves his car's width and A.room
+  // of the two lanes): slowing down across them, it is pushed on toward its kerb (the side of the street's middle its
+  // own is on, else the way it was thrown) at A.push px/step until one lane is clear. Followed A.watch s
+  clearLanes(dt) {
+    const A = this.C.aside, lanes = this.o.lanes, b = this.van.body, w = this.world;
+    // still over a car he has just shoved (it was thrown into something that held it): out from under him, every
+    // `again` s, ahead of him and to its side
+    if (this.asides.size && !this.dead) {
+      for (const pair of w.physics.activePairs()) {
+        const o = pair.bodyA === b ? pair.bodyB : pair.bodyB === b ? pair.bodyA : null, s = o && this.asides.get(o.entity);
+        if (!s || !pair.isSensor || w.time - s.at > A.hold || w.time - s.last < A.again) continue;
+        const vel = Body.getVelocity(o), T = asideThrow(1, kgOf(o), this.C);
+        s.last = w.time;
+        Body.setVelocity(o, { x: Math.max(vel.x, this.v * T.along), y: s.side * Math.max(Math.abs(vel.y), T.across) });
+        o.flyUntil = w.time + A.fly;
+      }
+    }
+    for (const [e, s] of this.asides) {
+      if ((s.t += dt) > A.watch || e.dead) { this.asides.delete(e); continue; }
+      if (!lanes || lanes.length < 2 || e.exploded) continue;
+      const o = s.o, band = [Math.min(...lanes) * TILE, Math.max(...lanes) * TILE], half = (band[1] - band[0]) / 2;
+      const vel = Body.getVelocity(o);
+      if (Math.abs(vel.y) > A.push || !blocksBoth(o.bounds.min.y, o.bounds.max.y, band[0] - half, band[1] + half, this.van.h + A.room)) continue;
+      const mid = (band[0] + band[1]) / 2, to = Math.abs(o.position.y - mid) > 4 ? Math.sign(o.position.y - mid) : s.side;
+      if (o.frozen) wake(o);
+      if (o.isSleeping) Sleeping.set(o, false);
+      Body.setVelocity(o, { x: vel.x * 0.9, y: to * A.push });
+      o.flyUntil = this.world.time + this.C.fly;
+      s.t = Math.min(s.t, A.watch - 1); // (still in the way: watched on)
+    }
+  }
+
   // a frozen body in a contact being resolved becomes a dynamic one at once, the contact told its mass
   loosen(o, pair) {
     if (o.frozen) {
@@ -791,6 +938,7 @@ export default class Drive {
     for (const h of this.hits) this.react(h);
     this.hits.length = 0;
     if (!this.dead) { this.scrape(dt); this.fx(dt); }
+    this.clearLanes(dt);
     this.carry();
     // the end of the road: the level is over (the results)
     const end = this.o.end;
@@ -812,6 +960,7 @@ export default class Drive {
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 8, 260);
       return;
     }
+    if (h.aside) { this.shovedAside(h); return; }
     const key = e || h.o;
     if (t - (this.seen.get(key) ?? -Infinity) < C.hit.again) return;
     this.seen.set(key, t);
@@ -850,6 +999,26 @@ export default class Drive {
     if (h.kind !== 'gives' && !this.lost) { this.lost = true; this.v *= 1 - C.hit.loss; }
   }
 
+  // He shoved a parked car aside (aside): what it cost him (asideKeep of his speed along his nose, never less), and
+  // what it looks and sounds like: its alarm and a dent, sparks along the way it went, its glass on a square hit, the
+  // picture shaken and his body thrown by how square it was. Told on 'carShoved' ({ car, by, x, y, sq, side })
+  shovedAside(h) {
+    const w = this.world, C = this.C, v = this.van, e = h.e, { sq, side, along, again } = h.aside, hard = 0.4 + 0.6 * sq;
+    const a = Math.atan2(h.vy, h.vx);
+    if (again) { w.particles.sparks(h.x, h.y, a + side * 0.6, 1.1, 5, 300); return; } // (still pushing it out: nothing more lost)
+    this.v = Math.min(this.v, Math.max(along * asideKeep(sq, C), C.aside.floor * this.cruise));
+    this.seen.set(e, w.time);
+    h.o.flyUntil = w.time + C.aside.fly;
+    e.hit(0, h.x, h.y, a, 1, 'blunt');
+    w.sound('carHit', h.x, h.y, hard);
+    w.particles.sparks(h.x, h.y, a + side * 0.6, 1.1, Math.round(8 + 14 * hard), 340);
+    if (sq > 0.35) w.particles.glass(h.x, h.y, a + side * 0.4, 1.1, Math.round(16 * sq), 220);
+    w.shake(C.hit.shake * (0.6 + sq));
+    this.bump('hit', hard);
+    w.events.emit('ride', { beat: 'hit', x: h.x, y: h.y });
+    w.events.emit('carShoved', { car: e, by: v, x: h.x, y: h.y, sq, side });
+  }
+
   // what its speed does around it: tyres letting go (white smoke, rubber left on the road) on a shove or hard
   // steering; spray out of standing water; pigeons, cats and people ahead frightened; an awning or a parasol it
   // drives under torn down
@@ -858,7 +1027,7 @@ export default class Drive {
     const wheels = v.m.wheels.map(([sx, sy]) => v.toWorld(sx, sy)), rear = wheels.slice(0, 2);
     // (pulling away from the opening: the rear tyres spin)
     if (this.launchT > 0) { this.launchT -= dt; for (const r of rear) w.particles.smoke(r.x, r.y, C.intro.launch.smoke, 3, { speed: 30, size: F.smoke[1], life: F.smoke[2] }); }
-    const skid = this.launchT > 0 ? 1 : skidOf(this.u, this.v, this.shoveT > 0, C);
+    const skid = this.launchT > 0 ? 1 : skidOf(this.u, this.v, this.shoveT > 0, C, this.slip);
     const on = skid > 0 ? rear : null;
     if (on) {
       // (their rubber smoke in the air: systems/CarFx.js; all four in a shove)

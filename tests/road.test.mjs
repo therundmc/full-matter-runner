@@ -16,6 +16,7 @@ const { default: lab } = await load('game/data/levels/lab.js');
 const { default: level1 } = await load('game/data/levels/level1.js');
 
 const C = level2a.chase;
+const WORKS = [203, 231]; // the gas works' columns (tools/build_level2a.py)
 const assets = readFileSync(fileURLToPath(new URL('../src/engine/Assets.js', import.meta.url)), 'utf8');
 const png = (name) => existsSync(fileURLToPath(new URL(`../assets/sprites/props/${name}.png`, import.meta.url)));
 // half of a thing's hitbox across the street (rows), turned as it stands
@@ -59,7 +60,19 @@ test('road: nothing stands in the two lanes, from one end to the other', () => {
 test('road: cars are parked on the north side, on ours, or on neither, by section', () => {
   const cars = level2a.props.filter(([t, c, r, deg, o]) => VEHICLES[t] && o?.lights === false && r > 8 && r < 18);
   const north = cars.filter(([, , r]) => r < 11), south = cars.filter(([, , r]) => r > 16);
-  assert.ok(north.length >= 8 && south.length >= 5 && north.length + south.length === cars.length, `${north.length} north, ${south.length} south`);
+  // thinned (the user: "too many cars on the sides"): 12 where there were 21, by section
+  assert.ok(north.length === 8 && south.length === 4 && north.length + south.length === cars.length, `${north.length} north, ${south.length} south`);
+  const SECTIONS = [[0, 45, 3, 'n'], [62, 104, 2, 's'], [105, 147, 2, 'n'], [157, 246, 2, 'n'], [272, 312, 2, 's'], [357, 388, 1, 'n']];
+  for (const [c0, c1, n, sideOf] of SECTIONS) {
+    const here = cars.filter(([, c]) => c >= c0 && c <= c1);
+    assert.equal(here.length, n, `cols ${c0}-${c1}: ${here.length} parked`);
+    for (const [, c, r] of here) assert.equal(r < 11 ? 'n' : 's', sideOf, `col ${c}: on the section's side`);
+  }
+  assert.ok(new Set(cars.map(([t]) => t)).size >= 3, 'three models still');
+  // empty bays show it: a patch, a sealed crack, a cone somebody left (in the row, never in a lane)
+  const row = (r) => (r > 9 && r < 11) || (r > 16 && r < 18);
+  assert.ok(level2a.floor.filter(([n, , r]) => /^road_(patch|crack)/.test(n) && row(r)).length >= 6, 'patches and cracks in the empty bays');
+  assert.ok(level2a.props.filter(([t, c, r]) => t === 'traffic_cone' && (c < WORKS[0] || c > WORKS[1])).length >= 2, 'a stray cone');
   for (const [, , , deg] of north) assert.equal(deg, 180, 'facing west on their side');
   for (const [, , , deg] of south) assert.equal(deg, 0, 'facing east on ours');
   // stretches of 20 m and more with nobody parked on either side: the junctions, the bridge, the bus stop, the yard
