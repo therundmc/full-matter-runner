@@ -416,3 +416,18 @@ test('shield: the tutorial - a man on the landing with his back to the fire door
     assert.ok(!up[0].offstage && !up[1].offstage && up[2].offstage, `the first two come up the stairs (${how})`);
   }
 });
+
+test('shield: bare hands on a man with a pistol take his pistol, its rounds and no spare; a gun in hand keeps its own', () => {
+  const w = world(), p = player(w), g = guard(w, 20, 0, { weapon: { type: 'pistol', mag: 4, reserve: 2, wear: undefined, bare: false } });
+  p.take = function (type, mag) { this.setWeapon(type, mag); };
+  steps(w, p, 1, idle, pressE);
+  assert.equal(p.shield?.target, g);
+  assert.equal(p.weapon?.type, 'pistol');
+  assert.equal(p.weapon.mag, 4);
+  assert.equal(p.ammo['9mm'], 0, 'no spare magazine');
+  assert.equal(g.weapon, null);
+  const w2 = world(), p2 = player(w2, 'uzi'), g2 = guard(w2, 20, 0, { weapon: { type: 'pistol', mag: 4, reserve: 0 } });
+  steps(w2, p2, 1, idle, pressE);
+  assert.equal(p2.weapon.type, 'uzi');
+  assert.equal(g2.weapon.type, 'pistol');
+});

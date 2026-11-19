@@ -632,6 +632,14 @@ export default class Player extends Character {
     target.held = this;
     target.dormant = false;
     target.swing = target.tell = target.reloading = 0;
+    // bare hands on a man with a gun he can hold over him: it is in his hand (the user's call), its rounds with it,
+    // never his spare magazines
+    const gun = target.weapon, gd = gun && WEAPONS[gun.type];
+    if (this.def.hold === 'none' && gd?.kind === 'gun' && oneHanded(gd)) {
+      target.weapon = this.weapon = null;
+      this.take(gun.type, gun.mag, gun.wear, gun.bare);
+      this.pickFrom = { x: target.x, y: target.y };
+    }
     if (w.director) { w.director.release(target); w.director.provoked = true; } // nobody seizes a guard by accident
     this.body.collisionFilter = { ...this.body.collisionFilter, group };
     target.body.collisionFilter = { category: CAT.CHAR, mask: MASK.CHAR, group };

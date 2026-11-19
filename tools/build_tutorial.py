@@ -72,8 +72,9 @@ lv.actor('j', 11, 11, face=90, job='rummage')           # at the kitchen worktop
 lv.actor('m', 19, 10, face=0, job='hall')               # at the back door, smoking: comes when the first one is dead
 lv.actor('p', 17, 14, face=0, job='lookout')            # down the corridor, a pistol, his eyes on the corner: time to fire
 lv.actor('p', 9, 14, face=180, at=(9.4, 14.6))          # past the fire door, his back to it, a pistol: taken as a shield
-lv.actor('j', 7, 19, face=270)                          # coming up the stairs when he takes that man
-lv.actor('m', 9, 19, face=270)
+lv.actor('p', 7, 19, face=270)                          # coming up the stairs when he takes that man: two pistols, what
+                                                        # the shield is for
+lv.actor('p', 9, 19, face=270)
 lv.actor('k', 8, 20, face=270)                          # and a third when those two are dead
 lv.drop('bat', 12.5, 10.7, 25)
 
