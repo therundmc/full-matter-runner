@@ -56,6 +56,14 @@ export default class WorldRenderer {
     this.cues = new Cues(world); // readability cues (data/readability.js)
   }
 
+  // its canvases let go (World.dispose)
+  dispose() {
+    if (this.layer) this.layer.width = this.layer.height = 0;
+    this.layer = null;
+    this.smoke.dispose();
+    this.liquid.dispose();
+  }
+
   // the layer of what stands on the floor: the size of the picture, cleared, drawn with the scene's transform
   standing(ctx) {
     const c = ctx.canvas;

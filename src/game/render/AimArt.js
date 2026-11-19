@@ -9,11 +9,20 @@ import { aimCue, lineOfFire, lockTarget, meleeLock, throwCue } from '../systems/
 import { ringBits, chevronBits, barBits, flecks, ringRadius } from '../systems/AimMark.js';
 import { angDiff } from '../../engine/math.js';
 
-// ---- the marks of a frame: whole pixels, the brightest ink kept where two fall on the same one
-let marks = new Map();
+// ---- the marks of a frame: whole pixels, the brightest ink kept where two fall on the same one (the mark objects
+// kept from frame to frame: `pool`, `used` of them taken this frame)
+const marks = new Map(), pool = [];
+let used = 0;
 function dot(x, y, col, alpha) {
-  const ix = Math.floor(x), iy = Math.floor(y), k = ix * 8192 + iy, m = marks.get(k);
-  if (!m || m.alpha < alpha) marks.set(k, { x: ix, y: iy, col, alpha });
+  const ix = Math.floor(x), iy = Math.floor(y), k = ix * 8192 + iy;
+  let m = marks.get(k);
+  if (m && m.alpha >= alpha) return;
+  if (!m) {
+    m = pool[used] || (pool[used] = { x: 0, y: 0, col: '', alpha: 0 });
+    used++;
+    marks.set(k, m);
+  }
+  m.x = ix; m.y = iy; m.col = col; m.alpha = alpha;
 }
 // a pixel line from (x, y) along a, from d0 to d1 px; dash: [on, off, phase] or null for a solid one
 function ray(x, y, a, d0, d1, col, alpha, dash = null) {
@@ -42,7 +51,8 @@ function flush(ctx) {
     ctx.fillRect(m.x, m.y, 1, 1);
   }
   ctx.globalAlpha = 1;
-  marks = new Map();
+  marks.clear();
+  used = 0;
 }
 
 // a chevron pointing along a, its tip `at` px from (x, y), two px thick; `n` of them one behind the other

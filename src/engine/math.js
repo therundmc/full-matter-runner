@@ -5,7 +5,6 @@ export const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const chance = (p) => Math.random() < p;
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
-export const dist = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
 export const frac = (v) => v - Math.floor(v);
 // r = [a, b]: the point k of the way from a to b
 export const lerpRange = (r, k) => r[0] + (r[1] - r[0]) * k;
@@ -64,6 +63,24 @@ export function stepAngle(a, was, step, slack = 0) {
 
 // gaussian-ish spread in [-1, 1]
 export const spread = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
+
+// A summed-area table of a w x h grid (set(x, y): is that cell counted), for how many cells of a rectangle are set in
+// constant time (areaCount)
+export function areaTable(w, h, set) {
+  const W = w + 1, s = new Int32Array(W * (h + 1));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) s[(y + 1) * W + x + 1] = (set(x, y) ? 1 : 0) + s[y * W + x + 1] + s[(y + 1) * W + x] - s[y * W + x];
+  }
+  return { s, w, h };
+}
+
+// the cells set in [c0, c1] x [r0, r1] (inclusive; clamped to the grid)
+export function areaCount({ s, w, h }, c0, r0, c1, r1) {
+  c0 = Math.max(0, c0); r0 = Math.max(0, r0); c1 = Math.min(w - 1, c1); r1 = Math.min(h - 1, r1);
+  if (c1 < c0 || r1 < r0) return 0;
+  const W = w + 1;
+  return s[(r1 + 1) * W + c1 + 1] - s[r0 * W + c1 + 1] - s[(r1 + 1) * W + c0] + s[r0 * W + c0];
+}
 
 // rotate a local offset (lx, ly) by angle and add to (x, y)
 export function local(x, y, angle, lx, ly) {

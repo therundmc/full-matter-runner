@@ -75,6 +75,13 @@ export default class LiquidArt {
     this.shown = false; // something wet in view this frame
   }
 
+  // its buffers let go (World.dispose)
+  dispose() {
+    for (const b of [this.color, this.mirror]) if (b) b.c.width = b.c.height = 0;
+    this.color = this.mirror = null;
+    this.sim = null;
+  }
+
   setup(S) {
     const look = LIQUIDS.look, px = look.px, L = CH + 2, R = CH + 4;
     this.sim = S;

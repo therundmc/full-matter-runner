@@ -13,6 +13,10 @@
 import { POST } from '../data/post.js';
 import { devParam } from '../data/build.js';
 
+// a number of data/post.js written into a shader (a float literal)
+const num = (v) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
+const TAPE = POST.tube.tape, SHIMMER = POST.heat.shimmer, SHAFT = POST.rays, EDGE = POST.focus.shape;
+
 const VERT = `
 attribute vec2 aPos;
 varying vec2 vUv;
@@ -61,10 +65,10 @@ void main() {
       vec2 d = (L.xy - vUv) * uReach / 10.0;
       vec2 p = vUv;
       float w = 1.0;
-      for (int j = 0; j < 10; j++) { p += d; acc += texture2D(uTex, p).rgb * w * L.z; w *= 0.86; }
+      for (int j = 0; j < 10; j++) { p += d; acc += texture2D(uTex, p).rgb * w * L.z; w *= ${num(SHAFT.decay)}; }
     }
   }
-  gl_FragColor = vec4(acc / 6.5, 1.0);
+  gl_FragColor = vec4(acc / ${num(SHAFT.norm)}, 1.0);
 }`;
 
 const FINAL = `${HEAD}
@@ -92,9 +96,9 @@ void main() {
   float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
   // torn tape: some bands jump sideways, the picture rolls a hair
   if (uGlitch > 0.001) {
-    float n = hash(vec2(floor(uv.y * 26.0), floor(uTime * 24.0)));
-    uv.x += (n - 0.5) * 0.11 * uGlitch * step(0.6, n);
-    uv.y += 0.006 * uGlitch * sin(uTime * 47.0);
+    float n = hash(vec2(floor(uv.y * ${num(TAPE.bands)}), floor(uTime * ${num(TAPE.rate)})));
+    uv.x += (n - 0.5) * ${num(TAPE.shift)} * uGlitch * step(${num(TAPE.from)}, n);
+    uv.y += ${num(TAPE.roll)} * uGlitch * sin(uTime * ${num(TAPE.rollRate)});
   }
   // shock waves: the picture pushed outward on a ring
   for (int i = 0; i < 4; i++) {
@@ -111,7 +115,7 @@ void main() {
     if (h.w > 0.0) {
       vec2 d = (uv - h.xy) * vec2(asp, 1.0);
       float f = max(0.0, 1.0 - length(d) / h.z);
-      uv += vec2(sin(uv.y * 210.0 + uTime * 8.0) / asp, cos(uv.x * asp * 170.0 - uTime * 6.1)) * 0.0017 * h.w * f * f;
+      uv += vec2(sin(uv.y * ${num(SHIMMER.waves[0])} + uTime * ${num(SHIMMER.rates[0])}) / asp, cos(uv.x * asp * ${num(SHIMMER.waves[1])} - uTime * ${num(SHIMMER.rates[1])})) * ${num(SHIMMER.amp)} * h.w * f * f;
     }
   }
   // at the wheel: how far this point is into the band the speed works on (0 on the road and round his car, 1 on
@@ -157,7 +161,7 @@ void main() {
   }
   // focus: soft toward the edges, soft all over behind a menu
   vec3 soft = texture2D(uSoft, uv).rgb;
-  float edge = smoothstep(0.42, 1.0, length(c * vec2(1.0, 1.08)) * 0.78);
+  float edge = smoothstep(${num(EDGE.from)}, 1.0, length(c * vec2(1.0, ${num(EDGE.tall)})) * ${num(EDGE.k)});
   col = mix(col, soft, clamp(edge * uEdge + uBlur, 0.0, 1.0));
   // glow and shafts
   col += texture2D(uGlow, uv).rgb * uGlowK + texture2D(uRays, uv).rgb * uRaysK;
@@ -179,7 +183,7 @@ void main() {
   col *= 1.0 - uScan * step(0.5, fract(gl_FragCoord.y / (2.0 * uScanStep)));
   float m = mod(gl_FragCoord.x, 3.0);
   col *= 1.0 - uMask + uMask * 3.0 * vec3(step(m, 1.0), step(1.0, m) * step(m, 2.0), step(2.0, m));
-  col *= 1.0 - uVignette * smoothstep(0.45, 1.0, length(c) * 0.7071);
+  col *= 1.0 - uVignette * smoothstep(${num(POST.tube.vignetteFrom)}, 1.0, length(c) * 0.7071);
   col += (hash(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * uGrain;
   gl_FragColor = vec4(col * inside, 1.0);
 }`;
@@ -228,7 +232,9 @@ class Post {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     this.sceneTex = this.texture();
+    this.sceneW = this.sceneH = 0; // the size the scene's texture was made at (render)
     this.targets = null;
+    this.one = {}; // the final pass's single numbers, kept from frame to frame
     // the card dropped us: step aside for good, the game goes back to drawing on its own canvas
     canvas.addEventListener('webglcontextlost', () => {
       this.ok = false;
@@ -286,8 +292,13 @@ class Post {
   render(u, t) {
     if (!this.ok) return;
     const gl = this.gl, [h0, h1, q0, q1, q2] = this.targets, W = this.canvas.width, H = this.canvas.height;
+    // the scene's texture: made at the scene's size when that changes, then only its pixels sent
+    const S = this.scene;
     gl.bindTexture(gl.TEXTURE_2D, this.sceneTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.scene);
+    if (S.width !== this.sceneW || S.height !== this.sceneH) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, S);
+      this.sceneW = S.width; this.sceneH = S.height;
+    } else gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, S);
     const blur = (src, dst, x, y) => this.pass(this.blurP, src, dst, (g, l) => { g.uniform1i(l.uTex, 0); g.uniform2f(l.uStep, x, y); });
     // the soft picture
     blur(this.sceneTex, h0, 1 / h0.w, 0);
@@ -312,7 +323,7 @@ class Post {
       const R = u.rush;
       g.uniform2f(l.uRushDir, R.dir[0], R.dir[1]); g.uniform2f(l.uRushAt, R.at[0], R.at[1]); g.uniform2f(l.uRushBand, R.band[0], R.band[1]);
       g.uniform2f(l.uRushCar, R.car[0], R.car[1]);
-      const one = {
+      const one = Object.assign(this.one, {
         uTime: t % 1000, uFringe: u.fringe, uZoom: u.zoom, uFrame: u.frame, uGlitch: u.glitch, uCurve: u.curve, uScan: u.scan,
         uScanStep: u.scanStep, uMask: u.mask, uBleed: u.bleed, uGrain: u.grain, uVignette: u.vignette, uEdge: u.edge, uBlur: u.blur,
         uGlowK: u.glow.strength, uRaysK: u.rays.strength, uRadial: u.radial, uWaveWidth: u.waveWidth,
@@ -320,7 +331,7 @@ class Post {
         uSat: u.grade.sat, uCon: u.grade.con, uTintK: u.grade.tintK,
         uRushShare: R.lines.share, uRushRun: R.lines.run, uRushGlow: R.lines.glow,
         uFlat: R.flat, uRush: R.k, uRushLen: R.len, uRushRows: R.rows, uRushFlick: R.flick, uRushMix: R.mix, uRushPull: R.pull, uRushSplit: R.split, uRushDark: R.dark,
-      };
+      });
       for (const k in one) g.uniform1f(l[k], one[k]);
     });
   }
