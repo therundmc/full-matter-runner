@@ -48,7 +48,7 @@ export default {
     "==========================================",
     "==========================================",
     "==========================================",
-    "------------------------------------------",
+    "--==--==--=====================--==--==--=",
     "==========================================",
     "==========================================",
     "ssssssssssssssssssssssssssssssssssssssssss",
@@ -109,15 +109,22 @@ export default {
     ['streetlight', 15.5, 30.3, 270], ['streetlight', 27.5, 30.3, 270], ['bench', 12.5, 31.7, 180],
     ['hydrant', 25.5, 30.35, 0], ['news_box', 10.7, 31.8, 180], ['neon_sign_palm', 17, 31.91, 180],
     ['flyers', 13.4, 31.94, 180], ['palm_tree', 4.5, 31.2, 0], ['palm_tree', 37.5, 31.2, 0],
+    ['news_box', 11.25, 31.8, 180], ['paper_bundle', 9.95, 31.74, 0], ['mailbox', 31, 30.36, 0],
+    ['sign_speed', 2.5, 30.3, 0], ['shopping_cart', 22.3, 36.45, 90],
     // road: parked along the bar side
-    ['car2', 15, 24, 0, { lights: false, trunk: 'tire_iron' }], ['car', 29.2, 24, 180, { lights: false }],
-    ['van', 34.3, 24.05, 180, { lights: false }],
+    ['barricade', 40.75, 23.98, 90], ['sign_works', 41.45, 24.1, 270], ['traffic_cone', 37.75, 23.35, 0],
+    ['traffic_cone', 37.8, 24.05, 0], ['traffic_cone', 38, 24.82, 0], ['traffic_cone', 39.2, 24.84, 0],
+    ['traffic_cone', 40.3, 24.82, 0], ['car2', 15, 24, 0, { lights: false, trunk: 'tire_iron' }],
+    ['car', 29.2, 24, 180, { lights: false }], ['van', 34.3, 24.05, 180, { lights: false }],
     // north sidewalk and the facade
     ['neon_sign_bar', 28, 21.09, 0], ['neon_sign_arrow', 9.6, 21.09, 0], ['neon_sign_open', 22.5, 21.09, 0],
     ['ash_urn', 24.4, 21.3, 0], ['streetlight', 6.5, 22.7, 90], ['streetlight', 33.5, 22.7, 90],
     ['bench', 35.5, 22.62, 180], ['trash_can', 38.5, 21.35, 0], ['hydrant', 10.6, 22.65, 0],
     ['vending', 17.42, 21.33, 0], ['news_box', 25.6, 21.19, 0], ['flyers', 2.6, 21.06, 0], ['flyers', 31.4, 21.06, 0],
-    ['palm_tree', 39.6, 21.8, 0],
+    ['palm_tree', 39.6, 21.8, 0], ['bin_bag', 9.75, 21.32, 0], ['bin_bag', 10.3, 21.36, 0],
+    ['cardboard_box', 10.02, 21.8, 0], ['sign_noparking', 3.7, 22.75, 0], ['paper_bundle', 26.25, 21.22, 0],
+    ['mailbox', 32.4, 22.58, 0], ['phone_booth', 1.1, 21.44, 0], ['awning_red', 6.5, 21.56, 0],
+    ['awning_blue', 35.5, 21.56, 0],
     // liquor store
     ['neon_sign_liquor', 4, 21.09, 0], ['alarm_box', 4.87, 21.1, 0], ['bottle_shelf', 5, 17.2, 0],
     ['bottle_shelf', 6.3, 17.2, 0], ['ladder', 3.5, 16.5, 0], ['bottle_shelf', 8.3, 17.2, 0],
@@ -213,7 +220,7 @@ export default {
   // rooms open to the public: a stranger may hang about there, no guard tells him to clear off
   welcome: [[20, 12, 22, 12], [15, 13, 22, 15], [15, 16, 22, 19], [20, 6, 22, 11]],
   // painted on the floor, no body: [sprite, col, row, deg]
-  floor: [['tag', 20.2, 34.9, -8], ['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 10.5, 25.0, 0], ['road_edge', 13.5, 25.0, 0], ['road_edge', 16.5, 25.0, 0], ['road_edge', 19.5, 25.0, 0], ['road_edge', 22.5, 25.0, 0], ['road_edge', 25.5, 25.0, 0], ['road_edge', 28.5, 25.0, 0], ['road_edge', 31.5, 25.0, 0], ['road_edge', 34.5, 25.0, 0], ['road_edge', 37.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['parking_bay', 2.0, 24.05, 90], ['parking_bay', 7.0, 24.05, 90], ['parking_bay', 12.1, 24.05, 90], ['parking_bay', 17.1, 24.05, 90], ['parking_bay', 22.1, 24.05, 90], ['parking_bay', 26.8, 24.05, 90], ['parking_bay', 31.6, 24.05, 90], ['parking_bay', 36.9, 24.05, 90], ['parking_bay', 41.9, 24.05, 90], ['entry_mat', 21.0, 21.4, 0], ['tag', 11.9, 12.6, 80], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
+  floor: [['tag', 20.2, 34.9, -8], ['road_patch_b', 39.2, 26.95, 90], ['road_patch_c', 9.6, 28.8, 0], ['road_patch_a', 32.2, 26.2, 0], ['road_crack_b', 3.2, 27.3, 0], ['road_crack_a', 17.6, 26.3, 180], ['road_crack_a', 33.0, 28.6, 0], ['skid_marks', 25.7, 26.3, 180], ['oil_stain_b', 1.7, 24.1, 0], ['oil_stain_a', 7.9, 23.85, 90], ['oil_stain_a', 18.3, 24.2, 180], ['road_edge', 1.5, 25.0, 0], ['road_edge', 4.5, 25.0, 0], ['road_edge', 7.5, 25.0, 0], ['road_edge', 9.1, 25.0, 0], ['road_edge', 15.9, 25.0, 0], ['road_edge', 18.5, 25.0, 0], ['road_edge', 24.5, 25.0, 0], ['road_edge', 27.5, 25.0, 0], ['road_edge', 30.5, 25.0, 0], ['road_edge', 33.5, 25.0, 0], ['road_edge', 36.5, 25.0, 0], ['road_edge', 39.5, 25.0, 0], ['road_edge', 40.5, 25.0, 0], ['park_tee', 3.4, 24.0, 0], ['park_tee', 9.0, 24.0, 0], ['park_tee', 14.4, 24.0, 0], ['park_tee', 19.5, 24.0, 0], ['park_tee', 26.65, 24.0, 0], ['park_tee', 31.75, 24.0, 0], ['park_tee', 36.85, 24.0, 0], ['park_tee', 41.95, 24.0, 0], ['road_loading', 4.9, 24.0, 0], ['hatch_bay', 12.5, 24.0, 0], ['hatch_kerb', 24.9, 24.0, 0], ['road_keep', 14.3, 26.25, 270], ['road_clear', 11.6, 26.25, 270], ['zebra_a', 21.5, 23.5, 0], ['zebra_b', 21.5, 24.5, 0], ['zebra_a', 21.5, 25.5, 0], ['zebra_a', 21.5, 26.5, 0], ['zebra_b', 21.5, 27.5, 0], ['zebra_a', 21.5, 28.5, 0], ['zebra_a', 21.5, 29.5, 0], ['kerb_ramp_s', 21.0, 22.5312, 0], ['kerb_ramp_n', 21.0, 30.4688, 0], ['stop_line', 19.25, 28.75, 0], ['stop_line', 23.75, 26.25, 0], ['road_slow', 16.5, 28.75, 90], ['road_slow', 28.6, 26.25, 270], ['road_arrow', 6.5, 28.75, 0], ['road_arrow', 36.0, 26.25, 180], ['centre_double', 12.5, 27.5, 0], ['centre_double', 15.5, 27.5, 0], ['centre_double', 18.5, 27.5, 0], ['centre_double', 24.5, 27.5, 0], ['centre_double', 27.5, 27.5, 0], ['kerb_s_4', 2.0, 22.9688, 0], ['kerb_s_yellow', 4.5, 22.9688, 0], ['kerb_s_yellow', 5.5, 22.9688, 0], ['kerb_s_yellow', 6.5, 22.9688, 0], ['kerb_s_yellow', 7.5, 22.9688, 0], ['kerb_s_yellow', 8.5, 22.9688, 0], ['kerb_s_red', 9.5, 22.9688, 0], ['kerb_s_red', 10.5, 22.9688, 0], ['kerb_s_low', 11.5, 22.9688, 0], ['kerb_s_low', 12.5, 22.9688, 0], ['kerb_s_low', 13.5, 22.9688, 0], ['kerb_s_4', 16.0, 22.9688, 0], ['kerb_s', 18.5, 22.9688, 0], ['kerb_s_red', 19.5, 22.9688, 0], ['kerb_s_low', 20.5, 22.9688, 0], ['kerb_s_low', 21.5, 22.9688, 0], ['kerb_s', 22.5, 22.9688, 0], ['kerb_s_red', 23.5, 22.9688, 0], ['kerb_s_yellow', 24.5, 22.9688, 0], ['kerb_s_yellow', 25.5, 22.9688, 0], ['kerb_s_yellow', 26.5, 22.9688, 0], ['kerb_s_4', 29.0, 22.9688, 0], ['kerb_s_4', 33.0, 22.9688, 0], ['kerb_s_4', 37.0, 22.9688, 0], ['kerb_s', 39.5, 22.9688, 0], ['kerb_s', 40.5, 22.9688, 0], ['kerb_s', 41.5, 22.9688, 0], ['kerb_n_4', 2.0, 30.0312, 0], ['kerb_n_4', 6.0, 30.0312, 0], ['kerb_n_4', 10.0, 30.0312, 0], ['kerb_n_4', 14.0, 30.0312, 0], ['kerb_n_4', 18.0, 30.0312, 0], ['kerb_n_low', 20.5, 30.0312, 0], ['kerb_n_low', 21.5, 30.0312, 0], ['kerb_n', 22.5, 30.0312, 0], ['kerb_n', 23.5, 30.0312, 0], ['kerb_n_red', 24.5, 30.0312, 0], ['kerb_n_red', 25.5, 30.0312, 0], ['kerb_n_red', 26.5, 30.0312, 0], ['kerb_n_4', 29.0, 30.0312, 0], ['kerb_n_4', 33.0, 30.0312, 0], ['kerb_n_4', 37.0, 30.0312, 0], ['kerb_n', 39.5, 30.0312, 0], ['kerb_n', 40.5, 30.0312, 0], ['kerb_n', 41.5, 30.0312, 0], ['drain', 18.4, 23.25, 0], ['drain', 39.4, 23.25, 0], ['drain', 8.5, 29.75, 0], ['drain', 23.6, 29.75, 0], ['drain', 34.5, 29.75, 0], ['valve_cap', 10.6, 23.6, 0], ['valve_cap', 25.5, 29.5, 0], ['manhole_sq', 29.0, 22.35, 0], ['manhole_sq', 33.6, 30.9, 90], ['tree_grate', 4.5, 31.2, 0], ['tree_grate', 37.5, 31.2, 0], ['tree_grate', 39.6, 21.8, 0], ['steel_plate', 39.2, 23.95, 0], ['drain', 12.4, 19.3, 0], ['road_crack_b', 12.5, 16.0, 0], ['drain', 21.3, 32.6, 0], ['park_tee', 20.3, 2.7, 0], ['park_tee', 26.7, 2.7, 0], ['oil_stain_b', 28.3, 2.9, 0], ['drain', 18.6, 4.4, 0], ['manhole_sq', 29.3, 4.2, 0], ['entry_mat', 21.0, 21.4, 0], ['tag', 11.9, 12.6, 80], ['trapdoor', 35.55, 17.95, 0], ['rug', 25.75, 10.35, 0]],
   // weapons lying about [type, col, row, deg, rounds in it (null: full)]
   drops: [["pistol", 8.62, 4.72, 205, null]],
   // weapons stood against a wall [type, col, row, deg]
@@ -259,7 +266,7 @@ export default {
     ["feather", 27.152, 18.827, 172, 0], ["feather", 26.797, 18.402, 219, 0], ["feather", 27.134, 18.716, 340, 0],
   ],
   // street fauna: flocks of pigeons [col, row, n], cats [col, row] (rats, flies and moths need no data)
-  critters: {"cats": [[22.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [31.3, 21.7, 2], [4.6, 12.6, 3], [8.6, 6.0, 2]]},
+  critters: {"cats": [[22.4, 34.5]], "pigeons": [[16.5, 30.6, 3], [31.3, 21.7, 2]]},
   // beds heard from one tile (data/soundscape.js SPOTS): [bed, col, row]
   soundSpots: [['window', 9, 31]],
   // street dressing without a body: manholes [col, row], papers [col0, row0, col1, row1, n], beds [col, row, deg]

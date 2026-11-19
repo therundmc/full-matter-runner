@@ -100,7 +100,6 @@ export default class WorldRenderer {
     this.liquid.draw(ctx, view);
     drawRainGround(ctx, w.weather, view, t);
     D.drawFlesh(ctx, fx0, fy0, fx1, fy1);
-    this.cues.drawMark(ctx); // the ring at the player's feet (render/Readability.js), under everybody
     // what stands or lies on the floor is drawn on a layer of its own, then laid on the scene: its pixels are what the
     // floor's reflections (Lighting.post) must not cover
     const floor = ctx;

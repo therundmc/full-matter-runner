@@ -86,6 +86,8 @@ FLOOR += ('zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'road_
           'road_slow', 'road_keep', 'road_clear', 'road_only', 'hatch_yard', 'hatch_bay', 'drain', 'manhole_sq', 'valve_cap',
           'road_patch_a', 'road_patch_b', 'road_patch_c', 'road_crack_a', 'road_crack_b', 'tree_grate', 'trench', 'spoil',
           'steel_plate', 'viaduct_shadow')
+# ... and level 1's own
+FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_marks')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
           'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)

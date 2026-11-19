@@ -13,6 +13,7 @@ const { VEHICLES } = await load('game/entities/Vehicle.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: level2a } = await load('game/data/levels/level2a.js');
 const { default: lab } = await load('game/data/levels/lab.js');
+const { default: level1 } = await load('game/data/levels/level1.js');
 
 const C = level2a.chase;
 const assets = readFileSync(fileURLToPath(new URL('../src/engine/Assets.js', import.meta.url)), 'utf8');
@@ -25,12 +26,12 @@ function halfAcross(type, deg) {
 }
 
 test('road: every prop and every piece of floor paint of the street is a known sprite, loaded by the game', () => {
-  const kinds = new Set([...level2a.props.map(([t]) => t), ...lab.props.map(([t]) => t)]);
+  const kinds = new Set([...level2a.props, ...lab.props, ...level1.props].map(([t]) => t)); // (level 1's street: tests/street1.test.mjs)
   for (const k of kinds) {
     assert.ok(PROPS[k] || VEHICLES[k], `${k} is a prop`);
     assert.ok(png(PROPS[k]?.sprite ? 'trash_can' : k) && (PROPS[k]?.sprite || assets.includes(`'${k}'`)), `${k}: its sprite, listed in engine/Assets.js (unlisted, it is drawn as a bin)`);
   }
-  for (const [name] of level2a.floor) assert.ok(png(name) && assets.includes(`'${name}'`), `${name}: painted on the floor, listed`);
+  for (const [name] of [...level2a.floor, ...level1.floor]) assert.ok(png(name) && assets.includes(`'${name}'`), `${name}: painted on the floor, listed`);
   for (const k of ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade']) assert.ok(png(k + '_glow'), `${k}: its emissive map`);
 });
 
