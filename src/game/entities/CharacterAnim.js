@@ -147,8 +147,11 @@ export function newPose() {
     tuck: 0, over: 0, // curled up in a ball, the back up (a roll); the legs up over the body
     sq: 1, sqW: 1, sqA: 0, // the curled body's length along axis sqA and its width across it (a roll seen from above)
     ha: 0,            // where the head looks: it keeps to the aim while the shoulders turn under it
+    hox: 0, hoy: 0,   // the head's own shift off the neck (pose px, world orientation): pulled back onto a shoulder
     feet: [pt(), pt()],
     hand: ['loose', 'loose'], elb: [0.45, 0.45], // how each hand is ('fist' | 'loose' | 'flat'), elbows out 0 .. 1
+    elbOn: [false, false], elbow: [pt(), pt()],  // an elbow put where the pose says (an arm round a neck), not found
+    armK: [1, 1],     // each arm's girth (1: as painted; an arm seen flat across a chest shows broader)
     hl: pt(), hr: pt(), wpn: pt(), carry: pt(),
     wpnOn: false, carryImg: null,
     bare: false,      // the gun drawn with its magazine out (weapons.js `_bare` sprite)
@@ -595,6 +598,9 @@ export function standPose(ch, P, a) {
   P.over = 0;
   P.sq = P.sqW = 1;
   P.bow = 0;
+  P.hox = P.hoy = 0;
+  P.elbOn[0] = P.elbOn[1] = false;
+  P.armK[0] = P.armK[1] = 1;
 
   // feet: along the way he goes, toes the way his hips face (ch.footA), each one planted then swung ahead; standing
   // still, the weight on one leg puts the other foot a little forward
@@ -2152,56 +2158,158 @@ export function heldPose(ch, P) {
   return P;
 }
 
-// The man who holds another in front of him as a shield (Player.shield, SHIELD.pose), over his standing pose: the
-// left arm round the man's neck from behind; a gun's hand out to the right, clear of his shoulder (the muzzle goes
-// with it: Character.noteMuzzle); a blade laid across his throat; an empty right hand in his collar.
+// ---------------- the human shield (Player.shield, SHIELD.pose) ----------------
+// What the two poses share, so that the arm stays on the neck it is round: m (hauled in, 0 .. 1), limp (dead in the
+// arms, 0 .. 1), j (his struggle, px), back / side (px his drawn torso is off his centre, along the aim and to its
+// right: pulled onto the chest and aside, snatched back at the grab, thrown by a round), take / wr (the click's
+// kill: the hold taken up, then the wrench or the slice itself, each 0 .. 1), kind (that kill's, or null)
+const HOLD = { m: 0, limp: 0, j: 0, back: 0, side: 0, take: 0, wr: 0, kind: null };
+const WRENCH_AT = 0.45; // share of the kill's motion that takes the hold up before the wrench
+export function holdAt(sh, t) {
+  const S = SHIELD.pose, H = HOLD, b = sh.target.breath || 0, k = sh.kill;
+  H.m = smooth(sh.t / SHIELD.set);
+  H.limp = sh.dead ? smooth((t - sh.dead.t) / S.limp.in) : 0;
+  H.j = Math.sin(t * S.shake[0] + b) * S.shake[1] * (1 - H.limp) * (0.3 + 0.7 * smooth(Math.sin(t * 1.7 + b) * 2));
+  const u = sh.t / S.jerk[0], jerk = u < 1 ? Math.sin(Math.PI * Math.sqrt(u)) : 0;
+  const hit = Math.exp(-Math.max(0, t - sh.hit) * 9), q = k ? clamp(k.t / k.K.at, 0, 1) : 0;
+  H.kind = k ? k.kind : null;
+  H.take = smooth(q / WRENCH_AT);
+  H.wr = easeOut((q - WRENCH_AT) / (1 - WRENCH_AT)); // all at once
+  H.back = -(S.pull * H.m + S.jerk[1] * jerk + 1.6 * hit * H.m + 0.7 * H.take) + 0.4 * H.j;
+  H.side = S.aside * H.m * (1 - 0.6 * H.limp);
+  return H;
+}
+
+// The man who holds another in front of him as a shield, over his standing pose: bladed behind him, a shoulder in
+// his back, that arm round his throat (the elbow under the chin, the hand back on the far shoulder: P.elbow); a
+// gun's hand out past his other shoulder (the muzzle goes with it: Character.noteMuzzle); a blade at the side of his
+// neck; an empty hand behind his head. The click's kill (sh.kill): the arm tightened then torn aside, or the blade
+// taken across his throat and drawn back.
 export function shieldPose(ch, P) {
   const sh = ch.shield, tg = sh.target, S = SHIELD.pose, d = ch.def, a = ch.angle, c = Math.cos(a), s = Math.sin(a);
-  const m = smooth(sh.t / SHIELD.set), D = Math.hypot(tg.x - ch.x, tg.y - ch.y) / BODY_SCALE;
-  // a hand from where the standing pose has it to (x, y) in the aim's frame
-  const put = (h, x, y, side) => {
-    const X = lerp(h.x * c + h.y * s, x, m), Y = lerp(-h.x * s + h.y * c, y, m);
-    h.x = X * c - Y * s; h.y = X * s + Y * c;
-    reachOut(h, P, side);
-  };
-  put(P.hl, D + S.arm[0], S.arm[1], -1);
-  P.hand[0] = 'fist'; P.elb[0] = 0.25;
+  const H = holdAt(sh, ch.world.time), m = H.m, neck = H.kind === 'neck', cut = H.kind === 'throat';
+  // his centre in the aim's frame (pose px), and his neck there
+  const wx = (tg.x - ch.x) / BODY_SCALE, wy = (tg.y - ch.y) / BODY_SCALE, gx = wx * c + wy * s, gy = -wx * s + wy * c;
+  const nx = gx + H.back, ny = gy + H.side;
+  const along = (h) => h.x * c + h.y * s, across = (h) => -h.x * s + h.y * c;
+  const set = (h, x, y) => { h.x = x * c - y * s; h.y = x * s + y * c; };
+  // the choking arm goes round the front of his neck, not through it; the elbow from where the arm had it
+  const wr = neck ? H.wr : 0, e1x = nx + S.elbow[0] - 0.9 * wr, e1y = ny + S.elbow[1] - S.wrench[1] * wr;
+  const h0x = along(P.hl), h0y = across(P.hl), h1x = nx + S.hand[0] - 0.5 * wr, h1y = ny + S.hand[1] - 0.8 * wr, n = 1 - m;
+  set(P.hl, n * n * h0x + 2 * n * m * (nx + 7.5) + m * m * h1x, n * n * h0y + 2 * n * m * (ny - 4.5) + m * m * h1y);
+  shoulder(SH, P, -1);
+  set(P.elbow[0], lerp((along(SH) + h0x) / 2, e1x, m), lerp((across(SH) + h0y) / 2 - 2, e1y, m));
+  P.elbOn[0] = true;
+  P.armK[0] = lerp(1, S.girth, m);
+  P.hand[0] = 'fist';
   P.flat = null;
   if (P.wpnOn && d.kind === 'gun') {
-    const out = Math.max(0, S.gun - (-P.hr.x * s + P.hr.y * c)) * m;
-    for (const h of [P.hr, P.wpn]) { h.x -= out * s; h.y += out * c; }
+    // (from where the gun is held out, so that its kick stays in the hand)
+    const rest = d.hold === 'side' ? [sideReach(d), SIDE.aim[1]] : PAIR.aim;
+    const dx = (gx + S.gun[0] - rest[0]) * m, dy = (gy + S.gun[1] - rest[1]) * m;
+    for (const h of [P.hr, P.wpn]) { h.x += dx * c - dy * s; h.y += dx * s + dy * c; }
   } else if (P.wpnOn) {
-    put(P.hr, D + ON.throat + 0.6, 3.2, 1);
-    P.wpn.x = P.hr.x; P.wpn.y = P.hr.y; P.wpn.a = lerpA(P.wpn.a, a - 1.3, m);
-    P.wpnLen = lerp(P.wpnLen, 0.8, m);
+    const k = cut ? H.take : 0, w2 = cut ? H.wr : 0;
+    const bx = lerp(lerp(S.blade[0], S.slice[0][0], k), S.slice[1][0], w2), by = lerp(lerp(S.blade[1], S.slice[0][1], k), S.slice[1][1], w2);
+    set(P.hr, lerp(along(P.hr), nx + bx, m), lerp(across(P.hr), ny + by, m));
+    P.wpn.x = P.hr.x; P.wpn.y = P.hr.y; P.wpn.a = lerpA(P.wpn.a, a + S.blade[2] + 0.5 * k, m);
+    P.wpnLen = lerp(P.wpnLen, 0.85, m);
+    P.elb[1] = 0.8;
     P.top = 1;
   } else {
-    put(P.hr, D - 1, 4.6, 1);
-    P.hand[1] = 'fist'; P.elb[1] = 0.3;
+    // behind his head, the elbow out; the wrench: it shoves his head round as the other arm tears it back
+    set(P.hr, lerp(along(P.hr), nx + S.nape.at[0] + 1.2 * wr, m), lerp(across(P.hr), ny + S.nape.at[1] - 1.6 * wr, m));
+    shoulder(SH, P, 1);
+    set(P.elbow[1], lerp(along(SH), nx + S.nape.elbow[0], m), lerp(across(SH) + 3, ny + S.nape.elbow[1] - 1.5 * wr, m));
+    P.elbOn[1] = true;
+    P.hand[1] = 'flat'; P.flat = 'hr'; P.flatA = a - 1.9;
+  }
+  P.ta = a + (S.twist + 0.12 * H.take + 0.4 * wr) * m;
+  P.tx += (S.lean[0] * c - S.lean[1] * s) * m; P.ty += (S.lean[0] * s + S.lean[1] * c) * m;
+  return P;
+}
+
+// The man held as a shield (Enemy.held, Player.shield), in his own frame: pulled back onto the chest behind him and
+// a little aside, his head thrown back off the arm round his throat, his shoulders drawn in, his hands clawing at
+// the forearm in fits (it never frees him), thrown back by every round he takes. His neck broken: his head turned
+// right round, his hands flown open. Dead in the arms: sunk, his head lolling, his arms hanging, his feet trailing
+// after him (sh.drag, systems/Shield.js dragFeet).
+export function hostagePose(ch, P) {
+  const sh = ch.held.shield, S = SHIELD.pose, L = S.limp, a = P.ta, c = Math.cos(a), s = Math.sin(a);
+  const H = holdAt(sh, ch.world.time), m = H.m, limp = H.limp, live = 1 - limp, j = H.j, wr = H.kind === 'neck' ? H.wr : 0;
+  P.tx += c * H.back - s * H.side; P.ty += s * H.back + c * H.side;
+  P.s *= 1 - L.sink * limp;
+  P.ta = a + 0.12 * j + 0.1 * H.take - 0.5 * wr;
+  P.hunch = Math.max(P.hunch, S.hunch * m * live);
+  P.bow = lerp(-(S.chin + 0.15 * H.take) * m, L.head[0], limp);
+  P.ha = a + lerp((S.head[2] + 0.3 * j) * m + S.wrench[0] * wr, L.head[1], limp);
+  const ox = (S.head[0] - 0.8 * H.take) * m * live, oy = (S.head[1] + S.wrench[2] * wr) * m * live;
+  P.hox = ox * c - oy * s; P.hoy = ox * s + oy * c;
+  const put = (h, at, to, dj) => {
+    const lx = lerp(lerp(at[0] + dj, 5, wr), to[0], limp), ly = lerp(lerp(at[1], at[1] * 5, wr), to[1], limp);
+    h.x = lerp(h.x, P.tx + (lx * c - ly * s) * P.s, m); h.y = lerp(h.y, P.ty + (lx * s + ly * c) * P.s, m);
+  };
+  put(P.hl, S.claw[0], L.hands[0], j);
+  if (!P.wpnOn) put(P.hr, S.claw[1], L.hands[1], -j);
+  else {
+    // what he still has in his hand hangs by his thigh, of no use to him
+    const hx = P.tx + (S.low[0] * c - S.low[1] * s) * P.s, hy = P.ty + (S.low[0] * s + S.low[1] * c) * P.s;
+    P.hr.x = P.wpn.x = lerp(P.hr.x, hx, m); P.hr.y = P.wpn.y = lerp(P.hr.y, hy, m);
+    P.wpn.a = lerpA(P.wpn.a, a + S.low[2], m);
+    P.wpnLen = lerp(P.wpnLen, S.low[3], m);
+  }
+  P.hand[0] = P.hand[1] = wr > 0.3 ? 'flat' : 'loose';
+  P.elb[0] = P.elb[1] = lerp(0.75, 0.3, limp);
+  P.top = 0; // (his fingers show past the arm, from under it: the arm is what must be seen)
+  if (limp > 0 && sh.drag) {
+    for (let i = 0; i < 2; i++) {
+      const f = P.feet[i], q = sh.drag[i], qx = q.x / BODY_SCALE, qy = q.y / BODY_SCALE;
+      f.x = lerp(f.x, qx, limp); f.y = lerp(f.y, qy, limp);
+      f.a = lerpA(f.a, Math.atan2(qy, qx) + (i ? 0.45 : -0.45), limp);
+      f.lift *= live; f.heel *= live;
+    }
   }
   return P;
 }
 
-// The man held as a shield (Enemy.held, Player.shield), in his own frame: pulled back onto the chest behind him, his
-// hands at the arm round his neck, struggling in fits (it never frees him), thrown back by every round he takes;
-// dead, he hangs there, his arms fallen and his head down.
-export function hostagePose(ch, P) {
-  const sh = ch.held.shield, S = SHIELD.pose, a = P.ta, c = Math.cos(a), s = Math.sin(a), t = ch.world.time;
-  const m = smooth(sh.t / SHIELD.set), limp = sh.dead ? 1 : 0, hit = Math.exp(-Math.max(0, t - sh.hit) * 9);
-  const fit = limp ? 0 : 0.3 + 0.7 * smooth(Math.sin(t * 1.7 + ch.breath) * 2);
-  const j = Math.sin(t * S.shake[0] + ch.breath) * S.shake[1] * fit;
-  const put = (h, lx, ly) => { h.x = lerp(h.x, P.tx + (lx * c - ly * s) * P.s, m); h.y = lerp(h.y, P.ty + (lx * s + ly * c) * P.s, m); };
-  const back = (-S.pull - 1.6 * hit) * m + 0.4 * j;
-  P.tx += c * back; P.ty += s * back;
-  P.s *= 1 - 0.06 * limp;
-  P.ta = a + 0.12 * j;
-  P.ha = a + (limp ? 0.7 : 0.25 * j);
-  P.bow = Math.max(P.bow, 0.5 * limp);
-  put(P.hl, lerp(4.6 + j, 2.5, limp), lerp(-2.4, -6, limp));
-  if (!P.wpnOn) put(P.hr, lerp(4.6 - j, 2.5, limp), lerp(2.4, 6, limp));
-  P.hand[0] = P.hand[1] = 'loose';
-  P.top = 0;
+// The arms that have just let a held man go (Player.shieldOut): the shove of a throw (the arm unwound from his neck,
+// both hands thrown out along the aim, the shoulders swung through, then home), or simply opened after a kill.
+export function shieldOutPose(ch, P) {
+  const o = ch.shieldOut, S = SHIELD.pose, a = ch.angle, c = Math.cos(a), s = Math.sin(a), u = clamp(o.t / o.dur, 0, 1);
+  const gx = SHIELD.gap / BODY_SCALE - S.pull, thrown = o.kind === 'throw';
+  const push = thrown ? easeOut(u / 0.3) : 0, w = 1 - smooth(thrown ? (u - 0.4) / 0.6 : u);
+  const mix = (h, from, to) => {
+    const x = lerp(from[0], to[0], push), y = lerp(from[1], to[1], push);
+    h.x = lerp(h.x, x * c - y * s, w); h.y = lerp(h.y, x * s + y * c, w);
+  };
+  mix(P.hl, [gx + S.hand[0], S.hand[1]], S.shove[0]);
+  P.hand[0] = thrown && w > 0.5 ? 'flat' : P.hand[0];
+  if (!P.wpnOn) {
+    mix(P.hr, [gx + S.nape.at[0], S.nape.at[1]], S.shove[1]);
+    if (thrown && w > 0.5) P.hand[1] = 'flat';
+  }
+  P.ta += lerp(S.twist, S.back, push) * w;
   return P;
+}
+
+// One picture of the two (Character.draw): the man held between the other's chest and his arms. From the floor up:
+// their shadows, his legs, the holder's legs and body, his arms, hands and body, the holder's arms round him (and
+// what is in his hands), the holder's head (behind his: its brim would hide him), then his head.
+export function drawPair(ctx, ch, P, tg, T) {
+  const layer = (who, pose, parts) => {
+    ctx.save();
+    bodyFrame(ctx, who);
+    paintPose(ctx, who, pose, 1, parts);
+    ctx.restore();
+  };
+  layer(ch, P, PART.shadow);
+  layer(tg, T, PART.shadow);
+  layer(tg, T, PART.legs);
+  layer(ch, P, PART.legs | PART.body);
+  layer(tg, T, PART.arms | PART.body);
+  layer(ch, P, PART.arms | PART.top);
+  layer(ch, P, PART.head);
+  layer(tg, T, PART.head);
 }
 
 // His head driven into what is in front of him by a fist in his hair: yanked back (his head thrown back, the
@@ -2453,7 +2561,8 @@ function paintArms(ch, P) {
     WJ.x = H.x - (dx / d) * 0.9 * s; WJ.y = H.y - (dy / d) * 0.9 * s;
     dx = WJ.x - SJ.x; dy = WJ.y - SJ.y; d = Math.hypot(dx, dy) || 1e-6;
     const ux = dx / d, uy = dy / d;
-    if (d >= Lu + Lf) { EJ.x = SJ.x + ux * Lu; EJ.y = SJ.y + uy * Lu; }
+    if (P.elbOn[i]) { EJ.x = P.elbow[i].x; EJ.y = P.elbow[i].y; }
+    else if (d >= Lu + Lf) { EJ.x = SJ.x + ux * Lu; EJ.y = SJ.y + uy * Lu; }
     else {
       const along = clamp((d * d + Lu * Lu - Lf * Lf) / (2 * d), -Lu, Lu);
       const h = Math.sqrt(Math.max(0, Lu * Lu - along * along)) * P.elb[i];
@@ -2463,7 +2572,7 @@ function paintArms(ch, P) {
       EJ.x = SJ.x + ux * along - uy * h * k; EJ.y = SJ.y + uy * along + ux * h * k;
     }
     ELB[i].x = EJ.x; ELB[i].y = EJ.y;
-    paintArm(ch.look, SJ, EJ, WJ);
+    paintArm(ch.look, SJ, EJ, WJ, P.armK[i]);
   }
 }
 
@@ -2536,7 +2645,12 @@ export function drawPose(ctx, ch, P, alpha = 1) {
   ctx.restore();
 }
 
-function paintPose(ctx, ch, P, alpha) {
+// What a pose is painted of, from the floor up; a pose alone is all of it at once, a pair's is interleaved (drawPair):
+// arms: the sleeves, what is carried, and the weapon and hands that are not held over the shoulders; body: the coat's
+// skirt and the torso; top: what is held over the shoulders (P.top)
+const PART = { shadow: 1, legs: 2, arms: 4, body: 8, head: 16, top: 32, all: 63 };
+
+function paintPose(ctx, ch, P, alpha, parts = PART.all) {
   const x = ch.x, y = ch.y, s = P.s, ta = P.ta;
   const bx = x + P.tx, by = y + P.ty;
   const ga = ctx.globalAlpha;
@@ -2546,34 +2660,35 @@ function paintPose(ctx, ch, P, alpha) {
   // bent over (P.bow), the head goes on ahead of the shoulders and down (smaller), the back shows longer
   const bow = P.bow, ha = ta + clamp(angDiff(ta, P.ha), -1, 1), head = 1 - smooth(P.tuck * 2);
   const hs = (1 + (s - 1) * 0.6) * (1 - 0.5 * P.duck) * (1 - BOW.low * bow);
-  const neck = (LIMB.neck * (1 - 3 * P.duck) + BOW.reach * bow) * s, hx = bx + Math.cos(ta) * neck, hy = by + Math.sin(ta) * neck;
-
-  // shadow: further away, larger and softer as the body rises
-  const sh = silhouette(ch.torso), shh = silhouette(ch.head), lift = P.lift;
-  const ox = 2 + lift * 4, oy = 2 + lift * 5, sa = 0.35 * (1 - 0.35 * lift);
+  const neck = (LIMB.neck * (1 - 3 * P.duck) + BOW.reach * bow) * s;
+  const hx = bx + Math.cos(ta) * neck + P.hox, hy = by + Math.sin(ta) * neck + P.hoy;
   const skirt = ch.look?.coat && P.tuck <= 0.02 ? skirtOf(ch, P, ta) : null; // (gathered in when he rolls in a ball)
-  if (skirt) drawSkirt(ctx, ch, skirt, bx + ox, by + oy, ta, s, sa, true);
-  if (lift > 0.05) {
-    for (const j of [-1, 1]) {
-      drawSprite(ctx, sh, bx + ox + 0.7 * j, by + oy + 0.5 * j, ta, sa * 0.55, s * 1.05);
-      if (head > 0.5) drawSprite(ctx, shh, hx + ox + 0.7 * j, hy + oy + 0.5 * j, ha, sa * 0.55, hs * 1.05);
+
+  if (parts & PART.shadow) {
+    // shadow: further away, larger and softer as the body rises
+    const sh = silhouette(ch.torso), shh = silhouette(ch.head), lift = P.lift;
+    const ox = 2 + lift * 4, oy = 2 + lift * 5, sa = 0.35 * (1 - 0.35 * lift);
+    if (skirt) drawSkirt(ctx, ch, skirt, bx + ox, by + oy, ta, s, sa, true);
+    if (lift > 0.05) {
+      for (const j of [-1, 1]) {
+        drawSprite(ctx, sh, bx + ox + 0.7 * j, by + oy + 0.5 * j, ta, sa * 0.55, s * 1.05);
+        if (head > 0.5) drawSprite(ctx, shh, hx + ox + 0.7 * j, hy + oy + 0.5 * j, ha, sa * 0.55, hs * 1.05);
+      }
+    } else {
+      drawSprite(ctx, sh, bx + ox, by + oy, ta, sa, s);
+      if (head > 0.5) drawSprite(ctx, shh, hx + ox, hy + oy, ha, sa, hs);
     }
-  } else {
-    drawSprite(ctx, sh, bx + ox, by + oy, ta, sa, s);
-    if (head > 0.5) drawSprite(ctx, shh, hx + ox, hy + oy, ha, sa, hs);
   }
 
   // legs and arms, under the weapon and the torso
-  beginLimbs(ta);
-  if (P.over <= 0.35) paintLegs(ch, P);
-  paintArms(ch, P);
-  flushLimbs(ctx, x, y);
+  const legs = parts & PART.legs && P.over <= 0.35, arms = parts & PART.arms;
+  if (legs || arms) {
+    beginLimbs(ta);
+    if (legs) paintLegs(ch, P);
+    if (arms) paintArms(ch, P);
+    flushLimbs(ctx, x, y);
+  }
 
-  // the weapon and what is carried, in the torso frame
-  ctx.save();
-  ctx.translate(bx, by);
-  ctx.rotate(ta);
-  ctx.scale(s, s);
   const c = Math.cos(-ta) / s, sn = Math.sin(-ta) / s;
   const toLocal = (p, out) => {
     const dx = p.x - P.tx, dy = p.y - P.ty;
@@ -2581,29 +2696,37 @@ function paintPose(ctx, ch, P, alpha) {
     return out;
   };
   const d = ch.def, armed = P.wpnOn && d.sprite;
-  if (armed && !P.top) drawWeapon(ctx, P, d, ta, toLocal(P.wpn, TMP));
-  if (P.carryImg) {
-    toLocal(P.carry, TMP);
+  const cup = cupped(ch, P); // a pistol in both hands: the other hand closed over the gun hand
+  if (arms) {
+    // the weapon and what is carried, in the torso frame
     ctx.save();
-    ctx.translate(TMP.x, TMP.y);
-    ctx.rotate(P.carry.a - ta);
-    const ck = P.carryImg.k || 1;
-    ctx.scale(ck, ck); // a finer sprite (Assets.js `density`)
-    ctx.drawImage(P.carryImg, -P.carryImg.width / 2, -P.carryImg.height / 2);
+    ctx.translate(bx, by);
+    ctx.rotate(ta);
+    ctx.scale(s, s);
+    if (armed && !P.top) drawWeapon(ctx, P, d, ta, toLocal(P.wpn, TMP));
+    if (P.carryImg) {
+      toLocal(P.carry, TMP);
+      ctx.save();
+      ctx.translate(TMP.x, TMP.y);
+      ctx.rotate(P.carry.a - ta);
+      const ck = P.carryImg.k || 1;
+      ctx.scale(ck, ck); // a finer sprite (Assets.js `density`)
+      ctx.drawImage(P.carryImg, -P.carryImg.width / 2, -P.carryImg.height / 2);
+      ctx.restore();
+    }
     ctx.restore();
+    for (const i of cup ? HANDS_CUP : HANDS_ORDER) if (i ? !P.top : P.top < 2) paintHand(ctx, ch, P, i, x, y, cup);
   }
-  ctx.restore();
-  // a pistol in both hands: the other hand closed over the gun hand
-  const cup = cupped(ch, P);
-  for (const i of cup ? HANDS_CUP : HANDS_ORDER) if (i ? !P.top : P.top < 2) paintHand(ctx, ch, P, i, x, y, cup);
 
-  if (skirt) drawSkirt(ctx, ch, skirt, bx, by, ta, s, 1, false); // under his shoulders, over his legs
-  if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
-  else if (P.hunch > 0.005 || bow > 0.005) drawHunched(ctx, ch.torso, bx, by, ta, s, P.hunch, Math.max(0, bow) * BOW.long);
-  else drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
-  if (head > 0) drawSprite(ctx, ch.head, hx, hy, ha, head, hs);
-  if (P.over > 0.35) { beginLimbs(ta); paintLegs(ch, P, 0.15 * P.over); flushLimbs(ctx, x, y); } // up over the body
-  if (P.top) {
+  if (parts & PART.body) {
+    if (skirt) drawSkirt(ctx, ch, skirt, bx, by, ta, s, 1, false); // under his shoulders, over his legs
+    if (P.tuck > 0.02) drawTucked(ctx, ch, P, bx, by);
+    else if (P.hunch > 0.005 || bow > 0.005) drawHunched(ctx, ch.torso, bx, by, ta, s, P.hunch, Math.max(0, bow) * BOW.long);
+    else drawSprite(ctx, ch.torso, bx, by, ta, 1, s);
+  }
+  if (parts & PART.head && head > 0) drawSprite(ctx, ch.head, hx, hy, ha, head, hs);
+  if (parts & PART.body && P.over > 0.35) { beginLimbs(ta); paintLegs(ch, P, 0.15 * P.over); flushLimbs(ctx, x, y); } // up over the body
+  if (parts & PART.top && P.top) {
     // what is held above the shoulders goes over them
     if (armed) {
       ctx.save();

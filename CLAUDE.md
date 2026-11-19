@@ -110,9 +110,12 @@
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed
   guard up close with free hands snatches his gun (`SNATCH` in data/feel.js).
 - Human shield (the user's design: systems/Shield.js rules, `SHIELD` in data/feel.js, Player.startShield /
-  updateShield): E / pad X behind a guard (or on one down) with empty hands or a one-handed weapon (`oneHanded`) takes
-  him; held in front, he stops rounds, pellets and thrown things from the front arc (3 hits, his corpse 2 more), never a
-  blow; the player walks slower, no SPACE; a click fires over his shoulder (empty hands: the neck, a blade: the throat),
+  updateShield): E / pad X behind a STANDING guard only (never one down) with empty hands or a one-handed weapon
+  (`oneHanded`) takes him in a choke hold (CharacterAnim `drawPair`: the two painted as one pair in layers, the arm
+  round his neck, numbers `SHIELD.pose`; he is carried at the pair's speed so his legs walk it: never put there with
+  no velocity); held in front, he stops rounds, pellets and thrown things from the front arc (3 hits, his corpse 2
+  more), never a blow; the player walks slower, no SPACE; a click fires over his shoulder (empty hands: the neck, a
+  blade: the throat, after a short wrench / slice, `SHIELD.kill.at`),
   right click / LB throws him (held: aimed), knocking down whom he hits; gunmen hold their fire a moment, brutes less,
   blades flank; bare hands take his pistol as they take him. Taught in the tutorial on the gunman by the corridor's
   fire door (wave trigger `shield`: two gunmen come up the stairs); lab station 29.

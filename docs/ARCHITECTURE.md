@@ -61,11 +61,13 @@ src/
                           `advance`: the beat clock of a takedown (rules only, unit-tested); `slamAt`: how far
                           a head driven into something is, off that clock
       Shield.js           the human shield's rules (SHIELD in data/feel.js; the hold itself is Player.startShield ..
-                          endShield): `offers(player, guard)`: who can be taken (from behind, or down; never a boss),
+                          endShield): `offers(player, guard)`: who can be taken (standing, from behind; never a boss),
                           `covers`: the front arc in which the man held takes what comes (Projectile, WeaponItem ask
                           Player.shieldStops), `hesitation`: how long a gunman holds his fire (Enemy.holdsFire),
                           `flankSide`: the side a man with a blade comes round by (Enemy.tRush), `bodyHits`: who a
-                          thrown hostage floors (Enemy.updateFlung); tells 'shield' and 'shieldKill' (DOM-free, unit-tested)
+                          thrown hostage floors (Enemy.updateFlung), `dragFeet`: a dead hostage's trailing feet; tells 'shield'
+                          and 'shieldKill' (DOM-free, unit-tested). Drawn as one pair in layers (CharacterAnim drawPair:
+                          shieldPose, hostagePose, shieldOutPose; numbers SHIELD.pose)
       Danger.js           `threatened(player, guards, ...)`: is somebody on the player (a guard after him in sight, a
                           round at him a moment ago, the squad on alert with a guard close): quick kill or long execution
       TakedownSpot.js     `spotFor(guard, map, props)`: what stands right in front of a guard seized from behind that his
