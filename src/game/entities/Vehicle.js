@@ -500,7 +500,7 @@ export default class Vehicle {
     const { x, y } = this;
     w.explode(x, y, { radius: 160, source: 'car', origin: this });
     w.camera.punch(0.12);
-    w.slowmo(0.3, 0.6);
+    if (!w.drive?.on) w.slowmo(0.3, 0.6); // (never at the wheel: the chase has no slow motion)
     // charred wreck
     const g = this.g;
     g.save();

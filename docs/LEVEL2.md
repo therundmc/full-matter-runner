@@ -320,3 +320,23 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the three dummies stand in the slots (abreast, a length ahead, ahead in his lane); E gets him out (no brake to
   stop with). Played by script, stepped at 60 Hz, no god mode (dodging each tell by a shove, shoving whoever is
   abreast, through the terrace): the road finished alive with the four cars wrecked.
+- 2026-11-19: FIXES AT THE WHEEL. THE STALL (steered onto a sidewalk, the car dropped to 3 km/h for good): measured
+  in Node and the headless browser, its front corner caught where the building fronts are not flat: a window (`G`,
+  its pane in the middle of the tile) or a door is set back half a tile in its wall, and the next wall body's face
+  (or the seam between two wall bodies) stopped the corner square on; Drive.step caps the speed at what the physics
+  let it do, so it never came back. Now: the car's flank is held 2 px short of the building fronts as he steers into
+  them (Drive.offFronts, frontsAt: a window or a door counts as the front, a fence or an opening does not; CHASE.front),
+  sparks and the grind there as before; a driven car's body has its corners rounded 7 px (physics only, CHASE.corner);
+  a light loose thing met at a crawl is flung too, never a full contact (fling.least); and a net: crawling under 25 %
+  of its cruise 0.6 s, the car eases itself out sideways at 1.6 px/step however slow it is (his way when he steers:
+  never fought; else the way what holds it pushes it, else the street's middle, else the far lane; the other way if
+  it gets nowhere), a bolted thing it is wedged on torn off, a parked car it leans on woken to be shoved (Drive.unstick,
+  CHASE.stall). Scrapes on the seams of the fronts no longer clip the speed (crash.graze). Also: a car's crew is one kill for the streak (how.crew: no DOUBLE for one wreck),
+  no multi-kill slow motion or hit-stop at the wheel and no slow motion when a car blows up (only the three moments
+  of the route keep it); past the end of the road the wheel, the shove and the gun are off under the card; the
+  arrows steer too; the parked car shoved on by a drive in the lab is told by the drive he is in now; Pursuit's path
+  look-ups go through the cars and what blocks a path only (looked up again when props come); `gunman.atOnce`
+  removed (one tell at a time on the back road; two overlapping wait for the end of the route). QA: `npm run qa --
+  --level level2a` plays the chase (tools/qa/README.md "At the wheel"), its `stalled` finding caught the stall on the
+  old code (seed 7: "against wall", a seam of the south fronts; "against van", a parked van shoved into his lane);
+  with the fixes, seed 7 still reports 2 s at 8 km/h nose-on into a parked car of the north parking row, then out.

@@ -34,6 +34,16 @@ export const CHASE = {
   give: 0.3,            // what it runs at: no more than this over what it really did last step (a hit slows it)
   bounce: 2,            // a sideways bounce off what it leans on slower than this is dropped (it slides along it)
   fly: 0.05,            // s: driven, the floor's friction is not fighting the engine (refreshed each step)
+  // px its flank is held short of the building fronts as he steers into them (Drive.offFronts): a shop's windows and
+  // doors are set back in its front, and a corner sliding along caught in one and held the car there
+  front: 2,
+  // px: a driven car's body has its corners rounded this much (physics only, the sprite is drawn as it is): a square
+  // corner sliding along the building fronts caught on the seam between two wall bodies and stopped the car for good
+  corner: 7,
+  // never stalled for good (Drive.unstick): crawling under `under` of its cruise speed for `after` s, not crashed, it
+  // eases itself sideways out of what holds it (his way when he steers) at `steer` of the full sideways speed (the
+  // other way when it has not moved `moved` px across in `after` s more), until it runs at `until` of its cruise again
+  stall: { under: 0.25, after: 0.6, steer: 0.4, moved: 4, until: 0.6 },
   vehicle: 'convertible', // the model he drives in the chase (entities/Vehicle.js VEHICLES): THE BOSS's, roof down
   // where he sits and where its driver's door is, when the model gives none (VEHICLES[model].seat / .door, sprite px):
   // shares of its length (from the tail) and width (from the driver's side, -y; the door: px out from that side)
@@ -48,18 +58,20 @@ export const CHASE = {
   shove: { v: 8, dur: 0.1, back: 44, cooldown: 0.7, shake: 0.2, push: 5, roll: 30, smoke: 3 },
   // a nose-on hit on what does not give (a wall, a building, a `lasting` prop): faster than `speed` along the nose,
   // within `cone` rad of square on, he is dead; what it hit covering less than `corner` of its width (a corner
-  // clipped), it is a jolt: the speed down to `clip`
-  crash: { speed: 6, cone: (35 * Math.PI) / 180, corner: 0.2, clip: 3, shake: 0.9, dents: 4 },
+  // clipped), it is a jolt: the speed down to `clip`; less than `graze` px of it (the next wall body along the
+  // building fronts, met at their seam as it slides on them), a scrape: nothing lost
+  crash: { speed: 6, cone: (35 * Math.PI) / 180, corner: 0.2, clip: 3, graze: 6, shake: 0.9, dents: 4 },
   // what gives: a parked car is woken and shoved by the physics (thrown `fly` s, its alarm, a dent); hit square on
   // faster than crash.speed, the van keeps only `keep` of its speed. A bolted thing (a hydrant, a streetlight, a bench)
   // hit faster than `tear` is torn off (thrown with `power` at cruise speed, more the faster, `most` at most: over 2
   // it goes at once and its pieces fly); slower, it holds. Every hit takes `loss` of the speed. A car shoved
   // into another faster than `chain` shoves it on. A loose thing of `fling.kg` or less (a bin, a chair, a crate) is
-  // thrown by hand (Drive.fling): at `v` times the car's speed, `side` rad out to the side it was hit on, turning up
-  // to `spin` rad/step, off the floor `fly` s.
+  // thrown by hand (Drive.fling), however slow the car: at `v` times the car's speed (`least` px/step at least: out
+  // of its way when it crawls), `side` rad out to the side it was hit on, turning up to `spin` rad/step, off the
+  // floor `fly` s; it never holds the car up.
   hit: {
     fly: 0.3, keep: 0.35, tear: 0.8, power: 2.2, most: 3, loss: 0.03, again: 0.4, shake: 0.25, chain: 1,
-    fling: { kg: 120, v: [0.9, 1.35], side: [0.15, 0.7], spin: 0.35, fly: [0.25, 0.55] },
+    fling: { kg: 120, v: [0.9, 1.35], least: 2, side: [0.15, 0.7], spin: 0.35, fly: [0.25, 0.55] },
   },
   run: 2,               // a person hit faster than this is run down (one hit kills), thrown on along `throw` x speed
   throw: 1.4,
@@ -172,7 +184,8 @@ export const CHASE = {
   //   runner within `cone` rad of square out of his window (100 degrees: from a car ahead he leans out and fires
   //   back along its flank; never across his own car); `keep`: sprite px the runner's seat must be past his car's
   //   middle line before he changes window (no flutter from dead ahead); grace: s in the chase first;
-  //   cool: s between two tells (any gunman: one tells at a time early on, `atOnce`); none starts in the `quiet` px
+  //   cool: s between two tells (any gunman: one tells at a time; two overlapping wait for the end of the route,
+  //   docs/LEVEL2.md); none starts in the `quiet` px
   //   of road before an event that tells something itself (a red lane, the lorry), nor while it is told
   //   glint: s of the white glint at the muzzle, then `line` s of the red line fattening into a wedge, then the shot
   //   band: the bracket's box where it lands, locked when the tell starts: the y of the runner's seat then (+- half),
@@ -182,7 +195,7 @@ export const CHASE = {
   //   lab: the dummy (station 19) tells every `every` s with the runner within `range` px, harmlessly
   gunman: {
     r: 7, lean: 6, seat: 0.42,
-    range: 300, grace: 1, cool: [1.6, 2.4], atOnce: 1, quiet: 520, straight: 0.3, cone: 1.75, keep: 5,
+    range: 300, grace: 1, cool: [1.6, 2.4], quiet: 520, straight: 0.3, cone: 1.75, keep: 5,
     glint: 0.15, line: 0.6,
     band: { half: 22, lead: 40 },
     tracer: 0.14, window: 14,

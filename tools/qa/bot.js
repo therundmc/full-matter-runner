@@ -106,7 +106,15 @@
       road: { steps: [{ go: [20.5, 11.2] }, { wait: 15 }], ok: () => opts.god },
       road2: { steps: [{ go: [24.5, 14.2] }, { wait: 15 }], ok: () => opts.god },
     },
+    // level 2A, at the wheel (systems/Drive.js): no steps, the drive itself (playChase): lanes changed on a slow random
+    // cycle, now and then up onto a sidewalk against the building fronts, the shove on a pursuer alongside, the Uzi at
+    // the nearest one in his arc
+    level2a: { chase: { steps: [] } },
   };
+  // the chase's bot: s a lane is held [from, to], the odds the next target is a sidewalk (into the building fronts) and
+  // s it is held at most, px from the target line that count as on it, px of reach of the gun, the box a pursuer
+  // alongside is shoved in ([dx, dy from, dy to] from his car's middle)
+  const CHASE_BOT = { hold: [1.5, 4], kerb: 0.2, kerbFor: 2.5, near: 10, range: 420, abreast: [70, 45, 120] };
 
   const prng = K.prng;
 
@@ -132,6 +140,8 @@
       coverage: Object.fromEntries(FEATURES.map((f) => [f, 0])), maxKills: 0, maxKillsSession: 0,
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
       plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0, envTakedowns: {},
+      // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls
+      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0 },
       // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
       // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
       // the stage they reached, drivers held up at gunpoint
@@ -255,7 +265,7 @@
     B.sessionStart = S.clock; B.noTarget = 0; B.blacklist = [];
     B.exitSince = null; B.leftZero = null; B.exitPathT = -99;
     B.powerCheckT = null; B.lastingSeen = new Set();
-    B.plan = null; B.style = null;
+    B.plan = null; B.style = null; B.chase = null; B.stall = null;
     newTrackers(w);
     wrapDraws(w.chars);
     wrapGhosts(w);
@@ -266,6 +276,7 @@
 
   // features this level has nothing for (no 'not-covered' warning about them)
   function notApplicable(w) {
+    if (w.level.chase) return FEATURES.filter((f) => f !== 'exit'); // at the wheel all the way (level 2A)
     const has = (type) => w.props.some((q) => q.type === type);
     const na = [];
     if (!has('ladder')) na.push('ladderUp', 'ladderDown');
@@ -301,10 +312,11 @@
       // what he was locked in when it got him (a ground finisher, a takedown), or free
       bump(S.stats.deathsIn, victim.execution ? 'finisher' : victim.takedown ? 'takedown' : 'free');
       S.sess.died = cause;
-      act(`DIED (${cause})`);
+      act(`DIED (${cause})${w.drive?.on ? ` at the wheel, cell ${cellOf(w.drive.van.x, w.drive.van.y)}` : ''}`);
       return;
     }
     if (victim.isCivilian) { bump(S.stats.civilians, cause || '?'); return; }
+    if (victim.isPursuer) { bump(S.stats.drive.kills, e.how?.car || cause || '?'); act(`killed a pursuer's man (${e.how?.car || cause})`); return; }
     if (!victim.isEnemy) return;
     S.stats.kills++;
     S.sess.kills++;
@@ -718,9 +730,51 @@
     if (!p.alive) return;
     const m = B.mischief;
     if (m && (S.clock > m.until || m.over || m.M.over)) { endMischief(m.over ? 'broke' : m.M.over ? 'done' : 'time'); return play(w, p, inp); }
+    if (w.drive?.on) { playChase(w, p, inp, w.drive); return; } // at the wheel: the drive's own (no walking, no mischief)
     if (m?.own) { runMischief(w, p, inp, m); return; }
     playFree(w, p, inp);
     if (m) runMischief(w, p, inp, m);
+  }
+
+  // At the wheel (level 2A: systems/Drive.js, systems/Pursuit.js, systems/CarGun.js): the wheel turned toward a lane
+  // picked on a slow random cycle (sometimes a sidewalk, into the building fronts: CHASE_BOT.kerb), the shove (Space,
+  // aimed at it) on a pursuer alongside, else the Uzi held on the nearest pursuer still driven within its arc
+  function playChase(w, p, inp, d) {
+    const C = CHASE_BOT, van = d.van, o = d.o, ch = B.chase ??= { y: van.y, until: 0, kerb: false };
+    if (S.clock >= ch.until) {
+      const lanes = (o.lanes || [van.y / TILE]).map((r) => r * TILE), kerbs = o.kerbs?.map((r) => r * TILE);
+      ch.kerb = !!kerbs && rnd() < C.kerb;
+      // a sidewalk: past the kerb, as far as the building fronts let it go
+      ch.y = ch.kerb ? (rnd() < 0.5 ? kerbs[0] - 2 * TILE : kerbs[1] + 2 * TILE) : lanes[Math.floor(rnd() * lanes.length)];
+      ch.until = S.clock + (ch.kerb ? C.kerbFor : C.hold[0] + rnd() * (C.hold[1] - C.hold[0]));
+      act(ch.kerb ? 'chase: into the kerb' : `chase: lane ${Math.round(ch.y / TILE)}`);
+    }
+    // (stalled, the car easing itself out of what holds it: hands off the wheel, as a player would let it come out)
+    const dy = ch.y - van.y;
+    if (Math.abs(dy) > C.near && !d.freeing) inp.keys.add(dy < 0 ? 'KeyW' : 'KeyS');
+    const cars = (w.pursuit?.cars || []).filter((c) => !c.dummy && ['chase', 'limp', 'cross'].includes(c.state));
+    // a pursuer alongside: shoved
+    const side = cars.find((c) => Math.abs(c.v.x - van.x) < C.abreast[0] && Math.abs(c.v.y - van.y) > C.abreast[1] && Math.abs(c.v.y - van.y) < C.abreast[2]);
+    if (side && d.cool <= 0 && !d.grabbing) {
+      aimAt(inp, side.v.x, side.v.y);
+      press(inp, 'Space');
+      bump(S.stats.drive, 'shoves');
+      act('chase: shove');
+      return;
+    }
+    // the nearest one with its driver still in it, in his arc: a burst at its windscreen
+    let best = null, bd = C.range;
+    for (const c of cars) {
+      if (!c.driver) continue;
+      const a = c.v.body.angle, at = { x: c.v.x + Math.cos(a) * c.v.w * 0.2, y: c.v.y + Math.sin(a) * c.v.w * 0.2 };
+      const dist = Math.hypot(at.x - van.x, at.y - van.y);
+      if (dist < bd && d.gun.aimAt(at).ok) { bd = dist; best = at; }
+    }
+    if (best) {
+      aimAt(inp, best.x, best.y);
+      inp.mouse.down[0] = true;
+      if (S.clock > B.fireT) { B.fireT = S.clock + 0.4; bump(S.stats.drive, 'bursts'); act('chase: fire'); }
+    } else aimAt(inp, van.x + 200, van.y);
   }
 
   function playFree(w, p, inp) {
@@ -1691,15 +1745,16 @@
     S.rr.pose += n;
   }
 
-  function deepCheck(w, p) {
+  function deepCheck(w, p, driving = false) {
     const t0 = performance.now();
     cameraCheck(w, p);
     ghostTargets(w);
-    propInWall(w);
+    // (at the wheel what it throws aside lands against the building fronts, and nobody walks to an item)
+    if (!driving) propInWall(w);
     vehicleShove(w);
     doorCheck(w);
     civStuck(w);
-    if (S.steps % 60 === 0) unreachableItems(w);
+    if (!driving && S.steps % 60 === 0) unreachableItems(w);
     S.cost.checks += performance.now() - t0;
   }
 
@@ -1852,7 +1907,9 @@
           { who, kind: ch.kind, state: ch.state, tile: w.map.at(...cellOf(ch.x, ch.y)), knocked: ch.knocked > 0 });
       }
     };
-    checkWall(p, 'player');
+    const driving = !!w.drive?.on; // (at the wheel he is carried in his seat: the detectors made for walking stay off)
+    if (!driving) checkWall(p, 'player');
+    else stalled(w, w.drive);
     if (S.steps % 6 === 0) {
       for (const e of w.enemies) checkWall(e, 'guard');
       for (const c of w.civilians) checkWall(c, 'civilian');
@@ -1866,7 +1923,7 @@
     if (S.steps % 10 === 5) { const t0 = performance.now(); corpseDrift(w); S.cost.checks += performance.now() - t0; }
     if (S.steps % 30 === 15) { const t0 = performance.now(); probePoses(w); S.cost.probes += performance.now() - t0; }
     if (S.steps % 30 === 0) {
-      deepCheck(w, p);
+      deepCheck(w, p, driving);
       nanCheck(w);
       outOfMap(w);
       guardStuck(w);
@@ -1876,7 +1933,7 @@
       if (opts.mode === 'realtime') audioCheck();
       else if (S.steps % 600 === 0) audioCheck(true);
     }
-    softlock(w, p);
+    if (!driving) softlock(w, p);
 
     // leak samples every 10 s of game time
     if (now >= S.sess.nextSample) {
@@ -1987,6 +2044,39 @@
         { type: q.type, wired: (pw.wired || []).includes(q), lights: w.lighting.propLights(q).length, sputter: !!q.sputter,
           cutAgo: r1(w.time - pw.cutAt), why: 'a lamp on the cut mains is still lit (lightsOut false)' });
     }
+  }
+
+  // At the wheel: the car crawling under CHASE_STALL.under of its cruise speed for CHASE_STALL.after s while the drive
+  // is on, he is alive and the road not over (a crash stops it dead: that is a death, not a stall): what touches it
+  // then is in the finding (the sig: what holds it, the first solid contact)
+  const CHASE_STALL = { under: 0.25, after: 2 };
+  function stalled(w, d) {
+    const live = !d.dead && !w.exited && game.state === 'play' && w.player.alive;
+    if (!live || d.v >= CHASE_STALL.under * d.cruise) { B.stall = null; return; }
+    const b = d.van.body;
+    if (!B.stall) { B.stall = { t: w.time, told: false, then: touchingOf(w, b) }; return; }
+    if (B.stall.told || w.time - B.stall.t < CHASE_STALL.after) return;
+    B.stall.told = true;
+    S.stats.drive.stalls++;
+    const then = B.stall.then, held = then.find((c) => !c.sensor);
+    report('stalled', 'error', `against ${held?.what || 'nothing'}`, posOf(d.van.x, d.van.y), {
+      kmh: d.kmh, cruise: Math.round(d.cruise * 6.75), held: r1(w.time - B.stall.t), angle: Math.round(b.angle * 1000) / 1000,
+      bounds: [Math.round(b.bounds.min.x), Math.round(b.bounds.min.y), Math.round(b.bounds.max.x), Math.round(b.bounds.max.y)],
+      then, now: touchingOf(w, b),
+    });
+  }
+
+  // what touches body b now (the physics' active pairs): what, a sensor or not, how deep, the normal, where
+  function touchingOf(w, b) {
+    const out = [];
+    for (const pr of w.physics.activePairs()) {
+      const o = pr.bodyA === b ? pr.bodyB : pr.bodyB === b ? pr.bodyA : null;
+      if (!o) continue;
+      const n = pr.collision.normal;
+      out.push({ what: o.entity?.type || o.label, sensor: !!pr.isSensor, depth: r1(pr.collision.depth), normal: [r1(n.x), r1(n.y)],
+        at: [Math.round(o.position.x), Math.round(o.position.y)] });
+    }
+    return out;
   }
 
   function softlock(w, p) {

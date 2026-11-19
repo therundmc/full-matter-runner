@@ -134,6 +134,10 @@ export function writeReport(dir, rep) {
   L.push(`- Devices used: ${list(st.devices || {})}; falls on a slick floor: ${st.slips ?? 0}`);
   if (st.notApplicable?.length) L.push(`- Not in this level (no warning): ${st.notApplicable.join(', ')}`);
   L.push(`- How the dead went: ${list(st.dying)}`);
+  const dr = st.drive;
+  if (dr && (dr.shoves || dr.bursts || dr.stalls || Object.keys(dr.kills || {}).length)) {
+    L.push(`- At the wheel: shoves ${dr.shoves}, bursts ${dr.bursts}, stalls ${dr.stalls}; pursuers' men killed: ${list(dr.kills || {})}`);
+  }
   const ai = st.ai || {};
   L.push(`- Guards: entered a fight ${ai.engaged ?? 0}, got within reach of him ${ai.reached ?? 0}, held 3 s on one spot on their way ${ai.stall3 ?? 0}; challenges: ${list(ai.challenges || {})} (stages reached: ${list(ai.stages || {})}); drivers held up: ${list(ai.heldUp || {})}`);
   L.push(`- Plans (started / done / cut short by a death or restart / skipped as pointless, failures): ${planLines(st.plans)}`);

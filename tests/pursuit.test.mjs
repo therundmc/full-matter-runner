@@ -19,6 +19,8 @@ const { default: EventBus } = await load('engine/EventBus.js');
 const { setMaterial, scaleInertia } = await load('engine/physics/Body.js');
 const { TILE, CAT, MASK } = await load('game/Config.js');
 const { default: level2a } = await load('game/data/levels/level2a.js');
+const { default: Scoring } = await load('game/systems/Scoring.js');
+const { listenMoments } = await load('game/fx/Impact.js');
 
 const { Bodies, Body } = Matter;
 const DT = 1 / 60;
@@ -634,3 +636,39 @@ test('grab: the lab\'s convertible gives the gun every time he gets in, and take
     assert.ok(w.drive === null && v.gun && p.weapon.type === 'knife', 'out: the Uzi back on the seat, his knife in his hand');
   }
 });
+
+test('pursuit: a car wrecked with both men in it is two kills but ONE for the streak: no double, no slow motion at the wheel', () => calm(() => {
+  const s = start(), w = s.w;
+  w.enemies = [];
+  const sc = new Scoring(w), multi = [], slow = [];
+  w.events.on('multiKill', (e) => multi.push(e.tag));
+  w.slowmo = (...a) => slow.push(a);
+  w.hitstop = (t) => slow.push(t);
+  listenMoments(w);
+  const a = s.P.spawn(s.v.x + 300, NORTH, 0, 'chase', 8.9), b = s.P.spawn(s.v.x + 600, NORTH, 0, 'chase', 8.9);
+  s.P.wreck(a);
+  assert.equal(w.kills.length, 2, 'its driver and its gunman');
+  assert.ok(!w.kills[0].how.crew && w.kills[1].how.crew, 'the second one of its crew');
+  assert.equal(sc.kills, 2);
+  assert.equal(sc.streak, 1);
+  assert.ok(!sc.tags.includes('double') && multi.length === 0, 'one wreck: no double');
+  // two cars in the same breath are a double, but at the wheel nothing slows down nor freezes
+  s.P.wreck(b);
+  assert.deepEqual(multi, ['double']);
+  assert.equal(slow.length, 0, 'no slow motion, no hit-stop at the wheel');
+  w.drive.on = false;
+  w.events.emit('multiKill', { tag: 'double' });
+  assert.ok(slow.length > 0, 'on foot the moment is as it was');
+}));
+
+test('pursuit: what stands in a car\'s way is looked up once (the cars and what blocks a path), again when props come', () => calm(() => {
+  const s = start(), P = s.P;
+  P.blockedAt(null, s.v.x, SOUTH, 100);
+  assert.ok(P.blockers.every((p) => p.isVehicle || p.def?.blocksPath), 'nothing a car goes over');
+  const was = P.blockers, car = P.spawn(s.v.x + 600, NORTH, 0, 'chase', 0);
+  assert.equal(P.blockedAt(null, s.v.x + 600, NORTH, 100)?.p, car.v, 'found in the way');
+  assert.ok(P.blockers !== was && P.blockers.includes(car.v));
+  const now = P.blockers;
+  P.blockedAt(null, s.v.x, SOUTH, 100);
+  assert.equal(P.blockers, now, 'not looked up again while nothing came');
+}));

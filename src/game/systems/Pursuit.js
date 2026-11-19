@@ -114,6 +114,8 @@ export default class Pursuit {
     this.road = null;      // the lane he is in and the other one (lanesOf), as of the last step
     this.crew = '';        // who is in the chase (the slots are dealt again when it changes: assign)
     this.shuffleT = 0;     // s before the slots are dealt again anyway
+    this.blockers = null;  // what may stand in a car's way (blockedAt: looked up again only when props come or go)
+    this.propsN = -1;      // how many props the world had when it was looked up
     const L = chase?.lanes;
     this.band = L ? [Math.min(...L) * TILE, Math.max(...L) * TILE] : null;
     this.halfLane = L?.length > 1 ? (this.band[1] - this.band[0]) / 2 : TILE * 1.75; // half a lane's width (px)
@@ -414,12 +416,17 @@ export default class Pursuit {
     const w = this.world, half = (car?.v.h ?? 58) / 2 + this.C.margin, x0 = x - (car ? car.v.w / 2 - 6 : ahead), x1 = x + ahead;
     const y0 = y - half, y1 = y + half;
     const mine = his ? null : w.drive?.van;
+    // (the cars and what blocks a path; never the lorry, `blind`: never seen coming; nor what hangs)
+    if (this.propsN !== w.props.length) {
+      this.propsN = w.props.length;
+      this.blockers = w.props.filter((p) => (p.isVehicle || p.def?.blocksPath) && !p.def?.hung && !p.def?.blind);
+    }
     let best = null;
-    for (const p of w.props) {
-      if (p === car?.v || p === mine || !p.body || p.dead || p.def?.hung || p.def?.blind) continue; // (blind: the lorry, never seen coming)
+    for (const p of this.blockers) {
+      if (p === car?.v || p === mine || !p.body || p.dead) continue;
       const bb = p.body.bounds;
       if (bb.max.x < x0 || bb.min.x > x1 || bb.max.y < y0 || bb.min.y > y1) continue;
-      if (!p.isVehicle && (bb.max.x - bb.min.x < 22 || !p.def?.blocksPath)) continue; // a bin, a box: it goes over
+      if (!p.isVehicle && bb.max.x - bb.min.x < 22) continue; // a bin, a box: it goes over
       if (!best || bb.min.x < best.x) best = { x: bb.min.x, p };
     }
     return best;
@@ -512,9 +519,17 @@ export default class Pursuit {
       w.shake?.(0.25);
     }
     // the men in it: the driver, unless he was shot (his kill told then), and the gunman if still in it
-    const how = w.time - car.by < AGAIN ? 'shoved' : 'wrecked';
-    if (car.driver) { car.driver = false; this.credit(v, car.cause ?? how, 'wreck'); }
-    if (car.gunman) { car.gunman = false; this.credit(this.gunPoint(car), how, 'wreck'); }
+    this.creditCrew(car, w.time - car.by < AGAIN ? 'shoved' : 'wrecked', 'wreck');
+  }
+
+  // the men still in a car stopped for good, all at once: one kill each, but ONE for the streak (how.crew: no
+  // double for one wreck, nor its slow motion); tag: how.car of the gunman's, own: the driver's
+  creditCrew(car, tag, cause, own = car.cause ?? tag) {
+    const v = car.v, men = [];
+    if (car.driver) men.push([v, own]);
+    if (car.gunman) men.push([this.gunPoint(car), tag]);
+    car.driver = car.gunman = false;
+    men.forEach(([at, t], i) => this.credit(at, t, cause, i > 0));
   }
 
   // ---------------------------------------------------------------- his rounds
@@ -585,10 +600,11 @@ export default class Pursuit {
     this.credit(g, 'gunman', 'bullet');
   }
 
-  // a man of a car out: a kill of his (the scoring: cause, the tag in how.car)
-  credit(at, tag, cause) {
-    const w = this.world, p = w.player;
-    w.events.emit('kill', { victim: { x: at.x, y: at.y, isPursuer: true, aware: 1, knocked: 0 }, cause, killer: p, how: { car: tag } });
+  // a man of a car out: a kill of his (the scoring: cause, the tag in how.car; crew: the second man of a car stopped
+  // with both in it, not one more for the streak)
+  credit(at, tag, cause, crew = false) {
+    const w = this.world, p = w.player, how = crew ? { car: tag, crew } : { car: tag };
+    w.events.emit('kill', { victim: { x: at.x, y: at.y, isPursuer: true, aware: 1, knocked: 0 }, cause, killer: p, how });
   }
 
   // ---------------------------------------------------------------- the gunman and his tell
@@ -743,9 +759,7 @@ export default class Pursuit {
       if (car.wreckHit && car.state !== 'wrecked') this.wreck(car);
       car.wreckHit = false;
       if (car.v.exploded && (car.driver || car.gunman)) {
-        if (car.driver) this.credit(car.v, null, 'explosion');
-        if (car.gunman) this.credit(this.gunPoint(car), null, 'explosion');
-        car.driver = car.gunman = false;
+        this.creditCrew(car, null, 'explosion', null);
         if (this.tell?.car === car) this.endTell();
         car.state = 'wrecked';
       }

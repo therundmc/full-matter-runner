@@ -44,10 +44,24 @@ export function speedStep(v, cruise, dt, C = CHASE) {
   return v < cruise ? Math.min(cruise, v + C.ease * dt) : Math.max(cruise, v - C.ease * dt);
 }
 
-// the steering as held, -1 (up the picture, -y) .. 1 (down): W / A up, S / D down, else the pad's left stick by its y
+// the steering as held, -1 (up the picture, -y) .. 1 (down): W / A / up / left up, S / D / down / right down (the
+// arrows move him on foot too), else the pad's left stick by its y
+const UP = ['KeyW', 'KeyA', 'ArrowUp', 'ArrowLeft'], DOWN = ['KeyS', 'KeyD', 'ArrowDown', 'ArrowRight'];
 export function steerOf(input) {
-  const key = (input.down('KeyS') || input.down('KeyD') ? 1 : 0) - (input.down('KeyW') || input.down('KeyA') ? 1 : 0);
-  return key || clamp(input.move?.()?.y ?? 0, -1, 1);
+  const held = (codes) => (codes.some((c) => input.down(c)) ? 1 : 0);
+  return held(DOWN) - held(UP) || clamp(input.move?.()?.y ?? 0, -1, 1);
+}
+
+// A driven car's body with its corners rounded r px (C.corner), its mass and inertia kept: a square corner sliding
+// along the building fronts catches on the seam between two wall bodies (the physics sees the next one's face) and
+// stops the car dead. Once per body
+function roundCorners(b, r) {
+  if (b.rounded || !(r > 0)) return;
+  const { mass, inertia } = b;
+  Body.setVertices(b, Matter.Vertices.chamfer(b.vertices, r));
+  Body.setMass(b, mass);
+  Body.setInertia(b, inertia);
+  b.rounded = true;
 }
 
 // the speed across a step later: u px/step; steer -1..1 (steerOf) toward steer x C.steer, nothing held: the
@@ -121,10 +135,30 @@ export function nosedIn(a, vx, vy, nx, ny, C = CHASE) {
   return ca * nx + sa * ny >= Math.cos(C.crash.cone) && vx * ca + vy * sa > C.crash.speed;
 }
 
-// Did it take it on the nose, or only clip it with a corner? The share of the car's width (its middle at y, h wide)
-// that what it hit covers (from lo to hi across the road): under `corner` of it is a clip, a jolt and sparks, not
-// the crash
-export const onNose = (lo, hi, y, h, C = CHASE) => (Math.min(hi, y + h / 2) - Math.max(lo, y - h / 2)) / h >= C.crash.corner;
+// px of the car's width (its middle at y, h wide) that what it hit covers (from lo to hi across the road)
+const coverOf = (lo, hi, y, h) => Math.min(hi, y + h / 2) - Math.max(lo, y - h / 2);
+
+// Did it take it on the nose, or only clip it with a corner? Under `corner` of the car's width covered by what it
+// hit is a clip, a jolt and sparks, not the crash
+export const onNose = (lo, hi, y, h, C = CHASE) => coverOf(lo, hi, y, h) / h >= C.crash.corner;
+
+// Only grazed: what it hit covers under `graze` px of its width (the next wall body along the building fronts it
+// slides on, met at their seam): a scrape, it goes on (no clip)
+const grazes = (lo, hi, y, h, C = CHASE) => coverOf(lo, hi, y, h) < C.crash.graze;
+
+// The building fronts either side of a car in column c, row r (a street running along +x): [world px y of the face
+// above it (the bottom of the first wall, window or door tile up), of the one below it (the top of the first one
+// down)], none within `most` tiles: -+Infinity; null when r itself is one. A window or a door is set back in its wall
+// (its pane, its leaves in the middle of the tile): it counts as the front. A fence does not (it is gone through),
+// nor an opening (an alley, a yard: the face is its back wall)
+export function frontsAt(map, c, r, most = 8) {
+  const front = (k) => map.isSolid(c, k) || 'GDL'.includes(map.at(c, k));
+  if (front(r)) return null;
+  let up = r, down = r;
+  while (up > r - most && !front(up - 1)) up--;
+  while (down < r + most && !front(down + 1)) down++;
+  return [up > r - most ? up * TILE : -Infinity, down < r + most ? (down + 1) * TILE : Infinity];
+}
 
 // ---------------------------------------------------------------- the drive
 export default class Drive {
@@ -163,6 +197,10 @@ export default class Drive {
     this.ground = null;               // what its front wheels were on a step ago (a kerb crossed: a bump)
     this.wind = [];                   // streaks of air past it: { x, y, len, vx px/s, t, life, a }
     this.wakeT = 1;                   // s before its wake whips something up again
+    this.stallT = 0;                  // s it has crawled (unstick)
+    this.freeing = null;              // stalled: { side: the way it eases itself out, y: where it was, t: s since }
+    this.knocked = new Map();         // the cars it shoved -> the handler it gave them (knock; taken back at leave)
+    this.grind = null;                // held off the building fronts as he steers into them: where its flank is
     this.board();
     this.gun = new CarGun(world, van, seatOf(van, CHASE)); // his gun out of the car (the aim, the left click)
     this.grab = null;                 // the beat of taking the gun off the passenger seat: { t, arms, took, racked }
@@ -249,6 +287,7 @@ export default class Drive {
     const w = this.world, p = w.player, v = this.van, b = v.body;
     wake(b);
     if (b.isSleeping) Sleeping.set(b, false);
+    roundCorners(b, CHASE.corner);
     b.sleepThreshold = Infinity;
     this.was = { air: b.frictionAir, friction: b.friction };
     b.frictionAir = 0; // the engine holds its speed: only what it hits slows it
@@ -282,6 +321,8 @@ export default class Drive {
     v.armoured = this.was.armoured;
     v.unseat?.();
     v.onCollide = null;
+    for (const [car, fn] of this.knocked) if (car.onCollide === fn) car.onCollide = null; // (a pursuer keeps its own)
+    this.knocked.clear();
     if (this.stash !== undefined) {
       // the lab: the seat's gun put back on the seat (taken again next time), what he had back in his hand
       v.gun = true;
@@ -322,11 +363,12 @@ export default class Drive {
     if (!this.on) return;
     this.carry();
     if (this.dead) { if (this.coasting) this.coastStep(dt); return; }
-    // taking the gun off the seat: the car rolls on by itself, nothing fires (a click now is lost)
-    const busy = this.grabbing;
+    const w = this.world, C = this.C, v = this.van, b = v.body;
+    // taking the gun off the seat: the car rolls on by itself, nothing fires (a click now is lost); past the end of
+    // the road (the card coming up over it) nothing he does counts any more
+    const busy = this.grabbing || !!w.exited;
     if (this.grab) this.grabStep(dt);
     if (!busy) this.gun.step(dt, input, aim);
-    const w = this.world, C = this.C, v = this.van, b = v.body;
     // what the physics let it do last step: a hit slows it, a knock sideways is taken (the small bounce off what it
     // leans on is not: it goes on along it)
     const vel = Body.getVelocity(b);
@@ -334,8 +376,9 @@ export default class Drive {
     if (this.shoveT <= 0 && (Math.abs(vel.y) < Math.abs(this.u) || vel.y * this.u < 0)) {
       this.u = vel.y * this.u < 0 && Math.abs(vel.y) < C.bounce ? 0 : vel.y;
     }
-    // the controls: the wheel only (up / down the picture); the speed is the road's
-    const steer = busy ? 0 : steerOf(input);
+    // the controls: the wheel only (up / down the picture); the speed is the road's. Stalled, the car eases itself
+    // out sideways, his way if he steers (unstick: its sideways speed held, whatever the crawl or what it rubs on)
+    const own = busy ? 0 : steerOf(input), free = this.unstick(dt, own), steer = free ?? own;
     this.v = speedStep(this.v, this.cruise, dt, C);
     // a car at a standstill does not go sideways; crawling (held up by what it pushes), it can still steer out
     const grip = this.v > 0.1 ? clamp(this.v / this.cruise, C.crawl, 1) : 0;
@@ -344,11 +387,13 @@ export default class Drive {
     if (this.shoveT > 0) {
       this.shoveT -= dt;
       this.u = this.side * C.shove.v * grip;
-    } else {
+    } else if (free) this.u = free * C.stall.steer * C.steer;
+    else {
       // (out of a shove the sideways speed is given back fast, until the wheel is his again)
       if (this.shoved && (steer || Math.abs(this.u) < 1)) this.shoved = false;
       this.u = steerStep(this.u, steer * grip, dt, C, this.shoved ? C.shove.back : C.pull);
     }
+    this.u = this.offFronts(this.u);
     // the velocity set; the nose sprung toward the way it really goes (a knock turns it, the road brings it back;
     // held up against a wall, it comes round along it instead of digging in)
     const Y = C.yaw, across = Math.abs(vel.y) < Math.abs(this.u) ? vel.y : this.u;
@@ -367,6 +412,82 @@ export default class Drive {
     this.springs(dt);
     // the lab: E, and he gets out (the car stopped where it is)
     if (this.o.exit && !busy && input.hit('KeyE')) this.leave();
+  }
+
+  // Never stalled for good (C.stall): crawling under `under` of its cruise speed for `after` s (a car shoved into its
+  // lane, a wreck, a thing pinned against it), it eases itself sideways out of it until it runs again, at `steer` of
+  // the full sideways speed however slow it is and whatever it rubs on (at a crawl the wheel alone could not drag it
+  // off what its nose leans on): the way he steers (own: never fought), else the way what holds it pushes it, else
+  // toward the street's middle, else toward the lane it is farthest from; the other way if it has not got anywhere
+  // after `after` s more. -1..1 the way it goes, or null: the wheel as usual (the lab has no street)
+  unstick(dt, own) {
+    const S = this.C.stall, mid = this.street, y = this.van.y;
+    this.stallT = this.v < S.under * this.cruise ? this.stallT + dt : 0;
+    if (this.v >= S.until * this.cruise) this.freeing = null;
+    else if (this.stallT > S.after && !this.freeing) this.freeing = { side: this.wayOut(mid), y, t: 0 };
+    const F = this.freeing;
+    if (!F || mid === null) return null;
+    if (own) return own;
+    this.tearHeld();
+    if ((F.t += dt) > S.after) {
+      if (Math.abs(y - F.y) < S.moved) F.side = -F.side; // (held that way too)
+      F.y = y;
+      F.t = 0;
+    }
+    return F.side;
+  }
+
+  // which way out of what holds it (-1: -y): the way the solid contacts push it, else the street's middle, else the
+  // lane it is farthest from
+  wayOut(mid) {
+    const b = this.van.body, y = this.van.y;
+    let push = 0;
+    for (const pair of this.world.physics.activePairs()) {
+      if (pair.isSensor || (pair.bodyA !== b && pair.bodyB !== b)) continue;
+      push += pair.collision.normal.y * (pair.bodyB === b ? 1 : -1); // (Matter's normal points from A to B)
+    }
+    if (Math.abs(push) > 0.3) return Math.sign(push);
+    if (mid !== null && Math.abs(mid - y) >= TILE) return Math.sign(mid - y);
+    const far = (this.o.lanes || []).map((r) => r * TILE).sort((a, c) => Math.abs(c - y) - Math.abs(a - y))[0];
+    return far !== undefined && far !== y ? Math.sign(far - y) : 1;
+  }
+
+  // stalled: a bolted thing it leans on (met at a crawl, it held: a pole it is wedged under against a wall) is torn
+  // off as if hit fast; a parked car it leans on is woken (frozen again at rest, it held: shoved aside now)
+  tearHeld() {
+    const b = this.van.body;
+    for (const pair of this.world.physics.activePairs()) {
+      const o = pair.bodyA === b ? pair.bodyB : pair.bodyB === b ? pair.bodyA : null, e = o?.entity;
+      if (e?.isVehicle && o.frozen && !e.exploded) this.loosen(o, pair);
+      if (!e?.def?.static || e.def.lasting || e.isVehicle || e.dead || e.dying || pair.isSensor) continue;
+      pair.isSensor = o.isSensor = true;
+      e.break(Math.atan2(o.position.y - b.position.y, o.position.x - b.position.x), this.C.hit.power * 0.6);
+    }
+  }
+
+  // u (px/step across) kept from carrying its flank into the building fronts (frontsAt, C.front px short of them):
+  // their windows and doors are set back in them and a corner sliding along caught in one and held the car there.
+  // Held off them as it goes into them: `grind`, its flank there (the scrape's sparks and grind: scrape)
+  // (a street only: the chase; the lab has none)
+  offFronts(u) {
+    const map = this.world.map;
+    this.grind = null;
+    if (!this.o.lanes || !map || !u) return u;
+    const b = this.van.body.bounds, m = this.C.front, r = Math.floor(this.van.y / TILE);
+    let lo = -Infinity, hi = Infinity;
+    for (let c = Math.floor(b.min.x / TILE); c <= Math.floor(b.max.x / TILE); c++) {
+      const f = frontsAt(map, c, r);
+      if (f) { lo = Math.max(lo, f[0]); hi = Math.min(hi, f[1]); }
+    }
+    const held = u > 0 ? Math.min(u, Math.max(0, hi - m - b.max.y)) : Math.max(u, Math.min(0, lo + m - b.min.y));
+    if (Math.abs(held) < Math.abs(u) - 0.05) this.grind = { x: this.van.x, y: u > 0 ? hi : lo };
+    return held;
+  }
+
+  // the street's middle line (world px y: the level's `chase.mid` row, else the lanes'), or null (the lab)
+  get street() {
+    const lanes = this.o.lanes, row = this.o.mid ?? (lanes ? lanes.reduce((s, r) => s + r, 0) / lanes.length : null);
+    return row === null ? null : row * TILE;
   }
 
   // The body on its springs this step (looks only): what the speeds did since the last one pushes it (a hit that
@@ -458,7 +579,11 @@ export default class Drive {
     if (e?.isVehicle) {
       h.kind = 'car';
       this.loosen(o, pair);
-      e.onCollide ??= (o2, pair2) => this.knock(o, o2, pair2); // what it is shoved into goes too
+      if (!e.onCollide) {
+        // what it is shoved into goes too (this drive's: leave takes it back, a new drive gives its own)
+        e.onCollide = (o2, pair2) => this.knock(o, o2, pair2);
+        this.knocked.set(e, e.onCollide);
+      }
     } else if (e && (e.isPlayer || e.isEnemy || e.isCivilian)) h.kind = 'person';
     else if (e?.def && (e.dead || e.dying)) h.kind = 'gives';
     else if (e?.def && !e.def.lasting) {
@@ -470,7 +595,7 @@ export default class Drive {
         pair.isSensor = o.isSensor = true;
         e.break(Math.atan2(vel.y, vel.x) + rand(-0.3, 0.3), tearPower(fast, C));
         h.kind = 'torn';
-      } else if (!o.isStatic && !o.frozen && kgOf(o) <= C.hit.fling.kg && fast > C.hit.tear) this.fling(o, pair, vel);
+      } else if (!o.isStatic && !o.frozen && kgOf(o) <= C.hit.fling.kg) this.fling(o, pair, vel); // (however slow)
       else this.loosen(o, pair);
     } else if (e && !e.def) h.kind = 'gives'; // a window, a door: their own business
     this.hits.push(h);
@@ -478,10 +603,11 @@ export default class Drive {
 
   // A light loose thing in its way (a bin, a chair, a crate, a bag) is thrown, by hand: on ahead of the car and out
   // to the side it was hit on, turning, off the floor a moment. The contact itself is dropped (the physics would
-  // share the overlap equally between a chair and two tons of car, and hold it up).
+  // share the overlap equally between a chair and two tons of car, and hold it up), at any speed: met at a crawl
+  // and kept, a bag pinned between the car and a wall held it up
   fling(o, pair, vel) {
     const F = this.C.hit.fling, v = this.van, side = v.toSprite(o.position.x, o.position.y).sy < v.h / 2 ? -1 : 1;
-    const sp = Math.hypot(vel.x, vel.y) * rand(...F.v), a = Math.atan2(vel.y, vel.x) + side * rand(...F.side);
+    const sp = Math.max(F.least, Math.hypot(vel.x, vel.y) * rand(...F.v)), a = Math.atan2(vel.y, vel.x) + side * rand(...F.side);
     pair.isActive = false;
     pair.isSensor = true;
     if (o.isSleeping) Sleeping.set(o, false);
@@ -532,7 +658,7 @@ export default class Drive {
     const square = nosedIn(h.a, h.vx, h.vy, h.nx, h.ny, C);
     if (h.kind === 'solid') {
       if (square && onNose(h.lo, h.hi, h.mid, v.h, C) && !w.player.invulnerable) { this.crash(h); return; }
-      if (square) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); this.bump('hit'); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
+      if (square && !grazes(h.lo, h.hi, h.mid, v.h, C)) { this.v = Math.min(this.v, C.crash.clip); w.shake(C.hit.shake); this.bump('hit'); w.events.emit('ride', { beat: 'clip', x: h.x, y: h.y }); } // a corner clipped: most of the speed gone
       w.sound('carHit', h.x, h.y, 0.5);
       w.particles.sparks(h.x, h.y, Math.atan2(-h.ny, -h.nx), 1, 8, 260);
       return;
@@ -659,10 +785,19 @@ export default class Drive {
     }
   }
 
-  // a flank grinding along a wall or a car: sparks and the grind, every so often while it lasts
+  // a flank grinding along a wall or a car (or held off the building fronts as he steers into them: grind): sparks and
+  // the grind, every so often while it lasts
   scrape(dt) {
     const w = this.world, C = this.C.scrape, b = this.van.body;
     if ((this.scrapeT -= dt) > 0) return;
+    const g = this.grind;
+    if (g && this.v >= 1.5) {
+      w.particles.sparks(g.x, g.y, Math.PI + b.angle, 0.7, C.sparks, 240);
+      w.sound('vanScrape', g.x, g.y, C.vol);
+      w.events.emit('ride', { beat: 'scrape', x: g.x, y: g.y });
+      this.scrapeT = C.every;
+      return;
+    }
     for (const pair of w.physics.activePairs()) {
       if (pair.bodyA !== b && pair.bodyB !== b) continue;
       const o = pair.bodyA === b ? pair.bodyB : pair.bodyA;
@@ -709,9 +844,8 @@ export default class Drive {
   // car's place as it is drawn (Vehicle.draw snaps it the same way), so the car's offset in the picture is one whole
   // number of px, frame after frame
   frame(viewW, z = 1) {
-    const C = this.C.camera, v = this.van, snap = (n) => Math.round(n * z) / z;
-    const lanes = this.o.lanes, row = this.o.mid ?? (lanes ? lanes.reduce((s, r) => s + r, 0) / lanes.length : null);
-    return { x: snap(v.x) + snap(viewW * (0.5 - C.at)), y: snap(row === null ? v.y : row * TILE) };
+    const C = this.C.camera, v = this.van, snap = (n) => Math.round(n * z) / z, mid = this.street;
+    return { x: snap(v.x) + snap(viewW * (0.5 - C.at)), y: snap(mid === null ? v.y : mid) };
   }
 
   // its engine and tyres this step (audio/Motor.js; World hands it to Audio.motor): the gearbox on its real speed,

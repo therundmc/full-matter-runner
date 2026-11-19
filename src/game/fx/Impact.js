@@ -79,11 +79,12 @@ export function slowAtLeast(world, scale, dur) {
   return true;
 }
 
-// several kills in a breath (Scoring's 'multiKill'): MOMENTS.multi of its tag. World, once.
+// several kills in a breath (Scoring's 'multiKill'): MOMENTS.multi of its tag; never at the wheel (no slow motion
+// nor hit-stop in the chase, docs/LEVEL2.md). World, once.
 export function listenMoments(world) {
   world.events.on('multiKill', ({ tag }) => {
     const m = MOMENTS.multi[tag];
-    if (!m) return;
+    if (!m || world.drive?.on) return;
     slowAtLeast(world, ...m.slowmo);
     if (m.stop) world.hitstop(m.stop);
   });
