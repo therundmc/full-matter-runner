@@ -102,7 +102,7 @@ test('traversal: the gate is climbed both ways and each time he rolls on landing
 });
 
 test('traversal: up the ladder facing it, down it backwards, never a roll', () => {
-  const w = world(), up = man(w, 1.5, 21.35);
+  const w = world(), up = man(w, 3.5, 17.35);   // the liquor store's own ladder, from the aisle
   assert.ok(up.tryVault(-Math.PI / 2));
   const L = up.vaulting.ladder;
   assert.ok(L && L.up && up.vaulting.kind === 'climb');
@@ -116,11 +116,11 @@ test('traversal: up the ladder facing it, down it backwards, never a roll', () =
   const still = seen.path.filter((q, i) => i && Math.abs(q.y - seen.path[i - 1].y) < 0.15).length;
   assert.ok(still > 10, `${still} frames at rest on a rung`);
 
-  const down = man(w, 1.5, 19.65);
+  const down = man(w, 3.5, 15.65);
   assert.ok(down.tryVault(Math.PI / 2));
   assert.ok(!down.vaulting.ladder.up);
   seen = play(down);
-  assert.equal(tileAt(w, down), 's', 'down in the street');
+  assert.equal(tileAt(w, down), ',', 'down in the shop');
   const back = seen.angles[Math.floor(seen.frames / 2)];
   assert.ok(Math.abs(back + Math.PI / 2) < 0.05, 'his back to the way he goes, facing the ladder');
 });

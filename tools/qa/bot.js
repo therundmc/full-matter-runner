@@ -45,16 +45,15 @@
   // then the bot plays freely, in the plan's `style` ('throw': blades are thrown at guards in range).
   // ok(w, p): whether the plan still makes sense now. Routes through the map are level 1's; a level with no entry
   // here only plays 'free'. A plan marked `rescue` is never drawn, only started when needed.
-  const FIRE_ESCAPE = [{ go: [1.5, 21.4] }, { cross: [1.5, 19.3] }]; // up the street corner's ladder onto the liquor store roof
   const DROP_LOT = [{ go: [9.45, 3.5] }, { cross: [11.7, 3.5] }];    // over the parapet, down into the back lot (a roll)
   const DROP_ALLEY = [{ go: [9.45, 12.5] }, { cross: [11.7, 12.5] }]; // ... into the service alley
   // the liquor store: the aisle between its counter and the shelves leads west to the foot of the shop's ladder (all of
   // it blocked cells for the grid); its pistol is hidden up on the roof, by the lookout's chair over the back lot
   const PISTOL = { pick: 'pistol', near: [8.6, 4.7], r: 2 };
-  const SHOP_DOWN = [{ go: [3.5, 15.45] }, { cross: [3.5, 17.6] }];  // down the shop's own ladder, into the aisle
   const SHOP_UP = [{ to: [3.5, 17.75] }, { to: [3.5, 17.45] }, { cross: [3.5, 15.4] }];
   const COUNTER_IN = [{ go: [8.5, 19.5] }, { cross: [8.5, 17.7] }];  // in by the front door (locked: broken open), over the counter
   const COUNTER_OUT = [{ to: [8.5, 17.75] }, { cross: [8.5, 19.6] }];
+  const ROOF_UP = [...COUNTER_IN, ...SHOP_UP];                       // the only way up: into the shop and up its ladder
   const itemNear = (w, type, at, r) => w.items.find((it) => !it.dead && it.type === type && Math.hypot(it.x - at[0] * TILE, it.y - at[1] * TILE) < r * TILE);
   const TIRE_IRON = [{ trunk: true }, { pick: 'tire_iron', near: [13.5, 24], r: 4, optional: true }];
   const THROW = { steps: [{ pick: 'knife', any: true }], style: 'throw', ok: (w) => w.items.some((it) => !it.dead && it.type === 'knife') };
@@ -64,9 +63,9 @@
     level1: {
       free: { steps: [] },
       trunk: { steps: TIRE_IRON, ok: (w, p) => !p.armed && B.trunks.some((c) => !c.dead && !c.trunk.open) },
-      roof: { steps: [...FIRE_ESCAPE, ...DROP_LOT] },
-      roofShop: { steps: [...FIRE_ESCAPE, ...SHOP_DOWN, ...SHOP_UP, ...DROP_ALLEY] },
-      roofGun: { steps: [...FIRE_ESCAPE, PISTOL, ...DROP_LOT], ok: (w, p) => !p.hasGun && !!itemNear(w, 'pistol', PISTOL.near, 2) },
+      roof: { steps: [...ROOF_UP, ...DROP_LOT] },
+      roofShop: { steps: [...ROOF_UP, ...DROP_ALLEY] },
+      roofGun: { steps: [...ROOF_UP, PISTOL, ...DROP_LOT], ok: (w, p) => !p.hasGun && !!itemNear(w, 'pistol', PISTOL.near, 2) },
       liquor: { steps: [...COUNTER_IN, ...COUNTER_OUT] },
       // the back lot is watched (a patrol, a doorman by the back door): a tire iron first, if the trunk still has it
       fuse: { steps: [...TIRE_IRON, { smash: 'fuse_box', near: [23.5, 4.92], stand: [23.5, 4.3] }], ok: (w) => w.power.on },
@@ -1283,8 +1282,8 @@
     // the fuse box broken, then a fight in the dark
     darkFight: { dur: 45, levels: ['level1', 'lab'], get steps() { return PLANS[opts.level]?.fuse?.steps || []; },
       ok: (w, p) => !!PLANS[opts.level]?.fuse && PLANS[opts.level].fuse.ok(w, p), fn: () => {} },
-    // a fight dragged up the fire escape onto the liquor store roof
-    roofFight: { dur: 25, levels: ['level1'], steps: [{ provoke: true }, ...FIRE_ESCAPE, { wait: 12 }], fn: () => {} },
+    // a fight dragged through the liquor store and up its ladder onto the roof
+    roofFight: { dur: 25, levels: ['level1'], steps: [{ provoke: true }, ...ROOF_UP, { wait: 12 }], fn: () => {} },
     // into the tutorial's fire
     tutorialFire: { own: true, dur: 20, levels: ['tutorial'], fn: (c) => {
       const { w, p, M } = c, f = w.fireSpread?.nearest(p.x, p.y);

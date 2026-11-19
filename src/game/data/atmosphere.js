@@ -32,13 +32,13 @@ export const RAIN = {
     per: 0, r: [9, 21], gap: 70, floors: ['asphalt', 'asphalt_line', 'sidewalk', 'concrete', 'dirt'],
     lobes: 9, squash: [0.5, 0.75], // ragged outline, flattened
   },
-  // drips: water running off the eaves and the fire escape, a drop every few seconds on the same spots
+  // drips: water running off the eaves and any ladder out in the open, a drop every few seconds on the same spots
   drips: {
     per: 5,                // spots per 100 wall faces along an open floor
     every: [0.6, 2.4],     // s between two drops of a spot
     fall: 0.3,             // s a drop is seen coming down
     size: 1.4,             // px of the drop, at the bottom of its fall
-    ladder: 3,             // spots under each ladder (the fire escape)
+    ladder: 3,             // spots under each ladder out in the open
     color: '#dfe8ff', alpha: 0.6,
   },
   // the wet: floors in the open mirror the lights harder (Lighting.post, x (1 + wet)), and the beams of the cars

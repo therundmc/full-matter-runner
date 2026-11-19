@@ -17,7 +17,7 @@ Plan (north is up):
 
 The street is alive at 2:14 AM: three shop fronts throw their light on the sidewalks through their display windows
 (a liquor store and a TV shop, closed, on either side of the bar; a laundromat open all night next to the start alley).
-They are public ground. The liquor store has a ladder to its roof in its back wall.
+They are public ground. The liquor store has a ladder to its roof in its back wall: the only way up.
 
 Six ways in, none of them free (the level is made to be played again another way):
     the front    double door under the neon: the bouncer, the sidewalk patrol, the whole room at once
@@ -27,12 +27,12 @@ Six ways in, none of them free (the level is made to be played again another way
                  but it is the long way round, with no room to dodge, past a window of the bar, and it comes out
                  in the back lot under the tube light by the back door, where a guard leans smoking; on its way, a window of the
                  VIP room to dive through
-    the roof     a fire-escape ladder at the corner of the liquor store (far left of the street) climbs to its flat
-                 roof: nobody up there, a bat left by whoever comes to smoke, and two drops over the parapet: into
-                 the service alley behind the gate and the smoker's back, or into the west end of the back lot
+    the roof     up the liquor store's own ladder, in its back wall, to its flat roof (no ladder outside: the user
+                 found one on the street made no sense): nobody up there, a bat left by whoever comes to smoke, and
+                 two drops over the parapet: into the service alley behind the gate and the smoker's back, or into
+                 the west end of the back lot
     the shop     the liquor store: break in by the front (the bell rings, the guards come and look: a diversion as
-                 much as a way in), or come down its own ladder from the roof without a sound; the same ladder is the
-                 way on from there. The pistol that was behind its counter is hidden up on the roof now, by the
+                 much as a way in), over the counter and up its ladder. The pistol that was behind its counter is hidden up on the roof now, by the
                  lookout's chair over the back lot: a reward for the climb
     the lot      from the back lot: the locked back door (to force), or the toilets' window (a public room: one comes
                  out of it a customer); the boss's room has no window
@@ -95,10 +95,9 @@ lv.fill(20, 32, 23, 36, '_')
 # shop fronts, 3 m deep behind their display windows: liquor store (west of the bar) and TV shop (east), both locked
 # for the night, and the laundromat by the start alley, open
 lv.fill(3, 17, 8, 19, ',')
-# the liquor store's flat roof: up a ladder from the street corner or from the shop, down over a parapet
+# the liquor store's flat roof: up the shop's own ladder (the only way up), down over a parapet
 lv.fill(1, 8, 9, 14, '^')
 lv.fill(7, 3, 9, 7, '^')       # its north arm, above the back lot
-lv.fill(1, 15, 1, 20, '^')     # the fire escape's landing and its ladder on the street
 lv.fill(3, 15, 3, 16, '^')     # the shop's own ladder, in its back wall
 lv.put(10, 12, '^')            # the parapet over the service alley
 lv.put(10, 3, '^')             # ... and over the back lot
@@ -622,7 +621,6 @@ lv.smoke_haze(30.0, 18.9, 1.4, 0.12)                     # thicker in the stage'
 
 # ---------------------------------------------------------------- rooftops of the neighbouring buildings
 lv.area('the liquor store roof')
-lv.prop('ladder', 1.5, 20.5)                            # the fire escape, at the corner of the street
 lv.prop('wall_lamp', 9.91, 11.4, 90)                    # a lamp by each way down
 lv.prop('wall_lamp', 9.91, 4.6, 90)
 # somebody's summer evenings, against the north wall: a couch from the street, a crate for a table, a radio

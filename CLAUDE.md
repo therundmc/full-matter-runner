@@ -130,8 +130,8 @@
   trunk of the first parked car (prop option `trunk`,
   E at its tail); the player starts on the ground and gets up (level `intro`), the first time with a bottle of rum,
   the camera pushed in on him (systems/Opening.js, SHOTS `swig*`).
-- Five ways in on foot (front door, gate, the gap, the liquor store roof by a `ladder`, the shop's own ladder; down
-  by a `parapet`) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
+- Four ways in on foot (front door, gate, the gap, the liquor store: in by its door and up its own `ladder` to the
+  roof, the only way up (no ladder on the street: the user's call); down by a `parapet`) and three windows (toilets, gaming room, VIP room). A walkable roof is floor tile `^`.
 - Guards have the house's keys (`World.pathForGuard`, `Door.unlatch`): never lock a door without checking they still
   get out (the QA robot reports `guard-stuck`).
 - The getaway is THE BOSS's convertible (model `convertible`, entities/Vehicle.js: `seat`, `door`, `cabin`, `hat`;
