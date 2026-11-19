@@ -144,7 +144,8 @@
 - At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
-  systems/Papers.js.
+  systems/Papers.js, what drips on the floor (systems/Drips.js: prop `drips`, `LIQUIDS.drips`), what fumes on a stove
+  (clutter `fume`, `SMOKE.fumes`: r 6 at least), liquid on a floor from the start (level `spills`, levelkit `spill`).
 
 ## Level 1
 - The boss is CUEBALL, the comic's heavy (kind `cueball`: data/bosses.js `BOSSES`, entities/Boss.js, systems/BossStage.js):
@@ -205,6 +206,10 @@
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
+  The flat's dressing (2026-11-19: FLAT_PROPS / FLAT_PAINT / FLAT_CLUTTER in generate_assets.py, the wear kinds `damp`,
+  `flakes`, `grease`, `leak`, `threadbare`, lab station 34): what lies on a floor is PAINT (no body), a piece with a
+  body goes in a corner, never in the lane, a doorway, a spawn or the robot's way (tests/flat.test.mjs holds them);
+  a paint that burns is listed in FIRE.paint (the mattress as the bed was); a spill never across a petrol trail.
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending; a page is skipped by holding
   SPACE / pad A, never a stray key or click: Hold.js, `SKIP`), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.

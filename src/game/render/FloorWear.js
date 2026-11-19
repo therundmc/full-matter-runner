@@ -19,6 +19,7 @@ const PATCHED = hexRgb('#4a4c56'), CEMENT = hexRgb('#55525a'), WORN = hexRgb('#8
 const BOARDS = [0, 5, 11, 16, 21, 27, 32];
 const DAMP = hexRgb('#3a4a3a'), RUST = hexRgb('#7a4a26'), STEEL = hexRgb('#6a707a'), STEEL_L = hexRgb('#9aa0aa');
 const LINT = hexRgb('#b4bccc');
+const PLASTER = hexRgb('#d8d0c0'), FAT = hexRgb('#8a6a20'), LIME = hexRgb('#d8dccc');
 const DRAIN = 5; // px across a floor drain's grate
 const GAP = 20; // px: two marks of a kind never closer on a surface
 
@@ -601,6 +602,61 @@ const KINDS = {
     const r = 2 + R() * 3;
     blob(P, x, y, r, r * (0.5 + R() * 0.4), R() * TAU, ragged(R, 0.4), (px, py, e) => {
       if (e < 0.8) P.tint(px, py, 10, BACKING, 0.35); else P.tint(px, py, -9);
+    });
+  },
+
+  // ---- an old flat's (tools/build_tutorial.py), laid by the level (`grime`), `r` px across if given
+
+  // damp come through a wall and out over the floor: a dark greenish blot, the salts it leaves along its edge
+  damp(P, R, x, y, o) {
+    const r = o.r ?? 9 + R() * 8;
+    blob(P, x, y, r, r * (0.55 + R() * 0.3), R() * TAU, ragged(R, 0.4), (px, py, e) => {
+      const w = smooth((1 - e) / 0.5);
+      P.tint(px, py, -7 * w, DAMP, 0.2 * w);
+      if (e > 0.9) P.tint(px, py, 5, PLASTER, 0.12);
+    });
+  },
+
+  // plaster and paint come off a wall: pale flakes at its foot, the bigger ones with their shadow, their dust
+  flakes(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 9;
+    blob(P, x, y, r, r * 0.6, R() * TAU, ragged(R, 0.3), (px, py, e) => P.tint(px, py, 3 * (1 - e), PLASTER, 0.1 * (1 - e)));
+    for (let n = 5 + Math.floor(R() * 8); n > 0; n--) {
+      const a = R() * TAU, d = r * Math.sqrt(R()), fx = Math.floor((x + Math.cos(a) * d) * s), fy = Math.floor((y + Math.sin(a) * d * 0.6) * s);
+      P.tint(fx, fy, 14, PLASTER, 0.75);
+      if (R() < 0.35) { P.tint(fx + 1, fy, 10, PLASTER, 0.6); P.tint(fx + 1, fy + 1, -8); }
+    }
+  },
+
+  // fat spat off a stove for years: a yellow film on the floor before it, pin spots round it
+  grease(P, R, x, y, o) {
+    const s = P.s, r = o.r ?? 12;
+    blob(P, x, y, r, r * 0.7, R() * TAU, ragged(R, 0.3), (px, py, e) => {
+      const w = smooth((1 - e) / 0.6);
+      P.tint(px, py, -6 * w, FAT, 0.22 * w);
+    });
+    for (let n = 14 + Math.floor(R() * 10); n > 0; n--) {
+      const a = R() * TAU, d = r * (0.5 + R() * 0.9);
+      P.tint((x + Math.cos(a) * d) * s, (y + Math.sin(a) * d * 0.7) * s, -9, FAT, 0.4);
+    }
+  },
+
+  // where water has dripped for months: the floor washed pale, lime at its heart, a broken ring of rust round it
+  leak(P, R, x, y, o) {
+    const r = o.r ?? 7 + R() * 4, ph = R() * TAU;
+    blob(P, x, y, r, r * 0.8, R() * TAU, ragged(R, 0.3), (px, py, e, ux, uy) => {
+      if (e > 0.82) P.tint(px, py, -7 * (0.6 + 0.4 * Math.sin(3 * Math.atan2(uy, ux) + ph)), RUST, 0.3);
+      else if (e < 0.3) P.tint(px, py, 6, LIME, 0.18);
+      else P.tint(px, py, 3 * (1 - e));
+    });
+  },
+
+  // a carpet worn through to its backing: pale, the weave showing as fine crossed threads
+  threadbare(P, R, x, y, o) {
+    const r = o.r ?? 10 + R() * 6;
+    blob(P, x, y, r, r * (0.5 + R() * 0.3), R() * TAU, ragged(R, 0.35), (px, py, e) => {
+      const w = smooth((1 - e) / 0.5), weave = (px + py) % 3 === 0 || (px - py + 3000) % 4 === 0;
+      P.tint(px, py, (weave ? 9 : 4) * w, BACKING, (weave ? 0.3 : 0.14) * w);
     });
   },
 };

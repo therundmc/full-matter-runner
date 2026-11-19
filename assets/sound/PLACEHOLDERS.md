@@ -104,3 +104,5 @@ or kept silent (`[]`). Replace the mapping when the SFX library is bought. One l
 | shieldGrab | a guard seized from behind, or hauled up off the floor, as a human shield (Player.startShield; the `grab` cuts for now) | an arm clamped round a neck: cloth grabbed hard, a choked grunt, two pairs of feet scuffing |
 | shieldNeck | the click that breaks the neck of the man held as a shield, bare hands (Player.shieldKill; the `neck` cuts for now) | a neck wrenched in the crook of an arm: one dry crack, a breath let out, no body fall (he is still held) |
 | shieldThrow | the man held as a shield thrown forward along the aim (Player.throwShield) | a heavy shove: cloth snapping, a grunt of effort, a man's stumbling steps thrown off balance |
+| panClang | a frying pan or a kettle knocked off the stove or the worktop lands (systems/Clutter.js; two `metal` cuts for now) | a cast-iron pan clanging on a tiled floor and ringing down, what was in it slopping out |
+| dripPlink | a drop falls from a weeping joint or into a full pail (systems/Drips.js; silent for now) | one drop of water plinking into a zinc pail / onto a wet lino floor, close and small |
