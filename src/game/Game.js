@@ -13,7 +13,7 @@ import PostFX from './render/PostFX.js';
 import { ReplayRecorder, ReplayPlayer } from './render/Replay.js';
 import { loadBest, saveBest } from './systems/Records.js';
 import { loadSettings, saveSettings } from './systems/Settings.js';
-import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, levelTag, loadCrossed, saveCrossed } from './systems/Progress.js';
+import { CAMPAIGN, loadProgress, saveProgress, complete, latest, resetProgress, nextLevel, levelNumber, loadCrossed, saveCrossed } from './systems/Progress.js';
 import { levelScoring } from './data/scoring.js';
 import LEVELS from './data/levels/index.js';
 import { drawHUD } from './ui/HUD.js';
@@ -23,7 +23,7 @@ import { PAD_BINDINGS, PAD_AIM } from './data/controls.js';
 import { AIM, nextStyle } from './data/aim.js';
 import { assistAim } from './systems/AimCue.js';
 import Rumble from './systems/Rumble.js';
-import Menu, { selectable } from './ui/Menu.js';
+import Menu, { selectable, levelNotes } from './ui/Menu.js';
 import { drawMenu } from './ui/MenuArt.js';
 import { Pick, pauseCard } from './ui/Pause.js';
 import { cineView, cineBeats, drawCinematic } from './ui/Cinematic.js';
@@ -76,7 +76,7 @@ const DOES = {
   reload: (inp) => inp.down('KeyR'),
 };
 // what the intro banner calls a level
-const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelTag(id)}` : 'TEST LEVEL');
+const levelLabel = (id) => (id === 'tutorial' ? 'PROLOGUE' : CAMPAIGN.includes(id) ? `LEVEL ${levelNumber(id)}` : 'TEST LEVEL');
 // the steps the middle of the backdrop's gradient drifts on (share of its diagonal: Game.backdrop); its flat tone
 // under a map that fills the picture
 const BACKDROP_STEP = 0.005, BACKDROP_FLAT = '#12061f';
@@ -116,7 +116,7 @@ export default class Game {
     this.dev = devMode();              // the developer's keys and switches (data/build.js: off in a release build)
     this.pausedFrom = null;            // { state, t } the pause was opened from (pause / resume)
     this.settings = loadSettings();
-    this.progress = loadProgress();
+    this.progress = loadProgress(undefined, has);
     this.menu = new Menu('main', () => this.menuContext());
     this.menuRects = [];               // where the menu's items were drawn last frame (MenuArt), for the mouse
     this.pick = new Pick();            // the pause's chosen line: its tab's slide, a confirm's press (ui/Pause.js)
@@ -281,7 +281,7 @@ export default class Game {
 
   // a level finished: marked done, the next one opened (the tutorial calls it too)
   completeLevel(id) {
-    this.progress = complete(this.progress, id);
+    this.progress = complete(this.progress, id, has);
     saveProgress(this.progress);
   }
 
@@ -473,10 +473,10 @@ export default class Game {
     // a run helped by the sandbox is shown but never kept as a record
     this.completeLevel(this.levelId);
     const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.runTime }) : { prev: this.best, record: false };
-    const next = nextLevel(this.levelId);
+    const next = nextLevel(this.levelId, has);
     this.results = {
       ...tally, best: kept.prev, record: kept.record, ranked: this.ranked,
-      level: { label: levelLabel(this.levelId), name: w.level.name || '' }, nextLevel: next && has(next) ? next : null,
+      level: { label: levelLabel(this.levelId), name: w.level.name || '' }, nextLevel: next,
     };
     this.resultsT = 0;
     this.replay.start();
@@ -662,7 +662,7 @@ export default class Game {
       if (skip || leapView(lt).over) {
         const done = this.levelId;
         this.completeLevel(done);
-        this.startLevel(nextLevel(done) || this.firstLevel());
+        this.startLevel(nextLevel(done, has) || this.firstLevel());
       }
       return;
     }
@@ -790,6 +790,7 @@ export default class Game {
   titleView() {
     return {
       menu: this.menu, progress: this.progress, device: this.input.device, mouse: this.input.mouse, between: this.state === 'hitlist',
+      notes: this.state === 'hitlist' ? levelNotes(this.menuContext()) : null,
       crossed: this.crossed, sound: (name, vol, opts) => Audio.play(name, { vol, ...opts }), onCrossed: (n) => this.markCrossed(n),
     };
   }

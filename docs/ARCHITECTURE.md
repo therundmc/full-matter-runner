@@ -157,7 +157,9 @@ src/
                           (DOM-free, unit-tested; advanced by Game on the real clock)
       Opening.js          the camera on level 1's opening (the bottle of rum, Player.swig): SHOTS `swig`, `swigThrow`,
                           `swigUp`, the first start only (pure state, unit-tested)
-      Progress.js         the campaign order, what is unlocked and done, saved in localStorage (DOM-free, storage injectable)
+      Progress.js         the campaign (data/campaign.js: the player's numbered levels, each one or several stages, the
+                          engine's levels, played in a row), what is unlocked and done, saved in localStorage (DOM-free,
+                          storage injectable)
       PoolBalls.js        the balls on a pool table roll, bounce, clack and drop ('propHit', 'impact', 'poolStroke';
                           DOM-free, unit-tested; drawn by render/PropLife.js)
       Gadgets.js          the arcade cabinet rings when shaken, the jukebox derails then dies (GADGETS)
@@ -177,6 +179,9 @@ src/
       Steam.js            manholes that breathe (and seep between breaths, thicker in the rain), wall vents, steam pipes
                           whistling out of a bullet hole (SMOKE.steam / jets.leak, level `street`): steam put in the air
                           of Smoke.js, which carries it (a passing car tears it along)
+      Drips.js            water that drips on the floor drop by drop (prop `drips`, LIQUIDS.drips: a water heater's
+                          weeping joint, a pail running over): a little liquid poured at the prop's foot every few
+                          seconds while it stands, none once the floor there is deep enough (DOM-free, unit-tested)
       Papers.js           loose sheets blown by gusts, dragged by passing cars, kicked by runners (PAPERS; no bodies);
                           soaked by the rain, heavier and darker; `drop` adds sheets that fell out of something
       Weather.js          the wet after the rain (level `soundscape.rain`, RAIN in data/atmosphere.js; falling rain is

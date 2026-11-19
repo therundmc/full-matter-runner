@@ -134,7 +134,14 @@ export const SMOKE = {
   // burning car, its wreck, the flame of a pierced gas bottle, shorted electronics
   burn: { r: 10, rate: 0.55, cap: 0.95, swell: 1.2, size: { fire: 1, spot: 0.5, car: 3, wreck: 4, flame: 0.4, short: 0.3 } },
   // steady sources (per s over r px): a badly damaged engine (times how damaged)
-  fumes: { engine: { kind: 'smoke', rate: 1.2, r: 6 } },
+  // (`cap`: never over that at its heart; r no less than 6: under the air's cell a source may fall between two;
+  // `swell`: the hot air welling out of it, volume 1/s per s; `wisp`: the threads seen rising off it, one every
+  // `every` s within `spread` px, as a cigarette's (`cig`) but thicker); a pan left on the gas and a kettle on the boil (systems/Clutter.js `fume`)
+  fumes: {
+    engine: { kind: 'smoke', rate: 1.2, r: 6 },
+    pan: { kind: 'smoke', rate: 2.2, r: 6, cap: 1.3, swell: 0.9, wisp: { every: 0.05, alpha: 0.75, spread: 2.2 } },
+    kettle: { kind: 'steam', rate: 2.4, r: 6, cap: 0.45, swell: 0.5, wisp: { every: 0.08, alpha: 0.85, spread: 1 } },
+  },
   // a jet out of a hole: `rate` per s of its kind laid over r px at the hole and further out (never over `cap`), the
   // air thrown along it at `speed` px/s over `reach` px (k of the way per step) and swelling out at its end (`swell`:
   // volume 1/s per s), thrashing `wobble` rad either way `hz` times a s, for `dur` s, its pressure falling to `fall`; a hiss every `hiss` s (the gas one, at `vol`, `pitch`)

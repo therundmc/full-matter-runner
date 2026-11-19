@@ -213,9 +213,13 @@ export default class Smoke {
   }
 
   // one of SMOKE.fumes going on at (x, y), at k of its rate
-  fume(name, x, y, dt, k = 1) {
-    const S = this.cfg.fumes[name];
-    this.emit(S.kind, x, y, S.rate * k, dt, S.r);
+  // (`o`, whatever gives it off, keeps the pace of the threads seen rising from it: `wisp`, as a cigarette's)
+  fume(name, x, y, dt, k = 1, o = null) {
+    const S = this.cfg.fumes[name], W = S.wisp;
+    this.emit(S.kind, x, y, S.rate * k, dt, S.r, S.cap, S.swell);
+    if (!W || !o || (o.fumeT = (o.fumeT || 0) - dt) > 0 || !this.within(x, y)) return;
+    o.fumeT = W.every;
+    this.thread(x + (this.rand() - 0.5) * 2 * W.spread, y + (this.rand() - 0.5) * 2 * W.spread, 1 + this.rand() * 50, W.alpha);
   }
 
   // the air in a disc of radius r pulled toward (vx, vy) px/s, k of the way at its heart (a vent, a fan...)

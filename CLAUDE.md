@@ -88,9 +88,11 @@
 
 ## Gameplay
 - A hard game (the user's rule): NO checkpoints. Dying restarts the level from its beginning, never mid-level
-  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is split in two levels
-  instead: level 2 is 2a (the car chase, ending on the crash into the gas station) and 2b (the gas station fight,
-  restarted from the crash); the FLAMINGO MOTEL (JITTERS) is level 3.
+  (the tutorial alone restarts at its last room reached, `Game.tutorialAt`). A long level is cut in STAGES played
+  in a row instead (data/campaign.js: the player's levels 00 tutorial, 01 CUEBALL, 02 and 03 JITTERS, 04 05 LUCKY,
+  06 07 THE BOSS, each a list of the engine's levels): LEVEL 2 is level2a (the car chase, ending on the crash into
+  the gas station) then level2b (the gas station fight, restarted from the crash); for the player it is one level,
+  02, never "2A / 2B"; the FLAMINGO MOTEL (JITTERS) is level 3.
 - LEVEL 2: docs/LEVEL2.md is its level design and roadmap (with the concept boards in docs/level2/). Read it before
   any level 2 work, keep to it, update it when a decision changes, and add a line to its progress log at every step.
   2A is built by tools/build_level2a.py (level `chase` block: van start, cruise, lanes, end col, events by col); the
@@ -144,7 +146,8 @@
 - At the wheel the beats are systems/ChaseCam.js's (`CHASE.cinema`): a pursuer stopped for good (strong the first time and after its cooldown, light otherwise, never strong twice in a row), the lorry across his road (slow motion while he is on a collision course, the wheel handed more); any zoom a cut between whole zooms, no lens blur; lab station 31. A close-up at the wheel (SHOTS `even`) rests on an EVEN whole zoom, looks at the car AS DRAWN (never at his own body: it is not drawn between two steps) and goes through `Drive.lock`.
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
-  systems/Papers.js.
+  systems/Papers.js, what drips on the floor (systems/Drips.js: prop `drips`, `LIQUIDS.drips`), what fumes on a stove
+  (clutter `fume`, `SMOKE.fumes`: r 6 at least), liquid on a floor from the start (level `spills`, levelkit `spill`).
 
 ## Level 1
 - The boss is CUEBALL, the comic's heavy (kind `cueball`: data/bosses.js `BOSSES`, entities/Boss.js, systems/BossStage.js):
@@ -178,8 +181,9 @@
   back room and the back of house are not.
 
 ## Front end, story, tutorial
-- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN` = tutorial, level1, level2a: the level after a done one is open, an
-  old save too)
+- ui/Menu.js (pages, DOM-free) / ui/MenuArt.js; progression systems/Progress.js (`CAMPAIGN`: the stages of data/campaign.js in a row, made or not; the made stage
+  after a done one is open, an old save too; `levelDone`: a level is done when its last made stage is; best results
+  are kept by stage, `levelBest`)
   and systems/Settings.js in localStorage; `Game.startLevel(id)`, `newGame()`, `?level=<id>` forces a level.
 - Story: he ran packages for the bar's boss for six years and hid every dollar under his floor to leave town; the
   boss's men take it back and set his flat on fire with him in it. He gets out through the window; level 1 is the
@@ -205,14 +209,20 @@
   called is framed (`FRAME`, wave `frame`); the bat breaks on the corridor's gunman and his pistol is snatched with a
   spare magazine (`FORCE`, stage `snatch` / `spare`), then RELOAD; nobody surrenders there; the end is a chain of
   fire-balls down the corridor, set off as the last man falls (`BLAST.chain`, level `blast.chain`), and the way out is marked (`EXIT`, level `exit`).
+  The flat's dressing (2026-11-19: FLAT_PROPS / FLAT_PAINT / FLAT_CLUTTER in generate_assets.py, the wear kinds `damp`,
+  `flakes`, `grease`, `leak`, `threadbare`, lab station 34): what lies on a floor is PAINT (no body), a piece with a
+  body goes in a corner, never in the lane, a doorway, a spawn or the robot's way (tests/flat.test.mjs holds them);
+  a paint that burns is listed in FIRE.paint (the mattress as the bed was); a spill never across a petrol trail.
 - Cinematics: ui/Cinematic.js (opening), ui/cine/* (Page, Panels, Ink, Leap, Ending; a page is skipped by holding
   SPACE / pad A, never a stray key or click: Hold.js, `SKIP`), stills painted by
   tools/generate_comic.py (package tools/comic/, art bible tools/comic/STYLE.md); Menus and title: plain pixel art, flat shades, a dark outline, NO dither / screentone / gradient.
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once; the levels pinned under their target in `LEVEL_AT`, 2A and 2B under JITTERS, a level not made
-  yet a greyed note taped SOON, `SOON`), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  drawn by a marker once; a note a level (Menu.js `levelNotes`, never one for a stage), pinned in a column under its
+  target, three rows at most (`noteAt`: the tutorial and BACK under the photo of his flat, 01 under CUEBALL, 02 03
+  under JITTERS, then LUCKY, then THE BOSS), LEFT / RIGHT from a column to the next, UP / DOWN down it (page `grid`);
+  a level not made yet a greyed note taped SOON with its working title, seen and never started), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),

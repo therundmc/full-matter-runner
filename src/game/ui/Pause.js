@@ -3,7 +3,7 @@
 //   confirm is pressed down like a stamp for a beat before its action, and the whole screen is cut in when it opens.
 // - pauseCard: the note pinned beside the items: the level's number and name, whose night it is (the hit list's
 //   target, in his ink), the run's time and kills so far.
-import { levelTag } from '../systems/Progress.js';
+import { levelOf, levelTag } from '../systems/Progress.js';
 
 // s: the tab's slide, a confirm's press before its action, the screen coming in; fps: the pictures a second they
 // are held on (cut paper moves like stop motion)
@@ -56,17 +56,17 @@ export const TARGETS = {
   level2b: { label: 'TARGET', name: 'JITTERS', ink: '#3ad8e8', sign: 'jitters' },
 };
 
-// the number on a level's card: 00 the tutorial, 01, 02A...; '--' a level out of the campaign (the lab)
-export function levelNumber(id) {
-  if (id === 'tutorial') return '00';
-  const tag = levelTag(id);
-  return tag ? tag.replace(/^\d+/, (d) => d.padStart(2, '0')) : '--';
+// the number on a level's card, the hit list's (data/campaign.js): 00 the tutorial, 01, 02 (both stages of 2);
+// '--' a level out of the campaign (the lab)
+export function cardNumber(id) {
+  const level = levelOf(id);
+  return level ? levelTag(level) : '--';
 }
 
 // { number, name, target: { label, name, ink, sign } | null, time (s), kills, guards (0: not counted, the chase) }
 export function pauseCard(id, level, world) {
   return {
-    number: levelNumber(id), name: level?.name || String(id || '').toUpperCase(), target: TARGETS[id] || null,
+    number: cardNumber(id), name: level?.name || String(id || '').toUpperCase(), target: TARGETS[id] || null,
     time: world?.runTime ?? 0, kills: world?.scoring?.kills ?? 0, guards: world?.drive?.on ? 0 : world?.totalEnemies ?? 0,
   };
 }

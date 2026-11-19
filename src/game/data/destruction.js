@@ -291,6 +291,27 @@ export const DESTRUCTION = {
   // `lasting` (data/props.js): marked by every hit, never torn nor sawn
   ladder: { height: 3, material: 'metal' },
   parapet: { height: 1, material: 'stone' },
+  // the flat of the prologue: cheap furniture, a bag of clothes, tin and glass on the walls; the water heater's pipe
+  // floods the kitchen when it goes, the pail throws what it held
+  nightstand: { height: 0.5, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], floats: ['paper', 4], contents: [{ bit: 'bottle', n: 1, on: 'break' }] },
+  chair_jacket: {
+    height: 0.45,
+    parts: [{ cut: 'frame', t: 0.3, sides: 'l' }, { cut: 'panel', rect: [0.3, 0, 1, 1], name: 'seat' }],
+    legs: { n: 4, size: 0.05, color: '#4a2c18' },
+  },
+  duffel_bag: { height: 0.35, floats: ['stuffing', 8], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
+  coffee_table: { height: 0.4, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.07, color: '#3a2416' } },
+  record_player: { height: 0.6, electric: true, parts: [{ cut: 'grid', cols: 3, rows: 2 }], contents: [{ bit: 'book', n: 5, on: 'break' }] },
+  worktop: { height: 0.9, parts: [{ cut: 'planks', n: 4, axis: 'long', snap: true }], contents: [{ bit: 'can', n: 3, on: 'break' }] },
+  boiler: { height: 1.6, material: 'metal', parts: [{ cut: 'grid', cols: 2, rows: 1 }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'hit', dur: 4, flood: 1800 } },
+  bucket: { height: 0.3, material: 'metal', gush: 700, parts: [{ cut: 'wedges', n: 4, centre: true }], leak: { kind: 'water', color: 'rgba(110,160,200,0.16)', on: 'break', dur: 1 } },
+  plant_dead: {
+    height: 0.5, floats: ['straw', 8], spill: 'soil', parts: [{ cut: 'wedges', n: 4 }],
+    contents: [{ bit: 'pot', n: 5, on: 'break' }, { bit: 'soil', n: 1, on: 'break' }],
+  },
+  mirror_cracked: { height: 1.5, material: 'glass', parts: [{ cut: 'wedges', n: 6 }] },
+  mailboxes: { height: 1.4, material: 'metal', floats: ['paper', 6], parts: [{ cut: 'grid', cols: 5, rows: 1 }], contents: [{ bit: 'sheet', n: 4, on: 'break' }] },
+  calendar: { height: 1.5, floats: ['paper', 3], parts: [{ cut: 'grid', cols: 2, rows: 1 }] },
 };
 
 // Material-based defaults for props without a recipe, and the per-material hit response.
