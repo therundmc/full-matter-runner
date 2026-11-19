@@ -162,11 +162,11 @@ test('controls: every action has a cap for each device; the pad binds what the b
   assert.equal(keyLabel('nothing', 'pad'), 'nothing');
   assert.deepEqual(PAD_BINDINGS, { A: 'Space', X: 'KeyE', Y: 'KeyR', Start: 'Escape', RB: 'Mouse0', LB: 'Mouse2', RT: 'Mouse0', LT: 'ShiftLeft' });
   // the CONTROLS page says the same
-  const said = Object.fromEntries(PAD_CONTROLS.flat().filter(([k]) => k));
-  assert.equal(said['RB / RT'], 'ATTACK / TAKE DOWN');
-  assert.equal(said.LB, 'THROW / PICK UP');
-  assert.equal(said.LT, 'LOOK FURTHER');
-  assert.equal(said.RB, 'FINISH A MAN DOWN');
+  const said = Object.fromEntries(PAD_CONTROLS.flat().flatMap(([, list]) => list).map(([k, what]) => [what, k]));
+  assert.equal(said['ATTACK / SHOOT'], 'RB / RT');
+  assert.equal(said['THROW (HOLD: AIM) / PICK UP'], 'LB');
+  assert.equal(said['LOOK FURTHER'], 'LT');
+  assert.equal(said['TAKE DOWN / FINISH'], 'RB');
 });
 
 test('input: RT is an alias of RB (attack), the bumpers are read on the frame they go down, with no threshold', () => {
@@ -218,7 +218,8 @@ test('gamepad: rumble shakes the pad last touched, dual-rumble first, a pulse fa
   other.hapticActuators = [{ pulse: (v, ms) => { calls.push(['pad1', v, ms]); return Promise.resolve(true); } }];
   const g = new Gamepad(f.pads);
   g.update(1 / 60);
-  assert.equal(g.rumble({ strong: 1, weak: 1, ms: 100 }), false, 'nothing touched yet: no pad in hand');
+  assert.ok(g.rumble({ strong: 1, weak: 1, ms: 100 }), 'nothing touched yet: the first connected pad that can rumble');
+  assert.equal(calls.pop()[0], 'pad0');
   f.press('A');
   g.update(1 / 60);
   assert.ok(g.rumble({ strong: 0.5, weak: 2, ms: 80.4 }));
@@ -258,4 +259,59 @@ test('input: the pad rumbles only while it is the device in use', () => {
   inp.device = 'kbm'; // the mouse taken up
   assert.equal(inp.rumble({ strong: 1, weak: 1, ms: 50 }), false);
   assert.equal(calls.length, 1);
+});
+
+test('gamepad: rumble reads the pad afresh by its index at the call (a browser handing out snapshots)', () => {
+  const calls = [], f = fakePad();
+  f.pad.index = 0;
+  const snap = (tag) => ({ ...f.pad, buttons: f.pad.buttons.map((b) => ({ ...b })), axes: [...f.pad.axes], vibrationActuator: { playEffect: (type, o) => { calls.push([tag, o.duration]); } } });
+  let now = snap('old');
+  const g = new Gamepad(() => [now]);
+  f.press('A');
+  now = snap('old');
+  g.update(1 / 60);
+  now = snap('fresh'); // the next frame's snapshot, not polled yet
+  assert.ok(g.rumble({ strong: 0.5, weak: 0.5, ms: 40 }));
+  assert.deepEqual(calls.pop(), ['fresh', 40], 'the snapshot of now, not the stored one');
+  now = null; // gone from the list between two polls: the stored one
+  assert.ok(g.rumble({ strong: 0.5, weak: 0.5, ms: 30 }));
+  assert.deepEqual(calls.pop(), ['old', 30]);
+});
+
+test('gamepad: canRumble tells whether a connected pad has an actuator this browser drives', () => {
+  const f = fakePad(), g = new Gamepad(f.pads);
+  g.update(1 / 60);
+  assert.equal(g.canRumble, false, 'a pad without an actuator (Firefox)');
+  assert.equal(g.rumble({ strong: 1, weak: 1, ms: 50 }), false);
+  f.pad.vibrationActuator = { playEffect() {} };
+  g.update(1 / 60);
+  assert.equal(g.canRumble, true, 'vibrationActuator (Chrome / Edge)');
+  delete f.pad.vibrationActuator;
+  f.pad.hapticActuators = [{ pulse() {} }];
+  g.update(1 / 60);
+  assert.equal(g.canRumble, true, 'a haptic pulse');
+  f.unplug();
+  g.update(1 / 60);
+  assert.equal(g.canRumble, false, 'no pad');
+  const inp = new Input(null, { pads: f.pads });
+  f.plug();
+  inp.poll(1 / 60);
+  assert.equal(inp.canRumble, true);
+});
+
+test('input: a sample rumbles a connected pad whatever the device; the mouse takes over only past a real move', () => {
+  const f = fakePad(), inp = new Input(null, { pads: f.pads }), calls = [];
+  f.pad.vibrationActuator = { playEffect: (type, o) => { calls.push(o); } };
+  inp.bindPad(PAD_BINDINGS);
+  inp.poll(1 / 60);
+  assert.equal(inp.rumble({ strong: 1, weak: 1, ms: 50 }), false, 'the keyboard is the device');
+  assert.equal(inp.rumble({ strong: 1, weak: 1, ms: 50 }, true), true, 'a sample is felt anyway');
+  f.press('A');
+  inp.poll(1 / 60);
+  assert.equal(inp.device, 'pad');
+  // a mouse on the desk: a px now and then, for seconds, never adds up
+  for (let i = 0; i < 300; i++) { if (i % 10 === 0) inp.travel(2); inp.poll(1 / 60); }
+  assert.equal(inp.device, 'pad', 'drift does not take the pad out of his hands');
+  inp.travel(40);
+  assert.equal(inp.device, 'kbm', 'a mouse taken up does');
 });

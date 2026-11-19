@@ -57,6 +57,8 @@ const has = (id) => !!LEVELS[id];
 // over `fade` s more, then the leap seen from the alley (ui/cine/Leap.js) until the next level starts
 const FALL = { hold: 0.7, fade: 0.55, slow: 0.4 };
 const FALLEN = FALL.hold + FALL.fade;
+// s the mouse rests on one of OPTIONS' things, crossed on its way right to the sheet, before that thing's sheet shows
+const HOVER_DWELL = 0.15;
 // which keys do an action (data/controls.js ACTIONS), for a lesson waiting on it (systems/Tutorial.js pace)
 const DOES = {
   move: (inp) => !!inp.move() || ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some((c) => inp.down(c)),
@@ -77,7 +79,7 @@ export default class Game {
     this.input.bindPad(PAD_BINDINGS); // the gamepad plays the keys and buttons (data/controls.js)
     this.padAimAt = null;              // the right stick's virtual cursor: { angle, reach, idle } (padAim)
     // the pad's rumble, felt from the world's events (systems/Rumble.js, data/rumble.js)
-    this.rumble = new Rumble({ play: (fx) => this.input.rumble(fx), stop: () => this.input.stopRumble() });
+    this.rumble = new Rumble({ play: (fx, any) => this.input.rumble(fx, any), stop: () => this.input.stopRumble() });
     this.camera = new Camera();
     this.direction = new Direction();  // the camera's shots where a level is staged (the prologue)
     this.opening = new Opening(null);  // level 1's opening on the camera (startLevel)
@@ -110,6 +112,7 @@ export default class Game {
     this.after = null;                 // the level that follows the hit list between two levels (null: the menu)
     this.grab = null;                  // index of the slider held by the mouse
     this.lastMouse = { x: 0, y: 0 };
+    this.dwell = null;                 // the thing of OPTIONS the mouse is on (pointed)
     this.postfx = new PostFX();        // 2D grading: only when the lens below cannot be had
     this.lens = new Lens();            // what the last pass of the picture does this frame
     this.post = createPost(canvas);    // that pass, on the graphics card (null: no WebGL, or ?post=0)
@@ -206,6 +209,8 @@ export default class Game {
 
   // must run within a key press or a click (the browser's rule): update() is called on the frame after one
   setFullscreen(on) {
+    // a pad's button is no gesture to the browser: asked from the pad, it is taken at the next key or click
+    if (on && globalThis.navigator?.userActivation?.isActive === false) { this.wantFull = true; return; }
     try {
       const d = document, p = on ? d.documentElement.requestFullscreen?.() : d.fullscreenElement && d.exitFullscreen?.();
       p?.catch?.(() => {});
@@ -218,7 +223,8 @@ export default class Game {
   firstLevel() { return this.campaign()[0]?.id || Object.keys(LEVELS)[0]; }
 
   menuContext() {
-    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok, device: this.input.device };
+    return { settings: this.settings, progress: this.progress, best: (id) => loadBest(id), levels: this.campaign(), lensOk: !!this.post?.ok, device: this.input.device,
+      rumbleOk: !this.input.padConnected || this.input.canRumble };
   }
 
   // a level finished: marked done, the next one opened (the tutorial calls it too)
@@ -458,7 +464,7 @@ export default class Game {
       this.post.show(this.lensOn);
       this.lensNote = this.time + 1.6;
     }
-    // debug: the next way of showing the aim (data/aim.js; the AIM option, kept)
+    // debug: the next way of showing the aim (data/aim.js; the setting `aim` keeps it, no menu row)
     if (inp.hit('F7')) {
       this.setSetting('aim', nextStyle(this.settings.aim));
       this.aimNote = this.time + AIM.note;
@@ -490,8 +496,9 @@ export default class Game {
     if (inp.hit('KeyM')) { this.musicOn = !this.musicOn; this.musicOn ? Music.start() : Music.stop(); }
 
     if (this.state === 'pause') {
-      if (inp.hit('KeyR')) this.newGame();
-      else if (inp.hit('KeyQ')) this.toTitle();
+      // (R / A restart and quit from the pause's own page only: not from its options)
+      if (this.menu.depth === 0 && inp.hit('KeyR')) this.newGame();
+      else if (this.menu.depth === 0 && inp.hit('KeyQ')) this.toTitle();
       else {
         if (inp.hit('F2')) this.world.showVision = !this.world.showVision;
         this.updateMenu(inp);
@@ -700,27 +707,34 @@ export default class Game {
 
   // ---------------- menu (title and pause) ----------------
   // keyboard: arrows / ZQSD move, Enter / Space activate, Escape / Backspace go back; gamepad: d-pad / left stick
-  // move, A activates, B / START go back (data/controls.js); mouse: hover selects, a click
-  // activates, a slider is dragged (saved on release), right click goes back. On the title's first page a click
-  // beside the items starts the game, as the title always did (CONTINUE or NEW GAME).
+  // move, A activates, B / START go back (data/controls.js); mouse: pointing selects (and moves the focus between
+  // OPTIONS' things and the sheet beside them: Menu.point), a click activates, a slider is dragged (saved on
+  // release), right click goes back. On the title's first page a click beside the items starts the game, as the
+  // title always did (CONTINUE or NEW GAME). On OPTIONS, the things and their sheet: Menu.js `sheets`.
   updateMenu(inp) {
     const nav = this.menu, before = `${nav.top.id}:${nav.sel}`, acts = [];
-    const { x, y } = inp.mouse, moved = x !== this.lastMouse.x || y !== this.lastMouse.y;
+    const { x, y } = inp.mouse, dx = x - this.lastMouse.x, moved = dx !== 0 || y !== this.lastMouse.y;
     this.lastMouse = { x, y };
     const rects = this.menuRects, at = rects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    const on = (r) => r.page ?? nav.top.id;   // the page a rect's item is on (the title's and the pause's: the top one)
     const key = (...codes) => codes.some((c) => inp.hit(c));
     // a gamepad's RB / RT play the left button: they do not click in a menu (A does)
     const click = inp.device !== 'pad' && inp.mouseHit(0);
-    if (this.grab === null && click && at?.track && nav.page.items[at.i]?.slider) { nav.hover(at.i); this.grab = at.i; }
+    if (this.grab === null && click && at?.track) {
+      nav.point(on(at), at.i);
+      if (nav.top.id === on(at) && nav.page.items[at.i]?.slider) this.grab = at.i;
+    }
     if (this.grab !== null) {
-      const r = rects.find((q) => q.i === this.grab), it = nav.page.items[this.grab];
+      const r = rects.find((q) => q.i === this.grab && on(q) === nav.top.id), it = nav.page.items[this.grab];
       if (!r?.track || !it?.slider) this.grab = null;
       else if (inp.mouseDown(0)) this.setSetting(it.slider, Math.round(clamp((x - r.track.x) / r.track.w, 0, 1) * 100) / 100, false);
-      else { saveSettings(this.settings); this.audible(it.slider); this.grab = null; }
+      else { saveSettings(this.settings); this.audible(it.slider); if (it.slider === 'rumble') this.rumble.sample(); this.grab = null; }
     } else {
-      if (at && moved) nav.hover(at.i);
-      if (click) acts.push(at ? nav.click(at.i) : this.state === 'title' ? nav.primary() : null);
-      else if (inp.device !== 'pad' && inp.mouseHit(2)) acts.push(nav.back());
+      if (this.pointed(at, moved, dx)) nav.point(on(at), at.i);
+      if (click) {
+        if (at) nav.point(on(at), at.i);
+        acts.push(at ? (nav.top.id === on(at) ? nav.click(at.i) : null) : this.state === 'title' ? nav.primary() : null);
+      } else if (inp.device !== 'pad' && inp.mouseHit(2)) acts.push(nav.back());
       if (key('ArrowUp', 'KeyW', 'NavUp')) acts.push(nav.up());
       if (key('ArrowDown', 'KeyS', 'NavDown')) acts.push(nav.down());
       if (key('ArrowLeft', 'KeyA', 'NavLeft')) acts.push(nav.left());
@@ -730,9 +744,25 @@ export default class Game {
     }
     const done = acts.filter(Boolean), turned = `${nav.top.id}:${nav.sel}` !== before;
     for (const a of done) { if (this.applyMenu(a)) break; }
-    if (done.some((a) => a.type === 'set' && a.key === 'rumble')) this.rumble.tick('sample'); // felt at its new strength
+    if (done.some((a) => a.type === 'set' && a.key === 'rumble')) this.rumble.sample(); // felt at its new strength
     // a tick for every move and action, after it: a volume set is heard at its new level (the music speaks for itself)
     if (turned || done.some((a) => a.type !== 'set' || a.key !== 'music')) Audio.play('ui');
+  }
+
+  // Is the mouse on `at` to be taken as pointing at it this frame: when it moved onto it, but one of OPTIONS' things
+  // crossed on the way right, to the sheet, takes the sheet over only once the mouse has stayed on it HOVER_DWELL s
+  // (the sheet of the one he left stays to be reached).
+  pointed(at, moved, dx) {
+    if (!at) { this.dwell = null; return false; }
+    const id = `${at.page}:${at.i}`;
+    if (!at.thing) { this.dwell = null; return moved; }
+    // (a thing that came under a mouse at rest is not pointed at until the mouse moves)
+    if (this.dwell?.id !== id) { this.dwell = { id, t: this.time, wait: dx > 0, done: !moved }; if (!moved) return false; }
+    const d = this.dwell;
+    if (d.done) return moved;
+    if (d.wait && this.time - d.t < HOVER_DWELL) return false;
+    d.done = true;
+    return true;
   }
 
   // a menu action (ui/Menu.js); true when it left the menu

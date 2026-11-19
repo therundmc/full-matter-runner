@@ -307,7 +307,7 @@ src/
                           buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
                           title/ (Title: which picture the title state shows; Poster: the comic's cover in three layers,
                           its fire, rain and signs cut live; HitList: the LEVELS page and the screen between two levels
-                          (Game state 'hitlist'); Options: OPTIONS and the pages under it, his table from above, for the title and the pause; Beats: their clocks and sounds, unit tested; Paper: the cut-paper sheet
+                          (Game state 'hitlist'); Options: OPTIONS and the pages under it, his table from above, a thing's sheet shown as soon as it is chosen (Menu `sheets`), CONTROLS as key caps, for the title and the pause; Beats: their clocks and sounds, unit tested; Paper: the cut-paper sheet
                           and the menu's panel; Draw: the frame),
                           Cinematic (the opening, comic pages) and cine/ (Ink pixel tools, Page + Panels: comic pages, Leap: the tutorial's exit and its card, Ending: a level's closing page, Hold: a page skipped by holding SPACE)
     data/                 atmosphere (rain, smoke, neon faults: the look of the air), chase (driving: CHASE), liquids (the liquid on the floor:

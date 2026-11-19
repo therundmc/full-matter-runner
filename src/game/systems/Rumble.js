@@ -1,5 +1,6 @@
 // The gamepad's rumble: what the player feels in his hands (data/rumble.js RUMBLE). DOM-free: the pad is injected,
-// { play({ strong, weak, ms }), stop() } (Game: engine/Input.js rumble / stopRumble), and the effects come from the
+// { play({ strong, weak, ms }, any), stop() } (Game: engine/Input.js rumble / stopRumble; any: whatever the device
+// in use, for the VIBRATION option's sample), and the effects come from the
 // world's events (bind):
 //   shot          his own, by the gun's family            blow   his blow on a man (a takedown's, a finisher's)
 //   kill          a man of his down; his own death        finisher   a finisher's last beat
@@ -89,6 +90,17 @@ export default class Rumble {
 
   // a menu's tick (RUMBLE.ui)
   tick(name = 'tick') { return this.feel(this.T.ui[name], 1, true); }
+
+  // The VIBRATION option just set: RUMBLE.ui.sample at the new strength, told to a connected pad at once whatever
+  // device moved the slider (the mouse too: he may hold the pad to feel it), outside the mix (nothing else plays in
+  // a menu). True when a pad took it.
+  sample() {
+    const fx = this.T.ui.sample, g = this.scale;
+    if (!fx || !(g > 0)) return false;
+    const out = { strong: clamp01(fx.strong * g), weak: clamp01(fx.weak * g), ms: fx.ms };
+    this.log?.push({ t: Math.round(this.now * 1000) / 1000, ...out, sample: true });
+    return !!this.pad.play(out, true);
+  }
 
   // once a frame, real dt. live: in play (not paused, no menu, no page); pad: the gamepad is the device in use
   update(dt, live, pad) {
