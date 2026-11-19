@@ -10340,10 +10340,11 @@ def kerb_ramp(side):
     return make
 
 
-def road_text(word, seed):
+def road_text(word, seed, col=None, ky=6):
     """A word stencilled on the lane, its letters drawn out long as they are on a road (read by who drives over it:
-    the builder turns it)."""
-    kx, ky, gap = 2, 6, 3
+    the builder turns it). col: its paint (white unless told); ky: px a row of the stencil (4: a word painted in a
+    parking bay, read from the sidewalk, not drawn out)."""
+    kx, gap = 2, 3
     step = 5 * kx + gap
     W, H = len(word) * step - gap + 2, 7 * ky + 2
 
@@ -10354,7 +10355,7 @@ def road_text(word, seed):
             return False
         row = FONT_STENCIL[word[n]][int(gy // ky)]
         return row[int((gx - n * step) // kx)] == '#'
-    return lambda: road_mark(W, H, mask, seed, wear=0.3)
+    return lambda: road_mark(W, H, mask, seed, col or ROAD_WHITE, wear=0.3)
 
 
 def p_road_arrow():
@@ -10378,6 +10379,48 @@ def road_hatch(W, H, seed):
         e = min(x - 1, y - 1, W - 1 - x, H - 1 - y)
         return e >= 0 and (e < 2.6 or (x + y) % 15 < 3.2)
     return lambda: road_mark(W, H, mask, seed, ROAD_YELLOW)
+
+
+def oil_stain(W, H, seed):
+    """What engines drip in the same bay night after night: a stain soaked into the ground, nearly black in its
+    middle, paler rings round it where it spread, a few drops beside it (flat steps: no gradient)."""
+    def make():
+        cv = Cv(W, H)
+        rng = random.Random(seed)
+        rag = VNoise(max(W, 16), max(H, 16), 4, rng)
+        m = min(W, H)
+        blobs = [(rng.uniform(0.3, 0.7) * W, rng.uniform(0.36, 0.64) * H, rng.uniform(0.2, 0.33) * m) for _ in range(3)]
+
+        def f(x, y, cur):
+            k = max(1 - math.hypot(x - bx, y - by) / (br * (0.7 + rag(x, y) * 0.7)) for (bx, by, br) in blobs)
+            if k <= 0:
+                return None
+            return (17, 16, 23, 150) if k > 0.55 else (22, 21, 30, 96) if k > 0.24 else (27, 25, 35, 50)
+        px_paint(cv, 1, 1, W - 1, H - 1, f)
+        for _ in range(6):
+            cv.dot(rng.uniform(2, W - 2), rng.uniform(2, H - 2), (20, 19, 27, 110))
+        return cv
+    return make
+
+
+def p_skid_marks():
+    """Rubber laid by two locked wheels, 3.4 m of it (the car going toward +x): heavy where the brakes bit, thinner
+    and broken where the tyres skipped, drifting a little to one side."""
+    W, H = 110, 54
+    cv = Cv(W, H)
+    rng = random.Random(9382)
+    skip = VNoise(W, H, 3, rng)
+
+    def f(x, y, cur):
+        u = x / W
+        for y0 in (5.0, 43.0):
+            if abs(y - (y0 + 5.0 * u * u)) < 1.7 - 0.5 * u and 2 <= x < W - 2:
+                if skip(x, y * 3) > 0.42 + 0.4 * (1 - u) or rng.random() < 0.04:
+                    return None
+                return (19, 18, 25, 150 if u > 0.55 else 104 if u > 0.25 else 58)
+        return None
+    px_paint(cv, 0, 0, W, H, f)
+    return cv
 
 
 def iron_cover(W, H, seed, round_=False, slots=False):
@@ -11014,6 +11057,11 @@ ROAD_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     road_crack_a=(road_crack(90, 40, 9347), (90, 40)), road_crack_b=(road_crack(60, 72, 9348), (60, 72)),
     tree_grate=(p_tree_grate, (40, 40)), trench=(p_trench, (150, 44)), spoil=(p_spoil, (46, 34)),
     steel_plate=(p_steel_plate, (70, 50)), viaduct_shadow=(p_viaduct_shadow, (164, 320)),
+    # level 1's street (tools/build_level1.py): the hatched stub between its crossing and the next bay, LOADING in
+    # yellow in the liquor store's bay, what engines dripped in the bays, rubber before the crossing
+    hatch_kerb=(road_hatch(104, 56, 9333), (104, 56)), road_loading=(road_text('LOADING', 9327, ROAD_YELLOW, 4), (90, 30)),
+    oil_stain_a=(oil_stain(26, 20, 9380), (26, 20)), oil_stain_b=(oil_stain(40, 26, 9381), (40, 26)),
+    skid_marks=(p_skid_marks, (110, 54)),
 )
 for _i, _s in enumerate('nsew'):
     _sz = (32, 8) if _s in 'ns' else (8, 32)

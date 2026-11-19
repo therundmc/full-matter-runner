@@ -55,7 +55,8 @@ const ROAD_PAINT = [
   'kerb_s_low', 'kerb_s_red', 'kerb_s_yellow', 'kerb_w', 'kerb_w_low', 'manhole_sq', 'park_tee', 'road_arrow',
   'road_arrow_turn', 'road_bus', 'road_clear', 'road_crack_a', 'road_crack_b', 'road_keep', 'road_only', 'road_patch_a',
   'road_patch_b', 'road_patch_c', 'road_slow', 'road_stop', 'spoil', 'steel_plate', 'stop_line', 'tree_grate', 'trench',
-  'valve_cap', 'viaduct_shadow', 'zebra_a', 'zebra_b'];
+  'valve_cap', 'viaduct_shadow', 'zebra_a', 'zebra_b',
+  'hatch_kerb', 'oil_stain_a', 'oil_stain_b', 'road_loading', 'skid_marks']; // (the last row: level 1's street)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade'];
 export const OPTIONAL_LIST = [
   ...FIXTURES.flatMap((n) => [`props/${n}`, `props/${n}_glow`]),

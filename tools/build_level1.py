@@ -47,6 +47,13 @@ W, H = 44, 38
 CUT_COLS, CUT_ROWS = (19, 29), ()
 lv = Level(W, H, cut_cols=CUT_COLS, cut_rows=CUT_ROWS)
 
+
+def drawn(col):
+    """A column of the level (after the cuts: what tests, QA plans and the game see) in the drawing's: the street
+    is laid out in the level's columns, measured against what stands on it, and given back in the drawing's."""
+    return col + (2 if col >= 28 else 1 if col >= 19 else 0)
+
+
 # ---------------------------------------------------------------- tiles
 # back lot and service alley
 lv.fill(11, 1, 32, 4, '_')
@@ -88,7 +95,8 @@ lv.put(22, 20, 'D')            # front double door
 # the street, open at both ends for the traffic
 lv.fill(0, 21, W - 1, 22, 's')
 lv.fill(0, 23, W - 1, 29, '=')
-lv.fill(0, 27, W - 1, 27, '-')
+for c in (0, 1, 4, 5, 8, 9, 31, 32, 35, 36, 39, 40):   # the centre line in dashes, two metres on, two off (level
+    lv.put(drawn(c), 27, '-')                           # columns); solid and double toward the crossing: paint, below
 lv.fill(0, 30, W - 1, 31, 's')
 # the alley across the road
 lv.fill(20, 32, 23, 36, '_')
@@ -225,7 +233,8 @@ lv.prop('trash_can', 20.45, 36.4)
 lv.prop('trash_can', 20.5, 35.6)
 lv.prop('trash_can', 23.3, 32.5)                        # on the cat's way out
 lv.cat(23.4, 34.5)                                      # on the dumpster, watching him
-lv.pigeons(16.5, 30.6, 3)
+lv.pigeons(16.5, 30.6, 3)                             # on his way across: up as he comes (two flocks in the level,
+                                                        # this one and the gap's: the user found four too many)
 lv.prop('string_lights', 22.0, 33.9)
 lv.prop('string_lights', 22.0, 36.1)
 lv.prop('wall_lamp', 20.09, 35.0, 270, flicker='broken')   # down the alley from where he sits (never over him), on its last legs
@@ -245,19 +254,120 @@ lv.prop('flyers', 13.4, 31.94, 180)                     # the south side's wall,
 lv.paint('tag', 21.2, 34.9, -8)                         # the start alley: a tag on the ground by where he sat
 lv.prop('palm_tree', 4.5, 31.2)
 lv.prop('palm_tree', 39.5, 31.2)
+# (level columns) a second news box and the morning's bundle by the first, a mailbox on the kerb past the
+# laundromat, the limit's sign for who drives in from the west: all off the two lines the passers-by walk
+lv.prop('news_box', drawn(11.25), 31.8, 180)
+lv.prop('paper_bundle', drawn(9.95), 31.74)
+lv.prop('mailbox', drawn(31.0), 30.36)
+lv.prop('sign_speed', drawn(2.5), 30.3)
+lv.prop('shopping_cart', drawn(22.3), 36.45, 90)        # the tramp's, down the start alley past the dumpster
 
 lv.area('road: parked along the bar side')
-# the parking strip (rows 23-24) marked off from the westbound lane by a solid edge line, its bays painted across it:
-# with it the road reads as two equal lanes either side of the centre line, plus the strip (the user). Positions are
-# worked out in the level's columns (after the cuts) and given back in the drawing's.
-def drawn(col):
-    return col + (2 if col >= 28 else 1 if col >= 19 else 0)
+# The street as a street is made, with level 2A's kit (floor paint: no body, baked once into the floor layer under
+# everything that stands; ROAD_PAINT in tools/generate_assets.py). North to south (rows): the bar's sidewalk 21-22,
+# its kerb, the parking row 23-24, their lane 25 to 27.5 (westbound), ours down to 30, the kerb, the sidewalk 30-31.
+# West to east along the parking row (LEVEL columns, after the cuts: `drawn` gives the drawing's):
+#
+#     0-3.4      a bay, empty: what engines dripped there
+#     3.4-9      the liquor store's LOADING bay, in yellow, its kerb yellow, a sign on a post
+#     9-10.6     the hydrant: a red kerb, its valve in the gutter
+#     10.6-14.4  the service alley's gate: the kerb dropped, the row hatched in yellow, KEEP CLEAR on the lane. The
+#                coupe is parked with its tail over the hatching, across the way out: it is the one the getaway
+#                shoves aside (tests/getaway.test.mjs)
+#     14.4-19.5  the coupe's bay
+#     20-23      the crossing, from the bar's door to the start alley: zebra bars kerb to kerb, the kerbs dropped
+#                and their aprons, a stop line and SLOW before it in each lane, red kerbs either side, the centre
+#                line double and solid for nine metres toward it
+#     23.3-26.5  too short for a bay: hatched, a yellow kerb (the bar's front kept free)
+#     26.65-36.85  two bays: the pink car, the van
+#     36.85-42   the gas board's bay: a steel plate over what is still open, its cut across both lanes patched,
+#                a barricade with its two flashers toward who comes, cones along the lane, the sign
+#
+# Nothing of it stands in a lane (the traffic's drivers stop for what does: systems/Ambient.js) and nothing with a
+# body is put where the getaway comes out of the alley and slides away west (tests/road.test.mjs).
+PARK_ROW, THEIRS, OURS = 24.0, 26.25, 28.75             # the middle of the parking row and of the two lanes
+ZEBRA = 20                                              # the crossing: three metres from this column
+TEES = (3.4, 9.0, 14.4, 19.5, 26.65, 31.75, 36.85, 41.95)   # where two bays meet
 
 
-for i in range(14):
-    lv.paint('road_edge', drawn(1.5 + 3 * i), 25.0)
-for col in (2.0, 7.0, 12.1, 17.1, 22.1, 26.8, 31.6, 36.9, 41.9):
-    lv.paint('parking_bay', drawn(col), 24.05, 90)
+def paint(kind, col, row, deg=0):
+    lv.paint(kind, drawn(col), row, deg)
+
+
+# what the years did to it, under the paint: patches, sealed cracks, oil in the bays, rubber before the crossing
+for (kind, col, row, deg) in (('road_patch_b', 39.2, 26.95, 90),      # the gas board's cut, from its plate to the far kerb
+                              ('road_patch_c', 9.6, 28.8, 0), ('road_patch_a', 32.2, 26.2, 0),
+                              ('road_crack_b', 3.2, 27.3, 0), ('road_crack_a', 17.6, 26.3, 180), ('road_crack_a', 33.0, 28.6, 0),
+                              ('skid_marks', 25.7, 26.3, 180),        # somebody stood on his brakes for the crossing
+                              ('oil_stain_b', 1.7, 24.1, 0), ('oil_stain_a', 7.9, 23.85, 90), ('oil_stain_a', 18.3, 24.2, 180)):
+    paint(kind, col, row, deg)
+# the parking row: its edge line (none across the gate's hatching nor the crossing), a tee where two bays meet
+for col in (1.5, 4.5, 7.5, 9.1, 15.9, 18.5, 24.5, 27.5, 30.5, 33.5, 36.5, 39.5, 40.5):
+    paint('road_edge', col, 25.0)
+for col in TEES:
+    paint('park_tee', col, PARK_ROW)
+paint('road_loading', 4.9, PARK_ROW)                    # (west of the lamp's head: it reads whole)
+paint('hatch_bay', 12.5, PARK_ROW)
+paint('hatch_kerb', 24.9, PARK_ROW)
+paint('road_keep', 14.3, THEIRS, 270)                   # read by who drives west: KEEP first
+paint('road_clear', 11.6, THEIRS, 270)
+# the crossing
+for r in range(23, 30):
+    paint('zebra_b' if r % 3 == 0 else 'zebra_a', ZEBRA + 1.5, r + 0.5)
+paint('kerb_ramp_s', ZEBRA + 1.0, 23 - 15 / 32)
+paint('kerb_ramp_n', ZEBRA + 1.0, 30 + 15 / 32)
+paint('stop_line', ZEBRA - 0.75, OURS)
+paint('stop_line', ZEBRA + 3.75, THEIRS)
+paint('road_slow', 16.5, OURS, 90)
+paint('road_slow', 28.6, THEIRS, 270)
+paint('road_arrow', 6.5, OURS)
+paint('road_arrow', 36.0, THEIRS, 180)
+for col in (12.5, 15.5, 18.5, 24.5, 27.5):
+    paint('centre_double', col, 27.5)
+
+
+def lay_kerb(row, side, looks):
+    """A kerb along the whole street on the edge `row` between a sidewalk and the road on its `side` ('s' / 'n'),
+    stone by stone; looks: level column -> '_low' (dropped) | '_red' (no stopping) | '_yellow' (loading); the plain
+    ones in four-metre lengths where they run."""
+    y, c = row + (-1 if side == 's' else 1) / 32, 0
+    while c < lv.w:
+        n = 4 if all(c + i < lv.w and c + i not in looks for i in range(4)) else 1
+        paint(f'kerb_{side}' + (looks.get(c, '') if n == 1 else '_4'), c + n / 2, y)
+        c += n
+
+
+lay_kerb(23, 's', {**{c: '_yellow' for c in (4, 5, 6, 7, 8, 24, 25, 26)}, **{c: '_red' for c in (9, 10, 19, 23)},
+                   **{c: '_low' for c in (11, 12, 13, ZEBRA, ZEBRA + 1)}})
+lay_kerb(30, 'n', {**{c: '_red' for c in (24, 25, 26)}, **{c: '_low' for c in (ZEBRA, ZEBRA + 1)}})   # (red: its hydrant)
+# iron in the ground: drains in the gutters, the hydrants' valves, covers in the sidewalks, the palms' grates
+for col in (18.4, 39.4):
+    paint('drain', col, 23 + 8 / 32)
+for col in (8.5, 23.6, 34.5):
+    paint('drain', col, 30 - 8 / 32)
+paint('valve_cap', 10.6, 23.6)
+paint('valve_cap', 25.5, 29.5)
+paint('manhole_sq', 29.0, 22.35)
+paint('manhole_sq', 33.6, 30.9, 90)
+for (col, row) in ((4.5, 31.2), (37.5, 31.2), (39.6, 21.8)):
+    paint('tree_grate', col, row)
+# the gas board's bay
+paint('steel_plate', 39.2, 23.95)
+lv.prop('barricade', drawn(40.75), 23.98, 90)
+lv.prop('sign_works', drawn(41.45), 24.1, 270)
+for (col, row) in ((37.75, 23.35), (37.8, 24.05), (38.0, 24.82), (39.2, 24.84), (40.3, 24.82)):
+    lv.prop('traffic_cone', drawn(col), row)
+# the alleys and the lot behind (concrete): a drain inside the gate and one in the start alley's mouth, a sealed
+# crack down the service alley; in the back lot the boss's bay marked out round his convertible and the next one
+# empty, its oil, the lot's drain and a cover by the gap's end
+paint('drain', 12.4, 19.3)
+paint('road_crack_b', 12.5, 16.0)
+paint('drain', 21.3, 32.6)
+paint('park_tee', 20.3, 2.7)
+paint('park_tee', 26.7, 2.7)
+paint('oil_stain_b', 28.3, 2.9)
+paint('drain', 18.6, 4.4)
+paint('manhole_sq', 29.3, 4.2)
 lv.prop('car2', 15.0, 24.0, 0, lights=False, trunk='tire_iron')   # E at its tail: a tire iron in the trunk
 lv.prop('car', 31.2, 24.0, 180, lights=False)           # parked: its lights off
 lv.prop('van', 36.3, 24.05, 180, lights=False)           # in its bay
@@ -280,7 +390,7 @@ lv.prop('streetlight', 6.5, 22.7, 90)
 lv.prop('streetlight', 35.5, 22.7, 90)
 lv.prop('bench', 37.5, 22.62, 180)                      # on the kerb, facing the TV shop's window
 lv.prop('trash_can', 40.5, 21.35)
-lv.pigeons(33.3, 21.7, 2)
+lv.pigeons(33.3, 21.7, 2)                             # by the gap's door: nobody ever stands there
 lv.prop('hydrant', 10.6, 22.65)                       # clear of the alley's mouth (bigger, it snagged whoever came out)
 lv.prop('vending', 17.42, 21.33)                        # drinks machine against the bar's front
 lv.prop('news_box', 26.6, 21.19)
@@ -290,6 +400,21 @@ lv.dress('papers', 0, 21, 43, 22, 9)
 lv.dress('papers', 0, 23, 43, 29, 6)
 lv.dress('manholes', 27.3, 28.5)                        # (the one by the parking bays sat astride their line: removed)
 lv.prop('palm_tree', 41.6, 21.8)
+# what a street has at 2:14 AM (level 2A's kit; level columns): the liquor store's rubbish out for the morning by its
+# door (east of it, short of the gate), the loading bay's sign on the kerb, tomorrow's papers dropped by the news box,
+# a mailbox between the gap's door and the lamp, a phone booth against the blind wall at the west end (clear of the
+# palm's crown at the east one), an awning over the two closed shops' windows (never over
+# a door, never the bar's: the user). Nothing bolted on the sidewalk patrol's beat (row 22, cols 16-26), nothing at
+# all where the getaway comes out (cols 11-15: tests/road.test.mjs drives it)
+lv.prop('bin_bag', drawn(9.75), 21.32)
+lv.prop('bin_bag', drawn(10.3), 21.36)
+lv.prop('cardboard_box', drawn(10.02), 21.8)
+lv.prop('sign_noparking', drawn(3.7), 22.75)
+lv.prop('paper_bundle', drawn(26.25), 21.22)
+lv.prop('mailbox', drawn(32.4), 22.58)
+lv.prop('phone_booth', drawn(1.1), 21.44)
+lv.prop('awning_red', drawn(6.5), 21.56)
+lv.prop('awning_blue', drawn(35.5), 21.56)
 
 lv.area('liquor store')
 lv.prop('neon_sign_liquor', 4.0, 21.09)
@@ -657,8 +782,6 @@ lv.prop('chair', 9.3, 4.4, 80)
 lv.prop('wall_vent', 8.4, 3.08)
 lv.actor('5', 4, 11)                                    # a bat left against the crate
 lv.drop('pistol', 8.62, 4.72, 205)                      # the liquor store's pistol, hidden up here by the lookout's chair
-lv.pigeons(4.6, 12.6, 3)
-lv.pigeons(8.6, 6.0, 2)
 lv.dress('papers', 1, 8, 9, 14, 3)
 
 lv.area('west block, round the roof')
