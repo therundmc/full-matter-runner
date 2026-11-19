@@ -470,7 +470,7 @@ export default class Game {
     this.quiet(); // (on foot out of the exit: the slow motion's tint and muffle would stay over the results)
     // a run helped by the sandbox is shown but never kept as a record
     this.completeLevel(this.levelId);
-    const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.time }) : { prev: this.best, record: false };
+    const kept = this.ranked ? saveBest(this.levelId, { total: tally.total, grade: tally.grade, time: w.runTime }) : { prev: this.best, record: false };
     const next = nextLevel(this.levelId);
     this.results = {
       ...tally, best: kept.prev, record: kept.record, ranked: this.ranked,

@@ -345,7 +345,9 @@ export default class World {
     const d = Math.hypot(x - p.x, y - p.y);
     return d > 90 && d < 2400 && !this.lineOfSight(p.x, p.y, x, y);
   }
-  get runTime() { return this.endT ?? this.time; }
+  // the run's clock: from `clockFrom` (0; level 2A's opening does not count: it starts as the car pulls away,
+  // Drive.launch) to his death
+  get runTime() { return Math.max(0, (this.endT ?? this.time) - (this.clockFrom || 0)); }
   shake(a) { this.camera.shake(a); }
   hitstop(s) { this.game.hitstop = Math.max(this.game.hitstop, s); }
   slowmo(scale, dur) { this.game.slowmo(scale, dur); }

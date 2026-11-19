@@ -264,7 +264,7 @@ export default class Scoring {
     return tally({
       points: this.points, kills: this.kills, guards: this.world.totalEnemies, maxCombo: this.maxCombo,
       methods: this.methods.size, shots: this.shots, hits: this.hits, alerts: this.alerts,
-      civilians: this.civilians, spared: this.world.enemies.filter((e) => e.alive && e.yielded).length, time: this.world.time,
+      civilians: this.civilians, spared: this.world.enemies.filter((e) => e.alive && e.yielded).length, time: this.world.runTime ?? this.world.time,
       styled: this.styled,
     }, level, this.rules);
   }

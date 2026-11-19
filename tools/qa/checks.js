@@ -70,7 +70,8 @@
     const out = [];
     for (const k of ['x', 'y', 'zoom', 'scale']) if (!finite(cam[k])) out.push({ sig: `nan-${k}`, why: `camera ${k} is ${cam[k]}` });
     if (out.length) return out;
-    if (cam.scale < 0.4 || cam.scale > 3) out.push({ sig: 'scale-range', why: `camera scale ${cam.scale} out of [0.4, 3]` });
+    // (4: the closest staged close-up, level 2A's butt on the road: SHOTS `butt`)
+    if (cam.scale < 0.4 || cam.scale > 4) out.push({ sig: 'scale-range', why: `camera scale ${cam.scale} out of [0.4, 4]` });
     if (o.start) {
       if (o.scale !== undefined && Math.abs(cam.scale - o.scale) > 1e-3) out.push({ sig: 'scale-not-reset', why: `level start with camera scale ${cam.scale}, its default is ${o.scale}` });
       if (o.zoom !== undefined && cam.zoom !== o.zoom) out.push({ sig: 'zoom-not-reset', why: `level start with zoom ${cam.zoom}, the window gives ${o.zoom}` });

@@ -58,7 +58,8 @@ export default class LastDrag {
     this.ph = dragPhases(0, cfg);
     this.at = this.local(cfg.hood, 0); // the camera's point
     this.emberT = 0;
-    this.puffs = 0;
+    this.puffs = 0;       // the smoke owed (a share of a puff)
+    this.smoke = [];      // what he breathes out: { x, y, vx, vy, t, life, k (its size's share) }
     this.wispT = 0;
     this.said = new Set(); // the sounds played
   }
@@ -101,8 +102,8 @@ export default class LastDrag {
         const u = (t - I.breath[0]) / (I.breath[1] - I.breath[0]);
         while (this.puffs >= 1) {
           this.puffs--;
-          const far = rand(0, I.drift) * (0.3 + u), q = this.local(I.tip.mouth[0] + far, I.tip.mouth[1] - far * 0.35 + rand(-3, 3));
-          w.particles?.smoke(q.x, q.y, 1, 1.5, { speed: 10, size: 4.5, life: 1.5 });
+          const q = this.local(I.hand.mouth[0] + 3, I.hand.mouth[1] - 1), v = this.local(I.drift[0] * rand(1, 1.5), I.drift[1] * rand(0.7, 1.5) + rand(-6, 6)), o = this.local(0, 0);
+          this.smoke.push({ x: q.x, y: q.y, vx: (v.x - o.x) * (1.2 - 0.5 * u), vy: (v.y - o.y) * (1.2 - 0.5 * u), t: 0, life: rand(...I.life), k: rand(0.6, 1) });
         }
       }
       if (!ph.held && !this.butt) this.flick();
@@ -112,6 +113,11 @@ export default class LastDrag {
       if (ph.done) this.end();
     }
     this.fly(dt);
+    // his smoke drifting off, slowing
+    const slow = Math.exp(-I.slow * dt);
+    for (const q of this.smoke) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= slow; q.vy *= slow; }
+    if (this.smoke.length && this.smoke.some((q) => q.t >= q.life)) this.smoke = this.smoke.filter((q) => q.t < q.life);
+    if (!this.on && !this.butt && !this.smoke.length) this.gone = true; // (skipped before the flick)
   }
 
   // the butt leaves his fingers: out to his left and a little ahead, turning
@@ -127,7 +133,8 @@ export default class LastDrag {
     if (!b) return;
     const hit = buttStep(b, dt, B);
     if (hit) {
-      w.particles?.sparks(b.x, b.y, Math.atan2(b.vy, b.vx), 1.4, Math.max(1, B.sparks[0] - B.sparks[1] * (b.n - 1)), 90, '#ffb060');
+      w.particles?.sparks(b.x, b.y, Math.atan2(b.vy, b.vx), 1.6, Math.max(1, B.sparks[0] - B.sparks[1] * (b.n - 1)), B.sparks[2], '#ffb060');
+      w.light?.(b.x, b.y, B.flash[0], '#ffb060', B.flash[1]);
       w.sound?.('buttHit', b.x, b.y, hit === 'rest' ? 0.3 : 0.5);
     }
     if (hit === 'rest') {
@@ -137,11 +144,17 @@ export default class LastDrag {
     }
     if (!b.rest) return;
     b.glow -= dt;
+    // its end lights a little of the road, breathing, dying away
+    if (b.glow > 0 && (this.emberT -= dt) <= 0) {
+      this.emberT = this.I.ember.every;
+      w.light?.(b.x, b.y, B.lamp[0] * (0.75 + 0.25 * Math.sin(this.t * 5.3)) * Math.sqrt(b.glow / B.glow), B.lamp[1], this.I.ember.life);
+    }
     if ((this.wispT -= dt) <= 0 && b.glow > 0) {
       this.wispT = B.wisp;
       w.particles?.smoke(b.x, b.y, 1, 0.5, { speed: 6, size: 2.5, life: 1.2 });
     }
-    if (b.glow <= 0 && !this.on) this.gone = true;
+    if (b.glow <= 0 && !this.on && !this.smoke.length) this.gone = true;
+
   }
 
   // the beat is over: the hand is his (Drive: the engine, then the gun)
@@ -149,7 +162,7 @@ export default class LastDrag {
     this.on = false;
     const rider = this.van.rider;
     if (rider?.riding) rider.riding.drag = null;
-    if (!this.butt) this.gone = true;
+    if (!this.butt && !this.smoke.length) this.gone = true;
   }
 
   // SPACE / pad A held: straight to the engine (a butt already in the air goes on by itself)
@@ -160,5 +173,5 @@ export default class LastDrag {
   }
 
   // the camera's shot (Game.stagedShot; SHOTS `drag`)
-  shot() { return this.on ? { name: 'drag', at: this.at } : null; }
+  shot() { return this.on ? { name: this.butt ? 'butt' : 'drag', at: this.at } : null; }
 }

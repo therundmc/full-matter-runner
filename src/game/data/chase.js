@@ -246,26 +246,33 @@ export const CHASE = {
   //   `follow` 1/s (as it goes after the butt later); SHOTS `drag`
   //   lift / drag / lower: the door's hand brings it to his mouth [from, to], the long drag [from, to] (the ember
   //   flares), the hand back out over the door [from, to]
-  //   breath: he lets the smoke out [from, to]: `puffs` of it a second, drifting `drift` px/s ahead and out of the car
+  //   breath: he lets the smoke out [from, to], a plume out over his door: `puffs` of it a second, each leaving his
+  //   mouth at `drift` px/s [ahead, across (-: out of the car)] (half as much again at random), slowed at `slow`
+  //   1/s, living `life` s [from, to] and growing from `size` [px, px] (render/DragArt.js: pale squares drawn over
+  //   the night, they are seen in the dark)
   //   flick: the butt leaves his fingers (the arm snapped out over `snap` s before it); the camera stays on the butt
   //   from `flick` to `go`; go: the engine, the lamps, the cut back to him, the car pulls away (the grab at once)
   //   ember: the light of the cigarette's end in the cab: [radius px, colour] at rest, `flare` at the height of the
-  //   drag, flickering by `flicker` of it; laid every `every` s for `life` s
+  //   drag (his face, the wheel and the dash in it), flickering by `flicker` of it; laid every `every` s for `life` s
+  //   hud: s the HUD takes to come in once the car pulls away (none before: Drive `hud`)
   //   hand: where the door's hand holds it at his mouth and at the end of the flick, pose px [ahead, across] from
   //   his seat (CharacterAnim dragPose); tip: world px from his seat to the ember while it is at his mouth / out
   //   over the door [ahead, across] (the light's place, the butt's start)
   //   butt: thrown `out` px/s to his left and `fwd` px/s ahead from `z` px up at `up` px/s, falling at `g` px/s2,
   //   turning `spin` rad/s; it bounces `bounces` times keeping `keep` of its speed and `lift` of its fall each time
-  //   (`sparks` [how many, fewer each time] thrown at each), then lies there, its end glowing `glow` s (a thread of
-  //   smoke every `wisp` s) and stays on the road
+  //   (`sparks` [how many, fewer each time, px/s] thrown at each, in a flash of `flash` [radius px, s]), then lies
+  //   there, its end glowing `glow` s (its light `lamp` [radius px, colour], a thread of smoke every `wisp` s) and
+  //   stays on the road; the camera cuts in closer on it (SHOTS `butt`)
   //   launch: as it pulls away, `smoke` puffs off each rear tyre every step for `spin` s, the body thrown up by
   //   `kick` of a shove's
   intro: {
-    pan: 0.25, hood: 46, follow: 3.4, lift: [0.55, 0.95], drag: [0.95, 2.0], lower: [2.0, 2.4], breath: [2.3, 3.3], puffs: 26, drift: 26,
-    snap: 0.16, flick: 3.55, go: 4.9,
-    ember: { rest: [20, '#ff7a2a'], flare: [58, '#ffb060'], flicker: 0.18, every: 0.05, life: 0.12 },
-    hand: { mouth: [4.6, -2.2], out: [3.5, -19] }, tip: { mouth: [8, -4], out: [6, -27] },
-    butt: { out: 92, fwd: 26, z: 13, up: 58, g: 420, spin: 19, bounces: 2, keep: 0.42, lift: 0.4, sparks: [7, 3], glow: 9, wisp: 0.22 },
+    pan: 0.25, hood: 46, follow: 3.4, lift: [0.55, 0.95], drag: [0.95, 2.0], lower: [2.0, 2.4],
+    breath: [2.25, 3.35], puffs: 26, drift: [20, -58], slow: 1.2, life: [1.0, 1.9], size: [3, 12],
+    snap: 0.16, flick: 3.55, go: 4.9, hud: 0.6,
+    ember: { rest: [30, '#ff7a2a'], flare: [110, '#ffb060'], flicker: 0.18, every: 0.05, life: 0.12 },
+    hand: { mouth: [3.2, -1.4], out: [3.5, -19] }, tip: { mouth: [9.5, -3.5], out: [6, -23] },
+    butt: { out: 92, fwd: 26, z: 13, up: 58, g: 420, spin: 19, bounces: 2, keep: 0.42, lift: 0.4, sparks: [18, 5, 150], flash: [46, 0.14],
+      glow: 9, lamp: [26, '#ff7a2a'], wisp: 0.22 },
     launch: { smoke: 2, spin: 0.9, kick: 1.2 },
   },
   // THE CHASE'S OWN KILL CAM AND SLOW MOTIONS (systems/ChaseCam.js; the user, 2026-11-19: "un cote film d'action").

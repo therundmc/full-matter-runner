@@ -1978,9 +1978,10 @@ def items():
                           "dddo"], {'w': hx('#ece6d6'), 'd': hx('#c8c0ae'), 'o': hx('#d89a50')}, ol=None)
     # level 2A's opening (systems/LastDrag.js), both painted at FINE density (a pixel is half a world px; Assets.js
     # FINE_ITEMS): the end of a cigarette in his fingers, its filter toward -x, the paper, the ash, the ember at +x
-    # (4 x 1 world px); and the butt once flicked, on the road, its end still alight (3 x 1)
-    I['cigarette'] = ascii_cv(["FFfWWwae",
-                               "ffdwwwae"], {'F': hx('#d8a868'), 'f': hx('#b88848'), 'd': hx('#96683a'), 'W': hx('#f4efe2'),
+    # (6 x 1 world px: longer than life, it has to read from above); and the butt once flicked, on the road, its
+    # end still alight (3 x 1)
+    I['cigarette'] = ascii_cv(["FFFfWWWWwaee",
+                               "fffdwwwwwaee"], {'F': hx('#d8a868'), 'f': hx('#b88848'), 'd': hx('#96683a'), 'W': hx('#f4efe2'),
                                              'w': hx('#d2ccbc'), 'a': hx('#8a8680'), 'e': hx('#ff8a2a')}, ol=None)
     I['cig_butt'] = ascii_cv(["FFfWae",
                               "ffdwae"], {'F': hx('#d8a868'), 'f': hx('#b88848'), 'd': hx('#96683a'), 'W': hx('#f4efe2'),
@@ -11304,7 +11305,7 @@ EXPECTED = {
                      for n in ['pigeon_idle', 'pigeon_peck', 'pigeon_dead', 'rat_idle', 'rat_dead', 'cat_sit', 'cat_low',
                                'cat_dead'] + ['%s%d' % (n, i) for n in ('pigeon_walk', 'pigeon_fly', 'rat_run', 'cat_run')
                                               for i in range(3)] + ['cat_walk%d' % i for i in range(4)]),
-    'items': dict(butt=(4, 2), cigarette=(8, 2), cig_butt=(6, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
+    'items': dict(butt=(4, 2), cigarette=(12, 2), cig_butt=(6, 2), cigar=(6, 2), can=(6, 4), magazine=(8, 10), ashtray=(10, 10), bottle=(11, 5), shades=(13, 6)),
     'structure': dict(door=(32, 9), door_locked=(32, 9), stall_door=(32, 9), door_jamb=(5, 32), door_jamb_steel=(5, 32), threshold=(32, 32),
                       window=(32, 10), window_broken=(32, 10), window_sill=(32, 32), fence=(32, 6),
                       # the door skins at FINE density (keep in step with DOOR_SKINS in src/engine/Assets.js)

@@ -90,7 +90,8 @@ function world() {
   };
   const w = {
     physics, events, player, chars: [player], props: [], corpses: [], projectiles: [], time: 0, particles: quiet, sounds, lights,
-    exited: false, drive: null, game: { onExit() {} },
+    exited: false, drive: null, game: { onExit() {} }, endT: null, clockFrom: 0,
+    get runTime() { return Math.max(0, (w.endT ?? w.time) - (w.clockFrom || 0)); }, // (World.runTime)
     addBody: (b) => physics.add(b), removeBody: (b) => physics.remove(b), shake() {}, noise() {}, addDebris() {}, addProjectile() {},
     sound(name) { sounds.push(name); }, light(x, y, r, color) { lights.push({ x, y, r, color }); },
   };
@@ -166,15 +167,19 @@ test('intro: the first time the car stands, lamps off, while he smokes; then the
   assert.ok(d.drag instanceof LastDrag && d.drag.on && d.grabbing && d.v === 0 && v.lightsOut, 'standing in the dark');
   assert.equal(d.shot().name, 'drag');
   assert.equal(d.motor(DT), null, 'the engine off');
+  assert.ok(d.hud === 0 && w.runTime === 0, 'no HUD, the run\'s clock not started');
   const hood = d.shot().at.x;
   run(s, (I.drag[0] + I.drag[1]) / 2);
   assert.ok(Math.abs(v.x - x0) < 0.01 && d.v === 0 && d.grab.t === 0 && v.gun, 'not moved, the gun still on the seat');
+  assert.ok(d.hud === 0 && w.runTime === 0 && w.time > 1, 'still no HUD, the clock still at zero');
   assert.ok(p.riding.drag.mouth === 1 && w.sounds.includes('cigDrag'), 'the drag');
   assert.ok(d.shot().at.x < hood - 20, 'the view come from the hood onto him');
   const lit = w.lights.length;
   assert.ok(lit > 10 && Math.max(...w.lights.map((l) => l.r)) > I.ember.rest[0] * 1.5, 'the ember\'s light, swelling with the drag');
   run(s, I.flick + 0.05 - d.drag.t);
+  assert.ok(d.drag.smoke.length > 8 && Math.min(...d.drag.smoke.map((q) => q.y)) < v.y - v.h / 2 - 8, 'his smoke, a plume drifting out over the door');
   assert.ok(d.drag.butt && !d.drag.butt.rest && !p.riding.drag.held && w.sounds.includes('cigFlick'), 'flicked');
+  assert.equal(d.shot().name, 'butt', 'the cut in closer on it');
   assert.ok(d.drag.butt.y < v.y - v.h / 2, 'out over his door (-y)');
   run(s, 0.25);
   const seat = v.toWorld(...seatOf(v)), look = d.shot().at;
@@ -186,12 +191,15 @@ test('intro: the first time the car stands, lamps off, while he smokes; then the
   run(s, 0.1);
   assert.ok(!d.drag.on && !v.lightsOut && w.sounds.includes('engineRoar') && p.riding.drag === null, 'the engine, the lamps');
   assert.equal(d.shot().name, 'grab', 'the cut back to him: the gun');
+  const t0 = w.time;
+  assert.ok(w.runTime < 0.1 && d.hud > 0 && d.hud < 0.3, 'the clock starts at the launch, the HUD begins to come in');
   assert.ok(d.grabbing && d.grab.t > 0 && d.grab.t < 0.12 && d.launchT > 0, 'the grab under way as it pulls away, its tyres spinning');
   assert.ok(!v.body.frozen && !v.body.isStatic, 'its body woken: it takes its speed');
   run(s, SEAT.grab.take + 0.1);
   assert.ok(d.v > 3 && d.v < CHASE.cruise && v.x > x0 + 20 && p.weapon?.type === 'uzi' && !v.gun, 'pulling away by itself, the gun in his hand');
   run(s, 2);
   assert.ok(Math.abs(d.v - CHASE.cruise) < 1e-6 && !d.grabbing && d.shot() === null, 'at cruise, his');
+  assert.ok(d.hud === 1 && Math.abs(w.runTime - (w.time - t0)) < 0.1 && w.runTime < w.time - 4, 'the HUD in, the clock counting from the launch');
   run(s, CHASE.intro.butt.glow);
   assert.equal(d.drag, null, 'the ember out: nothing of it left');
 });
@@ -205,12 +213,15 @@ test('intro: a retry skips it (rolling, the gun in hand, as before); SPACE held 
   a.d.skipGrab(); // (Game.startLevel on a retry)
   assert.ok(!a.d.drag && !a.d.grab && !a.d.grabbing && a.d.v === CHASE.cruise && !a.v.lightsOut && p.weapon.type === 'uzi' && a.d.shot() === null);
   assert.ok(Math.abs(Body.getVelocity(a.v.body).x - CHASE.cruise) < 1e-6);
+  a.w.time = 2;
+  assert.ok(a.d.hud === 1 && a.w.runTime === 2, 'the HUD and the clock at once');
   const b = start();
   run(b, 1);
   b.d.drag.skip(); // (Game: the hold is full)
   assert.ok(!b.d.drag.on && b.d.drag.gone, 'over, no butt thrown');
   run(b, 2 * DT);
   assert.ok(b.d.drag === null && !b.v.lightsOut && b.d.grab && b.d.grabbing && b.d.shot().name === 'grab', 'the engine, then the grab as ever');
+  assert.ok(b.d.hud > 0 && b.w.runTime <= 2 * DT + 1e-9 && b.w.time > 1, 'skipped: the clock starts at once, the HUD comes in');
   b.d.skipGrab();
   assert.ok(b.w.player.weapon.type === 'uzi');
   // a level without it (the lab's cars, an old chase): none

@@ -9,7 +9,19 @@ import { drawPrompts } from './Glyphs.js';
 import { keyLabel } from '../data/controls.js';
 import { clamp } from '../../engine/math.js';
 
+// how much of the HUD is there (1 but while it comes in: level 2A's opening has none, it fades in as the car pulls
+// away, Drive `hud`); every alpha set below is a share of it
+let FADE = 1;
+
 export function drawHUD(ctx, game, t) {
+  const d = game.world.drive;
+  FADE = d?.on ? d.hud : 1;
+  if (FADE <= 0) return;
+  ctx.globalAlpha = FADE;
+  try { paintHUD(ctx, game, t); } finally { ctx.globalAlpha = 1; FADE = 1; }
+}
+
+function paintHUD(ctx, game, t) {
   const w = game.world, p = w.player;
   const W = game.canvas.width, H = game.canvas.height;
   const s = H / 720;
@@ -61,10 +73,10 @@ export function drawHUD(ctx, game, t) {
     const y = gy + 6 * s, bw = 150 * s, short = p.stamina < PLAYER.slide.cost;
     ctx.fillStyle = PALETTE.ink;
     ctx.fillRect(pad, y, bw, 5 * s);
-    ctx.globalAlpha = p.winded > 0 && Math.floor(t * 14) % 2 ? 0.35 : 1;
+    ctx.globalAlpha = FADE * (p.winded > 0 && Math.floor(t * 14) % 2 ? 0.35 : 1);
     ctx.fillStyle = short ? PALETTE.pink : PALETTE.yellow;
     ctx.fillRect(pad, y, bw * p.stamina, 5 * s);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = FADE;
     ctx.fillStyle = PALETTE.ink;
     ctx.fillRect(pad + bw * PLAYER.slide.cost - s, y, 2 * s, 5 * s); // what one slide takes
   }
@@ -116,9 +128,9 @@ function drawDrive(ctx, d, x, y, s, t) {
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(bx - s, by - s, bw + 2 * s, bh + 2 * s);
   ctx.fillStyle = ready ? PALETTE.white : PALETTE.pink;
-  ctx.globalAlpha = ready ? 0.85 + Math.sin(t * 6) * 0.15 : 0.7;
+  ctx.globalAlpha = FADE * (ready ? 0.85 + Math.sin(t * 6) * 0.15 : 0.7);
   ctx.fillRect(bx, by, bw * clamp(d.ready, 0, 1), bh);
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = FADE;
   const v = String(d.kmh);
   text(ctx, v, x, y - 16 * s, 40 * s, PALETTE.white, { align: 'left' });
   text(ctx, 'KM/H', x + widthOf(ctx, v, 40 * s) + 14 * s, y - 12 * s, 14 * s, PALETTE.white, { align: 'left', alpha: 0.8 });
@@ -134,11 +146,11 @@ function drawRoad(ctx, w, W, pad, s) {
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(bx - s, by - s, bw + 2 * s, 4 * s);
   ctx.fillStyle = PALETTE.white;
-  ctx.globalAlpha = 0.85;
+  ctx.globalAlpha = FADE * 0.85;
   ctx.fillRect(bx, by, bw * k, 2 * s);
-  ctx.globalAlpha = 0.3;
+  ctx.globalAlpha = FADE * 0.3;
   ctx.fillRect(bx + bw * k, by, bw * (1 - k), 2 * s);
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = FADE;
   const mx = bx + bw * k; // his mark: a small triangle pointing down at the line
   ctx.beginPath(); ctx.moveTo(mx - 6 * s, by - 10 * s); ctx.lineTo(mx + 6 * s, by - 10 * s); ctx.lineTo(mx, by - 2 * s); ctx.fill();
   const left = Math.max(0, Math.round((x1 - w.drive.van.x) / TILE));
@@ -165,7 +177,7 @@ function drawHunters(ctx, game, s, t) {
     ctx.lineWidth = 4.5 * z;
     ctx.stroke();
     ctx.strokeStyle = '#ff2a4a'; // the telegraphs' red (render/PursuitArt.js)
-    ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 9);
+    ctx.globalAlpha = FADE * (0.8 + 0.2 * Math.sin(t * 9));
     ctx.lineWidth = 2.2 * z;
     ctx.stroke();
     ctx.restore();
@@ -191,7 +203,7 @@ function drawWarnings(ctx, game, s, t) {
     for (const [col, lw, alpha] of [[PALETTE.ink, 4.5 * z, 1], ['#ff2a4a', 2.2 * z, on ? 1 : 0.45]]) {
       ctx.strokeStyle = col;
       ctx.lineWidth = lw;
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = FADE * alpha;
       ctx.beginPath();
       for (let i = 0; i < 3; i++) {
         const x = -i * 9 * z;
@@ -264,19 +276,19 @@ function drawChain(ctx, feed, sc, x, y, s, t) {
     const low = left < F.low, blink = low && Math.floor(t * F.blink * 2) % 2 === 0;
     const tier = pv?.tier ?? 0;
     ctx.fillStyle = PALETTE.ink;
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = FADE * 0.75;
     ctx.fillRect(x - bw - s, by - s, bw + 2 * s, bh + 2 * s);
-    ctx.globalAlpha = blink ? 0.45 : 1;
+    ctx.globalAlpha = FADE * (blink ? 0.45 : 1);
     ctx.fillStyle = left < F.low / 2 ? F.red : low ? PALETTE.yellow : tone(tierColor(tier), t);
     ctx.fillRect(x - bw * left, by, bw * left, bh);
     // a knock-down won some time back: the bar flashes white
     const r = feed.refill();
     if (r > 0) {
-      ctx.globalAlpha = r;
+      ctx.globalAlpha = FADE * r;
       ctx.fillStyle = PALETTE.white;
       ctx.fillRect(x - bw * left, by - s, bw * left, bh + 2 * s);
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = FADE;
     top = by + bh + 8 * s;
   }
   const L = K.feed;

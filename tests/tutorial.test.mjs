@@ -867,7 +867,7 @@ test('direction: a shot is eased toward, its zoom settling on a whole number of 
   d.set('run');
   for (let i = 0; i < 900; i++) d.update(1 / 60, 4);
   assert.equal(d.zoom, 0.75, 'wide for the run');
-  for (const s of Object.values(SHOTS)) assert.ok(s.zoom >= 0.5 && s.zoom <= 2.5 && s.ease > 0);
+  for (const s of Object.values(SHOTS)) assert.ok(s.zoom >= 0.5 && s.zoom <= (s.even ? 4 : 2.5) && s.ease > 0) // (a close-up at the wheel: 2A's butt);
   assert.ok(SHOTS.wake.zoom > SHOTS.bedroom.zoom && SHOTS.bedroom.zoom > SHOTS.flat.zoom && SHOTS.flat.zoom > SHOTS.corridor.zoom && SHOTS.corridor.zoom > SHOTS.run.zoom,
     'very close on waking, closer than usual in the flat, wider and wider to the end');
 });

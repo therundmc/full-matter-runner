@@ -1313,7 +1313,7 @@ function dragPose(V, ph, a, at) {
   V.carryImg = spriteOpt('items/cigarette');
   // (its filter in his fingers: it points out over the door at rest, ahead of his face at his mouth)
   V.carry.a = a + lerp(-Math.PI / 2, -0.35, ph.mouth);
-  V.carry.x = l.x + Math.cos(V.carry.a) * 1.6; V.carry.y = l.y + Math.sin(V.carry.a) * 1.6;
+  V.carry.x = l.x + Math.cos(V.carry.a) * 2.4; V.carry.y = l.y + Math.sin(V.carry.a) * 2.4;
 }
 const LIPS = { x: 0, y: 0 }, FLICK = { x: 0, y: 0 };
 const WHEEL = { x: 0, y: 0 }, DOOR = { x: 0, y: 0 }, GRIP = { x: 0, y: 0 }, CHEST = { x: 0, y: 0 }, KNOB = { x: 0, y: 0 };

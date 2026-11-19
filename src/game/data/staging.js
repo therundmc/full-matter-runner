@@ -36,6 +36,8 @@ export const SHOTS = {
   // level 2A's opening, the cigarette (systems/LastDrag.js, CHASE.intro): the same close-up, all the way onto the
   // point LastDrag moves: from the hood onto him, after the butt out onto the road, back on him in one cut
   drag: { zoom: 2.5, ease: 7, pull: 1, look: 0, even: true },
+  // ... and closer still on the butt once it is flicked (a cut: 8 px a world px at 720, 12 at 1080, 16 at 1440)
+  butt: { zoom: 4, ease: 7, pull: 1, look: 0, even: true },
   // the chase's beats (systems/ChaseCam.js, CHASE.cinema). A pursuer stopped for good: a cut in toward the wreck
   // (`ahead`: the view goes toward it across the road and forward only, never back: it shows no less of the road
   // ahead of his car than the cut itself does). The lorry: no zoom, the view shifted toward the way round it

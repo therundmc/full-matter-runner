@@ -219,9 +219,11 @@ export default class Drive {
     this.drag = o.intro === 'drag' && this.grab ? new LastDrag(world, van, seatOf(van, CHASE)) : null;
     this.launchT = 0;                 // s its rear tyres still spin as it pulls away (launch)
     this.standing = !!this.drag;      // the car stands until the opening is over (or skipped)
+    this.hudT = Infinity;             // s since the HUD began to come in (launch)
     if (this.drag) {
       this.v = this.lastV = this.was2.v = 0;
       van.lightsOut = true;
+      world.clockFrom = Infinity; // the run's clock waits for the launch (World.runTime)
       Body.setVelocity(van.body, { x: 0, y: 0 });
     }
     // water standing in the gutter (the level's `chase.water`: [col, row, r px])
@@ -262,6 +264,8 @@ export default class Drive {
     wake(b);
     if (b.isSleeping) Sleeping.set(b, false);
     v.lightsOut = false;
+    w.clockFrom = w.time; // the run's clock starts here (World.runTime): the opening is not his time
+    this.hudT = 0;
     this.launchT = L.spin;
     this.bump('shove', L.kick);
     w.shake(this.C.shove.shake);
@@ -276,6 +280,7 @@ export default class Drive {
       if (p.riding) p.riding.drag = null;
       this.drag = null;
       this.standing = false;
+      this.world.clockFrom = 0;
       this.v = this.lastV = this.was2.v = this.cruise;
       this.van.lightsOut = false;
       Body.setVelocity(this.van.body, { x: this.cruise, y: 0 });
@@ -332,6 +337,8 @@ export default class Drive {
     return { x: snap(x) + snap(at.x - x), y: snap(at.y) };
   }
 
+  // 0..1: how much of the HUD shows: none during the opening, faded in over CHASE.intro.hud s as it pulls away
+  get hud() { return this.standing ? 0 : clamp(this.hudT / this.C.intro.hud, 0, 1); }
   get kmh() { return kmh(this.v, this.C); }
   // world px of height the picture shows while he is at the wheel (Game.setView)
   get view() { return this.o.view ?? this.C.camera.view; }
@@ -434,6 +441,7 @@ export default class Drive {
       return;
     }
     if (this.drag) { this.drag.step(dt); if (this.drag.gone) this.drag = null; } // (its butt, still glowing behind)
+    this.hudT += dt;
     // taking the gun off the seat: the car rolls on by itself, nothing fires (a click now is lost); past the end of
     // the road (the card coming up over it) nothing he does counts any more
     const busy = this.grabbing || !!w.exited;

@@ -472,3 +472,12 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   tests/chasecinema.test.mjs. A bug the QA robot caught on the way: a car standing five seconds is frozen by the
   physics and took no speed afterwards (Drive.launch wakes it; the robot's stall check knows `standing`). QA 3 min
   seed 1: PASS, 9 sessions, no stall, 15 slow steps (main, same seed: 11 sessions, 22 slow steps).
+- 2026-11-19: the opening, second pass (the user's notes on the first). No HUD during it (Drive `hud`, ui/HUD.js: it
+  fades in over 0.6 s as the car pulls away) and the run's clock starts at the launch (World `clockFrom` / runTime;
+  the results and the record use it; a skip starts it at once). The drag reads: the hand right at his mouth, a
+  cigarette 6 px long, its ember drawn over the night (render/DragArt.js) and its light 110 px wide at the height of
+  the drag (his face, the wheel, the dash); the smoke is a plume of pale squares drawn over the night too (26 a
+  second for 1.1 s, out over his door, seen in the dark: the particles' smoke was drawn under it and lost). The butt:
+  a cut in closer (SHOTS `butt`, zoom 4 even: 8 / 12 / 16 px a world px at 720 / 1080 / 1440), 18 sparks in a flash
+  at its first bounce, its end lighting 26 px of road. QA 3 min seed 1: the camera's scale check takes 4 now; the
+  known stall at col 301.
