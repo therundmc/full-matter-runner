@@ -56,6 +56,11 @@ export const AIM = {
   // on the obstacle's edge and two arcs bowed the way he would go, the near one white (radii `r` about a point `back`
   // px before the edge, `span` rad and `width` px each), which hop `rise` px out and back in whole px, `rate` rad/s
   hop: { edge: 13, thick: 2, r: [7, 12], span: [1.5, 1.05], width: [2, 2], back: 2, rise: 2, rate: 8, alpha: [0.95, 0.85], seed: 3 },
+  // the throw being wound up (Player.throwHold; systems/AimCue.js throwCue, AimArt drawThrow), whatever the style: a
+  // dotted line on the floor from his hand to where the throw would stop (reach [quick, full] px, growing with the
+  // charge) or to what it meets, a dot every `every` px, paler by bands; white with the man on it (LOCK's corner
+  // ticks on him); solid once fully charged; a worn chevron at its end where nothing stops it
+  throw: { reach: [170, 260], every: 3, bands: [0.9, 0.7, 0.5, 0.3], start: 3, chevron: 3, seed: 11 },
   // the car gun out of its arc: a short grey stub and a cross at its end
   offArc: { len: 30, on: 2, off: 3, cross: 3, alpha: 0.9 },
   // the mouse's dot (ui px at 720p), and the F7 label's time on screen

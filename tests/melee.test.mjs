@@ -68,7 +68,7 @@ function flight(type, v) {
   w.characters = () => [g];
   const body = Matter.Bodies.rectangle(0, 0, 10, 4);
   Matter.Body.setVelocity(body, { x: v, y: 0 });
-  Object.assign(it, { world: w, type, def: WEAPONS[type], thrower: fighter('pistol'), body });
+  Object.assign(it, { world: w, type, def: WEAPONS[type], thrower: fighter('pistol'), body, charge: 0, trail: [] });
   it.update(1 / 60);
   return { g, removed, it };
 }

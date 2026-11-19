@@ -571,7 +571,7 @@ export default class Game {
       if (skip) { this.endOutro(); return; }
     }
     // Escape / START pauses; so does the gamepad in use going away
-    if (this.state === 'play' && (inp.hit('Escape') || inp.padLost)) { inp.padLost = false; this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
+    if (this.state === 'play' && (inp.hit('Escape') || inp.padLost)) { inp.padLost = false; this.world.player.interrupt?.(); this.menu.reset('pause'); this.setState('pause'); inp.consume(); return; }
     // once dead: R and the pad's A / Y restart at once, a click after a moment (he may have died clicking)
     if (this.state === 'dead' && (inp.hit('PadA') || (this.stateT > 0.5 && inp.mouseHit(0)))) { this.newGame(); inp.consume(); return; }
     this.padAim(dt);
@@ -596,6 +596,7 @@ export default class Game {
     this.tension.update(dt);
     this.world.killFeed.update(dt); // on the real clock: a hit-stop never holds a stamp up
     this.world.bossStage.update(dt);
+    this.world.throwBeat.update(dt);
     Music.setIntensity(this.tension.level(this.world.director.phase));
     Music.setCombo(this.world.scoring.combo);
 
@@ -754,10 +755,11 @@ export default class Game {
   audible(key) { if (key === 'master' || key === 'sfx') Audio.play('ui'); }
 
   // the camera's shot: the tutorial's staging, level 1's opening (systems/Opening.js), a boss's beat
-  // (systems/BossStage.js) or the gun taken off the car's seat (systems/Drive.js grab); null: the usual view
+  // (systems/BossStage.js), the gun taken off the car's seat (systems/Drive.js grab) or a throw's beat
+  // (systems/ThrowBeat.js); null: the usual view
   stagedShot() {
     const w = this.world;
-    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot() ?? w.drive?.shot() ?? null;
+    return w.tutorial?.shot() ?? this.opening.shot() ?? w.bossStage.shot() ?? w.drive?.shot() ?? w.throwBeat.shot();
   }
 
   updateCamera(dt) {

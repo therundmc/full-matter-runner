@@ -5,7 +5,7 @@
 // round him. What it tells comes from systems/AimCue.js. LOCK's marks and the vault's are worn stencil paint
 // (systems/AimMark.js).
 import { AIM } from '../data/aim.js';
-import { aimCue, lineOfFire, lockTarget, meleeLock } from '../systems/AimCue.js';
+import { aimCue, lineOfFire, lockTarget, meleeLock, throwCue } from '../systems/AimCue.js';
 import { ringBits, chevronBits, barBits, flecks, ringRadius } from '../systems/AimMark.js';
 import { angDiff } from '../../engine/math.js';
 
@@ -173,17 +173,7 @@ function lock(world, p, q, t) {
   } else if (L.mark === 'point') {
     const P = L.point;
     wornChevron(near.x, near.y, back + Math.PI, -(near.radius + P.gap[i]), P.size[i], col, P.alpha[i], seed);
-  } else {
-    const B = L.corners, r = Math.round(B.box + (on ? Math.sin(t * B.rate) * B.pulse : 2));
-    for (const sx of [-1, 1]) {
-      for (const sy of [-1, 1]) {
-        for (let k = 0; k < B.corner; k++) {
-          dot(cx + sx * (r - k), cy + sy * r, col, B.alpha[i]);
-          dot(cx + sx * r, cy + sy * (r - k), col, B.alpha[i]);
-        }
-      }
-    }
-  }
+  } else corners(near, t, on);
 }
 
 // the car gun out of its arc: a short grey stub out of his seat and a cross at its end (his hand cannot point there)
@@ -209,8 +199,36 @@ export function drawVaultMark(ctx, v, t) {
   flush(ctx);
 }
 
-// style: one of data/aim.js AIM_STYLES ('cross' draws nothing here)
+// LOCK's corner ticks round a man (his own wear kept), white on him
+function corners(c, t, on) {
+  const B = AIM.lock.corners, r = Math.round(B.box + (on ? Math.sin(t * B.rate) * B.pulse : 2)), col = on ? AIM.hot : AIM.rest, i = on ? 1 : 0;
+  const cx = Math.floor(c.x), cy = Math.floor(c.y);
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      for (let k = 0; k < B.corner; k++) {
+        dot(cx + sx * (r - k), cy + sy * r, col, B.alpha[i]);
+        dot(cx + sx * r, cy + sy * (r - k), col, B.alpha[i]);
+      }
+    }
+  }
+}
+
+// THE THROW being wound up (systems/AimCue.js throwCue), whatever the style: a dotted line on the floor from his hand
+// to where it would stop or what it meets, longer as it charges and solid once it is full; white with a man on it,
+// the corner ticks on him; a worn chevron at its end on open floor
+function drawThrow(q, t) {
+  const T = AIM.throw, man = q.target || q.lock, hot = !!q.target, col = hot ? AIM.hot : AIM.rest, full = q.k >= 1;
+  const end = q.len - (hot ? q.target.radius - 2 : 0);
+  const band = (d) => T.bands[Math.min(T.bands.length - 1, Math.floor(d / Math.max(1, q.len) * T.bands.length))];
+  for (let d = T.start; d <= end; d += full ? 1 : T.every) dot(q.x + Math.cos(q.a) * d, q.y + Math.sin(q.a) * d, col, hot ? 0.95 : band(d));
+  if (man) corners(man, t, hot);
+  else if (!q.hit) wornChevron(q.x, q.y, q.a, q.len, T.chevron, col, band(q.len), T.seed);
+}
+
+// style: one of data/aim.js AIM_STYLES ('cross' draws nothing here); a throw being wound up shows its own mark instead
 export function drawAim(ctx, world, style, t) {
+  const tq = throwCue(world);
+  if (tq) { drawThrow(tq, t); flush(ctx); return; }
   if (!style || style === 'cross') return;
   const q = aimCue(world), p = world.player;
   if (!q) return;

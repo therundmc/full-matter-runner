@@ -29,7 +29,7 @@
 - Clean, documented, decoupled, scalable code (levels, weapons, enemies, mechanics), testable (logic/render/physics/data split).
 - Keyboard is AZERTY (we use `e.code`, so KeyW/A/S/D = ZQSD).
 - Gamepad (data/controls.js `PAD_BINDINGS`): the fire is on the bumpers (the user's pick): RB attacks / shoots / takes
-  down (RT too, an alias), LB throws / picks up, LT looks further, A acts, X uses, Y reloads, START pauses. Rumble:
+  down (RT too, an alias), LB throws (hold to aim) / picks up, LT looks further, A acts, X uses, Y reloads, START pauses. Rumble:
   systems/Rumble.js from the world's events, effects in data/rumble.js (`RUMBLE`: per gun family, blow, kill,
   finisher, death, blast, door, the car's `ride` beats; `mix`: the strongest per motor, never a drone), in play only
   with the pad in hand, scaled by the VIBRATION option (GAME page, Settings `rumble`).
@@ -97,6 +97,9 @@
 - Ammo per caliber: `weapon = { type, mag, reserve }`, player pools `player.ammo[caliber]`; reloading drops the mag
   with its rounds. A pistol holds 7, the player starts with no reserve, a dead guard drops no spare magazine, level 1
   has no ammunition box.
+- Throwing (data/feel.js `THROW`): right click / LB held winds the throw up (the arm drawn back, a dotted mark on the
+  floor, AimArt `drawThrow`; LOCK pulls it onto its man), let go it flies, a tap is the quick throw; a full one plants
+  a blade; a hit that floors or kills has its beat (systems/ThrowBeat.js: hit-stop, slow motion, camera punch-in).
 - Melee weapons are data (`swing`, `heft`, `material`, `thrust`, `snaps`, `finisher`, `wear`, `breaks`): never test
   `=== WEAPONS.bat`. They wear out in BLOWS (`wear`, data/weapons.js `WEAR`: a man 1, a thing 0.25, a whiff 0) and
   break on the one that uses them up (`breaks: 'snap' | 'lodge'`, `bends`, `Character.breakWeapon`). Killing an armed

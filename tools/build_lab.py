@@ -32,7 +32,7 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
         21    X  road: 17 VEHICLES (car, van, leaking car)       X
         25    X  the south sidewalk                               X
         26    X#####.########.#########.######XXXXXXXXXXXXXXXXXXXXX
-        27    X#24 ARCADE#25 LAUNDRY#  26 ARMS  #
+        27    X#24 ARCADE#25 LAUNDRY#  26 ARMS  ##   27 THROW   #
         30    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
      1 RANGE       the whole west end, fired west: every gun on the firing line (col 8), two rows of ammo boxes behind
@@ -119,6 +119,10 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    the wall at the far end of the room, a brawler (fists only); a knife-man (a blade in his pocket,
                    drawn in a moment). A shot or a noise and the doorman runs for his bat, snatches it up and comes;
                    take the bat first and he comes with his fists
+    27 THROW       next door east: the throw (THROW in data/feel.js; hold the right click / LB to wind it up and aim it,
+                   let go to throw, a tap throws at once): three dummies down the room at 80, 150 and 220 px from the
+                   throwing spot by the door, three knives, a bat and a 1911 on the floor there; a full throw plants a
+                   knife in the farthest (the hit's beat: systems/ThrowBeat.js)
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, and CUEBALL).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
@@ -208,6 +212,10 @@ lv.fill(10, 27, 15, 29, '+')
 lv.put(14, 26, '+')
 lv.fill(17, 27, 31, 29, '.')
 lv.put(24, 26, '.')
+lv.fill(33, 25, 48, 25, 's')               # 27 THROW: the sidewalk carried on east, a long room off it
+lv.fill(33, 26, 48, 29, '#')
+lv.fill(34, 27, 47, 29, '_')
+lv.put(35, 26, '_')
 
 # ---------------------------------------------------------------- actors (30 guards)
 lv.actor('@', 27, 9, face=270)
@@ -505,6 +513,19 @@ lv.prop('chair', 25.4, 28.2, 0)
 for x in (20.0, 27.0):
     lv.prop('ceiling_lamp', x, 28.0)
 
+lv.area('27 throw: three dummies down a long room, things to throw at them')
+lv.paint('label_throw', 37.5, 25.5)
+# the throwing spot (35.5, 28.5), under the doorway: the dummies 80, 150 and 220 px east of it, on its row
+for n, d in enumerate((80, 150, 220)):
+    x = 35.5 + d / 32
+    lv.actor('mji'[n], int(x), 28, face=180, at=(x, 28.5))
+for x, kind in ((34.4, 'knife'), (34.9, 'knife'), (35.4, 'knife')):
+    lv.drop(kind, x, 27.5, 0)
+lv.drop('bat', 34.6, 29.4, 0)
+lv.drop('pistol', 35.6, 29.4, 0)
+for x in (37.0, 43.0):
+    lv.prop('ceiling_lamp', x, 28.0)
+
 # indirect fill only (no visible source): the glow of the city over the street
 lights = [
     [12, 22, 9, '#5a6ad8', 0.3],
@@ -516,7 +537,7 @@ lights = [
 light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.27, 0.42])
 
 if __name__ == '__main__':
-    lv.check(guards=36)
+    lv.check(guards=39)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
              exit=exit_zone, ambient={'traffic': [], 'walkers': []},
              header=[
