@@ -214,10 +214,13 @@
 - Title (the user's pick: the poster + the hit list): ui/title/Title.js picks the picture; Poster.js (the comic's
   cover: three layers shifted with the mouse, the fire taking his building, rain, the four's signs, the neon logo),
   HitList.js (the LEVELS page and the screen between two levels, Game state `hitlist`: the targets' cards, the X
-  drawn by a marker once; a note a level (Menu.js `levelNotes`, never one for a stage), pinned in a column under its
-  target, three rows at most (`noteAt`: the tutorial and BACK under the photo of his flat, 01 under CUEBALL, 02 03
-  under JITTERS, then LUCKY, then THE BOSS), LEFT / RIGHT from a column to the next, UP / DOWN down it (page `grid`);
-  a level not made yet a greyed note taped SOON with its working title, seen and never started), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
+  drawn by a marker once; the board pinned by hand and read as the story goes: his flat at the left, the four cards
+  at their own heights and leans (title_art.py `TARGETS`), the string along their tops, never across a face; a note
+  a level (Menu.js `levelNotes`, never one for a stage) in a bunch under its target, askew, three at most (`noteAt`,
+  `FAN`: 00 under the photo of his flat, 01 under CUEBALL, 02 03 under JITTERS, then LUCKY, then THE BOSS), LEFT /
+  RIGHT from a bunch to the next, UP / DOWN down it (page `grid`), opened on the furthest level he can play; a level
+  not made yet a smaller violet scrap taped SOON with its working title, seen and never started; BACK a scrap in the
+  bottom left corner), Options.js (OPTIONS and its pages, from the title and the pause: his table from above,
   a thing a section, its settings on a sheet of paper beside it, live as soon as the thing is chosen: RIGHT / ENTER
   step onto the sheet, LEFT / ESC back, no BACK line on a sheet; CONTROLS a grid of key caps from data/controls.js),
   Beats.js (their clocks and sounds, DOM-free),

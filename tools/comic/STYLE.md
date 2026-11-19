@@ -136,9 +136,13 @@ the game: src/game/ui/title/).
   cut paper; a letter that fails goes to the pink's dark.
 - **The hit list**: the board on a black wall, a bar of light across it; the photo of his flat, the four cards in
   the order he takes them (the next in his card's ink, the others in the board's violet, the dead gone dark under
-  a red X), a red string from pin to pin as far as he has got, the matchbook once CUEBALL is dead (under his one note). The
-  menu is bone notes pinned to it: a note a level, in a column under its man (three at most), its number big at its
-  corner under the pin; a level not made yet in the board's violet, a strip of tape across it.
+  a red X), a red string from pin to pin as far as he has got, the matchbook once CUEBALL is dead. It is pinned by a man
+  in a hurry, and read as the story goes: his flat at the left, each card at its own height and lean, the string
+  along their tops and never across a face, the small logo in the top right corner across from his flat, the
+  matchbook in the open foot of the board. The menu is bone notes pinned to it: a note a level, in a bunch under
+  its man (three at most), each askew and a little off the one above, its number big at its corner under the pin;
+  a level not made yet a smaller scrap in the board's violet, a strip of tape across its foot; BACK a scrap in the
+  bottom left corner. Leave the board room to breathe: nothing in a grid.
 - **The options** (from the title and the pause): what he carries, laid out. His table from above, boards on a
   slant, the lamp's pool, the satchel's corner; a thing a section down the left (the walkman AUDIO, the portable
   set VIDEO, the knuckles CONTROLS, the notebook GAME, his cap BACK), its name on a strip of tape. The chosen one
