@@ -97,7 +97,7 @@ test('openings know which wall tiles hold them', () => {
   // (3, 2) carries the hinges of the plain door and takes the bolt of the locked one
   const mid = heldBy(w, 3, 2);
   assert.deepEqual([mid.doors, mid.unbolted], [[w.doors[1]], [w.doors[0]]]);
-  assert.deepEqual(heldBy(w, 1, 1), { windows: [], doors: [], unbolted: [] });
+  assert.deepEqual(heldBy(w, 1, 1), { hung: [], windows: [], doors: [], unbolted: [] });
 });
 
 test('a window goes with the wall that holds it: glass, frame and sill, leaving a passable breach', () => {

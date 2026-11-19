@@ -11,6 +11,17 @@
 // shakes it a little: Ballistics.brushFittings), only a blast breaks it; what is on the walls breaks as anything else.
 // height = how high an overhead object sits, as parallax (fraction of its distance to the centre of the view);
 // pole = [colour, width] of the post drawn from its foot to its head. sign = animated neon lettering (render/Lighting.js).
+// What hangs on a wall face (the same names as ON_WALL in tools/levelkit.py: tests/wallhung.test.mjs): it goes with
+// the wall tile it hangs on (world/Openings.js wallMount, systems/Destruction.js watchOpenings).
+export const ON_WALL = new Set(['wall_lamp', 'tube_light', 'neon_tube_pink', 'neon_tube_cyan', 'emergency_light', 'fuse_box',
+  'extinguisher', 'alarm_box', 'wall_vent', 'pipe_steam', 'pipe_water', 'radiator', 'neon_sign_palm', 'neon_sign_bar',
+  'neon_sign_arrow', 'neon_sign_liquor', 'neon_sign_video', 'neon_sign_wash', 'fire_alarm', 'neon_sign_mirage',
+  'neon_sign_open', 'frame_photo', 'frame_gold', 'poster_fight', 'poster_band', 'dartboard', 'pay_phone', 'coat_hooks',
+  'towel_dispenser', 'neon_sign_beer', 'neon_sign_bay', 'poster_pinup', 'poster_revue', 'mirror_strip', 'neon_sign_lips',
+  'conduit', 'flyers', 'neon_sign_diner', 'neon_sign_cafe', 'security_mirror', 'cig_rack', 'price_board', 'tape_rack',
+  'notice_board', 'coin_changer', 'hand_dryer', 'graffiti', 'wall_clock', 'cleaning_rack', 'boiler', 'mirror_cracked',
+  'mailboxes', 'calendar']);
+
 export const PROPS = {
   table: { static: true, vault: true, material: 'wood', w: 44, h: 26, hp: 14, chips: '#7a4a2a', sound: 'wood', blocksPath: true, flips: 'table_flipped' },
   table_round: { static: true, vault: true, material: 'wood', r: 14, hp: 10, chips: '#8a5530', sound: 'wood', blocksPath: true, flips: 'table_round_flipped' },

@@ -154,6 +154,9 @@
   `prints`, `runoff` beside the older ones and the flat's `grease`, `damp`, `leak`...), appended after the older marks (the rect ones share one random stream).
   What drips, steams or slops over is systems/Seeps.js + data/seeps.js (`SEEPS`; a prop's def or the level's prop
   option `seep`): small on purpose (a puddle a step wide), it stops with its prop; lab station 33.
+- What hangs on a wall goes with its wall (data/props.js `ON_WALL`, the same names as levelkit ON_WALL; world/Openings.js
+  `hang` / `wallMount`, Destruction `watchOpenings`): when a tile at its back comes down (a blast), it breaks, its
+  light out, on either face, `lasting` or not. A new wall-hung prop is named in BOTH lists (tests/wallhung.test.mjs).
 - Living furniture: systems/PoolBalls.js, systems/Gadgets.js (arcade, jukebox), render/PropLife.js, the mirror
   ball's spots (Lighting.drawSpots), extinguisher powder (systems/Smoke.js, World.sightLine), systems/Steam.js,
   systems/Papers.js, what drips on the floor (systems/Seeps.js: prop `seep`, SEEPS `joint` / `pail`), what fumes on a stove

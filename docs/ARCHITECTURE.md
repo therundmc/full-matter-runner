@@ -79,8 +79,8 @@ src/
       Explosions.js       blasts: kills, breakage, wall crushing, mass-based shockwave, all scaled by occlusion()
       Gas.js              holed gas (props with `gas`: bottle, stove): flame jet at the hole, fuse, rocket bottle, blast
       Destruction.js      wall tiles (worn by anything, brought down by blasts only), windows torn out, doors off
-                          hinges, fences; `watchOpenings` makes doors and windows go with the wall tile that holds
-                          them (listens to `wallDestroyed`)
+                          hinges, fences; `watchOpenings` makes doors, windows and what hangs on a wall face go
+                          with the wall tile that holds them (listens to `wallDestroyed`)
       Glass.js            how a pane breaks (DOM-free, unit-tested): shards of three sizes, which ones cut / kill
       Fracture.js         prop destruction math (DOM-free): marks by weapon/energy/angle, debris cones, damage zones,
                           part recipes -> polygons, collapse launch
@@ -444,8 +444,8 @@ chase's wind. `?interp=off` (a developer's switch) draws the state as stepped, t
 | `explosion` | `{ x, y, radius, source }` | Explosions | Scoring (a rocket kill is a hit), Curtains (the cloth thrown), Litter (thrown), Rumble (by distance) |
 | `slide` | `{ ch, x, y, angle }` | Player.startSlide | (the slide also calls `World.noise`) |
 | `dodge` | `{ ch, x, y }` | Player.dodge (a round passed over the sliding player) | Scoring (a kill right after is a DODGE KILL) |
-| `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile) |
-| `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run) |
+| `wallDestroyed` | `{ cx, cy, x, y, dirA, power }` | Destruction | Director (incident), Destruction.watchOpenings (windows / doors held by that tile, what hangs on it) |
+| `windowDestroyed` | `{ x, y, cx, cy, dirA, power }` | Destruction.destroyWindow (glass, frame and sill gone: the tile is a breach) | Destruction.watchOpenings (next window of a glazed run, what hangs on it) |
 | `propHit` | `{ prop, x, y, dirA, kind, power }` | Prop.hit (every blow or shot on a prop still standing) | Critters (rats out from under a dumpster), PoolBalls, Clutter |
 | `propFlipped` | `{ prop, to, x, y, dirA }` | Prop.flip (a table tipped on its side; `to`: the upended table) | Clutter (what stood on it flies) |
 | `propTipped` | `{ prop, x, y, dirA, by }` | systems/Tipping.tipOver (a street bin knocked over; `by`: who, when known) | - |
@@ -1179,6 +1179,9 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   tile into a breach with `TileMap.destroyTile`, exactly like a destroyed wall tile (sight, paths, lights).
 - Openings go with what holds them (`Destruction.watchOpenings`): when a wall tile collapses, the windows built into
   it are torn out, the door hinged on it falls, a bolt shot into it is free; a glazed run follows window by window.
+  What hangs on a wall face (data/props.js `ON_WALL`, the level kit's list: lamps, tubes, neons, clocks, frames, pipes,
+  the fuse box, paint) is hung at load on the tiles at its back (`Openings.hang` / `wallMount`: `prop.mount`) and
+  breaks with any of them, on either face, its light out at once, `lasting` or not (`Prop.break(.., force)`).
 
 ## Debug
 
