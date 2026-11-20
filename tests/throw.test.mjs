@@ -21,7 +21,7 @@ const DT = 1 / 60;
 
 // a world that knows only what a step of the player and a throw need; it keeps what it was asked (slowmo, hitstop,
 // the camera's punch) and the items thrown
-function world(style = 'cross') {
+function world() {
   const asked = { slowmo: [], hitstop: [], punch: [], sounds: [] };
   const w = {
     asked, particles: sink, decals: sink, events: new EventBus(), time: 0, timers: [], light: noop, shake: noop, noise: noop,
@@ -31,7 +31,7 @@ function world(style = 'cross') {
     map: { solidAt: () => false, raycast: () => null, isWallChar: () => false, at: () => '.' }, lineOfSight: () => true, sightLine: () => true,
     traceBullet: () => null,
     props: [], items: [], corpses: [], debris: [], uses: { near: () => null }, windows: [], fences: [], ladders: [], doors: [], director: { phase: 'combat' },
-    aimStyle: style, aimMark: false, enemies: [], chars: [],
+    aimMark: false, enemies: [], chars: [],
     addBody: noop, removeBody: noop, addItem(it) { this.items.push(it); }, removeItem(it) { it.dead = true; }, pickupFlash: noop,
     addDebris(d) { this.debris.push(d); },
   };
@@ -129,19 +129,18 @@ test('throw: while it is held he walks at the move share, the left click and R d
   assert.equal(reloads, 0);
 });
 
-test('throw: LOCK draws a held throw onto its man within the cone; the CROSS throws along the aim', () => {
+test('throw: LOCK draws a held throw onto its man within the cone, else it goes along the aim', () => {
   const off = AIM.lock.cone - 0.05, d = 150;
-  for (const style of ['lock', 'cross']) {
-    const w = world(style), p = player(w, 'knife');
+  {
+    const w = world(), p = player(w, 'knife');
     guard(w, Math.cos(off) * d, Math.sin(off) * d);
     const [it] = play(w, p, 30);
     const a = Math.atan2(it.body.velocity.y, it.body.velocity.x);
-    if (style === 'lock') assert.ok(Math.abs(a - off) < 1e-6, `onto him: ${a}`);
-    else assert.ok(Math.abs(a) < 1e-9, `along the aim: ${a}`);
+    assert.ok(Math.abs(a - off) < 1e-6, `onto him: ${a}`);
   }
   // out of the cone or past the reach: along the aim
   for (const [o, r] of [[AIM.lock.cone + 0.05, 150], [0.1, THROW.lock + 20]]) {
-    const w = world('lock'), p = player(w, 'knife');
+    const w = world(), p = player(w, 'knife');
     guard(w, Math.cos(o) * r, Math.sin(o) * r);
     const [it] = play(w, p, 30);
     assert.ok(Math.abs(Math.atan2(it.body.velocity.y, it.body.velocity.x)) < 1e-9);

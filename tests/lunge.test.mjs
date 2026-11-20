@@ -53,7 +53,7 @@ test('lunge: never with a gun in hand', () => {
   assert.equal(lungeTarget(me, WEAPONS.shotgun, [guard(30, 0)], 0, L, sees, open), null);
 });
 
-// ---- the man the LOCK aim cue holds (data/aim.js AIM.lock; Player.startLunge passes him in) ----
+// ---- the man the LOCK aim holds (data/aim.js AIM.lock; Player.startLunge passes him in) ----
 const LK = L.lock;
 
 test('lunge: the man LOCK holds takes the whole turn and the longer step', () => {
@@ -110,13 +110,13 @@ const { updateFacing } = await load('game/entities/Facing.js');
 // the player at (0, 0) aiming along +x, a guard who has seen him `d` px off at `off` rad (and `more` at [d, off]); the
 // swing stepped through in the world's order (timers, the player, his drawn layers, then the physics moving him by his
 // velocity), the button down on step `wait` (of `steps`); each step: his angle, his drawn shoulders, the aim's way
-function swing(type, d, off, style, { wait = 0, more = [], steps = wait + 12 } = {}) {
+function swing(type, d, off, { wait = 0, more = [], steps = wait + 12 } = {}) {
   const w = {
     particles: sink, decals: sink, camera: sink, events: sink, time: 0, timers: [], slowmo: noop, hitstop: noop, shake: noop, light: noop,
     sound: noop, noise: noop, after(s, fn) { this.timers.push({ t: this.time + s, fn }); },
     map: { solidAt: () => false, raycast: () => null, isWallChar: () => false, at: () => '.' }, lineOfSight: () => true, sightLine: () => true,
     props: [], items: [], corpses: [], debris: [], uses: { near: () => null }, windows: [], fences: [], ladders: [], doors: [], director: { phase: 'combat' },
-    aimStyle: style, aimMark: false,
+    aimMark: false,
   };
   const p = Object.create(Player.prototype);
   Object.assign(p, { world: w, isPlayer: true, team: 'player', alive: true, knocked: 0, angle: 0, strike: 0, punchSide: 1, recoil: 0,
@@ -147,22 +147,18 @@ function swing(type, d, off, style, { wait = 0, more = [], steps = wait + 12 } =
   return { p, g, others, angles, sh, aimed, w, dir: Math.atan2(g.y, g.x) };
 }
 
-test('lunge: with LOCK, a swing at a held man off the aim turns the player onto him and the blow lands', () => {
+test('lunge: a swing at LOCK\'s held man off the aim turns the player onto him and the blow lands', () => {
   const cone = AIM.lock.cone;
   // in LOCK's cone, off the aim: a bat at 40 px (and at 52, past today's reach), fists at 25 px (and at 44)
   for (const [type, d, off] of [['bat', 40, cone - 0.05], [null, 25, cone - 0.02], ['bat', 52, cone - 0.05], [null, 44, cone - 0.05]]) {
-    const s = swing(type, d, off, 'lock');
+    const s = swing(type, d, off);
     assert.ok(Math.abs(s.angles[0] - s.dir) < 0.05, `${type}: turned onto him (${s.angles[0].toFixed(3)} vs ${s.dir.toFixed(3)})`);
     assert.ok(!s.g.alive || s.g.knocked, `${type || 'fists'} at ${d} px: the blow landed (${Math.hypot(s.g.x - s.p.x, s.g.y - s.p.y).toFixed(1)} px)`);
   }
 });
 
-test('lunge: with the CROSS (or nobody held), the swing is today\'s: the aim turned by PLAYER.lunge.turn at most', () => {
-  const s = swing('bat', 40, AIM.lock.cone - 0.05, 'cross');
-  assert.ok(Math.abs(s.angles[0] - L.turn) < 1e-9);
-  assert.ok(swing('bat', 52, AIM.lock.cone - 0.05, 'cross').g.alive, 'today\'s short step: the bat falls short at 52 px');
-  // a man past LOCK's melee reach: nobody held, no lunge, no turn
-  const far = swing('bat', AIM.lock.melee + 10, 0.2, 'lock');
+test('lunge: a man past LOCK\'s melee reach: nobody held, no lunge, no turn', () => {
+  const far = swing('bat', AIM.lock.melee + 10, 0.2);
   assert.equal(far.angles[0], 0);
   assert.ok(far.g.alive);
 });
@@ -172,12 +168,12 @@ const wait = Math.ceil(AIM.lock.face * 60) + 2; // steps before the click: the t
 
 test('melee lock: a man at his side in reach is held, faced before the click, and struck', () => {
   // no click yet: LOCK's man, close, and the turn under way from the first step
-  const pre = swing('bat', 30, 1.4, 'lock', { wait: 99, steps: 10 });
+  const pre = swing('bat', 30, 1.4, { wait: 99, steps: 10 });
   const held = meleeLock(pre.w, pre.p, pre.p.def, 0);
   assert.ok(held?.close && held.man === pre.g, 'held, close');
   assert.ok(pre.angles[0] > 0, 'the turn starts at once');
   // the click after the turn's time
-  const s = swing('bat', 30, 1.4, 'lock', { wait }), at = wait - 1;
+  const s = swing('bat', 30, 1.4, { wait }), at = wait - 1;
   assert.ok(Math.abs(s.angles[at] - s.dir) < 0.05, `faced before the click (${s.angles[at].toFixed(3)} vs ${s.dir.toFixed(3)})`);
   assert.ok(Math.abs(s.angles[1] - s.dir) > 0.1, 'eased, not snapped, before the click');
   assert.ok(!s.g.alive || s.g.knocked, 'the blow landed');
@@ -185,46 +181,40 @@ test('melee lock: a man at his side in reach is held, faced before the click, an
 });
 
 test('melee lock: the same man past the close window is not held (the narrow cone there)', () => {
-  const s = swing('bat', 70, 1.4, 'lock', { wait });
+  const s = swing('bat', 70, 1.4, { wait });
   assert.equal(meleeLock(s.w, s.p, s.p.def, 0), null);
   assert.ok(s.angles.slice(0, wait).every((a) => a === 0), 'no turn');
   assert.ok(s.g.alive && !s.g.knocked);
   // within the cone at 70 px: held, not close (marked, not struck from there)
-  const c = swing('bat', 70, AIM.lock.cone - 0.05, 'lock', { wait: 99, steps: 10 });
+  const c = swing('bat', 70, AIM.lock.cone - 0.05, { wait: 99, steps: 10 });
   const m = meleeLock(c.w, c.p, c.p.def, 0);
   assert.ok(m && !m.close && m.man === c.g);
   assert.equal(c.angles[5], 0, 'no turn onto a man out of reach');
 });
 
 test('melee lock: of two men in the window, the one nearer the aim line', () => {
-  const s = swing('bat', 34, 1.4, 'lock', { wait: 99, steps: 10, more: [[24, -0.9]] });
+  const s = swing('bat', 34, 1.4, { wait: 99, steps: 10, more: [[24, -0.9]] });
   assert.equal(meleeLock(s.w, s.p, s.p.def, 0).man, s.others[0]);
-  const t = swing('bat', 24, 1.4, 'lock', { wait: 99, steps: 10, more: [[34, -0.9]] });
+  const t = swing('bat', 24, 1.4, { wait: 99, steps: 10, more: [[34, -0.9]] });
   assert.equal(meleeLock(t.w, t.p, t.p.def, 0).man, t.others[0], 'nearer the line beats nearer him');
   // a man right behind him: not held (the aim must come round some)
-  const b = swing('bat', 28, Math.PI, 'lock', { wait: 99, steps: 10 });
+  const b = swing('bat', 28, Math.PI, { wait: 99, steps: 10 });
   assert.equal(meleeLock(b.w, b.p, b.p.def, 0), null);
   // a gun in hand: nobody
-  const g = swing('pistol', 30, 0.2, 'lock', { wait: 99, steps: 10 });
+  const g = swing('pistol', 30, 0.2, { wait: 99, steps: 10 });
   assert.equal(meleeLock(g.w, g.p, g.p.def, 0), null);
 });
 
-test('melee lock: with the CROSS, no turn before the click and today\'s swing', () => {
-  // bare hands (a club's swing may come round whole, by chance: Character.meleeStrike's spin)
-  const s = swing(null, 30, 1.4, 'cross', { wait });
-  assert.equal(meleeLock(s.w, s.p, s.p.def, 0), null);
-  assert.ok(s.angles.slice(0, wait + 1).every((a) => a === 0), 'neither before nor at the click: out of the lunge cone');
-  assert.ok(s.g.alive && !s.g.knocked, 'the punch goes along the aim, past him');
-  // the same man with LOCK: faced and punched
-  const l = swing(null, 30, 1.4, 'lock', { wait });
+test('melee lock: bare hands, a man at his side out of the lunge cone: faced and punched', () => {
+  const l = swing(null, 30, 1.4, { wait });
   assert.ok(!l.g.alive || l.g.knocked);
 });
 
 test('melee lock: a click at once snaps his drawn shoulders onto the man on that very frame', () => {
-  const s = swing('bat', 30, 1.4, 'lock', { wait: 0 });
+  const s = swing('bat', 30, 1.4, { wait: 0 });
   assert.ok(Math.abs(s.sh[0] - s.dir) < 1e-6, `shoulders ${s.sh[0].toFixed(3)} vs ${s.dir.toFixed(3)}`);
   assert.ok(!s.g.alive || s.g.knocked, 'the blow landed');
   // without the click the shoulders lag the turn on their spring
-  const pre = swing('bat', 30, 1.4, 'lock', { wait: 99, steps: 10 });
+  const pre = swing('bat', 30, 1.4, { wait: 99, steps: 10 });
   assert.ok(Math.abs(pre.sh[0] - pre.dir) > 0.3);
 });

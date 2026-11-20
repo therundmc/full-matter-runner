@@ -42,7 +42,7 @@ function world() {
     traceBullet: () => null,
     props: [], items: [], corpses: [], debris: [], uses: { near: () => null }, windows: [], fences: [], ladders: [], doors: [],
     director: { phase: 'combat', release: noop, provoked: false },
-    aimStyle: 'cross', aimMark: false, enemies: [], chars: [],
+    aimMark: false, enemies: [], chars: [],
     addBody: noop, removeBody: noop, addItem(it) { this.items.push(it); }, removeItem(it) { it.dead = true; }, pickupFlash: noop,
     addDebris(d) { this.debris.push(d); },
   };

@@ -33,7 +33,7 @@ function world() {
     map: { solidAt: () => false, raycast: () => null, isWallChar: () => false, at: () => '.' }, lineOfSight: () => true, sightLine: () => true,
     traceBullet: () => null,
     props: [], items: [], corpses: [], debris: [], uses: { near: () => null }, windows: [], fences: [], ladders: [], doors: [], director: { phase: 'combat' },
-    aimStyle: 'lock', aimMark: false, enemies: [], chars: [],
+    aimMark: false, enemies: [], chars: [],
     addBody: noop, removeBody: noop, addItem(it) { this.items.push(it); }, removeItem(it) { it.dead = true; }, pickupFlash: noop,
     addDebris(d) { this.debris.push(d); },
   };
@@ -211,14 +211,14 @@ test('combat: a blast on a car breaks a window once', () => {
 test('combat: LOCK never brackets a bystander, nor turns a swing onto a man who gave up', () => {
   const p = { x: 0, y: 0, alive: true, team: 'player', radius: 10, isPlayer: true };
   const civ = { x: 120, y: 4, alive: true, team: 'civilian', radius: 10, isCivilian: true };
-  const w = { player: p, chars: [p, civ], enemies: [], sightLine: () => true, aimStyle: 'lock' };
+  const w = { player: p, chars: [p, civ], enemies: [], sightLine: () => true };
   assert.equal(lockTarget(w, 'player', 0, 0, 0), null, 'a patron in the cone');
   const g = { x: 160, y: 0, alive: true, team: 'enemy', radius: 10, isEnemy: true, knocked: 0 };
   w.chars.push(g);
   assert.equal(lockTarget(w, 'player', 0, 0, 0), g, 'the guard behind him');
   // a guard on his knees, close, with a bat in hand
   const knelt = { x: 30, y: 0, alive: true, team: 'enemy', radius: 10, isEnemy: true, knocked: 0, yielded: true };
-  const m = { player: p, chars: [p, knelt], enemies: [knelt], sightLine: () => true, aimStyle: 'lock' };
+  const m = { player: p, chars: [p, knelt], enemies: [knelt], sightLine: () => true };
   assert.equal(meleeLock(m, p, WEAPONS.bat, 0)?.close ?? false, false);
   assert.equal(lungeTarget(p, WEAPONS.bat, [knelt], 0, PLAYER.lunge, () => true, () => false), null);
   assert.equal(lungeTarget(p, WEAPONS.bat, [knelt], 0, PLAYER.lunge, () => true, () => false, knelt), null, 'even held by LOCK');

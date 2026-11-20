@@ -1,4 +1,4 @@
-// The shapes of the LOCK concept's marks as lists of pixels (data/aim.js AIM.lock, AIM.worn; render/AimArt.js lays
+// The shapes of LOCK's marks as lists of pixels (data/aim.js AIM.lock, AIM.worn; render/AimArt.js lays
 // them down): worn paint, a stencil sprayed on the floor a long time ago. The wear is a hash of the mark's own bits
 // (never of the frame or of where it stands), so a mark keeps its chips while its man walks, and two men do not
 // wear the same. DOM-free, pure.
