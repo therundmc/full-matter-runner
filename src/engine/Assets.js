@@ -67,7 +67,8 @@ const ROAD_PAINT = [
   'hatch_kerb', 'oil_stain_a', 'oil_stain_b', 'road_loading', 'skid_marks',
   'road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
   'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow', 'rumble_strip',
-  'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4'];
+  'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4', 'lane_taper',
+  'plaza_fan'];
 // (in ROAD_PAINT: level 1's street from hatch_kerb to skid_marks; from road_cut on, 2A's part two: the works, the ramp, the toll)
 const ROAD_GLOWING = ['traffic_light', 'bus_shelter', 'arrow_board', 'barricade', 'road_closed', 'works_light', 'highway_lamp',
   'toll_booth', 'toll_canopy', 'lane_signal_go', 'lane_signal_stop'];
@@ -101,7 +102,7 @@ export const OPTIONAL_LIST = [
     'sandwich_board', 'ash_urn', 'entry_mat'].map((n) => `props/${n}`),
   // the physics lab's stencilled floor labels (tools/build_lab.py)
   ...['range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox', 'trapdoor',
-    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend'].map((n) => `props/label_${n}`),
+    'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim', 'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend', 'toll'].map((n) => `props/label_${n}`),
   // a bar's walls: pictures, posters, a dartboard, the pay phone, the coat hooks, the towels in the toilets, the VIP
   // room's mirror (and its low table)
   ...BAR_WALL.map((n) => `props/${n}`),

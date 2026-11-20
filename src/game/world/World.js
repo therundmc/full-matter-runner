@@ -80,6 +80,7 @@ import Drive, { driveSpot } from '../systems/Drive.js';
 import Pursuit from '../systems/Pursuit.js';
 import Signals from '../systems/Signals.js';
 import Lorries from '../systems/Lorries.js';
+import Toll from '../systems/Toll.js';
 import { Gearbox } from '../../audio/Motor.js';
 
 const { Body } = Matter;
@@ -203,8 +204,10 @@ export default class World {
     this.pursuit = level.chase || this.props.some((p) => p.pursuer) ? new Pursuit(this, level.chase) : null;
     // the lorry that backs out across the street (the chase's event 2, the lab's)
     this.lorries = level.chase || this.props.some((p) => p.backs) ? new Lorries(this, level.chase) : null;
+    // a toll's plaza on the way (the chase's event 3, the lab's): its gates told, the pursuers' lanes through it
+    this.toll = Toll.of(this, level);
     // the chase's own slow motions and cuts (a pursuer stopped, the lorry across the road): where one can be driven
-    this.chaseCam = this.pursuit || this.lorries ? new ChaseCam(this) : null;
+    this.chaseCam = this.pursuit || this.lorries || this.toll ? new ChaseCam(this) : null;
     this.carFx = new CarFx(this);     // a car in trouble: its smoke, the sparks where it scrapes, its fire-ball (looks)
     this.signals = new Signals(this); // traffic lights, the works' arrow board and flashers: their lamps in turn
     this.lighting = new Lighting(this);
@@ -644,6 +647,7 @@ export default class World {
     else this.player.baseUpdate(dt);
     this.pursuit?.step(dt);
     this.lorries?.step(dt);
+    this.toll?.step(dt);
     this.chaseCam?.step();
     this.signals.step();
     this.director.update(dt);

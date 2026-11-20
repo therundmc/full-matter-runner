@@ -388,7 +388,8 @@ export const PROPS = {
   toll_canopy: { hung: true, lasting: true, overhead: true, height: 0.03, static: true, material: 'metal', w: 188, h: 636, hp: 99, chips: '#4e5562', sound: 'metal',
     light: [{ r: 150, color: '#e8f0ff', intensity: 0.6, y: -216 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: -72 },
       { r: 150, color: '#e8f0ff', intensity: 0.6, y: 72 }, { r: 150, color: '#e8f0ff', intensity: 0.6, y: 216 }] },
-  gate_arm_wood: { static: true, material: 'wood', w: 110, h: 4, hp: 3, chips: '#d0242c', sound: 'wood' },
+  // (`cost`: the share of his speed a car loses tearing it off, Drive.react; in its own pieces: data/destruction.js)
+  gate_arm_wood: { static: true, material: 'wood', w: 110, h: 4, hp: 3, chips: '#d0242c', sound: 'wood', cost: 0.1 },
   gate_arm_bit_a: { material: 'wood', w: 42, h: 4, hp: 2, kg: 3, mu: 0.5, chips: '#d0242c', sound: 'wood' },
   gate_arm_bit_b: { material: 'wood', w: 30, h: 4, hp: 2, kg: 2, mu: 0.5, chips: '#d0242c', sound: 'wood' },
   gate_arm_bit_c: { material: 'wood', w: 20, h: 4, hp: 2, kg: 1.5, mu: 0.5, chips: '#d0242c', sound: 'wood' },

@@ -5,13 +5,15 @@
 //   draws him sat at the wheel, his arm out: Vehicle.draw, CharacterAnim.seatPose)
 //   drawChaseTells (after the lighting: telegraphs read in the dark; docs/LEVEL2.md, "nothing else red on the road"):
 //   the alley car's RED LANE across the road; a gunman's tell in its three beats (a white glint at the muzzle, a thin
-//   red line fattening into a wedge toward the bracket on the lane band where it will land, the shot's bone tracer)
+//   red line fattening into a wedge toward the bracket on the lane band where it will land, the shot's bone tracer);
+//   a lorry backing out; a toll told (bone arrows down the wooden lanes, red on the steel ones: drawToll)
 //   drawChaseWind (after the lighting too): the streaks of air past his car at speed (systems/Drive.js `wind`): one
 //   world px thick, whole px, bone, each fading in and out
 import { BODY_SCALE } from '../Config.js';
 import { sprite, drawSprite } from '../../engine/Assets.js';
 import { clamp } from '../../engine/math.js';
 import { CHASE } from '../data/chase.js';
+import { laneY } from '../systems/Toll.js';
 
 const RED = '255,42,74';        // the telegraph's red
 const BONE = '239,230,210';     // enemy tracers
@@ -78,6 +80,7 @@ function drawHand(ctx, gun, p) {
 export function drawChaseTells(ctx, w, t) {
   const P = w.pursuit;
   if (w.lorries) drawLorries(ctx, w.lorries, t);
+  if (w.toll) drawToll(ctx, w.toll, t);
   if (!P) return;
   ctx.save();
   for (const L of P.lanes) drawLane(ctx, L, t);
@@ -137,6 +140,54 @@ function drawLorries(ctx, S, t) {
       }
       ctx.stroke();
     }
+  }
+  ctx.restore();
+}
+
+// A toll told (systems/Toll.js, CHASE.toll): bone arrows running down each wooden lane toward its arm, along the
+// lane's line as it spreads to the plaza (from just ahead of his car to the gate; none once the arm is gone); a red
+// wash with hard edges over the last stretch of each steel lane, a bracket closing on its boom
+function drawToll(ctx, S, t) {
+  const C = CHASE.toll, beat = 0.5 + 0.5 * Math.sin(t * 14);
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const { P, k, d } of S.told()) {
+    const x0 = d?.van ? d.van.x + C.from : P.x - 600;
+    P.gates.forEach((g, i) => {
+      const gate = P.props[i], gy = laneY(P, i, P.x);
+      if (g === 'wood') {
+        if (!gate || gate.dead || gate.dying) return;
+        ctx.strokeStyle = `rgba(${BONE},${(0.62 + 0.3 * beat) * k})`;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let x = P.x - 24 - (C.every - ((t * C.run) % C.every)); x >= x0; x -= C.every) {
+          const y = laneY(P, i, x), a = Math.atan2(laneY(P, i, x + 8) - y, 8), c = Math.cos(a), sn = Math.sin(a);
+          const at = (u, v) => [x + u * c - v * sn, y + u * sn + v * c];
+          ctx.moveTo(...at(-6, -9)); ctx.lineTo(...at(4, 0)); ctx.lineTo(...at(-6, 9));
+        }
+        ctx.stroke();
+        return;
+      }
+      const hw = 44, len = 72, u = 0.6 + 0.4 * beat;
+      ctx.fillStyle = `rgba(${RED},${(0.14 + 0.1 * beat) * k})`;
+      ctx.fillRect(P.x - len, gy - hw, len, hw * 2);
+      ctx.strokeStyle = `rgba(${RED},${0.9 * k})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(P.x - len, gy - hw); ctx.lineTo(P.x, gy - hw);
+      ctx.moveTo(P.x - len, gy + hw); ctx.lineTo(P.x, gy + hw);
+      ctx.stroke();
+      const hx = 10 + 6 * (1 - u), hy = hw + 6 * (1 - u), cn = 8;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = `rgba(${RED},${(0.6 + 0.4 * u) * k})`;
+      ctx.beginPath();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const x = P.x + sx * hx, y = gy + sy * hy;
+        ctx.moveTo(x - sx * cn, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * cn);
+      }
+      ctx.stroke();
+    });
   }
   ctx.restore();
 }

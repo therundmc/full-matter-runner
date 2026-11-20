@@ -4,7 +4,10 @@
 //   legs  [{ from, to: cols (the leg holds from <= col < to), lanes: rows (2 or more, any order), mid: row (the
 //         camera's middle across; none: the lanes'), cruise: px/step, view: px (the picture's height; none: the
 //         chase's, else CHASE.camera.view), kerbs: [row, row] (the roadway's first row, the first sidewalk row),
-//         across: [[col0, col1, row above, row below]] (streets across: Drive.fronts) }]. No `legs`: one leg as long
+//         across: [[col0, col1, row above, row below]] (streets across: Drive.fronts), track: 0..1 (the share of his
+//         place across the road the view follows: a road wider than the picture, the toll's plaza; 0: none) }]. Legs
+//         one after the other with no bend between them are driven on from one to the next by column (the car keeps
+//         its row: lanes may differ; the view is eased across to the next one's framing). No `legs`: one leg as long
 //         as the map, from the chase's own lanes / mid / cruise / view / kerbs (the chase before legs).
 //   bends [{ at: col (the car's middle there on its leg: the script takes over), path: [[col, row], ...] (the corner
 //         points of its line: straight lines, each inner point rounded off by an arc of `radius` tiles), radius:
@@ -26,7 +29,7 @@ export function legsOf(o = {}) {
     return {
       from: L.from ?? -Infinity, to: L.to ?? Infinity, lanes,
       mid: L.mid ?? (lanes ? lanes.reduce((s, r) => s + r, 0) / lanes.length : null),
-      cruise: L.cruise ?? o.cruise ?? CHASE.cruise, view: L.view ?? o.view ?? null, kerbs: L.kerbs ?? null,
+      cruise: L.cruise ?? o.cruise ?? CHASE.cruise, view: L.view ?? o.view ?? null, kerbs: L.kerbs ?? null, track: L.track ?? 0,
       // (the chase's own `across` holds on every leg: its columns are the map's)
       across: [...(o.legs?.length ? L.across || [] : []), ...(o.across || [])],
     };

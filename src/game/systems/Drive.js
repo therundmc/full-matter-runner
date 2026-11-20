@@ -235,6 +235,7 @@ export default class Drive {
     this.legI = 0;                    // the leg he is on (in a bend: the one it hands him to)
     this.bend = null;                 // a bend under way: Route.enterBend's state ({ b, p, v, slip, ... }), its pose
     this.camOff = null;               // the camera's offset from the car while it is not the leg's own framing (frame)
+    this.camY = null;                 // the view's middle across while it is eased to a leg's framing or follows him (acrossStep)
     this.viewW = null;                // world px across the view, as last framed
     this.far = 0;                     // px along the route, the most so far (progress: never back)
     if (van || o.van) this.legI = legAt(this.route.legs, van ? van.x : o.van[0] * TILE);
@@ -535,8 +536,9 @@ export default class Drive {
       const nb = this.route.bends[this.bendI];
       if (nb && v.x >= nb.x && this.legI === nb.from) this.startBend(nb);
       else {
+        // (the next leg by column: the car goes on in its row; the view eased across from where this one had it)
         const i = legAt(this.route.legs, v.x);
-        if (i !== this.legI) { this.legI = i; this.cruise = this.leg.cruise; }
+        if (i !== this.legI) { this.camY ??= this.trackY(); this.legI = i; this.cruise = this.leg.cruise; }
       }
     }
     if (this.bend) { this.bendDrive(dt); this.camStep(dt); return; }
@@ -606,7 +608,8 @@ export default class Drive {
   // bend }: systems/ChaseCam.js, systems/Pursuit.js)
   startBend(b) {
     const v = this.van;
-    this.camOff ??= this.normalOff(); // (from where the leg held the view: no jump)
+    this.camOff ??= { ...this.normalOff(), y: (this.camY ?? this.trackY()) - v.y }; // (from where the leg held the view: no jump)
+    this.camY = null;
     this.bend = enterBend(b, v.x, v.y, v.body.angle, this.v, this.slip, this.slipV, this.C.bend);
     this.bend.turn = 0;
     this.legI = b.to;
@@ -660,7 +663,7 @@ export default class Drive {
   // the camera's offset from the car (world px), a step: in a bend it looks ahead along the line, out of one it comes
   // back to the leg's own framing (normalOff) and lets go of it once there (CHASE.bend.camera)
   camStep(dt) {
-    if (!this.bend && !this.camOff) return;
+    if (!this.bend && !this.camOff) { this.acrossStep(dt); return; }
     const K = this.C.bend.camera, o = (this.camOff ??= this.normalOff());
     let want = this.normalOff();
     if (this.bend) {
@@ -674,10 +677,27 @@ export default class Drive {
   }
 
   // the offset the leg's own framing holds the view at from the car (frame): C.camera.at of the view's width
-  // behind its middle along the road, the street's middle across
+  // behind its middle along the road, the street's middle across (trackY)
   normalOff() {
     const C = this.C.camera, v = this.van, mid = this.street, W = this.viewW ?? (this.view * 16) / 9;
-    return { x: W * (0.5 - C.at - this.surge), y: mid === null ? 0 : mid - v.y };
+    return { x: W * (0.5 - C.at - this.surge), y: mid === null ? 0 : this.trackY() - v.y };
+  }
+
+  // the y the leg's framing holds the view's middle at: the street's middle (its `mid`), and `track` of the way from
+  // it to his car (a road wider than the picture); none (the lab): on the car
+  trackY() {
+    const mid = this.street, v = this.van;
+    return mid === null ? v.y : mid + (v.y - mid) * (this.leg.track || 0);
+  }
+
+  // Across, out of a bend: on a leg that follows him (`track`), the view's middle eased toward trackY as he moves;
+  // into the next leg by column with another framing, eased from where the last one had it (no jump), then dropped:
+  // the leg's middle held exactly (frame). C.camera.across
+  acrossStep(dt) {
+    const K = this.C.camera.across, want = this.trackY();
+    if (this.camY === null) { if (!this.leg.track) return; this.camY = want; }
+    this.camY += clamp((want - this.camY) * Math.min(1, K.ease * dt), -K.most, K.most);
+    if (!this.leg.track && Math.abs(this.camY - want) < K.done) this.camY = null;
   }
 
   // Never stalled for good (C.stall): crawling under `under` of its cruise speed for `after` s (a car shoved into its
@@ -1119,8 +1139,9 @@ export default class Drive {
       if (e.def.glass) w.particles.glass(h.x, h.y, a, 0.9, F.glass, speed * F.speed);
       w.papers?.drop(h.x, h.y, F.papers[0], a, F.papers[1]);
     }
-    // what it cost him: once a step at most, and nothing for what was already broken (the bits of it in the air)
-    if (h.kind !== 'gives' && !this.lost) { this.lost = true; this.v *= 1 - C.hit.loss; }
+    // what it cost him: once a step at most (what it was: its `cost`, a toll's arm), and nothing for what was already
+    // broken (the bits of it in the air)
+    if (h.kind !== 'gives' && !this.lost) { this.lost = true; this.v *= 1 - (e?.def?.cost ?? C.hit.loss); }
   }
 
   // He shoved a parked car aside (aside): what it cost him (asideKeep of his speed along his nose, never less), and
@@ -1293,8 +1314,9 @@ export default class Drive {
     this.viewW = viewW;
     const C = this.C.camera, v = this.van, snap = (n) => Math.round(n * z) / z, mid = this.street, o = this.camOff;
     if (o) return { x: snap(v.x) + snap(o.x), y: snap(v.y) + snap(o.y) };
-    // (slowed by a hit it sits `surge` further forward: whole px, like the rest)
-    return { x: snap(v.x) + snap(viewW * (0.5 - C.at - this.surge)), y: snap(mid === null ? v.y : mid) };
+    // (slowed by a hit it sits `surge` further forward: whole px, like the rest; across, eased between two legs'
+    // framings or following him: camY)
+    return { x: snap(v.x) + snap(viewW * (0.5 - C.at - this.surge)), y: snap(this.camY ?? (mid === null ? v.y : mid)) };
   }
 
   // its engine and tyres this step (audio/Motor.js; World hands it to Audio.motor): the gearbox on its real speed,

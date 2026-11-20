@@ -37,27 +37,40 @@ test('road: every prop and every piece of floor paint of the street is a known s
 });
 
 test('road: nothing stands in the lanes of a leg, from one end of it to the other', () => {
-  // (each leg of the route: the street, then the one the detour comes out on; systems/Route.js)
-  const map = new TileMap(level2a.tiles), legs = C.legs.map((L) => ({ ...L, top: L.lanes[0] - 1.25, bottom: L.lanes[L.lanes.length - 1] + 1.25 }));
-  assert.deepEqual([legs[0].top, legs[0].bottom], [11, 16]);
+  // (each leg of the route: the street, the one the detour comes out on, the toll's; systems/Route.js). Lanes side by
+  // side are one band across them all; the toll's plaza has islands between its lanes: a band a lane, 3 m (a crash
+  // cushion before an island's nose kept off the width of a car in the middle of its lane), its gates across them
+  const map = new TileMap(level2a.tiles), plaza = (L) => L.lanes.join() === C.toll.lanes.join();
+  const legs = C.legs.map((L) => {
+    const half = (L.lanes[1] - L.lanes[0]) / 2;
+    const bands = plaza(L) ? L.lanes.map((r) => [r - 1.5, r + 1.5]) : [[L.lanes[0] - half, L.lanes[L.lanes.length - 1] + half]];
+    return { ...L, bands };
+  });
+  assert.deepEqual(legs[0].bands, [[11, 16]]);
   assert.deepEqual(C.legs[0].lanes, C.lanes, 'the street is the first leg');
+  assert.ok(legs.some(plaza), 'the toll\'s plaza is a leg');
   const legOf = (c) => legs.find((L) => c >= L.from && c < L.to);
   const across = (c) => C.across.some(([a, b]) => c >= a && c <= b);
   for (const [t, c, r, deg = 0] of level2a.props) {
     const d = PROPS[t], L = legOf(c);
-    if (!L || d?.hung || (across(c) && (r < 8 || r > 18))) continue;
+    if (!L || d?.hung || (across(c) && (r < 8 || r > 18)) || t === 'gate_arm_wood' || t === 'gate_steel') continue;
     const half = halfAcross(t, deg);
-    assert.ok(r + half <= L.top + 0.01 || r - half >= L.bottom - 0.01, `${t} at ${c}, ${r} reaches into a lane`);
+    for (const [top, bottom] of L.bands) {
+      const [y0, y1] = t === 'crash_cushion' && plaza(L) ? [(top + bottom) / 2 - 0.95, (top + bottom) / 2 + 0.95] : [top, bottom];
+      assert.ok(r + half <= y0 + 0.01 || r - half >= y1 - 0.01, `${t} at ${c}, ${r} reaches into a lane`);
+    }
   }
   // and the lanes are road all the way
   for (const L of legs) {
-    for (let x = Math.max(0, L.from); x < Math.min(map.w - 1, L.to); x++) for (let y = L.top; y < L.bottom; y++) assert.ok('=-'.includes(map.at(x, y)), `col ${x} row ${y}`);
+    for (const [top, bottom] of L.bands) {
+      for (let x = Math.max(0, L.from); x < Math.min(map.w - 1, L.to); x++) for (let y = Math.floor(top); y < bottom; y++) assert.ok('=-'.includes(map.at(x, y)), `col ${x} row ${y}`);
+    }
   }
   // what is loose (a car's nudge sends it rolling) keeps half a metre off them
   for (const [t, c, r] of level2a.props) {
     const d = PROPS[t], L = legOf(c);
-    if (!L || !d || d.static || d.hung || !d.kg || d.kg > 40 || r < L.top - 3 || r > L.bottom + 2) continue;
-    assert.ok(r < L.top - 0.1 || r > L.bottom + 0.3, `${t} at ${c}, ${r} stands by the lane`);
+    if (!L || !d || d.static || d.hung || !d.kg || d.kg > 40) continue;
+    for (const [top, bottom] of L.bands) if (r >= top - 3 && r <= bottom + 2) assert.ok(r < top - 0.1 || r > bottom + 0.3, `${t} at ${c}, ${r} stands by the lane`);
   }
 });
 

@@ -185,15 +185,23 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    takes the wheel (W / S do nothing, the gun is still his): it brakes, turns right down the side
                    street, the tail out, smoke and rubber off the rear tyres, a breath of slow motion at each turn,
                    the camera following it down and round, then left onto the lower road, its lane, and the wheel
-                   is his again. The lower road ends on a wall: E to get out before it
+                   is his again. The lower road runs on east to 37's toll
+    37 TOLL        a toll's two gates (systems/Toll.js, CHASE.toll; level 2A's event 3), at the lower road's east end:
+                   a convertible parked on it (E at its door; 36's car comes out on it too). The road opens round
+                   three islands, a crash cushion at each nose, a lit booth on two; the north lane shut by a wooden arm
+                   (its signal a green arrow), the south one, the lane he is in, by a steel boom (a red X). Told 1.5 s
+                   out: bone arrows down the wooden lane, red on the steel one. Through the arm: it flies in its
+                   lengths, a tenth of the speed lost, a breath of slow motion; nose-on into the boom: the crash. The
+                   road ends on a wall past it: E to get out before it
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
 
-W, H = 150, 52                             # (cols 63-74 are 15 CUEBALL's room, in the brick; east of them only the street, 32 CHASE FX;
-                                           # rows 31 on and cols 96 on: 36 BEND's two roads, under the rest)
+W, H = 200, 58                             # (cols 63-74 are 15 CUEBALL's room, in the brick; east of them only the street, 32 CHASE FX;
+                                           # rows 31 on and cols 96 on: 36 BEND's two roads, under the rest; cols
+                                           # 149 on: 37 TOLL on the lower road)
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -691,12 +699,44 @@ for x in (70.5, 86.5):
     lv.prop('wall_lamp', x, 32.08, 0)
 for x in (112.5, 136.5):
     lv.prop('streetlight', x, 44.72, 90)
+
+lv.area('37 toll: the lower road opens round three islands, a wooden arm on the north lane, a steel boom on the south one')
+# (systems/Toll.js: the route's `toll`; its lanes 4.5 m apart round the middle island, as on level 2A's plaza)
+T_NOSE, T_GATE = 166.0, 174.1              # the islands' noses (8 m long), the gates at their ends
+T_LANES, T_ISLES = (45.25, 49.75), (43.0, 47.5, 52.0)
+lv.fill(149, 43, 157, 44, 's')             # the lower road carried on east
+lv.fill(149, 45, 157, 49, '=')
+lv.fill(149, 50, 157, 50, 's')
+lv.fill(158, 41, 198, 54, '"')             # then out of the town: grass verges, the road opening to the plaza
+lv.fill(158, 45, 198, 49, '=')
+lv.fill(158, 42, 181, 53, '=')
+for c in range(148, 157, 4):
+    lv.fill(c, 47, c + 1, 47, '-')
+lv.paint('label_toll', 152.0, 44.5)
+lv.prop('convertible', 152.0, 48.75, 0, drive=True, route='bend')   # (on the lower road: leg 1 of 36's route)
+for (k, r) in enumerate(T_LANES):
+    lv.paint('toll_text', 161.5, r, 90)
+    lv.paint(f'toll_lane_{k + 1}', 163.5, r, 90)
+for (i, r) in enumerate(T_ISLES):
+    lv.prop('crash_cushion', T_NOSE - 84 / 64 - 0.05, r)
+    lv.prop('toll_island', T_NOSE + 254 / 64, r)
+    if i < 2:
+        lv.prop('toll_booth', T_NOSE + 5.0, r)
+    if i > 0:
+        lv.prop('lane_signal_go' if i == 1 else 'lane_signal_stop', T_NOSE + 1.4, r)
+lv.prop('gate_arm_wood', T_GATE, T_LANES[0] - 11 / 32, 90)
+lv.prop('gate_steel', T_GATE, T_LANES[1] - 12 / 32, 90)
+for (c, r) in ((160.5, 41.6), (176.5, 53.4)):
+    lv.prop('highway_lamp', c, r, 90)
 for r in (45.6, 47.0, 48.4):
-    lv.prop('traffic_cone', 145.5, r)          # the wall at its end: E to get out before it
+    lv.prop('traffic_cone', 195.5, r)          # the wall at its end: E to get out before it
+
 routes = {'bend': {
     'legs': [{'from': 0, 'to': 100, 'lanes': [34.25, 36.75], 'mid': 35.5, 'kerbs': [33, 38], 'across': [[94, 105, 33, 38]]},
              {'from': 100, 'to': W, 'lanes': [46.25, 48.75], 'mid': 47.0, 'kerbs': [45, 50]}],
     'bends': [{'at': 92, 'path': [[92, 36.75], [100, 36.75], [100, 48.75], [116, 48.75]], 'radius': 6, 'to': 1}],
+    # 37 TOLL's gates, north lane first (the approach's lanes `from`, the plaza's `lanes`, where they spread: `fan`)
+    'toll': {'at': T_GATE, 'lanes': list(T_LANES), 'from': [46.25, 48.75], 'fan': [158, 164], 'gates': ['wood', 'steel']},
 }}
 
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
@@ -781,6 +821,7 @@ lights = [
     [76, 35, 9, '#5a6ad8', 0.3],
     [100, 41, 8, '#7a5ad8', 0.3],
     [124, 47, 9, '#5a6ad8', 0.3],
+    [170, 47, 10, '#7a5ad8', 0.32],
 ]
 # a brighter night than the bar's (LIGHTING.ambient), everywhere one plays: a lab is for seeing what happens. The
 # lamps are bulbs and wall lamps, no tubes or neon (the failing ones render/Flicker.js picks among them would add to

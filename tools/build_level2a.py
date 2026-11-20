@@ -36,7 +36,11 @@ off):
     404-449   C  the way to the freeway (its sign over the road)
     438-460      THE DETOUR (a plain test layout, to be dressed): works shut the street past the side street (cols
                  442-449); the script takes the car right down it at col 438 and left at its foot onto LEG 1 (rows
-                 43-47, cols 446 on, systems/Route.js legs and bends); the level ends at col 570 of leg 1
+                 43-47, cols 446-559, systems/Route.js legs and bends)
+    560-699      THE TOLL (segment 2, docs/LEVEL2.md has its table): the road opens from two lanes to four, the four
+                 spread to the plaza's grid under its roof (cols 603-611: five islands, four booths, a gate at the end
+                 of each lane: a wooden arm or a steel boom, told by its lane's signal), spread back and merge to two:
+                 the freeway's start; the level ends at col 672
 """
 import math
 import random
@@ -44,7 +48,8 @@ import random
 from levelkit import Level, SIZES, SOLID as BLOCKS
 
 WS, HS = 450, 24             # the street (segment 1): its columns and rows
-W, H = 600, 56               # the map: the street, the detour down the side street, leg 1 (the on-ramp's start) below it
+W, H = 700, 64               # the map: the street, the detour down the side street, leg 1 (the on-ramp's start) below it,
+                            # the toll east of col 560 (rows 56 on: the plaza's south half)
 START = (8.5, 14.75)        # the car's centre, facing +x, in our lane
 LANES = (12.25, 14.75)      # the lanes' middle rows: theirs (westbound), ours
 # THE DETOUR (docs/LEVEL2.md "Legs and scripted bends"; a plain test layout for now): works shut the street past the
@@ -59,7 +64,7 @@ LEG1 = 446                  # leg 1 holds the columns from here to the map's end
 LEG1_W = 436                # its road from this column (a dead end west of the side street's foot)
 ROAD1 = (43, 47)            # its roadway's rows: sidewalks on 41-42 and 48-49, blind walls on 40 and 50
 LANES1 = (44.25, 46.75)     # its lanes' middle rows (the centre line on row 45): theirs, ours
-END = 570                   # past this column of leg 1 the level is over
+END = 672                   # past this column of the last leg (the freeway's start, past the toll) the level is over
 EVENT_ALLEY = 138           # first column of the alley kept clear for event 1
 ALLEY_AT = 111              # event 1 set off with the car's middle at this column (about 0:06): no brake at the wheel,
                             # so it is told early enough to cross AHEAD of him into the far lane (he keeps out of it)
@@ -730,6 +735,114 @@ for r in (24.0, 32.0):
     must('streetlight', S0 - 1.28, r, 0)
 
 
+# ---------------------------------------------------------------- THE TOLL (cols 560 on; docs/LEVEL2.md segment 2)
+# Leg 1's two lanes open to four (2.5 m: the two and a new one either side), the four spread to the plaza's grid
+# under its lit roof (four lanes of 3 m between five islands of 1.5 m: TOLL_LANES in tools/generate_assets.py), each
+# lane shut at the islands' end by a gate: a wooden arm (it flies: a small cost) or a steel boom (nose-on, the crash),
+# told by its lane's signal over the island (a green arrow, a red X), the gates themselves, and by the chase (systems/
+# Toll.js: bone arrows down the wooden lanes, red chevrons at the edge for the steel ones, 1.5 s out). Past the
+# plaza they spread back to 2.5 m, the outer two merge in, and the freeway starts on leg 1's two lanes. A freeway:
+# no sidewalks, no kerbs; paved shoulders, guardrails along the grass verges, tall lamps.
+TOLL0 = 560                 # the toll's ground from this column on (what leg 1 had there is taken away)
+TAPER = (560, 572)          # the two lanes' edges flare out to four lanes
+FAN = (587, 603)            # the four spread to the plaza's grid, the outer edges out to the outer islands' noses
+NOSE = 603.0                # the islands' noses (8 m long: to col 611); a crash cushion before each
+CANOPY_X = 608.0            # the roof's middle (6 m along the road: cols 605-611)
+GATE_X = 611.1              # the gates, at the islands' ends (the roof's exit)
+AFTER = (611, 627)          # the four lanes spread back to 2.5 m (the fan turned round)
+DROP = (640, 652)           # the outer two end: merge arrows before, a hatched gore over each
+MID = 45.5                  # the road's middle row all the way (leg 1's centre line)
+TOLL_CRUISE = 13.3          # px/step: 90 km/h
+APPROACH = (41.75, 44.25, 46.75, 49.25)                               # four lanes of 2.5 m: leg 1's two in the middle
+PLAZA = tuple(MID - 10 + y / 32 for y in (104, 248, 392, 536))        # the plaza's lanes: 38.75, 43.25, 47.75, 52.25
+ISLANDS = tuple(MID - 10 + y / 32 for y in (32, 176, 320, 464, 608))  # 36.5, 41, 45.5, 50, 54.5
+# lane by lane, north first (fixed by design, the level's `chase.toll.gates`): ours (leg 1's south lane, the third
+# here) is shut: he has to steer, up a lane or down one, to a wooden arm; the other two are steel
+GATES = ('steel', 'wood', 'steel', 'wood')
+ACROSS = ('gate_arm_wood', 'gate_steel')   # what stands across a lane on purpose (check_lanes)
+
+lv.area('the toll: its ground (a freeway: paved shoulders, grass verges)')
+lv.props[:] = [p for p in lv.props if p[2] < TOLL0 - 0.5]         # (leg 1's lamps carried on past it: the toll's now)
+lv.floor[:] = [f for f in lv.floor if f[1] < TOLL0]
+lv.fill(TOLL0, 30, W - 1, H - 2, '"')
+for (x0, x1, r0, r1) in ((TOLL0, FAN[0] - 1, 39, 51), (FAN[0], AFTER[1] - 1, 34, 57), (AFTER[1], DROP[1] - 1, 39, 51),
+                         (DROP[1], W - 1, 41, 49)):
+    lv.fill(x0, r0, x1, r1, '=')
+for (x, y) in ((566, 35), (574, 55), (591, 31), (633, 54), (659, 37), (684, 53), (618, 60)):   # the verge worn bare in patches
+    lv.fill(x, y, x + 2, y + 1, '~')
+
+lv.area('the toll: the paint (the lanes opening, spreading to the plaza and back, merging)')
+lv.paint('lane_taper', TAPER[0] + 6.0, MID)                           # the edges out from 43 / 48 to 40.5 / 50.5
+lv.paint('plaza_fan', FAN[0] + 8.0, MID)                              # 2.5 m lanes to the plaza's 4.5 m, edges to the islands
+lv.paint('plaza_fan', AFTER[0] + 8.0, MID, 180)                       # and back
+lv.paint('lane_taper', DROP[0] + 6.0, MID, 180)                       # the outer two end
+for (a, b, rows) in ((TAPER[1], FAN[0], (40.5, 50.5)), (AFTER[1], DROP[0], (40.5, 50.5)), (DROP[1], W - 1, (43.0, 48.0))):
+    for c in range(a, b - 2, 3):                                      # the edge lines, solid
+        for r in rows:
+            lv.paint('edge_line', c + 1.5, r)
+for (a, b, rows) in ((TOLL0, FAN[0], (MID,)), (TAPER[1], FAN[0], (43.0, 48.0)), (AFTER[1], DROP[0], (43.0, MID, 48.0)),
+                     (DROP[1], W - 1, (MID,))):
+    for c in range(a + 1, b - 3, 9):                                  # the lane lines: dashes of 3 m every 9
+        for r in rows:
+            lv.paint('lane_dash_long', c + 1.5, r)
+            if c + 6 < b - 1:
+                lv.paint('raised_marker', c + 6.0, r)                 # a cat's eye between two
+for (k, r) in enumerate(APPROACH):
+    lv.paint('toll_text', 576.0, r, 90)                               # TOLL in every lane, its number after
+    lv.paint(f'toll_lane_{k + 1}', 581.5, r, 90)
+for c in range(TAPER[1], FAN[0] - 2, 3):                              # the shoulders' rumble strips
+    lv.paint('rumble_strip', c + 1.5, 40.17)
+    lv.paint('rumble_strip', c + 1.5, 50.83)
+lv.paint('merge_arrow_s', 633.5, APPROACH[0])                         # the outer two: merge in
+lv.paint('merge_arrow', 633.5, APPROACH[3])
+lv.paint('gore_hatch', DROP[1] - 4.0, APPROACH[0], 180)
+lv.paint('gore_hatch', DROP[1] - 4.0, APPROACH[3], 180)
+for (c, r) in ((566.5, 46.1), (584.0, 43.6), (597.0, 49.3), (608.5, 44.0), (621.0, 47.2), (645.0, 44.6), (663.0, 46.3)):
+    lv.paint(('oil_stain_a', 'oil_stain_b', 'road_patch_a', 'oil_stain_b', 'road_crack_b', 'road_patch_c', 'oil_stain_a')[int(c) % 7], c, r)
+
+lv.area('the toll: the plaza (islands, their cushions, the booths, the lane signals, the gates, the roof)')
+for (i, r) in enumerate(ISLANDS):
+    lv.prop('crash_cushion', NOSE - 84 / 64 - 0.05, r)
+    lv.prop('toll_island', NOSE + 254 / 64, r)
+    if i < 4:
+        lv.prop('toll_booth', CANOPY_X, r)                            # the lane under it (+y) is its own
+    if i > 0:                                                         # the lane above it: its signal
+        lv.prop('lane_signal_go' if GATES[i - 1] == 'wood' else 'lane_signal_stop', NOSE + 1.4, r)
+lv.prop('sign_exact_change', NOSE + 1.4, ISLANDS[0])
+for (k, r) in enumerate(PLAZA):
+    # across its lane from the island above it (its cabinet there): the arm's middle 11 px, the boom's 12 above the
+    # lane's middle (its tip, its catch post just short of the island below)
+    if GATES[k] == 'wood':
+        lv.prop('gate_arm_wood', GATE_X, r - 11 / 32, 90)
+    else:
+        lv.prop('gate_steel', GATE_X, r - 12 / 32, 90)
+lv.prop('toll_canopy', CANOPY_X, MID)
+lv.patron('civ2', CANOPY_X + 1.2, 56.55, 270, 'smoke')               # one of the staff on the shoulder, on his break
+
+lv.area('the toll: guardrails, lamps, signs')
+# each run of rail starts with its end toward who comes; where the road narrows (past the plaza, at the lane drop) a
+# car still out wide meets that end: there it is a crash cushion (it bursts, the rail's thin end behind it only
+# clips him: never a death nobody told), not the terminal (`lasting`, as wide as a car's nose would need: the crash)
+for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], 38.88, 52.12, False), (FAN[0], AFTER[1], 33.88, 58.12, False),
+                                     (AFTER[1], DROP[1], 38.88, 52.12, True), (DROP[1], W - 1, 40.88, 50.12, True)):
+    for r in (top, bottom):
+        if cushion:
+            lv.prop('crash_cushion', a + 84 / 64 + 0.05, r + (0.55 if r > MID else -0.55))
+        else:
+            lv.prop('guardrail_end', a + 30 / 32, r)
+        for c in range(a + (3 if cushion else 2), b - 3, 4):
+            lv.prop('guardrail', c + 2.0, r)
+    for c in range(a + 3, b - 1, 6):
+        lv.prop('reflector_post', c + 0.5, top - 0.35)
+        lv.prop('reflector_post', c + 0.5, bottom + 0.35)
+for (c, r) in ((563.5, 37.95), (579.5, 53.05), (594.5, 33.0), (598.5, 59.0), (633.5, 37.95), (648.5, 53.05),
+               (664.5, 39.95), (680.5, 51.05), (695.5, 39.95)):
+    lv.prop('highway_lamp', c, r, 90)                                 # its heads out over the road and the verge
+for (kind, c, r) in (('sign_toll_ahead', 562.6, 53.0), ('sign_speed_55', 568.6, 37.7), ('sign_freeway', 656.6, 51.2),
+                     ('sign_speed_55', 670.6, 39.8)):
+    lv.prop(kind, c, r)
+
+
 def bend_line(pts, r, step=0.25):
     """The points along a bend's line (tiles), as systems/Outro.js routePath lays it: straight lines, each inner corner
     rounded off by an arc of radius r (shortened when the lines are too short for it)."""
@@ -862,7 +975,9 @@ lv.rain = 0
 lights = [[x, 13.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.16 if DARK[0] < x < DARK[1] else 0.3] for x in range(10, WS, 30)]
 lights += [[x, 17.0, 8, '#ffd9a0', 0.35] for x in range(D0 + 3, D1, 9)]      # the diner spills onto its corner
 lights += [[SIDE_X, r, 8, '#7a5ad8', 0.28] for r in (22, 34)]                 # the side street, leg 1
-lights += [[x, (ROAD1[0] + ROAD1[1] + 1) / 2, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.3] for x in range(LEG1_W + 4, W, 30)]
+lights += [[x, (ROAD1[0] + ROAD1[1] + 1) / 2, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.3] for x in range(LEG1_W + 4, TOLL0, 30)]
+lights += [[x, MID, 10, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in range(TOLL0 + 4, W, 30)]   # the freeway's
+lights += [[CANOPY_X, MID + d, 9, '#e8f0ff', 0.22] for d in (-6, 0, 6)]  # the plaza under its lit roof
 
 # people on the sidewalks, out of an alley or a street and into the next (they run from a car on the kerb, or die
 # under it)
@@ -884,8 +999,16 @@ ambient = {
 LEGS = [
     {'from': 0, 'to': LEG1, 'lanes': list(LANES), 'mid': 13.0, 'cruise': 8.9, 'kerbs': [9, 16],
      'across': [[SIDE[0] - 2, SIDE[1] + 2, 8, 18]]},
-    {'from': LEG1, 'to': W, 'lanes': list(LANES1), 'mid': (ROAD1[0] - 2 + ROAD1[1] + 3) / 2, 'cruise': 8.9,
+    {'from': LEG1, 'to': TOLL0, 'lanes': list(LANES1), 'mid': (ROAD1[0] - 2 + ROAD1[1] + 3) / 2, 'cruise': 8.9,
      'kerbs': [ROAD1[0], ROAD1[1] + 1]},
+    # THE TOLL: no bend, the legs follow one another by column, each holding leg 1's two lanes or the plaza's (the
+    # car goes on in its row from one to the next: Drive's framing eased across). The approach (four lanes of 2.5 m),
+    # the plaza from the fan to the fan back (its four lanes under the roof; the camera follows him across:
+    # `track`, the plaza is 20 m wide), four lanes again, the freeway's two
+    {'from': TOLL0, 'to': FAN[0], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE},
+    {'from': FAN[0], 'to': AFTER[1], 'lanes': list(PLAZA), 'mid': MID, 'cruise': TOLL_CRUISE, 'track': 0.7},
+    {'from': AFTER[1], 'to': DROP[1], 'lanes': list(APPROACH), 'mid': MID, 'cruise': TOLL_CRUISE},
+    {'from': DROP[1], 'to': W, 'lanes': list(LANES1), 'mid': MID, 'cruise': TOLL_CRUISE},
 ]
 # a bend: the car's middle at `at` (col) on its leg, the script drives it along `path` (its corners [col, row], each
 # inner one rounded off by an arc of `radius` tiles) and hands it to leg `to` on the lane the path ends on
@@ -907,7 +1030,11 @@ chase = {
     'legs': LEGS,
     'bends': BENDS,
     'end': END,                 # on the last leg
-    'next': 'THE TOLL',         # what comes after it, on the card that closes the demo (Game: TO BE CONTINUED)
+    'next': 'THE MOTORWAY',     # what comes after it, on the card that closes the demo (Game: TO BE CONTINUED)
+    # THE TOLL (systems/Toll.js, CHASE.toll; event 3 of docs/LEVEL2.md): the gates at col `at`, lane by lane north
+    # first: the plaza's rows (`lanes`), the same lanes' rows on the approach (`from`), the columns they spread over
+    # (`fan`: the way told and driven, straight from its end on), each one's gate (`gates`: 'wood' | 'steel')
+    'toll': {'at': GATE_X, 'lanes': list(PLAZA), 'from': list(APPROACH), 'fan': [FAN[0], FAN[1] - 4], 'gates': list(GATES)},
     # by the column of the car's middle. 'alley' (systems/Pursuit.js) waits at `car` [col, row] facing north, lamps on;
     # 'lorry' (systems/Lorries.js): the lorry waits at `lorry` [col, row] its cab to the north, and backs `back` tiles
     # south across the lanes; `gap` [col, row]: the way round its tail, shown by bone arrows
@@ -918,6 +1045,10 @@ chase = {
         *[{'at': c, 'kind': 'behind', 'style': st} for (c, st) in zip(BEHIND_AT, BEHIND_STYLE)],
         {'at': LORRY_AT, 'kind': 'lorry', 'lorry': [(YARD[0] + YARD[1] + 1) / 2, 6.69], 'back': 5, 'gap': [(YARD[0] + YARD[1] + 1) / 2, 18.3]},
         {'at': CROSS_AT, 'kind': 'alley', 'car': [(CROSS[0] + CROSS[1] + 1) / 2 + 1.5, 21.0], 'style': 'rammer'},
+        # the toll: two more from behind as the road opens; the first takes a steel lane (`gate`: it does not follow
+        # him: it wrecks on the boom, his kill), the other follows him through a wooden arm
+        {'at': TOLL0 + 1, 'kind': 'behind', 'style': 'rammer', 'gate': 'steel'},
+        {'at': TOLL0 + 11, 'kind': 'behind', 'style': 'gunner'},
     ],
     # water standing in the gutter [col, row, r px]: spray under his wheels
     'water': [[36.0, 15.6, 30], [152.0, 14.2, 34], [247.0, 15.5, 30], [318.0, 14.6, 28], [404.0, 14.9, 34]],
@@ -930,20 +1061,33 @@ chase = {
 }
 
 
+def lane_bands(leg):
+    """The rows a leg's lanes cover: [(top, bottom, what)], one band across them all (lanes side by side: leg 0's two
+    are the roadway's rows 11 to 15, leg 1's ROAD1), or one a lane on the plaza (islands between them: a lane 3 m
+    wide; a crash cushion before an island's nose only kept off the width of a car in the middle of it: `cushion`,
+    the band for it alone, or for all but it; None: for everything)."""
+    L = sorted(leg['lanes'])
+    if L == sorted(PLAZA):
+        return [(r - h, r + h, cushion) for r in L for (h, cushion) in ((1.5, False), (0.95, True))]
+    half = (L[1] - L[0]) / 2
+    return [(L[0] - half, L[-1] + half, None)]
+
+
 def check_lanes():
     """Nothing stands in the lanes of a leg, anywhere along it (a parked car's flank included), and nothing loose
-    stands within reach of them: a thing a car could knock into a lane is a thing in the lane. Leg 0's two lanes are
-    the roadway's rows 11 to 15, leg 1's ROAD1."""
-    roads = ((11.0, 16.0), (ROAD1[0], ROAD1[1] + 1.0))
+    stands within reach of them: a thing a car could knock into a lane is a thing in the lane. A toll's gates stand
+    across theirs on purpose."""
     for (_, kind, col, row, deg, _) in lv.props:
-        if SIZES.get(kind) is None:
+        if SIZES.get(kind) is None or kind in ACROSS:
             continue
         b = Level.box(kind, col, row, deg)
         if roadway(int(col)) and not 8 <= row < 18:
             continue                                          # up or down a street across
-        for leg, (top, bottom) in zip(LEGS, roads):
+        for leg in LEGS:
             if leg['from'] <= col < leg['to']:
-                assert b[3] <= top or b[1] >= bottom, f'{kind} at {col},{row} is in a lane'
+                for (top, bottom, cushion) in lane_bands(leg):
+                    if cushion is None or cushion == (kind == 'crash_cushion'):
+                        assert b[3] <= top or b[1] >= bottom, f'{kind} at {col},{row} is in a lane'
 
 
 if __name__ == '__main__':
@@ -959,5 +1103,6 @@ if __name__ == '__main__':
                  'section; two junctions under traffic lights, a railway bridge, works, a bus stop, the yard the lorry backs',
                  'out of (event 2) with the cafe\'s terrace as the way round, the diner on the lit corner. The alley at',
                  'col 138 is event 1. Then works shut it: the scripted detour down the side street onto leg 1 (a plain',
-                 'test layout for now: systems/Route.js legs and bends).',
+                 'test layout for now: systems/Route.js legs and bends), and THE TOLL: the road opens to four lanes, a plaza',
+                 'under its lit roof, a wooden arm or a steel boom at the end of each lane (event 3), the freeway\'s start.',
              ])

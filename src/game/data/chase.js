@@ -160,7 +160,11 @@ export const CHASE = {
   // comes forward on the picture, up to `surge` of the view's width at a standstill,
   // and falls back to `at` as it picks its speed up again (eased at `ease` 1/s, in whole px: at speed more of the
   // road ahead is seen, a hit is felt as the picture catching up with the car)
-  camera: { view: 360, at: 0.33, surge: 0.07, from: 0.2, ease: 3.5 },
+  camera: { view: 360, at: 0.33, surge: 0.07, from: 0.2, ease: 3.5,
+    // across, between two legs with another framing (a leg's `mid`, its `track`: the share of his place across the
+    // road the view follows, the toll's plaza is wider than the picture): the view's middle eased to the new one at
+    // `ease` 1/s, `most` px a step at most, in whole px; within `done` px of a leg's own fixed framing, held there
+    across: { ease: 5, most: 5, done: 0.5 } },
   // THE SCRIPTED BENDS (systems/Route.js; the level's `chase.legs` / `chase.bends`, docs/LEVEL2.md): where the road
   // turns a corner (works shut the street: the detour) the wheel is the script's, the gun still his. The car follows
   // the bend's line (its `path`: straight lines, each corner rounded off by an arc of `radius` tiles): it brakes at
@@ -315,6 +319,22 @@ export const CHASE = {
   // the red lane where its tail sweeps is `pad` px wider than it each side; the lab's backs out with a driven car
   // within `range` px, stays `stay` s, and goes back in
   lorry: { tell: 0.9, beep: 0.3, speed: 115, shake: 0.2, pad: 6, lamp: { r: 70, color: '#fff4e0' }, lab: { range: 420, stay: 2.5 } },
+  // THE TOLL (event 3, systems/Toll.js; the level's `chase.toll`). Its gates told `tell` s before them at his speed
+  // (`least` px out at least): bone arrows run down the wooden lanes (every `every` px, at `run` px/s, from `from` px
+  // ahead of his middle; `fade` s in), red brackets close on the steel booms, chevrons at the screen's edge for what
+  // is not on it yet; told until he is `past` px past them. A pursuer chooses its gate `decide` s out: a wooden lane
+  // (the one he is not heading for, when there are two), steering for its line `lead` s ahead (`lateral`: px/step
+  // across for each px off it, twice the chase's: the islands leave it 60 cm a side; `steer` px/step across at most:
+  // the fan's outer lines spread fast); one sent the wrong way
+  // (the level's event `gate: 'steel'`) takes the steel lane next to his and holds `wrong` px off his middle (a car's
+  // length behind him, never side by side as he changes lanes: it hits the boom a moment after he is through).
+  // Nothing is attacked or told by them meanwhile.
+  // His car through a wooden arm (what it costs him: the arm's `cost`, data/props.js): a breath of slow motion
+  // (`beat`, systems/ChaseCam.js), the picture kicked `push` px on, shaken
+  toll: {
+    tell: 1.5, least: 520, past: 60, decide: 2, lead: 0.3, wrong: -170, lateral: 0.14, steer: 5, every: 30, run: 90, from: 70, fade: 0.15,
+    beat: { slow: 0.4, in: 0.04, hold: 0.2, out: 0.18, push: 5, shake: 0.22 },
+  },
   // the alley car's red lane (event 1, OUT OF THE ALLEY): shown `red` s before the car is in his lane
   alley: { red: 0.7, pad: 10 },
   // HOW THE CHASE OPENS, the first time only (the level's `chase.intro: 'drag'`; systems/LastDrag.js; a retry skips

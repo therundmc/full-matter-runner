@@ -293,9 +293,14 @@ export default class Pursuit {
       const full = (at) => this.blockedAt(null, at + 60, y, 150);
       if (full(x)) x = back;
       for (let k = 0; k < 4 && full(x); k++) x -= 200;
-      this.spawn(x, y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over, e.style, e.miss);
+      const car = this.spawn(x, y, 0, 'chase', Math.hypot(tg.vel.x, tg.vel.y) + C.spawn.over, e.style, e.miss);
+      car.gate0 = e.gate ?? null; // (a toll's gate it will take whatever he does: 'steel', the wrong one: systems/Toll.js)
     }
   }
+
+  // their top speed: C.max, as much more as his leg's cruise is over the chase's (the toll's road at 90 km/h: they
+  // keep the same margin over him)
+  top() { return this.C.max + Math.max(0, (this.route.legs[this.hisLeg]?.cruise ?? CHASE.cruise) - CHASE.cruise); }
 
   // the leg a car or a point (world px x) is on, and that leg's band across (Route.bandOf: { band, half, rows })
   legOf(x) { return legAt(this.route.legs, x); }
@@ -414,7 +419,7 @@ export default class Pursuit {
     // (limping, no more than `limp` over his speed: it only just keeps up; but at full speed while it is still in his
     // lane ahead of him, out of it first)
     const inWay = tg?.car && v.x > tg.x && Math.abs(v.y - tg.y) < (v.h + tg.car.h) / 2 + C.margin;
-    const max = car.state === 'limp' && tg && !inWay ? Math.min(C.max, Math.max(0, tg.vel.x) + C.limp) : C.max;
+    const top = this.top(), max = car.state === 'limp' && tg && !inWay ? Math.min(top, Math.max(0, tg.vel.x) + C.limp) : top;
     if (car.state === 'cross') {
       wantH = -Math.PI / 2;
       wantS = C.spawn.cross;
@@ -468,6 +473,14 @@ export default class Pursuit {
       hold = beyond && v.x < tg.x + long;
       if (hold) ty = v.y;
     }
+    // a toll's plaza ahead (systems/Toll.js): its gate's lane, chosen and kept (no other line tried); the one sent
+    // the wrong way held a little behind him
+    const gate = this.world.toll?.steer(car, v.x, ty, tg) ?? null;
+    if (gate !== null) {
+      ty = gate;
+      hold = true;
+      tx = this.world.toll.wrongX(car, tg) ?? tx;
+    }
     let vx = clamp(pv + (tx - v.x) * C.close, 0, max);
     // what stands ahead in its lane: the nearest free line to its slot's, or brake for it
     const ahead = v.w / 2 + Math.max(car.s, 2) * 60 * C.look + C.pad;
@@ -496,7 +509,9 @@ export default class Pursuit {
     // the wheel follows a point that slides to the line it wants (easeLine): no jump from one line to the next
     car.lineY = easeLine(car.lineY ?? v.y, ty, dt, C);
     if (Math.abs(car.lineY - v.y) > C.ease) car.lineY = v.y + Math.sign(car.lineY - v.y) * C.ease; // (thrown far off it)
-    let vy = clamp((car.lineY - v.y) * C.lateral, -C.steer, C.steer);
+    // (through a toll's plaza it holds its lane's line tighter: the islands leave it 60 cm a side)
+    const T = car.toll ? CHASE.toll : null, lat = T ? T.steer : C.steer;
+    let vy = clamp((car.lineY - v.y) * (T ? T.lateral : C.lateral), -lat, lat);
     // ITS ATTACK. A ram: wound up first, drawn AWAY from him (told: its lamps flash, its body leans out), then the
     // swipe across at him. A brake: its brake lights first, then it drops back onto his nose in his lane, held there
     car.ram = 0;
@@ -615,7 +630,9 @@ export default class Pursuit {
       if (w.drive.lunge || car.ram <= 0) car.by = w.time;
       return;
     }
-    if (car.bend && e?.isVehicle) return; // (in a bend the line is the script's: one of theirs knocked wrecks nothing)
+    // (in a bend the line is the script's: one of theirs knocked wrecks nothing; nor through a toll's plaza, where each
+    // swerves for its gate)
+    if ((car.bend || ((car.toll || e?.pursuer?.toll) && e?.pursuer)) && e?.isVehicle) return;
     const k = w.time - car.by < AGAIN ? this.C.wreck.thrown : 1; // thrown by his car: it takes less
     if (e?.isVehicle) {
       this.shake(o, pair);
@@ -931,6 +948,7 @@ export default class Pursuit {
   // nor in the `quiet` px of road before an event that tells something (the level's events go by distance)
   busy(tg) {
     if (this.lanes.some((L) => L.on) || this.world.lorries?.told().length || this.world.drive?.bend) return true; // (nothing round a corner)
+    if (this.world.toll?.busy(tg.x, Math.max(1, tg.vel.x))) return true; // (nor through a toll's plaza)
     return (this.chase?.events || []).some((e) => !this.fired.has(e) && e.kind !== 'behind' && tg.x > e.at * TILE - this.G.quiet);
   }
 
@@ -1146,7 +1164,7 @@ export default class Pursuit {
     const car = A.car, v = car.v, C = this.C;
     A.t += dt;
     const phase = attackPhase(A.kind, A.t, C);
-    if (!phase || !tg || car.state !== 'chase' || car.stun > 0 || car.bend || this.world.drive?.bend || v.exploded) { this.endAttack(); return; }
+    if (!phase || !tg || car.state !== 'chase' || car.stun > 0 || car.bend || this.world.drive?.bend || v.exploded || car.toll) { this.endAttack(); return; }
     if (A.kind !== 'ram') return;
     v.lightsOut = phase === 'wind' && Math.floor(A.t / C.ram.flash) % 2 === 1;
     v.roll = (phase === 'wind' ? -1 : 1) * A.side * C.ram.lean;

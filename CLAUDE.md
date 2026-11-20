@@ -103,6 +103,9 @@
   held skips it), then his gun, the boss's Uzi taken off the
   passenger seat in a short beat (Drive `grab`, `skipGrab` on a retry; SEAT.grab); a map wider than CHUNKS.whole tiles is drawn
   in chunks (render/Chunks.js): paint a map layer through MapRenderer (`paint(fn, layer, x0, x1)`), never a canvas.
+  2A's toll (docs/LEVEL2.md segment 2): systems/Toll.js + CHASE.toll, the level's `chase.toll` (gates lane by lane:
+  `gate_arm_wood` torn at its `cost`, `gate_steel` lasting); a lane's signal (lane_signal_go / _stop) always
+  matches its gate, and at least one wooden lane is not his (tests/toll.test.mjs).
   2A's street is built section by section (the table in docs/LEVEL2.md: parking north / on our side / none, two
   junctions under traffic lights, the bridge, the works, the bus stop): NOTHING stands in its two lanes (builder
   `check_lanes`); its kerbs, markings and covers are floor paint (level `floor`, ROAD_PAINT in generate_assets.py),

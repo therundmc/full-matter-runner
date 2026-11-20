@@ -38,6 +38,9 @@
 //   live       s its torn wires go on spitting sparks where it hung
 //   doors      the doors of a cabinet, hinged on its front (+y) edge: { n, at: damage state they spring open at }
 //   gush       px2 of what it held (its leak's kind, water by default) that burst out all around when it gives way
+//   pieces     [[sprite, x0, x1, fly]]: it comes apart into these whole pieces (props/<sprite>, painted as such: a
+//              gate arm's lengths), each where it was (x0..x1: fractions of its length), thrown `fly` x as fast;
+//              `parts` then cut what is left of it
 export const DESTRUCTION = {
   table: {
     height: 0.75, parts: [{ cut: 'planks', n: 3, axis: 'long', snap: true }], legs: { n: 4, size: 0.09, color: '#5a361e' },
@@ -343,7 +346,11 @@ export const DESTRUCTION = {
   toll_island: { height: 0.2, material: 'stone' },
   toll_booth: { height: 2.6, material: 'metal' },
   toll_canopy: { height: 5.5, material: 'metal' },
-  gate_arm_wood: { height: 1, parts: [{ cut: 'planks', n: 4, axis: 'short', snap: true }] },
+  // the arm flies in its own three lengths (props gate_arm_bit_*), its cabinet left where it stood
+  gate_arm_wood: {
+    height: 1, pieces: [['gate_arm_bit_a', 0.18, 0.55, 2.2], ['gate_arm_bit_b', 0.55, 0.82, 2.6], ['gate_arm_bit_c', 0.82, 1, 3]],
+    parts: [{ cut: 'panel', rect: [0, 0, 0.17, 1], name: 'cabinet', fly: 0.1 }],
+  },
   gate_steel: { height: 1, material: 'metal' },
   lane_signal_go: { height: 2.6, drop: true, electric: true },
   lane_signal_stop: { height: 2.6, drop: true, electric: true },

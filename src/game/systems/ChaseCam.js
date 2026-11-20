@@ -11,6 +11,8 @@
 //   rammed  a pursuer's side swipe landing on his car (Pursuit's 'pursuerRam'): a short kick
 //   bend    a scripted corner of the route (systems/Drive.js 'chaseBend', each turn as it begins): a breath of slow
 //           motion (CHASE.bend.apex), never cutting into another beat
+//   toll    his car through a toll's wooden arm (systems/Toll.js 'tollGate'): a breath of slow motion, the picture
+//           kicked on (CHASE.toll.beat), never cutting into another beat
 // A beat is a time scale (`scale`: eased down over its `in`, held, back over its `out`; Game runs the world at it as
 // it is, no easing of its own) and maybe a shot (`shot`: a SHOTS name and what it looks at; at the wheel a shot's
 // zoom is a cut between whole zooms, the lens stays flat: no blur). It never touches the car: the wheel, the shove
@@ -66,6 +68,7 @@ export default class ChaseCam {
     world.events.on('pursuerWreck', (e) => this.onWreck(e));
     world.events.on('pursuerRam', (e) => this.onRam(e));
     world.events.on('chaseBend', (e) => this.onBend(e));
+    world.events.on('tollGate', (e) => this.onToll(e));
   }
 
   // may a beat open, or go on?
@@ -131,6 +134,17 @@ export default class ChaseCam {
     if (phase !== 'turn' || !A || !this.live || this.beat) return;
     this.open({ kind: 'bend', tier: 'light', ...A, shot: null, at: null });
     this.world.events.emit('chaseBeat', { kind: 'bend', tier: 'light', x, y });
+  }
+
+  // his car through a toll's wooden arm ({ his, x, y }): the arm flies, the world slows a breath
+  onToll({ his, x, y }) {
+    const B = CHASE.toll.beat, w = this.world;
+    if (!his || !this.live || this.beat) return;
+    this.open({ kind: 'toll', tier: 'light', ...B, shot: null, at: null });
+    w.camera?.push(B.push, 0);
+    w.shake?.(B.shake);
+    w.events.emit('ride', { beat: 'hit', x, y });
+    w.events.emit('chaseBeat', { kind: 'toll', tier: 'light', x, y });
   }
 
   open(b) { this.beat = { t: 0, left: -1, held: false, ...b }; }

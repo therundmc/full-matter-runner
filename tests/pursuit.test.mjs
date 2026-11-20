@@ -921,6 +921,9 @@ test('events: the waves of level 2A differ: a gunner, a rammer, a blocker, and t
   const ev = level2a.chase.events.filter((e) => e.kind === 'alley' || e.kind === 'behind');
   const styles = ev.map((e) => e.style ?? 'gunner');
   for (const k of ['gunner', 'rammer', 'blocker']) assert.ok(styles.includes(k), `a ${k}`);
-  assert.ok(ev.length >= 5 && ev.length <= 6, `${ev.length} cars`);
+  const street = ev.filter((e) => e.at < level2a.chase.legs[1].from), toll = ev.filter((e) => e.at >= level2a.chase.toll.at - 60);
+  assert.ok(street.length >= 5 && street.length <= 6, `${street.length} cars down the street`);
+  assert.equal(toll.length, 2, 'two more as the road opens to the toll');
+  assert.deepEqual(toll.map((e) => e.gate ?? null), ['steel', null], 'the first takes the wrong gate, the other follows him');
   for (let i = 1; i < ev.length; i++) assert.ok(ev[i].at > ev[i - 1].at, 'one after the other along the road');
 });

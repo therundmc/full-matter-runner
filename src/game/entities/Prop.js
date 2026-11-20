@@ -743,6 +743,12 @@ export default class Prop {
     const work = canvas(this.W, this.H, this.img.k);
     put(work.getContext('2d'), this.look);
     const pieces = [];
+    // (whole pieces painted as such, where they were in it: what is left is cut as usual)
+    for (const [name, x0, x1, fly = 1] of rec.pieces || []) {
+      const img = spriteOpt(`props/${name}`);
+      work.getContext('2d').clearRect(x0 * this.W, 0, (x1 - x0) * this.W, this.H);
+      if (img) pieces.push({ img, cx: ((x0 + x1) / 2) * this.W, cy: this.H / 2, name, fly });
+    }
     for (const g of [...rec.parts, { cut: 'grid', cols: 2, rows: 2 }]) {
       for (const c of cutPolys(g, this.W, this.H, Math.random, this.lastHit)) {
         const pc = cutPiece(work, c.poly, { min: 8, wreck: true });

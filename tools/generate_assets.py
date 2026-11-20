@@ -7035,7 +7035,8 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
                   drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
                   arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS', throw='27 THROW', killcam='28 KILL CAM', shield='29 SHIELD',
-                  signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS', propane='35 PROPANE', bend='36 BEND')   # (in the order they were added, not by number: each keeps its seed)
+                  signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS', propane='35 PROPANE', bend='36 BEND',
+                  toll='37 TOLL')   # (in the order they were added, not by number: each keeps its seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
@@ -12451,6 +12452,8 @@ def p_sign_exact_change():
 
 
 _FAN = [((0, 224 + k * 96), (320, 224 + k * 144)) for k in (-1, 0, 1)]   # the plaza's lane lines fanning out: 3 m lanes to 4.5 m
+_TAPER = [((0, 168 + k * 80), (384, 168 + k * 160)) for k in (-1, 1)]    # 2 lanes of 2.5 m to 4: the edges, 12 m
+_TOLL_FAN = [((0, 296 + k * a), (512, 296 + k * b)) for (a, b) in ((80, 144), (160, 288)) for k in (-1, 1)] + [((0, 296), (512, 296))]
 DETOUR_ARROW = [(2, 11), (48, 11), (60, 15), (66, 26), (66, 46)]
 MERGE_ARROW = [(2, 31), (34, 31), (52, 27), (66, 19), (82, 11)]
 RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, size in world px)
@@ -12471,6 +12474,11 @@ RAMP_PAINT = dict(   # painted on the floor (levelkit FLOOR): name -> (painter, 
     toll_text=(road_text('TOLL', 9910), (51, 44)),
     plaza_stripes=(plaza_lines(320, 448, _FAN, 9911), (320, 448)),
     plaza_line=(lambda: road_mark(128, 6, lambda x, y: 1 <= x < 127 and 1 <= y < 5, 9912), (128, 6)),
+    # made to measure for 2A's toll (tools/build_level2a.py): the two lanes' edges flaring out to four lanes of 2.5 m
+    # (the new lanes either side), then the four spreading to the plaza's grid (TOLL_LANES: 4.5 m apart), their
+    # edges out to the outer islands' noses; turned round (180), the same after the plaza
+    lane_taper=(plaza_lines(384, 336, _TAPER, 9921), (384, 336)),
+    plaza_fan=(plaza_lines(512, 592, _TOLL_FAN, 9922), (512, 592)),
 )
 for _n in range(1, 5):
     RAMP_PAINT['toll_lane_%d' % _n] = (road_text(str(_n), 9912 + _n), (12, 44))

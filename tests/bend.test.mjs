@@ -119,7 +119,8 @@ test('route: no legs is one leg from the chase\'s own lanes, middle and cruise (
   assert.equal(legsOf({})[0].cruise, CHASE.cruise);
   // with legs: each its own, the chase's `across` on all of them
   const legs = legsOf(C);
-  assert.equal(legs.length, 2);
+  assert.equal(legs.length, C.legs.length);
+  assert.ok(legs.length >= 2);
   assert.deepEqual(legs[0].lanes, C.lanes, 'the street is the first leg');
   assert.ok(legs[1].lanes[0] > C.kerbs[1] + 20, 'leg 1 well below it');
   assert.ok(legs.every((L) => C.across.every((a) => L.across.some((b) => b === a))));
@@ -130,7 +131,7 @@ test('route: the leg a point is on, by its column (the last one starting at or b
   assert.equal(legAt(legs, 10 * TILE), 0);
   assert.equal(legAt(legs, (legs[1].from - 0.1) * TILE), 0);
   assert.equal(legAt(legs, legs[1].from * TILE), 1);
-  assert.equal(legAt(legs, (C.end + 10) * TILE), 1);
+  assert.equal(legAt(legs, (C.end + 10) * TILE), legs.length - 1);
   assert.equal(legAt(legsOf({ lanes: [1, 2] }), -5000), 0, 'one leg: always it');
 });
 

@@ -139,7 +139,7 @@ Events:
 |---|------|-------|--------------|
 | 1 | 0:06 | OUT OF THE ALLEY | One of theirs out ahead of him: its lamps first, a red lane where it crosses, into the far lane (told early: there is no brake). Keep out of that lane; then it is alongside: shove it into the parked cars. |
 | 2 | 0:20 | THE LORRY BACKING OUT | Told 0.9 s (its beeper and reversing lamps, red chevrons on the edge of the screen, a red lane, bone arrows on the way round), then it shuts the street in 1.4 s. No brake, no way under its tail: up the kerb through the terrace (the wheel, or a shove): tables, chairs, parasols, planters, awnings. Whoever follows him into it dies there. |
-| 3 | 0:30 | THE TOLL | Bone arrow: a wooden arm that flies. Red cross: steel. The one behind him takes the wrong one. |
+| 3 | 0:30 | THE TOLL | Four lanes under a lit roof, a gate at the end of each: a wooden arm (a green arrow over its lane) flies off in its lengths at a tenth of his speed; a steel boom (a red X) is the crash. His own lane is steel: he steers, told 1.5 s out (bone arrows down the wooden lanes, red chevrons at the edge for the steel ones). The one behind him takes the wrong one and wrecks on a boom (his kill); another follows him through an arm. A breath of slow motion through the arm. (The section table below.) |
 | 4 | 0:46 | THEY MULTIPLY | Three cars, a gunman in each. Piers down the median, a lorry in the slow lane. |
 | 5 | 0:58 | THE TANKER | It folds across three lanes, its petrol runs back down the road, the fire runs up it: 4 s. One gap. It goes up behind him. |
 | 6 | 1:12 | FLYOVER OR UNDERPASS | The choice, told 3 s out by two signs: a bone arrow up, a bone arrow down. |
@@ -188,6 +188,23 @@ kerb; kerbs along every sidewalk edge, dropped at alleys, gates and crossings; d
 at a side street is held on the line of the fronts (`chase.across`), and where the fronts step in toward the road
 (a block set forward, the end of the terrace) the car is brought back inside their line before the corner
 (CHASE.frontAhead): neither is a death nobody told.
+
+### Segment 2, the toll (built 2026-11-20)
+
+Past the on-ramp (leg 1, cols 446-559, dressed by its own pass) the road is a freeway's: no sidewalks, no kerbs, paved
+shoulders, guardrails along grass verges, tall lamps. The legs follow one another by column with no bend (leg 1's two
+lanes, rows 44.25 / 46.75, go on in every leg after it): the car keeps its row, the view is eased across between two
+framings. 90 km/h (13.3 px/step) from col 560; the pursuers' top speed keeps its margin over it.
+
+| Cols | Section | North side | South side (ours) | Lanes | What happens |
+|------|---------|------------|-------------------|-------|--------------|
+| 560-571 | THE TAPER | verge, guardrail, a tall lamp (563), SPEED 55 | verge, guardrail, TOLL AHEAD | 2 opening to 4 of 2.5 m (one new either side: lane_taper) | Leg 2. Two pursuers join from behind (cols 561 and 571); the first will take the wrong gate. |
+| 572-586 | THE APPROACH | rumble strip on the shoulder, guardrail | the same, a tall lamp (579) | 4: rows 41.75 / 44.25 / 46.75 / 49.25 | TOLL in every lane (576), its number (581.5). Told 1.5 s out (col 574 at 90 km/h); the pursuers choose their gates 2 s out; nobody attacks from then to past the gates. |
+| 587-602 | THE FAN | the plaza's wide shoulder, a tall lamp (594) | the same (598) | 4 spreading from 2.5 m to 4.5 m apart (plaza_fan) | Leg 3: the plaza is 20 m wide, wider than the picture: the view follows him across (`track` 0.7). A crash cushion before each island's nose (col 601.7: it bursts). |
+| 603-611 | THE PLAZA | the outer island (row 36.5) | the outer island (54.5); one of the staff smoking on the shoulder | 4 of 3 m: 38.75 / 43.25 / 47.75 / 52.25, five islands of 1.5 m between (36.5, 41, 45.5, 50, 54.5) | The roof over cols 605-611 (it fades over him), a lit booth on each of the four upper islands, each lane's signal on the island below it, EXACT CHANGE on the first. The gates at col 611.1, north first: STEEL, WOOD, STEEL, WOOD (ours, the third, is steel). |
+| 611-626 | THE FAN BACK | plaza shoulder | plaza shoulder | 4 closing back to 2.5 m | Past the gates their attacks start again. |
+| 627-651 | THE MERGE | a crash cushion, the guardrail | the same | 4, the outer two ending over cols 640-652 (merge arrows at 633.5, a hatched gore over each) | Leg 4. A car left out wide meets a crash cushion and the rail's thin end: a jolt, never the crash. |
+| 652-699 | THE FREEWAY'S START | guardrail, tall lamps | guardrail, FREEWAY, SPEED 55 | 2: leg 1's rows 44.25 / 46.75 | Leg 5. The level ends at col 672: TO BE CONTINUED, NEXT: THE MOTORWAY. |
 
 Segment boards: [1 back road](level2/s1_backroad.webp), [2 toll](level2/s2_toll.webp),
 [3 tanker](level2/s5_tanker.webp), [3b jump](level2/s3_jump.webp), [4 drain](level2/s4_canal.webp),
@@ -265,6 +282,10 @@ brushes.
     again. A car on another leg than his sees him where the route puts him on its own leg (Pursuit.tgFor): ahead of
     him, it waits CHASE.bend.clear px past his way out, out of his lane. A pursuer event's `miss: true` makes it skip
     the bend (on into what shuts the road: the hook for "one misses the turn").
+  - Legs with no bend between them (the toll's: 2 lanes, 4, the plaza's 4, 4, 2) are driven on from one to the next by
+    column: the car keeps its row (a leg's lanes may differ: Drive never moves it onto one), its cruise is picked up as
+    after a hit, the view is eased across (CHASE.camera.across) when the framing changes; a leg's `track` (0..1) makes
+    the view follow that share of his place across the road (a road wider than the picture: the plaza).
   - Distance: along the route (legs + bend lines) from the van's start: the HUD's bar and metres (Drive.progress,
     never back), the QA robot's "farthest down the route". Events, lorries, signals stay keyed by column (x never goes
     back along the route: legs are disjoint and ordered); `end` is a column of the last leg.
@@ -285,7 +306,8 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
 - [x] **M1c - Back road polish.** Event 2 (the lorry backing out, the terrace); what breaks on the kerb; sounds as
   named placeholders; tuning in play; first playable demo of 2A's first 25 s.
 - [ ] **M2 - The toll and the motorway.** On-ramp, toll gates, 4 lanes, traffic, lorries, piers, three pursuers, the
-  tanker.
+  tanker. (The toll done 2026-11-20: the plaza, its gates, their tells, the pursuers through it, lab station 37; the
+  on-ramp and the motorway to come.)
 - [ ] **M3 - The interchange.** The choice, the flyover jump (airborne state, slow motion, weak points), the underpass.
 - [ ] **M4 - The storm drain.** Off-road surfaces, banks, the billboard, the rail bridge, the helicopter light, the
   second jump.
@@ -610,3 +632,16 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   the HUD and the QA robot count along the route. The test layout of 2A: works (ROAD CLOSED, jersey barriers) shut
   the street past col 446, the scripted right turn at col 438 down the side street (cols 442-449), the left turn onto
   leg 1 (lanes 44.25 / 46.75, cols 446-600), the end at col 570 (map 600 x 56). Lab station 36 BEND.
+- 2026-11-20: THE TOLL (branch feature/toll; the section table above, event 3). The map 700 x 64 (rows 56 on and cols
+  560 on: the toll's), the end at col 672, the card's next: THE MOTORWAY. Four legs after leg 1 with no bend (the
+  approach's four lanes, the plaza's, four again, the freeway's two), 90 km/h. Drive: legs by column with another
+  framing eased across, a leg's `track` (the view follows him across the 20 m plaza); a torn prop's `cost` (the arm:
+  10 % of his speed). systems/Toll.js (CHASE.toll, the level's `chase.toll`): told 1.5 s out (bone arrows down the
+  wooden lanes, red brackets on the steel booms, chevrons at the screen's edge: render/PursuitArt.js, ui/HUD.js), a
+  pursuer's gate chosen 2 s out (a wooden lane across nobody's way, the one he is not heading for if it can; the
+  level's event `gate: 'steel'`: the steel lane beside his, a car's length behind him: it wrecks on the boom, the kill
+  beat), no attack meanwhile, no wreck from a knock between two of them there; the breath of slow motion through his
+  arm (ChaseCam 'toll'). The arm flies in its own lengths (destruction recipe `pieces`, Prop.collapse). Sprites:
+  lane_taper, plaza_fan (made to measure), label_toll; levelkit MOUNTS (a booth, a signal on its island). QA robot:
+  down the wooden lane the toll sends him. Lab station 37 TOLL (the lower road of 36 carried on east: a wooden arm on
+  the north lane, a steel boom on his). Tests: tests/toll.test.mjs.

@@ -87,6 +87,8 @@ ROUND = {'dance_stage', 'table_round', 'cocktail_table'}
 # what hangs on a wall face: no box above (never in the way of furniture) but a body in the game, its length along the
 # wall in px (keep in sync with src/game/data/props.js): never across a doorway, where it bars the way (a lamp over the
 # back door of level 1 had its men jammed in it)
+# what may stand on another prop (a raised slab): the slab's name -> what stands on it (Level.check lets them overlap)
+MOUNTS = dict(toll_island=('toll_booth', 'lane_signal_go', 'lane_signal_stop', 'sign_exact_change'))
 ON_WALL = dict(wall_lamp=12, tube_light=28, neon_tube_pink=28, neon_tube_cyan=28, emergency_light=6, fuse_box=18,
                extinguisher=6, alarm_box=10, wall_vent=14, pipe_steam=96, pipe_water=96, radiator=28, neon_sign_palm=38,
                neon_sign_bar=42, neon_sign_arrow=28, neon_sign_liquor=44, neon_sign_video=42, neon_sign_wash=48,
@@ -113,7 +115,8 @@ FLOOR += ('hatch_kerb', 'road_loading', 'oil_stain_a', 'oil_stain_b', 'skid_mark
 # ... and its part two's (RAMP_PAINT): the works' cut and heaps, the detour's and the freeway's paint, the toll's
 FLOOR += ('road_cut', 'sand_pile', 'asphalt_pile', 'detour_arrow_paint', 'detour_arrow_paint_left', 'gore_hatch', 'merge_arrow',
           'merge_arrow_s', 'lane_dash_long', 'edge_line', 'edge_line_yellow', 'raised_marker', 'raised_marker_yellow',
-          'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4')
+          'rumble_strip', 'toll_text', 'plaza_stripes', 'plaza_line', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
+          'lane_taper', 'plaza_fan')
 # ... and its interiors': the duckboard behind a bar, a flattened carton laid as a mat
 FLOOR += ('bar_mat', 'cardboard_flat')
 # the prologue's flat (FLAT_PAINT in tools/generate_assets.py)
@@ -121,7 +124,7 @@ FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile',
           'cutlery_spill', 'runner_corner')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend', 'toll')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -534,6 +537,9 @@ class Level:
             for (ok, ob) in boxes:
                 # a bar is made of touching modules
                 if kind == ok == 'bar_counter':
+                    continue
+                # what stands on a raised slab (a toll island: its booth, the lane's signal) is on it, not in it
+                if (ok in MOUNTS and kind in MOUNTS[ok]) or (kind in MOUNTS and ok in MOUNTS[kind]):
                     continue
                 apart = b[0] >= ob[2] - 0.01 or ob[0] >= b[2] - 0.01 or b[1] >= ob[3] - 0.01 or ob[1] >= b[3] - 0.01
                 assert apart, f'{kind} at {col},{row} overlaps {ok}'

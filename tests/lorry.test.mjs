@@ -262,7 +262,7 @@ test('feel: the tyres let go on a shove and hard steering; a thing is torn harde
 });
 
 test('end: past the road\'s end the picture goes black, TO BE CONTINUED and what is next come up, then the results', () => {
-  assert.equal(C.next, 'THE TOLL');
+  assert.equal(C.next, 'THE MOTORWAY');
   const F = CHASE.finish, a = finishView(0), b = finishView(F.fade), c = finishView(F.name + F.rise), d = finishView(F.hold);
   assert.deepEqual([a.black, a.title, a.name, a.skip, a.over], [0, 0, 0, false, false]);
   assert.equal(b.black, 1, 'black');

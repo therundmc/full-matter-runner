@@ -744,7 +744,8 @@
   }
 
   // At the wheel (level 2A: systems/Drive.js, systems/Pursuit.js, systems/CarGun.js): the wheel turned toward a lane
-  // picked on a slow random cycle (sometimes a sidewalk, into the building fronts: CHASE_BOT.kerb), the shove (Space,
+  // picked on a slow random cycle (sometimes a sidewalk, into the building fronts: CHASE_BOT.kerb; a toll's wooden
+  // lane when one is told: systems/Toll.js guide), the shove (Space,
   // aimed at it) on a pursuer alongside, else the Uzi held on the nearest pursuer still driven within its arc
   function playChase(w, p, inp, d) {
     // (the leg of the route he is on: its lanes and kerbs, systems/Route.js; a new leg, a new target)
@@ -759,9 +760,18 @@
       ch.until = S.clock + (ch.kerb ? C.kerbFor : C.hold[0] + rnd() * (C.hold[1] - C.hold[0]));
       act(ch.kerb ? 'chase: into the kerb' : `chase: lane ${Math.round(ch.y / TILE)}`);
     }
+    // a toll told ahead (systems/Toll.js): down the wooden lane it sends him, on its line ahead of him, let go of
+    // the wheel in time (the road's pull takes the sideways speed off: no overshoot into an island)
+    const toll = w.toll?.guide(van.x, van.y);
+    if (toll) {
+      if (ch.toll !== toll.k) { ch.toll = toll.k; act(`chase: toll, lane ${toll.k + 1}`); }
+      ch.y = toll.y;
+      ch.kerb = false;
+      ch.until = S.clock + 0.3;
+    } else ch.toll = null;
     // (stalled, the car easing itself out of what holds it: hands off the wheel, as a player would let it come out)
-    const dy = ch.y - van.y;
-    if (Math.abs(dy) > C.near && !d.freeing) inp.keys.add(dy < 0 ? 'KeyW' : 'KeyS');
+    const dy = ch.y - van.y, near = toll ? Math.max(C.near, (30 * d.u * d.u) / d.C.pull + 4) : C.near;
+    if (Math.abs(dy) > near && !d.freeing) inp.keys.add(dy < 0 ? 'KeyW' : 'KeyS');
     const cars = (w.pursuit?.cars || []).filter((c) => !c.dummy && ['chase', 'limp', 'cross'].includes(c.state));
     // a pursuer alongside: shoved
     const side = cars.find((c) => Math.abs(c.v.x - van.x) < C.abreast[0] && Math.abs(c.v.y - van.y) > C.abreast[1] && Math.abs(c.v.y - van.y) < C.abreast[2]);
