@@ -179,13 +179,21 @@ window, ~ the curtained doorway, L the locked door; the rows 1-6 bays open on ro
                    second or two: get out), a second one sets it off at once; crates and a table for the blast to
                    take, the blast lights the floor (systems/FireSpread.js). In the prologue the same bottle is kept
                    for the end (prop.staged): its valve lit as the last man falls (systems/Tutorial.js fuse)
+    36 BEND        a scripted corner of the chase's route (systems/Route.js legs and bends, CHASE.bend), under the
+                   lab: down the passage at the street's east end (cols 91-93) to a road of its own, THE BOSS's
+                   convertible parked in its south lane (E at its door). It pulls away east; at col 92 the script
+                   takes the wheel (W / S do nothing, the gun is still his): it brakes, turns right down the side
+                   street, the tail out, smoke and rubber off the rear tyres, a breath of slow motion at each turn,
+                   the camera following it down and round, then left onto the lower road, its lane, and the wheel
+                   is his again. The lower road ends on a wall: E to get out before it
 The guards are passive dummies (they see and hear nothing but go on at their job), except the `awake` ones (the two
 sight tests, CUEBALL, the shield's three gunmen).
 F1 is open from the start (game/debug/Sandbox.js); T wakes or freezes them all.
 """
 from levelkit import Level
 
-W, H = 96, 31                              # (cols 63-74 are 15 CUEBALL's room, in the brick; east of them only the street, 32 CHASE FX)
+W, H = 150, 52                             # (cols 63-74 are 15 CUEBALL's room, in the brick; east of them only the street, 32 CHASE FX;
+                                           # rows 31 on and cols 96 on: 36 BEND's two roads, under the rest)
 lv = Level(W, H)
 
 # ---------------------------------------------------------------- tiles
@@ -654,6 +662,43 @@ lv.grime_at('dust', 94.55, 12.2, w=36, r=5, deg=90)
 lv.grime_to('drips', 91.2, 14.2, 93.2, 15.4)
 lv.grime_to('prints', 92.5, 16.85, 91.4, 14.6)
 
+lv.area('36 bend: a road of its own under the lab, a scripted corner down a side street onto a lower one')
+# (systems/Route.js: leg 0 its road, rows 33-37; the bend at col 92, right down the side street (cols 96-103), left
+# onto leg 1, rows 45-49; the routes are written into the level: `routes.bend`, the car's option `route`)
+lv.fill(91, 25, 93, 31, 's')               # the passage down from the street's east end
+lv.fill(60, 32, 107, 32, 's')
+lv.fill(60, 33, 107, 37, '=')
+lv.fill(60, 38, 95, 38, 's')
+lv.fill(104, 38, 107, 38, 's')
+lv.fill(94, 38, 105, 42, 's')              # the side street, its sidewalks
+lv.fill(96, 38, 103, 44, '=')
+lv.fill(88, 43, 148, 44, 's')              # the lower road
+lv.fill(96, 43, 103, 44, '=')
+lv.fill(88, 45, 148, 49, '=')
+lv.fill(88, 50, 148, 50, 's')
+for c in range(60, 107, 4):
+    if not 92 <= c <= 105:
+        lv.fill(c, 35, c + 1, 35, '-')
+for c in range(88, 148, 4):
+    if not 92 <= c <= 105:
+        lv.fill(c, 47, c + 1, 47, '-')
+lv.paint('label_bend', 64.6, 32.55)
+lv.prop('convertible', 66.0, 36.75, 0, drive=True, route='bend')   # its driver's door on the north lane
+lv.prop('road_closed', 106.4, 35.0, 90)    # the road shut past the side street
+lv.prop('sign_detour', 89.5, 38.5)
+lv.paint('detour_arrow_paint', 84.0, 36.75)
+for x in (70.5, 86.5):
+    lv.prop('wall_lamp', x, 32.08, 0)
+for x in (112.5, 136.5):
+    lv.prop('streetlight', x, 44.72, 90)
+for r in (45.6, 47.0, 48.4):
+    lv.prop('traffic_cone', 145.5, r)          # the wall at its end: E to get out before it
+routes = {'bend': {
+    'legs': [{'from': 0, 'to': 100, 'lanes': [34.25, 36.75], 'mid': 35.5, 'kerbs': [33, 38], 'across': [[94, 105, 33, 38]]},
+             {'from': 100, 'to': W, 'lanes': [46.25, 48.75], 'mid': 47.0, 'kerbs': [45, 50]}],
+    'bends': [{'at': 92, 'path': [[92, 36.75], [100, 36.75], [100, 48.75], [116, 48.75]], 'radius': 6, 'to': 1}],
+}}
+
 lv.area('20 getaway: the convertible and the way out of level 1, played in the street')
 lv.paint('label_getaway', 57.0, 18.6)
 lv.prop('convertible', 56.6, 21.0, 180, lights=False)   # its driver's door on the road's side
@@ -733,6 +778,9 @@ for x in (69.5, 72.8):
 lights = [
     [12, 22, 9, '#5a6ad8', 0.3],
     [38, 22, 9, '#7a5ad8', 0.3],
+    [76, 35, 9, '#5a6ad8', 0.3],
+    [100, 41, 8, '#7a5ad8', 0.3],
+    [124, 47, 9, '#5a6ad8', 0.3],
 ]
 # a brighter night than the bar's (LIGHTING.ambient), everywhere one plays: a lab is for seeing what happens. The
 # lamps are bulbs and wall lamps, no tubes or neon (the failing ones render/Flicker.js picks among them would add to
@@ -742,7 +790,7 @@ light = dict(inside=[0.36, 0.33, 0.48], street=[0.36, 0.35, 0.52], wall=[0.3, 0.
 if __name__ == '__main__':
     lv.check(guards=52)
     lv.write('lab', name='PHYSICS LAB', subtitle='SANDBOX  -  A STATION FOR EVERY SYSTEM', passive=True, lights=lights, light=light,
-             exit=exit_zone, ambient={'traffic': [], 'walkers': []},
+             exit=exit_zone, ambient={'traffic': [], 'walkers': []}, routes=routes,
              header=[
                  'Physics lab: a test facility, a concourse with a station on each side (range, executions, soot, pool, bars,',
                  'curtain, takedowns, jukebox, trapdoor, powder, steam, power, liquids, doors, CUEBALL, fire, the coat\'s lane, the aim\'s room) and a',

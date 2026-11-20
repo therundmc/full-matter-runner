@@ -142,8 +142,9 @@
       goalsAbandoned: 0, goals: {}, transientInWall: 0, renderErrors: 0,
       plans: {}, dying: {}, notApplicable: null, ammoOnFloor: 0, devices: {}, slips: 0, envTakedowns: {},
       // at the wheel (level 2A, playChase): shoves thrown, bursts fired, pursuers' men killed (by how.car), stalls (and
-      // how long the longest one lasted, s: from the crawl to the car running again, a crash or a restart)
-      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0, stallMost: 0 },
+      // how long the longest one lasted, s: from the crawl to the car running again, a crash or a restart), the farthest
+      // down the route he got (m along its legs and bends: Drive.progress)
+      drive: { shoves: 0, bursts: 0, kills: {}, stalls: 0, stallMost: 0, far: 0 },
       // the guards and the street at work (aiCheck, the 'challenge' / 'heldUp' events): guards entering a fight, a
       // guard in a fight who got within reach of the player, travellers held 3 s on one spot, challenges by act and by
       // the stage they reached, drivers held up at gunpoint
@@ -746,7 +747,10 @@
   // picked on a slow random cycle (sometimes a sidewalk, into the building fronts: CHASE_BOT.kerb), the shove (Space,
   // aimed at it) on a pursuer alongside, else the Uzi held on the nearest pursuer still driven within its arc
   function playChase(w, p, inp, d) {
-    const C = CHASE_BOT, van = d.van, o = d.o, ch = B.chase ??= { y: van.y, until: 0, kerb: false };
+    // (the leg of the route he is on: its lanes and kerbs, systems/Route.js; a new leg, a new target)
+    const C = CHASE_BOT, van = d.van, o = d.leg, ch = B.chase ??= { y: van.y, until: 0, kerb: false, leg: d.legI };
+    if (ch.leg !== d.legI) { ch.leg = d.legI; ch.until = 0; }
+    S.stats.drive.far = Math.max(S.stats.drive.far || 0, Math.round((d.progress?.s ?? 0) / TILE));
     if (S.clock >= ch.until) {
       const lanes = (o.lanes || [van.y / TILE]).map((r) => r * TILE), kerbs = o.kerbs?.map((r) => r * TILE);
       ch.kerb = !!kerbs && rnd() < C.kerb;

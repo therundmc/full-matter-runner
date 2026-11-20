@@ -136,7 +136,7 @@ export function writeReport(dir, rep) {
   L.push(`- How the dead went: ${list(st.dying)}`);
   const dr = st.drive;
   if (dr && (dr.shoves || dr.bursts || dr.stalls || Object.keys(dr.kills || {}).length)) {
-    L.push(`- At the wheel: shoves ${dr.shoves}, bursts ${dr.bursts}, stalls ${dr.stalls}${dr.stalls ? ` (the longest ${dr.stallMost ?? '?'} s)` : ''}; pursuers' men killed: ${list(dr.kills || {})}`);
+    L.push(`- At the wheel: shoves ${dr.shoves}, bursts ${dr.bursts}, stalls ${dr.stalls}${dr.stalls ? ` (the longest ${dr.stallMost ?? '?'} s)` : ''}; the farthest down the route ${dr.far ?? 0} m; pursuers' men killed: ${list(dr.kills || {})}`);
   }
   const ai = st.ai || {};
   L.push(`- Guards: entered a fight ${ai.engaged ?? 0}, got within reach of him ${ai.reached ?? 0}, held 3 s on one spot on their way ${ai.stall3 ?? 0}; challenges: ${list(ai.challenges || {})} (stages reached: ${list(ai.stages || {})}); drivers held up: ${list(ai.heldUp || {})}`);

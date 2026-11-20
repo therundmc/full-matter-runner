@@ -316,6 +316,9 @@
 - The chase (level 2A, docs/LEVEL2.md): numbers in data/chase.js; events by distance in the level's `chase.events`
   (systems/Pursuit.js, systems/Lorries.js); what the car hits is torn (a sensor at once), flung by hand (Drive.fling) or
   the crash (`lasting`): never let a light thing hold it up. Play it by script after touching it (tools/shot.mjs).
+  Its road is a route (systems/Route.js, `chase.legs` / `chase.bends`, CHASE.bend): straight legs along +x (lanes per
+  leg, two or more) joined by scripted bends (the camera never turned); read the CURRENT leg (Drive.leg), never
+  `chase.lanes`; distance along the route (Drive.progress). Lab station 36.
   A PARKED CAR IS NEVER A WALL NOR A DEATH: he shoves it aside (Drive.aside, `CHASE.aside`: 10 % of his speed on a
   graze, 50 % square on, never stopped) and it never shuts both lanes (clearLanes). His car slides (`CHASE.slide`,
   Drive slideStep / gripOf). Pursuers attack in turns, each TOLD (Pursuit nextAttack: shot / ram / brake;

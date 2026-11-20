@@ -121,7 +121,7 @@ FLOOR += ('mattress', 'clothes_pile', 'pizza_box', 'bottles_empty', 'mail_pile',
           'cutlery_spill', 'runner_corner')
 LABELS = ('range', 'executions', 'soot', 'powder', 'steam', 'liquids', 'curtain', 'bars', 'pool', 'power', 'jukebox',
           'trapdoor', 'vehicles', 'takedowns', 'doors', 'cueball', 'fire', 'coat', 'drive', 'getaway', 'lorry', 'grab', 'aim',
-          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
+          'arcade', 'laundry', 'arms', 'throw', 'killcam', 'shield', 'signals', 'chasecam', 'chasefx', 'seeps', 'flat', 'propane', 'bend')   # stencilled words (props/label_*, tools/generate_assets.py LAB_LABELS)
 
 # rooftop dressing in px (keep in sync with ROOF_SIZES in tools/generate_assets.py)
 ROOF_SIZES = dict(ac_unit=(46, 32), vent=(14, 14), duct=(64, 12), hatch=(22, 22), chimney=(20, 20), tank=(50, 50),
@@ -570,11 +570,12 @@ class Level:
 
     # ---- output: src/game/data/levels/<module>.js
     def write(self, module, header, name, subtitle, exit=None, passive=False, lights=(), ambient=None, objective=None,
-              light=None, chase=None):
+              light=None, chase=None, routes=None):
         """chase: a level driven in the van (src/game/systems/Drive.js), written as is (the builder's coordinates:
-        no cuts allowed with it)."""
+        no cuts allowed with it); routes: { name: { legs, bends } } for the cars with a prop option `route` (the
+        same: as is)."""
         assert not (self.tutorial and (self.cut_x or self.cut_y)), 'a tutorial is not moved by the cuts'
-        assert not (chase and (self.cut_x or self.cut_y)), 'a chase is not moved by the cuts'
+        assert not ((chase or routes) and (self.cut_x or self.cut_y)), 'a chase is not moved by the cuts'
         # what the builder hands over in its own coordinates
         if exit:
             exit = {**exit, 'x': self.X(exit['x']), 'y': self.Y(exit['y'])}
@@ -602,6 +603,9 @@ class Level:
             L.append('  // speed (px/step), the lanes\' middle rows (ours last), the kerbs\' rows, the col past which it is over, and')
             L.append('  // what happens on the way by distance (col)')
             L.append(f'  chase: {js(chase)},')
+        if routes:
+            L.append('  // routes of their own for cars to drive (a prop\'s option `route`: { legs, bends }, systems/Route.js)')
+            L.append(f'  routes: {js(routes)},')
         if exit:
             # route / radius / fade: the getaway's way out (systems/Outro.js), tiles
             more = ''.join(f', {k}: {json.dumps(exit[k])}' for k in ('route', 'radius', 'slide', 'fade', 'open') if k in exit)

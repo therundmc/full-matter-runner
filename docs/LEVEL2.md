@@ -120,8 +120,9 @@ The concept boards are in docs/level2/ (painted by the concept pass of 2026-11-1
 
 ![route](level2/route.webp)
 
-The level is built as a STRAIGHTENED strip: the road runs along +x on screen (as systems/Traffic.js lanes already
-do); the route map's bends are only suggested by the scenery. (Turning the camera with the road is not planned.)
+The level is built as STRAIGHTENED strips: each leg of the road runs along +x on screen (as systems/Traffic.js lanes
+already do); a real corner between two legs is a SCRIPTED BEND (see "Legs and scripted bends" below), the camera
+never turned. The route map's other bends are only suggested by the scenery.
 
 | # | Time | Segment | Speed, camera | What it is |
 |---|------|---------|---------------|------------|
@@ -240,6 +241,35 @@ brushes.
 - **Events.** A level-data schedule by distance along the road (x), not by time, so a slow driver meets them in the
   same places; each event a small DOM-free system.
 - **Lab.** Every new mechanic gets its station (the shove, a pursuer, the telegraph, later the jump).
+- **Legs and scripted bends** (2026-11-20, systems/Route.js, numbers `CHASE.bend`; the user: "un virage a 90 degres
+  un peu scripte pour faire transition"). The road is a list of straight LEGS along +x, each with its own lanes (two
+  or more: the toll will have four), middle, cruise, view, kerbs, streets across; a corner between two is a BEND the
+  script drives (the camera is never turned: pixel art stays crisp). Contract, the level's `chase` block (tiles,
+  px/step):
+  - `legs: [{ from, to, lanes: [rows], mid, cruise, view?, kerbs?: [first road row, first sidewalk row], across?:
+    [[col0, col1, row above, row below]] }]`: a leg holds the columns `from <= col < to` (ordered, never
+    overlapping); `mid` defaults to its lanes', `cruise` to the chase's, `view` to the chase's / CHASE.camera.view.
+    The chase's own `across` hold on every leg. No `legs`: one leg from the chase's `lanes` / `mid` / `cruise` /
+    `view` / `kerbs` (the level before legs; its top-level fields are kept = leg 0's for the tests and old code).
+  - `bends: [{ at: col, path: [[col, row], ...], radius?: tiles (one, or one per inner point), speed?: px/step, to:
+    leg }]`: with the car's middle at `at` on the leg before, the script takes the wheel along `path` (straight lines,
+    each inner corner rounded off by an arc of `radius`, systems/Outro.js routePath; its last point is put on the
+    lane of `to` nearest it, its last segment along +x and long enough for the arc: 0.49 x its length >= radius),
+    braking to `speed` in a turn (40 km/h), its tail out, smoke and rubber, a breath of slow motion at each turn
+    (ChaseCam 'bend'); W / S and the shove do nothing, the gun is his; nothing it brushes is the crash. At the end:
+    leg `to`, its lane, heading +x, its cruise picked up. Told on 'chaseBend' ({ phase: in | turn | out }).
+  - Camera: through a bend it follows the car both ways, leading along the line, eased in whole px; then eases back
+    to the next leg's framing (its `mid`, a third from the left) and holds it exactly again.
+  - Pursuers: every one reaching `at` follows the same line, CHASE.bend.space px behind whoever is ahead of it (no
+    slots, no attacks, no tells while he or it is in a bend; a knock between two there wrecks nothing); out of it, slots
+    again. A car on another leg than his sees him where the route puts him on its own leg (Pursuit.tgFor): ahead of
+    him, it waits CHASE.bend.clear px past his way out, out of his lane. A pursuer event's `miss: true` makes it skip
+    the bend (on into what shuts the road: the hook for "one misses the turn").
+  - Distance: along the route (legs + bend lines) from the van's start: the HUD's bar and metres (Drive.progress,
+    never back), the QA robot's "farthest down the route". Events, lorries, signals stay keyed by column (x never goes
+    back along the route: legs are disjoint and ordered); `end` is a column of the last leg.
+  - A builder checks: nothing in a leg's lanes along its columns (`check_lanes` per leg), the bend's line clear of
+    walls (1.5 tiles) and props (1.3 tiles) (`check_bend`).
 
 ## Roadmap
 
@@ -574,3 +604,9 @@ Milestones in order; each ends merged into main with its tests, a QA or shot che
   toll: toll_island, toll_booth (lit), toll_canopy (hung, fades over him, lit; its lanes at TOLL_LANES), gate_arm_wood
   and its pieces gate_arm_bit_a/b/c, gate_steel, lane_signal_go / _stop (lit), sign_exact_change; paint toll_text,
   toll_lane_1..4, plaza_stripes, plaza_line. Contact sheet and mock-ups in tmp/ramp-sprites/ (not committed).
+- 2026-11-20: LEGS AND SCRIPTED BENDS (systems/Route.js, CHASE.bend; the architecture decision above): the road is
+  straight legs along +x joined by bends the script drives (camera never turned, following him round, then the next
+  leg's framing); Drive, Pursuit (N lanes, slots per leg, pursuers following him round the same line, `miss` hook),
+  the HUD and the QA robot count along the route. The test layout of 2A: works (ROAD CLOSED, jersey barriers) shut
+  the street past col 446, the scripted right turn at col 438 down the side street (cols 442-449), the left turn onto
+  leg 1 (lanes 44.25 / 46.75, cols 446-600), the end at col 570 (map 600 x 56). Lab station 36 BEND.

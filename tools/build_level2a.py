@@ -33,7 +33,10 @@ off):
                  four metres, bollards along its kerb, tables, parasols, planters, awnings: the way round the lorry
     357-388   A  THE LIT CORNER: the diner, all glass and light
     389-403   J  THE CROSS STREET under traffic lights (its roadway cols 393-398): the last car comes out of it
-    404-449   C  the way to the freeway (its sign over the road); the level ends at col 428
+    404-449   C  the way to the freeway (its sign over the road)
+    438-460      THE DETOUR (a plain test layout, to be dressed): works shut the street past the side street (cols
+                 442-449); the script takes the car right down it at col 438 and left at its foot onto LEG 1 (rows
+                 43-47, cols 446 on, systems/Route.js legs and bends); the level ends at col 570 of leg 1
 """
 import math
 import random
@@ -702,15 +705,20 @@ for c in range(LEG1_W, W - 2, 4):
     if not S0 - 4 <= c <= S1 + 4:
         lv.fill(c, (R0 + R1) // 2, min(W - 2, c + 1), (R0 + R1) // 2, '-')
 lv.area('the detour: the works across the street, what tells the way round')
-for r in (12.0, 14.2):
-    must('barricade', WORKS_X + 1.5, r, 90, on='=')
-must('barricade', WORKS_X + 1.5, 16.3, 90, on='s')
-must('arrow_board', WORKS_X + 3.6, 13.1, 90, on='=')
+# (sprites of segment 2: ROAD CLOSED across the street, concrete barriers behind it, DETOUR on the corner and its
+# arrow painted in our lane: on, then right)
+must('road_closed', WORKS_X + 1.2, 13.5, 90, on='=')
+must('barricade', WORKS_X + 1.2, 16.75, 90, on='s')
+must('arrow_board', WORKS_X + 2.8, 13.1, 90, on='=')
+for r in (11.9, 15.1):
+    must('jersey_barrier', WORKS_X + 4.6, r, 90, on='=')
 must('sign_works', WORKS_X - 0.3, 9.9, 270, on='s')
 for r in (11.5, 12.7, 13.9, 15.1):
     must('traffic_cone', WORKS_X - 0.4, r, on='=')
-must('compressor', WORKS_X + 5.4, 12.2, 180, on='=')
-lv.paint('trench', WORKS_X + 5.0, 14.6)
+must('sign_detour', BEND_AT + 0.5, 16.6, 0)
+must('sign_detour', SIDE[0] - 5.5, 9.3, 0)
+lv.paint('detour_arrow_paint', BEND_AT - 9.0, LANES[1])
+lv.paint('trench', WORKS_X + 5.6, 13.5, 90)
 lv.area('the detour: leg 1, lamps and a dead end')
 for c in range(LEG1_W + 1, W - 3, 24):
     if not S0 - 3 <= c <= S1 + 3:

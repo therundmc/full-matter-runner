@@ -7035,7 +7035,7 @@ LAB_LABELS = dict(range='1 RANGE', executions='2 EXECUTIONS', soot='3 SOOT', poo
                   takedowns='7 TAKEDOWNS', doors='14 DOORS', cueball='15 CUEBALL', fire='16 FIRE', coat='18 COAT',
                   drive='19 DRIVE', getaway='20 GETAWAY', lorry='21 LORRY', grab='22 GRAB', aim='23 AIM',
                   arcade='24 ARCADE', laundry='25 LAUNDRY', arms='26 ARMS', throw='27 THROW', killcam='28 KILL CAM', shield='29 SHIELD',
-                  signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS', propane='35 PROPANE')   # (in the order they were added, not by number: each keeps its seed)
+                  signals='30 SIGNALS', chasecam='31 CHASE CAM', chasefx='32 CHASE FX', flat='34 FLAT', seeps='33 SEEPS', propane='35 PROPANE', bend='36 BEND')   # (in the order they were added, not by number: each keeps its seed)
 STENCIL_K = 2   # world px per font pixel
 STENCIL_PAD = 4  # world px of dark plate round the letters (1 px of it clear)
 
