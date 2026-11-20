@@ -2,6 +2,7 @@ import { TILE, LIGHTING as L } from '../Config.js';
 import { POST } from '../data/post.js';
 import { spriteOpt } from '../../engine/Assets.js';
 import { clamp, hash, areaTable, areaCount } from '../../engine/math.js';
+import { bytesOf } from '../../engine/Bytes.js';
 import { P } from '../fx/Particles.js';
 import { ROOF_DECOR } from '../data/roofs.js';
 import { RAIN } from '../data/atmosphere.js';
@@ -159,6 +160,15 @@ export default class Lighting {
     this.lit = []; this.pairs = [];
     this.brightest = []; this.bright = []; this.brightKeys = new Float64Array(POST.rays.max);
     this.frameLamps = [];
+  }
+
+  // what its buffers hold, the props' lamps' cast pools included, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) {
+    const lamps = [...this.lights];
+    for (const p of this.world.props) lamps.push(...(this.propEntries.get(p) || []));
+    const own = [this.lm, this.em, this.bl, this.rf, this.pd, this.fl, this.mr, this.tmp, this.ambient, this.reflMask, this.emissive,
+      this.grid, this.ambGrid, this.solidCopy, ...this.blobs.values(), ...this.glows.values(), ...lamps.map((l) => l.cache)];
+    return bytesOf(own.filter(Boolean), seen, 1);
   }
 
   // every canvas let go (World.dispose)

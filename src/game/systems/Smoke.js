@@ -20,6 +20,7 @@ import { GESTURES, exhale } from '../ai/Pastimes.js';
 import { WALKER } from '../ai/Civilians.js';
 import { angDiff, seeded, lerpRange } from '../../engine/math.js';
 import Fluid from '../../engine/physics/Fluid.js';
+import { bytesOf } from '../../engine/Bytes.js';
 
 const { Body } = Matter;
 const tmp = { x: 0, y: 0 };
@@ -118,6 +119,9 @@ export default class Smoke {
     // a pierced wall extinguisher empties itself away from its wall (a wall prop faces the room along its local +y)
     world.events.on('propDestroyed', ({ prop }) => prop.def.cloud && this.jet('powder', prop.x, prop.y, prop.body.angle + Math.PI / 2));
   }
+
+  // what its arrays hold, the fluid's included, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) { return bytesOf([this, this.fluid], seen); }
 
   // ---- the house: walls, doors, windows
 

@@ -15,6 +15,9 @@ const VARIANTS = 3;
 const TAU = Math.PI * 2;
 const made = new Map();
 
+// what the clouds made so far hold, bytes (the perf overlay)
+export const carFxBytes = () => { let n = 0; for (const c of made.values()) n += c.width * c.height * 4; return n; };
+
 const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
 // one cloud: `size` px across, of `tone`, shape `variant`, at age stage k of U.steps (0: whole)

@@ -15,6 +15,9 @@ src/
                           (vibrationActuator 'dual-rumble', hapticActuators pulse as a fallback; never throws)
     Interp.js             the fixed step's clock (StepClock) and the world drawn between its last two steps (Interp:
                           capture before a step, apply / restore round a draw); DOM-free, unit-tested
+    Profiler.js           where a frame's time goes: sections begin / end, counters, rolling mean / p95 / max over
+                          rings of frames (`PROF`, off and free until F8's overlay); DOM-free, unit-tested
+    Bytes.js              an estimate of the buffers a thing holds (typed arrays vs canvases) for the perf overlay
     physics/
       Units.js            scale contract: 1 m = 32 px = 1 tile, kg, px/step velocities
       Hinge.js            a leaf on a hinge as numbers: its inertia about the pivot, a force-limited push on it, a blow,
@@ -87,6 +90,8 @@ src/
       Scoring.js          score of a run from events: kill styles x combo, end tally (bonuses, grade); pure, unit-tested
       Quality.js          the QUALITY option in force (`quality()`, read by the renderers; table in data/quality.js)
                           and AUTO's watch of the frame time (QualityWatch); DOM-free, unit-tested
+      Perf.js             F8's perf overlay's numbers and `game.perf.snapshot()` (frame, CPU sections, GPU, memory
+                          by owner, world counts); `{ ...game.perf }` stays F4's numbers; DOM-free, unit-tested
       Records.js          best result per level in localStorage (guarded: the game runs without storage)
       Threats.js          which off-screen guards the player can plausibly know about (pure rule + per-guard memory)
       Impacts.js          listens to 'impact': material sounds by speed and mass
@@ -366,7 +371,7 @@ src/
                           fuse, the labels, the cash-out, the multi-kill banner; DOM-free state on the real clock,
                           KILLFEED in data/feel.js), Indicators (off-screen guard markers), Screens (loading, intro, death screen), Results (the
                           end-of-level screen: timeline and sounds pure, drawn beside the replay), Glyphs (key caps and pad
-                          buttons of the device in use), SandboxPanel, Text, Menu / MenuArt,
+                          buttons of the device in use), SandboxPanel, PerfOverlay (F8), Text, Menu / MenuArt,
                           title/ (Title: which picture the title state shows; Poster: the comic's cover in three layers,
                           its fire, rain and signs cut live; HitList: the LEVELS page and the screen between two levels
                           (Game state 'hitlist'); Options: OPTIONS and the pages under it, his table from above, a thing's sheet shown as soon as it is chosen (Menu `sheets`), CONTROLS as key caps, for the title and the pause; Beats: their clocks and sounds, unit tested; Paper: the cut-paper sheet
@@ -1200,6 +1205,13 @@ go through, at 0 HP it is ripped off (Destruction.detachDoor).
   so reading it per frame would toggle several times on high-refresh displays.
 - F2 enemy vision (cones, close-awareness ring, state:tactic + meter, target, cover, last known position,
   incidents and search points), F3 whole-level overview, F4 physics overlay (bodies by state, velocities, contacts, stats).
+- F8 the perf overlay, OFF -> COMPACT -> FULL (systems/Perf.js aggregates, ui/PerfOverlay.js draws it last, on the
+  HUD's canvas over the lens): frame times (p95, worst of 2 s, the display's rate, steps a frame, the time scale),
+  the CPU per section (engine/Profiler.js `PROF`: `if (PROF.on) PROF.begin('x')` ... `end('x')`, off and free until
+  the overlay shows; the sections and their parents are `SECTIONS` in Perf.js), the card (renderer, the lens' GPU
+  time where EXT_disjoint_timer_query is exposed, texture uploads), the JS heap and an estimate of the big buffers
+  by owner (each owner's `bytes()`, engine/Bytes.js: typed arrays vs canvases), the world's counts, the quality.
+  `game.perf.snapshot()` returns the same as a plain object; `{ ...game.perf }` stays F4's numbers (the QA robot).
 - `window.game` in the console.
 - `npm test` runs the Node unit tests.
 

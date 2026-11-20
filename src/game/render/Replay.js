@@ -6,6 +6,7 @@
 // Driven by 'kill' events only (independent from the scoring). Canvas creation is injectable (tests run in Node).
 import { REPLAY, PALETTE } from '../Config.js';
 import { clamp } from '../../engine/math.js';
+import { bytesOf } from '../../engine/Bytes.js';
 import { text } from '../ui/Text.js';
 
 const domCanvas = (w, h) => {
@@ -69,6 +70,9 @@ export class ReplayRecorder {
     this.now = 0;
     this.pending = null;              // clip in the making: { kills: [{ t, w }], end }
   }
+
+  // what its atlases hold, bytes (engine/Bytes.js; the perf overlay)
+  bytes(seen) { return bytesOf(this, seen); }
 
   // give the memory back (leaving the game for the title)
   release() {

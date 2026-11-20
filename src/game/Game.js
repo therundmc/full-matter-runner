@@ -51,6 +51,12 @@ import { createPost } from './render/PostGL.js';
 import { POST } from './data/post.js';
 import { quality, setQuality, levelOf, QualityWatch } from './systems/Quality.js';
 import { devMode, devParam, DEV_KEYS } from './data/build.js';
+import Perf from './systems/Perf.js';
+import { PROF } from '../engine/Profiler.js';
+import { drawPerf } from './ui/PerfOverlay.js';
+import { spriteBytes } from '../engine/Assets.js';
+import { bakedBytes } from './render/MapRenderer.js';
+import { carFxBytes } from './render/CarFxArt.js';
 
 // Top-level loop and state machine: loading -> title -> [cinematic ->] intro -> play -> dead | [outro -> [ending ->]]
 // results, play <-> pause; the tutorial ends play -> fall -> the next level's intro; a chase with more to come ends
@@ -134,6 +140,13 @@ export default class Game {
     if (this.post) this.post.onLost = () => this.resize(); // the card dropped it: the canvas back to the window's size
     this.lensOn = true;                // always, where it can be had; F6 (the developer's) flips it to compare
     this.lensNote = 0;                 // game time until which the F6 label stays up
+    // the frame's numbers (F4's line, the QA robot) and F8's perf overlay (systems/Perf.js, ui/PerfOverlay.js); what
+    // it cannot reach without the DOM is handed to it: the voices playing, the module-level caches' bytes
+    this.perf = new Perf(this, {
+      voices: () => (Audio.ctx ? Audio.active.filter((a) => a.end > Audio.ctx.currentTime).length : 0),
+      extra: () => ({ sprites: { cvs: spriteBytes().bytes }, 'retry cache': { cvs: bakedBytes() }, 'car clouds': { cvs: carFxBytes() } }),
+    });
+    this.steps = 0;                    // simulation steps run this frame
     // to compare LOCK's marks (data/aim.js AIM.lock.marks): ?mark=tick picks one for the session
     const mark = devParam('mark');
     if (AIM.lock.marks.includes(mark)) AIM.lock.mark = mark;
@@ -316,6 +329,7 @@ export default class Game {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
     this.forget(retry, resume);
     this.world?.dispose?.(); // the last run's canvases let go before the new one makes its own
+    this.interp.still(); // (its bodies held there would keep the old world, all its buffers, alive through the new one)
     this.world = new World(this, LEVELS[this.levelId]);
     this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)
     Music.setTrack(trackOf(LEVELS[this.levelId])); // the level's own track (its `music`)
@@ -416,6 +430,7 @@ export default class Game {
     this.quiet();
     this.world?.dispose?.();
     this.world = null;
+    this.interp.still(); // the bodies it held from the last step: they kept the whole world alive at the title
     this.opening = new Opening(null);
     this.rumble.unbind();
     this.sandbox.detach();
@@ -533,18 +548,8 @@ export default class Game {
     this.update(dt);
     const t1 = performance.now();
     this.render();
-    this.sample(dt, t1 - t0, performance.now() - t1);
+    this.perf.tick(dt, real, t1 - t0, performance.now() - t1, this.steps); // (F4's line, F8's overlay)
     this.watchPace(real * 1000);
-  }
-
-  // rolling frame stats, refreshed twice a second into this.perf (shown by the F4 overlay)
-  sample(dt, upMs, drMs) {
-    const p = this.perfAcc || (this.perfAcc = { t: 0, n: 0, worst: 0, up: 0, dr: 0 });
-    p.t += dt; p.n++; p.up += upMs; p.dr += drMs;
-    p.worst = Math.max(p.worst, dt * 1000);
-    if (p.t < 0.5) return;
-    this.perf = { fps: Math.round(p.n / p.t), frame: (p.t * 1000) / p.n, worst: p.worst, update: p.up / p.n, render: p.dr / p.n };
-    p.t = p.n = p.worst = p.up = p.dr = 0;
   }
 
   update(dt) {
@@ -557,7 +562,10 @@ export default class Game {
   // the frame's input, menus, screens and simulation
   advance(dt) {
     const inp = this.input;
+    this.steps = 0;
+    if (PROF.on) PROF.begin('input');
     inp.poll(dt);
+    if (PROF.on) PROF.end('input');
     // the developer's keys do nothing in a release build (data/build.js)
     if (!this.dev) for (const k of DEV_KEYS) inp.pressed.delete(k);
     // the pad gone or the window left pause play only: told anywhere else, it is forgotten
@@ -579,6 +587,9 @@ export default class Game {
       this.resize(); // (the canvas' size goes with it: fit)
       this.lensNote = this.time + 1.6;
     }
+    // debug: the perf overlay, OFF -> COMPACT -> FULL (systems/Perf.js); read per frame, so the press is taken at
+    // once (a frame with no step would read it again)
+    if (inp.hit('F8')) { inp.pressed.delete('F8'); this.perf.cycle(); }
     if (this.state === 'hitlist') {
       // the hit list between two levels: the marker crosses the dead man out (heard from the picture, HitList.js),
       // then a key or a click goes on to the next level, or to the menu after the last
@@ -735,11 +746,13 @@ export default class Game {
       this.hitstop -= dt;
     } else {
       // the fixed step; what moves is noted before each one, and drawn between the last two (render, updateCamera)
-      this.clock.run(dt, () => {
+      this.steps = this.clock.run(dt, () => {
         const aim = this.camera.screenToWorld(inp.mouse.x, inp.mouse.y), w = this.world;
         if (!outro) this.debugKeys(inp, aim);
         if (this.smooth) this.interp.capture(w.physics.bodies(), w.movers());
+        if (PROF.on) PROF.begin('sim');
         w.step(FIXED_DT * this.timeScale, inp, aim);
+        if (PROF.on) PROF.end('sim');
         inp.consume();
         return !(this.hitstop > 0);
       });
@@ -1018,6 +1031,7 @@ export default class Game {
     else if (this.state === 'ending') this.safeDraw(ctx, () => drawEnding(ctx, W, H, this.ending, this.stateT));
     else this.drawScene(ctx, W, H, t, post);
     if (post) {
+      if (PROF.on) PROF.begin('lens');
       const now = performance.now() / 1000, view = this.lensView(W, H, inWorld);
       this.lens.update(Math.min(0.1, now - (this.lensT ?? now)), view);
       this.lensT = now;
@@ -1025,7 +1039,9 @@ export default class Game {
       o.setTransform(1, 0, 0, 1, 0, 0);
       o.clearRect(0, 0, W, H);
       o.imageSmoothingEnabled = false;
+      if (PROF.on) PROF.end('lens');
     }
+    if (PROF.on) PROF.begin('hud');
     if (inWorld) this.drawOver(o, W, H, t);
     else if (this.state === 'title') this.menuRects = this.titleRects || [];
     if (this.lensNote > t) {
@@ -1035,6 +1051,12 @@ export default class Game {
       o.fillText(`F6  LENS ${this.lensOn ? 'ON' : 'OFF'}`, 12, H - 14 * H / 720);
     }
     if (!['loading', 'outro', 'ending', 'cinematic', 'fall', 'continued'].includes(this.state)) this.drawCursor(o, t);
+    if (PROF.on) PROF.end('hud');
+    // F8: the perf overlay, over everything (never under the lens: it is on the HUD's canvas)
+    if (!this.perf.on) return;
+    PROF.begin('overlay');
+    this.safeDraw(o, () => drawPerf(o, W, H, this.perf.mode, this.perf.view()));
+    PROF.end('overlay');
   }
 
   // the world (or the replay of the run behind the results), lit, before any lens
@@ -1055,7 +1077,9 @@ export default class Game {
       this.world.draw(ctx, { x: m.widthPx / 2, y: m.heightPx / 2, viewRadius: () => ({ x: 1e5, y: 1e5 }) }, t);
     } else {
       this.camera.apply(ctx);
+      if (PROF.on) PROF.begin('draw');
       this.safeDraw(ctx, () => this.world.draw(ctx, this.camera, t));
+      if (PROF.on) PROF.end('draw');
       if (this.murk > 0.001) {
         const at = this.camera.worldToScreen(this.world.player.x, this.world.player.y);
         this.safeDraw(ctx, () => drawMurk(ctx, W, H, at.x, at.y, this.murk));
@@ -1069,7 +1093,9 @@ export default class Game {
       ctx.fillRect(0, 0, W, H);
     }
     // the replay keeps the bare picture: no lens, scanlines, flash or HUD (they go over it again when it plays)
+    if (PROF.on) PROF.begin('replay');
     if (this.state === 'play' && !this.overview) this.recorder.capture(this.canvas, this.world.time);
+    if (PROF.on) PROF.end('replay');
     if (!post) ctx.drawImage(this.getVignette(W, H), 0, 0);
   }
 

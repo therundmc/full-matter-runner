@@ -304,7 +304,9 @@
   debug keys, `window.game` and the URL switches (`?level=`, `?killcam=`, `?mark=`, `?post=`) off unless `?dev=1`
   (`devMode`, `devParam`); the QA robot and tools/shot.mjs need it false. A run where a sandbox cheat was used is never a record.
 - Debug keys: F1 sandbox (game/debug/Sandbox.js), F2 enemy vision, F3 overview, F4 physics overlay (FPS, frame
-  times), F6 lens on / off (dev only, no option). The aim cue is LOCK (the user's pick; data/aim.js `AIM.lock`, render/AimArt.js, no style to choose; lab station 23 AIM; its mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`). `window.game` in the console.
+  times), F6 lens on / off (dev only, no option). The aim cue is LOCK (the user's pick; data/aim.js `AIM.lock`, render/AimArt.js, no style to choose; lab station 23 AIM; its mark on the man: `AIM.lock.mark`, `?mark=ring|tick|point|corners` to compare; its floor chevron is off by default, OPTIONS / VIDEO / AIM MARK, Settings `aimMark`; with a melee weapon LOCK takes a man in reach at his side too (`AimCue.meleeLock`, `AIM.lock.wide`), turns the hero onto him before the click (`AIM.lock.face`) and the swing snaps onto him and steps in, `PLAYER.lunge.lock`), F8 perf overlay (OFF / COMPACT / FULL: frame, CPU per section, GPU, memory by owner, world
+  counts; systems/Perf.js, ui/PerfOverlay.js, engine/Profiler.js `PROF` guarded by `PROF.on`; `game.perf.snapshot()`).
+  `window.game` in the console.
 - Headless checks: Edge `--headless=new --remote-debugging-port` over DevTools (tools/qa/cdp.mjs). Prefer the Node
   static server to Python's. Never kill processes you didn't start.
 

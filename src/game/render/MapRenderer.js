@@ -66,6 +66,12 @@ export function bakedFor(level, fs) {
   }
   return e;
 }
+// what the kept painting of every level holds, bytes (the perf overlay: systems/Perf.js)
+export function bakedBytes() {
+  let n = 0;
+  for (const e of BAKED.values()) for (const m of [e.floor, e.walls]) for (const c of m.values()) n += c.width * c.height * 4;
+  return n;
+}
 function forget(e) {
   e.gone = true;
   for (const m of [e.floor, e.walls]) { for (const c of m.values()) c.width = c.height = 0; m.clear(); }
@@ -822,7 +828,8 @@ export default class MapRenderer {
   drawWalls(ctx, x0, y0, x1, y1) { this.walls.draw(ctx, x0, y0, x1, y1); }
 
   // what the layers hold, MB (the F4 overlay, the measurements)
-  get megabytes() {
-    return Object.values(this.layers).concat(this.off).reduce((n, L) => n + L.bytes, 0) / 1048576;
-  }
+  get megabytes() { return this.bytes().cvs / 1048576; }
+
+  // ... in bytes, as the perf overlay counts them (engine/Bytes.js: all canvases)
+  bytes() { return { arr: 0, cvs: Object.values(this.layers).concat(this.off).reduce((n, L) => n + L.bytes, 0) }; }
 }

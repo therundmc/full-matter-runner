@@ -247,6 +247,13 @@ export async function loadAssets(onProgress) {
   try { await document.fonts.load('16px joystix'); } catch (e) { /* font optional */ }
 }
 
+// the sprites loaded: how many, and their pixels in bytes (the perf overlay)
+export function spriteBytes() {
+  let bytes = 0;
+  for (const img of images.values()) bytes += (img.width || 0) * (img.height || 0) * 4;
+  return { n: images.size, bytes };
+}
+
 export function sprite(name) {
   let img = images.get(name);
   if (!img) { img = placeholder(); images.set(name, img); }
