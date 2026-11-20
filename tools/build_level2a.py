@@ -611,14 +611,15 @@ for c in range(105, 110):
     painted[('h', c, 9)] = 'red'
 for (c, r) in ((37.0, 12.5), (88.5, 12.4), (171.5, 14.6), (199.4, 12.0), (236.4, 15.0), (290.2, 12.6), (368.2, 14.4), (411.0, 12.3)):
     lv.dress('manholes', c, r)
+# (none on a marking nor a palm's grate: the cracks clear of the centre line's dashes and double, check_paint_overlaps)
 for (kind, c, r, deg) in (('manhole_sq', 27.5, 16.9, 0), ('road_crack_a', 33.0, 12.2, 0), ('road_patch_c', 71.0, 14.6, 0),
-                          ('manhole_sq', 80.2, 9.2, 90), ('road_crack_b', 92.5, 12.6, 0), ('road_patch_a', 121.0, 14.7, 0),
+                          ('manhole_sq', 80.2, 9.2, 90), ('road_crack_b', 92.5, 12.3, 0), ('road_patch_a', 121.0, 14.7, 0),
                           ('valve_cap', 107.0, 9.6, 0), ('road_crack_a', 130.0, 14.4, 180), ('road_patch_b', 168.0, 12.1, 0),
-                          ('road_crack_b', 181.0, 14.2, 90), ('road_patch_c', 196.0, 14.9, 0), ('road_crack_a', 222.0, 14.6, 0),
-                          ('road_patch_a', 243.0, 14.6, 0), ('manhole_sq', 265.5, 9.3, 0), ('road_crack_b', 284.0, 13.0, 0),
+                          ('road_crack_b', 181.0, 14.55, 90), ('road_patch_c', 196.0, 14.9, 0), ('road_crack_a', 222.0, 14.6, 0),
+                          ('road_patch_a', 243.0, 14.6, 0), ('manhole_sq', 265.5, 9.3, 0), ('road_crack_b', 287.2, 13.0, 0),
                           ('road_patch_c', 297.5, 12.3, 0), ('road_crack_a', 318.0, 12.4, 180), ('road_patch_b', 352.0, 14.8, 0),
-                          ('road_crack_a', 365.0, 12.3, 0), ('road_patch_a', 381.0, 12.3, 0), ('manhole_sq', 407.0, 9.0, 0),
-                          ('road_crack_b', 413.0, 13.6, 0), ('road_patch_c', 431.0, 12.4, 0), ('valve_cap', 163.5, 15.6, 0),
+                          ('road_crack_a', 365.0, 12.3, 0), ('road_patch_a', 381.0, 12.3, 0), ('manhole_sq', 405.6, 9.1, 0),
+                          ('road_crack_b', 414.4, 14.4, 0), ('road_patch_c', 431.0, 12.4, 0), ('valve_cap', 163.5, 15.6, 0),
                           ('valve_cap', 320.5, 15.6, 0), ('valve_cap', 274.0, 11.5, 0)):
     lv.paint(kind, c, r, deg)
 for c in range(18, WS - 6, 34):                        # drains in the gutters, both sides
@@ -1287,7 +1288,8 @@ for (a, b, top, bottom, cushion) in ((TOLL0, FAN[0], *RAIL_IN, False), (FAN[0], 
 for (c, r) in ((563.5, 33.0), (577.5, 51.05), (594.5, 30.0), (600.0, 56.5), (633.5, 34.95), (648.5, 51.05),
                (664.5, 37.95), (680.5, 48.05), (695.5, 37.95)):
     lv.prop('highway_lamp', c, r, 90)                                 # its heads out over the road and the verge
-for (kind, c, r) in (('sign_toll_ahead', 562.6, 51.0), ('sign_speed_55', 568.6, 33.2), ('sign_freeway', 656.6, 48.2),
+# (the toll told in order: TOLL 1/2 MILE on the ramp, the gantry's 1/4, then EXACT CHANGE on the approach, the plaza)
+for (kind, c, r) in (('sign_exact_change', 562.6, 51.0), ('sign_speed_55', 568.6, 33.2), ('sign_freeway', 656.6, 48.2),
                      ('sign_speed_55', 670.6, 38.2)):
     lv.prop(kind, c, r)
 
@@ -1393,7 +1395,7 @@ swap('street_tree', 83.5, 'sabal_palm')
 swap('street_tree', 92.5, 'sabal_palm_b')
 must('bus_bench_bail', 81.0, 8.58)
 lv.paint('sabal_frond_fallen', 94.4, 10.3, 20)
-lv.paint('litter_bottles', 79.2, 9.4)
+lv.paint('litter_bottles', 78.9, 9.4)
 must('news_box_yellow', 109.6, 16.45)
 must('news_box_red', 110.2, 16.45)
 must('pole_sign_strip', 118.6, 17.25)                                     # PALM PLAZA: the strip's tenants on its pole
@@ -1594,9 +1596,10 @@ for (kind, c, r) in (('puddle_neon', 414.0, 11.9), ('puddle_neon_b', 427.4, 15.4
 # the cross street's lane arrow (ours) back off the lamp's head: arrow, lamp, puddle, stop line one after the other
 unpaint(lambda k, c, r: k == 'road_arrow' and abs(c - (CROSS[0] - 9.0)) < 0.1 and r == LANES[1])
 lv.paint('road_arrow', CROSS[0] - 9.7, LANES[1])
-# the parking row's tee at its west end stood on the kerb's corner (the kerb is that bay's end; its meter goes too)
-unpaint(lambda k, c, r: k == 'park_tee' and c == S_BAYS[1][0] and r == 17.0)
-drop(lambda k, c, r: k == 'parking_meter' and abs(c - (S_BAYS[1][0] + 0.2)) < 0.05)
+# the south parking rows' tee at their west end stood on the kerb's corner (the kerb is that bay's end; its meter goes
+# too): the one past Coral Street's bulb-out and the one past the bridge
+unpaint(lambda k, c, r: k == 'park_tee' and c in (S_BAYS[0][0], S_BAYS[1][0]) and r == 17.0)
+drop(lambda k, c, r: k == 'parking_meter' and any(abs(c - (b[0] + 0.2)) < 0.05 for b in S_BAYS[:2]))
 lv.paint('palm_frond_fallen', 430.4, 10.5, 170)
 lv.paint('litter_bottles', 443.2, 10.3)
 
@@ -1979,6 +1982,9 @@ LINE_PAINT = {'zebra_a', 'zebra_b', 'stop_line', 'centre_double', 'park_tee', 'r
               'merge_arrow_s', 'gore_hatch', 'toll_text', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3', 'toll_lane_4',
               'rumble_strip', 'raised_marker', 'raised_marker_yellow'}
 COVERS = {'drain', 'manhole_sq', 'valve_cap'}
+# what no marking nor cover lies on either: a kerb's rounded corner, bend, ramp or inner stone, a palm's grate (a marking
+# runs up to a straight kerb's face, no further)
+KERB_ENDS = ('kerb_bend_', 'kerb_corner_', 'kerb_ramp_', 'kerb_in', 'tree_grate')
 # what lies on the road and is no marking (rain, oil, rubber, a patch, a joint, litter): never over a marking either
 # (they may lie on one another); the lines painted slanted across a big sprite (a toll's fan, a taper) are told by their
 # pixels, not their box
@@ -2029,7 +2035,7 @@ def check_paint_overlaps(col0, col1, eps=0.03, stains=False):
     """Between columns col0 and col1 no two road markings overlap (two lines, a line on a crossing's bars, lettering on
     a line...), none lies on an iron cover, and none on the centre line's dashes (the tiles '-'); lengths of one line
     laid end to end only touch (or lie back over each other, on one row or one slant). A marking's box is its sprite's.
-    `stains`: nor does a stain lie on one (check_stains)."""
+    None lies on a kerb's corner or a palm's grate (KERB_ENDS). `stains`: nor does a stain lie on one (check_stains)."""
     marks = []
     for (kind, x, y, deg) in lv.floor:
         if (kind in LINE_PAINT or kind in COVERS) and col0 <= x < col1:
@@ -2047,6 +2053,13 @@ def check_paint_overlaps(col0, col1, eps=0.03, stains=False):
                 continue                  # (lengths of one line: laid back over each other to end on a column, or on a slant)
             assert not (a[0] < b[2] - eps and b[0] < a[2] - eps and a[1] < b[3] - eps and b[1] < a[3] - eps), \
                 f'{ka} at {xa:.2f},{ya:.2f} overlaps {kb} at {xb:.2f},{yb:.2f}'
+    for (kb, xb, yb, db) in lv.floor:
+        if kb.startswith(KERB_ENDS) and col0 - 2 <= xb < col1 + 2:
+            w, h = paint_size(kb)
+            b = (xb - w / 2, yb - h / 2, xb + w / 2, yb + h / 2)
+            for (ka, xa, ya, a, _) in marks:
+                assert not (a[0] < b[2] - eps and b[0] < a[2] - eps and a[1] < b[3] - eps and b[1] < a[3] - eps), \
+                    f'{ka} at {xa:.2f},{ya:.2f} lies on {kb} at {xb:.2f},{yb:.2f}'
     if stains:
         check_stains(col0, col1, marks, eps)
 
@@ -2054,12 +2067,9 @@ def check_paint_overlaps(col0, col1, eps=0.03, stains=False):
 if __name__ == '__main__':
     lv.actor('@', int(START[0]), int(START[1]), face=0)
     check_lanes()
-    check_paint_overlaps(0, 220)          # (the street's start to the dark stretch)
-    check_paint_overlaps(220, 455)        # (the dark stretch on to the works and the detour's mouth)
-    check_paint_overlaps(TOLL0, W, stains=True)   # (the toll: its rain, oil and rubber too)
+    check_paint_overlaps(0, W, stains=True)       # (the whole level: its rain, oil, cracks and rubber too)
     for B in BENDS:
         check_bend(B['path'], B['radius'])
-    check_paint_overlaps(LEG1, TOLL_X, stains=True)   # (the alley and leg 1: their oil, cracks and rubber too)
     lv.check(guards=0)
     lv.write('level2a', name='THE CHASE', subtitle='SUNSET BAY  -  MARCH 16TH 1986  -  1:40 AM',
              lights=lights, ambient=ambient, chase=chase, header=[
