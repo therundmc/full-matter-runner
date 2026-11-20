@@ -52,7 +52,7 @@ boom, told by its lane's signal), spread back, the outer two merge in: the freew
 import math
 import random
 
-from levelkit import Level, SIZES, SOLID as BLOCKS
+from levelkit import Level, ROOT, SIZES, SOLID as BLOCKS
 
 WS, HS = 450, 24             # the street (segment 1): its columns and rows
 W, H = 700, 64               # the map: the street, the detour down the side street, leg 1 (the on-ramp's start) below it,
@@ -728,6 +728,12 @@ F0, F1 = FWY
 M0, M1 = MERGE
 DOCK_S = (453, 464)          # the cold store's loading bays on the frontage road (south, cols)
 YARD_S = (468, 471)          # the opening of the yard gate south of it (cols)
+# leg 1's paint by row: the yellow left edge 8 px off the kerb under the bank (it lay on the kerb), then on the ramp
+# (no kerb) on the gore's own line; the lane line, its dashes 3 m every 9 in step with the toll's (they go on into it
+# unbroken: 561 - 9 k); the white right edge, the rumble strip on the shoulder (the toll's rows)
+EDGE_N, EDGE_RAMP = R0 + 0.25, R0
+LANE_AT = 444
+EDGE_S, RUMBLE_S = R1 + 1.0, R1 + 1.33
 lv.area('part two: the ground')
 for (x0, y0, x1, y1, t) in (
         (WS, 8, DEAD - 1, 10, 's'), (WS, 11, DEAD - 1, 15, '='), (WS, 16, DEAD - 1, 17, 's'),   # the street, on under the works
@@ -756,6 +762,14 @@ def pieces(kind, c0, c1, row, step=3.0, deg=0):
     while c + step <= c1 + 0.01:
         lv.paint(kind, c + step / 2, row, deg)
         c += step
+
+
+def solid(kind, c0, c1, row, step=3.0):
+    """A line painted unbroken from exactly c0 to exactly c1 (the last length laid back over the one before it: the
+    same paint on the same line, nothing shows)."""
+    pieces(kind, c0, c1, row, step)
+    if (c1 - c0) % step > 0.01 and c1 - c0 >= step:
+        lv.paint(kind, c1 - step / 2, row)
 
 
 def dashes(c0, c1, row, gap, kind='lane_dash_long', at=0, length=3.0):
@@ -858,13 +872,15 @@ for (x0, y0, x1, y1, t) in (
         (S0 - 2, F1 + 1, A0 - 1, R0 - 1, '"'), (A1 + 1, F1 + 1, S1 + 2, R0 - 1, '"'),                 # its bank either side
         (A0, 18, A1, R0 - 1, '=')):                                                                   # the alley's floor
     lv.fill(x0, y0, x1, y1, t)
-pieces('edge_line_yellow', S0 - 2, A0, R0 + 0.08)                            # the yellow line and the kerb under the bank
-pieces('edge_line_yellow', A1 + 1, S1 + 3, R0 + 0.08)
-lv.paint('kerb_s_4', S0, R0 - 1 / 32)
+lv.paint('kerb_s_4', S0, R0 - 1 / 32)                                       # the kerb under the bank (its yellow line:
+                                                                              # the frontage road's paint)
 for c in range(A1 + 1, S1 + 3):
     lv.paint('kerb_s', c + 0.5, R0 - 1 / 32)
 lv.put(A0 - 1, 26, 'L')                                                       # the bar's back door (west)
 lv.put(A1 + 1, 24, 'L')                                                       # the botanica's (east)
+for r in (25, 26, 27):                                                        # their reveals in the stucco too (the
+    lv.put(A0 - 2, r, 'P')                                                    # brick behind showed round each door)
+    lv.put(A1 + 2, r - 2, 'M')
 W_FACE, E_FACE = A0 + 0.07, A1 + 1 - 0.07                                     # (a thing on a wall face: its middle there)
 lv.area('part two: the alley, on its walls')
 for r in (20.0, 31.0):
@@ -947,8 +963,10 @@ slant('edge_line_yellow', (M0, F0 + 1.5), (M1, F0 + 4.0))
 slant('lane_dash_long', (M0, F0 + 4.0), (M1, F1 + 0.5), gap=12)
 lv.paint('gore_taper', (M0 + M1) / 2, F1 + 0.5 + (84 / 2 - 2) / 32)
 pieces('edge_line_yellow', M1, TOLL_X, F0 + 4.0)
-dashes(M1, TOLL_X, F1 + 0.5, 12, at=432)
-dashes(M1, TOLL_X, R0, 12, at=438)
+dashes(M1, TOLL_X, F1 + 0.5, 9, at=LANE_AT)                             # (on into the toll's lane lines, unbroken)
+solid('edge_line', M1, M1 + 6, R0)                                       # past the gore's tip: solid, then the toll's dashes
+for r in (F1 + 0.5, R0):
+    lv.paint('raised_marker', TOLL_X - 2.0, r)                           # (a cat's eye between two, as the toll's)
 for c in (470.5, 500.5):
     must('highway_lamp', c, F1 + 1.75, 90, on='"')
 
@@ -958,13 +976,14 @@ for c in (470.5, 500.5):
 # store's two loading bays (the kerb dropped along them), a yard behind its gate, a long shed with its pipes; sodium
 # lamps on the south sidewalk; FREEWAY ENTRANCE where the sheds end.
 lv.area('part two: the frontage road, its paint')
-pieces('edge_line_yellow', LEG1_W, S0 - 2, R0 + 0.08)                   # (broken across the side street's mouth)
-pieces('edge_line_yellow', S1 + 3, M0, R0 + 0.08)
-dashes(LEG1_W, RAMP_X, R0 + 2.5, 9, at=455)
-dashes(RAMP_X, TOLL_X, R0 + 2.5, 12, at=438)
+solid('edge_line_yellow', LEG1_W, A0, EDGE_N)                          # (broken across the alley's mouth)
+solid('edge_line_yellow', A1 + 1, RAMP_X - 3, EDGE_N)
+slant('edge_line_yellow', (RAMP_X - 3, EDGE_N), (RAMP_X, EDGE_RAMP))     # (past the kerb's end: onto the gore's line)
+solid('edge_line_yellow', RAMP_X, M0, EDGE_RAMP)
+dashes(LEG1_W, TOLL_X, R0 + 2.5, 9, at=LANE_AT)
 for c in list(range(LEG1_W, S0 - 2 - 3, 4)) + list(range(S1 + 3, RAMP_X - 3, 4)):   # the kerb under the bank
     lv.paint('kerb_s_4', c + 2.0, R0 - 1 / 32)
-for (kind, c, r, deg) in (('road_patch_c', 457.5, 44.3, 0), ('road_crack_a', 463.0, 46.9, 0), ('manhole_sq', 475.2, 45.4, 0),
+for (kind, c, r, deg) in (('road_patch_c', 457.5, 44.3, 0), ('road_crack_a', 463.0, 46.9, 0), ('manhole_sq', 478.2, 44.5, 0),
                           ('road_patch_b', 481.0, 46.6, 0), ('road_crack_b', 489.5, 44.0, 90), ('drain', 466.5, R1 + 1 - 8 / 32, 0),
                           ('drain', 490.5, R1 + 1 - 8 / 32, 0), ('oil_stain_b', 458.0, 48.9, 0), ('oil_stain_a', 461.5, 49.2, 0),
                           ('road_arrow', 462.0, LANES1[0], 0), ('road_arrow', 462.0, LANES1[1], 0)):
@@ -996,8 +1015,9 @@ lv.fill(LOT_S[0], R1 + 1, LOT_S[1], R1 + 2, '_')
 lv.fill(LOT_S[0] + 1, R1 + 4, LOT_S[1] - 1, R1 + 5, '+')
 for c in range(LOT_S[0] + 1, LOT_S[1]):
     lv.put(c, R1 + 3, 'L' if c == (LOT_S[0] + LOT_S[1]) // 2 else 'G')
-for c in (458.5, 482.5):
+for c in (445.0, 458.5, 482.5):                                         # (the first lights the T at the alley's foot)
     must('streetlight', c, R1 + 1.28, 270)
+must('sign_oneway', S1 - 1.0, R1 + 1.7, 0)                               # across the T from the alley: east only
 must('sign_freeway', RAMP_X - 3.0, R1 + 1.7, 0)
 lv.dress('papers', LEG1_W, R1 + 1, RAMP_X - 1, R1 + 2, 12)
 lv.cat(472.3, 49.5)
@@ -1012,26 +1032,28 @@ for (kind, c, r) in (('ac_unit', 430.6, 52.6), ('vent', 437.2, 51.8), ('duct', 4
 # whoever comes up it the wrong way, SPEED LIMIT 55, TOLL 1/2 MILE; the freeway's lanes come in alongside (the gore),
 # MERGE painted in our left lane; waste ground at the foot of the bank (off the picture).
 lv.area('part two: the on-ramp')
-pieces('edge_line', RAMP_X, TOLL_X, R1 + 0.92)
-pieces('rumble_strip', RAMP_X + 1, TOLL_X, R1 + 1.45)
-must('guardrail_end', RAMP_X - 0.1, R1 + 2.15, 0, on='"s')
-rail('guardrail', RAMP_X + 1, TOLL_X, R1 + 2.15, 180)
+solid('edge_line', RAMP_X + 0.25, TOLL_X, EDGE_S)                        # (clear of the sidewalk's last kerb)
+solid('rumble_strip', RAMP_X + 1, TOLL_X, RUMBLE_S)
+must('guardrail_end', RAMP_X + 1.0, R1 + 2.15 - 4.5 / 32, 0, on='"')    # its head on the bank, its rail the rail's height
+rail('guardrail', RAMP_X + 2, TOLL_X, R1 + 2.15, 180)
 for c in range(RAMP_X + 2, TOLL_X - 2, 4):
     put('reflector_post', c + 0.5, R1 + 1.86, on='=')
 for c in range(RAMP_X + 2, M0 - 1, 4):
     put('reflector_post', c + 0.5, R0 - 0.3, on='"')
 # (the signs stand at the shoulder's edge, read at a glance: the bank beyond is off the picture)
-must('sign_wrong_way', RAMP_X + 7.0, R1 + 1.7, 270, on='=')
-must('sign_wrong_way', RAMP_X + 7.0, R0 - 0.65, 270, on='"')
+must('sign_wrong_way', RAMP_X + 8.5, R1 + 1.7, 0, on='=')                # (read upright, as every sign: it was turned)
+must('sign_wrong_way', RAMP_X + 8.5, R0 - 0.65, 0, on='"')
 must('sign_speed_55', RAMP_X + 13.0, R1 + 1.7, 0, on='=')
 must('sign_toll_ahead', RAMP_X + 21.0, R1 + 1.7, 0, on='=')
 for c in (515.5, 545.5):
     must('highway_lamp', c, R1 + 2.65, 90, on='"')
-lv.paint('merge_arrow', M0 + 15.0, LANES1[0])
-dashes(RAMP_X, TOLL_X, R0 + 0.08, 12, kind='raised_marker_yellow', at=444, length=0.25)
-dashes(RAMP_X, TOLL_X, R0 + 2.5, 12, kind='raised_marker', at=444, length=0.25)
+lv.paint('merge_arrow', M0 + 12.0, LANES1[0])                           # (between two of the slabs' joints)
+for c in range(RAMP_X + 6, TOLL_X, 9):                                   # cat's eyes in the middle of each gap, the
+    lv.paint('raised_marker', c, R0 + 2.5)                               # yellow ones beside the left edge to the gore
+    if c < M0:
+        lv.paint('raised_marker_yellow', c, EDGE_RAMP + 0.19)
 for (kind, c, r, deg) in (('road_crack_a', 506.0, 46.4, 0), ('road_patch_b', 519.5, 44.4, 0), ('road_crack_b', 538.0, 47.0, 90),
-                          ('road_patch_c', 552.0, 45.0, 0)):
+                          ('road_patch_c', 551.5, 44.2, 0)):
     lv.paint(kind, c, r, deg)
 
 # ---------------------------------------------------------------- leg 1 dressed: Sunset Bay, 1985
@@ -1078,16 +1100,19 @@ must('royal_palm_b', 493.6, 41.8, on='"')
 lv.prop('billboard_tan', 477.0, 42.3 - 50 / 32)                          # (hung: its legs on the bank, its face over the rail)
 lv.prop('billboard_radio', 511.0, 42.3 - 50 / 32)
 must('crash_cushion_hit', 522.4, 42.1, 0, on='"=')
-lv.paint('litter_a', 503.6, 42.25, 90)
+lv.paint('litter_a', 518.6, 42.3)                                         # (off the WRONG WAY's foot)
 lv.area('miami: the cold store, the motel\'s back, the used car lot (south)')
-lv.prop('deco_canopy_mint', 465.9, R1 + 3 - 20 / 32)                    # over the cold store's office door
+lv.put(464, R1 + 3, 'L')                                                  # the cold store's office door, under its canopy
+lv.prop('deco_canopy_mint', 464.5, R1 + 3 - 20 / 32)
 must('royal_palm_b', 466.9, R1 + 1.55)
 lv.paint('tree_grate', 466.9, R1 + 1.55)
 must('pole_sign_motel', 472.7, R1 + 1.45)
 lv.prop('neon_sign_motel', 474.6, R1 + 2.91)                             # (neon reads one way up: never turned)
 must('hibiscus_hedge', 476.6, R1 + 2.42)
 lv.prop('neon_sign_flamingo', 477.4, R1 + 2.91)
-lv.prop('deco_canopy_pink', 480.4, R1 + 3 - 20 / 32)
+for c in range(LOT_S[0] - 14, LOT_S[0] + 1):                             # the motel's back in pink stucco, its door
+    lv.put(c, R1 + 3, 'L' if c == 480 else 'P')                           # under the canopy (both were a blind brick wall)
+lv.prop('deco_canopy_pink', 480.5, R1 + 3 - 20 / 32)
 must('hibiscus_hedge_pink', 483.9, R1 + 2.42)
 lv.prop('neon_sign_vacancy', 483.6, R1 + 2.91)
 must('pole_sign_autos', 485.0, R1 + 1.45)
@@ -1095,30 +1120,33 @@ lv.paint('display_ramp', 490.6, R1 + 2.0)
 must('car2', 490.6, R1 + 2.05, 0, on='_', lights=False)                 # an 80s coupe up on its ramp, for sale
 for c in (487.8, 493.6):
     must('lot_light', c, R1 + 1.25, 0, on='_')
-for (c, r, deg) in ((489.2, R1 + 2.05, 30), (492.2, R1 + 2.05, 150), (490.7, R1 + 1.3, 0)):
-    lv.prop('pennant_string', c, r, deg)                                 # strung from the poles to the showroom's door
+lv.prop('pennant_string', 490.7, R1 + 1.3)                               # strung between the poles (the two strung to the
+                                                                         # door hid the coupe under their flags)
 for c in range(LOT_S[0], LOT_S[1] + 1):                                  # its kerb, dropped at the way in
     lv.paint('kerb_n_low' if 489 <= c <= 491 else 'kerb_n', c + 0.5, R1 + 1 + 1 / 32)
 lv.area('miami: the ramp (an old crash, a call box, palms and hibiscus on its bank, its slabs)')
 lv.props[:] = [p for p in lv.props if not (p[1] == 'guardrail' and abs(p[3] - (R1 + 2.15)) < 0.01 and 526.5 < p[2] < 531.5)]
 boxes[:] = [b for b in boxes if not (abs((b[1] + b[3]) / 2 - (R1 + 2.15)) < 0.05 and 526.5 < (b[0] + b[2]) / 2 < 531.5)]
-end_to_end('guardrail_dented', 529.0, R1 + 2.15, 180)
-lv.paint('tyre_marks', 526.0, 47.73)
-lv.paint('crash_debris', 531.6, R1 + 1.45)
+end_to_end('guardrail_dented', 530.0, R1 + 2.15, 180)
+lv.paint('tyre_marks', 527.0, 47.73)
+lv.paint('crash_debris', 532.6, R1 + 1.45)
 must('call_box', 538.5, R1 + 1.7, 0, on='=')
-lv.prop('sign_gantry', 548.5, F0 + 7.0)                                  # over the merge: the toll told, lit from below
+# the gantry over the gore's nose, where the two roads run side by side a lane apart: each panel over the middle of
+# its own (at the gore's tip they meet: the far panel stood over the freeway's left edge)
+lv.prop('sign_gantry', M0 + 2.5, F0 + 7.6)
 for (kind, c) in (('royal_palm_b', 507.5), ('royal_palm', 525.0), ('royal_palm_b', 541.5), ('royal_palm', 556.0)):
     must(kind, c, R1 + 3.6, on='"')
 must('hibiscus_hedge_pink', 533.6, R1 + 3.45, on='"')
 must('hibiscus_hedge', 550.0, R1 + 3.45, on='"')
-for c in range(RAMP_X + 5, TOLL_X - 1, 6):
-    lv.paint('expansion_joint', c, R0 + 3.0)
-for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (541.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1]),
+for c in range(M0 + 3, TOLL_X, 6):                                      # the freeway's concrete slabs from the gore on (the
+    for r in (39.5, 45.5):                                               # ramp is asphalt): a joint every 6 m right across,
+        lv.paint('expansion_joint', c, r)                                # in step with the toll approach's
+for (c, r) in ((505.0, LANES1[0]), (520.0, LANES1[1]), (544.0, LANES1[0]), (553.0, LANES1[1]), (470.0, LANES1[1]),
                (533.0, 39.25), (551.0, 41.75)):
     lv.paint('oil_streak', c, r)
 # the merge's far side (the freeway's lanes coming in: nobody of his is held up there): a load lost off a truck, the
 # rubber of whoever braked for it, the bits of a mirror
-lv.paint('mattress_dumped', 553.4, 40.4, 160)
+lv.paint('mattress_dumped', 553.8, 39.3, 160)                           # (in a lane, clear of its lines)
 lv.paint('tyre_marks', 543.5, 39.0 + 36 / 32 - 0.3)
 lv.paint('crash_debris', 546.6, 41.9, 90)
 
@@ -1532,7 +1560,6 @@ lv.area('harmony: part two (the street\'s furniture carried on)')
 if drop(lambda k, c, r: k == 'shopping_cart' and abs(c - 461.5) < 0.3):
     must('cart_loaded', 461.5, 41.75, 20, on='"')
 lv.paint('cardboard_sign', 460.4, 42.55)
-lv.paint('cardboard_bed_blanket', 455.2, 42.5, 180)
 must('news_box_yellow', 473.7, 49.62)
 must('news_box_red', 474.3, 49.62)
 lv.paint('litter_bottles', 478.9, 48.6)
@@ -1612,6 +1639,83 @@ def check_bend(path, r, wall=1.5, prop=1.3, scrape=0.6):
         for (px, py) in pts:
             d = math.hypot(max(b[0] - px, 0, px - b[2]), max(b[1] - py, 0, py - b[3]))
             assert d >= (scrape if kind in SCRAPE else prop), f'{kind} at {col},{row} is {d:.2f} from the bend\'s line at {px:.1f},{py:.1f}'
+
+
+# ---------------------------------------------------------------- the paint on the road, checked pixel by pixel
+# Floor paint by what it is: a MARKING (a line, an arrow, a word, a gore, a cat's eye, a rumble strip), a KERB, a COVER
+# (iron in the road), a PATCH. What may lie over a marking (oil, rubber, cracks, a slab's joint, litter, a fallen frond)
+# is not checked: a road has them. Two markings never overlap, nor a marking and a kerb, a cover or a patch, nor two kerbs; no marking
+# runs under a guardrail, a cushion or a fence (RAILS).
+MARKINGS = {'lane_dash_long', 'edge_line', 'edge_line_yellow', 'gore_taper', 'gore_hatch', 'merge_arrow', 'merge_arrow_s',
+            'road_arrow', 'road_arrow_turn', 'raised_marker', 'raised_marker_yellow', 'rumble_strip', 'centre_double', 'stop_line',
+            'zebra_a', 'zebra_b', 'park_tee', 'hatch_yard', 'hatch_bay', 'hatch_kerb', 'detour_arrow_paint',
+            'detour_arrow_paint_left', 'road_bus', 'road_stop', 'road_slow', 'road_keep', 'road_clear', 'road_only', 'road_loading',
+            'toll_text', 'plaza_stripes', 'plaza_line', 'lane_taper', 'plaza_fan', 'toll_lane_1', 'toll_lane_2', 'toll_lane_3',
+            'toll_lane_4'}
+RAILS = ('guardrail', 'crash_cushion', 'jersey_barrier', 'chainlink', 'water_barrier')
+_masks = {}
+
+
+def paint_class(kind):
+    if kind.startswith('kerb_'):
+        return 'kerb'
+    if kind in ('drain', 'manhole_sq', 'valve_cap'):
+        return 'cover'
+    if kind.startswith('road_patch'):
+        return 'patch'
+    return 'mark' if kind in MARKINGS else None
+
+
+def paint_mask(kind, deg):
+    """The opaque pixels of a floor sprite (painted at FINE density: two of its pixels a world px), turned by deg, as
+    world px offsets from its middle."""
+    key = (kind, round(deg, 2) % 360)
+    if key not in _masks:
+        from PIL import Image
+        im = Image.open(f'{ROOT}/assets/sprites/props/{kind}.png').getchannel('A')
+        if key[1]:
+            im = im.rotate(-key[1], resample=Image.NEAREST, expand=True)
+        w, h = im.size
+        a = im.load()
+        _masks[key] = {((x - w / 2) // 2, (y - h / 2) // 2) for y in range(h) for x in range(w) if a[x, y] > 96}
+    return _masks[key]
+
+
+def check_paint_overlaps(col0, col1, tol=2):
+    """The paint between two columns is clean (the rules above): a pair whose pixels overlap by more than `tol` world
+    px is reported. The list of what is wrong ([] when clean)."""
+    near = [f for f in lv.floor if col0 - 14 <= f[1] < col1 + 14 and paint_class(f[0])]
+    px = []
+    for (kind, col, row, deg) in near:
+        cx, cy = round(col * 32), round(row * 32)
+        px.append({(cx + dx, cy + dy) for (dx, dy) in paint_mask(kind, deg)})
+    clash = {('mark', 'mark'), ('kerb', 'mark'), ('cover', 'mark'), ('mark', 'patch'), ('kerb', 'kerb')}
+    out = []
+    for i in range(len(near)):
+        for j in range(i + 1, len(near)):
+            a, b = near[i], near[j]
+            if not (col0 <= a[1] < col1 or col0 <= b[1] < col1):
+                continue
+            if tuple(sorted((paint_class(a[0]), paint_class(b[0])))) not in clash or abs(a[1] - b[1]) > 26:
+                continue
+            if paint_class(a[0]) == 'kerb' and a[0][:6] != b[0][:6]:
+                continue                                      # (a corner's piece over the ends it joins: the kit's way)
+            if a[0] == b[0] and abs(a[2] - b[2]) < 0.01 and a[3] == b[3] and a[3] % 180 == 0:
+                continue                                      # (lengths of one line laid over each other: nothing shows)
+            n = len(px[i] & px[j])
+            if n > (8 if a[0] == b[0] else tol):              # (lengths of one line laid end to end on a slant touch)
+                out.append(f'{a[0]} at {a[1]:.2f},{a[2]:.2f} and {b[0]} at {b[1]:.2f},{b[2]:.2f} overlap by {n} px')
+    for (_, kind, col, row, deg, _) in lv.props:
+        if not (col0 <= col < col1) or not kind.startswith(RAILS) or SIZES.get(kind) is None:
+            continue
+        b = Level.box(kind, col, row, deg)
+        x0, y0, x1, y1 = round(b[0] * 32), round(b[1] * 32), round(b[2] * 32), round(b[3] * 32)
+        for (f, m) in zip(near, px):
+            if paint_class(f[0]) == 'mark' and f[0] != 'rumble_strip':
+                n = sum(1 for (x, y) in m if x0 <= x < x1 and y0 <= y < y1)
+                if n > tol:
+                    out.append(f'{f[0]} at {f[1]:.2f},{f[2]:.2f} runs under {kind} at {col},{row} ({n} px)')
+    return out
 
 
 # ---------------------------------------------------------------- the kerbs
@@ -1702,7 +1806,7 @@ lv.rain = 0
 lights = [[x, 13.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.16 if DARK[0] < x < DARK[1] else 0.3] for x in range(10, WS, 30)]
 lights += [[x, 17.0, 8, '#ffd9a0', 0.35] for x in range(D0 + 3, D1, 9)]      # the diner spills onto its corner
 lights += ALLEY_LIGHTS                                                         # the alley's neon and sodium
-lights += [[x, 46.0, 9, '#ffa860', 0.2] for x in (458, 482)]                   # the frontage road's
+lights += [[x, 46.0, 9, '#ffa860', 0.2] for x in (445, 458, 482)]              # the frontage road's (the first at the T)
 lights += [[x, 39.0, 9, '#ffb46a', 0.22] for x in range(462, TOLL_X, 30)]       # the freeway's lamps along its bank
 lights += [[x, 47.0, 9, '#ffa860', 0.26] for x in (515, 545)]                   # the ramp's
 lights += [[x, 45.5, 9, '#5a6ad8' if (x // 15) % 2 else '#7a5ad8', 0.26] for x in (RAMP_X + 2, 530)]   # the night between
@@ -1856,6 +1960,8 @@ if __name__ == '__main__':
     check_lanes()
     for B in BENDS:
         check_bend(B['path'], B['radius'])
+    bad = check_paint_overlaps(LEG1, TOLL_X)                 # leg 1 and the alley (cols 446-559)
+    assert not bad, 'the paint overlaps:\n' + '\n'.join(bad)
     lv.check(guards=0)
     lv.write('level2a', name='THE CHASE', subtitle='SUNSET BAY  -  MARCH 16TH 1986  -  1:40 AM',
              lights=lights, ambient=ambient, chase=chase, header=[
