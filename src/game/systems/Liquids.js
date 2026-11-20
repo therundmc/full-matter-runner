@@ -10,12 +10,16 @@
 // What it does: a wet floor grips less (World.floorGrip; a slick kind floors runners, systems/Slips.js); whoever
 // walks in it splashes, pushes it along, then prints fading footprints on the dry floor or one long smear when
 // sliding (`decals.footprint` / `decals.smear`, event 'footprint' for the guards); drops landing in it ring.
+// The grid is sparse (engine/physics/Shallow.js): its chunks are made where liquid is poured or runs, and let go once
+// dry and still (`sweep`); a chunk made again gets its floor from here as the whole floor was laid at the start (its
+// level and bumps, a road's camber, the manholes, the rain's hollows), and what is solid from the map, the doors and
+// the furniture as they last stood (`gated`): it is as it would have been.
 // DOM-free: render/LiquidArt.js draws the grid and paints the stains it hands over (`stained`).
 // Listens to 'propDestroyed' (a `fountain` prop: the hydrant) and 'spill'.
 import { TILE } from '../Config.js';
 import { LIQUIDS } from '../data/liquids.js';
 import { rand, angDiff, TAU, seeded } from '../../engine/math.js';
-import Shallow from '../../engine/physics/Shallow.js';
+import Shallow, { CH } from '../../engine/physics/Shallow.js';
 import { bytesOf } from '../../engine/Bytes.js';
 
 const JUMP = 48;   // px in one step: a teleport, not a stride
@@ -38,20 +42,25 @@ export default class Liquids {
     this.names = Object.keys(cfg.kinds);
     this.kinds = this.names.map((n) => cfg.kinds[n]);
     const m = world.map, C = cfg.cell;
-    this.sim = new Shallow(Math.ceil(m.widthPx / C), Math.ceil(m.heightPx / C), C, this.kinds, cfg);
-    this.lay(m, world.level);
+    this.walled = false;      // the map's walls laid in the grid (at the first step: walls())
+    this.gated = new Map();   // cell -> solid or not, as a door or a piece of furniture last left it (look)
+    this.dents = new Map();   // cell -> [mm, ...] the rain's hollows dug in its floor (seed)
+    this.prepare(m, world.level);
+    this.sim = new Shallow(Math.ceil(m.widthPx / C), Math.ceil(m.heightPx / C), C, this.kinds,
+      { ...cfg, floor: (S, c, a0) => this.lay(S, c, a0), solid: (i) => this.solidOf(i) });
     this.sources = [];
     this.walkers = new Map(); // character -> { x, y, kind, left, dist, side }
     this.bled = new Map();    // corpse -> the radius of its pool already poured
     this.ripples = [];        // { x, y, t, life, size, kind }
-    this.stain = new Float32Array(this.sim.N); // mm of what stained each cell when it set or dried
+    this.stains = new Map();  // chunk -> mm of what stained each of its cells when it set or dried (made where some did)
     this.stained = [];        // cells set or dried since the drawing last painted them
-    this.onDry = (i, mm) => { this.stain[i] = mm; if (this.stained.length < cfg.maxStains) this.stained.push(i); };
+    this.onDry = (i, mm) => { this.stain(i, mm); if (this.stained.length < cfg.maxStains) this.stained.push(i); };
     this.version = -1;
     this.gates = null;        // doors and furniture holding the liquid, linked at the first step
     this.clock = 0;
     this.dryT = 0;
     this.checkT = 0;
+    this.sweepT = 0;
     this.tick = 0;
     world.events.on('propDestroyed', ({ prop, x, y }) => {
       if (prop.def.fountain) this.source(x, y, cfg.hydrant);
@@ -66,62 +75,141 @@ export default class Liquids {
   // what its arrays hold, the flow's included, bytes (engine/Bytes.js; the perf overlay)
   bytes(seen) { return bytesOf([this, this.sim], seen); }
 
+  // its grid let go (World.dispose): the world is not stepped again
+  dispose() {
+    this.sim = null;
+    this.stains.clear();
+    this.dents.clear();
+    this.gated.clear();
+  }
+
+  // mm of what stained cell i when it set or dried (0: nothing did), kept by chunk
+  stainOf(i) {
+    const S = this.sim, t = this.stains.get(S.chunkOf(i)), x = i % S.w;
+    return t ? t[(((i - x) / S.w) & (CH - 1)) * CH + (x & (CH - 1))] : 0;
+  }
+  stain(i, mm) {
+    const S = this.sim, c = S.chunkOf(i), x = i % S.w;
+    let t = this.stains.get(c);
+    if (!t) this.stains.set(c, (t = new Float32Array(CH * CH)));
+    t[(((i - x) / S.w) & (CH - 1)) * CH + (x & (CH - 1))] = mm;
+  }
+
   // ---- the floor: its level and what it drinks
 
-  lay(m, level = {}) {
-    const S = this.sim, C = this.cfg.cell, F = this.cfg.floors, R = seeded(7411 + (level.name || '').length);
-    const broad = noise(R), fine = noise(R), rf = this.cfg.relief, road = new Set(this.cfg.road.floors);
-    const isRoad = new Uint8Array(S.N);
-    for (let gy = 0; gy < S.h; gy++) {
-      for (let gx = 0; gx < S.w; gx++) {
-        const i = gy * S.w + gx, tx = Math.floor((gx * C) / TILE), ty = Math.floor((gy * C) / TILE);
-        const name = tx < m.w && ty < m.h ? m.floor[ty * m.w + tx] : null, f = F[name] || F.concrete;
-        const bump = broad(gx / rf.size, gy / rf.size) * rf.share + fine(gx / rf.fine + 31, gy / rf.fine + 17) * (1 - rf.share);
-        S.z[i] = f.z + (bump - 0.5) * 2 * f.rough;
-        S.soak[i] = f.soak;
-        if (road.has(name)) isRoad[i] = 1;
+  // what the floor is made of, kept as it was when the level started (a wall knocked down is left as it was laid);
+  // its bumps (two noises), its roads and their camber's reach, its manholes
+  prepare(m, level = {}) {
+    const R = seeded(7411 + (level.name || '').length), road = new Set(this.cfg.road.floors);
+    this.broad = noise(R);
+    this.fine = noise(R);
+    this.floors = m.floor.slice();
+    this.roads = Uint8Array.from(this.floors, (f) => (road.has(f) ? 1 : 0));
+    this.tiles = [m.w, m.h];
+    // past this many cells from a kerb the camber is at its most: no need to count further
+    this.reach = Math.ceil(this.cfg.road.max / this.cfg.road.camber) + 1;
+    this.manholes = level.street?.manholes || [];
+  }
+
+  // the floor's tile under cell (gx, gy): its index in the map, -1 out of it
+  tileOf(gx, gy) {
+    const C = this.cfg.cell, tx = Math.floor((gx * C) / TILE), ty = Math.floor((gy * C) / TILE), [w, h] = this.tiles;
+    return tx < w && ty < h ? ty * w + tx : -1;
+  }
+
+  // a chunk of the grid made (Shallow `floor`, its first cell at address a0): its cells' level and what they drink
+  lay(S, c, a0) {
+    const C = this.cfg.cell, F = this.cfg.floors, rf = this.cfg.relief, { camber, max } = this.cfg.road;
+    const cx = (c % S.cw) * CH, cy = ((c / S.cw) | 0) * CH, x1 = Math.min(S.w, cx + CH), y1 = Math.min(S.h, cy + CH);
+    const dist = this.camber(S, cx, cy);
+    for (let gy = cy; gy < y1; gy++) {
+      for (let gx = cx; gx < x1; gx++) {
+        const a = a0 + (gy - cy) * CH + gx - cx, t = this.tileOf(gx, gy), name = t >= 0 ? this.floors[t] : null, f = F[name] || F.concrete;
+        const bump = this.broad(gx / rf.size, gy / rf.size) * rf.share + this.fine(gx / rf.fine + 31, gy / rf.fine + 17) * (1 - rf.share);
+        S.z[a] = f.z + (bump - 0.5) * 2 * f.rough;
+        S.soak[a] = f.soak;
+        if (t >= 0 && this.roads[t]) S.z[a] += Math.min(max, dist[(gy - cy) * CH + gx - cx] * camber);
       }
     }
-    this.camber(isRoad);
     // the manholes swallow what runs into them
     const d = this.cfg.drain;
-    for (const [c, r] of level.street?.manholes || []) {
-      const x = c * TILE, y = r * TILE;
-      for (let gy = Math.floor((y - d.r) / C); gy <= Math.floor((y + d.r) / C); gy++) {
-        for (let gx = Math.floor((x - d.r) / C); gx <= Math.floor((x + d.r) / C); gx++) {
-          if (gx < 0 || gy < 0 || gx >= S.w || gy >= S.h) continue;
-          if (Math.hypot((gx + 0.5) * C - x, (gy + 0.5) * C - y) <= d.r) { S.soak[gy * S.w + gx] += d.soak; S.z[gy * S.w + gx] -= d.dip; }
+    for (const [mc, mr] of this.manholes) {
+      const x = mc * TILE, y = mr * TILE;
+      for (let gy = Math.max(cy, Math.floor((y - d.r) / C)); gy <= Math.min(y1 - 1, Math.floor((y + d.r) / C)); gy++) {
+        for (let gx = Math.max(cx, Math.floor((x - d.r) / C)); gx <= Math.min(x1 - 1, Math.floor((x + d.r) / C)); gx++) {
+          if (Math.hypot((gx + 0.5) * C - x, (gy + 0.5) * C - y) > d.r) continue;
+          const a = a0 + (gy - cy) * CH + gx - cx;
+          S.soak[a] += d.soak;
+          S.z[a] -= d.dip;
         }
       }
     }
-  }
-
-  // a road rises away from its kerbs (a breadth-first count of cells from the nearest one that is not road)
-  camber(isRoad) {
-    const S = this.sim, { camber, max } = this.cfg.road, dist = new Int32Array(S.N).fill(-1), queue = new Int32Array(S.N);
-    let head = 0, tail = 0;
-    for (let i = 0; i < S.N; i++) if (!isRoad[i]) { dist[i] = 0; queue[tail++] = i; }
-    while (head < tail) {
-      const i = queue[head++], x = i % S.w;
-      for (const j of [x > 0 ? i - 1 : -1, x < S.w - 1 ? i + 1 : -1, i - S.w, i + S.w]) {
-        if (j < 0 || j >= S.N || dist[j] >= 0) continue;
-        dist[j] = dist[i] + 1;
-        queue[tail++] = j;
+    // the rain's hollows dug since the start
+    if (!this.dents.size) return;
+    for (let gy = cy; gy < y1; gy++) {
+      for (let gx = cx; gx < x1; gx++) {
+        const dz = this.dents.get(gy * S.w + gx);
+        if (dz) for (const v of dz) S.z[a0 + (gy - cy) * CH + gx - cx] -= v;
       }
     }
-    for (let i = 0; i < S.N; i++) if (isRoad[i]) S.z[i] += Math.min(max, dist[i] * camber);
+  }
+
+  // a road rises away from its kerbs: for each cell of the chunk at (cx, cy), how many cells it is from the nearest
+  // one that is not road (a breadth-first count from those within `reach`: farther, the camber is at its most)
+  camber(S, cx, cy) {
+    const R = this.reach, x0 = Math.max(0, cx - R), y0 = Math.max(0, cy - R), x1 = Math.min(S.w, cx + CH + R), y1 = Math.min(S.h, cy + CH + R);
+    const W = x1 - x0, n = W * (y1 - y0), dist = new Int32Array(n).fill(-1), queue = new Int32Array(n), out = new Int32Array(CH * CH).fill(R);
+    let head = 0, tail = 0;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const t = this.tileOf(x, y), j = (y - y0) * W + x - x0;
+        if (t < 0 || !this.roads[t]) { dist[j] = 0; queue[tail++] = j; }
+      }
+    }
+    while (head < tail) {
+      const j = queue[head++], x = j % W;
+      for (const k of [x > 0 ? j - 1 : -1, x < W - 1 ? j + 1 : -1, j - W, j + W]) {
+        if (k < 0 || k >= n || dist[k] >= 0) continue;
+        dist[k] = dist[j] + 1;
+        queue[tail++] = k;
+      }
+    }
+    for (let y = cy; y < Math.min(S.h, cy + CH); y++) {
+      for (let x = cx; x < Math.min(S.w, cx + CH); x++) {
+        const v = dist[(y - y0) * W + x - x0];
+        if (v >= 0 && v < R) out[(y - cy) * CH + x - cx] = v;
+      }
+    }
+    return out;
+  }
+
+  // is cell i solid (a cell of the grid not made yet): a wall or a window once the walls are laid, else as a door
+  // or a piece of furniture last left it
+  solidOf(i) {
+    if (this.walled) {
+      const m = this.world.map, S = this.sim, C = this.cfg.cell, gx = i % S.w;
+      const tx = Math.floor((gx * C) / TILE), ty = Math.floor((((i - gx) / S.w) * C) / TILE);
+      if (m.isSolid(tx, ty) || m.at(tx, ty) === 'G') return 1;
+    }
+    return this.gated.get(i) ?? 0;
   }
 
   // walls (and the windows in them: the sill is above the floor) hold it
+  // (on the chunks made, in the order of the whole grid; those not made ask solidOf when they are)
   walls() {
     const m = this.world.map, S = this.sim, C = this.cfg.cell;
     this.version = m.version ?? 0;
+    this.walled = true;
+    this.gated.clear();
     for (let gy = 1; gy < S.h - 1; gy++) {
+      const row = Math.floor(gy / CH) * S.cw;
       for (let gx = 1; gx < S.w - 1; gx++) {
+        if (S.slot[row + Math.floor(gx / CH)] < 0) { gx += CH - 1 - (gx % CH); continue; }
         const tx = Math.floor((gx * C) / TILE), ty = Math.floor((gy * C) / TILE);
         S.setSolid(gy * S.w + gx, m.isSolid(tx, ty) || m.at(tx, ty) === 'G' ? 1 : 0);
       }
     }
+    for (let c = 0; c < S.slot.length; c++) if (S.slot[c] < 0) S.ver[c]++; // (what they show beside a wet one may change)
     if (this.gates) for (const g of this.gates) g.on = null; // laid again at the next look
   }
 
@@ -160,7 +248,9 @@ export default class Liquids {
       g.on = on;
       for (const i of g.cells) {
         const tx = Math.floor(((i % S.w) * C) / TILE), ty = Math.floor((Math.floor(i / S.w) * C) / TILE);
-        if (!m.isSolid(tx, ty) && m.at(tx, ty) !== 'G') S.setSolid(i, on ? 1 : 0);
+        if (m.isSolid(tx, ty) || m.at(tx, ty) === 'G' || S.solidAt(i) === +on) continue;
+        this.gated.set(i, +on);
+        S.setSolid(i, +on);
       }
     }
   }
@@ -176,11 +266,13 @@ export default class Liquids {
         for (let gx = Math.floor((p.x - R) / C); gx <= Math.floor((p.x + R) / C); gx++) {
           if (gx < 1 || gy < 1 || gx >= S.w - 1 || gy >= S.h - 1) continue;
           const i = gy * S.w + gx, x = (gx + 0.5) * C, y = (gy + 0.5) * C;
-          if (S.solid[i]) continue;
+          if (S.solidAt(i)) continue;
           let k = 0;
           for (const [bx, by, rx, ry] of blobs) k = Math.max(k, 1 - ((x - bx) / rx) ** 2 - ((y - by) / ry) ** 2);
           if (k <= 0) continue;
-          S.z[i] -= rain.hollow * Math.sqrt(k);
+          const v = rain.hollow * Math.sqrt(k);
+          S.z[S.cellOf(i)] -= v;
+          if (this.dents.has(i)) this.dents.get(i).push(v); else this.dents.set(i, [v]);
           cells.push(i);
         }
       }
@@ -188,12 +280,12 @@ export default class Liquids {
       // and it never dries under that
       const inside = new Set(cells);
       let rim = Infinity;
-      for (const i of cells) for (const j of [i - 1, i + 1, i - S.w, i + S.w]) if (!inside.has(j) && !S.solid[j]) rim = Math.min(rim, S.z[j]);
+      for (const i of cells) for (const j of [i - 1, i + 1, i - S.w, i + S.w]) if (!inside.has(j) && !S.solidAt(j)) rim = Math.min(rim, S.z[S.cellOf(j)]);
       for (const i of cells) {
-        const h = rim - rain.margin - S.z[i];
+        const h = rim - rain.margin - S.z[S.cellOf(i)];
         if (h < rain.min) continue;
         S.addCell(i, h, wet, 0);
-        S.rest[i] = h;
+        S.rest[S.addr(i)] = h;
       }
     }
     // the petrol poured in trails (level `petrol`: [width px, [col, row], ...]), a pour every `step` px of them
@@ -239,34 +331,37 @@ export default class Liquids {
   // a drop falls in at (x, y): a ring spreads if there is standing liquid there
   ripple(x, y, size) {
     const S = this.sim, i = S.index(x, y), R = this.cfg.ripple;
-    if (i < 0 || S.dep[i] < S.film[i] * this.cfg.splash || this.ripples.length >= R.max) return;
-    this.ripples.push({ x, y, t: 0, life: rand(...R.life), size: size ?? rand(...R.size), kind: S.dom[i] });
+    if (i < 0) return;
+    const a = S.addr(i), dep = a < 0 ? 0 : S.dep[a], film = a < 0 ? 0 : S.film[a];
+    if (dep < film * this.cfg.splash || this.ripples.length >= R.max) return;
+    this.ripples.push({ x, y, t: 0, life: rand(...R.life), size: size ?? rand(...R.size), kind: a < 0 ? 255 : S.dom[a] });
   }
 
   // ---- reading
 
   // the wet under a point, if any: { kind, depth (films), slip }
   at(x, y) {
-    const S = this.sim, i = S.index(x, y);
-    if (i < 0 || S.solid[i]) return null;
-    const d = S.dep[i], f = S.film[i];
+    const S = this.sim, a = S ? S.addr(S.index(x, y)) : -1;
+    if (a < 0 || S.solid[a]) return null;
+    const d = S.dep[a], f = S.film[a];
     if (d <= 0 || d < f * this.cfg.wet) return null;
-    return { kind: this.names[S.dom[i]], depth: d / f, slip: S.slip[i] > 0.5 };
+    return { kind: this.names[S.dom[a]], depth: d / f, slip: S.slip[a] > 0.5 };
   }
 
   // floor grip multiplier at a point (a film deep or more: its kinds' grip; thinner, part of it)
   grip(x, y) {
-    const S = this.sim, i = S.index(x, y);
-    if (i < 0) return 1;
-    const d = S.dep[i], f = S.film[i];
+    const S = this.sim, a = S ? S.addr(S.index(x, y)) : -1;
+    if (a < 0) return 1;
+    const d = S.dep[a], f = S.film[a];
     if (d <= 0 || d < f * this.cfg.wet) return 1;
-    return 1 - (1 - S.grip[i]) * Math.min(1, d / f);
+    return 1 - (1 - S.grip[a]) * Math.min(1, d / f);
   }
 
   // ---- stepping
 
   update(dt) {
     const w = this.world, S = this.sim, c = this.cfg;
+    if (!S) return;
     if ((w.map.version ?? 0) !== this.version) this.walls();
     if (!this.gates) this.link();
     if ((this.checkT -= dt) <= 0) { this.checkT = c.check; this.look(); }
@@ -281,6 +376,7 @@ export default class Liquids {
     this.clock = Math.min(this.clock + dt, P * 2);
     while (this.clock >= P) { this.clock -= P; S.step(P); }
     if ((this.dryT += dt) >= c.dryEvery) { S.dry(this.dryT, this.onDry); this.dryT = 0; }
+    if ((this.sweepT += dt) >= c.sweep) { S.sweep(); this.sweepT = 0; } // the chunks left dry and still let go
     for (const r of this.ripples) r.t += dt;
     if (this.ripples.length) this.ripples = this.ripples.filter((r) => r.t < r.life);
     this.tick++;

@@ -279,12 +279,10 @@ test('map: a retry copies the level\'s own painting kept from the first build in
     b.dispose();
     assert.equal(floor.width, 0);
     assert.ok([...kept.floor.values(), ...kept.walls.values()].every((c) => c.width > 0));
-    // two levels built after it, it is let go
-    bakedFor({ tiles: rows }, 1);
-    assert.equal(bakedFor(level, a.floorScale), kept, 'kept while it is one of the last two');
+    // another level built after it, it is let go
+    assert.equal(bakedFor(level, a.floorScale), kept, 'kept while it is the last one');
     bakedFor({ tiles: ['X'] }, 1);
-    bakedFor({ tiles: ['XX'] }, 1);
-    assert.ok(kept.gone && kept.floor.size === 0, 'only the last two levels are kept');
+    assert.ok(kept.gone && kept.floor.size === 0, 'only the last level is kept');
     assert.notEqual(bakedFor(level, a.floorScale), kept);
     // a level whose tiles changed is painted again
     const edited = { tiles: rows }, before = bakedFor(edited, 1);
@@ -294,11 +292,11 @@ test('map: a retry copies the level\'s own painting kept from the first build in
   } finally { globalThis.document = doc; }
 });
 
-test('world: dispose lets every canvas go once, and is safe to call again', () => {
+test('world: dispose lets every canvas (and the liquid grid) go once, and is safe to call again', () => {
   const calls = [];
   const part = (name) => ({ dispose: () => calls.push(name) });
-  const w = { decals: part('decals'), renderer: part('renderer'), lighting: part('lighting') };
+  const w = { decals: part('decals'), renderer: part('renderer'), lighting: part('lighting'), liquids: part('liquids') };
   World.prototype.dispose.call(w);
   World.prototype.dispose.call(w);
-  assert.deepEqual(calls, ['decals', 'renderer', 'lighting']);
+  assert.deepEqual(calls, ['decals', 'renderer', 'lighting', 'liquids']);
 });

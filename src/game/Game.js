@@ -329,6 +329,7 @@ export default class Game {
     this.levelId = LEVELS[id] ? id : this.firstLevel();
     this.forget(retry, resume);
     this.world?.dispose?.(); // the last run's canvases let go before the new one makes its own
+    this.world = null;   // (nothing here holds the old world while the new one is built: it can be collected then)
     this.interp.still(); // (its bodies held there would keep the old world, all its buffers, alive through the new one)
     this.world = new World(this, LEVELS[this.levelId]);
     this.aimTo(this.world); // before its first step: a melee swing reads it (Player.startLunge)

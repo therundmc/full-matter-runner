@@ -9,6 +9,7 @@ const { LIQUIDS } = await load('game/data/liquids.js');
 const { default: EventBus } = await load('engine/EventBus.js');
 const { default: TileMap } = await load('game/world/TileMap.js');
 const { default: Liquids } = await load('game/systems/Liquids.js');
+const { seeded } = await load('engine/math.js');
 
 // two rooms of wood floor, a wall between them at column 10 with a doorway at row 5
 const ROWS = [
@@ -46,7 +47,7 @@ function go(liquids, ch, dx, steps) {
 function rooms(liquids) {
   const S = liquids.sim, C = LIQUIDS.cell;
   let left = 0, right = 0;
-  for (let i = 0; i < S.N; i++) if ((i % S.w) * C < 10 * TILE) left += S.dep[i]; else right += S.dep[i];
+  for (let i = 0; i < S.N; i++) if ((i % S.w) * C < 10 * TILE) left += S.depth(i); else right += S.depth(i);
   return { left, right };
 }
 const shut = (x) => ({ hx: x, hy: 5 * TILE, a0: Math.PI / 2, len: TILE, locked: false, body: { angle: Math.PI / 2 } });
@@ -182,10 +183,10 @@ test('liquids: the rain lies in hollows of the open ground, at rest, never dries
   liquids.update(1 / 30);
   const z = liquids.at(puddle.x, puddle.y);
   assert.equal(z?.kind, 'rain');
-  const before = liquids.sim.total(), S = liquids.sim, i = S.index(puddle.x, puddle.y), d = S.dep[i];
+  const before = liquids.sim.total(), S = liquids.sim, i = S.index(puddle.x, puddle.y), d = S.depth(i);
   run(liquids, 1);
   assert.equal(S.active.length + S.next.length, 0, 'at rest from the start: asleep');
-  assert.equal(S.dep[i], d, 'level: nothing moved');
+  assert.equal(S.depth(i), d, 'level: nothing moved');
   for (let t = 0; t < 300; t += 0.5) liquids.update(0.5);
   assert.ok(Math.abs(liquids.sim.total() - before) < 1e-3, 'it does not dry');
   const ch = walker(puddle.x - 4, puddle.y);
@@ -199,7 +200,7 @@ test('liquids: the petrol poured in trails lies along them; the sprinklers wet a
   const { liquids } = stub({ level });
   liquids.update(1 / 30);
   const S = liquids.sim, k = liquids.names.indexOf('petrol');
-  const petrol = (x, y) => S.vol[S.index(x, y) * S.K + k];
+  const petrol = (x, y) => { const a = S.addr(S.index(x, y)); return a < 0 ? 0 : S.vol[a * S.K + k]; };
   assert.ok(petrol(4 * TILE, 4 * TILE) > 0 && petrol(5 * TILE, 5 * TILE) > 0 && petrol(6 * TILE, 6 * TILE) > 0, 'all along the trail');
   assert.ok(petrol(9 * TILE, 4 * TILE) > 0, 'a pool');
   assert.equal(petrol(15 * TILE, 4 * TILE), 0, 'not where nobody poured any');
@@ -232,8 +233,13 @@ test('liquids: a pool of blood against a wall is drawn short of it (LIQUIDS.look
     assert.ok(S.depthAt(face - 2, 3 * TILE) > 0, 'the blood is right up against the wall');
     const art = new LiquidArt(world);
     art.setup(S);
-    for (let c = 0; c < S.cw * S.ch; c++) art.fill(c);
-    const at = (x, y) => art.color.px[Math.floor(y / px) * art.TW + Math.floor(x / px)];
+    // every chunk painted, its patch laid into one picture of the map
+    const map = new Uint32Array(art.TW * art.TH), P = art.patch;
+    for (let c = 0; c < S.cw * S.ch; c++) {
+      const [x, y, w, h] = art.fill(c);
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) map[(y + j) * art.TW + x + i] = P.color.px[j * P.w + i];
+    }
+    const at = (x, y) => map[Math.floor(y / px) * art.TW + Math.floor(x / px)];
     let near = 0, open = 0;
     for (let y = 2 * TILE; y < 4 * TILE; y += px) {
       for (let x = face - 2; x < face + TILE; x += px) if (at(x + 0.5, y + 0.5)) near++;
@@ -242,4 +248,118 @@ test('liquids: a pool of blood against a wall is drawn short of it (LIQUIDS.look
     assert.equal(near, 0, 'nothing drawn on the wall nor within the gap');
     assert.ok(open > 0, 'drawn on the floor by it');
   } finally { delete globalThis.document; }
+});
+
+test('liquids: the wet floor is painted into a window round the view, not a map-sized buffer; it follows the view', async () => {
+  const { default: LiquidArt } = await load('game/render/LiquidArt.js');
+  const puts = [];
+  const ctx = {
+    createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }),
+    putImageData: (img, x, y) => puts.push([x, y]), drawImage() {}, clearRect() {}, save() {}, restore() {},
+  };
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+  try {
+    const rows = ['#'.repeat(120)];
+    for (let r = 0; r < 8; r++) rows.push('#' + '.'.repeat(118) + '#');
+    rows.push('#'.repeat(120));
+    const { world, liquids } = stub({ map: new TileMap(rows) });
+    world.events.emit('spill', { x: 5 * TILE, y: 4 * TILE, kind: 'water', area: 600 });
+    world.events.emit('spill', { x: 110 * TILE, y: 4 * TILE, kind: 'beer', area: 600 });
+    run(liquids, 1);
+    world.liquids = liquids;
+    const art = new LiquidArt(world), px = LIQUIDS.look.px;
+    art.draw(ctx, { x0: 0, y0: 0, x1: 12 * TILE, y1: 9 * TILE });
+    const W = art.win, span = (16 * LIQUIDS.cell) / px;
+    assert.ok(art.shown && puts.length > 0, 'the near spill painted');
+    assert.ok(W.color.c.width < art.TW / 4, `a window, not the map: ${W.color.c.width} of ${art.TW} texels`);
+    assert.ok(puts.every(([x, y]) => x >= 0 && y >= 0 && x < W.color.c.width && y < W.color.c.height), 'into the window');
+    const seen = [...art.drawn].filter((v) => v >= 0).length;
+    puts.length = 0;
+    art.draw(ctx, { x0: 106 * TILE, y0: 0, x1: 118 * TILE, y1: 9 * TILE });
+    assert.ok(art.win.ox * span * px > 90 * TILE, 'set again round the far view');
+    assert.ok(art.shown && puts.length > 0, 'the far spill painted into it');
+    assert.ok([...art.drawn].filter((v) => v >= 0).length <= seen + 40, 'what left the window is to be painted afresh');
+    art.dispose();
+    assert.equal(art.win, null);
+  } finally { delete globalThis.document; }
+});
+
+// the floor's bumps as systems/Liquids.js makes them (a copy: the reference below lays the whole map with it)
+function bumps(R) {
+  const N = 64, lat = Float32Array.from({ length: N * N }, R);
+  const at = (x, y) => lat[(y & (N - 1)) * N + (x & (N - 1))];
+  return (x, y) => {
+    const i = Math.floor(x), j = Math.floor(y), u = x - i, v = y - j, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+    const a = at(i, j) + (at(i + 1, j) - at(i, j)) * su, b = at(i, j + 1) + (at(i + 1, j + 1) - at(i, j + 1)) * su;
+    return a + (b - a) * sv;
+  };
+}
+
+test('liquids: a chunk of the sparse grid gets the floor the whole map was laid with (bumps, camber, manholes), made early or late', () => {
+  // a street: pavements, a wide road with a line, manholes; a wall row on top and at the bottom
+  const rows = ['#'.repeat(60)];
+  for (let r = 1; r < 18; r++) rows.push(r < 4 || r > 14 ? 's'.repeat(60) : r === 9 ? '-'.repeat(60) : '='.repeat(60));
+  rows.push('#'.repeat(60));
+  const level = { name: 'street', street: { manholes: [[20, 8], [41.5, 12]] } };
+  const map = new TileMap(rows);
+  const { liquids } = stub({ map, level });
+  const S = liquids.sim, C = LIQUIDS.cell;
+  // the floor as it was laid over the whole grid at once (the camber: a breadth-first count over all of it)
+  const N = S.w * S.h, z = new Float32Array(N), soak = new Float32Array(N), isRoad = new Uint8Array(N), F = LIQUIDS.floors, rf = LIQUIDS.relief;
+  const R = seeded(7411 + level.name.length), broad = bumps(R), fine = bumps(R), road = new Set(LIQUIDS.road.floors);
+  for (let gy = 0; gy < S.h; gy++) {
+    for (let gx = 0; gx < S.w; gx++) {
+      const i = gy * S.w + gx, tx = Math.floor((gx * C) / TILE), ty = Math.floor((gy * C) / TILE);
+      const name = tx < map.w && ty < map.h ? map.floor[ty * map.w + tx] : null, f = F[name] || F.concrete;
+      const bump = broad(gx / rf.size, gy / rf.size) * rf.share + fine(gx / rf.fine + 31, gy / rf.fine + 17) * (1 - rf.share);
+      z[i] = f.z + (bump - 0.5) * 2 * f.rough; soak[i] = f.soak;
+      if (road.has(name)) isRoad[i] = 1;
+    }
+  }
+  const dist = new Int32Array(N).fill(-1), queue = new Int32Array(N);
+  let head = 0, tail = 0;
+  for (let i = 0; i < N; i++) if (!isRoad[i]) { dist[i] = 0; queue[tail++] = i; }
+  while (head < tail) {
+    const i = queue[head++], x = i % S.w;
+    for (const j of [x > 0 ? i - 1 : -1, x < S.w - 1 ? i + 1 : -1, i - S.w, i + S.w]) {
+      if (j < 0 || j >= N || dist[j] >= 0) continue;
+      dist[j] = dist[i] + 1; queue[tail++] = j;
+    }
+  }
+  for (let i = 0; i < N; i++) if (isRoad[i]) z[i] += Math.min(LIQUIDS.road.max, dist[i] * LIQUIDS.road.camber);
+  const d = LIQUIDS.drain;
+  for (const [c, r] of level.street.manholes) {
+    const x = c * TILE, y = r * TILE;
+    for (let gy = Math.floor((y - d.r) / C); gy <= Math.floor((y + d.r) / C); gy++) {
+      for (let gx = Math.floor((x - d.r) / C); gx <= Math.floor((x + d.r) / C); gx++) {
+        if (Math.hypot((gx + 0.5) * C - x, (gy + 0.5) * C - y) <= d.r) { soak[gy * S.w + gx] += d.soak; z[gy * S.w + gx] -= d.dip; }
+      }
+    }
+  }
+  liquids.feed(20 * TILE, 8 * TILE, 400, 'water'); // a few chunks made early, the rest late
+  run(liquids, 0.5);
+  assert.ok(S.count > 0 && S.count < S.cw * S.ch, 'made only where something ran');
+  let bad = 0;
+  for (let i = 0; i < N; i++) { const a = S.cellOf(i); if (S.z[a] !== z[i] || S.soak[a] !== soak[i]) bad++; }
+  assert.equal(bad, 0, `${bad} cells laid otherwise`);
+});
+
+test('liquids: the grid is made where something is wet and let go once it has dried; a shut door still holds when made again', () => {
+  const { world, liquids } = stub();
+  const S = liquids.sim;
+  world.doors.push(shut(10 * TILE));
+  liquids.update(1 / 30);
+  const door = S.index(10 * TILE, 5 * TILE + 8);
+  assert.equal(S.solidAt(door), 1, 'the door holds');
+  world.events.emit('spill', { x: 4 * TILE, y: 3 * TILE, kind: 'water', area: 300 });
+  run(liquids, 2);
+  assert.ok(S.count > 0);
+  for (let t = 0; t < 900 && S.total() > 0; t += 0.5) liquids.update(0.5);
+  run(liquids, LIQUIDS.sweep + 1, 0.5);
+  assert.equal(S.total(), 0);
+  assert.equal(S.count, 0, 'all let go');
+  assert.equal(S.solidAt(door), 1, 'the door still holds');
+  S.cellOf(door);
+  assert.equal(S.solidAt(door), 1, 'made again: the door holds');
+  assert.equal(S.solidAt(S.index(10 * TILE + 8, 2 * TILE)), 1, 'and the wall');
 });

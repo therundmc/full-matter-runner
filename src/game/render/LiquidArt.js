@@ -1,5 +1,5 @@
 // Canvas side of the liquid on the floor (systems/Liquids.js over engine/physics/Shallow.js, LIQUIDS.look in
-// data/liquids.js). The grid is painted into a map-sized buffer a texel of `look.px` world px at a time: at each
+// data/liquids.js). The grid is painted into a buffer a texel of `look.px` world px at a time: at each
 // texel the depth (in films of what lies there), softened a little over the cells round it, is mixed between the
 // four nearest cells, roughened by a still noise of the texel's place (steady as the view moves) and cut into flat
 // steps: its edge line (lit on the side the light comes from, the top left), its thin film, its body,
@@ -8,6 +8,8 @@
 // along the edge of a fresh flow of beer and in clumps on it (where the still noise is high: never a dither), a
 // petrol's rainbow bands. Only the chunks whose cells changed are painted again (and
 // only once they are in view); the buffer is drawn with the floor, before the lighting (the light map lights it).
+// The buffer is a window on the map round the view (`look.margin` chunks each way), not the map: when the view
+// leaves it, it is set again round the view and the wet chunks in view are painted into it afresh.
 // A second buffer says how much of the lights each texel mirrors (Lighting.post draws the reflections through it).
 // Blood that has set (or dried) is painted for good into the blood layer of the floor, dry.
 // Ripples: rings of single pixels spreading where a drop fell in.
@@ -82,8 +84,9 @@ export default class LiquidArt {
 
   // its buffers let go (World.dispose)
   dispose() {
-    for (const b of [this.color, this.mirror]) if (b) b.c.width = b.c.height = 0;
-    this.color = this.mirror = null;
+    const W = this.win;
+    if (W) for (const b of [W.color, W.mirror]) b.c.width = b.c.height = 0;
+    this.win = this.patch = null;
     this.sim = null;
   }
 
@@ -95,8 +98,10 @@ export default class LiquidArt {
     const [big, small] = look.grain, a = still(GRAIN, big, 3), b = still(GRAIN, small, 4);
     this.grain = new Float32Array(a.length);
     for (let i = 0; i < a.length; i++) this.grain[i] = (a[i] * 0.6 + b[i] * 0.4) * look.rag;
-    this.color = buffer(this.TW, this.TH);
-    this.mirror = buffer(this.TW, this.TH);
+    // one chunk's texels, painted before they are put into the window
+    const P = Math.ceil((CH * S.cell) / px) + 1;
+    this.patch = { w: P, color: buffer(P, P), mirror: buffer(P, P) };
+    this.win = null;
     const C = S.cw * S.ch;
     this.drawn = new Float64Array(C).fill(-1); // the versions (summed over the chunk and its neighbours) last painted
     this.clear = new Uint8Array(C).fill(1);
@@ -153,15 +158,15 @@ export default class LiquidArt {
     this.rings = kindLook.map((L) => L.ring || 'rgba(255,255,255,0.3)');
   }
 
-  // the look of cell i (depth d): its dominant kind, the second one and its share, fresh or not
-  keyOf(i, d) {
-    const S = this.sim, K = S.K, o = i * K, dom = S.dom[i], mix = LIQUIDS.look.mix;
+  // the look of the cell at address a (depth d): its dominant kind, the second one and its share, fresh or not
+  keyOf(a, d) {
+    const S = this.sim, K = S.K, o = a * K, dom = S.dom[a], mix = LIQUIDS.look.mix;
     let s = dom, sv = 0;
     for (let k = 0; k < K; k++) if (k !== dom && S.vol[o + k] > sv) { sv = S.vol[o + k]; s = k; }
     const p = sv / d;
     let m = 0;
     if (p < mix[0]) s = dom; else m = p < mix[1] ? 0 : p < mix[2] ? 1 : 2;
-    return ((dom * K + s) * 3 + m) * 2 + (S.fresh[i] > 0.5 ? 0 : 1);
+    return ((dom * K + s) * 3 + m) * 2 + (S.fresh[a] > 0.5 ? 0 : 1);
   }
 
   // what a chunk and its neighbours show now (their versions summed)
@@ -174,7 +179,7 @@ export default class LiquidArt {
     return s;
   }
 
-  // paint chunk c's texels into both buffers; returns the texel rectangle
+  // paint chunk c's texels into the patch (its top left texel at its own top left); returns the texel rectangle
   fill(c) {
     const S = this.sim, look = LIQUIDS.look, L = CH + 2, R = CH + 4, raw = this.raw, lv = this.lv, key = this.key, sol = this.sol;
     const cx0 = (c % S.cw) * CH, cy0 = ((c / S.cw) | 0) * CH, cell = S.cell, px = look.px;
@@ -184,9 +189,9 @@ export default class LiquidArt {
     for (let ry = 0; ry < R; ry++) {
       const gy = cy0 - 2 + ry;
       for (let rx = 0; rx < R; rx++) {
-        const gx = cx0 - 2 + rx, i = gy * S.w + gx;
-        const out = gx < 0 || gy < 0 || gx >= S.w || gy >= S.h || S.solid[i] || S.dep[i] <= 0;
-        raw[ry * R + rx] = out ? 0 : S.dep[i] / S.film[i];
+        const gx = cx0 - 2 + rx, a = gx < 0 || gy < 0 || gx >= S.w || gy >= S.h ? -1 : S.addr(gy * S.w + gx);
+        const out = a < 0 || S.solid[a] || S.dep[a] <= 0;
+        raw[ry * R + rx] = out ? 0 : S.dep[a] / S.film[a];
         if (!out) any = true;
       }
     }
@@ -196,20 +201,20 @@ export default class LiquidArt {
       for (let lx = 0; lx < L; lx++) {
         const gx = cx0 - 1 + lx, j = ly * L + lx, r = (ly + 1) * R + lx + 1;
         if (gx < 0 || gy < 0 || gx >= S.w || gy >= S.h) { lv[j] = 0; key[j] = -1; sol[j] = 1; continue; }
-        const i = gy * S.w + gx, d = S.dep[i];
-        sol[j] = S.solid[i];
+        const i = gy * S.w + gx, a = S.addr(i), d = a < 0 ? 0 : S.dep[a];
+        sol[j] = a < 0 ? S.wall(i) : S.solid[a];
         lv[j] = sol[j] ? 0 : raw[r] * kc0 + (raw[r - 1] + raw[r + 1] + raw[r - R] + raw[r + R]) * kn
           + (raw[r - R - 1] + raw[r - R + 1] + raw[r + R - 1] + raw[r + R + 1]) * kd;
-        key[j] = d > 0 && !sol[j] ? this.keyOf(i, d) : -1;
+        key[j] = d > 0 && !sol[j] ? this.keyOf(a, d) : -1;
       }
     }
     const tx0 = Math.floor((cx0 * cell) / px), ty0 = Math.floor((cy0 * cell) / px);
     const tx1 = Math.min(this.TW, Math.floor(((cx0 + CH) * cell) / px)), ty1 = Math.min(this.TH, Math.floor(((cy0 + CH) * cell) / px));
-    const col = this.color.px, mir = this.mirror.px, TW = this.TW, lut = this.lut, mlut = this.mlut, flags = this.flags;
+    const P = this.patch, col = P.color.px, mir = P.mirror.px, TW = P.w, lut = this.lut, mlut = this.mlut, flags = this.flags;
     const [T0, T1, T2, T3, T4] = look.levels, grain = this.grain, gl = look.glint, G = look.gap;
     const fe = look.foam.edge * look.rag, fd = look.foam.deep * look.rag;
     for (let ty = ty0; ty < ty1; ty++) {
-      const row = ty * TW;
+      const row = (ty - ty0) * TW - tx0;
       if (!any) { col.fill(0, row + tx0, row + tx1); mir.fill(0, row + tx0, row + tx1); continue; }
       const wy = (ty + 0.5) * px, gy = wy / cell - 0.5, jy = Math.floor(gy), sy = gy - jy;
       const ly = jy - cy0 + 1, oy = Math.floor(wy / cell) - cy0 + 1;
@@ -256,9 +261,9 @@ export default class LiquidArt {
     if (!list.length) return;
     const decals = this.world.decals;
     if (!decals?.paint) { list.length = 0; return; }
-    const S = this.sim, st = liq.stain, look = LIQUIDS.look, px = look.px, cell = S.cell, per = Math.max(1, Math.round(cell / px));
+    const S = this.sim, look = LIQUIDS.look, px = look.px, cell = S.cell, per = Math.max(1, Math.round(cell / px));
     const film = LIQUIDS.kinds.blood.film, shade = look.kinds.blood.blood, [T0, T1, T2, T3, T4] = look.levels;
-    const at = (gx, gy) => (gx < 0 || gy < 0 || gx >= S.w || gy >= S.h ? 0 : st[gy * S.w + gx] / film);
+    const at = (gx, gy) => (gx < 0 || gy < 0 || gx >= S.w || gy >= S.h ? 0 : liq.stainOf(gy * S.w + gx) / film);
     const rects = [[], [], [], [], []];
     for (const i of list) {
       const cx = i % S.w, cy = (i / S.w) | 0;
@@ -304,6 +309,7 @@ export default class LiquidArt {
     const px = LIQUIDS.look.px, span = CH * S.cell;
     const cx0 = Math.max(0, Math.floor(view.x0 / span)), cx1 = Math.min(S.cw - 1, Math.floor(view.x1 / span));
     const cy0 = Math.max(0, Math.floor(view.y0 / span)), cy1 = Math.min(S.ch - 1, Math.floor(view.y1 / span));
+    const W = this.frame(cx0, cy0, cx1, cy1);
     let shown = false;
     for (let cy = cy0; cy <= cy1; cy++) {
       for (let cx = cx0; cx <= cx1; cx++) {
@@ -313,10 +319,10 @@ export default class LiquidArt {
         if (this.drawn[c] === sig) continue;
         this.drawn[c] = sig;
         if (!S.wet[c] && this.clear[c]) continue;
-        const [x, y, w, h] = this.fill(c);
+        const [x, y, w, h] = this.fill(c), P = this.patch;
         this.clear[c] = S.wet[c] ? 0 : 1;
-        this.color.g.putImageData(this.color.img, 0, 0, x, y, w, h);
-        this.mirror.g.putImageData(this.mirror.img, 0, 0, x, y, w, h);
+        W.color.g.putImageData(P.color.img, x - W.tx, y - W.ty, 0, 0, w, h);
+        W.mirror.g.putImageData(P.mirror.img, x - W.tx, y - W.ty, 0, 0, w, h);
         if (PROF.on) PROF.count('put', 2, w * h * 8); // (the perf overlay: pixels sent up)
       }
     }
@@ -325,9 +331,36 @@ export default class LiquidArt {
     const vw = view.x1 - view.x0, vh = view.y1 - view.y0;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.color.c, view.x0 / px, view.y0 / px, vw / px, vh / px, view.x0, view.y0, vw, vh);
+    ctx.drawImage(W.color.c, view.x0 / px - W.tx, view.y0 / px - W.ty, vw / px, vh / px, view.x0, view.y0, vw, vh);
     this.drawRipples(ctx, view);
     ctx.restore();
+  }
+
+  // The window over chunks [cx0, cx1] x [cy0, cy1] (and `look.margin` more each way): set again round them when they
+  // are not all in it (its canvases made again only when they are too small or far too large); the chunks it held
+  // are to be painted afresh when they come back into it
+  frame(cx0, cy0, cx1, cy1) {
+    const S = this.sim, look = LIQUIDS.look, m = look.margin, span = (CH * S.cell) / look.px;
+    let W = this.win;
+    if (W && cx0 >= W.ox && cy0 >= W.oy && cx1 < W.ox + W.cw && cy1 < W.oy + W.ch) return W;
+    const cw = cx1 - cx0 + 1 + m * 2, ch = cy1 - cy0 + 1 + m * 2;
+    const tw = Math.ceil(cw * span) + 1, th = Math.ceil(ch * span) + 1;
+    if (W) {
+      for (let y = Math.max(0, W.oy); y < Math.min(S.ch, W.oy + W.ch); y++) {
+        for (let x = Math.max(0, W.ox); x < Math.min(S.cw, W.ox + W.cw); x++) this.drawn[y * S.cw + x] = -1;
+      }
+    }
+    const fits = W && W.color.c.width >= tw && W.color.c.height >= th && W.color.c.width <= tw * 2 && W.color.c.height <= th * 2;
+    if (fits) for (const b of [W.color, W.mirror]) b.g.clearRect(0, 0, b.c.width, b.c.height);
+    else {
+      if (W) for (const b of [W.color, W.mirror]) b.c.width = b.c.height = 0;
+      const make = () => { const c = canvas(tw, th); return { c, g: c.getContext('2d') }; };
+      W = { color: make(), mirror: make() };
+    }
+    W.ox = cx0 - m; W.oy = cy0 - m; W.cw = Math.floor((W.color.c.width - 1) / span); W.ch = Math.floor((W.color.c.height - 1) / span);
+    // (the texel of the map at the window's top left)
+    W.tx = Math.floor((W.ox * CH * S.cell) / look.px); W.ty = Math.floor((W.oy * CH * S.cell) / look.px);
+    return (this.win = W);
   }
 
   // rings of single pixels, only where there is liquid under them
@@ -348,9 +381,10 @@ export default class LiquidArt {
 
   // the reflections' mask (Lighting.post: g in world px at its scale): false when nothing wet is in view
   mirrorInto(g, x0, y0, vw, vh) {
-    if (!this.shown || !this.mirror) return false;
+    const W = this.win;
+    if (!this.shown || !W) return false;
     const px = LIQUIDS.look.px;
-    g.drawImage(this.mirror.c, x0 / px, y0 / px, vw / px, vh / px, x0, y0, vw, vh);
+    g.drawImage(W.mirror.c, x0 / px - W.tx, y0 / px - W.ty, vw / px, vh / px, x0, y0, vw, vh);
     return true;
   }
 }
